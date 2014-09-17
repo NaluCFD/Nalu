@@ -1,0 +1,1185 @@
+/*------------------------------------------------------------------------*/
+/*  Nalu 1.0 Copyright 2014 Sandia Corporation.                           */
+/*  This software is released under the BSD license detailed              */
+/*  in the file, LICENSE which is located in the top-level Nalu           */
+/*  directory structure                                                   */
+/*------------------------------------------------------------------------*/
+
+
+#include <EnthalpyEquationSystem.h>
+#include <AlgorithmDriver.h>
+#include <AssembleScalarDiffBCSolverAlgorithm.h>
+#include <AssembleScalarEdgeContactSolverAlgorithm.h>
+#include <AssembleScalarEdgeOpenSolverAlgorithm.h>
+#include <AssembleScalarEdgeSolverAlgorithm.h>
+#include <AssembleScalarElemSolverAlgorithm.h>
+#include <AssembleScalarElemOpenSolverAlgorithm.h>
+#include <AssembleNodalGradAlgorithmDriver.h>
+#include <AssembleNodalGradEdgeAlgorithm.h>
+#include <AssembleNodalGradElemAlgorithm.h>
+#include <AssembleNodalGradEdgeBoundaryAlgorithm.h>
+#include <AssembleNodalGradElemBoundaryAlgorithm.h>
+#include <AssembleNodalGradEdgeContactAlgorithm.h>
+#include <AssembleNodalGradElemContactAlgorithm.h>
+#include <AssembleNodeSolverAlgorithm.h>
+#include <AssembleWallHeatTransferAlgorithmDriver.h>
+#include <AuxFunctionAlgorithm.h>
+#include <ComputeHeatTransferEdgeWallAlgorithm.h>
+#include <ComputeHeatTransferElemWallAlgorithm.h>
+#include <ConstantAuxFunction.h>
+#include <CopyFieldAlgorithm.h>
+#include <DirichletBC.h>
+#include <EffectiveDiffFluxCoeffAlgorithm.h>
+#include <EnthalpyPmrSrcNodeSuppAlg.h>
+#include <EnthalpyLowSpeedCompressibleNodeSuppAlg.h>
+#include <EquationSystem.h>
+#include <EquationSystems.h>
+#include <Enums.h>
+#include <FieldFunctions.h>
+#include <LinearSolvers.h>
+#include <LinearSolver.h>
+#include <LinearSystem.h>
+#include <NaluParsing.h>
+#include <Realm.h>
+#include <Realms.h>
+#include <ScalarMassBackwardEulerNodeSuppAlg.h>
+#include <ScalarMassBDF2NodeSuppAlg.h>
+#include <Simulation.h>
+#include <TimeIntegrator.h>
+#include <SolverAlgorithmDriver.h>
+#include <SolutionOptions.h>
+
+// props
+#include <EnthalpyPropertyEvaluator.h>
+#include <MaterialPropertys.h>
+#include <SpecificHeatPropertyEvaluator.h>
+#include <TemperaturePropAlgorithm.h>
+
+// stk_util
+#include <stk_util/parallel/Parallel.hpp>
+#include <stk_util/environment/CPUTime.hpp>
+#include <stk_util/environment/Env.hpp>
+
+// stk_mesh/base/fem
+#include <stk_mesh/base/BulkData.hpp>
+#include <stk_mesh/base/Field.hpp>
+#include <stk_mesh/base/FieldParallel.hpp>
+#include <stk_mesh/base/GetBuckets.hpp>
+#include <stk_mesh/base/GetEntities.hpp>
+#include <stk_mesh/base/CoordinateSystems.hpp>
+#include <stk_mesh/base/MetaData.hpp>
+
+// stk_io
+#include <stk_io/StkMeshIoBroker.hpp>
+#include <stk_io/IossBridge.hpp>
+
+// stk_topo
+#include <stk_topology/topology.hpp>
+
+// stk_util
+#include <stk_util/parallel/ParallelReduce.hpp>
+
+// basic c++
+#include <iostream>
+#include <math.h>
+#include <utility>
+
+namespace sierra{
+namespace nalu{
+
+//==========================================================================
+// Class Definition
+//==========================================================================
+// EnthalpyEquationSystem - manages h pde system; with T as dependent var
+//==========================================================================
+//--------------------------------------------------------------------------
+//-------- constructor -----------------------------------------------------
+//--------------------------------------------------------------------------
+EnthalpyEquationSystem::EnthalpyEquationSystem(
+  EquationSystems& eqSystems,
+  const double minT,
+  const double maxT)
+  : EquationSystem(eqSystems, "EnthalpyEQS"),
+    minimumT_(minT),
+    maximumT_(maxT),
+    enthalpy_(NULL),
+    temperature_(NULL),
+    dhdx_(NULL),
+    hTmp_(NULL),
+    visc_(NULL),
+    tvisc_(NULL),
+    evisc_(NULL),
+    divQ_(NULL),
+    pOld_(NULL),
+    assembleNodalGradAlgDriver_(new AssembleNodalGradAlgorithmDriver(realm_, "enthalpy", "dhdx")),
+    diffFluxCoeffAlgDriver_(new AlgorithmDriver(realm_)),
+    assembleWallHeatTransferAlgDriver_(NULL),
+    pmrCouplingActive_(false),
+    lowSpeedCompressActive_(false),
+    isInit_(true)
+{
+  // extract solver name and solver object
+  std::string solverName = realm_.equationSystems_.get_solver_block_name("enthalpy");
+  LinearSolver *solver = realm_.root()->linearSolvers_->create_solver(solverName, EQ_ENTHALPY);
+  linsys_ = LinearSystem::create(realm_, 1, name_, solver);
+
+  // determine nodal gradient form
+  set_nodal_gradient("enthalpy");
+  Env::outputP0() << "Edge projected nodal gradient for enthalpy: " << edgeNodalGradient_ <<std::endl;
+
+  // push back EQ to manager
+  realm_.equationSystems_.push_back(this);
+
+  // advertise need for the enthalpy property evaluator
+  realm_.needs_enthalpy(true);
+
+  // advertise as non isothermal
+  realm_.isothermalFlow_ = false;
+
+  // check for PMR coupling
+  std::map<std::string, std::vector<std::string> >::iterator isrc 
+    = realm_.solutionOptions_->srcTermsMap_.find("enthalpy");
+  if ( isrc != realm_.solutionOptions_->srcTermsMap_.end() ) {
+    std::vector<std::string> mapNameVec = isrc->second;
+    for (size_t k = 0; k < mapNameVec.size(); ++k ) {
+      std::string sourceName = mapNameVec[k];   
+      if ( sourceName == "participating_media_radiation" ) {
+        pmrCouplingActive_ = true;
+      }
+      else if ( sourceName == "low_speed_compressible" ) {
+        lowSpeedCompressActive_ = true;
+      }
+    }
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- destructor ------------------------------------------------------
+//--------------------------------------------------------------------------
+EnthalpyEquationSystem::~EnthalpyEquationSystem()
+{
+  delete assembleNodalGradAlgDriver_;
+  delete diffFluxCoeffAlgDriver_;
+
+  if ( NULL != assembleWallHeatTransferAlgDriver_ )
+    delete assembleWallHeatTransferAlgDriver_;
+
+  std::vector<TemperaturePropAlgorithm *>::iterator ii;
+  for( ii=enthalpyFromTemperatureAlg_.begin(); ii!=enthalpyFromTemperatureAlg_.end(); ++ii )
+    delete *ii;
+
+  for( ii=bcEnthalpyFromTemperatureAlg_.begin(); ii!=bcEnthalpyFromTemperatureAlg_.end(); ++ii )
+    delete *ii;
+
+  std::vector<Algorithm *>::iterator iib;
+  for( iib=bdf2CopyStateAlg_.begin(); iib!=bdf2CopyStateAlg_.end(); ++iib )
+    delete *iib;
+
+  for( iib=bcCopyStateAlg_.begin(); iib!=bcCopyStateAlg_.end(); ++iib )
+    delete *iib;
+
+}
+
+
+//--------------------------------------------------------------------------
+//-------- initial_work ----------------------------------------------------
+//--------------------------------------------------------------------------
+void
+EnthalpyEquationSystem::initial_work()
+{
+  // compute all enthalpy values given IC
+  for ( size_t k = 0; k < enthalpyFromTemperatureAlg_.size(); ++k )
+    enthalpyFromTemperatureAlg_[k]->execute();
+
+  // call base class method (will process copyStateAlg)
+  EquationSystem::initial_work();
+
+  // manage bdf2; state Np1 to N; not active if restart is requested
+  for ( size_t k = 0; k < bdf2CopyStateAlg_.size(); ++k )
+    bdf2CopyStateAlg_[k]->execute();
+
+}
+
+//--------------------------------------------------------------------------
+//-------- register_nodal_fields -------------------------------------------
+//--------------------------------------------------------------------------
+void
+EnthalpyEquationSystem::register_nodal_fields(
+  stk::mesh::Part *part)
+{
+
+  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+
+  const int nDim = meta_data.spatial_dimension();
+  const int numStates = realm_.number_of_states();
+
+  // register dof; set it as a restart variable
+  enthalpy_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "enthalpy", numStates));
+  stk::mesh::put_field(*enthalpy_, *part);
+  realm_.augment_restart_variable_list("enthalpy");
+
+  // temperature required in restart
+  temperature_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature"));
+  stk::mesh::put_field(*temperature_, *part);
+  realm_.augment_restart_variable_list("temperature");
+
+  dhdx_ =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "dhdx"));
+  stk::mesh::put_field(*dhdx_, *part, nDim);
+
+  // props
+  ScalarFieldType *specHeat = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "specific_heat"));
+  stk::mesh::put_field(*specHeat, *part);
+
+  // push to property list; enthalpy managed along with Cp
+  realm_.augment_property_map(SPEC_HEAT_ID, specHeat);
+
+  // delta solution for linear solver; share delta since this is a split system
+  hTmp_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "pTmp"));
+  stk::mesh::put_field(*hTmp_, *part);
+
+  visc_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity"));
+  stk::mesh::put_field(*visc_, *part);
+
+  if ( realm_.is_turbulent() ) {
+    tvisc_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_viscosity"));
+    stk::mesh::put_field(*tvisc_, *part);
+  }
+
+  evisc_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "effective_viscosity_h"));
+  stk::mesh::put_field(*evisc_, *part);
+
+  // register divergence of radiative heat flux; for now this is an explicit coupling
+  if ( pmrCouplingActive_ ) {
+    divQ_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "div_radiative_heat_flux"));
+    stk::mesh::put_field(*divQ_, *part);
+  }
+
+  // need to save off old pressure for pressure time derivative (avoid state for now)
+  if ( lowSpeedCompressActive_ ) {
+    pOld_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure_old"));
+    stk::mesh::put_field(*pOld_, *part);
+  }
+
+  // make sure all states are properly populated (restart can handle this)
+  if ( numStates > 2 && !realm_.restarted_simulation() ) {
+    ScalarFieldType &enthalpyN = enthalpy_->field_of_state(stk::mesh::StateN);
+    ScalarFieldType &enthalpyNp1 = enthalpy_->field_of_state(stk::mesh::StateNP1);
+
+    CopyFieldAlgorithm *theCopyAlg
+      = new CopyFieldAlgorithm(realm_, part,
+                               &enthalpyNp1, &enthalpyN,
+                               0, 1,
+                               stk::topology::NODE_RANK);
+    // personally manage enthalpy
+    bdf2CopyStateAlg_.push_back(theCopyAlg);
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- register_interior_algorithm -------------------------------------
+//--------------------------------------------------------------------------
+void
+EnthalpyEquationSystem::register_interior_algorithm(
+  stk::mesh::Part *part)
+{
+
+  // types of algorithms
+  const AlgorithmType algType = INTERIOR;
+
+  ScalarFieldType &enthalpyNp1 = enthalpy_->field_of_state(stk::mesh::StateNP1);
+  VectorFieldType &dhdxNone = dhdx_->field_of_state(stk::mesh::StateNone);
+
+  // non-solver, dhdx; allow for element-based shifted
+  std::map<AlgorithmType, Algorithm *>::iterator it
+    = assembleNodalGradAlgDriver_->algMap_.find(algType);
+  if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+    Algorithm *theAlg = NULL;
+    if ( edgeNodalGradient_ && realm_.realmUsesEdges_ ) {
+      theAlg = new AssembleNodalGradEdgeAlgorithm(realm_, part, &enthalpyNp1, &dhdxNone);
+    }
+    else {
+      theAlg = new AssembleNodalGradElemAlgorithm(realm_, part, &enthalpyNp1, &dhdxNone, edgeNodalGradient_);
+    }
+    assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+  }
+  else {
+    it->second->partVec_.push_back(part);
+  }
+
+  // solver; interior contribution (advection + diffusion)
+  std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi
+    = solverAlgDriver_->solverAlgMap_.find(algType);
+  if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
+    SolverAlgorithm *theAlg = NULL;
+    if ( realm_.realmUsesEdges_ ) {
+      theAlg = new AssembleScalarEdgeSolverAlgorithm(realm_, part, this, enthalpy_, dhdx_, evisc_);
+    }
+    else {
+      theAlg = new AssembleScalarElemSolverAlgorithm(realm_, part, this, enthalpy_, dhdx_, evisc_);
+    }
+    solverAlgDriver_->solverAlgMap_[algType] = theAlg;
+  }
+  else {
+    itsi->second->partVec_.push_back(part);
+  }
+
+  // time term; nodally lumped
+  const AlgorithmType algMass = MASS;
+  std::map<AlgorithmType, SolverAlgorithm *>::iterator itsm =
+    solverAlgDriver_->solverAlgMap_.find(algMass);
+  if ( itsm == solverAlgDriver_->solverAlgMap_.end() ) {
+    // create the solver alg
+    AssembleNodeSolverAlgorithm *theAlg
+      = new AssembleNodeSolverAlgorithm(realm_, part, this);
+    solverAlgDriver_->solverAlgMap_[algMass] = theAlg;
+
+    // now create the supplemental alg for mass term
+    if ( realm_.number_of_states() == 2 ) {
+      ScalarMassBackwardEulerNodeSuppAlg *theMass
+        = new ScalarMassBackwardEulerNodeSuppAlg(realm_, enthalpy_);
+      theAlg->supplementalAlg_.push_back(theMass);
+    }
+    else {
+      ScalarMassBDF2NodeSuppAlg *theMass
+        = new ScalarMassBDF2NodeSuppAlg(realm_, enthalpy_);
+      theAlg->supplementalAlg_.push_back(theMass);
+    }
+
+    // Add src term supp alg...; limited number supported
+    std::map<std::string, std::vector<std::string> >::iterator isrc 
+      = realm_.solutionOptions_->srcTermsMap_.find("enthalpy");
+    if ( isrc != realm_.solutionOptions_->srcTermsMap_.end() ) {      
+      std::vector<std::string> mapNameVec = isrc->second;
+      for (size_t k = 0; k < mapNameVec.size(); ++k ) {
+        std::string sourceName = mapNameVec[k];
+        if ( sourceName == "participating_media_radiation" ) {
+          EnthalpyPmrSrcNodeSuppAlg *pmrSrc
+            = new EnthalpyPmrSrcNodeSuppAlg(realm_);
+          theAlg->supplementalAlg_.push_back(pmrSrc);
+        }
+        else if ( sourceName == "low_speed_compressible" ) {
+          EnthalpyLowSpeedCompressibleNodeSuppAlg *compressSrc
+            = new EnthalpyLowSpeedCompressibleNodeSuppAlg(realm_);
+          theAlg->supplementalAlg_.push_back(compressSrc);
+        }
+        else {
+          throw std::runtime_error("EnthalpyEquationSystem::only PMR and low speed compressible src term is supported");
+        }
+      }
+    }
+  }
+  else {
+    itsm->second->partVec_.push_back(part);
+  }
+
+  // effective viscosity alg
+  const double lamPr = realm_.get_lam_prandtl(enthalpy_->name());
+  const double turbPr = realm_.get_turb_prandtl(enthalpy_->name());
+  std::map<AlgorithmType, Algorithm *>::iterator itev =
+    diffFluxCoeffAlgDriver_->algMap_.find(algType);
+  if ( itev == diffFluxCoeffAlgDriver_->algMap_.end() ) {
+    EffectiveDiffFluxCoeffAlgorithm *theAlg
+      = new EffectiveDiffFluxCoeffAlgorithm(realm_, part, visc_, tvisc_, evisc_, lamPr, turbPr);
+    diffFluxCoeffAlgDriver_->algMap_[algType] = theAlg;
+  }
+  else {
+    itev->second->partVec_.push_back(part);
+  }
+
+  // extract material prop evaluation for enthalpy and create alg to compute h
+  PropertyEvaluator *thePropEval
+    = realm_.get_material_prop_eval(ENTHALPY_ID);
+
+  TemperaturePropAlgorithm *auxAlg
+    = new TemperaturePropAlgorithm( realm_, part, &enthalpyNp1, temperature_, thePropEval);
+  enthalpyFromTemperatureAlg_.push_back(auxAlg);
+
+}
+
+//--------------------------------------------------------------------------
+//-------- register_inflow_bc ----------------------------------------------
+//--------------------------------------------------------------------------
+void
+EnthalpyEquationSystem::register_inflow_bc(
+  stk::mesh::Part *part,
+  const stk::topology &/*theTopo*/,
+  const InflowBoundaryConditionData &inflowBCData)
+{
+
+  // algorithm type
+  const AlgorithmType algType = INFLOW;
+
+  ScalarFieldType &enthalpyNp1 = enthalpy_->field_of_state(stk::mesh::StateNP1);
+  VectorFieldType &dhdxNone = dhdx_->field_of_state(stk::mesh::StateNone);
+
+  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+
+  // extract user data
+  InflowUserData userData = inflowBCData.userData_;
+
+  // check that it was specified
+  if ( !userData.tempSpec_ )
+    throw std::runtime_error("no temperature specified at inflow");
+
+  // extract value
+  Temperature theTemp = userData.temperature_;
+  std::vector<double> userSpec(1);
+  userSpec[0] = theTemp.temperature_;
+
+  // bc data work (copy, enthalpy evaluation, etc.)
+  ScalarFieldType *temperatureBc = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature_bc"));
+  stk::mesh::put_field(*temperatureBc, *part);
+  ScalarFieldType *enthalpyBc = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "enthalpy_bc"));
+  stk::mesh::put_field(*enthalpyBc, *part);
+  temperature_bc_setup(userSpec, part, temperatureBc, enthalpyBc);
+
+  // non-solver; dhdx; allow for element-based shifted
+  std::map<AlgorithmType, Algorithm *>::iterator it
+    = assembleNodalGradAlgDriver_->algMap_.find(algType);
+  if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+    Algorithm *theAlg = NULL;
+    if ( edgeNodalGradient_ && realm_.realmUsesEdges_ ) {
+      theAlg = new AssembleNodalGradEdgeBoundaryAlgorithm(realm_, part, &enthalpyNp1, &dhdxNone);
+    }
+    else {
+      theAlg = new AssembleNodalGradElemBoundaryAlgorithm(realm_, part, &enthalpyNp1, &dhdxNone, edgeNodalGradient_);
+    }
+    assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+  }
+  else {
+    it->second->partVec_.push_back(part);
+  }
+
+  // Dirichlet bc
+  std::map<AlgorithmType, SolverAlgorithm *>::iterator itd =
+    solverAlgDriver_->solverDirichAlgMap_.find(algType);
+  if ( itd == solverAlgDriver_->solverDirichAlgMap_.end() ) {
+    DirichletBC *theAlg
+      = new DirichletBC(realm_, this, part, &enthalpyNp1, enthalpyBc, 0, 1);
+    solverAlgDriver_->solverDirichAlgMap_[algType] = theAlg;
+  }
+  else {
+    itd->second->partVec_.push_back(part);
+  }
+
+}
+
+//--------------------------------------------------------------------------
+//-------- register_open_bc ------------------------------------------------
+//--------------------------------------------------------------------------
+void
+EnthalpyEquationSystem::register_open_bc(
+  stk::mesh::Part *part,
+  const stk::topology &/*theTopo*/,
+  const OpenBoundaryConditionData &openBCData)
+{
+
+  // algorithm type
+  const AlgorithmType algType = OPEN;
+
+  ScalarFieldType &enthalpyNp1 = enthalpy_->field_of_state(stk::mesh::StateNP1);
+  VectorFieldType &dhdxNone = dhdx_->field_of_state(stk::mesh::StateNone);
+
+  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+
+  // extract user data
+  OpenUserData userData = openBCData.userData_;
+
+  // check that temperature was specified
+  if ( !userData.tempSpec_ )
+    throw std::runtime_error("no temperature specified at open");
+
+  // extract value
+  Temperature theTemp = userData.temperature_;
+  std::vector<double> userSpec(1);
+  userSpec[0] = theTemp.temperature_;
+
+  // bc data work (copy, enthalpy evaluation, etc.)
+  const bool copyBcVal = false;
+  const bool isInterface = false;
+  ScalarFieldType *temperatureBc = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "open_temperature_bc"));
+  stk::mesh::put_field(*temperatureBc, *part);
+  ScalarFieldType *enthalpyBc = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "open_enthalpy_bc"));
+  stk::mesh::put_field(*enthalpyBc, *part);
+  temperature_bc_setup(userSpec, part, temperatureBc, enthalpyBc, isInterface, copyBcVal);
+
+  // non-solver; dhdx; allow for element-based shifted
+  std::map<AlgorithmType, Algorithm *>::iterator it
+    = assembleNodalGradAlgDriver_->algMap_.find(algType);
+  if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+    Algorithm *theAlg = NULL;
+    if ( edgeNodalGradient_ && realm_.realmUsesEdges_ ) {
+      theAlg = new AssembleNodalGradEdgeBoundaryAlgorithm(realm_, part, &enthalpyNp1, &dhdxNone);
+    }
+    else {
+      theAlg = new AssembleNodalGradElemBoundaryAlgorithm(realm_, part, &enthalpyNp1, &dhdxNone, edgeNodalGradient_);
+    }
+    assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+  }
+  else {
+    it->second->partVec_.push_back(part);
+  }
+
+  // solver open; lhs
+  std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi
+    = solverAlgDriver_->solverAlgMap_.find(algType);
+  if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
+    SolverAlgorithm *theAlg = NULL;
+    if ( realm_.realmUsesEdges_ ) {
+      theAlg = new AssembleScalarEdgeOpenSolverAlgorithm(realm_, part, this, enthalpy_, enthalpyBc, &dhdxNone, evisc_);
+    }
+    else {
+      theAlg = new AssembleScalarElemOpenSolverAlgorithm(realm_, part, this, enthalpy_, enthalpyBc, &dhdxNone, evisc_);
+    }
+    solverAlgDriver_->solverAlgMap_[algType] = theAlg;
+  }
+  else {
+    itsi->second->partVec_.push_back(part);
+  }
+
+}
+
+//--------------------------------------------------------------------------
+//-------- register_wall_bc ------------------------------------------------
+//--------------------------------------------------------------------------
+void
+EnthalpyEquationSystem::register_wall_bc(
+  stk::mesh::Part *part,
+  const stk::topology &/*theTopo*/,
+  const WallBoundaryConditionData &wallBCData)
+{
+
+  // algorithm type
+  const AlgorithmType algType = WALL;
+
+  // np1
+  ScalarFieldType &enthalpyNp1 = enthalpy_->field_of_state(stk::mesh::StateNP1);
+  VectorFieldType &dhdxNone = dhdx_->field_of_state(stk::mesh::StateNone);
+
+  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+
+  // extract user data
+  WallUserData userData = wallBCData.userData_;
+  std::string temperatureName = "temperature";
+
+  // check to see if this bc is a CHT type
+  const bool isInterface = userData.isInterface_;
+
+  // check for wall function; warn user that this is not yet supported
+  const bool wallFunctionApproach = userData.wallFunctionApproach_;
+  if (wallFunctionApproach)
+    Env::outputP0() << "Sorry, wall function not yet supported for energy; will use Dirichlet" << std::endl;
+
+  // check that is was specified (okay if it is not)
+  if ( bc_data_specified(userData, temperatureName) ) {
+
+    // extract value
+    Temperature theTemp = userData.temperature_;
+    std::vector<double> userSpec(1);
+    userSpec[0] = theTemp.temperature_;
+
+    // bc data work (copy, enthalpy evaluation, etc.)
+    ScalarFieldType *temperatureBc = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature_bc"));
+    stk::mesh::put_field(*temperatureBc, *part);
+    ScalarFieldType *enthalpyBc = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "enthalpy_bc"));
+    stk::mesh::put_field(*enthalpyBc, *part);
+    temperature_bc_setup(userSpec, part, temperatureBc, enthalpyBc, isInterface);
+
+    // Dirichlet bc
+    std::map<AlgorithmType, SolverAlgorithm *>::iterator itd =
+      solverAlgDriver_->solverDirichAlgMap_.find(algType);
+    if ( itd == solverAlgDriver_->solverDirichAlgMap_.end() ) {
+      DirichletBC *theAlg
+        = new DirichletBC(realm_, this, part, &enthalpyNp1, enthalpyBc, 0, 1);
+      solverAlgDriver_->solverDirichAlgMap_[algType] = theAlg;
+    }
+    else {
+      itd->second->partVec_.push_back(part);
+    }
+
+    // heat transfer coefficient
+
+    // register the fields
+    ScalarFieldType *assembledWallArea =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "assembled_wall_area_ht"));
+    stk::mesh::put_field(*assembledWallArea, *part);
+    ScalarFieldType *referenceTemperature =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "reference_temperature"));
+    stk::mesh::put_field(*referenceTemperature, *part);
+    ScalarFieldType *heatTransferCoeff =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "heat_transfer_coefficient"));
+    stk::mesh::put_field(*heatTransferCoeff, *part);
+
+    // create the driver
+    if ( NULL == assembleWallHeatTransferAlgDriver_ ) {
+      assembleWallHeatTransferAlgDriver_ = new AssembleWallHeatTransferAlgorithmDriver(realm_);
+    }
+
+    // create the edge or element algorithm for h and Too
+    std::map<AlgorithmType, Algorithm *>::iterator it
+      = assembleWallHeatTransferAlgDriver_->algMap_.find(algType);
+    if ( it == assembleWallHeatTransferAlgDriver_->algMap_.end() ) {
+      Algorithm *theAlg = NULL;
+      if ( realm_.realmUsesEdges_ ) {
+        theAlg = new ComputeHeatTransferEdgeWallAlgorithm(realm_, part);
+      }
+      else {
+        theAlg = new ComputeHeatTransferElemWallAlgorithm(realm_, part);
+      }
+      assembleWallHeatTransferAlgDriver_->algMap_[algType] = theAlg;
+    }
+    else {
+      it->second->partVec_.push_back(part);
+    }
+
+  }
+  else if ( userData.heatFluxSpec_ ) {
+
+    ScalarFieldType *theBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "heat_flux_bc"));
+    stk::mesh::put_field(*theBcField, *part);
+
+    NormalHeatFlux heatFlux = userData.q_;
+    std::vector<double> userSpec(1);
+    userSpec[0] = heatFlux.qn_;
+
+    // new it
+    ConstantAuxFunction *theAuxFunc = new ConstantAuxFunction(0, 1, userSpec);
+
+    // bc data alg
+    AuxFunctionAlgorithm *auxAlg
+      = new AuxFunctionAlgorithm(realm_, part,
+                                 theBcField, theAuxFunc,
+                                 stk::topology::NODE_RANK);
+    bcDataAlg_.push_back(auxAlg);
+
+    // solver; lhs
+    std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi =
+      solverAlgDriver_->solverAlgMap_.find(algType);
+    if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
+      AssembleScalarDiffBCSolverAlgorithm *theAlg
+        = new AssembleScalarDiffBCSolverAlgorithm(realm_, part, this,
+                                                  theBcField, realm_.realmUsesEdges_);
+      solverAlgDriver_->solverAlgMap_[algType] = theAlg;
+    }
+    else {
+      itsi->second->partVec_.push_back(part);
+    }
+  }
+
+  // non-solver; dhdx; allow for element-based shifted
+  std::map<AlgorithmType, Algorithm *>::iterator it
+    = assembleNodalGradAlgDriver_->algMap_.find(algType);
+  if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+    Algorithm *theAlg = NULL;
+    if ( edgeNodalGradient_ && realm_.realmUsesEdges_ ) {
+      theAlg = new AssembleNodalGradEdgeBoundaryAlgorithm(realm_, part, &enthalpyNp1, &dhdxNone);
+    }
+    else {
+      theAlg = new AssembleNodalGradElemBoundaryAlgorithm(realm_, part, &enthalpyNp1, &dhdxNone, edgeNodalGradient_);
+    }
+    assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+  }
+  else {
+    it->second->partVec_.push_back(part);
+  }
+
+}
+
+//--------------------------------------------------------------------------
+//-------- register_contact_bc ---------------------------------------------
+//--------------------------------------------------------------------------
+void
+EnthalpyEquationSystem::register_contact_bc(
+  stk::mesh::Part *part,
+  const stk::topology &theTopo,
+  const ContactBoundaryConditionData &contactBCData) {
+
+  const AlgorithmType algType = CONTACT;
+
+  ScalarFieldType &enthalpyNp1 = enthalpy_->field_of_state(stk::mesh::StateNP1);
+  VectorFieldType &dhdxNone = dhdx_->field_of_state(stk::mesh::StateNone);
+
+  if ( realm_.realmUsesEdges_ ) {
+
+    // register halo_h if using the element-based projected nodal gradient
+    ScalarFieldType *haloH = NULL;
+    if ( !edgeNodalGradient_ ) {
+      stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+      haloH = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "halo_h"));
+      stk::mesh::put_field(*haloH, *part);
+    }
+
+    // non-solver; contribution to dhdx
+    std::map<AlgorithmType, Algorithm *>::iterator it =
+      assembleNodalGradAlgDriver_->algMap_.find(algType);
+    if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+      Algorithm *theAlg = NULL;
+      if ( realm_.realmUsesEdges_ ) {
+        theAlg = new AssembleNodalGradEdgeContactAlgorithm(realm_, part, &enthalpyNp1, &dhdxNone);
+      }
+      else {
+        theAlg = new AssembleNodalGradElemContactAlgorithm(realm_, part, &enthalpyNp1, &dhdxNone, haloH);
+      }
+      assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+    }
+    else {
+      it->second->partVec_.push_back(part);
+    }
+
+    // solver; lhs
+    std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi =
+      solverAlgDriver_->solverAlgMap_.find(algType);
+    if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
+      AssembleScalarEdgeContactSolverAlgorithm *theAlg
+        = new AssembleScalarEdgeContactSolverAlgorithm(realm_, part, this,
+                                                       enthalpy_, dhdx_, evisc_);
+      solverAlgDriver_->solverAlgMap_[algType] = theAlg;
+    }
+    else {
+      itsi->second->partVec_.push_back(part);
+    }
+  }
+  else {
+    throw std::runtime_error("Sorry, element-based contact not supported");
+  }
+}
+
+
+//--------------------------------------------------------------------------
+//-------- register_symmetry_bc --------------------------------------------
+//--------------------------------------------------------------------------
+void
+EnthalpyEquationSystem::register_symmetry_bc(
+  stk::mesh::Part *part,
+  const stk::topology &/*theTopo*/,
+  const SymmetryBoundaryConditionData &/*wallBCData*/)
+{
+
+  // algorithm type
+  const AlgorithmType algType = SYMMETRY;
+
+  // np1
+  ScalarFieldType &enthalpyNp1 = enthalpy_->field_of_state(stk::mesh::StateNP1);
+  VectorFieldType &dhdxNone = dhdx_->field_of_state(stk::mesh::StateNone);
+
+  // non-solver; dhdx; allow for element-based shifted
+  std::map<AlgorithmType, Algorithm *>::iterator it
+    = assembleNodalGradAlgDriver_->algMap_.find(algType);
+  if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+    Algorithm *theAlg = NULL;
+    if ( edgeNodalGradient_ && realm_.realmUsesEdges_ ) {
+      theAlg = new AssembleNodalGradEdgeBoundaryAlgorithm(realm_, part, &enthalpyNp1, &dhdxNone);
+    }
+    else {
+      theAlg = new AssembleNodalGradElemBoundaryAlgorithm(realm_, part, &enthalpyNp1, &dhdxNone, edgeNodalGradient_);
+    }
+    assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+  }
+  else {
+    it->second->partVec_.push_back(part);
+  }
+
+}
+
+//--------------------------------------------------------------------------
+//-------- initialize ------------------------------------------------------
+//--------------------------------------------------------------------------
+void
+EnthalpyEquationSystem::initialize()
+{
+  solverAlgDriver_->initialize_connectivity();
+  linsys_->finalizeLinearSystem();
+}
+
+//--------------------------------------------------------------------------
+//-------- reinitialize_linear_system --------------------------------------
+//--------------------------------------------------------------------------
+void
+EnthalpyEquationSystem::reinitialize_linear_system()
+{
+  // delete old solver
+  const EquationType theEqID = EQ_ENTHALPY;
+  LinearSolver *theSolver = NULL;
+  std::map<EquationType, LinearSolver *>::const_iterator iter
+    = realm_.root()->linearSolvers_->solvers_.find(theEqID);
+  if (iter != realm_.root()->linearSolvers_->solvers_.end()) {
+    theSolver = (*iter).second;
+    delete theSolver;
+  }
+
+  // delete linsys
+  delete linsys_;
+
+  // create new solver
+  std::string solverName = realm_.equationSystems_.get_solver_block_name("enthalpyNp1");
+  LinearSolver *solver = realm_.root()->linearSolvers_->create_solver(solverName, EQ_ENTHALPY);
+  linsys_ = LinearSystem::create(realm_, 1, name_, solver);
+
+  // initialize
+  solverAlgDriver_->initialize_connectivity();
+  linsys_->finalizeLinearSystem();
+}
+
+//--------------------------------------------------------------------------
+//-------- solve_and_update ------------------------------------------------
+//--------------------------------------------------------------------------
+void
+EnthalpyEquationSystem::solve_and_update()
+{
+
+  // compute bc enthalpy
+  for ( size_t k = 0; k < bcEnthalpyFromTemperatureAlg_.size(); ++k )
+    bcEnthalpyFromTemperatureAlg_[k]->execute();
+
+  // copy enthalpy_bc to enthalpyNp1
+  for ( size_t k = 0; k < bcCopyStateAlg_.size(); ++k )
+    bcCopyStateAlg_[k]->execute();
+
+  // compute dh/dx
+  if ( isInit_ ) {
+    assembleNodalGradAlgDriver_->execute();
+    isInit_ = false;
+  }
+
+  // compute effective viscosity
+  diffFluxCoeffAlgDriver_->execute();
+
+  for ( int k = 0; k < maxIterations_; ++k ) {
+
+    Env::outputP0() << " " << k+1 << "/" << maxIterations_
+                    << std::setw(15) << std::right << name_ << std::endl;
+
+    // mixture fraction assemble, load_complete and solve
+    assemble_and_solve(hTmp_);
+
+    // update
+    double timeA = stk::cpu_time();
+    field_axpby(
+      realm_.fixture_->meta_data(),
+      realm_.fixture_->bulk_data(),
+      1.0, *hTmp_,
+      1.0, enthalpy_->field_of_state(stk::mesh::StateNP1));
+    double timeB = stk::cpu_time();
+    timerAssemble_ += (timeB-timeA);
+
+    // projected nodal gradient
+    timeA = stk::cpu_time();
+    assembleNodalGradAlgDriver_->execute();
+    timeB = stk::cpu_time();
+    timerMisc_ += (timeB-timeA);
+  }
+
+  // delay extract temperature and h and Too to the end of the iteration over all equations
+
+}
+
+//--------------------------------------------------------------------------
+//-------- post_iter_work --------------------------------------------------
+//--------------------------------------------------------------------------
+void
+EnthalpyEquationSystem::post_iter_work()
+{
+
+  // compute bc enthalpy based on converged species
+  for ( size_t k = 0; k < bcEnthalpyFromTemperatureAlg_.size(); ++k )
+    bcEnthalpyFromTemperatureAlg_[k]->execute();
+
+  // copy enthalpy_bc to enthalpyNp1
+  for ( size_t k = 0; k < bcCopyStateAlg_.size(); ++k )
+    bcCopyStateAlg_[k]->execute();
+
+  // extract temperature now
+  extract_temperature();
+
+  // post process h and Too
+  if ( NULL != assembleWallHeatTransferAlgDriver_ )
+    assembleWallHeatTransferAlgDriver_->execute();
+}
+
+//--------------------------------------------------------------------------
+//-------- post_adapt_work -------------------------------------------------
+//--------------------------------------------------------------------------
+void
+EnthalpyEquationSystem::post_adapt_work()
+{
+  if ( realm_.process_adaptivity() ) {
+    Env::outputP0() << "--EnthalpyEquationSystem::post_adapt_work()" << std::endl;
+    extract_temperature();
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- extract_temperature ---------------------------------------------
+//--------------------------------------------------------------------------
+void
+EnthalpyEquationSystem::extract_temperature()
+{
+
+  // define some high level quantities
+  const int maxIter = 25;
+  const double relax = 1.0;
+  const double om_relax = 1.0-relax;
+
+  const double tolerance = 1.0e-8;
+  double workTemperature[1] = {};
+
+  // quality metrics
+  size_t troubleCount[3] = {};
+
+  // extract h evaluator
+  PropertyEvaluator *enthEval = NULL;
+  std::map<PropertyIdentifier, PropertyEvaluator*>::iterator ith =
+    realm_.materialPropertys_.propertyEvalMap_.find(ENTHALPY_ID);
+  if ( ith == realm_.materialPropertys_.propertyEvalMap_.end() ) {
+    throw std::runtime_error("Enthalpy prop evaluator not found:");
+  }
+  else {
+    enthEval = (*ith).second;
+  }
+
+  // extract Cp evaluator
+  PropertyEvaluator *cpEval = NULL;
+  std::map<PropertyIdentifier, PropertyEvaluator*>::iterator itc =
+    realm_.materialPropertys_.propertyEvalMap_.find(SPEC_HEAT_ID);
+  if ( itc == realm_.materialPropertys_.propertyEvalMap_.end() ) {
+    throw std::runtime_error("Specific heat prop evaluator not found:");
+  }
+  else {
+    cpEval = (*itc).second;
+  }
+
+  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+
+  // np1 state
+  ScalarFieldType &enthalpyNp1 = enthalpy_->field_of_state(stk::mesh::StateNP1);
+
+  // select all nodes (locally and shared) where enthalpy is defined
+  stk::mesh::Selector s_all_nodes
+    = (meta_data.locally_owned_part() | meta_data.globally_shared_part())
+    &stk::mesh::selectField(*enthalpy_);
+
+  stk::mesh::BucketVector const& node_buckets =
+    realm_.get_buckets( stk::topology::NODE_RANK, s_all_nodes );
+  for ( stk::mesh::BucketVector::const_iterator ib = node_buckets.begin() ;
+        ib != node_buckets.end() ; ++ib ) {
+    stk::mesh::Bucket & b = **ib ;
+    const stk::mesh::Bucket::size_type length   = b.size();
+
+    // extract the field pointers
+    double * temperature = stk::mesh::field_data(*temperature_, b);
+    double * enthalpy = stk::mesh::field_data(enthalpyNp1, b);
+
+    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+
+      // extract the node
+      stk::mesh::Entity node = b[k];
+
+      // save the temperature
+      const double Tsave = temperature[k];
+
+      // extract the current enthalpy
+      const double hNp1 = enthalpy[k];
+
+      // set flag for convergence and possible trouble
+      bool convergedT = false;
+      bool trouble = false;
+
+      // make an initial guess; current is as good as anything
+      double TNp1 = Tsave;
+      for ( int j = 0; j < maxIter; ++j ) {
+
+        // populate work temperature array
+        workTemperature[0] = TNp1;
+
+        // extract enthalpy and Cp based on guessed temperature
+        const double enthalpyWork = enthEval->execute(workTemperature, node);
+        const double cpWork = cpEval->execute(workTemperature, node);
+
+        // evaluate diffs
+        const double hDiff = hNp1 - enthalpyWork;
+        const double tDiff = hDiff/cpWork;
+        TNp1 += tDiff;
+
+        // check for convergence
+        if ( std::abs(tDiff) < TNp1*tolerance ) {
+          convergedT = true;
+          break;
+        }
+      }
+
+      // check for trouble
+      if ( !convergedT ) {
+        troubleCount[0]++;
+        trouble = true;
+      }
+
+      // now check for monotonicy issues; too low; too high
+      if ( TNp1 < minimumT_ ) {
+        TNp1 = minimumT_;
+        trouble = true;
+        troubleCount[1]++;
+      }
+
+      if ( TNp1 > maximumT_ ) {
+        TNp1 = maximumT_;
+        trouble = true;
+        troubleCount[2]++;
+      }
+
+      // if trouble, relax temnperature; reset both T and h
+      if ( trouble ) {
+        const double troubleT = TNp1*relax + om_relax*Tsave;
+        workTemperature[0] = troubleT;
+        const double enthalpyClip = enthEval->execute(workTemperature, node);
+        enthalpy[k] = enthalpyClip;
+        temperature[k] = troubleT;
+      }
+      else {
+        temperature[k] = TNp1;
+      }
+    }
+  }
+
+  // parallel assemble not converged
+  size_t g_troubleCount[3] = {};
+  stk::ParallelMachine comm = MPI_COMM_WORLD;
+  stk::all_reduce_sum(comm, &troubleCount[0], &g_troubleCount[0], 3);
+
+  if ( g_troubleCount[0] > 0 ) {
+    Env::outputP0() << "Temperature extraction failed to converge " << g_troubleCount[0] << " times"
+                    << std::endl;
+  }
+
+  if ( g_troubleCount[1] > 0 ) {
+    Env::outputP0() << "Temperature clipped to min " << g_troubleCount[1] << " times"
+                    << std::endl;
+  }
+
+  if ( g_troubleCount[2] > 0 ) {
+    Env::outputP0() << "Temperature clipped to max " << g_troubleCount[2] << " times"
+                    << std::endl;
+  }
+
+}
+
+//--------------------------------------------------------------------------
+//-------- post_converged_work ---------------------------------------------
+//--------------------------------------------------------------------------
+void
+EnthalpyEquationSystem::post_converged_work()
+{
+  if ( lowSpeedCompressActive_ ) {
+    stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+    // copy pressure to pOld
+    ScalarFieldType *pressure = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure");
+    field_copy(meta_data, 
+	       realm_.fixture_->bulk_data(),
+	       *pressure, *pOld_);
+  } 
+}
+
+//--------------------------------------------------------------------------
+//-------- predict_state ---------------------------------------------------
+//--------------------------------------------------------------------------
+void
+EnthalpyEquationSystem::predict_state()
+{
+
+  // FIXME... move this to a generalized base class method
+  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+
+  ScalarFieldType &enthalpyN = enthalpy_->field_of_state(stk::mesh::StateN);
+  ScalarFieldType &enthalpyNp1 = enthalpy_->field_of_state(stk::mesh::StateNP1);
+
+  // define some common selectors; select all nodes (locally and shared)
+  // where enthalpy is defined
+  stk::mesh::Selector s_all_nodes
+    = (meta_data.locally_owned_part() | meta_data.globally_shared_part())
+    &stk::mesh::selectField(*enthalpy_);
+
+  //===========================================================
+  // copy state N into N+1
+  //===========================================================
+
+  stk::mesh::BucketVector const& node_buckets =
+    realm_.get_buckets( stk::topology::NODE_RANK, s_all_nodes );
+  for ( stk::mesh::BucketVector::const_iterator ib = node_buckets.begin() ;
+        ib != node_buckets.end() ; ++ib ) {
+    stk::mesh::Bucket & b = **ib ;
+    const stk::mesh::Bucket::size_type length   = b.size();
+    double * hN = stk::mesh::field_data(enthalpyN, b);
+    double * hNp1 = stk::mesh::field_data(enthalpyNp1, b);
+    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+      hNp1[k] = hN[k];
+    }
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- temperature_bc_setup --------------------------------------------
+//--------------------------------------------------------------------------
+void
+EnthalpyEquationSystem::temperature_bc_setup(
+  std::vector<double> userSpecData,
+  stk::mesh::Part *part,
+  ScalarFieldType *temperatureBc,
+  ScalarFieldType *enthalpyBc,
+  const bool isInterface,
+  const bool copyBCVal )
+{
+  ScalarFieldType &enthalpyNp1 = enthalpy_->field_of_state(stk::mesh::StateNP1);
+
+  // populate temperature_bc
+  ConstantAuxFunction *theAuxFunc = new ConstantAuxFunction(0, 1, userSpecData);
+  AuxFunctionAlgorithm *auxTempAlg
+    = new AuxFunctionAlgorithm(realm_, part,
+                               temperatureBc, theAuxFunc,
+                               stk::topology::NODE_RANK);
+
+  // copy bc value to temperature
+  CopyFieldAlgorithm *theTempCopyAlg = NULL;
+  if ( copyBCVal ) {
+    theTempCopyAlg = new CopyFieldAlgorithm(realm_, part,
+					    temperatureBc, temperature_,
+					    0, 1,
+					    stk::topology::NODE_RANK);
+  }
+
+  // if this is an interface bc, then push algorithm to initial condition
+  if ( isInterface ) {
+    // xfer will handle population; only need to populate the initial value
+    realm_.initCondAlg_.push_back(auxTempAlg);
+    if ( copyBCVal )
+      realm_.initCondAlg_.push_back(theTempCopyAlg);
+  }
+  else {
+    // will be processed as part of every pre-time step work
+    bcDataAlg_.push_back(auxTempAlg);
+    if ( copyBCVal )
+      bcDataMapAlg_.push_back(theTempCopyAlg);
+  }
+
+  // extract material prop evaluation for enthalpy and create alg to compute h_bc
+  PropertyEvaluator *thePropEval
+    = realm_.get_material_prop_eval(ENTHALPY_ID);
+
+  TemperaturePropAlgorithm *enthAlg
+    = new TemperaturePropAlgorithm( realm_, part, enthalpyBc, temperatureBc, thePropEval);
+
+  // copy enthalpy_bc to enthalpy np1...
+  CopyFieldAlgorithm *theEnthCopyAlg = NULL;
+  if ( copyBCVal ) {
+    theEnthCopyAlg = new CopyFieldAlgorithm(realm_, part,
+					    enthalpyBc, &enthalpyNp1,
+					    0, 1,
+					    stk::topology::NODE_RANK);
+  }
+
+  // enthalpy always manages bc enthalpy population
+  bcEnthalpyFromTemperatureAlg_.push_back(enthAlg);
+  // only copy enthalpy_bc to enthalpy primitive when required
+  if ( copyBCVal ) 
+    bcCopyStateAlg_.push_back(theEnthCopyAlg);
+
+}
+
+
+} // namespace nalu
+} // namespace Sierra

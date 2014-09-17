@@ -1,0 +1,42 @@
+/*------------------------------------------------------------------------*/
+/*                 Copyright 2013, 2014 Sandia Corporation.               */
+/*  Under terms of Contract DE-AC04-94AL85000, there is a non-exclusive   */
+/*  license for use of this work by or on behalf of the U.S. Government.  */
+/*  Export of this program may require a license from the                 */
+/*  United States Government.                                             */
+/*------------------------------------------------------------------------*/
+
+#ifndef AssembleNodalGradAlgorithmDriver_h
+#define AssembleNodalGradAlgorithmDriver_h
+
+#include <AlgorithmDriver.h>
+#include <string>
+
+namespace sierra{
+namespace nalu{
+
+class Realm;
+
+class AssembleNodalGradAlgorithmDriver : public AlgorithmDriver
+{
+public:
+
+  AssembleNodalGradAlgorithmDriver(
+    const Realm &realm,
+    const std::string & scalarQName,
+    const std::string & dqdxName);
+  ~AssembleNodalGradAlgorithmDriver();
+
+  void pre_work();
+  void post_work();
+
+  const std::string scalarQName_;
+  const std::string dqdxName_;
+  
+};
+  
+
+} // namespace nalu
+} // namespace Sierra
+
+#endif

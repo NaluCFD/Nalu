@@ -1,0 +1,107 @@
+/*------------------------------------------------------------------------*/
+/*  Nalu 1.0 Copyright 2014 Sandia Corporation.                           */
+/*  This software is released under the BSD license detailed              */
+/*  in the file, LICENSE which is located in the top-level Nalu           */
+/*  directory structure                                                   */
+/*------------------------------------------------------------------------*/
+
+
+#include <Realm.h>
+#include <BoundaryConditions.h>
+
+// yaml for parsing..
+#include <yaml-cpp/yaml.h>
+#include <NaluParsing.h>
+
+// basic c++
+#include <iostream>
+#include <map>
+#include <math.h>
+#include <utility>
+
+#include<stk_util/environment/Env.hpp>
+
+namespace sierra{
+namespace nalu{
+
+//==========================================================================
+// Class Definition
+//==========================================================================
+// BoundaryCondition - do some stuff
+//==========================================================================
+//--------------------------------------------------------------------------
+//-------- constructor -----------------------------------------------------
+//--------------------------------------------------------------------------
+  
+//--------------------------------------------------------------------------
+//-------- destructor ------------------------------------------------------
+//--------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------
+//-------- load -----------------------------------------------
+//--------------------------------------------------------------------------
+
+
+/// this is an example of a load() method with polymorphism - the type of
+/// the node is determined from some information, then a particular type
+/// of object is created and returned to the parent.
+
+BoundaryCondition * BoundaryCondition::load(const YAML::Node & node) 
+{
+  if ( node.FindValue("wall_boundary_condition") ){
+    WallBoundaryConditionData& wallBC = *new WallBoundaryConditionData(*parent());
+    node >> wallBC;
+    Env::outputP0() << "Wall BC name:        " << wallBC.bcName_
+                    << " on " << wallBC.targetName_ << std::endl;
+    return &wallBC;
+  }
+  else if (node.FindValue("inflow_boundary_condition")) {
+    InflowBoundaryConditionData& inflowBC = *new InflowBoundaryConditionData(*parent());
+    node >> inflowBC;
+    Env::outputP0() << "Inflow BC name:      " << inflowBC.bcName_
+                    << " on " << inflowBC.targetName_ << std::endl;
+    return &inflowBC;
+  }
+  else if (node.FindValue("open_boundary_condition")) {
+    OpenBoundaryConditionData& openBC = *new OpenBoundaryConditionData(*parent());
+    node >> openBC;
+    Env::outputP0() << "Open BC name:        " << openBC.bcName_
+                    << " on " << openBC.targetName_ << std::endl;
+    return &openBC;
+  }
+  else if (node.FindValue("contact_boundary_condition")) {
+    ContactBoundaryConditionData& contactBC = *new ContactBoundaryConditionData(*parent());
+    node >> contactBC;
+    Env::outputP0() << "Contact BC name:     " << contactBC.bcName_
+                    << " on " << contactBC.targetName_ << std::endl;
+    return &contactBC;
+  }
+  else if (node.FindValue("symmetry_boundary_condition")) {
+    SymmetryBoundaryConditionData& symmetryBC = *new SymmetryBoundaryConditionData(*parent());
+    node >> symmetryBC;
+    Env::outputP0() << "Symmetry BC name:    " << symmetryBC.bcName_
+                    << " on " << symmetryBC.targetName_ << std::endl;
+    return &symmetryBC;
+  }
+  else if (node.FindValue("periodic_boundary_condition")) {
+    PeriodicBoundaryConditionData& periodicBC = *new PeriodicBoundaryConditionData(*parent());
+    node >> periodicBC;
+    Env::outputP0() << "Periodic BC name:    " << periodicBC.bcName_
+                    << " between " << periodicBC.masterSlave_.master_
+                    << " and "<< periodicBC.masterSlave_.slave_ << std::endl;
+    return &periodicBC;
+  }
+  else {
+    throw std::runtime_error("parser error BoundaryConditions::load: no such bc type");
+  }
+  return 0;
+}
+
+  Simulation* BoundaryCondition::root() { return parent()->root(); }
+  BoundaryConditions *BoundaryCondition::parent() { return &boundaryConditions_; }
+
+  Simulation* BoundaryConditions::root() { return parent()->root(); }
+  Realm *BoundaryConditions::parent() { return &realm_; }
+
+} // namespace nalu
+} // namespace Sierra

@@ -1,0 +1,43 @@
+/*------------------------------------------------------------------------*/
+/*  Nalu 1.0 Copyright 2014 Sandia Corporation.                           */
+/*  This software is released under the BSD license detailed              */
+/*  in the file, LICENSE which is located in the top-level Nalu           */
+/*  directory structure                                                   */
+/*------------------------------------------------------------------------*/
+
+
+#ifndef AssembleCourantReynoldsElemAlgorithm_h
+#define AssembleCourantReynoldsElemAlgorithm_h
+
+#include<Algorithm.h>
+#include<FieldTypeDef.h>
+
+namespace sierra{
+namespace nalu{
+
+class Realm;
+
+class AssembleCourantReynoldsElemAlgorithm : public Algorithm
+{
+public:
+
+  AssembleCourantReynoldsElemAlgorithm(
+    Realm &realm,
+    stk::mesh::Part *part);
+  virtual ~AssembleCourantReynoldsElemAlgorithm() {}
+
+  virtual void execute();
+  
+  const bool meshMotion_;
+
+  VectorFieldType *meshVelocity_;
+  VectorFieldType *velocity_;
+  VectorFieldType *coordinates_;
+  ScalarFieldType *density_;
+  ScalarFieldType *viscosity_;
+};
+
+} // namespace nalu
+} // namespace Sierra
+
+#endif

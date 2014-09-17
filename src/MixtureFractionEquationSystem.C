@@ -1,0 +1,886 @@
+/*------------------------------------------------------------------------*/
+/*  Nalu 1.0 Copyright 2014 Sandia Corporation.                           */
+/*  This software is released under the BSD license detailed              */
+/*  in the file, LICENSE which is located in the top-level Nalu           */
+/*  directory structure                                                   */
+/*------------------------------------------------------------------------*/
+
+
+#include <MixtureFractionEquationSystem.h>
+#include <AlgorithmDriver.h>
+#include <AssembleScalarEdgeContactSolverAlgorithm.h>
+#include <AssembleScalarEdgeOpenSolverAlgorithm.h>
+#include <AssembleScalarEdgeSolverAlgorithm.h>
+#include <AssembleScalarElemSolverAlgorithm.h>
+#include <AssembleScalarElemOpenSolverAlgorithm.h>
+#include <AssembleNodalGradAlgorithmDriver.h>
+#include <AssembleNodalGradEdgeAlgorithm.h>
+#include <AssembleNodalGradElemAlgorithm.h>
+#include <AssembleNodalGradEdgeBoundaryAlgorithm.h>
+#include <AssembleNodalGradElemBoundaryAlgorithm.h>
+#include <AssembleNodalGradEdgeContactAlgorithm.h>
+#include <AssembleNodalGradElemContactAlgorithm.h>
+#include <AssembleNodeSolverAlgorithm.h>
+#include <AuxFunctionAlgorithm.h>
+#include <BurkeSchumannAlgorithm.h>
+#include <ConstantAuxFunction.h>
+#include <CopyFieldAlgorithm.h>
+#include <DirichletBC.h>
+#include <EffectiveDiffFluxCoeffAlgorithm.h>
+#include <EquationSystem.h>
+#include <EquationSystems.h>
+#include <Enums.h>
+#include <FieldFunctions.h>
+#include <LinearSolvers.h>
+#include <LinearSolver.h>
+#include <LinearSystem.h>
+#include <NaluParsing.h>
+#include <Realm.h>
+#include <Realms.h>
+#include <ScalarMassBackwardEulerNodeSuppAlg.h>
+#include <ScalarMassBDF2NodeSuppAlg.h>
+#include <Simulation.h>
+#include <TimeIntegrator.h>
+#include <SolverAlgorithmDriver.h>
+
+// stk_util
+#include <stk_util/parallel/Parallel.hpp>
+#include <stk_util/environment/CPUTime.hpp>
+#include <stk_util/environment/Env.hpp>
+
+// stk_mesh/base/fem
+#include <stk_mesh/base/BulkData.hpp>
+#include <stk_mesh/base/Field.hpp>
+#include <stk_mesh/base/FieldParallel.hpp>
+#include <stk_mesh/base/GetBuckets.hpp>
+#include <stk_mesh/base/GetEntities.hpp>
+#include <stk_mesh/base/CoordinateSystems.hpp>
+#include <stk_mesh/base/MetaData.hpp>
+
+// stk_io
+#include <stk_io/StkMeshIoBroker.hpp>
+#include <stk_io/IossBridge.hpp>
+
+// stk_topo
+#include <stk_topology/topology.hpp>
+
+// stk_util
+#include <stk_util/parallel/ParallelReduce.hpp>
+
+// basic c++
+#include <iostream>
+#include <math.h>
+#include <utility>
+
+namespace sierra{
+namespace nalu{
+
+//==========================================================================
+// Class Definition
+//==========================================================================
+// MixtureFractionEquationSystem - manages z pde system
+//==========================================================================
+//--------------------------------------------------------------------------
+//-------- constructor -----------------------------------------------------
+//--------------------------------------------------------------------------
+MixtureFractionEquationSystem::MixtureFractionEquationSystem(
+    EquationSystems& eqSystems,
+    const bool burkeSchumann)
+  : EquationSystem(eqSystems, "MixtureFractionEQS"),
+    burkeSchumann_(burkeSchumann),
+    mixFrac_(NULL),
+    dzdx_(NULL),
+    zTmp_(NULL),
+    visc_(NULL),
+    tvisc_(NULL),
+    evisc_(NULL),
+    scalarVar_(NULL),
+    scalarDiss_(NULL),
+    assembleNodalGradAlgDriver_(new AssembleNodalGradAlgorithmDriver(realm_, "mixture_fraction", "dzdx")),
+    diffFluxCoeffAlgDriver_(new AlgorithmDriver(realm_)),
+    speciesAlgDriver_(0),
+    isInit_(true)
+{
+  // extract solver name and solver object
+  std::string solverName = realm_.equationSystems_.get_solver_block_name("mixture_fraction");
+  LinearSolver *solver = realm_.root()->linearSolvers_->create_solver(solverName, EQ_MIXTURE_FRACTION);
+  linsys_ = LinearSystem::create(realm_, 1, name_, solver);
+
+  // determine nodal gradient form
+  set_nodal_gradient("mixture_fraction");
+  Env::outputP0() << "Edge projected nodal gradient for mixture_fraction: " << edgeNodalGradient_ <<std::endl;
+
+  // push back EQ to manager
+  realm_.equationSystems_.push_back(this);
+
+  // advertise as non uniform
+  realm_.uniformFlow_ = false;
+}
+
+//--------------------------------------------------------------------------
+//-------- destructor ------------------------------------------------------
+//--------------------------------------------------------------------------
+MixtureFractionEquationSystem::~MixtureFractionEquationSystem()
+{
+  delete assembleNodalGradAlgDriver_;
+  delete diffFluxCoeffAlgDriver_;
+  delete speciesAlgDriver_;
+}
+
+//--------------------------------------------------------------------------
+//-------- populate_derived_quantities -------------------------------------
+//--------------------------------------------------------------------------
+void
+MixtureFractionEquationSystem::populate_derived_quantities()
+{
+  if ( NULL != speciesAlgDriver_)
+    speciesAlgDriver_->execute();
+}
+
+//--------------------------------------------------------------------------
+//-------- register_nodal_fields -------------------------------------------
+//--------------------------------------------------------------------------
+void
+MixtureFractionEquationSystem::register_nodal_fields(
+  stk::mesh::Part *part)
+{
+
+  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+
+  const int nDim = meta_data.spatial_dimension();
+  const int numStates = realm_.number_of_states();
+
+  // register dof; set it as a restart variable
+  mixFrac_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "mixture_fraction", numStates));
+  stk::mesh::put_field(*mixFrac_, *part);
+  realm_.augment_restart_variable_list("mixture_fraction");
+
+  dzdx_ =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "dzdx"));
+  stk::mesh::put_field(*dzdx_, *part, nDim);
+
+  // delta solution for linear solver; share delta since this is a split system
+  zTmp_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "pTmp"));
+  stk::mesh::put_field(*zTmp_, *part);
+
+  visc_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity"));
+  stk::mesh::put_field(*visc_, *part);
+
+  if ( realm_.is_turbulent() ) {
+    tvisc_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_viscosity"));
+    stk::mesh::put_field(*tvisc_, *part);
+  }
+
+  evisc_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "effective_viscosity_z"));
+  stk::mesh::put_field(*evisc_, *part);
+
+  scalarVar_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "scalar_variance"));
+  stk::mesh::put_field(*scalarVar_, *part);
+
+  scalarDiss_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "scalar_dissipation"));
+  stk::mesh::put_field(*scalarDiss_, *part);
+
+  if ( burkeSchumann_ ) {
+    // register the mass fraction field
+    const int massFracSize = 5;
+    GenericFieldType *yk = &(meta_data.declare_field<GenericFieldType>(stk::topology::NODE_RANK, "mass_fraction"));
+    stk::mesh::put_field(*yk, *part, massFracSize);
+  }
+
+  // make sure all states are properly populated (restart can handle this)
+  if ( numStates > 2 && !realm_.restarted_simulation() ) {
+    ScalarFieldType &mixFracN = mixFrac_->field_of_state(stk::mesh::StateN);
+    ScalarFieldType &mixFracNp1 = mixFrac_->field_of_state(stk::mesh::StateNP1);
+
+    CopyFieldAlgorithm *theCopyAlg
+      = new CopyFieldAlgorithm(realm_, part,
+                               &mixFracNp1, &mixFracN,
+                               0, 1,
+                               stk::topology::NODE_RANK);
+    copyStateAlg_.push_back(theCopyAlg);
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- register_interior_algorithm -------------------------------------
+//--------------------------------------------------------------------------
+void
+MixtureFractionEquationSystem::register_interior_algorithm(
+  stk::mesh::Part *part)
+{
+
+  // types of algorithms
+  const AlgorithmType algType = INTERIOR;
+
+  ScalarFieldType &mixFracNp1 = mixFrac_->field_of_state(stk::mesh::StateNP1);
+  VectorFieldType &dzdxNone = dzdx_->field_of_state(stk::mesh::StateNone);
+
+  // non-solver; contribution to projected nodal gradient; allow for element-based shifted
+  std::map<AlgorithmType, Algorithm *>::iterator it
+    = assembleNodalGradAlgDriver_->algMap_.find(algType);
+  if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+    Algorithm *theAlg = NULL;
+    if ( edgeNodalGradient_ && realm_.realmUsesEdges_ ) {
+      theAlg = new AssembleNodalGradEdgeAlgorithm(realm_, part, &mixFracNp1, &dzdxNone);
+    }
+    else {
+      theAlg = new AssembleNodalGradElemAlgorithm(realm_, part, &mixFracNp1, &dzdxNone, edgeNodalGradient_);
+    }
+    assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+  }
+  else {
+    it->second->partVec_.push_back(part);
+  }
+
+  // solver; interior edge contribution (advection + diffusion)
+  std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi
+    = solverAlgDriver_->solverAlgMap_.find(algType);
+  if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
+    SolverAlgorithm *theAlg = NULL;
+    if ( realm_.realmUsesEdges_ ) {
+      theAlg = new AssembleScalarEdgeSolverAlgorithm(realm_, part, this, mixFrac_, dzdx_, evisc_);
+    }
+    else {
+      theAlg = new AssembleScalarElemSolverAlgorithm(realm_, part, this, mixFrac_, dzdx_, evisc_);
+    }
+    solverAlgDriver_->solverAlgMap_[algType] = theAlg;
+  }
+  else {
+    itsi->second->partVec_.push_back(part);
+  }
+
+  // time term; nodally lumped
+  const AlgorithmType algMass = MASS;
+  std::map<AlgorithmType, SolverAlgorithm *>::iterator itsm =
+    solverAlgDriver_->solverAlgMap_.find(algMass);
+  if ( itsm == solverAlgDriver_->solverAlgMap_.end() ) {
+    // create the solver alg
+    AssembleNodeSolverAlgorithm *theAlg
+      = new AssembleNodeSolverAlgorithm(realm_, part, this);
+    solverAlgDriver_->solverAlgMap_[algMass] = theAlg;
+
+    // now create the supplemental alg for mass term
+    if ( realm_.number_of_states() == 2 ) {
+      ScalarMassBackwardEulerNodeSuppAlg *theMass
+        = new ScalarMassBackwardEulerNodeSuppAlg(realm_, mixFrac_);
+      theAlg->supplementalAlg_.push_back(theMass);
+    }
+    else {
+      ScalarMassBDF2NodeSuppAlg *theMass
+        = new ScalarMassBDF2NodeSuppAlg(realm_, mixFrac_);
+      theAlg->supplementalAlg_.push_back(theMass);
+    }
+  }
+  else {
+    itsm->second->partVec_.push_back(part);
+  }
+
+  // effective viscosity alg
+  const double lamSc = realm_.get_lam_schmidt(mixFrac_->name());
+  const double turbSc = realm_.get_turb_schmidt(mixFrac_->name());
+  std::map<AlgorithmType, Algorithm *>::iterator itev =
+    diffFluxCoeffAlgDriver_->algMap_.find(algType);
+  if ( itev == diffFluxCoeffAlgDriver_->algMap_.end() ) {
+    EffectiveDiffFluxCoeffAlgorithm *theAlg
+      = new EffectiveDiffFluxCoeffAlgorithm(realm_, part, visc_, tvisc_, evisc_, lamSc, turbSc);
+    diffFluxCoeffAlgDriver_->algMap_[algType] = theAlg;
+  }
+  else {
+    itev->second->partVec_.push_back(part);
+  }
+
+  // any species post processing
+  if ( burkeSchumann_ ) {
+
+    // create the driver
+    if ( NULL == speciesAlgDriver_ )
+      speciesAlgDriver_ = new AlgorithmDriver(realm_);
+
+    // load the part of the algorithm
+    std::map<AlgorithmType, Algorithm *>::iterator itsp =
+      speciesAlgDriver_->algMap_.find(algType);
+    if ( itsp == speciesAlgDriver_->algMap_.end() ) {
+      BurkeSchumannAlgorithm *theAlg
+        = new BurkeSchumannAlgorithm(realm_, part, realm_.materialPropertys_.referencePropertyDataMap_);
+      speciesAlgDriver_->algMap_[algType] = theAlg;
+    }
+    else {
+      itsp->second->partVec_.push_back(part);
+    }
+  }
+
+}
+
+//--------------------------------------------------------------------------
+//-------- register_inflow_bc ----------------------------------------------
+//--------------------------------------------------------------------------
+void
+MixtureFractionEquationSystem::register_inflow_bc(
+  stk::mesh::Part *part,
+  const stk::topology &/*theTopo*/,
+  const InflowBoundaryConditionData &inflowBCData)
+{
+
+  // algorithm type
+  const AlgorithmType algType = INFLOW;
+
+  ScalarFieldType &mixFracNp1 = mixFrac_->field_of_state(stk::mesh::StateNP1);
+  VectorFieldType &dzdxNone = dzdx_->field_of_state(stk::mesh::StateNone);
+
+  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+
+  // register boundary data; mixFrac_bc
+  ScalarFieldType *theBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "mixFrac_bc"));
+  stk::mesh::put_field(*theBcField, *part);
+
+  // extract the value for user specified mixFrac and save off the AuxFunction
+  InflowUserData userData = inflowBCData.userData_;
+  MixtureFraction mixFrac = userData.mixFrac_;
+  std::vector<double> userSpec(1);
+  userSpec[0] = mixFrac.mixFrac_;
+
+  // new it
+  ConstantAuxFunction *theAuxFunc = new ConstantAuxFunction(0, 1, userSpec);
+
+  // bc data alg
+  AuxFunctionAlgorithm *auxAlg
+    = new AuxFunctionAlgorithm(realm_, part,
+                               theBcField, theAuxFunc,
+                               stk::topology::NODE_RANK);
+  bcDataAlg_.push_back(auxAlg);
+
+  // copy mixFrac_bc to mixture_fraction np1...
+  CopyFieldAlgorithm *theCopyAlg
+    = new CopyFieldAlgorithm(realm_, part,
+                             theBcField, &mixFracNp1,
+                             0, 1,
+                             stk::topology::NODE_RANK);
+  bcDataMapAlg_.push_back(theCopyAlg);
+
+  // non-solver; dzdx; allow for element-based shifted
+  std::map<AlgorithmType, Algorithm *>::iterator it
+    = assembleNodalGradAlgDriver_->algMap_.find(algType);
+  if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+    Algorithm *theAlg = NULL;
+    if ( edgeNodalGradient_ && realm_.realmUsesEdges_ ) {
+      theAlg = new AssembleNodalGradEdgeBoundaryAlgorithm(realm_, part, &mixFracNp1, &dzdxNone);
+    }
+    else {
+      theAlg = new AssembleNodalGradElemBoundaryAlgorithm(realm_, part, &mixFracNp1, &dzdxNone, edgeNodalGradient_);
+    }
+    assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+  }
+  else {
+    it->second->partVec_.push_back(part);
+  }
+
+  // Dirichlet bc
+  std::map<AlgorithmType, SolverAlgorithm *>::iterator itd =
+    solverAlgDriver_->solverDirichAlgMap_.find(algType);
+  if ( itd == solverAlgDriver_->solverDirichAlgMap_.end() ) {
+    DirichletBC *theAlg
+      = new DirichletBC(realm_, this, part, &mixFracNp1, theBcField, 0, 1);
+    solverAlgDriver_->solverDirichAlgMap_[algType] = theAlg;
+  }
+  else {
+    itd->second->partVec_.push_back(part);
+  }
+
+}
+
+//--------------------------------------------------------------------------
+//-------- register_open_bc ------------------------------------------------
+//--------------------------------------------------------------------------
+void
+MixtureFractionEquationSystem::register_open_bc(
+  stk::mesh::Part *part,
+  const stk::topology &/*theTopo*/,
+  const OpenBoundaryConditionData &openBCData)
+{
+
+  // algorithm type
+  const AlgorithmType algType = OPEN;
+
+  ScalarFieldType &mixFracNp1 = mixFrac_->field_of_state(stk::mesh::StateNP1);
+  VectorFieldType &dzdxNone = dzdx_->field_of_state(stk::mesh::StateNone);
+
+  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+
+  // register boundary data; mixFrac_bc
+  ScalarFieldType *theBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "open_mixFrac_bc"));
+  stk::mesh::put_field(*theBcField, *part);
+
+  // extract the value for user specified mixFrac and save off the AuxFunction
+  OpenUserData userData = openBCData.userData_;
+  MixtureFraction mixFrac = userData.mixFrac_;
+  std::vector<double> userSpec(1);
+  userSpec[0] = mixFrac.mixFrac_;
+
+  // new it
+  ConstantAuxFunction *theAuxFunc = new ConstantAuxFunction(0, 1, userSpec);
+
+  // bc data alg
+  AuxFunctionAlgorithm *auxAlg
+    = new AuxFunctionAlgorithm(realm_, part,
+                               theBcField, theAuxFunc,
+                               stk::topology::NODE_RANK);
+  bcDataAlg_.push_back(auxAlg);
+
+  // non-solver; dzdx; allow for element-based shifted
+  std::map<AlgorithmType, Algorithm *>::iterator it
+    = assembleNodalGradAlgDriver_->algMap_.find(algType);
+  if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+    Algorithm *theAlg = NULL;
+    if ( edgeNodalGradient_ && realm_.realmUsesEdges_ ) {
+      theAlg = new AssembleNodalGradEdgeBoundaryAlgorithm(realm_, part, &mixFracNp1, &dzdxNone);
+    }
+    else {
+      theAlg = new AssembleNodalGradElemBoundaryAlgorithm(realm_, part, &mixFracNp1, &dzdxNone, edgeNodalGradient_);
+    }
+    assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+  }
+  else {
+    it->second->partVec_.push_back(part);
+  }
+
+  // now solver contributions; open; lhs
+  std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi
+    = solverAlgDriver_->solverAlgMap_.find(algType);
+  if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
+    SolverAlgorithm *theAlg = NULL;
+    if ( realm_.realmUsesEdges_ ) {
+      theAlg = new AssembleScalarEdgeOpenSolverAlgorithm(realm_, part, this, mixFrac_, theBcField, &dzdxNone, evisc_);
+    }
+    else {
+      theAlg = new AssembleScalarElemOpenSolverAlgorithm(realm_, part, this, mixFrac_, theBcField, &dzdxNone, evisc_);
+    }
+    solverAlgDriver_->solverAlgMap_[algType] = theAlg;
+  }
+  else {
+    itsi->second->partVec_.push_back(part);
+  }
+
+}
+
+//--------------------------------------------------------------------------
+//-------- register_wall_bc ------------------------------------------------
+//--------------------------------------------------------------------------
+void
+MixtureFractionEquationSystem::register_wall_bc(
+  stk::mesh::Part *part,
+  const stk::topology &/*theTopo*/,
+  const WallBoundaryConditionData &wallBCData)
+{
+
+  // algorithm type
+  const AlgorithmType algType = WALL;
+
+  // np1
+  ScalarFieldType &mixFracNp1 = mixFrac_->field_of_state(stk::mesh::StateNP1);
+  VectorFieldType &dzdxNone = dzdx_->field_of_state(stk::mesh::StateNone);
+
+  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+
+  // extract the value for user specified mixFrac and save off the AuxFunction
+  WallUserData userData = wallBCData.userData_;
+  std::string mixFracName = "mixture_fraction";
+  if ( bc_data_specified(userData, mixFracName) ) {
+
+    // FIXME: Generalize for constant vs function
+
+    // register boundary data; mixFrac_bc
+    ScalarFieldType *theBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "mixFrac_bc"));
+    stk::mesh::put_field(*theBcField, *part);
+
+    // extract data
+    std::vector<double> userSpec(1);
+    MixtureFraction mixFrac = userData.mixFrac_;
+    userSpec[0] = mixFrac.mixFrac_;
+
+    // new it
+    ConstantAuxFunction *theAuxFunc = new ConstantAuxFunction(0, 1, userSpec);
+
+    // bc data alg
+    AuxFunctionAlgorithm *auxAlg
+      = new AuxFunctionAlgorithm(realm_, part,
+                                 theBcField, theAuxFunc,
+                                 stk::topology::NODE_RANK);
+    bcDataAlg_.push_back(auxAlg);
+
+    // copy mixFrac_bc to mixFrac np1...
+    CopyFieldAlgorithm *theCopyAlg
+      = new CopyFieldAlgorithm(realm_, part,
+                               theBcField, &mixFracNp1,
+                               0, 1,
+                               stk::topology::NODE_RANK);
+    bcDataMapAlg_.push_back(theCopyAlg);
+
+    // Dirichlet bc
+    std::map<AlgorithmType, SolverAlgorithm *>::iterator itd =
+      solverAlgDriver_->solverDirichAlgMap_.find(algType);
+    if ( itd == solverAlgDriver_->solverDirichAlgMap_.end() ) {
+      DirichletBC *theAlg
+        = new DirichletBC(realm_, this, part, &mixFracNp1, theBcField, 0, 1);
+      solverAlgDriver_->solverDirichAlgMap_[algType] = theAlg;
+    }
+    else {
+      itd->second->partVec_.push_back(part);
+    }
+  }
+
+  // non-solver; dzdx; allow for element-based shifted
+ std::map<AlgorithmType, Algorithm *>::iterator it
+   = assembleNodalGradAlgDriver_->algMap_.find(algType);
+ if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+   Algorithm *theAlg = NULL;
+   if ( edgeNodalGradient_ && realm_.realmUsesEdges_ ) {
+     theAlg = new AssembleNodalGradEdgeBoundaryAlgorithm(realm_, part, &mixFracNp1, &dzdxNone);
+   }
+   else {
+     theAlg = new AssembleNodalGradElemBoundaryAlgorithm(realm_, part, &mixFracNp1, &dzdxNone, edgeNodalGradient_);
+   }
+   assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+ }
+ else {
+   it->second->partVec_.push_back(part);
+ }
+
+}
+
+//--------------------------------------------------------------------------
+//-------- register_contact_bc ---------------------------------------------
+//--------------------------------------------------------------------------
+void
+MixtureFractionEquationSystem::register_contact_bc(
+  stk::mesh::Part *part,
+  const stk::topology &theTopo,
+  const ContactBoundaryConditionData &contactBCData) {
+
+  const AlgorithmType algType = CONTACT;
+
+  ScalarFieldType &mixFracNp1 = mixFrac_->field_of_state(stk::mesh::StateNP1);
+  VectorFieldType &dzdxNone = dzdx_->field_of_state(stk::mesh::StateNone);
+
+  if ( realm_.realmUsesEdges_ ) {
+
+    // register halo_z if using the element-based projected nodal gradient
+    ScalarFieldType *haloZ = NULL;
+    if ( !edgeNodalGradient_ ) {
+      stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+      haloZ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "halo_z"));
+      stk::mesh::put_field(*haloZ, *part);
+    }
+
+    // non-solver; contribution to dzdx
+    std::map<AlgorithmType, Algorithm *>::iterator it =
+      assembleNodalGradAlgDriver_->algMap_.find(algType);
+    if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+      Algorithm *theAlg = NULL;
+      if ( realm_.realmUsesEdges_ ) {
+        theAlg = new AssembleNodalGradEdgeContactAlgorithm(realm_, part, &mixFracNp1, &dzdxNone);
+      }
+      else {
+        theAlg = new AssembleNodalGradElemContactAlgorithm(realm_, part, &mixFracNp1, &dzdxNone, haloZ);
+      }
+      assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+    }
+    else {
+      it->second->partVec_.push_back(part);
+    }
+
+    // solver; lhs
+    std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi =
+      solverAlgDriver_->solverAlgMap_.find(algType);
+    if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
+      AssembleScalarEdgeContactSolverAlgorithm *theAlg
+        = new AssembleScalarEdgeContactSolverAlgorithm(realm_, part, this,
+                                                       mixFrac_, dzdx_, evisc_);
+      solverAlgDriver_->solverAlgMap_[algType] = theAlg;
+    }
+    else {
+      itsi->second->partVec_.push_back(part);
+    }
+  }
+  else {
+    throw std::runtime_error("Sorry, element-based contact not supported");
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- register_symmetry_bc --------------------------------------------
+//--------------------------------------------------------------------------
+void
+MixtureFractionEquationSystem::register_symmetry_bc(
+  stk::mesh::Part *part,
+  const stk::topology &/*theTopo*/,
+  const SymmetryBoundaryConditionData &/*wallBCData*/)
+{
+
+  // algorithm type
+  const AlgorithmType algType = SYMMETRY;
+
+  // np1
+  ScalarFieldType &mixFracNp1 = mixFrac_->field_of_state(stk::mesh::StateNP1);
+  VectorFieldType &dzdxNone = dzdx_->field_of_state(stk::mesh::StateNone);
+
+  // non-solver; dzdx; allow for element-based shifted
+  std::map<AlgorithmType, Algorithm *>::iterator it
+    = assembleNodalGradAlgDriver_->algMap_.find(algType);
+  if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+    Algorithm *theAlg = NULL;
+    if ( edgeNodalGradient_ && realm_.realmUsesEdges_ ) {
+      theAlg = new AssembleNodalGradEdgeBoundaryAlgorithm(realm_, part, &mixFracNp1, &dzdxNone);
+    }
+    else {
+      theAlg = new AssembleNodalGradElemBoundaryAlgorithm(realm_, part, &mixFracNp1, &dzdxNone, edgeNodalGradient_);
+    }
+    assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+  }
+  else {
+    it->second->partVec_.push_back(part);
+  }
+
+}
+
+//--------------------------------------------------------------------------
+//-------- initialize ------------------------------------------------------
+//--------------------------------------------------------------------------
+void
+MixtureFractionEquationSystem::initialize()
+{
+  solverAlgDriver_->initialize_connectivity();
+  linsys_->finalizeLinearSystem();
+}
+
+
+//--------------------------------------------------------------------------
+//-------- reinitialize_linear_system --------------------------------------
+//--------------------------------------------------------------------------
+void
+MixtureFractionEquationSystem::reinitialize_linear_system()
+{
+
+  // delete linsys
+  delete linsys_;
+
+  // delete old solver
+  const EquationType theEqID = EQ_MIXTURE_FRACTION;
+  LinearSolver *theSolver = NULL;
+  std::map<EquationType, LinearSolver *>::const_iterator iter
+    = realm_.root()->linearSolvers_->solvers_.find(theEqID);
+  if (iter != realm_.root()->linearSolvers_->solvers_.end()) {
+    theSolver = (*iter).second;
+    delete theSolver;
+  }
+
+  // create new solver
+  std::string solverName = realm_.equationSystems_.get_solver_block_name("mixture_fraction");
+  LinearSolver *solver = realm_.root()->linearSolvers_->create_solver(solverName, EQ_MIXTURE_FRACTION);
+  linsys_ = LinearSystem::create(realm_, 1, name_, solver);
+
+  // initialize
+  solverAlgDriver_->initialize_connectivity();
+  linsys_->finalizeLinearSystem();
+}
+
+//--------------------------------------------------------------------------
+//-------- solve_and_update ------------------------------------------------
+//--------------------------------------------------------------------------
+void
+MixtureFractionEquationSystem::solve_and_update()
+{
+
+  // compute dz/dx
+  if ( isInit_ ) {
+    assembleNodalGradAlgDriver_->execute();
+    isInit_ = false;
+  }
+
+  // compute effective viscosity
+  diffFluxCoeffAlgDriver_->execute();
+
+  for ( int k = 0; k < maxIterations_; ++k ) {
+
+    Env::outputP0() << " " << k+1 << "/" << maxIterations_
+                    << std::setw(15) << std::right << name_ << std::endl;
+
+    // mixture fraction assemble, load_complete and solve
+    assemble_and_solve(zTmp_);
+
+    // update
+    double timeA = stk::cpu_time();
+    update_and_clip();
+    double timeB = stk::cpu_time();
+    timerAssemble_ += (timeB-timeA);
+
+    // projected nodal gradient
+    timeA = stk::cpu_time();
+    assembleNodalGradAlgDriver_->execute();
+    timeB = stk::cpu_time();
+    timerMisc_ += (timeB-timeA);
+
+  }
+
+  compute_scalar_var_diss();
+
+  if ( speciesAlgDriver_ != NULL )
+    speciesAlgDriver_->execute();
+
+}
+
+//--------------------------------------------------------------------------
+//-------- post_iter_work --------------------------------------------------
+//--------------------------------------------------------------------------
+void
+MixtureFractionEquationSystem::post_iter_work()
+{
+  // nothing for now
+}
+
+//--------------------------------------------------------------------------
+//-------- update_and_clip -------------------------------------------------
+//--------------------------------------------------------------------------
+void
+MixtureFractionEquationSystem::update_and_clip()
+{
+  const double deltaZ = 0.0;
+  const double lowBound = 0.0-deltaZ;
+  const double highBound = 1.0+deltaZ;
+  size_t numClip[2] = {0,0};
+  double minZ = +1.0e16;
+  double maxZ = -1.0e16;
+
+  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+
+  // define some common selectors
+  stk::mesh::Selector s_all_nodes
+    = (meta_data.locally_owned_part() | meta_data.globally_shared_part())
+    &stk::mesh::selectField(*mixFrac_);
+
+  stk::mesh::BucketVector const& node_buckets =
+    realm_.get_buckets( stk::topology::NODE_RANK, s_all_nodes );
+  for ( stk::mesh::BucketVector::const_iterator ib = node_buckets.begin();
+        ib != node_buckets.end() ; ++ib ) {
+    stk::mesh::Bucket & b = **ib ;
+    const stk::mesh::Bucket::size_type length   = b.size();
+
+    double *mixFrac = stk::mesh::field_data(*mixFrac_, b);
+    double *zTmp    = stk::mesh::field_data(*zTmp_, b);
+
+    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+      double mixFracNp1 = mixFrac[k] + zTmp[k];
+      if ( mixFracNp1 < lowBound ) {
+        minZ = std::min(mixFracNp1, minZ);
+        mixFracNp1 = lowBound;
+        numClip[0]++;
+      }
+      else if ( mixFracNp1 > highBound ) {
+        maxZ = std::max(mixFracNp1, maxZ);
+        mixFracNp1 = highBound;
+        numClip[1]++;
+      }
+      mixFrac[k] = mixFracNp1;
+    }
+  }
+
+  // parallel assemble clipped value
+  if ( realm_.debug() ) {
+    size_t g_numClip[2] = {};
+    stk::ParallelMachine comm = MPI_COMM_WORLD;
+    stk::all_reduce_sum(comm, numClip, g_numClip, 2);
+
+    if ( g_numClip[0] > 0 ) {
+      double g_minZ = 0;
+      stk::all_reduce_min(comm, &minZ, &g_minZ, 1);
+      Env::outputP0() << "mixFrac clipped (-) " << g_numClip[0] << " times; min: " << g_minZ << std::endl;
+    }
+
+    if ( g_numClip[1] > 0 ) {
+      double g_maxZ = 0;
+      stk::all_reduce_max(comm, &maxZ, &g_maxZ, 1);
+      Env::outputP0() << "mixFrac clipped (+) " << g_numClip[1] << " times; min: " << g_maxZ << std::endl;
+    }
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- compute_scalar_var_diss -----------------------------------------
+//--------------------------------------------------------------------------
+void
+MixtureFractionEquationSystem::compute_scalar_var_diss()
+{
+
+  const double Cv = 0.5;
+  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+
+  const int nDim = meta_data.spatial_dimension();
+
+  ScalarFieldType *dualNodalVol = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
+  ScalarFieldType *density = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
+
+  // define some common selectors
+  stk::mesh::Selector s_all_nodes
+    = (meta_data.locally_owned_part() | meta_data.globally_shared_part())
+    &stk::mesh::selectField(*dzdx_);
+
+  stk::mesh::BucketVector const& node_buckets =
+    realm_.get_buckets( stk::topology::NODE_RANK, s_all_nodes );
+  for ( stk::mesh::BucketVector::const_iterator ib = node_buckets.begin();
+        ib != node_buckets.end() ; ++ib ) {
+    stk::mesh::Bucket & b = **ib ;
+    const stk::mesh::Bucket::size_type length   = b.size();
+
+    double *scalarVar = stk::mesh::field_data(*scalarVar_, b);
+    double *scalarDiss = stk::mesh::field_data(*scalarDiss_, b);
+    const double *dzdx = stk::mesh::field_data(*dzdx_, b);
+    const double *rho = stk::mesh::field_data(*density, b);
+    const double *evisc = stk::mesh::field_data(*evisc_, b);
+    const double *cVol = stk::mesh::field_data(*dualNodalVol, b);
+
+    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+      const double filter = std::pow(cVol[k], 1.0/nDim);
+      double sum = 0.0;
+      for (int j = 0; j < nDim; ++j ) {
+        sum += dzdx[k*nDim+j]*dzdx[k*nDim+j];
+      }
+      scalarVar[k] = Cv*filter*filter*sum;
+      scalarDiss[k] = 2.0*evisc[k]/rho[k]*sum;
+    }
+  }
+}
+
+void
+MixtureFractionEquationSystem::predict_state()
+{
+
+  // FIXME... move this to a generalized base class method
+  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+
+  ScalarFieldType &mixFracN = mixFrac_->field_of_state(stk::mesh::StateN);
+  ScalarFieldType &mixFracNp1 = mixFrac_->field_of_state(stk::mesh::StateNP1);
+
+  // define some common selectors; select all nodes (locally and shared)
+  // where mixFrac is defined
+  stk::mesh::Selector s_all_nodes
+    = (meta_data.locally_owned_part() | meta_data.globally_shared_part())
+    &stk::mesh::selectField(*mixFrac_);
+
+  //===========================================================
+  // copy state N into N+1
+  //===========================================================
+
+  stk::mesh::BucketVector const& node_buckets =
+    realm_.get_buckets( stk::topology::NODE_RANK, s_all_nodes);
+  for ( stk::mesh::BucketVector::const_iterator ib = node_buckets.begin() ;
+        ib != node_buckets.end() ; ++ib ) {
+    stk::mesh::Bucket & b = **ib ;
+    const stk::mesh::Bucket::size_type length   = b.size();
+    double * zN = stk::mesh::field_data(mixFracN, b);
+    double * zNp1 = stk::mesh::field_data(mixFracNp1, b);
+    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+      zNp1[k] = zN[k];
+    }
+  }
+}
+
+} // namespace nalu
+} // namespace Sierra

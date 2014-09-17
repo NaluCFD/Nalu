@@ -1,0 +1,764 @@
+/*------------------------------------------------------------------------*/
+/*  Nalu 1.0 Copyright 2014 Sandia Corporation.                           */
+/*  This software is released under the BSD license detailed              */
+/*  in the file, LICENSE which is located in the top-level Nalu           */
+/*  directory structure                                                   */
+/*------------------------------------------------------------------------*/
+
+
+#include <AlgorithmDriver.h>
+#include <AuxFunctionAlgorithm.h>
+#include <EquationSystems.h>
+#include <EquationSystem.h>
+#include <NaluParsing.h>
+#include <Realm.h>
+#include <PostProcessingData.h>
+#include <Simulation.h>
+#include <SolutionOptions.h>
+
+// all concrete EquationSystem's
+#include <EnthalpyEquationSystem.h>
+#include <HeatCondEquationSystem.h>
+#include <LowMachEquationSystem.h>
+#include <MixtureFractionEquationSystem.h>
+#include <ShearStressTransportEquationSystem.h>
+#include <TurbKineticEnergyEquationSystem.h>
+#include <pmr/RadiativeTransportEquationSystem.h>
+#include <mesh_motion/MeshDisplacementEquationSystem.h>
+
+#include <vector>
+
+#include <stk_mesh/base/BulkData.hpp>
+#include <stk_mesh/base/MetaData.hpp>
+
+// stk_io
+#include <stk_io/StkMeshIoBroker.hpp>
+
+// stk_topo
+#include <stk_topology/topology.hpp>
+
+// stk_util
+#include <stk_util/environment/Env.hpp>
+#include <stk_util/environment/CPUTime.hpp>
+
+namespace sierra{
+namespace nalu{
+
+//==========================================================================
+// Class Definition
+//==========================================================================
+// EquationSystems - base class equation system
+//==========================================================================
+//--------------------------------------------------------------------------
+//-------- constructor -----------------------------------------------------
+//--------------------------------------------------------------------------
+EquationSystems::EquationSystems(
+  Realm &realm)
+  : realm_(realm)
+{
+  // does nothing
+}
+
+//--------------------------------------------------------------------------
+//-------- destructor ------------------------------------------------------
+//--------------------------------------------------------------------------
+EquationSystems::~EquationSystems()
+{
+  std::vector<EquationSystem *>::iterator ii;
+  for( ii=begin(); ii!=end(); ++ii )
+    delete *ii;
+}
+
+//--------------------------------------------------------------------------
+//-------- load -----------------------------------------------
+//--------------------------------------------------------------------------
+void EquationSystems::load(const YAML::Node & y_node)
+{
+  const YAML::Node *y_equation_system = expect_map(y_node,"equation_systems");
+  {
+    get_required(*y_equation_system, "name", name_);
+    get_required(*y_equation_system, "max_iterations", maxIterations_);
+    
+    const YAML::Node &y_solver
+      = *(expect_map(*y_equation_system, "solver_system_specification"));
+    y_solver >> solverSpecMap_;
+    
+    const YAML::Node *y_systems = expect_sequence(*y_equation_system, "systems");
+    {
+      for ( size_t isystem = 0; isystem < y_systems->size(); ++isystem )
+      {
+        const YAML::Node & y_system = (*y_systems)[isystem];
+        EquationSystem *eqSys = 0;
+        const YAML::Node *y_eqsys = 0;
+        if ( (y_eqsys = expect_map(y_system, "LowMachEOM", true) ) ) {
+          if (root()->debug()) sierra::Env::outputP0() << "eqSys = LowMachEOM " << std::endl;
+          bool elemCont = (realm_.realmUsesEdges_) ? false : true;
+          get_if_present_no_default(*y_eqsys, "element_continuity_eqs", elemCont);
+          eqSys = new LowMachEquationSystem(*this, elemCont);
+        }
+        else if( (y_eqsys = expect_map(y_system, "ShearStressTransport", true)) ) {
+          if (root()->debug()) sierra::Env::outputP0() << "eqSys = tke/sdr " << std::endl;
+          eqSys = new ShearStressTransportEquationSystem(*this);
+        }
+        else if( (y_eqsys = expect_map(y_system, "TurbKineticEnergy", true)) ) {
+          if (root()->debug()) sierra::Env::outputP0() << "eqSys = tke " << std::endl;
+          eqSys = new TurbKineticEnergyEquationSystem(*this);
+        }
+        else if( (y_eqsys = expect_map(y_system, "MixtureFraction", true)) ) {
+          if (root()->debug()) sierra::Env::outputP0() << "eqSys = mixFrac " << std::endl;
+          bool burkeSchumann = false;
+          get_if_present_no_default(*y_eqsys, "burke_schumann", burkeSchumann);
+          eqSys = new MixtureFractionEquationSystem(*this, burkeSchumann);
+        }
+        else if( (y_eqsys = expect_map(y_system, "Enthalpy", true)) ) {
+          if (root()->debug()) sierra::Env::outputP0() << "eqSys = enthalpy " << std::endl;
+          double minT = 250.0;
+          double maxT = 3000.0;
+          get_if_present_no_default(*y_eqsys, "minimum_temperature", minT);
+          get_if_present_no_default(*y_eqsys, "maximum_temperature", maxT);
+          eqSys = new EnthalpyEquationSystem(*this, minT, maxT);
+        }
+        else if( (y_eqsys = expect_map(y_system, "HeatConduction", true)) ) {
+          if (root()->debug()) sierra::Env::outputP0() << "eqSys = HeatConduction " << std::endl;
+          eqSys = new HeatCondEquationSystem(*this);
+        }
+        else if( (y_eqsys = expect_map(y_system, "RadiativeTransport", true)) ) {
+          if (root()->debug()) sierra::Env::outputP0() << "eqSys = RadiativeTransport " << std::endl;
+          int quadratureOrder = 2;
+          get_if_present_no_default(*y_eqsys, "quadrature_order", quadratureOrder);
+          bool activateScattering = false;
+          get_if_present_no_default(*y_eqsys, "activate_scattering", activateScattering);
+          eqSys = new RadiativeTransportEquationSystem(*this, quadratureOrder, activateScattering);
+        }
+        else if( (y_eqsys = expect_map(y_system, "MeshDisplacement", true)) ) {
+          if (root()->debug()) sierra::Env::outputP0() << "eqSys = MeshDisplacement " << std::endl;
+          eqSys = new MeshDisplacementEquationSystem(*this);
+        }
+        else {
+          if (!sierra::Env::parallel_rank()) {
+            std::cout << "Error: parsing at " << NaluParsingHelper::info(y_system) 
+                      << "... at parent ... " << NaluParsingHelper::info(y_node) << std::endl;
+          }
+          throw std::runtime_error("parser error EquationSystem::load: unknown equation system type");
+        }
+        
+        eqSys->load(*y_eqsys);
+        
+        // soon:
+        //this->push_back(eqSys);
+      }
+    }
+  }
+
+}
+
+//--------------------------------------------------------------------------
+//-------- get_solver_block_name -------------------------------------------
+//--------------------------------------------------------------------------
+std::string
+EquationSystems::get_solver_block_name(
+  const std::string eqName ) {
+  std::string solverName = "n_a";
+  std::map<std::string, std::string>::const_iterator iter
+    = solverSpecMap_.find(eqName);
+  if (iter != solverSpecMap_.end()) {
+    solverName = (*iter).second;
+  }
+  else {
+    Env::outputP0() << "Missed equation solver block specification for " << eqName << std::endl;
+    throw std::runtime_error("issue with solver name mapping; none supplied");
+  }  
+  return solverName;
+}
+
+void EquationSystems::breadboard() {}
+#if 0
+{
+  for ( size_t ieqSys = 0; ieqSys < this->size(); ++ieqSys )
+  {
+    (*this)[ieqSys]->breadboard();
+  }
+}
+#endif
+
+Simulation* EquationSystems::root() { return parent()->root(); }
+Realm *EquationSystems::parent() { return &realm_; }
+
+//--------------------------------------------------------------------------
+//-------- register_nodal_fields -------------------------------------------
+//--------------------------------------------------------------------------
+void
+EquationSystems::register_nodal_fields(
+  const std::vector<std::string> targetNames)
+{
+
+  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  
+  for ( size_t itarget = 0; itarget < targetNames.size(); ++itarget ) {
+    stk::mesh::Part *targetPart = meta_data.get_part(targetNames[itarget]);
+    if ( NULL == targetPart ) {
+      Env::outputP0() << "Trouble with part " << targetNames[itarget] << std::endl;
+      throw std::runtime_error("Sorry, no part name found by the name " + targetNames[itarget]);
+    }
+    else {
+      realm_.register_nodal_fields(targetPart);
+      std::vector<EquationSystem *>::iterator ii;
+      for( ii=begin(); ii!=end(); ++ii )
+        (*ii)->register_nodal_fields(targetPart);
+    }
+  }
+
+}
+
+//--------------------------------------------------------------------------
+//-------- register_edge_fields --------------------------------------------
+//--------------------------------------------------------------------------
+void
+EquationSystems::register_edge_fields(
+  const std::vector<std::string> targetNames)
+{
+
+  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  
+  for ( size_t itarget = 0; itarget < targetNames.size(); ++itarget ) {
+    stk::mesh::Part *targetPart = meta_data.get_part(targetNames[itarget]);
+    if ( NULL == targetPart ) {
+      throw std::runtime_error("Sorry, no part name found by the name " + targetNames[itarget]);
+    }
+    else {
+      // found the part; no need to subset
+      std::vector<EquationSystem *>::iterator ii;
+      for( ii=begin(); ii!=end(); ++ii )
+        (*ii)->register_edge_fields(targetPart);
+    }
+  }
+
+}
+
+//--------------------------------------------------------------------------
+//-------- register_element_fields -----------------------------------------
+//--------------------------------------------------------------------------
+void
+EquationSystems::register_element_fields(
+  const std::vector<std::string> targetNames )
+{
+
+  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+
+  for ( size_t itarget = 0; itarget < targetNames.size(); ++itarget ) {
+    stk::mesh::Part *targetPart = meta_data.get_part(targetNames[itarget]);
+    if ( NULL == targetPart ) {
+      throw std::runtime_error("Sorry, no part name found by the name " + targetNames[itarget]);
+    }
+    else {
+      // found the part; no need to subset
+      const stk::topology the_topo = targetPart->topology();
+      if( stk::topology::ELEMENT_RANK != targetPart->primary_entity_rank() ) {
+        throw std::runtime_error("Sorry, parts need to be elements.. " + targetNames[itarget]);
+      }
+      std::vector<EquationSystem *>::iterator ii;
+      for( ii=begin(); ii!=end(); ++ii )
+        (*ii)->register_element_fields(targetPart, the_topo);
+    }
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- register_interior_algorithm -------------------------------------
+//--------------------------------------------------------------------------
+void
+EquationSystems::register_interior_algorithm(
+  const std::vector<std::string> targetNames)
+{
+
+  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+
+  for ( size_t itarget = 0; itarget < targetNames.size(); ++itarget ) {
+    stk::mesh::Part *targetPart = meta_data.get_part(targetNames[itarget]);
+    if ( NULL == targetPart ) {
+      throw std::runtime_error("Sorry, no part name found by the name " + targetNames[itarget]);
+    }
+    else {
+      // found the part; no need to subset
+      if( stk::topology::ELEMENT_RANK != targetPart->primary_entity_rank() ) {
+        throw std::runtime_error("Sorry, parts need to be elements.. " + targetNames[itarget]);
+      }
+
+      realm_.register_interior_algorithm(targetPart);
+      std::vector<EquationSystem *>::iterator ii;
+      for( ii=begin(); ii!=end(); ++ii ) {
+        (*ii)->register_interior_algorithm(targetPart);
+      }
+    }
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- register_wall_bc ------------------------------------------------
+//--------------------------------------------------------------------------
+void
+EquationSystems::register_wall_bc(
+  const std::string targetName,
+  const WallBoundaryConditionData &wallBCData)
+{
+  
+  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+
+  stk::mesh::Part *targetPart = meta_data.get_part(targetName);
+  if ( NULL == targetPart ) {
+    sierra::Env::outputP0() << "Sorry, no part name found by the name " << targetName << std::endl;
+  }
+  else {
+    // found the part
+    const std::vector<stk::mesh::Part*> & mesh_parts = targetPart->subsets();
+    for( std::vector<stk::mesh::Part*>::const_iterator i = mesh_parts.begin();
+         i != mesh_parts.end(); ++i )
+    {
+      stk::mesh::Part * const part = *i ;
+      const stk::topology the_topo = part->topology();
+
+      if ( !(meta_data.side_rank() == part->primary_entity_rank()) ) {
+        sierra::Env::outputP0() << "Sorry, part is not a face " << targetName;
+      }
+      else {
+        realm_.register_wall_bc(part, the_topo);
+        std::vector<EquationSystem *>::iterator ii;
+        for( ii=begin(); ii!=end(); ++ii )
+          (*ii)->register_wall_bc(part, the_topo, wallBCData);
+      }
+    }
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- register_inflow_bc ----------------------------------------------
+//--------------------------------------------------------------------------
+void
+EquationSystems::register_inflow_bc(
+  const std::string targetName,
+  const InflowBoundaryConditionData &inflowBCData)
+{
+  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+
+  stk::mesh::Part *targetPart = meta_data.get_part(targetName);
+  if ( NULL == targetPart ) {
+    sierra::Env::outputP0() << "Sorry, no part name found by the name " << targetName << std::endl;
+  }
+  else {
+    // found the part
+    const std::vector<stk::mesh::Part*> & mesh_parts = targetPart->subsets();
+    for( std::vector<stk::mesh::Part*>::const_iterator i = mesh_parts.begin();
+         i != mesh_parts.end(); ++i )
+    {
+      stk::mesh::Part * const part = *i ;
+      const stk::topology the_topo = part->topology();
+
+      if ( !(meta_data.side_rank() == part->primary_entity_rank()) ) {
+        sierra::Env::outputP0() << "Sorry, part is not a face " << targetName;
+      }
+      else {
+        realm_.register_inflow_bc(part, the_topo);
+        std::vector<EquationSystem *>::iterator ii;
+        for( ii=begin(); ii!=end(); ++ii )
+          (*ii)->register_inflow_bc(part, the_topo, inflowBCData);
+      }
+    }
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- register_open_bc ------------------------------------------------
+//--------------------------------------------------------------------------
+void
+EquationSystems::register_open_bc(
+  const std::string targetName,
+  const OpenBoundaryConditionData &openBCData)
+{
+  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+
+  stk::mesh::Part *targetPart = meta_data.get_part(targetName);
+  if ( NULL == targetPart ) {
+    sierra::Env::outputP0() << "Sorry, no part name found by the name " << targetName << std::endl;
+  }
+  else {
+    // found the part
+    const std::vector<stk::mesh::Part*> & mesh_parts = targetPart->subsets();
+    for( std::vector<stk::mesh::Part*>::const_iterator i = mesh_parts.begin();
+         i != mesh_parts.end(); ++i )
+    {
+      stk::mesh::Part * const part = *i ;
+      const stk::topology the_topo = part->topology();
+      if ( !(meta_data.side_rank() == part->primary_entity_rank()) ) {
+        sierra::Env::outputP0() << "Sorry, part is not a face " << targetName;
+      }
+      else {
+        realm_.register_open_bc(part, the_topo);
+        std::vector<EquationSystem *>::iterator ii;
+        for( ii=begin(); ii!=end(); ++ii )
+          (*ii)->register_open_bc(part, the_topo, openBCData);
+      }
+    }
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- register_contact_bc ---------------------------------------------
+//--------------------------------------------------------------------------
+void
+EquationSystems::register_contact_bc(
+  const std::string targetName,
+  const ContactBoundaryConditionData &contactBCData)
+{
+  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+
+  stk::mesh::Part *targetPart = meta_data.get_part(targetName);
+  if ( NULL == targetPart ) {
+    sierra::Env::outputP0() << "Sorry, no part name found by the name " << targetName << std::endl;
+  }
+  else {
+    // found the part
+    const std::vector<stk::mesh::Part*> & mesh_parts = targetPart->subsets();
+    for( std::vector<stk::mesh::Part*>::const_iterator i = mesh_parts.begin();
+         i != mesh_parts.end(); ++i )
+    {
+      stk::mesh::Part * const part = *i ;
+      const stk::topology the_topo = part->topology();
+      if ( !(meta_data.side_rank() == part->primary_entity_rank()) ) {
+        sierra::Env::outputP0() << "Sorry, part is not a face " << targetName;
+      }
+      else {
+        realm_.register_contact_bc(part, the_topo, contactBCData);
+        std::vector<EquationSystem *>::iterator ii;
+        for( ii=begin(); ii!=end(); ++ii )
+          (*ii)->register_contact_bc(part, the_topo, contactBCData);
+      }
+    }
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- register_symmetry_bc --------------------------------------------
+//--------------------------------------------------------------------------
+void
+EquationSystems::register_symmetry_bc(
+  const std::string targetName,
+  const SymmetryBoundaryConditionData &symmetryBCData)
+{
+  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+
+  stk::mesh::Part *targetPart = meta_data.get_part(targetName);
+  if ( NULL == targetPart ) {
+    sierra::Env::outputP0() << "Sorry, no part name found by the name " << targetName << std::endl;
+    throw std::runtime_error("Symmetry::fatal_error()");
+  }
+  else {
+    // found the part
+    const std::vector<stk::mesh::Part*> & mesh_parts = targetPart->subsets();
+    for( std::vector<stk::mesh::Part*>::const_iterator i = mesh_parts.begin();
+         i != mesh_parts.end(); ++i )
+    {
+      stk::mesh::Part * const part = *i ;
+      const stk::topology the_topo = part->topology();
+      if ( !(meta_data.side_rank() == part->primary_entity_rank()) ) {
+        sierra::Env::outputP0() << "Sorry, part is not a face " << targetName;
+        throw std::runtime_error("Symmetry::fatal_error()");
+      }
+      else {
+        realm_.register_symmetry_bc(part, the_topo);
+        std::vector<EquationSystem *>::iterator ii;
+        for( ii=begin(); ii!=end(); ++ii )
+          (*ii)->register_symmetry_bc(part, the_topo, symmetryBCData);
+      }
+    }
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- register_periodic_bc --------------------------------------------
+//--------------------------------------------------------------------------
+void
+EquationSystems::register_periodic_bc(
+  const std::string targetNameMaster,
+  const std::string targetNameSlave,
+  const PeriodicBoundaryConditionData &periodicBCData)
+{
+  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+
+  stk::mesh::Part *masterMeshPart= meta_data.get_part(targetNameMaster);
+  stk::mesh::Part *slaveMeshPart= meta_data.get_part(targetNameSlave);
+  if ( NULL == masterMeshPart) {
+    sierra::Env::outputP0() << "Sorry, no part name found by the name " << targetNameMaster << std::endl;
+    throw std::runtime_error("EquationSystems::fatal_error()");
+  }
+  else if ( NULL == slaveMeshPart) {
+    sierra::Env::outputP0() << "Sorry, no part name found by the name " << targetNameSlave << std::endl;
+    throw std::runtime_error("EquationSystems::fatal_error()");
+  }
+  else {
+    // error check on size of subsets
+    const std::vector<stk::mesh::Part*> & masterMeshParts = masterMeshPart->subsets();
+    const std::vector<stk::mesh::Part*> & slaveMeshParts = slaveMeshPart->subsets();
+
+    if ( masterMeshParts.size() != slaveMeshParts.size())
+      Env::outputP0() << "Mesh part subsets for master slave do not match in size" << std::endl;
+
+    if ( masterMeshParts.size() > 1 )
+      Env::outputP0() << "Surface has subsets active; please make sure that the topologies match" << std::endl;
+
+    // extract data and search tolerance
+    PeriodicUserData userData = periodicBCData.userData_;
+    const double searchTolerance = userData.searchTolerance_;
+    const std::string searchMethodName = userData.searchMethodName_;
+    realm_.register_periodic_bc(masterMeshPart, slaveMeshPart, searchTolerance, searchMethodName);
+  }
+}
+
+
+//--------------------------------------------------------------------------
+//-------- register_surface_pp_algorithm ----------------------
+//--------------------------------------------------------------------------
+void
+EquationSystems::register_surface_pp_algorithm(
+  const PostProcessingData &theData)
+{
+  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+
+  stk::mesh::PartVector partVector;
+  std::vector<std::string> targetNames = theData.targetNames_;
+  for ( size_t in = 0; in < targetNames.size(); ++in) {
+    stk::mesh::Part *targetPart = meta_data.get_part(targetNames[in]);
+    if ( NULL == targetPart ) {
+      sierra::Env::outputP0() << "SurfacePP: can not find part with name: " << targetNames[in];
+    }
+    else {
+      // found the part
+      const std::vector<stk::mesh::Part*> & mesh_parts = targetPart->subsets();
+      for( std::vector<stk::mesh::Part*>::const_iterator i = mesh_parts.begin();
+          i != mesh_parts.end(); ++i )
+      {
+        stk::mesh::Part * const part = *i ;
+        if ( !(meta_data.side_rank() == part->primary_entity_rank()) ) {
+          sierra::Env::outputP0() << "SurfacePP: part is not a face: " << targetNames[in];
+        }
+        partVector.push_back(part);
+      }
+    }
+  }
+
+  // call through to equation systems
+  std::vector<EquationSystem *>::iterator ii;
+  for( ii=begin(); ii!=end(); ++ii )
+    (*ii)->register_surface_pp_algorithm(theData, partVector);
+
+}
+
+//--------------------------------------------------------------------------
+//-------- setup_initial_condition_fcn() -----------------------------------
+//--------------------------------------------------------------------------
+void
+EquationSystems::register_initial_condition_fcn(
+  stk::mesh::Part *part,
+  const UserFunctionInitialConditionData &fcnIC)
+{
+  // call through to equation systems
+  std::vector<EquationSystem *>::iterator ii;
+  for( ii=begin(); ii!=end(); ++ii )
+    (*ii)->register_initial_condition_fcn(part, fcnIC.functionNames_, fcnIC.functionParams_);
+}
+
+//--------------------------------------------------------------------------
+//-------- initialize() ----------------------------------------------------
+//--------------------------------------------------------------------------
+void
+EquationSystems::initialize()
+{
+  double start_time = stk::cpu_time();
+  std::vector<EquationSystem *>::iterator ii;
+  for( ii=begin(); ii!=end(); ++ii )
+    (*ii)->initialize();
+  double end_time = stk::cpu_time();
+  realm_.timerInitializeEqs_ += (end_time-start_time);
+}
+
+//--------------------------------------------------------------------------
+//-------- reinitialize_linear_system() ----------------------------------------------------
+//--------------------------------------------------------------------------
+void
+EquationSystems::reinitialize_linear_system()
+{
+  double start_time = stk::cpu_time();
+  std::vector<EquationSystem *>::iterator ii;
+  for( ii=begin(); ii!=end(); ++ii )
+    (*ii)->reinitialize_linear_system();
+  double end_time = stk::cpu_time();
+  realm_.timerInitializeEqs_ += (end_time-start_time);
+}
+
+//--------------------------------------------------------------------------
+//-------- post_adapt_work() -----------------------------------------------
+//--------------------------------------------------------------------------
+void
+EquationSystems::post_adapt_work()
+{
+  double time = -stk::cpu_time();
+  std::vector<EquationSystem *>::iterator ii;
+  for( ii=begin(); ii!=end(); ++ii )
+    (*ii)->post_adapt_work();
+  
+  // everyone needs props to be done..
+  realm_.evaluate_properties();
+
+  // load all time to adapt
+  time += stk::cpu_time();
+  realm_.timerAdapt_ += time;
+
+}
+
+//--------------------------------------------------------------------------
+//-------- populate_derived_qauntities() -----------------------------------
+//--------------------------------------------------------------------------
+void
+EquationSystems::populate_derived_quantities()
+{
+  std::vector<EquationSystem *>::iterator ii;
+  for( ii=begin(); ii!=end(); ++ii )
+    (*ii)->populate_derived_quantities();
+}
+
+//--------------------------------------------------------------------------
+//-------- initial_work() --------------------------------------------------
+//--------------------------------------------------------------------------
+void
+EquationSystems::initial_work()
+{
+  std::vector<EquationSystem *>::iterator ii;
+  for( ii=begin(); ii!=end(); ++ii )
+    (*ii)->initial_work();
+}
+
+//--------------------------------------------------------------------------
+//-------- solve_and_update ------------------------------------------------
+//--------------------------------------------------------------------------
+bool
+EquationSystems::solve_and_update()
+{
+  std::vector<EquationSystem *>::iterator ii;
+  for( ii=begin(); ii!=end(); ++ii )
+    (*ii)->solve_and_update();
+  
+  // add a post iteration work section
+  for( ii=begin(); ii!=end(); ++ii )
+    (*ii)->post_iter_work();
+  
+  // check equations for convergence
+  bool overallConvergence = true;
+  for( ii=begin(); ii!=end(); ++ii ) {
+    const bool systemConverged = (*ii)->system_is_converged();
+    if ( !systemConverged )
+      overallConvergence = false;
+  }
+  
+  return overallConvergence;
+}
+
+
+//--------------------------------------------------------------------------
+//-------- provide_system_norm ---------------------------------------------
+//--------------------------------------------------------------------------
+double
+EquationSystems::provide_system_norm()
+{
+  double maxNorm = -1.0e16;
+  std::vector<EquationSystem *>::iterator ii;
+  for( ii=begin(); ii!=end(); ++ii )
+    maxNorm = std::max(maxNorm, (*ii)->provide_scaled_norm());
+  return maxNorm;
+}
+
+//--------------------------------------------------------------------------
+//-------- dump_eq_time ----------------------------------------------------
+//--------------------------------------------------------------------------
+void
+EquationSystems::dump_eq_time()
+{
+  std::vector<EquationSystem *>::iterator ii;
+  for( ii=begin(); ii!=end(); ++ii ) {
+    (*ii)->dump_eq_time();
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- predict_state ---------------------------------------------------
+//--------------------------------------------------------------------------
+void
+EquationSystems::predict_state()
+{
+  std::vector<EquationSystem *>::iterator ii;
+  for( ii=begin(); ii!=end(); ++ii )
+    (*ii)->predict_state();
+}
+
+//--------------------------------------------------------------------------
+//-------- populate_boundary_data ------------------------------------------
+//--------------------------------------------------------------------------
+void
+EquationSystems::populate_boundary_data()
+{
+  std::vector<EquationSystem *>::iterator ii;
+  for( ii=begin(); ii!=end(); ++ii ) {
+    for ( size_t k = 0; k < (*ii)->bcDataAlg_.size(); ++k ) {
+      (*ii)->bcDataAlg_[k]->execute();
+    }
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- boundary_data_to_state_data -------------------------------------
+//--------------------------------------------------------------------------
+void
+EquationSystems::boundary_data_to_state_data()
+{
+  std::vector<EquationSystem *>::iterator ii;
+  for( ii=begin(); ii!=end(); ++ii ) {
+    for ( size_t k = 0; k < (*ii)->bcDataMapAlg_.size(); ++k ) {
+      (*ii)->bcDataMapAlg_[k]->execute();
+    }
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- provide_output --------------------------------------------------
+//--------------------------------------------------------------------------
+void
+EquationSystems::provide_output()
+{
+  std::vector<EquationSystem *>::iterator ii;
+  for( ii=begin(); ii!=end(); ++ii )
+    (*ii)->provide_output();
+}
+
+//--------------------------------------------------------------------------
+//-------- pre_timestep_work -----------------------------------------------
+//--------------------------------------------------------------------------
+void
+EquationSystems::pre_timestep_work()
+{
+  // do the work
+  std::vector<EquationSystem *>::iterator ii;
+  for( ii=begin(); ii!=end(); ++ii )
+    (*ii)->pre_timestep_work();
+}
+
+//--------------------------------------------------------------------------
+//-------- post_converged_work----------------------------------------------
+//--------------------------------------------------------------------------
+void
+EquationSystems::post_converged_work()
+{
+  std::vector<EquationSystem *>::iterator ii;
+  for( ii=begin(); ii!=end(); ++ii )
+    (*ii)->post_converged_work();
+}
+
+} // namespace nalu
+} // namespace Sierra
