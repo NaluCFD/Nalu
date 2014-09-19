@@ -1,9 +1,10 @@
 /*------------------------------------------------------------------------*/
-/*  Nalu 1.0 Copyright 2014 Sandia Corporation.                           */
-/*  This software is released under the BSD license detailed              */
-/*  in the file, LICENSE which is located in the top-level Nalu           */
+/*  Copyright 2014 Sandia Corporation.                                    */
+/*  This software is released under the license detailed                  */
+/*  in the file, LICENSE, which is located in the top-level Nalu          */
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
+
 
 #include <Slib_Startup.h>
 #include <stk_util/environment/Env.hpp>
