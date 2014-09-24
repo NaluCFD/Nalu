@@ -1,0 +1,43 @@
+
+trilinos_install_dir=/usr/local/Cellar
+mpi_base_dir=/usr/local/Cellar/open-mpi/1.8.1
+superlu_dir=/usr/local/Cellar/superlu/4.3/include/superlu
+boost_dir=/usr/local/Cellar/boost/1.55.0_2/include/boost/
+
+EXTRA_ARGS=$@
+
+find . -name "CMakeFiles" -exec rm -rf {} \;
+rm -f CMakeCache.txt
+rm -r install
+
+cmake \
+-DCMAKE_INSTALL_PREFIX=$trilinos_install_dir \
+-DTrilinos_ENABLE_TESTS:BOOL=ON \
+-DTrilinos_ALLOW_NO_PACKAGES:BOOL=OFF \
+-DTPL_ENABLE_MPI=ON \
+  -DMPI_BASE_DIR:PATH=$mpi_base_dir \
+-DTPL_ENABLE_SuperLU=ON \
+  -DSuperLU_INCLUDE_DIRS:PATH=/usr/local/Cellar/superlu/4.3/include/superlu \
+  -DSuperLU_LIBRARY_DIRS:PATH=$superlu_dir/lib \
+-DTrilinos_ENABLE_Epetra:BOOL=ON \
+-DTrilinos_ENABLE_Tpetra:BOOL=ON \
+-DTrilinos_ENABLE_ML:BOOL=ON \
+-DTrilinos_ENABLE_MueLu:BOOL=ON \
+-DTrilinos_ENABLE_Belos:BOOL=ON \
+-DTrilinos_ENABLE_Ifpack2:BOOL=ON \
+-DTrilinos_ENABLE_Amesos2:BOOL=ON \
+-DTrilinos_ENABLE_Zoltan2:BOOL=ON \
+-DTrilinos_ENABLE_Ifpack:BOOL=ON \
+-DTrilinos_ENABLE_Amesos:BOOL=ON \
+-DTrilinos_ENABLE_Zoltan:BOOL=ON \
+-DTrilinos_ENABLE_STKMesh:BOOL=ON \
+-DTrilinos_ENABLE_STKIO:BOOL=ON \
+-DTrilinos_ENABLE_STKTransfer:BOOL=ON \
+-DTrilinos_ENABLE_STKSearch:BOOL=ON \
+-DTrilinos_ENABLE_STKUtil:BOOL=ON \
+-DTrilinos_ENABLE_STKTopology:BOOL=ON \
+-DTrilinos_ENABLE_Gtest:BOOL=ON \
+-DTrilinos_ENABLE_STKClassic:BOOL=OFF \
+-DTrilinos_ASSERT_MISSING_PACKAGES=OFF \
+$EXTRA_ARGS \
+../

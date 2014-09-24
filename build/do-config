@@ -1,0 +1,7 @@
+EXTRA_ARGS=$@
+
+
+cmake \
+  -DTRILINOS_DIR:PATH=/usr/local/Cellar/Trilinos \
+$EXTRA_ARGS \
+../
