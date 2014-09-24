@@ -50,7 +50,7 @@ AssembleRadTransEdgeSolverAlgorithm::AssembleRadTransEdgeSolverAlgorithm(
     absorption_(NULL),
     scattering_(NULL),
     scalarFlux_(NULL),
-    temperature_(NULL),
+    radiationSource_(NULL),
     dualNodalVolume_(NULL)
 {
   // save off fields
@@ -61,7 +61,7 @@ AssembleRadTransEdgeSolverAlgorithm::AssembleRadTransEdgeSolverAlgorithm(
   absorption_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "absorption_coefficient");
   scattering_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "scattering_coefficient");
   scalarFlux_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "scalar_flux");
-  temperature_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature");
+  radiationSource_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "radiation_source");
   dualNodalVolume_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
 
 }
@@ -95,7 +95,6 @@ AssembleRadTransEdgeSolverAlgorithm::execute()
   intensity_ = radEqSystem_->get_intensity();
 
   const double invPi = 1.0/(std::acos(-1.0));
-  const double sb = radEqSystem_->get_stefan_boltzmann();
 
   // space for LHS/RHS; always nodesPerEdge*nodesPerEdge and nodesPerEdge
   std::vector<double> lhs(4);
@@ -160,8 +159,8 @@ AssembleRadTransEdgeSolverAlgorithm::execute()
       const double scalarFluxL = *stk::mesh::field_data(*scalarFlux_, nodeL);
       const double scalarFluxR = *stk::mesh::field_data(*scalarFlux_, nodeR);
 
-      const double temperatureL = *stk::mesh::field_data(*temperature_, nodeL);
-      const double temperatureR = *stk::mesh::field_data(*temperature_, nodeR);
+      const double radiationSourceL = *stk::mesh::field_data(*radiationSource_, nodeL);
+      const double radiationSourceR = *stk::mesh::field_data(*radiationSource_, nodeR);
 
       const double dualNodalVolumeL = *stk::mesh::field_data(*dualNodalVolume_, nodeL);
       const double dualNodalVolumeR = *stk::mesh::field_data(*dualNodalVolume_, nodeR);
@@ -184,8 +183,7 @@ AssembleRadTransEdgeSolverAlgorithm::execute()
 
       // construct part of the residual
       const double muI = 0.5*(extinctionL*intensityL + extinctionR*intensityR);
-      const double eP = 0.5*(absorptionL*sb*temperatureL*temperatureL*temperatureL*temperatureL +
-          absorptionL*sb*temperatureR*temperatureR*temperatureR*temperatureR)*invPi;
+      const double eP = 0.5*(radiationSourceL + radiationSourceR);
       const double isotropicScatter = 0.5*(scatteringL*scalarFluxL + scatteringR*scalarFluxR)/4.0*invPi;
 
       // compute Sj*njdS; fill in residual; compute length scale

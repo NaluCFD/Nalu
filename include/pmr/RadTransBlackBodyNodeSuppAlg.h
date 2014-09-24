@@ -48,11 +48,8 @@ public:
   ScalarFieldType *intensity_;
   ScalarFieldType *absorption_;
   ScalarFieldType *scattering_;
-  ScalarFieldType *temperature_;
+  ScalarFieldType *radiationSource_;
   ScalarFieldType *dualNodalVolume_;
-
-  const double invPi_;
-  const double sb_;
 
 };
 

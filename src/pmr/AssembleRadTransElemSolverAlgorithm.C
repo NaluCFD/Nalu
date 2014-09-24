@@ -9,7 +9,6 @@
 // nalu
 #include <pmr/AssembleRadTransElemSolverAlgorithm.h>
 #include <pmr/RadiativeTransportEquationSystem.h>
-#include <EquationSystem.h>
 #include <SolverAlgorithm.h>
 
 #include <FieldTypeDef.h>
@@ -50,7 +49,7 @@ AssembleRadTransElemSolverAlgorithm::AssembleRadTransElemSolverAlgorithm(
     absorption_(NULL),
     scattering_(NULL),
     scalarFlux_(NULL),
-    temperature_(NULL),
+    radiationSource_(NULL),
     dualNodalVolume_(NULL)
 {
   // save off fields
@@ -59,7 +58,7 @@ AssembleRadTransElemSolverAlgorithm::AssembleRadTransElemSolverAlgorithm(
   absorption_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "absorption_coefficient");
   scattering_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "scattering_coefficient");
   scalarFlux_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "scalar_flux");
-  temperature_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature");
+  radiationSource_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "radiation_source");
   dualNodalVolume_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
 
 }
@@ -92,7 +91,6 @@ AssembleRadTransElemSolverAlgorithm::execute()
   intensity_ = radEqSystem_->get_intensity();
 
   const double invPi = 1.0/(std::acos(-1.0));
-  const double sb = radEqSystem_->get_stefan_boltzmann();
 
    // space for LHS/RHS; nodesPerElem*nodesPerElem and nodesPerElem
   std::vector<double> lhs;
@@ -105,7 +103,7 @@ AssembleRadTransElemSolverAlgorithm::execute()
   std::vector<double> ws_absorption;
   std::vector<double> ws_scattering;
   std::vector<double> ws_scalarFlux;
-  std::vector<double> ws_temperature;
+  std::vector<double> ws_radiationSource;
   std::vector<double> ws_dualVolume;
 
   // geometry related to populate
@@ -147,7 +145,7 @@ AssembleRadTransElemSolverAlgorithm::execute()
     ws_absorption.resize(nodesPerElement);
     ws_scattering.resize(nodesPerElement);
     ws_scalarFlux.resize(nodesPerElement);
-    ws_temperature.resize(nodesPerElement);
+    ws_radiationSource.resize(nodesPerElement);
     ws_dualVolume.resize(nodesPerElement);
     ws_scs_areav.resize(numScsIp*nDim);
     ws_dndx.resize(nDim*numScsIp*nodesPerElement);
@@ -163,7 +161,7 @@ AssembleRadTransElemSolverAlgorithm::execute()
     double *p_absorption = &ws_absorption[0];
     double *p_scattering = &ws_scattering[0];
     double *p_scalarFlux = &ws_scalarFlux[0];
-    double *p_temperature = &ws_temperature[0];
+    double *p_radiationSource = &ws_radiationSource[0];
     double *p_dualVolume = &ws_dualVolume[0];
     double *p_scs_areav = &ws_scs_areav[0];
     double *p_dndx = &ws_dndx[0];
@@ -205,7 +203,7 @@ AssembleRadTransElemSolverAlgorithm::execute()
         p_absorption[ni]  = *stk::mesh::field_data(*absorption_, node );
         p_scattering[ni]  = *stk::mesh::field_data(*scattering_, node );
         p_scalarFlux[ni]  = *stk::mesh::field_data(*scalarFlux_, node );
-        p_temperature[ni] = *stk::mesh::field_data(*temperature_, node );
+        p_radiationSource[ni] = *stk::mesh::field_data(*radiationSource_, node );
         p_dualVolume[ni]  = *stk::mesh::field_data(*dualNodalVolume_, node );
 
         // gather vectors
@@ -257,13 +255,12 @@ AssembleRadTransElemSolverAlgorithm::execute()
           const double I = p_intensity[ic];
           const double mu = p_absorption[ic];
           const double beta = p_scattering[ic];
-          const double T = p_temperature[ic];
 
           // interpolation to scs
           Iscs += r*I;
           extCoeffscs += r*(mu+beta);
           muIscs += r*(mu+beta)*I;
-          ePscs += r*mu*sb*T*T*T*T*invPi;
+          ePscs += r*p_radiationSource[ic];
           isotropicScatterscs += r*beta*p_scalarFlux[ic]/4.0*invPi;
           dualNodalVscs += r*p_dualVolume[ic];
 

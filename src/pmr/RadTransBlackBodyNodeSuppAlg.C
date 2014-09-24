@@ -40,16 +40,14 @@ RadTransBlackBodyNodeSuppAlg::RadTransBlackBodyNodeSuppAlg(
     intensity_(NULL),
     absorption_(NULL),
     scattering_(NULL),
-    temperature_(NULL),
-    dualNodalVolume_(NULL),
-    invPi_(1.0/std::acos(-1.0)),
-    sb_(radEqSystem->get_stefan_boltzmann())
+    radiationSource_(NULL),
+    dualNodalVolume_(NULL)
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
   absorption_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "absorption_coefficient");
   scattering_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "scattering_coefficient");
-  temperature_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature");
+  radiationSource_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "radiation_source");
   dualNodalVolume_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
 }
 
@@ -75,9 +73,9 @@ RadTransBlackBodyNodeSuppAlg::node_execute(
   const double intensity  = *stk::mesh::field_data(*intensity_, node);
   const double mu = *stk::mesh::field_data(*absorption_, node);
   const double beta = *stk::mesh::field_data(*scattering_, node);
-  const double temp       = *stk::mesh::field_data(*temperature_, node);
+  const double radiationSource = *stk::mesh::field_data(*radiationSource_, node);
   const double dualVolume = *stk::mesh::field_data(*dualNodalVolume_, node);
-  rhs[0] -= ((mu+beta)*intensity - mu*sb_*temp*temp*temp*temp*invPi_)*dualVolume;
+  rhs[0] -= ((mu+beta)*intensity - radiationSource)*dualVolume;
   lhs[0] += (mu+beta)*dualVolume;
 }
 

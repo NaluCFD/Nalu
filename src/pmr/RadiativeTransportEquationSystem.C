@@ -75,10 +75,12 @@ namespace nalu{
 RadiativeTransportEquationSystem::RadiativeTransportEquationSystem(
   EquationSystems& eqSystems,
   const int quadratureOrder,
-  const bool activateScattering)
+  const bool activateScattering,
+  const bool externalCoupling)
   : EquationSystem(eqSystems, "RadiativeTransportEQS"),
     quadratureOrder_(quadratureOrder),
     activateScattering_(activateScattering),
+    externalCoupling_(externalCoupling),
     intensity_(NULL),
     currentIntensity_(NULL),
     intensityBc_(NULL),
@@ -91,6 +93,7 @@ RadiativeTransportEquationSystem::RadiativeTransportEquationSystem(
     temperature_(NULL),
     radiativeHeatFlux_(NULL),
     divRadiativeHeatFlux_(NULL),
+    radiationSource_(NULL),
     scalarFlux_(NULL),
     scalarFluxOld_(NULL),
     absorptionCoeff_(NULL),
@@ -399,6 +402,9 @@ RadiativeTransportEquationSystem::register_nodal_fields(
   divRadiativeHeatFlux_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "div_radiative_heat_flux"));
   stk::mesh::put_field(*divRadiativeHeatFlux_, *part);
 
+  radiationSource_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "radiation_source"));
+  stk::mesh::put_field(*radiationSource_, *part);
+
   scalarFlux_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "scalar_flux"));
   stk::mesh::put_field(*scalarFlux_, *part);
 
@@ -409,7 +415,9 @@ RadiativeTransportEquationSystem::register_nodal_fields(
   // props; register and push
   absorptionCoeff_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "absorption_coefficient"));
   stk::mesh::put_field(*absorptionCoeff_, *part);
-  realm_.augment_property_map(ABSORBTION_COEFF_ID, absorptionCoeff_);
+  // possibly provided by another coupling mechanism; if so, do not push to propery evaluation
+  if (!externalCoupling_)
+    realm_.augment_property_map(ABSORBTION_COEFF_ID, absorptionCoeff_);
 
   // always register, however, do not make the user provide a value (default to zero)
   scatteringCoeff_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "scattering_coefficient"));
@@ -760,6 +768,7 @@ RadiativeTransportEquationSystem::solve_and_update()
     isInit_ = false;
   }
 
+  compute_radiation_source();
 
   for ( int i = 0; i < maxIterations_; ++i ) {
 
@@ -922,6 +931,44 @@ RadiativeTransportEquationSystem::compute_bc_intensity()
   }
 }
 
+//--------------------------------------------------------------------------
+//-------- compute_radiation_source ----------------------------------------
+//--------------------------------------------------------------------------
+void
+RadiativeTransportEquationSystem::compute_radiation_source()
+{
+  // external coupling will provide radiation source through xfer
+  if ( externalCoupling_ )
+    return;
+
+  // otherwise, proceed with computing source term based on what this realm knows
+  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+
+  const double inv_pi = 1.0/acos(-1.0);
+  const double sb = get_stefan_boltzmann();
+
+  // select all nodes
+  stk::mesh::Selector s_all_nodes
+     = (meta_data.locally_owned_part() | meta_data.globally_shared_part())
+     &stk::mesh::selectUnion(interiorPartVec_);
+
+  stk::mesh::BucketVector const& node_buckets =
+    realm_.get_buckets( stk::topology::NODE_RANK, s_all_nodes );
+  for ( stk::mesh::BucketVector::const_iterator ib = node_buckets.begin();
+        ib != node_buckets.end() ; ++ib ) {
+    stk::mesh::Bucket & b = **ib ;
+    const size_t length   = b.size();
+
+    double *radiationSource = stk::mesh::field_data(*radiationSource_, b);
+    const double *temperature = stk::mesh::field_data(*temperature_, b);
+    const double * absorption = stk::mesh::field_data(*absorptionCoeff_, b);
+
+    for ( size_t k = 0 ; k < length ; ++k ) {
+      const double T = temperature[k];
+      radiationSource[k] = absorption[k]*sb*T*T*T*T*inv_pi;
+    }
+  }
+}
 //--------------------------------------------------------------------------
 //-------- zero_out_fields -------------------------------------------------
 //--------------------------------------------------------------------------

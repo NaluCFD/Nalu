@@ -42,7 +42,7 @@ public:
   ScalarFieldType *absorption_;
   ScalarFieldType *scattering_;
   ScalarFieldType *scalarFlux_;
-  ScalarFieldType *temperature_;
+  ScalarFieldType *radiationSource_;
   ScalarFieldType *dualNodalVolume_;
   
 };

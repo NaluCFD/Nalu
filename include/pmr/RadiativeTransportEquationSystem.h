@@ -33,7 +33,8 @@ public:
   RadiativeTransportEquationSystem(
       EquationSystems& equationSystems,
       const int quadratureOrder,
-      const bool activateScattering);
+      const bool activateScattering,
+      const bool externalCoupling);
   virtual ~RadiativeTransportEquationSystem();
   
   void register_nodal_fields(
@@ -65,6 +66,7 @@ public:
 
   void initialize_intensity();
   void compute_bc_intensity();
+  void compute_radiation_source();
 
   void zero_out_fields();
   void zero_irradiation();
@@ -97,6 +99,7 @@ public:
 
   const int quadratureOrder_;
   const bool activateScattering_;
+  const bool externalCoupling_;
   
   ScalarFieldType *intensity_;
   ScalarFieldType *currentIntensity_;
@@ -110,6 +113,7 @@ public:
   ScalarFieldType *temperature_;
   VectorFieldType *radiativeHeatFlux_;
   ScalarFieldType *divRadiativeHeatFlux_;
+  ScalarFieldType *radiationSource_;
   ScalarFieldType *scalarFlux_;
   ScalarFieldType *scalarFluxOld_;
   ScalarFieldType *absorptionCoeff_;

@@ -127,8 +127,13 @@ void EquationSystems::load(const YAML::Node & y_node)
           int quadratureOrder = 2;
           get_if_present_no_default(*y_eqsys, "quadrature_order", quadratureOrder);
           bool activateScattering = false;
+          bool externalCoupling= false;
           get_if_present_no_default(*y_eqsys, "activate_scattering", activateScattering);
-          eqSys = new RadiativeTransportEquationSystem(*this, quadratureOrder, activateScattering);
+          get_if_present_no_default(*y_eqsys, "external_coupling", externalCoupling);
+          if ( externalCoupling )
+            Env::outputP0() << "PMR External Coupling; absorption coefficient/radiation_source expected by xfer" << std::endl;
+          eqSys = new RadiativeTransportEquationSystem(*this,
+              quadratureOrder, activateScattering, externalCoupling);
         }
         else if( (y_eqsys = expect_map(y_system, "MeshDisplacement", true)) ) {
           if (root()->debug()) sierra::Env::outputP0() << "eqSys = MeshDisplacement " << std::endl;
