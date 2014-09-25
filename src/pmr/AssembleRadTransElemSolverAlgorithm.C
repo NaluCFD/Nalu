@@ -60,7 +60,7 @@ AssembleRadTransElemSolverAlgorithm::AssembleRadTransElemSolverAlgorithm(
   scalarFlux_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "scalar_flux");
   radiationSource_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "radiation_source");
   dualNodalVolume_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
-
+ 
 }
 
 //--------------------------------------------------------------------------
@@ -82,14 +82,14 @@ AssembleRadTransElemSolverAlgorithm::execute()
 
   const int nDim = meta_data.spatial_dimension();
 
-  const bool useEdgeH = false;
+  const bool useEdgeH = true;
 
   // extract current ordinate direction
   std::vector<double> Sk(nDim,0.0);
   radEqSystem_->get_current_ordinate(&Sk[0]);
   const double *p_Sk = &Sk[0];
   intensity_ = radEqSystem_->get_intensity();
-
+  
   const double invPi = 1.0/(std::acos(-1.0));
 
    // space for LHS/RHS; nodesPerElem*nodesPerElem and nodesPerElem
@@ -240,10 +240,9 @@ AssembleRadTransElemSolverAlgorithm::execute()
         }
         const double aMag = std::sqrt(asq);
 
-        // integration point interpolation; I, extinction coeff, muI, eP and dual nodal volume
+        // integration point interpolation
         double Iscs = 0.0;
         double extCoeffscs = 0.0;
-        double muIscs = 0.0;
         double ePscs = 0.0;
         double isotropicScatterscs = 0.0;
         double dualNodalVscs = 0.0;
@@ -253,15 +252,14 @@ AssembleRadTransElemSolverAlgorithm::execute()
           
           // save of some variables
           const double I = p_intensity[ic];
-          const double mu = p_absorption[ic];
-          const double beta = p_scattering[ic];
+          const double mua = p_absorption[ic];
+          const double mus = p_scattering[ic];
 
           // interpolation to scs
           Iscs += r*I;
-          extCoeffscs += r*(mu+beta);
-          muIscs += r*(mu+beta)*I;
+          extCoeffscs += r*(mua+mus);
           ePscs += r*p_radiationSource[ic];
-          isotropicScatterscs += r*beta*p_scalarFlux[ic]/4.0*invPi;
+          isotropicScatterscs += r*mus*p_scalarFlux[ic]/4.0*invPi;
           dualNodalVscs += r*p_dualVolume[ic];
 
           // assemble I*sj*njdS to lhs; left/right
@@ -294,11 +292,10 @@ AssembleRadTransElemSolverAlgorithm::execute()
 
           // save of some variables
           const double I = p_intensity[ic];
-          const double extCoeff = p_absorption[ic] + p_scattering[ic];
-	
-          // SUCV -tau*sj*aj*(mu+beta)*I term; left/right (residual below)
-          p_lhs[rowL+ic] += -tau*sjaj*r*extCoeff;
-          p_lhs[rowR+ic] -= -tau*sjaj*r*extCoeff;
+          
+          // SUCV -tau*sj*aj*(mua+mus)*I term; left/right (residual below)
+          p_lhs[rowL+ic] += -tau*sjaj*r*extCoeffscs;
+          p_lhs[rowR+ic] -= -tau*sjaj*r*extCoeffscs;
 	  
           // SUCV diffusion-like term; -tau*si*dI/dxi*sjaj (residual below)
           double lhsfac = 0.0;
@@ -314,7 +311,7 @@ AssembleRadTransElemSolverAlgorithm::execute()
         }
 	
         // full sucv residual
-        const double residual = -tau*sjaj*(sidIdxi + muIscs - ePscs - isotropicScatterscs);
+	const double residual = -tau*sjaj*(sidIdxi + extCoeffscs*Iscs - ePscs - isotropicScatterscs);
 	
         // residual; left and right
         p_rhs[il] -= residual;

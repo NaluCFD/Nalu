@@ -1,14 +1,18 @@
-
 trilinos_install_dir=/usr/local/Cellar
 mpi_base_dir=/usr/local/Cellar/open-mpi/1.8.1
-superlu_dir=/usr/local/Cellar/superlu/4.3/include/superlu
-boost_dir=/usr/local/Cellar/boost/1.55.0_2/include/boost/
+superlu_dir=/usr/local/Cellar/superlu/4.3
+boost_dir=/usr/local/Cellar/boost/1.55.0_2
+
+#trilinos_install_dir=/scratch2/bmpersc/nalu_projects/Trilinos/nalu_build/install
+#mpi_base_dir=/home/trilinos/compilers/gcc/openmpi-1.6.3-gcc-4.7.2
+#superlu_dir=/home/trilinos/tpl/gcc4.4.4/SuperLU_4.3
+#boost_dir=/home/trilinos/tpl/gcc4.4.4/boostlib_1_55_0
 
 EXTRA_ARGS=$@
 
 find . -name "CMakeFiles" -exec rm -rf {} \;
 rm -f CMakeCache.txt
-rm -r install
+rm -rf install
 
 cmake \
 -DCMAKE_INSTALL_PREFIX=$trilinos_install_dir \
@@ -17,8 +21,11 @@ cmake \
 -DTPL_ENABLE_MPI=ON \
   -DMPI_BASE_DIR:PATH=$mpi_base_dir \
 -DTPL_ENABLE_SuperLU=ON \
-  -DSuperLU_INCLUDE_DIRS:PATH=/usr/local/Cellar/superlu/4.3/include/superlu \
+  -DSuperLU_INCLUDE_DIRS:PATH=$superlu_dir/include/superlu \
   -DSuperLU_LIBRARY_DIRS:PATH=$superlu_dir/lib \
+-DBoost_INCLUDE_DIRS:PATH=$boost_dir/include \
+-DBoostLib_INCLUDE_DIRS:PATH=$boost_dir/include \
+-DBoostLib_LIBRARY_DIRS:PATH=$boost_dir/lib \
 -DTrilinos_ENABLE_Epetra:BOOL=ON \
 -DTrilinos_ENABLE_Tpetra:BOOL=ON \
 -DTrilinos_ENABLE_ML:BOOL=ON \

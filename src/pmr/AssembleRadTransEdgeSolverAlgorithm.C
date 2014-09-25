@@ -86,7 +86,7 @@ AssembleRadTransEdgeSolverAlgorithm::execute()
 
   const int nDim = meta_data.spatial_dimension();
 
-  const bool useEdgeH = false;
+  const bool useEdgeH = true;
 
   // extract current ordinate direction
   std::vector<double> Sk(nDim,0.0);
@@ -180,9 +180,10 @@ AssembleRadTransEdgeSolverAlgorithm::execute()
       // extinction coefficient; always include scattering (likely zero)
       const double extinctionL = absorptionL + scatteringL;
       const double extinctionR = absorptionR + scatteringR;
+      const double extinctionIp = 0.5*(extinctionL + extinctionR);
 
       // construct part of the residual
-      const double muI = 0.5*(extinctionL*intensityL + extinctionR*intensityR);
+      const double muI = extinctionIp*0.5*(intensityL + intensityR);
       const double eP = 0.5*(radiationSourceL + radiationSourceR);
       const double isotropicScatter = 0.5*(scatteringL*scalarFluxL + scatteringR*scalarFluxR)/4.0*invPi;
 
@@ -207,11 +208,10 @@ AssembleRadTransEdgeSolverAlgorithm::execute()
       const double h = (useEdgeH) ? h_edge : h_vol;
 
       // form tau
-      const double extCoeff = 0.5*(extinctionL+extinctionR);
-      const double tau = std::sqrt(1.0/((2.0/h)*(2.0/h) + extCoeff*extCoeff));
+      const double tau = std::sqrt(1.0/((2.0/h)*(2.0/h) + extinctionIp*extinctionIp));
 
       /*
-        lhs[0] = IL,IL; lhs[1] = IL,IR; IR,IL; IR,IR; WILL NEED TO CHECK ONCE MORE...
+        lhs[0] = IL,IL; lhs[1] = IL,IR; IR,IL; IR,IR
       */
 
       // pure central term; Iip*sj*njdS
@@ -239,14 +239,13 @@ AssembleRadTransEdgeSolverAlgorithm::execute()
       p_lhs[3] -= lhsfac;
 
       // SUCV muI term; complete residual below
-      const double lhsfacL = -tau*sjaj*0.5*extinctionL;
+      lhsfac = -tau*sjaj*0.5*extinctionIp;
       // left node
-      p_lhs[0] += lhsfacL;
-      p_lhs[1] += lhsfacL;
+      p_lhs[0] += lhsfac;
+      p_lhs[1] += lhsfac;
       // now right node
-      const double lhsfacR = -tau*sjaj*0.5*extinctionR;
-      p_lhs[2] -= lhsfacR;
-      p_lhs[3] -= lhsfacR;
+      p_lhs[2] -= lhsfac;
+      p_lhs[3] -= lhsfac;
 
       // final SUCV residual
       const double sucv = -tau*sjaj*residual;
