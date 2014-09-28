@@ -10,7 +10,7 @@ its copyright in software entitled "Nalu v 1.0".
 
 ### Building Nalu
 
-Detailed build instructions for Nalu and the accompanied required TPS, e.g., Trilinos, YAML, etc.,
+Detailed build instructions for Nalu and the accompanied required TPLs, e.g., Trilinos, YAML, etc.,
 can be found under the Nalu Wiki [Build](https://github.com/spdomin/Nalu/wiki/Build_instructions)
 
 
