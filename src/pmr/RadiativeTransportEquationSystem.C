@@ -106,7 +106,9 @@ RadiativeTransportEquationSystem::RadiativeTransportEquationSystem(
     isInit_(true),
     ordinateDirections_(0),
     currentWeight_(0),
-    systemL2Norm_(0.0)
+    systemL2Norm_(0.0),
+    nonLinearResidualSum_(0.0),
+    firstNonLinearResidualSum_(0.0)
 {
   // extract solver name and solver object
   std::string solverName = realm_.equationSystems_.get_solver_block_name("intensity");
@@ -813,6 +815,13 @@ RadiativeTransportEquationSystem::solve_and_update()
 
     }
 
+    // save total nonlinear residual
+    nonLinearResidualSum_ = nonLinearResidualSum/double(ordinateDirections_);
+
+    // sa
+    if ( realm_.currentNonlinearIteration_ == 1 )
+      firstNonLinearResidualSum_ = nonLinearResidualSum_;
+
     // normalize_irradiation
     normalize_irradiation();
 
@@ -827,8 +836,8 @@ RadiativeTransportEquationSystem::solve_and_update()
     Env::outputP0()
       << "EqSystem Name:       " << name_ << std::endl
       << "   aver iters      = " << linearIterationsSum/double(ordinateDirections_) << std::endl
-      << "nonlinearResidNrm  = " << nonLinearResidualSum/double(ordinateDirections_) << std::endl;
-    Env::outputP0()
+      << "nonlinearResidNrm  = " << nonLinearResidualSum/double(ordinateDirections_) 
+      << " scaled: " << nonLinearResidualSum_/firstNonLinearResidualSum_ << std::endl
       << "Scalar flux norm   = " << systemL2Norm_ << std::endl;
     Env::outputP0() << std::endl;
 
@@ -842,6 +851,28 @@ RadiativeTransportEquationSystem::solve_and_update()
 
   }
 
+}
+
+//--------------------------------------------------------------------------
+//-------- system_is_converged ---------------------------------------------
+//--------------------------------------------------------------------------
+bool
+RadiativeTransportEquationSystem::system_is_converged()
+{
+  bool isConverged = true;
+  if ( NULL != linsys_ ) {
+    isConverged = (nonLinearResidualSum_/firstNonLinearResidualSum_ <  convergenceTolerance_ );
+  }
+  return isConverged;
+}
+
+//--------------------------------------------------------------------------
+//-------- provide_scaled_norm ---------------------------------------------
+//--------------------------------------------------------------------------
+double
+RadiativeTransportEquationSystem::provide_scaled_norm()
+{
+  return nonLinearResidualSum_/firstNonLinearResidualSum_;
 }
 
 //--------------------------------------------------------------------------

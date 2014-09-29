@@ -68,6 +68,9 @@ public:
   void compute_bc_intensity();
   void compute_radiation_source();
 
+  bool system_is_converged();
+  double provide_scaled_norm();
+
   void zero_out_fields();
   void zero_irradiation();
   
@@ -137,7 +140,9 @@ public:
   double currentWeight_;
   double stefanBoltz_;
   double systemL2Norm_;
-  
+  double nonLinearResidualSum_;
+  double firstNonLinearResidualSum_;
+
   // saved of mesh parts for interior and boundary
   std::vector<stk::mesh::Part *> interiorPartVec_;
   std::vector<stk::mesh::Part *> bcPartVec_;
