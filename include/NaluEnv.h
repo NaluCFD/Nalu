@@ -37,10 +37,10 @@ public:
   void set_log_file_stream(std::ofstream *str);
 
   template<class T>
-    NaluEnv& operator<<(T& thing) {
+    NaluEnv& operator<<(const T& thing) {
     if ( pRank_ )
       (*naluLogStream_) << thing;
-    return *naluLogStream_;
+    return *this;
   }
 
 };
