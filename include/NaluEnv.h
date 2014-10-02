@@ -40,7 +40,7 @@ public:
     NaluEnv& operator<<(T& thing) {
     if ( pRank_ )
       (*naluLogStream_) << thing;
-    return naluLogStream_;
+    return *naluLogStream_;
   }
 
 };
