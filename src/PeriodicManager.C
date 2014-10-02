@@ -7,6 +7,7 @@
 
 
 #include <PeriodicManager.h>
+#include <NaluEnv.h>
 #include <Realm.h>
 
 // stk_mesh/base/fem
@@ -76,7 +77,7 @@ PeriodicManager::add_periodic_pair(
   else if ( searchMethodName == "stk_octree" )
     searchMethod = stk::search::OCTREE;
   else
-    Env::outputP0() << "PeriodicManager::search method not declared; will use BOOST_RTREE" << std::endl;
+    NaluEnv::self().naluOutputP0() << "PeriodicManager::search method not declared; will use BOOST_RTREE" << std::endl;
   searchMethodVec_.push_back(searchMethod);
 }
 
@@ -109,7 +110,7 @@ PeriodicManager::build_constraints()
 
   // multiple pairs supported, however, constraint resolution not..
   if ( periodicPartPairs_.size() > 1 ) {
-    Env::outputP0()
+    NaluEnv::self().naluOutputP0()
       << "Multiple periodic pairs supported, however, must not have any reduction need" << std::endl;
   }
 
@@ -139,9 +140,9 @@ PeriodicManager::setup_gid_pairs(
   const stk::search::SearchMethod searchMethod)
 {
 
-  Env::outputP0() << std::endl;
-  Env::outputP0() << "Periodic Review:  realm: " << realm_.name_ << std::endl;
-  Env::outputP0() << "=========================" << std::endl;
+  NaluEnv::self().naluOutputP0() << std::endl;
+  NaluEnv::self().naluOutputP0() << "Periodic Review:  realm: " << realm_.name_ << std::endl;
+  NaluEnv::self().naluOutputP0() << "=========================" << std::endl;
 
   const std::string masterPartName = masterPart->name();
   const std::string slavePartName = slavePart->name();
@@ -181,7 +182,7 @@ PeriodicManager::setup_gid_pairs(
       stk::mesh::Entity node = b[k];
       numberMasterNodes += 1;
       // setup ident
-      theEntityKey theIdent(bulk_data.entity_key(node), Env::parallel_rank());
+      theEntityKey theIdent(bulk_data.entity_key(node), NaluEnv::self().parallel_rank());
 
       // define offset for all nodal fields that are of nDim
       const size_t offSet = k*nDim;
@@ -198,8 +199,8 @@ PeriodicManager::setup_gid_pairs(
       sphereBoundingBoxMasterVec.push_back(theSphere);
     }
   }
-  stk::all_reduce_sum(Env::parallel_comm(), &local_sum_coords_master[0], &global_sum_coords_master[0], nDim);
-  stk::all_reduce_sum(Env::parallel_comm(), &numberMasterNodes, &g_numberMasterNodes, 1);
+  stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &local_sum_coords_master[0], &global_sum_coords_master[0], nDim);
+  stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &numberMasterNodes, &g_numberMasterNodes, 1);
 
   // Slave: global_sum_coords_slave
   std::vector<double> local_sum_coords_slave(nDim, 0.0), global_sum_coords_slave(nDim, 0.0);
@@ -226,14 +227,14 @@ PeriodicManager::setup_gid_pairs(
       }
     }
   }
-  stk::all_reduce_sum(Env::parallel_comm(), &local_sum_coords_slave[0], &global_sum_coords_slave[0], nDim);
-  stk::all_reduce_sum(Env::parallel_comm(), &numberSlaveNodes, &g_numberSlaveNodes, 1);
+  stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &local_sum_coords_slave[0], &global_sum_coords_slave[0], nDim);
+  stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &numberSlaveNodes, &g_numberSlaveNodes, 1);
 
   // throw right away if master and slave nodes are not equal
   if ( g_numberMasterNodes != g_numberSlaveNodes ) {
-    Env::outputP0() << "Periodic BC Error: Master/Slave Pair: "
+    NaluEnv::self().naluOutputP0() << "Periodic BC Error: Master/Slave Pair: "
         << masterPartName << "/" << slavePartName << std::endl;
-    Env::outputP0() << "Master part has " << g_numberMasterNodes
+    NaluEnv::self().naluOutputP0() << "Master part has " << g_numberMasterNodes
         << " while Slave part has " << g_numberSlaveNodes << std::endl;
     throw std::runtime_error("Please ensure that periodic part surfaces match - both in node count and sane connectivities");
   }
@@ -247,9 +248,9 @@ PeriodicManager::setup_gid_pairs(
     rotationPoint[j] = global_sum_coords_master[j] / g_numberMasterNodes;
   }
 
-  Env::outputP0() << "Translating [ ";
-  for (int j = 0; j < nDim; ++j ) {  Env::outputP0() << translationVector[j] << " "; }
-  Env::outputP0() << "] for Master/Slave pair " << masterPartName << "/" << slavePartName << std::endl;
+  NaluEnv::self().naluOutputP0() << "Translating [ ";
+  for (int j = 0; j < nDim; ++j ) {  NaluEnv::self().naluOutputP0() << translationVector[j] << " "; }
+  NaluEnv::self().naluOutputP0() << "] for Master/Slave pair " << masterPartName << "/" << slavePartName << std::endl;
 
   // SLAVE - setup sphereBoundingBoxSlaveVec
   for ( stk::mesh::BucketVector::const_iterator ib = slave_node_buckets.begin();
@@ -261,7 +262,7 @@ PeriodicManager::setup_gid_pairs(
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
       stk::mesh::Entity node = b[k];
       // setup ident
-      theEntityKey theIdent(bulk_data.entity_key(node), Env::parallel_rank());
+      theEntityKey theIdent(bulk_data.entity_key(node), NaluEnv::self().parallel_rank());
       // define offset for all nodal fields that are of nDim
       const size_t offSet = k*nDim;
 
@@ -278,7 +279,7 @@ PeriodicManager::setup_gid_pairs(
   // will want to stuff product of search to a single vector
   std::vector<std::pair<theEntityKey, theEntityKey> > searchKeyPair;
   double timeA = stk::cpu_time();
-  stk::search::coarse_search(sphereBoundingBoxSlaveVec, sphereBoundingBoxMasterVec, searchMethod, Env::parallel_comm(), searchKeyPair);
+  stk::search::coarse_search(sphereBoundingBoxSlaveVec, sphereBoundingBoxMasterVec, searchMethod, NaluEnv::self().parallel_comm(), searchKeyPair);
   timerSearch_ += (stk::cpu_time() - timeA);
 
   //=====================================================================
@@ -312,18 +313,18 @@ PeriodicManager::setup_gid_pairs(
     }
   }
   size_t g_problemNodes = 0;
-  stk::all_reduce_sum(Env::parallel_comm(), &problemNodes, &g_problemNodes, 1);
+  stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &problemNodes, &g_problemNodes, 1);
 
   // report issues
   if ( g_problemNodes > 0 ){
-    Env::outputP0() << "PeriodicSearchError: Multiple candidates for periodic pair search on pair "
+    NaluEnv::self().naluOutputP0() << "PeriodicSearchError: Multiple candidates for periodic pair search on pair "
         << masterPartName <<"/" << slavePartName << std::endl << std::endl;
-    Env::outputP0() << g_problemNodes << " Occurrences; "
+    NaluEnv::self().naluOutputP0() << g_problemNodes << " Occurrences; "
         << "Please reduce search_tolerance to " << searchTolerance_/10.0 << std::endl;
     for ( size_t k = 0; k < problemPairVec.size(); ++k ) {
       stk::mesh::EntityId masterId = problemPairVec[k].first;
       stk::mesh::EntityId slaveId = problemPairVec[k].second;
-      Env::outputP0() << "Candidate Master/Slave pairs " << masterId << "/" << slaveId << std::endl;
+      NaluEnv::self().naluOutputP0() << "Candidate Master/Slave pairs " << masterId << "/" << slaveId << std::endl;
     }
     throw std::runtime_error("PeriodiocBC::Error: Please reduce periodic_search_tolerance");
   }
@@ -356,16 +357,16 @@ PeriodicManager::setup_gid_pairs(
       }
   }
   g_problemNodes = 0;
-  stk::all_reduce_sum(Env::parallel_comm(), &problemNodes, &g_problemNodes, 1);
+  stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &problemNodes, &g_problemNodes, 1);
 
   // report issues
   if ( g_problemNodes > 0 ){
-    Env::outputP0() << "PeriodicSearchError: Master node never found a slave node match: "
+    NaluEnv::self().naluOutputP0() << "PeriodicSearchError: Master node never found a slave node match: "
         << masterPartName <<"/" << slavePartName << std::endl << std::endl;
-    Env::outputP0() << g_problemNodes << " Occurrences; "
+    NaluEnv::self().naluOutputP0() << g_problemNodes << " Occurrences; "
          << "Please check your mesh for proper periodicity " << std::endl;
      for ( size_t k = 0; k < problemNodeVec.size(); ++k ) {
-       Env::outputP0() << "Problem Master node " << problemNodeVec[k] << std::endl;
+       NaluEnv::self().naluOutputP0() << "Problem Master node " << problemNodeVec[k] << std::endl;
      }
      throw std::runtime_error("PeriodiocBC::Error: Master node did not find a slave node; increase search tolerance?");
   }
@@ -383,7 +384,7 @@ PeriodicManager::create_ghosting_object()
 {
 
   stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
-  unsigned theRank = Env::parallel_rank();
+  unsigned theRank = NaluEnv::self().parallel_rank();
 
   std::vector<stk::mesh::EntityProc> sendNodes;
   for (size_t i=0, size=searchKeyVector_.size(); i<size; ++i) {
@@ -440,7 +441,7 @@ PeriodicManager::master_slave_reduction()
 {
   // multiple pairs supported, however, constraint resolution not..
   if ( periodicPartPairs_.size() > 1 ) {
-    Env::outputP0()
+    NaluEnv::self().naluOutputP0()
       << "Multiple periodic pairs supported, however, must not have any reduction need" << std::endl;
   }
 }

@@ -13,6 +13,7 @@
 #include <FieldTypeDef.h>
 #include <Realm.h>
 #include <master_element/MasterElement.h>
+#include <NaluEnv.h>
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/BulkData.hpp>
@@ -364,8 +365,8 @@ ComputeWallFrictionVelocityAlgorithm::compute_utau(
 
   // report trouble
   if (!converged ) {
-    Env::outputP0() << "Issue with utau; not converged " << std::endl;
-    Env::outputP0() << up << " " << yp << " " << utau << std::endl;
+    NaluEnv::self().naluOutputP0() << "Issue with utau; not converged " << std::endl;
+    NaluEnv::self().naluOutputP0() << up << " " << yp << " " << utau << std::endl;
   }
 
 }

@@ -11,6 +11,7 @@
 #include <HaloInfo.h>
 #include <master_element/MasterElement.h>
 #include <Realm.h>
+#include <NaluEnv.h>
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/BulkData.hpp>
@@ -77,7 +78,7 @@ ContactInfo::ContactInfo(
   else if ( searchMethodName == "stk_octree" )
     searchMethod_ = stk::search::OCTREE;
   else
-    Env::outputP0() << "ContactInfo::search method not declared; will use BOOST_RTREE" << std::endl;
+    NaluEnv::self().naluOutputP0() << "ContactInfo::search method not declared; will use BOOST_RTREE" << std::endl;
 
   // save off vector of parts for the search blocks
   stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
@@ -180,7 +181,7 @@ ContactInfo::construct_halo_state()
       HaloInfo *haloInfo = new HaloInfo(node, nDim);
 
       // setup ident; do something about processor count...
-      stk::search::IdentProc<uint64_t,unsigned> theIdent(bulk_data.identifier(node), Env::parallel_rank());
+      stk::search::IdentProc<uint64_t,unsigned> theIdent(bulk_data.identifier(node), NaluEnv::self().parallel_rank());
       haloInfoMap_[bulk_data.identifier(node)] = haloInfo;
 
       // define offset for all nodal fields that are of nDim
@@ -252,13 +253,13 @@ void
 ContactInfo::determine_elems_to_ghost()
 {
 
-  stk::search::coarse_search(boundingPointVec_, boundingElementBoxVec_, searchMethod_, Env::parallel_comm(), searchKeyPair_);
+  stk::search::coarse_search(boundingPointVec_, boundingElementBoxVec_, searchMethod_, NaluEnv::self().parallel_comm(), searchKeyPair_);
 
   std::vector<std::pair<boundingPoint::second_type, boundingElementBox::second_type> >::const_iterator ii;
   for( ii=searchKeyPair_.begin(); ii!=searchKeyPair_.end(); ++ii ) {
 
     const uint64_t theBox = ii->second.id();
-    unsigned theRank = Env::parallel_rank();
+    unsigned theRank = NaluEnv::self().parallel_rank();
     const unsigned pt_proc = ii->first.proc();
     const unsigned box_proc = ii->second.proc();
     if ( (box_proc == theRank) && (pt_proc != theRank) ) {
@@ -312,7 +313,7 @@ ContactInfo::complete_search()
 
     const uint64_t thePt = ii->first.id();
     const uint64_t theBox = ii->second.id();
-    const unsigned theRank = Env::parallel_rank();
+    const unsigned theRank = NaluEnv::self().parallel_rank();
     const unsigned pt_proc = ii->first.proc();
 
     // check if I own the point...
@@ -405,19 +406,19 @@ ContactInfo::complete_search()
     stk::mesh::Entity elem = infoObject->owningElement_;
     if ( infoObject->bestX_ > maxTol || !(bulk_data.is_valid(elem)) ) {
 
-      Env::outputP0() << "Sorry, halo node for face node " << bulk_data.identifier(infoObject->faceNode_)
+      NaluEnv::self().naluOutputP0() << "Sorry, halo node for face node " << bulk_data.identifier(infoObject->faceNode_)
                       << " Does not have an ideal bestX; consider clipping "
                       << infoObject->bestX_ << std::endl;
       if ( !(bulk_data.is_valid(elem)) )
-        Env::outputP0() << "In fact, the owning master element is null" << std::endl;
+        NaluEnv::self().naluOutputP0() << "In fact, the owning master element is null" << std::endl;
       else
-        Env::outputP0() << " The best element is "
+        NaluEnv::self().naluOutputP0() << " The best element is "
                         << bulk_data.identifier(infoObject->owningElement_)
                         << " consider clipping "<< std::endl;
 
       // clip to isoPar min/max... Still let dxj be what it is...
       if ( infoObject->bestX_ > maxTol && clipIsoParametricCoords_ ) {
-        Env::outputP0()
+        NaluEnv::self().naluOutputP0()
           << "Will clip the isoParametricCoords for node id: " << bulk_data.identifier(infoObject->faceNode_) << std::endl;
         const double minTol = -1.0-tol;
         for ( int j = 0; j < nDim; ++j ) {
@@ -531,7 +532,7 @@ ContactInfo::find_possible_elements()
            (rMax <= maxSearchRadius_ && rMax >= minSearchRadius_ )  ) {
 
         // setup ident
-        stk::search::IdentProc<uint64_t,unsigned> theIdent(bulk_data.identifier(elem), Env::parallel_rank());
+        stk::search::IdentProc<uint64_t,unsigned> theIdent(bulk_data.identifier(elem), NaluEnv::self().parallel_rank());
 
         searchElementMap_[bulk_data.identifier(elem)] = elem;
 
@@ -588,12 +589,12 @@ ContactInfo::dump_diagnosis()
 
     HaloInfo * infoObject = (*iterHalo).second;
     const size_t theId = bulk_data.identifier(infoObject->faceNode_);
-    Env::outputP0() << " " << std::endl;
-    Env::outputP0() << "The node id " << theId << " Has the following information: "
+    NaluEnv::self().naluOutputP0() << " " << std::endl;
+    NaluEnv::self().naluOutputP0() << "The node id " << theId << " Has the following information: "
                     << infoObject->haloEdgeDs_ << std::endl;
     double norm = 0.0;
     for ( int j = 0; j < nDim; ++j ) {
-      Env::outputP0() << "direction: " << j << " "
+      NaluEnv::self().naluOutputP0() << "direction: " << j << " "
                       << infoObject->haloEdgeAreaVec_[j] << " "
                       << infoObject->nodalCoords_[j] << " "
                       << infoObject->haloNodalCoords_[j] << " "
@@ -603,29 +604,29 @@ ContactInfo::dump_diagnosis()
     }
     norm = std::sqrt(norm);
     if ( norm > 1.0e-8 )
-      Env::outputP0() << "WARNING: diference between halo coords and check halo coords is large " << norm << std::endl;
+      NaluEnv::self().naluOutputP0() << "WARNING: diference between halo coords and check halo coords is large " << norm << std::endl;
 
     if ( !(bulk_data.is_valid(infoObject->owningElement_)) ) {
-      Env::outputP0() << "There was NO ELEMENT FOUND!! Think about expanding the box or search band" << std::endl;
+      NaluEnv::self().naluOutputP0() << "There was NO ELEMENT FOUND!! Think about expanding the box or search band" << std::endl;
     }
     else {
-      Env::outputP0() << "Finally, the found element is " << bulk_data.identifier(infoObject->owningElement_)
+      NaluEnv::self().naluOutputP0() << "Finally, the found element is " << bulk_data.identifier(infoObject->owningElement_)
                       << " with bestX as: " << infoObject->bestX_ << " " << std::endl;
     }
 
     const int isGhosted = infoObject->elemIsGhosted_;
     if ( isGhosted > 0 ) {
-      Env::outputP0() << "The node id " << theId << " found a need to ghost the element "
+      NaluEnv::self().naluOutputP0() << "The node id " << theId << " found a need to ghost the element "
                       << bulk_data.identifier(infoObject->owningElement_) << std::endl;
     }
   }
 
-  Env::outputP0() << "ContactInfo::searchElementMap (ll possible elements)" << name_ << std::endl;
+  NaluEnv::self().naluOutputP0() << "ContactInfo::searchElementMap (ll possible elements)" << name_ << std::endl;
   std::map<uint64_t, stk::mesh::Entity>::iterator iterEM;
   for (iterEM  = searchElementMap_.begin();
        iterEM != searchElementMap_.end();
        ++iterEM) {
-    Env::outputP0() << "The element id is " << (*iterEM).first << std::endl;
+    NaluEnv::self().naluOutputP0() << "The element id is " << (*iterEM).first << std::endl;
   }
 
   for (iterHalo  = haloInfoMap_.begin();
@@ -636,7 +637,7 @@ ContactInfo::dump_diagnosis()
     const int theId = bulk_data.identifier(infoObject->faceNode_);
     const int isGhosted = infoObject->elemIsGhosted_;
     if ( isGhosted > 0 ) {
-      Env::outputP0() << "The node id " << theId << " found a need to ghost the element "
+      NaluEnv::self().naluOutputP0() << "The node id " << theId << " found a need to ghost the element "
                       << bulk_data.identifier(infoObject->owningElement_) << std::endl;
     }
   }

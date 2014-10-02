@@ -73,6 +73,7 @@
 #include <MomentumBodyForceSrcNodeSuppAlg.h>
 #include <MomentumMassBackwardEulerNodeSuppAlg.h>
 #include <MomentumMassBDF2NodeSuppAlg.h>
+#include <NaluEnv.h>
 #include <NaluParsing.h>
 #include <PostProcessingData.h>
 #include <PstabErrorIndicatorEdgeAlgorithm.h>
@@ -95,7 +96,6 @@
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
 #include <stk_util/environment/CPUTime.hpp>
-#include <stk_util/environment/Env.hpp>
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/BulkData.hpp>
@@ -118,7 +118,6 @@
 // basic c++
 #include <iostream>
 #include <math.h>
-#include <utility>
 #include <vector>
 
 namespace sierra{
@@ -511,7 +510,7 @@ LowMachEquationSystem::solve_and_update()
   // start the iteration loop
   for ( int k = 0; k < maxIterations_; ++k ) {
 
-    Env::outputP0() << " " << k+1 << "/" << maxIterations_
+    NaluEnv::self().naluOutputP0() << " " << k+1 << "/" << maxIterations_
                     << std::setw(15) << std::right << name_ << std::endl;
 
     // momentum assemble, load_complete and solve
@@ -580,7 +579,7 @@ LowMachEquationSystem::post_adapt_work()
   // at the very least, we need to populate ip values at edge/element
   if ( realm_.process_adaptivity() ) {
     
-    Env::outputP0() << "--LowMachEquationSystem::post_adapt_work()" << std::endl;
+    NaluEnv::self().naluOutputP0() << "--LowMachEquationSystem::post_adapt_work()" << std::endl;
 
     // compute new nodal pressure gradient
     continuityEqSys_->assembleNodalGradAlgDriver_->execute();
@@ -746,7 +745,7 @@ MomentumEquationSystem::MomentumEquationSystem(
 
   // determine nodal gradient form
   set_nodal_gradient("velocity");
-  Env::outputP0() << "Edge projected nodal gradient for velocity: " << edgeNodalGradient_ <<std::endl;
+  NaluEnv::self().naluOutputP0() << "Edge projected nodal gradient for velocity: " << edgeNodalGradient_ <<std::endl;
 
   // push back EQ to manager
   realm_.equationSystems_.push_back(this);
@@ -1074,7 +1073,7 @@ MomentumEquationSystem::register_inflow_bc(
     std::string fcnName = get_bc_function_name(userData, velocityName);
     std::vector<double> theParams = get_bc_function_params(userData, velocityName);
     if ( theParams.size() == 0 )
-      Env::outputP0() << "function parameter size is zero" << std::endl;
+      NaluEnv::self().naluOutputP0() << "function parameter size is zero" << std::endl;
     // switch on the name found...
     if ( fcnName == "convecting_taylor_vortex" ) {
       theAuxFunc = new ConvectingTaylorVortexVelocityAuxFunction(0,nDim);
@@ -1603,7 +1602,7 @@ ContinuityEquationSystem::ContinuityEquationSystem(
 
   // message to user
   if ( realm_.realmUsesEdges_ && elementContinuityEqs_)
-    Env::outputP0() << "Edge scheme active (all scalars); element-based (continuity)!" << std::endl;
+    NaluEnv::self().naluOutputP0() << "Edge scheme active (all scalars); element-based (continuity)!" << std::endl;
 
   // error check
   if ( !elementContinuityEqs_ && !realm_.realmUsesEdges_ )
@@ -1616,7 +1615,7 @@ ContinuityEquationSystem::ContinuityEquationSystem(
 
   // determine nodal gradient form
   set_nodal_gradient("pressure");
-  Env::outputP0() << "Edge projected nodal gradient for pressure: " << edgeNodalGradient_ <<std::endl;
+  NaluEnv::self().naluOutputP0() << "Edge projected nodal gradient for pressure: " << edgeNodalGradient_ <<std::endl;
 
   // push back EQ to manager
   realm_.equationSystems_.push_back(this);
@@ -1864,7 +1863,7 @@ ContinuityEquationSystem::register_inflow_bc(
     std::string fcnName = get_bc_function_name(userData, velocityName);
     std::vector<double> theParams = get_bc_function_params(userData, velocityName);
     if ( theParams.size() == 0 )
-      Env::outputP0() << "function parameter size is zero" << std::endl;
+      NaluEnv::self().naluOutputP0() << "function parameter size is zero" << std::endl;
     // switch on the name found...
     if ( fcnName == "convecting_taylor_vortex" ) {
       theAuxFunc = new ConvectingTaylorVortexVelocityAuxFunction(0,nDim);

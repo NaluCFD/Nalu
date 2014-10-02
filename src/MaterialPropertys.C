@@ -11,6 +11,7 @@
 #include <Enums.h>
 #include <Realm.h>
 #include <MaterialPropertyData.h>
+#include <NaluEnv.h>
 #include <ReferencePropertyData.h>
 #include <PropertyEvaluator.h>
 
@@ -22,9 +23,6 @@
 #include <iostream>
 #include <map>
 #include <math.h>
-#include <utility>
-
-#include <stk_util/environment/Env.hpp>
 
 namespace sierra{
 namespace nalu{
@@ -157,7 +155,7 @@ MaterialPropertys::load(const YAML::Node & node)
             double theValue = 0.0;
             *standardConst >> theValue;
             matData->constValue_ = theValue;
-            Env::outputP0() << thePropName
+            NaluEnv::self().naluOutputP0() << thePropName
                 << " is a constant property: " << theValue << std::endl;
           }
           else {
@@ -189,7 +187,7 @@ MaterialPropertys::load(const YAML::Node & node)
                     matData->hfConstMap_[speciesName] = theValue;
                   }
                   else {
-                    Env::outputP0() << "default heat of formation set to zero" << std::endl;
+                    NaluEnv::self().naluOutputP0() << "default heat of formation set to zero" << std::endl;
                     matData->hfConstMap_[speciesName] = 0.0;
                   }
                 }
@@ -208,7 +206,7 @@ MaterialPropertys::load(const YAML::Node & node)
           matData->type_ = MIXFRAC_MAT;
           matData->primary_ = primaryVal;
           matData->secondary_ = secondaryVal;
-          Env::outputP0() << thePropName
+          NaluEnv::self().naluOutputP0() << thePropName
                           << " is a mix frac prop: "
                           << primaryVal << " "
                           << secondaryVal << std::endl;
@@ -266,22 +264,22 @@ MaterialPropertys::load(const YAML::Node & node)
         } 
         else if ( thePropType == "ideal_gas_t" ) {
           matData->type_ = IDEAL_GAS_T_MAT;
-          Env::outputP0() << thePropName
+          NaluEnv::self().naluOutputP0() << thePropName
                           << " is an ideal gas property (function of T and mw): " << std::endl;
         }
         else if ( thePropType == "ideal_gas_t_p" ) {
             matData->type_ = IDEAL_GAS_T_P_MAT;
-            Env::outputP0() << thePropName
+            NaluEnv::self().naluOutputP0() << thePropName
                             << " is an ideal gas property (function of T, mw and P): " << std::endl;
         }
         else if ( thePropType == "geometric" ) {
                   matData->type_ = GEOMETRIC_MAT;
-                  Env::outputP0() << thePropName
+                  NaluEnv::self().naluOutputP0() << thePropName
                                   << " is a geometric property: " << std::endl;
         }
         else if ( thePropType == "table") {
           matData->type_ = TABLE_MAT;
-          Env::outputP0() << thePropName << " is a table look-up property: " << std::endl;
+          NaluEnv::self().naluOutputP0() << thePropName << " is a table look-up property: " << std::endl;
 	  
           // what we might expect; only a single cIndex for property and aux var
           int cIndex = 0; int cIndexAuxVar = 0;

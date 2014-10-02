@@ -8,6 +8,7 @@
 /*------------------------------------------------------------------------*/
 
 #include <NaluParsing.h>
+#include <NaluEnv.h>
 #include <Simulation.h>
 #include <Enums.h>
 
@@ -16,8 +17,6 @@
 // yaml for parsing..
 #include <yaml-cpp/yaml.h>
 #include <string>
-
-#include <stk_util/environment/Env.hpp>
 
 namespace sierra{
 namespace nalu{
@@ -402,7 +401,7 @@ void operator >> (const YAML::Node& node, ConstantInitialConditionData& constIC)
   {
     constIC.targetNames_.resize(1);
     targets >> constIC.targetNames_[0];
-    Env::outputP0() << "constant IC: name: " << constIC.icName_ << " , target[" << 0 << "] = "
+    NaluEnv::self().naluOutputP0() << "constant IC: name: " << constIC.icName_ << " , target[" << 0 << "] = "
               << constIC.targetNames_[0] << std::endl;
     if (constIC.targetNames_[0].find(',') != std::string::npos)
       throw std::runtime_error("In " + constIC.icName_ +
@@ -415,7 +414,7 @@ void operator >> (const YAML::Node& node, ConstantInitialConditionData& constIC)
     {
       targets[i] >> constIC.targetNames_[i];
       if (constIC.root()->debug())
-        Env::outputP0() << "constant IC: name: " << constIC.icName_ << " , target[" << i << "] = "
+        NaluEnv::self().naluOutputP0() << "constant IC: name: " << constIC.icName_ << " , target[" << i << "] = "
                   << constIC.targetNames_[i] << std::endl;
     }
   }
@@ -426,7 +425,7 @@ void operator >> (const YAML::Node& node, ConstantInitialConditionData& constIC)
   constIC.data_.resize(value_size);
   if (constIC.root()->debug())
   {
-    Env::outputP0() << "fieldNames_.size()= " << constIC.fieldNames_.size()
+    NaluEnv::self().naluOutputP0() << "fieldNames_.size()= " << constIC.fieldNames_.size()
               << " value.size= " << constIC.data_.size() << std::endl;
   }
   size_t jv = 0;
@@ -443,7 +442,7 @@ void operator >> (const YAML::Node& node, ConstantInitialConditionData& constIC)
         value[iv] >> constIC.data_[jv][iv];
         if (constIC.root()->debug())
         {
-          Env::outputP0() << "fieldNames_= " << constIC.fieldNames_[jv] << " value= "
+          NaluEnv::self().naluOutputP0() << "fieldNames_= " << constIC.fieldNames_[jv] << " value= "
                     << constIC.data_[jv][iv] << std::endl;
         }
       }
@@ -454,7 +453,7 @@ void operator >> (const YAML::Node& node, ConstantInitialConditionData& constIC)
       value >> constIC.data_[jv][0];
       if (constIC.root()->debug())
       {
-        Env::outputP0() << "fieldNames_= " << constIC.fieldNames_[jv] << " value= " << constIC.data_[jv][0] << std::endl;
+        NaluEnv::self().naluOutputP0() << "fieldNames_= " << constIC.fieldNames_[jv] << " value= " << constIC.data_[jv][0] << std::endl;
       }
     }
   }
@@ -548,7 +547,7 @@ expect_type(const YAML::Node& node, const std::string& key, YAML::NodeType::valu
   std::ostringstream err_msg;
   if (!optional && !value)
     {
-      if (!sierra::Env::parallel_rank()) {
+      if (!NaluEnv::self().parallel_rank()) {
         err_msg << "Error: parsing expected required value " << key << " but it was not found at"
                 << NaluParsingHelper::line_info(node)
                 << " for Node= " << std::endl;
@@ -559,7 +558,7 @@ expect_type(const YAML::Node& node, const std::string& key, YAML::NodeType::valu
     }
   if (value && (value->Type() != type))
     {
-      if (!sierra::Env::parallel_rank()) {
+      if (!NaluEnv::self().parallel_rank()) {
         err_msg << "Error: parsing expected type " << types[type] << " got type = " << types[value->Type()]
                 << " for key= " << key
                 << " at " << NaluParsingHelper::line_info(node)

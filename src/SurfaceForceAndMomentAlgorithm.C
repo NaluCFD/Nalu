@@ -12,6 +12,7 @@
 #include <FieldTypeDef.h>
 #include <Realm.h>
 #include <master_element/MasterElement.h>
+#include <NaluEnv.h>
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/BulkData.hpp>
@@ -86,7 +87,7 @@ SurfaceForceAndMomentAlgorithm::SurfaceForceAndMomentAlgorithm(
     throw std::runtime_error("SurfaceForce: parameter length wrong; expect nDim");
 
   // deal with file name and banner
-  if ( Env::parallel_rank() == 0 ) {
+  if ( NaluEnv::self().parallel_rank() == 0 ) {
     std::ofstream myfile;
     myfile.open(outputFileName_.c_str());
     myfile << "Time    Fx    Fy    Fz    Mx    My    Mz "<< std::endl;
@@ -294,7 +295,7 @@ SurfaceForceAndMomentAlgorithm::execute()
     stk::all_reduce_sum(comm, &l_force_moment[0], &g_force_moment[0], 6);
 
     // deal with file name and banner
-    if ( Env::parallel_rank() == 0 ) {
+    if ( NaluEnv::self().parallel_rank() == 0 ) {
       std::ofstream myfile;
       myfile.open(outputFileName_.c_str(), std::ios_base::app);
       myfile << currentTime << " "

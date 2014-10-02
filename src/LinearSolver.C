@@ -9,8 +9,9 @@
 #include <LinearSolver.h>
 #include <LinearSolvers.h>
 
+#include <NaluEnv.h>
+
 #include <stk_util/environment/ReportHandler.hpp>
-#include <stk_util/environment/Env.hpp>
 
 #include <Epetra_FECrsMatrix.h>
 #include <Epetra_FEVector.h>
@@ -77,8 +78,8 @@ EpetraLinearSolver::EpetraLinearSolver(
 {
   solver_->SetAllAztecOptions(options);
   solver_->SetAllAztecParams(params);
-  solver_->SetOutputStream(Env::outputP0());
-  solver_->SetErrorStream(Env::outputP0());
+  solver_->SetOutputStream(NaluEnv::self().naluOutputP0());
+  solver_->SetErrorStream(NaluEnv::self().naluOutputP0());
 }
 
 EpetraLinearSolver::~EpetraLinearSolver () {
@@ -242,7 +243,7 @@ void TpetraLinearSolver::setupLinearSolver(
     }
     else {
       // throw an error and create gmres
-      Env::outputP0() << "Only gmres, tfqmr and cg solver methods are supported: " << config_->get_method() << std::endl;
+      NaluEnv::self().naluOutputP0() << "Only gmres, tfqmr and cg solver methods are supported: " << config_->get_method() << std::endl;
     }
   }
 
@@ -286,7 +287,7 @@ void TpetraLinearSolver::setMueLu()
   }
   else {
     // throw an error and create gmres
-    Env::outputP0() << "Only gmres, tfqmr and cg solver methods are supported: " << config_->get_method() << std::endl;
+    NaluEnv::self().naluOutputP0() << "Only gmres, tfqmr and cg solver methods are supported: " << config_->get_method() << std::endl;
   }
 
 }

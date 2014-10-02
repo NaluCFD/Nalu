@@ -15,6 +15,7 @@
 #include <Realm.h>
 #include <TimeIntegrator.h>
 #include <master_element/MasterElement.h>
+#include <NaluEnv.h>
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/BulkData.hpp>
@@ -26,7 +27,6 @@
 // stk_io
 #include <stk_io/StkMeshIoBroker.hpp>
 
-#include <stk_util/environment/Env.hpp>
 #include <stk_util/parallel/ParallelReduce.hpp>
 
 namespace sierra{
@@ -210,7 +210,7 @@ SimpleErrorIndicatorElemAlgorithm::execute()
 
   stk::ParallelMachine pm = realm_.fixture_->bulk_data().parallel();
   stk::all_reduce( pm, stk::ReduceMax<1>( &maxV ) );
-  Env::outputP0() << "tmp srk maxV= " << maxV << std::endl;
+  NaluEnv::self().naluOutputP0() << "tmp srk maxV= " << maxV << std::endl;
 
 }
 

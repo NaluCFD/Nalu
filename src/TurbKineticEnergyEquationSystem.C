@@ -35,6 +35,7 @@
 #include <LinearSolvers.h>
 #include <LinearSolver.h>
 #include <LinearSystem.h>
+#include <NaluEnv.h>
 #include <NaluParsing.h>
 #include <Realm.h>
 #include <Realms.h>
@@ -51,7 +52,6 @@
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
 #include <stk_util/environment/CPUTime.hpp>
-#include <stk_util/environment/Env.hpp>
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/BulkData.hpp>
@@ -75,7 +75,6 @@
 // basic c++
 #include <iostream>
 #include <math.h>
-#include <utility>
 
 namespace sierra{
 namespace nalu{
@@ -110,7 +109,7 @@ TurbKineticEnergyEquationSystem::TurbKineticEnergyEquationSystem(
 
   // determine nodal gradient form
   set_nodal_gradient("turbulent_ke");
-  Env::outputP0() << "Edge projected nodal gradient for turbulent_ke: " << edgeNodalGradient_ <<std::endl;
+  NaluEnv::self().naluOutputP0() << "Edge projected nodal gradient for turbulent_ke: " << edgeNodalGradient_ <<std::endl;
 
   // push back EQ to manager
   realm_.equationSystems_.push_back(this);
@@ -487,7 +486,7 @@ TurbKineticEnergyEquationSystem::register_wall_bc(
   const bool tkeSpecified = bc_data_specified(userData, tkeName);
   bool wallFunctionApproach = userData.wallFunctionApproach_;
   if ( tkeSpecified && wallFunctionApproach ) {
-    Env::outputP0() << "Both wall function and tke specified; will go with dirichlet" << std::endl;
+    NaluEnv::self().naluOutputP0() << "Both wall function and tke specified; will go with dirichlet" << std::endl;
     wallFunctionApproach = false;
   }
 
@@ -737,7 +736,7 @@ TurbKineticEnergyEquationSystem::solve_and_update()
   // start the iteration loop
   for ( int k = 0; k < maxIterations_; ++k ) {
 
-    Env::outputP0() << " " << k+1 << "/" << maxIterations_
+    NaluEnv::self().naluOutputP0() << " " << k+1 << "/" << maxIterations_
                     << std::setw(15) << std::right << name_ << std::endl;
 
     // tke assemble, load_complete and solve
@@ -833,7 +832,7 @@ TurbKineticEnergyEquationSystem::update_and_clip()
     stk::all_reduce_sum(comm, &numClip, &g_numClip, 1);
 
     if ( g_numClip > 0 ) {
-      Env::outputP0() << "tke clipped " << g_numClip << " times " << std::endl;
+      NaluEnv::self().naluOutputP0() << "tke clipped " << g_numClip << " times " << std::endl;
     }
 
   }

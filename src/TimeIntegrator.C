@@ -14,8 +14,8 @@
 #include <Simulation.h>
 #include <OutputInfo.h>
 #include <SolutionOptions.h>
+#include <NaluEnv.h>
 #include <NaluParsing.h>
-#include <stk_util/environment/Env.hpp>
 
 #include <limits>
 
@@ -80,7 +80,7 @@ void TimeIntegrator::load(const YAML::Node & node)
         if ( (*standardTimeIntegrator_node).FindValue("termination_step_count") ) {
           (*standardTimeIntegrator_node)["termination_step_count"] >> maxTimeStepCount_;
           if ( terminateBasedOnTime_  )
-            Env::outputP0() << "Both max time step and termination time provided, max step will prevail" << std::endl;
+            NaluEnv::self().naluOutputP0() << "Both max time step and termination time provided, max step will prevail" << std::endl;
           terminateBasedOnTime_ = false;
         }
 	      
@@ -98,24 +98,24 @@ void TimeIntegrator::load(const YAML::Node & node)
         get_if_present(*standardTimeIntegrator_node, "time_stepping_type", timeStepType, timeStepType);
         adaptiveTimeStep_ = ( timeStepType == "fixed" ) ? false : true;
 
-	      Env::outputP0() << "StandardTimeIntegrator " << std::endl
+	      NaluEnv::self().naluOutputP0() << "StandardTimeIntegrator " << std::endl
 	          << " name=              " << name_  << std::endl
 	          << " second order =     " << secondOrderTimeAccurate_ << std::endl;
 	      if ( terminateBasedOnTime_ )
-	        Env::outputP0() << " totalSimTime =     " << totalSimTime_ << std::endl;
+	        NaluEnv::self().naluOutputP0() << " totalSimTime =     " << totalSimTime_ << std::endl;
 	      else
-	        Env::outputP0() << " maxTimeStepCount = " << maxTimeStepCount_ << std::endl;
+	        NaluEnv::self().naluOutputP0() << " maxTimeStepCount = " << maxTimeStepCount_ << std::endl;
 
 	      if ( adaptiveTimeStep_ )  
-	        Env::outputP0() << " adaptive time step is active (realm owns specifics) " << std::endl;
+	        NaluEnv::self().naluOutputP0() << " adaptive time step is active (realm owns specifics) " << std::endl;
 	      else
-	        Env::outputP0() << " fixed time step is active  " << " with time step: " << timeStepN_ << std::endl;
+	        NaluEnv::self().naluOutputP0() << " fixed time step is active  " << " with time step: " << timeStepN_ << std::endl;
 
 	      const YAML::Node & realms_node = (*standardTimeIntegrator_node)["realms"] ;
 	      for (size_t irealm=0; irealm < realms_node.size(); ++irealm) {
 	        std::string realm_name;
 	        realms_node[irealm] >> realm_name;
-	        Env::outputP0() << "StandardTimeIntegrator realm_name[" << irealm << "]= "  << realm_name << std::endl;
+	        NaluEnv::self().naluOutputP0() << "StandardTimeIntegrator realm_name[" << irealm << "]= "  << realm_name << std::endl;
 	        realmNamesVec_.push_back(realm_name);
 	      }
       }
@@ -230,7 +230,7 @@ TimeIntegrator::integrate_realm()
     if ( secondOrderTimeAccurate_ )
       compute_gamma();
     
-    Env::outputP0()
+    NaluEnv::self().naluOutputP0()
       << "*******************************************************" << std::endl
       << "Time Step Count: " << timeStepCount_
       << " Current Time: " << currentTime_ << std::endl
@@ -261,7 +261,7 @@ TimeIntegrator::integrate_realm()
 
     // nonlinear iteration loop; Picard-style
     for ( int k = 0; k < nonlinearIterations_; ++k ) {
-      Env::outputP0()
+      NaluEnv::self().naluOutputP0()
         << "   Realm Nonlinear Iteration: " << k+1 << "/" << nonlinearIterations_ << std::endl
         << std::endl;
       for ( ii = realmVec_.begin(); ii!=realmVec_.end(); ++ii) {

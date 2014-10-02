@@ -7,10 +7,9 @@
 
 
 #include <LinearSolverConfig.h>
+#include <NaluEnv.h>
 #include <NaluParsing.h>
 #include <yaml-cpp/yaml.h>
-#include <Slib_Exception.h>
-#include <stk_util/environment/Env.hpp>
 #include <Teuchos_ParameterList.hpp>
 #include <Teuchos_RCP.hpp>
 #include <ml_MultiLevelPreconditioner.h>
@@ -164,7 +163,7 @@ EpetraLinearSolverConfig::string_to_AzSolver(const std::string & method)
   if(method == "fixed_pt") return AZ_fixed_pt;
   if(method == "analyze")  return AZ_analyze;
   if(method == "lu")       return AZ_lu;
-  throw RuntimeUserError() << "invalid linear solver method: " << method;
+  throw std::runtime_error("invalid linear solver method specified ");
 }
 
 int
@@ -187,7 +186,7 @@ EpetraLinearSolverConfig::string_to_AzPrecond(const std::string & precond)
   if(precond == "multilevel")   return AZ_multilevel;
   if(precond == "user_solve")   return AZ_user_precond;
   if(precond == "bilu_ifp")     return AZ_bilu_ifp;
-  throw RuntimeUserError() << "invalid linear solver preconditioner: " << precond;
+  throw std::runtime_error("invalid linear solver preconditioner specified ");
 }
 
 int
@@ -210,7 +209,7 @@ EpetraLinearSolverConfig::string_to_AzSubdomainSolver(const std::string & solver
   if(solver == "multilevel")   return AZ_multilevel;
   if(solver == "user_solve")   return AZ_user_precond;
   if(solver == "bilu_ifp")     return AZ_bilu_ifp;
-  throw RuntimeUserError() << "invalid linear subdomain solver: " << solver;
+  throw std::runtime_error("invalid linear subdomain solver specified ");
 }
 
 TpetraLinearSolverConfig::TpetraLinearSolverConfig() :
@@ -267,7 +266,7 @@ TpetraLinearSolverConfig::load(const YAML::Node & node)
   }
 
   params_->set("Output Frequency", output_level);
-  Teuchos::RCP<std::ostream> belosOutputStream = Teuchos::rcpFromRef (Env::outputP0());
+  Teuchos::RCP<std::ostream> belosOutputStream = Teuchos::rcpFromRef (NaluEnv::self().naluOutputP0());
   params_->set("Output Stream", belosOutputStream);
   params_->set("Num Blocks", kspace);
   params_->set("Maximum Restarts", std::max(1,max_iterations/kspace));
@@ -275,25 +274,20 @@ TpetraLinearSolverConfig::load(const YAML::Node & node)
   params_->set("Orthogonalization",orthoType);
   params_->set("Implicit Residual Scaling", "Norm of Preconditioned Initial Residual");
 
-  if (precond_ == "sgs")
-  {
+  if (precond_ == "sgs") {
     paramsPrecond_->set("relaxation: type","Symmetric Gauss-Seidel");
     paramsPrecond_->set("relaxation: sweeps",1);
-    //paramsPrecond_->set("relaxation: damping factor",relax_fact);
   }
-  else if (precond_ == "jacobi" || precond_ == "default")
-  {
+  else if (precond_ == "jacobi" || precond_ == "default") {
     paramsPrecond_->set("relaxation: type","Jacobi");
     paramsPrecond_->set("relaxation: sweeps",1);
   }
-  else if (precond_ == "muelu")
-  {
+  else if (precond_ == "muelu") {
     muelu_xml_file_ = std::string("milestone.xml");
     useMueLu_ = true;
   }
-  else
-  {
-   throw RuntimeUserError() << "invalid linear solver preconditioner: " << precond_;
+  else {
+    throw std::runtime_error("invalid linear solver preconditioner specified ");
   }
 
   get_if_present(node, "write_matrix_files", writeMatrixFiles_, false);

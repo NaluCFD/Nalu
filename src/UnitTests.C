@@ -17,7 +17,6 @@
 #include <iostream>
 #include <map>
 #include <math.h>
-#include <utility>
 
 namespace sierra{
 namespace nalu{

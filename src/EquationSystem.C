@@ -15,6 +15,7 @@
 #include <SolutionOptions.h>
 #include <FieldTypeDef.h>
 #include <NaluParsing.h>
+#include <NaluEnv.h>
 #include <LinearSystem.h>
 #include <ConstantAuxFunction.h>
 #include <Enums.h>
@@ -25,7 +26,6 @@
 #include <stk_mesh/base/Field.hpp>
 #include <stk_mesh/base/MetaData.hpp>
 
-#include <stk_util/environment/Env.hpp>
 #include <stk_util/environment/CPUTime.hpp>
 #include <stk_util/parallel/ParallelReduce.hpp>
 
@@ -108,27 +108,27 @@ EquationSystem::dump_eq_time()
   double g_max[4] = {};
   double g_sum[4] = {};
 
-  int nprocs = sierra::Env::parallel_size();
+  int nprocs = NaluEnv::self().parallel_size();
 
-  Env::outputP0() << "Timing for Eq: " << name_ << std::endl;
+  NaluEnv::self().naluOutputP0() << "Timing for Eq: " << name_ << std::endl;
 
   // get max, min, and sum over processes
-  stk::all_reduce_sum(sierra::Env::parallel_comm(), &l_timer[0], &g_sum[0], 4);
-  stk::all_reduce_min(sierra::Env::parallel_comm(), &l_timer[0], &g_min[0], 4);
-  stk::all_reduce_max(sierra::Env::parallel_comm(), &l_timer[0], &g_max[0], 4);
+  stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &l_timer[0], &g_sum[0], 4);
+  stk::all_reduce_min(NaluEnv::self().parallel_comm(), &l_timer[0], &g_min[0], 4);
+  stk::all_reduce_max(NaluEnv::self().parallel_comm(), &l_timer[0], &g_max[0], 4);
 
   // output
-  Env::outputP0() << "         assemble --  " << " \tavg: " << g_sum[0]/double(nprocs)
+  NaluEnv::self().naluOutputP0() << "         assemble --  " << " \tavg: " << g_sum[0]/double(nprocs)
                   << " \tmin: " << g_min[0] << " \tmax: " << g_max[0] << std::endl;
-  Env::outputP0() << "    load_complete --  " << " \tavg: " << g_sum[1]/double(nprocs)
+  NaluEnv::self().naluOutputP0() << "    load_complete --  " << " \tavg: " << g_sum[1]/double(nprocs)
                   << " \tmin: " << g_min[1] << " \tmax: " << g_max[1] << std::endl;
-  Env::outputP0() << "            solve --  " << " \tavg: " << g_sum[2]/double(nprocs)
+  NaluEnv::self().naluOutputP0() << "            solve --  " << " \tavg: " << g_sum[2]/double(nprocs)
                   << " \tmin: " << g_min[2] << " \tmax: " << g_max[2] << std::endl;
-  Env::outputP0() << "             misc --  " << " \tavg: " << g_sum[3]/double(nprocs)
+  NaluEnv::self().naluOutputP0() << "             misc --  " << " \tavg: " << g_sum[3]/double(nprocs)
                   << " \tmin: " << g_min[3] << " \tmax: " << g_max[3] << std::endl;
 
   if (reportLinearIterations_)
-    Env::outputP0() << "linear iterations -- " << " \tavg: " << avgLinearIterations_
+    NaluEnv::self().naluOutputP0() << "linear iterations -- " << " \tavg: " << avgLinearIterations_
                     << " \tmin: " << minLinearIterations_ << " \tmax: "
                     << maxLinearIterations_ << std::endl;
 
@@ -212,7 +212,7 @@ EquationSystem::assemble_and_solve(
     linsys_->linearSolveIterations());
   
   if ( error > 0 )
-    Env::outputP0() << "Error in " << name_ << "::solve_and_update()  " << std::endl;
+    NaluEnv::self().naluOutputP0() << "Error in " << name_ << "::solve_and_update()  " << std::endl;
   
 }
 

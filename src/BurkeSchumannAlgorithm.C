@@ -10,6 +10,7 @@
 #include <BurkeSchumannAlgorithm.h>
 #include <Algorithm.h>
 #include <FieldTypeDef.h>
+#include <NaluEnv.h>
 #include <Realm.h>
 #include <ReferencePropertyData.h>
 #include <stk_mesh/base/Field.hpp>
@@ -77,7 +78,7 @@ BurkeSchumannAlgorithm::BurkeSchumannAlgorithm(
 
   // compute stoichiometric mixture fraction
   zStoich_ = 1.0/(1.0+(M_+N_/4.0)*primaryVec_[fuelId_]*mwVec_[oxidizerId_]/(secondaryVec_[oxidizerId_]*mwVec_[fuelId_]));
-  Env::outputP0() << "Stoichiometric Mixture Fraction " << zStoich_ << std::endl;
+  NaluEnv::self().naluOutputP0() << "Stoichiometric Mixture Fraction " << zStoich_ << std::endl;
 }
 
 //--------------------------------------------------------------------------

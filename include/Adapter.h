@@ -5,7 +5,6 @@
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
-
 #if defined (NALU_USES_PERCEPT)
 
 #ifndef Adapter_h

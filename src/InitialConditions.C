@@ -6,8 +6,9 @@
 /*------------------------------------------------------------------------*/
 
 
-#include <Realm.h>
 #include <InitialConditions.h>
+#include <NaluEnv.h>
+#include <Realm.h>
 
 // yaml for parsing..
 #include <yaml-cpp/yaml.h>
@@ -17,8 +18,6 @@
 #include <iostream>
 #include <map>
 #include <math.h>
-#include <utility>
-#include <stk_util/environment/Env.hpp>
 
 namespace sierra{
 namespace nalu{
@@ -48,13 +47,13 @@ namespace nalu{
 InitialCondition * InitialCondition::load(const YAML::Node & node) 
 {
    if ( node.FindValue("constant") ){
-    Env::outputP0() << "Initial Is Type constant " << std::endl;
+    NaluEnv::self().naluOutputP0() << "Initial Is Type constant " << std::endl;
     ConstantInitialConditionData& constIC = *new ConstantInitialConditionData(*parent());
     node >> constIC;
     return &constIC;
   }
   else  if ( node.FindValue("user_function") ){
-    Env::outputP0() << "Initial Is Type user-function " << std::endl;
+    NaluEnv::self().naluOutputP0() << "Initial Is Type user-function " << std::endl;
     UserFunctionInitialConditionData& fcnIC = *new UserFunctionInitialConditionData(*parent());
     node >> fcnIC;
     return &fcnIC;

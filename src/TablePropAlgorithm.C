@@ -9,6 +9,7 @@
 #include <Algorithm.h>
 #include <TablePropAlgorithm.h>
 #include <FieldTypeDef.h>
+#include <NaluEnv.h>
 #include <PropertyEvaluator.h>
 #include <Realm.h>
 #include <tabular_props/StateTable.h>
@@ -68,9 +69,9 @@ TablePropAlgorithm::TablePropAlgorithm(
   workZ_.resize(indVarSize_);
 
   // provide some output
-  Env::outputP0() << "the Following Table Property name will be extracted: " << tablePropName << std::endl;
+  NaluEnv::self().naluOutputP0() << "the Following Table Property name will be extracted: " << tablePropName << std::endl;
   for ( size_t k = 0; k < indVarTableNameVec_.size(); ++k ) {
-    Env::outputP0() << "using independent variables: " << indVarTableNameVec_[k] << std::endl;
+    NaluEnv::self().naluOutputP0() << "using independent variables: " << indVarTableNameVec_[k] << std::endl;
   }
 
 }

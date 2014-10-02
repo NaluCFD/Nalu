@@ -7,7 +7,7 @@
 
 
 #include <OutputInfo.h>
-
+#include <NaluEnv.h>
 #include <NaluParsing.h>
 
 // basic c++
@@ -75,7 +75,7 @@ OutputInfo::load(
     {
       get_if_present(*y_output, "serialized_io_group_size", serializedIOGroupSize_, serializedIOGroupSize_);
       if (serializedIOGroupSize_) {
-        Env::outputP0() << "Info: found non-zero serialized_io_group_size in input file= " << serializedIOGroupSize_ << std::endl;
+        NaluEnv::self().naluOutputP0() << "Info: found non-zero serialized_io_group_size in input file= " << serializedIOGroupSize_ << std::endl;
       }
     }
 
@@ -121,7 +121,7 @@ OutputInfo::load(
     
     const YAML::Node *y_vars = y_restart->FindValue("restart_variables");
     if (y_vars) {
-      Env::outputP0() << "Restart variable specification has been deprecated" << std::endl;
+      NaluEnv::self().naluOutputP0() << "Restart variable specification has been deprecated" << std::endl;
     }
   }
 

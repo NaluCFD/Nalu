@@ -18,9 +18,6 @@
 #include <iostream>
 #include <map>
 #include <math.h>
-#include <utility>
-
-#include <stk_util/environment/Env.hpp>
 
 namespace sierra{
 namespace nalu{

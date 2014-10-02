@@ -8,6 +8,8 @@
 
 #include <SolutionOptions.h>
 #include <Enums.h>
+#include <NaluEnv.h>
+
 // basic c++
 #include <stdexcept>
 #include <utility>
@@ -172,10 +174,10 @@ SolutionOptions::load(const YAML::Node & y_node)
             }
             // error check..
             if ( !foundIt ) {
-              Env::outputP0() << "Sorry, turbulence model constant with name " << theConstName << " was not found " << std::endl;
-              Env::outputP0() << "List of turbulence model constant names are as follows:" << std::endl;
+              NaluEnv::self().naluOutputP0() << "Sorry, turbulence model constant with name " << theConstName << " was not found " << std::endl;
+              NaluEnv::self().naluOutputP0() << "List of turbulence model constant names are as follows:" << std::endl;
               for ( int k=0; k < TM_END; ++k ) {
-                Env::outputP0() << TurbulenceModelConstantNames[k] << std::endl;
+                NaluEnv::self().naluOutputP0() << TurbulenceModelConstantNames[k] << std::endl;
               }
             }
           }
@@ -193,7 +195,7 @@ SolutionOptions::load(const YAML::Node & y_node)
           }
         }
         else {
-          if (!sierra::Env::parallel_rank())
+          if (!NaluEnv::self().parallel_rank())
           {
             std::cout << "Error: parsing at " << NaluParsingHelper::info(y_option)
               //<< "... at parent ... " << NaluParsingHelper::info(y_node)
@@ -248,7 +250,7 @@ SolutionOptions::load(const YAML::Node & y_node)
       const YAML::Node *y_uniform = expect_map(*y_solution_options, "uniform_refinement", optional);
       if (y_uniform) {
 
-        Env::outputP0() << "Uniform refinement option found." << std::endl;
+        NaluEnv::self().naluOutputP0() << "Uniform refinement option found." << std::endl;
 
         const YAML::Node *y_refine_at = expect_sequence(*y_uniform, "refine_at", required);
         if (y_refine_at) {
@@ -256,7 +258,7 @@ SolutionOptions::load(const YAML::Node & y_node)
           std::vector<int> mvec;
           *y_refine_at >> mvec;
           for (unsigned i=0; i < mvec.size(); ++i) {
-            Env::outputP0() << "Uniform Refinement: refine_at[" << i << "]= " << mvec[i] << std::endl;
+            NaluEnv::self().naluOutputP0() << "Uniform Refinement: refine_at[" << i << "]= " << mvec[i] << std::endl;
 
             if (i > 0 && mvec[i-1] > mvec[i])
               throw std::runtime_error("refine_at option error: "+ NaluParsingHelper::info(*y_refine_at));
@@ -267,7 +269,7 @@ SolutionOptions::load(const YAML::Node & y_node)
           throw std::runtime_error("refine_at option missing: "+ NaluParsingHelper::info(*y_uniform));
         }
         get_if_present(*y_uniform, "save_mesh", uniformRefineSaveAfter_, uniformRefineSaveAfter_);
-        Env::outputP0() << "Uniform Refinement: save_mesh= " << uniformRefineSaveAfter_ << std::endl;
+        NaluEnv::self().naluOutputP0() << "Uniform Refinement: save_mesh= " << uniformRefineSaveAfter_ << std::endl;
       }
     }
 
@@ -275,7 +277,7 @@ SolutionOptions::load(const YAML::Node & y_node)
     const YAML::Node *y_adaptivity = expect_map(*y_solution_options, "adaptivity", optional);
     if (y_adaptivity) {
 
-      Env::outputP0() << "Adaptivity Active. Limited to Tri and Tet meshes " << std::endl;
+      NaluEnv::self().naluOutputP0() << "Adaptivity Active. Limited to Tri and Tet meshes " << std::endl;
 
       get_if_present(*y_adaptivity, "frequency", adaptivityFrequency_, adaptivityFrequency_);
       get_if_present(*y_adaptivity, "activate", activateAdaptivity_, activateAdaptivity_);
@@ -296,7 +298,7 @@ SolutionOptions::load(const YAML::Node & y_node)
 
         // error catching and user output
         if ( errorIndicatorType_ == EIT_NONE ) {
-          Env::outputP0() << "no or unknown error indicator was provided; will choose pstab.  Input value= " << type << std::endl;
+          NaluEnv::self().naluOutputP0() << "no or unknown error indicator was provided; will choose pstab.  Input value= " << type << std::endl;
           errorIndicatorType_ = EIT_PSTAB;
         }
 
@@ -309,14 +311,14 @@ SolutionOptions::load(const YAML::Node & y_node)
           errorIndicatorType_ = EIT_SIMPLE_DUDX2;
         if (errorIndicatorType_ & EIT_SIMPLE_BASE)
           {
-            Env::outputP0() << "WARNING: Found debug/test error inidicator type. Input value= " << type << std::endl;
+            NaluEnv::self().naluOutputP0() << "WARNING: Found debug/test error inidicator type. Input value= " << type << std::endl;
           }
       }
 
-      Env::outputP0() << std::endl;
-      Env::outputP0() << "Adaptivity Options Review: " << std::endl;
-      Env::outputP0() << "===========================" << std::endl;
-      Env::outputP0() << " pstab: " << (errorIndicatorType_ & EIT_PSTAB)
+      NaluEnv::self().naluOutputP0() << std::endl;
+      NaluEnv::self().naluOutputP0() << "Adaptivity Options Review: " << std::endl;
+      NaluEnv::self().naluOutputP0() << "===========================" << std::endl;
+      NaluEnv::self().naluOutputP0() << " pstab: " << (errorIndicatorType_ & EIT_PSTAB)
                       << " limit: " << (errorIndicatorType_ & EIT_LIMITER)
                       << " freq : " << adaptivityFrequency_ << std::endl;
 
@@ -343,7 +345,7 @@ SolutionOptions::load(const YAML::Node & y_node)
 
 #define OUTN(a) " " << #a << " = " << a
 
-      Env::outputP0() << "Adapt: options: "
+      NaluEnv::self().naluOutputP0() << "Adapt: options: "
                       << OUTN(activateAdaptivity_)
                       << OUTN(errorIndicatorType_)
                       << OUTN(adaptivityFrequency_) << "\n"
@@ -360,10 +362,10 @@ SolutionOptions::load(const YAML::Node & y_node)
     }
   }
 
-   Env::outputP0() << std::endl;
-   Env::outputP0() << "Turbulence Model Review:   " << std::endl;
-   Env::outputP0() << "===========================" << std::endl;
-   Env::outputP0() << "Turbulence Model is: "
+   NaluEnv::self().naluOutputP0() << std::endl;
+   NaluEnv::self().naluOutputP0() << "Turbulence Model Review:   " << std::endl;
+   NaluEnv::self().naluOutputP0() << "===========================" << std::endl;
+   NaluEnv::self().naluOutputP0() << "Turbulence Model is: "
        << TurbulenceModelNames[turbulenceModel_] << " " << isTurbulent_ <<std::endl;
 
 }

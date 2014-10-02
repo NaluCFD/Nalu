@@ -9,6 +9,7 @@
 #include <ContactInfo.h>
 #include <ContactManager.h>
 #include <master_element/MasterElement.h>
+#include <NaluEnv.h>
 #include <Realm.h>
 
 // stk_mesh/base/fem
@@ -127,10 +128,10 @@ ContactManager::manage_ghosting()
 
   // check for ghosting need
   size_t g_needToGhostCount = 0;
-  stk::all_reduce_sum(sierra::Env::parallel_comm(), &needToGhostCount_, &g_needToGhostCount, 1);
+  stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &needToGhostCount_, &g_needToGhostCount, 1);
   if (g_needToGhostCount > 0) {
     
-    Env::outputP0() << "Contact alg will ghost a number of entities: "
+    NaluEnv::self().naluOutputP0() << "Contact alg will ghost a number of entities: "
                     << g_needToGhostCount  << std::endl;
     
     bulk_data.modification_begin();
@@ -138,7 +139,7 @@ ContactManager::manage_ghosting()
     bulk_data.modification_end();
   }
   else {
-    Env::outputP0() << "Contact alg will NOT ghost entities: " << std::endl;
+    NaluEnv::self().naluOutputP0() << "Contact alg will NOT ghost entities: " << std::endl;
   }
 }
 

@@ -6,10 +6,10 @@
 /*------------------------------------------------------------------------*/
 
 
-
 #include <Realm.h>
 #include <Realms.h>
 #include <Simulation.h>
+#include <NaluEnv.h>
 
 // yaml for parsing..
 #include <yaml-cpp/yaml.h>
@@ -123,7 +123,7 @@ Transfer::load(const YAML::Node & node)
     }
     
     // warn the user...
-    Env::outputP0()
+    NaluEnv::self().naluOutputP0()
       << "Specifying the transfer variables requires expert understanding; consider using coupling_physics" << std::endl;
   }
 
@@ -222,19 +222,19 @@ Transfer::breadboard()
   if ( doOutput ) {
 
     // realm names
-    Env::outputP0() << "Xfer Setup Information: " << name_ << std::endl;
-    Env::outputP0() << "the From realm name is: " << fromRealm_->name_ << std::endl;
-    Env::outputP0() << "the To realm name is: " << toRealm_->name_ << std::endl;
+    NaluEnv::self().naluOutputP0() << "Xfer Setup Information: " << name_ << std::endl;
+    NaluEnv::self().naluOutputP0() << "the From realm name is: " << fromRealm_->name_ << std::endl;
+    NaluEnv::self().naluOutputP0() << "the To realm name is: " << toRealm_->name_ << std::endl;
 
     // extract mesh part names for the user
-    Env::outputP0() << "the From mesh part name is: " << meshPartPair_.first->name() << std::endl;
-    Env::outputP0() << "the To mesh part name is: " << meshPartPair_.second->name() << std::endl;
+    NaluEnv::self().naluOutputP0() << "the From mesh part name is: " << meshPartPair_.first->name() << std::endl;
+    NaluEnv::self().naluOutputP0() << "the To mesh part name is: " << meshPartPair_.second->name() << std::endl;
     
     // provide field names
     for( std::vector<std::pair<std::string, std::string> >::const_iterator i_var = transferVariablesPairName_.begin();
 	 i_var != transferVariablesPairName_.end(); ++i_var ) {
       const std::pair<std::string, std::string> thePair = *i_var;
-      Env::outputP0() << "From variable " << thePair.first << " To variable " << thePair.second << std::endl;
+      NaluEnv::self().naluOutputP0() << "From variable " << thePair.first << " To variable " << thePair.second << std::endl;
     }
   }
 }
@@ -268,7 +268,7 @@ void Transfer::allocate_stk_transfer() {
   else if ( searchMethodName_ == "stk_octree" )
     searchMethod = stk::search::OCTREE;
   else
-    Env::outputP0() << "Transfer::search method not declared; will use BOOST_RTREE" << std::endl;
+    NaluEnv::self().naluOutputP0() << "Transfer::search method not declared; will use BOOST_RTREE" << std::endl;
   const double expansionFactor = 1.5;
   transfer_.reset(new STKTransfer(from_mesh, to_mesh, name_, expansionFactor, searchMethod));
 }
@@ -292,7 +292,7 @@ void Transfer::ghost_from_elements()
 void
 Transfer::initialize_begin()
 {
-  Env::outputP0() << "PROCESSING Transfer::initialize_begin() for: " << name_ << std::endl;
+  NaluEnv::self().naluOutputP0() << "PROCESSING Transfer::initialize_begin() for: " << name_ << std::endl;
   double time = -stk::cpu_time();
   allocate_stk_transfer();
   transfer_->coarse_search();
@@ -312,7 +312,7 @@ Transfer::change_ghosting()
 void
 Transfer::initialize_end()
 {
-  Env::outputP0() << "PROCESSING Transfer::initialize_end() for: " << name_ << std::endl;
+  NaluEnv::self().naluOutputP0() << "PROCESSING Transfer::initialize_end() for: " << name_ << std::endl;
   transfer_->local_search();
 }
 
@@ -323,16 +323,16 @@ void
 Transfer::execute()
 {
   // do the xfer
-  Env::outputP0() << std::endl;
-  Env::outputP0() << "PROCESSING Transfer::execute() for: " << name_ << std::endl;
+  NaluEnv::self().naluOutputP0() << std::endl;
+  NaluEnv::self().naluOutputP0() << "PROCESSING Transfer::execute() for: " << name_ << std::endl;
 
   // provide field names
   for( std::vector<std::pair<std::string, std::string> >::const_iterator i_var = transferVariablesPairName_.begin();
        i_var != transferVariablesPairName_.end(); ++i_var ) {
     const std::pair<std::string, std::string> thePair = *i_var;
-    Env::outputP0() << "XFER From variable: " << thePair.first << " To variable " << thePair.second << std::endl;
+    NaluEnv::self().naluOutputP0() << "XFER From variable: " << thePair.first << " To variable " << thePair.second << std::endl;
   }
-  Env::outputP0() << std::endl;
+  NaluEnv::self().naluOutputP0() << std::endl;
   transfer_->apply();
 }
 

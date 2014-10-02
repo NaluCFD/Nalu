@@ -35,6 +35,7 @@
 #include <LinearSolvers.h>
 #include <LinearSolver.h>
 #include <LinearSystem.h>
+#include <NaluEnv.h>
 #include <NaluParsing.h>
 #include <Realm.h>
 #include <Realms.h>
@@ -49,7 +50,6 @@
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
 #include <stk_util/environment/CPUTime.hpp>
-#include <stk_util/environment/Env.hpp>
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/BulkData.hpp>
@@ -73,7 +73,6 @@
 // basic c++
 #include <iostream>
 #include <math.h>
-#include <utility>
 
 namespace sierra{
 namespace nalu{
@@ -108,7 +107,7 @@ SpecificDissipationRateEquationSystem::SpecificDissipationRateEquationSystem(
 
   // determine nodal gradient form
   set_nodal_gradient("specific_dissipation_rate");
-  Env::outputP0() << "Edge projected nodal gradient for specific_dissipation_rate: " << edgeNodalGradient_ <<std::endl;
+  NaluEnv::self().naluOutputP0() << "Edge projected nodal gradient for specific_dissipation_rate: " << edgeNodalGradient_ <<std::endl;
 
   // push back EQ to manager
   realm_.equationSystems_.push_back(this);

@@ -16,10 +16,10 @@
 #include <Simulation.h>
 #include <LinearSolver.h>
 #include <master_element/MasterElement.h>
+#include <NaluEnv.h>
 
 #include <stk_util/parallel/Parallel.hpp>
 #include <stk_util/environment/CPUTime.hpp>
-#include <stk_util/environment/Env.hpp>
 
 #include <stk_util/parallel/ParallelReduce.hpp>
 #include <stk_mesh/base/BulkData.hpp>
@@ -222,11 +222,11 @@ int TpetraLinearSystem::getDofStatus(stk::mesh::Entity node)
         stk::mesh::EntityKey ghostedEntityKey = bulkData.entity_key(ghostedEntity);
         const bool isInPeriodic = bulkData.in_receive_ghost(*realm_.periodicManager_->get_ghosting_object(),ghostedEntityKey);
         if ( isInPeriodic ) {
-          Env::outputP0() << "Found a periodically Ghosted node: Rank/StkId/NaluId "
+          NaluEnv::self().naluOutputP0() << "Found a periodically Ghosted node: Rank/StkId/NaluId "
               << bulkData.parallel_rank() << "/"<< stkId << "/" << naluId << std::endl;
         }
         else {
-          Env::outputP0() << "Found an aura-Ghosted node: Rank/StkId/NaluId "
+          NaluEnv::self().naluOutputP0() << "Found an aura-Ghosted node: Rank/StkId/NaluId "
               << bulkData.parallel_rank() << "/"<< stkId << "/" << naluId << std::endl;
         }
       }
@@ -759,7 +759,6 @@ void copy(
       double * value = stk::mesh::field_data(*X ,node);
       const stk::mesh::EntityId nodeId = *stk::mesh::field_data(*naluGlobalId, node);
       ThrowRequire(nodeId>0);
-      ThrowRequire(sierra::Env::parallel_rank() == static_cast<int>(bulkData.parallel_owner_rank(node)));
       for (int ndof=0; ndof<ndofs; ++ndof) {
         U.replaceGlobalValue(nodeId, ndof, value[ndof]);
       }
@@ -1081,7 +1080,7 @@ TpetraLinearSystem::applyDirichletBCs(
     }
   }
   adbc_time += stk::cpu_time();
-  if (debug()) Env::outputP0() << "Tpetra incremental applyDirichletBCs time= " << adbc_time << " Eq: " << name_ << std::endl;
+  if (debug()) NaluEnv::self().naluOutputP0() << "Tpetra incremental applyDirichletBCs time= " << adbc_time << " Eq: " << name_ << std::endl;
 }
 
 void
@@ -1137,7 +1136,7 @@ TpetraLinearSystem::solve(
       finalResidNorm);
 
   solve_time += stk::cpu_time();
-  if (debug()) Env::outputP0() << "Tpetra incremental solve time= " << solve_time <<  " eq: " << name_ << std::endl;
+  if (debug()) NaluEnv::self().naluOutputP0() << "Tpetra incremental solve time= " << solve_time <<  " eq: " << name_ << std::endl;
 
   if (linearSolver->getConfig()->getWriteMatrixFiles())
     {
@@ -1159,7 +1158,7 @@ TpetraLinearSystem::solve(
 
   if ( provideOutput_ ) {
     const int nameOffset = name_.length()+8;
-    Env::outputP0()
+    NaluEnv::self().naluOutputP0()
       << std::setw(nameOffset) << std::right << name_
       << std::setw(32-nameOffset)  << std::right << iters
       << std::setw(18) << std::right << finalResidNorm
@@ -1270,7 +1269,7 @@ TpetraLinearSystem::checkForZeroRow(bool useOwned, bool doThrow, bool doPrint)
                   << " row_sum= " << row_sum
                   << " dualVolume= " << dualVolume
                   << std::endl;
-        Env::outputP0() << "P[" << bulk.parallel_rank() << "] LHS zero: " << ii
+        NaluEnv::self().naluOutputP0() << "P[" << bulk.parallel_rank() << "] LHS zero: " << ii
                         << " GID= " << gid << " GID_check= " << GID_check << " nid= " << nid
                         << " naluGlobalId " << naluGlobalId << " is_valid= " << bulk.is_valid(node)
                         << " idof= " << idof << " numDof_= " << numDof_
@@ -1380,7 +1379,7 @@ TpetraLinearSystem::printInfo(bool useOwned)
                 << " "
                 << matrix->getGlobalNumEntries()
                 << std::endl;
-      Env::outputP0() << "\nMatrix for system: " << name_ << " :: N N NZ= " << matrix->getRangeMap()->getGlobalNumElements()
+      NaluEnv::self().naluOutputP0() << "\nMatrix for system: " << name_ << " :: N N NZ= " << matrix->getRangeMap()->getGlobalNumElements()
                       << " "
                       << matrix->getDomainMap()->getGlobalNumElements()
                       << " "

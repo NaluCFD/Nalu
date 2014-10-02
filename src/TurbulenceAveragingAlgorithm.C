@@ -14,6 +14,7 @@
 #include <FieldTypeDef.h>
 #include <Realm.h>
 #include <TimeIntegrator.h>
+#include <NaluEnv.h>
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/BulkData.hpp>
@@ -65,9 +66,9 @@ TurbulenceAveragingAlgorithm::TurbulenceAveragingAlgorithm(
     stk::mesh::FieldBase *averaged = meta_data.get_field(stk::topology::NODE_RANK, averagedName);
     if ( NULL == primitive || NULL == averaged ) {
       if ( NULL == primitive )
-        sierra::Env::outputP0() << " Sorry, no primitive field by the name " << primitiveName << std::endl;
+        NaluEnv::self().naluOutputP0() << " Sorry, no primitive field by the name " << primitiveName << std::endl;
       if ( NULL == averaged )
-        sierra::Env::outputP0() << " Sorry, no reynolds averaged field by the name " << averagedName << std::endl;
+        NaluEnv::self().naluOutputP0() << " Sorry, no reynolds averaged field by the name " << averagedName << std::endl;
       throw std::runtime_error("issue with Reynolds fields existing");
     }
     else {
@@ -93,9 +94,9 @@ TurbulenceAveragingAlgorithm::TurbulenceAveragingAlgorithm(
 
     if ( NULL == primitive || NULL == averaged) {
       if ( NULL == primitive )
-        sierra::Env::outputP0() << " Sorry, no primitive field by the name " << primitiveName << std::endl;
+        NaluEnv::self().naluOutputP0() << " Sorry, no primitive field by the name " << primitiveName << std::endl;
       if ( NULL == averaged )
-        sierra::Env::outputP0() << " Sorry, no favre averaged field by the name " << averagedName << std::endl;
+        NaluEnv::self().naluOutputP0() << " Sorry, no favre averaged field by the name " << averagedName << std::endl;
       throw std::runtime_error("issue with Favre fields existing");
     }
     else {
@@ -110,20 +111,20 @@ TurbulenceAveragingAlgorithm::TurbulenceAveragingAlgorithm(
   }
 
   // review what will be done
-  Env::outputP0() << std::endl;
-  Env::outputP0() << "Averaging Review:          " << std::endl;
-  Env::outputP0() << "=========================" << std::endl;
+  NaluEnv::self().naluOutputP0() << std::endl;
+  NaluEnv::self().naluOutputP0() << "Averaging Review:          " << std::endl;
+  NaluEnv::self().naluOutputP0() << "=========================" << std::endl;
   for ( size_t iav = 0; iav < reynoldsFieldVecPair_.size(); ++iav ) {
     stk::mesh::FieldBase *primitiveFB = reynoldsFieldVecPair_[iav].first;
     stk::mesh::FieldBase *averageFB = reynoldsFieldVecPair_[iav].second;
-    Env::outputP0() << "Primitive/Reynolds name: " << primitiveFB->name() << "/" <<  averageFB->name()
+    NaluEnv::self().naluOutputP0() << "Primitive/Reynolds name: " << primitiveFB->name() << "/" <<  averageFB->name()
 		    << " size " << reynoldsFieldSize_[iav] << std::endl;
   }
 
   for ( size_t iav = 0; iav < favreFieldVecPair_.size(); ++iav ) {
     stk::mesh::FieldBase *primitiveFB = favreFieldVecPair_[iav].first;
     stk::mesh::FieldBase *averageFB = favreFieldVecPair_[iav].second;
-    Env::outputP0() << "Primitive/Favre name:    " << primitiveFB->name() << "/" <<  averageFB->name()
+    NaluEnv::self().naluOutputP0() << "Primitive/Favre name:    " << primitiveFB->name() << "/" <<  averageFB->name()
 		    << " size " << favreFieldSize_[iav] << std::endl;
   }
 
@@ -150,7 +151,7 @@ TurbulenceAveragingAlgorithm::execute()
   const double zeroCurrent = resetFilter ? 0.0 : 1.0;
   const double currentTimeFilter =  resetFilter ? dt : oldTimeFilter + dt;
   realm_.averagingInfo_->currentTimeFilter_ = currentTimeFilter;
-  Env::outputP0() << "Filter Size " << currentTimeFilter << std::endl;
+  NaluEnv::self().naluOutputP0() << "Filter Size " << currentTimeFilter << std::endl;
 
   // deactivate hard reset
   realm_.averagingInfo_->forcedReset_ = false;

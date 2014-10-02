@@ -9,13 +9,11 @@
 #include <LinearSolvers.h>
 #include <LinearSolver.h>
 #include <LinearSolverConfig.h>
+#include <NaluEnv.h>
 #include <NaluParsing.h>
 #include <Simulation.h>
 
 #include <yaml-cpp/yaml.h>
-#include <Slib_Exception.h>
-#include <stk_util/environment/Env.hpp>
-
 
 namespace sierra{
 namespace nalu{
@@ -47,7 +45,7 @@ LinearSolvers::load(const YAML::Node & node)
       get_if_present_no_default(linear_solver_node, "type", solver_type);
       if (root()->debug())
       {
-        sierra::Env::outputP0() << "solver_type= " << solver_type << std::endl;
+        NaluEnv::self().naluOutputP0() << "solver_type= " << solver_type << std::endl;
       }
       if (solver_type == "epetra")
       {

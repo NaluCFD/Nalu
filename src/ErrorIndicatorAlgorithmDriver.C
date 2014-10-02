@@ -5,8 +5,6 @@
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
-#if defined (NALU_USES_PERCEPT)
-
 #include <ErrorIndicatorAlgorithmDriver.h>
 #include <Algorithm.h>
 #include <AlgorithmDriver.h>
@@ -14,8 +12,11 @@
 #include <Realm.h>
 #include <SolutionOptions.h>
 
+#if defined (NALU_USES_PERCEPT )
 #include <adapt/markers/MarkerUsingErrIndFraction.hpp>
 #include <adapt/markers/MarkerPhysicallyBased.hpp>
+#include <percept/FieldTypes.hpp>
+#endif
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/BulkData.hpp>
@@ -28,7 +29,6 @@
 #include <stk_mesh/base/Comm.hpp>
 #include <stk_io/StkMeshIoBroker.hpp>
 #include <stk_util/parallel/ParallelReduce.hpp>
-
 
 #include <algorithm>
 #include <functional>
@@ -52,6 +52,7 @@ ErrorIndicatorAlgorithmDriver::ErrorIndicatorAlgorithmDriver(
     errorIndicator_(NULL), refineField_(NULL), refineFieldOrig_(NULL), refineLevelField_(NULL), maxErrorIndicator_(0.0)
 {
   // save off fields
+#if defined (NALU_USES_PERCEPT )
   stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
   errorIndicator_ = meta_data.get_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "error_indicator");
   if (realm.solutionOptions_->useMarker_)
@@ -60,6 +61,7 @@ ErrorIndicatorAlgorithmDriver::ErrorIndicatorAlgorithmDriver(
       refineFieldOrig_ = meta_data.get_field<percept::RefineFieldType>(stk::topology::ELEMENT_RANK, "refine_field_orig");
       refineLevelField_ = meta_data.get_field<percept::RefineLevelType>(stk::topology::ELEMENT_RANK, "refine_level");
     }
+#endif
 }
 
 //--------------------------------------------------------------------------
@@ -86,6 +88,9 @@ ErrorIndicatorAlgorithmDriver::pre_work()
 void
 ErrorIndicatorAlgorithmDriver::post_work()
 {
+
+#if defined (NALU_USES_PERCEPT)
+
   // Marker
   // different criteria for refinement - we just pick #1 for now
   /**
@@ -119,10 +124,9 @@ ErrorIndicatorAlgorithmDriver::post_work()
     percept::MarkerUsingErrIndFraction marker(realm_.fixture_->bulk_data(), markerInfo);
     marker.mark();
   }
-
+# endif
 }
 
 } // namespace nalu
 } // namespace Sierra
 
-#endif

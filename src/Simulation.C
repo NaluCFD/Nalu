@@ -11,13 +11,12 @@
 // yaml for parsing..
 #include <yaml-cpp/yaml.h>
 #include <NaluParsing.h>
+#include <NaluEnv.h>
 #include <Realms.h>
 #include <xfer/Transfers.h>
 #include <TimeIntegrator.h>
 #include <LinearSolvers.h>
 #include <UnitTests.h>
-
-#include <stk_util/environment/Env.hpp>
 
 #include <Ioss_SerializeIO.h>
 
@@ -25,7 +24,6 @@
 #include <iostream>
 #include <map>
 #include <math.h>
-#include <utility>
 
 namespace sierra{
 namespace nalu{
@@ -95,7 +93,7 @@ void Simulation::load(const YAML::Node & node)
 
   if (0 != node.FindValue("UnitTests"))
     {
-      sierra::Env::outputP0() << "\n\n Running Unit Tests \n\n" << std::endl;
+      NaluEnv::self().naluOutputP0() << "\n\n Running Unit Tests \n\n" << std::endl;
       sierra::nalu::UnitTests unit_tests(*this);
       unit_tests.load(node);
     }
@@ -109,16 +107,16 @@ void Simulation::load(const YAML::Node & node)
   realms_->load(node);
 
   // create the time integrator
-  sierra::Env::outputP0() << std::endl;
-  sierra::Env::outputP0() << "Time Integrator Review:  " << std::endl;
-  sierra::Env::outputP0() << "=========================" << std::endl;
+  NaluEnv::self().naluOutputP0() << std::endl;
+  NaluEnv::self().naluOutputP0() << "Time Integrator Review:  " << std::endl;
+  NaluEnv::self().naluOutputP0() << "=========================" << std::endl;
   timeIntegrator_ = new TimeIntegrator(*this);
   timeIntegrator_->load(node);
 
   // create the transfers; mesh is already loaded in realm
-  sierra::Env::outputP0() << std::endl;
-  sierra::Env::outputP0() << "Transfer Review:         " << std::endl;
-  sierra::Env::outputP0() << "=========================" << std::endl;
+  NaluEnv::self().naluOutputP0() << std::endl;
+  NaluEnv::self().naluOutputP0() << "Transfer Review:         " << std::endl;
+  NaluEnv::self().naluOutputP0() << "=========================" << std::endl;
   transfers_ = new Transfers(*this);
   transfers_->load(node);
 
@@ -128,10 +126,10 @@ void Simulation::setSerializedIOGroupSize(int siogs)
 {
   if (siogs)
     {
-      if (siogs < 0 || siogs > Env::parallel_size() || Env::parallel_size() % siogs != 0)
+      if (siogs < 0 || siogs > NaluEnv::self().parallel_size() || NaluEnv::self().parallel_size() % siogs != 0)
         {
-          Env::outputP0() << "Error: Job requested serialized_io_group_size of " << siogs
-                          << " which is incompatible with MPI size= " << Env::parallel_size()
+          NaluEnv::self().naluOutputP0() << "Error: Job requested serialized_io_group_size of " << siogs
+                          << " which is incompatible with MPI size= " << NaluEnv::self().parallel_size()
                           << "... shutting down." << std::endl;
           Env::abort();
         }
@@ -154,10 +152,10 @@ void Simulation::initialize()
 }
 void Simulation::run()
 {
-  Env::outputP0() << std::endl;
-  Env::outputP0() << "*******************************************************" << std::endl;
-  Env::outputP0() << "Simulation Shall Commence: number of processors= " << sierra::Env::parallel_size() << std::endl;
-  Env::outputP0() << "*******************************************************" << std::endl;
+  NaluEnv::self().naluOutputP0() << std::endl;
+  NaluEnv::self().naluOutputP0() << "*******************************************************" << std::endl;
+  NaluEnv::self().naluOutputP0() << "Simulation Shall Commence: number of processors= " << NaluEnv::self().parallel_size() << std::endl;
+  NaluEnv::self().naluOutputP0() << "*******************************************************" << std::endl;
 
   if (unitTests_)
     {
@@ -170,32 +168,32 @@ void Simulation::run()
 
 void Simulation::high_level_banner() {
 
-  Env::outputP0() << std::endl;
-  Env::outputP0() << "=================================================================" << std::endl;
-  Env::outputP0() << "                            Nalu:                                " << std::endl;
-  Env::outputP0() << "      A low Mach number, turbulent reacting flow code with       " << std::endl;
-  Env::outputP0() << "            coupling to PMR and object response (CHT)            " << std::endl;
-  Env::outputP0() << "=================================================================" << std::endl;
-  Env::outputP0() << std::endl;
-  Env::outputP0() << " TPLs: Boost (BSL), STK (TBA), Trilinos (BSD) and YAML_cpp (MIT) " << std::endl;
-  Env::outputP0() << std::endl;
-  Env::outputP0() << "     Sandia National Laboratories, Albuquerque, New Mexico       " << std::endl;
-  Env::outputP0() << "-----------------------------------------------------------------" << std::endl;
-  Env::outputP0() << "       Notice: This computer software was prepared by            " << std::endl;
-  Env::outputP0() << "       Sandia Corporation, hereinafter the Contractor            " << std::endl;
-  Env::outputP0() << "       under Contract DE-AC04-94AL85000 with the                 " << std::endl;
-  Env::outputP0() << "       Department of Energy (DOE).  All rights in the            " << std::endl;
-  Env::outputP0() << "       computer software are reserved by DOE on behalf           " << std::endl;
-  Env::outputP0() << "       of the United States Government and the                   " << std::endl;
-  Env::outputP0() << "       Contractor as provided in the Contract. You are           " << std::endl;
-  Env::outputP0() << "       authorized to use this computer software for              " << std::endl;
-  Env::outputP0() << "       Governmental purposes but it is not to be                 " << std::endl;
-  Env::outputP0() << "       released or distributed to the public. NEITHER            " << std::endl;
-  Env::outputP0() << "       THE U.S.  GOVERNMENT NOR THE CONTRACTOR MAKES             " << std::endl;
-  Env::outputP0() << "       ANY WARRANTY, EXPRESS OR IMPLIED, OR ASSUMES ANY          " << std::endl;
-  Env::outputP0() << "       LIABILITY FOR THE USE OF THIS SOFTWARE.                   " << std::endl;
-  Env::outputP0() << "-----------------------------------------------------------------" << std::endl;
-  Env::outputP0() << std::endl;
+  NaluEnv::self().naluOutputP0() << std::endl;
+  NaluEnv::self().naluOutputP0() << "=================================================================" << std::endl;
+  NaluEnv::self().naluOutputP0() << "                            Nalu:                                " << std::endl;
+  NaluEnv::self().naluOutputP0() << "      A low Mach number, turbulent reacting flow code with       " << std::endl;
+  NaluEnv::self().naluOutputP0() << "            coupling to PMR and object response (CHT)            " << std::endl;
+  NaluEnv::self().naluOutputP0() << "=================================================================" << std::endl;
+  NaluEnv::self().naluOutputP0() << std::endl;
+  NaluEnv::self().naluOutputP0() << " TPLs: Boost (BSL), STK (TBA), Trilinos (BSD) and YAML_cpp (MIT) " << std::endl;
+  NaluEnv::self().naluOutputP0() << std::endl;
+  NaluEnv::self().naluOutputP0() << "     Sandia National Laboratories, Albuquerque, New Mexico       " << std::endl;
+  NaluEnv::self().naluOutputP0() << "-----------------------------------------------------------------" << std::endl;
+  NaluEnv::self().naluOutputP0() << "       Notice: This computer software was prepared by            " << std::endl;
+  NaluEnv::self().naluOutputP0() << "       Sandia Corporation, hereinafter the Contractor            " << std::endl;
+  NaluEnv::self().naluOutputP0() << "       under Contract DE-AC04-94AL85000 with the                 " << std::endl;
+  NaluEnv::self().naluOutputP0() << "       Department of Energy (DOE).  All rights in the            " << std::endl;
+  NaluEnv::self().naluOutputP0() << "       computer software are reserved by DOE on behalf           " << std::endl;
+  NaluEnv::self().naluOutputP0() << "       of the United States Government and the                   " << std::endl;
+  NaluEnv::self().naluOutputP0() << "       Contractor as provided in the Contract. You are           " << std::endl;
+  NaluEnv::self().naluOutputP0() << "       authorized to use this computer software for              " << std::endl;
+  NaluEnv::self().naluOutputP0() << "       Governmental purposes but it is not to be                 " << std::endl;
+  NaluEnv::self().naluOutputP0() << "       released or distributed to the public. NEITHER            " << std::endl;
+  NaluEnv::self().naluOutputP0() << "       THE U.S.  GOVERNMENT NOR THE CONTRACTOR MAKES             " << std::endl;
+  NaluEnv::self().naluOutputP0() << "       ANY WARRANTY, EXPRESS OR IMPLIED, OR ASSUMES ANY          " << std::endl;
+  NaluEnv::self().naluOutputP0() << "       LIABILITY FOR THE USE OF THIS SOFTWARE.                   " << std::endl;
+  NaluEnv::self().naluOutputP0() << "-----------------------------------------------------------------" << std::endl;
+  NaluEnv::self().naluOutputP0() << std::endl;
 
 }
 } // namespace nalu

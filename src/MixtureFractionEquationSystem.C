@@ -34,6 +34,7 @@
 #include <LinearSolvers.h>
 #include <LinearSolver.h>
 #include <LinearSystem.h>
+#include <NaluEnv.h>
 #include <NaluParsing.h>
 #include <Realm.h>
 #include <Realms.h>
@@ -46,7 +47,6 @@
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
 #include <stk_util/environment/CPUTime.hpp>
-#include <stk_util/environment/Env.hpp>
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/BulkData.hpp>
@@ -70,7 +70,6 @@
 // basic c++
 #include <iostream>
 #include <math.h>
-#include <utility>
 
 namespace sierra{
 namespace nalu{
@@ -108,7 +107,7 @@ MixtureFractionEquationSystem::MixtureFractionEquationSystem(
 
   // determine nodal gradient form
   set_nodal_gradient("mixture_fraction");
-  Env::outputP0() << "Edge projected nodal gradient for mixture_fraction: " << edgeNodalGradient_ <<std::endl;
+  NaluEnv::self().naluOutputP0() << "Edge projected nodal gradient for mixture_fraction: " << edgeNodalGradient_ <<std::endl;
 
   // push back EQ to manager
   realm_.equationSystems_.push_back(this);
@@ -700,7 +699,7 @@ MixtureFractionEquationSystem::solve_and_update()
 
   for ( int k = 0; k < maxIterations_; ++k ) {
 
-    Env::outputP0() << " " << k+1 << "/" << maxIterations_
+    NaluEnv::self().naluOutputP0() << " " << k+1 << "/" << maxIterations_
                     << std::setw(15) << std::right << name_ << std::endl;
 
     // mixture fraction assemble, load_complete and solve
@@ -791,13 +790,13 @@ MixtureFractionEquationSystem::update_and_clip()
     if ( g_numClip[0] > 0 ) {
       double g_minZ = 0;
       stk::all_reduce_min(comm, &minZ, &g_minZ, 1);
-      Env::outputP0() << "mixFrac clipped (-) " << g_numClip[0] << " times; min: " << g_minZ << std::endl;
+      NaluEnv::self().naluOutputP0() << "mixFrac clipped (-) " << g_numClip[0] << " times; min: " << g_minZ << std::endl;
     }
 
     if ( g_numClip[1] > 0 ) {
       double g_maxZ = 0;
       stk::all_reduce_max(comm, &maxZ, &g_maxZ, 1);
-      Env::outputP0() << "mixFrac clipped (+) " << g_numClip[1] << " times; min: " << g_maxZ << std::endl;
+      NaluEnv::self().naluOutputP0() << "mixFrac clipped (+) " << g_numClip[1] << " times; min: " << g_maxZ << std::endl;
     }
   }
 }

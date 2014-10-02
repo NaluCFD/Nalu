@@ -39,6 +39,7 @@
 #include <LinearSolvers.h>
 #include <LinearSolver.h>
 #include <LinearSystem.h>
+#include <NaluEnv.h>
 #include <NaluParsing.h>
 #include <Realm.h>
 #include <Realms.h>
@@ -58,7 +59,6 @@
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
 #include <stk_util/environment/CPUTime.hpp>
-#include <stk_util/environment/Env.hpp>
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/BulkData.hpp>
@@ -82,7 +82,6 @@
 // basic c++
 #include <iostream>
 #include <math.h>
-#include <utility>
 
 namespace sierra{
 namespace nalu{
@@ -125,7 +124,7 @@ EnthalpyEquationSystem::EnthalpyEquationSystem(
 
   // determine nodal gradient form
   set_nodal_gradient("enthalpy");
-  Env::outputP0() << "Edge projected nodal gradient for enthalpy: " << edgeNodalGradient_ <<std::endl;
+  NaluEnv::self().naluOutputP0() << "Edge projected nodal gradient for enthalpy: " << edgeNodalGradient_ <<std::endl;
 
   // push back EQ to manager
   realm_.equationSystems_.push_back(this);
@@ -568,7 +567,7 @@ EnthalpyEquationSystem::register_wall_bc(
   // check for wall function; warn user that this is not yet supported
   const bool wallFunctionApproach = userData.wallFunctionApproach_;
   if (wallFunctionApproach)
-    Env::outputP0() << "Sorry, wall function not yet supported for energy; will use Dirichlet" << std::endl;
+    NaluEnv::self().naluOutputP0() << "Sorry, wall function not yet supported for energy; will use Dirichlet" << std::endl;
 
   // check that is was specified (okay if it is not)
   if ( bc_data_specified(userData, temperatureName) ) {
@@ -843,7 +842,7 @@ EnthalpyEquationSystem::solve_and_update()
 
   for ( int k = 0; k < maxIterations_; ++k ) {
 
-    Env::outputP0() << " " << k+1 << "/" << maxIterations_
+    NaluEnv::self().naluOutputP0() << " " << k+1 << "/" << maxIterations_
                     << std::setw(15) << std::right << name_ << std::endl;
 
     // mixture fraction assemble, load_complete and solve
@@ -900,7 +899,7 @@ void
 EnthalpyEquationSystem::post_adapt_work()
 {
   if ( realm_.process_adaptivity() ) {
-    Env::outputP0() << "--EnthalpyEquationSystem::post_adapt_work()" << std::endl;
+    NaluEnv::self().naluOutputP0() << "--EnthalpyEquationSystem::post_adapt_work()" << std::endl;
     extract_temperature();
   }
 }
@@ -1043,17 +1042,17 @@ EnthalpyEquationSystem::extract_temperature()
   stk::all_reduce_sum(comm, &troubleCount[0], &g_troubleCount[0], 3);
 
   if ( g_troubleCount[0] > 0 ) {
-    Env::outputP0() << "Temperature extraction failed to converge " << g_troubleCount[0] << " times"
+    NaluEnv::self().naluOutputP0() << "Temperature extraction failed to converge " << g_troubleCount[0] << " times"
                     << std::endl;
   }
 
   if ( g_troubleCount[1] > 0 ) {
-    Env::outputP0() << "Temperature clipped to min " << g_troubleCount[1] << " times"
+    NaluEnv::self().naluOutputP0() << "Temperature clipped to min " << g_troubleCount[1] << " times"
                     << std::endl;
   }
 
   if ( g_troubleCount[2] > 0 ) {
-    Env::outputP0() << "Temperature clipped to max " << g_troubleCount[2] << " times"
+    NaluEnv::self().naluOutputP0() << "Temperature clipped to max " << g_troubleCount[2] << " times"
                     << std::endl;
   }
 

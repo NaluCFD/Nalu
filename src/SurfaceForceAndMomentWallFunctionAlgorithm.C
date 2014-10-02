@@ -12,6 +12,7 @@
 #include <FieldTypeDef.h>
 #include <Realm.h>
 #include <master_element/MasterElement.h>
+#include <NaluEnv.h>
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/BulkData.hpp>
@@ -98,7 +99,7 @@ SurfaceForceAndMomentWallFunctionAlgorithm::SurfaceForceAndMomentWallFunctionAlg
     throw std::runtime_error("SurfaceForce: wall friction velocity is not registered; wall bcs and post processing must be consistent");
 
   // deal with file name and banner
-  if ( Env::parallel_rank() == 0 ) {
+  if ( NaluEnv::self().parallel_rank() == 0 ) {
     std::ofstream myfile;
     myfile.open(outputFileName_.c_str());
     myfile << "Time    Fx    Fy    Fz    Mx    My    Mz   Ypmin   Ypmax"<< std::endl;
@@ -372,7 +373,7 @@ SurfaceForceAndMomentWallFunctionAlgorithm::execute()
     stk::all_reduce_max(comm, &yplusMax, &g_yplusMax, 1);
 
     // deal with file name and banner
-    if ( Env::parallel_rank() == 0 ) {
+    if ( NaluEnv::self().parallel_rank() == 0 ) {
       std::ofstream myfile;
       myfile.open(outputFileName_.c_str(), std::ios_base::app);
       myfile << currentTime << " "

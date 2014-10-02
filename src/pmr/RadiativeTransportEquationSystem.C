@@ -25,6 +25,7 @@
 #include <LinearSolver.h>
 #include <LinearSystem.h>
 #include <master_element/MasterElement.h>
+#include <NaluEnv.h>
 #include <Realm.h>
 #include <Realms.h>
 #include <Simulation.h>
@@ -136,7 +137,7 @@ RadiativeTransportEquationSystem::RadiativeTransportEquationSystem(
   create_quadrature_set();
   
   // tell the user scattering is or is not active
-  Env::outputP0() << "Scattering source term is active " << activateScattering_;
+  NaluEnv::self().naluOutputP0() << "Scattering source term is active " << activateScattering_;
 
 }
 
@@ -331,16 +332,16 @@ RadiativeTransportEquationSystem::create_quadrature_set()
     l_sum[3] += weights_[n]*Sn_[nDim*n+2];
   }
 
-  Env::outputP0() << " Discrete Ordinate Directions and Weights "  << std::endl;
-  Env::outputP0() << "    Quadrature Order    = " << quadratureOrder_    << std::endl;
-  Env::outputP0() << "    Number of Ordinates = " << ordinateDirections_ << std::endl;
-  Env::outputP0() << "    Weights sum         = " << l_sum[0]      << std::endl;
-  Env::outputP0() << "    X-Ordinates sum     = " << l_sum[1]      << std::endl;
-  Env::outputP0() << "    Y-Ordinates sum     = " << l_sum[2]      << std::endl;
-  Env::outputP0() << "    Z-Ordinates sum     = " << l_sum[3]      << std::endl;
+  NaluEnv::self().naluOutputP0() << " Discrete Ordinate Directions and Weights "  << std::endl;
+  NaluEnv::self().naluOutputP0() << "    Quadrature Order    = " << quadratureOrder_    << std::endl;
+  NaluEnv::self().naluOutputP0() << "    Number of Ordinates = " << ordinateDirections_ << std::endl;
+  NaluEnv::self().naluOutputP0() << "    Weights sum         = " << l_sum[0]      << std::endl;
+  NaluEnv::self().naluOutputP0() << "    X-Ordinates sum     = " << l_sum[1]      << std::endl;
+  NaluEnv::self().naluOutputP0() << "    Y-Ordinates sum     = " << l_sum[2]      << std::endl;
+  NaluEnv::self().naluOutputP0() << "    Z-Ordinates sum     = " << l_sum[3]      << std::endl;
 
   for ( n=0; n<ordinateDirections_; ++n ) {
-    Env::outputP0() << n+1 << " " << weights_[n] << " "
+    NaluEnv::self().naluOutputP0() << n+1 << " " << weights_[n] << " "
                     << Sn_[nDim*n+0] << " " <<  Sn_[nDim*n+1] << " " << Sn_[nDim*n+2] << std::endl;
   }
 
@@ -778,7 +779,7 @@ RadiativeTransportEquationSystem::solve_and_update()
     zero_out_fields();
     zero_irradiation();
 
-    Env::outputP0() << "   "
+    NaluEnv::self().naluOutputP0() << "   "
                     << name_ << " Iteration: " << i+1 << "/" << maxIterations_ << std::endl;
 
     double nonLinearResidualSum = 0.0;
@@ -833,19 +834,19 @@ RadiativeTransportEquationSystem::solve_and_update()
     copy_ordinate_intensity(*scalarFlux_, *scalarFluxOld_);
 
     // dump norm and averages
-    Env::outputP0()
+    NaluEnv::self().naluOutputP0()
       << "EqSystem Name:       " << name_ << std::endl
       << "   aver iters      = " << linearIterationsSum/double(ordinateDirections_) << std::endl
       << "nonlinearResidNrm  = " << nonLinearResidualSum/double(ordinateDirections_) 
       << " scaled: " << nonLinearResidualSum_/firstNonLinearResidualSum_ << std::endl
       << "Scalar flux norm   = " << systemL2Norm_ << std::endl;
-    Env::outputP0() << std::endl;
+    NaluEnv::self().naluOutputP0() << std::endl;
 
     // check for convergence; min between nonlinear and "for show" system norm
     const double bestConverged
       = std::min(nonLinearResidualSum/double(ordinateDirections_), systemL2Norm_);
     if ( bestConverged < convergenceTolerance_ ) {
-      Env::outputP0() << "Intensity Equation System Converged" << std::endl;
+      NaluEnv::self().naluOutputP0() << "Intensity Equation System Converged" << std::endl;
       break;
     }
 
@@ -1376,7 +1377,7 @@ RadiativeTransportEquationSystem::compute_div_norm()
   // parallel assemble sqrt(l2 norm)
   l2Norm = std::sqrt(l2Norm);
   double g_l2Norm = 0.0;
-  stk::all_reduce_sum(sierra::Env::parallel_comm(), &l2Norm, &g_l2Norm, 1);
+  stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &l2Norm, &g_l2Norm, 1);
   systemL2Norm_ = g_l2Norm/realm_.l2Scaling_;
 
 }

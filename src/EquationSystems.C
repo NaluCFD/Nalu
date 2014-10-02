@@ -10,6 +10,7 @@
 #include <AuxFunctionAlgorithm.h>
 #include <EquationSystems.h>
 #include <EquationSystem.h>
+#include <NaluEnv.h>
 #include <NaluParsing.h>
 #include <Realm.h>
 #include <PostProcessingData.h>
@@ -38,7 +39,6 @@
 #include <stk_topology/topology.hpp>
 
 // stk_util
-#include <stk_util/environment/Env.hpp>
 #include <stk_util/environment/CPUTime.hpp>
 
 namespace sierra{
@@ -91,27 +91,27 @@ void EquationSystems::load(const YAML::Node & y_node)
         EquationSystem *eqSys = 0;
         const YAML::Node *y_eqsys = 0;
         if ( (y_eqsys = expect_map(y_system, "LowMachEOM", true) ) ) {
-          if (root()->debug()) sierra::Env::outputP0() << "eqSys = LowMachEOM " << std::endl;
+          if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = LowMachEOM " << std::endl;
           bool elemCont = (realm_.realmUsesEdges_) ? false : true;
           get_if_present_no_default(*y_eqsys, "element_continuity_eqs", elemCont);
           eqSys = new LowMachEquationSystem(*this, elemCont);
         }
         else if( (y_eqsys = expect_map(y_system, "ShearStressTransport", true)) ) {
-          if (root()->debug()) sierra::Env::outputP0() << "eqSys = tke/sdr " << std::endl;
+          if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = tke/sdr " << std::endl;
           eqSys = new ShearStressTransportEquationSystem(*this);
         }
         else if( (y_eqsys = expect_map(y_system, "TurbKineticEnergy", true)) ) {
-          if (root()->debug()) sierra::Env::outputP0() << "eqSys = tke " << std::endl;
+          if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = tke " << std::endl;
           eqSys = new TurbKineticEnergyEquationSystem(*this);
         }
         else if( (y_eqsys = expect_map(y_system, "MixtureFraction", true)) ) {
-          if (root()->debug()) sierra::Env::outputP0() << "eqSys = mixFrac " << std::endl;
+          if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = mixFrac " << std::endl;
           bool burkeSchumann = false;
           get_if_present_no_default(*y_eqsys, "burke_schumann", burkeSchumann);
           eqSys = new MixtureFractionEquationSystem(*this, burkeSchumann);
         }
         else if( (y_eqsys = expect_map(y_system, "Enthalpy", true)) ) {
-          if (root()->debug()) sierra::Env::outputP0() << "eqSys = enthalpy " << std::endl;
+          if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = enthalpy " << std::endl;
           double minT = 250.0;
           double maxT = 3000.0;
           get_if_present_no_default(*y_eqsys, "minimum_temperature", minT);
@@ -119,11 +119,11 @@ void EquationSystems::load(const YAML::Node & y_node)
           eqSys = new EnthalpyEquationSystem(*this, minT, maxT);
         }
         else if( (y_eqsys = expect_map(y_system, "HeatConduction", true)) ) {
-          if (root()->debug()) sierra::Env::outputP0() << "eqSys = HeatConduction " << std::endl;
+          if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = HeatConduction " << std::endl;
           eqSys = new HeatCondEquationSystem(*this);
         }
         else if( (y_eqsys = expect_map(y_system, "RadiativeTransport", true)) ) {
-          if (root()->debug()) sierra::Env::outputP0() << "eqSys = RadiativeTransport " << std::endl;
+          if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = RadiativeTransport " << std::endl;
           int quadratureOrder = 2;
           get_if_present_no_default(*y_eqsys, "quadrature_order", quadratureOrder);
           bool activateScattering = false;
@@ -131,16 +131,16 @@ void EquationSystems::load(const YAML::Node & y_node)
           get_if_present_no_default(*y_eqsys, "activate_scattering", activateScattering);
           get_if_present_no_default(*y_eqsys, "external_coupling", externalCoupling);
           if ( externalCoupling )
-            Env::outputP0() << "PMR External Coupling; absorption coefficient/radiation_source expected by xfer" << std::endl;
+            NaluEnv::self().naluOutputP0() << "PMR External Coupling; absorption coefficient/radiation_source expected by xfer" << std::endl;
           eqSys = new RadiativeTransportEquationSystem(*this,
               quadratureOrder, activateScattering, externalCoupling);
         }
         else if( (y_eqsys = expect_map(y_system, "MeshDisplacement", true)) ) {
-          if (root()->debug()) sierra::Env::outputP0() << "eqSys = MeshDisplacement " << std::endl;
+          if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = MeshDisplacement " << std::endl;
           eqSys = new MeshDisplacementEquationSystem(*this);
         }
         else {
-          if (!sierra::Env::parallel_rank()) {
+          if (!NaluEnv::self().parallel_rank()) {
             std::cout << "Error: parsing at " << NaluParsingHelper::info(y_system) 
                       << "... at parent ... " << NaluParsingHelper::info(y_node) << std::endl;
           }
@@ -170,7 +170,7 @@ EquationSystems::get_solver_block_name(
     solverName = (*iter).second;
   }
   else {
-    Env::outputP0() << "Missed equation solver block specification for " << eqName << std::endl;
+    NaluEnv::self().naluOutputP0() << "Missed equation solver block specification for " << eqName << std::endl;
     throw std::runtime_error("issue with solver name mapping; none supplied");
   }  
   return solverName;
@@ -202,7 +202,7 @@ EquationSystems::register_nodal_fields(
   for ( size_t itarget = 0; itarget < targetNames.size(); ++itarget ) {
     stk::mesh::Part *targetPart = meta_data.get_part(targetNames[itarget]);
     if ( NULL == targetPart ) {
-      Env::outputP0() << "Trouble with part " << targetNames[itarget] << std::endl;
+      NaluEnv::self().naluOutputP0() << "Trouble with part " << targetNames[itarget] << std::endl;
       throw std::runtime_error("Sorry, no part name found by the name " + targetNames[itarget]);
     }
     else {
@@ -311,7 +311,7 @@ EquationSystems::register_wall_bc(
 
   stk::mesh::Part *targetPart = meta_data.get_part(targetName);
   if ( NULL == targetPart ) {
-    sierra::Env::outputP0() << "Sorry, no part name found by the name " << targetName << std::endl;
+    NaluEnv::self().naluOutputP0() << "Sorry, no part name found by the name " << targetName << std::endl;
   }
   else {
     // found the part
@@ -323,7 +323,7 @@ EquationSystems::register_wall_bc(
       const stk::topology the_topo = part->topology();
 
       if ( !(meta_data.side_rank() == part->primary_entity_rank()) ) {
-        sierra::Env::outputP0() << "Sorry, part is not a face " << targetName;
+        NaluEnv::self().naluOutputP0() << "Sorry, part is not a face " << targetName;
       }
       else {
         realm_.register_wall_bc(part, the_topo);
@@ -347,7 +347,7 @@ EquationSystems::register_inflow_bc(
 
   stk::mesh::Part *targetPart = meta_data.get_part(targetName);
   if ( NULL == targetPart ) {
-    sierra::Env::outputP0() << "Sorry, no part name found by the name " << targetName << std::endl;
+    NaluEnv::self().naluOutputP0() << "Sorry, no part name found by the name " << targetName << std::endl;
   }
   else {
     // found the part
@@ -359,7 +359,7 @@ EquationSystems::register_inflow_bc(
       const stk::topology the_topo = part->topology();
 
       if ( !(meta_data.side_rank() == part->primary_entity_rank()) ) {
-        sierra::Env::outputP0() << "Sorry, part is not a face " << targetName;
+        NaluEnv::self().naluOutputP0() << "Sorry, part is not a face " << targetName;
       }
       else {
         realm_.register_inflow_bc(part, the_topo);
@@ -383,7 +383,7 @@ EquationSystems::register_open_bc(
 
   stk::mesh::Part *targetPart = meta_data.get_part(targetName);
   if ( NULL == targetPart ) {
-    sierra::Env::outputP0() << "Sorry, no part name found by the name " << targetName << std::endl;
+    NaluEnv::self().naluOutputP0() << "Sorry, no part name found by the name " << targetName << std::endl;
   }
   else {
     // found the part
@@ -394,7 +394,7 @@ EquationSystems::register_open_bc(
       stk::mesh::Part * const part = *i ;
       const stk::topology the_topo = part->topology();
       if ( !(meta_data.side_rank() == part->primary_entity_rank()) ) {
-        sierra::Env::outputP0() << "Sorry, part is not a face " << targetName;
+        NaluEnv::self().naluOutputP0() << "Sorry, part is not a face " << targetName;
       }
       else {
         realm_.register_open_bc(part, the_topo);
@@ -418,7 +418,7 @@ EquationSystems::register_contact_bc(
 
   stk::mesh::Part *targetPart = meta_data.get_part(targetName);
   if ( NULL == targetPart ) {
-    sierra::Env::outputP0() << "Sorry, no part name found by the name " << targetName << std::endl;
+    NaluEnv::self().naluOutputP0() << "Sorry, no part name found by the name " << targetName << std::endl;
   }
   else {
     // found the part
@@ -429,7 +429,7 @@ EquationSystems::register_contact_bc(
       stk::mesh::Part * const part = *i ;
       const stk::topology the_topo = part->topology();
       if ( !(meta_data.side_rank() == part->primary_entity_rank()) ) {
-        sierra::Env::outputP0() << "Sorry, part is not a face " << targetName;
+        NaluEnv::self().naluOutputP0() << "Sorry, part is not a face " << targetName;
       }
       else {
         realm_.register_contact_bc(part, the_topo, contactBCData);
@@ -453,7 +453,7 @@ EquationSystems::register_symmetry_bc(
 
   stk::mesh::Part *targetPart = meta_data.get_part(targetName);
   if ( NULL == targetPart ) {
-    sierra::Env::outputP0() << "Sorry, no part name found by the name " << targetName << std::endl;
+    NaluEnv::self().naluOutputP0() << "Sorry, no part name found by the name " << targetName << std::endl;
     throw std::runtime_error("Symmetry::fatal_error()");
   }
   else {
@@ -465,7 +465,7 @@ EquationSystems::register_symmetry_bc(
       stk::mesh::Part * const part = *i ;
       const stk::topology the_topo = part->topology();
       if ( !(meta_data.side_rank() == part->primary_entity_rank()) ) {
-        sierra::Env::outputP0() << "Sorry, part is not a face " << targetName;
+        NaluEnv::self().naluOutputP0() << "Sorry, part is not a face " << targetName;
         throw std::runtime_error("Symmetry::fatal_error()");
       }
       else {
@@ -492,11 +492,11 @@ EquationSystems::register_periodic_bc(
   stk::mesh::Part *masterMeshPart= meta_data.get_part(targetNameMaster);
   stk::mesh::Part *slaveMeshPart= meta_data.get_part(targetNameSlave);
   if ( NULL == masterMeshPart) {
-    sierra::Env::outputP0() << "Sorry, no part name found by the name " << targetNameMaster << std::endl;
+    NaluEnv::self().naluOutputP0() << "Sorry, no part name found by the name " << targetNameMaster << std::endl;
     throw std::runtime_error("EquationSystems::fatal_error()");
   }
   else if ( NULL == slaveMeshPart) {
-    sierra::Env::outputP0() << "Sorry, no part name found by the name " << targetNameSlave << std::endl;
+    NaluEnv::self().naluOutputP0() << "Sorry, no part name found by the name " << targetNameSlave << std::endl;
     throw std::runtime_error("EquationSystems::fatal_error()");
   }
   else {
@@ -505,10 +505,10 @@ EquationSystems::register_periodic_bc(
     const std::vector<stk::mesh::Part*> & slaveMeshParts = slaveMeshPart->subsets();
 
     if ( masterMeshParts.size() != slaveMeshParts.size())
-      Env::outputP0() << "Mesh part subsets for master slave do not match in size" << std::endl;
+      NaluEnv::self().naluOutputP0() << "Mesh part subsets for master slave do not match in size" << std::endl;
 
     if ( masterMeshParts.size() > 1 )
-      Env::outputP0() << "Surface has subsets active; please make sure that the topologies match" << std::endl;
+      NaluEnv::self().naluOutputP0() << "Surface has subsets active; please make sure that the topologies match" << std::endl;
 
     // extract data and search tolerance
     PeriodicUserData userData = periodicBCData.userData_;
@@ -533,7 +533,7 @@ EquationSystems::register_surface_pp_algorithm(
   for ( size_t in = 0; in < targetNames.size(); ++in) {
     stk::mesh::Part *targetPart = meta_data.get_part(targetNames[in]);
     if ( NULL == targetPart ) {
-      sierra::Env::outputP0() << "SurfacePP: can not find part with name: " << targetNames[in];
+      NaluEnv::self().naluOutputP0() << "SurfacePP: can not find part with name: " << targetNames[in];
     }
     else {
       // found the part
@@ -543,7 +543,7 @@ EquationSystems::register_surface_pp_algorithm(
       {
         stk::mesh::Part * const part = *i ;
         if ( !(meta_data.side_rank() == part->primary_entity_rank()) ) {
-          sierra::Env::outputP0() << "SurfacePP: part is not a face: " << targetNames[in];
+          NaluEnv::self().naluOutputP0() << "SurfacePP: part is not a face: " << targetNames[in];
         }
         partVector.push_back(part);
       }

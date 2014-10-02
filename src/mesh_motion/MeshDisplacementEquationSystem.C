@@ -28,6 +28,7 @@
 #include <LinearSolvers.h>
 #include <LinearSystem.h>
 #include <master_element/MasterElement.h>
+#include <NaluEnv.h>
 #include <NaluParsing.h>
 #include <Realm.h>
 #include <Realms.h>
@@ -346,7 +347,7 @@ MeshDisplacementEquationSystem::register_wall_bc(
     }
   }
   else {
-    Env::outputP0() << "No displacement specified: zero surface traction applied" << std::endl;
+    NaluEnv::self().naluOutputP0() << "No displacement specified: zero surface traction applied" << std::endl;
   }
 
 }
@@ -448,7 +449,7 @@ MeshDisplacementEquationSystem::solve_and_update()
   // start the iteration loop
   for ( int k = 0; k < maxIterations_; ++k ) {
 
-    Env::outputP0() << " " << k+1 << "/" << maxIterations_
+    NaluEnv::self().naluOutputP0() << " " << k+1 << "/" << maxIterations_
                     << std::setw(15) << std::right << name_ << std::endl;
 
     // tke assemble, load_complete and solve

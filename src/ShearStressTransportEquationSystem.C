@@ -11,6 +11,7 @@
 #include <ComputeSSTMaxLengthScaleElemAlgorithm.h>
 #include <FieldFunctions.h>
 #include <master_element/MasterElement.h>
+#include <NaluEnv.h>
 #include <SpecificDissipationRateEquationSystem.h>
 #include <SolutionOptions.h>
 #include <TurbKineticEnergyEquationSystem.h>
@@ -32,7 +33,6 @@
 // basic c++
 #include <iostream>
 #include <math.h>
-#include <utility>
 #include <vector>
 
 namespace sierra{
@@ -206,7 +206,7 @@ ShearStressTransportEquationSystem::solve_and_update()
   // start the iteration loop
   for ( int k = 0; k < maxIterations_; ++k ) {
 
-    Env::outputP0() << " " << k+1 << "/" << maxIterations_
+    NaluEnv::self().naluOutputP0() << " " << k+1 << "/" << maxIterations_
                     << std::setw(15) << std::right << name_ << std::endl;
 
     // tke and sdr assemble, load_complete and solve; Jacobi iteration
@@ -230,7 +230,7 @@ void
 ShearStressTransportEquationSystem::post_adapt_work()
 {
   if ( realm_.process_adaptivity() ) {
-    Env::outputP0() << "--ShearStressTransportEquationSystem::post_adapt_work()" << std::endl;
+    NaluEnv::self().naluOutputP0() << "--ShearStressTransportEquationSystem::post_adapt_work()" << std::endl;
 
     if ( SST_DES == realm_.solutionOptions_->turbulenceModel_ )
       sstMaxLengthScaleAlgDriver_->execute();
@@ -314,7 +314,7 @@ ShearStressTransportEquationSystem::update_and_clip()
 
   // parallel assemble clipped value
   if (realm_.debug()) {
-    Env::outputP0() << "Add SST clipping diagnostic" << std::endl;
+    NaluEnv::self().naluOutputP0() << "Add SST clipping diagnostic" << std::endl;
   }
 
 }

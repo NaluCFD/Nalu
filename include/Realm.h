@@ -291,9 +291,9 @@ public:
   ComputeGeometryAlgorithmDriver *computeGeometryAlgDriver_;
   AlgorithmDriver *extrusionMeshDistanceAlgDriver_;
   ErrorIndicatorAlgorithmDriver *errorIndicatorAlgDriver_;
-  #if defined (NALU_USES_PERCEPT)
+# if defined (NALU_USES_PERCEPT)  
   Adapter *adapter_;
-  #endif
+#endif
   unsigned numInitialElements_;
   // for element, side, edge, node rank (node not used)
   stk::mesh::Selector adapterSelector_[4];

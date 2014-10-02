@@ -5,15 +5,14 @@
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
-
 #if defined (NALU_USES_PERCEPT)
 
 #include <Adapter.h>
+#include <NaluEnv.h>
 #include <Realm.h>
 #include <OutputInfo.h>
 #include <SolutionOptions.h>
 
-#include <stk_util/environment/Env.hpp>
 #include <stk_util/diag/Timer.hpp>
 
 // adapt
@@ -24,7 +23,7 @@
 #include <adapt/IAdapter.hpp>
 #include <adapt/AdaptedMeshVerifier.hpp>
 
-// Percept
+// percept
 #include <percept/PerceptMesh.hpp>
 
 #include <ErrorIndicatorAlgorithmDriver.h>
@@ -186,7 +185,7 @@ Adapter::do_adapt(int what_to_do)
 #endif
   if (doMeshVerification) {
     const int timeStepCount = realm_.get_time_step_count();
-    Env::outputP0() << "Adapt: verifier, timeStepCount= " << timeStepCount << std::endl;
+    NaluEnv::self().naluOutputP0() << "Adapt: verifier, timeStepCount= " << timeStepCount << std::endl;
 
     if (NULL == adaptedMeshVerifier_) {
       stk::diag::TimeBlock tbTimerVerify_(timerVerify_);

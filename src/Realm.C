@@ -8,12 +8,14 @@
 
 #include <Realm.h>
 #include <Simulation.h>
+#include <NaluEnv.h>
 
 // percept
 #if defined (NALU_USES_PERCEPT)
-#include <adapt/AdaptHelperFunctions.hpp>
 #include <adapt/AdaptedMeshVerifier.hpp>
+#include <adapt/AdaptHelperFunctions.hpp>
 #include <percept/PerceptMesh.hpp>
+#include <Adapter.h>
 #endif
 
 #include <AuxFunction.h>
@@ -29,9 +31,6 @@
 #include <EquationSystem.h>
 #include <EquationSystems.h>
 #include <ErrorIndicatorAlgorithmDriver.h>
-#if defined (NALU_USES_PERCEPT)
-#include <Adapter.h>
-#endif
 #include <ExtrusionMeshDistanceBoundaryAlgorithm.h>
 #include <FieldTypeDef.h>
 #include <InversePropAlgorithm.h>
@@ -72,7 +71,6 @@
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
 #include <stk_util/environment/CPUTime.hpp>
-#include <stk_util/environment/Env.hpp>
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/BulkData.hpp>
@@ -140,9 +138,9 @@ Realm::Realm(Realms& realms)
     computeGeometryAlgDriver_(0),
     extrusionMeshDistanceAlgDriver_(0),
     errorIndicatorAlgDriver_(0),
-    #if defined (NALU_USES_PERCEPT)
+#if defined (NALU_USES_PERCEPT)
     adapter_(0),
-    #endif
+#endif
     numInitialElements_(0),
     postConvergedAlgDriver_(0),
     timeIntegrator_(0),
@@ -421,10 +419,10 @@ Realm::load(const YAML::Node & node)
 
   // let everyone know about core algorithm
   if ( realmUsesEdges_ ) {
-     Env::outputP0() << "Edge-based scheme will be activated" << std::endl;
+     NaluEnv::self().naluOutputP0() << "Edge-based scheme will be activated" << std::endl;
   }
   else {
-    Env::outputP0() <<"Element-based scheme will be activated" << std::endl;
+    NaluEnv::self().naluOutputP0() <<"Element-based scheme will be activated" << std::endl;
   }
 
   // time step control
@@ -462,21 +460,21 @@ Realm::load(const YAML::Node & node)
   postProcessingInfo_->load(node);
 
   // boundary, init, material and equation systems "load"
-  Env::outputP0() << std::endl;
-  Env::outputP0() << "Boundary Condition Review: " << std::endl;
-  Env::outputP0() << "===========================" << std::endl;
+  NaluEnv::self().naluOutputP0() << std::endl;
+  NaluEnv::self().naluOutputP0() << "Boundary Condition Review: " << std::endl;
+  NaluEnv::self().naluOutputP0() << "===========================" << std::endl;
   boundaryConditions_.load(node);
-  Env::outputP0() << std::endl;
-  Env::outputP0() << "Initial Condition Review:  " << std::endl;
-  Env::outputP0() << "===========================" << std::endl;
+  NaluEnv::self().naluOutputP0() << std::endl;
+  NaluEnv::self().naluOutputP0() << "Initial Condition Review:  " << std::endl;
+  NaluEnv::self().naluOutputP0() << "===========================" << std::endl;
   initialConditions_.load(node);
-  Env::outputP0() << std::endl;
-  Env::outputP0() << "Material Prop Review:      " << std::endl;
-  Env::outputP0() << "===========================" << std::endl;
+  NaluEnv::self().naluOutputP0() << std::endl;
+  NaluEnv::self().naluOutputP0() << "Material Prop Review:      " << std::endl;
+  NaluEnv::self().naluOutputP0() << "===========================" << std::endl;
   materialPropertys_.load(node);
-  Env::outputP0() << std::endl;
-  Env::outputP0() << "EqSys/options Review:      " << std::endl;
-  Env::outputP0() << "===========================" << std::endl;
+  NaluEnv::self().naluOutputP0() << std::endl;
+  NaluEnv::self().naluOutputP0() << "EqSys/options Review:      " << std::endl;
+  NaluEnv::self().naluOutputP0() << "===========================" << std::endl;
   equationSystems_.load(node);
 
   // set number of nodes, check job run size
@@ -527,9 +525,7 @@ Realm::setup_adaptivity()
       percept::RefineLevelType& refine_level = meta_data.declare_field<percept::RefineLevelType>(stk::topology::ELEMENT_RANK, "refine_level");
       stk::mesh::put_field( refine_level , meta_data.universal_part());
     }
-
 #endif
-
 }
 
 //--------------------------------------------------------------------------
@@ -606,25 +602,25 @@ Realm::setup_post_processing_algorithms()
     PostProcessingData &theData = *(*ii);
     // type
     std::string theType = theData.type_;
-    Env::outputP0() << "the post processing type is " << theType << std::endl;
+    NaluEnv::self().naluOutputP0() << "the post processing type is " << theType << std::endl;
 
     // output name
     std::string theFile = theData.outputFileName_;
-    Env::outputP0() << "the post processing file name: " << theFile << std::endl;
+    NaluEnv::self().naluOutputP0() << "the post processing file name: " << theFile << std::endl;
 
     // physics
     std::string thePhysics = theData.physics_;
-    Env::outputP0() << "the post processing physics name: " << thePhysics << std::endl;
+    NaluEnv::self().naluOutputP0() << "the post processing physics name: " << thePhysics << std::endl;
 
     // target
     std::vector<std::string> targetNames = theData.targetNames_;
     for ( size_t in = 0; in < targetNames.size(); ++in)
-      Env::outputP0() << "Target name(s): " << targetNames[in] << std::endl;
+      NaluEnv::self().naluOutputP0() << "Target name(s): " << targetNames[in] << std::endl;
 
     // params
     std::vector<double> parameters = theData.parameters_;
     for ( size_t in = 0; in < parameters.size(); ++in)
-      Env::outputP0() << "Parameters used are: " << parameters[in] << std::endl;
+      NaluEnv::self().naluOutputP0() << "Parameters used are: " << parameters[in] << std::endl;
 
     // call through to the Eqsys
     if ( theType == "surface" ) {
@@ -696,7 +692,7 @@ Realm::enforce_bc_on_exposed_faces()
   stk::mesh::BucketVector const& face_buckets = bulkData.get_buckets(metaData.side_rank(), selectRule);
 
   if (!face_buckets.empty()) {
-    Env::outputP0() << "Exposed surfaces found without a boundary condition applied" << std::endl;
+    NaluEnv::self().naluOutputP0() << "Exposed surfaces found without a boundary condition applied" << std::endl;
 
     // proceed to show the problem faces
     for ( stk::mesh::BucketVector::const_iterator ib = face_buckets.begin();
@@ -706,7 +702,7 @@ Realm::enforce_bc_on_exposed_faces()
       const stk::mesh::Bucket::size_type length   = b.size();
       for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
         // report offending set of faces; okay if to P0
-        Env::outputP0() << "Face Id: " << bulkData.identifier(b[k]) << " is not properly covered" << std::endl;
+        NaluEnv::self().naluOutputP0() << "Face Id: " << bulkData.identifier(b[k]) << " is not properly covered" << std::endl;
       }
     }
     throw std::runtime_error("Realm::Error: Please aply bc to problematic exposed surfaces ");
@@ -752,7 +748,7 @@ Realm::setup_initial_conditions()
               ThrowAssert(field);
             }
             if (debug()) {
-              sierra::Env::outputP0() << "EquationSystem::register_initial_condition: field= " << field
+              NaluEnv::self().naluOutputP0() << "EquationSystem::register_initial_condition: field= " << field
                         << " for name= " << genIC.fieldNames_[ifield] << std::endl;
             }
 
@@ -779,14 +775,14 @@ Realm::setup_initial_conditions()
         break;
 
         case USER_SUB_UD:
-          sierra::Env::outputP0() << "Realm::setup_initial_conditions: USER_SUB not supported: " << std::endl;
+          NaluEnv::self().naluOutputP0() << "Realm::setup_initial_conditions: USER_SUB not supported: " << std::endl;
           throw std::runtime_error("Realm::setup_initial_conditions: USER_SUB not supported: ");
 
         case UserDataType_END:
           break;
 
         default:
-          sierra::Env::outputP0() << "Realm::setup_initial_conditions: unknown type: " << initCond.theIcType_ << std::endl;
+          NaluEnv::self().naluOutputP0() << "Realm::setup_initial_conditions: unknown type: " << initCond.theIcType_ << std::endl;
           throw std::runtime_error("Realm::setup_initial_conditions: unknown type:");
       }
     }
@@ -825,7 +821,7 @@ Realm::setup_property()
         materialPropertys_.propertyDataMap_.find(thePropId);
       if ( itf == materialPropertys_.propertyDataMap_.end() ) {
         // will need to throw
-        Env::outputP0() << "issue with property: " << PropertyIdentifierNames[thePropId] << std::endl;
+        NaluEnv::self().naluOutputP0() << "issue with property: " << PropertyIdentifierNames[thePropId] << std::endl;
         throw std::runtime_error("Please add property specification ");
       }
       else {
@@ -845,7 +841,7 @@ Realm::setup_property()
             std::map<std::string, double >::iterator itp
               = materialPropertys_.universalConstantMap_.find("reference_temperature");
             if ( itp == materialPropertys_.universalConstantMap_.end() ) {
-              Env::outputP0() << "WARNING: No reference temperature specified; using reference temperature "
+              NaluEnv::self().naluOutputP0() << "WARNING: No reference temperature specified; using reference temperature "
                               << referenceTemperature
                               << " to compute enthalpy." << std::endl;
             }
@@ -984,7 +980,7 @@ Realm::setup_property()
 
             case ENTHALPY_ID:
             {
-              Env::outputP0() << "Enthalpy specification is not required as Cp is sufficient";
+              NaluEnv::self().naluOutputP0() << "Enthalpy specification is not required as Cp is sufficient";
             }
             break;
 
@@ -1161,7 +1157,7 @@ Realm::setup_property()
           break;
 
         default:
-          Env::outputP0() << "Realm::setup_property: unknown type: " << std::endl;
+          NaluEnv::self().naluOutputP0() << "Realm::setup_property: unknown type: " << std::endl;
           throw std::runtime_error("Realm::setup_property: unknown type:");
       }
     }
@@ -1249,21 +1245,21 @@ Realm::pre_timestep_work()
       if ( solutionOptions_->refineAt_[i] == get_time_step_count() ||
            (solutionOptions_->refineAt_[i] == 0 && get_time_step_count() == 1) ) {
 
-        Env::outputP0() << "UniformRefinement: at step= " << get_time_step_count() << std::endl;
+        NaluEnv::self().naluOutputP0() << "UniformRefinement: at step= " << get_time_step_count() << std::endl;
 
         if (realmUsesEdges_ ) {
           stk::diag::TimeBlock tbDeleteEdges_(timerDeleteEdgesLocal_);
           delete_edges();
         }
 
-	#if defined (NALU_USES_PERCEPT)
+#if defined (NALU_USES_PERCEPT)
         adapter_->do_uniform_refine();
-	#endif
+#endif
 
         std::vector<size_t> counts;
         stk::mesh::comm_mesh_counts( bulk_data , counts);
 
-        Env::outputP0() << "UniformRefine: after uniform refine, mesh has  "
+        NaluEnv::self().naluOutputP0() << "UniformRefine: after uniform refine, mesh has  "
                         << counts[0] << " nodes, "
                         << counts[1] << " edges, "
                         << counts[2] << " faces, "
@@ -1307,8 +1303,7 @@ Realm::pre_timestep_work()
     double time = -stk::cpu_time();
     if ( process_adaptivity() ) {
 
-#if defined (NALU_USES_PERCEPT)
-
+# if defined (NALU_USES_PERCEPT)
       // mesh counts
       stk::mesh::BulkData & bulk_data = fixture_->bulk_data();
       std::vector<size_t> counts;
@@ -1321,8 +1316,8 @@ Realm::pre_timestep_work()
 
       if (solutionOptions_->useAdapter_ && solutionOptions_->maxRefinementLevel_)
         {
-          Env::outputP0() << "Adapt: running adapter..." << std::endl;
-          Env::outputP0() << "Adapt: before adapt, mesh has  "
+          NaluEnv::self().naluOutputP0() << "Adapt: running adapter..." << std::endl;
+          NaluEnv::self().naluOutputP0() << "Adapt: before adapt, mesh has  "
                           << counts[0] << " nodes, "
                           << counts[1] << " edges, "
                           << counts[2] << " faces, "
@@ -1344,7 +1339,7 @@ Realm::pre_timestep_work()
           counts.resize(0);
           stk::mesh::comm_mesh_counts( bulk_data , counts);
 
-          Env::outputP0() << "Adapt: after refine, mesh has  "
+          NaluEnv::self().naluOutputP0() << "Adapt: after refine, mesh has  "
                           << counts[0] << " nodes, "
                           << counts[1] << " edges, "
                           << counts[2] << " faces, "
@@ -1369,7 +1364,7 @@ Realm::pre_timestep_work()
           counts.resize(0);
           stk::mesh::comm_mesh_counts( bulk_data , counts);
 
-          Env::outputP0() << "Adapt: after unrefine, mesh has  "
+          NaluEnv::self().naluOutputP0() << "Adapt: after unrefine, mesh has  "
                           << counts[0] << " nodes, "
                           << counts[1] << " edges, "
                           << counts[2] << " faces, "
@@ -1394,12 +1389,12 @@ Realm::pre_timestep_work()
           }
 
           // process speciality methods for adaptivity
-          Env::outputP0() << std::endl;
-          Env::outputP0() << "Post Adapt Work:" << std::endl;
-          Env::outputP0() <<"===========================" << std::endl;
+          NaluEnv::self().naluOutputP0() << std::endl;
+          NaluEnv::self().naluOutputP0() << "Post Adapt Work:" << std::endl;
+          NaluEnv::self().naluOutputP0() <<"===========================" << std::endl;
           equationSystems_.post_adapt_work();
-          Env::outputP0() <<"===========================" << std::endl;
-          Env::outputP0() << std::endl;
+          NaluEnv::self().naluOutputP0() <<"===========================" << std::endl;
+          NaluEnv::self().naluOutputP0() << std::endl;
 
           outputInfo_->meshAdapted_ = true;
         }
@@ -1462,14 +1457,14 @@ Realm::advance_time_step()
   if ( !advanceMe )
     return;
 
-  Env::outputP0() << "NLI"
+  NaluEnv::self().naluOutputP0() << "NLI"
                   << std::setw(8) << std::right << "Name"
                   << std::setw(22) << std::right << "Linear Iter"
                   << std::setw(16) << std::right << "Linear Res"
                   << std::setw(16) << std::right << "NLinear Res"
                   << std::setw(14) << std::right << "Scaled NLR" << std::endl;
 
-  Env::outputP0() << "---"
+  NaluEnv::self().naluOutputP0() << "---"
                   << std::setw(8) << std::right << "----"
                   << std::setw(22) << std::right << "-----------"
                   << std::setw(16) << std::right << "----------"
@@ -1482,7 +1477,7 @@ Realm::advance_time_step()
   const int numNonLinearIterations = equationSystems_.maxIterations_;
   for ( int i = 0; i < numNonLinearIterations; ++i ) {
     currentNonlinearIteration_ = i+1;
-    Env::outputP0()
+    NaluEnv::self().naluOutputP0()
       << currentNonlinearIteration_
       << "/" << numNonLinearIterations
       << std::setw(29) << std::right << "Equation System Iteration" << std::endl;
@@ -1493,8 +1488,8 @@ Realm::advance_time_step()
     evaluate_properties();
 
     if ( isConverged ) {
-      Env::outputP0() << "norm convergence criteria met for all equation systems: " << std::endl;
-      Env::outputP0() << "max scaled norm is: " << equationSystems_.provide_system_norm() << std::endl;
+      NaluEnv::self().naluOutputP0() << "norm convergence criteria met for all equation systems: " << std::endl;
+      NaluEnv::self().naluOutputP0() << "max scaled norm is: " << equationSystems_.provide_system_norm() << std::endl;
       break;
     }
   }
@@ -1640,7 +1635,7 @@ Realm::create_output_mesh()
     std::string varName = outputInfo_->outputFieldNameVec_[i];
     stk::mesh::FieldBase *theField = stk::mesh::get_field_by_name(varName,fixture_->meta_data());
     if ( NULL == theField ) {
-      sierra::Env::outputP0() << " Sorry, no field by the name " << varName << std::endl;
+      NaluEnv::self().naluOutputP0() << " Sorry, no field by the name " << varName << std::endl;
     }
     else {
       // 'varName' is the name that will be written to the database
@@ -1667,7 +1662,7 @@ Realm::create_restart_mesh()
       std::string varName = outputInfo_->restartFieldNameVec_[i];
       stk::mesh::FieldBase *theField = stk::mesh::get_field_by_name(varName,fixture_->meta_data());
       if ( NULL == theField ) {
-        sierra::Env::outputP0() << " Sorry, no field by the name " << varName << std::endl;
+        NaluEnv::self().naluOutputP0() << " Sorry, no field by the name " << varName << std::endl;
       }
       else {
 	// add the field for a restart output
@@ -1713,7 +1708,7 @@ Realm::input_variables_from_mesh()
 
       stk::mesh::FieldBase *theField = stk::mesh::get_field_by_name(varName,fixture_->meta_data());
       if ( NULL == theField ) {
-        sierra::Env::outputP0() << " Sorry, no field by the name " << varName << std::endl;
+        NaluEnv::self().naluOutputP0() << " Sorry, no field by the name " << varName << std::endl;
       }
       else {
         fixture_->add_input_field(stk::io::MeshField(*theField, userName));
@@ -1761,13 +1756,13 @@ Realm::provide_entity_count() {
   std::vector<size_t> maxCounts;
   stk::mesh::comm_mesh_counts( bulk_data , counts, minCounts, maxCounts);
 
-  Env::outputP0() << "===========================" << std::endl;
-  Env::outputP0() << "Realm::provide_entity_count:   " << std::endl
+  NaluEnv::self().naluOutputP0() << "===========================" << std::endl;
+  NaluEnv::self().naluOutputP0() << "Realm::provide_entity_count:   " << std::endl
 		  << "nodes,    " << counts[0] << " min/max: " << minCounts[0] << "/" << maxCounts[0] << std::endl
 		  << "edges,    " << counts[1] << " min/max: " << minCounts[1] << "/" << maxCounts[1] << std::endl
 		  << "faces,    " << counts[2] << " min/max: " << minCounts[2] << "/" << maxCounts[2] << std::endl
 		  << "elements, " << counts[3] << " min/max: " << minCounts[3] << "/" << maxCounts[3] << std::endl;
-  Env::outputP0() << "===========================" << std::endl;
+  NaluEnv::self().naluOutputP0() << "===========================" << std::endl;
 
 }
 
@@ -1784,7 +1779,7 @@ Realm::delete_edges()
     std::vector<size_t> counts;
     stk::mesh::comm_mesh_counts( bulk_data , counts);
 
-    Env::outputP0() << "Realm::delete_edges: before delete_edges, mesh has  "
+    NaluEnv::self().naluOutputP0() << "Realm::delete_edges: before delete_edges, mesh has  "
                     << counts[0] << " nodes, "
                     << counts[1] << " edges, "
                     << counts[2] << " faces, "
@@ -1797,7 +1792,7 @@ Realm::delete_edges()
 
   if (debug()) {
     size_t sz = edges.size(), g_sz=0;
-    stk::all_reduce_sum(sierra::Env::parallel_comm(), &sz, &g_sz, 1);
+    stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &sz, &g_sz, 1);
     Env::output() << "P[" << bulk_data.parallel_rank() << "] Realm::delete_edges: edge list local size= "
                   << sz << " global size= " << g_sz << std::endl;
   }
@@ -1878,7 +1873,7 @@ Realm::delete_edges()
     std::vector<size_t> counts;
     stk::mesh::comm_mesh_counts( bulk_data , counts);
 
-    Env::outputP0() << "P[" << bulk_data.parallel_rank() << "] "
+    NaluEnv::self().naluOutputP0() << "P[" << bulk_data.parallel_rank() << "] "
                   << "Realm::delete_edges: after delete_edges, mesh has  "
                   << counts[0] << " nodes, "
                   << counts[1] << " edges, "
@@ -1938,7 +1933,7 @@ Realm::process_mesh_motion()
       stk::mesh::Part *targetPart = meta_data.get_part(theVector[k]);
 
       if ( NULL == targetPart ) {
-        Env::outputP0() << "problem with part " << theVector[k] << std::endl;
+        NaluEnv::self().naluOutputP0() << "problem with part " << theVector[k] << std::endl;
         throw std::runtime_error("Sorry, no part name found");
       }
       else {
@@ -2140,11 +2135,11 @@ Realm::compute_geometry()
 
     // get min, max and sum over processes
     double g_totalVolume = 0.0, g_minVolume = 0.0, g_maxVolume = 0.0;
-    stk::all_reduce_min(sierra::Env::parallel_comm(), &minVolume, &g_minVolume, 1);
-    stk::all_reduce_max(sierra::Env::parallel_comm(), &maxVolume, &g_maxVolume, 1);
-    stk::all_reduce_sum(sierra::Env::parallel_comm(), &totalVolume, &g_totalVolume, 1);
+    stk::all_reduce_min(NaluEnv::self().parallel_comm(), &minVolume, &g_minVolume, 1);
+    stk::all_reduce_max(NaluEnv::self().parallel_comm(), &maxVolume, &g_maxVolume, 1);
+    stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &totalVolume, &g_totalVolume, 1);
 
-    Env::outputP0() << " Volume  " << g_totalVolume
+    NaluEnv::self().naluOutputP0() << " Volume  " << g_totalVolume
 		    << " min: " << g_minVolume
 		    << " max: " << g_maxVolume << std::endl;
   }
@@ -2223,7 +2218,7 @@ Realm::compute_l2_scaling()
 
   // Parallel assembly of total nodes
   size_t g_totalNodes = 0;
-  stk::all_reduce_sum(Env::parallel_comm(), &totalNodes, &g_totalNodes, 1);
+  stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &totalNodes, &g_totalNodes, 1);
 
   l2Scaling_ = 1.0/std::sqrt(g_totalNodes);
 
@@ -2546,11 +2541,11 @@ Realm::register_contact_bc(
   const bool useHermiteInterp = userData.useHermiteInterpolation_;
 
   // some output for the user
-  Env::outputP0() << "extrusion alg active with distance " << extrusionDistance << std::endl;
-  Env::outputP0() << "min/max radius " << minSearchRadius << " " << maxSearchRadius << std::endl;
-  Env::outputP0() << "search block name: " << std::endl;
+  NaluEnv::self().naluOutputP0() << "extrusion alg active with distance " << extrusionDistance << std::endl;
+  NaluEnv::self().naluOutputP0() << "min/max radius " << minSearchRadius << " " << maxSearchRadius << std::endl;
+  NaluEnv::self().naluOutputP0() << "search block name: " << std::endl;
   for ( size_t k = 0; k < userData.searchBlock_.size(); ++k )
-    Env::outputP0() << userData.searchBlock_[k] << std::endl;
+    NaluEnv::self().naluOutputP0() << userData.searchBlock_[k] << std::endl;
 
   // create manager
   if ( NULL == contactManager_ ) {
@@ -2879,7 +2874,7 @@ Realm::populate_restart(
     foundRestartTime = fixture_->read_defined_input_fields(restartTime, &missingFields);
     if ( missingFields.size() > 0 ){
       for ( size_t k = 0; k < missingFields.size(); ++k)
-        Env::outputP0() << "WARNING: Restart value for Field "
+        NaluEnv::self().naluOutputP0() << "WARNING: Restart value for Field "
                         << missingFields[k].field()->name()
                         << " is missing; will default to IC specification" << std::endl;
     }
@@ -2969,7 +2964,7 @@ void
 Realm::output_banner()
 {
   // in future, probably want to call through to eq sys..
-  Env::outputP0() << " Max Courant: " << maxCourant_ << " Max Reynolds: " << maxReynolds_ << std::endl;
+  NaluEnv::self().naluOutputP0() << " Max Courant: " << maxCourant_ << " Max Reynolds: " << maxReynolds_ << std::endl;
 }
 
 //--------------------------------------------------------------------------
@@ -2979,16 +2974,16 @@ void
 Realm::check_job(bool get_node_count)
 {
 
-  Env::outputP0() << std::endl;
-  Env::outputP0() << "Realm memory Review:       " << name_ << std::endl;
-  Env::outputP0() << "===========================" << std::endl;
+  NaluEnv::self().naluOutputP0() << std::endl;
+  NaluEnv::self().naluOutputP0() << "Realm memory Review:       " << name_ << std::endl;
+  NaluEnv::self().naluOutputP0() << "===========================" << std::endl;
 
   // set number of nodes, check job run size
   if (get_node_count)
   {
     size_t localNodeCount = fixture_->get_input_io_region()->get_property("node_count").get_int();
-    stk::all_reduce_sum(Env::parallel_comm(), &localNodeCount, &nodeCount_, 1);
-    Env::outputP0() << "Node count from meta data = " << nodeCount_ << std::endl;
+    stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &localNodeCount, &nodeCount_, 1);
+    NaluEnv::self().naluOutputP0() << "Node count from meta data = " << nodeCount_ << std::endl;
   }
 
   /// estimate memory based on N*bandwidth, N = nodeCount*nDOF,
@@ -2996,7 +2991,7 @@ Realm::check_job(bool get_node_count)
   const unsigned HexBWFactor = 27;
   const unsigned MatrixStorageFactor = 3;  // for CRS storage, need one A_IJ, and one I and one J, approx
   SizeType memoryEstimate = 0;
-  double procGBScale = double(Env::parallel_size())*(1024.*1024.*1024.);
+  double procGBScale = double(NaluEnv::self().parallel_size())*(1024.*1024.*1024.);
   for (unsigned ieq=0; ieq < equationSystems_.size(); ++ieq)
     {
       if (!equationSystems_[ieq]->linsys_)
@@ -3006,7 +3001,7 @@ Realm::check_job(bool get_node_count)
       SizeType bandwidth = HexBWFactor * numDof;
       memoryEstimate += MatrixStorageFactor * N*bandwidth * sizeof(double);
     }
-  Env::outputP0() << "Total memory estimate for Matrix solve (per core)= "
+  NaluEnv::self().naluOutputP0() << "Total memory estimate for Matrix solve (per core)= "
                   << double(memoryEstimate)/procGBScale << " GB." << std::endl;
 
   SizeType memoryEstimateFields = 0;
@@ -3021,17 +3016,17 @@ Realm::check_job(bool get_node_count)
           unsigned fsz = field->max_size(stk::topology::NODE_RANK);
           memoryEstimateFields += nodeCount_ * fsz * sizeof(double);
         }
-      Env::outputP0() << "Total memory estimate for Fields (per core)= "
+      NaluEnv::self().naluOutputP0() << "Total memory estimate for Fields (per core)= "
                       << double(memoryEstimateFields)/procGBScale << " GB." << std::endl;
       memoryEstimate += memoryEstimateFields;
     }
 
-  Env::outputP0() << "Total memory estimate (per core) = "
+  NaluEnv::self().naluOutputP0() << "Total memory estimate (per core) = "
                   << double(memoryEstimate)/procGBScale << " GB." << std::endl;
 
   if (fixture_->meta_data().is_commit() && estimateMemoryOnly_)
     {
-      Env::outputP0() << "Job requested memory estimate only, shutting down." << std::endl;
+      NaluEnv::self().naluOutputP0() << "Job requested memory estimate only, shutting down." << std::endl;
       Env::abort();
     }
 
@@ -3039,7 +3034,7 @@ Realm::check_job(bool get_node_count)
   if (availableMemoryPerCoreGB_ != 0
       && double(memoryEstimate)/procGBScale > availableMemoryPerCoreGB_)
     {
-      Env::outputP0() << "ERROR: property available_memory_per_core_GB is set (= " << availableMemoryPerCoreGB_
+      NaluEnv::self().naluOutputP0() << "ERROR: property available_memory_per_core_GB is set (= " << availableMemoryPerCoreGB_
                       << ") and estimated memory (= " << double(memoryEstimate)/procGBScale
                       << ") is greater,\n job too large to run, \naborting..." << std::endl;
       Env::abort();
@@ -3053,13 +3048,13 @@ void
 Realm::dump_simulation_time()
 {
 
-  Env::outputP0() << "Begin Timer Overview for Realm: " << name_ << std::endl;
-  Env::outputP0() << "-------------------------------- " << std::endl;
+  NaluEnv::self().naluOutputP0() << "Begin Timer Overview for Realm: " << name_ << std::endl;
+  NaluEnv::self().naluOutputP0() << "-------------------------------- " << std::endl;
 
   // equation system time
   equationSystems_.dump_eq_time();
 
-  const int nprocs = sierra::Env::parallel_size();
+  const int nprocs = NaluEnv::self().parallel_size();
 
   // common
   const unsigned ntimers = 4;
@@ -3067,45 +3062,45 @@ Realm::dump_simulation_time()
   double g_min_time[ntimers] = {}, g_max_time[ntimers] = {}, g_total_time[ntimers] = {};
 
   // get min, max and sum over processes
-  stk::all_reduce_min(sierra::Env::parallel_comm(), &total_time[0], &g_min_time[0], ntimers);
-  stk::all_reduce_max(sierra::Env::parallel_comm(), &total_time[0], &g_max_time[0], ntimers);
-  stk::all_reduce_sum(sierra::Env::parallel_comm(), &total_time[0], &g_total_time[0], ntimers);
+  stk::all_reduce_min(NaluEnv::self().parallel_comm(), &total_time[0], &g_min_time[0], ntimers);
+  stk::all_reduce_max(NaluEnv::self().parallel_comm(), &total_time[0], &g_max_time[0], ntimers);
+  stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &total_time[0], &g_total_time[0], ntimers);
 
-  Env::outputP0() << "Timing for IO: " << std::endl;
-  Env::outputP0() << "     io read mesh --  " << " \tavg: " << g_total_time[0]/double(nprocs)
+  NaluEnv::self().naluOutputP0() << "Timing for IO: " << std::endl;
+  NaluEnv::self().naluOutputP0() << "     io read mesh --  " << " \tavg: " << g_total_time[0]/double(nprocs)
                   << " \tmin: " << g_min_time[0] << " \tmax: " << g_max_time[0] << std::endl;
-  Env::outputP0() << " io output fields --  " << " \tavg: " << g_total_time[1]/double(nprocs)
+  NaluEnv::self().naluOutputP0() << " io output fields --  " << " \tavg: " << g_total_time[1]/double(nprocs)
                   << " \tmin: " << g_min_time[1] << " \tmax: " << g_max_time[1] << std::endl;
 
-  Env::outputP0() << "Timing for connectivity/finalize lysys: " << std::endl;
-  Env::outputP0() << "         eqs init --  " << " \tavg: " << g_total_time[2]/double(nprocs)
+  NaluEnv::self().naluOutputP0() << "Timing for connectivity/finalize lysys: " << std::endl;
+  NaluEnv::self().naluOutputP0() << "         eqs init --  " << " \tavg: " << g_total_time[2]/double(nprocs)
                   << " \tmin: " << g_min_time[2] << " \tmax: " << g_max_time[2] << std::endl;
 
-  Env::outputP0() << "Timing for property evaluation:         " << std::endl;
-  Env::outputP0() << "         props    --  " << " \tavg: " << g_total_time[3]/double(nprocs)
+  NaluEnv::self().naluOutputP0() << "Timing for property evaluation:         " << std::endl;
+  NaluEnv::self().naluOutputP0() << "         props    --  " << " \tavg: " << g_total_time[3]/double(nprocs)
                   << " \tmin: " << g_min_time[3] << " \tmax: " << g_max_time[3] << std::endl;
 
   if (solutionOptions_->useAdapter_ && solutionOptions_->maxRefinementLevel_) {
     double g_total_adapt = 0.0, g_min_adapt = 0.0, g_max_adapt = 0.0;
-    stk::all_reduce_min(sierra::Env::parallel_comm(), &timerAdapt_, &g_min_adapt, 1);
-    stk::all_reduce_max(sierra::Env::parallel_comm(), &timerAdapt_, &g_max_adapt, 1);
-    stk::all_reduce_sum(sierra::Env::parallel_comm(), &timerAdapt_, &g_total_adapt, 1);
+    stk::all_reduce_min(NaluEnv::self().parallel_comm(), &timerAdapt_, &g_min_adapt, 1);
+    stk::all_reduce_max(NaluEnv::self().parallel_comm(), &timerAdapt_, &g_max_adapt, 1);
+    stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &timerAdapt_, &g_total_adapt, 1);
 
-    Env::outputP0() << "Timing for adaptivity:         " << std::endl;
-    Env::outputP0() << "         adapt    --  " << " \tavg: " << g_total_adapt/double(nprocs)
+    NaluEnv::self().naluOutputP0() << "Timing for adaptivity:         " << std::endl;
+    NaluEnv::self().naluOutputP0() << "         adapt    --  " << " \tavg: " << g_total_adapt/double(nprocs)
                     << " \tmin: " << g_min_adapt << " \tmax: " << g_max_adapt << std::endl;
   }
 
   // now edge creation; if applicable
   if ( realmUsesEdges_ ) {
     double g_total_edge = 0.0, g_min_edge = 0.0, g_max_edge = 0.0;
-    stk::all_reduce_min(sierra::Env::parallel_comm(), &timerCreateEdges_, &g_min_edge, 1);
-    stk::all_reduce_max(sierra::Env::parallel_comm(), &timerCreateEdges_, &g_max_edge, 1);
-    stk::all_reduce_sum(sierra::Env::parallel_comm(), &timerCreateEdges_, &g_total_edge, 1);
+    stk::all_reduce_min(NaluEnv::self().parallel_comm(), &timerCreateEdges_, &g_min_edge, 1);
+    stk::all_reduce_max(NaluEnv::self().parallel_comm(), &timerCreateEdges_, &g_max_edge, 1);
+    stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &timerCreateEdges_, &g_total_edge, 1);
 
-    Env::outputP0() << "Timing for Edge: " << std::endl;
+    NaluEnv::self().naluOutputP0() << "Timing for Edge: " << std::endl;
 
-    Env::outputP0() << "    edge creation --  " << " \tavg: " << g_total_edge/double(nprocs)
+    NaluEnv::self().naluOutputP0() << "    edge creation --  " << " \tavg: " << g_total_edge/double(nprocs)
                     << " \tmin: " << g_min_edge << " \tmax: " << g_max_edge << std::endl;
   }
 
@@ -3113,38 +3108,38 @@ Realm::dump_simulation_time()
   if ( hasPeriodic_ ){
     double periodicSearchTime = periodicManager_->get_search_time();
     double g_minPeriodicSearchTime = 0.0, g_maxPeriodicSearchTime = 0.0, g_periodicSearchTime = 0.0;
-    stk::all_reduce_min(sierra::Env::parallel_comm(), &periodicSearchTime, &g_minPeriodicSearchTime, 1);
-    stk::all_reduce_max(sierra::Env::parallel_comm(), &periodicSearchTime, &g_maxPeriodicSearchTime, 1);
-    stk::all_reduce_sum(sierra::Env::parallel_comm(), &periodicSearchTime, &g_periodicSearchTime, 1);
+    stk::all_reduce_min(NaluEnv::self().parallel_comm(), &periodicSearchTime, &g_minPeriodicSearchTime, 1);
+    stk::all_reduce_max(NaluEnv::self().parallel_comm(), &periodicSearchTime, &g_maxPeriodicSearchTime, 1);
+    stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &periodicSearchTime, &g_periodicSearchTime, 1);
 
-    Env::outputP0() << "Timing for Periodic: " << std::endl;
-    Env::outputP0() << "    search --         " << " \tavg: " << g_periodicSearchTime/double(nprocs)
+    NaluEnv::self().naluOutputP0() << "Timing for Periodic: " << std::endl;
+    NaluEnv::self().naluOutputP0() << "    search --         " << " \tavg: " << g_periodicSearchTime/double(nprocs)
                      << " \tmin: " << g_minPeriodicSearchTime << " \tmax: " << g_maxPeriodicSearchTime << std::endl;
   }
 
   // contact
   if ( hasContact_ ) {
     double g_totalContact = 0.0, g_minContact= 0.0, g_maxContact = 0.0;
-    stk::all_reduce_min(sierra::Env::parallel_comm(), &timerContact_, &g_minContact, 1);
-    stk::all_reduce_max(sierra::Env::parallel_comm(), &timerContact_, &g_maxContact, 1);
-    stk::all_reduce_sum(sierra::Env::parallel_comm(), &timerContact_, &g_totalContact, 1);
+    stk::all_reduce_min(NaluEnv::self().parallel_comm(), &timerContact_, &g_minContact, 1);
+    stk::all_reduce_max(NaluEnv::self().parallel_comm(), &timerContact_, &g_maxContact, 1);
+    stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &timerContact_, &g_totalContact, 1);
 
-    Env::outputP0() << "Timing for Contact: " << std::endl;
+    NaluEnv::self().naluOutputP0() << "Timing for Contact: " << std::endl;
 
-    Env::outputP0() << "    contact bc    --  " << " \tavg: " << g_totalContact/double(nprocs)
+    NaluEnv::self().naluOutputP0() << "    contact bc    --  " << " \tavg: " << g_totalContact/double(nprocs)
                     << " \tmin: " << g_minContact << " \tmax: " << g_maxContact << std::endl;
   }
 
   // transfer
   if ( hasTransfer_ ) {
     double g_totalXfer = 0.0, g_minXfer= 0.0, g_maxXfer = 0.0;
-    stk::all_reduce_min(sierra::Env::parallel_comm(), &timerTransferSearch_, &g_minXfer, 1);
-    stk::all_reduce_max(sierra::Env::parallel_comm(), &timerTransferSearch_, &g_maxXfer, 1);
-    stk::all_reduce_sum(sierra::Env::parallel_comm(), &timerTransferSearch_, &g_totalXfer, 1);
+    stk::all_reduce_min(NaluEnv::self().parallel_comm(), &timerTransferSearch_, &g_minXfer, 1);
+    stk::all_reduce_max(NaluEnv::self().parallel_comm(), &timerTransferSearch_, &g_maxXfer, 1);
+    stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &timerTransferSearch_, &g_totalXfer, 1);
 
-    Env::outputP0() << "Timing for Tranfer (fromRealm):    " << std::endl;
+    NaluEnv::self().naluOutputP0() << "Timing for Tranfer (fromRealm):    " << std::endl;
 
-    Env::outputP0() << "    search --         " << " \tavg: " << g_totalXfer/double(nprocs)
+    NaluEnv::self().naluOutputP0() << "    search --         " << " \tavg: " << g_totalXfer/double(nprocs)
                     << " \tmin: " << g_minXfer << " \tmax: " << g_maxXfer << std::endl;
   }
 
@@ -3191,7 +3186,7 @@ Realm::get_volume_master_element(
         break;
 
       default:
-        sierra::Env::outputP0() << "sorry, we only support hex8, tet4, wed6, pyr5, quad4, and tri3 volume elements" << std::endl;
+        NaluEnv::self().naluOutputP0() << "sorry, we only support hex8, tet4, wed6, pyr5, quad4, and tri3 volume elements" << std::endl;
         break;
     }
 
@@ -3259,8 +3254,8 @@ Realm::get_surface_master_element(
         break;
 
       default:
-        sierra::Env::outputP0() << "sorry, we only support hex8, tet4, pyr5, wed6, quad2d, quad3d, tri2d, tri3d and edge2d surface elements" << std::endl;
-        sierra::Env::outputP0() << "you're type is " << theTopo.value() << std::endl;
+        NaluEnv::self().naluOutputP0() << "sorry, we only support hex8, tet4, pyr5, wed6, quad2d, quad3d, tri2d, tri3d and edge2d surface elements" << std::endl;
+        NaluEnv::self().naluOutputP0() << "you're type is " << theTopo.value() << std::endl;
         break;
 
     }

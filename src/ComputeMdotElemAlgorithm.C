@@ -13,6 +13,7 @@
 #include <FieldTypeDef.h>
 #include <Realm.h>
 #include <master_element/MasterElement.h>
+#include <NaluEnv.h>
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/BulkData.hpp>
@@ -24,8 +25,6 @@
 
 // stk_io
 #include <stk_io/StkMeshIoBroker.hpp>
-
-#include <stk_util/environment/Env.hpp>
 
 namespace sierra{
 namespace nalu{
@@ -93,7 +92,7 @@ ComputeMdotElemAlgorithm::execute()
   // time step
   const double dt = realm_.get_time_step();
   const double gamma1 = realm_.get_gamma1();
-  if (realm_.debug() ) sierra::Env::outputP0() << "ComputeMdotElemAlgorithm::execute() gamma1= " << gamma1 << std::endl;
+  if (realm_.debug() ) NaluEnv::self().naluOutputP0() << "ComputeMdotElemAlgorithm::execute() gamma1= " << gamma1 << std::endl;
   const double projTimeScale = dt/gamma1;
 
   // nodal fields to gather

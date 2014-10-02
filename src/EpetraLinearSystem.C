@@ -14,10 +14,10 @@
 #include <Simulation.h>
 #include <LinearSolver.h>
 #include <master_element/MasterElement.h>
+#include <NaluEnv.h>
 
 #include <stk_util/parallel/Parallel.hpp>
 #include <stk_util/environment/CPUTime.hpp>
-#include <stk_util/environment/Env.hpp>
 
 #include <stk_util/parallel/ParallelReduce.hpp>
 #include <stk_mesh/base/BulkData.hpp>
@@ -498,7 +498,7 @@ void copy(
       const stk::mesh::EntityId nodeId = *stk::mesh::field_data(*naluGlobalId, node);
       const int nodeIntId = nodeId;
       ThrowRequire(nodeId>0);
-      ThrowRequire(sierra::Env::parallel_rank() == static_cast<int>(bulkData.parallel_owner_rank(node)));
+      ThrowRequire(NaluEnv::self().parallel_rank() == static_cast<int>(bulkData.parallel_owner_rank(node)));
       for (int ndof=0; ndof<ndofs; ++ndof) {
         U.ReplaceGlobalValue(nodeIntId, ndof, value[ndof]);
       }
@@ -590,7 +590,7 @@ EpetraLinearSystem::finalizeLinearSystem()
         stk::mesh::Entity node = nodes[n];
         double * value = stk::mesh::field_data(*coordinates ,node);
         ThrowRequire(*stk::mesh::field_data(*realm_.naluGlobalId_, node) > 0);
-        ThrowRequire(sierra::Env::parallel_rank() == static_cast<int>(bulk_data.parallel_owner_rank(node)));
+        ThrowRequire(NaluEnv::self().parallel_rank() == static_cast<int>(bulk_data.parallel_owner_rank(node)));
         for (int iDir = 0; iDir < nDim; ++iDir)
         {
           coords_[offset[iDir]] = value[iDir];
@@ -736,7 +736,7 @@ EpetraLinearSystem::applyDirichletBCs(
   }
 
   adbc_time += stk::cpu_time();
-  if (debug()) Env::outputP0() << "Epetra incremental applyDirichletBCs time= " << adbc_time << " Eq: " << name_ << std::endl;
+  if (debug()) NaluEnv::self().naluOutputP0() << "Epetra incremental applyDirichletBCs time= " << adbc_time << " Eq: " << name_ << std::endl;
 }
 
 void EpetraLinearSystem::dump_lhs(const std::string& msg)
@@ -781,7 +781,7 @@ EpetraLinearSystem::solve(stk::mesh::FieldBase * linearSolutionField)
       iters,
       finalResidNorm);
   solve_time += stk::cpu_time();
-  if (debug()) Env::outputP0() << "Epetra incremental solve time= " << solve_time <<  " eq: " << name_ << std::endl;
+  if (debug()) NaluEnv::self().naluOutputP0() << "Epetra incremental solve time= " << solve_time <<  " eq: " << name_ << std::endl;
 
   if (linearSolver->getConfig()->getWriteMatrixFiles())
   {
@@ -804,7 +804,7 @@ EpetraLinearSystem::solve(stk::mesh::FieldBase * linearSolutionField)
 
   if ( provideOutput_ ) {
     const int nameOffset = name_.length()+8;
-    Env::outputP0()
+    NaluEnv::self().naluOutputP0()
       << std::setw(nameOffset) << std::right << name_
       << std::setw(32-nameOffset)  << std::right << iters
       << std::setw(18) << std::right << finalResidNorm

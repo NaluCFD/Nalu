@@ -25,8 +25,6 @@
 // stk_io
 #include <stk_io/StkMeshIoBroker.hpp>
 
-#include <stk_util/environment/Env.hpp>
-
 namespace sierra{
 namespace nalu{
 

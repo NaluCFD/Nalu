@@ -35,6 +35,7 @@
 #include <LinearSolvers.h>
 #include <LinearSolver.h>
 #include <LinearSystem.h>
+#include <NaluEnv.h>
 #include <Realm.h>
 #include <Realms.h>
 #include <HeatCondMassBackwardEulerNodeSuppAlg.h>
@@ -53,7 +54,6 @@
 
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
-#include <stk_util/environment/Env.hpp>
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/BulkData.hpp>
@@ -75,12 +75,10 @@
 // stk_util
 #include <stk_util/parallel/ParallelReduce.hpp>
 #include <stk_util/environment/CPUTime.hpp>
-#include <stk_util/environment/Env.hpp>
 
 // basic c++
 #include <iostream>
 #include <math.h>
-#include <utility>
 
 namespace sierra{
 namespace nalu{
@@ -120,7 +118,7 @@ HeatCondEquationSystem::HeatCondEquationSystem(
 
   // determine nodal gradient form
   set_nodal_gradient("temperature");
-  Env::outputP0() << "Edge projected nodal gradient for temperature: " << edgeNodalGradient_ <<std::endl;
+  NaluEnv::self().naluOutputP0() << "Edge projected nodal gradient for temperature: " << edgeNodalGradient_ <<std::endl;
 
   // push back EQ to manager
   realm_.equationSystems_.push_back(this);
@@ -782,7 +780,7 @@ HeatCondEquationSystem::solve_and_update()
 
   for ( int k = 0; k < maxIterations_; ++k ) {
 
-    Env::outputP0() << " " << k+1 << "/" << maxIterations_
+    NaluEnv::self().naluOutputP0() << " " << k+1 << "/" << maxIterations_
                     << std::setw(15) << std::right << name_ << std::endl;
 
     // heat conduction assemble, load_complete and solve

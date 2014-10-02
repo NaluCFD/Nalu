@@ -10,7 +10,6 @@
 #include <FORTRAN_Proto.h>
 
 #include <stk_topology/topology.hpp>
-#include <Slib_Exception.h>
 
 #include <iostream>
 
