@@ -13,13 +13,11 @@
 #include <Enums.h>
 #include <InitialConditions.h>
 #include <MaterialPropertys.h>
-
 #include <NaluParsingHelper.h>
+#include <NaluEnv.h>
 
 // yaml for parsing..
 #include <yaml-cpp/yaml.h>
-
-#include <stk_util/environment/Env.hpp>
 
 #include <boost/lexical_cast.hpp>
 
@@ -370,7 +368,7 @@ void get_required(const YAML::Node & node, const std::string& key, T& result)
     *value >> result;
   else
     {
-      if (!sierra::Env::parallel_rank()) {
+      if (!NaluEnv::self().parallel_rank()) {
         std::ostringstream err_msg;
         err_msg << "\n\nError: parsing missing required key: " << key 
                   << " at " << NaluParsingHelper::line_info(node)

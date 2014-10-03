@@ -33,7 +33,6 @@
 
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
-#include <stk_util/environment/Env.hpp>
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/BulkData.hpp>
@@ -55,7 +54,6 @@
 // stk_util
 #include <stk_util/parallel/ParallelReduce.hpp>
 #include <stk_util/environment/CPUTime.hpp>
-#include <stk_util/environment/Env.hpp>
 
 // basic c++
 #include <iostream>

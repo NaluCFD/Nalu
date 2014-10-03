@@ -1793,8 +1793,8 @@ Realm::delete_edges()
   if (debug()) {
     size_t sz = edges.size(), g_sz=0;
     stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &sz, &g_sz, 1);
-    Env::output() << "P[" << bulk_data.parallel_rank() << "] Realm::delete_edges: edge list local size= "
-                  << sz << " global size= " << g_sz << std::endl;
+    NaluEnv::self().naluOutputP0() << "P[" << bulk_data.parallel_rank() << "] Realm::delete_edges: edge list local size= "
+				   << sz << " global size= " << g_sz << std::endl;
   }
 
   // delete elem -> edge relations
@@ -1851,16 +1851,16 @@ Realm::delete_edges()
     if (bulk_data.is_valid(edges[ii]) && bulk_data.bucket(edges[ii]).owned()) {
       if ( ! bulk_data.destroy_entity( edges[ii] ) ) {
         unsigned num_elems = bulk_data.num_elements(edges[ii]);
-        Env::output() << "P[" << bulk_data.parallel_rank() << "] deleting edge num_elems= " << num_elems
-                      << std::endl;
+        NaluEnv::self().naluOutputP0() << "P[" << bulk_data.parallel_rank() << "] deleting edge num_elems= " << num_elems
+				       << std::endl;
 
         stk::mesh::EntityRank topRank = stk::topology::ELEMENT_RANK;
         if (solutionOptions_->useAdapter_ && solutionOptions_->maxRefinementLevel_ > 0)
           ++topRank;
         for (stk::mesh::EntityRank irank = stk::topology::EDGE_RANK; irank <= topRank; ++irank) {
           unsigned nc = bulk_data.num_connectivity(edges[ii], irank);
-          Env::output() << "P[" << bulk_data.parallel_rank() << "] deleting edge nc[" << irank << "]= " << nc
-                        << std::endl;
+          NaluEnv::self().naluOutputP0() << "P[" << bulk_data.parallel_rank() << "] deleting edge nc[" << irank << "]= " << nc
+					 << std::endl;
         }
 
         throw std::runtime_error("delete_edges failed to delete edge");
@@ -3026,8 +3026,7 @@ Realm::check_job(bool get_node_count)
 
   if (fixture_->meta_data().is_commit() && estimateMemoryOnly_)
     {
-      NaluEnv::self().naluOutputP0() << "Job requested memory estimate only, shutting down." << std::endl;
-      Env::abort();
+      throw std::runtime_error("Job requested memory estimate only, shutting down");
     }
 
   // here's where we can check for estimated memory > given available memory
@@ -3037,7 +3036,7 @@ Realm::check_job(bool get_node_count)
       NaluEnv::self().naluOutputP0() << "ERROR: property available_memory_per_core_GB is set (= " << availableMemoryPerCoreGB_
                       << ") and estimated memory (= " << double(memoryEstimate)/procGBScale
                       << ") is greater,\n job too large to run, \naborting..." << std::endl;
-      Env::abort();
+      throw std::runtime_error("Job shutting down");
     }
 }
 

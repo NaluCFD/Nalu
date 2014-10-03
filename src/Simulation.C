@@ -131,7 +131,7 @@ void Simulation::setSerializedIOGroupSize(int siogs)
           NaluEnv::self().naluOutputP0() << "Error: Job requested serialized_io_group_size of " << siogs
                           << " which is incompatible with MPI size= " << NaluEnv::self().parallel_size()
                           << "... shutting down." << std::endl;
-          Env::abort();
+          throw std::runtime_error("shutdown");
         }
       serializedIOGroupSize_ = siogs;
       Ioss::SerializeIO::setGroupFactor(siogs);

@@ -288,7 +288,7 @@ PeriodicManager::setup_gid_pairs(
 
   // search should have provided **something**
   if ( searchKeyPair.size() < 1 )
-    Env::output() << " issue with coarse_search; no pairs found. try increasing tolerance " << std::endl;
+    NaluEnv::self().naluOutputP0() << " issue with coarse_search; no pairs found. try increasing tolerance " << std::endl;
 
   // Each slave entry must have one master. If not, smaller tolerance is required
   const size_t searchSize = searchKeyPair.size();
