@@ -1665,11 +1665,11 @@ Realm::create_restart_mesh()
         NaluEnv::self().naluOutputP0() << " Sorry, no field by the name " << varName << std::endl;
       }
       else {
-	// add the field for a restart output
+        // add the field for a restart output
         fixture_->add_field(restartFileIndex_, *theField, varName);
-	// if this is a restarted simulation, we will need input
-	if ( restarted_simulation() )
-	  fixture_->add_input_field(stk::io::MeshField(*theField, varName));
+        // if this is a restarted simulation, we will need input
+        if ( restarted_simulation() )
+          fixture_->add_input_field(stk::io::MeshField(*theField, varName));
       }
     }
 

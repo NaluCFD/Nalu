@@ -9,9 +9,8 @@
 
 #include <mpi.h>
 #include <fstream>
+#include <iostream>
 #include <string>
-
-#include <iostream> // FOR std::cout
 
 namespace sierra{
 namespace nalu{
@@ -84,9 +83,26 @@ NaluEnv::parallel_comm()
 //-------- set_log_file_stream ---------------------------------------------
 //--------------------------------------------------------------------------
 void
-NaluEnv::set_log_file_stream(std::ofstream *str)
+NaluEnv::set_log_file_stream(std::string naluLogName)
 {
-  naluLogStream_ = str;
+  if ( pRank_ == 0 ) {
+    naluStreamBuffer_.open(naluLogName.c_str(), std::ios::out);
+    naluLogStream_->rdbuf(&naluStreamBuffer_);
+  }
+  else {
+    naluLogStream_->rdbuf(&naluEmptyStreamBuffer_);
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- close_log_file_stream -------------------------------------------
+//--------------------------------------------------------------------------
+void
+NaluEnv::close_log_file_stream()
+{
+  if ( pRank_ == 0 ) {
+    naluStreamBuffer_.close();
+  }  
 }
 
 //--------------------------------------------------------------------------
@@ -94,6 +110,7 @@ NaluEnv::set_log_file_stream(std::ofstream *str)
 //--------------------------------------------------------------------------
 NaluEnv::~NaluEnv()
 {
+  close_log_file_stream();
   // shut down MPI
   MPI_Finalize();
 }

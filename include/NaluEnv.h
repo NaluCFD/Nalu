@@ -10,15 +10,20 @@
 #define NaluEnv_h
 
 #include <mpi.h>
-#include <string>
 #include <fstream>
+#include <streambuf>
 
 namespace sierra{
 namespace nalu{
+  
+  class NaluEmptyStreamBuffer : public std::filebuf {
+  public:
+    int overflow(int c) {return c;}
+  };
 
-class NaluEnv : std::ostream
+class NaluEnv
 {
-public:
+ public:
 
   NaluEnv();
   ~NaluEnv();
@@ -29,20 +34,16 @@ public:
   int pSize_;
   int pRank_;
   std::ostream *naluLogStream_;
+  
+  NaluEmptyStreamBuffer naluEmptyStreamBuffer_;
+  std::filebuf naluStreamBuffer_;
 
   std::ostream & naluOutputP0();
   MPI_Comm parallel_comm();
   int parallel_size();
   int parallel_rank();
-  void set_log_file_stream(std::ofstream *str);
-
-  template<class T>
-    NaluEnv& operator<<(const T& thing) {
-    if ( pRank_ )
-      (*naluLogStream_) << thing;
-    return *this;
-  }
-
+  void set_log_file_stream(std::string naluLogName);
+  void close_log_file_stream();
 };
 
 } // namespace nalu
