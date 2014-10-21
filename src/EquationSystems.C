@@ -681,6 +681,22 @@ EquationSystems::provide_system_norm()
 }
 
 //--------------------------------------------------------------------------
+//-------- provide_mean_system_norm ----------------------------------------
+//--------------------------------------------------------------------------
+double
+EquationSystems::provide_mean_system_norm()
+{
+  double meanNorm = 0.0;
+  double normIncrement = 0.0;
+  std::vector<EquationSystem *>::iterator ii;
+  for( ii=begin(); ii!=end(); ++ii ) {
+    meanNorm += (*ii)->provide_norm();
+    normIncrement += (*ii)->provide_norm_increment();
+  }
+  return meanNorm/normIncrement;
+}
+
+//--------------------------------------------------------------------------
 //-------- dump_eq_time ----------------------------------------------------
 //--------------------------------------------------------------------------
 void

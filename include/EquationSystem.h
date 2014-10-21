@@ -77,6 +77,8 @@ public:
   virtual void post_adapt_work() {}
   virtual void dump_eq_time();
   virtual double provide_scaled_norm();
+  virtual double provide_norm();
+  virtual double provide_norm_increment();
   virtual bool system_is_converged();
   
   virtual void register_wall_bc(

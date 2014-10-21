@@ -24,6 +24,7 @@
 // yaml for parsing..
 #include <yaml-cpp/yaml.h>
 
+// c++
 #include <iostream>
 #include <fstream>
 #include <iomanip>
@@ -62,7 +63,7 @@ int main( int argc, char ** argv )
 
   // NaluEnv singleton
   sierra::nalu::NaluEnv &naluEnv = sierra::nalu::NaluEnv::self();
-  
+ 
   stk::diag::setEnabledTimerMetricsMask(stk::diag::METRICS_CPU_TIME | stk::diag::METRICS_WALL_TIME);
 
   sierra::nalu::Simulation::rootTimer().start();
@@ -70,20 +71,18 @@ int main( int argc, char ** argv )
   // start initial time
   double start_time = stk::cpu_time();
 
-  std::string inputFileName = "defaultInput";
-  std::string logFileName = "defaultLog";
+  // command line options.
+  std::string inputFileName, logFileName;
   bool debug = false;
   int serializedIOGroupSize = 0;
 
-  // Add my command line options to the option descriptions.
-  boost::program_options::options_description desc("Allowed options");
+  boost::program_options::options_description desc("Nalu Supported Options");
   desc.add_options()
     ("help,h","Help message")
     ("version,v", "Code Version 1.0")
     ("input-deck,i", boost::program_options::value<std::string>(&inputFileName)->default_value("nalu.i"),
      "Analysis input file")
-    ("log-file,l", boost::program_options::value<std::string>(&logFileName)->default_value("nalu.log"),
-     "Analysis log file")
+    ("log-file,o", "Analysis log file")
     ("serialized-io-group-size,s",
      boost::program_options::value<int>(&serializedIOGroupSize)->default_value(0),
      "Specifies the number of processors which can concurrently perform I/O. Specifying zero disables serialization.")
@@ -118,10 +117,23 @@ int main( int argc, char ** argv )
     return 0;
   }
 
-  // Okay, time to proceed; first deal with logfile stream
-  std::ofstream logFileStream(logFileName.c_str());
-  naluEnv.set_log_file_stream(&logFileStream);  
+  // deal with logfile name; if none supplied, go with inputFileName.log
+  if (!vm.count("log-file")) {
+    int dotPos = inputFileName.rfind(".");
+    if ( -1 == dotPos ) {  
+      // lacking extension
+      logFileName = inputFileName + ".log";
+    } 
+    else {  
+      // with extension; swap with .log
+      logFileName = inputFileName.substr(0, dotPos) + ".log";
+    }
+  }
+
+  // deal with log file stream
+  naluEnv.set_log_file_stream(logFileName);  
   
+  // proceed with reading input file "document" from YAML
   YAML::Parser parser(fin);
   YAML::Node doc;
 

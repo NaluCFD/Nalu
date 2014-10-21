@@ -44,17 +44,11 @@ class Map;
 template <typename LocalOrdinal, typename GlobalOrdinal, typename Node >
 class Export;
 
-//template <typename LocalOrdinal, typename GlobalOrdinal, typename Node, typename LocalMatOpps>
-//class CrsGraph;
-
 template <typename Scalar, typename LocalOrdinal, typename GlobalOrdinal, typename Node>
 class MultiVector;
 
 template <typename Scalar, typename LocalOrdinal, typename GlobalOrdinal, typename Node>
 class Vector;
-
-//template <typename Scalar, typename LocalOrdinal, typename GlobalOrdinal, typename Node>
-//class CrsMatrix;
 
 template <typename Scalar, typename LocalOrdinal, typename GlobalOrdinal, typename Node>
 class Operator;
@@ -110,7 +104,7 @@ typedef Teuchos::MpiComm<int>                                              Comm;
 typedef Tpetra::Export< LocalOrdinal, GlobalOrdinal, Node >                Export;
 typedef Tpetra::Import< LocalOrdinal, GlobalOrdinal, Node >                Import;
 typedef Kokkos::DefaultKernels<void,LocalOrdinal,Node>::SparseOps          LocalMatOps;
-typedef Tpetra::CrsGraph< LocalOrdinal, GlobalOrdinal, Node, LocalMatOps>  Graph;
+typedef Tpetra::CrsGraph< LocalOrdinal, GlobalOrdinal, Node>               Graph;
 typedef Tpetra::Map<LocalOrdinal,GlobalOrdinal,Node>                       Map;
 typedef Tpetra::MultiVector<Scalar,LocalOrdinal,GlobalOrdinal,Node>        MultiVector;
 typedef Teuchos::ArrayRCP<Scalar >                                         OneDVector;

@@ -289,6 +289,15 @@ TimeIntegrator::integrate_realm()
     (*ii)->dump_simulation_time();
   }
   
+  // provide integrated norm
+  double sumNorm = 0.0;
+  double realmIncrement = 0.0;
+  for ( ii = realmVec_.begin(); ii!=realmVec_.end(); ++ii) {
+    sumNorm += (*ii)->provide_mean_norm();
+    realmIncrement += 1.0;
+  }
+  NaluEnv::self().naluOutputP0() << "Mean System Norm: " << sumNorm/realmIncrement << std::endl;
+
 }
 
 //--------------------------------------------------------------------------

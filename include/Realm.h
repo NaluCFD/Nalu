@@ -220,6 +220,7 @@ public:
 
   void boundary_data_to_state_data();
   void dump_simulation_time();
+  double provide_mean_norm();
 
   MasterElement* get_surface_master_element(
     const stk::topology & theTopo);

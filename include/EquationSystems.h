@@ -112,6 +112,7 @@ public:
   void initial_work();
   bool solve_and_update();
   double provide_system_norm();
+  double provide_mean_system_norm();
 
   void predict_state();
   void populate_boundary_data();

@@ -70,6 +70,7 @@ public:
 
   bool system_is_converged();
   double provide_scaled_norm();
+  double provide_norm();
 
   void zero_out_fields();
   void zero_irradiation();
