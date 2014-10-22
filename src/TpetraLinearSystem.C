@@ -51,6 +51,7 @@
 #include <MatrixMarket_Tpetra.hpp>
 
 #include <set>
+#include <limits>
 
 #define DEBUG_TPETRA 0
 
@@ -1154,7 +1155,7 @@ TpetraLinearSystem::solve(
   nonLinearResidual_ = realm_.l2Scaling_*norm2;
   if ( realm_.currentNonlinearIteration_ == 1 )
     firstNonLinearResidual_ = nonLinearResidual_;
-  scaledNonLinearResidual_ = nonLinearResidual_/firstNonLinearResidual_;
+  scaledNonLinearResidual_ = nonLinearResidual_/std::max(std::numeric_limits<double>::epsilon(), firstNonLinearResidual_);
 
   if ( provideOutput_ ) {
     const int nameOffset = name_.length()+8;

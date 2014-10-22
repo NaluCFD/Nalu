@@ -32,6 +32,8 @@
 #include <EffectiveDiffFluxCoeffAlgorithm.h>
 #include <EnthalpyPmrSrcNodeSuppAlg.h>
 #include <EnthalpyLowSpeedCompressibleNodeSuppAlg.h>
+#include <EnthalpyPressureWorkNodeSuppAlg.h>
+#include <EnthalpyViscousWorkNodeSuppAlg.h>
 #include <EquationSystem.h>
 #include <EquationSystems.h>
 #include <Enums.h>
@@ -360,6 +362,16 @@ EnthalpyEquationSystem::register_interior_algorithm(
           EnthalpyLowSpeedCompressibleNodeSuppAlg *compressSrc
             = new EnthalpyLowSpeedCompressibleNodeSuppAlg(realm_);
           theAlg->supplementalAlg_.push_back(compressSrc);
+        }
+        else if ( sourceName == "pressure_work" ) {
+          EnthalpyPressureWorkNodeSuppAlg *pressureSrc
+            = new EnthalpyPressureWorkNodeSuppAlg(realm_);
+          theAlg->supplementalAlg_.push_back(pressureSrc);
+        }
+        else if ( sourceName == "viscous_work" ) {
+          EnthalpyViscousWorkNodeSuppAlg *viscousSrc
+            = new EnthalpyViscousWorkNodeSuppAlg(realm_);
+          theAlg->supplementalAlg_.push_back(viscousSrc);
         }
         else {
           throw std::runtime_error("EnthalpyEquationSystem::only PMR and low speed compressible src term is supported");

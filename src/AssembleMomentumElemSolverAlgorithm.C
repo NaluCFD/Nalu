@@ -368,9 +368,9 @@ AssembleMomentumElemSolverAlgorithm::execute()
             : alphaUpw*p_uIpR[i] + (om_alphaUpw)*uiIp;
 
           // generalized central (2nd and 4th order)
-	  const double uiHatL = alpha*p_uIpL[i] + om_alpha*uiIp;
-	  const double uiHatR = alpha*p_uIpR[i] + om_alpha*uiIp;
-	  const double uiCds = 0.5*(uiHatL + uiHatR);
+          const double uiHatL = alpha*p_uIpL[i] + om_alpha*uiIp;
+          const double uiHatR = alpha*p_uIpR[i] + om_alpha*uiIp;
+          const double uiCds = 0.5*(uiHatL + uiHatR);
 
           // total advection; pressure contribution in time term
           const double aflux = tmdot*(pecfac*uiUpwind + om_pecfac*uiCds);

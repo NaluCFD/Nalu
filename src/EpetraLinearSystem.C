@@ -45,6 +45,7 @@
 #include <Teuchos_FancyOStream.hpp>
 
 #include <sstream>
+#include <limits>
 
 namespace sierra{
 namespace nalu{
@@ -800,7 +801,7 @@ EpetraLinearSystem::solve(stk::mesh::FieldBase * linearSolutionField)
   nonLinearResidual_ = realm_.l2Scaling_*theNorm[0];
   if ( realm_.currentNonlinearIteration_ == 1 )
     firstNonLinearResidual_ = nonLinearResidual_;
-  scaledNonLinearResidual_ = nonLinearResidual_/firstNonLinearResidual_;
+  scaledNonLinearResidual_ = nonLinearResidual_/std::max(std::numeric_limits<double>::epsilon(), firstNonLinearResidual_);
 
   if ( provideOutput_ ) {
     const int nameOffset = name_.length()+8;
