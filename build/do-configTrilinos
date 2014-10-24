@@ -1,31 +1,29 @@
-trilinos_install_dir=/usr/local/Cellar
-mpi_base_dir=/usr/local/Cellar/open-mpi/1.8.1
-superlu_dir=/usr/local/Cellar/superlu/4.3
-boost_dir=/usr/local/Cellar/boost/1.55.0_2
 
-#trilinos_install_dir=/scratch2/bmpersc/nalu_projects/Trilinos/nalu_build/install
-#mpi_base_dir=/home/trilinos/compilers/gcc/openmpi-1.6.3-gcc-4.7.2
-#superlu_dir=/home/trilinos/tpl/gcc4.4.4/SuperLU_4.3
-#boost_dir=/home/trilinos/tpl/gcc4.4.4/boostlib_1_55_0
+trilinos_install_dir=/Users/nalu/install
+mpi_base_dir=/usr/local/Cellar/open-mpi/1.8.1
+superlu_dir=/usr/local/Cellar/superlu/4.3/include/superlu
+boost_dir=/usr/local/Cellar/boost/1.56.0/include/boost/
+
+netcdf_install_dir=/Users/nalu/install
+hdf_install_dir=/Users/nalu/install
+z_install_dir=/Users/nalu/install
+
 
 EXTRA_ARGS=$@
 
 find . -name "CMakeFiles" -exec rm -rf {} \;
 rm -f CMakeCache.txt
-rm -rf install
+rm -r install
 
 cmake \
 -DCMAKE_INSTALL_PREFIX=$trilinos_install_dir \
--DTrilinos_ENABLE_TESTS:BOOL=ON \
+-DTrilinos_ENABLE_TESTS:BOOL=OFF \
 -DTrilinos_ALLOW_NO_PACKAGES:BOOL=OFF \
 -DTPL_ENABLE_MPI=ON \
   -DMPI_BASE_DIR:PATH=$mpi_base_dir \
 -DTPL_ENABLE_SuperLU=ON \
-  -DSuperLU_INCLUDE_DIRS:PATH=$superlu_dir/include/superlu \
+  -DSuperLU_INCLUDE_DIRS:PATH=$superlu_dir \
   -DSuperLU_LIBRARY_DIRS:PATH=$superlu_dir/lib \
--DBoost_INCLUDE_DIRS:PATH=$boost_dir/include \
--DBoostLib_INCLUDE_DIRS:PATH=$boost_dir/include \
--DBoostLib_LIBRARY_DIRS:PATH=$boost_dir/lib \
 -DTrilinos_ENABLE_Epetra:BOOL=ON \
 -DTrilinos_ENABLE_Tpetra:BOOL=ON \
 -DTrilinos_ENABLE_ML:BOOL=ON \
@@ -39,6 +37,18 @@ cmake \
 -DTrilinos_ENABLE_Zoltan:BOOL=ON \
 -DTrilinos_ENABLE_STKMesh:BOOL=ON \
 -DTrilinos_ENABLE_STKIO:BOOL=ON \
+-DTrilinos_ENABLE_SEACASExodus:BOOL=ON \
+\
+    -D TPL_ENABLE_Netcdf:STRING=ON \
+    -D Netcdf_INCLUDE_DIRS:PATH="${netcdf_install_dir}/include" \
+    -D Netcdf_LIBRARY_DIRS:PATH="${netcdf_install_dir}/lib" \
+    -D TPL_ENABLE_HDF5:STRING=ON \
+    -D HDF5_INCLUDE_DIRS:PATH="${hdf_install_dir}/include" \
+    -D TPL_HDF5_LIBRARIES:PATH="${hdf_install_dir}/lib/libhdf5_hl.a;${hdf_install_dir}/lib/libhdf5.a;${z_install_dir}/lib/libz.a" \
+    -D TPL_ENABLE_Zlib:STRING=ON \
+    -D Zlib_INCLUDE_DIRS:PATH="${z_install_dir}/include" \
+    -D TPL_Zlib_LIBRARIES:PATH="${z_install_dir}/lib/libz.a" \
+\
 -DTrilinos_ENABLE_STKTransfer:BOOL=ON \
 -DTrilinos_ENABLE_STKSearch:BOOL=ON \
 -DTrilinos_ENABLE_STKUtil:BOOL=ON \
