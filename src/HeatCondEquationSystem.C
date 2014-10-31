@@ -382,7 +382,7 @@ HeatCondEquationSystem::register_wall_bc(
 
   stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
 
-  // non-solver; dtdx; allow for element-based shifted
+  // non-solver; dtdx; allow for element-based shifted; all bcs are of generic type "WALL"
   std::map<AlgorithmType, Algorithm *>::iterator it
     = assembleNodalGradAlgDriver_->algMap_.find(algType);
   if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
@@ -459,6 +459,8 @@ HeatCondEquationSystem::register_wall_bc(
   }
   else if(userData.heatFluxSpec_) {
 
+    const AlgorithmType algTypeHF = WALL_HF;
+
     ScalarFieldType *theBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "heat_flux_bc"));
     stk::mesh::put_field(*theBcField, *part);
 
@@ -479,12 +481,12 @@ HeatCondEquationSystem::register_wall_bc(
     if ( realm_.realmUsesEdges_ ) {
       // solver; lhs
       std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi =
-        solverAlgDriver_->solverAlgMap_.find(algType);
+        solverAlgDriver_->solverAlgMap_.find(algTypeHF);
       if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
         AssembleScalarDiffBCSolverAlgorithm *theAlg
           = new AssembleScalarDiffBCSolverAlgorithm(realm_, part, this,
                                                     theBcField, realm_.realmUsesEdges_);
-        solverAlgDriver_->solverAlgMap_[algType] = theAlg;
+        solverAlgDriver_->solverAlgMap_[algTypeHF] = theAlg;
       }
       else {
         itsi->second->partVec_.push_back(part);
@@ -493,12 +495,12 @@ HeatCondEquationSystem::register_wall_bc(
     else {
       // solver; lhs
       std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi =
-        solverAlgDriver_->solverAlgMap_.find(algType);
+        solverAlgDriver_->solverAlgMap_.find(algTypeHF);
       if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
         AssembleScalarDiffBCSolverAlgorithm *theAlg
           = new AssembleScalarDiffBCSolverAlgorithm(realm_, part, this,
                                                     theBcField, realm_.realmUsesEdges_);
-        solverAlgDriver_->solverAlgMap_[algType] = theAlg;
+        solverAlgDriver_->solverAlgMap_[algTypeHF] = theAlg;
       }
       else {
         itsi->second->partVec_.push_back(part);
@@ -506,6 +508,8 @@ HeatCondEquationSystem::register_wall_bc(
     }
   }
   else if( userData.htcSpec_ || userData.refTempSpec_) {
+
+    const AlgorithmType algTypeCHT = WALL_CHT;
 
     // first make sure all appropriate variables were specified
     if ( !userData.refTempSpec_)
@@ -553,12 +557,12 @@ HeatCondEquationSystem::register_wall_bc(
 
     // solver; lhs
     std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi =
-      solverAlgDriver_->solverAlgMap_.find(algType);
+      solverAlgDriver_->solverAlgMap_.find(algTypeCHT);
     if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
       AssembleHeatCondWallSolverAlgorithm *theAlg
       = new AssembleHeatCondWallSolverAlgorithm(realm_, part, this,
           realm_.realmUsesEdges_);
-      solverAlgDriver_->solverAlgMap_[algType] = theAlg;
+      solverAlgDriver_->solverAlgMap_[algTypeCHT] = theAlg;
     }
     else {
       itsi->second->partVec_.push_back(part);
@@ -567,6 +571,8 @@ HeatCondEquationSystem::register_wall_bc(
   }
   else if ( userData.irradSpec_ ) {
     
+    const AlgorithmType algTypeRAD = WALL_RAD;
+
     // check for emissivity
     if ( !userData.emissSpec_)
       throw std::runtime_error("Sorry, irradiation was specified while emissivity was not");
@@ -614,12 +620,12 @@ HeatCondEquationSystem::register_wall_bc(
 
     // solver; lhs
     std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi =
-      solverAlgDriver_->solverAlgMap_.find(algType);
+      solverAlgDriver_->solverAlgMap_.find(algTypeRAD);
     if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
       AssembleHeatCondIrradWallSolverAlgorithm *theAlg
         = new AssembleHeatCondIrradWallSolverAlgorithm(realm_, part, this,
             realm_.realmUsesEdges_);
-      solverAlgDriver_->solverAlgMap_[algType] = theAlg;
+      solverAlgDriver_->solverAlgMap_[algTypeRAD] = theAlg;
     }
     else {
       itsi->second->partVec_.push_back(part);

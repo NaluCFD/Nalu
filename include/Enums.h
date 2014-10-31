@@ -22,7 +22,10 @@ enum AlgorithmType{
   MASS      = 4,
   SRC       = 5,
   CONTACT   = 6,
-  SYMMETRY  = 7
+  SYMMETRY  = 7,
+  WALL_HF   = 8,
+  WALL_CHT  = 9,
+  WALL_RAD  = 10
 };
 
 enum BoundaryConditionType{
