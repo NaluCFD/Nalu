@@ -27,7 +27,8 @@ NaluEnv::NaluEnv()
   : parallelCommunicator_(MPI_COMM_WORLD),
     pSize_(-1),
     pRank_(-1),
-    naluLogStream_(&std::cout)
+    naluLogStream_(&std::cout),
+    naluParallelStream_(&std::cout)
 {
   // initialize
   MPI_Comm_size(parallelCommunicator_, &pSize_);
@@ -50,6 +51,15 @@ std::ostream &
 NaluEnv::naluOutputP0()
 {
   return *naluLogStream_;
+}
+
+//--------------------------------------------------------------------------
+//-------- naluOutput ------------------------------------------------------
+//--------------------------------------------------------------------------
+std::ostream &
+NaluEnv::naluOutput()
+{
+  return *naluParallelStream_;
 }
 
 //--------------------------------------------------------------------------

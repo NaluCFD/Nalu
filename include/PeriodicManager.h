@@ -78,14 +78,23 @@ class PeriodicManager {
 
  private:
 
-  void setup_gid_pairs(
-    const stk::mesh::Part *partMaster,
-    const stk::mesh::Part *partSlave,
+  void augment_periodic_selector_pairs();
+
+  void initialize_translation_vector();
+
+  void determine_translation(
+     stk::mesh::Selector masterSelector,
+     stk::mesh::Selector slaveSelector,
+     std::vector<double> &translationVector,
+     std::vector<double> &rotationVector);
+
+  void remove_redundant_slave_nodes();
+
+  void populate_search_key_vec(
+    stk::mesh::Selector masterSelector,
+    stk::mesh::Selector slaveSelector,
+    std::vector<double> &translationVector,
     const stk::search::SearchMethod searchMethod);
-
-  void master_slave_reduction();
-
-  void create_slave_part_vector();
 
   void update_global_id_field();
 
@@ -107,21 +116,25 @@ class PeriodicManager {
   double timerSearch_;
 
   // the data structures to hold master/slave information
-  typedef std::pair<stk::mesh::Part*, stk::mesh::Part*> MeshPartPair;
   typedef std::pair<stk::mesh::Entity, stk::mesh::Entity> EntityPair;
+  typedef std::pair<stk::mesh::Selector, stk::mesh::Selector> SelectorPair;
   typedef std::vector<std::pair<theEntityKey,theEntityKey> > SearchKeyVector;
 
-  // vector of master:slave part pairs
-  std::vector<MeshPartPair> periodicPartPairs_;
+  // vector of master:slave selector pairs
+  std::vector<SelectorPair> periodicSelectorPairs_;
+
+  // vector of slave parts
+  stk::mesh::PartVector slavePartVector_;
 
   // vector of search types
   std::vector<stk::search::SearchMethod> searchMethodVec_;
 
+  // translation and rotation
+  std::vector<std::vector<double> > translationVector_;
+  std::vector<std::vector<double> > rotationVector_;
+
   // vector of masterEntity:slaveEntity
   std::vector<EntityPair> masterSlaveCommunicator_;
-
-  // vector of slave parts
-  stk::mesh::PartVector slavePartVector_;
 
   // culmination of all searches
   SearchKeyVector searchKeyVector_;

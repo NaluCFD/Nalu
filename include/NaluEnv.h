@@ -34,11 +34,14 @@ class NaluEnv
   int pSize_;
   int pRank_;
   std::ostream *naluLogStream_;
+  std::ostream *naluParallelStream_;
   
   NaluEmptyStreamBuffer naluEmptyStreamBuffer_;
   std::filebuf naluStreamBuffer_;
 
   std::ostream & naluOutputP0();
+  std::ostream & naluOutput();
+
   MPI_Comm parallel_comm();
   int parallel_size();
   int parallel_rank();

@@ -33,6 +33,7 @@
 // vector
 #include <vector>
 #include <map>
+#include <string>
 
 namespace sierra{
 namespace nalu{
@@ -67,13 +68,20 @@ PeriodicManager::add_periodic_pair(
   if (searchTolerance < searchTolerance_)
     searchTolerance_ = searchTolerance;
 
-  MeshPartPair periodicPartPair(masterMeshPart, slaveMeshPart);
-  periodicPartPairs_.push_back(periodicPartPair);
+  // form the slave part vector
+  slavePartVector_.push_back(slaveMeshPart);
+
+  // form the selector pair
+  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::Selector masterSelect = meta_data.locally_owned_part() & stk::mesh::Selector(*masterMeshPart);
+  stk::mesh::Selector slaveSelect = meta_data.locally_owned_part() & stk::mesh::Selector(*slaveMeshPart);
+  SelectorPair periodicSelectorPair(masterSelect, slaveSelect);
+  periodicSelectorPairs_.push_back(periodicSelectorPair);
 
   // determine search method for this pair; default is boost_rtree
   stk::search::SearchMethod searchMethod = stk::search::BOOST_RTREE;
   if ( searchMethodName == "boost_rtree" )
-      searchMethod = stk::search::BOOST_RTREE;
+    searchMethod = stk::search::BOOST_RTREE;
   else if ( searchMethodName == "stk_octree" )
     searchMethod = stk::search::OCTREE;
   else
@@ -104,26 +112,36 @@ PeriodicManager::get_search_time() {
 void
 PeriodicManager::build_constraints()
 {
+  if ( periodicSelectorPairs_.size() == 0 )
+     throw std::runtime_error("PeriodiocBC::Error: No periodic pair provided");
 
-  if ( periodicPartPairs_.size() == 0 )
-    throw std::runtime_error("PeriodiocBC::Error: No periodic pair provided");
+  NaluEnv::self().naluOutputP0() << std::endl;
+  NaluEnv::self().naluOutputP0() << "Periodic Review:  realm: " << realm_.name_ << std::endl;
+  NaluEnv::self().naluOutputP0() << "=========================" << std::endl;
 
-  // multiple pairs supported, however, constraint resolution not..
-  if ( periodicPartPairs_.size() > 1 ) {
-    NaluEnv::self().naluOutputP0()
-      << "Multiple periodic pairs supported, however, must not have any reduction need" << std::endl;
-  }
+  // clear vectors
+  searchKeyVector_.clear();
+
+  augment_periodic_selector_pairs();
+
+  // initialize translation and rotation vectors
+  initialize_translation_vector();
 
   // translate, search, constraint mapping
-  for ( size_t k = 0; k < periodicPartPairs_.size(); ++k) {
-    setup_gid_pairs(periodicPartPairs_[k].first, periodicPartPairs_[k].second, searchMethodVec_[k]);
+  for ( size_t k = 0; k < periodicSelectorPairs_.size(); ++k) {
+    determine_translation(periodicSelectorPairs_[k].first, periodicSelectorPairs_[k].second,
+        translationVector_[k], rotationVector_[k]);
+  }
+
+  remove_redundant_slave_nodes();
+
+  // translate, search, constraint mapping
+  for ( size_t k = 0; k < periodicSelectorPairs_.size(); ++k) {
+    populate_search_key_vec(periodicSelectorPairs_[k].first, periodicSelectorPairs_[k].second,
+        translationVector_[k], searchMethodVec_[k]);
   }
 
   create_ghosting_object();
-
-  master_slave_reduction();
-
-  create_slave_part_vector();
 
   // provide Nalu id update
   update_global_id_field();
@@ -131,46 +149,108 @@ PeriodicManager::build_constraints()
 }
 
 //--------------------------------------------------------------------------
-//-------- setup_gid_pairs -------------------------------------------------
+//-------- augment_periodic_selector_pairs ---------------------------------
 //--------------------------------------------------------------------------
 void
-PeriodicManager::setup_gid_pairs(
-  const stk::mesh::Part *masterPart,
-  const stk::mesh::Part *slavePart,
-  const stk::search::SearchMethod searchMethod)
+PeriodicManager::augment_periodic_selector_pairs()
+{
+  
+  const size_t pairSize = periodicSelectorPairs_.size();
+
+  switch ( pairSize ) {
+
+    case 1:
+      break; // nothing to do
+
+    case 2: {
+
+      // master/slave selectors
+      stk::mesh::Selector &masterA = periodicSelectorPairs_[0].first;
+      stk::mesh::Selector &masterB = periodicSelectorPairs_[1].first;
+
+      stk::mesh::Selector &slaveA = periodicSelectorPairs_[0].second;
+      stk::mesh::Selector &slaveB = periodicSelectorPairs_[1].second;
+
+      // push back intersection selector pairs
+      periodicSelectorPairs_.push_back(std::make_pair(masterA & masterB, slaveA & slaveB));
+
+      // need a search method; arbitrarily choose the first method specified
+      stk::search::SearchMethod searchMethod = searchMethodVec_[0];
+      searchMethodVec_.push_back(searchMethod);
+    
+      break;
+    }
+
+    case 3: {
+      const stk::mesh::Selector masterA = periodicSelectorPairs_[0].first;
+      const stk::mesh::Selector masterB = periodicSelectorPairs_[1].first;
+      const stk::mesh::Selector masterC = periodicSelectorPairs_[2].first;
+
+      const stk::mesh::Selector slaveA = periodicSelectorPairs_[0].second;
+      const stk::mesh::Selector slaveB = periodicSelectorPairs_[1].second;
+      const stk::mesh::Selector slaveC = periodicSelectorPairs_[2].second;
+
+      // push back intersection selector pairs
+      periodicSelectorPairs_.push_back(std::make_pair(masterA & masterB, slaveA & slaveB));
+      periodicSelectorPairs_.push_back(std::make_pair(masterB & masterC, slaveB & slaveC));
+      periodicSelectorPairs_.push_back(std::make_pair(masterA & masterC, slaveA & slaveC));
+      periodicSelectorPairs_.push_back(std::make_pair(masterA & masterB & masterC, slaveA & slaveB & slaveC));
+
+      // need a search method; arbitrarily choose the first method specified
+      stk::search::SearchMethod searchMethod = searchMethodVec_[0];
+      searchMethodVec_.push_back(searchMethod); // 3
+      searchMethodVec_.push_back(searchMethod); // 4
+      searchMethodVec_.push_back(searchMethod); // 5
+      searchMethodVec_.push_back(searchMethod); // 6
+
+      break;
+    }
+
+    default: {
+      NaluEnv::self().naluOutputP0() << "more than three periodic pairs assumes no common slave nodes " << std::endl;
+      break;
+    }
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- initialize_translation_vector -----------------------------------
+//--------------------------------------------------------------------------
+void
+PeriodicManager::initialize_translation_vector()
+{
+  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  translationVector_.resize(periodicSelectorPairs_.size());
+  rotationVector_.resize(periodicSelectorPairs_.size());
+  const int nDim = meta_data.spatial_dimension();
+  for ( size_t k = 0; k < periodicSelectorPairs_.size(); ++k ) {
+    translationVector_[k].resize(nDim);
+    rotationVector_[k].resize(nDim);
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- determine_translation -------------------------------------------
+//--------------------------------------------------------------------------
+void
+PeriodicManager::determine_translation(
+    stk::mesh::Selector masterSelector,
+    stk::mesh::Selector slaveSelector,
+    std::vector<double> &translationVector,
+    std::vector<double> &rotationVector)
 {
 
-  NaluEnv::self().naluOutputP0() << std::endl;
-  NaluEnv::self().naluOutputP0() << "Periodic Review:  realm: " << realm_.name_ << std::endl;
-  NaluEnv::self().naluOutputP0() << "=========================" << std::endl;
-
-  const std::string masterPartName = masterPart->name();
-  const std::string slavePartName = slavePart->name();
-
   stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
-
-  // required data structures; master/slave
-  std::vector<sphereBoundingBox> sphereBoundingBoxMasterVec;
-  std::vector<sphereBoundingBox> sphereBoundingBoxSlaveVec;
 
   // fields
   VectorFieldType *coordinates = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   const int nDim = meta_data.spatial_dimension();
 
-  // hack due to 3d; 2d searches need to fake a 3d search
-  const double pointRadius = searchTolerance_;
-  Point masterCenter, slaveCenter;
-
-  // Master: global_sum_coords_master; setup sphereBoundingBoxMasterVec,
+  // Master: global_sum_coords_master
   std::vector<double> local_sum_coords_master(nDim, 0.0), global_sum_coords_master(nDim, 0.0);
-
   size_t numberMasterNodes = 0, g_numberMasterNodes = 0;
 
-  stk::mesh::Selector sm_locally_owned = meta_data.locally_owned_part()
-    &stk::mesh::Selector(*masterPart);
-  stk::mesh::BucketVector const& master_node_buckets =
-    realm_.get_buckets( stk::topology::NODE_RANK, sm_locally_owned );
+  stk::mesh::BucketVector const& master_node_buckets = realm_.get_buckets( stk::topology::NODE_RANK, masterSelector);
 
   for ( stk::mesh::BucketVector::const_iterator ib = master_node_buckets.begin();
         ib != master_node_buckets.end() ; ++ib ) {
@@ -179,10 +259,7 @@ PeriodicManager::setup_gid_pairs(
     // point to data
     const double * coords = stk::mesh::field_data(*coordinates, b);
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
-      stk::mesh::Entity node = b[k];
       numberMasterNodes += 1;
-      // setup ident
-      theEntityKey theIdent(bulk_data.entity_key(node), NaluEnv::self().parallel_rank());
 
       // define offset for all nodal fields that are of nDim
       const size_t offSet = k*nDim;
@@ -191,12 +268,7 @@ PeriodicManager::setup_gid_pairs(
       for (int j = 0; j < nDim; ++j ) {
         const double cxj = coords[offSet+j];
         local_sum_coords_master[j] += cxj;
-        masterCenter[j] = cxj;
       }
-
-      // create the bounding point sphere and push back
-      sphereBoundingBox theSphere( Sphere(masterCenter, pointRadius), theIdent);
-      sphereBoundingBoxMasterVec.push_back(theSphere);
     }
   }
   stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &local_sum_coords_master[0], &global_sum_coords_master[0], nDim);
@@ -204,13 +276,10 @@ PeriodicManager::setup_gid_pairs(
 
   // Slave: global_sum_coords_slave
   std::vector<double> local_sum_coords_slave(nDim, 0.0), global_sum_coords_slave(nDim, 0.0);
-
-  stk::mesh::Selector ss_locally_owned = meta_data.locally_owned_part()
-    &stk::mesh::Selector(*slavePart);
-  stk::mesh::BucketVector const& slave_node_buckets =
-    realm_.get_buckets( stk::topology::NODE_RANK, ss_locally_owned );
-
   size_t numberSlaveNodes = 0, g_numberSlaveNodes = 0;
+
+  stk::mesh::BucketVector const& slave_node_buckets =
+    realm_.get_buckets( stk::topology::NODE_RANK, slaveSelector);
 
   for ( stk::mesh::BucketVector::const_iterator ib = slave_node_buckets.begin();
         ib != slave_node_buckets.end() ; ++ib ) {
@@ -230,29 +299,135 @@ PeriodicManager::setup_gid_pairs(
   stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &local_sum_coords_slave[0], &global_sum_coords_slave[0], nDim);
   stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &numberSlaveNodes, &g_numberSlaveNodes, 1);
 
-  // throw right away if master and slave nodes are not equal
-  if ( g_numberMasterNodes != g_numberSlaveNodes ) {
-    NaluEnv::self().naluOutputP0() << "Periodic BC Error: Master/Slave Pair: "
-        << masterPartName << "/" << slavePartName << std::endl;
-    NaluEnv::self().naluOutputP0() << "Master part has " << g_numberMasterNodes
-        << " while Slave part has " << g_numberSlaveNodes << std::endl;
-    throw std::runtime_error("Please ensure that periodic part surfaces match - both in node count and sane connectivities");
-  }
-
-  // TRANSLATE SLAVE onto MASTER
-  std::vector<double> translationVector(nDim, 0.0);
-  std::vector<double> rotationPoint(nDim, 0.0);  // master center of mass
-
+  // save off translation and rotation
   for (int j = 0; j < nDim; ++j ) {
     translationVector[j] = (global_sum_coords_master[j] - global_sum_coords_slave[j]) / g_numberMasterNodes;
-    rotationPoint[j] = global_sum_coords_master[j] / g_numberMasterNodes;
+    rotationVector[j] = global_sum_coords_master[j] / g_numberMasterNodes;
   }
 
   NaluEnv::self().naluOutputP0() << "Translating [ ";
   for (int j = 0; j < nDim; ++j ) {  NaluEnv::self().naluOutputP0() << translationVector[j] << " "; }
-  NaluEnv::self().naluOutputP0() << "] for Master/Slave pair " << masterPartName << "/" << slavePartName << std::endl;
+  NaluEnv::self().naluOutputP0() << "] Master/Slave pair " << std::endl;
+}
 
-  // SLAVE - setup sphereBoundingBoxSlaveVec
+//--------------------------------------------------------------------------
+//-------- remove_redundant_slave_nodes ------------------------------------
+//--------------------------------------------------------------------------
+void
+PeriodicManager::remove_redundant_slave_nodes()
+{
+
+  switch (periodicSelectorPairs_.size()) {
+
+    case 1: case 2:
+      break; // nothing to do
+
+    case 3: {
+      // slave selectors
+      stk::mesh::Selector &slaveA = periodicSelectorPairs_[0].second;
+      stk::mesh::Selector &slaveB = periodicSelectorPairs_[1].second;
+
+      // intersection of A/B
+      stk::mesh::Selector slaveIntersection = slaveA & slaveB;
+
+      // now remove redundant [corner] nodes
+      periodicSelectorPairs_[0].second = slaveA - slaveIntersection;
+      periodicSelectorPairs_[1].second = slaveB - slaveIntersection;
+
+      break;
+    }
+
+    case 7: {
+      // slave selectors
+      const stk::mesh::Selector slaveA = periodicSelectorPairs_[0].second;
+      const stk::mesh::Selector slaveB = periodicSelectorPairs_[1].second;
+      const stk::mesh::Selector slaveC = periodicSelectorPairs_[2].second;
+
+      // intersection of A/B/C (corner nodes)
+      const stk::mesh::Selector slaveABC = slaveA & slaveB & slaveC;
+
+      // intersection of A/B/C (edges of box)
+      const stk::mesh::Selector slaveAB = slaveA & slaveB;
+      const stk::mesh::Selector slaveAC = slaveA & slaveC;
+      const stk::mesh::Selector slaveBC = slaveB & slaveC;
+
+      // now remove redundant [corner] nodes
+      periodicSelectorPairs_[0].second = slaveA - (slaveAB | slaveAC);
+      periodicSelectorPairs_[1].second = slaveB - (slaveAB | slaveBC);
+      periodicSelectorPairs_[2].second = slaveC - (slaveAC | slaveBC);
+
+      // now remove redundant [edges of box] nodes
+      periodicSelectorPairs_[3].second = slaveAB - slaveABC;
+      periodicSelectorPairs_[4].second = slaveBC - slaveABC;
+      periodicSelectorPairs_[5].second = slaveAC - slaveABC;
+
+      break;
+    }
+    default: {
+      NaluEnv::self().naluOutputP0() << "more than three periodic pairs assumes no common slave nodes " << std::endl;
+      break;
+    }
+  }
+
+}
+//--------------------------------------------------------------------------
+//-------- populate_search_key_vec -----------------------------------------
+//--------------------------------------------------------------------------
+void
+PeriodicManager::populate_search_key_vec(
+    stk::mesh::Selector masterSelector,
+    stk::mesh::Selector slaveSelector,
+    std::vector<double> &translationVector,
+    const stk::search::SearchMethod searchMethod)
+{
+
+  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
+
+  // required data structures; master/slave
+  std::vector<sphereBoundingBox> sphereBoundingBoxMasterVec;
+  std::vector<sphereBoundingBox> sphereBoundingBoxSlaveVec;
+
+  // fields
+  VectorFieldType *coordinates = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  const int nDim = meta_data.spatial_dimension();
+
+  // Point
+  const double pointRadius = searchTolerance_;
+  Point masterCenter, slaveCenter;
+
+  // Master: setup sphereBoundingBoxMasterVec,
+  stk::mesh::BucketVector const& master_node_buckets = realm_.get_buckets( stk::topology::NODE_RANK, masterSelector);
+
+  for ( stk::mesh::BucketVector::const_iterator ib = master_node_buckets.begin();
+        ib != master_node_buckets.end() ; ++ib ) {
+    stk::mesh::Bucket & b = **ib;
+    const stk::mesh::Bucket::size_type length   = b.size();
+    // point to data
+    const double * coords = stk::mesh::field_data(*coordinates, b);
+    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+      stk::mesh::Entity node = b[k];
+      // setup ident
+      theEntityKey theIdent(bulk_data.entity_key(node), NaluEnv::self().parallel_rank());
+
+      // define offset for all nodal fields that are of nDim
+      const size_t offSet = k*nDim;
+
+      // sum local coords for translation; define localCoords for bounding point
+      for (int j = 0; j < nDim; ++j ) {
+        const double cxj = coords[offSet+j];
+        masterCenter[j] = cxj;
+      }
+
+      // create the bounding point sphere and push back
+      sphereBoundingBox theSphere( Sphere(masterCenter, pointRadius), theIdent);
+      sphereBoundingBoxMasterVec.push_back(theSphere);
+    }
+  }
+
+  // SLAVE: setup sphereBoundingBoxSlaveVec; translate slave onto master
+  stk::mesh::BucketVector const& slave_node_buckets =
+  realm_.get_buckets( stk::topology::NODE_RANK, slaveSelector);
   for ( stk::mesh::BucketVector::const_iterator ib = slave_node_buckets.begin();
        ib != slave_node_buckets.end() ; ++ib ) {
     stk::mesh::Bucket & b = **ib;
@@ -281,95 +456,6 @@ PeriodicManager::setup_gid_pairs(
   double timeA = stk::cpu_time();
   stk::search::coarse_search(sphereBoundingBoxSlaveVec, sphereBoundingBoxMasterVec, searchMethod, NaluEnv::self().parallel_comm(), searchKeyPair);
   timerSearch_ += (stk::cpu_time() - timeA);
-
-  //=====================================================================
-  // begin a series of checks that might indicate an issue with the mesh
-  //=====================================================================
-
-  // search should have provided **something**
-  if ( searchKeyPair.size() < 1 )
-    NaluEnv::self().naluOutputP0() << " issue with coarse_search; no pairs found. try increasing tolerance " << std::endl;
-
-  // Each slave entry must have one master. If not, smaller tolerance is required
-  const size_t searchSize = searchKeyPair.size();
-  size_t problemNodes = 0;
-  std::vector<std::pair<stk::mesh::EntityId, stk::mesh::EntityId>  > problemPairVec;
-  for ( size_t k = 0; k < searchSize; ++k) {
-    // get slave node for kth entry
-    stk::mesh::EntityId kthSlaveId = searchKeyPair[k].first.id();
-    size_t maxSizeToCheck = searchSize - 1;
-    if ( k < maxSizeToCheck ) {
-      // okay to check next entry
-      stk::mesh::EntityId kp1SlaveId = searchKeyPair[k+1].first.id();
-
-      // are they the same? If so, we have a problem
-      if ( kp1SlaveId == kthSlaveId ) {
-        stk::mesh::EntityId kthMasterId = searchKeyPair[k].second.id();
-        std::pair<stk::mesh::EntityId, stk::mesh::EntityId> theProblemPair
-          = std::make_pair(kthMasterId, kthSlaveId);
-        problemPairVec.push_back(theProblemPair);
-        problemNodes++;
-      }
-    }
-  }
-  size_t g_problemNodes = 0;
-  stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &problemNodes, &g_problemNodes, 1);
-
-  // report issues
-  if ( g_problemNodes > 0 ){
-    NaluEnv::self().naluOutputP0() << "PeriodicSearchError: Multiple candidates for periodic pair search on pair "
-        << masterPartName <<"/" << slavePartName << std::endl << std::endl;
-    NaluEnv::self().naluOutputP0() << g_problemNodes << " Occurrences; "
-        << "Please reduce search_tolerance to " << searchTolerance_/10.0 << std::endl;
-    for ( size_t k = 0; k < problemPairVec.size(); ++k ) {
-      stk::mesh::EntityId masterId = problemPairVec[k].first;
-      stk::mesh::EntityId slaveId = problemPairVec[k].second;
-      NaluEnv::self().naluOutputP0() << "Candidate Master/Slave pairs " << masterId << "/" << slaveId << std::endl;
-    }
-    throw std::runtime_error("PeriodiocBC::Error: Please reduce periodic_search_tolerance");
-  }
-
-  // All of the master nodes must have found at least one slave node
-  problemNodes = 0;
-  std::vector<stk::mesh::EntityId> problemNodeVec;
-  for ( stk::mesh::BucketVector::const_iterator ib = master_node_buckets.begin();
-          ib != master_node_buckets.end() ; ++ib ) {
-      stk::mesh::Bucket & b = **ib;
-      const stk::mesh::Bucket::size_type length   = b.size();
-      for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
-
-        stk::mesh::EntityId masterIdFromPart = bulk_data.identifier(b[k]);
-
-        // loop over search and see if one exists
-        bool foundIt = false;
-        for ( size_t j = 0; j < searchSize; ++j) {
-          stk::mesh::EntityId masterIdFromSearch = searchKeyPair[j].second.id();
-          if ( masterIdFromPart == masterIdFromSearch ) {
-            foundIt = true;
-            break;
-          }
-        }
-        // if we did not find the node, we have a problem
-        if (!foundIt ) {
-          problemNodes++;
-          problemNodeVec.push_back(masterIdFromPart);
-        }
-      }
-  }
-  g_problemNodes = 0;
-  stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &problemNodes, &g_problemNodes, 1);
-
-  // report issues
-  if ( g_problemNodes > 0 ){
-    NaluEnv::self().naluOutputP0() << "PeriodicSearchError: Master node never found a slave node match: "
-        << masterPartName <<"/" << slavePartName << std::endl << std::endl;
-    NaluEnv::self().naluOutputP0() << g_problemNodes << " Occurrences; "
-         << "Please check your mesh for proper periodicity " << std::endl;
-     for ( size_t k = 0; k < problemNodeVec.size(); ++k ) {
-       NaluEnv::self().naluOutputP0() << "Problem Master node " << problemNodeVec[k] << std::endl;
-     }
-     throw std::runtime_error("PeriodiocBC::Error: Master node did not find a slave node; increase search tolerance?");
-  }
 
   // populate searchKeyVector_; culmination of all master/slaves
   searchKeyVector_.insert(searchKeyVector_.end(), searchKeyPair.begin(), searchKeyPair.end());
@@ -434,31 +520,6 @@ PeriodicManager::get_ghosting_object()
 }
 
 //--------------------------------------------------------------------------
-//-------- master_slave_reduction ------------------------------------------
-//--------------------------------------------------------------------------
-void
-PeriodicManager::master_slave_reduction()
-{
-  // multiple pairs supported, however, constraint resolution not..
-  if ( periodicPartPairs_.size() > 1 ) {
-    NaluEnv::self().naluOutputP0()
-      << "Multiple periodic pairs supported, however, must not have any reduction need" << std::endl;
-  }
-}
-
-//--------------------------------------------------------------------------
-//-------- create_slave_part_vector ----------------------------------------
-//--------------------------------------------------------------------------
-void
-PeriodicManager::create_slave_part_vector()
-{
-  // for now, no slave reduction
-  for ( size_t k = 0; k < periodicPartPairs_.size(); ++k) {
-    slavePartVector_.push_back(periodicPartPairs_[k].second);
-  }
-}
-
-//--------------------------------------------------------------------------
 //-------- periodic_parallel_communicate_field -----------------------------
 //--------------------------------------------------------------------------
 void
@@ -496,7 +557,7 @@ PeriodicManager::update_global_id_field()
 
   stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
 
-  // no need to update periodically ghosted fields
+  // no need to update periodically ghosted fields..
 
   // vector of masterEntity:slaveEntity pairs
   for ( size_t k = 0; k < masterSlaveCommunicator_.size(); ++k) {
@@ -532,9 +593,7 @@ PeriodicManager::apply_constraints(
   const bool &setSlaves)
 {
 
-  // update periodically ghosted fields
-  periodic_parallel_communicate_field(theField);
-
+  // update periodically ghosted fields within add_ and set_
   if ( addSlaves )
     add_slave_to_master(theField, sizeOfField, bypassFieldCheck);
   if ( setSlaves )
@@ -554,6 +613,8 @@ PeriodicManager::apply_max_field(
   stk::mesh::FieldBase *theField,
   const unsigned &sizeOfField)
 {
+
+  periodic_parallel_communicate_field(theField);
 
   for ( size_t k = 0; k < masterSlaveCommunicator_.size(); ++k) {
     // extract master node and slave node
@@ -585,6 +646,9 @@ PeriodicManager::add_slave_to_master(
   const unsigned &sizeOfField,
   const bool &bypassFieldCheck)
 {
+  
+  periodic_parallel_communicate_field(theField);
+
   // iterate vector of masterEntity:slaveEntity pairs
   if ( bypassFieldCheck ) {
     // fields are expected to be defined on all master/slave nodes
@@ -598,7 +662,7 @@ PeriodicManager::add_slave_to_master(
       const double *slaveField = (double *)stk::mesh::field_data(*theField, slaveNode);
       // add in contribution
       for ( unsigned j = 0; j < sizeOfField; ++j ) {
-	masterField[j] += slaveField[j];
+        masterField[j] += slaveField[j];
       }
     }
   }
@@ -612,14 +676,16 @@ PeriodicManager::add_slave_to_master(
       // pointer to data
       double *masterField = (double *)stk::mesh::field_data(*theField, masterNode);
       if ( NULL != masterField ) {
-	const double *slaveField = (double *)stk::mesh::field_data(*theField, slaveNode);	
-	// add in contribution
-	for ( unsigned j = 0; j < sizeOfField; ++j ) {
-	  masterField[j] += slaveField[j];
-	}
+        const double *slaveField = (double *)stk::mesh::field_data(*theField, slaveNode);
+        // add in contribution
+        for ( unsigned j = 0; j < sizeOfField; ++j ) {
+          masterField[j] += slaveField[j];
+        }
       }
     }
   }
+
+  periodic_parallel_communicate_field(theField);
 
 }
 
@@ -632,6 +698,9 @@ PeriodicManager::set_slave_to_master(
   const unsigned &sizeOfField,
   const bool &bypassFieldCheck)
 {
+
+  periodic_parallel_communicate_field(theField);
+
   // iterate vector of masterEntity:slaveEntity pairs
   if ( bypassFieldCheck ) {
     // fields are expected to be defined on all master/slave nodes
@@ -645,7 +714,7 @@ PeriodicManager::set_slave_to_master(
       double *slaveField = (double *)stk::mesh::field_data(*theField, slaveNode);
       // set master to slave
       for ( unsigned j = 0; j < sizeOfField; ++j ) {
-	slaveField[j] = masterField[j];
+        slaveField[j] = masterField[j];
       }
     }
   }
@@ -660,14 +729,17 @@ PeriodicManager::set_slave_to_master(
       const double *masterField = (double *)stk::mesh::field_data(*theField, masterNode);
       
       if ( NULL != masterField ) {
-	double *slaveField = (double *)stk::mesh::field_data(*theField, slaveNode);
-	// set master to slave
-	for ( unsigned j = 0; j < sizeOfField; ++j ) {
-	  slaveField[j] = masterField[j];
-	}
+        double *slaveField = (double *)stk::mesh::field_data(*theField, slaveNode);
+        // set master to slave
+        for ( unsigned j = 0; j < sizeOfField; ++j ) {
+          slaveField[j] = masterField[j];
+        }
       }
     }
   }
+
+  periodic_parallel_communicate_field(theField);
+
 }
 
 } // namespace nalu
