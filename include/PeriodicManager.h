@@ -32,7 +32,7 @@ namespace nalu {
 
 class Realm;
 
-typedef stk::search::IdentProc<stk::mesh::EntityKey,unsigned> theEntityKey;
+typedef stk::search::IdentProc<stk::mesh::EntityKey,int> theEntityKey;
 typedef stk::search::Point<double> Point;
 typedef stk::search::Sphere<double> Sphere;
 typedef std::pair<Sphere,theEntityKey> sphereBoundingBox;
@@ -96,6 +96,8 @@ class PeriodicManager {
     std::vector<double> &translationVector,
     const stk::search::SearchMethod searchMethod);
 
+  void error_check();
+
   void update_global_id_field();
 
   /* communicate periodicGhosting nodes */
@@ -138,8 +140,6 @@ class PeriodicManager {
 
   // culmination of all searches
   SearchKeyVector searchKeyVector_;
-
- private:
 
   void add_slave_to_master(
     stk::mesh::FieldBase *theField,

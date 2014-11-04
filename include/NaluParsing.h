@@ -114,6 +114,13 @@ struct HeatTransferCoefficient {
   {}
 };
 
+struct RobinCouplingParameter {
+  double robinCouplingParameter_;
+  RobinCouplingParameter()
+    : robinCouplingParameter_(0.0)
+  {}
+};
+
 // base class
 struct UserData 
 {
@@ -152,15 +159,19 @@ struct WallUserData : public UserData {
   NormalHeatFlux q_;
   ReferenceTemperature referenceTemperature_;
   HeatTransferCoefficient heatTransferCoefficient_;
- 
+  RobinCouplingParameter robinCouplingParameter_;
+  
   bool tempSpec_;
   bool isAdiabatic_;
   bool heatFluxSpec_;
   bool isInterface_;
   bool refTempSpec_;
   bool htcSpec_;
+  bool robinParameterSpec_;
   bool irradSpec_;
   bool emissSpec_;
+  
+
   bool wallFunctionApproach_;
 
   WallUserData()
@@ -171,7 +182,8 @@ struct WallUserData : public UserData {
       isInterface_(false),
       refTempSpec_(false),
       htcSpec_(false),
-    irradSpec_(false),
+      robinParameterSpec_(false),
+      irradSpec_(false),
       wallFunctionApproach_(false) {}
 };
 

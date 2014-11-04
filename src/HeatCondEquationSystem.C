@@ -457,7 +457,7 @@ HeatCondEquationSystem::register_wall_bc(
       itd->second->partVec_.push_back(part);
     }
   }
-  else if(userData.heatFluxSpec_) {
+  else if( userData.heatFluxSpec_ && !userData.robinParameterSpec_ ) {
 
     const AlgorithmType algTypeHF = WALL_HF;
 
@@ -507,7 +507,7 @@ HeatCondEquationSystem::register_wall_bc(
       }
     }
   }
-  else if( userData.htcSpec_ || userData.refTempSpec_) {
+  else if( userData.htcSpec_ || (userData.refTempSpec_ && !userData.robinParameterSpec_) ) {
 
     const AlgorithmType algTypeCHT = WALL_CHT;
 
@@ -522,6 +522,8 @@ HeatCondEquationSystem::register_wall_bc(
     stk::mesh::put_field(*tRefField, *part);
     ScalarFieldType *htcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "heat_transfer_coefficient"));
     stk::mesh::put_field(*htcField, *part);
+    ScalarFieldType *normalHeatFluxField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "normal_heat_flux"));
+    stk::mesh::put_field(*normalHeatFluxField, *part);
 
     // aux algs
     ReferenceTemperature tRef = userData.referenceTemperature_;
@@ -543,6 +545,16 @@ HeatCondEquationSystem::register_wall_bc(
                                  htcField, htcAuxFunc,
                                  stk::topology::NODE_RANK);
 
+    // Create a zero-flux field to pass to generalized boundary condition
+    std::vector<double> zeroValue(1);
+    zeroValue[0] = 0.0;
+    AuxFunction *qnAuxFunc = new ConstantAuxFunction(0, 1, zeroValue);
+    AuxFunctionAlgorithm *qnAuxAlg = new AuxFunctionAlgorithm(realm_,
+                                                              part,
+                                                              normalHeatFluxField,
+                                                              qnAuxFunc,
+                                                              stk::topology::NODE_RANK);
+
     // decide where to put population of data
     if ( userData.isInterface_ ) {
       // xfer will handle population; only need to populate the initial value
@@ -554,14 +566,21 @@ HeatCondEquationSystem::register_wall_bc(
       bcDataAlg_.push_back(tRefAuxAlg);
       bcDataAlg_.push_back(htcAuxAlg);
     }
+    // added normal heat flux remains zero -- just set it at initial condition
+    realm_.initCondAlg_.push_back(qnAuxAlg);
 
     // solver; lhs
     std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi =
       solverAlgDriver_->solverAlgMap_.find(algTypeCHT);
     if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
       AssembleHeatCondWallSolverAlgorithm *theAlg
-      = new AssembleHeatCondWallSolverAlgorithm(realm_, part, this,
-          realm_.realmUsesEdges_);
+        = new AssembleHeatCondWallSolverAlgorithm(realm_, 
+                                                  part, 
+                                                  this,
+                                                  tRefField,
+                                                  htcField,
+                                                  normalHeatFluxField,
+                                                  realm_.realmUsesEdges_);
       solverAlgDriver_->solverAlgMap_[algTypeCHT] = theAlg;
     }
     else {
@@ -630,8 +649,87 @@ HeatCondEquationSystem::register_wall_bc(
     else {
       itsi->second->partVec_.push_back(part);
     }
-
   }
+  else if ( userData.robinParameterSpec_ ) {
+    
+    const AlgorithmType algTypeCHT = WALL_CHT;
+
+    // register boundary data
+    ScalarFieldType *robinParamField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "robin_coupling_parameter"));
+    stk::mesh::put_field(*robinParamField, *part);
+    ScalarFieldType *normalHeatFluxField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "normal_heat_flux"));
+    stk::mesh::put_field(*normalHeatFluxField, *part);
+    ScalarFieldType *tRefField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "reference_temperature"));
+    stk::mesh::put_field(*tRefField, *part);
+      
+    // aux algs
+    RobinCouplingParameter alpha = userData.robinCouplingParameter_;
+    std::vector<double> alphaUserSpec(1);
+    alphaUserSpec[0] = alpha.robinCouplingParameter_;
+    AuxFunction *alphaAuxFunc = new ConstantAuxFunction(0, 1, alphaUserSpec);
+    AuxFunctionAlgorithm *alphaAuxAlg = new AuxFunctionAlgorithm(realm_,
+                                                                 part,
+                                                                 robinParamField,
+                                                                 alphaAuxFunc,
+                                                                 stk::topology::NODE_RANK);
+    NormalHeatFlux heatFlux = userData.q_;
+    std::vector<double> qnUserSpec(1);
+    qnUserSpec[0] = heatFlux.qn_;
+    AuxFunction *qnAuxFunc = new ConstantAuxFunction(0, 1, qnUserSpec);
+    AuxFunctionAlgorithm *qnAuxAlg = new AuxFunctionAlgorithm(realm_,
+                                                              part,
+                                                              normalHeatFluxField,
+                                                              qnAuxFunc,
+                                                              stk::topology::NODE_RANK);
+
+    ReferenceTemperature tRef = userData.referenceTemperature_;
+    std::vector<double> tRefUserSpec(1);
+    tRefUserSpec[0] = tRef.referenceTemperature_;
+    AuxFunction *tRefAuxFunc = new ConstantAuxFunction(0, 1, tRefUserSpec);
+    AuxFunctionAlgorithm *tRefAuxAlg = new AuxFunctionAlgorithm(realm_, 
+                                                                part,
+                                                                tRefField, 
+                                                                tRefAuxFunc,
+                                                                stk::topology::NODE_RANK);
+
+
+    // decide where to put population of data
+    // Normal heat flux, reference temperature, and coupling parameter
+    // come from a transfer if this is an interface, so in that case
+    // only need to populate the initial values
+    if ( userData.isInterface_ ) {
+      // xfer will handle population; only need to populate the initial value
+      realm_.initCondAlg_.push_back(qnAuxAlg);
+      realm_.initCondAlg_.push_back(tRefAuxAlg);
+      realm_.initCondAlg_.push_back(alphaAuxAlg);
+    }
+    else {
+      // put it on bcData
+      bcDataAlg_.push_back(qnAuxAlg);
+      bcDataAlg_.push_back(tRefAuxAlg);
+      bcDataAlg_.push_back(alphaAuxAlg);
+    }
+
+    // solver contribution
+    std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi =
+      solverAlgDriver_->solverAlgMap_.find(algTypeCHT);
+    if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
+      AssembleHeatCondWallSolverAlgorithm *theAlg
+      = new AssembleHeatCondWallSolverAlgorithm(realm_, 
+                                                     part, 
+                                                     this,
+                                                     tRefField,
+                                                     robinParamField,
+                                                     normalHeatFluxField,
+                                                     realm_.realmUsesEdges_);
+      solverAlgDriver_->solverAlgMap_[algTypeCHT] = theAlg;
+    }
+    else {
+      itsi->second->partVec_.push_back(part);
+    }
+    
+  }
+
 }
 
 //--------------------------------------------------------------------------

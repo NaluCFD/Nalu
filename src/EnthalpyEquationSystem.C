@@ -608,7 +608,7 @@ EnthalpyEquationSystem::register_wall_bc(
       itd->second->partVec_.push_back(part);
     }
 
-    // heat transfer coefficient
+    // interface bc fields
 
     // register the fields
     ScalarFieldType *assembledWallArea =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "assembled_wall_area_ht"));
@@ -617,6 +617,10 @@ EnthalpyEquationSystem::register_wall_bc(
     stk::mesh::put_field(*referenceTemperature, *part);
     ScalarFieldType *heatTransferCoeff =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "heat_transfer_coefficient"));
     stk::mesh::put_field(*heatTransferCoeff, *part);
+    ScalarFieldType *normalHeatFlux = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "normal_heat_flux"));
+    stk::mesh::put_field(*normalHeatFlux, *part);
+    ScalarFieldType *robinCouplingParameter = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "robin_coupling_parameter"));
+    stk::mesh::put_field(*robinCouplingParameter, *part);
 
     // create the driver
     if ( NULL == assembleWallHeatTransferAlgDriver_ ) {

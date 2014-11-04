@@ -25,6 +25,9 @@ public:
     Realm &realm,
     stk::mesh::Part *part,
     EquationSystem *eqSystem,
+    ScalarFieldType *referenceTemp,
+    ScalarFieldType *couplingParameter,
+    ScalarFieldType *normalHeatFlux,
     bool useShifted = false);
   virtual ~AssembleHeatCondWallSolverAlgorithm() {}
   virtual void initialize_connectivity();
@@ -33,8 +36,9 @@ public:
   const bool useShifted_;
 
   GenericFieldType *exposedAreaVec_;
-  ScalarFieldType *heatTransCoeff_;
   ScalarFieldType *referenceTemp_;
+  ScalarFieldType *couplingParameter_;
+  ScalarFieldType *normalHeatFlux_;
   ScalarFieldType *temperature_;
 };
 

@@ -181,7 +181,7 @@ ContactInfo::construct_halo_state()
       HaloInfo *haloInfo = new HaloInfo(node, nDim);
 
       // setup ident; do something about processor count...
-      stk::search::IdentProc<uint64_t,unsigned> theIdent(bulk_data.identifier(node), NaluEnv::self().parallel_rank());
+      stk::search::IdentProc<uint64_t,int> theIdent(bulk_data.identifier(node), NaluEnv::self().parallel_rank());
       haloInfoMap_[bulk_data.identifier(node)] = haloInfo;
 
       // define offset for all nodal fields that are of nDim
@@ -532,7 +532,7 @@ ContactInfo::find_possible_elements()
            (rMax <= maxSearchRadius_ && rMax >= minSearchRadius_ )  ) {
 
         // setup ident
-        stk::search::IdentProc<uint64_t,unsigned> theIdent(bulk_data.identifier(elem), NaluEnv::self().parallel_rank());
+        stk::search::IdentProc<uint64_t,int> theIdent(bulk_data.identifier(elem), NaluEnv::self().parallel_rank());
 
         searchElementMap_[bulk_data.identifier(elem)] = elem;
 

@@ -32,7 +32,7 @@ namespace nalu{
 //==========================================================================
 // Class Definition
 //==========================================================================
-// AssembleHeatCondWallSolverAlgorithm - provides h(T-Too) flux
+// AssembleHeatCondWallSolverAlgorithm - provides q + alpha(Tref-T) flux
 //==========================================================================
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
@@ -41,15 +41,19 @@ AssembleHeatCondWallSolverAlgorithm::AssembleHeatCondWallSolverAlgorithm(
   Realm &realm,
   stk::mesh::Part *part,
   EquationSystem *eqSystem,
+  ScalarFieldType *referenceTemp,
+  ScalarFieldType *couplingParameter,
+  ScalarFieldType *normalHeatFlux,
   bool useShifted)
   : SolverAlgorithm(realm, part, eqSystem),
-    useShifted_(useShifted)
+    useShifted_(useShifted),
+    referenceTemp_(referenceTemp),
+    couplingParameter_(couplingParameter),
+    normalHeatFlux_(normalHeatFlux)
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
   exposedAreaVec_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");
-  heatTransCoeff_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "heat_transfer_coefficient");
-  referenceTemp_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "reference_temperature");
   temperature_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature");
 }
 
@@ -79,7 +83,8 @@ AssembleHeatCondWallSolverAlgorithm::execute()
   std::vector<stk::mesh::Entity> connected_nodes;
 
   // nodal fields to gather
-  std::vector<double> ws_htc;
+  std::vector<double> ws_coupling_parameter;
+  std::vector<double> ws_normal_heat_flux;
   std::vector<double> ws_reference_temperature;
   std::vector<double> ws_temperature;
 
@@ -109,7 +114,8 @@ AssembleHeatCondWallSolverAlgorithm::execute()
     connected_nodes.resize(nodesPerFace);
 
     // algorithm related
-    ws_htc.resize(nodesPerFace);
+    ws_coupling_parameter.resize(nodesPerFace);
+    ws_normal_heat_flux.resize(nodesPerFace);
     ws_reference_temperature.resize(nodesPerFace);
     ws_temperature.resize(nodesPerFace);
     ws_shape_function.resize(numScsIp*nodesPerFace);
@@ -117,7 +123,8 @@ AssembleHeatCondWallSolverAlgorithm::execute()
     // pointers
     double *p_lhs = &lhs[0];
     double *p_rhs = &rhs[0];
-    double *p_htc = &ws_htc[0];
+    double *p_coupling_parameter = &ws_coupling_parameter[0];
+    double *p_normal_heat_flux = &ws_normal_heat_flux[0];
     double *p_reference_temperature = &ws_reference_temperature[0];
     double *p_temperature = &ws_temperature[0];
     double *p_shape_function = &ws_shape_function[0];
@@ -150,7 +157,8 @@ AssembleHeatCondWallSolverAlgorithm::execute()
         connected_nodes[ni] = node;
 
         // gather scalar
-        p_htc[ni] = *stk::mesh::field_data(*heatTransCoeff_, node);
+        p_coupling_parameter[ni] = *stk::mesh::field_data(*couplingParameter_, node);
+        p_normal_heat_flux[ni] = *stk::mesh::field_data(*normalHeatFlux_, node);
         p_reference_temperature[ni] = *stk::mesh::field_data(*referenceTemp_, node);
         p_temperature[ni] = *stk::mesh::field_data(*temperature_, node);
       }
@@ -168,23 +176,25 @@ AssembleHeatCondWallSolverAlgorithm::execute()
         const int offSet = ip*nodesPerFace;
 	
         // form boundary ip values
-        double htcBip = 0.0;
-        double tRefBip = 0.0;
-        double tBip = 0.0;
+        double alphaBip = 0.0;
+        double qBip     = 0.0;
+        double tRefBip  = 0.0;
+        double tBip     = 0.0;
         for ( int ic = 0; ic < nodesPerFace; ++ic ) {
           const double r = p_shape_function[offSet+ic];
-          htcBip += r*p_htc[ic];
-          tRefBip += r*p_reference_temperature[ic];
-          tBip += r*p_temperature[ic];
+          alphaBip += r * p_coupling_parameter[ic];
+          qBip     += r * p_normal_heat_flux[ic];
+          tRefBip  += r * p_reference_temperature[ic];
+          tBip     += r * p_temperature[ic];
         }
 
         // form convection and rhs contribution
-        const double convection = htcBip*(tRefBip - tBip)*magA;
-        p_rhs[nn] += convection;
+        const double flux = (qBip + alphaBip*(tRefBip - tBip)) * magA;
+        p_rhs[nn] += flux;
 	
         // sensitivities
         const int rowR = nn*nodesPerFace;
-        const double lhsFac = htcBip*magA;
+        const double lhsFac = alphaBip*magA;
         for ( int ic = 0; ic < nodesPerFace; ++ic ) {
           const double r = p_shape_function[offSet+ic];
           p_lhs[rowR+ic] += r*lhsFac;

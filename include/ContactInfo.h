@@ -38,7 +38,7 @@ namespace nalu {
 class Realm;
 class HaloInfo;
 
-typedef stk::search::IdentProc<uint64_t,unsigned>  theKey;
+typedef stk::search::IdentProc<uint64_t,int>  theKey;
 typedef stk::search::Point<double> Point;
 typedef stk::search::Box<double> Box;
 typedef std::pair<Point,theKey> boundingPoint;

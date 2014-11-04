@@ -46,12 +46,15 @@ ComputeHeatTransferEdgeWallAlgorithm::ComputeHeatTransferEdgeWallAlgorithm(
     temperature_(NULL),
     dhdx_(NULL),
     coordinates_(NULL),
+    density_(NULL),
     viscosity_(NULL),
     specificHeat_(NULL),
     exposedAreaVec_(NULL),
     assembledWallArea_(NULL),
     referenceTemperature_(NULL),
     heatTransferCoefficient_(NULL),
+    normalHeatFlux_(NULL),
+    robinCouplingParameter_(NULL),
     Pr_(realm.get_lam_prandtl("enthalpy"))
 {
   // save off fields
@@ -59,12 +62,15 @@ ComputeHeatTransferEdgeWallAlgorithm::ComputeHeatTransferEdgeWallAlgorithm(
   temperature_= meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature");
   dhdx_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "dhdx");
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
   viscosity_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity");
   specificHeat_= meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "specific_heat");
   exposedAreaVec_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");
   assembledWallArea_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "assembled_wall_area_ht");
   referenceTemperature_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "reference_temperature");
   heatTransferCoefficient_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "heat_transfer_coefficient");
+  normalHeatFlux_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "normal_heat_flux");
+  robinCouplingParameter_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "robin_coupling_parameter");
 }
 
 //--------------------------------------------------------------------------
@@ -78,6 +84,8 @@ ComputeHeatTransferEdgeWallAlgorithm::execute()
   stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
 
   const int nDim = meta_data.spatial_dimension();
+
+  const double dt = realm_.get_time_step();
 
   // define vector of parent topos; should always be UNITY in size
   std::vector<stk::topology> parentTopo;
@@ -139,11 +147,14 @@ ComputeHeatTransferEdgeWallAlgorithm::execute()
 
         // nearest nodes; gathered and to-be-scattered
         const double * dhdxR    =  stk::mesh::field_data(*dhdx_, nodeR );
+        const double densityR   = *stk::mesh::field_data(*density_, nodeR );
         const double viscosityR = *stk::mesh::field_data(*viscosity_, nodeR );
         const double specificHeatR = *stk::mesh::field_data(*specificHeat_, nodeR );
         double *assembledWallArea = stk::mesh::field_data(*assembledWallArea_, nodeR);
         double *referenceTemperature = stk::mesh::field_data(*referenceTemperature_, nodeR);
         double *heatTransferCoefficient = stk::mesh::field_data(*heatTransferCoefficient_, nodeR);
+        double *normalHeatFlux = stk::mesh::field_data(*normalHeatFlux_, nodeR);
+        double *robinCouplingParameter = stk::mesh::field_data(*robinCouplingParameter_, nodeR);
 
         // offset for bip area vector
         const int faceOffSet = ip*nDim;
@@ -161,6 +172,7 @@ ComputeHeatTransferEdgeWallAlgorithm::execute()
         const double inv_axdx = 1.0/axdx;
         const double aMag = std::sqrt(asq);
         const double thermalCondBip = viscosityR*specificHeatR/Pr_;
+        const double edgeLen = axdx/aMag;
 
         // NOC; convert dhdx to dTdx
         double nonOrth = 0.0;
@@ -172,6 +184,11 @@ ComputeHeatTransferEdgeWallAlgorithm::execute()
           nonOrth += -thermalCondBip*kxj*GjT;
         }
 
+        // compute coupling parameter
+        const double chi = densityR * specificHeatR * edgeLen * edgeLen
+          / (2 * thermalCondBip * dt);
+        const double alpha = compute_coupling_parameter(thermalCondBip, edgeLen, chi);
+
         // assemble the nodal quantities; group NOC on reference temp
         // if NOC is < 0; Too will be greater than Tphyscial
         // if NOC is > 0; Too will be less than Tphysical
@@ -179,6 +196,8 @@ ComputeHeatTransferEdgeWallAlgorithm::execute()
         *assembledWallArea += aMag;
         *referenceTemperature += thermalCondBip*tempL*asq*inv_axdx - nonOrth;
         *heatTransferCoefficient += -thermalCondBip*tempR*asq*inv_axdx;
+        *normalHeatFlux += thermalCondBip*(tempL-tempR)*asq*inv_axdx - nonOrth;
+        *robinCouplingParameter += alpha*aMag;
       }
     }
   }
@@ -193,6 +212,18 @@ ComputeHeatTransferEdgeWallAlgorithm::~ComputeHeatTransferEdgeWallAlgorithm()
   // does nothing
 }
 
+//--------------------------------------------------------------------------
+//-------- compute_coupling_parameter --------------------------------------
+//--------------------------------------------------------------------------
+double
+ComputeHeatTransferEdgeWallAlgorithm::compute_coupling_parameter(const double & kappa,
+                                                                 const double & h,
+                                                                 const double & chi)
+{
+  // This function approximates the ideal coupling parameter for Dirichlet-Robin coupling
+  const double A = 1.0 + chi - 1.0/(1.0 + chi + std::sqrt(chi*(chi+2)));
+  return A * kappa/h;
+}
 
 
 } // namespace nalu

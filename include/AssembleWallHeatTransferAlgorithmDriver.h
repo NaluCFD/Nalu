@@ -31,6 +31,8 @@ public:
   ScalarFieldType *assembledWallArea_;
   ScalarFieldType *referenceTemperature_;
   ScalarFieldType *heatTransferCoefficient_;
+  ScalarFieldType *normalHeatFlux_;
+  ScalarFieldType *robinCouplingParameter_;
   ScalarFieldType *temperature_;
 
 };

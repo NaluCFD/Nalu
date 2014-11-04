@@ -127,7 +127,7 @@ PeriodicManager::build_constraints()
   // initialize translation and rotation vectors
   initialize_translation_vector();
 
-  // translate, search, constraint mapping
+  // translate
   for ( size_t k = 0; k < periodicSelectorPairs_.size(); ++k) {
     determine_translation(periodicSelectorPairs_[k].first, periodicSelectorPairs_[k].second,
         translationVector_[k], rotationVector_[k]);
@@ -135,13 +135,15 @@ PeriodicManager::build_constraints()
 
   remove_redundant_slave_nodes();
 
-  // translate, search, constraint mapping
+  // search and constraint mapping
   for ( size_t k = 0; k < periodicSelectorPairs_.size(); ++k) {
     populate_search_key_vec(periodicSelectorPairs_[k].first, periodicSelectorPairs_[k].second,
         translationVector_[k], searchMethodVec_[k]);
   }
 
   create_ghosting_object();
+
+  error_check();
 
   // provide Nalu id update
   update_global_id_field();
@@ -370,6 +372,7 @@ PeriodicManager::remove_redundant_slave_nodes()
   }
 
 }
+
 //--------------------------------------------------------------------------
 //-------- populate_search_key_vec -----------------------------------------
 //--------------------------------------------------------------------------
@@ -463,6 +466,52 @@ PeriodicManager::populate_search_key_vec(
 }
 
 //--------------------------------------------------------------------------
+//-------- error_check -----------------------------------------------------
+//--------------------------------------------------------------------------
+void
+PeriodicManager::error_check()
+{
+  // number of slave nodes should equal the size of the searchKeyVector_
+  size_t l_totalNumber[2] = {0,0};
+
+  // extract total locally owned slave nodes
+  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::Selector s_locally_owned = meta_data.locally_owned_part()
+    & stk::mesh::selectUnion(slavePartVector_);
+  stk::mesh::BucketVector const& slave_node_buckets = realm_.get_buckets( stk::topology::NODE_RANK, s_locally_owned);
+  for ( stk::mesh::BucketVector::const_iterator ib = slave_node_buckets.begin();
+	ib != slave_node_buckets.end() ; ++ib ) {
+    stk::mesh::Bucket & b = **ib;
+    const stk::mesh::Bucket::size_type length   = b.size();
+    l_totalNumber[0] += length;
+  }
+  
+  // extract locally owned slave nodes from the search
+  for (size_t i=0, size=searchKeyVector_.size(); i<size; ++i) {
+    if ( NaluEnv::self().parallel_rank() == searchKeyVector_[i].second.proc())
+      l_totalNumber[1] += 1;
+  }
+  
+  // parallel sum and check
+  size_t g_totalNumber[2] = {0,0};
+  stk::all_reduce_sum(NaluEnv::self().parallel_comm(), l_totalNumber, g_totalNumber, 2);
+
+  // soft error check
+  if ( g_totalNumber[0] != g_totalNumber[1]) {
+    NaluEnv::self().naluOutputP0() << "Probable issue with Search: " << std::endl;
+    NaluEnv::self().naluOutputP0() << "the total number of slave nodes (" << g_totalNumber[0] << ")" << std::endl;
+    NaluEnv::self().naluOutputP0() << "does not equal the product of the search(" << g_totalNumber[1] << ")" << std::endl;
+    NaluEnv::self().naluOutputP0() <<" Try reducing the tolerance" << std::endl;
+  }
+  else {
+    NaluEnv::self().naluOutputP0() << "Parallel consistency noted in master/slave pairings: "
+        << g_totalNumber[0] << "/"<< g_totalNumber[1] << std::endl;
+
+  }
+
+}
+
+//--------------------------------------------------------------------------
 //-------- create_ghosting_object ------------------------------------------
 //--------------------------------------------------------------------------
 void
@@ -490,7 +539,7 @@ PeriodicManager::create_ghosting_object()
 
   size_t numNodes = sendNodes.size();
   size_t g_numNodes = 0;
-  stk::all_reduce_sum(bulk_data.parallel(), &numNodes, &g_numNodes, 1);
+  stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &numNodes, &g_numNodes, 1);
   if ( g_numNodes > 0) {
     // check if we need to ghost
     bulk_data.modification_begin();

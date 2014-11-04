@@ -34,16 +34,23 @@ public:
   ScalarFieldType *temperature_;
   VectorFieldType *dhdx_;
   VectorFieldType *coordinates_;
+  ScalarFieldType *density_;
   ScalarFieldType *viscosity_;
   ScalarFieldType *specificHeat_;
   GenericFieldType *exposedAreaVec_;
   ScalarFieldType *assembledWallArea_;
   ScalarFieldType *referenceTemperature_;
   ScalarFieldType *heatTransferCoefficient_;
+  ScalarFieldType *normalHeatFlux_;
+  ScalarFieldType *robinCouplingParameter_;
 
   // only support properties based on constant Prandtl
   const double Pr_;
 
+  double compute_coupling_parameter(const double & kappa,
+                                    const double & h,
+                                    const double & chi);
+  
 };
 
 } // namespace nalu

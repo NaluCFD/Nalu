@@ -45,24 +45,30 @@ ComputeHeatTransferElemWallAlgorithm::ComputeHeatTransferElemWallAlgorithm(
   : Algorithm(realm, part),
     temperature_(NULL),
     coordinates_(NULL),
+    density_(NULL),
     viscosity_(NULL),
     specificHeat_(NULL),
     exposedAreaVec_(NULL),
     assembledWallArea_(NULL),
     referenceTemperature_(NULL),
     heatTransferCoefficient_(NULL),
+    normalHeatFlux_(NULL),
+    robinCouplingParameter_(NULL),
     Pr_(realm.get_lam_prandtl("enthalpy"))
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
   temperature_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature");
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
   viscosity_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity");
   specificHeat_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "specific_heat");
   exposedAreaVec_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");
   assembledWallArea_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "assembled_wall_area_ht");
   referenceTemperature_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "reference_temperature");
   heatTransferCoefficient_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "heat_transfer_coefficient");
+  normalHeatFlux_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "normal_heat_flux");
+  robinCouplingParameter_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "robin_coupling_parameter");
 }
 
 //--------------------------------------------------------------------------
@@ -77,10 +83,14 @@ ComputeHeatTransferElemWallAlgorithm::execute()
 
   const int nDim = meta_data.spatial_dimension();
 
+  const double dt = realm_.get_time_step();
+
   // nodal fields to gather
   std::vector<double> ws_coordinates;
   std::vector<double> ws_temperature;
   std::vector<double> ws_thermalCond;
+  std::vector<double> ws_density;
+  std::vector<double> ws_specificHeat;
 
   // master element
   std::vector<double> ws_face_shape_function;
@@ -122,6 +132,8 @@ ComputeHeatTransferElemWallAlgorithm::execute()
     ws_coordinates.resize(nodesPerElement*nDim);
     ws_temperature.resize(nodesPerElement);
     ws_thermalCond.resize(nodesPerFace);
+    ws_density.resize(nodesPerFace);
+    ws_specificHeat.resize(nodesPerFace);
     ws_face_shape_function.resize(nodesPerFace*nodesPerFace);
     ws_dndx.resize(nDim*nodesPerFace*nodesPerElement);
     ws_det_j.resize(nodesPerFace);
@@ -132,6 +144,8 @@ ComputeHeatTransferElemWallAlgorithm::execute()
     double *p_coordinates = &ws_coordinates[0];
     double *p_temperature = &ws_temperature[0];
     double *p_thermalCond = &ws_thermalCond[0];
+    double *p_density     = &ws_density[0];
+    double *p_specificHeat = &ws_specificHeat[0];
     double *p_face_shape_function = &ws_face_shape_function[0];
     double *p_dndx = &ws_dndx[0];
     double *p_nodesOnFace = &ws_nodesOnFace[0];
@@ -160,8 +174,10 @@ ComputeHeatTransferElemWallAlgorithm::execute()
       for ( int ni = 0; ni < num_face_nodes; ++ni ) {
         stk::mesh::Entity node = face_node_rels[ni];
         // gather scalars
+        p_density[ni] = *stk::mesh::field_data(*density_, node);
         const double mu = *stk::mesh::field_data(*viscosity_, node);
         const double Cp = *stk::mesh::field_data(*specificHeat_, node);
+        p_specificHeat[ni] = Cp;
         p_thermalCond[ni] = mu*Cp/Pr_;
       }
 
@@ -186,7 +202,7 @@ ComputeHeatTransferElemWallAlgorithm::execute()
         p_nodesOnFace[ni] = 0.0;
         p_nodesOffFace[ni] = 1.0;
         stk::mesh::Entity node = elem_node_rels[ni];
-        // gather scalar
+        // gather scalars
         p_temperature[ni] = *stk::mesh::field_data(*temperature_, node);
         // gather vectors
         double * coords = stk::mesh::field_data(*coordinates_, node);
@@ -216,6 +232,8 @@ ComputeHeatTransferElemWallAlgorithm::execute()
         double *assembledWallArea = stk::mesh::field_data(*assembledWallArea_, nodeR);
         double *referenceTemperature = stk::mesh::field_data(*referenceTemperature_, nodeR);
         double *heatTransferCoefficient = stk::mesh::field_data(*heatTransferCoefficient_, nodeR);
+        double *normalHeatFlux = stk::mesh::field_data(*normalHeatFlux_, nodeR);
+        double *robinCouplingParameter = stk::mesh::field_data(*robinCouplingParameter_, nodeR);
 
         // offset for bip area vector and types of shape function
         const int faceOffSet = ip*nDim;
@@ -223,14 +241,20 @@ ComputeHeatTransferElemWallAlgorithm::execute()
 
         // interpolate to bip
         double thermalCondBip = 0.0;
+        double densityBip = 0.0;
+        double specificHeatBip = 0.0;
         for ( int ic = 0; ic < nodesPerFace; ++ic ) {
           const double r = p_face_shape_function[offSetSF_face+ic];
           thermalCondBip += r*p_thermalCond[ic];
+          densityBip += r*p_density[ic];
+          specificHeatBip += r*p_specificHeat[ic];
         }
 
         // handle flux due to on and off face in a single loop (on/off provided above)
-        double dndxOn = 0.0;
+        double dndx    = 0.0;
+        double dndxOn  = 0.0;
         double dndxOff = 0.0;
+        double invEltLen = 0.0;
         for ( int ic = 0; ic < nodesPerElement; ++ic ) {
           const int offSetDnDx = nDim*nodesPerElement*ip + ic*nDim;
           const double nodesOnFace = p_nodesOnFace[ic];
@@ -239,8 +263,11 @@ ComputeHeatTransferElemWallAlgorithm::execute()
           for ( int j = 0; j < nDim; ++j ) {
             const double axj = areaVec[faceOffSet+j];
             const double dndxj = p_dndx[offSetDnDx+j];
-            dndxOn  += dndxj*axj*nodesOnFace*tempIC;
-            dndxOff += dndxj*axj*nodesOffFace*tempIC;
+            const double dTdA = dndxj*axj*tempIC;
+            dndx    += dTdA;
+            dndxOn  += dTdA*nodesOnFace;
+            dndxOff += dTdA*nodesOffFace;
+            invEltLen += dndxj*axj*nodesOnFace;
           }
         }
 
@@ -251,11 +278,19 @@ ComputeHeatTransferElemWallAlgorithm::execute()
           aMag += axj*axj;
         }
         aMag = std::sqrt(aMag);
+        double eltLen = aMag/invEltLen;
+
+        // compute coupling parameter
+        const double chi = densityBip * specificHeatBip * eltLen * eltLen 
+          / (2 * thermalCondBip * dt);
+        const double alpha = compute_coupling_parameter(thermalCondBip, eltLen, chi);
 
         // assemble the nodal quantities
         *assembledWallArea += aMag;
+        *normalHeatFlux -= thermalCondBip*dndx;
         *referenceTemperature -= thermalCondBip*dndxOff;
         *heatTransferCoefficient -= thermalCondBip*dndxOn;
+        *robinCouplingParameter += alpha*aMag;
       }
     }
   }
@@ -268,6 +303,19 @@ ComputeHeatTransferElemWallAlgorithm::execute()
 ComputeHeatTransferElemWallAlgorithm::~ComputeHeatTransferElemWallAlgorithm()
 {
   // does nothing
+}
+
+//--------------------------------------------------------------------------
+//-------- compute_coupling_parameter --------------------------------------
+//--------------------------------------------------------------------------
+double
+ComputeHeatTransferElemWallAlgorithm::compute_coupling_parameter(const double & kappa,
+                                                                 const double & h,
+                                                                 const double & chi)
+{
+  // This function approximates the ideal coupling parameter for Dirichlet-Robin coupling
+  const double A = 1.0 + chi - 1.0/(1.0 + chi + std::sqrt(chi*(chi+2)));
+  return A * kappa/h;
 }
 
 } // namespace nalu

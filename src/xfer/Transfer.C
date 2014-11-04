@@ -149,6 +149,24 @@ Transfer::load(const YAML::Node & node)
       thePairT = std::make_pair(sameNameT, sameNameT);
       transferVariablesPairName_.push_back(thePairT);
     }
+    else if ( couplingPhysicsName_ == "fluids_robin" ) {
+      // q
+      std::pair<std::string, std::string> thePairQ;
+      std::string sameNameQ = "normal_heat_flux";
+      thePairQ = std::make_pair(sameNameQ, sameNameQ);
+      transferVariablesPairName_.push_back(thePairQ);
+      // Too
+      std::pair<std::string, std::string> thePairT;
+      std::string fluidsT  = "temperature";
+      std::string thermalT = "reference_temperature";
+      thePairT = std::make_pair(fluidsT, thermalT);
+      transferVariablesPairName_.push_back(thePairT);
+      // alpha
+      std::pair<std::string, std::string> thePairA;
+      std::string sameNameA = "robin_coupling_parameter";
+      thePairA = std::make_pair(sameNameA, sameNameA);
+      transferVariablesPairName_.push_back(thePairA);
+    }
     else if ( couplingPhysicsName_ == "thermal_cht" ) {
       // T -> T
       std::pair<std::string, std::string> thePairT;
@@ -161,8 +179,20 @@ Transfer::load(const YAML::Node & node)
       thePairTbc = std::make_pair(temperatureName, temperatureBcName);
       transferVariablesPairName_.push_back(thePairTbc);
     }
+    else if ( couplingPhysicsName_ == "thermal_robin" ) {
+      // T -> T
+      std::pair<std::string, std::string> thePairT;
+      std::string temperatureName = "temperature";
+      thePairT = std::make_pair(temperatureName, temperatureName);
+      transferVariablesPairName_.push_back(thePairT);
+      // T -> Tbc
+      std::pair<std::string, std::string> thePairTbc;
+      std::string temperatureBcName = "temperature_bc";
+      thePairTbc = std::make_pair(temperatureName, temperatureBcName);
+      transferVariablesPairName_.push_back(thePairTbc);
+    }
     else {
-      throw std::runtime_error("only supports pre-defined fluids/thermal_cht; perhaps you can use the generic interface");
+      throw std::runtime_error("only supports pre-defined fluids/thermal_cht/robin; perhaps you can use the generic interface");
     }
   }
 

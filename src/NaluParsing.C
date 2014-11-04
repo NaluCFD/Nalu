@@ -77,6 +77,10 @@ void operator >> (const YAML::Node& node, HeatTransferCoefficient& htc) {
   node >> htc.heatTransferCoefficient_;
 }
 
+void operator >> (const YAML::Node& node, RobinCouplingParameter& alpha) {
+  node >> alpha.robinCouplingParameter_;
+}
+
 void operator >> (const YAML::Node& node, MasterSlave& ms) {
   node[0] >> ms.master_;
   node[1] >> ms.slave_;
@@ -138,6 +142,10 @@ void operator >> (const YAML::Node& node, WallUserData& wallData) {
   if ( node.FindValue("irradiation") ) {
     node["irradiation"] >> wallData.irradiation_;
     wallData.irradSpec_ = true;
+  }
+  if ( node.FindValue("robin_coupling_parameter") ) {
+    node["robin_coupling_parameter"] >> wallData.robinCouplingParameter_;
+    wallData.robinParameterSpec_ = true;
   }
   if ( node.FindValue("use_wall_function")) {
     node["use_wall_function"] >> wallData.wallFunctionApproach_;
