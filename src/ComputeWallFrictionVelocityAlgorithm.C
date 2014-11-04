@@ -288,8 +288,8 @@ ComputeWallFrictionVelocityAlgorithm::execute()
         }
         uTangential = std::sqrt(uTangential);
 
-	// provide an initial guess based on yplusCrit_ (more robust than a pure guess on utau)
-	double utauGuess = yplusCrit_*muBip/rhoBip/ypBip;
+        // provide an initial guess based on yplusCrit_ (more robust than a pure guess on utau)
+        double utauGuess = yplusCrit_*muBip/rhoBip/ypBip;
   
         compute_utau(uTangential, ypBip, rhoBip, muBip, utauGuess);
         wallFrictionVelocityBip[ip] = utauGuess;

@@ -63,6 +63,7 @@ SurfaceForceAndMomentAlgorithm::SurfaceForceAndMomentAlgorithm(
     pressure_(NULL),
     pressureForce_(NULL),
     tauWall_(NULL),
+    density_(NULL),
     viscosity_(NULL),
     dudx_(NULL),
     exposedAreaVec_(NULL),
@@ -74,6 +75,7 @@ SurfaceForceAndMomentAlgorithm::SurfaceForceAndMomentAlgorithm(
   pressure_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure");
   pressureForce_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "pressure_force");
   tauWall_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "tau_wall");
+  density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
   // extract viscosity name
   const std::string viscName = realm_.is_turbulent()
     ? "effective_viscosity_u" : "viscosity";
@@ -90,7 +92,7 @@ SurfaceForceAndMomentAlgorithm::SurfaceForceAndMomentAlgorithm(
   if ( NaluEnv::self().parallel_rank() == 0 ) {
     std::ofstream myfile;
     myfile.open(outputFileName_.c_str());
-    myfile << "Time    Fx    Fy    Fz    Mx    My    Mz "<< std::endl;
+    myfile << "Time    Fx    Fy    Fz    Mx    My    Mz   Ypmin   Ypmax"<< std::endl;
     myfile.close();
   }
  }
@@ -118,12 +120,23 @@ SurfaceForceAndMomentAlgorithm::execute()
   stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
   const int nDim = meta_data.spatial_dimension();
 
+  // set min and max values
+  double yplusMin = 1.0e8;
+  double yplusMax = -1.0e8;
+
   // nodal fields to gather
   std::vector<double> ws_pressure;
+  std::vector<double> ws_density;
   std::vector<double> ws_viscosity;
 
   // master element
   std::vector<double> ws_face_shape_function;
+
+  // deal with state
+  ScalarFieldType &densityNp1 = density_->field_of_state(stk::mesh::StateNP1);
+
+  // define vector of parent topos; should always be UNITY in size
+  std::vector<stk::topology> parentTopo;
 
   const double currentTime = realm_.get_current_time();
 
@@ -159,14 +172,25 @@ SurfaceForceAndMomentAlgorithm::execute()
     // face master element
     MasterElement *meFC = realm_.get_surface_master_element(b.topology());
     const int nodesPerFace = meFC->nodesPerElement_;
+    std::vector<int> face_node_ordinal_vec(nodesPerFace);
+
+    // extract connected element topology
+    b.parent_topology(stk::topology::ELEMENT_RANK, parentTopo);
+    ThrowAssert ( parentTopo.size() == 1 );
+    stk::topology theElemTopo = parentTopo[0];
+
+    // extract master element for this element topo
+    MasterElement *meSCS = realm_.get_surface_master_element(theElemTopo);
 
     // algorithm related; element
     ws_pressure.resize(nodesPerFace);
+    ws_density.resize(nodesPerFace);
     ws_viscosity.resize(nodesPerFace);
     ws_face_shape_function.resize(nodesPerFace*nodesPerFace);
     
     // pointers
     double *p_pressure = &ws_pressure[0];
+    double *p_density = &ws_density[0];
     double *p_viscosity = &ws_viscosity[0];
     double *p_face_shape_function = &ws_face_shape_function[0];
 
@@ -193,11 +217,24 @@ SurfaceForceAndMomentAlgorithm::execute()
         stk::mesh::Entity node = face_node_rels[ni];
         // gather scalars
         p_pressure[ni]    = *stk::mesh::field_data(*pressure_, node);
+        p_density[ni] = *stk::mesh::field_data(densityNp1, node);
         p_viscosity[ni] = *stk::mesh::field_data(*viscosity_, node);
       }
 
       // pointer to face data
       const double * areaVec = stk::mesh::field_data(*exposedAreaVec_, face);
+
+      // extract the connected element to this exposed face; should be single in size!
+      const stk::mesh::Entity* face_elem_rels = bulk_data.begin_elements(face);
+      ThrowAssert( bulk_data.num_elements(face) == 1 );
+
+      // get element; its face ordinal number and populate face_node_ordinal_vec
+      stk::mesh::Entity element = face_elem_rels[0];
+      const int face_ordinal = bulk_data.begin_element_ordinals(face)[0];
+      theElemTopo.side_node_ordinals(face_ordinal, face_node_ordinal_vec.begin());
+
+      // get the relations off of element
+      stk::mesh::Entity const * elem_node_rels = bulk_data.begin_nodes(element);
 
       for ( int ip = 0; ip < nodesPerFace; ++ip ) {
 
@@ -207,18 +244,20 @@ SurfaceForceAndMomentAlgorithm::execute()
 
         // interpolate to bip
         double pBip = 0.0;
+        double rhoBip = 0.0;
         double muBip = 0.0;
         for ( int ic = 0; ic < nodesPerFace; ++ic ) {
           const double r = p_face_shape_function[offSetSF_face+ic];
           pBip += r*p_pressure[ic];
+          rhoBip += r*p_density[ic];
           muBip += r*p_viscosity[ic];
-	}
+        }
 
         // extract nodal fields
         stk::mesh::Entity node = face_node_rels[ip];
         const double * coord = stk::mesh::field_data(*coordinates_, node );
         const double *duidxj = stk::mesh::field_data(*dudx_, node );
-	double *pressureForce = stk::mesh::field_data(*pressureForce_, node );
+        double *pressureForce = stk::mesh::field_data(*pressureForce_, node );
         double *tauWall = stk::mesh::field_data(*tauWall_, node );
         const double assembledArea = *stk::mesh::field_data(*assembledArea_, node );
 
@@ -244,7 +283,7 @@ SurfaceForceAndMomentAlgorithm::execute()
           // set forces
           ws_v_force[i] = 2.0/3.0*muBip*divU*includeDivU_*ai;
           ws_p_force[i] = pBip*ai;
-	  pressureForce[i] += pBip*ai;
+          pressureForce[i] += pBip*ai;
           double dflux = 0.0;
           double tauijNj = 0.0;
           const int offSetI = nDim*i;
@@ -282,6 +321,35 @@ SurfaceForceAndMomentAlgorithm::execute()
           l_force_moment[j+3] += ws_moment[j];
         }
 
+        // deal with yplus
+        const int opposingNode = meSCS->opposingNodes(face_ordinal,ip);
+        const int nearestNode = face_node_ordinal_vec[ip];
+
+        // left and right nodes; right is on the face; left is the opposing node
+        stk::mesh::Entity nodeL = elem_node_rels[opposingNode];
+        stk::mesh::Entity nodeR = elem_node_rels[nearestNode];
+
+        // extract nodal fields
+        const double * coordL = stk::mesh::field_data(*coordinates_, nodeL );
+        const double * coordR = stk::mesh::field_data(*coordinates_, nodeR );
+
+        // determine yp (approximated by 1/4 distance along edge)
+        double ypBip = 0.0;
+        for ( int j = 0; j < nDim; ++j ) {
+          const double nj = ws_normal[j];
+          const double ej = 0.25*(coordR[j] - coordL[j]);
+          ypBip += nj*ej*nj*ej;
+        }
+        ypBip = std::sqrt(ypBip);
+
+        const double tauW = std::sqrt(tauTangential);
+        const double uTau = std::sqrt(tauW/muBip);
+        const double yplus = rhoBip*ypBip/muBip*uTau;
+
+        // min and max
+        yplusMin = std::min(yplusMin, yplus);
+        yplusMax = std::max(yplusMax, yplus);
+
       }
     }
   }
@@ -294,13 +362,19 @@ SurfaceForceAndMomentAlgorithm::execute()
     // Parallel assembly of L2
     stk::all_reduce_sum(comm, &l_force_moment[0], &g_force_moment[0], 6);
 
+    // min/max
+    double g_yplusMin = 0.0, g_yplusMax = 0.0;
+    stk::all_reduce_min(comm, &yplusMin, &g_yplusMin, 1);
+    stk::all_reduce_max(comm, &yplusMax, &g_yplusMax, 1);
+
     // deal with file name and banner
     if ( NaluEnv::self().parallel_rank() == 0 ) {
       std::ofstream myfile;
       myfile.open(outputFileName_.c_str(), std::ios_base::app);
       myfile << currentTime << " "
         << g_force_moment[0] << " " << g_force_moment[1] << " " << g_force_moment[2] << " "
-        << g_force_moment[3] << " " << g_force_moment[4] << " " << g_force_moment[5] << std::endl;
+        << g_force_moment[3] << " " << g_force_moment[4] << " " << g_force_moment[5] <<  " "
+        << g_yplusMin << " " << g_yplusMax << std::endl;
       myfile.close();
     }
   }
