@@ -1,4 +1,4 @@
-trilinos_install_dir=/Users/nalu/install
+trilinos_install_dir=/Users/nalu/install/trilinos
 mpi_base_dir=/usr/local/Cellar/open-mpi/1.8.1
 superlu_dir=/usr/local/Cellar/superlu/4.3/include/superlu
 boost_dir=/usr/local/Cellar/boost/1.56.0/include/boost/
@@ -27,7 +27,6 @@ cmake \
 -DTrilinos_ENABLE_Tpetra:BOOL=ON \
 -DTrilinos_ENABLE_ML:BOOL=ON \
 -DTrilinos_ENABLE_MueLu:BOOL=ON \
-  -DMueLu_ENABLE_TESTS:BOOL=OFF \    
 -DTrilinos_ENABLE_Belos:BOOL=ON \
 -DTrilinos_ENABLE_Ifpack2:BOOL=ON \
 -DTrilinos_ENABLE_Amesos2:BOOL=ON \
@@ -47,15 +46,15 @@ cmake \
 -DTrilinos_ENABLE_SEACASExodus:BOOL=ON \
 -DTrilinos_ENABLE_SEACASEpu:BOOL=ON \
 -DTrilinos_ENABLE_SEACASExodiff:BOOL=ON \
-  -DTPL_ENABLE_Netcdf:STRING=ON \
-  -DNetcdf_INCLUDE_DIRS:PATH="${netcdf_install_dir}/include" \
-  -DNetcdf_LIBRARY_DIRS:PATH="${netcdf_install_dir}/lib" \
-  -DTPL_ENABLE_HDF5:STRING=ON \
-  -DHDF5_INCLUDE_DIRS:PATH="${hdf_install_dir}/include" \
-  -DTPL_HDF5_LIBRARIES:PATH="${hdf_install_dir}/lib/libhdf5_hl.a;${hdf_install_dir}/lib/libhdf5.a;${z_install_dir}/lib/libz.a" \
-  -DTPL_ENABLE_Zlib:STRING=ON \
-  -DZlib_INCLUDE_DIRS:PATH="${z_install_dir}/include" \
-  -DTPL_Zlib_LIBRARIES:PATH="${z_install_dir}/lib/libz.a" \
+  -D TPL_ENABLE_Netcdf:STRING=ON \
+  -D Netcdf_INCLUDE_DIRS:PATH="${netcdf_install_dir}/include" \
+  -D Netcdf_LIBRARY_DIRS:PATH="${netcdf_install_dir}/lib" \
+  -D TPL_ENABLE_HDF5:STRING=ON \
+  -D HDF5_INCLUDE_DIRS:PATH="${hdf_install_dir}/include" \
+  -D TPL_HDF5_LIBRARIES:PATH="${hdf_install_dir}/lib/libhdf5_hl.a;${hdf_install_dir}/lib/libhdf5.a;${z_install_dir}/lib/libz.a" \
+  -D TPL_ENABLE_Zlib:STRING=ON \
+  -D Zlib_INCLUDE_DIRS:PATH="${z_install_dir}/include" \
+  -D TPL_Zlib_LIBRARIES:PATH="${z_install_dir}/lib/libz.a" \
 -DTrilinos_ASSERT_MISSING_PACKAGES=OFF \
 $EXTRA_ARGS \
 ../
