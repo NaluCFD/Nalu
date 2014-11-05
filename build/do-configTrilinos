@@ -42,7 +42,6 @@ cmake \
 -DTrilinos_ENABLE_STKTopology:BOOL=ON \
 -DTrilinos_ENABLE_Gtest:BOOL=ON \
 -DTrilinos_ENABLE_STKClassic:BOOL=OFF \
--DTrilinos_ENABLE_SEACAS:BOOL=ON \
 -DTrilinos_ENABLE_SEACASExodus:BOOL=ON \
 -DTrilinos_ENABLE_SEACASEpu:BOOL=ON \
 -DTrilinos_ENABLE_SEACASExodiff:BOOL=ON \
@@ -58,3 +57,5 @@ cmake \
 -DTrilinos_ASSERT_MISSING_PACKAGES=OFF \
 $EXTRA_ARGS \
 ../
+
+#-DTrilinos_ENABLE_SEACAS:BOOL=ON \
