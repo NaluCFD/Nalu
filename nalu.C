@@ -24,7 +24,6 @@
 // yaml for parsing..
 #include <yaml-cpp/yaml.h>
 
-// c++
 #include <iostream>
 #include <fstream>
 #include <iomanip>
@@ -63,7 +62,7 @@ int main( int argc, char ** argv )
 
   // NaluEnv singleton
   sierra::nalu::NaluEnv &naluEnv = sierra::nalu::NaluEnv::self();
- 
+  
   stk::diag::setEnabledTimerMetricsMask(stk::diag::METRICS_CPU_TIME | stk::diag::METRICS_WALL_TIME);
 
   sierra::nalu::Simulation::rootTimer().start();
@@ -81,11 +80,12 @@ int main( int argc, char ** argv )
     ("help,h","Help message")
     ("version,v", "Code Version 1.0")
     ("input-deck,i", boost::program_options::value<std::string>(&inputFileName)->default_value("nalu.i"),
-     "Analysis input file")
-    ("log-file,o", "Analysis log file")
+        "Analysis input file")
+    ("log-file,o", boost::program_options::value<std::string>(&logFileName),
+        "Analysis log file")
     ("serialized-io-group-size,s",
      boost::program_options::value<int>(&serializedIOGroupSize)->default_value(0),
-     "Specifies the number of processors which can concurrently perform I/O. Specifying zero disables serialization.")
+        "Specifies the number of processors which can concurrently perform I/O. Specifying zero disables serialization.")
     ("debug,D", "debug print on");
 
   boost::program_options::variables_map vm;
