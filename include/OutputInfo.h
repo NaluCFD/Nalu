@@ -12,7 +12,7 @@
 #include <NaluParsing.h>
 
 #include <string>
-#include <vector>
+#include <set>
 
 namespace sierra{
 namespace nalu{
@@ -38,8 +38,8 @@ public:
   int restartFreq_;
   int restartMaxDataBaseStepSize_;
   bool restartNodeSet_;
-  std::vector<std::string> outputFieldNameVec_;
-  std::vector<std::string> restartFieldNameVec_;
+  std::set<std::string> outputFieldNameSet_;
+  std::set<std::string> restartFieldNameSet_;
 
 };
 

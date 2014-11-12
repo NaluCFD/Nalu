@@ -58,7 +58,6 @@ OutputInfo::load(
   const YAML::Node & y_node)
 {
 
-  // output for results
   const YAML::Node *y_output = y_node.FindValue("output");
   if(y_output)
   {
@@ -88,7 +87,7 @@ OutputInfo::load(
         const YAML::Node & y_var = (*y_vars)[ioption];
         std::string fieldName;
         y_var >> fieldName;
-        outputFieldNameVec_.push_back(fieldName);
+        outputFieldNameSet_.insert(fieldName);
       }
     }
   }

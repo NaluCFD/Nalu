@@ -63,6 +63,7 @@ SurfaceForceAndMomentAlgorithm::SurfaceForceAndMomentAlgorithm(
     pressure_(NULL),
     pressureForce_(NULL),
     tauWall_(NULL),
+    yplus_(NULL),
     density_(NULL),
     viscosity_(NULL),
     dudx_(NULL),
@@ -75,6 +76,7 @@ SurfaceForceAndMomentAlgorithm::SurfaceForceAndMomentAlgorithm(
   pressure_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure");
   pressureForce_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "pressure_force");
   tauWall_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "tau_wall");
+  yplus_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "yplus");
   density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
   // extract viscosity name
   const std::string viscName = realm_.is_turbulent()
@@ -259,6 +261,7 @@ SurfaceForceAndMomentAlgorithm::execute()
         const double *duidxj = stk::mesh::field_data(*dudx_, node );
         double *pressureForce = stk::mesh::field_data(*pressureForce_, node );
         double *tauWall = stk::mesh::field_data(*tauWall_, node );
+        double *yplus = stk::mesh::field_data(*yplus_, node );
         const double assembledArea = *stk::mesh::field_data(*assembledArea_, node );
 
         // divU and aMag
@@ -310,8 +313,8 @@ SurfaceForceAndMomentAlgorithm::execute()
         }
 
         // assemble nodal quantities; scaled by area for L2 lumped nodal projection
-        const double fac = aMag/assembledArea;
-        *tauWall += std::sqrt(tauTangential)*fac;
+        const double areaFac = aMag/assembledArea;
+        *tauWall += std::sqrt(tauTangential)*areaFac;
 
         cross_product(&ws_t_force[0], &ws_moment[0], &ws_radius[0]);
 
@@ -344,11 +347,14 @@ SurfaceForceAndMomentAlgorithm::execute()
 
         const double tauW = std::sqrt(tauTangential);
         const double uTau = std::sqrt(tauW/muBip);
-        const double yplus = rhoBip*ypBip/muBip*uTau;
+        const double yplusBip = rhoBip*ypBip/muBip*uTau;
+
+        // nodal field
+        *yplus += yplusBip*areaFac;
 
         // min and max
-        yplusMin = std::min(yplusMin, yplus);
-        yplusMax = std::max(yplusMax, yplus);
+        yplusMin = std::min(yplusMin, yplusBip);
+        yplusMax = std::max(yplusMax, yplusBip);
 
       }
     }

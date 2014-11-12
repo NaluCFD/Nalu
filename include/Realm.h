@@ -113,12 +113,16 @@ public:
     ScalarFieldType *theField);
 
   void initialize_global_variables();
-  void augment_restart_variable_list(
-      std::string restartFieldName);
 
   void create_output_mesh();
   void create_restart_mesh();
   void input_variables_from_mesh();
+
+  void augment_output_variable_list(
+      const std::string fieldName);
+  
+  void augment_restart_variable_list(
+      std::string restartFieldName);
 
   void create_edges();
   void provide_entity_count();
