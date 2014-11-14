@@ -1,5 +1,5 @@
-
-#	This is the top level CMakeLists.txt file 
+#
+#	This is the top level CMakeLists.txt file
 #	It should be located within master/nalu
 #	But not in the BUILD folder itself
 #
@@ -9,26 +9,29 @@ cmake_minimum_required (VERSION 2.8.11)
 
 ###########################################################################################################
 #
-#  THESE PATHS MAY NEED TO BE CHANGED DEPENDING ON WHERE THEY ARE STORED!!! 
+#  THESE PATHS MAY NEED TO BE CHANGED DEPENDING ON WHERE THEY ARE STORED!!!
 #
 
-SET(CMAKE_PREFIX_PATH ${TRILINOS_DIR} ${CMAKE_PREFIX_PATH}) 
+SET(CMAKE_FIND_LIBRARY_PREFIXES lib)
+SET(CMAKE_FIND_LIBRARY_SUFFIXES a)
+
+SET(CMAKE_PREFIX_PATH ${TRILINOS_DIR} ${CMAKE_PREFIX_PATH})
 FIND_PACKAGE(TRILINOS REQUIRED)
 
 # This needs to be cleaned up
-find_library(YAML_LIBRARY NAMES yaml-cpp PATHS ${YAML_DIR}/lib )
-find_path(YAML_INCLUDES yaml.h PATHS ${YAML_DIR}/include/yaml-cpp )  
-include_directories(${YAML_INCLUDES}) 
+find_library(YAML_LIBRARY NAMES libyaml-cpp.a PATHS ${YAML_DIR}/lib )
+find_path(YAML_INCLUDES yaml.h PATHS ${YAML_DIR}/include/yaml-cpp )
+include_directories(${YAML_INCLUDES})
 
-include(FindPackageHandleStandardArgs)
+#include(FindPackageHandleStandardArgs)
 
 include_directories(${Trilinos_INCLUDE_DIRS})
 include_directories(${Trilinos_TPL_INCLUDE_DIRS})
 
-#######################################     TRILINOS     ##################################################
+#######################################     TRILINOS	 ##################################################
 
 MESSAGE("\nFound Trilinos!  Here are the details: ")
-# Uncomment lines to view more details about Trilinos 
+# Uncomment lines to view more details about Trilinos
 MESSAGE("   Trilinos_DIR = ${Trilinos_DIR}")
 MESSAGE("   Trilinos_VERSION = ${Trilinos_VERSION}")
 MESSAGE("   Trilinos_PACKAGE_LIST = ${Trilinos_PACKAGE_LIST}")
@@ -70,6 +73,7 @@ ENDIF()
 
 # Build Nalu as shared libraries if Trilinos was compiled that way
 
+add_definitions(${Trilinos_CXX_COMPILER_FLAGS})
 IF(Trilinos_BUILD_SHARED_LIBS)
   SET(Nalu_LIBRARY_TYPE SHARED)
   SET(BUILD_SHARED_LIBS ON)
@@ -79,10 +83,11 @@ ELSE(Trilinos_BUILD_SHARED_LIBS)
 ENDIF(Trilinos_BUILD_SHARED_LIBS)
 
 SET(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} ${Trilinos_CXX_COMPILER_FLAGS} )
+MESSAGE("-- CMAKE_CXX_FLAGS = ${CMAKE_CXX_FLAGS}")
 
-MESSAGE("   CMAKE_CXX_FLAGS = ${CMAKE_CXX_FLAGS}")
+#add_definitions(${Trilinos_CXX_COMPILER_FLAGS})
 
-#######################################     NALU     ######################################################
+#######################     NALU     #######################
 
 PROJECT(Nalu)
 
@@ -92,7 +97,7 @@ file (GLOB HEADER include/*.h include/*/*.h)
 include_directories (${CMAKE_SOURCE_DIR}/include)
 add_library (nalu ${SOURCE} ${HEADER})
 target_link_libraries(nalu ${Trilinos_LIBRARIES})
-target_link_libraries(nalu ${YAML_LIBRARY}) 
+target_link_libraries(nalu ${YAML_LIBRARY})
 
 add_executable(naluX nalu.C)
 target_link_libraries(naluX nalu)
