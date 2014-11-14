@@ -66,6 +66,7 @@ SurfaceForceAndMomentWallFunctionAlgorithm::SurfaceForceAndMomentWallFunctionAlg
     pressure_(NULL),
     pressureForce_(NULL),
     tauWall_(NULL),
+    yplus_(NULL),
     bcVelocity_(NULL),
     density_(NULL),
     viscosity_(NULL),
@@ -81,6 +82,7 @@ SurfaceForceAndMomentWallFunctionAlgorithm::SurfaceForceAndMomentWallFunctionAlg
   pressure_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure");
   pressureForce_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "pressure_force");
   tauWall_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "tau_wall");
+  yplus_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "yplus");
   bcVelocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "wall_velocity_bc");
   density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
   viscosity_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity");
@@ -317,21 +319,22 @@ SurfaceForceAndMomentWallFunctionAlgorithm::execute()
         const double utau= wallFrictionVelocityBip[ip];
 
         // determine yplus
-        const double yplus = rhoBip*yp*utau/muBip;
+        const double yplusBip = rhoBip*yp*utau/muBip;
 
         // min and max
-        yplusMin = std::min(yplusMin, yplus);
-        yplusMax = std::max(yplusMax, yplus);
+        yplusMin = std::min(yplusMin, yplusBip);
+        yplusMax = std::max(yplusMax, yplusBip);
 
         double lambda = muBip/yp*aMag;
-        if ( yplus > yplusCrit_)
-          lambda = rhoBip*kappa_*utau/std::log(elog_*yplus)*aMag;
+        if ( yplusBip > yplusCrit_)
+          lambda = rhoBip*kappa_*utau/std::log(elog_*yplusBip)*aMag;
 
         // extract nodal fields
         stk::mesh::Entity node = face_node_rels[ip];
         const double * coord = stk::mesh::field_data(*coordinates_, node );
         double *pressureForce = stk::mesh::field_data(*pressureForce_, node );
         double *tauWall = stk::mesh::field_data(*tauWall_, node );
+        double *yplus = stk::mesh::field_data(*yplus_, node );
         const double assembledArea = *stk::mesh::field_data(*assembledArea_, node );
 
         // load radius; assemble force -sigma_ij*njdS
@@ -354,6 +357,9 @@ SurfaceForceAndMomentWallFunctionAlgorithm::execute()
 
         // assemble tauWall; area weighting is hiding in lambda/assembledArea
         *tauWall += lambda*std::sqrt(uParallel)/assembledArea;
+
+        // deal with yplus
+        *yplus += yplusBip*aMag/assembledArea;
 
       }
     }

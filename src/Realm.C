@@ -1182,23 +1182,6 @@ Realm::initialize_global_variables()
 }
 
 //--------------------------------------------------------------------------
-//-------- augment_restart_variable_list -----------------------------------
-//--------------------------------------------------------------------------
-void
-Realm::augment_restart_variable_list(
-  std::string restartFieldName)
-{
-  // check to see if it already exists; if not push_back
-  std::vector<std::string>::const_iterator it
-    = std::find(outputInfo_->restartFieldNameVec_.begin(),
-                outputInfo_->restartFieldNameVec_.end(),
-                restartFieldName);
-  if ( it == outputInfo_->restartFieldNameVec_.end()) {
-    outputInfo_->restartFieldNameVec_.push_back(restartFieldName);
-  }
-}
-
-//--------------------------------------------------------------------------
 //-------- augment_property_map --------------------------------------------
 //--------------------------------------------------------------------------
 void
@@ -1631,8 +1614,9 @@ Realm::create_output_mesh()
   fixture_->use_nodeset_for_part_nodes_fields(resultsFileIndex_, outputInfo_->outputNodeSet_);
 
   // FIXME: add_field can take user-defined output name, not just varName
-  for ( size_t i = 0; i < outputInfo_->outputFieldNameVec_.size(); ++i ) {
-    std::string varName = outputInfo_->outputFieldNameVec_[i];
+  for ( std::set<std::string>::iterator itorSet = outputInfo_->outputFieldNameSet_.begin(); 
+      itorSet != outputInfo_->outputFieldNameSet_.end(); ++itorSet ) {
+    std::string varName = *itorSet;
     stk::mesh::FieldBase *theField = stk::mesh::get_field_by_name(varName,fixture_->meta_data());
     if ( NULL == theField ) {
       NaluEnv::self().naluOutputP0() << " Sorry, no field by the name " << varName << std::endl;
@@ -1658,8 +1642,9 @@ Realm::create_restart_mesh()
     restartFileIndex_ = fixture_->create_output_mesh(outputInfo_->restartDBName_, stk::io::WRITE_RESTART);
 
     // loop over restart variable field names supplied by Eqs
-    for ( size_t i = 0; i < outputInfo_->restartFieldNameVec_.size(); ++i ) {
-      std::string varName = outputInfo_->restartFieldNameVec_[i];
+    for ( std::set<std::string>::iterator itorSet = outputInfo_->restartFieldNameSet_.begin();
+        itorSet != outputInfo_->restartFieldNameSet_.end(); ++itorSet ) {
+      std::string varName = *itorSet;
       stk::mesh::FieldBase *theField = stk::mesh::get_field_by_name(varName,fixture_->meta_data());
       if ( NULL == theField ) {
         NaluEnv::self().naluOutputP0() << " Sorry, no field by the name " << varName << std::endl;
@@ -1715,6 +1700,26 @@ Realm::input_variables_from_mesh()
       }
     }
   }
+}
+
+//--------------------------------------------------------------------------
+//-------- augment_output_variable_list() ----------------------------------
+//--------------------------------------------------------------------------
+void
+Realm::augment_output_variable_list(
+    const std::string fieldName)
+{
+  outputInfo_->outputFieldNameSet_.insert(fieldName);
+}
+
+//--------------------------------------------------------------------------
+//-------- augment_restart_variable_list -----------------------------------
+//--------------------------------------------------------------------------
+void
+Realm::augment_restart_variable_list(
+  std::string restartFieldName)
+{
+  outputInfo_->restartFieldNameSet_.insert(restartFieldName);
 }
 
 //--------------------------------------------------------------------------

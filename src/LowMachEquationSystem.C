@@ -394,6 +394,14 @@ LowMachEquationSystem::register_surface_pp_algorithm(
   stk::mesh::put_field(*pressureForce, stk::mesh::selectUnion(partVector), meta_data.spatial_dimension());
   ScalarFieldType *tauWall =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "tau_wall"));
   stk::mesh::put_field(*tauWall, stk::mesh::selectUnion(partVector));
+  ScalarFieldType *yplus =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "yplus"));
+  stk::mesh::put_field(*yplus, stk::mesh::selectUnion(partVector));
+
+  // force output for these variables
+  realm_.augment_output_variable_list(pressureForce->name());
+  realm_.augment_output_variable_list(tauWall->name());
+  realm_.augment_output_variable_list(yplus->name());
+
 
   if ( thePhysics == "surface_force_and_moment" ) {
     ScalarFieldType *assembledArea =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "assembled_area_force_moment"));

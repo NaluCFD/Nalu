@@ -68,6 +68,7 @@ SurfaceForceAndMomentAlgorithmDriver::zero_fields()
   // extract the fields
   VectorFieldType *pressureForce = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "pressure_force");
   ScalarFieldType *tauWall = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "tau_wall");
+  ScalarFieldType *yplus = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "yplus");
   // one of these might be null
   ScalarFieldType *assembledArea = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "assembled_area_force_moment");
   ScalarFieldType *assembledAreaWF = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "assembled_area_force_moment_wf");
@@ -75,6 +76,7 @@ SurfaceForceAndMomentAlgorithmDriver::zero_fields()
   // zero fields
   field_fill( meta_data, bulk_data, 0.0, *pressureForce);
   field_fill( meta_data, bulk_data, 0.0, *tauWall);
+  field_fill( meta_data, bulk_data, 0.0, *yplus);
   if ( NULL != assembledArea ) 
     field_fill( meta_data, bulk_data, 0.0, *assembledArea);
   if ( NULL != assembledAreaWF ) 
@@ -96,11 +98,13 @@ SurfaceForceAndMomentAlgorithmDriver::parallel_assemble_fields()
   // extract the fields
   VectorFieldType *pressureForce = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "pressure_force");
   ScalarFieldType *tauWall = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "tau_wall");
+  ScalarFieldType *yplus = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "yplus");
 
   // parallel assemble
   std::vector<stk::mesh::FieldBase*> fields;
   fields.push_back(pressureForce);
   fields.push_back(tauWall);
+  fields.push_back(yplus);
   stk::mesh::parallel_sum(bulk_data, fields);
 
   // periodic assemble
@@ -108,6 +112,7 @@ SurfaceForceAndMomentAlgorithmDriver::parallel_assemble_fields()
     const bool bypassFieldCheck = false; // fields are not defined at all slave/master node pairs
     realm_.periodic_field_update(pressureForce, nDim, bypassFieldCheck);
     realm_.periodic_field_update(tauWall, 1, bypassFieldCheck);
+    realm_.periodic_field_update(yplus, 1, bypassFieldCheck);
   }
 
 }

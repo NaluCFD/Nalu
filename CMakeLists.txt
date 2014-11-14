@@ -47,8 +47,6 @@ MESSAGE("   Trilinos_BUILD_SHARED_LIBS = ${Trilinos_BUILD_SHARED_LIBS}")
 MESSAGE("   Trilinos_CXX_COMPILER_FLAGS = ${Trilinos_CXX_COMPILER_FLAGS}")
 MESSAGE("End of Trilinos details\n")
 
-# ADD_OPTION(
-
 # Optional Installation helpers
 SET (INSTALL_NALU FALSE)
 IF (ENABLE_INSTALL)
@@ -73,7 +71,6 @@ ENDIF()
 
 # Build Nalu as shared libraries if Trilinos was compiled that way
 
-add_definitions(${Trilinos_CXX_COMPILER_FLAGS})
 IF(Trilinos_BUILD_SHARED_LIBS)
   SET(Nalu_LIBRARY_TYPE SHARED)
   SET(BUILD_SHARED_LIBS ON)
@@ -82,14 +79,14 @@ ELSE(Trilinos_BUILD_SHARED_LIBS)
   SET(Nalu_LIBRARY_TYPE STATIC)
 ENDIF(Trilinos_BUILD_SHARED_LIBS)
 
-SET(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} ${Trilinos_CXX_COMPILER_FLAGS} )
-MESSAGE("-- CMAKE_CXX_FLAGS = ${CMAKE_CXX_FLAGS}")
-
-#add_definitions(${Trilinos_CXX_COMPILER_FLAGS})
-
-#######################     NALU     #######################
+#######################################     NALU     ##########################
 
 PROJECT(Nalu)
+
+SET(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} ${Trilinos_CXX_COMPILER_FLAGS})
+SET(CMAKE_Fortran_FLAGS ${CMAKE_Fortran_FLAGS} ${Trilinos_Fortran_COMPILER_FLAGS})
+MESSAGE("-- CMAKE_CXX_FLAGS     = ${CMAKE_CXX_FLAGS}")
+MESSAGE("-- CMAKE_Fortran_FLAGS = ${CMAKE_Fortran_FLAGS}")
 
 file (GLOB SOURCE src/*.C src/*/*.C src/*/*.F)
 file (GLOB HEADER include/*.h include/*/*.h)

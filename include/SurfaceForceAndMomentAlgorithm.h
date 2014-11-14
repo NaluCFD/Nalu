@@ -50,6 +50,7 @@ public:
   ScalarFieldType *pressure_;
   VectorFieldType *pressureForce_;
   ScalarFieldType *tauWall_;
+  ScalarFieldType *yplus_;
   ScalarFieldType *density_;
   ScalarFieldType *viscosity_;
   GenericFieldType *dudx_;
