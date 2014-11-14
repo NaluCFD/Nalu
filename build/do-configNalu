@@ -1,4 +1,5 @@
-trilinos_install_dir=/Users/nalu/install
+trilinos_install_dir=/Users/nalu/install/trilinos
+#trilinos_install_dir=/Users/nalu/packages/publicTrilinos/build
 yaml_install_dir=/Users/nalu/install
 
 EXTRA_ARGS=$@
