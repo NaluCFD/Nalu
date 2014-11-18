@@ -1,11 +1,26 @@
-trilinos_install_dir=/Users/nalu/install/trilinos
-mpi_base_dir=/usr/local/Cellar/open-mpi/1.8.1
-superlu_dir=/usr/local/Cellar/superlu/4.3/include/superlu
-boost_dir=/usr/local/Cellar/boost/1.56.0/include/boost/
+# The base directory where mpi is located.  
+# From here you should be able to find include/mpi.h bin/mpicxx, bin/mpiexec, etc.
+mpi_base_dir=/sierra/sntools/SDK/mpi/openmpi/1.6.4-gcc-4.7.2-RHEL6
 
-netcdf_install_dir=/Users/nalu/install
-hdf_install_dir=/Users/nalu/install
-z_install_dir=/Users/nalu/install
+# Note: Don't forget to set your LD_LIBRARY_PATH to $mpi_base_dir/lib
+#       You may also need to add to LD_LIBRARY_PATH the lib directory for the compiler
+#       used to create the mpi executables.
+
+# TPLS needed by trilinos, possibly provided by HomeBrew on a Mac
+#boost_dir=/usr/local/Cellar/boost/1.56.0/include/boost/
+#superlu_dir=/usr/local/Cellar/superlu/4.3/include/superlu
+boost_dir=$nalu_build_dir/install
+superlu_dir=$nalu_build_dir/install/SuperLU_4.3
+
+# Additional needed TPLS
+netcdf_install_dir=$nalu_build_dir/install
+hdf_install_dir=$nalu_build_dir/install
+z_install_dir=$nalu_build_dir/install
+
+# Where trilinos will be installed
+trilinos_install_dir=$nalu_build_dir/install/trilinos
+
+echo "nalu_build_dir = \"$nalu_build_dir\""
 
 EXTRA_ARGS=$@
 
@@ -21,7 +36,7 @@ cmake \
 -DTPL_ENABLE_MPI=ON \
   -DMPI_BASE_DIR:PATH=$mpi_base_dir \
 -DTPL_ENABLE_SuperLU=ON \
-  -DSuperLU_INCLUDE_DIRS:PATH=$superlu_dir \
+  -DSuperLU_INCLUDE_DIRS:PATH=$superlu_dir/include \
   -DSuperLU_LIBRARY_DIRS:PATH=$superlu_dir/lib \
 -DTrilinos_ENABLE_Epetra:BOOL=ON \
 -DTrilinos_ENABLE_Tpetra:BOOL=ON \
@@ -45,17 +60,17 @@ cmake \
 -DTrilinos_ENABLE_SEACASExodus:BOOL=ON \
 -DTrilinos_ENABLE_SEACASEpu:BOOL=ON \
 -DTrilinos_ENABLE_SEACASExodiff:BOOL=ON \
-  -D TPL_ENABLE_Netcdf:STRING=ON \
-  -D Netcdf_INCLUDE_DIRS:PATH="${netcdf_install_dir}/include" \
-  -D Netcdf_LIBRARY_DIRS:PATH="${netcdf_install_dir}/lib" \
-  -D TPL_ENABLE_HDF5:STRING=ON \
-  -D HDF5_INCLUDE_DIRS:PATH="${hdf_install_dir}/include" \
-  -D TPL_HDF5_LIBRARIES:PATH="${hdf_install_dir}/lib/libhdf5_hl.a;${hdf_install_dir}/lib/libhdf5.a;${z_install_dir}/lib/libz.a" \
-  -D TPL_ENABLE_Zlib:STRING=ON \
-  -D Zlib_INCLUDE_DIRS:PATH="${z_install_dir}/include" \
-  -D TPL_Zlib_LIBRARIES:PATH="${z_install_dir}/lib/libz.a" \
+  -DTPL_ENABLE_Netcdf:STRING=ON \
+  -DNetcdf_INCLUDE_DIRS:PATH="${netcdf_install_dir}/include" \
+  -DNetcdf_LIBRARY_DIRS:PATH="${netcdf_install_dir}/lib" \
+  -DTPL_ENABLE_HDF5:STRING=ON \
+  -DHDF5_INCLUDE_DIRS:PATH="${hdf_install_dir}/include" \
+  -DTPL_HDF5_LIBRARIES:PATH="${hdf_install_dir}/lib/libhdf5_hl.a;${hdf_install_dir}/lib/libhdf5.a;${z_install_dir}/lib/libz.a" \
+  -DTPL_ENABLE_Zlib:STRING=ON \
+  -DZlib_INCLUDE_DIRS:PATH="${z_install_dir}/include" \
+  -DTPL_Zlib_LIBRARIES:PATH="${z_install_dir}/lib/libz.a" \
+-DBoostLib_INCLUDE_DIRS:PATH="$boost_dir/include" \
+-DBoostLib_LIBRARY_DIRS:PATH="$boost_dir/lib" \
 -DTrilinos_ASSERT_MISSING_PACKAGES=OFF \
 $EXTRA_ARGS \
 ../
-
-#-DTrilinos_ENABLE_SEACAS:BOOL=ON \
