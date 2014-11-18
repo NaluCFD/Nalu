@@ -8,9 +8,11 @@ mpi_base_dir=/sierra/sntools/SDK/mpi/openmpi/1.6.4-gcc-4.7.2-RHEL6
 
 # TPLS needed by trilinos, possibly provided by HomeBrew on a Mac
 #boost_dir=/usr/local/Cellar/boost/1.56.0/include/boost/
-#superlu_dir=/usr/local/Cellar/superlu/4.3/include/superlu
+#superlu_inc_dir=/usr/local/Cellar/superlu/4.3/include/superlu
+#superlu_lib_dir=/usr/local/Cellar/superlu/4.3/lib
 boost_dir=$nalu_build_dir/install
-superlu_dir=$nalu_build_dir/install/SuperLU_4.3
+superlu_inc_dir=$nalu_build_dir/install/SuperLU_4.3/include
+superlu_lib_dir=$nalu_build_dir/install/SuperLU_4.3/lib
 
 # Additional needed TPLS
 netcdf_install_dir=$nalu_build_dir/install
@@ -36,8 +38,8 @@ cmake \
 -DTPL_ENABLE_MPI=ON \
   -DMPI_BASE_DIR:PATH=$mpi_base_dir \
 -DTPL_ENABLE_SuperLU=ON \
-  -DSuperLU_INCLUDE_DIRS:PATH=$superlu_dir/include \
-  -DSuperLU_LIBRARY_DIRS:PATH=$superlu_dir/lib \
+  -DSuperLU_INCLUDE_DIRS:PATH=$superlu_inc_dir \
+  -DSuperLU_LIBRARY_DIRS:PATH=$superlu_lib_dir \
 -DTrilinos_ENABLE_Epetra:BOOL=ON \
 -DTrilinos_ENABLE_Tpetra:BOOL=ON \
 -DTrilinos_ENABLE_ML:BOOL=ON \
