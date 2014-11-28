@@ -1,6 +1,7 @@
 # The base directory where mpi is located.  
 # From here you should be able to find include/mpi.h bin/mpicxx, bin/mpiexec, etc.
 mpi_base_dir=/sierra/sntools/SDK/mpi/openmpi/1.6.4-gcc-4.7.2-RHEL6
+nalu_build_dir=/usr/local/packages
 
 # Note: Don't forget to set your LD_LIBRARY_PATH to $mpi_base_dir/lib
 #       You may also need to add to LD_LIBRARY_PATH the lib directory for the compiler
@@ -62,6 +63,8 @@ cmake \
 -DTrilinos_ENABLE_SEACASExodus:BOOL=ON \
 -DTrilinos_ENABLE_SEACASEpu:BOOL=ON \
 -DTrilinos_ENABLE_SEACASExodiff:BOOL=ON \
+-DTrilinos_ENABLE_SEACASNemspread:BOOL=ON \
+-DTrilinos_ENABLE_SEACASNemslice:BOOL=ON \
   -DTPL_ENABLE_Netcdf:STRING=ON \
   -DNetcdf_INCLUDE_DIRS:PATH="${netcdf_install_dir}/include" \
   -DNetcdf_LIBRARY_DIRS:PATH="${netcdf_install_dir}/lib" \

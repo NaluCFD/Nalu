@@ -17,8 +17,8 @@ SET(CMAKE_FIND_LIBRARY_SUFFIXES a)
 
 MESSAGE("   Trilinos_DIR = ${Trilinos_DIR}")
 SET(CMAKE_PREFIX_PATH ${Trilinos_DIR} ${CMAKE_PREFIX_PATH})
-
-FIND_PACKAGE(Trilinos REQUIRED)
+SET(CMAKE_PREFIX_PATH ${Trilinos_PATH} ${CMAKE_PREFIX_PATH})
+find_package(Trilinos REQUIRED)
 
 # This needs to be cleaned up
 find_library(YAML_LIBRARY NAMES libyaml-cpp.a PATHS ${YAML_DIR}/lib )
