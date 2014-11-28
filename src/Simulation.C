@@ -175,23 +175,12 @@ void Simulation::high_level_banner() {
   NaluEnv::self().naluOutputP0() << "            coupling to PMR and object response (CHT)            " << std::endl;
   NaluEnv::self().naluOutputP0() << "=================================================================" << std::endl;
   NaluEnv::self().naluOutputP0() << std::endl;
-  NaluEnv::self().naluOutputP0() << " TPLs: Boost (BSL), STK (TBA), Trilinos (BSD) and YAML_cpp (MIT) " << std::endl;
+  NaluEnv::self().naluOutputP0() << "   TPLs: Boost, HDF5, netCDF, STK, Trilinos, YAML_cpp and zlib   " << std::endl;
   NaluEnv::self().naluOutputP0() << std::endl;
-  NaluEnv::self().naluOutputP0() << "     Sandia National Laboratories, Albuquerque, New Mexico       " << std::endl;
-  NaluEnv::self().naluOutputP0() << "-----------------------------------------------------------------" << std::endl;
-  NaluEnv::self().naluOutputP0() << "       Notice: This computer software was prepared by            " << std::endl;
-  NaluEnv::self().naluOutputP0() << "       Sandia Corporation, hereinafter the Contractor            " << std::endl;
-  NaluEnv::self().naluOutputP0() << "       under Contract DE-AC04-94AL85000 with the                 " << std::endl;
-  NaluEnv::self().naluOutputP0() << "       Department of Energy (DOE).  All rights in the            " << std::endl;
-  NaluEnv::self().naluOutputP0() << "       computer software are reserved by DOE on behalf           " << std::endl;
-  NaluEnv::self().naluOutputP0() << "       of the United States Government and the                   " << std::endl;
-  NaluEnv::self().naluOutputP0() << "       Contractor as provided in the Contract. You are           " << std::endl;
-  NaluEnv::self().naluOutputP0() << "       authorized to use this computer software for              " << std::endl;
-  NaluEnv::self().naluOutputP0() << "       Governmental purposes but it is not to be                 " << std::endl;
-  NaluEnv::self().naluOutputP0() << "       released or distributed to the public. NEITHER            " << std::endl;
-  NaluEnv::self().naluOutputP0() << "       THE U.S.  GOVERNMENT NOR THE CONTRACTOR MAKES             " << std::endl;
-  NaluEnv::self().naluOutputP0() << "       ANY WARRANTY, EXPRESS OR IMPLIED, OR ASSUMES ANY          " << std::endl;
-  NaluEnv::self().naluOutputP0() << "       LIABILITY FOR THE USE OF THIS SOFTWARE.                   " << std::endl;
+  NaluEnv::self().naluOutputP0() << "              Copyright 2014 Sandia Corporation.                 " << std::endl;
+  NaluEnv::self().naluOutputP0() << "      This software is released under the license detailed       " << std::endl;
+  NaluEnv::self().naluOutputP0() << "   in the file, LICENSE, which is located in the top-level Nalu  " << std::endl;
+  NaluEnv::self().naluOutputP0() << "                     directory structure                         " << std::endl;
   NaluEnv::self().naluOutputP0() << "-----------------------------------------------------------------" << std::endl;
   NaluEnv::self().naluOutputP0() << std::endl;
 
