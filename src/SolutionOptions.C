@@ -35,6 +35,8 @@ SolutionOptions::SolutionOptions()
     turbPrDefault_(1.0),
     nocDefault_(true),
     referenceDensity_(0.0),
+    referenceTemperature_(298.0),
+    thermalExpansionCoeff_(1.0),
     stefanBoltzmann_(5.6704e-8),
     nearestFaceEntrain_(0.0),
     includeDivU_(0.0),
@@ -185,6 +187,8 @@ SolutionOptions::load(const YAML::Node & y_node)
         else if (expect_map( y_option, "user_constants", optional)) {
           const YAML::Node& y_user_constants = *y_option.FindValue("user_constants");
           get_if_present(y_user_constants, "reference_density",  referenceDensity_, referenceDensity_);
+          get_if_present(y_user_constants, "reference_temperature",  referenceTemperature_, referenceTemperature_);
+          get_if_present(y_user_constants, "thermal_expansion_coefficient",  thermalExpansionCoeff_, thermalExpansionCoeff_);
           get_if_present(y_user_constants, "stefan_boltzmann",  stefanBoltzmann_, stefanBoltzmann_);
           if (expect_sequence( y_user_constants, "gravity", optional) ) {
             const int gravSize = y_user_constants["gravity"].size();

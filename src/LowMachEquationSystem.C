@@ -70,6 +70,7 @@
 #include <LinearSystem.h>
 #include <master_element/MasterElement.h>
 #include <MomentumBuoyancySrcNodeSuppAlg.h>
+#include <MomentumBoussinesqSrcNodeSuppAlg.h>
 #include <MomentumBodyForceSrcNodeSuppAlg.h>
 #include <MomentumMassBackwardEulerNodeSuppAlg.h>
 #include <MomentumMassBDF2NodeSuppAlg.h>
@@ -961,13 +962,18 @@ MomentumEquationSystem::register_interior_algorithm(
         std::string sourceName = mapNameVec[k];
         if (sourceName == "buoyancy" ) {
           MomentumBuoyancySrcNodeSuppAlg *theBuoy
-          = new MomentumBuoyancySrcNodeSuppAlg(realm_);
+            = new MomentumBuoyancySrcNodeSuppAlg(realm_);
           theAlg->supplementalAlg_.push_back(theBuoy);
+        }
+        else if ( sourceName == "buoyancy_boussinesq") {
+          MomentumBoussinesqSrcNodeSuppAlg *theBous
+            = new MomentumBoussinesqSrcNodeSuppAlg(realm_);
+          theAlg->supplementalAlg_.push_back(theBous);
         }
         else if ( sourceName == "body_force") {
           // extract params
           std::map<std::string, std::vector<double> >::iterator iparams
-          = realm_.solutionOptions_->srcTermParamMap_.find("momentum");
+            = realm_.solutionOptions_->srcTermParamMap_.find("momentum");
           if ( iparams != realm_.solutionOptions_->srcTermParamMap_.end()) {
             std::vector<double> theParams = iparams->second;
             MomentumBodyForceSrcNodeSuppAlg *theBody

@@ -50,6 +50,8 @@ public:
   double turbPrDefault_;
   bool nocDefault_;
   double referenceDensity_;
+  double referenceTemperature_;
+  double thermalExpansionCoeff_;
   double stefanBoltzmann_;
   double nearestFaceEntrain_;
   double includeDivU_;
