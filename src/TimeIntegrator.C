@@ -279,6 +279,9 @@ TimeIntegrator::integrate_realm()
     for ( ii = realmVec_.begin(); ii!=realmVec_.end(); ++ii) {
       (*ii)->output_converged_results();
     }
+
+    // output mean norm
+    provide_mean_norm();
   
     timeStepNm1_ = timeStepN_;
     
@@ -289,15 +292,23 @@ TimeIntegrator::integrate_realm()
     (*ii)->dump_simulation_time();
   }
   
+}
+
+//--------------------------------------------------------------------------
+void
+TimeIntegrator::provide_mean_norm()
+{
   // provide integrated norm
+  std::vector<Realm *>::iterator ii;
   double sumNorm = 0.0;
   double realmIncrement = 0.0;
   for ( ii = realmVec_.begin(); ii!=realmVec_.end(); ++ii) {
     sumNorm += (*ii)->provide_mean_norm();
     realmIncrement += 1.0;
   }
-  NaluEnv::self().naluOutputP0() << "Mean System Norm: " << sumNorm/realmIncrement << std::endl;
-
+  NaluEnv::self().naluOutputP0() << "Mean System Norm: "
+      << std::setprecision(16) << sumNorm/realmIncrement << " "
+      << std::setprecision(6) << timeStepCount_ << " " << currentTime_ << std::endl;
 }
 
 //--------------------------------------------------------------------------

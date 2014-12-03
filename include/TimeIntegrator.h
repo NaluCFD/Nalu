@@ -39,6 +39,7 @@ public:
   Simulation *parent();
 
   void integrate_realm();
+  void provide_mean_norm();
   bool simulation_proceeds();
   Simulation& sim_;
 
