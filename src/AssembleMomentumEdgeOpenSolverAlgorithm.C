@@ -156,7 +156,6 @@ AssembleMomentumEdgeOpenSolverAlgorithm::execute()
       for ( int p = 0; p < rhsSize; ++p )
         p_rhs[p] = 0.0;
 
-
       // pointer to face data
       const double * areaVec = stk::mesh::field_data(*exposedAreaVec_, b, k);
       const double * mdot    = stk::mesh::field_data(*openMassFlowRate_, b, k);
@@ -302,17 +301,18 @@ AssembleMomentumEdgeOpenSolverAlgorithm::execute()
           // subtract normal component
           const double diffFlux = p_fx[i] - p_nx[i]*fxnx;
 
+          const double om_nxinxi = 1.0-p_nx[i]*p_nx[i];
+
           p_rhs[indexR] -= diffFlux;
-          double lhsFac = -viscBip*asq*inv_axdx*(1.0-p_nx[i]*p_nx[i]);
+          double lhsFac = -viscBip*asq*inv_axdx*om_nxinxi;
           p_lhs[rRiL_i] -= lhsFac;
           p_lhs[rRiR_i] += lhsFac;
 
           const double axi = areaVec[faceOffSet+i];
-          const double om_nxnx = 1.0-p_nx[i]*p_nx[i];
 
           for ( int j = 0; j < nDim; ++j ) {
             const double axj = areaVec[faceOffSet+j];
-            lhsFac = -viscBip*axi*axj*inv_axdx*om_nxnx;
+            lhsFac = -viscBip*axi*axj*inv_axdx*om_nxinxi;
 
             const int colL = opposingNode*nDim + j;
             const int colR = nearestNode*nDim + j;
@@ -327,16 +327,17 @@ AssembleMomentumEdgeOpenSolverAlgorithm::execute()
               // nothing
             }
             else {
+	      const double nxinxj = p_nx[i]*p_nx[j];
 
-              lhsFac = viscBip*asq*inv_axdx*p_nx[i]*p_nx[j];
+              lhsFac = viscBip*asq*inv_axdx*nxinxj;
               p_lhs[rRiL_j] -= lhsFac;
               p_lhs[rRiR_j] += lhsFac;
 
-              lhsFac = viscBip*axj*axj*p_nx[i]*p_nx[j];
+              lhsFac = viscBip*axj*axj*inv_axdx*nxinxj;
               p_lhs[rRiL_j] -= lhsFac;
               p_lhs[rRiR_j] += lhsFac;
 
-              lhsFac = viscBip*axj*axi*p_nx[i]*p_nx[j];
+              lhsFac = viscBip*axj*axi*inv_axdx*nxinxj;
               p_lhs[rRiL_i] -= lhsFac;
               p_lhs[rRiR_i] += lhsFac;
             }

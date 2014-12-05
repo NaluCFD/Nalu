@@ -298,8 +298,6 @@ AssembleMomentumEdgeSolverAlgorithm::execute()
           const double axj = p_areaVec[j];
           const double GjUi = 0.5*(dudxL[offSetIJ] + dudxR[offSetIJ]);
           p_duidxj[offSetIJ] = GjUi + (uidiff - GlUidxl)*axj*inv_axdx;
-
-
         }
       }
 
