@@ -56,7 +56,8 @@ SolutionOptions::SolutionOptions()
     maxRefinementNumberOfElementsFraction_(0),
     adapterExtraOutput_(false),
     useAdapter_(false),
-    maxRefinementLevel_(0)
+    maxRefinementLevel_(0),
+    extrusionCorrectionFac_(1.0)
 {
   // nothing to do
 }
@@ -88,6 +89,11 @@ SolutionOptions::load(const YAML::Node & y_node)
 
     // divU factor for stress
     get_if_present(*y_solution_options, "divU_stress_scaling", includeDivU_, includeDivU_);
+
+    // extrustion correction scaling
+    get_if_present(*y_solution_options, 
+                   "extrusion_correction_factor", 
+                   extrusionCorrectionFac_, extrusionCorrectionFac_);
 
     // extract turbulence model; would be nice if we could parse an enum..
     std::string specifiedTurbModel;

@@ -12,7 +12,6 @@
 
 #include <FieldTypeDef.h>
 #include <Realm.h>
-#include <SolutionOptions.h>
 #include <master_element/MasterElement.h>
 
 // stk_mesh/base/fem

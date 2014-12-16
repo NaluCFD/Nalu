@@ -154,7 +154,7 @@ void Simulation::run()
 {
   NaluEnv::self().naluOutputP0() << std::endl;
   NaluEnv::self().naluOutputP0() << "*******************************************************" << std::endl;
-  NaluEnv::self().naluOutputP0() << "Simulation Shall Commence: number of processors= " << NaluEnv::self().parallel_size() << std::endl;
+  NaluEnv::self().naluOutputP0() << "Simulation Shall Commence: number of processors = " << NaluEnv::self().parallel_size() << std::endl;
   NaluEnv::self().naluOutputP0() << "*******************************************************" << std::endl;
 
   if (unitTests_)

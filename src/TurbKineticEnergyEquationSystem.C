@@ -603,7 +603,7 @@ TurbKineticEnergyEquationSystem::register_contact_bc(
       assembleNodalGradAlgDriver_->algMap_.find(algType);
     if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
       Algorithm *theAlg = NULL;
-      if ( realm_.realmUsesEdges_ ) {
+      if ( edgeNodalGradient_ ) {
         theAlg = new AssembleNodalGradEdgeContactAlgorithm(realm_, part, &tkeNp1, &dkdxNone);
       }
       else {

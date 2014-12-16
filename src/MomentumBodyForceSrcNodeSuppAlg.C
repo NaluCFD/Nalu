@@ -9,7 +9,6 @@
 #include <MomentumBodyForceSrcNodeSuppAlg.h>
 #include <FieldTypeDef.h>
 #include <Realm.h>
-#include <SolutionOptions.h>
 #include <SupplementalAlgorithm.h>
 
 // stk_mesh/base/fem

@@ -2513,11 +2513,20 @@ Realm::register_contact_bc(
   stk::mesh::put_field(*exposedAreaVec_, *part, nDim*numScsIp );
 
   // register nodal field that will hold important information
+  VectorFieldType *haloNormal =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "halo_normal"));
+  stk::mesh::put_field(*haloNormal, *part, nDim);
   VectorFieldType *haloDxj =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "halo_dxj"));
   stk::mesh::put_field(*haloDxj, *part, nDim);
   ScalarFieldType *extDistance = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "extrusion_distance"));
   stk::mesh::put_field(*extDistance, *part);
 
+  // correction for extrusion distance (for non-planar surfaces)
+  ScalarFieldType *extDistanceCorrFac 
+    = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "extrusion_distance_correct_fac"));
+  stk::mesh::put_field(*extDistanceCorrFac, *part);
+  ScalarFieldType *extDistanceCorrCount 
+    = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "extrusion_distance_correct_count"));
+  stk::mesh::put_field(*extDistanceCorrCount, *part);
 
   if ( realmUsesEdges_ ) {
     // need some extra nodal data for edge-based
@@ -2577,7 +2586,7 @@ Realm::register_contact_bc(
   // Register contact algorithms
   //====================================================
 
-  // handle boundary data; for now this is constant extrusion distance
+  // handle boundary data; for now this is constant extrusion distance (with non-planar correction)
   std::vector<double> userSpecBc(1);
   userSpecBc[0] = extrusionDistance;
   ConstantAuxFunction *theAuxFuncBc = new ConstantAuxFunction(0, 1, userSpecBc);

@@ -11,7 +11,6 @@
 #include <Algorithm.h>
 #include <FieldTypeDef.h>
 #include <Realm.h>
-#include <SolutionOptions.h>
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/BulkData.hpp>

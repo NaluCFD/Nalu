@@ -73,6 +73,7 @@ public:
   bool adapterExtraOutput_;
   bool useAdapter_;
   int maxRefinementLevel_;
+  double extrusionCorrectionFac_;
 
   // turbulence model coeffs
   std::map<TurbulenceModelConstant, double> turbModelConstantMap_;
