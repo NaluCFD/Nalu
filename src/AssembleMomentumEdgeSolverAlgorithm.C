@@ -407,7 +407,7 @@ AssembleMomentumEdgeSolverAlgorithm::execute()
         }
 
       }
-
+      
       apply_coeff(connected_nodes, rhs, lhs, __FILE__);
 
     }

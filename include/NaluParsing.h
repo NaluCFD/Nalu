@@ -160,6 +160,7 @@ struct WallUserData : public UserData {
   ReferenceTemperature referenceTemperature_;
   HeatTransferCoefficient heatTransferCoefficient_;
   RobinCouplingParameter robinCouplingParameter_;
+  Pressure pressure_;
   
   bool tempSpec_;
   bool isAdiabatic_;
@@ -170,9 +171,10 @@ struct WallUserData : public UserData {
   bool robinParameterSpec_;
   bool irradSpec_;
   bool emissSpec_;
-  
 
   bool wallFunctionApproach_;
+
+  bool isFsiInterface_;
 
   WallUserData()
     : UserData(),
@@ -184,7 +186,8 @@ struct WallUserData : public UserData {
       htcSpec_(false),
       robinParameterSpec_(false),
       irradSpec_(false),
-      wallFunctionApproach_(false) {}
+      wallFunctionApproach_(false),
+      isFsiInterface_(false) {}
 };
 
 struct InflowUserData : public UserData {

@@ -133,8 +133,6 @@ template <class FROM, class TO>  void LinInterp<FROM,TO>::apply
   stk::mesh::BulkData         &toBulkData = ToPoints.toBulkData_;
   Realm &fromRealm = FromElem.fromRealm_;
 
-  const int sizeOfScalarField = 1;
-
   typename EntityKeyMap::const_iterator ii;
   for(ii=RangeToDomain.begin(); ii!=RangeToDomain.end(); ++ii ) { 
     
@@ -159,18 +157,31 @@ template <class FROM, class TO>  void LinInterp<FROM,TO>::apply
     const int num_nodes = fromBulkData.num_nodes(theElem);
     const int nodesPerElement = meSCS->nodesPerElement_;
 
-    std::vector <double > Coeff(nodesPerElement);
-
     for (unsigned n=0; n!=FromElem.fromFieldVec_.size(); ++n) {
+
+      // extract field
+      const stk::mesh::FieldBase *toFieldBaseField = ToPoints.toFieldVec_[n];
+
+      // FixMe: integers are problematic for now...
+      const size_t sizeOfField = field_bytes_per_entity(*toFieldBaseField, theNode) / sizeof(double);
+      std::vector <double > Coeff(nodesPerElement*sizeOfField);
+
       // now load the elemental values for future interpolation; fill in connected nodes
       for ( int ni = 0; ni < num_nodes; ++ni ) { 
         stk::mesh::Entity node = elem_node_rels[ni];
-        Coeff[ni] = *stk::mesh::field_data(*FromElem.fromFieldVec_[n], node);
-      }   
 
-      double * toField = stk::mesh::field_data(*ToPoints.toFieldVec_[n], theNode);
+        const stk::mesh::FieldBase *fromFieldBaseField = FromElem.fromFieldVec_[n];
+        const double *theField = (double*)stk::mesh::field_data(*fromFieldBaseField, node );
+
+        for ( size_t j = 0; j < sizeOfField; ++j) {
+          const int offSet = j*nodesPerElement + ni; 
+          Coeff[offSet] = theField[j];
+        }   
+      }
+
+      double * toField = (double*)stk::mesh::field_data(*toFieldBaseField, theNode);
       if (!toField) throw std::runtime_error("Receiving field undefined on mesh object.");
-      meSCS->interpolatePoint(sizeOfScalarField,
+      meSCS->interpolatePoint(sizeOfField,
                               &isoParCoords_[0],
                               &Coeff[0],
                               toField);

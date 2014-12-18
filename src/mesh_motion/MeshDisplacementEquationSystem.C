@@ -9,6 +9,7 @@
 #include <mesh_motion/MeshDisplacementEquationSystem.h>
 
 #include <mesh_motion/AssembleMeshDisplacementElemSolverAlgorithm.h>
+#include <mesh_motion/AssemblePressureForceBCSolverAlgorithm.h>
 #include <mesh_motion/MeshDisplacementMassBackwardEulerNodeSuppAlg.h>
 
 #include <user_functions/LinearRampMeshDisplacementAuxFunction.h>
@@ -100,7 +101,7 @@ MeshDisplacementEquationSystem::MeshDisplacementEquationSystem(
   // push back EQ to manager
   realm_.equationSystems_.push_back(this);
 
-  realm_.meshDeformation_ = true;
+  realm_.solutionOptions_->meshDeformation_ = true;
 
 }
 
@@ -225,7 +226,7 @@ MeshDisplacementEquationSystem::register_interior_algorithm(
   const AlgorithmType algType = INTERIOR;
   const AlgorithmType algMass = MASS;
 
-  // solver; interior elem contribution (advection + diffusion)
+  // solver; interior elem contribution
   std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi =
     solverAlgDriver_->solverAlgMap_.find(algType);
   if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
@@ -277,15 +278,16 @@ MeshDisplacementEquationSystem::register_wall_bc(
   stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
   const unsigned nDim = meta_data.spatial_dimension();
 
-  // register boundary data; mesh_displacement_bc
-  VectorFieldType *theBcField = &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_displacement_bc"));
-  stk::mesh::put_field(*theBcField, *part, nDim);
-
   // extract the value for user specified velocity and save off the AuxFunction
   WallUserData userData = wallBCData.userData_;
   std::string displacementName = "mesh_displacement";
+  std::string pressureName = "pressure";
 
   if ( bc_data_specified(userData, displacementName) ) {
+
+    // register boundary data; mesh_displacement_bc
+    VectorFieldType *theBcField = &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_displacement_bc"));
+    stk::mesh::put_field(*theBcField, *part, nDim);
 
     AuxFunction *theAuxFunc = NULL;
 
@@ -322,8 +324,15 @@ MeshDisplacementEquationSystem::register_wall_bc(
       = new AuxFunctionAlgorithm(realm_, part,
           theBcField, theAuxFunc,
           stk::topology::NODE_RANK);
-    bcDataAlg_.push_back(auxAlg);
 
+    // check to see if this is an FSI interface to determine how we handle mesh_displacement population
+    if ( userData.isFsiInterface_ ) {
+      // xfer will handle population; only need to populate the initial value
+      realm_.initCondAlg_.push_back(auxAlg);
+    }
+    else {
+      bcDataAlg_.push_back(auxAlg);
+    }
 
     // copy mesh_displacement_bc to mesh_displacement np1...
     CopyFieldAlgorithm *theCopyAlg
@@ -344,6 +353,46 @@ MeshDisplacementEquationSystem::register_wall_bc(
     else {
       itd->second->partVec_.push_back(part);
     }
+  }
+  else if (bc_data_specified(userData, pressureName) ) {
+    // register the bc pressure field
+    ScalarFieldType *bcPressureField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure_bc"));
+    stk::mesh::put_field(*bcPressureField, *part, nDim);
+
+    // extract the value for user specified pressure and save off the AuxFunction
+    Pressure pSpec = userData.pressure_;
+    std::vector<double> userSpecPbc(1);
+    userSpecPbc[0] = pSpec.pressure_;
+    
+    ConstantAuxFunction *theAuxFuncPbc = new ConstantAuxFunction(0, 1, userSpecPbc);
+
+    AuxFunctionAlgorithm *auxAlg
+      = new AuxFunctionAlgorithm(realm_, part,
+          bcPressureField, theAuxFuncPbc,
+          stk::topology::NODE_RANK);
+
+    // check to see if this is an FSI interface to determine how we handle pressure population
+    if ( userData.isFsiInterface_ ) {
+      // xfer will handle population; only need to populate the initial value
+      realm_.initCondAlg_.push_back(auxAlg);
+    }
+    else {
+      bcDataAlg_.push_back(auxAlg);
+    }
+
+    // now create the RHS algorithm
+    std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi =
+      solverAlgDriver_->solverAlgMap_.find(algType);
+    if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
+      AssemblePressureForceBCSolverAlgorithm *theAlg
+        = new AssemblePressureForceBCSolverAlgorithm(realm_, part, this,
+                                                     bcPressureField, realm_.realmUsesEdges_);
+      solverAlgDriver_->solverAlgMap_[algType] = theAlg;
+    }
+    else {
+      itsi->second->partVec_.push_back(part);
+    }
+
   }
   else {
     NaluEnv::self().naluOutputP0() << "No displacement specified: zero surface traction applied" << std::endl;
@@ -390,7 +439,6 @@ MeshDisplacementEquationSystem::reinitialize_linear_system()
   solverAlgDriver_->initialize_connectivity();
   linsys_->finalizeLinearSystem();
 }
-
 
 //--------------------------------------------------------------------------
 //-------- predict_state ---------------------------------------------------
@@ -468,7 +516,6 @@ MeshDisplacementEquationSystem::solve_and_update()
   }
 
 }
-
 
 //--------------------------------------------------------------------------
 //-------- compute_current_coordinates -------------------------------------

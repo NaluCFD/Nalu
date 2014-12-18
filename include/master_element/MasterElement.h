@@ -669,13 +669,21 @@ public:
 
   void shifted_shape_fcn(
     double *shpfc);
+
+  double isInElement(
+    const double *elemNodalCoord,
+    const double *pointCoord,
+    double *isoParCoord);
   
   void interpolatePoint(
     const int &nComp,
     const double *isoParCoord,
     const double *field,
     double *result);
-  
+
+  double parametric_distance(const std::vector<double> &x);
+
+  const double elemThickness_;  
 };
 
 } // namespace nalu

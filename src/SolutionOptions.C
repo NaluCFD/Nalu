@@ -43,6 +43,8 @@ SolutionOptions::SolutionOptions()
     isTurbulent_(false),
     turbulenceModel_(LAMINAR),
     meshMotion_(false),
+    meshDeformation_(false),
+    externalMeshDeformation_(false),
     activateUniformRefinement_(false),
     uniformRefineSaveAfter_(false),
     activateAdaptivity_(false),
@@ -94,6 +96,9 @@ SolutionOptions::load(const YAML::Node & y_node)
     get_if_present(*y_solution_options, 
                    "extrusion_correction_factor", 
                    extrusionCorrectionFac_, extrusionCorrectionFac_);
+    
+    // external mesh motion expected
+    get_if_present(*y_solution_options, "externally_provided_mesh_deformation", externalMeshDeformation_, externalMeshDeformation_);
 
     // extract turbulence model; would be nice if we could parse an enum..
     std::string specifiedTurbModel;
@@ -216,42 +221,47 @@ SolutionOptions::load(const YAML::Node & y_node)
       }
     }
 
-    // second set of options: mesh motion options
+    // second set of options: mesh motion... this means that the Realm will expect to provide rotation-based motion
     const YAML::Node *y_mesh_motion = expect_sequence(*y_solution_options, "mesh_motion", optional);
     if (y_mesh_motion)
     {
-
+      // mesh motion is active
       meshMotion_ = true;
 
-      for (size_t ioption = 0; ioption < y_mesh_motion->size(); ++ioption)
-      {
-        const YAML::Node &y_option = (*y_mesh_motion)[ioption];
-
-        // extract mesh motion name and omega value
-        std::string motionName = "na";
-        get_required(y_option, "name", motionName);
-        double omega = 0.0;
-        get_required(y_option, "omega", omega);
-
-        // now fill in name
-        std::vector<std::string> meshMotionBlock;
-        const YAML::Node &targets = y_option["target_name"];
-        if (targets.Type() == YAML::NodeType::Scalar) {
-          meshMotionBlock.resize(1);
-          targets >> meshMotionBlock[0];
-        }
-        else {
-          meshMotionBlock.resize(targets.size());
-          for (size_t i=0; i < targets.size(); ++i) {
-            targets[i] >> meshMotionBlock[i];
+      // has a user stated that mesh motion is external?
+      if ( meshDeformation_ ) {
+        NaluEnv::self().naluOutputP0() << "mesh motion set to external (will prevail over mesh motion specification)!" << std::endl;
+      }
+      else {        
+        for (size_t ioption = 0; ioption < y_mesh_motion->size(); ++ioption) {
+          const YAML::Node &y_option = (*y_mesh_motion)[ioption];
+          
+          // extract mesh motion name and omega value
+          std::string motionName = "na";
+          get_required(y_option, "name", motionName);
+          double omega = 0.0;
+          get_required(y_option, "omega", omega);
+          
+          // now fill in name
+          std::vector<std::string> meshMotionBlock;
+          const YAML::Node &targets = y_option["target_name"];
+          if (targets.Type() == YAML::NodeType::Scalar) {
+            meshMotionBlock.resize(1);
+            targets >> meshMotionBlock[0];
           }
+          else {
+            meshMotionBlock.resize(targets.size());
+            for (size_t i=0; i < targets.size(); ++i) {
+              targets[i] >> meshMotionBlock[i];
+            }
+          }
+          std::pair<std::vector<std::string>, double > thePair;
+          thePair = std::make_pair(meshMotionBlock, omega);
+          
+          // provide the map
+          meshMotionMap_[motionName] = thePair;
+          
         }
-        std::pair<std::vector<std::string>, double > thePair;
-        thePair = std::make_pair(meshMotionBlock, omega);
-
-        // provide the map
-        meshMotionMap_[motionName] = thePair;
-
       }
     }
 

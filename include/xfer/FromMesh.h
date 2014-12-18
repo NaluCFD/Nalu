@@ -57,14 +57,14 @@ public :
   typedef std::vector<std::pair<std::string, std::string> > PairNames;
 
 
-  std::vector< const ScalarFieldType *>
+  std::vector< const stk::mesh::FieldBase *>
   get_fields(const stk::mesh::MetaData &fromMetaData, const PairNames &VarPairName)
   {
-    std::vector< const ScalarFieldType *> fromFieldVec;
+    std::vector< const stk::mesh::FieldBase *> fromFieldVec;
     // provide field names
     for(PairNames::const_iterator i=VarPairName.begin(); i!=VarPairName.end(); ++i) {
       const std::string &name = i->first;
-      const ScalarFieldType *fromfield = stk::mesh::get_field_by_name<ScalarFieldType>(name,fromMetaData);
+      const stk::mesh::FieldBase *fromfield = stk::mesh::get_field_by_name(name,fromMetaData);
       fromFieldVec.push_back(fromfield);
     }
     return fromFieldVec;
@@ -202,7 +202,7 @@ public :
         stk::mesh::BulkData &fromBulkData_;
         Realm &fromRealm_;
   const VectorFieldType *fromcoordinates_;
-  const std::vector< const ScalarFieldType *> fromFieldVec_;
+  const std::vector< const stk::mesh::FieldBase *> fromFieldVec_;
   const stk::mesh::Part *fromMeshPart_;
   const stk::ParallelMachine comm_;
 

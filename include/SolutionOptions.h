@@ -58,6 +58,8 @@ public:
   bool isTurbulent_;
   TurbulenceModel turbulenceModel_;
   bool meshMotion_;
+  bool meshDeformation_;
+  bool externalMeshDeformation_;
   bool activateUniformRefinement_;
   bool uniformRefineSaveAfter_;
   std::vector<int> refineAt_;

@@ -177,7 +177,6 @@ Realm::Realm(Realms& realms)
     exposedBoundaryPart_(0),
     edgesPart_(0),
     checkForMissingBcs_(false),
-    meshDeformation_(false),
     isothermalFlow_(true),
     uniformFlow_(true),
     provideEntityCount_(false),
@@ -341,12 +340,13 @@ Realm::initialize()
 
   populate_boundary_data();
 
-  process_mesh_motion();
+  if ( solutionOptions_->meshMotion_ )
+    process_mesh_motion();
 
   if ( hasPeriodic_ )
     periodicManager_->build_constraints();
 
-  if ( meshDeformation_ )
+  if ( has_mesh_deformation() )
     init_current_coordinates();
 
   compute_geometry();
@@ -1404,10 +1404,18 @@ Realm::pre_timestep_work()
 
   }
 
-
-  // hack for now
-  if ( meshDeformation_ )
+  // deal with non-topology changes, however, moving mesh
+  if ( has_mesh_deformation() ) {
+    // extract target parts for this physics
+    if ( solutionOptions_->externalMeshDeformation_ ) {
+      std::vector<std::string> targetNames = materialPropertys_.targetNames_;
+      for ( size_t itarget = 0; itarget < targetNames.size(); ++itarget ) {
+        stk::mesh::Part *targetPart = fixture_->meta_data().get_part(targetNames[itarget]);
+        set_current_coordinates(targetPart);
+      }
+    }
     compute_geometry();
+  }
 
   // ask the equation system to do some work
   equationSystems_.pre_timestep_work();
@@ -1902,7 +1910,8 @@ Realm::initialize_contact()
 std::string
 Realm::get_coordinates_name()
 {
-  return ( (solutionOptions_->meshMotion_ | meshDeformation_ ) ? "current_coordinates" : "coordinates");
+  return ( (solutionOptions_->meshMotion_ | solutionOptions_->meshDeformation_ | solutionOptions_->externalMeshDeformation_) 
+           ? "current_coordinates" : "coordinates");
 }
 
 //--------------------------------------------------------------------------
@@ -1915,16 +1924,23 @@ Realm::has_mesh_motion()
 }
 
 //--------------------------------------------------------------------------
+//-------- has_mesh_deformation --------------------------------------------
+//--------------------------------------------------------------------------
+bool
+Realm::has_mesh_deformation()
+{
+  return solutionOptions_->externalMeshDeformation_ | solutionOptions_->meshDeformation_;
+}
+
+//--------------------------------------------------------------------------
 //-------- process_mesh_motion ---------------------------------------------
 //--------------------------------------------------------------------------
 void
 Realm::process_mesh_motion()
 {
-  // deal with mesh motion; extract parameters
-  // allows for omega to change...
-
+  // extract parameters; allows for omega to change...
   stk::mesh::MetaData & meta_data = fixture_->meta_data();
-
+  
   std::map<std::string, std::pair<std::vector<std::string>, double> >::const_iterator iter;
   for ( iter = solutionOptions_->meshMotionMap_.begin();
         iter != solutionOptions_->meshMotionMap_.end(); ++iter) {
@@ -2109,9 +2125,8 @@ Realm::compute_geometry()
     extrusionMeshDistanceAlgDriver_->execute();
   computeGeometryAlgDriver_->execute();
 
-  // find total volume...
-  const bool doIt = true;
-  if ( doIt && solutionOptions_->meshMotion_ ) {
+  // find total volume if the mesh moves at all
+  if ( has_mesh_motion() || has_mesh_deformation() ) {
     stk::mesh::MetaData & meta_data = fixture_->meta_data();
     stk::mesh::BulkData & bulk_data = fixture_->bulk_data();
 
@@ -2241,16 +2256,19 @@ Realm::register_nodal_fields(
   stk::mesh::MetaData &meta_data = fixture_->meta_data();
   const int nDim = meta_data.spatial_dimension();
 
-  // mesh motion is high level
-  if ( solutionOptions_->meshMotion_ ) {
+  // mesh motion/deformation is high level
+  if ( solutionOptions_->meshMotion_ || solutionOptions_->externalMeshDeformation_ ) {
     VectorFieldType *displacement = &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_displacement"));
     stk::mesh::put_field(*displacement, *part, nDim);
     VectorFieldType *currentCoords = &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "current_coordinates"));
     stk::mesh::put_field(*currentCoords, *part, nDim);
     VectorFieldType *meshVelocity = &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_velocity"));
     stk::mesh::put_field(*meshVelocity, *part, nDim);
-    ScalarFieldType *omega = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "omega"));
-    stk::mesh::put_field(*omega, *part);
+    // only internal mesh motion requires rotation rate
+    if ( solutionOptions_->meshMotion_ ) {
+      ScalarFieldType *omega = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "omega"));
+      stk::mesh::put_field(*omega, *part);
+    }
   }
 
   if ( averagingInfo_->processAveraging_ )

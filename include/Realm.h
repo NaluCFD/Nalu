@@ -135,6 +135,7 @@ public:
 
   std::string get_coordinates_name();
   bool has_mesh_motion();
+  bool has_mesh_deformation();
 
   void set_omega(
     stk::mesh::Part *targetPart,
@@ -363,9 +364,6 @@ public:
   stk::mesh::Part *edgesPart_;
 
   bool checkForMissingBcs_;
-
-  // mesh deforms due to mesh displacement solve, i.e., not fixed mesh rotation/motion
-  bool meshDeformation_;
 
   // types of physics
   bool isothermalFlow_;

@@ -7,7 +7,7 @@
 
 
 // nalu
-#include <AssembleScalarDiffBCSolverAlgorithm.h>
+#include <mesh_motion/AssemblePressureForceBCSolverAlgorithm.h>
 #include <EquationSystem.h>
 #include <FieldTypeDef.h>
 #include <LinearSystem.h>
@@ -32,12 +32,12 @@ namespace nalu{
 //==========================================================================
 // Class Definition
 //==========================================================================
-// AssembleScalarDiffBCSolverAlgorithm - scalar flux bc, Int bcScalarQ*area
+// AssemblePressureForceBCSolverAlgorithm - Int bcScalarQ*area_i
 //==========================================================================
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-AssembleScalarDiffBCSolverAlgorithm::AssembleScalarDiffBCSolverAlgorithm(
+AssemblePressureForceBCSolverAlgorithm::AssemblePressureForceBCSolverAlgorithm(
   Realm &realm,
   stk::mesh::Part *part,
   EquationSystem *eqSystem,
@@ -57,7 +57,7 @@ AssembleScalarDiffBCSolverAlgorithm::AssembleScalarDiffBCSolverAlgorithm(
 //-------- initialize_connectivity -----------------------------------------
 //--------------------------------------------------------------------------
 void
-AssembleScalarDiffBCSolverAlgorithm::initialize_connectivity()
+AssemblePressureForceBCSolverAlgorithm::initialize_connectivity()
 {
   eqSystem_->linsys_->buildFaceElemToNodeGraph(partVec_);
 }
@@ -66,7 +66,7 @@ AssembleScalarDiffBCSolverAlgorithm::initialize_connectivity()
 //-------- execute ---------------------------------------------------------
 //--------------------------------------------------------------------------
 void
-AssembleScalarDiffBCSolverAlgorithm::execute()
+AssemblePressureForceBCSolverAlgorithm::execute()
 {
 
   stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
@@ -74,8 +74,7 @@ AssembleScalarDiffBCSolverAlgorithm::execute()
 
   const int nDim = meta_data.spatial_dimension();
 
-
-  // space for LHS/RHS; nodesPerElement*nodesPerElement and nodesPerElement
+   // space for LHS/RHS; nodesPerElem*nDim*nodesPerElem*nDim and nodesPerElem*nDim
   std::vector<double> lhs;
   std::vector<double> rhs;
   std::vector<stk::mesh::Entity> connected_nodes;
@@ -115,8 +114,8 @@ AssembleScalarDiffBCSolverAlgorithm::execute()
     std::vector<int> face_node_ordinal_vec(nodesPerFace);
 
     // resize some things; matrix related
-    const int lhsSize = nodesPerElement*nodesPerElement;
-    const int rhsSize = nodesPerElement;
+    const int lhsSize = nodesPerElement*nDim*nodesPerElement*nDim;
+    const int rhsSize = nodesPerElement*nDim;
     lhs.resize(lhsSize);
     rhs.resize(rhsSize);
     connected_nodes.resize(nodesPerElement);
@@ -214,14 +213,12 @@ AssembleScalarDiffBCSolverAlgorithm::execute()
           fluxBip += r*p_bcScalarQ[ic];
         }
 
-        const int offset = ip*nDim;
-        double areaNorm = 0.0;
-        for (int idir = 0; idir < nDim; ++idir)
-          areaNorm += areaVec[offset+idir]*areaVec[offset+idir];
-        areaNorm = std::sqrt(areaNorm);
-
-        p_rhs[nearestNode] += fluxBip*areaNorm;
-
+        // assemble for each of the ith component
+        for ( int i = 0; i < nDim; ++i ) {
+          const int indexR = nearestNode*nDim + i;
+          p_rhs[indexR] -= fluxBip*areaVec[ip*nDim+i];
+          // RHS only, no need to populate LHS (is zeroed out)
+        }
       }
 
       apply_coeff(connected_nodes, rhs, lhs, __FILE__);

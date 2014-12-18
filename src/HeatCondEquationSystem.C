@@ -478,34 +478,19 @@ HeatCondEquationSystem::register_wall_bc(
                                  stk::topology::NODE_RANK);
     bcDataAlg_.push_back(auxAlg);
 
-    if ( realm_.realmUsesEdges_ ) {
-      // solver; lhs
-      std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi =
+    // solver; lhs; same for edge and element-based scheme
+    std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi =
         solverAlgDriver_->solverAlgMap_.find(algTypeHF);
-      if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
-        AssembleScalarDiffBCSolverAlgorithm *theAlg
-          = new AssembleScalarDiffBCSolverAlgorithm(realm_, part, this,
-                                                    theBcField, realm_.realmUsesEdges_);
-        solverAlgDriver_->solverAlgMap_[algTypeHF] = theAlg;
-      }
-      else {
-        itsi->second->partVec_.push_back(part);
-      }
+    if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
+      AssembleScalarDiffBCSolverAlgorithm *theAlg
+        = new AssembleScalarDiffBCSolverAlgorithm(realm_, part, this,
+            theBcField, realm_.realmUsesEdges_);
+      solverAlgDriver_->solverAlgMap_[algTypeHF] = theAlg;
     }
     else {
-      // solver; lhs
-      std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi =
-        solverAlgDriver_->solverAlgMap_.find(algTypeHF);
-      if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
-        AssembleScalarDiffBCSolverAlgorithm *theAlg
-          = new AssembleScalarDiffBCSolverAlgorithm(realm_, part, this,
-                                                    theBcField, realm_.realmUsesEdges_);
-        solverAlgDriver_->solverAlgMap_[algTypeHF] = theAlg;
-      }
-      else {
-        itsi->second->partVec_.push_back(part);
-      }
+      itsi->second->partVec_.push_back(part);
     }
+
   }
   else if ( userData.irradSpec_ ) {
     

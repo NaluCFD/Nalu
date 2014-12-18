@@ -43,14 +43,14 @@ public :
   enum {Dimension = 3};
 
   typedef std::vector<std::pair<std::string, std::string> > PairNames;
-  std::vector< const ScalarFieldType *>
+  std::vector< const stk::mesh::FieldBase *>
   get_fields(const stk::mesh::MetaData  &toMetaData,
              const PairNames            &VarPairName) {
-    std::vector< const ScalarFieldType *> toFieldVec;
+    std::vector< const stk::mesh::FieldBase *> toFieldVec;
     // provide field names
     for( PairNames::const_iterator i=VarPairName.begin(); i!=VarPairName.end(); ++i) {
       const std::string &name = i->second;
-      const ScalarFieldType *tofield = stk::mesh::get_field_by_name<ScalarFieldType>(name,toMetaData);
+      const stk::mesh::FieldBase *tofield = stk::mesh::get_field_by_name(name,toMetaData);
       toFieldVec.push_back(tofield);
     }
     return toFieldVec;
@@ -130,7 +130,7 @@ public :
   stk::mesh::MetaData &toMetaData_;
   stk::mesh::BulkData &toBulkData_;
   const VectorFieldType     *tocoordinates_;
-  const std::vector< const ScalarFieldType *> toFieldVec_;
+  const std::vector< const stk::mesh::FieldBase *> toFieldVec_;
   const stk::mesh::Part *toMeshPart_;
   const stk::ParallelMachine comm_;
   const double radius_;

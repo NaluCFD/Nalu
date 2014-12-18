@@ -150,6 +150,14 @@ void operator >> (const YAML::Node& node, WallUserData& wallData) {
   if ( node.FindValue("use_wall_function")) {
     node["use_wall_function"] >> wallData.wallFunctionApproach_;
   }
+  if ( node.FindValue("pressure") ) {
+    node["pressure"] >> wallData.pressure_;
+    wallData.bcDataSpecifiedMap_["pressure"] = true;
+    wallData.bcDataTypeMap_["pressure"] = CONSTANT_UD;
+  }
+  if ( node.FindValue("fsi_interface") ) {
+    node["fsi_interface"] >> wallData.isFsiInterface_;
+  }
 
   // not appropriate
   if ( node.FindValue("specific_dissipation_rate")) {

@@ -1299,7 +1299,15 @@ MomentumEquationSystem::register_wall_bc(
     = new AuxFunctionAlgorithm(realm_, part,
                                theBcField, theAuxFunc,
                                stk::topology::NODE_RANK);
-  bcDataAlg_.push_back(auxAlg);
+
+  // check to see if this is an FSI interface to determine how we handle velocity population
+  if ( userData.isFsiInterface_ ) {
+    // xfer will handle population; only need to populate the initial value
+    realm_.initCondAlg_.push_back(auxAlg);
+  }
+  else {
+    bcDataAlg_.push_back(auxAlg);
+  }
   
   // copy velocity_bc to velocity np1... (consider not doing this when a wall function is in use)
   CopyFieldAlgorithm *theCopyAlg
@@ -1386,6 +1394,13 @@ MomentumEquationSystem::register_wall_bc(
       itd->second->partVec_.push_back(part);
     }
   }
+
+  // specialty FSI
+  if ( userData.isFsiInterface_ ) {
+    // need p^n+1/2; requires "old" pressure... need a utility to save it and compute it...
+  }
+
+
 }
 
 //--------------------------------------------------------------------------
