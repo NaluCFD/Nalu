@@ -229,6 +229,7 @@ int main( int argc, char ** argv )
   stk::diag::printTimersTable(naluEnv.naluOutputP0(), sierra::nalu::Simulation::rootTimer(),
                               stk::diag::METRICS_CPU_TIME | stk::diag::METRICS_WALL_TIME,
                               false, naluEnv.parallel_comm());
-  
+
+  // all done  
   return 0;
 }
