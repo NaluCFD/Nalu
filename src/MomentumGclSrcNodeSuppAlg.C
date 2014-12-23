@@ -6,10 +6,11 @@
 /*------------------------------------------------------------------------*/
 
 
-#include <ContinuityMassBDF2NodeSuppAlg.h>
-#include <SupplementalAlgorithm.h>
+#include <MomentumGclSrcNodeSuppAlg.h>
 #include <FieldTypeDef.h>
 #include <Realm.h>
+#include <SolutionOptions.h>
+#include <SupplementalAlgorithm.h>
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/Entity.hpp>
@@ -25,63 +26,65 @@ namespace nalu{
 //==========================================================================
 // Class Definition
 //==========================================================================
-// ContinuityMassBDF2NodeSuppAlg - lumped mass drho/dt; BDF2
+// MomentumGclSrcNodeSuppAlg - GCL
 //==========================================================================
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-ContinuityMassBDF2NodeSuppAlg::ContinuityMassBDF2NodeSuppAlg(
+MomentumGclSrcNodeSuppAlg::MomentumGclSrcNodeSuppAlg(
   Realm &realm)
   : SupplementalAlgorithm(realm),
-    densityNm1_(NULL),
-    densityN_(NULL),
+    velocityNp1_(NULL),
     densityNp1_(NULL),
+    dvdx_(NULL),
     dualNodalVolume_(NULL),
-    dt_(0.0),
-    gamma1_(0.0),
-    gamma2_(0.0),
-    gamma3_(0.0)
+    nDim_(1)
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  VectorFieldType *velocity = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
+  velocityNp1_ = &(velocity->field_of_state(stk::mesh::StateNP1));
   ScalarFieldType *density = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
-  densityNm1_ = &(density->field_of_state(stk::mesh::StateNM1));
-  densityN_ = &(density->field_of_state(stk::mesh::StateN));
   densityNp1_ = &(density->field_of_state(stk::mesh::StateNP1));
+  dvdx_ = meta_data.get_field<GenericFieldType>(stk::topology::NODE_RANK, "dvdx");
   dualNodalVolume_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
+  nDim_ = meta_data.spatial_dimension();
 }
 
 //--------------------------------------------------------------------------
 //-------- setup -----------------------------------------------------------
 //--------------------------------------------------------------------------
 void
-ContinuityMassBDF2NodeSuppAlg::setup()
+MomentumGclSrcNodeSuppAlg::setup()
 {
-  dt_ = realm_.get_time_step();
-  gamma1_ = realm_.get_gamma1();
-  gamma2_ = realm_.get_gamma2();
-  gamma3_ = realm_.get_gamma3();
-
+  // all set up in constructor
 }
 
 //--------------------------------------------------------------------------
 //-------- node_execute ----------------------------------------------------
 //--------------------------------------------------------------------------
 void
-ContinuityMassBDF2NodeSuppAlg::node_execute(
-  double *lhs,
+MomentumGclSrcNodeSuppAlg::node_execute(
+  double */*lhs*/,
   double *rhs,
   stk::mesh::Entity node)
 {
-  // deal with lumped mass matrix
-  const double projTimeScale = dt_/gamma1_;
-  const double rhoNm1     = *stk::mesh::field_data(*densityNm1_, node);
-  const double rhoN       = *stk::mesh::field_data(*densityN_, node);
-  const double rhoNp1     = *stk::mesh::field_data(*densityNp1_, node);
-  const double dualVolume = *stk::mesh::field_data(*dualNodalVolume_, node);
+  // rhs-= rho*u*div(v)
+  const double *uNp1 = stk::mesh::field_data(*velocityNp1_, node );
+  const double rhoNp1 = *stk::mesh::field_data(*densityNp1_, node );
+  const double *dvdx = stk::mesh::field_data(*dvdx_, node );
+  const double dualVolume = *stk::mesh::field_data(*dualNodalVolume_, node );
+  const int nDim = nDim_;
 
-  rhs[0] -= (gamma1_*rhoNp1 + gamma2_*rhoN + gamma3_*rhoNm1)*dualVolume/dt_/projTimeScale;
-  lhs[0] += 0.0;
+  // form d/dxj(vj)
+  double divV = 0.0;
+  for ( int j = 0; j < nDim; ++j )
+    divV += dvdx[j*nDim+j];
+
+  const double fac = rhoNp1*divV*dualVolume;
+  for ( int i = 0; i < nDim; ++i ) {
+    rhs[i] -= fac*uNp1[i];
+  }
 }
 
 } // namespace nalu

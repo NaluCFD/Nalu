@@ -52,6 +52,7 @@
 #include <user_functions/WindEnergyAuxFunction.h>
 #include <user_functions/WindEnergyTaylorVortexAuxFunction.h>
 #include <ContactInfo.h>
+#include <ContinuityGclNodeSuppAlg.h>
 #include <ContinuityLowSpeedCompressibleNodeSuppAlg.h>
 #include <ContactManager.h>
 #include <ContinuityMassBackwardEulerNodeSuppAlg.h>
@@ -72,6 +73,7 @@
 #include <MomentumBuoyancySrcNodeSuppAlg.h>
 #include <MomentumBoussinesqSrcNodeSuppAlg.h>
 #include <MomentumBodyForceSrcNodeSuppAlg.h>
+#include <MomentumGclSrcNodeSuppAlg.h>
 #include <MomentumMassBackwardEulerNodeSuppAlg.h>
 #include <MomentumMassBDF2NodeSuppAlg.h>
 #include <NaluEnv.h>
@@ -741,7 +743,7 @@ MomentumEquationSystem::MomentumEquationSystem(
     visc_(NULL),
     tvisc_(NULL),
     evisc_(NULL),
-    assembleNodalGradAlgDriver_(new AssembleNodalGradUAlgorithmDriver(realm_)),
+    assembleNodalGradAlgDriver_(new AssembleNodalGradUAlgorithmDriver(realm_, "dudx")),
     diffFluxCoeffAlgDriver_(new AlgorithmDriver(realm_)),
     tviscAlgDriver_(new AlgorithmDriver(realm_)),
     cflReyAlgDriver_(new AlgorithmDriver(realm_)),
@@ -960,15 +962,12 @@ MomentumEquationSystem::register_interior_algorithm(
       std::vector<std::string> mapNameVec = isrc->second;
       for (size_t k = 0; k < mapNameVec.size(); ++k ) {
         std::string sourceName = mapNameVec[k];
+        SupplementalAlgorithm *suppAlg = NULL;
         if (sourceName == "buoyancy" ) {
-          MomentumBuoyancySrcNodeSuppAlg *theBuoy
-            = new MomentumBuoyancySrcNodeSuppAlg(realm_);
-          theAlg->supplementalAlg_.push_back(theBuoy);
+          suppAlg = new MomentumBuoyancySrcNodeSuppAlg(realm_);
         }
         else if ( sourceName == "buoyancy_boussinesq") {
-          MomentumBoussinesqSrcNodeSuppAlg *theBous
-            = new MomentumBoussinesqSrcNodeSuppAlg(realm_);
-          theAlg->supplementalAlg_.push_back(theBous);
+          suppAlg = new MomentumBoussinesqSrcNodeSuppAlg(realm_);
         }
         else if ( sourceName == "body_force") {
           // extract params
@@ -976,17 +975,19 @@ MomentumEquationSystem::register_interior_algorithm(
             = realm_.solutionOptions_->srcTermParamMap_.find("momentum");
           if ( iparams != realm_.solutionOptions_->srcTermParamMap_.end()) {
             std::vector<double> theParams = iparams->second;
-            MomentumBodyForceSrcNodeSuppAlg *theBody
-              = new MomentumBodyForceSrcNodeSuppAlg(realm_, theParams);
-            theAlg->supplementalAlg_.push_back(theBody);
+            suppAlg = new MomentumBodyForceSrcNodeSuppAlg(realm_, theParams);
           }
           else {
             throw std::runtime_error("SrcTermsError::body_force: No params found");
           }
         }
-        else {
-          throw std::runtime_error("MomentumEquationSystem::only buoyancy or body force src term is supported");
+        else if ( sourceName == "gcl") {
+          suppAlg = new MomentumGclSrcNodeSuppAlg(realm_);
         }
+        else {
+          throw std::runtime_error("MomentumEquationSystem::only buoyancy, buoyancy_boussinesq, body force or gcl are supported");
+        }
+        theAlg->supplementalAlg_.push_back(suppAlg);
       }
     }
   }
@@ -1833,8 +1834,11 @@ ContinuityEquationSystem::register_interior_algorithm(
         else if ( sourceName == "low_speed_compressible" ) {
           suppAlg = new ContinuityLowSpeedCompressibleNodeSuppAlg(realm_);
         }
+        else if ( sourceName == "gcl" ) {
+          suppAlg = new ContinuityGclNodeSuppAlg(realm_);
+        }
         else {
-          throw std::runtime_error("only density time derivative and low speed compress cont src is supported");
+          throw std::runtime_error("ContinuityEquationSystem::only density_time_derivative, low_speed_compressible or gcl are supported");
         }
         // add supplemental algorithm
         theAlg->supplementalAlg_.push_back(suppAlg);

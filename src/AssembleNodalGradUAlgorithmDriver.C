@@ -34,8 +34,10 @@ class Realm;
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 AssembleNodalGradUAlgorithmDriver::AssembleNodalGradUAlgorithmDriver(
-  const Realm &realm)
-  : AlgorithmDriver(realm)
+  const Realm &realm,
+  const std::string dudxName)
+  : AlgorithmDriver(realm),
+    dudxName_(dudxName)
 {
   // does nothing
 }
@@ -52,7 +54,7 @@ AssembleNodalGradUAlgorithmDriver::pre_work()
   const int nDim = meta_data.spatial_dimension();
 
   // extract fields
-  GenericFieldType *dudx = meta_data.get_field<GenericFieldType>(stk::topology::NODE_RANK, "dudx");
+  GenericFieldType *dudx = meta_data.get_field<GenericFieldType>(stk::topology::NODE_RANK, dudxName_);
 
   // define some common selectors; select all nodes (locally and shared)
   // where dudx is defined
@@ -94,7 +96,7 @@ AssembleNodalGradUAlgorithmDriver::post_work()
   stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
 
   // extract fields
-  GenericFieldType *dudx = meta_data.get_field<GenericFieldType>(stk::topology::NODE_RANK, "dudx");
+  GenericFieldType *dudx = meta_data.get_field<GenericFieldType>(stk::topology::NODE_RANK, dudxName_);
   std::vector<stk::mesh::FieldBase*> sum_fields(1, dudx);
   stk::mesh::parallel_sum(bulk_data, sum_fields);
 

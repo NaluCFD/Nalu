@@ -45,6 +45,7 @@
 #include <NaluParsing.h>
 #include <Realm.h>
 #include <Realms.h>
+#include <ScalarGclNodeSuppAlg.h>
 #include <ScalarMassBackwardEulerNodeSuppAlg.h>
 #include <ScalarMassBDF2NodeSuppAlg.h>
 #include <Simulation.h>
@@ -353,29 +354,27 @@ EnthalpyEquationSystem::register_interior_algorithm(
       std::vector<std::string> mapNameVec = isrc->second;
       for (size_t k = 0; k < mapNameVec.size(); ++k ) {
         std::string sourceName = mapNameVec[k];
+        SupplementalAlgorithm *suppAlg = NULL;
         if ( sourceName == "participating_media_radiation" ) {
-          EnthalpyPmrSrcNodeSuppAlg *pmrSrc
-            = new EnthalpyPmrSrcNodeSuppAlg(realm_);
-          theAlg->supplementalAlg_.push_back(pmrSrc);
+          suppAlg = new EnthalpyPmrSrcNodeSuppAlg(realm_);
         }
         else if ( sourceName == "low_speed_compressible" ) {
-          EnthalpyLowSpeedCompressibleNodeSuppAlg *compressSrc
-            = new EnthalpyLowSpeedCompressibleNodeSuppAlg(realm_);
-          theAlg->supplementalAlg_.push_back(compressSrc);
+          suppAlg = new EnthalpyLowSpeedCompressibleNodeSuppAlg(realm_);
         }
         else if ( sourceName == "pressure_work" ) {
-          EnthalpyPressureWorkNodeSuppAlg *pressureSrc
-            = new EnthalpyPressureWorkNodeSuppAlg(realm_);
-          theAlg->supplementalAlg_.push_back(pressureSrc);
+          suppAlg = new EnthalpyPressureWorkNodeSuppAlg(realm_);
         }
         else if ( sourceName == "viscous_work" ) {
-          EnthalpyViscousWorkNodeSuppAlg *viscousSrc
-            = new EnthalpyViscousWorkNodeSuppAlg(realm_);
-          theAlg->supplementalAlg_.push_back(viscousSrc);
+          suppAlg = new EnthalpyViscousWorkNodeSuppAlg(realm_);
+        }
+        else if ( sourceName == "gcl" ) {
+          suppAlg = new ScalarGclNodeSuppAlg(enthalpy_,realm_);
         }
         else {
-          throw std::runtime_error("EnthalpyEquationSystem::only PMR and low speed compressible src term is supported");
+          throw std::runtime_error("EnthalpyEquationSystem::only PMR, low speed compressible and gcl src term(s) are supported");
         }
+        // add supplemental algorithm
+        theAlg->supplementalAlg_.push_back(suppAlg);
       }
     }
   }

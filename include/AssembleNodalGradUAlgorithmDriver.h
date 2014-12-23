@@ -21,11 +21,14 @@ class AssembleNodalGradUAlgorithmDriver : public AlgorithmDriver
 public:
 
   AssembleNodalGradUAlgorithmDriver(
-    const Realm &realm);
+    const Realm &realm,
+    const std::string dudxName);
   virtual ~AssembleNodalGradUAlgorithmDriver() {}
 
   virtual void pre_work();
   virtual void post_work();
+
+  const std::string dudxName_;
 };
 
 } // namespace nalu

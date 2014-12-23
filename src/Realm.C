@@ -1462,6 +1462,10 @@ Realm::advance_time_step()
                   << std::setw(16) << std::right << "-----------"
                   << std::setw(14) << std::right << "----------" << std::endl;
 
+  // evaluate new geometry based on lastest mesh motion geometry state (provided that external is active)
+  if ( solutionOptions_->externalMeshDeformation_ )
+    compute_geometry();
+
   // evaluate properties based on latest state including boundary and and possible xfer
   evaluate_properties();
 
@@ -2268,6 +2272,11 @@ Realm::register_nodal_fields(
     if ( solutionOptions_->meshMotion_ ) {
       ScalarFieldType *omega = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "omega"));
       stk::mesh::put_field(*omega, *part);
+    }
+    // only external mesh deformation requires dvi/dxj (for GCL)
+    if ( solutionOptions_->externalMeshDeformation_) {
+      GenericFieldType *dvdx = &(meta_data.declare_field<GenericFieldType>(stk::topology::NODE_RANK, "dvdx"));
+      stk::mesh::put_field(*dvdx, *part, nDim*nDim);    
     }
   }
 

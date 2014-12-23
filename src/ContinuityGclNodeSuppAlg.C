@@ -6,10 +6,11 @@
 /*------------------------------------------------------------------------*/
 
 
-#include <ContinuityMassBDF2NodeSuppAlg.h>
+#include <ContinuityGclNodeSuppAlg.h>
 #include <SupplementalAlgorithm.h>
 #include <FieldTypeDef.h>
 #include <Realm.h>
+#include <TimeIntegrator.h>
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/Entity.hpp>
@@ -25,62 +26,62 @@ namespace nalu{
 //==========================================================================
 // Class Definition
 //==========================================================================
-// ContinuityMassBDF2NodeSuppAlg - lumped mass drho/dt; BDF2
+// ContinuityGclNodeSuppAlg - GCL
 //==========================================================================
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-ContinuityMassBDF2NodeSuppAlg::ContinuityMassBDF2NodeSuppAlg(
+ContinuityGclNodeSuppAlg::ContinuityGclNodeSuppAlg(
   Realm &realm)
   : SupplementalAlgorithm(realm),
-    densityNm1_(NULL),
-    densityN_(NULL),
     densityNp1_(NULL),
+    dvdx_(NULL),
     dualNodalVolume_(NULL),
     dt_(0.0),
-    gamma1_(0.0),
-    gamma2_(0.0),
-    gamma3_(0.0)
+    gamma1_(1.0),
+    nDim_(1)
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
   ScalarFieldType *density = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
-  densityNm1_ = &(density->field_of_state(stk::mesh::StateNM1));
-  densityN_ = &(density->field_of_state(stk::mesh::StateN));
   densityNp1_ = &(density->field_of_state(stk::mesh::StateNP1));
+  dvdx_ = meta_data.get_field<GenericFieldType>(stk::topology::NODE_RANK, "dvdx");
   dualNodalVolume_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
+  nDim_ = meta_data.spatial_dimension();
 }
 
 //--------------------------------------------------------------------------
 //-------- setup -----------------------------------------------------------
 //--------------------------------------------------------------------------
 void
-ContinuityMassBDF2NodeSuppAlg::setup()
+ContinuityGclNodeSuppAlg::setup()
 {
-  dt_ = realm_.get_time_step();
   gamma1_ = realm_.get_gamma1();
-  gamma2_ = realm_.get_gamma2();
-  gamma3_ = realm_.get_gamma3();
-
+  dt_ = realm_.timeIntegrator_->get_time_step();
 }
 
 //--------------------------------------------------------------------------
 //-------- node_execute ----------------------------------------------------
 //--------------------------------------------------------------------------
 void
-ContinuityMassBDF2NodeSuppAlg::node_execute(
+ContinuityGclNodeSuppAlg::node_execute(
   double *lhs,
   double *rhs,
   stk::mesh::Entity node)
 {
-  // deal with lumped mass matrix
+  // rhs -= rho*div(v)*dV/timeFactors
   const double projTimeScale = dt_/gamma1_;
-  const double rhoNm1     = *stk::mesh::field_data(*densityNm1_, node);
-  const double rhoN       = *stk::mesh::field_data(*densityN_, node);
-  const double rhoNp1     = *stk::mesh::field_data(*densityNp1_, node);
-  const double dualVolume = *stk::mesh::field_data(*dualNodalVolume_, node);
+  const double rhoNp1 = *stk::mesh::field_data(*densityNp1_, node );
+  const double *dvdx = stk::mesh::field_data(*dvdx_, node );
+  const double dualVolume = *stk::mesh::field_data(*dualNodalVolume_, node );
+  const int nDim = nDim_;
 
-  rhs[0] -= (gamma1_*rhoNp1 + gamma2_*rhoN + gamma3_*rhoNm1)*dualVolume/dt_/projTimeScale;
+  // form d/dxj(vj)
+  double divV = 0.0;
+  for ( int j = 0; j < nDim; ++j )
+    divV += dvdx[j*nDim+j];
+  
+  rhs[0] -= rhoNp1*divV*dualVolume/projTimeScale;
   lhs[0] += 0.0;
 }
 

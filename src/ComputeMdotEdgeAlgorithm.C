@@ -41,7 +41,7 @@ ComputeMdotEdgeAlgorithm::ComputeMdotEdgeAlgorithm(
   Realm &realm,
   stk::mesh::Part *part)
   : Algorithm(realm, part),
-    meshMotion_(realm_.has_mesh_motion()),
+    meshMotion_(realm_.has_mesh_motion() | realm_.has_mesh_deformation()),
     meshVelocity_(NULL),
     velocity_(NULL),
     Gpdx_(NULL),
@@ -55,6 +55,7 @@ ComputeMdotEdgeAlgorithm::ComputeMdotEdgeAlgorithm(
   stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
   if ( meshMotion_ )
     meshVelocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_velocity");
+
   velocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
   Gpdx_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "dpdx");
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
@@ -147,7 +148,7 @@ ComputeMdotEdgeAlgorithm::execute()
       const double densityL = *stk::mesh::field_data(densityNp1, nodeL );
       const double densityR = *stk::mesh::field_data(densityNp1, nodeR );
 
-      // copy to velcoity relative to mesh
+      // copy to velocity relative to mesh
       for ( int j = 0; j < nDim; ++j ) {
         p_vrtmL[j] = velocityNp1L[j];
         p_vrtmR[j] = velocityNp1R[j];

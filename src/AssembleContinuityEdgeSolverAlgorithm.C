@@ -41,7 +41,7 @@ AssembleContinuityEdgeSolverAlgorithm::AssembleContinuityEdgeSolverAlgorithm(
   stk::mesh::Part *part,
   EquationSystem *eqSystem)
   : SolverAlgorithm(realm, part, eqSystem),
-    meshMotion_(realm_.has_mesh_motion()),
+    meshMotion_(realm_.has_mesh_motion() | realm_.has_mesh_deformation()),
     meshVelocity_(NULL),
     velocity_(NULL),
     Gpdx_(NULL),
@@ -54,6 +54,7 @@ AssembleContinuityEdgeSolverAlgorithm::AssembleContinuityEdgeSolverAlgorithm(
   stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
   if ( meshMotion_ )
     meshVelocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_velocity");
+
   velocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
   Gpdx_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "dpdx");
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());

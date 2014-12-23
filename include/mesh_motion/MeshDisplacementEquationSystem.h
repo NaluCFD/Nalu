@@ -21,6 +21,7 @@ namespace sierra{
 namespace nalu{
 
 class AlgorithmDriver;
+class AssembleNodalGradUAlgorithmDriver;
 class Realm;
 class LinearSystem;
 
@@ -61,6 +62,7 @@ public:
   bool isInit_;
   VectorFieldType *meshDisplacement_;
   VectorFieldType *meshVelocity_;
+  GenericFieldType *dvdx_;
   VectorFieldType *coordinates_;
   VectorFieldType *currentCoordinates_;
   ScalarFieldType *dualNodalVolume_;
@@ -68,6 +70,8 @@ public:
   ScalarFieldType *lameMu_;
   ScalarFieldType *lameLambda_;
   VectorFieldType *dxTmp_;
+
+  AssembleNodalGradUAlgorithmDriver *assembleNodalGradAlgDriver_;
 
 };
 

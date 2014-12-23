@@ -16,6 +16,9 @@
 #include <user_functions/SinMeshDisplacementAuxFunction.h>
 
 #include <AlgorithmDriver.h>
+#include <AssembleNodalGradUAlgorithmDriver.h>
+#include <AssembleNodalGradUElemAlgorithm.h>
+#include <AssembleNodalGradUElemBoundaryAlgorithm.h>
 #include <AssembleNodeSolverAlgorithm.h>
 #include <AuxFunctionAlgorithm.h>
 #include <ConstantAuxFunction.h>
@@ -85,18 +88,24 @@ MeshDisplacementEquationSystem::MeshDisplacementEquationSystem(
     isInit_(false),
     meshDisplacement_(NULL),
     meshVelocity_(NULL),
+    dvdx_(NULL),
     coordinates_(NULL),
     currentCoordinates_(NULL),
     dualNodalVolume_(NULL),
     density_(NULL),
     lameMu_(NULL),
     lameLambda_(NULL),
-    dxTmp_(NULL)
+    dxTmp_(NULL),
+    assembleNodalGradAlgDriver_(new AssembleNodalGradUAlgorithmDriver(realm_, "dvdx"))
 {
   // extract solver name and solver object
   std::string solverName = realm_.equationSystems_.get_solver_block_name("mesh_displacement");
   LinearSolver *solver = realm_.root()->linearSolvers_->create_solver(solverName, EQ_MESH_DISPLACEMENT);
   linsys_ = LinearSystem::create(realm_, realm_.spatialDimension_, name_, solver);
+
+  // determine nodal gradient form; use the edgeNodalGradient_ data member since mesh_displacement EQ does not need this
+  set_nodal_gradient("mesh_velocity");
+  NaluEnv::self().naluOutputP0() << "Edge projected nodal gradient for mesh_velocity: " << edgeNodalGradient_ <<std::endl;
 
   // push back EQ to manager
   realm_.equationSystems_.push_back(this);
@@ -145,6 +154,10 @@ MeshDisplacementEquationSystem::register_nodal_fields(
   // mesh velocity (used for fluids coupling)
   meshVelocity_ =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_velocity"));
   stk::mesh::put_field(*meshVelocity_, *part, nDim);
+
+  // projected nodal gradient
+  dvdx_ =  &(meta_data.declare_field<GenericFieldType>(stk::topology::NODE_RANK, "dvdx"));
+  stk::mesh::put_field(*dvdx_, *part, nDim*nDim);
 
   // delta solution for linear solver
   dxTmp_ =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "dxTmp"));
@@ -257,6 +270,18 @@ MeshDisplacementEquationSystem::register_interior_algorithm(
     }
   }
 
+  // non-solver; contribution to Gjvi; allow for element-based shifted
+  std::map<AlgorithmType, Algorithm *>::iterator itgv
+    = assembleNodalGradAlgDriver_->algMap_.find(algType);
+  if ( itgv == assembleNodalGradAlgDriver_->algMap_.end() ) {
+    AssembleNodalGradUElemAlgorithm *theAlg 
+      = new AssembleNodalGradUElemAlgorithm(realm_, part, meshVelocity_, dvdx_, edgeNodalGradient_);
+    assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+  }
+  else {
+    itgv->second->partVec_.push_back(part);
+  }
+  
 }
 
 //--------------------------------------------------------------------------
@@ -398,6 +423,18 @@ MeshDisplacementEquationSystem::register_wall_bc(
     NaluEnv::self().naluOutputP0() << "No displacement specified: zero surface traction applied" << std::endl;
   }
 
+  // non-solver; contribution to Gjvi; allow for element-based shifted
+  std::map<AlgorithmType, Algorithm *>::iterator itgv
+    = assembleNodalGradAlgDriver_->algMap_.find(algType);
+  if ( itgv == assembleNodalGradAlgDriver_->algMap_.end() ) {
+    AssembleNodalGradUElemBoundaryAlgorithm *theAlg
+      = new AssembleNodalGradUElemBoundaryAlgorithm(realm_, part, meshVelocity_, dvdx_, edgeNodalGradient_);
+    assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+  }
+  else {
+    itgv->second->partVec_.push_back(part);
+  }
+
 }
 
 //--------------------------------------------------------------------------
@@ -514,7 +551,10 @@ MeshDisplacementEquationSystem::solve_and_update()
 
     compute_current_coordinates();
   }
-
+  
+  // compute nodal projected gradient
+  assembleNodalGradAlgDriver_->execute();
+  
 }
 
 //--------------------------------------------------------------------------

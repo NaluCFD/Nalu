@@ -39,6 +39,7 @@
 #include <NaluParsing.h>
 #include <Realm.h>
 #include <Realms.h>
+#include <ScalarGclNodeSuppAlg.h>
 #include <ScalarMassBackwardEulerNodeSuppAlg.h>
 #include <ScalarMassBDF2NodeSuppAlg.h>
 #include <Simulation.h>
@@ -271,6 +272,25 @@ TurbKineticEnergyEquationSystem::register_interior_algorithm(
         throw std::runtime_error("Unsupported turbulence model in TurbKe: only SST, SST_DES and Ksgs supported");
     }
     theAlg->supplementalAlg_.push_back(theSrc);
+
+    // Add src term supp alg...; limited number supported
+    std::map<std::string, std::vector<std::string> >::iterator isrc 
+      = realm_.solutionOptions_->srcTermsMap_.find("turbulent_ke");
+    if ( isrc != realm_.solutionOptions_->srcTermsMap_.end() ) {
+      std::vector<std::string> mapNameVec = isrc->second;   
+      for (size_t k = 0; k < mapNameVec.size(); ++k ) {
+        std::string sourceName = mapNameVec[k];
+        SupplementalAlgorithm *suppAlg = NULL;
+        if ( sourceName == "gcl" ) {
+          suppAlg = new ScalarGclNodeSuppAlg(tke_,realm_);
+        }
+        else {
+          throw std::runtime_error("TurbKineticEnergyEquationSystem::only gcl source term(s) are supported");
+        }
+        // add supplemental algorithm
+        theAlg->supplementalAlg_.push_back(suppAlg);
+      }
+    }
   }
   else {
     itsm->second->partVec_.push_back(part);
