@@ -87,6 +87,7 @@ public:
   const double & nonLinearResidual() {return nonLinearResidual_; }
   const double & scaledNonLinearResidual() {return scaledNonLinearResidual_; }
   bool & recomputePreconditioner() {return recomputePreconditioner_;}
+  bool & reusePreconditioner() {return reusePreconditioner_;}
 protected:
   virtual void beginLinearSystemConstruction()=0;
   virtual void checkError(
@@ -108,6 +109,7 @@ protected:
   double firstNonLinearResidual_;
   double scaledNonLinearResidual_;
   bool recomputePreconditioner_;
+  bool reusePreconditioner_;
 
 public:
   bool provideOutput_;

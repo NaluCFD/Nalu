@@ -66,8 +66,8 @@ class LinearSolver
 {
   public:
   LinearSolver(std::string name, LinearSolvers *linearSolvers,
-    bool recompute_preconditioner) : name_(name), linearSolvers_(linearSolvers),
-    recomputePreconditioner_(recompute_preconditioner) {}
+    bool recompute_preconditioner, bool reuse_preconditioner) : name_(name), linearSolvers_(linearSolvers),
+    recomputePreconditioner_(recompute_preconditioner), reusePreconditioner_(reuse_preconditioner) {}
   virtual ~LinearSolver() {}
   std::string name_;
   virtual PetraType getType() = 0;
@@ -76,8 +76,10 @@ class LinearSolver
   LinearSolvers *linearSolvers_;
   protected:
   bool recomputePreconditioner_;
+  bool reusePreconditioner_;
   public:
   bool & recomputePreconditioner() {return recomputePreconditioner_;}
+  bool & reusePreconditioner() {return reusePreconditioner_;}
 };
 
 class EpetraLinearSolver : public LinearSolver

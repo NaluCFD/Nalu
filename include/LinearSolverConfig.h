@@ -41,6 +41,7 @@ class EpetraLinearSolverConfig {
     std::string & muelu_xml_file() {return muelu_xml_file_;}
     bool getWriteMatrixFiles() { return writeMatrixFiles_; }
     bool recomputePreconditioner() { return recomputePreconditioner_; }
+    bool reusePreconditioner() { return reusePreconditioner_; }
   private:
     static int string_to_AzSolver(const std::string & method);
     static int string_to_AzPrecond(const std::string & precond);
@@ -59,6 +60,7 @@ class EpetraLinearSolverConfig {
     std::string muelu_xml_file_;
 
     bool recomputePreconditioner_;
+    bool reusePreconditioner_;
 };
 
 class TpetraLinearSolverConfig {
@@ -73,6 +75,7 @@ class TpetraLinearSolverConfig {
     bool use_MueLu() const {return useMueLu_;}
     std::string & muelu_xml_file() {return muelu_xml_file_;}
     bool recomputePreconditioner() { return recomputePreconditioner_; }
+    bool reusePreconditioner() { return reusePreconditioner_; }
     std::string get_method() {return method_;}
 
   private:
@@ -87,6 +90,7 @@ class TpetraLinearSolverConfig {
     bool useMueLu_;
 
     bool recomputePreconditioner_;
+    bool reusePreconditioner_;
 
 };
 
