@@ -2,6 +2,7 @@
 /build/CMakeFiles/
 /build/bin/
 /build/libnalu.a
+/build/libnalu.so
 /build/naluX
 /build/cmake_install.cmake
 /build/Makefile
