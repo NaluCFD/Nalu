@@ -12,7 +12,7 @@
 #include <Realm.h>
 #include <SolutionOptions.h>
 
-#if defined (NALU_USES_PERCEPT )
+#if defined (NALU_USES_PERCEPT)
 #include <adapt/markers/MarkerUsingErrIndFraction.hpp>
 #include <adapt/markers/MarkerPhysicallyBased.hpp>
 #include <percept/FieldTypes.hpp>
@@ -52,7 +52,7 @@ ErrorIndicatorAlgorithmDriver::ErrorIndicatorAlgorithmDriver(
     errorIndicator_(NULL), refineField_(NULL), refineFieldOrig_(NULL), refineLevelField_(NULL), maxErrorIndicator_(0.0)
 {
   // save off fields
-#if defined (NALU_USES_PERCEPT )
+#if defined (NALU_USES_PERCEPT)
   stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
   errorIndicator_ = meta_data.get_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "error_indicator");
   if (realm.solutionOptions_->useMarker_)

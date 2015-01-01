@@ -5,6 +5,12 @@
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
+
+// deal with Percept 
+/* #ifndef NALU_USES_PERCEPT
+   #define NALU_USES_PERCEPT
+   #endif */
+
 #include <mpi.h>
 #include <stk_util/diag/PrintTimer.hpp>
 

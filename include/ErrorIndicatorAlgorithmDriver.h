@@ -33,7 +33,7 @@ public:
 
 public:
 
-#if defined (NALU_USES_PERCEPT )
+#if defined (NALU_USES_PERCEPT)
   GenericFieldType *errorIndicator_;
   percept::RefineFieldType *refineField_;
   percept::RefineFieldType *refineFieldOrig_;
