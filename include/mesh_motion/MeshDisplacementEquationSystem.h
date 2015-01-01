@@ -31,7 +31,8 @@ public:
 
   MeshDisplacementEquationSystem(
     EquationSystems& equationSystems,
-    const bool activateMass = false);
+    const bool activateMass,
+    const bool deformWrtModelCoords);
   virtual ~MeshDisplacementEquationSystem();
 
   void initial_work();
@@ -57,12 +58,15 @@ public:
   void predict_state();
   void solve_and_update();
   void compute_current_coordinates();
+  void compute_div_mesh_velocity();
   
   const bool activateMass_;
+  const bool deformWrtModelCoords_;
   bool isInit_;
   VectorFieldType *meshDisplacement_;
   VectorFieldType *meshVelocity_;
   GenericFieldType *dvdx_;
+  ScalarFieldType *divV_;
   VectorFieldType *coordinates_;
   VectorFieldType *currentCoordinates_;
   ScalarFieldType *dualNodalVolume_;

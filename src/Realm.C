@@ -2275,8 +2275,8 @@ Realm::register_nodal_fields(
     }
     // only external mesh deformation requires dvi/dxj (for GCL)
     if ( solutionOptions_->externalMeshDeformation_) {
-      GenericFieldType *dvdx = &(meta_data.declare_field<GenericFieldType>(stk::topology::NODE_RANK, "dvdx"));
-      stk::mesh::put_field(*dvdx, *part, nDim*nDim);    
+      ScalarFieldType *divV = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "div_mesh_velocity"));
+      stk::mesh::put_field(*divV, *part);
     }
   }
 

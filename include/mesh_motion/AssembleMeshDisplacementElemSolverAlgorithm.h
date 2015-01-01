@@ -30,13 +30,16 @@ public:
   AssembleMeshDisplacementElemSolverAlgorithm(
     Realm &realm,
     stk::mesh::Part *part,
-    EquationSystem *eqSystem);
+    EquationSystem *eqSystem,
+    const bool deformWrtModelCoords);
   virtual ~AssembleMeshDisplacementElemSolverAlgorithm() {}
   virtual void initialize_connectivity();
   virtual void execute();
 
+  const bool deformWrtModelCoords_;
   VectorFieldType *meshDisplacement_;
   VectorFieldType *coordinates_;
+  VectorFieldType *modelCoordinates_;
   ScalarFieldType *mu_;
   ScalarFieldType *lambda_;
 };

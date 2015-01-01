@@ -42,13 +42,16 @@ namespace nalu{
 AssembleMeshDisplacementElemSolverAlgorithm::AssembleMeshDisplacementElemSolverAlgorithm(
   Realm &realm,
   stk::mesh::Part *part,
-  EquationSystem *eqSystem)
-  : SolverAlgorithm(realm, part, eqSystem)
+  EquationSystem *eqSystem,
+  const bool deformWrtModelCoords)
+  : SolverAlgorithm(realm, part, eqSystem),
+    deformWrtModelCoords_(deformWrtModelCoords)
 {
   // save off data
   stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
   meshDisplacement_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_displacement");
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  modelCoordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates");
 
   // property
   mu_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "lame_mu");
@@ -85,6 +88,7 @@ AssembleMeshDisplacementElemSolverAlgorithm::execute()
   // nodal fields to gather
   std::vector<double> ws_displacementNp1;
   std::vector<double> ws_coordinates;
+  std::vector<double> ws_modelCoordinates;
   std::vector<double> ws_mu;
   std::vector<double> ws_lambda;
 
@@ -127,6 +131,7 @@ AssembleMeshDisplacementElemSolverAlgorithm::execute()
     // algorithm related
     ws_displacementNp1.resize(nodesPerElement*nDim);
     ws_coordinates.resize(nodesPerElement*nDim);
+    ws_modelCoordinates.resize(nodesPerElement*nDim);
     ws_mu.resize(nodesPerElement);
     ws_lambda.resize(nodesPerElement);
     ws_scs_areav.resize(numScsIp*nDim);
@@ -140,6 +145,7 @@ AssembleMeshDisplacementElemSolverAlgorithm::execute()
     double *p_rhs = &rhs[0];
     double *p_displacementNp1 = &ws_displacementNp1[0];
     double *p_coordinates = &ws_coordinates[0];
+    double *p_modelCoordinates = &ws_modelCoordinates[0];
     double *p_mu = &ws_mu[0];
     double *p_lambda = &ws_lambda[0];
     double *p_scs_areav = &ws_scs_areav[0];
@@ -175,6 +181,7 @@ AssembleMeshDisplacementElemSolverAlgorithm::execute()
         // pointers to real data
         const double * dxNp1  =  stk::mesh::field_data(displacementNp1, node);
         const double * coords =  stk::mesh::field_data(*coordinates_, node);
+        const double * modelCoords =  stk::mesh::field_data(*modelCoordinates_, node);
         const double mu = *stk::mesh::field_data(*mu_, node);
         const double lambda = *stk::mesh::field_data(*lambda_, node);
 
@@ -187,6 +194,8 @@ AssembleMeshDisplacementElemSolverAlgorithm::execute()
         for ( int i=0; i < nDim; ++i ) {
           p_displacementNp1[niNdim+i] = dxNp1[i];
           p_coordinates[niNdim+i] = coords[i];
+          p_modelCoordinates[niNdim+i] = modelCoords[i];
+
         }
       }
 
@@ -194,9 +203,14 @@ AssembleMeshDisplacementElemSolverAlgorithm::execute()
       double scs_error = 0.0;
       meSCS->determinant(1, &p_coordinates[0], &p_scs_areav[0], &scs_error);
 
-      // compute dndx
-      meSCS->grad_op(1, &p_coordinates[0], &p_dndx[0], &ws_deriv[0], &ws_det_j[0], &scs_error);
-
+      // compute dndx; model coords or displaced?
+      if ( deformWrtModelCoords_ ) {
+        meSCS->grad_op(1, &p_modelCoordinates[0], &p_dndx[0], &ws_deriv[0], &ws_det_j[0], &scs_error);
+      }
+      else {
+        meSCS->grad_op(1, &p_coordinates[0], &p_dndx[0], &ws_deriv[0], &ws_det_j[0], &scs_error);
+      }
+        
       for ( int ip = 0; ip < numScsIp; ++ip ) {
 
         const int ipNdim = ip*nDim;

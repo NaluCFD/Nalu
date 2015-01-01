@@ -44,7 +44,7 @@ public:
 
   VectorFieldType *velocityNp1_;
   ScalarFieldType *densityNp1_;
-  GenericFieldType *dvdx_;
+  ScalarFieldType *divV_;
   ScalarFieldType *dualNodalVolume_;
   int nDim_;
 

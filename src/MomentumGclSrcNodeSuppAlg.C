@@ -36,7 +36,7 @@ MomentumGclSrcNodeSuppAlg::MomentumGclSrcNodeSuppAlg(
   : SupplementalAlgorithm(realm),
     velocityNp1_(NULL),
     densityNp1_(NULL),
-    dvdx_(NULL),
+    divV_(NULL),
     dualNodalVolume_(NULL),
     nDim_(1)
 {
@@ -46,7 +46,7 @@ MomentumGclSrcNodeSuppAlg::MomentumGclSrcNodeSuppAlg(
   velocityNp1_ = &(velocity->field_of_state(stk::mesh::StateNP1));
   ScalarFieldType *density = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
   densityNp1_ = &(density->field_of_state(stk::mesh::StateNP1));
-  dvdx_ = meta_data.get_field<GenericFieldType>(stk::topology::NODE_RANK, "dvdx");
+  divV_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "div_mesh_velocity");
   dualNodalVolume_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
   nDim_ = meta_data.spatial_dimension();
 }
@@ -72,15 +72,9 @@ MomentumGclSrcNodeSuppAlg::node_execute(
   // rhs-= rho*u*div(v)
   const double *uNp1 = stk::mesh::field_data(*velocityNp1_, node );
   const double rhoNp1 = *stk::mesh::field_data(*densityNp1_, node );
-  const double *dvdx = stk::mesh::field_data(*dvdx_, node );
+  const double divV = *stk::mesh::field_data(*divV_, node );
   const double dualVolume = *stk::mesh::field_data(*dualNodalVolume_, node );
   const int nDim = nDim_;
-
-  // form d/dxj(vj)
-  double divV = 0.0;
-  for ( int j = 0; j < nDim; ++j )
-    divV += dvdx[j*nDim+j];
-
   const double fac = rhoNp1*divV*dualVolume;
   for ( int i = 0; i < nDim; ++i ) {
     rhs[i] -= fac*uNp1[i];

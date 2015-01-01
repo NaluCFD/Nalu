@@ -82,13 +82,16 @@ namespace nalu{
 //--------------------------------------------------------------------------
 MeshDisplacementEquationSystem::MeshDisplacementEquationSystem(
   EquationSystems& eqSystems,
-  const bool activateMass)
+  const bool activateMass,
+  const bool deformWrtModelCoords)
   : EquationSystem(eqSystems, "MeshDisplacementEQS"),
     activateMass_(activateMass),
+    deformWrtModelCoords_(deformWrtModelCoords),
     isInit_(false),
     meshDisplacement_(NULL),
     meshVelocity_(NULL),
     dvdx_(NULL),
+    divV_(NULL),
     coordinates_(NULL),
     currentCoordinates_(NULL),
     dualNodalVolume_(NULL),
@@ -159,7 +162,10 @@ MeshDisplacementEquationSystem::register_nodal_fields(
   dvdx_ =  &(meta_data.declare_field<GenericFieldType>(stk::topology::NODE_RANK, "dvdx"));
   stk::mesh::put_field(*dvdx_, *part, nDim*nDim);
 
-  // delta solution for linear solver
+  divV_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "div_mesh_velocity"));
+   stk::mesh::put_field(*divV_, *part);
+
+   // delta solution for linear solver
   dxTmp_ =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "dxTmp"));
   stk::mesh::put_field(*dxTmp_, *part, nDim);
 
@@ -244,7 +250,8 @@ MeshDisplacementEquationSystem::register_interior_algorithm(
     solverAlgDriver_->solverAlgMap_.find(algType);
   if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
     AssembleMeshDisplacementElemSolverAlgorithm *theAlg
-      = new AssembleMeshDisplacementElemSolverAlgorithm(realm_, part, this);
+      = new AssembleMeshDisplacementElemSolverAlgorithm(
+              realm_, part, this, deformWrtModelCoords_);
     solverAlgDriver_->solverAlgMap_[algType] = theAlg;
   }
   else {
@@ -552,9 +559,11 @@ MeshDisplacementEquationSystem::solve_and_update()
     compute_current_coordinates();
   }
   
-  // compute nodal projected gradient
+  // compute nodal projected gradient and nodal divV
   assembleNodalGradAlgDriver_->execute();
   
+  compute_div_mesh_velocity();
+
 }
 
 //--------------------------------------------------------------------------
@@ -593,6 +602,39 @@ MeshDisplacementEquationSystem::compute_current_coordinates()
         // hack a mesh velocity to be first order backward Euler
         meshVelocity[offSet+j] = (dxNp1[offSet+j] - dxN[offSet+j])/dt;
       }
+    }
+  }
+
+}
+
+//--------------------------------------------------------------------------
+//-------- compute_div_mesh_velocity ---------------------------------------
+//--------------------------------------------------------------------------
+void
+MeshDisplacementEquationSystem::compute_div_mesh_velocity()
+{
+  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+
+  const int nDim = meta_data.spatial_dimension();
+
+  stk::mesh::Selector s_all_nodes
+    = (meta_data.locally_owned_part() | meta_data.globally_shared_part())
+      &stk::mesh::selectField(*divV_);
+
+  stk::mesh::BucketVector const& node_buckets =
+    realm_.get_buckets( stk::topology::NODE_RANK, s_all_nodes );
+  for ( stk::mesh::BucketVector::const_iterator ib = node_buckets.begin() ;
+        ib != node_buckets.end() ; ++ib ) {
+    stk::mesh::Bucket & b = **ib ;
+    const stk::mesh::Bucket::size_type length   = b.size();
+    const double * dvdx = stk::mesh::field_data(*dvdx_, b);
+    double * divV = stk::mesh::field_data(*divV_, b);
+    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+      size_t offSet = k*nDim*nDim;
+      double sum = 0.0;
+      for ( int j = 0; j < nDim; ++j )
+        sum += dvdx[offSet+nDim*j +j];
+      divV[k] = sum;
     }
   }
 

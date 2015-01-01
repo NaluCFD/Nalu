@@ -43,11 +43,10 @@ public:
     stk::mesh::Entity node);
   
   ScalarFieldType *densityNp1_;
-  GenericFieldType *dvdx_;
+  ScalarFieldType *divV_;
   ScalarFieldType *dualNodalVolume_;
   double dt_;
   double gamma1_;
-  int nDim_;
 };
 
 } // namespace nalu
