@@ -20,6 +20,7 @@ cd $baseTestDirectory/packages/publicTrilinos
 #git pull
 
 # now build
+echo ....Commencing the Trilinos Build.....
 cd build
 # ./do-configTrilinos
 # make -j 4
@@ -39,6 +40,7 @@ cd build
 ./do-ConfigNaluNonTracked
 
 # build it... send contents to a file
+echo ....Commencing the Nalu Build....
 make -j 4 >> $baseTestDirectory/nightlyBuildAndTest/NaluBuild.txt
 
 # get to NaluRtest; do not hold an extra clone - switch to nightly
@@ -51,9 +53,11 @@ git pull
 # remove old test vouchers
 if [ -d "$baseTestDirectory/runNaluRtest" ]; then
     rm -rf $baseTestDirectory/runNaluRtest/nightly/*/PASS
+    echo ....Removing PASS status under runNaluRtest....
 fi
 
 # run it... send contents to a file
+echo ....Commensing NaluRtest....
 ./run_tests.sh >> $baseTestDirectory/nightlyBuildAndTest/NaluRtest.txt
 
 # checkout master
@@ -63,4 +67,5 @@ git checkout master
 cd $baseTestDirectory/nightlyBuildAndTest
 
 # mail contents
+echo ....Mailing the results voucher(s)....
 osascript "mailRtest.scpt"
