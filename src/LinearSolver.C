@@ -154,7 +154,7 @@ EpetraLinearSolver::solve(
     if (mueLuPreconditioner_ == Teuchos::null)
     {
       std::string xmlFileName = config_->muelu_xml_file();
-      Teuchos::RCP<Time> tm = Teuchos::TimeMonitor::getNewTimer("nalu MueLu preconditioner setup");
+      Teuchos::RCP<Teuchos::Time> tm = Teuchos::TimeMonitor::getNewTimer("nalu MueLu preconditioner setup");
       Teuchos::TimeMonitor timeMon(*tm);
       mueLuPreconditioner_ = MueLu::CreateEpetraPreconditioner(mueLuMat_, xmlFileName, mueLuCoordinates_);
       Teuchos::TimeMonitor::summarize(std::cout,false,true,false,Teuchos::Union);
@@ -267,9 +267,9 @@ void TpetraLinearSolver::setMueLu()
 
   std::string xmlFileName = config_->muelu_xml_file();
 
-  Teuchos::RCP<Time> tm = TimeMonitor::getNewTimer("nalu MueLu preconditioner setup");
+  Teuchos::RCP<Teuchos::Time> tm = Teuchos::TimeMonitor::getNewTimer("nalu MueLu preconditioner setup");
 
-  TimeMonitor timeMon(*tm);
+  Teuchos::TimeMonitor timeMon(*tm);
   mueluPreconditioner_ = MueLu::CreateTpetraPreconditioner<SC,LO,GO,NO>(matrix_,xmlFileName, coords_);
   Teuchos::TimeMonitor::summarize(std::cout,false,true,false,Teuchos::Union);
 
