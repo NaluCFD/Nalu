@@ -1286,7 +1286,7 @@ Realm::pre_timestep_work()
     double time = -stk::cpu_time();
     if ( process_adaptivity() ) {
 
-# if defined (NALU_USES_PERCEPT)
+#if defined (NALU_USES_PERCEPT)
       // mesh counts
       stk::mesh::BulkData & bulk_data = fixture_->bulk_data();
       std::vector<size_t> counts;

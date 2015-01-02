@@ -297,10 +297,12 @@ SolutionOptions::load(const YAML::Node & y_node)
     const YAML::Node *y_adaptivity = expect_map(*y_solution_options, "adaptivity", optional);
     if (y_adaptivity) {
 
+#if defined (NALU_USES_PERCEPT)
+      NaluEnv::self().naluOutputP0() << "Adaptivity Active. tested on Tri, Tet and quad meshes " << std::endl;
+#else
       throw std::runtime_error("Adaptivity not supported in NaluV1.0:");
-
-      NaluEnv::self().naluOutputP0() << "Adaptivity Active. Limited to Tri and Tet meshes " << std::endl;
-
+#endif
+      
       get_if_present(*y_adaptivity, "frequency", adaptivityFrequency_, adaptivityFrequency_);
       get_if_present(*y_adaptivity, "activate", activateAdaptivity_, activateAdaptivity_);
 
