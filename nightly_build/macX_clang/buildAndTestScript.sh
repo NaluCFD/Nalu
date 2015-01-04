@@ -22,15 +22,9 @@ cd $baseTestDirectory/packages/publicTrilinos
 # now build
 echo ....Commencing the Trilinos Build.....(pull, do-Config, make, make install disabled)
 cd build
-<<<<<<< HEAD
 #./do-configTrilinos
 #make -j 4
 #make install >> $baseTestDirectory/nightlyBuildAndTest/TrilinosBuild.txt
-=======
-./do-configTrilinos
-make -j 4
-make install >> $baseTestDirectory/nightlyBuildAndTest/TrilinosBuild.txt
->>>>>>> f56cb4bca66f588f7c642e7a78a558182cfdeece
 
 # get to Nalu
 cd $baseTestDirectory/nightlyBuildAndTest/Nalu
