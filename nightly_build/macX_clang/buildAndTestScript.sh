@@ -22,9 +22,8 @@ cd $baseTestDirectory/packages/publicTrilinos
 # now build
 echo ....Commencing the Trilinos Build.....
 cd build
-# ./do-configTrilinos
-# make -j 4
-make
+./do-configTrilinos
+make -j 4
 make install >> $baseTestDirectory/nightlyBuildAndTest/TrilinosBuild.txt
 
 # get to Nalu
@@ -36,36 +35,50 @@ git pull
 # get to build
 cd build
 
+# remove old executable
+if [ -f "naluX" ]; then
+        echo Removing previous naluX executable
+	rm naluX
+fi
+
 # config
-./do-ConfigNaluNonTracked
+./do-ConfigNaluNonTracked >> $baseTestDirectory/nightlyBuildAndTest/NaluBuild.txt
 
 # build it... send contents to a file
 echo ....Commencing the Nalu Build....
 make -j 4 >> $baseTestDirectory/nightlyBuildAndTest/NaluBuild.txt
 
-# get to NaluRtest; do not hold an extra clone - switch to nightly
-cd  $baseTestDirectory/NaluRtest
-git checkout nightly
+# check for executable
+if [ -f "naluX" ]; then
+        echo Nalu build successful... ready to test..
+	# get to NaluRtest; do not hold an extra clone - switch to nightly
+	cd  $baseTestDirectory/NaluRtest
+	git checkout nightly
 
-# pull
-git pull
+	# pull
+	git pull
 
-# remove old test vouchers
-if [ -d "$baseTestDirectory/runNaluRtest" ]; then
-    rm -rf $baseTestDirectory/runNaluRtest/nightly/*/PASS
-    echo ....Removing PASS status under runNaluRtest....
+	# remove old test vouchers
+	if [ -d "$baseTestDirectory/runNaluRtest" ]; then
+    		rm -rf $baseTestDirectory/runNaluRtest/nightly/*/PASS
+    		echo ....Removing PASS status under runNaluRtest....
+	fi
+
+	# run it... send contents to a file
+	echo ....Commencing NaluRtest....
+	./run_tests.sh >> $baseTestDirectory/nightlyBuildAndTest/NaluRtest.txt
+
+	# checkout master
+	git checkout master
+
+else
+	echo PROCESS FAILED >> $baseTestDirectory/nightlyBuildAndTest/NaluBuild.txt
+        echo PROCESS FAILED >> $baseTestDirectory/nightlyBuildAndTest/NaluRtest.txt	
 fi
-
-# run it... send contents to a file
-echo ....Commensing NaluRtest....
-./run_tests.sh >> $baseTestDirectory/nightlyBuildAndTest/NaluRtest.txt
-
-# checkout master
-git checkout master
 
 # get back to base
 cd $baseTestDirectory/nightlyBuildAndTest
 
 # mail contents
-echo ....Mailing the results voucher(s)....
+echo ....Mailing the results voucher....
 osascript "mailRtest.scpt"
