@@ -33,9 +33,11 @@ public:
   void execute();
   void assemble_edge_mdot();
 
+  const bool meshMotion_;
   const bool assembleMdotToEdge_;
 
   // extract fields; nodal
+  VectorFieldType *meshVelocity_;
   VectorFieldType *velocity_;
   VectorFieldType *Gpdx_;
   VectorFieldType *coordinates_;

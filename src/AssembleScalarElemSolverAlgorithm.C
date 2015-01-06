@@ -47,13 +47,26 @@ AssembleScalarElemSolverAlgorithm::AssembleScalarElemSolverAlgorithm(
   VectorFieldType *dqdx,
   ScalarFieldType *diffFluxCoeff)
   : SolverAlgorithm(realm, part, eqSystem),
+    meshMotion_(realm_.has_mesh_motion() | realm_.has_mesh_deformation()),
     scalarQ_(scalarQ),
     dqdx_(dqdx),
-    diffFluxCoeff_(diffFluxCoeff)
+    diffFluxCoeff_(diffFluxCoeff),
+    meshVelocity_(NULL),
+    velocity_(NULL),
+    coordinates_(NULL),
+    density_(NULL),
+    massFlowRate_(NULL)
 {
 
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+
+  // hold either mesh velocity or velocity in meshVelocity_ (avoids logic below)
+  if ( meshMotion_ )
+     meshVelocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_velocity");
+   else
+     meshVelocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
+
   velocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
@@ -120,6 +133,8 @@ AssembleScalarElemSolverAlgorithm::execute()
 
   // nodal fields to gather
   std::vector<double> ws_velocityNp1;
+  std::vector<double> ws_meshVelocity;
+  std::vector<double> ws_vrtm;
   std::vector<double> ws_coordinates;
   std::vector<double> ws_scalarQNp1;
   std::vector<double> ws_dqdx;
@@ -172,6 +187,8 @@ AssembleScalarElemSolverAlgorithm::execute()
 
     // algorithm related
     ws_velocityNp1.resize(nodesPerElement*nDim);
+    ws_meshVelocity.resize(nodesPerElement*nDim);
+    ws_vrtm.resize(nodesPerElement*nDim);
     ws_coordinates.resize(nodesPerElement*nDim);
     ws_dqdx.resize(nodesPerElement*nDim);
     ws_scalarQNp1.resize(nodesPerElement);
@@ -187,6 +204,8 @@ AssembleScalarElemSolverAlgorithm::execute()
     double *p_lhs = &lhs[0];
     double *p_rhs = &rhs[0];
     double *p_velocityNp1 = &ws_velocityNp1[0];
+    double *p_meshVelocity = &ws_meshVelocity[0];
+    double *p_vrtm = &ws_vrtm[0];
     double *p_coordinates = &ws_coordinates[0];
     double *p_dqdx = &ws_dqdx[0];
     double *p_scalarQNp1 = &ws_scalarQNp1[0];
@@ -229,9 +248,10 @@ AssembleScalarElemSolverAlgorithm::execute()
         connected_nodes[ni] = node;
 
         // pointers to real data
-        double * uNp1   = stk::mesh::field_data(velocityNp1, node );
-        double * coords = stk::mesh::field_data(*coordinates_, node );
-        double * dq     = stk::mesh::field_data(*dqdx_, node );
+        const double * uNp1   = stk::mesh::field_data(velocityNp1, node );
+        const double * vNp1   = stk::mesh::field_data(*meshVelocity_, node);
+        const double * coords = stk::mesh::field_data(*coordinates_, node );
+        const double * dq     = stk::mesh::field_data(*dqdx_, node );
 
         // gather scalars
         p_scalarQNp1[ni]    = *stk::mesh::field_data(scalarQNp1, node );
@@ -239,11 +259,13 @@ AssembleScalarElemSolverAlgorithm::execute()
         p_diffFluxCoeff[ni] = *stk::mesh::field_data(*diffFluxCoeff_, node );
 
         // gather vectors
-        const int offSet = ni*nDim;
+        const int niNdim = ni*nDim;
         for ( int i=0; i < nDim; ++i ) {
-          p_velocityNp1[offSet+i] = uNp1[i];
-          p_coordinates[offSet+i] = coords[i];
-          p_dqdx[offSet+i] = dq[i];
+          p_velocityNp1[niNdim+i] = uNp1[i];
+          p_vrtm[niNdim+i] = uNp1[i];
+          p_meshVelocity[niNdim+i] = vNp1[i];
+          p_coordinates[niNdim+i] = coords[i];
+          p_dqdx[niNdim+i] = dq[i];
         }
       }
 
@@ -253,6 +275,14 @@ AssembleScalarElemSolverAlgorithm::execute()
 
       // compute dndx
       meSCS->grad_op(1, &p_coordinates[0], &p_dndx[0], &ws_deriv[0], &ws_det_j[0], &scs_error);
+
+      // manage velocity relative to mesh
+      if ( meshMotion_ ) {
+        const int kSize = num_nodes*nDim;
+        for ( int k = 0; k < kSize; ++k ) {
+          p_vrtm[k] -= p_meshVelocity[k];
+        }
+      }
 
       for ( int ip = 0; ip < numScsIp; ++ip ) {
 
@@ -294,8 +324,7 @@ AssembleScalarElemSolverAlgorithm::execute()
         double udotx = 0.0;
         for(int j = 0; j < nDim; ++j ) {
           const double dxj = p_coordinates[ir*nDim+j]-p_coordinates[il*nDim+j];
-          const double uj = 0.5*(p_velocityNp1[il*nDim+j]
-                                 + p_velocityNp1[ir*nDim+j]);
+          const double uj = 0.5*(p_vrtm[il*nDim+j] + p_vrtm[ir*nDim+j]);
           udotx += uj*dxj;
         }
         double pecfac = hybridFactor*udotx/(diffIp+small);
@@ -336,9 +365,9 @@ AssembleScalarElemSolverAlgorithm::execute()
             : alphaUpw*qIpR + om_alphaUpw*qIp;
 
         // generalized central (2nd and 4th order)
-	const double qHatL = alpha*qIpL + om_alpha*qIp;
-	const double qHatR = alpha*qIpR + om_alpha*qIp;
-	const double qCds = 0.5*(qHatL + qHatR);
+        const double qHatL = alpha*qIpL + om_alpha*qIp;
+        const double qHatR = alpha*qIpR + om_alpha*qIp;
+        const double qCds = 0.5*(qHatL + qHatR);
 
         // total advection
         const double aflux = tmdot*(pecfac*qUpwind + om_pecfac*qCds);

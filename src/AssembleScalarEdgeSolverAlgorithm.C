@@ -43,7 +43,7 @@ AssembleScalarEdgeSolverAlgorithm::AssembleScalarEdgeSolverAlgorithm(
   VectorFieldType *dqdx,
   ScalarFieldType *diffFluxCoeff)
   : SolverAlgorithm(realm, part, eqSystem),
-    meshMotion_(realm_.has_mesh_motion()),
+    meshMotion_(realm_.has_mesh_motion() | realm_.has_mesh_deformation()),
     scalarQ_(scalarQ),
     dqdx_(dqdx),
     diffFluxCoeff_(diffFluxCoeff),
@@ -233,8 +233,8 @@ AssembleScalarEdgeSolverAlgorithm::execute()
       double nonOrth = 0.0;
       for ( int j = 0; j < nDim; ++j ) {
         const double dxj = coordR[j] - coordL[j];
-	dqL += 0.5*dxj*dqdxL[j];
-	dqR += 0.5*dxj*dqdxR[j];
+        dqL += 0.5*dxj*dqdxL[j];
+        dqR += 0.5*dxj*dqdxR[j];
         // now non-orth (over-relaxed procedure of Jasek)
         const double axj = p_areaVec[j];
         const double kxj = axj - asq*inv_axdx*dxj;
@@ -247,8 +247,8 @@ AssembleScalarEdgeSolverAlgorithm::execute()
       double limitR = 1.0;
       const double dq = qNp1R - qNp1L;
       if ( useLimiter ) {
-	const double dqMl = 2.0*2.0*dqL - dq;
-	const double dqMr = 2.0*2.0*dqR - dq;
+        const double dqMl = 2.0*2.0*dqL - dq;
+        const double dqMr = 2.0*2.0*dqR - dq;
         limitL = van_leer(dqMl, dq, small);
         limitR = van_leer(dqMr, dq, small);
       }

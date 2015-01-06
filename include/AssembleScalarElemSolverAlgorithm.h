@@ -42,10 +42,13 @@ public:
     const double &dqm,
     const double &dqp,
     const double &small);
+
+  const bool meshMotion_;
   
   ScalarFieldType *scalarQ_;
   VectorFieldType *dqdx_;
   ScalarFieldType *diffFluxCoeff_;
+  VectorFieldType *meshVelocity_;
   VectorFieldType *velocity_;
   VectorFieldType *coordinates_;
   ScalarFieldType *density_;

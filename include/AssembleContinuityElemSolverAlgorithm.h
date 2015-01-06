@@ -35,13 +35,15 @@ public:
   virtual void initialize_connectivity();
   virtual void execute();
 
+  const bool meshMotion_;
+
   // extract fields; nodal
+  VectorFieldType *meshVelocity_;
   VectorFieldType *velocity_;
   VectorFieldType *Gpdx_;
   VectorFieldType *coordinates_;
   ScalarFieldType *pressure_;
   ScalarFieldType *density_;
-  GenericFieldType *massFlowRate_;
 };
 
 } // namespace nalu
