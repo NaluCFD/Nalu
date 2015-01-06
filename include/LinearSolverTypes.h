@@ -44,10 +44,10 @@ class Map;
 template <typename LocalOrdinal, typename GlobalOrdinal, typename Node >
 class Export;
 
-template <typename Scalar, typename LocalOrdinal, typename GlobalOrdinal, typename Node>
+template <typename Scalar, typename LocalOrdinal, typename GlobalOrdinal, typename Node, bool classic>
 class MultiVector;
 
-template <typename Scalar, typename LocalOrdinal, typename GlobalOrdinal, typename Node>
+template <typename Scalar, typename LocalOrdinal, typename GlobalOrdinal, typename Node, bool classic>
 class Vector;
 
 template <typename Scalar, typename LocalOrdinal, typename GlobalOrdinal, typename Node>
@@ -99,11 +99,10 @@ typedef long   GlobalOrdinal; // MUST be signed
 typedef int    LocalOrdinal;  // MUST be signed
 typedef double Scalar;
 
-typedef Kokkos::SerialNode                                                 Node;
+typedef KokkosClassic::DefaultNode::DefaultNodeType                        Node;
 typedef Teuchos::MpiComm<int>                                              Comm;
 typedef Tpetra::Export< LocalOrdinal, GlobalOrdinal, Node >                Export;
 typedef Tpetra::Import< LocalOrdinal, GlobalOrdinal, Node >                Import;
-typedef Kokkos::DefaultKernels<void,LocalOrdinal,Node>::SparseOps          LocalMatOps;
 typedef Tpetra::CrsGraph< LocalOrdinal, GlobalOrdinal, Node>               Graph;
 typedef Tpetra::Map<LocalOrdinal,GlobalOrdinal,Node>                       Map;
 typedef Tpetra::MultiVector<Scalar,LocalOrdinal,GlobalOrdinal,Node>        MultiVector;
