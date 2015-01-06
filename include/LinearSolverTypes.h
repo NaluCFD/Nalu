@@ -44,10 +44,10 @@ class Map;
 template <typename LocalOrdinal, typename GlobalOrdinal, typename Node >
 class Export;
 
-template <typename Scalar, typename LocalOrdinal, typename GlobalOrdinal, typename Node>
+template <typename Scalar, typename LocalOrdinal, typename GlobalOrdinal, typename Node, bool classic>
 class MultiVector;
 
-template <typename Scalar, typename LocalOrdinal, typename GlobalOrdinal, typename Node>
+template <typename Scalar, typename LocalOrdinal, typename GlobalOrdinal, typename Node, bool classic>
 class Vector;
 
 template <typename Scalar, typename LocalOrdinal, typename GlobalOrdinal, typename Node>
