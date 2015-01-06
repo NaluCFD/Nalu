@@ -33,8 +33,7 @@ typedef double                                                        Scalar;
 typedef long                                                          GlobalOrdinal;
 typedef int                                                           LocalOrdinal;
 typedef Tpetra::DefaultPlatform::DefaultPlatformType                  Platform;
-typedef Kokkos::SerialNode                                            Node;
-typedef Kokkos::DefaultKernels<Scalar,LocalOrdinal,Node>::SparseOps   LocalMatOps;
+typedef KokkosClassic::DefaultNode::DefaultNodeType                        Node;
 typedef Teuchos::ScalarTraits<Scalar> STS;
 
 // MueLu main header: include most common header files in one line
