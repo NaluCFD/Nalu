@@ -146,6 +146,7 @@ EpetraLinearSolverConfig::load(const YAML::Node & node)
   get_if_present(node, "write_matrix_files", writeMatrixFiles_, false);
 
   get_if_present(node, "recompute_preconditioner", recomputePreconditioner_, true);
+  get_if_present(node, "reuse_preconditioner",     reusePreconditioner_,     false);
 }
 
 int
@@ -293,6 +294,7 @@ TpetraLinearSolverConfig::load(const YAML::Node & node)
   get_if_present(node, "write_matrix_files", writeMatrixFiles_, false);
 
   get_if_present(node, "recompute_preconditioner", recomputePreconditioner_, true);
+  get_if_present(node, "reuse_preconditioner",     reusePreconditioner_,     false);
 
 }
 

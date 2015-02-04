@@ -63,6 +63,7 @@ LinearSystem::LinearSystem(
     firstNonLinearResidual_(1.0e8),
     scaledNonLinearResidual_(1.0e8),
     recomputePreconditioner_(true),
+    reusePreconditioner_(false),
     provideOutput_(true)
 {
 }
