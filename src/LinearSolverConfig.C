@@ -119,6 +119,7 @@ EpetraLinearSolverConfig::load(const YAML::Node & node)
   {
     useMueLu_ = true;
     muelu_xml_file_ = std::string("milestone.xml");
+    get_if_present(node, "muelu_xml_file_name", muelu_xml_file_, muelu_xml_file_);
     az_options[AZ_precond] = string_to_AzPrecond("multilevel");
   }
   else
@@ -144,7 +145,8 @@ EpetraLinearSolverConfig::load(const YAML::Node & node)
   get_if_present_no_default(node, "omega", az_params[AZ_omega]);
   
   get_if_present(node, "write_matrix_files", writeMatrixFiles_, false);
-
+  get_if_present(node, "summarize_muelu_timer", summarizeMueluTimer_, false);
+  
   get_if_present(node, "recompute_preconditioner", recomputePreconditioner_, true);
   get_if_present(node, "reuse_preconditioner",     reusePreconditioner_,     false);
 }
@@ -285,6 +287,7 @@ TpetraLinearSolverConfig::load(const YAML::Node & node)
   }
   else if (precond_ == "muelu") {
     muelu_xml_file_ = std::string("milestone.xml");
+    get_if_present(node, "muelu_xml_file_name", muelu_xml_file_, muelu_xml_file_);
     useMueLu_ = true;
   }
   else {
@@ -292,6 +295,7 @@ TpetraLinearSolverConfig::load(const YAML::Node & node)
   }
 
   get_if_present(node, "write_matrix_files", writeMatrixFiles_, false);
+  get_if_present(node, "summarize_muelu_timer", summarizeMueluTimer_, false);
 
   get_if_present(node, "recompute_preconditioner", recomputePreconditioner_, true);
   get_if_present(node, "reuse_preconditioner",     reusePreconditioner_,     false);

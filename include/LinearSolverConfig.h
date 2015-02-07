@@ -40,6 +40,7 @@ class EpetraLinearSolverConfig {
     bool use_mueLu() const { return useMueLu_; }
     std::string & muelu_xml_file() {return muelu_xml_file_;}
     bool getWriteMatrixFiles() { return writeMatrixFiles_; }
+    bool getSummarizeMueluTimer() { return summarizeMueluTimer_; }
     bool recomputePreconditioner() { return recomputePreconditioner_; }
     bool reusePreconditioner() { return reusePreconditioner_; }
   private:
@@ -54,6 +55,7 @@ class EpetraLinearSolverConfig {
     int az_options[AZ_OPTIONS_SIZE];
     double az_params[AZ_PARAMS_SIZE];
     bool writeMatrixFiles_;
+    bool summarizeMueluTimer_;
     bool useML_;
     bool useMueLu_;
     Teuchos::RCP<Teuchos::ParameterList> mlParameterList_;
@@ -72,6 +74,7 @@ class TpetraLinearSolverConfig {
     const Teuchos::RCP<Teuchos::ParameterList> & params() const;
     const Teuchos::RCP<Teuchos::ParameterList> & paramsPrecond() const;
     bool getWriteMatrixFiles() { return writeMatrixFiles_; }
+    bool getSummarizeMueluTimer() { return summarizeMueluTimer_; }
     bool use_MueLu() const {return useMueLu_;}
     std::string & muelu_xml_file() {return muelu_xml_file_;}
     bool recomputePreconditioner() { return recomputePreconditioner_; }
@@ -85,6 +88,7 @@ class TpetraLinearSolverConfig {
     Teuchos::RCP<Teuchos::ParameterList> params_;
     Teuchos::RCP<Teuchos::ParameterList> paramsPrecond_;
     bool writeMatrixFiles_;
+    bool summarizeMueluTimer_;
 
     std::string muelu_xml_file_;
     bool useMueLu_;

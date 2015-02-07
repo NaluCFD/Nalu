@@ -162,7 +162,8 @@ EpetraLinearSolver::solve(
     else if (reusePreconditioner_) {
       MueLu::ReuseEpetraPreconditioner(mueLuMat_, *mueLuPreconditioner_);
     }
-    Teuchos::TimeMonitor::summarize(std::cout, false, true, false, Teuchos::Union);
+    if (config_->getSummarizeMueluTimer())
+      Teuchos::TimeMonitor::summarize(std::cout, false, true, false, Teuchos::Union);
 
     solver_->SetPrecOperator(mueLuPreconditioner_.getRawPtr());
   }
@@ -277,7 +278,8 @@ void TpetraLinearSolver::setMueLu()
     else if (reusePreconditioner_) {
       MueLu::ReuseTpetraPreconditioner(matrix_, *mueluPreconditioner_);
     }
-    Teuchos::TimeMonitor::summarize(std::cout, false, true, false, Teuchos::Union);
+    if (config_->getSummarizeMueluTimer())
+      Teuchos::TimeMonitor::summarize(std::cout, false, true, false, Teuchos::Union);
   }
 
   problem_->setRightPrec(mueluPreconditioner_);
