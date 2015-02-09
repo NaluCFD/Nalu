@@ -55,6 +55,7 @@ public:
   double stefanBoltzmann_;
   double nearestFaceEntrain_;
   double includeDivU_;
+  bool mdotInterpRhoUTogether_;
   bool isTurbulent_;
   TurbulenceModel turbulenceModel_;
   bool meshMotion_;

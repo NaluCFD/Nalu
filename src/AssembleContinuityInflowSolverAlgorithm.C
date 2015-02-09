@@ -77,6 +77,10 @@ AssembleContinuityInflowSolverAlgorithm::execute()
   const double gamma1 = realm_.get_gamma1();
   const double projTimeScale = dt/gamma1;
 
+  // deal with interpolation procedure
+  const double interpTogether = realm_.get_mdot_interp();
+  const double om_interpTogether = 1.0-interpTogether;
+
   // space for LHS/RHS; nodesPerElem*nodesPerElem and nodesPerElem
   std::vector<double> lhs;
   std::vector<double> rhs;
@@ -90,8 +94,10 @@ AssembleContinuityInflowSolverAlgorithm::execute()
   std::vector<double> ws_shape_function;
 
   // ip data
+  std::vector<double>uIp(nDim);
   std::vector<double>rho_uIp(nDim);
   double *p_rho_uIp = &rho_uIp[0];
+  double *p_uIp = &uIp[0];
 
   ScalarFieldType &densityNp1 = densityBC_->field_of_state(stk::mesh::StateNP1);
 
@@ -173,21 +179,26 @@ AssembleContinuityInflowSolverAlgorithm::execute()
         const int nn = ip;
 
         // interpolate to scs point; operate on saved off ws_field
-        for (int j=0; j < nDim; ++j )
+        for (int j=0; j < nDim; ++j ) {
           p_rho_uIp[j] = 0.0;
+          p_uIp[j] = 0.0;
+        }
 
+        double rhoIp = 0.0;
         const int offSet = ip*nodesPerFace;
         for ( int ic = 0; ic < nodesPerFace; ++ic ) {
           const double r = p_shape_function[offSet+ic];
           const double rhoIC = p_density[ic];
+          rhoIp += r*rhoIC;
           for ( int j = 0; j < nDim; ++j ) {
             p_rho_uIp[j] += r*rhoIC*p_velocity[ic*nDim+j];
+            p_uIp[j] += r*p_velocity[ic*nDim+j];
           }
         }
 
         double mdot = 0.0;
         for ( int j=0; j < nDim; ++j ) {
-          mdot += p_rho_uIp[j]*areaVec[ip*nDim+j];
+          mdot += (interpTogether*p_rho_uIp[j] + om_interpTogether*rhoIp*uIp[j])*areaVec[ip*nDim+j];
         }
         p_rhs[nn] = -mdot/projTimeScale;
       }

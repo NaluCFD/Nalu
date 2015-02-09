@@ -40,6 +40,7 @@ SolutionOptions::SolutionOptions()
     stefanBoltzmann_(5.6704e-8),
     nearestFaceEntrain_(0.0),
     includeDivU_(0.0),
+    mdotInterpRhoUTogether_(true),
     isTurbulent_(false),
     turbulenceModel_(LAMINAR),
     meshMotion_(false),
@@ -91,6 +92,9 @@ SolutionOptions::load(const YAML::Node & y_node)
 
     // divU factor for stress
     get_if_present(*y_solution_options, "divU_stress_scaling", includeDivU_, includeDivU_);
+
+    // mdot interpolation procedure 
+    get_if_present(*y_solution_options, "interp_rhou_together_for_mdot", mdotInterpRhoUTogether_, mdotInterpRhoUTogether_);
 
     // extrustion correction scaling
     get_if_present(*y_solution_options, 

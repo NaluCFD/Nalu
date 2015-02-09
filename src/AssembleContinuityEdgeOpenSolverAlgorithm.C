@@ -89,6 +89,8 @@ AssembleContinuityEdgeOpenSolverAlgorithm::execute()
   const double gamma1 = realm_.get_gamma1();
   const double projTimeScale = dt/gamma1;
 
+  // interpolation for mdot uses nearest node, therefore, n/a
+
   // deal with state
   VectorFieldType &velocityNp1 = velocity_->field_of_state(stk::mesh::StateNP1);
   ScalarFieldType &densityNp1 = density_->field_of_state(stk::mesh::StateNP1);

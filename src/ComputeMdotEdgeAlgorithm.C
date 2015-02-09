@@ -86,6 +86,10 @@ ComputeMdotEdgeAlgorithm::execute()
   const double gamma1 = realm_.get_gamma1();
   const double projTimeScale = dt/gamma1;
 
+  // deal with interpolation procedure
+  const double interpTogether = realm_.get_mdot_interp();
+  const double om_interpTogether = 1.0-interpTogether;
+
   // area vector; gather into
   std::vector<double> areaVec(nDim);
 
@@ -175,6 +179,7 @@ ComputeMdotEdgeAlgorithm::execute()
       }
 
       const double inv_axdx = 1.0/axdx;
+      const double rhoIp = 0.5*(densityR + densityL);
 
       //  mdot
       double tmdot = -projTimeScale*(pressureR - pressureL)*asq*inv_axdx;
@@ -183,8 +188,10 @@ ComputeMdotEdgeAlgorithm::execute()
         const double dxj = coordR[j] - coordL[j];
         const double kxj = axj - asq*inv_axdx*dxj; // NOC
         const double rhoUjIp = 0.5*(densityR*p_vrtmR[j] + densityL*p_vrtmL[j]);
+        const double ujIp = 0.5*(p_vrtmR[j] + p_vrtmL[j]);
         const double GjIp = 0.5*(GpdxR[j] + GpdxL[j]);
-        tmdot += (rhoUjIp+projTimeScale*GjIp)*axj - projTimeScale*kxj*GjIp*nocFac;
+        tmdot += (interpTogether*rhoUjIp + om_interpTogether*rhoIp*ujIp + projTimeScale*GjIp)*axj 
+          - projTimeScale*kxj*GjIp*nocFac;
       }
       // scatter to mdot
       mdot[k] = tmdot;

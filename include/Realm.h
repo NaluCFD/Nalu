@@ -253,6 +253,7 @@ public:
   bool get_noc_usage(
     const std::string dofname);
   double get_divU();
+  double get_mdot_interp();
 
   PropertyEvaluator *
   get_material_prop_eval(
