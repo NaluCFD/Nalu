@@ -96,8 +96,8 @@ AssembleContinuityInflowSolverAlgorithm::execute()
   // ip data
   std::vector<double>uIp(nDim);
   std::vector<double>rho_uIp(nDim);
-  double *p_rho_uIp = &rho_uIp[0];
   double *p_uIp = &uIp[0];
+  double *p_rho_uIp = &rho_uIp[0];
 
   ScalarFieldType &densityNp1 = densityBC_->field_of_state(stk::mesh::StateNP1);
 
@@ -180,8 +180,8 @@ AssembleContinuityInflowSolverAlgorithm::execute()
 
         // interpolate to scs point; operate on saved off ws_field
         for (int j=0; j < nDim; ++j ) {
-          p_rho_uIp[j] = 0.0;
           p_uIp[j] = 0.0;
+          p_rho_uIp[j] = 0.0;
         }
 
         double rhoIp = 0.0;
@@ -191,14 +191,14 @@ AssembleContinuityInflowSolverAlgorithm::execute()
           const double rhoIC = p_density[ic];
           rhoIp += r*rhoIC;
           for ( int j = 0; j < nDim; ++j ) {
-            p_rho_uIp[j] += r*rhoIC*p_velocity[ic*nDim+j];
             p_uIp[j] += r*p_velocity[ic*nDim+j];
+            p_rho_uIp[j] += r*rhoIC*p_velocity[ic*nDim+j];
           }
         }
 
         double mdot = 0.0;
         for ( int j=0; j < nDim; ++j ) {
-          mdot += (interpTogether*p_rho_uIp[j] + om_interpTogether*rhoIp*uIp[j])*areaVec[ip*nDim+j];
+          mdot += (interpTogether*p_rho_uIp[j] + om_interpTogether*rhoIp*p_uIp[j])*areaVec[ip*nDim+j];
         }
         p_rhs[nn] = -mdot/projTimeScale;
       }
