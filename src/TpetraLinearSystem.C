@@ -738,33 +738,50 @@ static void dump_graph(std::ostream& out, const unsigned p_rank, LinSys::Graph& 
 }
 #endif
 
-/// Copy values from Field X to DataVector u.
-void copy(
-  stk::mesh::BulkData & bulkData,
-  GlobalIdFieldType *naluGlobalId,
-  stk::mesh::BucketVector const& node_buckets,
-  VectorFieldType * X,
-  Tpetra::MultiVector<SC,LO,GO,NO> &U, const int ndofs)
+void
+TpetraLinearSystem::copy_stk_to_tpetra(
+  stk::mesh::FieldBase * stkField,
+  const Teuchos::RCP<LinSys::MultiVector> tpetraField)
 {
+  ThrowAssert(!tpetraField.is_null());
+  ThrowAssert(stkField);
+  const int numVectors = tpetraField->getNumVectors();
 
-  ThrowRequire(ndofs == static_cast<int>(U.getNumVectors ()) );
+  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
+  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
 
-  stk::mesh::BucketVector::const_iterator ib     = node_buckets.begin();
-  stk::mesh::BucketVector::const_iterator ib_end = node_buckets.end();
-  for ( ; ib != ib_end ; ++ib ) {
-    const stk::mesh::Bucket & b = **ib ;
-    const stk::mesh::Bucket::size_type length = b.size() ;
-    stk::mesh::Bucket::iterator nodes = b.begin();
-    for ( stk::mesh::Bucket::size_type n=0; n < length; ++n) {
-      stk::mesh::Entity node = nodes[n];
-      double * value = stk::mesh::field_data(*X ,node);
-      const stk::mesh::EntityId nodeId = *stk::mesh::field_data(*naluGlobalId, node);
-      ThrowRequire(nodeId>0);
-      for (int ndof=0; ndof<ndofs; ++ndof) {
-        U.replaceGlobalValue(nodeId, ndof, value[ndof]);
+  const stk::mesh::Selector selector = stk::mesh::selectField(*stkField) & meta_data.locally_owned_part() &
+    !stk::mesh::selectUnion(realm_.get_slave_part_vector());
+  stk::mesh::BucketVector const& buckets = bulk_data.get_buckets(stk::topology::NODE_RANK, selector);
+
+  for ( stk::mesh::BucketVector::const_iterator ib = buckets.begin();
+        ib != buckets.end() ; ++ib ) {
+    stk::mesh::Bucket & b = **ib ;
+
+    if (!b.owned())
+      continue;
+
+    const int fieldSize = field_bytes_per_entity(*stkField, b) / (sizeof(double));
+
+    ThrowRequire(numVectors == fieldSize);
+
+    const stk::mesh::Bucket::size_type length = b.size();
+
+    const double * stkFieldPtr = (double*)stk::mesh::field_data(*stkField, b);
+
+    for (stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k )
+    {
+      const stk::mesh::Entity node = b[k];
+      const stk::mesh::EntityId nodeId = *stk::mesh::field_data(*realm_.naluGlobalId_, node);
+      for(int d=0; d < fieldSize; ++d)
+      {
+        const size_t stkIndex = k*fieldSize + d;
+        tpetraField->replaceGlobalValue(nodeId, d, stkFieldPtr[stkIndex]);
       }
     }
+
   }
+
 }
 
 
@@ -908,11 +925,6 @@ TpetraLinearSystem::finalizeLinearSystem()
 
   sln_ = Teuchos::rcp(new LinSys::Vector(ownedRowsMap_));
 
-  // setup for buckets; union parts and ask for locally owned
-  stk::mesh::Selector s_locally_owned = metaData.locally_owned_part();
-  stk::mesh::BucketVector const& node_buckets =
-    realm_.get_buckets( stk::topology::NODE_RANK,s_locally_owned );
-
   const int nDim = metaData.spatial_dimension();
 
   Teuchos::RCP<Tpetra::MultiVector<LinSys::Scalar,LinSys::LocalOrdinal,LinSys::GlobalOrdinal,LinSys::Node> > coords
@@ -924,7 +936,7 @@ TpetraLinearSystem::finalizeLinearSystem()
 
   VectorFieldType *coordinates = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   if (linearSolver->activeMueLu())
-    copy(bulkData, realm_.naluGlobalId_, node_buckets, coordinates, *coords, nDim);
+    copy_stk_to_tpetra(coordinates, coords);
 
   linearSolver->setupLinearSolver(sln_, ownedMatrix_, ownedRhs_, coords);
 

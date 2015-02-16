@@ -105,6 +105,11 @@ private:
     const Teuchos::RCP<LinSys::Vector> tpetraVector,
     stk::mesh::FieldBase * stkField);
 
+  // This method copies a stk::mesh::field to a tpetra multivector. Each dof/node is written into a different
+  // vector in the multivector.
+  void copy_stk_to_tpetra(stk::mesh::FieldBase * stkField,
+    const Teuchos::RCP<LinSys::MultiVector> tpetraVector);
+
   void addConnections(const std::vector<stk::mesh::Entity> & entities);
   void checkForNaN(bool useOwned);
   bool checkForZeroRow(bool useOwned, bool doThrow, bool doPrint=false);
