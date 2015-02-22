@@ -345,6 +345,21 @@ void operator >> (const YAML::Node& node, PeriodicUserData& periodicData) {
   }
 }
 
+void operator >> (const YAML::Node& node, NonConformalUserData& nonConformalData) {
+
+  // everything is optional
+  if ( node.FindValue("search_method") ) {
+    node["search_method"] >> nonConformalData.searchMethodName_;
+  }
+  if ( node.FindValue("expand_box_percentage" )  ) {
+    node["expand_box_percentage"] >> nonConformalData.expandBoxPercentage_;
+  }
+  if ( node.FindValue("clip_isoparametric_coordinates" )  ) {
+     node["clip_isoparametric_coordinates"] >> nonConformalData.clipIsoParametricCoords_;
+  }
+
+}
+
 void operator >> (const YAML::Node& node, BoundaryConditionOptions& bcOptions) {
   node["boundary_conditions"] >> bcOptions.bcSetName_;
   node["wall_boundary_condition"] >> bcOptions.wallbc_;
@@ -353,6 +368,7 @@ void operator >> (const YAML::Node& node, BoundaryConditionOptions& bcOptions) {
   node["contact_boundary_condition"] >> bcOptions.contactbc_;
   node["symmetry_boundary_condition"] >> bcOptions.symmetrybc_;
   node["periodic_boundary_condition"] >> bcOptions.periodicbc_;
+  node["non_confomal_boundary_condition"] >> bcOptions.nonConformalbc_;
 }
 
 void operator >> (const YAML::Node& node, WallBoundaryConditionData& wallBC) {
@@ -402,6 +418,15 @@ void operator >> (const YAML::Node& node, PeriodicBoundaryConditionData& periodi
   periodicBC.theBcType_ = PERIODIC_BC;
   const YAML::Node& periodicUserData = node["periodic_user_data"];
   periodicUserData >> periodicBC.userData_;
+}
+
+void operator >> (const YAML::Node& node, NonConformalBoundaryConditionData& nonConformalBC) {
+  node["non_conformal_boundary_condition"] >> nonConformalBC.bcName_;
+  node["target_name"] >> nonConformalBC.masterSlave_;
+  nonConformalBC.targetName_ = nonConformalBC.masterSlave_.master_ + "_" + nonConformalBC.masterSlave_.slave_;
+  nonConformalBC.theBcType_ = NON_CONFORMAL_BC;
+  const YAML::Node& nonConformalUserData = node["non_conformal_user_data"];
+  nonConformalUserData >> nonConformalBC.userData_;
 }
 
 void operator >> (const YAML::Node& node, MeshInput& meshInput) {

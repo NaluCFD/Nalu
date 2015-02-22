@@ -3044,10 +3044,10 @@ Edge2DSCS::Edge2DSCS()
   numIntPoints_ = 2;
 
   intgLoc_.resize(2);
-  intgLoc_[0]  =  -0.50; intgLoc_[1]  = 0.50;
+  intgLoc_[0]  =  -0.25; intgLoc_[1]  = 0.25;
  
   intgLocShift_.resize(2);
-  intgLocShift_[0]  =  -1.00; intgLocShift_[1]  = 1.00; 
+  intgLocShift_[0]  =  -0.50; intgLocShift_[1]  = 0.50; 
   
 }
 
@@ -3086,10 +3086,10 @@ void Edge2DSCS::determinant(
 void
 Edge2DSCS::shape_fcn(double *shpfc)
 {
-  for ( int i =0; i< nodesPerElement_; ++i ) {
+  for ( int i =0; i < nodesPerElement_; ++i ) {
     int j = 2*i;
-    shpfc[j  ] = 0.5*(1.0-intgLoc_[i]);
-    shpfc[j+1] = 0.5*(1.0+intgLoc_[i]);
+    shpfc[j  ] = 0.5-intgLoc_[i];
+    shpfc[j+1] = 0.5+intgLoc_[i];
   }
 }
 
@@ -3101,8 +3101,8 @@ Edge2DSCS::shifted_shape_fcn(double *shpfc)
 {
   for ( int i =0; i< nodesPerElement_; ++i ) {
     int j = 2*i;
-    shpfc[j  ] = 0.5*(1.0-intgLocShift_[i]);
-    shpfc[j+1] = 0.5*(1.0+intgLocShift_[i]);
+    shpfc[j  ] = 0.5-intgLocShift_[i];
+    shpfc[j+1] = 0.5+intgLocShift_[i];
   }
 }
 
@@ -3149,17 +3149,16 @@ Edge2DSCS::isInElement(
 }
 
 //--------------------------------------------------------------------------
-//-------- interpolatePoint ------------------------------------------------
+//-------- parametric_distance ---------------------------------------------
 //--------------------------------------------------------------------------
 double
 Edge2DSCS::parametric_distance(const std::vector<double> &x)
-  {
-    double dist = std::fabs(x[0]);
-    if (elemThickness_ < x[1] && dist < 1.0+x[1]) 
-      dist = 1+x[1];
-    return dist;
-  }
-
+{
+  double dist = std::fabs(x[0]);
+  if (elemThickness_ < x[1] && dist < 1.0+x[1]) 
+    dist = 1+x[1];
+  return dist;
+}
 
 //--------------------------------------------------------------------------
 //-------- interpolatePoint ------------------------------------------------
@@ -3178,6 +3177,23 @@ Edge2DSCS::interpolatePoint(
     result[i] = 0.5*(1.0-xi) * field[b+0] +
       0.5*(1.0+xi) * field[b+1];
   }
+}
+
+//--------------------------------------------------------------------------
+//-------- general_shape_fcn -----------------------------------------------
+//--------------------------------------------------------------------------
+void
+Edge2DSCS::general_shape_fcn(
+  const int numIp,
+  const double *isoParCoord,
+  double *shpfc)
+{
+  for ( int ip = 0; ip < numIp; ++ip ) {
+    int j = 2*ip;
+    shpfc[j  ] = 0.5*(1.0-isoParCoord[ip]);
+    shpfc[j+1] = 0.5*(1.0+isoParCoord[ip]);
+  }
+
 }
 
 } // namespace nalu

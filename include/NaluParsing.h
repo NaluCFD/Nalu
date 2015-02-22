@@ -268,6 +268,19 @@ struct PeriodicUserData : public UserData {
   {}
 };
 
+struct NonConformalUserData : public UserData {
+
+  std::string searchMethodName_;
+  double expandBoxPercentage_;
+  bool clipIsoParametricCoords_;
+
+  NonConformalUserData()
+    : UserData(),
+      searchMethodName_("na"), expandBoxPercentage_(0.0),
+      clipIsoParametricCoords_(false)
+  {}
+};
+
 struct WallBoundaryConditionData : public BoundaryCondition {
   WallBoundaryConditionData(BoundaryConditions& bcs) : BoundaryCondition(bcs){};
   WallUserData userData_;
@@ -299,12 +312,19 @@ struct PeriodicBoundaryConditionData : public BoundaryCondition {
   PeriodicUserData userData_;
 };
 
+struct NonConformalBoundaryConditionData : public BoundaryCondition {
+  NonConformalBoundaryConditionData(BoundaryConditions& bcs) : BoundaryCondition(bcs){};
+  MasterSlave masterSlave_;
+  NonConformalUserData userData_;
+};
+
 struct BoundaryConditionOptions{
   std::string bcSetName_;
   WallBoundaryConditionData wallbc_;
   InflowBoundaryConditionData inflowbc_;
   OpenBoundaryConditionData openbc_;
   ContactBoundaryConditionData contactbc_;
+  NonConformalBoundaryConditionData nonConformalbc_;
   SymmetryBoundaryConditionData symmetrybc_;
   PeriodicBoundaryConditionData periodicbc_;
 };
@@ -341,6 +361,7 @@ void operator >> (const YAML::Node& node, WallUserData& wallData);
 void operator >> (const YAML::Node& node, InflowUserData& inflowData);
 void operator >> (const YAML::Node& node, OpenUserData& openData);
 void operator >> (const YAML::Node& node, ContactUserData& bcData);
+void operator >> (const YAML::Node& node, NonConformalUserData& bcData);
 void operator >> (const YAML::Node& node, SymmetryUserData& bcData);
 void operator >> (const YAML::Node& node, PeriodicUserData& bcData);
 void operator >> (const YAML::Node& node, BoundaryConditionOptions& bcOptions);
@@ -348,6 +369,7 @@ void operator >> (const YAML::Node& node, WallBoundaryConditionData& wallBC);
 void operator >> (const YAML::Node& node, InflowBoundaryConditionData& inflowBC);
 void operator >> (const YAML::Node& node, OpenBoundaryConditionData& openBC);
 void operator >> (const YAML::Node& node, ContactBoundaryConditionData& contactBC);
+void operator >> (const YAML::Node& node, NonConformalBoundaryConditionData& nonConformalBC);
 void operator >> (const YAML::Node& node, SymmetryBoundaryConditionData& symmetryBC);
 void operator >> (const YAML::Node& node, PeriodicBoundaryConditionData& periodicBC);
 void operator >> (const YAML::Node& node, MeshInput& meshInput);

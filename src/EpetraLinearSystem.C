@@ -476,6 +476,13 @@ EpetraLinearSystem::buildEdgeHaloNodeGraph(
   }
 }
 
+void
+EpetraLinearSystem::buildNonConformalNodeGraph(
+  const stk::mesh::PartVector &/*parts*/)
+{
+  throw std::runtime_error("EpetraLinearSystem can not be used with non conformal algorithm; activate tpetra");
+}
+
 /// Copy values from Field X to DataVector u.
 void copy(
   stk::mesh::BulkData & bulkData,

@@ -94,9 +94,9 @@ public:
     throw std::runtime_error("interpolatePoint not implemented"); }
   
   virtual void general_shape_fcn(
-  const int numIp,
-  const double *isoParCoord,
-  double *shpfc) {
+    const int numIp,
+    const double *isoParCoord,
+    double *shpfc) {
     throw std::runtime_error("general_shape_fcn not implement"); }
 
   virtual const int * faceNodeOnExtrudedElem() {
@@ -680,6 +680,11 @@ public:
     const double *isoParCoord,
     const double *field,
     double *result);
+
+  void general_shape_fcn(
+    const int numIp,
+    const double *isoParCoord,
+    double *shpfc);
 
   double parametric_distance(const std::vector<double> &x);
 

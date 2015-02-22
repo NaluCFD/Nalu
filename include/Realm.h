@@ -51,6 +51,7 @@ class AuxFunctionAlgorithm;
 class ComputeGeometryAlgorithmDriver;
 class ContactInfo;
 class ContactManager;
+class NonConformalManager;
 class ErrorIndicatorAlgorithmDriver;
 #if defined (NALU_USES_PERCEPT)
 class Adapter;
@@ -136,6 +137,7 @@ public:
   std::string get_coordinates_name();
   bool has_mesh_motion();
   bool has_mesh_deformation();
+  bool has_non_matching_boundary_face_alg();
 
   void set_omega(
     stk::mesh::Part *targetPart,
@@ -148,6 +150,8 @@ public:
     stk::mesh::Part *targetPart);
 
   void initialize_contact();
+  void initialize_non_conformal();
+
   void compute_geometry();
   void compute_l2_scaling();
   void advance_time_step();
@@ -191,6 +195,11 @@ public:
     stk::mesh::Part *slaveMeshPart,
     const double &searchTolerance,
     const std::string &searchMethodName);
+
+  void register_non_conformal_bc(
+    stk::mesh::Part *currentPart,
+    stk::mesh::Part *opposingPart,
+    const NonConformalBoundaryConditionData &nonConformalBCData);
 
   void periodic_field_update(
     stk::mesh::FieldBase *theField,
@@ -349,7 +358,9 @@ public:
   double timerTransferSearch_;
 
   ContactManager *contactManager_;
+  NonConformalManager *nonConformalManager_;
   bool hasContact_;
+  bool hasNonConformal_;
   bool hasTransfer_;
 
   PeriodicManager *periodicManager_;

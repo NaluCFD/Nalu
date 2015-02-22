@@ -113,6 +113,9 @@ public:
     const stk::topology &theTopoSlave,
     const PeriodicBoundaryConditionData &periodicBCData) {}
 
+  virtual void register_non_conformal_bc(
+    stk::mesh::Part *currentPart) {}
+
   virtual void register_surface_pp_algorithm(
     const PostProcessingData &theData,
     stk::mesh::PartVector &partVector) {}

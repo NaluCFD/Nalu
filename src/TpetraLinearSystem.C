@@ -9,8 +9,11 @@
 #include <TpetraLinearSystem.h>
 #include <ContactInfo.h>
 #include <ContactManager.h>
+#include <NonConformalInfo.h>
+#include <NonConformalManager.h>
 #include <FieldTypeDef.h>
 #include <HaloInfo.h>
+#include <DgInfo.h>
 #include <Realm.h>
 #include <PeriodicManager.h>
 #include <Simulation.h>
@@ -186,11 +189,11 @@ int TpetraLinearSystem::getDofStatus(stk::mesh::Entity node)
   const bool entityIsShared = b.shared();
   const bool entityIsGhosted = !entityIsOwned && !entityIsShared;
 
-  if (realm_.hasPeriodic_ && realm_.hasContact_)
-    throw std::logic_error("not ready for primetime");
+  if (realm_.hasPeriodic_ && realm_.has_non_matching_boundary_face_alg())
+    throw std::logic_error("not ready for primetime to compbine periodic and non-matching algorithm suite");
 
   // simple case
-  if (!realm_.hasPeriodic_ && !realm_.hasContact_) {
+  if (!realm_.hasPeriodic_ && !realm_.has_non_matching_boundary_face_alg()) {
     if (entityIsGhosted)
       return DS_GhostedDOF;
     if (entityIsOwned)
@@ -199,7 +202,7 @@ int TpetraLinearSystem::getDofStatus(stk::mesh::Entity node)
       return DS_GloballyOwnedDOF;
   }
 
-  if (realm_.hasContact_) {
+  if (realm_.has_non_matching_boundary_face_alg()) {
     if (entityIsOwned)
       return DS_OwnedDOF;
     if (!entityIsOwned && (entityIsGhosted || entityIsShared)){
@@ -655,7 +658,6 @@ TpetraLinearSystem::buildFaceElemToNodeGraph(const stk::mesh::PartVector & parts
   }
 }
 
-
 void
 TpetraLinearSystem::buildEdgeHaloNodeGraph(
   const stk::mesh::PartVector &/*parts*/)
@@ -694,6 +696,64 @@ TpetraLinearSystem::buildEdgeHaloNodeGraph(
         entities[n+1] = elem_nodes[n];
       }
       addConnections(entities);
+    }
+  }
+}
+
+void
+TpetraLinearSystem::buildNonConformalNodeGraph(
+  const stk::mesh::PartVector &/*parts*/)
+{
+  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
+  beginLinearSystemConstruction();
+
+  std::vector<stk::mesh::Entity> entities;
+
+  // iterate nonConformalManager's dgInfoVec
+  std::vector<NonConformalInfo *>::iterator ii;
+  for( ii=realm_.nonConformalManager_->nonConformalInfoVec_.begin();
+       ii!=realm_.nonConformalManager_->nonConformalInfoVec_.end(); ++ii ) {
+
+    // extract vector of DgInfo
+    std::vector<std::vector<DgInfo *> > &dgInfoVec = (*ii)->dgInfoVec_;
+    
+    std::vector<std::vector<DgInfo*> >::iterator idg;
+    for( idg=dgInfoVec.begin(); idg!=dgInfoVec.end(); ++idg ) {
+
+      std::vector<DgInfo *> &faceDgInfoVec = (*idg);
+
+      // now loop over all the DgInfo objects on this particular exposed face
+      for ( size_t k = 0; k < faceDgInfoVec.size(); ++k ) {
+
+        DgInfo *dgInfo = faceDgInfoVec[k];
+
+        // extract current/opposing face; for now neglect all but penalty sensitivities
+        stk::mesh::Entity currentFace = dgInfo->currentFace_;
+        stk::mesh::Entity opposingFace = dgInfo->opposingFace_;
+        
+        // node relations; current and opposing
+        stk::mesh::Entity const* current_face_node_rels = bulk_data.begin_nodes(currentFace);
+        const int current_num_face_nodes = bulk_data.num_nodes(currentFace);
+        stk::mesh::Entity const* opposing_face_node_rels = bulk_data.begin_nodes(opposingFace);
+        const int opposing_num_face_nodes = bulk_data.num_nodes(opposingFace);
+        
+        // resize based on both current and opposing face node size
+        entities.resize(current_num_face_nodes+opposing_num_face_nodes);
+        
+        // fill in connected nodes; current
+        for ( int ni = 0; ni < current_num_face_nodes; ++ni ) {
+          entities[ni] = current_face_node_rels[ni];
+        }
+        
+        // fill in connected nodes; opposing
+        for ( int ni = 0; ni < opposing_num_face_nodes; ++ni ) {
+          entities[current_num_face_nodes+ni] = opposing_face_node_rels[ni];
+        }
+        
+        // okay, now add the connections; will be symmetric 
+        // columns of current node row (opposing nodes) will add columns to opposing nodes row
+        addConnections(entities);
+      }
     }
   }
 }

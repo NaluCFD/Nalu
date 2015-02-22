@@ -25,6 +25,7 @@ namespace nalu{
 
 class Realm;
 class AssembleNodalGradAlgorithmDriver;
+class AlgorithmDriver;
 class EquationSystems;
 
 class HeatCondEquationSystem : public EquationSystem {
@@ -58,6 +59,9 @@ public:
     const stk::topology &theTopo,
     const ContactBoundaryConditionData &contactBCData);
 
+  virtual void register_non_conformal_bc(
+    stk::mesh::Part *currentPart);
+
   virtual void register_initial_condition_fcn(
       stk::mesh::Part *part,
       const std::map<std::string, std::string> &theNames,
@@ -75,7 +79,6 @@ public:
     EquationSystem::load(node);
     get_if_present(node, "use_collocation", collocationForViscousTerms_, false);
   }
-
 
   ScalarFieldType *temperature_;
   VectorFieldType *dtdx_;
@@ -96,6 +99,8 @@ public:
   AssembleNodalGradAlgorithmDriver *assembleNodalGradAlgDriver_;
   bool isInit_;
   bool collocationForViscousTerms_;
+
+  AlgorithmDriver *assembleNonConformalAlgDriver_;
   
 };
 

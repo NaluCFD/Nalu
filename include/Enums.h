@@ -25,7 +25,8 @@ enum AlgorithmType{
   SYMMETRY  = 7,
   WALL_HF   = 8,
   WALL_CHT  = 9,
-  WALL_RAD  = 10
+  WALL_RAD  = 10,
+  NON_CONFORMAL = 11
 };
 
 enum BoundaryConditionType{
@@ -34,7 +35,8 @@ enum BoundaryConditionType{
   WALL_BC      = 3,
   CONTACT_BC   = 4,
   SYMMETRY_BC  = 5,
-  PERIODIC_BC  = 6
+  PERIODIC_BC  = 6,
+  NON_CONFORMAL_BC = 7
 };
 
 enum EquationType {

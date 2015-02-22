@@ -41,6 +41,8 @@
 #include <MaterialPropertyData.h>
 #include <MaterialPropertys.h>
 #include <NaluParsing.h>
+#include <NonConformalManager.h>
+#include <NonConformalInfo.h>
 #include <OutputInfo.h>
 #include <AveragingInfo.h>
 #include <PostProcessingInfo.h>
@@ -169,7 +171,9 @@ Realm::Realm(Realms& realms)
     timerAdapt_(0.0),
     timerTransferSearch_(0.0),
     contactManager_(NULL),
+    nonConformalManager_(NULL),
     hasContact_(false),
+    hasNonConformal_(false),
     hasTransfer_(false),
     periodicManager_(NULL),
     hasPeriodic_(false),
@@ -246,6 +250,10 @@ Realm::~Realm()
   // delete contact related things
   if ( NULL != contactManager_ )
     delete contactManager_;
+
+  // delete non-conformal related things
+  if ( NULL != nonConformalManager_ )
+    delete nonConformalManager_;
 
   // delete periodic related things
   if ( NULL != periodicManager_ )
@@ -353,6 +361,9 @@ Realm::initialize()
 
   if ( hasContact_ )
     initialize_contact();
+
+  if ( hasNonConformal_ )
+    initialize_non_conformal();
 
   compute_l2_scaling();
 
@@ -663,6 +674,9 @@ Realm::setup_bc()
           (*reinterpret_cast<const PeriodicBoundaryConditionData *>(&bc)).masterSlave_.master_,
           (*reinterpret_cast<const PeriodicBoundaryConditionData *>(&bc)).masterSlave_.slave_,
           *reinterpret_cast<const PeriodicBoundaryConditionData *>(&bc));
+        break;
+      case NON_CONFORMAL_BC:
+        equationSystems_.register_non_conformal_bc(*reinterpret_cast<const NonConformalBoundaryConditionData *>(&bc));
         break;
       default:
         throw std::runtime_error("unknown bc");
@@ -1264,12 +1278,9 @@ Realm::pre_timestep_work()
         }
 
         // now re-initialize linear system
-        const bool doIt = true;
-        if ( doIt ) {
-          stk::diag::TimeBlock tbReInit_(timerReInitLinSys_);
-          equationSystems_.reinitialize_linear_system();
-        }
-
+        stk::diag::TimeBlock tbReInit_(timerReInitLinSys_);
+        equationSystems_.reinitialize_linear_system();
+        
       }
     }
   }
@@ -1365,12 +1376,9 @@ Realm::pre_timestep_work()
           }
 
           // now re-initialize linear system
-          const bool doIt = true;
-          if ( doIt ) {
-            stk::diag::TimeBlock tbReInit_(timerReInitLinSys_);
-            equationSystems_.reinitialize_linear_system();
-          }
-
+          stk::diag::TimeBlock tbReInit_(timerReInitLinSys_);
+          equationSystems_.reinitialize_linear_system();
+          
           // process speciality methods for adaptivity
           NaluEnv::self().naluOutputP0() << std::endl;
           NaluEnv::self().naluOutputP0() << "Post Adapt Work:" << std::endl;
@@ -1397,10 +1405,12 @@ Realm::pre_timestep_work()
     if ( hasContact_ )
       initialize_contact();
 
+    // and non-conformal algorithm
+    if ( hasNonConformal_ )
+      initialize_non_conformal();
+
     // now re-initialize linear system
-    const bool doIt = true;
-    if ( doIt )
-      equationSystems_.reinitialize_linear_system();
+    equationSystems_.reinitialize_linear_system();
 
   }
 
@@ -1909,6 +1919,15 @@ Realm::initialize_contact()
 }
 
 //--------------------------------------------------------------------------
+//-------- initialize_non_conformal ----------------------------------------
+//--------------------------------------------------------------------------
+void
+Realm::initialize_non_conformal()
+{
+  nonConformalManager_->initialize();
+}
+
+//--------------------------------------------------------------------------
 //-------- get_coordinates_name ---------------------------------------------
 //--------------------------------------------------------------------------
 std::string
@@ -1934,6 +1953,15 @@ bool
 Realm::has_mesh_deformation()
 {
   return solutionOptions_->externalMeshDeformation_ | solutionOptions_->meshDeformation_;
+}
+
+//--------------------------------------------------------------------------
+//-------- has_non_matching_boundary_face_alg ------------------------------
+//--------------------------------------------------------------------------
+bool
+Realm::has_non_matching_boundary_face_alg()
+{
+  return hasContact_ | hasNonConformal_;
 }
 
 //--------------------------------------------------------------------------
@@ -2718,6 +2746,97 @@ Realm::register_periodic_bc(
 
   // add the parts to the manager
   periodicManager_->add_periodic_pair(masterMeshPart, slaveMeshPart, searchTolerance, searchMethodName);
+
+}
+
+//--------------------------------------------------------------------------
+//-------- register_non_conformal_bc ---------------------------------------
+//--------------------------------------------------------------------------
+void
+Realm::register_non_conformal_bc(
+  stk::mesh::Part *currentPart,
+  stk::mesh::Part *opposingPart,
+  const NonConformalBoundaryConditionData &nonConformalBCData)
+{
+
+  // push back the part for book keeping and, later, skin mesh
+  bcPartVec_.push_back(currentPart);
+
+  const AlgorithmType algType = NON_CONFORMAL;
+
+  hasNonConformal_ = true;
+
+  stk::mesh::MetaData & meta_data = fixture_->meta_data();
+  const int nDim = meta_data.spatial_dimension();
+  
+  //====================================================
+  // Register boundary condition data
+  // current and opposing part came in as a whole... 
+  // Need to subset the currentPart to get at 
+  // topo for field registration
+  //====================================================
+
+  const std::vector<stk::mesh::Part*> & masterMeshParts = currentPart->subsets();
+    
+  // create one algorithm per master part and provide vector of opposing parts for the search
+  for( std::vector<stk::mesh::Part*>::const_iterator i = masterMeshParts.begin();
+       i != masterMeshParts.end(); ++i ) {
+    stk::mesh::Part * const part = *i ;
+    const stk::topology partTopo = part->topology();
+    if ( !(meta_data.side_rank() == part->primary_entity_rank()) ) {
+      NaluEnv::self().naluOutputP0() << "Sorry, part is not a face " << part->name();
+      throw std::runtime_error("NonConformal::fatal_error()");
+    }
+    else {
+      
+      // size of ip variables
+      MasterElement *meFC = get_surface_master_element(partTopo);
+      const int numBip = meFC->numIntPoints_;
+      
+      // exposed area vector
+      GenericFieldType *exposedAreaVec_
+        = &(meta_data.declare_field<GenericFieldType>(static_cast<stk::topology::rank_t>(meta_data.side_rank()), "exposed_area_vector"));
+      stk::mesh::put_field(*exposedAreaVec_, *part, nDim*numBip );
+    }
+  }
+
+  // extract data
+  NonConformalUserData userData = nonConformalBCData.userData_;
+
+  // extract params useful for search
+  const std::string searchMethodName = userData.searchMethodName_;
+  const double expandBoxPercentage = userData.expandBoxPercentage_/100.0;
+  const bool clipIsoParametricCoords = userData.clipIsoParametricCoords_; 
+ 
+  // create manager
+  if ( NULL == nonConformalManager_ ) {
+    nonConformalManager_ = new NonConformalManager(*this);
+  }
+   
+  // create contact info for this surface
+  NonConformalInfo *nonConformalInfo
+    = new NonConformalInfo(*this,
+                           currentPart,
+                           opposingPart,
+                           expandBoxPercentage,
+                           searchMethodName,
+                           clipIsoParametricCoords);
+  
+  nonConformalManager_->nonConformalInfoVec_.push_back(nonConformalInfo);
+
+  //====================================================
+  // Register non-conformal algorithms
+  //====================================================
+  std::map<AlgorithmType, Algorithm *>::iterator it
+    = computeGeometryAlgDriver_->algMap_.find(algType);
+  if ( it == computeGeometryAlgDriver_->algMap_.end() ) {
+    ComputeGeometryBoundaryAlgorithm *theAlg
+      = new ComputeGeometryBoundaryAlgorithm(*this, currentPart);
+    computeGeometryAlgDriver_->algMap_[algType] = theAlg;
+  }
+  else {
+    it->second->partVec_.push_back(currentPart);
+  }
 
 }
 

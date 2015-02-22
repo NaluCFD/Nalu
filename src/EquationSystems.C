@@ -522,6 +522,36 @@ EquationSystems::register_periodic_bc(
   }
 }
 
+//--------------------------------------------------------------------------
+//-------- register_non_conformal_bc ---------------------------------------
+//--------------------------------------------------------------------------
+void
+EquationSystems::register_non_conformal_bc(
+  const NonConformalBoundaryConditionData &nonConformalBCData)
+{
+  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+
+  const std::string targetNameCurrent = nonConformalBCData.masterSlave_.master_;
+  const std::string targetNameOpposing = nonConformalBCData.masterSlave_.slave_;
+ 
+  stk::mesh::Part *currentMeshPart= meta_data.get_part(targetNameCurrent);
+  stk::mesh::Part *opposingMeshPart= meta_data.get_part(targetNameOpposing);
+
+  if ( NULL == currentMeshPart) {
+    NaluEnv::self().naluOutputP0() << "Sorry, no part name found by the name " << targetNameCurrent << std::endl;
+    throw std::runtime_error("EquationSystems::fatal_error()");
+  }
+  else if ( NULL == opposingMeshPart) {
+    NaluEnv::self().naluOutputP0() << "Sorry, no part name found by the name " << targetNameOpposing << std::endl;
+    throw std::runtime_error("EquationSystems::fatal_error()");
+  }
+  else {
+    realm_.register_non_conformal_bc(currentMeshPart, opposingMeshPart, nonConformalBCData);
+    std::vector<EquationSystem *>::iterator ii;
+    for( ii=begin(); ii!=end(); ++ii )
+      (*ii)->register_non_conformal_bc(currentMeshPart);
+  }
+}
 
 //--------------------------------------------------------------------------
 //-------- register_surface_pp_algorithm ----------------------

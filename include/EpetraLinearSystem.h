@@ -45,6 +45,7 @@ public:
   void buildReducedElemToNodeGraph(const stk::mesh::PartVector & parts); // elem (nearest nodes only)->node assembly
   void buildFaceElemToNodeGraph(const stk::mesh::PartVector & parts); // elem:face->node assembly
   void buildEdgeHaloNodeGraph(const stk::mesh::PartVector & parts); // haloNode->elem_node assembly
+  void buildNonConformalNodeGraph(const stk::mesh::PartVector & parts); // nonConformal->node assembly
   void finalizeLinearSystem();
 
   // Matrix Assembly

@@ -89,6 +89,15 @@ BoundaryCondition * BoundaryCondition::load(const YAML::Node & node)
                     << " and "<< periodicBC.masterSlave_.slave_ << std::endl;
     return &periodicBC;
   }
+  else if (node.FindValue("non_conformal_boundary_condition")) {
+    NonConformalBoundaryConditionData& nonConformalBC = *new NonConformalBoundaryConditionData(*parent());
+    node >> nonConformalBC;
+    NaluEnv::self().naluOutputP0() << "NonConformal BC name:    " << nonConformalBC.bcName_
+                    << " between " << nonConformalBC.masterSlave_.master_
+                    << " and "<< nonConformalBC.masterSlave_.slave_ << std::endl;
+    return &nonConformalBC;
+  }
+ 
   else {
     throw std::runtime_error("parser error BoundaryConditions::load: no such bc type");
   }
