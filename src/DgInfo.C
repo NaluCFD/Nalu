@@ -35,7 +35,7 @@ DgInfo::DgInfo(
   MasterElement *meSCSCurrent,
   const int nDim)
   : parallelRank_(parallelRank),
-    globalFaceId_(globalFaceId_),
+    globalFaceId_(globalFaceId),
     localGaussPointId_(localGaussPointId),
     currentGaussPointId_(currentGaussPointId),
     currentFace_(currentFace),
