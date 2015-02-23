@@ -57,7 +57,7 @@ class ContactManager {
   /* ghosting for all surface:block pair */
   stk::mesh::Ghosting *contactGhosting_;
 
-  size_t needToGhostCount_;
+  uint64_t needToGhostCount_;
   bool provideDetailedOutput_;
 
   stk::mesh::EntityProcVec elemsToGhost_;

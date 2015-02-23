@@ -127,7 +127,7 @@ NonConformalManager::manage_ghosting()
   stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
 
   // check for ghosting need
-  size_t g_needToGhostCount = 0;
+  uint64_t g_needToGhostCount = 0;
   stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &needToGhostCount_, &g_needToGhostCount, 1);
   if (g_needToGhostCount > 0) {
     
