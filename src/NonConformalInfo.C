@@ -153,7 +153,7 @@ NonConformalInfo::construct_dgInfo_state()
   const int nDim = meta_data.spatial_dimension();
 
   // dial in Gauss-labato points
-  const bool useShifted = true;
+  const bool useShifted = realm_.has_nc_gauss_labatto_quadrature();
 
   // hold the point location for gauss points
   Point currentGaussPointCoords;

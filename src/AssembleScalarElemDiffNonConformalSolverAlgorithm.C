@@ -54,7 +54,9 @@ AssembleScalarElemDiffNonConformalSolverAlgorithm::AssembleScalarElemDiffNonConf
     diffFluxCoeff_(diffFluxCoeff),
     ncPenalty_(ncPenalty),
     coordinates_(NULL),
-    exposedAreaVec_(NULL)
+    exposedAreaVec_(NULL),
+    robinStyle_(false),
+    dsFactor_(1.0)
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
@@ -67,6 +69,30 @@ AssembleScalarElemDiffNonConformalSolverAlgorithm::AssembleScalarElemDiffNonConf
   ghostFieldVec_.push_back(ncPenalty_);
   ghostFieldVec_.push_back(diffFluxCoeff_);
   ghostFieldVec_.push_back(coordinates_);
+
+  // specific algorithm options
+  NonConformalAlgType algType = realm_.get_nc_alg_type();
+  switch ( algType ) {
+    case NC_ALG_TYPE_DG:
+      dsFactor_ = 1.0;
+      robinStyle_ = false;
+      break;
+      
+    case NC_ALG_TYPE_DS: 
+      dsFactor_ = 0.0;
+      // robinStyle_ does not matter here..
+      break;
+    
+    case NC_ALG_TYPE_RB:
+      dsFactor_ = 1.0;
+      robinStyle_ = true;
+      
+    default:
+      // nothing to do... parsing should have caught this...
+      break;
+  }
+
+  NaluEnv::self().naluOutputP0() << "NC options: dsFactor/robinStyle: " << dsFactor_ << " " << robinStyle_ << std::endl;
   
 }
 
@@ -85,10 +111,6 @@ AssembleScalarElemDiffNonConformalSolverAlgorithm::initialize_connectivity()
 void
 AssembleScalarElemDiffNonConformalSolverAlgorithm::execute()
 {
-
-  // HACK... dial in type of non-conformal algoirthm
-  const bool robinStyle = false; // average the fluxes
-  const double dsFactor = 1.0;   // include fluxes
 
   stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
   stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
@@ -364,8 +386,8 @@ AssembleScalarElemDiffNonConformalSolverAlgorithm::execute()
           p_rhs[p] = 0.0;
                 
         const double penaltyIp = 0.5*(currentLambdaBip + opposingLambdaBip);
-        const double diffFlux =  robinStyle ? -opposingNcNormalFluxQBip : 0.5*(currentNcNormalFluxQBip - opposingNcNormalFluxQBip);
-        const double totalFlux = dsFactor*diffFlux + penaltyIp*(currentScalarQBip-opposingScalarQBip);
+        const double diffFlux =  robinStyle_ ? -opposingNcNormalFluxQBip : 0.5*(currentNcNormalFluxQBip - opposingNcNormalFluxQBip);
+        const double totalFlux = dsFactor_*diffFlux + penaltyIp*(currentScalarQBip-opposingScalarQBip);
         
         // form residual
         const int nn = currentGaussPointId;

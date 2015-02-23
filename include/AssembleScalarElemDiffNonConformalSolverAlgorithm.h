@@ -46,6 +46,10 @@ public:
   VectorFieldType *coordinates_;
   GenericFieldType *exposedAreaVec_;
 
+  // options that prevail over all algorithms created
+  bool robinStyle_;
+  double dsFactor_;
+
   std::vector< const stk::mesh::FieldBase *> ghostFieldVec_;
 
 };

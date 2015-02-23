@@ -357,7 +357,6 @@ void operator >> (const YAML::Node& node, NonConformalUserData& nonConformalData
   if ( node.FindValue("clip_isoparametric_coordinates" )  ) {
      node["clip_isoparametric_coordinates"] >> nonConformalData.clipIsoParametricCoords_;
   }
-
 }
 
 void operator >> (const YAML::Node& node, BoundaryConditionOptions& bcOptions) {

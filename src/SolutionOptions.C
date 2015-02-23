@@ -60,7 +60,9 @@ SolutionOptions::SolutionOptions()
     adapterExtraOutput_(false),
     useAdapter_(false),
     maxRefinementLevel_(0),
-    extrusionCorrectionFac_(1.0)
+    extrusionCorrectionFac_(1.0),
+    ncAlgGaussLabatto_(true),
+    ncAlgType_(NC_ALG_TYPE_DG)
 {
   // nothing to do
 }
@@ -211,6 +213,26 @@ SolutionOptions::load(const YAML::Node & y_node)
             for (int i = 0; i < gravSize; ++i ) {
               y_user_constants["gravity"][i] >> gravity_[i];
             }
+          }
+        }
+        else if (expect_map( y_option, "non_conformal", optional)) {
+          const YAML::Node& y_nc = *y_option.FindValue("non_conformal");
+          get_if_present(y_nc, "gauss_labatto_quadrature",  ncAlgGaussLabatto_, ncAlgGaussLabatto_);
+          if (y_nc.FindValue("algorithm_type" )  ) {
+            std::string algTypeString = "none";
+            y_nc["algorithm_type"] >> algTypeString;
+            // find the enum and set the value
+            bool foundIt = false;
+            for ( int k=0; k < NC_ALG_TYPE_END; ++k ) {
+              if ( algTypeString == NonConformalAlgTypeNames[k] ) {
+                NonConformalAlgType algTypeEnum = NonConformalAlgType(k);
+                foundIt = true;
+                ncAlgType_ = algTypeEnum;
+                break;
+              }
+            }
+            if ( !foundIt )
+              NaluEnv::self().naluOutputP0() << "Cound not find: " << algTypeString << std::endl;
           }
         }
         else {

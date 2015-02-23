@@ -264,6 +264,9 @@ public:
   double get_divU();
   double get_mdot_interp();
 
+  bool has_nc_gauss_labatto_quadrature();
+  NonConformalAlgType get_nc_alg_type();
+
   PropertyEvaluator *
   get_material_prop_eval(
     const PropertyIdentifier thePropID);

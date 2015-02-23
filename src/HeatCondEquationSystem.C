@@ -810,7 +810,7 @@ HeatCondEquationSystem::register_non_conformal_bc(
   // assemble and normalized lambda/L
   ScalarFieldType *ncNormalFlux = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "nc_t_normal_flux"));
   ScalarFieldType *ncPenalty = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "nc_t_penalty"));
-  ScalarFieldType *ncArea = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "nc_t_area"));
+  ScalarFieldType *ncArea = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "nc_t_assembled_area"));
   stk::mesh::put_field(*ncNormalFlux, *currentPart);
   stk::mesh::put_field(*ncPenalty, *currentPart);
   stk::mesh::put_field(*ncArea, *currentPart);

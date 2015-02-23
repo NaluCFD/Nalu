@@ -177,6 +177,19 @@ static const std::string TurbulenceModelConstantNames[] = {
   "Cw",
   "END"};
 
+enum NonConformalAlgType {
+  NC_ALG_TYPE_DG = 0,
+  NC_ALG_TYPE_DS = 1,
+  NC_ALG_TYPE_RB = 2,
+  NC_ALG_TYPE_END = 3
+};
+
+const std::string NonConformalAlgTypeNames[] = {
+  "dg",
+  "ds",
+  "rb",
+  "END" };
+
 } // namespace nalu
 } // namespace Sierra
 

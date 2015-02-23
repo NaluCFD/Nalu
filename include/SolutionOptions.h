@@ -77,6 +77,8 @@ public:
   bool useAdapter_;
   int maxRefinementLevel_;
   double extrusionCorrectionFac_;
+  bool ncAlgGaussLabatto_;
+  NonConformalAlgType ncAlgType_;
 
   // turbulence model coeffs
   std::map<TurbulenceModelConstant, double> turbModelConstantMap_;
