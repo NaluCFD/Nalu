@@ -973,7 +973,7 @@ void TetSCS::grad_op(
 //--------------------------------------------------------------------------
 void TetSCS::face_grad_op(
   const int nelem,
-  const int face_ordinal,
+  const int /*face_ordinal*/,
   const double *coords,
   double *gradop,
   double *det_j,
@@ -990,6 +990,7 @@ void TetSCS::face_grad_op(
 
     for ( int k=0; k<npf; k++ ) {
 
+      // derivatives are constant
       SIERRA_FORTRAN(tet_derivative)
         ( &nface, dpsi );
 
@@ -1916,6 +1917,7 @@ void Quad2DSCS::face_grad_op(
 {
   int lerr = 0;
   int npf = 2;
+  int ndim = 2;
 
   const int nface = 1;
   double dpsi[8];
@@ -1925,6 +1927,7 @@ void Quad2DSCS::face_grad_op(
     
     for ( int k=0; k<npf; k++ ) {
       
+      const int row = 4*face_ordinal + k*ndim;
       SIERRA_FORTRAN(quad_derivative)
         ( &nface, &intgExpFace_[0], dpsi );
       
@@ -2380,7 +2383,7 @@ void Tri2DSCS::grad_op(
 //--------------------------------------------------------------------------
 void Tri2DSCS::face_grad_op(
   const int nelem,
-  const int face_ordinal,
+  const int /*face_ordinal*/,
   const double *coords,
   double *gradop,
   double *det_j,
@@ -2397,6 +2400,7 @@ void Tri2DSCS::face_grad_op(
     
     for ( int k=0; k<npf; k++ ) {
       
+      // derivatives are constant
       SIERRA_FORTRAN(tri_derivative)
         ( &nface, dpsi );
       
