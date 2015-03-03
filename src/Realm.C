@@ -1554,7 +1554,7 @@ Realm::create_mesh()
 {
   double start_time = stk::cpu_time();
 
-  stk::ParallelMachine pm = MPI_COMM_WORLD;
+  stk::ParallelMachine pm = NaluEnv::self().parallel_comm();
   fixture_ = new stk::io::StkMeshIoBroker( pm );
 
   // for adaptivity we need an additional rank to store parent/child relations

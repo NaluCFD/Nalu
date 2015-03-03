@@ -363,7 +363,7 @@ SurfaceForceAndMomentAlgorithm::execute()
   if ( processMe ) {
     // parallel assemble and output
     double g_force_moment[6] = {};
-    stk::ParallelMachine comm = MPI_COMM_WORLD;
+    stk::ParallelMachine comm = NaluEnv::self().parallel_comm();
 
     // Parallel assembly of L2
     stk::all_reduce_sum(comm, &l_force_moment[0], &g_force_moment[0], 6);

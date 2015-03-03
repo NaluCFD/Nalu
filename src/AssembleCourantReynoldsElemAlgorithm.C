@@ -12,6 +12,7 @@
 
 #include <FieldTypeDef.h>
 #include <Realm.h>
+#include <NaluEnv.h>
 #include <TimeIntegrator.h>
 #include <master_element/MasterElement.h>
 
@@ -195,7 +196,7 @@ AssembleCourantReynoldsElemAlgorithm::execute()
 
   // parallel max
   double g_maxCR[2]  = {};
-  stk::ParallelMachine comm = MPI_COMM_WORLD;
+  stk::ParallelMachine comm = NaluEnv::self().parallel_comm();
   stk::all_reduce_max(comm, maxCR, g_maxCR, 2);
 
   // sent to realm

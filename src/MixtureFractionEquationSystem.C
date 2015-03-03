@@ -805,7 +805,7 @@ MixtureFractionEquationSystem::update_and_clip()
   // parallel assemble clipped value
   if ( realm_.debug() ) {
     size_t g_numClip[2] = {};
-    stk::ParallelMachine comm = MPI_COMM_WORLD;
+    stk::ParallelMachine comm = NaluEnv::self().parallel_comm();
     stk::all_reduce_sum(comm, numClip, g_numClip, 2);
 
     if ( g_numClip[0] > 0 ) {

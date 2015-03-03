@@ -1053,7 +1053,7 @@ EnthalpyEquationSystem::extract_temperature()
 
   // parallel assemble not converged
   size_t g_troubleCount[3] = {};
-  stk::ParallelMachine comm = MPI_COMM_WORLD;
+  stk::ParallelMachine comm = NaluEnv::self().parallel_comm();
   stk::all_reduce_sum(comm, &troubleCount[0], &g_troubleCount[0], 3);
 
   if ( g_troubleCount[0] > 0 ) {
