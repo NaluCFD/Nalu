@@ -685,10 +685,11 @@ HexSCS::general_shape_fcn(
 {
 
   // -1:1 isoparametric range
+  const double npe = nodesPerElement_;
   for ( int ip = 0; ip < numIp; ++ip ) {
     
     const int rowIpc = 3*ip;
-    const int rowSfc = numIp*ip;
+    const int rowSfc = npe*ip;
     
     const double s1 = isoParCoord[rowIpc];
     const double s2 = isoParCoord[rowIpc+1];
@@ -2161,10 +2162,11 @@ Quad2DSCS::general_shape_fcn(
 {
 
   // -1:1 isoparametric range
+  const double npe = nodesPerElement_;
   for ( int ip = 0; ip < numIp; ++ip ) {
     
     const int rowIpc = 2*ip;
-    const int rowSfc = numIp*ip;
+    const int rowSfc = npe*ip;
     
     const double s1 = isoParCoord[rowIpc];
     const double s2 = isoParCoord[rowIpc+1];
@@ -3192,8 +3194,9 @@ Edge2DSCS::general_shape_fcn(
   const double *isoParCoord,
   double *shpfc)
 {
+  const double npe = nodesPerElement_;
   for ( int ip = 0; ip < numIp; ++ip ) {
-    int j = 2*ip;
+    int j = npe*ip;
     shpfc[j  ] = 0.5*(1.0-isoParCoord[ip]);
     shpfc[j+1] = 0.5*(1.0+isoParCoord[ip]);
   }
