@@ -184,5 +184,77 @@ IdealGasTPPropertyEvaluator::execute(
   return P*mw_/R_/T;
 }
 
+//==========================================================================
+// Class Definition
+//==========================================================================
+// IdealGasYkPropertyEvaluator - evaluates density as a function of Yk
+//==========================================================================
+//--------------------------------------------------------------------------
+//-------- constructor -----------------------------------------------------
+//--------------------------------------------------------------------------
+IdealGasYkPropertyEvaluator::IdealGasYkPropertyEvaluator(
+  double pRef,
+  double tRef,
+  double universalR,
+  std::vector<double> mwVec,
+  stk::mesh::MetaData &metaData)
+  : PropertyEvaluator(),
+    pRef_(pRef),
+    tRef_(tRef),
+    R_(universalR),
+    massFraction_(NULL),
+    mwVecSize_(0)
+{
+  // sizing
+  mwVecSize_ = mwVec.size();
+  mwVec_.resize(mwVecSize_);
+
+  // save off mwVec (reference quantity)
+  for (std::size_t k = 0; k < mwVecSize_; ++k ){
+    mwVec_[k] = mwVec[k];
+  }
+
+  // save off mass fraction field
+  massFraction_ = metaData.get_field<GenericFieldType>(stk::topology::NODE_RANK, "mass_fraction");
+
+}
+ 
+//--------------------------------------------------------------------------
+//-------- destructor ------------------------------------------------------
+//--------------------------------------------------------------------------
+IdealGasYkPropertyEvaluator::~IdealGasYkPropertyEvaluator()
+{
+  // nothing
+}
+
+//--------------------------------------------------------------------------
+//-------- execute ---------------------------------------------------------
+//--------------------------------------------------------------------------
+double
+IdealGasYkPropertyEvaluator::execute(
+    double */*indVarList*/,
+    stk::mesh::Entity node)
+{
+  const double *massFraction = stk::mesh::field_data(*massFraction_, node);
+  const double mw = compute_mw(massFraction);
+  return pRef_*mw/R_/tRef_;
+}
+
+//--------------------------------------------------------------------------
+//-------- compute_mw ------------------------------------------------------
+//--------------------------------------------------------------------------
+double
+IdealGasYkPropertyEvaluator::compute_mw(
+    const double *massFraction)
+{
+
+  // compute mixture mw
+  double sum = 0.0;
+  for (std::size_t k = 0; k < mwVecSize_; ++k ){
+    sum += massFraction[k]/mwVec_[k];
+  }
+  return 1.0/sum;
+}
+
 } // namespace nalu
 } // namespace Sierra

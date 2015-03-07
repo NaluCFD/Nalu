@@ -265,12 +265,17 @@ MaterialPropertys::load(const YAML::Node & node)
         else if ( thePropType == "ideal_gas_t" ) {
           matData->type_ = IDEAL_GAS_T_MAT;
           NaluEnv::self().naluOutputP0() << thePropName
-                          << " is an ideal gas property (function of T and mw): " << std::endl;
+                          << " is an ideal gas property (function of T, Pref and mwRef): " << std::endl;
         }
         else if ( thePropType == "ideal_gas_t_p" ) {
             matData->type_ = IDEAL_GAS_T_P_MAT;
             NaluEnv::self().naluOutputP0() << thePropName
-                            << " is an ideal gas property (function of T, mw and P): " << std::endl;
+                            << " is an ideal gas property (function of T, mwRef and P): " << std::endl;
+        }
+        else if ( thePropType == "ideal_gas_yk" ) {
+            matData->type_ = IDEAL_GAS_YK_MAT;
+            NaluEnv::self().naluOutputP0() << thePropName
+                            << " is an ideal gas property (function of mw, Tref, and Pref): " << std::endl;
         }
         else if ( thePropType == "geometric" ) {
                   matData->type_ = GEOMETRIC_MAT;

@@ -49,6 +49,14 @@ void operator >> (const YAML::Node& node, MixtureFraction& z) {
   node >> z.mixFrac_;
 }
 
+void operator >> (const YAML::Node& node, MassFraction& yk) {
+  const size_t ykSize = node.size();
+  yk.massFraction_.resize(ykSize);
+  for ( size_t k = 0; k < ykSize; ++k ) {
+    node[k] >> yk.massFraction_[k];
+  }
+}
+
 void operator >> (const YAML::Node& node, Emissivity& emiss) {
   node >> emiss.emissivity_;
 }
@@ -114,6 +122,11 @@ void operator >> (const YAML::Node& node, WallUserData& wallData) {
     node["mixture_fraction"] >> wallData.mixFrac_;
     wallData.bcDataSpecifiedMap_["mixture_fraction"] = true;
     wallData.bcDataTypeMap_["mixture_fraction"] = CONSTANT_UD;
+  }
+  if ( node.FindValue("mass_fraction") ) {
+    node["mass_fraction"] >> wallData.massFraction_;
+    wallData.bcDataSpecifiedMap_["mass_fraction"] = true;
+    wallData.bcDataTypeMap_["mass_fraction"] = CONSTANT_UD;
   }
   if ( node.FindValue("emissivity") ) {
     node["emissivity"] >> wallData.emissivity_; 
@@ -211,6 +224,10 @@ void operator >> (const YAML::Node& node, InflowUserData& inflowData) {
   if ( node.FindValue("mixture_fraction") ){
     node["mixture_fraction"] >> inflowData.mixFrac_;
     inflowData.mixFracSpec_ = true;
+  }
+  if ( node.FindValue("mass_fraction") ){
+    node["mass_fraction"] >> inflowData.massFraction_;
+    inflowData.massFractionSpec_ = true;
   }
   if ( node.FindValue("temperature") ) {
     node["temperature"] >> inflowData.temperature_;
@@ -321,6 +338,10 @@ void operator >> (const YAML::Node& node, OpenUserData& openData) {
   if ( node.FindValue("mixture_fraction") ){
     node["mixture_fraction"] >> openData.mixFrac_;
     openData.mixFracSpec_ = true;
+  }
+  if ( node.FindValue("mass_fraction") ){
+    node["mass_fraction"] >> openData.massFraction_;
+    openData.massFractionSpec_ = true;
   }
   if ( node.FindValue("temperature") ) {
     node["temperature"] >> openData.temperature_;

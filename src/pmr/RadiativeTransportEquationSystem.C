@@ -697,7 +697,7 @@ RadiativeTransportEquationSystem::set_current_ordinate_info(
 }
 
 //--------------------------------------------------------------------------
-//-------- copy_ordinate_intensity ---------------------------------------
+//-------- copy_ordinate_intensity -----------------------------------------
 //--------------------------------------------------------------------------
 void
 RadiativeTransportEquationSystem::copy_ordinate_intensity(

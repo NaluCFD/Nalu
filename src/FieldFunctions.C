@@ -128,5 +128,35 @@ void field_copy(
 
 }
 
+void field_index_copy(
+  const stk::mesh::MetaData & metaData,
+  const stk::mesh::BulkData & bulkData,
+  const stk::mesh::FieldBase & xField,
+  const int xFieldIndex,
+  const stk::mesh::FieldBase & yField,
+  const int yFieldIndex,
+  const stk::topology::rank_t entityRankValue)
+{
+  const stk::mesh::Selector selector =
+    metaData.universal_part() &
+    stk::mesh::selectField(xField) &
+    stk::mesh::selectField(yField);
+
+  stk::mesh::BucketVector const& buckets = bulkData.get_buckets( entityRankValue, selector );
+
+  for(size_t i=0; i < buckets.size(); ++i) {
+    stk::mesh::Bucket & b = *buckets[i];
+    const stk::mesh::Bucket::size_type length = b.size();
+    const size_t xFieldSize = field_bytes_per_entity(xField, b) / sizeof(double);
+    const size_t yFieldSize = field_bytes_per_entity(yField, b) / sizeof(double);
+    const double * x = (double*)stk::mesh::field_data(xField, b);
+    double * y = (double*)stk::mesh::field_data(yField, b);
+    for(unsigned k = 0 ; k < length ; ++k) {
+      y[k*yFieldSize+yFieldIndex] = x[k*xFieldSize+xFieldIndex];
+    }
+  }
+
+}
+
 } // namespace nalu
 } // namespace Sierra

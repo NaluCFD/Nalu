@@ -6,13 +6,10 @@
 /*------------------------------------------------------------------------*/
 
 
-#ifndef TemperaturePropAlgorithm_h
-#define TemperaturePropAlgorithm_h
+#ifndef GenericPropAlgorithm_h
+#define GenericPropAlgorithm_h
 
 #include <Algorithm.h>
-
-// standard c++
-#include <string>
 
 namespace stk {
 namespace mesh {
@@ -27,24 +24,22 @@ namespace nalu{
 class Realm;
 class PropertyEvaluator;
 
-class TemperaturePropAlgorithm : public Algorithm
+class GenericPropAlgorithm : public Algorithm
 {
 public:
 
-  TemperaturePropAlgorithm(
+  GenericPropAlgorithm(
     Realm & realm,
     stk::mesh::Part * part,
     stk::mesh::FieldBase * prop,
-    PropertyEvaluator *propEvaluator,
-    std::string tempName = "temperature");
+    PropertyEvaluator *propEvaluator);
 
-  virtual ~TemperaturePropAlgorithm() {}
+  virtual ~GenericPropAlgorithm() {}
 
   virtual void execute();
 
   stk::mesh::FieldBase *prop_;
   PropertyEvaluator *propEvaluator_;
-  stk::mesh::FieldBase *temperature_;
   
 };
 

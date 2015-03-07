@@ -33,6 +33,7 @@
 #include <ErrorIndicatorAlgorithmDriver.h>
 #include <ExtrusionMeshDistanceBoundaryAlgorithm.h>
 #include <FieldTypeDef.h>
+#include <GenericPropAlgorithm.h>
 #include <InversePropAlgorithm.h>
 #include <InverseDualVolumePropAlgorithm.h>
 #include <LinearPropAlgorithm.h>
@@ -752,15 +753,9 @@ Realm::setup_initial_conditions()
           for (size_t ifield = 0; ifield < genIC.fieldNames_.size(); ++ifield) {
 
             std::vector<double>  genSpec = genIC.data_[ifield];
-            stk::mesh::FieldBase *field = 0;
-            if (genSpec.size() == 1) {
-              field = stk::mesh::get_field_by_name<ScalarFieldType>(genIC.fieldNames_[ifield], meta_data);
-              ThrowAssert(field);
-            }
-            else {
-              field = stk::mesh::get_field_by_name<VectorFieldType>(genIC.fieldNames_[ifield], meta_data);
-              ThrowAssert(field);
-            }
+            stk::mesh::FieldBase *field = stk::mesh::get_field_by_name(genIC.fieldNames_[ifield], meta_data);
+            ThrowAssert(field);
+      
             if (debug()) {
               NaluEnv::self().naluOutputP0() << "EquationSystem::register_initial_condition: field= " << field
                         << " for name= " << genIC.fieldNames_[ifield] << std::endl;
@@ -789,7 +784,6 @@ Realm::setup_initial_conditions()
         break;
 
         case USER_SUB_UD:
-          NaluEnv::self().naluOutputP0() << "Realm::setup_initial_conditions: USER_SUB not supported: " << std::endl;
           throw std::runtime_error("Realm::setup_initial_conditions: USER_SUB not supported: ");
 
         case UserDataType_END:
@@ -849,19 +843,9 @@ Realm::setup_property()
 
           // for constant specific heat, proceed in specialty code; create the appropriate enthalpy evaluator
           if (thePropId == SPEC_HEAT_ID && needsEnthalpy_) {
-
             // extract reference temperature
-            double referenceTemperature = 300.0;
-            std::map<std::string, double >::iterator itp
-              = materialPropertys_.universalConstantMap_.find("reference_temperature");
-            if ( itp == materialPropertys_.universalConstantMap_.end() ) {
-              NaluEnv::self().naluOutputP0() << "WARNING: No reference temperature specified; using reference temperature "
-                              << referenceTemperature
-                              << " to compute enthalpy." << std::endl;
-            }
-            else {
-              referenceTemperature = (*itp).second;
-            }
+            double tRef = 300.0;
+            extract_universal_constant("reference_temperature", tRef, true);
 
             // set up evaluators required for all cases
             PropertyEvaluator *theCpPropEval = NULL;
@@ -877,21 +861,20 @@ Realm::setup_property()
                 theCpPropEval = new SpecificHeatConstCpkPropertyEvaluator(
                     matData->cpConstMap_, meta_data);
                 theEnthPropEval = new EnthalpyConstCpkPropertyEvaluator(
-                    matData->cpConstMap_, matData->hfConstMap_, meta_data, referenceTemperature);
+                    matData->cpConstMap_, matData->hfConstMap_, meta_data, tRef);
               }
 
               // create the algorithm to compute Cp; EnthalpyEqs manages h population, i.e., no alg required
-              ScalarFieldType *temperature = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature");
               TemperaturePropAlgorithm *auxAlg
-                = new TemperaturePropAlgorithm( *this, targetPart, thePropField, temperature, theCpPropEval);
+                = new TemperaturePropAlgorithm( *this, targetPart, thePropField, theCpPropEval);
               propertyAlg_.push_back(auxAlg);
-
+              
             }
             else {
               // single constant value
               double specificHeatValue = matData->constValue_;
               theCpPropEval = new ConstantPropertyEvaluator(specificHeatValue);
-              theEnthPropEval = new EnthalpyConstSpecHeatPropertyEvaluator(specificHeatValue, referenceTemperature);
+              theEnthPropEval = new EnthalpyConstSpecHeatPropertyEvaluator(specificHeatValue, tRef);
 
               // set the default begin/end
               int theBegin = 0;
@@ -959,11 +942,6 @@ Realm::setup_property()
 
         case POLYNOMIAL_MAT:
         {
-          // extract the temperature field
-          ScalarFieldType *temperature = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature");
-          if ( NULL == temperature ) {
-            throw std::runtime_error("Realm::setup_property: polynomial needs temperature:");
-          }
 
           // switch on property id
           switch( thePropId ) {
@@ -971,20 +949,44 @@ Realm::setup_property()
             case VISCOSITY_ID:
             {
               PropertyEvaluator *viscPropEval = NULL;
-              if ( uniformFlow_ ) {
-                // props computed based on reference values
-                viscPropEval = new SutherlandsPropertyEvaluator(
-                    materialPropertys_.referencePropertyDataMap_, matData->polynomialCoeffsMap_ );
+              
+              if ( isothermalFlow_ ) {
+
+                // all props will use Tref
+                double tRef = 0.0;
+                extract_universal_constant("reference_temperature", tRef, true);
+
+                if ( uniformFlow_ ) {
+                  // props computed based on YkRef and Tref
+                  throw std::runtime_error("Realm::setup_property: Sorry, polynomial visc Ykref and Tref is not supported");
+                }
+                else {
+                  // props computed based on Yk and Tref
+                  viscPropEval = new SutherlandsYkTrefPropertyEvaluator(
+                    matData->polynomialCoeffsMap_, meta_data, fixture_, tRef);
+                }
+                // create the GenericPropAlgorithm; push it back
+                GenericPropAlgorithm *auxAlg
+                  = new GenericPropAlgorithm( *this, targetPart, thePropField, viscPropEval);
+                propertyAlg_.push_back(auxAlg);
               }
               else {
-                viscPropEval = new SutherlandsYkPropertyEvaluator(
+                // all props will use [transported] T
+                if ( uniformFlow_ ) {
+                  // props computed based on YkRef and T
+                  viscPropEval = new SutherlandsPropertyEvaluator(
+                    materialPropertys_.referencePropertyDataMap_, matData->polynomialCoeffsMap_ );
+                }
+                else {
+                  // props computed based on Yk and T
+                  viscPropEval = new SutherlandsYkPropertyEvaluator(
                     matData->polynomialCoeffsMap_, meta_data, fixture_);
+                }
+                // create the TemperaturePropAlgorithm; push it back
+                TemperaturePropAlgorithm *auxAlg
+                  = new TemperaturePropAlgorithm( *this, targetPart, thePropField, viscPropEval);
+                propertyAlg_.push_back(auxAlg);
               }
-
-              // create the algorithm to compute visc; push it back
-              TemperaturePropAlgorithm *auxAlg
-                = new TemperaturePropAlgorithm( *this, targetPart, thePropField, temperature, viscPropEval);
-              propertyAlg_.push_back(auxAlg);
 
               // create the property alg and push to evalmap
               materialPropertys_.propertyEvalMap_[thePropId] = viscPropEval;
@@ -1001,15 +1003,8 @@ Realm::setup_property()
             case SPEC_HEAT_ID:
             {
               // R
-              double universalR = 0.0;
-              std::map<std::string, double >::iterator it
-                = materialPropertys_.universalConstantMap_.find("universal_gas_constant");
-              if ( it == materialPropertys_.universalConstantMap_.end() ) {
-                throw std::runtime_error("Realm::setup_property: pRef not found:");
-              }
-              else {
-                universalR = (*it).second;
-              }
+              double universalR = 8314.4621;
+              extract_universal_constant("universal_gas_constant", universalR, true);
 
               // create the property alg and push to evalmap
               PropertyEvaluator *theCpPropEval = NULL;
@@ -1035,7 +1030,7 @@ Realm::setup_property()
 
               // create the algorithm to compute Cp; EnthalpyEqs manages h population, i.e., no alg required
               TemperaturePropAlgorithm *auxAlg
-                = new TemperaturePropAlgorithm( *this, targetPart, thePropField, temperature, theCpPropEval);
+                = new TemperaturePropAlgorithm( *this, targetPart, thePropField, theCpPropEval);
               propertyAlg_.push_back(auxAlg);
 
               // set property maps...
@@ -1053,36 +1048,11 @@ Realm::setup_property()
         case IDEAL_GAS_T_MAT: case IDEAL_GAS_T_P_MAT:
         {
           if ( DENSITY_ID == thePropId ) {
-            // extract the temperature field
-            ScalarFieldType *temperature = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature");
-            if ( NULL == temperature ) {
-              throw std::runtime_error("Realm::setup_property: ideal_gas_t needs temperature:");
-            }
-
-            // pRef, only id required
-            double pRef = 0.0;
-            if ( IDEAL_GAS_T_MAT == matData->type_ ) {
-              std::map<std::string, double >::iterator itp
-              = materialPropertys_.universalConstantMap_.find("reference_pressure");
-              if ( itp == materialPropertys_.universalConstantMap_.end() ) {
-                  throw std::runtime_error("Realm::setup_property: pRef not found:");
-              }
-              else {
-                  pRef = (*itp).second;
-              }
-            }
-
-            // R
-            double universalR = 0.0;
-            std::map<std::string, double >::iterator itr =
-              materialPropertys_.universalConstantMap_.find("universal_gas_constant");
-            if ( itr == materialPropertys_.universalConstantMap_.end() ) {
-              throw std::runtime_error("Realm::setup_property: R not found:");
-            }
-            else {
-              universalR = (*itr).second;
-            }
-
+        
+            // everyone will require R
+            double universalR = 8314.4621;
+            extract_universal_constant("universal_gas_constant", universalR, true);
+            
             // create the property evaluator
             PropertyEvaluator *rhoPropEval = NULL;
             if ( uniformFlow_ ) {
@@ -1096,10 +1066,14 @@ Realm::setup_property()
                 thePair = std::make_pair(propData->mw_,propData->massFraction_);
                 mwMassFracVec.push_back(thePair);
               }
-              if ( IDEAL_GAS_T_MAT == matData->type_ )
+              if ( IDEAL_GAS_T_MAT == matData->type_ ) {
+                double pRef = 101325.0;
+                extract_universal_constant("reference_pressure", pRef, true);
                 rhoPropEval = new IdealGasTPropertyEvaluator(pRef, universalR, mwMassFracVec);
-              else
+              }
+              else {
                 rhoPropEval = new IdealGasTPPropertyEvaluator(universalR, mwMassFracVec, meta_data);
+              }
             }
             else {
               // load mw
@@ -1110,10 +1084,14 @@ Realm::setup_property()
                 ReferencePropertyData *propData = (*itrp).second;
                 mwVec.push_back(propData->mw_);
               }
-              if ( IDEAL_GAS_T_MAT == matData->type_ )
+              if ( IDEAL_GAS_T_MAT == matData->type_ ) {
+                double pRef = 101325.0;
+                extract_universal_constant("reference_pressure", pRef, true);
                 rhoPropEval = new IdealGasTYkPropertyEvaluator(pRef, universalR, mwVec, meta_data);
-              else
+              }
+              else {
                 throw std::runtime_error("Realm::setup_property: ideal_gas_tp only supported for uniform flow:");
+              }
             }
 
             // push back property evaluator to map
@@ -1121,13 +1099,52 @@ Realm::setup_property()
 
             // create the property algorithm
             TemperaturePropAlgorithm *auxAlg
-              = new TemperaturePropAlgorithm( *this, targetPart, thePropField, temperature, rhoPropEval);
+              = new TemperaturePropAlgorithm( *this, targetPart, thePropField, rhoPropEval);
             propertyAlg_.push_back(auxAlg);
           }
           else {
             throw std::runtime_error("Realm::setup_property: ideal_gas_t only supported for density:");
           }
 
+        }
+        break;
+
+        case IDEAL_GAS_YK_MAT:
+        {
+          if ( DENSITY_ID == thePropId ) {
+        
+            // pRef, tRef and R
+            double pRef = 101325.0;
+            double tRef = 300.0;
+            double universalR = 8314.4621;
+            extract_universal_constant("reference_pressure", pRef, true);
+            extract_universal_constant("reference_temperature", tRef, true);
+            extract_universal_constant("universal_gas_constant", universalR, true);
+
+            // load mw
+            std::vector<double> mwVec;
+            std::map<std::string, ReferencePropertyData*>::const_iterator itrp;
+            for ( itrp = materialPropertys_.referencePropertyDataMap_.begin();
+                  itrp!= materialPropertys_.referencePropertyDataMap_.end(); ++itrp) {
+              ReferencePropertyData *propData = (*itrp).second;
+              mwVec.push_back(propData->mw_);
+            }
+
+            // create the property evaluator
+            PropertyEvaluator *rhoPropEval = new IdealGasYkPropertyEvaluator(pRef, tRef, universalR, mwVec, meta_data);
+
+            // push back property evaluator to map
+            materialPropertys_.propertyEvalMap_[thePropId] = rhoPropEval;
+
+            // create the property algorithm
+            GenericPropAlgorithm *auxAlg
+              = new GenericPropAlgorithm( *this, targetPart, thePropField, rhoPropEval);
+            propertyAlg_.push_back(auxAlg);
+
+          }
+          else {
+            throw std::runtime_error("Realm::setup_property: ideal_gas_yk only supported for density:");
+          }
         }
         break;
 
@@ -1171,10 +1188,32 @@ Realm::setup_property()
           break;
 
         default:
-          NaluEnv::self().naluOutputP0() << "Realm::setup_property: unknown type: " << std::endl;
           throw std::runtime_error("Realm::setup_property: unknown type:");
       }
     }
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- extract_universal_constant --------------------------------------
+//--------------------------------------------------------------------------
+void
+Realm::extract_universal_constant( 
+  const std::string name, double &value, const bool useDefault)
+{
+  std::map<std::string, double >::iterator it
+    = materialPropertys_.universalConstantMap_.find(name);
+  if ( it == materialPropertys_.universalConstantMap_.end() ) {
+    // not found
+    if ( useDefault ) {
+      NaluEnv::self().naluOutputP0() << "WARNING: Reference value for " << name << " not found " << " using " << value << std::endl;
+    }
+    else {
+      throw std::runtime_error("Realm::setup_property: reference value not found: " + name);
+    }
+  }
+  else {
+    value = (*it).second;
   }
 }
 
@@ -1986,8 +2025,7 @@ Realm::process_mesh_motion()
       stk::mesh::Part *targetPart = meta_data.get_part(theVector[k]);
 
       if ( NULL == targetPart ) {
-        NaluEnv::self().naluOutputP0() << "problem with part " << theVector[k] << std::endl;
-        throw std::runtime_error("Sorry, no part name found");
+        throw std::runtime_error("Sorry, no part name found" + theVector[k]);
       }
       else {
         set_omega(targetPart, theOmega);
@@ -2784,8 +2822,7 @@ Realm::register_non_conformal_bc(
     stk::mesh::Part * const part = *i ;
     const stk::topology partTopo = part->topology();
     if ( !(meta_data.side_rank() == part->primary_entity_rank()) ) {
-      NaluEnv::self().naluOutputP0() << "Sorry, part is not a face " << part->name();
-      throw std::runtime_error("NonConformal::fatal_error()");
+      throw std::runtime_error("NonConformal::fatal_error(); part is not a face" + part->name());
     }
     else {
       

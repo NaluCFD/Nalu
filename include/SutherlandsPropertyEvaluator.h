@@ -64,11 +64,11 @@ public:
 
   virtual ~SutherlandsYkPropertyEvaluator();
   
-  double execute(
+  virtual double execute(
       double *indVarList,
       stk::mesh::Entity node);
 
-  double compute_viscosity(
+  virtual double compute_viscosity(
       const double &T,
       const double *pt_poly);
 
@@ -80,6 +80,25 @@ public:
   // polynomial coeffs
   std::vector<std::vector<double> > polynomialCoeffs_;
   
+};
+
+class SutherlandsYkTrefPropertyEvaluator : public SutherlandsYkPropertyEvaluator
+{
+public:
+
+  SutherlandsYkTrefPropertyEvaluator(
+      const std::map<std::string, std::vector<double> > &polynomialCoeffsMap,
+      stk::mesh::MetaData &metaData,
+      stk::io::StkMeshIoBroker *fixture,
+      const double tRef);
+
+  virtual ~SutherlandsYkTrefPropertyEvaluator();
+  
+  double execute(
+      double *indVarList,
+      stk::mesh::Entity node);
+
+  const double tRef_;
 };
 
 } // namespace nalu

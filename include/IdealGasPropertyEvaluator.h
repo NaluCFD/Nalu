@@ -101,6 +101,39 @@ public:
 
 };
 
+class IdealGasYkPropertyEvaluator : public PropertyEvaluator
+{
+public:
+
+  IdealGasYkPropertyEvaluator(
+      double pRef,
+      double tRef,
+      double universalR,
+      std::vector<double>mwVec,
+      stk::mesh::MetaData &metaData);
+  virtual ~IdealGasYkPropertyEvaluator();
+  
+  double execute(
+      double *indVarList,
+      stk::mesh::Entity node);
+  
+  double compute_mw(
+      const double *yk);
+  
+  // reference quantities
+  const double pRef_;
+  const double tRef_;
+  const double R_;  
+
+  // field definition and extraction,
+  GenericFieldType *massFraction_;
+
+  // reference mw vector; size and declaration
+  size_t mwVecSize_;
+  std::vector<double> mwVec_;
+  
+};
+
 } // namespace nalu
 } // namespace Sierra
 

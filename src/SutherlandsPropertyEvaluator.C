@@ -198,5 +198,52 @@ SutherlandsYkPropertyEvaluator::compute_viscosity(
   return muRef*std::pow(T/TRef, 1.5)*(TRef+SRef)/(T+SRef);
 }
 
+//==========================================================================
+// Class Definition
+//==========================================================================
+// SutherlandsYkTrefPropertyEvaluator - evaluates mu based on Yk and Tref
+//==========================================================================
+//--------------------------------------------------------------------------
+//-------- constructor -----------------------------------------------------
+//--------------------------------------------------------------------------
+SutherlandsYkTrefPropertyEvaluator::SutherlandsYkTrefPropertyEvaluator(
+    const std::map<std::string, std::vector<double> > &polynomialCoeffsMap,
+    stk::mesh::MetaData &metaData,
+    stk::io::StkMeshIoBroker *fixture,
+    const double tRef)
+  : SutherlandsYkPropertyEvaluator(polynomialCoeffsMap, metaData, fixture),
+    tRef_(tRef)
+{
+  // base class handles everything that is required
+}
+
+//--------------------------------------------------------------------------
+//-------- destructor ------------------------------------------------------
+//--------------------------------------------------------------------------
+SutherlandsYkTrefPropertyEvaluator::~SutherlandsYkTrefPropertyEvaluator()
+{
+  // nothing
+}
+
+//--------------------------------------------------------------------------
+//-------- execute ---------------------------------------------------------
+//--------------------------------------------------------------------------
+double
+SutherlandsYkTrefPropertyEvaluator::execute(
+    double */*indVarList*/,
+    stk::mesh::Entity node)
+{
+  const double T = tRef_;
+  const double *massFraction = stk::mesh::field_data(*massFraction_, node);
+
+  // process sum
+  double sum_mu = 0.0;
+  for ( size_t k = 0; k < ykVecSize_; ++k ) {
+    sum_mu += massFraction[k]*compute_viscosity(T, &polynomialCoeffs_[k][0]);
+  }
+
+  return sum_mu;
+}
+
 } // namespace nalu
 } // namespace Sierra

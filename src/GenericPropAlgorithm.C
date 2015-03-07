@@ -7,7 +7,7 @@
 
 
 #include <Algorithm.h>
-#include <TemperaturePropAlgorithm.h>
+#include <GenericPropAlgorithm.h>
 #include <FieldTypeDef.h>
 #include <PropertyEvaluator.h>
 #include <Realm.h>
@@ -22,33 +22,27 @@
 namespace sierra{
 namespace nalu{
 
-TemperaturePropAlgorithm::TemperaturePropAlgorithm(
+GenericPropAlgorithm::GenericPropAlgorithm(
   Realm & realm,
   stk::mesh::Part * part,
   stk::mesh::FieldBase * prop,
-  PropertyEvaluator *propEvaluator,
-  std::string tempName)
+  PropertyEvaluator *propEvaluator)
   : Algorithm(realm, part),
     prop_(prop),
-    propEvaluator_(propEvaluator),
-    temperature_(NULL)
+    propEvaluator_(propEvaluator)
 {
-  // extract temperature field
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
-  temperature_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, tempName);
-  if ( NULL == temperature_ ) {
-    throw std::runtime_error("Realm::setup_property: TemperaturePropAlgorithm requires temperature/bc:");
-  }
+  // does nothing
 }
 
 void
-TemperaturePropAlgorithm::execute()
+GenericPropAlgorithm::execute()
 {
 
   // make sure that partVec_ is size one
   ThrowAssert( partVec_.size() == 1 );
 
-  std::vector<double> indVarList(1);
+  // empty independet variable list; hence "Generic"
+  std::vector<double> indVarList(1,0.0);
 
   stk::mesh::Selector selector = stk::mesh::selectUnion(partVec_);
 
@@ -61,14 +55,13 @@ TemperaturePropAlgorithm::execute()
     const stk::mesh::Bucket::size_type length   = b.size();
 
     double *prop  = (double*) stk::mesh::field_data(*prop_, b);
-    const double *temperature  = (double*) stk::mesh::field_data(*temperature_, b);
 
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
-      indVarList[0] = temperature[k];
       prop[k] = propEvaluator_->execute(&indVarList[0], b[k]);
     }
   }
 }
+
 
 } // namespace nalu
 } // namespace Sierra

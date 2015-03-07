@@ -49,6 +49,7 @@ enum EquationType {
   EQ_ENTHALPY = 6,
   EQ_MESH_DISPLACEMENT = 7,
   EQ_SPEC_DISS_RATE = 8,
+  EQ_MASS_FRACTION = 9,
   EquationSystemType_END
 };
 
@@ -61,7 +62,8 @@ static const std::string EquationTypeMap[] = {
   "Intensity",
   "Enthalpy",
   "MeshVelocity",
-  "Specific_Dissipation_Rate"
+  "Specific_Dissipation_Rate",
+  "Mass_Fraction"
 };
 
 enum UserDataType {
@@ -105,6 +107,7 @@ enum  MaterialPropertyType {
   GEOMETRIC_MAT = 4,
   IDEAL_GAS_T_P_MAT = 5,
   TABLE_MAT = 6,
+  IDEAL_GAS_YK_MAT = 7,
   MaterialPropertyType_END
 };
 

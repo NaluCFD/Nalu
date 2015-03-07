@@ -72,6 +72,12 @@ struct MixtureFraction {
   {}
 };
 
+struct MassFraction {
+  std::vector<double> massFraction_;
+  MassFraction()
+  {}
+};
+
 struct Emissivity {
   double emissivity_;
   Emissivity()
@@ -152,6 +158,7 @@ struct WallUserData : public UserData {
   TurbKinEnergy tke_;
   Temperature temperature_;
   MixtureFraction mixFrac_;
+  MassFraction massFraction_;
   Emissivity emissivity_;
   Irradiation irradiation_;
   Transmissivity transmissivity_;
@@ -195,17 +202,19 @@ struct InflowUserData : public UserData {
   TurbKinEnergy tke_;
   SpecDissRate sdr_;
   MixtureFraction mixFrac_;
+  MassFraction massFraction_;
   Temperature temperature_;
 
   bool uSpec_;
   bool tkeSpec_;
   bool sdrSpec_;
   bool mixFracSpec_;
+  bool massFractionSpec_;
   bool tempSpec_;
   
   InflowUserData()
     : UserData(),
-      uSpec_(false), tkeSpec_(false), sdrSpec_(false), mixFracSpec_(false), tempSpec_(false)
+      uSpec_(false), tkeSpec_(false), sdrSpec_(false), mixFracSpec_(false), massFractionSpec_(false), tempSpec_(false)
   {}
 };
 
@@ -215,6 +224,7 @@ struct OpenUserData : public UserData {
   TurbKinEnergy tke_;
   SpecDissRate sdr_;
   MixtureFraction mixFrac_;
+  MassFraction massFraction_;
   Temperature temperature_;
 
   bool uSpec_;
@@ -222,11 +232,12 @@ struct OpenUserData : public UserData {
   bool tkeSpec_;
   bool sdrSpec_;
   bool mixFracSpec_;
+  bool massFractionSpec_;
   bool tempSpec_;
 
   OpenUserData()
     : UserData(),
-      uSpec_(false), pSpec_(false), tkeSpec_(false), sdrSpec_(false), mixFracSpec_(false), tempSpec_(false)
+      uSpec_(false), pSpec_(false), tkeSpec_(false), sdrSpec_(false), mixFracSpec_(false), massFractionSpec_(false), tempSpec_(false)
   {}
 };
 
@@ -353,6 +364,7 @@ void operator >> (const YAML::Node& node, TurbKinEnergy& tke);
 void operator >> (const YAML::Node& node, SpecDissRate& sdr);
 void operator >> (const YAML::Node& node, Temperature& t);
 void operator >> (const YAML::Node& node, MixtureFraction& z);
+void operator >> (const YAML::Node& node, MassFraction& yk);
 void operator >> (const YAML::Node& node, std::map<std::string,double>& mapName);
 void operator >> (const YAML::Node& node, std::map<std::string,std::string>& mapName);
 void operator >> (const YAML::Node& node, std::map<std::string,std::vector<std::string> >& mapName);

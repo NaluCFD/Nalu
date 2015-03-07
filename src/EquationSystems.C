@@ -23,6 +23,7 @@
 #include <LowMachEquationSystem.h>
 #include <MixtureFractionEquationSystem.h>
 #include <ShearStressTransportEquationSystem.h>
+#include <MassFractionEquationSystem.h>
 #include <TurbKineticEnergyEquationSystem.h>
 #include <pmr/RadiativeTransportEquationSystem.h>
 #include <mesh_motion/MeshDisplacementEquationSystem.h>
@@ -103,6 +104,10 @@ void EquationSystems::load(const YAML::Node & y_node)
         else if( (y_eqsys = expect_map(y_system, "TurbKineticEnergy", true)) ) {
           if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = tke " << std::endl;
           eqSys = new TurbKineticEnergyEquationSystem(*this);
+        }
+        else if( (y_eqsys = expect_map(y_system, "MassFraction", true)) ) {
+          if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = Yk " << std::endl;
+          eqSys = new MassFractionEquationSystem(*this);
         }
         else if( (y_eqsys = expect_map(y_system, "MixtureFraction", true)) ) {
           if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = mixFrac " << std::endl;

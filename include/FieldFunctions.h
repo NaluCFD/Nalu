@@ -54,6 +54,16 @@ void field_copy(
   const stk::mesh::FieldBase & yField,
   const stk::topology::rank_t entityRankValue=stk::topology::NODE_RANK);
 
+// y[compJ] = x[compK]
+void field_index_copy(
+  const stk::mesh::MetaData & metaData,
+  const stk::mesh::BulkData & bulkData,
+  const stk::mesh::FieldBase & xField,
+  const int xFieldIndex,
+  const stk::mesh::FieldBase & yField,
+  const int yFieldIndex,
+  const stk::topology::rank_t entityRankValue=stk::topology::NODE_RANK);
+
 } // namespace nalu
 } // namespace Sierra
 

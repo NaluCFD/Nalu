@@ -401,7 +401,7 @@ EnthalpyEquationSystem::register_interior_algorithm(
     = realm_.get_material_prop_eval(ENTHALPY_ID);
 
   TemperaturePropAlgorithm *auxAlg
-    = new TemperaturePropAlgorithm( realm_, part, &enthalpyNp1, temperature_, thePropEval);
+    = new TemperaturePropAlgorithm( realm_, part, &enthalpyNp1, thePropEval);
   enthalpyFromTemperatureAlg_.push_back(auxAlg);
 
 }
@@ -1175,7 +1175,7 @@ EnthalpyEquationSystem::temperature_bc_setup(
     = realm_.get_material_prop_eval(ENTHALPY_ID);
 
   TemperaturePropAlgorithm *enthAlg
-    = new TemperaturePropAlgorithm( realm_, part, enthalpyBc, temperatureBc, thePropEval);
+    = new TemperaturePropAlgorithm( realm_, part, enthalpyBc, thePropEval, temperatureBc->name());
 
   // copy enthalpy_bc to enthalpy np1...
   CopyFieldAlgorithm *theEnthCopyAlg = NULL;
