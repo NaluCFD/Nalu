@@ -346,7 +346,7 @@ SurfaceForceAndMomentAlgorithm::execute()
         ypBip = std::sqrt(ypBip);
 
         const double tauW = std::sqrt(tauTangential);
-        const double uTau = std::sqrt(tauW/muBip);
+        const double uTau = std::sqrt(tauW/rhoBip);
         const double yplusBip = rhoBip*ypBip/muBip*uTau;
 
         // nodal field
