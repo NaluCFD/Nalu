@@ -117,6 +117,10 @@ SurfaceForceAndMomentAlgorithm::execute()
   const int timeStepCount = realm_.get_time_step_count();
   const bool processMe = (timeStepCount % frequency_) == 0 ? true : false;
 
+  // do not waste time here
+  if ( !processMe )
+    return;
+
   // common
   stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
   stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();

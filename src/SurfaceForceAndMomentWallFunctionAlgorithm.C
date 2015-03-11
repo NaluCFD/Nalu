@@ -128,6 +128,10 @@ SurfaceForceAndMomentWallFunctionAlgorithm::execute()
   const int timeStepCount = realm_.get_time_step_count();
   const bool processMe = (timeStepCount % frequency_) == 0 ? true : false;
 
+  // do not waste time here
+  if ( !processMe )
+    return;
+
   stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
   stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
 
@@ -342,7 +346,7 @@ SurfaceForceAndMomentWallFunctionAlgorithm::execute()
         for ( int i = 0; i < nDim; ++i ) {
           w_radius[i] = coord[i] - centroid[i];
           const double uDiff = p_uiTangential[i] - p_uiBcTangential[i];
-          w_force[i] = pBip*areaVec[offSetAveraVec+i] - lambda*(uDiff);
+          w_force[i] = pBip*areaVec[offSetAveraVec+i] + lambda*(uDiff);
           pressureForce[i] += pBip*areaVec[offSetAveraVec+i];
           uParallel += uDiff*uDiff;
         }
