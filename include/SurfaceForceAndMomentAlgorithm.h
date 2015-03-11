@@ -57,6 +57,8 @@ public:
   GenericFieldType *exposedAreaVec_;
   ScalarFieldType *assembledArea_;
 
+  const int w_;
+
 };
 
 } // namespace nalu

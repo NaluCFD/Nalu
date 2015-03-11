@@ -32,6 +32,7 @@
 #include <math.h>
 #include <iostream>
 #include <fstream>
+#include <iomanip>
 
 namespace sierra{
 namespace nalu{
@@ -73,7 +74,8 @@ SurfaceForceAndMomentWallFunctionAlgorithm::SurfaceForceAndMomentWallFunctionAlg
     wallFrictionVelocityBip_(NULL),
     wallNormalDistanceBip_(NULL),
     exposedAreaVec_(NULL),
-    assembledArea_(NULL)
+    assembledArea_(NULL),
+    w_(12)
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
@@ -104,7 +106,12 @@ SurfaceForceAndMomentWallFunctionAlgorithm::SurfaceForceAndMomentWallFunctionAlg
   if ( NaluEnv::self().parallel_rank() == 0 ) {
     std::ofstream myfile;
     myfile.open(outputFileName_.c_str());
-    myfile << "Time    Fx    Fy    Fz    Mx    My    Mz   Ypmin   Ypmax"<< std::endl;
+    myfile << std::setw(w_) 
+           << "Time" << std::setw(w_) 
+           << "Fpx"  << std::setw(w_) << "Fpy" << std::setw(w_)  << "Fpz" << std::setw(w_) 
+           << "Fvx"  << std::setw(w_) << "Fvy" << std::setw(w_)  << "Fxz" << std::setw(w_) 
+           << "Mtx"  << std::setw(w_) << "Mty" << std::setw(w_)  << "Mtz" << std::setw(w_) 
+           << "Y+min" << std::setw(w_) << "Y+max"<< std::endl;
     myfile.close();
   }
  }
@@ -173,15 +180,17 @@ SurfaceForceAndMomentWallFunctionAlgorithm::execute()
   const double currentTime = realm_.get_current_time();
 
   // local force and MomentWallFunction; i.e., to be assembled
-  double l_force_MomentWallFunction[6] = {0,0,0,0,0,0};
+  double l_force_moment[9] = {};
 
   // work force, MomentWallFunction and radius; i.e., to be pused to cross_product()
-  double w_force[3] = {0,0,0};
-  double w_MomentWallFunction[3] = {0,0,0};
-  double w_radius[3] = {0,0,0};
+  double ws_p_force[3] = {};
+  double ws_v_force[3] = {};
+  double ws_t_force[3] = {};
+  double ws_moment[3] = {};
+  double ws_radius[3] = {};
 
   // centroid
-  double centroid[3] = {0,0,0};
+  double centroid[3] = {};
   for ( size_t k = 0; k < parameters_.size(); ++k)
     centroid[k] = parameters_[k];
 
@@ -344,19 +353,23 @@ SurfaceForceAndMomentWallFunctionAlgorithm::execute()
         // load radius; assemble force -sigma_ij*njdS
         double uParallel = 0.0;
         for ( int i = 0; i < nDim; ++i ) {
-          w_radius[i] = coord[i] - centroid[i];
+          const double ai = areaVec[offSetAveraVec+i];
+          ws_radius[i] = coord[i] - centroid[i];
           const double uDiff = p_uiTangential[i] - p_uiBcTangential[i];
-          w_force[i] = pBip*areaVec[offSetAveraVec+i] + lambda*(uDiff);
-          pressureForce[i] += pBip*areaVec[offSetAveraVec+i];
+          ws_p_force[i] = pBip*ai;
+          ws_v_force[i] = lambda*uDiff;
+          ws_t_force[i] = ws_p_force[i] + ws_v_force[i];
+          pressureForce[i] += ws_p_force[i];;
           uParallel += uDiff*uDiff;
         }
 
-        cross_product(&w_force[0], &w_MomentWallFunction[0], &w_radius[0]);
+        cross_product(&ws_t_force[0], &ws_moment[0], &ws_radius[0]);
 
         // assemble for and moment
         for ( int j = 0; j < 3; ++j ) {
-          l_force_MomentWallFunction[j] += w_force[j];
-          l_force_MomentWallFunction[j+3] += w_MomentWallFunction[j];
+          l_force_moment[j] += ws_p_force[j];
+          l_force_moment[j+3] += ws_v_force[j];
+          l_force_moment[j+6] += ws_moment[j];
         }
 
         // assemble tauWall; area weighting is hiding in lambda/assembledArea
@@ -371,11 +384,11 @@ SurfaceForceAndMomentWallFunctionAlgorithm::execute()
 
   if ( processMe ) {
     // parallel assemble and output
-    double g_force_MomentWallFunction[6] = {};
+    double g_force_moment[9] = {};
     stk::ParallelMachine comm = NaluEnv::self().parallel_comm();
 
     // Parallel assembly of L2
-    stk::all_reduce_sum(comm, &l_force_MomentWallFunction[0], &g_force_MomentWallFunction[0], 6);
+    stk::all_reduce_sum(comm, &l_force_moment[0], &g_force_moment[0], 9);
 
     // min/max
     double g_yplusMin = 0.0, g_yplusMax = 0.0;
@@ -386,10 +399,13 @@ SurfaceForceAndMomentWallFunctionAlgorithm::execute()
     if ( NaluEnv::self().parallel_rank() == 0 ) {
       std::ofstream myfile;
       myfile.open(outputFileName_.c_str(), std::ios_base::app);
-      myfile << currentTime << " "
-          << g_force_MomentWallFunction[0] << " " << g_force_MomentWallFunction[1] << " " << g_force_MomentWallFunction[2] << " "
-          << g_force_MomentWallFunction[3] << " " << g_force_MomentWallFunction[4] << " " << g_force_MomentWallFunction[5] << " "
-          << g_yplusMin << " " << g_yplusMax << std::endl;
+      myfile << std::setprecision(6) 
+             << std::setw(w_) 
+             << currentTime << std::setw(w_) 
+             << g_force_moment[0] << std::setw(w_) << g_force_moment[1] << std::setw(w_) << g_force_moment[2] << std::setw(w_)
+             << g_force_moment[3] << std::setw(w_) << g_force_moment[4] << std::setw(w_) << g_force_moment[5] <<  std::setw(w_)
+             << g_force_moment[6] << std::setw(w_) << g_force_moment[7] << std::setw(w_) << g_force_moment[8] <<  std::setw(w_)
+             << g_yplusMin << std::setw(w_) << g_yplusMax << std::endl;
       myfile.close();
     }
   }
