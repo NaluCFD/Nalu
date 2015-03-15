@@ -132,13 +132,18 @@ void EquationSystems::load(const YAML::Node & y_node)
           int quadratureOrder = 2;
           get_if_present_no_default(*y_eqsys, "quadrature_order", quadratureOrder);
           bool activateScattering = false;
-          bool externalCoupling= false;
+          bool activatePmrUpwind = false;
+          bool externalCoupling = false;
           get_if_present_no_default(*y_eqsys, "activate_scattering", activateScattering);
+          get_if_present_no_default(*y_eqsys, "activate_upwind", activatePmrUpwind);
           get_if_present_no_default(*y_eqsys, "external_coupling", externalCoupling);
           if ( externalCoupling )
             NaluEnv::self().naluOutputP0() << "PMR External Coupling; absorption coefficient/radiation_source expected by xfer" << std::endl;
+          if ( activatePmrUpwind )
+            NaluEnv::self().naluOutputP0() << "PMR residual stabilization is off, pure upwind will be used" << std::endl;
+
           eqSys = new RadiativeTransportEquationSystem(*this,
-              quadratureOrder, activateScattering, externalCoupling);
+            quadratureOrder, activateScattering, activatePmrUpwind, externalCoupling);
         }
         else if( (y_eqsys = expect_map(y_system, "MeshDisplacement", true)) ) {
           bool activateMass = false;

@@ -33,7 +33,7 @@ namespace nalu{
 //==========================================================================
 // Class Definition
 //==========================================================================
-// AssembleRadTransElemSolverAlgorithm - add LHS/RHS for Intensity
+// AssembleRadTransElemSolverAlgorithm - add LHS/RHS for Intensity (SUCV)
 //==========================================================================
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
@@ -82,6 +82,7 @@ AssembleRadTransElemSolverAlgorithm::execute()
 
   const int nDim = meta_data.spatial_dimension();
 
+  // use edge-based length scale
   const bool useEdgeH = true;
 
   // extract current ordinate direction

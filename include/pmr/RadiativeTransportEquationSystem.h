@@ -34,6 +34,7 @@ public:
       EquationSystems& equationSystems,
       const int quadratureOrder,
       const bool activateScattering,
+      const bool activateUpwind,
       const bool externalCoupling);
   virtual ~RadiativeTransportEquationSystem();
   
@@ -103,6 +104,7 @@ public:
 
   const int quadratureOrder_;
   const bool activateScattering_;
+  const bool activateUpwind_;
   const bool externalCoupling_;
   
   ScalarFieldType *intensity_;

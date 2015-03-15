@@ -6,8 +6,8 @@
 /*------------------------------------------------------------------------*/
 
 
-#ifndef AssembleRadTransEdgeSolverAlgorithm_h
-#define AssembleRadTransEdgeSolverAlgorithm_h
+#ifndef AssembleRadTransEdgeUpwindSolverAlgorithm_h
+#define AssembleRadTransEdgeUpwindSolverAlgorithm_h
 
 #include<SolverAlgorithm.h>
 #include<FieldTypeDef.h>
@@ -24,15 +24,15 @@ namespace nalu{
 class RadiativeTransportEquationSystem;
 class Realm;
 
-class AssembleRadTransEdgeSolverAlgorithm : public SolverAlgorithm
+class AssembleRadTransEdgeUpwindSolverAlgorithm : public SolverAlgorithm
 {
 public:
   
-  AssembleRadTransEdgeSolverAlgorithm(
+  AssembleRadTransEdgeUpwindSolverAlgorithm(
     Realm &realm,
     stk::mesh::Part *part,
     RadiativeTransportEquationSystem *radEqSystem);
-  virtual ~AssembleRadTransEdgeSolverAlgorithm() {}
+  virtual ~AssembleRadTransEdgeUpwindSolverAlgorithm() {}
   virtual void initialize_connectivity();
   virtual void execute();
 
@@ -40,12 +40,6 @@ public:
 
   ScalarFieldType *intensity_;
   VectorFieldType *edgeAreaVec_;
-  VectorFieldType *coordinates_;
-  ScalarFieldType *absorption_;
-  ScalarFieldType *scattering_;
-  ScalarFieldType *scalarFlux_;
-  ScalarFieldType *radiationSource_;
-  ScalarFieldType *dualNodalVolume_;
   
 };
 

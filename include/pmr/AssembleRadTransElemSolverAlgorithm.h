@@ -37,6 +37,7 @@ public:
   virtual void execute();
 
   const RadiativeTransportEquationSystem *radEqSystem_;
+
   ScalarFieldType *intensity_;
   VectorFieldType *coordinates_;
   ScalarFieldType *absorption_;

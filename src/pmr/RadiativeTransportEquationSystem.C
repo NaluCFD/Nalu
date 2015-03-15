@@ -10,6 +10,7 @@
 #include <pmr/RadTransBlackBodyNodeSuppAlg.h>
 #include <pmr/RadTransIsoScatteringNodeSuppAlg.h>
 #include <pmr/AssembleRadTransEdgeSolverAlgorithm.h>
+#include <pmr/AssembleRadTransEdgeUpwindSolverAlgorithm.h>
 #include <pmr/AssembleRadTransElemSolverAlgorithm.h>
 #include <pmr/AssembleRadTransWallSolverAlgorithm.h>
 #include <AssembleNodeSolverAlgorithm.h>
@@ -75,10 +76,12 @@ RadiativeTransportEquationSystem::RadiativeTransportEquationSystem(
   EquationSystems& eqSystems,
   const int quadratureOrder,
   const bool activateScattering,
+  const bool activateUpwind,
   const bool externalCoupling)
   : EquationSystem(eqSystems, "RadiativeTransportEQS"),
     quadratureOrder_(quadratureOrder),
     activateScattering_(activateScattering),
+    activateUpwind_(activateUpwind),
     externalCoupling_(externalCoupling),
     intensity_(NULL),
     currentIntensity_(NULL),
@@ -136,6 +139,11 @@ RadiativeTransportEquationSystem::RadiativeTransportEquationSystem(
   
   // tell the user scattering is or is not active
   NaluEnv::self().naluOutputP0() << "Scattering source term is active " << activateScattering_;
+
+  // check for upwind option...
+  if ( activateUpwind_ )
+    if ( !realm_.realmUsesEdges_ )
+      throw std::runtime_error("PMR upwind only supported when using the edge-based scheme. please switch");
 
 }
 
@@ -489,7 +497,10 @@ RadiativeTransportEquationSystem::register_interior_algorithm(
   if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
     SolverAlgorithm *theAlg = NULL;
     if ( realm_.realmUsesEdges_ ) {
-      theAlg = new AssembleRadTransEdgeSolverAlgorithm(realm_, part, this);
+      if ( activateUpwind_ ) // only supported for edge (constructor enforces this)
+        theAlg = new AssembleRadTransEdgeUpwindSolverAlgorithm(realm_, part, this);
+      else
+        theAlg = new AssembleRadTransEdgeSolverAlgorithm(realm_, part, this);
     }
     else {
       theAlg = new AssembleRadTransElemSolverAlgorithm(realm_, part, this);
