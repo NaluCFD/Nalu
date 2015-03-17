@@ -683,7 +683,7 @@ MassFractionEquationSystem::compute_nth_mass_fraction()
         yi[offSet+i] = yiClipped;
       }
       // set nth mass fraction
-      yi[offSet+numMassFraction_] = 1.0 - sum;
+      yi[offSet+nm1MassFraction] = 1.0 - sum;
     }
   }
 }
