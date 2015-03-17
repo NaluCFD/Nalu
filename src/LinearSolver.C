@@ -343,12 +343,8 @@ TpetraLinearSolver::solve(
 
 
   const int status = 0;
-  //!iteration_count = 10;
-  //!scaledResidual = 1.0;
   int whichNorm = 2;
-  //!double initResidNrm=0.0;
   finalResidNrm=0.0;
-  //!bool transpose=false;
 
   if (activateMueLu_)
   {
@@ -363,7 +359,6 @@ TpetraLinearSolver::solve(
   solver_->solve();
 
   iters = solver_->getNumIters();
-  //  finalResidNrm = solver.scaledResidual();
   residual_norm(whichNorm, sln, finalResidNrm);
 
   return status;

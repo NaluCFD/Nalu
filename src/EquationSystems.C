@@ -106,8 +106,10 @@ void EquationSystems::load(const YAML::Node & y_node)
           eqSys = new TurbKineticEnergyEquationSystem(*this);
         }
         else if( (y_eqsys = expect_map(y_system, "MassFraction", true)) ) {
+          int numSpecies = 1.0;
+          get_if_present_no_default(*y_eqsys, "number_of_species", numSpecies);
           if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = Yk " << std::endl;
-          eqSys = new MassFractionEquationSystem(*this);
+          eqSys = new MassFractionEquationSystem(*this, numSpecies);
         }
         else if( (y_eqsys = expect_map(y_system, "MixtureFraction", true)) ) {
           if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = mixFrac " << std::endl;

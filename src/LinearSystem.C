@@ -60,6 +60,7 @@ LinearSystem::LinearSystem(
     linearSolver_(linearSolver),
     linearSolveIterations_(0),
     nonLinearResidual_(0.0),
+    linearResidual_(0.0),
     firstNonLinearResidual_(1.0e8),
     scaledNonLinearResidual_(1.0e8),
     recomputePreconditioner_(true),

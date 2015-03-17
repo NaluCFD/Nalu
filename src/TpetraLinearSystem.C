@@ -1223,8 +1223,11 @@ TpetraLinearSystem::solve(
   // computeL2 norm
   const double norm2 = ownedRhs_->norm2();
 
+  // save off solver info
   linearSolveIterations_ = iters;
   nonLinearResidual_ = realm_.l2Scaling_*norm2;
+  linearResidual_ = finalResidNorm;
+    
   if ( realm_.currentNonlinearIteration_ == 1 )
     firstNonLinearResidual_ = nonLinearResidual_;
   scaledNonLinearResidual_ = nonLinearResidual_/std::max(std::numeric_limits<double>::epsilon(), firstNonLinearResidual_);

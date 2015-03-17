@@ -85,6 +85,7 @@ public:
   virtual void writeSolutionToFile(const char * filename, bool useOwned=true)=0;
   const unsigned numDof() const { return numDof_; }
   const int & linearSolveIterations() {return linearSolveIterations_; }
+  const double & linearResidual() {return linearResidual_; }
   const double & nonLinearResidual() {return nonLinearResidual_; }
   const double & scaledNonLinearResidual() {return scaledNonLinearResidual_; }
   bool & recomputePreconditioner() {return recomputePreconditioner_;}
@@ -107,6 +108,7 @@ protected:
   LinearSolver * linearSolver_;
   int linearSolveIterations_;
   double nonLinearResidual_;
+  double linearResidual_;
   double firstNonLinearResidual_;
   double scaledNonLinearResidual_;
   bool recomputePreconditioner_;

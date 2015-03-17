@@ -585,13 +585,13 @@ MassFractionEquationSystem::solve_and_update()
 
   // we solve for n-1 mass fraction
   const int nm1MassFraction = numMassFraction_ - 1;
-
+    
   for ( int i = 0; i < maxIterations_; ++i ) {
 
-    NaluEnv::self().naluOutputP0() << "   "
-                                   << name_ << " Iteration: " << i+1 << "/" << maxIterations_ << std::endl;
+    NaluEnv::self().naluOutputP0() << " " << i+1 << "/" << maxIterations_ << std::setw(15) << std::right << name_ << std::endl;
 
     double nonLinearResidualSum = 0.0;
+    double linearResidualSum = 0.0;
     double linearIterationsSum = 0.0;
 
     for ( int k = 0; k < nm1MassFraction; ++k ) {
@@ -624,6 +624,7 @@ MassFractionEquationSystem::solve_and_update()
       // increment solve counts and norms
       linearIterationsSum += linsys_->linearSolveIterations();
       nonLinearResidualSum += linsys_->nonLinearResidual();
+      linearResidualSum += linsys_->linearResidual();
 
     }
 
@@ -638,12 +639,14 @@ MassFractionEquationSystem::solve_and_update()
       firstNonLinearResidualSum_ = nonLinearResidualSum_;
 
     // dump norm and averages
+    std::string systemName = "MassFractionEQS";
+    const int systemNameOffset = systemName.length()+8;
     NaluEnv::self().naluOutputP0()
-      << "EqSystem Name:       " << name_ << std::endl
-      << "   aver iters      = " << linearIterationsSum/double(nm1MassFraction) << std::endl
-      << "nonlinearResidNrm  = " << nonLinearResidualSum/double(nm1MassFraction) 
-      << " scaled: " << nonLinearResidualSum_/firstNonLinearResidualSum_ << std::endl;
-    NaluEnv::self().naluOutputP0() << std::endl;
+      << std::setw(systemNameOffset) << std::right << systemName
+      << std::setw(32-systemNameOffset)  << std::right << linearIterationsSum/double(nm1MassFraction)
+      << std::setw(18) << std::right << linearResidualSum/double(nm1MassFraction)
+      << std::setw(15) << std::right << nonLinearResidualSum/double(nm1MassFraction)
+      << std::setw(14) << std::right << nonLinearResidualSum_/firstNonLinearResidualSum_ << std::endl;
   }
 
 }

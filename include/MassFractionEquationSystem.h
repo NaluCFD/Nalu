@@ -35,7 +35,7 @@ public:
 
   MassFractionEquationSystem(
       EquationSystems& equationSystems,
-      const int numMassFraction = 2);
+      const int numMassFraction);
   virtual ~MassFractionEquationSystem();
   
   void register_nodal_fields(

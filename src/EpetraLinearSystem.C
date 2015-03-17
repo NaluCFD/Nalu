@@ -804,8 +804,11 @@ EpetraLinearSystem::solve(stk::mesh::FieldBase * linearSolutionField)
   std::vector<double> theNorm(1); // for now, size is unity..
   rhs_->Norm2(&theNorm[0]);
 
+  // save off solver info
   linearSolveIterations_ = iters;
   nonLinearResidual_ = realm_.l2Scaling_*theNorm[0];
+  linearResidual_ = finalResidNorm;
+
   if ( realm_.currentNonlinearIteration_ == 1 )
     firstNonLinearResidual_ = nonLinearResidual_;
   scaledNonLinearResidual_ = nonLinearResidual_/std::max(std::numeric_limits<double>::epsilon(), firstNonLinearResidual_);
