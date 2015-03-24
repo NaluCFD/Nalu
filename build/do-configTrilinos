@@ -1,7 +1,7 @@
 # The base directory where mpi is located.  
 # From here you should be able to find include/mpi.h bin/mpicxx, bin/mpiexec, etc.
-mpi_base_dir=/sierra/sntools/SDK/mpi/openmpi/1.6.4-gcc-4.7.2-RHEL6
-nalu_build_dir=/usr/local/packages
+mpi_base_dir=/PathToMPI
+nalu_build_dir=/PathToScratchBuild
 
 # Note: Don't forget to set your LD_LIBRARY_PATH to $mpi_base_dir/lib
 #       You may also need to add to LD_LIBRARY_PATH the lib directory for the compiler
@@ -34,8 +34,14 @@ rm -f CMakeCache.txt
 
 cmake \
 -DCMAKE_INSTALL_PREFIX=$trilinos_install_dir \
--DTrilinos_ENABLE_CXX11=OFF \
+-DTrilinos_ENABLE_CXX11=ON \
+-DTrilinos_ENABLE_EXPLICIT_INSTANTIATION:BOOL=ON \
+-DTpetra_INST_DOUBLE:BOOL=ON \
+-DTpetra_INST_INT_LONG:BOOL=ON \
+-DTpetra_INST_COMPLEX_DOUBLE=OFF \
+-DCMAKE_BUILD_TYPE:STRING=Release \
 -DTrilinos_ENABLE_TESTS:BOOL=OFF \
+-DTrilinos_ENABLE_ALL_OPTIONAL_PACKAGES=OFF \
 -DTrilinos_ALLOW_NO_PACKAGES:BOOL=OFF \
 -DTPL_ENABLE_MPI=ON \
   -DMPI_BASE_DIR:PATH=$mpi_base_dir \
@@ -46,6 +52,8 @@ cmake \
 -DTrilinos_ENABLE_Tpetra:BOOL=ON \
 -DTrilinos_ENABLE_ML:BOOL=ON \
 -DTrilinos_ENABLE_MueLu:BOOL=ON \
+-DTrilinos_ENABLE_EpetraExt:BOOL=ON \
+-DTrilinos_ENABLE_AztecOO:BOOL=ON \
 -DTrilinos_ENABLE_Belos:BOOL=ON \
 -DTrilinos_ENABLE_Ifpack2:BOOL=ON \
 -DTrilinos_ENABLE_Amesos2:BOOL=ON \
@@ -67,6 +75,7 @@ cmake \
 -DTrilinos_ENABLE_SEACASNemspread:BOOL=ON \
 -DTrilinos_ENABLE_SEACASNemslice:BOOL=ON \
   -DTPL_ENABLE_Netcdf:STRING=ON \
+  -DTPL_Netcdf_LIBRARIES:PATH="${netcdf_install_dir}/lib/libnetcdf.a;${hdf_install_dir}/lib/libhdf5_hl.a;${hdf_install_dir}/lib/libhdf5.a;${z_install_dir}/lib/libz.a" \
   -DNetcdf_INCLUDE_DIRS:PATH="${netcdf_install_dir}/include" \
   -DNetcdf_LIBRARY_DIRS:PATH="${netcdf_install_dir}/lib" \
   -DTPL_ENABLE_HDF5:STRING=ON \
