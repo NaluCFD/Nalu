@@ -185,7 +185,8 @@ Realm::Realm(Realms& realms)
     isothermalFlow_(true),
     uniformFlow_(true),
     provideEntityCount_(false),
-    stateTable_(NULL)
+    stateTable_(NULL),
+    autoDecompType_("None")
 {
   // nothing to do
 }
@@ -426,9 +427,6 @@ Realm::load(const YAML::Node & node)
   // determine if edges are required and whether or not stk handles this
   node["use_edges"] >> realmUsesEdges_;
 
-  // how often is the realm solved..
-  get_if_present(node, "solve_frequency", solveFrequency_, solveFrequency_);
-
   // let everyone know about core algorithm
   if ( realmUsesEdges_ ) {
      NaluEnv::self().naluOutputP0() << "Edge-based scheme will be activated" << std::endl;
@@ -436,6 +434,12 @@ Realm::load(const YAML::Node & node)
   else {
     NaluEnv::self().naluOutputP0() <<"Element-based scheme will be activated" << std::endl;
   }
+
+  // how often is the realm solved..
+  get_if_present(node, "solve_frequency", solveFrequency_, solveFrequency_);
+
+  // automatic decomposition
+  get_if_present(node, "automatic_decomposition_type", autoDecompType_, autoDecompType_);
 
   // time step control
   const bool dtOptional = true;
@@ -1595,7 +1599,11 @@ Realm::create_mesh()
 
   stk::ParallelMachine pm = NaluEnv::self().parallel_comm();
   fixture_ = new stk::io::StkMeshIoBroker( pm );
+  if (autoDecompType_ != "None") 
+    fixture_->property_add(Ioss::Property("DECOMPOSITION_METHOD", autoDecompType_));
 
+  // allow for automatic decomposition
+  
   // for adaptivity we need an additional rank to store parent/child relations
   if (solutionOptions_->useAdapter_ || solutionOptions_->activateUniformRefinement_) {
     std::vector<std::string> entity_rank_names = stk::mesh::entity_rank_names();

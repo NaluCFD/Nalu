@@ -392,6 +392,9 @@ public:
   // multi-d table for property evaluations
   StateTable *stateTable_;
 
+  // automatic mesh decomposition; None, rib, rcb, multikl, etc.
+  std::string autoDecompType_;
+  
   // mesh parts for all boundary conditions
   stk::mesh::PartVector bcPartVec_;
 
