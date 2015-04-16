@@ -35,7 +35,9 @@ namespace nalu{
 //==========================================================================
 // Class Definition
 //==========================================================================
-// AssembleScalarElemDiffNonConformalSolverAlgorithm - lhs for NC bc (DS)
+// AssembleScalarElemDiffNonConformalSolverAlgorithm - lhs for NC bc (DG)
+//                                                     used for both edge
+//                                                     and element
 //==========================================================================
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------

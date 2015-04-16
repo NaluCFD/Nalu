@@ -23,6 +23,7 @@
 #include <AssembleNodalGradEdgeContactAlgorithm.h>
 #include <AssembleNodalGradElemContactAlgorithm.h>
 #include <AssembleNodeSolverAlgorithm.h>
+#include <AssembleNonConformalEdgeDiffPenaltyAlgorithm.h>
 #include <AssembleNonConformalElemDiffPenaltyAlgorithm.h>
 #include <AuxFunctionAlgorithm.h>
 #include <ConstantAuxFunction.h>
@@ -773,10 +774,6 @@ HeatCondEquationSystem::register_non_conformal_bc(
     stk::mesh::Part *currentPart)
 {
 
-  if ( realm_.realmUsesEdges_ ) {
-    throw std::runtime_error("Error: no support for non-conformal edge-based scheme");
-  }
-  
   // create the driver for post-porcessed quantities
   if ( NULL == assembleNonConformalAlgDriver_ ) {
     assembleNonConformalAlgDriver_ = new AlgorithmDriver(realm_);
@@ -818,8 +815,11 @@ HeatCondEquationSystem::register_non_conformal_bc(
   std::map<AlgorithmType, Algorithm *>::iterator itnc
     = assembleNonConformalAlgDriver_->algMap_.find(algType);
   if ( itnc == assembleNonConformalAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg 
-      = new AssembleNonConformalElemDiffPenaltyAlgorithm(realm_, currentPart, temperature_, ncNormalFlux, ncPenalty, ncArea, thermalCond_, realm_.realmUsesEdges_);
+    Algorithm *theAlg = NULL;
+    if ( realm_.realmUsesEdges_ ) 
+      theAlg = new AssembleNonConformalEdgeDiffPenaltyAlgorithm(realm_, currentPart, temperature_, dtdx_, ncNormalFlux, ncPenalty, ncArea, thermalCond_);
+    else
+      theAlg = new AssembleNonConformalElemDiffPenaltyAlgorithm(realm_, currentPart, temperature_, ncNormalFlux, ncPenalty, ncArea, thermalCond_);
     assembleNonConformalAlgDriver_->algMap_[algType] = theAlg;
   }
   else {

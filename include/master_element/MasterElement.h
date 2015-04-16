@@ -610,6 +610,11 @@ public:
     const double *field,
     double *result);
 
+  void general_shape_fcn(
+    const int numIp,
+    const double *isoParCoord,
+    double *shpfc);
+
   bool within_tol( const double & val, const double & tol );
   
   double vector_norm2( const double * vect, int len );

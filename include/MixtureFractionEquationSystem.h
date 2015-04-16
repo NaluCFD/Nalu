@@ -95,6 +95,8 @@ public:
   AlgorithmDriver *speciesAlgDriver_;
 
   bool isInit_;
+
+  AlgorithmDriver *assembleNonConformalAlgDriver_;
   
 };
 

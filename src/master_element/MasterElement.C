@@ -2947,6 +2947,33 @@ Quad3DSCS::interpolatePoint(
 }
 
 //--------------------------------------------------------------------------
+//-------- general_shape_fcn -----------------------------------------------
+//--------------------------------------------------------------------------
+void
+Quad3DSCS::general_shape_fcn(
+  const int numIp,
+  const double *isoParCoord,
+  double *shpfc)
+{
+
+  // -1:1 isoparametric range
+  const double npe = nodesPerElement_;
+  for ( int ip = 0; ip < numIp; ++ip ) {
+    
+    const int rowIpc = 2*ip;
+    const int rowSfc = npe*ip;
+    
+    const double s1 = isoParCoord[rowIpc];
+    const double s2 = isoParCoord[rowIpc+1];
+    shpfc[rowSfc  ] = 0.25*(1.0-s1)*(1.0-s2);
+    shpfc[rowSfc+1] = 0.25*(1.0+s1)*(1.0-s2);
+    shpfc[rowSfc+2] = 0.25*(1.0+s1)*(1.0+s2);
+    shpfc[rowSfc+3] = 0.25*(1.0-s1)*(1.0+s2);
+ 
+  }
+}
+
+//--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 Tri3DSCS::Tri3DSCS()

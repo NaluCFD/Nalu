@@ -7,7 +7,7 @@
 
 
 // nalu
-#include <AssembleNonConformalElemDiffPenaltyAlgorithm.h>
+#include <AssembleNonConformalEdgeDiffPenaltyAlgorithm.h>
 
 #include <FieldTypeDef.h>
 #include <Realm.h>
@@ -35,21 +35,23 @@ namespace nalu{
 //==========================================================================
 // Class Definition
 //==========================================================================
-// AssembleNonConformalElemDiffPenaltyAlgorithm - nodal lambda, flux
+// AssembleNonConformalEdgeDiffPenaltyAlgorithm - nodal lambda, flux
 //==========================================================================
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-AssembleNonConformalElemDiffPenaltyAlgorithm::AssembleNonConformalElemDiffPenaltyAlgorithm(
+AssembleNonConformalEdgeDiffPenaltyAlgorithm::AssembleNonConformalEdgeDiffPenaltyAlgorithm(
   Realm &realm,
   stk::mesh::Part *part,
   ScalarFieldType *scalarQ,
+  VectorFieldType *GjQ,
   ScalarFieldType *ncNormalFlux,
   ScalarFieldType *ncPenalty,
   ScalarFieldType *ncArea,
   ScalarFieldType *diffFluxCoeff)
   : Algorithm(realm, part),
     scalarQ_(scalarQ),
+    GjQ_(GjQ),
     ncNormalFlux_(ncNormalFlux),
     ncPenalty_(ncPenalty),
     ncArea_(ncArea),
@@ -67,7 +69,7 @@ AssembleNonConformalElemDiffPenaltyAlgorithm::AssembleNonConformalElemDiffPenalt
 //-------- execute ---------------------------------------------------------
 //--------------------------------------------------------------------------
 void
-AssembleNonConformalElemDiffPenaltyAlgorithm::execute()
+AssembleNonConformalEdgeDiffPenaltyAlgorithm::execute()
 {
 
   // zero out fields...
@@ -77,16 +79,6 @@ AssembleNonConformalElemDiffPenaltyAlgorithm::execute()
   stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
 
   const int nDim = meta_data.spatial_dimension();
-
-  // nodal fields to gather
-  std::vector<double> ws_coordinates;
-  std::vector<double> ws_scalarQ;
-  std::vector<double> ws_diffFluxCoeff;
- 
-  // master element
-  std::vector<double> ws_face_shape_function;
-  std::vector<double> ws_dndx;
-  std::vector<double> ws_det_j;
 
   // define vector of parent topos; should always be UNITY in size
   std::vector<stk::topology> parentTopo;
@@ -115,26 +107,6 @@ AssembleNonConformalElemDiffPenaltyAlgorithm::execute()
     // size some things that are useful
     int num_face_nodes = b.topology().num_nodes();
     std::vector<int> face_node_ordinals(num_face_nodes);
-
-    // algorithm related; element nodes
-    ws_coordinates.resize(nodesPerElement*nDim);
-    ws_scalarQ.resize(nodesPerElement);
-    // face nodes
-    ws_diffFluxCoeff.resize(nodesPerFace);
-    ws_face_shape_function.resize(nodesPerFace*nodesPerFace);
-    ws_dndx.resize(nDim*nodesPerFace*nodesPerElement);
-    ws_det_j.resize(nodesPerFace);
-
-    // pointers
-    double *p_coordinates = &ws_coordinates[0];
-    double *p_scalarQ = &ws_scalarQ[0];
-    double *p_diffFluxCoeff = &ws_diffFluxCoeff[0];
-    double *p_face_shape_function = &ws_face_shape_function[0];
-    double *p_dndx = &ws_dndx[0];
-
-    // shape function
-    meFC->shape_fcn(&p_face_shape_function[0]);
-    
     const stk::mesh::Bucket::size_type length   = b.size();
 
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
@@ -145,19 +117,6 @@ AssembleNonConformalElemDiffPenaltyAlgorithm::execute()
       // pointer to face data
       const double * areaVec = stk::mesh::field_data(*exposedAreaVec_, b, k);
 
-      //======================================
-      // gather nodal data off of face
-      //======================================
-      stk::mesh::Entity const * face_node_rels = bulk_data.begin_nodes(face);
-      num_face_nodes = bulk_data.num_nodes(face);
-      // sanity check on num nodes
-      ThrowAssert( num_face_nodes == nodesPerFace );
-      for ( int ni = 0; ni < num_face_nodes; ++ni ) {
-        stk::mesh::Entity node = face_node_rels[ni];
-        // gather scalars
-        p_diffFluxCoeff[ni] = *stk::mesh::field_data(*diffFluxCoeff_, node);
-      }
-
       // extract the connected element to this exposed face; should be single in size!
       stk::mesh::Entity const * face_elem_rels = b.begin_elements(k);
       ThrowAssert( b.num_elements(k) == 1 );
@@ -166,39 +125,29 @@ AssembleNonConformalElemDiffPenaltyAlgorithm::execute()
       stk::mesh::Entity element = face_elem_rels[0];
       const int face_ordinal = b.begin_element_ordinals(k)[0];
       theElemTopo.side_node_ordinals(face_ordinal, face_node_ordinals.begin());
-
-      //==========================================
-      // gather nodal data off of element
-      //==========================================
-      stk::mesh::Entity const * elem_node_rels = bulk_data.begin_nodes(element);
-      int num_nodes = bulk_data.num_nodes(element);
-      // sanity check on num nodes
-      ThrowAssert( num_nodes == nodesPerElement );
-      for ( int ni = 0; ni < num_nodes; ++ni ) {
-        stk::mesh::Entity node = elem_node_rels[ni];
-        // gather scalars
-        p_scalarQ[ni] = *stk::mesh::field_data(*scalarQ_, node);
-        // gather vectors
-        double * coords = stk::mesh::field_data(*coordinates_, node);
-        const int offSet = ni*nDim;
-        for ( int j=0; j < nDim; ++j ) {
-          p_coordinates[offSet+j] = coords[j];
-        }
-      }
-
-      // compute dndx
-      double scs_error = 0.0;
-      meSCS->face_grad_op(1, face_ordinal, &p_coordinates[0], &p_dndx[0], &ws_det_j[0], &scs_error);
       
+      // get the relations
+      stk::mesh::Entity const * elem_node_rels = bulk_data.begin_nodes(element);
+
       for ( int ip = 0; ip < num_face_nodes; ++ip ) {
 
         const int opposingNode = meSCS->opposingNodes(face_ordinal,ip);
         const int nearestNode = face_node_ordinals[ip];
 
-        // node on the face
+        // left and right nodes; right is on the face; left is the opposing node
+        stk::mesh::Entity nodeL = elem_node_rels[opposingNode];
         stk::mesh::Entity nodeR = elem_node_rels[nearestNode];
 
-        // pointers to nearest node data
+        // extract nodal fields
+        const double * coordL = stk::mesh::field_data(*coordinates_, nodeL );
+        const double * coordR = stk::mesh::field_data(*coordinates_, nodeR );
+
+        const double scalarQL = *stk::mesh::field_data(*scalarQ_, nodeL );
+        const double scalarQR = *stk::mesh::field_data(*scalarQ_, nodeR );
+
+        // pointers to nearest node data; const and data to be assembled
+        const double * GjQR    =  stk::mesh::field_data(*GjQ_, nodeR );
+        const double diffFluxCoeffR = *stk::mesh::field_data(*diffFluxCoeff_, nodeR );
         double *ncNormalFlux = stk::mesh::field_data(*ncNormalFlux_, nodeR);
         double *ncPenalty = stk::mesh::field_data(*ncPenalty_, nodeR);
         double *ncArea = stk::mesh::field_data(*ncArea_, nodeR);
@@ -207,45 +156,33 @@ AssembleNonConformalElemDiffPenaltyAlgorithm::execute()
         const int faceOffSet = ip*nDim;
         const int offSetSF_face = ip*nodesPerFace;
 
-        // interpolate to bip
-        double diffFluxCoeffBip = 0.0;
-        for ( int ic = 0; ic < nodesPerFace; ++ic ) {
-          const double r = p_face_shape_function[offSetSF_face+ic];
-          diffFluxCoeffBip += r*p_diffFluxCoeff[ic];
+        // compute geometry
+        double axdx = 0.0;
+        double asq = 0.0;
+        for ( int j = 0; j < nDim; ++j ) {
+          const double axj = areaVec[faceOffSet+j];
+          const double dxj = coordR[j] - coordL[j];
+          asq += axj*axj;
+          axdx += axj*dxj;
         }
+        const double inv_axdx = 1.0/axdx;
+        const double aMag = std::sqrt(asq);
 
-        // characteristic length
+        // NOC and characteristic length
+        double nonOrth = 0.0;
         double charLength = 0.0;
         for ( int j = 0; j < nDim; ++j ) {
-          double dxj = p_coordinates[opposingNode*nDim+j] - p_coordinates[nearestNode*nDim+j];
+          const double axj = areaVec[faceOffSet+j];
+          const double dxj = coordR[j] - coordL[j];
+          const double kxj = axj - asq*inv_axdx*dxj;
+          nonOrth += -diffFluxCoeffR*kxj*GjQR[j];
           charLength += dxj*dxj;
         }
         charLength = std::sqrt(charLength);
-
-        // handle flux due to on and off face in a single loop (on/off provided above)
-        double dndx = 0.0;
-        for ( int ic = 0; ic < nodesPerElement; ++ic ) {
-          const int offSetDnDx = nDim*nodesPerElement*ip + ic*nDim;
-          const double scalarQIC = p_scalarQ[ic];
-          for ( int j = 0; j < nDim; ++j ) {
-            const double axj = areaVec[faceOffSet+j];
-            const double dndxj = p_dndx[offSetDnDx+j];
-            const double dTdA = dndxj*axj*scalarQIC;
-            dndx    += dTdA;
-          }
-        }
-
-        // compute assembled area
-        double aMag = 0.0;
-        for ( int j = 0; j < nDim; ++j ) {
-          const double axj = areaVec[faceOffSet+j];
-          aMag += axj*axj;
-        }
-        aMag = std::sqrt(aMag);
-        
+                
         // assemble the nodal quantities
-        *ncNormalFlux -= diffFluxCoeffBip*dndx;
-        *ncPenalty += diffFluxCoeffBip/charLength*aMag;
+        *ncNormalFlux += -diffFluxCoeffR*(scalarQR-scalarQL)*asq*inv_axdx + nonOrth;
+        *ncPenalty += diffFluxCoeffR/charLength*aMag;
         *ncArea += aMag;
       }
     }
@@ -259,7 +196,7 @@ AssembleNonConformalElemDiffPenaltyAlgorithm::execute()
 //--------------------------------------------------------------------------
 //-------- destructor ------------------------------------------------------
 //--------------------------------------------------------------------------
-AssembleNonConformalElemDiffPenaltyAlgorithm::~AssembleNonConformalElemDiffPenaltyAlgorithm()
+AssembleNonConformalEdgeDiffPenaltyAlgorithm::~AssembleNonConformalEdgeDiffPenaltyAlgorithm()
 {
   // does nothing
 }
@@ -268,7 +205,7 @@ AssembleNonConformalElemDiffPenaltyAlgorithm::~AssembleNonConformalElemDiffPenal
 //-------- zero_fields -----------------------------------------------------
 //--------------------------------------------------------------------------
 void
-AssembleNonConformalElemDiffPenaltyAlgorithm::zero_fields()
+AssembleNonConformalEdgeDiffPenaltyAlgorithm::zero_fields()
 {  
   stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
   stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
@@ -299,7 +236,7 @@ AssembleNonConformalElemDiffPenaltyAlgorithm::zero_fields()
 //-------- assemble_and_normalize ------------------------------------------
 //--------------------------------------------------------------------------
 void
-AssembleNonConformalElemDiffPenaltyAlgorithm::assemble_and_normalize()
+AssembleNonConformalEdgeDiffPenaltyAlgorithm::assemble_and_normalize()
 {
   stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
   stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
