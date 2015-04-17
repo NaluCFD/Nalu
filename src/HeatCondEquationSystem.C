@@ -23,6 +23,7 @@
 #include <AssembleNodalGradEdgeContactAlgorithm.h>
 #include <AssembleNodalGradElemContactAlgorithm.h>
 #include <AssembleNodeSolverAlgorithm.h>
+#include <AssembleNonConformalAlgorithmDriver.h>
 #include <AssembleNonConformalEdgeDiffPenaltyAlgorithm.h>
 #include <AssembleNonConformalElemDiffPenaltyAlgorithm.h>
 #include <AuxFunctionAlgorithm.h>
@@ -773,11 +774,6 @@ void
 HeatCondEquationSystem::register_non_conformal_bc(
     stk::mesh::Part *currentPart)
 {
-
-  // create the driver for post-porcessed quantities
-  if ( NULL == assembleNonConformalAlgDriver_ ) {
-    assembleNonConformalAlgDriver_ = new AlgorithmDriver(realm_);
-  }
   
   const AlgorithmType algType = NON_CONFORMAL;
 
@@ -811,6 +807,12 @@ HeatCondEquationSystem::register_non_conformal_bc(
   stk::mesh::put_field(*ncNormalFlux, *currentPart);
   stk::mesh::put_field(*ncPenalty, *currentPart);
   stk::mesh::put_field(*ncArea, *currentPart);
+
+  // create the driver for post-porcessed quantities
+  if ( NULL == assembleNonConformalAlgDriver_ ) {
+    const unsigned fluxFieldSize = 1;
+    assembleNonConformalAlgDriver_ = new AssembleNonConformalAlgorithmDriver(realm_, ncNormalFlux, ncPenalty, ncArea, fluxFieldSize);
+  }
  
   std::map<AlgorithmType, Algorithm *>::iterator itnc
     = assembleNonConformalAlgDriver_->algMap_.find(algType);

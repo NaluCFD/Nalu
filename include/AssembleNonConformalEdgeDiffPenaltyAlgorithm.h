@@ -36,9 +36,7 @@ public:
   ~AssembleNonConformalEdgeDiffPenaltyAlgorithm();
 
   void execute();
-  void zero_fields();
-  void assemble_and_normalize();
-
+ 
   ScalarFieldType *scalarQ_;
   VectorFieldType *GjQ_;
   ScalarFieldType *ncNormalFlux_;

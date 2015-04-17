@@ -23,6 +23,7 @@ namespace nalu{
 class AlgorithmDriver;
 class Realm;
 class AssembleNodalGradAlgorithmDriver;
+class AssembleNonConformalAlgorithmDriver;
 class LinearSystem;
 class EquationSystems;
 
@@ -96,7 +97,7 @@ public:
 
   bool isInit_;
 
-  AlgorithmDriver *assembleNonConformalAlgDriver_;
+  AssembleNonConformalAlgorithmDriver *assembleNonConformalAlgDriver_;
   
 };
 

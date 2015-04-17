@@ -71,10 +71,6 @@ AssembleNonConformalEdgeDiffPenaltyAlgorithm::AssembleNonConformalEdgeDiffPenalt
 void
 AssembleNonConformalEdgeDiffPenaltyAlgorithm::execute()
 {
-
-  // zero out fields...
-  zero_fields();
-  
   stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
   stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
 
@@ -186,11 +182,7 @@ AssembleNonConformalEdgeDiffPenaltyAlgorithm::execute()
         *ncArea += aMag;
       }
     }
-  }
-  
-  // assemble fields
-  assemble_and_normalize();
-
+  }  
 }
 
 //--------------------------------------------------------------------------
@@ -199,80 +191,6 @@ AssembleNonConformalEdgeDiffPenaltyAlgorithm::execute()
 AssembleNonConformalEdgeDiffPenaltyAlgorithm::~AssembleNonConformalEdgeDiffPenaltyAlgorithm()
 {
   // does nothing
-}
-
-//--------------------------------------------------------------------------
-//-------- zero_fields -----------------------------------------------------
-//--------------------------------------------------------------------------
-void
-AssembleNonConformalEdgeDiffPenaltyAlgorithm::zero_fields()
-{  
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
-
-  // define some common selectors; select all nodes (locally and shared)
-  stk::mesh::Selector s_all_nodes
-    = (meta_data.locally_owned_part() | meta_data.globally_shared_part())
-    &stk::mesh::selectField(*ncPenalty_);
-
-  stk::mesh::BucketVector const& node_buckets =
-    realm_.get_buckets( stk::topology::NODE_RANK, s_all_nodes );
-  for ( stk::mesh::BucketVector::const_iterator ib = node_buckets.begin() ;
-        ib != node_buckets.end() ; ++ib ) {
-    stk::mesh::Bucket & b = **ib ;
-    const stk::mesh::Bucket::size_type length   = b.size();
-    double * ncPenalty = stk::mesh::field_data(*ncPenalty_, b);
-    double * ncNormalFlux = stk::mesh::field_data(*ncNormalFlux_, b);
-    double * ncArea = stk::mesh::field_data(*ncArea_, b);
-    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
-      ncNormalFlux[k] = 0.0;
-      ncPenalty[k] = 0.0; 
-      ncArea[k] = 0.0; 
-    }
-  }
-}
-
-//--------------------------------------------------------------------------
-//-------- assemble_and_normalize ------------------------------------------
-//--------------------------------------------------------------------------
-void
-AssembleNonConformalEdgeDiffPenaltyAlgorithm::assemble_and_normalize()
-{
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
-
-  std::vector<stk::mesh::FieldBase*> fields;
-  fields.push_back(ncPenalty_);
-  fields.push_back(ncArea_);
-  stk::mesh::parallel_sum(bulk_data, fields);
-
-  if ( realm_.hasPeriodic_) {
-    const unsigned sizeOfField = 1;
-    realm_.periodic_field_update(ncPenalty_, sizeOfField);
-    realm_.periodic_field_update(ncNormalFlux_, sizeOfField);
-    realm_.periodic_field_update(ncArea_, sizeOfField);
-  }
-
-  // normalize
-  stk::mesh::Selector s_all_nodes
-    = (meta_data.locally_owned_part() | meta_data.globally_shared_part())
-    &stk::mesh::selectField(*ncPenalty_);
-  
-  stk::mesh::BucketVector const& node_buckets =
-    realm_.get_buckets( stk::topology::NODE_RANK, s_all_nodes );
-  for ( stk::mesh::BucketVector::const_iterator ib = node_buckets.begin() ;
-        ib != node_buckets.end() ; ++ib ) {
-    stk::mesh::Bucket & b = **ib ;
-    const stk::mesh::Bucket::size_type length   = b.size();
-    double * ncNormalFlux = stk::mesh::field_data(*ncNormalFlux_, b);
-    double * ncPenalty = stk::mesh::field_data(*ncPenalty_, b);
-    const double * ncArea = stk::mesh::field_data(*ncArea_, b);
-    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
-      ncNormalFlux[k] /= ncArea[k];
-      ncPenalty[k] /= ncArea[k];
-    }
-  }
-  
 }
 
 } // namespace nalu
