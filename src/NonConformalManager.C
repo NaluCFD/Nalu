@@ -49,7 +49,7 @@ NonConformalManager::NonConformalManager(
   : realm_(realm ),
     nonConformalGhosting_(NULL),
     needToGhostCount_(0),
-    provideDetailedOutput_(true)
+    provideDetailedOutput_(false)
 {
   // do nothing
 }

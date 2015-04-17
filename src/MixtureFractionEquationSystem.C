@@ -100,7 +100,8 @@ MixtureFractionEquationSystem::MixtureFractionEquationSystem(
     assembleNodalGradAlgDriver_(new AssembleNodalGradAlgorithmDriver(realm_, "mixture_fraction", "dzdx")),
     diffFluxCoeffAlgDriver_(new AlgorithmDriver(realm_)),
     speciesAlgDriver_(0),
-    isInit_(true)
+    isInit_(true),
+    assembleNonConformalAlgDriver_(NULL)
 {
   // extract solver name and solver object
   std::string solverName = realm_.equationSystems_.get_solver_block_name("mixture_fraction");
@@ -126,6 +127,10 @@ MixtureFractionEquationSystem::~MixtureFractionEquationSystem()
   delete assembleNodalGradAlgDriver_;
   delete diffFluxCoeffAlgDriver_;
   delete speciesAlgDriver_;
+
+  if ( NULL != assembleNonConformalAlgDriver_ )
+    delete assembleNonConformalAlgDriver_;
+
 }
 
 //--------------------------------------------------------------------------

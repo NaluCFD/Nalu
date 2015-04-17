@@ -6,8 +6,8 @@
 /*------------------------------------------------------------------------*/
 
 
-#ifndef AssembleNonConformalElemDiffPenaltyAlgorithm_h
-#define AssembleNonConformalElemDiffPenaltyAlgorithm_h
+#ifndef AssembleNonConformalEdgeDiffPenaltyAlgorithm_h
+#define AssembleNonConformalEdgeDiffPenaltyAlgorithm_h
 
 #include<Algorithm.h>
 #include<FieldTypeDef.h>
@@ -20,25 +20,27 @@ namespace nalu{
 
 class Realm;
 
-class AssembleNonConformalElemDiffPenaltyAlgorithm : public Algorithm
+class AssembleNonConformalEdgeDiffPenaltyAlgorithm : public Algorithm
 {
 public:
 
-  AssembleNonConformalElemDiffPenaltyAlgorithm(
+  AssembleNonConformalEdgeDiffPenaltyAlgorithm(
     Realm &realm,
     stk::mesh::Part *part,
     ScalarFieldType *scalarQ,
+    VectorFieldType *GjQ,
     ScalarFieldType *ncNormalFlux,
     ScalarFieldType *ncPenalty,
     ScalarFieldType *ncArea,
     ScalarFieldType *diffFluxCoeff);
-  ~AssembleNonConformalElemDiffPenaltyAlgorithm();
+  ~AssembleNonConformalEdgeDiffPenaltyAlgorithm();
 
   void execute();
   void zero_fields();
   void assemble_and_normalize();
 
   ScalarFieldType *scalarQ_;
+  VectorFieldType *GjQ_;
   ScalarFieldType *ncNormalFlux_;
   ScalarFieldType *ncPenalty_;
   ScalarFieldType *ncArea_;
