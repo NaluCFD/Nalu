@@ -21,6 +21,7 @@
 #include <AssembleNodalGradEdgeContactAlgorithm.h>
 #include <AssembleNodalGradElemContactAlgorithm.h>
 #include <AssembleNodeSolverAlgorithm.h>
+#include <AssembleNonConformalAlgorithmDriver.h>
 #include <AuxFunctionAlgorithm.h>
 #include <BurkeSchumannAlgorithm.h>
 #include <ConstantAuxFunction.h>
@@ -876,7 +877,7 @@ MixtureFractionEquationSystem::compute_scalar_var_diss()
 void
 MixtureFractionEquationSystem::predict_state()
 {
-
+  
   // FIXME... move this to a generalized base class method
   stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
 
