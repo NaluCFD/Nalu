@@ -25,6 +25,7 @@ namespace nalu{
 
 class Realm;
 class AssembleNodalGradAlgorithmDriver;
+class AssembleNonConformalAlgorithmDriver;
 class AlgorithmDriver;
 class EquationSystems;
 
@@ -99,8 +100,8 @@ public:
   AssembleNodalGradAlgorithmDriver *assembleNodalGradAlgDriver_;
   bool isInit_;
   bool collocationForViscousTerms_;
-
-  AlgorithmDriver *assembleNonConformalAlgDriver_;
+  
+  AssembleNonConformalAlgorithmDriver *assembleNonConformalAlgDriver_;
   
 };
 

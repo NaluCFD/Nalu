@@ -35,8 +35,6 @@ public:
   ~AssembleNonConformalElemDiffPenaltyAlgorithm();
 
   void execute();
-  void zero_fields();
-  void assemble_and_normalize();
 
   ScalarFieldType *scalarQ_;
   ScalarFieldType *ncNormalFlux_;
