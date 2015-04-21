@@ -67,7 +67,7 @@ class SolutionOptions;
 class TimeIntegrator;
 class MasterElement;
 class PropertyEvaluator;
-class StateTable;
+class HDF5FilePtr;
 class Transfer;
 
 class Realm {
@@ -389,8 +389,8 @@ public:
   // some post processing of entity counts
   bool provideEntityCount_;
 
-  // multi-d table for property evaluations
-  StateTable *stateTable_;
+  // pointer to HDF5 file structure holding table
+  HDF5FilePtr *HDF5ptr_;
 
   // automatic mesh decomposition; None, rib, rcb, multikl, etc.
   std::string autoDecompType_;

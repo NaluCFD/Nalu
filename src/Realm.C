@@ -51,7 +51,7 @@
 #include <PeriodicManager.h>
 #include <Realms.h>
 #include <ReferencePropertyData.h>
-#include <TablePropAlgorithm.h>
+#include <HDF5TablePropAlgorithm.h>
 #include <TemperaturePropAlgorithm.h>
 #include <TurbulenceAveragingAlgorithm.h>
 #include <SolutionOptions.h>
@@ -66,7 +66,7 @@
 #include <SutherlandsPropertyEvaluator.h>
 
 // tables
-#include <tabular_props/StateTable.h>
+#include <tabular_props/HDF5FilePtr.h>
 
 // transfer
 #include <xfer/Transfer.h>
@@ -185,7 +185,7 @@ Realm::Realm(Realms& realms)
     isothermalFlow_(true),
     uniformFlow_(true),
     provideEntityCount_(false),
-    stateTable_(NULL),
+    HDF5ptr_(NULL),
     autoDecompType_("None")
 {
   // nothing to do
@@ -261,9 +261,9 @@ Realm::~Realm()
   if ( NULL != periodicManager_ )
     delete periodicManager_;
 
-  // delete state table
-  if ( NULL != stateTable_ )
-    delete stateTable_;
+  // delete HDF5 file ptr
+  if ( NULL != HDF5ptr_ )
+    delete HDF5ptr_;
 }
 
 void
@@ -1161,32 +1161,47 @@ Realm::setup_property()
         }
         break;
 
-        case TABLE_MAT:
+        case HDF5_TABLE_MAT:
         {
-          // extract the table
-          if ( NULL == stateTable_ )
-            stateTable_ = new StateTable(materialPropertys_.propertyTableName_);
+	  if ( HDF5ptr_ == NULL ) {
+	    HDF5ptr_ = new HDF5FilePtr( materialPropertys_.propertyTableName_ );
+	  }
 
-          // create the algorithm
-          TablePropAlgorithm * auxAlg = new TablePropAlgorithm(*this, targetPart, stateTable_,
-              thePropField, matData->tablePropName_, matData->indVarName_, matData->indVarTableName_,
-              matData->cIndex_, meta_data);
+ 	  // create the new TablePropAlgorithm that knows how to read from HDF5 file
+ 	  HDF5TablePropAlgorithm * auxAlg = new HDF5TablePropAlgorithm(*this, 
+								       targetPart, 
+								       HDF5ptr_->get_H5IO(),
+								       thePropField, 
+								       matData->tablePropName_, 
+								       matData->indVarName_, 
+								       matData->indVarTableName_,
+								       meta_data );
           propertyAlg_.push_back(auxAlg);
 
-          // auxVariable
+	  NaluEnv::self().naluOutputP0() << "With " << matData->tablePropName_ << " also read table for auxVarName " <<matData->auxVarName_  << std::endl;
+	  
+	  //TODO : need to make auxVarName_ and tableAuxVarName_ into vectors and loop over them to create a set of new auxVar's and algorithms
+
+          // auxVariable	  
           std::string auxVarName = matData->auxVarName_;
           if ( "na" != auxVarName ) {
             // register and put the field; assume a scalar for now; species extraction will complicate the matter
             ScalarFieldType *auxVar =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, auxVarName));
             stk::mesh::put_field(*auxVar, *targetPart);
-            // create the algorithm to populate it
-            TablePropAlgorithm * auxVarAlg = new TablePropAlgorithm(*this, targetPart, stateTable_,
-                auxVar, matData->tableAuxVarName_, matData->indVarName_, matData->indVarTableName_,
-                matData->cIndexAuxVar_, meta_data);
+            // create the algorithm to populate it from an HDF5 file
+	    HDF5TablePropAlgorithm * auxVarAlg = new HDF5TablePropAlgorithm(*this, 
+									 targetPart, 
+									 HDF5ptr_->get_H5IO(),
+									 auxVar, 
+									 matData->tableAuxVarName_, 
+									 matData->indVarName_, 
+									 matData->indVarTableName_,
+									 meta_data );
             propertyAlg_.push_back(auxVarAlg);
           }
-        }
-        break;
+
+	}
+	break;
 
         case MaterialPropertyType_END:
           break;

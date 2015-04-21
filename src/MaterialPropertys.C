@@ -282,54 +282,50 @@ MaterialPropertys::load(const YAML::Node & node)
                   NaluEnv::self().naluOutputP0() << thePropName
                                   << " is a geometric property: " << std::endl;
         }
-        else if ( thePropType == "table") {
-          matData->type_ = TABLE_MAT;
-          NaluEnv::self().naluOutputP0() << thePropName << " is a table look-up property: " << std::endl;
+	else if ( thePropType == "hdf5table") {
+	  matData->type_ = HDF5_TABLE_MAT;
+	  NaluEnv::self().naluOutputP0() << thePropName << " is a hdf5 table look-up property: " << std::endl;
+ 	  
+	  // what we might expect 
+	  std::string tablePropName = "na"; 
+	  std::string auxVarName = "na"; std::string tableAuxVarName = "na";
+
+	  // extract possible vector
+	  const YAML::Node &names = y_spec["independent_variable_set"];
+	  if (names.Type() == YAML::NodeType::Scalar) {
+	    matData->indVarName_.resize(1);
+	    names >> matData->indVarName_[0];
+	  }
+	  else {
+	    matData->indVarName_.resize(names.size());
+	    for (size_t i=0; i < names.size(); ++i) {
+	      names[i] >> matData->indVarName_[i];
+	    }
+	  }
 	  
-          // what we might expect; only a single cIndex for property and aux var
-          int cIndex = 0; int cIndexAuxVar = 0;
-          std::string auxVarName = "na"; std::string tablePropName = "na"; std::string tableAuxVarName = "na";
-
-          // extract possible vector
-          const YAML::Node &names = y_spec["independent_variable_set"];
-          if (names.Type() == YAML::NodeType::Scalar) {
-            matData->indVarName_.resize(1);
-            names >> matData->indVarName_[0];
-          }
-          else {
-            matData->indVarName_.resize(names.size());
-            for (size_t i=0; i < names.size(); ++i) {
-              names[i] >> matData->indVarName_[i];
-            }
-          }
-
-          // extract possible vector of independent table names
-          const YAML::Node &tableNames = y_spec["table_name_for_independent_variable_set"];
-          if (tableNames.Type() == YAML::NodeType::Scalar) {
-            matData->indVarTableName_.resize(1);
-            tableNames >> matData->indVarTableName_[0];
-          }
-          else {
-            matData->indVarTableName_.resize(names.size());
-            for (size_t i=0; i < tableNames.size(); ++i) {
-              tableNames[i] >> matData->indVarTableName_[i];
-            }
-          }
-
-          // the following are all single in size
-          get_required(y_spec, "c_index_for_property", cIndex);
-          get_if_present_no_default(y_spec, "c_index_for_aux_variables", cIndexAuxVar);
+	  // extract possible vector of independent table names
+	  const YAML::Node &tableNames = y_spec["table_name_for_independent_variable_set"];
+	  if (tableNames.Type() == YAML::NodeType::Scalar) {
+	    matData->indVarTableName_.resize(1);
+	    tableNames >> matData->indVarTableName_[0];
+	  }
+	  else {
+	    matData->indVarTableName_.resize(names.size());
+	    for (size_t i=0; i < tableNames.size(); ++i) {
+	      tableNames[i] >> matData->indVarTableName_[i];
+	    }
+	  }
+	  
+	  // the following are all single in size
+	  get_if_present_no_default(y_spec, "table_name_for_property", tablePropName);
           get_if_present_no_default(y_spec, "aux_variables", auxVarName);
-          get_if_present_no_default(y_spec, "table_name_for_property", tablePropName);
           get_if_present_no_default(y_spec, "table_name_for_aux_variables", tableAuxVarName);
-
-          // set matData
-          matData->cIndex_ = cIndex;
-          matData->cIndexAuxVar_ = cIndexAuxVar;
+	  
+	  // set matData
           matData->auxVarName_ = auxVarName;
           matData->tablePropName_ = tablePropName;
           matData->tableAuxVarName_ = tableAuxVarName;
-        }
+	}
         else {
           throw std::runtime_error("unknown property type");  
         }

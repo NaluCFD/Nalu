@@ -34,8 +34,6 @@ public:
   // table specifics, all single in size, all possibly required to be more general
   std::vector<std::string> indVarName_;
   std::vector<std::string> indVarTableName_;
-  int cIndex_;
-  int cIndexAuxVar_;
   std::string auxVarName_;
   std::string tablePropName_;
   std::string tableAuxVarName_;

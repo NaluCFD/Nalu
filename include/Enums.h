@@ -106,7 +106,7 @@ enum  MaterialPropertyType {
   IDEAL_GAS_T_MAT = 3,
   GEOMETRIC_MAT = 4,
   IDEAL_GAS_T_P_MAT = 5,
-  TABLE_MAT = 6,
+  HDF5_TABLE_MAT = 6,
   IDEAL_GAS_YK_MAT = 7,
   MaterialPropertyType_END
 };
