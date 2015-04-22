@@ -21,8 +21,6 @@ MaterialPropertyData::MaterialPropertyData()
     constValue_(0.0),
     primary_(0.0),
     secondary_(0.0),
-    cIndex_(0),
-    cIndexAuxVar_(0),
     auxVarName_("na"),
     tablePropName_("na"),
     tableAuxVarName_("na")
