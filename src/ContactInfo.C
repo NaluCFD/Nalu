@@ -22,9 +22,6 @@
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/Part.hpp>
 
-// stk_io
-#include <stk_io/StkMeshIoBroker.hpp>
-
 // stk_util
 #include <stk_util/parallel/ParallelReduce.hpp>
 #include <stk_util/environment/CPUTime.hpp>
@@ -81,7 +78,7 @@ ContactInfo::ContactInfo(
     NaluEnv::self().naluOutputP0() << "ContactInfo::search method not declared; will use BOOST_RTREE" << std::endl;
 
   // save off vector of parts for the search blocks
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
   for ( size_t k = 0; k < contactSearchBlockName.size(); ++k ) {
      stk::mesh::Part *blockSearchPart = meta_data.get_part(contactSearchBlockName[k]);
      if ( NULL == blockSearchPart ) {
@@ -145,8 +142,8 @@ ContactInfo::construct_halo_state()
   // hack due to 3d
   Point localHaloCoords;
 
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
 
   // fields
   VectorFieldType *coordinates = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
@@ -218,7 +215,7 @@ void
 ContactInfo::populate_halo_mesh_velocity()
 {
 
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   // fields
   ScalarFieldType *omegaField = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "omega");
@@ -290,8 +287,8 @@ void
 ContactInfo::complete_search()
 {
 
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
   const int nDim = meta_data.spatial_dimension();
 
   // fields
@@ -464,8 +461,8 @@ void
 ContactInfo::find_possible_elements()
 {
 
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
 
   const int nDim = meta_data.spatial_dimension();
 
@@ -577,8 +574,8 @@ void
 ContactInfo::dump_diagnosis()
 {
 
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
 
   const int nDim = meta_data.spatial_dimension();
 

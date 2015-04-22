@@ -28,9 +28,6 @@
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/Part.hpp>
 
-// stk_io
-#include <stk_io/StkMeshIoBroker.hpp>
-
 namespace sierra{
 namespace nalu{
 
@@ -54,7 +51,7 @@ AssembleNodalGradElemContactAlgorithm::AssembleNodalGradElemContactAlgorithm(
     haloQ_(haloQ)
 {
   // save off fields
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
   dualNodalVolume_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
 
   // populate fieldVec
@@ -84,7 +81,7 @@ void
 AssembleNodalGradElemContactAlgorithm::populate_halo_state()
 {
 
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
 
   // parallel communicate ghosted entities
   if ( NULL != realm_.contactManager_->contactGhosting_ )
@@ -150,8 +147,8 @@ void
 AssembleNodalGradElemContactAlgorithm::add_elem_gradq()
 {
 
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
 
   // fields
   VectorFieldType *coordinates = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());

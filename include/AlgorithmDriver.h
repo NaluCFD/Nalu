@@ -24,14 +24,14 @@ class AlgorithmDriver
 public:
 
   AlgorithmDriver(
-    const Realm &realm);
+    Realm &realm);
   virtual ~AlgorithmDriver();
 
   virtual void pre_work(){};
   virtual void execute();
   virtual void post_work(){};
 
-  const Realm &realm_;
+  Realm &realm_;
   std::map<AlgorithmType, Algorithm *> algMap_;
 };
 

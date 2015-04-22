@@ -21,7 +21,6 @@
 #include <stk_mesh/base/GetEntities.hpp>
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/Part.hpp>
-#include <stk_io/StkMeshIoBroker.hpp>
 
 namespace sierra{
 namespace nalu{
@@ -37,7 +36,7 @@ class Realm;
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 ComputeGeometryAlgorithmDriver::ComputeGeometryAlgorithmDriver(
-  const Realm &realm)
+  Realm &realm)
   : AlgorithmDriver(realm)
 {
   // does nothing
@@ -50,7 +49,7 @@ void
 ComputeGeometryAlgorithmDriver::pre_work()
 {
   // meta and bulk data
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const int nDim = meta_data.spatial_dimension();
 
@@ -114,8 +113,8 @@ ComputeGeometryAlgorithmDriver::post_work()
 {
 
   // meta and bulk data
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
   std::vector<stk::mesh::FieldBase*> sum_fields;
 
   // extract field always germane

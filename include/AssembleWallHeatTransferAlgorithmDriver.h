@@ -22,7 +22,7 @@ class AssembleWallHeatTransferAlgorithmDriver : public AlgorithmDriver
 public:
 
   AssembleWallHeatTransferAlgorithmDriver(
-    const Realm &realm);
+    Realm &realm);
   ~AssembleWallHeatTransferAlgorithmDriver();
 
   void pre_work();

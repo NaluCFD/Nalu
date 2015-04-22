@@ -20,9 +20,6 @@
 #include <ConstantAuxFunction.h>
 #include <Enums.h>
 
-// stk_io
-#include <stk_io/StkMeshIoBroker.hpp>
-
 #include <stk_mesh/base/Field.hpp>
 #include <stk_mesh/base/MetaData.hpp>
 

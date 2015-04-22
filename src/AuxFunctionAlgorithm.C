@@ -17,7 +17,6 @@
 #include <stk_mesh/base/GetBuckets.hpp>
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/Selector.hpp>
-#include <stk_io/StkMeshIoBroker.hpp>
 
 namespace sierra{
 namespace nalu{
@@ -48,7 +47,7 @@ AuxFunctionAlgorithm::execute()
   // make sure that partVec_ is size one
   ThrowAssert( partVec_.size() == 1 );
 
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const unsigned nDim = meta_data.spatial_dimension();
   const double time = realm_.get_current_time();

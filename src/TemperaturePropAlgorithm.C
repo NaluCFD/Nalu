@@ -17,7 +17,6 @@
 #include <stk_mesh/base/GetBuckets.hpp>
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/Selector.hpp>
-#include <stk_io/StkMeshIoBroker.hpp>
 
 namespace sierra{
 namespace nalu{
@@ -34,7 +33,7 @@ TemperaturePropAlgorithm::TemperaturePropAlgorithm(
     temperature_(NULL)
 {
   // extract temperature field
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
   temperature_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, tempName);
   if ( NULL == temperature_ ) {
     throw std::runtime_error("Realm::setup_property: TemperaturePropAlgorithm requires temperature/bc:");

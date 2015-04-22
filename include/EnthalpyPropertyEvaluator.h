@@ -21,9 +21,6 @@ namespace mesh {
 class MetaData;
 struct Entity;
 }
-namespace io {
-class StkMeshIoBroker;
-}
 }
 
 namespace sierra{

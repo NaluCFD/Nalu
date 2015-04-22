@@ -33,9 +33,6 @@
 #include <stk_mesh/base/BulkData.hpp>
 #include <stk_mesh/base/MetaData.hpp>
 
-// stk_io
-#include <stk_io/StkMeshIoBroker.hpp>
-
 // stk_topo
 #include <stk_topology/topology.hpp>
 
@@ -113,9 +110,7 @@ void EquationSystems::load(const YAML::Node & y_node)
         }
         else if( (y_eqsys = expect_map(y_system, "MixtureFraction", true)) ) {
           if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = mixFrac " << std::endl;
-          bool burkeSchumann = false;
-          get_if_present_no_default(*y_eqsys, "burke_schumann", burkeSchumann);
-          eqSys = new MixtureFractionEquationSystem(*this, burkeSchumann);
+          eqSys = new MixtureFractionEquationSystem(*this);
         }
         else if( (y_eqsys = expect_map(y_system, "Enthalpy", true)) ) {
           if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = enthalpy " << std::endl;
@@ -213,7 +208,7 @@ EquationSystems::register_nodal_fields(
   const std::vector<std::string> targetNames)
 {
 
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
   
   for ( size_t itarget = 0; itarget < targetNames.size(); ++itarget ) {
     stk::mesh::Part *targetPart = meta_data.get_part(targetNames[itarget]);
@@ -239,7 +234,7 @@ EquationSystems::register_edge_fields(
   const std::vector<std::string> targetNames)
 {
 
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
   
   for ( size_t itarget = 0; itarget < targetNames.size(); ++itarget ) {
     stk::mesh::Part *targetPart = meta_data.get_part(targetNames[itarget]);
@@ -264,7 +259,7 @@ EquationSystems::register_element_fields(
   const std::vector<std::string> targetNames )
 {
 
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   for ( size_t itarget = 0; itarget < targetNames.size(); ++itarget ) {
     stk::mesh::Part *targetPart = meta_data.get_part(targetNames[itarget]);
@@ -292,7 +287,7 @@ EquationSystems::register_interior_algorithm(
   const std::vector<std::string> targetNames)
 {
 
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   for ( size_t itarget = 0; itarget < targetNames.size(); ++itarget ) {
     stk::mesh::Part *targetPart = meta_data.get_part(targetNames[itarget]);
@@ -323,7 +318,7 @@ EquationSystems::register_wall_bc(
   const WallBoundaryConditionData &wallBCData)
 {
   
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   stk::mesh::Part *targetPart = meta_data.get_part(targetName);
   if ( NULL == targetPart ) {
@@ -359,7 +354,7 @@ EquationSystems::register_inflow_bc(
   const std::string targetName,
   const InflowBoundaryConditionData &inflowBCData)
 {
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   stk::mesh::Part *targetPart = meta_data.get_part(targetName);
   if ( NULL == targetPart ) {
@@ -395,7 +390,7 @@ EquationSystems::register_open_bc(
   const std::string targetName,
   const OpenBoundaryConditionData &openBCData)
 {
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   stk::mesh::Part *targetPart = meta_data.get_part(targetName);
   if ( NULL == targetPart ) {
@@ -430,7 +425,7 @@ EquationSystems::register_contact_bc(
   const std::string targetName,
   const ContactBoundaryConditionData &contactBCData)
 {
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   stk::mesh::Part *targetPart = meta_data.get_part(targetName);
   if ( NULL == targetPart ) {
@@ -465,7 +460,7 @@ EquationSystems::register_symmetry_bc(
   const std::string targetName,
   const SymmetryBoundaryConditionData &symmetryBCData)
 {
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   stk::mesh::Part *targetPart = meta_data.get_part(targetName);
   if ( NULL == targetPart ) {
@@ -503,7 +498,7 @@ EquationSystems::register_periodic_bc(
   const std::string targetNameSlave,
   const PeriodicBoundaryConditionData &periodicBCData)
 {
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   stk::mesh::Part *masterMeshPart= meta_data.get_part(targetNameMaster);
   stk::mesh::Part *slaveMeshPart= meta_data.get_part(targetNameSlave);
@@ -541,7 +536,7 @@ void
 EquationSystems::register_non_conformal_bc(
   const NonConformalBoundaryConditionData &nonConformalBCData)
 {
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   const std::string targetNameCurrent = nonConformalBCData.masterSlave_.master_;
   const std::string targetNameOpposing = nonConformalBCData.masterSlave_.slave_;
@@ -572,7 +567,7 @@ void
 EquationSystems::register_surface_pp_algorithm(
   const PostProcessingData &theData)
 {
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   stk::mesh::PartVector partVector;
   std::vector<std::string> targetNames = theData.targetNames_;

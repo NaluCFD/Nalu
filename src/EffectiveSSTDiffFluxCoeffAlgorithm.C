@@ -18,8 +18,6 @@
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/Part.hpp>
 #include <stk_mesh/base/Field.hpp>
-// stk_io
-#include <stk_io/StkMeshIoBroker.hpp>
 
 namespace sierra{
 namespace nalu{
@@ -49,7 +47,7 @@ EffectiveSSTDiffFluxCoeffAlgorithm::EffectiveSSTDiffFluxCoeffAlgorithm(
     sigmaTwo_(sigmaTwo)
 {
   // extract blending nodal variable
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
   fOneBlend_= meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "sst_f_one_blending");
 }
 
@@ -60,7 +58,7 @@ void
 EffectiveSSTDiffFluxCoeffAlgorithm::execute()
 {
 
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   // define some common selectors
   stk::mesh::Selector s_all_nodes

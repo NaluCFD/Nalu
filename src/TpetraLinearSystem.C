@@ -31,7 +31,6 @@
 #include <stk_mesh/base/Selector.hpp>
 #include <stk_mesh/base/GetBuckets.hpp>
 #include <stk_mesh/base/Part.hpp>
-#include <stk_io/StkMeshIoBroker.hpp>
 #include <stk_topology/topology.hpp>
 #include <stk_mesh/base/FieldParallel.hpp>
 
@@ -59,7 +58,7 @@
 #define DEBUG_TPETRA 0
 
 #define DEBUG_PRINT 0
-#define RANK (realm_.fixture_->bulk_data().parallel_rank())
+#define RANK (realm_.bulk_data().parallel_rank())
 
 
 #define PRINTMSG(a) do { if(DEBUG_PRINT)  std::cout << "tmp srk P[" << RANK << "] " <<  a << std::endl; } while (0)
@@ -138,7 +137,7 @@ size_t TpetraLinearSystem::lookup_myLID(MyLIDMapType& myLIDs, stk::mesh::EntityI
 #if DEBUG_TPETRA
   MyLIDMapType::iterator found = myLIDs.find(entityId);
   if (found == myLIDs.end()) {
-    stk::mesh::BulkData& bulkData = realm_.fixture_->bulk_data();
+    stk::mesh::BulkData& bulkData = realm_.bulk_data();
     const unsigned p_rank = bulkData.parallel_rank();
     (void)p_rank;
 
@@ -180,7 +179,7 @@ size_t TpetraLinearSystem::lookup_myLID(MyLIDMapType& myLIDs, stk::mesh::EntityI
 //   is both owned and ghosted: OwnedDOF | GhostedDOF
 int TpetraLinearSystem::getDofStatus(stk::mesh::Entity node)
 {
-  stk::mesh::BulkData & bulkData = realm_.fixture_->bulk_data();
+  stk::mesh::BulkData & bulkData = realm_.bulk_data();
   const unsigned p_rank = bulkData.parallel_rank();
   (void)p_rank;
 
@@ -281,8 +280,8 @@ TpetraLinearSystem::beginLinearSystemConstruction()
   if(inConstruction_) return;
   inConstruction_ = true;
   ThrowRequire(ownedGraph_.is_null());
-  stk::mesh::BulkData & bulkData = realm_.fixture_->bulk_data();
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::BulkData & bulkData = realm_.bulk_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
   const unsigned p_rank = bulkData.parallel_rank();
   (void)p_rank;
   const unsigned p_size = bulkData.parallel_size();
@@ -451,7 +450,7 @@ TpetraLinearSystem::beginLinearSystemConstruction()
 
 void TpetraLinearSystem::addConnections(const std::vector<stk::mesh::Entity> & entities)
 {
-  stk::mesh::BulkData & bulkData = realm_.fixture_->bulk_data();
+  stk::mesh::BulkData & bulkData = realm_.bulk_data();
   const unsigned p_rank = bulkData.parallel_rank();
   (void)p_rank;
 
@@ -475,7 +474,7 @@ void
 TpetraLinearSystem::buildNodeGraph(const stk::mesh::PartVector & parts)
 {
   beginLinearSystemConstruction();
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const stk::mesh::Selector s_owned = meta_data.locally_owned_part()
     & stk::mesh::selectUnion(parts)
@@ -501,7 +500,7 @@ void
 TpetraLinearSystem::buildEdgeToNodeGraph(const stk::mesh::PartVector & parts)
 {
   beginLinearSystemConstruction();
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const stk::mesh::Selector s_owned = meta_data.locally_owned_part()
         & stk::mesh::selectUnion(parts);
@@ -529,7 +528,7 @@ void
 TpetraLinearSystem::buildFaceToNodeGraph(const stk::mesh::PartVector & parts)
 {
   beginLinearSystemConstruction();
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const stk::mesh::Selector s_owned = meta_data.locally_owned_part()
         & stk::mesh::selectUnion(parts);
@@ -558,7 +557,7 @@ void
 TpetraLinearSystem::buildElemToNodeGraph(const stk::mesh::PartVector & parts)
 {
   beginLinearSystemConstruction();
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const stk::mesh::Selector s_owned = meta_data.locally_owned_part()
         & stk::mesh::selectUnion(parts);
@@ -586,7 +585,7 @@ void
 TpetraLinearSystem::buildReducedElemToNodeGraph(const stk::mesh::PartVector & parts)
 {
   beginLinearSystemConstruction();
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const stk::mesh::Selector s_owned = meta_data.locally_owned_part()
         & stk::mesh::selectUnion(parts);
@@ -624,8 +623,8 @@ void
 TpetraLinearSystem::buildFaceElemToNodeGraph(const stk::mesh::PartVector & parts)
 {
   beginLinearSystemConstruction();
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const stk::mesh::Selector s_owned = meta_data.locally_owned_part()
         & stk::mesh::selectUnion(parts);
@@ -662,7 +661,7 @@ void
 TpetraLinearSystem::buildEdgeHaloNodeGraph(
   const stk::mesh::PartVector &/*parts*/)
 {
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
   beginLinearSystemConstruction();
 
   std::vector<stk::mesh::Entity> entities;
@@ -704,7 +703,7 @@ void
 TpetraLinearSystem::buildNonConformalNodeGraph(
   const stk::mesh::PartVector &/*parts*/)
 {
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
   beginLinearSystemConstruction();
 
   std::vector<stk::mesh::Entity> entities;
@@ -807,8 +806,8 @@ TpetraLinearSystem::copy_stk_to_tpetra(
   ThrowAssert(stkField);
   const int numVectors = tpetraField->getNumVectors();
 
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const stk::mesh::Selector selector = stk::mesh::selectField(*stkField) & meta_data.locally_owned_part() &
     !stk::mesh::selectUnion(realm_.get_slave_part_vector());
@@ -851,8 +850,8 @@ TpetraLinearSystem::finalizeLinearSystem()
   ThrowRequire(inConstruction_);
   inConstruction_ = false;
 
-  stk::mesh::BulkData & bulkData = realm_.fixture_->bulk_data();
-  stk::mesh::MetaData & metaData = realm_.fixture_->meta_data();
+  stk::mesh::BulkData & bulkData = realm_.bulk_data();
+  stk::mesh::MetaData & metaData = realm_.meta_data();
 
   const int this_mpi_rank = bulkData.parallel_rank();
   (void)this_mpi_rank;
@@ -1031,7 +1030,7 @@ TpetraLinearSystem::sumInto(
   const char *trace_tag
   )
 {
-  stk::mesh::BulkData & bulkData = realm_.fixture_->bulk_data();
+  stk::mesh::BulkData & bulkData = realm_.bulk_data();
 
   const size_t n_obj = entities.size();
   const size_t numRows = n_obj * numDof_;
@@ -1081,7 +1080,7 @@ TpetraLinearSystem::applyDirichletBCs(
   const unsigned beginPos,
   const unsigned endPos)
 {
-  stk::mesh::BulkData & bulkData = realm_.fixture_->bulk_data();
+  stk::mesh::BulkData & bulkData = realm_.bulk_data();
 
   double adbc_time = -stk::cpu_time();
   const unsigned p_size = bulkData.parallel_size();
@@ -1281,7 +1280,7 @@ TpetraLinearSystem::checkForZeroRow(bool useOwned, bool doThrow, bool doPrint)
 {
   Teuchos::RCP<LinSys::Matrix> matrix = useOwned ? ownedMatrix_ : globallyOwnedMatrix_;
   Teuchos::RCP<LinSys::Vector> rhs = useOwned ? ownedRhs_ : globallyOwnedRhs_;
-  stk::mesh::BulkData & bulk = realm_.fixture_->bulk_data();
+  stk::mesh::BulkData & bulk = realm_.bulk_data();
 
   Teuchos::ArrayView<const LocalOrdinal> indices;
   Teuchos::ArrayView<const double> values;
@@ -1365,7 +1364,7 @@ TpetraLinearSystem::checkForZeroRow(bool useOwned, bool doThrow, bool doPrint)
 void
 TpetraLinearSystem::writeToFile(const char * base_filename, bool useOwned)
 {
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
   const unsigned p_rank = bulk_data.parallel_rank();
   const unsigned p_size = bulk_data.parallel_size();
 
@@ -1441,7 +1440,7 @@ TpetraLinearSystem::writeToFile(const char * base_filename, bool useOwned)
 void
 TpetraLinearSystem::printInfo(bool useOwned)
 {
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
   const unsigned p_rank = bulk_data.parallel_rank();
 
   Teuchos::RCP<LinSys::Matrix> matrix = useOwned ? ownedMatrix_ : globallyOwnedMatrix_;
@@ -1467,7 +1466,7 @@ TpetraLinearSystem::printInfo(bool useOwned)
 void
 TpetraLinearSystem::writeSolutionToFile(const char * base_filename, bool useOwned)
 {
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
   const unsigned p_rank = bulk_data.parallel_rank();
   const unsigned p_size = bulk_data.parallel_size();
 
@@ -1518,7 +1517,7 @@ TpetraLinearSystem::copy_tpetra_to_stk(
   const Teuchos::RCP<LinSys::Vector> tpetraField,
   stk::mesh::FieldBase * stkField)
 {
-  stk::mesh::BulkData & bulkData = realm_.fixture_->bulk_data();
+  stk::mesh::BulkData & bulkData = realm_.bulk_data();
 
   ThrowAssert(!tpetraField.is_null());
   ThrowAssert(stkField);

@@ -18,8 +18,6 @@
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/Part.hpp>
 #include <stk_mesh/base/Field.hpp>
-// stk_io
-#include <stk_io/StkMeshIoBroker.hpp>
 
 namespace sierra{
 namespace nalu{
@@ -61,7 +59,7 @@ EffectiveDiffFluxCoeffAlgorithm::execute()
   const double invSigmaLam = 1.0/sigmaLam_;
   const double invSigmaTurb = 1.0/sigmaTurb_;
 
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   // define some common selectors
   stk::mesh::Selector s_all_nodes

@@ -25,7 +25,7 @@ class ErrorIndicatorAlgorithmDriver : public AlgorithmDriver
 public:
 
   ErrorIndicatorAlgorithmDriver(
-    const Realm &realm);
+    Realm &realm);
   ~ErrorIndicatorAlgorithmDriver();
 
   void pre_work();

@@ -27,7 +27,6 @@
 #include <stk_mesh/base/Selector.hpp>
 #include <stk_mesh/base/GetBuckets.hpp>
 #include <stk_mesh/base/Part.hpp>
-#include <stk_io/StkMeshIoBroker.hpp>
 #include <stk_topology/topology.hpp>
 #include <stk_mesh/base/FieldParallel.hpp>
 
@@ -102,7 +101,7 @@ LinearSystem *LinearSystem::create(Realm& realm, const unsigned numDof, const st
 void LinearSystem::sync_field(const stk::mesh::FieldBase *field)
 {
   std::vector< const stk::mesh::FieldBase *> fields(1,field);
-  stk::mesh::BulkData& bulkData = realm_.fixture_->bulk_data();
+  stk::mesh::BulkData& bulkData = realm_.bulk_data();
 
   // only the aura = !locally_owned_part && !globally_shared_part (outer layer)
   //stk::mesh::communicate_field_data(bulkData.shared_aura(), fields);

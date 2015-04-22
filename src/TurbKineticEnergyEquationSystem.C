@@ -64,7 +64,6 @@
 #include <stk_mesh/base/MetaData.hpp>
 
 // stk_io
-#include <stk_io/StkMeshIoBroker.hpp>
 #include <stk_io/IossBridge.hpp>
 
 // stk_topo
@@ -141,7 +140,7 @@ TurbKineticEnergyEquationSystem::register_nodal_fields(
   stk::mesh::Part *part)
 {
 
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   const int nDim = meta_data.spatial_dimension();
   const int numStates = realm_.number_of_states();
@@ -343,7 +342,7 @@ TurbKineticEnergyEquationSystem::register_inflow_bc(
   ScalarFieldType &tkeNp1 = tke_->field_of_state(stk::mesh::StateNP1);
   VectorFieldType &dkdxNone = dkdx_->field_of_state(stk::mesh::StateNone);
 
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   // register boundary data; tke_bc
   ScalarFieldType *theBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "tke_bc"));
@@ -420,7 +419,7 @@ TurbKineticEnergyEquationSystem::register_open_bc(
   ScalarFieldType &tkeNp1 = tke_->field_of_state(stk::mesh::StateNP1);
   VectorFieldType &dkdxNone = dkdx_->field_of_state(stk::mesh::StateNone);
 
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   // register boundary data; tke_bc
   ScalarFieldType *theBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "open_tke_bc"));
@@ -494,7 +493,7 @@ TurbKineticEnergyEquationSystem::register_wall_bc(
   ScalarFieldType &tkeNp1 = tke_->field_of_state(stk::mesh::StateNP1);
   VectorFieldType &dkdxNone = dkdx_->field_of_state(stk::mesh::StateNone);
 
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   // register boundary data; tke_bc
   ScalarFieldType *theBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "tke_bc"));
@@ -613,7 +612,7 @@ TurbKineticEnergyEquationSystem::register_contact_bc(
     // register halo_tke if using the element-based projected nodal gradient
     ScalarFieldType *haloTke = NULL;
     if ( !edgeNodalGradient_ ) {
-      stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+      stk::mesh::MetaData &meta_data = realm_.meta_data();
       haloTke = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "halo_tke"));
       stk::mesh::put_field(*haloTke, *part);
     }
@@ -816,7 +815,7 @@ TurbKineticEnergyEquationSystem::update_and_clip()
   const double clipValue = 1.0e-16;
   size_t numClip = 0;
 
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   // define some common selectors
   stk::mesh::Selector s_all_nodes
@@ -863,7 +862,7 @@ TurbKineticEnergyEquationSystem::predict_state()
 {
 
   // FIXME... move this to a generalized base class method
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   ScalarFieldType &tkeN = tke_->field_of_state(stk::mesh::StateN);
   ScalarFieldType &tkeNp1 = tke_->field_of_state(stk::mesh::StateNP1);

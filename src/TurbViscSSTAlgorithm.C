@@ -19,9 +19,6 @@
 #include <stk_mesh/base/Part.hpp>
 #include <stk_mesh/base/Field.hpp>
 
-// stk_io
-#include <stk_io/StkMeshIoBroker.hpp>
-
 namespace sierra{
 namespace nalu{
 
@@ -48,7 +45,7 @@ TurbViscSSTAlgorithm::TurbViscSSTAlgorithm(
     tvisc_(NULL)
 {
   // 2003 variant; basically, sijMag replaces vorticityMag
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
   density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
   viscosity_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity");
   tke_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_ke");
@@ -65,7 +62,7 @@ void
 TurbViscSSTAlgorithm::execute()
 {
 
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const int nDim = meta_data.spatial_dimension();
 

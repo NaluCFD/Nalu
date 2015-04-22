@@ -19,12 +19,6 @@
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/Part.hpp>
 
-// stk_io
-#include <stk_io/StkMeshIoBroker.hpp>
-
-// stk_util
-#include <stk_util/parallel/ParallelReduce.hpp>
-
 namespace sierra{
 namespace nalu{
 
@@ -46,7 +40,7 @@ AssembleNodalGradUEdgeAlgorithm::AssembleNodalGradUEdgeAlgorithm(
     dudx_(dudx)
 {
   // extract fields
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
   edgeAreaVec_ = meta_data.get_field<VectorFieldType>(stk::topology::EDGE_RANK, "edge_area_vector");
   dualNodalVolume_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
 }
@@ -58,7 +52,7 @@ void
 AssembleNodalGradUEdgeAlgorithm::execute()
 {
 
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const int nDim = meta_data.spatial_dimension();
 

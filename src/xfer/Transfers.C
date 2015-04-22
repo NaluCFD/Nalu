@@ -16,7 +16,6 @@
 #include <yaml-cpp/yaml.h>
 #include <NaluParsing.h>
 
-#include <stk_io/StkMeshIoBroker.hpp>
 #include <stk_mesh/base/BulkData.hpp>
 
 // basic c++
@@ -84,7 +83,7 @@ Transfers::initialize()
 
   for ( size_t itransfer = 0; itransfer < this->size(); ++itransfer ) {
     const std::string fromName = (*this)[itransfer]->realmPairName_.first;
-    stk::mesh::BulkData &fromBulkData = root()->realms_->find_realm(fromName)->fixture_->bulk_data();
+    stk::mesh::BulkData &fromBulkData = root()->realms_->find_realm(fromName)->bulk_data();
     fromBulkData.modification_begin();
     (*this)[itransfer]->change_ghosting(); 
     fromBulkData.modification_end();

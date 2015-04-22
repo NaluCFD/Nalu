@@ -56,7 +56,6 @@
 #include <stk_mesh/base/Comm.hpp>
 
 // stk_io
-#include <stk_io/StkMeshIoBroker.hpp>
 #include <stk_io/IossBridge.hpp>
 
 #include <stk_topology/topology.hpp>
@@ -132,7 +131,7 @@ MassFractionEquationSystem::register_nodal_fields(
   stk::mesh::Part *part)
 {
 
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
   const int nDim = meta_data.spatial_dimension();
   const int numStates = realm_.number_of_states();
 
@@ -262,7 +261,7 @@ MassFractionEquationSystem::register_inflow_bc(
   // algorithm type
   const AlgorithmType algType = INFLOW;
 
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   // register boundary data; massFraction_bc for all mass fraction number
   GenericFieldType *theBcField = &(meta_data.declare_field<GenericFieldType>(stk::topology::NODE_RANK, "mass_fraction_bc"));
@@ -344,7 +343,7 @@ MassFractionEquationSystem::register_open_bc(
   // algorithm type
   const AlgorithmType algType = OPEN;
 
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   // register boundary data; mass fraction_bc for all speecies number
   GenericFieldType *theBcField = &(meta_data.declare_field<GenericFieldType>(stk::topology::NODE_RANK, "mass_fraction_open_bc"));
@@ -423,7 +422,7 @@ MassFractionEquationSystem::register_wall_bc(
   // algorithm type
   const AlgorithmType algType = WALL;
 
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   // extract the value for user specified mixFrac and save off the AuxFunction
   WallUserData userData = wallBCData.userData_;
@@ -518,7 +517,7 @@ MassFractionEquationSystem::predict_state()
   // copy state n to state np1
   GenericFieldType &yN = massFraction_->field_of_state(stk::mesh::StateN);
   GenericFieldType &yNp1 = massFraction_->field_of_state(stk::mesh::StateNP1);
-  field_copy(realm_.fixture_->meta_data(), realm_.fixture_->bulk_data(), yN, yNp1);
+  field_copy(realm_.meta_data(), realm_.bulk_data(), yN, yNp1);
 }
 
 //--------------------------------------------------------------------------
@@ -528,7 +527,7 @@ void
 MassFractionEquationSystem::set_current_mass_fraction(
   const int k)
 {
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   // copy np1; n and possible nm1
   GenericFieldType &yNp1 = massFraction_->field_of_state(stk::mesh::StateNP1);
@@ -565,7 +564,7 @@ MassFractionEquationSystem::copy_mass_fraction(
   const stk::mesh::FieldBase &toField,
   const int toFieldIndex)
 {
-  field_index_copy(realm_.fixture_->meta_data(), realm_.fixture_->bulk_data(), fromField, fromFieldIndex, toField, toFieldIndex);
+  field_index_copy(realm_.meta_data(), realm_.bulk_data(), fromField, fromFieldIndex, toField, toFieldIndex);
 }
 
 //--------------------------------------------------------------------------
@@ -611,8 +610,8 @@ MassFractionEquationSystem::solve_and_update()
       // update
       timeA = stk::cpu_time();
       field_axpby(
-        realm_.fixture_->meta_data(),
-        realm_.fixture_->bulk_data(),
+        realm_.meta_data(),
+        realm_.bulk_data(),
         1.0, *yTmp_,
         1.0, *currentMassFraction_);
       timeB = stk::cpu_time();
@@ -657,7 +656,7 @@ MassFractionEquationSystem::solve_and_update()
 void
 MassFractionEquationSystem::compute_nth_mass_fraction()
 {
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   const int nm1MassFraction = numMassFraction_-1;
   const double lowerBound = 1.0e-16;

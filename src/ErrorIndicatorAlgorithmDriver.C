@@ -27,7 +27,8 @@
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/Part.hpp>
 #include <stk_mesh/base/Comm.hpp>
-#include <stk_io/StkMeshIoBroker.hpp>
+
+// stk_util
 #include <stk_util/parallel/ParallelReduce.hpp>
 
 #include <algorithm>
@@ -47,13 +48,13 @@ class Realm;
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 ErrorIndicatorAlgorithmDriver::ErrorIndicatorAlgorithmDriver(
-  const Realm &realm)
+  Realm &realm)
   : AlgorithmDriver(realm),
     errorIndicator_(NULL), refineField_(NULL), refineFieldOrig_(NULL), refineLevelField_(NULL), maxErrorIndicator_(0.0)
 {
   // save off fields
 #if defined (NALU_USES_PERCEPT)
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
   errorIndicator_ = meta_data.get_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "error_indicator");
   if (realm.solutionOptions_->useMarker_)
     {
@@ -114,14 +115,14 @@ ErrorIndicatorAlgorithmDriver::post_work()
     markerInfo.physicalErrIndCriterion_ = realm_.solutionOptions_->physicalErrIndCriterion_;
     markerInfo.physicalErrIndUnrefCriterionMultipler_ = realm_.solutionOptions_->physicalErrIndUnrefCriterionMultipler_;
 
-    percept::MarkerPhysicallyBased marker(realm_.fixture_->bulk_data(), markerInfo);
+    percept::MarkerPhysicallyBased marker(realm_.bulk_data(), markerInfo);
     marker.mark();
   }
   else {
     markerInfo.refineFraction_ = realm_.solutionOptions_->refineFraction_;
     markerInfo.unrefineFraction_ = realm_.solutionOptions_->unrefineFraction_;
 
-    percept::MarkerUsingErrIndFraction marker(realm_.fixture_->bulk_data(), markerInfo);
+    percept::MarkerUsingErrIndFraction marker(realm_.bulk_data(), markerInfo);
     marker.mark();
   }
 # endif

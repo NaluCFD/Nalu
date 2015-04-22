@@ -47,7 +47,6 @@
 #include <stk_mesh/base/Comm.hpp>
 
 // stk_io
-#include <stk_io/StkMeshIoBroker.hpp>
 #include <stk_io/IossBridge.hpp>
 
 #include <stk_topology/topology.hpp>
@@ -122,7 +121,7 @@ RadiativeTransportEquationSystem::RadiativeTransportEquationSystem(
   // push back EQ to manager
   realm_.equationSystems_.push_back(this);
 
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
   const int nDim = meta_data.spatial_dimension();
 
   // extract quadrature weights
@@ -156,7 +155,7 @@ RadiativeTransportEquationSystem::create_quadrature_set()
 {
 
   // FIXME: deal with 2D
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
   const int nDim = meta_data.spatial_dimension();
 
   int j, k, m, n, noct;
@@ -375,7 +374,7 @@ RadiativeTransportEquationSystem::register_nodal_fields(
   stk::mesh::Part *part)
 {
 
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
   const int nDim = meta_data.spatial_dimension();
 
   // register all number of ordinates intensity; reserve intensity_ for "curent"
@@ -444,7 +443,7 @@ RadiativeTransportEquationSystem::register_edge_fields(
   stk::mesh::Part *part)
 {
 
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   //====================================================
   // Register edge data
@@ -469,7 +468,7 @@ RadiativeTransportEquationSystem::register_element_fields(
   // Register element data
   //====================================================
 
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const int numScvIp = theTopo.num_nodes();
   scVolume_ = &(meta_data.declare_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "sc_volume"));
@@ -551,7 +550,7 @@ RadiativeTransportEquationSystem::register_wall_bc(
 
   const AlgorithmType algType = WALL;
 
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   // extract the value for user specified temperature and save off the AuxFunction
   WallUserData userData = wallBCData.userData_;
@@ -687,7 +686,7 @@ void
 RadiativeTransportEquationSystem::set_current_ordinate_info(
   const int k)
 {
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
   const int nDim = meta_data.spatial_dimension();
   currentWeight_ = weights_[k];
   for ( int j = 0; j < nDim; ++j )
@@ -715,7 +714,7 @@ RadiativeTransportEquationSystem::copy_ordinate_intensity(
   const ScalarFieldType &fromField,
   const ScalarFieldType &toField)
 {
-  field_copy(realm_.fixture_->meta_data(), realm_.fixture_->bulk_data(), fromField, toField);
+  field_copy(realm_.meta_data(), realm_.bulk_data(), fromField, toField);
 }
 
 //--------------------------------------------------------------------------
@@ -725,7 +724,7 @@ void
 RadiativeTransportEquationSystem::get_current_ordinate(
   double *Sk) const
 {
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
   const int nDim = meta_data.spatial_dimension();
   for ( int j = 0; j < nDim; ++j )
     Sk[j] = currentSn_[j];
@@ -739,7 +738,7 @@ RadiativeTransportEquationSystem::get_current_ordinate_info(
   double &weight,
   double *Sk) const
 {
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
   const int nDim = meta_data.spatial_dimension();
   weight = currentWeight_;
   for ( int j = 0; j < nDim; ++j )
@@ -804,8 +803,8 @@ RadiativeTransportEquationSystem::solve_and_update()
       // update
       double timeA = stk::cpu_time();
       field_axpby(
-        realm_.fixture_->meta_data(),
-        realm_.fixture_->bulk_data(),
+        realm_.meta_data(),
+        realm_.bulk_data(),
         1.0, *iTmp_,
         1.0, *intensity_);
       double timeB = stk::cpu_time();
@@ -901,7 +900,7 @@ void
 RadiativeTransportEquationSystem::initialize_intensity()
 {
 
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const double inv_pi = 1.0/acos(-1.0);
   const double sb = get_stefan_boltzmann();
@@ -945,7 +944,7 @@ void
 RadiativeTransportEquationSystem::compute_bc_intensity()
 {
 
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const double inv_pi = 1.0/acos(-1.0);
   const double sb = get_stefan_boltzmann();
@@ -992,7 +991,7 @@ RadiativeTransportEquationSystem::compute_radiation_source()
     return;
 
   // otherwise, proceed with computing source term based on what this realm knows
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const double inv_pi = 1.0/acos(-1.0);
   const double sb = get_stefan_boltzmann();
@@ -1026,7 +1025,7 @@ void
 RadiativeTransportEquationSystem::zero_out_fields()
 {
 
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const int nDim = meta_data.spatial_dimension();
 
@@ -1063,7 +1062,7 @@ void
 RadiativeTransportEquationSystem::zero_irradiation()
 {
 
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   // boundary
   stk::mesh::Selector s_all_nodes_bc
@@ -1091,8 +1090,8 @@ void
 RadiativeTransportEquationSystem::assemble_boundary_area()
 {
 
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const int nDim = meta_data.spatial_dimension();
 
@@ -1173,7 +1172,7 @@ void
 RadiativeTransportEquationSystem::assemble_fields()
 {
 
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const int nDim = meta_data.spatial_dimension();
 
@@ -1215,7 +1214,7 @@ void
 RadiativeTransportEquationSystem::assemble_irradiation()
 {
 
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const int nDim = meta_data.spatial_dimension();
 
@@ -1325,8 +1324,8 @@ void
 RadiativeTransportEquationSystem::normalize_irradiation()
 {
 
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   // first, parallel assemble
   std::vector<stk::mesh::FieldBase*> sum_fields(1, irradiation_);
@@ -1361,7 +1360,7 @@ RadiativeTransportEquationSystem::compute_div_norm()
 
   const double sb = get_stefan_boltzmann();
 
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   // define some common selectors
   stk::mesh::Selector s_all_nodes_interior

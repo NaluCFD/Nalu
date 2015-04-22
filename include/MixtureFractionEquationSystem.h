@@ -33,8 +33,7 @@ class MixtureFractionEquationSystem : public EquationSystem {
 public:
 
   MixtureFractionEquationSystem(
-    EquationSystems& equationSystems,
-    const bool burkeSchumann);
+    EquationSystems& equationSystems);
   virtual ~MixtureFractionEquationSystem();
 
   void populate_derived_quantities();
@@ -80,8 +79,6 @@ public:
   void compute_scalar_var_diss();
   void post_iter_work();
 
-  const bool burkeSchumann_;
-
   ScalarFieldType *mixFrac_;
   VectorFieldType *dzdx_;
   ScalarFieldType *zTmp_;
@@ -93,8 +90,7 @@ public:
   
   AssembleNodalGradAlgorithmDriver *assembleNodalGradAlgDriver_;
   AlgorithmDriver *diffFluxCoeffAlgDriver_;
-  AlgorithmDriver *speciesAlgDriver_;
-
+ 
   bool isInit_;
 
   AssembleNonConformalAlgorithmDriver *assembleNonConformalAlgDriver_;

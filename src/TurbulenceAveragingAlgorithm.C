@@ -24,9 +24,6 @@
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/Part.hpp>
 
-// stk_io
-#include <stk_io/StkMeshIoBroker.hpp>
-
 // c++
 #include <vector>
 #include <utility>
@@ -48,7 +45,7 @@ TurbulenceAveragingAlgorithm::TurbulenceAveragingAlgorithm(
   : Algorithm(realm, part)
 {
   // save off pairs
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   // deal with density; always need Reynolds averaged quantity
   const std::string rhoName = "density";
@@ -136,7 +133,7 @@ TurbulenceAveragingAlgorithm::TurbulenceAveragingAlgorithm(
 void
 TurbulenceAveragingAlgorithm::execute()
 {
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   // increment time filter; RESTART for this field...
   const double dt = realm_.timeIntegrator_->get_time_step();

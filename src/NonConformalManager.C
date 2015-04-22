@@ -21,9 +21,6 @@
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/Part.hpp>
 
-// stk_io
-#include <stk_io/StkMeshIoBroker.hpp>
-
 // stk_util
 #include <stk_util/parallel/ParallelReduce.hpp>
 #include <stk_util/environment/CPUTime.hpp>
@@ -75,7 +72,7 @@ NonConformalManager::initialize()
 
   const double timeA = stk::cpu_time();
 
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
  
   // initialize need to ghost and elems to ghost
   needToGhostCount_ = 0;
@@ -124,7 +121,7 @@ void
 NonConformalManager::manage_ghosting()
 {
   
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
 
   // check for ghosting need
   uint64_t g_needToGhostCount = 0;

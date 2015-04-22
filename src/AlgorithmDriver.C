@@ -25,7 +25,7 @@ class Realm;
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 AlgorithmDriver::AlgorithmDriver(
-  const Realm &realm)
+  Realm &realm)
   : realm_(realm)
 {
   // does nothing
