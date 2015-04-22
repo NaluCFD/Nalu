@@ -18,8 +18,7 @@
 #include <AssembleNodalGradAlgorithmDriver.h>
 #include <AssembleNodalGradEdgeAlgorithm.h>
 #include <AssembleNodalGradElemAlgorithm.h>
-#include <AssembleNodalGradEdgeBoundaryAlgorithm.h>
-#include <AssembleNodalGradElemBoundaryAlgorithm.h>
+#include <AssembleNodalGradBoundaryAlgorithm.h>
 #include <AssembleNodalGradEdgeContactAlgorithm.h>
 #include <AssembleNodalGradElemContactAlgorithm.h>
 #include <AssembleNodeSolverAlgorithm.h>
@@ -394,13 +393,8 @@ HeatCondEquationSystem::register_wall_bc(
   std::map<AlgorithmType, Algorithm *>::iterator it
     = assembleNodalGradAlgDriver_->algMap_.find(algType);
   if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg = NULL;
-    if ( edgeNodalGradient_ && realm_.realmUsesEdges_ ) {
-      theAlg = new AssembleNodalGradEdgeBoundaryAlgorithm(realm_, part, &tempNp1, &dtdxNone);
-    }
-    else {
-      theAlg = new AssembleNodalGradElemBoundaryAlgorithm(realm_, part, &tempNp1, &dtdxNone, edgeNodalGradient_);
-    }
+    Algorithm *theAlg 
+      = new AssembleNodalGradBoundaryAlgorithm(realm_, part, &tempNp1, &dtdxNone, edgeNodalGradient_);
     assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
   }
   else {
@@ -786,13 +780,8 @@ HeatCondEquationSystem::register_non_conformal_bc(
   std::map<AlgorithmType, Algorithm *>::iterator it
     = assembleNodalGradAlgDriver_->algMap_.find(algType);
   if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg = NULL;
-    if ( edgeNodalGradient_ && realm_.realmUsesEdges_ ) {
-      theAlg = new AssembleNodalGradEdgeBoundaryAlgorithm(realm_, currentPart, &tempNp1, &dtdxNone);
-    }
-    else {
-      theAlg = new AssembleNodalGradElemBoundaryAlgorithm(realm_, currentPart, &tempNp1, &dtdxNone, edgeNodalGradient_);
-    }
+    Algorithm *theAlg 
+      = new AssembleNodalGradBoundaryAlgorithm(realm_, currentPart, &tempNp1, &dtdxNone, edgeNodalGradient_);
     assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
   }
   else {

@@ -7,7 +7,7 @@
 
 
 // nalu
-#include <AssembleNodalGradElemBoundaryAlgorithm.h>
+#include <AssembleNodalGradUBoundaryAlgorithm.h>
 #include <Algorithm.h>
 
 #include <FieldTypeDef.h>
@@ -28,20 +28,20 @@ namespace nalu{
 //==========================================================================
 // Class Definition
 //==========================================================================
-// AssembleNodalGradElemBoundaryAlgorithm - adds in boundary contribution
-//                                          for elem gradient
+// AssembleNodalGradUBoundaryAlgorithm - adds in boundary contribution
+//                                       for elem/edge proj nodal gradient
 //==========================================================================
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-AssembleNodalGradElemBoundaryAlgorithm::AssembleNodalGradElemBoundaryAlgorithm(
+AssembleNodalGradUBoundaryAlgorithm::AssembleNodalGradUBoundaryAlgorithm(
   Realm &realm,
   stk::mesh::Part *part,
-  ScalarFieldType *scalarQ,
-  VectorFieldType *dqdx,
-  const bool useShifted)
+  VectorFieldType *vectorQ,
+  GenericFieldType *dqdx,
+  const bool useShifted )
   : Algorithm(realm, part),
-    scalarQ_(scalarQ),
+    vectorQ_(vectorQ),
     dqdx_(dqdx),
     useShifted_(useShifted)
 {
@@ -52,7 +52,7 @@ AssembleNodalGradElemBoundaryAlgorithm::AssembleNodalGradElemBoundaryAlgorithm(
 //-------- execute ---------------------------------------------------------
 //--------------------------------------------------------------------------
 void
-AssembleNodalGradElemBoundaryAlgorithm::execute()
+AssembleNodalGradUBoundaryAlgorithm::execute()
 {
 
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -64,10 +64,13 @@ AssembleNodalGradElemBoundaryAlgorithm::execute()
   ScalarFieldType *dualNodalVolume = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
 
   // nodal fields to gather; gather everything other than what we are assembling
-  std::vector<double> ws_scalarQ;
+  std::vector<double> ws_vectorQ;
 
   // geometry related to populate
   std::vector<double> ws_shape_function;
+
+  // ip data
+  std::vector<double>qIp(nDim);
 
   // define some common selectors
   stk::mesh::Selector s_locally_owned_union = meta_data.locally_owned_part()
@@ -88,12 +91,12 @@ AssembleNodalGradElemBoundaryAlgorithm::execute()
     const int numScsIp = meFC->numIntPoints_;
 
     // algorithm related
-    ws_scalarQ.resize(nodesPerFace);
+    ws_vectorQ.resize(nodesPerFace*nDim);
     ws_shape_function.resize(numScsIp*nodesPerFace);
 
     // pointers
-    double *p_scalarQ = ws_scalarQ.data();
-    double *p_shape_function = ws_shape_function.data();
+    double *p_vectorQ = &ws_vectorQ[0];
+    double *p_shape_function = &ws_shape_function[0];
 
     if ( useShifted_ )
       meFC->shifted_shape_fcn(&p_shape_function[0]);
@@ -103,7 +106,7 @@ AssembleNodalGradElemBoundaryAlgorithm::execute()
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
 
       // face data
-      const double * areaVec = stk::mesh::field_data(*exposedAreaVec, b, k);
+      double * areaVec = stk::mesh::field_data(*exposedAreaVec, b, k);
 
       //===============================================
       // gather nodal data; this is how we do it now..
@@ -116,8 +119,15 @@ AssembleNodalGradElemBoundaryAlgorithm::execute()
 
       for ( int ni = 0; ni < num_nodes; ++ni ) {
         stk::mesh::Entity node = face_node_rels[ni];
-        // gather scalars
-        ws_scalarQ[ni] = *stk::mesh::field_data(*scalarQ_, node);
+
+        // pointers to real data
+        double * vectorQ = stk::mesh::field_data(*vectorQ_, node );
+
+        // gather vectors
+        const int offSet = ni*nDim;
+        for ( int j=0; j < nDim; ++j ) {
+          p_vectorQ[offSet+j] = vectorQ[j];
+        }
       }
 
       // start assembly
@@ -129,25 +139,34 @@ AssembleNodalGradElemBoundaryAlgorithm::execute()
         stk::mesh::Entity nodeNN = face_node_rels[nn];
 
         // pointer to fields to assemble
-        double *gradQNN = stk::mesh::field_data(*dqdx_, nodeNN);
+        double *gradQNN = stk::mesh::field_data(*dqdx_, nodeNN );
 
         // suplemental
         double volNN = *stk::mesh::field_data(*dualNodalVolume, nodeNN);
 
         // interpolate to scs point; operate on saved off ws_field
-        double qIp = 0.0;
+        for (int j =0; j < nDim; ++j )
+          qIp[j] = 0.0;
+
         const int offSet = ip*nodesPerFace;
         for ( int ic = 0; ic < nodesPerFace; ++ic ) {
-          qIp += p_shape_function[offSet+ic]*p_scalarQ[ic];
+          const double r = p_shape_function[offSet+ic];
+          for ( int j = 0; j < nDim; ++j ) {
+            qIp[j] += r*p_vectorQ[ic*nDim+j];
+          }
         }
 
         // nearest node volume
         double inv_volNN = 1.0/volNN;
 
         // assemble to nearest node
-        for ( int j = 0; j < nDim; ++j ) {
-          double fac = qIp*areaVec[ip*nDim+j];
-          gradQNN[j] += fac*inv_volNN;
+        for ( int i = 0; i < nDim; ++i ) {
+          const int row_gradQ = i*nDim;
+          double qip = qIp[i];
+          for ( int j = 0; j < nDim; ++j ) {
+            double fac = qip*areaVec[ip*nDim+j];
+            gradQNN[row_gradQ+j] += fac*inv_volNN;
+          }
         }
       }
     }

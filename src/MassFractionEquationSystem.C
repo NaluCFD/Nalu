@@ -15,8 +15,7 @@
 #include <AssembleNodalGradAlgorithmDriver.h>
 #include <AssembleNodalGradEdgeAlgorithm.h>
 #include <AssembleNodalGradElemAlgorithm.h>
-#include <AssembleNodalGradEdgeBoundaryAlgorithm.h>
-#include <AssembleNodalGradElemBoundaryAlgorithm.h>
+#include <AssembleNodalGradBoundaryAlgorithm.h>
 #include <AssembleNodalGradEdgeContactAlgorithm.h>
 #include <AssembleNodalGradElemContactAlgorithm.h>
 #include <AssembleNodeSolverAlgorithm.h>
@@ -303,13 +302,8 @@ MassFractionEquationSystem::register_inflow_bc(
   std::map<AlgorithmType, Algorithm *>::iterator it
     = assembleNodalGradAlgDriver_->algMap_.find(algType);
   if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg = NULL;
-    if ( edgeNodalGradient_ && realm_.realmUsesEdges_ ) {
-      theAlg = new AssembleNodalGradEdgeBoundaryAlgorithm(realm_, part, currentMassFraction_, dydx_);
-    }
-    else {
-      theAlg = new AssembleNodalGradElemBoundaryAlgorithm(realm_, part, currentMassFraction_, dydx_, edgeNodalGradient_);
-    }
+    Algorithm *theAlg 
+      = new AssembleNodalGradBoundaryAlgorithm(realm_, part, currentMassFraction_, dydx_, edgeNodalGradient_);
     assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
   }
   else {
@@ -377,13 +371,8 @@ MassFractionEquationSystem::register_open_bc(
   std::map<AlgorithmType, Algorithm *>::iterator it
     = assembleNodalGradAlgDriver_->algMap_.find(algType);
   if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg = NULL;
-    if ( edgeNodalGradient_ && realm_.realmUsesEdges_ ) {
-      theAlg = new AssembleNodalGradEdgeBoundaryAlgorithm(realm_, part, currentMassFraction_, dydx_);
-    }
-    else {
-      theAlg = new AssembleNodalGradElemBoundaryAlgorithm(realm_, part, currentMassFraction_, dydx_, edgeNodalGradient_);
-    }
+    Algorithm *theAlg 
+      = new AssembleNodalGradBoundaryAlgorithm(realm_, part, currentMassFraction_, dydx_, edgeNodalGradient_);
     assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
   }
   else {
@@ -483,13 +472,8 @@ MassFractionEquationSystem::register_wall_bc(
   std::map<AlgorithmType, Algorithm *>::iterator it
     = assembleNodalGradAlgDriver_->algMap_.find(algType);
   if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg = NULL;
-    if ( edgeNodalGradient_ && realm_.realmUsesEdges_ ) {
-      theAlg = new AssembleNodalGradEdgeBoundaryAlgorithm(realm_, part, currentMassFraction_, dydx_);
-    }
-    else {
-      theAlg = new AssembleNodalGradElemBoundaryAlgorithm(realm_, part, currentMassFraction_, dydx_, edgeNodalGradient_);
-    }
+    Algorithm *theAlg 
+      = new AssembleNodalGradBoundaryAlgorithm(realm_, part, currentMassFraction_, dydx_, edgeNodalGradient_);
     assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
   }
   else {

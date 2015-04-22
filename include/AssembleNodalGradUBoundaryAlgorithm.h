@@ -5,9 +5,10 @@
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
+/*------------------------------------------------------------------------*/
 
-#ifndef AssembleNodalGradElemBoundaryAlgorithm_h
-#define AssembleNodalGradElemBoundaryAlgorithm_h
+#ifndef AssembleNodalGradUBoundaryAlgorithm_h
+#define AssembleNodalGradUBoundaryAlgorithm_h
 
 #include<Algorithm.h>
 #include<FieldTypeDef.h>
@@ -17,21 +18,22 @@ namespace nalu{
 
 class Realm;
 
-class AssembleNodalGradElemBoundaryAlgorithm : public Algorithm
+class AssembleNodalGradUBoundaryAlgorithm : public Algorithm
 {
 public:
-  AssembleNodalGradElemBoundaryAlgorithm(
+  AssembleNodalGradUBoundaryAlgorithm(
     Realm &realm,
     stk::mesh::Part *part,
-    ScalarFieldType *scalarQ,
-    VectorFieldType *dqdx,
-    const bool useShifted = false);
-  virtual ~AssembleNodalGradElemBoundaryAlgorithm() {}
+    VectorFieldType *vectorQ,
+    GenericFieldType *dqdx,
+    const bool useShifted);
+  virtual ~AssembleNodalGradUBoundaryAlgorithm() {}
 
   virtual void execute();
 
-  ScalarFieldType *scalarQ_;
-  VectorFieldType *dqdx_;
+  VectorFieldType *vectorQ_;
+  GenericFieldType *dqdx_;
+
   const bool useShifted_;
 
 };

@@ -18,7 +18,7 @@
 #include <AlgorithmDriver.h>
 #include <AssembleNodalGradUAlgorithmDriver.h>
 #include <AssembleNodalGradUElemAlgorithm.h>
-#include <AssembleNodalGradUElemBoundaryAlgorithm.h>
+#include <AssembleNodalGradUBoundaryAlgorithm.h>
 #include <AssembleNodeSolverAlgorithm.h>
 #include <AuxFunctionAlgorithm.h>
 #include <ConstantAuxFunction.h>
@@ -432,8 +432,8 @@ MeshDisplacementEquationSystem::register_wall_bc(
   std::map<AlgorithmType, Algorithm *>::iterator itgv
     = assembleNodalGradAlgDriver_->algMap_.find(algType);
   if ( itgv == assembleNodalGradAlgDriver_->algMap_.end() ) {
-    AssembleNodalGradUElemBoundaryAlgorithm *theAlg
-      = new AssembleNodalGradUElemBoundaryAlgorithm(realm_, part, meshVelocity_, dvdx_, edgeNodalGradient_);
+    AssembleNodalGradUBoundaryAlgorithm *theAlg
+      = new AssembleNodalGradUBoundaryAlgorithm(realm_, part, meshVelocity_, dvdx_, edgeNodalGradient_);
     assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
   }
   else {

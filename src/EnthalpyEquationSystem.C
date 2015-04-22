@@ -17,8 +17,7 @@
 #include <AssembleNodalGradAlgorithmDriver.h>
 #include <AssembleNodalGradEdgeAlgorithm.h>
 #include <AssembleNodalGradElemAlgorithm.h>
-#include <AssembleNodalGradEdgeBoundaryAlgorithm.h>
-#include <AssembleNodalGradElemBoundaryAlgorithm.h>
+#include <AssembleNodalGradBoundaryAlgorithm.h>
 #include <AssembleNodalGradEdgeContactAlgorithm.h>
 #include <AssembleNodalGradElemContactAlgorithm.h>
 #include <AssembleNodeSolverAlgorithm.h>
@@ -446,13 +445,8 @@ EnthalpyEquationSystem::register_inflow_bc(
   std::map<AlgorithmType, Algorithm *>::iterator it
     = assembleNodalGradAlgDriver_->algMap_.find(algType);
   if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg = NULL;
-    if ( edgeNodalGradient_ && realm_.realmUsesEdges_ ) {
-      theAlg = new AssembleNodalGradEdgeBoundaryAlgorithm(realm_, part, &enthalpyNp1, &dhdxNone);
-    }
-    else {
-      theAlg = new AssembleNodalGradElemBoundaryAlgorithm(realm_, part, &enthalpyNp1, &dhdxNone, edgeNodalGradient_);
-    }
+    Algorithm *theAlg 
+      = new AssembleNodalGradBoundaryAlgorithm(realm_, part, &enthalpyNp1, &dhdxNone, edgeNodalGradient_);
     assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
   }
   else {
@@ -516,13 +510,8 @@ EnthalpyEquationSystem::register_open_bc(
   std::map<AlgorithmType, Algorithm *>::iterator it
     = assembleNodalGradAlgDriver_->algMap_.find(algType);
   if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg = NULL;
-    if ( edgeNodalGradient_ && realm_.realmUsesEdges_ ) {
-      theAlg = new AssembleNodalGradEdgeBoundaryAlgorithm(realm_, part, &enthalpyNp1, &dhdxNone);
-    }
-    else {
-      theAlg = new AssembleNodalGradElemBoundaryAlgorithm(realm_, part, &enthalpyNp1, &dhdxNone, edgeNodalGradient_);
-    }
+    Algorithm *theAlg 
+      = new AssembleNodalGradBoundaryAlgorithm(realm_, part, &enthalpyNp1, &dhdxNone, edgeNodalGradient_);
     assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
   }
   else {
@@ -680,13 +669,8 @@ EnthalpyEquationSystem::register_wall_bc(
   std::map<AlgorithmType, Algorithm *>::iterator it
     = assembleNodalGradAlgDriver_->algMap_.find(algType);
   if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg = NULL;
-    if ( edgeNodalGradient_ && realm_.realmUsesEdges_ ) {
-      theAlg = new AssembleNodalGradEdgeBoundaryAlgorithm(realm_, part, &enthalpyNp1, &dhdxNone);
-    }
-    else {
-      theAlg = new AssembleNodalGradElemBoundaryAlgorithm(realm_, part, &enthalpyNp1, &dhdxNone, edgeNodalGradient_);
-    }
+    Algorithm *theAlg 
+      = new AssembleNodalGradBoundaryAlgorithm(realm_, part, &enthalpyNp1, &dhdxNone, edgeNodalGradient_);
     assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
   }
   else {
@@ -776,13 +760,8 @@ EnthalpyEquationSystem::register_symmetry_bc(
   std::map<AlgorithmType, Algorithm *>::iterator it
     = assembleNodalGradAlgDriver_->algMap_.find(algType);
   if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg = NULL;
-    if ( edgeNodalGradient_ && realm_.realmUsesEdges_ ) {
-      theAlg = new AssembleNodalGradEdgeBoundaryAlgorithm(realm_, part, &enthalpyNp1, &dhdxNone);
-    }
-    else {
-      theAlg = new AssembleNodalGradElemBoundaryAlgorithm(realm_, part, &enthalpyNp1, &dhdxNone, edgeNodalGradient_);
-    }
+    Algorithm *theAlg 
+      = new AssembleNodalGradBoundaryAlgorithm(realm_, part, &enthalpyNp1, &dhdxNone, edgeNodalGradient_);
     assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
   }
   else {
