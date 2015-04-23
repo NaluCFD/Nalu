@@ -420,6 +420,11 @@ Realm::load(const YAML::Node & node)
   node["name"] >> name_;
   node["mesh"] >> inputDBName_;
 
+  // provide a high level banner
+  NaluEnv::self().naluOutputP0() << std::endl;
+  NaluEnv::self().naluOutputP0() << "Realm Options Review: " << name_ << std::endl;
+  NaluEnv::self().naluOutputP0() << "===========================" << std::endl;
+
   get_if_present(node, "estimate_memory_only", estimateMemoryOnly_, false);
   get_if_present(node, "available_memory_per_core_GB", availableMemoryPerCoreGB_, 0.0);
 
@@ -434,7 +439,7 @@ Realm::load(const YAML::Node & node)
 
   // let everyone know about core algorithm
   if ( realmUsesEdges_ ) {
-     NaluEnv::self().naluOutputP0() << "Edge-based scheme will be activated" << std::endl;
+    NaluEnv::self().naluOutputP0() << "Edge-based scheme will be activated" << std::endl;
   }
   else {
     NaluEnv::self().naluOutputP0() <<"Element-based scheme will be activated" << std::endl;
@@ -446,8 +451,12 @@ Realm::load(const YAML::Node & node)
   // automatic decomposition
   get_if_present(node, "automatic_decomposition_type", autoDecompType_, autoDecompType_);
 
-  // activate aura (generally off)
+  // activate aura
   get_if_present(node, "activate_aura", activateAura_, activateAura_);
+  if ( activateAura_ )
+    NaluEnv::self().naluOutputP0() << "Nalu will ACTIVATE aura ghosting for Realm: " << name_ << std::endl;
+  else
+    NaluEnv::self().naluOutputP0() << "Nalu will DEACTIVATE aura ghosting Realm: " << name_ << std::endl;
 
   // time step control
   const bool dtOptional = true;
