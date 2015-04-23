@@ -454,9 +454,9 @@ Realm::load(const YAML::Node & node)
   // activate aura
   get_if_present(node, "activate_aura", activateAura_, activateAura_);
   if ( activateAura_ )
-    NaluEnv::self().naluOutputP0() << "Nalu will ACTIVATE aura ghosting for Realm: " << name_ << std::endl;
+    NaluEnv::self().naluOutputP0() << "Nalu will ACTIVATE aura ghosting"  << std::endl;
   else
-    NaluEnv::self().naluOutputP0() << "Nalu will DEACTIVATE aura ghosting Realm: " << name_ << std::endl;
+    NaluEnv::self().naluOutputP0() << "Nalu will DEACTIVATE aura ghosting" << std::endl;
 
   // time step control
   const bool dtOptional = true;
