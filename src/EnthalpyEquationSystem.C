@@ -17,8 +17,7 @@
 #include <AssembleNodalGradAlgorithmDriver.h>
 #include <AssembleNodalGradEdgeAlgorithm.h>
 #include <AssembleNodalGradElemAlgorithm.h>
-#include <AssembleNodalGradEdgeBoundaryAlgorithm.h>
-#include <AssembleNodalGradElemBoundaryAlgorithm.h>
+#include <AssembleNodalGradBoundaryAlgorithm.h>
 #include <AssembleNodalGradEdgeContactAlgorithm.h>
 #include <AssembleNodalGradElemContactAlgorithm.h>
 #include <AssembleNodeSolverAlgorithm.h>
@@ -73,7 +72,6 @@
 #include <stk_mesh/base/MetaData.hpp>
 
 // stk_io
-#include <stk_io/StkMeshIoBroker.hpp>
 #include <stk_io/IossBridge.hpp>
 
 // stk_topo
@@ -210,7 +208,7 @@ EnthalpyEquationSystem::register_nodal_fields(
   stk::mesh::Part *part)
 {
 
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   const int nDim = meta_data.spatial_dimension();
   const int numStates = realm_.number_of_states();
@@ -422,7 +420,7 @@ EnthalpyEquationSystem::register_inflow_bc(
   ScalarFieldType &enthalpyNp1 = enthalpy_->field_of_state(stk::mesh::StateNP1);
   VectorFieldType &dhdxNone = dhdx_->field_of_state(stk::mesh::StateNone);
 
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   // extract user data
   InflowUserData userData = inflowBCData.userData_;
@@ -447,13 +445,8 @@ EnthalpyEquationSystem::register_inflow_bc(
   std::map<AlgorithmType, Algorithm *>::iterator it
     = assembleNodalGradAlgDriver_->algMap_.find(algType);
   if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg = NULL;
-    if ( edgeNodalGradient_ && realm_.realmUsesEdges_ ) {
-      theAlg = new AssembleNodalGradEdgeBoundaryAlgorithm(realm_, part, &enthalpyNp1, &dhdxNone);
-    }
-    else {
-      theAlg = new AssembleNodalGradElemBoundaryAlgorithm(realm_, part, &enthalpyNp1, &dhdxNone, edgeNodalGradient_);
-    }
+    Algorithm *theAlg 
+      = new AssembleNodalGradBoundaryAlgorithm(realm_, part, &enthalpyNp1, &dhdxNone, edgeNodalGradient_);
     assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
   }
   else {
@@ -490,7 +483,7 @@ EnthalpyEquationSystem::register_open_bc(
   ScalarFieldType &enthalpyNp1 = enthalpy_->field_of_state(stk::mesh::StateNP1);
   VectorFieldType &dhdxNone = dhdx_->field_of_state(stk::mesh::StateNone);
 
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   // extract user data
   OpenUserData userData = openBCData.userData_;
@@ -517,13 +510,8 @@ EnthalpyEquationSystem::register_open_bc(
   std::map<AlgorithmType, Algorithm *>::iterator it
     = assembleNodalGradAlgDriver_->algMap_.find(algType);
   if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg = NULL;
-    if ( edgeNodalGradient_ && realm_.realmUsesEdges_ ) {
-      theAlg = new AssembleNodalGradEdgeBoundaryAlgorithm(realm_, part, &enthalpyNp1, &dhdxNone);
-    }
-    else {
-      theAlg = new AssembleNodalGradElemBoundaryAlgorithm(realm_, part, &enthalpyNp1, &dhdxNone, edgeNodalGradient_);
-    }
+    Algorithm *theAlg 
+      = new AssembleNodalGradBoundaryAlgorithm(realm_, part, &enthalpyNp1, &dhdxNone, edgeNodalGradient_);
     assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
   }
   else {
@@ -566,7 +554,7 @@ EnthalpyEquationSystem::register_wall_bc(
   ScalarFieldType &enthalpyNp1 = enthalpy_->field_of_state(stk::mesh::StateNP1);
   VectorFieldType &dhdxNone = dhdx_->field_of_state(stk::mesh::StateNone);
 
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   // extract user data
   WallUserData userData = wallBCData.userData_;
@@ -681,13 +669,8 @@ EnthalpyEquationSystem::register_wall_bc(
   std::map<AlgorithmType, Algorithm *>::iterator it
     = assembleNodalGradAlgDriver_->algMap_.find(algType);
   if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg = NULL;
-    if ( edgeNodalGradient_ && realm_.realmUsesEdges_ ) {
-      theAlg = new AssembleNodalGradEdgeBoundaryAlgorithm(realm_, part, &enthalpyNp1, &dhdxNone);
-    }
-    else {
-      theAlg = new AssembleNodalGradElemBoundaryAlgorithm(realm_, part, &enthalpyNp1, &dhdxNone, edgeNodalGradient_);
-    }
+    Algorithm *theAlg 
+      = new AssembleNodalGradBoundaryAlgorithm(realm_, part, &enthalpyNp1, &dhdxNone, edgeNodalGradient_);
     assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
   }
   else {
@@ -715,7 +698,7 @@ EnthalpyEquationSystem::register_contact_bc(
     // register halo_h if using the element-based projected nodal gradient
     ScalarFieldType *haloH = NULL;
     if ( !edgeNodalGradient_ ) {
-      stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+      stk::mesh::MetaData &meta_data = realm_.meta_data();
       haloH = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "halo_h"));
       stk::mesh::put_field(*haloH, *part);
     }
@@ -777,13 +760,8 @@ EnthalpyEquationSystem::register_symmetry_bc(
   std::map<AlgorithmType, Algorithm *>::iterator it
     = assembleNodalGradAlgDriver_->algMap_.find(algType);
   if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg = NULL;
-    if ( edgeNodalGradient_ && realm_.realmUsesEdges_ ) {
-      theAlg = new AssembleNodalGradEdgeBoundaryAlgorithm(realm_, part, &enthalpyNp1, &dhdxNone);
-    }
-    else {
-      theAlg = new AssembleNodalGradElemBoundaryAlgorithm(realm_, part, &enthalpyNp1, &dhdxNone, edgeNodalGradient_);
-    }
+    Algorithm *theAlg 
+      = new AssembleNodalGradBoundaryAlgorithm(realm_, part, &enthalpyNp1, &dhdxNone, edgeNodalGradient_);
     assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
   }
   else {
@@ -866,8 +844,8 @@ EnthalpyEquationSystem::solve_and_update()
     // update
     double timeA = stk::cpu_time();
     field_axpby(
-      realm_.fixture_->meta_data(),
-      realm_.fixture_->bulk_data(),
+      realm_.meta_data(),
+      realm_.bulk_data(),
       1.0, *hTmp_,
       1.0, enthalpy_->field_of_state(stk::mesh::StateNP1));
     double timeB = stk::cpu_time();
@@ -959,7 +937,7 @@ EnthalpyEquationSystem::extract_temperature()
     cpEval = (*itc).second;
   }
 
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   // np1 state
   ScalarFieldType &enthalpyNp1 = enthalpy_->field_of_state(stk::mesh::StateNP1);
@@ -1080,11 +1058,11 @@ void
 EnthalpyEquationSystem::post_converged_work()
 {
   if ( lowSpeedCompressActive_ ) {
-    stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+    stk::mesh::MetaData & meta_data = realm_.meta_data();
     // copy pressure to pOld
     ScalarFieldType *pressure = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure");
     field_copy(meta_data, 
-	       realm_.fixture_->bulk_data(),
+	       realm_.bulk_data(),
 	       *pressure, *pOld_);
   } 
 }
@@ -1097,7 +1075,7 @@ EnthalpyEquationSystem::predict_state()
 {
 
   // FIXME... move this to a generalized base class method
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   ScalarFieldType &enthalpyN = enthalpy_->field_of_state(stk::mesh::StateN);
   ScalarFieldType &enthalpyNp1 = enthalpy_->field_of_state(stk::mesh::StateNP1);

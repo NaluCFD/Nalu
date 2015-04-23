@@ -115,6 +115,8 @@ public:
     PropertyIdentifier propID,
     ScalarFieldType *theField);
 
+  void makeSureNodesHaveValidTopology();
+
   void initialize_global_variables();
 
   void create_output_mesh();
@@ -289,6 +291,10 @@ public:
                                               const stk::mesh::Selector & selector ,
                                               bool get_all = false) const;
 
+  // get bulk and meta data
+  stk::mesh::BulkData & bulk_data();
+  stk::mesh::MetaData & meta_data();
+
   Realms& realms_;
 
   std::string inputDBName_;
@@ -301,7 +307,11 @@ public:
 
   double l2Scaling_;
 
-  stk::io::StkMeshIoBroker *fixture_;
+  // ioBroker, meta and bulk data
+  stk::mesh::MetaData *metaData_;
+  stk::mesh::BulkData *bulkData_;
+  stk::io::StkMeshIoBroker *ioBroker_;
+
   size_t resultsFileIndex_;
   size_t restartFileIndex_;
 
@@ -394,7 +404,10 @@ public:
 
   // automatic mesh decomposition; None, rib, rcb, multikl, etc.
   std::string autoDecompType_;
-  
+
+  // allow aura to be optional
+  bool activateAura_;
+
   // mesh parts for all boundary conditions
   stk::mesh::PartVector bcPartVec_;
 

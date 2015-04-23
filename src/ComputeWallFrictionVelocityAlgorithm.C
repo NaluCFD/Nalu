@@ -24,9 +24,6 @@
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/Part.hpp>
 
-// stk_io
-#include <stk_io/StkMeshIoBroker.hpp>
-
 // basic c++
 #include <math.h>
 
@@ -54,7 +51,7 @@ ComputeWallFrictionVelocityAlgorithm::ComputeWallFrictionVelocityAlgorithm(
     tolerance_(1.0e-6)
 {
   // save off fields
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
   velocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
   bcVelocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "wall_velocity_bc");
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
@@ -82,8 +79,8 @@ void
 ComputeWallFrictionVelocityAlgorithm::execute()
 {
 
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const int nDim = meta_data.spatial_dimension();
 
@@ -308,7 +305,7 @@ void
 ComputeWallFrictionVelocityAlgorithm::zero_nodal_fields()
 {
 
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   stk::mesh::Selector s_all_nodes
     = (meta_data.locally_owned_part() | meta_data.globally_shared_part())
@@ -378,8 +375,8 @@ void
 ComputeWallFrictionVelocityAlgorithm::normalize_nodal_fields()
 {
 
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   // parallel assemble
   std::vector<stk::mesh::FieldBase*> fields;

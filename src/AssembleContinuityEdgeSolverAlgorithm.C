@@ -22,9 +22,6 @@
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/Part.hpp>
 
-// stk_io
-#include <stk_io/StkMeshIoBroker.hpp>
-
 namespace sierra{
 namespace nalu{
 
@@ -51,7 +48,7 @@ AssembleContinuityEdgeSolverAlgorithm::AssembleContinuityEdgeSolverAlgorithm(
     edgeAreaVec_(NULL)
 {
   // save off fields
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
   if ( meshMotion_ )
     meshVelocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_velocity");
 
@@ -79,7 +76,7 @@ void
 AssembleContinuityEdgeSolverAlgorithm::execute()
 {
 
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const int nDim = meta_data.spatial_dimension();
 

@@ -21,9 +21,6 @@ namespace stk {
 namespace mesh {
  class MetaData;
 }
-namespace io {
- class StkMeshIoBroker;
-}
 }
 
 namespace sierra{
@@ -59,8 +56,7 @@ public:
 
   SutherlandsYkPropertyEvaluator(
       const std::map<std::string, std::vector<double> > &polynomialCoeffsMap,
-      stk::mesh::MetaData &metaData,
-      stk::io::StkMeshIoBroker *fixture);
+      stk::mesh::MetaData &metaData);
 
   virtual ~SutherlandsYkPropertyEvaluator();
   
@@ -73,7 +69,6 @@ public:
       const double *pt_poly);
 
   // field definition and extraction
-  stk::io::StkMeshIoBroker *fixture_;
   GenericFieldType *massFraction_;
   size_t ykVecSize_;
   
@@ -89,7 +84,6 @@ public:
   SutherlandsYkTrefPropertyEvaluator(
       const std::map<std::string, std::vector<double> > &polynomialCoeffsMap,
       stk::mesh::MetaData &metaData,
-      stk::io::StkMeshIoBroker *fixture,
       const double tRef);
 
   virtual ~SutherlandsYkTrefPropertyEvaluator();

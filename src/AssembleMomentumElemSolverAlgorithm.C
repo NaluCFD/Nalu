@@ -24,9 +24,6 @@
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/Part.hpp>
 
-// stk_io
-#include <stk_io/StkMeshIoBroker.hpp>
-
 namespace sierra{
 namespace nalu{
 
@@ -55,7 +52,7 @@ AssembleMomentumElemSolverAlgorithm::AssembleMomentumElemSolverAlgorithm(
 
 {
   // save off data
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   // hold either mesh velocity or velocity in meshVelocity_ (avoids logic below)
    if ( meshMotion_ )
@@ -104,7 +101,7 @@ void
 AssembleMomentumElemSolverAlgorithm::execute()
 {
 
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const int nDim = meta_data.spatial_dimension();
 

@@ -22,9 +22,6 @@
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/Part.hpp>
 
-// stk_io
-#include <stk_io/StkMeshIoBroker.hpp>
-
 namespace sierra{
 namespace nalu{
 

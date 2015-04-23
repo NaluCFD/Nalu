@@ -17,8 +17,6 @@
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/BulkData.hpp>
 #include <stk_mesh/base/Field.hpp>
-// stk_io
-#include <stk_io/StkMeshIoBroker.hpp>
 
 namespace sierra{
 namespace nalu{
@@ -41,7 +39,7 @@ SteadyThermalContactSrcNodeSuppAlg::SteadyThermalContactSrcNodeSuppAlg(
     pi_(std::acos(-1.0))
 {
   // save off fields
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   dualNodalVolume_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
 }

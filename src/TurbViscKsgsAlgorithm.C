@@ -18,8 +18,6 @@
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/Part.hpp>
 #include <stk_mesh/base/Field.hpp>
-// stk_io
-#include <stk_io/StkMeshIoBroker.hpp>
 
 namespace sierra{
 namespace nalu{
@@ -43,7 +41,7 @@ TurbViscKsgsAlgorithm::TurbViscKsgsAlgorithm(
     cmuEps_(realm.get_turb_model_constant(TM_cmuEps))
 {
 
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   tke_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_ke");
   density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
@@ -59,7 +57,7 @@ void
 TurbViscKsgsAlgorithm::execute()
 {
 
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const double cmuEps = cmuEps_;
   const double invNdim = 1.0/meta_data.spatial_dimension();

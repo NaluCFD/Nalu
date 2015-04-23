@@ -27,7 +27,6 @@
 #include <stk_mesh/base/MetaData.hpp>
 
 // stk_io
-#include <stk_io/StkMeshIoBroker.hpp>
 #include <stk_io/IossBridge.hpp>
 
 // basic c++
@@ -95,7 +94,7 @@ ShearStressTransportEquationSystem::register_nodal_fields(
   stk::mesh::Part *part)
 {
 
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
   const int numStates = realm_.number_of_states();
 
   // re-register tke and sdr for convenience
@@ -250,7 +249,7 @@ ShearStressTransportEquationSystem::update_and_clip()
 {
   const double clipValue = 1.0e-8;
 
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   // required fields
   ScalarFieldType *density = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
@@ -329,8 +328,8 @@ ShearStressTransportEquationSystem::clip_min_distance_to_wall()
     return;
 
   // okay, no restart: proceed with clipping of minimum wall distance
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const int nDim = meta_data.spatial_dimension();
 
@@ -434,7 +433,7 @@ void
 ShearStressTransportEquationSystem::compute_f_one_blending()
 {
   // compute fone with parameters appropriate for 2003 SST implementation
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const int nDim = meta_data.spatial_dimension();
 

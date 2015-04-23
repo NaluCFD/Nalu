@@ -21,7 +21,7 @@ class AssembleNodalGradUAlgorithmDriver : public AlgorithmDriver
 public:
 
   AssembleNodalGradUAlgorithmDriver(
-    const Realm &realm,
+    Realm &realm,
     const std::string dudxName);
   virtual ~AssembleNodalGradUAlgorithmDriver() {}
 

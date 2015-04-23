@@ -20,7 +20,6 @@
 #include <stk_mesh/base/GetEntities.hpp>
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/Part.hpp>
-#include <stk_io/StkMeshIoBroker.hpp>
 
 namespace sierra{
 namespace nalu{
@@ -36,7 +35,7 @@ class Realm;
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 AssembleWallHeatTransferAlgorithmDriver::AssembleWallHeatTransferAlgorithmDriver(
-  const Realm &realm)
+  Realm &realm)
   : AlgorithmDriver(realm),
     assembledWallArea_(NULL),
     referenceTemperature_(NULL),
@@ -46,7 +45,7 @@ AssembleWallHeatTransferAlgorithmDriver::AssembleWallHeatTransferAlgorithmDriver
     temperature_(NULL)
 {
   // register the fields
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
   assembledWallArea_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "assembled_wall_area_ht");
   referenceTemperature_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "reference_temperature");
   heatTransferCoefficient_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "heat_transfer_coefficient");
@@ -70,7 +69,7 @@ void
 AssembleWallHeatTransferAlgorithmDriver::pre_work()
 {
 
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   // define some common selectors; select all nodes (locally and shared)
   // where assembledWallArea is defined
@@ -111,8 +110,8 @@ void
 AssembleWallHeatTransferAlgorithmDriver::post_work()
 {
 
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   std::vector<stk::mesh::FieldBase*> fields;
   fields.push_back(assembledWallArea_);

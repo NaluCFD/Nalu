@@ -17,8 +17,7 @@
 #include <AssembleNodalGradAlgorithmDriver.h>
 #include <AssembleNodalGradEdgeAlgorithm.h>
 #include <AssembleNodalGradElemAlgorithm.h>
-#include <AssembleNodalGradEdgeBoundaryAlgorithm.h>
-#include <AssembleNodalGradElemBoundaryAlgorithm.h>
+#include <AssembleNodalGradBoundaryAlgorithm.h>
 #include <AssembleNodalGradEdgeContactAlgorithm.h>
 #include <AssembleNodalGradElemContactAlgorithm.h>
 #include <AuxFunctionAlgorithm.h>
@@ -64,7 +63,6 @@
 #include <stk_mesh/base/MetaData.hpp>
 
 // stk_io
-#include <stk_io/StkMeshIoBroker.hpp>
 #include <stk_io/IossBridge.hpp>
 
 // stk_topo
@@ -141,7 +139,7 @@ TurbKineticEnergyEquationSystem::register_nodal_fields(
   stk::mesh::Part *part)
 {
 
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   const int nDim = meta_data.spatial_dimension();
   const int numStates = realm_.number_of_states();
@@ -343,7 +341,7 @@ TurbKineticEnergyEquationSystem::register_inflow_bc(
   ScalarFieldType &tkeNp1 = tke_->field_of_state(stk::mesh::StateNP1);
   VectorFieldType &dkdxNone = dkdx_->field_of_state(stk::mesh::StateNone);
 
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   // register boundary data; tke_bc
   ScalarFieldType *theBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "tke_bc"));
@@ -377,13 +375,7 @@ TurbKineticEnergyEquationSystem::register_inflow_bc(
   std::map<AlgorithmType, Algorithm *>::iterator it
     = assembleNodalGradAlgDriver_->algMap_.find(algType);
   if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg = NULL;
-    if ( edgeNodalGradient_ && realm_.realmUsesEdges_ ) {
-      theAlg = new AssembleNodalGradEdgeBoundaryAlgorithm(realm_, part, &tkeNp1, &dkdxNone);
-    }
-    else {
-      theAlg = new AssembleNodalGradElemBoundaryAlgorithm(realm_, part, &tkeNp1, &dkdxNone, edgeNodalGradient_);
-    }
+    Algorithm *theAlg = new AssembleNodalGradBoundaryAlgorithm(realm_, part, &tkeNp1, &dkdxNone, edgeNodalGradient_);
     assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
   }
   else {
@@ -420,7 +412,7 @@ TurbKineticEnergyEquationSystem::register_open_bc(
   ScalarFieldType &tkeNp1 = tke_->field_of_state(stk::mesh::StateNP1);
   VectorFieldType &dkdxNone = dkdx_->field_of_state(stk::mesh::StateNone);
 
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   // register boundary data; tke_bc
   ScalarFieldType *theBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "open_tke_bc"));
@@ -446,13 +438,8 @@ TurbKineticEnergyEquationSystem::register_open_bc(
   std::map<AlgorithmType, Algorithm *>::iterator it
     = assembleNodalGradAlgDriver_->algMap_.find(algType);
   if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg = NULL;
-    if ( edgeNodalGradient_ && realm_.realmUsesEdges_ ) {
-      theAlg = new AssembleNodalGradEdgeBoundaryAlgorithm(realm_, part, &tkeNp1, &dkdxNone);
-    }
-    else {
-      theAlg = new AssembleNodalGradElemBoundaryAlgorithm(realm_, part, &tkeNp1, &dkdxNone, edgeNodalGradient_);
-    }
+    Algorithm *theAlg 
+      = new AssembleNodalGradBoundaryAlgorithm(realm_, part, &tkeNp1, &dkdxNone, edgeNodalGradient_);
     assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
   }
   else {
@@ -494,7 +481,7 @@ TurbKineticEnergyEquationSystem::register_wall_bc(
   ScalarFieldType &tkeNp1 = tke_->field_of_state(stk::mesh::StateNP1);
   VectorFieldType &dkdxNone = dkdx_->field_of_state(stk::mesh::StateNone);
 
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   // register boundary data; tke_bc
   ScalarFieldType *theBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "tke_bc"));
@@ -580,13 +567,8 @@ TurbKineticEnergyEquationSystem::register_wall_bc(
   std::map<AlgorithmType, Algorithm *>::iterator it
     = assembleNodalGradAlgDriver_->algMap_.find(algType);
   if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg = NULL;
-    if ( edgeNodalGradient_ && realm_.realmUsesEdges_ ) {
-      theAlg = new AssembleNodalGradEdgeBoundaryAlgorithm(realm_, part, &tkeNp1, &dkdxNone);
-    }
-    else {
-      theAlg = new AssembleNodalGradElemBoundaryAlgorithm(realm_, part, &tkeNp1, &dkdxNone, edgeNodalGradient_);
-    }
+    Algorithm *theAlg 
+      = new AssembleNodalGradBoundaryAlgorithm(realm_, part, &tkeNp1, &dkdxNone, edgeNodalGradient_);
     assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
   }
   else {
@@ -613,7 +595,7 @@ TurbKineticEnergyEquationSystem::register_contact_bc(
     // register halo_tke if using the element-based projected nodal gradient
     ScalarFieldType *haloTke = NULL;
     if ( !edgeNodalGradient_ ) {
-      stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+      stk::mesh::MetaData &meta_data = realm_.meta_data();
       haloTke = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "halo_tke"));
       stk::mesh::put_field(*haloTke, *part);
     }
@@ -675,13 +657,8 @@ TurbKineticEnergyEquationSystem::register_symmetry_bc(
   std::map<AlgorithmType, Algorithm *>::iterator it
     = assembleNodalGradAlgDriver_->algMap_.find(algType);
   if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg = NULL;
-    if ( edgeNodalGradient_ && realm_.realmUsesEdges_ ) {
-      theAlg = new AssembleNodalGradEdgeBoundaryAlgorithm(realm_, part, &tkeNp1, &dkdxNone);
-    }
-    else {
-      theAlg = new AssembleNodalGradElemBoundaryAlgorithm(realm_, part, &tkeNp1, &dkdxNone, edgeNodalGradient_);
-    }
+    Algorithm *theAlg 
+      = new AssembleNodalGradBoundaryAlgorithm(realm_, part, &tkeNp1, &dkdxNone, edgeNodalGradient_);
     assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
   }
   else {
@@ -816,7 +793,7 @@ TurbKineticEnergyEquationSystem::update_and_clip()
   const double clipValue = 1.0e-16;
   size_t numClip = 0;
 
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   // define some common selectors
   stk::mesh::Selector s_all_nodes
@@ -863,7 +840,7 @@ TurbKineticEnergyEquationSystem::predict_state()
 {
 
   // FIXME... move this to a generalized base class method
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   ScalarFieldType &tkeN = tke_->field_of_state(stk::mesh::StateN);
   ScalarFieldType &tkeNp1 = tke_->field_of_state(stk::mesh::StateNP1);

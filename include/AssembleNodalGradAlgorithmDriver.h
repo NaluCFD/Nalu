@@ -22,7 +22,7 @@ class AssembleNodalGradAlgorithmDriver : public AlgorithmDriver
 public:
 
   AssembleNodalGradAlgorithmDriver(
-    const Realm &realm,
+    Realm &realm,
     const std::string & scalarQName,
     const std::string & dqdxName);
   ~AssembleNodalGradAlgorithmDriver();

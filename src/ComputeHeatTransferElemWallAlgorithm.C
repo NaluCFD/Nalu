@@ -22,9 +22,6 @@
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/Part.hpp>
 
-// stk_io
-#include <stk_io/StkMeshIoBroker.hpp>
-
 // basic c++
 #include <math.h>
 
@@ -57,7 +54,7 @@ ComputeHeatTransferElemWallAlgorithm::ComputeHeatTransferElemWallAlgorithm(
     Pr_(realm.get_lam_prandtl("enthalpy"))
 {
   // save off fields
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
   temperature_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature");
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
@@ -78,8 +75,8 @@ void
 ComputeHeatTransferElemWallAlgorithm::execute()
 {
 
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const int nDim = meta_data.spatial_dimension();
 

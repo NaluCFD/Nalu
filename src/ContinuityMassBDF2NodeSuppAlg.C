@@ -16,8 +16,6 @@
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/BulkData.hpp>
 #include <stk_mesh/base/Field.hpp>
-// stk_io
-#include <stk_io/StkMeshIoBroker.hpp>
 
 namespace sierra{
 namespace nalu{
@@ -43,7 +41,7 @@ ContinuityMassBDF2NodeSuppAlg::ContinuityMassBDF2NodeSuppAlg(
     gamma3_(0.0)
 {
   // save off fields
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
   ScalarFieldType *density = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
   densityNm1_ = &(density->field_of_state(stk::mesh::StateNM1));
   densityN_ = &(density->field_of_state(stk::mesh::StateN));

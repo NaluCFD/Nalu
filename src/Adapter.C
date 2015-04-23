@@ -51,7 +51,7 @@ Adapter::Adapter(
     elementRefinePredicate_(NULL), selector_(NULL), adaptedMeshVerifier_(NULL)
 {
 
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
   stk::mesh::BulkData * bulk_data = 0;
   if (meta_data.is_commit())
     throw std::logic_error("Adapter called with already-committed meta data");
@@ -126,7 +126,7 @@ Adapter::~Adapter()
 void
 Adapter::do_uniform_refine()
 {
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
 
   if (NULL == perceptMesh_->get_bulk_data()) {
     perceptMesh_->set_bulk_data(&bulk_data);
@@ -172,8 +172,8 @@ Adapter::do_adapt(int what_to_do)
 
   stk::diag::TimeBlock tbTimerAdapt_(timerAdapt_);
 
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
 
   if (NULL == perceptMesh_->get_bulk_data()) {
     perceptMesh_->set_bulk_data(&bulk_data);
@@ -342,7 +342,7 @@ Adapter::setNaluGlobalId()
   // set integer field naluGlobalId_ (adapt doesn't prolongate integer fields,
   //   it really isn't a well-defined process, so the app code needs to do it)
 
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
   stk::mesh::BucketVector buckets = bulk_data.buckets(stk::topology::NODE_RANK);
   
   for ( std::vector<stk::mesh::Bucket*>::const_iterator ib = buckets.begin() ;

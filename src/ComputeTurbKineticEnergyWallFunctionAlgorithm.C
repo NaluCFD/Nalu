@@ -22,9 +22,6 @@
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/Part.hpp>
 
-// stk_io
-#include <stk_io/StkMeshIoBroker.hpp>
-
 // basic c++
 #include <math.h>
 
@@ -46,7 +43,7 @@ ComputeTurbKineticEnergyWallFunctionAlgorithm::ComputeTurbKineticEnergyWallFunct
     cMu_(realm.get_turb_model_constant(TM_cMu))
 {
   // save off fields
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
   turbKineticEnergy_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_ke");
   bcTurbKineticEnergy_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "tke_bc");
   bcAssembledTurbKineticEnergy_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "wall_model_tke_bc");
@@ -70,8 +67,8 @@ void
 ComputeTurbKineticEnergyWallFunctionAlgorithm::execute()
 {
 
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const int nDim = meta_data.spatial_dimension();
 
@@ -141,7 +138,7 @@ void
 ComputeTurbKineticEnergyWallFunctionAlgorithm::zero_nodal_fields()
 {
 
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   stk::mesh::Selector s_all_nodes
     = (meta_data.locally_owned_part() | meta_data.globally_shared_part())
@@ -167,8 +164,8 @@ void
 ComputeTurbKineticEnergyWallFunctionAlgorithm::normalize_nodal_fields()
 {
 
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   // deal with state
   ScalarFieldType &tkeNp1 = turbKineticEnergy_->field_of_state(stk::mesh::StateNP1);

@@ -22,9 +22,6 @@
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/Part.hpp>
 
-// stk_io
-#include <stk_io/StkMeshIoBroker.hpp>
-
 namespace sierra{
 namespace nalu{
 
@@ -42,7 +39,7 @@ LimiterErrorIndicatorElemAlgorithm::LimiterErrorIndicatorElemAlgorithm(
   : Algorithm(realm, part)
 {
    // extract fields; nodal
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
   velocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   dudx_ = meta_data.get_field<GenericFieldType>(stk::topology::NODE_RANK, "dudx");
@@ -55,7 +52,7 @@ LimiterErrorIndicatorElemAlgorithm::LimiterErrorIndicatorElemAlgorithm(
 void
 LimiterErrorIndicatorElemAlgorithm::execute()
 {
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const int nDim = meta_data.spatial_dimension();
 

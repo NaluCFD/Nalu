@@ -21,7 +21,7 @@ class ComputeGeometryAlgorithmDriver : public AlgorithmDriver
 public:
 
   ComputeGeometryAlgorithmDriver(
-    const Realm &realm);
+    Realm &realm);
   virtual ~ComputeGeometryAlgorithmDriver() {}
 
   void pre_work();

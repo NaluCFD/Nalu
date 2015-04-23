@@ -26,7 +26,6 @@
 #include <stk_mesh/base/Selector.hpp>
 #include <stk_mesh/base/GetBuckets.hpp>
 #include <stk_mesh/base/Part.hpp>
-#include <stk_io/StkMeshIoBroker.hpp>
 #include <stk_topology/topology.hpp>
 #include <stk_mesh/base/FieldParallel.hpp>
 
@@ -56,7 +55,7 @@ namespace nalu{
 #define DEBUG_EPETRA 0
 
 #define DEBUG_PRINT 0
-#define RANK (realm_.fixture_->bulk_data().parallel_rank())
+#define RANK (realm_.bulk_data().parallel_rank())
 
 #define PRINTMSG(a) do { if(DEBUG_PRINT)  std::cout << "tmp srk P[" << RANK << "] " <<  a << std::endl; } while (0)
 #define PRINTLN(a) do { if(DEBUG_PRINT)  std::cout << "tmp srk P[" << RANK << "] " << #a << " = " << a << std::endl; } while (0)
@@ -126,8 +125,8 @@ EpetraLinearSystem::beginLinearSystemConstruction()
   if(inConstruction_) return;
   inConstruction_ = true;
   ThrowRequire(graph_ == NULL);
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const stk::mesh::Selector s_owned = meta_data.locally_owned_part()
       & !stk::mesh::selectUnion(realm_.get_slave_part_vector());
@@ -189,7 +188,7 @@ void
 EpetraLinearSystem::buildNodeGraph(const stk::mesh::PartVector & parts)
 {
   beginLinearSystemConstruction();
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const stk::mesh::Selector s_owned = meta_data.locally_owned_part()
     & stk::mesh::selectUnion(parts)
@@ -220,7 +219,7 @@ void
 EpetraLinearSystem::buildEdgeToNodeGraph(const stk::mesh::PartVector & parts)
 {
   beginLinearSystemConstruction();
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const stk::mesh::Selector s_owned = meta_data.locally_owned_part()
         & stk::mesh::selectUnion(parts);
@@ -256,7 +255,7 @@ void
 EpetraLinearSystem::buildFaceToNodeGraph(const stk::mesh::PartVector & parts)
 {
   beginLinearSystemConstruction();
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const stk::mesh::Selector s_owned = meta_data.locally_owned_part()
         & stk::mesh::selectUnion(parts);
@@ -293,7 +292,7 @@ void
 EpetraLinearSystem::buildElemToNodeGraph(const stk::mesh::PartVector & parts)
 {
   beginLinearSystemConstruction();
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const stk::mesh::Selector s_owned = meta_data.locally_owned_part()
         & stk::mesh::selectUnion(parts);
@@ -330,7 +329,7 @@ void
 EpetraLinearSystem::buildReducedElemToNodeGraph(const stk::mesh::PartVector & parts)
 {
   beginLinearSystemConstruction();
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const stk::mesh::Selector s_owned = meta_data.locally_owned_part()
         & stk::mesh::selectUnion(parts);
@@ -378,8 +377,8 @@ void
 EpetraLinearSystem::buildFaceElemToNodeGraph(const stk::mesh::PartVector & parts)
 {
   beginLinearSystemConstruction();
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const stk::mesh::Selector s_owned = meta_data.locally_owned_part()
         & stk::mesh::selectUnion(parts);
@@ -427,7 +426,7 @@ EpetraLinearSystem::buildEdgeHaloNodeGraph(
 
   beginLinearSystemConstruction();
 
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
 
   int err_code(0);
 
@@ -530,8 +529,8 @@ EpetraLinearSystem::finalizeLinearSystem()
   zeroSystem();
   inConstruction_ = false;
 
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   EpetraLinearSolver *linearSolver = reinterpret_cast<EpetraLinearSolver *>(linearSolver_);
 
@@ -635,7 +634,7 @@ EpetraLinearSystem::sumInto(
   const char *trace_tag
   )
 {
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
   const unsigned p_rank = bulk_data.parallel_rank();
   (void)p_rank;
 
@@ -674,7 +673,7 @@ EpetraLinearSystem::applyDirichletBCs(
 {
   double adbc_time = -stk::cpu_time();
 
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
   const unsigned p_size = bulk_data.parallel_size();
   const unsigned p_rank = bulk_data.parallel_rank();
   (void)p_rank;
@@ -769,7 +768,7 @@ EpetraLinearSystem::loadComplete()
 int
 EpetraLinearSystem::solve(stk::mesh::FieldBase * linearSolutionField)
 {
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
   const unsigned p_size = bulk_data.parallel_size();
   const unsigned p_rank = bulk_data.parallel_rank();
   (void)p_rank;
@@ -878,7 +877,7 @@ void
 EpetraLinearSystem::writeToFile(const char * base_filename, bool useOwned)
 {
   const int currentCount = writeCounter_;
-  stk::mesh::BulkData & bulkData = realm_.fixture_->bulk_data();
+  stk::mesh::BulkData & bulkData = realm_.bulk_data();
 
   const unsigned p_rank = bulkData.parallel_rank();
   const unsigned p_size = bulkData.parallel_size();
@@ -959,7 +958,7 @@ void
 EpetraLinearSystem::writeSolutionToFile(const char * base_filename, bool useOwned)
 {
   const int currentCount = writeCounter_;
-  stk::mesh::BulkData & bulkData = realm_.fixture_->bulk_data();
+  stk::mesh::BulkData & bulkData = realm_.bulk_data();
 
   const unsigned p_rank = bulkData.parallel_rank();
   const unsigned p_size = bulkData.parallel_size();

@@ -24,9 +24,6 @@
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/Part.hpp>
 
-// stk_io
-#include <stk_io/StkMeshIoBroker.hpp>
-
 // basic c++
 #include <math.h>
 
@@ -54,7 +51,7 @@ AssembleRadTransWallSolverAlgorithm::AssembleRadTransWallSolverAlgorithm(
     exposedAreaVec_(NULL)
 {
   // save off fields
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
   bcIntensity_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "intensity_bc");
   exposedAreaVec_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");
 }
@@ -75,8 +72,8 @@ void
 AssembleRadTransWallSolverAlgorithm::execute()
 {
 
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const int nDim = meta_data.spatial_dimension();
 

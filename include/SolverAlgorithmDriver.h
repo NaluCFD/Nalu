@@ -25,7 +25,7 @@ class SolverAlgorithmDriver : public AlgorithmDriver
 public:
 
   SolverAlgorithmDriver(
-    const Realm &realm);
+    Realm &realm);
   virtual ~SolverAlgorithmDriver();
 
   virtual void initialize_connectivity();

@@ -28,7 +28,7 @@ class AssembleNonConformalAlgorithmDriver : public AlgorithmDriver
 public:
 
   AssembleNonConformalAlgorithmDriver(
-    const Realm &realm,
+    Realm &realm,
     stk::mesh::FieldBase *ncNormalFlux,
     stk::mesh::FieldBase *ncPenalty,
     ScalarFieldType *ncArea,

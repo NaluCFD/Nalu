@@ -17,8 +17,6 @@
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/BulkData.hpp>
 #include <stk_mesh/base/Field.hpp>
-// stk_io
-#include <stk_io/StkMeshIoBroker.hpp>
 
 namespace sierra{
 namespace nalu{
@@ -44,7 +42,7 @@ MomentumMassBackwardEulerNodeSuppAlg::MomentumMassBackwardEulerNodeSuppAlg(
     nDim_(1)
 {
   // save off fields
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
   VectorFieldType *velocity = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
   velocityN_ = &(velocity->field_of_state(stk::mesh::StateN));
   velocityNp1_ = &(velocity->field_of_state(stk::mesh::StateNP1));

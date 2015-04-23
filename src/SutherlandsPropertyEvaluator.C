@@ -14,9 +14,6 @@
 #include <stk_mesh/base/BulkData.hpp>
 #include <stk_mesh/base/Field.hpp>
 
-// stk_io
-#include <stk_io/StkMeshIoBroker.hpp>
-
 #include <cmath>
 #include <stdexcept>
 
@@ -124,10 +121,8 @@ SutherlandsPropertyEvaluator::compute_viscosity(
 //--------------------------------------------------------------------------
 SutherlandsYkPropertyEvaluator::SutherlandsYkPropertyEvaluator(
     const std::map<std::string, std::vector<double> > &polynomialCoeffsMap,
-    stk::mesh::MetaData &metaData,
-    stk::io::StkMeshIoBroker *fixture)
+    stk::mesh::MetaData &metaData)
   : PropertyEvaluator(),
-    fixture_(fixture),
     massFraction_(NULL),
     ykVecSize_(0)
 {
@@ -209,9 +204,8 @@ SutherlandsYkPropertyEvaluator::compute_viscosity(
 SutherlandsYkTrefPropertyEvaluator::SutherlandsYkTrefPropertyEvaluator(
     const std::map<std::string, std::vector<double> > &polynomialCoeffsMap,
     stk::mesh::MetaData &metaData,
-    stk::io::StkMeshIoBroker *fixture,
     const double tRef)
-  : SutherlandsYkPropertyEvaluator(polynomialCoeffsMap, metaData, fixture),
+  : SutherlandsYkPropertyEvaluator(polynomialCoeffsMap, metaData),
     tRef_(tRef)
 {
   // base class handles everything that is required

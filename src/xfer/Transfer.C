@@ -30,9 +30,6 @@
 #include <xfer/LinInterp.h>
 #include <stk_transfer/GeometricTransfer.hpp>
 
-// stk_io
-#include <stk_io/StkMeshIoBroker.hpp>
-
 // stk_search
 #include <stk_search/SearchMethod.hpp>
 
@@ -223,13 +220,9 @@ Transfer::breadboard()
   // advertise this transfer to realm; for calling control
   fromRealm_->augment_transfer_vector(this);
 
-  // now fixture
-  stk::io::StkMeshIoBroker *fromFixture = fromRealm_->fixture_;
-  stk::io::StkMeshIoBroker *toFixture = toRealm_->fixture_;
-
   // meta data; bulk data to early to extract?
-  stk::mesh::MetaData &fromMetaData = fromFixture->meta_data();
-  stk::mesh::MetaData &toMetaData = toFixture->meta_data();
+  stk::mesh::MetaData &fromMetaData = fromRealm_->meta_data();
+  stk::mesh::MetaData &toMetaData = toRealm_->meta_data();
 
   // mesh part pairs
   fromName = meshPartPairName_.first;
@@ -271,20 +264,20 @@ Transfer::breadboard()
 
 void Transfer::allocate_stk_transfer() {
 
-  const stk::mesh::MetaData    &fromMetaData = fromRealm_->fixture_->meta_data();
-        stk::mesh::BulkData    &fromBulkData = fromRealm_->fixture_->bulk_data();
+  const stk::mesh::MetaData    &fromMetaData = fromRealm_->meta_data();
+        stk::mesh::BulkData    &fromBulkData = fromRealm_->bulk_data();
   const std::string            &fromcoordName   = fromRealm_->get_coordinates_name();
   const std::vector<std::pair<std::string, std::string> > &FromVar = transferVariablesPairName_;
-  const stk::ParallelMachine    &fromComm    = fromRealm_->fixture_->bulk_data().parallel();
+  const stk::ParallelMachine    &fromComm    = fromRealm_->bulk_data().parallel();
 
   boost::shared_ptr<FromMesh >
     from_mesh (new FromMesh(fromMetaData, fromBulkData, *fromRealm_, fromcoordName, FromVar, meshPartPair_.first, fromComm));
 
-  stk::mesh::MetaData    &toMetaData = toRealm_->fixture_->meta_data();
-  stk::mesh::BulkData    &toBulkData = toRealm_->fixture_->bulk_data();
+  stk::mesh::MetaData    &toMetaData = toRealm_->meta_data();
+  stk::mesh::BulkData    &toBulkData = toRealm_->bulk_data();
   const std::string             &tocoordName   = toRealm_->get_coordinates_name();
   const std::vector<std::pair<std::string, std::string> > &toVar = transferVariablesPairName_;
-  const stk::ParallelMachine    &toComm    = toRealm_->fixture_->bulk_data().parallel();
+  const stk::ParallelMachine    &toComm    = toRealm_->bulk_data().parallel();
 
   boost::shared_ptr<ToMesh >
     to_mesh (new ToMesh(toMetaData, toBulkData, tocoordName, toVar, meshPartPair_.second, toComm));

@@ -25,9 +25,6 @@
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/Part.hpp>
 
-// stk_io
-#include <stk_io/StkMeshIoBroker.hpp>
-
 namespace sierra{
 namespace nalu{
 
@@ -48,7 +45,7 @@ AssembleMeshDisplacementElemSolverAlgorithm::AssembleMeshDisplacementElemSolverA
     deformWrtModelCoords_(deformWrtModelCoords)
 {
   // save off data
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
   meshDisplacement_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_displacement");
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   modelCoordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates");
@@ -76,7 +73,7 @@ void
 AssembleMeshDisplacementElemSolverAlgorithm::execute()
 {
 
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const int nDim = meta_data.spatial_dimension();
 

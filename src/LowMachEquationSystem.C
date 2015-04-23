@@ -29,12 +29,10 @@
 #include <AssembleNodalGradElemAlgorithm.h>
 #include <AssembleNodalGradUEdgeAlgorithm.h>
 #include <AssembleNodalGradUElemAlgorithm.h>
-#include <AssembleNodalGradEdgeBoundaryAlgorithm.h>
-#include <AssembleNodalGradElemBoundaryAlgorithm.h>
+#include <AssembleNodalGradBoundaryAlgorithm.h>
 #include <AssembleNodalGradEdgeContactAlgorithm.h>
 #include <AssembleNodalGradElemContactAlgorithm.h>
-#include <AssembleNodalGradUEdgeBoundaryAlgorithm.h>
-#include <AssembleNodalGradUElemBoundaryAlgorithm.h>
+#include <AssembleNodalGradUBoundaryAlgorithm.h>
 #include <AssembleNodalGradUEdgeContactAlgorithm.h>
 #include <AssembleNodalGradUElemContactAlgorithm.h>
 #include <AssembleNodeSolverAlgorithm.h>
@@ -112,7 +110,6 @@
 #include <stk_mesh/base/Comm.hpp>
 
 // stk_io
-#include <stk_io/StkMeshIoBroker.hpp>
 #include <stk_io/IossBridge.hpp>
 
 // stk_topo
@@ -196,7 +193,7 @@ LowMachEquationSystem::register_nodal_fields(
   stk::mesh::Part *part)
 {
 
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   // add properties; denisty needs to be a restart field
   const int numStates = realm_.number_of_states();
@@ -239,7 +236,7 @@ LowMachEquationSystem::register_element_fields(
   const stk::topology &theTopo)
 {
 
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   const int numScvIp = theTopo.num_nodes();
   scVolume_ = &(meta_data.declare_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "sc_volume"));
@@ -272,7 +269,7 @@ LowMachEquationSystem::register_edge_fields(
 {
 
   if ( realm_.realmUsesEdges_ ) {
-    stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+    stk::mesh::MetaData &meta_data = realm_.meta_data();
     const int nDim = meta_data.spatial_dimension();
     edgeAreaVec_ = &(meta_data.declare_field<VectorFieldType>(stk::topology::EDGE_RANK, "edge_area_vector"));
     stk::mesh::put_field(*edgeAreaVec_, *part, nDim);
@@ -327,7 +324,7 @@ LowMachEquationSystem::register_open_bc(
 {
 
   // register boundary data
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   const int nDim = meta_data.spatial_dimension();
 
@@ -392,7 +389,7 @@ LowMachEquationSystem::register_surface_pp_algorithm(
   const std::string thePhysics = theData.physics_;
 
   // register nodal fields in common
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
   VectorFieldType *pressureForce =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "pressure_force"));
   stk::mesh::put_field(*pressureForce, stk::mesh::selectUnion(partVector), meta_data.spatial_dimension());
   ScalarFieldType *tauWall =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "tau_wall"));
@@ -440,7 +437,7 @@ LowMachEquationSystem::register_initial_condition_fcn(
   const std::map<std::string, std::vector<double> > &theParams)
 {
   // extract nDim
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
   const int nDim = meta_data.spatial_dimension();
 
   // iterate map and check for name
@@ -530,8 +527,8 @@ LowMachEquationSystem::solve_and_update()
     // update all of velocity
     timeA = stk::cpu_time();
     field_axpby(
-      realm_.fixture_->meta_data(),
-      realm_.fixture_->bulk_data(),
+      realm_.meta_data(),
+      realm_.bulk_data(),
       1.0, *momentumEqSys_->uTmp_,
       1.0, momentumEqSys_->velocity_->field_of_state(stk::mesh::StateNP1));
     timeB = stk::cpu_time();
@@ -543,8 +540,8 @@ LowMachEquationSystem::solve_and_update()
     // update pressure
     timeA = stk::cpu_time();
     field_axpby(
-      realm_.fixture_->meta_data(),
-      realm_.fixture_->bulk_data(),
+      realm_.meta_data(),
+      realm_.bulk_data(),
       1.0, *continuityEqSys_->pTmp_,
       1.0, *continuityEqSys_->pressure_);
     timeB = stk::cpu_time();
@@ -606,8 +603,8 @@ LowMachEquationSystem::post_adapt_work()
       
       // update pressure
       field_axpby(
-          realm_.fixture_->meta_data(),
-          realm_.fixture_->bulk_data(),
+          realm_.meta_data(),
+          realm_.bulk_data(),
           1.0, *continuityEqSys_->pTmp_,
           1.0, *continuityEqSys_->pressure_);
     }
@@ -636,7 +633,7 @@ void
 LowMachEquationSystem::project_nodal_velocity()
 {
 
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   // time step
   const double dt = realm_.get_time_step();
@@ -808,7 +805,7 @@ MomentumEquationSystem::register_nodal_fields(
   stk::mesh::Part *part)
 {
 
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   const int nDim = meta_data.spatial_dimension();
   const int numStates = realm_.number_of_states();
@@ -1058,7 +1055,7 @@ MomentumEquationSystem::register_inflow_bc(
   VectorFieldType &velocityNp1 = velocity_->field_of_state(stk::mesh::StateNP1);
   GenericFieldType &dudxNone = dudx_->field_of_state(stk::mesh::StateNone);
 
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
   const unsigned nDim = meta_data.spatial_dimension();
 
   // register boundary data; velocity_bc
@@ -1121,13 +1118,8 @@ MomentumEquationSystem::register_inflow_bc(
   std::map<AlgorithmType, Algorithm *>::iterator it
     = assembleNodalGradAlgDriver_->algMap_.find(algType);
   if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg = NULL;
-    if ( edgeNodalGradient_ && realm_.realmUsesEdges_ ) {
-      theAlg = new AssembleNodalGradUEdgeBoundaryAlgorithm(realm_, part, &velocityNp1, &dudxNone);
-    }
-    else {
-      theAlg = new AssembleNodalGradUElemBoundaryAlgorithm(realm_, part, &velocityNp1, &dudxNone, edgeNodalGradient_);
-    }
+    Algorithm *theAlg 
+      = new AssembleNodalGradUBoundaryAlgorithm(realm_, part, &velocityNp1, &dudxNone, edgeNodalGradient_);
     assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
   }
   else {
@@ -1162,7 +1154,7 @@ MomentumEquationSystem::register_open_bc(
   const AlgorithmType algType = OPEN;
 
   // register boundary data; open_velocity_bc
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   const int nDim = meta_data.spatial_dimension();
 
@@ -1195,13 +1187,8 @@ MomentumEquationSystem::register_open_bc(
   std::map<AlgorithmType, Algorithm *>::iterator it
     = assembleNodalGradAlgDriver_->algMap_.find(algType);
   if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg = NULL;
-    if ( edgeNodalGradient_ && realm_.realmUsesEdges_ ) {
-      theAlg = new AssembleNodalGradUEdgeBoundaryAlgorithm(realm_, part, &velocityNp1, &dudxNone);
-    }
-    else {
-      theAlg = new AssembleNodalGradUElemBoundaryAlgorithm(realm_, part, &velocityNp1, &dudxNone, edgeNodalGradient_);
-    }
+    Algorithm *theAlg 
+      = new AssembleNodalGradUBoundaryAlgorithm(realm_, part, &velocityNp1, &dudxNone, edgeNodalGradient_);
     assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
   }
   else {
@@ -1246,7 +1233,7 @@ MomentumEquationSystem::register_wall_bc(
   VectorFieldType &velocityNp1 = velocity_->field_of_state(stk::mesh::StateNP1);
   GenericFieldType &dudxNone = dudx_->field_of_state(stk::mesh::StateNone);
 
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
   const unsigned nDim = meta_data.spatial_dimension();
 
   // find out if this is a wall function approach
@@ -1322,13 +1309,8 @@ MomentumEquationSystem::register_wall_bc(
   std::map<AlgorithmType, Algorithm *>::iterator it
     = assembleNodalGradAlgDriver_->algMap_.find(algType);
   if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg = NULL;
-    if ( edgeNodalGradient_ && realm_.realmUsesEdges_ ) {
-      theAlg = new AssembleNodalGradUEdgeBoundaryAlgorithm(realm_, part, &velocityNp1, &dudxNone);
-    }
-    else {
-      theAlg = new AssembleNodalGradUElemBoundaryAlgorithm(realm_, part, &velocityNp1, &dudxNone, edgeNodalGradient_);
-    }
+    Algorithm *theAlg 
+      = new AssembleNodalGradUBoundaryAlgorithm(realm_, part, &velocityNp1, &dudxNone, edgeNodalGradient_);
     assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
   }
   else {
@@ -1423,7 +1405,7 @@ MomentumEquationSystem::register_contact_bc(
     // register halo_ui if using the element-based projected nodal gradient
     VectorFieldType *haloUi = NULL;
     if ( !edgeNodalGradient_ ) {
-      stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+      stk::mesh::MetaData &meta_data = realm_.meta_data();
       haloUi = &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "halo_ui"));
       stk::mesh::put_field(*haloUi, *part);
     }
@@ -1483,13 +1465,8 @@ MomentumEquationSystem::register_symmetry_bc(
   std::map<AlgorithmType, Algorithm *>::iterator it
     = assembleNodalGradAlgDriver_->algMap_.find(algType);
   if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg = NULL;
-    if ( edgeNodalGradient_ && realm_.realmUsesEdges_ ) {
-      theAlg = new AssembleNodalGradUEdgeBoundaryAlgorithm(realm_, part, &velocityNp1, &dudxNone);
-    }
-    else {
-      theAlg = new AssembleNodalGradUElemBoundaryAlgorithm(realm_, part, &velocityNp1, &dudxNone, edgeNodalGradient_);
-    }
+    Algorithm *theAlg 
+      = new AssembleNodalGradUBoundaryAlgorithm(realm_, part, &velocityNp1, &dudxNone, edgeNodalGradient_);
     assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
   }
   else {
@@ -1562,7 +1539,7 @@ MomentumEquationSystem::reinitialize_linear_system()
 void
 MomentumEquationSystem::predict_state()
 {
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const int nDim = meta_data.spatial_dimension();
 
@@ -1669,7 +1646,7 @@ ContinuityEquationSystem::register_nodal_fields(
   stk::mesh::Part *part)
 {
 
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   const int nDim = meta_data.spatial_dimension();
 
@@ -1708,7 +1685,7 @@ void
 ContinuityEquationSystem::register_edge_fields(
   stk::mesh::Part *part)
 {
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
   massFlowRate_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::EDGE_RANK, "mass_flow_rate"));
   stk::mesh::put_field(*massFlowRate_, *part);
 }
@@ -1866,7 +1843,7 @@ ContinuityEquationSystem::register_inflow_bc(
   ScalarFieldType &pressureNone = pressure_->field_of_state(stk::mesh::StateNone);
   VectorFieldType &dpdxNone = dpdx_->field_of_state(stk::mesh::StateNone);
 
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
   const unsigned nDim = meta_data.spatial_dimension();
 
   // register boundary data; velocity_bc
@@ -1920,13 +1897,8 @@ ContinuityEquationSystem::register_inflow_bc(
   std::map<AlgorithmType, Algorithm *>::iterator it
     = assembleNodalGradAlgDriver_->algMap_.find(algType);
   if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg = NULL;
-    if ( !elementContinuityEqs_ && edgeNodalGradient_ ) {
-      theAlg = new AssembleNodalGradEdgeBoundaryAlgorithm(realm_, part, &pressureNone, &dpdxNone);
-    }
-    else {
-      theAlg = new AssembleNodalGradElemBoundaryAlgorithm(realm_, part, &pressureNone, &dpdxNone, edgeNodalGradient_);
-    }
+    Algorithm *theAlg 
+      = new AssembleNodalGradBoundaryAlgorithm(realm_, part, &pressureNone, &dpdxNone, edgeNodalGradient_);
     assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
   }
   else {
@@ -1961,7 +1933,7 @@ ContinuityEquationSystem::register_open_bc(
   const AlgorithmType algType = OPEN;
 
   // register boundary data
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
   ScalarFieldType *pressureBC
     = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure_bc"));
   stk::mesh::put_field(*pressureBC, *part );
@@ -1972,13 +1944,8 @@ ContinuityEquationSystem::register_open_bc(
   std::map<AlgorithmType, Algorithm *>::iterator it
     = assembleNodalGradAlgDriver_->algMap_.find(algType);
   if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg = NULL;
-    if ( !elementContinuityEqs_ && edgeNodalGradient_ ) {
-      theAlg = new AssembleNodalGradEdgeBoundaryAlgorithm(realm_, part, pressureBC, &dpdxNone);
-    }
-    else {
-      theAlg = new AssembleNodalGradElemBoundaryAlgorithm(realm_, part, pressureBC, &dpdxNone, edgeNodalGradient_);
-    }
+    Algorithm *theAlg 
+      = new AssembleNodalGradBoundaryAlgorithm(realm_, part, pressureBC, &dpdxNone, edgeNodalGradient_);
     assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
   }
   else {
@@ -2059,13 +2026,8 @@ ContinuityEquationSystem::register_wall_bc(
   std::map<AlgorithmType, Algorithm *>::iterator it
     = assembleNodalGradAlgDriver_->algMap_.find(algType);
   if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg = NULL;
-    if ( !elementContinuityEqs_ && edgeNodalGradient_ ) {
-      theAlg = new AssembleNodalGradEdgeBoundaryAlgorithm(realm_, part, &pressureNone, &dpdxNone);
-    }
-    else {
-      theAlg = new AssembleNodalGradElemBoundaryAlgorithm(realm_, part, &pressureNone, &dpdxNone, edgeNodalGradient_);
-    }
+    Algorithm *theAlg 
+      = new AssembleNodalGradBoundaryAlgorithm(realm_, part, &pressureNone, &dpdxNone, edgeNodalGradient_);
     assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
   }
   else {
@@ -2091,7 +2053,7 @@ ContinuityEquationSystem::register_contact_bc(
     // register halo_p if using the element-based projected nodal gradient
     ScalarFieldType *haloP = NULL;
     if ( !edgeNodalGradient_ || elementContinuityEqs_) {
-      stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+      stk::mesh::MetaData &meta_data = realm_.meta_data();
       haloP = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "halo_p"));
       stk::mesh::put_field(*haloP, *part);
     }
@@ -2161,13 +2123,8 @@ ContinuityEquationSystem::register_symmetry_bc(
   // non-solver; contribution to Gjp; allow for element-based shifted
   std::map<AlgorithmType, Algorithm *>::iterator it = assembleNodalGradAlgDriver_->algMap_.find(algType);
   if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg = NULL;
-    if ( !elementContinuityEqs_ && edgeNodalGradient_ ) {
-      theAlg = new AssembleNodalGradEdgeBoundaryAlgorithm(realm_, part, &pressureNone, &dpdxNone);
-    }
-    else {
-      theAlg = new AssembleNodalGradElemBoundaryAlgorithm(realm_, part, &pressureNone, &dpdxNone, edgeNodalGradient_);
-    }
+    Algorithm *theAlg 
+      = new AssembleNodalGradBoundaryAlgorithm(realm_, part, &pressureNone, &dpdxNone, edgeNodalGradient_);
     assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
   }
   else {

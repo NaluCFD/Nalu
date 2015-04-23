@@ -22,9 +22,6 @@
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/Part.hpp>
 
-// stk_io
-#include <stk_io/StkMeshIoBroker.hpp>
-
 namespace sierra{
 namespace nalu{
 
@@ -160,7 +157,7 @@ AssembleNodalGradElemAlgorithm::AssembleNodalGradElemAlgorithm(
     useShifted_(useShifted)
 {
   // extract fields
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   dualNodalVolume_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
@@ -172,7 +169,7 @@ AssembleNodalGradElemAlgorithm::AssembleNodalGradElemAlgorithm(
 void
 AssembleNodalGradElemAlgorithm::execute()
 {
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const int nDim = meta_data.spatial_dimension();
   std::vector<double> ws_shape_function;

@@ -18,9 +18,6 @@
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/BulkData.hpp>
 
-// stk_io
-#include <stk_io/StkMeshIoBroker.hpp>
-
 namespace sierra{
 namespace nalu{
 
@@ -42,10 +39,10 @@ TurbKineticEnergyKsgsNodeSourceSuppAlg::TurbKineticEnergyKsgsNodeSourceSuppAlg(
     dualNodalVolume_(NULL),
     cEps_(realm.get_turb_model_constant(TM_cEps)),
     tkeProdLimitRatio_(realm.get_turb_model_constant(TM_tkeProdLimitRatio)),
-    nDim_(realm_.fixture_->meta_data().spatial_dimension())
+    nDim_(realm_.meta_data().spatial_dimension())
 {
   // save off fields
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
   ScalarFieldType *tke = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_ke");
   tkeNp1_ = &(tke->field_of_state(stk::mesh::StateNP1));
   ScalarFieldType *density = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");

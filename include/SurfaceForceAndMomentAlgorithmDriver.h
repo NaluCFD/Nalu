@@ -23,7 +23,7 @@ class SurfaceForceAndMomentAlgorithmDriver : public AlgorithmDriver
 public:
 
   SurfaceForceAndMomentAlgorithmDriver(
-    const Realm &realm);
+    Realm &realm);
   ~SurfaceForceAndMomentAlgorithmDriver();
 
   std::vector<Algorithm *> algVec_;

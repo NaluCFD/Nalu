@@ -17,8 +17,6 @@
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/BulkData.hpp>
 #include <stk_mesh/base/Field.hpp>
-// stk_io
-#include <stk_io/StkMeshIoBroker.hpp>
 
 namespace sierra{
 namespace nalu{
@@ -44,12 +42,12 @@ TurbKineticEnergySSTDESNodeSourceSuppAlg::TurbKineticEnergySSTDESNodeSourceSuppA
     maxLengthScale_(NULL),
     fOneBlend_(NULL),
     tkeProdLimitRatio_(realm.get_turb_model_constant(TM_tkeProdLimitRatio)),
-    nDim_(realm.fixture_->meta_data().spatial_dimension()),
+    nDim_(realm.meta_data().spatial_dimension()),
     cDESke_(realm.get_turb_model_constant(TM_cDESke)),
     cDESkw_(realm.get_turb_model_constant(TM_cDESkw))
 {
   // save off fields
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
   ScalarFieldType *tke = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_ke");
   tkeNp1_ = &(tke->field_of_state(stk::mesh::StateNP1));
   ScalarFieldType *sdr = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "specific_dissipation_rate");

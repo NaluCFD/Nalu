@@ -22,9 +22,6 @@
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/Part.hpp>
 
-// stk_io
-#include <stk_io/StkMeshIoBroker.hpp>
-
 // stk_util
 #include <stk_util/parallel/ParallelReduce.hpp>
 #include <stk_util/environment/CPUTime.hpp>
@@ -147,8 +144,8 @@ NonConformalInfo::initialize()
 void
 NonConformalInfo::construct_dgInfo_state()
 {
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
 
   const int nDim = meta_data.spatial_dimension();
 
@@ -299,7 +296,7 @@ void
 NonConformalInfo::determine_elems_to_ghost()
 {
   
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
 
   // perform the coarse search
   stk::search::coarse_search(boundingPointVec_, boundingFaceElementBoxVec_, searchMethod_, NaluEnv::self().parallel_comm(), searchKeyPair_);
@@ -347,8 +344,8 @@ void
 NonConformalInfo::complete_search()
 {
 
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
   const int nDim = meta_data.spatial_dimension();
 
   // fields
@@ -490,8 +487,8 @@ void
 NonConformalInfo::find_possible_face_elements()
 {
 
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
 
   const int nDim = meta_data.spatial_dimension();
 
@@ -570,8 +567,8 @@ void
 NonConformalInfo::provide_diagnosis()
 {
 
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
   const int nDim = meta_data.spatial_dimension();
 
   VectorFieldType *coordinates = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());

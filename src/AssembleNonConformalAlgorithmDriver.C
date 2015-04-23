@@ -20,7 +20,6 @@
 #include <stk_mesh/base/GetEntities.hpp>
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/Part.hpp>
-#include <stk_io/StkMeshIoBroker.hpp>
 
 namespace sierra{
 namespace nalu{
@@ -36,7 +35,7 @@ class Realm;
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 AssembleNonConformalAlgorithmDriver::AssembleNonConformalAlgorithmDriver(
-  const Realm &realm,
+  Realm &realm,
   stk::mesh::FieldBase *ncNormalFlux,
   stk::mesh::FieldBase *ncPenalty,
   ScalarFieldType *ncArea,
@@ -65,8 +64,8 @@ void
 AssembleNonConformalAlgorithmDriver::pre_work()
 {
   // need to zero out the fields
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   // define some common selectors; select all nodes (locally and shared)
   stk::mesh::Selector s_all_nodes
@@ -100,8 +99,8 @@ void
 AssembleNonConformalAlgorithmDriver::post_work()
 {
   // assemble and normalize
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   std::vector<stk::mesh::FieldBase*> fields;
   fields.push_back(ncPenalty_);

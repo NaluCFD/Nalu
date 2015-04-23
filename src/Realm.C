@@ -135,7 +135,9 @@ Realm::Realm(Realms& realms)
     isTurbulent_(false),
     needsEnthalpy_(false),
     l2Scaling_(1.0),
-    fixture_(NULL),
+    ioBroker_(NULL),
+    metaData_(NULL),
+    bulkData_(NULL),
     resultsFileIndex_(99),
     restartFileIndex_(99),
     computeGeometryAlgDriver_(0),
@@ -186,7 +188,8 @@ Realm::Realm(Realms& realms)
     uniformFlow_(true),
     provideEntityCount_(false),
     HDF5ptr_(NULL),
-    autoDecompType_("None")
+    autoDecompType_("None"),
+    activateAura_(false)
 {
   // nothing to do
 }
@@ -197,7 +200,9 @@ Realm::Realm(Realms& realms)
 Realm::~Realm()
 {
 
-  delete fixture_;
+  delete bulkData_;
+  delete metaData_;
+  delete ioBroker_;
 
   delete computeGeometryAlgDriver_;
   if ( NULL != extrusionMeshDistanceAlgDriver_ )
@@ -317,7 +322,7 @@ Realm::initialize()
 
   // Populate_mesh fills in the entities (nodes/elements/etc) and
   // connectivities, but no field-data. Field-data is not allocated yet.
-  fixture_->populate_mesh();
+  ioBroker_->populate_mesh();
 
   // If we want to create all internal edges, we want to do it before
   // field-data is allocated because that allows better performance in
@@ -332,7 +337,7 @@ Realm::initialize()
   // Now the mesh is fully populated, so we're ready to populate
   // field-data including coordinates, and attributes and/or distribution factors
   // if those exist on the input mesh file.
-  fixture_->populate_field_data();
+  ioBroker_->populate_field_data();
 
   // manage NaluGlobalId for linear system
   set_global_id();
@@ -415,6 +420,11 @@ Realm::load(const YAML::Node & node)
   node["name"] >> name_;
   node["mesh"] >> inputDBName_;
 
+  // provide a high level banner
+  NaluEnv::self().naluOutputP0() << std::endl;
+  NaluEnv::self().naluOutputP0() << "Realm Options Review: " << name_ << std::endl;
+  NaluEnv::self().naluOutputP0() << "===========================" << std::endl;
+
   get_if_present(node, "estimate_memory_only", estimateMemoryOnly_, false);
   get_if_present(node, "available_memory_per_core_GB", availableMemoryPerCoreGB_, 0.0);
 
@@ -429,7 +439,7 @@ Realm::load(const YAML::Node & node)
 
   // let everyone know about core algorithm
   if ( realmUsesEdges_ ) {
-     NaluEnv::self().naluOutputP0() << "Edge-based scheme will be activated" << std::endl;
+    NaluEnv::self().naluOutputP0() << "Edge-based scheme will be activated" << std::endl;
   }
   else {
     NaluEnv::self().naluOutputP0() <<"Element-based scheme will be activated" << std::endl;
@@ -440,6 +450,13 @@ Realm::load(const YAML::Node & node)
 
   // automatic decomposition
   get_if_present(node, "automatic_decomposition_type", autoDecompType_, autoDecompType_);
+
+  // activate aura
+  get_if_present(node, "activate_aura", activateAura_, activateAura_);
+  if ( activateAura_ )
+    NaluEnv::self().naluOutputP0() << "Nalu will ACTIVATE aura ghosting"  << std::endl;
+  else
+    NaluEnv::self().naluOutputP0() << "Nalu will DEACTIVATE aura ghosting" << std::endl;
 
   // time step control
   const bool dtOptional = true;
@@ -467,7 +484,7 @@ Realm::load(const YAML::Node & node)
 
   // once we know the mesh name, we can open the meta data, and set spatial dimension
   create_mesh();
-  spatialDimension_ = fixture_->meta_data().spatial_dimension();
+  spatialDimension_ = metaData_->spatial_dimension();
 
   // averaging
   averagingInfo_->load(node);
@@ -511,20 +528,19 @@ void
 Realm::setup_adaptivity()
 {
 #if defined (NALU_USES_PERCEPT)
-  stk::mesh::MetaData & meta_data = fixture_->meta_data();
 
   if ((solutionOptions_->activateUniformRefinement_ ||
        (solutionOptions_->useAdapter_ && solutionOptions_->maxRefinementLevel_ > 0)) && NULL == adapter_) {
       adapter_ = new Adapter(*this);
       // get the part that holds the "parent" elements, that is, elements that have been refined
       //   and thus have child elements - we want to avoid them in each bucket loop
-      stk::mesh::EntityRank part_ranks[] = {stk::topology::ELEMENT_RANK, meta_data.side_rank()};
+      stk::mesh::EntityRank part_ranks[] = {stk::topology::ELEMENT_RANK, metaData_->side_rank()};
       unsigned nranks = 2;
       for (unsigned irank=0; irank < nranks; ++irank) {
         std::ostringstream inactive_part_name;
         inactive_part_name << "refine_inactive_elements_part_" << static_cast<unsigned int>(part_ranks[irank]);
         //stk::mesh::Part* child_elements_part = m_eMesh.get_non_const_part(active_part_name);
-        stk::mesh::Part* parent_elements_part = meta_data.get_part(inactive_part_name.str());
+        stk::mesh::Part* parent_elements_part = metaData_->get_part(inactive_part_name.str());
         if (!parent_elements_part)
           throw std::runtime_error("error - no parent_elements_part can be found");
         adapterSelector_[part_ranks[irank]] = !stk::mesh::Selector(*parent_elements_part);
@@ -534,12 +550,12 @@ Realm::setup_adaptivity()
   // fields
   if (solutionOptions_->useMarker_)
     {
-      percept::RefineFieldType *refineField= &(meta_data.declare_field<percept::RefineFieldType>(stk::topology::ELEMENT_RANK, "refine_field"));
-      stk::mesh::put_field(*refineField, meta_data.universal_part());
-      percept::RefineFieldType *refineFieldOrig= &(meta_data.declare_field<percept::RefineFieldType>(stk::topology::ELEMENT_RANK, "refine_field_orig"));
-      stk::mesh::put_field(*refineFieldOrig, meta_data.universal_part());
-      percept::RefineLevelType& refine_level = meta_data.declare_field<percept::RefineLevelType>(stk::topology::ELEMENT_RANK, "refine_level");
-      stk::mesh::put_field( refine_level , meta_data.universal_part());
+      percept::RefineFieldType *refineField= &(metaData_->declare_field<percept::RefineFieldType>(stk::topology::ELEMENT_RANK, "refine_field"));
+      stk::mesh::put_field(*refineField, metaData_->universal_part());
+      percept::RefineFieldType *refineFieldOrig= &(metaData_->declare_field<percept::RefineFieldType>(stk::topology::ELEMENT_RANK, "refine_field_orig"));
+      stk::mesh::put_field(*refineFieldOrig, metaData_->universal_part());
+      percept::RefineLevelType& refine_level = metaData_->declare_field<percept::RefineLevelType>(stk::topology::ELEMENT_RANK, "refine_level");
+      stk::mesh::put_field( refine_level , metaData_->universal_part());
     }
 #endif
 }
@@ -551,11 +567,9 @@ void
 Realm::setup_nodal_fields()
 {
   // register global id and rank fields on all parts
-  stk::mesh::MetaData & meta_data = fixture_->meta_data();
-
-  const stk::mesh::PartVector parts = meta_data.get_parts();
+  const stk::mesh::PartVector parts = metaData_->get_parts();
   for ( size_t ipart = 0; ipart < parts.size(); ++ipart ) {
-    naluGlobalId_ = &(meta_data.declare_field<GlobalIdFieldType>(stk::topology::NODE_RANK, "nalu_global_id"));
+    naluGlobalId_ = &(metaData_->declare_field<GlobalIdFieldType>(stk::topology::NODE_RANK, "nalu_global_id"));
     stk::mesh::put_field(*naluGlobalId_, *parts[ipart]);
   }
 
@@ -696,19 +710,16 @@ void
 Realm::enforce_bc_on_exposed_faces()
 {
 
-  stk::mesh::BulkData & bulkData = fixture_->bulk_data();
-  stk::mesh::MetaData & metaData = fixture_->meta_data();
-
   // first, skin mesh and, therefore, populate
-  stk::mesh::Selector activePart = metaData.locally_owned_part() | metaData.globally_shared_part();
+  stk::mesh::Selector activePart = metaData_->locally_owned_part() | metaData_->globally_shared_part();
   stk::mesh::PartVector partVec;
   partVec.push_back(exposedBoundaryPart_);
-  stk::mesh::skin_mesh(bulkData, activePart, partVec);
+  stk::mesh::skin_mesh(*bulkData_, activePart, partVec);
 
   stk::mesh::Selector selectRule = stk::mesh::Selector(*exposedBoundaryPart_)
     & !stk::mesh::selectUnion(bcPartVec_);
 
-  stk::mesh::BucketVector const& face_buckets = bulkData.get_buckets(metaData.side_rank(), selectRule);
+  stk::mesh::BucketVector const& face_buckets = bulkData_->get_buckets(metaData_->side_rank(), selectRule);
 
   if (!face_buckets.empty()) {
     NaluEnv::self().naluOutputP0() << "Exposed surfaces found without a boundary condition applied" << std::endl;
@@ -721,7 +732,7 @@ Realm::enforce_bc_on_exposed_faces()
       const stk::mesh::Bucket::size_type length   = b.size();
       for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
         // report offending set of faces; okay if to P0
-        NaluEnv::self().naluOutputP0() << "Face Id: " << bulkData.identifier(b[k]) << " is not properly covered" << std::endl;
+        NaluEnv::self().naluOutputP0() << "Face Id: " << bulkData_->identifier(b[k]) << " is not properly covered" << std::endl;
       }
     }
     throw std::runtime_error("Realm::Error: Please aply bc to problematic exposed surfaces ");
@@ -735,8 +746,6 @@ Realm::enforce_bc_on_exposed_faces()
 void
 Realm::setup_initial_conditions()
 {
-  stk::mesh::MetaData & meta_data = fixture_->meta_data();
-
   // loop over all ics and register
   for (size_t j_ic = 0; j_ic < initialConditions_.size(); ++j_ic) {
     InitialCondition& initCond = *initialConditions_[j_ic];
@@ -746,7 +755,7 @@ Realm::setup_initial_conditions()
     for (size_t itarget=0; itarget < targetNames.size(); ++itarget) {
 
       // target need not be subsetted since nothing below will depend on topo
-      stk::mesh::Part *targetPart = meta_data.get_part(targetNames[itarget]);
+      stk::mesh::Part *targetPart = metaData_->get_part(targetNames[itarget]);
 
       switch(initCond.theIcType_) {
 
@@ -757,7 +766,7 @@ Realm::setup_initial_conditions()
           for (size_t ifield = 0; ifield < genIC.fieldNames_.size(); ++ifield) {
 
             std::vector<double>  genSpec = genIC.data_[ifield];
-            stk::mesh::FieldBase *field = stk::mesh::get_field_by_name(genIC.fieldNames_[ifield], meta_data);
+            stk::mesh::FieldBase *field = stk::mesh::get_field_by_name(genIC.fieldNames_[ifield], *metaData_);
             ThrowAssert(field);
       
             if (debug()) {
@@ -807,17 +816,12 @@ Realm::setup_initial_conditions()
 void
 Realm::setup_property()
 {
-
-  // FIXME: Consider a property manager design...
-
-  stk::mesh::MetaData & meta_data = fixture_->meta_data();
-
   // loop over all target names
   const std::vector<std::string> targetNames = materialPropertys_.targetNames_;
   for (size_t itarget=0; itarget < targetNames.size(); ++itarget) {
 
     // target need not be subsetted since nothing below will depend on topo
-    stk::mesh::Part *targetPart = meta_data.get_part(targetNames[itarget]);
+    stk::mesh::Part *targetPart = metaData_->get_part(targetNames[itarget]);
 
     // loop over propertyMap
     std::map<PropertyIdentifier, ScalarFieldType *>::iterator ii;
@@ -863,9 +867,9 @@ Realm::setup_property()
               else {
                 // props computed based on local mass fractions, however, constant per species k
                 theCpPropEval = new SpecificHeatConstCpkPropertyEvaluator(
-                    matData->cpConstMap_, meta_data);
+                    matData->cpConstMap_, *metaData_);
                 theEnthPropEval = new EnthalpyConstCpkPropertyEvaluator(
-                    matData->cpConstMap_, matData->hfConstMap_, meta_data, tRef);
+                    matData->cpConstMap_, matData->hfConstMap_, *metaData_, tRef);
               }
 
               // create the algorithm to compute Cp; EnthalpyEqs manages h population, i.e., no alg required
@@ -922,7 +926,7 @@ Realm::setup_property()
         case MIXFRAC_MAT:
         {
           // extract the mixture fraction field
-          ScalarFieldType *mixFrac = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "mixture_fraction");
+          ScalarFieldType *mixFrac = metaData_->get_field<ScalarFieldType>(stk::topology::NODE_RANK, "mixture_fraction");
 
           // primary and secondary
           const double propPrim = matData->primary_;
@@ -967,7 +971,7 @@ Realm::setup_property()
                 else {
                   // props computed based on Yk and Tref
                   viscPropEval = new SutherlandsYkTrefPropertyEvaluator(
-                    matData->polynomialCoeffsMap_, meta_data, fixture_, tRef);
+                    matData->polynomialCoeffsMap_, *metaData_, tRef);
                 }
                 // create the GenericPropAlgorithm; push it back
                 GenericPropAlgorithm *auxAlg
@@ -984,7 +988,7 @@ Realm::setup_property()
                 else {
                   // props computed based on Yk and T
                   viscPropEval = new SutherlandsYkPropertyEvaluator(
-                    matData->polynomialCoeffsMap_, meta_data, fixture_);
+                    matData->polynomialCoeffsMap_, *metaData_);
                 }
                 // create the TemperaturePropAlgorithm; push it back
                 TemperaturePropAlgorithm *auxAlg
@@ -1026,10 +1030,10 @@ Realm::setup_property()
                 // props computed based on transported Yk values
                 theCpPropEval = new SpecificHeatTYkPropertyEvaluator(
                     materialPropertys_.referencePropertyDataMap_, matData->lowPolynomialCoeffsMap_,
-                    matData->highPolynomialCoeffsMap_, universalR, meta_data);
+                    matData->highPolynomialCoeffsMap_, universalR, *metaData_);
                 theEnthPropEval = new EnthalpyTYkPropertyEvaluator(
                    materialPropertys_.referencePropertyDataMap_, matData->lowPolynomialCoeffsMap_,
-                   matData->highPolynomialCoeffsMap_, universalR, meta_data);
+                   matData->highPolynomialCoeffsMap_, universalR, *metaData_);
               }
 
               // create the algorithm to compute Cp; EnthalpyEqs manages h population, i.e., no alg required
@@ -1076,7 +1080,7 @@ Realm::setup_property()
                 rhoPropEval = new IdealGasTPropertyEvaluator(pRef, universalR, mwMassFracVec);
               }
               else {
-                rhoPropEval = new IdealGasTPPropertyEvaluator(universalR, mwMassFracVec, meta_data);
+                rhoPropEval = new IdealGasTPPropertyEvaluator(universalR, mwMassFracVec, *metaData_);
               }
             }
             else {
@@ -1091,7 +1095,7 @@ Realm::setup_property()
               if ( IDEAL_GAS_T_MAT == matData->type_ ) {
                 double pRef = 101325.0;
                 extract_universal_constant("reference_pressure", pRef, true);
-                rhoPropEval = new IdealGasTYkPropertyEvaluator(pRef, universalR, mwVec, meta_data);
+                rhoPropEval = new IdealGasTYkPropertyEvaluator(pRef, universalR, mwVec, *metaData_);
               }
               else {
                 throw std::runtime_error("Realm::setup_property: ideal_gas_tp only supported for uniform flow:");
@@ -1135,7 +1139,7 @@ Realm::setup_property()
             }
 
             // create the property evaluator
-            PropertyEvaluator *rhoPropEval = new IdealGasYkPropertyEvaluator(pRef, tRef, universalR, mwVec, meta_data);
+            PropertyEvaluator *rhoPropEval = new IdealGasYkPropertyEvaluator(pRef, tRef, universalR, mwVec, *metaData_);
 
             // push back property evaluator to map
             materialPropertys_.propertyEvalMap_[thePropId] = rhoPropEval;
@@ -1175,7 +1179,7 @@ Realm::setup_property()
 								       matData->tablePropName_, 
 								       matData->indVarName_, 
 								       matData->indVarTableName_,
-								       meta_data );
+								       *metaData_ );
           propertyAlg_.push_back(auxAlg);
 
 	  NaluEnv::self().naluOutputP0() << "With " << matData->tablePropName_ << " also read table for auxVarName " <<matData->auxVarName_  << std::endl;
@@ -1186,7 +1190,7 @@ Realm::setup_property()
           std::string auxVarName = matData->auxVarName_;
           if ( "na" != auxVarName ) {
             // register and put the field; assume a scalar for now; species extraction will complicate the matter
-            ScalarFieldType *auxVar =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, auxVarName));
+            ScalarFieldType *auxVar =  &(metaData_->declare_field<ScalarFieldType>(stk::topology::NODE_RANK, auxVarName));
             stk::mesh::put_field(*auxVar, *targetPart);
             // create the algorithm to populate it from an HDF5 file
 	    HDF5TablePropAlgorithm * auxVarAlg = new HDF5TablePropAlgorithm(*this, 
@@ -1196,7 +1200,7 @@ Realm::setup_property()
 									 matData->tableAuxVarName_, 
 									 matData->indVarName_, 
 									 matData->indVarTableName_,
-									 meta_data );
+									 *metaData_ );
             propertyAlg_.push_back(auxVarAlg);
           }
 
@@ -1264,16 +1268,20 @@ Realm::augment_property_map(
   propertyMap_[propID] = theField;
 }
 
-void makeSureNodesHaveValidTopology(stk::mesh::BulkData& bulk_data)
+//--------------------------------------------------------------------------
+//-------- makeSureNodesHaveValidTopology ----------------------------------
+//--------------------------------------------------------------------------
+void 
+Realm::makeSureNodesHaveValidTopology()
 {
   //To make sure nodes have valid topology, we have to make sure they are in a part that has NODE topology.
   //So first, let's obtain the node topology part:
-  stk::mesh::Part& nodePart = bulk_data.mesh_meta_data().get_cell_topology_root_part(stk::mesh::get_cell_topology(stk::topology::NODE));
-  stk::mesh::Selector nodesNotInNodePart = !nodePart & bulk_data.mesh_meta_data().locally_owned_part();
+  stk::mesh::Part& nodePart = bulkData_->mesh_meta_data().get_cell_topology_root_part(stk::mesh::get_cell_topology(stk::topology::NODE));
+  stk::mesh::Selector nodesNotInNodePart = !nodePart & bulkData_->mesh_meta_data().locally_owned_part();
 
   //get all the nodes that are *NOT* in nodePart
   std::vector<stk::mesh::Entity> nodes_vector;
-  stk::mesh::get_selected_entities(nodesNotInNodePart, bulk_data.buckets(stk::topology::NODE_RANK), nodes_vector);
+  stk::mesh::get_selected_entities(nodesNotInNodePart, bulkData_->buckets(stk::topology::NODE_RANK), nodes_vector);
   // now we require all nodes are in proper node part
   if (nodes_vector.size()) std::cout << "nodes_vector= " << nodes_vector.size() << std::endl;
   ThrowRequire(0 == nodes_vector.size());
@@ -1294,8 +1302,7 @@ Realm::pre_timestep_work()
     static stk::diag::Timer timerReInitLinSys_("ReInitLinSys", timerUniformRefine_);
 
     stk::diag::TimeBlock tbTimerUR_(timerUniformRefine_);
-    stk::mesh::BulkData & bulk_data = fixture_->bulk_data();
-
+  
     for (unsigned i = 0; i < solutionOptions_->refineAt_.size(); ++i) {
       if ( solutionOptions_->refineAt_[i] == get_time_step_count() ||
            (solutionOptions_->refineAt_[i] == 0 && get_time_step_count() == 1) ) {
@@ -1312,7 +1319,7 @@ Realm::pre_timestep_work()
 #endif
 
         std::vector<size_t> counts;
-        stk::mesh::comm_mesh_counts( bulk_data , counts);
+        stk::mesh::comm_mesh_counts( *bulkData_ , counts);
 
         NaluEnv::self().naluOutputP0() << "UniformRefine: after uniform refine, mesh has  "
                         << counts[0] << " nodes, "
@@ -1323,7 +1330,7 @@ Realm::pre_timestep_work()
         //call this temporary function to correct the part membership of any nodes that
         //are not in the node-topology part. Remove this function as soon as percept/adapt
         //is altered to make sure that all newly-created nodes are placed in that part.
-        makeSureNodesHaveValidTopology(bulk_data);
+        makeSureNodesHaveValidTopology();
 
         if (realmUsesEdges_ ) {
           stk::diag::TimeBlock tbCreateEdges_(timerCreateEdgesLocal_);
@@ -1357,9 +1364,8 @@ Realm::pre_timestep_work()
 
 #if defined (NALU_USES_PERCEPT)
       // mesh counts
-      stk::mesh::BulkData & bulk_data = fixture_->bulk_data();
       std::vector<size_t> counts;
-      stk::mesh::comm_mesh_counts( bulk_data , counts);
+      stk::mesh::comm_mesh_counts( *bulkData_ , counts);
       if (0 == numInitialElements_) {
         numInitialElements_ = counts[3];
       }
@@ -1389,7 +1395,7 @@ Realm::pre_timestep_work()
           adapter_->do_adapt(ADAPT_REFINE);
 
           counts.resize(0);
-          stk::mesh::comm_mesh_counts( bulk_data , counts);
+          stk::mesh::comm_mesh_counts( *bulkData_ , counts);
 
           NaluEnv::self().naluOutputP0() << "Adapt: after refine, mesh has  "
                           << counts[0] << " nodes, "
@@ -1406,7 +1412,7 @@ Realm::pre_timestep_work()
           //call this temporary function to correct the part membership of any nodes that
           //are not in the node-topology part. Remove this function as soon as percept/adapt
           //is altered to make sure that all newly-created nodes are placed in that part.
-          makeSureNodesHaveValidTopology(bulk_data);
+          makeSureNodesHaveValidTopology();
 
 #if USE_NALU_PERFORMANCE_TESTING_CALLGRIND
   CALLGRIND_TOGGLE_COLLECT;
@@ -1414,7 +1420,7 @@ Realm::pre_timestep_work()
 #endif
 
           counts.resize(0);
-          stk::mesh::comm_mesh_counts( bulk_data , counts);
+          stk::mesh::comm_mesh_counts( *bulkData_ , counts);
 
           NaluEnv::self().naluOutputP0() << "Adapt: after unrefine, mesh has  "
                           << counts[0] << " nodes, "
@@ -1478,7 +1484,7 @@ Realm::pre_timestep_work()
     if ( solutionOptions_->externalMeshDeformation_ ) {
       std::vector<std::string> targetNames = materialPropertys_.targetNames_;
       for ( size_t itarget = 0; itarget < targetNames.size(); ++itarget ) {
-        stk::mesh::Part *targetPart = fixture_->meta_data().get_part(targetNames[itarget]);
+        stk::mesh::Part *targetPart = metaData_->get_part(targetNames[itarget]);
         set_current_coordinates(targetPart);
       }
     }
@@ -1596,12 +1602,10 @@ Realm::compute_adaptive_time_step()
 void
 Realm::commit()
 {
-
   //====================================================
   // Commit the meta data
   //====================================================
-  stk::mesh::MetaData & meta_data = fixture_->meta_data();
-  meta_data.commit();
+  metaData_->commit();
 }
 
 //--------------------------------------------------------------------------
@@ -1613,36 +1617,38 @@ Realm::create_mesh()
   double start_time = stk::cpu_time();
 
   stk::ParallelMachine pm = NaluEnv::self().parallel_comm();
-  fixture_ = new stk::io::StkMeshIoBroker( pm );
-  if (autoDecompType_ != "None") 
-    fixture_->property_add(Ioss::Property("DECOMPOSITION_METHOD", autoDecompType_));
+  
+  // news for mesh constructs
+  metaData_ = new stk::mesh::MetaData();
+  bulkData_ = new stk::mesh::BulkData(*metaData_, pm, activateAura_ ? stk::mesh::BulkData::AUTO_AURA : stk::mesh::BulkData::NO_AUTO_AURA);
+  ioBroker_ = new stk::io::StkMeshIoBroker( pm );
+  ioBroker_->set_bulk_data(*bulkData_);
 
   // allow for automatic decomposition
+  if (autoDecompType_ != "None") 
+    ioBroker_->property_add(Ioss::Property("DECOMPOSITION_METHOD", autoDecompType_));
   
   // for adaptivity we need an additional rank to store parent/child relations
   if (solutionOptions_->useAdapter_ || solutionOptions_->activateUniformRefinement_) {
     std::vector<std::string> entity_rank_names = stk::mesh::entity_rank_names();
     entity_rank_names.push_back("FAMILY_TREE");
-    fixture_->set_rank_name_vector(entity_rank_names);
+    ioBroker_->set_rank_name_vector(entity_rank_names);
   }
 
   // Initialize meta data (from exodus file); can possibly be a restart file..
-  fixture_->add_mesh_database( inputDBName_,
+  ioBroker_->add_mesh_database( inputDBName_,
       restarted_simulation() ? stk::io::READ_RESTART : stk::io::READ_MESH );
-  fixture_->create_input_mesh();
+  ioBroker_->create_input_mesh();
 
   // declare an exposed part for later bc coverage check
   if ( checkForMissingBcs_ ) {
-    stk::mesh::MetaData & metaData = fixture_->meta_data();
-    exposedBoundaryPart_ = &metaData.declare_part("exposed_boundary_part",metaData.side_rank());
+    exposedBoundaryPart_ = &metaData_->declare_part("exposed_boundary_part",metaData_->side_rank());
   }
 
   // declare a part to hold new edges
-  if (realmUsesEdges_)
-    {
-      stk::mesh::MetaData & metaData = fixture_->meta_data();
-      edgesPart_ = &metaData.declare_part("create_edges_part", stk::topology::EDGE_RANK);
-    }
+  if (realmUsesEdges_) {
+    edgesPart_ = &metaData_->declare_part("create_edges_part", stk::topology::EDGE_RANK);
+  }
   const double end_time = stk::cpu_time();
 
   // set mesh reading
@@ -1674,18 +1680,18 @@ Realm::create_output_mesh()
     if (fileid++ > 0) oname += "-s" + fileid_ss.str();
   }
 
-  resultsFileIndex_ = fixture_->create_output_mesh( oname, stk::io::WRITE_RESULTS );
+  resultsFileIndex_ = ioBroker_->create_output_mesh( oname, stk::io::WRITE_RESULTS );
 
 #if defined (NALU_USES_PERCEPT)
 
   if (solutionOptions_->useAdapter_ && outputInfo_->meshAdapted_) {
     stk::mesh::Selector selectRule =
-      fixture_->meta_data().locally_owned_part() |
-      fixture_->meta_data().globally_shared_part();
+      metaData_->locally_owned_part() |
+      metaData_->globally_shared_part();
 
-    activePartForIO_ = Teuchos::rcp(new stk::mesh::Selector(percept::make_active_part_selector(fixture_->meta_data(), selectRule)));
+    activePartForIO_ = Teuchos::rcp(new stk::mesh::Selector(percept::make_active_part_selector(*metaData_, selectRule)));
 
-    fixture_->set_subset_selector(resultsFileIndex_, activePartForIO_);
+    ioBroker_->set_subset_selector(resultsFileIndex_, activePartForIO_);
   }
 
 #endif
@@ -1695,20 +1701,20 @@ Realm::create_output_mesh()
   // if 'false', then output as nodal fields (on all nodes of the mesh, zero-filled)
   // The option is provided since some post-processing/visualization codes do not
   // correctly handle nodeset fields.
-  fixture_->use_nodeset_for_part_nodes_fields(resultsFileIndex_, outputInfo_->outputNodeSet_);
+  ioBroker_->use_nodeset_for_part_nodes_fields(resultsFileIndex_, outputInfo_->outputNodeSet_);
 
   // FIXME: add_field can take user-defined output name, not just varName
   for ( std::set<std::string>::iterator itorSet = outputInfo_->outputFieldNameSet_.begin(); 
       itorSet != outputInfo_->outputFieldNameSet_.end(); ++itorSet ) {
     std::string varName = *itorSet;
-    stk::mesh::FieldBase *theField = stk::mesh::get_field_by_name(varName,fixture_->meta_data());
+    stk::mesh::FieldBase *theField = stk::mesh::get_field_by_name(varName, *metaData_);
     if ( NULL == theField ) {
       NaluEnv::self().naluOutputP0() << " Sorry, no field by the name " << varName << std::endl;
     }
     else {
       // 'varName' is the name that will be written to the database
       // For now, just using the name of the stk field
-      fixture_->add_field(resultsFileIndex_, *theField, varName);
+      ioBroker_->add_field(resultsFileIndex_, *theField, varName);
     }
   }
 
@@ -1723,22 +1729,22 @@ void
 Realm::create_restart_mesh()
 {
   if (outputInfo_->hasRestartBlock_ ) {
-    restartFileIndex_ = fixture_->create_output_mesh(outputInfo_->restartDBName_, stk::io::WRITE_RESTART);
+    restartFileIndex_ = ioBroker_->create_output_mesh(outputInfo_->restartDBName_, stk::io::WRITE_RESTART);
 
     // loop over restart variable field names supplied by Eqs
     for ( std::set<std::string>::iterator itorSet = outputInfo_->restartFieldNameSet_.begin();
         itorSet != outputInfo_->restartFieldNameSet_.end(); ++itorSet ) {
       std::string varName = *itorSet;
-      stk::mesh::FieldBase *theField = stk::mesh::get_field_by_name(varName,fixture_->meta_data());
+      stk::mesh::FieldBase *theField = stk::mesh::get_field_by_name(varName,*metaData_);
       if ( NULL == theField ) {
         NaluEnv::self().naluOutputP0() << " Sorry, no field by the name " << varName << std::endl;
       }
       else {
         // add the field for a restart output
-        fixture_->add_field(restartFileIndex_, *theField, varName);
+        ioBroker_->add_field(restartFileIndex_, *theField, varName);
         // if this is a restarted simulation, we will need input
         if ( restarted_simulation() )
-          fixture_->add_input_field(stk::io::MeshField(*theField, varName));
+          ioBroker_->add_input_field(stk::io::MeshField(*theField, varName));
       }
     }
 
@@ -1749,12 +1755,12 @@ Realm::create_restart_mesh()
       std::string parameterName = (*i).first;
       stk::util::Parameter parameter = (*i).second;
       if(parameter.toRestartFile) {
-        fixture_->add_global(restartFileIndex_, parameterName, parameter.value, parameter.type);
+        ioBroker_->add_global(restartFileIndex_, parameterName, parameter.value, parameter.type);
       }
     }
 
     // set max size for restart data base
-    fixture_->get_output_io_region(restartFileIndex_)->get_database()->set_cycle_count(outputInfo_->restartMaxDataBaseStepSize_);
+    ioBroker_->get_output_io_region(restartFileIndex_)->get_database()->set_cycle_count(outputInfo_->restartMaxDataBaseStepSize_);
 
   }
 
@@ -1775,12 +1781,12 @@ Realm::input_variables_from_mesh()
       std::string varName = iter->first;
       std::string userName = iter->second;
 
-      stk::mesh::FieldBase *theField = stk::mesh::get_field_by_name(varName,fixture_->meta_data());
+      stk::mesh::FieldBase *theField = stk::mesh::get_field_by_name(varName,*metaData_);
       if ( NULL == theField ) {
         NaluEnv::self().naluOutputP0() << " Sorry, no field by the name " << varName << std::endl;
       }
       else {
-        fixture_->add_input_field(stk::io::MeshField(*theField, userName));
+        ioBroker_->add_input_field(stk::io::MeshField(*theField, userName));
       }
     }
   }
@@ -1815,14 +1821,12 @@ Realm::create_edges()
   static stk::diag::Timer timerCE_("CreateEdges", Simulation::rootTimer());
   stk::diag::TimeBlock tbCreateEdges_(timerCE_);
 
-  stk::mesh::BulkData & bulk_data = fixture_->bulk_data();
-
   double start_time = stk::cpu_time();
   if (solutionOptions_->useAdapter_ && solutionOptions_->maxRefinementLevel_ > 0 ) {
-    stk::mesh::create_edges(bulk_data, adapterSelector_[stk::topology::ELEMENT_RANK], edgesPart_);
+    stk::mesh::create_edges(*bulkData_, adapterSelector_[stk::topology::ELEMENT_RANK], edgesPart_);
   }
   else {
-    stk::mesh::create_edges(bulk_data, fixture_->meta_data().universal_part(), edgesPart_);
+    stk::mesh::create_edges(*bulkData_, metaData_->universal_part(), edgesPart_);
   }
   double stop_time = stk::cpu_time();
 
@@ -1838,12 +1842,10 @@ Realm::create_edges()
 void
 Realm::provide_entity_count() {
 
-  stk::mesh::BulkData & bulk_data = fixture_->bulk_data();
-
   std::vector<size_t> counts;
   std::vector<size_t> minCounts;
   std::vector<size_t> maxCounts;
-  stk::mesh::comm_mesh_counts( bulk_data , counts, minCounts, maxCounts);
+  stk::mesh::comm_mesh_counts( *bulkData_ , counts, minCounts, maxCounts);
 
   NaluEnv::self().naluOutputP0() << "===========================" << std::endl;
   NaluEnv::self().naluOutputP0() << "Realm::provide_entity_count:   " << std::endl
@@ -1861,12 +1863,9 @@ Realm::provide_entity_count() {
 void
 Realm::delete_edges()
 {
-  stk::mesh::BulkData & bulk_data = fixture_->bulk_data();
-  stk::mesh::MetaData & meta_data = fixture_->meta_data();
-
   if (debug()) {
     std::vector<size_t> counts;
-    stk::mesh::comm_mesh_counts( bulk_data , counts);
+    stk::mesh::comm_mesh_counts( *bulkData_ , counts);
 
     NaluEnv::self().naluOutputP0() << "Realm::delete_edges: before delete_edges, mesh has  "
                     << counts[0] << " nodes, "
@@ -1875,59 +1874,59 @@ Realm::delete_edges()
                     << counts[3] << " elements" << std::endl;
   }
 
-  stk::mesh::BucketVector const& edge_buckets = bulk_data.get_buckets( stk::topology::EDGE_RANK,  *edgesPart_);
+  stk::mesh::BucketVector const& edge_buckets = bulkData_->get_buckets( stk::topology::EDGE_RANK,  *edgesPart_);
   std::vector<stk::mesh::Entity> edges;
   stk::mesh::get_selected_entities( *edgesPart_ , edge_buckets, edges);
 
   if (debug()) {
     size_t sz = edges.size(), g_sz=0;
     stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &sz, &g_sz, 1);
-    NaluEnv::self().naluOutputP0() << "P[" << bulk_data.parallel_rank() << "] Realm::delete_edges: edge list local size= "
+    NaluEnv::self().naluOutputP0() << "P[" << bulkData_->parallel_rank() << "] Realm::delete_edges: edge list local size= "
 				   << sz << " global size= " << g_sz << std::endl;
   }
 
   // delete elem -> edge relations
-  bulk_data.modification_begin();
+  bulkData_->modification_begin();
   for (unsigned ii=0; ii < edges.size(); ++ii) {
     while (true) {
 
-      if (!bulk_data.is_valid(edges[ii]))
+      if (!bulkData_->is_valid(edges[ii]))
         throw std::runtime_error("bad edge 1");
 
-      unsigned num_elems = bulk_data.num_elements(edges[ii]);
+      unsigned num_elems = bulkData_->num_elements(edges[ii]);
 
       if (!num_elems)
         break;
 
-      stk::mesh::Entity const * const edge_elems = bulk_data.begin_elements(edges[ii]);
-      stk::mesh::ConnectivityOrdinal const* edge_elem_ordinals = bulk_data.begin_element_ordinals(edges[ii]);
+      stk::mesh::Entity const * const edge_elems = bulkData_->begin_elements(edges[ii]);
+      stk::mesh::ConnectivityOrdinal const* edge_elem_ordinals = bulkData_->begin_element_ordinals(edges[ii]);
 
       stk::mesh::Entity to_rel = edge_elems[0];
       stk::mesh::RelationIdentifier to_id = edge_elem_ordinals[0];
 
-      bool del = bulk_data.destroy_relation( to_rel, edges[ii], to_id);
+      bool del = bulkData_->destroy_relation( to_rel, edges[ii], to_id);
       if (!del)
         throw std::runtime_error("delete_edges failed to delete up relation");
     }
 
-    if (3 == meta_data.spatial_dimension()) {
+    if (3 == metaData_->spatial_dimension()) {
       while (true) {
 
-        if (!bulk_data.is_valid(edges[ii]))
+        if (!bulkData_->is_valid(edges[ii]))
           throw std::runtime_error("bad edge 1");
 
-        unsigned num_faces = bulk_data.num_faces(edges[ii]);
+        unsigned num_faces = bulkData_->num_faces(edges[ii]);
 
         if (!num_faces)
           break;
 
-        stk::mesh::Entity const * const edge_faces = bulk_data.begin_faces(edges[ii]);
-        stk::mesh::ConnectivityOrdinal const* edge_face_ordinals = bulk_data.begin_face_ordinals(edges[ii]);
+        stk::mesh::Entity const * const edge_faces = bulkData_->begin_faces(edges[ii]);
+        stk::mesh::ConnectivityOrdinal const* edge_face_ordinals = bulkData_->begin_face_ordinals(edges[ii]);
 
         stk::mesh::Entity to_rel = edge_faces[0];
         stk::mesh::RelationIdentifier to_id = edge_face_ordinals[0];
 
-        bool del = bulk_data.destroy_relation( to_rel, edges[ii], to_id);
+        bool del = bulkData_->destroy_relation( to_rel, edges[ii], to_id);
         if (!del)
           throw std::runtime_error("delete_edges failed to delete up relation for face");
       }
@@ -1937,18 +1936,18 @@ Realm::delete_edges()
   // now delete edges
   for (unsigned ii=0; ii < edges.size(); ++ii) {
 
-    if (bulk_data.is_valid(edges[ii]) && bulk_data.bucket(edges[ii]).owned()) {
-      if ( ! bulk_data.destroy_entity( edges[ii] ) ) {
-        unsigned num_elems = bulk_data.num_elements(edges[ii]);
-        NaluEnv::self().naluOutputP0() << "P[" << bulk_data.parallel_rank() << "] deleting edge num_elems= " << num_elems
+    if (bulkData_->is_valid(edges[ii]) && bulkData_->bucket(edges[ii]).owned()) {
+      if ( ! bulkData_->destroy_entity( edges[ii] ) ) {
+        unsigned num_elems = bulkData_->num_elements(edges[ii]);
+        NaluEnv::self().naluOutputP0() << "P[" << bulkData_->parallel_rank() << "] deleting edge num_elems= " << num_elems
 				       << std::endl;
 
         stk::mesh::EntityRank topRank = stk::topology::ELEMENT_RANK;
         if (solutionOptions_->useAdapter_ && solutionOptions_->maxRefinementLevel_ > 0)
           ++topRank;
         for (stk::mesh::EntityRank irank = stk::topology::EDGE_RANK; irank <= topRank; ++irank) {
-          unsigned nc = bulk_data.num_connectivity(edges[ii], irank);
-          NaluEnv::self().naluOutputP0() << "P[" << bulk_data.parallel_rank() << "] deleting edge nc[" << irank << "]= " << nc
+          unsigned nc = bulkData_->num_connectivity(edges[ii], irank);
+          NaluEnv::self().naluOutputP0() << "P[" << bulkData_->parallel_rank() << "] deleting edge nc[" << irank << "]= " << nc
 					 << std::endl;
         }
 
@@ -1956,13 +1955,13 @@ Realm::delete_edges()
       }
     }
   }
-  bulk_data.modification_end();
+  bulkData_->modification_end();
 
   if (debug()) {
     std::vector<size_t> counts;
-    stk::mesh::comm_mesh_counts( bulk_data , counts);
+    stk::mesh::comm_mesh_counts( *bulkData_ , counts);
 
-    NaluEnv::self().naluOutputP0() << "P[" << bulk_data.parallel_rank() << "] "
+    NaluEnv::self().naluOutputP0() << "P[" << bulkData_->parallel_rank() << "] "
                   << "Realm::delete_edges: after delete_edges, mesh has  "
                   << counts[0] << " nodes, "
                   << counts[1] << " edges, "
@@ -2033,8 +2032,6 @@ void
 Realm::process_mesh_motion()
 {
   // extract parameters; allows for omega to change...
-  stk::mesh::MetaData & meta_data = fixture_->meta_data();
-  
   std::map<std::string, std::pair<std::vector<std::string>, double> >::const_iterator iter;
   for ( iter = solutionOptions_->meshMotionMap_.begin();
         iter != solutionOptions_->meshMotionMap_.end(); ++iter) {
@@ -2045,7 +2042,7 @@ Realm::process_mesh_motion()
     const double theOmega = thePair.second;
     for (size_t k = 0; k < theVector.size(); ++k ) {
 
-      stk::mesh::Part *targetPart = meta_data.get_part(theVector[k]);
+      stk::mesh::Part *targetPart = metaData_->get_part(theVector[k]);
 
       if ( NULL == targetPart ) {
         throw std::runtime_error("Sorry, no part name found" + theVector[k]);
@@ -2068,15 +2065,11 @@ Realm::set_omega(
   stk::mesh::Part *targetPart,
   double scalarOmega)
 {
-
-  stk::mesh::MetaData & meta_data = fixture_->meta_data();
-  stk::mesh::BulkData & bulk_data = fixture_->bulk_data();
-
-  ScalarFieldType *omega = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "omega");
+  ScalarFieldType *omega = metaData_->get_field<ScalarFieldType>(stk::topology::NODE_RANK, "omega");
 
   stk::mesh::Selector s_all_nodes = stk::mesh::Selector(*targetPart);
 
-  stk::mesh::BucketVector const& node_buckets = bulk_data.get_buckets( stk::topology::NODE_RANK, s_all_nodes );
+  stk::mesh::BucketVector const& node_buckets = bulkData_->get_buckets( stk::topology::NODE_RANK, s_all_nodes );
   for ( stk::mesh::BucketVector::const_iterator ib = node_buckets.begin() ;
         ib != node_buckets.end() ; ++ib ) {
     stk::mesh::Bucket & b = **ib ;
@@ -2095,19 +2088,16 @@ void
 Realm::set_current_displacement(
   stk::mesh::Part *targetPart)
 {
-
-  stk::mesh::MetaData & meta_data = fixture_->meta_data();
-  stk::mesh::BulkData & bulk_data = fixture_->bulk_data();
-  const int nDim = meta_data.spatial_dimension();
+  const int nDim = metaData_->spatial_dimension();
   const double currentTime = get_current_time();
 
-  VectorFieldType *modelCoords = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates");
-  VectorFieldType *displacement = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_displacement");
-  ScalarFieldType *omega = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "omega");
+  VectorFieldType *modelCoords = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates");
+  VectorFieldType *displacement = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_displacement");
+  ScalarFieldType *omega = metaData_->get_field<ScalarFieldType>(stk::topology::NODE_RANK, "omega");
 
   stk::mesh::Selector s_all_nodes = stk::mesh::Selector(*targetPart);
 
-  stk::mesh::BucketVector const& node_buckets = bulk_data.get_buckets( stk::topology::NODE_RANK, s_all_nodes );
+  stk::mesh::BucketVector const& node_buckets = bulkData_->get_buckets( stk::topology::NODE_RANK, s_all_nodes );
 
   for ( stk::mesh::BucketVector::const_iterator ib = node_buckets.begin() ;
         ib != node_buckets.end() ; ++ib ) {
@@ -2141,18 +2131,15 @@ void
 Realm::set_current_coordinates(
   stk::mesh::Part *targetPart)
 {
+  const int nDim = metaData_->spatial_dimension();
 
-  stk::mesh::MetaData & meta_data = fixture_->meta_data();
-  stk::mesh::BulkData & bulk_data = fixture_->bulk_data();
-  const int nDim = meta_data.spatial_dimension();
-
-  VectorFieldType *modelCoords = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates");
-  VectorFieldType *currentCoords = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "current_coordinates");
-  VectorFieldType *displacement = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_displacement");
+  VectorFieldType *modelCoords = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates");
+  VectorFieldType *currentCoords = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, "current_coordinates");
+  VectorFieldType *displacement = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_displacement");
 
   stk::mesh::Selector s_all_nodes = stk::mesh::Selector(*targetPart);
 
-  stk::mesh::BucketVector const& node_buckets = bulk_data.get_buckets( stk::topology::NODE_RANK, s_all_nodes );
+  stk::mesh::BucketVector const& node_buckets = bulkData_->get_buckets( stk::topology::NODE_RANK, s_all_nodes );
   for ( stk::mesh::BucketVector::const_iterator ib = node_buckets.begin() ;
         ib != node_buckets.end() ; ++ib ) {
     stk::mesh::Bucket & b = **ib ;
@@ -2175,18 +2162,15 @@ void
 Realm::set_mesh_velocity(
   stk::mesh::Part *targetPart)
 {
+  const int nDim = metaData_->spatial_dimension();
 
-  stk::mesh::MetaData & meta_data = fixture_->meta_data();
-  stk::mesh::BulkData & bulk_data = fixture_->bulk_data();
-  const int nDim = meta_data.spatial_dimension();
-
-  VectorFieldType *currentCoords = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "current_coordinates");
-  VectorFieldType *meshVelocity = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_velocity");
-  ScalarFieldType *omega = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "omega");
+  VectorFieldType *currentCoords = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, "current_coordinates");
+  VectorFieldType *meshVelocity = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_velocity");
+  ScalarFieldType *omega = metaData_->get_field<ScalarFieldType>(stk::topology::NODE_RANK, "omega");
 
   stk::mesh::Selector s_all_nodes = stk::mesh::Selector(*targetPart);
 
-  stk::mesh::BucketVector const& node_buckets = bulk_data.get_buckets( stk::topology::NODE_RANK, s_all_nodes );
+  stk::mesh::BucketVector const& node_buckets = bulkData_->get_buckets( stk::topology::NODE_RANK, s_all_nodes );
   for ( stk::mesh::BucketVector::const_iterator ib = node_buckets.begin() ;
         ib != node_buckets.end() ; ++ib ) {
     stk::mesh::Bucket & b = **ib ;
@@ -2220,19 +2204,17 @@ Realm::compute_geometry()
 
   // find total volume if the mesh moves at all
   if ( has_mesh_motion() || has_mesh_deformation() ) {
-    stk::mesh::MetaData & meta_data = fixture_->meta_data();
-    stk::mesh::BulkData & bulk_data = fixture_->bulk_data();
 
     double totalVolume = 0.0;
     double maxVolume = -1.0e16;
     double minVolume = 1.0e16;
 
-    ScalarFieldType *dualVolume = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
+    ScalarFieldType *dualVolume = metaData_->get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
 
     stk::mesh::Selector s_local_nodes
-      = meta_data.locally_owned_part() &stk::mesh::selectField(*dualVolume);
+      = metaData_->locally_owned_part() &stk::mesh::selectField(*dualVolume);
 
-    stk::mesh::BucketVector const& node_buckets = bulk_data.get_buckets( stk::topology::NODE_RANK, s_local_nodes );
+    stk::mesh::BucketVector const& node_buckets = bulkData_->get_buckets( stk::topology::NODE_RANK, s_local_nodes );
     for ( stk::mesh::BucketVector::const_iterator ib = node_buckets.begin() ;
 	  ib != node_buckets.end() ; ++ib ) {
       stk::mesh::Bucket & b = **ib ;
@@ -2265,18 +2247,16 @@ void
 Realm::init_current_coordinates()
 {
 
-  stk::mesh::MetaData & meta_data = fixture_->meta_data();
-  stk::mesh::BulkData & bulk_data = fixture_->bulk_data();
-  const int nDim = meta_data.spatial_dimension();
+  const int nDim = metaData_->spatial_dimension();
 
-  VectorFieldType *modelCoords = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates");
-  VectorFieldType *currentCoords = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "current_coordinates");
-  VectorFieldType *displacement = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_displacement");
+  VectorFieldType *modelCoords = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates");
+  VectorFieldType *currentCoords = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, "current_coordinates");
+  VectorFieldType *displacement = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_displacement");
 
   stk::mesh::Selector s_all_nodes
-    = (meta_data.locally_owned_part() | meta_data.globally_shared_part());
+    = (metaData_->locally_owned_part() | metaData_->globally_shared_part());
 
-  stk::mesh::BucketVector const& node_buckets = bulk_data.get_buckets( stk::topology::NODE_RANK, s_all_nodes );
+  stk::mesh::BucketVector const& node_buckets = bulkData_->get_buckets( stk::topology::NODE_RANK, s_all_nodes );
   for ( stk::mesh::BucketVector::const_iterator ib = node_buckets.begin() ;
         ib != node_buckets.end() ; ++ib ) {
     stk::mesh::Bucket & b = **ib ;
@@ -2300,16 +2280,12 @@ Realm::init_current_coordinates()
 void
 Realm::compute_l2_scaling()
 {
-
-  stk::mesh::MetaData & meta_data = fixture_->meta_data();
-  stk::mesh::BulkData & bulk_data = fixture_->bulk_data();
-
   // loop over all material propertys  and save off part vector
   stk::mesh::PartVector partVec;
   const std::vector<std::string> targetNames = materialPropertys_.targetNames_;
   for (size_t itarget=0; itarget < targetNames.size(); ++itarget) {
     // target need not be subsetted since nothing below will depend on topo
-    stk::mesh::Part *targetPart = meta_data.get_part(targetNames[itarget]);
+    stk::mesh::Part *targetPart = metaData_->get_part(targetNames[itarget]);
     partVec.push_back(targetPart);
   }
 
@@ -2317,10 +2293,10 @@ Realm::compute_l2_scaling()
 
   // selector for all locally owned nodes
   stk::mesh::Selector s_locally_owned_union =
-    meta_data.locally_owned_part()
+    metaData_->locally_owned_part()
     &stk::mesh::selectUnion(partVec);
 
-  stk::mesh::BucketVector const& node_bucket = bulk_data.get_buckets( stk::topology::NODE_RANK, s_locally_owned_union );
+  stk::mesh::BucketVector const& node_bucket = bulkData_->get_buckets( stk::topology::NODE_RANK, s_locally_owned_union );
 
   for ( stk::mesh::BucketVector::const_iterator ib = node_bucket.begin() ;
         ib != node_bucket.end() ; ++ib ) {
@@ -2346,25 +2322,24 @@ Realm::register_nodal_fields(
   stk::mesh::Part *part)
 {
   // register high level common fields
-  stk::mesh::MetaData &meta_data = fixture_->meta_data();
-  const int nDim = meta_data.spatial_dimension();
+  const int nDim = metaData_->spatial_dimension();
 
   // mesh motion/deformation is high level
   if ( solutionOptions_->meshMotion_ || solutionOptions_->externalMeshDeformation_ ) {
-    VectorFieldType *displacement = &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_displacement"));
+    VectorFieldType *displacement = &(metaData_->declare_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_displacement"));
     stk::mesh::put_field(*displacement, *part, nDim);
-    VectorFieldType *currentCoords = &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "current_coordinates"));
+    VectorFieldType *currentCoords = &(metaData_->declare_field<VectorFieldType>(stk::topology::NODE_RANK, "current_coordinates"));
     stk::mesh::put_field(*currentCoords, *part, nDim);
-    VectorFieldType *meshVelocity = &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_velocity"));
+    VectorFieldType *meshVelocity = &(metaData_->declare_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_velocity"));
     stk::mesh::put_field(*meshVelocity, *part, nDim);
     // only internal mesh motion requires rotation rate
     if ( solutionOptions_->meshMotion_ ) {
-      ScalarFieldType *omega = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "omega"));
+      ScalarFieldType *omega = &(metaData_->declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "omega"));
       stk::mesh::put_field(*omega, *part);
     }
     // only external mesh deformation requires dvi/dxj (for GCL)
     if ( solutionOptions_->externalMeshDeformation_) {
-      ScalarFieldType *divV = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "div_mesh_velocity"));
+      ScalarFieldType *divV = &(metaData_->declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "div_mesh_velocity"));
       stk::mesh::put_field(*divV, *part);
     }
   }
@@ -2380,12 +2355,11 @@ void
 Realm::register_averaging_variables(stk::mesh::Part *part)
 {
   // register high level common fields
-  stk::mesh::MetaData &meta_data = fixture_->meta_data();
-  const int nDim = meta_data.spatial_dimension();
+  const int nDim = metaData_->spatial_dimension();
 
   // always need Reynolds averaged density; add as restart variable
   std::string densReName = "density_ra";
-  ScalarFieldType *densityRA =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, densReName));
+  ScalarFieldType *densityRA =  &(metaData_->declare_field<ScalarFieldType>(stk::topology::NODE_RANK, densReName));
   stk::mesh::put_field(*densityRA, *part);
   augment_restart_variable_list(densReName);
 
@@ -2394,11 +2368,11 @@ Realm::register_averaging_variables(stk::mesh::Part *part)
     const std::string varName = averagingInfo_->favreFieldNameVec_[i];
     const std::string favreName = varName + "_fa";
     if ( varName == "velocity" ) {
-      VectorFieldType *velocity = &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, favreName));
+      VectorFieldType *velocity = &(metaData_->declare_field<VectorFieldType>(stk::topology::NODE_RANK, favreName));
       stk::mesh::put_field(*velocity, *part, nDim);
     }
     else {
-      ScalarFieldType *scalarQ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, favreName));
+      ScalarFieldType *scalarQ = &(metaData_->declare_field<ScalarFieldType>(stk::topology::NODE_RANK, favreName));
       stk::mesh::put_field(*scalarQ, *part);
     }
 
@@ -2411,11 +2385,11 @@ Realm::register_averaging_variables(stk::mesh::Part *part)
     const std::string varName = averagingInfo_->reynoldsFieldNameVec_[i];
     const std::string reynoldsName = varName + "_ra";
     if ( varName == "velocity" ) {
-      VectorFieldType *velocity = &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, reynoldsName));
+      VectorFieldType *velocity = &(metaData_->declare_field<VectorFieldType>(stk::topology::NODE_RANK, reynoldsName));
       stk::mesh::put_field(*velocity, *part, nDim);
     }
     else {
-      ScalarFieldType *scalarQ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, reynoldsName));
+      ScalarFieldType *scalarQ = &(metaData_->declare_field<ScalarFieldType>(stk::topology::NODE_RANK, reynoldsName));
       stk::mesh::put_field(*scalarQ, *part);
     }
 
@@ -2481,15 +2455,13 @@ Realm::register_wall_bc(
   // push back the part for book keeping and, later, skin mesh
   bcPartVec_.push_back(part);
 
-  stk::mesh::MetaData & meta_data = fixture_->meta_data();
-
-  const int nDim = meta_data.spatial_dimension();
+  const int nDim = metaData_->spatial_dimension();
 
   // register fields
   const int numScsIp = theTopo.num_nodes();
 
   GenericFieldType *exposedAreaVec_
-    = &(meta_data.declare_field<GenericFieldType>(static_cast<stk::topology::rank_t>(meta_data.side_rank()), "exposed_area_vector"));
+    = &(metaData_->declare_field<GenericFieldType>(static_cast<stk::topology::rank_t>(metaData_->side_rank()), "exposed_area_vector"));
   stk::mesh::put_field(*exposedAreaVec_, *part, nDim*numScsIp );
 
   //====================================================
@@ -2525,15 +2497,13 @@ Realm::register_inflow_bc(
   // push back the part for book keeping and, later, skin mesh
   bcPartVec_.push_back(part);
 
-  stk::mesh::MetaData & meta_data = fixture_->meta_data();
-
-  const int nDim = meta_data.spatial_dimension();
+  const int nDim = metaData_->spatial_dimension();
 
   // register fields
   const int numScsIp = theTopo.num_nodes();
 
   GenericFieldType *exposedAreaVec_
-    = &(meta_data.declare_field<GenericFieldType>(static_cast<stk::topology::rank_t>(meta_data.side_rank()), "exposed_area_vector"));
+    = &(metaData_->declare_field<GenericFieldType>(static_cast<stk::topology::rank_t>(metaData_->side_rank()), "exposed_area_vector"));
   stk::mesh::put_field(*exposedAreaVec_, *part, nDim*numScsIp );
 
   //====================================================
@@ -2568,15 +2538,13 @@ Realm::register_open_bc(
   // push back the part for book keeping and, later, skin mesh
   bcPartVec_.push_back(part);
 
-  stk::mesh::MetaData & meta_data = fixture_->meta_data();
-
-  const int nDim = meta_data.spatial_dimension();
+  const int nDim = metaData_->spatial_dimension();
 
   // register fields
   const int numScsIp = theTopo.num_nodes();
 
   GenericFieldType *exposedAreaVec_
-    = &(meta_data.declare_field<GenericFieldType>(static_cast<stk::topology::rank_t>(meta_data.side_rank()), "exposed_area_vector"));
+    = &(metaData_->declare_field<GenericFieldType>(static_cast<stk::topology::rank_t>(metaData_->side_rank()), "exposed_area_vector"));
   stk::mesh::put_field(*exposedAreaVec_, *part, nDim*numScsIp );
 
   //====================================================
@@ -2619,37 +2587,36 @@ Realm::register_contact_bc(
   // Register boundary condition data
   //====================================================
 
-  stk::mesh::MetaData & meta_data = fixture_->meta_data();
-  const int nDim = meta_data.spatial_dimension();
+  const int nDim = metaData_->spatial_dimension();
   const int numScsIp = theTopo.num_nodes();
 
   // exposed area vector
   GenericFieldType *exposedAreaVec_
-    = &(meta_data.declare_field<GenericFieldType>(static_cast<stk::topology::rank_t>(meta_data.side_rank()), "exposed_area_vector"));
+    = &(metaData_->declare_field<GenericFieldType>(static_cast<stk::topology::rank_t>(metaData_->side_rank()), "exposed_area_vector"));
   stk::mesh::put_field(*exposedAreaVec_, *part, nDim*numScsIp );
 
   // register nodal field that will hold important information
-  VectorFieldType *haloNormal =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "halo_normal"));
+  VectorFieldType *haloNormal =  &(metaData_->declare_field<VectorFieldType>(stk::topology::NODE_RANK, "halo_normal"));
   stk::mesh::put_field(*haloNormal, *part, nDim);
-  VectorFieldType *haloDxj =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "halo_dxj"));
+  VectorFieldType *haloDxj =  &(metaData_->declare_field<VectorFieldType>(stk::topology::NODE_RANK, "halo_dxj"));
   stk::mesh::put_field(*haloDxj, *part, nDim);
-  ScalarFieldType *extDistance = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "extrusion_distance"));
+  ScalarFieldType *extDistance = &(metaData_->declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "extrusion_distance"));
   stk::mesh::put_field(*extDistance, *part);
 
   // correction for extrusion distance (for non-planar surfaces)
   ScalarFieldType *extDistanceCorrFac 
-    = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "extrusion_distance_correct_fac"));
+    = &(metaData_->declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "extrusion_distance_correct_fac"));
   stk::mesh::put_field(*extDistanceCorrFac, *part);
   ScalarFieldType *extDistanceCorrCount 
-    = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "extrusion_distance_correct_count"));
+    = &(metaData_->declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "extrusion_distance_correct_count"));
   stk::mesh::put_field(*extDistanceCorrCount, *part);
 
   if ( realmUsesEdges_ ) {
     // need some extra nodal data for edge-based
-    ScalarFieldType *haloMdot =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "halo_mdot"));
+    ScalarFieldType *haloMdot =  &(metaData_->declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "halo_mdot"));
     stk::mesh::put_field(*haloMdot, *part);
 
-    VectorFieldType *haloAxj =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "halo_axj"));
+    VectorFieldType *haloAxj =  &(metaData_->declare_field<VectorFieldType>(stk::topology::NODE_RANK, "halo_axj"));
     stk::mesh::put_field(*haloAxj, *part, nDim);
   }
   else {
@@ -2758,15 +2725,13 @@ Realm::register_symmetry_bc(
   // push back the part for book keeping and, later, skin mesh
   bcPartVec_.push_back(part);
 
-  stk::mesh::MetaData & meta_data = fixture_->meta_data();
-
-  const int nDim = meta_data.spatial_dimension();
+  const int nDim = metaData_->spatial_dimension();
 
   // register fields
   const int numScsIp = theTopo.num_nodes();
 
   GenericFieldType *exposedAreaVec_
-    = &(meta_data.declare_field<GenericFieldType>(static_cast<stk::topology::rank_t>(meta_data.side_rank()), "exposed_area_vector"));
+    = &(metaData_->declare_field<GenericFieldType>(static_cast<stk::topology::rank_t>(metaData_->side_rank()), "exposed_area_vector"));
   stk::mesh::put_field(*exposedAreaVec_, *part, nDim*numScsIp );
 
   //====================================================
@@ -2827,8 +2792,7 @@ Realm::register_non_conformal_bc(
 
   hasNonConformal_ = true;
 
-  stk::mesh::MetaData & meta_data = fixture_->meta_data();
-  const int nDim = meta_data.spatial_dimension();
+  const int nDim = metaData_->spatial_dimension();
   
   //====================================================
   // Register boundary condition data
@@ -2844,7 +2808,7 @@ Realm::register_non_conformal_bc(
        i != masterMeshParts.end(); ++i ) {
     stk::mesh::Part * const part = *i ;
     const stk::topology partTopo = part->topology();
-    if ( !(meta_data.side_rank() == part->primary_entity_rank()) ) {
+    if ( !(metaData_->side_rank() == part->primary_entity_rank()) ) {
       throw std::runtime_error("NonConformal::fatal_error(); part is not a face" + part->name());
     }
     else {
@@ -2855,7 +2819,7 @@ Realm::register_non_conformal_bc(
       
       // exposed area vector
       GenericFieldType *exposedAreaVec_
-        = &(meta_data.declare_field<GenericFieldType>(static_cast<stk::topology::rank_t>(meta_data.side_rank()), "exposed_area_vector"));
+        = &(metaData_->declare_field<GenericFieldType>(static_cast<stk::topology::rank_t>(metaData_->side_rank()), "exposed_area_vector"));
       stk::mesh::put_field(*exposedAreaVec_, *part, nDim*numBip );
     }
   }
@@ -2974,7 +2938,7 @@ Realm::provide_output()
       create_output_mesh();
 
     // not set up for globals
-    fixture_->process_output_request(resultsFileIndex_, currentTime);
+    ioBroker_->process_output_request(resultsFileIndex_, currentTime);
     equationSystems_.provide_output();
   }
 
@@ -3008,8 +2972,8 @@ Realm::provide_restart_output()
     if ( isRestartOutputStep ) {
 
       // handle fields
-      fixture_->begin_output_step(restartFileIndex_, currentTime);
-      fixture_->write_defined_output_fields(restartFileIndex_);
+      ioBroker_->begin_output_step(restartFileIndex_, currentTime);
+      ioBroker_->write_defined_output_fields(restartFileIndex_);
 
       // push global variables for time step
       const double timeStepNm1 = timeIntegrator_->get_time_step();
@@ -3025,11 +2989,11 @@ Realm::provide_restart_output()
         std::string parameterName = (*i).first;
         stk::util::Parameter parameter = (*i).second;
         if ( parameter.toRestartFile ) {
-          fixture_->write_global(restartFileIndex_, parameterName,  parameter.value, parameter.type);
+          ioBroker_->write_global(restartFileIndex_, parameterName,  parameter.value, parameter.type);
         }
       }
 
-      fixture_->end_output_step(restartFileIndex_);
+      ioBroker_->end_output_step(restartFileIndex_);
     }
 
     const double stop_time = stk::cpu_time();
@@ -3046,8 +3010,7 @@ Realm::provide_restart_output()
 void
 Realm::swap_states()
 {
-  stk::mesh::BulkData & bulk_data = fixture_->bulk_data();
-  bulk_data.update_field_data_states();
+  bulkData_->update_field_data_states();
 }
 
 //--------------------------------------------------------------------------
@@ -3091,7 +3054,7 @@ Realm::populate_restart(
     // allow restart to skip missed required fields
     const double restartTime = outputInfo_->restartTime_;
     std::vector<stk::io::MeshField> missingFields;
-    foundRestartTime = fixture_->read_defined_input_fields(restartTime, &missingFields);
+    foundRestartTime = ioBroker_->read_defined_input_fields(restartTime, &missingFields);
     if ( missingFields.size() > 0 ){
       for ( size_t k = 0; k < missingFields.size(); ++k)
         NaluEnv::self().naluOutputP0() << "WARNING: Restart value for Field "
@@ -3101,10 +3064,10 @@ Realm::populate_restart(
 
     // extract time parameters; okay if they are missing; no need to let the user know
     const bool abortIfNotFound = false;
-    fixture_->get_global("timeStepNm1", timeStepNm1, abortIfNotFound);
-    fixture_->get_global("timeStepCount", timeStepCount, abortIfNotFound);
+    ioBroker_->get_global("timeStepNm1", timeStepNm1, abortIfNotFound);
+    ioBroker_->get_global("timeStepCount", timeStepCount, abortIfNotFound);
     if ( averagingInfo_->processAveraging_)
-      fixture_->get_global("currentTimeFilter", averagingInfo_->currentTimeFilter_, abortIfNotFound);
+      ioBroker_->get_global("currentTimeFilter", averagingInfo_->currentTimeFilter_, abortIfNotFound);
   }
   return foundRestartTime;
 }
@@ -3118,7 +3081,7 @@ Realm::populate_variables_from_input()
   // no reading fields from mesh if this is a restart
   if ( !restarted_simulation() && solutionOptions_->inputVarFromFileMap_.size() > 0 ) {
     const double timeToRead = 1.0e8;
-    fixture_->read_defined_input_fields(timeToRead);
+    ioBroker_->read_defined_input_fields(timeToRead);
   }
 }
 
@@ -3146,11 +3109,8 @@ Realm::initial_work()
 void
 Realm::set_global_id()
 {
-  stk::mesh::MetaData & meta_data = fixture_->meta_data();
-  stk::mesh::BulkData & bulk_data = fixture_->bulk_data();
-
-  const stk::mesh::Selector s_universal = meta_data.universal_part();
-  stk::mesh::BucketVector const& buckets = bulk_data.get_buckets( stk::topology::NODE_RANK, s_universal );
+  const stk::mesh::Selector s_universal = metaData_->universal_part();
+  stk::mesh::BucketVector const& buckets = bulkData_->get_buckets( stk::topology::NODE_RANK, s_universal );
 
   for ( stk::mesh::BucketVector::const_iterator ib = buckets.begin();
         ib != buckets.end(); ++ib ) {
@@ -3159,7 +3119,7 @@ Realm::set_global_id()
     stk::mesh::EntityId *naluGlobalIds = stk::mesh::field_data(*naluGlobalId_, b);
 
     for ( stk::mesh::Bucket::size_type k = 0; k < length; ++k ) {
-   	  naluGlobalIds[k] = bulk_data.identifier(b[k]);
+   	  naluGlobalIds[k] = bulkData_->identifier(b[k]);
     }
   }
 }
@@ -3201,7 +3161,7 @@ Realm::check_job(bool get_node_count)
   // set number of nodes, check job run size
   if (get_node_count)
   {
-    size_t localNodeCount = fixture_->get_input_io_region()->get_property("node_count").get_int();
+    size_t localNodeCount = ioBroker_->get_input_io_region()->get_property("node_count").get_int();
     stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &localNodeCount, &nodeCount_, 1);
     NaluEnv::self().naluOutputP0() << "Node count from meta data = " << nodeCount_ << std::endl;
   }
@@ -3225,9 +3185,9 @@ Realm::check_job(bool get_node_count)
                   << double(memoryEstimate)/procGBScale << " GB." << std::endl;
 
   SizeType memoryEstimateFields = 0;
-  if (fixture_->meta_data().is_commit())
+  if (metaData_->is_commit())
     {
-      const stk::mesh::FieldVector & fields =  fixture_->meta_data().get_fields();
+      const stk::mesh::FieldVector & fields =  metaData_->get_fields();
       unsigned nfields = fields.size();
       for (unsigned ifld = 0; ifld < nfields; ++ifld)
         {
@@ -3244,7 +3204,7 @@ Realm::check_job(bool get_node_count)
   NaluEnv::self().naluOutputP0() << "Total memory estimate (per core) = "
                   << double(memoryEstimate)/procGBScale << " GB." << std::endl;
 
-  if (fixture_->meta_data().is_commit() && estimateMemoryOnly_)
+  if (metaData_->is_commit() && estimateMemoryOnly_)
     {
       throw std::runtime_error("Job requested memory estimate only, shutting down");
     }
@@ -3909,9 +3869,8 @@ stk::mesh::BucketVector const& Realm::get_buckets( stk::mesh::EntityRank rank,
                                                    const stk::mesh::Selector & selector ,
                                                    bool get_all) const
 {
-  stk::mesh::BulkData const& mesh = fixture_->bulk_data();
-  if (fixture_->meta_data().spatial_dimension() == 3 && rank == stk::topology::EDGE_RANK)
-    return mesh.get_buckets(rank, selector);
+  if (metaData_->spatial_dimension() == 3 && rank == stk::topology::EDGE_RANK)
+    return bulkData_->get_buckets(rank, selector);
 
   if (!get_all && solutionOptions_->useAdapter_ && solutionOptions_->maxRefinementLevel_ > 0)
     {
@@ -3921,14 +3880,31 @@ stk::mesh::BucketVector const& Realm::get_buckets( stk::mesh::EntityRank rank,
           // adapterSelector_ avoids parent elements
           new_selector = selector & adapterSelector_[rank];
         }
-      return mesh.get_buckets(rank, new_selector);
+      return bulkData_->get_buckets(rank, new_selector);
     }
   else
     {
-      return mesh.get_buckets(rank, selector);
+      return bulkData_->get_buckets(rank, selector);
     }
 }
 
+//--------------------------------------------------------------------------
+//-------- bulk_data() -----------------------------------------------------
+//--------------------------------------------------------------------------
+stk::mesh::BulkData &
+Realm::bulk_data()
+{
+  return *bulkData_;
+}
+
+//--------------------------------------------------------------------------
+//-------- meta_data() -----------------------------------------------------
+//--------------------------------------------------------------------------
+stk::mesh::MetaData &
+Realm::meta_data()
+{
+  return *metaData_;
+}
 
 } // namespace nalu
 } // namespace Sierra

@@ -17,8 +17,6 @@
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/BulkData.hpp>
 #include <stk_mesh/base/Field.hpp>
-// stk_io
-#include <stk_io/StkMeshIoBroker.hpp>
 
 namespace sierra{
 namespace nalu{
@@ -38,10 +36,10 @@ EnthalpyViscousWorkNodeSuppAlg::EnthalpyViscousWorkNodeSuppAlg(
     viscosity_(NULL),
     dualNodalVolume_(NULL),
     includeDivU_(realm_.get_divU()),
-    nDim_(realm_.fixture_->meta_data().spatial_dimension())
+    nDim_(realm_.meta_data().spatial_dimension())
 {
   // save off fields
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
   dudx_ = meta_data.get_field<GenericFieldType>(stk::topology::NODE_RANK, "dudx");
   const std::string viscName = realm.is_turbulent() ? "effective_viscosity_u" : "viscosity";
   viscosity_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, viscName);

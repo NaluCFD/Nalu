@@ -17,8 +17,6 @@
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/BulkData.hpp>
 #include <stk_mesh/base/Field.hpp>
-// stk_io
-#include <stk_io/StkMeshIoBroker.hpp>
 
 namespace sierra{
 namespace nalu{
@@ -40,7 +38,7 @@ EnthalpyLowSpeedCompressibleNodeSuppAlg::EnthalpyLowSpeedCompressibleNodeSuppAlg
     dt_(0.0)
 {
   // save off fields
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
   pressureN_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure_old");
   pressureNp1_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure");
   dualNodalVolume_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");

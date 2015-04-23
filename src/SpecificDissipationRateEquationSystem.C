@@ -17,8 +17,7 @@
 #include <AssembleNodalGradAlgorithmDriver.h>
 #include <AssembleNodalGradEdgeAlgorithm.h>
 #include <AssembleNodalGradElemAlgorithm.h>
-#include <AssembleNodalGradEdgeBoundaryAlgorithm.h>
-#include <AssembleNodalGradElemBoundaryAlgorithm.h>
+#include <AssembleNodalGradBoundaryAlgorithm.h>
 #include <AssembleNodalGradEdgeContactAlgorithm.h>
 #include <AssembleNodalGradElemContactAlgorithm.h>
 #include <AuxFunctionAlgorithm.h>
@@ -62,7 +61,6 @@
 #include <stk_mesh/base/MetaData.hpp>
 
 // stk_io
-#include <stk_io/StkMeshIoBroker.hpp>
 #include <stk_io/IossBridge.hpp>
 
 // stk_topo
@@ -135,7 +133,7 @@ SpecificDissipationRateEquationSystem::register_nodal_fields(
   stk::mesh::Part *part)
 {
 
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   const int nDim = meta_data.spatial_dimension();
   const int numStates = realm_.number_of_states();
@@ -306,7 +304,7 @@ SpecificDissipationRateEquationSystem::register_inflow_bc(
   ScalarFieldType &sdrNp1 = sdr_->field_of_state(stk::mesh::StateNP1);
   VectorFieldType &dwdxNone = dwdx_->field_of_state(stk::mesh::StateNone);
 
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   // register boundary data; sdr_bc
   ScalarFieldType *theBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "sdr_bc"));
@@ -340,13 +338,8 @@ SpecificDissipationRateEquationSystem::register_inflow_bc(
   std::map<AlgorithmType, Algorithm *>::iterator it
     = assembleNodalGradAlgDriver_->algMap_.find(algType);
   if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg = NULL;
-    if ( edgeNodalGradient_ && realm_.realmUsesEdges_ ) {
-      theAlg = new AssembleNodalGradEdgeBoundaryAlgorithm(realm_, part, &sdrNp1, &dwdxNone);
-    }
-    else {
-      theAlg = new AssembleNodalGradElemBoundaryAlgorithm(realm_, part, &sdrNp1, &dwdxNone, edgeNodalGradient_);
-    }
+    Algorithm *theAlg 
+      = new AssembleNodalGradBoundaryAlgorithm(realm_, part, &sdrNp1, &dwdxNone, edgeNodalGradient_);
     assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
   }
   else {
@@ -383,7 +376,7 @@ SpecificDissipationRateEquationSystem::register_open_bc(
   ScalarFieldType &sdrNp1 = sdr_->field_of_state(stk::mesh::StateNP1);
   VectorFieldType &dwdxNone = dwdx_->field_of_state(stk::mesh::StateNone);
 
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   // register boundary data; sdr_bc
   ScalarFieldType *theBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "open_sdr_bc"));
@@ -409,13 +402,8 @@ SpecificDissipationRateEquationSystem::register_open_bc(
   std::map<AlgorithmType, Algorithm *>::iterator it
     = assembleNodalGradAlgDriver_->algMap_.find(algType);
   if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg = NULL;
-    if ( edgeNodalGradient_ && realm_.realmUsesEdges_ ) {
-      theAlg = new AssembleNodalGradEdgeBoundaryAlgorithm(realm_, part, &sdrNp1, &dwdxNone);
-    }
-    else {
-      theAlg = new AssembleNodalGradElemBoundaryAlgorithm(realm_, part, &sdrNp1, &dwdxNone, edgeNodalGradient_);
-    }
+    Algorithm *theAlg 
+      = new AssembleNodalGradBoundaryAlgorithm(realm_, part, &sdrNp1, &dwdxNone, edgeNodalGradient_);
     assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
   }
   else {
@@ -458,7 +446,7 @@ SpecificDissipationRateEquationSystem::register_wall_bc(
   ScalarFieldType &sdrNp1 = sdr_->field_of_state(stk::mesh::StateNP1);
   VectorFieldType &dwdxNone = dwdx_->field_of_state(stk::mesh::StateNone);
 
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   // register boundary data; sdr_bc
   sdrWallBc_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "sdr_bc"));
@@ -501,13 +489,8 @@ SpecificDissipationRateEquationSystem::register_wall_bc(
   std::map<AlgorithmType, Algorithm *>::iterator it
     = assembleNodalGradAlgDriver_->algMap_.find(algType);
   if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg = NULL;
-    if ( edgeNodalGradient_ && realm_.realmUsesEdges_ ) {
-      theAlg = new AssembleNodalGradEdgeBoundaryAlgorithm(realm_, part, &sdrNp1, &dwdxNone);
-    }
-    else {
-      theAlg = new AssembleNodalGradElemBoundaryAlgorithm(realm_, part, &sdrNp1, &dwdxNone, edgeNodalGradient_);
-    }
+    Algorithm *theAlg 
+      = new AssembleNodalGradBoundaryAlgorithm(realm_, part, &sdrNp1, &dwdxNone, edgeNodalGradient_);
     assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
   }
   else {
@@ -534,7 +517,7 @@ SpecificDissipationRateEquationSystem::register_contact_bc(
     // register halo_sdr if using the element-based projected nodal gradient
     ScalarFieldType *haloSdr = NULL;
     if ( !edgeNodalGradient_ ) {
-      stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+      stk::mesh::MetaData &meta_data = realm_.meta_data();
       haloSdr = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "halo_sdr"));
       stk::mesh::put_field(*haloSdr, *part);
     }
@@ -596,13 +579,8 @@ SpecificDissipationRateEquationSystem::register_symmetry_bc(
   std::map<AlgorithmType, Algorithm *>::iterator it
     = assembleNodalGradAlgDriver_->algMap_.find(algType);
   if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg = NULL;
-    if ( edgeNodalGradient_ && realm_.realmUsesEdges_ ) {
-      theAlg = new AssembleNodalGradEdgeBoundaryAlgorithm(realm_, part, &sdrNp1, &dwdxNone);
-    }
-    else {
-      theAlg = new AssembleNodalGradElemBoundaryAlgorithm(realm_, part, &sdrNp1, &dwdxNone, edgeNodalGradient_);
-    }
+    Algorithm *theAlg 
+      = new AssembleNodalGradBoundaryAlgorithm(realm_, part, &sdrNp1, &dwdxNone, edgeNodalGradient_);
     assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
   }
   else {
@@ -684,8 +662,8 @@ SpecificDissipationRateEquationSystem::compute_wall_model_parameters()
   if ( wallModelAlg_.size() == 0 )
     return;
 
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   // selector; all nodes that have a SST-specific nodal field registered
   stk::mesh::Selector s_all_nodes
@@ -753,7 +731,7 @@ SpecificDissipationRateEquationSystem::predict_state()
 {
 
   // FIXME... move this to a generalized base class method
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   ScalarFieldType &sdrN = sdr_->field_of_state(stk::mesh::StateN);
   ScalarFieldType &sdrNp1 = sdr_->field_of_state(stk::mesh::StateNP1);

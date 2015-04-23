@@ -18,7 +18,7 @@
 #include <AlgorithmDriver.h>
 #include <AssembleNodalGradUAlgorithmDriver.h>
 #include <AssembleNodalGradUElemAlgorithm.h>
-#include <AssembleNodalGradUElemBoundaryAlgorithm.h>
+#include <AssembleNodalGradUBoundaryAlgorithm.h>
 #include <AssembleNodeSolverAlgorithm.h>
 #include <AuxFunctionAlgorithm.h>
 #include <ConstantAuxFunction.h>
@@ -57,7 +57,6 @@
 #include <stk_mesh/base/Comm.hpp>
 
 // stk_io
-#include <stk_io/StkMeshIoBroker.hpp>
 #include <stk_io/IossBridge.hpp>
 
 // stk_topo
@@ -144,7 +143,7 @@ MeshDisplacementEquationSystem::register_nodal_fields(
   stk::mesh::Part *part)
 {
 
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   const int nDim = meta_data.spatial_dimension();
   const int numStates = realm_.number_of_states();
@@ -224,8 +223,7 @@ MeshDisplacementEquationSystem::register_element_fields(
   // Register element data
   //====================================================
 
-  stk::io::StkMeshIoBroker *fixture = realm_.fixture_;
-  stk::mesh::MetaData & meta_data = fixture->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const int numScvIp = theTopo.num_nodes();
   GenericFieldType *scVolume = &(meta_data.declare_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "sc_volume"));
@@ -307,7 +305,7 @@ MeshDisplacementEquationSystem::register_wall_bc(
   // np1 mesh displacement
   VectorFieldType &displacementNp1 = meshDisplacement_->field_of_state(stk::mesh::StateNP1);
 
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
   const unsigned nDim = meta_data.spatial_dimension();
 
   // extract the value for user specified velocity and save off the AuxFunction
@@ -434,8 +432,8 @@ MeshDisplacementEquationSystem::register_wall_bc(
   std::map<AlgorithmType, Algorithm *>::iterator itgv
     = assembleNodalGradAlgDriver_->algMap_.find(algType);
   if ( itgv == assembleNodalGradAlgDriver_->algMap_.end() ) {
-    AssembleNodalGradUElemBoundaryAlgorithm *theAlg
-      = new AssembleNodalGradUElemBoundaryAlgorithm(realm_, part, meshVelocity_, dvdx_, edgeNodalGradient_);
+    AssembleNodalGradUBoundaryAlgorithm *theAlg
+      = new AssembleNodalGradUBoundaryAlgorithm(realm_, part, meshVelocity_, dvdx_, edgeNodalGradient_);
     assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
   }
   else {
@@ -490,7 +488,7 @@ MeshDisplacementEquationSystem::reinitialize_linear_system()
 void
 MeshDisplacementEquationSystem::predict_state()
 {
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const int nDim = meta_data.spatial_dimension();
 
@@ -549,8 +547,8 @@ MeshDisplacementEquationSystem::solve_and_update()
     // update
     double timeA = stk::cpu_time();
     field_axpby(
-      realm_.fixture_->meta_data(),
-      realm_.fixture_->bulk_data(),
+      realm_.meta_data(),
+      realm_.bulk_data(),
       1.0, *dxTmp_,
       1.0, meshDisplacement_->field_of_state(stk::mesh::StateNP1));
     double timeB = stk::cpu_time();
@@ -572,7 +570,7 @@ MeshDisplacementEquationSystem::solve_and_update()
 void
 MeshDisplacementEquationSystem::compute_current_coordinates()
 {
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   VectorFieldType &displacementN = meshDisplacement_->field_of_state(stk::mesh::StateN);
   VectorFieldType &displacementNp1 = meshDisplacement_->field_of_state(stk::mesh::StateNP1);
@@ -613,7 +611,7 @@ MeshDisplacementEquationSystem::compute_current_coordinates()
 void
 MeshDisplacementEquationSystem::compute_div_mesh_velocity()
 {
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const int nDim = meta_data.spatial_dimension();
 

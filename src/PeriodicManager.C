@@ -19,9 +19,6 @@
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/Part.hpp>
 
-// stk_io
-#include <stk_io/StkMeshIoBroker.hpp>
-
 // stk_util
 #include <stk_util/parallel/ParallelReduce.hpp>
 #include <stk_util/environment/CPUTime.hpp>
@@ -72,7 +69,7 @@ PeriodicManager::add_periodic_pair(
   slavePartVector_.push_back(slaveMeshPart);
 
   // form the selector pair
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
   stk::mesh::Selector masterSelect = meta_data.locally_owned_part() & stk::mesh::Selector(*masterMeshPart);
   stk::mesh::Selector slaveSelect = meta_data.locally_owned_part() & stk::mesh::Selector(*slaveMeshPart);
   SelectorPair periodicSelectorPair(masterSelect, slaveSelect);
@@ -221,7 +218,7 @@ PeriodicManager::augment_periodic_selector_pairs()
 void
 PeriodicManager::initialize_translation_vector()
 {
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
   translationVector_.resize(periodicSelectorPairs_.size());
   rotationVector_.resize(periodicSelectorPairs_.size());
   const int nDim = meta_data.spatial_dimension();
@@ -242,7 +239,7 @@ PeriodicManager::determine_translation(
     std::vector<double> &rotationVector)
 {
 
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   // fields
   VectorFieldType *coordinates = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
@@ -384,8 +381,8 @@ PeriodicManager::populate_search_key_vec(
     const stk::search::SearchMethod searchMethod)
 {
 
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
 
   // required data structures; master/slave
   std::vector<sphereBoundingBox> sphereBoundingBoxMasterVec;
@@ -475,7 +472,7 @@ PeriodicManager::error_check()
   size_t l_totalNumber[2] = {0,0};
 
   // extract total locally owned slave nodes
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
   stk::mesh::Selector s_locally_owned = meta_data.locally_owned_part()
     & stk::mesh::selectUnion(slavePartVector_);
   stk::mesh::BucketVector const& slave_node_buckets = realm_.get_buckets( stk::topology::NODE_RANK, s_locally_owned);
@@ -518,7 +515,7 @@ void
 PeriodicManager::create_ghosting_object()
 {
 
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
   unsigned theRank = NaluEnv::self().parallel_rank();
 
   std::vector<stk::mesh::EntityProc> sendNodes;
@@ -588,7 +585,7 @@ void
 PeriodicManager::parallel_communicate_field(
   stk::mesh::FieldBase *theField)
 {
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
   const unsigned pSize = bulk_data.parallel_size();
   if ( pSize > 1 ) {
     std::vector< const stk::mesh::FieldBase *> fieldVec(1, theField);
@@ -604,7 +601,7 @@ void
 PeriodicManager::update_global_id_field()
 {
 
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
 
   // no need to update periodically ghosted fields..
 

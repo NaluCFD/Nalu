@@ -18,7 +18,6 @@
 #include <stk_mesh/base/GetEntities.hpp>
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/Part.hpp>
-#include <stk_io/StkMeshIoBroker.hpp>
 
 namespace sierra{
 namespace nalu{
@@ -34,7 +33,7 @@ class Realm;
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 AssembleNodalGradUAlgorithmDriver::AssembleNodalGradUAlgorithmDriver(
-  const Realm &realm,
+  Realm &realm,
   const std::string dudxName)
   : AlgorithmDriver(realm),
     dudxName_(dudxName)
@@ -49,7 +48,7 @@ void
 AssembleNodalGradUAlgorithmDriver::pre_work()
 {
 
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const int nDim = meta_data.spatial_dimension();
 
@@ -92,8 +91,8 @@ void
 AssembleNodalGradUAlgorithmDriver::post_work()
 {
 
-  stk::mesh::BulkData & bulk_data = realm_.fixture_->bulk_data();
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   // extract fields
   GenericFieldType *dudx = meta_data.get_field<GenericFieldType>(stk::topology::NODE_RANK, dudxName_);

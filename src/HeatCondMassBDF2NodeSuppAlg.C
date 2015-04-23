@@ -16,8 +16,6 @@
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/BulkData.hpp>
 #include <stk_mesh/base/Field.hpp>
-// stk_io
-#include <stk_io/StkMeshIoBroker.hpp>
 
 namespace sierra{
 namespace nalu{
@@ -45,7 +43,7 @@ HeatCondMassBDF2NodeSuppAlg::HeatCondMassBDF2NodeSuppAlg(
     gamma3_(0.0)
 {
   // save off fields
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
   ScalarFieldType *temperature = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature");
   temperatureNm1_ = &(temperature->field_of_state(stk::mesh::StateNM1));
   temperatureN_ = &(temperature->field_of_state(stk::mesh::StateN));

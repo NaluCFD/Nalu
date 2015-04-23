@@ -18,8 +18,7 @@
 #include <AssembleNodalGradAlgorithmDriver.h>
 #include <AssembleNodalGradEdgeAlgorithm.h>
 #include <AssembleNodalGradElemAlgorithm.h>
-#include <AssembleNodalGradEdgeBoundaryAlgorithm.h>
-#include <AssembleNodalGradElemBoundaryAlgorithm.h>
+#include <AssembleNodalGradBoundaryAlgorithm.h>
 #include <AssembleNodalGradEdgeContactAlgorithm.h>
 #include <AssembleNodalGradElemContactAlgorithm.h>
 #include <AssembleNodeSolverAlgorithm.h>
@@ -71,7 +70,6 @@
 #include <stk_mesh/base/Comm.hpp>
 
 // stk_io
-#include <stk_io/StkMeshIoBroker.hpp>
 #include <stk_io/IossBridge.hpp>
 
 #include <stk_topology/topology.hpp>
@@ -148,7 +146,7 @@ void
 HeatCondEquationSystem::register_nodal_fields(
   stk::mesh::Part *part)
 {
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   const int nDim = meta_data.spatial_dimension();
 
@@ -210,7 +208,7 @@ HeatCondEquationSystem::register_edge_fields(
   stk::mesh::Part *part)
 {
 
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   //====================================================
   // Register edge data
@@ -235,7 +233,7 @@ HeatCondEquationSystem::register_element_fields(
   // Register element data
   //====================================================
 
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   const int numScvIp = theTopo.num_nodes();
   scVolume_ = &(meta_data.declare_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "sc_volume"));
@@ -389,19 +387,14 @@ HeatCondEquationSystem::register_wall_bc(
   ScalarFieldType &tempNp1 = temperature_->field_of_state(stk::mesh::StateNP1);
   VectorFieldType &dtdxNone = dtdx_->field_of_state(stk::mesh::StateNone);
 
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   // non-solver; dtdx; allow for element-based shifted; all bcs are of generic type "WALL"
   std::map<AlgorithmType, Algorithm *>::iterator it
     = assembleNodalGradAlgDriver_->algMap_.find(algType);
   if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg = NULL;
-    if ( edgeNodalGradient_ && realm_.realmUsesEdges_ ) {
-      theAlg = new AssembleNodalGradEdgeBoundaryAlgorithm(realm_, part, &tempNp1, &dtdxNone);
-    }
-    else {
-      theAlg = new AssembleNodalGradElemBoundaryAlgorithm(realm_, part, &tempNp1, &dtdxNone, edgeNodalGradient_);
-    }
+    Algorithm *theAlg 
+      = new AssembleNodalGradBoundaryAlgorithm(realm_, part, &tempNp1, &dtdxNone, edgeNodalGradient_);
     assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
   }
   else {
@@ -726,7 +719,7 @@ HeatCondEquationSystem::register_contact_bc(
     // register halo_t if using the element-based projected nodal gradient
     ScalarFieldType *haloT = NULL;
     if ( !edgeNodalGradient_ ) {
-      stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+      stk::mesh::MetaData &meta_data = realm_.meta_data();
       haloT = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "halo_t"));
       stk::mesh::put_field(*haloT, *part);
     }
@@ -781,19 +774,14 @@ HeatCondEquationSystem::register_non_conformal_bc(
   ScalarFieldType &tempNp1 = temperature_->field_of_state(stk::mesh::StateNP1);
   VectorFieldType &dtdxNone = dtdx_->field_of_state(stk::mesh::StateNone);
 
-  stk::mesh::MetaData &meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   // non-solver; dtdx; allow for element-based shifted; all bcs are of generic type "WALL"
   std::map<AlgorithmType, Algorithm *>::iterator it
     = assembleNodalGradAlgDriver_->algMap_.find(algType);
   if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg = NULL;
-    if ( edgeNodalGradient_ && realm_.realmUsesEdges_ ) {
-      theAlg = new AssembleNodalGradEdgeBoundaryAlgorithm(realm_, currentPart, &tempNp1, &dtdxNone);
-    }
-    else {
-      theAlg = new AssembleNodalGradElemBoundaryAlgorithm(realm_, currentPart, &tempNp1, &dtdxNone, edgeNodalGradient_);
-    }
+    Algorithm *theAlg 
+      = new AssembleNodalGradBoundaryAlgorithm(realm_, currentPart, &tempNp1, &dtdxNone, edgeNodalGradient_);
     assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
   }
   else {
@@ -888,7 +876,7 @@ HeatCondEquationSystem::predict_state()
 {
 
   // FIXME... move this to a generalized base class method
-  stk::mesh::MetaData & meta_data = realm_.fixture_->meta_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   ScalarFieldType &dofN = temperature_->field_of_state(stk::mesh::StateN);
   ScalarFieldType &dofNp1 = temperature_->field_of_state(stk::mesh::StateNP1);
@@ -945,8 +933,8 @@ HeatCondEquationSystem::solve_and_update()
     // update
     double timeA = stk::cpu_time();
     field_axpby(
-      realm_.fixture_->meta_data(),
-      realm_.fixture_->bulk_data(),
+      realm_.meta_data(),
+      realm_.bulk_data(),
       1.0, *tTmp_,
       1.0, *temperature_);
     double timeB = stk::cpu_time();
