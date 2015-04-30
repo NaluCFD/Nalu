@@ -37,7 +37,16 @@ AssembleContinuityElemOpenSolverAlgorithm::AssembleContinuityElemOpenSolverAlgor
   Realm &realm,
   stk::mesh::Part *part,
   EquationSystem *eqSystem)
-  : SolverAlgorithm(realm, part, eqSystem)
+  : SolverAlgorithm(realm, part, eqSystem),
+    velocity_(NULL),
+    Gpdx_(NULL),
+    coordinates_(NULL),
+    pressure_(NULL),
+    density_(NULL),
+    exposedAreaVec_(NULL),
+    pressureBc_(NULL),
+    shiftMdot_(realm_.get_cvfem_shifted_mdot()),
+    shiftPoisson_(realm_.get_cvfem_shifted_poisson())
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -177,8 +186,15 @@ AssembleContinuityElemOpenSolverAlgorithm::execute()
     double *p_face_shape_function = &ws_face_shape_function[0];
 
     // shape functions
-    meSCS->shape_fcn(&p_shape_function[0]);
-    meFC->shape_fcn(&p_face_shape_function[0]);
+    if ( shiftPoisson_ )
+      meSCS->shifted_shape_fcn(&p_shape_function[0]);
+    else
+      meSCS->shape_fcn(&p_shape_function[0]);
+
+    if ( shiftMdot_ )
+      meFC->shifted_shape_fcn(&p_face_shape_function[0]);
+    else
+      meFC->shape_fcn(&p_face_shape_function[0]);
 
     const stk::mesh::Bucket::size_type length   = b.size();
 

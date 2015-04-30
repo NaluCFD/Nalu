@@ -43,6 +43,15 @@ public:
     double * error ) {
     throw std::runtime_error("grad_op not implemented");}
 
+  virtual void shifted_grad_op(
+    const int nelem,
+    const double *coords,
+    double *gradop,
+    double *deriv,
+    double *det_j,
+    double * error ) {
+    throw std::runtime_error("grad_op not implemented");}
+
   virtual void nodal_grad_op(
     const int nelem,
     double *deriv,
@@ -165,6 +174,14 @@ public:
     double * error );
 
   void grad_op(
+    const int nelem,
+    const double *coords,
+    double *gradop,
+    double *deriv,
+    double *det_j,
+    double * error );
+
+  void shifted_grad_op(
     const int nelem,
     const double *coords,
     double *gradop,

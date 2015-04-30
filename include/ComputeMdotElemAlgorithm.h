@@ -46,6 +46,8 @@ public:
   GenericFieldType *massFlowRate_;
   ScalarFieldType *edgeMassFlowRate_;
 
+  const bool shiftMdot_;
+  const bool shiftPoisson_;
 };
 
 } // namespace nalu

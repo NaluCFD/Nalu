@@ -318,6 +318,35 @@ void HexSCS::grad_op(
 }
 
 //--------------------------------------------------------------------------
+//-------- shifted_grad_op -------------------------------------------------
+//--------------------------------------------------------------------------
+void HexSCS::shifted_grad_op(
+  const int nelem,
+  const double *coords,
+  double *gradop,
+  double *deriv,
+  double *det_j,
+  double *error)
+{
+  int lerr = 0;
+
+  SIERRA_FORTRAN(hex_derivative)
+    ( &numIntPoints_,
+      &intgLocShift_[0], deriv );
+  
+  SIERRA_FORTRAN(hex_gradient_operator)
+    ( &nelem,
+      &nodesPerElement_,
+      &numIntPoints_,
+      deriv,
+      coords, gradop, det_j, error, &lerr );
+
+  if ( lerr )
+    std::cout << "sorry, negative volume.." << std::endl;
+  
+}
+
+//--------------------------------------------------------------------------
 //-------- face_grad_op ----------------------------------------------------
 //--------------------------------------------------------------------------
 void HexSCS::face_grad_op(

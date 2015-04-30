@@ -44,6 +44,10 @@ public:
   VectorFieldType *coordinates_;
   ScalarFieldType *pressure_;
   ScalarFieldType *density_;
+
+  const bool shiftMdot_;
+  const bool shiftPoisson_;
+
 };
 
 } // namespace nalu
