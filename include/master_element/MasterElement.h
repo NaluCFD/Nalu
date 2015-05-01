@@ -279,6 +279,14 @@ public:
     double *det_j,
     double * error );
 
+  void shifted_grad_op(
+    const int nelem,
+    const double *coords,
+    double *gradop,
+    double *deriv,
+    double *det_j,
+    double * error );
+
   void face_grad_op(
     const int nelem,
     const int face_ordinal,
@@ -344,6 +352,19 @@ public:
     double *det_j,
     double * error );
 
+  void shifted_grad_op(
+    const int nelem,
+    const double *coords,
+    double *gradop,
+    double *deriv,
+    double *det_j,
+    double * error );
+
+  void pyr_derivative(
+    const int npts,
+    const double *intLoc,
+    double *deriv);
+
   const int * adjacentNodes();
 
   void shape_fcn(
@@ -389,6 +410,14 @@ public:
     double * error );
 
   void grad_op(
+    const int nelem,
+    const double *coords,
+    double *gradop,
+    double *deriv,
+    double *det_j,
+    double * error );
+
+  void shifted_grad_op(
     const int nelem,
     const double *coords,
     double *gradop,
@@ -460,6 +489,14 @@ public:
   const int * adjacentNodes();
 
   void grad_op(
+    const int nelem,
+    const double *coords,
+    double *gradop,
+    double *deriv,
+    double *det_j,
+    double * error );
+
+  void shifted_grad_op(
     const int nelem,
     const double *coords,
     double *gradop,
@@ -546,6 +583,14 @@ public:
     double * error );
 
   void grad_op(
+    const int nelem,
+    const double *coords,
+    double *gradop,
+    double *deriv,
+    double *det_j,
+    double * error );
+
+  void shifted_grad_op(
     const int nelem,
     const double *coords,
     double *gradop,
