@@ -313,7 +313,36 @@ void HexSCS::grad_op(
       coords, gradop, det_j, error, &lerr );
 
   if ( lerr )
-    std::cout << "sorry, negative volume.." << std::endl;
+    std::cout << "sorry, negative HexSCS volume.." << std::endl;
+  
+}
+
+//--------------------------------------------------------------------------
+//-------- shifted_grad_op -------------------------------------------------
+//--------------------------------------------------------------------------
+void HexSCS::shifted_grad_op(
+  const int nelem,
+  const double *coords,
+  double *gradop,
+  double *deriv,
+  double *det_j,
+  double *error)
+{
+  int lerr = 0;
+
+  SIERRA_FORTRAN(hex_derivative)
+    ( &numIntPoints_,
+      &intgLocShift_[0], deriv );
+  
+  SIERRA_FORTRAN(hex_gradient_operator)
+    ( &nelem,
+      &nodesPerElement_,
+      &numIntPoints_,
+      deriv,
+      coords, gradop, det_j, error, &lerr );
+
+  if ( lerr )
+    std::cout << "sorry, negative HexSCS volume.." << std::endl;
   
 }
 
@@ -965,8 +994,36 @@ void TetSCS::grad_op(
       coords, gradop, det_j, error, &lerr );
 
   if ( lerr )
-    std::cout << "sorry, negative volume.." << std::endl;
+    std::cout << "sorry, negative TetSCS volume.." << std::endl;
   
+}
+
+//--------------------------------------------------------------------------
+//-------- shifted_grad_op -------------------------------------------------
+//--------------------------------------------------------------------------
+void TetSCS::shifted_grad_op(
+  const int nelem,
+  const double *coords,
+  double *gradop,
+  double *deriv,
+  double *det_j,
+  double *error)
+{
+  int lerr = 0;
+
+  SIERRA_FORTRAN(tet_derivative)
+    ( &numIntPoints_, deriv );
+
+  SIERRA_FORTRAN(tet_gradient_operator)
+    ( &nelem,
+      &nodesPerElement_,
+      &numIntPoints_,
+      deriv,
+      coords, gradop, det_j, error, &lerr );
+
+  if ( lerr )
+    std::cout << "sorry, negative TetSCS volume.." << std::endl;
+
 }
 
 //--------------------------------------------------------------------------
@@ -1230,44 +1287,7 @@ void PyrSCS::grad_op(
 {
   int lerr = 0;
 
-  // d3d(c,s,j) = deriv[c + 3*(s + 5*j)] = deriv[c+3s+15j]
-  // c + 3s + 15j
-
-  // some params
-  const double zero = 0.0;
-  const double one = 1.0;
-  const int npts = numIntPoints_;
-
-  for ( int j = 0; j < npts; ++j) {
-
-    int k = j*3;
-    const int p = 15*j;
-
-    double r = intgLoc_[k+0];
-    double s = intgLoc_[k+1];
-    double t = intgLoc_[k+2];
-    
-    deriv[0+3*0+p] =-0.25*(one-s)*(one-t);  // d(N_1)/ d(r) = deriv[0]
-    deriv[1+3*0+p] =-0.25*(one-r)*(one-t);  // d(N_1)/ d(s) = deriv[1]
-    deriv[2+3*0+p] =-0.25*(one-r)*(one-s);  // d(N_1)/ d(t) = deriv[2]
-
-    deriv[0+3*1+p] = 0.25*(one-s)*(one-t);  // d(N_2)/ d(r) = deriv[0+3]
-    deriv[1+3*1+p]  =-0.25*(one+r)*(one-t);  // d(N_2)/ d(s) = deriv[1+3]
-    deriv[2+3*1+p] =-0.25*(one+r)*(one-s);  // d(N_2)/ d(t) = deriv[2+3]
-
-    deriv[0+3*2+p] = 0.25*(one+s)*(one-t);  // d(N_3)/ d(r) = deriv[0+6]
-    deriv[1+3*2+p] = 0.25*(one+r)*(one-t);  // d(N_3)/ d(s) = deriv[1+6]
-    deriv[2+3*2+p] =-0.25*(one+r)*(one+s);  // d(N_3)/ d(t) = deriv[2+6]
-
-    deriv[0+3*3+p] =-0.25*(one+s)*(one-t);  // d(N_4)/ d(r) = deriv[0+9]
-    deriv[1+3*3+p] = 0.25*(one-r)*(one-t);  // d(N_4)/ d(s) = deriv[1+9]
-    deriv[2+3*3+p] =-0.25*(one-r)*(one+s);  // d(N_4)/ d(t) = deriv[2+9]
-
-    deriv[0+3*4+p] = zero;                  // d(N_5)/ d(r) = deriv[0+12]
-    deriv[1+3*4+p] = zero;                  // d(N_5)/ d(s) = deriv[1+12]
-    deriv[2+3*4+p] = one;                   // d(N_5)/ d(t) = deriv[2+12]
-
-  }
+  pyr_derivative(numIntPoints_, &intgLoc_[0], deriv);
   
   SIERRA_FORTRAN(pyr_gradient_operator)
     ( &nelem,
@@ -1277,8 +1297,75 @@ void PyrSCS::grad_op(
       coords, gradop, det_j, error, &lerr );
 
   if ( lerr )
-    std::cout << "sorry, negative volume.." << std::endl;
+    std::cout << "sorry, negative PyrSCS volume.." << std::endl;
   
+}
+
+//--------------------------------------------------------------------------
+//-------- shifted_grad_op -------------------------------------------------
+//--------------------------------------------------------------------------
+void PyrSCS::shifted_grad_op(
+  const int nelem,
+  const double *coords,
+  double *gradop,
+  double *deriv,
+  double *det_j,
+  double *error)
+{
+  int lerr = 0;
+
+  pyr_derivative(numIntPoints_, &intgLocShift_[0], deriv);
+
+  SIERRA_FORTRAN(pyr_gradient_operator)
+    ( &nelem,
+      &nodesPerElement_,
+      &numIntPoints_,
+      deriv,
+      coords, gradop, det_j, error, &lerr );
+
+  if ( lerr )
+    std::cout << "sorry, negative PyrSCS volume.." << std::endl;
+
+}
+
+//--------------------------------------------------------------------------
+//-------- pyr_derivative --------------------------------------------------
+//--------------------------------------------------------------------------
+void PyrSCS::pyr_derivative(
+  const int npts,
+  const double *intgLoc,
+  double *deriv)
+{
+  // d3d(c,s,j) = deriv[c + 3*(s + 5*j)] = deriv[c+3s+15j]
+
+  for ( int j = 0; j < npts; ++j) {
+    const int k = j*3;
+    const int p = 15*j;
+
+    double r = intgLoc[k+0];
+    double s = intgLoc[k+1];
+    double t = intgLoc[k+2];
+
+    deriv[0+3*0+p] =-0.25*(1.0-s)*(1.0-t);  // d(N_1)/ d(r) = deriv[0]
+    deriv[1+3*0+p] =-0.25*(1.0-r)*(1.0-t);  // d(N_1)/ d(s) = deriv[1]
+    deriv[2+3*0+p] =-0.25*(1.0-r)*(1.0-s);  // d(N_1)/ d(t) = deriv[2]
+
+    deriv[0+3*1+p] = 0.25*(1.0-s)*(1.0-t);  // d(N_2)/ d(r) = deriv[0+3]
+    deriv[1+3*1+p] =-0.25*(1.0+r)*(1.0-t);  // d(N_2)/ d(s) = deriv[1+3]
+    deriv[2+3*1+p] =-0.25*(1.0+r)*(1.0-s);  // d(N_2)/ d(t) = deriv[2+3]
+
+    deriv[0+3*2+p] = 0.25*(1.0+s)*(1.0-t);  // d(N_3)/ d(r) = deriv[0+6]
+    deriv[1+3*2+p] = 0.25*(1.0+r)*(1.0-t);  // d(N_3)/ d(s) = deriv[1+6]
+    deriv[2+3*2+p] =-0.25*(1.0+r)*(1.0+s);  // d(N_3)/ d(t) = deriv[2+6]
+
+    deriv[0+3*3+p] =-0.25*(1.0+s)*(1.0-t);  // d(N_4)/ d(r) = deriv[0+9]
+    deriv[1+3*3+p] = 0.25*(1.0-r)*(1.0-t);  // d(N_4)/ d(s) = deriv[1+9]
+    deriv[2+3*3+p] =-0.25*(1.0-r)*(1.0+s);  // d(N_4)/ d(t) = deriv[2+9]
+
+    deriv[0+3*4+p] = 0.0;                   // d(N_5)/ d(r) = deriv[0+12]
+    deriv[1+3*4+p] = 0.0;                   // d(N_5)/ d(s) = deriv[1+12]
+    deriv[2+3*4+p] = 1.0;                   // d(N_5)/ d(t) = deriv[2+12]
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -1526,9 +1613,6 @@ void WedSCS::grad_op(
 {
   int lerr = 0;
 
-  // d3d(c,s,j) = deriv[c + 3*(s + 6*j)] = deriv[c+3s+18j]
-
-  // some params
   wedge_derivative(numIntPoints_, &intgLoc_[0], deriv);
 
   SIERRA_FORTRAN(wed_gradient_operator) (
@@ -1539,8 +1623,35 @@ void WedSCS::grad_op(
       coords, gradop, det_j, error, &lerr );
 
   if ( lerr )
-    std::cout << "sorry, negative volume.." << std::endl;
+    std::cout << "sorry, negative WedSCS volume.." << std::endl;
   
+}
+
+//--------------------------------------------------------------------------
+//-------- shifted_grad_op -------------------------------------------------
+//--------------------------------------------------------------------------
+void WedSCS::shifted_grad_op(
+  const int nelem,
+  const double *coords,
+  double *gradop,
+  double *deriv,
+  double *det_j,
+  double *error)
+{
+  int lerr = 0;
+
+  wedge_derivative(numIntPoints_, &intgLocShift_[0], deriv);
+
+  SIERRA_FORTRAN(wed_gradient_operator) (
+      &nelem,
+      &nodesPerElement_,
+      &numIntPoints_,
+      deriv,
+      coords, gradop, det_j, error, &lerr );
+
+  if ( lerr )
+    std::cout << "sorry, negative WedSCS volume.." << std::endl;
+
 }
 
 //--------------------------------------------------------------------------
@@ -1901,8 +2012,36 @@ void Quad2DSCS::grad_op(
       coords, gradop, det_j, error, &lerr );
   
   if ( lerr )
-    std::cout << "sorry, negative volume.." << std::endl;
+    std::cout << "sorry, negative Quad2DSCS volume.." << std::endl;
   
+}
+
+//--------------------------------------------------------------------------
+//-------- shifted_grad_op -------------------------------------------------
+//--------------------------------------------------------------------------
+void Quad2DSCS::shifted_grad_op(
+  const int nelem,
+  const double *coords,
+  double *gradop,
+  double *deriv,
+  double *det_j,
+  double *error)
+{
+  int lerr = 0;
+
+  SIERRA_FORTRAN(quad_derivative)
+    ( &numIntPoints_, &intgLocShift_[0], deriv );
+
+  SIERRA_FORTRAN(quad_gradient_operator)
+    ( &nelem,
+      &nodesPerElement_,
+      &numIntPoints_,
+      deriv,
+      coords, gradop, det_j, error, &lerr );
+
+  if ( lerr )
+    std::cout << "sorry, negative Quad2DSCS volume.." << std::endl;
+
 }
 
 //--------------------------------------------------------------------------
@@ -2376,8 +2515,35 @@ void Tri2DSCS::grad_op(
       coords, gradop, det_j, error, &lerr );
   
   if ( lerr )
-    std::cout << "sorry, negative volume.." << std::endl;
+    std::cout << "sorry, negative Tri2DSCS volume.." << std::endl;
   
+}
+
+//--------------------------------------------------------------------------
+//-------- shifted_grad_op -------------------------------------------------
+//--------------------------------------------------------------------------
+void Tri2DSCS::shifted_grad_op(
+  const int nelem,
+  const double *coords,
+  double *gradop,
+  double *deriv,
+  double *det_j,
+  double *error)
+{
+  int lerr = 0;
+
+  SIERRA_FORTRAN(tri_derivative)
+    ( &numIntPoints_, deriv );
+
+  SIERRA_FORTRAN(tri_gradient_operator)
+    ( &nelem,
+      &nodesPerElement_,
+      &numIntPoints_,
+      deriv,
+      coords, gradop, det_j, error, &lerr );
+
+  if ( lerr )
+    std::cout << "sorry, negative Tri2DSCS volume.." << std::endl;
 }
 
 //--------------------------------------------------------------------------

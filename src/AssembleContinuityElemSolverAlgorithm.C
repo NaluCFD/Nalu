@@ -45,7 +45,9 @@ AssembleContinuityElemSolverAlgorithm::AssembleContinuityElemSolverAlgorithm(
     Gpdx_(NULL),
     coordinates_(NULL),
     pressure_(NULL),
-    density_(NULL)
+    density_(NULL),
+    shiftMdot_(realm_.get_cvfem_shifted_mdot()),
+    shiftPoisson_(realm_.get_cvfem_shifted_poisson())
 {
   // extract fields; nodal
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -182,8 +184,11 @@ AssembleContinuityElemSolverAlgorithm::execute()
     double *p_dndx = &ws_dndx[0];
     double *p_shape_function = &ws_shape_function[0];
 
-    meSCS->shape_fcn(&p_shape_function[0]);
-
+    if ( shiftMdot_)
+      meSCS->shifted_shape_fcn(&p_shape_function[0]);
+    else
+      meSCS->shape_fcn(&p_shape_function[0]);
+    
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
 
       // zero lhs/rhs
@@ -233,8 +238,11 @@ AssembleContinuityElemSolverAlgorithm::execute()
       meSCS->determinant(1, &p_coordinates[0], &p_scs_areav[0], &scs_error);
 
       // compute dndx
-      meSCS->grad_op(1, &p_coordinates[0], &p_dndx[0], &ws_deriv[0], &ws_det_j[0], &scs_error);
-
+      if ( shiftPoisson_ )
+        meSCS->shifted_grad_op(1, &p_coordinates[0], &p_dndx[0], &ws_deriv[0], &ws_det_j[0], &scs_error);
+      else
+        meSCS->grad_op(1, &p_coordinates[0], &p_dndx[0], &ws_deriv[0], &ws_det_j[0], &scs_error);
+      
       // manage velocity relative to mesh
       if ( meshMotion_ ) {
         const int kSize = num_nodes*nDim;

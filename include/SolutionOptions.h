@@ -79,6 +79,8 @@ public:
   double extrusionCorrectionFac_;
   bool ncAlgGaussLabatto_;
   NonConformalAlgType ncAlgType_;
+  bool cvfemShiftMdot_;
+  bool cvfemShiftPoisson_;
 
   // turbulence model coeffs
   std::map<TurbulenceModelConstant, double> turbModelConstantMap_;

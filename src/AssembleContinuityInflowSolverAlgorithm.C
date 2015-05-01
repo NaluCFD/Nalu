@@ -39,7 +39,10 @@ AssembleContinuityInflowSolverAlgorithm::AssembleContinuityInflowSolverAlgorithm
   EquationSystem *eqSystem,
   bool useShifted)
   : SolverAlgorithm(realm, part, eqSystem),
-    useShifted_(useShifted)
+    useShifted_(useShifted),
+    exposedAreaVec_(NULL),
+    velocityBC_(NULL),
+    densityBC_(NULL)
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();

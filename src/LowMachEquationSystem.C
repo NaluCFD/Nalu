@@ -1906,7 +1906,7 @@ ContinuityEquationSystem::register_inflow_bc(
   }
 
   // solver; lhs - shared by both elem/edge
-  const bool useShifted = !elementContinuityEqs_;
+  const bool useShifted = !elementContinuityEqs_ ? true : realm_.get_cvfem_shifted_mdot();
   std::map<AlgorithmType, SolverAlgorithm *>::iterator its =
     solverAlgDriver_->solverAlgMap_.find(algType);
   if ( its == solverAlgDriver_->solverAlgMap_.end() ) {

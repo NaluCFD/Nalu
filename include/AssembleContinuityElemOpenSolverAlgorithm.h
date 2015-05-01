@@ -43,6 +43,9 @@ public:
   GenericFieldType *exposedAreaVec_;
   ScalarFieldType *pressureBc_;
 
+  const bool shiftMdot_;
+  const bool shiftPoisson_;
+
 };
 
 } // namespace nalu

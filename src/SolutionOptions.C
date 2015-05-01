@@ -62,7 +62,9 @@ SolutionOptions::SolutionOptions()
     maxRefinementLevel_(0),
     extrusionCorrectionFac_(1.0),
     ncAlgGaussLabatto_(true),
-    ncAlgType_(NC_ALG_TYPE_DG)
+    ncAlgType_(NC_ALG_TYPE_DG),
+    cvfemShiftMdot_(false),
+    cvfemShiftPoisson_(false)
 {
   // nothing to do
 }
@@ -105,6 +107,14 @@ SolutionOptions::load(const YAML::Node & y_node)
     
     // external mesh motion expected
     get_if_present(*y_solution_options, "externally_provided_mesh_deformation", externalMeshDeformation_, externalMeshDeformation_);
+
+    // shifted CVFEM pressure poisson
+    get_if_present(*y_solution_options, "shift_cvfem_mdot", cvfemShiftMdot_, cvfemShiftMdot_);
+    get_if_present(*y_solution_options, "shift_cvfem_poisson", cvfemShiftPoisson_, cvfemShiftPoisson_);
+    if ( cvfemShiftMdot_ )
+      NaluEnv::self().naluOutputP0() << "Shifted CVFEM mass flow rate" << std::endl;
+    if ( cvfemShiftPoisson_ )
+      NaluEnv::self().naluOutputP0() << "Shifted CVFEM Poisson" << std::endl;
 
     // extract turbulence model; would be nice if we could parse an enum..
     std::string specifiedTurbModel;
