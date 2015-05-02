@@ -914,9 +914,9 @@ TetSCS::TetSCS()
 
   // shifted
   intgLocShift_.resize(36);
-  intgLocShift_[0]  =  0.00; intgLocShift_[1]  =  0.50; intgLocShift_[2]  =  0.00; // surf 1    1->2
+  intgLocShift_[0]  =  0.50; intgLocShift_[1]  =  0.00; intgLocShift_[2]  =  0.00; // surf 1    1->2
   intgLocShift_[3]  =  0.50; intgLocShift_[4]  =  0.50; intgLocShift_[5]  =  0.00; // surf 2    2->3
-  intgLocShift_[6]  =  0.00; intgLocShift_[7]  =  0.00; intgLocShift_[8]  =  0.50; // surf 3    1->3
+  intgLocShift_[6]  =  0.00; intgLocShift_[7]  =  0.50; intgLocShift_[8]  =  0.00; // surf 3    1->3
   intgLocShift_[9]  =  0.00; intgLocShift_[10] =  0.00; intgLocShift_[11] =  0.50; // surf 4    1->4
   intgLocShift_[12] =  0.50; intgLocShift_[13] =  0.00; intgLocShift_[14] =  0.50; // surf 5    2->4
   intgLocShift_[15] =  0.00; intgLocShift_[16] =  0.50; intgLocShift_[17] =  0.50; // surf 6    3->4
@@ -1239,10 +1239,10 @@ PyrSCS::PyrSCS()
   intgLocShift_[3]  =  1.00; intgLocShift_[4]  =  0.00; intgLocShift_[5]  =  0.00; // surf 2    2->3
   intgLocShift_[6]  =  0.00; intgLocShift_[7]  =  1.00; intgLocShift_[8]  =  0.00; // surf 3    3->4
   intgLocShift_[9]  = -1.00; intgLocShift_[10] =  0.00; intgLocShift_[11] =  0.00; // surf 4    1->4
-  intgLocShift_[12] = -1.00; intgLocShift_[13] = -1.00; intgLocShift_[14] =  1.00; // surf 5    1->5
-  intgLocShift_[15] =  1.00; intgLocShift_[16] = -1.00; intgLocShift_[17] =  1.00; // surf 6    2->5
-  intgLocShift_[18] =  1.00; intgLocShift_[19] =  1.00; intgLocShift_[20] =  1.00; // surf 7    3->5
-  intgLocShift_[21] = -1.00; intgLocShift_[22] =  1.00; intgLocShift_[23] =  1.00; // surf 8    4->5
+  intgLocShift_[12] = -0.50; intgLocShift_[13] = -0.50; intgLocShift_[14] =  0.50; // surf 5    1->5
+  intgLocShift_[15] =  0.50; intgLocShift_[16] = -0.50; intgLocShift_[17] =  0.50; // surf 6    2->5
+  intgLocShift_[18] =  0.50; intgLocShift_[19] =  0.50; intgLocShift_[20] =  0.50; // surf 7    3->5
+  intgLocShift_[21] = -0.50; intgLocShift_[22] =  0.50; intgLocShift_[23] =  0.50; // surf 8    4->5
 
   // exposed face; n/a
 
