@@ -530,7 +530,8 @@ LowMachEquationSystem::solve_and_update()
       realm_.meta_data(),
       realm_.bulk_data(),
       1.0, *momentumEqSys_->uTmp_,
-      1.0, momentumEqSys_->velocity_->field_of_state(stk::mesh::StateNP1));
+      1.0, momentumEqSys_->velocity_->field_of_state(stk::mesh::StateNP1),
+      realm_.get_activate_aura());
     timeB = stk::cpu_time();
     momentumEqSys_->timerAssemble_ += (timeB-timeA);
 
@@ -543,7 +544,8 @@ LowMachEquationSystem::solve_and_update()
       realm_.meta_data(),
       realm_.bulk_data(),
       1.0, *continuityEqSys_->pTmp_,
-      1.0, *continuityEqSys_->pressure_);
+      1.0, *continuityEqSys_->pressure_,
+      realm_.get_activate_aura());
     timeB = stk::cpu_time();
     continuityEqSys_->timerAssemble_ += (timeB-timeA);
 
@@ -606,7 +608,8 @@ LowMachEquationSystem::post_adapt_work()
           realm_.meta_data(),
           realm_.bulk_data(),
           1.0, *continuityEqSys_->pTmp_,
-          1.0, *continuityEqSys_->pressure_);
+          1.0, *continuityEqSys_->pressure_,
+          realm_.get_activate_aura());
     }
     
     // compute mdot
@@ -1539,39 +1542,10 @@ MomentumEquationSystem::reinitialize_linear_system()
 void
 MomentumEquationSystem::predict_state()
 {
-  stk::mesh::MetaData & meta_data = realm_.meta_data();
-
-  const int nDim = meta_data.spatial_dimension();
-
-  VectorFieldType &velocityN = velocity_->field_of_state(stk::mesh::StateN);
-  VectorFieldType &velocityNp1 = velocity_->field_of_state(stk::mesh::StateNP1);
-
-  // define some common selectors; select all nodes (locally and shared)
-  // where velocity is defined
-  stk::mesh::Selector s_all_nodes
-    = (meta_data.locally_owned_part() | meta_data.globally_shared_part())
-    &stk::mesh::selectField(*velocity_);
-
-  //===========================================================
-  // copy state N into N+1
-  //===========================================================
-
-  stk::mesh::BucketVector const& node_buckets =
-    realm_.get_buckets( stk::topology::NODE_RANK, s_all_nodes );
-  for ( stk::mesh::BucketVector::const_iterator ib = node_buckets.begin() ;
-        ib != node_buckets.end() ; ++ib ) {
-    stk::mesh::Bucket & b = **ib ;
-    const stk::mesh::Bucket::size_type length   = b.size();
-    double * uN = stk::mesh::field_data(velocityN, b);
-    double * uNp1 = stk::mesh::field_data(velocityNp1, b);
-    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
-      const int offSet = k*nDim;
-      for ( int j = 0; j < nDim; ++j ) {
-        uNp1[offSet+j] = uN[offSet+j];
-      }
-    }
-  }
-
+  // copy state n to state np1
+  VectorFieldType &uN = velocity_->field_of_state(stk::mesh::StateN);
+  VectorFieldType &uNp1 = velocity_->field_of_state(stk::mesh::StateNP1);
+  field_copy(realm_.meta_data(), realm_.bulk_data(), uN, uNp1, realm_.get_activate_aura());
 }
 
 //--------------------------------------------------------------------------

@@ -501,7 +501,7 @@ MassFractionEquationSystem::predict_state()
   // copy state n to state np1
   GenericFieldType &yN = massFraction_->field_of_state(stk::mesh::StateN);
   GenericFieldType &yNp1 = massFraction_->field_of_state(stk::mesh::StateNP1);
-  field_copy(realm_.meta_data(), realm_.bulk_data(), yN, yNp1);
+  field_copy(realm_.meta_data(), realm_.bulk_data(), yN, yNp1, realm_.get_activate_aura());
 }
 
 //--------------------------------------------------------------------------
@@ -548,7 +548,8 @@ MassFractionEquationSystem::copy_mass_fraction(
   const stk::mesh::FieldBase &toField,
   const int toFieldIndex)
 {
-  field_index_copy(realm_.meta_data(), realm_.bulk_data(), fromField, fromFieldIndex, toField, toFieldIndex);
+  field_index_copy(realm_.meta_data(), realm_.bulk_data(), fromField, fromFieldIndex, toField, toFieldIndex, 
+                   realm_.get_activate_aura());
 }
 
 //--------------------------------------------------------------------------
@@ -597,7 +598,8 @@ MassFractionEquationSystem::solve_and_update()
         realm_.meta_data(),
         realm_.bulk_data(),
         1.0, *yTmp_,
-        1.0, *currentMassFraction_);
+        1.0, *currentMassFraction_, 
+        realm_.get_activate_aura());
       timeB = stk::cpu_time();
       timerAssemble_ += (timeB-timeA);
 

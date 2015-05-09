@@ -295,7 +295,8 @@ public:
                                               const stk::mesh::Selector & selector ,
                                               bool get_all = false) const;
 
-  // get bulk and meta data
+  // get aura, bulk and meta data
+  bool get_activate_aura();
   stk::mesh::BulkData & bulk_data();
   stk::mesh::MetaData & meta_data();
 

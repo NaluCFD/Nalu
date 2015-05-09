@@ -838,35 +838,10 @@ TurbKineticEnergyEquationSystem::update_and_clip()
 void
 TurbKineticEnergyEquationSystem::predict_state()
 {
-
-  // FIXME... move this to a generalized base class method
-  stk::mesh::MetaData & meta_data = realm_.meta_data();
-
+  // copy state n to state np1
   ScalarFieldType &tkeN = tke_->field_of_state(stk::mesh::StateN);
   ScalarFieldType &tkeNp1 = tke_->field_of_state(stk::mesh::StateNP1);
-
-  // define some common selectors; select all nodes (locally and shared)
-  // where tke is defined
-  stk::mesh::Selector s_all_nodes
-    = (meta_data.locally_owned_part() | meta_data.globally_shared_part())
-    &stk::mesh::selectField(*tke_);
-
-  //===========================================================
-  // copy state N into N+1
-  //===========================================================
-
-  stk::mesh::BucketVector const& node_buckets =
-    realm_.get_buckets( stk::topology::NODE_RANK, s_all_nodes );
-  for ( stk::mesh::BucketVector::const_iterator ib = node_buckets.begin() ;
-        ib != node_buckets.end() ; ++ib ) {
-    stk::mesh::Bucket & b = **ib ;
-    const stk::mesh::Bucket::size_type length   = b.size();
-    double * kN = stk::mesh::field_data(tkeN, *b.begin() );
-    double * kNp1 = stk::mesh::field_data(tkeNp1, *b.begin() );
-    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
-      kNp1[k] = kN[k];
-    }
-  }
+  field_copy(realm_.meta_data(), realm_.bulk_data(), tkeN, tkeNp1, realm_.get_activate_aura());
 }
 
 } // namespace nalu

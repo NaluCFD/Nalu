@@ -18,9 +18,9 @@
 
 #include <algorithm>
 
-namespace sierra{
-namespace nalu{
-
+namespace sierra {
+namespace nalu {
+ 
 void field_axpby(
   const stk::mesh::MetaData & metaData,
   const stk::mesh::BulkData & bulkData,
@@ -28,13 +28,18 @@ void field_axpby(
   const stk::mesh::FieldBase & xField,
   const double beta,
   const stk::mesh::FieldBase & yField,
+  const bool auraIsActive,
   const stk::topology::rank_t entityRankValue)
 {
-  const stk::mesh::Selector selector =
-      metaData.universal_part() &
-      stk::mesh::selectField(xField) &
-      stk::mesh::selectField(yField);
-
+  // decide on selector
+  const stk::mesh::Selector selector = auraIsActive 
+    ? metaData.universal_part() &
+    stk::mesh::selectField(xField) &
+    stk::mesh::selectField(yField)
+    : (metaData.locally_owned_part() | metaData.globally_shared_part()) &
+    stk::mesh::selectField(xField) &
+    stk::mesh::selectField(yField);
+ 
   stk::mesh::BucketVector const& buckets = bulkData.get_buckets( entityRankValue, selector );
 
   for(size_t i=0; i < buckets.size(); ++i) {
@@ -56,10 +61,14 @@ void field_fill(
   const stk::mesh::BulkData & bulkData,
   const double alpha,
   const stk::mesh::FieldBase & xField,
+  const bool auraIsActive,
   const stk::topology::rank_t entityRankValue)
 {
-  const stk::mesh::Selector selector =
-    metaData.universal_part() &
+  // decide on selector
+  const stk::mesh::Selector selector = auraIsActive 
+    ? metaData.universal_part() &
+    stk::mesh::selectField(xField)
+    : (metaData.locally_owned_part() | metaData.globally_shared_part()) &
     stk::mesh::selectField(xField);
 
   stk::mesh::BucketVector const& buckets = bulkData.get_buckets( entityRankValue, selector );
@@ -79,11 +88,15 @@ void field_scale(
   const stk::mesh::BulkData & bulkData,
   const double alpha,
   const stk::mesh::FieldBase & xField,
+  const bool auraIsActive,
   const stk::topology::rank_t entityRankValue)
 {
-  const stk::mesh::Selector selector =
-      metaData.universal_part() &
-      stk::mesh::selectField(xField);
+  // decide on selector
+  const stk::mesh::Selector selector = auraIsActive 
+    ? metaData.universal_part() &
+    stk::mesh::selectField(xField)
+    : (metaData.locally_owned_part() | metaData.globally_shared_part()) &
+    stk::mesh::selectField(xField);
 
   stk::mesh::BucketVector const& buckets = bulkData.get_buckets( entityRankValue, selector );
 
@@ -104,10 +117,15 @@ void field_copy(
   const stk::mesh::BulkData & bulkData,
   const stk::mesh::FieldBase & xField,
   const stk::mesh::FieldBase & yField,
+  const bool auraIsActive,
   const stk::topology::rank_t entityRankValue)
 {
-  const stk::mesh::Selector selector =
-    metaData.universal_part() &
+  // decide on selector
+  const stk::mesh::Selector selector = auraIsActive 
+    ? metaData.universal_part() &
+    stk::mesh::selectField(xField) &
+    stk::mesh::selectField(yField)
+    : (metaData.locally_owned_part() | metaData.globally_shared_part()) &
     stk::mesh::selectField(xField) &
     stk::mesh::selectField(yField);
 
@@ -135,10 +153,15 @@ void field_index_copy(
   const int xFieldIndex,
   const stk::mesh::FieldBase & yField,
   const int yFieldIndex,
+  const bool auraIsActive,
   const stk::topology::rank_t entityRankValue)
 {
-  const stk::mesh::Selector selector =
-    metaData.universal_part() &
+  // decide on selector
+  const stk::mesh::Selector selector = auraIsActive 
+    ? metaData.universal_part() &
+    stk::mesh::selectField(xField) &
+    stk::mesh::selectField(yField)
+    : (metaData.locally_owned_part() | metaData.globally_shared_part()) &
     stk::mesh::selectField(xField) &
     stk::mesh::selectField(yField);
 

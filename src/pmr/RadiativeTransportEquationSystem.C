@@ -714,7 +714,7 @@ RadiativeTransportEquationSystem::copy_ordinate_intensity(
   const ScalarFieldType &fromField,
   const ScalarFieldType &toField)
 {
-  field_copy(realm_.meta_data(), realm_.bulk_data(), fromField, toField);
+  field_copy(realm_.meta_data(), realm_.bulk_data(), fromField, toField, realm_.get_activate_aura());
 }
 
 //--------------------------------------------------------------------------
@@ -806,7 +806,8 @@ RadiativeTransportEquationSystem::solve_and_update()
         realm_.meta_data(),
         realm_.bulk_data(),
         1.0, *iTmp_,
-        1.0, *intensity_);
+        1.0, *intensity_, 
+        realm_.get_activate_aura());
       double timeB = stk::cpu_time();
       timerAssemble_ += (timeB-timeA);
 
