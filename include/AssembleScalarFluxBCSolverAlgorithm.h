@@ -32,7 +32,7 @@ public:
     stk::mesh::Part *part,
     EquationSystem *eqSystem,
     ScalarFieldType *bcScalarQ,
-    bool use_shifted_integration);
+    bool useShifted);
   virtual ~AssembleScalarFluxBCSolverAlgorithm() {}
   virtual void initialize_connectivity();
   virtual void execute();
