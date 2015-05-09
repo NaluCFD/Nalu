@@ -8,7 +8,7 @@
 
 #include <EnthalpyEquationSystem.h>
 #include <AlgorithmDriver.h>
-#include <AssembleScalarDiffBCSolverAlgorithm.h>
+#include <AssembleScalarFluxBCSolverAlgorithm.h>
 #include <AssembleScalarEdgeContactSolverAlgorithm.h>
 #include <AssembleScalarEdgeOpenSolverAlgorithm.h>
 #include <AssembleScalarEdgeSolverAlgorithm.h>
@@ -655,8 +655,8 @@ EnthalpyEquationSystem::register_wall_bc(
     std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi =
       solverAlgDriver_->solverAlgMap_.find(algType);
     if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
-      AssembleScalarDiffBCSolverAlgorithm *theAlg
-        = new AssembleScalarDiffBCSolverAlgorithm(realm_, part, this,
+      AssembleScalarFluxBCSolverAlgorithm *theAlg
+        = new AssembleScalarFluxBCSolverAlgorithm(realm_, part, this,
                                                   theBcField, realm_.realmUsesEdges_);
       solverAlgDriver_->solverAlgMap_[algType] = theAlg;
     }

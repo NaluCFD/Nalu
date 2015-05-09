@@ -5,8 +5,8 @@
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
-#ifndef ASSEMBLESCALARELEMDIFFBCSOLVERALGORITHM_H_
-#define ASSEMBLESCALARELEMDIFFBCSOLVERALGORITHM_H_
+#ifndef AssembleScalarFluxBCSolverAlgorithm_h
+#define AssembleScalarFluxBCSolverAlgorithm_h
 
 #include<SolverAlgorithm.h>
 #include<FieldTypeDef.h>
@@ -23,27 +23,27 @@ namespace nalu{
 class LinearSystem;
 class Realm;
 
-class AssembleScalarDiffBCSolverAlgorithm : public SolverAlgorithm
+class AssembleScalarFluxBCSolverAlgorithm : public SolverAlgorithm
 {
 public:
 
-  AssembleScalarDiffBCSolverAlgorithm(
+  AssembleScalarFluxBCSolverAlgorithm(
     Realm &realm,
     stk::mesh::Part *part,
     EquationSystem *eqSystem,
     ScalarFieldType *bcScalarQ,
     bool use_shifted_integration);
-  virtual ~AssembleScalarDiffBCSolverAlgorithm() {}
+  virtual ~AssembleScalarFluxBCSolverAlgorithm() {}
   virtual void initialize_connectivity();
   virtual void execute();
 
 private:
 
+  const bool useShifted_;
+
   ScalarFieldType *bcScalarQ_;
   VectorFieldType *coordinates_;
   GenericFieldType *exposedAreaVec_;
-
-  bool use_shifted_integration_;
 
 };
 

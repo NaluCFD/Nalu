@@ -14,7 +14,7 @@
 #include <AssembleScalarElemDiffSolverAlgorithm.h>
 #include <AssembleScalarElemDiffNonConformalSolverAlgorithm.h>
 #include <AssembleScalarEdgeDiffContactSolverAlgorithm.h>
-#include <AssembleScalarDiffBCSolverAlgorithm.h>
+#include <AssembleScalarFluxBCSolverAlgorithm.h>
 #include <AssembleNodalGradAlgorithmDriver.h>
 #include <AssembleNodalGradEdgeAlgorithm.h>
 #include <AssembleNodalGradElemAlgorithm.h>
@@ -484,8 +484,8 @@ HeatCondEquationSystem::register_wall_bc(
     std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi =
         solverAlgDriver_->solverAlgMap_.find(algTypeHF);
     if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
-      AssembleScalarDiffBCSolverAlgorithm *theAlg
-        = new AssembleScalarDiffBCSolverAlgorithm(realm_, part, this,
+      AssembleScalarFluxBCSolverAlgorithm *theAlg
+        = new AssembleScalarFluxBCSolverAlgorithm(realm_, part, this,
             theBcField, realm_.realmUsesEdges_);
       solverAlgDriver_->solverAlgMap_[algTypeHF] = theAlg;
     }
