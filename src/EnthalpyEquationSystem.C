@@ -8,7 +8,7 @@
 
 #include <EnthalpyEquationSystem.h>
 #include <AlgorithmDriver.h>
-#include <AssembleScalarDiffBCSolverAlgorithm.h>
+#include <AssembleScalarFluxBCSolverAlgorithm.h>
 #include <AssembleScalarEdgeContactSolverAlgorithm.h>
 #include <AssembleScalarEdgeOpenSolverAlgorithm.h>
 #include <AssembleScalarEdgeSolverAlgorithm.h>
@@ -655,8 +655,8 @@ EnthalpyEquationSystem::register_wall_bc(
     std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi =
       solverAlgDriver_->solverAlgMap_.find(algType);
     if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
-      AssembleScalarDiffBCSolverAlgorithm *theAlg
-        = new AssembleScalarDiffBCSolverAlgorithm(realm_, part, this,
+      AssembleScalarFluxBCSolverAlgorithm *theAlg
+        = new AssembleScalarFluxBCSolverAlgorithm(realm_, part, this,
                                                   theBcField, realm_.realmUsesEdges_);
       solverAlgDriver_->solverAlgMap_[algType] = theAlg;
     }
@@ -847,7 +847,8 @@ EnthalpyEquationSystem::solve_and_update()
       realm_.meta_data(),
       realm_.bulk_data(),
       1.0, *hTmp_,
-      1.0, enthalpy_->field_of_state(stk::mesh::StateNP1));
+      1.0, enthalpy_->field_of_state(stk::mesh::StateNP1),
+      realm_.get_activate_aura());
     double timeB = stk::cpu_time();
     timerAssemble_ += (timeB-timeA);
 
@@ -1061,9 +1062,7 @@ EnthalpyEquationSystem::post_converged_work()
     stk::mesh::MetaData & meta_data = realm_.meta_data();
     // copy pressure to pOld
     ScalarFieldType *pressure = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure");
-    field_copy(meta_data, 
-	       realm_.bulk_data(),
-	       *pressure, *pOld_);
+    field_copy(meta_data, realm_.bulk_data(), *pressure, *pOld_, realm_.get_activate_aura());
   } 
 }
 
@@ -1073,35 +1072,10 @@ EnthalpyEquationSystem::post_converged_work()
 void
 EnthalpyEquationSystem::predict_state()
 {
-
-  // FIXME... move this to a generalized base class method
-  stk::mesh::MetaData & meta_data = realm_.meta_data();
-
-  ScalarFieldType &enthalpyN = enthalpy_->field_of_state(stk::mesh::StateN);
-  ScalarFieldType &enthalpyNp1 = enthalpy_->field_of_state(stk::mesh::StateNP1);
-
-  // define some common selectors; select all nodes (locally and shared)
-  // where enthalpy is defined
-  stk::mesh::Selector s_all_nodes
-    = (meta_data.locally_owned_part() | meta_data.globally_shared_part())
-    &stk::mesh::selectField(*enthalpy_);
-
-  //===========================================================
-  // copy state N into N+1
-  //===========================================================
-
-  stk::mesh::BucketVector const& node_buckets =
-    realm_.get_buckets( stk::topology::NODE_RANK, s_all_nodes );
-  for ( stk::mesh::BucketVector::const_iterator ib = node_buckets.begin() ;
-        ib != node_buckets.end() ; ++ib ) {
-    stk::mesh::Bucket & b = **ib ;
-    const stk::mesh::Bucket::size_type length   = b.size();
-    double * hN = stk::mesh::field_data(enthalpyN, b);
-    double * hNp1 = stk::mesh::field_data(enthalpyNp1, b);
-    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
-      hNp1[k] = hN[k];
-    }
-  }
+  // copy state n to state np1
+  ScalarFieldType &hN = enthalpy_->field_of_state(stk::mesh::StateN);
+  ScalarFieldType &hNp1 = enthalpy_->field_of_state(stk::mesh::StateNP1);
+  field_copy(realm_.meta_data(), realm_.bulk_data(), hN, hNp1, realm_.get_activate_aura());
 }
 
 //--------------------------------------------------------------------------

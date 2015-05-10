@@ -7,7 +7,7 @@
 
 
 // nalu
-#include <AssembleScalarDiffBCSolverAlgorithm.h>
+#include <AssembleScalarFluxBCSolverAlgorithm.h>
 #include <EquationSystem.h>
 #include <FieldTypeDef.h>
 #include <LinearSystem.h>
@@ -29,20 +29,20 @@ namespace nalu{
 //==========================================================================
 // Class Definition
 //==========================================================================
-// AssembleScalarDiffBCSolverAlgorithm - scalar flux bc, Int bcScalarQ*area
+// AssembleScalarFluxBCSolverAlgoithm - scalar flux bc, Int bcScalarQ*area
 //==========================================================================
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-AssembleScalarDiffBCSolverAlgorithm::AssembleScalarDiffBCSolverAlgorithm(
+AssembleScalarFluxBCSolverAlgorithm::AssembleScalarFluxBCSolverAlgorithm(
   Realm &realm,
   stk::mesh::Part *part,
   EquationSystem *eqSystem,
   ScalarFieldType *bcScalarQ,
-  bool use_shifted_integration)
+  bool useShifted)
   : SolverAlgorithm(realm, part, eqSystem),
-    bcScalarQ_(bcScalarQ),
-    use_shifted_integration_(use_shifted_integration)
+    useShifted_(useShifted),
+    bcScalarQ_(bcScalarQ)
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -54,16 +54,16 @@ AssembleScalarDiffBCSolverAlgorithm::AssembleScalarDiffBCSolverAlgorithm(
 //-------- initialize_connectivity -----------------------------------------
 //--------------------------------------------------------------------------
 void
-AssembleScalarDiffBCSolverAlgorithm::initialize_connectivity()
+AssembleScalarFluxBCSolverAlgorithm::initialize_connectivity()
 {
-  eqSystem_->linsys_->buildFaceElemToNodeGraph(partVec_);
+  eqSystem_->linsys_->buildFaceToNodeGraph(partVec_);
 }
 
 //--------------------------------------------------------------------------
 //-------- execute ---------------------------------------------------------
 //--------------------------------------------------------------------------
 void
-AssembleScalarDiffBCSolverAlgorithm::execute()
+AssembleScalarFluxBCSolverAlgorithm::execute()
 {
 
   stk::mesh::BulkData & bulk_data = realm_.bulk_data();
@@ -72,7 +72,7 @@ AssembleScalarDiffBCSolverAlgorithm::execute()
   const int nDim = meta_data.spatial_dimension();
 
 
-  // space for LHS/RHS; nodesPerElement*nodesPerElement and nodesPerElement
+  // space for LHS/RHS; nodesPerFace*nodesPerFace and nodesPerFace
   std::vector<double> lhs;
   std::vector<double> rhs;
   std::vector<stk::mesh::Entity> connected_nodes;
@@ -84,9 +84,6 @@ AssembleScalarDiffBCSolverAlgorithm::execute()
   // master element
   std::vector<double> ws_face_shape_function;
 
-  // define vector of parent topos; should always be UNITY in size
-  std::vector<stk::topology> parentTopo;
-
   // define some common selectors
   stk::mesh::Selector s_locally_owned_union = meta_data.locally_owned_part()
     &stk::mesh::selectUnion(partVec_);
@@ -97,31 +94,22 @@ AssembleScalarDiffBCSolverAlgorithm::execute()
         ib != face_buckets.end() ; ++ib ) {
     stk::mesh::Bucket & b = **ib ;
 
-    // extract connected element topology
-    b.parent_topology(stk::topology::ELEMENT_RANK, parentTopo);
-    ThrowAssert ( parentTopo.size() == 1 );
-    stk::topology theElemTopo = parentTopo[0];
-
-    // volume master element
-    MasterElement *meSCS = realm_.get_surface_master_element(theElemTopo);
-    const int nodesPerElement = meSCS->nodesPerElement_;
-
     // face master element
     MasterElement *meFC = realm_.get_surface_master_element(b.topology());
     const int nodesPerFace = meFC->nodesPerElement_;
-    std::vector<int> face_node_ordinal_vec(nodesPerFace);
+    const int numScsIp = meFC->numIntPoints_;
 
     // resize some things; matrix related
-    const int lhsSize = nodesPerElement*nodesPerElement;
-    const int rhsSize = nodesPerElement;
+    const int lhsSize = nodesPerFace*nodesPerFace;
+    const int rhsSize = nodesPerFace;
     lhs.resize(lhsSize);
     rhs.resize(rhsSize);
-    connected_nodes.resize(nodesPerElement);
+    connected_nodes.resize(nodesPerFace);
 
     // algorithm related; element
     ws_face_coordinates.resize(nodesPerFace*nDim);
     ws_bcScalarQ.resize(nodesPerFace);
-    ws_face_shape_function.resize(nodesPerFace*nodesPerFace);
+    ws_face_shape_function.resize(numScsIp*nodesPerFace);
 
     // pointers
     double *p_lhs = &lhs[0];
@@ -131,8 +119,7 @@ AssembleScalarDiffBCSolverAlgorithm::execute()
     double *p_face_shape_function = &ws_face_shape_function[0];
 
     // shape functions
-    if (use_shifted_integration_)
-    {
+    if (useShifted_) {
       meFC->shifted_shape_fcn(&p_face_shape_function[0]);
     }
     else{
@@ -160,8 +147,12 @@ AssembleScalarDiffBCSolverAlgorithm::execute()
       // sanity check on num nodes
       ThrowAssert( num_face_nodes == nodesPerFace );
       for ( int ni = 0; ni < num_face_nodes; ++ni ) {
-        stk::mesh::Entity node = face_node_rels[ni];
 
+        // get the node and form connected_node
+        stk::mesh::Entity node = face_node_rels[ni];
+        connected_nodes[ni] = node;
+
+        // gather scalar
         p_bcScalarQ[ni] = *stk::mesh::field_data(*bcScalarQ_, node);
 
         // gather vectors
@@ -172,35 +163,13 @@ AssembleScalarDiffBCSolverAlgorithm::execute()
         }
       }
 
-      // extract the connected element to this exposed face; should be single in size!
-      const stk::mesh::Entity* face_elem_rels = bulk_data.begin_elements(face);
-      ThrowAssert( bulk_data.num_elements(face) == 1 );
-
-      // get element; its face ordinal number and populate face_node_ordinal_vec
-      stk::mesh::Entity element = face_elem_rels[0];
-      const int face_ordinal = bulk_data.begin_element_ordinals(face)[0];
-      theElemTopo.side_node_ordinals(face_ordinal, face_node_ordinal_vec.begin());
-
-      //==========================================
-      // gather nodal data off of element; n/a
-      //==========================================
-      stk::mesh::Entity const * elem_node_rels = bulk_data.begin_nodes(element);
-      int num_nodes = bulk_data.num_nodes(element);
-      // sanity check on num nodes
-      ThrowAssert( num_nodes == nodesPerElement );
-      for ( int ni = 0; ni < num_nodes; ++ni ) {
-        stk::mesh::Entity node = elem_node_rels[ni];
-        // set connected nodes
-        connected_nodes[ni] = node;
-      }
-
       // pointer to face data
       double * areaVec = stk::mesh::field_data(*exposedAreaVec_, face);
 
       // loop over face nodes
-      for ( int ip = 0; ip < num_face_nodes; ++ip ) {
+      for ( int ip = 0; ip < numScsIp; ++ip ) {
 
-        const int nearestNode = face_node_ordinal_vec[ip];
+        const int nearestNode = ip;
 
         const int offSetSF_face = ip*nodesPerFace;
 

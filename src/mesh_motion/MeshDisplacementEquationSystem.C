@@ -488,39 +488,10 @@ MeshDisplacementEquationSystem::reinitialize_linear_system()
 void
 MeshDisplacementEquationSystem::predict_state()
 {
-  stk::mesh::MetaData & meta_data = realm_.meta_data();
-
-  const int nDim = meta_data.spatial_dimension();
-
-  VectorFieldType &displacementN = meshDisplacement_->field_of_state(stk::mesh::StateN);
-  VectorFieldType &displacementNp1 = meshDisplacement_->field_of_state(stk::mesh::StateNP1);
-
-  // define some common selectors; select all nodes (locally and shared)
-  // where velocity is defined
-  stk::mesh::Selector s_all_nodes
-    = (meta_data.locally_owned_part() | meta_data.globally_shared_part())
-    &stk::mesh::selectField(*meshDisplacement_);
-
-  //===========================================================
-  // copy state N into N+1
-  //===========================================================
-
-  stk::mesh::BucketVector const& node_buckets =
-    realm_.get_buckets( stk::topology::NODE_RANK, s_all_nodes );
-  for ( stk::mesh::BucketVector::const_iterator ib = node_buckets.begin() ;
-        ib != node_buckets.end() ; ++ib ) {
-    stk::mesh::Bucket & b = **ib ;
-    const stk::mesh::Bucket::size_type length   = b.size();
-    double * dxN = stk::mesh::field_data(displacementN, b);
-    double * dxNp1 = stk::mesh::field_data(displacementNp1, b);
-    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
-      const int offSet = k*nDim;
-      for ( int j = 0; j < nDim; ++j ) {
-        dxNp1[offSet+j] = dxN[offSet+j];
-      }
-    }
-  }
-
+  // copy state n to state np1
+  VectorFieldType &dN = meshDisplacement_->field_of_state(stk::mesh::StateN);
+  VectorFieldType &dNp1 = meshDisplacement_->field_of_state(stk::mesh::StateNP1);
+  field_copy(realm_.meta_data(), realm_.bulk_data(), dN, dNp1, realm_.get_activate_aura());
 }
 
 //--------------------------------------------------------------------------
@@ -550,7 +521,8 @@ MeshDisplacementEquationSystem::solve_and_update()
       realm_.meta_data(),
       realm_.bulk_data(),
       1.0, *dxTmp_,
-      1.0, meshDisplacement_->field_of_state(stk::mesh::StateNP1));
+      1.0, meshDisplacement_->field_of_state(stk::mesh::StateNP1), 
+      realm_.get_activate_aura());
     double timeB = stk::cpu_time();
     timerAssemble_ += (timeB-timeA);
 

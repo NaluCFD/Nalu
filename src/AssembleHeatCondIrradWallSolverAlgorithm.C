@@ -76,7 +76,7 @@ AssembleHeatCondIrradWallSolverAlgorithm::execute()
 
   const double sigma = realm_.get_stefan_boltzmann();
 
-  // space for LHS/RHS; nodesPerElem*nodesPerElem and nodesPerElem
+  // space for LHS/RHS; nodesPerFace*nodesPerFace and nodesPerFace
   std::vector<double> lhs;
   std::vector<double> rhs;
   std::vector<stk::mesh::Entity> connected_nodes;
