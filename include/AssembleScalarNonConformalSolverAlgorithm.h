@@ -6,8 +6,8 @@
 /*------------------------------------------------------------------------*/
 
 
-#ifndef AssembleScalarElemDiffNonConformalSolverAlgorithm_h
-#define AssembleScalarElemDiffNonConformalSolverAlgorithm_h
+#ifndef AssembleScalarNonConformalSolverAlgorithm_h
+#define AssembleScalarNonConformalSolverAlgorithm_h
 
 #include<SolverAlgorithm.h>
 #include<FieldTypeDef.h>
@@ -23,27 +23,26 @@ namespace nalu{
 
 class Realm;
 
-class AssembleScalarElemDiffNonConformalSolverAlgorithm : public SolverAlgorithm
+class AssembleScalarNonConformalSolverAlgorithm : public SolverAlgorithm
 {
 public:
 
-  AssembleScalarElemDiffNonConformalSolverAlgorithm(
+  AssembleScalarNonConformalSolverAlgorithm(
     Realm &realm,
     stk::mesh::Part *part,
     EquationSystem *eqSystem,
     ScalarFieldType *scalarQ,
     ScalarFieldType *ncNormalFlux,
-    ScalarFieldType *diffFluxCoeff,
-    ScalarFieldType *ncPenalty);
-  virtual ~AssembleScalarElemDiffNonConformalSolverAlgorithm() {}
+    ScalarFieldType *ncPenalty,
+    const bool normalizeByTimeScale = false);
+  virtual ~AssembleScalarNonConformalSolverAlgorithm() {}
   virtual void initialize_connectivity();
   virtual void execute();
 
   ScalarFieldType *scalarQ_;
   ScalarFieldType *ncNormalFlux_;
-  ScalarFieldType *diffFluxCoeff_;
   ScalarFieldType *ncPenalty_;
-  VectorFieldType *coordinates_;
+  const bool normalizeByTimeScale_;
   GenericFieldType *exposedAreaVec_;
 
   // options that prevail over all algorithms created

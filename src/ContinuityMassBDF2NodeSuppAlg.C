@@ -59,7 +59,6 @@ ContinuityMassBDF2NodeSuppAlg::setup()
   gamma1_ = realm_.get_gamma1();
   gamma2_ = realm_.get_gamma2();
   gamma3_ = realm_.get_gamma3();
-
 }
 
 //--------------------------------------------------------------------------

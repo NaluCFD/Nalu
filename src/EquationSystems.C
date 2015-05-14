@@ -553,10 +553,27 @@ EquationSystems::register_non_conformal_bc(
     throw std::runtime_error("EquationSystems::fatal_error()");
   }
   else {
-    realm_.register_non_conformal_bc(currentMeshPart, opposingMeshPart, nonConformalBCData);
-    std::vector<EquationSystem *>::iterator ii;
-    for( ii=begin(); ii!=end(); ++ii )
-      (*ii)->register_non_conformal_bc(currentMeshPart);
+    // set up the non-conformal bc, e.g., manager, parts, etc.
+    realm_.setup_non_conformal_bc(currentMeshPart, opposingMeshPart, nonConformalBCData);
+
+    // subset the current part for current part explosed surface field registration and algorithm creation
+    const std::vector<stk::mesh::Part*> & mesh_parts = currentMeshPart->subsets();
+    for( std::vector<stk::mesh::Part*>::const_iterator i = mesh_parts.begin();
+         i != mesh_parts.end(); ++i )
+    {
+      stk::mesh::Part * const part = *i ;
+      const stk::topology the_topo = part->topology();
+      if ( !(meta_data.side_rank() == part->primary_entity_rank()) ) {
+        NaluEnv::self().naluOutputP0() << "Sorry, part is not a face " << part->name();
+        throw std::runtime_error("NonConformal::fatal_error()");
+      }
+      else {
+        realm_.register_non_conformal_bc(part, the_topo);
+        std::vector<EquationSystem *>::iterator ii;
+        for( ii=begin(); ii!=end(); ++ii )
+          (*ii)->register_non_conformal_bc(part, the_topo);
+      }
+    } 
   }
 }
 

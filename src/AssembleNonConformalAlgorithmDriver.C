@@ -83,10 +83,10 @@ AssembleNonConformalAlgorithmDriver::pre_work()
     double * ncArea = (double*)stk::mesh::field_data(*ncArea_, b);
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
       ncArea[k] = 0.0;      
+      ncPenalty[k] = 0.0;
       for ( unsigned i = 0; i < fluxFieldSize_; ++i ) {
         const int offSet = k*fluxFieldSize_;
         ncNormalFlux[offSet+i] = 0.0;
-        ncPenalty[offSet+i] = 0.0; 
       }
     }
   }
@@ -131,10 +131,10 @@ AssembleNonConformalAlgorithmDriver::post_work()
     const double * ncArea = (double*)stk::mesh::field_data(*ncArea_, b);
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
       const double theArea = ncArea[k];
+      ncPenalty[k] /= theArea;
       for (unsigned i = 0; i < fluxFieldSize_; ++i) {
         const int offSet = k*fluxFieldSize_;
         ncNormalFlux[offSet+i] /= theArea;
-        ncPenalty[offSet+i] /= theArea;
       }
     }
   }

@@ -24,6 +24,7 @@ class AlgorithmDriver;
 class Realm;
 class AssembleNodalGradAlgorithmDriver;
 class AssembleNodalGradUAlgorithmDriver;
+class AssembleNonConformalAlgorithmDriver;
 class MomentumEquationSystem;
 class ContinuityEquationSystem;
 class LinearSystem;
@@ -75,6 +76,9 @@ public:
   void project_nodal_velocity();
 
   void post_converged_work();
+
+  void non_conformal_continuity();
+  void non_conformal_momentum();
 
   const bool elementContinuityEqs_; /* allow for mixed element/edge for continuity */
   MomentumEquationSystem *momentumEqSys_;
@@ -140,6 +144,10 @@ public:
     const stk::topology &theTopo,
     const SymmetryBoundaryConditionData &symmetryBCData);
 
+  virtual void register_non_conformal_bc(
+    stk::mesh::Part *part,
+    const stk::topology &theTopo);
+
   virtual void initialize();
   virtual void reinitialize_linear_system();
   
@@ -162,6 +170,7 @@ public:
   AlgorithmDriver *tviscAlgDriver_;
   AlgorithmDriver *cflReyAlgDriver_;
   AlgorithmDriver *wallFunctionParamsAlgDriver_;
+  AssembleNonConformalAlgorithmDriver *assembleNonConformalAlgDriver_;
 
   // saved of mesh parts that are not to be projected
   std::vector<stk::mesh::Part *> notProjectedPart_;
@@ -215,6 +224,10 @@ public:
     const stk::topology &theTopo,
     const SymmetryBoundaryConditionData &symmetryBCData);
 
+  virtual void register_non_conformal_bc(
+    stk::mesh::Part *part,
+    const stk::topology &theTopo);
+
   virtual void initialize();
   virtual void reinitialize_linear_system();    
   
@@ -233,6 +246,7 @@ public:
 
   AssembleNodalGradAlgorithmDriver *assembleNodalGradAlgDriver_;
   AlgorithmDriver *computeMdotAlgDriver_;
+  AssembleNonConformalAlgorithmDriver *assembleNonConformalAlgDriver_;
 
 };
 

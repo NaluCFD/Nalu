@@ -7,7 +7,7 @@
 
 
 // nalu
-#include <AssembleNonConformalElemDiffPenaltyAlgorithm.h>
+#include <AssembleScalarElemNonConformalPenaltyAlgorithm.h>
 
 #include <FieldTypeDef.h>
 #include <Realm.h>
@@ -32,12 +32,12 @@ namespace nalu{
 //==========================================================================
 // Class Definition
 //==========================================================================
-// AssembleNonConformalElemDiffPenaltyAlgorithm - nodal lambda, flux
+// AssembleScalarElemNonConformalPenaltyAlgorithm - nodal lambda, flux
 //==========================================================================
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-AssembleNonConformalElemDiffPenaltyAlgorithm::AssembleNonConformalElemDiffPenaltyAlgorithm(
+AssembleScalarElemNonConformalPenaltyAlgorithm::AssembleScalarElemNonConformalPenaltyAlgorithm(
   Realm &realm,
   stk::mesh::Part *part,
   ScalarFieldType *scalarQ,
@@ -52,19 +52,21 @@ AssembleNonConformalElemDiffPenaltyAlgorithm::AssembleNonConformalElemDiffPenalt
     ncArea_(ncArea),
     diffFluxCoeff_(diffFluxCoeff),
     coordinates_(NULL),
-    exposedAreaVec_(NULL)
+    exposedAreaVec_(NULL),
+    massFlowRate_(NULL)
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   exposedAreaVec_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");
+  massFlowRate_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "nc_mass_flow_rate");
 }
 
 //--------------------------------------------------------------------------
 //-------- execute ---------------------------------------------------------
 //--------------------------------------------------------------------------
 void
-AssembleNonConformalElemDiffPenaltyAlgorithm::execute()
+AssembleScalarElemNonConformalPenaltyAlgorithm::execute()
 {
   stk::mesh::BulkData & bulk_data = realm_.bulk_data();
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -137,6 +139,7 @@ AssembleNonConformalElemDiffPenaltyAlgorithm::execute()
 
       // pointer to face data
       const double * areaVec = stk::mesh::field_data(*exposedAreaVec_, b, k);
+      const double * massFlowRate =  stk::mesh::field_data(*massFlowRate_, b, k);
 
       //======================================
       // gather nodal data off of face
@@ -202,9 +205,12 @@ AssembleNonConformalElemDiffPenaltyAlgorithm::execute()
 
         // interpolate to bip
         double diffFluxCoeffBip = 0.0;
+        double scalarQBip = 0.0;
         for ( int ic = 0; ic < nodesPerFace; ++ic ) {
           const double r = p_face_shape_function[offSetSF_face+ic];
           diffFluxCoeffBip += r*p_diffFluxCoeff[ic];
+          const int nn = face_node_ordinals[ic];
+          scalarQBip += r*p_scalarQ[nn];
         }
 
         // characteristic length and aMag
@@ -233,8 +239,8 @@ AssembleNonConformalElemDiffPenaltyAlgorithm::execute()
         }
         
         // assemble the nodal quantities
-        *ncNormalFlux -= diffFluxCoeffBip*dndx;
-        *ncPenalty += diffFluxCoeffBip/charLength*aMag;
+        *ncNormalFlux += massFlowRate[ip]*scalarQBip - diffFluxCoeffBip*dndx;
+        *ncPenalty += diffFluxCoeffBip/charLength*aMag + std::abs(massFlowRate[ip])/2.0;
         *ncArea += aMag;
       }
     }
@@ -244,7 +250,7 @@ AssembleNonConformalElemDiffPenaltyAlgorithm::execute()
 //--------------------------------------------------------------------------
 //-------- destructor ------------------------------------------------------
 //--------------------------------------------------------------------------
-AssembleNonConformalElemDiffPenaltyAlgorithm::~AssembleNonConformalElemDiffPenaltyAlgorithm()
+AssembleScalarElemNonConformalPenaltyAlgorithm::~AssembleScalarElemNonConformalPenaltyAlgorithm()
 {
   // does nothing
 }
