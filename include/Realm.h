@@ -200,10 +200,14 @@ public:
     const double &searchTolerance,
     const std::string &searchMethodName);
 
-  void register_non_conformal_bc(
+  void setup_non_conformal_bc(
     stk::mesh::Part *currentPart,
     stk::mesh::Part *opposingPart,
     const NonConformalBoundaryConditionData &nonConformalBCData);
+
+  void register_non_conformal_bc(
+    stk::mesh::Part *part,
+    const stk::topology &theTopo);
 
   void periodic_field_update(
     stk::mesh::FieldBase *theField,

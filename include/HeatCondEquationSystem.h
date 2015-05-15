@@ -61,7 +61,8 @@ public:
     const ContactBoundaryConditionData &contactBCData);
 
   virtual void register_non_conformal_bc(
-    stk::mesh::Part *currentPart);
+    stk::mesh::Part *part,
+    const stk::topology &theTopo);
 
   virtual void register_initial_condition_fcn(
       stk::mesh::Part *part,

@@ -454,9 +454,9 @@ Realm::load(const YAML::Node & node)
   // activate aura
   get_if_present(node, "activate_aura", activateAura_, activateAura_);
   if ( activateAura_ )
-    NaluEnv::self().naluOutputP0() << "Nalu will ACTIVATE aura ghosting"  << std::endl;
+    NaluEnv::self().naluOutputP0() << "Nalu will activate aura ghosting" << std::endl;
   else
-    NaluEnv::self().naluOutputP0() << "Nalu will DEACTIVATE aura ghosting" << std::endl;
+    NaluEnv::self().naluOutputP0() << "Nalu will deactivate aura ghosting" << std::endl;
 
   // time step control
   const bool dtOptional = true;
@@ -2776,54 +2776,19 @@ Realm::register_periodic_bc(
 }
 
 //--------------------------------------------------------------------------
-//-------- register_non_conformal_bc ---------------------------------------
+//-------- setup_non_conformal_bc ------------------------------------------
 //--------------------------------------------------------------------------
 void
-Realm::register_non_conformal_bc(
+Realm::setup_non_conformal_bc(
   stk::mesh::Part *currentPart,
   stk::mesh::Part *opposingPart,
   const NonConformalBoundaryConditionData &nonConformalBCData)
 {
 
-  // push back the part for book keeping and, later, skin mesh
-  bcPartVec_.push_back(currentPart);
-
-  const AlgorithmType algType = NON_CONFORMAL;
-
   hasNonConformal_ = true;
 
   const int nDim = metaData_->spatial_dimension();
   
-  //====================================================
-  // Register boundary condition data
-  // current and opposing part came in as a whole... 
-  // Need to subset the currentPart to get at 
-  // topo for field registration
-  //====================================================
-
-  const std::vector<stk::mesh::Part*> & masterMeshParts = currentPart->subsets();
-    
-  // create one algorithm per master part and provide vector of opposing parts for the search
-  for( std::vector<stk::mesh::Part*>::const_iterator i = masterMeshParts.begin();
-       i != masterMeshParts.end(); ++i ) {
-    stk::mesh::Part * const part = *i ;
-    const stk::topology partTopo = part->topology();
-    if ( !(metaData_->side_rank() == part->primary_entity_rank()) ) {
-      throw std::runtime_error("NonConformal::fatal_error(); part is not a face" + part->name());
-    }
-    else {
-      
-      // size of ip variables
-      MasterElement *meFC = get_surface_master_element(partTopo);
-      const int numBip = meFC->numIntPoints_;
-      
-      // exposed area vector
-      GenericFieldType *exposedAreaVec_
-        = &(metaData_->declare_field<GenericFieldType>(static_cast<stk::topology::rank_t>(metaData_->side_rank()), "exposed_area_vector"));
-      stk::mesh::put_field(*exposedAreaVec_, *part, nDim*numBip );
-    }
-  }
-
   // extract data
   NonConformalUserData userData = nonConformalBCData.userData_;
 
@@ -2848,6 +2813,33 @@ Realm::register_non_conformal_bc(
   
   nonConformalManager_->nonConformalInfoVec_.push_back(nonConformalInfo);
 
+}
+
+//--------------------------------------------------------------------------
+//-------- register_non_conformal_bc ---------------------------------------
+//--------------------------------------------------------------------------
+void
+Realm::register_non_conformal_bc(
+  stk::mesh::Part *part,
+  const stk::topology &theTopo)
+{
+
+  // push back the part for book keeping and, later, skin mesh
+  bcPartVec_.push_back(part);
+
+  const AlgorithmType algType = NON_CONFORMAL;
+
+  const int nDim = metaData_->spatial_dimension();
+  
+  // size of ip variables
+  MasterElement *meFC = get_surface_master_element(theTopo);
+  const int numBip = meFC->numIntPoints_;
+  
+  // exposed area vector
+  GenericFieldType *exposedAreaVec_
+    = &(metaData_->declare_field<GenericFieldType>(static_cast<stk::topology::rank_t>(metaData_->side_rank()), "exposed_area_vector"));
+  stk::mesh::put_field(*exposedAreaVec_, *part, nDim*numBip );
+   
   //====================================================
   // Register non-conformal algorithms
   //====================================================
@@ -2855,13 +2847,12 @@ Realm::register_non_conformal_bc(
     = computeGeometryAlgDriver_->algMap_.find(algType);
   if ( it == computeGeometryAlgDriver_->algMap_.end() ) {
     ComputeGeometryBoundaryAlgorithm *theAlg
-      = new ComputeGeometryBoundaryAlgorithm(*this, currentPart);
+      = new ComputeGeometryBoundaryAlgorithm(*this, part);
     computeGeometryAlgDriver_->algMap_[algType] = theAlg;
   }
   else {
-    it->second->partVec_.push_back(currentPart);
+    it->second->partVec_.push_back(part);
   }
-
 }
 
 //--------------------------------------------------------------------------

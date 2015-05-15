@@ -15,6 +15,7 @@
 #include <AssembleContinuityEdgeContactSolverAlgorithm.h>
 #include <AssembleContinuityEdgeOpenSolverAlgorithm.h>
 #include <AssembleContinuityElemOpenSolverAlgorithm.h>
+#include <AssembleContinuityNonConformalPenaltyAlgorithm.h>
 #include <AssembleMomentumEdgeSolverAlgorithm.h>
 #include <AssembleMomentumElemSolverAlgorithm.h>
 #include <AssembleMomentumEdgeContactSolverAlgorithm.h>
@@ -23,6 +24,9 @@
 #include <AssembleMomentumEdgeSymmetrySolverAlgorithm.h>
 #include <AssembleMomentumElemSymmetrySolverAlgorithm.h>
 #include <AssembleMomentumWallFunctionSolverAlgorithm.h>
+#include <AssembleMomentumElemNonConformalPenaltyAlgorithm.h>
+#include <AssembleMomentumNonConformalSolverAlgorithm.h>
+#include <AssembleScalarNonConformalSolverAlgorithm.h>
 #include <AssembleNodalGradAlgorithmDriver.h>
 #include <AssembleNodalGradUAlgorithmDriver.h>
 #include <AssembleNodalGradEdgeAlgorithm.h>
@@ -36,12 +40,14 @@
 #include <AssembleNodalGradUEdgeContactAlgorithm.h>
 #include <AssembleNodalGradUElemContactAlgorithm.h>
 #include <AssembleNodeSolverAlgorithm.h>
+#include <AssembleNonConformalAlgorithmDriver.h>
 #include <AuxFunctionAlgorithm.h>
 #include <ComputeMdotEdgeAlgorithm.h>
 #include <ComputeMdotElemAlgorithm.h>
 #include <ComputeMdotEdgeContactAlgorithm.h>
 #include <ComputeMdotEdgeOpenAlgorithm.h>
 #include <ComputeMdotElemOpenAlgorithm.h>
+#include <ComputeMdotNonConformalAlgorithm.h>
 #include <ComputeWallFrictionVelocityAlgorithm.h>
 #include <ConstantAuxFunction.h>
 #include <user_functions/ConvectingTaylorVortexVelocityAuxFunction.h>
@@ -503,6 +509,7 @@ LowMachEquationSystem::solve_and_update()
   if ( isInit_ ) {
     timeA = stk::cpu_time();
     continuityEqSys_->assembleNodalGradAlgDriver_->execute();
+    non_conformal_continuity();
     continuityEqSys_->computeMdotAlgDriver_->execute();
     timeB = stk::cpu_time();
     continuityEqSys_->timerMisc_ += (timeB-timeA);
@@ -521,6 +528,9 @@ LowMachEquationSystem::solve_and_update()
     NaluEnv::self().naluOutputP0() << " " << k+1 << "/" << maxIterations_
                     << std::setw(15) << std::right << name_ << std::endl;
 
+    // compute nc post processed flux for momentum
+    non_conformal_momentum();
+
     // momentum assemble, load_complete and solve
     momentumEqSys_->assemble_and_solve(momentumEqSys_->uTmp_);
 
@@ -534,6 +544,9 @@ LowMachEquationSystem::solve_and_update()
       realm_.get_activate_aura());
     timeB = stk::cpu_time();
     momentumEqSys_->timerAssemble_ += (timeB-timeA);
+
+    // compute NC post processed flux for continuity
+    non_conformal_continuity();
 
     // continuity assemble, load_complete and solve
     continuityEqSys_->assemble_and_solve(continuityEqSys_->pTmp_);
@@ -725,6 +738,26 @@ LowMachEquationSystem::post_converged_work()
   }
 }
 
+//--------------------------------------------------------------------------
+//-------- non_conformal_continuity ----------------------------------------
+//--------------------------------------------------------------------------
+void
+LowMachEquationSystem::non_conformal_continuity()
+{
+  if ( NULL != continuityEqSys_->assembleNonConformalAlgDriver_ )
+    continuityEqSys_->assembleNonConformalAlgDriver_->execute();
+}
+
+//--------------------------------------------------------------------------
+//-------- non_conformal_momentum ------------------------------------------
+//--------------------------------------------------------------------------
+void
+LowMachEquationSystem::non_conformal_momentum()
+{
+  if ( NULL != momentumEqSys_->assembleNonConformalAlgDriver_ )
+    momentumEqSys_->assembleNonConformalAlgDriver_->execute();
+}
+
 //==========================================================================
 // Class Definition
 //==========================================================================
@@ -747,7 +780,8 @@ MomentumEquationSystem::MomentumEquationSystem(
     diffFluxCoeffAlgDriver_(new AlgorithmDriver(realm_)),
     tviscAlgDriver_(new AlgorithmDriver(realm_)),
     cflReyAlgDriver_(new AlgorithmDriver(realm_)),
-    wallFunctionParamsAlgDriver_(NULL)
+    wallFunctionParamsAlgDriver_(NULL),
+    assembleNonConformalAlgDriver_(NULL)
 {
   // extract solver name and solver object
   std::string solverName = realm_.equationSystems_.get_solver_block_name("velocity");
@@ -774,6 +808,8 @@ MomentumEquationSystem::~MomentumEquationSystem()
   delete cflReyAlgDriver_;
   if ( NULL != wallFunctionParamsAlgDriver_)
     delete wallFunctionParamsAlgDriver_;
+  if ( NULL != assembleNonConformalAlgDriver_ )
+    delete assembleNonConformalAlgDriver_;
  }
 
 //--------------------------------------------------------------------------
@@ -1386,7 +1422,6 @@ MomentumEquationSystem::register_wall_bc(
     // need p^n+1/2; requires "old" pressure... need a utility to save it and compute it...
   }
 
-
 }
 
 //--------------------------------------------------------------------------
@@ -1447,7 +1482,6 @@ MomentumEquationSystem::register_contact_bc(
   }
 }
 
-
 //--------------------------------------------------------------------------
 //-------- register_symmetry_bc ------------------------------------------------
 //--------------------------------------------------------------------------
@@ -1493,6 +1527,86 @@ MomentumEquationSystem::register_symmetry_bc(
     itsi->second->partVec_.push_back(part);
   }
 
+}
+
+//--------------------------------------------------------------------------
+//-------- register_non_conformal_bc ---------------------------------------
+//--------------------------------------------------------------------------
+void
+MomentumEquationSystem::register_non_conformal_bc(
+  stk::mesh::Part *part,
+  const stk::topology &theTopo)
+{
+
+  const AlgorithmType algType = NON_CONFORMAL;
+
+  VectorFieldType &velocityNp1 = velocity_->field_of_state(stk::mesh::StateNP1);
+  GenericFieldType &dudxNone = dudx_->field_of_state(stk::mesh::StateNone);
+
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
+
+  const unsigned nDim = meta_data.spatial_dimension();
+
+  // mdot at nc bc; register field; require topo and num ips
+  MasterElement *meFC = realm_.get_surface_master_element(theTopo);
+  const int numIp = meFC->numIntPoints_;
+
+  stk::topology::rank_t sideRank = static_cast<stk::topology::rank_t>(meta_data.side_rank());
+  GenericFieldType *mdotBip =
+    &(meta_data.declare_field<GenericFieldType>(sideRank, "nc_mass_flow_rate"));
+  stk::mesh::put_field(*mdotBip, *part, numIp );
+
+  // assemble and normalized lambda/L (scalar)
+  VectorFieldType *ncNormalFlux = &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "nc_u_normal_flux"));
+  ScalarFieldType *ncPenalty = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "nc_u_penalty"));
+  ScalarFieldType *ncArea = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "nc_p_assembled_area"));
+  stk::mesh::put_field(*ncNormalFlux, *part, nDim);
+  stk::mesh::put_field(*ncPenalty, *part);
+  stk::mesh::put_field(*ncArea, *part);
+
+  // create the driver for post-processed quantities
+  if ( NULL == assembleNonConformalAlgDriver_ ) {
+    const unsigned fluxFieldSize = nDim;
+    assembleNonConformalAlgDriver_ = new AssembleNonConformalAlgorithmDriver(realm_, ncNormalFlux, ncPenalty, ncArea, fluxFieldSize);
+  }
+
+  // add it...
+  std::map<AlgorithmType, Algorithm *>::iterator itnc
+    = assembleNonConformalAlgDriver_->algMap_.find(algType);
+  if ( itnc == assembleNonConformalAlgDriver_->algMap_.end() ) {
+    Algorithm *theAlg
+      = new AssembleMomentumElemNonConformalPenaltyAlgorithm(realm_, part, velocity_,
+        ncNormalFlux, ncPenalty, ncArea, realm_.is_turbulent() ? evisc_ : visc_);
+    assembleNonConformalAlgDriver_->algMap_[algType] = theAlg;
+  }
+  else {
+    itnc->second->partVec_.push_back(part);
+  }
+
+  // non-solver; contribution to Gjui; allow for element-based shifted
+  std::map<AlgorithmType, Algorithm *>::iterator it
+    = assembleNodalGradAlgDriver_->algMap_.find(algType);
+  if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+    Algorithm *theAlg
+      = new AssembleNodalGradUBoundaryAlgorithm(realm_, part, &velocityNp1, &dudxNone, edgeNodalGradient_);
+    assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+  }
+  else {
+    it->second->partVec_.push_back(part);
+  }
+
+  // solver; lhs; same for edge and element-based scheme
+  std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi =
+    solverAlgDriver_->solverAlgMap_.find(algType);
+  if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
+    AssembleMomentumNonConformalSolverAlgorithm *theAlg
+      = new AssembleMomentumNonConformalSolverAlgorithm(realm_, part, this,
+                                                        &velocityNp1, ncNormalFlux, ncPenalty);
+    solverAlgDriver_->solverAlgMap_[algType] = theAlg;
+  }
+  else {
+    itsi->second->partVec_.push_back(part);
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -1578,7 +1692,8 @@ ContinuityEquationSystem::ContinuityEquationSystem(
     coordinates_(NULL),
     pTmp_(NULL),
     assembleNodalGradAlgDriver_(new AssembleNodalGradAlgorithmDriver(realm_, "pressure", "dpdx")),
-    computeMdotAlgDriver_(new AlgorithmDriver(realm_))
+    computeMdotAlgDriver_(new AlgorithmDriver(realm_)),
+    assembleNonConformalAlgDriver_(NULL)
 {
 
   // message to user
@@ -1610,6 +1725,8 @@ ContinuityEquationSystem::~ContinuityEquationSystem()
 {
   delete assembleNodalGradAlgDriver_;
   delete computeMdotAlgDriver_;
+  if ( NULL != assembleNonConformalAlgDriver_ )
+    delete assembleNonConformalAlgDriver_;
 }
 
 //--------------------------------------------------------------------------
@@ -2105,6 +2222,95 @@ ContinuityEquationSystem::register_symmetry_bc(
     it->second->partVec_.push_back(part);
   }
 
+}
+
+
+//--------------------------------------------------------------------------
+//-------- register_non_conformal_bc ---------------------------------------
+//--------------------------------------------------------------------------
+void
+ContinuityEquationSystem::register_non_conformal_bc(
+  stk::mesh::Part *part,
+  const stk::topology &theTopo)
+{
+  
+  const AlgorithmType algType = NON_CONFORMAL;
+
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
+
+  // mdot at nc bc; register field; require topo and num ips
+  MasterElement *meFC = realm_.get_surface_master_element(theTopo);
+  const int numIp = meFC->numIntPoints_;
+  
+  stk::topology::rank_t sideRank = static_cast<stk::topology::rank_t>(meta_data.side_rank());
+  GenericFieldType *mdotBip =
+    &(meta_data.declare_field<GenericFieldType>(sideRank, "nc_mass_flow_rate"));
+  stk::mesh::put_field(*mdotBip, *part, numIp );
+
+  // assemble and normalized lambda/L
+  ScalarFieldType *ncNormalFlux = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "nc_p_normal_flux"));
+  ScalarFieldType *ncPenalty = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "nc_p_penalty"));
+  ScalarFieldType *ncArea = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "nc_p_assembled_area"));
+  stk::mesh::put_field(*ncNormalFlux, *part);
+  stk::mesh::put_field(*ncPenalty, *part);
+  stk::mesh::put_field(*ncArea, *part);
+
+  // create the driver for post-processed quantities
+  if ( NULL == assembleNonConformalAlgDriver_ ) {
+    const unsigned fluxFieldSize = 1;
+    assembleNonConformalAlgDriver_ = new AssembleNonConformalAlgorithmDriver(realm_, ncNormalFlux, ncPenalty, ncArea, fluxFieldSize);
+  }
+
+  // add it...
+  std::map<AlgorithmType, Algorithm *>::iterator itnc
+    = assembleNonConformalAlgDriver_->algMap_.find(algType);
+  if ( itnc == assembleNonConformalAlgDriver_->algMap_.end() ) {
+    Algorithm *theAlg = new AssembleContinuityNonConformalPenaltyAlgorithm(realm_, part, ncNormalFlux, ncPenalty, ncArea, realm_.realmUsesEdges_);
+    assembleNonConformalAlgDriver_->algMap_[algType] = theAlg;
+  }
+  else {
+    itnc->second->partVec_.push_back(part);
+  }
+  
+  // non-solver; dpdx; allow for element-based shifted
+  std::map<AlgorithmType, Algorithm *>::iterator it
+    = assembleNodalGradAlgDriver_->algMap_.find(algType);
+  if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+    Algorithm *theAlg 
+      = new AssembleNodalGradBoundaryAlgorithm(realm_, part, pressure_, dpdx_, edgeNodalGradient_);
+    assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+  }
+  else {
+    it->second->partVec_.push_back(part);
+  }
+
+  // non-solver alg; compute nc mdot (same for edge and element-based)
+  std::map<AlgorithmType, Algorithm *>::iterator itm =
+    computeMdotAlgDriver_->algMap_.find(algType);
+  if ( itm == computeMdotAlgDriver_->algMap_.end() ) {
+    ComputeMdotNonConformalAlgorithm *theAlg
+      = new ComputeMdotNonConformalAlgorithm(realm_, part, pressure_, ncNormalFlux, ncPenalty);
+    computeMdotAlgDriver_->algMap_[algType] = theAlg;
+  }
+  else {
+    itm->second->partVec_.push_back(part);
+  }
+
+  // matrix assmeble
+
+  // solver; lhs; same for edge and element-based scheme
+  std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi =
+    solverAlgDriver_->solverAlgMap_.find(algType);
+  if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
+    const bool normalizeByTimeScale = true; // continuity equation is normalized by projection time scale
+    AssembleScalarNonConformalSolverAlgorithm *theAlg
+      = new AssembleScalarNonConformalSolverAlgorithm(realm_, part, this, 
+                                                      pressure_, ncNormalFlux, ncPenalty, normalizeByTimeScale);
+    solverAlgDriver_->solverAlgMap_[algType] = theAlg;
+  }
+  else {
+    itsi->second->partVec_.push_back(part);
+  }
 }
 
 //--------------------------------------------------------------------------
