@@ -84,8 +84,8 @@ AssembleNonConformalAlgorithmDriver::pre_work()
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
       ncArea[k] = 0.0;      
       ncPenalty[k] = 0.0;
+      const int offSet = k*fluxFieldSize_;
       for ( unsigned i = 0; i < fluxFieldSize_; ++i ) {
-        const int offSet = k*fluxFieldSize_;
         ncNormalFlux[offSet+i] = 0.0;
       }
     }
@@ -132,8 +132,8 @@ AssembleNonConformalAlgorithmDriver::post_work()
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
       const double theArea = ncArea[k];
       ncPenalty[k] /= theArea;
+      const int offSet = k*fluxFieldSize_;
       for (unsigned i = 0; i < fluxFieldSize_; ++i) {
-        const int offSet = k*fluxFieldSize_;
         ncNormalFlux[offSet+i] /= theArea;
       }
     }
