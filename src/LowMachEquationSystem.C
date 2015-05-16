@@ -24,6 +24,7 @@
 #include <AssembleMomentumEdgeSymmetrySolverAlgorithm.h>
 #include <AssembleMomentumElemSymmetrySolverAlgorithm.h>
 #include <AssembleMomentumWallFunctionSolverAlgorithm.h>
+#include <AssembleMomentumEdgeNonConformalPenaltyAlgorithm.h>
 #include <AssembleMomentumElemNonConformalPenaltyAlgorithm.h>
 #include <AssembleMomentumNonConformalSolverAlgorithm.h>
 #include <AssembleScalarNonConformalSolverAlgorithm.h>
@@ -1574,9 +1575,15 @@ MomentumEquationSystem::register_non_conformal_bc(
   std::map<AlgorithmType, Algorithm *>::iterator itnc
     = assembleNonConformalAlgDriver_->algMap_.find(algType);
   if ( itnc == assembleNonConformalAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg
-      = new AssembleMomentumElemNonConformalPenaltyAlgorithm(realm_, part, velocity_,
+    Algorithm *theAlg = NULL;
+    if ( realm_.realmUsesEdges_ ) {
+      theAlg = new AssembleMomentumEdgeNonConformalPenaltyAlgorithm(realm_, part, velocity_,
         ncNormalFlux, ncPenalty, ncArea, realm_.is_turbulent() ? evisc_ : visc_);
+    }
+    else {
+      theAlg = new AssembleMomentumElemNonConformalPenaltyAlgorithm(realm_, part, velocity_,
+        ncNormalFlux, ncPenalty, ncArea, realm_.is_turbulent() ? evisc_ : visc_);
+    }
     assembleNonConformalAlgDriver_->algMap_[algType] = theAlg;
   }
   else {

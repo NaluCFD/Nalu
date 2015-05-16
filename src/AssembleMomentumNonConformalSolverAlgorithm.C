@@ -238,8 +238,8 @@ AssembleMomentumNonConformalSolverAlgorithm::execute()
           const double *ncNormalFlux = stk::mesh::field_data(*ncNormalFlux_, node );
           for ( int i = 0; i < nDim; ++i ) {
             const int offSet = i*current_num_face_nodes + ni;        
-            p_c_face_velocity[offSet] = *stk::mesh::field_data(velocityNp1, node);
-            p_c_ncNormalFlux[offSet] = *stk::mesh::field_data(*ncNormalFlux_, node);
+            p_c_face_velocity[offSet] = uNp1[i];
+            p_c_ncNormalFlux[offSet] = ncNormalFlux[i];
           }
         }
         
@@ -257,8 +257,8 @@ AssembleMomentumNonConformalSolverAlgorithm::execute()
           const double *ncNormalFlux = stk::mesh::field_data(*ncNormalFlux_, node );
           for ( int i = 0; i < nDim; ++i ) {
             const int offSet = i*opposing_num_face_nodes + ni;        
-            p_o_face_velocity[offSet] = *stk::mesh::field_data(velocityNp1, node);
-            p_o_ncNormalFlux[offSet] = *stk::mesh::field_data(*ncNormalFlux_, node);
+            p_o_face_velocity[offSet] = uNp1[i];
+            p_o_ncNormalFlux[offSet] = ncNormalFlux[i];
           }
         }
         
