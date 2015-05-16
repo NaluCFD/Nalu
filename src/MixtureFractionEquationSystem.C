@@ -23,6 +23,7 @@
 #include <AssembleNodeSolverAlgorithm.h>
 #include <AssembleNonConformalAlgorithmDriver.h>
 #include <AssembleScalarElemNonConformalPenaltyAlgorithm.h>
+#include <AssembleScalarEdgeNonConformalPenaltyAlgorithm.h>
 #include <AuxFunctionAlgorithm.h>
 #include <ConstantAuxFunction.h>
 #include <CopyFieldAlgorithm.h>
@@ -662,9 +663,9 @@ MixtureFractionEquationSystem::register_non_conformal_bc(
   if ( itnc == assembleNonConformalAlgDriver_->algMap_.end() ) {
     Algorithm *theAlg = NULL;
     if ( realm_.realmUsesEdges_ )
-      throw std::runtime_error("MixtureFractionEquationSystem::non_conformal_alg Only Element-based scheme is working");
+      theAlg = new AssembleScalarEdgeNonConformalPenaltyAlgorithm(realm_, part, &mixFracNp1, &dzdxNone, ncNormalFlux, ncPenalty, ncArea, evisc_);
     else
-      theAlg = new AssembleScalarElemNonConformalPenaltyAlgorithm(realm_, part, mixFrac_, ncNormalFlux, ncPenalty, ncArea, evisc_);
+      theAlg = new AssembleScalarElemNonConformalPenaltyAlgorithm(realm_, part, &mixFracNp1, ncNormalFlux, ncPenalty, ncArea, evisc_);
     assembleNonConformalAlgDriver_->algMap_[algType] = theAlg;
   }
   else {
