@@ -98,8 +98,7 @@ MixtureFractionEquationSystem::MixtureFractionEquationSystem(
     scalarDiss_(NULL),
     assembleNodalGradAlgDriver_(new AssembleNodalGradAlgorithmDriver(realm_, "mixture_fraction", "dzdx")),
     diffFluxCoeffAlgDriver_(new AlgorithmDriver(realm_)),
-    isInit_(true),
-    assembleNonConformalAlgDriver_(NULL)
+    isInit_(true)
 {
   // extract solver name and solver object
   std::string solverName = realm_.equationSystems_.get_solver_block_name("mixture_fraction");
@@ -124,10 +123,6 @@ MixtureFractionEquationSystem::~MixtureFractionEquationSystem()
 {
   delete assembleNodalGradAlgDriver_;
   delete diffFluxCoeffAlgDriver_;
- 
-  if ( NULL != assembleNonConformalAlgDriver_ )
-    delete assembleNonConformalAlgDriver_;
-
 }
 
 //--------------------------------------------------------------------------
@@ -743,14 +738,13 @@ MixtureFractionEquationSystem::solve_and_update()
   // compute effective viscosity
   diffFluxCoeffAlgDriver_->execute();
 
-  // nonconformal
-  if ( NULL != assembleNonConformalAlgDriver_)
-    assembleNonConformalAlgDriver_->execute();
-
   for ( int k = 0; k < maxIterations_; ++k ) {
 
     NaluEnv::self().naluOutputP0() << " " << k+1 << "/" << maxIterations_
                     << std::setw(15) << std::right << name_ << std::endl;
+
+    // compute nc post processed flux for mixture fraction
+    assemble_non_conformal();
 
     // mixture fraction assemble, load_complete and solve
     assemble_and_solve(zTmp_);

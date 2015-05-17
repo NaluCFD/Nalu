@@ -15,6 +15,7 @@
 #include <AssembleContinuityEdgeContactSolverAlgorithm.h>
 #include <AssembleContinuityEdgeOpenSolverAlgorithm.h>
 #include <AssembleContinuityElemOpenSolverAlgorithm.h>
+#include <AssembleScalarNonConformalSolverAlgorithm.h>
 #include <AssembleContinuityNonConformalPenaltyAlgorithm.h>
 #include <AssembleMomentumEdgeSolverAlgorithm.h>
 #include <AssembleMomentumElemSolverAlgorithm.h>
@@ -27,7 +28,6 @@
 #include <AssembleMomentumEdgeNonConformalPenaltyAlgorithm.h>
 #include <AssembleMomentumElemNonConformalPenaltyAlgorithm.h>
 #include <AssembleMomentumNonConformalSolverAlgorithm.h>
-#include <AssembleScalarNonConformalSolverAlgorithm.h>
 #include <AssembleNodalGradAlgorithmDriver.h>
 #include <AssembleNodalGradUAlgorithmDriver.h>
 #include <AssembleNodalGradEdgeAlgorithm.h>
@@ -745,8 +745,7 @@ LowMachEquationSystem::post_converged_work()
 void
 LowMachEquationSystem::non_conformal_continuity()
 {
-  if ( NULL != continuityEqSys_->assembleNonConformalAlgDriver_ )
-    continuityEqSys_->assembleNonConformalAlgDriver_->execute();
+  continuityEqSys_->assemble_non_conformal();
 }
 
 //--------------------------------------------------------------------------
@@ -755,8 +754,7 @@ LowMachEquationSystem::non_conformal_continuity()
 void
 LowMachEquationSystem::non_conformal_momentum()
 {
-  if ( NULL != momentumEqSys_->assembleNonConformalAlgDriver_ )
-    momentumEqSys_->assembleNonConformalAlgDriver_->execute();
+  momentumEqSys_->assemble_non_conformal();
 }
 
 //==========================================================================
@@ -781,8 +779,7 @@ MomentumEquationSystem::MomentumEquationSystem(
     diffFluxCoeffAlgDriver_(new AlgorithmDriver(realm_)),
     tviscAlgDriver_(new AlgorithmDriver(realm_)),
     cflReyAlgDriver_(new AlgorithmDriver(realm_)),
-    wallFunctionParamsAlgDriver_(NULL),
-    assembleNonConformalAlgDriver_(NULL)
+    wallFunctionParamsAlgDriver_(NULL)
 {
   // extract solver name and solver object
   std::string solverName = realm_.equationSystems_.get_solver_block_name("velocity");
@@ -809,8 +806,6 @@ MomentumEquationSystem::~MomentumEquationSystem()
   delete cflReyAlgDriver_;
   if ( NULL != wallFunctionParamsAlgDriver_)
     delete wallFunctionParamsAlgDriver_;
-  if ( NULL != assembleNonConformalAlgDriver_ )
-    delete assembleNonConformalAlgDriver_;
  }
 
 //--------------------------------------------------------------------------
@@ -1538,7 +1533,6 @@ MomentumEquationSystem::register_non_conformal_bc(
   stk::mesh::Part *part,
   const stk::topology &theTopo)
 {
-
   const AlgorithmType algType = NON_CONFORMAL;
 
   VectorFieldType &velocityNp1 = velocity_->field_of_state(stk::mesh::StateNP1);
@@ -1560,7 +1554,7 @@ MomentumEquationSystem::register_non_conformal_bc(
   // assemble and normalized lambda/L (scalar)
   VectorFieldType *ncNormalFlux = &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "nc_u_normal_flux"));
   ScalarFieldType *ncPenalty = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "nc_u_penalty"));
-  ScalarFieldType *ncArea = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "nc_p_assembled_area"));
+  ScalarFieldType *ncArea = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "nc_u_assembled_area"));
   stk::mesh::put_field(*ncNormalFlux, *part, nDim);
   stk::mesh::put_field(*ncPenalty, *part);
   stk::mesh::put_field(*ncArea, *part);
@@ -1699,8 +1693,7 @@ ContinuityEquationSystem::ContinuityEquationSystem(
     coordinates_(NULL),
     pTmp_(NULL),
     assembleNodalGradAlgDriver_(new AssembleNodalGradAlgorithmDriver(realm_, "pressure", "dpdx")),
-    computeMdotAlgDriver_(new AlgorithmDriver(realm_)),
-    assembleNonConformalAlgDriver_(NULL)
+    computeMdotAlgDriver_(new AlgorithmDriver(realm_))
 {
 
   // message to user
@@ -1732,8 +1725,6 @@ ContinuityEquationSystem::~ContinuityEquationSystem()
 {
   delete assembleNodalGradAlgDriver_;
   delete computeMdotAlgDriver_;
-  if ( NULL != assembleNonConformalAlgDriver_ )
-    delete assembleNonConformalAlgDriver_;
 }
 
 //--------------------------------------------------------------------------
@@ -2240,7 +2231,6 @@ ContinuityEquationSystem::register_non_conformal_bc(
   stk::mesh::Part *part,
   const stk::topology &theTopo)
 {
-  
   const AlgorithmType algType = NON_CONFORMAL;
 
   stk::mesh::MetaData &meta_data = realm_.meta_data();
@@ -2278,7 +2268,7 @@ ContinuityEquationSystem::register_non_conformal_bc(
   else {
     itnc->second->partVec_.push_back(part);
   }
-  
+
   // non-solver; dpdx; allow for element-based shifted
   std::map<AlgorithmType, Algorithm *>::iterator it
     = assembleNodalGradAlgDriver_->algMap_.find(algType);
@@ -2302,8 +2292,6 @@ ContinuityEquationSystem::register_non_conformal_bc(
   else {
     itm->second->partVec_.push_back(part);
   }
-
-  // matrix assmeble
 
   // solver; lhs; same for edge and element-based scheme
   std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi =

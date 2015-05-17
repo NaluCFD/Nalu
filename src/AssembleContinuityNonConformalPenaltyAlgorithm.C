@@ -58,13 +58,11 @@ AssembleContinuityNonConformalPenaltyAlgorithm::AssembleContinuityNonConformalPe
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
-
   // hold either mesh velocity or velocity in meshVelocity_ (avoids logic below)
   if ( meshMotion_ )
     meshVelocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_velocity");
   else
     meshVelocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
-
   density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
   velocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
