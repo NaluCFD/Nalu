@@ -8,6 +8,7 @@
 
 #include <EquationSystem.h>
 #include <AuxFunctionAlgorithm.h>
+#include <AssembleNonConformalAlgorithmDriver.h>
 #include <SolverAlgorithmDriver.h>
 #include <InitialConditions.h>
 #include <Realm.h>
@@ -46,9 +47,36 @@ EquationSystem::EquationSystem(
     nonLinearIterationCount_(0),
     reportLinearIterations_(false),
     edgeNodalGradient_(realm_.realmUsesEdges_),
-    linsys_(NULL)
+    linsys_(NULL),
+    assembleNonConformalAlgDriver_(NULL)
 {
   // nothing to do
+}
+
+//--------------------------------------------------------------------------
+//-------- destructor ------------------------------------------------------
+//--------------------------------------------------------------------------
+EquationSystem::~EquationSystem()
+{
+  delete solverAlgDriver_;
+
+  if ( NULL != linsys_ )
+    delete linsys_;
+
+  // initial conditions and bc prop
+  std::vector<AuxFunctionAlgorithm *>::iterator ii;
+  for( ii=bcDataAlg_.begin(); ii!=bcDataAlg_.end(); ++ii )
+    delete *ii;
+
+  std::vector<Algorithm *>::iterator iim;
+  for( iim=bcDataMapAlg_.begin(); iim!=bcDataMapAlg_.end(); ++iim )
+    delete *iim;
+
+  for( iim=copyStateAlg_.begin(); iim!=copyStateAlg_.end(); ++iim )
+    delete *iim;
+
+  if ( NULL != assembleNonConformalAlgDriver_ )
+    delete assembleNonConformalAlgDriver_;
 }
 
 //--------------------------------------------------------------------------
@@ -159,6 +187,9 @@ EquationSystem::dump_eq_time()
 
 }
 
+//--------------------------------------------------------------------------
+//-------- update_iteration_statistics -------------------------------------
+//--------------------------------------------------------------------------
 void
 EquationSystem::update_iteration_statistics(
   const int & iters)
@@ -231,6 +262,15 @@ EquationSystem::assemble_and_solve(
   
 }
 
+//--------------------------------------------------------------------------
+//-------- assemble_non_conformal ------------------------------------------
+//--------------------------------------------------------------------------
+void
+EquationSystem::assemble_non_conformal()
+{
+  if ( NULL != assembleNonConformalAlgDriver_ )
+    assembleNonConformalAlgDriver_->execute();
+}
 
 //--------------------------------------------------------------------------
 //-------- bc_data_specified ----------------------------------------------------
@@ -301,32 +341,6 @@ EquationSystem::get_bc_function_params(
     return theParams;
   }
 }
-
-
-//--------------------------------------------------------------------------
-//-------- destructor ------------------------------------------------------
-//--------------------------------------------------------------------------
-EquationSystem::~EquationSystem()
-{
-  delete solverAlgDriver_;
-  
-  if ( NULL != linsys_ )
-    delete linsys_;
-
-  // initial conditions and bc prop
-  std::vector<AuxFunctionAlgorithm *>::iterator ii;
-  for( ii=bcDataAlg_.begin(); ii!=bcDataAlg_.end(); ++ii )
-    delete *ii;
-
-  std::vector<Algorithm *>::iterator iim;
-  for( iim=bcDataMapAlg_.begin(); iim!=bcDataMapAlg_.end(); ++iim )
-    delete *iim;
-
-  for( iim=copyStateAlg_.begin(); iim!=copyStateAlg_.end(); ++iim )
-    delete *iim;
-
-}
-
 
 } // namespace nalu
 } // namespace Sierra

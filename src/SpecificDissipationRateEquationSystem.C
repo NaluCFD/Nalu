@@ -13,6 +13,7 @@
 #include <AssembleScalarEdgeSolverAlgorithm.h>
 #include <AssembleScalarElemSolverAlgorithm.h>
 #include <AssembleScalarElemOpenSolverAlgorithm.h>
+#include <AssembleScalarNonConformalSolverAlgorithm.h>
 #include <AssembleNodeSolverAlgorithm.h>
 #include <AssembleNodalGradAlgorithmDriver.h>
 #include <AssembleNodalGradEdgeAlgorithm.h>
@@ -20,6 +21,9 @@
 #include <AssembleNodalGradBoundaryAlgorithm.h>
 #include <AssembleNodalGradEdgeContactAlgorithm.h>
 #include <AssembleNodalGradElemContactAlgorithm.h>
+#include <AssembleNonConformalAlgorithmDriver.h>
+#include <AssembleScalarElemNonConformalPenaltyAlgorithm.h>
+#include <AssembleScalarEdgeNonConformalPenaltyAlgorithm.h>
 #include <AuxFunctionAlgorithm.h>
 #include <ComputeLowReynoldsSDRWallAlgorithm.h>
 #include <ComputeWallModelSDRWallAlgorithm.h>
@@ -544,8 +548,7 @@ SpecificDissipationRateEquationSystem::register_contact_bc(
       solverAlgDriver_->solverAlgMap_.find(algType);
     if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
       AssembleScalarEdgeContactSolverAlgorithm *theAlg
-        = new AssembleScalarEdgeContactSolverAlgorithm(realm_, part, this,
-                                                       sdr_, dwdx_, evisc_);
+        = new AssembleScalarEdgeContactSolverAlgorithm(realm_, part, this, sdr_, dwdx_, evisc_);
       solverAlgDriver_->solverAlgMap_[algType] = theAlg;
     }
     else {
@@ -556,7 +559,6 @@ SpecificDissipationRateEquationSystem::register_contact_bc(
     throw std::runtime_error("Sorry, element-based contact not supported");
   }
 }
-
 
 //--------------------------------------------------------------------------
 //-------- register_symmetry_bc --------------------------------------------
@@ -587,6 +589,78 @@ SpecificDissipationRateEquationSystem::register_symmetry_bc(
     it->second->partVec_.push_back(part);
   }
 
+}
+
+
+//--------------------------------------------------------------------------
+//-------- register_non_conformal_bc ---------------------------------------
+//--------------------------------------------------------------------------
+void
+SpecificDissipationRateEquationSystem::register_non_conformal_bc(
+  stk::mesh::Part *part,
+  const stk::topology &/*theTopo*/)
+{
+
+  const AlgorithmType algType = NON_CONFORMAL;
+
+  // np1
+  ScalarFieldType &sdrNp1 = sdr_->field_of_state(stk::mesh::StateNP1);
+  VectorFieldType &dwdxNone = dwdx_->field_of_state(stk::mesh::StateNone);
+
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
+
+  // non-solver; dwdx; allow for element-based shifted
+  std::map<AlgorithmType, Algorithm *>::iterator it
+    = assembleNodalGradAlgDriver_->algMap_.find(algType);
+  if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+    Algorithm *theAlg
+      = new AssembleNodalGradBoundaryAlgorithm(realm_, part, &sdrNp1, &dwdxNone, edgeNodalGradient_);
+    assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+  }
+  else {
+    it->second->partVec_.push_back(part);
+  }
+
+  // assemble and normalized lambda/L
+  ScalarFieldType *ncNormalFlux = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "nc_sdr_normal_flux"));
+  ScalarFieldType *ncPenalty = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "nc_sdr_penalty"));
+  ScalarFieldType *ncArea = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "nc_sdr_assembled_area"));
+  stk::mesh::put_field(*ncNormalFlux, *part);
+  stk::mesh::put_field(*ncPenalty, *part);
+  stk::mesh::put_field(*ncArea, *part);
+
+  // create the driver for post-processed quantities
+  if ( NULL == assembleNonConformalAlgDriver_ ) {
+    const unsigned fluxFieldSize = 1;
+    assembleNonConformalAlgDriver_ = new AssembleNonConformalAlgorithmDriver(realm_, ncNormalFlux, ncPenalty, ncArea, fluxFieldSize);
+  }
+
+  std::map<AlgorithmType, Algorithm *>::iterator itnc
+    = assembleNonConformalAlgDriver_->algMap_.find(algType);
+  if ( itnc == assembleNonConformalAlgDriver_->algMap_.end() ) {
+    Algorithm *theAlg = NULL;
+    if ( realm_.realmUsesEdges_ )
+      theAlg = new AssembleScalarEdgeNonConformalPenaltyAlgorithm(realm_, part, &sdrNp1, &dwdxNone, ncNormalFlux, ncPenalty, ncArea, evisc_);
+    else
+      theAlg = new AssembleScalarElemNonConformalPenaltyAlgorithm(realm_, part, &sdrNp1, ncNormalFlux, ncPenalty, ncArea, evisc_);
+    assembleNonConformalAlgDriver_->algMap_[algType] = theAlg;
+  }
+  else {
+    itnc->second->partVec_.push_back(part);
+  }
+
+  // solver; lhs; same for edge and element-based scheme
+  std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi =
+    solverAlgDriver_->solverAlgMap_.find(algType);
+  if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
+    AssembleScalarNonConformalSolverAlgorithm *theAlg
+      = new AssembleScalarNonConformalSolverAlgorithm(realm_, part, this,
+                                                      sdr_, ncNormalFlux, ncPenalty);
+    solverAlgDriver_->solverAlgMap_[algType] = theAlg;
+  }
+  else {
+    itsi->second->partVec_.push_back(part);
+  }
 }
 
 //--------------------------------------------------------------------------

@@ -102,8 +102,6 @@ public:
   bool isInit_;
   bool collocationForViscousTerms_;
   
-  AssembleNonConformalAlgorithmDriver *assembleNonConformalAlgDriver_;
-  
 };
 
 } // namespace nalu

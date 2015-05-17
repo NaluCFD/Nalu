@@ -170,11 +170,9 @@ public:
   AlgorithmDriver *tviscAlgDriver_;
   AlgorithmDriver *cflReyAlgDriver_;
   AlgorithmDriver *wallFunctionParamsAlgDriver_;
-  AssembleNonConformalAlgorithmDriver *assembleNonConformalAlgDriver_;
 
   // saved of mesh parts that are not to be projected
   std::vector<stk::mesh::Part *> notProjectedPart_;
-
 };
 
 class ContinuityEquationSystem : public EquationSystem {
@@ -246,8 +244,6 @@ public:
 
   AssembleNodalGradAlgorithmDriver *assembleNodalGradAlgDriver_;
   AlgorithmDriver *computeMdotAlgDriver_;
-  AssembleNonConformalAlgorithmDriver *assembleNonConformalAlgDriver_;
-
 };
 
 } // namespace nalu

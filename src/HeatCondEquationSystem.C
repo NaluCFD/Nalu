@@ -111,8 +111,7 @@ HeatCondEquationSystem::HeatCondEquationSystem(
     edgeAreaVec_(NULL),
     assembleNodalGradAlgDriver_(new AssembleNodalGradAlgorithmDriver(realm_, "temperature", "dtdx")),
     isInit_(true),
-    collocationForViscousTerms_(false),
-    assembleNonConformalAlgDriver_(NULL)
+    collocationForViscousTerms_(false)
 {
   // extract solver name and solver object
   std::string solverName = realm_.equationSystems_.get_solver_block_name("temperature");
@@ -133,10 +132,6 @@ HeatCondEquationSystem::HeatCondEquationSystem(
 HeatCondEquationSystem::~HeatCondEquationSystem()
 {
   delete assembleNodalGradAlgDriver_;
-  
-  if ( NULL != assembleNonConformalAlgDriver_ )
-    delete assembleNonConformalAlgDriver_;
-
 }
 
 //--------------------------------------------------------------------------
@@ -900,8 +895,7 @@ HeatCondEquationSystem::solve_and_update()
                     << std::setw(15) << std::right << name_ << std::endl;
 
     // post process non-conformal algorithm
-    if ( NULL != assembleNonConformalAlgDriver_ )
-      assembleNonConformalAlgDriver_->execute();
+    assemble_non_conformal();
     
     // heat conduction assemble, load_complete and solve
     assemble_and_solve(tTmp_);

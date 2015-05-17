@@ -31,7 +31,7 @@
 
 // basic c++
 #include <iostream>
-#include <math.h>
+#include <cmath>
 #include <vector>
 
 namespace sierra{
@@ -207,6 +207,10 @@ ShearStressTransportEquationSystem::solve_and_update()
 
     NaluEnv::self().naluOutputP0() << " " << k+1 << "/" << maxIterations_
                     << std::setw(15) << std::right << name_ << std::endl;
+
+    // compute nc post processed flux for turbulent ke and specific dissipation rate
+    tkeEqSys_->assemble_non_conformal();
+    sdrEqSys_->assemble_non_conformal();
 
     // tke and sdr assemble, load_complete and solve; Jacobi iteration
     tkeEqSys_->assemble_and_solve(tkeEqSys_->kTmp_);
