@@ -129,6 +129,7 @@ NonConformalInfo::initialize()
     for ( size_t k = 0; k < faceDgInfoVec.size(); ++k )
       delete faceDgInfoVec[k];
   }
+  dgInfoVec_.clear();
 
   construct_dgInfo_state();
 
