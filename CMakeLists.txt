@@ -23,7 +23,7 @@ find_package(Trilinos REQUIRED)
 # This needs to be cleaned up
 find_library(YAML_LIBRARY NAMES libyaml-cpp.a PATHS ${YAML_DIR}/lib )
 find_path(YAML_INCLUDES yaml.h PATHS ${YAML_DIR}/include/yaml-cpp )
-include_directories(${YAML_INCLUDES})
+include_directories(${YAML_INCLUDES}/..)
 
 #include(FindPackageHandleStandardArgs)
 
