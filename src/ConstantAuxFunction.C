@@ -10,9 +10,6 @@
 #include <algorithm>
 #include <stk_util/environment/ReportHandler.hpp>
 
-// basic c++
-#include <iostream>
-
 namespace sierra{
 namespace nalu{
 

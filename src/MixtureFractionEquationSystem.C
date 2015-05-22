@@ -70,10 +70,6 @@
 // stk_util
 #include <stk_util/parallel/ParallelReduce.hpp>
 
-// basic c++
-#include <iostream>
-#include <math.h>
-
 namespace sierra{
 namespace nalu{
 

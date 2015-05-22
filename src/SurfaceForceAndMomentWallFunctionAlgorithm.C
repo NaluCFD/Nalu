@@ -26,8 +26,7 @@
 #include <stk_util/parallel/ParallelReduce.hpp>
 
 // basic c++
-#include <math.h>
-#include <iostream>
+#include <cmath>
 #include <fstream>
 #include <iomanip>
 

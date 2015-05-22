@@ -246,7 +246,7 @@ NonConformalInfo::construct_dgInfo_state()
         for ( int j = 0; j < nDim; ++j )
           currentGaussPointCoords[j] = 0.0;
         
-        // interpolate to guass point
+        // interpolate to gauss point
         for ( int ic = 0; ic < nodesPerFace; ++ic ) {
           const double r = p_face_shape_function[ip*nodesPerFace+ic];
           for ( int j = 0; j < nDim; ++j ) {

@@ -23,8 +23,8 @@
 #include <stk_mesh/base/Part.hpp>
 
 // basic c++
-#include <iostream>
-#include <math.h>
+#include <stdexcept>
+#include <vector>
 
 namespace sierra{
 namespace nalu{

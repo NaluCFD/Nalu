@@ -21,9 +21,6 @@
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/Part.hpp>
 
-// basic c++
-#include <math.h>
-
 namespace sierra{
 namespace nalu{
 

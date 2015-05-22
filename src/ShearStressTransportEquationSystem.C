@@ -30,7 +30,6 @@
 #include <stk_io/IossBridge.hpp>
 
 // basic c++
-#include <iostream>
 #include <cmath>
 #include <vector>
 

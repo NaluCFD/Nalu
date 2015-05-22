@@ -123,8 +123,6 @@
 #include <stk_topology/topology.hpp>
 
 // basic c++
-#include <iostream>
-#include <math.h>
 #include <vector>
 
 namespace sierra{

@@ -15,11 +15,6 @@
 #include <yaml-cpp/yaml.h>
 #include <NaluParsing.h>
 
-// basic c++
-#include <iostream>
-#include <map>
-#include <math.h>
-
 namespace sierra{
 namespace nalu{
 

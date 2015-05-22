@@ -78,10 +78,6 @@
 #include <stk_util/parallel/ParallelReduce.hpp>
 #include <stk_util/environment/CPUTime.hpp>
 
-// basic c++
-#include <iostream>
-#include <math.h>
-
 namespace sierra{
 namespace nalu{
 

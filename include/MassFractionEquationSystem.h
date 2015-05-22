@@ -59,6 +59,20 @@ public:
       const stk::topology &theTopo,
       const WallBoundaryConditionData &wallBCData);
 
+  void register_contact_bc(
+      stk::mesh::Part *part,
+      const stk::topology &theTopo,
+      const ContactBoundaryConditionData &contactBCData);
+
+  virtual void register_symmetry_bc(
+    stk::mesh::Part *part,
+    const stk::topology &theTopo,
+    const SymmetryBoundaryConditionData &symmetryBCData);
+
+  virtual void register_non_conformal_bc(
+    stk::mesh::Part *part,
+    const stk::topology &theTopo);
+
   void initialize();
 
   void predict_state();

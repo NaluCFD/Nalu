@@ -104,9 +104,8 @@
 #include <boost/lexical_cast.hpp>
 
 // basic c++
-#include <iostream>
 #include <map>
-#include <math.h>
+#include <cmath>
 #include <utility>
 #include <stdint.h>
 
@@ -400,7 +399,7 @@ Realm::sample_look_ahead()
         // do something...
         std::string out;
         *val >> out;
-        std::cout << "found special_condition_XXX = " << out << std::endl;
+        NaluEnv::self().naluOutputP0() << "found special_condition_XXX = " << out << std::endl;
       }
     }
   }

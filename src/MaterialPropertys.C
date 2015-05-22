@@ -20,9 +20,8 @@
 #include <NaluParsing.h>
 
 // basic c++
-#include <iostream>
+#include <stdexcept>
 #include <map>
-#include <math.h>
 
 namespace sierra{
 namespace nalu{
