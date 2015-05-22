@@ -20,11 +20,6 @@
 
 #include <Ioss_SerializeIO.h>
 
-// basic c++
-#include <iostream>
-#include <map>
-#include <math.h>
-
 namespace sierra{
 namespace nalu{
 

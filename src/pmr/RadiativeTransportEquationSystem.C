@@ -56,9 +56,7 @@
 #include <stk_util/environment/CPUTime.hpp>
 
 // basic c++
-#include <iostream>
-#include <math.h>
-#include <utility>
+#include <cmath>
 
 namespace sierra{
 namespace nalu{

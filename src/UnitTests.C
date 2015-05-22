@@ -11,12 +11,6 @@
 // yaml for parsing..
 #include <yaml-cpp/yaml.h>
 #include <NaluParsing.h>
-#include <LinearSolvers.h>
-
-// basic c++
-#include <iostream>
-#include <map>
-#include <math.h>
 
 namespace sierra{
 namespace nalu{

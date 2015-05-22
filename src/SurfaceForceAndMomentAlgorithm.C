@@ -26,10 +26,10 @@
 #include <stk_util/parallel/ParallelReduce.hpp>
 
 // basic c++
-#include <math.h>
-#include <iostream>
 #include <fstream>
 #include <iomanip>
+#include <string>
+#include <vector>
 
 namespace sierra{
 namespace nalu{
