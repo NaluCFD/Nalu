@@ -47,7 +47,8 @@ AssembleContinuityElemSolverAlgorithm::AssembleContinuityElemSolverAlgorithm(
     pressure_(NULL),
     density_(NULL),
     shiftMdot_(realm_.get_cvfem_shifted_mdot()),
-    shiftPoisson_(realm_.get_cvfem_shifted_poisson())
+    shiftPoisson_(realm_.get_cvfem_shifted_poisson()),
+    reducedSensitivities_(realm_.get_cvfem_reduced_sens_poisson())
 {
   // extract fields; nodal
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -110,6 +111,7 @@ AssembleContinuityElemSolverAlgorithm::execute()
   // geometry related to populate
   std::vector<double> ws_scs_areav;
   std::vector<double> ws_dndx;
+  std::vector<double> ws_dndx_lhs;
   std::vector<double> ws_deriv;
   std::vector<double> ws_det_j;
   std::vector<double> ws_shape_function;
@@ -166,6 +168,7 @@ AssembleContinuityElemSolverAlgorithm::execute()
     ws_density.resize(nodesPerElement);
     ws_scs_areav.resize(numScsIp*nDim);
     ws_dndx.resize(nDim*numScsIp*nodesPerElement);
+    ws_dndx_lhs.resize(nDim*numScsIp*nodesPerElement);
     ws_deriv.resize(nDim*numScsIp*nodesPerElement);
     ws_det_j.resize(numScsIp);
     ws_shape_function.resize(numScsIp*nodesPerElement);
@@ -182,6 +185,7 @@ AssembleContinuityElemSolverAlgorithm::execute()
     double *p_density = &ws_density[0];
     double *p_scs_areav = &ws_scs_areav[0];
     double *p_dndx = &ws_dndx[0];
+    double *p_dndx_lhs = reducedSensitivities_ ? &ws_dndx_lhs[0] : &ws_dndx[0];
     double *p_shape_function = &ws_shape_function[0];
 
     if ( shiftMdot_)
@@ -237,12 +241,16 @@ AssembleContinuityElemSolverAlgorithm::execute()
       double scs_error = 0.0;
       meSCS->determinant(1, &p_coordinates[0], &p_scs_areav[0], &scs_error);
 
-      // compute dndx
+      // compute dndx for residual
       if ( shiftPoisson_ )
-        meSCS->shifted_grad_op(1, &p_coordinates[0], &p_dndx[0], &ws_deriv[0], &ws_det_j[0], &scs_error);
+        meSCS->shifted_grad_op(1, &p_coordinates[0], &ws_dndx[0], &ws_deriv[0], &ws_det_j[0], &scs_error);
       else
-        meSCS->grad_op(1, &p_coordinates[0], &p_dndx[0], &ws_deriv[0], &ws_det_j[0], &scs_error);
+        meSCS->grad_op(1, &p_coordinates[0], &ws_dndx[0], &ws_deriv[0], &ws_det_j[0], &scs_error);
       
+      // compute dndx for LHS
+      if ( reducedSensitivities_ )
+        meSCS->shifted_grad_op(1, &p_coordinates[0], &ws_dndx_lhs[0], &ws_deriv[0], &ws_det_j[0], &scs_error);
+
       // manage velocity relative to mesh
       if ( meshMotion_ ) {
         const int kSize = num_nodes*nDim;
@@ -261,7 +269,7 @@ AssembleContinuityElemSolverAlgorithm::execute()
         int rowL = il*nodesPerElement;
         int rowR = ir*nodesPerElement;
 
-        // setup for ip values
+        // setup for ip values; sneak in geometry for possible reduced sens
         for ( int j = 0; j < nDim; ++j ) {
           p_uIp[j] = 0.0;
           p_rho_uIp[j] = 0.0;
@@ -286,7 +294,7 @@ AssembleContinuityElemSolverAlgorithm::execute()
             p_uIp[j] += r*p_vrtm[nDim*ic+j];
             p_rho_uIp[j] += r*nodalRho*p_vrtm[nDim*ic+j];
             p_dpdxIp[j] += p_dndx[offSetDnDx+j]*nodalPressure;
-            lhsfac += -p_dndx[offSetDnDx+j]*p_scs_areav[ip*nDim+j];
+            lhsfac += -p_dndx_lhs[offSetDnDx+j]*p_scs_areav[ip*nDim+j];
           }
 
           // assemble to lhs; left
