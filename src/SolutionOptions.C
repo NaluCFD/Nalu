@@ -64,7 +64,8 @@ SolutionOptions::SolutionOptions()
     ncAlgGaussLabatto_(true),
     ncAlgType_(NC_ALG_TYPE_DG),
     cvfemShiftMdot_(false),
-    cvfemShiftPoisson_(false)
+    cvfemShiftPoisson_(false),
+    cvfemReducedSensPoisson_(false)
 {
   // nothing to do
 }
@@ -111,10 +112,13 @@ SolutionOptions::load(const YAML::Node & y_node)
     // shifted CVFEM pressure poisson
     get_if_present(*y_solution_options, "shift_cvfem_mdot", cvfemShiftMdot_, cvfemShiftMdot_);
     get_if_present(*y_solution_options, "shift_cvfem_poisson", cvfemShiftPoisson_, cvfemShiftPoisson_);
+    get_if_present(*y_solution_options, "reduced_sens_cvfem_poisson", cvfemReducedSensPoisson_, cvfemReducedSensPoisson_);
     if ( cvfemShiftMdot_ )
       NaluEnv::self().naluOutputP0() << "Shifted CVFEM mass flow rate" << std::endl;
     if ( cvfemShiftPoisson_ )
       NaluEnv::self().naluOutputP0() << "Shifted CVFEM Poisson" << std::endl;
+    if ( cvfemReducedSensPoisson_)
+      NaluEnv::self().naluOutputP0() << "Reduced sensitivities CVFEM Poisson" << std::endl;
 
     // extract turbulence model; would be nice if we could parse an enum..
     std::string specifiedTurbModel;

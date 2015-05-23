@@ -275,6 +275,7 @@ public:
   double get_mdot_interp();
   bool get_cvfem_shifted_mdot();
   bool get_cvfem_shifted_poisson();
+  bool get_cvfem_reduced_sens_poisson();
   
   bool has_nc_gauss_labatto_quadrature();
   NonConformalAlgType get_nc_alg_type();
