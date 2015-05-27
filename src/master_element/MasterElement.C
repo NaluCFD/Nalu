@@ -2069,7 +2069,7 @@ void Quad2DSCS::face_grad_op(
       
       const int row = 4*face_ordinal + k*ndim;
       SIERRA_FORTRAN(quad_derivative)
-        ( &nface, &intgExpFace_[0], dpsi );
+        ( &nface, &intgExpFace_[row], dpsi );
       
       SIERRA_FORTRAN(quad_gradient_operator)
         ( &nface,
