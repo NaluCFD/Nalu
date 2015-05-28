@@ -43,14 +43,22 @@ AssembleScalarElemOpenSolverAlgorithm::AssembleScalarElemOpenSolverAlgorithm(
   VectorFieldType *dqdx,
   ScalarFieldType *diffFluxCoeff)
   : SolverAlgorithm(realm, part, eqSystem),
+    meshMotion_(realm.does_mesh_move()),
     scalarQ_(scalarQ),
     bcScalarQ_(bcScalarQ),
     dqdx_(dqdx),
-    diffFluxCoeff_(diffFluxCoeff)
+    diffFluxCoeff_(diffFluxCoeff),
+    velocityRTM_(NULL),
+    coordinates_(NULL),
+    density_(NULL),
+    openMassFlowRate_(NULL)
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
-  velocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
+  if ( meshMotion_ )
+    velocityRTM_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity_rtm");
+  else
+    velocityRTM_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
   openMassFlowRate_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "open_mass_flow_rate");
@@ -108,7 +116,6 @@ AssembleScalarElemOpenSolverAlgorithm::execute()
   std::vector<double> ws_face_shape_function;
 
   // deal with state
-  VectorFieldType &velocityNp1 = velocity_->field_of_state(stk::mesh::StateNP1);
   ScalarFieldType &scalarQNp1 = scalarQ_->field_of_state(stk::mesh::StateNP1);
   ScalarFieldType &densityNp1 = density_->field_of_state(stk::mesh::StateNP1);
 
@@ -257,8 +264,8 @@ AssembleScalarElemOpenSolverAlgorithm::execute()
         const double diffCoeffL  = *stk::mesh::field_data(*diffFluxCoeff_, nodeL);
         const double diffCoeffR  = *stk::mesh::field_data(*diffFluxCoeff_, nodeR);
         const double scalarQNp1R = *stk::mesh::field_data(scalarQNp1, nodeR);
-        const double *uNp1L      =  stk::mesh::field_data(velocityNp1, nodeL);
-        const double *uNp1R      =  stk::mesh::field_data(velocityNp1, nodeR);
+        const double *vrtmL      =  stk::mesh::field_data(*velocityRTM_, nodeL);
+        const double *vrtmR      =  stk::mesh::field_data(*velocityRTM_, nodeR);
         const double *coordL     =  stk::mesh::field_data(*coordinates_, nodeL);
         const double *coordR     =  stk::mesh::field_data(*coordinates_, nodeR);
         const double *dqdxR      =  stk::mesh::field_data(*dqdx_, nodeR);
@@ -267,7 +274,7 @@ AssembleScalarElemOpenSolverAlgorithm::execute()
         double dqR = 0.0;
         for ( int i = 0; i < nDim; ++i ) {
           const double dxi = coordR[i]  - coordL[i];
-          udotx += 0.5*dxi*(uNp1L[i] + uNp1R[i]);
+          udotx += 0.5*dxi*(vrtmL[i] + vrtmR[i]);
           // extrapolation
           const double dx_bip = coordBip[i] - coordR[i];
           dqR += dx_bip*dqdxR[i]*hoUpwind;

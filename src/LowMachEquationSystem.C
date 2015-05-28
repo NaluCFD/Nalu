@@ -544,6 +544,9 @@ LowMachEquationSystem::solve_and_update()
     timeB = stk::cpu_time();
     momentumEqSys_->timerAssemble_ += (timeB-timeA);
 
+    // compute velocity relative to mesh with new velocity
+    realm_.compute_vrtm();
+
     // compute NC post processed flux for continuity
     non_conformal_continuity();
 
@@ -572,6 +575,9 @@ LowMachEquationSystem::solve_and_update()
     project_nodal_velocity();
     timeB = stk::cpu_time();
     timerMisc_ += (timeB-timeA);
+
+    // compute velocity relative to mesh with new velocity
+    realm_.compute_vrtm();
 
     // velocity gradients based on current values;
     // note timing of this algorithm relative to initial_work

@@ -40,12 +40,11 @@ AssembleScalarEdgeSolverAlgorithm::AssembleScalarEdgeSolverAlgorithm(
   VectorFieldType *dqdx,
   ScalarFieldType *diffFluxCoeff)
   : SolverAlgorithm(realm, part, eqSystem),
-    meshMotion_(realm_.has_mesh_motion() | realm_.has_mesh_deformation()),
+    meshMotion_(realm_.does_mesh_move()),
     scalarQ_(scalarQ),
     dqdx_(dqdx),
     diffFluxCoeff_(diffFluxCoeff),
-    meshVelocity_(NULL),
-    velocity_(NULL),
+    velocityRTM_(NULL),
     coordinates_(NULL),
     density_(NULL),
     massFlowRate_(NULL),
@@ -54,8 +53,9 @@ AssembleScalarEdgeSolverAlgorithm::AssembleScalarEdgeSolverAlgorithm(
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   if ( meshMotion_ )
-    meshVelocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_velocity");
-  velocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
+    velocityRTM_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity_rtm");
+  else
+    velocityRTM_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
   massFlowRate_ = meta_data.get_field<ScalarFieldType>(stk::topology::EDGE_RANK, "mass_flow_rate");
@@ -110,15 +110,8 @@ AssembleScalarEdgeSolverAlgorithm::execute()
   double *p_rhs = &rhs[0];
   double *p_areaVec = &areaVec[0];
 
-  // mesh motion
-  std::vector<double> vrtmL(nDim);
-  std::vector<double> vrtmR(nDim);
-  double * p_vrtmL = &vrtmL[0];
-  double * p_vrtmR = &vrtmR[0];
-
   // deal with state
   ScalarFieldType &scalarQNp1  = scalarQ_->field_of_state(stk::mesh::StateNP1);
-  VectorFieldType &velocityNp1 = velocity_->field_of_state(stk::mesh::StateNP1);
   ScalarFieldType &densityNp1 = density_->field_of_state(stk::mesh::StateNP1);
 
   // define some common selectors
@@ -173,8 +166,8 @@ AssembleScalarEdgeSolverAlgorithm::execute()
       const double * dqdxL = stk::mesh::field_data(*dqdx_, nodeL);
       const double * dqdxR = stk::mesh::field_data(*dqdx_, nodeR);
 
-      const double * uNp1L = stk::mesh::field_data(velocityNp1, nodeL);
-      const double * uNp1R = stk::mesh::field_data(velocityNp1, nodeR);
+      const double * vrtmL = stk::mesh::field_data(*velocityRTM_, nodeL);
+      const double * vrtmR = stk::mesh::field_data(*velocityRTM_, nodeR);
 
       const double qNp1L = *stk::mesh::field_data(scalarQNp1, nodeL);
       const double qNp1R = *stk::mesh::field_data(scalarQNp1, nodeR);
@@ -185,22 +178,6 @@ AssembleScalarEdgeSolverAlgorithm::execute()
       const double diffFluxCoeffL = *stk::mesh::field_data(*diffFluxCoeff_, nodeL);
       const double diffFluxCoeffR = *stk::mesh::field_data(*diffFluxCoeff_, nodeR);
 
-      // copy to velocity relative to mesh
-      for ( int j = 0; j < nDim; ++j ) {
-        p_vrtmL[j] = uNp1L[j];
-        p_vrtmR[j] = uNp1R[j];
-      }
-
-      // deal with mesh motion
-      if ( meshMotion_ ) {
-        const double * meshVelocityL = stk::mesh::field_data(*meshVelocity_, nodeL);
-        const double * meshVelocityR = stk::mesh::field_data(*meshVelocity_, nodeR);
-        for (int j = 0; j < nDim; ++j ) {
-          p_vrtmL[j] -= meshVelocityL[j];
-          p_vrtmR[j] -= meshVelocityR[j];
-        }
-      }
-
       // compute geometry
       double axdx = 0.0;
       double asq = 0.0;
@@ -210,7 +187,7 @@ AssembleScalarEdgeSolverAlgorithm::execute()
         const double dxj = coordR[j] - coordL[j];
         asq += axj*axj;
         axdx += axj*dxj;
-        udotx += 0.5*dxj*(p_vrtmL[j] + p_vrtmR[j]);
+        udotx += 0.5*dxj*(vrtmL[j] + vrtmR[j]);
       }
 
       const double inv_axdx = 1.0/axdx;

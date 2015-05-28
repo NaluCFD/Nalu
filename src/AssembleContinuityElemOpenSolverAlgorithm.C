@@ -38,7 +38,8 @@ AssembleContinuityElemOpenSolverAlgorithm::AssembleContinuityElemOpenSolverAlgor
   stk::mesh::Part *part,
   EquationSystem *eqSystem)
   : SolverAlgorithm(realm, part, eqSystem),
-    velocity_(NULL),
+    meshMotion_(realm_.does_mesh_move()),
+    velocityRTM_(NULL),
     Gpdx_(NULL),
     coordinates_(NULL),
     pressure_(NULL),
@@ -50,7 +51,10 @@ AssembleContinuityElemOpenSolverAlgorithm::AssembleContinuityElemOpenSolverAlgor
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
-  velocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
+  if ( meshMotion_ )
+    velocityRTM_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity_rtm");
+  else
+    velocityRTM_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
   Gpdx_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "dpdx");
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   pressure_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure");
@@ -107,7 +111,7 @@ AssembleContinuityElemOpenSolverAlgorithm::execute()
   // nodal fields to gather
   std::vector<double> ws_coordinates;
   std::vector<double> ws_pressure;
-  std::vector<double> ws_velocityNp1;
+  std::vector<double> ws_vrtm;
   std::vector<double> ws_Gpdx;
   std::vector<double> ws_density;
   std::vector<double> ws_bcPressure;
@@ -125,7 +129,6 @@ AssembleContinuityElemOpenSolverAlgorithm::execute()
   const double om_interpTogether = 1.0-interpTogether;
 
   // deal with state
-  VectorFieldType &velocityNp1 = velocity_->field_of_state(stk::mesh::StateNP1);
   ScalarFieldType &densityNp1 = density_->field_of_state(stk::mesh::StateNP1);
 
   // define vector of parent topos; should always be UNITY in size
@@ -166,7 +169,7 @@ AssembleContinuityElemOpenSolverAlgorithm::execute()
     // algorithm related; element
     ws_coordinates.resize(nodesPerElement*nDim);
     ws_pressure.resize(nodesPerElement);
-    ws_velocityNp1.resize(nodesPerFace*nDim);
+    ws_vrtm.resize(nodesPerFace*nDim);
     ws_Gpdx.resize(nodesPerFace*nDim);
     ws_density.resize(nodesPerFace);
     ws_bcPressure.resize(nodesPerFace);
@@ -178,7 +181,7 @@ AssembleContinuityElemOpenSolverAlgorithm::execute()
     double *p_rhs = &rhs[0];
     double *p_coordinates = &ws_coordinates[0];
     double *p_pressure = &ws_pressure[0];
-    double *p_velocityNp1 = &ws_velocityNp1[0];
+    double *p_vrtm = &ws_vrtm[0];
     double *p_Gpdx = &ws_Gpdx[0];
     double *p_density = &ws_density[0];
     double *p_bcPressure = &ws_bcPressure[0];
@@ -224,11 +227,11 @@ AssembleContinuityElemOpenSolverAlgorithm::execute()
         p_bcPressure[ni] = *stk::mesh::field_data(*pressureBc_, node);
 
         // gather vectors
-        const double * uNp1 = stk::mesh::field_data(velocityNp1, node);
+        const double * vrtm = stk::mesh::field_data(*velocityRTM_, node);
         const double * Gjp = stk::mesh::field_data(*Gpdx_, node);
         const int offSet = ni*nDim;
         for ( int j=0; j < nDim; ++j ) {
-          p_velocityNp1[offSet+j] = uNp1[j];
+          p_vrtm[offSet+j] = vrtm[j];
           p_Gpdx[offSet+j] = Gjp[j];
         }
       }
@@ -298,8 +301,8 @@ AssembleContinuityElemOpenSolverAlgorithm::execute()
           const int offSetFN = ic*nDim;
           const int offSetEN = fn*nDim;
           for ( int j = 0; j < nDim; ++j ) {
-            p_uBip[j] += r*p_velocityNp1[offSetFN+j];
-            p_rho_uBip[j] += r*rhoIC*p_velocityNp1[offSetFN+j];
+            p_uBip[j] += r*p_vrtm[offSetFN+j];
+            p_rho_uBip[j] += r*rhoIC*p_vrtm[offSetFN+j];
             p_GpdxBip[j] += r*p_Gpdx[offSetFN+j];
             p_coordBip[j] += r*p_coordinates[offSetEN+j];
           }

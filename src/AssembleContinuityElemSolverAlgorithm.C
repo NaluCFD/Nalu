@@ -39,9 +39,8 @@ AssembleContinuityElemSolverAlgorithm::AssembleContinuityElemSolverAlgorithm(
   stk::mesh::Part *part,
   EquationSystem *eqSystem)
   : SolverAlgorithm(realm, part, eqSystem),
-    meshMotion_(realm_.has_mesh_motion() | realm_.has_mesh_deformation()),
-    meshVelocity_(NULL),
-    velocity_(NULL),
+    meshMotion_(realm_.does_mesh_move()),
+    velocityRTM_(NULL),
     Gpdx_(NULL),
     coordinates_(NULL),
     pressure_(NULL),
@@ -52,13 +51,10 @@ AssembleContinuityElemSolverAlgorithm::AssembleContinuityElemSolverAlgorithm(
 {
   // extract fields; nodal
   stk::mesh::MetaData & meta_data = realm_.meta_data();
-  // hold either mesh velocity or velocity in meshVelocity_ (avoids logic below)
   if ( meshMotion_ )
-    meshVelocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_velocity");
+    velocityRTM_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity_rtm");
   else
-    meshVelocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
-
-  velocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
+    velocityRTM_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
   Gpdx_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "dpdx");
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   pressure_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure");
@@ -100,8 +96,6 @@ AssembleContinuityElemSolverAlgorithm::execute()
   std::vector<stk::mesh::Entity> connected_nodes;
 
   // nodal fields to gather
-  std::vector<double> ws_velocityNp1;
-  std::vector<double> ws_meshVelocity;
   std::vector<double> ws_vrtm;
   std::vector<double> ws_Gpdx;
   std::vector<double> ws_coordinates;
@@ -129,7 +123,6 @@ AssembleContinuityElemSolverAlgorithm::execute()
   double *p_dpdxIp = &dpdxIp[0];
 
   // deal with state
-  VectorFieldType &velocityNp1 = velocity_->field_of_state(stk::mesh::StateNP1);
   ScalarFieldType &densityNp1 = density_->field_of_state(stk::mesh::StateNP1);
 
   // define some common selectors
@@ -159,8 +152,6 @@ AssembleContinuityElemSolverAlgorithm::execute()
     connected_nodes.resize(nodesPerElement);
 
     // algorithm related
-    ws_velocityNp1.resize(nodesPerElement*nDim);
-    ws_meshVelocity.resize(nodesPerElement*nDim);
     ws_vrtm.resize(nodesPerElement*nDim);
     ws_Gpdx.resize(nodesPerElement*nDim);
     ws_coordinates.resize(nodesPerElement*nDim);
@@ -176,8 +167,6 @@ AssembleContinuityElemSolverAlgorithm::execute()
     // pointers
     double *p_lhs = &lhs[0];
     double *p_rhs = &rhs[0];
-    double *p_velocityNp1 = &ws_velocityNp1[0];
-    double *p_meshVelocity = &ws_meshVelocity[0];
     double *p_vrtm = &ws_vrtm[0];
     double *p_Gpdx = &ws_Gpdx[0];
     double *p_coordinates = &ws_coordinates[0];
@@ -217,10 +206,9 @@ AssembleContinuityElemSolverAlgorithm::execute()
         connected_nodes[ni] = node;
 
         // pointers to real data
-        const double * uNp1   = stk::mesh::field_data(velocityNp1, node );
-        const double * vNp1   = stk::mesh::field_data(*meshVelocity_, node);
         const double * Gjp    = stk::mesh::field_data(*Gpdx_, node );
         const double * coords = stk::mesh::field_data(*coordinates_, node );
+        const double * vrtm   = stk::mesh::field_data(*velocityRTM_, node );
 
         // gather scalars
         p_pressure[ni] = *stk::mesh::field_data(*pressure_, node );
@@ -229,9 +217,7 @@ AssembleContinuityElemSolverAlgorithm::execute()
         // gather vectors
         const int niNdim = ni*nDim;
         for ( int j=0; j < nDim; ++j ) {
-          p_velocityNp1[niNdim+j] = uNp1[j];
-          p_vrtm[niNdim+j] = uNp1[j];
-          p_meshVelocity[niNdim+j] = vNp1[j];
+          p_vrtm[niNdim+j] = vrtm[j];
           p_Gpdx[niNdim+j] = Gjp[j];
           p_coordinates[niNdim+j] = coords[j];
         }
@@ -250,14 +236,6 @@ AssembleContinuityElemSolverAlgorithm::execute()
       // compute dndx for LHS
       if ( reducedSensitivities_ )
         meSCS->shifted_grad_op(1, &p_coordinates[0], &ws_dndx_lhs[0], &ws_deriv[0], &ws_det_j[0], &scs_error);
-
-      // manage velocity relative to mesh
-      if ( meshMotion_ ) {
-        const int kSize = num_nodes*nDim;
-        for ( int k = 0; k < kSize; ++k ) {
-          p_vrtm[k] -= p_meshVelocity[k];
-        }
-      }
 
       for ( int ip = 0; ip < numScsIp; ++ip ) {
 

@@ -44,12 +44,11 @@ AssembleScalarElemSolverAlgorithm::AssembleScalarElemSolverAlgorithm(
   VectorFieldType *dqdx,
   ScalarFieldType *diffFluxCoeff)
   : SolverAlgorithm(realm, part, eqSystem),
-    meshMotion_(realm_.has_mesh_motion() | realm_.has_mesh_deformation()),
+    meshMotion_(realm_.does_mesh_move()),
     scalarQ_(scalarQ),
     dqdx_(dqdx),
     diffFluxCoeff_(diffFluxCoeff),
-    meshVelocity_(NULL),
-    velocity_(NULL),
+    velocityRTM_(NULL),
     coordinates_(NULL),
     density_(NULL),
     massFlowRate_(NULL)
@@ -57,14 +56,10 @@ AssembleScalarElemSolverAlgorithm::AssembleScalarElemSolverAlgorithm(
 
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
-
-  // hold either mesh velocity or velocity in meshVelocity_ (avoids logic below)
   if ( meshMotion_ )
-     meshVelocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_velocity");
+     velocityRTM_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity_rtm");
    else
-     meshVelocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
-
-  velocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
+     velocityRTM_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
   massFlowRate_ = meta_data.get_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "mass_flow_rate_scs");
@@ -105,7 +100,6 @@ AssembleScalarElemSolverAlgorithm::execute()
   const int nDim = meta_data.spatial_dimension();
   const double small = 1.0e-16;
 
-
   // extract user advection options (allow to potentially change over time)
   const std::string dofName = scalarQ_->name();
   const double hybridFactor = realm_.get_hybrid_factor(dofName);
@@ -129,8 +123,6 @@ AssembleScalarElemSolverAlgorithm::execute()
     supplementalAlg_[i]->setup();
 
   // nodal fields to gather
-  std::vector<double> ws_velocityNp1;
-  std::vector<double> ws_meshVelocity;
   std::vector<double> ws_vrtm;
   std::vector<double> ws_coordinates;
   std::vector<double> ws_scalarQNp1;
@@ -153,7 +145,6 @@ AssembleScalarElemSolverAlgorithm::execute()
 
   // deal with state
   ScalarFieldType &scalarQNp1   = scalarQ_->field_of_state(stk::mesh::StateNP1);
-  VectorFieldType &velocityNp1 = velocity_->field_of_state(stk::mesh::StateNP1);
   ScalarFieldType &densityNp1 = density_->field_of_state(stk::mesh::StateNP1);
 
   // define some common selectors
@@ -183,8 +174,6 @@ AssembleScalarElemSolverAlgorithm::execute()
     connected_nodes.resize(nodesPerElement);
 
     // algorithm related
-    ws_velocityNp1.resize(nodesPerElement*nDim);
-    ws_meshVelocity.resize(nodesPerElement*nDim);
     ws_vrtm.resize(nodesPerElement*nDim);
     ws_coordinates.resize(nodesPerElement*nDim);
     ws_dqdx.resize(nodesPerElement*nDim);
@@ -200,8 +189,6 @@ AssembleScalarElemSolverAlgorithm::execute()
     // pointer to lhs/rhs
     double *p_lhs = &lhs[0];
     double *p_rhs = &rhs[0];
-    double *p_velocityNp1 = &ws_velocityNp1[0];
-    double *p_meshVelocity = &ws_meshVelocity[0];
     double *p_vrtm = &ws_vrtm[0];
     double *p_coordinates = &ws_coordinates[0];
     double *p_dqdx = &ws_dqdx[0];
@@ -245,8 +232,7 @@ AssembleScalarElemSolverAlgorithm::execute()
         connected_nodes[ni] = node;
 
         // pointers to real data
-        const double * uNp1   = stk::mesh::field_data(velocityNp1, node );
-        const double * vNp1   = stk::mesh::field_data(*meshVelocity_, node);
+        const double * vrtm   = stk::mesh::field_data(*velocityRTM_, node );
         const double * coords = stk::mesh::field_data(*coordinates_, node );
         const double * dq     = stk::mesh::field_data(*dqdx_, node );
 
@@ -258,9 +244,7 @@ AssembleScalarElemSolverAlgorithm::execute()
         // gather vectors
         const int niNdim = ni*nDim;
         for ( int i=0; i < nDim; ++i ) {
-          p_velocityNp1[niNdim+i] = uNp1[i];
-          p_vrtm[niNdim+i] = uNp1[i];
-          p_meshVelocity[niNdim+i] = vNp1[i];
+          p_vrtm[niNdim+i] = vrtm[i];
           p_coordinates[niNdim+i] = coords[i];
           p_dqdx[niNdim+i] = dq[i];
         }
@@ -272,14 +256,6 @@ AssembleScalarElemSolverAlgorithm::execute()
 
       // compute dndx
       meSCS->grad_op(1, &p_coordinates[0], &p_dndx[0], &ws_deriv[0], &ws_det_j[0], &scs_error);
-
-      // manage velocity relative to mesh
-      if ( meshMotion_ ) {
-        const int kSize = num_nodes*nDim;
-        for ( int k = 0; k < kSize; ++k ) {
-          p_vrtm[k] -= p_meshVelocity[k];
-        }
-      }
 
       for ( int ip = 0; ip < numScsIp; ++ip ) {
 

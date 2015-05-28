@@ -38,9 +38,8 @@ ComputeMdotEdgeAlgorithm::ComputeMdotEdgeAlgorithm(
   Realm &realm,
   stk::mesh::Part *part)
   : Algorithm(realm, part),
-    meshMotion_(realm_.has_mesh_motion() | realm_.has_mesh_deformation()),
-    meshVelocity_(NULL),
-    velocity_(NULL),
+    meshMotion_(realm_.does_mesh_move()),
+    velocityRTM_(NULL),
     Gpdx_(NULL),
     coordinates_(NULL),
     pressure_(NULL),
@@ -51,9 +50,9 @@ ComputeMdotEdgeAlgorithm::ComputeMdotEdgeAlgorithm(
   // save off field
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   if ( meshMotion_ )
-    meshVelocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_velocity");
-
-  velocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
+    velocityRTM_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity_rtm");
+  else
+    velocityRTM_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
   Gpdx_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "dpdx");
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   pressure_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure");
@@ -100,7 +99,6 @@ ComputeMdotEdgeAlgorithm::execute()
   double * p_vrtmR = &vrtmR[0];
 
   // deal with state
-  VectorFieldType &velocityNp1 = velocity_->field_of_state(stk::mesh::StateNP1);
   ScalarFieldType &densityNp1 = density_->field_of_state(stk::mesh::StateNP1);
 
   // define some common selectors
@@ -140,30 +138,14 @@ ComputeMdotEdgeAlgorithm::execute()
       const double * GpdxL = stk::mesh::field_data(*Gpdx_, nodeL );
       const double * GpdxR = stk::mesh::field_data(*Gpdx_, nodeR );
 
-      const double * velocityNp1L = stk::mesh::field_data(velocityNp1, nodeL );
-      const double * velocityNp1R = stk::mesh::field_data(velocityNp1, nodeR );
+      const double * vrtmL = stk::mesh::field_data(*velocityRTM_, nodeL );
+      const double * vrtmR = stk::mesh::field_data(*velocityRTM_, nodeR );
 
       const double pressureL = *stk::mesh::field_data(*pressure_, nodeL );
       const double pressureR = *stk::mesh::field_data(*pressure_, nodeR );
 
       const double densityL = *stk::mesh::field_data(densityNp1, nodeL );
       const double densityR = *stk::mesh::field_data(densityNp1, nodeR );
-
-      // copy to velocity relative to mesh
-      for ( int j = 0; j < nDim; ++j ) {
-        p_vrtmL[j] = velocityNp1L[j];
-        p_vrtmR[j] = velocityNp1R[j];
-      }
-
-      // deal with mesh motion
-      if ( meshMotion_ ) {
-        const double * meshVelocityL = stk::mesh::field_data(*meshVelocity_, nodeL );
-        const double * meshVelocityR = stk::mesh::field_data(*meshVelocity_, nodeR );
-        for (int j = 0; j < nDim; ++j ) {
-          p_vrtmL[j] -= meshVelocityL[j];
-          p_vrtmR[j] -= meshVelocityR[j];
-        }
-      }
 
       // compute geometry
       double axdx = 0.0;
@@ -184,8 +166,8 @@ ComputeMdotEdgeAlgorithm::execute()
         const double axj = p_areaVec[j];
         const double dxj = coordR[j] - coordL[j];
         const double kxj = axj - asq*inv_axdx*dxj; // NOC
-        const double rhoUjIp = 0.5*(densityR*p_vrtmR[j] + densityL*p_vrtmL[j]);
-        const double ujIp = 0.5*(p_vrtmR[j] + p_vrtmL[j]);
+        const double rhoUjIp = 0.5*(densityR*vrtmR[j] + densityL*vrtmL[j]);
+        const double ujIp = 0.5*(vrtmR[j] + vrtmL[j]);
         const double GjIp = 0.5*(GpdxR[j] + GpdxL[j]);
         tmdot += (interpTogether*rhoUjIp + om_interpTogether*rhoIp*ujIp + projTimeScale*GjIp)*axj 
           - projTimeScale*kxj*GjIp*nocFac;

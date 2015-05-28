@@ -36,9 +36,9 @@ AssembleMomentumEdgeSolverAlgorithm::AssembleMomentumEdgeSolverAlgorithm(
   stk::mesh::Part *part,
   EquationSystem *eqSystem)
   : SolverAlgorithm(realm, part, eqSystem),
-    meshMotion_(realm_.has_mesh_motion()),
+    meshMotion_(realm_.does_mesh_move()),
     includeDivU_(realm_.get_divU()),
-    meshVelocity_(NULL),
+    velocityRTM_(NULL),
     velocity_(NULL),
     coordinates_(NULL),
     dudx_(NULL),
@@ -50,7 +50,9 @@ AssembleMomentumEdgeSolverAlgorithm::AssembleMomentumEdgeSolverAlgorithm(
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   if ( meshMotion_ )
-    meshVelocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_velocity");
+    velocityRTM_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity_rtm");
+  else
+    velocityRTM_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
   velocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   dudx_ = meta_data.get_field<GenericFieldType>(stk::topology::NODE_RANK, "dudx");
@@ -61,7 +63,6 @@ AssembleMomentumEdgeSolverAlgorithm::AssembleMomentumEdgeSolverAlgorithm(
   viscosity_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, viscName);
   edgeAreaVec_ = meta_data.get_field<VectorFieldType>(stk::topology::EDGE_RANK, "edge_area_vector");
   massFlowRate_ = meta_data.get_field<ScalarFieldType>(stk::topology::EDGE_RANK, "mass_flow_rate");
-
 }
 
 void
@@ -133,12 +134,6 @@ AssembleMomentumEdgeSolverAlgorithm::execute()
   double *p_duL = &duL[0];
   double *p_duR = &duR[0];
 
-  // mesh motion
-  std::vector<double> vrtmL(nDim);
-  std::vector<double> vrtmR(nDim);
-  double * p_vrtmL = &vrtmL[0];
-  double * p_vrtmR = &vrtmR[0];
-
   // deal with state
   VectorFieldType &velocityNp1 = velocity_->field_of_state(stk::mesh::StateNP1);
   ScalarFieldType &densityNp1 = density_->field_of_state(stk::mesh::StateNP1);
@@ -192,6 +187,9 @@ AssembleMomentumEdgeSolverAlgorithm::execute()
       const double * dudxL = stk::mesh::field_data(*dudx_, nodeL);
       const double * dudxR = stk::mesh::field_data(*dudx_, nodeR);
 
+      const double * vrtmL = stk::mesh::field_data(*velocityRTM_, nodeL);
+      const double * vrtmR = stk::mesh::field_data(*velocityRTM_, nodeR);
+
       const double * uNp1L = stk::mesh::field_data(velocityNp1, nodeL);
       const double * uNp1R = stk::mesh::field_data(velocityNp1, nodeR);
 
@@ -201,11 +199,8 @@ AssembleMomentumEdgeSolverAlgorithm::execute()
       const double viscosityL = *stk::mesh::field_data(*viscosity_, nodeL);
       const double viscosityR = *stk::mesh::field_data(*viscosity_, nodeR);
 
-      // copy to velocity relative to mesh; squeeze in extrapolated values
+      // copy in extrapolated values
       for ( int i = 0; i < nDim; ++i ) {
-        // copy to vrtm
-        p_vrtmL[i] = uNp1L[i];
-        p_vrtmR[i] = uNp1R[i];
         // extrapolated du
         p_duL[i] = 0.0;
         p_duR[i] = 0.0;
@@ -214,16 +209,6 @@ AssembleMomentumEdgeSolverAlgorithm::execute()
           const double dxj = 0.5*(coordR[j] - coordL[j]);
           p_duL[i] += dxj*dudxL[offSet+j];
           p_duR[i] += dxj*dudxR[offSet+j];
-        }
-      }
-
-      // deal with mesh motion
-      if ( meshMotion_ ) {
-        const double * meshVelocityL = stk::mesh::field_data(*meshVelocity_, nodeL);
-        const double * meshVelocityR = stk::mesh::field_data(*meshVelocity_, nodeR);
-        for (int j = 0; j < nDim; ++j ) {
-          p_vrtmL[j] -= meshVelocityL[j];
-          p_vrtmR[j] -= meshVelocityR[j];
         }
       }
 
@@ -236,7 +221,7 @@ AssembleMomentumEdgeSolverAlgorithm::execute()
         const double dxj = coordR[j] - coordL[j];
         axdx += axj*dxj;
         asq += axj*axj;
-        udotx += 0.5*dxj*(p_vrtmL[j] + p_vrtmR[j]);
+        udotx += 0.5*dxj*(vrtmL[j] + vrtmR[j]);
       }
 
       const double inv_axdx = 1.0/axdx;

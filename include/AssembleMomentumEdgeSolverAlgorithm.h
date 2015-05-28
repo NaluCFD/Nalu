@@ -37,7 +37,7 @@ public:
   const bool meshMotion_;
   const double includeDivU_;
 
-  VectorFieldType *meshVelocity_;
+  VectorFieldType *velocityRTM_;
   VectorFieldType *velocity_;
   VectorFieldType *coordinates_;
   GenericFieldType *dudx_;

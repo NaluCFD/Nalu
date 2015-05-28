@@ -39,10 +39,9 @@ ComputeMdotElemAlgorithm::ComputeMdotElemAlgorithm(
   stk::mesh::Part *part,
   const bool assembleMdotToEdge)
   : Algorithm(realm, part),
-    meshMotion_(realm_.has_mesh_motion() | realm_.has_mesh_deformation()),
+    meshMotion_(realm_.does_mesh_move()),
     assembleMdotToEdge_(assembleMdotToEdge),
-    meshVelocity_(NULL),
-    velocity_(NULL),
+    velocityRTM_(NULL),
     Gpdx_(NULL),
     coordinates_(NULL),
     pressure_(NULL),
@@ -54,14 +53,10 @@ ComputeMdotElemAlgorithm::ComputeMdotElemAlgorithm(
 {
    // extract fields; nodal
   stk::mesh::MetaData & meta_data = realm_.meta_data();
-
-  // hold either mesh velocity or velocity in meshVelocity_ (avoids logic below)
   if ( meshMotion_ )
-    meshVelocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_velocity");
+    velocityRTM_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity_rtm");
   else
-    meshVelocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
-
-  velocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
+    velocityRTM_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
   Gpdx_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "dpdx");
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   pressure_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure");
@@ -98,7 +93,6 @@ ComputeMdotElemAlgorithm::execute()
   // time step
   const double dt = realm_.get_time_step();
   const double gamma1 = realm_.get_gamma1();
-  if (realm_.debug() ) NaluEnv::self().naluOutputP0() << "ComputeMdotElemAlgorithm::execute() gamma1= " << gamma1 << std::endl;
   const double projTimeScale = dt/gamma1;
 
   // deal with interpolation procedure
@@ -106,8 +100,6 @@ ComputeMdotElemAlgorithm::execute()
   const double om_interpTogether = 1.0-interpTogether;
 
   // nodal fields to gather
-  std::vector<double> ws_velocityNp1;
-  std::vector<double> ws_meshVelocity;
   std::vector<double> ws_vrtm;
   std::vector<double> ws_Gpdx;
   std::vector<double> ws_coordinates;
@@ -134,7 +126,6 @@ ComputeMdotElemAlgorithm::execute()
   double *p_dpdxIp = &dpdxIp[0];
 
   // deal with state
-  VectorFieldType &velocityNp1 = velocity_->field_of_state(stk::mesh::StateNP1);
   ScalarFieldType &densityNp1 = density_->field_of_state(stk::mesh::StateNP1);
 
   // define some common selectors
@@ -156,8 +147,6 @@ ComputeMdotElemAlgorithm::execute()
     const int numScsIp = meSCS->numIntPoints_;
 
     // algorithm related
-    ws_velocityNp1.resize(nodesPerElement*nDim);
-    ws_meshVelocity.resize(nodesPerElement*nDim);
     ws_vrtm.resize(nodesPerElement*nDim);
     ws_Gpdx.resize(nodesPerElement*nDim);
     ws_coordinates.resize(nodesPerElement*nDim);
@@ -170,8 +159,6 @@ ComputeMdotElemAlgorithm::execute()
     ws_shape_function.resize(numScsIp*nodesPerElement);
 
     // pointers
-    double *p_velocityNp1 = &ws_velocityNp1[0];
-    double *p_meshVelocity = &ws_meshVelocity[0];
     double *p_vrtm = &ws_vrtm[0];
     double *p_Gpdx = &ws_Gpdx[0];
     double *p_coordinates = &ws_coordinates[0];
@@ -204,8 +191,7 @@ ComputeMdotElemAlgorithm::execute()
         stk::mesh::Entity node = node_rels[ni];
 
         // pointers to real data
-        const double * uNp1   = stk::mesh::field_data(velocityNp1, node);
-        const double * vNp1   = stk::mesh::field_data(*meshVelocity_, node);
+        const double * vrtm   = stk::mesh::field_data(*velocityRTM_, node);
         const double * Gjp    = stk::mesh::field_data(*Gpdx_, node);
         const double * coords = stk::mesh::field_data(*coordinates_, node);
 
@@ -216,9 +202,7 @@ ComputeMdotElemAlgorithm::execute()
         // gather vectors
         const int offSet = ni*nDim;
         for ( int j=0; j < nDim; ++j ) {
-          p_velocityNp1[offSet+j] = uNp1[j];
-          p_vrtm[offSet+j] = uNp1[j];
-          p_meshVelocity[offSet+j] = vNp1[j];
+          p_vrtm[offSet+j] = vrtm[j];
           p_Gpdx[offSet+j] = Gjp[j];
           p_coordinates[offSet+j] = coords[j];
         }
@@ -234,14 +218,6 @@ ComputeMdotElemAlgorithm::execute()
       else
         meSCS->grad_op(1, &p_coordinates[0], &p_dndx[0], &ws_deriv[0], &ws_det_j[0], &scs_error);
       
-      // manage velocity relative to mesh
-      if ( meshMotion_ ) {
-        const int kSize = num_nodes*nDim;
-        for ( int k = 0; k < kSize; ++k ) {
-          p_vrtm[k] -= p_meshVelocity[k];
-        }
-      }
-
       for ( int ip = 0; ip < numScsIp; ++ip ) {
 
         // setup for ip values

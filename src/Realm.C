@@ -1535,12 +1535,15 @@ Realm::advance_time_step()
                   << std::setw(16) << std::right << "-----------"
                   << std::setw(14) << std::right << "----------" << std::endl;
 
-  // evaluate new geometry based on lastest mesh motion geometry state (provided that external is active)
+  // evaluate new geometry based on latest mesh motion geometry state (provided that external is active)
   if ( solutionOptions_->externalMeshDeformation_ )
     compute_geometry();
 
   // evaluate properties based on latest state including boundary and and possible xfer
   evaluate_properties();
+
+  // compute velocity relative to mesh
+  compute_vrtm();
 
   const int numNonLinearIterations = equationSystems_.maxIterations_;
   for ( int i = 0; i < numNonLinearIterations; ++i ) {
@@ -2016,6 +2019,15 @@ Realm::has_mesh_deformation()
 }
 
 //--------------------------------------------------------------------------
+//-------- does_mesh_move --------------------------------------------------
+//--------------------------------------------------------------------------
+bool
+Realm::does_mesh_move()
+{
+  return has_mesh_motion() | has_mesh_deformation();
+}
+
+//--------------------------------------------------------------------------
 //-------- has_non_matching_boundary_face_alg ------------------------------
 //--------------------------------------------------------------------------
 bool
@@ -2200,42 +2212,42 @@ Realm::compute_geometry()
   if ( hasContact_ )
     extrusionMeshDistanceAlgDriver_->execute();
   computeGeometryAlgDriver_->execute();
+}
 
-  // find total volume if the mesh moves at all
-  if ( has_mesh_motion() || has_mesh_deformation() ) {
+//--------------------------------------------------------------------------
+//-------- compute_vrtm ----------------------------------------------------
+//--------------------------------------------------------------------------
+void
+Realm::compute_vrtm()
+{
+  // compute velocity relative to mesh; must be tied to velocity update...
+  if ( solutionOptions_->meshMotion_ || solutionOptions_->externalMeshDeformation_ ) {
+    std::cout << "before mesh" << std::endl;
+    const int nDim = metaData_->spatial_dimension();
 
-    double totalVolume = 0.0;
-    double maxVolume = -1.0e16;
-    double minVolume = 1.0e16;
+    VectorFieldType *velocity = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
+    VectorFieldType *meshVelocity = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_velocity");
+    VectorFieldType *velocityRTM = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity_rtm");
 
-    ScalarFieldType *dualVolume = metaData_->get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
+    stk::mesh::Selector s_all_nodes
+       = (metaData_->locally_owned_part() | metaData_->globally_shared_part());
 
-    stk::mesh::Selector s_local_nodes
-      = metaData_->locally_owned_part() &stk::mesh::selectField(*dualVolume);
-
-    stk::mesh::BucketVector const& node_buckets = bulkData_->get_buckets( stk::topology::NODE_RANK, s_local_nodes );
+    stk::mesh::BucketVector const& node_buckets = bulkData_->get_buckets( stk::topology::NODE_RANK, s_all_nodes );
     for ( stk::mesh::BucketVector::const_iterator ib = node_buckets.begin() ;
 	  ib != node_buckets.end() ; ++ib ) {
       stk::mesh::Bucket & b = **ib ;
       const stk::mesh::Bucket::size_type length   = b.size();
-      const double * dv = stk::mesh::field_data(*dualVolume, b);
+      const double * uNp1 = stk::mesh::field_data(*velocity, b);
+      const double * vNp1 = stk::mesh::field_data(*meshVelocity, b);
+      double * vrtm = stk::mesh::field_data(*velocityRTM, b);
+
       for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
-        const double theVol = dv[k];
-        totalVolume += theVol;
-        maxVolume = std::max(theVol, maxVolume);
-        minVolume = std::min(theVol, minVolume);
+        const int offSet = k*nDim;
+        for ( int j=0; j < nDim; ++j ) {
+          vrtm[offSet+j] = uNp1[offSet+j] - vNp1[offSet+j];
+        }
       }
     }
-
-    // get min, max and sum over processes
-    double g_totalVolume = 0.0, g_minVolume = 0.0, g_maxVolume = 0.0;
-    stk::all_reduce_min(NaluEnv::self().parallel_comm(), &minVolume, &g_minVolume, 1);
-    stk::all_reduce_max(NaluEnv::self().parallel_comm(), &maxVolume, &g_maxVolume, 1);
-    stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &totalVolume, &g_totalVolume, 1);
-
-    NaluEnv::self().naluOutputP0() << " Volume  " << g_totalVolume
-		    << " min: " << g_minVolume
-		    << " max: " << g_maxVolume << std::endl;
   }
 }
 
@@ -2324,13 +2336,15 @@ Realm::register_nodal_fields(
   const int nDim = metaData_->spatial_dimension();
 
   // mesh motion/deformation is high level
-  if ( solutionOptions_->meshMotion_ || solutionOptions_->externalMeshDeformation_ ) {
+  if ( solutionOptions_->meshMotion_ || solutionOptions_->externalMeshDeformation_) {
     VectorFieldType *displacement = &(metaData_->declare_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_displacement"));
     stk::mesh::put_field(*displacement, *part, nDim);
     VectorFieldType *currentCoords = &(metaData_->declare_field<VectorFieldType>(stk::topology::NODE_RANK, "current_coordinates"));
     stk::mesh::put_field(*currentCoords, *part, nDim);
     VectorFieldType *meshVelocity = &(metaData_->declare_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_velocity"));
     stk::mesh::put_field(*meshVelocity, *part, nDim);
+    VectorFieldType *velocityRTM = &(metaData_->declare_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity_rtm"));
+    stk::mesh::put_field(*velocityRTM, *part, nDim);
     // only internal mesh motion requires rotation rate
     if ( solutionOptions_->meshMotion_ ) {
       ScalarFieldType *omega = &(metaData_->declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "omega"));
