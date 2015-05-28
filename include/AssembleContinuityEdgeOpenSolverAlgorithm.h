@@ -35,7 +35,9 @@ public:
   virtual void initialize_connectivity();
   virtual void execute();
 
-  VectorFieldType *velocity_;
+  const bool meshMotion_;
+
+  VectorFieldType *velocityRTM_;
   VectorFieldType *Gpdx_;
   VectorFieldType *coordinates_;
   ScalarFieldType *pressure_;

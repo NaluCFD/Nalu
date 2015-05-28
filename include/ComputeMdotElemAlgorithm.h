@@ -37,8 +37,7 @@ public:
   const bool assembleMdotToEdge_;
 
   // extract fields; nodal
-  VectorFieldType *meshVelocity_;
-  VectorFieldType *velocity_;
+  VectorFieldType *velocityRTM_;
   VectorFieldType *Gpdx_;
   VectorFieldType *coordinates_;
   ScalarFieldType *pressure_;

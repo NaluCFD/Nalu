@@ -48,8 +48,7 @@ public:
   ScalarFieldType *scalarQ_;
   VectorFieldType *dqdx_;
   ScalarFieldType *diffFluxCoeff_;
-  VectorFieldType *meshVelocity_;
-  VectorFieldType *velocity_;
+  VectorFieldType *velocityRTM_;
   VectorFieldType *coordinates_;
   ScalarFieldType *density_;
   GenericFieldType *massFlowRate_;

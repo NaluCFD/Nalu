@@ -46,11 +46,13 @@ AssembleScalarEdgeOpenSolverAlgorithm::AssembleScalarEdgeOpenSolverAlgorithm(
     scalarQ_(scalarQ),
     bcScalarQ_(bcScalarQ),
     dqdx_(dqdx),
-    diffFluxCoeff_(diffFluxCoeff)
+    diffFluxCoeff_(diffFluxCoeff),
+    coordinates_(NULL),
+    density_(NULL),
+    openMassFlowRate_(NULL)
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
-  velocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
   openMassFlowRate_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "open_mass_flow_rate");

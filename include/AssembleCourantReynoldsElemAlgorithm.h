@@ -30,8 +30,7 @@ public:
   
   const bool meshMotion_;
 
-  VectorFieldType *meshVelocity_;
-  VectorFieldType *velocity_;
+  VectorFieldType *velocityRTM_;
   VectorFieldType *coordinates_;
   ScalarFieldType *density_;
   ScalarFieldType *viscosity_;

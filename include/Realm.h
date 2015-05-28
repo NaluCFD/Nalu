@@ -141,6 +141,7 @@ public:
   std::string get_coordinates_name();
   bool has_mesh_motion();
   bool has_mesh_deformation();
+  bool does_mesh_move();
   bool has_non_matching_boundary_face_alg();
 
   void set_omega(
@@ -157,6 +158,7 @@ public:
   void initialize_non_conformal();
 
   void compute_geometry();
+  void compute_vrtm();
   void compute_l2_scaling();
   void advance_time_step();
   void output_converged_results();

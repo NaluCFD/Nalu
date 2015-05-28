@@ -39,12 +39,13 @@ public:
   virtual void initialize_connectivity();
   virtual void execute();
 
+  const bool meshMotion_;
   
   ScalarFieldType *scalarQ_;
   ScalarFieldType *bcScalarQ_;
   VectorFieldType *dqdx_;
   ScalarFieldType *diffFluxCoeff_;
-  VectorFieldType *velocity_;
+  VectorFieldType *velocityRTM_;
   VectorFieldType *coordinates_;
   ScalarFieldType *density_;
   GenericFieldType *openMassFlowRate_;

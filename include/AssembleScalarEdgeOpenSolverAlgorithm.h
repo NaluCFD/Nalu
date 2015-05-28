@@ -44,7 +44,6 @@ public:
   ScalarFieldType *bcScalarQ_;
   VectorFieldType *dqdx_;
   ScalarFieldType *diffFluxCoeff_;
-  VectorFieldType *velocity_;
   VectorFieldType *coordinates_;
   ScalarFieldType *density_;
   GenericFieldType *openMassFlowRate_;
