@@ -2317,6 +2317,84 @@ Quad2DSCS::general_shape_fcn(
   }
 }
 
+
+//--------------------------------------------------------------------------
+//-------- general_face_grad_op --------------------------------------------
+//--------------------------------------------------------------------------
+void 
+Quad2DSCS::general_face_grad_op(
+  const int face_ordinal,
+  const double *isoParCoord,
+  const double *coords,
+  double *gradop,
+  double *det_j,
+  double *error)
+{
+  int lerr = 0;
+  int ndim = 2;
+
+  const int nface = 1;
+  double dpsi[8];
+  double grad[8];
+
+  SIERRA_FORTRAN(quad_derivative)
+    ( &nface, &isoParCoord[0], dpsi );
+      
+  SIERRA_FORTRAN(quad_gradient_operator)
+    ( &nface,
+      &nodesPerElement_,
+      &nface,
+      dpsi,
+      &coords[0], grad, &det_j[0], error, &lerr );
+  
+  if ( lerr )
+    std::cout << "sorry, issue with face_grad_op.." << std::endl;
+  
+  for ( int j=0; j<8; j++) {
+    gradop[j] = grad[j];
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- sidePcoords_to_elemPcoords --------------------------------------
+//--------------------------------------------------------------------------
+void 
+Quad2DSCS::sidePcoords_to_elemPcoords(
+  const int & side_ordinal,
+  const int & npoints,
+  const double *side_pcoords,
+  double *elem_pcoords)
+{
+  switch (side_ordinal) {
+  case 0:
+    for (int i=0; i<npoints; i++) {
+      elem_pcoords[i*2+0] = 0.5*side_pcoords[i];
+      elem_pcoords[i*2+1] = -0.5;
+    }
+    break;
+  case 1:
+    for (int i=0; i<npoints; i++) {
+      elem_pcoords[i*2+0] = 0.5;
+      elem_pcoords[i*2+1] = 0.5*side_pcoords[i];
+    }
+    break;
+  case 2:
+    for (int i=0; i<npoints; i++) {
+      elem_pcoords[i*2+0] = -0.5*side_pcoords[i];
+      elem_pcoords[i*2+1] = 0.5;
+    }
+    break;
+  case 3:
+    for (int i=0; i<npoints; i++) {
+      elem_pcoords[i*2+0] = -0.5;
+      elem_pcoords[i*2+1] = -0.5*side_pcoords[i];
+    }
+    break;
+  default:
+    throw std::runtime_error("Quad2DSCS::sideMap invalid ordinal size");
+  }
+}
+
 //--------------------------------------------------------------------------
 //-------- faceNodeOnExtrudedElem ------------------------------------------
 //--------------------------------------------------------------------------

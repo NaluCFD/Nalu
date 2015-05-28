@@ -23,8 +23,6 @@
 #include <AssembleNodalGradElemContactAlgorithm.h>
 #include <AssembleNodeSolverAlgorithm.h>
 #include <AssembleNonConformalAlgorithmDriver.h>
-#include <AssembleNonConformalEdgeDiffPenaltyAlgorithm.h>
-#include <AssembleNonConformalElemDiffPenaltyAlgorithm.h>
 #include <AuxFunctionAlgorithm.h>
 #include <ConstantAuxFunction.h>
 #include <CopyFieldAlgorithm.h>
@@ -779,42 +777,13 @@ HeatCondEquationSystem::register_non_conformal_bc(
   else {
     it->second->partVec_.push_back(part);
   }
-
-  // assemble and normalized lambda/L
-  ScalarFieldType *ncNormalFlux = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "nc_t_normal_flux"));
-  ScalarFieldType *ncPenalty = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "nc_t_penalty"));
-  ScalarFieldType *ncArea = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "nc_t_assembled_area"));
-  stk::mesh::put_field(*ncNormalFlux, *part);
-  stk::mesh::put_field(*ncPenalty, *part);
-  stk::mesh::put_field(*ncArea, *part);
-
-  // create the driver for post-porcessed quantities
-  if ( NULL == assembleNonConformalAlgDriver_ ) {
-    const unsigned fluxFieldSize = 1;
-    assembleNonConformalAlgDriver_ = new AssembleNonConformalAlgorithmDriver(realm_, ncNormalFlux, ncPenalty, ncArea, fluxFieldSize);
-  }
- 
-  std::map<AlgorithmType, Algorithm *>::iterator itnc
-    = assembleNonConformalAlgDriver_->algMap_.find(algType);
-  if ( itnc == assembleNonConformalAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg = NULL;
-    if ( realm_.realmUsesEdges_ ) 
-      theAlg = new AssembleNonConformalEdgeDiffPenaltyAlgorithm(realm_, part, temperature_, dtdx_, ncNormalFlux, ncPenalty, ncArea, thermalCond_);
-    else
-      theAlg = new AssembleNonConformalElemDiffPenaltyAlgorithm(realm_, part, temperature_, ncNormalFlux, ncPenalty, ncArea, thermalCond_);
-    assembleNonConformalAlgDriver_->algMap_[algType] = theAlg;
-  }
-  else {
-    itnc->second->partVec_.push_back(part);
-  }
   
   // solver; lhs; same for edge and element-based scheme
   std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi =
     solverAlgDriver_->solverAlgMap_.find(algType);
   if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
     AssembleScalarDiffNonConformalSolverAlgorithm *theAlg
-      = new AssembleScalarDiffNonConformalSolverAlgorithm(realm_, part, this, 
-                                                          temperature_, ncNormalFlux, ncPenalty);
+      = new AssembleScalarDiffNonConformalSolverAlgorithm(realm_, part, this, temperature_, thermalCond_);
     solverAlgDriver_->solverAlgMap_[algType] = theAlg;
   }
   else {
@@ -889,9 +858,6 @@ HeatCondEquationSystem::solve_and_update()
 
     NaluEnv::self().naluOutputP0() << " " << k+1 << "/" << maxIterations_
                     << std::setw(15) << std::right << name_ << std::endl;
-
-    // post process non-conformal algorithm
-    assemble_non_conformal();
     
     // heat conduction assemble, load_complete and solve
     assemble_and_solve(tTmp_);

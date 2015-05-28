@@ -14,6 +14,7 @@
 //==============================================================================
 
 #include <stk_mesh/base/Entity.hpp>
+#include <stk_topology/topology.hpp>
 
 #include <vector>
 
@@ -50,6 +51,7 @@ class DgInfo {
     const int currentFaceOrdinal,
     MasterElement *meFCCurrent,
     MasterElement *meSCSurrent,
+    stk::topology currentElementTopo,
     const int nDim);
   
   ~DgInfo();
@@ -64,8 +66,10 @@ class DgInfo {
   const int currentFaceOrdinal_;
   MasterElement *meFCCurrent_;
   MasterElement *meSCSCurrent_;
-
+  stk::topology currentElementTopo_;
+  
   int nDim_;
+
   double bestX_;
   int opposingFaceIsGhosted_;
 
@@ -74,6 +78,9 @@ class DgInfo {
 
   // face:element relations provide connected element to opposing face
   stk::mesh::Entity opposingElement_;
+
+  // opposing element topo
+  stk::topology opposingElementTopo_;
 
   // for the opposing face, what is its ordinal?
   int opposingFaceOrdinal_;
@@ -91,8 +98,7 @@ class DgInfo {
   std::vector<double> currentIsoParCoords_;
 
   // iso-parametric coordinates for gauss point on opposing face (-1:1)
-  std::vector<double> opposingIsoParCoords_;
-  
+  std::vector<double> opposingIsoParCoords_;  
 };
   
 } // end sierra namespace

@@ -25,6 +25,7 @@
 #include <stk_mesh/base/FieldParallel.hpp>
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/Part.hpp>
+#include <stk_topology/topology.hpp>
 
 namespace sierra{
 namespace nalu{
@@ -33,8 +34,8 @@ namespace nalu{
 // Class Definition
 //==========================================================================
 // AssembleScalarDiffNonConformalSolverAlgorithm - lhs for NC bc (DG)
-//                                                     used for both edge
-//                                                     and element; WIP..
+//                                                 used for both edge
+//                                                 and element; WIP..
 //==========================================================================
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
@@ -44,24 +45,23 @@ AssembleScalarDiffNonConformalSolverAlgorithm::AssembleScalarDiffNonConformalSol
   stk::mesh::Part *part,
   EquationSystem *eqSystem,
   ScalarFieldType *scalarQ,
-  ScalarFieldType *ncNormalFlux,
-  ScalarFieldType *ncPenalty)
+  ScalarFieldType *diffFluxCoeff)
   : SolverAlgorithm(realm, part, eqSystem),
     scalarQ_(scalarQ),
-    ncNormalFlux_(ncNormalFlux),
-    ncPenalty_(ncPenalty),
+    diffFluxCoeff_(diffFluxCoeff),
+    coordinates_(NULL),
     exposedAreaVec_(NULL),
     robinStyle_(false),
     dsFactor_(1.0)
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
+  coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   exposedAreaVec_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");  
  
   // what do we need ghosted for this alg to work?
   ghostFieldVec_.push_back(&(scalarQ_->field_of_state(stk::mesh::StateNP1)));
-  ghostFieldVec_.push_back(ncNormalFlux_);
-  ghostFieldVec_.push_back(ncPenalty_);
+  ghostFieldVec_.push_back(diffFluxCoeff_);
  
   // specific algorithm options
   NonConformalAlgType algType = realm_.get_nc_alg_type();
@@ -116,14 +116,19 @@ AssembleScalarDiffNonConformalSolverAlgorithm::execute()
   std::vector<stk::mesh::Entity> connected_nodes;
  
   // ip values; both boundary and opposing surface
-  std::vector<double> currentIsoParCoords(nDim-1);
-  std::vector<double> opposingIsoParCoords(nDim-1);
+  std::vector<double> currentIsoParCoords(nDim);
+  std::vector<double> opposingIsoParCoords(nDim);
   std::vector<double> cNx(nDim);
   std::vector<double> oNx(nDim);
 
+  // mapping for -1:1 -> -0.5:0.5 and then to volume element
+  std::vector<double> currentSideIsoParCoords(nDim);
+  std::vector<double> opposingSideIsoParCoords(nDim);
+  std::vector<double> currentElemIsoParCoords(nDim);
+  std::vector<double> opposingElemIsoParCoords(nDim);
+
   // interpolate nodal values to point-in-elem
   const int sizeOfScalarField = 1;
-  const int sizeOfVectorField = nDim;
  
   // pointers to fixed values
   double *p_cNx = &cNx[0];
@@ -132,13 +137,24 @@ AssembleScalarDiffNonConformalSolverAlgorithm::execute()
   // nodal fields to gather
   std::vector<double> ws_c_face_scalarQ;
   std::vector<double> ws_o_face_scalarQ;
-  std::vector<double> ws_c_ncNormalFlux;
-  std::vector<double> ws_o_ncNormalFlux;
-  std::vector<double> ws_c_ncPenalty;
-  std::vector<double> ws_o_ncPenalty;
-
+  std::vector<double> ws_c_elem_scalarQ;
+  std::vector<double> ws_o_elem_scalarQ;
+  std::vector<double> ws_c_elem_coordinates;
+  std::vector<double> ws_o_elem_coordinates;
+  std::vector<double> ws_c_diffFluxCoeff;
+  std::vector<double> ws_o_diffFluxCoeff;
+ 
+  // master element data
+  std::vector<double> ws_c_dndx;
+  std::vector<double> ws_o_dndx;
+  std::vector<double> ws_c_det_j;
+  std::vector<double> ws_o_det_j;
   std::vector <double > ws_c_general_shape_function;
   std::vector <double > ws_o_general_shape_function;
+  std::vector<double> ws_c_is_a_face_node;
+  std::vector<double> ws_o_is_a_face_node;
+  std::vector<int> ws_c_face_node_ordinals;
+  std::vector<int> ws_o_face_node_ordinals;
 
   // deal with state
   ScalarFieldType &scalarQNp1 = scalarQ_->field_of_state(stk::mesh::StateNP1);
@@ -168,12 +184,18 @@ AssembleScalarDiffNonConformalSolverAlgorithm::execute()
         // extract current/opposing face/element
         stk::mesh::Entity currentFace = dgInfo->currentFace_;
         stk::mesh::Entity opposingFace = dgInfo->opposingFace_;
-        stk::mesh::Entity currentElement = dgInfo->currentElement_;
-        stk::mesh::Entity opposingElement = dgInfo->opposingElement_;
-        
-        // master element
+        stk::mesh::Entity currentElem = dgInfo->currentElement_;
+        stk::mesh::Entity opposingElem = dgInfo->opposingElement_;
+        stk::topology currentElemTopo = dgInfo->currentElementTopo_;
+        stk::topology opposingElemTopo = dgInfo->opposingElementTopo_;
+        const int currentFaceOrdinal = dgInfo->currentFaceOrdinal_;
+        const int opposingFaceOrdinal = dgInfo->opposingFaceOrdinal_;
+
+        // master element; face and volume
         MasterElement * meFCCurrent = dgInfo->meFCCurrent_; 
         MasterElement * meFCOpposing = dgInfo->meFCOpposing_;
+        MasterElement * meSCSCurrent = dgInfo->meSCSCurrent_; 
+        MasterElement * meSCSOpposing = dgInfo->meSCSOpposing_;
         
         // local ip, ordinals, etc
         const int currentGaussPointId = dgInfo->currentGaussPointId_;
@@ -183,6 +205,8 @@ AssembleScalarDiffNonConformalSolverAlgorithm::execute()
         // extract some master element info
         const int currentNodesPerFace = meFCCurrent->nodesPerElement_;
         const int opposingNodesPerFace = meFCOpposing->nodesPerElement_;
+        const int currentNodesPerElem = meSCSCurrent->nodesPerElement_;
+        const int opposingNodesPerElem = meSCSOpposing->nodesPerElement_;
         
         // resize some things; matrix related
         const int lhsSize = (currentNodesPerFace+opposingNodesPerFace)*(currentNodesPerFace+opposingNodesPerFace);
@@ -191,57 +215,121 @@ AssembleScalarDiffNonConformalSolverAlgorithm::execute()
         rhs.resize(rhsSize);
         connected_nodes.resize(currentNodesPerFace+opposingNodesPerFace);
         
-        // algorithm related; element (n/a)
+        // algorithm related; element; dndx will be at a single gauss point...
+        ws_c_elem_scalarQ.resize(currentNodesPerElem);
+        ws_o_elem_scalarQ.resize(opposingNodesPerElem);
+        ws_c_elem_coordinates.resize(currentNodesPerElem*nDim);
+        ws_o_elem_coordinates.resize(opposingNodesPerElem*nDim);
+        ws_c_dndx.resize(nDim*currentNodesPerElem);
+        ws_o_dndx.resize(nDim*opposingNodesPerElem);
+        ws_c_det_j.resize(1);
+        ws_o_det_j.resize(1);
         
         // algorithm related; face
         ws_c_face_scalarQ.resize(currentNodesPerFace);
         ws_o_face_scalarQ.resize(opposingNodesPerFace);
-        ws_c_ncNormalFlux.resize(currentNodesPerFace);
-        ws_o_ncNormalFlux.resize(opposingNodesPerFace);
-        ws_c_ncPenalty.resize(currentNodesPerFace);
-        ws_o_ncPenalty.resize(opposingNodesPerFace);
+        ws_c_diffFluxCoeff.resize(currentNodesPerFace);
+        ws_o_diffFluxCoeff.resize(opposingNodesPerFace);
         ws_c_general_shape_function.resize(currentNodesPerFace);
         ws_o_general_shape_function.resize(opposingNodesPerFace);
         
+        // face node identification
+        ws_c_is_a_face_node.resize(currentNodesPerElem);
+        ws_o_is_a_face_node.resize(opposingNodesPerElem);
+        ws_c_face_node_ordinals.resize(currentNodesPerFace);
+        ws_o_face_node_ordinals.resize(opposingNodesPerFace);
+
         // pointers
         double *p_lhs = &lhs[0];
         double *p_rhs = &rhs[0];
         
         double *p_c_face_scalarQ = &ws_c_face_scalarQ[0];
         double *p_o_face_scalarQ = &ws_o_face_scalarQ[0];
-        double *p_c_ncNormalFlux = &ws_c_ncNormalFlux[0];
-        double *p_o_ncNormalFlux = &ws_o_ncNormalFlux[0];
-        double *p_c_ncPenalty = &ws_c_ncPenalty[0];
-        double *p_o_ncPenalty = &ws_o_ncPenalty[0];
-               
+        double *p_c_elem_scalarQ = &ws_c_elem_scalarQ[0];
+        double *p_o_elem_scalarQ = &ws_o_elem_scalarQ[0];
+        double *p_c_elem_coordinates = &ws_c_elem_coordinates[0];
+        double *p_o_elem_coordinates = &ws_o_elem_coordinates[0];
+        double *p_c_diffFluxCoeff = &ws_c_diffFluxCoeff[0];
+        double *p_o_diffFluxCoeff = &ws_o_diffFluxCoeff[0];
+        double *p_c_is_a_face_node = &ws_c_is_a_face_node[0];
+        double *p_o_is_a_face_node = &ws_o_is_a_face_node[0];
+
         // general shape function
         double *p_c_general_shape_function = &ws_c_general_shape_function[0];
         double *p_o_general_shape_function = &ws_o_general_shape_function[0];
+        double *p_c_dndx = &ws_c_dndx[0];
+        double *p_o_dndx = &ws_o_dndx[0];
         
-        // gather current face data; sneak in first of connected nodes
+        // initialize current is_a_face_node (required for length scale)
+        for ( int ni = 0; ni < currentNodesPerElem; ++ni )
+          p_c_is_a_face_node[ni] = 0.0;
+
+        // populate current face_node_ordinals
+        currentElemTopo.side_node_ordinals(currentFaceOrdinal, ws_c_face_node_ordinals.begin());
+
+        // gather current face data; sneak in first of connected nodes and face node
         stk::mesh::Entity const* current_face_node_rels = bulk_data.begin_nodes(currentFace);
         const int current_num_face_nodes = bulk_data.num_nodes(currentFace);
         for ( int ni = 0; ni < current_num_face_nodes; ++ni ) {
           stk::mesh::Entity node = current_face_node_rels[ni];
           // set connected nodes
           connected_nodes[ni] = node;
-          // gather...
+          // set face node
+          p_c_is_a_face_node[ws_c_face_node_ordinals[ni]] = 1.0;
+          // gather; scalar
           p_c_face_scalarQ[ni] = *stk::mesh::field_data(scalarQNp1, node);
-          p_c_ncNormalFlux[ni] = *stk::mesh::field_data(*ncNormalFlux_, node);
-          p_c_ncPenalty[ni] = *stk::mesh::field_data(*ncPenalty_, node);
+          p_c_diffFluxCoeff[ni] = *stk::mesh::field_data(*diffFluxCoeff_, node);
         }
         
-        // gather opposing face data; sneak in second of connected nodes
+        // initialize opposing is_a_face_node (required for length scale)
+        for ( int ni = 0; ni < opposingNodesPerElem; ++ni )
+          p_o_is_a_face_node[ni] = 0.0;
+
+        // populate opposing face_node_ordinals
+        opposingElemTopo.side_node_ordinals(opposingFaceOrdinal, ws_o_face_node_ordinals.begin());
+
+        // gather opposing face data; sneak in second of connected nodes and face node
         stk::mesh::Entity const* opposing_face_node_rels = bulk_data.begin_nodes(opposingFace);
         const int opposing_num_face_nodes = bulk_data.num_nodes(opposingFace);
         for ( int ni = 0; ni < opposing_num_face_nodes; ++ni ) {
           stk::mesh::Entity node = opposing_face_node_rels[ni];
           // set connected nodes
-          connected_nodes[ni+current_num_face_nodes] = node;
+          connected_nodes[ni+opposing_num_face_nodes] = node;
+          // set face node
+          p_o_is_a_face_node[ws_o_face_node_ordinals[ni]] = 1.0;
           // gather...
           p_o_face_scalarQ[ni] = *stk::mesh::field_data(scalarQNp1, node);
-          p_o_ncNormalFlux[ni] = *stk::mesh::field_data(*ncNormalFlux_, node);
-          p_o_ncPenalty[ni] = *stk::mesh::field_data(*ncPenalty_, node);
+          p_o_diffFluxCoeff[ni] = *stk::mesh::field_data(*diffFluxCoeff_, node);
+        }
+
+        // gather current element data
+        stk::mesh::Entity const* current_elem_node_rels = bulk_data.begin_nodes(currentElem);
+        const int current_num_elem_nodes = bulk_data.num_nodes(currentElem);
+        for ( int ni = 0; ni < current_num_elem_nodes; ++ni ) {
+          stk::mesh::Entity node = current_elem_node_rels[ni];
+          // gather; scalar
+          p_c_elem_scalarQ[ni] = *stk::mesh::field_data(scalarQNp1, node);
+          // gather; vector
+          const double *coords = stk::mesh::field_data(*coordinates_, node);
+          const int niNdim = ni*nDim;
+          for ( int i = 0; i < nDim; ++i ) {
+            p_c_elem_coordinates[niNdim+i] = coords[i];
+          }
+        }
+
+        // gather opposing element data
+        stk::mesh::Entity const* opposing_elem_node_rels = bulk_data.begin_nodes(opposingElem);
+        const int opposing_num_elem_nodes = bulk_data.num_nodes(opposingElem);
+        for ( int ni = 0; ni < opposing_num_elem_nodes; ++ni ) {
+          stk::mesh::Entity node = opposing_elem_node_rels[ni];
+          // gather; scalar
+          p_o_elem_scalarQ[ni] = *stk::mesh::field_data(scalarQNp1, node);
+          // gather; vector
+          const double *coords = stk::mesh::field_data(*coordinates_, node);
+          const int niNdim = ni*nDim;
+          for ( int i = 0; i < nDim; ++i ) {
+            p_o_elem_coordinates[niNdim+i] = coords[i];
+          }
         }
         
         // pointer to face data
@@ -265,22 +353,49 @@ AssembleScalarDiffNonConformalSolverAlgorithm::execute()
           p_cNx[i] = c_areaVec[currentGaussPointId*nDim+i]/c_amag;
           p_oNx[i] = o_areaVec[0*nDim+i]/o_amag;  
         }
-        
-        // interpolate face data
-        double currentLambdaBip = 0.0;
-        meFCCurrent->interpolatePoint(
-          sizeOfScalarField,
-          &(dgInfo->currentIsoParCoords_[0]),
-          &ws_c_ncPenalty[0],
-          &currentLambdaBip);
-        
-        double opposingLambdaBip = 0.0;
-        meFCOpposing->interpolatePoint(
-          sizeOfScalarField,
-          &(dgInfo->opposingIsoParCoords_[0]),
-          &ws_o_ncPenalty[0],
-          &opposingLambdaBip);
-        
+
+        // project from side to element; method deals with the -1:1 isInElement range to the proper -0.5:0.5 CVFEM rang
+        meSCSCurrent->sidePcoords_to_elemPcoords(currentFaceOrdinal, 1, &currentSideIsoParCoords[0], &currentElemIsoParCoords[0]);
+        meSCSOpposing->sidePcoords_to_elemPcoords(opposingFaceOrdinal, 1, &opposingSideIsoParCoords[0], &opposingElemIsoParCoords[0]);
+
+        // compute dndx
+        double scs_error = 0.0;
+        meSCSCurrent->general_face_grad_op(currentFaceOrdinal, &currentElemIsoParCoords[0], 
+                                           &p_c_elem_coordinates[0], &p_c_dndx[0], &ws_c_det_j[0], &scs_error);
+        meSCSOpposing->general_face_grad_op(opposingFaceOrdinal, &opposingElemIsoParCoords[0], 
+                                           &p_o_elem_coordinates[0], &p_o_dndx[0], &ws_o_det_j[0], &scs_error);
+
+        // current flux and inverse length scale
+        double currentDiffFluxBip = 0.0;
+        double currentInverseLength = 0.0;
+        for ( int ic = 0; ic < currentNodesPerElem; ++ic ) {
+          const int offSetDnDx = ic*nDim; // single intg. point
+          const double nodesOnFace = p_c_is_a_face_node[ic];
+          const double scalarQIC = p_c_elem_scalarQ[ic];
+          for ( int j = 0; j < nDim; ++j ) {
+            const double nxj = p_cNx[j];
+            const double dndxj = p_c_dndx[offSetDnDx+j];
+            currentDiffFluxBip += dndxj*nxj*scalarQIC;
+            currentInverseLength += dndxj*nxj*nodesOnFace;
+          }
+        }
+
+        // opposing flux and inverse length scale
+        double opposingDiffFluxBip = 0.0;
+        double opposingInverseLength = 0.0;
+        for ( int ic = 0; ic < opposingNodesPerElem; ++ic ) {
+          const int offSetDnDx = ic*nDim; // single intg. point
+          const double nodesOnFace = p_o_is_a_face_node[ic];
+          const double scalarQIC = p_o_elem_scalarQ[ic];
+          for ( int j = 0; j < nDim; ++j ) {
+            const double nxj = p_oNx[j];
+            const double dndxj = p_o_dndx[offSetDnDx+j];
+            opposingDiffFluxBip += dndxj*nxj*scalarQIC;
+            opposingInverseLength += dndxj*nxj*nodesOnFace;
+          }
+        }
+
+        // current and opposing...
         double currentScalarQBip = 0.0;
         meFCCurrent->interpolatePoint(
           sizeOfScalarField,
@@ -295,29 +410,35 @@ AssembleScalarDiffNonConformalSolverAlgorithm::execute()
           &ws_o_face_scalarQ[0],
           &opposingScalarQBip);
 
-        double currentNcNormalFluxQBip = 0.0;
+        double currentDiffFluxCoeffBip = 0.0;
         meFCCurrent->interpolatePoint(
           sizeOfScalarField,
           &(dgInfo->currentIsoParCoords_[0]),
-          &ws_c_ncNormalFlux[0],
-          &currentNcNormalFluxQBip);
+          &ws_c_diffFluxCoeff[0],
+          &currentDiffFluxCoeffBip);
 
-        double opposingNcNormalFluxQBip = 0.0;
-        meFCOpposing->interpolatePoint(
+        double opposingDiffFluxCoeffBip = 0.0;
+        meFCCurrent->interpolatePoint(
           sizeOfScalarField,
           &(dgInfo->opposingIsoParCoords_[0]),
-          &ws_o_ncNormalFlux[0],
-          &opposingNcNormalFluxQBip);
+          &ws_o_diffFluxCoeff[0],
+          &opposingDiffFluxCoeffBip);
                 
+        // now total flux
+        currentDiffFluxBip *= -currentDiffFluxCoeffBip;
+        opposingDiffFluxBip *= -opposingDiffFluxCoeffBip;
+
         // zero lhs/rhs
         for ( int p = 0; p < lhsSize; ++p )
           p_lhs[p] = 0.0;
         for ( int p = 0; p < rhsSize; ++p )
           p_rhs[p] = 0.0;
 
-        // compute penalty; did not include mass flow rate
-        const double penaltyIp = 0.5*(currentLambdaBip + opposingLambdaBip);
-        const double ncDiffFlux =  robinStyle_ ? -opposingNcNormalFluxQBip : 0.5*(currentNcNormalFluxQBip - opposingNcNormalFluxQBip);
+        // compute penalty
+        const double penaltyIp = 0.5*(currentDiffFluxCoeffBip*currentInverseLength + opposingDiffFluxCoeffBip*opposingInverseLength);
+
+        // non conformal diffusive flux
+        const double ncDiffFlux =  robinStyle_ ? -opposingDiffFluxBip : 0.5*(currentDiffFluxBip - opposingDiffFluxBip);
        
         // form residual
         const int nn = currentGaussPointId;
@@ -327,14 +448,14 @@ AssembleScalarDiffNonConformalSolverAlgorithm::execute()
         const int rowR = nn*(currentNodesPerFace+opposingNodesPerFace);
         double lhsFac = penaltyIp*c_amag;
         
-        // sensitivities; current face; use general shape function for this single ip
+        // sensitivities; current face; use general shape function for this single ip (neglect diffusion)
         meFCCurrent->general_shape_fcn(1, &currentIsoParCoords[0], &ws_c_general_shape_function[0]);
         for ( int ic = 0; ic < currentNodesPerFace; ++ic ) {
           const double r = p_c_general_shape_function[ic];
           p_lhs[rowR+ic] += r*lhsFac;
         }
         
-        // sensitivities; opposing face; use general shape function for this single ip
+        // sensitivities; opposing face; use general shape function for this single ip (neglect diffusion)
         meFCOpposing->general_shape_fcn(1, &opposingIsoParCoords[0], &ws_o_general_shape_function[0]);
         for ( int ic = 0; ic < opposingNodesPerFace; ++ic ) {
           const double r = p_o_general_shape_function[ic];

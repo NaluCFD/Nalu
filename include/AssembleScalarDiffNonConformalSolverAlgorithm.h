@@ -32,15 +32,14 @@ public:
     stk::mesh::Part *part,
     EquationSystem *eqSystem,
     ScalarFieldType *scalarQ,
-    ScalarFieldType *ncNormalFlux,
-    ScalarFieldType *ncPenalty);
+    ScalarFieldType *diffFluxCoeff);
   virtual ~AssembleScalarDiffNonConformalSolverAlgorithm() {}
   virtual void initialize_connectivity();
   virtual void execute();
 
   ScalarFieldType *scalarQ_;
-  ScalarFieldType *ncNormalFlux_;
-  ScalarFieldType *ncPenalty_;
+  ScalarFieldType *diffFluxCoeff_;
+  VectorFieldType *coordinates_;
   GenericFieldType *exposedAreaVec_;
 
   // options that prevail over all algorithms created

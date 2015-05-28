@@ -11,6 +11,7 @@
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/Entity.hpp>
+#include <stk_topology/topology.hpp>
 
 namespace sierra{
 namespace nalu{
@@ -33,6 +34,7 @@ DgInfo::DgInfo(
   const int currentFaceOrdinal,
   MasterElement *meFCCurrent,
   MasterElement *meSCSCurrent,
+  stk::topology currentElementTopo,
   const int nDim)
   : parallelRank_(parallelRank),
     globalFaceId_(globalFaceId),
@@ -43,18 +45,16 @@ DgInfo::DgInfo(
     currentFaceOrdinal_(currentFaceOrdinal),
     meFCCurrent_(meFCCurrent),
     meSCSCurrent_(meSCSCurrent),
+    currentElementTopo_(currentElementTopo),
     nDim_(nDim),
-    opposingFace_(),
-    opposingElement_(),
-    opposingFaceOrdinal_(0),
     bestX_(1.0e16),
     opposingFaceIsGhosted_(0)
 {
   // resize internal vectors
   currentGaussPointCoords_.resize(nDim);
-  // isoPar coords have one size less than nDim
-  currentIsoParCoords_.resize(nDim-1);
-  opposingIsoParCoords_.resize(nDim-1);
+  // isoPar coords will map to full volume element
+  currentIsoParCoords_.resize(nDim);
+  opposingIsoParCoords_.resize(nDim);
 }
 
 //--------------------------------------------------------------------------

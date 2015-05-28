@@ -30,6 +30,9 @@
 #include <stk_search/CoarseSearch.hpp>
 #include <stk_search/IdentProc.hpp>
 
+// stk_topo
+#include <stk_topology/topology.hpp>
+
 // vector, pair and find
 #include <vector>
 #include <utility>
@@ -185,10 +188,10 @@ NonConformalInfo::construct_dgInfo_state()
     // extract connected element topology
     b.parent_topology(stk::topology::ELEMENT_RANK, parentTopo);
     ThrowAssert ( parentTopo.size() == 1 );
-    stk::topology theElemTopo = parentTopo[0];
+    stk::topology currentElemTopo = parentTopo[0];
 
     // volume and surface master element
-    MasterElement *meSCS = realm_.get_surface_master_element(theElemTopo);
+    MasterElement *meSCS = realm_.get_surface_master_element(currentElemTopo);
     MasterElement *meFC = realm_.get_surface_master_element(b.topology());
 
     // master element-specific values
@@ -256,7 +259,7 @@ NonConformalInfo::construct_dgInfo_state()
      
         // create data structure to hold this information; add currentIpNumber for later fast look-up
         DgInfo *dgInfo = new DgInfo(NaluEnv::self().parallel_rank(), globalFaceId, localGaussPointId, ip, 
-                                    face, element, currentFaceOrdinal, meFC, meSCS, nDim);
+                                    face, element, currentFaceOrdinal, meFC, meSCS, currentElemTopo, nDim);
 
         // extract isoparametric coords on current face from meFC
         const double *intgLoc = useShifted ? &meFC->intgLocShift_[0] : &meFC->intgLoc_[0];
@@ -353,7 +356,7 @@ NonConformalInfo::complete_search()
   VectorFieldType *coordinates = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
 
   std::vector<double> currentGaussPointCoords(nDim);
-  std::vector<double> opposingIsoParCoords(nDim-1);
+  std::vector<double> opposingIsoParCoords(nDim);
 
   // invert the process... Loop over dgInfoVec_ and query searchKeyPair_ for this information
   std::vector<DgInfo *> problemDgInfoVec;
@@ -462,6 +465,7 @@ NonConformalInfo::complete_search()
               const stk::topology theOpposingElementTopo = bulk_data.bucket(opposingElement).topology();
               MasterElement *meSCS = realm_.get_surface_master_element(theOpposingElementTopo);
               dgInfo->meSCSOpposing_ = meSCS;
+              dgInfo->opposingElementTopo_ = theOpposingElementTopo;
               dgInfo->opposingIsoParCoords_ = opposingIsoParCoords;
               dgInfo->bestX_ = nearestDistance;
               dgInfo->opposingFaceIsGhosted_ = opposingFaceIsGhosted;
@@ -577,8 +581,8 @@ NonConformalInfo::provide_diagnosis()
   std::vector<double> currentGaussPointCoords(nDim);
   std::vector<double> opposingGaussPointCoords(nDim);
  
-  std::vector<double> currentIsoParCoords(nDim-1);
-  std::vector<double> opposingIsoParCoords(nDim-1);
+  std::vector<double> currentIsoParCoords(nDim);
+  std::vector<double> opposingIsoParCoords(nDim);
 
   NaluEnv::self().naluOutput() << std::endl;
   NaluEnv::self().naluOutput() << "Non Conformal Alg review for surface: " << name_ << std::endl;
