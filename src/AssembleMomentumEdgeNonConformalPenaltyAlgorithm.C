@@ -54,15 +54,13 @@ AssembleMomentumEdgeNonConformalPenaltyAlgorithm::AssembleMomentumEdgeNonConform
     diffFluxCoeff_(diffFluxCoeff),
     dudx_(NULL),
     coordinates_(NULL),
-    exposedAreaVec_(NULL),
-    massFlowRate_(NULL)
+    exposedAreaVec_(NULL)
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   dudx_ = meta_data.get_field<GenericFieldType>(stk::topology::NODE_RANK, "dudx");
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   exposedAreaVec_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");
-  massFlowRate_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "nc_mass_flow_rate");
 }
 
 //--------------------------------------------------------------------------
@@ -129,7 +127,6 @@ AssembleMomentumEdgeNonConformalPenaltyAlgorithm::execute()
 
       // pointer to face data
       const double * areaVec = stk::mesh::field_data(*exposedAreaVec_, b, k);
-      const double * massFlowRate =  stk::mesh::field_data(*massFlowRate_, b, k);
 
       // extract the connected element to this exposed face; should be single in size!
       stk::mesh::Entity const * face_elem_rels = b.begin_elements(k);
@@ -232,11 +229,11 @@ AssembleMomentumEdgeNonConformalPenaltyAlgorithm::execute()
 
         // assemble the nodal quantities; scalar
         *ncArea += aMag;
-        *ncPenalty += diffFluxCoeffBip/charLength*aMag + std::abs(massFlowRate[ip])/2.0;
+        *ncPenalty += diffFluxCoeffBip/charLength*aMag;
 
         // vector
         for ( int i = 0; i < nDim; ++i ) {
-          ncNormalFlux[i] += massFlowRate[ip]*uNp1R[i] + p_fx[i];
+          ncNormalFlux[i] += p_fx[i];
         }
       }
     }

@@ -49,22 +49,19 @@ AssembleContinuityNonConformalPenaltyAlgorithm::AssembleContinuityNonConformalPe
     ncPenalty_(ncPenalty),
     ncArea_(ncArea),
     useShifted_(useShifted),
-    meshMotion_(realm_.has_mesh_motion() | realm_.has_mesh_deformation()),
-    meshVelocity_(NULL),
+    meshMotion_(realm_.does_mesh_move()),
+    velocityRTM_(NULL),
     density_(NULL),
-    velocity_(NULL),
     coordinates_(NULL),
     exposedAreaVec_(NULL)
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
-  // hold either mesh velocity or velocity in meshVelocity_ (avoids logic below)
-  if ( meshMotion_ )
-    meshVelocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_velocity");
+ if ( meshMotion_ )
+    velocityRTM_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity_rtm");
   else
-    meshVelocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
+    velocityRTM_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
   density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
-  velocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   exposedAreaVec_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");
 }
@@ -100,8 +97,6 @@ AssembleContinuityNonConformalPenaltyAlgorithm::execute()
   // nodal fields to gather
   std::vector<double> ws_coordinates;
   std::vector<double> ws_density;
-  std::vector<double> ws_velocity;
-  std::vector<double> ws_meshVelocity;
   std::vector<double> ws_vrtm;
 
   // master element
@@ -140,16 +135,12 @@ AssembleContinuityNonConformalPenaltyAlgorithm::execute()
    
     // face nodes
     ws_density.resize(nodesPerFace);
-    ws_velocity.resize(nDim*nodesPerFace);
-    ws_meshVelocity.resize(nDim*nodesPerFace);
     ws_vrtm.resize(nodesPerElement*nDim);
     ws_face_shape_function.resize(nodesPerFace*nodesPerFace);
   
     // pointers
     double *p_coordinates = &ws_coordinates[0];
     double *p_density = &ws_density[0];
-    double *p_velocity = &ws_velocity[0];    
-    double *p_meshVelocity = &ws_meshVelocity[0];
     double *p_vrtm = &ws_vrtm[0];
     double *p_face_shape_function = &ws_face_shape_function[0];
 
@@ -181,14 +172,10 @@ AssembleContinuityNonConformalPenaltyAlgorithm::execute()
         // gather scalars
         p_density[ni] = *stk::mesh::field_data(*density_, node);
         // gather vectors
-        const double * uNp1 = stk::mesh::field_data(*velocity_, node);
-        const double * vNp1 = stk::mesh::field_data(*meshVelocity_, node);
-
+        const double * vrtm = stk::mesh::field_data(*velocityRTM_, node);
         const int offSet = ni*nDim;
         for ( int j=0; j < nDim; ++j ) {
-          p_velocity[offSet+j] = uNp1[j];
-          p_vrtm[offSet+j] = uNp1[j];
-          p_meshVelocity[offSet+j] = vNp1[j];
+          p_vrtm[offSet+j] = vrtm[j];
         }
       }
       
@@ -215,14 +202,6 @@ AssembleContinuityNonConformalPenaltyAlgorithm::execute()
         const int offSet = ni*nDim;
         for ( int j=0; j < nDim; ++j ) {
           p_coordinates[offSet+j] = coords[j];
-        }
-      }
-
-      // manage velocity relative to mesh
-      if ( meshMotion_ ) {
-        const int kSize = num_face_nodes*nDim;
-        for ( int k = 0; k < kSize; ++k ) {
-          p_vrtm[k] -= p_meshVelocity[k];
         }
       }
 

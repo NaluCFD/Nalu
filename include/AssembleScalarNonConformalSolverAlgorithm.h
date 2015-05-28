@@ -33,8 +33,7 @@ public:
     EquationSystem *eqSystem,
     ScalarFieldType *scalarQ,
     ScalarFieldType *ncNormalFlux,
-    ScalarFieldType *ncPenalty,
-    const bool normalizeByTimeScale = false);
+    ScalarFieldType *ncPenalty);
   virtual ~AssembleScalarNonConformalSolverAlgorithm() {}
   virtual void initialize_connectivity();
   virtual void execute();
@@ -42,8 +41,8 @@ public:
   ScalarFieldType *scalarQ_;
   ScalarFieldType *ncNormalFlux_;
   ScalarFieldType *ncPenalty_;
-  const bool normalizeByTimeScale_;
   GenericFieldType *exposedAreaVec_;
+  GenericFieldType *ncMassFlowRate_;
 
   // options that prevail over all algorithms created
   bool robinStyle_;

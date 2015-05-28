@@ -7,7 +7,7 @@
 
 
 // nalu
-#include <AssembleMomentumNonConformalSolverAlgorithm.h>
+#include <AssembleScalarDiffNonConformalSolverAlgorithm.h>
 #include <EquationSystem.h>
 #include <DgInfo.h>
 #include <FieldTypeDef.h>
@@ -32,36 +32,34 @@ namespace nalu{
 //==========================================================================
 // Class Definition
 //==========================================================================
-// AssembleMomentumNonConformalSolverAlgorithm - lhs for NC bc (DG)
-//                                               used for both edge
-//                                               and element; WIP..
+// AssembleScalarDiffNonConformalSolverAlgorithm - lhs for NC bc (DG)
+//                                                     used for both edge
+//                                                     and element; WIP..
 //==========================================================================
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-AssembleMomentumNonConformalSolverAlgorithm::AssembleMomentumNonConformalSolverAlgorithm(
+AssembleScalarDiffNonConformalSolverAlgorithm::AssembleScalarDiffNonConformalSolverAlgorithm(
   Realm &realm,
   stk::mesh::Part *part,
   EquationSystem *eqSystem,
-  VectorFieldType *velocity,
-  VectorFieldType *ncNormalFlux,
+  ScalarFieldType *scalarQ,
+  ScalarFieldType *ncNormalFlux,
   ScalarFieldType *ncPenalty)
   : SolverAlgorithm(realm, part, eqSystem),
-    velocity_(velocity),
+    scalarQ_(scalarQ),
     ncNormalFlux_(ncNormalFlux),
     ncPenalty_(ncPenalty),
     exposedAreaVec_(NULL),
-    ncMassFlowRate_(NULL),
     robinStyle_(false),
     dsFactor_(1.0)
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   exposedAreaVec_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");  
-  ncMassFlowRate_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "nc_mass_flow_rate");
-
+ 
   // what do we need ghosted for this alg to work?
-  ghostFieldVec_.push_back(&(velocity_->field_of_state(stk::mesh::StateNP1)));
+  ghostFieldVec_.push_back(&(scalarQ_->field_of_state(stk::mesh::StateNP1)));
   ghostFieldVec_.push_back(ncNormalFlux_);
   ghostFieldVec_.push_back(ncPenalty_);
  
@@ -95,7 +93,7 @@ AssembleMomentumNonConformalSolverAlgorithm::AssembleMomentumNonConformalSolverA
 //-------- initialize_connectivity -----------------------------------------
 //--------------------------------------------------------------------------
 void
-AssembleMomentumNonConformalSolverAlgorithm::initialize_connectivity()
+AssembleScalarDiffNonConformalSolverAlgorithm::initialize_connectivity()
 {
   eqSystem_->linsys_->buildNonConformalNodeGraph(partVec_);
 }
@@ -104,7 +102,7 @@ AssembleMomentumNonConformalSolverAlgorithm::initialize_connectivity()
 //-------- execute ---------------------------------------------------------
 //--------------------------------------------------------------------------
 void
-AssembleMomentumNonConformalSolverAlgorithm::execute()
+AssembleScalarDiffNonConformalSolverAlgorithm::execute()
 {
 
   stk::mesh::BulkData & bulk_data = realm_.bulk_data();
@@ -123,12 +121,6 @@ AssembleMomentumNonConformalSolverAlgorithm::execute()
   std::vector<double> cNx(nDim);
   std::vector<double> oNx(nDim);
 
-  // c/o velocity and normal flux
-  std::vector<double> currentUBip(nDim);
-  std::vector<double> opposingUBip(nDim);
-  std::vector<double> currentNcNormalFluxBip(nDim);
-  std::vector<double> opposingNcNormalFluxBip(nDim);
-
   // interpolate nodal values to point-in-elem
   const int sizeOfScalarField = 1;
   const int sizeOfVectorField = nDim;
@@ -138,8 +130,8 @@ AssembleMomentumNonConformalSolverAlgorithm::execute()
   double *p_oNx = &oNx[0];
 
   // nodal fields to gather
-  std::vector<double> ws_c_face_velocity;
-  std::vector<double> ws_o_face_velocity;
+  std::vector<double> ws_c_face_scalarQ;
+  std::vector<double> ws_o_face_scalarQ;
   std::vector<double> ws_c_ncNormalFlux;
   std::vector<double> ws_o_ncNormalFlux;
   std::vector<double> ws_c_ncPenalty;
@@ -149,7 +141,7 @@ AssembleMomentumNonConformalSolverAlgorithm::execute()
   std::vector <double > ws_o_general_shape_function;
 
   // deal with state
-  VectorFieldType &velocityNp1 = velocity_->field_of_state(stk::mesh::StateNP1);
+  ScalarFieldType &scalarQNp1 = scalarQ_->field_of_state(stk::mesh::StateNP1);
 
   // parallel communicate ghosted entities
   if ( NULL != realm_.nonConformalManager_->nonConformalGhosting_ )
@@ -193,8 +185,8 @@ AssembleMomentumNonConformalSolverAlgorithm::execute()
         const int opposingNodesPerFace = meFCOpposing->nodesPerElement_;
         
         // resize some things; matrix related
-        const int lhsSize = (currentNodesPerFace+opposingNodesPerFace)*nDim*(currentNodesPerFace+opposingNodesPerFace)*nDim;
-        const int rhsSize = (currentNodesPerFace+opposingNodesPerFace)*nDim;
+        const int lhsSize = (currentNodesPerFace+opposingNodesPerFace)*(currentNodesPerFace+opposingNodesPerFace);
+        const int rhsSize = currentNodesPerFace+opposingNodesPerFace;
         lhs.resize(lhsSize);
         rhs.resize(rhsSize);
         connected_nodes.resize(currentNodesPerFace+opposingNodesPerFace);
@@ -202,10 +194,10 @@ AssembleMomentumNonConformalSolverAlgorithm::execute()
         // algorithm related; element (n/a)
         
         // algorithm related; face
-        ws_c_face_velocity.resize(currentNodesPerFace*nDim);
-        ws_o_face_velocity.resize(opposingNodesPerFace*nDim);
-        ws_c_ncNormalFlux.resize(currentNodesPerFace*nDim);
-        ws_o_ncNormalFlux.resize(opposingNodesPerFace*nDim);
+        ws_c_face_scalarQ.resize(currentNodesPerFace);
+        ws_o_face_scalarQ.resize(opposingNodesPerFace);
+        ws_c_ncNormalFlux.resize(currentNodesPerFace);
+        ws_o_ncNormalFlux.resize(opposingNodesPerFace);
         ws_c_ncPenalty.resize(currentNodesPerFace);
         ws_o_ncPenalty.resize(opposingNodesPerFace);
         ws_c_general_shape_function.resize(currentNodesPerFace);
@@ -215,8 +207,8 @@ AssembleMomentumNonConformalSolverAlgorithm::execute()
         double *p_lhs = &lhs[0];
         double *p_rhs = &rhs[0];
         
-        double *p_c_face_velocity = &ws_c_face_velocity[0];
-        double *p_o_face_velocity = &ws_o_face_velocity[0];
+        double *p_c_face_scalarQ = &ws_c_face_scalarQ[0];
+        double *p_o_face_scalarQ = &ws_o_face_scalarQ[0];
         double *p_c_ncNormalFlux = &ws_c_ncNormalFlux[0];
         double *p_o_ncNormalFlux = &ws_o_ncNormalFlux[0];
         double *p_c_ncPenalty = &ws_c_ncPenalty[0];
@@ -233,16 +225,10 @@ AssembleMomentumNonConformalSolverAlgorithm::execute()
           stk::mesh::Entity node = current_face_node_rels[ni];
           // set connected nodes
           connected_nodes[ni] = node;
-          // gather; scalar
+          // gather...
+          p_c_face_scalarQ[ni] = *stk::mesh::field_data(scalarQNp1, node);
+          p_c_ncNormalFlux[ni] = *stk::mesh::field_data(*ncNormalFlux_, node);
           p_c_ncPenalty[ni] = *stk::mesh::field_data(*ncPenalty_, node);
-          // gather; vector
-          const double *uNp1 = stk::mesh::field_data(velocityNp1, node );
-          const double *ncNormalFlux = stk::mesh::field_data(*ncNormalFlux_, node );
-          for ( int i = 0; i < nDim; ++i ) {
-            const int offSet = i*current_num_face_nodes + ni;        
-            p_c_face_velocity[offSet] = uNp1[i];
-            p_c_ncNormalFlux[offSet] = ncNormalFlux[i];
-          }
         }
         
         // gather opposing face data; sneak in second of connected nodes
@@ -252,23 +238,16 @@ AssembleMomentumNonConformalSolverAlgorithm::execute()
           stk::mesh::Entity node = opposing_face_node_rels[ni];
           // set connected nodes
           connected_nodes[ni+current_num_face_nodes] = node;
-          // gather; scalar
+          // gather...
+          p_o_face_scalarQ[ni] = *stk::mesh::field_data(scalarQNp1, node);
+          p_o_ncNormalFlux[ni] = *stk::mesh::field_data(*ncNormalFlux_, node);
           p_o_ncPenalty[ni] = *stk::mesh::field_data(*ncPenalty_, node);
-          // gather; vector
-          const double *uNp1 = stk::mesh::field_data(velocityNp1, node );
-          const double *ncNormalFlux = stk::mesh::field_data(*ncNormalFlux_, node );
-          for ( int i = 0; i < nDim; ++i ) {
-            const int offSet = i*opposing_num_face_nodes + ni;        
-            p_o_face_velocity[offSet] = uNp1[i];
-            p_o_ncNormalFlux[offSet] = ncNormalFlux[i];
-          }
         }
         
         // pointer to face data
         const double * c_areaVec = stk::mesh::field_data(*exposedAreaVec_, currentFace);
         const double * o_areaVec = stk::mesh::field_data(*exposedAreaVec_, opposingFace);
-        const double * ncMassFlowRate = stk::mesh::field_data(*ncMassFlowRate_, currentFace);
-        
+       
         double c_amag = 0.0;
         double o_amag = 0.0;
         for ( int j = 0; j < nDim; ++j ) {
@@ -302,29 +281,33 @@ AssembleMomentumNonConformalSolverAlgorithm::execute()
           &ws_o_ncPenalty[0],
           &opposingLambdaBip);
         
+        double currentScalarQBip = 0.0;
         meFCCurrent->interpolatePoint(
-          sizeOfVectorField,
+          sizeOfScalarField,
           &(dgInfo->currentIsoParCoords_[0]),
-          &ws_c_face_velocity[0],
-          &currentUBip[0]);
+          &ws_c_face_scalarQ[0],
+          &currentScalarQBip);
         
+        double opposingScalarQBip = 0.0;
         meFCOpposing->interpolatePoint(
-          sizeOfVectorField,
+          sizeOfScalarField,
           &(dgInfo->opposingIsoParCoords_[0]),
-          &ws_o_face_velocity[0],
-          &opposingUBip[0]);
+          &ws_o_face_scalarQ[0],
+          &opposingScalarQBip);
 
+        double currentNcNormalFluxQBip = 0.0;
         meFCCurrent->interpolatePoint(
-          sizeOfVectorField,
+          sizeOfScalarField,
           &(dgInfo->currentIsoParCoords_[0]),
           &ws_c_ncNormalFlux[0],
-          &currentNcNormalFluxBip[0]);
+          &currentNcNormalFluxQBip);
 
+        double opposingNcNormalFluxQBip = 0.0;
         meFCOpposing->interpolatePoint(
-          sizeOfVectorField,
+          sizeOfScalarField,
           &(dgInfo->opposingIsoParCoords_[0]),
           &ws_o_ncNormalFlux[0],
-          &opposingNcNormalFluxBip[0]);
+          &opposingNcNormalFluxQBip);
                 
         // zero lhs/rhs
         for ( int p = 0; p < lhsSize; ++p )
@@ -333,40 +316,31 @@ AssembleMomentumNonConformalSolverAlgorithm::execute()
           p_rhs[p] = 0.0;
 
         // compute penalty; did not include mass flow rate
-        const double penaltyIp = 0.5*(currentLambdaBip + opposingLambdaBip) + std::abs(ncMassFlowRate[currentGaussPointId])/2.0;
-
-        for ( int i = 0; i < nDim; ++i ) {
-         
-          // construct diffusive flux and advection
-          const double ncDiffFlux =  robinStyle_ ? -opposingNcNormalFluxBip[i] 
-            : 0.5*(currentNcNormalFluxBip[i] - opposingNcNormalFluxBip[i]);
-          const double ncAdv = robinStyle_ ? ncMassFlowRate[currentGaussPointId]*opposingUBip[i] 
-            : 0.5*ncMassFlowRate[currentGaussPointId]*(currentUBip[i] + opposingUBip[i]);
-         
-          // assemble residual; form proper rhs index for current face assembly
-          const int indexR = currentGaussPointId*nDim + i;
-          p_rhs[indexR] -= ((dsFactor_*ncDiffFlux + penaltyIp*(currentUBip[i]-opposingUBip[i]))*c_amag + ncAdv);
-
-          // set-up row for matrix
-          const int rowR = indexR*(currentNodesPerFace+opposingNodesPerFace)*nDim;
+        const double penaltyIp = 0.5*(currentLambdaBip + opposingLambdaBip);
+        const double ncDiffFlux =  robinStyle_ ? -opposingNcNormalFluxQBip : 0.5*(currentNcNormalFluxQBip - opposingNcNormalFluxQBip);
+       
+        // form residual
+        const int nn = currentGaussPointId;
+        p_rhs[nn] -= (dsFactor_*ncDiffFlux + penaltyIp*(currentScalarQBip-opposingScalarQBip))*c_amag;
         
-          // sensitivities; current face; use general shape function for this single ip
-          double lhsFac = penaltyIp*c_amag;
-          meFCCurrent->general_shape_fcn(1, &currentIsoParCoords[0], &ws_c_general_shape_function[0]);
-          for ( int ic = 0; ic < currentNodesPerFace; ++ic ) {
-            const double r = p_c_general_shape_function[ic];
-            const int nn = ic; // check this...
-            p_lhs[rowR+nn*nDim+i] += r*lhsFac;
-          }
+        // set-up row for matrix
+        const int rowR = nn*(currentNodesPerFace+opposingNodesPerFace);
+        double lhsFac = penaltyIp*c_amag;
         
-          // sensitivities; opposing face; use general shape function for this single ip
-          meFCOpposing->general_shape_fcn(1, &opposingIsoParCoords[0], &ws_o_general_shape_function[0]);
-          for ( int ic = 0; ic < opposingNodesPerFace; ++ic ) {
-            const double r = p_o_general_shape_function[ic];
-            const int nn = ic + currentNodesPerFace;
-            p_lhs[rowR+nn*nDim+i] -= r*lhsFac;
-          }          
+        // sensitivities; current face; use general shape function for this single ip
+        meFCCurrent->general_shape_fcn(1, &currentIsoParCoords[0], &ws_c_general_shape_function[0]);
+        for ( int ic = 0; ic < currentNodesPerFace; ++ic ) {
+          const double r = p_c_general_shape_function[ic];
+          p_lhs[rowR+ic] += r*lhsFac;
         }
+        
+        // sensitivities; opposing face; use general shape function for this single ip
+        meFCOpposing->general_shape_fcn(1, &opposingIsoParCoords[0], &ws_o_general_shape_function[0]);
+        for ( int ic = 0; ic < opposingNodesPerFace; ++ic ) {
+          const double r = p_o_general_shape_function[ic];
+          p_lhs[rowR+ic+currentNodesPerFace] -= r*lhsFac;
+        }
+        
         apply_coeff(connected_nodes, rhs, lhs, __FILE__);
       }
     }

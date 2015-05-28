@@ -46,7 +46,6 @@ public:
 
   VectorFieldType *coordinates_;
   GenericFieldType *exposedAreaVec_;
-  GenericFieldType *massFlowRate_;
 };
 
 } // namespace nalu

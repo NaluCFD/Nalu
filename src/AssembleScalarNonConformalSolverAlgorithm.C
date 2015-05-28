@@ -45,20 +45,20 @@ AssembleScalarNonConformalSolverAlgorithm::AssembleScalarNonConformalSolverAlgor
   EquationSystem *eqSystem,
   ScalarFieldType *scalarQ,
   ScalarFieldType *ncNormalFlux,
-  ScalarFieldType *ncPenalty,
-  const bool normalizeByTimeScale)
+  ScalarFieldType *ncPenalty)
   : SolverAlgorithm(realm, part, eqSystem),
     scalarQ_(scalarQ),
     ncNormalFlux_(ncNormalFlux),
     ncPenalty_(ncPenalty),
-    normalizeByTimeScale_(normalizeByTimeScale),
     exposedAreaVec_(NULL),
+    ncMassFlowRate_(NULL),
     robinStyle_(false),
     dsFactor_(1.0)
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   exposedAreaVec_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");  
+  ncMassFlowRate_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "nc_mass_flow_rate");
 
   // what do we need ghosted for this alg to work?
   ghostFieldVec_.push_back(&(scalarQ_->field_of_state(stk::mesh::StateNP1)));
@@ -111,14 +111,6 @@ AssembleScalarNonConformalSolverAlgorithm::execute()
   stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const int nDim = meta_data.spatial_dimension();
-
-  // this class serves both scalars and the continuity equation
-  double scalingFactor = 1.0;
-  if ( normalizeByTimeScale_ ) {
-    const double dt = realm_.get_time_step();
-    const double gamma1 = realm_.get_gamma1();
-    scalingFactor = dt/gamma1;
-  }
 
   // space for LHS/RHS; nodesPerElem*nodesPerElem and nodesPerElem
   std::vector<double> lhs;
@@ -257,7 +249,8 @@ AssembleScalarNonConformalSolverAlgorithm::execute()
         // pointer to face data
         const double * c_areaVec = stk::mesh::field_data(*exposedAreaVec_, currentFace);
         const double * o_areaVec = stk::mesh::field_data(*exposedAreaVec_, opposingFace);
-        
+        const double * ncMassFlowRate = stk::mesh::field_data(*ncMassFlowRate_, currentFace);
+       
         double c_amag = 0.0;
         double o_amag = 0.0;
         for ( int j = 0; j < nDim; ++j ) {
@@ -324,18 +317,20 @@ AssembleScalarNonConformalSolverAlgorithm::execute()
           p_lhs[p] = 0.0;
         for ( int p = 0; p < rhsSize; ++p )
           p_rhs[p] = 0.0;
-                
-        const double penaltyIp = 0.5*(currentLambdaBip + opposingLambdaBip);
-        const double ncFlux =  robinStyle_ ? -opposingNcNormalFluxQBip : 0.5*(currentNcNormalFluxQBip - opposingNcNormalFluxQBip);
-        const double totalFlux = dsFactor_*ncFlux + penaltyIp*(currentScalarQBip-opposingScalarQBip);
-        
+
+        // compute penalty; did not include mass flow rate
+        const double penaltyIp = 0.5*(currentLambdaBip + opposingLambdaBip) + std::abs(ncMassFlowRate[currentGaussPointId])/2.0;
+        const double ncDiffFlux =  robinStyle_ ? -opposingNcNormalFluxQBip : 0.5*(currentNcNormalFluxQBip - opposingNcNormalFluxQBip);
+        const double ncAdv = robinStyle_ ? ncMassFlowRate[currentGaussPointId]*opposingScalarQBip 
+          : 0.5*ncMassFlowRate[currentGaussPointId]*(currentScalarQBip + opposingScalarQBip);
+       
         // form residual
         const int nn = currentGaussPointId;
-        p_rhs[nn] -= totalFlux*c_amag/scalingFactor;
+        p_rhs[nn] -= ((dsFactor_*ncDiffFlux + penaltyIp*(currentScalarQBip-opposingScalarQBip))*c_amag + ncAdv);
 
         // set-up row for matrix
         const int rowR = nn*(currentNodesPerFace+opposingNodesPerFace);
-        double lhsFac = penaltyIp*c_amag/scalingFactor;
+        double lhsFac = penaltyIp*c_amag;
         
         // sensitivities; current face; use general shape function for this single ip
         meFCCurrent->general_shape_fcn(1, &currentIsoParCoords[0], &ws_c_general_shape_function[0]);

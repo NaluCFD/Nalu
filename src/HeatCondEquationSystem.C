@@ -13,7 +13,7 @@
 #include <AssembleScalarEdgeDiffSolverAlgorithm.h>
 #include <AssembleScalarElemDiffSolverAlgorithm.h>
 #include <AssembleScalarEdgeDiffContactSolverAlgorithm.h>
-#include <AssembleScalarNonConformalSolverAlgorithm.h>
+#include <AssembleScalarDiffNonConformalSolverAlgorithm.h>
 #include <AssembleScalarFluxBCSolverAlgorithm.h>
 #include <AssembleNodalGradAlgorithmDriver.h>
 #include <AssembleNodalGradEdgeAlgorithm.h>
@@ -812,9 +812,9 @@ HeatCondEquationSystem::register_non_conformal_bc(
   std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi =
     solverAlgDriver_->solverAlgMap_.find(algType);
   if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
-    AssembleScalarNonConformalSolverAlgorithm *theAlg
-      = new AssembleScalarNonConformalSolverAlgorithm(realm_, part, this, 
-                                                      temperature_, ncNormalFlux, ncPenalty);
+    AssembleScalarDiffNonConformalSolverAlgorithm *theAlg
+      = new AssembleScalarDiffNonConformalSolverAlgorithm(realm_, part, this, 
+                                                          temperature_, ncNormalFlux, ncPenalty);
     solverAlgDriver_->solverAlgMap_[algType] = theAlg;
   }
   else {
