@@ -6,47 +6,48 @@
 /*------------------------------------------------------------------------*/
 
 
-#ifndef AssembleNonConformalEdgeDiffPenaltyAlgorithm_h
-#define AssembleNonConformalEdgeDiffPenaltyAlgorithm_h
+#ifndef AssembleScalarDiffNonConformalSolverAlgorithm_h
+#define AssembleScalarDiffNonConformalSolverAlgorithm_h
 
-#include<Algorithm.h>
+#include<SolverAlgorithm.h>
 #include<FieldTypeDef.h>
 
-// stk
-#include <stk_mesh/base/Part.hpp>
+namespace stk {
+namespace mesh {
+class Part;
+}
+}
 
 namespace sierra{
 namespace nalu{
 
 class Realm;
 
-class AssembleNonConformalEdgeDiffPenaltyAlgorithm : public Algorithm
+class AssembleScalarDiffNonConformalSolverAlgorithm : public SolverAlgorithm
 {
 public:
 
-  AssembleNonConformalEdgeDiffPenaltyAlgorithm(
+  AssembleScalarDiffNonConformalSolverAlgorithm(
     Realm &realm,
     stk::mesh::Part *part,
+    EquationSystem *eqSystem,
     ScalarFieldType *scalarQ,
-    VectorFieldType *GjQ,
-    ScalarFieldType *ncNormalFlux,
-    ScalarFieldType *ncPenalty,
-    ScalarFieldType *ncArea,
     ScalarFieldType *diffFluxCoeff);
-  ~AssembleNonConformalEdgeDiffPenaltyAlgorithm();
+  virtual ~AssembleScalarDiffNonConformalSolverAlgorithm() {}
+  virtual void initialize_connectivity();
+  virtual void execute();
 
-  void execute();
- 
   ScalarFieldType *scalarQ_;
-  VectorFieldType *GjQ_;
-  ScalarFieldType *ncNormalFlux_;
-  ScalarFieldType *ncPenalty_;
-  ScalarFieldType *ncArea_;
   ScalarFieldType *diffFluxCoeff_;
-
   VectorFieldType *coordinates_;
   GenericFieldType *exposedAreaVec_;
-  
+
+  // options that prevail over all algorithms created
+  bool robinStyle_;
+  double dsFactor_;
+
+  std::vector< const stk::mesh::FieldBase *> ghostFieldVec_;
+
 };
 
 } // namespace nalu

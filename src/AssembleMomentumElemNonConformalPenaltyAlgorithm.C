@@ -53,14 +53,12 @@ AssembleMomentumElemNonConformalPenaltyAlgorithm::AssembleMomentumElemNonConform
     ncArea_(ncArea),
     diffFluxCoeff_(diffFluxCoeff),
     coordinates_(NULL),
-    exposedAreaVec_(NULL),
-    massFlowRate_(NULL)
+    exposedAreaVec_(NULL)
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   exposedAreaVec_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");
-  massFlowRate_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "nc_mass_flow_rate");
 }
 
 //--------------------------------------------------------------------------
@@ -140,7 +138,6 @@ AssembleMomentumElemNonConformalPenaltyAlgorithm::execute()
 
       // pointer to face data
       const double * areaVec = stk::mesh::field_data(*exposedAreaVec_, b, k);
-      const double * massFlowRate =  stk::mesh::field_data(*massFlowRate_, b, k);
 
       //======================================
       // gather nodal data off of face
@@ -206,14 +203,10 @@ AssembleMomentumElemNonConformalPenaltyAlgorithm::execute()
 
         // interpolate to bip
         double diffFluxCoeffBip = 0.0;
-        double velocityBip[3] = {0.0,0.0,0.0};
         for ( int ic = 0; ic < nodesPerFace; ++ic ) {
           const double r = p_face_shape_function[offSetSF_face+ic];
           diffFluxCoeffBip += r*p_diffFluxCoeff[ic];
           const int nn = face_node_ordinals[ic];
-          const int offSetEN = nn*nDim;
-          for ( int j = 0; j < nDim; ++j )
-            velocityBip[j] += r*p_velocity[offSetEN+j];
         }
 
         // characteristic length and aMag
@@ -260,11 +253,11 @@ AssembleMomentumElemNonConformalPenaltyAlgorithm::execute()
 
         // assemble the nodal quantities; scalar
         *ncArea += aMag;
-        *ncPenalty += diffFluxCoeffBip/charLength*aMag + std::abs(massFlowRate[ip])/2.0;
+        *ncPenalty += diffFluxCoeffBip/charLength*aMag;
 
         // vector
         for ( int i = 0; i < nDim; ++i ) {
-          ncNormalFlux[i] += massFlowRate[ip]*velocityBip[i] + tauijaj[i];
+          ncNormalFlux[i] += tauijaj[i];
         }
       }
     }

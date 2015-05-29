@@ -6,8 +6,8 @@
 /*------------------------------------------------------------------------*/
 
 
-#ifndef AssembleMomentumNonConformalSolverAlgorithm_h
-#define AssembleMomentumNonConformalSolverAlgorithm_h
+#ifndef AssembleContinuityNonConformalSolverAlgorithm_h
+#define AssembleContinuityNonConformalSolverAlgorithm_h
 
 #include<SolverAlgorithm.h>
 #include<FieldTypeDef.h>
@@ -23,27 +23,28 @@ namespace nalu{
 
 class Realm;
 
-class AssembleMomentumNonConformalSolverAlgorithm : public SolverAlgorithm
+class AssembleContinuityNonConformalSolverAlgorithm : public SolverAlgorithm
 {
 public:
 
-  AssembleMomentumNonConformalSolverAlgorithm(
+  AssembleContinuityNonConformalSolverAlgorithm(
     Realm &realm,
     stk::mesh::Part *part,
     EquationSystem *eqSystem,
-    VectorFieldType *velocity,
-    VectorFieldType *ncNormalFlux,
+    ScalarFieldType *pressure,
     ScalarFieldType *ncPenalty);
-  virtual ~AssembleMomentumNonConformalSolverAlgorithm() {}
+  virtual ~AssembleContinuityNonConformalSolverAlgorithm() {}
   virtual void initialize_connectivity();
   virtual void execute();
 
-  VectorFieldType *velocity_;
-  VectorFieldType *ncNormalFlux_;
+  ScalarFieldType *pressure_;
   ScalarFieldType *ncPenalty_;
+  VectorFieldType *velocityRTM_;
+  ScalarFieldType *density_;
   GenericFieldType *exposedAreaVec_;
-  GenericFieldType *ncMassFlowRate_;
-
+ 
+  const bool meshMotion_;
+  
   // options that prevail over all algorithms created
   bool robinStyle_;
   double dsFactor_;

@@ -108,6 +108,22 @@ public:
     double *shpfc) {
     throw std::runtime_error("general_shape_fcn not implement"); }
 
+  virtual void general_face_grad_op(
+    const int face_ordinal,
+    const double *isoParCoord,
+    const double *coords,
+    double *gradop,
+    double *det_j,
+    double * error ) {
+    throw std::runtime_error("general_face_grad_op not implemented");}
+
+  virtual void sidePcoords_to_elemPcoords(
+    const int & side_ordinal,
+    const int & npoints,
+    const double *side_pcoords,
+    double *elem_pcoords) {
+    throw std::runtime_error("sidePcoords_to_elemPcoords");}
+
   virtual const int * faceNodeOnExtrudedElem() {
     throw std::runtime_error("faceNodeOnExtrudedElem not implement"); }
 
@@ -545,13 +561,26 @@ public:
     const double *isoParCoord,
     double *shpfc);
 
+  void general_face_grad_op(
+    const int face_ordinal,
+    const double *isoParCoord,
+    const double *coords,
+    double *gradop,
+    double *det_j,
+    double * error );
+
+  void sidePcoords_to_elemPcoords(
+    const int & side_ordinal,
+    const int & npoints,
+    const double *side_pcoords,
+    double *elem_pcoords);
+
   // extrusion data structure access
   const int * faceNodeOnExtrudedElem();
   const int * opposingNodeOnExtrudedElem();
   const int * faceScsIpOnExtrudedElem();
   const int * faceScsIpOnFaceEdges();
   const double * edgeAlignedArea();
-  
 };
 
 // 2D Tri 3 subcontrol volume

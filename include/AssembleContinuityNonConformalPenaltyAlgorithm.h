@@ -41,12 +41,10 @@ public:
   const bool useShifted_;
   const bool meshMotion_;
 
-  VectorFieldType *meshVelocity_;
+  VectorFieldType *velocityRTM_;
   ScalarFieldType *density_;
-  VectorFieldType *velocity_;
   VectorFieldType *coordinates_;
-  GenericFieldType *exposedAreaVec_;
-  
+  GenericFieldType *exposedAreaVec_;  
 };
 
 } // namespace nalu

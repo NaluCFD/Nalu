@@ -32,7 +32,7 @@ namespace nalu{
 //==========================================================================
 // Class Definition
 //==========================================================================
-// AssembleScalarEdgeNonConformalPenaltyAlgorithm - nodal lambda, flux
+// AssembleScalarEdgeNonConformalPenaltyAlgorithm - nodal lambda, diff flux
 //==========================================================================
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
@@ -54,14 +54,12 @@ AssembleScalarEdgeNonConformalPenaltyAlgorithm::AssembleScalarEdgeNonConformalPe
     ncArea_(ncArea),
     diffFluxCoeff_(diffFluxCoeff),
     coordinates_(NULL),
-    exposedAreaVec_(NULL),
-    massFlowRate_(NULL)
+    exposedAreaVec_(NULL)
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   exposedAreaVec_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");
-  massFlowRate_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "nc_mass_flow_rate");
 }
 
 //--------------------------------------------------------------------------
@@ -111,8 +109,7 @@ AssembleScalarEdgeNonConformalPenaltyAlgorithm::execute()
 
       // pointer to face data
       const double * areaVec = stk::mesh::field_data(*exposedAreaVec_, b, k);
-      const double * massFlowRate =  stk::mesh::field_data(*massFlowRate_, b, k);
-
+     
       // extract the connected element to this exposed face; should be single in size!
       stk::mesh::Entity const * face_elem_rels = b.begin_elements(k);
       ThrowAssert( b.num_elements(k) == 1 );
@@ -177,8 +174,8 @@ AssembleScalarEdgeNonConformalPenaltyAlgorithm::execute()
         charLength = std::sqrt(charLength);
                 
         // assemble the nodal quantities
-        *ncNormalFlux += massFlowRate[ip]*scalarQR -diffFluxCoeffR*(scalarQR-scalarQL)*asq*inv_axdx + nonOrth;
-        *ncPenalty += diffFluxCoeffR/charLength*aMag + std::abs(massFlowRate[ip])/2.0;
+        *ncNormalFlux += -diffFluxCoeffR*(scalarQR-scalarQL)*asq*inv_axdx + nonOrth;
+        *ncPenalty += diffFluxCoeffR/charLength*aMag;
         *ncArea += aMag;
       }
     }

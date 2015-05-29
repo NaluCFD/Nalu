@@ -15,7 +15,7 @@
 #include <AssembleContinuityEdgeContactSolverAlgorithm.h>
 #include <AssembleContinuityEdgeOpenSolverAlgorithm.h>
 #include <AssembleContinuityElemOpenSolverAlgorithm.h>
-#include <AssembleScalarNonConformalSolverAlgorithm.h>
+#include <AssembleContinuityNonConformalSolverAlgorithm.h>
 #include <AssembleContinuityNonConformalPenaltyAlgorithm.h>
 #include <AssembleMomentumEdgeSolverAlgorithm.h>
 #include <AssembleMomentumElemSolverAlgorithm.h>
@@ -2290,7 +2290,7 @@ ContinuityEquationSystem::register_non_conformal_bc(
     computeMdotAlgDriver_->algMap_.find(algType);
   if ( itm == computeMdotAlgDriver_->algMap_.end() ) {
     ComputeMdotNonConformalAlgorithm *theAlg
-      = new ComputeMdotNonConformalAlgorithm(realm_, part, pressure_, ncNormalFlux, ncPenalty);
+      = new ComputeMdotNonConformalAlgorithm(realm_, part, pressure_, ncPenalty);
     computeMdotAlgDriver_->algMap_[algType] = theAlg;
   }
   else {
@@ -2301,10 +2301,8 @@ ContinuityEquationSystem::register_non_conformal_bc(
   std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi =
     solverAlgDriver_->solverAlgMap_.find(algType);
   if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
-    const bool normalizeByTimeScale = true; // continuity equation is normalized by projection time scale
-    AssembleScalarNonConformalSolverAlgorithm *theAlg
-      = new AssembleScalarNonConformalSolverAlgorithm(realm_, part, this, 
-                                                      pressure_, ncNormalFlux, ncPenalty, normalizeByTimeScale);
+    AssembleContinuityNonConformalSolverAlgorithm *theAlg
+      = new AssembleContinuityNonConformalSolverAlgorithm(realm_, part, this, pressure_, ncPenalty);
     solverAlgDriver_->solverAlgMap_[algType] = theAlg;
   }
   else {

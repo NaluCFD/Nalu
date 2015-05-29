@@ -28,7 +28,6 @@ public:
     Realm &realm,
     stk::mesh::Part *part,
     ScalarFieldType *pressure,
-    ScalarFieldType *ncNormalFlux,
     ScalarFieldType *ncPenalty);
 
   ~ComputeMdotNonConformalAlgorithm();
@@ -36,12 +35,14 @@ public:
   void execute();
 
   ScalarFieldType *pressure_;
-  ScalarFieldType *ncNormalFlux_;
   ScalarFieldType *ncPenalty_;
-  
+  VectorFieldType *velocityRTM_;
+  ScalarFieldType *density_;
   GenericFieldType *exposedAreaVec_;
   GenericFieldType *ncMassFlowRate_;
 
+  const bool meshMotion_;
+  
   std::vector< const stk::mesh::FieldBase *> ghostFieldVec_;
 
 };
