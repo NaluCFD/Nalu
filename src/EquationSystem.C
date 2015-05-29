@@ -8,7 +8,6 @@
 
 #include <EquationSystem.h>
 #include <AuxFunctionAlgorithm.h>
-#include <AssembleNonConformalAlgorithmDriver.h>
 #include <SolverAlgorithmDriver.h>
 #include <InitialConditions.h>
 #include <Realm.h>
@@ -47,8 +46,7 @@ EquationSystem::EquationSystem(
     nonLinearIterationCount_(0),
     reportLinearIterations_(false),
     edgeNodalGradient_(realm_.realmUsesEdges_),
-    linsys_(NULL),
-    assembleNonConformalAlgDriver_(NULL)
+    linsys_(NULL)
 {
   // nothing to do
 }
@@ -74,9 +72,6 @@ EquationSystem::~EquationSystem()
 
   for( iim=copyStateAlg_.begin(); iim!=copyStateAlg_.end(); ++iim )
     delete *iim;
-
-  if ( NULL != assembleNonConformalAlgDriver_ )
-    delete assembleNonConformalAlgDriver_;
 }
 
 //--------------------------------------------------------------------------
@@ -260,16 +255,6 @@ EquationSystem::assemble_and_solve(
   if ( error > 0 )
     NaluEnv::self().naluOutputP0() << "Error in " << name_ << "::solve_and_update()  " << std::endl;
   
-}
-
-//--------------------------------------------------------------------------
-//-------- assemble_non_conformal ------------------------------------------
-//--------------------------------------------------------------------------
-void
-EquationSystem::assemble_non_conformal()
-{
-  if ( NULL != assembleNonConformalAlgDriver_ )
-    assembleNonConformalAlgDriver_->execute();
 }
 
 //--------------------------------------------------------------------------

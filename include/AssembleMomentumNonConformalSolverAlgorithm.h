@@ -32,21 +32,22 @@ public:
     stk::mesh::Part *part,
     EquationSystem *eqSystem,
     VectorFieldType *velocity,
-    VectorFieldType *ncNormalFlux,
-    ScalarFieldType *ncPenalty);
+    ScalarFieldType *diffFluxCoeff);
   virtual ~AssembleMomentumNonConformalSolverAlgorithm() {}
   virtual void initialize_connectivity();
   virtual void execute();
 
   VectorFieldType *velocity_;
-  VectorFieldType *ncNormalFlux_;
-  ScalarFieldType *ncPenalty_;
+  ScalarFieldType *diffFluxCoeff_;
+  VectorFieldType *coordinates_;
   GenericFieldType *exposedAreaVec_;
   GenericFieldType *ncMassFlowRate_;
 
   // options that prevail over all algorithms created
   bool robinStyle_;
   double dsFactor_;
+
+  const double includeDivU_;
 
   std::vector< const stk::mesh::FieldBase *> ghostFieldVec_;
 

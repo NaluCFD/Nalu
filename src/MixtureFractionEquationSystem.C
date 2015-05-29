@@ -21,9 +21,6 @@
 #include <AssembleNodalGradEdgeContactAlgorithm.h>
 #include <AssembleNodalGradElemContactAlgorithm.h>
 #include <AssembleNodeSolverAlgorithm.h>
-#include <AssembleNonConformalAlgorithmDriver.h>
-#include <AssembleScalarElemNonConformalPenaltyAlgorithm.h>
-#include <AssembleScalarEdgeNonConformalPenaltyAlgorithm.h>
 #include <AuxFunctionAlgorithm.h>
 #include <ConstantAuxFunction.h>
 #include <CopyFieldAlgorithm.h>
@@ -634,42 +631,13 @@ MixtureFractionEquationSystem::register_non_conformal_bc(
   else {
     it->second->partVec_.push_back(part);
   }
-
-  // assemble and normalized lambda/L
-  ScalarFieldType *ncNormalFlux = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "nc_z_normal_flux"));
-  ScalarFieldType *ncPenalty = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "nc_z_penalty"));
-  ScalarFieldType *ncArea = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "nc_z_assembled_area"));
-  stk::mesh::put_field(*ncNormalFlux, *part);
-  stk::mesh::put_field(*ncPenalty, *part);
-  stk::mesh::put_field(*ncArea, *part);
-
-  // create the driver for post-porcessed quantities
-  if ( NULL == assembleNonConformalAlgDriver_ ) {
-    const unsigned fluxFieldSize = 1;
-    assembleNonConformalAlgDriver_ = new AssembleNonConformalAlgorithmDriver(realm_, ncNormalFlux, ncPenalty, ncArea, fluxFieldSize);
-  }
- 
-  std::map<AlgorithmType, Algorithm *>::iterator itnc
-    = assembleNonConformalAlgDriver_->algMap_.find(algType);
-  if ( itnc == assembleNonConformalAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg = NULL;
-    if ( realm_.realmUsesEdges_ )
-      theAlg = new AssembleScalarEdgeNonConformalPenaltyAlgorithm(realm_, part, &mixFracNp1, &dzdxNone, ncNormalFlux, ncPenalty, ncArea, evisc_);
-    else
-      theAlg = new AssembleScalarElemNonConformalPenaltyAlgorithm(realm_, part, &mixFracNp1, ncNormalFlux, ncPenalty, ncArea, evisc_);
-    assembleNonConformalAlgDriver_->algMap_[algType] = theAlg;
-  }
-  else {
-    itnc->second->partVec_.push_back(part);
-  }
   
   // solver; lhs; same for edge and element-based scheme
   std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi =
     solverAlgDriver_->solverAlgMap_.find(algType);
   if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
     AssembleScalarNonConformalSolverAlgorithm *theAlg
-      = new AssembleScalarNonConformalSolverAlgorithm(realm_, part, this, 
-                                                      mixFrac_, ncNormalFlux, ncPenalty);
+      = new AssembleScalarNonConformalSolverAlgorithm(realm_, part, this, mixFrac_, evisc_);
     solverAlgDriver_->solverAlgMap_[algType] = theAlg;
   }
   else {
@@ -738,9 +706,6 @@ MixtureFractionEquationSystem::solve_and_update()
 
     NaluEnv::self().naluOutputP0() << " " << k+1 << "/" << maxIterations_
                     << std::setw(15) << std::right << name_ << std::endl;
-
-    // compute nc post processed flux for mixture fraction
-    assemble_non_conformal();
 
     // mixture fraction assemble, load_complete and solve
     assemble_and_solve(zTmp_);

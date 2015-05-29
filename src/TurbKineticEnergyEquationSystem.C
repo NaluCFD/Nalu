@@ -21,9 +21,6 @@
 #include <AssembleNodalGradBoundaryAlgorithm.h>
 #include <AssembleNodalGradEdgeContactAlgorithm.h>
 #include <AssembleNodalGradElemContactAlgorithm.h>
-#include <AssembleNonConformalAlgorithmDriver.h>
-#include <AssembleScalarElemNonConformalPenaltyAlgorithm.h>
-#include <AssembleScalarEdgeNonConformalPenaltyAlgorithm.h>
 #include <AuxFunctionAlgorithm.h>
 #include <ComputeTurbKineticEnergyWallFunctionAlgorithm.h>
 #include <ConstantAuxFunction.h>
@@ -695,41 +692,12 @@ TurbKineticEnergyEquationSystem::register_non_conformal_bc(
     it->second->partVec_.push_back(part);
   }
 
-  // assemble and normalized lambda/L
-  ScalarFieldType *ncNormalFlux = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "nc_tke_normal_flux"));
-  ScalarFieldType *ncPenalty = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "nc_tke_penalty"));
-  ScalarFieldType *ncArea = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "nc_tke_assembled_area"));
-  stk::mesh::put_field(*ncNormalFlux, *part);
-  stk::mesh::put_field(*ncPenalty, *part);
-  stk::mesh::put_field(*ncArea, *part);
-
-  // create the driver for post-porcessed quantities
-  if ( NULL == assembleNonConformalAlgDriver_ ) {
-    const unsigned fluxFieldSize = 1;
-    assembleNonConformalAlgDriver_ = new AssembleNonConformalAlgorithmDriver(realm_, ncNormalFlux, ncPenalty, ncArea, fluxFieldSize);
-  }
-
-  std::map<AlgorithmType, Algorithm *>::iterator itnc
-    = assembleNonConformalAlgDriver_->algMap_.find(algType);
-  if ( itnc == assembleNonConformalAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg = NULL;
-    if ( realm_.realmUsesEdges_ )
-      theAlg = new AssembleScalarEdgeNonConformalPenaltyAlgorithm(realm_, part, &tkeNp1, &dkdxNone, ncNormalFlux, ncPenalty, ncArea, evisc_);
-    else
-      theAlg = new AssembleScalarElemNonConformalPenaltyAlgorithm(realm_, part, &tkeNp1, ncNormalFlux, ncPenalty, ncArea, evisc_);
-    assembleNonConformalAlgDriver_->algMap_[algType] = theAlg;
-  }
-  else {
-    itnc->second->partVec_.push_back(part);
-  }
-
   // solver; lhs; same for edge and element-based scheme
   std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi =
     solverAlgDriver_->solverAlgMap_.find(algType);
   if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
     AssembleScalarNonConformalSolverAlgorithm *theAlg
-      = new AssembleScalarNonConformalSolverAlgorithm(realm_, part, this,
-                                                      tke_, ncNormalFlux, ncPenalty);
+      = new AssembleScalarNonConformalSolverAlgorithm(realm_, part, this, tke_, evisc_);
     solverAlgDriver_->solverAlgMap_[algType] = theAlg;
   }
   else {
