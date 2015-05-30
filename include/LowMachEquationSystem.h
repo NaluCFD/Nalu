@@ -24,7 +24,6 @@ class AlgorithmDriver;
 class Realm;
 class AssembleNodalGradAlgorithmDriver;
 class AssembleNodalGradUAlgorithmDriver;
-class AssembleNonConformalAlgorithmDriver;
 class MomentumEquationSystem;
 class ContinuityEquationSystem;
 class LinearSystem;
@@ -76,9 +75,6 @@ public:
   void project_nodal_velocity();
 
   void post_converged_work();
-
-  void non_conformal_continuity();
-  void non_conformal_momentum();
 
   const bool elementContinuityEqs_; /* allow for mixed element/edge for continuity */
   MomentumEquationSystem *momentumEqSys_;

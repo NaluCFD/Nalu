@@ -25,7 +25,6 @@ namespace nalu{
 
 class Algorithm;
 class AlgorithmDriver;
-class AssembleNonConformalAlgorithmDriver;
 class AuxFunctionAlgorithm;
 class Realm;
 class SolverAlgorithmDriver;
@@ -158,8 +157,6 @@ public:
   bool reportLinearIterations_;
   bool edgeNodalGradient_;
 
-  AssembleNonConformalAlgorithmDriver *assembleNonConformalAlgDriver_;
-
   void update_iteration_statistics(
     const int & iters);
   
@@ -179,8 +176,6 @@ public:
     const UserData&, std::string &name);
 
   virtual void post_converged_work() {}
-
-  virtual void assemble_non_conformal();
 
   std::vector<AuxFunctionAlgorithm *> bcDataAlg_;
   std::vector<Algorithm *> bcDataMapAlg_;

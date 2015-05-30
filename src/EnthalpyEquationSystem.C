@@ -23,9 +23,6 @@
 #include <AssembleNodalGradElemContactAlgorithm.h>
 #include <AssembleNodeSolverAlgorithm.h>
 #include <AssembleWallHeatTransferAlgorithmDriver.h>
-#include <AssembleNonConformalAlgorithmDriver.h>
-#include <AssembleScalarElemNonConformalPenaltyAlgorithm.h>
-#include <AssembleScalarEdgeNonConformalPenaltyAlgorithm.h>
 #include <AuxFunctionAlgorithm.h>
 #include <ComputeHeatTransferEdgeWallAlgorithm.h>
 #include <ComputeHeatTransferElemWallAlgorithm.h>
@@ -786,7 +783,7 @@ EnthalpyEquationSystem::register_non_conformal_bc(
 
   stk::mesh::MetaData &meta_data = realm_.meta_data();
 
-  // non-solver; dzdx; allow for element-based shifted
+  // non-solver; dhdx; allow for element-based shifted
   std::map<AlgorithmType, Algorithm *>::iterator it
     = assembleNodalGradAlgDriver_->algMap_.find(algType);
   if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
@@ -798,41 +795,12 @@ EnthalpyEquationSystem::register_non_conformal_bc(
     it->second->partVec_.push_back(part);
   }
 
-  // assemble and normalized lambda/L
-  ScalarFieldType *ncNormalFlux = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "nc_h_normal_flux"));
-  ScalarFieldType *ncPenalty = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "nc_h_penalty"));
-  ScalarFieldType *ncArea = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "nc_h_assembled_area"));
-  stk::mesh::put_field(*ncNormalFlux, *part);
-  stk::mesh::put_field(*ncPenalty, *part);
-  stk::mesh::put_field(*ncArea, *part);
-
-  // create the driver for post-processed quantities
-  if ( NULL == assembleNonConformalAlgDriver_ ) {
-    const unsigned fluxFieldSize = 1;
-    assembleNonConformalAlgDriver_ = new AssembleNonConformalAlgorithmDriver(realm_, ncNormalFlux, ncPenalty, ncArea, fluxFieldSize);
-  }
-
-  std::map<AlgorithmType, Algorithm *>::iterator itnc
-    = assembleNonConformalAlgDriver_->algMap_.find(algType);
-  if ( itnc == assembleNonConformalAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg = NULL;
-    if ( realm_.realmUsesEdges_ )
-      theAlg = new AssembleScalarEdgeNonConformalPenaltyAlgorithm(realm_, part, &hNp1, &dhdxNone, ncNormalFlux, ncPenalty, ncArea, evisc_);
-    else
-      theAlg = new AssembleScalarElemNonConformalPenaltyAlgorithm(realm_, part, &hNp1, ncNormalFlux, ncPenalty, ncArea, evisc_);
-    assembleNonConformalAlgDriver_->algMap_[algType] = theAlg;
-  }
-  else {
-    itnc->second->partVec_.push_back(part);
-  }
-
   // solver; lhs; same for edge and element-based scheme
   std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi =
     solverAlgDriver_->solverAlgMap_.find(algType);
   if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
     AssembleScalarNonConformalSolverAlgorithm *theAlg
-      = new AssembleScalarNonConformalSolverAlgorithm(realm_, part, this,
-                                                      enthalpy_, ncNormalFlux, ncPenalty);
+      = new AssembleScalarNonConformalSolverAlgorithm(realm_, part, this, enthalpy_, evisc_);
     solverAlgDriver_->solverAlgMap_[algType] = theAlg;
   }
   else {
@@ -907,9 +875,6 @@ EnthalpyEquationSystem::solve_and_update()
 
     NaluEnv::self().naluOutputP0() << " " << k+1 << "/" << maxIterations_
                     << std::setw(15) << std::right << name_ << std::endl;
-
-    // compute nc post processed flux for enthalpy
-    assemble_non_conformal();
 
     // mixture fraction assemble, load_complete and solve
     assemble_and_solve(hTmp_);
