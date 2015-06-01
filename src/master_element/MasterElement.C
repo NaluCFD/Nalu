@@ -736,6 +736,101 @@ HexSCS::general_shape_fcn(
 }
 
 //--------------------------------------------------------------------------
+//-------- general_face_grad_op --------------------------------------------
+//--------------------------------------------------------------------------
+void 
+HexSCS::general_face_grad_op(
+  const int face_ordinal,
+  const double *isoParCoord,
+  const double *coords,
+  double *gradop,
+  double *det_j,
+  double *error)
+{
+  int lerr = 0;
+  const int ndim = 3;
+  const int nface = 1;
+
+  double dpsi[24];
+  double grad[24];
+
+  SIERRA_FORTRAN(hex_derivative)
+    ( &nface, &isoParCoord[0], dpsi );
+      
+  SIERRA_FORTRAN(hex_gradient_operator)
+    ( &nface,
+      &nodesPerElement_,
+      &nface,
+      dpsi,
+      &coords[0], grad, &det_j[0], error, &lerr );
+  
+  if ( lerr )
+    std::cout << "HexSCS::general_face_grad_op: issue.." << std::endl;
+  
+  for ( int j=0; j<24; j++) {
+    gradop[j] = grad[j];
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- sidePcoords_to_elemPcoords --------------------------------------
+//--------------------------------------------------------------------------
+void 
+HexSCS::sidePcoords_to_elemPcoords(
+  const int & side_ordinal,
+  const int & npoints,
+  const double *side_pcoords,
+  double *elem_pcoords)
+{
+  switch (side_ordinal) {
+  case 0:
+    for (int i=0; i<npoints; i++) {
+      elem_pcoords[i*3+0] = 0.5*side_pcoords[2*i+0];
+      elem_pcoords[i*3+1] = -0.5;
+      elem_pcoords[i*3+2] = 0.5*side_pcoords[2*i+1];
+    }
+    break;
+  case 1:
+    for (int i=0; i<npoints; i++) {
+      elem_pcoords[i*3+0] = 0.5;
+      elem_pcoords[i*3+1] = 0.5*side_pcoords[2*i+0];
+      elem_pcoords[i*3+2] = 0.5*side_pcoords[2*i+1];
+    }
+    break;
+  case 2:
+    for (int i=0; i<npoints; i++) {
+      elem_pcoords[i*3+0] = -0.5*side_pcoords[2*i+0];
+      elem_pcoords[i*3+1] = 0.5;
+      elem_pcoords[i*3+2] = 0.5*side_pcoords[2*i+1];
+    }
+    break;
+  case 3:
+    for (int i=0; i<npoints; i++) {
+      elem_pcoords[i*3+0] = -0.5;
+      elem_pcoords[i*3+1] = 0.5*side_pcoords[2*i+1];
+      elem_pcoords[i*3+2] = 0.5*side_pcoords[2*i+0];
+    }
+    break;
+  case 4:
+    for (int i=0; i<npoints; i++) {
+      elem_pcoords[i*3+0] = 0.5*side_pcoords[2*i+1];
+      elem_pcoords[i*3+1] = 0.5*side_pcoords[2*i+0];
+      elem_pcoords[i*3+2] = -0.5;
+    }
+    break;
+  case 5:
+    for (int i=0; i<npoints; i++) {
+      elem_pcoords[i*3+0] = 0.5*side_pcoords[2*i+0];
+      elem_pcoords[i*3+1] = 0.5*side_pcoords[2*i+1];
+      elem_pcoords[i*3+2] = 0.5;
+    }
+    break;
+  default:
+    throw std::runtime_error("HexSCS::sideMap invalid ordinal");
+  }
+}
+
+//--------------------------------------------------------------------------
 //-------- faceNodeOnExtrudedElem ------------------------------------------
 //--------------------------------------------------------------------------
 const int *
@@ -2317,7 +2412,6 @@ Quad2DSCS::general_shape_fcn(
   }
 }
 
-
 //--------------------------------------------------------------------------
 //-------- general_face_grad_op --------------------------------------------
 //--------------------------------------------------------------------------
@@ -2331,9 +2425,9 @@ Quad2DSCS::general_face_grad_op(
   double *error)
 {
   int lerr = 0;
-  int ndim = 2;
-
+  const int ndim = 2;
   const int nface = 1;
+
   double dpsi[8];
   double grad[8];
 
@@ -2348,7 +2442,7 @@ Quad2DSCS::general_face_grad_op(
       &coords[0], grad, &det_j[0], error, &lerr );
   
   if ( lerr )
-    std::cout << "sorry, issue with face_grad_op.." << std::endl;
+    std::cout << "Quad2DSCS::general_face_grad_op: issue.." << std::endl;
   
   for ( int j=0; j<8; j++) {
     gradop[j] = grad[j];
@@ -2391,7 +2485,7 @@ Quad2DSCS::sidePcoords_to_elemPcoords(
     }
     break;
   default:
-    throw std::runtime_error("Quad2DSCS::sideMap invalid ordinal size");
+    throw std::runtime_error("Quad2DSCS::sideMap invalid ordinal");
   }
 }
 

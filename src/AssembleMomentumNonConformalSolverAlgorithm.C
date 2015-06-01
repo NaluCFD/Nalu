@@ -53,6 +53,7 @@ AssembleMomentumNonConformalSolverAlgorithm::AssembleMomentumNonConformalSolverA
     ncMassFlowRate_(NULL),
     robinStyle_(false),
     dsFactor_(1.0),
+    upwindAdvection_(realm_.get_nc_alg_upwind_advection()),
     includeDivU_(realm_.get_divU())
 {
   // save off fields
@@ -88,7 +89,8 @@ AssembleMomentumNonConformalSolverAlgorithm::AssembleMomentumNonConformalSolverA
       break;
   }
 
-  NaluEnv::self().naluOutputP0() << "NC options: dsFactor/robinStyle: " << dsFactor_ << " " << robinStyle_ << std::endl;
+  NaluEnv::self().naluOutputP0() << "NC Momentum options: dsFactor/robinStyle/upwind: " 
+                                 << dsFactor_ << " " << robinStyle_ << " " << upwindAdvection_ << std::endl;
   
 }
 
@@ -477,18 +479,24 @@ AssembleMomentumNonConformalSolverAlgorithm::execute()
         for ( int p = 0; p < rhsSize; ++p )
           p_rhs[p] = 0.0;
 
+        // save mdot
+        const double tmdot = ncMassFlowRate[currentGaussPointId];
+
         // compute penalty
         const double penaltyIp = 0.5*(currentDiffFluxCoeffBip*currentInverseLength + opposingDiffFluxCoeffBip*opposingInverseLength) 
-          + std::abs(ncMassFlowRate[currentGaussPointId])/2.0;
+          + std::abs(tmdot)/2.0;
    
         for ( int i = 0; i < nDim; ++i ) {
          
-          // construct diffusive flux and advection
+          // non conformal diffusive flux
           const double ncDiffFlux =  robinStyle_ ? -opposingDiffFluxBip[i] 
             : 0.5*(currentDiffFluxBip[i] - opposingDiffFluxBip[i]);
-          const double ncAdv = robinStyle_ ? ncMassFlowRate[currentGaussPointId]*opposingUBip[i] 
-            : 0.5*ncMassFlowRate[currentGaussPointId]*(currentUBip[i] + opposingUBip[i]);
-         
+
+          // non conformal advection; find upwind (upwind prevails over Robin or DG approach)
+          const double upwindUBip = tmdot > 0.0 ? currentUBip[i] : opposingUBip[i];
+          const double ncAdv = upwindAdvection_ ? tmdot*upwindUBip : robinStyle_ ? tmdot*opposingUBip[i]
+            : 0.5*tmdot*(currentUBip[i] + opposingUBip[i]);
+
           // assemble residual; form proper rhs index for current face assembly
           const int indexR = currentGaussPointId*nDim + i;
           p_rhs[indexR] -= ((dsFactor_*ncDiffFlux + penaltyIp*(currentUBip[i]-opposingUBip[i]))*c_amag + ncAdv);

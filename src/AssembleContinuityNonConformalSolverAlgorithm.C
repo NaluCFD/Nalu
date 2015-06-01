@@ -92,7 +92,7 @@ AssembleContinuityNonConformalSolverAlgorithm::AssembleContinuityNonConformalSol
       break;
   }
 
-  NaluEnv::self().naluOutputP0() << "NC options: dsFactor/robinStyle: " << dsFactor_ << " " << robinStyle_ << std::endl;
+  NaluEnv::self().naluOutputP0() << "NC Continuity options: dsFactor/robinStyle: " << dsFactor_ << " " << robinStyle_ << std::endl;
   
 }
 
