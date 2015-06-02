@@ -243,6 +243,20 @@ public:
     const double *isoParCoord,
     double *shpfc);
 
+  void general_face_grad_op(
+    const int face_ordinal,
+    const double *isoParCoord,
+    const double *coords,
+    double *gradop,
+    double *det_j,
+    double * error );
+
+  void sidePcoords_to_elemPcoords(
+    const int & side_ordinal,
+    const int & npoints,
+    const double *side_pcoords,
+    double *elem_pcoords);
+
   // extrusion data structure access
   const int * faceNodeOnExtrudedElem();
   const int * opposingNodeOnExtrudedElem();

@@ -52,7 +52,8 @@ AssembleScalarNonConformalSolverAlgorithm::AssembleScalarNonConformalSolverAlgor
     exposedAreaVec_(NULL),
     ncMassFlowRate_(NULL),
     robinStyle_(false),
-    dsFactor_(1.0)
+    dsFactor_(1.0),
+    upwindAdvection_(realm_.get_nc_alg_upwind_advection())
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -87,7 +88,8 @@ AssembleScalarNonConformalSolverAlgorithm::AssembleScalarNonConformalSolverAlgor
       break;
   }
 
-  NaluEnv::self().naluOutputP0() << "NC options: dsFactor/robinStyle: " << dsFactor_ << " " << robinStyle_ << std::endl;
+  NaluEnv::self().naluOutputP0() << "NC Scalar options: dsFactor/robinStyle/upwind: " 
+                                 << dsFactor_ << " " << robinStyle_ << " " << upwindAdvection_  << std::endl;
   
 }
 
@@ -435,16 +437,20 @@ AssembleScalarNonConformalSolverAlgorithm::execute()
         for ( int p = 0; p < rhsSize; ++p )
           p_rhs[p] = 0.0;
 
+        // save mdot
+        const double tmdot = ncMassFlowRate[currentGaussPointId];
+
         // compute penalty
         const double penaltyIp = 0.5*(currentDiffFluxCoeffBip*currentInverseLength + opposingDiffFluxCoeffBip*opposingInverseLength) 
-          + std::abs(ncMassFlowRate[currentGaussPointId])/2.0;
+          + std::abs(tmdot)/2.0;
        
         // non conformal diffusive flux
         const double ncDiffFlux =  robinStyle_ ? -opposingDiffFluxBip : 0.5*(currentDiffFluxBip - opposingDiffFluxBip);
        
-        // total advection 
-        const double ncAdv = robinStyle_ ? ncMassFlowRate[currentGaussPointId]*opposingScalarQBip 
-          : 0.5*ncMassFlowRate[currentGaussPointId]*(currentScalarQBip + opposingScalarQBip);
+        // non conformal advection; find upwind (upwind prevails over Robin or DG approach)
+        const double upwindScalarQBip = tmdot > 0.0 ? currentScalarQBip : opposingScalarQBip;
+        const double ncAdv = upwindAdvection_ ? tmdot*upwindScalarQBip : robinStyle_ ? tmdot*opposingScalarQBip 
+          : 0.5*tmdot*(currentScalarQBip + opposingScalarQBip);
        
         // form residual
         const int nn = currentGaussPointId;

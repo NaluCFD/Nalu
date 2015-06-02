@@ -62,6 +62,7 @@ SolutionOptions::SolutionOptions()
     maxRefinementLevel_(0),
     extrusionCorrectionFac_(1.0),
     ncAlgGaussLabatto_(true),
+    ncAlgUpwindAdvection_(false),
     ncAlgType_(NC_ALG_TYPE_DG),
     cvfemShiftMdot_(false),
     cvfemShiftPoisson_(false),
@@ -232,6 +233,7 @@ SolutionOptions::load(const YAML::Node & y_node)
         else if (expect_map( y_option, "non_conformal", optional)) {
           const YAML::Node& y_nc = *y_option.FindValue("non_conformal");
           get_if_present(y_nc, "gauss_labatto_quadrature",  ncAlgGaussLabatto_, ncAlgGaussLabatto_);
+          get_if_present(y_nc, "upwind_advection",  ncAlgUpwindAdvection_, ncAlgUpwindAdvection_);
           if (y_nc.FindValue("algorithm_type" )  ) {
             std::string algTypeString = "none";
             y_nc["algorithm_type"] >> algTypeString;

@@ -79,6 +79,7 @@ public:
   double extrusionCorrectionFac_;
   bool ncAlgGaussLabatto_;
   NonConformalAlgType ncAlgType_;
+  bool ncAlgUpwindAdvection_;
   bool cvfemShiftMdot_;
   bool cvfemShiftPoisson_;
   bool cvfemReducedSensPoisson_;
