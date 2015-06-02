@@ -122,6 +122,17 @@ AssembleWallHeatTransferAlgorithmDriver::post_work()
 
   stk::mesh::parallel_sum(bulk_data, fields);
 
+  // add periodic assembly piror to normalization
+  if ( realm_.hasPeriodic_) {
+    const unsigned scalarSize = 1;
+    const bool bypassFieldCheck = false; // nodal fields are only defined at periodic nodes
+    realm_.periodic_field_update(assembledWallArea_, scalarSize, bypassFieldCheck);
+    realm_.periodic_field_update(referenceTemperature_, scalarSize, bypassFieldCheck);
+    realm_.periodic_field_update(heatTransferCoefficient_, scalarSize, bypassFieldCheck);
+    realm_.periodic_field_update(normalHeatFlux_, scalarSize, bypassFieldCheck);
+    realm_.periodic_field_update(robinCouplingParameter_, scalarSize, bypassFieldCheck);
+  }
+
   // normalize
   stk::mesh::Selector s_all_nodes
     = (meta_data.locally_owned_part() | meta_data.globally_shared_part())
