@@ -800,6 +800,11 @@ public:
     const double *field,
     double *result);
 
+  void general_shape_fcn(
+    const int numIp,
+    const double *isoParCoord,
+    double *shpfc);
+
 };
 
 // edge 2d

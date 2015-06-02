@@ -68,7 +68,8 @@ class NonConformalInfo {
     const stk::mesh::Part *opposingPart,
     const double expandBoxPercentage,
     const std::string &searchMethodName,
-    const bool clipIsoParametricCoords);
+    const bool clipIsoParametricCoords,
+    const double searchTolerance);
 
   ~NonConformalInfo();
 
@@ -94,6 +95,9 @@ class NonConformalInfo {
 
   /* clip isoparametric coordinates if they are out of bounds */
   const bool clipIsoParametricCoords_;
+
+  /* allow for some finite search tolereance for bounding box */
+  const double searchTolerance_;
 
   /* does the realm have mesh motion */
   const bool meshMotion_;

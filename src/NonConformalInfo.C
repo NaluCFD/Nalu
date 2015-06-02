@@ -77,7 +77,8 @@ NonConformalInfo::NonConformalInfo(
    const stk::mesh::Part *opposingPart,
    const double expandBoxPercentage,
    const std::string &searchMethodName,
-   const bool clipIsoParametricCoords)
+   const bool clipIsoParametricCoords,
+   const double searchTolerance)
   : realm_(realm ),
     name_(currentPart->name()),
     currentPart_(currentPart),
@@ -85,6 +86,7 @@ NonConformalInfo::NonConformalInfo(
     expandBoxPercentage_(expandBoxPercentage),
     searchMethod_(stk::search::BOOST_RTREE),
     clipIsoParametricCoords_(clipIsoParametricCoords),
+    searchTolerance_(searchTolerance),
     meshMotion_(realm_.has_mesh_motion()),
     meSCS_(NULL)
 {
@@ -283,12 +285,11 @@ NonConformalInfo::construct_dgInfo_state()
         // create the bounding point and push back
         boundingPoint thePt(currentGaussPointCoords, theIdent);
         boundingPointVec_.push_back(thePt);
-        
       }
       
       // push them all back
       dgInfoVec_.push_back(faceDgInfoVec);
-
+      
       }
   }
 }
@@ -549,12 +550,12 @@ NonConformalInfo::find_possible_face_elements()
 
       searchFaceElementMap_[bulk_data.identifier(face)] = face;
 
-      // expand the box
+      // expand the box by both % and search tolerance
       for ( int i = 0; i < nDim; ++i ) {
         const double theMin = minCorner[i];
         const double theMax = maxCorner[i];
-        const double increment = expandBoxPercentage_*(theMax - theMin);
-        minCorner[i]   -= increment;
+        const double increment = expandBoxPercentage_*(theMax - theMin) + searchTolerance_;
+        minCorner[i] -= increment;
         maxCorner[i] += increment;
       }
 

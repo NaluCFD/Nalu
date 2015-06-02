@@ -80,6 +80,7 @@ public:
   bool ncAlgGaussLabatto_;
   NonConformalAlgType ncAlgType_;
   bool ncAlgUpwindAdvection_;
+  bool ncAlgDetailedOutput_;
   bool cvfemShiftMdot_;
   bool cvfemShiftPoisson_;
   bool cvfemReducedSensPoisson_;
