@@ -655,13 +655,13 @@ NonConformalInfo::provide_diagnosis()
         stk::mesh::Entity node = opposing_face_node_rels[ni];
         const double * coords = stk::mesh::field_data(*coordinates, node);
         for ( int j=0; j < nDim; ++j ) {
-          opposingFaceNodalCoords[j*currentNodesPerFace+ni] = coords[j];
+          opposingFaceNodalCoords[j*opposingNodesPerFace+ni] = coords[j];
         }
       }
       
       // interpolate to opposing GP
       std::vector<double> checkOpposingFaceGaussPointCoords(nDim);
-      meFCCurrent->interpolatePoint(
+      meFCOpposing->interpolatePoint(
         nDim,
         &opposingIsoParCoords[0],
         &opposingFaceNodalCoords[0],
@@ -669,7 +669,6 @@ NonConformalInfo::provide_diagnosis()
 
       // global id for opposing element
       const uint64_t opElemId = bulk_data.identifier(dgInfo->opposingElement_);
-      
 
       // compute a norm between the curent nd opposing coordinate checks
       double distanceNorm = 0.0;

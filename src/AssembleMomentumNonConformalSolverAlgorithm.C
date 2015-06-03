@@ -411,7 +411,7 @@ AssembleMomentumNonConformalSolverAlgorithm::execute()
           &currentDiffFluxCoeffBip);
 
         double opposingDiffFluxCoeffBip = 0.0;
-        meFCCurrent->interpolatePoint(
+        meFCOpposing->interpolatePoint(
           sizeOfScalarField,
           &(dgInfo->opposingIsoParCoords_[0]),
           &ws_o_diffFluxCoeff[0],
