@@ -46,7 +46,8 @@ class NonConformalManager {
 
   // constructor and destructor
   NonConformalManager(
-    Realm & realm);
+    Realm & realm,
+    const bool ncAlgDetailedOutput );
 
   ~NonConformalManager();
 
@@ -54,13 +55,13 @@ class NonConformalManager {
   void manage_ghosting();
 
   Realm &realm_;
+  const bool ncAlgDetailedOutput_;
 
   /* ghosting for all surface:block pair */
   stk::mesh::Ghosting *nonConformalGhosting_;
 
   uint64_t needToGhostCount_;
-  bool provideDetailedOutput_;
-
+ 
   stk::mesh::EntityProcVec elemsToGhost_;
   std::vector<NonConformalInfo *> nonConformalInfoVec_;
 

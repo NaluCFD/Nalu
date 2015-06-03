@@ -42,11 +42,12 @@ class HaloInfo;
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 NonConformalManager::NonConformalManager(
-   Realm &realm)
+  Realm &realm,
+  const bool ncAlgDetailedOutput)
   : realm_(realm ),
+    ncAlgDetailedOutput_(ncAlgDetailedOutput),
     nonConformalGhosting_(NULL),
-    needToGhostCount_(0),
-    provideDetailedOutput_(false)
+    needToGhostCount_(0)
 {
   // do nothing
 }
@@ -103,7 +104,7 @@ NonConformalManager::initialize()
     nonConformalInfoVec_[k]->complete_search();
 
   // provide diagnosis
-  if ( provideDetailedOutput_ ) {
+  if ( ncAlgDetailedOutput_ ) {
     for ( size_t k = 0; k < nonConformalInfoVec_.size(); ++k )
       nonConformalInfoVec_[k]->provide_diagnosis();
   }

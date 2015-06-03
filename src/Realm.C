@@ -2844,10 +2844,14 @@ Realm::setup_non_conformal_bc(
   const std::string searchMethodName = userData.searchMethodName_;
   const double expandBoxPercentage = userData.expandBoxPercentage_/100.0;
   const bool clipIsoParametricCoords = userData.clipIsoParametricCoords_; 
- 
+  const double searchTolerance = userData.searchTolerance_;
+
+  // deal with output
+  const bool ncAlgDetailedOutput = solutionOptions_->ncAlgDetailedOutput_;
+
   // create manager
   if ( NULL == nonConformalManager_ ) {
-    nonConformalManager_ = new NonConformalManager(*this);
+    nonConformalManager_ = new NonConformalManager(*this, ncAlgDetailedOutput);
   }
    
   // create contact info for this surface
@@ -2857,7 +2861,8 @@ Realm::setup_non_conformal_bc(
                            opposingPart,
                            expandBoxPercentage,
                            searchMethodName,
-                           clipIsoParametricCoords);
+                           clipIsoParametricCoords,
+                           searchTolerance);
   
   nonConformalManager_->nonConformalInfoVec_.push_back(nonConformalInfo);
 

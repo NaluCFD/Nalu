@@ -268,7 +268,6 @@ public:
   double vector_norm( const double * vect, int len );
   double parametric_distance(const std::vector<double> &x);
   bool within_tol( const double & val, const double & tol );
-
 };
 
 // Tet 4 subcontrol volume
@@ -343,6 +342,20 @@ public:
 
   int opposingFace(
     const int ordinal, const int node);
+
+  void general_face_grad_op(
+    const int face_ordinal,
+    const double *isoParCoord,
+    const double *coords,
+    double *gradop,
+    double *det_j,
+    double * error );
+  
+  void sidePcoords_to_elemPcoords(
+    const int & side_ordinal,
+    const int & npoints,
+    const double *side_pcoords,
+    double *elem_pcoords);
 };
 
 // Pyramid 5 subcontrol volume
@@ -681,6 +694,20 @@ public:
 
   double tri_parametric_distance(
     const std::vector<double> &x);
+  
+  void general_face_grad_op(
+    const int face_ordinal,
+    const double *isoParCoord,
+    const double *coords,
+    double *gradop,
+    double *det_j,
+    double * error );
+
+  void sidePcoords_to_elemPcoords(
+    const int & side_ordinal,
+    const int & npoints,
+    const double *side_pcoords,
+    double *elem_pcoords);
 
 };
 
@@ -758,6 +785,25 @@ public:
      const int &npts,
      const double *par_coord,
      double* shape_fcn);
+
+   double isInElement(
+     const double *elemNodalCoord,
+     const double *pointCoord,
+     double *isoParCoord);
+
+  double parametric_distance(
+    const std::vector<double> &x);
+
+  void interpolatePoint(
+    const int &nComp,
+    const double *isoParCoord,
+    const double *field,
+    double *result);
+
+  void general_shape_fcn(
+    const int numIp,
+    const double *isoParCoord,
+    double *shpfc);
 
 };
 

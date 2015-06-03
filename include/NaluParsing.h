@@ -284,11 +284,12 @@ struct NonConformalUserData : public UserData {
   std::string searchMethodName_;
   double expandBoxPercentage_;
   bool clipIsoParametricCoords_;
+  double searchTolerance_;
 
   NonConformalUserData()
     : UserData(),
       searchMethodName_("na"), expandBoxPercentage_(0.0),
-      clipIsoParametricCoords_(false)
+    clipIsoParametricCoords_(false), searchTolerance_(1.0e-16)
   {}
 };
 

@@ -66,16 +66,11 @@ void HexSCV::determinant(
   double *volume,
   double *error)
 {
-
   int lerr = 0;
 
   SIERRA_FORTRAN(hex_scv_det)
     ( &nelem, &nodesPerElement_, &numIntPoints_, coords,
       volume, error, &lerr );
-
-  // check
-  *error = (lerr == 0) ? 0.0 : 1.0;
-
 }
 
 //--------------------------------------------------------------------------
@@ -259,7 +254,6 @@ HexSCS::HexSCS()
   edgeAlignedArea_[12] = +1.0; edgeAlignedArea_[13] = +1.0; edgeAlignedArea_[14] = -1.0; edgeAlignedArea_[15] = -1.0;
   edgeAlignedArea_[16] = +1.0; edgeAlignedArea_[17] = +1.0; edgeAlignedArea_[18] = -1.0; edgeAlignedArea_[19] = -1.0;
   edgeAlignedArea_[20] = -1.0; edgeAlignedArea_[21] = +1.0; edgeAlignedArea_[22] = +1.0; edgeAlignedArea_[23] = -1.0;
-
 }
 
 //--------------------------------------------------------------------------
@@ -279,13 +273,11 @@ void HexSCS::determinant(
   double *areav,
   double *error)
 {
-
   SIERRA_FORTRAN(hex_scs_det)
     ( &nelem, &nodesPerElement_, &numIntPoints_, coords, areav );
 
   // all is always well; no error checking
   *error = 0;
-
 }
 
 //--------------------------------------------------------------------------
@@ -314,8 +306,7 @@ void HexSCS::grad_op(
 
   if ( lerr )
     std::cout << "sorry, negative HexSCS volume.." << std::endl;
-  
-}
+ }
 
 //--------------------------------------------------------------------------
 //-------- shifted_grad_op -------------------------------------------------
@@ -343,7 +334,6 @@ void HexSCS::shifted_grad_op(
 
   if ( lerr )
     std::cout << "sorry, negative HexSCS volume.." << std::endl;
-  
 }
 
 //--------------------------------------------------------------------------
@@ -383,7 +373,7 @@ void HexSCS::face_grad_op(
       
       if ( lerr )
         std::cout << "sorry, issue with face_grad_op.." << std::endl;
-      
+       
       for ( int j=0; j<24; j++) {
         gradop[k*nelem*24+n*24+j] = grad[j];
       }
@@ -452,7 +442,6 @@ HexSCS::isInElement(
     const double * point_coor,          // (3)
 	  double * par_coor ) 
 {
-
   const int maxNonlinearIter = 20;
   const double isInElemConverged = 1.0e-16;
   // Translate element so that (x,y,z) coordinates of the first node are (0,0,0)
@@ -664,11 +653,9 @@ HexSCS::interpolatePoint(
 	  double * result ) // (ncomp_field)
 {
   // 'field' is a flat array of dimension (8,ncomp_field) (Fortran ordering);
-
   double xi   = par_coord[0];
   double eta  = par_coord[1];
   double zeta = par_coord[2];
-
 
   for ( int i = 0; i < ncomp_field; i++ )
   {
@@ -700,7 +687,6 @@ HexSCS::interpolatePoint(
 				  (1.00000000000000-xi  )*
 				  (1.00000000000000+zeta)*field[b+7];
   }
-
 }
 
 //--------------------------------------------------------------------------
@@ -712,7 +698,6 @@ HexSCS::general_shape_fcn(
   const double *isoParCoord,
   double *shpfc)
 {
-
   // -1:1 isoparametric range
   const double npe = nodesPerElement_;
   for ( int ip = 0; ip < numIp; ++ip ) {
@@ -943,16 +928,11 @@ void TetSCV::determinant(
   double *volume,
   double *error)
 {
-
   int lerr = 0;
 
   SIERRA_FORTRAN(tet_scv_det)
     ( &nelem, &nodesPerElement_, &numIntPoints_, coords,
       volume, error, &lerr );
-
-  // check
-  *error = (lerr == 0) ? 0.0 : 1.0;
-
 }
 
 //--------------------------------------------------------------------------
@@ -1056,13 +1036,11 @@ void TetSCS::determinant(
   double *areav,
   double *error)
 {
-
   SIERRA_FORTRAN(tet_scs_det)
     ( &nelem, &nodesPerElement_, &numIntPoints_, coords, areav );
 
   // all is always well; no error checking
   *error = 0;
-
 }
 
 //--------------------------------------------------------------------------
@@ -1089,8 +1067,7 @@ void TetSCS::grad_op(
       coords, gradop, det_j, error, &lerr );
 
   if ( lerr )
-    std::cout << "sorry, negative TetSCS volume.." << std::endl;
-  
+    std::cout << "sorry, negative TetSCS volume.." << std::endl;  
 }
 
 //--------------------------------------------------------------------------
@@ -1118,7 +1095,6 @@ void TetSCS::shifted_grad_op(
 
   if ( lerr )
     std::cout << "sorry, negative TetSCS volume.." << std::endl;
-
 }
 
 //--------------------------------------------------------------------------
@@ -1237,6 +1213,88 @@ TetSCS::opposingFace(
 }
 
 //--------------------------------------------------------------------------
+//-------- general_face_grad_op --------------------------------------------
+//--------------------------------------------------------------------------
+void 
+TetSCS::general_face_grad_op(
+  const int /*face_ordinal*/,
+  const double */*isoParCoord*/,
+  const double *coords,
+  double *gradop,
+  double *det_j,
+  double *error)
+{
+  int lerr = 0;
+
+  const int nface = 1;
+  double dpsi[12];
+  double grad[12];
+
+  // derivatives are constant
+  SIERRA_FORTRAN(tet_derivative)
+    ( &nface, dpsi );
+
+  SIERRA_FORTRAN(tet_gradient_operator)
+    ( &nface,
+      &nodesPerElement_,
+      &nface,
+      dpsi,
+      &coords[0], grad, &det_j[0], error, &lerr );
+  
+  if ( lerr )
+    throw std::runtime_error("TetSCS::general_face_grad_op issue");
+ 
+  for ( int j=0; j<12; j++) {
+    gradop[j] = grad[j];
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- sidePcoords_to_elemPcoords --------------------------------------
+//--------------------------------------------------------------------------
+void 
+TetSCS::sidePcoords_to_elemPcoords(
+  const int & side_ordinal,
+  const int & npoints,
+  const double *side_pcoords,
+  double *elem_pcoords)
+{
+  switch (side_ordinal) {
+  case 0:
+    for (int i=0; i<npoints; i++) {
+      elem_pcoords[i*3+0] = side_pcoords[2*i+0];
+      elem_pcoords[i*3+1] = 0.0;
+      elem_pcoords[i*3+2] = side_pcoords[2*i+1];
+    }
+    break;
+  case 1:
+    for (int i=0; i<npoints; i++) {
+      elem_pcoords[i*3+0] = 1.0 - side_pcoords[2*i+0] - side_pcoords[2*i+1];
+      elem_pcoords[i*3+1] = side_pcoords[2*i+0];
+      elem_pcoords[i*3+2] = side_pcoords[2*i+1];
+    }
+    break;
+  case 2:
+    for (int i=0; i<npoints; i++) {
+      elem_pcoords[i*3+0] = 0.0;
+      elem_pcoords[i*3+1] = side_pcoords[2*i+1];
+      elem_pcoords[i*3+2] = side_pcoords[2*i+0];
+    }
+    break;
+  case 3:
+    for (int i=0; i<npoints; i++) {
+      elem_pcoords[i*3+0] = side_pcoords[2*i+1];
+      elem_pcoords[i*3+1] = side_pcoords[2*i+0];
+      elem_pcoords[i*3+2] = 0.0;
+    }
+    break;
+  default:
+    throw std::runtime_error("TetSCS::sideMap invalid ordinal");
+  }
+  return;
+}
+
+//--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 PyrSCV::PyrSCV()
@@ -1270,12 +1328,7 @@ void PyrSCV::determinant(
   SIERRA_FORTRAN(pyr_scv_det)
     ( &nelem, &nodesPerElement_, &numIntPoints_, coords,
       volume, error, &lerr );
-
-  // check
-  *error = (lerr == 0) ? 0.0 : 1.0;
-
 }
-
 
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
@@ -1340,7 +1393,6 @@ PyrSCS::PyrSCS()
   intgLocShift_[21] = -0.50; intgLocShift_[22] =  0.50; intgLocShift_[23] =  0.50; // surf 8    4->5
 
   // exposed face; n/a
-
 }
 
 //--------------------------------------------------------------------------
@@ -1360,13 +1412,11 @@ void PyrSCS::determinant(
   double *areav,
   double *error)
 {
-
   SIERRA_FORTRAN(pyr_scs_det)
     ( &nelem, &nodesPerElement_, &numIntPoints_, coords, areav );
 
   // all is always well; no error checking
   *error = 0;
-
 }
 
 //--------------------------------------------------------------------------
@@ -1393,7 +1443,6 @@ void PyrSCS::grad_op(
 
   if ( lerr )
     std::cout << "sorry, negative PyrSCS volume.." << std::endl;
-  
 }
 
 //--------------------------------------------------------------------------
@@ -1420,7 +1469,6 @@ void PyrSCS::shifted_grad_op(
 
   if ( lerr )
     std::cout << "sorry, negative PyrSCS volume.." << std::endl;
-
 }
 
 //--------------------------------------------------------------------------
@@ -1555,16 +1603,11 @@ void WedSCV::determinant(
   double *volume,
   double *error)
 {
-
   int lerr = 0;
 
   SIERRA_FORTRAN(wed_scv_det)
     ( &nelem, &nodesPerElement_, &numIntPoints_, coords,
       volume, error, &lerr );
-
-  // check
-  *error = (lerr == 0) ? 0.0 : 1.0;
-
 }
 
 
@@ -1666,7 +1709,6 @@ WedSCS::WedSCS()
   intgExpFace_[51] = seven12th; intgExpFace_[52] = five24th;  intgExpFace_[53] = 1.0;  // face 4, surf 1
   intgExpFace_[54] = five24th;  intgExpFace_[55] = seven12th; intgExpFace_[56] = 1.0;  // face 4, surf 2
   intgExpFace_[57] = 0.0;       intgExpFace_[58] = 0.0;       intgExpFace_[59] = 0.0;  // (blank)
-
 }
 
 //--------------------------------------------------------------------------
@@ -1686,13 +1728,11 @@ void WedSCS::determinant(
   double *areav,
   double *error)
 {
-
   SIERRA_FORTRAN(wed_scs_det)
     ( &nelem, &nodesPerElement_, &numIntPoints_, coords, areav );
 
   // all is always well; no error checking
   *error = 0;
-
 }
 
 //--------------------------------------------------------------------------
@@ -1719,7 +1759,6 @@ void WedSCS::grad_op(
 
   if ( lerr )
     std::cout << "sorry, negative WedSCS volume.." << std::endl;
-  
 }
 
 //--------------------------------------------------------------------------
@@ -1746,7 +1785,6 @@ void WedSCS::shifted_grad_op(
 
   if ( lerr )
     std::cout << "sorry, negative WedSCS volume.." << std::endl;
-
 }
 
 //--------------------------------------------------------------------------
@@ -1806,7 +1844,6 @@ void WedSCS::face_grad_op(
   double *det_j,
   double *error)
 {
-
   int lerr = 0;
   const int ndim = 3;
   const int nface = 1;
@@ -1943,18 +1980,12 @@ void Quad2DSCV::determinant(
   double *volume,
   double *error)
 {
-
   int lerr = 0;
 
   SIERRA_FORTRAN(quad_scv_det)
     ( &nelem, &nodesPerElement_, &numIntPoints_, coords,
       volume, error, &lerr );
-
-  // check
-  *error = (lerr == 0) ? 0.0 : 1.0;
-
 }
-
 
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
@@ -2074,13 +2105,11 @@ void Quad2DSCS::determinant(
   double *areav,
   double *error)
 {
-
   SIERRA_FORTRAN(quad_scs_det)
     ( &nelem, &nodesPerElement_, &numIntPoints_, coords, areav );
 
   // all is always well; no error checking
   *error = 0;
-
 }
 
 //--------------------------------------------------------------------------
@@ -2107,8 +2136,7 @@ void Quad2DSCS::grad_op(
       coords, gradop, det_j, error, &lerr );
   
   if ( lerr )
-    std::cout << "sorry, negative Quad2DSCS volume.." << std::endl;
-  
+    std::cout << "sorry, negative Quad2DSCS volume.." << std::endl;  
 }
 
 //--------------------------------------------------------------------------
@@ -2136,7 +2164,6 @@ void Quad2DSCS::shifted_grad_op(
 
   if ( lerr )
     std::cout << "sorry, negative Quad2DSCS volume.." << std::endl;
-
 }
 
 //--------------------------------------------------------------------------
@@ -2263,7 +2290,6 @@ Quad2DSCS::isInElement(
   const double *pointCoord,
   double *isoParCoord )
 {
-
   // square of the desired norm, 1.0e-8
   const double isInElemConverged = 1.0e-16;
   const int maxNonlinearIter = 10;
@@ -2353,9 +2379,7 @@ Quad2DSCS::isInElement(
       ? std::abs(xinew) : std::abs(etanew);
   }
   return dist;
-
 }
-
 
 //--------------------------------------------------------------------------
 //-------- interpolatePoint ------------------------------------------------
@@ -2367,7 +2391,7 @@ Quad2DSCS::interpolatePoint(
   const double *field,
   double *result )
 {
-  
+  // -1:1 isoparametric range
   const double xi   = isoParCoord[0];
   const double eta  = isoParCoord[1];
 
@@ -2381,8 +2405,7 @@ Quad2DSCS::interpolatePoint(
       (1.00000000000000-eta) * (1.00000000000000+xi ) * field[b+1] +
       (1.00000000000000+eta) * (1.00000000000000+xi ) * field[b+2] +
       (1.00000000000000+eta) * (1.00000000000000-xi ) * field[b+3] ) ;
-  }
-  
+  }  
 }
 
 //--------------------------------------------------------------------------
@@ -2394,7 +2417,6 @@ Quad2DSCS::general_shape_fcn(
   const double *isoParCoord,
   double *shpfc)
 {
-
   // -1:1 isoparametric range
   const double npe = nodesPerElement_;
   for ( int ip = 0; ip < numIp; ++ip ) {
@@ -2562,18 +2584,12 @@ void Tri2DSCV::determinant(
   double *volume,
   double *error)
 {
-
   int lerr = 0;
 
   SIERRA_FORTRAN(tri_scv_det)
     ( &nelem, &nodesPerElement_, &numIntPoints_, coords,
       volume, error, &lerr );
-
-  // check
-  *error = (lerr == 0) ? 0.0 : 1.0;
-
 }
-
 
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
@@ -2634,7 +2650,6 @@ Tri2DSCS::Tri2DSCS()
   // face 2, surf 0, 1; nodes 2,0
   intgExpFace_[8]  = 0.00; intgExpFace_[9]  = 0.75;
   intgExpFace_[10] = 0.00; intgExpFace_[11] = 0.25;
-
 }
 
 //--------------------------------------------------------------------------
@@ -2654,13 +2669,11 @@ void Tri2DSCS::determinant(
   double *areav,
   double *error)
 {
-
   SIERRA_FORTRAN(tri_scs_det)
     ( &nelem, &nodesPerElement_, &numIntPoints_, coords, areav );
 
   // all is always well; no error checking
   *error = 0;
-
 }
 
 //--------------------------------------------------------------------------
@@ -2688,7 +2701,6 @@ void Tri2DSCS::grad_op(
   
   if ( lerr )
     std::cout << "sorry, negative Tri2DSCS volume.." << std::endl;
-  
 }
 
 //--------------------------------------------------------------------------
@@ -2929,7 +2941,6 @@ Tri2DSCS::tri_parametric_distance(
   return dist;
 }
 
-
 //--------------------------------------------------------------------------
 //-------- interpolatePoint ------------------------------------------------
 //--------------------------------------------------------------------------
@@ -2947,6 +2958,78 @@ Tri2DSCS::interpolatePoint(
   {
     const int b = 3*i;
     result[i] =  oneMinusST*field[b+0] + s*field[b+1] + t*field[b+2];
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- general_face_grad_op --------------------------------------------
+//--------------------------------------------------------------------------
+void 
+Tri2DSCS::general_face_grad_op(
+  const int /*face_ordinal*/,
+  const double */*isoParCoord*/,
+  const double *coords,
+  double *gradop,
+  double *det_j,
+  double *error)
+{
+  int lerr = 0;
+  
+  const int nface = 1;
+  double dpsi[6];
+  double grad[6];
+  
+  // derivatives are constant
+  SIERRA_FORTRAN(tri_derivative)
+    ( &nface, dpsi );
+      
+  SIERRA_FORTRAN(tri_gradient_operator)
+    ( &nface,
+      &nodesPerElement_,
+      &nface,
+      dpsi,
+      &coords[0], grad, &det_j[0], error, &lerr );
+      
+  if ( lerr )
+    std::cout << "sorry, issue with face_grad_op.." << std::endl;
+  
+  for ( int j=0; j<6; j++) {
+    gradop[j] = grad[j];
+  }
+}
+
+
+//--------------------------------------------------------------------------
+//-------- sidePcoords_to_elemPcoords --------------------------------------
+//--------------------------------------------------------------------------
+void 
+Tri2DSCS::sidePcoords_to_elemPcoords(
+  const int & side_ordinal,
+  const int & npoints,
+  const double *side_pcoords,
+  double *elem_pcoords)
+{
+  switch (side_ordinal) {
+  case 0:
+    for (int i=0; i<npoints; i++) {
+      elem_pcoords[i*2+0] = 0.5*(1.0 + side_pcoords[i]);
+      elem_pcoords[i*2+1] = 0.0;
+    }
+    break;
+  case 1:
+    for (int i=0; i<npoints; i++) {
+      elem_pcoords[i*2+0] = 1. - 0.5 * (side_pcoords[i] + 1.);
+      elem_pcoords[i*2+1] = 0.5 * (side_pcoords[i] + 1.);
+    }
+    break;
+  case 2:
+    for (int i=0; i<npoints; i++) {
+      elem_pcoords[i*2+0] = 0.0;
+      elem_pcoords[i*2+1] = 1. - 0.5 * (side_pcoords[i] + 1.);
+    }
+    break;
+  default:
+    throw std::runtime_error("Tri2DSCS::sideMap invalid ordinal");
   }
 }
 
@@ -2994,15 +3077,13 @@ void Quad3DSCS::determinant(
   double *areav,
   double *error)
 {
-
   int lerr = 0;
 
   SIERRA_FORTRAN(quad3d_scs_det)
     ( &nelem, coords, areav );
 
-  // check
+  // fake check
   *error = (lerr == 0) ? 0.0 : 1.0;
-
 }
 
 //--------------------------------------------------------------------------
@@ -3035,7 +3116,6 @@ Quad3DSCS::isInElement(
   const double *pointCoord,
   double *isoParCoord )
 {
-
   // square of the desired norm, 1.0e-8
   const double isInElemConverged = 1.0e-16;
   const int maxNonlinearIter = 20;
@@ -3265,7 +3345,6 @@ Quad3DSCS::interpolatePoint(
   const double *field,
   double *result )
 {
- 
   // this is the same as the 2D implementation... Consider consolidation
   const double xi   = isoParCoord[0];
   const double eta  = isoParCoord[1];
@@ -3281,7 +3360,6 @@ Quad3DSCS::interpolatePoint(
       (1.00+eta) * (1.00+xi ) * field[b+2] +
       (1.00+eta) * (1.00-xi ) * field[b+3] ) ;
   }
-
 }
 
 //--------------------------------------------------------------------------
@@ -3293,7 +3371,6 @@ Quad3DSCS::general_shape_fcn(
   const double *isoParCoord,
   double *shpfc)
 {
-
   // -1:1 isoparametric range
   const double npe = nodesPerElement_;
   for ( int ip = 0; ip < numIp; ++ip ) {
@@ -3353,16 +3430,14 @@ void Tri3DSCS::determinant(
   double *areav,
   double *error)
 {
-
   int lerr = 0;
 
   SIERRA_FORTRAN(tri3d_scs_det)
     ( &nelem, &nodesPerElement_, &numIntPoints_,
       coords, areav );
 
-  // check
+  // fake check
   *error = (lerr == 0) ? 0.0 : 1.0;
-
 }
 
 //--------------------------------------------------------------------------
@@ -3404,6 +3479,156 @@ Tri3DSCS::tri_shape_fcn(
 }
 
 //--------------------------------------------------------------------------
+//-------- isInElement -----------------------------------------------------
+//--------------------------------------------------------------------------
+double
+Tri3DSCS::isInElement(
+    const double * elem_nodal_coor,
+    const double * point_coor,
+	  double * par_coor ) 
+{
+  // always intended for 3D...
+  const int npar_coord = 3;
+  // Translate element so that (x,y,z) coordinates of the
+  // first node
+  double x[2] = { elem_nodal_coor[1] - elem_nodal_coor[0],
+                  elem_nodal_coor[2] - elem_nodal_coor[0] };
+  double y[2] = { elem_nodal_coor[4] - elem_nodal_coor[3],
+                  elem_nodal_coor[5] - elem_nodal_coor[3] };
+  double z[2] = { elem_nodal_coor[7] - elem_nodal_coor[6],
+                  elem_nodal_coor[8] - elem_nodal_coor[6] };
+
+  // Translate position vector of point in same manner
+
+  double xp = point_coor[0] - elem_nodal_coor[0];
+  double yp = point_coor[1] - elem_nodal_coor[3];
+  double zp = point_coor[2] - elem_nodal_coor[6];
+
+  // Set new nodal coordinates with Node 1 at origin and with new
+  // x and y axes lying in the plane of the element
+  double len12 = std::sqrt( x[0]*x[0] + y[0]*y[0] + z[0] *z[0] );
+  double len13 = std::sqrt( x[1]*x[1] + y[1]*y[1] + z[1] *z[1] );
+
+  double xnew[3];
+  double ynew[3];
+  double znew[3];
+
+  // Use cross-product of 12 and 13 to find enclosed angle and
+  // direction of new z-axis
+
+  znew[0] = y[0]*z[1] - y[1]*z[0];
+  znew[1] = x[1]*z[0] - x[0]*z[1];
+  znew[2] = x[0]*y[1] - x[1]*y[0];
+
+  double Area2 = std::sqrt( znew[0]*znew[0] + znew[1]*znew[1] +
+                            znew[2]*znew[2] );
+
+  // find sin of angle
+  double sin_theta = Area2 / ( len12 * len13 ) ;
+
+  // find cosine of angle
+  double cos_theta = (x[0]*x[1] + y[0]*y[1] + z[0]*z[1])/(len12 * len13);
+
+  // nodal coordinates of nodes 2 and 3 in new system
+  // (coordinates of node 1 are identically 0.0)
+  double x_nod_new[2] = { len12, len13*cos_theta};
+  double y_nod_new[2] = {  0.0, len13*sin_theta};
+
+  // find direction cosines transform position vector of
+  // point to be checked into new coordinate system
+
+  // direction cosines of new x axis along side 12
+
+  xnew[0] = x[0]/len12;
+  xnew[1] = y[0]/len12;
+  xnew[2] = z[0]/len12;
+
+  // direction cosines of new z axis
+  znew[0] = znew[0]/Area2;
+  znew[1] = znew[1]/Area2;
+  znew[2] = znew[2]/Area2;
+
+  // direction cosines of new y-axis (cross-product of znew and xnew)
+  ynew[0] = znew[1]*xnew[2] - xnew[1]*znew[2];
+  ynew[1] = xnew[0]*znew[2] - znew[0]*xnew[2];
+  ynew[2] = znew[0]*xnew[1] - xnew[0]*znew[1];
+
+  // compute transformed coordinates of point
+  // (coordinates in xnew,ynew,znew)
+  double xpnew = xnew[0]*xp + xnew[1]*yp + xnew[2]*zp;
+  double ypnew = ynew[0]*xp + ynew[1]*yp + ynew[2]*zp;
+  double zpnew = znew[0]*xp + znew[1]*yp + znew[2]*zp;
+
+  // Find parametric coordinates of point and check that
+  // it lies in the element
+  par_coor[0] = 1. - xpnew / x_nod_new[0] +
+		 ypnew*( x_nod_new[1] - x_nod_new[0] ) / Area2;
+  par_coor[1] = ( xpnew*y_nod_new[1] - ypnew*x_nod_new[1] ) / Area2;
+
+  if (3 == npar_coord) par_coor[2] = zpnew/std::sqrt(Area2);
+
+  std::vector<double> w = { par_coor[0], par_coor[1], zpnew/std::sqrt(Area2) };
+
+  par_coor[0] = w[1];
+  par_coor[1] = 1.0-w[0]-w[1];
+
+  const double dist = parametric_distance(w);
+
+  return dist;
+}
+
+//--------------------------------------------------------------------------
+//-------- parametric_distance ---------------------------------------------
+//--------------------------------------------------------------------------
+double 
+Tri3DSCS::parametric_distance(
+  const std::vector<double> &x)
+{
+  const double ELEM_THICK = 0.01;
+  const double X=x[0] - 1./3.;
+  const double Y=x[1] - 1./3.;
+  const double dist0 = -3*X;
+  const double dist1 = -3*Y;
+  const double dist2 =  3*(X+Y);
+  double dist = std::max(std::max(dist0,dist1),dist2);
+  const double y = std::fabs(x[2]);
+  if (ELEM_THICK < y && dist < 1+y) dist = 1+y;
+  return dist;
+}
+
+//--------------------------------------------------------------------------
+//-------- interpolatePoint ------------------------------------------------
+//--------------------------------------------------------------------------
+void
+Tri3DSCS::interpolatePoint(
+  const int  & ncomp_field,
+  const double * par_coord,
+  const double * field,
+  double * result )
+{
+  const double r = par_coord[0];
+  const double s = par_coord[1];
+  const double t = 1.0 - r - s;
+
+  for ( int i = 0; i < ncomp_field; i++ ) {
+    int b = 3*i;  //Base 'field array' index for ith component
+    result[i] = t*field[b] + r*field[b+1] + s*field[b+2];
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- general_shape_fcn -----------------------------------------------
+//--------------------------------------------------------------------------
+void
+Tri3DSCS::general_shape_fcn(
+  const int numIp,
+  const double *isoParCoord,
+  double *shpfc)
+{
+  tri_shape_fcn(numIp, &isoParCoord[0], shpfc);
+}
+
+//--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 Edge2DSCS::Edge2DSCS()
@@ -3439,16 +3664,14 @@ void Edge2DSCS::determinant(
   double *areav,
   double *error)
 {
-
   int lerr = 0;
 
   SIERRA_FORTRAN(edge2d_scs_det)
     ( &nelem, &nodesPerElement_, &numIntPoints_,
       coords, areav );
 
-  // check
+  // fake check
   *error = (lerr == 0) ? 0.0 : 1.0;
-
 }
 
 //--------------------------------------------------------------------------
