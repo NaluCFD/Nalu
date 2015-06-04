@@ -74,6 +74,7 @@
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
 #include <stk_util/environment/CPUTime.hpp>
+#include <stk_util/environment/perf_util.hpp>
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/BulkData.hpp>
@@ -188,7 +189,8 @@ Realm::Realm(Realms& realms)
     provideEntityCount_(false),
     HDF5ptr_(NULL),
     autoDecompType_("None"),
-    activateAura_(false)
+    activateAura_(false),
+    activateMemoryDiagnostic_(false)
 {
   // nothing to do
 }
@@ -281,6 +283,78 @@ bool
 Realm::debug() const
 {
   return root()->debug_;
+}
+
+//--------------------------------------------------------------------------
+//-------- get_activate_memory_diagnostic ----------------------------------
+//--------------------------------------------------------------------------
+bool
+Realm::get_activate_memory_diagnostic()
+{
+  return activateMemoryDiagnostic_;
+}
+
+//--------------------------------------------------------------------------
+//-------- provide_memory_summary ------------------------------------------
+//--------------------------------------------------------------------------
+void
+Realm::provide_memory_summary() 
+{
+  size_t now, hwm;
+  stk::get_memory_usage(now, hwm);
+  // min, max, sum
+  size_t global_now[3] = {now,now,now};
+  size_t global_hwm[3] = {hwm,hwm,hwm};
+  
+  stk::all_reduce(NaluEnv::self().parallel_comm(), stk::ReduceSum<1>( &global_now[2] ) );
+  stk::all_reduce(NaluEnv::self().parallel_comm(), stk::ReduceMin<1>( &global_now[0] ) );
+  stk::all_reduce(NaluEnv::self().parallel_comm(), stk::ReduceMax<1>( &global_now[1] ) );
+  
+  stk::all_reduce(NaluEnv::self().parallel_comm(), stk::ReduceSum<1>( &global_hwm[2] ) );
+  stk::all_reduce(NaluEnv::self().parallel_comm(), stk::ReduceMin<1>( &global_hwm[0] ) );
+  stk::all_reduce(NaluEnv::self().parallel_comm(), stk::ReduceMax<1>( &global_hwm[1] ) );
+  
+  NaluEnv::self().naluOutputP0() << "Memory Overview: " << std::endl;
+  NaluEnv::self().naluOutputP0() << "nalu memory: total (over all cores) current/high-water mark= "
+                                 << std::setw(15) << convert_bytes(global_now[2])
+                                 << std::setw(15) << convert_bytes(global_hwm[2])
+                                 << std::endl;
+  
+  NaluEnv::self().naluOutputP0() << "nalu memory:   min (over all cores) current/high-water mark= "
+                                 << std::setw(15) << convert_bytes(global_now[0])
+                                 << std::setw(15) << convert_bytes(global_hwm[0])
+                                 << std::endl;
+  
+  NaluEnv::self().naluOutputP0() << "nalu memory:   max (over all cores) current/high-water mark= "
+                                  << std::setw(15) << convert_bytes(global_now[1])
+                                  << std::setw(15) << convert_bytes(global_hwm[1])
+                                  << std::endl;
+}
+
+//--------------------------------------------------------------------------
+//-------- convert_bytes ---------------------------------------------------
+//--------------------------------------------------------------------------
+std::string 
+Realm::convert_bytes(double bytes)
+{
+  const double K = 1024;
+  const double M = K*1024;
+  const double G = M*1024;
+
+  std::ostringstream out;
+  if (bytes < K) {
+    out << bytes << " B";
+  } else if (bytes < M) {
+    bytes /= K;
+    out << bytes << " K";
+  } else if (bytes < G) {
+    bytes /= M;
+    out << bytes << " M";
+  } else {
+    bytes /= G;
+    out << bytes << " G";
+  }
+  return out.str();
 }
 
 //--------------------------------------------------------------------------
@@ -456,6 +530,11 @@ Realm::load(const YAML::Node & node)
     NaluEnv::self().naluOutputP0() << "Nalu will activate aura ghosting" << std::endl;
   else
     NaluEnv::self().naluOutputP0() << "Nalu will deactivate aura ghosting" << std::endl;
+
+  // memory diagnostic
+  get_if_present(node, "activate_memory_diagnostic", activateMemoryDiagnostic_, activateMemoryDiagnostic_);
+  if ( activateMemoryDiagnostic_ )
+    NaluEnv::self().naluOutputP0() << "Nalu will activate detailed memory pulse" << std::endl;
 
   // time step control
   const bool dtOptional = true;
@@ -768,11 +847,6 @@ Realm::setup_initial_conditions()
             stk::mesh::FieldBase *field = stk::mesh::get_field_by_name(genIC.fieldNames_[ifield], *metaData_);
             ThrowAssert(field);
       
-            if (debug()) {
-              NaluEnv::self().naluOutputP0() << "EquationSystem::register_initial_condition: field= " << field
-                        << " for name= " << genIC.fieldNames_[ifield] << std::endl;
-            }
-
             stk::mesh::FieldBase *fieldWithState = ( field->number_of_states() > 1 )
               ? field->field_state(stk::mesh::StateNP1)
               : field->field_state(stk::mesh::StateNone);

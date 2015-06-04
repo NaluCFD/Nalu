@@ -637,8 +637,13 @@ EquationSystems::initialize()
 {
   double start_time = stk::cpu_time();
   std::vector<EquationSystem *>::iterator ii;
-  for( ii=begin(); ii!=end(); ++ii )
+  for( ii=begin(); ii!=end(); ++ii ) {
+    if ( realm_.get_activate_memory_diagnostic() ) {
+      NaluEnv::self().naluOutputP0() << "NaluMemory::EquationSystems::initialize(): " << (*ii)->name_ << std::endl;
+      realm_.provide_memory_summary();
+    }
     (*ii)->initialize();
+  }
   double end_time = stk::cpu_time();
   realm_.timerInitializeEqs_ += (end_time-start_time);
 }
@@ -709,6 +714,12 @@ EquationSystems::solve_and_update()
   for( ii=begin(); ii!=end(); ++ii )
     (*ii)->solve_and_update();
   
+  // memory diagnostic
+  if ( realm_.get_activate_memory_diagnostic() ) {
+    NaluEnv::self().naluOutputP0() << "NaluMemory::EquationSystem::solve_and_update()" << std::endl;
+    realm_.provide_memory_summary();
+  }
+
   // add a post iteration work section
   for( ii=begin(); ii!=end(); ++ii )
     (*ii)->post_iter_work();

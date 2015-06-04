@@ -41,7 +41,6 @@ public:
   bool debug() { return debug_; }
   bool debug() const { return debug_; }
   void setSerializedIOGroupSize(int siogs);
-
   static stk::diag::TimerSet &rootTimerSet();
   static stk::diag::Timer &rootTimer();
   static stk::diag::Timer &outputTimer();
