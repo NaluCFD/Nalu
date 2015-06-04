@@ -908,10 +908,8 @@ TpetraLinearSystem::finalizeLinearSystem()
 
   const int nDim = metaData.spatial_dimension();
 
-  Teuchos::RCP<Tpetra::MultiVector<LinSys::Scalar,LinSys::LocalOrdinal,LinSys::GlobalOrdinal,LinSys::Node> > coords
-    = Teuchos::RCP<Tpetra::MultiVector<LinSys::Scalar,LinSys::LocalOrdinal,LinSys::GlobalOrdinal,LinSys::Node> >(
-    new Tpetra::MultiVector<LinSys::Scalar,LinSys::LocalOrdinal,LinSys::GlobalOrdinal,LinSys::Node> (sln_->getMap(), nDim));
-
+  Teuchos::RCP<LinSys::MultiVector> coords 
+    = Teuchos::RCP<LinSys::MultiVector>(new LinSys::MultiVector(sln_->getMap(), nDim));
 
   TpetraLinearSolver *linearSolver = reinterpret_cast<TpetraLinearSolver *>(linearSolver_);
 

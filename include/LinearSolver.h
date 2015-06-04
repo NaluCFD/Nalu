@@ -33,7 +33,7 @@ typedef double                                                        Scalar;
 typedef long                                                          GlobalOrdinal;
 typedef int                                                           LocalOrdinal;
 typedef Tpetra::DefaultPlatform::DefaultPlatformType                  Platform;
-typedef KokkosClassic::DefaultNode::DefaultNodeType                        Node;
+typedef Tpetra::Map<LocalOrdinal, GlobalOrdinal>::node_type           Node;
 typedef Teuchos::ScalarTraits<Scalar> STS;
 
 // MueLu main header: include most common header files in one line
@@ -156,7 +156,7 @@ class TpetraLinearSolver : public LinearSolver
       Teuchos::RCP<LinSys::Vector> sln,
       Teuchos::RCP<LinSys::Matrix> matrix,
       Teuchos::RCP<LinSys::Vector> rhs,
-      Teuchos::RCP<Tpetra::MultiVector<SC,LO,GO,NO> > coords);
+      Teuchos::RCP<LinSys::MultiVector> coords);
 
     void destroyLinearSolver();
 
@@ -184,7 +184,7 @@ class TpetraLinearSolver : public LinearSolver
     Teuchos::RCP<LinSys::SolverManager> solver_;
     Teuchos::RCP<LinSys::Preconditioner> preconditioner_;
     Teuchos::RCP<MueLu::TpetraOperator<SC,LO,GO,NO> > mueluPreconditioner_;
-    Teuchos::RCP<Tpetra::MultiVector<SC,LO,GO,NO> > coords_;
+    Teuchos::RCP<LinSys::MultiVector> coords_;
 
     bool activateMueLu_;
 

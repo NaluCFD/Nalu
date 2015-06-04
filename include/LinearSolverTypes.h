@@ -25,17 +25,6 @@ class ParameterList;
 
 }
 
-/*
- * This forward declaration is not needed and is wrong with the
- * recent changes to kokkos that moves the old kokkos names to the
- * kokkosclassic namespace.
-namespace Kokkos {
-
-class SerialNode;
-
-}
-*/
-
 namespace Tpetra {
 
 template <typename LocalOrdinal, typename GlobalOrdinal, typename Node>
@@ -99,7 +88,7 @@ typedef long   GlobalOrdinal; // MUST be signed
 typedef int    LocalOrdinal;  // MUST be signed
 typedef double Scalar;
 
-typedef KokkosClassic::DefaultNode::DefaultNodeType                        Node;
+typedef Tpetra::Map<LocalOrdinal, GlobalOrdinal>::node_type                Node;
 typedef Teuchos::MpiComm<int>                                              Comm;
 typedef Tpetra::Export< LocalOrdinal, GlobalOrdinal, Node >                Export;
 typedef Tpetra::Import< LocalOrdinal, GlobalOrdinal, Node >                Import;
