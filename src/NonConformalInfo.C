@@ -271,9 +271,10 @@ NonConformalInfo::construct_dgInfo_state()
           dgInfo->currentGaussPointCoords_[j] = currentGaussPointCoords[j];
         }
 
-        // save face iso-parametric coordinates (factor of conversion from -0.5:0.5 to -1:1)
+        // save face iso-parametric coordinates; extract conversion factor from CVFEM to isInElement
+        const double conversionFac = meFC->scaleToStandardIsoFac_;
         for ( int j = 0; j < nDim-1; ++j ) {
-          dgInfo->currentIsoParCoords_[j] = 2.0*intgLoc[ip*(nDim-1)+j]; // FIXME: make sure that **all** CVFEM is -0.5:0.5
+          dgInfo->currentIsoParCoords_[j] = conversionFac*intgLoc[ip*(nDim-1)+j]; 
         }
 
         // push back to local

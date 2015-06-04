@@ -25,7 +25,8 @@ namespace nalu{
 MasterElement::MasterElement()
   : nDim_(0),
     nodesPerElement_(0),
-    numIntPoints_(0)
+    numIntPoints_(0),
+    scaleToStandardIsoFac_(1.0)
 {
   // nothing else
 }
@@ -82,6 +83,7 @@ HexSCS::HexSCS()
   nDim_ = 3;
   nodesPerElement_ = 8;
   numIntPoints_ = 12;
+  scaleToStandardIsoFac_ = 2.0;
 
   // define L/R mappings
   lrscv_.resize(24);
@@ -1996,6 +1998,7 @@ Quad2DSCS::Quad2DSCS()
   nDim_ = 2;
   nodesPerElement_ = 4;
   numIntPoints_ = 4;
+  scaleToStandardIsoFac_ = 2.0;
 
   // define L/R mappings
   lrscv_.resize(8);
@@ -3043,6 +3046,7 @@ Quad3DSCS::Quad3DSCS()
   nDim_ = 3;
   nodesPerElement_ = 4;
   numIntPoints_ = 4;
+  scaleToStandardIsoFac_ = 2.0;
 
   // standard integration location
   intgLoc_.resize(8);    
@@ -3638,6 +3642,7 @@ Edge2DSCS::Edge2DSCS()
   nDim_ = 2;
   nodesPerElement_ = 2;
   numIntPoints_ = 2;
+  scaleToStandardIsoFac_ = 2.0;
 
   intgLoc_.resize(2);
   intgLoc_[0]  =  -0.25; intgLoc_[1]  = 0.25;

@@ -142,6 +142,8 @@ public:
   int nDim_;
   int nodesPerElement_;
   int numIntPoints_;
+  double scaleToStandardIsoFac_;
+
   std::vector<int> lrscv_;
   std::vector<int> oppNode_;
   std::vector<int> oppFace_;
