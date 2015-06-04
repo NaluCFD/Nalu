@@ -290,7 +290,7 @@ NonConformalInfo::construct_dgInfo_state()
       // push them all back
       dgInfoVec_.push_back(faceDgInfoVec);
       
-      }
+    }
   }
 }
 
@@ -481,9 +481,19 @@ NonConformalInfo::complete_search()
   }
   
   // check for problems... will want to be more pro-active in the near future, e.g., expand and search...
-  if ( problemDgInfoVec.size() > 0 )
-    throw std::runtime_error("sorry, issues with finding a home for all Gauss points?");
-
+  if ( problemDgInfoVec.size() > 0 ) {
+    NaluEnv::self().naluOutputP0() << "NonConformalInfo::complete_search issue with " << currentPart_->name() << " " << opposingPart_->name() << " Size of issue is " << problemDgInfoVec.size() << std::endl; 
+    NaluEnv::self().naluOutputP0() << "Problem ips are as follows: " << std::endl; 
+    for ( int k = 0; k < problemDgInfoVec.size(); ++k ) {
+      const uint64_t localGaussPointId  = problemDgInfoVec[k]->localGaussPointId_; 
+      NaluEnv::self().naluOutputP0() << "local gauss point id with gass point coords " << localGaussPointId << " ";
+      for ( int i = 0; i < nDim; ++i ) 
+        NaluEnv::self().naluOutputP0() << " " << problemDgInfoVec[k]->currentGaussPointCoords_[i];
+      NaluEnv::self().naluOutputP0() << std::endl;
+    }
+    NaluEnv::self().naluOutputP0() << std::endl;
+    throw std::runtime_error("Try to adjust the search tolerance and re-submit...");
+  }
 }
 
 //--------------------------------------------------------------------------
