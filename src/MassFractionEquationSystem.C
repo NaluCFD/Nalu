@@ -577,8 +577,6 @@ MassFractionEquationSystem::register_non_conformal_bc(
 
   const AlgorithmType algType = NON_CONFORMAL;
 
-  stk::mesh::MetaData &meta_data = realm_.meta_data();
-
   // non-solver; dydx; allow for element-based shifted
   std::map<AlgorithmType, Algorithm *>::iterator it
     = assembleNodalGradAlgDriver_->algMap_.find(algType);
@@ -633,8 +631,6 @@ void
 MassFractionEquationSystem::set_current_mass_fraction(
   const int k)
 {
-  stk::mesh::MetaData &meta_data = realm_.meta_data();
-
   // copy np1; n and possible nm1
   GenericFieldType &yNp1 = massFraction_->field_of_state(stk::mesh::StateNP1);
   ScalarFieldType &cyNp1 = currentMassFraction_->field_of_state(stk::mesh::StateNP1);

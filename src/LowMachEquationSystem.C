@@ -1515,8 +1515,6 @@ MomentumEquationSystem::register_non_conformal_bc(
 
   stk::mesh::MetaData &meta_data = realm_.meta_data();
 
-  const unsigned nDim = meta_data.spatial_dimension();
-
   // mdot at nc bc; register field; require topo and num ips
   MasterElement *meFC = realm_.get_surface_master_element(theTopo);
   const int numIp = meFC->numIntPoints_;

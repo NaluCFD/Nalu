@@ -781,8 +781,6 @@ EnthalpyEquationSystem::register_non_conformal_bc(
   ScalarFieldType &hNp1 = enthalpy_->field_of_state(stk::mesh::StateNP1);
   VectorFieldType &dhdxNone = dhdx_->field_of_state(stk::mesh::StateNone);
 
-  stk::mesh::MetaData &meta_data = realm_.meta_data();
-
   // non-solver; dhdx; allow for element-based shifted
   std::map<AlgorithmType, Algorithm *>::iterator it
     = assembleNodalGradAlgDriver_->algMap_.find(algType);

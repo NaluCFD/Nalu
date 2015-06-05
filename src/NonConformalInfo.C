@@ -379,7 +379,6 @@ NonConformalInfo::complete_search()
       else {
         for (std::vector<std::pair<theKey, theKey> >::const_iterator ii = p2.first; ii != p2.second; ++ii ) {
           
-          const uint64_t thePt = ii->first.id();
           const uint64_t theBox = ii->second.id();
           const unsigned theRank = NaluEnv::self().parallel_rank();
           const unsigned pt_proc = ii->first.proc();
@@ -485,7 +484,7 @@ NonConformalInfo::complete_search()
   if ( problemDgInfoVec.size() > 0 ) {
     NaluEnv::self().naluOutputP0() << "NonConformalInfo::complete_search issue with " << currentPart_->name() << " " << opposingPart_->name() << " Size of issue is " << problemDgInfoVec.size() << std::endl; 
     NaluEnv::self().naluOutputP0() << "Problem ips are as follows: " << std::endl; 
-    for ( int k = 0; k < problemDgInfoVec.size(); ++k ) {
+    for ( size_t k = 0; k < problemDgInfoVec.size(); ++k ) {
       const uint64_t localGaussPointId  = problemDgInfoVec[k]->localGaussPointId_; 
       NaluEnv::self().naluOutputP0() << "local gauss point id with gass point coords " << localGaussPointId << " ";
       for ( int i = 0; i < nDim; ++i ) 

@@ -27,14 +27,13 @@ c
       dimension cordel(3, npe, nelem)
       dimension area_vec(3, nelem, nscs)
 
-      double precision coords, scscoords, areatmp
+      double precision coords, scscoords
 
       integer ielem, j, k, ics, inode, itrianglenode, npf
       ! coordinates of the vertices needed to define the scs
       dimension coords(3,27)
       ! coordinates of the vertices of the scs
       dimension scscoords(3,4)
-      dimension areatmp(3)
 
       double precision half, one4th, one8th
 
@@ -630,9 +629,9 @@ c***********************************************************************
 c
       implicit none
 c
-      integer nelem, npe, nscs, nerr
-      double precision cordel, area_vec, err
-      double precision coords, scscoords, areatmp
+      integer nelem, npe, nscs
+      double precision cordel, area_vec
+      double precision coords, scscoords
       integer TetEdgeFacetTable, ielem, j, k, ics, inode, itrianglenode
       double precision half, one3rd, one4th
 
@@ -643,7 +642,6 @@ c
       dimension coords(3,15)
       ! coordinates of vertices of scs
       dimension scscoords(3,4)
-      dimension areatmp(3)
       dimension TetEdgeFacetTable(4,6)
 
       data TetEdgeFacetTable /
@@ -779,7 +777,7 @@ c
 
       integer nelem, npe, nscs
       double precision cordel, area_vec
-      double precision coords, scscoords, areatmp
+      double precision coords, scscoords
       integer PyramidEdgeFacetTable, ielem, j, k, ics, inode
       integer itrianglenode
       double precision half, one4th, one3rd
@@ -791,7 +789,6 @@ c
       dimension coords(3,19)
       ! coordinates of vertices of scs
       dimension scscoords(3,4)
-      dimension areatmp(3)
 
       ! this table defines the vertices of each scs
       dimension PyramidEdgeFacetTable(4,8)
@@ -1148,12 +1145,11 @@ c
       dimension cordel(3,npe,nelem),
      *          area_vec(3,nelem,nscs)
 
-      double precision coords, scscoords, areatmp
+      double precision coords, scscoords
       ! coordinates of vertices needed to define scs
       dimension coords(3,21)
       ! coordinates of vertices of the scs
       dimension scscoords(3,4)
-      dimension areatmp(3)
 
       integer ielem, k, j, ics, inodeTriangle, inode
 
@@ -1723,7 +1719,7 @@ c
       double precision cordel, area
 c
       integer k, i, idim
-      double precision p, e, c
+      double precision p, c
       double precision half
       double precision dx13, dy13
 
@@ -1808,12 +1804,11 @@ c
 c
       implicit none
       dimension cordel(2,npe,nelem),
-     .          area(nelem,nint),
      .          vol(nelem,nint),
      .          err(nelem)
       dimension deriv(2,4), shape_fcn(4)
       dimension xi(2,4), xigp(2,4)
-      double precision cordel, area, vol, err
+      double precision cordel, vol, err
       double precision deriv, shape_fcn
       double precision xi, xigp
       integer nelem, npe, nint, nerr

@@ -27,7 +27,7 @@ c
       implicit none
 
       integer ncoords, ntriangles, triangleFaceTable
-      integer itriangle, k, j, ip, iq, ir
+      integer itriangle, k, ip, iq, ir
       double precision areacoords, area
       double precision r1, r2
      

@@ -678,8 +678,6 @@ TurbKineticEnergyEquationSystem::register_non_conformal_bc(
   ScalarFieldType &tkeNp1 = tke_->field_of_state(stk::mesh::StateNP1);
   VectorFieldType &dkdxNone = dkdx_->field_of_state(stk::mesh::StateNone);
 
-  stk::mesh::MetaData &meta_data = realm_.meta_data();
-
   // non-solver; dkdx; allow for element-based shifted
   std::map<AlgorithmType, Algorithm *>::iterator it
     = assembleNodalGradAlgDriver_->algMap_.find(algType);
