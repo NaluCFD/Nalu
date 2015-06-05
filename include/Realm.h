@@ -92,6 +92,9 @@ public:
   Realms *parent();
 
   bool debug() const;
+  bool get_activate_memory_diagnostic();
+  void provide_memory_summary();
+  std::string convert_bytes(double bytes);
 
   void create_mesh();
 
@@ -420,6 +423,9 @@ public:
 
   // allow aura to be optional
   bool activateAura_;
+
+  // allow detailed output (memory) to be provided
+  bool activateMemoryDiagnostic_;
 
   // mesh parts for all boundary conditions
   stk::mesh::PartVector bcPartVec_;

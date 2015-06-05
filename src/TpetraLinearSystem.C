@@ -57,16 +57,6 @@
 
 #define DEBUG_TPETRA 0
 
-#define DEBUG_PRINT 0
-#define RANK (realm_.bulk_data().parallel_rank())
-
-
-#define PRINTMSG(a) do { if(DEBUG_PRINT)  std::cout << "tmp srk P[" << RANK << "] " <<  a << std::endl; } while (0)
-#define PRINTLN(a) do { if(DEBUG_PRINT)  std::cout << "tmp srk P[" << RANK << "] " << #a << " = " << a << std::endl; } while (0)
-#define PRINTLN2(a,b) do { if(DEBUG_PRINT)  std::cout << "tmp srk P[" << RANK << "] " << #a << " = " << a << " " << #b << " = " << b << std::endl; } while (0)
-#define PRINTLN3(a,b,c) do { if(DEBUG_PRINT)  std::cout << "tmp srk P[" << RANK << "] " << #a << " = " << a <<  " " << #b << " = " << b <<  " " << #c << " = " << c << std::endl; } while (0)
-#define PRINTLN4(a,b,c,d) do { if(DEBUG_PRINT)  std::cout << "tmp srk P[" << RANK << "] " << #a << " = " << a <<  " " << #b << " = " << b <<  " " << #c << " = " << c << " " << #d << " = " << d << std::endl; } while (0)
-
 #include <sstream>
 
 namespace sierra{
@@ -134,41 +124,7 @@ struct CompareEntityById
 
 size_t TpetraLinearSystem::lookup_myLID(MyLIDMapType& myLIDs, stk::mesh::EntityId entityId, const std::string& msg, stk::mesh::Entity entity)
 {
-#if DEBUG_TPETRA
-  MyLIDMapType::iterator found = myLIDs.find(entityId);
-  if (found == myLIDs.end()) {
-    stk::mesh::BulkData& bulkData = realm_.bulk_data();
-    const unsigned p_rank = bulkData.parallel_rank();
-    (void)p_rank;
-
-    const stk::mesh::EntityId stkId = bulkData.identifier(entity);
-    const stk::mesh::EntityId naluId = *stk::mesh::field_data(*realm_.naluGlobalId_, entity);
-    stk::mesh::Entity entity_naluId = bulkData.get_entity(stk::topology::NODE_RANK, naluId);
-    std::ostringstream extra;
-    if (bulkData.is_valid(entity_naluId)) {
-      const stk::mesh::EntityId per_stkId = bulkData.identifier(entity_naluId);
-      const stk::mesh::EntityId per_naluId = *stk::mesh::field_data(*realm_.naluGlobalId_, entity_naluId);
-      extra << " entity_naluId.id() = " << per_stkId << " entity_naluId.naluId= " << per_naluId
-            << " entity_naluId.owned= " << bulkData.bucket(entity_naluId).owned()
-            << " entity_naluId.shared= " << bulkData.bucket(entity_naluId).shared();
-    }
-
-    std::cout << "P[" << p_rank << "] found == myLIDs.end(), entityId= " << entityId << " valid= " << bulkData.is_valid(entity) << " id(entity)= " << stkId << " msg= " << msg
-              << " owned= " << bulkData.bucket(entity).owned()
-              << " shared= " << bulkData.bucket(entity).shared()
-              << " stkId= " << stkId
-              << " naluId= " << naluId
-              << " entity(naluId) is_valid= " << bulkData.is_valid(entity_naluId)
-              << extra.str()
-              << std::endl;
-
-
-  }
-  ThrowRequire(found != myLIDs.end());
-  return found->second;
-#else
-    return myLIDs[entityId];
-#endif
+  return myLIDs[entityId];
 }
 
 #define EXCLUDE_SLAVE_NODES 0
@@ -220,19 +176,6 @@ int TpetraLinearSystem::getDofStatus(stk::mesh::Entity node)
 
     // really simple here.. ghosted nodes never part of the matrix
     if ( nodeGhosted ) {
-      if ( DEBUG_TPETRA ) {
-        stk::mesh::Entity ghostedEntity = bulkData.get_entity(stk::topology::NODE_RANK, stkId);
-        stk::mesh::EntityKey ghostedEntityKey = bulkData.entity_key(ghostedEntity);
-        const bool isInPeriodic = bulkData.in_receive_ghost(*realm_.periodicManager_->get_ghosting_object(),ghostedEntityKey);
-        if ( isInPeriodic ) {
-          NaluEnv::self().naluOutputP0() << "Found a periodically Ghosted node: Rank/StkId/NaluId "
-              << bulkData.parallel_rank() << "/"<< stkId << "/" << naluId << std::endl;
-        }
-        else {
-          NaluEnv::self().naluOutputP0() << "Found an aura-Ghosted node: Rank/StkId/NaluId "
-              << bulkData.parallel_rank() << "/"<< stkId << "/" << naluId << std::endl;
-        }
-      }
       return DS_GhostedDOF;
     }
 
@@ -335,13 +278,6 @@ TpetraLinearSystem::beginLinearSystemConstruction()
     }
   }
 
-  if (DEBUG_TPETRA)
-    std::cout << "P[" << p_rank << "] numNodes= " << numNodes
-              << " numOwnedNodes= " << numOwnedNodes
-              << " numGloballyOwnedNotLocallyOwned= " << numGloballyOwnedNotLocallyOwned
-              << " numGhostNodes = " << numGhostNodes
-              << std::endl;
-
   maxOwnedRowId_ = numOwnedNodes * numDof_;
   maxGloballyOwnedRowId_ = numNodes * numDof_;
 
@@ -369,19 +305,6 @@ TpetraLinearSystem::beginLinearSystemConstruction()
   }
 
   std::sort(owned_nodes.begin(), owned_nodes.end(), CompareEntityById(bulkData, realm_.naluGlobalId_) );
-
-  // check for duplicate entries..
-  /*
-  const size_t ownedNodesSize = owned_nodes.size();
-  for ( size_t k = 0; k < ownedNodesSize; ++k ) {
-    const stk::mesh::Entity kEntity = owned_nodes[k];
-    if ( k < ownedNodesSize-1) {
-      const stk::mesh::Entity kp1Entity = owned_nodes[k+1];
-      const stk::mesh::EntityId kthNaluId = *stk::mesh::field_data(*realm_.naluGlobalId_, kthEntity);
-      const stk::mesh::EntityId kp1thNaluId = *stk::mesh::field_data(*realm_.naluGlobalId_, kthEntity);
-    }
-  }
-  */
   for (unsigned inode=0; inode < owned_nodes.size(); ++inode) {
       const stk::mesh::Entity entity = owned_nodes[inode];
       const stk::mesh::EntityId entityId = *stk::mesh::field_data(*realm_.naluGlobalId_, entity);
@@ -421,8 +344,7 @@ TpetraLinearSystem::beginLinearSystemConstruction()
       }
     }
 
-  if (localId != numNodes)
-    {
+  if (localId != numNodes) {
       std::cout << "P[" << p_rank << "] error localId= " << localId << " numNodes= " << numNodes << " numOwnedNodes= " << numOwnedNodes << " numGloballyOwnedNotLocallyOwned= " << numGloballyOwnedNotLocallyOwned << std::endl;
     }
   ThrowRequire(localId == numNodes);
@@ -986,10 +908,8 @@ TpetraLinearSystem::finalizeLinearSystem()
 
   const int nDim = metaData.spatial_dimension();
 
-  Teuchos::RCP<Tpetra::MultiVector<LinSys::Scalar,LinSys::LocalOrdinal,LinSys::GlobalOrdinal,LinSys::Node> > coords
-    = Teuchos::RCP<Tpetra::MultiVector<LinSys::Scalar,LinSys::LocalOrdinal,LinSys::GlobalOrdinal,LinSys::Node> >(
-    new Tpetra::MultiVector<LinSys::Scalar,LinSys::LocalOrdinal,LinSys::GlobalOrdinal,LinSys::Node> (sln_->getMap(), nDim));
-
+  Teuchos::RCP<LinSys::MultiVector> coords 
+    = Teuchos::RCP<LinSys::MultiVector>(new LinSys::MultiVector(sln_->getMap(), nDim));
 
   TpetraLinearSolver *linearSolver = reinterpret_cast<TpetraLinearSolver *>(linearSolver_);
 
@@ -1152,7 +1072,6 @@ TpetraLinearSystem::applyDirichletBCs(
     }
   }
   adbc_time += stk::cpu_time();
-  if (debug()) NaluEnv::self().naluOutputP0() << "Tpetra incremental applyDirichletBCs time= " << adbc_time << " Eq: " << name_ << std::endl;
 }
 
 void
@@ -1185,7 +1104,6 @@ TpetraLinearSystem::solve(
   TpetraLinearSolver *linearSolver = reinterpret_cast<TpetraLinearSolver *>(linearSolver_);
 
 #ifndef NDEBUG
-  //printInfo(true);
   checkForNaN(true);
   if (checkForZeroRow(true, false, true))
      {
@@ -1202,19 +1120,24 @@ TpetraLinearSystem::solve(
 
   int iters;
   double finalResidNorm;
+  
+  // memory diagnostic
+  if ( realm_.get_activate_memory_diagnostic() ) {
+    NaluEnv::self().naluOutputP0() << "NaluMemory::TpetraLinearSystem::solve() PreSolve: " << name_ << std::endl;
+    realm_.provide_memory_summary();
+  }
+
   const int status = linearSolver->solve(
       sln_,
       iters,
       finalResidNorm);
 
   solve_time += stk::cpu_time();
-  if (debug()) NaluEnv::self().naluOutputP0() << "Tpetra incremental solve time= " << solve_time <<  " eq: " << name_ << std::endl;
 
-  if (linearSolver->getConfig()->getWriteMatrixFiles())
-    {
+  if (linearSolver->getConfig()->getWriteMatrixFiles()) {
       writeSolutionToFile(this->name_.c_str());
       ++writeCounter_;
-    }
+  }
 
   copy_tpetra_to_stk(sln_, linearSolutionField);
   sync_field(linearSolutionField);

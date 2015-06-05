@@ -377,10 +377,9 @@ SolutionOptions::load(const YAML::Node & y_node)
           errorIndicatorType_ = EIT_SIMPLE_VORTICITY;
         else if (type == "simple.dudx2")
           errorIndicatorType_ = EIT_SIMPLE_DUDX2;
-        if (errorIndicatorType_ & EIT_SIMPLE_BASE)
-          {
-            NaluEnv::self().naluOutputP0() << "WARNING: Found debug/test error inidicator type. Input value= " << type << std::endl;
-          }
+        if (errorIndicatorType_ & EIT_SIMPLE_BASE) {
+          NaluEnv::self().naluOutputP0() << "WARNING: Found debug/test error inidicator type. Input value= " << type << std::endl;
+        }
       }
 
       NaluEnv::self().naluOutputP0() << std::endl;

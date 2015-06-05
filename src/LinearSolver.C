@@ -218,7 +218,7 @@ void TpetraLinearSolver::setupLinearSolver(
   Teuchos::RCP<LinSys::Vector> sln,
   Teuchos::RCP<LinSys::Matrix> matrix,
   Teuchos::RCP<LinSys::Vector> rhs,
-  Teuchos::RCP<Tpetra::MultiVector<SC,LO,GO,NO> > coords)
+  Teuchos::RCP<LinSys::MultiVector> coords)
 {
 
   setSystemObjects(matrix,rhs);

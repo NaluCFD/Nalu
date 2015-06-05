@@ -54,15 +54,6 @@ namespace nalu{
 
 #define DEBUG_EPETRA 0
 
-#define DEBUG_PRINT 0
-#define RANK (realm_.bulk_data().parallel_rank())
-
-#define PRINTMSG(a) do { if(DEBUG_PRINT)  std::cout << "tmp srk P[" << RANK << "] " <<  a << std::endl; } while (0)
-#define PRINTLN(a) do { if(DEBUG_PRINT)  std::cout << "tmp srk P[" << RANK << "] " << #a << " = " << a << std::endl; } while (0)
-#define PRINTLN2(a,b) do { if(DEBUG_PRINT)  std::cout << "tmp srk P[" << RANK << "] " << #a << " = " << a << " " << #b << " = " << b << std::endl; } while (0)
-#define PRINTLN3(a,b,c) do { if(DEBUG_PRINT)  std::cout << "tmp srk P[" << RANK << "] " << #a << " = " << a <<  " " << #b << " = " << b <<  " " << #c << " = " << c << std::endl; } while (0)
-#define PRINTLN4(a,b,c,d) do { if(DEBUG_PRINT)  std::cout << "tmp srk P[" << RANK << "] " << #a << " = " << a <<  " " << #b << " = " << b <<  " " << #c << " = " << c << " " << #d << " = " << d << std::endl; } while (0)
-
 struct EpetraCompare
 {
 
@@ -743,7 +734,6 @@ EpetraLinearSystem::applyDirichletBCs(
   }
 
   adbc_time += stk::cpu_time();
-  if (debug()) NaluEnv::self().naluOutputP0() << "Epetra incremental applyDirichletBCs time= " << adbc_time << " Eq: " << name_ << std::endl;
 }
 
 void EpetraLinearSystem::dump_lhs(const std::string& msg)
@@ -783,12 +773,18 @@ EpetraLinearSystem::solve(stk::mesh::FieldBase * linearSolutionField)
 
   int iters;
   double finalResidNorm;
+
+  // memory diagnostic
+  if ( realm_.get_activate_memory_diagnostic() ) {
+    NaluEnv::self().naluOutputP0() << "NaluMemory::EpetraLinearSystem::solve() PreSolve: " << name_ << std::endl;
+    realm_.provide_memory_summary();
+  }
+
   const int status = linearSolver->solve(
       sln_,
       iters,
       finalResidNorm);
   solve_time += stk::cpu_time();
-  if (debug()) NaluEnv::self().naluOutputP0() << "Epetra incremental solve time= " << solve_time <<  " eq: " << name_ << std::endl;
 
   if (linearSolver->getConfig()->getWriteMatrixFiles())
   {
