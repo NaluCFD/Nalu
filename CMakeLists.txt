@@ -102,6 +102,7 @@ set(nalu_ex_name "naluX")
 message("CMAKE_BUILD_TYPE = ${CMAKE_BUILD_TYPE}")
 if (CMAKE_BUILD_TYPE STREQUAL "DEBUG")
    set (nalu_ex_name "naluXd")
+   add_definitions("-Wall" "-Werror")
    message("Debug Build")
 endif()
 

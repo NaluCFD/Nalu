@@ -735,7 +735,6 @@ HexSCS::general_face_grad_op(
   double *error)
 {
   int lerr = 0;
-  const int ndim = 3;
   const int nface = 1;
 
   double dpsi[24];
@@ -2450,7 +2449,6 @@ Quad2DSCS::general_face_grad_op(
   double *error)
 {
   int lerr = 0;
-  const int ndim = 2;
   const int nface = 1;
 
   double dpsi[8];

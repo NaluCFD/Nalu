@@ -92,12 +92,6 @@ ComputeMdotEdgeAlgorithm::execute()
   // pointers for fast access
   double *p_areaVec = &areaVec[0];
 
-  // mesh motion
-  std::vector<double> vrtmL(nDim);
-  std::vector<double> vrtmR(nDim);
-  double * p_vrtmL = &vrtmL[0];
-  double * p_vrtmR = &vrtmR[0];
-
   // deal with state
   ScalarFieldType &densityNp1 = density_->field_of_state(stk::mesh::StateNP1);
 

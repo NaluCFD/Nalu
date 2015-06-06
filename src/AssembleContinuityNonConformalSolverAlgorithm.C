@@ -50,8 +50,8 @@ AssembleContinuityNonConformalSolverAlgorithm::AssembleContinuityNonConformalSol
     coordinates_(NULL),
     density_(NULL),
     exposedAreaVec_(NULL),
-    robinStyle_(false),
     meshMotion_(realm_.does_mesh_move()),
+    robinStyle_(false),
     dsFactor_(1.0)
 {
   // save off fields; VRTM

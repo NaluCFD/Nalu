@@ -133,8 +133,6 @@ ComputeMdotNonConformalAlgorithm::execute()
   std::vector<double> ws_o_dndx;
   std::vector<double> ws_c_det_j;
   std::vector<double> ws_o_det_j;
-  std::vector <double > ws_c_general_shape_function;
-  std::vector <double > ws_o_general_shape_function;
   std::vector<int> ws_c_face_node_ordinals;
   std::vector<int> ws_o_face_node_ordinals;
 
@@ -197,9 +195,7 @@ ComputeMdotNonConformalAlgorithm::execute()
         ws_o_vrtm.resize(opposingNodesPerFace*nDim);
         ws_c_density.resize(currentNodesPerFace);
         ws_o_density.resize(opposingNodesPerFace);
-        ws_c_general_shape_function.resize(currentNodesPerFace);
-        ws_o_general_shape_function.resize(opposingNodesPerFace);
-
+       
         // face node identification
         ws_c_face_node_ordinals.resize(currentNodesPerFace);
         ws_o_face_node_ordinals.resize(opposingNodesPerFace);
@@ -223,8 +219,6 @@ ComputeMdotNonConformalAlgorithm::execute()
         double *p_o_density = &ws_o_density[0];
 
         // me pointers
-        double *p_c_general_shape_function = &ws_c_general_shape_function[0];
-        double *p_o_general_shape_function = &ws_o_general_shape_function[0];
         double *p_c_dndx = &ws_c_dndx[0];
         double *p_o_dndx = &ws_o_dndx[0];
         

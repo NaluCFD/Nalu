@@ -599,8 +599,6 @@ SpecificDissipationRateEquationSystem::register_non_conformal_bc(
   ScalarFieldType &sdrNp1 = sdr_->field_of_state(stk::mesh::StateNP1);
   VectorFieldType &dwdxNone = dwdx_->field_of_state(stk::mesh::StateNone);
 
-  stk::mesh::MetaData &meta_data = realm_.meta_data();
-
   // non-solver; dwdx; allow for element-based shifted
   std::map<AlgorithmType, Algorithm *>::iterator it
     = assembleNodalGradAlgDriver_->algMap_.find(algType);

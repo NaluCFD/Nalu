@@ -135,9 +135,9 @@ Realm::Realm(Realms& realms)
     isTurbulent_(false),
     needsEnthalpy_(false),
     l2Scaling_(1.0),
-    ioBroker_(NULL),
     metaData_(NULL),
     bulkData_(NULL),
+    ioBroker_(NULL),
     resultsFileIndex_(99),
     restartFileIndex_(99),
     computeGeometryAlgDriver_(0),
@@ -2908,8 +2908,6 @@ Realm::setup_non_conformal_bc(
 {
 
   hasNonConformal_ = true;
-
-  const int nDim = metaData_->spatial_dimension();
   
   // extract data
   NonConformalUserData userData = nonConformalBCData.userData_;
