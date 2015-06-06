@@ -117,7 +117,7 @@ AssembleScalarElemSolverAlgorithm::execute()
   std::vector<double> rhs;
   std::vector<stk::mesh::Entity> connected_nodes;
 
-  // supplemental algorithm size and setup
+  // supplemental algorithm setup
   const size_t supplementalAlgSize = supplementalAlg_.size();
   for ( size_t i = 0; i < supplementalAlgSize; ++i )
     supplementalAlg_[i]->setup();
@@ -160,6 +160,7 @@ AssembleScalarElemSolverAlgorithm::execute()
 
     // extract master element
     MasterElement *meSCS = realm_.get_surface_master_element(b.topology());
+    MasterElement *meSCV = realm_.get_volume_master_element(b.topology());
 
     // extract master element specifics
     const int nodesPerElement = meSCS->nodesPerElement_;
@@ -202,7 +203,12 @@ AssembleScalarElemSolverAlgorithm::execute()
     // extract shape function
     meSCS->shape_fcn(&p_shape_function[0]);
 
+    // resize possible supplemental element alg
+    for ( size_t i = 0; i < supplementalAlgSize; ++i )
+      supplementalAlg_[i]->elem_resize(meSCS, meSCV);
+
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+
       // get elem
       stk::mesh::Entity elem = b[k];
 
@@ -399,7 +405,7 @@ AssembleScalarElemSolverAlgorithm::execute()
 
       // call supplemental
       for ( size_t i = 0; i < supplementalAlgSize; ++i )
-        supplementalAlg_[i]->elem_execute( nodesPerElement, numScsIp, &lhs[0], &rhs[0], elem);
+        supplementalAlg_[i]->elem_execute( &lhs[0], &rhs[0], elem, meSCS, meSCV);
 
       apply_coeff(connected_nodes, rhs, lhs, __FILE__);
 

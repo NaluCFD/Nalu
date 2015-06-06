@@ -29,13 +29,6 @@ public:
   virtual ~HeatCondMassBDF2NodeSuppAlg() {}
 
   virtual void setup();
-
-  virtual void elem_execute(
-    const int &numScvIntPoints,
-    const int &numScsIntPoints,
-    double *lhs,
-    double *rhs,
-    stk::mesh::Entity elem) {}
   
   virtual void node_execute(
     double *lhs,
