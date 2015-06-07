@@ -6,41 +6,36 @@
 /*------------------------------------------------------------------------*/
 
 
-#ifndef ScalarGclNodeSuppAlg_h
-#define ScalarGclNodeSuppAlg_h
+#ifndef AssembleElemSolverAlgorithm_h
+#define AssembleElemSolverAlgorithm_h
 
-#include <SupplementalAlgorithm.h>
-#include <FieldTypeDef.h>
+#include<SolverAlgorithm.h>
+#include<FieldTypeDef.h>
 
-#include <stk_mesh/base/Entity.hpp>
+namespace stk {
+namespace mesh {
+class Part;
+}
+}
 
 namespace sierra{
 namespace nalu{
 
 class Realm;
 
-class ScalarGclNodeSuppAlg : public SupplementalAlgorithm
+class AssembleElemSolverAlgorithm : public SolverAlgorithm
 {
 public:
 
-  ScalarGclNodeSuppAlg(
-    ScalarFieldType *scalarQNp1,
-    Realm &realm);
+  AssembleElemSolverAlgorithm(
+    Realm &realm,
+    stk::mesh::Part *part,
+    EquationSystem *eqSystem);
+  virtual ~AssembleElemSolverAlgorithm() {}
+  virtual void initialize_connectivity();
+  virtual void execute();
 
-  virtual ~ScalarGclNodeSuppAlg() {}
-
-  virtual void setup();
-
-  virtual void node_execute(
-    double *lhs,
-    double *rhs,
-    stk::mesh::Entity node);
-  
-  ScalarFieldType *scalarQNp1_;
-  ScalarFieldType *densityNp1_;
-  ScalarFieldType *divV_;
-  ScalarFieldType *dualNodalVolume_;
-
+  const int sizeOfSystem_;
 };
 
 } // namespace nalu

@@ -14,6 +14,7 @@
 #include <FieldTypeDef.h>
 #include <LinearSystem.h>
 #include <Realm.h>
+#include <SupplementalAlgorithm.h>
 #include <TimeIntegrator.h>
 #include <master_element/MasterElement.h>
 
@@ -122,6 +123,11 @@ AssembleMomentumElemSolverAlgorithm::execute()
   std::vector<double> rhs;
   std::vector<stk::mesh::Entity> connected_nodes;
 
+  // supplemental algorithm setup
+  const size_t supplementalAlgSize = supplementalAlg_.size();
+  for ( size_t i = 0; i < supplementalAlgSize; ++i )
+    supplementalAlg_[i]->setup();
+
   // nodal fields to gather
   std::vector<double> ws_velocityNp1;
   std::vector<double> ws_vrtm;
@@ -180,6 +186,7 @@ AssembleMomentumElemSolverAlgorithm::execute()
 
     // extract master element
     MasterElement *meSCS = realm_.get_surface_master_element(b.topology());
+    MasterElement *meSCV = realm_.get_volume_master_element(b.topology());
 
     // extract master element specifics
     const int nodesPerElement = meSCS->nodesPerElement_;
@@ -225,7 +232,14 @@ AssembleMomentumElemSolverAlgorithm::execute()
     else
       meSCS->shape_fcn(&p_shape_function[0]);
 
+    // resize possible supplemental element alg
+    for ( size_t i = 0; i < supplementalAlgSize; ++i )
+      supplementalAlg_[i]->elem_resize(meSCS, meSCV);
+
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+
+      // get elem
+      stk::mesh::Entity elem = b[k];
 
       // zero lhs/rhs
       for ( int p = 0; p < lhsSize; ++p )
@@ -482,6 +496,10 @@ AssembleMomentumElemSolverAlgorithm::execute()
           }
         }
       }
+
+      // call supplemental
+      for ( size_t i = 0; i < supplementalAlgSize; ++i )
+        supplementalAlg_[i]->elem_execute( &lhs[0], &rhs[0], elem, meSCS, meSCV);
 
       apply_coeff(connected_nodes, rhs, lhs, __FILE__);
 

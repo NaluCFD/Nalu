@@ -9,11 +9,11 @@
 #ifndef SupplementalAlgorithm_h
 #define SupplementalAlgorithm_h
 
+#include <master_element/MasterElement.h>
 #include <vector>
 
 #include <stk_mesh/base/Types.hpp>
-
-namespace stk { namespace mesh { struct Entity; } }
+#include <stk_mesh/base/Entity.hpp>
 
 namespace sierra{
 namespace nalu{
@@ -32,17 +32,21 @@ public:
   virtual void setup() {}
 
   virtual void elem_execute(
-    const int &numScvIntPoints,
-    const int &numScsIntPoints,
     double *lhs,
     double *rhs,
-    stk::mesh::Entity elem) = 0;
+    stk::mesh::Entity element,
+    const MasterElement *meSCS,
+    const MasterElement *meSCV) {}
   
   virtual void node_execute(
     double *lhs,
     double *rhs,
-    stk::mesh::Entity node) = 0;
+    stk::mesh::Entity node) {}
   
+  virtual void elem_resize(
+    const MasterElement *meSCS,
+    const MasterElement *meSCV) {}
+
   Realm &realm_;
   
 };
