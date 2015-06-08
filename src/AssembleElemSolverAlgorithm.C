@@ -100,6 +100,10 @@ AssembleElemSolverAlgorithm::execute()
     rhs.resize(rhsSize);
     connected_nodes.resize(nodesPerElement);
 
+    // resize possible supplemental element alg
+    for ( size_t i = 0; i < supplementalAlgSize; ++i )
+      supplementalAlg_[i]->elem_resize(meSCS, meSCV);
+
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
 
       // get element
