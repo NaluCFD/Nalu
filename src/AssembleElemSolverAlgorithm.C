@@ -66,10 +66,6 @@ AssembleElemSolverAlgorithm::execute()
   std::vector<double> rhs;
   std::vector<stk::mesh::Entity> connected_nodes;
 
-  // pointers
-  double *p_lhs = &lhs[0];
-  double *p_rhs = &rhs[0];
-
   // supplemental algorithm size and setup
   const size_t supplementalAlgSize = supplementalAlg_.size();
   for ( size_t i = 0; i < supplementalAlgSize; ++i )
@@ -103,6 +99,10 @@ AssembleElemSolverAlgorithm::execute()
     // resize possible supplemental element alg
     for ( size_t i = 0; i < supplementalAlgSize; ++i )
       supplementalAlg_[i]->elem_resize(meSCS, meSCV);
+
+    // pointers
+    double *p_lhs = &lhs[0];
+    double *p_rhs = &rhs[0];
 
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
 
