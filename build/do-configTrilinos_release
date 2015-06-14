@@ -35,6 +35,7 @@ rm -f CMakeCache.txt
 cmake \
 -DCMAKE_INSTALL_PREFIX=$trilinos_install_dir \
 -DTrilinos_ENABLE_CXX11=ON \
+-DCMAKE_BUILD_TYPE=RELEASE \
 -DTrilinos_ENABLE_EXPLICIT_INSTANTIATION:BOOL=ON \
 -DTpetra_INST_DOUBLE:BOOL=ON \
 -DTpetra_INST_INT_LONG:BOOL=ON \
