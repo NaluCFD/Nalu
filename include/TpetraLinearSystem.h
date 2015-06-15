@@ -98,9 +98,10 @@ public:
 
 private:
   void beginLinearSystemConstruction();
+
   void checkError(
     const int err_code,
-    const char * msg);
+    const char * msg) {}
 
   void copy_tpetra_to_stk(
     const Teuchos::RCP<LinSys::Vector> tpetraVector,

@@ -180,9 +180,6 @@ Adapter::do_adapt(int what_to_do)
   }
 
   bool doMeshVerification = realm_.debug();
-#ifndef NDEBUG
-  //doMeshVerification = true;
-#endif
   if (doMeshVerification) {
     const int timeStepCount = realm_.get_time_step_count();
     NaluEnv::self().naluOutputP0() << "Adapt: verifier, timeStepCount= " << timeStepCount << std::endl;

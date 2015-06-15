@@ -171,10 +171,6 @@ EpetraLinearSystem::beginLinearSystemConstruction()
 
 }
 
-static void dump_graph_info(int numDof_, std::vector<int>& gids, std::string tag)
-{
-}
-
 void
 EpetraLinearSystem::buildNodeGraph(const stk::mesh::PartVector & parts)
 {
@@ -199,7 +195,6 @@ EpetraLinearSystem::buildNodeGraph(const stk::mesh::PartVector & parts)
         gids[d] = GID_(node_id, numDof_ , d);
       }
       // assume full coupling -- all dofs on each node depend on all dofs on each node.
-      dump_graph_info(numDof_, gids, "buildNodeGraph");
       err_code = graph_->InsertGlobalIndices(gids.size(), gids.data(), gids.size(), gids.data());
       checkError(err_code, "build_edge_to_node_graph/InsertGlobalIndices");
     }
@@ -235,7 +230,6 @@ EpetraLinearSystem::buildEdgeToNodeGraph(const stk::mesh::PartVector & parts)
           gids[n*numDof_ + d] = GID_(node_id, numDof_ , d);
       }
       // assume full coupling -- all dofs on each node depend on all dofs on each node.
-      dump_graph_info(numDof_, gids, "buildEdgeToNodeGraph");
       err_code = graph_->InsertGlobalIndices(gids.size(), gids.data(), gids.size(), gids.data());
       checkError(err_code, "build_edge_to_node_graph/InsertGlobalIndices");
     }
@@ -272,7 +266,6 @@ EpetraLinearSystem::buildFaceToNodeGraph(const stk::mesh::PartVector & parts)
           gids[n*numDof_ + d] = GID_(nodeId , numDof_ , d);
       }
       // assume full coupling -- all dofs on each node depend on all dofs on each node.
-      dump_graph_info(numDof_, gids, "buildFaceToNodeGraph");
       err_code = graph_->InsertGlobalIndices(gids.size(), gids.data(), gids.size(), gids.data());
       checkError(err_code, "build_edge_to_node_graph/InsertGlobalIndices");
     }
@@ -309,7 +302,6 @@ EpetraLinearSystem::buildElemToNodeGraph(const stk::mesh::PartVector & parts)
           gids[n*numDof_ + d] = GID_(nodeId, numDof_ , d);
       }
       // assume full coupling -- all dofs on each node depend on all dofs on each node.
-      dump_graph_info(numDof_, gids, "buildElemToNodeGraph");
       err_code = graph_->InsertGlobalIndices(gids.size(), gids.data(), gids.size(), gids.data());
       checkError(err_code, "build_elem_to_node_graph/InsertGlobalIndices");
     }
@@ -354,7 +346,6 @@ EpetraLinearSystem::buildReducedElemToNodeGraph(const stk::mesh::PartVector & pa
             gids[j*numDof_ + d] = GID_(nodeId[j], numDof_, d);
         }
         // assume full coupling -- all dofs on each node depend on all dofs on each node.
-        dump_graph_info(numDof_, gids, "buildReducedElemToNodeGraph");
         err_code = graph_->InsertGlobalIndices(gids.size(), gids.data(), gids.size(), gids.data());
         checkError(err_code, "build_reduced_elem_to_node_graph/InsertGlobalIndices");
 
@@ -403,7 +394,6 @@ EpetraLinearSystem::buildFaceElemToNodeGraph(const stk::mesh::PartVector & parts
           gids[n*numDof_ + d] = GID_(nodeId, numDof_ , d);
       }
       // assume full coupling -- all dofs on each node depend on all dofs on each node.
-      dump_graph_info(numDof_, gids, "buildFaceElemToNodeGraph");
       err_code = graph_->InsertGlobalIndices(gids.size(), gids.data(), gids.size(), gids.data());
       checkError(err_code, "build_elem_to_node_graph/InsertGlobalIndices");
     }
@@ -459,7 +449,6 @@ EpetraLinearSystem::buildEdgeHaloNodeGraph(
           gids[(n+1)*numDof_ + d] = GID_(elemNodeId, numDof_ , d);
       }
       // assume full coupling -- all dofs on each node depend on all dofs on each node.
-      dump_graph_info(numDof_, gids, "buildEdgeHaloToNodeGraph");
       err_code = graph_->InsertGlobalIndices(gids.size(), gids.data(), gids.size(), gids.data());
       checkError(err_code, "build_edge_to_node_graph/InsertGlobalIndices");
     }
@@ -646,7 +635,6 @@ EpetraLinearSystem::sumInto(
     }
   }
 
-  //dump_graph_info(numDof_, globalIds, "sumInto");
   err_code = rhs_->SumIntoGlobalValues(numRows, globalIds.data(), rhs.data());
   checkError(err_code, "sum_into - rhs->SumIntoGlobalValues");
 
@@ -736,10 +724,6 @@ EpetraLinearSystem::applyDirichletBCs(
   adbc_time += stk::cpu_time();
 }
 
-void EpetraLinearSystem::dump_lhs(const std::string& msg)
-{
-}
-
 void
 EpetraLinearSystem::loadComplete()
 {
@@ -821,54 +805,6 @@ EpetraLinearSystem::solve(stk::mesh::FieldBase * linearSolutionField)
   return status;
 }
 
-//=======================================================================
-// copy & specialized from void Epetra_MultiVector::Print(ostream& os)
-static void Print(Epetra_MultiVector* emv, std::ostream& os, bool sort_gids=true)  {
-
-  int MyPID = emv->Map().Comm().MyPID();
-  //int NumProc = emv->Map().Comm().NumProc();
-
-  {
-      int NumVectors1 = emv->NumVectors();
-      int NumMyElements1 =emv->Map(). NumMyElements();
-      int MaxElementSize1 = emv->Map().MaxElementSize();
-      double ** A_Pointers = emv->Pointers();
-
-      if (MyPID==0) {
-        os.width(8);
-        os <<  "     MyPID"; os << "    ";
-        os.width(12);
-        if (MaxElementSize1==1)
-          os <<  "GID  ";
-        else
-          os <<  "     GID/Point";
-        for (int j = 0; j < NumVectors1 ; ++j)
-          {
-            os.width(20);
-            os <<  "Value  ";
-          }
-        os << std::endl;
-      }
-      int * MyGlobalElements1 = emv->Map().MyGlobalElements();
-      std::vector<int> sorted_GID(MyGlobalElements1, MyGlobalElements1+NumMyElements1);
-      if (sort_gids)
-        std::sort(sorted_GID.begin(), sorted_GID.end());
-      for (int i=0; i < NumMyElements1; ++i) {
-          os.width(10);
-          os <<  MyPID; os << "    ";
-          os.width(10);
-          os << sorted_GID[i] << "    ";
-
-          for (int j = 0; j < NumVectors1 ; ++j)
-            {
-              os.width(20);
-              os <<  A_Pointers[j][emv->Map().LID(sorted_GID[i])];
-            }
-          os << std::endl;
-      }
-  }
-}
-
 void
 EpetraLinearSystem::writeToFile(const char * base_filename, bool useOwned)
 {
@@ -903,49 +839,7 @@ EpetraLinearSystem::writeToFile(const char * base_filename, bool useOwned)
       osRhs << base_filename << "-" << currentCount << ".epetra.rhs." << p_size << "." << p_rank; // A little hacky but whatever
       osGra << base_filename << "-" << currentCount << ".epetra.gra." << p_size << "." << p_rank; // A little hacky but whatever
       //osSln << base_filename << "-" << "O-" << currentCount << ".sln." << p_size << "." << p_rank; // A little hacky but whatever
-
-#define DUMP_RHS(A)  do {                                                   \
-        out << "\n\n===============================================================================================\n"; \
-        out << "===============================================================================================\n"; \
-        out << "P[" << p_rank << "] EpetraLinearSystem::writeToFile:: " #A "= " << "\n---------------------------\n" ; \
-        Print(A, out);                                                   \
-        out << "===============================================================================================\n"; \
-        out << "===============================================================================================\n\n\n"; \
-      } while(0)
-#define DUMP_MATRIX(A)  do {                                                   \
-        out << "\n\n===============================================================================================\n"; \
-        out << "===============================================================================================\n"; \
-        out << "P[" << p_rank << "] EpetraLinearSystem::writeToFile:: " #A "= " << "\n---------------------------\n" ; \
-        A->Print(out);                                          \
-        out << "===============================================================================================\n"; \
-        out << "===============================================================================================\n\n\n"; \
-      } while(0)
-
-      {
-        std::ostringstream out;
-        DUMP_MATRIX(lhs_);
-        std::ofstream fout;
-        fout.open (osLhs.str().c_str());
-        fout << out.str() << std::endl;
-      }
-
-      {
-        std::ostringstream out;
-        DUMP_MATRIX(graph_);
-        std::ofstream fout;
-        fout.open (osGra.str().c_str());
-        fout << out.str() << std::endl;
-      }
-
-      {
-        std::ostringstream out;
-        DUMP_RHS(rhs_);
-        std::ofstream fout;
-        fout.open (osRhs.str().c_str());
-        fout << out.str() << std::endl;
-      }
-#undef DUMP_RHS
-#undef DUMP_MATRIX
+      
     }
 
 }
@@ -974,23 +868,6 @@ EpetraLinearSystem::writeSolutionToFile(const char * base_filename, bool useOwne
 
       osSln << base_filename << "-" << currentCount << ".epetra.sln." << p_size << "." << p_rank; // A little hacky but whatever
 
-#define DUMP_SLN(A)  do {                                                   \
-        out << "\n\n===============================================================================================\n"; \
-        out << "===============================================================================================\n"; \
-        out << "P[" << p_rank << "] EpetraLinearSystem::writeToFile:: " #A "= " << "\n---------------------------\n" ; \
-        Print(A, out);                                                   \
-        out << "===============================================================================================\n"; \
-        out << "===============================================================================================\n\n\n"; \
-      } while(0)
-
-      {
-        std::ostringstream out;
-        DUMP_SLN(sln_);
-        std::ofstream fout;
-        fout.open (osSln.str().c_str());
-        fout << out.str() << std::endl;
-      }
-#undef DUMP_SLN
     }
 
 }

@@ -55,8 +55,6 @@
 #include <set>
 #include <limits>
 
-#define DEBUG_TPETRA 0
-
 #include <sstream>
 
 namespace sierra{
@@ -93,15 +91,6 @@ TpetraLinearSystem::~TpetraLinearSystem()
   // dereference linear solver in safe manner
   TpetraLinearSolver *linearSolver = reinterpret_cast<TpetraLinearSolver *>(linearSolver_);
   linearSolver->destroyLinearSolver();
-
-}
-
-void
-TpetraLinearSystem::checkError(const int err_code, const char * msg)
-{
-  if(err_code >= 0) return;
-  std::cout << "checkTpetraError(" << err_code << "): " << msg << std::endl;
-  ThrowRequire(err_code >= 0);
 }
 
 struct CompareEntityById
@@ -679,46 +668,6 @@ TpetraLinearSystem::buildNonConformalNodeGraph(
   }
 }
 
-#if 0 && DEBUG_TPETRA
-static void dump_graph(std::ostream& out, const unsigned p_rank, LinSys::Graph& graph)
-{
-  typedef LinSys::GlobalOrdinal GlobalOrdinal;
-  typedef LinSys::LocalOrdinal  LocalOrdinal;
-
-  int width = 20;
-
-  out << "graph.isGloballyIndexed()= " << graph.isGloballyIndexed() << std::endl;
-
-  out << std::setw(width) << "Node ID"
-      << std::setw(width) << "Global Row"
-      << std::setw(width) << "Num Entries";
-  out << " Entries";
-  out << std::endl;
-  for (size_t r=0; r < graph.getNodeNumRows(); ++r) {
-    GlobalOrdinal gid = graph.getRowMap()->getGlobalElement(r);
-    if (graph.isGloballyIndexed()) {
-      Tpetra::ArrayView<const GlobalOrdinal> rowview;
-      graph.getGlobalRowView(gid,rowview);
-      out << std::setw(width) << p_rank
-          << std::setw(width) << gid
-          << std::setw(width) << rowview.size();
-      for (int j=0; j < rowview.size(); ++j) out << " " << rowview[j];
-    }
-    else if (graph.isLocallyIndexed()) {
-      Tpetra::ArrayView<const LocalOrdinal> rowview;
-      graph.getLocalRowView(r,rowview);
-      out << std::setw(width) << p_rank
-          << std::setw(width) << gid
-          << std::setw(width) << rowview.size();
-      for (int j=0; j < rowview.size(); ++j) out << " " << graph.getColMap()->getGlobalElement(rowview[j]);
-
-    }
-    out << std::endl;
-
-  }
-}
-#endif
-
 void
 TpetraLinearSystem::copy_stk_to_tpetra(
   stk::mesh::FieldBase * stkField,
@@ -859,16 +808,13 @@ TpetraLinearSystem::finalizeLinearSystem()
     // to worry about doing an insert on (globalRow_a, globalDofs_a),
     // etc.
 
-    // for dofs on entity_a add columns due to entity_b dofs
-    //if ( bulkData.parallel_owner_rank(entity_a) == this_mpi_rank ) { // Locally owned
     if (getDofStatus(entity_a) & DS_OwnedDOF) { // Locally owned
       for (size_t d=0; d < numDof_; ++d) {
         const GlobalOrdinal globalRow_a = GID_(entityId_a, numDof_ , d);
         ownedGraph_->insertGlobalIndices(globalRow_a, globalDofs_b);
       }
     }
-    // for dofs on entity_b add columns due to entity_a dofs
-    //if ( bulkData.parallel_owner_rank(entity_b) == this_mpi_rank ) { // Locally owned
+
     if (getDofStatus(entity_b) & DS_OwnedDOF) { // Locally owned
       for (size_t d=0; d < numDof_; ++d) {
         const GlobalOrdinal globalRow_b = GID_(entityId_b, numDof_ , d);
@@ -1103,14 +1049,13 @@ TpetraLinearSystem::solve(
 
   TpetraLinearSolver *linearSolver = reinterpret_cast<TpetraLinearSolver *>(linearSolver_);
 
-#ifndef NDEBUG
-  checkForNaN(true);
-  if (checkForZeroRow(true, false, true))
-     {
-       throw std::runtime_error("ERROR checkForZeroRow in solve()");
-     }
-#endif
-
+  if ( realm_.debug() ) {
+    checkForNaN(true);
+    if (checkForZeroRow(true, false, true)) {
+      throw std::runtime_error("ERROR checkForZeroRow in solve()");
+    }
+  }
+   
   if (linearSolver->getConfig()->getWriteMatrixFiles()) {
     writeToFile(this->name_.c_str());
     writeToFile(this->name_.c_str(), false);

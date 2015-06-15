@@ -58,7 +58,6 @@ public:
     const char *trace_tag=0
     );
 
-  void dump_lhs(const std::string& msg);
   void applyDirichletBCs(
     stk::mesh::FieldBase * solutionField,
     stk::mesh::FieldBase * bcValuesField,
