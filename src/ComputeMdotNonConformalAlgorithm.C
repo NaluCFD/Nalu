@@ -39,9 +39,11 @@ namespace nalu{
 ComputeMdotNonConformalAlgorithm::ComputeMdotNonConformalAlgorithm(
   Realm &realm,
   stk::mesh::Part *part,
-  ScalarFieldType *pressure)
+  ScalarFieldType *pressure,
+  VectorFieldType *Gjp)
   : Algorithm(realm, part),
     pressure_(pressure),
+    Gjp_(Gjp),
     velocityRTM_(NULL),
     coordinates_(NULL),
     density_(NULL),
@@ -62,6 +64,7 @@ ComputeMdotNonConformalAlgorithm::ComputeMdotNonConformalAlgorithm(
   
   // what do we need ghosted for this alg to work?
   ghostFieldVec_.push_back(pressure_);
+  ghostFieldVec_.push_back(Gjp_);
   ghostFieldVec_.push_back(coordinates_);
   ghostFieldVec_.push_back(velocityRTM_);
   ghostFieldVec_.push_back(density_);
@@ -96,6 +99,9 @@ ComputeMdotNonConformalAlgorithm::execute()
   const double interpTogether = realm_.get_mdot_interp();
   const double om_interpTogether = 1.0-interpTogether;
 
+  // pressure stabilization
+  const double includePstab = realm_.get_nc_alg_include_pstab() ? 1.0 : 0.0;
+
   // ip values; both boundary and opposing surface
   std::vector<double> currentIsoParCoords(nDim);
   std::vector<double> opposingIsoParCoords(nDim);
@@ -105,6 +111,11 @@ ComputeMdotNonConformalAlgorithm::execute()
   std::vector<double> opposingVrtmBip(nDim);
   std::vector<double> currentRhoVrtmBip(nDim);
   std::vector<double> opposingRhoVrtmBip(nDim);
+  // pressure stabilization
+  std::vector<double> currentGjpBip(nDim);
+  std::vector<double> opposingGjpBip(nDim);
+  std::vector<double> currentDpdxBip(nDim);
+  std::vector<double> opposingDpdxBip(nDim);
 
   // mapping for -1:1 -> -0.5:0.5 volume element
   std::vector<double> currentElementIsoParCoords(nDim);
@@ -118,15 +129,21 @@ ComputeMdotNonConformalAlgorithm::execute()
   double *p_cNx = &cNx[0];
   double *p_oNx = &oNx[0];
 
-  // nodal fields to gather
+  // nodal fields to gather; face
   std::vector<double> ws_c_pressure;
   std::vector<double> ws_o_pressure;
-  std::vector<double> ws_c_elem_coordinates;
-  std::vector<double> ws_o_elem_coordinates;
+  std::vector<double> ws_c_Gjp;
+  std::vector<double> ws_o_Gjp;
   std::vector<double> ws_c_vrtm;
   std::vector<double> ws_o_vrtm;
   std::vector<double> ws_c_density;
   std::vector<double> ws_o_density;
+
+  // element
+  std::vector<double> ws_c_elem_pressure;
+  std::vector<double> ws_o_elem_pressure;
+  std::vector<double> ws_c_elem_coordinates;
+  std::vector<double> ws_o_elem_coordinates;
 
   // master element data
   std::vector<double> ws_c_dndx;
@@ -135,6 +152,9 @@ ComputeMdotNonConformalAlgorithm::execute()
   std::vector<double> ws_o_det_j;
   std::vector<int> ws_c_face_node_ordinals;
   std::vector<int> ws_o_face_node_ordinals;
+
+  // deal with state
+  ScalarFieldType &pressureNp1 = pressure_->field_of_state(stk::mesh::StateNP1);
 
   // parallel communicate ghosted entities
   if ( NULL != realm_.nonConformalManager_->nonConformalGhosting_ )
@@ -191,6 +211,8 @@ ComputeMdotNonConformalAlgorithm::execute()
         // algorithm related; face
         ws_c_pressure.resize(currentNodesPerFace);
         ws_o_pressure.resize(opposingNodesPerFace);
+        ws_c_Gjp.resize(currentNodesPerFace*nDim);
+        ws_o_Gjp.resize(opposingNodesPerFace*nDim);
         ws_c_vrtm.resize(currentNodesPerFace*nDim);
         ws_o_vrtm.resize(opposingNodesPerFace*nDim);
         ws_c_density.resize(currentNodesPerFace);
@@ -201,6 +223,8 @@ ComputeMdotNonConformalAlgorithm::execute()
         ws_o_face_node_ordinals.resize(opposingNodesPerFace);
 
         // algorithm related; element; dndx will be at a single gauss point
+        ws_c_elem_pressure.resize(currentNodesPerElement);
+        ws_o_elem_pressure.resize(opposingNodesPerElement);
         ws_c_elem_coordinates.resize(currentNodesPerElement*nDim);
         ws_o_elem_coordinates.resize(opposingNodesPerElement*nDim);
         ws_c_dndx.resize(nDim*currentNodesPerElement);
@@ -208,15 +232,21 @@ ComputeMdotNonConformalAlgorithm::execute()
         ws_c_det_j.resize(1);
         ws_o_det_j.resize(1);
 
-        // pointers
+        // pointers; face
         double *p_c_pressure = &ws_c_pressure[0];
         double *p_o_pressure = &ws_o_pressure[0];
-        double *p_c_elem_coordinates = &ws_c_elem_coordinates[0];
-        double *p_o_elem_coordinates = &ws_o_elem_coordinates[0];
+        double *p_c_Gjp = &ws_c_Gjp[0];
+        double *p_o_Gjp = &ws_o_Gjp[0];
         double *p_c_vrtm = &ws_c_vrtm[0];
         double *p_o_vrtm = &ws_o_vrtm[0];
         double *p_c_density = &ws_c_density[0];
         double *p_o_density = &ws_o_density[0];
+        
+        // element
+        double *p_c_elem_pressure = &ws_c_elem_pressure[0];
+        double *p_o_elem_pressure = &ws_o_elem_pressure[0];
+        double *p_c_elem_coordinates = &ws_c_elem_coordinates[0];
+        double *p_o_elem_coordinates = &ws_o_elem_coordinates[0];
 
         // me pointers
         double *p_c_dndx = &ws_c_dndx[0];
@@ -235,9 +265,11 @@ ComputeMdotNonConformalAlgorithm::execute()
           p_c_density[ni] = *stk::mesh::field_data(*density_, node);
           // gather; vector
           const double *vrtm = stk::mesh::field_data(*velocityRTM_, node );
+          const double *Gjp = stk::mesh::field_data(*Gjp_, node );
           for ( int i = 0; i < nDim; ++i ) {
             const int offSet = i*current_num_face_nodes + ni;        
             p_c_vrtm[offSet] = vrtm[i];
+            p_c_Gjp[offSet] = Gjp[i];
           }
         }
         
@@ -254,9 +286,11 @@ ComputeMdotNonConformalAlgorithm::execute()
           p_o_density[ni] = *stk::mesh::field_data(*density_, node);
           // gather; vector
           const double *vrtm = stk::mesh::field_data(*velocityRTM_, node );
+          const double *Gjp = stk::mesh::field_data(*Gjp_, node );
           for ( int i = 0; i < nDim; ++i ) {
             const int offSet = i*opposing_num_face_nodes + ni;        
             p_o_vrtm[offSet] = vrtm[i];
+            p_o_Gjp[offSet] = Gjp[i];
           }
         }
 
@@ -265,6 +299,8 @@ ComputeMdotNonConformalAlgorithm::execute()
         const int current_num_elem_nodes = bulk_data.num_nodes(currentElement);
         for ( int ni = 0; ni < current_num_elem_nodes; ++ni ) {
           stk::mesh::Entity node = current_elem_node_rels[ni];
+          // gather; scalar
+          p_c_elem_pressure[ni] = *stk::mesh::field_data(pressureNp1, node);
           // gather; vector
           const double *coords = stk::mesh::field_data(*coordinates_, node);
           const int niNdim = ni*nDim;
@@ -278,6 +314,8 @@ ComputeMdotNonConformalAlgorithm::execute()
         const int opposing_num_elem_nodes = bulk_data.num_nodes(opposingElement);
         for ( int ni = 0; ni < opposing_num_elem_nodes; ++ni ) {
           stk::mesh::Entity node = opposing_elem_node_rels[ni];
+          // gather; scalar
+          p_o_elem_pressure[ni] = *stk::mesh::field_data(pressureNp1, node);
           // gather; vector
           const double *coords = stk::mesh::field_data(*coordinates_, node);
           const int niNdim = ni*nDim;
@@ -343,6 +381,32 @@ ComputeMdotNonConformalAlgorithm::execute()
           }
         }
         
+        // projected nodal gradient; zero out
+        for ( int j = 0; j < nDim; ++j ) {
+          currentDpdxBip[j] = 0.0;
+          opposingDpdxBip[j] = 0.0;
+        }
+
+        // current pressure gradient
+        for ( int ic = 0; ic < currentNodesPerElement; ++ic ) {
+          const int offSetDnDx = ic*nDim; // single intg. point
+          const double pNp1 = p_c_elem_pressure[ic];
+          for ( int j = 0; j < nDim; ++j ) {
+            const double dndxj = p_c_dndx[offSetDnDx+j];
+            currentDpdxBip[j] += dndxj*pNp1;
+          }
+        }
+
+        // opposing pressure gradient
+        for ( int ic = 0; ic < opposingNodesPerElement; ++ic ) {
+          const int offSetDnDx = ic*nDim; // single intg. point
+          const double pNp1 = p_o_elem_pressure[ic];
+          for ( int j = 0; j < nDim; ++j ) {
+            const double dndxj = p_o_dndx[offSetDnDx+j];
+            opposingDpdxBip[j] += dndxj*pNp1;
+          }
+        }
+
         // interpolate to boundary ips
         double currentPressureBip = 0.0;
         meFCCurrent->interpolatePoint(
@@ -370,6 +434,19 @@ ComputeMdotNonConformalAlgorithm::execute()
           &(dgInfo->opposingIsoParCoords_[0]),
           &ws_o_vrtm[0],
           &opposingVrtmBip[0]);
+
+        // projected nodal gradient
+        meFCCurrent->interpolatePoint(
+          sizeOfVectorField,
+          &(dgInfo->currentIsoParCoords_[0]),
+          &ws_c_Gjp[0],
+          &currentGjpBip[0]);
+        
+        meFCOpposing->interpolatePoint(
+          sizeOfVectorField,
+          &(dgInfo->opposingIsoParCoords_[0]),
+          &ws_o_Gjp[0],
+          &opposingGjpBip[0]);
 
         // density
         double currentDensityBip = 0.0;
@@ -420,15 +497,19 @@ ComputeMdotNonConformalAlgorithm::execute()
         const double penaltyIp = projTimeScale*0.5*(currentInverseLength + opposingInverseLength);
 
         double ncFlux = 0.0;
+        double ncPstabFlux = 0.0;
         for ( int j = 0; j < nDim; ++j ) {
           const double cRhoVrtm = interpTogether*currentRhoVrtmBip[j] + om_interpTogether*currentDensityBip*currentVrtmBip[j];
           const double oRhoVrtm = interpTogether*opposingRhoVrtmBip[j] + om_interpTogether*opposingDensityBip*opposingVrtmBip[j];
           ncFlux += 0.5*(cRhoVrtm*p_cNx[j] - oRhoVrtm*p_oNx[j]);
+          const double cPstab = currentDpdxBip[j] - currentGjpBip[j];
+          const double oPstab = opposingDpdxBip[j] - opposingGjpBip[j];
+          ncPstabFlux += 0.5*(cPstab*p_cNx[j] - oPstab*p_oNx[j]);
         }
 
         // scatter it
-        ncMassFlowRate[currentGaussPointId] = (ncFlux + penaltyIp*(currentPressureBip - opposingPressureBip))*c_amag;
-
+        ncMassFlowRate[currentGaussPointId] = (ncFlux - includePstab*projTimeScale*ncPstabFlux 
+                                               + penaltyIp*(currentPressureBip - opposingPressureBip))*c_amag;
       }
     }
   }

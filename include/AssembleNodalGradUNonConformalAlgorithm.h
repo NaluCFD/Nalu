@@ -6,8 +6,8 @@
 /*------------------------------------------------------------------------*/
 
 
-#ifndef ComputeMdotNonConformalAlgorithm_h
-#define ComputeMdotNonConformalAlgorithm_h
+#ifndef AssembleNodalGradUNonConformalAlgorithm_h
+#define AssembleNodalGradUNonConformalAlgorithm_h
 
 #include<Algorithm.h>
 #include<FieldTypeDef.h>
@@ -20,31 +20,27 @@ namespace nalu{
 
 class Realm;
 
-class ComputeMdotNonConformalAlgorithm : public Algorithm
+class AssembleNodalGradUNonConformalAlgorithm : public Algorithm
 {
 public:
 
-  ComputeMdotNonConformalAlgorithm(
+  AssembleNodalGradUNonConformalAlgorithm(
     Realm &realm,
     stk::mesh::Part *part,
-    ScalarFieldType *pressure,
-    VectorFieldType *Gjp);
-  ~ComputeMdotNonConformalAlgorithm();
+    VectorFieldType *vectorQ,
+    GenericFieldType *dqdx);
+
+  ~AssembleNodalGradUNonConformalAlgorithm();
 
   void execute();
 
-  ScalarFieldType *pressure_;
-  VectorFieldType *Gjp_;
-  VectorFieldType *velocityRTM_;
-  VectorFieldType *coordinates_;
-  ScalarFieldType *density_;
-  GenericFieldType *exposedAreaVec_;
-  GenericFieldType *ncMassFlowRate_;
-
-  const bool meshMotion_;
+  VectorFieldType *vectorQ_;
+  GenericFieldType *dqdx_;
   
-  std::vector< const stk::mesh::FieldBase *> ghostFieldVec_;
+  ScalarFieldType *dualNodalVolume_;
+  GenericFieldType *exposedAreaVec_;
 
+  std::vector< const stk::mesh::FieldBase *> ghostFieldVec_;
 };
 
 } // namespace nalu

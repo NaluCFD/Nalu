@@ -31,13 +31,15 @@ public:
     Realm &realm,
     stk::mesh::Part *part,
     EquationSystem *eqSystem,
-    ScalarFieldType *pressure);
+    ScalarFieldType *pressure,
+    VectorFieldType *Gjp);
   virtual ~AssembleContinuityNonConformalSolverAlgorithm() {}
 
   virtual void initialize_connectivity();
   virtual void execute();
 
   ScalarFieldType *pressure_;
+  VectorFieldType *Gjp_;
   VectorFieldType *velocityRTM_;
   VectorFieldType *coordinates_;
   ScalarFieldType *density_;

@@ -26,17 +26,19 @@
 #include <AssembleMomentumWallFunctionSolverAlgorithm.h>
 #include <AssembleMomentumNonConformalSolverAlgorithm.h>
 #include <AssembleNodalGradAlgorithmDriver.h>
-#include <AssembleNodalGradUAlgorithmDriver.h>
 #include <AssembleNodalGradEdgeAlgorithm.h>
 #include <AssembleNodalGradElemAlgorithm.h>
-#include <AssembleNodalGradUEdgeAlgorithm.h>
-#include <AssembleNodalGradUElemAlgorithm.h>
 #include <AssembleNodalGradBoundaryAlgorithm.h>
 #include <AssembleNodalGradEdgeContactAlgorithm.h>
 #include <AssembleNodalGradElemContactAlgorithm.h>
+#include <AssembleNodalGradNonConformalAlgorithm.h>
+#include <AssembleNodalGradUAlgorithmDriver.h>
+#include <AssembleNodalGradUEdgeAlgorithm.h>
+#include <AssembleNodalGradUElemAlgorithm.h>
 #include <AssembleNodalGradUBoundaryAlgorithm.h>
 #include <AssembleNodalGradUEdgeContactAlgorithm.h>
 #include <AssembleNodalGradUElemContactAlgorithm.h>
+#include <AssembleNodalGradUNonConformalAlgorithm.h>
 #include <AssembleNodeSolverAlgorithm.h>
 #include <AuxFunctionAlgorithm.h>
 #include <ComputeMdotEdgeAlgorithm.h>
@@ -1524,18 +1526,33 @@ MomentumEquationSystem::register_non_conformal_bc(
     &(meta_data.declare_field<GenericFieldType>(sideRank, "nc_mass_flow_rate"));
   stk::mesh::put_field(*mdotBip, *part, numIp );
 
-  // non-solver; contribution to Gjui; allow for element-based shifted
-  std::map<AlgorithmType, Algorithm *>::iterator it
-    = assembleNodalGradAlgDriver_->algMap_.find(algType);
-  if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg
-      = new AssembleNodalGradUBoundaryAlgorithm(realm_, part, &velocityNp1, &dudxNone, edgeNodalGradient_);
-    assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+  // non-solver; contribution to Gjui; DG algorithm decides on locations for integration points
+  if ( edgeNodalGradient_ ) {
+    std::map<AlgorithmType, Algorithm *>::iterator it
+      = assembleNodalGradAlgDriver_->algMap_.find(algType);
+    if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+      Algorithm *theAlg
+        = new AssembleNodalGradUBoundaryAlgorithm(realm_, part, &velocityNp1, &dudxNone, edgeNodalGradient_);
+      assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+    }
+    else {
+      it->second->partVec_.push_back(part);
+    }
   }
-  else {
-    it->second->partVec_.push_back(part);
+  else { 
+    // proceed with DG
+    std::map<AlgorithmType, Algorithm *>::iterator it
+      = assembleNodalGradAlgDriver_->algMap_.find(algType);
+    if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+      AssembleNodalGradUNonConformalAlgorithm *theAlg 
+        = new AssembleNodalGradUNonConformalAlgorithm(realm_, part, &velocityNp1, &dudxNone);
+      assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+    }
+    else {
+      it->second->partVec_.push_back(part);
+    }
   }
-  
+
   // solver; lhs; same for edge and element-based scheme
   std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi =
     solverAlgDriver_->solverAlgMap_.find(algType);
@@ -2162,7 +2179,6 @@ ContinuityEquationSystem::register_symmetry_bc(
 
 }
 
-
 //--------------------------------------------------------------------------
 //-------- register_non_conformal_bc ---------------------------------------
 //--------------------------------------------------------------------------
@@ -2184,24 +2200,39 @@ ContinuityEquationSystem::register_non_conformal_bc(
     &(meta_data.declare_field<GenericFieldType>(sideRank, "nc_mass_flow_rate"));
   stk::mesh::put_field(*mdotBip, *part, numIp );
 
-  // non-solver; dpdx; allow for element-based shifted
-  std::map<AlgorithmType, Algorithm *>::iterator it
-    = assembleNodalGradAlgDriver_->algMap_.find(algType);
-  if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg 
-      = new AssembleNodalGradBoundaryAlgorithm(realm_, part, pressure_, dpdx_, edgeNodalGradient_);
-    assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+  // non-solver; contribution to Gjp; DG algorithm decides on locations for integration points
+  if ( edgeNodalGradient_ ) {    
+    std::map<AlgorithmType, Algorithm *>::iterator it
+      = assembleNodalGradAlgDriver_->algMap_.find(algType);
+    if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+      Algorithm *theAlg 
+        = new AssembleNodalGradBoundaryAlgorithm(realm_, part, pressure_, dpdx_, edgeNodalGradient_);
+      assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+    }
+    else {
+      it->second->partVec_.push_back(part);
+    }
   }
   else {
-    it->second->partVec_.push_back(part);
+    // proceed with DG
+    std::map<AlgorithmType, Algorithm *>::iterator it
+      = assembleNodalGradAlgDriver_->algMap_.find(algType);
+    if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+      AssembleNodalGradNonConformalAlgorithm *theAlg 
+        = new AssembleNodalGradNonConformalAlgorithm(realm_, part, pressure_, dpdx_);
+      assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+    }
+    else {
+      it->second->partVec_.push_back(part);
+    }
   }
-
+  
   // non-solver alg; compute nc mdot (same for edge and element-based)
   std::map<AlgorithmType, Algorithm *>::iterator itm =
     computeMdotAlgDriver_->algMap_.find(algType);
   if ( itm == computeMdotAlgDriver_->algMap_.end() ) {
     ComputeMdotNonConformalAlgorithm *theAlg
-      = new ComputeMdotNonConformalAlgorithm(realm_, part, pressure_);
+      = new ComputeMdotNonConformalAlgorithm(realm_, part, pressure_, dpdx_);
     computeMdotAlgDriver_->algMap_[algType] = theAlg;
   }
   else {
@@ -2213,7 +2244,7 @@ ContinuityEquationSystem::register_non_conformal_bc(
     solverAlgDriver_->solverAlgMap_.find(algType);
   if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
     AssembleContinuityNonConformalSolverAlgorithm *theAlg
-      = new AssembleContinuityNonConformalSolverAlgorithm(realm_, part, this, pressure_);
+      = new AssembleContinuityNonConformalSolverAlgorithm(realm_, part, this, pressure_, dpdx_);
     solverAlgDriver_->solverAlgMap_[algType] = theAlg;
   }
   else {

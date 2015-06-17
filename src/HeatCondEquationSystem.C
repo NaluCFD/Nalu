@@ -21,6 +21,7 @@
 #include <AssembleNodalGradBoundaryAlgorithm.h>
 #include <AssembleNodalGradEdgeContactAlgorithm.h>
 #include <AssembleNodalGradElemContactAlgorithm.h>
+#include <AssembleNodalGradNonConformalAlgorithm.h>
 #include <AssembleNodeSolverAlgorithm.h>
 #include <AuxFunctionAlgorithm.h>
 #include <ConstantAuxFunction.h>
@@ -763,16 +764,31 @@ HeatCondEquationSystem::register_non_conformal_bc(
   ScalarFieldType &tempNp1 = temperature_->field_of_state(stk::mesh::StateNP1);
   VectorFieldType &dtdxNone = dtdx_->field_of_state(stk::mesh::StateNone);
 
-  // non-solver; dtdx; allow for element-based shifted
-  std::map<AlgorithmType, Algorithm *>::iterator it
-    = assembleNodalGradAlgDriver_->algMap_.find(algType);
-  if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg 
-      = new AssembleNodalGradBoundaryAlgorithm(realm_, part, &tempNp1, &dtdxNone, edgeNodalGradient_);
-    assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+  // non-solver; contribution to dtdx; DG algorithm decides on locations for integration points
+  if ( edgeNodalGradient_ ) {    
+    std::map<AlgorithmType, Algorithm *>::iterator it
+      = assembleNodalGradAlgDriver_->algMap_.find(algType);
+    if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+      Algorithm *theAlg 
+        = new AssembleNodalGradBoundaryAlgorithm(realm_, part, &tempNp1, &dtdxNone, edgeNodalGradient_);
+      assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+    }
+    else {
+      it->second->partVec_.push_back(part);
+    }
   }
   else {
-    it->second->partVec_.push_back(part);
+    // proceed with DG
+    std::map<AlgorithmType, Algorithm *>::iterator it
+      = assembleNodalGradAlgDriver_->algMap_.find(algType);
+    if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+      AssembleNodalGradNonConformalAlgorithm *theAlg 
+        = new AssembleNodalGradNonConformalAlgorithm(realm_, part, &tempNp1, &dtdxNone);
+      assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+    }
+    else {
+      it->second->partVec_.push_back(part);
+    }
   }
   
   // solver; lhs; same for edge and element-based scheme

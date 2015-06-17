@@ -21,6 +21,7 @@
 #include <AssembleNodalGradBoundaryAlgorithm.h>
 #include <AssembleNodalGradEdgeContactAlgorithm.h>
 #include <AssembleNodalGradElemContactAlgorithm.h>
+#include <AssembleNodalGradNonConformalAlgorithm.h>
 #include <AuxFunctionAlgorithm.h>
 #include <ComputeTurbKineticEnergyWallFunctionAlgorithm.h>
 #include <ConstantAuxFunction.h>
@@ -678,16 +679,31 @@ TurbKineticEnergyEquationSystem::register_non_conformal_bc(
   ScalarFieldType &tkeNp1 = tke_->field_of_state(stk::mesh::StateNP1);
   VectorFieldType &dkdxNone = dkdx_->field_of_state(stk::mesh::StateNone);
 
-  // non-solver; dkdx; allow for element-based shifted
-  std::map<AlgorithmType, Algorithm *>::iterator it
-    = assembleNodalGradAlgDriver_->algMap_.find(algType);
-  if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg
-      = new AssembleNodalGradBoundaryAlgorithm(realm_, part, &tkeNp1, &dkdxNone, edgeNodalGradient_);
-    assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+  // non-solver; contribution to dkdx; DG algorithm decides on locations for integration points
+  if ( edgeNodalGradient_ ) {    
+    std::map<AlgorithmType, Algorithm *>::iterator it
+      = assembleNodalGradAlgDriver_->algMap_.find(algType);
+    if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+      Algorithm *theAlg 
+        = new AssembleNodalGradBoundaryAlgorithm(realm_, part, &tkeNp1, &dkdxNone, edgeNodalGradient_);
+      assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+    }
+    else {
+      it->second->partVec_.push_back(part);
+    }
   }
   else {
-    it->second->partVec_.push_back(part);
+    // proceed with DG
+    std::map<AlgorithmType, Algorithm *>::iterator it
+      = assembleNodalGradAlgDriver_->algMap_.find(algType);
+    if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+      AssembleNodalGradNonConformalAlgorithm *theAlg 
+        = new AssembleNodalGradNonConformalAlgorithm(realm_, part, &tkeNp1, &dkdxNone);
+      assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+    }
+    else {
+      it->second->partVec_.push_back(part);
+    }
   }
 
   // solver; lhs; same for edge and element-based scheme

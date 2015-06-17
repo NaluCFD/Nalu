@@ -285,6 +285,7 @@ public:
   bool has_nc_gauss_labatto_quadrature();
   NonConformalAlgType get_nc_alg_type();
   bool get_nc_alg_upwind_advection();
+  bool get_nc_alg_include_pstab();
 
   PropertyEvaluator *
   get_material_prop_eval(
