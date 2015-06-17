@@ -85,7 +85,7 @@ ScalarMassBDF2NodeSuppAlg::node_execute(
   const double rhoN       = *stk::mesh::field_data(*densityN_, node);
   const double rhoNp1     = *stk::mesh::field_data(*densityNp1_, node);
   const double dualVolume = *stk::mesh::field_data(*dualNodalVolume_, node);
-  const double lhsTime    = rhoNp1*dualVolume/dt_;
+  const double lhsTime    = gamma1_*rhoNp1*dualVolume/dt_;
   rhs[0] -= (gamma1_*rhoNp1*qNp1 + gamma2_*qN*rhoN + gamma3_*qNm1*rhoNm1)*dualVolume/dt_;
   lhs[0] += lhsTime;
 }
