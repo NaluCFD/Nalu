@@ -102,12 +102,6 @@ class NonConformalInfo {
   /* does the realm have mesh motion */
   const bool meshMotion_;
 
-  /* master element for homegeneous block search type; one topo per contactinfo */
-  MasterElement *meSCS_;
-
-  // possible elements for search
-  std::map<uint64_t, stk::mesh::Entity> searchFaceElementMap_;
-
   /* bounding box data types for stk_search */
   std::vector<boundingPoint>      boundingPointVec_;
   std::vector<boundingElementBox> boundingFaceElementBoxVec_;

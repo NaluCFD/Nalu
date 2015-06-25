@@ -110,7 +110,6 @@ ContactInfo::initialize()
   // clear some of the search info
   boundingPointVec_.clear();
   boundingElementBoxVec_.clear();
-  searchElementMap_.clear();
   searchKeyPair_.clear();
 
   // delete haloInfoMap_
@@ -242,13 +241,13 @@ ContactInfo::populate_halo_mesh_velocity()
   }
 }
 
-
 //--------------------------------------------------------------------------
 //-------- determine_elems_to_ghost ----------------------------------------
 //--------------------------------------------------------------------------
 void
 ContactInfo::determine_elems_to_ghost()
 {
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
 
   stk::search::coarse_search(boundingPointVec_, boundingElementBoxVec_, searchMethod_, NaluEnv::self().parallel_comm(), searchKeyPair_);
 
@@ -264,11 +263,9 @@ ContactInfo::determine_elems_to_ghost()
       // Send box to pt proc
 
       // find the element
-      std::map<uint64_t, stk::mesh::Entity>::iterator iterEM;
-      iterEM=searchElementMap_.find(theBox);
-      if ( iterEM == searchElementMap_.end() )
-        throw std::runtime_error("No entry in searchElementMap found");
-      stk::mesh::Entity theElemMeshObj = iterEM->second;
+      stk::mesh::Entity theElemMeshObj = bulk_data.get_entity(stk::topology::ELEMENT_RANK, theBox);
+      if ( !(bulk_data.is_valid(theElemMeshObj)) )
+        throw std::runtime_error("no valid entry for element");
 
       // new element to ghost counter
       realm_.contactManager_->needToGhostCount_++;
@@ -316,40 +313,14 @@ ContactInfo::complete_search()
     // check if I own the point...
     if ( theRank == pt_proc ) {
 
-      // yes, I own the point... However, what about the element? Who owns that
-      int elemIsGhosted = 0;
-      // proceed as required
-      stk::mesh::Entity elem = stk::mesh::Entity();
-      std::map<uint64_t, stk::mesh::Entity>::iterator iterEM;
-      iterEM=searchElementMap_.find(theBox);
-      if ( iterEM != searchElementMap_.end() ) {
-        elem = iterEM->second;
-      }
-      else {
+      // yes, I own the point... However, what about the element? Who owns that?
 
-        elemIsGhosted = 1;
-
-        // extract ghosted element; need to look for it...
-        stk::mesh::Selector s_ghosted
-          = !(meta_data.locally_owned_part() | meta_data.globally_shared_part());
-
-        stk::mesh::BucketVector const& ghosted_elem_buckets =
-          realm_.get_buckets( stk::topology::ELEMENT_RANK, s_ghosted );
-        for ( stk::mesh::BucketVector::const_iterator ib = ghosted_elem_buckets.begin() ;
-              ib != ghosted_elem_buckets.end() ; ++ib ) {
-          stk::mesh::Bucket & b = **ib ;
-          const stk::mesh::Bucket::size_type length  = b.size();
-          for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
-            const uint64_t iglob = bulk_data.identifier(b[k]);
-            if (theBox == iglob ) {
-              elem = b[k];
-              break;
-            }
-          }
-        }
-      }
+      // proceed as required; all elements should have already been ghosted via the coarse search
+      stk::mesh::Entity elem = bulk_data.get_entity(stk::topology::ELEMENT_RANK, theBox);
       if ( !(bulk_data.is_valid(elem)) )
         throw std::runtime_error("no valid entry for element");
+
+      int elemIsGhosted = bulk_data.bucket(elem).owned() ? 0 : 1;
 
       std::map<uint64_t, HaloInfo *>::iterator iterHalo;
       iterHalo=haloInfoMap_.find(thePt);
@@ -531,8 +502,6 @@ ContactInfo::find_possible_elements()
         // setup ident
         stk::search::IdentProc<uint64_t,int> theIdent(bulk_data.identifier(elem), NaluEnv::self().parallel_rank());
 
-        searchElementMap_[bulk_data.identifier(elem)] = elem;
-
         // expand the box
         for ( int i = 0; i < nDim; ++i ) {
           const double theMin = minCorner[i];
@@ -616,14 +585,6 @@ ContactInfo::dump_diagnosis()
       NaluEnv::self().naluOutputP0() << "The node id " << theId << " found a need to ghost the element "
                       << bulk_data.identifier(infoObject->owningElement_) << std::endl;
     }
-  }
-
-  NaluEnv::self().naluOutputP0() << "ContactInfo::searchElementMap (ll possible elements)" << name_ << std::endl;
-  std::map<uint64_t, stk::mesh::Entity>::iterator iterEM;
-  for (iterEM  = searchElementMap_.begin();
-       iterEM != searchElementMap_.end();
-       ++iterEM) {
-    NaluEnv::self().naluOutputP0() << "The element id is " << (*iterEM).first << std::endl;
   }
 
   for (iterHalo  = haloInfoMap_.begin();

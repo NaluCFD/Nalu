@@ -98,7 +98,7 @@ class ContactInfo {
   stk::mesh::PartVector contactSearchBlock_;
   const stk::mesh::Part *contactSurfacePart_;
 
-  /* master element for homegeneous block search type; one topo per contactinfo */
+  /* master element for homogeneous block search type; one topo per contactinfo */
   MasterElement *meSCS_;
 
   /* expand search box */
@@ -114,9 +114,6 @@ class ContactInfo {
 
   /* use higher order Hermite interpolation */
   const bool useHermiteInterpolation_;
-
-  // possible elements for search
-  std::map<uint64_t, stk::mesh::Entity> searchElementMap_;
 
   /* bounding box data types for stk_search */
   std::vector<boundingPoint>      boundingPointVec_;

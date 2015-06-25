@@ -87,8 +87,7 @@ NonConformalInfo::NonConformalInfo(
     searchMethod_(stk::search::BOOST_RTREE),
     clipIsoParametricCoords_(clipIsoParametricCoords),
     searchTolerance_(searchTolerance),
-    meshMotion_(realm_.has_mesh_motion()),
-    meSCS_(NULL)
+    meshMotion_(realm_.has_mesh_motion())
 {
   // determine search method for this pair
   if ( searchMethodName == "boost_rtree" )
@@ -124,7 +123,6 @@ NonConformalInfo::initialize()
   // clear some of the search info
   boundingPointVec_.clear();
   boundingFaceElementBoxVec_.clear();
-  searchFaceElementMap_.clear();
   searchKeyPair_.clear();
 
   // delete dgInfoVec_
@@ -301,8 +299,8 @@ NonConformalInfo::construct_dgInfo_state()
 void
 NonConformalInfo::determine_elems_to_ghost()
 {
-  
   stk::mesh::BulkData & bulk_data = realm_.bulk_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   // perform the coarse search
   stk::search::coarse_search(boundingPointVec_, boundingFaceElementBoxVec_, searchMethod_, NaluEnv::self().parallel_comm(), searchKeyPair_);
@@ -322,11 +320,9 @@ NonConformalInfo::determine_elems_to_ghost()
       // Send box to pt proc
 
       // find the face element
-      std::map<uint64_t, stk::mesh::Entity>::iterator iterEM;
-      iterEM=searchFaceElementMap_.find(theBox);
-      if ( iterEM == searchFaceElementMap_.end() )
-        throw std::runtime_error("No entry in searchElementMap found");
-      stk::mesh::Entity face = iterEM->second;
+      stk::mesh::Entity face = bulk_data.get_entity(meta_data.side_rank(), theBox);
+      if ( !(bulk_data.is_valid(face)) )
+        throw std::runtime_error("no valid entry for face");
       
       // extract the connected element
       const stk::mesh::Entity* face_elem_rels = bulk_data.begin_elements(face);
@@ -349,7 +345,6 @@ NonConformalInfo::determine_elems_to_ghost()
 void
 NonConformalInfo::complete_search()
 {
-
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   stk::mesh::BulkData & bulk_data = realm_.bulk_data();
   const int nDim = meta_data.spatial_dimension();
@@ -386,40 +381,14 @@ NonConformalInfo::complete_search()
           // check if I own the point...
           if ( theRank == pt_proc ) {
             
-            // yes, I own the point... However, what about the face element? Who owns that
-            int opposingFaceIsGhosted = 0;
-            // proceed as required
-            stk::mesh::Entity opposingFace = stk::mesh::Entity();
-            std::map<uint64_t, stk::mesh::Entity>::iterator iterEM;
-            iterEM=searchFaceElementMap_.find(theBox);
-            if ( iterEM != searchFaceElementMap_.end() ) {
-              opposingFace = iterEM->second;
-            }
-            else {
-              
-              opposingFaceIsGhosted = 1;
-              
-              // extract ghosted element; need to look for it...
-              stk::mesh::Selector s_ghosted
-                = !(meta_data.locally_owned_part() | meta_data.globally_shared_part());
-              
-              stk::mesh::BucketVector const& ghosted_elem_buckets =
-                realm_.get_buckets( meta_data.side_rank(), s_ghosted );
-              for ( stk::mesh::BucketVector::const_iterator ib = ghosted_elem_buckets.begin() ;
-                    ib != ghosted_elem_buckets.end() ; ++ib ) {
-                stk::mesh::Bucket & b = **ib ;
-                const stk::mesh::Bucket::size_type length  = b.size();
-                for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
-                  const uint64_t iglob = bulk_data.identifier(b[k]);
-                  if (theBox == iglob ) {
-                    opposingFace = b[k];
-                    break;
-                  }
-                }
-              }
-            }
+            // yes, I own the point... However, what about the face element? Who owns that?
+
+            // proceed as required; all elements should have already been ghosted via the coarse search
+            stk::mesh::Entity opposingFace = bulk_data.get_entity(meta_data.side_rank(), theBox);
             if ( !(bulk_data.is_valid(opposingFace)) )
               throw std::runtime_error("no valid entry for face element");
+
+            int opposingFaceIsGhosted = bulk_data.bucket(opposingFace).owned() ? 0 : 1;
             
             // extract the gauss point coordinates
             currentGaussPointCoords = dgInfo->currentGaussPointCoords_;
@@ -557,8 +526,6 @@ NonConformalInfo::find_possible_face_elements()
       
       // setup ident
       stk::search::IdentProc<uint64_t,int> theIdent(bulk_data.identifier(face), NaluEnv::self().parallel_rank());
-
-      searchFaceElementMap_[bulk_data.identifier(face)] = face;
 
       // expand the box by both % and search tolerance
       for ( int i = 0; i < nDim; ++i ) {
