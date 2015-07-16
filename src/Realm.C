@@ -190,7 +190,8 @@ Realm::Realm(Realms& realms)
     HDF5ptr_(NULL),
     autoDecompType_("None"),
     activateAura_(false),
-    activateMemoryDiagnostic_(false)
+    activateMemoryDiagnostic_(false),
+    supportInconsistentRestart_(false)
 {
   // nothing to do
 }
@@ -535,6 +536,9 @@ Realm::load(const YAML::Node & node)
   get_if_present(node, "activate_memory_diagnostic", activateMemoryDiagnostic_, activateMemoryDiagnostic_);
   if ( activateMemoryDiagnostic_ )
     NaluEnv::self().naluOutputP0() << "Nalu will activate detailed memory pulse" << std::endl;
+  
+  // allow for inconsistent restart (fields are missing)
+  get_if_present(node, "support_inconsistent_multi_state_restart", supportInconsistentRestart_, supportInconsistentRestart_);
 
   // time step control
   const bool dtOptional = true;
@@ -3172,12 +3176,17 @@ Realm::populate_restart(
     std::vector<stk::io::MeshField> missingFields;
     foundRestartTime = ioBroker_->read_defined_input_fields(restartTime, &missingFields);
     if ( missingFields.size() > 0 ){
-      for ( size_t k = 0; k < missingFields.size(); ++k)
+      for ( size_t k = 0; k < missingFields.size(); ++k) {
         NaluEnv::self().naluOutputP0() << "WARNING: Restart value for Field "
-                        << missingFields[k].field()->name()
-                        << " is missing; will default to IC specification" << std::endl;
+                                       << missingFields[k].field()->name()
+                                       << " is missing; may default to IC specification" << std::endl;
+      }
+      if ( !supportInconsistentRestart_ ) {
+        NaluEnv::self().naluOutputP0() << "The user may desire to set the support_inconsistent_multi_state_restart Realm line command" << std::endl;
+        NaluEnv::self().naluOutputP0() << "This is applicable for a BDF2 restart run from a previously run Backward Euler simulation" << std::endl;
+      }
     }
-
+    
     // extract time parameters; okay if they are missing; no need to let the user know
     const bool abortIfNotFound = false;
     ioBroker_->get_global("timeStepNm1", timeStepNm1, abortIfNotFound);
@@ -3985,6 +3994,15 @@ bool
 Realm::restarted_simulation()
 {
   return outputInfo_->activateRestart_ ;
+}
+
+//--------------------------------------------------------------------------
+//-------- support_inconsistent_restart() ----------------------------------
+//--------------------------------------------------------------------------
+bool
+Realm::support_inconsistent_restart()
+{
+  return supportInconsistentRestart_ ;
 }
 
 //--------------------------------------------------------------------------

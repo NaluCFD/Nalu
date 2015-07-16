@@ -98,26 +98,26 @@ void TimeIntegrator::load(const YAML::Node & node)
         get_if_present(*standardTimeIntegrator_node, "time_stepping_type", timeStepType, timeStepType);
         adaptiveTimeStep_ = ( timeStepType == "fixed" ) ? false : true;
 
-	      NaluEnv::self().naluOutputP0() << "StandardTimeIntegrator " << std::endl
-	          << " name=              " << name_  << std::endl
-	          << " second order =     " << secondOrderTimeAccurate_ << std::endl;
-	      if ( terminateBasedOnTime_ )
-	        NaluEnv::self().naluOutputP0() << " totalSimTime =     " << totalSimTime_ << std::endl;
-	      else
-	        NaluEnv::self().naluOutputP0() << " maxTimeStepCount = " << maxTimeStepCount_ << std::endl;
-
-	      if ( adaptiveTimeStep_ )  
-	        NaluEnv::self().naluOutputP0() << " adaptive time step is active (realm owns specifics) " << std::endl;
-	      else
-	        NaluEnv::self().naluOutputP0() << " fixed time step is active  " << " with time step: " << timeStepN_ << std::endl;
-
-	      const YAML::Node & realms_node = (*standardTimeIntegrator_node)["realms"] ;
-	      for (size_t irealm=0; irealm < realms_node.size(); ++irealm) {
-	        std::string realm_name;
-	        realms_node[irealm] >> realm_name;
-	        NaluEnv::self().naluOutputP0() << "StandardTimeIntegrator realm_name[" << irealm << "]= "  << realm_name << std::endl;
-	        realmNamesVec_.push_back(realm_name);
-	      }
+        NaluEnv::self().naluOutputP0() << "StandardTimeIntegrator " << std::endl
+                                       << " name=              " << name_  << std::endl
+                                       << " second order =     " << secondOrderTimeAccurate_ << std::endl;
+        if ( terminateBasedOnTime_ )
+          NaluEnv::self().naluOutputP0() << " totalSimTime =     " << totalSimTime_ << std::endl;
+        else
+          NaluEnv::self().naluOutputP0() << " maxTimeStepCount = " << maxTimeStepCount_ << std::endl;
+        
+        if ( adaptiveTimeStep_ )  
+          NaluEnv::self().naluOutputP0() << " adaptive time step is active (realm owns specifics) " << std::endl;
+        else
+          NaluEnv::self().naluOutputP0() << " fixed time step is active  " << " with time step: " << timeStepN_ << std::endl;
+        
+        const YAML::Node & realms_node = (*standardTimeIntegrator_node)["realms"] ;
+        for (size_t irealm=0; irealm < realms_node.size(); ++irealm) {
+          std::string realm_name;
+          realms_node[irealm] >> realm_name;
+          NaluEnv::self().naluOutputP0() << "StandardTimeIntegrator realm_name[" << irealm << "]= "  << realm_name << std::endl;
+          realmNamesVec_.push_back(realm_name);
+        }
       }
     }
   }

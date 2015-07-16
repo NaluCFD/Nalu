@@ -164,7 +164,7 @@ TurbKineticEnergyEquationSystem::register_nodal_fields(
   stk::mesh::put_field(*evisc_, *part);
 
   // make sure all states are properly populated (restart can handle this)
-  if ( numStates > 2 && !realm_.restarted_simulation() ) {
+  if ( numStates > 2 && (!realm_.restarted_simulation() || realm_.support_inconsistent_restart()) ) {
     ScalarFieldType &tkeN = tke_->field_of_state(stk::mesh::StateN);
     ScalarFieldType &tkeNp1 = tke_->field_of_state(stk::mesh::StateNP1);
 

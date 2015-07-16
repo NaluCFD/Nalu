@@ -175,7 +175,7 @@ HeatCondEquationSystem::register_nodal_fields(
   realm_.augment_property_map(THERMAL_COND_ID, thermalCond_);
 
   // make sure all states are properly populated (restart can handle this)
-  if ( numStates > 2 && !realm_.restarted_simulation() ) {
+  if ( numStates > 2 && (!realm_.restarted_simulation() || realm_.support_inconsistent_restart()) ) {
     ScalarFieldType &tempN = temperature_->field_of_state(stk::mesh::StateN);
     ScalarFieldType &tempNp1 = temperature_->field_of_state(stk::mesh::StateNP1);
 

@@ -259,7 +259,7 @@ EnthalpyEquationSystem::register_nodal_fields(
   }
 
   // make sure all states are properly populated (restart can handle this)
-  if ( numStates > 2 && !realm_.restarted_simulation() ) {
+  if ( numStates > 2 && (!realm_.restarted_simulation() || realm_.support_inconsistent_restart()) ) {
     ScalarFieldType &enthalpyN = enthalpy_->field_of_state(stk::mesh::StateN);
     ScalarFieldType &enthalpyNp1 = enthalpy_->field_of_state(stk::mesh::StateNP1);
 

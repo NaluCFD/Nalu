@@ -428,6 +428,9 @@ public:
   // allow detailed output (memory) to be provided
   bool activateMemoryDiagnostic_;
 
+  // sometimes restarts can be missing states or dofs
+  bool supportInconsistentRestart_;
+
   // mesh parts for all boundary conditions
   stk::mesh::PartVector bcPartVec_;
 
@@ -454,6 +457,7 @@ public:
 
   // restart
   bool restarted_simulation();
+  bool support_inconsistent_restart();
 
   double get_stefan_boltzmann();
   double get_turb_model_constant(

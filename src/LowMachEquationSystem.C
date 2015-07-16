@@ -216,7 +216,7 @@ LowMachEquationSystem::register_nodal_fields(
   stk::mesh::put_field(*dualNodalVolume_, *part);
 
   // make sure all states are properly populated (restart can handle this)
-  if ( numStates > 2 && !realm_.restarted_simulation() ) {
+  if ( numStates > 2 && (!realm_.restarted_simulation() || realm_.support_inconsistent_restart()) ) {
     ScalarFieldType &densityN = density_->field_of_state(stk::mesh::StateN);
     ScalarFieldType &densityNp1 = density_->field_of_state(stk::mesh::StateNP1);
 
@@ -848,10 +848,10 @@ MomentumEquationSystem::register_nodal_fields(
   }
 
   // make sure all states are properly populated (restart can handle this)
-  if ( numStates > 2 && !realm_.restarted_simulation() ) {
+  if ( numStates > 2 && (!realm_.restarted_simulation() || realm_.support_inconsistent_restart()) ) {
     VectorFieldType &velocityN = velocity_->field_of_state(stk::mesh::StateN);
     VectorFieldType &velocityNp1 = velocity_->field_of_state(stk::mesh::StateNP1);
-
+    
     CopyFieldAlgorithm *theCopyAlg
       = new CopyFieldAlgorithm(realm_, part,
                                &velocityNp1, &velocityN,
