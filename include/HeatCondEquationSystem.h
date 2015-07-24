@@ -53,7 +53,7 @@ public:
     stk::mesh::Part *part,
     const stk::topology &theTopo,
     const WallBoundaryConditionData &wallBCData);
-  
+ 
   virtual void register_contact_bc(
     stk::mesh::Part *part,
     const stk::topology &theTopo,
@@ -62,6 +62,8 @@ public:
   virtual void register_non_conformal_bc(
     stk::mesh::Part *part,
     const stk::topology &theTopo);
+
+  virtual void register_overset_bc();
 
   virtual void register_initial_condition_fcn(
       stk::mesh::Part *part,

@@ -256,6 +256,65 @@ void operator >> (const YAML::Node& node, InflowUserData& inflowData) {
   }
   
 }
+void operator >> (const YAML::Node& node, OversetUserData& oversetData){
+  //nothing is optional
+  if ( node.FindValue("percent_overlap") ) {
+    node["percent_overlap"] >> oversetData.percentOverlap_;
+  }
+  else {
+    throw std::runtime_error("One MUST specify overset overlap percentage");
+  }
+
+  if ( node.FindValue("background_block") ) {
+    node["background_block"] >> oversetData.backgroundBlock_;
+  }
+  else {
+    throw std::runtime_error("One MUST specify background block");
+  }
+
+  if ( node.FindValue("overset_block") ) {
+    const YAML::Node &oversetBlock = *node.FindValue("overset_block");
+    if (oversetBlock.Type() == YAML::NodeType::Scalar) {
+      oversetData.oversetBlockVec_.resize(1);
+      oversetBlock >> oversetData.oversetBlockVec_[0];
+    }
+    else {
+      oversetData.oversetBlockVec_.resize(oversetBlock.size());
+      for (size_t i=0; i < oversetBlock.size(); ++i) {
+        oversetBlock[i] >> oversetData.oversetBlockVec_[i];
+      }
+    }
+  }
+  else {
+    throw std::runtime_error("One MUST specify overset block(s)");
+  }
+
+  if ( node.FindValue("background_cut_block") ) {
+    node["background_cut_block"] >> oversetData.backgroundCutBlock_;
+  }
+  else {
+    throw std::runtime_error("One MUST specify background cut block");
+  }
+
+  if ( node.FindValue("background_cut_surface") ) {
+    node["background_cut_surface"] >> oversetData.backgroundSurface_;
+  }
+  else {
+    throw std::runtime_error("One MUST specify background cut surface");
+  }
+
+  if ( node.FindValue("overset_surface") ) {
+    node["overset_surface"] >> oversetData.oversetSurface_;
+  }
+  else {
+    throw std::runtime_error("One MUST specify overset surface");
+  }
+
+  if ( node.FindValue("clip_isoparametric_coordinates") ) {
+     node["clip_isoparametric_coordinates"] >> oversetData.clipIsoParametricCoords_;
+  }
+
+}
 
 void operator >> (const YAML::Node& node, ContactUserData& contactData) {
   // nothing is optional
@@ -389,6 +448,7 @@ void operator >> (const YAML::Node& node, BoundaryConditionOptions& bcOptions) {
   node["wall_boundary_condition"] >> bcOptions.wallbc_;
   node["inflow_boundary_condition"] >> bcOptions.inflowbc_;
   node["open_boundary_condition"] >> bcOptions.openbc_;
+  node["overset_boundary_condition"] >> bcOptions.oversetbc_;
   node["contact_boundary_condition"] >> bcOptions.contactbc_;
   node["symmetry_boundary_condition"] >> bcOptions.symmetrybc_;
   node["periodic_boundary_condition"] >> bcOptions.periodicbc_;
@@ -417,6 +477,14 @@ void operator >> (const YAML::Node& node, OpenBoundaryConditionData& openBC) {
   openBC.theBcType_ = OPEN_BC;
   const YAML::Node& openUserData = node["open_user_data"];
   openUserData >> openBC.userData_;
+}
+
+void operator >> (const YAML::Node& node, OversetBoundaryConditionData& oversetBC) {
+  node["overset_boundary_condition"] >> oversetBC.bcName_;
+  node["target_name"] >> oversetBC.targetName_;
+  oversetBC.theBcType_ = OVERSET_BC;
+  const YAML::Node& oversetUserData = node["overset_user_data"];
+  oversetUserData >> oversetBC.userData_;
 }
 
 void operator >> (const YAML::Node& node, ContactBoundaryConditionData& contactBC) {

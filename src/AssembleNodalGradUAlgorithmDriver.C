@@ -105,6 +105,11 @@ AssembleNodalGradUAlgorithmDriver::post_work()
     realm_.periodic_field_update(dudx, sizeOfField);
   }
 
+  if ( realm_.hasOverset_ ) {
+    // this is a tensor
+    const unsigned nDim = meta_data.spatial_dimension();
+    realm_.overset_orphan_node_field_update(dudx, nDim, nDim);
+  }
 }
 
 } // namespace nalu

@@ -49,6 +49,9 @@
 #include <TimeIntegrator.h>
 #include <SolverAlgorithmDriver.h>
 
+// overset
+#include <overset/AssembleScalarOversetSolverAlgorithm.h>
+
 // user functions
 #include <user_functions/SteadyThermalContactAuxFunction.h>
 #include <user_functions/SteadyThermalContactSrcNodeSuppAlg.h>
@@ -235,6 +238,13 @@ HeatCondEquationSystem::register_element_fields(
     stk::mesh::put_field(*pstabEI, *part, numIp);
   }
   
+  // register the intersected elemental field
+  if ( realm_.query_for_overset() ) {
+    const int sizeOfElemField = 1;
+    GenericFieldType *intersectedElement
+      = &(meta_data.declare_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "intersected_element"));
+    stk::mesh::put_field(*intersectedElement, *part, sizeOfElemField);
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -801,8 +811,29 @@ HeatCondEquationSystem::register_non_conformal_bc(
   }
   else {
     itsi->second->partVec_.push_back(part);
-  }
+  }  
+}
+
+//--------------------------------------------------------------------------
+//-------- register_overset_bc ---------------------------------------------
+//--------------------------------------------------------------------------
+void
+HeatCondEquationSystem::register_overset_bc()
+{
+  // create the alg on the new constraint; at present, should only hit this once
+  const AlgorithmType algType = OVERSET;
   
+  std::map<AlgorithmType, SolverAlgorithm *>::iterator itc =
+    solverAlgDriver_->solverConstraintAlgMap_.find(algType);
+  if ( itc == solverAlgDriver_->solverConstraintAlgMap_.end() ) {
+    // FIXME: should we declare an empty part to push into below Alg?
+    AssembleScalarOversetSolverAlgorithm *theAlg
+      = new AssembleScalarOversetSolverAlgorithm(realm_, NULL, this, temperature_);
+    solverAlgDriver_->solverConstraintAlgMap_[algType] = theAlg;
+  }
+  else {
+    throw std::runtime_error("HeatCondEquationSystem::register_overset_bc: overset must be single in size!!");
+  }  
 }
 
 //--------------------------------------------------------------------------

@@ -283,7 +283,6 @@ ContactInfo::determine_elems_to_ghost()
 void
 ContactInfo::complete_search()
 {
-
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   stk::mesh::BulkData & bulk_data = realm_.bulk_data();
   const int nDim = meta_data.spatial_dimension();

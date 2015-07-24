@@ -98,6 +98,9 @@ public:
     const std::string targetNameSlave,
     const PeriodicBoundaryConditionData &periodicBCData);
 
+  void register_overset_bc(
+    const OversetBoundaryConditionData &oversetBCData);
+
   void register_non_conformal_bc(
     const NonConformalBoundaryConditionData &nonConformalBCData);
 

@@ -120,8 +120,7 @@ NonConformalManager::initialize()
 //--------------------------------------------------------------------------
 void
 NonConformalManager::manage_ghosting()
-{
-  
+{  
   stk::mesh::BulkData & bulk_data = realm_.bulk_data();
 
   // check for ghosting need

@@ -42,13 +42,16 @@ SolverAlgorithmDriver::~SolverAlgorithmDriver()
     Algorithm *theAlg = ii->second;
     delete theAlg;
   }
-  
-  std::map<AlgorithmType, SolverAlgorithm *>::iterator iid;
-  for( iid=solverDirichAlgMap_.begin(); iid!=solverDirichAlgMap_.end(); ++iid ) {
-    Algorithm *theAlg = iid->second;
+
+  for( ii=solverConstraintAlgMap_.begin(); ii!=solverConstraintAlgMap_.end(); ++ii ) {
+    Algorithm *theAlg = ii->second;
     delete theAlg;
   }
   
+  for( ii=solverDirichAlgMap_.begin(); ii!=solverDirichAlgMap_.end(); ++ii ) {
+    Algorithm *theAlg = ii->second;
+    delete theAlg;
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -57,9 +60,11 @@ SolverAlgorithmDriver::~SolverAlgorithmDriver()
 void
 SolverAlgorithmDriver::initialize_connectivity()
 {
-
   std::map<AlgorithmType, SolverAlgorithm *>::iterator it;
   for ( it = solverAlgMap_.begin(); it != solverAlgMap_.end(); ++it ) {
+    it->second->initialize_connectivity();
+  }
+  for ( it = solverConstraintAlgMap_.begin(); it != solverConstraintAlgMap_.end(); ++it ) {
     it->second->initialize_connectivity();
   }
 }
@@ -97,10 +102,14 @@ SolverAlgorithmDriver::execute()
     it->second->execute();
   }
   
+  // handle constraint (will zero out entire row and process constraint)
+  for ( it = solverConstraintAlgMap_.begin(); it != solverConstraintAlgMap_.end(); ++it ) {
+    it->second->execute();
+  }
+
   // handle dirichlet
-  std::map<AlgorithmType, SolverAlgorithm *>::iterator itd;
-  for ( itd = solverDirichAlgMap_.begin(); itd != solverDirichAlgMap_.end(); ++itd ) {
-    itd->second->execute();
+  for ( it = solverDirichAlgMap_.begin(); it != solverDirichAlgMap_.end(); ++it ) {
+    it->second->execute();
   }
 
   post_work();

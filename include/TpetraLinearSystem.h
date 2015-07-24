@@ -59,6 +59,7 @@ public:
   void buildFaceElemToNodeGraph(const stk::mesh::PartVector & parts); // elem:face->node assembly
   void buildEdgeHaloNodeGraph(const stk::mesh::PartVector & parts); // haloNode->elem_node assembly
   void buildNonConformalNodeGraph(const stk::mesh::PartVector & parts); // nonConformal->node assembly
+  void buildOversetNodeGraph(const stk::mesh::PartVector & parts); // overset->elem_node assembly
   void finalizeLinearSystem();
 
   // Matrix Assembly
@@ -75,6 +76,10 @@ public:
     stk::mesh::FieldBase * solutionField,
     stk::mesh::FieldBase * bcValuesField,
     const stk::mesh::PartVector & parts,
+    const unsigned beginPos,
+    const unsigned endPos);
+
+  void prepareConstraints(
     const unsigned beginPos,
     const unsigned endPos);
 

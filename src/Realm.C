@@ -57,6 +57,9 @@
 #include <SolutionOptions.h>
 #include <TimeIntegrator.h>
 
+// overset
+#include <overset/OversetManager.h>
+
 // props
 #include <PropertyEvaluator.h>
 #include <ConstantPropertyEvaluator.h>
@@ -177,6 +180,7 @@ Realm::Realm(Realms& realms)
     nonConformalManager_(NULL),
     hasContact_(false),
     hasNonConformal_(false),
+    hasOverset_(false),
     hasTransfer_(false),
     periodicManager_(NULL),
     hasPeriodic_(false),
@@ -445,6 +449,9 @@ Realm::initialize()
 
   if ( hasNonConformal_ )
     initialize_non_conformal();
+
+  if ( hasOverset_ )
+    initialize_overset();
 
   compute_l2_scaling();
 
@@ -778,6 +785,9 @@ Realm::setup_bc()
         break;
       case NON_CONFORMAL_BC:
         equationSystems_.register_non_conformal_bc(*reinterpret_cast<const NonConformalBoundaryConditionData *>(&bc));
+        break;
+      case OVERSET_BC:
+        equationSystems_.register_overset_bc(*reinterpret_cast<const OversetBoundaryConditionData *>(&bc));
         break;
       default:
         throw std::runtime_error("unknown bc");
@@ -1550,6 +1560,10 @@ Realm::pre_timestep_work()
     if ( hasNonConformal_ )
       initialize_non_conformal();
 
+    // and overset algorithm
+    if ( hasOverset_ )
+      initialize_overset();
+
     // now re-initialize linear system
     equationSystems_.reinitialize_linear_system();
 
@@ -1729,6 +1743,7 @@ Realm::create_mesh()
   if (realmUsesEdges_) {
     edgesPart_ = &metaData_->declare_part("create_edges_part", stk::topology::EDGE_RANK);
   }
+
   const double end_time = stk::cpu_time();
 
   // set mesh reading
@@ -2069,6 +2084,15 @@ Realm::initialize_non_conformal()
 }
 
 //--------------------------------------------------------------------------
+//-------- initialize_overset ----------------------------------------------
+//--------------------------------------------------------------------------
+void
+Realm::initialize_overset()
+{
+  oversetManager_->initialize();
+}
+
+//--------------------------------------------------------------------------
 //-------- get_coordinates_name ---------------------------------------------
 //--------------------------------------------------------------------------
 std::string
@@ -2111,7 +2135,26 @@ Realm::does_mesh_move()
 bool
 Realm::has_non_matching_boundary_face_alg()
 {
-  return hasContact_ | hasNonConformal_;
+  return hasContact_ | hasNonConformal_ | hasOverset_; 
+}
+
+//--------------------------------------------------------------------------
+//-------- query_for_overset -----------------------------------------------
+//--------------------------------------------------------------------------
+bool 
+Realm::query_for_overset() 
+{
+  for (size_t ibc = 0; ibc < boundaryConditions_.size(); ++ibc) {
+    BoundaryCondition& bc = *boundaryConditions_[ibc];
+    switch(bc.theBcType_) {
+    case OVERSET_BC:
+      hasOverset_ = true;
+      break;
+    default:
+      hasOverset_ = false;
+    }
+  }
+  return hasOverset_;
 }
 
 //--------------------------------------------------------------------------
@@ -2898,7 +2941,6 @@ Realm::register_periodic_bc(
 
   // add the parts to the manager
   periodicManager_->add_periodic_pair(masterMeshPart, slaveMeshPart, searchTolerance, searchMethodName);
-
 }
 
 //--------------------------------------------------------------------------
@@ -2985,6 +3027,22 @@ Realm::register_non_conformal_bc(
 }
 
 //--------------------------------------------------------------------------
+//-------- setup_overset_bc ------------------------------------------------
+//--------------------------------------------------------------------------
+void
+Realm::setup_overset_bc(
+  const OversetBoundaryConditionData &oversetBCData)
+{
+  // setting flag for linear system setup (may have been set via earlier "query")
+  hasOverset_ = true;
+  
+  // create manager while providing overset data
+  if ( NULL == oversetManager_ ) {
+    oversetManager_ = new OversetManager(*this,oversetBCData.userData_);
+  }   
+}
+
+//--------------------------------------------------------------------------
 //-------- periodic_field_update -------------------------------------------
 //--------------------------------------------------------------------------
 void
@@ -3033,6 +3091,19 @@ Realm::get_slave_part_vector()
     return periodicManager_->get_slave_part_vector();
   else
     return emptyPartVector_;
+}
+
+
+//--------------------------------------------------------------------------
+//-------- overset_field_update -------------------------------------------
+//--------------------------------------------------------------------------
+void
+Realm::overset_orphan_node_field_update(
+  stk::mesh::FieldBase *theField,
+  const unsigned sizeRow,
+  const unsigned sizeCol)
+{
+  oversetManager_->overset_orphan_node_field_update(theField, sizeRow, sizeCol);
 }
 
 //--------------------------------------------------------------------------
@@ -4093,6 +4164,20 @@ bool
 Realm::get_activate_aura()
 {
   return activateAura_;
+}
+
+//--------------------------------------------------------------------------
+//-------- get_inactive_selector() -----------------------------------------
+//--------------------------------------------------------------------------
+stk::mesh::Selector
+Realm::get_inactive_selector()
+{
+  /*  if ( hasOverset_ )
+    return stk::mesh::Selector(*oversetManager_->inActivePart_);
+  else
+    return stk::mesh::Selector();
+  */  
+  return (hasOverset_) ? stk::mesh::Selector(*oversetManager_->inActivePart_) : stk::mesh::Selector();
 }
 
 } // namespace nalu

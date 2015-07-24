@@ -115,6 +115,11 @@ AssembleNodalGradAlgorithmDriver::post_work()
     realm_.periodic_field_update(dqdx, nDim);
   }
 
+  if ( realm_.hasOverset_ ) {
+    // this is a vector
+    const unsigned nDim = meta_data.spatial_dimension();
+    realm_.overset_orphan_node_field_update(dqdx, nDim, 1);
+  }
 }
 
 } // namespace nalu

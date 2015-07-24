@@ -578,6 +578,24 @@ EquationSystems::register_non_conformal_bc(
 }
 
 //--------------------------------------------------------------------------
+//-------- register_overset_bc ---------------------------------------------
+//--------------------------------------------------------------------------
+void
+EquationSystems::register_overset_bc(
+  const OversetBoundaryConditionData &oversetBCData)
+{
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
+
+  // set up the overset bc, e.g., manager, parts, etc.
+  realm_.setup_overset_bc(oversetBCData);
+
+  // register algs on the equation system
+  std::vector<EquationSystem *>::iterator ii;
+  for( ii=begin(); ii!=end(); ++ii )
+    (*ii)->register_overset_bc(/*nothing required as of yet*/);
+}
+
+//--------------------------------------------------------------------------
 //-------- register_surface_pp_algorithm ----------------------
 //--------------------------------------------------------------------------
 void

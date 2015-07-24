@@ -261,6 +261,22 @@ struct ContactUserData : public UserData {
   {}
 };
 
+struct OversetUserData : public UserData {
+  // at present, simulation can have one background mesh with multiple, non-interacting overset blocks
+  double percentOverlap_;
+  std::string backgroundBlock_;
+  std::vector<std::string> oversetBlockVec_;
+  std::string backgroundSurface_;
+  std::string backgroundCutBlock_;
+  std::string oversetSurface_;
+  bool clipIsoParametricCoords_;
+  
+ OversetUserData()
+   : UserData(),
+    percentOverlap_(1.0), clipIsoParametricCoords_(false)
+    {} 
+};
+ 
 struct SymmetryUserData : public UserData {
   SymmetryUserData()
     : UserData()
@@ -308,6 +324,11 @@ struct OpenBoundaryConditionData : public BoundaryCondition {
   OpenUserData userData_;
 };
 
+struct OversetBoundaryConditionData : public BoundaryCondition {
+  OversetBoundaryConditionData(BoundaryConditions& bcs) : BoundaryCondition(bcs){};
+  OversetUserData userData_;
+};
+
 struct ContactBoundaryConditionData : public BoundaryCondition {
   ContactBoundaryConditionData(BoundaryConditions& bcs) : BoundaryCondition(bcs){};
   ContactUserData userData_;
@@ -335,6 +356,7 @@ struct BoundaryConditionOptions{
   WallBoundaryConditionData wallbc_;
   InflowBoundaryConditionData inflowbc_;
   OpenBoundaryConditionData openbc_;
+  OversetBoundaryConditionData oversetbc_;
   ContactBoundaryConditionData contactbc_;
   NonConformalBoundaryConditionData nonConformalbc_;
   SymmetryBoundaryConditionData symmetrybc_;
@@ -373,6 +395,7 @@ void operator >> (const YAML::Node& node, std::map<std::string,std::vector<std::
 void operator >> (const YAML::Node& node, WallUserData& wallData);
 void operator >> (const YAML::Node& node, InflowUserData& inflowData);
 void operator >> (const YAML::Node& node, OpenUserData& openData);
+void operator >> (const YAML::Node& node, OversetUserData& bcData);
 void operator >> (const YAML::Node& node, ContactUserData& bcData);
 void operator >> (const YAML::Node& node, NonConformalUserData& bcData);
 void operator >> (const YAML::Node& node, SymmetryUserData& bcData);
@@ -381,6 +404,7 @@ void operator >> (const YAML::Node& node, BoundaryConditionOptions& bcOptions);
 void operator >> (const YAML::Node& node, WallBoundaryConditionData& wallBC);
 void operator >> (const YAML::Node& node, InflowBoundaryConditionData& inflowBC);
 void operator >> (const YAML::Node& node, OpenBoundaryConditionData& openBC);
+void operator >> (const YAML::Node& node, OversetBoundaryConditionData& oversetBC);
 void operator >> (const YAML::Node& node, ContactBoundaryConditionData& contactBC);
 void operator >> (const YAML::Node& node, NonConformalBoundaryConditionData& nonConformalBC);
 void operator >> (const YAML::Node& node, SymmetryBoundaryConditionData& symmetryBC);

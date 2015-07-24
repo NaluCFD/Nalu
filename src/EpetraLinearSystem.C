@@ -462,6 +462,13 @@ EpetraLinearSystem::buildNonConformalNodeGraph(
   throw std::runtime_error("EpetraLinearSystem can not be used with non conformal algorithm; activate tpetra");
 }
 
+void
+EpetraLinearSystem::buildOversetNodeGraph(
+  const stk::mesh::PartVector &/*parts*/)
+{
+  throw std::runtime_error("EpetraLinearSystem can not be used with overset algorithm; activate tpetra");
+}
+
 /// Copy values from Field X to DataVector u.
 void copy(
   stk::mesh::BulkData & bulkData,

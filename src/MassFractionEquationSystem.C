@@ -665,7 +665,6 @@ MassFractionEquationSystem::set_current_mass_fraction(
   // manage boundary data; copy kth value of bcField (from) to currentBcField (to)
   std::set<std::pair<stk::mesh::FieldBase*, stk::mesh::FieldBase*> >::iterator it;
   for ( it = bcMassFractionSet_.begin(); it != bcMassFractionSet_.end(); ++it) {
-    //std::pair<stk::mesh::FieldBase*, stk::mesh::FieldBase*> thePair = *it;
     const stk::mesh::FieldBase *fromBcField = (*it).first;
     const stk::mesh::FieldBase *toBcField = (*it).second;
     copy_mass_fraction(*fromBcField, k, *toBcField, 0);

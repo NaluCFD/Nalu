@@ -6,37 +6,41 @@
 /*------------------------------------------------------------------------*/
 
 
-#ifndef SolverAlgorithmDriver_h
-#define SolverAlgorithmDriver_h
+#ifndef AssembleScalarOversetSolverAlgorithm_h
+#define AssembleScalarOversetSolverAlgorithm_h
 
-#include<AlgorithmDriver.h>
-#include<Enums.h>
+#include<SolverAlgorithm.h>
+#include<FieldTypeDef.h>
 
-#include<map>
+namespace stk {
+namespace mesh {
+class Part;
+class FieldBase;
+}
+}
 
 namespace sierra{
 namespace nalu{
 
 class Realm;
-class SolverAlgorithm;
 
-class SolverAlgorithmDriver : public AlgorithmDriver
+class AssembleScalarOversetSolverAlgorithm : public SolverAlgorithm
 {
 public:
 
-  SolverAlgorithmDriver(
-    Realm &realm);
-  virtual ~SolverAlgorithmDriver();
-
+  AssembleScalarOversetSolverAlgorithm(
+    Realm &realm,
+    stk::mesh::Part *part,
+    EquationSystem *eqSystem,
+    ScalarFieldType *scalarQ);
+  virtual ~AssembleScalarOversetSolverAlgorithm() {}
   virtual void initialize_connectivity();
-  virtual void pre_work();
   virtual void execute();
-  virtual void post_work();
+  virtual void prepare_constraints();
+
+  ScalarFieldType *scalarQ_;
   
-  // different types of algorithms... interior/flux; constraints and dirichlet
-  std::map<AlgorithmType, SolverAlgorithm *> solverAlgMap_;
-  std::map<AlgorithmType, SolverAlgorithm *> solverConstraintAlgMap_;
-  std::map<AlgorithmType, SolverAlgorithm *> solverDirichAlgMap_;
+  std::vector< const stk::mesh::FieldBase *> ghostFieldVec_;
 };
 
 } // namespace nalu

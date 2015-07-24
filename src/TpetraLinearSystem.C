@@ -21,6 +21,10 @@
 #include <master_element/MasterElement.h>
 #include <NaluEnv.h>
 
+// overset
+#include <overset/OversetManager.h>
+#include <overset/OversetInfo.h>
+
 #include <stk_util/parallel/Parallel.hpp>
 #include <stk_util/environment/CPUTime.hpp>
 
@@ -223,7 +227,7 @@ TpetraLinearSystem::beginLinearSystemConstruction()
 #if EXCLUDE_SLAVE_NODES
     & !stk::mesh::selectUnion(realm_.get_slave_part_vector())
 #endif
-    ;
+    & !(realm_.get_inactive_selector());
 
   stk::mesh::BucketVector const& buckets =
     realm_.get_buckets( stk::topology::NODE_RANK, s_universal );
@@ -392,7 +396,8 @@ TpetraLinearSystem::buildNodeGraph(const stk::mesh::PartVector & parts)
 #if EXCLUDE_SLAVE_NODES
     & !stk::mesh::selectUnion(realm_.get_slave_part_vector())
 #endif
-;
+    & !(realm_.get_inactive_selector());
+
   stk::mesh::BucketVector const& buckets =
     realm_.get_buckets( stk::topology::NODE_RANK, s_owned );
   std::vector<stk::mesh::Entity> entities(1);
@@ -414,7 +419,7 @@ TpetraLinearSystem::buildEdgeToNodeGraph(const stk::mesh::PartVector & parts)
   stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const stk::mesh::Selector s_owned = meta_data.locally_owned_part()
-        & stk::mesh::selectUnion(parts);
+        & stk::mesh::selectUnion(parts) & !(realm_.get_inactive_selector());
   stk::mesh::BucketVector const& buckets =
     realm_.get_buckets( stk::topology::EDGE_RANK, s_owned );
   const size_t numNodes = 2; // Edges are easy...
@@ -471,7 +476,7 @@ TpetraLinearSystem::buildElemToNodeGraph(const stk::mesh::PartVector & parts)
   stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const stk::mesh::Selector s_owned = meta_data.locally_owned_part()
-        & stk::mesh::selectUnion(parts);
+    & stk::mesh::selectUnion(parts) & !(realm_.get_inactive_selector());
   stk::mesh::BucketVector const& buckets =
     realm_.get_buckets( stk::topology::ELEMENT_RANK, s_owned );
   std::vector<stk::mesh::Entity> entities;
@@ -499,7 +504,7 @@ TpetraLinearSystem::buildReducedElemToNodeGraph(const stk::mesh::PartVector & pa
   stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const stk::mesh::Selector s_owned = meta_data.locally_owned_part()
-        & stk::mesh::selectUnion(parts);
+        & stk::mesh::selectUnion(parts) & !(realm_.get_inactive_selector());
   stk::mesh::BucketVector const& buckets =
     realm_.get_buckets( stk::topology::ELEMENT_RANK, s_owned );
   std::vector<stk::mesh::Entity> entities;
@@ -669,6 +674,38 @@ TpetraLinearSystem::buildNonConformalNodeGraph(
 }
 
 void
+TpetraLinearSystem::buildOversetNodeGraph(
+  const stk::mesh::PartVector &/*parts*/)
+{
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
+  beginLinearSystemConstruction();
+
+  std::vector<stk::mesh::Entity> entities;
+
+  // iterate oversetInfoVec_
+  std::vector<OversetInfo *>::iterator ii;
+  for( ii=realm_.oversetManager_->oversetInfoVec_.begin();
+       ii!=realm_.oversetManager_->oversetInfoVec_.end(); ++ii ) {
+
+    // extract element mesh object and orphan node
+    stk::mesh::Entity owningElement = (*ii)->owningElement_;
+    stk::mesh::Entity orphanNode = (*ii)->orphanNode_;
+
+    // relations
+    stk::mesh::Entity const* elem_nodes = bulk_data.begin_nodes(owningElement);
+    const size_t numNodes = bulk_data.num_nodes(owningElement);
+    const size_t numEntities = numNodes+1;
+    entities.resize(numEntities);
+    
+    entities[0] = orphanNode;
+    for(size_t n=0; n < numNodes; ++n) {
+      entities[n+1] = elem_nodes[n];
+    }
+    addConnections(entities);
+  }
+}
+
+void
 TpetraLinearSystem::copy_stk_to_tpetra(
   stk::mesh::FieldBase * stkField,
   const Teuchos::RCP<LinSys::MultiVector> tpetraField)
@@ -681,7 +718,7 @@ TpetraLinearSystem::copy_stk_to_tpetra(
   stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const stk::mesh::Selector selector = stk::mesh::selectField(*stkField) & meta_data.locally_owned_part() &
-    !stk::mesh::selectUnion(realm_.get_slave_part_vector());
+    !stk::mesh::selectUnion(realm_.get_slave_part_vector()) & !(realm_.get_inactive_selector());
   stk::mesh::BucketVector const& buckets = bulk_data.get_buckets(stk::topology::NODE_RANK, selector);
 
   for ( stk::mesh::BucketVector::const_iterator ib = buckets.begin();
@@ -1018,6 +1055,54 @@ TpetraLinearSystem::applyDirichletBCs(
     }
   }
   adbc_time += stk::cpu_time();
+}
+
+void
+TpetraLinearSystem::prepareConstraints(
+  const unsigned beginPos,
+  const unsigned endPos)
+{
+  stk::mesh::BulkData & bulkData = realm_.bulk_data();
+
+  Teuchos::ArrayView<const LocalOrdinal> indices;
+  Teuchos::ArrayView<const double> values;
+  std::vector<double> new_values;
+
+  // iterate oversetInfoVec_
+  std::vector<OversetInfo *>::iterator ii;
+  for( ii=realm_.oversetManager_->oversetInfoVec_.begin();
+       ii!=realm_.oversetManager_->oversetInfoVec_.end(); ++ii ) {
+
+    // extract orphan node and global id
+    stk::mesh::Entity orphanNode = (*ii)->orphanNode_;
+    const stk::mesh::EntityId naluId = *stk::mesh::field_data(*realm_.naluGlobalId_, orphanNode);
+    const LocalOrdinal localIdOffset = lookup_myLID(myLIDs_, naluId, "prepareConstraints") * numDof_;
+
+    for(unsigned d=beginPos; d < endPos; ++d) {
+      const LocalOrdinal localId = localIdOffset + d;
+      const bool useOwned = localId < maxOwnedRowId_;
+      const LocalOrdinal actualLocalId = useOwned ? localId : localId - maxOwnedRowId_;
+      Teuchos::RCP<LinSys::Matrix> matrix = useOwned ? ownedMatrix_ : globallyOwnedMatrix_;
+      
+      if ( localId > maxGloballyOwnedRowId_) {
+        throw std::runtime_error("logic error: localId > maxGloballyOwnedRowId_");
+      }
+      
+      // Adjust the LHS; full row is perfectly zero
+      matrix->getLocalRowView(actualLocalId, indices, values);
+      const size_t rowLength = values.size();
+      new_values.resize(rowLength);
+      for(size_t i=0; i < rowLength; ++i) {
+        new_values[i] = 0.0;
+      }
+      matrix->replaceLocalValues(actualLocalId, indices, new_values);
+      
+      // Replace the RHS residual with zero
+      Teuchos::RCP<LinSys::Vector> rhs = useOwned ? ownedRhs_: globallyOwnedRhs_;
+      const double bc_residual = 0.0;
+      rhs->replaceLocalValue(actualLocalId, bc_residual);
+    }
+  }
 }
 
 void
