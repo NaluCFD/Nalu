@@ -333,7 +333,7 @@ OversetManager::define_overset_bounding_box()
   // reduce the translated box
   const double percentOverlap = oversetUserData_.percentOverlap_;
   for ( int i = 0; i < nDim_; ++i ) {
-    const double distance = (g_maxOversetCorner[i] - g_minOversetCorner[i])*percentOverlap;
+    const double distance = (g_maxOversetCorner[i] - g_minOversetCorner[i])*percentOverlap/100.0;
     g_minOversetCorner[i] += distance;
     g_maxOversetCorner[i] -= distance;
   }

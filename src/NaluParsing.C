@@ -481,7 +481,6 @@ void operator >> (const YAML::Node& node, OpenBoundaryConditionData& openBC) {
 
 void operator >> (const YAML::Node& node, OversetBoundaryConditionData& oversetBC) {
   node["overset_boundary_condition"] >> oversetBC.bcName_;
-  node["target_name"] >> oversetBC.targetName_;
   oversetBC.theBcType_ = OVERSET_BC;
   const YAML::Node& oversetUserData = node["overset_user_data"];
   oversetUserData >> oversetBC.userData_;

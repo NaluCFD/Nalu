@@ -92,7 +92,12 @@ BoundaryCondition * BoundaryCondition::load(const YAML::Node & node)
                     << " and "<< nonConformalBC.masterSlave_.slave_ << std::endl;
     return &nonConformalBC;
   }
- 
+  else if (node.FindValue("overset_boundary_condition")) {
+    OversetBoundaryConditionData& oversetBC = *new OversetBoundaryConditionData(*parent());
+    node >> oversetBC;
+    NaluEnv::self().naluOutputP0() << "Overset BC name: " << oversetBC.bcName_ << std::endl;
+    return &oversetBC;
+  } 
   else {
     throw std::runtime_error("parser error BoundaryConditions::load: no such bc type");
   }
