@@ -1062,8 +1062,6 @@ TpetraLinearSystem::prepareConstraints(
   const unsigned beginPos,
   const unsigned endPos)
 {
-  stk::mesh::BulkData & bulkData = realm_.bulk_data();
-
   Teuchos::ArrayView<const LocalOrdinal> indices;
   Teuchos::ArrayView<const double> values;
   std::vector<double> new_values;

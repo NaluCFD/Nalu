@@ -584,8 +584,6 @@ void
 EquationSystems::register_overset_bc(
   const OversetBoundaryConditionData &oversetBCData)
 {
-  stk::mesh::MetaData &meta_data = realm_.meta_data();
-
   // set up the overset bc, e.g., manager, parts, etc.
   realm_.setup_overset_bc(oversetBCData);
 

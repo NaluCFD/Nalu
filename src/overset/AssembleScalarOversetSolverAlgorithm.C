@@ -72,7 +72,6 @@ AssembleScalarOversetSolverAlgorithm::execute()
   // first thing to do is to zero out the row (lhs and rhs)
   prepare_constraints();
   
-  stk::mesh::MetaData & meta_data = realm_.meta_data();
   stk::mesh::BulkData & bulk_data = realm_.bulk_data();
 
   // space for LHS/RHS (nodesPerElem+1)*(nodesPerElem+1); nodesPerElem+1
@@ -163,8 +162,7 @@ AssembleScalarOversetSolverAlgorithm::execute()
     // lhs; extract general shape function
     meSCS->general_shape_fcn(1, &(infoObject->isoParCoords_[0]), &ws_general_shape_function[0]);
     
-    // row is zero by design (first connected node is the orphan node)
-    int rowR = 0;
+    // row is zero by design (first connected node is the orphan node
     p_lhs[0] += 1.0;
     for ( int ic = 0; ic < nodesPerElement; ++ic ) {
       p_lhs[ic+1] -= ws_general_shape_function[ic];

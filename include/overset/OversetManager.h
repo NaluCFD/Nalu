@@ -70,8 +70,8 @@ public:
   // allow for manager to populate orhan nodal values
   void overset_orphan_node_field_update(
      stk::mesh::FieldBase *theField,
-     const unsigned sizeRow,
-     const unsigned sizeCol);
+     const int sizeRow,
+     const int sizeCol);
 
   // initialize ghosting data structures
   void initialize_ghosting();
@@ -82,11 +82,14 @@ public:
   // set space for inactive part exposed surfaces
   void declare_background_surface_part();
   
-  // define the high level overset bounding box
+  // define the high level overset bounding box (single in size for cutting)
   void define_overset_bounding_box();
 
+  // define the high level overset bounding boxes
+  void define_overset_bounding_boxes();
+
   // define the background mesh set of bounding boxes
-  void define_background_bounding_box();
+  void define_background_bounding_boxes();
 
   // determine all of the intersected elements (coarse search on oversetBoxVec and backgroundBoxVec)
   void determine_intersected_elements();
@@ -113,15 +116,13 @@ public:
   void coarse_search( 
     std::vector<boundingPoint> &boundingPointVec,    
     std::vector<boundingElementBox> &boundingElementVec,
-    std::vector<std::pair<theKey, theKey> > searchKeyPair);
+    std::vector<std::pair<theKey, theKey> > &searchKeyPair);
 
   // deal with ghosting objects/data for fine search purposes
   void manage_ghosting();
   
   // general complete search method (fine search)
   void complete_search( 
-    std::vector<boundingPoint> &boundingPointVec,    
-    std::vector<boundingElementBox> &boundingElementVec,
     std::vector<std::pair<theKey, theKey> > searchKeyPair,
     std::map<uint64_t, OversetInfo *> &oversetInfoMap);
 
@@ -152,10 +153,12 @@ public:
   // search data structures
   std::vector<boundingElementBox> boundingElementOversetBoxVec_;
   std::vector<boundingElementBox> boundingElementOversetBoxesVec_;
-  std::vector<boundingElementBox> boundingElementBackgroundBoxVec_;
+  std::vector<boundingElementBox> boundingElementBackgroundBoxesVec_;
   std::vector<boundingPoint>      boundingPointVecBackground_;
   std::vector<boundingPoint>      boundingPointVecOverset_;
-  std::map<uint64_t, stk::mesh::Entity> searchElementMap_;
+
+  // map for background elements (used for intersection)
+  std::map<uint64_t, stk::mesh::Entity> searchIntersectedElementMap_;
 
   /* save off product of search */
   std::vector<std::pair<theKey, theKey> > searchKeyPairBackground_;

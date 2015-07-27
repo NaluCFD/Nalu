@@ -91,8 +91,11 @@ OversetManager::initialize()
   // define overset bounding box for cutting
   define_overset_bounding_box();
 
-  // define background bounding box
-  define_background_bounding_box();
+  // define overset bounding boxes
+  define_overset_bounding_boxes();
+
+  // define background bounding boxes
+  define_background_bounding_boxes();
 
   // perform the coarse search to find the intersected elements
   determine_intersected_elements();
@@ -122,8 +125,8 @@ OversetManager::initialize()
 void
 OversetManager::overset_orphan_node_field_update(
   stk::mesh::FieldBase *theField,
-  const unsigned sizeRow,
-  const unsigned sizeCol)
+  const int sizeRow,
+  const int sizeCol)
 {
 
   const unsigned sizeOfField = sizeRow*sizeCol;
@@ -166,12 +169,10 @@ OversetManager::overset_orphan_node_field_update(
       // load up scalar/vectors/tensor
       const double *fieldQ = (double *) stk::mesh::field_data(*theField, node );
 
-      for ( int i = 0; i < sizeCol; ++i ) {
-        const int offSet = i*nodesPerElement + ni;
-       
+      for ( int i = 0; i < sizeRow; ++i ) {
         const int rowI = i*sizeCol;
         const int offSetT = i*nodesPerElement*sizeRow;
-        for ( int j = 0; j < sizeRow; ++j ) {
+        for ( int j = 0; j < sizeCol; ++j ) {
           elemNodalQ[offSetT+j*nodesPerElement+ni] = fieldQ[rowI+j];
         }
       }
@@ -184,11 +185,11 @@ OversetManager::overset_orphan_node_field_update(
         &elemNodalQ[0],
         &(orphanNodalQ[0]));
 
-    // FIXME: populate orphan node; is likely wrong on the indexing...
+    // populate orphan node
     double *orphanQ = (double *) stk::mesh::field_data(*theField, orphanNode);
-    for ( int i = 0; i < sizeCol; ++i ) {
+    for ( int i = 0; i < sizeRow; ++i ) {
       const int rowI = i*sizeCol;
-      for ( int j = 0; j < sizeRow; ++j ) {
+      for ( int j = 0; j < sizeCol; ++j ) {
         orphanQ[rowI+j] = orphanNodalQ[rowI+j];
       }
     }
@@ -278,7 +279,7 @@ OversetManager::define_overset_bounding_box()
   // determine the min/max bounding box by iterating all overset elements
   //======================================================================
   for ( stk::mesh::BucketVector::const_iterator ib = locally_owned_elem_buckets_overset.begin();
-      ib != locally_owned_elem_buckets_overset.end() ; ++ib ) {
+        ib != locally_owned_elem_buckets_overset.end() ; ++ib ) {
     stk::mesh::Bucket & b = **ib;
 
     const stk::mesh::Bucket::size_type length   = b.size();
@@ -363,10 +364,81 @@ OversetManager::define_overset_bounding_box()
 }
 
 //--------------------------------------------------------------------------
-//-------- define_background_bounding_box ----------------------------------
+//-------- define_overset_bounding_boxes -----------------------------------
 //--------------------------------------------------------------------------
 void
-OversetManager::define_background_bounding_box()
+OversetManager::define_overset_bounding_boxes()
+{
+  // extract coordinates
+  VectorFieldType *coordinates
+    = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  
+  // setup data structures for search
+  Point minBackgroundCorner, maxBackgroundCorner;
+
+  // selector and bucket vector for overset part; first extract the part name (s)
+  stk::mesh::PartVector targetPartOversetVec;
+  for ( size_t k = 0; k < oversetUserData_.oversetBlockVec_.size(); ++k ) {
+    std::string targetNameOverset(oversetUserData_.oversetBlockVec_[k]);
+    stk::mesh::Part *targetPartOverset = metaData_->get_part(targetNameOverset);
+    if ( NULL == targetPartOverset )
+      throw std::runtime_error("Null pointer for overset block vec name");
+    targetPartOversetVec.push_back(targetPartOverset);
+  }
+
+  stk::mesh::Selector s_locally_owned_union_overset
+    = metaData_->locally_owned_part() &stk::mesh::selectUnion(targetPartOversetVec);
+  stk::mesh::BucketVector const &locally_owned_elem_buckets_overset 
+    = bulkData_->get_buckets( stk::topology::ELEMENT_RANK, s_locally_owned_union_overset );
+
+  for ( stk::mesh::BucketVector::const_iterator ib = locally_owned_elem_buckets_overset.begin();
+        ib != locally_owned_elem_buckets_overset.end() ; ++ib ) {
+    stk::mesh::Bucket & b = **ib;
+    
+    const stk::mesh::Bucket::size_type length   = b.size();
+    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+      
+      // get element
+      stk::mesh::Entity element = b[k];
+
+      // initialize max and min
+      for (int j = 0; j < nDim_; ++j ) {
+        minBackgroundCorner[j] = +1.0e16;
+        maxBackgroundCorner[j] = -1.0e16;
+      }
+        
+      // extract elem_node_relations
+      stk::mesh::Entity const* elem_node_rels = bulkData_->begin_nodes(element);
+      const int num_nodes = bulkData_->num_nodes(element);
+        
+      for ( int ni = 0; ni < num_nodes; ++ni ) {
+        stk::mesh::Entity node = elem_node_rels[ni];
+
+        // pointers to real data
+        const double * coords = stk::mesh::field_data(*coordinates, node );
+
+        // check max/min
+        for ( int j = 0; j < nDim_; ++j ) {
+          minBackgroundCorner[j] = std::min(minBackgroundCorner[j], coords[j]);
+          maxBackgroundCorner[j] = std::max(maxBackgroundCorner[j], coords[j]);
+        }
+      }
+
+      // setup ident
+      stk::search::IdentProc<uint64_t,int> theIdent(bulkData_->identifier(element), NaluEnv::self().parallel_rank());
+      
+      // create the bounding point box and push back
+      boundingElementBox theBox(Box(minBackgroundCorner,maxBackgroundCorner), theIdent);
+      boundingElementOversetBoxesVec_.push_back(theBox);
+    }
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- define_background_bounding_boxes --------------------------------
+//--------------------------------------------------------------------------
+void
+OversetManager::define_background_bounding_boxes()
 {
   // extract coordinates
   VectorFieldType *coordinates
@@ -421,11 +493,12 @@ OversetManager::define_background_bounding_box()
       // setup ident
       stk::search::IdentProc<uint64_t,int> theIdent(bulkData_->identifier(element), NaluEnv::self().parallel_rank());
 
-      searchElementMap_[bulkData_->identifier(element)] = element;
+      // populate map for later intersection
+      searchIntersectedElementMap_[bulkData_->identifier(element)] = element;
 
       // create the bounding point box and push back
       boundingElementBox theBox(Box(minBackgroundCorner,maxBackgroundCorner), theIdent);
-      boundingElementBackgroundBoxVec_.push_back(theBox);
+      boundingElementBackgroundBoxesVec_.push_back(theBox);
     }
   }
 }
@@ -440,7 +513,7 @@ OversetManager::determine_intersected_elements()
   std::vector<std::pair<theKey, theKey> > searchKeyPair;
   
   // proceed with coarse search
-  stk::search::coarse_search(boundingElementOversetBoxVec_, boundingElementBackgroundBoxVec_, searchMethod_, NaluEnv::self().parallel_comm(), searchKeyPair);
+  stk::search::coarse_search(boundingElementOversetBoxVec_, boundingElementBackgroundBoxesVec_, searchMethod_, NaluEnv::self().parallel_comm(), searchKeyPair);
 
   // iterate search key; extract found elements and push to vector
   std::vector<std::pair<theKey, theKey> >::const_iterator ii;
@@ -454,8 +527,8 @@ OversetManager::determine_intersected_elements()
     if ( box_proc == theRank ) {
       // find the element
       std::map<uint64_t, stk::mesh::Entity>::iterator iterEM;
-      iterEM=searchElementMap_.find(theBox);
-      if ( iterEM == searchElementMap_.end() )
+      iterEM=searchIntersectedElementMap_.find(theBox);
+      if ( iterEM == searchIntersectedElementMap_.end() )
         throw std::runtime_error("No entry in searchElementMap found");
       stk::mesh::Entity theElemMeshObj = iterEM->second;
       intersectedElementVec_.push_back(theElemMeshObj);
@@ -634,18 +707,16 @@ OversetManager::orphan_node_search()
 {
   // coarse search 
   coarse_search(
-    boundingPointVecOverset_, boundingElementBackgroundBoxVec_, searchKeyPairOverset_);
+    boundingPointVecOverset_, boundingElementBackgroundBoxesVec_, searchKeyPairOverset_);
   coarse_search(
-    boundingPointVecBackground_, boundingElementOversetBoxVec_, searchKeyPairBackground_);
+    boundingPointVecBackground_, boundingElementOversetBoxesVec_, searchKeyPairBackground_);
 
   // deal with ghosting so that fine search isInElement has all of the data that it needs
   manage_ghosting();
 
   // fine search
-  complete_search(
-    boundingPointVecOverset_, boundingElementBackgroundBoxVec_, searchKeyPairOverset_, oversetInfoMapOverset_);  
-  complete_search(
-    boundingPointVecBackground_, boundingElementOversetBoxVec_, searchKeyPairBackground_, oversetInfoMapBackground_);
+  complete_search(searchKeyPairOverset_, oversetInfoMapOverset_);  
+  complete_search(searchKeyPairBackground_, oversetInfoMapBackground_);
 }
 
 //--------------------------------------------------------------------------
@@ -655,8 +726,8 @@ void
 OversetManager::set_data_on_inactive_part()
 {
   // extract elemental field
-  ScalarFieldType *intersectedElement
-    = metaData_->get_field<ScalarFieldType>(stk::topology::ELEMENT_RANK, "intersected_element");
+  GenericFieldType *intersectedElement
+    = metaData_->get_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "intersected_element");
 
   stk::mesh::Selector s_inactive = stk::mesh::Selector(*inActivePart_);
   
@@ -680,12 +751,8 @@ void
 OversetManager::coarse_search(
   std::vector<boundingPoint> &boundingPointVec,
   std::vector<boundingElementBox> &boundingElementVec,
-  std::vector<std::pair<theKey, theKey> > searchKeyPair)
+  std::vector<std::pair<theKey, theKey> > &searchKeyPair)
 {
-  // extract coordinates
-  VectorFieldType *coordinates
-    = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
-
   // first coarse search for potential donors for the orphans on the overset
   searchKeyPair.clear();
   stk::search::coarse_search(boundingPointVec, boundingElementVec,
@@ -745,8 +812,6 @@ OversetManager::manage_ghosting()
 //--------------------------------------------------------------------------
 void
 OversetManager::complete_search(
-  std::vector<boundingPoint> &boundingPointVec,
-  std::vector<boundingElementBox> &boundingElementVec,
   std::vector<std::pair<theKey, theKey> > searchKeyPair,
   std::map<uint64_t, OversetInfo *> &oversetInfoMap)
 {
@@ -835,14 +900,12 @@ OversetManager::complete_search(
     const double tol = 1.0e-6;
     const double maxTol = 1.0+tol;
     std::map<uint64_t, OversetInfo *>::iterator iterOrphan;
-    for (iterOrphan =  oversetInfoMapOverset_.begin();
-         iterOrphan != oversetInfoMapOverset_.end();
+    for (iterOrphan =  oversetInfoMap.begin();
+         iterOrphan != oversetInfoMap.end();
          ++iterOrphan) {
       
       OversetInfo * infoObject = (*iterOrphan).second;
-
-      stk::mesh::Entity elem = infoObject->owningElement_;
-   
+      stk::mesh::Entity elem = infoObject->owningElement_;   
     
       if ( infoObject->bestX_ > maxTol || !(bulkData_->is_valid(elem)) ) {
         NaluEnv::self().naluOutputP0() << "Sorry, orphan node for node " << bulkData_->identifier(infoObject->orphanNode_)
@@ -867,6 +930,17 @@ OversetManager::complete_search(
               infoObject->isoParCoords_[j] = minTol;
           }
         }
+      }
+      else {
+        NaluEnv::self().naluOutputP0() << "Orphan node (all is well): " << bulkData_->identifier(infoObject->orphanNode_)
+                                       << " has the following best X " << infoObject->bestX_ << std::endl;
+        NaluEnv::self().naluOutputP0() << " with owning element: " << bulkData_->identifier(elem) << std::endl;
+        NaluEnv::self().naluOutputP0() << " elem nodes ";
+        stk::mesh::Entity const* elem_node_rels = bulkData_->begin_nodes(elem);
+        const int num_nodes = bulkData_->num_nodes(elem);
+        for ( int en = 0; en < num_nodes; ++en )
+          NaluEnv::self().naluOutputP0() << bulkData_->identifier(elem_node_rels[en]) << " ";
+        NaluEnv::self().naluOutputP0() << std::endl;
       }
     }
   }  
