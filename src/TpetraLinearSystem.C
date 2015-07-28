@@ -790,15 +790,14 @@ TpetraLinearSystem::finalizeLinearSystem()
     // etc.
 
     // for dofs on entity_a add columns due to entity_b dofs
-    //if ( bulkData.parallel_owner_rank(entity_a) != this_mpi_rank ) { // !Locally owned
     if (getDofStatus(entity_a) & DS_GloballyOwnedDOF) { // !Locally owned
       for (size_t d=0; d < numDof_; ++d) {
         const GlobalOrdinal globalRow_a = GID_(entityId_a, numDof_, d);
         globallyOwnedGraph_->insertGlobalIndices(globalRow_a, globalDofs_b);
       }
     }
+
     // for dofs on entity_b add columns due to entity_a dofs
-    //if ( bulkData.parallel_owner_rank(entity_b) != this_mpi_rank ) { // !Locally owned
     if (getDofStatus(entity_b) & DS_GloballyOwnedDOF) { // !Locally owned
       for (size_t d=0; d < numDof_; ++d) {
         const GlobalOrdinal globalRow_b = GID_(entityId_b, numDof_ , d);

@@ -128,7 +128,6 @@ OversetManager::overset_orphan_node_field_update(
   const int sizeRow,
   const int sizeCol)
 {
-
   const unsigned sizeOfField = sizeRow*sizeCol;
   std::vector <double > orphanNodalQ(sizeOfField);
 

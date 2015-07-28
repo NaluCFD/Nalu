@@ -4172,12 +4172,10 @@ Realm::get_activate_aura()
 stk::mesh::Selector
 Realm::get_inactive_selector()
 {
-  /*  if ( hasOverset_ )
-    return stk::mesh::Selector(*oversetManager_->inActivePart_);
-  else
-    return stk::mesh::Selector();
-  */  
-  return (hasOverset_) ? stk::mesh::Selector(*oversetManager_->inActivePart_) : stk::mesh::Selector();
+  // provide inactive part that excludes background surface
+  return (hasOverset_) ? (stk::mesh::Selector(*oversetManager_->inActivePart_) 
+                          &!(stk::mesh::selectUnion(oversetManager_->orphanPointSurfaceVecBackground_)))
+    : stk::mesh::Selector();
 }
 
 } // namespace nalu
