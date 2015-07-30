@@ -188,7 +188,9 @@ AssembleOversetSolverConstraintAlgorithm::execute()
 void
 AssembleOversetSolverConstraintAlgorithm::prepare_constraints()
 {
-  eqSystem_->linsys_->prepareConstraints(0,1);
+  const int sysStart = 0;
+  const int sysEnd = eqSystem_->linsys_->numDof();
+  eqSystem_->linsys_->prepareConstraints(sysStart,sysEnd);
 }
 
 } // namespace nalu
