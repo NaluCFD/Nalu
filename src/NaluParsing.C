@@ -314,6 +314,10 @@ void operator >> (const YAML::Node& node, OversetUserData& oversetData){
      node["clip_isoparametric_coordinates"] >> oversetData.clipIsoParametricCoords_;
   }
 
+  if ( node.FindValue("detailed_output") ) {
+     node["detailed_output"] >> oversetData.detailedOutput_;
+  }
+
 }
 
 void operator >> (const YAML::Node& node, ContactUserData& contactData) {

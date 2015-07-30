@@ -178,6 +178,7 @@ Realm::Realm(Realms& realms)
     timerTransferSearch_(0.0),
     contactManager_(NULL),
     nonConformalManager_(NULL),
+    oversetManager_(NULL),
     hasContact_(false),
     hasNonConformal_(false),
     hasOverset_(false),
@@ -2983,7 +2984,6 @@ Realm::setup_non_conformal_bc(
                            searchTolerance);
   
   nonConformalManager_->nonConformalInfoVec_.push_back(nonConformalInfo);
-
 }
 
 //--------------------------------------------------------------------------

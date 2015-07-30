@@ -264,16 +264,17 @@ struct ContactUserData : public UserData {
 struct OversetUserData : public UserData {
   // at present, simulation can have one background mesh with multiple, non-interacting overset blocks
   double percentOverlap_;
+  bool clipIsoParametricCoords_;
+  bool detailedOutput_;
   std::string backgroundBlock_;
-  std::vector<std::string> oversetBlockVec_;
   std::string backgroundSurface_;
   std::string backgroundCutBlock_;
   std::string oversetSurface_;
-  bool clipIsoParametricCoords_;
-  
+  std::vector<std::string> oversetBlockVec_;
  OversetUserData()
    : UserData(),
-    percentOverlap_(1.0), clipIsoParametricCoords_(false)
+    percentOverlap_(10.0), clipIsoParametricCoords_(false), detailedOutput_(false), backgroundBlock_("na"),
+    backgroundSurface_("na"), backgroundCutBlock_("na"), oversetSurface_("na")
     {} 
 };
  

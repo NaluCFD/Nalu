@@ -53,7 +53,7 @@ OversetManager::OversetManager(
   nDim_(realm.spatialDimension_),
   metaData_(&realm.meta_data()),
   bulkData_(&realm.bulk_data()),
-  oversetAlgDetailedOutput_(true),
+  oversetAlgDetailedOutput_(oversetUserData.detailedOutput_),
   oversetGhosting_(NULL),
   needToGhostCount_(0),
   inActivePart_(NULL),
