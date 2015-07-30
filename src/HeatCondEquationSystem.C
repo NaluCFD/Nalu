@@ -50,7 +50,7 @@
 #include <SolverAlgorithmDriver.h>
 
 // overset
-#include <overset/AssembleScalarOversetSolverAlgorithm.h>
+#include <overset/AssembleOversetSolverConstraintAlgorithm.h>
 
 // user functions
 #include <user_functions/SteadyThermalContactAuxFunction.h>
@@ -827,8 +827,8 @@ HeatCondEquationSystem::register_overset_bc()
     solverAlgDriver_->solverConstraintAlgMap_.find(algType);
   if ( itc == solverAlgDriver_->solverConstraintAlgMap_.end() ) {
     // FIXME: should we declare an empty part to push into below Alg?
-    AssembleScalarOversetSolverAlgorithm *theAlg
-      = new AssembleScalarOversetSolverAlgorithm(realm_, NULL, this, temperature_);
+    AssembleOversetSolverConstraintAlgorithm *theAlg
+      = new AssembleOversetSolverConstraintAlgorithm(realm_, NULL, this, temperature_);
     solverAlgDriver_->solverConstraintAlgMap_[algType] = theAlg;
   }
   else {

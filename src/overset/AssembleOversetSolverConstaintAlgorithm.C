@@ -7,7 +7,7 @@
 
 
 // nalu
-#include <overset/AssembleScalarOversetSolverAlgorithm.h>
+#include <overset/AssembleOversetSolverConstraintAlgorithm.h>
 #include <EquationSystem.h>
 #include <SolverAlgorithm.h>
 
@@ -37,28 +37,28 @@ namespace nalu{
 //==========================================================================
 // Class Definition
 //==========================================================================
-// AssembleScalarOversetSolverAlgorithm - add LHS/RHS for scalar
+// AssembleOversetSolverConstraintAlgorithm - add LHS/RHS for scalar
 //==========================================================================
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-AssembleScalarOversetSolverAlgorithm::AssembleScalarOversetSolverAlgorithm(
+AssembleOversetSolverConstraintAlgorithm::AssembleOversetSolverConstraintAlgorithm(
   Realm &realm,
   stk::mesh::Part *part,
   EquationSystem *eqSystem,
-  ScalarFieldType *scalarQ)
+  stk::mesh::FieldBase *fieldQ)
   : SolverAlgorithm(realm, part, eqSystem),
-    scalarQ_(scalarQ)
+    fieldQ_(fieldQ)
 {
   // populate fieldVec
-  ghostFieldVec_.push_back(scalarQ_);
+  ghostFieldVec_.push_back(fieldQ_);
 }
 
 //--------------------------------------------------------------------------
 //-------- initialize_connectivity -----------------------------------------
 //--------------------------------------------------------------------------
 void
-AssembleScalarOversetSolverAlgorithm::initialize_connectivity()
+AssembleOversetSolverConstraintAlgorithm::initialize_connectivity()
 {
   eqSystem_->linsys_->buildOversetNodeGraph(partVec_);
 }
@@ -67,14 +67,14 @@ AssembleScalarOversetSolverAlgorithm::initialize_connectivity()
 //-------- execute ---------------------------------------------------------
 //--------------------------------------------------------------------------
 void
-AssembleScalarOversetSolverAlgorithm::execute()
+AssembleOversetSolverConstraintAlgorithm::execute()
 {
   // first thing to do is to zero out the row (lhs and rhs)
   prepare_constraints();
   
   stk::mesh::BulkData & bulk_data = realm_.bulk_data();
 
-  // space for LHS/RHS (nodesPerElem+1)*(nodesPerElem+1); nodesPerElem+1
+  // space for LHS/RHS (nodesPerElem+1)*numDof*(nodesPerElem+1)*numDof; (nodesPerElem+1)*numDof
   std::vector<double> lhs;
   std::vector<double> rhs;
   std::vector<stk::mesh::Entity> connected_nodes;
@@ -82,12 +82,12 @@ AssembleScalarOversetSolverAlgorithm::execute()
   // master element data
   std::vector <double > ws_general_shape_function;
  
-  // deal with state
-  ScalarFieldType &scalarQNp1  = scalarQ_->field_of_state(stk::mesh::StateNP1);
-
   // interpolate nodal values to point-in-elem
-  const int sizeOfScalarField = 1;
+  const int sizeOfDof = eqSystem_->linsys_->numDof();
  
+  // size interpolated value
+  std::vector<double> qNp1Orphan(sizeOfDof, 0.0);
+
   // parallel communicate ghosted entities
   if ( NULL != realm_.oversetManager_->oversetGhosting_ )
     stk::mesh::communicate_field_data(*(realm_.oversetManager_->oversetGhosting_), ghostFieldVec_);  
@@ -107,13 +107,13 @@ AssembleScalarOversetSolverAlgorithm::execute()
     // get master element type for this contactInfo
     MasterElement *meSCS  = infoObject->meSCS_;
     const int nodesPerElement = meSCS->nodesPerElement_;
-    std::vector <double > elemNodalQ(nodesPerElement);
+    std::vector <double > elemNodalQ(nodesPerElement*sizeOfDof);
     std::vector <double > shpfc(nodesPerElement);
 
     // resize some things; matrix related
     const int npePlusOne = nodesPerElement+1;
-    const int lhsSize = npePlusOne*npePlusOne;
-    const int rhsSize = npePlusOne;
+    const int lhsSize = npePlusOne*sizeOfDof*npePlusOne*sizeOfDof;
+    const int rhsSize = npePlusOne*sizeOfDof;
     lhs.resize(lhsSize);
     rhs.resize(rhsSize);
     connected_nodes.resize(npePlusOne);
@@ -134,7 +134,7 @@ AssembleScalarOversetSolverAlgorithm::execute()
     }
     
     // extract nodal value for scalarQ
-    const double qNp1Nodal = *stk::mesh::field_data(scalarQNp1, orphanNode);
+    const double *qNp1Nodal = (double *)stk::mesh::field_data(*fieldQ_, orphanNode);
     
     stk::mesh::Entity const* elem_node_rels = bulk_data.begin_nodes(owningElement);
     const int num_nodes = bulk_data.num_nodes(owningElement);
@@ -144,30 +144,39 @@ AssembleScalarOversetSolverAlgorithm::execute()
     for ( int ni = 0; ni < num_nodes; ++ni ) {
       stk::mesh::Entity node = elem_node_rels[ni];
       connected_nodes[ni+1] = node;
-      elemNodalQ[ni] = *stk::mesh::field_data(scalarQNp1, node);
+
+      const double *qNp1 = (double *)stk::mesh::field_data(*fieldQ_, node );
+      for ( int i = 0; i < sizeOfDof; ++i ) {
+        elemNodalQ[i*nodesPerElement + ni] = qNp1[i];
+      }
     }
 
-    // interpolate dof to elemental ips
-    double qNp1Orphan = 0.0;
+    // interpolate dof to elemental ips (assigns qNp1)
     meSCS->interpolatePoint(
-      sizeOfScalarField,
+      sizeOfDof,
       &(infoObject->isoParCoords_[0]),
       &elemNodalQ[0],
-      &qNp1Orphan);
-    
-    // rhs...
-    const double residual = qNp1Nodal - qNp1Orphan;
-    p_rhs[0] = -residual;
+      &qNp1Orphan[0]);
     
     // lhs; extract general shape function
     meSCS->general_shape_fcn(1, &(infoObject->isoParCoords_[0]), &ws_general_shape_function[0]);
-    
-    // row is zero by design (first connected node is the orphan node
-    p_lhs[0] += 1.0;
-    for ( int ic = 0; ic < nodesPerElement; ++ic ) {
-      p_lhs[ic+1] -= ws_general_shape_function[ic];
+
+    // rhs; orphan node is defined to be the zeroth connected node
+    for ( int i = 0; i < sizeOfDof; ++i) {
+      const int rowOi = i * npePlusOne * sizeOfDof;
+      const double residual = qNp1Nodal[i] - qNp1Orphan[i];
+      p_rhs[i] = -residual;
+
+      // row is zero by design (first connected node is the orphan node); assign it fully
+      p_lhs[rowOi+i] += 1.0;
+
+      for ( int ic = 0; ic < nodesPerElement; ++ic ) {
+        const int indexR = i + sizeOfDof*(ic+1);
+        const int rOiR = rowOi+indexR;
+        p_lhs[rOiR] -= ws_general_shape_function[ic];
+      }
     }
-    
+
     // apply to linear system
     apply_coeff(connected_nodes, rhs, lhs, __FILE__);
   }
@@ -177,7 +186,7 @@ AssembleScalarOversetSolverAlgorithm::execute()
 //-------- prepare_constraints ---------------------------------------------
 //--------------------------------------------------------------------------
 void
-AssembleScalarOversetSolverAlgorithm::prepare_constraints()
+AssembleOversetSolverConstraintAlgorithm::prepare_constraints()
 {
   eqSystem_->linsys_->prepareConstraints(0,1);
 }

@@ -6,8 +6,8 @@
 /*------------------------------------------------------------------------*/
 
 
-#ifndef AssembleScalarOversetSolverAlgorithm_h
-#define AssembleScalarOversetSolverAlgorithm_h
+#ifndef AssembleOversetSolverConstraintAlgorithm_h
+#define AssembleOversetSolverConstraintAlgorithm_h
 
 #include<SolverAlgorithm.h>
 #include<FieldTypeDef.h>
@@ -24,21 +24,22 @@ namespace nalu{
 
 class Realm;
 
-class AssembleScalarOversetSolverAlgorithm : public SolverAlgorithm
+class AssembleOversetSolverConstraintAlgorithm : public SolverAlgorithm
 {
 public:
 
-  AssembleScalarOversetSolverAlgorithm(
+  AssembleOversetSolverConstraintAlgorithm(
     Realm &realm,
     stk::mesh::Part *part,
     EquationSystem *eqSystem,
-    ScalarFieldType *scalarQ);
-  virtual ~AssembleScalarOversetSolverAlgorithm() {}
+    stk::mesh::FieldBase *fieldQ);
+  virtual ~AssembleOversetSolverConstraintAlgorithm() {}
   virtual void initialize_connectivity();
   virtual void execute();
   virtual void prepare_constraints();
 
-  ScalarFieldType *scalarQ_;
+  // interface assumes that the correct state was provided
+  stk::mesh::FieldBase *fieldQ_;
   
   std::vector< const stk::mesh::FieldBase *> ghostFieldVec_;
 };
