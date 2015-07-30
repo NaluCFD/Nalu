@@ -99,6 +99,9 @@
 #include <TurbViscSSTAlgorithm.h>
 #include <TurbViscWaleAlgorithm.h>
 
+// overset
+#include <overset/AssembleOversetSolverConstraintAlgorithm.h>
+
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
 #include <stk_util/environment/CPUTime.hpp>
@@ -261,6 +264,13 @@ LowMachEquationSystem::register_element_fields(
     stk::mesh::put_field(*pstabEI, *part, numIp);
   }
 
+  // register the intersected elemental field
+  if ( realm_.query_for_overset() ) {
+    const int sizeOfElemField = 1;
+    GenericFieldType *intersectedElement
+      = &(meta_data.declare_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "intersected_element"));
+    stk::mesh::put_field(*intersectedElement, *part, sizeOfElemField);
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -1568,6 +1578,28 @@ MomentumEquationSystem::register_non_conformal_bc(
 }
 
 //--------------------------------------------------------------------------
+//-------- register_overset_bc ---------------------------------------------
+//--------------------------------------------------------------------------
+void
+MomentumEquationSystem::register_overset_bc()
+{
+  // create the alg on the new constraint; at present, should only hit this once
+  const AlgorithmType algType = OVERSET;
+  
+  std::map<AlgorithmType, SolverAlgorithm *>::iterator itc =
+    solverAlgDriver_->solverConstraintAlgMap_.find(algType);
+  if ( itc == solverAlgDriver_->solverConstraintAlgMap_.end() ) {
+    // FIXME: should we declare an empty part to push into below Alg?
+    AssembleOversetSolverConstraintAlgorithm *theAlg
+      = new AssembleOversetSolverConstraintAlgorithm(realm_, NULL, this, velocity_);
+    solverAlgDriver_->solverConstraintAlgMap_[algType] = theAlg;
+  }
+  else {
+    throw std::runtime_error("MomentumEquationSystem::register_overset_bc: overset must be single in size!!");
+  }  
+}
+
+//--------------------------------------------------------------------------
 //-------- initialize ------------------------------------------------
 //--------------------------------------------------------------------------
 void
@@ -2250,6 +2282,28 @@ ContinuityEquationSystem::register_non_conformal_bc(
   else {
     itsi->second->partVec_.push_back(part);
   }
+}
+
+//--------------------------------------------------------------------------
+//-------- register_overset_bc ---------------------------------------------
+//--------------------------------------------------------------------------
+void
+ContinuityEquationSystem::register_overset_bc()
+{
+  // create the alg on the new constraint; at present, should only hit this once
+  const AlgorithmType algType = OVERSET;
+  
+  std::map<AlgorithmType, SolverAlgorithm *>::iterator itc =
+    solverAlgDriver_->solverConstraintAlgMap_.find(algType);
+  if ( itc == solverAlgDriver_->solverConstraintAlgMap_.end() ) {
+    // FIXME: should we declare an empty part to push into below Alg?
+    AssembleOversetSolverConstraintAlgorithm *theAlg
+      = new AssembleOversetSolverConstraintAlgorithm(realm_, NULL, this, pressure_);
+    solverAlgDriver_->solverConstraintAlgMap_[algType] = theAlg;
+  }
+  else {
+    throw std::runtime_error("ContinuityEquationSystem::register_overset_bc: overset must be single in size!!");
+  }  
 }
 
 //--------------------------------------------------------------------------
