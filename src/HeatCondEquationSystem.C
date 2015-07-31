@@ -926,7 +926,7 @@ HeatCondEquationSystem::solve_and_update()
 }
 
 //--------------------------------------------------------------------------
-//-------- register_initial_condition_fcn ------------------------------------------------
+//-------- register_initial_condition_fcn ----------------------------------
 //--------------------------------------------------------------------------
 void
 HeatCondEquationSystem::register_initial_condition_fcn(

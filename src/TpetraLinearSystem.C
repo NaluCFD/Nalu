@@ -1162,8 +1162,8 @@ TpetraLinearSystem::solve(
   solve_time += stk::cpu_time();
 
   if (linearSolver->getConfig()->getWriteMatrixFiles()) {
-      writeSolutionToFile(this->name_.c_str());
-      ++writeCounter_;
+    writeSolutionToFile(this->name_.c_str());
+    ++writeCounter_;
   }
 
   copy_tpetra_to_stk(sln_, linearSolutionField);

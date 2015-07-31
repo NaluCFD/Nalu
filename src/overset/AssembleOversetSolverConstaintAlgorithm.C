@@ -71,8 +71,11 @@ AssembleOversetSolverConstraintAlgorithm::execute()
 {
   // first thing to do is to zero out the row (lhs and rhs)
   prepare_constraints();
-  
-  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
+
+  // extract the rank
+  const int theRank = NaluEnv::self().parallel_rank();
+
+  stk::mesh::BulkData & bulkData = realm_.bulk_data();
 
   // space for LHS/RHS (nodesPerElem+1)*numDof*(nodesPerElem+1)*numDof; (nodesPerElem+1)*numDof
   std::vector<double> lhs;
@@ -103,6 +106,13 @@ AssembleOversetSolverConstraintAlgorithm::execute()
     // extract element and node mesh object
     stk::mesh::Entity owningElement = infoObject->owningElement_;
     stk::mesh::Entity orphanNode = infoObject->orphanNode_;
+
+    // extract the owning rank for this node
+    const int nodeRank = bulkData.parallel_owner_rank(orphanNode);
+    
+    // check to see if this node is locally owned by this rank; we only want to process locally owned nodes, not shared
+    if ( theRank != nodeRank )
+      continue;
 
     // get master element type for this contactInfo
     MasterElement *meSCS  = infoObject->meSCS_;
@@ -136,8 +146,8 @@ AssembleOversetSolverConstraintAlgorithm::execute()
     // extract nodal value for scalarQ
     const double *qNp1Nodal = (double *)stk::mesh::field_data(*fieldQ_, orphanNode);
     
-    stk::mesh::Entity const* elem_node_rels = bulk_data.begin_nodes(owningElement);
-    const int num_nodes = bulk_data.num_nodes(owningElement);
+    stk::mesh::Entity const* elem_node_rels = bulkData.begin_nodes(owningElement);
+    const int num_nodes = bulkData.num_nodes(owningElement);
 
     // now load the elemental values for future interpolation; fill in connected nodes; first connected node is orhpan
     connected_nodes[0] = orphanNode;

@@ -148,7 +148,7 @@ OversetManager::overset_orphan_node_field_update(
     // extract element and node mesh object
     stk::mesh::Entity owningElement = infoObject->owningElement_;
     stk::mesh::Entity orphanNode = infoObject->orphanNode_;
-    
+
     // get master element type for this contactInfo
     MasterElement *meSCS  = infoObject->meSCS_;
     const int nodesPerElement = meSCS->nodesPerElement_;
@@ -193,7 +193,7 @@ OversetManager::overset_orphan_node_field_update(
       }
     }
   }
-} 
+}
 
 //--------------------------------------------------------------------------
 //-------- initialize_ghosting ---------------------------------------------
@@ -604,7 +604,7 @@ OversetManager::create_overset_info_vec()
   Point localNodalCoords;
   
   // first populate overset info on overset mesh
-  stk::mesh::Selector s_locally_owned_overset = metaData_->locally_owned_part()
+  stk::mesh::Selector s_locally_owned_overset = (metaData_->locally_owned_part() | metaData_->globally_shared_part())
             &stk::mesh::selectUnion(orphanPointSurfaceVecOverset_);
 
   stk::mesh::BucketVector const& locally_owned_node_bucket_overset =
@@ -651,8 +651,8 @@ OversetManager::create_overset_info_vec()
   }
   
   // populate background overset info
-  stk::mesh::Selector s_locally_owned_background = metaData_->locally_owned_part()
-            &stk::mesh::selectUnion(orphanPointSurfaceVecBackground_);
+  stk::mesh::Selector s_locally_owned_background = (metaData_->locally_owned_part() | metaData_->globally_shared_part())
+    &stk::mesh::selectUnion(orphanPointSurfaceVecBackground_);
   
   stk::mesh::BucketVector const& locally_owned_node_bucket_background =
       bulkData_->get_buckets( stk::topology::NODE_RANK, s_locally_owned_background );
