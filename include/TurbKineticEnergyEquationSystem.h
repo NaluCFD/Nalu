@@ -70,6 +70,8 @@ public:
     stk::mesh::Part *part,
     const stk::topology &theTopo);
 
+  virtual void register_overset_bc();
+
   void initialize();
   void reinitialize_linear_system();
   

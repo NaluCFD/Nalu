@@ -49,9 +49,6 @@
 #include <TimeIntegrator.h>
 #include <SolverAlgorithmDriver.h>
 
-// overset
-#include <overset/AssembleOversetSolverConstraintAlgorithm.h>
-
 // user functions
 #include <user_functions/SteadyThermalContactAuxFunction.h>
 #include <user_functions/SteadyThermalContactSrcNodeSuppAlg.h>
@@ -820,20 +817,7 @@ HeatCondEquationSystem::register_non_conformal_bc(
 void
 HeatCondEquationSystem::register_overset_bc()
 {
-  // create the alg on the new constraint; at present, should only hit this once
-  const AlgorithmType algType = OVERSET;
-  
-  std::map<AlgorithmType, SolverAlgorithm *>::iterator itc =
-    solverAlgDriver_->solverConstraintAlgMap_.find(algType);
-  if ( itc == solverAlgDriver_->solverConstraintAlgMap_.end() ) {
-    // FIXME: should we declare an empty part to push into below Alg?
-    AssembleOversetSolverConstraintAlgorithm *theAlg
-      = new AssembleOversetSolverConstraintAlgorithm(realm_, NULL, this, temperature_);
-    solverAlgDriver_->solverConstraintAlgMap_[algType] = theAlg;
-  }
-  else {
-    throw std::runtime_error("HeatCondEquationSystem::register_overset_bc: overset must be single in size!!");
-  }  
+  create_constraint_algorithm(temperature_);
 }
 
 //--------------------------------------------------------------------------

@@ -52,6 +52,8 @@ public:
     const stk::topology &theTopo,
     const WallBoundaryConditionData &wallBCData);
 
+  void register_overset_bc();
+
   void initialize();
   void reinitialize_linear_system();
   

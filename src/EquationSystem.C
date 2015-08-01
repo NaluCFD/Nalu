@@ -20,7 +20,12 @@
 #include <ConstantAuxFunction.h>
 #include <Enums.h>
 
+// overset
+#include <overset/AssembleOversetSolverConstraintAlgorithm.h>
+
 #include <stk_mesh/base/Field.hpp>
+
+// stk
 #include <stk_mesh/base/MetaData.hpp>
 
 #include <stk_util/environment/CPUTime.hpp>
@@ -324,6 +329,29 @@ EquationSystem::get_bc_function_params(
   }
   else {
     return theParams;
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- create_constraint_algorithm -------------------------------------
+//--------------------------------------------------------------------------
+void
+EquationSystem::create_constraint_algorithm(
+  stk::mesh::FieldBase *theField)
+{
+  // create the alg on the new constraint; at present, should only hit this once
+  const AlgorithmType algType = OVERSET;
+
+  std::map<AlgorithmType, SolverAlgorithm *>::iterator itc =
+    solverAlgDriver_->solverConstraintAlgMap_.find(algType);
+  if ( itc == solverAlgDriver_->solverConstraintAlgMap_.end() ) {
+    // FIXME: should we declare an empty part to push into below Alg?
+    AssembleOversetSolverConstraintAlgorithm *theAlg
+      = new AssembleOversetSolverConstraintAlgorithm(realm_, NULL, this, theField);
+    solverAlgDriver_->solverConstraintAlgMap_[algType] = theAlg;
+  }
+  else {
+    throw std::runtime_error("EquationSystem::register_overset_bc: overset must be single in size!!");
   }
 }
 

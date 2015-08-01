@@ -119,6 +119,9 @@ public:
 
   virtual void register_overset_bc() {}
 
+  virtual void create_constraint_algorithm(
+    stk::mesh::FieldBase *theField);
+
   virtual void register_surface_pp_algorithm(
     const PostProcessingData &theData,
     stk::mesh::PartVector &partVector) {}
