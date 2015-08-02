@@ -102,11 +102,6 @@ void LinearSystem::sync_field(const stk::mesh::FieldBase *field)
 {
   std::vector< const stk::mesh::FieldBase *> fields(1,field);
   stk::mesh::BulkData& bulkData = realm_.bulk_data();
-
-  // only the aura = !locally_owned_part && !globally_shared_part (outer layer)
-  //stk::mesh::communicate_field_data(bulkData.shared_aura(), fields);
-  // the shared part (just the shared boundary)
-  //stk::mesh::communicate_field_data(*bulkData.ghostings()[0], fields);
   stk::mesh::copy_owned_to_shared( bulkData, fields);
 }
 
