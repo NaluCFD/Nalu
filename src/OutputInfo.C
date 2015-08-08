@@ -29,6 +29,7 @@ OutputInfo::OutputInfo()
     outputFreq_(1),
     outputNodeSet_(false),
     serializedIOGroupSize_(0),
+    hasOutputBlock_(false),
     hasRestartBlock_(false),
     activateRestart_(false),
     meshAdapted_(false),
@@ -59,8 +60,11 @@ OutputInfo::load(
 {
 
   const YAML::Node *y_output = y_node.FindValue("output");
-  if(y_output)
+  if (y_output)
   {
+    // user desires output
+    hasOutputBlock_ = true;
+
     // output data base name
     get_if_present(*y_output, "output_data_base_name", outputDBName_, outputDBName_);
     
@@ -96,7 +100,6 @@ OutputInfo::load(
   const YAML::Node *y_restart = y_node.FindValue("restart");
   if (y_restart)
   {    
-
     // some sort of intent to manage a restart event - either clean or restart run
     hasRestartBlock_ = true;
 

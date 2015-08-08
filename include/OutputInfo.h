@@ -30,6 +30,7 @@ public:
   int outputFreq_;
   bool outputNodeSet_; 
   int serializedIOGroupSize_;
+  bool hasOutputBlock_;
   bool hasRestartBlock_;
   bool activateRestart_;
   bool meshAdapted_;

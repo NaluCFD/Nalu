@@ -1758,25 +1758,27 @@ Realm::create_mesh()
 void
 Realm::create_output_mesh()
 {
-  // exodus file creation
+  // exodus output file creation
+  if (outputInfo_->hasOutputBlock_ ) {
 
-  if (outputInfo_->outputFreq_ == 0) return;
+    if (outputInfo_->outputFreq_ == 0)
+      return;
 
-  // if we are adapting, skip when no I/O happens before first adapt step
-  if (solutionOptions_->useAdapter_ && outputInfo_->meshAdapted_ == false &&
-      solutionOptions_->adaptivityFrequency_ <= outputInfo_->outputFreq_) {
-    return;
-  }
+    // if we are adapting, skip when no I/O happens before first adapt step
+    if (solutionOptions_->useAdapter_ && outputInfo_->meshAdapted_ == false &&
+        solutionOptions_->adaptivityFrequency_ <= outputInfo_->outputFreq_) {
+      return;
+    }
 
-  std::string oname =  outputInfo_->outputDBName_ ;
-  if (solutionOptions_->useAdapter_ && solutionOptions_->maxRefinementLevel_) {
-    static int fileid = 0;
-    std::ostringstream fileid_ss;
-    fileid_ss << std::setfill('0') << std::setw(4) << (fileid+1);
-    if (fileid++ > 0) oname += "-s" + fileid_ss.str();
-  }
+    std::string oname =  outputInfo_->outputDBName_ ;
+    if (solutionOptions_->useAdapter_ && solutionOptions_->maxRefinementLevel_) {
+      static int fileid = 0;
+      std::ostringstream fileid_ss;
+      fileid_ss << std::setfill('0') << std::setw(4) << (fileid+1);
+      if (fileid++ > 0) oname += "-s" + fileid_ss.str();
+    }
 
-  resultsFileIndex_ = ioBroker_->create_output_mesh( oname, stk::io::WRITE_RESULTS );
+    resultsFileIndex_ = ioBroker_->create_output_mesh( oname, stk::io::WRITE_RESULTS );
 
 #if defined (NALU_USES_PERCEPT)
 
@@ -1792,30 +1794,31 @@ Realm::create_output_mesh()
 
 #endif
 
-  // Tell stk_io how to output element block nodal fields:
-  // if 'true' passed to function, then output them as nodeset fields;
-  // if 'false', then output as nodal fields (on all nodes of the mesh, zero-filled)
-  // The option is provided since some post-processing/visualization codes do not
-  // correctly handle nodeset fields.
-  ioBroker_->use_nodeset_for_part_nodes_fields(resultsFileIndex_, outputInfo_->outputNodeSet_);
+    // Tell stk_io how to output element block nodal fields:
+    // if 'true' passed to function, then output them as nodeset fields;
+    // if 'false', then output as nodal fields (on all nodes of the mesh, zero-filled)
+    // The option is provided since some post-processing/visualization codes do not
+    // correctly handle nodeset fields.
+    ioBroker_->use_nodeset_for_part_nodes_fields(resultsFileIndex_, outputInfo_->outputNodeSet_);
 
-  // FIXME: add_field can take user-defined output name, not just varName
-  for ( std::set<std::string>::iterator itorSet = outputInfo_->outputFieldNameSet_.begin(); 
-      itorSet != outputInfo_->outputFieldNameSet_.end(); ++itorSet ) {
-    std::string varName = *itorSet;
-    stk::mesh::FieldBase *theField = stk::mesh::get_field_by_name(varName, *metaData_);
-    if ( NULL == theField ) {
-      NaluEnv::self().naluOutputP0() << " Sorry, no field by the name " << varName << std::endl;
+    // FIXME: add_field can take user-defined output name, not just varName
+    for ( std::set<std::string>::iterator itorSet = outputInfo_->outputFieldNameSet_.begin();
+        itorSet != outputInfo_->outputFieldNameSet_.end(); ++itorSet ) {
+      std::string varName = *itorSet;
+      stk::mesh::FieldBase *theField = stk::mesh::get_field_by_name(varName, *metaData_);
+      if ( NULL == theField ) {
+        NaluEnv::self().naluOutputP0() << " Sorry, no field by the name " << varName << std::endl;
+      }
+      else {
+        // 'varName' is the name that will be written to the database
+        // For now, just using the name of the stk field
+        ioBroker_->add_field(resultsFileIndex_, *theField, varName);
+      }
     }
-    else {
-      // 'varName' is the name that will be written to the database
-      // For now, just using the name of the stk field
-      ioBroker_->add_field(resultsFileIndex_, *theField, varName);
-    }
+
+    // reset this flag
+    outputInfo_->meshAdapted_ = false;
   }
-
-  // reset this flag
-  outputInfo_->meshAdapted_ = false;
 }
 
 //--------------------------------------------------------------------------
@@ -1824,7 +1827,12 @@ Realm::create_output_mesh()
 void
 Realm::create_restart_mesh()
 {
+  // exodus restart file creation
   if (outputInfo_->hasRestartBlock_ ) {
+
+    if (outputInfo_->restartFreq_ == 0)
+      return;
+
     restartFileIndex_ = ioBroker_->create_output_mesh(outputInfo_->restartDBName_, stk::io::WRITE_RESTART);
 
     // loop over restart variable field names supplied by Eqs
@@ -3114,30 +3122,33 @@ Realm::provide_output()
 {
   stk::diag::TimeBlock mesh_output_timeblock(Simulation::outputTimer());
 
-  if (outputInfo_->outputFreq_ == 0) return;
+  if ( outputInfo_->hasOutputBlock_ ) {
 
-  const double start_time = stk::cpu_time();
+    if (outputInfo_->outputFreq_ == 0)
+      return;
 
-  // process output via io
-  const double currentTime = get_current_time();
-  const int timeStepCount = get_time_step_count();
-  const bool isOutput = (timeStepCount % outputInfo_->outputFreq_) == 0;
+    const double start_time = stk::cpu_time();
 
-  if ( isOutput ) {
-    // when adaptivity has occurred, re-create the output mesh file
-    if (outputInfo_->meshAdapted_)
-      create_output_mesh();
+    // process output via io
+    const double currentTime = get_current_time();
+    const int timeStepCount = get_time_step_count();
+    const bool isOutput = (timeStepCount % outputInfo_->outputFreq_) == 0;
 
-    // not set up for globals
-    ioBroker_->process_output_request(resultsFileIndex_, currentTime);
-    equationSystems_.provide_output();
+    if ( isOutput ) {
+      // when adaptivity has occurred, re-create the output mesh file
+      if (outputInfo_->meshAdapted_)
+        create_output_mesh();
+
+      // not set up for globals
+      ioBroker_->process_output_request(resultsFileIndex_, currentTime);
+      equationSystems_.provide_output();
+    }
+
+    const double stop_time = stk::cpu_time();
+
+    // increment time for output
+    timerOutputFields_ += (stop_time - start_time);
   }
-
-  const double stop_time = stk::cpu_time();
-
-  // increment time for output
-  timerOutputFields_ += (stop_time - start_time);
-
 }
 
 //--------------------------------------------------------------------------
