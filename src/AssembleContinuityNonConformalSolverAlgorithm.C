@@ -243,11 +243,12 @@ AssembleContinuityNonConformalSolverAlgorithm::execute()
         const int opposingNodesPerElement = meSCSOpposing->nodesPerElement_;
 
         // resize some things; matrix related
-        const int lhsSize = (currentNodesPerFace+opposingNodesPerFace)*(currentNodesPerFace+opposingNodesPerFace);
-        const int rhsSize = currentNodesPerFace+opposingNodesPerFace;
+        const int totalNodes = currentNodesPerElement + opposingNodesPerElement;
+        const int lhsSize = totalNodes*totalNodes;
+        const int rhsSize = totalNodes;
         lhs.resize(lhsSize);
         rhs.resize(rhsSize);
-        connected_nodes.resize(currentNodesPerFace+opposingNodesPerFace);
+        connected_nodes.resize(totalNodes);
         
         // algorithm related; face
         ws_c_pressure.resize(currentNodesPerFace);
@@ -304,13 +305,11 @@ AssembleContinuityNonConformalSolverAlgorithm::execute()
         // populate current face_node_ordinals
         currentElementTopo.side_node_ordinals(currentFaceOrdinal, ws_c_face_node_ordinals.begin());
 
-        // gather current face data; sneak in first of connected nodes and face node
+        // gather current face data
         stk::mesh::Entity const* current_face_node_rels = bulk_data.begin_nodes(currentFace);
         const int current_num_face_nodes = bulk_data.num_nodes(currentFace);
         for ( int ni = 0; ni < current_num_face_nodes; ++ni ) {
           stk::mesh::Entity node = current_face_node_rels[ni];
-          // set connected nodes
-          connected_nodes[ni] = node;
           // gather; scalar
           p_c_pressure[ni] = *stk::mesh::field_data(pressureNp1, node);
           p_c_density[ni] = *stk::mesh::field_data(*density_, node);
@@ -327,13 +326,11 @@ AssembleContinuityNonConformalSolverAlgorithm::execute()
         // populate opposing face_node_ordinals
         opposingElementTopo.side_node_ordinals(opposingFaceOrdinal, ws_o_face_node_ordinals.begin());
 
-        // gather opposing face data; sneak in second of connected nodes and face node
+        // gather opposing face data
         stk::mesh::Entity const* opposing_face_node_rels = bulk_data.begin_nodes(opposingFace);
         const int opposing_num_face_nodes = bulk_data.num_nodes(opposingFace);
         for ( int ni = 0; ni < opposing_num_face_nodes; ++ni ) {
           stk::mesh::Entity node = opposing_face_node_rels[ni];
-          // set connected nodes
-          connected_nodes[ni+current_num_face_nodes] = node;
           // gather; scalar
           p_o_pressure[ni] = *stk::mesh::field_data(pressureNp1, node);
           p_o_density[ni] = *stk::mesh::field_data(*density_, node);
@@ -352,6 +349,8 @@ AssembleContinuityNonConformalSolverAlgorithm::execute()
         const int current_num_elem_nodes = bulk_data.num_nodes(currentElement);
         for ( int ni = 0; ni < current_num_elem_nodes; ++ni ) {
           stk::mesh::Entity node = current_elem_node_rels[ni];          
+          // set connected nodes
+          connected_nodes[ni] = node;
           // gather; scalar
           p_c_elem_pressure[ni] = *stk::mesh::field_data(pressureNp1, node);
           // gather; vector
@@ -362,11 +361,13 @@ AssembleContinuityNonConformalSolverAlgorithm::execute()
           }
         }
 
-        // gather opposing element data
+        // gather opposing element data; sneak in second connected nodes
         stk::mesh::Entity const* opposing_elem_node_rels = bulk_data.begin_nodes(opposingElement);
         const int opposing_num_elem_nodes = bulk_data.num_nodes(opposingElement);
         for ( int ni = 0; ni < opposing_num_elem_nodes; ++ni ) {
           stk::mesh::Entity node = opposing_elem_node_rels[ni];
+          // set connected nodes
+          connected_nodes[ni+current_num_elem_nodes] = node;
           // gather; scalar
           p_o_elem_pressure[ni] = *stk::mesh::field_data(pressureNp1, node);
           // gather; vector
@@ -569,27 +570,53 @@ AssembleContinuityNonConformalSolverAlgorithm::execute()
                              + penaltyIp*(currentPressureBip - opposingPressureBip))*c_amag;
         
         // form residual
-        const int nn = currentGaussPointId;
+        const int nn = ws_c_face_node_ordinals[currentGaussPointId];
         p_rhs[nn] -= mdot/projTimeScale;
 
         // set-up row for matrix
-        const int rowR = nn*(currentNodesPerFace+opposingNodesPerFace);
+        const int rowR = nn*totalNodes;
         double lhsFac = penaltyIp*c_amag/projTimeScale;
         
-        // sensitivities; current face; use general shape function for this single ip
+        // sensitivities; current face (penalty); use general shape function for this single ip
         meFCCurrent->general_shape_fcn(1, &currentIsoParCoords[0], &ws_c_general_shape_function[0]);
         for ( int ic = 0; ic < currentNodesPerFace; ++ic ) {
+          const int icnn = ws_c_face_node_ordinals[ic];
           const double r = p_c_general_shape_function[ic];
-          p_lhs[rowR+ic] += r*lhsFac;
+          p_lhs[rowR+icnn] += r*lhsFac;
         }
         
-        // sensitivities; opposing face; use general shape function for this single ip
+        // sensitivities; current element (diffusion)
+        for ( int ic = 0; ic < currentNodesPerElement; ++ic ) {
+          const int offSetDnDx = ic*nDim; // single intg. point
+          double lhscd = 0.0;
+          for ( int j = 0; j < nDim; ++j ) {
+            const double nxj = p_cNx[j];
+            const double dndxj = p_c_dndx[offSetDnDx+j];
+            lhscd -= dndxj*nxj;
+          }
+          p_lhs[rowR+ic] += 0.5*lhscd*c_amag*includePstab;
+        }
+
+        // sensitivities; opposing face (penalty); use general shape function for this single ip
         meFCOpposing->general_shape_fcn(1, &opposingIsoParCoords[0], &ws_o_general_shape_function[0]);
         for ( int ic = 0; ic < opposingNodesPerFace; ++ic ) {
+          const int icnn = ws_o_face_node_ordinals[ic];
           const double r = p_o_general_shape_function[ic];
-          p_lhs[rowR+ic+currentNodesPerFace] -= r*lhsFac;
+          p_lhs[rowR+icnn+currentNodesPerElement] -= r*lhsFac;
         }
         
+        // sensitivities; opposing element (diffusion)
+        for ( int ic = 0; ic < opposingNodesPerElement; ++ic ) {
+          const int offSetDnDx = ic*nDim; // single intg. point
+          double lhscd = 0.0;
+          for ( int j = 0; j < nDim; ++j ) {
+            const double nxj = p_oNx[j];
+            const double dndxj = p_o_dndx[offSetDnDx+j];
+            lhscd -= dndxj*nxj;
+          }
+          p_lhs[rowR+ic+currentNodesPerElement] -= 0.5*lhscd*c_amag*includePstab;
+        }
+
         apply_coeff(connected_nodes, rhs, lhs, __FILE__);
       }
     }

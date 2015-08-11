@@ -355,7 +355,7 @@ SurfaceForceAndMomentWallFunctionAlgorithm::execute()
           ws_p_force[i] = pBip*ai;
           ws_v_force[i] = lambda*uDiff;
           ws_t_force[i] = ws_p_force[i] + ws_v_force[i];
-          pressureForce[i] += ws_p_force[i];;
+          pressureForce[i] += ws_p_force[i];
           uParallel += uDiff*uDiff;
         }
 

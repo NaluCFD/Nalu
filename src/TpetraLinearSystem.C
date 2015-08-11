@@ -634,27 +634,27 @@ TpetraLinearSystem::buildNonConformalNodeGraph(
 
         DgInfo *dgInfo = faceDgInfoVec[k];
 
-        // extract current/opposing face; for now neglect all but penalty sensitivities
-        stk::mesh::Entity currentFace = dgInfo->currentFace_;
-        stk::mesh::Entity opposingFace = dgInfo->opposingFace_;
+        // extract current/opposing element
+        stk::mesh::Entity currentElement = dgInfo->currentElement_;
+        stk::mesh::Entity opposingElement = dgInfo->opposingElement_;
         
         // node relations; current and opposing
-        stk::mesh::Entity const* current_face_node_rels = bulkData.begin_nodes(currentFace);
-        const int current_num_face_nodes = bulkData.num_nodes(currentFace);
-        stk::mesh::Entity const* opposing_face_node_rels = bulkData.begin_nodes(opposingFace);
-        const int opposing_num_face_nodes = bulkData.num_nodes(opposingFace);
+        stk::mesh::Entity const* current_elem_node_rels = bulkData.begin_nodes(currentElement);
+        const int current_num_elem_nodes = bulkData.num_nodes(currentElement);
+        stk::mesh::Entity const* opposing_elem_node_rels = bulkData.begin_nodes(opposingElement);
+        const int opposing_num_elem_nodes = bulkData.num_nodes(opposingElement);
         
         // resize based on both current and opposing face node size
-        entities.resize(current_num_face_nodes+opposing_num_face_nodes);
+        entities.resize(current_num_elem_nodes+opposing_num_elem_nodes);
         
         // fill in connected nodes; current
-        for ( int ni = 0; ni < current_num_face_nodes; ++ni ) {
-          entities[ni] = current_face_node_rels[ni];
+        for ( int ni = 0; ni < current_num_elem_nodes; ++ni ) {
+          entities[ni] = current_elem_node_rels[ni];
         }
         
         // fill in connected nodes; opposing
-        for ( int ni = 0; ni < opposing_num_face_nodes; ++ni ) {
-          entities[current_num_face_nodes+ni] = opposing_face_node_rels[ni];
+        for ( int ni = 0; ni < opposing_num_elem_nodes; ++ni ) {
+          entities[current_num_elem_nodes+ni] = opposing_elem_node_rels[ni];
         }
         
         // okay, now add the connections; will be symmetric 
