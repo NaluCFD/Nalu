@@ -388,7 +388,9 @@ TpetraLinearSystem::buildNodeGraph(const stk::mesh::PartVector & parts)
   stk::mesh::MetaData & metaData = realm_.meta_data();
 
   const stk::mesh::Selector s_owned = metaData.locally_owned_part()
-    & stk::mesh::selectUnion(parts) & !(realm_.get_inactive_selector());
+    & stk::mesh::selectUnion(parts) 
+    & !(stk::mesh::selectUnion(realm_.get_slave_part_vector()))
+    & !(realm_.get_inactive_selector());
 
   stk::mesh::BucketVector const& buckets =
     realm_.get_buckets( stk::topology::NODE_RANK, s_owned );
@@ -411,7 +413,9 @@ TpetraLinearSystem::buildEdgeToNodeGraph(const stk::mesh::PartVector & parts)
   stk::mesh::MetaData & metaData = realm_.meta_data();
 
   const stk::mesh::Selector s_owned = metaData.locally_owned_part()
-        & stk::mesh::selectUnion(parts) & !(realm_.get_inactive_selector());
+    & stk::mesh::selectUnion(parts) 
+    & !(realm_.get_inactive_selector());
+
   stk::mesh::BucketVector const& buckets =
     realm_.get_buckets( stk::topology::EDGE_RANK, s_owned );
   const size_t numNodes = 2; // Edges are easy...
@@ -439,7 +443,9 @@ TpetraLinearSystem::buildFaceToNodeGraph(const stk::mesh::PartVector & parts)
   stk::mesh::MetaData & metaData = realm_.meta_data();
 
   const stk::mesh::Selector s_owned = metaData.locally_owned_part()
-        & stk::mesh::selectUnion(parts) & !(realm_.get_inactive_selector());
+    & stk::mesh::selectUnion(parts) 
+    & !(realm_.get_inactive_selector());
+
   stk::mesh::BucketVector const& buckets =
     realm_.get_buckets( metaData.side_rank(), s_owned );
   std::vector<stk::mesh::Entity> entities;
@@ -468,7 +474,9 @@ TpetraLinearSystem::buildElemToNodeGraph(const stk::mesh::PartVector & parts)
   stk::mesh::MetaData & metaData = realm_.meta_data();
 
   const stk::mesh::Selector s_owned = metaData.locally_owned_part()
-    & stk::mesh::selectUnion(parts) & !(realm_.get_inactive_selector());
+    & stk::mesh::selectUnion(parts) 
+    & !(realm_.get_inactive_selector());
+
   stk::mesh::BucketVector const& buckets =
     realm_.get_buckets( stk::topology::ELEMENT_RANK, s_owned );
   std::vector<stk::mesh::Entity> entities;
@@ -496,7 +504,9 @@ TpetraLinearSystem::buildReducedElemToNodeGraph(const stk::mesh::PartVector & pa
   stk::mesh::MetaData & metaData = realm_.meta_data();
 
   const stk::mesh::Selector s_owned = metaData.locally_owned_part()
-        & stk::mesh::selectUnion(parts) & !(realm_.get_inactive_selector());
+    & stk::mesh::selectUnion(parts) 
+    & !(realm_.get_inactive_selector());
+
   stk::mesh::BucketVector const& buckets =
     realm_.get_buckets( stk::topology::ELEMENT_RANK, s_owned );
   std::vector<stk::mesh::Entity> entities;
@@ -535,7 +545,9 @@ TpetraLinearSystem::buildFaceElemToNodeGraph(const stk::mesh::PartVector & parts
   stk::mesh::MetaData & metaData = realm_.meta_data();
 
   const stk::mesh::Selector s_owned = metaData.locally_owned_part()
-        & stk::mesh::selectUnion(parts) & !(realm_.get_inactive_selector());
+    & stk::mesh::selectUnion(parts) 
+    & !(realm_.get_inactive_selector());
+
   stk::mesh::BucketVector const& face_buckets =
     realm_.get_buckets( metaData.side_rank(), s_owned );
   std::vector<stk::mesh::Entity> entities;
@@ -719,8 +731,11 @@ TpetraLinearSystem::copy_stk_to_tpetra(
   stk::mesh::BulkData & bulkData = realm_.bulk_data();
   stk::mesh::MetaData & metaData = realm_.meta_data();
 
-  const stk::mesh::Selector selector = stk::mesh::selectField(*stkField) & metaData.locally_owned_part() &
-    !stk::mesh::selectUnion(realm_.get_slave_part_vector()) & !(realm_.get_inactive_selector());
+  const stk::mesh::Selector selector = stk::mesh::selectField(*stkField) 
+    & metaData.locally_owned_part() 
+    & !(stk::mesh::selectUnion(realm_.get_slave_part_vector())) 
+    & !(realm_.get_inactive_selector());
+
   stk::mesh::BucketVector const& buckets = bulkData.get_buckets(stk::topology::NODE_RANK, selector);
 
   for ( stk::mesh::BucketVector::const_iterator ib = buckets.begin();
@@ -991,7 +1006,8 @@ TpetraLinearSystem::applyDirichletBCs(
   (void)p_size;
 
   const stk::mesh::Selector selector = stk::mesh::selectUnion(parts)
-    & stk::mesh::selectField(*solutionField) & !(realm_.get_inactive_selector());
+    & stk::mesh::selectField(*solutionField) 
+    & !(realm_.get_inactive_selector());
 
   stk::mesh::BucketVector const& buckets =
     realm_.get_buckets( stk::topology::NODE_RANK, selector );
@@ -1466,6 +1482,7 @@ TpetraLinearSystem::copy_tpetra_to_stk(
   stk::mesh::FieldBase * stkField)
 {
   stk::mesh::BulkData & bulkData = realm_.bulk_data();
+  stk::mesh::MetaData & metaData = realm_.meta_data();
 
   ThrowAssert(!tpetraField.is_null());
   ThrowAssert(stkField);
@@ -1475,8 +1492,10 @@ TpetraLinearSystem::copy_tpetra_to_stk(
   (void)p_rank;
 
   const stk::mesh::Selector selector = stk::mesh::selectField(*stkField)
-    & !stk::mesh::selectUnion(realm_.get_slave_part_vector());
-  // FIXME: why does including this cause paralell sims to fail? & !(realm_.get_inactive_selector());
+    & metaData.locally_owned_part() 
+    & !(stk::mesh::selectUnion(realm_.get_slave_part_vector()))
+    & !(realm_.get_inactive_selector());
+  
   stk::mesh::BucketVector const& buckets =
     realm_.get_buckets(stk::topology::NODE_RANK, selector);
 
