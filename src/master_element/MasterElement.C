@@ -1214,6 +1214,117 @@ TetSCS::opposingFace(
 }
 
 //--------------------------------------------------------------------------
+//-------- isInElement -----------------------------------------------------
+//--------------------------------------------------------------------------
+double
+TetSCS::isInElement(
+    const double * elem_nodal_coor,
+    const double * point_coor,
+	  double * par_coor ) 
+{
+  // load up the element coordinates
+  const double x1 = elem_nodal_coor[0];
+  const double x2 = elem_nodal_coor[1];
+  const double x3 = elem_nodal_coor[2];
+  const double x4 = elem_nodal_coor[3];
+
+  const double y1 = elem_nodal_coor[4];
+  const double y2 = elem_nodal_coor[5];
+  const double y3 = elem_nodal_coor[6];
+  const double y4 = elem_nodal_coor[7];
+
+  const double z1 = elem_nodal_coor[8];
+  const double z2 = elem_nodal_coor[9];
+  const double z3 = elem_nodal_coor[10];
+  const double z4 = elem_nodal_coor[11];
+
+  // determinant of matrix M in eqn x-x1 = M*xi
+  const double det =
+    (x2 - x1)*( (y3 - y1)*(z4 - z1) - (y4 - y1)*(z3 - z1) ) -
+    (x3 - x1)*( (y2 - y1)*(z4 - z1) - (y4 - y1)*(z2 - z1) ) +
+    (x4 - x1)*( (y2 - y1)*(z3 - z1) - (y3 - y1)*(z2 - z1) );
+
+  const double invDet = 1.0/det;
+
+  // matrix entries in inverse of M
+
+  const double m11 = y3*z4 - y1*z4 - y4*z3+y1*z3+y4*z1 - y3*z1;
+  const double m12 =  - (x3*z4 - x1*z4 - x4*z3+x1*z3+x4*z1 - x3*z1);
+  const double m13 = x3*y4 - x1*y4 - x4*y3+x1*y3+x4*y1 - x3*y1;
+  const double m21 =  - (y2*z4 - y1*z4 - y4*z2+y1*z2+y4*z1 - y2*z1);
+  const double m22 = x2*z4 - x1*z4 - x4*z2+x1*z2+x4*z1 - x2*z1;
+  const double m23 =  - (x2*y4 - x1*y4 - x4*y2+x1*y2+x4*y1 - x2*y1);
+  const double m31 = y2*z3 - y1*z3 - y3*z2+y1*z2+y3*z1 - y2*z1;
+  const double m32 =  - (x2*z3 - x1*z3 - x3*z2+x1*z2+x3*z1 - x2*z1);
+  const double m33 = x2*y3 - x1*y3 - x3*y2+x1*y2+x3*y1 - x2*y1;
+
+  const double xx1 = point_coor[0] - x1;
+  const double yy1 = point_coor[1] - y1;
+  const double zz1 = point_coor[2] - z1;
+
+  // solve for parametric coordinates
+
+  const double xi   = invDet*(m11*xx1 + m12*yy1 + m13*zz1);
+  const double eta  = invDet*(m21*xx1 + m22*yy1 + m23*zz1);
+  const double zeta = invDet*(m31*xx1 + m32*yy1 + m33*zz1);
+
+  // if volume coordinates are negative, point is outside the tet
+
+  par_coor[0] = xi;
+  par_coor[1] = eta;
+  par_coor[2] = zeta;
+
+  std::vector<double> x(3);
+  x[0]=par_coor[0];
+  x[1]=par_coor[1];
+  x[2]=par_coor[2];
+
+  const double dist = parametric_distance(x);
+
+  return dist;
+}
+
+//--------------------------------------------------------------------------
+//-------- interpolatePoint ------------------------------------------------
+//--------------------------------------------------------------------------
+void
+TetSCS::interpolatePoint(
+    const int  & ncomp_field,
+    const double * par_coord,           // (3)
+    const double * field,               // (4,ncomp_field)
+	  double * result ) // (ncomp_field)
+{
+  const double xi   = par_coord[0];
+  const double eta  = par_coord[1];
+  const double zeta = par_coord[2];
+
+  const double psi1 = 1.0 - xi - eta - zeta;
+
+  for(int i = 0; i < ncomp_field; ++i) {
+    const int fourI = 4*i;
+
+    const double f1 = field[fourI];
+    const double f2 = field[1 + fourI];
+    const double f3 = field[2 + fourI];
+    const double f4 = field[3 + fourI];
+
+    result[i] = f1*psi1 + f2*xi + f3*eta + f4*zeta;
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- general_shape_fcn -----------------------------------------------
+//--------------------------------------------------------------------------
+void
+TetSCS::general_shape_fcn(
+  const int numIp,
+  const double *isoParCoord,
+  double *shpfc)
+{
+  tet_shape_fcn(numIp, &isoParCoord[0], shpfc);
+}
+
+//--------------------------------------------------------------------------
 //-------- general_face_grad_op --------------------------------------------
 //--------------------------------------------------------------------------
 void 
@@ -1293,6 +1404,23 @@ TetSCS::sidePcoords_to_elemPcoords(
     throw std::runtime_error("TetSCS::sideMap invalid ordinal");
   }
   return;
+}
+
+//--------------------------------------------------------------------------
+//-------- parametric_distance ---------------------------------------------
+//--------------------------------------------------------------------------
+double
+TetSCS::parametric_distance(const std::vector<double> &x)
+{
+  const double X=x[0] - 1./4.;
+  const double Y=x[1] - 1./4.;
+  const double Z=x[2] - 1./4.;
+  const double dist0 = -4*X;
+  const double dist1 = -4*Y;
+  const double dist2 = -4*Z;
+  const double dist3 =  4*(X+Y+Z);
+  const double dist  = std::max(std::max(dist0,dist1),std::max(dist2,dist3));
+  return dist;
 }
 
 //--------------------------------------------------------------------------
