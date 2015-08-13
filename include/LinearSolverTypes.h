@@ -59,14 +59,7 @@ template <typename Scalar, typename MultiVector, typename Operator>
 class SolverManager;
 
 template <typename Scalar, typename MultiVector, typename Operator>
-class PseudoBlockGmresSolMgr;
-
-template <typename Scalar, typename MultiVector, typename Operator>
-class TFQMRSolMgr;
-
-template <typename Scalar, typename MultiVector, typename Operator>
-class PseudoBlockCGSolMgr;
-
+class SolverFactory;
 }
 
 namespace Ifpack2 {
@@ -80,7 +73,6 @@ namespace sierra{
 namespace nalu{
 
 class TpetraLinearSolver;
-
 
 struct LinSys {
 
@@ -104,11 +96,8 @@ typedef Belos::MultiVecTraits<Scalar, MultiVector>                         Multi
 typedef Belos::OperatorTraits<Scalar,MultiVector, Operator>                OperatorTraits;
 typedef Belos::LinearProblem<Scalar, MultiVector, Operator>                LinearProblem;
 typedef Belos::SolverManager<Scalar, MultiVector, Operator>                SolverManager;
-typedef Belos::PseudoBlockGmresSolMgr<Scalar, MultiVector, Operator>       GmresSolver;
-typedef Belos::TFQMRSolMgr<Scalar, MultiVector, Operator>                  TfqmrSolver;
-typedef Belos::PseudoBlockCGSolMgr<Scalar, MultiVector, Operator>          CgSolver;
+typedef Belos::SolverFactory<Scalar, MultiVector, Operator>                SolverFactory;
 typedef Ifpack2::Preconditioner<Scalar, LocalOrdinal, GlobalOrdinal, Node> Preconditioner;
-
 };
 
 

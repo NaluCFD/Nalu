@@ -18,12 +18,6 @@ namespace YAML {
 class Node;
 }
 
-
-namespace Belos {
-template <typename Scalar, typename MV, typename OP>
-class SolverFactory;
-}
-
 namespace sierra{
 namespace nalu{
 

@@ -10,6 +10,7 @@
 #include <LinearSolvers.h>
 
 #include <NaluEnv.h>
+#include <LinearSolverTypes.h>
 
 #include <stk_util/environment/ReportHandler.hpp>
 
@@ -26,13 +27,9 @@
 #include <BelosOperatorTraits.hpp>
 #include <BelosSolverFactory.hpp>
 #include <BelosSolverManager.hpp>
-#include <BelosPseudoBlockGmresSolMgr.hpp>
-#include <BelosTFQMRSolMgr.hpp>
-#include <BelosPseudoBlockCGSolMgr.hpp>
 #include <BelosConfigDefs.hpp>
 #include <BelosLinearProblem.hpp>
 #include <BelosTpetraAdapter.hpp>
-#include <BelosBlockCGSolMgr.hpp>
 
 #include <Ifpack2_Factory.hpp>
 #include <Kokkos_DefaultNode.hpp>
@@ -235,22 +232,11 @@ void TpetraLinearSolver::setupLinearSolver(
     preconditioner_->initialize();
     problem_->setRightPrec(preconditioner_);
 
-    // create the correct solver..
-    if ( config_->get_method() == "gmres") {
-      solver_ = Teuchos::RCP<LinSys::GmresSolver>(new LinSys::GmresSolver(problem_, params_) );
-    }
-    else if ( config_->get_method() == "tfqmr") {
-      solver_ = Teuchos::RCP<LinSys::TfqmrSolver>(new LinSys::TfqmrSolver(problem_, params_) );
-    }
-    else if ( config_->get_method() == "cg") {
-      solver_ = Teuchos::RCP<LinSys::CgSolver>(new LinSys::CgSolver(problem_, params_) );
-    }
-    else {
-      // throw an error and create gmres
-      NaluEnv::self().naluOutputP0() << "Only gmres, tfqmr and cg solver methods are supported: " << config_->get_method() << std::endl;
-    }
+    // create the solver, e.g., gmres, cg, tfqmr, bicgstab
+    LinSys::SolverFactory sFactory;
+    solver_ = sFactory.create(config_->get_method(), params_);
+    solver_->setProblem(problem_);
   }
-
 }
 
 void TpetraLinearSolver::destroyLinearSolver()
@@ -284,24 +270,11 @@ void TpetraLinearSolver::setMueLu()
 
   problem_->setRightPrec(mueluPreconditioner_);
 
-  // create the correct solver..
-  solver_ = Teuchos::null;
-  if ( config_->get_method() == "gmres") {
-    solver_ = Teuchos::RCP<LinSys::GmresSolver>(new LinSys::GmresSolver(problem_, params_) );
-  }
-  else if ( config_->get_method() == "tfqmr") {
-    solver_ = Teuchos::RCP<LinSys::TfqmrSolver>(new LinSys::TfqmrSolver(problem_, params_) );
-  }
-  else if ( config_->get_method() == "cg") {
-    solver_ = Teuchos::RCP<LinSys::CgSolver>(new LinSys::CgSolver(problem_, params_) );
-  }
-  else {
-    // throw an error and create gmres
-    NaluEnv::self().naluOutputP0() << "Only gmres, tfqmr and cg solver methods are supported: " << config_->get_method() << std::endl;
-  }
-
+  // create the solver, e.g., gmres, cg, tfqmr, bicgstab
+  LinSys::SolverFactory sFactory;
+  solver_ = sFactory.create(config_->get_method(), params_);
+  solver_->setProblem(problem_);
 }
-
 
 int TpetraLinearSolver::residual_norm(int whichNorm, Teuchos::RCP<LinSys::Vector> sln, double& norm)
 {
