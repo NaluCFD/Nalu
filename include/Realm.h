@@ -61,6 +61,7 @@ class EquationSystems;
 class OutputInfo;
 class AveragingInfo;
 class PostProcessingInfo;
+class SolutionNormPostProcessing;
 class PeriodicManager;
 class Realms;
 class Simulation;
@@ -386,6 +387,7 @@ public:
   OutputInfo *outputInfo_;
   AveragingInfo *averagingInfo_;
   PostProcessingInfo *postProcessingInfo_;
+  SolutionNormPostProcessing *solutionNormPostProcessing_;
 
   std::vector<Algorithm *> propertyAlg_;
   std::map<PropertyIdentifier, ScalarFieldType *> propertyMap_;

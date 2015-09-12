@@ -1,0 +1,325 @@
+/*------------------------------------------------------------------------*/
+/*  Copyright 2014 Sandia Corporation.                                    */
+/*  This software is released under the license detailed                  */
+/*  in the file, LICENSE, which is located in the top-level Nalu          */
+/*  directory structure                                                   */
+/*------------------------------------------------------------------------*/
+
+
+#include <SolutionNormPostProcessing.h>
+#include <AuxFunctionAlgorithm.h>
+#include <FieldTypeDef.h>
+#include <NaluParsing.h>
+#include <Realm.h>
+
+// the factory of aux functions
+#include <user_functions/SteadyThermalContactAuxFunction.h>
+
+// stk_util
+#include <stk_util/parallel/ParallelReduce.hpp>
+
+// stk_mesh/base/fem
+#include <stk_mesh/base/BulkData.hpp>
+#include <stk_mesh/base/Field.hpp>
+#include <stk_mesh/base/GetBuckets.hpp>
+#include <stk_mesh/base/MetaData.hpp>
+#include <stk_mesh/base/Part.hpp>
+
+// basic c++
+#include <stdexcept>
+#include <string>
+#include <fstream>
+#include <iomanip>
+
+namespace sierra{
+namespace nalu{
+
+//==========================================================================
+// Class Definition
+//==========================================================================
+// SolutionNormPostProcessing - norm solution post processing; all nodal
+//==========================================================================
+//--------------------------------------------------------------------------
+//-------- constructor -----------------------------------------------------
+//--------------------------------------------------------------------------
+SolutionNormPostProcessing::SolutionNormPostProcessing(
+  Realm & realm) 
+  : realm_(realm),
+    outputFrequency_(100),
+    outputFileName_("norms.dat"),
+    w_(12),
+    percision_(6)
+{
+  // na
+}
+
+//--------------------------------------------------------------------------
+//-------- destructor ------------------------------------------------------
+//--------------------------------------------------------------------------
+SolutionNormPostProcessing::~SolutionNormPostProcessing()
+{
+  // clean-up; aux function algorithm deletes aux function 
+  std::vector<AuxFunctionAlgorithm *>::iterator ii;
+  for( ii=populateExactNodalFieldAlg_.begin(); ii!=populateExactNodalFieldAlg_.end(); ++ii )
+    delete *ii;
+}
+
+//--------------------------------------------------------------------------
+//-------- load ------------------------------------------------------------
+//--------------------------------------------------------------------------
+void
+SolutionNormPostProcessing::load(
+  const YAML::Node & y_node)
+{
+  // output for results
+  const YAML::Node *y_norm = y_node.FindValue("solution_norm");
+  if (y_norm)
+  {    
+    // output frequency
+    get_if_present(*y_norm, "output_frequency", outputFrequency_, outputFrequency_);
+
+    // output name
+    get_if_present(*y_norm, "file_name", outputFileName_, outputFileName_);
+
+    // spacing
+    get_if_present(*y_norm, "spacing", w_, w_);
+
+    // percision
+    get_if_present(*y_norm, "percision", percision_, percision_);
+
+    // target matches the physics description (see Material model)
+    
+    // find the pair; create some space for the names
+    const YAML::Node *y_dof_pair = y_norm->FindValue("dof_user_function_pair");
+    std::string dofName, functionName;
+    if (y_dof_pair)
+    {
+      size_t varSize = y_dof_pair->size();
+      for (size_t ioption = 0; ioption < varSize; ++ioption) {
+        const YAML::Node & y_var = (*y_dof_pair)[ioption];
+        size_t varPairSize = y_var.size();
+        if ( varPairSize != 2 )
+          throw std::runtime_error("need two field name pairs for xfer");
+        y_var[0] >> dofName;
+        y_var[1] >> functionName;
+
+        // push back pair of field names
+        dofFunctionVec_.push_back(std::make_pair(dofName, functionName));
+      }
+    }
+  }
+
+  // deal with file name and banner
+  if ( NaluEnv::self().parallel_rank() == 0 ) {
+    std::ofstream myfile;
+    myfile.open(outputFileName_.c_str());
+    myfile << "Nalu Norm Post Processing......." << std::endl;
+    myfile << "Field" << std::setw(w_) 
+           << "Step" << std::setw(w_) << "Time" << std::setw(w_) << "Node Count" << std::setw(w_) 
+           << "Loo"  << std::setw(w_) << "L1" << std::setw(w_)  << "L2" << std::setw(w_) << std::endl;
+    myfile.close();
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- setup -----------------------------------------------------------
+//--------------------------------------------------------------------------
+void
+SolutionNormPostProcessing::setup(
+  const std::vector<std::string> targetNames)
+{
+  stk::mesh::MetaData & metaData = realm_.meta_data();
+
+  // first, loop over all target names, extract the part and push back
+  for ( size_t itarget = 0; itarget < targetNames.size(); ++itarget ) {
+    stk::mesh::Part *targetPart = metaData.get_part(targetNames[itarget]);
+    if ( NULL == targetPart ) {
+      NaluEnv::self().naluOutputP0() << "Trouble with part " << targetNames[itarget] << std::endl;
+      throw std::runtime_error("Sorry, no part name found by the name " + targetNames[itarget]);
+    }
+    else {
+      // push back
+      partVec_.push_back(targetPart);
+    }
+  }
+  
+  // iterate the vector
+  for ( size_t k = 0; k < dofFunctionVec_.size(); ++k ) {
+        
+    // extract the dof and function name
+    const std::string dofName = dofFunctionVec_[k].first;
+    const std::string functionName = dofFunctionVec_[k].second;
+    
+    // find the field
+    const stk::mesh::FieldBase *dofField = metaData.get_field(stk::topology::NODE_RANK, dofName);
+    if ( NULL == dofField )
+      throw std::runtime_error("SolutionNorm::setup no dof field by the name of: " + dofName);
+    
+    // find the size; is there a better wat to determine a field size on a given part?
+    const int dofSize = dofField->max_size(stk::topology::NODE_RANK);
+    
+    // register the field, "dofName + _exact"
+    const std::string dofNameExact = dofName + "_exact";
+    
+    stk::mesh::FieldBase *exactDofField
+      = &(metaData.declare_field<stk::mesh::Field<double, stk::mesh::SimpleArrayTag> >(stk::topology::NODE_RANK, dofNameExact));
+        
+    // push back to vector of pairs; unique list 
+    fieldPairVec_.push_back(std::make_pair(dofField, exactDofField));
+
+    // loop over parts
+    for ( size_t j = 0; j < partVec_.size(); ++j ) {
+      // extract the part
+      stk::mesh::Part *targetPart = partVec_[j];
+
+      // put the field on the part
+      stk::mesh::put_field(*exactDofField, *targetPart, dofSize);
+    
+      // create the algorithm to populate the analytical field
+      analytical_function_factory(functionName, exactDofField, targetPart);
+    }
+  } 
+}
+
+//--------------------------------------------------------------------------
+//-------- analytical_function_factory -------------------------------------
+//--------------------------------------------------------------------------
+void
+SolutionNormPostProcessing::analytical_function_factory(
+  const std::string functionName,
+  stk::mesh::FieldBase *exactDofField,
+  stk::mesh::Part *part)
+{
+  AuxFunction *theAuxFunc = NULL;
+  // switch on the name found...
+  if ( functionName == "steady_2d_thermal" ) {
+    theAuxFunc = new SteadyThermalContactAuxFunction();
+  }
+  else {
+    throw std::runtime_error("SolutionNormPostProcessing::setup: Only steady_2d_thermal user functions supported");
+  }
+
+  // create the aux function
+  AuxFunctionAlgorithm *auxAlg
+    = new AuxFunctionAlgorithm(realm_, part,
+                               exactDofField, theAuxFunc,
+                               stk::topology::NODE_RANK);
+
+  // push back
+  populateExactNodalFieldAlg_.push_back(auxAlg);
+}
+
+//--------------------------------------------------------------------------
+//-------- execute ---------------------------------------------------------
+//--------------------------------------------------------------------------
+void
+SolutionNormPostProcessing::execute()
+{
+  // check for proper count; return if not an output count (worry about field output sync?)
+  const int timeStepCount = realm_.get_time_step_count();
+  const bool processMe = (timeStepCount % outputFrequency_) == 0;
+  if (!processMe)
+    return;
+
+  // determine norm  
+  stk::mesh::MetaData &metaData = realm_.meta_data();
+  stk::mesh::BulkData &bulkData = realm_.bulk_data();
+
+  // populate the exact field
+  for ( size_t k = 0; k < populateExactNodalFieldAlg_.size(); ++k )
+    populateExactNodalFieldAlg_[k]->execute();
+  
+  stk::mesh::Selector s_locall_owned
+    = metaData.locally_owned_part() 
+    & stk::mesh::selectUnion(partVec_) 
+    & !(realm_.get_inactive_selector());
+
+  // size and initialize norm-related quantities; Loo, L1 and L2
+  const int numberOfDofs = fieldPairVec_.size();
+  std::vector<double> l_LooNorm(numberOfDofs);
+  std::vector<double> l_L12Norm(2*numberOfDofs);
+  std::vector<double> l_nodeCount(numberOfDofs,0);
+
+  // initialize norms
+  for ( int j = 0; j < numberOfDofs; ++j ) {
+    l_LooNorm[j] = -1.0e16;
+    l_L12Norm[j*numberOfDofs+0] = 0.0;
+    l_L12Norm[j*numberOfDofs+1] = 0.0;
+  }
+
+  stk::mesh::BucketVector const& node_buckets = bulkData.get_buckets( stk::topology::NODE_RANK, s_locall_owned );
+  for ( stk::mesh::BucketVector::const_iterator ib = node_buckets.begin() ;
+        ib != node_buckets.end() ; ++ib ) {
+    stk::mesh::Bucket & b = **ib ;
+    const stk::mesh::Bucket::size_type length   = b.size();
+    
+    for ( size_t j = 0; j < fieldPairVec_.size(); ++j ) {
+
+      // extract fields
+      const double *dofField = (double*)stk::mesh::field_data(*(fieldPairVec_[j].first), b);
+      double *exactDofField = (double*)stk::mesh::field_data(*(fieldPairVec_[j].second), b);
+
+      // sizes are the same between dof and exact dof
+      const int fieldSize = field_bytes_per_entity(*(fieldPairVec_[j].first), b) / sizeof(double);
+      
+      // initilize local counters
+      double Loo = l_LooNorm[j];
+      double L1 = l_L12Norm[j*numberOfDofs];
+      double L2 = l_L12Norm[j*numberOfDofs+1];
+
+      for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+        // increment node count (redundant)
+        l_nodeCount[j]++;
+
+        double diff = 0.0;
+        for ( int i = 0; i < fieldSize; ++i )
+          diff += std::abs(dofField[k*fieldSize+i] - exactDofField[k*fieldSize+i]);
+      
+        // norms...
+        Loo = std::max(diff, l_LooNorm[0]);
+        L1 += diff;
+        L2 += diff*diff;
+      }
+      
+      // assign back
+      l_LooNorm[j] = Loo;
+      l_L12Norm[j*numberOfDofs] = L1;
+      l_L12Norm[j*numberOfDofs+1] = L2;
+    }
+  }
+
+  // now assemble
+  std::vector<double> g_LooNorm(numberOfDofs);
+  std::vector<double> g_L12Norm(2*numberOfDofs);
+  std::vector<double> g_nodeCount(numberOfDofs,0);
+
+  stk::ParallelMachine comm = NaluEnv::self().parallel_comm();
+  stk::all_reduce_sum(comm, &l_nodeCount[0], &g_nodeCount[0], numberOfDofs);
+  stk::all_reduce_max(comm, &l_LooNorm[0], &g_LooNorm[0], numberOfDofs);
+  stk::all_reduce_sum(comm, &l_L12Norm[0], &g_L12Norm[0], numberOfDofs*2);
+
+  // output to a file
+  if ( NaluEnv::self().parallel_rank() == 0 ) {
+    const double currentTime = realm_.get_current_time();
+    std::ofstream myfile;
+    myfile.open(outputFileName_.c_str(), std::ios_base::app);
+
+    for ( size_t j = 0; j < fieldPairVec_.size(); ++j ) {
+      const stk::mesh::FieldBase *dofField = fieldPairVec_[j].first;
+      const std::string dofName = dofField->name();
+      myfile << std::setprecision(percision_) 
+             << std::setw(w_) 
+             << dofName  << std::setw(w_)
+             << timeStepCount << std::setw(w_)
+             << currentTime << std::setw(w_) 
+             << g_nodeCount[j] << std::setw(w_) 
+             << g_LooNorm[j] << std::setw(w_)
+             << g_L12Norm[j*numberOfDofs]/g_nodeCount[j] << std::setw(w_)
+             << g_L12Norm[j*numberOfDofs+1]/std::sqrt(g_nodeCount[j]) << std::setw(w_)
+             << std::endl;
+    }
+  }
+}
+
+} // namespace nalu
+} // namespace Sierra

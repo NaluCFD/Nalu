@@ -48,6 +48,7 @@
 #include <AveragingInfo.h>
 #include <PostProcessingInfo.h>
 #include <PostProcessingData.h>
+#include <SolutionNormPostProcessing.h>
 #include <PeriodicManager.h>
 #include <Realms.h>
 #include <ReferencePropertyData.h>
@@ -165,6 +166,7 @@ Realm::Realm(Realms& realms)
     outputInfo_(new OutputInfo()),
     averagingInfo_(new AveragingInfo()),
     postProcessingInfo_(new PostProcessingInfo()),
+    solutionNormPostProcessing_(new SolutionNormPostProcessing(*this)),
     nodeCount_(0),
     estimateMemoryOnly_(false),
     availableMemoryPerCoreGB_(0),
@@ -260,6 +262,7 @@ Realm::~Realm()
   delete outputInfo_;
   delete averagingInfo_;
   delete postProcessingInfo_;
+  delete solutionNormPostProcessing_;
 
   // delete contact related things
   if ( NULL != contactManager_ )
@@ -582,6 +585,9 @@ Realm::load(const YAML::Node & node)
   // post processing
   postProcessingInfo_->load(node);
 
+  // norms
+  solutionNormPostProcessing_->load(node);
+
   // boundary, init, material and equation systems "load"
   NaluEnv::self().naluOutputP0() << std::endl;
   NaluEnv::self().naluOutputP0() << "Boundary Condition Review: " << std::endl;
@@ -666,6 +672,10 @@ Realm::setup_nodal_fields()
   // loop over all material props targets and register nodal fields
   std::vector<std::string> targetNames = materialPropertys_.targetNames_;
   equationSystems_.register_nodal_fields(targetNames);
+
+  // check for norm nodal fields
+  if ( NULL != solutionNormPostProcessing_ )
+    solutionNormPostProcessing_->setup(targetNames);
 }
 
 //--------------------------------------------------------------------------
@@ -715,7 +725,7 @@ Realm::setup_post_processing_algorithms()
   // get a pointer to the post processing data vector
   std::vector<PostProcessingData* > &ppDataVec = postProcessingInfo_->ppDataVec_;
 
-  // iterate and set=up
+  // iterate and set-up
   std::vector<PostProcessingData *>::const_iterator ii;
   for( ii=ppDataVec.begin(); ii!=ppDataVec.end(); ++ii ) {
 
@@ -2614,7 +2624,6 @@ Realm::register_interior_algorithm(
       it_pp->second->partVec_.push_back(part);
     }
   }
-
 }
 
 //--------------------------------------------------------------------------
@@ -4011,6 +4020,9 @@ Realm::post_converged_work()
 
   for ( size_t k = 0; k < postConvergedAlg_.size(); ++k)
     postConvergedAlg_[k]->execute();
+
+  if ( NULL != solutionNormPostProcessing_ )
+    solutionNormPostProcessing_->execute();
 
   equationSystems_.post_converged_work();
 }
