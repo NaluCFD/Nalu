@@ -337,7 +337,7 @@ SolutionNormPostProcessing::execute()
                << g_nodeCount << std::setw(w_) 
                << g_LooNorm[offSet+i] << std::setw(w_)
                << g_L12Norm[offSet+i]/g_nodeCount << std::setw(w_)
-               << g_L12Norm[offSet+i+totalDofCompSize_]/std::sqrt(g_nodeCount) << std::setw(w_)
+               << std::sqrt(g_L12Norm[offSet+i+totalDofCompSize_]/g_nodeCount) << std::setw(w_)
                << std::endl;
       }
       // increment offset
