@@ -89,6 +89,7 @@ AssembleNodalGradUBoundaryAlgorithm::execute()
     // extract master element specifics
     const int nodesPerFace = meFC->nodesPerElement_;
     const int numScsIp = meFC->numIntPoints_;
+    const int *ipNodeMap = meFC->ipNodeMap();
 
     // algorithm related
     ws_vectorQ.resize(nodesPerFace*nDim);
@@ -134,7 +135,7 @@ AssembleNodalGradUBoundaryAlgorithm::execute()
       for ( int ip = 0; ip < numScsIp; ++ip ) {
 
         // nearest node
-        const int nn = ip;
+        const int nn = ipNodeMap[ip];
 
         stk::mesh::Entity nodeNN = face_node_rels[nn];
 

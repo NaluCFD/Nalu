@@ -92,7 +92,9 @@ void EquationSystems::load(const YAML::Node & y_node)
           if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = LowMachEOM " << std::endl;
           bool elemCont = (realm_.realmUsesEdges_) ? false : true;
           get_if_present_no_default(*y_eqsys, "element_continuity_eqs", elemCont);
-          eqSys = new LowMachEquationSystem(*this, elemCont);
+          bool managePNG = false;
+          get_if_present_no_default(*y_eqsys, "manage_png", managePNG);
+          eqSys = new LowMachEquationSystem(*this, elemCont, managePNG);
         }
         else if( (y_eqsys = expect_map(y_system, "ShearStressTransport", true)) ) {
           if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = tke/sdr " << std::endl;
@@ -122,7 +124,9 @@ void EquationSystems::load(const YAML::Node & y_node)
         }
         else if( (y_eqsys = expect_map(y_system, "HeatConduction", true)) ) {
           if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = HeatConduction " << std::endl;
-          eqSys = new HeatCondEquationSystem(*this);
+          bool managePNG = false;
+          get_if_present_no_default(*y_eqsys, "manage_png", managePNG);
+          eqSys = new HeatCondEquationSystem(*this, managePNG);
         }
         else if( (y_eqsys = expect_map(y_system, "RadiativeTransport", true)) ) {
           if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = RadiativeTransport " << std::endl;

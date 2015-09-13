@@ -14,6 +14,8 @@
 
 // the factory of aux functions
 #include <user_functions/SteadyThermalContactAuxFunction.h>
+#include <user_functions/SteadyTaylorVortexVelocityAuxFunction.h>
+#include <user_functions/SteadyTaylorVortexGradPressureAuxFunction.h>
 
 // stk_util
 #include <stk_util/parallel/ParallelReduce.hpp>
@@ -46,6 +48,7 @@ SolutionNormPostProcessing::SolutionNormPostProcessing(
   Realm & realm) 
   : realm_(realm),
     outputFrequency_(100),
+    totalDofCompSize_(0),
     outputFileName_("norms.dat"),
     w_(12),
     percision_(6)
@@ -144,6 +147,7 @@ SolutionNormPostProcessing::setup(
   }
   
   // iterate the vector
+  sizeOfEachField_.resize(dofFunctionVec_.size());
   for ( size_t k = 0; k < dofFunctionVec_.size(); ++k ) {
         
     // extract the dof and function name
@@ -157,7 +161,13 @@ SolutionNormPostProcessing::setup(
     
     // find the size; is there a better wat to determine a field size on a given part?
     const int dofSize = dofField->max_size(stk::topology::NODE_RANK);
-    
+
+    // increment total dof component size
+    totalDofCompSize_ += dofSize;
+
+    // save off size for each field
+    sizeOfEachField_[k] = dofSize;
+
     // register the field, "dofName + _exact"
     const std::string dofNameExact = dofName + "_exact";
     
@@ -194,6 +204,12 @@ SolutionNormPostProcessing::analytical_function_factory(
   // switch on the name found...
   if ( functionName == "steady_2d_thermal" ) {
     theAuxFunc = new SteadyThermalContactAuxFunction();
+  }
+  else if ( functionName == "SteadyTaylorVortexVelocity" ) {
+    theAuxFunc = new SteadyTaylorVortexVelocityAuxFunction(0,realm_.meta_data().spatial_dimension());
+  }
+  else if ( functionName == "SteadyTaylorVortexGradPressure" ) {
+    theAuxFunc = new SteadyTaylorVortexGradPressureAuxFunction(0,realm_.meta_data().spatial_dimension());
   }
   else {
     throw std::runtime_error("SolutionNormPostProcessing::setup: Only steady_2d_thermal user functions supported");
@@ -235,16 +251,15 @@ SolutionNormPostProcessing::execute()
     & !(realm_.get_inactive_selector());
 
   // size and initialize norm-related quantities; Loo, L1 and L2
-  const int numberOfDofs = fieldPairVec_.size();
-  std::vector<double> l_LooNorm(numberOfDofs);
-  std::vector<double> l_L12Norm(2*numberOfDofs);
-  std::vector<double> l_nodeCount(numberOfDofs,0);
+  std::vector<double> l_LooNorm(totalDofCompSize_);
+  std::vector<double> l_L12Norm(2*totalDofCompSize_);
 
   // initialize norms
-  for ( int j = 0; j < numberOfDofs; ++j ) {
+  size_t l_nodeCount = 0;
+  for ( int j = 0; j < totalDofCompSize_; ++j ) {
     l_LooNorm[j] = -1.0e16;
-    l_L12Norm[j*numberOfDofs+0] = 0.0;
-    l_L12Norm[j*numberOfDofs+1] = 0.0;
+    l_L12Norm[j] = 0.0;
+    l_L12Norm[totalDofCompSize_+j] = 0.0;
   }
 
   stk::mesh::BucketVector const& node_buckets = bulkData.get_buckets( stk::topology::NODE_RANK, s_locall_owned );
@@ -252,51 +267,55 @@ SolutionNormPostProcessing::execute()
         ib != node_buckets.end() ; ++ib ) {
     stk::mesh::Bucket & b = **ib ;
     const stk::mesh::Bucket::size_type length   = b.size();
+
+    l_nodeCount += length;
     
+    int offSet = 0;
     for ( size_t j = 0; j < fieldPairVec_.size(); ++j ) {
 
       // extract fields
       const double *dofField = (double*)stk::mesh::field_data(*(fieldPairVec_[j].first), b);
       double *exactDofField = (double*)stk::mesh::field_data(*(fieldPairVec_[j].second), b);
 
-      // sizes are the same between dof and exact dof
-      const int fieldSize = field_bytes_per_entity(*(fieldPairVec_[j].first), b) / sizeof(double);
-      
+      // size of this particular field      
+      const int fieldSize = sizeOfEachField_[j];
+
       // initilize local counters
-      double Loo = l_LooNorm[j];
-      double L1 = l_L12Norm[j*numberOfDofs];
-      double L2 = l_L12Norm[j*numberOfDofs+1];
+      double *Loo = &l_LooNorm[offSet];
+      double *L1 = &l_L12Norm[offSet];
+      double *L2 = &l_L12Norm[offSet+totalDofCompSize_];
 
       for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
-        // increment node count (redundant)
-        l_nodeCount[j]++;
-
-        double diff = 0.0;
-        for ( int i = 0; i < fieldSize; ++i )
-          diff += std::abs(dofField[k*fieldSize+i] - exactDofField[k*fieldSize+i]);
-      
-        // norms...
-        Loo = std::max(diff, l_LooNorm[0]);
-        L1 += diff;
-        L2 += diff*diff;
+        // loop over each field component
+        for ( int i = 0; i < fieldSize; ++i ) {
+          const double diff = std::abs(dofField[k*fieldSize+i] - exactDofField[k*fieldSize+i]);
+          // norms...
+          Loo[i] = std::max(diff, Loo[i]);
+          L1[i] += diff;
+          L2[i] += diff*diff;
+        }
       }
-      
-      // assign back
-      l_LooNorm[j] = Loo;
-      l_L12Norm[j*numberOfDofs] = L1;
-      l_L12Norm[j*numberOfDofs+1] = L2;
+      // increment offset
+      offSet += fieldSize;
     }
   }
 
   // now assemble
-  std::vector<double> g_LooNorm(numberOfDofs);
-  std::vector<double> g_L12Norm(2*numberOfDofs);
-  std::vector<double> g_nodeCount(numberOfDofs,0);
+  std::vector<double> g_LooNorm(totalDofCompSize_);
+  std::vector<double> g_L12Norm(2*totalDofCompSize_);
+
+  // initialize norms
+  size_t g_nodeCount = 0;
+  for ( int j = 0; j < totalDofCompSize_; ++j ) {
+    g_LooNorm[j] = -1.0e16;
+    g_L12Norm[j] = 0.0;
+    g_L12Norm[totalDofCompSize_+j] = 0.0;
+  }
 
   stk::ParallelMachine comm = NaluEnv::self().parallel_comm();
-  stk::all_reduce_sum(comm, &l_nodeCount[0], &g_nodeCount[0], numberOfDofs);
-  stk::all_reduce_max(comm, &l_LooNorm[0], &g_LooNorm[0], numberOfDofs);
-  stk::all_reduce_sum(comm, &l_L12Norm[0], &g_L12Norm[0], numberOfDofs*2);
+  stk::all_reduce_sum(comm, &l_nodeCount, &g_nodeCount, 1);
+  stk::all_reduce_max(comm, &l_LooNorm[0], &g_LooNorm[0], totalDofCompSize_);
+  stk::all_reduce_sum(comm, &l_L12Norm[0], &g_L12Norm[0], totalDofCompSize_*2);
 
   // output to a file
   if ( NaluEnv::self().parallel_rank() == 0 ) {
@@ -304,19 +323,25 @@ SolutionNormPostProcessing::execute()
     std::ofstream myfile;
     myfile.open(outputFileName_.c_str(), std::ios_base::app);
 
+    int offSet = 0;
     for ( size_t j = 0; j < fieldPairVec_.size(); ++j ) {
       const stk::mesh::FieldBase *dofField = fieldPairVec_[j].first;
+      const int fieldSize = sizeOfEachField_[j];
       const std::string dofName = dofField->name();
-      myfile << std::setprecision(percision_) 
-             << std::setw(w_) 
-             << dofName  << std::setw(w_)
-             << timeStepCount << std::setw(w_)
-             << currentTime << std::setw(w_) 
-             << g_nodeCount[j] << std::setw(w_) 
-             << g_LooNorm[j] << std::setw(w_)
-             << g_L12Norm[j*numberOfDofs]/g_nodeCount[j] << std::setw(w_)
-             << g_L12Norm[j*numberOfDofs+1]/std::sqrt(g_nodeCount[j]) << std::setw(w_)
-             << std::endl;
+      for ( int i = 0; i < fieldSize; ++i ) {
+        myfile << std::setprecision(percision_) 
+               << std::setw(w_) 
+               << dofName  << "[" << i << "]" << std::setw(w_)
+               << timeStepCount << std::setw(w_)
+               << currentTime << std::setw(w_) 
+               << g_nodeCount << std::setw(w_) 
+               << g_LooNorm[offSet+i] << std::setw(w_)
+               << g_L12Norm[offSet+i]/g_nodeCount << std::setw(w_)
+               << g_L12Norm[offSet+i+totalDofCompSize_]/std::sqrt(g_nodeCount) << std::setw(w_)
+               << std::endl;
+      }
+      // increment offset
+      offSet += fieldSize;
     }
   }
 }

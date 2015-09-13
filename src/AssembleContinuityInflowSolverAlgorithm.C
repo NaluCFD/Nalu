@@ -114,7 +114,8 @@ AssembleContinuityInflowSolverAlgorithm::execute()
     // extract master element specifics
     MasterElement *meFC = realm_.get_surface_master_element(b.topology());
     const int nodesPerFace = meFC->nodesPerElement_;
-    const int numScsIp = meFC->numIntPoints_;
+    const int numScsBip = meFC->numIntPoints_;
+    const int *ipNodeMap = meFC->ipNodeMap();
 
     // resize some things; matrix related
     const int lhsSize = nodesPerFace*nodesPerFace;
@@ -126,7 +127,7 @@ AssembleContinuityInflowSolverAlgorithm::execute()
     // algorithm related
     ws_densityBC.resize(nodesPerFace);
     ws_velocityBC.resize(nodesPerFace*nDim);
-    ws_shape_function.resize(numScsIp*nodesPerFace);
+    ws_shape_function.resize(numScsBip*nodesPerFace);
 
     // pointers
     double *p_lhs = &lhs[0];
@@ -146,6 +147,10 @@ AssembleContinuityInflowSolverAlgorithm::execute()
 
     const stk::mesh::Bucket::size_type length   = b.size();
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+
+      // zero rhs always for each exposed face
+      for ( int p = 0; p < rhsSize; ++p )
+        p_rhs[p] = 0.0;
 
       // face data
       double * areaVec = stk::mesh::field_data(*exposedAreaVec_, b, k);
@@ -174,9 +179,9 @@ AssembleContinuityInflowSolverAlgorithm::execute()
       }
 
       // start the assembly
-      for ( int ip = 0; ip < numScsIp; ++ip ) {
+      for ( int ip = 0; ip < numScsBip; ++ip ) {
 
-        const int nn = ip;
+        const int nn = ipNodeMap[ip];
 
         // interpolate to scs point; operate on saved off ws_field
         for (int j=0; j < nDim; ++j ) {
@@ -200,7 +205,7 @@ AssembleContinuityInflowSolverAlgorithm::execute()
         for ( int j=0; j < nDim; ++j ) {
           mdot += (interpTogether*p_rho_uIp[j] + om_interpTogether*rhoIp*p_uIp[j])*areaVec[ip*nDim+j];
         }
-        p_rhs[nn] = -mdot/projTimeScale;
+        p_rhs[nn] += -mdot/projTimeScale;
       }
 
       apply_coeff(connected_nodes, rhs, lhs, __FILE__);

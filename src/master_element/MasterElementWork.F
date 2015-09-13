@@ -2039,10 +2039,6 @@ c
       return
       end
 
-c
-c     Copyright 2002 Sandia Corporation, Albuquerque, NM.
-c
-c***********************************************************************
 c***********************************************************************
       subroutine tri_scs_det( nelem, npe, nint,
      *    cordel, area_vec )
@@ -3521,12 +3517,83 @@ c
          s1 = par_coord(1,j)
          s2 = par_coord(2,j)
 c
-         Shape_fcn(1,j) = one4th + half*(-s1 - s2) + s1*s2
+         shape_fcn(1,j) = one4th + half*(-s1 - s2) + s1*s2
          shape_fcn(2,j) = one4th + half*( s1 - s2) - s1*s2
          shape_fcn(3,j) = one4th + half*( s1 + s2) + s1*s2
          shape_fcn(4,j) = one4th + half*(-s1 + s2) - s1*s2
 c
       end do
 c
+      return
+      end
+
+      subroutine quad92d_derivative( npts, par_coord, deriv )
+!       
+!***********************************************************************
+!***********************************************************************
+!
+! formal parameters - input:
+!     npts          int   number of points to evaluate (usually 
+!                         the number of Gauss Points)
+!     par_coord     real  parametric coordinates of the points to be
+!                         evaluated (typically, the gauss pts)
+!
+! formal parameters - output:
+!     deriv         real  shape function dirivatives evaluated at 
+!                         evaluation points.
+!
+!***********************************************************************
+!
+!
+      implicit none
+!
+      integer npts
+      double precision par_coord, deriv
+c
+      dimension par_coord(2,npts)
+      dimension deriv(2,9,npts)
+
+      integer j
+      double precision s, t, t2, s2
+      double precision one4th, half, one, two
+!
+      one4th = 1.d0/4.d0
+      half = 1.d0/2.d0
+      one = 1.d0
+      two = 2.d0
+
+      do j = 1,npts
+         s = par_coord(1,j)
+         t = par_coord(2,j)
+
+         t2 = t*t
+         s2 = s*s
+!
+! shape function derivative in the s direction -
+!
+        deriv(1,1,j) =  one4th * (two * s  * t2 - two*s*t-t2+t)
+        deriv(1,2,j) =  one4th * (two * s  * t2 - two*s*t+t2-t)
+        deriv(1,3,j) =  one4th * (two * s  * t2 + two*s*t+t2+t)
+        deriv(1,4,j) =  one4th * (two * s  * t2 + two*s*t-t2-t)
+        deriv(1,5,j) =   -half * (two * s  * t2 - two*s*t)
+        deriv(1,6,j) =   -half * (two * s  * t2 + t2 - two*s-one)
+        deriv(1,7,j) =   -half * (two * s  * t2 + two*s*t)
+        deriv(1,8,j) =   -half * (two * s  * t2 - t2 - two*s+one)
+        deriv(1,9,j) =            two * s  * t2      - two*s
+!
+! shape function derivative in the t direction -
+!
+        deriv(2,1,j) =  one4th * (two * s2 * t  - two*s*t-s2+s)
+        deriv(2,2,j) =  one4th * (two * s2 * t  + two*s*t-s2-s)
+        deriv(2,3,j) =  one4th * (two * s2 * t  + two*s*t+s2+s)
+        deriv(2,4,j) =  one4th * (two * s2 * t  - two*s*t+s2-s)
+        deriv(2,5,j) =   -half * (two * s2 * t  - s2 - two*t+one)
+        deriv(2,6,j) =   -half * (two * s2 * t  + two*s*t)
+        deriv(2,7,j) =   -half * (two * s2 * t  + s2 - two*t-one)
+        deriv(2,8,j) =   -half * (two * s2 * t  - two*s*t)
+        deriv(2,9,j) =            two * s2 * t       - two*t
+
+      end do
+!
       return
       end

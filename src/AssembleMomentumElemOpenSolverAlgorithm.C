@@ -155,6 +155,7 @@ AssembleMomentumElemOpenSolverAlgorithm::execute()
     // face master element
     MasterElement *meFC = realm_.get_surface_master_element(b.topology());
     const int nodesPerFace = meFC->nodesPerElement_;
+    const int numScsBip = meFC->numIntPoints_;
     std::vector<int> face_node_ordinal_vec(nodesPerFace);
 
     // resize some things; matrix related
@@ -170,10 +171,10 @@ AssembleMomentumElemOpenSolverAlgorithm::execute()
     ws_coordinates.resize(nodesPerElement*nDim);
     ws_viscosity.resize(nodesPerFace);
     ws_bcVelocity.resize(nodesPerFace*nDim);
-    ws_face_shape_function.resize(nodesPerFace*nodesPerFace);
+    ws_face_shape_function.resize(numScsBip*nodesPerFace);
     ws_shape_function.resize(numScsIp*nodesPerElement);
-    ws_dndx.resize(nDim*nodesPerFace*nodesPerElement);
-    ws_det_j.resize(nodesPerFace);
+    ws_dndx.resize(nDim*numScsBip*nodesPerElement);
+    ws_det_j.resize(numScsBip);
 
     // pointers
     double *p_lhs = &lhs[0];
@@ -248,6 +249,10 @@ AssembleMomentumElemOpenSolverAlgorithm::execute()
       const int face_ordinal = face_elem_ords[0];
       theElemTopo.side_node_ordinals(face_ordinal, face_node_ordinal_vec.begin());
 
+      // mapping from ip to nodes for this ordinal
+      const int *ipNodeMap = meSCS->ipNodeMap(face_ordinal);
+      const int *faceIpNodeMap = meFC->ipNodeMap();
+
       //==========================================
       // gather nodal data off of element
       //==========================================
@@ -273,12 +278,13 @@ AssembleMomentumElemOpenSolverAlgorithm::execute()
       double scs_error = 0.0;
       meSCS->face_grad_op(1, face_ordinal, &p_coordinates[0], &p_dndx[0], &ws_det_j[0], &scs_error);
 
-      // loop over face nodes
-      for ( int ip = 0; ip < num_face_nodes; ++ip ) {
+      // loop over boundary ips
+      for ( int ip = 0; ip < numScsBip; ++ip ) {
 
         const int opposingNode = meSCS->opposingNodes(face_ordinal,ip);
-        const int nearestNode = face_node_ordinal_vec[ip];
+        const int nearestNode = ipNodeMap[ip];
         const int opposingScsIp = meSCS->opposingFace(face_ordinal,ip);
+        const int localFaceNode = faceIpNodeMap[ip];
 
         // offset for bip area vector and types of shape function
         const int faceOffSet = ip*nDim;
@@ -336,7 +342,7 @@ AssembleMomentumElemOpenSolverAlgorithm::execute()
         const double *coordR =  stk::mesh::field_data(*coordinates_, nodeR);
 
         double udotx = 0.0;
-        const int row_p_dudxR = ip*nDim*nDim;
+        const int row_p_dudxR = localFaceNode*nDim*nDim; // tricky here with localFaceNode
         for ( int i = 0; i < nDim; ++i ) {
           const double dxi = coordR[i]  - coordL[i];
           udotx += 0.5*dxi*(uNp1L[i] + uNp1R[i]);

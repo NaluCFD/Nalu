@@ -178,8 +178,15 @@ SolutionOptions::load(const YAML::Node & y_node)
           const YAML::Node& ySrc = *y_option.FindValue("source_terms");
           ySrc >> srcTermsMap_;
         }
+        else if (expect_map( y_option, "element_source_terms", optional)) {
+          const YAML::Node& ySrc = *y_option.FindValue("element_source_terms");
+          ySrc >> elemSrcTermsMap_;
+        }
         else if (expect_map( y_option, "source_term_parameters", optional)) {
             y_option["source_term_parameters"] >> srcTermParamMap_;
+        }
+        else if (expect_map( y_option, "element_source_term_parameters", optional)) {
+          y_option["element_source_term_parameters"] >> elemSrcTermParamMap_;
         }
         else if (expect_map( y_option, "projected_nodal_gradient", optional)) {
           y_option["projected_nodal_gradient"] >> nodalGradMap_;

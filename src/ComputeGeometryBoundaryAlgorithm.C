@@ -102,8 +102,9 @@ ComputeGeometryBoundaryAlgorithm::execute()
       double scs_error = 0.0;
       meFC->determinant(1, &ws_coordinates[0], &ws_scs_areav[0], &scs_error);
 
-      for ( int ni = 0; ni < num_nodes; ++ni ) {
-        const int offSet = ni*nDim;
+      // scarrer to area vector
+      for ( int ip = 0; ip < numScsIp; ++ip ) {
+        const int offSet = ip*nDim;
         for ( int j=0; j < nDim; ++j ) {
           areaVec[offSet+j] = ws_scs_areav[offSet+j];
         }

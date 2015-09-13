@@ -121,7 +121,7 @@ AssembleMomentumElemSymmetrySolverAlgorithm::execute()
     // face master element
     MasterElement *meFC = realm_.get_surface_master_element(b.topology());
     const int nodesPerFace = meFC->nodesPerElement_;
-    std::vector<int> face_node_ordinal_vec(nodesPerFace);
+    const int numScsBip = meFC->numIntPoints_;
 
     // resize some things; matrix related
     const int lhsSize = nodesPerElement*nDim*nodesPerElement*nDim;
@@ -134,9 +134,9 @@ AssembleMomentumElemSymmetrySolverAlgorithm::execute()
     ws_velocityNp1.resize(nodesPerElement*nDim);
     ws_coordinates.resize(nodesPerElement*nDim);
     ws_viscosity.resize(nodesPerFace);
-    ws_face_shape_function.resize(nodesPerFace*nodesPerFace);
-    ws_dndx.resize(nDim*nodesPerFace*nodesPerElement);
-    ws_det_j.resize(nodesPerFace);
+    ws_face_shape_function.resize(numScsBip*nodesPerFace);
+    ws_dndx.resize(nDim*numScsBip*nodesPerElement);
+    ws_det_j.resize(numScsBip);
 
     // pointers
     double *p_lhs = &lhs[0];
@@ -183,11 +183,13 @@ AssembleMomentumElemSymmetrySolverAlgorithm::execute()
       stk::mesh::Entity const * face_elem_rels = bulk_data.begin_elements(face);
       ThrowAssert( bulk_data.num_elements(face) == 1 );
 
-      // get element; its face ordinal number and populate face_node_ordinal_vec
+      // get element; its face ordinal number
       stk::mesh::Entity element = face_elem_rels[0];
       const stk::mesh::ConnectivityOrdinal* face_elem_ords = bulk_data.begin_element_ordinals(face);
       const int face_ordinal = face_elem_ords[0];
-      theElemTopo.side_node_ordinals(face_ordinal, face_node_ordinal_vec.begin());
+
+      // mapping from ip to nodes for this ordinal
+      const int *ipNodeMap = meSCS->ipNodeMap(face_ordinal);
 
       //==========================================
       // gather nodal data off of element
@@ -214,10 +216,10 @@ AssembleMomentumElemSymmetrySolverAlgorithm::execute()
       double scs_error = 0.0;
       meSCS->face_grad_op(1, face_ordinal, &p_coordinates[0], &p_dndx[0], &ws_det_j[0], &scs_error);
 
-      // loop over face nodes
-      for ( int ip = 0; ip < num_face_nodes; ++ip ) {
+      // loop over boundary ips
+      for ( int ip = 0; ip < numScsBip; ++ip ) {
 
-        const int nearestNode = face_node_ordinal_vec[ip];
+        const int nearestNode = ipNodeMap[ip];
 
         // offset for bip area vector and types of shape function
         const int faceOffSet = ip*nDim;

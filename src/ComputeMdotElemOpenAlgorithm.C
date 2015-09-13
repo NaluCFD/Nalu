@@ -141,6 +141,7 @@ ComputeMdotElemOpenAlgorithm::execute()
     // face master element
     MasterElement *meFC = realm_.get_surface_master_element(b.topology());
     const int nodesPerFace = b.topology().num_nodes();
+    const int numScsBip = meFC->numIntPoints_;
     std::vector<int> face_node_ordinal_vec(nodesPerFace);
 
     // algorithm related; element
@@ -151,7 +152,7 @@ ComputeMdotElemOpenAlgorithm::execute()
     ws_density.resize(nodesPerFace);
     ws_bcPressure.resize(nodesPerFace);
     ws_shape_function.resize(numScsIp*nodesPerElement);
-    ws_face_shape_function.resize(nodesPerFace*nodesPerFace);
+    ws_face_shape_function.resize(numScsBip*nodesPerFace);
 
     // pointers
     double *p_coordinates = &ws_coordinates[0];
@@ -239,8 +240,8 @@ ComputeMdotElemOpenAlgorithm::execute()
         }
       }
 
-      // loop over face nodes
-      for ( int ip = 0; ip < num_face_nodes; ++ip ) {
+      // loop over boundary ips
+      for ( int ip = 0; ip < numScsBip; ++ip ) {
 
         const int opposingScsIp = meSCS->opposingFace(face_ordinal,ip);
 

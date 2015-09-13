@@ -1,0 +1,151 @@
+/*------------------------------------------------------------------------*/
+/*  Copyright 2014 Sandia Corporation.                                    */
+/*  This software is released under the license detailed                  */
+/*  in the file, LICENSE, which is located in the top-level Nalu          */
+/*  directory structure                                                   */
+/*------------------------------------------------------------------------*/
+
+
+#include <MomentumBuoyancySrcElemSuppAlg.h>
+#include <SupplementalAlgorithm.h>
+#include <FieldTypeDef.h>
+#include <Realm.h>
+#include <SolutionOptions.h>
+
+// master element
+#include <master_element/MasterElement.h>
+
+// stk_mesh/base/fem
+#include <stk_mesh/base/Entity.hpp>
+#include <stk_mesh/base/MetaData.hpp>
+#include <stk_mesh/base/BulkData.hpp>
+#include <stk_mesh/base/Field.hpp>
+
+namespace sierra{
+namespace nalu{
+
+//==========================================================================
+// Class Definition
+//==========================================================================
+// MomentumBuoyancySrcElemSuppAlg - CMM for momentum buoyancy (u-dof)
+//==========================================================================
+//--------------------------------------------------------------------------
+//-------- constructor -----------------------------------------------------
+//--------------------------------------------------------------------------
+MomentumBuoyancySrcElemSuppAlg::MomentumBuoyancySrcElemSuppAlg(
+  Realm &realm)
+  : SupplementalAlgorithm(realm),
+    bulkData_(&realm.bulk_data()),
+    densityNp1_(NULL),
+    scVolume_(NULL),
+    nDim_(realm_.spatialDimension_),
+    rhoRef_(0.0),
+    useShifted_(false)
+{
+  // save off fields
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
+  ScalarFieldType *density = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
+  densityNp1_ = &(density->field_of_state(stk::mesh::StateNP1));
+  scVolume_ = meta_data.get_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "sc_volume");
+
+  // extract user parameters from solution options
+  gravity_.resize(nDim_);
+  gravity_ = realm_.solutionOptions_->gravity_;
+  rhoRef_ = realm_.solutionOptions_->referenceDensity_;
+}
+
+//--------------------------------------------------------------------------
+//-------- elem_resize -----------------------------------------------------
+//--------------------------------------------------------------------------
+void
+MomentumBuoyancySrcElemSuppAlg::elem_resize(
+  MasterElement */*meSCS*/,
+  MasterElement *meSCV)
+{
+  const int nodesPerElement = meSCV->nodesPerElement_;
+  const int numScvIp = meSCV->numIntPoints_;
+
+  // resize
+  ws_shape_function_.resize(numScvIp*nodesPerElement);
+  ws_rhoNp1_.resize(nodesPerElement);
+
+  // compute shape function
+  if ( useShifted_ )
+    meSCV->shifted_shape_fcn(&ws_shape_function_[0]);
+  else
+    meSCV->shape_fcn(&ws_shape_function_[0]);
+}
+
+//--------------------------------------------------------------------------
+//-------- setup -----------------------------------------------------------
+//--------------------------------------------------------------------------
+void
+MomentumBuoyancySrcElemSuppAlg::setup()
+{
+  // nothing to do
+}
+
+//--------------------------------------------------------------------------
+//-------- elem_execute ----------------------------------------------------
+//--------------------------------------------------------------------------
+void
+MomentumBuoyancySrcElemSuppAlg::elem_execute(
+  double *lhs,
+  double *rhs,
+  stk::mesh::Entity element,
+  MasterElement */*meSCS*/,
+  MasterElement *meSCV)
+{
+  // pointers to field
+  const double *scVolume = stk::mesh::field_data(*scVolume_, element);
+  
+  // pointer to ME methods
+  const int *ipNodeMap = meSCV->ipNodeMap();
+  const int nodesPerElement = meSCV->nodesPerElement_;
+  const int numScvIp = meSCV->numIntPoints_;
+
+  // gather
+  stk::mesh::Entity const *  node_rels = bulkData_->begin_nodes(element);
+  int num_nodes = bulkData_->num_nodes(element);
+
+  // sanity check on num nodes
+  ThrowAssert( num_nodes == nodesPerElement );
+
+  for ( int ni = 0; ni < num_nodes; ++ni ) {
+    stk::mesh::Entity node = node_rels[ni];
+    // gather scalars
+    ws_rhoNp1_[ni] = *stk::mesh::field_data(*densityNp1_, node);
+
+    // gather vectors; n/a
+  }
+
+  for ( int ip = 0; ip < numScvIp; ++ip ) {
+      
+    // nearest node to ip
+    const int nearestNode = ipNodeMap[ip];
+    
+    // zero out
+    double rhoNp1Scv = 0.0;
+      
+    const int offSet = ip*nodesPerElement;
+    for ( int ic = 0; ic < nodesPerElement; ++ic ) {
+      // save off shape function
+      const double r = ws_shape_function_[offSet+ic];
+
+      // density
+      rhoNp1Scv += r*ws_rhoNp1_[ic];
+    }
+
+    // assemble rhs
+    const double scV = scVolume[ip];
+    const int nnNdim = nearestNode*nDim_;
+    const double fac = (rhoNp1Scv-rhoRef_)*scV;
+    for ( int i = 0; i < nDim_; ++i ) {
+      rhs[nnNdim+i] += fac*gravity_[i];
+    }
+    // manage LHS; n/a
+  }
+}
+
+} // namespace nalu
+} // namespace Sierra

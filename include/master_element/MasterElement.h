@@ -20,6 +20,15 @@ struct topology;
 namespace sierra{
 namespace nalu{
 
+namespace Jacobian{
+enum Direction
+{
+  S_DIRECTION = 0,
+  T_DIRECTION = 1,
+  U_DIRECTION = 2
+};
+}
+
 class MasterElement
 {
 public:
@@ -70,6 +79,10 @@ public:
   virtual const int * adjacentNodes() {
     throw std::runtime_error("adjacentNodes not implementedunknown bc");
     return NULL;}
+
+  virtual const int * ipNodeMap(int ordinal = 0) {
+      throw std::runtime_error("ipNodeMap not implemented");
+      return NULL;}
 
   virtual void shape_fcn(
     double *shpfc) {
@@ -139,12 +152,15 @@ public:
   virtual const double * edgeAlignedArea() {
     throw std::runtime_error("edgeAlignedArea not implement"); }
 
+  double isoparametric_mapping(const double b, const double a, const double xi);
+
   int nDim_;
   int nodesPerElement_;
   int numIntPoints_;
   double scaleToStandardIsoFac_;
 
   std::vector<int> lrscv_;
+  std::vector<int> ipNodeMap_;
   std::vector<int> oppNode_;
   std::vector<int> oppFace_;
   std::vector<double> intgLoc_;
@@ -168,6 +184,8 @@ public:
   HexSCV();
   virtual ~HexSCV();
 
+  const int * ipNodeMap(int ordinal = 0);
+
   void determinant(
     const int nelem,
     const double *coords,
@@ -184,6 +202,8 @@ public:
 
   HexSCS();
   virtual ~HexSCS();
+
+  const int * ipNodeMap(int ordinal = 0);
 
   void determinant(
     const int nelem,
@@ -272,6 +292,153 @@ public:
   bool within_tol( const double & val, const double & tol );
 };
 
+class HexahedralP2Element : public MasterElement
+{
+public:
+  HexahedralP2Element();
+  virtual ~HexahedralP2Element() = default;
+
+  void shape_fcn(double *shpfc);
+  void shifted_shape_fcn(double *shpfc)  {};
+
+protected:
+  struct ContourData {
+    Jacobian::Direction direction;
+    double weight;
+  };
+
+  int tensor_product_node_map(int i, int j, int k) const;
+  void shape_deriv_s(const double* isoParCoords, double* result) const;
+  void shape_deriv_t(const double* isoParCoords, double* result) const;
+  void shape_deriv_u(const double* isoParCoords, double* result) const;
+
+  const double scsDist_;
+  const bool useGLLGLL_;
+  const int nodes1D_;
+  const int numQuad_;
+
+  //quadrature info
+  std::vector<double> gp_;
+  std::vector<double> gw_;
+  std::vector<double> scsEndLoc_;
+
+  std::vector<int> stkNodeMap_;
+
+private:
+  void hex27_shape_fcn(
+    const int &npts,
+    const double *par_coord,
+    double* shape_fcn
+  ) const;
+
+
+};
+
+// 3D Quad 27 subcontrol volume
+class Hex27SCV : public HexahedralP2Element
+{
+public:
+  Hex27SCV();
+  virtual ~Hex27SCV() = default;
+
+  const int * ipNodeMap(int ordinal = 0);
+
+  void determinant(
+    const int nelem,
+    const double *coords,
+    double *areav,
+    double * error );
+
+private:
+  double jacobian_determinant(
+    const double *isoParCoords,
+    const double *elemNodalCoords,
+    double *shapeDerivs,
+    double *err) const;
+
+  void shape_deriv(
+      const double* isoParCoords,
+      double* shapeDerivs) const;
+
+  std::vector<double> ipWeight_;
+};
+
+// 3D Hex 27 subcontrol surface
+class Hex27SCS : public HexahedralP2Element
+{
+public:
+  Hex27SCS();
+  virtual ~Hex27SCS() = default;
+
+  const int * adjacentNodes();
+
+  void determinant(
+    const int nelem,
+    const double *coords,
+    double *areav,
+    double * error );
+
+  void grad_op(
+    const int nelem,
+    const double *coords,
+    double *gradop,
+    double *deriv,
+    double *det_j,
+    double * error );
+
+  void face_grad_op(
+     const int nelem,
+     const int face_ordinal,
+     const double *coords,
+     double *gradop,
+     double *det_j,
+     double * error );
+
+  const int * ipNodeMap(int ordinal = 0);
+
+  int opposingNodes(
+    const int ordinal, const int node);
+
+  int opposingFace(
+    const int ordinal, const int node);
+
+private:
+  void set_interior_info();
+  void set_boundary_info();
+
+  void area_vector(
+    const Jacobian::Direction direction,
+    const double *isoParCoords,
+    const double *elemNodalCoords,
+    double *shapeDeriv,
+    double *normalVec ) const;
+
+  void directional_shape_deriv(
+    const Jacobian::Direction direction,
+    const double *isoParCoords,
+    double *deriv ) const;
+
+  void shape_deriv(
+    const double *isoParCoords,
+    double *deriv ) const;
+
+  void gradient(
+    const double* elemNodalCoords,
+    const double* shapeDeriv,
+    double* grad,
+    double* det_j ) const;
+
+  int opp_face_map(
+    int k,
+    int l,
+    int i,
+    int j,
+    int face ) const;
+
+  std::vector<ContourData> ipInfo_;
+  int ipsPerFace_;
+};
+
 // Tet 4 subcontrol volume
 class TetSCV : public MasterElement
 {
@@ -280,12 +447,13 @@ public:
   TetSCV();
   virtual ~TetSCV();
 
+  const int * ipNodeMap(int ordinal = 0);
+
   void determinant(
     const int nelem,
     const double *coords,
     double *areav,
     double * error );
-
 };
 
 // Tet 4 subcontrol surface
@@ -295,6 +463,8 @@ public:
 
   TetSCS();
   virtual ~TetSCS();
+
+  const int * ipNodeMap(int ordinal = 0);
 
   void determinant(
     const int nelem,
@@ -387,6 +557,8 @@ public:
   PyrSCV();
   virtual ~PyrSCV();
 
+  const int * ipNodeMap(int ordinal = 0);
+
   void determinant(
     const int nelem,
     const double *coords,
@@ -453,6 +625,8 @@ public:
   WedSCV();
   virtual ~WedSCV();
 
+  const int * ipNodeMap(int ordinal = 0);
+
   void determinant(
     const int nelem,
     const double *coords,
@@ -466,6 +640,8 @@ class WedSCS : public MasterElement
 public:
   WedSCS();
   virtual ~WedSCS();
+
+  const int * ipNodeMap(int ordinal = 0);
 
   void determinant(
     const int nelem,
@@ -530,6 +706,8 @@ public:
   Quad2DSCV();
   virtual ~Quad2DSCV();
 
+  const int * ipNodeMap(int ordinal = 0);
+
   void determinant(
     const int nelem,
     const double *coords,
@@ -543,6 +721,8 @@ class Quad2DSCS : public MasterElement
 public:
   Quad2DSCS();
   virtual ~Quad2DSCS();
+
+  const int * ipNodeMap(int ordinal = 0);
 
   void determinant(
     const int nelem,
@@ -631,12 +811,149 @@ public:
   const double * edgeAlignedArea();
 };
 
+class QuadrilateralP2Element : public MasterElement
+{
+public:
+  QuadrilateralP2Element();
+  virtual ~QuadrilateralP2Element() = default;
+
+protected:
+  struct ContourData {
+    Jacobian::Direction direction;
+    double weight;
+  };
+
+  int tensor_product_node_map(int i, int j) const;
+
+  void shape_deriv_s(const double* isoParCoords, double* result) const;
+
+  void shape_deriv_t(const double* isoParCoords, double* result) const;
+
+  void quad9_shape_fcn(
+    const int &npts,
+    const double *par_coord,
+    double* shape_fcn
+  );
+
+  const double scsDist_;
+  const bool useGLLGLL_;
+  const int nodes1D_;
+  const int numQuad_;
+
+  //quadrature info
+  std::vector<double> gp_;
+  std::vector<double> gw_;
+
+  std::vector<int> stkNodeMap_;
+};
+
+
+// 2D Quad 9 subcontrol volume
+class Quad92DSCV : public QuadrilateralP2Element
+{
+public:
+  Quad92DSCV();
+  ~Quad92DSCV();
+
+  const int * ipNodeMap(int ordinal = 0);
+
+  void shape_fcn(double *shpfc);
+  void shifted_shape_fcn(double *shpfc);
+
+  void determinant(
+    const int nelem,
+    const double *coords,
+    double *areav,
+    double * error );
+
+private:
+  double jacobian_determinant(
+    const double *isoParCoords,
+    const double *elemNodalCoords,
+    double *work,
+    double *err) const;
+
+  void shape_deriv(
+     const double *isoParCoords,
+     double *deriv) const;
+
+  std::vector<double> ipWeight_;
+};
+
+// 2D Quad 9 subcontrol surface
+class Quad92DSCS : public QuadrilateralP2Element
+{
+public:
+  Quad92DSCS();
+  ~Quad92DSCS();
+
+  const int * ipNodeMap(int ordinal = 0);
+
+  void determinant(
+    const int nelem,
+    const double *coords,
+    double *areav,
+    double * error );
+
+  const int * adjacentNodes();
+
+  void grad_op(
+    const int nelem,
+    const double *coords,
+    double *gradop,
+    double *deriv,
+    double *det_j,
+    double * error );
+
+  void face_grad_op(
+    const int nelem,
+    const int face_ordinal,
+    const double *coords,
+    double *gradop,
+    double *det_j,
+    double * error );
+
+  int opposingNodes(
+    const int ordinal, const int node);
+
+  int opposingFace(
+    const int ordinal, const int node);
+
+  void shape_fcn(
+    double *shpfc);
+
+  void shifted_shape_fcn(
+    double *shpfc);
+
+private:
+  void set_interior_info();
+  void set_boundary_info();
+
+  void area_vector(
+    const Jacobian::Direction direction,
+    const double *isoParCoords,
+    const double *elemNodalCoords,
+    double *shapeDeriv,
+    double *normalVec ) const;
+
+  void directional_shape_deriv(
+    const Jacobian::Direction direction,
+    const double *isoParCoords,
+    double *deriv) const;
+
+  std::vector<ContourData>ipInfo_;
+  int ipsPerFace_;
+
+};
+
 // 2D Tri 3 subcontrol volume
 class Tri2DSCV : public MasterElement
 {
 public:
   Tri2DSCV();
   virtual ~Tri2DSCV();
+
+  const int * ipNodeMap(int ordinal = 0);
 
   void determinant(
     const int nelem,
@@ -652,6 +969,8 @@ class Tri2DSCS : public MasterElement
 public:
   Tri2DSCS();
   virtual ~Tri2DSCS();
+
+  const int * ipNodeMap(int ordinal = 0);
 
   void determinant(
     const int nelem,
@@ -740,6 +1059,8 @@ public:
   Quad3DSCS();
   virtual ~Quad3DSCS();
 
+  const int * ipNodeMap(int ordinal = 0);
+
   void determinant(
     const int nelem,
     const double *coords,
@@ -782,6 +1103,50 @@ public:
   const double elemThickness_;
 };
 
+// 3D Quad 9
+class Quad93DSCS : public HexahedralP2Element
+{
+public:
+  Quad93DSCS();
+  virtual ~Quad93DSCS() = default;
+
+  const int * ipNodeMap(int ordinal = 0);
+
+  void determinant(
+    const int nelem,
+    const double *coords,
+    double *areav,
+    double * error );
+
+  void shape_fcn(
+    double *shpfc);
+
+  void shifted_shape_fcn(
+    double *shpfc);
+  
+  void quad9_shape_fcn(
+    const int &npts,
+    const double *par_coord, 
+    double* shape_fcn);
+
+private:
+  void area_vector(
+    const double *coords,
+    const double *isoParCoords,
+    double *shapeDerivs,
+    double *normalVec) const;
+
+  void shape_deriv_s(
+    const double *isoParCoords,
+    double *deriv) const;
+
+  void shape_deriv_t(
+    const double *isoParCoords,
+    double *deriv) const;
+
+  std::vector<double> ipWeight_;
+};
+
 // 3D Tri 3
 class Tri3DSCS : public MasterElement
 {
@@ -789,6 +1154,8 @@ public:
 
   Tri3DSCS();
   virtual ~Tri3DSCS();
+
+  const int * ipNodeMap(int ordinal = 0);
 
   void determinant(
     const int nelem,
@@ -835,6 +1202,8 @@ public:
   Edge2DSCS();
   virtual ~Edge2DSCS();
 
+  const int * ipNodeMap(int ordinal = 0);
+
   void determinant(
     const int nelem,
     const double *coords,
@@ -866,6 +1235,36 @@ public:
   double parametric_distance(const std::vector<double> &x);
 
   const double elemThickness_;  
+};
+
+// edge 2d
+class Edge32DSCS : public QuadrilateralP2Element
+{
+public:
+  Edge32DSCS();
+  virtual ~Edge32DSCS();
+
+  const int * ipNodeMap(int ordinal = 0);
+
+  void determinant(
+    const int nelem,
+    const double *coords,
+    double *areav,
+    double * error );
+
+  void shape_fcn(
+    double *shpfc);
+
+  void shifted_shape_fcn(
+    double *shpfc);
+
+private:
+  void area_vector(
+    const double *coords,
+    const double s,
+    double *normalVec) const;
+
+  std::vector<double> ipWeight_;
 };
 
 } // namespace nalu

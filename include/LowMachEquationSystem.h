@@ -27,6 +27,7 @@ class AssembleNodalGradUAlgorithmDriver;
 class MomentumEquationSystem;
 class ContinuityEquationSystem;
 class LinearSystem;
+class ProjectedNodalGradientEquationSystem;
 class SurfaceForceAndMomentAlgorithmDriver;
 
 class LowMachEquationSystem : public EquationSystem {
@@ -35,7 +36,8 @@ public:
 
   LowMachEquationSystem (
     EquationSystems& equationSystems,
-    const bool elementContinuityEqs);
+    const bool elementContinuityEqs,
+    const bool managePNG);
   virtual ~LowMachEquationSystem();
   
   virtual void initialize();
@@ -152,7 +154,7 @@ public:
   virtual void predict_state();
 
   void compute_wall_function_params();
-
+ 
   VectorFieldType *velocity_;
   GenericFieldType *dudx_;
 
@@ -179,7 +181,8 @@ public:
 
   ContinuityEquationSystem(
     EquationSystems& equationSystems,
-    const bool elementContinuityEqs);
+    const bool elementContinuityEqs,
+    const bool managePNG);
   virtual ~ContinuityEquationSystem();
 
   virtual void register_nodal_fields(
@@ -233,8 +236,13 @@ public:
       stk::mesh::Part *part,
       const std::map<std::string, std::string> &theNames,
       const std::map<std::string, std::vector<double> > &theParams);
+
+  virtual void manage_projected_nodal_gradient(
+    EquationSystems& eqSystems);
+  virtual void compute_projected_nodal_gradient();
   
   const bool elementContinuityEqs_;
+  const bool managePNG_;
   ScalarFieldType *pressure_;
   VectorFieldType *dpdx_;
   ScalarFieldType *massFlowRate_;
@@ -244,7 +252,8 @@ public:
 
   AssembleNodalGradAlgorithmDriver *assembleNodalGradAlgDriver_;
   AlgorithmDriver *computeMdotAlgDriver_;
-};
+  ProjectedNodalGradientEquationSystem *projectedNodalGradEqs_;}
+;
 
 } // namespace nalu
 } // namespace Sierra

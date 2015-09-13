@@ -144,6 +144,12 @@ extern "C" void
 SIERRA_FORTRAN( quad_derivative ) ( const int*  npts,
 				    const double* par_coords,
 				    double* deriv );
+
+extern "C" void
+SIERRA_FORTRAN( quad92d_derivative ) ( const int*  npts,
+				       const double* par_coords,
+				       double* deriv );
+
 extern "C" void
 SIERRA_FORTRAN( tet_derivative ) ( const int*  npts,
                                    double* deriv );
@@ -222,6 +228,5 @@ extern "C" void
 SIERRA_FORTRAN( quad3d_shape_fcn ) ( const int*  npts,
                                      const double* par_coords,
                                      double* shape_fcn );
-
 
 #endif // FORTRAN_Proto_h

@@ -41,10 +41,17 @@
 #include <ScalarGclNodeSuppAlg.h>
 #include <ScalarMassBackwardEulerNodeSuppAlg.h>
 #include <ScalarMassBDF2NodeSuppAlg.h>
+#include <ScalarMassBDF2ElemSuppAlg.h>
 #include <Simulation.h>
 #include <SolutionOptions.h>
 #include <TimeIntegrator.h>
 #include <SolverAlgorithmDriver.h>
+
+// user function
+#include <user_functions/SteadyTaylorVortexMixFracSrcElemSuppAlg.h>
+#include <user_functions/SteadyTaylorVortexMixFracSrcNodeSuppAlg.h>
+#include <user_functions/SteadyTaylorVortexMixFracAuxFunction.h>
+#include <user_functions/RayleighTaylorMixFracAuxFunction.h>
 
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
@@ -216,6 +223,7 @@ MixtureFractionEquationSystem::register_interior_algorithm(
   }
 
   // solver; interior edge contribution (advection + diffusion)
+  bool useCMM = false;
   std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi
     = solverAlgDriver_->solverAlgMap_.find(algType);
   if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
@@ -227,6 +235,33 @@ MixtureFractionEquationSystem::register_interior_algorithm(
       theAlg = new AssembleScalarElemSolverAlgorithm(realm_, part, this, mixFrac_, dzdx_, evisc_);
     }
     solverAlgDriver_->solverAlgMap_[algType] = theAlg;
+
+    // look for src
+    std::map<std::string, std::vector<std::string> >::iterator isrc 
+      = realm_.solutionOptions_->elemSrcTermsMap_.find("mixture_fraction");
+    if ( isrc != realm_.solutionOptions_->elemSrcTermsMap_.end() ) {
+      std::vector<std::string> mapNameVec = isrc->second;
+      for (size_t k = 0; k < mapNameVec.size(); ++k ) {
+        std::string sourceName = mapNameVec[k];
+        SupplementalAlgorithm *suppAlg = NULL;
+        if (sourceName == "SteadyTaylorVortex" ) {
+          suppAlg = new SteadyTaylorVortexMixFracSrcElemSuppAlg(realm_);
+        }
+        else if (sourceName == "mixture_fraction_time_derivative" ) {
+          useCMM = true;
+          if ( realm_.number_of_states() == 2 ) {
+            throw std::runtime_error("ElemSrcTermsError::CMM Backward Euler not supported");
+          }
+          else {
+            suppAlg = new ScalarMassBDF2ElemSuppAlg(realm_, mixFrac_);
+          } 
+        }
+        else {
+          throw std::runtime_error("ElemSrcTermsError::only support SteadyTV and time term");
+        }     
+        theAlg->supplementalAlg_.push_back(suppAlg); 
+      }
+    }
   }
   else {
     itsi->second->partVec_.push_back(part);
@@ -243,15 +278,17 @@ MixtureFractionEquationSystem::register_interior_algorithm(
     solverAlgDriver_->solverAlgMap_[algMass] = theAlg;
 
     // now create the supplemental alg for mass term
-    if ( realm_.number_of_states() == 2 ) {
-      ScalarMassBackwardEulerNodeSuppAlg *theMass
-        = new ScalarMassBackwardEulerNodeSuppAlg(realm_, mixFrac_);
-      theAlg->supplementalAlg_.push_back(theMass);
-    }
-    else {
-      ScalarMassBDF2NodeSuppAlg *theMass
-        = new ScalarMassBDF2NodeSuppAlg(realm_, mixFrac_);
-      theAlg->supplementalAlg_.push_back(theMass);
+    if ( !useCMM ) {
+      if ( realm_.number_of_states() == 2 ) {
+        ScalarMassBackwardEulerNodeSuppAlg *theMass
+          = new ScalarMassBackwardEulerNodeSuppAlg(realm_, mixFrac_);
+        theAlg->supplementalAlg_.push_back(theMass);
+      }
+      else {
+        ScalarMassBDF2NodeSuppAlg *theMass
+          = new ScalarMassBDF2NodeSuppAlg(realm_, mixFrac_);
+        theAlg->supplementalAlg_.push_back(theMass);
+      }
     }
     
     // Add src term supp alg...; limited number supported
@@ -264,6 +301,9 @@ MixtureFractionEquationSystem::register_interior_algorithm(
         SupplementalAlgorithm *suppAlg = NULL;
         if ( sourceName == "gcl" ) {
           suppAlg = new ScalarGclNodeSuppAlg(mixFrac_,realm_);
+        }
+        else if ( sourceName == "SteadyTaylorVortex" ) {
+          suppAlg = new SteadyTaylorVortexMixFracSrcNodeSuppAlg(realm_);
         }
         else {
           throw std::runtime_error("MixtureFractionEquationSystem::only gcl source term(s) are supported");
@@ -317,18 +357,37 @@ MixtureFractionEquationSystem::register_inflow_bc(
 
   // extract the value for user specified mixFrac and save off the AuxFunction
   InflowUserData userData = inflowBCData.userData_;
-  MixtureFraction mixFrac = userData.mixFrac_;
-  std::vector<double> userSpec(1);
-  userSpec[0] = mixFrac.mixFrac_;
+  std::string mixFracName = "mixture_fraction";
+  UserDataType theDataType = get_bc_data_type(userData, mixFracName);
 
-  // new it
-  ConstantAuxFunction *theAuxFunc = new ConstantAuxFunction(0, 1, userSpec);
+  AuxFunction *theAuxFunc = NULL;
+  if ( CONSTANT_UD == theDataType ) {
+    MixtureFraction mixFrac = userData.mixFrac_;
+    std::vector<double> userSpec(1);
+    userSpec[0] = mixFrac.mixFrac_;
+
+    // new it
+    theAuxFunc = new ConstantAuxFunction(0, 1, userSpec);
+  }
+  else if ( FUNCTION_UD == theDataType ) {
+    std::string fcnName = get_bc_function_name(userData, mixFracName);
+    if ( fcnName == "SteadyTaylorVortex" ) {
+      theAuxFunc = new SteadyTaylorVortexMixFracAuxFunction();
+    }
+    else {
+      throw std::runtime_error("MixFracEquationSystem::register_inflow_bc: Only SteadyTaylorVortex supported");
+    }
+  }
+  else {
+    throw std::runtime_error("MixFracEquationSystem::register_inflow_bc: only constant and user function supported");
+  }
 
   // bc data alg
   AuxFunctionAlgorithm *auxAlg
     = new AuxFunctionAlgorithm(realm_, part,
                                theBcField, theAuxFunc,
                                stk::topology::NODE_RANK);
+
   bcDataAlg_.push_back(auxAlg);
 
   // copy mixFrac_bc to mixture_fraction np1...
@@ -678,7 +737,6 @@ MixtureFractionEquationSystem::initialize()
   linsys_->finalizeLinearSystem();
 }
 
-
 //--------------------------------------------------------------------------
 //-------- reinitialize_linear_system --------------------------------------
 //--------------------------------------------------------------------------
@@ -710,6 +768,46 @@ MixtureFractionEquationSystem::reinitialize_linear_system()
 }
 
 //--------------------------------------------------------------------------
+//-------- register_initial_condition_fcn ----------------------------------
+//--------------------------------------------------------------------------
+void
+MixtureFractionEquationSystem::register_initial_condition_fcn(
+  stk::mesh::Part *part,
+  const std::map<std::string, std::string> &theNames,
+  const std::map<std::string, std::vector<double> > &/*theParams*/)
+{
+  // iterate map and check for name
+  const std::string dofName = "mixture_fraction";
+  std::map<std::string, std::string>::const_iterator iterName
+    = theNames.find(dofName);
+  if (iterName != theNames.end()) {
+    std::string fcnName = (*iterName).second;
+    AuxFunction *theAuxFunc = NULL;
+    if ( fcnName == "SteadyTaylorVortex" ) {
+      // create the function
+      theAuxFunc = new SteadyTaylorVortexMixFracAuxFunction();      
+    }
+    else if ( fcnName == "RayleighTaylor" ) {
+      // create the function
+      theAuxFunc = new RayleighTaylorMixFracAuxFunction();      
+    }
+    else {
+      throw std::runtime_error("MixtureFractionEquationSystem::register_initial_condition_fcn: steady_tv only supported");
+    }
+    
+    // create the algorithm
+    AuxFunctionAlgorithm *auxAlg
+      = new AuxFunctionAlgorithm(realm_, part,
+				 mixFrac_, theAuxFunc,
+				 stk::topology::NODE_RANK);
+    
+    // push to ic
+    realm_.initCondAlg_.push_back(auxAlg);
+    
+  }
+}
+
+//--------------------------------------------------------------------------
 //-------- solve_and_update ------------------------------------------------
 //--------------------------------------------------------------------------
 void
@@ -735,7 +833,18 @@ MixtureFractionEquationSystem::solve_and_update()
 
     // update
     double timeA = stk::cpu_time();
-    update_and_clip();
+    const bool doClip = true;
+    if ( doClip ) {
+      update_and_clip();
+    }
+    else {
+      field_axpby(
+        realm_.meta_data(),
+        realm_.bulk_data(),
+        1.0, *zTmp_,
+        1.0, mixFrac_->field_of_state(stk::mesh::StateNP1),
+        realm_.get_activate_aura());
+    }
     double timeB = stk::cpu_time();
     timerAssemble_ += (timeB-timeA);
 
@@ -748,7 +857,6 @@ MixtureFractionEquationSystem::solve_and_update()
   }
 
   compute_scalar_var_diss();
-
 }
 
 //--------------------------------------------------------------------------

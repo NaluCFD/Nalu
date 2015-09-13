@@ -86,6 +86,7 @@ ComputeGeometryInteriorAlgorithm::execute()
     // extract master element specifics
     const int nodesPerElement = meSCV->nodesPerElement_;
     const int numScvIp = meSCV->numIntPoints_;
+    const int *ipNodeMap = meSCV->ipNodeMap();
 
     // define scratch field
     std::vector<double > ws_coordinates(nodesPerElement*nDim);
@@ -120,12 +121,14 @@ ComputeGeometryInteriorAlgorithm::execute()
       meSCV->determinant(1, &ws_coordinates[0], &ws_scvol[0], &scv_error);
 
       // assemble dual volume while scattering ip volume
-      for ( int ni = 0; ni < num_nodes; ++ni ) {
-        stk::mesh::Entity node = node_rels[ni];
+      for ( int ip = 0; ip < numScvIp; ++ip ) {
+        // nearest node for this ip
+        const int nn = ipNodeMap[ip];
+        stk::mesh::Entity node = node_rels[nn];
         double * dualcv = stk::mesh::field_data(*dualNodalVolume, node);
 
-        const double scvol = ws_scvol[ni];
-        subContVol[ni] = scvol;
+        const double scvol = ws_scvol[ip];
+        subContVol[ip] = scvol;
         // augment nodal dual volume
         *dualcv += scvol;
       }

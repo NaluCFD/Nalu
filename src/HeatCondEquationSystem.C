@@ -8,6 +8,7 @@
 
 #include <HeatCondEquationSystem.h>
 
+#include <AssembleElemSolverAlgorithm.h>
 #include <AssembleHeatCondWallSolverAlgorithm.h>
 #include <AssembleHeatCondIrradWallSolverAlgorithm.h>
 #include <AssembleScalarEdgeDiffSolverAlgorithm.h>
@@ -36,11 +37,13 @@
 #include <LinearSolvers.h>
 #include <LinearSolver.h>
 #include <LinearSystem.h>
+#include <master_element/MasterElement.h>
 #include <NaluEnv.h>
 #include <Realm.h>
 #include <Realms.h>
 #include <HeatCondMassBackwardEulerNodeSuppAlg.h>
 #include <HeatCondMassBDF2NodeSuppAlg.h>
+#include <ProjectedNodalGradientEquationSystem.h>
 #include <PstabErrorIndicatorEdgeAlgorithm.h>
 #include <PstabErrorIndicatorElemAlgorithm.h>
 #include <SimpleErrorIndicatorScalarElemAlgorithm.h>
@@ -52,6 +55,7 @@
 // user functions
 #include <user_functions/SteadyThermalContactAuxFunction.h>
 #include <user_functions/SteadyThermalContactSrcNodeSuppAlg.h>
+#include <user_functions/SteadyThermalContactSrcElemSuppAlg.h>
 
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
@@ -88,8 +92,10 @@ namespace nalu{
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 HeatCondEquationSystem::HeatCondEquationSystem(
-  EquationSystems& eqSystems)
+  EquationSystems& eqSystems,
+  const bool managePNG)
   : EquationSystem(eqSystems, "HeatCondEQS"),
+    managePNG_(managePNG),
     temperature_(NULL),
     dtdx_(NULL),
     tTmp_(NULL),
@@ -105,7 +111,8 @@ HeatCondEquationSystem::HeatCondEquationSystem(
     edgeAreaVec_(NULL),
     assembleNodalGradAlgDriver_(new AssembleNodalGradAlgorithmDriver(realm_, "temperature", "dtdx")),
     isInit_(true),
-    collocationForViscousTerms_(false)
+    collocationForViscousTerms_(false),
+    projectedNodalGradEqs_(NULL)
 {
   // extract solver name and solver object
   std::string solverName = realm_.equationSystems_.get_solver_block_name("temperature");
@@ -118,6 +125,11 @@ HeatCondEquationSystem::HeatCondEquationSystem(
 
   // push back EQ to manager
   realm_.equationSystems_.push_back(this);
+
+  // create projected nodal gradient equation system
+  if ( managePNG_ ) {
+    manage_png(eqSystems);
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -126,6 +138,19 @@ HeatCondEquationSystem::HeatCondEquationSystem(
 HeatCondEquationSystem::~HeatCondEquationSystem()
 {
   delete assembleNodalGradAlgDriver_;
+}
+
+//--------------------------------------------------------------------------
+//-------- manage_png ------------------------------------------------------
+//--------------------------------------------------------------------------
+void
+HeatCondEquationSystem::manage_png(
+  EquationSystems& eqSystems)
+{
+  projectedNodalGradEqs_ 
+    = new ProjectedNodalGradientEquationSystem(eqSystems, "dqdxCMM", "qTmp", "temperature", "PNGGradEQS");
+  // fill the map; only require wall (which is the same name)...
+  projectedNodalGradEqs_->set_data_map(WALL_BC, "temperature");
 }
 
 //--------------------------------------------------------------------------
@@ -187,6 +212,10 @@ HeatCondEquationSystem::register_nodal_fields(
 
     copyStateAlg_.push_back(theCopyAlgA);
   }
+
+  // WIP; register dqdxCMM for norm calculation
+  VectorFieldType *dqdxCMM = &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "dqdxCMM"));
+  stk::mesh::put_field(*dqdxCMM, *part, nDim);
 }
 
 //--------------------------------------------------------------------------
@@ -224,7 +253,8 @@ HeatCondEquationSystem::register_element_fields(
 
   stk::mesh::MetaData &meta_data = realm_.meta_data();
 
-  const int numScvIp = theTopo.num_nodes();
+  MasterElement *meSCV = realm_.get_volume_master_element(theTopo);
+  const int numScvIp = meSCV->numIntPoints_;
   scVolume_ = &(meta_data.declare_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "sc_volume"));
   stk::mesh::put_field(*scVolume_, *part, numScvIp );
 
@@ -259,20 +289,22 @@ HeatCondEquationSystem::register_interior_algorithm(
   VectorFieldType &dtdxNone = dtdx_->field_of_state(stk::mesh::StateNone);
 
   // non-solver; contribution to projected nodal gradient; allow for element-based shifted
-  std::map<AlgorithmType, Algorithm *>::iterator it
-    = assembleNodalGradAlgDriver_->algMap_.find(algType);
-  if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg = NULL;
-    if ( edgeNodalGradient_ && realm_.realmUsesEdges_ ) {
-      theAlg = new AssembleNodalGradEdgeAlgorithm(realm_, part, &tempNp1, &dtdxNone);
+  if ( !managePNG_ ) {
+    std::map<AlgorithmType, Algorithm *>::iterator it
+      = assembleNodalGradAlgDriver_->algMap_.find(algType);
+    if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+      Algorithm *theAlg = NULL;
+      if ( edgeNodalGradient_ && realm_.realmUsesEdges_ ) {
+        theAlg = new AssembleNodalGradEdgeAlgorithm(realm_, part, &tempNp1, &dtdxNone);
+      }
+      else {
+        theAlg = new AssembleNodalGradElemAlgorithm(realm_, part, &tempNp1, &dtdxNone, edgeNodalGradient_);
+      }
+      assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
     }
     else {
-      theAlg = new AssembleNodalGradElemAlgorithm(realm_, part, &tempNp1, &dtdxNone, edgeNodalGradient_);
+      it->second->partVec_.push_back(part);
     }
-    assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
-  }
-  else {
-    it->second->partVec_.push_back(part);
   }
 
   // solver; interior edge contribution (diffusion)
@@ -326,7 +358,7 @@ HeatCondEquationSystem::register_interior_algorithm(
         std::string sourceName = mapNameVec[k];
         if (sourceName == "steady_2d_thermal" ) {
           SteadyThermalContactSrcNodeSuppAlg *theSrc
-	    = new SteadyThermalContactSrcNodeSuppAlg(realm_);
+            = new SteadyThermalContactSrcNodeSuppAlg(realm_);
           theAlg->supplementalAlg_.push_back(theSrc);
         }
         else {
@@ -339,12 +371,45 @@ HeatCondEquationSystem::register_interior_algorithm(
     itsm->second->partVec_.push_back(part);
   }
 
+  // allow for fully integrated source terms
+  const AlgorithmType algElemSource = ELEM_SOURCE;
+  std::map<AlgorithmType, SolverAlgorithm *>::iterator itsrc
+    = solverAlgDriver_->solverAlgMap_.find(algElemSource);
+  if ( itsrc == solverAlgDriver_->solverAlgMap_.end() ) {
+    // create the solver alg
+    AssembleElemSolverAlgorithm *theAlg
+      = new AssembleElemSolverAlgorithm(realm_, part, this);
+    solverAlgDriver_->solverAlgMap_[algElemSource] = theAlg;
+
+    // Add src term supp alg...; limited number supported
+    std::map<std::string, std::vector<std::string> >::iterator isrc 
+      = realm_.solutionOptions_->elemSrcTermsMap_.find("temperature");
+    if ( isrc != realm_.solutionOptions_->elemSrcTermsMap_.end() ) {
+      std::vector<std::string> mapNameVec = isrc->second;
+      for (size_t k = 0; k < mapNameVec.size(); ++k ) {
+        std::string sourceName = mapNameVec[k];
+        if (sourceName == "steady_2d_thermal" ) {
+          SteadyThermalContactSrcElemSuppAlg *theSrc
+            = new SteadyThermalContactSrcElemSuppAlg(realm_);
+          theAlg->supplementalAlg_.push_back(theSrc);
+        }
+        else {
+          throw std::runtime_error("HeatCondEquationSystem::only steady_2d_thermal element src term is supported");
+        }
+      }
+    }
+  }
+  else {
+    itsrc->second->partVec_.push_back(part);
+  }
+
   // deal with adaptivity
   if ( realm_.solutionOptions_->activateAdaptivity_) {
 
     // non-solver alg
-    it = realm_.errorIndicatorAlgDriver_->algMap_.find(algType);
-    if ( it == realm_.errorIndicatorAlgDriver_->algMap_.end() ) {
+    std::map<AlgorithmType, Algorithm *>::iterator itEI
+      = realm_.errorIndicatorAlgDriver_->algMap_.find(algType);
+    if ( itEI == realm_.errorIndicatorAlgDriver_->algMap_.end() ) {
       Algorithm *theAlg = NULL;
       if ( realm_.solutionOptions_->errorIndicatorType_ & EIT_PSTAB ) {
         if ( realm_.realmUsesEdges_)
@@ -361,10 +426,9 @@ HeatCondEquationSystem::register_interior_algorithm(
       realm_.errorIndicatorAlgDriver_->algMap_[algType] = theAlg;
     }
     else {
-      it->second->partVec_.push_back(part);
+      itEI->second->partVec_.push_back(part);
     }
   }
-  
 }
 
 //--------------------------------------------------------------------------
@@ -386,15 +450,17 @@ HeatCondEquationSystem::register_wall_bc(
   stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   // non-solver; dtdx; allow for element-based shifted; all bcs are of generic type "WALL"
-  std::map<AlgorithmType, Algorithm *>::iterator it
-    = assembleNodalGradAlgDriver_->algMap_.find(algType);
-  if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg 
-      = new AssembleNodalGradBoundaryAlgorithm(realm_, part, &tempNp1, &dtdxNone, edgeNodalGradient_);
-    assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
-  }
-  else {
-    it->second->partVec_.push_back(part);
+  if ( !managePNG_ ) {
+    std::map<AlgorithmType, Algorithm *>::iterator it
+      = assembleNodalGradAlgDriver_->algMap_.find(algType);
+    if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+      Algorithm *theAlg 
+        = new AssembleNodalGradBoundaryAlgorithm(realm_, part, &tempNp1, &dtdxNone, edgeNodalGradient_);
+      assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+    }
+    else {
+      it->second->partVec_.push_back(part);
+    }
   }
 
   // extract the value for user specified temperaure and save off the AuxFunction
@@ -876,9 +942,8 @@ void
 HeatCondEquationSystem::solve_and_update()
 {
   // initialize fields
-
   if ( isInit_ ) {
-    assembleNodalGradAlgDriver_->execute();
+    compute_projected_nodal_gradient();
     isInit_ = false;
   }
 
@@ -903,9 +968,23 @@ HeatCondEquationSystem::solve_and_update()
    
     // projected nodal gradient
     timeA = stk::cpu_time();
-    assembleNodalGradAlgDriver_->execute();
+    compute_projected_nodal_gradient();
     timeB = stk::cpu_time();
     timerMisc_ += (timeB-timeA);
+  }  
+}
+
+//--------------------------------------------------------------------------
+//-------- compute_projected_nodal_gradient --------------------------------
+//--------------------------------------------------------------------------
+void
+HeatCondEquationSystem::compute_projected_nodal_gradient()
+{
+  if ( !managePNG_ ) {
+    assembleNodalGradAlgDriver_->execute();
+  }
+  else {
+    projectedNodalGradEqs_->solve_and_update_external();
   }
 }
 

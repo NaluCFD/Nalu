@@ -74,6 +74,11 @@ public:
 
   virtual void register_overset_bc();
 
+  virtual void register_initial_condition_fcn(
+      stk::mesh::Part *part,
+      const std::map<std::string, std::string> &theNames,
+      const std::map<std::string, std::vector<double> > &theParams);
+
   void initialize();
   void reinitialize_linear_system();
   

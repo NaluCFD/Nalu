@@ -102,9 +102,11 @@ public:
   std::map<std::string, double> turbScMap_;
   std::map<std::string, double> turbPrMap_;
 
-  // source
+  // source; nodal and fully integrated
   std::map<std::string, std::vector<std::string> > srcTermsMap_;
   std::map<std::string, std::vector<double> > srcTermParamMap_;
+  std::map<std::string, std::vector<std::string> > elemSrcTermsMap_;
+  std::map<std::string, std::vector<double> > elemSrcTermParamMap_;
 
   // nodal gradient
   std::map<std::string, std::string> nodalGradMap_;

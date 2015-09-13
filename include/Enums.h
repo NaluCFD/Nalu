@@ -27,7 +27,8 @@ enum AlgorithmType{
   WALL_CHT  = 9,
   WALL_RAD  = 10,
   NON_CONFORMAL = 11,
-  OVERSET = 12
+  ELEM_SOURCE = 12,
+  OVERSET = 13
 };
 
 enum BoundaryConditionType{
@@ -52,6 +53,7 @@ enum EquationType {
   EQ_MESH_DISPLACEMENT = 7,
   EQ_SPEC_DISS_RATE = 8,
   EQ_MASS_FRACTION = 9,
+  EQ_PNG = 10,
   EquationSystemType_END
 };
 
@@ -65,7 +67,8 @@ static const std::string EquationTypeMap[] = {
   "Enthalpy",
   "MeshVelocity",
   "Specific_Dissipation_Rate",
-  "Mass_Fraction"
+  "Mass_Fraction",
+  "PNG"
 };
 
 enum UserDataType {

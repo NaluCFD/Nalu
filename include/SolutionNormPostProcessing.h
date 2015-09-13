@@ -63,6 +63,12 @@ public:
   // how often to output norms
   int outputFrequency_;
   
+  // keep track of total dof component size
+  int totalDofCompSize_;
+
+  // for each dof, save off field size
+  std::vector<int> sizeOfEachField_;
+  
   // file name
   std::string outputFileName_;
   

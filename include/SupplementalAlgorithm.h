@@ -35,8 +35,8 @@ public:
     double *lhs,
     double *rhs,
     stk::mesh::Entity element,
-    const MasterElement *meSCS,
-    const MasterElement *meSCV) {}
+    MasterElement *meSCS,
+    MasterElement *meSCV) {}
   
   virtual void node_execute(
     double *lhs,
@@ -44,11 +44,10 @@ public:
     stk::mesh::Entity node) {}
   
   virtual void elem_resize(
-    const MasterElement *meSCS,
-    const MasterElement *meSCV) {}
+    MasterElement *meSCS,
+    MasterElement *meSCV) {}
 
-  Realm &realm_;
-  
+  Realm &realm_;  
 };
 
 } // namespace nalu

@@ -144,6 +144,7 @@ AssembleScalarElemOpenSolverAlgorithm::execute()
     // face master element
     MasterElement *meFC = realm_.get_surface_master_element(b.topology());
     const int nodesPerFace = meFC->nodesPerElement_;
+    const int numScsBip = meFC->numIntPoints_;
     std::vector<int> face_node_ordinal_vec(nodesPerFace);
 
     // resize some things; matrix related
@@ -157,7 +158,7 @@ AssembleScalarElemOpenSolverAlgorithm::execute()
     ws_face_coordinates.resize(nodesPerFace*nDim);
     ws_scalarQNp1.resize(nodesPerFace);
     ws_bcScalarQ.resize(nodesPerFace);
-    ws_face_shape_function.resize(nodesPerFace*nodesPerFace);
+    ws_face_shape_function.resize(numScsBip*nodesPerFace);
 
     // pointers
     double *p_lhs = &lhs[0];
@@ -217,6 +218,9 @@ AssembleScalarElemOpenSolverAlgorithm::execute()
       const int face_ordinal = bulk_data.begin_element_ordinals(face)[0];
       theElemTopo.side_node_ordinals(face_ordinal, face_node_ordinal_vec.begin());
 
+      // mapping from ip to nodes for this ordinal
+      const int *ipNodeMap = meSCS->ipNodeMap(face_ordinal);
+
       //==========================================
       // gather nodal data off of element; n/a
       //==========================================
@@ -230,10 +234,10 @@ AssembleScalarElemOpenSolverAlgorithm::execute()
       }
 
       // loop over face nodes
-      for ( int ip = 0; ip < num_face_nodes; ++ip ) {
+      for ( int ip = 0; ip < numScsBip; ++ip ) {
 
         const int opposingNode = meSCS->opposingNodes(face_ordinal,ip);
-        const int nearestNode = face_node_ordinal_vec[ip];
+        const int nearestNode = ipNodeMap[ip];
 
         const int offSetSF_face = ip*nodesPerFace;
 
