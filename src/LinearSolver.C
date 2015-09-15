@@ -259,7 +259,7 @@ void TpetraLinearSolver::setMueLu()
     if (recomputePreconditioner_ || mueluPreconditioner_ == Teuchos::null)
     {
       std::string xmlFileName = config_->muelu_xml_file();
-      mueluPreconditioner_ = MueLu::CreateTpetraPreconditioner<SC,LO,GO,NO>(matrix_, xmlFileName, coords_);
+      mueluPreconditioner_ = MueLu::CreateTpetraPreconditioner<SC,LO,GO,NO>(Teuchos::RCP<Tpetra::Operator<SC,LO,GO,NO> >(matrix_), xmlFileName, coords_);
     }
     else if (reusePreconditioner_) {
       MueLu::ReuseTpetraPreconditioner(matrix_, *mueluPreconditioner_);
