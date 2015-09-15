@@ -217,16 +217,7 @@ MeshDisplacementEquationSystem::register_element_fields(
   stk::mesh::Part *part,
   const stk::topology &theTopo)
 {
-  //====================================================
-  // Register element data
-  //====================================================
-
-  stk::mesh::MetaData & meta_data = realm_.meta_data();
-
-  const int numScvIp = theTopo.num_nodes();
-  GenericFieldType *scVolume = &(meta_data.declare_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "sc_volume"));
-  stk::mesh::put_field(*scVolume, *part, numScvIp );
-
+  // n/a
 }
 
 //--------------------------------------------------------------------------

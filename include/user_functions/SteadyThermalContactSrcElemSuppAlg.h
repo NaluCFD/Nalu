@@ -46,7 +46,7 @@ public:
   const stk::mesh::BulkData *bulkData_;
 
   VectorFieldType *coordinates_;
-  GenericFieldType *scVolume_;
+
   const double a_;
   const double k_;
   const double pi_;
@@ -58,6 +58,7 @@ public:
   std::vector<double> scvCoords_;
   std::vector<double> ws_shape_function_;
   std::vector<double> ws_coordinates_;
+  std::vector<double> ws_scv_volume_;
   std::vector<double> ws_nodalSrc_;
 };
 

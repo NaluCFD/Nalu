@@ -46,7 +46,6 @@ public:
   const stk::mesh::BulkData *bulkData_;
 
   VectorFieldType *coordinates_;
-  GenericFieldType *scVolume_;
 
   double dt_;
   const int nDim_;
@@ -70,6 +69,7 @@ public:
   // at elem_resize
   std::vector<double> ws_shape_function_;
   std::vector<double> ws_coordinates_;
+  std::vector<double> ws_scv_volume_;
 };
 
 } // namespace nalu

@@ -43,15 +43,13 @@ AssemblePNGElemSolverAlgorithm::AssemblePNGElemSolverAlgorithm(
   : SolverAlgorithm(realm, part, eqSystem),
     scalarQ_(NULL),
     dqdx_(NULL),
-    coordinates_(NULL),
-    scVolume_(NULL)
+    coordinates_(NULL)
 {
   // save off data
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   scalarQ_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, independentDofName);
   dqdx_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, dofName);
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
-  scVolume_ = meta_data.get_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "sc_volume");
 }
 
 //--------------------------------------------------------------------------
@@ -86,6 +84,7 @@ AssemblePNGElemSolverAlgorithm::execute()
 
   // geometry related to populate
   std::vector<double> ws_scs_areav;
+  std::vector<double> ws_scv_volume;
   std::vector<double> ws_shape_function_scs;
   std::vector<double> ws_shape_function_scv;
 
@@ -129,6 +128,7 @@ AssemblePNGElemSolverAlgorithm::execute()
     ws_dqdx.resize(nodesPerElement*nDim);
     ws_coordinates.resize(nodesPerElement*nDim);
     ws_scs_areav.resize(numScsIp*nDim);
+    ws_scv_volume.resize(numScvIp);
     ws_shape_function_scs.resize(numScsIp*nodesPerElement);
     ws_shape_function_scv.resize(numScvIp*nodesPerElement);
 
@@ -139,6 +139,7 @@ AssemblePNGElemSolverAlgorithm::execute()
     double *p_dqdx = &ws_dqdx[0];
     double *p_coordinates = &ws_coordinates[0];
     double *p_scs_areav = &ws_scs_areav[0];
+    double *p_scv_volume = &ws_scv_volume[0];
     double *p_shape_function_scs = &ws_shape_function_scs[0];
     double *p_shape_function_scv = &ws_shape_function_scv[0];
 
@@ -153,10 +154,7 @@ AssemblePNGElemSolverAlgorithm::execute()
         p_lhs[p] = 0.0;
       for ( int p = 0; p < rhsSize; ++p )
         p_rhs[p] = 0.0;
-
-      // ip data for this element; scs and scv
-      const double *scVolume = stk::mesh::field_data(*scVolume_, b, k );
-
+      
       //===============================================
       // gather nodal data; this is how we do it now..
       //===============================================
@@ -192,6 +190,9 @@ AssemblePNGElemSolverAlgorithm::execute()
       // compute geometry
       double scs_error = 0.0;
       meSCS->determinant(1, &p_coordinates[0], &p_scs_areav[0], &scs_error);
+
+      double scv_error = 0.0;
+      meSCV->determinant(1, &p_coordinates[0], &p_scv_volume[0], &scv_error);
 
       // handle scs first; all RHS as if it is a source term
       for ( int ip = 0; ip < numScsIp; ++ip ) {
@@ -238,7 +239,7 @@ AssemblePNGElemSolverAlgorithm::execute()
         // save off some offsets and sc_volume at this ip
         const int nnNdim = nearestNode*nDim;
         const int offSetSF = ip*nodesPerElement;
-        const double scV = scVolume[ip];
+        const double scV = p_scv_volume[ip];
 
         // zero out scv
         for ( int j = 0; j < nDim; ++j )

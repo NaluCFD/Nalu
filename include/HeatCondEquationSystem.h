@@ -105,7 +105,6 @@ public:
   ScalarFieldType *specHeat_;
   ScalarFieldType *thermalCond_;
 
-  GenericFieldType *scVolume_;
   VectorFieldType *edgeAreaVec_;
  
   AssembleNodalGradAlgorithmDriver *assembleNodalGradAlgDriver_;

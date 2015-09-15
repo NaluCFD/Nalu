@@ -36,11 +36,12 @@ ContinuityMassBDF2ElemSuppAlg::ContinuityMassBDF2ElemSuppAlg(
     densityNm1_(NULL),
     densityN_(NULL),
     densityNp1_(NULL),
-    scVolume_(NULL),
+    coordinates_(NULL),
     dt_(0.0),
     gamma1_(0.0),
     gamma2_(0.0),
     gamma3_(0.0),
+    nDim_(realm_.spatialDimension_),
     useShifted_(false)
 {
   // save off fields
@@ -49,7 +50,7 @@ ContinuityMassBDF2ElemSuppAlg::ContinuityMassBDF2ElemSuppAlg(
   densityNm1_ = &(density->field_of_state(stk::mesh::StateNM1));
   densityN_ = &(density->field_of_state(stk::mesh::StateN));
   densityNp1_ = &(density->field_of_state(stk::mesh::StateNP1));
-  scVolume_ = meta_data.get_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "sc_volume");
+  coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
 }
 
 //--------------------------------------------------------------------------
@@ -68,6 +69,8 @@ ContinuityMassBDF2ElemSuppAlg::elem_resize(
   ws_rhoNp1_.resize(nodesPerElement);
   ws_rhoN_.resize(nodesPerElement);
   ws_rhoNm1_.resize(nodesPerElement);
+  ws_coordinates_.resize(nDim_*nodesPerElement);
+  ws_scv_volume_.resize(numScvIp);
 
   // compute shape function
   if ( useShifted_ )
@@ -101,9 +104,6 @@ ContinuityMassBDF2ElemSuppAlg::elem_execute(
 {
   const double projTimeScale = dt_/gamma1_;
   
-  // pointers to field
-  const double *scVolume = stk::mesh::field_data(*scVolume_, element);
-  
   // pointer to ME methods
   const int *ipNodeMap = meSCV->ipNodeMap();
   const int nodesPerElement = meSCV->nodesPerElement_;
@@ -119,13 +119,24 @@ ContinuityMassBDF2ElemSuppAlg::elem_execute(
   for ( int ni = 0; ni < num_nodes; ++ni ) {
     stk::mesh::Entity node = node_rels[ni];
     
+    // pointers to real data
+    const double * coords =  stk::mesh::field_data(*coordinates_, node);
+      
     // gather scalars
     ws_rhoNm1_[ni] = *stk::mesh::field_data(*densityNm1_, node);
     ws_rhoN_[ni] = *stk::mesh::field_data(*densityN_, node);
     ws_rhoNp1_[ni] = *stk::mesh::field_data(*densityNp1_, node);
 
-    // gather vectors; n/a
+    // gather vectors
+    const int niNdim = ni*nDim_;
+    for ( int i=0; i < nDim_; ++i ) {
+      ws_coordinates_[niNdim+i] = coords[i];
+    }
   }
+
+  // compute geometry
+  double scv_error = 0.0;
+  meSCV->determinant(1, &ws_coordinates_[0], &ws_scv_volume_[0], &scv_error);
 
   for ( int ip = 0; ip < numScvIp; ++ip ) {
       
@@ -149,7 +160,7 @@ ContinuityMassBDF2ElemSuppAlg::elem_execute(
     }
 
     // assemble rhs
-    const double scV = scVolume[ip];
+    const double scV = ws_scv_volume_[ip];
     rhs[nearestNode] += 
       -(gamma1_*rhoNp1Scv + gamma2_*rhoNScv + gamma3_*rhoNm1Scv)*scV/dt_/projTimeScale;
     // manage LHS; n/a

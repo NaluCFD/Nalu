@@ -123,7 +123,7 @@ ComputeGeometryExtrusionBoundaryAlgorithm::execute()
     // define scratch field
     std::vector<double > ws_coordinates(nodesPerElement*nDim);
     std::vector<double > ws_scs_areav(numScsIp*nDim);
-    std::vector<double > ws_scvol(nodesPerElement);
+    std::vector<double > ws_scv_volume(nodesPerElement);
     
     const stk::mesh::Bucket::size_type length   = b.size();
     
@@ -161,7 +161,7 @@ ComputeGeometryExtrusionBoundaryAlgorithm::execute()
       
       // compute integration point volume
       double scv_error = 0.0;
-      meSCV->determinant(1, &ws_coordinates[0], &ws_scvol[0], &scv_error);
+      meSCV->determinant(1, &ws_coordinates[0], &ws_scv_volume[0], &scv_error);
       
       // compute scs integration point areavec
       double scs_error = 0.0;
@@ -172,7 +172,7 @@ ComputeGeometryExtrusionBoundaryAlgorithm::execute()
 	stk::mesh::Entity node = face_node_rels[ni];
 	double * dualVolume = stk::mesh::field_data( *dualNodalVolume, node );
 	const int faceNode = faceNodeOnExtrudedElem[face_ordinal*num_nodes + ni];
-	*dualVolume += ws_scvol[faceNode];
+	*dualVolume += ws_scv_volume[faceNode];
 	// area vector for halo edge; 
 	// face ordinal 0 for extruded element has all scs area vectors pointing from face to opposing face
 	double * hAxj = stk::mesh::field_data( *haloAxj, node );

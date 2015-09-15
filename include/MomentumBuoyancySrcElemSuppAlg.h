@@ -46,7 +46,7 @@ public:
   const stk::mesh::BulkData *bulkData_;
 
   ScalarFieldType *densityNp1_;
-  GenericFieldType *scVolume_;
+  VectorFieldType *coordinates_;
 
   const int nDim_;
   double rhoRef_;
@@ -56,6 +56,8 @@ public:
   // scratch space
   std::vector<double> ws_shape_function_;
   std::vector<double> ws_rhoNp1_;
+  std::vector<double> ws_coordinates_;
+  std::vector<double> ws_scv_volume_;
 };
 
 } // namespace nalu

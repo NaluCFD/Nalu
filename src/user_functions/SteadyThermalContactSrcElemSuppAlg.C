@@ -34,7 +34,6 @@ SteadyThermalContactSrcElemSuppAlg::SteadyThermalContactSrcElemSuppAlg(
   : SupplementalAlgorithm(realm),
     bulkData_(&realm.bulk_data()),
     coordinates_(NULL),
-    scVolume_(NULL),
     a_(1.0),
     k_(1.0),
     pi_(std::acos(-1.0)),
@@ -45,8 +44,7 @@ SteadyThermalContactSrcElemSuppAlg::SteadyThermalContactSrcElemSuppAlg(
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
-  scVolume_ = meta_data.get_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "sc_volume");
-
+ 
   // scratch vecs
   scvCoords_.resize(nDim_);
 }
@@ -63,6 +61,7 @@ SteadyThermalContactSrcElemSuppAlg::elem_resize(
   const int numScvIp = meSCV->numIntPoints_;
   ws_shape_function_.resize(numScvIp*nodesPerElement);
   ws_coordinates_.resize(nDim_*nodesPerElement);
+  ws_scv_volume_.resize(numScvIp);
   ws_nodalSrc_.resize(nodesPerElement);
 
   // compute shape function
@@ -92,9 +91,6 @@ SteadyThermalContactSrcElemSuppAlg::elem_execute(
   MasterElement */*meSCS*/,
   MasterElement *meSCV)
 {
-  // pointers to field
-  const double *scVolume = stk::mesh::field_data(*scVolume_, element);
-  
   // pointer to ME methods
   const int *ipNodeMap = meSCV->ipNodeMap();
   const int nodesPerElement = meSCV->nodesPerElement_;
@@ -118,6 +114,10 @@ SteadyThermalContactSrcElemSuppAlg::elem_execute(
     }
   }
 
+  // compute geometry
+  double scv_error = 0.0;
+  meSCV->determinant(1, &ws_coordinates_[0], &ws_scv_volume_[0], &scv_error);
+
   // choose a form...
   if ( evalAtIps_ ) {
     // interpolate to ips and evaluate source
@@ -138,7 +138,7 @@ SteadyThermalContactSrcElemSuppAlg::elem_execute(
       }
       const double x = scvCoords_[0];
       const double y = scvCoords_[1];
-      rhs[nearestNode] += k_/4.0*(2.0*a_*pi_)*(2.0*a_*pi_)*(cos(2.0*a_*pi_*x) + cos(2.0*a_*pi_*y))*scVolume[ip];
+      rhs[nearestNode] += k_/4.0*(2.0*a_*pi_)*(2.0*a_*pi_)*(cos(2.0*a_*pi_*x) + cos(2.0*a_*pi_*y))*ws_scv_volume_[ip];
     }
   }
   else {
@@ -162,7 +162,7 @@ SteadyThermalContactSrcElemSuppAlg::elem_execute(
         const double r = ws_shape_function_[offSet+ic];
         ipSource += r*ws_nodalSrc_[ic];
       }
-      rhs[nearestNode] += ipSource*scVolume[ip];
+      rhs[nearestNode] += ipSource*ws_scv_volume_[ip];
     } 
   }
 }

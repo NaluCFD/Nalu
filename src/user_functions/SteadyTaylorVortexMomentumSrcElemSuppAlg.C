@@ -34,7 +34,6 @@ SteadyTaylorVortexMomentumSrcElemSuppAlg::SteadyTaylorVortexMomentumSrcElemSuppA
   : SupplementalAlgorithm(realm),
     bulkData_(&realm.bulk_data()),
     coordinates_(NULL),
-    scVolume_(NULL),
     nDim_(realm_.spatialDimension_),
     rhoP_(1.0),
     rhoS_(1.0),
@@ -52,8 +51,7 @@ SteadyTaylorVortexMomentumSrcElemSuppAlg::SteadyTaylorVortexMomentumSrcElemSuppA
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
-  scVolume_ = meta_data.get_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "sc_volume");
-
+ 
   // scratch vecs
   scvCoords_.resize(nDim_);
   srcXi_.resize(nDim_);
@@ -71,6 +69,7 @@ SteadyTaylorVortexMomentumSrcElemSuppAlg::elem_resize(
   const int numScvIp = meSCV->numIntPoints_;
   ws_shape_function_.resize(numScvIp*nodesPerElement);
   ws_coordinates_.resize(nDim_*nodesPerElement);
+  ws_scv_volume_.resize(numScvIp);
 
   // compute shape function
   if ( useShifted_ )
@@ -99,9 +98,6 @@ SteadyTaylorVortexMomentumSrcElemSuppAlg::elem_execute(
   MasterElement */*meSCS*/,
   MasterElement *meSCV)
 {
-  // pointers to field
-  const double *scVolume = stk::mesh::field_data(*scVolume_, element);
-  
   // pointer to ME methods
   const int *ipNodeMap = meSCV->ipNodeMap();
   const int nodesPerElement = meSCV->nodesPerElement_;
@@ -125,6 +121,10 @@ SteadyTaylorVortexMomentumSrcElemSuppAlg::elem_execute(
     }
   }
   
+  // compute geometry
+  double scv_error = 0.0;
+  meSCV->determinant(1, &ws_coordinates_[0], &ws_scv_volume_[0], &scv_error);
+  
   for ( int ip = 0; ip < numScvIp; ++ip ) {
     
     // nearest node to ip
@@ -146,7 +146,7 @@ SteadyTaylorVortexMomentumSrcElemSuppAlg::elem_execute(
 
     srcXi_[0] = -2.0*visc_*a_*a_*pi_*pi_*cos(a_*pi_*x)*sin(a_*pi_*y);
     srcXi_[1] = +2.0*visc_*a_*a_*pi_*pi_*sin(a_*pi_*x)*cos(a_*pi_*y);
-    const double scV = scVolume[ip];
+    const double scV = ws_scv_volume_[ip];
     const int nnNdim = nearestNode*nDim_;
     for ( int i = 0; i < nDim_; ++i ) {
       rhs[nnNdim+i] += srcXi_[i]*scV;      

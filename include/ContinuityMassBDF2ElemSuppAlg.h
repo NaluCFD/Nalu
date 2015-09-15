@@ -48,12 +48,13 @@ public:
   ScalarFieldType *densityNm1_;
   ScalarFieldType *densityN_;
   ScalarFieldType *densityNp1_;
-  GenericFieldType *scVolume_;
+  VectorFieldType *coordinates_;
 
   double dt_;
   double gamma1_;
   double gamma2_;
   double gamma3_;
+  const int nDim_;
   const bool useShifted_;
 
   // scratch space
@@ -64,6 +65,8 @@ public:
   std::vector<double> ws_rhoNm1_;
   std::vector<double> ws_rhoN_;
   std::vector<double> ws_rhoNp1_;
+  std::vector<double> ws_coordinates_;
+  std::vector<double> ws_scv_volume_;
 };
 
 } // namespace nalu

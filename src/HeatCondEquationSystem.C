@@ -107,7 +107,6 @@ HeatCondEquationSystem::HeatCondEquationSystem(
     density_(NULL),
     specHeat_(NULL),
     thermalCond_(NULL),
-    scVolume_(NULL),
     edgeAreaVec_(NULL),
     assembleNodalGradAlgDriver_(new AssembleNodalGradAlgorithmDriver(realm_, "temperature", "dtdx")),
     isInit_(true),
@@ -240,24 +239,15 @@ HeatCondEquationSystem::register_edge_fields(
 }
 
 //--------------------------------------------------------------------------
-//-------- register_element_fields -------------------------------------------
+//-------- register_element_fields -----------------------------------------
 //--------------------------------------------------------------------------
 void
 HeatCondEquationSystem::register_element_fields(
   stk::mesh::Part *part,
   const stk::topology &theTopo)
 {
-  //====================================================
-  // Register element data
-  //====================================================
-
   stk::mesh::MetaData &meta_data = realm_.meta_data();
-
-  MasterElement *meSCV = realm_.get_volume_master_element(theTopo);
-  const int numScvIp = meSCV->numIntPoints_;
-  scVolume_ = &(meta_data.declare_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "sc_volume"));
-  stk::mesh::put_field(*scVolume_, *part, numScvIp );
-
+  
   // deal with heat conduction error indicator; elemental field of size unity
   if ( realm_.solutionOptions_->activateAdaptivity_) {
     const int numIp = 1;

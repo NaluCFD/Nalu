@@ -156,7 +156,6 @@ LowMachEquationSystem::LowMachEquationSystem(
     density_(NULL),
     viscosity_(NULL),
     dualNodalVolume_(NULL),
-    scVolume_(NULL),
     edgeAreaVec_(NULL),
     surfaceForceAndMomentAlgDriver_(NULL),
     isInit_(true)
@@ -239,13 +238,7 @@ LowMachEquationSystem::register_element_fields(
   stk::mesh::Part *part,
   const stk::topology &theTopo)
 {
-
   stk::mesh::MetaData &meta_data = realm_.meta_data();
-
-  MasterElement *meSCV = realm_.get_volume_master_element(theTopo);
-  const int numScvIp = meSCV->numIntPoints_;
-  scVolume_ = &(meta_data.declare_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "sc_volume"));
-  stk::mesh::put_field(*scVolume_, *part, numScvIp );
 
   // register mdot for element-based scheme...
   if ( elementContinuityEqs_ ) {
@@ -891,7 +884,7 @@ MomentumEquationSystem::register_nodal_fields(
 }
 
 //--------------------------------------------------------------------------
-//-------- register_element_fields -------------------------------------------
+//-------- register_element_fields -----------------------------------------
 //--------------------------------------------------------------------------
 void
 MomentumEquationSystem::register_element_fields(

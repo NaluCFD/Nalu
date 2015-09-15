@@ -124,7 +124,6 @@ public:
   ScalarFieldType *scalarFluxOld_;
   ScalarFieldType *absorptionCoeff_;
   ScalarFieldType *scatteringCoeff_;
-  GenericFieldType *scVolume_;
   VectorFieldType *edgeAreaVec_;
   ScalarFieldType *irradiation_;
   ScalarFieldType *bcTemperature_;

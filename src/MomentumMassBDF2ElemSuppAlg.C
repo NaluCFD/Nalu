@@ -40,12 +40,12 @@ MomentumMassBDF2ElemSuppAlg::MomentumMassBDF2ElemSuppAlg(
     densityN_(NULL),
     densityNp1_(NULL),
     Gjp_(NULL),
-    scVolume_(NULL),
+    coordinates_(NULL),
     dt_(0.0),
-    nDim_(realm_.spatialDimension_),
     gamma1_(0.0),
     gamma2_(0.0),
     gamma3_(0.0),
+    nDim_(realm_.spatialDimension_),
     useShifted_(false)
 {
   // save off fields
@@ -59,7 +59,7 @@ MomentumMassBDF2ElemSuppAlg::MomentumMassBDF2ElemSuppAlg(
   densityN_ = &(density->field_of_state(stk::mesh::StateN));
   densityNp1_ = &(density->field_of_state(stk::mesh::StateNP1));
   Gjp_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "dpdx");
-  scVolume_ = meta_data.get_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "sc_volume");
+  coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
 
   // scratch vecs
   uNm1Scv_.resize(nDim_);
@@ -88,6 +88,8 @@ MomentumMassBDF2ElemSuppAlg::elem_resize(
   ws_rhoNp1_.resize(nodesPerElement);
   ws_rhoN_.resize(nodesPerElement);
   ws_rhoNm1_.resize(nodesPerElement);
+  ws_coordinates_.resize(nDim_*nodesPerElement);
+  ws_scv_volume_.resize(numScvIp);
 
   // compute shape function
   if ( useShifted_ )
@@ -119,9 +121,6 @@ MomentumMassBDF2ElemSuppAlg::elem_execute(
   MasterElement */*meSCS*/,
   MasterElement *meSCV)
 {
-  // pointers to field
-  const double *scVolume = stk::mesh::field_data(*scVolume_, element);
-  
   // pointer to ME methods
   const int *ipNodeMap = meSCV->ipNodeMap();
   const int nodesPerElement = meSCV->nodesPerElement_;
@@ -141,6 +140,7 @@ MomentumMassBDF2ElemSuppAlg::elem_execute(
     const double * uN = stk::mesh::field_data(*velocityN_, node );
     const double * uNp1 = stk::mesh::field_data(*velocityNp1_, node );
     const double * Gjp = stk::mesh::field_data(*Gjp_, node );
+    const double * coords =  stk::mesh::field_data(*coordinates_, node);
     
     // gather scalars
     ws_rhoNm1_[ni] = *stk::mesh::field_data(*densityNm1_, node);
@@ -154,8 +154,13 @@ MomentumMassBDF2ElemSuppAlg::elem_execute(
       ws_uN_[niNdim+j] = uN[j];
       ws_uNp1_[niNdim+j] = uNp1[j];
       ws_Gjp_[niNdim+j] = Gjp[j];
+      ws_coordinates_[niNdim+j] = coords[j];
     }
   }
+
+  // compute geometry
+  double scv_error = 0.0;
+  meSCV->determinant(1, &ws_coordinates_[0], &ws_scv_volume_[0], &scv_error);
 
   for ( int ip = 0; ip < numScvIp; ++ip ) {
       
@@ -194,7 +199,7 @@ MomentumMassBDF2ElemSuppAlg::elem_execute(
     }
 
     // assemble rhs
-    const double scV = scVolume[ip];
+    const double scV = ws_scv_volume_[ip];
     const int nnNdim = nearestNode*nDim_;
     for ( int i = 0; i < nDim_; ++i ) {
       rhs[nnNdim+i] += 

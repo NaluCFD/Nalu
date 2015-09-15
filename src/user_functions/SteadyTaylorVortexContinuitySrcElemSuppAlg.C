@@ -34,7 +34,6 @@ SteadyTaylorVortexContinuitySrcElemSuppAlg::SteadyTaylorVortexContinuitySrcElemS
   : SupplementalAlgorithm(realm),
     bulkData_(&realm.bulk_data()),
     coordinates_(NULL),
-    scVolume_(NULL),
     nDim_(realm_.spatialDimension_),
     rhoP_(1.0),
     rhoS_(1.0),
@@ -53,7 +52,6 @@ SteadyTaylorVortexContinuitySrcElemSuppAlg::SteadyTaylorVortexContinuitySrcElemS
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
-  scVolume_ = meta_data.get_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "sc_volume");
 
   // scratch vecs
   scvCoords_.resize(nDim_);
@@ -71,6 +69,7 @@ SteadyTaylorVortexContinuitySrcElemSuppAlg::elem_resize(
   const int numScvIp = meSCV->numIntPoints_;
   ws_shape_function_.resize(numScvIp*nodesPerElement);
   ws_coordinates_.resize(nDim_*nodesPerElement);
+  ws_scv_volume_.resize(numScvIp);
 
   // compute shape function
   if ( useShifted_ )
@@ -101,9 +100,6 @@ SteadyTaylorVortexContinuitySrcElemSuppAlg::elem_execute(
   MasterElement */*meSCS*/,
   MasterElement *meSCV)
 {
-  // pointers to field
-  const double *scVolume = stk::mesh::field_data(*scVolume_, element);
-  
   // pointer to ME methods
   const int *ipNodeMap = meSCV->ipNodeMap();
   const int nodesPerElement = meSCV->nodesPerElement_;
@@ -126,6 +122,10 @@ SteadyTaylorVortexContinuitySrcElemSuppAlg::elem_execute(
       ws_coordinates_[niNdim+j] = coords[j];
     }
   }
+
+  // compute geometry
+  double scv_error = 0.0;
+  meSCV->determinant(1, &ws_coordinates_[0], &ws_scv_volume_[0], &scv_error);
   
   for ( int ip = 0; ip < numScvIp; ++ip ) {
     
@@ -147,7 +147,7 @@ SteadyTaylorVortexContinuitySrcElemSuppAlg::elem_execute(
     
     const double src = 0.10e1 * std::pow(znot_ * cos(amf_ * pi_ * x) * cos(amf_ * pi_ * y) / rhoP_ + (0.1e1 - znot_ * cos(amf_ * pi_ * x) * cos(amf_ * pi_ * y)) / rhoS_, -0.2e1) * unot_ * cos(a_ * pi_ * x) * sin(a_ * pi_ * y) * (-znot_ * sin(amf_ * pi_ * x) * amf_ * pi_ * cos(amf_ * pi_ * y) / rhoP_ + znot_ * sin(amf_ * pi_ * x) * amf_ * pi_ * cos(amf_ * pi_ * y) / rhoS_) + 0.10e1 / (znot_ * cos(amf_ * pi_ * x) * cos(amf_ * pi_ * y) / rhoP_ + (0.1e1 - znot_ * cos(amf_ * pi_ * x) * cos(amf_ * pi_ * y)) / rhoS_) * unot_ * sin(a_ * pi_ * x) * a_ * pi_ * sin(a_ * pi_ * y) - 0.10e1 * std::pow(znot_ * cos(amf_ * pi_ * x) * cos(amf_ * pi_ * y) / rhoP_ + (0.1e1 - znot_ * cos(amf_ * pi_ * x) * cos(amf_ * pi_ * y)) / rhoS_, -0.2e1) * vnot_ * sin(a_ * pi_ * x) * cos(a_ * pi_ * y) * (-znot_ * cos(amf_ * pi_ * x) * sin(amf_ * pi_ * y) * amf_ * pi_ / rhoP_ + znot_ * cos(amf_ * pi_ * x) * sin(amf_ * pi_ * y) * amf_ * pi_ / rhoS_) - 0.10e1 / (znot_ * cos(amf_ * pi_ * x) * cos(amf_ * pi_ * y) / rhoP_ + (0.1e1 - znot_ * cos(amf_ * pi_ * x) * cos(amf_ * pi_ * y)) / rhoS_) * vnot_ * sin(a_ * pi_ * x) * sin(a_ * pi_ * y) * a_ * pi_;
 
-    rhs[nearestNode] += src*scVolume[ip]/projTimeScale_;      
+    rhs[nearestNode] += src*ws_scv_volume_[ip]/projTimeScale_;      
   }
 }
 

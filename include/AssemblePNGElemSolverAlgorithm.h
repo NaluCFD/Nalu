@@ -40,7 +40,6 @@ public:
   ScalarFieldType *scalarQ_;
   VectorFieldType *dqdx_;
   VectorFieldType *coordinates_;
-  GenericFieldType *scVolume_;
 };
 
 } // namespace nalu

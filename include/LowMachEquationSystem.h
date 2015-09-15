@@ -85,7 +85,6 @@ public:
   ScalarFieldType *density_;
   ScalarFieldType *viscosity_;
   ScalarFieldType *dualNodalVolume_;
-  GenericFieldType *scVolume_;
   VectorFieldType *edgeAreaVec_;
 
   SurfaceForceAndMomentAlgorithmDriver *surfaceForceAndMomentAlgDriver_;
