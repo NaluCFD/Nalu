@@ -4232,5 +4232,15 @@ Realm::get_inactive_selector()
     : stk::mesh::Selector();
 }
 
+//--------------------------------------------------------------------------
+//-------- push_equation_to_systems() --------------------------------------
+//--------------------------------------------------------------------------
+void
+Realm::push_equation_to_systems(
+  EquationSystem *eqSystem)
+{
+  equationSystems_.equationSystemVector_.push_back(eqSystem);
+}
+
 } // namespace nalu
 } // namespace Sierra

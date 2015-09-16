@@ -107,8 +107,7 @@ SpecificDissipationRateEquationSystem::SpecificDissipationRateEquationSystem(
   NaluEnv::self().naluOutputP0() << "Edge projected nodal gradient for specific_dissipation_rate: " << edgeNodalGradient_ <<std::endl;
 
   // push back EQ to manager
-  realm_.equationSystems_.push_back(this);
-
+  realm_.push_equation_to_systems(this);
 }
 
 //--------------------------------------------------------------------------

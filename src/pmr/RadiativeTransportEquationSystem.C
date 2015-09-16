@@ -116,7 +116,7 @@ RadiativeTransportEquationSystem::RadiativeTransportEquationSystem(
   linsys_->provideOutput_ = false;
 
   // push back EQ to manager
-  realm_.equationSystems_.push_back(this);
+  realm_.push_equation_to_systems(this);
 
   stk::mesh::MetaData &meta_data = realm_.meta_data();
   const int nDim = meta_data.spatial_dimension();

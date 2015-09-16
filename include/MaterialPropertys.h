@@ -34,7 +34,7 @@ class Simulation;
 
 typedef std::vector<MaterialProperty *> MaterialPropertyVector;
 
-class MaterialPropertys : public MaterialPropertyVector {
+class MaterialPropertys {
 public:
   MaterialPropertys(Realm& realm);
   
@@ -44,7 +44,15 @@ public:
   
   void breadboard(){};
   
+  // ease of access methods to particular initial condition
+  size_t size() {return materialPropertyVector_.size();}
+  MaterialProperty *operator[](int i) { return materialPropertyVector_[i];}
+
+  Simulation *root();
+  Realm *parent();  
+
   Realm &realm_;
+  MaterialPropertyVector materialPropertyVector_;
   std::string propertyTableName_;
 
   // vectors and maps required to manage full set of options
@@ -54,9 +62,6 @@ public:
   std::map<std::string, ReferencePropertyData*> referencePropertyDataMap_; /* defines overall species ordering */
   std::map<PropertyIdentifier, PropertyEvaluator*> propertyEvalMap_;
   std::map<std::string, ReferencePropertyData*> tablePropertyMap_;
-  Simulation *root();
-  Realm *parent();  
-  
 };
 
 

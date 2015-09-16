@@ -126,7 +126,7 @@ EnthalpyEquationSystem::EnthalpyEquationSystem(
   NaluEnv::self().naluOutputP0() << "Edge projected nodal gradient for enthalpy: " << edgeNodalGradient_ <<std::endl;
 
   // push back EQ to manager
-  realm_.equationSystems_.push_back(this);
+  realm_.push_equation_to_systems(this);
 
   // advertise need for the enthalpy property evaluator
   realm_.needs_enthalpy(true);

@@ -58,7 +58,7 @@ ShearStressTransportEquationSystem::ShearStressTransportEquationSystem(
     sstMaxLengthScaleAlgDriver_(NULL)
 {
   // push back EQ to manager
-  realm_.equationSystems_.push_back(this);
+  realm_.push_equation_to_systems(this);
 
   // create momentum and pressure
   tkeEqSys_= new TurbKineticEnergyEquationSystem(eqSystems);

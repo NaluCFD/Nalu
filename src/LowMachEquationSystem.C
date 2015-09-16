@@ -161,7 +161,7 @@ LowMachEquationSystem::LowMachEquationSystem(
     isInit_(true)
 {
   // push back EQ to manager
-  realm_.equationSystems_.push_back(this);
+  realm_.push_equation_to_systems(this);
 
   // create momentum and pressure
   momentumEqSys_= new MomentumEquationSystem(eqSystems);
@@ -792,7 +792,7 @@ MomentumEquationSystem::MomentumEquationSystem(
   NaluEnv::self().naluOutputP0() << "Edge projected nodal gradient for velocity: " << edgeNodalGradient_ <<std::endl;
 
   // push back EQ to manager
-  realm_.equationSystems_.push_back(this);
+  realm_.push_equation_to_systems(this);
 }
 
 //--------------------------------------------------------------------------
@@ -1743,8 +1743,8 @@ ContinuityEquationSystem::ContinuityEquationSystem(
   NaluEnv::self().naluOutputP0() << "Edge projected nodal gradient for pressure: " << edgeNodalGradient_ <<std::endl;
 
   // push back EQ to manager
-  realm_.equationSystems_.push_back(this);
-
+  realm_.equationSystems_.equationSystemVector_.push_back(this);
+  
   // create projected nodal gradient equation system
   if ( managePNG_ ) {
     manage_projected_nodal_gradient(eqSystems);

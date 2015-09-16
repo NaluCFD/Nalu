@@ -83,7 +83,7 @@ ProjectedNodalGradientEquationSystem::ProjectedNodalGradientEquationSystem(
   linsys_ = LinearSystem::create(realm_, realm_.spatialDimension_, eqSysName_, solver);
 
   // push back EQ to manager
-  realm_.equationSystems_.push_back(this);
+  realm_.push_equation_to_systems(this);
 }
 
 //--------------------------------------------------------------------------

@@ -32,10 +32,10 @@ typedef std::vector<Realm *> RealmVector;
 
 class Simulation;
 
-class Realms : public RealmVector {
+class Realms {
+
 public:
   Realms(Simulation& sim) : simulation_(sim) {}
-
   ~Realms();
 
   void load(const YAML::Node & node) ;
@@ -43,8 +43,9 @@ public:
   void initialize();
   Simulation *root();
   Simulation *parent();
+  size_t size() {return realmVector_.size();}
 
-  // helper
+  // find realm with operator
   struct IsString {
     IsString(std::string& str) : str_(str) {}
     std::string& str_;
@@ -53,15 +54,16 @@ public:
 
   Realm *find_realm(std::string realm_name)
   {
-    RealmVector::iterator realm_iter = std::find_if(begin(), end(), IsString(realm_name));
-    if (realm_iter != end())
+    RealmVector::iterator realm_iter 
+      = std::find_if(realmVector_.begin(), realmVector_.end(), IsString(realm_name));
+    if (realm_iter != realmVector_.end())
       return *realm_iter;
     else
       return 0;
   }
 
   Simulation &simulation_;
-
+  RealmVector realmVector_;
 };
 
 } // namespace nalu

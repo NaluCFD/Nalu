@@ -25,81 +25,81 @@ namespace YAML {
 namespace sierra{
   namespace nalu{
 
-    class Realm;
-    class BoundaryConditions;
-    class Simulation;
+class Realm;
+class BoundaryConditions;
+class Simulation;
 
-    class BoundaryCondition {
-    public:
-      BoundaryCondition(BoundaryConditions& bcs) : boundaryConditions_(bcs) {}
-
-      virtual ~BoundaryCondition() {}
-
-      BoundaryCondition * load(const YAML::Node & node) ;
-      Simulation *root();
-      BoundaryConditions *parent();
+class BoundaryCondition {
+ public:
+ BoundaryCondition(BoundaryConditions& bcs) : boundaryConditions_(bcs) {}
   
-      void breadboard()
-      {
-        // nothing
-      }
-
-      std::string bcName_;
-      std::string targetName_;
-      BoundaryConditionType theBcType_;
-      BoundaryConditions& boundaryConditions_;
-    };
-
-    typedef std::vector<BoundaryCondition *> BoundaryConditionVector;
-
-    class BoundaryConditions : public BoundaryConditionVector {
-    public:
-      BoundaryConditions(Realm& realm) : realm_(realm) {}
-
-      ~BoundaryConditions()
-      {
-        for ( size_t iboundary_condition = 0; iboundary_condition < this->size(); ++iboundary_condition )
-          {
-            delete (*this)[iboundary_condition];
-          }
-      }
-
-      BoundaryConditions* load(const YAML::Node & node) 
-      {
-        BoundaryCondition tmp_boundary_condition(*this);
-
-        const YAML::Node *boundary_conditions = node.FindValue("boundary_conditions");
-        if (boundary_conditions) {
-          for ( size_t iboundary_condition = 0; iboundary_condition < boundary_conditions->size(); ++iboundary_condition ) {
-            const YAML::Node & boundary_condition_node = (*boundary_conditions)[iboundary_condition];
-            BoundaryCondition* bc = tmp_boundary_condition.load(boundary_condition_node);
-            this->push_back(bc);
-          }
-        }
-        else
-          throw std::runtime_error("parser error BoundaryConditions::load");
-
-        return this;
-      }
+  virtual ~BoundaryCondition() {}
   
-      void breadboard()
-      {
-        for ( size_t iboundary_condition = 0; iboundary_condition < this->size(); ++iboundary_condition )
-          {
-            (*this)[iboundary_condition]->breadboard();
-          }
-      }
+  BoundaryCondition * load(const YAML::Node & node) ;
+  Simulation *root();
+  BoundaryConditions *parent();
+  
+  void breadboard()
+  {
+    // nothing
+  }
+  
+  std::string bcName_;
+  std::string targetName_;
+  BoundaryConditionType theBcType_;
+  BoundaryConditions& boundaryConditions_;
+};
+ 
+ typedef std::vector<BoundaryCondition *> BoundaryConditionVector;
+ 
+ class BoundaryConditions {
+ public:
+   
+ BoundaryConditions(Realm& realm) 
+   : realm_(realm) {}
+ ~BoundaryConditions() {
+   for ( size_t iboundary_condition = 0; iboundary_condition < boundaryConditionVector_.size(); ++iboundary_condition ) {
+     delete boundaryConditionVector_[iboundary_condition];
+   }
+ }
 
-      Simulation *root();
-      Realm *parent();
+ BoundaryConditions* load(const YAML::Node & node) 
+ {
+   BoundaryCondition tmp_boundary_condition(*this);
+   
+   const YAML::Node *boundary_conditions = node.FindValue("boundary_conditions");
+   if (boundary_conditions) {
+     for ( size_t iboundary_condition = 0; iboundary_condition < boundary_conditions->size(); ++iboundary_condition ) {
+       const YAML::Node & boundary_condition_node = (*boundary_conditions)[iboundary_condition];
+       BoundaryCondition* bc = tmp_boundary_condition.load(boundary_condition_node);
+       boundaryConditionVector_.push_back(bc);
+     }
+   }
+   else
+     throw std::runtime_error("parser error BoundaryConditions::load");
+   
+   return this;
+ }
+ 
+ void breadboard()
+ {
+   for ( size_t iboundary_condition = 0; iboundary_condition < boundaryConditionVector_.size(); ++iboundary_condition ) {
+     boundaryConditionVector_[iboundary_condition]->breadboard();
+   }
+ }
+ 
+ Simulation *root();
+ Realm *parent();
+ 
+ // ease of access methods to particular boundary condition
+ size_t size() {return boundaryConditionVector_.size();}
+ BoundaryCondition *operator[](int i) { return boundaryConditionVector_[i];}
+ 
+ Realm &realm_;
+ BoundaryConditionVector boundaryConditionVector_;
+};
 
-      Realm &realm_;
-
-
-    };
-
-
-  } // namespace nalu
+} // namespace nalu
 } // namespace Sierra
 
 #endif

@@ -330,6 +330,10 @@ public:
   // inactive part
   stk::mesh::Selector get_inactive_selector();
 
+  // push back equation to equation systems vector
+  void push_equation_to_systems(
+    EquationSystem *eqSystem);
+
   Realms& realms_;
 
   std::string inputDBName_;
@@ -484,7 +488,6 @@ public:
   double get_turb_model_constant(
     const TurbulenceModelConstant turbModelEnum);
   bool process_adaptivity();
-
 };
 
 } // namespace nalu

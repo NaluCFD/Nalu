@@ -136,10 +136,7 @@ void TimeIntegrator::breadboard()
 
 void TimeIntegrator::initialize()
 {
-  // initialize realm
-  for (size_t irealm = 0; irealm < realmVec_.size(); ++irealm) {
-    realmVec_[irealm]->initialize();
-  }
+  // nothing to do now for the integrator
 }
 
 Simulation *TimeIntegrator::root() { return parent()->root(); }

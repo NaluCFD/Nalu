@@ -32,8 +32,8 @@ namespace nalu{
 //--------------------------------------------------------------------------
 Realms::~Realms()
 {
-  for (size_t ir = 0; ir < this->size(); ++ir)
-    delete (*this)[ir];
+  for (size_t ir = 0; ir < realmVector_.size(); ++ir)
+    delete realmVector_[ir];
 }
 
 void 
@@ -47,7 +47,7 @@ Realms::load(const YAML::Node & node)
       const YAML::Node & realm_node = (*realms)[irealm];
       Realm *realm = new Realm(*this);
       realm->load(realm_node);
-      this->push_back(realm);
+      realmVector_.push_back(realm);
     }
   }
   else
@@ -57,20 +57,17 @@ Realms::load(const YAML::Node & node)
 void 
 Realms::breadboard()
 {
-  for ( size_t irealm = 0; irealm < this->size(); ++irealm ) {
-    (*this)[irealm]->breadboard();
+  for ( size_t irealm = 0; irealm < realmVector_.size(); ++irealm ) {
+    realmVector_[irealm]->breadboard();
   }
 }
 
 void 
 Realms::initialize()
 {
-#if 0
-  for ( size_t irealm = 0; irealm < this->size(); ++irealm )
-    {
-      (*this)[irealm]->initialize();
-    }
-#endif
+  for ( size_t irealm = 0; irealm < realmVector_.size(); ++irealm ) {
+    realmVector_[irealm]->initialize();
+  }
 }
 
 Simulation *Realms::root() { return parent()->root(); }

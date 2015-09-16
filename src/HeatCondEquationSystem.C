@@ -123,7 +123,7 @@ HeatCondEquationSystem::HeatCondEquationSystem(
   NaluEnv::self().naluOutputP0() << "Edge projected nodal gradient for temperature: " << edgeNodalGradient_ <<std::endl;
 
   // push back EQ to manager
-  realm_.equationSystems_.push_back(this);
+  realm_.push_equation_to_systems(this);
 
   // create projected nodal gradient equation system
   if ( managePNG_ ) {

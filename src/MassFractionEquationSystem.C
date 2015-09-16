@@ -108,11 +108,10 @@ MassFractionEquationSystem::MassFractionEquationSystem(
   linsys_->provideOutput_ = false;
 
   // push back EQ to manager
-  realm_.equationSystems_.push_back(this);
+  realm_.push_equation_to_systems(this);
 
   // advertise as non-uniform
   realm_.uniformFlow_ = false;
-
 }
 
 //--------------------------------------------------------------------------
