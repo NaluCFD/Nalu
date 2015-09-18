@@ -46,7 +46,7 @@ double
 MasterElement::isoparametric_mapping( 
   const double b,
   const double a,
-  const double xi)
+  const double xi) const
 {
   return xi*(b-a)/2.0 +(a+b)/2.0;
 }
@@ -964,14 +964,82 @@ HexahedralP2Element::HexahedralP2Element()
     nodes1D_(3),
     numQuad_(2)
 {
-  //TODO: Implement the useGLLGLL_ quadrature again
+  //TODO: Avoid redundant gradient computations when useGLLGLL_ is enabled
 
   nDim_ = 3;
   nodesPerElement_ = nodes1D_ * nodes1D_ * nodes1D_;
 
-  //Per subcontrol-volume (surface)  quadrature rule in 1D
-  gp_ = { -std::sqrt(3.0)/3.0, std::sqrt(3.0)/3.0 };
-  gw_ =  { 0.5, 0.5 };
+  if (useGLLGLL_ && numQuad_ != 3) {
+    throw std::runtime_error("useGLLGLL_ only implemented for 3-point quadrature");
+  }
+
+  // Per subcontrol-volume (surface)  quadrature rule in 1D
+  // numQuad_ = 2 is the optimal quadrature for OoA
+  switch (numQuad_) {
+    case 1:
+      gaussAbscissae_ = { 0.0 };
+      gaussWeight_ = { 1.0 };
+      break;
+    case 2:
+      gaussAbscissae_ = { -std::sqrt(3.0)/3.0, std::sqrt(3.0)/3.0 };
+      gaussWeight_ = { 0.5, 0.5 };
+      break;
+    case 3:
+      if (!useGLLGLL_) {
+        gaussAbscissae_ = { -std::sqrt(3.0/5.0), 0.0, std::sqrt(3.0/5.0) };
+        gaussWeight_ = { 5.0/18.0, 4.0/9.0,  5.0/18.0 };
+      }
+      else {
+        gaussAbscissae_ = { -1.0, 0.0, +1.0 };
+
+        //use a node-specific quadrature weight with fixed integration point locations
+        std::vector<std::vector<double>> weightRHS(3,std::vector<double>(3));
+        weightRHS[0][0] =  (1.0-scsDist_);
+        weightRHS[1][0] = -(1.0-scsDist_*scsDist_)/2.0;
+        weightRHS[2][0] =  (1.0-scsDist_*scsDist_*scsDist_)/3.0;
+
+        weightRHS[0][1] =  2.0*scsDist_;
+        weightRHS[1][1] =  0.0;
+        weightRHS[2][1] =  2.0*scsDist_*scsDist_*scsDist_/3.0;
+
+        weightRHS[0][2] =  weightRHS[0][0];
+        weightRHS[1][2] = -weightRHS[1][0];
+        weightRHS[2][2] =  weightRHS[2][0];
+
+        gaussWeight_.resize(numQuad_*nodes1D_);
+
+        //left (-1) node
+        gaussWeight_[0 + nodes1D_ * 0] = 0.5 * (weightRHS[2][0] - weightRHS[1][0]);
+        gaussWeight_[1 + nodes1D_ * 0] = weightRHS[0][0] - weightRHS[2][0];
+        gaussWeight_[2 + nodes1D_ * 0] = 0.5 * (weightRHS[2][0] + weightRHS[1][0]);
+
+        //middle (0) node
+        gaussWeight_[0 + nodes1D_ * 1] = 0.5 * (weightRHS[2][1] - weightRHS[1][1]);
+        gaussWeight_[1 + nodes1D_ * 1] = weightRHS[0][1] - weightRHS[2][1];
+        gaussWeight_[2 + nodes1D_ * 1] = 0.5 * (weightRHS[2][1] + weightRHS[1][1]);
+
+        //right (+1) node
+        gaussWeight_[0 + nodes1D_ * 2] = 0.5 * (weightRHS[2][2] - weightRHS[1][2]);
+        gaussWeight_[1 + nodes1D_ * 2] = weightRHS[0][2] - weightRHS[2][2];
+        gaussWeight_[2 + nodes1D_ * 2] = 0.5 * (weightRHS[2][2] + weightRHS[1][2]);
+      }
+      break;
+    case 4:
+      gaussAbscissae_ = {
+          -std::sqrt(3.0/7.0+2.0/7.0*std::sqrt(6.0/5.0)),
+          -std::sqrt(3.0/7.0-2.0/7.0*std::sqrt(6.0/5.0)),
+          +std::sqrt(3.0/7.0-2.0/7.0*std::sqrt(6.0/5.0)),
+          +std::sqrt(3.0/7.0+2.0/7.0*std::sqrt(6.0/5.0)) };
+
+      gaussWeight_ = {
+          (18.0-std::sqrt(30.0))/72.0,
+          (18.0+std::sqrt(30.0))/72.0,
+          (18.0+std::sqrt(30.0))/72.0,
+          (18.0-std::sqrt(30.0))/72.0 };
+      break;
+    default:
+      throw std::runtime_error("Quadrature rule not implemented");
+  }
 
   // map the standard stk node numbering to a tensor-product style node numbering (i.e. node (m,l,k) -> m+npe*l+npe^2*k)
   stkNodeMap_ = {
@@ -985,7 +1053,11 @@ HexahedralP2Element::HexahedralP2Element()
                   19, 22, 17, // top mid-front edge
                    7, 18,  6  // top back edge
                 };
+
+  // a padded list of the scs locations
+  scsEndLoc_ = { -1.0, -scsDist_, scsDist_, 1.0 };
 }
+
 //--------------------------------------------------------------------------
 //-------- tensor_product_node_map -----------------------------------------
 //--------------------------------------------------------------------------
@@ -994,20 +1066,124 @@ HexahedralP2Element::tensor_product_node_map(int i, int j, int k) const
 {
    return stkNodeMap_[i+j*nodes1D_+k*nodes1D_*nodes1D_];
 }
+
 //--------------------------------------------------------------------------
-//-------- shape_fcn -------------------------------------------------------
+//-------- gauss_point_location --------------------------------------------
+//--------------------------------------------------------------------------
+double
+HexahedralP2Element::gauss_point_location(
+  int nodeOrdinal,
+  int gaussPointOrdinal) const
+{
+  double location1D;
+  if (!useGLLGLL_) {
+    location1D = isoparametric_mapping( scsEndLoc_[nodeOrdinal+1],
+                                        scsEndLoc_[nodeOrdinal],
+                                        gaussAbscissae_[gaussPointOrdinal] );
+  }
+  else {
+    location1D = gaussAbscissae_[gaussPointOrdinal];
+  }
+   return location1D;
+}
+
+//--------------------------------------------------------------------------
+//-------- tensor_product_weight -------------------------------------------
+//--------------------------------------------------------------------------
+
+double
+HexahedralP2Element::tensor_product_weight(
+  int s1Node, int s2Node, int s3Node,
+  int s1Ip, int s2Ip, int s3Ip) const
+{
+  // volume integration
+  double weight;
+  if (!useGLLGLL_) {
+    const double Ls1 = scsEndLoc_[s1Node+1]-scsEndLoc_[s1Node];
+    const double Ls2 = scsEndLoc_[s2Node+1]-scsEndLoc_[s2Node];
+    const double Ls3 = scsEndLoc_[s3Node+1]-scsEndLoc_[s3Node];
+    const double isoparametricArea = Ls1 * Ls2 * Ls3;
+
+    weight = isoparametricArea * gaussWeight_[s1Ip] * gaussWeight_[s2Ip] * gaussWeight_[s3Ip];
+   }
+   else {
+     // weights are node-specific and take into account the isoparametric volume
+     weight = gaussWeight_[s1Node+nodes1D_*s1Ip] * gaussWeight_[s2Node+nodes1D_*s2Ip] * gaussWeight_[s3Node+nodes1D_*s3Ip];
+   }
+   return weight;
+}
+
+//--------------------------------------------------------------------------
+//-------- tensor_product_weight -------------------------------------------
+//--------------------------------------------------------------------------
+double
+HexahedralP2Element::tensor_product_weight(
+  int s1Node, int s2Node,
+  int s1Ip, int s2Ip) const
+{
+  // surface integration
+  double weight;
+  if (!useGLLGLL_) {
+    const double Ls1 = scsEndLoc_[s1Node+1]-scsEndLoc_[s1Node];
+    const double Ls2 = scsEndLoc_[s2Node+1]-scsEndLoc_[s2Node];
+    const double isoparametricArea = Ls1 * Ls2;
+
+    weight = isoparametricArea * gaussWeight_[s1Ip] * gaussWeight_[s2Ip];
+   }
+   else {
+     // weights are node-specific and take into account the isoparametric area
+     weight = gaussWeight_[s1Node+nodes1D_*s1Ip] * gaussWeight_[s2Node+nodes1D_*s2Ip];
+   }
+   return weight;
+}
+
+//--------------------------------------------------------------------------
+//-------- shape_fcn -------------------------------------------------------c
 //--------------------------------------------------------------------------
 void
 HexahedralP2Element::shape_fcn(double* shpfc)
 {
-  hex27_shape_fcn(numIntPoints_, &intgLoc_[0], shpfc);
+  for (int ip = 0; ip < numIntPoints_ * nodesPerElement_; ++ip) {
+    shpfc[ip] = shapeFunctions_[ip];
+  }
 }
+
+//--------------------------------------------------------------------------
+//-------- eval_shape_functions_at_ips -------------------------------------
+//--------------------------------------------------------------------------
+void
+HexahedralP2Element::eval_shape_functions_at_ips()
+{
+  shapeFunctions_.resize(numIntPoints_*nodesPerElement_);
+  hex27_shape_fcn(numIntPoints_, intgLoc_.data(), shapeFunctions_.data());
+}
+
+//--------------------------------------------------------------------------
+//-------- eval_shape_derivs_at_ips ----------------------------------------
+//--------------------------------------------------------------------------
+void
+HexahedralP2Element::eval_shape_derivs_at_ips()
+{
+  shapeDerivs_.resize(numIntPoints_*nodesPerElement_*nDim_);
+  hex27_shape_deriv(numIntPoints_, intgLoc_.data(), shapeDerivs_.data());
+}
+
+//--------------------------------------------------------------------------
+//-------- eval_shape_derivs_at_face_ips -----------------------------------
+//--------------------------------------------------------------------------
+void
+HexahedralP2Element::eval_shape_derivs_at_face_ips()
+{
+  expFaceShapeDerivs_.resize(numIntPoints_*nodesPerElement_*nDim_);
+  hex27_shape_deriv(numIntPoints_, intgExpFace_.data(), expFaceShapeDerivs_.data());
+}
+
 //--------------------------------------------------------------------------
 //-------- hex27_shape_fcn -------------------------------------------------
 //--------------------------------------------------------------------------
 void
 HexahedralP2Element::hex27_shape_fcn(
-  const int  &numIntPoints,
+  int numIntPoints,
   const double *intgLoc,
   double *shpfc) const
 {
@@ -1018,11 +1194,11 @@ HexahedralP2Element::hex27_shape_fcn(
 
   for ( int ip = 0; ip < numIntPoints; ++ip ) {
     int ip_offset = nodesPerElement_*ip; // nodes per element is always 27
-    int dim_offset = nDim_*ip;
+    int vector_offset = nDim_*ip;
 
-    const double s = intgLoc_[dim_offset+0];
-    const double t = intgLoc_[dim_offset+1];
-    const double u = intgLoc_[dim_offset+2];
+    const double s = intgLoc[vector_offset+0];
+    const double t = intgLoc[vector_offset+1];
+    const double u = intgLoc[vector_offset+2];
 
     const double stu = s * t * u;
     const double  st  = s * t;
@@ -1070,180 +1246,215 @@ HexahedralP2Element::hex27_shape_fcn(
   }
 }
 
+//--------------------------------------------------------------------------
+//-------- hex27_shape_deriv -----------------------------------------------
+//--------------------------------------------------------------------------
 void
-HexahedralP2Element::shape_deriv_s(const double* isoParCoords, double* result) const
+HexahedralP2Element::hex27_shape_deriv(
+  int numIntPoints,
+  const double *intgLoc,
+  double *shapeDerivs) const
 {
-  const double s = isoParCoords[0];
-  const double t = isoParCoords[1];
-  const double u = isoParCoords[2];
-
-  const double stu = s * t * u;
-  const double st  = s * t;
-  const double su  = s * u;
-  const double tu  = t * u;
-
-  const double one = 1.0;
   const double half = 1.0/2.0;
   const double one4th = 1.0/4.0;
   const double one8th = 1.0/8.0;
   const double two = 2.0;
 
-  const double one_m_t = one - t;
-  const double one_p_t = one + t;
-  const double one_m_u = one - u;
-  const double one_p_u = one + u;
+  for ( int ip = 0; ip < numIntPoints; ++ip ) {
+    const int vector_offset = nDim_ * ip;
+    const int ip_offset  = nDim_ * nodesPerElement_ * ip;
+    int node; int offset;
 
-  const double one_m_tt = one - t * t;
-  const double one_m_uu = one - u * u;
+    const double s = intgLoc[vector_offset+0];
+    const double t = intgLoc[vector_offset+1];
+    const double u = intgLoc[vector_offset+2];
 
-  const double one_m_2s = one - two * s;
-  const double one_p_2s = one + two * s;
+    const double stu = s * t * u;
+    const double st  = s * t;
+    const double su  = s * u;
+    const double tu  = t * u;
 
+    const double one_m_s = 1.0 - s;
+    const double one_p_s = 1.0 + s;
+    const double one_m_t = 1.0 - t;
+    const double one_p_t = 1.0 + t;
+    const double one_m_u = 1.0 - u;
+    const double one_p_u = 1.0 + u;
 
-  result[0] = -one8th * tu * one_m_2s * one_m_t * one_m_u;
-  result[1] = one8th * tu * one_p_2s * one_m_t * one_m_u;
-  result[2] = -one8th * tu * one_p_2s * one_p_t * one_m_u;
-  result[3] = one8th * tu * one_m_2s * one_p_t * one_m_u;
-  result[4] = one8th * tu * one_m_2s * one_m_t * one_p_u;
-  result[5] = -one8th * tu * one_p_2s * one_m_t * one_p_u;
-  result[6] = one8th * tu * one_p_2s * one_p_t * one_p_u;
-  result[7] = -one8th * tu * one_m_2s * one_p_t * one_p_u;
-  result[8] = -half * stu * one_m_t * one_m_u;
-  result[9] = -one4th * u * one_p_2s * one_m_tt * one_m_u;
-  result[10] = half * stu * one_p_t * one_m_u;
-  result[11] = one4th * u * one_m_2s * one_m_tt * one_m_u;
-  result[12] = one4th * t * one_m_2s * one_m_t * one_m_uu;
-  result[13] = -one4th * t * one_p_2s * one_m_t * one_m_uu;
-  result[14] = one4th * t * one_p_2s * one_p_t * one_m_uu;
-  result[15] = -one4th * t * one_m_2s * one_p_t * one_m_uu;
-  result[16] = half * stu * one_m_t * one_p_u;
-  result[17] = one4th * u * one_p_2s * one_m_tt * one_p_u;
-  result[18] = -half * stu * one_p_t * one_p_u;
-  result[19] = -one4th * u * one_m_2s * one_m_tt * one_p_u;
-  result[20] = -two * s * one_m_tt * one_m_uu;
-  result[21] = su * one_m_tt * one_m_u;
-  result[22] = -su * one_m_tt * one_p_u;
-  result[23] = -half * one_m_2s * one_m_tt * one_m_uu;
-  result[24] = half * one_p_2s * one_m_tt * one_m_uu;
-  result[25] = st * one_m_t * one_m_uu;
-  result[26] = -st * one_p_t * one_m_uu;
-}
+    const double one_m_ss = 1.0 - s * s;
+    const double one_m_tt = 1.0 - t * t;
+    const double one_m_uu = 1.0 - u * u;
 
-void
-HexahedralP2Element::shape_deriv_t(const double* isoParCoords, double* result) const
-{
-  const double s = isoParCoords[0];
-  const double t = isoParCoords[1];
-  const double u = isoParCoords[2];
+    const double one_m_2s = 1.0 - 2.0 * s;
+    const double one_m_2t = 1.0 - 2.0 * t;
+    const double one_m_2u = 1.0 - 2.0 * u;
 
-  const double stu = s * t * u;
-  const double st  = s * t;
-  const double su  = s * u;
-  const double tu  = t * u;
+    const double one_p_2s = 1.0 + 2.0 * s;
+    const double one_p_2t = 1.0 + 2.0 * t;
+    const double one_p_2u = 1.0 + 2.0 * u;
 
-  const double one = 1.0;
-  const double half = 1.0/2.0;
-  const double one4th = 1.0/4.0;
-  const double one8th = 1.0/8.0;
-  const double two = 2.0;
+    node = 0;
+    offset = ip_offset + nDim_ * node;
+    shapeDerivs[offset + 0] = -one8th * tu * one_m_2s * one_m_t * one_m_u;
+    shapeDerivs[offset + 1] = -one8th * su * one_m_s * one_m_2t * one_m_u;
+    shapeDerivs[offset + 2] = -one8th * st * one_m_s * one_m_t * one_m_2u;
 
-  const double one_m_s = one - s;
-  const double one_p_s = one + s;
-  const double one_m_u = one - u;
-  const double one_p_u = one + u;
+    node = 1;
+    offset = ip_offset + nDim_ * node;
+    shapeDerivs[offset + 0] = one8th * tu * one_p_2s * one_m_t * one_m_u;
+    shapeDerivs[offset + 1] = one8th * su * one_p_s * one_m_2t * one_m_u;
+    shapeDerivs[offset + 2] = one8th * st * one_p_s * one_m_t * one_m_2u;
 
-  const double one_m_ss = one - s * s;
-  const double one_m_uu = one - u * u;
+    node = 2;
+    offset = ip_offset + nDim_ * node;
+    shapeDerivs[offset + 0] = -one8th * tu * one_p_2s * one_p_t * one_m_u;
+    shapeDerivs[offset + 1] = -one8th * su * one_p_s * one_p_2t * one_m_u;
+    shapeDerivs[offset + 2] = -one8th * st * one_p_s * one_p_t * one_m_2u;
 
-  const double one_m_2t = one - two * t;
-  const double one_p_2t = one + two * t;
+    node = 3;
+    offset = ip_offset + nDim_ * node;
+    shapeDerivs[offset + 0] = one8th * tu * one_m_2s * one_p_t * one_m_u;
+    shapeDerivs[offset + 1] = one8th * su * one_m_s * one_p_2t * one_m_u;
+    shapeDerivs[offset + 2] = one8th * st * one_m_s * one_p_t * one_m_2u;
 
-  result[0] = -one8th * su * one_m_s * one_m_2t * one_m_u;
-  result[1] = one8th * su * one_p_s * one_m_2t * one_m_u;
-  result[2] = -one8th * su * one_p_s * one_p_2t * one_m_u;
-  result[3] = one8th * su * one_m_s * one_p_2t * one_m_u;
-  result[4] = one8th * su * one_m_s * one_m_2t * one_p_u;
-  result[5] = -one8th * su * one_p_s * one_m_2t * one_p_u;
-  result[6] = one8th * su * one_p_s * one_p_2t * one_p_u;
-  result[7] = -one8th * su * one_m_s * one_p_2t * one_p_u;
-  result[8] = one4th * u * one_m_ss * one_m_2t * one_m_u;
-  result[9] = half * stu * one_p_s * one_m_u;
-  result[10] = -one4th * u * one_m_ss * one_p_2t * one_m_u;
-  result[11] = -half * stu * one_m_s * one_m_u;
-  result[12] = one4th * s * one_m_s * one_m_2t * one_m_uu;
-  result[13] = -one4th * s * one_p_s * one_m_2t * one_m_uu;
-  result[14] = one4th * s * one_p_s * one_p_2t * one_m_uu;
-  result[15] = -one4th * s * one_m_s * one_p_2t * one_m_uu;
-  result[16] = -one4th * u * one_m_ss * one_m_2t * one_p_u;
-  result[17] = -half * stu * one_p_s * one_p_u;
-  result[18] = one4th * u * one_m_ss * one_p_2t * one_p_u;
-  result[19] = half * stu * one_m_s * one_p_u;
-  result[20] = -two * t * one_m_ss * one_m_uu;
-  result[21] = tu * one_m_ss * one_m_u;
-  result[22] = -tu * one_m_ss * one_p_u;
-  result[23] = st * one_m_s * one_m_uu;
-  result[24] = -st * one_p_s * one_m_uu;
-  result[25] = -half * one_m_ss * one_m_2t * one_m_uu;
-  result[26] = half * one_m_ss * one_p_2t * one_m_uu;
-}
+    node = 4;
+    offset = ip_offset + nDim_ * node;
+    shapeDerivs[offset + 0] = one8th * tu * one_m_2s * one_m_t * one_p_u;
+    shapeDerivs[offset + 1] = one8th * su * one_m_s * one_m_2t * one_p_u;
+    shapeDerivs[offset + 2] = one8th * st * one_m_s * one_m_t * one_p_2u;
 
-void
-HexahedralP2Element::shape_deriv_u(const double* isoParCoords, double* result) const
-{
-  const double s = isoParCoords[0];
-  const double t = isoParCoords[1];
-  const double u = isoParCoords[2];
+    node = 5;
+    offset = ip_offset + nDim_ * node;
+    shapeDerivs[offset + 0] = -one8th * tu * one_p_2s * one_m_t * one_p_u;
+    shapeDerivs[offset + 1] = -one8th * su * one_p_s * one_m_2t * one_p_u;
+    shapeDerivs[offset + 2] = -one8th * st * one_p_s * one_m_t * one_p_2u;
 
-  const double stu = s * t * u;
-  const double st  = s * t;
-  const double su  = s * u;
-  const double tu  = t * u;
+    node = 6;
+    offset = ip_offset + nDim_ * node;
+    shapeDerivs[offset + 0] = one8th * tu * one_p_2s * one_p_t * one_p_u;
+    shapeDerivs[offset + 1] = one8th * su * one_p_s * one_p_2t * one_p_u;
+    shapeDerivs[offset + 2] = one8th * st * one_p_s * one_p_t * one_p_2u;
 
-  const double one = 1.0;
-  const double half = 1.0/2.0;
-  const double one4th = 1.0/4.0;
-  const double one8th = 1.0/8.0;
-  const double two = 2.0;
+    node = 7;
+    offset = ip_offset + nDim_ * node;
+    shapeDerivs[offset + 0] = -one8th * tu * one_m_2s * one_p_t * one_p_u;
+    shapeDerivs[offset + 1] = -one8th * su * one_m_s * one_p_2t * one_p_u;
+    shapeDerivs[offset + 2] = -one8th * st * one_m_s * one_p_t * one_p_2u;
 
-  const double one_m_s = one - s;
-  const double one_p_s = one + s;
-  const double one_m_t = one - t;
-  const double one_p_t = one + t;
+    node = 8;
+    offset = ip_offset + nDim_ * node;
+    shapeDerivs[offset + 0] = -half * stu * one_m_t * one_m_u;
+    shapeDerivs[offset + 1] = one4th * u * one_m_ss * one_m_2t * one_m_u;
+    shapeDerivs[offset + 2] = one4th * t * one_m_ss * one_m_t * one_m_2u;
 
-  const double one_m_ss = one - s * s;
-  const double one_m_tt = one - t * t;
+    node = 9;
+    offset = ip_offset + nDim_ * node;
+    shapeDerivs[offset + 0] = -one4th * u * one_p_2s * one_m_tt * one_m_u;
+    shapeDerivs[offset + 1] = half * stu * one_p_s * one_m_u;
+    shapeDerivs[offset + 2] = -one4th * s * one_p_s * one_m_tt * one_m_2u;
 
-  const double one_m_2u = one - two * u;
-  const double one_p_2u = one + two * u;
+    node = 10;
+    offset = ip_offset + nDim_ * node;
+    shapeDerivs[offset + 0] = half * stu * one_p_t * one_m_u;
+    shapeDerivs[offset + 1] = -one4th * u * one_m_ss * one_p_2t * one_m_u;
+    shapeDerivs[offset + 2] = -one4th * t * one_m_ss * one_p_t * one_m_2u;
 
-  result[0] = -one8th * st * one_m_s * one_m_t * one_m_2u;
-  result[1] = one8th * st * one_p_s * one_m_t * one_m_2u;
-  result[2] = -one8th * st * one_p_s * one_p_t * one_m_2u;
-  result[3] = one8th * st * one_m_s * one_p_t * one_m_2u;
-  result[4] = one8th * st * one_m_s * one_m_t * one_p_2u;
-  result[5] = -one8th * st * one_p_s * one_m_t * one_p_2u;
-  result[6] = one8th * st * one_p_s * one_p_t * one_p_2u;
-  result[7] = -one8th * st * one_m_s * one_p_t * one_p_2u;
-  result[8] = one4th * t * one_m_ss * one_m_t * one_m_2u;
-  result[9] = -one4th * s * one_p_s * one_m_tt * one_m_2u;
-  result[10] = -one4th * t * one_m_ss * one_p_t * one_m_2u;
-  result[11] = one4th * s * one_m_s * one_m_tt * one_m_2u;
-  result[12] = -half * stu * one_m_s * one_m_t;
-  result[13] = half * stu * one_p_s * one_m_t;
-  result[14] = -half * stu * one_p_s * one_p_t;
-  result[15] = half * stu * one_m_s * one_p_t;
-  result[16] = -one4th * t * one_m_ss * one_m_t * one_p_2u;
-  result[17] = one4th * s * one_p_s * one_m_tt * one_p_2u;
-  result[18] = one4th * t * one_m_ss * one_p_t * one_p_2u;
-  result[19] = -one4th * s * one_m_s * one_m_tt * one_p_2u;
-  result[20] = -two * u * one_m_ss * one_m_tt;
-  result[21] = -half * one_m_ss * one_m_tt * one_m_2u;
-  result[22] = half * one_m_ss * one_m_tt * one_p_2u;
-  result[23] = su * one_m_s * one_m_tt;
-  result[24] = -su * one_p_s * one_m_tt;
-  result[25] = tu * one_m_ss * one_m_t;
-  result[26] = -tu * one_m_ss * one_p_t;
+    node = 11;
+    offset = ip_offset + nDim_ * node;
+    shapeDerivs[offset + 0] = one4th * u * one_m_2s * one_m_tt * one_m_u;
+    shapeDerivs[offset + 1] = -half * stu * one_m_s * one_m_u;
+    shapeDerivs[offset + 2] = one4th * s * one_m_s * one_m_tt * one_m_2u;
 
+    node = 12;
+    offset = ip_offset + nDim_ * node;
+    shapeDerivs[offset + 0] = one4th * t * one_m_2s * one_m_t * one_m_uu;
+    shapeDerivs[offset + 1] = one4th * s * one_m_s * one_m_2t * one_m_uu;
+    shapeDerivs[offset + 2] = -half * stu * one_m_s * one_m_t;
+
+    node = 13;
+    offset = ip_offset + nDim_ * node;
+    shapeDerivs[offset + 0] = -one4th * t * one_p_2s * one_m_t * one_m_uu;
+    shapeDerivs[offset + 1] = -one4th * s * one_p_s * one_m_2t * one_m_uu;
+    shapeDerivs[offset + 2] = half * stu * one_p_s * one_m_t;
+
+    node = 14;
+    offset = ip_offset + nDim_ * node;
+    shapeDerivs[offset + 0] = one4th * t * one_p_2s * one_p_t * one_m_uu;
+    shapeDerivs[offset + 1] = one4th * s * one_p_s * one_p_2t * one_m_uu;
+    shapeDerivs[offset + 2] = -half * stu * one_p_s * one_p_t;
+
+    node = 15;
+    offset = ip_offset + nDim_ * node;
+    shapeDerivs[offset + 0] = -one4th * t * one_m_2s * one_p_t * one_m_uu;
+    shapeDerivs[offset + 1] = -one4th * s * one_m_s * one_p_2t * one_m_uu;
+    shapeDerivs[offset + 2] = half * stu * one_m_s * one_p_t;
+
+    node = 16;
+    offset = ip_offset + nDim_ * node;
+    shapeDerivs[offset + 0] = half * stu * one_m_t * one_p_u;
+    shapeDerivs[offset + 1] = -one4th * u * one_m_ss * one_m_2t * one_p_u;
+    shapeDerivs[offset + 2] = -one4th * t * one_m_ss * one_m_t * one_p_2u;
+
+    node = 17;
+    offset = ip_offset + nDim_ * node;
+    shapeDerivs[offset + 0] = one4th * u * one_p_2s * one_m_tt * one_p_u;
+    shapeDerivs[offset + 1] = -half * stu * one_p_s * one_p_u;
+    shapeDerivs[offset + 2] = one4th * s * one_p_s * one_m_tt * one_p_2u;
+
+    node = 18;
+    offset = ip_offset + nDim_ * node;
+    shapeDerivs[offset + 0] = -half * stu * one_p_t * one_p_u;
+    shapeDerivs[offset + 1] = one4th * u * one_m_ss * one_p_2t * one_p_u;
+    shapeDerivs[offset + 2] = one4th * t * one_m_ss * one_p_t * one_p_2u;
+
+    node = 19;
+    offset = ip_offset + nDim_ * node;
+    shapeDerivs[offset + 0] = -one4th * u * one_m_2s * one_m_tt * one_p_u;
+    shapeDerivs[offset + 1] = half * stu * one_m_s * one_p_u;
+    shapeDerivs[offset + 2] = -one4th * s * one_m_s * one_m_tt * one_p_2u;
+
+    node = 20;
+    offset = ip_offset + nDim_ * node;
+    shapeDerivs[offset + 0] = -two * s * one_m_tt * one_m_uu;
+    shapeDerivs[offset + 1] = -two * t * one_m_ss * one_m_uu;
+    shapeDerivs[offset + 2] = -two * u * one_m_ss * one_m_tt;
+
+    node = 21;
+    offset = ip_offset + nDim_ * node;
+    shapeDerivs[offset + 0] = su * one_m_tt * one_m_u;
+    shapeDerivs[offset + 1] = tu * one_m_ss * one_m_u;
+    shapeDerivs[offset + 2] = -half * one_m_ss * one_m_tt * one_m_2u;
+
+    node = 22;
+    offset = ip_offset + nDim_ * node;
+    shapeDerivs[offset + 0] = -su * one_m_tt * one_p_u;
+    shapeDerivs[offset + 1] = -tu * one_m_ss * one_p_u;
+    shapeDerivs[offset + 2] = half * one_m_ss * one_m_tt * one_p_2u;
+
+    node = 23;
+    offset = ip_offset + nDim_ * node;
+    shapeDerivs[offset + 0] = -half * one_m_2s * one_m_tt * one_m_uu;
+    shapeDerivs[offset + 1] = st * one_m_s * one_m_uu;
+    shapeDerivs[offset + 2] = su * one_m_s * one_m_tt;
+
+    node = 24;
+    offset = ip_offset + nDim_ * node;
+    shapeDerivs[offset + 0] = half * one_p_2s * one_m_tt * one_m_uu;
+    shapeDerivs[offset + 1] = -st * one_p_s * one_m_uu;
+    shapeDerivs[offset + 2] = -su * one_p_s * one_m_tt;
+
+    node = 25;
+    offset = ip_offset + nDim_ * node;
+    shapeDerivs[offset + 0] = st * one_m_t * one_m_uu;
+    shapeDerivs[offset + 1] = -half * one_m_ss * one_m_2t * one_m_uu;
+    shapeDerivs[offset + 2] = tu * one_m_ss * one_m_t;
+
+    node = 26;
+    offset = ip_offset + nDim_ * node;
+    shapeDerivs[offset + 0] = -st * one_p_t * one_m_uu;
+    shapeDerivs[offset + 1] = half * one_m_ss * one_p_2t * one_m_uu;
+    shapeDerivs[offset + 2] = -tu * one_m_ss * one_p_t;
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -1251,6 +1462,20 @@ HexahedralP2Element::shape_deriv_u(const double* isoParCoords, double* result) c
 //--------------------------------------------------------------------------
 Hex27SCV::Hex27SCV()
   : HexahedralP2Element()
+{
+  // set up integration rule and relevant maps for scvs
+  set_interior_info();
+
+  // compute and save shape functions and derivatives at ips
+  eval_shape_functions_at_ips();
+  eval_shape_derivs_at_ips();
+}
+
+//--------------------------------------------------------------------------
+//-------- set_interior_info -----------------------------------------------
+//--------------------------------------------------------------------------
+void
+Hex27SCV::set_interior_info()
 {
   //1D integration rule per sub-control volume
   numIntPoints_ = (nodes1D_ * nodes1D_  * nodes1D_) * ( numQuad_ * numQuad_ * numQuad_); // 216
@@ -1261,34 +1486,26 @@ Hex27SCV::Hex27SCV()
   intgLocShift_.resize(numIntPoints_*nDim_);
   ipWeight_.resize(numIntPoints_);
 
-  // a padded list of the scs locations in 1D
-  const std::vector<double> scsEndLoc =  { -1, -scsDist_, scsDist_, 1 };
-
   // tensor product nodes (3x3x3) x tensor product quadrature (2x2x2)
   int vector_index = 0; int scalar_index = 0;
   for (int n = 0; n < nodes1D_; ++n) {
-    const double Lu = scsEndLoc[n + 1] - scsEndLoc[n];
-
     for (int m = 0; m < nodes1D_; ++m) {
-      const double Lt = scsEndLoc[m + 1] - scsEndLoc[m];
-
       for (int l = 0; l < nodes1D_; ++l) {
-        const double Ls = scsEndLoc[l + 1] - scsEndLoc[l];
 
+        // current node number
         const int nodeNumber = tensor_product_node_map(l,m,n);
+
         //tensor-product quadrature for a particular sub-cv
         for (int k = 0; k < numQuad_; ++k) {
           for (int j = 0; j < numQuad_; ++j) {
             for (int i = 0; i < numQuad_; ++i) {
               //integration point location
-              intgLoc_[vector_index]     = isoparametric_mapping(scsEndLoc[l + 1], scsEndLoc[l], gp_[i]);
-              intgLoc_[vector_index + 1] = isoparametric_mapping(scsEndLoc[m + 1], scsEndLoc[m], gp_[j]);
-              intgLoc_[vector_index + 2] = isoparametric_mapping(scsEndLoc[n + 1], scsEndLoc[n], gp_[k]);
+              intgLoc_[vector_index]     = gauss_point_location(l,i);
+              intgLoc_[vector_index + 1] = gauss_point_location(m,j);
+              intgLoc_[vector_index + 2] = gauss_point_location(n,k);
 
               //weight
-              const double isoparametricVolume = Ls * Lt * Lu;
-              const double tensorProductWeight = gw_[i] * gw_[j] * gw_[k];
-              ipWeight_[scalar_index] = isoparametricVolume * tensorProductWeight;
+              ipWeight_[scalar_index] = tensor_product_weight(l,m,n,i,j,k);
 
               //sub-control volume association
               ipNodeMap_[scalar_index] = nodeNumber;
@@ -1324,27 +1541,24 @@ void Hex27SCV::determinant(
   double *volume,
   double *error)
 {
-  std::vector<double> shapeDerivs(nDim_ * nodesPerElement_);
-  double* p_shapeDerivs = shapeDerivs.data();
-
-  double ierr = 0.0;
+//  std::vector<double> jacobian(nDim_*nDim_);
   for (int k = 0; k < nelem; ++k) {
-    const int scalar_ip_elem_offset = numIntPoints_ * k;
+    const int scalar_elem_offset = numIntPoints_ * k;
     const int coord_elem_offset = nDim_ * nodesPerElement_ * k;
-    for (int ni = 0; ni < numIntPoints_; ++ni) {
-      const int dim_offset = nDim_ * ni;
+    for (int ip = 0; ip < numIntPoints_; ++ip) {
+      const int grad_offset = nDim_ * nodesPerElement_ * ip;
 
       //weighted jacobian determinant
-      double det_j = jacobian_determinant(&intgLoc_[dim_offset], &coords[coord_elem_offset], p_shapeDerivs, &ierr);
-      volume[scalar_ip_elem_offset + ni] = ipWeight_[ni] * det_j;
+      const double det_j = jacobian_determinant(&coords[coord_elem_offset],&shapeDerivs_[grad_offset]);
 
-      if (ierr == 1.0) {
+      //apply weight and store to volume
+      volume[scalar_elem_offset + ip] = ipWeight_[ip] * det_j;
+
+      //flag error
+      if (det_j <= 0.0) {
         *error = 1.0;
       }
     }
-  }
-  if (*error > 0.0) {
-    throw std::runtime_error("Negative volume!");
   }
 }
 
@@ -1353,32 +1567,22 @@ void Hex27SCV::determinant(
 //--------------------------------------------------------------------------
 double
 Hex27SCV::jacobian_determinant(
-  const double *isoParCoords,
   const double *elemNodalCoords,
-  double *shapeDeriv,
-  double *err) const
+  const double *shapeDerivs) const
 {
-
-  shape_deriv(isoParCoords,shapeDeriv);
-
   double dx_ds1 = 0.0;  double dx_ds2 = 0.0; double dx_ds3 = 0.0;
   double dy_ds1 = 0.0;  double dy_ds2 = 0.0; double dy_ds3 = 0.0;
   double dz_ds1 = 0.0;  double dz_ds2 = 0.0; double dz_ds3 = 0.0;
+  for (int node = 0; node < nodesPerElement_; ++node) {
+    const int vector_offset = nDim_ * node;
 
-  int t_offset = 1 * nodesPerElement_;
-  int u_offset = 2 * nodesPerElement_;
+    const double xCoord = elemNodalCoords[vector_offset+0];
+    const double yCoord = elemNodalCoords[vector_offset+1];
+    const double zCoord = elemNodalCoords[vector_offset+2];
 
-  for (int ni = 0; ni < nodesPerElement_; ++ni) {
-    int offSet = nDim_ * ni;
-
-    // human names
-    const double xCoord = elemNodalCoords[offSet];
-    const double yCoord = elemNodalCoords[offSet+1];
-    const double zCoord = elemNodalCoords[offSet+2];
-
-    const double dn_ds1 = shapeDeriv[ni];
-    const double dn_ds2 = shapeDeriv[ni + t_offset];
-    const double dn_ds3 = shapeDeriv[ni + u_offset];
+    const double dn_ds1 = shapeDerivs[vector_offset+0];
+    const double dn_ds2 = shapeDerivs[vector_offset+1];
+    const double dn_ds3 = shapeDerivs[vector_offset+2];
 
     dx_ds1 += dn_ds1 * xCoord;
     dx_ds2 += dn_ds2 * xCoord;
@@ -1393,39 +1597,33 @@ Hex27SCV::jacobian_determinant(
     dz_ds3 += dn_ds3 * zCoord;
   }
 
-  const double det_j = dx_ds1*( dy_ds2*dz_ds3 - dz_ds2*dy_ds3 )
-                     + dy_ds1*( dz_ds2*dx_ds3 - dx_ds2*dz_ds3 )
-                     + dz_ds1*( dx_ds2*dy_ds3 - dy_ds2*dx_ds3 );
-
-  //check volume
-  *err = (det_j > 0.0) ? 0.0 : 1.0;
-  if (det_j <= 0.0)
-    throw std::runtime_error("Negative volume!");
+  const double det_j = dx_ds1 * ( dy_ds2 * dz_ds3 - dz_ds2 * dy_ds3 )
+                     + dy_ds1 * ( dz_ds2 * dx_ds3 - dx_ds2 * dz_ds3 )
+                     + dz_ds1 * ( dx_ds2 * dy_ds3 - dy_ds2 * dx_ds3 );
 
   return det_j;
 }
 
-void
-Hex27SCV::shape_deriv(
-  const double* isoParCoords,
-  double* shapeDerivs ) const
-{
-  shape_deriv_s(isoParCoords, &shapeDerivs[0*nodesPerElement_]);
-  shape_deriv_t(isoParCoords, &shapeDerivs[1*nodesPerElement_]);
-  shape_deriv_u(isoParCoords, &shapeDerivs[2*nodesPerElement_]);
-}
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 Hex27SCS::Hex27SCS()
   : HexahedralP2Element()
 {
+  // set up integration rule and relevant maps on scs
   set_interior_info();
+
+  // set up integration rule and relevant maps on faces
   set_boundary_info();
+
+  // compute and save shape functions and derivatives at ips
+  eval_shape_functions_at_ips();
+  eval_shape_derivs_at_ips();
+  eval_shape_derivs_at_face_ips();
 }
 
 //--------------------------------------------------------------------------
-//-------- set_boundary_info -----------------------------------------------
+//-------- set_interior_info -----------------------------------------------
 //--------------------------------------------------------------------------
 void
 Hex27SCS::set_interior_info()
@@ -1435,7 +1633,7 @@ Hex27SCS::set_interior_info()
   const int numSurfaces = surfacesPerDirection * nDim_; // 6
 
   numIntPoints_ = numSurfaces*ipsPerSurface; // 216
-  int numVectorPoints = numIntPoints_*nDim_; // 648
+  const int numVectorPoints = numIntPoints_*nDim_; // 648
 
   // define L/R mappings
   lrscv_.resize(2*numIntPoints_); // size = 432
@@ -1449,20 +1647,18 @@ Hex27SCS::set_interior_info()
   // Save quadrature weight and directionality information
   ipInfo_.resize(numIntPoints_);
 
-  // a (padded) list of the scs locations in 1D
-  const std::vector<double> scsLoc =  { -scsDist_, scsDist_ };
-  const std::vector<double> scsEndLoc =  { -1, -scsDist_, scsDist_, 1 };
+  // a list of the scs locations in 1D
+  const std::vector<double> scsLoc = { -scsDist_, scsDist_ };
+
+  // correct orientation of area vector
   const std::vector<double> orientation = {-1.0, +1.0};
 
   // specify integration point locations in a dimension-by-dimension manner
-
   //u direction: bottom-top (0-1)
   int vector_index = 0; int lrscv_index = 0; int scalar_index = 0;
   for (int m = 0; m < surfacesPerDirection; ++m) {
     for (int l = 0; l < nodes1D_; ++l) {
-      double Lv =  scsEndLoc[l+1]-scsEndLoc[l];
       for (int k = 0; k < nodes1D_; ++k) {
-        double Lu =  scsEndLoc[k+1]-scsEndLoc[k];
 
         int leftNode; int rightNode;
         if (m == 0) {
@@ -1479,14 +1675,12 @@ Hex27SCS::set_interior_info()
             lrscv_[lrscv_index]     = leftNode;
             lrscv_[lrscv_index + 1] = rightNode;
 
-            intgLoc_[vector_index]     = isoparametric_mapping(scsEndLoc[k + 1], scsEndLoc[k], gp_[i]);
-            intgLoc_[vector_index + 1] = isoparametric_mapping(scsEndLoc[l + 1], scsEndLoc[l], gp_[j]);
+            intgLoc_[vector_index]     = gauss_point_location(k,i);
+            intgLoc_[vector_index + 1] = gauss_point_location(l,j);
             intgLoc_[vector_index + 2] = scsLoc[m];
 
             //compute the quadrature weight
-            double isoparametric_area = Lu*Lv;
-            double tensor_product_weight = gw_[i] * gw_[j];
-            ipInfo_[scalar_index].weight = orientation[m]*isoparametric_area * tensor_product_weight;
+            ipInfo_[scalar_index].weight = orientation[m] * tensor_product_weight(k,l,i,j);
 
             //direction
             ipInfo_[scalar_index].direction = Jacobian::U_DIRECTION;
@@ -1503,9 +1697,7 @@ Hex27SCS::set_interior_info()
   //t direction: front-back (2-3)
   for (int m = 0; m < surfacesPerDirection; ++m) {
     for (int l = 0; l < nodes1D_; ++l) {
-      double Lv =  scsEndLoc[l+1]-scsEndLoc[l];
       for (int k = 0; k < nodes1D_; ++k) {
-        double Lu =  scsEndLoc[k+1]-scsEndLoc[k];
 
         int leftNode; int rightNode;
         if (m == 0) {
@@ -1517,20 +1709,17 @@ Hex27SCS::set_interior_info()
           rightNode = tensor_product_node_map(k,m,l);
         }
 
-
         for (int j = 0; j < numQuad_; ++j) {
           for (int i = 0; i < numQuad_; ++i) {
             lrscv_[lrscv_index]     = leftNode;
             lrscv_[lrscv_index + 1] = rightNode;
 
-            intgLoc_[vector_index]     = isoparametric_mapping(scsEndLoc[k + 1], scsEndLoc[k], gp_[i]);
+            intgLoc_[vector_index]     = gauss_point_location(k,i);
             intgLoc_[vector_index + 1] = scsLoc[m];
-            intgLoc_[vector_index + 2] = isoparametric_mapping(scsEndLoc[l + 1], scsEndLoc[l], gp_[j]);
+            intgLoc_[vector_index + 2] = gauss_point_location(l,j);
 
             //compute the quadrature weight
-            double isoparametric_area = Lu*Lv;
-            double tensor_product_weight = gw_[i] * gw_[j];
-            ipInfo_[scalar_index].weight = orientation[m]*isoparametric_area * tensor_product_weight;
+            ipInfo_[scalar_index].weight = orientation[m] * tensor_product_weight(k,l,i,j);
 
             //direction
             ipInfo_[scalar_index].direction = Jacobian::T_DIRECTION;
@@ -1547,9 +1736,7 @@ Hex27SCS::set_interior_info()
   //s direction: left-right (4-5)
   for (int m = 0; m < surfacesPerDirection; ++m) {
     for (int l = 0; l < nodes1D_; ++l) {
-      double Lv =  scsEndLoc[l+1]-scsEndLoc[l];
       for (int k = 0; k < nodes1D_; ++k) {
-        double Lu =  scsEndLoc[k+1]-scsEndLoc[k];
 
         int leftNode; int rightNode;
         if (m == 0) {
@@ -1567,13 +1754,11 @@ Hex27SCS::set_interior_info()
             lrscv_[lrscv_index + 1] = rightNode;
 
             intgLoc_[vector_index]     = scsLoc[m];
-            intgLoc_[vector_index + 1] = isoparametric_mapping(scsEndLoc[k + 1], scsEndLoc[k], gp_[i]);
-            intgLoc_[vector_index + 2] = isoparametric_mapping(scsEndLoc[l + 1], scsEndLoc[l], gp_[j]);
+            intgLoc_[vector_index + 1] = gauss_point_location(k,i);
+            intgLoc_[vector_index + 2] = gauss_point_location(l,j);
 
             //compute the quadrature weight
-            double isoparametric_area = Lu*Lv;
-            double tensor_product_weight = gw_[i] * gw_[j];
-            ipInfo_[scalar_index].weight = -orientation[m]*isoparametric_area * tensor_product_weight;
+            ipInfo_[scalar_index].weight = -orientation[m] * tensor_product_weight(k,l,i,j);
 
             //direction
             ipInfo_[scalar_index].direction = Jacobian::S_DIRECTION;
@@ -1594,32 +1779,50 @@ Hex27SCS::set_interior_info()
 void
 Hex27SCS::set_boundary_info()
 {
-  const int numFaces = 2*nDim_;
-  const int nodesPerFace = nodes1D_*nodes1D_;
-  ipsPerFace_ = nodesPerFace*(numQuad_*numQuad_);
-  const int numFaceIps = numFaces*ipsPerFace_; // 216 = numIntPoints_ for this element
+  const int numFaces = 2 * nDim_; // 6
+  const int nodesPerFace = nodes1D_ * nodes1D_; // 9
+  ipsPerFace_ = nodesPerFace * (numQuad_ * numQuad_); // 36
+  const int numFaceIps = numFaces * ipsPerFace_; // 216 = numIntPoints_ for this element
 
   oppFace_.resize(numFaceIps);
   ipNodeMap_.resize(numFaceIps);
   oppNode_.resize(numFaceIps);
-  intgExpFace_.resize(numFaceIps*nDim_);
+  intgExpFace_.resize(numFaceIps*nDim_); // size = 648
 
+  // face ordinal to tensor-product style node ordering
   const std::vector<int> stkFaceNodeMap = {
                                             0,  8,  1, 12, 25, 13,  4, 16,  5, // face 0(2): front face (cclockwise)
                                             1,  9,  2, 13, 24, 14,  5, 17,  6, // face 1(5): right face (cclockwise)
-                                            2, 10,  3, 14, 26, 15,  6, 18,  7, // face 2(3): back face  (clockwise)
+                                            3, 10,  2, 15, 26, 14,  6, 18,  7, // face 2(3): back face  (clockwise)
                                             0, 11,  3, 12, 23, 15,  4, 19,  7, // face 3(4): left face  (clockwise)
-                                            0,  8,  1, 11, 21, 9,   3, 10,  2, // face 4(0): bottom face  (clockwise)
-                                            4, 16,  5, 19, 22,  17, 7, 18,  6  // face 5(1): top face (clockwise)
-                                           };
+                                            0,  8,  1, 11, 21, 9,   3, 10,  2, // face 4(0): bottom face (clockwise)
+                                            4, 16,  5, 19, 22,  17, 7, 18,  6  // face 5(1): top face (cclockwise)
+                                          };
 
+
+  // tensor-product style access to the map
   auto face_node_number = [=] (int i, int j, int faceOrdinal)
   {
-        return stkFaceNodeMap[i + (nodes1D_*j) + (nodesPerFace*faceOrdinal)];
+    return stkFaceNodeMap[i + nodes1D_ * j + nodesPerFace * faceOrdinal];
   };
 
+  // map face ip ordinal to nearest sub-control surface ip ordinal
+  // sub-control surface renumbering
+  const std::vector<int> faceToSurface = { 2, 5, 3, 4, 0, 1 };
+  auto opp_face_map = [=] ( int k, int l, int i, int j, int face_index)
+  {
+    int face_offset = faceToSurface[face_index] * ipsPerFace_;
+
+    int node_index = k + nodes1D_ * l;
+    int node_offset = node_index * (numQuad_ * numQuad_);
+
+    int ip_index = face_offset+node_offset+i+numQuad_*j;
+
+    return ip_index;
+  };
+
+  // location of the faces in the correct order
   const std::vector<double> faceLoc = {-1.0, +1.0, +1.0, -1.0, -1.0, +1.0};
-  const std::vector<double> scsEndLoc = { -1.0, -scsDist_, +scsDist_, +1.0 };
 
   // Set points face-by-face
   int vector_index = 0; int scalar_index = 0; int faceOrdinal = 0;
@@ -1634,6 +1837,7 @@ Hex27SCS::set_boundary_info()
       //tensor-product quadrature for a particular sub-cv
       for (int j = 0; j < numQuad_; ++j) {
         for (int i = 0; i < numQuad_; ++i) {
+          // set maps
           ipNodeMap_[scalar_index] = nearNode;
           oppNode_[scalar_index] = oppNode;
           oppFace_[scalar_index] = opp_face_map(k,l,i,j,faceOrdinal);
@@ -1661,6 +1865,7 @@ Hex27SCS::set_boundary_info()
       //tensor-product quadrature for a particular sub-cv
       for (int j = 0; j < numQuad_; ++j) {
         for (int i = 0; i < numQuad_; ++i) {
+          // set maps
           ipNodeMap_[scalar_index] = nearNode;
           oppNode_[scalar_index] = oppNode;
           oppFace_[scalar_index] = opp_face_map(k,l,i,j,faceOrdinal);
@@ -1680,16 +1885,15 @@ Hex27SCS::set_boundary_info()
 
   // back face: s = +1.0: s-direction reversed
   faceOrdinal = 2;
-  int node_number = 0;
   for (int l = 0; l < nodes1D_; ++l) {
     for (int k = nodes1D_-1; k >= 0; --k) {
-      const int nearNode = stkFaceNodeMap[node_number+nodesPerFace*faceOrdinal];
+      const int nearNode = face_node_number(k,l,faceOrdinal);
       int oppNode = tensor_product_node_map(k,1,l);
-      ++node_number;
 
       //tensor-product quadrature for a particular sub-cv
       for (int j = 0; j < numQuad_; ++j) {
         for (int i = numQuad_-1; i >= 0; --i) {
+          // set maps
           ipNodeMap_[scalar_index] = nearNode;
           oppNode_[scalar_index] = oppNode;
           oppFace_[scalar_index] = opp_face_map(k,l,i,j,faceOrdinal);
@@ -1717,6 +1921,7 @@ Hex27SCS::set_boundary_info()
       //tensor-product quadrature for a particular sub-cv
       for (int j = 0; j < numQuad_; ++j) {
         for (int i = 0; i < numQuad_; ++i) {
+          // set maps
           ipNodeMap_[scalar_index] = nearNode;
           oppNode_[scalar_index]   = oppNode;
           oppFace_[scalar_index]   = opp_face_map(l,k,j,i,faceOrdinal);
@@ -1744,6 +1949,7 @@ Hex27SCS::set_boundary_info()
       //tensor-product quadrature for a particular sub-cv
       for (int j = 0; j < numQuad_; ++j) {
         for (int i = 0; i < numQuad_; ++i) {
+          // set maps
           ipNodeMap_[scalar_index] = nearNode;
           oppNode_[scalar_index] = oppNode;
           oppFace_[scalar_index] = opp_face_map(l,k,j,i,faceOrdinal);
@@ -1771,6 +1977,7 @@ Hex27SCS::set_boundary_info()
       //tensor-product quadrature for a particular sub-cv
       for (int j = 0; j < numQuad_; ++j) {
         for (int i = 0; i < numQuad_; ++i) {
+          // set maps
           ipNodeMap_[scalar_index] = nearNode;
           oppNode_[scalar_index] = oppNode;
           oppFace_[scalar_index] = opp_face_map(k,l,i,j,faceOrdinal);
@@ -1787,40 +1994,6 @@ Hex27SCS::set_boundary_info()
       }
     }
   }
-
-  // all ips are associated with a face IP for this element type
-  bool err =  false;
-  for(int ni = 0; ni < numFaceIps; ++ni) {
-    if (std::count(oppFace_.begin(), oppFace_.end(), ni) != 1) {
-      std::cout << "Incorrect ip count for ip: " << oppFace_[ni] << std::endl;
-      err = true;
-    }
-  }
-
-  if (err) {
-    throw std::runtime_error("Error in boundary ip information");
-  }
-
-}
-
-//--------------------------------------------------------------------------
-//-------- opp_face_map-----------------------------------------------------
-//--------------------------------------------------------------------------
-int
-Hex27SCS::opp_face_map(
-  int k, int l,
-  int i, int j,
-  int face_index) const
-{
-  const std::vector<int> faceToSurface = { 2, 5, 3, 4, 0, 1 };
-  int face_offset = faceToSurface[face_index] * ipsPerFace_;
-
-  int node_index = k + nodes1D_ * l;
-  int node_offset = node_index * (numQuad_ * numQuad_);
-
-  int ip_index = face_offset+node_offset+i+numQuad_*j;
-
-  return ip_index;
 }
 
 //--------------------------------------------------------------------------
@@ -1879,27 +2052,25 @@ Hex27SCS::determinant(
   //returns the normal vector x_t x x_u for constant s curves
   //returns the normal vector x_u x x_s for constant t curves
   //returns the normal vector x_s x x_t for constant u curves
-  std::vector<double> shapeDerivs(nodesPerElement_*(nDim_-1));
-  std::vector<double> normalVec(nDim_);
-
-  // raw pointers
-  double* p_shapeDerivs = shapeDerivs.data();
-  double* p_normalVec = normalVec.data();
+  std::vector<double> areaVector(nDim_);
 
   for (int k = 0; k < nelem; ++k) {
     const int coord_elem_offset = nDim_ * nodesPerElement_ * k;
-    const int vector_ip_elem_offset = nDim_*numIntPoints_*k;
+        const int vector_elem_offset = nDim_ * numIntPoints_ * k;
 
-    for (int ni = 0; ni < numIntPoints_; ++ni) {
-      const int dim_offset = nDim_ * ni;
-      const int offset = dim_offset + vector_ip_elem_offset;
+    for (int ip = 0; ip < numIntPoints_; ++ip) {
+      const int grad_offset = nDim_ * nodesPerElement_ * ip;
+      const int offset = nDim_ * ip + vector_elem_offset;
 
       //compute area vector for this ip
-      area_vector(ipInfo_[ni].direction, &intgLoc_[dim_offset], &coords[coord_elem_offset], p_shapeDerivs, p_normalVec);
+      area_vector( ipInfo_[ip].direction,
+                   &coords[coord_elem_offset],
+                   &shapeDerivs_[grad_offset],
+                   areaVector.data() );
 
       // apply quadrature weight and orientation (combined as weight)
       for (int j = 0; j < nDim_; ++j) {
-        areav[offset+j]  = ipInfo_[ni].weight * p_normalVec[j];
+        areav[offset+j]  = ipInfo_[ip].weight * areaVector[j];
       }
     }
   }
@@ -1913,79 +2084,56 @@ Hex27SCS::determinant(
 void
 Hex27SCS::area_vector(
   const Jacobian::Direction direction,
-  const double *isoParCoords,
   const double *elemNodalCoords,
   double *shapeDeriv,
-  double *normalVec) const
+  double *areaVector) const
 {
-  directional_shape_deriv(direction, isoParCoords, shapeDeriv);
+
+  int s1Component; int s2Component;
+  switch (direction) {
+    case Jacobian::S_DIRECTION:
+      s1Component = static_cast<int>(Jacobian::T_DIRECTION);
+      s2Component = static_cast<int>(Jacobian::U_DIRECTION);
+      break;
+    case Jacobian::T_DIRECTION:
+      s1Component = static_cast<int>(Jacobian::S_DIRECTION);
+      s2Component = static_cast<int>(Jacobian::U_DIRECTION);
+      break;
+    case Jacobian::U_DIRECTION:
+      s1Component = static_cast<int>(Jacobian::T_DIRECTION);
+      s2Component = static_cast<int>(Jacobian::S_DIRECTION);
+      break;
+    default:
+      throw std::runtime_error("Not a valid direction for this element!");
+  }
 
   // return the normal area vector given shape derivatives dnds OR dndt
   double dx_ds1 = 0.0; double dy_ds1 = 0.0; double dz_ds1 = 0.0;
   double dx_ds2 = 0.0; double dy_ds2 = 0.0; double dz_ds2 = 0.0;
 
-  const int deriv_offset = nodesPerElement_;
   for (int node = 0; node < nodesPerElement_; ++node) {
-    const int dim_offset = nDim_ * node;
-    const double xCoord = elemNodalCoords[dim_offset+0];
-    const double yCoord = elemNodalCoords[dim_offset+1];
-    const double zCoord = elemNodalCoords[dim_offset+2];
+    const int vector_offset = nDim_ * node;
+    const double xCoord = elemNodalCoords[vector_offset+0];
+    const double yCoord = elemNodalCoords[vector_offset+1];
+    const double zCoord = elemNodalCoords[vector_offset+2];
 
-    const double dn_ds1 = shapeDeriv[node+0];
-    const double dn_ds2 = shapeDeriv[node+deriv_offset];
+    const double dn_ds1 = shapeDeriv[vector_offset+s1Component];
+    const double dn_ds2 = shapeDeriv[vector_offset+s2Component];
 
     dx_ds1 += dn_ds1 * xCoord;
     dx_ds2 += dn_ds2 * xCoord;
+
     dy_ds1 += dn_ds1 * yCoord;
     dy_ds2 += dn_ds2 * yCoord;
+
     dz_ds1 += dn_ds1 * zCoord;
     dz_ds2 += dn_ds2 * zCoord;
   }
 
   //cross product
-  normalVec[0] = dy_ds1*dz_ds2 - dz_ds1*dy_ds2;
-  normalVec[1] = dz_ds1*dx_ds2 - dx_ds1*dz_ds2;
-  normalVec[2] = dx_ds1*dy_ds2 - dy_ds1*dx_ds2;
-}
-
-//--------------------------------------------------------------------------
-//-------- shape_deriv -----------------------------------------------
-//--------------------------------------------------------------------------
-void
-Hex27SCS::directional_shape_deriv(
-  const Jacobian::Direction direction,
-  const double *isoParCoords,
-  double *deriv) const
-{
-  switch (direction) {
-    case Jacobian::S_DIRECTION:
-      shape_deriv_t(isoParCoords, &deriv[0*nodesPerElement_]);
-      shape_deriv_u(isoParCoords, &deriv[1*nodesPerElement_]);
-      break;
-    case Jacobian::T_DIRECTION:
-      shape_deriv_s(isoParCoords, &deriv[0*nodesPerElement_]);
-      shape_deriv_u(isoParCoords, &deriv[1*nodesPerElement_]);
-      break;
-    case Jacobian::U_DIRECTION:
-      shape_deriv_t(isoParCoords, &deriv[0*nodesPerElement_]);
-      shape_deriv_s(isoParCoords, &deriv[1*nodesPerElement_]);
-      break;
-    default:
-      throw std::runtime_error("Not a valid direction for this element!");
-  }
-}
-
-//--------------------------------------------------------------------------
-//-------- shape_deriv -----------------------------------------------
-//--------------------------------------------------------------------------
-void
-Hex27SCS::shape_deriv(
-  const double *isoParCoords,
-  double *deriv) const
-{
-  shape_deriv_s(isoParCoords, &deriv[0*nodesPerElement_]);
-  shape_deriv_t(isoParCoords, &deriv[1*nodesPerElement_]);
-  shape_deriv_u(isoParCoords, &deriv[2*nodesPerElement_]);
+  areaVector[0] = dy_ds1*dz_ds2 - dz_ds1*dy_ds2;
+  areaVector[1] = dz_ds1*dx_ds2 - dx_ds1*dz_ds2;
+  areaVector[2] = dx_ds1*dy_ds2 - dy_ds1*dx_ds2;
 }
 
 //--------------------------------------------------------------------------
@@ -1999,38 +2147,25 @@ void Hex27SCS::grad_op(
   double *det_j,
   double *error)
 {
-  std::vector<double> grad(nDim_ * nodesPerElement_);
-  std::vector<double> shapeDerivs(nDim_ * nodesPerElement_);
-
-  // raw pointers
-  double* p_shapeDerivs = shapeDerivs.data();
-  double* p_grad = grad.data();
-
   for (int k = 0; k < nelem; ++k) {
     const int coord_elem_offset = nDim_ * nodesPerElement_ * k;
-    const int scalar_ip_elem_offset = numIntPoints_ * k;
-    const int grad_ip_elem_offset = numIntPoints_ * nDim_ * nodesPerElement_ * k;
+    const int scalar_elem_offset = numIntPoints_ * k;
+    const int grad_elem_offset = numIntPoints_ * nDim_ * nodesPerElement_ * k;
 
-    for (int ni = 0; ni < numIntPoints_; ++ni) {
-      const int dim_offset = nDim_ * ni;
-      const int grad_offset = ni * nDim_ * nodesPerElement_ + grad_ip_elem_offset;
-
-      shape_deriv(&intgLoc_[dim_offset], p_shapeDerivs); // also used in gradient calculation
-
-      for (int ic = 0; ic < nodesPerElement_; ++ic) {
-        const int offSetDnDx = grad_offset + ic * nDim_;
-        for (int j = 0; j < nDim_; ++j) {
-          deriv[offSetDnDx + j] = p_shapeDerivs[ic + nodesPerElement_ * j];
-        }
-      }
-
-      gradient(&coords[coord_elem_offset], p_shapeDerivs, p_grad, &det_j[scalar_ip_elem_offset+ni]);
+    for (int ip = 0; ip < numIntPoints_; ++ip) {
+      const int grad_offset = nDim_ * nodesPerElement_ * ip;
+      const int offset = grad_offset + grad_elem_offset;
 
       for (int j = 0; j < nodesPerElement_ * nDim_; ++j) {
-        gradop[grad_offset + j] = p_grad[j];
+        deriv[offset + j] = shapeDerivs_[grad_offset +j];
       }
 
-      if (det_j[ni] <= 0.0) {
+      gradient( &coords[coord_elem_offset],
+                &shapeDerivs_[grad_offset],
+                &gradop[offset],
+                &det_j[scalar_elem_offset+ip] );
+
+      if (det_j[ip] <= 0.0) {
         *error = 1.0;
       }
     }
@@ -2048,30 +2183,22 @@ void Hex27SCS::face_grad_op(
   double *det_j,
   double *error)
 {
-  std::vector<double> grad(nDim_ * nodesPerElement_);
-  std::vector<double> shapeDerivs(nDim_ * nodesPerElement_);
-
-  // raw pointers
-  double* p_shapeDerivs = shapeDerivs.data();
-  double* p_grad = grad.data();
-
+  const int face_offset =  nDim_ * ipsPerFace_ * nodesPerElement_ * face_ordinal;
   for (int k = 0; k < nelem; ++k) {
     const int coord_elem_offset = nDim_ * nodesPerElement_ * k;
-    const int scalar_ip_elem_offset = ipsPerFace_ * k;
-    const int grad_ip_elem_offset = ipsPerFace_ * nDim_ * nodesPerElement_ * k;
+    const int scalar_elem_offset = ipsPerFace_ * k;
+    const int grad_elem_offset = ipsPerFace_ * nDim_ * nodesPerElement_ * k;
 
-    for (int ni = 0; ni < ipsPerFace_; ++ni) {
-      const int grad_offset = ni * nDim_ * nodesPerElement_ + grad_ip_elem_offset;
-      const int face_offset =  nDim_ * ipsPerFace_ * face_ordinal + ni * nDim_;
+    for (int ip = 0; ip < ipsPerFace_; ++ip) {
+      const int grad_offset = nDim_ * nodesPerElement_ * ip;
+      const int offset = grad_offset + grad_elem_offset;
 
-      shape_deriv(&intgExpFace_[face_offset], p_shapeDerivs); // also used in gradient calculation
-      gradient(&coords[coord_elem_offset], p_shapeDerivs, p_grad, &det_j[scalar_ip_elem_offset+ni]);
+      gradient( &coords[coord_elem_offset],
+                &expFaceShapeDerivs_[face_offset+grad_offset],
+                &gradop[offset],
+                &det_j[scalar_elem_offset+ip] );
 
-      for (int j = 0; j < nodesPerElement_ * nDim_; ++j) {
-        gradop[grad_offset + j] = p_grad[j];
-      }
-
-      if (det_j[ni] <= 0.0) {
+      if (det_j[ip] <= 0.0) {
         *error = 1.0;
       }
     }
@@ -2092,20 +2219,17 @@ Hex27SCS::gradient(
   double dy_ds1 = 0.0;  double dy_ds2 = 0.0; double dy_ds3 = 0.0;
   double dz_ds1 = 0.0;  double dz_ds2 = 0.0; double dz_ds3 = 0.0;
 
-  int t_offset = nodesPerElement_;
-  int u_offset = 2 * nodesPerElement_;
-
+  //compute Jacobian
   for (int node = 0; node < nodesPerElement_; ++node) {
     const int vector_offset = nDim_ * node;
 
-    // human names
-    const double xCoord = elemNodalCoords[vector_offset];
-    const double yCoord = elemNodalCoords[vector_offset+1];
-    const double zCoord = elemNodalCoords[vector_offset+2];
+    const double xCoord = elemNodalCoords[vector_offset + 0];
+    const double yCoord = elemNodalCoords[vector_offset + 1];
+    const double zCoord = elemNodalCoords[vector_offset + 2];
 
-    const double dn_ds1 = shapeDeriv[node];
-    const double dn_ds2 = shapeDeriv[node + t_offset];
-    const double dn_ds3 = shapeDeriv[node + u_offset];
+    const double dn_ds1 = shapeDeriv[vector_offset + 0];
+    const double dn_ds2 = shapeDeriv[vector_offset + 1];
+    const double dn_ds3 = shapeDeriv[vector_offset + 2];
 
     dx_ds1 += dn_ds1 * xCoord;
     dx_ds2 += dn_ds2 * xCoord;
@@ -2120,38 +2244,35 @@ Hex27SCS::gradient(
     dz_ds3 += dn_ds3 * zCoord;
   }
 
-  *det_j = dx_ds1*( dy_ds2*dz_ds3 - dz_ds2*dy_ds3 )
-         + dy_ds1*( dz_ds2*dx_ds3 - dx_ds2*dz_ds3 )
-         + dz_ds1*( dx_ds2*dy_ds3 - dy_ds2*dx_ds3 );
+  *det_j = dx_ds1 * ( dy_ds2 * dz_ds3 - dz_ds2 * dy_ds3 )
+         + dy_ds1 * ( dz_ds2 * dx_ds3 - dx_ds2 * dz_ds3 )
+         + dz_ds1 * ( dx_ds2 * dy_ds3 - dy_ds2 * dx_ds3 );
 
-  double inv_det_j = (*det_j > 0.0) ? 1.0/(*det_j) : 0.0;
+  const double inv_det_j = (*det_j > 0.0) ? 1.0 / (*det_j) : 0.0;
 
-  if (*det_j <= 0.0) {
-     throw std::runtime_error("Negative volume!");
-   }
+  const double ds1_dx = inv_det_j*(dy_ds2 * dz_ds3 - dz_ds2 * dy_ds3);
+  const double ds2_dx = inv_det_j*(dz_ds1 * dy_ds3 - dy_ds1 * dz_ds3);
+  const double ds3_dx = inv_det_j*(dy_ds1 * dz_ds2 - dz_ds1 * dy_ds2);
+
+  const double ds1_dy = inv_det_j*(dz_ds2 * dx_ds3 - dx_ds2 * dz_ds3);
+  const double ds2_dy = inv_det_j*(dx_ds1 * dz_ds3 - dz_ds1 * dx_ds3);
+  const double ds3_dy = inv_det_j*(dz_ds1 * dx_ds2 - dx_ds1 * dz_ds2);
+
+  const double ds1_dz = inv_det_j*(dx_ds2 * dy_ds3 - dy_ds2 * dx_ds3);
+  const double ds2_dz = inv_det_j*(dy_ds1 * dx_ds3 - dx_ds1 * dy_ds3);
+  const double ds3_dz = inv_det_j*(dx_ds1 * dy_ds2 - dy_ds1 * dx_ds2);
 
   // metrics
   for (int node = 0; node < nodesPerElement_; ++node) {
     const int vector_offset = nDim_ * node;
 
-    const double dn_ds1 = shapeDeriv[node];
-    const double dn_ds2 = shapeDeriv[node + t_offset];
-    const double dn_ds3 = shapeDeriv[node + u_offset];
+    const double dn_ds1 = shapeDeriv[vector_offset + 0];
+    const double dn_ds2 = shapeDeriv[vector_offset + 1];
+    const double dn_ds3 = shapeDeriv[vector_offset + 2];
 
-    grad[vector_offset+0] = inv_det_j *
-           (  dn_ds1*(dy_ds2*dz_ds3 - dz_ds2*dy_ds3)
-            + dn_ds2*(dz_ds1*dy_ds3 - dy_ds1*dz_ds3)
-            + dn_ds3*(dy_ds1*dz_ds2 - dz_ds1*dy_ds2) );
-
-    grad[vector_offset+1] = inv_det_j *
-           (  dn_ds1*(dz_ds2*dx_ds3 - dx_ds2*dz_ds3)
-            + dn_ds2*(dx_ds1*dz_ds3 - dz_ds1*dx_ds3)
-            + dn_ds3*(dz_ds1*dx_ds2 - dx_ds1*dz_ds2) );
-
-    grad[vector_offset+2]  = inv_det_j *
-           ( dn_ds1*(dx_ds2*dy_ds3 - dy_ds2*dx_ds3)
-           + dn_ds2*(dy_ds1*dx_ds3 - dx_ds1*dy_ds3)
-           + dn_ds3*(dx_ds1*dy_ds2 - dy_ds1*dx_ds2) );
+    grad[vector_offset + 0] = dn_ds1 * ds1_dx + dn_ds2 * ds2_dx + dn_ds3 * ds3_dx;
+    grad[vector_offset + 1] = dn_ds1 * ds1_dy + dn_ds2 * ds2_dy + dn_ds3 * ds3_dy;
+    grad[vector_offset + 2] = dn_ds1 * ds1_dz + dn_ds2 * ds2_dz + dn_ds3 * ds3_dz;
   }
 }
 
@@ -4077,35 +4198,79 @@ QuadrilateralP2Element::QuadrilateralP2Element()
     nodes1D_(3),
     numQuad_(2)
 {
-  //TODO: Re-implement the useGLLGLL_ nodal quadrature rule
+  //TODO: Avoid redundant gradient computations when useGLLGLL_ is enabled
 
   nDim_ = 2;
   nodesPerElement_ = nodes1D_ * nodes1D_;
 
+  if (useGLLGLL_ && numQuad_ != 3) {
+     throw std::runtime_error("useGLLGLL_ only implemented for 3-point quadrature");
+   }
+
   // numQuad_ = 2 is the optimal quadrature for OoA
   switch (numQuad_) {
+    case 1:
+      gaussAbscissae_ = { 0.0 };
+      gaussWeight_ = { 1.0 };
+      break;
     case 2:
-      gp_ = { -std::sqrt(3.0)/3.0, std::sqrt(3.0)/3.0 };
-      gw_ = { 0.5, 0.5 };
+      gaussAbscissae_ = { -std::sqrt(3.0)/3.0, std::sqrt(3.0)/3.0 };
+      gaussWeight_ = { 0.5, 0.5 };
       break;
     case 3:
-      gp_ = { -std::sqrt(3.0/5.0), 0.0, std::sqrt(3.0/5.0) };
-      gw_ = { 5.0/18.0, 4.0/9.0,  5.0/18.0 };
+      if (!useGLLGLL_) {
+        gaussAbscissae_ = { -std::sqrt(3.0/5.0), 0.0, std::sqrt(3.0/5.0) };
+        gaussWeight_ = { 5.0/18.0, 4.0/9.0,  5.0/18.0 };
+      }
+      else {
+        gaussAbscissae_ = {-1.0, 0.0, +1.0};
+
+        //use a node-specific quadrature weight with fixed integration point locations
+        std::vector<std::vector<double>> weightRHS(3,std::vector<double>(3));
+        weightRHS[0][0] =  (1.0-scsDist_);
+        weightRHS[1][0] = -(1.0-scsDist_*scsDist_)/2.0;
+        weightRHS[2][0] =  (1.0-scsDist_*scsDist_*scsDist_)/3.0;
+
+        weightRHS[0][1] =  2.0*scsDist_;
+        weightRHS[1][1] =  0.0;
+        weightRHS[2][1] =  2.0*scsDist_*scsDist_*scsDist_/3.0;
+
+        weightRHS[0][2] =  weightRHS[0][0];
+        weightRHS[1][2] = -weightRHS[1][0];
+        weightRHS[2][2] =  weightRHS[2][0];
+
+        gaussWeight_.resize(numQuad_*nodes1D_);
+
+        //left (-1) node
+        gaussWeight_[0 + nodes1D_ * 0] = 0.5 * (weightRHS[2][0] - weightRHS[1][0]);
+        gaussWeight_[1 + nodes1D_ * 0] = weightRHS[0][0] - weightRHS[2][0];
+        gaussWeight_[2 + nodes1D_ * 0] = 0.5 * (weightRHS[2][0] + weightRHS[1][0]);
+
+        //middle (0) node
+        gaussWeight_[0 + nodes1D_ * 1] = 0.5 * (weightRHS[2][1] - weightRHS[1][1]);
+        gaussWeight_[1 + nodes1D_ * 1] = weightRHS[0][1] - weightRHS[2][1];
+        gaussWeight_[2 + nodes1D_ * 1] = 0.5 * (weightRHS[2][1] + weightRHS[1][1]);
+
+        //right (+1) node
+        gaussWeight_[0 + nodes1D_ * 2] = 0.5 * (weightRHS[2][2] - weightRHS[1][2]);
+        gaussWeight_[1 + nodes1D_ * 2] = weightRHS[0][2] - weightRHS[2][2];
+        gaussWeight_[2 + nodes1D_ * 2] = 0.5 * (weightRHS[2][2] + weightRHS[1][2]);
+      }
       break;
     case 4:
-      gp_ = {
-             -std::sqrt(3.0/7.0+2.0/7.0*std::sqrt(6.0/5.0)),
-             -std::sqrt(3.0/7.0-2.0/7.0*std::sqrt(6.0/5.0)),
-             +std::sqrt(3.0/7.0-2.0/7.0*std::sqrt(6.0/5.0)),
-             +std::sqrt(3.0/7.0+2.0/7.0*std::sqrt(6.0/5.0))
-           };
+      gaussAbscissae_ = {
+                         -std::sqrt(3.0/7.0+2.0/7.0*std::sqrt(6.0/5.0)),
+                         -std::sqrt(3.0/7.0-2.0/7.0*std::sqrt(6.0/5.0)),
+                         +std::sqrt(3.0/7.0-2.0/7.0*std::sqrt(6.0/5.0)),
+                         +std::sqrt(3.0/7.0+2.0/7.0*std::sqrt(6.0/5.0))
+                        };
 
-      gw_ = {
-             (18.0-std::sqrt(30.0))/72.0,
-             (18.0+std::sqrt(30.0))/72.0,
-             (18.0+std::sqrt(30.0))/72.0,
-             (18.0-std::sqrt(30.0))/72.0
-            };
+      gaussWeight_ = {
+                      (18.0-std::sqrt(30.0))/72.0,
+                      (18.0+std::sqrt(30.0))/72.0,
+                      (18.0+std::sqrt(30.0))/72.0,
+                      (18.0-std::sqrt(30.0))/72.0
+                     };
       break;
     default:
       throw std::runtime_error("Quadrature rule not implemented");
@@ -4118,7 +4283,11 @@ QuadrilateralP2Element::QuadrilateralP2Element()
                   7, 8, 5, // middle row of nodes
                   3, 6, 2  // top row of nodes
                 };
+
+  // a padded list of scs locations
+  scsEndLoc_ = { -1.0, -scsDist_, scsDist_, +1.0 };
 }
+
 //--------------------------------------------------------------------------
 //-------- tensor_product_node_map -----------------------------------------
 //--------------------------------------------------------------------------
@@ -4127,20 +4296,126 @@ QuadrilateralP2Element::tensor_product_node_map(int i, int j) const
 {
    return stkNodeMap_[i+nodes1D_*j];
 }
+
+//--------------------------------------------------------------------------
+//-------- gauss_point_location --------------------------------------------
+//--------------------------------------------------------------------------
+double
+QuadrilateralP2Element::gauss_point_location(
+  int nodeOrdinal,
+  int gaussPointOrdinal) const
+{
+  double location1D;
+  if (!useGLLGLL_) {
+    location1D = isoparametric_mapping( scsEndLoc_[nodeOrdinal+1],
+                                        scsEndLoc_[nodeOrdinal],
+                                        gaussAbscissae_[gaussPointOrdinal] );
+  }
+  else {
+    location1D = gaussAbscissae_[gaussPointOrdinal];
+  }
+   return location1D;
+}
+
+//--------------------------------------------------------------------------
+//-------- tensor_product_weight -------------------------------------------
+//--------------------------------------------------------------------------
+double
+QuadrilateralP2Element::tensor_product_weight(
+  int s1Node, int s2Node,
+  int s1Ip, int s2Ip) const
+{
+  //surface integration
+  double weight;
+  if (!useGLLGLL_) {
+    const double Ls1 = scsEndLoc_[s1Node+1]-scsEndLoc_[s1Node];
+    const double Ls2 = scsEndLoc_[s2Node+1]-scsEndLoc_[s2Node];
+    const double isoparametricArea = Ls1 * Ls2;
+
+    weight = isoparametricArea * gaussWeight_[s1Ip] * gaussWeight_[s2Ip];
+   }
+   else {
+     // weights are node-specific and take into account the isoparametric area
+     weight = gaussWeight_[s1Node+nodes1D_*s1Ip] * gaussWeight_[s2Node+nodes1D_*s2Ip];
+   }
+   return weight;
+}
+
+//--------------------------------------------------------------------------
+//-------- tensor_product_weight -------------------------------------------
+//--------------------------------------------------------------------------
+double
+QuadrilateralP2Element::tensor_product_weight(int s1Node, int s1Ip) const
+{
+  //line integration
+  double weight;
+  if (!useGLLGLL_) {
+    const double isoparametricLength = scsEndLoc_[s1Node+1]-scsEndLoc_[s1Node];
+    weight = isoparametricLength * gaussWeight_[s1Ip];
+   }
+   else {
+     // weights are node-specific and take into account the isoparametric area
+     weight = gaussWeight_[s1Node+nodes1D_*s1Ip];
+   }
+   return weight;
+}
+
+
+//--------------------------------------------------------------------------
+//-------- shape_fcn -------------------------------------------------------
+//--------------------------------------------------------------------------
+void
+QuadrilateralP2Element::shape_fcn(double* shpfc)
+{
+  for (int ni = 0; ni < numIntPoints_ * nodesPerElement_; ++ni) {
+    shpfc[ni] = shapeFunctions_[ni];
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- eval_shape_functions_at_ips -------------------------------------
+//--------------------------------------------------------------------------
+void
+QuadrilateralP2Element::eval_shape_functions_at_ips()
+{
+  shapeFunctions_.resize(numIntPoints_*nodesPerElement_);
+  quad9_shape_fcn(numIntPoints_, intgLoc_.data(), shapeFunctions_.data());
+}
+
+//--------------------------------------------------------------------------
+//-------- eval_shape_derivs_at_ips ----------------------------------------
+//--------------------------------------------------------------------------
+void
+QuadrilateralP2Element::eval_shape_derivs_at_ips()
+{
+  shapeDerivs_.resize(numIntPoints_*nodesPerElement_*nDim_);
+  quad9_shape_deriv(numIntPoints_, intgLoc_.data(), shapeDerivs_.data());
+}
+
+//--------------------------------------------------------------------------
+//-------- eval_shape_derivs_at_face_ips ----------------------------------------
+//--------------------------------------------------------------------------
+void
+QuadrilateralP2Element::eval_shape_derivs_at_face_ips()
+{
+  expFaceShapeDerivs_.resize(numIntPoints_*nodesPerElement_*nDim_);
+  quad9_shape_deriv(numIntPoints_, intgExpFace_.data(), expFaceShapeDerivs_.data());
+}
+
 //--------------------------------------------------------------------------
 //-------- quad9_shape_fcn -------------------------------------------------
 //--------------------------------------------------------------------------
 void
 QuadrilateralP2Element::quad9_shape_fcn(
-  const int  &numIntPoints,
+  int  numIntPoints,
   const double *intgLoc,
-  double *shpfc)
+  double *shpfc) const
 {
   for ( int ip = 0; ip < numIntPoints; ++ip ) {
-    int nineIp = 9*ip; // nodes per element is always 9
-    int k = 2*ip;
-    const double s = intgLoc[k];
-    const double t = intgLoc[k+1];
+    int nineIp = nodesPerElement_ * ip; // nodes per element is always 9
+    int vector_offset = nDim_ * ip;
+    const double s = intgLoc[vector_offset+0];
+    const double t = intgLoc[vector_offset+1];
 
     const double one_m_s = 1.0 - s;
     const double one_p_s = 1.0 + s;
@@ -4161,51 +4436,72 @@ QuadrilateralP2Element::quad9_shape_fcn(
     shpfc[nineIp+8] =  one_m_ss * one_m_tt;
   }
 }
-//--------------------------------------------------------------------------
-//-------- shape_deriv_s ---------------------------------------------------
-//--------------------------------------------------------------------------
-void
-QuadrilateralP2Element::shape_deriv_s(
-  const double *isoParCoords,
-  double *deriv) const
-{
-  const double s = isoParCoords[0];
-  const double t = isoParCoords[1];
 
-  const double t2 = t*t;
-
-  deriv[0] = 0.25 * (2.0 * s * t2 - 2.0 * s * t - t2 + t);
-  deriv[1] = 0.25 * (2.0 * s * t2 - 2.0 * s * t + t2 - t);
-  deriv[2] = 0.25 * (2.0 * s * t2 + 2.0 * s * t + t2 + t);
-  deriv[3] = 0.25 * (2.0 * s * t2 + 2.0 * s * t - t2 - t);
-  deriv[4] = -0.5 * (2.0 * s * t2 - 2.0 * s * t);
-  deriv[5] = -0.5 * (2.0 * s * t2 + t2 - 2.0 * s - 1.0);
-  deriv[6] = -0.5 * (2.0 * s * t2 + 2.0 * s * t);
-  deriv[7] = -0.5 * (2.0 * s * t2 - t2 - 2.0 * s + 1.0);
-  deriv[8] = 2.0 * s * t2 - 2.0 * s;
-}
 //--------------------------------------------------------------------------
-//-------- shape_deriv_t -------------------------------------------------
+//-------- quad9_shape_deriv -----------------------------------------------
 //--------------------------------------------------------------------------
 void
-QuadrilateralP2Element::shape_deriv_t(
-  const double *isoParCoords,
+QuadrilateralP2Element::quad9_shape_deriv(
+  int numIntPoints,
+  const double *intgLoc,
   double *deriv) const
 {
-  const double s = isoParCoords[0];
-  const double t = isoParCoords[1];
+  for ( int ip = 0; ip < numIntPoints; ++ip ) {
+    const int grad_offset = nDim_ * nodesPerElement_ * ip; // nodes per element is always 9
+    const int vector_offset = nDim_ * ip;
+    int node; int offset;
 
-  const double s2 = s*s;
+    const double s = intgLoc[vector_offset+0];
+    const double t = intgLoc[vector_offset+1];
 
-  deriv[0] = 0.25 * (2.0 * s2 * t - 2.0 * s * t - s2 + s);
-  deriv[1] = 0.25 * (2.0 * s2 * t + 2.0 * s * t - s2 - s);
-  deriv[2] = 0.25 * (2.0 * s2 * t + 2.0 * s * t + s2 + s);
-  deriv[3] = 0.25 * (2.0 * s2 * t - 2.0 * s * t + s2 - s);
-  deriv[4] = -0.5 * (2.0 * s2 * t - s2 - 2.0 * t + 1.0);
-  deriv[5] = -0.5 * (2.0 * s2 * t + 2.0 * s * t);
-  deriv[6] = -0.5 * (2.0 * s2 * t + s2 - 2.0 * t - 1.0);
-  deriv[7] = -0.5 * (2.0 * s2 * t - 2.0 * s * t);
-  deriv[8] = 2.0 * s2 * t - 2.0 * t;
+    const double s2 = s*s;
+    const double t2 = t*t;
+
+    node = 0;
+    offset = grad_offset + nDim_ * node;
+    deriv[offset+0] = 0.25 * (2.0 * s * t2 - 2.0 * s * t - t2 + t);
+    deriv[offset+1] = 0.25 * (2.0 * s2 * t - 2.0 * s * t - s2 + s);
+
+    node = 1;
+    offset = grad_offset + nDim_ * node;
+    deriv[offset+0] = 0.25 * (2.0 * s * t2 - 2.0 * s * t + t2 - t);
+    deriv[offset+1] = 0.25 * (2.0 * s2 * t + 2.0 * s * t - s2 - s);
+
+    node = 2;
+    offset = grad_offset + nDim_ * node;
+    deriv[offset+0] = 0.25 * (2.0 * s * t2 + 2.0 * s * t + t2 + t);
+    deriv[offset+1] = 0.25 * (2.0 * s2 * t + 2.0 * s * t + s2 + s);
+
+    node = 3;
+    offset = grad_offset + nDim_ * node;
+    deriv[offset+0] = 0.25 * (2.0 * s * t2 + 2.0 * s * t - t2 - t);
+    deriv[offset+1] = 0.25 * (2.0 * s2 * t - 2.0 * s * t + s2 - s);
+
+    node = 4;
+    offset = grad_offset + nDim_ * node;
+    deriv[offset+0] = -0.5 * (2.0 * s * t2 - 2.0 * s * t);
+    deriv[offset+1] = -0.5 * (2.0 * s2 * t - s2 - 2.0 * t + 1.0);
+
+    node = 5;
+    offset = grad_offset + nDim_ * node;
+    deriv[offset+0] = -0.5 * (2.0 * s * t2 + t2 - 2.0 * s - 1.0);
+    deriv[offset+1] = -0.5 * (2.0 * s2 * t + 2.0 * s * t);
+
+    node = 6;
+    offset = grad_offset + nDim_ * node;
+    deriv[offset+0] = -0.5 * (2.0 * s * t2 + 2.0 * s * t);
+    deriv[offset+1] = -0.5 * (2.0 * s2 * t + s2 - 2.0 * t - 1.0);
+
+    node = 7;
+    offset = grad_offset + nDim_ * node;
+    deriv[offset+0] = -0.5 * (2.0 * s * t2 - t2 - 2.0 * s + 1.0);
+    deriv[offset+1] = -0.5 * (2.0 * s2 * t - 2.0 * s * t);
+
+    node = 8;
+    offset = grad_offset + nDim_ * node;
+    deriv[offset+0] = 2.0 * s * t2 - 2.0 * s;
+    deriv[offset+1] = 2.0 * s2 * t - 2.0 * t;
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -4213,6 +4509,20 @@ QuadrilateralP2Element::shape_deriv_t(
 //--------------------------------------------------------------------------
 Quad92DSCV::Quad92DSCV()
 : QuadrilateralP2Element()
+{
+  // set up integration rule and relevant maps for scvs
+  set_interior_info();
+
+  // compute and save shape functions and derivatives at ips
+  eval_shape_functions_at_ips();
+  eval_shape_derivs_at_ips();
+}
+
+//--------------------------------------------------------------------------
+//-------- set_interior_info -----------------------------------------------
+//--------------------------------------------------------------------------
+void
+Quad92DSCV::set_interior_info()
 {
   //1D integration rule per sub-control volume
   numIntPoints_ = (nodes1D_ * nodes1D_) * ( numQuad_ * numQuad_ ); // 36
@@ -4223,29 +4533,20 @@ Quad92DSCV::Quad92DSCV()
   intgLocShift_.resize(numIntPoints_*nDim_); // size = 72
   ipWeight_.resize(numIntPoints_);
 
-  // a padded list of the scs locations in 1D
-  const std::vector<double> scsEndLoc =  { -1, -scsDist_, scsDist_, 1 };
-
   // tensor product nodes (3x3x3) x tensor product quadrature (2x2x2)
   int vector_index = 0; int scalar_index = 0;
   for (int l = 0; l < nodes1D_; ++l) {
-    const double Lt = scsEndLoc[l + 1] - scsEndLoc[l];
-
     for (int k = 0; k < nodes1D_; ++k) {
-      const double Ls = scsEndLoc[k + 1] - scsEndLoc[k];
-
       const int nodeNumber = tensor_product_node_map(k,l);
       //tensor-product quadrature for a particular sub-cv
       for (int j = 0; j < numQuad_; ++j) {
         for (int i = 0; i < numQuad_; ++i) {
           //integration point location
-          intgLoc_[vector_index]     = isoparametric_mapping(scsEndLoc[k + 1], scsEndLoc[k], gp_[i]);
-          intgLoc_[vector_index + 1] = isoparametric_mapping(scsEndLoc[l + 1], scsEndLoc[l], gp_[j]);
+          intgLoc_[vector_index]     = gauss_point_location(k,i);
+          intgLoc_[vector_index + 1] = gauss_point_location(l,j);
 
           //weight
-          const double isoparametricVolume = Ls * Lt;
-          const double tensorProductWeight = gw_[i] * gw_[j];
-          ipWeight_[scalar_index] = isoparametricVolume * tensorProductWeight;
+          ipWeight_[scalar_index] = tensor_product_weight(k,l,i,j);
 
           //sub-control volume association
           ipNodeMap_[scalar_index] = nodeNumber;
@@ -4257,31 +4558,6 @@ Quad92DSCV::Quad92DSCV()
       }
     }
   }
-}
-
-//--------------------------------------------------------------------------
-//-------- destructor ------------------------------------------------------
-//--------------------------------------------------------------------------
-Quad92DSCV::~Quad92DSCV()
-{
- // does nothing
-}
-
-//--------------------------------------------------------------------------
-//-------- shape_fcn -------------------------------------------------------
-//--------------------------------------------------------------------------
-void
-Quad92DSCV::shape_fcn(double* shpfc)
-{
-  quad9_shape_fcn(numIntPoints_, intgLoc_.data(), shpfc);
-}
-//--------------------------------------------------------------------------
-//-------- shifted_shape_fcn -----------------------------------------------
-//--------------------------------------------------------------------------
-void
-Quad92DSCV::shifted_shape_fcn(double* shpfc)
-{
-  quad9_shape_fcn(numIntPoints_, intgLoc_.data(), shpfc);
 }
 
 //--------------------------------------------------------------------------
@@ -4304,24 +4580,21 @@ void Quad92DSCV::determinant(
   double *volume,
   double *error)
 {
-  std::vector<double> shapeDerivs(nDim_ * nodesPerElement_);
-
-  // raw pointers
-  double* p_shapeDerivs = shapeDerivs.data();
-
   for (int k = 0; k < nelem; ++k) {
-    const int coord_elem_offset = nDim_ * nodesPerElement_*k;
-    const int scalar_ip_elem_offset = numIntPoints_ * k;
-    for (int ni = 0; ni < numIntPoints_; ++ni) {
-      const int dim_offset = nDim_ * ni;
+    const int scalar_elem_offset = numIntPoints_ * k;
+    const int coord_elem_offset = nDim_ * nodesPerElement_ * k;
+    for (int ip = 0; ip < numIntPoints_; ++ip) {
+      const int grad_offset = nDim_ * nodesPerElement_ * ip;
 
       //weighted jacobian determinant
-      double ierr;
-      volume[scalar_ip_elem_offset + ni] = ipWeight_[ni]
-         * jacobian_determinant(&intgLoc_[dim_offset], &coords[coord_elem_offset], p_shapeDerivs, &ierr);
+      const double det_j = jacobian_determinant(&coords[coord_elem_offset], &shapeDerivs_[grad_offset]);
 
-      if (ierr == 1.0) {
-        *error = 1;
+      //apply weight and store to volume
+      volume[scalar_elem_offset + ip] = ipWeight_[ip] * det_j;
+
+      //flag error
+      if (det_j <= 0.0) {
+        *error = 1.0;
       }
     }
   }
@@ -4332,46 +4605,31 @@ void Quad92DSCV::determinant(
 //--------------------------------------------------------------------------
 double
 Quad92DSCV::jacobian_determinant(
-  const double *isoParCoords,
   const double *elemNodalCoords,
-  double *shapeDerivs,
-  double *err) const
+  const double *shapeDerivs) const
 {
-  shape_deriv(isoParCoords, shapeDerivs); // "work" = shape derivatives
+  double dx_ds1 = 0.0;  double dx_ds2 = 0.0;
+  double dy_ds1 = 0.0;  double dy_ds2 = 0.0;
 
-  double dxds = 0.0;  double dxdt = 0.0;
-  double dyds = 0.0;  double dydt = 0.0;
+  for (int node = 0; node < nodesPerElement_; ++node) {
+    const int vector_offset = node * nDim_;
 
-  const int t_offset = nodesPerElement_;
-  for (int ni = 0; ni < nodesPerElement_; ++ni) {
-    const int offset = ni * nDim_;
-    const double xCoord = elemNodalCoords[offset];
-    const double yCoord = elemNodalCoords[offset + 1];
-    const double dnds  = shapeDerivs[ni];
-    const double dndt  = shapeDerivs[ni + t_offset];
+    const double xCoord = elemNodalCoords[vector_offset + 0];
+    const double yCoord = elemNodalCoords[vector_offset + 1];
 
-    dxds += dnds * xCoord;
-    dxdt += dndt * xCoord;
-    dyds += dnds * yCoord;
-    dydt += dndt * yCoord;
+    const double dn_ds1  = shapeDerivs[vector_offset + 0];
+    const double dn_ds2  = shapeDerivs[vector_offset + 1];
+
+    dx_ds1 += dn_ds1 * xCoord;
+    dx_ds2 += dn_ds2 * xCoord;
+
+    dy_ds1 += dn_ds1 * yCoord;
+    dy_ds2 += dn_ds2 * yCoord;
   }
 
-  const double det_j = dxds * dydt - dyds * dxdt;
-  *err = (det_j <= 0.0) ? 1.0 : 0.0;
+  const double det_j = dx_ds1 * dy_ds2 - dy_ds1 * dx_ds2;
 
   return det_j;
-}
-
-//--------------------------------------------------------------------------
-//-------- point_shape_deriv -----------------------------------------------
-//--------------------------------------------------------------------------
-void
-Quad92DSCV::shape_deriv(
-  const double *isoParCoords,
-  double *deriv) const
-{
-  shape_deriv_s(isoParCoords, &deriv[0*nodesPerElement_]);
-  shape_deriv_t(isoParCoords, &deriv[1*nodesPerElement_]);
 }
 
 //--------------------------------------------------------------------------
@@ -4380,23 +4638,26 @@ Quad92DSCV::shape_deriv(
 Quad92DSCS::Quad92DSCS()
   : QuadrilateralP2Element()
 {
+  // set up integration rule and relevant maps for scs
   set_interior_info();
+
+  // set up integration rule and relevant maps for faces
   set_boundary_info();
+
+  // compute and save shape functions and derivatives at ips
+  eval_shape_functions_at_ips();
+  eval_shape_derivs_at_ips();
+  eval_shape_derivs_at_face_ips();
 }
 
 //--------------------------------------------------------------------------
-//-------- destructor ------------------------------------------------------
+//-------- set_interior_info -----------------------------------------------
 //--------------------------------------------------------------------------
-Quad92DSCS::~Quad92DSCS()
-{
-  // does nothing
-}
-
 void
 Quad92DSCS::set_interior_info()
 {
   const int linesPerDirection = nodes1D_ - 1; // 2
-  const int ipsPerLine = numQuad_*nodes1D_;
+  const int ipsPerLine = numQuad_ * nodes1D_;
   const int numLines = linesPerDirection * nDim_;
 
   numIntPoints_ = numLines * ipsPerLine; // 24
@@ -4412,10 +4673,11 @@ Quad92DSCS::set_interior_info()
 
   ipInfo_.resize(numIntPoints_);
 
-  // a (padded) list of the scs locations in 1D
+  // a list of the scs locations in 1D
   const std::vector<double> scsLoc =  { -scsDist_, scsDist_ };
-  const std::vector<double> scsEndLoc =  { -1, -scsDist_, scsDist_, 1 };
-  const std::vector<double> orientation = {-1.0,+1.0};
+
+  // correct orientation for area vector
+  const std::vector<double> orientation = { -1.0, +1.0 };
 
   // specify integration point locations in a dimension-by-dimension manner
 
@@ -4424,17 +4686,15 @@ Quad92DSCS::set_interior_info()
   int lrscv_index = 0;
   int scalar_index = 0;
   for (int m = 0; m < linesPerDirection; ++m) {
-
     for (int l = 0; l < nodes1D_; ++l) {
-      double Lu =  scsEndLoc[l+1]-scsEndLoc[l];
 
       int leftNode; int rightNode;
       if (m == 0) {
         leftNode  = tensor_product_node_map(l,m);
-        rightNode = tensor_product_node_map(l,m+1);
+        rightNode = tensor_product_node_map(l,m + 1);
       }
       else {
-        leftNode  = tensor_product_node_map(l,m+1);
+        leftNode  = tensor_product_node_map(l,m + 1);
         rightNode = tensor_product_node_map(l,m);
       }
 
@@ -4443,12 +4703,11 @@ Quad92DSCS::set_interior_info()
         lrscv_[lrscv_index] = leftNode;
         lrscv_[lrscv_index + 1] = rightNode;
 
-        intgLoc_[vector_index] = isoparametric_mapping(scsEndLoc[l + 1], scsEndLoc[l], gp_[j]);
+        intgLoc_[vector_index] = gauss_point_location(l,j);
         intgLoc_[vector_index + 1] = scsLoc[m];
 
         //compute the quadrature weight
-        double isoparametric_area = Lu;
-        ipInfo_[scalar_index].weight = orientation[m]*isoparametric_area * gw_[j];
+        ipInfo_[scalar_index].weight = orientation[m]*tensor_product_weight(l,j);
 
         //direction
         ipInfo_[scalar_index].direction = Jacobian::T_DIRECTION;
@@ -4463,7 +4722,6 @@ Quad92DSCS::set_interior_info()
   //t-direction
   for (int m = 0; m < linesPerDirection; ++m) {
     for (int l = 0; l < nodes1D_; ++l) {
-      double Lu =  scsEndLoc[l+1]-scsEndLoc[l];
 
       int leftNode; int rightNode;
       if (m == 0) {
@@ -4481,11 +4739,10 @@ Quad92DSCS::set_interior_info()
         lrscv_[lrscv_index+1] = rightNode;
 
         intgLoc_[vector_index] = scsLoc[m];
-        intgLoc_[vector_index+1] = isoparametric_mapping(scsEndLoc[l + 1], scsEndLoc[l], gp_[j]);
+        intgLoc_[vector_index+1] = gauss_point_location(l,j);
 
         //compute the quadrature weight
-        double isoparametric_area = Lu;
-        ipInfo_[scalar_index].weight = -orientation[m]*isoparametric_area * gw_[j];
+        ipInfo_[scalar_index].weight = -orientation[m]*tensor_product_weight(l,j);
 
         //direction
         ipInfo_[scalar_index].direction = Jacobian::S_DIRECTION;
@@ -4498,6 +4755,9 @@ Quad92DSCS::set_interior_info()
   }
 }
 
+//--------------------------------------------------------------------------
+//-------- set_boundary_info -----------------------------------------------
+//--------------------------------------------------------------------------
 void
 Quad92DSCS::set_boundary_info()
 {
@@ -4517,13 +4777,15 @@ Quad92DSCS::set_boundary_info()
                                             1, 5, 2, //face 1, right face
                                             2, 6, 3, //face 2, top face  -- reversed order
                                             3, 7, 0  //face 3, left face -- reversed order
-                                           };
+                                          };
 
-  auto face_node_number = [=] (int number,int faceOrdinal) { return stkFaceNodeMap[number+nodes1D_*faceOrdinal]; };
+  auto face_node_number = [=] (int number,int faceOrdinal)
+  {
+    return stkFaceNodeMap[number+nodes1D_*faceOrdinal];
+  };
 
   const std::vector<int> faceToLine = { 0, 3, 1, 2 };
   const std::vector<double> faceLoc = {-1.0, +1.0, +1.0, -1.0};
-  const std::vector<double> scsEndLoc = { -1.0, -scsDist_, +scsDist_, +1.0 };
 
   int scalar_index = 0; int vector_index = 0;
   int faceOrdinal = 0; //bottom face
@@ -4606,20 +4868,6 @@ Quad92DSCS::set_boundary_info()
       ++oppFaceIndex;
     }
   }
-
-  // all ips are associated with a face IP for this element type
-  bool err =  false;
-  for(int ni = 0; ni < numFaceIps; ++ni) {
-    if (std::count(oppFace_.begin(), oppFace_.end(), ni) != 1) {
-      std::cout << "Incorrect ip count for ip: " << oppFace_[ni] << std::endl;
-      err = true;
-    }
-  }
-
-  if (err) {
-    throw std::runtime_error("Error in boundary ip information");
-  }
-
 }
 
 
@@ -4637,35 +4885,35 @@ Quad92DSCS::ipNodeMap(
 //--------------------------------------------------------------------------
 //-------- determinant -----------------------------------------------------
 //--------------------------------------------------------------------------
-
 void
-Quad92DSCS::determinant(const int nelem,
-  const double* coords,
-  double* areav,
-  double* error)
+Quad92DSCS::determinant(
+  const int nelem,
+  const double *coords,
+  double *areav,
+  double *error)
 {
   //returns the normal vector (dyds,-dxds) for constant t curves
   //returns the normal vector (dydt,-dxdt) for constant s curves
-  std::vector<double> shapeDerivs(nodesPerElement_*(nDim_-1));
-  std::vector<double> normalVec(nDim_);
 
-  // raw pointers
-  double* p_shapeDerivs = shapeDerivs.data();
-  double* p_normalVec = normalVec.data();
+  std::vector<double> areaVector(nDim_);
 
   for (int k = 0; k < nelem; ++k) {
     const int coord_elem_offset = nDim_ * nodesPerElement_ * k;
-    const int vector_ip_elem_offset = nDim_*numIntPoints_*k;
-    for (int ni = 0; ni < numIntPoints_; ++ni) {
-      const int dim_offset = nDim_ * ni;
-      const int offset = dim_offset + vector_ip_elem_offset;
+    const int vector_elem_offset = nDim_*numIntPoints_*k;
 
-      //calculate area vector for this ip
-      area_vector(ipInfo_[ni].direction, &intgLoc_[dim_offset], &coords[coord_elem_offset], p_shapeDerivs, p_normalVec);
+    for (int ip = 0; ip < numIntPoints_; ++ip) {
+      const int grad_offset = nDim_ * nodesPerElement_ * ip;
+      const int offset = nDim_ * ip + vector_elem_offset;
+
+      //compute area vector for this ip
+      area_vector( ipInfo_[ip].direction,
+                   &coords[coord_elem_offset],
+                   &shapeDerivs_[grad_offset],
+                   areaVector.data() );
 
       // apply quadrature weight and orientation (combined as weight)
       for (int j = 0; j < nDim_; ++j) {
-        areav[offset+j]  = ipInfo_[ni].weight * p_normalVec[j];
+        areav[offset+j]  = ipInfo_[ip].weight * areaVector[j];
       }
     }
   }
@@ -4722,7 +4970,7 @@ void Quad92DSCS::face_grad_op(
   double* p_shapeDerivs = shapeDerivs.data();
   double* p_grad = grad.data();
 
-    const int nface = 1; // always 1 face -- need to update offsets if changes
+  const int nface = 1; // always 1 face -- need to update offsets if changes
   for (int k = 0; k < nelem; ++k) {
     const int coord_elem_offset = vecNodes * k;
     const int scalar_ip_elem_offset = ipsPerFace_ * k;
@@ -4763,7 +5011,7 @@ Quad92DSCS::adjacentNodes()
 }
 
 //--------------------------------------------------------------------------
-//-------- opposingNodes --------------------------------------------------
+//-------- opposingNodes ---------------------------------------------------
 //--------------------------------------------------------------------------
 int
 Quad92DSCS::opposingNodes(
@@ -4774,7 +5022,7 @@ Quad92DSCS::opposingNodes(
 }
 
 //--------------------------------------------------------------------------
-//-------- opposingFace --------------------------------------------------
+//-------- opposingFace ----------------------------------------------------
 //--------------------------------------------------------------------------
 int
 Quad92DSCS::opposingFace(
@@ -4785,71 +5033,39 @@ Quad92DSCS::opposingFace(
 }
 
 //--------------------------------------------------------------------------
-//-------- shape_fcn -------------------------------------------------------
-//--------------------------------------------------------------------------
-void
-Quad92DSCS::shape_fcn(double *shpfc)
-{
-  quad9_shape_fcn(numIntPoints_, &intgLoc_[0], shpfc);
-}
-
-//--------------------------------------------------------------------------
-//-------- shifted_shape_fcn -----------------------------------------------
-//--------------------------------------------------------------------------
-void
-Quad92DSCS::shifted_shape_fcn(double *shpfc)
-{
-  std::cout << "Qaud92DSCS::shifted_shape_fcn not implemented with intLocShift_" << std::endl;
-  quad9_shape_fcn(numIntPoints_, &intgLoc_[0], shpfc);
-}
-
-//--------------------------------------------------------------------------
 //-------- area_vector -----------------------------------------------------
 //--------------------------------------------------------------------------
 void
 Quad92DSCS::area_vector(
   const Jacobian::Direction direction,
-  const double *isoParCoords,
   const double *elemNodalCoords,
   double *shapeDeriv,
   double *normalVec ) const
 {
-  // return the normal area vector given shape derivatives dnds OR dndt
-  directional_shape_deriv(direction, isoParCoords, shapeDeriv);
-
-  double dxdr = 0.0;  double dydr = 0.0;
-  for (int ni = 0; ni < nodesPerElement_; ++ni) {
-    const int dim_offset = nDim_ * ni;
-    const double xCoord = elemNodalCoords[dim_offset];
-    const double yCoord = elemNodalCoords[dim_offset+1];
-
-    dxdr += shapeDeriv[ni] * xCoord;
-    dydr += shapeDeriv[ni] * yCoord;
-  }
-
-  normalVec[0] =  dydr;
-  normalVec[1] = -dxdr;
-}
-
-//--------------------------------------------------------------------------
-//-------- point_shape_deriv -----------------------------------------------
-//--------------------------------------------------------------------------
-void
-Quad92DSCS::directional_shape_deriv(
-  const Jacobian::Direction direction,
-  const double *isoParCoords,
-  double *deriv) const
-{
+  int s1Component;
   switch (direction) {
     case Jacobian::S_DIRECTION:
-      shape_deriv_t(isoParCoords, deriv);
+      s1Component = static_cast<int>(Jacobian::T_DIRECTION);
       break;
     case Jacobian::T_DIRECTION:
-      shape_deriv_s(isoParCoords, deriv);
+      s1Component = static_cast<int>(Jacobian::S_DIRECTION);
       break;
     default:
       throw std::runtime_error("Not a valid direction for this element!");
   }
+
+  double dxdr = 0.0;  double dydr = 0.0;
+  for (int node = 0; node < nodesPerElement_; ++node) {
+    const int vector_offset = nDim_ * node;
+    const double xCoord = elemNodalCoords[vector_offset+0];
+    const double yCoord = elemNodalCoords[vector_offset+1];
+
+    dxdr += shapeDeriv[vector_offset+s1Component] * xCoord;
+    dydr += shapeDeriv[vector_offset+s1Component] * yCoord;
+  }
+
+  normalVec[0] =  dydr;
+  normalVec[1] = -dxdr;
 }
 
 //--------------------------------------------------------------------------
@@ -5741,7 +5957,22 @@ Quad3DSCS::general_shape_fcn(
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 Quad93DSCS::Quad93DSCS()
-  : HexahedralP2Element()
+  : HexahedralP2Element(),
+    surfaceDimension_(2)
+{
+  // set up integration rule and relevant maps on scs
+  set_interior_info();
+
+  // compute and save shape functions and derivatives at ips
+  eval_shape_functions_at_ips();
+  eval_shape_derivs_at_ips();
+}
+
+//--------------------------------------------------------------------------
+//-------- set_interior_info -----------------------------------------------
+//--------------------------------------------------------------------------
+void
+Quad93DSCS::set_interior_info()
 {
   nodesPerElement_ = nodes1D_ * nodes1D_;
 
@@ -5758,51 +5989,63 @@ Quad93DSCS::Quad93DSCS()
 
    // define ip node mappings
    ipNodeMap_.resize(numIntPoints_);
-   intgLoc_.resize(numIntPoints_*(nDim_-1)); // size = 72
-   intgLocShift_.resize(numIntPoints_*(nDim_-1)); // size = 72
+   intgLoc_.resize(numIntPoints_*surfaceDimension_); // size = 72
+   intgLocShift_.resize(numIntPoints_*surfaceDimension_); // size = 72
    ipWeight_.resize(numIntPoints_);
-
-   // a padded list of the scs locations in 1D
-   const std::vector<double> scsEndLoc =  { -1, -scsDist_, scsDist_, 1 };
 
    // tensor product nodes (3x3) x tensor product quadrature (2x2)
    int vector_index_2D = 0; int scalar_index = 0;
    for (int l = 0; l < nodes1D_; ++l) {
-     const double Lt = scsEndLoc[l + 1] - scsEndLoc[l];
-
      for (int k = 0; k < nodes1D_; ++k) {
-       const double Ls = scsEndLoc[k + 1] - scsEndLoc[k];
-
-       const int nodeNumber = tensor_map_2D(k,l);
-       //tensor-product quadrature for a particular sub-cv
        for (int j = 0; j < numQuad_; ++j) {
          for (int i = 0; i < numQuad_; ++i) {
            //integration point location
-           intgLoc_[vector_index_2D]     = isoparametric_mapping(scsEndLoc[k + 1], scsEndLoc[k], gp_[i]);
-           intgLoc_[vector_index_2D + 1] = isoparametric_mapping(scsEndLoc[l + 1], scsEndLoc[l], gp_[j]);
+           intgLoc_[vector_index_2D]     = gauss_point_location(k,i);
+           intgLoc_[vector_index_2D + 1] = gauss_point_location(l,j);
 
            //weight
-           const double isoparametricVolume = Ls * Lt;
-           const double tensorProductWeight = gw_[i] * gw_[j];
-           ipWeight_[scalar_index] = isoparametricVolume * tensorProductWeight;
+           ipWeight_[scalar_index] = tensor_product_weight(k,l,i,j);
 
            //sub-control volume association
-           ipNodeMap_[scalar_index] = nodeNumber;
+           ipNodeMap_[scalar_index] = tensor_map_2D(k,l);
 
            // increment indices
            ++scalar_index;
-           vector_index_2D += (nDim_-1);
+           vector_index_2D += surfaceDimension_;
          }
        }
      }
    }
 }
 
+//--------------------------------------------------------------------------
+//-------- eval_shape_derivs_at_ips ----------------------------------------
+//--------------------------------------------------------------------------
+void
+Quad93DSCS::eval_shape_functions_at_ips()
+{
+  shapeFunctions_.resize(numIntPoints_*nodesPerElement_);
+  quad9_shape_fcn(numIntPoints_, intgLoc_.data(), shapeFunctions_.data());
+}
+
+//--------------------------------------------------------------------------
+//-------- eval_shape_derivs_at_ips ----------------------------------------
+//--------------------------------------------------------------------------
+void
+Quad93DSCS::eval_shape_derivs_at_ips()
+{
+  shapeDerivs_.resize(numIntPoints_*nodesPerElement_*surfaceDimension_);
+  quad9_shape_deriv(numIntPoints_, intgLoc_.data(), shapeDerivs_.data());
+}
+
+//--------------------------------------------------------------------------
+//-------- quad9_shape_fcn -------------------------------------------------
+//--------------------------------------------------------------------------
 void
 Quad93DSCS::quad9_shape_fcn(
-  const int  &numIntPoints,
+  int  numIntPoints,
   const double *intgLoc,
-  double *shpfc)
+  double *shpfc) const
 {
   for ( int ip = 0; ip < numIntPoints; ++ip ) {
     int nineIp = 9*ip; // nodes per element is always 9
@@ -5829,51 +6072,73 @@ Quad93DSCS::quad9_shape_fcn(
     shpfc[nineIp+8] =  one_m_ss * one_m_tt;
   }
 }
-//--------------------------------------------------------------------------
-//-------- shape_deriv_s ---------------------------------------------------
-//--------------------------------------------------------------------------
-void
-Quad93DSCS::shape_deriv_s(
-  const double *isoParCoords,
-  double *deriv) const
-{
-  const double s = isoParCoords[0];
-  const double t = isoParCoords[1];
 
-  const double t2 = t*t;
 
-  deriv[0] = 0.25 * (2.0 * s * t2 - 2.0 * s * t - t2 + t);
-  deriv[1] = 0.25 * (2.0 * s * t2 - 2.0 * s * t + t2 - t);
-  deriv[2] = 0.25 * (2.0 * s * t2 + 2.0 * s * t + t2 + t);
-  deriv[3] = 0.25 * (2.0 * s * t2 + 2.0 * s * t - t2 - t);
-  deriv[4] = -0.5 * (2.0 * s * t2 - 2.0 * s * t);
-  deriv[5] = -0.5 * (2.0 * s * t2 + t2 - 2.0 * s - 1.0);
-  deriv[6] = -0.5 * (2.0 * s * t2 + 2.0 * s * t);
-  deriv[7] = -0.5 * (2.0 * s * t2 - t2 - 2.0 * s + 1.0);
-  deriv[8] = 2.0 * s * t2 - 2.0 * s;
-}
 //--------------------------------------------------------------------------
-//-------- shape_deriv_t -------------------------------------------------
+//-------- quad9_shape_deriv -----------------------------------------------
 //--------------------------------------------------------------------------
 void
-Quad93DSCS::shape_deriv_t(
-  const double *isoParCoords,
+Quad93DSCS::quad9_shape_deriv(
+  int numIntPoints,
+  const double *intgLoc,
   double *deriv) const
 {
-  const double s = isoParCoords[0];
-  const double t = isoParCoords[1];
+  for ( int ip = 0; ip < numIntPoints; ++ip ) {
+    const int grad_offset = surfaceDimension_ * nodesPerElement_ * ip; // nodes per element is always 9
+    const int vector_offset = surfaceDimension_ * ip;
+    int node; int offset;
 
-  const double s2 = s*s;
+    const double s = intgLoc[vector_offset+0];
+    const double t = intgLoc[vector_offset+1];
 
-  deriv[0] = 0.25 * (2.0 * s2 * t - 2.0 * s * t - s2 + s);
-  deriv[1] = 0.25 * (2.0 * s2 * t + 2.0 * s * t - s2 - s);
-  deriv[2] = 0.25 * (2.0 * s2 * t + 2.0 * s * t + s2 + s);
-  deriv[3] = 0.25 * (2.0 * s2 * t - 2.0 * s * t + s2 - s);
-  deriv[4] = -0.5 * (2.0 * s2 * t - s2 - 2.0 * t + 1.0);
-  deriv[5] = -0.5 * (2.0 * s2 * t + 2.0 * s * t);
-  deriv[6] = -0.5 * (2.0 * s2 * t + s2 - 2.0 * t - 1.0);
-  deriv[7] = -0.5 * (2.0 * s2 * t - 2.0 * s * t);
-  deriv[8] = 2.0 * s2 * t - 2.0 * t;
+    const double s2 = s*s;
+    const double t2 = t*t;
+
+    node = 0;
+    offset = grad_offset + surfaceDimension_ * node;
+    deriv[offset+0] = 0.25 * (2.0 * s * t2 - 2.0 * s * t - t2 + t);
+    deriv[offset+1] = 0.25 * (2.0 * s2 * t - 2.0 * s * t - s2 + s);
+
+    node = 1;
+    offset = grad_offset + surfaceDimension_ * node;
+    deriv[offset+0] = 0.25 * (2.0 * s * t2 - 2.0 * s * t + t2 - t);
+    deriv[offset+1] = 0.25 * (2.0 * s2 * t + 2.0 * s * t - s2 - s);
+
+    node = 2;
+    offset = grad_offset + surfaceDimension_ * node;
+    deriv[offset+0] = 0.25 * (2.0 * s * t2 + 2.0 * s * t + t2 + t);
+    deriv[offset+1] = 0.25 * (2.0 * s2 * t + 2.0 * s * t + s2 + s);
+
+    node = 3;
+    offset = grad_offset + surfaceDimension_ * node;
+    deriv[offset+0] = 0.25 * (2.0 * s * t2 + 2.0 * s * t - t2 - t);
+    deriv[offset+1] = 0.25 * (2.0 * s2 * t - 2.0 * s * t + s2 - s);
+
+    node = 4;
+    offset = grad_offset + surfaceDimension_ * node;
+    deriv[offset+0] = -0.5 * (2.0 * s * t2 - 2.0 * s * t);
+    deriv[offset+1] = -0.5 * (2.0 * s2 * t - s2 - 2.0 * t + 1.0);
+
+    node = 5;
+    offset = grad_offset + surfaceDimension_ * node;
+    deriv[offset+0] = -0.5 * (2.0 * s * t2 + t2 - 2.0 * s - 1.0);
+    deriv[offset+1] = -0.5 * (2.0 * s2 * t + 2.0 * s * t);
+
+    node = 6;
+    offset = grad_offset + surfaceDimension_ * node;
+    deriv[offset+0] = -0.5 * (2.0 * s * t2 + 2.0 * s * t);
+    deriv[offset+1] = -0.5 * (2.0 * s2 * t + s2 - 2.0 * t - 1.0);
+
+    node = 7;
+    offset = grad_offset + surfaceDimension_ * node;
+    deriv[offset+0] = -0.5 * (2.0 * s * t2 - t2 - 2.0 * s + 1.0);
+    deriv[offset+1] = -0.5 * (2.0 * s2 * t - 2.0 * s * t);
+
+    node = 8;
+    offset = grad_offset + surfaceDimension_ * node;
+    deriv[offset+0] = 2.0 * s * t2 - 2.0 * s;
+    deriv[offset+1] = 2.0 * s2 * t - 2.0 * t;
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -5897,54 +6162,27 @@ Quad93DSCS::determinant(
   double *areav,
   double *error)
 {
-  //returns the normal vector (dyds,-dxds) for constant t curves
-  //returns the normal vector (dydt,-dxdt) for constant s curves
-  std::vector<double> normalVec(nDim_);
-  std::vector<double> shapeDerivs(nodesPerElement_*(nDim_-1));
-
-  // raw pointers
-  double* p_normalVec = normalVec.data();
-  double* p_shapeDerivs = shapeDerivs.data();
+  std::vector<double> areaVector(nDim_);
 
   for (int k = 0; k < nelem; ++k) {
     const int coord_elem_offset = nDim_ * nodesPerElement_ * k;
-    const int vector_ip_elem_offset = nDim_ * numIntPoints_ * k;
-    for (int ni = 0; ni < numIntPoints_; ++ni) {
-      const int ip_offset = (nDim_-1) * ni;
-      const int dim_offset = nDim_ * ni;
-      const int offset = dim_offset + vector_ip_elem_offset;
+    const int vector_elem_offset = nDim_ * numIntPoints_ * k;
 
+    for (int ip = 0; ip < numIntPoints_; ++ip) {
+      const int grad_offset = surfaceDimension_ * nodesPerElement_ * ip;
+      const int offset = nDim_ * ip + vector_elem_offset;
 
-      // calculate the area vector for this IP
-      area_vector(&intgLoc_[ip_offset], &coords[coord_elem_offset], p_shapeDerivs, p_normalVec);
+      //compute area vector for this ip
+      area_vector( &coords[coord_elem_offset],
+                   &shapeDerivs_[grad_offset],
+                   areaVector.data() );
 
-      // apply quadrature weight
+      // apply quadrature weight and orientation (combined as weight)
       for (int j = 0; j < nDim_; ++j) {
-        areav[offset+j] = ipWeight_[ni] * p_normalVec[j];
+        areav[offset+j]  = ipWeight_[ip] * areaVector[j];
       }
     }
   }
-
-  // all is always well; no error checking
-  *error = 0;
-}
-
-//--------------------------------------------------------------------------
-//-------- shape_fcn -------------------------------------------------------
-//--------------------------------------------------------------------------
-void
-Quad93DSCS::shape_fcn(double *shpfc)
-{
-  quad9_shape_fcn(numIntPoints_, &intgLoc_[0], shpfc);
-}
-
-//--------------------------------------------------------------------------
-//-------- shifted_shape_fcn -----------------------------------------------
-//--------------------------------------------------------------------------
-void
-Quad93DSCS::shifted_shape_fcn(double *shpfc)
-{
-  quad9_shape_fcn(numIntPoints_, &intgLocShift_[0], shpfc);
 }
 
 //--------------------------------------------------------------------------
@@ -5952,28 +6190,24 @@ Quad93DSCS::shifted_shape_fcn(double *shpfc)
 //--------------------------------------------------------------------------
 void
 Quad93DSCS::area_vector(
-  const double *isoParCoords,
   const double *elemNodalCoords,
-  double *shapeDeriv,
-  double *normalVec) const
+  const double *shapeDeriv,
+  double *areaVector) const
 {
-  
-  shape_deriv_s(isoParCoords, &shapeDeriv[0*nodesPerElement_]);
-  shape_deriv_t(isoParCoords, &shapeDeriv[1*nodesPerElement_]);
-
    // return the normal area vector given shape derivatives dnds OR dndt
    double dx_ds1 = 0.0; double dy_ds1 = 0.0; double dz_ds1 = 0.0;
    double dx_ds2 = 0.0; double dy_ds2 = 0.0; double dz_ds2 = 0.0;
 
-   const int deriv_offset = nodesPerElement_;
-   for (int ni = 0; ni < nodesPerElement_; ++ni) {
-     const int dim_offset = nDim_ * ni;
-     const double xCoord = elemNodalCoords[dim_offset+0];
-     const double yCoord = elemNodalCoords[dim_offset+1];
-     const double zCoord = elemNodalCoords[dim_offset+2];
+   for (int node = 0; node < nodesPerElement_; ++node) {
+     const int vector_offset = nDim_ * node;
+     const int surface_vector_offset = surfaceDimension_ * node;
 
-     const double dn_ds1 = shapeDeriv[ni+0];
-     const double dn_ds2 = shapeDeriv[ni+deriv_offset];
+     const double xCoord = elemNodalCoords[vector_offset+0];
+     const double yCoord = elemNodalCoords[vector_offset+1];
+     const double zCoord = elemNodalCoords[vector_offset+2];
+
+     const double dn_ds1 = shapeDeriv[surface_vector_offset+0];
+     const double dn_ds2 = shapeDeriv[surface_vector_offset+1];
 
      dx_ds1 += dn_ds1 * xCoord;
      dx_ds2 += dn_ds2 * xCoord;
@@ -5986,9 +6220,9 @@ Quad93DSCS::area_vector(
    }
 
    //cross product
-   normalVec[0] = dy_ds1*dz_ds2 - dz_ds1*dy_ds2;
-   normalVec[1] = dz_ds1*dx_ds2 - dx_ds1*dz_ds2;
-   normalVec[2] = dx_ds1*dy_ds2 - dy_ds1*dx_ds2;
+   areaVector[0] = dy_ds1 * dz_ds2 - dz_ds1 * dy_ds2;
+   areaVector[1] = dz_ds1 * dx_ds2 - dx_ds1 * dz_ds2;
+   areaVector[2] = dx_ds1 * dy_ds2 - dy_ds1 * dx_ds2;
 }
 
 //--------------------------------------------------------------------------
@@ -6440,37 +6674,25 @@ Edge32DSCS::Edge32DSCS()
   ipNodeMap_.resize(numIntPoints_);
   intgLoc_.resize(numIntPoints_);
 
-  intgLocShift_.resize(numIntPoints_);
+  intgLocShift_.resize(6);
   intgLocShift_[0] = -1.00; intgLocShift_[1]  = -1.00;
   intgLocShift_[2] =  0.00; intgLocShift_[3]  =  0.00;
   intgLocShift_[4] =  1.00; intgLocShift_[5]  =  1.00;
 
   ipWeight_.resize(numIntPoints_);
 
-  std::vector<int> stk1DNodeMap = { 0, 2, 1};
-  const std::vector<double> scsEndLoc = {-1,-scsDist_, scsDist_, 1};
+  std::vector<int> stk1DNodeMap = { 0, 2, 1 };
 
   int scalar_index = 0;
-  for (int m = 0; m < nodes1D_; ++m) {
-    const double Ls = scsEndLoc[m+1] - scsEndLoc[m];
-    for (int j = 0; j < numQuad_; ++j) {
-      ipNodeMap_[scalar_index] = stk1DNodeMap[m];
-
-      intgLoc_[scalar_index] = isoparametric_mapping(scsEndLoc[m+1], scsEndLoc[m], gp_[j]);
-
-      ipWeight_[scalar_index] = Ls*gw_[j];
+  for (int k = 0; k < nodes1D_; ++k) {
+    for (int i = 0; i < numQuad_; ++i) {
+      ipNodeMap_[scalar_index] = stk1DNodeMap[k];
+      intgLoc_[scalar_index] = gauss_point_location(k,i);
+      ipWeight_[scalar_index] = tensor_product_weight(k,i);
 
       ++scalar_index;
     }
   }
-}
-
-//--------------------------------------------------------------------------
-//-------- destructor ------------------------------------------------------
-//--------------------------------------------------------------------------
-Edge32DSCS::~Edge32DSCS()
-{
-  // does nothing
 }
 
 //--------------------------------------------------------------------------
@@ -6493,36 +6715,22 @@ void Edge32DSCS::determinant(
   double *areav,
   double *error)
 {
-  std::vector<double> normalVec(nDim_);
-  std::vector<double> elemNodalCoords(nDim_ * nodesPerElement_);
-
-  // raw pointers
-  double* p_normalVec = normalVec.data();
-  double* p_elemNodalCoords = elemNodalCoords.data();
+  std::vector<double> areaVector(nDim_);
 
   for (int k = 0; k < nelem; ++k) {
-    const int elem_offset = nDim_ * nodesPerElement_ * k;
+    const int coord_elem_offset = nDim_ * nodesPerElement_ * k;
 
-    //load up the element coordinates in the expected format
-    for (int ni = 0; ni < nodesPerElement_; ++ni) {
-      const int dim_offset = ni * nDim_;
-      const int offset = dim_offset + elem_offset;
-      for (int j = 0; j < nDim_; ++j) {
-        p_elemNodalCoords[dim_offset + j] = coords[offset + j];
-      }
-    }
-
-    for (int ni = 0; ni < numIntPoints_; ++ni) {
-      const int dim_offset = ni * nDim_;
-      const int offset = dim_offset + elem_offset;
-      const double s = intgLoc_[ni];
+    for (int ip = 0; ip < numIntPoints_; ++ip) {
+      const int offset = nDim_ * ip + coord_elem_offset;
 
       // calculate the area vector
-      area_vector(p_elemNodalCoords, s, p_normalVec);
+      area_vector( &coords[coord_elem_offset],
+                   intgLoc_[ip],
+                   areaVector.data() );
 
       // weight the area vector with the Gauss-quadrature weight for this IP
-      areav[offset] = ipWeight_[ni] * p_normalVec[0];
-      areav[offset + 1] = ipWeight_[ni] * p_normalVec[1];
+      areav[offset + 0] = ipWeight_[ip] * areaVector[0];
+      areav[offset + 1] = ipWeight_[ip] * areaVector[1];
     }
   }
 
@@ -6567,7 +6775,7 @@ void
 Edge32DSCS::area_vector(
   const double *coords,
   const double s,
-  double *normalVec) const
+  double *areaVector) const
 {
   // returns the normal area vector (dyds,-dxds) evaluated at s
 
@@ -6585,8 +6793,8 @@ Edge32DSCS::area_vector(
   const double dxds = 0.5 * (x1 - x0) + (x1 - 2.0 * x2 + x0) * s;
   const double dyds = 0.5 * (y1 - y0) + (y1 - 2.0 * y2 + y0) * s;
 
-  normalVec[0] =  dyds;
-  normalVec[1] = -dxds;
+  areaVector[0] =  dyds;
+  areaVector[1] = -dxds;
 }
 
 } // namespace nalu

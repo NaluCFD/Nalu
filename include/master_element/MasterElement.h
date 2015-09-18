@@ -152,7 +152,7 @@ public:
   virtual const double * edgeAlignedArea() {
     throw std::runtime_error("edgeAlignedArea not implement"); }
 
-  double isoparametric_mapping(const double b, const double a, const double xi);
+  double isoparametric_mapping(const double b, const double a, const double xi) const;
 
   int nDim_;
   int nodesPerElement_;
@@ -191,7 +191,6 @@ public:
     const double *coords,
     double *volume,
     double * error );
-
 };
 
 
@@ -296,10 +295,10 @@ class HexahedralP2Element : public MasterElement
 {
 public:
   HexahedralP2Element();
-  virtual ~HexahedralP2Element() = default;
+  virtual ~HexahedralP2Element() {}
 
   void shape_fcn(double *shpfc);
-  void shifted_shape_fcn(double *shpfc)  {};
+  void shifted_shape_fcn(double *shpfc)  { throw std::runtime_error("shifted shape functions not implemented"); };
 
 protected:
   struct ContourData {
@@ -308,30 +307,53 @@ protected:
   };
 
   int tensor_product_node_map(int i, int j, int k) const;
-  void shape_deriv_s(const double* isoParCoords, double* result) const;
-  void shape_deriv_t(const double* isoParCoords, double* result) const;
-  void shape_deriv_u(const double* isoParCoords, double* result) const;
+
+  double gauss_point_location(
+    int nodeOrdinal,
+    int gaussPointOrdinal) const;
+
+  double tensor_product_weight(
+    int s1Node, int s2Node, int s3Node,
+    int s1Ip, int s2Ip, int s3Ip) const;
+
+  double tensor_product_weight(
+    int s1Node, int s2Node,
+    int s1Ip, int s2Ip) const;
+
+  virtual void eval_shape_functions_at_ips();
+
+  virtual void eval_shape_derivs_at_ips();
+
+  void eval_shape_derivs_at_face_ips();
 
   const double scsDist_;
   const bool useGLLGLL_;
   const int nodes1D_;
   const int numQuad_;
 
-  //quadrature info
-  std::vector<double> gp_;
-  std::vector<double> gw_;
+  // quadrature info
+  std::vector<double> gaussAbscissae_;
+  std::vector<double> gaussWeight_;
   std::vector<double> scsEndLoc_;
 
   std::vector<int> stkNodeMap_;
 
+  std::vector<double> shapeFunctions_;
+  std::vector<double> shapeDerivs_;
+  std::vector<double> expFaceShapeDerivs_;
+
 private:
   void hex27_shape_fcn(
-    const int &npts,
+    int npts,
     const double *par_coord,
     double* shape_fcn
   ) const;
 
-
+  void hex27_shape_deriv(
+    int npts,
+    const double *par_coord,
+    double* shape_fcn
+  ) const;
 };
 
 // 3D Quad 27 subcontrol volume
@@ -339,7 +361,7 @@ class Hex27SCV : public HexahedralP2Element
 {
 public:
   Hex27SCV();
-  virtual ~Hex27SCV() = default;
+  virtual ~Hex27SCV() {}
 
   const int * ipNodeMap(int ordinal = 0);
 
@@ -350,15 +372,11 @@ public:
     double * error );
 
 private:
-  double jacobian_determinant(
-    const double *isoParCoords,
-    const double *elemNodalCoords,
-    double *shapeDerivs,
-    double *err) const;
+  void set_interior_info();
 
-  void shape_deriv(
-      const double* isoParCoords,
-      double* shapeDerivs) const;
+  double jacobian_determinant(
+    const double *elemNodalCoords,
+    const double *shapeDerivs ) const;
 
   std::vector<double> ipWeight_;
 };
@@ -368,9 +386,7 @@ class Hex27SCS : public HexahedralP2Element
 {
 public:
   Hex27SCS();
-  virtual ~Hex27SCS() = default;
-
-  const int * adjacentNodes();
+  virtual ~Hex27SCS() {}
 
   void determinant(
     const int nelem,
@@ -387,12 +403,14 @@ public:
     double * error );
 
   void face_grad_op(
-     const int nelem,
-     const int face_ordinal,
-     const double *coords,
-     double *gradop,
-     double *det_j,
-     double * error );
+    const int nelem,
+    const int face_ordinal,
+    const double *coords,
+    double *gradop,
+    double *det_j,
+    double * error );
+
+  const int * adjacentNodes();
 
   const int * ipNodeMap(int ordinal = 0);
 
@@ -408,32 +426,15 @@ private:
 
   void area_vector(
     const Jacobian::Direction direction,
-    const double *isoParCoords,
     const double *elemNodalCoords,
     double *shapeDeriv,
-    double *normalVec ) const;
-
-  void directional_shape_deriv(
-    const Jacobian::Direction direction,
-    const double *isoParCoords,
-    double *deriv ) const;
-
-  void shape_deriv(
-    const double *isoParCoords,
-    double *deriv ) const;
+    double *areaVector ) const;
 
   void gradient(
     const double* elemNodalCoords,
     const double* shapeDeriv,
     double* grad,
     double* det_j ) const;
-
-  int opp_face_map(
-    int k,
-    int l,
-    int i,
-    int j,
-    int face ) const;
 
   std::vector<ContourData> ipInfo_;
   int ipsPerFace_;
@@ -696,7 +697,6 @@ public:
     const int &npts,
     const double *par_coord, 
     double* shape_fcn);
-
 };
 
 // 2D Quad 4 subcontrol volume
@@ -815,7 +815,10 @@ class QuadrilateralP2Element : public MasterElement
 {
 public:
   QuadrilateralP2Element();
-  virtual ~QuadrilateralP2Element() = default;
+  virtual ~QuadrilateralP2Element() {}
+
+  void shape_fcn(double *shpfc);
+  void shifted_shape_fcn(double *shpfc)  { throw std::runtime_error("shifted shape functions not implemented"); };
 
 protected:
   struct ContourData {
@@ -825,15 +828,19 @@ protected:
 
   int tensor_product_node_map(int i, int j) const;
 
-  void shape_deriv_s(const double* isoParCoords, double* result) const;
+  double gauss_point_location(
+    int nodeOrdinal,
+    int gaussPointOrdinal) const;
 
-  void shape_deriv_t(const double* isoParCoords, double* result) const;
+  double tensor_product_weight(
+    int s1Node, int s2Node,
+    int s1Ip, int s2Ip) const;
 
-  void quad9_shape_fcn(
-    const int &npts,
-    const double *par_coord,
-    double* shape_fcn
-  );
+  double tensor_product_weight(int s1Node, int s1Ip) const;
+
+  void eval_shape_functions_at_ips();
+  void eval_shape_derivs_at_ips();
+  void eval_shape_derivs_at_face_ips();
 
   const double scsDist_;
   const bool useGLLGLL_;
@@ -841,24 +848,38 @@ protected:
   const int numQuad_;
 
   //quadrature info
-  std::vector<double> gp_;
-  std::vector<double> gw_;
+  std::vector<double> gaussAbscissae_;
+  std::vector<double> gaussWeight_;
 
   std::vector<int> stkNodeMap_;
+  std::vector<double> scsEndLoc_;
+
+  std::vector<double> shapeFunctions_;
+  std::vector<double> shapeDerivs_;
+  std::vector<double> expFaceShapeDerivs_;
+
+private:
+  void quad9_shape_fcn(
+    int npts,
+    const double *par_coord,
+    double* shape_fcn
+  ) const;
+
+  void quad9_shape_deriv(
+    int npts,
+    const double *par_coord,
+    double* shape_fcn
+  ) const;
 };
 
-
-// 2D Quad 9 subcontrol volume
+// 3D Quad 27 subcontrol volume
 class Quad92DSCV : public QuadrilateralP2Element
 {
 public:
   Quad92DSCV();
-  ~Quad92DSCV();
+  virtual ~Quad92DSCV() {}
 
   const int * ipNodeMap(int ordinal = 0);
-
-  void shape_fcn(double *shpfc);
-  void shifted_shape_fcn(double *shpfc);
 
   void determinant(
     const int nelem,
@@ -867,35 +888,27 @@ public:
     double * error );
 
 private:
-  double jacobian_determinant(
-    const double *isoParCoords,
-    const double *elemNodalCoords,
-    double *work,
-    double *err) const;
+  void set_interior_info();
 
-  void shape_deriv(
-     const double *isoParCoords,
-     double *deriv) const;
+  double jacobian_determinant(
+    const double *elemNodalCoords,
+    const double *shapeDerivs ) const;
 
   std::vector<double> ipWeight_;
 };
 
-// 2D Quad 9 subcontrol surface
+// 3D Hex 27 subcontrol surface
 class Quad92DSCS : public QuadrilateralP2Element
 {
 public:
   Quad92DSCS();
-  ~Quad92DSCS();
-
-  const int * ipNodeMap(int ordinal = 0);
+  virtual ~Quad92DSCS() {}
 
   void determinant(
     const int nelem,
     const double *coords,
     double *areav,
     double * error );
-
-  const int * adjacentNodes();
 
   void grad_op(
     const int nelem,
@@ -913,17 +926,15 @@ public:
     double *det_j,
     double * error );
 
+  const int * adjacentNodes();
+
+  const int * ipNodeMap(int ordinal = 0);
+
   int opposingNodes(
     const int ordinal, const int node);
 
   int opposingFace(
     const int ordinal, const int node);
-
-  void shape_fcn(
-    double *shpfc);
-
-  void shifted_shape_fcn(
-    double *shpfc);
 
 private:
   void set_interior_info();
@@ -931,19 +942,12 @@ private:
 
   void area_vector(
     const Jacobian::Direction direction,
-    const double *isoParCoords,
     const double *elemNodalCoords,
     double *shapeDeriv,
-    double *normalVec ) const;
+    double *areaVector ) const;
 
-  void directional_shape_deriv(
-    const Jacobian::Direction direction,
-    const double *isoParCoords,
-    double *deriv) const;
-
-  std::vector<ContourData>ipInfo_;
+  std::vector<ContourData> ipInfo_;
   int ipsPerFace_;
-
 };
 
 // 2D Tri 3 subcontrol volume
@@ -1108,7 +1112,7 @@ class Quad93DSCS : public HexahedralP2Element
 {
 public:
   Quad93DSCS();
-  virtual ~Quad93DSCS() = default;
+  virtual ~Quad93DSCS() {}
 
   const int * ipNodeMap(int ordinal = 0);
 
@@ -1118,33 +1122,30 @@ public:
     double *areav,
     double * error );
 
-  void shape_fcn(
-    double *shpfc);
-
-  void shifted_shape_fcn(
-    double *shpfc);
-  
-  void quad9_shape_fcn(
-    const int &npts,
-    const double *par_coord, 
-    double* shape_fcn);
-
 private:
+  void set_interior_info();
+  void eval_shape_functions_at_ips();
+  void eval_shape_derivs_at_ips();
+
   void area_vector(
     const double *coords,
-    const double *isoParCoords,
-    double *shapeDerivs,
-    double *normalVec) const;
+    const double *shapeDerivs,
+    double *areaVector) const;
 
-  void shape_deriv_s(
-    const double *isoParCoords,
-    double *deriv) const;
+  void quad9_shape_fcn(
+    int npts,
+    const double *par_coord,
+    double* shape_fcn
+  ) const;
 
-  void shape_deriv_t(
-    const double *isoParCoords,
-    double *deriv) const;
+  void quad9_shape_deriv(
+    int npts,
+    const double *par_coord,
+    double* shape_fcn
+  ) const;
 
   std::vector<double> ipWeight_;
+  const int surfaceDimension_;
 };
 
 // 3D Tri 3
@@ -1242,7 +1243,7 @@ class Edge32DSCS : public QuadrilateralP2Element
 {
 public:
   Edge32DSCS();
-  virtual ~Edge32DSCS();
+  virtual ~Edge32DSCS() {}
 
   const int * ipNodeMap(int ordinal = 0);
 
@@ -1262,7 +1263,7 @@ private:
   void area_vector(
     const double *coords,
     const double s,
-    double *normalVec) const;
+    double *areaVector) const;
 
   std::vector<double> ipWeight_;
 };
