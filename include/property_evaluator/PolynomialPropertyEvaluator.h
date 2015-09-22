@@ -9,7 +9,7 @@
 #ifndef PolynomialPropertyEvaluator_h
 #define PolynomialPropertyEvaluator_h
 
-#include <PropertyEvaluator.h>
+#include <property_evaluator/PropertyEvaluator.h>
 #include <FieldTypeDef.h>
 
 #include <string>

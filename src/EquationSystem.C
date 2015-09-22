@@ -355,5 +355,16 @@ EquationSystem::create_constraint_algorithm(
   }
 }
 
+//--------------------------------------------------------------------------
+//-------- evaluate_properties ---------------------------------------------
+//--------------------------------------------------------------------------
+void
+EquationSystem::evaluate_properties()
+{
+  for ( size_t k = 0; k < propertyAlg_.size(); ++k ) {
+    propertyAlg_[k]->execute();
+  }
+}
+
 } // namespace nalu
 } // namespace Sierra

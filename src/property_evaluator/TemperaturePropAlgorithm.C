@@ -7,8 +7,9 @@
 
 
 #include <Algorithm.h>
-#include <LinearPropAlgorithm.h>
+#include <property_evaluator/TemperaturePropAlgorithm.h>
 #include <FieldTypeDef.h>
+#include <property_evaluator/PropertyEvaluator.h>
 #include <Realm.h>
 
 #include <stk_mesh/base/BulkData.hpp>
@@ -20,28 +21,33 @@
 namespace sierra{
 namespace nalu{
 
-LinearPropAlgorithm::LinearPropAlgorithm(
+TemperaturePropAlgorithm::TemperaturePropAlgorithm(
   Realm & realm,
   stk::mesh::Part * part,
   stk::mesh::FieldBase * prop,
-  stk::mesh::FieldBase * indVar,
-  const double primary,
-  const double secondary)
+  PropertyEvaluator *propEvaluator,
+  std::string tempName)
   : Algorithm(realm, part),
     prop_(prop),
-    indVar_(indVar),
-    primary_(primary),
-    secondary_(secondary)
+    propEvaluator_(propEvaluator),
+    temperature_(NULL)
 {
-  // does nothing
+  // extract temperature field
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
+  temperature_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, tempName);
+  if ( NULL == temperature_ ) {
+    throw std::runtime_error("Realm::setup_property: TemperaturePropAlgorithm requires temperature/bc:");
+  }
 }
 
 void
-LinearPropAlgorithm::execute()
+TemperaturePropAlgorithm::execute()
 {
 
   // make sure that partVec_ is size one
   ThrowAssert( partVec_.size() == 1 );
+
+  std::vector<double> indVarList(1);
 
   stk::mesh::Selector selector = stk::mesh::selectUnion(partVec_);
 
@@ -54,16 +60,14 @@ LinearPropAlgorithm::execute()
     const stk::mesh::Bucket::size_type length   = b.size();
 
     double *prop  = (double*) stk::mesh::field_data(*prop_, b);
-    const double *indVar  = (double*) stk::mesh::field_data(*indVar_, b);
+    const double *temperature  = (double*) stk::mesh::field_data(*temperature_, b);
 
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
-      const double z = indVar[k];
-      const double om_z = 1.0-z;
-      prop[k] = z*primary_ + om_z*secondary_;
+      indVarList[0] = temperature[k];
+      prop[k] = propEvaluator_->execute(&indVarList[0], b[k]);
     }
   }
 }
-
 
 } // namespace nalu
 } // namespace Sierra

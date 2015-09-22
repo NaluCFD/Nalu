@@ -10,10 +10,12 @@
 
 #include <Enums.h>
 #include <Realm.h>
-#include <MaterialPropertyData.h>
 #include <NaluEnv.h>
-#include <ReferencePropertyData.h>
-#include <PropertyEvaluator.h>
+
+// props; algs, evaluators and data
+#include <property_evaluator/MaterialPropertyData.h>
+#include <property_evaluator/ReferencePropertyData.h>
+#include <property_evaluator/PropertyEvaluator.h>
 
 // yaml for parsing..
 #include <yaml-cpp/yaml.h>
@@ -325,6 +327,10 @@ MaterialPropertys::load(const YAML::Node & node)
           matData->tablePropName_ = tablePropName;
           matData->tableAuxVarName_ = tableAuxVarName;
 	}
+        else if ( thePropType == "generic" ) {
+          matData->type_ = GENERIC;
+          get_required(y_spec, "generic_property_evaluator_name", matData->genericPropertyEvaluatorName_);
+        }
         else {
           throw std::runtime_error("unknown property type");  
         }

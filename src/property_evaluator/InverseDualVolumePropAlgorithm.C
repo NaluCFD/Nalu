@@ -7,9 +7,8 @@
 
 
 #include <Algorithm.h>
-#include <TemperaturePropAlgorithm.h>
+#include <property_evaluator/InverseDualVolumePropAlgorithm.h>
 #include <FieldTypeDef.h>
-#include <PropertyEvaluator.h>
 #include <Realm.h>
 
 #include <stk_mesh/base/BulkData.hpp>
@@ -21,33 +20,28 @@
 namespace sierra{
 namespace nalu{
 
-TemperaturePropAlgorithm::TemperaturePropAlgorithm(
+InverseDualVolumePropAlgorithm::InverseDualVolumePropAlgorithm(
   Realm & realm,
   stk::mesh::Part * part,
-  stk::mesh::FieldBase * prop,
-  PropertyEvaluator *propEvaluator,
-  std::string tempName)
+  stk::mesh::FieldBase * prop)
   : Algorithm(realm, part),
     prop_(prop),
-    propEvaluator_(propEvaluator),
-    temperature_(NULL)
+    dualNodalVolume_(NULL)
 {
-  // extract temperature field
+  // extract dual volume
   stk::mesh::MetaData & meta_data = realm_.meta_data();
-  temperature_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, tempName);
-  if ( NULL == temperature_ ) {
-    throw std::runtime_error("Realm::setup_property: TemperaturePropAlgorithm requires temperature/bc:");
-  }
+  dualNodalVolume_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
+}
+
+InverseDualVolumePropAlgorithm::~InverseDualVolumePropAlgorithm() {
 }
 
 void
-TemperaturePropAlgorithm::execute()
+InverseDualVolumePropAlgorithm::execute()
 {
 
   // make sure that partVec_ is size one
   ThrowAssert( partVec_.size() == 1 );
-
-  std::vector<double> indVarList(1);
 
   stk::mesh::Selector selector = stk::mesh::selectUnion(partVec_);
 
@@ -59,15 +53,15 @@ TemperaturePropAlgorithm::execute()
     stk::mesh::Bucket & b = **ib ;
     const stk::mesh::Bucket::size_type length   = b.size();
 
-    double *prop  = (double*) stk::mesh::field_data(*prop_, b);
-    const double *temperature  = (double*) stk::mesh::field_data(*temperature_, b);
+    double *prop  = (double*)stk::mesh::field_data(*prop_, b);
+    const double *dualNodalVolume  = (double*)stk::mesh::field_data(*dualNodalVolume_, b);
 
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
-      indVarList[0] = temperature[k];
-      prop[k] = propEvaluator_->execute(&indVarList[0], b[k]);
+      prop[k] = 1.0/dualNodalVolume[k];
     }
   }
 }
+
 
 } // namespace nalu
 } // namespace Sierra

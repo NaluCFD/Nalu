@@ -6,8 +6,8 @@
 /*------------------------------------------------------------------------*/
 
 
-#include <PropertyEvaluator.h>
-#include <IdealGasPropertyEvaluator.h>
+#include <property_evaluator/PropertyEvaluator.h>
+#include <property_evaluator/WaterPropertyEvaluator.h>
 #include <FieldTypeDef.h>
 
 #include <stk_mesh/base/MetaData.hpp>
@@ -21,32 +21,25 @@ namespace nalu{
 //==========================================================================
 // Class Definition
 //==========================================================================
-// IdealGasTPropertyEvaluator - evaluates density as a function of T
+// WaterDensityTPropertyEvaluator - evaluates density as a function of T
 //==========================================================================
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-IdealGasTPropertyEvaluator::IdealGasTPropertyEvaluator(
-  double pRef,
-  double universalR,
-  std::vector<std::pair<double, double> > mwMassFracVec)
+WaterDensityTPropertyEvaluator::WaterDensityTPropertyEvaluator(
+  stk::mesh::MetaData &metaData)
   : PropertyEvaluator(),
-    pRef_(pRef),
-    R_(universalR),
-    mw_(0.0)
+    aw_(+765.33),
+    bw_(+1.8142),
+    cw_(-3.5e-3)
 {
-  // compute mixture mw
-  double sum = 0.0;
-  for (std::size_t k = 0; k < mwMassFracVec.size(); ++k ){
-    sum += mwMassFracVec[k].second/mwMassFracVec[k].first;
-  }
-  mw_ = 1.0/sum;
+  // nothing to do
 }
 
 //--------------------------------------------------------------------------
 //-------- destructor ------------------------------------------------------
 //--------------------------------------------------------------------------
-IdealGasTPropertyEvaluator::~IdealGasTPropertyEvaluator()
+WaterDensityTPropertyEvaluator::~WaterDensityTPropertyEvaluator()
 {
   // nothing
 }
@@ -55,51 +48,38 @@ IdealGasTPropertyEvaluator::~IdealGasTPropertyEvaluator()
 //-------- execute ---------------------------------------------------------
 //--------------------------------------------------------------------------
 double
-IdealGasTPropertyEvaluator::execute(
+WaterDensityTPropertyEvaluator::execute(
   double *indVarList,
   stk::mesh::Entity /*node*/)
 {
   const double T = indVarList[0];
-  return pRef_*mw_/R_/T;
+  const double rhoW = aw_ + T*(bw_ + T*cw_);
+  return rhoW; // kg/m^3; T in C (converted above)
 }
 
 //==========================================================================
 // Class Definition
 //==========================================================================
-// IdealGasTYkPropertyEvaluator - evaluates density as a function of T and Yk
+// WaterViscosityTPropertyEvaluator - evaluates viscosity as a function of T
 //==========================================================================
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-IdealGasTYkPropertyEvaluator::IdealGasTYkPropertyEvaluator(
-  double pRef,
-  double universalR,
-  std::vector<double> mwVec,
+WaterViscosityTPropertyEvaluator::WaterViscosityTPropertyEvaluator(
   stk::mesh::MetaData &metaData)
   : PropertyEvaluator(),
-    pRef_(pRef),
-    R_(universalR),
-    massFraction_(NULL),
-    mwVecSize_(0)
+    aw_(+9.67e-2),
+    bw_(-8.207e-4),
+    cw_(+2.344e-6),
+    dw_(-2.244e-9)
 {
-  // sizing
-  mwVecSize_ = mwVec.size();
-  mwVec_.resize(mwVecSize_);
-
-  // save off mwVec (reference quantity)
-  for (std::size_t k = 0; k < mwVecSize_; ++k ){
-    mwVec_[k] = mwVec[k];
-  }
-
-  // save off mass fraction field
-  massFraction_ = metaData.get_field<GenericFieldType>(stk::topology::NODE_RANK, "mass_fraction");
-
+  // nothing to do
 }
- 
+
 //--------------------------------------------------------------------------
 //-------- destructor ------------------------------------------------------
 //--------------------------------------------------------------------------
-IdealGasTYkPropertyEvaluator::~IdealGasTYkPropertyEvaluator()
+WaterViscosityTPropertyEvaluator::~WaterViscosityTPropertyEvaluator()
 {
   // nothing
 }
@@ -108,65 +88,39 @@ IdealGasTYkPropertyEvaluator::~IdealGasTYkPropertyEvaluator()
 //-------- execute ---------------------------------------------------------
 //--------------------------------------------------------------------------
 double
-IdealGasTYkPropertyEvaluator::execute(
-    double *indVarList,
-    stk::mesh::Entity node)
+WaterViscosityTPropertyEvaluator::execute(
+  double *indVarList,
+  stk::mesh::Entity /*node*/)
 {
   const double T = indVarList[0];
-  const double *massFraction = stk::mesh::field_data(*massFraction_, node);
-  const double mw = compute_mw(massFraction);
-  return pRef_*mw/R_/T;
-}
-
-//--------------------------------------------------------------------------
-//-------- compute_mw ------------------------------------------------------
-//--------------------------------------------------------------------------
-double
-IdealGasTYkPropertyEvaluator::compute_mw(
-    const double *massFraction)
-{
-
-  // compute mixture mw
-  double sum = 0.0;
-  for (std::size_t k = 0; k < mwVecSize_; ++k ){
-    sum += massFraction[k]/mwVec_[k];
-  }
-  return 1.0/sum;
+  const double muW = aw_ + T*(bw_ + T*(cw_ + T*dw_));
+  return muW; // kg/m-s; T in K
 }
 
 //==========================================================================
 // Class Definition
 //==========================================================================
-// IdealGasTPPropertyEvaluator - evaluates density as a function of T and P
+// WaterSpecHeatTPropertyEvaluator - evaluates Cp as a function of T
 //==========================================================================
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-IdealGasTPPropertyEvaluator::IdealGasTPPropertyEvaluator(
-  double universalR,
-  std::vector<std::pair<double, double> > mwMassFracVec,
+WaterSpecHeatTPropertyEvaluator::WaterSpecHeatTPropertyEvaluator(
   stk::mesh::MetaData &metaData)
   : PropertyEvaluator(),
-    R_(universalR),
-    mw_(0.0),
-    pressure_(NULL)
+    aw_(28.07),
+    bw_(-2.817e-1),
+    cw_(+1.25e-3),
+    dw_(-2.48e-6),
+    ew_(+1.857e-9)
 {
-
-  // save off mass fraction field
-  pressure_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure");
-
-  // compute mixture mw
-  double sum = 0.0;
-  for (std::size_t k = 0; k < mwMassFracVec.size(); ++k ){
-    sum += mwMassFracVec[k].second/mwMassFracVec[k].first;
-  }
-  mw_ = 1.0/sum;
+  // nothing to do
 }
 
 //--------------------------------------------------------------------------
 //-------- destructor ------------------------------------------------------
 //--------------------------------------------------------------------------
-IdealGasTPPropertyEvaluator::~IdealGasTPPropertyEvaluator()
+WaterSpecHeatTPropertyEvaluator::~WaterSpecHeatTPropertyEvaluator()
 {
   // nothing
 }
@@ -175,54 +129,93 @@ IdealGasTPPropertyEvaluator::~IdealGasTPPropertyEvaluator()
 //-------- execute ---------------------------------------------------------
 //--------------------------------------------------------------------------
 double
-IdealGasTPPropertyEvaluator::execute(
+WaterSpecHeatTPropertyEvaluator::execute(
+  double *indVarList,
+  stk::mesh::Entity /*node*/)
+{
+  const double T = indVarList[0];
+  const double cpW = (aw_ + T*(bw_ + T*(cw_ + T*(dw_ + T*ew_))))*1000.0;
+  return cpW; // J/kg-K; T in K (orginal correlation provided in kJ/kg-K)
+}
+
+//==========================================================================
+// Class Definition
+//==========================================================================
+// WaterEnthalpyTPropertyEvaluator - evaluates h as a function of T
+//==========================================================================
+//--------------------------------------------------------------------------
+//-------- constructor -----------------------------------------------------
+//--------------------------------------------------------------------------
+WaterEnthalpyTPropertyEvaluator::WaterEnthalpyTPropertyEvaluator(
+  stk::mesh::MetaData &metaData)
+  : PropertyEvaluator(),
+    aw_(28.07),
+    bw_(-2.817e-1),
+    cw_(+1.25e-3),
+    dw_(-2.48e-6),
+    ew_(+1.857e-9),
+    Tref_(300.0),
+    hRef_((aw_ + Tref_*(bw_ + Tref_*(cw_ + Tref_*(dw_ + Tref_*ew_))))*1000.0*Tref_)
+{
+  // nothing to do
+}
+
+//--------------------------------------------------------------------------
+//-------- destructor ------------------------------------------------------
+//--------------------------------------------------------------------------
+WaterEnthalpyTPropertyEvaluator::~WaterEnthalpyTPropertyEvaluator()
+{
+  // nothing
+}
+
+//--------------------------------------------------------------------------
+//-------- execute ---------------------------------------------------------
+//--------------------------------------------------------------------------
+double
+WaterEnthalpyTPropertyEvaluator::execute(
   double *indVarList,
   stk::mesh::Entity node)
 {
   const double T = indVarList[0];
-  const double P = *stk::mesh::field_data(*pressure_, node);
-  return P*mw_/R_/T;
+  const double hWT = compute_h(T);
+  const double hWTRef = compute_h(Tref_);
+  const double hW = hWT - hWTRef + hRef_;
+  return hW;
+}
+
+//--------------------------------------------------------------------------
+//-------- compute_h ---------------------------------------------------------
+//--------------------------------------------------------------------------
+double
+WaterEnthalpyTPropertyEvaluator::compute_h(
+  const double T)
+{
+  const double hW = T*(aw_ + T*(bw_/2.0 + T*(cw_/3.0 + T*(dw_/4.0 + T*ew_/5.0))))*1000.0;
+  return hW;
 }
 
 //==========================================================================
 // Class Definition
 //==========================================================================
-// IdealGasYkPropertyEvaluator - evaluates density as a function of Yk
+// WaterThermalCondTPropertyEvaluator - evaluates lambda as a function of T
 //==========================================================================
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-IdealGasYkPropertyEvaluator::IdealGasYkPropertyEvaluator(
-  double pRef,
-  double tRef,
-  double universalR,
-  std::vector<double> mwVec,
+WaterThermalCondTPropertyEvaluator::WaterThermalCondTPropertyEvaluator(
   stk::mesh::MetaData &metaData)
   : PropertyEvaluator(),
-    pRef_(pRef),
-    tRef_(tRef),
-    R_(universalR),
-    massFraction_(NULL),
-    mwVecSize_(0)
+    aw_(-0.5752),
+    bw_(+6.397e-3),
+    cw_(-8.151e-6)
 {
-  // sizing
-  mwVecSize_ = mwVec.size();
-  mwVec_.resize(mwVecSize_);
-
-  // save off mwVec (reference quantity)
-  for (std::size_t k = 0; k < mwVecSize_; ++k ){
-    mwVec_[k] = mwVec[k];
-  }
-
-  // save off mass fraction field
-  massFraction_ = metaData.get_field<GenericFieldType>(stk::topology::NODE_RANK, "mass_fraction");
-
+  // nothing to do
 }
- 
+
 //--------------------------------------------------------------------------
 //-------- destructor ------------------------------------------------------
 //--------------------------------------------------------------------------
-IdealGasYkPropertyEvaluator::~IdealGasYkPropertyEvaluator()
+WaterThermalCondTPropertyEvaluator::~WaterThermalCondTPropertyEvaluator()
 {
   // nothing
 }
@@ -231,29 +224,13 @@ IdealGasYkPropertyEvaluator::~IdealGasYkPropertyEvaluator()
 //-------- execute ---------------------------------------------------------
 //--------------------------------------------------------------------------
 double
-IdealGasYkPropertyEvaluator::execute(
-    double */*indVarList*/,
-    stk::mesh::Entity node)
+WaterThermalCondTPropertyEvaluator::execute(
+  double *indVarList,
+  stk::mesh::Entity /*node*/)
 {
-  const double *massFraction = stk::mesh::field_data(*massFraction_, node);
-  const double mw = compute_mw(massFraction);
-  return pRef_*mw/R_/tRef_;
-}
-
-//--------------------------------------------------------------------------
-//-------- compute_mw ------------------------------------------------------
-//--------------------------------------------------------------------------
-double
-IdealGasYkPropertyEvaluator::compute_mw(
-    const double *massFraction)
-{
-
-  // compute mixture mw
-  double sum = 0.0;
-  for (std::size_t k = 0; k < mwVecSize_; ++k ){
-    sum += massFraction[k]/mwVec_[k];
-  }
-  return 1.0/sum;
+  const double T = indVarList[0];
+  const double lambdaW = aw_ + T*(bw_ + T*cw_);
+  return lambdaW; // W/m-K; T in K
 }
 
 } // namespace nalu

@@ -9,7 +9,7 @@
 #ifndef ConstantPropertyEvaluator_h
 #define ConstantPropertyEvaluator_h
 
-#include <PropertyEvaluator.h>
+#include <property_evaluator/PropertyEvaluator.h>
 
 namespace stk {
 namespace mesh {

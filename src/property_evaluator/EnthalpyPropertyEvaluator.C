@@ -6,12 +6,11 @@
 /*------------------------------------------------------------------------*/
 
 
-#include <EnthalpyPropertyEvaluator.h>
-#include <PolynomialPropertyEvaluator.h>
+#include <property_evaluator/EnthalpyPropertyEvaluator.h>
+#include <property_evaluator/PolynomialPropertyEvaluator.h>
+#include <property_evaluator/ReferencePropertyData.h>
 
 #include <FieldTypeDef.h>
-#include <ReferencePropertyData.h>
-
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/BulkData.hpp>
 #include <stk_mesh/base/Field.hpp>

@@ -6,34 +6,45 @@
 /*------------------------------------------------------------------------*/
 
 
-#include <ReferencePropertyData.h>
-
-#include <Enums.h>
+#include <property_evaluator/ConstantPropertyEvaluator.h>
 
 namespace sierra{
 namespace nalu{
 
+//==========================================================================
+// Class Definition
+//==========================================================================
+// ConstantPropertyEvaluator
+//==========================================================================
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-ReferencePropertyData::ReferencePropertyData()
-  : speciesName_("na"),
-    mw_(0.0),
-    massFraction_(0.0),
-    stoichiometry_(0.0),
-    primaryMassFraction_(0.0),
-    secondaryMassFraction_(0.0)
+ConstantPropertyEvaluator::ConstantPropertyEvaluator(const double & value)
+  : value_(value)
 {
-  // does nothing
+  // nothing else
 }
 
 //--------------------------------------------------------------------------
 //-------- destructor ------------------------------------------------------
 //--------------------------------------------------------------------------
-ReferencePropertyData::~ReferencePropertyData()
+ConstantPropertyEvaluator::~ConstantPropertyEvaluator()
 {
   // nothing
 }
 
+//--------------------------------------------------------------------------
+//-------- execute ---------------------------------------------------------
+//--------------------------------------------------------------------------
+double
+ConstantPropertyEvaluator::execute(
+  double *indVarList,
+  stk::mesh::Entity /*node*/)
+{
+  return value_;
+}
+
 } // namespace nalu
 } // namespace Sierra
+
+

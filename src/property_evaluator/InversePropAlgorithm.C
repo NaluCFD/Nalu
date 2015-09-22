@@ -7,7 +7,7 @@
 
 
 #include <Algorithm.h>
-#include <InverseDualVolumePropAlgorithm.h>
+#include <property_evaluator/InversePropAlgorithm.h>
 #include <FieldTypeDef.h>
 #include <Realm.h>
 
@@ -20,28 +20,32 @@
 namespace sierra{
 namespace nalu{
 
-InverseDualVolumePropAlgorithm::InverseDualVolumePropAlgorithm(
+InversePropAlgorithm::InversePropAlgorithm(
   Realm & realm,
   stk::mesh::Part * part,
-  stk::mesh::FieldBase * prop)
+  stk::mesh::FieldBase * prop,
+  stk::mesh::FieldBase * indVar,
+  const double primary,
+  const double secondary)
   : Algorithm(realm, part),
     prop_(prop),
-    dualNodalVolume_(NULL)
+    indVar_(indVar),
+    primary_(primary),
+    secondary_(secondary)
 {
-  // extract dual volume
-  stk::mesh::MetaData & meta_data = realm_.meta_data();
-  dualNodalVolume_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
+  // does nothing
 }
 
-InverseDualVolumePropAlgorithm::~InverseDualVolumePropAlgorithm() {
+InversePropAlgorithm::~InversePropAlgorithm() {
 }
 
 void
-InverseDualVolumePropAlgorithm::execute()
+InversePropAlgorithm::execute()
 {
 
   // make sure that partVec_ is size one
   ThrowAssert( partVec_.size() == 1 );
+
 
   stk::mesh::Selector selector = stk::mesh::selectUnion(partVec_);
 
@@ -54,10 +58,12 @@ InverseDualVolumePropAlgorithm::execute()
     const stk::mesh::Bucket::size_type length   = b.size();
 
     double *prop  = (double*)stk::mesh::field_data(*prop_, b);
-    const double *dualNodalVolume  = (double*)stk::mesh::field_data(*dualNodalVolume_, b);
+    const double *indVar  = (double*)stk::mesh::field_data(*indVar_, b);
 
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
-      prop[k] = 1.0/dualNodalVolume[k];
+      const double z = indVar[k];
+      const double om_z = 1.0-z;
+      prop[k] = 1.0/(z/primary_ + om_z/secondary_);
     }
   }
 }

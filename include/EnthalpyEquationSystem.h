@@ -105,6 +105,8 @@ public:
   ScalarFieldType *visc_;
   ScalarFieldType *tvisc_;
   ScalarFieldType *evisc_;
+  ScalarFieldType *thermalCond_;
+  ScalarFieldType *specHeat_;
   ScalarFieldType *divQ_;
   ScalarFieldType *pOld_;
   

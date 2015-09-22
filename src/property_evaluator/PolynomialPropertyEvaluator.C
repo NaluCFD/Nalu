@@ -6,10 +6,9 @@
 /*------------------------------------------------------------------------*/
 
 
-#include <PolynomialPropertyEvaluator.h>
-#include <PropertyEvaluator.h>
-
-#include <ReferencePropertyData.h>
+#include <property_evaluator/PolynomialPropertyEvaluator.h>
+#include <property_evaluator/PropertyEvaluator.h>
+#include <property_evaluator/ReferencePropertyData.h>
 
 #include <stdexcept>
 

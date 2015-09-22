@@ -43,22 +43,21 @@ ComputeHeatTransferElemWallAlgorithm::ComputeHeatTransferElemWallAlgorithm(
     temperature_(NULL),
     coordinates_(NULL),
     density_(NULL),
-    viscosity_(NULL),
+    thermalCond_(NULL),
     specificHeat_(NULL),
     exposedAreaVec_(NULL),
     assembledWallArea_(NULL),
     referenceTemperature_(NULL),
     heatTransferCoefficient_(NULL),
     normalHeatFlux_(NULL),
-    robinCouplingParameter_(NULL),
-    Pr_(realm.get_lam_prandtl("enthalpy"))
+    robinCouplingParameter_(NULL)
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   temperature_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature");
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
-  viscosity_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity");
+  thermalCond_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "thermal_conductivity");
   specificHeat_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "specific_heat");
   exposedAreaVec_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");
   assembledWallArea_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "assembled_wall_area_ht");
@@ -172,10 +171,10 @@ ComputeHeatTransferElemWallAlgorithm::execute()
         stk::mesh::Entity node = face_node_rels[ni];
         // gather scalars
         p_density[ni] = *stk::mesh::field_data(*density_, node);
-        const double mu = *stk::mesh::field_data(*viscosity_, node);
+        const double lambda = *stk::mesh::field_data(*thermalCond_, node);
         const double Cp = *stk::mesh::field_data(*specificHeat_, node);
         p_specificHeat[ni] = Cp;
-        p_thermalCond[ni] = mu*Cp/Pr_;
+        p_thermalCond[ni] = lambda;
       }
 
       // extract the connected element to this exposed face; should be single in size!

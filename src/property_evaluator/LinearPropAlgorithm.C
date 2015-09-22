@@ -7,7 +7,7 @@
 
 
 #include <Algorithm.h>
-#include <InversePropAlgorithm.h>
+#include <property_evaluator/LinearPropAlgorithm.h>
 #include <FieldTypeDef.h>
 #include <Realm.h>
 
@@ -20,7 +20,7 @@
 namespace sierra{
 namespace nalu{
 
-InversePropAlgorithm::InversePropAlgorithm(
+LinearPropAlgorithm::LinearPropAlgorithm(
   Realm & realm,
   stk::mesh::Part * part,
   stk::mesh::FieldBase * prop,
@@ -36,16 +36,12 @@ InversePropAlgorithm::InversePropAlgorithm(
   // does nothing
 }
 
-InversePropAlgorithm::~InversePropAlgorithm() {
-}
-
 void
-InversePropAlgorithm::execute()
+LinearPropAlgorithm::execute()
 {
 
   // make sure that partVec_ is size one
   ThrowAssert( partVec_.size() == 1 );
-
 
   stk::mesh::Selector selector = stk::mesh::selectUnion(partVec_);
 
@@ -57,13 +53,13 @@ InversePropAlgorithm::execute()
     stk::mesh::Bucket & b = **ib ;
     const stk::mesh::Bucket::size_type length   = b.size();
 
-    double *prop  = (double*)stk::mesh::field_data(*prop_, b);
-    const double *indVar  = (double*)stk::mesh::field_data(*indVar_, b);
+    double *prop  = (double*) stk::mesh::field_data(*prop_, b);
+    const double *indVar  = (double*) stk::mesh::field_data(*indVar_, b);
 
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
       const double z = indVar[k];
       const double om_z = 1.0-z;
-      prop[k] = 1.0/(z/primary_ + om_z/secondary_);
+      prop[k] = z*primary_ + om_z*secondary_;
     }
   }
 }

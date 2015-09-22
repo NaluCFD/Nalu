@@ -6,45 +6,36 @@
 /*------------------------------------------------------------------------*/
 
 
-#include <ConstantPropertyEvaluator.h>
+#include <property_evaluator/MaterialPropertyData.h>
+
+#include <Enums.h>
 
 namespace sierra{
 namespace nalu{
 
-//==========================================================================
-// Class Definition
-//==========================================================================
-// ConstantPropertyEvaluator
-//==========================================================================
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-ConstantPropertyEvaluator::ConstantPropertyEvaluator(const double & value)
-  : value_(value)
+MaterialPropertyData::MaterialPropertyData()
+  : type_(MaterialPropertyType_END),
+    constValue_(0.0),
+    primary_(0.0),
+    secondary_(0.0),
+    auxVarName_("na"),
+    tablePropName_("na"),
+    tableAuxVarName_("na"),
+    genericPropertyEvaluatorName_("na")
 {
-  // nothing else
+  // does nothing
 }
 
 //--------------------------------------------------------------------------
 //-------- destructor ------------------------------------------------------
 //--------------------------------------------------------------------------
-ConstantPropertyEvaluator::~ConstantPropertyEvaluator()
+MaterialPropertyData::~MaterialPropertyData()
 {
   // nothing
 }
 
-//--------------------------------------------------------------------------
-//-------- execute ---------------------------------------------------------
-//--------------------------------------------------------------------------
-double
-ConstantPropertyEvaluator::execute(
-  double *indVarList,
-  stk::mesh::Entity /*node*/)
-{
-  return value_;
-}
-
 } // namespace nalu
 } // namespace Sierra
-
-

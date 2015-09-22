@@ -6,7 +6,7 @@
 /*------------------------------------------------------------------------*/
 
 
-#include <MaterialPropertyData.h>
+#include <property_evaluator/ReferencePropertyData.h>
 
 #include <Enums.h>
 
@@ -16,14 +16,13 @@ namespace nalu{
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-MaterialPropertyData::MaterialPropertyData()
-  : type_(CONSTANT_MAT),
-    constValue_(0.0),
-    primary_(0.0),
-    secondary_(0.0),
-    auxVarName_("na"),
-    tablePropName_("na"),
-    tableAuxVarName_("na")
+ReferencePropertyData::ReferencePropertyData()
+  : speciesName_("na"),
+    mw_(0.0),
+    massFraction_(0.0),
+    stoichiometry_(0.0),
+    primaryMassFraction_(0.0),
+    secondaryMassFraction_(0.0)
 {
   // does nothing
 }
@@ -31,7 +30,7 @@ MaterialPropertyData::MaterialPropertyData()
 //--------------------------------------------------------------------------
 //-------- destructor ------------------------------------------------------
 //--------------------------------------------------------------------------
-MaterialPropertyData::~MaterialPropertyData()
+ReferencePropertyData::~ReferencePropertyData()
 {
   // nothing
 }

@@ -38,6 +38,9 @@ public:
   std::string tablePropName_;
   std::string tableAuxVarName_;
 
+  // generic property name
+  std::string genericPropertyEvaluatorName_;
+
   // vectors and maps
   std::map<std::string, std::vector<double> > polynomialCoeffsMap_;
   std::map<std::string, std::vector<double> > lowPolynomialCoeffsMap_;

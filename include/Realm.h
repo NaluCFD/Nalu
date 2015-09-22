@@ -282,7 +282,7 @@ public:
   double get_lam_schmidt(
     const std::string dofname);
   double get_lam_prandtl(
-    const std::string dofname);
+    const std::string dofname, bool &prProvided);
   double get_turb_schmidt(
     const std::string dofname);
   double get_turb_prandtl(

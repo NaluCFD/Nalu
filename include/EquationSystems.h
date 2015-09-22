@@ -131,7 +131,8 @@ class EquationSystems
   void dump_eq_time();
   void pre_timestep_work();
   void post_converged_work();
-
+  void evaluate_properties();
+  
   Realm &realm_;
   std::string name_;
   int maxIterations_;

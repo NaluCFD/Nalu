@@ -30,7 +30,7 @@
 #include <ConstantAuxFunction.h>
 #include <CopyFieldAlgorithm.h>
 #include <DirichletBC.h>
-#include <EffectiveDiffFluxCoeffAlgorithm.h>
+#include <EnthalpyEffectiveDiffFluxCoeffAlgorithm.h>
 #include <EnthalpyPmrSrcNodeSuppAlg.h>
 #include <EnthalpyLowSpeedCompressibleNodeSuppAlg.h>
 #include <EnthalpyPressureWorkNodeSuppAlg.h>
@@ -55,10 +55,11 @@
 #include <SolutionOptions.h>
 
 // props
-#include <EnthalpyPropertyEvaluator.h>
+#include <property_evaluator/EnthalpyPropertyEvaluator.h>
 #include <MaterialPropertys.h>
-#include <SpecificHeatPropertyEvaluator.h>
-#include <TemperaturePropAlgorithm.h>
+#include <property_evaluator/SpecificHeatPropertyEvaluator.h>
+#include <property_evaluator/TemperaturePropAlgorithm.h>
+#include <property_evaluator/ThermalConductivityFromPrandtlPropAlgorithm.h>
 
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
@@ -107,6 +108,8 @@ EnthalpyEquationSystem::EnthalpyEquationSystem(
     visc_(NULL),
     tvisc_(NULL),
     evisc_(NULL),
+    thermalCond_(NULL),
+    specHeat_(NULL),
     divQ_(NULL),
     pOld_(NULL),
     assembleNodalGradAlgDriver_(new AssembleNodalGradAlgorithmDriver(realm_, "enthalpy", "dhdx")),
@@ -225,19 +228,40 @@ EnthalpyEquationSystem::register_nodal_fields(
   stk::mesh::put_field(*dhdx_, *part, nDim);
 
   // props
-  ScalarFieldType *specHeat = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "specific_heat"));
-  stk::mesh::put_field(*specHeat, *part);
+  specHeat_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "specific_heat"));
+  stk::mesh::put_field(*specHeat_, *part);
+  
+  visc_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity"));
+  stk::mesh::put_field(*visc_, *part);
 
-  // push to property list; enthalpy managed along with Cp
-  realm_.augment_property_map(SPEC_HEAT_ID, specHeat);
+  // push standard props to property list; enthalpy managed along with Cp
+  realm_.augment_property_map(SPEC_HEAT_ID, specHeat_);
+  realm_.augment_property_map(VISCOSITY_ID, visc_);
+
+  // special thermal conductivity
+  thermalCond_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "thermal_conductivity"));
+  stk::mesh::put_field(*thermalCond_, *part);
+
+  // check to see if Prandtl number was provided
+  bool prProvided = false;
+  const double providedPr = realm_.get_lam_prandtl("enthalpy", prProvided);
+  if ( prProvided ) {
+    // compute thermal conductivity using Pr; create and push back the algorithm
+    NaluEnv::self().naluOutputP0() << "Laminar Prandtl provided; will compute Thermal conductivity based on this constant value" << std::endl;
+    Algorithm *propAlg 
+      = new ThermalConductivityFromPrandtlPropAlgorithm(realm_, part, thermalCond_, specHeat_, visc_, providedPr);
+    propertyAlg_.push_back(propAlg);
+  }
+  else {
+    // no Pr provided, simply augment property map and expect lambda to be provided in the input file
+    realm_.augment_property_map(THERMAL_COND_ID, thermalCond_);
+  }
 
   // delta solution for linear solver; share delta since this is a split system
   hTmp_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "pTmp"));
   stk::mesh::put_field(*hTmp_, *part);
-
-  visc_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity"));
-  stk::mesh::put_field(*visc_, *part);
-
+  
+  // turbulent viscosity and effective viscosity
   if ( realm_.is_turbulent() ) {
     tvisc_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_viscosity"));
     stk::mesh::put_field(*tvisc_, *part);
@@ -379,13 +403,12 @@ EnthalpyEquationSystem::register_interior_algorithm(
   }
 
   // effective viscosity alg
-  const double lamPr = realm_.get_lam_prandtl(enthalpy_->name());
   const double turbPr = realm_.get_turb_prandtl(enthalpy_->name());
   std::map<AlgorithmType, Algorithm *>::iterator itev =
     diffFluxCoeffAlgDriver_->algMap_.find(algType);
   if ( itev == diffFluxCoeffAlgDriver_->algMap_.end() ) {
-    EffectiveDiffFluxCoeffAlgorithm *theAlg
-      = new EffectiveDiffFluxCoeffAlgorithm(realm_, part, visc_, tvisc_, evisc_, lamPr, turbPr);
+    EnthalpyEffectiveDiffFluxCoeffAlgorithm *theAlg
+      = new EnthalpyEffectiveDiffFluxCoeffAlgorithm(realm_, part, thermalCond_, specHeat_, tvisc_, evisc_, turbPr);
     diffFluxCoeffAlgDriver_->algMap_[algType] = theAlg;
   }
   else {

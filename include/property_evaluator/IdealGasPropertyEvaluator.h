@@ -9,7 +9,7 @@
 #ifndef IdealGasPropertyEvaluator_h
 #define IdealGasPropertyEvaluator_h
 
-#include <PropertyEvaluator.h>
+#include <property_evaluator/PropertyEvaluator.h>
 #include<FieldTypeDef.h>
 
 #include <vector>

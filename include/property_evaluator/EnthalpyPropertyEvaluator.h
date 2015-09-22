@@ -9,7 +9,7 @@
 #ifndef EnthalpyPropertyEvaluator_h
 #define EnthalpyPropertyEvaluator_h
 
-#include <PolynomialPropertyEvaluator.h>
+#include <property_evaluator/PolynomialPropertyEvaluator.h>
 #include <FieldTypeDef.h>
 
 #include <string>

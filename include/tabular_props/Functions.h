@@ -1,7 +1,6 @@
 #ifndef FUNCTIONS_H
 #define FUNCTIONS_H
 
-#include "HDF5TablePropAlgorithm.h"
 #include <vector>
 
 namespace sierra {

@@ -45,7 +45,6 @@ public:
   double alphaUpwDefault_;
   double upwDefault_;
   double lamScDefault_;
-  double lamPrDefault_;
   double turbScDefault_;
   double turbPrDefault_;
   bool nocDefault_;

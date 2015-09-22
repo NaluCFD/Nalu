@@ -1,4 +1,4 @@
-#include <HDF5TablePropAlgorithm.h>
+#include <property_evaluator/HDF5TablePropAlgorithm.h>
 #include <tabular_props/HDF5Table.h>
 #include <tabular_props/H5IO.h>
 

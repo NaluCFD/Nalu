@@ -7,9 +7,9 @@
 
 
 #include <Algorithm.h>
-#include <GenericPropAlgorithm.h>
+#include <property_evaluator/GenericPropAlgorithm.h>
 #include <FieldTypeDef.h>
-#include <PropertyEvaluator.h>
+#include <property_evaluator/PropertyEvaluator.h>
 #include <Realm.h>
 
 #include <stk_mesh/base/BulkData.hpp>

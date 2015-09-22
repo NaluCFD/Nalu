@@ -9,7 +9,7 @@
 #ifndef SpecificHeatPropertyEvaluator_h
 #define SpecificHeatPropertyEvaluator_h
 
-#include <PolynomialPropertyEvaluator.h>
+#include <property_evaluator/PolynomialPropertyEvaluator.h>
 #include <FieldTypeDef.h>
 
 #include <string>

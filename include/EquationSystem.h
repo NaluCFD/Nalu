@@ -131,6 +131,9 @@ public:
     const std::map<std::string, std::string> &theNames,
     const std::map<std::string, std::vector<double> > &theParams) {}
 
+  // rip through the propertyAlg_
+  virtual void evaluate_properties();
+ 
   virtual void load(const YAML::Node & node)
   {
     get_required(node, "name", name_);
@@ -187,7 +190,10 @@ public:
   std::vector<Algorithm *> copyStateAlg_;
   
   LinearSystem *linsys_;
-  
+
+  // vector of property algorithms
+  std::vector<Algorithm *> propertyAlg_;
+
   // vector of pre-iteration work algorithm drivers
   /*std::vector<AlgorithmDriver *> preIterAlgDriver_;*/
 

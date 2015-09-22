@@ -9,7 +9,7 @@
 #ifndef SutherlandsPropertyEvaluator_h
 #define SutherlandsPropertyEvaluator_h
 
-#include <PropertyEvaluator.h>
+#include <property_evaluator/PropertyEvaluator.h>
 #include <FieldTypeDef.h>
 
 #include <vector>

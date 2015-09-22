@@ -6,9 +6,9 @@
 /*------------------------------------------------------------------------*/
 
 
-#include <PropertyEvaluator.h>
-#include <SutherlandsPropertyEvaluator.h>
-#include <ReferencePropertyData.h>
+#include <property_evaluator/PropertyEvaluator.h>
+#include <property_evaluator/SutherlandsPropertyEvaluator.h>
+#include <property_evaluator/ReferencePropertyData.h>
 
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/BulkData.hpp>
