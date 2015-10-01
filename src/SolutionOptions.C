@@ -123,6 +123,14 @@ SolutionOptions::load(const YAML::Node & y_node)
     if ( cvfemReducedSensPoisson_)
       NaluEnv::self().naluOutputP0() << "Reduced sensitivities CVFEM Poisson" << std::endl;
 
+    // sanity checks; if user asked for shifted Poisson, then user will have reduced sensitivities
+    if ( cvfemShiftPoisson_ ) {
+      if ( !cvfemReducedSensPoisson_) {
+        NaluEnv::self().naluOutputP0() << "Reduced sensitivities CVFEM Poisson will be set" << std::endl;
+        cvfemReducedSensPoisson_ = true;
+      }
+    }
+
     // extract turbulence model; would be nice if we could parse an enum..
     std::string specifiedTurbModel;
     std::string defaultTurbModel = "laminar";
@@ -201,8 +209,8 @@ SolutionOptions::load(const YAML::Node & y_node)
           std::map<std::string, double> turbConstMap;
           y_option["turbulence_model_constants"] >> turbConstMap;
           // iterate the parsed map
-	  std::map<std::string, double>::iterator it;
-	  for ( it = turbConstMap.begin(); it!= turbConstMap.end(); ++it ) {
+          std::map<std::string, double>::iterator it;
+          for ( it = turbConstMap.begin(); it!= turbConstMap.end(); ++it ) {
             std::string theConstName = it->first;
             double theConstValue = it->second;
             // find the enum and set the value

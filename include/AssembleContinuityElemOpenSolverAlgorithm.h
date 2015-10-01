@@ -47,7 +47,7 @@ public:
 
   const bool shiftMdot_;
   const bool shiftPoisson_;
-
+  const bool reducedSensitivities_;
 };
 
 } // namespace nalu

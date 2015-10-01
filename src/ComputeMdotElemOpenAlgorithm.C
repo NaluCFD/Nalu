@@ -164,12 +164,13 @@ ComputeMdotElemOpenAlgorithm::execute()
     double *p_shape_function = &ws_shape_function[0];
     double *p_face_shape_function = &ws_face_shape_function[0];
 
-    // shape functions
+    // shape functions; interior
     if ( shiftPoisson_ )
       meSCS->shifted_shape_fcn(&p_shape_function[0]);
     else
       meSCS->shape_fcn(&p_shape_function[0]);
 
+    // shape functions; boundary
     if ( shiftMdot_ )
       meFC->shifted_shape_fcn(&p_face_shape_function[0]);
     else

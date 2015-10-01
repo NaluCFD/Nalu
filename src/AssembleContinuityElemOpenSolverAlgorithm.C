@@ -47,7 +47,8 @@ AssembleContinuityElemOpenSolverAlgorithm::AssembleContinuityElemOpenSolverAlgor
     exposedAreaVec_(NULL),
     pressureBc_(NULL),
     shiftMdot_(realm_.get_cvfem_shifted_mdot()),
-    shiftPoisson_(realm_.get_cvfem_shifted_poisson())
+    shiftPoisson_(realm_.get_cvfem_shifted_poisson()),
+    reducedSensitivities_(realm_.get_cvfem_reduced_sens_poisson())
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -61,6 +62,10 @@ AssembleContinuityElemOpenSolverAlgorithm::AssembleContinuityElemOpenSolverAlgor
   density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
   exposedAreaVec_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");
   pressureBc_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure_bc");
+
+  // Implementation details: code is designed to manage the following
+  // When shiftPoisson_ is TRUE, reducedSensitivities_ is enforced to be TRUE
+  // However, shiftPoisson_ can be FALSE while reducedSensitivities_ is TRUE
 }
 
 //--------------------------------------------------------------------------
@@ -117,6 +122,7 @@ AssembleContinuityElemOpenSolverAlgorithm::execute()
   std::vector<double> ws_bcPressure;
   // master element
   std::vector<double> ws_shape_function;
+  std::vector<double> ws_shape_function_lhs;
   std::vector<double> ws_face_shape_function;
 
   // time step
@@ -175,6 +181,7 @@ AssembleContinuityElemOpenSolverAlgorithm::execute()
     ws_density.resize(nodesPerFace);
     ws_bcPressure.resize(nodesPerFace);
     ws_shape_function.resize(numScsIp*nodesPerElement);
+    ws_shape_function_lhs.resize(numScsIp*nodesPerElement);
     ws_face_shape_function.resize(numScsBip*nodesPerFace);
 
     // pointers
@@ -187,14 +194,19 @@ AssembleContinuityElemOpenSolverAlgorithm::execute()
     double *p_density = &ws_density[0];
     double *p_bcPressure = &ws_bcPressure[0];
     double *p_shape_function = &ws_shape_function[0];
+    double *p_shape_function_lhs = shiftPoisson_ ? &ws_shape_function[0] : reducedSensitivities_ ? &ws_shape_function_lhs[0] : &ws_shape_function[0];
     double *p_face_shape_function = &ws_face_shape_function[0];
 
-    // shape functions
+    // shape functions; interior
     if ( shiftPoisson_ )
       meSCS->shifted_shape_fcn(&p_shape_function[0]);
     else
       meSCS->shape_fcn(&p_shape_function[0]);
 
+    if ( !shiftPoisson_ && reducedSensitivities_ )
+      meSCS->shifted_shape_fcn(&p_shape_function_lhs[0]);
+
+    // shape functions; boundary
     if ( shiftMdot_ )
       meFC->shifted_shape_fcn(&p_face_shape_function[0]);
     else
@@ -352,7 +364,7 @@ AssembleContinuityElemOpenSolverAlgorithm::execute()
         int rowR = nearestNode*nodesPerElement;
 
         for ( int ic = 0; ic < nodesPerElement; ++ic ) {
-          const double r = p_shape_function[offSetSF_elem+ic];
+          const double r = p_shape_function_lhs[offSetSF_elem+ic];
           p_lhs[rowR+ic] += r*asq*inv_axdx;
         }
 

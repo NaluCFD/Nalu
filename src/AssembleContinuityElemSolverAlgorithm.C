@@ -60,6 +60,10 @@ AssembleContinuityElemSolverAlgorithm::AssembleContinuityElemSolverAlgorithm(
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   pressure_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure");
   density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
+
+  // Implementation details: code is designed to manage the following
+  // When shiftPoisson_ is TRUE, reducedSensitivities_ is enforced to be TRUE
+  // However, shiftPoisson_ can be FALSE while reducedSensitivities_ is TRUE
 }
 
 //--------------------------------------------------------------------------
@@ -182,7 +186,7 @@ AssembleContinuityElemSolverAlgorithm::execute()
     double *p_density = &ws_density[0];
     double *p_scs_areav = &ws_scs_areav[0];
     double *p_dndx = &ws_dndx[0];
-    double *p_dndx_lhs = reducedSensitivities_ ? &ws_dndx_lhs[0] : &ws_dndx[0];
+    double *p_dndx_lhs = shiftPoisson_ ? &ws_dndx[0] : reducedSensitivities_ ? &ws_dndx_lhs[0] : &ws_dndx[0];
     double *p_shape_function = &ws_shape_function[0];
 
     if ( shiftMdot_)
@@ -244,13 +248,13 @@ AssembleContinuityElemSolverAlgorithm::execute()
 
       // compute dndx for residual
       if ( shiftPoisson_ )
-        meSCS->shifted_grad_op(1, &p_coordinates[0], &ws_dndx[0], &ws_deriv[0], &ws_det_j[0], &scs_error);
+        meSCS->shifted_grad_op(1, &p_coordinates[0], &p_dndx[0], &ws_deriv[0], &ws_det_j[0], &scs_error);
       else
-        meSCS->grad_op(1, &p_coordinates[0], &ws_dndx[0], &ws_deriv[0], &ws_det_j[0], &scs_error);
+        meSCS->grad_op(1, &p_coordinates[0], &p_dndx[0], &ws_deriv[0], &ws_det_j[0], &scs_error);
       
       // compute dndx for LHS
-      if ( reducedSensitivities_ )
-        meSCS->shifted_grad_op(1, &p_coordinates[0], &ws_dndx_lhs[0], &ws_deriv[0], &ws_det_j[0], &scs_error);
+      if ( !shiftPoisson_ && reducedSensitivities_ )
+        meSCS->shifted_grad_op(1, &p_coordinates[0], &p_dndx_lhs[0], &ws_deriv[0], &ws_det_j[0], &scs_error);
 
       for ( int ip = 0; ip < numScsIp; ++ip ) {
 
