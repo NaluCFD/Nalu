@@ -59,7 +59,6 @@ class Adapter;
 #endif
 class EquationSystems;
 class OutputInfo;
-class AveragingInfo;
 class PostProcessingInfo;
 class SolutionNormPostProcessing;
 class PeriodicManager;
@@ -67,6 +66,7 @@ class Realms;
 class Simulation;
 class SolutionOptions;
 class TimeIntegrator;
+class TurbulenceAveragingPostProcessing;
 class MasterElement;
 class PropertyEvaluator;
 class HDF5FilePtr;
@@ -75,19 +75,18 @@ class Transfer;
 class Realm {
 public:
 
-  Realm(Realms&);
-
+  Realm(Realms&, const YAML::Node & node);
   ~Realm();
 
   typedef size_t SizeType;
 
   void load(const YAML::Node & node);
+  void look_ahead_and_creation(const YAML::Node & node);
 
   void breadboard();
 
   void initialize();
-  void sample_look_ahead();
-
+ 
   Simulation *root() const;
   Simulation *root();
   Realms *parent() const;
@@ -180,9 +179,6 @@ public:
     stk::mesh::Part *part);
 
   void register_nodal_fields(
-    stk::mesh::Part *part);
-
-  void register_averaging_variables(
     stk::mesh::Part *part);
 
   void register_wall_bc(
@@ -389,9 +385,9 @@ public:
 
   SolutionOptions *solutionOptions_;
   OutputInfo *outputInfo_;
-  AveragingInfo *averagingInfo_;
   PostProcessingInfo *postProcessingInfo_;
   SolutionNormPostProcessing *solutionNormPostProcessing_;
+  TurbulenceAveragingPostProcessing *turbulenceAveragingPostProcessing_;
 
   std::vector<Algorithm *> propertyAlg_;
   std::map<PropertyIdentifier, ScalarFieldType *> propertyMap_;

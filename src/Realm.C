@@ -40,18 +40,19 @@
 #include <NonConformalManager.h>
 #include <NonConformalInfo.h>
 #include <OutputInfo.h>
-#include <AveragingInfo.h>
 #include <PostProcessingInfo.h>
 #include <PostProcessingData.h>
-#include <SolutionNormPostProcessing.h>
 #include <PeriodicManager.h>
 #include <Realms.h>
-#include <TurbulenceAveragingAlgorithm.h>
 #include <SolutionOptions.h>
 #include <TimeIntegrator.h>
 
 // overset
 #include <overset/OversetManager.h>
+
+// post processing
+#include <SolutionNormPostProcessing.h>
+#include <TurbulenceAveragingPostProcessing.h>
 
 // props; algs, evaluators and data
 #include <property_evaluator/GenericPropAlgorithm.h>
@@ -131,7 +132,7 @@ namespace nalu{
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-Realm::Realm(Realms& realms)
+  Realm::Realm(Realms& realms, const YAML::Node & node)
   : realms_(realms),
     inputDBName_("input_unknown"),
     spatialDimension_(3u),  // for convenience; can always get it from meta data
@@ -165,9 +166,9 @@ Realm::Realm(Realms& realms)
     currentNonlinearIteration_(1),
     solutionOptions_(new SolutionOptions()),
     outputInfo_(new OutputInfo()),
-    averagingInfo_(new AveragingInfo()),
     postProcessingInfo_(new PostProcessingInfo()),
     solutionNormPostProcessing_(new SolutionNormPostProcessing(*this)),
+    turbulenceAveragingPostProcessing_(NULL),
     nodeCount_(0),
     estimateMemoryOnly_(false),
     availableMemoryPerCoreGB_(0),
@@ -201,7 +202,9 @@ Realm::Realm(Realms& realms)
     activateMemoryDiagnostic_(false),
     supportInconsistentRestart_(false)
 {
-  // nothing to do
+  // deal with specialty options that live off of the realm; 
+  // choose to do this now rather than waiting for the load stage
+  look_ahead_and_creation(node);
 }
 
 //--------------------------------------------------------------------------
@@ -261,9 +264,10 @@ Realm::~Realm()
 
   delete solutionOptions_;
   delete outputInfo_;
-  delete averagingInfo_;
   delete postProcessingInfo_;
   delete solutionNormPostProcessing_;
+  if ( NULL != turbulenceAveragingPostProcessing_ )
+    delete turbulenceAveragingPostProcessing_;
 
   // delete contact related things
   if ( NULL != contactManager_ )
@@ -373,10 +377,6 @@ Realm::convert_bytes(double bytes)
 void
 Realm::initialize()
 {
-
-  // example of how to check for something special
-  sample_look_ahead();
-
   // initialize adaptivity - note: must be done before field registration
   setup_adaptivity();
 
@@ -467,29 +467,21 @@ Realm::initialize()
 }
 
 //--------------------------------------------------------------------------
-//-------- sample_look_ahead -----------------------------------------------
+//-------- look_ahead_and_creation -----------------------------------------
 //--------------------------------------------------------------------------
 void
-Realm::sample_look_ahead()
+Realm::look_ahead_and_creation(const YAML::Node & node)
 {
-  // example of how we might query all the nodes
-  bool demo_parser_look_ahead=false;
-  if (demo_parser_look_ahead) {
-    const YAML::Node& root_node = root()->m_root_node;
-    std::vector<const YAML::Node *> found_nodes;
-    NaluParsingHelper::find_nodes_given_key("wall_boundary_condition", root_node, found_nodes);
-    for (unsigned ii=0; ii < found_nodes.size(); ++ii)
-    {
-      const YAML::Node *val = found_nodes[ii]->FindValue("special_condition_XXX");
-      if (val)
-      {
-        // do something...
-        std::string out;
-        *val >> out;
-        NaluEnv::self().naluOutputP0() << "found special_condition_XXX = " << out << std::endl;
-      }
-    }
+  // look for turbulence averaging
+  std::vector<const YAML::Node *> foundTurbAveraging;
+  NaluParsingHelper::find_nodes_given_key("turbulence_averaging", node, foundTurbAveraging);
+  if ( foundTurbAveraging.size() > 0 ) {
+    if ( foundTurbAveraging.size() != 1 )
+      throw std::runtime_error("look_ahead_and_create::error: Too many turbulence_averaging_wip");
+    turbulenceAveragingPostProcessing_ =  new TurbulenceAveragingPostProcessing(*this, *foundTurbAveraging[0]);
   }
+
+  // in the future, look for other things, e.g., SolutionNormPostProcessing
 }
 
 //--------------------------------------------------------------------------
@@ -579,9 +571,6 @@ Realm::load(const YAML::Node & node)
   // once we know the mesh name, we can open the meta data, and set spatial dimension
   create_mesh();
   spatialDimension_ = metaData_->spatial_dimension();
-
-  // averaging
-  averagingInfo_->load(node);
 
   // post processing
   postProcessingInfo_->load(node);
@@ -760,8 +749,11 @@ Realm::setup_post_processing_algorithms()
     else {
       throw std::runtime_error("Post Processing Error: only  surface-based is supported");
     }
-
   }
+
+  // check for turbulence averaging fields
+  if ( NULL != turbulenceAveragingPostProcessing_ )
+    turbulenceAveragingPostProcessing_->setup();
 }
 
 //--------------------------------------------------------------------------
@@ -1390,7 +1382,7 @@ Realm::initialize_global_variables()
   globalParameters_.set_param("timeStepCount", 1, needInOutput, needInRestart);
 
   // consider pushing this parameter to some higher level design
-  if ( averagingInfo_->processAveraging_ )
+  if ( NULL != turbulenceAveragingPostProcessing_ )
     globalParameters_.set_param("currentTimeFilter", 0.0, needInOutput, needInRestart);
 }
 
@@ -2570,60 +2562,8 @@ Realm::register_nodal_fields(
       stk::mesh::put_field(*divV, *part);
     }
   }
-
-  if ( averagingInfo_->processAveraging_ )
-    register_averaging_variables(part);
 }
 
-//--------------------------------------------------------------------------
-//-------- register_averaging_variables ------------------------------------
-//--------------------------------------------------------------------------
-void
-Realm::register_averaging_variables(stk::mesh::Part *part)
-{
-  // register high level common fields
-  const int nDim = metaData_->spatial_dimension();
-
-  // always need Reynolds averaged density; add as restart variable
-  std::string densReName = "density_ra";
-  ScalarFieldType *densityRA =  &(metaData_->declare_field<ScalarFieldType>(stk::topology::NODE_RANK, densReName));
-  stk::mesh::put_field(*densityRA, *part);
-  augment_restart_variable_list(densReName);
-
-  // favre
-  for ( size_t i = 0; i < averagingInfo_->favreFieldNameVec_.size(); ++i ) {
-    const std::string varName = averagingInfo_->favreFieldNameVec_[i];
-    const std::string favreName = varName + "_fa";
-    if ( varName == "velocity" ) {
-      VectorFieldType *velocity = &(metaData_->declare_field<VectorFieldType>(stk::topology::NODE_RANK, favreName));
-      stk::mesh::put_field(*velocity, *part, nDim);
-    }
-    else {
-      ScalarFieldType *scalarQ = &(metaData_->declare_field<ScalarFieldType>(stk::topology::NODE_RANK, favreName));
-      stk::mesh::put_field(*scalarQ, *part);
-    }
-
-    // add to restart
-    augment_restart_variable_list(favreName);
-  }
-
-  // reynolds
-  for ( size_t i = 0; i < averagingInfo_->reynoldsFieldNameVec_.size(); ++i ) {
-    const std::string varName = averagingInfo_->reynoldsFieldNameVec_[i];
-    const std::string reynoldsName = varName + "_ra";
-    if ( varName == "velocity" ) {
-      VectorFieldType *velocity = &(metaData_->declare_field<VectorFieldType>(stk::topology::NODE_RANK, reynoldsName));
-      stk::mesh::put_field(*velocity, *part, nDim);
-    }
-    else {
-      ScalarFieldType *scalarQ = &(metaData_->declare_field<ScalarFieldType>(stk::topology::NODE_RANK, reynoldsName));
-      stk::mesh::put_field(*scalarQ, *part);
-    }
-
-    // add to restart
-    augment_restart_variable_list(reynoldsName);
-  }
-}
 
 //--------------------------------------------------------------------------
 //-------- register_interior_algorithm -------------------------------------
@@ -2645,23 +2585,6 @@ Realm::register_interior_algorithm(
   }
   else {
     it->second->partVec_.push_back(part);
-  }
-
-  // nodal post processing; only averaging thus far
-  if ( averagingInfo_->processAveraging_ ) {
-    if ( NULL == postConvergedAlgDriver_ )
-      postConvergedAlgDriver_ = new AlgorithmDriver(*this);
-
-    std::map<AlgorithmType, Algorithm *>::iterator it_pp
-      = postConvergedAlgDriver_->algMap_.find(algType);
-    if ( it_pp == postConvergedAlgDriver_->algMap_.end() ) {
-      TurbulenceAveragingAlgorithm *theAlg
-	= new TurbulenceAveragingAlgorithm(*this, part);
-      postConvergedAlgDriver_->algMap_[algType] = theAlg;
-    }
-    else {
-      it_pp->second->partVec_.push_back(part);
-    }
   }
 }
 
@@ -3236,8 +3159,10 @@ Realm::provide_restart_output()
       const double timeStepNm1 = timeIntegrator_->get_time_step();
       globalParameters_.set_value("timeStepNm1", timeStepNm1);
       globalParameters_.set_value("timeStepCount", timeStepCount);
-      if ( averagingInfo_->processAveraging_ )
-        globalParameters_.set_value("currentTimeFilter", averagingInfo_->currentTimeFilter_ );
+
+      if ( NULL != turbulenceAveragingPostProcessing_ ) {
+        globalParameters_.set_value("currentTimeFilter", turbulenceAveragingPostProcessing_->currentTimeFilter_ );
+      }
 
       stk::util::ParameterMapType::const_iterator i = globalParameters_.begin();
       stk::util::ParameterMapType::const_iterator iend = globalParameters_.end();
@@ -3328,8 +3253,9 @@ Realm::populate_restart(
     const bool abortIfNotFound = false;
     ioBroker_->get_global("timeStepNm1", timeStepNm1, abortIfNotFound);
     ioBroker_->get_global("timeStepCount", timeStepCount, abortIfNotFound);
-    if ( averagingInfo_->processAveraging_)
-      ioBroker_->get_global("currentTimeFilter", averagingInfo_->currentTimeFilter_, abortIfNotFound);
+    if ( NULL != turbulenceAveragingPostProcessing_ ) {
+      ioBroker_->get_global("currentTimeFilter", turbulenceAveragingPostProcessing_->currentTimeFilter_, abortIfNotFound);
+    }
   }
   return foundRestartTime;
 }
@@ -3466,10 +3392,9 @@ Realm::check_job(bool get_node_count)
   NaluEnv::self().naluOutputP0() << "Total memory estimate (per core) = "
                   << double(memoryEstimate)/procGBScale << " GB." << std::endl;
 
-  if (metaData_->is_commit() && estimateMemoryOnly_)
-    {
-      throw std::runtime_error("Job requested memory estimate only, shutting down");
-    }
+  if (metaData_->is_commit() && estimateMemoryOnly_) {
+    throw std::runtime_error("Job requested memory estimate only, shutting down");
+  }
 
   // here's where we can check for estimated memory > given available memory
   if (availableMemoryPerCoreGB_ != 0
@@ -4085,6 +4010,7 @@ Realm::process_transfer()
 void
 Realm::post_converged_work()
 {
+  // FIXME: There is an opportunity for cleanup here...
   if ( NULL != postConvergedAlgDriver_ )
     postConvergedAlgDriver_->execute();
 
@@ -4093,8 +4019,11 @@ Realm::post_converged_work()
 
   if ( NULL != solutionNormPostProcessing_ )
     solutionNormPostProcessing_->execute();
-
+  
   equationSystems_.post_converged_work();
+
+  if ( NULL != turbulenceAveragingPostProcessing_ )
+    turbulenceAveragingPostProcessing_->execute();
 }
 
 //--------------------------------------------------------------------------

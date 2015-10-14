@@ -134,37 +134,34 @@ public:
   {
     // recursive depth first
     YAML::NodeType::value type = node.Type();
-    if (type != YAML::NodeType::Scalar)
-      {
-        const YAML::Node *value = node.FindValue(key);
-        if (value)
-          result.push_back(&node);
-      }
+    if (type != YAML::NodeType::Scalar && type != YAML::NodeType::Null) {
+      const YAML::Node *value = node.FindValue(key);
+      if (value)
+        result.push_back(&node);
+    }
 
-    switch (type)
-      {
-      case YAML::NodeType::Scalar:
-        break;
-      case YAML::NodeType::Sequence:
-        for (unsigned int i = 0; i < node.size(); ++i) {
-          const YAML::Node & subnode = node[i];
-          find_nodes_given_key(key, subnode, result);
-        }
-        break;
-      case YAML::NodeType::Map:
-        for (YAML::Iterator i = node.begin(); i != node.end(); ++i) {
-          //const YAML::Node & key1   = i.first();
-          const YAML::Node & value = i.second();
-          find_nodes_given_key(key, value, result);
-        }
-        break;
-      case YAML::NodeType::Null:
-        break;
-      default:
-        break;
+    switch (type) {
+    case YAML::NodeType::Scalar:
+      break;
+    case YAML::NodeType::Sequence:
+      for (unsigned int i = 0; i < node.size(); ++i) {
+        const YAML::Node & subnode = node[i];
+        find_nodes_given_key(key, subnode, result);
       }
+      break;
+    case YAML::NodeType::Map:
+      for (YAML::Iterator i = node.begin(); i != node.end(); ++i) {
+        //const YAML::Node & key1   = i.first();
+        const YAML::Node & value = i.second();
+        find_nodes_given_key(key, value, result);
+      }
+      break;
+    case YAML::NodeType::Null:
+      break;
+    default:
+      break;
+    }
   }
-
 };
 
 }

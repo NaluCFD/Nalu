@@ -40,12 +40,10 @@ void
 Realms::load(const YAML::Node & node) 
 {
   const YAML::Node *realms = node.FindValue("realms");
-  if (realms)
-  {
-    for ( size_t irealm = 0; irealm < realms->size(); ++irealm )
-    {
+  if (realms) {
+    for ( size_t irealm = 0; irealm < realms->size(); ++irealm ) {
       const YAML::Node & realm_node = (*realms)[irealm];
-      Realm *realm = new Realm(*this);
+      Realm *realm = new Realm(*this, realm_node);
       realm->load(realm_node);
       realmVector_.push_back(realm);
     }
