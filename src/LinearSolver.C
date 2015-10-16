@@ -34,7 +34,7 @@
 #include <Ifpack2_Factory.hpp>
 #include <Kokkos_DefaultNode.hpp>
 
-#include <Kokkos_SerialNode.hpp>
+#include <Kokkos_Serial.hpp>
 #include <Teuchos_ArrayRCP.hpp>
 #include <Teuchos_DefaultMpiComm.hpp>
 #include <Teuchos_OrdinalTraits.hpp>

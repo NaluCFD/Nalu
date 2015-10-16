@@ -40,6 +40,8 @@ EquationSystem::EquationSystem(
   : equationSystems_(eqSystems),
     realm_(eqSystems.realm_),
     name_(name),
+    maxIterations_(1),
+    convergenceTolerance_(1.0),
     solverAlgDriver_(new SolverAlgorithmDriver(realm_)),
     timerAssemble_(0.0),
     timerLoadComplete_(0.0),

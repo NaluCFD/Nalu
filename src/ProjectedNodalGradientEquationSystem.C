@@ -325,7 +325,6 @@ ProjectedNodalGradientEquationSystem::solve_and_update()
 void
 ProjectedNodalGradientEquationSystem::solve_and_update_external()
 {
-  maxIterations_ = 1;
   for ( int k = 0; k < maxIterations_; ++k ) {
 
     NaluEnv::self().naluOutputP0() << " " << k+1 << "/" << maxIterations_
