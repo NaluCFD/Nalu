@@ -15,5 +15,5 @@ can be found under the Nalu Wiki [Build](https://github.com/spdomin/Nalu/wiki/Bu
 
 ### For consulting
 
-Consulting for Nalu is available through the consulting [link]<naluconsulting@gmail.com>.
+Consulting for Nalu is available through the consulting <naluconsulting@gmail.com>.
 
