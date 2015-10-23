@@ -521,7 +521,7 @@ TurbulenceAveragingPostProcessing::execute()
               const double uj = uNp1[k*nDim+j];
               const double ujRA = uNp1RA[k*nDim+j];
               const double newStress = (stress[k*stressSize+component]*oldTimeFilter*zeroCurrent + ui*uj*dt - uiRA*ujRA*dt)/currentTimeFilter_;
-              stress[component] = newStress;
+              stress[k*stressSize+component] = newStress;
               componentCount++;
             }
           }
