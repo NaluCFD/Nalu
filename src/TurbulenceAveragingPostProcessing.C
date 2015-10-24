@@ -207,28 +207,28 @@ TurbulenceAveragingPostProcessing::setup()
       }
 
       // deal with density; always need Reynolds averaged quantity
-      const std::string densityReynoldsName = "ra_density_" + averageBlockName;
+      const std::string densityReynoldsName = "density_ra_" + averageBlockName;
       ScalarFieldType *densityReynolds =  &(metaData.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, densityReynoldsName));
       stk::mesh::put_field(*densityReynolds, *targetPart);
       
       // reynolds
       for ( size_t i = 0; i < avInfo->reynoldsFieldNameVec_.size(); ++i ) {
         const std::string primitiveName = avInfo->reynoldsFieldNameVec_[i];
-        const std::string averagedName = "ra_" + primitiveName + "_" + averageBlockName;
+        const std::string averagedName = primitiveName + "_ra_" + averageBlockName;
         register_field(primitiveName, averagedName, metaData, targetPart);
       }
       
       // favre
       for ( size_t i = 0; i < avInfo->favreFieldNameVec_.size(); ++i ) {
         const std::string primitiveName = avInfo->favreFieldNameVec_[i];
-        const std::string averagedName = "fa_" + primitiveName + "_" + averageBlockName;
+        const std::string averagedName = primitiveName + "_fa_" + averageBlockName;
         register_field(primitiveName, averagedName, metaData, targetPart);
       }      
     }
 
     // now deal with pairs; extract density
     const std::string densityName = "density";
-    const std::string densityReynoldsName = "ra_density_" + averageBlockName;
+    const std::string densityReynoldsName = "density_ra_" + averageBlockName;
     stk::mesh::FieldBase *density = metaData.get_field(stk::topology::NODE_RANK, densityName);
     stk::mesh::FieldBase *densityReynolds = metaData.get_field(stk::topology::NODE_RANK, densityReynoldsName);
     avInfo->reynoldsFieldVecPair_.push_back(std::make_pair(density, densityReynolds));
@@ -238,14 +238,14 @@ TurbulenceAveragingPostProcessing::setup()
     // reynolds
     for ( size_t i = 0; i < avInfo->reynoldsFieldNameVec_.size(); ++i ) {
       const std::string primitiveName = avInfo->reynoldsFieldNameVec_[i];
-      const std::string averagedName = "ra_" + primitiveName + "_" + averageBlockName;
+      const std::string averagedName = primitiveName + "_ra_" + averageBlockName;
       construct_pair(primitiveName, averagedName, avInfo->reynoldsFieldVecPair_, avInfo->reynoldsFieldSizeVec_, metaData);
     }
     
     // favre
     for ( size_t i = 0; i < avInfo->favreFieldNameVec_.size(); ++i ) {
       const std::string primitiveName = avInfo->favreFieldNameVec_[i];
-      const std::string averagedName = "fa_" + primitiveName + "_" + averageBlockName;
+      const std::string averagedName = primitiveName + "_fa_" + averageBlockName;
       construct_pair(primitiveName, averagedName, avInfo->favreFieldVecPair_, avInfo->favreFieldSizeVec_, metaData);
     }
 
@@ -451,7 +451,7 @@ TurbulenceAveragingPostProcessing::execute()
       const int nDim = realm_.spatialDimension_;
 
       const std::string averageBlockName = avInfo->name_;
-      const std::string velocityRAName = "ra_velocity_" + averageBlockName;
+      const std::string velocityRAName = "velocity_ra_" + averageBlockName;
       const std::string resolvedTkeName = "resolved_turbulent_ke";
 
       // extract fields
@@ -489,7 +489,7 @@ TurbulenceAveragingPostProcessing::execute()
       const int stressSize = realm_.spatialDimension_ == 3 ? 6 : 3;
       
       const std::string averageBlockName = avInfo->name_;
-      const std::string velocityRAName = "ra_velocity_" + averageBlockName;
+      const std::string velocityRAName = "velocity_ra_" + averageBlockName;
       const std::string stressName = "reynolds_stress";
 
       // extract fields
