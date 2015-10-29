@@ -65,6 +65,7 @@ public:
   // during load
   std::string name_;
   std::string transferType_;
+  std::string transferObjective_;
   std::string searchMethodName_;
   std::pair<std::string, std::string> realmPairName_;
   std::pair<std::string, std::string> meshPartPairName_;
