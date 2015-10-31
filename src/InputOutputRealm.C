@@ -54,11 +54,12 @@ InputOutputRealm::~InputOutputRealm()
 void 
 InputOutputRealm::initialize()
 {
-  // bar minimum to register fields, create the output mesh and populate the mesh
+  // bar minimum to register fields and to extract from possible mesh file
   register_io_fields();
-  create_output_mesh();
   ioBroker_->populate_mesh();
   ioBroker_->populate_field_data();
+  create_output_mesh();
+  input_variables_from_mesh();
 }
 
 //--------------------------------------------------------------------------
@@ -159,6 +160,15 @@ InputOutputRealm::load(const YAML::Node & node)
   }
 }
 
+//--------------------------------------------------------------------------
+//-------- populate_restart ------------------------------------------------
+//--------------------------------------------------------------------------
+double
+InputOutputRealm::populate_restart(
+  double &timeStepNm1, int &timeStepCount)
+{
+  return get_current_time();
+}
 
 } // namespace nalu
 } // namespace Sierra

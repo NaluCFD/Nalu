@@ -170,7 +170,6 @@ ShearStressTransportEquationSystem::register_wall_bc(
 void
 ShearStressTransportEquationSystem::solve_and_update()
 {
-
   // wrap timing
   // SST_FIXME: deal with timers; all on misc for SSTEqs double timeA, timeB;
   if ( isInit_ ) {
@@ -219,6 +218,67 @@ ShearStressTransportEquationSystem::solve_and_update()
     sdrEqSys_->assemble_nodal_gradient();
   }
 
+}
+
+//--------------------------------------------------------------------------
+//-------- initial_work ----------------------------------------------------
+//--------------------------------------------------------------------------
+void
+ShearStressTransportEquationSystem::initial_work()
+{
+  // do not lett he user specify a negative field
+  const double clipValue = 1.0e-8;
+
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
+
+  // required fields
+  ScalarFieldType *density = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
+  ScalarFieldType *viscosity = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity");
+
+  // required fields with state
+  ScalarFieldType &sdrNp1 = sdr_->field_of_state(stk::mesh::StateNP1);
+  ScalarFieldType &tkeNp1 = tke_->field_of_state(stk::mesh::StateNP1);
+
+  // define some common selectors
+  stk::mesh::Selector s_all_nodes
+    = (meta_data.locally_owned_part() | meta_data.globally_shared_part())
+    &stk::mesh::selectField(*sdr_);
+
+  stk::mesh::BucketVector const& node_buckets =
+    realm_.get_buckets( stk::topology::NODE_RANK, s_all_nodes );
+  for ( stk::mesh::BucketVector::const_iterator ib = node_buckets.begin();
+        ib != node_buckets.end() ; ++ib ) {
+    stk::mesh::Bucket & b = **ib ;
+    const stk::mesh::Bucket::size_type length   = b.size();
+
+    const double *visc = stk::mesh::field_data(*viscosity, b);
+    const double *rho = stk::mesh::field_data(*density, b);
+    double *tke = stk::mesh::field_data(tkeNp1, b);
+    double *sdr = stk::mesh::field_data(sdrNp1, b);
+
+    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+
+      const double tkeNew = tke[k];
+      const double sdrNew = sdr[k];
+      
+      if ( (tkeNew >= 0.0) && (sdrNew > 0.0) ) {
+        // nothing
+      }
+      else if ( (tkeNew < 0.0) && (sdrNew < 0.0) ) {
+        // both negative;
+        tke[k] = clipValue;
+        sdr[k] = rho[k]*clipValue/visc[k];
+      }
+      else if ( tkeNew < 0.0 ) {
+        tke[k] = visc[k]*sdrNew/rho[k];
+        sdr[k] = sdrNew;
+      }
+      else {
+        sdr[k] = rho[k]*tkeNew/visc[k];
+        tke[k] = tkeNew;
+      }
+    }
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -314,8 +374,8 @@ ShearStressTransportEquationSystem::update_and_clip()
   if (realm_.debug()) {
     NaluEnv::self().naluOutputP0() << "Add SST clipping diagnostic" << std::endl;
   }
-
 }
+
 //--------------------------------------------------------------------------
 //-------- clip_min_distance_to_wall ---------------------------------------
 //--------------------------------------------------------------------------

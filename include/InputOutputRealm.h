@@ -54,12 +54,10 @@ public:
   void breadboard() {}
   void initialize();
 
-  // called by others; time integrator
+  // called by others; time integrator; virtual
   void populate_initial_condition() {}
   void populate_boundary_data() {}
   void boundary_data_to_state_data() {}
-  void populate_variables_from_input() {}
-  double populate_restart( double &timeStepNm1, int &timeStepCount) { return 1.0e-16; }
   void populate_derived_quantities() {}
   void evaluate_properties() {}
   void initial_work() {}
@@ -69,7 +67,8 @@ public:
   void pre_timestep_work() {}  
   void output_banner() {}
   void advance_time_step() {}
-
+  double populate_restart( double &timeStepNm1, int &timeStepCount);
+ 
   // internal calls
   void register_io_fields();
 

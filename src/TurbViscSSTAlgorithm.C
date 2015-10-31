@@ -107,6 +107,7 @@ TurbViscSSTAlgorithm::execute()
       const double fTwo = std::tanh(fArgTwo*fArgTwo);
 
       tvisc[k] = aOne_*rho[k]*tke[k]/std::max(aOne_*sdr[k], sijMag*fTwo);
+
     }
   }
 }

@@ -413,7 +413,11 @@ class Realm {
   bool hasContact_;
   bool hasNonConformal_;
   bool hasOverset_;
-  bool hasTransfer_;
+
+  // three type of transfer operations
+  bool hasMultiPhysicsTransfer_;
+  bool hasInitializationTransfer_;
+  bool hasIoTransfer_;
 
   PeriodicManager *periodicManager_;
   bool hasPeriodic_;
@@ -459,13 +463,13 @@ class Realm {
 
   std::vector<AuxFunctionAlgorithm *> bcDataAlg_;
 
-  // transfer information
-  std::vector<Transfer *> transferVec_;
-  std::vector<Transfer *> initTransferVec_;
+  // transfer information; three types
+  std::vector<Transfer *> multiPhysicsTransferVec_;
+  std::vector<Transfer *> initializationTransferVec_;
   std::vector<Transfer *> ioTransferVec_;
   void augment_transfer_vector(Transfer *transfer, const std::string transferObjective);
-  void process_transfer();
-  bool process_init_transfer();
+  void process_multi_physics_transfer();
+  void process_initialization_transfer();
   void process_io_transfer();
 
   // process end of time step converged work

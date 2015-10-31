@@ -188,7 +188,9 @@ namespace nalu{
     hasContact_(false),
     hasNonConformal_(false),
     hasOverset_(false),
-    hasTransfer_(false),
+    hasMultiPhysicsTransfer_(false),
+    hasInitializationTransfer_(false),
+    hasIoTransfer_(false),
     periodicManager_(NULL),
     hasPeriodic_(false),
     globalParameters_(),
@@ -3273,8 +3275,7 @@ Realm::populate_variables_from_input()
 {
   // no reading fields from mesh if this is a restart
   if ( !restarted_simulation() && solutionOptions_->inputVarFromFileMap_.size() > 0 ) {
-    const double timeToRead = 1.0e8;
-    ioBroker_->read_defined_input_fields(timeToRead);
+    ioBroker_->read_defined_input_fields(solutionOptions_->inputVariablesRestorationTime_);
   }
 }
 
@@ -3501,7 +3502,7 @@ Realm::dump_simulation_time()
   }
 
   // transfer
-  if ( hasTransfer_ ) {
+  if ( hasMultiPhysicsTransfer_ ) {
     double g_totalXfer = 0.0, g_minXfer= 0.0, g_maxXfer = 0.0;
     stk::all_reduce_min(NaluEnv::self().parallel_comm(), &timerTransferSearch_, &g_minXfer, 1);
     stk::all_reduce_max(NaluEnv::self().parallel_comm(), &timerTransferSearch_, &g_maxXfer, 1);
@@ -3990,14 +3991,17 @@ Realm::number_of_states()
 void
 Realm::augment_transfer_vector(Transfer *transfer, const std::string transferObjective)
 {
-  if ( transferObjective == "multi_phyics" ) {
-    transferVec_.push_back(transfer);
-    hasTransfer_ = true; }
+  if ( transferObjective == "multi_physics" ) {
+    multiPhysicsTransferVec_.push_back(transfer);
+    hasMultiPhysicsTransfer_ = true; 
+  }
   else if ( transferObjective == "initialization" ) {
-    initTransferVec_.push_back(transfer);
+    initializationTransferVec_.push_back(transfer);
+    hasInitializationTransfer_ = true;
   }
   else if ( transferObjective == "input_output" ) {
     ioTransferVec_.push_back(transfer);
+    hasIoTransfer_ = true;
   }
   else { 
     throw std::runtime_error("Real::augment_transfer_vector: Error, none supported transfer objective: " + transferObjective);
@@ -4005,32 +4009,32 @@ Realm::augment_transfer_vector(Transfer *transfer, const std::string transferObj
 }
 
 //--------------------------------------------------------------------------
-//-------- process_transfer ------------------------------------------------
+//-------- process_multi_physics_transfer ----------------------------------
 //--------------------------------------------------------------------------
 void
-Realm::process_transfer()
+Realm::process_multi_physics_transfer()
 {
-  if ( !hasTransfer_ )
+  if ( !hasMultiPhysicsTransfer_ )
     return;
 
   std::vector<Transfer *>::iterator ii;
-  for( ii=transferVec_.begin(); ii!=transferVec_.end(); ++ii )
+  for( ii=multiPhysicsTransferVec_.begin(); ii!=multiPhysicsTransferVec_.end(); ++ii )
     (*ii)->execute();
 }
 
 //--------------------------------------------------------------------------
 //-------- process_init_transfer -------------------------------------------
 //--------------------------------------------------------------------------
-bool
-Realm::process_init_transfer()
+void
+Realm::process_initialization_transfer()
 {
-  bool hasAnInit = false;
+  if ( !hasInitializationTransfer_ )
+    return;
+
   std::vector<Transfer *>::iterator ii;
-  for( ii=initTransferVec_.begin(); ii!=initTransferVec_.end(); ++ii ) {
+  for( ii=initializationTransferVec_.begin(); ii!=initializationTransferVec_.end(); ++ii ) {
     (*ii)->execute();
-    hasAnInit = true;
   }
-  return hasAnInit;
 }
 
 //--------------------------------------------------------------------------
@@ -4039,7 +4043,10 @@ Realm::process_init_transfer()
 void
 Realm::process_io_transfer()
 {
-  // onlpy do at an IO step
+  if ( !hasIoTransfer_ )
+    return;
+
+  // only do at an IO step
   const int timeStepCount = get_time_step_count();
   const bool isOutput = (timeStepCount % outputInfo_->outputFreq_) == 0;
   if ( isOutput ) {

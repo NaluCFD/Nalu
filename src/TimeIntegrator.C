@@ -85,6 +85,7 @@ void TimeIntegrator::load(const YAML::Node & node)
         }
 	      
         get_if_present(*standardTimeIntegrator_node, "time_step", timeStepFromFile_, timeStepFromFile_);
+        get_if_present(*standardTimeIntegrator_node, "start_time", currentTime_, currentTime_);
         get_if_present(*standardTimeIntegrator_node, "time_step_count", timeStepCount_, timeStepCount_);
         get_if_present(*standardTimeIntegrator_node, "second_order_accuracy", secondOrderTimeAccurate_, secondOrderTimeAccurate_);
         get_if_present(*standardTimeIntegrator_node, "nonlinear_iterations", nonlinearIterations_, nonlinearIterations_);
@@ -179,14 +180,10 @@ TimeIntegrator::integrate_realm()
 
   // populate data from transfer
   for ( ii = realmVec_.begin(); ii!=realmVec_.end(); ++ii) {
-    const bool hasAnInit = (*ii)->process_init_transfer();
-    // purge this Realm from the list if its sole purpose is to initialize
-    if ( hasAnInit ) {
-      delete *ii;
-      ii = realmVec_.erase(ii);
-    }
+    (*ii)->process_initialization_transfer();
+    // might erase the initialization Realm since it has performed its duty (requires shared pointers)
   }
-
+  
   // nm1 dt from possible restart always prevails; input file overrides for fixed time stepping
   if ( adaptiveTimeStep_ ) {
     timeStepN_ = timeStepNm1_;
@@ -212,7 +209,7 @@ TimeIntegrator::integrate_realm()
 
   // provide for initial transfer
   for ( ii = realmVec_.begin(); ii!=realmVec_.end(); ++ii) {
-    (*ii)->process_transfer();
+    (*ii)->process_multi_physics_transfer();
   }
 
   //=====================================
@@ -273,7 +270,7 @@ TimeIntegrator::integrate_realm()
         << std::endl;
       for ( ii = realmVec_.begin(); ii!=realmVec_.end(); ++ii) {
         (*ii)->advance_time_step();
-        (*ii)->process_transfer();
+        (*ii)->process_multi_physics_transfer();
       }
     }
 
@@ -316,6 +313,7 @@ TimeIntegrator::provide_mean_norm()
   double realmIncrement = 0.0;
   for ( ii = realmVec_.begin(); ii!=realmVec_.end(); ++ii) {
     if ( (*ii)->type_ == "multi_physics" ) { 
+      // only increment for a "real" realm
       sumNorm += (*ii)->provide_mean_norm();
       realmIncrement += 1.0;
     }

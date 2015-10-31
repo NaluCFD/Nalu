@@ -57,7 +57,7 @@ Transfer::Transfer(
     toRealm_(NULL),
     name_("none"),
     transferType_("none"),
-    transferObjective_("multi_phyics"),
+    transferObjective_("multi_physics"),
     searchMethodName_("none")
 {
   // nothing to do

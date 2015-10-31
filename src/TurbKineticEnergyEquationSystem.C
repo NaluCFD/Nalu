@@ -814,6 +814,40 @@ TurbKineticEnergyEquationSystem::solve_and_update()
 }
 
 //--------------------------------------------------------------------------
+//-------- initial_work ----------------------------------------------------
+//--------------------------------------------------------------------------
+void
+TurbKineticEnergyEquationSystem::initial_work()
+{
+  // do not let the user specify a negative field
+  const double clipValue = 1.0e-16;
+
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
+
+  // define some common selectors
+  stk::mesh::Selector s_all_nodes
+    = (meta_data.locally_owned_part() | meta_data.globally_shared_part())
+    &stk::mesh::selectField(*tke_);
+
+  stk::mesh::BucketVector const& node_buckets =
+    realm_.get_buckets( stk::topology::NODE_RANK, s_all_nodes );
+  for ( stk::mesh::BucketVector::const_iterator ib = node_buckets.begin();
+        ib != node_buckets.end() ; ++ib ) {
+    stk::mesh::Bucket & b = **ib ;
+    const stk::mesh::Bucket::size_type length   = b.size();
+
+    double *tke = stk::mesh::field_data(*tke_, b);
+
+    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+      const double tkeNp1 = tke[k];
+      if ( tkeNp1 < 0.0 ) {
+        tke[k] = clipValue;
+      }
+    }
+  }
+}
+
+//--------------------------------------------------------------------------
 //-------- assemble_nodal_gradient() ---------------------------------------
 //--------------------------------------------------------------------------
 void

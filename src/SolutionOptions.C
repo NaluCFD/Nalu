@@ -68,7 +68,8 @@ SolutionOptions::SolutionOptions()
     ncAlgDetailedOutput_(false),
     cvfemShiftMdot_(false),
     cvfemShiftPoisson_(false),
-    cvfemReducedSensPoisson_(false)
+    cvfemReducedSensPoisson_(false),
+    inputVariablesRestorationTime_(1.0e8)
 {
   // nothing to do
 }
@@ -147,6 +148,9 @@ SolutionOptions::load(const YAML::Node & y_node)
     }
     // initialize turbuelnce constants since some laminar models may need such variables, e.g., kappa
     initialize_turbulence_constants();
+
+    // extract possible copy from input fields restoration time
+    get_if_present(*y_solution_options, "input_variables_from_file_restoration_time", inputVariablesRestorationTime_, inputVariablesRestorationTime_);
 
     // first set of options; hybrid, source, etc.
     const YAML::Node *y_options = expect_sequence(*y_solution_options, "options", required);
