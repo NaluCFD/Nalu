@@ -3510,7 +3510,7 @@ WedSCS::opposingFace(
 void
 WedSCS::shape_fcn(double *shpfc)
 {
-  wed_shape_fcn(numIntPoints_, &intgLoc_[0], shpfc);
+  wedge_shape_fcn(numIntPoints_, &intgLoc_[0], shpfc);
 }
 
 //--------------------------------------------------------------------------
@@ -3519,25 +3519,212 @@ WedSCS::shape_fcn(double *shpfc)
 void
 WedSCS::shifted_shape_fcn(double *shpfc)
 {
-  wed_shape_fcn(numIntPoints_, &intgLocShift_[0], shpfc);
+  wedge_shape_fcn(numIntPoints_, &intgLocShift_[0], shpfc);
 }
 
 //--------------------------------------------------------------------------
-//-------- wed_shape_fcn ---------------------------------------------------
+//-------- isInElement -----------------------------------------------------
+//--------------------------------------------------------------------------
+double
+WedSCS::isInElement(
+  const double *elemNodalCoord,
+  const double *pointCoord,
+  double *isoParCoord )
+{
+  const double isInElemConverged = 1.0e-16;
+
+  // ------------------------------------------------------------------
+  // Pentahedron master element space is (r,s,xi):
+  // r=([0,1]), s=([0,1]), xi=([-1,+1])
+  // Use natural coordinates to determine if point is in pentahedron.
+  // ------------------------------------------------------------------
+
+  // Translate element so that (x,y,z) coordinates of first node are (0,0,0)
+  
+  double x[] = {0.0,
+                elemNodalCoord[ 1] - elemNodalCoord[ 0],
+                elemNodalCoord[ 2] - elemNodalCoord[ 0],
+                elemNodalCoord[ 3] - elemNodalCoord[ 0],
+                elemNodalCoord[ 4] - elemNodalCoord[ 0],
+                elemNodalCoord[ 5] - elemNodalCoord[ 0] };
+  double y[] = {0.0,
+                elemNodalCoord[ 7] - elemNodalCoord[ 6],
+                elemNodalCoord[ 8] - elemNodalCoord[ 6],
+                elemNodalCoord[ 9] - elemNodalCoord[ 6],
+                elemNodalCoord[10] - elemNodalCoord[ 6],
+                elemNodalCoord[11] - elemNodalCoord[ 6] };
+  double z[] = {0.0,
+                elemNodalCoord[13] - elemNodalCoord[12],
+                elemNodalCoord[14] - elemNodalCoord[12],
+                elemNodalCoord[15] - elemNodalCoord[12],
+                elemNodalCoord[16] - elemNodalCoord[12],
+                elemNodalCoord[17] - elemNodalCoord[12] };
+  
+  // (xp,yp,zp) is the point to be mapped into (r,s,xi) coordinate system.
+  // This point must also be translated as above.
+
+  double xp = pointCoord[0] - elemNodalCoord[ 0];
+  double yp = pointCoord[1] - elemNodalCoord[ 6];
+  double zp = pointCoord[2] - elemNodalCoord[12];
+
+  // Newton-Raphson iteration for (r,s,xi)
+  double j[3][3];
+  double jinv[3][3];
+  double f[3];
+  double shapefct[6];
+  double rnew   = 1.0 / 3.0; // initial guess (centroid)
+  double snew   = 1.0 / 3.0;
+  double xinew  = 0.0;
+  double rcur   = rnew;
+  double scur   = snew;
+  double xicur  = xinew;
+  double xidiff[] = { 1.0, 1.0, 1.0 };
+
+  double shp_func_deriv[18];
+  double current_pc[3];
+
+  const int MAX_NR_ITER = 20;
+  int i = 0;
+  do
+  {
+    current_pc[0] = rcur  = rnew;
+    current_pc[1] = scur  = snew;
+    current_pc[2] = xicur = xinew;
+
+    // Build Jacobian and Invert
+
+    //aj(1,1)=( dN/dr  ) * x[]
+    //aj(1,2)=( dN/ds  ) * x[]
+    //aj(1,3)=( dN/dxi ) * x[]
+    //aj(2,1)=( dN/dr  ) * y[]
+    //aj(2,2)=( dN/ds  ) * y[]
+    //aj(2,3)=( dN/dxi ) * y[]
+    //aj(3,1)=( dN/dr  ) * z[]
+    //aj(3,2)=( dN/ds  ) * z[]
+    //aj(3,3)=( dN/dxi ) * z[]
+
+    wedge_derivative(1, current_pc, shp_func_deriv);
+
+    for (int row = 0; row != 3; ++row)
+      for (int col = 0; col != 3; ++col)
+	j[row][col] = 0.0;
+
+    for (int k = 1; k != 6; ++k)
+    {
+      j[0][0] -= shp_func_deriv[k * 3 + 0] * x[k];
+      j[0][1] -= shp_func_deriv[k * 3 + 1] * x[k];
+      j[0][2] -= shp_func_deriv[k * 3 + 2] * x[k];
+
+      j[1][0] -= shp_func_deriv[k * 3 + 0] * y[k];
+      j[1][1] -= shp_func_deriv[k * 3 + 1] * y[k];
+      j[1][2] -= shp_func_deriv[k * 3 + 2] * y[k];
+
+      j[2][0] -= shp_func_deriv[k * 3 + 0] * z[k];
+      j[2][1] -= shp_func_deriv[k * 3 + 1] * z[k];
+      j[2][2] -= shp_func_deriv[k * 3 + 2] * z[k];
+    }
+
+    const double jdet =   j[0][0] * (j[1][1] * j[2][2] - j[1][2] * j[2][1])
+		      - j[0][1] * (j[1][0] * j[2][2] - j[1][2] * j[2][0])
+		      + j[0][2] * (j[1][0] * j[2][1] - j[1][1] * j[2][0]);
+
+    jinv[0][0] =  (j[1][1] * j[2][2] - j[1][2] * j[2][1]) / jdet;
+    jinv[0][1] = -(j[0][1] * j[2][2] - j[2][1] * j[0][2]) / jdet;
+    jinv[0][2] =  (j[1][2] * j[0][1] - j[0][2] * j[1][1]) / jdet;
+    jinv[1][0] = -(j[1][0] * j[2][2] - j[2][0] * j[1][2]) / jdet;
+    jinv[1][1] =  (j[0][0] * j[2][2] - j[0][2] * j[2][0]) / jdet;
+    jinv[1][2] = -(j[0][0] * j[1][2] - j[1][0] * j[0][2]) / jdet;
+    jinv[2][0] =  (j[1][0] * j[2][1] - j[2][0] * j[1][1]) / jdet;
+    jinv[2][1] = -(j[0][0] * j[2][1] - j[2][0] * j[0][1]) / jdet;
+    jinv[2][2] =  (j[0][0] * j[1][1] - j[0][1] * j[1][0]) / jdet;
+
+    wedge_shape_fcn(1, current_pc, shapefct);
+
+    // x[0] = y[0] = z[0] = 0 by construction
+    f[0] = xp - (shapefct[1] * x[1] +
+		 shapefct[2] * x[2] +
+		 shapefct[3] * x[3] +
+		 shapefct[4] * x[4] +
+		 shapefct[5] * x[5]);
+    f[1] = yp - (shapefct[1] * y[1] +
+		 shapefct[2] * y[2] +
+		 shapefct[3] * y[3] +
+		 shapefct[4] * y[4] +
+		 shapefct[5] * y[5]);
+    f[2] = zp - (shapefct[1] * z[1] +
+		 shapefct[2] * z[2] +
+		 shapefct[3] * z[3] +
+		 shapefct[4] * z[4] +
+		 shapefct[5] * z[5]);
+
+    rnew  = rcur  - (f[0] * jinv[0][0] + f[1] * jinv[0][1] + f[2] * jinv[0][2]);
+    snew  = scur  - (f[0] * jinv[1][0] + f[1] * jinv[1][1] + f[2] * jinv[1][2]);
+    xinew = xicur - (f[0] * jinv[2][0] + f[1] * jinv[2][1] + f[2] * jinv[2][2]);
+
+    xidiff[0] = rnew  - rcur;
+    xidiff[1] = snew  - scur;
+    xidiff[2] = xinew - xicur;
+  }
+  while (!within_tolerance(vector_norm_sq(xidiff), isInElemConverged) && ++i != MAX_NR_ITER);
+
+  isoParCoord[0] = isoParCoord[1] = isoParCoord[2] = std::numeric_limits<double>::max();
+  double dist = std::numeric_limits<double>::max();
+
+  if (i < MAX_NR_ITER)
+  {
+    isoParCoord[0] = rnew;
+    isoParCoord[1] = snew;
+    isoParCoord[2] = xinew;
+    std::vector<double> xx = { isoParCoord[0], isoParCoord[1], isoParCoord[2] };
+
+    dist = parametric_distance(xx);
+  }
+
+  return dist;
+}
+
+//--------------------------------------------------------------------------
+//-------- interpolatePoint ------------------------------------------------
 //--------------------------------------------------------------------------
 void
-WedSCS::wed_shape_fcn(
+WedSCS::interpolatePoint(
+  const int &nComp,
+  const double *isoParCoord,
+  const double *field,
+  double *result )
+{
+  double shapefct[6];
+
+  wedge_shape_fcn(1, isoParCoord, shapefct);
+
+  for ( int i = 0; i < nComp; i++)
+  {
+    // Base 'field array' index for i_th component
+    int b = 6 * i;
+
+    result[i] = 0.0;
+
+    for (int j = 0; j != 6; ++j)
+      result[i] += shapefct[j] * field[b + j];
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- wedge_shape_fcn -------------------------------------------------
+//--------------------------------------------------------------------------
+void
+WedSCS::wedge_shape_fcn(
   const int  &npts,
-  const double *par_coord, 
+  const double *isoParCoord, 
   double *shape_fcn)
 {
   for (int j = 0; j < npts; ++j ) {
     int sixj = 6 * j;
     int k    = 3 * j;
-    double r    = par_coord[k];
-    double s    = par_coord[k + 1];
+    double r    = isoParCoord[k];
+    double s    = isoParCoord[k + 1];
     double t    = 1.0 - r - s;
-    double xi   = par_coord[k + 2];
+    double xi   = isoParCoord[k + 2];
     shape_fcn[    sixj] = 0.5 * t * (1.0 - xi);
     shape_fcn[1 + sixj] = 0.5 * r * (1.0 - xi);
     shape_fcn[2 + sixj] = 0.5 * s * (1.0 - xi);
@@ -3545,6 +3732,54 @@ WedSCS::wed_shape_fcn(
     shape_fcn[4 + sixj] = 0.5 * r * (1.0 + xi);
     shape_fcn[5 + sixj] = 0.5 * s * (1.0 + xi);
   }
+}
+
+//--------------------------------------------------------------------------
+//-------- within_tolerance ------------------------------------------------
+//--------------------------------------------------------------------------
+bool 
+WedSCS::within_tolerance( const double & val, const double & tol )
+{
+  return (std::abs(val)<tol);
+}
+
+//--------------------------------------------------------------------------
+//-------- vector_norm_sq --------------------------------------------------
+//--------------------------------------------------------------------------
+double
+WedSCS::vector_norm_sq( const double *theVector)
+{
+  return (theVector[0] * theVector[0] +
+	  theVector[1] * theVector[1] +
+	  theVector[2] * theVector[2]);
+}
+
+//--------------------------------------------------------------------------
+//-------- parametric_distance ---------------------------------------------
+//--------------------------------------------------------------------------
+double
+WedSCS::parametric_distance(const double X, const double Y)
+{
+  const double dist0 = -3*X;
+  const double dist1 = -3*Y;
+  const double dist2 =  3*(X+Y);
+  const double dist = std::max(std::max(dist0,dist1),dist2);
+  return dist;
+}
+
+//--------------------------------------------------------------------------
+//-------- parametric_distance ---------------------------------------------
+//--------------------------------------------------------------------------
+double
+WedSCS::parametric_distance(const std::vector<double> &x)
+{
+  const double X = x[0] - 1./3.;
+  const double Y = x[1] - 1./3.;
+  const double Z = x[2] ;
+  const double dist_t = parametric_distance(X,Y);
+  const double dist_z = std::fabs(Z);
+  const double dist = std::max(dist_z, dist_t);
+  return dist;
 }
 
 //--------------------------------------------------------------------------
@@ -3899,14 +4134,14 @@ Quad2DSCS::shifted_shape_fcn(double *shpfc)
 void
 Quad2DSCS::quad_shape_fcn(
   const int  &npts,
-  const double *par_coord, 
+  const double *isoParCoord, 
   double *shape_fcn)
 {
   for (int j = 0; j < npts; ++j ) {
     const int fourj = 4*j;
     const int k = 2*j;
-    const double s1 = par_coord[k];
-    const double s2 = par_coord[k+1];
+    const double s1 = isoParCoord[k];
+    const double s2 = isoParCoord[k+1];
     shape_fcn[    fourj] = 1.0/4.0 + 0.5*(-s1 - s2 ) + s1*s2;
     shape_fcn[1 + fourj] = 1.0/4.0 + 0.5*( s1 - s2 ) - s1*s2;
     shape_fcn[2 + fourj] = 1.0/4.0 + 0.5*( s1 + s2 ) + s1*s2;
@@ -5354,14 +5589,14 @@ Tri2DSCS::shifted_shape_fcn(double *shpfc)
 void
 Tri2DSCS::tri_shape_fcn(
   const int  &npts,
-  const double *par_coord, 
+  const double *isoParCoord, 
   double *shape_fcn)
 {
   for (int j = 0; j < npts; ++j ) {
     const int threej = 3*j;
     const int k = 2*j;
-    const double xi = par_coord[k];
-    const double eta = par_coord[k+1];
+    const double xi = isoParCoord[k];
+    const double eta = isoParCoord[k+1];
     shape_fcn[threej] = 1.0 - xi - eta;
     shape_fcn[1 + threej] = xi;
     shape_fcn[2 + threej] = eta;
@@ -5843,12 +6078,12 @@ Quad3DSCS::vector_norm2( const double * vect, int len )
 
 void
 Quad3DSCS::non_unit_face_normal(
-  const double * par_coord,              // (2)
+  const double * isoParCoord,            // (2)
   const double * elem_nodal_coor,        // (4,3)
 	double * normal_vector )         // (3)
 {
-  double xi  = par_coord[0];
-  double eta = par_coord[1];
+  double xi  = isoParCoord[0];
+  double eta = isoParCoord[1];
 
   // Translate element so that node 0 is at (x,y,z) = (0,0,0)
 
@@ -6318,14 +6553,14 @@ Tri3DSCS::shifted_shape_fcn(double *shpfc)
 void
 Tri3DSCS::tri_shape_fcn(
   const int  &npts,
-  const double *par_coord,
+  const double *isoParCoord,
   double *shape_fcn)
 {
   for (int j = 0; j < npts; ++j ) {
     const int threej = 3*j;
     const int k = 2*j;
-    const double xi = par_coord[k];
-    const double eta = par_coord[k+1];
+    const double xi = isoParCoord[k];
+    const double eta = isoParCoord[k+1];
     shape_fcn[    threej] = 1.0 - xi - eta;
     shape_fcn[1 + threej] = xi;
     shape_fcn[2 + threej] = eta;
@@ -6456,12 +6691,12 @@ Tri3DSCS::parametric_distance(
 void
 Tri3DSCS::interpolatePoint(
   const int  & ncomp_field,
-  const double * par_coord,
+  const double * isoParCoord,
   const double * field,
   double * result )
 {
-  const double r = par_coord[0];
-  const double s = par_coord[1];
+  const double r = isoParCoord[0];
+  const double s = isoParCoord[1];
   const double t = 1.0 - r - s;
 
   for ( int i = 0; i < ncomp_field; i++ ) {

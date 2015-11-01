@@ -692,11 +692,28 @@ public:
 
   void shifted_shape_fcn(
     double *shpfc);
+
+  double isInElement(
+    const double *elemNodalCoord,
+    const double *pointCoord,
+    double *isoParCoord);
+
+  void interpolatePoint(
+    const int &nComp,
+    const double *isoParCoord,
+    const double *field,
+    double *result);
   
-  void wed_shape_fcn(
+  void wedge_shape_fcn(
     const int &npts,
     const double *par_coord, 
     double* shape_fcn);
+
+  // helper functions to isInElement
+  bool within_tolerance( const double & val, const double & tol );
+  double vector_norm_sq( const double *theVector );
+  double parametric_distance( const double X, const double Y);
+  double parametric_distance( const std::vector<double> &x);
 };
 
 // 2D Quad 4 subcontrol volume
