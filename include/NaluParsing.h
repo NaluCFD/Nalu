@@ -135,7 +135,11 @@ struct UserData
   std::map<std::string, std::string> userFunctionMap_;
   std::map<std::string, std::vector<double> > functionParams_;
 
-  UserData() {}
+  // FIXME: must elevate temperature due to the temperature_bc_setup method
+  Temperature temperature_;
+  bool tempSpec_; 
+  
+UserData() : tempSpec_(false) {}
 };
 
 struct NormalHeatFlux {
@@ -156,7 +160,6 @@ struct WallUserData : public UserData {
   Velocity u_;
   Velocity dx_;
   TurbKinEnergy tke_;
-  Temperature temperature_;
   MixtureFraction mixFrac_;
   MassFraction massFraction_;
   Emissivity emissivity_;
@@ -169,7 +172,6 @@ struct WallUserData : public UserData {
   RobinCouplingParameter robinCouplingParameter_;
   Pressure pressure_;
   
-  bool tempSpec_;
   bool isAdiabatic_;
   bool heatFluxSpec_;
   bool isInterface_;
@@ -185,7 +187,6 @@ struct WallUserData : public UserData {
 
   WallUserData()
     : UserData(),
-      tempSpec_(false),
       isAdiabatic_(false),
       heatFluxSpec_(false),
       isInterface_(false),
@@ -203,18 +204,16 @@ struct InflowUserData : public UserData {
   SpecDissRate sdr_;
   MixtureFraction mixFrac_;
   MassFraction massFraction_;
-  Temperature temperature_;
-
+ 
   bool uSpec_;
   bool tkeSpec_;
   bool sdrSpec_;
   bool mixFracSpec_;
   bool massFractionSpec_;
-  bool tempSpec_;
   
   InflowUserData()
     : UserData(),
-      uSpec_(false), tkeSpec_(false), sdrSpec_(false), mixFracSpec_(false), massFractionSpec_(false), tempSpec_(false)
+      uSpec_(false), tkeSpec_(false), sdrSpec_(false), mixFracSpec_(false), massFractionSpec_(false)
   {}
 };
 
@@ -225,19 +224,17 @@ struct OpenUserData : public UserData {
   SpecDissRate sdr_;
   MixtureFraction mixFrac_;
   MassFraction massFraction_;
-  Temperature temperature_;
-
+ 
   bool uSpec_;
   bool pSpec_;
   bool tkeSpec_;
   bool sdrSpec_;
   bool mixFracSpec_;
   bool massFractionSpec_;
-  bool tempSpec_;
 
   OpenUserData()
     : UserData(),
-      uSpec_(false), pSpec_(false), tkeSpec_(false), sdrSpec_(false), mixFracSpec_(false), massFractionSpec_(false), tempSpec_(false)
+      uSpec_(false), pSpec_(false), tkeSpec_(false), sdrSpec_(false), mixFracSpec_(false), massFractionSpec_(false)
   {}
 };
 

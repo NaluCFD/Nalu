@@ -61,6 +61,9 @@
 #include <property_evaluator/TemperaturePropAlgorithm.h>
 #include <property_evaluator/ThermalConductivityFromPrandtlPropAlgorithm.h>
 
+// user functions
+#include <user_functions/FlowPastCylinderTempAuxFunction.h>
+
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
 #include <stk_util/environment/CPUTime.hpp>
@@ -450,17 +453,12 @@ EnthalpyEquationSystem::register_inflow_bc(
   if ( !userData.tempSpec_ )
     throw std::runtime_error("no temperature specified at inflow");
 
-  // extract value
-  Temperature theTemp = userData.temperature_;
-  std::vector<double> userSpec(1);
-  userSpec[0] = theTemp.temperature_;
-
   // bc data work (copy, enthalpy evaluation, etc.)
   ScalarFieldType *temperatureBc = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature_bc"));
   stk::mesh::put_field(*temperatureBc, *part);
   ScalarFieldType *enthalpyBc = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "enthalpy_bc"));
   stk::mesh::put_field(*enthalpyBc, *part);
-  temperature_bc_setup(userSpec, part, temperatureBc, enthalpyBc);
+  temperature_bc_setup(userData, part, temperatureBc, enthalpyBc);
 
   // non-solver; dhdx; allow for element-based shifted
   std::map<AlgorithmType, Algorithm *>::iterator it
@@ -513,11 +511,6 @@ EnthalpyEquationSystem::register_open_bc(
   if ( !userData.tempSpec_ )
     throw std::runtime_error("no temperature specified at open");
 
-  // extract value
-  Temperature theTemp = userData.temperature_;
-  std::vector<double> userSpec(1);
-  userSpec[0] = theTemp.temperature_;
-
   // bc data work (copy, enthalpy evaluation, etc.)
   const bool copyBcVal = false;
   const bool isInterface = false;
@@ -525,7 +518,7 @@ EnthalpyEquationSystem::register_open_bc(
   stk::mesh::put_field(*temperatureBc, *part);
   ScalarFieldType *enthalpyBc = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "open_enthalpy_bc"));
   stk::mesh::put_field(*enthalpyBc, *part);
-  temperature_bc_setup(userSpec, part, temperatureBc, enthalpyBc, isInterface, copyBcVal);
+  temperature_bc_setup(userData, part, temperatureBc, enthalpyBc, isInterface, copyBcVal);
 
   // non-solver; dhdx; allow for element-based shifted
   std::map<AlgorithmType, Algorithm *>::iterator it
@@ -592,17 +585,12 @@ EnthalpyEquationSystem::register_wall_bc(
   // check that is was specified (okay if it is not)
   if ( bc_data_specified(userData, temperatureName) ) {
 
-    // extract value
-    Temperature theTemp = userData.temperature_;
-    std::vector<double> userSpec(1);
-    userSpec[0] = theTemp.temperature_;
-
     // bc data work (copy, enthalpy evaluation, etc.)
     ScalarFieldType *temperatureBc = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature_bc"));
     stk::mesh::put_field(*temperatureBc, *part);
     ScalarFieldType *enthalpyBc = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "enthalpy_bc"));
     stk::mesh::put_field(*enthalpyBc, *part);
-    temperature_bc_setup(userSpec, part, temperatureBc, enthalpyBc, isInterface);
+    temperature_bc_setup(userData, part, temperatureBc, enthalpyBc, isInterface);
 
     // Dirichlet bc
     std::map<AlgorithmType, SolverAlgorithm *>::iterator itd =
@@ -1167,7 +1155,7 @@ EnthalpyEquationSystem::predict_state()
 //--------------------------------------------------------------------------
 void
 EnthalpyEquationSystem::temperature_bc_setup(
-  std::vector<double> userSpecData,
+  UserData userData,
   stk::mesh::Part *part,
   ScalarFieldType *temperatureBc,
   ScalarFieldType *enthalpyBc,
@@ -1176,8 +1164,33 @@ EnthalpyEquationSystem::temperature_bc_setup(
 {
   ScalarFieldType &enthalpyNp1 = enthalpy_->field_of_state(stk::mesh::StateNP1);
 
+  // extract the type
+  std::string temperatureName = "temperature";
+  UserDataType theDataType = get_bc_data_type(userData, temperatureName);
+
   // populate temperature_bc
-  ConstantAuxFunction *theAuxFunc = new ConstantAuxFunction(0, 1, userSpecData);
+  AuxFunction *theAuxFunc = NULL;
+  if ( CONSTANT_UD == theDataType ) {
+    Temperature theTemp = userData.temperature_;
+    std::vector<double> userSpec(1);
+    userSpec[0] = theTemp.temperature_;
+    theAuxFunc = new ConstantAuxFunction(0, 1, userSpec);
+  }
+  else if ( FUNCTION_UD == theDataType ) {
+    // extract the name
+    std::string fcnName = get_bc_function_name(userData, temperatureName);
+    // switch on the name found...
+    if ( fcnName == "flow_past_cylinder" ) {
+      theAuxFunc = new FlowPastCylinderTempAuxFunction();
+    }
+    else {
+      throw std::runtime_error("Only steady_2d_thermal user functions supported");
+    }
+  } 
+  else {
+    throw std::runtime_error("EnthalpyEquationSystem::temperature_bc_setup: only function and constants supported");   
+  }
+  
   AuxFunctionAlgorithm *auxTempAlg
     = new AuxFunctionAlgorithm(realm_, part,
                                temperatureBc, theAuxFunc,
