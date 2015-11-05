@@ -69,21 +69,22 @@ FlowPastCylinderTempAuxFunction::do_evaluate(
     const double x = coords[0];
     const double y = coords[1];
 
-    // determine the quadrant
-    double addMe = 0.0;
+    // radius and raw angle
+    const double radius = std::sqrt((x-h_)*(x-h_) + (y-k_)*(y-k_));
+    const double thetaRaw = 180.0/pi_*asin((y-k_)/radius);
+
+    // determine the quadrant and compute the proper theta
+    double theta = 0.0;
     if ( x < h_ )
       if ( y > k_ )
-        addMe = 0.0;   // Q1
+        theta = thetaRaw;       // Q1
       else
-        addMe = 270.0; // Q3
+        theta = 360.0+thetaRaw; // Q4
     else
       if ( y > k_ )
-        addMe = 90.0;  // Q2
+        theta = 180.0-thetaRaw; // Q2
       else
-        addMe = 180.0; // Q4
-
-    const double radius = std::sqrt((x-h_)*(x-h_) + (y-k_)*(y-k_));
-    const double theta = 90.0/pi_*acos((x-h_)/radius) + addMe;
+        theta = 180.0-thetaRaw; // Q3
     
     // find the value via linear interpolation
     const double findT = interpolate_data(theta);
@@ -125,46 +126,47 @@ double
 FlowPastCylinderTempAuxFunction::interpolate_data( 
   const double z) const
 {
+  // check for over or under
+  if( z < experimentalData_[0][0] ) return experimentalData_[0][1];
+  if( z > experimentalData_[iMax_][0] ) return experimentalData_[iMax_][1];
+
   // find the index
   int foundIndex = find_index(z, iMin_, iMax_);
 
-  // proceed with the simple linear interpolation
-  double interpProp = 0.0;
-
-  // check for high/low bounds
-  if ( foundIndex == iMin_ || foundIndex == iMax_)
-    interpProp = experimentalData_[foundIndex][1];
-  else {
-    // not on the outer edge of the table
-    if ( experimentalData_[foundIndex][0] > z ) {
-      // on the high side
-      int foundM1 = foundIndex-1;
-      
-      // values of mixFrac
-      const double x1 = experimentalData_[foundIndex][0];
-      const double x0 = experimentalData_[foundM1][0];
-      
-      // property
-      const double y1 = experimentalData_[foundIndex][1];
-      const double y0 = experimentalData_[foundM1][1];
-      interpProp = y0 + (y1 - y0 )*(z-x0)/(x1-x0);
-    }
-    else {
-      // on the low side
-      const int foundP1 = foundIndex+1;
-      
-      // values of mixFrac
-      const double x0 = experimentalData_[foundIndex][0];
-      const double x1 = experimentalData_[foundP1][0];
-      
-      // property
-      const double y0 = experimentalData_[foundIndex][1];
-      const double y1 = experimentalData_[foundP1][1];
-      
-      interpProp = y0 + (y1 - y0 )*(z-x0)/(x1-x0);
-    }
+  // check for special case of high/low bounds
+  if ( foundIndex == iMin_ ) {
+    const int indexMod = foundIndex+1;
+    return local_interpolation(z, foundIndex, indexMod);
   }
-  return interpProp;
+  else if ( foundIndex == iMax_ ) {
+    const int indexMod = foundIndex-1;
+    return local_interpolation(z, indexMod, foundIndex);
+  }
+    
+  // not on the outer edge of the table; proceed
+  if ( experimentalData_[foundIndex][0] > z ) {
+    const int indexMod = foundIndex-1;
+    return local_interpolation(z, indexMod, foundIndex);
+  }
+  else {
+    const int indexMod = foundIndex+1;
+    return local_interpolation(z, foundIndex, indexMod);
+  }
+}
+
+double
+FlowPastCylinderTempAuxFunction::local_interpolation( 
+  const double z, const int index0, const int index1) const
+{
+  // values of independent variable
+  const double x0 = experimentalData_[index0][0];
+  const double x1 = experimentalData_[index1][0];
+  
+  // property
+  const double y0 = experimentalData_[index0][1];
+  const double y1 = experimentalData_[index1][1];
+  
+  return y0 + (y1 - y0 )*(z-x0)/(x1-x0);
 }
 
 } // namespace nalu
