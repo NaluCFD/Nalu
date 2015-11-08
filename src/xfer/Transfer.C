@@ -57,6 +57,7 @@ Transfer::Transfer(
     toRealm_(NULL),
     name_("none"),
     transferType_("none"),
+    transferObjective_("multi_physics"),
     searchMethodName_("none")
 {
   // nothing to do
@@ -79,6 +80,10 @@ Transfer::load(const YAML::Node & node)
 
   node["name"] >> name_;
   node["type"] >> transferType_;
+  if ( node.FindValue("objective") ) {
+    node["objective"] >> transferObjective_;
+  }
+
   if ( node.FindValue("coupling_physics") ) {
     node["coupling_physics"] >> couplingPhysicsName_;
     couplingPhysicsSpecified_ = true;
@@ -218,8 +223,8 @@ Transfer::breadboard()
     throw std::runtime_error("to realm in xfer is NULL");
 
   // advertise this transfer to realm; for calling control
-  fromRealm_->augment_transfer_vector(this);
-
+  fromRealm_->augment_transfer_vector(this, transferObjective_);
+ 
   // meta data; bulk data to early to extract?
   stk::mesh::MetaData &fromMetaData = fromRealm_->meta_data();
   stk::mesh::MetaData &toMetaData = toRealm_->meta_data();

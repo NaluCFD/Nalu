@@ -306,7 +306,7 @@ SurfaceForceAndMomentAlgorithm::execute()
           ws_v_force[i] += dflux;
           ws_tau[i] = tauijNj;
         }
-
+        
         // compute total force and tangential tau
         double tauTangential = 0.0;
         for ( int i = 0; i < nDim; ++i ) {

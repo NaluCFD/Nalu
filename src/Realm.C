@@ -134,6 +134,8 @@ namespace nalu{
 //--------------------------------------------------------------------------
   Realm::Realm(Realms& realms, const YAML::Node & node)
   : realms_(realms),
+    name_("na"),
+    type_("multi_physics"),
     inputDBName_("input_unknown"),
     spatialDimension_(3u),  // for convenience; can always get it from meta data
     realmUsesEdges_(false),
@@ -186,7 +188,9 @@ namespace nalu{
     hasContact_(false),
     hasNonConformal_(false),
     hasOverset_(false),
-    hasTransfer_(false),
+    hasMultiPhysicsTransfer_(false),
+    hasInitializationTransfer_(false),
+    hasIoTransfer_(false),
     periodicManager_(NULL),
     hasPeriodic_(false),
     globalParameters_(),
@@ -497,6 +501,7 @@ Realm::load(const YAML::Node & node)
 
   node["name"] >> name_;
   node["mesh"] >> inputDBName_;
+  get_if_present(node, "type", type_, type_);
 
   // provide a high level banner
   NaluEnv::self().naluOutputP0() << std::endl;
@@ -513,7 +518,7 @@ Realm::load(const YAML::Node & node)
   get_if_present(node, "provide_entity_count", provideEntityCount_, provideEntityCount_);
 
   // determine if edges are required and whether or not stk handles this
-  node["use_edges"] >> realmUsesEdges_;
+  get_if_present(node, "use_edges", realmUsesEdges_, realmUsesEdges_);
 
   // let everyone know about core algorithm
   if ( realmUsesEdges_ ) {
@@ -579,22 +584,24 @@ Realm::load(const YAML::Node & node)
   solutionNormPostProcessing_->load(node);
 
   // boundary, init, material and equation systems "load"
-  NaluEnv::self().naluOutputP0() << std::endl;
-  NaluEnv::self().naluOutputP0() << "Boundary Condition Review: " << std::endl;
-  NaluEnv::self().naluOutputP0() << "===========================" << std::endl;
-  boundaryConditions_.load(node);
-  NaluEnv::self().naluOutputP0() << std::endl;
-  NaluEnv::self().naluOutputP0() << "Initial Condition Review:  " << std::endl;
-  NaluEnv::self().naluOutputP0() << "===========================" << std::endl;
-  initialConditions_.load(node);
-  NaluEnv::self().naluOutputP0() << std::endl;
-  NaluEnv::self().naluOutputP0() << "Material Prop Review:      " << std::endl;
-  NaluEnv::self().naluOutputP0() << "===========================" << std::endl;
-  materialPropertys_.load(node);
-  NaluEnv::self().naluOutputP0() << std::endl;
-  NaluEnv::self().naluOutputP0() << "EqSys/options Review:      " << std::endl;
-  NaluEnv::self().naluOutputP0() << "===========================" << std::endl;
-  equationSystems_.load(node);
+  if ( type_ == "multi_physics" ) {
+    NaluEnv::self().naluOutputP0() << std::endl;
+    NaluEnv::self().naluOutputP0() << "Boundary Condition Review: " << std::endl;
+    NaluEnv::self().naluOutputP0() << "===========================" << std::endl;
+    boundaryConditions_.load(node);
+    NaluEnv::self().naluOutputP0() << std::endl;
+    NaluEnv::self().naluOutputP0() << "Initial Condition Review:  " << std::endl;
+    NaluEnv::self().naluOutputP0() << "===========================" << std::endl;
+    initialConditions_.load(node);
+    NaluEnv::self().naluOutputP0() << std::endl;
+    NaluEnv::self().naluOutputP0() << "Material Prop Review:      " << std::endl;
+    NaluEnv::self().naluOutputP0() << "===========================" << std::endl;
+    materialPropertys_.load(node);
+    NaluEnv::self().naluOutputP0() << std::endl;
+    NaluEnv::self().naluOutputP0() << "EqSys/options Review:      " << std::endl;
+    NaluEnv::self().naluOutputP0() << "===========================" << std::endl;
+    equationSystems_.load(node);
+  }
 
   // set number of nodes, check job run size
   check_job(true);
@@ -3268,8 +3275,7 @@ Realm::populate_variables_from_input()
 {
   // no reading fields from mesh if this is a restart
   if ( !restarted_simulation() && solutionOptions_->inputVarFromFileMap_.size() > 0 ) {
-    const double timeToRead = 1.0e8;
-    ioBroker_->read_defined_input_fields(timeToRead);
+    ioBroker_->read_defined_input_fields(solutionOptions_->inputVariablesRestorationTime_);
   }
 }
 
@@ -3341,7 +3347,6 @@ Realm::output_banner()
 void
 Realm::check_job(bool get_node_count)
 {
-
   NaluEnv::self().naluOutputP0() << std::endl;
   NaluEnv::self().naluOutputP0() << "Realm memory Review:       " << name_ << std::endl;
   NaluEnv::self().naluOutputP0() << "===========================" << std::endl;
@@ -3497,7 +3502,7 @@ Realm::dump_simulation_time()
   }
 
   // transfer
-  if ( hasTransfer_ ) {
+  if ( hasMultiPhysicsTransfer_ ) {
     double g_totalXfer = 0.0, g_minXfer= 0.0, g_maxXfer = 0.0;
     stk::all_reduce_min(NaluEnv::self().parallel_comm(), &timerTransferSearch_, &g_minXfer, 1);
     stk::all_reduce_max(NaluEnv::self().parallel_comm(), &timerTransferSearch_, &g_maxXfer, 1);
@@ -3981,27 +3986,74 @@ Realm::number_of_states()
 }
 
 //--------------------------------------------------------------------------
-//-------- augment_transfer_list -------------------------------------------
+//-------- augment_transfer_vector -----------------------------------------
 //--------------------------------------------------------------------------
 void
-Realm::augment_transfer_vector(Transfer *transfer)
+Realm::augment_transfer_vector(Transfer *transfer, const std::string transferObjective)
 {
-  transferVec_.push_back(transfer);
-  hasTransfer_ = true;
+  if ( transferObjective == "multi_physics" ) {
+    multiPhysicsTransferVec_.push_back(transfer);
+    hasMultiPhysicsTransfer_ = true; 
+  }
+  else if ( transferObjective == "initialization" ) {
+    initializationTransferVec_.push_back(transfer);
+    hasInitializationTransfer_ = true;
+  }
+  else if ( transferObjective == "input_output" ) {
+    ioTransferVec_.push_back(transfer);
+    hasIoTransfer_ = true;
+  }
+  else { 
+    throw std::runtime_error("Real::augment_transfer_vector: Error, none supported transfer objective: " + transferObjective);
+  }
 }
 
 //--------------------------------------------------------------------------
-//-------- process_transfer ------------------------------------------------
+//-------- process_multi_physics_transfer ----------------------------------
 //--------------------------------------------------------------------------
 void
-Realm::process_transfer()
+Realm::process_multi_physics_transfer()
 {
-  if ( !hasTransfer_ )
+  if ( !hasMultiPhysicsTransfer_ )
     return;
 
   std::vector<Transfer *>::iterator ii;
-  for( ii=transferVec_.begin(); ii!=transferVec_.end(); ++ii )
+  for( ii=multiPhysicsTransferVec_.begin(); ii!=multiPhysicsTransferVec_.end(); ++ii )
     (*ii)->execute();
+}
+
+//--------------------------------------------------------------------------
+//-------- process_init_transfer -------------------------------------------
+//--------------------------------------------------------------------------
+void
+Realm::process_initialization_transfer()
+{
+  if ( !hasInitializationTransfer_ )
+    return;
+
+  std::vector<Transfer *>::iterator ii;
+  for( ii=initializationTransferVec_.begin(); ii!=initializationTransferVec_.end(); ++ii ) {
+    (*ii)->execute();
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- process_io_transfer ------------------------------------------------
+//--------------------------------------------------------------------------
+void
+Realm::process_io_transfer()
+{
+  if ( !hasIoTransfer_ )
+    return;
+
+  // only do at an IO step
+  const int timeStepCount = get_time_step_count();
+  const bool isOutput = (timeStepCount % outputInfo_->outputFreq_) == 0;
+  if ( isOutput ) {
+    std::vector<Transfer *>::iterator ii;
+    for( ii=ioTransferVec_.begin(); ii!=ioTransferVec_.end(); ++ii )
+      (*ii)->execute();
+  }
 }
 
 //--------------------------------------------------------------------------

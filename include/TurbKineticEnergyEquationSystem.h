@@ -78,6 +78,8 @@ public:
   void predict_state();
   
   void solve_and_update();
+  void initial_work();
+
   void assemble_nodal_gradient();
   void compute_effective_diff_flux_coeff();
   void compute_wall_model_parameters();

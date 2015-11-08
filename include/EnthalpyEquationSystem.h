@@ -88,7 +88,7 @@ public:
   void initial_work();
   
   void temperature_bc_setup(
-    std::vector<double> userSpecData,
+    UserData userData,
     stk::mesh::Part *part,
     ScalarFieldType *temperatureBc,
     ScalarFieldType *enthalpyBc,

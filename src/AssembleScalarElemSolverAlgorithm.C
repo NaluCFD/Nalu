@@ -354,8 +354,8 @@ AssembleScalarElemSolverAlgorithm::execute()
 
         // right hand side; L and R
         p_rhs[il] -= aflux;
-        p_rhs[ir] += aflux;
-
+        p_rhs[ir] += aflux; 
+        
         // advection operator sens; all but central
 
         // upwind advection (includes 4th); left node
@@ -401,7 +401,7 @@ AssembleScalarElemSolverAlgorithm::execute()
         // rhs; il then ir
         p_rhs[il] -= qDiff;
         p_rhs[ir] += qDiff;
-
+        
       }
 
       // call supplemental

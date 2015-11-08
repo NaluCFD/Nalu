@@ -73,19 +73,19 @@ class HDF5FilePtr;
 class Transfer;
 
 class Realm {
-public:
+ public:
 
   Realm(Realms&, const YAML::Node & node);
-  ~Realm();
-
+  virtual ~Realm();
+  
   typedef size_t SizeType;
 
-  void load(const YAML::Node & node);
+  virtual void load(const YAML::Node & node);
   void look_ahead_and_creation(const YAML::Node & node);
 
-  void breadboard();
+  virtual void breadboard();
 
-  void initialize();
+  virtual void initialize();
  
   Simulation *root() const;
   Simulation *root();
@@ -113,8 +113,6 @@ public:
   void setup_property();
   void extract_universal_constant( 
     const std::string name, double &value, const bool useDefault);
-  void pre_timestep_work();
-  void evaluate_properties();
   void augment_property_map(
     PropertyIdentifier propID,
     ScalarFieldType *theField);
@@ -136,7 +134,6 @@ public:
   void create_edges();
   void provide_entity_count();
   void delete_edges();
-  void register_fields();
   void commit();
 
   void process_mesh_motion();
@@ -169,9 +166,7 @@ public:
   void compute_geometry();
   void compute_vrtm();
   void compute_l2_scaling();
-  void advance_time_step();
   void output_converged_results();
-  double compute_adaptive_time_step();
   void provide_output();
   void provide_restart_output();
 
@@ -240,23 +235,27 @@ public:
     const unsigned sizeRow,
     const unsigned sizeCol);
 
-  void swap_states();
-
-  void predict_state();
-
-  void populate_initial_condition();
+  virtual void populate_initial_condition();
+  virtual void populate_boundary_data();
+  virtual void boundary_data_to_state_data();
+  virtual void populate_variables_from_input();
+  virtual double populate_restart( double &timeStepNm1, int &timeStepCount);
+  virtual void populate_derived_quantities();
+  virtual void evaluate_properties();
+  virtual double compute_adaptive_time_step();
+  virtual void swap_states();
+  virtual void predict_state();
+  virtual void pre_timestep_work();
+  virtual void output_banner();
+  virtual void advance_time_step();
+ 
+  virtual void initial_work();
+  
   void set_global_id();
-  void populate_boundary_data();
-  double populate_restart( double &timeStepNm1, int &timeStepCount);
-  void populate_variables_from_input();
-  void populate_derived_quantities();
-  void initial_work();
-  void output_banner();
-
+ 
   /// check job for fitting in memory
   void check_job(bool get_node_count);
 
-  void boundary_data_to_state_data();
   void dump_simulation_time();
   double provide_mean_norm();
 
@@ -332,6 +331,8 @@ public:
 
   Realms& realms_;
 
+  std::string name_;
+  std::string type_;
   std::string inputDBName_;
   unsigned spatialDimension_;
 
@@ -369,12 +370,10 @@ public:
 
   TimeIntegrator *timeIntegrator_;
 
-  std::string name_;
-
   BoundaryConditions boundaryConditions_;
   InitialConditions initialConditions_;
   MaterialPropertys materialPropertys_;
-
+  
   EquationSystems equationSystems_;
 
   double maxCourant_;
@@ -414,7 +413,11 @@ public:
   bool hasContact_;
   bool hasNonConformal_;
   bool hasOverset_;
-  bool hasTransfer_;
+
+  // three type of transfer operations
+  bool hasMultiPhysicsTransfer_;
+  bool hasInitializationTransfer_;
+  bool hasIoTransfer_;
 
   PeriodicManager *periodicManager_;
   bool hasPeriodic_;
@@ -460,10 +463,14 @@ public:
 
   std::vector<AuxFunctionAlgorithm *> bcDataAlg_;
 
-  // transfer information
-  std::vector<Transfer *> transferVec_;
-  void augment_transfer_vector(Transfer *transfer);
-  void process_transfer();
+  // transfer information; three types
+  std::vector<Transfer *> multiPhysicsTransferVec_;
+  std::vector<Transfer *> initializationTransferVec_;
+  std::vector<Transfer *> ioTransferVec_;
+  void augment_transfer_vector(Transfer *transfer, const std::string transferObjective);
+  void process_multi_physics_transfer();
+  void process_initialization_transfer();
+  void process_io_transfer();
 
   // process end of time step converged work
   void post_converged_work();

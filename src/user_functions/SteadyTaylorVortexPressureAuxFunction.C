@@ -19,9 +19,9 @@ namespace nalu{
 
 SteadyTaylorVortexPressureAuxFunction::SteadyTaylorVortexPressureAuxFunction() :
   AuxFunction(0,1),
-    pnot_(1.0),
-    a_(20.0),
-    pi_(acos(-1.0))
+  pnot_(1.0),
+  a_(20.0),
+  pi_(acos(-1.0))
 {
   // does nothing
 }

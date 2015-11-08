@@ -6,8 +6,9 @@
 /*------------------------------------------------------------------------*/
 
 
-#include <Realm.h>
 #include <Realms.h>
+#include <Realm.h>
+#include <InputOutputRealm.h>
 #include <TimeIntegrator.h>
 #include <Simulation.h>
 
@@ -43,7 +44,14 @@ Realms::load(const YAML::Node & node)
   if (realms) {
     for ( size_t irealm = 0; irealm < realms->size(); ++irealm ) {
       const YAML::Node & realm_node = (*realms)[irealm];
-      Realm *realm = new Realm(*this, realm_node);
+      // check for multi_physics realm type...
+      std::string realmType = "multi_physics";
+      get_if_present(realm_node, "type", realmType, realmType);
+      Realm *realm = NULL;
+      if ( realmType == "multi_physics" )
+        realm = new Realm(*this, realm_node);
+      else
+        realm = new InputOutputRealm(*this, realm_node);
       realm->load(realm_node);
       realmVector_.push_back(realm);
     }

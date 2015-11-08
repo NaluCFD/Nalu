@@ -85,6 +85,7 @@ void TimeIntegrator::load(const YAML::Node & node)
         }
 	      
         get_if_present(*standardTimeIntegrator_node, "time_step", timeStepFromFile_, timeStepFromFile_);
+        get_if_present(*standardTimeIntegrator_node, "start_time", currentTime_, currentTime_);
         get_if_present(*standardTimeIntegrator_node, "time_step_count", timeStepCount_, timeStepCount_);
         get_if_present(*standardTimeIntegrator_node, "second_order_accuracy", secondOrderTimeAccurate_, secondOrderTimeAccurate_);
         get_if_present(*standardTimeIntegrator_node, "nonlinear_iterations", nonlinearIterations_, nonlinearIterations_);
@@ -172,11 +173,17 @@ TimeIntegrator::integrate_realm()
     (*ii)->populate_variables_from_input();
   }
 
-  // possible restart; need to extract current time (last one in wins)
+  // possible restart; need to extract current time (max wins)
   for ( ii = realmVec_.begin(); ii!=realmVec_.end(); ++ii) {
-    currentTime_ = (*ii)->populate_restart(timeStepNm1_, timeStepCount_);
+    currentTime_ = std::max(currentTime_, (*ii)->populate_restart(timeStepNm1_, timeStepCount_));
   }
 
+  // populate data from transfer
+  for ( ii = realmVec_.begin(); ii!=realmVec_.end(); ++ii) {
+    (*ii)->process_initialization_transfer();
+    // might erase the initialization Realm since it has performed its duty (requires shared pointers)
+  }
+  
   // nm1 dt from possible restart always prevails; input file overrides for fixed time stepping
   if ( adaptiveTimeStep_ ) {
     timeStepN_ = timeStepNm1_;
@@ -202,7 +209,7 @@ TimeIntegrator::integrate_realm()
 
   // provide for initial transfer
   for ( ii = realmVec_.begin(); ii!=realmVec_.end(); ++ii) {
-    (*ii)->process_transfer();
+    (*ii)->process_multi_physics_transfer();
   }
 
   //=====================================
@@ -263,13 +270,18 @@ TimeIntegrator::integrate_realm()
         << std::endl;
       for ( ii = realmVec_.begin(); ii!=realmVec_.end(); ++ii) {
         (*ii)->advance_time_step();
-        (*ii)->process_transfer();
+        (*ii)->process_multi_physics_transfer();
       }
     }
 
     // process any post converged work
     for ( ii = realmVec_.begin(); ii!=realmVec_.end(); ++ii) {
       (*ii)->post_converged_work();
+    }
+    
+    // populate data from io transfer
+    for ( ii = realmVec_.begin(); ii!=realmVec_.end(); ++ii) {
+      (*ii)->process_io_transfer();
     }
 
     // provide output/restart after nonlinear iteration
@@ -300,8 +312,11 @@ TimeIntegrator::provide_mean_norm()
   double sumNorm = 0.0;
   double realmIncrement = 0.0;
   for ( ii = realmVec_.begin(); ii!=realmVec_.end(); ++ii) {
-    sumNorm += (*ii)->provide_mean_norm();
-    realmIncrement += 1.0;
+    if ( (*ii)->type_ == "multi_physics" ) { 
+      // only increment for a "real" realm
+      sumNorm += (*ii)->provide_mean_norm();
+      realmIncrement += 1.0;
+    }
   }
   NaluEnv::self().naluOutputP0() << "Mean System Norm: "
       << std::setprecision(16) << sumNorm/realmIncrement << " "
