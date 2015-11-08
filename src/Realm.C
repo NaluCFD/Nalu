@@ -533,6 +533,10 @@ Realm::load(const YAML::Node & node)
 
   // automatic decomposition
   get_if_present(node, "automatic_decomposition_type", autoDecompType_, autoDecompType_);
+  if ( "None" != autoDecompType_ ) {
+    NaluEnv::self().naluOutputP0() 
+      <<"Warning: When using automatic_decomposition_type, one must have a serial file" << std::endl;
+  }
 
   // activate aura
   get_if_present(node, "activate_aura", activateAura_, activateAura_);

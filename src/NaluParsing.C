@@ -465,6 +465,10 @@ void operator >> (const YAML::Node& node, WallBoundaryConditionData& wallBC) {
   wallBC.theBcType_ = WALL_BC;
   const YAML::Node& wallUserData = node["wall_user_data"];
   wallUserData >> wallBC.userData_;
+  // check for typical rogue line command
+  const YAML::Node *value = node.FindValue("user_function_name");
+  if ( NULL != value )
+    throw std::runtime_error("user_function_data is misplaced; it must be under wall_user_data");
 }
 
 void operator >> (const YAML::Node& node, InflowBoundaryConditionData& inflowBC) {
@@ -473,6 +477,10 @@ void operator >> (const YAML::Node& node, InflowBoundaryConditionData& inflowBC)
   inflowBC.theBcType_ = INFLOW_BC;
   const YAML::Node& inflowUserData = node["inflow_user_data"];
   inflowUserData >> inflowBC.userData_;
+  // check for typical rogue line command
+  const YAML::Node *value = node.FindValue("user_function_name");
+  if ( NULL != value )
+    throw std::runtime_error("user_function_data is misplaced; it must be under inflow_user_data");
 }
 
 void operator >> (const YAML::Node& node, OpenBoundaryConditionData& openBC) {
@@ -481,6 +489,10 @@ void operator >> (const YAML::Node& node, OpenBoundaryConditionData& openBC) {
   openBC.theBcType_ = OPEN_BC;
   const YAML::Node& openUserData = node["open_user_data"];
   openUserData >> openBC.userData_;
+  // check for typical rogue line command
+  const YAML::Node *value = node.FindValue("user_function_name");
+  if ( NULL != value )
+    throw std::runtime_error("user_function_data is misplaced; it must be under open_user_data");
 }
 
 void operator >> (const YAML::Node& node, OversetBoundaryConditionData& oversetBC) {
