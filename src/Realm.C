@@ -3993,7 +3993,7 @@ Realm::number_of_states()
 //-------- augment_transfer_vector -----------------------------------------
 //--------------------------------------------------------------------------
 void
-Realm::augment_transfer_vector(Transfer *transfer, const std::string transferObjective)
+Realm::augment_transfer_vector(Transfer *transfer, const std::string transferObjective, Realm *toRealm)
 {
   if ( transferObjective == "multi_physics" ) {
     multiPhysicsTransferVec_.push_back(transfer);
@@ -4004,8 +4004,8 @@ Realm::augment_transfer_vector(Transfer *transfer, const std::string transferObj
     hasInitializationTransfer_ = true;
   }
   else if ( transferObjective == "input_output" ) {
-    ioTransferVec_.push_back(transfer);
-    hasIoTransfer_ = true;
+    toRealm->ioTransferVec_.push_back(transfer);
+    toRealm->hasIoTransfer_ = true;
   }
   else { 
     throw std::runtime_error("Real::augment_transfer_vector: Error, none supported transfer objective: " + transferObjective);

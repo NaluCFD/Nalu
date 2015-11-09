@@ -223,7 +223,7 @@ Transfer::breadboard()
     throw std::runtime_error("to realm in xfer is NULL");
 
   // advertise this transfer to realm; for calling control
-  fromRealm_->augment_transfer_vector(this, transferObjective_);
+  fromRealm_->augment_transfer_vector(this, transferObjective_, toRealm_);
  
   // meta data; bulk data to early to extract?
   stk::mesh::MetaData &fromMetaData = fromRealm_->meta_data();

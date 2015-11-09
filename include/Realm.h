@@ -467,7 +467,7 @@ class Realm {
   std::vector<Transfer *> multiPhysicsTransferVec_;
   std::vector<Transfer *> initializationTransferVec_;
   std::vector<Transfer *> ioTransferVec_;
-  void augment_transfer_vector(Transfer *transfer, const std::string transferObjective);
+  void augment_transfer_vector(Transfer *transfer, const std::string transferObjective, Realm *toRealm);
   void process_multi_physics_transfer();
   void process_initialization_transfer();
   void process_io_transfer();
