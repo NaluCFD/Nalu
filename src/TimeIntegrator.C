@@ -212,6 +212,11 @@ TimeIntegrator::integrate_realm()
     (*ii)->process_multi_physics_transfer();
   }
 
+  // provide output/restart for initial condition
+  for ( ii = realmVec_.begin(); ii!=realmVec_.end(); ++ii) {
+    (*ii)->output_converged_results();
+  }
+
   //=====================================
   // time integration
   //=====================================

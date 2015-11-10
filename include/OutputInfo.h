@@ -28,6 +28,7 @@ public:
   
   std::string outputDBName_;
   int outputFreq_;
+  int outputStart_;
   bool outputNodeSet_; 
   int serializedIOGroupSize_;
   bool hasOutputBlock_;
@@ -37,6 +38,7 @@ public:
   double restartTime_;
   std::string restartDBName_;
   int restartFreq_;
+  int restartStart_;
   int restartMaxDataBaseStepSize_;
   bool restartNodeSet_;
   std::set<std::string> outputFieldNameSet_;

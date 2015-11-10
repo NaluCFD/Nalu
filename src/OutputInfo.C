@@ -27,6 +27,7 @@ namespace nalu{
 OutputInfo::OutputInfo() 
   : outputDBName_("output.e"),
     outputFreq_(1),
+    outputStart_(0),
     outputNodeSet_(false),
     serializedIOGroupSize_(0),
     hasOutputBlock_(false),
@@ -36,6 +37,7 @@ OutputInfo::OutputInfo()
     restartTime_(0.0),
     restartDBName_("restart.rst"),
     restartFreq_(500),
+    restartStart_(500),
     restartMaxDataBaseStepSize_(100000),
     restartNodeSet_(true)
 {
@@ -70,6 +72,9 @@ OutputInfo::load(
     
     // output frequency
     get_if_present(*y_output, "output_frequency", outputFreq_, outputFreq_);
+
+    // output start
+    get_if_present(*y_output, "output_start", outputStart_, outputStart_);
 
     // determine if we want nodeset output
     get_if_present(*y_output, "output_node_set", outputNodeSet_, outputNodeSet_);
@@ -109,6 +114,9 @@ OutputInfo::load(
     // restart output frequency
     get_if_present(*y_restart, "restart_frequency", restartFreq_, restartFreq_);
     
+    // restart start
+    get_if_present(*y_restart, "restart_start", restartStart_, restartStart_);
+
     // determine if we want nodeset restart output
     get_if_present(*y_restart, "restart_node_set", restartNodeSet_, restartNodeSet_);
     

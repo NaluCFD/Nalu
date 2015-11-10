@@ -3121,7 +3121,9 @@ Realm::provide_output()
     // process output via io
     const double currentTime = get_current_time();
     const int timeStepCount = get_time_step_count();
-    const bool isOutput = (timeStepCount % outputInfo_->outputFreq_) == 0;
+    const int modStep = timeStepCount - outputInfo_->outputStart_;
+    const bool isOutput 
+      = timeStepCount >=outputInfo_->outputStart_ && modStep % outputInfo_->outputFreq_ == 0;
 
     if ( isOutput ) {
       // when adaptivity has occurred, re-create the output mesh file
@@ -3158,8 +3160,10 @@ Realm::provide_restart_output()
     // process restart via io
     const double currentTime = get_current_time();
     const int timeStepCount = get_time_step_count();
-    const bool isRestartOutputStep = (timeStepCount % outputInfo_->restartFreq_) == 0;
-
+    const int modStep = timeStepCount - outputInfo_->restartStart_;
+    const bool isRestartOutputStep 
+      = timeStepCount >= outputInfo_->restartStart_ && modStep % outputInfo_->restartFreq_ == 0;
+    
     if ( isRestartOutputStep ) {
 
       // handle fields
