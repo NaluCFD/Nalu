@@ -15,8 +15,8 @@
 #include <ContactManager.h>
 #include <FieldTypeDef.h>
 #include <LinearSystem.h>
+#include <PecletFunction.h>
 #include <Realm.h>
-#include <TimeIntegrator.h>
 
 #include <master_element/MasterElement.h>
 
@@ -46,7 +46,8 @@ AssembleMomentumEdgeContactSolverAlgorithm::AssembleMomentumEdgeContactSolverAlg
   : SolverAlgorithm(realm, part, eqSystem),
     meshMotion_(realm_.has_mesh_motion()),
     includeDivU_(realm_.get_divU()),
-    meshVelocity_(NULL)
+    meshVelocity_(NULL),
+    pecletFunction_(NULL)
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -62,13 +63,33 @@ AssembleMomentumEdgeContactSolverAlgorithm::AssembleMomentumEdgeContactSolverAlg
   viscosity_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, viscName);
   haloMdot_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "halo_mdot");
 
+  // create the peclet blending function; for now, decided upon at construction
+  const std::string dofName = velocity_->name();
+  if ( "classic" == realm_.get_peclet_functional_form(dofName) ) { 
+    const double hybridFactor = realm_.get_hybrid_factor(dofName);
+    const double A = 5.0;
+    pecletFunction_ = new ClassicPecletFunction(A, hybridFactor);
+  }
+  else {
+    const double c1 = realm_.get_peclet_tanh_trans(dofName);
+    const double c2 = realm_.get_peclet_tanh_width(dofName);
+    pecletFunction_ = new TanhPecletFunction(c1, c2);
+  }
+
   // populate fieldVec; no state
   ghostFieldVec_.push_back(dudx_);
   ghostFieldVec_.push_back(coordinates_);
   // with state
   ghostFieldVec_.push_back(&(velocity_->field_of_state(stk::mesh::StateNP1)));
   ghostFieldVec_.push_back(&(density_->field_of_state(stk::mesh::StateNP1)));
+}
 
+//--------------------------------------------------------------------------
+//-------- destructor ------------------------------------------------------
+//--------------------------------------------------------------------------
+AssembleMomentumEdgeContactSolverAlgorithm::~AssembleMomentumEdgeContactSolverAlgorithm()
+{
+  delete pecletFunction_;
 }
 
 //--------------------------------------------------------------------------
@@ -96,7 +117,6 @@ AssembleMomentumEdgeContactSolverAlgorithm::execute()
 
   // extract user advection options (allow to potentially change over time)
   const std::string dofName = "velocity";
-  const double hybridFactor = realm_.get_hybrid_factor(dofName);
   const double alpha = realm_.get_alpha_factor(dofName);
   const double alphaUpw = realm_.get_alpha_upw_factor(dofName);
   const double hoUpwind = realm_.get_upw_factor(dofName);
@@ -317,8 +337,7 @@ AssembleMomentumEdgeContactSolverAlgorithm::execute()
       const double diffIp = 0.5*(viscosityL/densityL + viscosityR/densityR);
 
       // Peclet factor
-      double pecfac = hybridFactor*udotx/(diffIp+small);
-      pecfac = pecfac*pecfac/(5.0 + pecfac*pecfac);
+      const double pecfac = pecletFunction_->execute(std::abs(udotx)/(diffIp+small));
       const double om_pecfac = 1.0-pecfac;
 
       // determine limiter if applicable

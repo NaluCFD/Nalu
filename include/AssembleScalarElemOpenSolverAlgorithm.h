@@ -22,6 +22,7 @@ namespace sierra{
 namespace nalu{
 
 class Realm;
+class PecletFunction;
 
 class AssembleScalarElemOpenSolverAlgorithm : public SolverAlgorithm
 {
@@ -35,7 +36,7 @@ public:
     ScalarFieldType *bcScalarQ,
     VectorFieldType *dqdx,
     ScalarFieldType *diffFluxCoeff);
-  virtual ~AssembleScalarElemOpenSolverAlgorithm() {}
+  virtual ~AssembleScalarElemOpenSolverAlgorithm();
   virtual void initialize_connectivity();
   virtual void execute();
 
@@ -50,6 +51,8 @@ public:
   ScalarFieldType *density_;
   GenericFieldType *openMassFlowRate_;
 
+  // peclet function specifics
+  PecletFunction * pecletFunction_;
 };
 
 } // namespace nalu

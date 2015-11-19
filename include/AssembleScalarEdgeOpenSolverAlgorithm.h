@@ -45,9 +45,7 @@ public:
   VectorFieldType *dqdx_;
   ScalarFieldType *diffFluxCoeff_;
   VectorFieldType *coordinates_;
-  ScalarFieldType *density_;
   GenericFieldType *openMassFlowRate_;
-
 };
 
 } // namespace nalu

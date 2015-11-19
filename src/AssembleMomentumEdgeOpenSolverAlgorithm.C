@@ -47,7 +47,6 @@ AssembleMomentumEdgeOpenSolverAlgorithm::AssembleMomentumEdgeOpenSolverAlgorithm
   velocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
   dudx_ = meta_data.get_field<GenericFieldType>(stk::topology::NODE_RANK, "dudx");
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
-  density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
   // extract viscosity  name
   const std::string viscName = realm_.is_turbulent()
     ? "effective_viscosity_u" : "viscosity";
@@ -78,12 +77,6 @@ AssembleMomentumEdgeOpenSolverAlgorithm::execute()
 
   const int nDim = meta_data.spatial_dimension();
 
-  const double small = 1.0e-16;
-
-  // extract user advection options (allow to potentially change over time)
-  const std::string dofName = "velocity";
-  const double hybridFactor = realm_.get_hybrid_factor(dofName);
-
   // nearest face entrainment
   const double nfEntrain = realm_.solutionOptions_->nearestFaceEntrain_;
   const double om_nfEntrain = 1.0-nfEntrain;
@@ -106,7 +99,6 @@ AssembleMomentumEdgeOpenSolverAlgorithm::execute()
 
   // deal with state
   VectorFieldType &velocityNp1 = velocity_->field_of_state(stk::mesh::StateNP1);
-  ScalarFieldType &densityNp1 = density_->field_of_state(stk::mesh::StateNP1);
 
   // define vector of parent topos
   std::vector<stk::topology> parentTopo;
@@ -193,10 +185,6 @@ AssembleMomentumEdgeOpenSolverAlgorithm::execute()
         const double * uNp1L = stk::mesh::field_data(velocityNp1, nodeL );
         const double * uNp1R = stk::mesh::field_data(velocityNp1, nodeR );
 
-        const double densityL = *stk::mesh::field_data(densityNp1, nodeL );
-        const double densityR = *stk::mesh::field_data(densityNp1, nodeR );
-
-        const double viscosityL = *stk::mesh::field_data(*viscosity_, nodeL );
         const double viscosityR = *stk::mesh::field_data(*viscosity_, nodeR );
         const double viscBip = viscosityR;
 
@@ -221,11 +209,6 @@ AssembleMomentumEdgeOpenSolverAlgorithm::execute()
 
         const double inv_axdx = 1.0/axdx;
         const double amag = std::sqrt(asq);
-
-        // deal with peclet factor
-        const double diffIP = 0.5*(viscosityL/densityL + viscosityR/densityR);
-        double pecfac = hybridFactor*udotx/(diffIP+small);
-        pecfac = pecfac*pecfac/(5.0 + pecfac*pecfac);
 
         // form duidxj with over-relaxed procedure of Jasak:
         for ( int i = 0; i < nDim; ++i ) {

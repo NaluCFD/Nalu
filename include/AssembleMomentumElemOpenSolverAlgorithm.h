@@ -22,6 +22,7 @@ namespace sierra{
 namespace nalu{
 
 class Realm;
+class PecletFunction;
 
 class AssembleMomentumElemOpenSolverAlgorithm : public SolverAlgorithm
 {
@@ -31,7 +32,7 @@ public:
     Realm &realm,
     stk::mesh::Part *part,
     EquationSystem *eqSystem);
-  virtual ~AssembleMomentumElemOpenSolverAlgorithm() {}
+  virtual ~AssembleMomentumElemOpenSolverAlgorithm();
   virtual void initialize_connectivity();
   virtual void execute();
 
@@ -45,6 +46,9 @@ public:
   GenericFieldType *exposedAreaVec_;
   GenericFieldType *openMassFlowRate_;
   VectorFieldType *velocityBc_;
+
+  // peclet function specifics
+  PecletFunction * pecletFunction_;
 };
 
 } // namespace nalu

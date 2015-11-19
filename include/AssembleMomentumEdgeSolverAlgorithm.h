@@ -16,6 +16,7 @@ namespace sierra{
 namespace nalu{
 
 class Realm;
+class PecletFunction;
 
 class AssembleMomentumEdgeSolverAlgorithm : public SolverAlgorithm
 {
@@ -25,7 +26,7 @@ public:
     Realm &realm,
     stk::mesh::Part *part,
     EquationSystem *eqSystem);
-  virtual ~AssembleMomentumEdgeSolverAlgorithm() {}
+  virtual ~AssembleMomentumEdgeSolverAlgorithm();
   virtual void initialize_connectivity();
   virtual void execute();
   
@@ -45,6 +46,9 @@ public:
   ScalarFieldType *viscosity_;
   VectorFieldType *edgeAreaVec_;
   ScalarFieldType *massFlowRate_;
+
+  // peclet function specifics
+  PecletFunction * pecletFunction_;
 };
 
 } // namespace nalu

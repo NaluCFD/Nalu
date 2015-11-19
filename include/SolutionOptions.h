@@ -48,6 +48,9 @@ public:
   double turbScDefault_;
   double turbPrDefault_;
   bool nocDefault_;
+  std::string pecletFunctionalFormDefault_;
+  double pecletTanhTransDefault_;
+  double pecletTanhWidthDefault_;
   double referenceDensity_;
   double referenceTemperature_;
   double thermalExpansionCoeff_;
@@ -95,6 +98,9 @@ public:
   std::map<std::string, double> alphaUpwMap_;
   std::map<std::string, double> upwMap_;
   std::map<std::string, bool> limiterMap_;
+  std::map<std::string, std::string> pecletFunctionalFormMap_;
+  std::map<std::string, double> pecletFunctionTanhTransMap_;
+  std::map<std::string, double> pecletFunctionTanhWidthMap_;
 
   // property related
   std::map<std::string, double> lamScMap_;

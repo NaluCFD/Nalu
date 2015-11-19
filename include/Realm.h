@@ -286,6 +286,14 @@ class Realm {
     const std::string dofname);
   double get_divU();
 
+  // peclet factor specifics
+  std::string get_peclet_functional_form(
+    const std::string dofname);
+  double get_peclet_tanh_trans(
+    const std::string dofname);
+  double get_peclet_tanh_width(
+    const std::string dofname);
+
   // pressure poisson nuance
   double get_mdot_interp();
   bool get_cvfem_shifted_mdot();

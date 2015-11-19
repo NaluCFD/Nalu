@@ -23,6 +23,7 @@ namespace sierra{
 namespace nalu{
 
 class Realm;
+class PecletFunction;
 
 class AssembleScalarEdgeContactSolverAlgorithm : public SolverAlgorithm
 {
@@ -35,7 +36,7 @@ public:
     ScalarFieldType *scalarQ,
     VectorFieldType *dqdx,
     ScalarFieldType *diffFluxCoeff);
-  virtual ~AssembleScalarEdgeContactSolverAlgorithm() {}
+  virtual ~AssembleScalarEdgeContactSolverAlgorithm();
   virtual void initialize_connectivity();
   virtual void execute();
   
@@ -54,9 +55,11 @@ public:
   VectorFieldType *coordinates_;
   ScalarFieldType *density_;
   ScalarFieldType *haloMdot_;
+
+  // peclet function specifics
+  PecletFunction * pecletFunction_;
   
   std::vector< const stk::mesh::FieldBase *> ghostFieldVec_;
-
 };
 
 } // namespace nalu

@@ -11,6 +11,7 @@
 #include <EquationSystem.h>
 #include <FieldTypeDef.h>
 #include <LinearSystem.h>
+#include <PecletFunction.h>
 #include <Realm.h>
 
 #include <stk_mesh/base/BulkData.hpp>
@@ -45,7 +46,8 @@ AssembleMomentumEdgeSolverAlgorithm::AssembleMomentumEdgeSolverAlgorithm(
     density_(NULL),
     viscosity_(NULL),
     edgeAreaVec_(NULL),
-    massFlowRate_(NULL)
+    massFlowRate_(NULL),
+    pecletFunction_(NULL)
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -63,8 +65,32 @@ AssembleMomentumEdgeSolverAlgorithm::AssembleMomentumEdgeSolverAlgorithm(
   viscosity_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, viscName);
   edgeAreaVec_ = meta_data.get_field<VectorFieldType>(stk::topology::EDGE_RANK, "edge_area_vector");
   massFlowRate_ = meta_data.get_field<ScalarFieldType>(stk::topology::EDGE_RANK, "mass_flow_rate");
+
+  // create the peclet blending function; for now, decided upon at construction
+  const std::string dofName = velocity_->name();
+  if ( "classic" == realm_.get_peclet_functional_form(dofName) ) { 
+    const double hybridFactor = realm_.get_hybrid_factor(dofName);
+    const double A = 5.0;
+    pecletFunction_ = new ClassicPecletFunction(A, hybridFactor);
+  }
+  else {
+    const double c1 = realm_.get_peclet_tanh_trans(dofName);
+    const double c2 = realm_.get_peclet_tanh_width(dofName);
+    pecletFunction_ = new TanhPecletFunction(c1, c2);
+  }
 }
 
+//--------------------------------------------------------------------------
+//-------- destructor ------------------------------------------------------
+//--------------------------------------------------------------------------
+AssembleMomentumEdgeSolverAlgorithm::~AssembleMomentumEdgeSolverAlgorithm()
+{
+  delete pecletFunction_;
+}
+
+//--------------------------------------------------------------------------
+//-------- initialize_connectivity -----------------------------------------
+//--------------------------------------------------------------------------
 void
 AssembleMomentumEdgeSolverAlgorithm::initialize_connectivity()
 {
@@ -86,7 +112,6 @@ AssembleMomentumEdgeSolverAlgorithm::execute()
 
   // extract user advection options (allow to potentially change over time)
   const std::string dofName = "velocity";
-  const double hybridFactor = realm_.get_hybrid_factor(dofName);
   const double alpha = realm_.get_alpha_factor(dofName);
   const double alphaUpw = realm_.get_alpha_upw_factor(dofName);
   const double hoUpwind = realm_.get_upw_factor(dofName);
@@ -232,8 +257,7 @@ AssembleMomentumEdgeSolverAlgorithm::execute()
       const double diffIp = 0.5*(viscosityL/densityL + viscosityR/densityR);
 
       // Peclet factor
-      double pecfac = hybridFactor*udotx/(diffIp+small);
-      pecfac = pecfac*pecfac/(5.0 + pecfac*pecfac);
+      const double pecfac = pecletFunction_->execute(std::abs(udotx)/(diffIp+small));
       const double om_pecfac = 1.0-pecfac;
 
       // determine limiter if applicable

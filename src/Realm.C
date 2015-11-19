@@ -3850,6 +3850,54 @@ Realm::get_noc_usage(
 }
 
 //--------------------------------------------------------------------------
+//-------- get_peclet_functional_form --------------------------------------
+//--------------------------------------------------------------------------
+std::string
+Realm::get_peclet_functional_form(
+  const std::string dofName )
+{
+  std::string pecletForm = solutionOptions_->pecletFunctionalFormDefault_;
+  std::map<std::string, std::string>::const_iterator iter
+    = solutionOptions_->pecletFunctionalFormMap_.find(dofName);
+  if (iter != solutionOptions_->pecletFunctionalFormMap_.end()) {
+    pecletForm = (*iter).second;
+  }
+  return pecletForm;
+}
+
+//--------------------------------------------------------------------------
+//-------- get_peclet_tanh_trans -------------------------------------------
+//--------------------------------------------------------------------------
+double
+Realm::get_peclet_tanh_trans(
+  const std::string dofName )
+{
+  double tanhTrans = solutionOptions_->pecletTanhTransDefault_;
+  std::map<std::string, double>::const_iterator iter
+    = solutionOptions_->pecletFunctionTanhTransMap_.find(dofName);
+  if (iter != solutionOptions_->pecletFunctionTanhTransMap_.end()) {
+    tanhTrans = (*iter).second;
+  }
+  return tanhTrans;
+}
+
+//--------------------------------------------------------------------------
+//-------- get_peclet_tanh_width -------------------------------------------
+//--------------------------------------------------------------------------
+double
+Realm::get_peclet_tanh_width(
+  const std::string dofName )
+{
+  double tanhWidth = solutionOptions_->pecletTanhWidthDefault_;
+  std::map<std::string, double>::const_iterator iter
+    = solutionOptions_->pecletFunctionTanhWidthMap_.find(dofName);
+  if (iter != solutionOptions_->pecletFunctionTanhWidthMap_.end()) {
+    tanhWidth = (*iter).second;
+  }
+  return tanhWidth;
+}
+
+//--------------------------------------------------------------------------
 //-------- get_divU --------------------------------------------------------
 //--------------------------------------------------------------------------
 double
