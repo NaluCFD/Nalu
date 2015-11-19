@@ -64,19 +64,9 @@ AssembleScalarElemSolverAlgorithm::AssembleScalarElemSolverAlgorithm(
   density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
   massFlowRate_ = meta_data.get_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "mass_flow_rate_scs");
 
-  // create the peclet blending function; for now, decided upon at construction
-  const std::string dofName = scalarQ_->name();
-  if ( "classic" == realm_.get_peclet_functional_form(dofName) ) { 
-    const double hybridFactor = realm_.get_hybrid_factor(dofName);
-    const double A = 5.0;
-    pecletFunction_ = new ClassicPecletFunction(A, hybridFactor);
-  }
-  else {
-    const double c1 = realm_.get_peclet_tanh_trans(dofName);
-    const double c2 = realm_.get_peclet_tanh_width(dofName);
-    pecletFunction_ = new TanhPecletFunction(c1, c2);
-  }
-
+  // create the peclet blending function
+  pecletFunction_ = eqSystem->create_peclet_function(scalarQ_->name());
+  
   /* Notes:
 
   Matrix layout is in row major. For a npe = 4 (quad) and nDof = 1:

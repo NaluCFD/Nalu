@@ -63,18 +63,8 @@ AssembleMomentumEdgeContactSolverAlgorithm::AssembleMomentumEdgeContactSolverAlg
   viscosity_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, viscName);
   haloMdot_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "halo_mdot");
 
-  // create the peclet blending function; for now, decided upon at construction
-  const std::string dofName = velocity_->name();
-  if ( "classic" == realm_.get_peclet_functional_form(dofName) ) { 
-    const double hybridFactor = realm_.get_hybrid_factor(dofName);
-    const double A = 5.0;
-    pecletFunction_ = new ClassicPecletFunction(A, hybridFactor);
-  }
-  else {
-    const double c1 = realm_.get_peclet_tanh_trans(dofName);
-    const double c2 = realm_.get_peclet_tanh_width(dofName);
-    pecletFunction_ = new TanhPecletFunction(c1, c2);
-  }
+  // create the peclet blending function
+  pecletFunction_ = eqSystem->create_peclet_function(velocity_->name());
 
   // populate fieldVec; no state
   ghostFieldVec_.push_back(dudx_);
