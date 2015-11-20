@@ -90,6 +90,7 @@ public:
   void post_iter_work();
 
   ScalarFieldType *mixFrac_;
+  ScalarFieldType *mixFracUF_;
   VectorFieldType *dzdx_;
   ScalarFieldType *zTmp_;
   ScalarFieldType *visc_;

@@ -42,6 +42,7 @@
 #include <ScalarMassBackwardEulerNodeSuppAlg.h>
 #include <ScalarMassBDF2NodeSuppAlg.h>
 #include <ScalarMassBDF2ElemSuppAlg.h>
+#include <ScalarLocalDCOElemSuppAlg.h>
 #include <Simulation.h>
 #include <SolutionOptions.h>
 #include <TimeIntegrator.h>
@@ -90,6 +91,7 @@ MixtureFractionEquationSystem::MixtureFractionEquationSystem(
     EquationSystems& eqSystems)
   : EquationSystem(eqSystems, "MixtureFractionEQS"),
     mixFrac_(NULL),
+    mixFracUF_(NULL),
     dzdx_(NULL),
     zTmp_(NULL),
     visc_(NULL),
@@ -153,6 +155,10 @@ MixtureFractionEquationSystem::register_nodal_fields(
   stk::mesh::put_field(*mixFrac_, *part);
   realm_.augment_restart_variable_list("mixture_fraction");
 
+  // for a sanity check, keep around the un-filterd/clipped field
+  mixFracUF_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "uf_mixture_fraction", numStates));
+  stk::mesh::put_field(*mixFracUF_, *part);
+ 
   dzdx_ =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "dzdx"));
   stk::mesh::put_field(*dzdx_, *part, nDim);
 
@@ -247,10 +253,16 @@ MixtureFractionEquationSystem::register_interior_algorithm(
         if (sourceName == "SteadyTaylorVortex" ) {
           suppAlg = new SteadyTaylorVortexMixFracSrcElemSuppAlg(realm_);
         }
+        else if (sourceName == "LOCAL_DCO_2ND" ) {
+          suppAlg = new ScalarLocalDCOElemSuppAlg(realm_, mixFrac_, dzdx_, evisc_, 0.0);
+        }
+        else if (sourceName == "LOCAL_DCO_4TH" ) {
+          suppAlg = new ScalarLocalDCOElemSuppAlg(realm_, mixFrac_, dzdx_, evisc_, 1.0);
+        }
         else if (sourceName == "mixture_fraction_time_derivative" ) {
           useCMM = true;
           if ( realm_.number_of_states() == 2 ) {
-            throw std::runtime_error("ElemSrcTermsError::CMM Backward Euler not supported");
+            throw std::runtime_error("ElemSrcTermsError::mixture_fraction_time_derivative requires BDF2 activation");
           }
           else {
             suppAlg = new ScalarMassBDF2ElemSuppAlg(realm_, mixFrac_);
@@ -896,10 +908,14 @@ MixtureFractionEquationSystem::update_and_clip()
     const stk::mesh::Bucket::size_type length   = b.size();
 
     double *mixFrac = stk::mesh::field_data(*mixFrac_, b);
+    double *mixFracUF = stk::mesh::field_data(*mixFracUF_, b);
     double *zTmp    = stk::mesh::field_data(*zTmp_, b);
 
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
       double mixFracNp1 = mixFrac[k] + zTmp[k];
+      // store un-filtered value for numerical methods development purposes
+      mixFracUF[k] = mixFracNp1;
+      // clip now
       if ( mixFracNp1 < lowBound ) {
         minZ = std::min(mixFracNp1, minZ);
         mixFracNp1 = lowBound;
@@ -915,7 +931,8 @@ MixtureFractionEquationSystem::update_and_clip()
   }
 
   // parallel assemble clipped value
-  if ( realm_.debug() ) {
+  const bool doOutput = false;
+  if ( doOutput || realm_.debug() ) {
     size_t g_numClip[2] = {};
     stk::ParallelMachine comm = NaluEnv::self().parallel_comm();
     stk::all_reduce_sum(comm, numClip, g_numClip, 2);
@@ -929,7 +946,7 @@ MixtureFractionEquationSystem::update_and_clip()
     if ( g_numClip[1] > 0 ) {
       double g_maxZ = 0;
       stk::all_reduce_max(comm, &maxZ, &g_maxZ, 1);
-      NaluEnv::self().naluOutputP0() << "mixFrac clipped (+) " << g_numClip[1] << " times; min: " << g_maxZ << std::endl;
+      NaluEnv::self().naluOutputP0() << "mixFrac clipped (+) " << g_numClip[1] << " times; max: " << g_maxZ << std::endl;
     }
   }
 }

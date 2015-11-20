@@ -787,7 +787,7 @@ RadiativeTransportEquationSystem::solve_and_update()
 
       // intensity RTE assemble, load_complete and solve
       assemble_and_solve(iTmp_);
-
+      
       // update
       double timeA = stk::cpu_time();
       field_axpby(
@@ -798,7 +798,7 @@ RadiativeTransportEquationSystem::solve_and_update()
         realm_.get_activate_aura());
       double timeB = stk::cpu_time();
       timerAssemble_ += (timeB-timeA);
-
+   
       // assemble qj, G; operates on intensity_
       assemble_fields();
 

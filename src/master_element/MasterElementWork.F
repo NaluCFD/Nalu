@@ -2890,6 +2890,166 @@ c
       return
       end
 
+      subroutine quad_gij( npe, 
+     *    nint, deriv, cordel, gupperij, glowerij )
+c       
+c***********************************************************************
+c
+      implicit none
+      
+      integer npe, nint
+      double precision deriv, cordel, gupperij, glowerij
+
+      dimension deriv(2,npe,nint),
+     *          cordel(2,npe),
+     *          gupperij(2,2,nint),
+     *          glowerij(2,2,nint)
+c
+      integer ki, kn, i, j
+      double precision dx_ds, ds_dx
+      dimension dx_ds(2,2), ds_dx(2,2)
+      double precision det_j, denom, realmin
+      realmin = 2.2250738585072014d-308
+
+      do ki = 1,nint
+c     zero out
+         dx_ds(1,1) = 0.d0
+         dx_ds(1,2) = 0.d0
+         dx_ds(2,1) = 0.d0
+         dx_ds(2,2) = 0.d0
+c 
+c calculate the jacobian at the integration station -
+         do kn = 1,npe              
+c
+            dx_ds(1,1) = dx_ds(1,1)+deriv(1,kn,ki)*cordel(1,kn)
+            dx_ds(1,2) = dx_ds(1,2)+deriv(2,kn,ki)*cordel(1,kn)
+c     
+            dx_ds(2,1) = dx_ds(2,1)+deriv(1,kn,ki)*cordel(2,kn)
+            dx_ds(2,2) = dx_ds(2,2)+deriv(2,kn,ki)*cordel(2,kn)
+c     
+         end do
+
+c calculate the determinate of the jacobian at the integration station -
+         det_j = dx_ds(1,1)*dx_ds(2,2) - dx_ds(2,1)*dx_ds(1,2)
+
+c clip
+         if ( det_j .le. 1.d6*realmin ) then
+            denom = 1.d0
+         else
+            denom = 1.d0/det_j
+         endif
+
+c compute the inverse jacobian
+         ds_dx(1,1) =  dx_ds(2,2)*denom 
+         ds_dx(1,2) = -dx_ds(1,2)*denom
+         ds_dx(2,1) = -dx_ds(2,1)*denom
+         ds_dx(2,2) =  dx_ds(1,1)*denom
+c         
+         do i = 1, 2
+            do j = 1, 2
+               gupperij(i,j,ki) = 
+     $              dx_ds(i,1)*dx_ds(j,1)+dx_ds(i,2)*dx_ds(j,2)
+               glowerij(i,j,ki) = 
+     $              ds_dx(i,1)*ds_dx(j,1)+ds_dx(i,2)*ds_dx(j,2)
+            end do
+         end do
+c     
+      end do
+c      
+      return
+      end
+
+      subroutine hex_gij( npe, 
+     *    nint, deriv, cordel, gupperij, glowerij )
+c       
+c***********************************************************************
+c
+      implicit none
+      
+      integer npe, nint
+      double precision deriv, cordel, gupperij, glowerij
+
+      dimension deriv(3,npe,nint),
+     *          cordel(3,npe),
+     *          gupperij(3,3,nint),
+     *          glowerij(3,3,nint)
+c
+      integer ki, kn, i, j
+      double precision dx_ds, ds_dx
+      dimension dx_ds(3,3), ds_dx(3,3)
+      double precision det_j, denom, realmin
+      realmin = 2.2250738585072014d-308
+
+      do ki = 1,nint
+c     zero out
+         dx_ds(1,1) = 0.d0
+         dx_ds(1,2) = 0.d0
+         dx_ds(1,3) = 0.d0
+         dx_ds(2,1) = 0.d0
+         dx_ds(2,2) = 0.d0
+         dx_ds(2,3) = 0.d0
+         dx_ds(3,1) = 0.d0
+         dx_ds(3,2) = 0.d0
+         dx_ds(3,3) = 0.d0
+c 
+c calculate the jacobian at the integration station -
+         do kn = 1,npe              
+c
+            dx_ds(1,1) = dx_ds(1,1)+deriv(1,kn,ki)*cordel(1,kn)
+            dx_ds(1,2) = dx_ds(1,2)+deriv(2,kn,ki)*cordel(1,kn)
+            dx_ds(1,3) = dx_ds(1,3)+deriv(3,kn,ki)*cordel(1,kn)
+c     
+            dx_ds(2,1) = dx_ds(2,1)+deriv(1,kn,ki)*cordel(2,kn)
+            dx_ds(2,2) = dx_ds(2,2)+deriv(2,kn,ki)*cordel(2,kn)
+            dx_ds(2,3) = dx_ds(2,3)+deriv(3,kn,ki)*cordel(2,kn)
+c     
+            dx_ds(3,1) = dx_ds(3,1)+deriv(1,kn,ki)*cordel(3,kn)
+            dx_ds(3,2) = dx_ds(3,2)+deriv(2,kn,ki)*cordel(3,kn)
+            dx_ds(3,3) = dx_ds(3,3)+deriv(3,kn,ki)*cordel(3,kn)
+c     
+         end do
+
+c calculate the determinate of the jacobian at the integration station -
+         det_j= dx_ds(1,1)*(dx_ds(2,2)*dx_ds(3,3)-dx_ds(3,2)*dx_ds(2,3))
+     *        + dx_ds(2,1)*(dx_ds(3,2)*dx_ds(1,3)-dx_ds(1,2)*dx_ds(3,3))
+     *        + dx_ds(3,1)*(dx_ds(1,2)*dx_ds(2,3)-dx_ds(2,2)*dx_ds(1,3))
+
+c clip
+         if ( det_j .le. 1.d6*realmin ) then
+            denom = 1.d0
+         else
+            denom = 1.d0/det_j
+         endif
+
+c calculate the inverse Jacobina
+         ds_dx(1,1)= denom*(dx_ds(2,2)*dx_ds(3,3)-dx_ds(3,2)*dx_ds(2,3))
+         ds_dx(1,2)= denom*(dx_ds(3,2)*dx_ds(1,3)-dx_ds(1,2)*dx_ds(3,3))
+         ds_dx(1,3)= denom*(dx_ds(1,2)*dx_ds(2,3)-dx_ds(2,2)*dx_ds(1,3))         
+c     
+         ds_dx(2,1)= denom*(dx_ds(3,1)*dx_ds(2,3)-dx_ds(2,1)*dx_ds(3,3))
+         ds_dx(2,2)= denom*(dx_ds(1,1)*dx_ds(3,3)-dx_ds(3,1)*dx_ds(1,3))
+         ds_dx(2,3)= denom*(dx_ds(2,1)*dx_ds(1,3)-dx_ds(1,1)*dx_ds(2,3))
+c
+         ds_dx(3,1)= denom*(dx_ds(2,1)*dx_ds(3,2)-dx_ds(3,1)*dx_ds(2,2))
+         ds_dx(3,2)= denom*(dx_ds(3,1)*dx_ds(1,2)-dx_ds(1,1)*dx_ds(3,2))
+         ds_dx(3,3)= denom*(dx_ds(1,1)*dx_ds(2,2)-dx_ds(2,1)*dx_ds(1,2))
+C
+         do i = 1, 3
+            do j = 1, 3
+               gupperij(i,j,ki) = 
+     $              dx_ds(i,1)*dx_ds(j,1)+dx_ds(i,2)*dx_ds(j,2)
+     $              +dx_ds(i,3)*dx_ds(j,3)
+               glowerij(i,j,ki) = 
+     $              ds_dx(i,1)*ds_dx(j,1)+ds_dx(i,2)*ds_dx(j,2)
+     $              +ds_dx(i,3)*ds_dx(j,3)
+            end do
+         end do
+c     
+      end do
+c      
+      return
+      end
+
       subroutine tet_gradient_operator( nelem, npe,
      *    nint, deriv, cordel, gradop, det_j, err, nerr )
 c

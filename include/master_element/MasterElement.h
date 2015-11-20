@@ -61,6 +61,13 @@ public:
     double * error ) {
     throw std::runtime_error("grad_op not implemented");}
 
+  virtual void gij(
+    const double *coords,
+    double *gupperij,
+    double *glowerij,
+    double *deriv) {
+    throw std::runtime_error("gij not implemented");}
+
   virtual void nodal_grad_op(
     const int nelem,
     double *deriv,
@@ -233,6 +240,12 @@ public:
     double *gradop,
     double *det_j,
     double * error );
+
+  void gij(
+    const double *coords,
+    double *gupperij,
+    double *glowerij,
+    double *deriv);
 
   const int * adjacentNodes();
 
@@ -409,6 +422,12 @@ public:
     double *gradop,
     double *det_j,
     double * error );
+
+  void gij(
+    const double *coords,
+    double *gupperij,
+    double *glowerij,
+    double *deriv);
 
   const int * adjacentNodes();
 
@@ -765,6 +784,12 @@ public:
     double *det_j,
     double * error );
 
+  void gij(
+    const double *coords,
+    double *gupperij,
+    double *gij,
+    double *deriv);
+
   void face_grad_op(
     const int nelem,
     const int face_ordinal,
@@ -934,6 +959,12 @@ public:
     double *deriv,
     double *det_j,
     double * error );
+
+  void gij(
+    const double *coords,
+    double *gupperij,
+    double *glowerij,
+    double *deriv);
 
   void face_grad_op(
     const int nelem,
