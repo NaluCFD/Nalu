@@ -224,7 +224,6 @@ ProjectedNodalGradientEquationSystem::register_open_bc(
   const stk::topology &/*theTopo*/,
   const OpenBoundaryConditionData &/*openBCData*/)
 {
-
   const AlgorithmType algType = OPEN;
 
   // extract the field name for this bc type
@@ -267,6 +266,29 @@ ProjectedNodalGradientEquationSystem::register_symmetry_bc(
   else {
     its->second->partVec_.push_back(part);
   }
+}
+
+//--------------------------------------------------------------------------
+//-------- register_contact_bc ---------------------------------------------
+//--------------------------------------------------------------------------
+void
+ProjectedNodalGradientEquationSystem::register_contact_bc(
+  stk::mesh::Part */*part*/,
+  const stk::topology &/*theTopo*/,
+  const ContactBoundaryConditionData &/*contactBCData*/) 
+{
+  throw std::runtime_error("ProjectedNodalGradientEquationSystem::register_contact_bc: bc not supported");
+}
+
+//--------------------------------------------------------------------------
+//-------- register_non_conformal_bc ---------------------------------------
+//--------------------------------------------------------------------------
+void
+ProjectedNodalGradientEquationSystem::register_non_conformal_bc(
+  stk::mesh::Part */*part*/,
+  const stk::topology &/*theTopo*/)
+{
+  throw std::runtime_error("ProjectedNodalGradientEquationSystem::register_non_conformal_bc: bc not supported");
 }
 
 //--------------------------------------------------------------------------

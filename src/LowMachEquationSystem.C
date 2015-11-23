@@ -1749,7 +1749,6 @@ ContinuityEquationSystem::ContinuityEquationSystem(
   if ( managePNG_ ) {
     manage_projected_nodal_gradient(eqSystems);
   }
-
 }
 
 //--------------------------------------------------------------------------
@@ -2459,7 +2458,7 @@ ContinuityEquationSystem::manage_projected_nodal_gradient(
 {
   if ( NULL == projectedNodalGradEqs_ ) {
     projectedNodalGradEqs_ 
-      = new ProjectedNodalGradientEquationSystem(eqSystems, "dpdx", "qTmp", "pressure", "PNGGradEQS");
+      = new ProjectedNodalGradientEquationSystem(eqSystems, "dpdx", "qTmp", "pressure", "PNGradPEQS");
   }
   // fill the map for expected boundary condition names...
   projectedNodalGradEqs_->set_data_map(INFLOW_BC, "pressure");

@@ -36,6 +36,7 @@
 #include <LinearSystem.h>
 #include <NaluEnv.h>
 #include <NaluParsing.h>
+#include <ProjectedNodalGradientEquationSystem.h>
 #include <Realm.h>
 #include <Realms.h>
 #include <ScalarGclNodeSuppAlg.h>
@@ -88,8 +89,10 @@ namespace nalu{
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 MixtureFractionEquationSystem::MixtureFractionEquationSystem(
-    EquationSystems& eqSystems)
+  EquationSystems& eqSystems,
+  const bool managePNG)
   : EquationSystem(eqSystems, "MixtureFractionEQS"),
+    managePNG_(managePNG),
     mixFrac_(NULL),
     mixFracUF_(NULL),
     dzdx_(NULL),
@@ -101,6 +104,7 @@ MixtureFractionEquationSystem::MixtureFractionEquationSystem(
     scalarDiss_(NULL),
     assembleNodalGradAlgDriver_(new AssembleNodalGradAlgorithmDriver(realm_, "mixture_fraction", "dzdx")),
     diffFluxCoeffAlgDriver_(new AlgorithmDriver(realm_)),
+    projectedNodalGradEqs_(NULL),
     isInit_(true)
 {
   // extract solver name and solver object
@@ -117,6 +121,11 @@ MixtureFractionEquationSystem::MixtureFractionEquationSystem(
 
   // advertise as non uniform
   realm_.uniformFlow_ = false;
+
+  // create projected nodal gradient equation system
+  if ( managePNG_ ) {
+    manage_projected_nodal_gradient(eqSystems);
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -212,20 +221,22 @@ MixtureFractionEquationSystem::register_interior_algorithm(
   VectorFieldType &dzdxNone = dzdx_->field_of_state(stk::mesh::StateNone);
 
   // non-solver; contribution to projected nodal gradient; allow for element-based shifted
-  std::map<AlgorithmType, Algorithm *>::iterator it
-    = assembleNodalGradAlgDriver_->algMap_.find(algType);
-  if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg = NULL;
-    if ( edgeNodalGradient_ && realm_.realmUsesEdges_ ) {
-      theAlg = new AssembleNodalGradEdgeAlgorithm(realm_, part, &mixFracNp1, &dzdxNone);
+  if ( !managePNG_ ) {
+    std::map<AlgorithmType, Algorithm *>::iterator it
+      = assembleNodalGradAlgDriver_->algMap_.find(algType);
+    if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+      Algorithm *theAlg = NULL;
+      if ( edgeNodalGradient_ && realm_.realmUsesEdges_ ) {
+        theAlg = new AssembleNodalGradEdgeAlgorithm(realm_, part, &mixFracNp1, &dzdxNone);
+      }
+      else {
+        theAlg = new AssembleNodalGradElemAlgorithm(realm_, part, &mixFracNp1, &dzdxNone, edgeNodalGradient_);
+      }
+      assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
     }
     else {
-      theAlg = new AssembleNodalGradElemAlgorithm(realm_, part, &mixFracNp1, &dzdxNone, edgeNodalGradient_);
-    }
-    assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
-  }
-  else {
-    it->second->partVec_.push_back(part);
+      it->second->partVec_.push_back(part);
+    } 
   }
 
   // solver; interior edge contribution (advection + diffusion)
@@ -411,15 +422,17 @@ MixtureFractionEquationSystem::register_inflow_bc(
   bcDataMapAlg_.push_back(theCopyAlg);
 
   // non-solver; dzdx; allow for element-based shifted
-  std::map<AlgorithmType, Algorithm *>::iterator it
-    = assembleNodalGradAlgDriver_->algMap_.find(algType);
-  if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg 
-      = new AssembleNodalGradBoundaryAlgorithm(realm_, part, &mixFracNp1, &dzdxNone, edgeNodalGradient_);
-    assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
-  }
-  else {
-    it->second->partVec_.push_back(part);
+  if ( !managePNG_ ) {
+    std::map<AlgorithmType, Algorithm *>::iterator it
+      = assembleNodalGradAlgDriver_->algMap_.find(algType);
+    if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+      Algorithm *theAlg 
+        = new AssembleNodalGradBoundaryAlgorithm(realm_, part, &mixFracNp1, &dzdxNone, edgeNodalGradient_);
+      assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+    }
+    else {
+      it->second->partVec_.push_back(part);
+    }
   }
 
   // Dirichlet bc
@@ -475,15 +488,17 @@ MixtureFractionEquationSystem::register_open_bc(
   bcDataAlg_.push_back(auxAlg);
 
   // non-solver; dzdx; allow for element-based shifted
-  std::map<AlgorithmType, Algorithm *>::iterator it
-    = assembleNodalGradAlgDriver_->algMap_.find(algType);
-  if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg 
-      = new AssembleNodalGradBoundaryAlgorithm(realm_, part, &mixFracNp1, &dzdxNone, edgeNodalGradient_);
-    assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
-  }
-  else {
-    it->second->partVec_.push_back(part);
+  if ( !managePNG_ ) {
+    std::map<AlgorithmType, Algorithm *>::iterator it
+      = assembleNodalGradAlgDriver_->algMap_.find(algType);
+    if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+      Algorithm *theAlg 
+        = new AssembleNodalGradBoundaryAlgorithm(realm_, part, &mixFracNp1, &dzdxNone, edgeNodalGradient_);
+      assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+    }
+    else {
+      it->second->partVec_.push_back(part);
+    }
   }
 
   // now solver contributions; open; lhs
@@ -572,17 +587,18 @@ MixtureFractionEquationSystem::register_wall_bc(
   }
 
   // non-solver; dzdx; allow for element-based shifted
- std::map<AlgorithmType, Algorithm *>::iterator it
-   = assembleNodalGradAlgDriver_->algMap_.find(algType);
- if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-   Algorithm *theAlg 
-     = new AssembleNodalGradBoundaryAlgorithm(realm_, part, &mixFracNp1, &dzdxNone, edgeNodalGradient_);
-   assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
- }
- else {
-   it->second->partVec_.push_back(part);
- }
-
+  if ( !managePNG_ ) {
+    std::map<AlgorithmType, Algorithm *>::iterator it
+      = assembleNodalGradAlgDriver_->algMap_.find(algType);
+    if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+      Algorithm *theAlg 
+        = new AssembleNodalGradBoundaryAlgorithm(realm_, part, &mixFracNp1, &dzdxNone, edgeNodalGradient_);
+      assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+    }
+    else {
+      it->second->partVec_.push_back(part);
+    }
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -610,20 +626,22 @@ MixtureFractionEquationSystem::register_contact_bc(
     }
 
     // non-solver; contribution to dzdx
-    std::map<AlgorithmType, Algorithm *>::iterator it =
-      assembleNodalGradAlgDriver_->algMap_.find(algType);
-    if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-      Algorithm *theAlg = NULL;
-      if ( edgeNodalGradient_ ) {
-        theAlg = new AssembleNodalGradEdgeContactAlgorithm(realm_, part, &mixFracNp1, &dzdxNone);
+    if ( !managePNG_ ) {
+      std::map<AlgorithmType, Algorithm *>::iterator it =
+        assembleNodalGradAlgDriver_->algMap_.find(algType);
+      if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+        Algorithm *theAlg = NULL;
+        if ( edgeNodalGradient_ ) {
+          theAlg = new AssembleNodalGradEdgeContactAlgorithm(realm_, part, &mixFracNp1, &dzdxNone);
+        }
+        else {
+          theAlg = new AssembleNodalGradElemContactAlgorithm(realm_, part, &mixFracNp1, &dzdxNone, haloZ);
+        }
+        assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
       }
       else {
-        theAlg = new AssembleNodalGradElemContactAlgorithm(realm_, part, &mixFracNp1, &dzdxNone, haloZ);
+        it->second->partVec_.push_back(part);
       }
-      assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
-    }
-    else {
-      it->second->partVec_.push_back(part);
     }
 
     // solver; lhs
@@ -662,17 +680,18 @@ MixtureFractionEquationSystem::register_symmetry_bc(
   VectorFieldType &dzdxNone = dzdx_->field_of_state(stk::mesh::StateNone);
 
   // non-solver; dzdx; allow for element-based shifted
-  std::map<AlgorithmType, Algorithm *>::iterator it
-    = assembleNodalGradAlgDriver_->algMap_.find(algType);
-  if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-    Algorithm *theAlg 
-      = new AssembleNodalGradBoundaryAlgorithm(realm_, part, &mixFracNp1, &dzdxNone, edgeNodalGradient_);
-    assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+  if ( !managePNG_ ) {
+    std::map<AlgorithmType, Algorithm *>::iterator it
+      = assembleNodalGradAlgDriver_->algMap_.find(algType);
+    if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+      Algorithm *theAlg 
+        = new AssembleNodalGradBoundaryAlgorithm(realm_, part, &mixFracNp1, &dzdxNone, edgeNodalGradient_);
+      assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+    }
+    else {
+      it->second->partVec_.push_back(part);
+    }
   }
-  else {
-    it->second->partVec_.push_back(part);
-  }
-
 }
 
 //--------------------------------------------------------------------------
@@ -691,29 +710,31 @@ MixtureFractionEquationSystem::register_non_conformal_bc(
   VectorFieldType &dzdxNone = dzdx_->field_of_state(stk::mesh::StateNone);
 
   // non-solver; contribution to dzdx; DG algorithm decides on locations for integration points
-  if ( edgeNodalGradient_ ) {    
-    std::map<AlgorithmType, Algorithm *>::iterator it
-      = assembleNodalGradAlgDriver_->algMap_.find(algType);
-    if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-      Algorithm *theAlg 
-        = new AssembleNodalGradBoundaryAlgorithm(realm_, part, &mixFracNp1, &dzdxNone, edgeNodalGradient_);
-      assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+  if ( !managePNG_ ) {
+    if ( edgeNodalGradient_ ) {    
+      std::map<AlgorithmType, Algorithm *>::iterator it
+        = assembleNodalGradAlgDriver_->algMap_.find(algType);
+      if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+        Algorithm *theAlg 
+          = new AssembleNodalGradBoundaryAlgorithm(realm_, part, &mixFracNp1, &dzdxNone, edgeNodalGradient_);
+        assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+      }
+      else {
+        it->second->partVec_.push_back(part);
+      }
     }
     else {
-      it->second->partVec_.push_back(part);
-    }
-  }
-  else {
-    // proceed with DG
-    std::map<AlgorithmType, Algorithm *>::iterator it
-      = assembleNodalGradAlgDriver_->algMap_.find(algType);
-    if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-      AssembleNodalGradNonConformalAlgorithm *theAlg 
-        = new AssembleNodalGradNonConformalAlgorithm(realm_, part, &mixFracNp1, &dzdxNone);
-      assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
-    }
-    else {
-      it->second->partVec_.push_back(part);
+      // proceed with DG
+      std::map<AlgorithmType, Algorithm *>::iterator it
+        = assembleNodalGradAlgDriver_->algMap_.find(algType);
+      if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+        AssembleNodalGradNonConformalAlgorithm *theAlg 
+          = new AssembleNodalGradNonConformalAlgorithm(realm_, part, &mixFracNp1, &dzdxNone);
+        assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+      }
+      else {
+        it->second->partVec_.push_back(part);
+      }
     }
   }
   
@@ -828,7 +849,7 @@ MixtureFractionEquationSystem::solve_and_update()
 
   // compute dz/dx
   if ( isInit_ ) {
-    assembleNodalGradAlgDriver_->execute();
+    compute_projected_nodal_gradient();
     isInit_ = false;
   }
 
@@ -862,10 +883,9 @@ MixtureFractionEquationSystem::solve_and_update()
 
     // projected nodal gradient
     timeA = stk::cpu_time();
-    assembleNodalGradAlgDriver_->execute();
+    compute_projected_nodal_gradient();
     timeB = stk::cpu_time();
     timerMisc_ += (timeB-timeA);
-
   }
 
   compute_scalar_var_diss();
@@ -997,6 +1017,9 @@ MixtureFractionEquationSystem::compute_scalar_var_diss()
   }
 }
 
+//--------------------------------------------------------------------------
+//-------- predict_state ---------------------------------------------------
+//--------------------------------------------------------------------------
 void
 MixtureFractionEquationSystem::predict_state()
 {
@@ -1004,6 +1027,38 @@ MixtureFractionEquationSystem::predict_state()
   ScalarFieldType &zN = mixFrac_->field_of_state(stk::mesh::StateN);
   ScalarFieldType &zNp1 = mixFrac_->field_of_state(stk::mesh::StateNP1);
   field_copy(realm_.meta_data(), realm_.bulk_data(), zN, zNp1, realm_.get_activate_aura());
+}
+
+//--------------------------------------------------------------------------
+//-------- manage_projected_nodal_gradient ---------------------------------
+//--------------------------------------------------------------------------
+void
+MixtureFractionEquationSystem::manage_projected_nodal_gradient(
+  EquationSystems& eqSystems)
+{
+  if ( NULL == projectedNodalGradEqs_ ) {
+    projectedNodalGradEqs_ 
+      = new ProjectedNodalGradientEquationSystem(eqSystems, "dzdx", "qTmp", "mixture_fraction", "PNGradZEQS");
+  }
+  // fill the map for expected boundary condition names...
+  projectedNodalGradEqs_->set_data_map(INFLOW_BC, "mixture_fraction");
+  projectedNodalGradEqs_->set_data_map(WALL_BC, "mixture_fraction");
+  projectedNodalGradEqs_->set_data_map(OPEN_BC, "open_mixFrac_bc");
+  projectedNodalGradEqs_->set_data_map(SYMMETRY_BC, "mixture_fraction");
+}
+
+//--------------------------------------------------------------------------
+//-------- compute_projected_nodal_gradient---------------------------------
+//--------------------------------------------------------------------------
+void
+MixtureFractionEquationSystem::compute_projected_nodal_gradient()
+{
+  if ( !managePNG_ ) {
+    assembleNodalGradAlgDriver_->execute();
+  }
+  else {
+    projectedNodalGradEqs_->solve_and_update_external();
+  }
 }
 
 } // namespace nalu

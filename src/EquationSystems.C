@@ -111,7 +111,9 @@ void EquationSystems::load(const YAML::Node & y_node)
         }
         else if( (y_eqsys = expect_map(y_system, "MixtureFraction", true)) ) {
           if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = mixFrac " << std::endl;
-          eqSys = new MixtureFractionEquationSystem(*this);
+          bool managePNG = false;
+          get_if_present_no_default(*y_eqsys, "manage_png", managePNG);
+          eqSys = new MixtureFractionEquationSystem(*this, managePNG);
         }
         else if( (y_eqsys = expect_map(y_system, "Enthalpy", true)) ) {
           if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = enthalpy " << std::endl;

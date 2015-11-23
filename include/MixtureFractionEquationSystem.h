@@ -25,14 +25,15 @@ class Realm;
 class AssembleNodalGradAlgorithmDriver;
 class LinearSystem;
 class EquationSystems;
-
+class ProjectedNodalGradientEquationSystem;
 
 class MixtureFractionEquationSystem : public EquationSystem {
 
 public:
 
   MixtureFractionEquationSystem(
-    EquationSystems& equationSystems);
+    EquationSystems& equationSystems,
+    const bool managePNG);
   virtual ~MixtureFractionEquationSystem();
 
   void populate_derived_quantities();
@@ -89,6 +90,12 @@ public:
   void compute_scalar_var_diss();
   void post_iter_work();
 
+  void manage_projected_nodal_gradient(
+    EquationSystems& eqSystems);
+  void compute_projected_nodal_gradient();
+
+  const bool managePNG_;
+
   ScalarFieldType *mixFrac_;
   ScalarFieldType *mixFracUF_;
   VectorFieldType *dzdx_;
@@ -102,6 +109,8 @@ public:
   AssembleNodalGradAlgorithmDriver *assembleNodalGradAlgDriver_;
   AlgorithmDriver *diffFluxCoeffAlgDriver_;
   
+  ProjectedNodalGradientEquationSystem *projectedNodalGradEqs_;
+
   bool isInit_;
 };
 

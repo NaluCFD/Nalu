@@ -251,8 +251,8 @@ public:
 
   AssembleNodalGradAlgorithmDriver *assembleNodalGradAlgDriver_;
   AlgorithmDriver *computeMdotAlgDriver_;
-  ProjectedNodalGradientEquationSystem *projectedNodalGradEqs_;}
-;
+  ProjectedNodalGradientEquationSystem *projectedNodalGradEqs_;
+};
 
 } // namespace nalu
 } // namespace Sierra
