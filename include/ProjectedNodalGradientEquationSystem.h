@@ -35,6 +35,7 @@ public:
 
   ProjectedNodalGradientEquationSystem(
     EquationSystems& equationSystems,
+    const EquationType eqType,
     const std::string dofName, 
     const std::string deltaName, 
     const std::string independentDofName,
@@ -95,6 +96,7 @@ public:
   void reinitialize_linear_system();
 
   // names that customize this PNG system
+  EquationType eqType_;
   std::string dofName_;
   std::string deltaName_;
   std::string independentDofName_;

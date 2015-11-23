@@ -110,7 +110,7 @@ public:
   AlgorithmDriver *diffFluxCoeffAlgDriver_;
   
   ProjectedNodalGradientEquationSystem *projectedNodalGradEqs_;
-
+  
   bool isInit_;
 };
 

@@ -280,7 +280,7 @@ MixtureFractionEquationSystem::register_interior_algorithm(
           } 
         }
         else {
-          throw std::runtime_error("ElemSrcTermsError::only support SteadyTV and time term");
+          throw std::runtime_error("ElemSrcTermsError::only support SteadyTV, DCO and time term");
         }     
         theAlg->supplementalAlg_.push_back(suppAlg); 
       }
@@ -1038,9 +1038,9 @@ MixtureFractionEquationSystem::manage_projected_nodal_gradient(
 {
   if ( NULL == projectedNodalGradEqs_ ) {
     projectedNodalGradEqs_ 
-      = new ProjectedNodalGradientEquationSystem(eqSystems, "dzdx", "qTmp", "mixture_fraction", "PNGradZEQS");
+      = new ProjectedNodalGradientEquationSystem(eqSystems, EQ_PNG_Z, "dzdx", "qTmp", "mixture_fraction", "PNGradZEQS");
   }
-  // fill the map for expected boundary condition names...
+  // fill the map for expected boundary condition names...; open is the only flux bc for now
   projectedNodalGradEqs_->set_data_map(INFLOW_BC, "mixture_fraction");
   projectedNodalGradEqs_->set_data_map(WALL_BC, "mixture_fraction");
   projectedNodalGradEqs_->set_data_map(OPEN_BC, "open_mixFrac_bc");

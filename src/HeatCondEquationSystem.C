@@ -147,7 +147,7 @@ HeatCondEquationSystem::manage_png(
   EquationSystems& eqSystems)
 {
   projectedNodalGradEqs_ 
-    = new ProjectedNodalGradientEquationSystem(eqSystems, "dqdxCMM", "qTmp", "temperature", "PNGGradEQS");
+    = new ProjectedNodalGradientEquationSystem(eqSystems, EQ_PNG, "dqdxCMM", "qTmp", "temperature", "PNGGradEQS");
   // fill the map; only require wall (which is the same name)...
   projectedNodalGradEqs_->set_data_map(WALL_BC, "temperature");
 }

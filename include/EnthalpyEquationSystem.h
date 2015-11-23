@@ -26,6 +26,7 @@ class AssembleNodalGradAlgorithmDriver;
 class AssembleWallHeatTransferAlgorithmDriver;
 class LinearSystem;
 class EquationSystems;
+class ProjectedNodalGradientEquationSystem;
 class TemperaturePropAlgorithm;
 
 class EnthalpyEquationSystem : public EquationSystem {
@@ -35,7 +36,8 @@ public:
   EnthalpyEquationSystem(
     EquationSystems& equationSystems,
     const double minT,
-    const double maxT);
+    const double maxT,
+    const bool managePNG);
   virtual ~EnthalpyEquationSystem();
   
   virtual void register_nodal_fields(
@@ -95,8 +97,14 @@ public:
     const bool isInterface = false,
     const bool copyBcVal = true);
   
+  void manage_projected_nodal_gradient(
+    EquationSystems& eqSystems);
+  void compute_projected_nodal_gradient();
+
   const double minimumT_;
   const double maximumT_;
+
+  const bool managePNG_;
   
   ScalarFieldType *enthalpy_;
   ScalarFieldType *temperature_;
@@ -116,6 +124,9 @@ public:
   
   bool pmrCouplingActive_;
   bool lowSpeedCompressActive_;
+
+  ProjectedNodalGradientEquationSystem *projectedNodalGradEqs_;
+
   bool isInit_;
 
   std::vector<TemperaturePropAlgorithm *> enthalpyFromTemperatureAlg_;

@@ -63,12 +63,14 @@ namespace nalu{
 //--------------------------------------------------------------------------
 ProjectedNodalGradientEquationSystem::ProjectedNodalGradientEquationSystem(
  EquationSystems& eqSystems,
+ const EquationType eqType,
  const std::string dofName, 
  const std::string deltaName, 
  const std::string independentDofName,
  const std::string eqSysName,
  const bool managesSolve)
   : EquationSystem(eqSystems, eqSysName),
+    eqType_(eqType),
     dofName_(dofName),
     deltaName_(deltaName),
     independentDofName_(independentDofName),
@@ -79,7 +81,7 @@ ProjectedNodalGradientEquationSystem::ProjectedNodalGradientEquationSystem(
 {
   // extract solver name and solver object
   std::string solverName = realm_.equationSystems_.get_solver_block_name(dofName);
-  LinearSolver *solver = realm_.root()->linearSolvers_->create_solver(solverName, EQ_PNG);
+  LinearSolver *solver = realm_.root()->linearSolvers_->create_solver(solverName, eqType_);
   linsys_ = LinearSystem::create(realm_, realm_.spatialDimension_, eqSysName_, solver);
 
   // push back EQ to manager
@@ -312,7 +314,7 @@ ProjectedNodalGradientEquationSystem::reinitialize_linear_system()
   delete linsys_;
 
   // delete old solver
-  const EquationType theEqID = EQ_PNG;
+  const EquationType theEqID = eqType_;
   LinearSolver *theSolver = NULL;
   std::map<EquationType, LinearSolver *>::const_iterator iter
     = realm_.root()->linearSolvers_->solvers_.find(theEqID);
@@ -323,7 +325,7 @@ ProjectedNodalGradientEquationSystem::reinitialize_linear_system()
 
   // create new solver
   std::string solverName = realm_.equationSystems_.get_solver_block_name(dofName_);
-  LinearSolver *solver = realm_.root()->linearSolvers_->create_solver(solverName, EQ_PNG);
+  LinearSolver *solver = realm_.root()->linearSolvers_->create_solver(solverName, eqType_);
   linsys_ = LinearSystem::create(realm_, 1, eqSysName_, solver);
 
   // initialize

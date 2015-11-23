@@ -121,7 +121,9 @@ void EquationSystems::load(const YAML::Node & y_node)
           double maxT = 3000.0;
           get_if_present_no_default(*y_eqsys, "minimum_temperature", minT);
           get_if_present_no_default(*y_eqsys, "maximum_temperature", maxT);
-          eqSys = new EnthalpyEquationSystem(*this, minT, maxT);
+          bool managePNG = false;
+          get_if_present_no_default(*y_eqsys, "manage_png", managePNG);
+          eqSys = new EnthalpyEquationSystem(*this, minT, maxT, managePNG);
         }
         else if( (y_eqsys = expect_map(y_system, "HeatConduction", true)) ) {
           if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = HeatConduction " << std::endl;
