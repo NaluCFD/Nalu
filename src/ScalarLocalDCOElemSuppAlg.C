@@ -271,16 +271,16 @@ ScalarLocalDCOElemSuppAlg::elem_execute(
     }      
     
     // construct nu from residual
-    const double nuProper = std::sqrt((residual*residual)/(gUpperMagGradQ+small_));
+    const double nuResidual = std::sqrt((residual*residual)/(gUpperMagGradQ+small_));
     
-    // construct nu from first-order-like approach; tauM from SNL-internal write-up (eq 209)
-    const double tauM = 1.0/std::sqrt(std::pow(2.0*gamma1_*rhoNp1Scs/dt_,2) 
-                                      + rhoNp1Scs*rhoNp1Scs*uigLoweruj 
-                                      + 9.0*std::pow(2.0*diffFluxCoeffScs,2)*gLowerSq/3.0);
-    const double nuFirstOrder = Cmax_*1.0/tauM; // Cmax is a fudge factor similar to Guermond's approach
-    
-    // limit based on first order
-    const double nu = std::min(nuFirstOrder, nuProper);
+    // construct nu from first-order-like approach; SNL-internal write-up (eq 209)
+    // for now, only include advection as full set of terms is too diffuse
+    const double nuFirstOrder = std::sqrt(std::pow(2.0*gamma1_*rhoNp1Scs/dt_,2)*0.0 
+                                          + rhoNp1Scs*rhoNp1Scs*uigLoweruj 
+                                          + 9.0*std::pow(2.0*diffFluxCoeffScs,2)*gLowerSq/3.0*0.0);
+
+    // limit based on first order; Cmax is a fudge factor similar to Guermond's approach
+    const double nu = std::min(Cmax_*nuFirstOrder, nuResidual);
     
     double gijFac = 0.0;
     for ( int ic = 0; ic < nodesPerElement; ++ic ) {
