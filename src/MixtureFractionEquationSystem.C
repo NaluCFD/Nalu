@@ -951,7 +951,7 @@ MixtureFractionEquationSystem::update_and_clip()
   }
 
   // parallel assemble clipped value
-  const bool doOutput = false;
+  const bool doOutput = true;
   if ( doOutput || realm_.debug() ) {
     size_t g_numClip[2] = {};
     stk::ParallelMachine comm = NaluEnv::self().parallel_comm();

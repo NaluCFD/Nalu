@@ -52,7 +52,7 @@ ScalarLocalDCOElemSuppAlg::ScalarLocalDCOElemSuppAlg(
     gamma1_(0.0),
     gamma2_(0.0),
     gamma3_(0.0),
-    Cmax_(0.1),
+    Cupw_(0.1),
     small_(1.0e-16),
     fourthFac_(fourthFac)
 {
@@ -279,8 +279,8 @@ ScalarLocalDCOElemSuppAlg::elem_execute(
                                           + rhoNp1Scs*rhoNp1Scs*uigLoweruj 
                                           + 9.0*std::pow(2.0*diffFluxCoeffScs,2)*gLowerSq/3.0*0.0);
 
-    // limit based on first order; Cmax is a fudge factor similar to Guermond's approach
-    const double nu = std::min(Cmax_*nuFirstOrder, nuResidual);
+    // limit based on first order; Cupw_ is a fudge factor similar to Guermond's approach
+    const double nu = std::min(Cupw_*nuFirstOrder, nuResidual);
     
     double gijFac = 0.0;
     for ( int ic = 0; ic < nodesPerElement; ++ic ) {

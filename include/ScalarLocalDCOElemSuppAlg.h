@@ -65,7 +65,7 @@ public:
   double gamma1_;
   double gamma2_;
   double gamma3_;
-  const double Cmax_;
+  const double Cupw_;
   const double small_;
   const double fourthFac_;
 
