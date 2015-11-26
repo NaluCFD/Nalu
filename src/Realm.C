@@ -445,11 +445,11 @@ Realm::initialize()
   if ( solutionOptions_->meshMotion_ )
     process_mesh_motion();
 
-  if ( hasPeriodic_ )
-    periodicManager_->build_constraints();
-
   if ( has_mesh_deformation() )
     init_current_coordinates();
+
+  if ( hasPeriodic_ )
+    periodicManager_->build_constraints();
 
   compute_geometry();
 
