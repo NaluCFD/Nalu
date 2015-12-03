@@ -119,10 +119,7 @@ ComputeHeatTransferElemWallAlgorithm::execute()
     // face master element
     MasterElement *meFC = realm_.get_surface_master_element(b.topology());
     const int nodesPerFace = meFC->nodesPerElement_;
-
-    // size some things that are useful
-    int num_face_nodes = b.topology().num_nodes();
-    std::vector<int> face_node_ordinals(num_face_nodes);
+    const int numScsBip = meFC->numIntPoints_;
 
     // algorithm related; element
     ws_coordinates.resize(nodesPerElement*nDim);
@@ -130,9 +127,9 @@ ComputeHeatTransferElemWallAlgorithm::execute()
     ws_thermalCond.resize(nodesPerFace);
     ws_density.resize(nodesPerFace);
     ws_specificHeat.resize(nodesPerFace);
-    ws_face_shape_function.resize(nodesPerFace*nodesPerFace);
-    ws_dndx.resize(nDim*nodesPerFace*nodesPerElement);
-    ws_det_j.resize(nodesPerFace);
+    ws_face_shape_function.resize(numScsBip*nodesPerFace);
+    ws_dndx.resize(nDim*numScsBip*nodesPerElement);
+    ws_det_j.resize(numScsBip);
     ws_nodesOnFace.resize(nodesPerElement);
     ws_nodesOffFace.resize(nodesPerElement);
 
@@ -164,7 +161,7 @@ ComputeHeatTransferElemWallAlgorithm::execute()
       // gather nodal data off of face
       //======================================
       stk::mesh::Entity const * face_node_rels = bulk_data.begin_nodes(face);
-      num_face_nodes = bulk_data.num_nodes(face);
+      const int num_face_nodes = bulk_data.num_nodes(face);
       // sanity check on num nodes
       ThrowAssert( num_face_nodes == nodesPerFace );
       for ( int ni = 0; ni < num_face_nodes; ++ni ) {
@@ -181,10 +178,12 @@ ComputeHeatTransferElemWallAlgorithm::execute()
       stk::mesh::Entity const * face_elem_rels = b.begin_elements(k);
       ThrowAssert( b.num_elements(k) == 1 );
 
-      // get element; its face ordinal number and populate face_node_ordinals
+      // get element; its face ordinal
       stk::mesh::Entity element = face_elem_rels[0];
       const int face_ordinal = b.begin_element_ordinals(k)[0];
-      theElemTopo.side_node_ordinals(face_ordinal, face_node_ordinals.begin());
+
+      // mapping from ip to nodes for this ordinal
+      const int *ipNodeMap = meSCS->ipNodeMap(face_ordinal);
 
       //==========================================
       // gather nodal data off of element
@@ -209,8 +208,8 @@ ComputeHeatTransferElemWallAlgorithm::execute()
       }
 
       // process on/off while looping over face nodes
-      for ( int ip = 0; ip < num_face_nodes; ++ip ) {
-        const int nearestNode = face_node_ordinals[ip];
+      for ( int ip = 0; ip < numScsBip; ++ip ) {
+        const int nearestNode = ipNodeMap[ip];
         p_nodesOnFace[nearestNode] = 1.0;
         p_nodesOffFace[nearestNode] = 0.0;
       }
@@ -219,9 +218,10 @@ ComputeHeatTransferElemWallAlgorithm::execute()
       double scs_error = 0.0;
       meSCS->face_grad_op(1, face_ordinal, &p_coordinates[0], &p_dndx[0], &ws_det_j[0], &scs_error);
 
-      for ( int ip = 0; ip < num_face_nodes; ++ip ) {
+      // loop over boundary ips
+      for ( int ip = 0; ip < numScsBip; ++ip ) {
 
-        const int nearestNode = face_node_ordinals[ip];
+        const int nearestNode = ipNodeMap[ip];
         stk::mesh::Entity nodeR = elem_node_rels[nearestNode];
 
         // pointers to nearest node data

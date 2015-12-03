@@ -169,7 +169,7 @@ namespace nalu{
     solutionOptions_(new SolutionOptions()),
     outputInfo_(new OutputInfo()),
     postProcessingInfo_(new PostProcessingInfo()),
-    solutionNormPostProcessing_(new SolutionNormPostProcessing(*this)),
+    solutionNormPostProcessing_(NULL),
     turbulenceAveragingPostProcessing_(NULL),
     nodeCount_(0),
     estimateMemoryOnly_(false),
@@ -269,7 +269,8 @@ Realm::~Realm()
   delete solutionOptions_;
   delete outputInfo_;
   delete postProcessingInfo_;
-  delete solutionNormPostProcessing_;
+  if ( NULL != solutionNormPostProcessing_ )
+    delete solutionNormPostProcessing_;
   if ( NULL != turbulenceAveragingPostProcessing_ )
     delete turbulenceAveragingPostProcessing_;
 
@@ -481,13 +482,20 @@ Realm::look_ahead_and_creation(const YAML::Node & node)
   NaluParsingHelper::find_nodes_given_key("turbulence_averaging", node, foundTurbAveraging);
   if ( foundTurbAveraging.size() > 0 ) {
     if ( foundTurbAveraging.size() != 1 )
-      throw std::runtime_error("look_ahead_and_create::error: Too many turbulence_averaging_wip");
+      throw std::runtime_error("look_ahead_and_create::error: Too many turbulence_averaging");
     turbulenceAveragingPostProcessing_ =  new TurbulenceAveragingPostProcessing(*this, *foundTurbAveraging[0]);
   }
 
-  // in the future, look for other things, e.g., SolutionNormPostProcessing
+  // look for SolutionNormPostProcessing
+  std::vector<const YAML::Node *> foundNormPP;
+  NaluParsingHelper::find_nodes_given_key("solution_norm", node, foundNormPP);
+  if ( foundNormPP.size() > 0 ) {
+    if ( foundNormPP.size() != 1 )
+      throw std::runtime_error("look_ahead_and_create::error: Too many Solution Norm blocks");
+    solutionNormPostProcessing_ =  new SolutionNormPostProcessing(*this);
+  }
 }
-
+  
 //--------------------------------------------------------------------------
 //-------- load ------------------------------------------------------------
 //--------------------------------------------------------------------------
@@ -585,7 +593,8 @@ Realm::load(const YAML::Node & node)
   postProcessingInfo_->load(node);
 
   // norms
-  solutionNormPostProcessing_->load(node);
+  if ( NULL != solutionNormPostProcessing_ )
+    solutionNormPostProcessing_->load(node);
 
   // boundary, init, material and equation systems "load"
   if ( type_ == "multi_physics" ) {
