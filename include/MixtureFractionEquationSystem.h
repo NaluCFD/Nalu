@@ -33,7 +33,8 @@ public:
 
   MixtureFractionEquationSystem(
     EquationSystems& equationSystems,
-    const bool managePNG);
+    const bool managePNG,
+    const bool outputClippingDiag);
   virtual ~MixtureFractionEquationSystem();
 
   void populate_derived_quantities();
@@ -95,6 +96,7 @@ public:
   void compute_projected_nodal_gradient();
 
   const bool managePNG_;
+  const bool outputClippingDiag_;
 
   ScalarFieldType *mixFrac_;
   ScalarFieldType *mixFracUF_;

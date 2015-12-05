@@ -37,7 +37,8 @@ public:
     EquationSystems& equationSystems,
     const double minT,
     const double maxT,
-    const bool managePNG);
+    const bool managePNG,
+    const bool outputClippingDiag);
   virtual ~EnthalpyEquationSystem();
   
   virtual void register_nodal_fields(
@@ -105,7 +106,8 @@ public:
   const double maximumT_;
 
   const bool managePNG_;
-  
+  const bool outputClippingDiag_;
+
   ScalarFieldType *enthalpy_;
   ScalarFieldType *temperature_;
   VectorFieldType *dhdx_;

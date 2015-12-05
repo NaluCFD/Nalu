@@ -90,9 +90,11 @@ namespace nalu{
 //--------------------------------------------------------------------------
 MixtureFractionEquationSystem::MixtureFractionEquationSystem(
   EquationSystems& eqSystems,
-  const bool managePNG)
+  const bool managePNG,
+  const bool outputClippingDiag)
   : EquationSystem(eqSystems, "MixtureFractionEQS"),
     managePNG_(managePNG),
+    outputClippingDiag_(outputClippingDiag),
     mixFrac_(NULL),
     mixFracUF_(NULL),
     dzdx_(NULL),
@@ -866,18 +868,7 @@ MixtureFractionEquationSystem::solve_and_update()
 
     // update
     double timeA = stk::cpu_time();
-    const bool doClip = true;
-    if ( doClip ) {
-      update_and_clip();
-    }
-    else {
-      field_axpby(
-        realm_.meta_data(),
-        realm_.bulk_data(),
-        1.0, *zTmp_,
-        1.0, mixFrac_->field_of_state(stk::mesh::StateNP1),
-        realm_.get_activate_aura());
-    }
+    update_and_clip();
     double timeB = stk::cpu_time();
     timerAssemble_ += (timeB-timeA);
 
@@ -951,8 +942,7 @@ MixtureFractionEquationSystem::update_and_clip()
   }
 
   // parallel assemble clipped value
-  const bool doOutput = true;
-  if ( doOutput || realm_.debug() ) {
+  if ( outputClippingDiag_ ) {
     size_t g_numClip[2] = {};
     stk::ParallelMachine comm = NaluEnv::self().parallel_comm();
     stk::all_reduce_sum(comm, numClip, g_numClip, 2);
@@ -1040,10 +1030,10 @@ MixtureFractionEquationSystem::manage_projected_nodal_gradient(
     projectedNodalGradEqs_ 
       = new ProjectedNodalGradientEquationSystem(eqSystems, EQ_PNG_Z, "dzdx", "qTmp", "mixture_fraction", "PNGradZEQS");
   }
-  // fill the map for expected boundary condition names...; open is the only flux bc for now
+  // fill the map for expected boundary condition names; can be more complex...
   projectedNodalGradEqs_->set_data_map(INFLOW_BC, "mixture_fraction");
   projectedNodalGradEqs_->set_data_map(WALL_BC, "mixture_fraction");
-  projectedNodalGradEqs_->set_data_map(OPEN_BC, "open_mixFrac_bc");
+  projectedNodalGradEqs_->set_data_map(OPEN_BC, "mixture_fraction");
   projectedNodalGradEqs_->set_data_map(SYMMETRY_BC, "mixture_fraction");
 }
 

@@ -13,8 +13,6 @@
 
 // yaml for parsing..
 #include <yaml-cpp/yaml.h>
-#include <xfer/Transfer.h>
-#include <NaluParsing.h>
 
 #include <map>
 #include <string>
@@ -27,11 +25,10 @@ class Node;
 namespace sierra{
 namespace nalu{
 
-typedef std::vector<Transfer *> TransferVector;
-
 class Simulation;
+class Transfer;
 
-class Transfers : public TransferVector {
+class Transfers {
 public:
   Transfers(Simulation& sim);
   ~Transfers();
@@ -43,7 +40,7 @@ public:
   Simulation *parent();
 
   Simulation &simulation_;
-
+  std::vector<Transfer *> transferVector_;
 };
 
 } // namespace nalu

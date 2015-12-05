@@ -104,11 +104,13 @@ EnthalpyEquationSystem::EnthalpyEquationSystem(
   EquationSystems& eqSystems,
   const double minT,
   const double maxT,
-  const bool managePNG)
+  const bool managePNG,
+  const bool outputClippingDiag)
   : EquationSystem(eqSystems, "EnthalpyEQS"),
     minimumT_(minT),
     maximumT_(maxT),
     managePNG_(managePNG),
+    outputClippingDiag_(outputClippingDiag),
     enthalpy_(NULL),
     temperature_(NULL),
     dhdx_(NULL),
@@ -1159,25 +1161,26 @@ EnthalpyEquationSystem::extract_temperature()
   }
 
   // parallel assemble not converged
-  size_t g_troubleCount[3] = {};
-  stk::ParallelMachine comm = NaluEnv::self().parallel_comm();
-  stk::all_reduce_sum(comm, &troubleCount[0], &g_troubleCount[0], 3);
-
-  if ( g_troubleCount[0] > 0 ) {
-    NaluEnv::self().naluOutputP0() << "Temperature extraction failed to converge " << g_troubleCount[0] << " times"
-                    << std::endl;
+  if ( outputClippingDiag_ ) {
+    size_t g_troubleCount[3] = {};
+    stk::ParallelMachine comm = NaluEnv::self().parallel_comm();
+    stk::all_reduce_sum(comm, &troubleCount[0], &g_troubleCount[0], 3);
+    
+    if ( g_troubleCount[0] > 0 ) {
+      NaluEnv::self().naluOutputP0() << "Temperature extraction failed to converge " << g_troubleCount[0] << " times"
+                                     << std::endl;
+    }
+    
+    if ( g_troubleCount[1] > 0 ) {
+      NaluEnv::self().naluOutputP0() << "Temperature clipped to min " << g_troubleCount[1] << " times"
+                                     << std::endl;
+    }
+    
+    if ( g_troubleCount[2] > 0 ) {
+      NaluEnv::self().naluOutputP0() << "Temperature clipped to max " << g_troubleCount[2] << " times"
+                                     << std::endl;
+    }
   }
-
-  if ( g_troubleCount[1] > 0 ) {
-    NaluEnv::self().naluOutputP0() << "Temperature clipped to min " << g_troubleCount[1] << " times"
-                    << std::endl;
-  }
-
-  if ( g_troubleCount[2] > 0 ) {
-    NaluEnv::self().naluOutputP0() << "Temperature clipped to max " << g_troubleCount[2] << " times"
-                    << std::endl;
-  }
-
 }
 
 //--------------------------------------------------------------------------
@@ -1309,10 +1312,10 @@ EnthalpyEquationSystem::manage_projected_nodal_gradient(
     projectedNodalGradEqs_ 
       = new ProjectedNodalGradientEquationSystem(eqSystems, EQ_PNG_H, "dhdx", "qTmp", "enthalpy", "PNGradHEQS");
   }
-  // fill the map for expected boundary condition names...; open is the only flux bc for now..
+  // fill the map for expected boundary condition names; can be more complex...
   projectedNodalGradEqs_->set_data_map(INFLOW_BC, "enthalpy");
   projectedNodalGradEqs_->set_data_map(WALL_BC, "enthalpy");
-  projectedNodalGradEqs_->set_data_map(OPEN_BC, "open_enthalpy_bc");
+  projectedNodalGradEqs_->set_data_map(OPEN_BC, "enthalpy");
   projectedNodalGradEqs_->set_data_map(SYMMETRY_BC, "enthalpy");
 }
 

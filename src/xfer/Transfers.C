@@ -14,15 +14,11 @@
 
 // yaml for parsing..
 #include <yaml-cpp/yaml.h>
-#include <NaluParsing.h>
 
 #include <stk_mesh/base/BulkData.hpp>
 
 // basic c++
-#include <iostream>
-#include <map>
-#include <math.h>
-#include <utility>
+#include <vector>
 
 namespace sierra{
 namespace nalu{
@@ -47,8 +43,8 @@ Transfers::Transfers(
 //--------------------------------------------------------------------------
 Transfers::~Transfers()
 {
-  for (size_t ir = 0; ir < this->size(); ir++)
-    delete (*this)[ir];
+  for (size_t ir = 0; ir < transferVector_.size(); ir++)
+    delete transferVector_[ir];
 }
 
 void 
@@ -61,7 +57,7 @@ Transfers::load(const YAML::Node & node)
       const YAML::Node & transferNode = (*transfers)[itransfer];
       Transfer *transferInfo = new Transfer(*this);
       transferInfo->load(transferNode);
-      this->push_back(transferInfo);
+      transferVector_.push_back(transferInfo);
     }
   }
 }
@@ -69,28 +65,28 @@ Transfers::load(const YAML::Node & node)
 void 
 Transfers::breadboard()
 {
-  for ( size_t itransfer = 0; itransfer < this->size(); ++itransfer ) {
-    (*this)[itransfer]->breadboard();
+  for ( size_t itransfer = 0; itransfer < transferVector_.size(); ++itransfer ) {
+    transferVector_[itransfer]->breadboard();
   }
 }
 
 void 
 Transfers::initialize()
 {
-  for ( size_t itransfer = 0; itransfer < this->size(); ++itransfer ) {
-    (*this)[itransfer]->initialize_begin();
+  for ( size_t itransfer = 0; itransfer < transferVector_.size(); ++itransfer ) {
+    transferVector_[itransfer]->initialize_begin();
   }
 
-  for ( size_t itransfer = 0; itransfer < this->size(); ++itransfer ) {
-    const std::string fromName = (*this)[itransfer]->realmPairName_.first;
+  for ( size_t itransfer = 0; itransfer < transferVector_.size(); ++itransfer ) {
+    const std::string fromName = transferVector_[itransfer]->realmPairName_.first;
     stk::mesh::BulkData &fromBulkData = root()->realms_->find_realm(fromName)->bulk_data();
     fromBulkData.modification_begin();
-    (*this)[itransfer]->change_ghosting(); 
+    transferVector_[itransfer]->change_ghosting(); 
     fromBulkData.modification_end();
   }
 
-  for ( size_t itransfer = 0; itransfer < this->size(); ++itransfer ) {
-    (*this)[itransfer]->initialize_end();
+  for ( size_t itransfer = 0; itransfer < transferVector_.size(); ++itransfer ) {
+    transferVector_[itransfer]->initialize_end();
   }
 }
 
