@@ -429,6 +429,7 @@ class Realm {
 
   PeriodicManager *periodicManager_;
   bool hasPeriodic_;
+  bool hasFluids_;
 
   // global parameter list
   stk::util::ParameterList globalParameters_;

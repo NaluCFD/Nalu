@@ -193,6 +193,7 @@ namespace nalu{
     hasIoTransfer_(false),
     periodicManager_(NULL),
     hasPeriodic_(false),
+    hasFluids_(false),
     globalParameters_(),
     exposedBoundaryPart_(0),
     edgesPart_(0),
@@ -3354,8 +3355,8 @@ Realm::populate_boundary_data()
 void
 Realm::output_banner()
 {
-  // in future, probably want to call through to eq sys..
-  NaluEnv::self().naluOutputP0() << " Max Courant: " << maxCourant_ << " Max Reynolds: " << maxReynolds_ << std::endl;
+  if ( hasFluids_ )
+    NaluEnv::self().naluOutputP0() << " Max Courant: " << maxCourant_ << " Max Reynolds: " << maxReynolds_ << std::endl;
 }
 
 //--------------------------------------------------------------------------

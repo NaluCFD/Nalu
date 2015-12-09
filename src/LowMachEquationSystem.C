@@ -166,6 +166,9 @@ LowMachEquationSystem::LowMachEquationSystem(
   // create momentum and pressure
   momentumEqSys_= new MomentumEquationSystem(eqSystems);
   continuityEqSys_ = new ContinuityEquationSystem(eqSystems, elementContinuityEqs_, managePNG);
+
+  // inform realm
+  realm_.hasFluids_ = true;
 }
 
 //--------------------------------------------------------------------------
@@ -263,6 +266,14 @@ LowMachEquationSystem::register_element_fields(
       = &(meta_data.declare_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "intersected_element"));
     stk::mesh::put_field(*intersectedElement, *part, sizeOfElemField);
   }
+
+  // provide mean element Peclet and Courant fields; always...
+  GenericFieldType *elemReynolds
+    = &(meta_data.declare_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "element_reynolds"));
+  stk::mesh::put_field(*elemReynolds, *part, 1);
+  GenericFieldType *elemCourant
+    = &(meta_data.declare_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "element_courant"));
+  stk::mesh::put_field(*elemCourant, *part, 1);
 }
 
 //--------------------------------------------------------------------------

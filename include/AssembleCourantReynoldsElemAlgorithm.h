@@ -34,6 +34,8 @@ public:
   VectorFieldType *coordinates_;
   ScalarFieldType *density_;
   ScalarFieldType *viscosity_;
+  GenericFieldType *elemReynolds_;
+  GenericFieldType *elemCourant_;
 };
 
 } // namespace nalu

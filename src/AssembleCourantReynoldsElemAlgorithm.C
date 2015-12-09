@@ -46,7 +46,9 @@ AssembleCourantReynoldsElemAlgorithm::AssembleCourantReynoldsElemAlgorithm(
     velocityRTM_(NULL),
     coordinates_(NULL),
     density_(NULL),
-    viscosity_(NULL)
+    viscosity_(NULL),
+    elemReynolds_(NULL),
+    elemCourant_(NULL)
 {
   // save off data
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -59,6 +61,10 @@ AssembleCourantReynoldsElemAlgorithm::AssembleCourantReynoldsElemAlgorithm(
   const std::string viscName = (realm.is_turbulent())
      ? "effective_viscosity_u" : "viscosity";
   viscosity_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, viscName);
+
+  // provide for elemental fields
+  elemReynolds_ = meta_data.get_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "element_reynolds");
+  elemCourant_ = meta_data.get_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "element_courant");
 }
 
 //--------------------------------------------------------------------------
@@ -124,7 +130,11 @@ AssembleCourantReynoldsElemAlgorithm::execute()
 
       // get elem
       stk::mesh::Entity elem = b[k];
-
+      
+      // pointers to elem data
+      double * elemReynolds = stk::mesh::field_data(*elemReynolds_, b, k);
+      double * elemCourant = stk::mesh::field_data(*elemCourant_, b, k);
+      
       //===============================================
       // gather nodal data; this is how we do it now..
       //===============================================
@@ -153,7 +163,9 @@ AssembleCourantReynoldsElemAlgorithm::execute()
         }
       }
 
-      // compute cfl and Re along each edge
+      // compute cfl and Re along each edge; set ip max to negative
+      double eReynolds = -1.0;
+      double eCourant = -1.0;
       for ( int ip = 0; ip < numScsIp; ++ip ) {
 
         // left and right nodes for this ip
@@ -170,11 +182,21 @@ AssembleCourantReynoldsElemAlgorithm::execute()
         }
 
         udotx = std::abs(udotx);
-        maxCR[0] = std::max(maxCR[0], std::abs(udotx*dt/dxSq));
+        const double ipCourant = std::abs(udotx*dt/dxSq);
+        maxCR[0] = std::max(maxCR[0], ipCourant);
 
-        double diffIp = 0.5*( p_viscosity[il]/p_density[il] + p_viscosity[ir]/p_density[ir] );
-        maxCR[1] = std::max(maxCR[1], udotx/(diffIp+small));
+        const double diffIp = 0.5*( p_viscosity[il]/p_density[il] + p_viscosity[ir]/p_density[ir] );
+        const double ipReynolds = udotx/(diffIp+small);
+        maxCR[1] = std::max(maxCR[1], ipReynolds);
+        
+        // determine local max ip value
+        eReynolds = std::max(eReynolds, ipReynolds);
+        eCourant = std::max(eCourant, ipCourant);
       }
+      
+      // scatter
+      elemReynolds[0] = eReynolds;
+      elemCourant[0] = eCourant;
     }
   }
 
