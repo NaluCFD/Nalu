@@ -698,6 +698,12 @@ public:
     double *det_j,
     double * error );
 
+  void gij(
+    const double *coords,
+    double *gupperij,
+    double *glowerij,
+    double *deriv);
+
   const int * adjacentNodes();
 
   int opposingNodes(

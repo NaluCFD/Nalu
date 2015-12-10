@@ -78,6 +78,7 @@
 #include <MomentumMassBackwardEulerElemSuppAlg.h>
 #include <MomentumMassBDF2NodeSuppAlg.h>
 #include <MomentumMassBDF2ElemSuppAlg.h>
+#include <MomentumLocalDCOElemSuppAlg.h>
 #include <NaluEnv.h>
 #include <NaluParsing.h>
 #include <ProjectedNodalGradientEquationSystem.h>
@@ -993,11 +994,14 @@ MomentumEquationSystem::register_interior_algorithm(
         else if (sourceName == "SteadyTaylorVortex" ) {
           suppAlg = new SteadyTaylorVortexMomentumSrcElemSuppAlg(realm_);
         }
+        else if (sourceName == "LOCAL_DCO_2ND" ) {
+          suppAlg = new MomentumLocalDCOElemSuppAlg(realm_, velocity_, dudx_, evisc_, 0.0);
+        }
         else if (sourceName == "buoyancy" ) {
           suppAlg = new MomentumBuoyancySrcElemSuppAlg(realm_);
         }
         else {
-          throw std::runtime_error("ElemSrcTermsError::only support CMM and SteadyTV");
+          throw std::runtime_error("ElemSrcTermsError::only support CMM, local_dco_2nd, buoyancy and SteadyTV");
         }
         theAlg->supplementalAlg_.push_back(suppAlg); 
       }

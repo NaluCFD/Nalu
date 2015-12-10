@@ -446,7 +446,7 @@ void HexSCS::gij(
   double *glowerij,
   double *deriv)
 {
-  SIERRA_FORTRAN(hex_gij)
+  SIERRA_FORTRAN(threed_gij)
     ( &nodesPerElement_,
       &numIntPoints_,
       deriv,
@@ -2301,7 +2301,7 @@ void Hex27SCS::gij(
   double *glowerij,
   double *deriv)
 {
-  SIERRA_FORTRAN(hex_gij)
+  SIERRA_FORTRAN(threed_gij)
     ( &nodesPerElement_,
       &numIntPoints_,
       deriv,
@@ -3504,6 +3504,22 @@ void WedSCS::face_grad_op(
 }
 
 //--------------------------------------------------------------------------
+//-------- guij ------------------------------------------------------------
+//--------------------------------------------------------------------------
+void WedSCS::gij(
+  const double *coords,
+  double *gupperij,
+  double *glowerij,
+  double *deriv)
+{
+  SIERRA_FORTRAN(threed_gij)
+    ( &nodesPerElement_,
+      &numIntPoints_,
+      deriv,
+      coords, gupperij, glowerij);
+}
+
+//--------------------------------------------------------------------------
 //-------- adjacentNodes ---------------------------------------------------
 //--------------------------------------------------------------------------
 const int *
@@ -4075,7 +4091,7 @@ void Quad2DSCS::gij(
   double *glowerij,
   double *deriv)
 {
-  SIERRA_FORTRAN(quad_gij)
+  SIERRA_FORTRAN(twod_gij)
     ( &nodesPerElement_,
       &numIntPoints_,
       deriv,
@@ -5292,7 +5308,7 @@ void Quad92DSCS::gij(
   double *glowerij,
   double *deriv)
 {
-  SIERRA_FORTRAN(quad_gij)
+  SIERRA_FORTRAN(twod_gij)
     ( &nodesPerElement_,
       &numIntPoints_,
       deriv,

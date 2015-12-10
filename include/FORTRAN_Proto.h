@@ -181,21 +181,21 @@ SIERRA_FORTRAN( quad_gradient_operator ) ( const int*  nelem,
 					   int* lerr);
 
 extern "C" void
-SIERRA_FORTRAN( quad_gij ) ( const int* npe,
+SIERRA_FORTRAN( twod_gij ) ( const int* npe,
                              const int* numint,
                              double *deriv,
                              const double* coords,
                              double* gupperij,
                              double* glowerij);
-
+                                         
 extern "C" void
-SIERRA_FORTRAN( hex_gij ) ( const int* npe,
-                            const int* numint,
-                            double *deriv,
-                            const double* coords,
-                            double* gupperij,
-                            double* glowerij);
-
+SIERRA_FORTRAN( threed_gij ) ( const int* npe,
+                               const int* numint,
+                               double *deriv,
+                               const double* coords,
+                               double* gupperij,
+                               double* glowerij);
+                                         
 extern "C" void
 SIERRA_FORTRAN( tet_gradient_operator ) ( const int*  nelem,
                                           const int* npe,

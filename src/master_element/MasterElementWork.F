@@ -2890,7 +2890,7 @@ c
       return
       end
 
-      subroutine quad_gij( npe, 
+      subroutine twod_gij( npe, 
      *    nint, deriv, cordel, gupperij, glowerij )
 c       
 c***********************************************************************
@@ -2959,7 +2959,7 @@ c
       return
       end
 
-      subroutine hex_gij( npe, 
+      subroutine threed_gij( npe, 
      *    nint, deriv, cordel, gupperij, glowerij )
 c       
 c***********************************************************************
