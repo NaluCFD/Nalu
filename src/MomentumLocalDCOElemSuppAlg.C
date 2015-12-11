@@ -79,6 +79,7 @@ MomentumLocalDCOElemSuppAlg::MomentumLocalDCOElemSuppAlg(
   // fixed size
   //ws_dGjuScs_.resize(nDim_*nDim_);
   ws_dukdxScs_.resize(nDim_);
+  ws_rhovScs_.resize(nDim_);
   ws_vrtmScs_.resize(nDim_);
   ws_dpdxScs_.resize(nDim_);
 }
@@ -148,6 +149,10 @@ MomentumLocalDCOElemSuppAlg::elem_execute(
   const int numScsIp = meSCS->numIntPoints_;
   const int *lrscv = meSCS->adjacentNodes();    
   
+  // T form of the residual
+  const double tFac = 1.0;
+  const double om_tFac = 1.0 - tFac;
+
   // gather
   stk::mesh::Entity const *  node_rels = bulkData_->begin_nodes(element);
   int num_nodes = bulkData_->num_nodes(element);
@@ -217,10 +222,11 @@ MomentumLocalDCOElemSuppAlg::elem_execute(
     double rhoNScs = 0.0;
     double rhoNp1Scs = 0.0;
     double dFdxCont = 0.0;
-   
+    
     // zero out vector
     for ( int i = 0; i < nDim_; ++i ) {
       ws_vrtmScs_[i] = 0.0;
+      ws_rhovScs_[i] = 0.0;
     }
     
     // determine scs values of interest
@@ -246,6 +252,7 @@ MomentumLocalDCOElemSuppAlg::elem_execute(
         ws_vrtmScs_[j] += vrtmj*r;
         dFdxCont += rhoIC*vrtmj*dnj;
         ws_dpdxScs_[j] += pIC*dnj;
+        ws_rhovScs_[j] += r*rhoIC*vrtmj;
       }
     }
  
@@ -302,10 +309,15 @@ MomentumLocalDCOElemSuppAlg::elem_execute(
       
       // include local gradP to the residual; neglect diffusion and test for high Re flow...
       dFdxk -= ws_dpdxScs_[k];
+
+      // T-Style of residual
+      double dFdxkL = ukNp1Scs*dFdxCont;
+      for ( int j = 0; j < nDim_; ++j )
+        dFdxkL += ws_rhovScs_[j]*ws_dukdxScs_[j];
       
       // compute residual for DCO; use non-conserved form by subtraction of continuity residual
       const double time = (gamma1_*rhoNp1Scs*ukNp1Scs + gamma2_*rhoNScs*ukNScs + gamma3_*rhoNm1Scs*ukNm1Scs)/dt_;
-      const double residual = time + dFdxk - contRes;
+      const double residual = (time + dFdxk - contRes*ukNp1Scs)*om_tFac + (dFdxk - dFdxkL)*tFac;
       
       // demonominator for nu as well as terms for "upwind" nu
       double gUpperMagGradQ = 0.0;

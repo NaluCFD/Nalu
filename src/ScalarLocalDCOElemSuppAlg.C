@@ -254,7 +254,7 @@ ScalarLocalDCOElemSuppAlg::elem_execute(
     // compute residual for DCO; use non-conserved form by subtraction of continuity residual
     const double time = (gamma1_*rhoNp1Scs*qNp1Scs + gamma2_*rhoNScs*qNScs + gamma3_*rhoNm1Scs*qNm1Scs)/dt_;
     const double contRes = (gamma1_*rhoNp1Scs + gamma2_*rhoNScs + gamma3_*rhoNm1Scs)/dt_ + dFdxCont;
-    const double residual = time + dFdx - contRes;
+    const double residual = time + dFdx - contRes*qNp1Scs;
     
     // demonominator for nu as well as terms for "upwind" nu
     double gUpperMagGradQ = 0.0;
