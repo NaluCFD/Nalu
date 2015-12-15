@@ -51,7 +51,7 @@
 #include <ScalarMassBackwardEulerNodeSuppAlg.h>
 #include <ScalarMassBDF2NodeSuppAlg.h>
 #include <ScalarMassBDF2ElemSuppAlg.h>
-#include <ScalarLocalDCOElemSuppAlg.h>
+#include <ScalarNSOElemSuppAlg.h>
 #include <Simulation.h>
 #include <TimeIntegrator.h>
 #include <SolverAlgorithmDriver.h>
@@ -368,11 +368,17 @@ EnthalpyEquationSystem::register_interior_algorithm(
       for (size_t k = 0; k < mapNameVec.size(); ++k ) {
         std::string sourceName = mapNameVec[k];
         SupplementalAlgorithm *suppAlg = NULL;
-        if (sourceName == "LOCAL_DCO_2ND" ) {
-          suppAlg = new ScalarLocalDCOElemSuppAlg(realm_, enthalpy_, dhdx_, evisc_, 0.0);
+        if (sourceName == "NSO_2ND" ) {
+          suppAlg = new ScalarNSOElemSuppAlg(realm_, enthalpy_, dhdx_, evisc_, 0.0, 0.0);
         }
-        else if (sourceName == "LOCAL_DCO_4TH" ) {
-          suppAlg = new ScalarLocalDCOElemSuppAlg(realm_, enthalpy_, dhdx_, evisc_, 1.0);
+        else if (sourceName == "NSO_2ND_ALT" ) {
+          suppAlg = new ScalarNSOElemSuppAlg(realm_, enthalpy_, dhdx_, evisc_, 0.0, 1.0);
+        }
+        else if (sourceName == "NSO_4TH" ) {
+          suppAlg = new ScalarNSOElemSuppAlg(realm_, enthalpy_, dhdx_, evisc_, 1.0, 0.0);
+        }
+        else if (sourceName == "NSO_4TH_ALT" ) {
+          suppAlg = new ScalarNSOElemSuppAlg(realm_, enthalpy_, dhdx_, evisc_, 1.0, 1.0);
         }
         else if (sourceName == "enthalpy_time_derivative" ) {
           useCMM = true;

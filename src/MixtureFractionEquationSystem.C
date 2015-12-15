@@ -43,7 +43,7 @@
 #include <ScalarMassBackwardEulerNodeSuppAlg.h>
 #include <ScalarMassBDF2NodeSuppAlg.h>
 #include <ScalarMassBDF2ElemSuppAlg.h>
-#include <ScalarLocalDCOElemSuppAlg.h>
+#include <ScalarNSOElemSuppAlg.h>
 #include <Simulation.h>
 #include <SolutionOptions.h>
 #include <TimeIntegrator.h>
@@ -266,11 +266,17 @@ MixtureFractionEquationSystem::register_interior_algorithm(
         if (sourceName == "SteadyTaylorVortex" ) {
           suppAlg = new SteadyTaylorVortexMixFracSrcElemSuppAlg(realm_);
         }
-        else if (sourceName == "LOCAL_DCO_2ND" ) {
-          suppAlg = new ScalarLocalDCOElemSuppAlg(realm_, mixFrac_, dzdx_, evisc_, 0.0);
+        else if (sourceName == "NSO_2ND" ) {
+          suppAlg = new ScalarNSOElemSuppAlg(realm_, mixFrac_, dzdx_, evisc_, 0.0, 0.0);
         }
-        else if (sourceName == "LOCAL_DCO_4TH" ) {
-          suppAlg = new ScalarLocalDCOElemSuppAlg(realm_, mixFrac_, dzdx_, evisc_, 1.0);
+        else if (sourceName == "NSO_2ND_ALT" ) {
+          suppAlg = new ScalarNSOElemSuppAlg(realm_, mixFrac_, dzdx_, evisc_, 0.0, 1.0);
+        }
+        else if (sourceName == "NSO_4TH" ) {
+          suppAlg = new ScalarNSOElemSuppAlg(realm_, mixFrac_, dzdx_, evisc_, 1.0, 0.0);
+        }
+        else if (sourceName == "NSO_4TH_ALT" ) {
+          suppAlg = new ScalarNSOElemSuppAlg(realm_, mixFrac_, dzdx_, evisc_, 1.0, 1.0);
         }
         else if (sourceName == "mixture_fraction_time_derivative" ) {
           useCMM = true;
@@ -282,7 +288,7 @@ MixtureFractionEquationSystem::register_interior_algorithm(
           } 
         }
         else {
-          throw std::runtime_error("ElemSrcTermsError::only support SteadyTV, DCO and time term");
+          throw std::runtime_error("ElemSrcTermsError::only support SteadyTV, NSO and time term");
         }     
         theAlg->supplementalAlg_.push_back(suppAlg); 
       }

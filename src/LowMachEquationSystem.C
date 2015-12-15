@@ -78,7 +78,7 @@
 #include <MomentumMassBackwardEulerElemSuppAlg.h>
 #include <MomentumMassBDF2NodeSuppAlg.h>
 #include <MomentumMassBDF2ElemSuppAlg.h>
-#include <MomentumLocalDCOElemSuppAlg.h>
+#include <MomentumNSOElemSuppAlg.h>
 #include <NaluEnv.h>
 #include <NaluParsing.h>
 #include <ProjectedNodalGradientEquationSystem.h>
@@ -994,14 +994,23 @@ MomentumEquationSystem::register_interior_algorithm(
         else if (sourceName == "SteadyTaylorVortex" ) {
           suppAlg = new SteadyTaylorVortexMomentumSrcElemSuppAlg(realm_);
         }
-        else if (sourceName == "LOCAL_DCO_2ND" ) {
-          suppAlg = new MomentumLocalDCOElemSuppAlg(realm_, velocity_, dudx_, evisc_, 0.0);
+        else if (sourceName == "NSO_2ND" ) {
+          suppAlg = new MomentumNSOElemSuppAlg(realm_, velocity_, dudx_, realm_.is_turbulent() ? evisc_ : visc_, 0.0, 0.0);
+        }
+        else if (sourceName == "NSO_2ND_ALT" ) {
+          suppAlg = new MomentumNSOElemSuppAlg(realm_, velocity_, dudx_, realm_.is_turbulent() ? evisc_ : visc_, 0.0, 1.0);
+        }
+        else if (sourceName == "NSO_4TH" ) {
+          suppAlg = new MomentumNSOElemSuppAlg(realm_, velocity_, dudx_, realm_.is_turbulent() ? evisc_ : visc_, 1.0, 0.0);
+        }
+        else if (sourceName == "NSO_4TH_ALT" ) {
+          suppAlg = new MomentumNSOElemSuppAlg(realm_, velocity_, dudx_, realm_.is_turbulent() ? evisc_ : visc_, 1.0, 1.0);
         }
         else if (sourceName == "buoyancy" ) {
           suppAlg = new MomentumBuoyancySrcElemSuppAlg(realm_);
         }
         else {
-          throw std::runtime_error("ElemSrcTermsError::only support CMM, local_dco_2nd, buoyancy and SteadyTV");
+          throw std::runtime_error("ElemSrcTermsError::only support CMM, nso_2nd, nso_4th, buoyancy and SteadyTV");
         }
         theAlg->supplementalAlg_.push_back(suppAlg); 
       }

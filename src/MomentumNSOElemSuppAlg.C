@@ -6,7 +6,7 @@
 /*------------------------------------------------------------------------*/
 
 
-#include <MomentumLocalDCOElemSuppAlg.h>
+#include <MomentumNSOElemSuppAlg.h>
 #include <SupplementalAlgorithm.h>
 #include <FieldTypeDef.h>
 #include <Realm.h>
@@ -24,17 +24,18 @@ namespace nalu{
 //==========================================================================
 // Class Definition
 //==========================================================================
-// MomentumLocalDCOElemSuppAlg - DCO for momentum equation
+// MomentumNSOElemSuppAlg - NSO for momentum equation
 //==========================================================================
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-MomentumLocalDCOElemSuppAlg::MomentumLocalDCOElemSuppAlg(
+MomentumNSOElemSuppAlg::MomentumNSOElemSuppAlg(
   Realm &realm,
   VectorFieldType *velocity,
   GenericFieldType *Gju,
-  ScalarFieldType *diffFluxCoeff,
-  const double fourthFac)
+  ScalarFieldType *viscosity,
+  const double fourthFac,
+  const double altResFac)
   : SupplementalAlgorithm(realm),
     bulkData_(&realm.bulk_data()),
     velocityNm1_(NULL),
@@ -46,7 +47,7 @@ MomentumLocalDCOElemSuppAlg::MomentumLocalDCOElemSuppAlg(
     pressure_(NULL),
     velocityRTM_(NULL),
     coordinates_(NULL),
-    diffFluxCoeff_(diffFluxCoeff),
+    viscosity_(viscosity),
     Gju_(Gju),
     dt_(0.0),
     nDim_(realm_.spatialDimension_),
@@ -55,7 +56,11 @@ MomentumLocalDCOElemSuppAlg::MomentumLocalDCOElemSuppAlg(
     gamma3_(0.0),
     Cupw_(0.1),
     small_(1.0e-16),
-    fourthFac_(fourthFac)
+    fourthFac_(fourthFac),
+    altResFac_(altResFac),
+    om_altResFac_(1.0-altResFac),
+    nonConservedForm_(0.0),
+    includeDivU_(realm_.get_divU())
 {
   // save off fields; for non-BDF2 gather in state N for Nm1 (gamma3_ will be zero)
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -77,18 +82,20 @@ MomentumLocalDCOElemSuppAlg::MomentumLocalDCOElemSuppAlg(
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
 
   // fixed size
-  //ws_dGjuScs_.resize(nDim_*nDim_);
   ws_dukdxScs_.resize(nDim_);
   ws_rhovScs_.resize(nDim_);
   ws_vrtmScs_.resize(nDim_);
   ws_dpdxScs_.resize(nDim_);
+  ws_kd_.resize(nDim_*nDim_,0);
+  for ( int i = 0; i < nDim_; ++i )
+    ws_kd_[i*nDim_+i] = 1.0;
 }
 
 //--------------------------------------------------------------------------
 //-------- elem_resize -----------------------------------------------------
 //--------------------------------------------------------------------------
 void
-MomentumLocalDCOElemSuppAlg::elem_resize(
+MomentumNSOElemSuppAlg::elem_resize(
   MasterElement *meSCS,
   MasterElement */*meSCV*/)
 {
@@ -114,8 +121,8 @@ MomentumLocalDCOElemSuppAlg::elem_resize(
   ws_pressure_.resize(nodesPerElement);
   ws_velocityRTM_.resize(nDim_*nodesPerElement);
   ws_coordinates_.resize(nDim_*nodesPerElement);
-  //ws_diffFluxCoeff_.resize(nodesPerElement);
-  //ws_Gju_.resize(nDim_*nodesPerElement*nDim_);
+  ws_viscosity_.resize(nodesPerElement);
+  ws_Gju_.resize(nDim_*nDim_*nodesPerElement);
   
   // compute shape function
   meSCS->shape_fcn(&ws_shape_function_[0]);
@@ -125,7 +132,7 @@ MomentumLocalDCOElemSuppAlg::elem_resize(
 //-------- setup -----------------------------------------------------------
 //--------------------------------------------------------------------------
 void
-MomentumLocalDCOElemSuppAlg::setup()
+MomentumNSOElemSuppAlg::setup()
 {
   dt_ = realm_.get_time_step();
   gamma1_ = realm_.get_gamma1();
@@ -137,7 +144,7 @@ MomentumLocalDCOElemSuppAlg::setup()
 //-------- elem_execute ----------------------------------------------------
 //--------------------------------------------------------------------------
 void
-MomentumLocalDCOElemSuppAlg::elem_execute(
+MomentumNSOElemSuppAlg::elem_execute(
   double *lhs,
   double *rhs,
   stk::mesh::Entity element,
@@ -149,10 +156,6 @@ MomentumLocalDCOElemSuppAlg::elem_execute(
   const int numScsIp = meSCS->numIntPoints_;
   const int *lrscv = meSCS->adjacentNodes();    
   
-  // T form of the residual
-  const double tFac = 1.0;
-  const double om_tFac = 1.0 - tFac;
-
   // gather
   stk::mesh::Entity const *  node_rels = bulkData_->begin_nodes(element);
   int num_nodes = bulkData_->num_nodes(element);
@@ -167,8 +170,7 @@ MomentumLocalDCOElemSuppAlg::elem_execute(
     ws_rhoNm1_[ni] = *stk::mesh::field_data(*densityNm1_, node);
     ws_rhoN_[ni] = *stk::mesh::field_data(*densityN_, node);
     ws_rhoNp1_[ni] = *stk::mesh::field_data(*densityNp1_, node);
-    
-    //ws_diffFluxCoeff_[ni] = *stk::mesh::field_data(*diffFluxCoeff_, node);
+    ws_viscosity_[ni] = *stk::mesh::field_data(*viscosity_, node);
 
     // pointers to real data
     const double * uNm1   = stk::mesh::field_data(*velocityNm1_, node );
@@ -176,23 +178,26 @@ MomentumLocalDCOElemSuppAlg::elem_execute(
     const double * uNp1   = stk::mesh::field_data(*velocityNp1_, node );
     const double * vrtm   = stk::mesh::field_data(*velocityRTM_, node );
     const double * coords = stk::mesh::field_data(*coordinates_, node );
-    //const double * Gju    = stk::mesh::field_data(*Gju_, node );
+    const double * Gju    = stk::mesh::field_data(*Gju_, node );
 
     // gather vectors
-    const int offSet = ni*nDim_;
-    for ( int j=0; j < nDim_; ++j ) {
-      ws_uNm1_[offSet+j] = uNm1[j];
-      ws_uN_[offSet+j] = uN[j];
-      ws_uNp1_[offSet+j] = uNp1[j];
-      ws_velocityRTM_[offSet+j] = vrtm[j];
-      ws_coordinates_[offSet+j] = coords[j];
-      /*
-      for ( int i = 0; i < nDim_; ++i ) 
-        ws_Gju_[offSet+j] = Gju[j]; // WRONG....
-      */
+    const int niNdim = ni*nDim_;
+    // row for ws_Gju
+    const int row_ws_Gju = niNdim*nDim_;
+    for ( int i=0; i < nDim_; ++i ) {
+      ws_uNm1_[niNdim+i] = uNm1[i];
+      ws_uN_[niNdim+i] = uN[i];
+      ws_uNp1_[niNdim+i] = uNp1[i];
+      ws_velocityRTM_[niNdim+i] = vrtm[i];
+      ws_coordinates_[niNdim+i] = coords[i];
+      // gather tensor projected nodal gradients
+      const int row_Gju = i*nDim_;
+      for ( int j=0; j < nDim_; ++j ) {
+        ws_Gju_[row_ws_Gju+row_Gju+j] = Gju[row_Gju+j];
+      }
     }
   }
-
+  
   // compute geometry (AGAIN)...
   double scs_error = 0.0;
   meSCS->determinant(1, &ws_coordinates_[0], &ws_scs_areav_[0], &scs_error);
@@ -222,7 +227,8 @@ MomentumLocalDCOElemSuppAlg::elem_execute(
     double rhoNScs = 0.0;
     double rhoNp1Scs = 0.0;
     double dFdxCont = 0.0;
-    
+    double divU = 0.0;
+
     // zero out vector
     for ( int i = 0; i < nDim_; ++i ) {
       ws_vrtmScs_[i] = 0.0;
@@ -232,34 +238,38 @@ MomentumLocalDCOElemSuppAlg::elem_execute(
     // determine scs values of interest
     const int offSet = ip*nodesPerElement;
     for ( int ic = 0; ic < nodesPerElement; ++ic ) {
+
       // save off shape function
       const double r = ws_shape_function_[offSet+ic];  
-        
+
+      const int icNdim = ic*nDim_;
+      
+      const int row_ws_Gju = icNdim*nDim_;
+  
       // time term, density
       rhoNm1Scs += r*ws_rhoNm1_[ic];
       rhoNScs += r*ws_rhoN_[ic];
       rhoNp1Scs += r*ws_rhoNp1_[ic];
-      //diffFluxCoeffScs += r*ws_diffFluxCoeff_[ic];
       
       // compute scs derivatives and flux derivative
-      const int offSetDnDx = nDim_*nodesPerElement*ip + ic*nDim_;
+      const int offSetDnDx = nDim_*nodesPerElement*ip + icNdim;
       const double pIC = ws_pressure_[ic];
       const double rhoIC = ws_rhoNp1_[ic];
-      //const double diffFluxCoeffIC = ws_diffFluxCoeff_[ic];
       for ( int j = 0; j < nDim_; ++j ) {
         const double dnj = ws_dndx_[offSetDnDx+j];
-        const double vrtmj = ws_velocityRTM_[ic*nDim_+j];
-        ws_vrtmScs_[j] += vrtmj*r;
+        const double vrtmj = ws_velocityRTM_[icNdim+j];
+        ws_vrtmScs_[j] += r*vrtmj;
+        ws_rhovScs_[j] += r*rhoIC*vrtmj;
+        divU += r*ws_Gju_[row_ws_Gju+j*nDim_+j];
         dFdxCont += rhoIC*vrtmj*dnj;
         ws_dpdxScs_[j] += pIC*dnj;
-        ws_rhovScs_[j] += r*rhoIC*vrtmj;
       }
     }
- 
-    // save off continuity residual (constant for all component k)
+    
+    // full continuity residual (constant for all component k)
     const double contRes = (gamma1_*rhoNp1Scs + gamma2_*rhoNScs + gamma3_*rhoNm1Scs)/dt_ + dFdxCont;
- 
-    // assemble each component; re-compute stuff like densitySCS and continuity residual
+    
+    // assemble each component
     for ( int k = 0; k < nDim_; ++k ) {
 
       const int indexL = ilNdim + k;
@@ -268,57 +278,65 @@ MomentumLocalDCOElemSuppAlg::elem_execute(
       const int rowL = indexL*nodesPerElement*nDim_;
       const int rowR = indexR*nodesPerElement*nDim_;
 
-      // zero out residual and interpolated velocity to scs
+      // zero out residual_k and interpolated velocity_k to scs
       double dFdxk = 0.0;
       double ukNm1Scs = 0.0;
       double ukNScs = 0.0;
       double ukNp1Scs = 0.0;
 
-      // zero out vector duk/dxj | SCS
-      for ( int i = 0; i < nDim_; ++i ) {
-        ws_dukdxScs_[i] = 0.0;
+      // zero out vector of local derivatives (duk/dxj)
+      for ( int j = 0; j < nDim_; ++j ) {
+        ws_dukdxScs_[j] = 0.0;
       }
     
       // determine scs values of interest
       const int offSet = ip*nodesPerElement;
       for ( int ic = 0; ic < nodesPerElement; ++ic ) {
         
+        const int icNdim = ic*nDim_;
+
         // save off shape function
         const double r = ws_shape_function_[offSet+ic];
            
         // save off velocity for component k
-        const double ukNm1 = ws_uNm1_[ic*nDim_+k];
-        const double ukN = ws_uN_[ic*nDim_+k];
-        const double ukNp1 = ws_uNp1_[ic*nDim_+k];
+        const double ukNm1 = ws_uNm1_[icNdim+k];
+        const double ukN = ws_uN_[icNdim+k];
+        const double ukNp1 = ws_uNp1_[icNdim+k];
 
         ukNm1Scs += r*ukNm1;
         ukNScs += r*ukN;
         ukNp1Scs += r*ukNm1;
     
-        // compute scs derivatives and flux derivative
-        const int offSetDnDx = nDim_*nodesPerElement*ip + ic*nDim_;
+        // save off offset into the row for the tensor projected nodal gradient gathered
+        const int row_ws_Gju = icNdim*nDim_;
+
+        // compute scs derivatives and flux derivative (adv/diff)
+        const int offSetDnDx = nDim_*nodesPerElement*ip + icNdim;
         const double rhoIC = ws_rhoNp1_[ic];
+        const double viscIC = ws_viscosity_[ic];
         for ( int j = 0; j < nDim_; ++j ) {
           const double dnj = ws_dndx_[offSetDnDx+j];
-          const double vrtmj = ws_velocityRTM_[ic*nDim_+j];
+          const double vrtmj = ws_velocityRTM_[icNdim+j];
           ws_dukdxScs_[j] += ukNp1*dnj;
-          const double uk = ws_uNp1_[ic*nDim_+k];
-          dFdxk += (rhoIC*vrtmj*uk)*dnj;
+          const double uk = ws_uNp1_[icNdim+k];
+          dFdxk += (rhoIC*vrtmj*uk 
+                    - viscIC*(ws_Gju_[row_ws_Gju+k*nDim_+j] + ws_Gju_[row_ws_Gju+j*nDim_+k] 
+                              - 2.0/3.0*divU*ws_kd_[k*nDim_+j]*includeDivU_))*dnj;
         }
       }
       
-      // include local gradP to the residual; neglect diffusion and test for high Re flow...
-      dFdxk -= ws_dpdxScs_[k];
-
-      // T-Style of residual
-      double dFdxkL = ukNp1Scs*dFdxCont;
+      // compute residual for NSO; linearized first
+      double residualAlt = ukNp1Scs*dFdxCont;
       for ( int j = 0; j < nDim_; ++j )
-        dFdxkL += ws_rhovScs_[j]*ws_dukdxScs_[j];
+        residualAlt += ws_rhovScs_[j]*ws_dukdxScs_[j];
       
-      // compute residual for DCO; use non-conserved form by subtraction of continuity residual
+      // compute residual for NSO; pde-based second
       const double time = (gamma1_*rhoNp1Scs*ukNp1Scs + gamma2_*rhoNScs*ukNScs + gamma3_*rhoNm1Scs*ukNm1Scs)/dt_;
-      const double residual = (time + dFdxk - contRes*ukNp1Scs)*om_tFac + (dFdxk - dFdxkL)*tFac;
-      
+      const double residualPde = time + dFdxk + ws_dpdxScs_[k] - contRes*ukNp1Scs*nonConservedForm_; 
+
+      // final form
+      const double residual = residualAlt*altResFac_ + residualPde*om_altResFac_;
+
       // demonominator for nu as well as terms for "upwind" nu
       double gUpperMagGradQ = 0.0;
       double uigLoweruj = 0.0;
@@ -344,15 +362,21 @@ MomentumLocalDCOElemSuppAlg::elem_execute(
       double gijFac = 0.0;
       for ( int ic = 0; ic < nodesPerElement; ++ic ) {
 
+        // save off shape function
+        const double r = ws_shape_function_[offSet+ic];
+
         // find the row
         const int icNdim = ic*nDim_;
+
+        const int row_ws_Gju = icNdim*nDim_;
+
         const int rLkC_k = rowL+icNdim+k;
         const int rRkC_k = rowR+icNdim+k;
 
         // save of some variables
         const double ukNp1 = ws_uNp1_[ic*nDim_+k];
         
-        // DCO diffusion-like term; -nu*gUpper*dQ/dxj*ai (residual below)
+        // NSO diffusion-like term; -nu*gUpper*dQ/dxj*ai (residual below)
         double lhsfac = 0.0;
         const int offSetDnDx = nDim_*nodesPerElement*ip + ic*nDim_;
         for ( int i = 0; i < nDim_; ++i ) {
@@ -360,7 +384,8 @@ MomentumLocalDCOElemSuppAlg::elem_execute(
           for ( int j = 0; j < nDim_; ++j ) {
             const double dnxj = ws_dndx_[offSetDnDx+j];
             const double fac = p_gUpper[i*nDim_+j]*dnxj*axi;
-            gijFac += fac*ukNp1;
+            const double facGj = r*p_gUpper[i*nDim_+j]*ws_Gju_[row_ws_Gju+k*nDim_+j]*axi;
+            gijFac += fac*ukNp1 - facGj*fourthFac_;
             lhsfac += -fac;
           }
         }
@@ -371,9 +396,9 @@ MomentumLocalDCOElemSuppAlg::elem_execute(
       }
       
       // residual; left and right
-      const double residualDCO = -nu*gijFac;
-      rhs[indexL] -= residualDCO;
-      rhs[indexR] += residualDCO;
+      const double residualNSO = -nu*gijFac;
+      rhs[indexL] -= residualNSO;
+      rhs[indexR] += residualNSO;
     }      
   }
 }

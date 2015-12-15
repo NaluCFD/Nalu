@@ -6,7 +6,7 @@
 /*------------------------------------------------------------------------*/
 
 
-#include <ScalarLocalDCOElemSuppAlg.h>
+#include <ScalarNSOElemSuppAlg.h>
 #include <SupplementalAlgorithm.h>
 #include <FieldTypeDef.h>
 #include <Realm.h>
@@ -24,17 +24,18 @@ namespace nalu{
 //==========================================================================
 // Class Definition
 //==========================================================================
-// ScalarLocalDCOElemSuppAlg - DCO for scalar equation
+// ScalarNSOElemSuppAlg - NSO for scalar equation
 //==========================================================================
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-ScalarLocalDCOElemSuppAlg::ScalarLocalDCOElemSuppAlg(
+ScalarNSOElemSuppAlg::ScalarNSOElemSuppAlg(
   Realm &realm,
   ScalarFieldType *scalarQ,
   VectorFieldType *Gjq,
   ScalarFieldType *diffFluxCoeff,
-  const double fourthFac)
+  const double fourthFac,
+  const double altResFac)
   : SupplementalAlgorithm(realm),
     bulkData_(&realm.bulk_data()),
     scalarQNm1_(NULL),
@@ -54,7 +55,10 @@ ScalarLocalDCOElemSuppAlg::ScalarLocalDCOElemSuppAlg(
     gamma3_(0.0),
     Cupw_(0.1),
     small_(1.0e-16),
-    fourthFac_(fourthFac)
+    fourthFac_(fourthFac),
+    altResFac_(altResFac),
+    om_altResFac_(1.0-altResFac),
+    nonConservedForm_(0.0)
 {
   // save off fields; for non-BDF2 gather in state N for Nm1 (gamma3_ will be zero)
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -77,13 +81,14 @@ ScalarLocalDCOElemSuppAlg::ScalarLocalDCOElemSuppAlg(
   // fixed size
   ws_dqdxScs_.resize(nDim_);
   ws_vrtmScs_.resize(nDim_);
+  ws_rhovScs_.resize(nDim_);
 }
 
 //--------------------------------------------------------------------------
 //-------- elem_resize -----------------------------------------------------
 //--------------------------------------------------------------------------
 void
-ScalarLocalDCOElemSuppAlg::elem_resize(
+ScalarNSOElemSuppAlg::elem_resize(
   MasterElement *meSCS,
   MasterElement */*meSCV*/)
 {
@@ -119,7 +124,7 @@ ScalarLocalDCOElemSuppAlg::elem_resize(
 //-------- setup -----------------------------------------------------------
 //--------------------------------------------------------------------------
 void
-ScalarLocalDCOElemSuppAlg::setup()
+ScalarNSOElemSuppAlg::setup()
 {
   dt_ = realm_.get_time_step();
   gamma1_ = realm_.get_gamma1();
@@ -131,7 +136,7 @@ ScalarLocalDCOElemSuppAlg::setup()
 //-------- elem_execute ----------------------------------------------------
 //--------------------------------------------------------------------------
 void
-ScalarLocalDCOElemSuppAlg::elem_execute(
+ScalarNSOElemSuppAlg::elem_execute(
   double *lhs,
   double *rhs,
   stk::mesh::Entity element,
@@ -209,7 +214,6 @@ ScalarLocalDCOElemSuppAlg::elem_execute(
     double rhoNm1Scs = 0.0;
     double rhoNScs = 0.0;
     double rhoNp1Scs = 0.0;
-    double diffFluxCoeffScs = 0.0;
     double dFdx = 0.0;
     double dFdxCont = 0.0;
    
@@ -217,6 +221,7 @@ ScalarLocalDCOElemSuppAlg::elem_execute(
     for ( int i = 0; i < nDim_; ++i ) {
       ws_dqdxScs_[i] = 0.0;
       ws_vrtmScs_[i] = 0.0;
+      ws_rhovScs_[i] = 0.0;
     }
     
     // determine scs values of interest
@@ -234,7 +239,6 @@ ScalarLocalDCOElemSuppAlg::elem_execute(
       rhoNm1Scs += r*ws_rhoNm1_[ic];
       rhoNScs += r*ws_rhoN_[ic];
       rhoNp1Scs += r*ws_rhoNp1_[ic];
-      diffFluxCoeffScs += r*ws_diffFluxCoeff_[ic];
 
       // compute scs derivatives and flux derivative
       const int offSetDnDx = nDim_*nodesPerElement*ip + ic*nDim_;
@@ -242,31 +246,40 @@ ScalarLocalDCOElemSuppAlg::elem_execute(
       const double rhoIC = ws_rhoNp1_[ic];
       const double diffFluxCoeffIC = ws_diffFluxCoeff_[ic];
       for ( int j = 0; j < nDim_; ++j ) {
-        const double dn = ws_dndx_[offSetDnDx+j];
+        const double dnj = ws_dndx_[offSetDnDx+j];
         const double vrtmj = ws_velocityRTM_[ic*nDim_+j];
-        ws_dqdxScs_[j] += qIC*dn;
+        ws_dqdxScs_[j] += qIC*dnj;
         ws_vrtmScs_[j] += vrtmj*r;
-        dFdx += (rhoIC*vrtmj*qIC - diffFluxCoeffIC*ws_Gjq_[ic*nDim_+j])*dn;
-        dFdxCont += rhoIC*vrtmj*dn;
+        ws_rhovScs_[j] += r*rhoIC*vrtmj;
+        dFdx += (rhoIC*vrtmj*qIC - diffFluxCoeffIC*ws_Gjq_[ic*nDim_+j])*dnj;
+        dFdxCont += rhoIC*vrtmj*dnj;
       }
     }
     
-    // compute residual for DCO; use non-conserved form by subtraction of continuity residual
-    const double time = (gamma1_*rhoNp1Scs*qNp1Scs + gamma2_*rhoNScs*qNScs + gamma3_*rhoNm1Scs*qNm1Scs)/dt_;
+    // full continuity residual
     const double contRes = (gamma1_*rhoNp1Scs + gamma2_*rhoNScs + gamma3_*rhoNm1Scs)/dt_ + dFdxCont;
-    const double residual = time + dFdx - contRes*qNp1Scs;
-    
+
+    // compute residual for NSO; linearized first
+    double residualAlt = qNp1Scs*dFdxCont;
+    for ( int j = 0; j < nDim_; ++j )
+      residualAlt += ws_rhovScs_[j]*ws_dqdxScs_[j];
+   
+    // compute residual for NSO; pde-based second
+    const double time = (gamma1_*rhoNp1Scs*qNp1Scs + gamma2_*rhoNScs*qNScs + gamma3_*rhoNm1Scs*qNm1Scs)/dt_;
+    const double residualPde = time + dFdx - contRes*qNp1Scs*nonConservedForm_;
+
+    // final form
+    const double residual = residualAlt*altResFac_ + residualPde*om_altResFac_;
+
     // demonominator for nu as well as terms for "upwind" nu
     double gUpperMagGradQ = 0.0;
     double uigLoweruj = 0.0;
-    double gLowerSq = 0.0;
     for ( int i = 0; i < nDim_; ++i ) {
       const double dqdxScsi = ws_dqdxScs_[i];
       const double ui = ws_vrtmScs_[i];
       for ( int j = 0; j < nDim_; ++j ) {
         gUpperMagGradQ += dqdxScsi*p_gUpper[i*nDim_+j]*ws_dqdxScs_[j];
         uigLoweruj += ui*p_gLower[i*nDim_+j]*ws_vrtmScs_[j];
-        gLowerSq += p_gLower[i*nDim_+j]*p_gLower[i*nDim_+j];
       }
     }      
     
@@ -275,9 +288,7 @@ ScalarLocalDCOElemSuppAlg::elem_execute(
     
     // construct nu from first-order-like approach; SNL-internal write-up (eq 209)
     // for now, only include advection as full set of terms is too diffuse
-    const double nuFirstOrder = std::sqrt(std::pow(2.0*gamma1_*rhoNp1Scs/dt_,2)*0.0 
-                                          + rhoNp1Scs*rhoNp1Scs*uigLoweruj 
-                                          + 9.0*std::pow(2.0*diffFluxCoeffScs,2)*gLowerSq/3.0*0.0);
+    const double nuFirstOrder = std::sqrt(rhoNp1Scs*rhoNp1Scs*uigLoweruj);
 
     // limit based on first order; Cupw_ is a fudge factor similar to Guermond's approach
     const double nu = std::min(Cupw_*nuFirstOrder, nuResidual);
@@ -291,7 +302,7 @@ ScalarLocalDCOElemSuppAlg::elem_execute(
       // save of some variables
       const double qIC = ws_qNp1_[ic];
       
-      // DCO diffusion-like term; -nu*gUpper*(dQ/dxj - Gjq)*ai (residual below)
+      // NSO diffusion-like term; -nu*gUpper*(dQ/dxj - Gjq)*ai (residual below)
       double lhsfac = 0.0;
       const int offSetDnDx = nDim_*nodesPerElement*ip + ic*nDim_;
       for ( int i = 0; i < nDim_; ++i ) {
@@ -299,7 +310,7 @@ ScalarLocalDCOElemSuppAlg::elem_execute(
         for ( int j = 0; j < nDim_; ++j ) {
           const double dnxj = ws_dndx_[offSetDnDx+j];
           const double fac = p_gUpper[i*nDim_+j]*dnxj*axi;
-          const double facGj = p_gUpper[i*nDim_+j]*r*ws_Gjq_[ic*nDim_+j]*axi;
+          const double facGj = r*p_gUpper[i*nDim_+j]*ws_Gjq_[ic*nDim_+j]*axi;
           gijFac += fac*qIC - facGj*fourthFac_;
           lhsfac += -fac;
         }
@@ -310,9 +321,9 @@ ScalarLocalDCOElemSuppAlg::elem_execute(
     }
     
     // residual; left and right
-    const double residualDCO = -nu*gijFac;
-    rhs[il] -= residualDCO;
-    rhs[ir] += residualDCO;
+    const double residualNSO = -nu*gijFac;
+    rhs[il] -= residualNSO;
+    rhs[ir] += residualNSO;
   }      
 }
   

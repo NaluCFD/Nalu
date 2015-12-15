@@ -6,8 +6,8 @@
 /*------------------------------------------------------------------------*/
 
 
-#ifndef ScalarLocalDCOElemSuppAlg_h
-#define ScalarLocalDCOElemSuppAlg_h
+#ifndef ScalarNSOElemSuppAlg_h
+#define ScalarNSOElemSuppAlg_h
 
 #include <SupplementalAlgorithm.h>
 #include <FieldTypeDef.h>
@@ -21,18 +21,19 @@ namespace nalu{
 class Realm;
 class MasterElement;
 
-class ScalarLocalDCOElemSuppAlg : public SupplementalAlgorithm
+class ScalarNSOElemSuppAlg : public SupplementalAlgorithm
 {
 public:
 
-  ScalarLocalDCOElemSuppAlg(
+  ScalarNSOElemSuppAlg(
     Realm &realm,
     ScalarFieldType *scalarQ,
     VectorFieldType *Gjq,
     ScalarFieldType *diffFluxCoeff,
-    const double fourthFac);
+    const double fourthFac,
+    const double altResFac);
 
-  virtual ~ScalarLocalDCOElemSuppAlg() {}
+  virtual ~ScalarNSOElemSuppAlg() {}
 
   virtual void setup();
 
@@ -68,10 +69,14 @@ public:
   const double Cupw_;
   const double small_;
   const double fourthFac_;
+  const double altResFac_;
+  const double om_altResFac_;
+  const double nonConservedForm_;
 
   // fixed space
   std::vector<double> ws_dqdxScs_;
   std::vector<double> ws_vrtmScs_;
+  std::vector<double> ws_rhovScs_;
 
   // scratch space; geometry
   std::vector<double> ws_scs_areav_;

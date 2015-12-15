@@ -6,8 +6,8 @@
 /*------------------------------------------------------------------------*/
 
 
-#ifndef MomentumLocalDCOElemSuppAlg_h
-#define MomentumLocalDCOElemSuppAlg_h
+#ifndef MomentumNSOElemSuppAlg_h
+#define MomentumNSOElemSuppAlg_h
 
 #include <SupplementalAlgorithm.h>
 #include <FieldTypeDef.h>
@@ -21,18 +21,19 @@ namespace nalu{
 class Realm;
 class MasterElement;
 
-class MomentumLocalDCOElemSuppAlg : public SupplementalAlgorithm
+class MomentumNSOElemSuppAlg : public SupplementalAlgorithm
 {
 public:
 
-  MomentumLocalDCOElemSuppAlg(
+  MomentumNSOElemSuppAlg(
     Realm &realm,
     VectorFieldType *velocity,
     GenericFieldType *Gju,
-    ScalarFieldType *diffFluxCoeff,
-    const double fourthFac);
+    ScalarFieldType *viscosity,
+    const double fourthFac,
+    const double altResFac);
 
-  virtual ~MomentumLocalDCOElemSuppAlg() {}
+  virtual ~MomentumNSOElemSuppAlg() {}
 
   virtual void setup();
 
@@ -58,7 +59,7 @@ public:
   ScalarFieldType *pressure_;
   VectorFieldType *velocityRTM_;
   VectorFieldType *coordinates_;
-  ScalarFieldType *diffFluxCoeff_;
+  ScalarFieldType *viscosity_;
   GenericFieldType *Gju_;
   double dt_;
   const int nDim_;
@@ -68,13 +69,18 @@ public:
   const double Cupw_;
   const double small_;
   const double fourthFac_;
+  const double altResFac_;
+  const double om_altResFac_;
+  const double nonConservedForm_;
+  const double includeDivU_;
 
   // fixed space
   std::vector<double> ws_dukdxScs_;
   std::vector<double> ws_rhovScs_;
   std::vector<double> ws_vrtmScs_;
   std::vector<double> ws_dpdxScs_;
-  
+  std::vector<double> ws_kd_;
+
   // scratch space; geometry
   std::vector<double> ws_scs_areav_;
   std::vector<double> ws_dndx_;
@@ -94,8 +100,8 @@ public:
   std::vector<double> ws_pressure_;
   std::vector<double> ws_velocityRTM_;
   std::vector<double> ws_coordinates_;
-  //std::vector<double> ws_diffFluxCoeff_;
-  //std::vector<double> ws_Gju_;
+  std::vector<double> ws_viscosity_;
+  std::vector<double> ws_Gju_;
 };
 
 } // namespace nalu
