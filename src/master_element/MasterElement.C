@@ -15,6 +15,11 @@
 
 #include <cmath>
 #include <limits>
+#include <array>
+#include "Teuchos_SerialDenseMatrix.hpp"
+#include "Teuchos_SerialDenseVector.hpp"
+#include "Teuchos_SerialDenseSolver.hpp"
+#include "Teuchos_RCP.hpp"
 
 namespace sierra{
 namespace nalu{
@@ -980,82 +985,8 @@ HexahedralP2Element::HexahedralP2Element()
     nodes1D_(3),
     numQuad_(2)
 {
-  //TODO: Avoid redundant gradient computations when useGLLGLL_ is enabled
-
   nDim_ = 3;
   nodesPerElement_ = nodes1D_ * nodes1D_ * nodes1D_;
-
-  if (useGLLGLL_ && numQuad_ != 3) {
-    throw std::runtime_error("useGLLGLL_ only implemented for 3-point quadrature");
-  }
-
-  // Per subcontrol-volume (surface)  quadrature rule in 1D
-  // numQuad_ = 2 is the optimal quadrature for OoA
-  switch (numQuad_) {
-    case 1:
-      gaussAbscissae_ = { 0.0 };
-      gaussWeight_ = { 1.0 };
-      break;
-    case 2:
-      gaussAbscissae_ = { -std::sqrt(3.0)/3.0, std::sqrt(3.0)/3.0 };
-      gaussWeight_ = { 0.5, 0.5 };
-      break;
-    case 3:
-      if (!useGLLGLL_) {
-        gaussAbscissae_ = { -std::sqrt(3.0/5.0), 0.0, std::sqrt(3.0/5.0) };
-        gaussWeight_ = { 5.0/18.0, 4.0/9.0,  5.0/18.0 };
-      }
-      else {
-        gaussAbscissae_ = { -1.0, 0.0, +1.0 };
-
-        //use a node-specific quadrature weight with fixed integration point locations
-        std::vector<std::vector<double>> weightRHS(3,std::vector<double>(3));
-        weightRHS[0][0] =  (1.0-scsDist_);
-        weightRHS[1][0] = -(1.0-scsDist_*scsDist_)/2.0;
-        weightRHS[2][0] =  (1.0-scsDist_*scsDist_*scsDist_)/3.0;
-
-        weightRHS[0][1] =  2.0*scsDist_;
-        weightRHS[1][1] =  0.0;
-        weightRHS[2][1] =  2.0*scsDist_*scsDist_*scsDist_/3.0;
-
-        weightRHS[0][2] =  weightRHS[0][0];
-        weightRHS[1][2] = -weightRHS[1][0];
-        weightRHS[2][2] =  weightRHS[2][0];
-
-        gaussWeight_.resize(numQuad_*nodes1D_);
-
-        //left (-1) node
-        gaussWeight_[0 + nodes1D_ * 0] = 0.5 * (weightRHS[2][0] - weightRHS[1][0]);
-        gaussWeight_[1 + nodes1D_ * 0] = weightRHS[0][0] - weightRHS[2][0];
-        gaussWeight_[2 + nodes1D_ * 0] = 0.5 * (weightRHS[2][0] + weightRHS[1][0]);
-
-        //middle (0) node
-        gaussWeight_[0 + nodes1D_ * 1] = 0.5 * (weightRHS[2][1] - weightRHS[1][1]);
-        gaussWeight_[1 + nodes1D_ * 1] = weightRHS[0][1] - weightRHS[2][1];
-        gaussWeight_[2 + nodes1D_ * 1] = 0.5 * (weightRHS[2][1] + weightRHS[1][1]);
-
-        //right (+1) node
-        gaussWeight_[0 + nodes1D_ * 2] = 0.5 * (weightRHS[2][2] - weightRHS[1][2]);
-        gaussWeight_[1 + nodes1D_ * 2] = weightRHS[0][2] - weightRHS[2][2];
-        gaussWeight_[2 + nodes1D_ * 2] = 0.5 * (weightRHS[2][2] + weightRHS[1][2]);
-      }
-      break;
-    case 4:
-      gaussAbscissae_ = {
-          -std::sqrt(3.0/7.0+2.0/7.0*std::sqrt(6.0/5.0)),
-          -std::sqrt(3.0/7.0-2.0/7.0*std::sqrt(6.0/5.0)),
-          +std::sqrt(3.0/7.0-2.0/7.0*std::sqrt(6.0/5.0)),
-          +std::sqrt(3.0/7.0+2.0/7.0*std::sqrt(6.0/5.0)) };
-
-      gaussWeight_ = {
-          (18.0-std::sqrt(30.0))/72.0,
-          (18.0+std::sqrt(30.0))/72.0,
-          (18.0+std::sqrt(30.0))/72.0,
-          (18.0-std::sqrt(30.0))/72.0 };
-      break;
-    default:
-      throw std::runtime_error("Quadrature rule not implemented");
-  }
 
   // map the standard stk node numbering to a tensor-product style node numbering (i.e. node (m,l,k) -> m+npe*l+npe^2*k)
   stkNodeMap_ = {
@@ -1072,6 +1003,126 @@ HexahedralP2Element::HexahedralP2Element()
 
   // a padded list of the scs locations
   scsEndLoc_ = { -1.0, -scsDist_, scsDist_, 1.0 };
+}
+
+//--------------------------------------------------------------------------
+//-------- set_quadrature_rule ---------------------------------------------
+//--------------------------------------------------------------------------
+void
+HexahedralP2Element::set_quadrature_rule()
+{
+  gaussAbscissaeShift_ = {-1.0,-1.0,0.0,0.0,+1.0,+1.0};
+
+  if (useGLLGLL_ && numQuad_ < 3) {
+    throw std::runtime_error("Need at least 3 points for gllgll quadrature");
+  }
+
+  switch (numQuad_) {
+    case 1:
+    {
+      gaussAbscissae_ = { 0.0 };
+      gaussWeight_ = { 1.0 };
+      break;
+    }
+    case 2:
+    {
+      gaussAbscissae_ = { -std::sqrt(3.0)/3.0, std::sqrt(3.0)/3.0 };
+      gaussWeight_ = { 0.5, 0.5 };
+      break;
+    }
+    case 3:
+    {
+      if (!useGLLGLL_) {
+        gaussAbscissae_ = { -std::sqrt(3.0/5.0), 0.0, std::sqrt(3.0/5.0) };
+        gaussWeight_ = { 5.0/18.0, 4.0/9.0,  5.0/18.0 };
+      }
+      else {
+        gaussAbscissae1D_ = {-1.0, 0.0, +1.0};
+        GLLGLL_quadrature_weights();
+        gaussAbscissae_ = {
+            gaussAbscissae1D_[0], gaussAbscissae1D_[1], gaussAbscissae1D_[2],
+            gaussAbscissae1D_[0], gaussAbscissae1D_[1], gaussAbscissae1D_[2],
+            gaussAbscissae1D_[0], gaussAbscissae1D_[1], gaussAbscissae1D_[2]
+        };
+      }
+      break;
+    }
+    case 4:
+    {
+      if (!useGLLGLL_) {
+        gaussAbscissae_ = {
+            -std::sqrt(3.0/7.0+2.0/7.0*std::sqrt(6.0/5.0)),
+            -std::sqrt(3.0/7.0-2.0/7.0*std::sqrt(6.0/5.0)),
+            +std::sqrt(3.0/7.0-2.0/7.0*std::sqrt(6.0/5.0)),
+            +std::sqrt(3.0/7.0+2.0/7.0*std::sqrt(6.0/5.0))
+        };
+
+        gaussWeight_ = {
+            (18.0-std::sqrt(30.0))/72.0,
+            (18.0+std::sqrt(30.0))/72.0,
+            (18.0+std::sqrt(30.0))/72.0,
+            (18.0-std::sqrt(30.0))/72.0
+        };
+      }
+      else {
+        gaussAbscissae1D_ = { -1.0, -std::sqrt(5.0)/5.0, std::sqrt(5.0)/5.0, +1.0};
+        GLLGLL_quadrature_weights();
+
+        gaussAbscissae_ = {
+            gaussAbscissae1D_[0], gaussAbscissae1D_[1], gaussAbscissae1D_[2], gaussAbscissae1D_[3],
+            gaussAbscissae1D_[0], gaussAbscissae1D_[1], gaussAbscissae1D_[2], gaussAbscissae1D_[3],
+            gaussAbscissae1D_[0], gaussAbscissae1D_[1], gaussAbscissae1D_[2], gaussAbscissae1D_[3]
+        };
+      }
+      break;
+    }
+    default:
+      throw std::runtime_error("Quadrature rule not implemented");
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- GLL_quadrature_weights ----------------------------------------
+//--------------------------------------------------------------------------
+void
+HexahedralP2Element::GLLGLL_quadrature_weights()
+{
+  // for fixed abscissae, use a moment-matching equation to compute weights
+
+  const int nrows = gaussAbscissae1D_.size();
+  const int nrhs = nodes1D_;
+
+  Teuchos::SerialDenseMatrix<int, double> weightLHS(nrows, nrows);
+  for (int j = 0; j < nrows; ++j) {
+    for (int i = 0; i < nrows; ++i) {
+      weightLHS(i, j) = std::pow(gaussAbscissae1D_[j], i);
+    }
+  }
+
+  // each node has a separate RHS
+  Teuchos::SerialDenseMatrix<int, double> weightRHS(nrows, nrhs);
+  for (int j = 0; j < nrhs; ++j) {
+    for (int i = 0; i < nrows; ++i) {
+      weightRHS(i, j) = (std::pow(scsEndLoc_[j + 1], i + 1)
+                       - std::pow(scsEndLoc_[j], i + 1)) / (i + 1.0);
+    }
+  }
+
+  Teuchos::SerialDenseSolver<int, double> solver;
+  Teuchos::SerialDenseMatrix<int, double> quadratureWeights(nrows, nrhs);
+  solver.setMatrix(Teuchos::rcp(&weightLHS, false));
+  solver.setVectors(
+    Teuchos::rcp(&quadratureWeights, false),
+    Teuchos::rcp(&weightRHS, false)
+  );
+  solver.solve();
+
+  gaussWeight_.resize(nrows * nrhs);
+  for (int j = 0; j < nrows; ++j) {
+    for (int i = 0; i < nrhs; ++i) {
+      gaussWeight_[i + j * nrhs] = quadratureWeights(i, j); //transpose
+    }
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -1098,9 +1149,20 @@ HexahedralP2Element::gauss_point_location(
                                         gaussAbscissae_[gaussPointOrdinal] );
   }
   else {
-    location1D = gaussAbscissae_[gaussPointOrdinal];
+    location1D = gaussAbscissae_[nodeOrdinal*numQuad_ + gaussPointOrdinal];
   }
    return location1D;
+}
+
+//--------------------------------------------------------------------------
+//-------- gauss_point_location --------------------------------------------
+//--------------------------------------------------------------------------
+double
+HexahedralP2Element::shifted_gauss_point_location(
+  int nodeOrdinal,
+  int gaussPointOrdinal) const
+{
+  return gaussAbscissaeShift_[nodeOrdinal*numQuad_ + gaussPointOrdinal];
 }
 
 //--------------------------------------------------------------------------
@@ -1120,11 +1182,16 @@ HexahedralP2Element::tensor_product_weight(
     const double Ls3 = scsEndLoc_[s3Node+1]-scsEndLoc_[s3Node];
     const double isoparametricArea = Ls1 * Ls2 * Ls3;
 
-    weight = isoparametricArea * gaussWeight_[s1Ip] * gaussWeight_[s2Ip] * gaussWeight_[s3Ip];
+    weight = isoparametricArea
+           * gaussWeight_[s1Ip]
+           * gaussWeight_[s2Ip]
+           * gaussWeight_[s3Ip];
    }
    else {
-     // weights are node-specific and take into account the isoparametric volume
-     weight = gaussWeight_[s1Node+nodes1D_*s1Ip] * gaussWeight_[s2Node+nodes1D_*s2Ip] * gaussWeight_[s3Node+nodes1D_*s3Ip];
+     weight = gaussWeight_[s1Node*numQuad_+s1Ip]
+            * gaussWeight_[s2Node*numQuad_+s2Ip]
+            * gaussWeight_[s3Node*numQuad_+s3Ip];
+
    }
    return weight;
 }
@@ -1147,14 +1214,15 @@ HexahedralP2Element::tensor_product_weight(
     weight = isoparametricArea * gaussWeight_[s1Ip] * gaussWeight_[s2Ip];
    }
    else {
-     // weights are node-specific and take into account the isoparametric area
-     weight = gaussWeight_[s1Node+nodes1D_*s1Ip] * gaussWeight_[s2Node+nodes1D_*s2Ip];
+     weight = gaussWeight_[s1Node*numQuad_+s1Ip]
+            * gaussWeight_[s2Node*numQuad_+s2Ip];
+
    }
    return weight;
 }
 
 //--------------------------------------------------------------------------
-//-------- shape_fcn -------------------------------------------------------c
+//-------- shape_fcn -------------------------------------------------------
 //--------------------------------------------------------------------------
 void
 HexahedralP2Element::shape_fcn(double* shpfc)
@@ -1163,6 +1231,17 @@ HexahedralP2Element::shape_fcn(double* shpfc)
     shpfc[ip] = shapeFunctions_[ip];
   }
 }
+//--------------------------------------------------------------------------
+//-------- shifted_shape_fcn -----------------------------------------------
+//--------------------------------------------------------------------------
+void
+HexahedralP2Element::shifted_shape_fcn(double* shpfc)
+{
+  for (int ip = 0; ip < numIntPoints_ * nodesPerElement_; ++ip) {
+    shpfc[ip] = shapeFunctionsShift_[ip];
+  }
+}
+
 
 //--------------------------------------------------------------------------
 //-------- eval_shape_functions_at_ips -------------------------------------
@@ -1185,13 +1264,37 @@ HexahedralP2Element::eval_shape_derivs_at_ips()
 }
 
 //--------------------------------------------------------------------------
+//-------- eval_shape_functions_at_shifted_ips -----------------------------
+//--------------------------------------------------------------------------
+void
+HexahedralP2Element::eval_shape_functions_at_shifted_ips()
+{
+  shapeFunctionsShift_.resize(numIntPoints_*nodesPerElement_);
+  hex27_shape_fcn(numIntPoints_, intgLocShift_.data(), shapeFunctionsShift_.data());
+}
+
+//--------------------------------------------------------------------------
+//-------- eval_shape_derivs_at_ips ----------------------------------------
+//--------------------------------------------------------------------------
+void
+HexahedralP2Element::eval_shape_derivs_at_shifted_ips()
+{
+  shapeDerivsShift_.resize(numIntPoints_*nodesPerElement_*nDim_);
+  hex27_shape_deriv(numIntPoints_, intgLocShift_.data(), shapeDerivsShift_.data());
+}
+
+//--------------------------------------------------------------------------
 //-------- eval_shape_derivs_at_face_ips -----------------------------------
 //--------------------------------------------------------------------------
 void
 HexahedralP2Element::eval_shape_derivs_at_face_ips()
 {
   expFaceShapeDerivs_.resize(numIntPoints_*nodesPerElement_*nDim_);
-  hex27_shape_deriv(numIntPoints_, intgExpFace_.data(), expFaceShapeDerivs_.data());
+  hex27_shape_deriv(
+    numIntPoints_,
+    intgExpFace_.data(),
+    expFaceShapeDerivs_.data()
+  );
 }
 
 //--------------------------------------------------------------------------
@@ -1479,12 +1582,17 @@ HexahedralP2Element::hex27_shape_deriv(
 Hex27SCV::Hex27SCV()
   : HexahedralP2Element()
 {
+  // set up the one-dimensional quadrature rule
+  set_quadrature_rule();
+
   // set up integration rule and relevant maps for scvs
   set_interior_info();
 
   // compute and save shape functions and derivatives at ips
   eval_shape_functions_at_ips();
   eval_shape_derivs_at_ips();
+  eval_shape_functions_at_shifted_ips();
+  eval_shape_derivs_at_shifted_ips();
 }
 
 //--------------------------------------------------------------------------
@@ -1519,6 +1627,10 @@ Hex27SCV::set_interior_info()
               intgLoc_[vector_index]     = gauss_point_location(l,i);
               intgLoc_[vector_index + 1] = gauss_point_location(m,j);
               intgLoc_[vector_index + 2] = gauss_point_location(n,k);
+
+              intgLocShift_[vector_index]     = shifted_gauss_point_location(l,i);
+              intgLocShift_[vector_index + 1] = shifted_gauss_point_location(m,j);
+              intgLocShift_[vector_index + 2] = shifted_gauss_point_location(n,k);
 
               //weight
               ipWeight_[scalar_index] = tensor_product_weight(l,m,n,i,j,k);
@@ -1626,6 +1738,9 @@ Hex27SCV::jacobian_determinant(
 Hex27SCS::Hex27SCS()
   : HexahedralP2Element()
 {
+  // set up the one-dimensional quadrature rule
+  set_quadrature_rule();
+
   // set up integration rule and relevant maps on scs
   set_interior_info();
 
@@ -1636,6 +1751,8 @@ Hex27SCS::Hex27SCS()
   eval_shape_functions_at_ips();
   eval_shape_derivs_at_ips();
   eval_shape_derivs_at_face_ips();
+  eval_shape_functions_at_shifted_ips();
+  eval_shape_derivs_at_shifted_ips();
 }
 
 //--------------------------------------------------------------------------
@@ -1695,6 +1812,10 @@ Hex27SCS::set_interior_info()
             intgLoc_[vector_index + 1] = gauss_point_location(l,j);
             intgLoc_[vector_index + 2] = scsLoc[m];
 
+            intgLocShift_[vector_index]     = shifted_gauss_point_location(k,i);
+            intgLocShift_[vector_index + 1] = shifted_gauss_point_location(l,j);
+            intgLocShift_[vector_index + 2] = scsLoc[m];
+
             //compute the quadrature weight
             ipInfo_[scalar_index].weight = orientation[m] * tensor_product_weight(k,l,i,j);
 
@@ -1734,6 +1855,10 @@ Hex27SCS::set_interior_info()
             intgLoc_[vector_index + 1] = scsLoc[m];
             intgLoc_[vector_index + 2] = gauss_point_location(l,j);
 
+            intgLocShift_[vector_index]     = shifted_gauss_point_location(k,i);
+            intgLocShift_[vector_index + 1] = scsLoc[m];
+            intgLocShift_[vector_index + 2] = shifted_gauss_point_location(l,j);
+
             //compute the quadrature weight
             ipInfo_[scalar_index].weight = orientation[m] * tensor_product_weight(k,l,i,j);
 
@@ -1772,6 +1897,10 @@ Hex27SCS::set_interior_info()
             intgLoc_[vector_index]     = scsLoc[m];
             intgLoc_[vector_index + 1] = gauss_point_location(k,i);
             intgLoc_[vector_index + 2] = gauss_point_location(l,j);
+
+            intgLocShift_[vector_index]     = scsLoc[m];
+            intgLocShift_[vector_index + 1] = shifted_gauss_point_location(k,i);
+            intgLocShift_[vector_index + 2] = shifted_gauss_point_location(l,j);
 
             //compute the quadrature weight
             ipInfo_[scalar_index].weight = -orientation[m] * tensor_product_weight(k,l,i,j);
@@ -2068,7 +2197,7 @@ Hex27SCS::determinant(
   //returns the normal vector x_t x x_u for constant s curves
   //returns the normal vector x_u x x_s for constant t curves
   //returns the normal vector x_s x x_t for constant u curves
-  std::vector<double> areaVector(nDim_);
+  std::array<double,3> areaVector;
 
   for (int k = 0; k < nelem; ++k) {
     const int coord_elem_offset = nDim_ * nodesPerElement_ * k;
@@ -2163,6 +2292,8 @@ void Hex27SCS::grad_op(
   double *det_j,
   double *error)
 {
+  *error = 0.0;
+
   for (int k = 0; k < nelem; ++k) {
     const int coord_elem_offset = nDim_ * nodesPerElement_ * k;
     const int scalar_elem_offset = numIntPoints_ * k;
@@ -2189,6 +2320,44 @@ void Hex27SCS::grad_op(
 }
 
 //--------------------------------------------------------------------------
+//-------- shifted_grad_op -------------------------------------------------
+//--------------------------------------------------------------------------
+void Hex27SCS::shifted_grad_op(
+  const int nelem,
+  const double *coords,
+  double *gradop,
+  double *deriv,
+  double *det_j,
+  double *error)
+{
+  *error = 0.0;
+
+  for (int k = 0; k < nelem; ++k) {
+    const int coord_elem_offset = nDim_ * nodesPerElement_ * k;
+    const int scalar_elem_offset = numIntPoints_ * k;
+    const int grad_elem_offset = numIntPoints_ * nDim_ * nodesPerElement_ * k;
+
+    for (int ip = 0; ip < numIntPoints_; ++ip) {
+      const int grad_offset = nDim_ * nodesPerElement_ * ip;
+      const int offset = grad_offset + grad_elem_offset;
+
+      for (int j = 0; j < nodesPerElement_ * nDim_; ++j) {
+        deriv[offset + j] = shapeDerivsShift_[grad_offset +j];
+      }
+
+      gradient( &coords[coord_elem_offset],
+                &shapeDerivsShift_[grad_offset],
+                &gradop[offset],
+                &det_j[scalar_elem_offset+ip] );
+
+      if (det_j[ip] <= 0.0) {
+        *error = 1.0;
+      }
+    }
+  }
+}
+
+//--------------------------------------------------------------------------
 //-------- face_grad_op ----------------------------------------------------
 //--------------------------------------------------------------------------
 void Hex27SCS::face_grad_op(
@@ -2199,6 +2368,8 @@ void Hex27SCS::face_grad_op(
   double *det_j,
   double *error)
 {
+  *error = 0.0;
+
   const int face_offset =  nDim_ * ipsPerFace_ * nodesPerElement_ * face_ordinal;
   for (int k = 0; k < nelem; ++k) {
     const int coord_elem_offset = nDim_ * nodesPerElement_ * k;
@@ -4502,79 +4673,6 @@ QuadrilateralP2Element::QuadrilateralP2Element()
   nDim_ = 2;
   nodesPerElement_ = nodes1D_ * nodes1D_;
 
-  if (useGLLGLL_ && numQuad_ != 3) {
-     throw std::runtime_error("useGLLGLL_ only implemented for 3-point quadrature");
-   }
-
-  // numQuad_ = 2 is the optimal quadrature for OoA
-  switch (numQuad_) {
-    case 1:
-      gaussAbscissae_ = { 0.0 };
-      gaussWeight_ = { 1.0 };
-      break;
-    case 2:
-      gaussAbscissae_ = { -std::sqrt(3.0)/3.0, std::sqrt(3.0)/3.0 };
-      gaussWeight_ = { 0.5, 0.5 };
-      break;
-    case 3:
-      if (!useGLLGLL_) {
-        gaussAbscissae_ = { -std::sqrt(3.0/5.0), 0.0, std::sqrt(3.0/5.0) };
-        gaussWeight_ = { 5.0/18.0, 4.0/9.0,  5.0/18.0 };
-      }
-      else {
-        gaussAbscissae_ = {-1.0, 0.0, +1.0};
-
-        //use a node-specific quadrature weight with fixed integration point locations
-        std::vector<std::vector<double>> weightRHS(3,std::vector<double>(3));
-        weightRHS[0][0] =  (1.0-scsDist_);
-        weightRHS[1][0] = -(1.0-scsDist_*scsDist_)/2.0;
-        weightRHS[2][0] =  (1.0-scsDist_*scsDist_*scsDist_)/3.0;
-
-        weightRHS[0][1] =  2.0*scsDist_;
-        weightRHS[1][1] =  0.0;
-        weightRHS[2][1] =  2.0*scsDist_*scsDist_*scsDist_/3.0;
-
-        weightRHS[0][2] =  weightRHS[0][0];
-        weightRHS[1][2] = -weightRHS[1][0];
-        weightRHS[2][2] =  weightRHS[2][0];
-
-        gaussWeight_.resize(numQuad_*nodes1D_);
-
-        //left (-1) node
-        gaussWeight_[0 + nodes1D_ * 0] = 0.5 * (weightRHS[2][0] - weightRHS[1][0]);
-        gaussWeight_[1 + nodes1D_ * 0] = weightRHS[0][0] - weightRHS[2][0];
-        gaussWeight_[2 + nodes1D_ * 0] = 0.5 * (weightRHS[2][0] + weightRHS[1][0]);
-
-        //middle (0) node
-        gaussWeight_[0 + nodes1D_ * 1] = 0.5 * (weightRHS[2][1] - weightRHS[1][1]);
-        gaussWeight_[1 + nodes1D_ * 1] = weightRHS[0][1] - weightRHS[2][1];
-        gaussWeight_[2 + nodes1D_ * 1] = 0.5 * (weightRHS[2][1] + weightRHS[1][1]);
-
-        //right (+1) node
-        gaussWeight_[0 + nodes1D_ * 2] = 0.5 * (weightRHS[2][2] - weightRHS[1][2]);
-        gaussWeight_[1 + nodes1D_ * 2] = weightRHS[0][2] - weightRHS[2][2];
-        gaussWeight_[2 + nodes1D_ * 2] = 0.5 * (weightRHS[2][2] + weightRHS[1][2]);
-      }
-      break;
-    case 4:
-      gaussAbscissae_ = {
-                         -std::sqrt(3.0/7.0+2.0/7.0*std::sqrt(6.0/5.0)),
-                         -std::sqrt(3.0/7.0-2.0/7.0*std::sqrt(6.0/5.0)),
-                         +std::sqrt(3.0/7.0-2.0/7.0*std::sqrt(6.0/5.0)),
-                         +std::sqrt(3.0/7.0+2.0/7.0*std::sqrt(6.0/5.0))
-                        };
-
-      gaussWeight_ = {
-                      (18.0-std::sqrt(30.0))/72.0,
-                      (18.0+std::sqrt(30.0))/72.0,
-                      (18.0+std::sqrt(30.0))/72.0,
-                      (18.0-std::sqrt(30.0))/72.0
-                     };
-      break;
-    default:
-      throw std::runtime_error("Quadrature rule not implemented");
-  }
-
   // map the standard stk (refinement consistent) node numbering
   // to a tensor-product style node numbering (i.e. node (m,l,k) -> m+npe*l+npe^2*k)
   stkNodeMap_ = {
@@ -4585,6 +4683,126 @@ QuadrilateralP2Element::QuadrilateralP2Element()
 
   // a padded list of scs locations
   scsEndLoc_ = { -1.0, -scsDist_, scsDist_, +1.0 };
+}
+
+//--------------------------------------------------------------------------
+//-------- set_quadrature_rule ---------------------------------------------
+//--------------------------------------------------------------------------
+void
+QuadrilateralP2Element::set_quadrature_rule()
+{
+  gaussAbscissaeShift_ = {-1.0,-1.0,0.0,0.0,+1.0,+1.0};
+
+  if (useGLLGLL_ && numQuad_ < 3) {
+    throw std::runtime_error("Need at least 3 points for gllgll quadrature");
+  }
+
+  switch (numQuad_) {
+    case 1:
+    {
+      gaussAbscissae_ = { 0.0 };
+      gaussWeight_ = { 1.0 };
+      break;
+    }
+    case 2:
+    {
+      gaussAbscissae_ = { -std::sqrt(3.0)/3.0, std::sqrt(3.0)/3.0 };
+      gaussWeight_ = { 0.5, 0.5 };
+      break;
+    }
+    case 3:
+    {
+      if (!useGLLGLL_) {
+        gaussAbscissae_ = { -std::sqrt(3.0/5.0), 0.0, std::sqrt(3.0/5.0) };
+        gaussWeight_ = { 5.0/18.0, 4.0/9.0,  5.0/18.0 };
+      }
+      else {
+        gaussAbscissae1D_ = {-1.0, 0.0, +1.0};
+        GLLGLL_quadrature_weights();
+        gaussAbscissae_ = {
+            gaussAbscissae1D_[0], gaussAbscissae1D_[1], gaussAbscissae1D_[2],
+            gaussAbscissae1D_[0], gaussAbscissae1D_[1], gaussAbscissae1D_[2],
+            gaussAbscissae1D_[0], gaussAbscissae1D_[1], gaussAbscissae1D_[2]
+        };
+      }
+      break;
+    }
+    case 4:
+    {
+      if (!useGLLGLL_) {
+        gaussAbscissae_ = {
+            -std::sqrt(3.0/7.0+2.0/7.0*std::sqrt(6.0/5.0)),
+            -std::sqrt(3.0/7.0-2.0/7.0*std::sqrt(6.0/5.0)),
+            +std::sqrt(3.0/7.0-2.0/7.0*std::sqrt(6.0/5.0)),
+            +std::sqrt(3.0/7.0+2.0/7.0*std::sqrt(6.0/5.0))
+        };
+
+        gaussWeight_ = {
+            (18.0-std::sqrt(30.0))/72.0,
+            (18.0+std::sqrt(30.0))/72.0,
+            (18.0+std::sqrt(30.0))/72.0,
+            (18.0-std::sqrt(30.0))/72.0
+        };
+      }
+      else {
+        gaussAbscissae1D_ = { -1.0, -std::sqrt(5.0)/5.0, std::sqrt(5.0)/5.0, +1.0};
+        GLLGLL_quadrature_weights();
+
+        gaussAbscissae_ = {
+            gaussAbscissae1D_[0], gaussAbscissae1D_[1], gaussAbscissae1D_[2], gaussAbscissae1D_[3],
+            gaussAbscissae1D_[0], gaussAbscissae1D_[1], gaussAbscissae1D_[2], gaussAbscissae1D_[3],
+            gaussAbscissae1D_[0], gaussAbscissae1D_[1], gaussAbscissae1D_[2], gaussAbscissae1D_[3]
+        };
+      }
+      break;
+    }
+    default:
+      throw std::runtime_error("Quadrature rule not implemented");
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- GLLGLL_quadrature_weights ---------------------------------------
+//--------------------------------------------------------------------------
+void
+QuadrilateralP2Element::GLLGLL_quadrature_weights()
+{
+  // for fixed abscissae, use a moment-matching equation to compute weights
+  // given a heaviside weight function
+  const int nrows = gaussAbscissae1D_.size();
+  const int nrhs = nodes1D_;
+
+  Teuchos::SerialDenseMatrix<int, double> weightLHS(nrows, nrows);
+  for (int j = 0; j < nrows; ++j) {
+    for (int i = 0; i < nrows; ++i) {
+      weightLHS(i, j) = std::pow(gaussAbscissae1D_[j], i);
+    }
+  }
+
+  // each node has a separate RHS
+  Teuchos::SerialDenseMatrix<int, double> weightRHS(nrows, nrhs);
+  for (int j = 0; j < nrhs; ++j) {
+    for (int i = 0; i < nrows; ++i) {
+      weightRHS(i, j) = (std::pow(scsEndLoc_[j + 1], i + 1)
+                       - std::pow(scsEndLoc_[j], i + 1)) / (i + 1.0);
+    }
+  }
+
+  Teuchos::SerialDenseSolver<int, double> solver;
+  Teuchos::SerialDenseMatrix<int, double> quadratureWeights(nrows, nrhs);
+  solver.setMatrix(Teuchos::rcp(&weightLHS, false));
+  solver.setVectors(
+    Teuchos::rcp(&quadratureWeights, false),
+    Teuchos::rcp(&weightRHS, false)
+  );
+  solver.solve();
+
+  gaussWeight_.resize(nrows * nrhs);
+  for (int j = 0; j < nrows; ++j) {
+    for (int i = 0; i < nrhs; ++i) {
+      gaussWeight_[i + j * nrhs] = quadratureWeights(i, j); //transpose
+    }
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -4611,11 +4829,20 @@ QuadrilateralP2Element::gauss_point_location(
                                         gaussAbscissae_[gaussPointOrdinal] );
   }
   else {
-    location1D = gaussAbscissae_[gaussPointOrdinal];
+    location1D = gaussAbscissae_[nodeOrdinal*numQuad_ + gaussPointOrdinal];
   }
    return location1D;
 }
-
+//--------------------------------------------------------------------------
+//-------- shifted_gauss_point_location ------------------------------------
+//--------------------------------------------------------------------------
+double
+QuadrilateralP2Element::shifted_gauss_point_location(
+  int nodeOrdinal,
+  int gaussPointOrdinal) const
+{
+  return gaussAbscissaeShift_[nodeOrdinal*numQuad_ + gaussPointOrdinal];
+}
 //--------------------------------------------------------------------------
 //-------- tensor_product_weight -------------------------------------------
 //--------------------------------------------------------------------------
@@ -4671,6 +4898,13 @@ QuadrilateralP2Element::shape_fcn(double* shpfc)
   }
 }
 
+void
+QuadrilateralP2Element::shifted_shape_fcn(double* shpfc)
+{
+  for (int ip = 0; ip < numIntPoints_ * nodesPerElement_; ++ip) {
+    shpfc[ip] = shapeFunctionsShift_[ip];
+  }
+}
 //--------------------------------------------------------------------------
 //-------- eval_shape_functions_at_ips -------------------------------------
 //--------------------------------------------------------------------------
@@ -4691,6 +4925,25 @@ QuadrilateralP2Element::eval_shape_derivs_at_ips()
   quad9_shape_deriv(numIntPoints_, intgLoc_.data(), shapeDerivs_.data());
 }
 
+//--------------------------------------------------------------------------
+//-------- eval_shape_functions_at_shifted_ips -----------------------------
+//--------------------------------------------------------------------------
+void
+QuadrilateralP2Element::eval_shape_functions_at_shifted_ips()
+{
+  shapeFunctionsShift_.resize(numIntPoints_*nodesPerElement_);
+  quad9_shape_fcn(numIntPoints_, intgLocShift_.data(), shapeFunctionsShift_.data());
+}
+
+//--------------------------------------------------------------------------
+//-------- eval_shape_derivs_at_ips ----------------------------------------
+//--------------------------------------------------------------------------
+void
+QuadrilateralP2Element::eval_shape_derivs_at_shifted_ips()
+{
+  shapeDerivsShift_.resize(numIntPoints_*nodesPerElement_*nDim_);
+  quad9_shape_deriv(numIntPoints_, intgLocShift_.data(), shapeDerivsShift_.data());
+}
 //--------------------------------------------------------------------------
 //-------- eval_shape_derivs_at_face_ips ----------------------------------------
 //--------------------------------------------------------------------------
@@ -4809,12 +5062,18 @@ QuadrilateralP2Element::quad9_shape_deriv(
 Quad92DSCV::Quad92DSCV()
 : QuadrilateralP2Element()
 {
+  // set up the one-dimensional quadrature rule
+  set_quadrature_rule();
+
   // set up integration rule and relevant maps for scvs
   set_interior_info();
 
   // compute and save shape functions and derivatives at ips
   eval_shape_functions_at_ips();
   eval_shape_derivs_at_ips();
+
+  eval_shape_functions_at_shifted_ips();
+  eval_shape_derivs_at_shifted_ips();
 }
 
 //--------------------------------------------------------------------------
@@ -4843,6 +5102,9 @@ Quad92DSCV::set_interior_info()
           //integration point location
           intgLoc_[vector_index]     = gauss_point_location(k,i);
           intgLoc_[vector_index + 1] = gauss_point_location(l,j);
+
+          intgLocShift_[vector_index]     = shifted_gauss_point_location(k,i);
+          intgLocShift_[vector_index + 1] = shifted_gauss_point_location(l,j);
 
           //weight
           ipWeight_[scalar_index] = tensor_product_weight(k,l,i,j);
@@ -4937,6 +5199,9 @@ Quad92DSCV::jacobian_determinant(
 Quad92DSCS::Quad92DSCS()
   : QuadrilateralP2Element()
 {
+  // set up the one-dimensional quadrature rule
+  set_quadrature_rule();
+
   // set up integration rule and relevant maps for scs
   set_interior_info();
 
@@ -4947,6 +5212,9 @@ Quad92DSCS::Quad92DSCS()
   eval_shape_functions_at_ips();
   eval_shape_derivs_at_ips();
   eval_shape_derivs_at_face_ips();
+
+  eval_shape_functions_at_shifted_ips();
+  eval_shape_derivs_at_shifted_ips();
 }
 
 //--------------------------------------------------------------------------
@@ -5005,6 +5273,9 @@ Quad92DSCS::set_interior_info()
         intgLoc_[vector_index] = gauss_point_location(l,j);
         intgLoc_[vector_index + 1] = scsLoc[m];
 
+        intgLocShift_[vector_index] = shifted_gauss_point_location(l,j);
+        intgLocShift_[vector_index + 1] = scsLoc[m];
+
         //compute the quadrature weight
         ipInfo_[scalar_index].weight = orientation[m]*tensor_product_weight(l,j);
 
@@ -5039,6 +5310,9 @@ Quad92DSCS::set_interior_info()
 
         intgLoc_[vector_index] = scsLoc[m];
         intgLoc_[vector_index+1] = gauss_point_location(l,j);
+
+        intgLocShift_[vector_index] = scsLoc[m];
+        intgLocShift_[vector_index+1] = shifted_gauss_point_location(l,j);
 
         //compute the quadrature weight
         ipInfo_[scalar_index].weight = -orientation[m]*tensor_product_weight(l,j);
@@ -5194,7 +5468,7 @@ Quad92DSCS::determinant(
   //returns the normal vector (dyds,-dxds) for constant t curves
   //returns the normal vector (dydt,-dxdt) for constant s curves
 
-  std::vector<double> areaVector(nDim_);
+  std::array<double,2> areaVector;
 
   for (int k = 0; k < nelem; ++k) {
     const int coord_elem_offset = nDim_ * nodesPerElement_ * k;
@@ -5233,8 +5507,10 @@ void Quad92DSCS::grad_op(
 {
   int lerr = 0;
 
-  SIERRA_FORTRAN(quad92d_derivative)
-    ( &numIntPoints_, &intgLoc_[0], deriv );
+  int numShapeDerivs = numIntPoints_*nodesPerElement_*nDim_;
+  for (int j = 0; j < numShapeDerivs; ++j) {
+    deriv[j] = shapeDerivs_[j];
+  }
 
   SIERRA_FORTRAN(quad_gradient_operator)
     ( &nelem,
@@ -5249,6 +5525,35 @@ void Quad92DSCS::grad_op(
 }
 
 //--------------------------------------------------------------------------
+//-------- shifted_grad_op -------------------------------------------------
+//--------------------------------------------------------------------------
+void Quad92DSCS::shifted_grad_op(
+  const int nelem,
+  const double *coords,
+  double *gradop,
+  double *deriv,
+  double *det_j,
+  double *error)
+{
+  int lerr = 0;
+
+  int numShapeDerivs = numIntPoints_*nodesPerElement_*nDim_;
+  for (int j = 0; j < numShapeDerivs; ++j) {
+    deriv[j] = shapeDerivsShift_[j];
+  }
+
+  SIERRA_FORTRAN(quad_gradient_operator)
+  ( &nelem,
+      &nodesPerElement_,
+      &numIntPoints_,
+      deriv,
+      coords, gradop, det_j, error, &lerr );
+
+  if ( lerr )
+    std::cout << "sorry, negative area.." << std::endl;
+}
+
+//--------------------------------------------------------------------------
 //-------- face_grad_op ----------------------------------------------------
 //--------------------------------------------------------------------------
 void Quad92DSCS::face_grad_op(
@@ -5260,40 +5565,30 @@ void Quad92DSCS::face_grad_op(
   double *error)
 {
   int lerr = 0;
-  const int vecNodes = nDim_*nodesPerElement_;
 
-  std::vector<double> grad(vecNodes);
-  std::vector<double> shapeDerivs(vecNodes);
-
-  // raw pointers
-  double* p_shapeDerivs = shapeDerivs.data();
-  double* p_grad = grad.data();
-
-  const int nface = 1; // always 1 face -- need to update offsets if changes
+  const int nface = 1;
+  const int face_offset =  nDim_ * ipsPerFace_ * nodesPerElement_ * face_ordinal;
   for (int k = 0; k < nelem; ++k) {
-    const int coord_elem_offset = vecNodes * k;
-    const int scalar_ip_elem_offset = ipsPerFace_ * k;
-    const int grad_ip_elem_offset = ipsPerFace_ * vecNodes * k;
+    const int coord_elem_offset = nDim_ * nodesPerElement_ * k;
+    const int scalar_elem_offset = ipsPerFace_ * k;
 
-    for (int ni = 0; ni < ipsPerFace_; ++ni) {
-      const int grad_offset = ni * vecNodes + grad_ip_elem_offset;
-      const int face_offset =  nDim_ * ipsPerFace_ * face_ordinal + ni * nDim_;
-
-      SIERRA_FORTRAN(quad92d_derivative)
-      ( &nface, &intgExpFace_[face_offset], p_shapeDerivs );
+    for (int ip = 0; ip < ipsPerFace_; ++ip) {
+      const int grad_offset = nDim_ * nodesPerElement_ * ip;
 
       SIERRA_FORTRAN(quad_gradient_operator)
       ( &nface,
           &nodesPerElement_,
           &nface,
-          p_shapeDerivs,
-          &coords[coord_elem_offset], p_grad, &det_j[scalar_ip_elem_offset+ni], error, &lerr );
+          &expFaceShapeDerivs_[face_offset+grad_offset],
+          &coords[coord_elem_offset],
+          &gradop[grad_offset],
+          &det_j[scalar_elem_offset+ip],
+          error,
+          &lerr
+      );
 
-      if ( lerr )
-        std::cout << "sorry, issue with face_grad_op.." << std::endl;
-
-      for (int j = 0; j < vecNodes; ++j) {
-        gradop[grad_offset + j] = p_grad[j];
+      if (det_j[ip] <= 0.0) {
+        *error = 1.0;
       }
     }
   }
@@ -6275,12 +6570,17 @@ Quad93DSCS::Quad93DSCS()
   : HexahedralP2Element(),
     surfaceDimension_(2)
 {
+  // set up the one-dimensional quadrature rule
+  set_quadrature_rule();
+
   // set up integration rule and relevant maps on scs
   set_interior_info();
 
   // compute and save shape functions and derivatives at ips
   eval_shape_functions_at_ips();
   eval_shape_derivs_at_ips();
+  eval_shape_functions_at_shifted_ips();
+  eval_shape_derivs_at_shifted_ips();
 }
 
 //--------------------------------------------------------------------------
@@ -6318,6 +6618,9 @@ Quad93DSCS::set_interior_info()
            intgLoc_[vector_index_2D]     = gauss_point_location(k,i);
            intgLoc_[vector_index_2D + 1] = gauss_point_location(l,j);
 
+           intgLocShift_[vector_index_2D]     = shifted_gauss_point_location(k,i);
+           intgLocShift_[vector_index_2D + 1] = shifted_gauss_point_location(l,j);
+
            //weight
            ipWeight_[scalar_index] = tensor_product_weight(k,l,i,j);
 
@@ -6351,6 +6654,26 @@ Quad93DSCS::eval_shape_derivs_at_ips()
 {
   shapeDerivs_.resize(numIntPoints_*nodesPerElement_*surfaceDimension_);
   quad9_shape_deriv(numIntPoints_, intgLoc_.data(), shapeDerivs_.data());
+}
+
+//--------------------------------------------------------------------------
+//-------- eval_shape_derivs_at_ips ----------------------------------------
+//--------------------------------------------------------------------------
+void
+Quad93DSCS::eval_shape_functions_at_shifted_ips()
+{
+  shapeFunctionsShift_.resize(numIntPoints_*nodesPerElement_);
+  quad9_shape_fcn(numIntPoints_, intgLocShift_.data(), shapeFunctionsShift_.data());
+}
+
+//--------------------------------------------------------------------------
+//-------- eval_shape_derivs_at_ips ----------------------------------------
+//--------------------------------------------------------------------------
+void
+Quad93DSCS::eval_shape_derivs_at_shifted_ips()
+{
+  shapeDerivsShift_.resize(numIntPoints_*nodesPerElement_*surfaceDimension_);
+  quad9_shape_deriv(numIntPoints_, intgLocShift_.data(), shapeDerivsShift_.data());
 }
 
 //--------------------------------------------------------------------------
@@ -6477,7 +6800,7 @@ Quad93DSCS::determinant(
   double *areav,
   double *error)
 {
-  std::vector<double> areaVector(nDim_);
+  std::array<double,3> areaVector;
 
   for (int k = 0; k < nelem; ++k) {
     const int coord_elem_offset = nDim_ * nodesPerElement_ * k;
@@ -6984,6 +7307,10 @@ Edge32DSCS::Edge32DSCS()
   : QuadrilateralP2Element()
 {
   nodesPerElement_ = nodes1D_;
+
+  // set up the one-dimensional quadrature rule
+  set_quadrature_rule();
+
   numIntPoints_ = numQuad_ * nodes1D_;
 
   ipNodeMap_.resize(numIntPoints_);
@@ -7030,7 +7357,7 @@ void Edge32DSCS::determinant(
   double *areav,
   double *error)
 {
-  std::vector<double> areaVector(nDim_);
+  std::array<double,2> areaVector;
 
   for (int k = 0; k < nelem; ++k) {
     const int coord_elem_offset = nDim_ * nodesPerElement_ * k;

@@ -311,7 +311,7 @@ public:
   virtual ~HexahedralP2Element() {}
 
   void shape_fcn(double *shpfc);
-  void shifted_shape_fcn(double *shpfc)  { throw std::runtime_error("shifted shape functions not implemented"); };
+  void shifted_shape_fcn(double *shpfc);
 
 protected:
   struct ContourData {
@@ -325,6 +325,10 @@ protected:
     int nodeOrdinal,
     int gaussPointOrdinal) const;
 
+  double shifted_gauss_point_location(
+    int nodeOrdinal,
+    int gaussPointOrdinal) const;
+
   double tensor_product_weight(
     int s1Node, int s2Node, int s3Node,
     int s1Ip, int s2Ip, int s3Ip) const;
@@ -334,10 +338,15 @@ protected:
     int s1Ip, int s2Ip) const;
 
   virtual void eval_shape_functions_at_ips();
+  virtual void eval_shape_functions_at_shifted_ips();
 
   virtual void eval_shape_derivs_at_ips();
+  virtual void eval_shape_derivs_at_shifted_ips();
 
   void eval_shape_derivs_at_face_ips();
+
+  void set_quadrature_rule();
+  void GLLGLL_quadrature_weights();
 
   const double scsDist_;
   const bool useGLLGLL_;
@@ -345,14 +354,18 @@ protected:
   const int numQuad_;
 
   // quadrature info
+  std::vector<double> gaussAbscissae1D_;
   std::vector<double> gaussAbscissae_;
+  std::vector<double> gaussAbscissaeShift_;
   std::vector<double> gaussWeight_;
   std::vector<double> scsEndLoc_;
 
   std::vector<int> stkNodeMap_;
 
   std::vector<double> shapeFunctions_;
+  std::vector<double> shapeFunctionsShift_;
   std::vector<double> shapeDerivs_;
+  std::vector<double> shapeDerivsShift_;
   std::vector<double> expFaceShapeDerivs_;
 
 private:
@@ -408,6 +421,14 @@ public:
     double * error );
 
   void grad_op(
+    const int nelem,
+    const double *coords,
+    double *gradop,
+    double *deriv,
+    double *det_j,
+    double * error );
+
+  void shifted_grad_op(
     const int nelem,
     const double *coords,
     double *gradop,
@@ -866,17 +887,23 @@ public:
   virtual ~QuadrilateralP2Element() {}
 
   void shape_fcn(double *shpfc);
-  void shifted_shape_fcn(double *shpfc)  { throw std::runtime_error("shifted shape functions not implemented"); };
-
+  void shifted_shape_fcn(double *shpfc);
 protected:
   struct ContourData {
     Jacobian::Direction direction;
     double weight;
   };
 
+  void set_quadrature_rule();
+  void GLLGLL_quadrature_weights();
+
   int tensor_product_node_map(int i, int j) const;
 
   double gauss_point_location(
+    int nodeOrdinal,
+    int gaussPointOrdinal) const;
+
+  double shifted_gauss_point_location(
     int nodeOrdinal,
     int gaussPointOrdinal) const;
 
@@ -887,25 +914,32 @@ protected:
   double tensor_product_weight(int s1Node, int s1Ip) const;
 
   void eval_shape_functions_at_ips();
+  void eval_shape_functions_at_shifted_ips();
+
   void eval_shape_derivs_at_ips();
+  void eval_shape_derivs_at_shifted_ips();
+
   void eval_shape_derivs_at_face_ips();
 
   const double scsDist_;
-  const bool useGLLGLL_;
+  bool useGLLGLL_;
   const int nodes1D_;
-  const int numQuad_;
+  int numQuad_;
 
   //quadrature info
+  std::vector<double> gaussAbscissae1D_;
   std::vector<double> gaussAbscissae_;
+  std::vector<double> gaussAbscissaeShift_;
   std::vector<double> gaussWeight_;
 
   std::vector<int> stkNodeMap_;
   std::vector<double> scsEndLoc_;
 
   std::vector<double> shapeFunctions_;
+  std::vector<double> shapeFunctionsShift_;
   std::vector<double> shapeDerivs_;
+  std::vector<double> shapeDerivsShift_;
   std::vector<double> expFaceShapeDerivs_;
-
 private:
   void quad9_shape_fcn(
     int npts,
@@ -959,6 +993,14 @@ public:
     double * error );
 
   void grad_op(
+    const int nelem,
+    const double *coords,
+    double *gradop,
+    double *deriv,
+    double *det_j,
+    double * error );
+
+  void shifted_grad_op(
     const int nelem,
     const double *coords,
     double *gradop,
@@ -1178,8 +1220,11 @@ public:
 
 private:
   void set_interior_info();
-  void eval_shape_functions_at_ips();
-  void eval_shape_derivs_at_ips();
+  void eval_shape_functions_at_ips() final;
+  void eval_shape_derivs_at_ips() final;
+
+  void eval_shape_functions_at_shifted_ips() final;
+  void eval_shape_derivs_at_shifted_ips() final;
 
   void area_vector(
     const double *coords,
