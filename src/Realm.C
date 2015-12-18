@@ -102,6 +102,9 @@
 // stk_util
 #include <stk_util/parallel/ParallelReduce.hpp>
 
+// Ioss for propertManager (io)
+#include <Ioss_PropertyManager.h>
+
 // yaml for parsing..
 #include <yaml-cpp/yaml.h>
 #include <NaluParsing.h>
@@ -1811,7 +1814,6 @@ Realm::create_mesh()
 
   // set mesh reading
   timerReadMesh_ = (end_time - start_time);
-
 }
 
 //--------------------------------------------------------------------------
@@ -1840,7 +1842,7 @@ Realm::create_output_mesh()
       if (fileid++ > 0) oname += "-s" + fileid_ss.str();
     }
 
-    resultsFileIndex_ = ioBroker_->create_output_mesh( oname, stk::io::WRITE_RESULTS );
+    resultsFileIndex_ = ioBroker_->create_output_mesh( oname, stk::io::WRITE_RESULTS, *outputInfo_->outputPropertyManager_);
 
 #if defined (NALU_USES_PERCEPT)
 
@@ -1894,9 +1896,9 @@ Realm::create_restart_mesh()
 
     if (outputInfo_->restartFreq_ == 0)
       return;
-
-    restartFileIndex_ = ioBroker_->create_output_mesh(outputInfo_->restartDBName_, stk::io::WRITE_RESTART);
-
+    
+    restartFileIndex_ = ioBroker_->create_output_mesh(outputInfo_->restartDBName_, stk::io::WRITE_RESTART, *outputInfo_->restartPropertyManager_);
+    
     // loop over restart variable field names supplied by Eqs
     for ( std::set<std::string>::iterator itorSet = outputInfo_->restartFieldNameSet_.begin();
         itorSet != outputInfo_->restartFieldNameSet_.end(); ++itorSet ) {
