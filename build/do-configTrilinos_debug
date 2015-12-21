@@ -67,6 +67,7 @@ cmake \
 -DTrilinos_ENABLE_STKSearch:BOOL=ON \
 -DTrilinos_ENABLE_STKUtil:BOOL=ON \
 -DTrilinos_ENABLE_STKTopology:BOOL=ON \
+-DTrilinos_ENABLE_STKUnit_test_utils=OFF \
 -DTrilinos_ENABLE_Gtest:BOOL=ON \
 -DTrilinos_ENABLE_STKClassic:BOOL=OFF \
 -DTrilinos_ENABLE_SEACASExodus:BOOL=ON \
