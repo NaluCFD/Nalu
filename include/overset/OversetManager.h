@@ -51,7 +51,7 @@ namespace stk {
 namespace sierra {
 namespace nalu{
 class OversetInfo;
-class OversetUserData;
+struct OversetUserData;
 
 class OversetManager
 {
