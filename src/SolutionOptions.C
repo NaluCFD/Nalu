@@ -72,7 +72,8 @@ SolutionOptions::SolutionOptions()
     cvfemShiftMdot_(false),
     cvfemShiftPoisson_(false),
     cvfemReducedSensPoisson_(false),
-    inputVariablesRestorationTime_(1.0e8)
+    inputVariablesRestorationTime_(1.0e8),
+    consistentMMPngDefault_(false)
 {
   // nothing to do
 }
@@ -285,6 +286,9 @@ SolutionOptions::load(const YAML::Node & y_node)
         }
         else if (expect_map( y_option, "peclet_function_tanh_width", optional)) {
           y_option["peclet_function_tanh_width"] >> pecletFunctionTanhWidthMap_;
+        }
+        else if (expect_map( y_option, "consistent_mass_matrix_png", optional)) {
+          y_option["consistent_mass_matrix_png"] >> consistentMassMatrixPngMap_;
         }
         else {
           if (!NaluEnv::self().parallel_rank())

@@ -34,8 +34,7 @@ class HeatCondEquationSystem : public EquationSystem {
 public:
 
   HeatCondEquationSystem(
-    EquationSystems& equationSystems,
-    const bool managePNG);
+    EquationSystems& equationSystems);
   virtual ~HeatCondEquationSystem();
 
   void manage_png(

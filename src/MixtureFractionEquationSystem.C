@@ -90,10 +90,9 @@ namespace nalu{
 //--------------------------------------------------------------------------
 MixtureFractionEquationSystem::MixtureFractionEquationSystem(
   EquationSystems& eqSystems,
-  const bool managePNG,
   const bool outputClippingDiag)
   : EquationSystem(eqSystems, "MixtureFractionEQS"),
-    managePNG_(managePNG),
+    managePNG_(realm_.get_consistent_mass_matrix_png("mixture_fraction")),
     outputClippingDiag_(outputClippingDiag),
     mixFrac_(NULL),
     mixFracUF_(NULL),

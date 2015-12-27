@@ -95,6 +95,8 @@ public:
   void initialize();
   void reinitialize_linear_system();
 
+  void deactivate_output();
+
   // names that customize this PNG system
   EquationType eqType_;
   std::string dofName_;

@@ -93,6 +93,8 @@ public:
   const double & linearResidual() {return linearResidual_; }
   const double & nonLinearResidual() {return nonLinearResidual_; }
   const double & scaledNonLinearResidual() {return scaledNonLinearResidual_; }
+  void setNonLinearResidual(const double nlr) { nonLinearResidual_ = nlr;}
+  const std::string name() { return name_; }
   bool & recomputePreconditioner() {return recomputePreconditioner_;}
   bool & reusePreconditioner() {return reusePreconditioner_;}
 protected:
@@ -121,9 +123,7 @@ protected:
 
 public:
   bool provideOutput_;
-
 };
-
 
 } // namespace nalu
 } // namespace Sierra

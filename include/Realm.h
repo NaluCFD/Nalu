@@ -294,6 +294,10 @@ class Realm {
   double get_peclet_tanh_width(
     const std::string dofname);
 
+  // consistent mass matrix for projected nodal gradient
+  bool get_consistent_mass_matrix_png(
+    const std::string dofname);
+
   // pressure poisson nuance
   double get_mdot_interp();
   bool get_cvfem_shifted_mdot();

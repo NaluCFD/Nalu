@@ -92,10 +92,9 @@ namespace nalu{
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 HeatCondEquationSystem::HeatCondEquationSystem(
-  EquationSystems& eqSystems,
-  const bool managePNG)
+  EquationSystems& eqSystems)
   : EquationSystem(eqSystems, "HeatCondEQS"),
-    managePNG_(managePNG),
+    managePNG_(realm_.get_consistent_mass_matrix_png("temperature")),
     temperature_(NULL),
     dtdx_(NULL),
     tTmp_(NULL),

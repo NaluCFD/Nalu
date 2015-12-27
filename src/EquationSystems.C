@@ -91,9 +91,7 @@ void EquationSystems::load(const YAML::Node & y_node)
           if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = LowMachEOM " << std::endl;
           bool elemCont = (realm_.realmUsesEdges_) ? false : true;
           get_if_present_no_default(*y_eqsys, "element_continuity_eqs", elemCont);
-          bool managePNG = false;
-          get_if_present_no_default(*y_eqsys, "manage_png", managePNG);
-          eqSys = new LowMachEquationSystem(*this, elemCont, managePNG);
+          eqSys = new LowMachEquationSystem(*this, elemCont);
         }
         else if( (y_eqsys = expect_map(y_system, "ShearStressTransport", true)) ) {
           if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = tke/sdr " << std::endl;
@@ -111,11 +109,9 @@ void EquationSystems::load(const YAML::Node & y_node)
         }
         else if( (y_eqsys = expect_map(y_system, "MixtureFraction", true)) ) {
           if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = mixFrac " << std::endl;
-          bool managePNG = false;
-          get_if_present_no_default(*y_eqsys, "manage_png", managePNG);
           bool ouputClipDiag = false;
           get_if_present_no_default(*y_eqsys, "output_clipping_diagnostic", ouputClipDiag);
-          eqSys = new MixtureFractionEquationSystem(*this, managePNG, ouputClipDiag);
+          eqSys = new MixtureFractionEquationSystem(*this, ouputClipDiag);
         }
         else if( (y_eqsys = expect_map(y_system, "Enthalpy", true)) ) {
           if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = enthalpy " << std::endl;
@@ -123,17 +119,13 @@ void EquationSystems::load(const YAML::Node & y_node)
           double maxT = 3000.0;
           get_if_present_no_default(*y_eqsys, "minimum_temperature", minT);
           get_if_present_no_default(*y_eqsys, "maximum_temperature", maxT);
-          bool managePNG = false;
-          get_if_present_no_default(*y_eqsys, "manage_png", managePNG);
           bool ouputClipDiag = true;
           get_if_present_no_default(*y_eqsys, "output_clipping_diagnostic", ouputClipDiag);
-          eqSys = new EnthalpyEquationSystem(*this, minT, maxT, managePNG, ouputClipDiag);
+          eqSys = new EnthalpyEquationSystem(*this, minT, maxT, ouputClipDiag);
         }
         else if( (y_eqsys = expect_map(y_system, "HeatConduction", true)) ) {
           if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = HeatConduction " << std::endl;
-          bool managePNG = false;
-          get_if_present_no_default(*y_eqsys, "manage_png", managePNG);
-          eqSys = new HeatCondEquationSystem(*this, managePNG);
+          eqSys = new HeatCondEquationSystem(*this);
         }
         else if( (y_eqsys = expect_map(y_system, "RadiativeTransport", true)) ) {
           if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = RadiativeTransport " << std::endl;

@@ -37,7 +37,6 @@ public:
     EquationSystems& equationSystems,
     const double minT,
     const double maxT,
-    const bool managePNG,
     const bool outputClippingDiag);
   virtual ~EnthalpyEquationSystem();
   

@@ -33,7 +33,6 @@ public:
 
   MixtureFractionEquationSystem(
     EquationSystems& equationSystems,
-    const bool managePNG,
     const bool outputClippingDiag);
   virtual ~MixtureFractionEquationSystem();
 

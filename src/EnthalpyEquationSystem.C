@@ -104,12 +104,11 @@ EnthalpyEquationSystem::EnthalpyEquationSystem(
   EquationSystems& eqSystems,
   const double minT,
   const double maxT,
-  const bool managePNG,
   const bool outputClippingDiag)
   : EquationSystem(eqSystems, "EnthalpyEQS"),
     minimumT_(minT),
     maximumT_(maxT),
-    managePNG_(managePNG),
+    managePNG_(realm_.get_consistent_mass_matrix_png("enthalpy")),
     outputClippingDiag_(outputClippingDiag),
     enthalpy_(NULL),
     temperature_(NULL),

@@ -3910,6 +3910,22 @@ Realm::get_peclet_tanh_width(
 }
 
 //--------------------------------------------------------------------------
+//-------- get_consistent_mass_matrix_png ----------------------------------
+//--------------------------------------------------------------------------
+bool
+Realm::get_consistent_mass_matrix_png(
+  const std::string dofName )
+{
+  bool cmmPng = solutionOptions_->consistentMMPngDefault_;
+  std::map<std::string, bool>::const_iterator iter
+    = solutionOptions_->consistentMassMatrixPngMap_.find(dofName);
+  if (iter != solutionOptions_->consistentMassMatrixPngMap_.end()) {
+    cmmPng = (*iter).second;
+  }
+  return cmmPng;
+}
+
+//--------------------------------------------------------------------------
 //-------- get_divU --------------------------------------------------------
 //--------------------------------------------------------------------------
 double

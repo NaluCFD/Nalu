@@ -88,6 +88,7 @@ public:
   bool cvfemShiftPoisson_;
   bool cvfemReducedSensPoisson_;
   double inputVariablesRestorationTime_;
+  bool consistentMMPngDefault_;
 
   // turbulence model coeffs
   std::map<TurbulenceModelConstant, double> turbModelConstantMap_;
@@ -101,6 +102,7 @@ public:
   std::map<std::string, std::string> pecletFunctionalFormMap_;
   std::map<std::string, double> pecletFunctionTanhTransMap_;
   std::map<std::string, double> pecletFunctionTanhWidthMap_;
+  std::map<std::string, bool> consistentMassMatrixPngMap_;
 
   // property related
   std::map<std::string, double> lamScMap_;

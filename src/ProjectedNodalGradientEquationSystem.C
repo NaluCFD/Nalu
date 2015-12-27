@@ -351,9 +351,6 @@ ProjectedNodalGradientEquationSystem::solve_and_update_external()
 {
   for ( int k = 0; k < maxIterations_; ++k ) {
 
-    NaluEnv::self().naluOutputP0() << " " << k+1 << "/" << maxIterations_
-                    << std::setw(15) << std::right << name_ << std::endl;
-    
     // projected nodal gradient, load_complete and solve
     assemble_and_solve(qTmp_);
     
@@ -368,6 +365,15 @@ ProjectedNodalGradientEquationSystem::solve_and_update_external()
     double timeB = stk::cpu_time();
     timerAssemble_ += (timeB-timeA);   
   }
+}
+
+//--------------------------------------------------------------------------
+//-------- deactivate_output -----------------------------------------------
+//--------------------------------------------------------------------------
+void
+ProjectedNodalGradientEquationSystem::deactivate_output()
+{
+  linsys_->provideOutput_ = false;
 }
 
 } // namespace nalu

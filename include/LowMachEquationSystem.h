@@ -36,8 +36,7 @@ public:
 
   LowMachEquationSystem (
     EquationSystems& equationSystems,
-    const bool elementContinuityEqs,
-    const bool managePNG);
+    const bool elementContinuityEqs);
   virtual ~LowMachEquationSystem();
   
   virtual void initialize();
@@ -153,7 +152,13 @@ public:
   virtual void predict_state();
 
   void compute_wall_function_params();
+
+  virtual void manage_projected_nodal_gradient(
+     EquationSystems& eqSystems);
+   virtual void compute_projected_nodal_gradient();
  
+  const bool managePNG_;
+
   VectorFieldType *velocity_;
   GenericFieldType *dudx_;
 
@@ -170,6 +175,10 @@ public:
   AlgorithmDriver *cflReyAlgDriver_;
   AlgorithmDriver *wallFunctionParamsAlgDriver_;
 
+  ProjectedNodalGradientEquationSystem *projectedNodalGradEqs_;
+
+  double firstPNGResidual_;
+
   // saved of mesh parts that are not to be projected
   std::vector<stk::mesh::Part *> notProjectedPart_;
 };
@@ -180,8 +189,7 @@ public:
 
   ContinuityEquationSystem(
     EquationSystems& equationSystems,
-    const bool elementContinuityEqs,
-    const bool managePNG);
+    const bool elementContinuityEqs);
   virtual ~ContinuityEquationSystem();
 
   virtual void register_nodal_fields(
