@@ -49,6 +49,7 @@
 #include <TurbKineticEnergyKsgsNodeSourceSuppAlg.h>
 #include <TurbKineticEnergySSTNodeSourceSuppAlg.h>
 #include <TurbKineticEnergySSTDESNodeSourceSuppAlg.h>
+#include <TurbKineticEnergyKsgsBuoyantElemSuppAlg.h>
 #include <SolverAlgorithmDriver.h>
 
 // stk_util
@@ -219,6 +220,26 @@ TurbKineticEnergyEquationSystem::register_interior_algorithm(
       theAlg = new AssembleScalarElemSolverAlgorithm(realm_, part, this, tke_, dkdx_, evisc_);
     }
     solverAlgDriver_->solverAlgMap_[algType] = theAlg;
+
+    // look for src
+    std::map<std::string, std::vector<std::string> >::iterator isrc 
+      = realm_.solutionOptions_->elemSrcTermsMap_.find("turbulent_ke");
+    if ( isrc != realm_.solutionOptions_->elemSrcTermsMap_.end() ) {
+      std::vector<std::string> mapNameVec = isrc->second;
+      for (size_t k = 0; k < mapNameVec.size(); ++k ) {
+        std::string sourceName = mapNameVec[k];
+        SupplementalAlgorithm *suppAlg = NULL;
+        if (sourceName == "ksgs_buoyant" ) {
+          if (turbulenceModel_ != KSGS)
+            throw std::runtime_error("ElemSrcTermsError::TurbKineticEnergyKsgsBuoyantElemSuppAlg requires Ksgs model");
+          suppAlg = new TurbKineticEnergyKsgsBuoyantElemSuppAlg(realm_);
+        }
+        else {
+          throw std::runtime_error("ElemSrcTermsError::only support Buoyant");
+        }     
+        theAlg->supplementalAlg_.push_back(suppAlg); 
+      }
+    }
   }
   else {
     itsi->second->partVec_.push_back(part);
@@ -269,7 +290,7 @@ TurbKineticEnergyEquationSystem::register_interior_algorithm(
     }
     theAlg->supplementalAlg_.push_back(theSrc);
 
-    // Add src term supp alg...; limited number supported
+    // Add nodal src term supp alg...; limited number supported
     std::map<std::string, std::vector<std::string> >::iterator isrc 
       = realm_.solutionOptions_->srcTermsMap_.find("turbulent_ke");
     if ( isrc != realm_.solutionOptions_->srcTermsMap_.end() ) {

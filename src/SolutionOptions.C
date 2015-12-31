@@ -500,7 +500,7 @@ SolutionOptions::initialize_turbulence_constants()
   turbModelConstantMap_[TM_sigmaWTwo] = 0.856;
   turbModelConstantMap_[TM_cmuCs] = 0.17;
   turbModelConstantMap_[TM_Cw] = 0.325;
-  
+  turbModelConstantMap_[TM_CbTwo] = 0.35;
 }
 
 } // namespace nalu

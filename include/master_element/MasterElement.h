@@ -198,8 +198,18 @@ public:
     const double *coords,
     double *volume,
     double * error );
-};
 
+  void grad_op(
+    const int nelem,
+    const double *coords,
+    double *gradop,
+    double *deriv,
+    double *det_j,
+    double * error );
+
+  void shape_fcn(
+    double *shpfc);
+};
 
 // Hex 8 subcontrol surface
 class HexSCS : public MasterElement
