@@ -547,6 +547,12 @@ public:
     double *det_j,
     double * error );
 
+  void gij(
+    const double *coords,
+    double *gupperij,
+    double *glowerij,
+    double *deriv);
+
   const int * adjacentNodes();
 
   void shape_fcn(
@@ -650,6 +656,12 @@ public:
   void pyr_derivative(
     const int npts,
     const double *intLoc,
+    double *deriv);
+
+  void gij(
+    const double *coords,
+    double *gupperij,
+    double *glowerij,
     double *deriv);
 
   const int * adjacentNodes();
@@ -803,8 +815,6 @@ public:
     double *areav,
     double * error );
 
-  const int * adjacentNodes();
-
   void grad_op(
     const int nelem,
     const double *coords,
@@ -821,12 +831,6 @@ public:
     double *det_j,
     double * error );
 
-  void gij(
-    const double *coords,
-    double *gupperij,
-    double *gij,
-    double *deriv);
-
   void face_grad_op(
     const int nelem,
     const int face_ordinal,
@@ -834,6 +838,14 @@ public:
     double *gradop,
     double *det_j,
     double * error );
+
+  void gij(
+     const double *coords,
+     double *gupperij,
+     double *gij,
+     double *deriv);
+
+  const int * adjacentNodes();
 
   int opposingNodes(
     const int ordinal, const int node);
@@ -1018,12 +1030,6 @@ public:
     double *det_j,
     double * error );
 
-  void gij(
-    const double *coords,
-    double *gupperij,
-    double *glowerij,
-    double *deriv);
-
   void face_grad_op(
     const int nelem,
     const int face_ordinal,
@@ -1031,6 +1037,12 @@ public:
     double *gradop,
     double *det_j,
     double * error );
+
+  void gij(
+    const double *coords,
+    double *gupperij,
+    double *glowerij,
+    double *deriv);
 
   const int * adjacentNodes();
 
@@ -1111,6 +1123,12 @@ public:
     double *gradop,
     double *det_j,
     double * error );
+
+  void gij(
+    const double *coords,
+    double *gupperij,
+    double *glowerij,
+    double *deriv);
 
   const int * adjacentNodes();
 

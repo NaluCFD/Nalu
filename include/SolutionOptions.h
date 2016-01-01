@@ -89,6 +89,7 @@ public:
   bool cvfemReducedSensPoisson_;
   double inputVariablesRestorationTime_;
   bool consistentMMPngDefault_;
+  bool useConsolidatedSolverAlg_;
 
   // turbulence model coeffs
   std::map<TurbulenceModelConstant, double> turbModelConstantMap_;

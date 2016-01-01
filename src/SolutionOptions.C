@@ -73,7 +73,8 @@ SolutionOptions::SolutionOptions()
     cvfemShiftPoisson_(false),
     cvfemReducedSensPoisson_(false),
     inputVariablesRestorationTime_(1.0e8),
-    consistentMMPngDefault_(false)
+    consistentMMPngDefault_(false),
+    useConsolidatedSolverAlg_(false)
 {
   // nothing to do
 }
@@ -135,6 +136,9 @@ SolutionOptions::load(const YAML::Node & y_node)
         cvfemReducedSensPoisson_ = true;
       }
     }
+
+    // check for consolidated solver alg (AssembleSolver)
+    get_if_present(*y_solution_options, "use_consolidated_solver_algorithm", useConsolidatedSolverAlg_, useConsolidatedSolverAlg_);
 
     // extract turbulence model; would be nice if we could parse an enum..
     std::string specifiedTurbModel;

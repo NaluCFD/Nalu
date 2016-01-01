@@ -25,6 +25,7 @@
 #include <AssembleMomentumElemSymmetrySolverAlgorithm.h>
 #include <AssembleMomentumWallFunctionSolverAlgorithm.h>
 #include <AssembleMomentumNonConformalSolverAlgorithm.h>
+#include <AssembleElemSolverAlgorithm.h>
 #include <AssembleNodalGradAlgorithmDriver.h>
 #include <AssembleNodalGradEdgeAlgorithm.h>
 #include <AssembleNodalGradElemAlgorithm.h>
@@ -56,6 +57,7 @@
 #include <ContinuityMassBackwardEulerNodeSuppAlg.h>
 #include <ContinuityMassBDF2NodeSuppAlg.h>
 #include <ContinuityMassBDF2ElemSuppAlg.h>
+#include <ContinuityAdvElemSuppAlg.h>
 #include <CopyFieldAlgorithm.h>
 #include <DirichletBC.h>
 #include <EffectiveDiffFluxCoeffAlgorithm.h>
@@ -79,6 +81,7 @@
 #include <MomentumMassBDF2NodeSuppAlg.h>
 #include <MomentumMassBDF2ElemSuppAlg.h>
 #include <MomentumNSOElemSuppAlg.h>
+#include <MomentumAdvDiffElemSuppAlg.h>
 #include <NaluEnv.h>
 #include <NaluParsing.h>
 #include <ProjectedNodalGradientEquationSystem.h>
@@ -978,14 +981,17 @@ MomentumEquationSystem::register_interior_algorithm(
   std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi
     = solverAlgDriver_->solverAlgMap_.find(algType);
   if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
-    SolverAlgorithm *theAlg = NULL;
+    SolverAlgorithm *theSolverAlg = NULL;
     if ( realm_.realmUsesEdges_ ) {
-      theAlg = new AssembleMomentumEdgeSolverAlgorithm(realm_, part, this);
+      theSolverAlg = new AssembleMomentumEdgeSolverAlgorithm(realm_, part, this);
     }
     else {
-      theAlg = new AssembleMomentumElemSolverAlgorithm(realm_, part, this);
+      if ( realm_.solutionOptions_->useConsolidatedSolverAlg_ )
+        theSolverAlg = new AssembleElemSolverAlgorithm(realm_, part, this); // WIP
+      else
+        theSolverAlg = new AssembleMomentumElemSolverAlgorithm(realm_, part, this);
     }
-    solverAlgDriver_->solverAlgMap_[algType] = theAlg;
+    solverAlgDriver_->solverAlgMap_[algType] = theSolverAlg;
     
     // look for fully integrated source terms, e.g., mass/src
     std::map<std::string, std::vector<std::string> >::iterator isrc 
@@ -1022,10 +1028,13 @@ MomentumEquationSystem::register_interior_algorithm(
         else if (sourceName == "buoyancy" ) {
           suppAlg = new MomentumBuoyancySrcElemSuppAlg(realm_);
         }
-        else {
-          throw std::runtime_error("ElemSrcTermsError::only support CMM, nso_2nd, nso_4th, buoyancy and SteadyTV");
+        else if (sourceName == "advection_diffusion" ) {
+          suppAlg = new MomentumAdvDiffElemSuppAlg(realm_, velocity_, realm_.is_turbulent() ? evisc_ : visc_);
         }
-        theAlg->supplementalAlg_.push_back(suppAlg); 
+        else {
+          throw std::runtime_error("ElemSrcTermsError::only support CMM, nso_2nd, nso_4th, buoyancy, advection_diffusion and SteadyTaylorVortex");
+        }
+        theSolverAlg->supplementalAlg_.push_back(suppAlg);
       }
     }
   }
@@ -2043,9 +2052,12 @@ ContinuityEquationSystem::register_interior_algorithm(
     std::map<AlgorithmType, SolverAlgorithm *>::iterator its
       = solverAlgDriver_->solverAlgMap_.find(algType);
     if ( its == solverAlgDriver_->solverAlgMap_.end() ) {
-      AssembleContinuityElemSolverAlgorithm *theAlg
-        = new AssembleContinuityElemSolverAlgorithm(realm_, part, this);
-      solverAlgDriver_->solverAlgMap_[algType] = theAlg;
+      SolverAlgorithm *theSolverAlg = NULL;
+      if ( realm_.solutionOptions_->useConsolidatedSolverAlg_ )
+        theSolverAlg = new AssembleElemSolverAlgorithm(realm_, part, this);
+      else
+        theSolverAlg = new AssembleContinuityElemSolverAlgorithm(realm_, part, this);
+      solverAlgDriver_->solverAlgMap_[algType] = theSolverAlg;
 
       // look for src
       std::map<std::string, std::vector<std::string> >::iterator isrc 
@@ -2061,10 +2073,13 @@ ContinuityEquationSystem::register_interior_algorithm(
           else if (sourceName == "density_time_derivative" ) {
             suppAlg = new ContinuityMassBDF2ElemSuppAlg(realm_);
           }
-          else {
-            throw std::runtime_error("ElemSrcTermsError::only support SteadyTV");
+          else if (sourceName == "advection" ) {
+            suppAlg = new ContinuityAdvElemSuppAlg(realm_);
           }
-          theAlg->supplementalAlg_.push_back(suppAlg); 
+          else {
+            throw std::runtime_error("ElemSrcTermsError::only support SteadyTaylorVortex, density_time_derivative and advection");
+          }
+          theSolverAlg->supplementalAlg_.push_back(suppAlg);
         }
       }
     }
