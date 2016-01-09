@@ -8,6 +8,14 @@ its copyright in software entitled "Nalu v 1.0".
 
 ![Nalu 1.0](https://github.com/spdomin/Nalu/wiki/images/naluV1.0.png)
 
+### Follow us!
+
+[![alt text][2]][1]
+
+  [1]: https://twitter.com/nalucfd 
+  [2]: https://github.com/spdomin/Nalu/wiki/images/twitterIcon.jpg width=48 (hover text) Folow us!
+
+  
 ### Referencing Nalu
 When disseminating technical work that includes Nalu simulations, please reference the following citation:
 
