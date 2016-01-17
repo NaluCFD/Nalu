@@ -16,6 +16,7 @@
 #include <user_functions/SteadyThermalContactAuxFunction.h>
 #include <user_functions/SteadyTaylorVortexVelocityAuxFunction.h>
 #include <user_functions/SteadyTaylorVortexGradPressureAuxFunction.h>
+#include <user_functions/VariableDensityVelocityAuxFunction.h>
 
 // stk_util
 #include <stk_util/parallel/ParallelReduce.hpp>
@@ -207,6 +208,9 @@ SolutionNormPostProcessing::analytical_function_factory(
   }
   else if ( functionName == "SteadyTaylorVortexVelocity" ) {
     theAuxFunc = new SteadyTaylorVortexVelocityAuxFunction(0,realm_.meta_data().spatial_dimension());
+  }
+  else if ( functionName == "VariableDensityVelocity" ) {
+    theAuxFunc = new VariableDensityVelocityAuxFunction(0,realm_.meta_data().spatial_dimension());
   }
   else if ( functionName == "SteadyTaylorVortexGradPressure" ) {
     theAuxFunc = new SteadyTaylorVortexGradPressureAuxFunction(0,realm_.meta_data().spatial_dimension());

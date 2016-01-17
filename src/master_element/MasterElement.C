@@ -4095,6 +4095,20 @@ Quad2DSCV::Quad2DSCV()
   // define ip node mappings
   ipNodeMap_.resize(4);
   ipNodeMap_[0] = 0; ipNodeMap_[1] = 1; ipNodeMap_[2] = 2; ipNodeMap_[3] = 3;
+
+  // standard integration location
+  intgLoc_.resize(8);    
+  intgLoc_[0]  = -0.25; intgLoc_[1]  = -0.25; 
+  intgLoc_[2]  = +0.25; intgLoc_[3]  = -0.25; 
+  intgLoc_[4]  = +0.25; intgLoc_[5]  = +0.25; 
+  intgLoc_[6]  = -0.25; intgLoc_[7]  = +0.25; 
+
+  // shifted integration location
+  intgLocShift_.resize(8);    
+  intgLocShift_[0]  = -0.50; intgLocShift_[1]  = -0.50; 
+  intgLocShift_[2]  = +0.50; intgLocShift_[3]  = -0.50; 
+  intgLocShift_[4]  = +0.05; intgLocShift_[5]  = +0.50; 
+  intgLocShift_[6]  = -0.50; intgLocShift_[7]  = +0.50; 
 }
 
 //--------------------------------------------------------------------------
@@ -4130,6 +4144,45 @@ void Quad2DSCV::determinant(
   SIERRA_FORTRAN(quad_scv_det)
     ( &nelem, &nodesPerElement_, &numIntPoints_, coords,
       volume, error, &lerr );
+}
+
+//--------------------------------------------------------------------------
+//-------- shape_fcn -------------------------------------------------------
+//--------------------------------------------------------------------------
+void
+Quad2DSCV::shape_fcn(double *shpfc)
+{
+  quad_shape_fcn(numIntPoints_, &intgLoc_[0], shpfc);
+}
+
+//--------------------------------------------------------------------------
+//-------- shifted_shape_fcn -----------------------------------------------
+//--------------------------------------------------------------------------
+void
+Quad2DSCV::shifted_shape_fcn(double *shpfc)
+{
+  quad_shape_fcn(numIntPoints_, &intgLocShift_[0], shpfc);
+}
+
+//--------------------------------------------------------------------------
+//-------- quad_shape_fcn ---------------------------------------------------
+//--------------------------------------------------------------------------
+void
+Quad2DSCV::quad_shape_fcn(
+  const int  &npts,
+  const double *isoParCoord, 
+  double *shape_fcn)
+{
+  for (int j = 0; j < npts; ++j ) {
+    const int fourj = 4*j;
+    const int k = 2*j;
+    const double s1 = isoParCoord[k];
+    const double s2 = isoParCoord[k+1];
+    shape_fcn[    fourj] = 1.0/4.0 + 0.5*(-s1 - s2 ) + s1*s2;
+    shape_fcn[1 + fourj] = 1.0/4.0 + 0.5*( s1 - s2 ) - s1*s2;
+    shape_fcn[2 + fourj] = 1.0/4.0 + 0.5*( s1 + s2 ) + s1*s2;
+    shape_fcn[3 + fourj] = 1.0/4.0 + 0.5*(-s1 + s2 ) - s1*s2;
+  }
 }
 
 //--------------------------------------------------------------------------

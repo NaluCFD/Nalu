@@ -6,7 +6,7 @@
 /*------------------------------------------------------------------------*/
 
 
-#include <user_functions/SteadyTaylorVortexMixFracAuxFunction.h>
+#include <user_functions/VariableDensityMixFracAuxFunction.h>
 #include <algorithm>
 
 // basic c++
@@ -17,7 +17,7 @@
 namespace sierra{
 namespace nalu{
 
-SteadyTaylorVortexMixFracAuxFunction::SteadyTaylorVortexMixFracAuxFunction() :
+VariableDensityMixFracAuxFunction::VariableDensityMixFracAuxFunction() :
   AuxFunction(0,1),
   znot_(1.0),
   amf_(10.0),
@@ -27,7 +27,7 @@ SteadyTaylorVortexMixFracAuxFunction::SteadyTaylorVortexMixFracAuxFunction() :
 }
 
 void
-SteadyTaylorVortexMixFracAuxFunction::do_evaluate(
+VariableDensityMixFracAuxFunction::do_evaluate(
   const double *coords,
   const double /*time*/,
   const unsigned spatialDimension,
@@ -42,7 +42,7 @@ SteadyTaylorVortexMixFracAuxFunction::do_evaluate(
     const double x = coords[0];
     const double y = coords[1];
 
-    fieldPtr[0] = znot_*cos(amf_*pi_*x)*sin(amf_*pi_*y);
+    fieldPtr[0] = znot_*cos(amf_*pi_*x)*cos(amf_*pi_*y);
 
     fieldPtr += fieldSize;
     coords += spatialDimension;

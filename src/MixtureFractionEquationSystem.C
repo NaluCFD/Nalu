@@ -50,9 +50,9 @@
 #include <SolverAlgorithmDriver.h>
 
 // user function
-#include <user_functions/SteadyTaylorVortexMixFracSrcElemSuppAlg.h>
-#include <user_functions/SteadyTaylorVortexMixFracSrcNodeSuppAlg.h>
-#include <user_functions/SteadyTaylorVortexMixFracAuxFunction.h>
+#include <user_functions/VariableDensityMixFracSrcElemSuppAlg.h>
+#include <user_functions/VariableDensityMixFracSrcNodeSuppAlg.h>
+#include <user_functions/VariableDensityMixFracAuxFunction.h>
 #include <user_functions/RayleighTaylorMixFracAuxFunction.h>
 
 // stk_util
@@ -90,10 +90,12 @@ namespace nalu{
 //--------------------------------------------------------------------------
 MixtureFractionEquationSystem::MixtureFractionEquationSystem(
   EquationSystems& eqSystems,
-  const bool outputClippingDiag)
+  const bool outputClippingDiag,
+  const double deltaZClip)
   : EquationSystem(eqSystems, "MixtureFractionEQS"),
     managePNG_(realm_.get_consistent_mass_matrix_png("mixture_fraction")),
     outputClippingDiag_(outputClippingDiag),
+    deltaZClip_(deltaZClip),
     mixFrac_(NULL),
     mixFracUF_(NULL),
     dzdx_(NULL),
@@ -262,8 +264,8 @@ MixtureFractionEquationSystem::register_interior_algorithm(
       for (size_t k = 0; k < mapNameVec.size(); ++k ) {
         std::string sourceName = mapNameVec[k];
         SupplementalAlgorithm *suppAlg = NULL;
-        if (sourceName == "SteadyTaylorVortex" ) {
-          suppAlg = new SteadyTaylorVortexMixFracSrcElemSuppAlg(realm_);
+        if (sourceName == "VariableDensity" ) {
+          suppAlg = new VariableDensityMixFracSrcElemSuppAlg(realm_);
         }
         else if (sourceName == "NSO_2ND" ) {
           suppAlg = new ScalarNSOElemSuppAlg(realm_, mixFrac_, dzdx_, evisc_, 0.0, 0.0);
@@ -287,7 +289,7 @@ MixtureFractionEquationSystem::register_interior_algorithm(
           } 
         }
         else {
-          throw std::runtime_error("ElemSrcTermsError::only support SteadyTV, NSO and time term");
+          throw std::runtime_error("ElemSrcTermsError::only support VariableDensity, NSO and time term");
         }     
         theAlg->supplementalAlg_.push_back(suppAlg); 
       }
@@ -332,8 +334,8 @@ MixtureFractionEquationSystem::register_interior_algorithm(
         if ( sourceName == "gcl" ) {
           suppAlg = new ScalarGclNodeSuppAlg(mixFrac_,realm_);
         }
-        else if ( sourceName == "SteadyTaylorVortex" ) {
-          suppAlg = new SteadyTaylorVortexMixFracSrcNodeSuppAlg(realm_);
+        else if ( sourceName == "VariableDensity" ) {
+          suppAlg = new VariableDensityMixFracSrcNodeSuppAlg(realm_);
         }
         else {
           throw std::runtime_error("MixtureFractionEquationSystem::only gcl source term(s) are supported");
@@ -401,11 +403,11 @@ MixtureFractionEquationSystem::register_inflow_bc(
   }
   else if ( FUNCTION_UD == theDataType ) {
     std::string fcnName = get_bc_function_name(userData, mixFracName);
-    if ( fcnName == "SteadyTaylorVortex" ) {
-      theAuxFunc = new SteadyTaylorVortexMixFracAuxFunction();
+    if ( fcnName == "VariableDensity" ) {
+      theAuxFunc = new VariableDensityMixFracAuxFunction();
     }
     else {
-      throw std::runtime_error("MixFracEquationSystem::register_inflow_bc: Only SteadyTaylorVortex supported");
+      throw std::runtime_error("MixFracEquationSystem::register_inflow_bc: Only VariableDensity supported");
     }
   }
   else {
@@ -823,16 +825,16 @@ MixtureFractionEquationSystem::register_initial_condition_fcn(
   if (iterName != theNames.end()) {
     std::string fcnName = (*iterName).second;
     AuxFunction *theAuxFunc = NULL;
-    if ( fcnName == "SteadyTaylorVortex" ) {
+    if ( fcnName == "VariableDensity" ) {
       // create the function
-      theAuxFunc = new SteadyTaylorVortexMixFracAuxFunction();      
+      theAuxFunc = new VariableDensityMixFracAuxFunction();      
     }
     else if ( fcnName == "RayleighTaylor" ) {
       // create the function
       theAuxFunc = new RayleighTaylorMixFracAuxFunction();      
     }
     else {
-      throw std::runtime_error("MixtureFractionEquationSystem::register_initial_condition_fcn: steady_tv only supported");
+      throw std::runtime_error("MixtureFractionEquationSystem::register_initial_condition_fcn: VariableDensity only supported");
     }
     
     // create the algorithm
@@ -902,7 +904,7 @@ MixtureFractionEquationSystem::post_iter_work()
 void
 MixtureFractionEquationSystem::update_and_clip()
 {
-  const double deltaZ = 0.0;
+  const double deltaZ = deltaZClip_;
   const double lowBound = 0.0-deltaZ;
   const double highBound = 1.0+deltaZ;
   size_t numClip[2] = {0,0};
@@ -957,11 +959,17 @@ MixtureFractionEquationSystem::update_and_clip()
       stk::all_reduce_min(comm, &minZ, &g_minZ, 1);
       NaluEnv::self().naluOutputP0() << "mixFrac clipped (-) " << g_numClip[0] << " times; min: " << g_minZ << std::endl;
     }
+    else {
+      NaluEnv::self().naluOutputP0() << "mixFrac clipped (-) zero times" << std::endl;
+    }
 
     if ( g_numClip[1] > 0 ) {
       double g_maxZ = 0;
       stk::all_reduce_max(comm, &maxZ, &g_maxZ, 1);
       NaluEnv::self().naluOutputP0() << "mixFrac clipped (+) " << g_numClip[1] << " times; max: " << g_maxZ << std::endl;
+    }
+    else {
+      NaluEnv::self().naluOutputP0() << "mixFrac clipped (+) zero times" << std::endl;
     }
   }
 }

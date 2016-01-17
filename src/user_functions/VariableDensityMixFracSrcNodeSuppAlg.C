@@ -6,7 +6,7 @@
 /*------------------------------------------------------------------------*/
 
 
-#include <user_functions/SteadyTaylorVortexMixFracSrcNodeSuppAlg.h>
+#include <user_functions/VariableDensityMixFracSrcNodeSuppAlg.h>
 #include <SupplementalAlgorithm.h>
 #include <FieldTypeDef.h>
 #include <Realm.h>
@@ -24,26 +24,26 @@ namespace nalu{
 //==========================================================================
 // Class Definition
 //==========================================================================
-// SteadyTaylorVortexMixFracSrcNodeSuppAlg - base class for algorithm
+// VariableDensityMixFracSrcNodeSuppAlg - base class for algorithm
 //==========================================================================
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-SteadyTaylorVortexMixFracSrcNodeSuppAlg::SteadyTaylorVortexMixFracSrcNodeSuppAlg(
+VariableDensityMixFracSrcNodeSuppAlg::VariableDensityMixFracSrcNodeSuppAlg(
   Realm &realm)
   : SupplementalAlgorithm(realm),
     coordinates_(NULL),
     dualNodalVolume_(NULL),
     rhoP_(1.0),
-    rhoS_(1.0),
+    rhoS_(2.0),
     unot_(1.0),
     vnot_(1.0),
     znot_(1.0),
     pnot_(1.0),
-    visc_(0.001),
+    visc_(0.01),
     a_(20.0),
     amf_(10.0),
-    Sc_(0.9),
+    Sc_(0.8),
     pi_(acos(-1.0))
 {
   // save off fields
@@ -56,7 +56,7 @@ SteadyTaylorVortexMixFracSrcNodeSuppAlg::SteadyTaylorVortexMixFracSrcNodeSuppAlg
 //-------- setup -----------------------------------------------------------
 //--------------------------------------------------------------------------
 void
-SteadyTaylorVortexMixFracSrcNodeSuppAlg::setup()
+VariableDensityMixFracSrcNodeSuppAlg::setup()
 {
   // nothing
 }
@@ -65,7 +65,7 @@ SteadyTaylorVortexMixFracSrcNodeSuppAlg::setup()
 //-------- node_execute ----------------------------------------------------
 //--------------------------------------------------------------------------
 void
-SteadyTaylorVortexMixFracSrcNodeSuppAlg::node_execute(
+VariableDensityMixFracSrcNodeSuppAlg::node_execute(
   double */*lhs*/,
   double *rhs,
   stk::mesh::Entity node)
@@ -76,7 +76,7 @@ SteadyTaylorVortexMixFracSrcNodeSuppAlg::node_execute(
   const double x = coords[0];
   const double y = coords[1];
 
-  const double src = amf_ * pi_ / Sc_ * (cos(a_ * pi_ * x) * sin(a_ * pi_ * y) * sin(amf_ * pi_ * x) * sin(amf_ * pi_ * y) * Sc_ + sin(a_ * pi_ * x) * cos(a_ * pi_ * y) * cos(amf_ * pi_ * x) * cos(amf_ * pi_ * y) * Sc_ + 0.2e1 * visc_ * cos(amf_ * pi_ * x) * amf_ * pi_ * sin(amf_ * pi_ * y));
+  const double src = 0.10e1 * pow(znot_ * cos(amf_ * pi_ * x) * cos(amf_ * pi_ * y) / rhoP_ + (0.1e1 - znot_ * cos(amf_ * pi_ * x) * cos(amf_ * pi_ * y)) / rhoS_, -0.2e1) * unot_ * cos(a_ * pi_ * x) * sin(a_ * pi_ * y) * znot_ * cos(amf_ * pi_ * x) * cos(amf_ * pi_ * y) * (-znot_ * sin(amf_ * pi_ * x) * amf_ * pi_ * cos(amf_ * pi_ * y) / rhoP_ + znot_ * sin(amf_ * pi_ * x) * amf_ * pi_ * cos(amf_ * pi_ * y) / rhoS_) + 0.10e1 / (znot_ * cos(amf_ * pi_ * x) * cos(amf_ * pi_ * y) / rhoP_ + (0.1e1 - znot_ * cos(amf_ * pi_ * x) * cos(amf_ * pi_ * y)) / rhoS_) * unot_ * sin(a_ * pi_ * x) * a_ * pi_ * sin(a_ * pi_ * y) * znot_ * cos(amf_ * pi_ * x) * cos(amf_ * pi_ * y) + 0.10e1 / (znot_ * cos(amf_ * pi_ * x) * cos(amf_ * pi_ * y) / rhoP_ + (0.1e1 - znot_ * cos(amf_ * pi_ * x) * cos(amf_ * pi_ * y)) / rhoS_) * unot_ * cos(a_ * pi_ * x) * sin(a_ * pi_ * y) * znot_ * sin(amf_ * pi_ * x) * amf_ * pi_ * cos(amf_ * pi_ * y) - 0.10e1 * pow(znot_ * cos(amf_ * pi_ * x) * cos(amf_ * pi_ * y) / rhoP_ + (0.1e1 - znot_ * cos(amf_ * pi_ * x) * cos(amf_ * pi_ * y)) / rhoS_, -0.2e1) * vnot_ * sin(a_ * pi_ * x) * cos(a_ * pi_ * y) * znot_ * cos(amf_ * pi_ * x) * cos(amf_ * pi_ * y) * (-znot_ * cos(amf_ * pi_ * x) * sin(amf_ * pi_ * y) * amf_ * pi_ / rhoP_ + znot_ * cos(amf_ * pi_ * x) * sin(amf_ * pi_ * y) * amf_ * pi_ / rhoS_) - 0.10e1 / (znot_ * cos(amf_ * pi_ * x) * cos(amf_ * pi_ * y) / rhoP_ + (0.1e1 - znot_ * cos(amf_ * pi_ * x) * cos(amf_ * pi_ * y)) / rhoS_) * vnot_ * sin(a_ * pi_ * x) * sin(a_ * pi_ * y) * a_ * pi_ * znot_ * cos(amf_ * pi_ * x) * cos(amf_ * pi_ * y) - 0.10e1 / (znot_ * cos(amf_ * pi_ * x) * cos(amf_ * pi_ * y) / rhoP_ + (0.1e1 - znot_ * cos(amf_ * pi_ * x) * cos(amf_ * pi_ * y)) / rhoS_) * vnot_ * sin(a_ * pi_ * x) * cos(a_ * pi_ * y) * znot_ * cos(amf_ * pi_ * x) * sin(amf_ * pi_ * y) * amf_ * pi_ + 0.2e1 * visc_ / Sc_ * znot_ * cos(amf_ * pi_ * x) * amf_ * amf_ * pi_ * pi_ * cos(amf_ * pi_ * y);
 
   rhs[0] += src*dualVolume;
 }

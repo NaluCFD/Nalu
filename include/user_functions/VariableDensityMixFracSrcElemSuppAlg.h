@@ -6,37 +6,49 @@
 /*------------------------------------------------------------------------*/
 
 
-#ifndef SteadyTaylorVortexMixFracSrcNodeSuppAlg_h
-#define SteadyTaylorVortexMixFracSrcNodeSuppAlg_h
+#ifndef VariableDensityMixFracSrcElemSuppAlg_h
+#define VariableDensityMixFracSrcElemSuppAlg_h
 
 #include <SupplementalAlgorithm.h>
 #include <FieldTypeDef.h>
 
+#include <stk_mesh/base/BulkData.hpp>
 #include <stk_mesh/base/Entity.hpp>
 
 namespace sierra{
 namespace nalu{
 
 class Realm;
+class MasterElement;
 
-class SteadyTaylorVortexMixFracSrcNodeSuppAlg : public SupplementalAlgorithm
+class VariableDensityMixFracSrcElemSuppAlg : public SupplementalAlgorithm
 {
 public:
 
-  SteadyTaylorVortexMixFracSrcNodeSuppAlg(
+  VariableDensityMixFracSrcElemSuppAlg(
     Realm &realm);
 
-  virtual ~SteadyTaylorVortexMixFracSrcNodeSuppAlg() {}
+  virtual ~VariableDensityMixFracSrcElemSuppAlg() {}
 
   virtual void setup();
 
-  virtual void node_execute(
+  virtual void elem_resize(
+    MasterElement *meSCS,
+    MasterElement *meSCV);
+
+  virtual void elem_execute(
     double *lhs,
     double *rhs,
-    stk::mesh::Entity node);
+    stk::mesh::Entity element,
+    MasterElement *meSCS,
+    MasterElement *meSCV);
   
+  const stk::mesh::BulkData *bulkData_;
+
   VectorFieldType *coordinates_;
-  ScalarFieldType *dualNodalVolume_;
+
+  double dt_;
+  const int nDim_;
   const double rhoP_;
   const double rhoS_;
   const double unot_;
@@ -48,7 +60,16 @@ public:
   const double amf_;
   const double Sc_;  
   const double pi_;
-  
+
+  const bool useShifted_;
+
+  // scratch space (at constructor)
+  std::vector<double> scvCoords_;
+  std::vector<double> srcXi_;
+  // at elem_resize
+  std::vector<double> ws_shape_function_;
+  std::vector<double> ws_coordinates_;
+  std::vector<double> ws_scv_volume_;
 };
 
 } // namespace nalu

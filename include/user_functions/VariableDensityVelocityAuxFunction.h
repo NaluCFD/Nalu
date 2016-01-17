@@ -5,8 +5,8 @@
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
-#ifndef SteadyTaylorVortexMixFracAuxFunction_h
-#define SteadyTaylorVortexMixFracAuxFunction_h
+#ifndef VariableDensityVelocityAuxFunction_h
+#define VariableDensityVelocityAuxFunction_h
 
 #include <AuxFunction.h>
 
@@ -15,13 +15,15 @@
 namespace sierra{
 namespace nalu{
 
-class SteadyTaylorVortexMixFracAuxFunction : public AuxFunction
+class VariableDensityVelocityAuxFunction : public AuxFunction
 {
 public:
 
-  SteadyTaylorVortexMixFracAuxFunction();
+  VariableDensityVelocityAuxFunction(
+    const unsigned beginPos,
+    const unsigned endPos);
 
-  virtual ~SteadyTaylorVortexMixFracAuxFunction() {}
+  virtual ~VariableDensityVelocityAuxFunction() {}
   
   virtual void do_evaluate(
     const double * coords,
@@ -34,8 +36,10 @@ public:
     const unsigned endPos) const;
   
 private:
-  const double znot_;
-  const double amf_;
+  const double unot_;
+  const double vnot_;
+  const double wnot_;
+  const double a_;
   const double pi_;
 };
 

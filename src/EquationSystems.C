@@ -111,7 +111,9 @@ void EquationSystems::load(const YAML::Node & y_node)
           if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = mixFrac " << std::endl;
           bool ouputClipDiag = false;
           get_if_present_no_default(*y_eqsys, "output_clipping_diagnostic", ouputClipDiag);
-          eqSys = new MixtureFractionEquationSystem(*this, ouputClipDiag);
+          double deltaZClip = 0.0;
+          get_if_present_no_default(*y_eqsys, "clipping_delta", deltaZClip);
+          eqSys = new MixtureFractionEquationSystem(*this, ouputClipDiag, deltaZClip);
         }
         else if( (y_eqsys = expect_map(y_system, "Enthalpy", true)) ) {
           if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = enthalpy " << std::endl;

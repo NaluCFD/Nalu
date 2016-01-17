@@ -33,7 +33,8 @@ public:
 
   MixtureFractionEquationSystem(
     EquationSystems& equationSystems,
-    const bool outputClippingDiag);
+    const bool outputClippingDiag,
+    const double deltaZClip);
   virtual ~MixtureFractionEquationSystem();
 
   void populate_derived_quantities();
@@ -96,6 +97,7 @@ public:
 
   const bool managePNG_;
   const bool outputClippingDiag_;
+  const double deltaZClip_;
 
   ScalarFieldType *mixFrac_;
   ScalarFieldType *mixFracUF_;
