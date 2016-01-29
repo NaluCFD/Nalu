@@ -24,6 +24,16 @@
 
 #include <FieldTypeDef.h>
 
+// stk
+namespace stk {
+namespace mesh {
+class Part;
+typedef std::vector<Part*> PartVector;
+class MetaData;
+class BulkData;
+}
+}
+
 namespace sierra{
 namespace nalu{
 
@@ -60,14 +70,14 @@ public :
          stk::mesh::BulkData &toBulkData,
          const std::string &coordinates_name,
          const PairNames &VarPairName,
-         const stk::mesh::Part  *toMeshPart,
+         const stk::mesh::PartVector &toPartVec,
          const stk::ParallelMachine comm,
          const double radius=.0001) :
     toMetaData_(toMetaData),
     toBulkData_(toBulkData),
     tocoordinates_(toMetaData.get_field<VectorFieldType>(stk::topology::NODE_RANK,coordinates_name)),
     toFieldVec_   (get_fields(toMetaData, VarPairName)),
-    toMeshPart_(toMeshPart),
+    toPartVec_(toPartVec),
     comm_(comm),
     radius_(radius)   {}
 
@@ -92,7 +102,7 @@ public :
     Point center;
 
     stk::mesh::Selector s_locally_owned_union = toMetaData_.locally_owned_part()
-      &stk::mesh::Selector(*toMeshPart_);
+      &stk::mesh::selectUnion(toPartVec_);
 
     stk::mesh::BucketVector const& node_buckets = toBulkData_.get_buckets( stk::topology::NODE_RANK, s_locally_owned_union );
     for ( stk::mesh::BucketVector::const_iterator ib = node_buckets.begin();
@@ -131,7 +141,7 @@ public :
   stk::mesh::BulkData &toBulkData_;
   const VectorFieldType     *tocoordinates_;
   const std::vector< const stk::mesh::FieldBase *> toFieldVec_;
-  const stk::mesh::Part *toMeshPart_;
+  const stk::mesh::PartVector toPartVec_;
   const stk::ParallelMachine comm_;
   const double radius_;
 

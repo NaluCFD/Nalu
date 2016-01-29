@@ -31,6 +31,7 @@
 namespace stk {
 namespace mesh {
 class Part;
+typedef std::vector<Part*> PartVector;
 class MetaData;
 class BulkData;
 }
@@ -75,14 +76,14 @@ public :
                  Realm &fromRealm,
            const std::string &coordinates_name,
            const PairNames &VarPairName,
-           const stk::mesh::Part *fromMeshPart,
+           const stk::mesh::PartVector &fromPartVec,
            const stk::ParallelMachine comm) :
     fromMetaData_   (fromMetaData),
     fromBulkData_   (fromBulkData),
     fromRealm_      (fromRealm),
     fromcoordinates_(fromMetaData.get_field<VectorFieldType>(stk::topology::NODE_RANK,coordinates_name)),
     fromFieldVec_   (get_fields(fromMetaData, VarPairName)),
-    fromMeshPart_   (fromMeshPart),
+    fromPartVec_    (fromPartVec),
     comm_           (comm),
     mesh_modified_  (false),
     ghosting_       (0),
@@ -107,10 +108,10 @@ public :
     Point min_corner, max_corner;
 
     stk::mesh::Selector s_locally_owned_union = fromMetaData_.locally_owned_part()
-      & stk::mesh::Selector(*fromMeshPart_);
+      & stk::mesh::selectUnion(fromPartVec_);
 
-    // determine entity rank for the part served up
-    stk::mesh::EntityRank partEntityRank = fromMeshPart_->primary_entity_rank();
+    // determine entity rank for the part served up; should be homogeneous
+    stk::mesh::EntityRank partEntityRank = fromPartVec_[0]->primary_entity_rank();
 
     stk::mesh::BucketVector const& entity_buckets = fromBulkData_.get_buckets( partEntityRank, s_locally_owned_union );
     for ( stk::mesh::BucketVector::const_iterator ib = entity_buckets.begin();
@@ -203,7 +204,7 @@ public :
         Realm &fromRealm_;
   const VectorFieldType *fromcoordinates_;
   const std::vector< const stk::mesh::FieldBase *> fromFieldVec_;
-  const stk::mesh::Part *fromMeshPart_;
+  const stk::mesh::PartVector fromPartVec_;
   const stk::ParallelMachine comm_;
 
   bool mesh_modified_;

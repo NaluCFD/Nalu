@@ -829,7 +829,6 @@ Realm::setup_bc()
 void
 Realm::enforce_bc_on_exposed_faces()
 {
-
   // first, skin mesh and, therefore, populate
   stk::mesh::Selector activePart = metaData_->locally_owned_part() | metaData_->globally_shared_part();
   stk::mesh::PartVector partVec;
