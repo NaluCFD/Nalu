@@ -92,27 +92,22 @@ Transfer::load(const YAML::Node & node)
   // realm names
   const YAML::Node & realmPair = node["realm_pair"];
   if ( realmPair.size() != 2 )
-    throw std::runtime_error("need two realm pairs for xfer");
+    throw std::runtime_error("XFER::Error: need two realm pairs for xfer");
   realmPair[0] >> realmPairName_.first;
   realmPair[1] >> realmPairName_.second;
 
-  // error checking on mesh part declaration
+  // set bools for variety of mesh part declarations
   const bool hasOld = node.FindValue("mesh_part_pair");
   const bool hasNewFrom = node.FindValue("from_target_name");
   const bool hasNewTo = node.FindValue("to_target_name");
 
-  // check to make sure old is not used with new :)
-  if ( hasOld ) {
-    if ( hasNewFrom || hasNewTo )
-      throw std::runtime_error("XFER::part definition error: can not mix mesh part line commands");
-  }
-  else {
-    if ( !hasNewFrom || !hasNewTo )
-      throw  std::runtime_error("XFER::part definition error: missing a from_target_name or to to_target_name");
-  }
-
   // mesh part pairs
-  if ( node.FindValue("mesh_part_pair") ) {
+  if ( hasOld ) {
+    // error check to ensure old and new are not mixed
+    if ( hasNewFrom || hasNewTo )
+      throw std::runtime_error("XFER::Error: part definition error: can not mix mesh part line commands");
+
+    // proceed safely
     const YAML::Node & meshPartPairName = node["mesh_part_pair"];
     if ( meshPartPairName.size() != 2 )
       throw std::runtime_error("need two mesh part pairs for xfer");
@@ -123,35 +118,37 @@ Transfer::load(const YAML::Node & node)
     meshPartPairName[1] >> toPartNameVec_[0];
   }
   else {
-    if ( node.FindValue("from_target_name") ) {      
-      // new methodology that allows for full target
-      const YAML::Node &targets = node["from_target_name"];
-      if (targets.Type() == YAML::NodeType::Scalar) {
-        fromPartNameVec_.resize(1);
-        targets >> fromPartNameVec_[0];
-      }
-      else {
-        fromPartNameVec_.resize(targets.size());
-        for (size_t i=0; i < targets.size(); ++i) {
-          targets[i] >> fromPartNameVec_[i];
-        }
+    // new methodology that allows for full target; error check
+    if ( !hasNewFrom )
+      throw  std::runtime_error("XFER::Error: part definition error: missing a from_target_name");
+    if ( !hasNewTo )
+      throw  std::runtime_error("XFER::Error: part definition error: missing a to_target_name");
+
+    // proceed safely; manage "from" parts
+    const YAML::Node &targetsFrom = node["from_target_name"];
+    if (targetsFrom.Type() == YAML::NodeType::Scalar) {
+      fromPartNameVec_.resize(1);
+      targetsFrom >> fromPartNameVec_[0];
+    }
+    else {
+      fromPartNameVec_.resize(targetsFrom.size());
+      for (size_t i=0; i < targetsFrom.size(); ++i) {
+        targetsFrom[i] >> fromPartNameVec_[i];
       }
     }
     
-    if ( node.FindValue("to_target_name") ) {
-      // new methodology that allows for full target
-      const YAML::Node &targets = node["to_target_name"];
-      if (targets.Type() == YAML::NodeType::Scalar) {
-        toPartNameVec_.resize(1);
-        targets >> toPartNameVec_[0];
+    // manage "to" parts
+    const YAML::Node &targetsTo = node["to_target_name"];
+    if (targetsTo.Type() == YAML::NodeType::Scalar) {
+      toPartNameVec_.resize(1);
+      targetsTo >> toPartNameVec_[0];
+    }
+    else {
+      toPartNameVec_.resize(targetsTo.size());
+      for (size_t i=0; i < targetsTo.size(); ++i) {
+        targetsTo[i] >> toPartNameVec_[i];
       }
-      else {
-        toPartNameVec_.resize(targets.size());
-        for (size_t i=0; i < targets.size(); ++i) {
-          targets[i] >> toPartNameVec_[i];
-        }
-      }
-    }  
+    }
   }
 
   // search method
