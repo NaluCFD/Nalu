@@ -79,7 +79,12 @@ public:
 
   void initialize();
   void reinitialize_linear_system();
-  
+
+  virtual void register_initial_condition_fcn(
+      stk::mesh::Part *part,
+      const std::map<std::string, std::string> &theNames,
+      const std::map<std::string, std::vector<double> > &theParams);
+
   void predict_state();
   
   void solve_and_update();

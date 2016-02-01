@@ -80,6 +80,12 @@ EquationSystem::~EquationSystem()
 
   for( iim=copyStateAlg_.begin(); iim!=copyStateAlg_.end(); ++iim )
     delete *iim;
+
+  // prop algs
+  std::vector<Algorithm *>::iterator iip;
+  for( iip=propertyAlg_.begin(); iip!=propertyAlg_.end(); ++iip ) {
+    delete *iip;
+  }
 }
 
 //--------------------------------------------------------------------------

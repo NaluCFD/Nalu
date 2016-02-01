@@ -66,6 +66,8 @@
 
 // user functions
 #include <user_functions/FlowPastCylinderTempAuxFunction.h>
+#include <user_functions/VariableDensityNonIsoTemperatureAuxFunction.h>
+#include <user_functions/VariableDensityNonIsoEnthalpySrcNodeSuppAlg.h>
 
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
@@ -389,7 +391,7 @@ EnthalpyEquationSystem::register_interior_algorithm(
           }
         }
         else {
-          throw std::runtime_error("ElemSrcTermsError::only support DCO and time term");
+          throw std::runtime_error("EnthalpyEquationSystem::register_interior_algorithm limited supported element src terms");
         }     
         theAlg->supplementalAlg_.push_back(suppAlg); 
       }
@@ -447,8 +449,11 @@ EnthalpyEquationSystem::register_interior_algorithm(
         else if ( sourceName == "gcl" ) {
           suppAlg = new ScalarGclNodeSuppAlg(enthalpy_,realm_);
         }
+        else if (sourceName == "VariableDensityNonIso" ) {
+          suppAlg = new VariableDensityNonIsoEnthalpySrcNodeSuppAlg(realm_);
+        }
         else {
-          throw std::runtime_error("EnthalpyEquationSystem::only PMR, low speed compressible and gcl src term(s) are supported");
+          throw std::runtime_error("EnthalpyEquationSystem::register_interior_algorithm limited supported nodal src terms");
         }
         // add supplemental algorithm
         theAlg->supplementalAlg_.push_back(suppAlg);
@@ -502,10 +507,6 @@ EnthalpyEquationSystem::register_inflow_bc(
 
   // extract user data
   InflowUserData userData = inflowBCData.userData_;
-
-  // check that it was specified
-  if ( !userData.tempSpec_ )
-    throw std::runtime_error("no temperature specified at inflow");
 
   // bc data work (copy, enthalpy evaluation, etc.)
   ScalarFieldType *temperatureBc = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature_bc"));
@@ -946,12 +947,45 @@ EnthalpyEquationSystem::reinitialize_linear_system()
 }
 
 //--------------------------------------------------------------------------
+//-------- register_initial_condition_fcn ----------------------------------
+//--------------------------------------------------------------------------
+void
+EnthalpyEquationSystem::register_initial_condition_fcn(
+  stk::mesh::Part *part,
+  const std::map<std::string, std::string> &theNames,
+  const std::map<std::string, std::vector<double> > &/*theParams*/)
+{
+  // iterate map and check for name
+  const std::string dofName = "temperature";
+  std::map<std::string, std::string>::const_iterator iterName
+    = theNames.find(dofName);
+  if (iterName != theNames.end()) {
+    std::string fcnName = (*iterName).second;
+    AuxFunction *theAuxFunc = NULL;
+    if ( fcnName == "VariableDensityNonIso" ) {
+      theAuxFunc = new VariableDensityNonIsoTemperatureAuxFunction();      
+    }
+    else {
+      throw std::runtime_error("EnthalpyEquationSystem::register_initial_condition_fcn: limited user functions supported");
+    }
+    
+    // create the algorithm
+    AuxFunctionAlgorithm *auxAlg
+      = new AuxFunctionAlgorithm(realm_, part,
+				 temperature_, theAuxFunc,
+				 stk::topology::NODE_RANK);
+    
+    // push to ic
+    realm_.initCondAlg_.push_back(auxAlg);
+  }
+}
+
+//--------------------------------------------------------------------------
 //-------- solve_and_update ------------------------------------------------
 //--------------------------------------------------------------------------
 void
 EnthalpyEquationSystem::solve_and_update()
 {
-
   // compute bc enthalpy
   for ( size_t k = 0; k < bcEnthalpyFromTemperatureAlg_.size(); ++k )
     bcEnthalpyFromTemperatureAlg_[k]->execute();
@@ -1247,12 +1281,15 @@ EnthalpyEquationSystem::temperature_bc_setup(
     if ( fcnName == "flow_past_cylinder" ) {
       theAuxFunc = new FlowPastCylinderTempAuxFunction();
     }
+    else if ( fcnName == "VariableDensityNonIso" ) {
+      theAuxFunc = new VariableDensityNonIsoTemperatureAuxFunction();
+    }
     else {
-      throw std::runtime_error("Only steady_2d_thermal user functions supported");
+      throw std::runtime_error("EnthalpyEquationSystem::temperature_bc_setup; limited user functions supported");
     }
   } 
   else {
-    throw std::runtime_error("EnthalpyEquationSystem::temperature_bc_setup: only function and constants supported");   
+    throw std::runtime_error("EnthalpyEquationSystem::temperature_bc_setup: only function and constants supported (and none specified)");   
   }
   
   AuxFunctionAlgorithm *auxTempAlg

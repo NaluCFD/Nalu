@@ -121,6 +121,9 @@
 #include <user_functions/VariableDensityContinuitySrcNodeSuppAlg.h>
 #include <user_functions/VariableDensityMomentumSrcNodeSuppAlg.h>
 
+#include <user_functions/VariableDensityNonIsoContinuitySrcNodeSuppAlg.h>
+#include <user_functions/VariableDensityNonIsoMomentumSrcNodeSuppAlg.h>
+
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
 #include <stk_util/environment/CPUTime.hpp>
@@ -453,7 +456,7 @@ LowMachEquationSystem::register_surface_pp_algorithm(
 }
 
 //--------------------------------------------------------------------------
-//-------- register_initial_condition_fcn ------------------------------------------------
+//-------- register_initial_condition_fcn ----------------------------------
 //--------------------------------------------------------------------------
 void
 LowMachEquationSystem::register_initial_condition_fcn(
@@ -494,18 +497,15 @@ LowMachEquationSystem::register_initial_condition_fcn(
       }
     }
     else if ( fcnName == "SteadyTaylorVortex" ) {
-      
-      // create the function
       theAuxFunc = new SteadyTaylorVortexVelocityAuxFunction(0,nDim);
     }
-    else if ( fcnName == "VariableDensity" ) {
-      
-      // create the function
+    else if ( fcnName == "VariableDensity" ) {      
+      theAuxFunc = new VariableDensityVelocityAuxFunction(0,nDim);
+    }
+    else if ( fcnName == "VariableDensityNonIso" ) {      
       theAuxFunc = new VariableDensityVelocityAuxFunction(0,nDim);
     }
     else if ( fcnName == "convecting_taylor_vortex" ) {
-      
-      // create the function
       theAuxFunc = new ConvectingTaylorVortexVelocityAuxFunction(0,nDim); 
     }
     else {
@@ -564,7 +564,7 @@ LowMachEquationSystem::solve_and_update()
       realm_.get_activate_aura());
     timeB = stk::cpu_time();
     momentumEqSys_->timerAssemble_ += (timeB-timeA);
-
+    
     // compute velocity relative to mesh with new velocity
     realm_.compute_vrtm();
 
@@ -581,7 +581,7 @@ LowMachEquationSystem::solve_and_update()
       realm_.get_activate_aura());
     timeB = stk::cpu_time();
     continuityEqSys_->timerAssemble_ += (timeB-timeA);
-
+    
     // compute mdot
     timeA = stk::cpu_time();
     continuityEqSys_->computeMdotAlgDriver_->execute();
@@ -1096,6 +1096,9 @@ MomentumEquationSystem::register_interior_algorithm(
         else if (sourceName == "VariableDensity" ) {
           suppAlg = new VariableDensityMomentumSrcNodeSuppAlg(realm_);
         }
+        else if (sourceName == "VariableDensityNonIso" ) {
+          suppAlg = new VariableDensityNonIsoMomentumSrcNodeSuppAlg(realm_);
+        }
         else {
           throw std::runtime_error("MomentumEquationSystem::only buoyancy, buoyancy_boussinesq, body force or gcl are supported");
         }
@@ -1211,8 +1214,11 @@ MomentumEquationSystem::register_inflow_bc(
     else if ( fcnName == "VariableDensity" ) {
       theAuxFunc = new VariableDensityVelocityAuxFunction(0,nDim);
     }
+    else if ( fcnName == "VariableDensityNonIso" ) {
+      theAuxFunc = new VariableDensityVelocityAuxFunction(0,nDim);
+    }
     else {
-      throw std::runtime_error("MomentumEquationSystem::register_inflow_bc: Only convecting_taylor_vortex, SteadyTaylorVortex and VariableDensity supported");
+      throw std::runtime_error("MomentumEquationSystem::register_inflow_bc: limited functions supported");
     }
   }
   else {
@@ -2129,8 +2135,11 @@ ContinuityEquationSystem::register_interior_algorithm(
         else if ( sourceName == "VariableDensity" ) {
           suppAlg = new VariableDensityContinuitySrcNodeSuppAlg(realm_);
         }
+        else if ( sourceName == "VariableDensityNonIso" ) {
+          suppAlg = new VariableDensityNonIsoContinuitySrcNodeSuppAlg(realm_);
+        }
         else {
-          throw std::runtime_error("ContinuityEquationSystem::only density_time_derivative, low_speed_compressible or gcl are supported");
+          throw std::runtime_error("ContinuityEquationSystem::src; limited source terms supported");
         }
         // add supplemental algorithm
         theAlg->supplementalAlg_.push_back(suppAlg);
@@ -2199,8 +2208,11 @@ ContinuityEquationSystem::register_inflow_bc(
     else if ( fcnName == "VariableDensity" ) {
       theAuxFunc = new VariableDensityVelocityAuxFunction(0,nDim);
     }
+    else if ( fcnName == "VariableDensityNonIso" ) {
+      theAuxFunc = new VariableDensityVelocityAuxFunction(0,nDim);
+    }
     else {
-      throw std::runtime_error("ContEquationSystem::register_inflow_bc: Only convecting_taylor_vortex, SteadyTaylorVortex and VariableDensity supported");
+      throw std::runtime_error("ContEquationSystem::register_inflow_bc: limited functions supported");
     }
   }
   else {
@@ -2583,7 +2595,7 @@ ContinuityEquationSystem::reinitialize_linear_system()
 }
 
 //--------------------------------------------------------------------------
-//-------- register_initial_condition_fcn ------------------------------------------------
+//-------- register_initial_condition_fcn ----------------------------------
 //--------------------------------------------------------------------------
 void
 ContinuityEquationSystem::register_initial_condition_fcn(
@@ -2610,8 +2622,12 @@ ContinuityEquationSystem::register_initial_condition_fcn(
       // create the function
       theAuxFunc = new VariableDensityPressureAuxFunction();      
     }
+    else if ( fcnName == "VariableDensityNonIso" ) {
+      // create the function
+      theAuxFunc = new VariableDensityPressureAuxFunction();      
+    }
     else {
-      throw std::runtime_error("ContinuityEquationSystem::register_initial_condition_fcn: convecting_taylor_vortex, SteadyTaylorVortex and VariableDensity only supported");
+      throw std::runtime_error("ContinuityEquationSystem::register_initial_condition_fcn: limited functions supported");
     }
     
     // create the algorithm
