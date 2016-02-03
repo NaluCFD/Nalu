@@ -42,7 +42,7 @@ VariableDensityMomentumSrcNodeSuppAlg::VariableDensityMomentumSrcNodeSuppAlg(
     znot_(1.0),
     a_(20.0),
     amf_(10.0),
-    visc_(0.01),
+    visc_(0.0025),
     rhoP_(1.0),
     rhoS_(2.0),
     pi_(std::acos(-1.0)),

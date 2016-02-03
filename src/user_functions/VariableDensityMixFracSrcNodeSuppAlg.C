@@ -40,7 +40,7 @@ VariableDensityMixFracSrcNodeSuppAlg::VariableDensityMixFracSrcNodeSuppAlg(
     vnot_(1.0),
     znot_(1.0),
     pnot_(1.0),
-    visc_(0.01),
+    visc_(0.0025),
     a_(20.0),
     amf_(10.0),
     Sc_(0.8),

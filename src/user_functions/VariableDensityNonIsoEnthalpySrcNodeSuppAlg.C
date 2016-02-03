@@ -40,7 +40,7 @@ VariableDensityNonIsoEnthalpySrcNodeSuppAlg::VariableDensityNonIsoEnthalpySrcNod
     hnot_(1.0),
     a_(20.0),
     ah_(10.0),
-    visc_(0.01),
+    visc_(0.00125),
     Pref_(100.0),
     MW_(30.0),
     R_(10.0),
