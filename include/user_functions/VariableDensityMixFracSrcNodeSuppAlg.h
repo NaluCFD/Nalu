@@ -41,6 +41,7 @@ public:
   const double rhoS_;
   const double unot_;
   const double vnot_;
+  const double wnot_;
   const double znot_;
   const double pnot_;
   const double visc_;

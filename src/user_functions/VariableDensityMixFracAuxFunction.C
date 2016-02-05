@@ -41,8 +41,9 @@ VariableDensityMixFracAuxFunction::do_evaluate(
 
     const double x = coords[0];
     const double y = coords[1];
+    const double z = coords[2];
 
-    fieldPtr[0] = znot_*cos(amf_*pi_*x)*cos(amf_*pi_*y);
+    fieldPtr[0] = znot_*cos(amf_*pi_*x)*cos(amf_*pi_*y)*cos(amf_*pi_*z);
 
     fieldPtr += fieldSize;
     coords += spatialDimension;

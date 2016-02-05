@@ -41,9 +41,12 @@ VariableDensityPressureAuxFunction::do_evaluate(
 
     const double x = coords[0];
     const double y = coords[1];
-
-    fieldPtr[0] = -pnot_/4.0*(cos(2.0*a_*pi_*x) + cos(2.0*a_*pi_*y));
-
+    const double z = coords[2];
+    
+    fieldPtr[0] = -pnot_/4.0*( cos(2.0*a_*pi_*x) + 
+                               cos(2.0*a_*pi_*y) + 
+                               cos(2.0*a_*pi_*z));
+    
     fieldPtr += fieldSize;
     coords += spatialDimension;
   }

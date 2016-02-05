@@ -8,6 +8,7 @@
 
 #include <user_functions/VariableDensityNonIsoTemperatureAuxFunction.h>
 #include <algorithm>
+#include <NaluEnv.h>
 
 // basic c++
 #include <cmath>
@@ -43,8 +44,9 @@ VariableDensityNonIsoTemperatureAuxFunction::do_evaluate(
 
     const double x = coords[0];
     const double y = coords[1];
+    const double z = coords[2];
     
-    const double h = hnot_*cos(ah_*pi_*x)*cos(ah_*pi_*y);
+    const double h = cos(ah_*pi_*x)*cos(ah_*pi_*y)*cos(ah_*pi_*z);
 
     const double temp = h/Cp_ + Tref_;
 

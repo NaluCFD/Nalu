@@ -79,9 +79,10 @@ VariableDensityNonIsoContinuitySrcNodeSuppAlg::node_execute(
 
   const double x = coords[0];
   const double y = coords[1];
+  const double z = coords[2];
 
-  const double src = -Pref_ * MW_ / R_ * pow(hnot_ * cos(ah_ * pi_ * x) * cos(ah_ * pi_ * y) / Cp_ + Tref_, -0.2e1) * unot_ * cos(a_ * pi_ * x) * sin(a_ * pi_ * y) * hnot_ * sin(ah_ * pi_ * x) * ah_ * pi_ * cos(ah_ * pi_ * y) / Cp_ + Pref_ * MW_ / R_ / (hnot_ * cos(ah_ * pi_ * x) * cos(ah_ * pi_ * y) / Cp_ + Tref_) * unot_ * sin(a_ * pi_ * x) * a_ * pi_ * sin(a_ * pi_ * y) + Pref_ * MW_ / R_ * pow(hnot_ * cos(ah_ * pi_ * x) * cos(ah_ * pi_ * y) / Cp_ + Tref_, -0.2e1) * vnot_ * sin(a_ * pi_ * x) * cos(a_ * pi_ * y) * hnot_ * cos(ah_ * pi_ * x) * sin(ah_ * pi_ * y) * ah_ * pi_ / Cp_ - Pref_ * MW_ / R_ / (hnot_ * cos(ah_ * pi_ * x) * cos(ah_ * pi_ * y) / Cp_ + Tref_) * vnot_ * sin(a_ * pi_ * x) * sin(a_ * pi_ * y) * a_ * pi_;
-
+  const double src = -Pref_ * MW_ / R_ * pow(hnot_ * cos(ah_ * pi_ * x) * cos(ah_ * pi_ * y) * cos(ah_ * pi_ * z) / Cp_ + Tref_, -0.2e1) * unot_ * cos(a_ * pi_ * x) * sin(a_ * pi_ * y) * sin(a_ * pi_ * z) * hnot_ * sin(ah_ * pi_ * x) * ah_ * pi_ * cos(ah_ * pi_ * y) * cos(ah_ * pi_ * z) / Cp_ + Pref_ * MW_ / R_ / (hnot_ * cos(ah_ * pi_ * x) * cos(ah_ * pi_ * y) * cos(ah_ * pi_ * z) / Cp_ + Tref_) * unot_ * sin(a_ * pi_ * x) * a_ * pi_ * sin(a_ * pi_ * y) * sin(a_ * pi_ * z) + Pref_ * MW_ / R_ * pow(hnot_ * cos(ah_ * pi_ * x) * cos(ah_ * pi_ * y) * cos(ah_ * pi_ * z) / Cp_ + Tref_, -0.2e1) * vnot_ * sin(a_ * pi_ * x) * cos(a_ * pi_ * y) * sin(a_ * pi_ * z) * hnot_ * cos(ah_ * pi_ * x) * sin(ah_ * pi_ * y) * ah_ * pi_ * cos(ah_ * pi_ * z) / Cp_ - Pref_ * MW_ / R_ / (hnot_ * cos(ah_ * pi_ * x) * cos(ah_ * pi_ * y) * cos(ah_ * pi_ * z) / Cp_ + Tref_) * vnot_ * sin(a_ * pi_ * x) * sin(a_ * pi_ * y) * a_ * pi_ * sin(a_ * pi_ * z) - Pref_ * MW_ / R_ * pow(hnot_ * cos(ah_ * pi_ * x) * cos(ah_ * pi_ * y) * cos(ah_ * pi_ * z) / Cp_ + Tref_, -0.2e1) * wnot_ * sin(a_ * pi_ * x) * sin(a_ * pi_ * y) * cos(a_ * pi_ * z) * hnot_ * cos(ah_ * pi_ * x) * cos(ah_ * pi_ * y) * sin(ah_ * pi_ * z) * ah_ * pi_ / Cp_ + Pref_ * MW_ / R_ / (hnot_ * cos(ah_ * pi_ * x) * cos(ah_ * pi_ * y) * cos(ah_ * pi_ * z) / Cp_ + Tref_) * wnot_ * sin(a_ * pi_ * x) * sin(a_ * pi_ * y) * sin(a_ * pi_ * z) * a_ * pi_;
+ 
   rhs[0] += src*dualVolume/projTimeScale_;
 }
 
