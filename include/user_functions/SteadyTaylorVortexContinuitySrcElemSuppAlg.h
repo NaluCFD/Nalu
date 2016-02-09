@@ -55,7 +55,6 @@ public:
   const double vnot_;
   const double znot_;
   const double pnot_;
-  const double visc_;
   const double a_;
   const double amf_;
   const double Sc_;  

@@ -41,7 +41,6 @@ SteadyTaylorVortexContinuitySrcElemSuppAlg::SteadyTaylorVortexContinuitySrcElemS
     vnot_(1.0),
     znot_(1.0),
     pnot_(1.0),
-    visc_(0.001),
     a_(20.0),
     amf_(10.0),
     Sc_(0.9),

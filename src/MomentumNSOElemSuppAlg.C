@@ -279,7 +279,8 @@ MomentumNSOElemSuppAlg::elem_execute(
       const int rowR = indexR*nodesPerElement*nDim_;
 
       // zero out residual_k and interpolated velocity_k to scs
-      double dFdxk = 0.0;
+      double dFdxkAdv = 0.0;
+      double dFdxkDiff = 0.0;
       double ukNm1Scs = 0.0;
       double ukNScs = 0.0;
       double ukNp1Scs = 0.0;
@@ -319,20 +320,20 @@ MomentumNSOElemSuppAlg::elem_execute(
           const double vrtmj = ws_velocityRTM_[icNdim+j];
           ws_dukdxScs_[j] += ukNp1*dnj;
           const double uk = ws_uNp1_[icNdim+k];
-          dFdxk += (rhoIC*vrtmj*uk 
-                    - viscIC*(ws_Gju_[row_ws_Gju+k*nDim_+j] + ws_Gju_[row_ws_Gju+j*nDim_+k] 
-                              - 2.0/3.0*divU*ws_kd_[k*nDim_+j]*includeDivU_))*dnj;
+          dFdxkAdv += rhoIC*vrtmj*uk*dnj;
+          dFdxkDiff += viscIC*(ws_Gju_[row_ws_Gju+k*nDim_+j] + ws_Gju_[row_ws_Gju+j*nDim_+k] 
+                               - 2.0/3.0*divU*ws_kd_[k*nDim_+j]*includeDivU_)*dnj;
         }
       }
       
       // compute residual for NSO; linearized first
-      double residualAlt = ukNp1Scs*dFdxCont;
+      double residualAlt = dFdxkAdv - ukNp1Scs*dFdxCont;
       for ( int j = 0; j < nDim_; ++j )
-        residualAlt += ws_rhovScs_[j]*ws_dukdxScs_[j];
+        residualAlt -= ws_rhovScs_[j]*ws_dukdxScs_[j];
       
       // compute residual for NSO; pde-based second
       const double time = (gamma1_*rhoNp1Scs*ukNp1Scs + gamma2_*rhoNScs*ukNScs + gamma3_*rhoNm1Scs*ukNm1Scs)/dt_;
-      const double residualPde = time + dFdxk + ws_dpdxScs_[k] - contRes*ukNp1Scs*nonConservedForm_; 
+      const double residualPde = time + dFdxkAdv - dFdxkDiff + ws_dpdxScs_[k] - contRes*ukNp1Scs*nonConservedForm_; 
 
       // final form
       const double residual = residualAlt*altResFac_ + residualPde*om_altResFac_;

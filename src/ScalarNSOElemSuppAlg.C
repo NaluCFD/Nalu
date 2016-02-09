@@ -214,7 +214,8 @@ ScalarNSOElemSuppAlg::elem_execute(
     double rhoNm1Scs = 0.0;
     double rhoNScs = 0.0;
     double rhoNp1Scs = 0.0;
-    double dFdx = 0.0;
+    double dFdxAdv = 0.0;
+    double dFdxDiff = 0.0;
     double dFdxCont = 0.0;
    
     // zero out vector
@@ -251,7 +252,8 @@ ScalarNSOElemSuppAlg::elem_execute(
         ws_dqdxScs_[j] += qIC*dnj;
         ws_vrtmScs_[j] += vrtmj*r;
         ws_rhovScs_[j] += r*rhoIC*vrtmj;
-        dFdx += (rhoIC*vrtmj*qIC - diffFluxCoeffIC*ws_Gjq_[ic*nDim_+j])*dnj;
+        dFdxAdv += rhoIC*vrtmj*qIC*dnj;
+        dFdxDiff += diffFluxCoeffIC*ws_Gjq_[ic*nDim_+j]*dnj;
         dFdxCont += rhoIC*vrtmj*dnj;
       }
     }
@@ -260,13 +262,13 @@ ScalarNSOElemSuppAlg::elem_execute(
     const double contRes = (gamma1_*rhoNp1Scs + gamma2_*rhoNScs + gamma3_*rhoNm1Scs)/dt_ + dFdxCont;
 
     // compute residual for NSO; linearized first
-    double residualAlt = qNp1Scs*dFdxCont;
-    for ( int j = 0; j < nDim_; ++j )
-      residualAlt += ws_rhovScs_[j]*ws_dqdxScs_[j];
-   
+    double residualAlt = dFdxAdv - qNp1Scs*dFdxCont;
+      for ( int j = 0; j < nDim_; ++j )
+      residualAlt -= ws_rhovScs_[j]*ws_dqdxScs_[j];
+    
     // compute residual for NSO; pde-based second
     const double time = (gamma1_*rhoNp1Scs*qNp1Scs + gamma2_*rhoNScs*qNScs + gamma3_*rhoNm1Scs*qNm1Scs)/dt_;
-    const double residualPde = time + dFdx - contRes*qNp1Scs*nonConservedForm_;
+    const double residualPde = time + dFdxAdv - dFdxDiff - contRes*qNp1Scs*nonConservedForm_;
 
     // final form
     const double residual = residualAlt*altResFac_ + residualPde*om_altResFac_;
