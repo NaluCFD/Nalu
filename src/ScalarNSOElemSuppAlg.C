@@ -263,7 +263,7 @@ ScalarNSOElemSuppAlg::elem_execute(
 
     // compute residual for NSO; linearized first
     double residualAlt = dFdxAdv - qNp1Scs*dFdxCont;
-      for ( int j = 0; j < nDim_; ++j )
+    for ( int j = 0; j < nDim_; ++j )
       residualAlt -= ws_rhovScs_[j]*ws_dqdxScs_[j];
     
     // compute residual for NSO; pde-based second

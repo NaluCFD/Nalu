@@ -46,7 +46,7 @@ VariableDensityMomentumSrcNodeSuppAlg::VariableDensityMomentumSrcNodeSuppAlg(
     rhoP_(0.1),
     rhoS_(1.0),
     pi_(std::acos(-1.0)),
-    twoThirds_(2.0/3.0),
+    twoThirds_(2.0/3.0*realm_.get_divU()),
     rhoRef_(1.0),
     gx_(0.0),
     gy_(0.0),

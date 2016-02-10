@@ -49,7 +49,7 @@ VariableDensityNonIsoMomentumSrcNodeSuppAlg::VariableDensityNonIsoMomentumSrcNod
     Tref_(300.0),
     Cp_(0.01),
     pi_(std::acos(-1.0)),
-    twoThirds_(2.0/3.0),
+    twoThirds_(2.0/3.0*realm_.get_divU()),
     rhoRef_(1.0),
     gx_(0.0),
     gy_(0.0),
