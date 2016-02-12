@@ -1799,7 +1799,9 @@ void
 MomentumEquationSystem::compute_projected_nodal_gradient()
 {
   if ( !managePNG_ ) {
+    const double timeA = -stk::cpu_time();
     assembleNodalGradAlgDriver_->execute();
+    timerMisc_ += (stk::cpu_time() + timeA);
   }
   else {
     // this option is more complex... Rather than solving a nDim*nDim system, we
@@ -2667,7 +2669,9 @@ void
 ContinuityEquationSystem::compute_projected_nodal_gradient()
 {
   if ( !managePNG_ ) {
+    const double timeA = -stk::cpu_time();
     assembleNodalGradAlgDriver_->execute();
+    timerMisc_ += (stk::cpu_time() + timeA);
   }
   else {
     projectedNodalGradEqs_->solve_and_update_external();

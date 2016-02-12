@@ -25,7 +25,7 @@ class Realm;
 class AssembleNodalGradAlgorithmDriver;
 class LinearSystem;
 class EquationSystems;
-
+class ProjectedNodalGradientEquationSystem;
 
 class TurbKineticEnergyEquationSystem : public EquationSystem {
 
@@ -80,11 +80,16 @@ public:
   void solve_and_update();
   void initial_work();
 
-  void assemble_nodal_gradient();
   void compute_effective_diff_flux_coeff();
   void compute_wall_model_parameters();
   void update_and_clip();
+
+  void manage_projected_nodal_gradient(
+    EquationSystems& eqSystems);
+  void compute_projected_nodal_gradient();
   
+  const bool managePNG_;
+
   ScalarFieldType *tke_;
   VectorFieldType *dkdx_;
   ScalarFieldType *kTmp_;
@@ -96,6 +101,9 @@ public:
   AlgorithmDriver *diffFluxCoeffAlgDriver_;
   AlgorithmDriver *wallFunctionTurbKineticEnergyAlgDriver_;
   const TurbulenceModel turbulenceModel_;
+
+  ProjectedNodalGradientEquationSystem *projectedNodalGradEqs_;
+
   bool isInit_;
 
 };

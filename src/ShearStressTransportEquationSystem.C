@@ -174,7 +174,7 @@ ShearStressTransportEquationSystem::solve_and_update()
   // SST_FIXME: deal with timers; all on misc for SSTEqs double timeA, timeB;
   if ( isInit_ ) {
     // compute projected nodal gradients
-    tkeEqSys_->assemble_nodal_gradient();
+    tkeEqSys_->compute_projected_nodal_gradient();
     sdrEqSys_->assemble_nodal_gradient();
     clip_min_distance_to_wall();
     
@@ -214,7 +214,7 @@ ShearStressTransportEquationSystem::solve_and_update()
     update_and_clip();
 
     // compute projected nodal gradients
-    tkeEqSys_->assemble_nodal_gradient();
+    tkeEqSys_->compute_projected_nodal_gradient();
     sdrEqSys_->assemble_nodal_gradient();
   }
 

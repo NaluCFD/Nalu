@@ -1023,10 +1023,7 @@ EnthalpyEquationSystem::solve_and_update()
     timerAssemble_ += (timeB-timeA);
 
     // projected nodal gradient
-    timeA = stk::cpu_time();
     compute_projected_nodal_gradient();
-    timeB = stk::cpu_time();
-    timerMisc_ += (timeB-timeA);
   }
 
   // delay extract temperature and h and Too to the end of the iteration over all equations
@@ -1368,7 +1365,9 @@ void
 EnthalpyEquationSystem::compute_projected_nodal_gradient()
 {
   if ( !managePNG_ ) {
+    const double timeA = -stk::cpu_time();
     assembleNodalGradAlgDriver_->execute();
+    timerMisc_ += (stk::cpu_time() + timeA);
   }
   else {
     projectedNodalGradEqs_->solve_and_update_external();
