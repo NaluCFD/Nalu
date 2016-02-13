@@ -149,7 +149,7 @@ AssembleScalarElemDiffSolverAlgorithm::execute()
       for ( size_t i = 0; i < supplementalAlgSize; ++i )
         supplementalAlg_[i]->elem_execute( &lhs[0], &rhs[0], elem, meSCS, meSCV);
 
-      apply_coeff(connected_nodes, scratchIds, scratchVals, rhs, lhs,  __FILE__);
+      apply_coeff(connected_nodes, scratchIds, scratchVals, rhs, lhs, __FILE__);
 
     }
 

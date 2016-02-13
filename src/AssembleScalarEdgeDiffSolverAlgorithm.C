@@ -188,7 +188,7 @@ AssembleScalarEdgeDiffSolverAlgorithm::execute()
       p_rhs[1] = diffFlux;
 
       // apply it
-      apply_coeff(connected_nodes, scratchIds, scratchVals, rhs, lhs,  __FILE__);
+      apply_coeff(connected_nodes, scratchIds, scratchVals, rhs, lhs, __FILE__);
 
     }
   }

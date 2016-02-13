@@ -251,7 +251,7 @@ AssembleRadTransEdgeSolverAlgorithm::execute()
       p_rhs[0] -= sucv;
       p_rhs[1] += sucv;
 
-      apply_coeff(connected_nodes, scratchIds, scratchVals, rhs, lhs,  __FILE__);
+      apply_coeff(connected_nodes, scratchIds, scratchVals, rhs, lhs, __FILE__);
 
     }
   }

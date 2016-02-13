@@ -192,7 +192,7 @@ AssembleOversetSolverConstraintAlgorithm::execute()
     }
 
     // apply to linear system
-    apply_coeff(connected_nodes, scratchIds, scratchVals, rhs, lhs,  __FILE__);
+    apply_coeff(connected_nodes, scratchIds, scratchVals, rhs, lhs, __FILE__);
   }
 }
 

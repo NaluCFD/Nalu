@@ -621,7 +621,7 @@ AssembleContinuityNonConformalSolverAlgorithm::execute()
           p_lhs[rowR+ic+currentNodesPerElement] -= 0.5*lhscd*c_amag*includePstab;
         }
 
-        apply_coeff(connected_nodes, scratchIds, scratchVals, rhs, lhs,  __FILE__);
+        apply_coeff(connected_nodes, scratchIds, scratchVals, rhs, lhs, __FILE__);
       }
     }
   }

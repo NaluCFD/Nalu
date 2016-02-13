@@ -308,7 +308,7 @@ AssembleScalarEdgeSolverAlgorithm::execute()
       // total flux right
       p_rhs[1] += aflux;
 
-      apply_coeff(connected_nodes, scratchIds, scratchVals, rhs, lhs,  __FILE__);
+      apply_coeff(connected_nodes, scratchIds, scratchVals, rhs, lhs, __FILE__);
 
     }
   }

@@ -149,7 +149,7 @@ AssembleRadTransEdgeUpwindSolverAlgorithm::execute()
       p_rhs[0] = -sjaj*intensityIp;
       p_rhs[1] = +sjaj*intensityIp;
       
-      apply_coeff(connected_nodes, scratchIds, scratchVals, rhs, lhs,  __FILE__);
+      apply_coeff(connected_nodes, scratchIds, scratchVals, rhs, lhs, __FILE__);
 
     }
   }
