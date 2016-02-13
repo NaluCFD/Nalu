@@ -616,6 +616,8 @@ EpetraLinearSystem::zeroSystem()
 void
 EpetraLinearSystem::sumInto(
   const std::vector<stk::mesh::Entity> & sym_meshobj,
+  std::vector<int> &scratchIds,
+  std::vector<double> &/*scratchVals*/,
   const std::vector<double> & rhs,
   const std::vector<double> & lhs,
   const char *trace_tag
@@ -632,20 +634,18 @@ EpetraLinearSystem::sumInto(
   ThrowAssert((size_t)numRows == rhs.size());
   ThrowAssert((size_t)numRows*numRows == lhs.size());
 
-  static std::vector<int> globalIds;
-  globalIds.resize(numRows);
   for(int i=0; i < n_obj; ++i) {
     const int globalOffset = GID_(*stk::mesh::field_data(*realm_.naluGlobalId_, sym_meshobj[i]), numDof_, 0);
     for(unsigned d=0; d < numDof_; ++d) {
       int lid = i*numDof_ + d;
-      globalIds[lid] = globalOffset + d;
+      scratchIds[lid] = globalOffset + d;
     }
   }
 
-  err_code = rhs_->SumIntoGlobalValues(numRows, globalIds.data(), rhs.data());
+  err_code = rhs_->SumIntoGlobalValues(numRows, scratchIds.data(), rhs.data());
   checkError(err_code, "sum_into - rhs->SumIntoGlobalValues");
 
-  err_code = lhs_->SumIntoGlobalValues(numRows, globalIds.data(), lhs.data(), Epetra_FECrsMatrix::ROW_MAJOR);
+  err_code = lhs_->SumIntoGlobalValues(numRows, scratchIds.data(), lhs.data(), Epetra_FECrsMatrix::ROW_MAJOR);
   checkError(err_code, "sum_into - lhs->SumIntoGlobalValues");
 }
 

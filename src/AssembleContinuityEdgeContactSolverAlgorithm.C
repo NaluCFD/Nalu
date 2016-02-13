@@ -69,7 +69,6 @@ AssembleContinuityEdgeContactSolverAlgorithm::AssembleContinuityEdgeContactSolve
   // with state
   ghostFieldVec_.push_back(&(velocity_->field_of_state(stk::mesh::StateNP1)));
   ghostFieldVec_.push_back(&(density_->field_of_state(stk::mesh::StateNP1)));
-
 }
 
 //--------------------------------------------------------------------------
@@ -116,6 +115,8 @@ AssembleContinuityEdgeContactSolverAlgorithm::execute()
   // space for LHS/RHS (nodesPerElem+1)*(nodesPerElem+1); nodesPerElem+1
   std::vector<double> lhs;
   std::vector<double> rhs;
+  std::vector<int> scratchIds;
+  std::vector<double> scratchVals;
   std::vector<stk::mesh::Entity> connected_nodes;
 
   // deal with state
@@ -156,6 +157,8 @@ AssembleContinuityEdgeContactSolverAlgorithm::execute()
     const int rhsSize = npePlusOne;
     lhs.resize(lhsSize);
     rhs.resize(rhsSize);
+    scratchIds.resize(rhsSize);
+    scratchVals.resize(rhsSize);
     connected_nodes.resize(npePlusOne);
 
     // pointer to lhs/rhs
@@ -299,7 +302,7 @@ AssembleContinuityEdgeContactSolverAlgorithm::execute()
       }
 
       // apply to linear system
-      apply_coeff(connected_nodes, rhs, lhs, __FILE__);
+      apply_coeff(connected_nodes, scratchIds, scratchVals, rhs, lhs,  __FILE__);
     }
   }
 }

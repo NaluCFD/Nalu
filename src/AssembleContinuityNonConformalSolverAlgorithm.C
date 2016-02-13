@@ -135,6 +135,8 @@ AssembleContinuityNonConformalSolverAlgorithm::execute()
   // space for LHS/RHS; nodesPerElem*nodesPerElem and nodesPerElem
   std::vector<double> lhs;
   std::vector<double> rhs;
+  std::vector<int> scratchIds;
+  std::vector<double> scratchVals;
   std::vector<stk::mesh::Entity> connected_nodes;
  
   // ip values; both boundary and opposing surface
@@ -248,6 +250,8 @@ AssembleContinuityNonConformalSolverAlgorithm::execute()
         const int rhsSize = totalNodes;
         lhs.resize(lhsSize);
         rhs.resize(rhsSize);
+        scratchIds.resize(rhsSize);
+        scratchVals.resize(rhsSize);
         connected_nodes.resize(totalNodes);
         
         // algorithm related; face
@@ -617,7 +621,7 @@ AssembleContinuityNonConformalSolverAlgorithm::execute()
           p_lhs[rowR+ic+currentNodesPerElement] -= 0.5*lhscd*c_amag*includePstab;
         }
 
-        apply_coeff(connected_nodes, rhs, lhs, __FILE__);
+        apply_coeff(connected_nodes, scratchIds, scratchVals, rhs, lhs,  __FILE__);
       }
     }
   }

@@ -117,6 +117,8 @@ AssembleMomentumEdgeSolverAlgorithm::execute()
   const int rhsSize = nDim*nodesPerEdge;
   std::vector<double> lhs(lhsSize);
   std::vector<double> rhs(rhsSize);
+  std::vector<int> scratchIds(rhsSize);
+  std::vector<double> scratchVals(rhsSize);
   std::vector<stk::mesh::Entity> connected_nodes(2);
 
   // area vector; gather into
@@ -406,7 +408,7 @@ AssembleMomentumEdgeSolverAlgorithm::execute()
 
       }
       
-      apply_coeff(connected_nodes, rhs, lhs, __FILE__);
+      apply_coeff(connected_nodes, scratchIds, scratchVals, rhs, lhs,  __FILE__);
 
     }
   }

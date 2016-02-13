@@ -80,6 +80,8 @@ AssembleOversetSolverConstraintAlgorithm::execute()
   // space for LHS/RHS (nodesPerElem+1)*numDof*(nodesPerElem+1)*numDof; (nodesPerElem+1)*numDof
   std::vector<double> lhs;
   std::vector<double> rhs;
+  std::vector<int> scratchIds;
+  std::vector<double> scratchVals;
   std::vector<stk::mesh::Entity> connected_nodes;
 
   // master element data
@@ -126,6 +128,8 @@ AssembleOversetSolverConstraintAlgorithm::execute()
     const int rhsSize = npePlusOne*sizeOfDof;
     lhs.resize(lhsSize);
     rhs.resize(rhsSize);
+    scratchIds.resize(rhsSize);
+    scratchVals.resize(rhsSize);
     connected_nodes.resize(npePlusOne);
 
     // algorithm related; element 
@@ -188,7 +192,7 @@ AssembleOversetSolverConstraintAlgorithm::execute()
     }
 
     // apply to linear system
-    apply_coeff(connected_nodes, rhs, lhs, __FILE__);
+    apply_coeff(connected_nodes, scratchIds, scratchVals, rhs, lhs,  __FILE__);
   }
 }
 

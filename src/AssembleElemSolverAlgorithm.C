@@ -67,6 +67,8 @@ AssembleElemSolverAlgorithm::execute()
   // space for LHS/RHS
   std::vector<double> lhs;
   std::vector<double> rhs;
+  std::vector<int> scratchIds;
+  std::vector<double> scratchVals;
   std::vector<stk::mesh::Entity> connected_nodes;
 
   // supplemental algorithm size and setup
@@ -97,6 +99,8 @@ AssembleElemSolverAlgorithm::execute()
     const int rhsSize = nodesPerElement*sizeOfSystem_;
     lhs.resize(lhsSize);
     rhs.resize(rhsSize);
+    scratchIds.resize(rhsSize);
+    scratchVals.resize(rhsSize);
     connected_nodes.resize(nodesPerElement);
 
     // resize possible supplemental element alg
@@ -134,7 +138,7 @@ AssembleElemSolverAlgorithm::execute()
       for ( size_t i = 0; i < supplementalAlgSize; ++i )
         supplementalAlg_[i]->elem_execute( &lhs[0], &rhs[0], element, meSCS, meSCV);
 
-      apply_coeff(connected_nodes, rhs, lhs, __FILE__);
+      apply_coeff(connected_nodes, scratchIds, scratchVals, rhs, lhs,  __FILE__);
 
     }
   }

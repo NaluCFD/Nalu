@@ -84,8 +84,10 @@ AssembleContinuityInflowSolverAlgorithm::execute()
   // space for LHS/RHS; nodesPerElem*nodesPerElem and nodesPerElem
   std::vector<double> lhs;
   std::vector<double> rhs;
+  std::vector<int> scratchIds;
+  std::vector<double> scratchVals;
   std::vector<stk::mesh::Entity> connected_nodes;
-
+  
   // nodal fields to gather; gather everything other than what we are assembling
   std::vector<double> ws_densityBC;
   std::vector<double> ws_velocityBC;
@@ -122,6 +124,8 @@ AssembleContinuityInflowSolverAlgorithm::execute()
     const int rhsSize = nodesPerFace;
     lhs.resize(lhsSize);
     rhs.resize(rhsSize);
+    scratchIds.resize(rhsSize);
+    scratchVals.resize(rhsSize);
     connected_nodes.resize(nodesPerFace);
 
     // algorithm related
@@ -208,7 +212,7 @@ AssembleContinuityInflowSolverAlgorithm::execute()
         p_rhs[nn] += -mdot/projTimeScale;
       }
 
-      apply_coeff(connected_nodes, rhs, lhs, __FILE__);
+      apply_coeff(connected_nodes, scratchIds, scratchVals, rhs, lhs,  __FILE__);
 
     }
   }

@@ -83,6 +83,8 @@ AssembleRadTransWallSolverAlgorithm::execute()
   // space for LHS/RHS; nodesPerFace*nodesPerFace and nodesPerFace
   std::vector<double> lhs;
   std::vector<double> rhs;
+  std::vector<int> scratchIds;
+  std::vector<double> scratchVals;
   std::vector<stk::mesh::Entity> connected_nodes;
 
   // nodal fields to gather
@@ -111,6 +113,8 @@ AssembleRadTransWallSolverAlgorithm::execute()
     const int rhsSize = nodesPerFace;
     lhs.resize(lhsSize);
     rhs.resize(rhsSize);
+    scratchIds.resize(rhsSize);
+    scratchVals.resize(rhsSize);
     connected_nodes.resize(nodesPerFace);
 
     // algorithm related; element
@@ -199,7 +203,7 @@ AssembleRadTransWallSolverAlgorithm::execute()
 
       }
 
-      apply_coeff(connected_nodes, rhs, lhs, __FILE__);
+      apply_coeff(connected_nodes, scratchIds, scratchVals, rhs, lhs,  __FILE__);
 
     }
   }

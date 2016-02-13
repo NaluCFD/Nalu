@@ -88,9 +88,11 @@ AssembleContinuityEdgeOpenSolverAlgorithm::execute()
     = (realm_.get_noc_usage(dofName) == true) ? 1.0 : 0.0;
 
   // lhs/rhs space
-  std::vector<stk::mesh::Entity> connected_nodes;
-  std::vector<double> rhs;
   std::vector<double> lhs;
+  std::vector<double> rhs;
+  std::vector<int> scratchIds;
+  std::vector<double> scratchVals;
+  std::vector<stk::mesh::Entity> connected_nodes;
 
   // time step
   const double dt = realm_.get_time_step();
@@ -127,6 +129,8 @@ AssembleContinuityEdgeOpenSolverAlgorithm::execute()
     const int rhsSize = nodesPerElement;
     lhs.resize(lhsSize);
     rhs.resize(rhsSize);
+    scratchIds.resize(rhsSize);
+    scratchVals.resize(rhsSize);
     connected_nodes.resize(nodesPerElement);
 
     // pointers
@@ -234,7 +238,7 @@ AssembleContinuityEdgeOpenSolverAlgorithm::execute()
         p_lhs[rowR+opposingNode] += 0.5*lhsfac;
       }
 
-      apply_coeff(connected_nodes, rhs, lhs, __FILE__);
+      apply_coeff(connected_nodes, scratchIds, scratchVals, rhs, lhs,  __FILE__);
 
     }
   }

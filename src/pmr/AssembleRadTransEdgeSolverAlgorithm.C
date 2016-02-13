@@ -60,7 +60,6 @@ AssembleRadTransEdgeSolverAlgorithm::AssembleRadTransEdgeSolverAlgorithm(
   scalarFlux_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "scalar_flux");
   radiationSource_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "radiation_source");
   dualNodalVolume_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
-
 }
 
 //--------------------------------------------------------------------------
@@ -97,6 +96,8 @@ AssembleRadTransEdgeSolverAlgorithm::execute()
   // space for LHS/RHS; always nodesPerEdge*nodesPerEdge and nodesPerEdge
   std::vector<double> lhs(4);
   std::vector<double> rhs(2);
+  std::vector<int> scratchIds(2);
+  std::vector<double> scratchVals(2);
   std::vector<stk::mesh::Entity> connected_nodes(2);
 
   // area vector; gather into
@@ -250,7 +251,7 @@ AssembleRadTransEdgeSolverAlgorithm::execute()
       p_rhs[0] -= sucv;
       p_rhs[1] += sucv;
 
-      apply_coeff(connected_nodes, rhs, lhs, __FILE__);
+      apply_coeff(connected_nodes, scratchIds, scratchVals, rhs, lhs,  __FILE__);
 
     }
   }

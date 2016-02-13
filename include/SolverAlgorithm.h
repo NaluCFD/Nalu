@@ -38,6 +38,8 @@ protected:
   // Need to find out whether this ever gets called inside a modification cycle.
   void apply_coeff(
     const std::vector<stk::mesh::Entity> & sym_meshobj,
+    std::vector<int> &scratchIds,
+    std::vector<double> &scratchVals,
     const std::vector<double> &rhs,
     const std::vector<double> &lhs,
     const char *trace_tag=0);

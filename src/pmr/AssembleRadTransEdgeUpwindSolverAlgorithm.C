@@ -78,6 +78,8 @@ AssembleRadTransEdgeUpwindSolverAlgorithm::execute()
   // space for LHS/RHS; always nodesPerEdge*nodesPerEdge and nodesPerEdge
   std::vector<double> lhs(4);
   std::vector<double> rhs(2);
+  std::vector<int> scratchIds(2);
+  std::vector<double> scratchVals(2);
   std::vector<stk::mesh::Entity> connected_nodes(2);
 
   // area vector; gather into
@@ -147,7 +149,7 @@ AssembleRadTransEdgeUpwindSolverAlgorithm::execute()
       p_rhs[0] = -sjaj*intensityIp;
       p_rhs[1] = +sjaj*intensityIp;
       
-      apply_coeff(connected_nodes, rhs, lhs, __FILE__);
+      apply_coeff(connected_nodes, scratchIds, scratchVals, rhs, lhs,  __FILE__);
 
     }
   }

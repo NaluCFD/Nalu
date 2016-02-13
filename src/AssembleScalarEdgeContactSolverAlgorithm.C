@@ -123,6 +123,8 @@ AssembleScalarEdgeContactSolverAlgorithm::execute()
   // space for LHS/RHS (nodesPerElem+1)*(nodesPerElem+1); nodesPerElem+1
   std::vector<double> lhs;
   std::vector<double> rhs;
+  std::vector<int> scratchIds;
+  std::vector<double> scratchVals;
   std::vector<stk::mesh::Entity> connected_nodes;
 
   // deal with state
@@ -172,6 +174,8 @@ AssembleScalarEdgeContactSolverAlgorithm::execute()
     const int rhsSize = npePlusOne;
     lhs.resize(lhsSize);
     rhs.resize(rhsSize);
+    scratchIds.resize(rhsSize);
+    scratchVals.resize(rhsSize);
     connected_nodes.resize(npePlusOne);
 
     // pointer to lhs/rhs
@@ -396,7 +400,7 @@ AssembleScalarEdgeContactSolverAlgorithm::execute()
       }
 
       // apply to linear system
-      apply_coeff(connected_nodes, rhs, lhs, __FILE__);
+      apply_coeff(connected_nodes, scratchIds, scratchVals, rhs, lhs,  __FILE__);
     }
   }
 }

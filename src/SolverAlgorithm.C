@@ -46,10 +46,12 @@ SolverAlgorithm::SolverAlgorithm(
 void
 SolverAlgorithm::apply_coeff(
   const std::vector<stk::mesh::Entity> & sym_meshobj,
+  std::vector<int> &scratchIds,
+  std::vector<double> &scratchVals,
   const std::vector<double> & rhs,
   const std::vector<double> & lhs, const char *trace_tag)
 {
-  eqSystem_->linsys_->sumInto(sym_meshobj, rhs, lhs, trace_tag);
+  eqSystem_->linsys_->sumInto(sym_meshobj, scratchIds, scratchVals, rhs, lhs, trace_tag);
 }
 
 } // namespace nalu

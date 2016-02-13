@@ -118,6 +118,8 @@ AssembleMomentumNonConformalSolverAlgorithm::execute()
   // space for LHS/RHS; nodesPerElem*nodesPerElem and nodesPerElem
   std::vector<double> lhs;
   std::vector<double> rhs;
+  std::vector<int> scratchIds;
+  std::vector<double> scratchVals;
   std::vector<stk::mesh::Entity> connected_nodes;
  
   // ip values; both boundary and opposing surface
@@ -220,6 +222,8 @@ AssembleMomentumNonConformalSolverAlgorithm::execute()
         const int rhsSize = totalNodes*nDim;
         lhs.resize(lhsSize);
         rhs.resize(rhsSize);
+        scratchIds.resize(rhsSize);
+        scratchVals.resize(rhsSize);
         connected_nodes.resize(totalNodes);
         
         // algorithm related; element; dndx will be at a single gauss point...
@@ -557,7 +561,7 @@ AssembleMomentumNonConformalSolverAlgorithm::execute()
             }
           }
         }
-        apply_coeff(connected_nodes, rhs, lhs, __FILE__);
+        apply_coeff(connected_nodes, scratchIds, scratchVals, rhs, lhs,  __FILE__);
       }
     }
   }

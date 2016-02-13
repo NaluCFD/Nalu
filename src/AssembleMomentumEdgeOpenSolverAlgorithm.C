@@ -85,9 +85,11 @@ AssembleMomentumEdgeOpenSolverAlgorithm::execute()
   std::vector<double> duidxj(nDim*nDim);
 
   // lhs/rhs space
-  std::vector<stk::mesh::Entity> connected_nodes;
   std::vector<double> rhs;
   std::vector<double> lhs;
+  std::vector<int> scratchIds;
+  std::vector<double> scratchVals;
+  std::vector<stk::mesh::Entity> connected_nodes;
 
   std::vector<double> nx(nDim);
   std::vector<double> fx(nDim);
@@ -125,6 +127,8 @@ AssembleMomentumEdgeOpenSolverAlgorithm::execute()
     const int rhsSize = nodesPerElement*nDim;
     lhs.resize(lhsSize);
     rhs.resize(rhsSize);
+    scratchIds.resize(rhsSize);
+    scratchVals.resize(rhsSize);
     connected_nodes.resize(nodesPerElement);
 
     // pointer to lhs/rhs
@@ -366,7 +370,7 @@ AssembleMomentumEdgeOpenSolverAlgorithm::execute()
         }
       }
 
-      apply_coeff(connected_nodes, rhs, lhs, __FILE__);
+      apply_coeff(connected_nodes, scratchIds, scratchVals, rhs, lhs,  __FILE__);
 
     }
   }

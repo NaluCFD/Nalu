@@ -941,6 +941,8 @@ TpetraLinearSystem::zeroSystem()
 void
 TpetraLinearSystem::sumInto(
   const std::vector<stk::mesh::Entity> & entities,
+  std::vector<int> &scratchIds,
+  std::vector<double> &scratchVals,
   const std::vector<double> & rhs,
   const std::vector<double> & lhs,
   const char *trace_tag
@@ -954,8 +956,6 @@ TpetraLinearSystem::sumInto(
   ThrowAssert(numRows == rhs.size());
   ThrowAssert(numRows*numRows == lhs.size());
 
-  static std::vector<LocalOrdinal> localIds;
-  localIds.resize(numRows);
   for(size_t i=0; i < n_obj; ++i) {
     const stk::mesh::Entity entity = entities[i];
     const stk::mesh::EntityId entityId = bulkData.identifier(entity);
@@ -964,24 +964,23 @@ TpetraLinearSystem::sumInto(
     const LocalOrdinal localOffset = lookup_myLID(myLIDs_, naluId, "sumInto", entity) * numDof_;
     for(size_t d=0; d < numDof_; ++d) {
       size_t lid = i*numDof_ + d;
-      localIds[lid] = localOffset + d;
+      scratchIds[lid] = localOffset + d;
     }
   }
-  static std::vector<double> vals;
-  vals.resize(numRows);
+
   for(size_t r=0; r < numRows; ++r) {
-    const LocalOrdinal localId = localIds[r];
+    const LocalOrdinal localId = scratchIds[r];
 
     for(size_t c=0; c < numRows; ++c) // numRows == numCols
-      vals[c] = lhs[r*numRows + c];
+      scratchVals[c] = lhs[r*numRows + c];
 
     if(localId < maxOwnedRowId_) {
-      ownedMatrix_->sumIntoLocalValues(localId, localIds, vals);
+      ownedMatrix_->sumIntoLocalValues(localId, scratchIds, scratchVals);
       ownedRhs_->sumIntoLocalValue(localId, rhs[r]);
     }
     else if(localId < maxGloballyOwnedRowId_) {
       const LocalOrdinal actualLocalId = localId - maxOwnedRowId_;
-      globallyOwnedMatrix_->sumIntoLocalValues(actualLocalId, localIds, vals);
+      globallyOwnedMatrix_->sumIntoLocalValues(actualLocalId, scratchIds, scratchVals);
       globallyOwnedRhs_->sumIntoLocalValue(actualLocalId, rhs[r]);
     }
   }

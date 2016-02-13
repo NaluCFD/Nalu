@@ -43,7 +43,7 @@ AssembleNodeSolverAlgorithm::AssembleNodeSolverAlgorithm(
   : SolverAlgorithm(realm, part, eqSystem),
     sizeOfSystem_(eqSystem->linsys_->numDof())
 {
-  // nothing
+  // nothing to do
 }
 
 void
@@ -64,6 +64,8 @@ AssembleNodeSolverAlgorithm::execute()
   const int rhsSize = sizeOfSystem_;
   std::vector<double> lhs(lhsSize);
   std::vector<double> rhs(rhsSize);
+  std::vector<int> scratchIds(rhsSize);
+  std::vector<double> scratchVals(rhsSize);
   std::vector<stk::mesh::Entity> connected_nodes(1);
 
   // pointers
@@ -103,7 +105,7 @@ AssembleNodeSolverAlgorithm::execute()
       for ( size_t i = 0; i < supplementalAlgSize; ++i )
         supplementalAlg_[i]->node_execute( &lhs[0], &rhs[0], node);
 
-      apply_coeff(connected_nodes, rhs, lhs, __FILE__);
+      apply_coeff(connected_nodes, scratchIds, scratchVals, rhs, lhs,  __FILE__);
 
     }
   }

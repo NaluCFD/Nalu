@@ -119,6 +119,8 @@ AssembleMomentumEdgeContactSolverAlgorithm::execute()
   // space for LHS/RHS; (nodesPerElem+1)*nDim*(nodesPerElem+1)*nDim; (nodesPerElem+1)*nDim
   std::vector<double> lhs;
   std::vector<double> rhs;
+  std::vector<int> scratchIds;
+  std::vector<double> scratchVals;
   std::vector<stk::mesh::Entity> connected_nodes;
 
   // space for dui/dxj. This variable is the modifed gradient with NOC
@@ -191,6 +193,8 @@ AssembleMomentumEdgeContactSolverAlgorithm::execute()
     const int rhsSize = npePlusOne*nDim;
     lhs.resize(lhsSize);
     rhs.resize(rhsSize);
+    scratchIds.resize(rhsSize);
+    scratchVals.resize(rhsSize);
     connected_nodes.resize(npePlusOne);
 
     // pointer to lhs/rhs
@@ -480,7 +484,7 @@ AssembleMomentumEdgeContactSolverAlgorithm::execute()
       }
 
       // apply to linear system
-      apply_coeff(connected_nodes, rhs, lhs, __FILE__);
+      apply_coeff(connected_nodes, scratchIds, scratchVals, rhs, lhs,  __FILE__);
 
     }
   }

@@ -66,6 +66,8 @@ public:
 
   virtual void sumInto(
     const std::vector<stk::mesh::Entity> & sym_meshobj,
+    std::vector<int> &scratchIds,
+    std::vector<double> &scratchVals,
     const std::vector<double> & rhs,
     const std::vector<double> & lhs,
     const char *trace_tag=0
