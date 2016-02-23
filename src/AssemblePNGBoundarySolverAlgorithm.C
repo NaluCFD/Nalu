@@ -95,8 +95,8 @@ AssemblePNGBoundarySolverAlgorithm::execute()
     // face master element
     MasterElement *meFC = realm_.get_surface_master_element(b.topology());
     const int nodesPerFace = meFC->nodesPerElement_;
-    const int numScsIp = meFC->numIntPoints_;
-    const int *ipNodeMap = meFC->ipNodeMap();
+    const int numScsBip = meFC->numIntPoints_;
+    const int *faceIpNodeMap = meFC->ipNodeMap();
 
     // resize some things; matrix related
     const int lhsSize = nodesPerFace*nDim*nodesPerFace*nDim;
@@ -109,7 +109,7 @@ AssemblePNGBoundarySolverAlgorithm::execute()
 
     // algorithm related; element
     ws_scalarQ.resize(nodesPerFace);
-    ws_face_shape_function.resize(numScsIp*nodesPerFace);
+    ws_face_shape_function.resize(numScsBip*nodesPerFace);
   
     // pointers
     double *p_lhs = &lhs[0];
@@ -151,13 +151,13 @@ AssemblePNGBoundarySolverAlgorithm::execute()
       const double * areaVec = stk::mesh::field_data(*exposedAreaVec_, b, k);
 
       // start the assembly
-      for ( int ip = 0; ip < numScsIp; ++ip ) {
+      for ( int ip = 0; ip < numScsBip; ++ip ) {
         
         // nearest node to ip
-        const int nearestNode = ipNodeMap[ip];
+        const int localFaceNode = faceIpNodeMap[ip];
 
         // save off some offsets for this ip
-        const int nnNdim = nearestNode*nDim;
+        const int nnNdim = localFaceNode*nDim;
         const int offSetSF_face = ip*nodesPerFace;
 
         // interpolate to bip

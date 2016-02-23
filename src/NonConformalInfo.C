@@ -195,12 +195,12 @@ NonConformalInfo::construct_dgInfo_state()
     MasterElement *meFC = realm_.get_surface_master_element(b.topology());
 
     // master element-specific values
-    const int numIntPoints = meFC->numIntPoints_;
+    const int numScsBip = meFC->numIntPoints_;
     const int nodesPerFace = meFC->nodesPerElement_;
 
     // algorithm related; face
     ws_face_coordinates.resize(nodesPerFace*nDim);  
-    ws_face_shape_function.resize(numIntPoints*nodesPerFace);
+    ws_face_shape_function.resize(numScsBip*nodesPerFace);
 
     // pointers
     double *p_face_coordinates = &ws_face_coordinates[0];
@@ -225,7 +225,7 @@ NonConformalInfo::construct_dgInfo_state()
       const int num_face_nodes = bulk_data.num_nodes(face);
       
       // sanity check on num nodes (low order, P=1, check)
-      ThrowAssert( num_face_nodes == numIntPoints ); ThrowAssert( num_face_nodes == nodesPerFace );
+      ThrowAssert( num_face_nodes == numScsBip ); ThrowAssert( num_face_nodes == nodesPerFace );
       for ( int ni = 0; ni < num_face_nodes; ++ni ) {
         stk::mesh::Entity node = face_node_rels[ni];
         double * coords = stk::mesh::field_data(*coordinates, node);
@@ -243,8 +243,8 @@ NonConformalInfo::construct_dgInfo_state()
       const stk::mesh::ConnectivityOrdinal* face_elem_ords = bulk_data.begin_element_ordinals(face);
       const int currentFaceOrdinal = face_elem_ords[0];
 
-      std::vector<DgInfo *> faceDgInfoVec(numIntPoints);
-      for ( int ip = 0; ip < numIntPoints; ++ip ) {
+      std::vector<DgInfo *> faceDgInfoVec(numScsBip);
+      for ( int ip = 0; ip < numScsBip; ++ip ) {
         
         for ( int j = 0; j < nDim; ++j )
           currentGaussPointCoords[j] = 0.0;

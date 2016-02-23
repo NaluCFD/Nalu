@@ -181,7 +181,10 @@ SurfaceForceAndMomentAlgorithm::execute()
     // face master element
     MasterElement *meFC = realm_.get_surface_master_element(b.topology());
     const int nodesPerFace = meFC->nodesPerElement_;
-    std::vector<int> face_node_ordinal_vec(nodesPerFace);
+    const int numScsBip = meFC->numIntPoints_;
+
+    // mapping from ip to nodes for this ordinal; face perspective (use with face_node_relations)
+    const int *faceIpNodeMap = meFC->ipNodeMap();
 
     // extract connected element topology
     b.parent_topology(stk::topology::ELEMENT_RANK, parentTopo);
@@ -195,7 +198,7 @@ SurfaceForceAndMomentAlgorithm::execute()
     ws_pressure.resize(nodesPerFace);
     ws_density.resize(nodesPerFace);
     ws_viscosity.resize(nodesPerFace);
-    ws_face_shape_function.resize(nodesPerFace*nodesPerFace);
+    ws_face_shape_function.resize(numScsBip*nodesPerFace);
     
     // pointers
     double *p_pressure = &ws_pressure[0];
@@ -237,19 +240,20 @@ SurfaceForceAndMomentAlgorithm::execute()
       const stk::mesh::Entity* face_elem_rels = bulk_data.begin_elements(face);
       ThrowAssert( bulk_data.num_elements(face) == 1 );
 
-      // get element; its face ordinal number and populate face_node_ordinal_vec
+      // get element; its face ordinal number
       stk::mesh::Entity element = face_elem_rels[0];
       const int face_ordinal = bulk_data.begin_element_ordinals(face)[0];
-      theElemTopo.side_node_ordinals(face_ordinal, face_node_ordinal_vec.begin());
 
       // get the relations off of element
       stk::mesh::Entity const * elem_node_rels = bulk_data.begin_nodes(element);
 
-      for ( int ip = 0; ip < nodesPerFace; ++ip ) {
+      for ( int ip = 0; ip < numScsBip; ++ip ) {
 
         // offsets
         const int offSetAveraVec = ip*nDim;
         const int offSetSF_face = ip*nodesPerFace;
+        const int localFaceNode = faceIpNodeMap[ip];
+        const int opposingNode = meSCS->opposingNodes(face_ordinal,ip);
 
         // interpolate to bip
         double pBip = 0.0;
@@ -263,7 +267,7 @@ SurfaceForceAndMomentAlgorithm::execute()
         }
 
         // extract nodal fields
-        stk::mesh::Entity node = face_node_rels[ip];
+        stk::mesh::Entity node = face_node_rels[localFaceNode];
         const double * coord = stk::mesh::field_data(*coordinates_, node );
         const double *duidxj = stk::mesh::field_data(*dudx_, node );
         double *pressureForce = stk::mesh::field_data(*pressureForce_, node );
@@ -332,13 +336,13 @@ SurfaceForceAndMomentAlgorithm::execute()
           l_force_moment[j+6] += ws_moment[j];
         }
 
+        //==================
         // deal with yplus
-        const int opposingNode = meSCS->opposingNodes(face_ordinal,ip);
-        const int nearestNode = face_node_ordinal_vec[ip];
+        //==================
 
         // left and right nodes; right is on the face; left is the opposing node
         stk::mesh::Entity nodeL = elem_node_rels[opposingNode];
-        stk::mesh::Entity nodeR = elem_node_rels[nearestNode];
+        stk::mesh::Entity nodeR = face_node_rels[localFaceNode];
 
         // extract nodal fields
         const double * coordL = stk::mesh::field_data(*coordinates_, nodeL );
@@ -426,7 +430,10 @@ SurfaceForceAndMomentAlgorithm::pre_work()
 
     // face master element
     MasterElement *meFC = realm_.get_surface_master_element(b.topology());
-    const int nodesPerFace = meFC->nodesPerElement_;
+    const int numScsBip = meFC->numIntPoints_;
+
+    // mapping from ip to nodes for this ordinal; face perspective (use with face_node_relations)
+    const int *faceIpNodeMap = meFC->ipNodeMap();
 
     const stk::mesh::Bucket::size_type length   = b.size();
 
@@ -441,12 +448,15 @@ SurfaceForceAndMomentAlgorithm::pre_work()
       // pointer to face data
       const double * areaVec = stk::mesh::field_data(*exposedAreaVec_, face);
 
-      for ( int ip = 0; ip < nodesPerFace; ++ip ) {
+      for ( int ip = 0; ip < numScsBip; ++ip ) {
         // offsets
         const int offSetAveraVec = ip*nDim;
 
+        // nearest node mapping to this ip
+        const int localFaceNode = faceIpNodeMap[ip];
+
         // extract nodal fields
-        stk::mesh::Entity node = face_node_rels[ip];
+        stk::mesh::Entity node = face_node_rels[localFaceNode];
         double *assembledArea = stk::mesh::field_data(*assembledArea_, node );
 
         // aMag

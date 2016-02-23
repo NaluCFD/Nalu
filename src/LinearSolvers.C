@@ -108,11 +108,11 @@ LinearSolvers::create_solver(
   
   // error check; both found
   if ( foundE && foundT ) {
-    throw std::runtime_error("solver name block duplicated in t and e petra");
+    throw std::runtime_error("solver name block duplicated in t and e petra; check: " + solverName);
   }
   // error check; none found
   if ( !foundE && !foundT ) {
-    throw std::runtime_error("solver name block not found; error in solver creation");
+    throw std::runtime_error("solver name block not found; error in solver creation; check: " + solverName);
   }
 
   // set it and return

@@ -260,13 +260,13 @@ AssembleMomentumElemOpenSolverAlgorithm::execute()
 
       // get element; its face ordinal number and populate face_node_ordinal_vec
       stk::mesh::Entity element = face_elem_rels[0];
-      const stk::mesh::ConnectivityOrdinal* face_elem_ords = bulk_data.begin_element_ordinals(face);
-      const int face_ordinal = face_elem_ords[0];
+      const int face_ordinal = bulk_data.begin_element_ordinals(face)[0];
+
       theElemTopo.side_node_ordinals(face_ordinal, face_node_ordinal_vec.begin());
 
-      // mapping from ip to nodes for this ordinal
-      const int *ipNodeMap = meSCS->ipNodeMap(face_ordinal);
-      const int *faceIpNodeMap = meFC->ipNodeMap();
+      // mapping from ip to nodes for this ordinal; 
+      const int *ipNodeMap = meSCS->ipNodeMap(face_ordinal); // use with elem_node_rels
+      const int *faceIpNodeMap = meFC->ipNodeMap(); // use with face_node_rels
 
       //==========================================
       // gather nodal data off of element

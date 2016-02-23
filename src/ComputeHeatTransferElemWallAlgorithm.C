@@ -182,7 +182,7 @@ ComputeHeatTransferElemWallAlgorithm::execute()
       stk::mesh::Entity element = face_elem_rels[0];
       const int face_ordinal = b.begin_element_ordinals(k)[0];
 
-      // mapping from ip to nodes for this ordinal
+      // mapping from ip to nodes for this ordinal; element perspective (use with elem_node_relations)
       const int *ipNodeMap = meSCS->ipNodeMap(face_ordinal);
 
       //==========================================

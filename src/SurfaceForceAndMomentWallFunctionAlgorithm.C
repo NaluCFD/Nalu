@@ -203,6 +203,10 @@ SurfaceForceAndMomentWallFunctionAlgorithm::execute()
     // face master element
     MasterElement *meFC = realm_.get_surface_master_element(b.topology());
     const int nodesPerFace = meFC->nodesPerElement_;
+    const int numScsBip = meFC->numIntPoints_;
+
+    // mapping from ip to nodes for this ordinal
+    const int *faceIpNodeMap = meFC->ipNodeMap();
 
     // algorithm related; element
     ws_velocityNp1.resize(nodesPerFace*nDim);
@@ -210,7 +214,7 @@ SurfaceForceAndMomentWallFunctionAlgorithm::execute()
     ws_pressure.resize(nodesPerFace);
     ws_density.resize(nodesPerFace);
     ws_viscosity.resize(nodesPerFace);
-    ws_face_shape_function.resize(nodesPerFace*nodesPerFace);
+    ws_face_shape_function.resize(numScsBip*nodesPerFace);
 
     // pointers
     double *p_velocityNp1 = &ws_velocityNp1[0];
@@ -262,12 +266,13 @@ SurfaceForceAndMomentWallFunctionAlgorithm::execute()
       const double *wallNormalDistanceBip = stk::mesh::field_data(*wallNormalDistanceBip_, face);
       const double *wallFrictionVelocityBip = stk::mesh::field_data(*wallFrictionVelocityBip_, face);
 
-      for ( int ip = 0; ip < nodesPerFace; ++ip ) {
+      for ( int ip = 0; ip < numScsBip; ++ip ) {
 
         // offsets
         const int offSetAveraVec = ip*nDim;
         const int offSetSF_face = ip*nodesPerFace;
-
+        const int localFaceNode = faceIpNodeMap[ip];
+        
         // zero out vector quantities; squeeze in aMag
         double aMag = 0.0;
         for ( int j = 0; j < nDim; ++j ) {
@@ -339,7 +344,7 @@ SurfaceForceAndMomentWallFunctionAlgorithm::execute()
           lambda = rhoBip*kappa_*utau/std::log(elog_*yplusBip)*aMag;
 
         // extract nodal fields
-        stk::mesh::Entity node = face_node_rels[ip];
+        stk::mesh::Entity node = face_node_rels[localFaceNode];
         const double * coord = stk::mesh::field_data(*coordinates_, node );
         double *pressureForce = stk::mesh::field_data(*pressureForce_, node );
         double *tauWall = stk::mesh::field_data(*tauWall_, node );
@@ -436,7 +441,10 @@ SurfaceForceAndMomentWallFunctionAlgorithm::pre_work()
 
     // face master element
     MasterElement *meFC = realm_.get_surface_master_element(b.topology());
-    const int nodesPerFace = meFC->nodesPerElement_;
+    const int numScsBip = meFC->numIntPoints_;
+
+    // mapping from ip to nodes for this ordinal
+    const int *faceIpNodeMap = meFC->ipNodeMap();
 
     const stk::mesh::Bucket::size_type length   = b.size();
 
@@ -451,12 +459,15 @@ SurfaceForceAndMomentWallFunctionAlgorithm::pre_work()
       // pointer to face data
       const double * areaVec = stk::mesh::field_data(*exposedAreaVec_, face);
 
-      for ( int ip = 0; ip < nodesPerFace; ++ip ) {
+      for ( int ip = 0; ip < numScsBip; ++ip ) {
         // offsets
         const int offSetAveraVec = ip*nDim;
 
+        // nearest node mapping to this ip
+        const int localFaceNode = faceIpNodeMap[ip];
+
         // extract nodal fields
-        stk::mesh::Entity node = face_node_rels[ip];
+        stk::mesh::Entity node = face_node_rels[localFaceNode];
         double *assembledArea = stk::mesh::field_data(*assembledArea_, node );
 
         // aMag

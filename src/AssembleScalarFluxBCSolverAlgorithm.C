@@ -99,7 +99,10 @@ AssembleScalarFluxBCSolverAlgorithm::execute()
     // face master element
     MasterElement *meFC = realm_.get_surface_master_element(b.topology());
     const int nodesPerFace = meFC->nodesPerElement_;
-    const int numScsIp = meFC->numIntPoints_;
+    const int numScsBip = meFC->numIntPoints_;
+
+    // mapping from ip to nodes for this ordinal; face perspective (use with face_node_relations)
+    const int *faceIpNodeMap = meFC->ipNodeMap();
 
     // resize some things; matrix related
     const int lhsSize = nodesPerFace*nodesPerFace;
@@ -113,7 +116,7 @@ AssembleScalarFluxBCSolverAlgorithm::execute()
     // algorithm related; element
     ws_face_coordinates.resize(nodesPerFace*nDim);
     ws_bcScalarQ.resize(nodesPerFace);
-    ws_face_shape_function.resize(numScsIp*nodesPerFace);
+    ws_face_shape_function.resize(numScsBip*nodesPerFace);
 
     // pointers
     double *p_lhs = &lhs[0];
@@ -171,9 +174,9 @@ AssembleScalarFluxBCSolverAlgorithm::execute()
       double * areaVec = stk::mesh::field_data(*exposedAreaVec_, face);
 
       // loop over face nodes
-      for ( int ip = 0; ip < numScsIp; ++ip ) {
+      for ( int ip = 0; ip < numScsBip; ++ip ) {
 
-        const int nearestNode = ip;
+        const int localFaceNode = faceIpNodeMap[ip];
 
         const int offSetSF_face = ip*nodesPerFace;
 
@@ -190,7 +193,7 @@ AssembleScalarFluxBCSolverAlgorithm::execute()
           areaNorm += areaVec[offset+idir]*areaVec[offset+idir];
         areaNorm = std::sqrt(areaNorm);
 
-        p_rhs[nearestNode] += fluxBip*areaNorm;
+        p_rhs[localFaceNode] += fluxBip*areaNorm;
 
       }
 
