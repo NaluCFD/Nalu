@@ -124,6 +124,9 @@
 #include <user_functions/VariableDensityNonIsoContinuitySrcNodeSuppAlg.h>
 #include <user_functions/VariableDensityNonIsoMomentumSrcNodeSuppAlg.h>
 
+#include <user_functions/TaylorGreenPressureAuxFunction.h>
+#include <user_functions/TaylorGreenVelocityAuxFunction.h>
+
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
 #include <stk_util/environment/CPUTime.hpp>
@@ -507,6 +510,9 @@ LowMachEquationSystem::register_initial_condition_fcn(
     }
     else if ( fcnName == "convecting_taylor_vortex" ) {
       theAuxFunc = new ConvectingTaylorVortexVelocityAuxFunction(0,nDim); 
+    }
+    else if ( fcnName == "TaylorGreen" ) {
+      theAuxFunc = new TaylorGreenVelocityAuxFunction(0,nDim); 
     }
     else {
       throw std::runtime_error("InitialCondFunction::non-supported velocity IC"); 
@@ -2627,6 +2633,10 @@ ContinuityEquationSystem::register_initial_condition_fcn(
     else if ( fcnName == "VariableDensityNonIso" ) {
       // create the function
       theAuxFunc = new VariableDensityPressureAuxFunction();      
+    }
+    else if ( fcnName == "TaylorGreen" ) {
+      // create the function
+      theAuxFunc = new TaylorGreenPressureAuxFunction();      
     }
     else {
       throw std::runtime_error("ContinuityEquationSystem::register_initial_condition_fcn: limited functions supported");

@@ -278,8 +278,11 @@ TpetraLinearSystem::beginLinearSystemConstruction()
   // the owned nodes then we number the globallyOwned nodes.
   LocalOrdinal localId = 0;
 
-  // owned first:
+  // make separate arrays that hold the owned and globallyOwned gids
   std::vector<stk::mesh::Entity> owned_nodes, globally_owned_nodes;
+  std::vector<GlobalOrdinal> ownedGids, globallyOwnedGids;
+
+  // owned first:
   for ( stk::mesh::BucketVector::const_iterator ib = buckets.begin() ; ib != buckets.end() ; ++ib ) {
     stk::mesh::Bucket & b = **ib ;
     {
@@ -293,28 +296,33 @@ TpetraLinearSystem::beginLinearSystemConstruction()
       }
     }
   }
-
+  
   std::sort(owned_nodes.begin(), owned_nodes.end(), CompareEntityById(bulkData, realm_.naluGlobalId_) );
+  
+  myLIDs_.clear();
   for (unsigned inode=0; inode < owned_nodes.size(); ++inode) {
-      const stk::mesh::Entity entity = owned_nodes[inode];
-      const stk::mesh::EntityId entityId = *stk::mesh::field_data(*realm_.naluGlobalId_, entity);
+    const stk::mesh::Entity entity = owned_nodes[inode];
+    const stk::mesh::EntityId entityId = *stk::mesh::field_data(*realm_.naluGlobalId_, entity);
+    // entityId can be duplicated in periodic or contact
+    MyLIDMapType::iterator found = myLIDs_.find(entityId);
+    if (found == myLIDs_.end()) {
       myLIDs_[entityId] = localId++;
       for(unsigned idof=0; idof < numDof_; ++ idof) {
         const GlobalOrdinal gid = GID_(entityId, numDof_, idof);
         totalGids_.push_back(gid);
+        ownedGids.push_back(gid);
       }
+    }
   }
-  ThrowRequire(localId == numOwnedNodes);
   
   // now globallyOwned:
   for ( stk::mesh::BucketVector::const_iterator ib = buckets.begin() ; ib != buckets.end() ; ++ib ) {
     stk::mesh::Bucket & b = **ib ;
-
     {
       const stk::mesh::Bucket::size_type length   = b.size();
       for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
         const stk::mesh::Entity node = b[k];
-
+        
         int status = getDofStatus(node);
         if (!(status & DS_SkippedDOF) && (status & DS_GloballyOwnedDOF))
           globally_owned_nodes.push_back(node);
@@ -322,27 +330,26 @@ TpetraLinearSystem::beginLinearSystemConstruction()
     }
   }
   std::sort(globally_owned_nodes.begin(), globally_owned_nodes.end(), CompareEntityById(bulkData, realm_.naluGlobalId_) );
-
+  
   for (unsigned inode=0; inode < globally_owned_nodes.size(); ++inode) {
     const stk::mesh::Entity entity = globally_owned_nodes[inode];
     const stk::mesh::EntityId naluId = *stk::mesh::field_data(*realm_.naluGlobalId_, entity);
-    myLIDs_[naluId] = localId++;
-    for(unsigned idof=0; idof < numDof_; ++ idof) {
-      const GlobalOrdinal gid = GID_(naluId, numDof_, idof);
-      totalGids_.push_back(gid);
+    MyLIDMapType::iterator found = myLIDs_.find(naluId);
+    if (found == myLIDs_.end()) {
+      myLIDs_[naluId] = localId++;
+      for(unsigned idof=0; idof < numDof_; ++ idof) {
+        const GlobalOrdinal gid = GID_(naluId, numDof_, idof);
+        totalGids_.push_back(gid);
+        globallyOwnedGids.push_back(gid);
+      }
     }
   }
   
-  if (localId != numNodes) {
-      std::cout << "P[" << p_rank << "] error localId= " << localId << " numNodes= " << numNodes << " numOwnedNodes= " << numOwnedNodes << " numGloballyOwnedNotLocallyOwned= " << numGloballyOwnedNotLocallyOwned << std::endl;
-  }
-  ThrowRequire(localId == numNodes);
-
   const int numOwnedRows = numOwnedNodes * numDof_;
-
-  // make separate arrays that hold the owned and globallyOwned gids
-  const std::vector<GlobalOrdinal> ownedGids(totalGids_.begin(), totalGids_.begin() + numOwnedRows);
-  const std::vector<GlobalOrdinal> globallyOwnedGids(totalGids_.begin() + numOwnedRows, totalGids_.end());
+  (void)numOwnedRows;
+  
+  std::sort(ownedGids.begin(), ownedGids.end());
+  std::sort(globallyOwnedGids.begin(), globallyOwnedGids.end());
 
   const Teuchos::RCP<LinSys::Comm> tpetraComm = Tpetra::rcp(new LinSys::Comm(bulkData.parallel()));
   ownedRowsMap_ = Teuchos::rcp(new LinSys::Map(Teuchos::OrdinalTraits<Tpetra::global_size_t>::invalid(), ownedGids, 1, tpetraComm, node_));
@@ -753,6 +760,11 @@ TpetraLinearSystem::copy_stk_to_tpetra(
     for (stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k )
     {
       const stk::mesh::Entity node = b[k];
+
+      int status = getDofStatus(node);
+      if ((status & DS_SkippedDOF) || (status & DS_GloballyOwnedDOF))
+        continue;
+
       const stk::mesh::EntityId nodeId = *stk::mesh::field_data(*realm_.naluGlobalId_, node);
       for(int d=0; d < fieldSize; ++d)
       {
