@@ -48,6 +48,8 @@ OutputInfo::OutputInfo()
     outputCompressionShuffle_(false),
     restartCompressionLevel_(0),
     restartCompressionShuffle_(false),
+    userWallTimeResults_(false, 1.0e6),
+    userWallTimeRestart_(false, 1.0e6),
     outputPropertyManager_(new Ioss::PropertyManager()),
     restartPropertyManager_(new Ioss::PropertyManager())  
 {
@@ -85,6 +87,12 @@ OutputInfo::load(
 
     // output start
     get_if_present(*y_output, "output_start", outputStart_, outputStart_);
+
+    // output at WALL time
+    if ( y_output->FindValue("output_forced_wall_time")) {
+      userWallTimeResults_.first = true;
+      *(y_output->FindValue("output_forced_wall_time")) >> userWallTimeResults_.second;
+    }
 
     // determine if we want nodeset output
     get_if_present(*y_output, "output_node_set", outputNodeSet_, outputNodeSet_);
@@ -146,6 +154,12 @@ OutputInfo::load(
     
     // restart start
     get_if_present(*y_restart, "restart_start", restartStart_, restartStart_);
+
+    // output at WALL time
+    if ( y_restart->FindValue("restart_forced_wall_time")) {
+      userWallTimeRestart_.first = true;
+      *(y_restart->FindValue("restart_forced_wall_time")) >> userWallTimeRestart_.second;
+    }
 
     // determine if we want nodeset restart output
     get_if_present(*y_restart, "restart_node_set", restartNodeSet_, restartNodeSet_);

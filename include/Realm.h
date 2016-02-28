@@ -470,6 +470,9 @@ class Realm {
   // sometimes restarts can be missing states or dofs
   bool supportInconsistentRestart_;
 
+  // beginning wall time
+  double wallTimeStart_;
+
   // mesh parts for all boundary conditions
   stk::mesh::PartVector bcPartVec_;
 

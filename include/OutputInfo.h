@@ -57,6 +57,9 @@ public:
   int restartCompressionLevel_;
   bool restartCompressionShuffle_;
 
+  std::pair<bool, double> userWallTimeResults_;
+  std::pair<bool, double> userWallTimeRestart_;
+
   // manage the properties for io
   Ioss::PropertyManager *outputPropertyManager_;
   Ioss::PropertyManager *restartPropertyManager_;
