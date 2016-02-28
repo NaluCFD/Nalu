@@ -278,7 +278,7 @@ Transfer::breadboard()
     // get the part; no need to subset
     stk::mesh::Part *fromTargetPart = fromMetaData.get_part(fromPartNameVec_[k]);
     if ( NULL == fromTargetPart )
-      throw std::runtime_error("from target part in xfer is NULL");
+      throw std::runtime_error("from target part in xfer is NULL; check: " + fromPartNameVec_[k]);
     else
       fromPartVec_.push_back(fromTargetPart);
   }
@@ -288,7 +288,7 @@ Transfer::breadboard()
     // get the part; no need to subset
     stk::mesh::Part *toTargetPart = toMetaData.get_part(toPartNameVec_[k]);
     if ( NULL == toTargetPart )
-      throw std::runtime_error("to target part in xfer is NULL");
+      throw std::runtime_error("to target part in xfer is NULL; check: " + toPartNameVec_[k]);
     else
       toPartVec_.push_back(toTargetPart);
   }
@@ -321,6 +321,9 @@ Transfer::breadboard()
   }
 }
 
+//--------------------------------------------------------------------------
+//-------- allocate_stk_transfer -------------------------------------------
+//--------------------------------------------------------------------------
 void Transfer::allocate_stk_transfer() {
 
   const stk::mesh::MetaData    &fromMetaData = fromRealm_->meta_data();
@@ -339,7 +342,7 @@ void Transfer::allocate_stk_transfer() {
   const stk::ParallelMachine    &toComm    = toRealm_->bulk_data().parallel();
 
   boost::shared_ptr<ToMesh >
-    to_mesh (new ToMesh(toMetaData, toBulkData, tocoordName, toVar, toPartVec_, toComm));
+    to_mesh (new ToMesh(toMetaData, toBulkData, *toRealm_, tocoordName, toVar, toPartVec_, toComm));
 
   typedef stk::transfer::GeometricTransfer< class LinInterp< class FromMesh, class ToMesh > > STKTransfer;
 
@@ -355,6 +358,9 @@ void Transfer::allocate_stk_transfer() {
   transfer_.reset(new STKTransfer(from_mesh, to_mesh, name_, expansionFactor, searchMethod));
 }
 
+//--------------------------------------------------------------------------
+//-------- ghost_from_elements ---------------------------------------------
+//--------------------------------------------------------------------------
 void Transfer::ghost_from_elements()
 {
   typedef stk::transfer::GeometricTransfer< class LinInterp< class FromMesh, class ToMesh > > STKTransfer;
@@ -381,6 +387,7 @@ Transfer::initialize_begin()
   time += stk::cpu_time();
   fromRealm_->timerTransferSearch_ += time;
 }
+
 //--------------------------------------------------------------------------
 //--------------------------------------------------------------------------
 void
@@ -388,6 +395,7 @@ Transfer::change_ghosting()
 {
   ghost_from_elements();
 }
+
 //--------------------------------------------------------------------------
 //-------- initialize_end ------------------------------------------------------
 //--------------------------------------------------------------------------

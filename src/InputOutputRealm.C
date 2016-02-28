@@ -84,7 +84,7 @@ InputOutputRealm::register_io_fields() {
       const std::string targetName = targetNames[j];
       stk::mesh::Part *targetPart = metaData_->get_part(targetName);
       if ( NULL == targetPart ) {
-        throw std::runtime_error("Sorry, no part name found by the name " + targetName);
+        throw std::runtime_error("Sorry, no part name found by the name: " + targetName + " for field: " + fieldName);
       }
       else {
         if ( fieldName == "velocity" ) {
