@@ -68,6 +68,8 @@ public:
   std::string transferType_;
   std::string transferObjective_;
   std::string searchMethodName_;
+  double searchTolerance_;
+  double searchExpansionFactor_;
   std::pair<std::string, std::string> realmPairName_;
   
   // allow the user to provide a vector "from" and "to" parts; names

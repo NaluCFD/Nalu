@@ -114,7 +114,7 @@ public :
     const PairNames &VarPairName,
     const stk::mesh::PartVector &toPartVec,
     const stk::ParallelMachine comm,
-    const double radius=.0001) 
+    const double radius) 
     : toMetaData_(toMetaData),
     toBulkData_(toBulkData),
     toRealm_      (toRealm),

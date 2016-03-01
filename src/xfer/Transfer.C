@@ -58,7 +58,9 @@ Transfer::Transfer(
     name_("none"),
     transferType_("none"),
     transferObjective_("multi_physics"),
-    searchMethodName_("none")
+    searchMethodName_("none"),
+    searchTolerance_(1.0e-4),
+    searchExpansionFactor_(1.5)
 {
   // nothing to do
 }
@@ -154,6 +156,16 @@ Transfer::load(const YAML::Node & node)
   // search method
   if ( node.FindValue("search_method") ) {
     node["search_method"] >> searchMethodName_;
+  }
+
+  // search tolerance which forms the initail size of the radius
+  if ( node.FindValue("search_tolerance") ) {
+    node["search_tolerance"] >> searchTolerance_;
+  }
+
+  // search expansion factor if points are not found
+  if ( node.FindValue("search_expansion_factor") ) {
+    node["search_expansion_factor"] >> searchExpansionFactor_;
   }
 
   // now possible field names
@@ -342,7 +354,7 @@ void Transfer::allocate_stk_transfer() {
   const stk::ParallelMachine    &toComm    = toRealm_->bulk_data().parallel();
 
   boost::shared_ptr<ToMesh >
-    to_mesh (new ToMesh(toMetaData, toBulkData, *toRealm_, tocoordName, toVar, toPartVec_, toComm));
+    to_mesh (new ToMesh(toMetaData, toBulkData, *toRealm_, tocoordName, toVar, toPartVec_, toComm, searchTolerance_));
 
   typedef stk::transfer::GeometricTransfer< class LinInterp< class FromMesh, class ToMesh > > STKTransfer;
 
@@ -354,8 +366,7 @@ void Transfer::allocate_stk_transfer() {
     searchMethod = stk::search::OCTREE;
   else
     NaluEnv::self().naluOutputP0() << "Transfer::search method not declared; will use BOOST_RTREE" << std::endl;
-  const double expansionFactor = 1.5;
-  transfer_.reset(new STKTransfer(from_mesh, to_mesh, name_, expansionFactor, searchMethod));
+  transfer_.reset(new STKTransfer(from_mesh, to_mesh, name_, searchExpansionFactor_, searchMethod));
 }
 
 //--------------------------------------------------------------------------
