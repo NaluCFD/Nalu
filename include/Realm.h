@@ -420,6 +420,7 @@ class Realm {
   double timerPropertyEval_;
   double timerAdapt_;
   double timerTransferSearch_;
+  double timerSkinMesh_;
 
   ContactManager *contactManager_;
   NonConformalManager *nonConformalManager_;

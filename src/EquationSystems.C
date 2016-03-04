@@ -640,6 +640,7 @@ EquationSystems::register_initial_condition_fcn(
 void
 EquationSystems::initialize()
 {
+  NaluEnv::self().naluOutputP0() << "EquationSystems::initialize(): Begin " << std::endl;
   double start_time = stk::cpu_time();
   EquationSystemVector::iterator ii;
   for( ii=equationSystemVector_.begin(); ii!=equationSystemVector_.end(); ++ii ) {
@@ -651,6 +652,7 @@ EquationSystems::initialize()
   }
   double end_time = stk::cpu_time();
   realm_.timerInitializeEqs_ += (end_time-start_time);
+  NaluEnv::self().naluOutputP0() << "EquationSystems::initialize(): End " << std::endl;
 }
 
 //--------------------------------------------------------------------------

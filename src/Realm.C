@@ -186,6 +186,7 @@ namespace nalu{
     timerPropertyEval_(0.0),
     timerAdapt_(0.0),
     timerTransferSearch_(0.0),
+    timerSkinMesh_(0.0),
     contactManager_(NULL),
     nonConformalManager_(NULL),
     oversetManager_(NULL),
@@ -831,6 +832,10 @@ Realm::setup_bc()
 void
 Realm::enforce_bc_on_exposed_faces()
 {
+  double start_time = stk::cpu_time();
+
+  NaluEnv::self().naluOutputP0() << "Realm::skin_mesh(): Begin" << std::endl;
+
   // first, skin mesh and, therefore, populate
   stk::mesh::Selector activePart = metaData_->locally_owned_part() | metaData_->globally_shared_part();
   stk::mesh::PartVector partVec;
@@ -859,6 +864,12 @@ Realm::enforce_bc_on_exposed_faces()
     throw std::runtime_error("Realm::Error: Please aply bc to problematic exposed surfaces ");
   }
 
+  const double end_time = stk::cpu_time();
+
+  // set mesh reading
+  timerSkinMesh_ = (end_time - start_time);
+
+  NaluEnv::self().naluOutputP0() << "Realm::skin_mesh(): End" << std::endl;
 }
 
 //--------------------------------------------------------------------------
@@ -1777,7 +1788,7 @@ Realm::create_mesh()
 {
   double start_time = stk::cpu_time();
 
-  NaluEnv::self().naluOutputP0() << "Realm::create_mesh() Begin" << std::endl;
+  NaluEnv::self().naluOutputP0() << "Realm::create_mesh(): Begin" << std::endl;
   stk::ParallelMachine pm = NaluEnv::self().parallel_comm();
   
   // news for mesh constructs
@@ -3518,7 +3529,7 @@ Realm::dump_simulation_time()
                   << " \tmin: " << g_min_time[2] << " \tmax: " << g_max_time[2] << std::endl;
 
   NaluEnv::self().naluOutputP0() << "Timing for property evaluation:         " << std::endl;
-  NaluEnv::self().naluOutputP0() << "         props    --  " << " \tavg: " << g_total_time[3]/double(nprocs)
+  NaluEnv::self().naluOutputP0() << "            props --  " << " \tavg: " << g_total_time[3]/double(nprocs)
                   << " \tmin: " << g_min_time[3] << " \tmax: " << g_max_time[3] << std::endl;
 
   if (solutionOptions_->useAdapter_ && solutionOptions_->maxRefinementLevel_) {
@@ -3528,7 +3539,7 @@ Realm::dump_simulation_time()
     stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &timerAdapt_, &g_total_adapt, 1);
 
     NaluEnv::self().naluOutputP0() << "Timing for adaptivity:         " << std::endl;
-    NaluEnv::self().naluOutputP0() << "         adapt    --  " << " \tavg: " << g_total_adapt/double(nprocs)
+    NaluEnv::self().naluOutputP0() << "            adapt --  " << " \tavg: " << g_total_adapt/double(nprocs)
                     << " \tmin: " << g_min_adapt << " \tmax: " << g_max_adapt << std::endl;
   }
 
@@ -3540,7 +3551,6 @@ Realm::dump_simulation_time()
     stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &timerCreateEdges_, &g_total_edge, 1);
 
     NaluEnv::self().naluOutputP0() << "Timing for Edge: " << std::endl;
-
     NaluEnv::self().naluOutputP0() << "    edge creation --  " << " \tavg: " << g_total_edge/double(nprocs)
                     << " \tmin: " << g_min_edge << " \tmax: " << g_max_edge << std::endl;
   }
@@ -3554,7 +3564,7 @@ Realm::dump_simulation_time()
     stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &periodicSearchTime, &g_periodicSearchTime, 1);
 
     NaluEnv::self().naluOutputP0() << "Timing for Periodic: " << std::endl;
-    NaluEnv::self().naluOutputP0() << "    search --         " << " \tavg: " << g_periodicSearchTime/double(nprocs)
+    NaluEnv::self().naluOutputP0() << "           search --  " << " \tavg: " << g_periodicSearchTime/double(nprocs)
                      << " \tmin: " << g_minPeriodicSearchTime << " \tmax: " << g_maxPeriodicSearchTime << std::endl;
   }
 
@@ -3566,8 +3576,7 @@ Realm::dump_simulation_time()
     stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &timerContact_, &g_totalContact, 1);
 
     NaluEnv::self().naluOutputP0() << "Timing for Contact: " << std::endl;
-
-    NaluEnv::self().naluOutputP0() << "    contact bc    --  " << " \tavg: " << g_totalContact/double(nprocs)
+    NaluEnv::self().naluOutputP0() << "       contact bc --  " << " \tavg: " << g_totalContact/double(nprocs)
                     << " \tmin: " << g_minContact << " \tmax: " << g_maxContact << std::endl;
   }
 
@@ -3579,11 +3588,21 @@ Realm::dump_simulation_time()
     stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &timerTransferSearch_, &g_totalXfer, 1);
 
     NaluEnv::self().naluOutputP0() << "Timing for Tranfer (fromRealm):    " << std::endl;
-
-    NaluEnv::self().naluOutputP0() << "    search --         " << " \tavg: " << g_totalXfer/double(nprocs)
+    NaluEnv::self().naluOutputP0() << "           search --  " << " \tavg: " << g_totalXfer/double(nprocs)
                     << " \tmin: " << g_minXfer << " \tmax: " << g_maxXfer << std::endl;
   }
 
+  // skin mesh
+  if ( checkForMissingBcs_ || hasOverset_ ) {
+    double g_totalSkin = 0.0, g_minSkin= 0.0, g_maxSkin = 0.0;
+    stk::all_reduce_min(NaluEnv::self().parallel_comm(), &timerSkinMesh_, &g_minSkin, 1);
+    stk::all_reduce_max(NaluEnv::self().parallel_comm(), &timerSkinMesh_, &g_maxSkin, 1);
+    stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &timerSkinMesh_, &g_totalSkin, 1);
+    
+    NaluEnv::self().naluOutputP0() << "Timing for skin_mesh :    " << std::endl;    
+    NaluEnv::self().naluOutputP0() << "        skin_mesh --  " << " \tavg: " << g_totalSkin/double(nprocs)
+                                   << " \tmin: " << g_minSkin << " \tmax: " << g_maxSkin << std::endl;
+  }
 }
 
 //--------------------------------------------------------------------------
