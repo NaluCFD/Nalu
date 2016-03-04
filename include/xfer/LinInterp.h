@@ -67,6 +67,10 @@ template <class FROM, class TO>  void LinInterp<FROM,TO>::filter_to_nearest (
   typedef typename EntityKeyMap::iterator iterator;
   typedef typename EntityKeyMap::const_iterator const_iterator;
 
+  // some simple user diagnostics to let the user know if something bad is happening
+  double maxBestX = -std::numeric_limits<double>::max();
+  size_t maxCandidateBoundingBox = 0;
+
   for (const_iterator current_key=RangeToDomain.begin(); current_key!=RangeToDomain.end(); ) { 
 
     double bestX_ = std::numeric_limits<double>::max();
@@ -79,7 +83,9 @@ template <class FROM, class TO>  void LinInterp<FROM,TO>::filter_to_nearest (
     std::pair<iterator, iterator> keys=RangeToDomain.equal_range(current_key->first);
     iterator nearest = keys.second;
 
+    size_t candidateBoundingBoxSize = 0;
     for (iterator ii=keys.first; ii != keys.second; ++ii) {
+      candidateBoundingBoxSize++;
 
       const stk::mesh::EntityKey theBox = ii->second; 
       stk::mesh::Entity theElem = fromBulkData.get_entity(theBox);    
@@ -115,14 +121,28 @@ template <class FROM, class TO>  void LinInterp<FROM,TO>::filter_to_nearest (
         bestX_         = nearestDistance;    
         ToPoints.TransferInfo_[thePt] = isoParCoords;
         nearest = ii;
+        maxBestX = std::max(maxBestX, bestX_);
       }   
     }
+    maxCandidateBoundingBox = std::max(maxCandidateBoundingBox, candidateBoundingBoxSize);
+  
     current_key = keys.second;
     if (nearest != keys.first ) RangeToDomain.erase(keys.first, nearest);
     if (nearest != keys.second) RangeToDomain.erase(++nearest, keys.second);
   }
-}
 
+  // parallel sum and output diagnostics
+  double g_maxBestX = 0.0;
+  size_t g_maxCandidateBoundngBox = 0;
+  stk::all_reduce_max(FromElem.comm(), &maxBestX, &g_maxBestX, 1);
+  stk::all_reduce_max(FromElem.comm(), &maxCandidateBoundingBox, &g_maxCandidateBoundngBox, 1);
+  
+  NaluEnv::self().naluOutputP0() << std::endl;
+  NaluEnv::self().naluOutputP0() << "XFER::LinInterp::fine_search() Overview:" << std::endl;
+  NaluEnv::self().naluOutputP0() << "  Maximum normalized distance found is: " << g_maxBestX << " (should be unity or less)" <<  std::endl;
+  NaluEnv::self().naluOutputP0() << "  Maximum number of candidate bounding boxes found for a single point is: " <<  g_maxCandidateBoundngBox << std::endl;
+  NaluEnv::self().naluOutputP0() << "  Should max normalized distance and/or candidate bounding box size be too large, please check setup" << std::endl;
+ }
 
 template <class FROM, class TO>  void LinInterp<FROM,TO>::apply 
        (MeshB              &ToPoints,

@@ -1777,6 +1777,7 @@ Realm::create_mesh()
 {
   double start_time = stk::cpu_time();
 
+  NaluEnv::self().naluOutputP0() << "Realm::create_mesh() Begin" << std::endl;
   stk::ParallelMachine pm = NaluEnv::self().parallel_comm();
   
   // news for mesh constructs
@@ -1812,6 +1813,8 @@ Realm::create_mesh()
   }
 
   const double end_time = stk::cpu_time();
+
+  NaluEnv::self().naluOutputP0() << "Realm::create_mesh() End" << std::endl;
 
   // set mesh reading
   timerReadMesh_ = (end_time - start_time);
@@ -1987,6 +1990,8 @@ Realm::augment_restart_variable_list(
 void
 Realm::create_edges()
 {
+  NaluEnv::self().naluOutputP0() << "Realm::create_edges(): Nalu Realm: " << name_ << " requires edge creation: Begin" << std::endl;
+
   static stk::diag::Timer timerCE_("CreateEdges", Simulation::rootTimer());
   stk::diag::TimeBlock tbCreateEdges_(timerCE_);
 
@@ -2002,7 +2007,7 @@ Realm::create_edges()
   // timer close-out
   const double total_edge_time = stop_time - start_time;
   timerCreateEdges_ += total_edge_time;
-
+  NaluEnv::self().naluOutputP0() << "Realm::create_edges(): Nalu Realm: " << name_ << " requires edge creation: End" << std::endl;
 }
 
 //--------------------------------------------------------------------------

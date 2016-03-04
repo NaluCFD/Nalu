@@ -38,7 +38,7 @@ namespace nalu{
 PeriodicManager::PeriodicManager(
    Realm &realm)
   : realm_(realm ),
-    searchTolerance_(1.0e8),
+    searchTolerance_(1.0e-8),
     periodicGhosting_(NULL),
     ghostingName_("nalu_periodic"),
     timerSearch_(0.0)
