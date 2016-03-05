@@ -3170,6 +3170,8 @@ Realm::provide_output()
             << currentTime << std::endl;
         NaluEnv::self().naluOutputP0()
             <<  " Elapsed (max) WALL time: " << g_elapsedWallTime << " (hours)" << std::endl;
+        // provide timer information
+        dump_simulation_time();
       }
     }
 
@@ -3499,7 +3501,8 @@ Realm::check_job(bool get_node_count)
 void
 Realm::dump_simulation_time()
 {
-
+  NaluEnv::self().naluOutputP0() << std::endl;
+  NaluEnv::self().naluOutputP0() << "-------------------------------- " << std::endl;
   NaluEnv::self().naluOutputP0() << "Begin Timer Overview for Realm: " << name_ << std::endl;
   NaluEnv::self().naluOutputP0() << "-------------------------------- " << std::endl;
 
@@ -3603,6 +3606,7 @@ Realm::dump_simulation_time()
     NaluEnv::self().naluOutputP0() << "        skin_mesh --  " << " \tavg: " << g_totalSkin/double(nprocs)
                                    << " \tmin: " << g_minSkin << " \tmax: " << g_maxSkin << std::endl;
   }
+  NaluEnv::self().naluOutputP0() << std::endl;
 }
 
 //--------------------------------------------------------------------------

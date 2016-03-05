@@ -298,9 +298,14 @@ TimeIntegrator::integrate_realm()
     provide_mean_norm();
   
     timeStepNm1_ = timeStepN_;
-    
   }
-
+  
+  // inform the user that the simulation is complete
+  NaluEnv::self().naluOutputP0() << "*******************************************************" << std::endl;
+  NaluEnv::self().naluOutputP0() << "Simulation Shall Complete: time/timestep: " 
+                                 << totalSimTime_ << "/" << timeStepCount_ << std::endl;
+  NaluEnv::self().naluOutputP0() << "*******************************************************" << std::endl;
+  
   // dump time
   for ( ii = realmVec_.begin(); ii!=realmVec_.end(); ++ii) {
     (*ii)->dump_simulation_time();
