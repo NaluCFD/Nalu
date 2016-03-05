@@ -161,6 +161,7 @@ public:
   double timerLoadComplete_;
   double timerSolve_;
   double timerMisc_;
+  double timerInit_;
 
   double avgLinearIterations_;
   double maxLinearIterations_;

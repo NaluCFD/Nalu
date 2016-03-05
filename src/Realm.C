@@ -186,6 +186,7 @@ namespace nalu{
     timerPropertyEval_(0.0),
     timerAdapt_(0.0),
     timerTransferSearch_(0.0),
+    timerTransferExecute_(0.0),
     timerSkinMesh_(0.0),
     contactManager_(NULL),
     nonConformalManager_(NULL),
@@ -389,6 +390,8 @@ Realm::convert_bytes(double bytes)
 void
 Realm::initialize()
 {
+  NaluEnv::self().naluOutputP0() << "Realm::initialize() Begin " << std::endl;
+
   // initialize adaptivity - note: must be done before field registration
   setup_adaptivity();
 
@@ -476,6 +479,8 @@ Realm::initialize()
 
   // check job run size after mesh creation, linear system initialization
   check_job(false);
+
+  NaluEnv::self().naluOutputP0() << "Realm::initialize() End " << std::endl;
 }
 
 //--------------------------------------------------------------------------
@@ -3584,15 +3589,19 @@ Realm::dump_simulation_time()
   }
 
   // transfer
-  if ( hasMultiPhysicsTransfer_ ) {
-    double g_totalXfer = 0.0, g_minXfer= 0.0, g_maxXfer = 0.0;
-    stk::all_reduce_min(NaluEnv::self().parallel_comm(), &timerTransferSearch_, &g_minXfer, 1);
-    stk::all_reduce_max(NaluEnv::self().parallel_comm(), &timerTransferSearch_, &g_maxXfer, 1);
-    stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &timerTransferSearch_, &g_totalXfer, 1);
+  if ( hasMultiPhysicsTransfer_ || hasInitializationTransfer_ || hasIoTransfer_ ) {
+    
+    double totalXfer[2] = {timerTransferSearch_, timerTransferExecute_};
+    double g_totalXfer[2] = {}, g_minXfer[2] = {}, g_maxXfer[2] = {};
+    stk::all_reduce_min(NaluEnv::self().parallel_comm(), &totalXfer[0], &g_minXfer[0], 2);
+    stk::all_reduce_max(NaluEnv::self().parallel_comm(), &totalXfer[0], &g_maxXfer[0], 2);
+    stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &totalXfer[0], &g_totalXfer[0], 2);
 
     NaluEnv::self().naluOutputP0() << "Timing for Tranfer (fromRealm):    " << std::endl;
-    NaluEnv::self().naluOutputP0() << "           search --  " << " \tavg: " << g_totalXfer/double(nprocs)
-                    << " \tmin: " << g_minXfer << " \tmax: " << g_maxXfer << std::endl;
+    NaluEnv::self().naluOutputP0() << "           search --  " << " \tavg: " << g_totalXfer[0]/double(nprocs)
+                                   << " \tmin: " << g_minXfer[0] << " \tmax: " << g_maxXfer[0] << std::endl;
+    NaluEnv::self().naluOutputP0() << "          execute --  " << " \tavg: " << g_totalXfer[1]/double(nprocs)
+                                   << " \tmin: " << g_minXfer[1] << " \tmax: " << g_maxXfer[1] << std::endl;
   }
 
   // skin mesh
@@ -4183,9 +4192,12 @@ Realm::process_multi_physics_transfer()
   if ( !hasMultiPhysicsTransfer_ )
     return;
 
+  double timeXfer = -stk::cpu_time();
   std::vector<Transfer *>::iterator ii;
   for( ii=multiPhysicsTransferVec_.begin(); ii!=multiPhysicsTransferVec_.end(); ++ii )
     (*ii)->execute();
+  timeXfer += stk::cpu_time();
+  timerTransferExecute_ += timeXfer;
 }
 
 //--------------------------------------------------------------------------
@@ -4197,10 +4209,13 @@ Realm::process_initialization_transfer()
   if ( !hasInitializationTransfer_ )
     return;
 
+  double timeXfer = -stk::cpu_time();
   std::vector<Transfer *>::iterator ii;
   for( ii=initializationTransferVec_.begin(); ii!=initializationTransferVec_.end(); ++ii ) {
     (*ii)->execute();
   }
+  timeXfer += stk::cpu_time();
+  timerTransferExecute_ += timeXfer;
 }
 
 //--------------------------------------------------------------------------
@@ -4212,6 +4227,7 @@ Realm::process_io_transfer()
   if ( !hasIoTransfer_ )
     return;
 
+  double timeXfer = -stk::cpu_time();
   // only do at an IO step
   const int timeStepCount = get_time_step_count();
   const bool isOutput = (timeStepCount % outputInfo_->outputFreq_) == 0;
@@ -4220,6 +4236,8 @@ Realm::process_io_transfer()
     for( ii=ioTransferVec_.begin(); ii!=ioTransferVec_.end(); ++ii )
       (*ii)->execute();
   }
+  timeXfer += stk::cpu_time();
+  timerTransferExecute_ += timeXfer;
 }
 
 //--------------------------------------------------------------------------

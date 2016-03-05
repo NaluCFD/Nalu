@@ -48,6 +48,7 @@ EquationSystem::EquationSystem(
     timerLoadComplete_(0.0),
     timerSolve_(0.0),
     timerMisc_(0.0),
+    timerInit_(0.0),
     avgLinearIterations_(0.0),
     maxLinearIterations_(0.0),
     minLinearIterations_(1.0e10),
@@ -155,21 +156,23 @@ void
 EquationSystem::dump_eq_time()
 {
 
-  double l_timer[4] = {timerAssemble_, timerLoadComplete_, timerSolve_, timerMisc_};
-  double g_min[4] = {};
-  double g_max[4] = {};
-  double g_sum[4] = {};
+  double l_timer[5] = {timerAssemble_, timerLoadComplete_, timerSolve_, timerMisc_, timerInit_};
+  double g_min[5] = {};
+  double g_max[5] = {};
+  double g_sum[5] = {};
 
   int nprocs = NaluEnv::self().parallel_size();
 
   NaluEnv::self().naluOutputP0() << "Timing for Eq: " << name_ << std::endl;
 
   // get max, min, and sum over processes
-  stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &l_timer[0], &g_sum[0], 4);
-  stk::all_reduce_min(NaluEnv::self().parallel_comm(), &l_timer[0], &g_min[0], 4);
-  stk::all_reduce_max(NaluEnv::self().parallel_comm(), &l_timer[0], &g_max[0], 4);
+  stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &l_timer[0], &g_sum[0], 5);
+  stk::all_reduce_min(NaluEnv::self().parallel_comm(), &l_timer[0], &g_min[0], 5);
+  stk::all_reduce_max(NaluEnv::self().parallel_comm(), &l_timer[0], &g_max[0], 5);
 
   // output
+  NaluEnv::self().naluOutputP0() << "             init --  " << " \tavg: " << g_sum[4]/double(nprocs)
+                  << " \tmin: " << g_min[4] << " \tmax: " << g_max[4] << std::endl;
   NaluEnv::self().naluOutputP0() << "         assemble --  " << " \tavg: " << g_sum[0]/double(nprocs)
                   << " \tmin: " << g_min[0] << " \tmax: " << g_max[0] << std::endl;
   NaluEnv::self().naluOutputP0() << "    load_complete --  " << " \tavg: " << g_sum[1]/double(nprocs)
@@ -184,11 +187,12 @@ EquationSystem::dump_eq_time()
                     << " \tmin: " << minLinearIterations_ << " \tmax: "
                     << maxLinearIterations_ << std::endl;
 
-  // reset anytime these are called
+  // reset anytime these are called; think about what we want here...
   timerAssemble_ = 0.0;
   timerLoadComplete_ = 0.0;
   timerMisc_ = 0.0;
   timerSolve_ = 0.0;
+  timerInit_ = 0.0;
   avgLinearIterations_ = 0.0;
   minLinearIterations_ = 1.0e10;
   maxLinearIterations_ = 0.0;
