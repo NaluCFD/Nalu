@@ -80,6 +80,7 @@
 #include <MomentumMassBackwardEulerElemSuppAlg.h>
 #include <MomentumMassBDF2NodeSuppAlg.h>
 #include <MomentumMassBDF2ElemSuppAlg.h>
+#include <MomentumKeNSOElemSuppAlg.h>
 #include <MomentumNSOElemSuppAlg.h>
 #include <MomentumAdvDiffElemSuppAlg.h>
 #include <NaluEnv.h>
@@ -1027,6 +1028,12 @@ MomentumEquationSystem::register_interior_algorithm(
         }
         else if (sourceName == "NSO_4TH_ALT" ) {
           suppAlg = new MomentumNSOElemSuppAlg(realm_, velocity_, dudx_, realm_.is_turbulent() ? evisc_ : visc_, 1.0, 1.0);
+        }
+        else if (sourceName == "NSO_KE_2ND" ) {
+          suppAlg = new MomentumKeNSOElemSuppAlg(realm_, velocity_, dudx_, 0.0);
+        }
+        else if (sourceName == "NSO_KE_4TH" ) {
+          suppAlg = new MomentumKeNSOElemSuppAlg(realm_, velocity_, dudx_, 1.0);
         }
         else if (sourceName == "buoyancy" ) {
           suppAlg = new MomentumBuoyancySrcElemSuppAlg(realm_);

@@ -44,6 +44,7 @@
 #include <ScalarMassBDF2NodeSuppAlg.h>
 #include <ScalarMassBDF2ElemSuppAlg.h>
 #include <ScalarNSOElemSuppAlg.h>
+#include <ScalarKeNSOElemSuppAlg.h>
 #include <Simulation.h>
 #include <SolutionOptions.h>
 #include <TimeIntegrator.h>
@@ -278,6 +279,14 @@ MixtureFractionEquationSystem::register_interior_algorithm(
         }
         else if (sourceName == "NSO_4TH_ALT" ) {
           suppAlg = new ScalarNSOElemSuppAlg(realm_, mixFrac_, dzdx_, evisc_, 1.0, 1.0);
+        }
+        else if (sourceName == "NSO_KE_2ND" ) {
+          const double turbSc = realm_.get_turb_schmidt(mixFrac_->name());
+          suppAlg = new ScalarKeNSOElemSuppAlg(realm_, mixFrac_, dzdx_, turbSc, 0.0);
+        }
+        else if (sourceName == "NSO_KE_4TH" ) {
+          const double turbSc = realm_.get_turb_schmidt(mixFrac_->name());
+          suppAlg = new ScalarKeNSOElemSuppAlg(realm_, mixFrac_, dzdx_, turbSc, 1.0);
         }
         else if (sourceName == "mixture_fraction_time_derivative" ) {
           useCMM = true;
