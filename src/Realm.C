@@ -53,6 +53,7 @@
 // post processing
 #include <SolutionNormPostProcessing.h>
 #include <TurbulenceAveragingPostProcessing.h>
+#include <DataProbePostProcessing.h>
 
 // props; algs, evaluators and data
 #include <property_evaluator/GenericPropAlgorithm.h>
@@ -175,6 +176,7 @@ namespace nalu{
     postProcessingInfo_(new PostProcessingInfo()),
     solutionNormPostProcessing_(NULL),
     turbulenceAveragingPostProcessing_(NULL),
+    dataProbePostProcessing_(NULL),
     nodeCount_(0),
     estimateMemoryOnly_(false),
     availableMemoryPerCoreGB_(0),
@@ -428,6 +430,8 @@ Realm::initialize()
   if (realmUsesEdges_ )
     create_edges();
 
+  // create the nodes for possible data probe
+
   // output entity counts including max/min
   if ( provideEntityCount_ )
     provide_entity_count();
@@ -473,6 +477,8 @@ Realm::initialize()
   if ( hasOverset_ )
     initialize_overset();
 
+  initialize_post_processing_algorithms();
+
   compute_l2_scaling();
 
   equationSystems_.initialize();
@@ -505,6 +511,15 @@ Realm::look_ahead_and_creation(const YAML::Node & node)
     if ( foundNormPP.size() != 1 )
       throw std::runtime_error("look_ahead_and_create::error: Too many Solution Norm blocks");
     solutionNormPostProcessing_ =  new SolutionNormPostProcessing(*this);
+  }
+
+  // look for DataProbe
+  std::vector<const YAML::Node *> foundProbe;
+  NaluParsingHelper::find_nodes_given_key("data_probes", node, foundProbe);
+  if ( foundProbe.size() > 0 ) {
+    if ( foundProbe.size() != 1 )
+      throw std::runtime_error("look_ahead_and_create::error: Too many data probe blocks");
+    dataProbePostProcessing_ =  new DataProbePostProcessing(*this, *foundProbe[0]);
   }
 }
   
@@ -786,6 +801,10 @@ Realm::setup_post_processing_algorithms()
   // check for turbulence averaging fields
   if ( NULL != turbulenceAveragingPostProcessing_ )
     turbulenceAveragingPostProcessing_->setup();
+
+  // check for data probes
+  if ( NULL != dataProbePostProcessing_ )
+    dataProbePostProcessing_->setup();
 }
 
 //--------------------------------------------------------------------------
@@ -2188,6 +2207,17 @@ Realm::initialize_overset()
 }
 
 //--------------------------------------------------------------------------
+//-------- initialize_post_processing_algorithms ---------------------------
+//--------------------------------------------------------------------------
+void
+Realm::initialize_post_processing_algorithms()
+{
+  // check for data probes
+  if ( NULL != dataProbePostProcessing_ )
+    dataProbePostProcessing_->initialize();
+}
+
+//--------------------------------------------------------------------------
 //-------- get_coordinates_name ---------------------------------------------
 //--------------------------------------------------------------------------
 std::string
@@ -3401,7 +3431,7 @@ Realm::set_global_id()
     stk::mesh::EntityId *naluGlobalIds = stk::mesh::field_data(*naluGlobalId_, b);
 
     for ( stk::mesh::Bucket::size_type k = 0; k < length; ++k ) {
-   	  naluGlobalIds[k] = bulkData_->identifier(b[k]);
+      naluGlobalIds[k] = bulkData_->identifier(b[k]);
     }
   }
 }
@@ -4260,6 +4290,9 @@ Realm::post_converged_work()
 
   if ( NULL != turbulenceAveragingPostProcessing_ )
     turbulenceAveragingPostProcessing_->execute();
+
+  if ( NULL != dataProbePostProcessing_ )
+    dataProbePostProcessing_->execute();
 }
 
 //--------------------------------------------------------------------------
@@ -4430,10 +4463,20 @@ Realm::get_activate_aura()
 stk::mesh::Selector
 Realm::get_inactive_selector()
 {
-  // provide inactive part that excludes background surface
-  return (hasOverset_) ? (stk::mesh::Selector(*oversetManager_->inActivePart_) 
-                          &!(stk::mesh::selectUnion(oversetManager_->orphanPointSurfaceVecBackground_)))
+  // accumulate inactive parts relative to the universal part
+  
+  // provide inactive Overset part that excludes background surface   
+  stk::mesh::Selector inactiveOverSetSelector = (hasOverset_) 
+    ? (stk::mesh::Selector(*oversetManager_->inActivePart_) 
+       &!(stk::mesh::selectUnion(oversetManager_->orphanPointSurfaceVecBackground_)))
     : stk::mesh::Selector();
+ 
+  // provide inactive dataProbe parts
+  stk::mesh::Selector inactiveDataProbeSelector = (NULL != dataProbePostProcessing_) 
+    ? (dataProbePostProcessing_->get_inactive_selector())
+    : stk::mesh::Selector();
+  
+  return inactiveOverSetSelector | inactiveDataProbeSelector;
 }
 
 //--------------------------------------------------------------------------

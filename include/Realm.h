@@ -60,17 +60,19 @@ class Adapter;
 class EquationSystems;
 class OutputInfo;
 class PostProcessingInfo;
-class SolutionNormPostProcessing;
 class PeriodicManager;
 class Realms;
 class Simulation;
 class SolutionOptions;
 class TimeIntegrator;
-class TurbulenceAveragingPostProcessing;
 class MasterElement;
 class PropertyEvaluator;
 class HDF5FilePtr;
 class Transfer;
+
+class SolutionNormPostProcessing;
+class TurbulenceAveragingPostProcessing;
+class DataProbePostProcessing;
 
 class Realm {
  public:
@@ -162,6 +164,7 @@ class Realm {
   void initialize_contact();
   void initialize_non_conformal();
   void initialize_overset();
+  void initialize_post_processing_algorithms();
 
   void compute_geometry();
   void compute_vrtm();
@@ -401,6 +404,7 @@ class Realm {
   PostProcessingInfo *postProcessingInfo_;
   SolutionNormPostProcessing *solutionNormPostProcessing_;
   TurbulenceAveragingPostProcessing *turbulenceAveragingPostProcessing_;
+  DataProbePostProcessing *dataProbePostProcessing_;
 
   std::vector<Algorithm *> propertyAlg_;
   std::map<PropertyIdentifier, ScalarFieldType *> propertyMap_;

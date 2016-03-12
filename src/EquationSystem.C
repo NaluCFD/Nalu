@@ -234,7 +234,6 @@ void
 EquationSystem::assemble_and_solve(
   stk::mesh::FieldBase *deltaSolution)
 {
-
   int error = 0;
   
   // zero the system

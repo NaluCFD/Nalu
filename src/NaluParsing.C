@@ -29,6 +29,13 @@ void operator >> (const YAML::Node& node, Velocity& v) {
     node[2] >> v.uz_;
 }
 
+void operator >> (const YAML::Node& node, Coordinates& cx) {
+  node[0] >> cx.x_;
+  node[1] >> cx.y_;
+  if ( node.size() > 2 )
+    node[2] >> cx.z_;
+}
+
 void operator >> (const YAML::Node& node, Pressure& p) {
   node >> p.pressure_;
 }

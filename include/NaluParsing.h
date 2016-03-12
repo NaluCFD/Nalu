@@ -37,6 +37,13 @@ struct Velocity {
   {}
 };
 
+struct Coordinates {
+  double x_, y_, z_;
+  Coordinates()
+    : x_(0.0), y_(0.0), z_(0.0)
+  {}
+};
+
 struct Pressure {
   double pressure_;
   Pressure()
@@ -380,6 +387,7 @@ struct UserFunctionInitialConditionData : public InitialCondition {
 
 // now the extraction operators for these types
 void operator >> (const YAML::Node& node, Velocity& v);
+void operator >> (const YAML::Node& node, Coordinates& x);
 void operator >> (const YAML::Node& node, Pressure& p);
 void operator >> (const YAML::Node& node, TurbKinEnergy& tke);
 void operator >> (const YAML::Node& node, SpecDissRate& sdr);
