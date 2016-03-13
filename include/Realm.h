@@ -416,7 +416,7 @@ class Realm {
   SizeType nodeCount_;
   bool estimateMemoryOnly_;
   double availableMemoryPerCoreGB_;
-  double timerReadMesh_;
+  double timerCreateMesh_;
   double timerOutputFields_;
   double timerCreateEdges_;
   double timerContact_;

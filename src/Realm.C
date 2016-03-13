@@ -180,7 +180,7 @@ namespace nalu{
     nodeCount_(0),
     estimateMemoryOnly_(false),
     availableMemoryPerCoreGB_(0),
-    timerReadMesh_(0.0),
+    timerCreateMesh_(0.0),
     timerOutputFields_(0.0),
     timerCreateEdges_(0.0),
     timerContact_(0.0),
@@ -1847,12 +1847,11 @@ Realm::create_mesh()
     edgesPart_ = &metaData_->declare_part("create_edges_part", stk::topology::EDGE_RANK);
   }
 
+  // set mesh creation
   const double end_time = stk::cpu_time();
+  timerCreateMesh_ = (end_time - start_time);
 
   NaluEnv::self().naluOutputP0() << "Realm::create_mesh() End" << std::endl;
-
-  // set mesh reading
-  timerReadMesh_ = (end_time - start_time);
 }
 
 //--------------------------------------------------------------------------
@@ -1863,6 +1862,9 @@ Realm::create_output_mesh()
 {
   // exodus output file creation
   if (outputInfo_->hasOutputBlock_ ) {
+
+    double start_time = stk::cpu_time();
+    NaluEnv::self().naluOutputP0() << "Realm::create_output_mesh(): Begin" << std::endl;
 
     if (outputInfo_->outputFreq_ == 0)
       return;
@@ -1921,6 +1923,12 @@ Realm::create_output_mesh()
 
     // reset this flag
     outputInfo_->meshAdapted_ = false;
+
+    // set mesh creation
+    const double end_time = stk::cpu_time();
+    timerCreateMesh_ = (end_time - start_time);
+
+    NaluEnv::self().naluOutputP0() << "Realm::create_output_mesh() End" << std::endl;
   }
 }
 
@@ -3548,7 +3556,7 @@ Realm::dump_simulation_time()
 
   // common
   const unsigned ntimers = 4;
-  double total_time[ntimers] = {timerReadMesh_,timerOutputFields_, timerInitializeEqs_, timerPropertyEval_};
+  double total_time[ntimers] = {timerCreateMesh_,timerOutputFields_, timerInitializeEqs_, timerPropertyEval_};
   double g_min_time[ntimers] = {}, g_max_time[ntimers] = {}, g_total_time[ntimers] = {};
 
   // get min, max and sum over processes
@@ -3557,7 +3565,7 @@ Realm::dump_simulation_time()
   stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &total_time[0], &g_total_time[0], ntimers);
 
   NaluEnv::self().naluOutputP0() << "Timing for IO: " << std::endl;
-  NaluEnv::self().naluOutputP0() << "     io read mesh --  " << " \tavg: " << g_total_time[0]/double(nprocs)
+  NaluEnv::self().naluOutputP0() << "   io create mesh --  " << " \tavg: " << g_total_time[0]/double(nprocs)
                   << " \tmin: " << g_min_time[0] << " \tmax: " << g_max_time[0] << std::endl;
   NaluEnv::self().naluOutputP0() << " io output fields --  " << " \tavg: " << g_total_time[1]/double(nprocs)
                   << " \tmin: " << g_min_time[1] << " \tmax: " << g_max_time[1] << std::endl;
