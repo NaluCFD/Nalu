@@ -493,12 +493,13 @@ PeriodicManager::error_check()
   size_t g_totalNumber[2] = {0,0};
   stk::all_reduce_sum(NaluEnv::self().parallel_comm(), l_totalNumber, g_totalNumber, 2);
 
-  // soft error check
+  // hard error check
   if ( g_totalNumber[0] != g_totalNumber[1]) {
     NaluEnv::self().naluOutputP0() << "Probable issue with Search: " << std::endl;
     NaluEnv::self().naluOutputP0() << "the total number of slave nodes (" << g_totalNumber[0] << ")" << std::endl;
     NaluEnv::self().naluOutputP0() << "does not equal the product of the search(" << g_totalNumber[1] << ")" << std::endl;
     NaluEnv::self().naluOutputP0() <<" Try reducing the tolerance" << std::endl;
+    throw std::runtime_error("PeriodiocBC::Error: parallel consistency not noted in the master/slave pairings");
   }
   else {
     NaluEnv::self().naluOutputP0() << "Parallel consistency noted in master/slave pairings: "
