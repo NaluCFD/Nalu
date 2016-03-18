@@ -49,6 +49,7 @@ EquationSystem::EquationSystem(
     timerSolve_(0.0),
     timerMisc_(0.0),
     timerInit_(0.0),
+    timerPrecond_(0.0),
     avgLinearIterations_(0.0),
     maxLinearIterations_(0.0),
     minLinearIterations_(1.0e10),
@@ -155,20 +156,26 @@ EquationSystem::provide_norm_increment()
 void
 EquationSystem::dump_eq_time()
 {
+  // extract preconditioning time which lives on the linear solver
+  if ( NULL != linsys_ ) {
+    timerPrecond_ = linsys_->get_timer_precond();
+    // subtract out preconditioning time from solve time
+    timerSolve_ -= timerPrecond_;
+  }
 
-  double l_timer[5] = {timerAssemble_, timerLoadComplete_, timerSolve_, timerMisc_, timerInit_};
-  double g_min[5] = {};
-  double g_max[5] = {};
-  double g_sum[5] = {};
+  double l_timer[6] = {timerAssemble_, timerLoadComplete_, timerSolve_, timerMisc_, timerInit_, timerPrecond_};
+  double g_min[6] = {};
+  double g_max[6] = {};
+  double g_sum[6] = {};
 
   int nprocs = NaluEnv::self().parallel_size();
 
   NaluEnv::self().naluOutputP0() << "Timing for Eq: " << name_ << std::endl;
 
   // get max, min, and sum over processes
-  stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &l_timer[0], &g_sum[0], 5);
-  stk::all_reduce_min(NaluEnv::self().parallel_comm(), &l_timer[0], &g_min[0], 5);
-  stk::all_reduce_max(NaluEnv::self().parallel_comm(), &l_timer[0], &g_max[0], 5);
+  stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &l_timer[0], &g_sum[0], 6);
+  stk::all_reduce_min(NaluEnv::self().parallel_comm(), &l_timer[0], &g_min[0], 6);
+  stk::all_reduce_max(NaluEnv::self().parallel_comm(), &l_timer[0], &g_max[0], 6);
 
   // output
   NaluEnv::self().naluOutputP0() << "             init --  " << " \tavg: " << g_sum[4]/double(nprocs)
@@ -179,6 +186,8 @@ EquationSystem::dump_eq_time()
                   << " \tmin: " << g_min[1] << " \tmax: " << g_max[1] << std::endl;
   NaluEnv::self().naluOutputP0() << "            solve --  " << " \tavg: " << g_sum[2]/double(nprocs)
                   << " \tmin: " << g_min[2] << " \tmax: " << g_max[2] << std::endl;
+  NaluEnv::self().naluOutputP0() << "    precond setup --  " << " \tavg: " << g_sum[5]/double(nprocs)
+                  << " \tmin: " << g_min[5] << " \tmax: " << g_max[5] << std::endl;
   NaluEnv::self().naluOutputP0() << "             misc --  " << " \tavg: " << g_sum[3]/double(nprocs)
                   << " \tmin: " << g_min[3] << " \tmax: " << g_max[3] << std::endl;
 
@@ -187,17 +196,20 @@ EquationSystem::dump_eq_time()
                     << " \tmin: " << minLinearIterations_ << " \tmax: "
                     << maxLinearIterations_ << std::endl;
 
-  // reset anytime these are called; think about what we want here...
+  // reset anytime these are called; 
+  // some EquationSystems have no linear system, e.g., LowMach holds .. uvw_p
   timerAssemble_ = 0.0;
   timerLoadComplete_ = 0.0;
   timerMisc_ = 0.0;
   timerSolve_ = 0.0;
   timerInit_ = 0.0;
+  timerPrecond_ = 0.0;
+  if ( NULL != linsys_ )
+    linsys_->zero_timer_precond();
   avgLinearIterations_ = 0.0;
   minLinearIterations_ = 1.0e10;
   maxLinearIterations_ = 0.0;
   nonLinearIterationCount_ = 0;
-
 }
 
 //--------------------------------------------------------------------------
@@ -257,13 +269,15 @@ EquationSystem::assemble_and_solve(
   // solve the system; extract delta
   timeA = stk::cpu_time();
   error = linsys_->solve(deltaSolution);
-
-  if ( realm_.hasPeriodic_) {
-    realm_.periodic_delta_solution_update(deltaSolution, linsys_->numDof());
-  }
-
   timeB = stk::cpu_time();
   timerSolve_ += (timeB-timeA);
+
+  if ( realm_.hasPeriodic_) {
+    timeA = stk::cpu_time();
+    realm_.periodic_delta_solution_update(deltaSolution, linsys_->numDof());
+    timeB = stk::cpu_time();
+    timerMisc_ += (timeB-timeA);
+  }
 
   // handle statistics
   update_iteration_statistics(
@@ -271,7 +285,6 @@ EquationSystem::assemble_and_solve(
   
   if ( error > 0 )
     NaluEnv::self().naluOutputP0() << "Error in " << name_ << "::solve_and_update()  " << std::endl;
-  
 }
 
 //--------------------------------------------------------------------------

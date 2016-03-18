@@ -99,6 +99,9 @@ public:
   const std::string name() { return name_; }
   bool & recomputePreconditioner() {return recomputePreconditioner_;}
   bool & reusePreconditioner() {return reusePreconditioner_;}
+  double get_timer_precond();
+  void zero_timer_precond();
+
 protected:
   virtual void beginLinearSystemConstruction()=0;
   virtual void checkError(

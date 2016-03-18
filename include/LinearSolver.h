@@ -67,7 +67,7 @@ class LinearSolver
   public:
   LinearSolver(std::string name, LinearSolvers *linearSolvers,
     bool recompute_preconditioner, bool reuse_preconditioner) : name_(name), linearSolvers_(linearSolvers),
-    recomputePreconditioner_(recompute_preconditioner), reusePreconditioner_(reuse_preconditioner) {}
+    recomputePreconditioner_(recompute_preconditioner), reusePreconditioner_(reuse_preconditioner), timerPrecond_(0.0) {}
   virtual ~LinearSolver() {}
   std::string name_;
   virtual PetraType getType() = 0;
@@ -77,9 +77,12 @@ class LinearSolver
   protected:
   bool recomputePreconditioner_;
   bool reusePreconditioner_;
+  double timerPrecond_;
   public:
   bool & recomputePreconditioner() {return recomputePreconditioner_;}
   bool & reusePreconditioner() {return reusePreconditioner_;}
+  void zero_timer_precond() { timerPrecond_ = 0.0;}
+  double get_timer_precond() { return timerPrecond_;}
 };
 
 class EpetraLinearSolver : public LinearSolver
@@ -187,7 +190,6 @@ class TpetraLinearSolver : public LinearSolver
     Teuchos::RCP<LinSys::MultiVector> coords_;
 
     bool activateMueLu_;
-
 };
 
 } // namespace nalu
