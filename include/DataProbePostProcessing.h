@@ -35,6 +35,8 @@ namespace sierra{
 namespace nalu{
 
 class Realm;
+class Transfer;
+class Transfers;
 
 class DataProbeInfo {
 public:
@@ -49,21 +51,24 @@ public:
   std::vector<int> numPoints_;
   std::vector<Coordinates> tipCoordinates_;
   std::vector<Coordinates> tailCoordinates_;
-  std::vector<std::pair<std::string, int> > fieldInfo_;
   std::vector<std::vector<stk::mesh::Entity> > nodeVector_;
   std::vector<stk::mesh::Part *> part_;
 };
 
 class DataProbeSpecInfo {
 public:
-  DataProbeSpecInfo() { }
-  ~DataProbeSpecInfo() {}
+  DataProbeSpecInfo();
+  ~DataProbeSpecInfo();
 
   std::string xferName_;
   std::vector<std::string> fromTargetNames_;
   
   // vector of averaging information
   std::vector<DataProbeInfo *> dataProbeInfo_;
+ 
+  // homegeneous collection of fields over each specification
+  std::vector<std::pair<std::string, std::string> > fromToName_;
+  std::vector<std::pair<std::string, int> > fieldInfo_;
 };
 
 class DataProbePostProcessing
@@ -97,6 +102,9 @@ public:
   // we want these nodes to be excluded from anything of importance
   void create_inactive_selector();
 
+  // create the transfer and hold the vector in the DataProbePostProcessing class
+  void create_transfer();
+
   // populate nodal field and output norms (if appropriate)
   void execute();
 
@@ -121,6 +129,9 @@ public:
   // hold all the parts; provide a selector
   stk::mesh::PartVector allTheParts_;
   stk::mesh::Selector inactiveSelector_;
+
+  // hold the transfers
+  Transfers *transfers_;
 };
 
 } // namespace nalu

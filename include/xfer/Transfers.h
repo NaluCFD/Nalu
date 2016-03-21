@@ -36,6 +36,7 @@ public:
   void load(const YAML::Node & node);
   void breadboard();
   void initialize();
+  void execute(); // general method to execute all xfers (as apposed to Realm)
   Simulation *root();
   Simulation *parent();
 

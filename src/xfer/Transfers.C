@@ -78,8 +78,7 @@ Transfers::initialize()
   }
 
   for ( size_t itransfer = 0; itransfer < transferVector_.size(); ++itransfer ) {
-    const std::string fromName = transferVector_[itransfer]->realmPairName_.first;
-    stk::mesh::BulkData &fromBulkData = root()->realms_->find_realm(fromName)->bulk_data();
+    stk::mesh::BulkData &fromBulkData = transferVector_[itransfer]->fromRealm_->bulk_data();
     fromBulkData.modification_begin();
     transferVector_[itransfer]->change_ghosting(); 
     fromBulkData.modification_end();
@@ -87,6 +86,14 @@ Transfers::initialize()
 
   for ( size_t itransfer = 0; itransfer < transferVector_.size(); ++itransfer ) {
     transferVector_[itransfer]->initialize_end();
+  }
+}
+
+void 
+Transfers::execute()
+{
+  for ( size_t itransfer = 0; itransfer < transferVector_.size(); ++itransfer ) {
+    transferVector_[itransfer]->execute();
   }
 }
 

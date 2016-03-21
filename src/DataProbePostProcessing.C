@@ -11,6 +11,11 @@
 #include <NaluParsing.h>
 #include <NaluEnv.h>
 #include <Realm.h>
+#include <Simulation.h>
+
+// xfer
+#include <xfer/Transfer.h>
+#include <xfer/Transfers.h>
 
 // stk_util
 #include <stk_util/parallel/ParallelReduce.hpp>
@@ -41,6 +46,29 @@ namespace nalu{
 //==========================================================================
 // Class Definition
 //==========================================================================
+// DataProbeSpecInfo - holds DataProbeInfo
+//==========================================================================
+//--------------------------------------------------------------------------
+//-------- constructor -----------------------------------------------------
+//--------------------------------------------------------------------------
+DataProbeSpecInfo::DataProbeSpecInfo()
+{
+  // nothing to do
+}
+
+//--------------------------------------------------------------------------
+//-------- destructor ------------------------------------------------------
+//--------------------------------------------------------------------------
+DataProbeSpecInfo::~DataProbeSpecInfo()
+{
+  // delete the probe info
+  for ( size_t k = 0; k < dataProbeInfo_.size(); ++k )
+    delete dataProbeInfo_[k];
+}
+
+//==========================================================================
+// Class Definition
+//==========================================================================
 // DataProbePostProcessing - post process
 //==========================================================================
 //--------------------------------------------------------------------------
@@ -62,7 +90,13 @@ DataProbePostProcessing::DataProbePostProcessing(
 //--------------------------------------------------------------------------
 DataProbePostProcessing::~DataProbePostProcessing()
 {
-  // delete info?
+  // delete xfer(s)
+  if ( NULL != transfers_ )
+    delete transfers_;
+
+  // delete data probes specifications vector
+  for ( size_t k = 0; k < dataProbeSpecInfo_.size(); ++k )
+    delete dataProbeSpecInfo_[k];
 }
 
 //--------------------------------------------------------------------------
@@ -72,10 +106,13 @@ void
 DataProbePostProcessing::load(
   const YAML::Node & y_node)
 {
-  // output for results
+  // check for any data probes
   const YAML::Node *y_dataProbe = y_node.FindValue("data_probes");
   if (y_dataProbe) {
     NaluEnv::self().naluOutputP0() << "DataProbePostProcessing::load" << std::endl;
+
+    // extract the frequency of output
+    get_if_present(*y_dataProbe, "output_frequency", outputFreq_, outputFreq_);
 
     const YAML::Node *y_specs = expect_sequence(*y_dataProbe, "specifications", false);
     if (y_specs) {
@@ -109,7 +146,7 @@ DataProbePostProcessing::load(
             fromTargets[i] >> probeSpec->fromTargetNames_[i];
           }
         }
-
+        
         // extract the type of probe, e.g., line of site, plane, etc
         const YAML::Node *y_loss = expect_sequence(y_spec, "line_of_site_specifications", false);
         if (y_loss) {
@@ -195,10 +232,15 @@ DataProbePostProcessing::load(
             int fieldSize;
             *fieldNameNode >> fieldName;
             *fieldSizeNode >> fieldSize;
-            
+
+            // push to fromToName
+            std::string fromName = fieldName;
+            std::string toName = fieldName + "_probe";
+            probeSpec->fromToName_.push_back(std::make_pair(fromName, toName));
+
             // push to probeInfo
-            std::pair<std::string, int> fieldInfoPair = std::make_pair(fieldName + "_probe", fieldSize);
-            probeInfo->fieldInfo_.push_back(fieldInfoPair);
+            std::pair<std::string, int> fieldInfoPair = std::make_pair(toName, fieldSize);
+            probeSpec->fieldInfo_.push_back(fieldInfoPair);
           }
         }
       }
@@ -255,8 +297,8 @@ DataProbePostProcessing::setup()
           =  &(metaData.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates"));
         stk::mesh::put_field(*coordinates, *probePart, nDim);
         // now the general set of fields for this probe
-        for ( size_t j = 0; j < probeInfo->fieldInfo_.size(); ++j ) 
-          register_field(probeInfo->fieldInfo_[j].first, probeInfo->fieldInfo_[j].second, metaData, probePart);
+        for ( size_t j = 0; j < probeSpec->fieldInfo_.size(); ++j ) 
+          register_field(probeSpec->fieldInfo_[j].first, probeSpec->fieldInfo_[j].second, metaData, probePart);
       }
     }
   }
@@ -362,10 +404,11 @@ DataProbePostProcessing::initialize()
         }
       }
     }
-    // create the transfer; manage it locally
   }
 
   create_inactive_selector();
+
+  create_transfer();
 }
   
 //--------------------------------------------------------------------------
@@ -406,7 +449,65 @@ DataProbePostProcessing::create_inactive_selector()
 
   inactiveSelector_ = stk::mesh::selectUnion(allTheParts_);
 }
-  
+
+//--------------------------------------------------------------------------
+//-------- create_transfer -------------------------------------------------
+//--------------------------------------------------------------------------
+void
+DataProbePostProcessing::create_transfer()
+{  
+  stk::mesh::MetaData &metaData = realm_.meta_data();
+
+  // create a [dummy] transfers
+  transfers_ = new Transfers(*realm_.root());
+
+  for ( size_t idps = 0; idps < dataProbeSpecInfo_.size(); ++idps ) {
+
+    DataProbeSpecInfo *probeSpec = dataProbeSpecInfo_[idps];
+
+    // new a transfer and push back
+    Transfer *theTransfer = new Transfer(*transfers_);
+    transfers_->transferVector_.push_back(theTransfer);
+
+    // set some data
+    theTransfer->name_ = probeSpec->xferName_;
+    theTransfer->searchMethodName_ = "boost_rtree";
+    theTransfer->fromRealm_ = &realm_;
+    theTransfer->toRealm_ = &realm_;
+    
+    // provide from/to parts
+    for ( size_t k = 0; k < probeSpec->dataProbeInfo_.size(); ++k ) {
+    
+      DataProbeInfo *probeInfo = probeSpec->dataProbeInfo_[k];
+
+      // extract field names (homegeneous over all probes)
+      for ( size_t j = 0; j < probeSpec->fromToName_.size(); ++j )
+        theTransfer->transferVariablesPairName_.push_back(std::make_pair(probeSpec->fromToName_[j].first, 
+                                                                         probeSpec->fromToName_[j].second));
+          
+      // accumulate all of the From parts for this Specification
+      for ( size_t j = 0; j < probeSpec->fromTargetNames_.size(); ++j ) {
+        std::string fromTargetName = probeSpec->fromTargetNames_[j];
+        stk::mesh::Part *fromTargetPart = metaData.get_part(fromTargetName);
+        if ( NULL == fromTargetPart ) {
+          throw 
+            std::runtime_error("DataProbePostProcessing::create_transfer() Trouble with part, " + fromTargetName);
+        }
+        else {
+          theTransfer->fromPartVec_.push_back(fromTargetPart);
+        }
+      }
+
+      // accumulate all of the To parts for this Specification (sum over all probes)
+      for ( int j = 0; j < probeInfo->numProbes_; ++j ) {
+        theTransfer->toPartVec_.push_back(probeInfo->part_[j]);
+      }
+    }
+  }
+
+  // okay, ready to call through Transfers to do the real work
+  transfers_->initialize();
+}  
 //--------------------------------------------------------------------------
 //-------- review ----------------------------------------------------------
 //--------------------------------------------------------------------------
@@ -429,9 +530,8 @@ DataProbePostProcessing::execute()
   const bool isOutput = timeStepCount % outputFreq_ == 0;
 
   if ( isOutput ) {
-    // execute transfer...
-
-    // provide the results
+    // execute and provide results...
+    transfers_->execute();
     provide_average(currentTime, timeStepCount);
   }
 }
@@ -479,9 +579,9 @@ DataProbePostProcessing::provide_average(
         const int numPoints = probeInfo->numPoints_[inp];
       
         // loop over fields
-        for ( size_t ifi = 0; ifi < probeInfo->fieldInfo_.size(); ++ifi ) {
-          const std::string fieldName = probeInfo->fieldInfo_[ifi].first;
-          const int fieldSize = probeInfo->fieldInfo_[ifi].second;
+        for ( size_t ifi = 0; ifi < probeSpec->fieldInfo_.size(); ++ifi ) {
+          const std::string fieldName = probeSpec->fieldInfo_[ifi].first;
+          const int fieldSize = probeSpec->fieldInfo_[ifi].second;
 
           if ( processorId == NaluEnv::self().parallel_rank()) {  
             for ( int jj = 0; jj < fieldSize; ++jj ) {
