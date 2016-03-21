@@ -403,11 +403,11 @@ LowMachEquationSystem::register_open_bc(
 
   // mdot at open bc; register field
   MasterElement *meFC = realm_.get_surface_master_element(theTopo);
-  const int numScsIp = meFC->numIntPoints_;
+  const int numScsBip = meFC->numIntPoints_;
   GenericFieldType *mdotBip 
     = &(metaData.declare_field<GenericFieldType>(static_cast<stk::topology::rank_t>(metaData.side_rank()), 
                                                  "open_mass_flow_rate"));
-  stk::mesh::put_field(*mdotBip, *part, numScsIp);
+  stk::mesh::put_field(*mdotBip, *part, numScsBip);
 }
 
 //--------------------------------------------------------------------------
@@ -1473,15 +1473,18 @@ MomentumEquationSystem::register_wall_bc(
     ScalarFieldType *assembledWallNormalDistance=  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "assembled_wall_normal_distance"));
     stk::mesh::put_field(*assembledWallNormalDistance, *part);
 
-    // integration point; size it based on number of nodes (= number of bips)
-    const int numIp = theTopo.num_nodes();
+    // integration point; size it based on number of boundary integration points
+    MasterElement *meFC = realm_.get_surface_master_element(theTopo);
+    const int numScsBip = meFC->numIntPoints_;
 
     stk::topology::rank_t sideRank = static_cast<stk::topology::rank_t>(meta_data.side_rank());
-    GenericFieldType *wallFrictionVelocityBip=  &(meta_data.declare_field<GenericFieldType>(sideRank, "wall_friction_velocity_bip"));
-    stk::mesh::put_field(*wallFrictionVelocityBip, *part, numIp);
+    GenericFieldType *wallFrictionVelocityBip 
+      =  &(meta_data.declare_field<GenericFieldType>(sideRank, "wall_friction_velocity_bip"));
+    stk::mesh::put_field(*wallFrictionVelocityBip, *part, numScsBip);
 
-    GenericFieldType *wallNormalDistanceBip =  &(meta_data.declare_field<GenericFieldType>(sideRank, "wall_normal_distance_bip"));
-    stk::mesh::put_field(*wallNormalDistanceBip, *part, numIp);
+    GenericFieldType *wallNormalDistanceBip 
+      =  &(meta_data.declare_field<GenericFieldType>(sideRank, "wall_normal_distance_bip"));
+    stk::mesh::put_field(*wallNormalDistanceBip, *part, numScsBip);
 
     // create wallFunctionParamsAlgDriver
     if ( NULL == wallFunctionParamsAlgDriver_)
@@ -1659,12 +1662,12 @@ MomentumEquationSystem::register_non_conformal_bc(
 
   // mdot at nc bc; register field; require topo and num ips
   MasterElement *meFC = realm_.get_surface_master_element(theTopo);
-  const int numIp = meFC->numIntPoints_;
+  const int numScsBip = meFC->numIntPoints_;
 
   stk::topology::rank_t sideRank = static_cast<stk::topology::rank_t>(meta_data.side_rank());
   GenericFieldType *mdotBip =
     &(meta_data.declare_field<GenericFieldType>(sideRank, "nc_mass_flow_rate"));
-  stk::mesh::put_field(*mdotBip, *part, numIp );
+  stk::mesh::put_field(*mdotBip, *part, numScsBip );
 
   // non-solver; contribution to Gjui; DG algorithm decides on locations for integration points
   if ( edgeNodalGradient_ ) {
@@ -2502,12 +2505,12 @@ ContinuityEquationSystem::register_non_conformal_bc(
 
   // mdot at nc bc; register field; require topo and num ips
   MasterElement *meFC = realm_.get_surface_master_element(theTopo);
-  const int numIp = meFC->numIntPoints_;
+  const int numScsBip = meFC->numIntPoints_;
   
   stk::topology::rank_t sideRank = static_cast<stk::topology::rank_t>(meta_data.side_rank());
   GenericFieldType *mdotBip =
     &(meta_data.declare_field<GenericFieldType>(sideRank, "nc_mass_flow_rate"));
-  stk::mesh::put_field(*mdotBip, *part, numIp );
+  stk::mesh::put_field(*mdotBip, *part, numScsBip );
 
   // non-solver; contribution to Gjp; DG algorithm decides on locations for integration points
   if ( edgeNodalGradient_ ) {    

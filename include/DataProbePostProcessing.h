@@ -101,7 +101,7 @@ public:
   void execute();
 
   // output the average value
-  void provide_average(const double currentTime, const double timeStepCount);
+  void provide_average(const double currentTime, const int timeStepCount);
   
   // provide the inactive selector
   stk::mesh::Selector &get_inactive_selector();
@@ -111,7 +111,10 @@ public:
 
   // frequency of output
   int outputFreq_;
-  
+
+  // width for output
+  int w_;
+
   // vector of specifications
   std::vector<DataProbeSpecInfo *> dataProbeSpecInfo_;
 

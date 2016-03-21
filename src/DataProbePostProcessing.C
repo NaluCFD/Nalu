@@ -33,6 +33,7 @@
 #include <fstream>
 #include <iomanip>
 #include <algorithm>
+#include <sstream>
 
 namespace sierra{
 namespace nalu{
@@ -49,7 +50,8 @@ DataProbePostProcessing::DataProbePostProcessing(
   Realm &realm,
   const YAML::Node &node)
   : realm_(realm),
-    outputFreq_(10)
+    outputFreq_(10),
+    w_(26)
 {
   // load the data
   load(node);
@@ -440,19 +442,17 @@ DataProbePostProcessing::execute()
 void
 DataProbePostProcessing::provide_average(
   const double currentTime,
-  const double timeStepCount)
+  const int timeStepCount)
 { 
   stk::mesh::MetaData &metaData = realm_.meta_data();
-
-  std::cout << "DataProbePostProcessing::provide_average() at current time/timeStepCount: " 
-            << currentTime <<"/"<< timeStepCount << std::endl;
+  VectorFieldType *coordinates 
+    = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates");
   
+  const int nDim = metaData.spatial_dimension();
+
   for ( size_t idps = 0; idps < dataProbeSpecInfo_.size(); ++idps ) {
 
     DataProbeSpecInfo *probeSpec = dataProbeSpecInfo_[idps];
-
-    std::cout << " ...will proceed with specification name: " 
-              << probeSpec->xferName_ << std::endl;
     
     for ( size_t k = 0; k < probeSpec->dataProbeInfo_.size(); ++k ) {
     
@@ -460,10 +460,18 @@ DataProbePostProcessing::provide_average(
           
       for ( int inp = 0; inp < probeInfo->numProbes_; ++inp ) {
 
-        std::cout << std::endl;
-        std::cout << " .......................... and probe name: "  
-                  << probeInfo->partName_[inp] << std::endl;
-        std::cout << std::endl;
+        // open the file for this probe
+        const int processorId = probeInfo->processorId_[inp];
+        std::ostringstream ss;
+        ss << processorId;
+        const std::string fileName = probeInfo->partName_[inp] + "_" + ss.str() + ".dat";
+        std::ofstream myfile;
+        if ( processorId == NaluEnv::self().parallel_rank()) {    
+          myfile.open(fileName.c_str(), std::ios_base::app);
+          myfile << timeStepCount << " " << currentTime << std::endl;
+          for ( int jj = 0; jj < nDim; ++jj )
+            myfile << "Coordinates[" << jj << "]" << std::setw(w_);          
+        }
 
         // reference to the nodeVector
         std::vector<stk::mesh::Entity> &nodeVec = probeInfo->nodeVector_[inp];
@@ -474,21 +482,47 @@ DataProbePostProcessing::provide_average(
         for ( size_t ifi = 0; ifi < probeInfo->fieldInfo_.size(); ++ifi ) {
           const std::string fieldName = probeInfo->fieldInfo_[ifi].first;
           const int fieldSize = probeInfo->fieldInfo_[ifi].second;
-          
+
+          if ( processorId == NaluEnv::self().parallel_rank()) {  
+            for ( int jj = 0; jj < fieldSize; ++jj ) {
+              if ( jj != fieldSize-1)
+                myfile << fieldName << "[" << jj << "]" << std::setw(w_);
+              else
+                myfile << fieldName << "[" << jj << "]" << std::endl; 
+            }
+          }
+
           const stk::mesh::FieldBase *theField = metaData.get_field(stk::topology::NODE_RANK, fieldName);
       
-          // now populate the coordinates; can use a simple loop rather than buckets
+          // construct mean
           std::vector<double> meanValue(fieldSize, 0.0);
           for ( size_t inv = 0; inv < nodeVec.size(); ++inv ) {
             stk::mesh::Entity node = nodeVec[inv];
             double * theF = (double*)stk::mesh::field_data(*theField, node );
-            for ( int ifs = 0; ifs < fieldSize; ++ifs )
+            double * theCoord = (double*)stk::mesh::field_data(*coordinates, node );
+
+            // output the coordinates
+            for ( int jj = 0; jj < nDim; ++jj )
+              myfile << theCoord[jj] << std::setw(w_);
+
+            for ( int ifs = 0; ifs < fieldSize; ++ifs ) {
               meanValue[ifs] += theF[ifs];
+              if ( ifs != fieldSize-1)
+                myfile << theF[ifs] << std::setw(w_);
+              else
+                myfile << theF[ifs] << std::endl;
+            }
           }
           
           for ( int ifs = 0; ifs < fieldSize; ++ifs ) {
-            std::cout << "Mean value for " << fieldName << "[" << ifs << "] is: " << meanValue[ifs]/numPoints << std::endl; 
+            myfile << "Mean value for " 
+                   << fieldName << "[" << ifs << "] is: " 
+                   << meanValue[ifs]/numPoints << std::endl; 
           }
+        }
+      
+        if ( processorId == NaluEnv::self().parallel_rank()) {  
+          myfile.close();
         }
       }
     }
