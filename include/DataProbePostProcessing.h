@@ -123,6 +123,11 @@ public:
   // width for output
   int w_;
 
+  // xfer specifications
+  std::string searchMethodName_;
+  double searchTolerance_;
+  double searchExpansionFactor_;
+
   // vector of specifications
   std::vector<DataProbeSpecInfo *> dataProbeSpecInfo_;
 

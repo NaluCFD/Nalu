@@ -79,7 +79,10 @@ DataProbePostProcessing::DataProbePostProcessing(
   const YAML::Node &node)
   : realm_(realm),
     outputFreq_(10),
-    w_(26)
+    w_(26),
+    searchMethodName_("none"),
+    searchTolerance_(1.0e-4),
+    searchExpansionFactor_(1.5)
 {
   // load the data
   load(node);
@@ -113,6 +116,11 @@ DataProbePostProcessing::load(
 
     // extract the frequency of output
     get_if_present(*y_dataProbe, "output_frequency", outputFreq_, outputFreq_);
+
+    // transfer specifications
+    get_if_present(*y_dataProbe, "search_method", searchMethodName_, searchMethodName_);
+    get_if_present(*y_dataProbe, "search_tolerance", searchTolerance_, searchTolerance_);
+    get_if_present(*y_dataProbe, "search_expansion_factor", searchExpansionFactor_, searchExpansionFactor_);
 
     const YAML::Node *y_specs = expect_sequence(*y_dataProbe, "specifications", false);
     if (y_specs) {
@@ -469,12 +477,14 @@ DataProbePostProcessing::create_transfer()
     Transfer *theTransfer = new Transfer(*transfers_);
     transfers_->transferVector_.push_back(theTransfer);
 
-    // set some data
+    // set some data on the transfer
     theTransfer->name_ = probeSpec->xferName_;
-    theTransfer->searchMethodName_ = "boost_rtree";
     theTransfer->fromRealm_ = &realm_;
     theTransfer->toRealm_ = &realm_;
-    
+    theTransfer->searchMethodName_ = searchMethodName_;
+    theTransfer->searchTolerance_ = searchTolerance_;
+    theTransfer->searchExpansionFactor_ = searchExpansionFactor_;
+
     // provide from/to parts
     for ( size_t k = 0; k < probeSpec->dataProbeInfo_.size(); ++k ) {
     
