@@ -177,13 +177,13 @@ DataProbePostProcessing::load(
 
           // deal with processors... Distribute each probe over subsequent procs
           const int numProcs = NaluEnv::self().parallel_size();
-          const int probePerProc = numProcs > numProbes ? 1 : numProbes / numProcs;
+          const int divProcProbe = std::max(numProcs/numProbes, numProcs);
 
           for (size_t ilos = 0; ilos < y_loss->size(); ++ilos) {
             const YAML::Node &y_los = (*y_loss)[ilos];
 
             // processor id; distribute los equally over the number of processors
-            probeInfo->processorId_[ilos] = (ilos + probePerProc)/probePerProc - 1;
+            probeInfo->processorId_[ilos] = divProcProbe > 0 ? ilos % divProcProbe : 0;
 
             // name; which is the part name of choice
             const YAML::Node *nameNode = y_los.FindValue("name");
@@ -326,6 +326,9 @@ DataProbePostProcessing::initialize()
   std::vector<std::string> toPartNameVec;
   std::vector<std::string> fromPartNameVec;
 
+  // the call to declare entities requires a high level mesh modification, however, not one per part
+  bulkData.modification_begin();
+
   for ( size_t idps = 0; idps < dataProbeSpecInfo_.size(); ++idps ) {
 
     DataProbeSpecInfo *probeSpec = dataProbeSpecInfo_[idps];
@@ -345,29 +348,26 @@ DataProbePostProcessing::initialize()
         std::vector<stk::mesh::EntityId> availableNodeIds(numPoints);
         bulkData.generate_new_ids(stk::topology::NODE_RANK, numPoints, availableNodeIds);
 
-        // reference to the nodeVector
-        std::vector<stk::mesh::Entity> &nodeVec = probeInfo->nodeVector_[j];
-
-        // size the vector of nodes
+        // only declare nodeVector_ and declare entities on which these nodes parallel rank resides
         if ( processorId == NaluEnv::self().parallel_rank()) {    
+          // reference to the nodeVector; and resize
+          std::vector<stk::mesh::Entity> &nodeVec = probeInfo->nodeVector_[j];
           nodeVec.resize(numPoints);
-        }
-
-        // declare the nodes
-        bulkData.modification_begin();
-        for (int i = 0; i < numPoints; ++i) {
-          if ( processorId == NaluEnv::self().parallel_rank()) {    
+          
+          // declare the entity on this rank (rank is determined by calling declare_entity on this rank)
+          for (int i = 0; i < numPoints; ++i) {
             stk::mesh::Entity theNode = bulkData.declare_entity(stk::topology::NODE_RANK, availableNodeIds[i], *probePart);
             nodeVec[i] = theNode;
           }
         }
-        bulkData.modification_end();
       }
     }
   }
   
+  bulkData.modification_end();
+  
   // populate values for coord; probe stays the same place
-  // *** so worry about mesh motion (if the probe moves around)**
+  // FIXME: worry about mesh motion (if the probe moves around?)
   VectorFieldType *coordinates = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates");
 
   const int nDim = metaData.spatial_dimension();
@@ -579,61 +579,63 @@ DataProbePostProcessing::provide_average(
         if ( processorId == NaluEnv::self().parallel_rank()) {    
           myfile.open(fileName.c_str(), std::ios_base::app);
           myfile << timeStepCount << " " << currentTime << std::endl;
-          for ( int jj = 0; jj < nDim; ++jj )
-            myfile << "Coordinates[" << jj << "]" << std::setw(w_);          
-        }
-
-        // reference to the nodeVector
-        std::vector<stk::mesh::Entity> &nodeVec = probeInfo->nodeVector_[inp];
+          
+          // reference to the nodeVector
+          std::vector<stk::mesh::Entity> &nodeVec = probeInfo->nodeVector_[inp];
       
-        const int numPoints = probeInfo->numPoints_[inp];
+          const int numPoints = probeInfo->numPoints_[inp];
       
-        // loop over fields
-        for ( size_t ifi = 0; ifi < probeSpec->fieldInfo_.size(); ++ifi ) {
-          const std::string fieldName = probeSpec->fieldInfo_[ifi].first;
-          const int fieldSize = probeSpec->fieldInfo_[ifi].second;
-
-          if ( processorId == NaluEnv::self().parallel_rank()) {  
+          // loop over fields
+          for ( size_t ifi = 0; ifi < probeSpec->fieldInfo_.size(); ++ifi ) {
+            const std::string fieldName = probeSpec->fieldInfo_[ifi].first;
+            const int fieldSize = probeSpec->fieldInfo_[ifi].second;
+            
+            // provide banner for each field
+            for ( int jj = 0; jj < nDim; ++jj )
+              myfile << "Coordinates[" << jj << "]" << std::setw(w_);          
+            
             for ( int jj = 0; jj < fieldSize; ++jj ) {
               if ( jj != fieldSize-1)
                 myfile << fieldName << "[" << jj << "]" << std::setw(w_);
               else
                 myfile << fieldName << "[" << jj << "]" << std::endl; 
             }
-          }
-
-          const stk::mesh::FieldBase *theField = metaData.get_field(stk::topology::NODE_RANK, fieldName);
-      
-          // construct mean
-          std::vector<double> meanValue(fieldSize, 0.0);
-          for ( size_t inv = 0; inv < nodeVec.size(); ++inv ) {
-            stk::mesh::Entity node = nodeVec[inv];
-            double * theF = (double*)stk::mesh::field_data(*theField, node );
-            double * theCoord = (double*)stk::mesh::field_data(*coordinates, node );
-
-            // output the coordinates
-            for ( int jj = 0; jj < nDim; ++jj )
-              myfile << theCoord[jj] << std::setw(w_);
-
-            for ( int ifs = 0; ifs < fieldSize; ++ifs ) {
-              meanValue[ifs] += theF[ifs];
-              if ( ifs != fieldSize-1)
-                myfile << theF[ifs] << std::setw(w_);
-              else
-                myfile << theF[ifs] << std::endl;
-            }
-          }
           
-          for ( int ifs = 0; ifs < fieldSize; ++ifs ) {
-            myfile << "Mean value for " 
-                   << fieldName << "[" << ifs << "] is: " 
-                   << meanValue[ifs]/numPoints << std::endl; 
+            const stk::mesh::FieldBase *theField = metaData.get_field(stk::topology::NODE_RANK, fieldName);
+          
+            // construct mean
+            std::vector<double> meanValue(fieldSize, 0.0);
+            for ( size_t inv = 0; inv < nodeVec.size(); ++inv ) {
+              stk::mesh::Entity node = nodeVec[inv];
+              double * theF = (double*)stk::mesh::field_data(*theField, node );
+              double * theCoord = (double*)stk::mesh::field_data(*coordinates, node );
+              
+              // output the coordinates
+              for ( int jj = 0; jj < nDim; ++jj )
+                myfile << theCoord[jj] << std::setw(w_);
+              
+              for ( int ifs = 0; ifs < fieldSize; ++ifs ) {
+                meanValue[ifs] += theF[ifs];
+                if ( ifs != fieldSize-1)
+                  myfile << theF[ifs] << std::setw(w_);
+                else
+                  myfile << theF[ifs] << std::endl;
+              }
+            }
+            
+            // output the mean
+            for ( int ifs = 0; ifs < fieldSize; ++ifs ) {
+              myfile << "Mean value for " 
+                     << fieldName << "[" << ifs << "] is: " 
+                     << meanValue[ifs]/numPoints << std::endl; 
+            }
+            myfile << std::endl;
           }
-        }
-      
-        if ( processorId == NaluEnv::self().parallel_rank()) {  
           myfile.close();
         }
+        else {
+          // nothing to do for this probe on this processor
+        } 
       }
     }
   }
