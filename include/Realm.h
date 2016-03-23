@@ -417,6 +417,8 @@ class Realm {
   bool estimateMemoryOnly_;
   double availableMemoryPerCoreGB_;
   double timerCreateMesh_;
+  double timerPopulateMesh_;
+  double timerPopulateFieldData_;
   double timerOutputFields_;
   double timerCreateEdges_;
   double timerContact_;

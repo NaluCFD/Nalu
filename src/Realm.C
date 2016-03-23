@@ -181,6 +181,8 @@ namespace nalu{
     estimateMemoryOnly_(false),
     availableMemoryPerCoreGB_(0),
     timerCreateMesh_(0.0),
+    timerPopulateMesh_(0.0),
+    timerPopulateFieldData_(0.0),
     timerOutputFields_(0.0),
     timerCreateEdges_(0.0),
     timerContact_(0.0),
@@ -422,7 +424,12 @@ Realm::initialize()
 
   // Populate_mesh fills in the entities (nodes/elements/etc) and
   // connectivities, but no field-data. Field-data is not allocated yet.
+  NaluEnv::self().naluOutputP0() << "Realm::ioBroker_->populate_mesh() Begin" << std::endl;
+  double time = -stk::cpu_time();
   ioBroker_->populate_mesh();
+  time += stk::cpu_time();
+  timerPopulateMesh_ += time;
+  NaluEnv::self().naluOutputP0() << "Realm::ioBroker_->populate_mesh() End" << std::endl;
 
   // If we want to create all internal edges, we want to do it before
   // field-data is allocated because that allows better performance in
@@ -439,7 +446,12 @@ Realm::initialize()
   // Now the mesh is fully populated, so we're ready to populate
   // field-data including coordinates, and attributes and/or distribution factors
   // if those exist on the input mesh file.
+  NaluEnv::self().naluOutputP0() << "Realm::ioBroker_->populate_field_data() Begin" << std::endl;
+  time = -stk::cpu_time();
   ioBroker_->populate_field_data();
+  time += stk::cpu_time();
+  timerPopulateFieldData_ += time;
+  NaluEnv::self().naluOutputP0() << "Realm::ioBroker_->populate_field_data() End" << std::endl;
 
   // manage NaluGlobalId for linear system
   set_global_id();
@@ -3555,8 +3567,9 @@ Realm::dump_simulation_time()
   const int nprocs = NaluEnv::self().parallel_size();
 
   // common
-  const unsigned ntimers = 4;
-  double total_time[ntimers] = {timerCreateMesh_,timerOutputFields_, timerInitializeEqs_, timerPropertyEval_};
+  const unsigned ntimers = 6;
+  double total_time[ntimers] = {timerCreateMesh_, timerOutputFields_, timerInitializeEqs_, 
+                                timerPropertyEval_, timerPopulateMesh_, timerPopulateFieldData_};
   double g_min_time[ntimers] = {}, g_max_time[ntimers] = {}, g_total_time[ntimers] = {};
 
   // get min, max and sum over processes
@@ -3569,7 +3582,10 @@ Realm::dump_simulation_time()
                   << " \tmin: " << g_min_time[0] << " \tmax: " << g_max_time[0] << std::endl;
   NaluEnv::self().naluOutputP0() << " io output fields --  " << " \tavg: " << g_total_time[1]/double(nprocs)
                   << " \tmin: " << g_min_time[1] << " \tmax: " << g_max_time[1] << std::endl;
-
+  NaluEnv::self().naluOutputP0() << " io populate mesh --  " << " \tavg: " << g_total_time[4]/double(nprocs)
+                  << " \tmin: " << g_min_time[4] << " \tmax: " << g_max_time[4] << std::endl;
+  NaluEnv::self().naluOutputP0() << " io populate fd   --  " << " \tavg: " << g_total_time[5]/double(nprocs)
+                  << " \tmin: " << g_min_time[5] << " \tmax: " << g_max_time[5] << std::endl;
   NaluEnv::self().naluOutputP0() << "Timing for connectivity/finalize lysys: " << std::endl;
   NaluEnv::self().naluOutputP0() << "         eqs init --  " << " \tavg: " << g_total_time[2]/double(nprocs)
                   << " \tmin: " << g_min_time[2] << " \tmax: " << g_max_time[2] << std::endl;
