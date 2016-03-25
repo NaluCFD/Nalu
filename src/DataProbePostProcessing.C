@@ -270,23 +270,26 @@ DataProbePostProcessing::setup()
   for ( size_t idps = 0; idps < dataProbeSpecInfo_.size(); ++idps ) {
 
     DataProbeSpecInfo *probeSpec = dataProbeSpecInfo_[idps];
-
-    for ( size_t k = 0; k < probeSpec->dataProbeInfo_.size(); ++k ) {
     
+    for ( size_t k = 0; k < probeSpec->dataProbeInfo_.size(); ++k ) {
+      
       DataProbeInfo *probeInfo = probeSpec->dataProbeInfo_[k];
-          
+      
       // loop over probes... one part per probe
       for ( int j = 0; j < probeInfo->numProbes_; ++j ) {
         // extract name
         std::string partName = probeInfo->partName_[j];
         // declare the part and push it to info; make the part available as a nodeset
         probeInfo->part_[j] = &metaData.declare_part(partName, stk::topology::NODE_RANK);
-        stk::io::put_io_part_attribute(*probeInfo->part_[j]);
+
+        // only define part attribute if this is not a restarted simulation
+        if ( !realm_.restarted_simulation() )
+          stk::io::put_io_part_attribute(*probeInfo->part_[j]);
       }
     }
   }
   
-  // second, register the fields
+  // second, always register the fields
   const int nDim = metaData.spatial_dimension();
   for ( size_t idps = 0; idps < dataProbeSpecInfo_.size(); ++idps ) {
 
