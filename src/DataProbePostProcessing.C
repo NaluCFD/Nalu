@@ -170,6 +170,7 @@ DataProbePostProcessing::load(
           probeInfo->partName_.resize(numProbes);
           probeInfo->processorId_.resize(numProbes);
           probeInfo->numPoints_.resize(numProbes);
+          probeInfo->generateNewIds_.resize(numProbes);
           probeInfo->tipCoordinates_.resize(numProbes);
           probeInfo->tailCoordinates_.resize(numProbes);
           probeInfo->nodeVector_.resize(numProbes);
@@ -279,16 +280,23 @@ DataProbePostProcessing::setup()
       for ( int j = 0; j < probeInfo->numProbes_; ++j ) {
         // extract name
         std::string partName = probeInfo->partName_[j];
-        // declare the part and push it to info; make the part available as a nodeset
-        probeInfo->part_[j] = &metaData.declare_part(partName, stk::topology::NODE_RANK);
 
-        // only define part attribute if this is not a restarted simulation
-        if ( !realm_.restarted_simulation() )
+        // declare the part and push it to info; make the part available as a nodeset; check for existance
+        probeInfo->part_[j] = metaData.get_part(partName);
+        if ( NULL == probeInfo->part_[j] ) {
+          probeInfo->part_[j] = &metaData.declare_part(partName, stk::topology::NODE_RANK);
           stk::io::put_io_part_attribute(*probeInfo->part_[j]);
+          // part was null, signal for generation of ids
+          probeInfo->generateNewIds_[j] = 1;
+        }
+        else {
+          // part was not null, no ids to be generated
+          probeInfo->generateNewIds_[j] = 0;
+        }
       }
     }
   }
-  
+
   // second, always register the fields
   const int nDim = metaData.spatial_dimension();
   for ( size_t idps = 0; idps < dataProbeSpecInfo_.size(); ++idps ) {
@@ -346,21 +354,54 @@ DataProbePostProcessing::initialize()
         stk::mesh::Part *probePart = probeInfo->part_[j];
         const int numPoints = probeInfo->numPoints_[j];
         const int processorId  = probeInfo->processorId_[j];
-   
-        // generate new ids
-        std::vector<stk::mesh::EntityId> availableNodeIds(numPoints);
-        bulkData.generate_new_ids(stk::topology::NODE_RANK, numPoints, availableNodeIds);
+        const bool generateNewIds = probeInfo->generateNewIds_[j];
 
-        // only declare nodeVector_ and declare entities on which these nodes parallel rank resides
+        // generate new ids; only if the part was 
+        std::vector<stk::mesh::EntityId> availableNodeIds(numPoints);
+        if ( generateNewIds > 0 ) 
+          bulkData.generate_new_ids(stk::topology::NODE_RANK, numPoints, availableNodeIds);
+
+        // check to see if part has nodes on it already
         if ( processorId == NaluEnv::self().parallel_rank()) {    
-          // reference to the nodeVector; and resize
-          std::vector<stk::mesh::Entity> &nodeVec = probeInfo->nodeVector_[j];
-          nodeVec.resize(numPoints);
           
-          // declare the entity on this rank (rank is determined by calling declare_entity on this rank)
-          for (int i = 0; i < numPoints; ++i) {
-            stk::mesh::Entity theNode = bulkData.declare_entity(stk::topology::NODE_RANK, availableNodeIds[i], *probePart);
-            nodeVec[i] = theNode;
+          // set some data
+          int checkNumPoints = 0;
+          bool nodesExist = false;
+          std::vector<stk::mesh::Entity> &nodeVec = probeInfo->nodeVector_[j];
+
+          stk::mesh::Selector s_local_nodes
+            = metaData.locally_owned_part() &stk::mesh::Selector(*probePart);
+          
+          stk::mesh::BucketVector const& node_buckets = bulkData.get_buckets( stk::topology::NODE_RANK, s_local_nodes );
+          for ( stk::mesh::BucketVector::const_iterator ib = node_buckets.begin() ;
+                ib != node_buckets.end() ; ++ib ) {
+            stk::mesh::Bucket & b = **ib ;
+            const stk::mesh::Bucket::size_type length   = b.size();
+            for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+              checkNumPoints++;
+              stk::mesh::Entity node = b[k];
+              nodeVec.push_back(node);
+              nodesExist = true;
+            }
+          }
+          
+          // check if nodes exists. If they do, did the number of points match?
+          if ( nodesExist ) {
+            if ( checkNumPoints != numPoints ) {
+              std::cout << "Number of points specified within input file does not match nodes that exists: " << probePart->name() << std::endl;
+              std::cout << "The old and new node count is as follows: " << numPoints << " " << checkNumPoints << std::endl;
+              probeInfo->numPoints_[j] = checkNumPoints;
+            }
+          }
+          else {
+            // only declare entities on which these nodes parallel rank resides
+            nodeVec.resize(numPoints);
+            
+            // declare the entity on this rank (rank is determined by calling declare_entity on this rank)
+            for (int i = 0; i < numPoints; ++i) {
+              stk::mesh::Entity theNode = bulkData.declare_entity(stk::topology::NODE_RANK, availableNodeIds[i], *probePart);
+              nodeVec[i] = theNode;
+            }
           }
         }
       }

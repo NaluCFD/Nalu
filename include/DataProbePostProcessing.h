@@ -49,6 +49,7 @@ public:
   std::vector<std::string> partName_;
   std::vector<int> processorId_;
   std::vector<int> numPoints_;
+  std::vector<int> generateNewIds_;
   std::vector<Coordinates> tipCoordinates_;
   std::vector<Coordinates> tailCoordinates_;
   std::vector<std::vector<stk::mesh::Entity> > nodeVector_;
