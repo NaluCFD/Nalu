@@ -667,11 +667,27 @@ DataProbePostProcessing::provide_average(
               }
             }
             
-            // output the mean
+            // finish mean normalization
             for ( int ifs = 0; ifs < fieldSize; ++ifs ) {
-              myfile << "Mean value for " 
+              meanValue[ifs] /= numPoints;
+            }
+
+            // construct the standard deviation
+            std::vector<double> standardDeviation(fieldSize, 0.0);
+            for ( size_t inv = 0; inv < nodeVec.size(); ++inv ) {
+              stk::mesh::Entity node = nodeVec[inv];
+              double * theF = (double*)stk::mesh::field_data(*theField, node );
+
+              for ( int ifs = 0; ifs < fieldSize; ++ifs ) {
+                standardDeviation[ifs] += std::pow(meanValue[ifs] - theF[ifs], 2);
+              }
+            }
+
+            // output mean and standard deviation
+            for ( int ifs = 0; ifs < fieldSize; ++ifs ) {
+              myfile << "Mean and standard deviation value for "
                      << fieldName << "[" << ifs << "] is: " 
-                     << meanValue[ifs]/numPoints << std::endl; 
+                     << meanValue[ifs] << " " << std::sqrt(standardDeviation[ifs]/numPoints) << std::endl;
             }
             myfile << std::endl;
           }
