@@ -346,6 +346,9 @@ class Realm {
   void push_equation_to_systems(
     EquationSystem *eqSystem);
 
+  // provide all of the physics target names
+  const std::vector<std::string> &get_physics_target_names();
+
   Realms& realms_;
 
   std::string name_;
@@ -382,8 +385,6 @@ class Realm {
   // for element, side, edge, node rank (node not used)
   stk::mesh::Selector adapterSelector_[4];
   Teuchos::RCP<stk::mesh::Selector> activePartForIO_;
-  AlgorithmDriver *postConvergedAlgDriver_;
-  std::vector<Algorithm *> postConvergedAlg_;
 
   TimeIntegrator *timeIntegrator_;
 

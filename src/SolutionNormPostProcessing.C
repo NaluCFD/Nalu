@@ -48,7 +48,8 @@ namespace nalu{
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 SolutionNormPostProcessing::SolutionNormPostProcessing(
-  Realm & realm) 
+  Realm &realm,
+  const YAML::Node &node)
   : realm_(realm),
     outputFrequency_(100),
     totalDofCompSize_(0),
@@ -56,7 +57,8 @@ SolutionNormPostProcessing::SolutionNormPostProcessing(
     w_(12),
     percision_(6)
 {
-  // na
+  // load the data
+  load(node);
 }
 
 //--------------------------------------------------------------------------
@@ -131,9 +133,11 @@ SolutionNormPostProcessing::load(
 //-------- setup -----------------------------------------------------------
 //--------------------------------------------------------------------------
 void
-SolutionNormPostProcessing::setup(
-  const std::vector<std::string> targetNames)
+SolutionNormPostProcessing::setup()
 {
+  // extract target names
+
+  const std::vector<std::string> targetNames = realm_.get_physics_target_names();
   stk::mesh::MetaData & metaData = realm_.meta_data();
 
   // first, loop over all target names, extract the part and push back

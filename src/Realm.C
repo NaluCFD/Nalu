@@ -160,7 +160,6 @@ namespace nalu{
     adapter_(0),
 #endif
     numInitialElements_(0),
-    postConvergedAlgDriver_(0),
     timeIntegrator_(0),
     boundaryConditions_(*this),
     initialConditions_(*this),
@@ -245,9 +244,6 @@ Realm::~Realm()
     delete adapter_;
 #endif
 
-  if ( NULL != postConvergedAlgDriver_ )
-    delete postConvergedAlgDriver_;
-
   // prop algs
   std::vector<Algorithm *>::iterator ii;
   for( ii=initCondAlg_.begin(); ii!=initCondAlg_.end(); ++ii )
@@ -260,11 +256,6 @@ Realm::~Realm()
   std::vector<AuxFunctionAlgorithm *>::iterator iaux;
   for( iaux=bcDataAlg_.begin(); iaux!=bcDataAlg_.end(); ++iaux )
     delete *iaux;
-
-  // post converged algs
-  std::vector<Algorithm *>::iterator ipc;
-  for( ipc=postConvergedAlg_.begin(); ipc!=postConvergedAlg_.end(); ++ipc )
-    delete *ipc;
 
   // delete master elements that were saved off; surface
   std::map<stk::topology, MasterElement *>::iterator it;
@@ -281,8 +272,11 @@ Realm::~Realm()
   delete solutionOptions_;
   delete outputInfo_;
   delete postProcessingInfo_;
+
+  // post processing-like objects
   if ( NULL != solutionNormPostProcessing_ )
     delete solutionNormPostProcessing_;
+
   if ( NULL != turbulenceAveragingPostProcessing_ )
     delete turbulenceAveragingPostProcessing_;
 
@@ -522,7 +516,7 @@ Realm::look_ahead_and_creation(const YAML::Node & node)
   if ( foundNormPP.size() > 0 ) {
     if ( foundNormPP.size() != 1 )
       throw std::runtime_error("look_ahead_and_create::error: Too many Solution Norm blocks");
-    solutionNormPostProcessing_ =  new SolutionNormPostProcessing(*this);
+    solutionNormPostProcessing_ =  new SolutionNormPostProcessing(*this, *foundNormPP[0]);
   }
 
   // look for DataProbe
@@ -631,10 +625,6 @@ Realm::load(const YAML::Node & node)
   // post processing
   postProcessingInfo_->load(node);
 
-  // norms
-  if ( NULL != solutionNormPostProcessing_ )
-    solutionNormPostProcessing_->load(node);
-
   // boundary, init, material and equation systems "load"
   if ( type_ == "multi_physics" ) {
     NaluEnv::self().naluOutputP0() << std::endl;
@@ -721,10 +711,6 @@ Realm::setup_nodal_fields()
   // loop over all material props targets and register nodal fields
   std::vector<std::string> targetNames = materialPropertys_.targetNames_;
   equationSystems_.register_nodal_fields(targetNames);
-
-  // check for norm nodal fields
-  if ( NULL != solutionNormPostProcessing_ )
-    solutionNormPostProcessing_->setup(targetNames);
 }
 
 //--------------------------------------------------------------------------
@@ -817,6 +803,10 @@ Realm::setup_post_processing_algorithms()
   // check for data probes
   if ( NULL != dataProbePostProcessing_ )
     dataProbePostProcessing_->setup();
+
+  // check for norm nodal fields
+  if ( NULL != solutionNormPostProcessing_ )
+    solutionNormPostProcessing_->setup();
 }
 
 //--------------------------------------------------------------------------
@@ -4300,18 +4290,12 @@ Realm::process_io_transfer()
 void
 Realm::post_converged_work()
 {
-  // FIXME: There is an opportunity for cleanup here...
-  if ( NULL != postConvergedAlgDriver_ )
-    postConvergedAlgDriver_->execute();
+  equationSystems_.post_converged_work();
 
-  for ( size_t k = 0; k < postConvergedAlg_.size(); ++k)
-    postConvergedAlg_[k]->execute();
-
+  // FIXME: Consider a unified collection of post processing work
   if ( NULL != solutionNormPostProcessing_ )
     solutionNormPostProcessing_->execute();
   
-  equationSystems_.post_converged_work();
-
   if ( NULL != turbulenceAveragingPostProcessing_ )
     turbulenceAveragingPostProcessing_->execute();
 
@@ -4511,6 +4495,15 @@ Realm::push_equation_to_systems(
   EquationSystem *eqSystem)
 {
   equationSystems_.equationSystemVector_.push_back(eqSystem);
+}
+
+//--------------------------------------------------------------------------
+//-------- get_physics_target_names() --------------------------------------
+//--------------------------------------------------------------------------
+const std::vector<std::string> &
+Realm::get_physics_target_names()
+{
+  return materialPropertys_.targetNames_;
 }
 
 } // namespace nalu
