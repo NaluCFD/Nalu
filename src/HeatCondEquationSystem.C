@@ -351,7 +351,7 @@ HeatCondEquationSystem::register_interior_algorithm(
           theAlg->supplementalAlg_.push_back(theSrc);
         }
         else {
-          throw std::runtime_error("HeatCondEquationSystem::only steady_2d_thermal src term is supported");
+          throw std::runtime_error("HeatCondNodalSrcTerms::Error Source term is not supported: " + sourceName);
         }
       }
     }
@@ -383,7 +383,7 @@ HeatCondEquationSystem::register_interior_algorithm(
           theAlg->supplementalAlg_.push_back(theSrc);
         }
         else {
-          throw std::runtime_error("HeatCondEquationSystem::only steady_2d_thermal element src term is supported");
+          throw std::runtime_error("HeatCondElemSrcTerms::Error Source term is not supported: " + sourceName);
         }
       }
     }

@@ -6,8 +6,8 @@
 /*------------------------------------------------------------------------*/
 
 
-#ifndef VariableDensityMixFracSrcElemSuppAlg_h
-#define VariableDensityMixFracSrcElemSuppAlg_h
+#ifndef VariableDensityMomentumSrcElemSuppAlg_h
+#define VariableDensityMomentumSrcElemSuppAlg_h
 
 #include <SupplementalAlgorithm.h>
 #include <FieldTypeDef.h>
@@ -21,14 +21,14 @@ namespace nalu{
 class Realm;
 class MasterElement;
 
-class VariableDensityMixFracSrcElemSuppAlg : public SupplementalAlgorithm
+class VariableDensityMomentumSrcElemSuppAlg : public SupplementalAlgorithm
 {
 public:
 
-  VariableDensityMixFracSrcElemSuppAlg(
+  VariableDensityMomentumSrcElemSuppAlg(
     Realm &realm);
 
-  virtual ~VariableDensityMixFracSrcElemSuppAlg() {}
+  virtual ~VariableDensityMomentumSrcElemSuppAlg() {}
 
   virtual void setup();
 
@@ -48,18 +48,22 @@ public:
   VectorFieldType *coordinates_;
 
   const int nDim_;
-  const double rhoP_;
-  const double rhoS_;
   const double unot_;
   const double vnot_;
   const double wnot_;
-  const double znot_;
   const double pnot_;
-  const double visc_;
+  const double znot_;
   const double a_;
   const double amf_;
-  const double Sc_;  
+  const double visc_;
+  const double rhoP_;
+  const double rhoS_;
   const double pi_;
+  const double twoThirds_;
+  double rhoRef_;
+  double gx_;
+  double gy_;
+  double gz_;
   const bool useShifted_;
 
   // scratch space (at constructor)

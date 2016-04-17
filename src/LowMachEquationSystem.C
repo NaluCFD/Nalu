@@ -119,7 +119,9 @@
 
 #include <user_functions/VariableDensityVelocityAuxFunction.h>
 #include <user_functions/VariableDensityPressureAuxFunction.h>
+#include <user_functions/VariableDensityContinuitySrcElemSuppAlg.h>
 #include <user_functions/VariableDensityContinuitySrcNodeSuppAlg.h>
+#include <user_functions/VariableDensityMomentumSrcElemSuppAlg.h>
 #include <user_functions/VariableDensityMomentumSrcNodeSuppAlg.h>
 
 #include <user_functions/VariableDensityNonIsoContinuitySrcNodeSuppAlg.h>
@@ -1017,6 +1019,9 @@ MomentumEquationSystem::register_interior_algorithm(
         else if (sourceName == "SteadyTaylorVortex" ) {
           suppAlg = new SteadyTaylorVortexMomentumSrcElemSuppAlg(realm_);
         }
+        else if (sourceName == "VariableDensity" ) {
+          suppAlg = new VariableDensityMomentumSrcElemSuppAlg(realm_);
+        }
         else if (sourceName == "NSO_2ND" ) {
           suppAlg = new MomentumNSOElemSuppAlg(realm_, velocity_, dudx_, realm_.is_turbulent() ? evisc_ : visc_, 0.0, 0.0);
         }
@@ -1042,7 +1047,7 @@ MomentumEquationSystem::register_interior_algorithm(
           suppAlg = new MomentumAdvDiffElemSuppAlg(realm_, velocity_, realm_.is_turbulent() ? evisc_ : visc_);
         }
         else {
-          throw std::runtime_error("ElemSrcTermsError::only support CMM, nso_2nd, nso_4th, buoyancy, advection_diffusion and SteadyTaylorVortex");
+          throw std::runtime_error("MomentumElemSrcTerms::Error Source term is not supported: " + sourceName);
         }
         theSolverAlg->supplementalAlg_.push_back(suppAlg);
       }
@@ -1113,7 +1118,7 @@ MomentumEquationSystem::register_interior_algorithm(
           suppAlg = new VariableDensityNonIsoMomentumSrcNodeSuppAlg(realm_);
         }
         else {
-          throw std::runtime_error("MomentumEquationSystem::only buoyancy, buoyancy_boussinesq, body force or gcl are supported");
+          throw std::runtime_error("MomentumNodalSrcTerms::Error Source term is not supported: " + sourceName);
         }
         theAlg->supplementalAlg_.push_back(suppAlg);
       }
@@ -2097,6 +2102,9 @@ ContinuityEquationSystem::register_interior_algorithm(
           if (sourceName == "SteadyTaylorVortex" ) {
             suppAlg = new SteadyTaylorVortexContinuitySrcElemSuppAlg(realm_);
           }
+          else if ( sourceName == "VariableDensity" ) {
+            suppAlg = new VariableDensityContinuitySrcElemSuppAlg(realm_);
+          }
           else if (sourceName == "density_time_derivative" ) {
             suppAlg = new ContinuityMassBDF2ElemSuppAlg(realm_);
           }
@@ -2104,7 +2112,7 @@ ContinuityEquationSystem::register_interior_algorithm(
             suppAlg = new ContinuityAdvElemSuppAlg(realm_);
           }
           else {
-            throw std::runtime_error("ElemSrcTermsError::only support SteadyTaylorVortex, density_time_derivative and advection");
+            throw std::runtime_error("ContinuityElemSrcTerms::Error Source term is not supported: " + sourceName);
           }
           theSolverAlg->supplementalAlg_.push_back(suppAlg);
         }
@@ -2157,7 +2165,7 @@ ContinuityEquationSystem::register_interior_algorithm(
           suppAlg = new VariableDensityNonIsoContinuitySrcNodeSuppAlg(realm_);
         }
         else {
-          throw std::runtime_error("ContinuityEquationSystem::src; limited source terms supported");
+          throw std::runtime_error("ContinuityNodalSrcTerms::Error Source term is not supported: " + sourceName);
         }
         // add supplemental algorithm
         theAlg->supplementalAlg_.push_back(suppAlg);

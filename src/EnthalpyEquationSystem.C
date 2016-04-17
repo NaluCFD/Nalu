@@ -400,7 +400,7 @@ EnthalpyEquationSystem::register_interior_algorithm(
           }
         }
         else {
-          throw std::runtime_error("EnthalpyEquationSystem::register_interior_algorithm limited supported element src terms");
+          throw std::runtime_error("EnthalpyElemSrcTerms::Error Source term is not supported: " + sourceName);
         }     
         theAlg->supplementalAlg_.push_back(suppAlg); 
       }
@@ -462,7 +462,7 @@ EnthalpyEquationSystem::register_interior_algorithm(
           suppAlg = new VariableDensityNonIsoEnthalpySrcNodeSuppAlg(realm_);
         }
         else {
-          throw std::runtime_error("EnthalpyEquationSystem::register_interior_algorithm limited supported nodal src terms");
+          throw std::runtime_error("EnthalpyNodalSrcTerms::Error Source term is not supported: " + sourceName);
         }
         // add supplemental algorithm
         theAlg->supplementalAlg_.push_back(suppAlg);

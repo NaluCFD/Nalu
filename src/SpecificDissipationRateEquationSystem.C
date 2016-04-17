@@ -257,7 +257,7 @@ SpecificDissipationRateEquationSystem::register_interior_algorithm(
           suppAlg = new ScalarGclNodeSuppAlg(sdr_,realm_);
         }
         else {
-          throw std::runtime_error("SpecificDissipationRateEquationSystem::only gcl source term(s) are supported");
+          throw std::runtime_error("SpecificDissipationRateNodalSrcTerms::Error Source term is not supported: " + sourceName);
         }
         // add supplemental algorithm
         theAlg->supplementalAlg_.push_back(suppAlg);

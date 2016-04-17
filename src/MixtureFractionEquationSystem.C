@@ -298,7 +298,7 @@ MixtureFractionEquationSystem::register_interior_algorithm(
           } 
         }
         else {
-          throw std::runtime_error("ElemSrcTermsError::only support VariableDensity, NSO and time term");
+          throw std::runtime_error("MixtureFractionElemSrcTerms::Error Source term is not supported: " + sourceName);
         }     
         theAlg->supplementalAlg_.push_back(suppAlg); 
       }
@@ -347,7 +347,7 @@ MixtureFractionEquationSystem::register_interior_algorithm(
           suppAlg = new VariableDensityMixFracSrcNodeSuppAlg(realm_);
         }
         else {
-          throw std::runtime_error("MixtureFractionEquationSystem::only gcl source term(s) are supported");
+          throw std::runtime_error("MixtureFractionNodalSrcTerms::Error Source term is not supported: " + sourceName);
         }
         // add supplemental algorithm
         theAlg->supplementalAlg_.push_back(suppAlg);

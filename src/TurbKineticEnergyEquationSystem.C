@@ -271,7 +271,7 @@ TurbKineticEnergyEquationSystem::register_interior_algorithm(
           } 
         }
         else {
-          throw std::runtime_error("TurbKineticEnergyEquationSystem::Error: unsupported source term");
+          throw std::runtime_error("TurbKineticEnergyElemSrcTerms::Error Source term is not supported: " + sourceName);
         }     
         theAlg->supplementalAlg_.push_back(suppAlg); 
       }
@@ -340,7 +340,7 @@ TurbKineticEnergyEquationSystem::register_interior_algorithm(
           suppAlg = new ScalarGclNodeSuppAlg(tke_,realm_);
         }
         else {
-          throw std::runtime_error("TurbKineticEnergyEquationSystem::only gcl source term(s) are supported");
+          throw std::runtime_error("TurbKineticEnergyNodalSrcTerms::Error Source term is not supported: " + sourceName);
         }
         // add supplemental algorithm
         theAlg->supplementalAlg_.push_back(suppAlg);
