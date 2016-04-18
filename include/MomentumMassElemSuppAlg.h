@@ -6,8 +6,8 @@
 /*------------------------------------------------------------------------*/
 
 
-#ifndef ScalarMassBDF2ElemSuppAlg_h
-#define ScalarMassBDF2ElemSuppAlg_h
+#ifndef MomentumMassElemSuppAlg_h
+#define MomentumMassElemSuppAlg_h
 
 #include <SupplementalAlgorithm.h>
 #include <FieldTypeDef.h>
@@ -21,15 +21,14 @@ namespace nalu{
 class Realm;
 class MasterElement;
 
-class ScalarMassBDF2ElemSuppAlg : public SupplementalAlgorithm
+class MomentumMassElemSuppAlg : public SupplementalAlgorithm
 {
 public:
 
-  ScalarMassBDF2ElemSuppAlg(
-    Realm &realm,
-    ScalarFieldType *scalarQ);
+  MomentumMassElemSuppAlg(
+    Realm &realm);
 
-  virtual ~ScalarMassBDF2ElemSuppAlg() {}
+  virtual ~MomentumMassElemSuppAlg() {}
 
   virtual void setup();
 
@@ -46,12 +45,13 @@ public:
   
   const stk::mesh::BulkData *bulkData_;
 
-  ScalarFieldType *scalarQNm1_;
-  ScalarFieldType *scalarQN_;
-  ScalarFieldType *scalarQNp1_;
+  VectorFieldType *velocityNm1_;
+  VectorFieldType *velocityN_;
+  VectorFieldType *velocityNp1_;
   ScalarFieldType *densityNm1_;
   ScalarFieldType *densityN_;
   ScalarFieldType *densityNp1_;
+  VectorFieldType *Gjp_;
   VectorFieldType *coordinates_;
 
   double dt_;
@@ -62,10 +62,16 @@ public:
   const bool useShifted_;
 
   // scratch space
+  std::vector<double> uNm1Scv_;
+  std::vector<double> uNScv_;
+  std::vector<double> uNp1Scv_;
+  std::vector<double> GjpScv_;
+
   std::vector<double> ws_shape_function_;
-  std::vector<double> ws_qNm1_;
-  std::vector<double> ws_qN_;
-  std::vector<double> ws_qNp1_;
+  std::vector<double> ws_uNm1_;
+  std::vector<double> ws_uN_;
+  std::vector<double> ws_uNp1_;
+  std::vector<double> ws_Gjp_;
   std::vector<double> ws_rhoNm1_;
   std::vector<double> ws_rhoN_;
   std::vector<double> ws_rhoNp1_;

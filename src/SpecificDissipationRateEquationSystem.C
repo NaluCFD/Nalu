@@ -43,6 +43,7 @@
 #include <ScalarGclNodeSuppAlg.h>
 #include <ScalarMassBackwardEulerNodeSuppAlg.h>
 #include <ScalarMassBDF2NodeSuppAlg.h>
+#include <ScalarMassElemSuppAlg.h>
 #include <Simulation.h>
 #include <SolutionOptions.h>
 #include <TimeIntegrator.h>
@@ -202,6 +203,7 @@ SpecificDissipationRateEquationSystem::register_interior_algorithm(
   }
 
   // solver; interior contribution (advection + diffusion)
+  bool useCMM = false;
   std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi
     = solverAlgDriver_->solverAlgMap_.find(algType);
   if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
@@ -213,6 +215,24 @@ SpecificDissipationRateEquationSystem::register_interior_algorithm(
       theAlg = new AssembleScalarElemSolverAlgorithm(realm_, part, this, sdr_, dwdx_, evisc_);
     }
     solverAlgDriver_->solverAlgMap_[algType] = theAlg;
+
+    // look for src
+    std::map<std::string, std::vector<std::string> >::iterator isrc 
+      = realm_.solutionOptions_->elemSrcTermsMap_.find("specific_dissipation_rate");
+    if ( isrc != realm_.solutionOptions_->elemSrcTermsMap_.end() ) {
+      std::vector<std::string> mapNameVec = isrc->second;
+      for (size_t k = 0; k < mapNameVec.size(); ++k ) {
+        std::string sourceName = mapNameVec[k];
+        SupplementalAlgorithm *suppAlg = NULL;
+        if (sourceName == "specific_dissipation_rate_time_derivative" ) {
+          useCMM = true;
+          suppAlg = new ScalarMassElemSuppAlg(realm_, sdr_);
+        }
+        else {
+          throw std::runtime_error("SpecificDissipationElemSrcTerms::Error Source term is not supported: " + sourceName);
+        }     
+      }
+    }
   }
   else {
     itsi->second->partVec_.push_back(part);
@@ -229,15 +249,17 @@ SpecificDissipationRateEquationSystem::register_interior_algorithm(
     solverAlgDriver_->solverAlgMap_[algMass] = theAlg;
 
     // now create the supplemental alg for mass term
-    if ( realm_.number_of_states() == 2 ) {
-      ScalarMassBackwardEulerNodeSuppAlg *theMass
-        = new ScalarMassBackwardEulerNodeSuppAlg(realm_, sdr_);
-      theAlg->supplementalAlg_.push_back(theMass);
-    }
-    else {
-      ScalarMassBDF2NodeSuppAlg *theMass
-        = new ScalarMassBDF2NodeSuppAlg(realm_, sdr_);
-      theAlg->supplementalAlg_.push_back(theMass);
+    if ( !useCMM ) {
+      if ( realm_.number_of_states() == 2 ) {
+        ScalarMassBackwardEulerNodeSuppAlg *theMass
+          = new ScalarMassBackwardEulerNodeSuppAlg(realm_, sdr_);
+        theAlg->supplementalAlg_.push_back(theMass);
+      }
+      else {
+        ScalarMassBDF2NodeSuppAlg *theMass
+          = new ScalarMassBDF2NodeSuppAlg(realm_, sdr_);
+        theAlg->supplementalAlg_.push_back(theMass);
+      }
     }
 
     // now create the src alg for sdr source

@@ -44,7 +44,7 @@
 #include <ScalarGclNodeSuppAlg.h>
 #include <ScalarMassBackwardEulerNodeSuppAlg.h>
 #include <ScalarMassBDF2NodeSuppAlg.h>
-#include <ScalarMassBDF2ElemSuppAlg.h>
+#include <ScalarMassElemSuppAlg.h>
 #include <ScalarKeNSOElemSuppAlg.h>
 #include <ScalarNSOElemSuppAlg.h>
 #include <Simulation.h>
@@ -263,12 +263,7 @@ TurbKineticEnergyEquationSystem::register_interior_algorithm(
         }
         else if (sourceName == "turbulent_ke_time_derivative" ) {
           useCMM = true;
-          if ( realm_.number_of_states() == 2 ) {
-            throw std::runtime_error("ElemSrcTermsError::turbulent_ke_time_derivative requires BDF2 activation");
-          }
-          else {
-            suppAlg = new ScalarMassBDF2ElemSuppAlg(realm_, tke_);
-          } 
+          suppAlg = new ScalarMassElemSuppAlg(realm_, tke_);
         }
         else {
           throw std::runtime_error("TurbKineticEnergyElemSrcTerms::Error Source term is not supported: " + sourceName);

@@ -40,7 +40,9 @@
 #include <Realms.h>
 #include <ScalarMassBackwardEulerNodeSuppAlg.h>
 #include <ScalarMassBDF2NodeSuppAlg.h>
+#include <ScalarMassElemSuppAlg.h>
 #include <Simulation.h>
+#include <SolutionOptions.h>
 #include <SolverAlgorithmDriver.h>
 
 // stk_util
@@ -191,7 +193,8 @@ MassFractionEquationSystem::register_interior_algorithm(
     it->second->partVec_.push_back(part);
   }
 
-  // solver; interior edge contribution (advection + diffusion)
+  // solver; interior contribution (advection + diffusion)
+  bool useCMM = false;
   std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi
     = solverAlgDriver_->solverAlgMap_.find(algType);
   if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
@@ -203,11 +206,29 @@ MassFractionEquationSystem::register_interior_algorithm(
       theAlg = new AssembleScalarElemSolverAlgorithm(realm_, part, this, currentMassFraction_, dydx_, evisc_);
     }
     solverAlgDriver_->solverAlgMap_[algType] = theAlg;
+
+    // look for src
+    std::map<std::string, std::vector<std::string> >::iterator isrc 
+      = realm_.solutionOptions_->elemSrcTermsMap_.find("mass_fraction");
+    if ( isrc != realm_.solutionOptions_->elemSrcTermsMap_.end() ) {
+      std::vector<std::string> mapNameVec = isrc->second;
+      for (size_t k = 0; k < mapNameVec.size(); ++k ) {
+        std::string sourceName = mapNameVec[k];
+        SupplementalAlgorithm *suppAlg = NULL;
+        if (sourceName == "mass_fraction_time_derivative" ) {
+          useCMM = true;
+          suppAlg = new ScalarMassElemSuppAlg(realm_, currentMassFraction_);
+        }
+        else {
+          throw std::runtime_error("MassFractionElemSrcTerms::Error Source term is not supported: " + sourceName);
+        }     
+      }
+    }
   }
   else {
     itsi->second->partVec_.push_back(part);
   }
-
+  
   // time term; nodally lumped
   const AlgorithmType algMass = MASS;
   std::map<AlgorithmType, SolverAlgorithm *>::iterator itsm =
@@ -219,18 +240,27 @@ MassFractionEquationSystem::register_interior_algorithm(
     solverAlgDriver_->solverAlgMap_[algMass] = theAlg;
     
     // now create the supplemental alg for mass term
-    if ( realm_.number_of_states() == 2 ) {
-      ScalarMassBackwardEulerNodeSuppAlg *theMass
-        = new ScalarMassBackwardEulerNodeSuppAlg(realm_, currentMassFraction_);
-      theAlg->supplementalAlg_.push_back(theMass);
-    }
-    else {
-      ScalarMassBDF2NodeSuppAlg *theMass
-        = new ScalarMassBDF2NodeSuppAlg(realm_, currentMassFraction_);
-      theAlg->supplementalAlg_.push_back(theMass);
+    if ( !useCMM ) {
+      if ( realm_.number_of_states() == 2 ) {
+        ScalarMassBackwardEulerNodeSuppAlg *theMass
+          = new ScalarMassBackwardEulerNodeSuppAlg(realm_, currentMassFraction_);
+        theAlg->supplementalAlg_.push_back(theMass);
+      }
+      else {
+        ScalarMassBDF2NodeSuppAlg *theMass
+          = new ScalarMassBDF2NodeSuppAlg(realm_, currentMassFraction_);
+        theAlg->supplementalAlg_.push_back(theMass);
+      }
     }
     
-    // Add src term supp alg...; limited number supported - get from mix frac
+    // Add src term supp alg...; limited number supported
+    std::map<std::string, std::vector<std::string> >::iterator isrc 
+      = realm_.solutionOptions_->srcTermsMap_.find("mass_fraction");
+    if ( isrc != realm_.solutionOptions_->srcTermsMap_.end() ) {
+      std::vector<std::string> mapNameVec = isrc->second;   
+      if ( mapNameVec.size() > 0 )
+        throw std::runtime_error("MassFractionNodalSrcTerms::Error No source terms supported");
+    }
   }
 
   // effective viscosity alg

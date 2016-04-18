@@ -6,8 +6,8 @@
 /*------------------------------------------------------------------------*/
 
 
-#ifndef ContinuityMassBDF2ElemSuppAlg_h
-#define ContinuityMassBDF2ElemSuppAlg_h
+#ifndef ContinuityMassElemSuppAlg_h
+#define ContinuityMassElemSuppAlg_h
 
 #include <SupplementalAlgorithm.h>
 #include <FieldTypeDef.h>
@@ -21,14 +21,14 @@ namespace nalu{
 class Realm;
 class MasterElement;
 
-class ContinuityMassBDF2ElemSuppAlg : public SupplementalAlgorithm
+class ContinuityMassElemSuppAlg : public SupplementalAlgorithm
 {
 public:
 
-  ContinuityMassBDF2ElemSuppAlg(
+  ContinuityMassElemSuppAlg(
     Realm &realm);
 
-  virtual ~ContinuityMassBDF2ElemSuppAlg() {}
+  virtual ~ContinuityMassElemSuppAlg() {}
 
   virtual void setup();
 

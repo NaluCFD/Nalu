@@ -6,8 +6,8 @@
 /*------------------------------------------------------------------------*/
 
 
-#ifndef MomentumMassBackwardEulerElemSuppAlg_h
-#define MomentumMassBackwardEulerElemSuppAlg_h
+#ifndef ScalarMassElemSuppAlg_h
+#define ScalarMassElemSuppAlg_h
 
 #include <SupplementalAlgorithm.h>
 #include <FieldTypeDef.h>
@@ -21,14 +21,15 @@ namespace nalu{
 class Realm;
 class MasterElement;
 
-class MomentumMassBackwardEulerElemSuppAlg : public SupplementalAlgorithm
+class ScalarMassElemSuppAlg : public SupplementalAlgorithm
 {
 public:
 
-  MomentumMassBackwardEulerElemSuppAlg(
-    Realm &realm);
+  ScalarMassElemSuppAlg(
+    Realm &realm,
+    ScalarFieldType *scalarQ);
 
-  virtual ~MomentumMassBackwardEulerElemSuppAlg() {}
+  virtual ~ScalarMassElemSuppAlg() {}
 
   virtual void setup();
 
@@ -45,26 +46,27 @@ public:
   
   const stk::mesh::BulkData *bulkData_;
 
-  VectorFieldType *velocityN_;
-  VectorFieldType *velocityNp1_;
+  ScalarFieldType *scalarQNm1_;
+  ScalarFieldType *scalarQN_;
+  ScalarFieldType *scalarQNp1_;
+  ScalarFieldType *densityNm1_;
   ScalarFieldType *densityN_;
   ScalarFieldType *densityNp1_;
-  VectorFieldType *Gjp_;
   VectorFieldType *coordinates_;
 
   double dt_;
+  double gamma1_;
+  double gamma2_;
+  double gamma3_;
   const int nDim_;
   const bool useShifted_;
 
   // scratch space
-  std::vector<double> uNScv_;
-  std::vector<double> uNp1Scv_;
-  std::vector<double> GjpScv_;
-
   std::vector<double> ws_shape_function_;
-  std::vector<double> ws_uN_;
-  std::vector<double> ws_uNp1_;
-  std::vector<double> ws_Gjp_;
+  std::vector<double> ws_qNm1_;
+  std::vector<double> ws_qN_;
+  std::vector<double> ws_qNp1_;
+  std::vector<double> ws_rhoNm1_;
   std::vector<double> ws_rhoN_;
   std::vector<double> ws_rhoNp1_;
   std::vector<double> ws_coordinates_;

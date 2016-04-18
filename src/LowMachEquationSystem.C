@@ -56,7 +56,7 @@
 #include <ContactManager.h>
 #include <ContinuityMassBackwardEulerNodeSuppAlg.h>
 #include <ContinuityMassBDF2NodeSuppAlg.h>
-#include <ContinuityMassBDF2ElemSuppAlg.h>
+#include <ContinuityMassElemSuppAlg.h>
 #include <ContinuityAdvElemSuppAlg.h>
 #include <CopyFieldAlgorithm.h>
 #include <DirichletBC.h>
@@ -77,9 +77,8 @@
 #include <MomentumBodyForceSrcNodeSuppAlg.h>
 #include <MomentumGclSrcNodeSuppAlg.h>
 #include <MomentumMassBackwardEulerNodeSuppAlg.h>
-#include <MomentumMassBackwardEulerElemSuppAlg.h>
 #include <MomentumMassBDF2NodeSuppAlg.h>
-#include <MomentumMassBDF2ElemSuppAlg.h>
+#include <MomentumMassElemSuppAlg.h>
 #include <MomentumKeNSOElemSuppAlg.h>
 #include <MomentumNSOElemSuppAlg.h>
 #include <MomentumAdvDiffElemSuppAlg.h>
@@ -1009,12 +1008,7 @@ MomentumEquationSystem::register_interior_algorithm(
         SupplementalAlgorithm *suppAlg = NULL;
         if (sourceName == "momentum_time_derivative" ) {
           useCMM = true;
-          if ( realm_.number_of_states() == 2 ) {
-            suppAlg = new MomentumMassBackwardEulerElemSuppAlg(realm_);
-          }
-          else {
-            suppAlg = new MomentumMassBDF2ElemSuppAlg(realm_);
-          } 
+          suppAlg = new MomentumMassElemSuppAlg(realm_);
         }
         else if (sourceName == "SteadyTaylorVortex" ) {
           suppAlg = new SteadyTaylorVortexMomentumSrcElemSuppAlg(realm_);
@@ -2106,7 +2100,7 @@ ContinuityEquationSystem::register_interior_algorithm(
             suppAlg = new VariableDensityContinuitySrcElemSuppAlg(realm_);
           }
           else if (sourceName == "density_time_derivative" ) {
-            suppAlg = new ContinuityMassBDF2ElemSuppAlg(realm_);
+            suppAlg = new ContinuityMassElemSuppAlg(realm_);
           }
           else if (sourceName == "advection" ) {
             suppAlg = new ContinuityAdvElemSuppAlg(realm_);
