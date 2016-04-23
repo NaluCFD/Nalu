@@ -81,6 +81,7 @@
 #include <MomentumMassElemSuppAlg.h>
 #include <MomentumKeNSOElemSuppAlg.h>
 #include <MomentumNSOElemSuppAlg.h>
+#include <MomentumNSOGradElemSuppAlg.h>
 #include <MomentumAdvDiffElemSuppAlg.h>
 #include <NaluEnv.h>
 #include <NaluParsing.h>
@@ -1033,6 +1034,12 @@ MomentumEquationSystem::register_interior_algorithm(
         }
         else if (sourceName == "NSO_KE_4TH" ) {
           suppAlg = new MomentumKeNSOElemSuppAlg(realm_, velocity_, dudx_, 1.0);
+        }
+        else if (sourceName == "NSO_GRAD_2ND" ) {
+          suppAlg = new MomentumNSOGradElemSuppAlg(realm_, velocity_, dudx_, 0.0);
+        }
+        else if (sourceName == "NSO_GRAD_4TH" ) {
+          suppAlg = new MomentumNSOGradElemSuppAlg(realm_, velocity_, dudx_, 1.0);
         }
         else if (sourceName == "buoyancy" ) {
           suppAlg = new MomentumBuoyancySrcElemSuppAlg(realm_);

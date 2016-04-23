@@ -44,6 +44,8 @@
 #include <ScalarMassBackwardEulerNodeSuppAlg.h>
 #include <ScalarMassBDF2NodeSuppAlg.h>
 #include <ScalarMassElemSuppAlg.h>
+#include <ScalarKeNSOElemSuppAlg.h>
+#include <ScalarNSOElemSuppAlg.h>
 #include <Simulation.h>
 #include <SolutionOptions.h>
 #include <TimeIntegrator.h>
@@ -224,7 +226,21 @@ SpecificDissipationRateEquationSystem::register_interior_algorithm(
       for (size_t k = 0; k < mapNameVec.size(); ++k ) {
         std::string sourceName = mapNameVec[k];
         SupplementalAlgorithm *suppAlg = NULL;
-        if (sourceName == "specific_dissipation_rate_time_derivative" ) {
+        if (sourceName == "NSO_2ND_ALT" ) {
+          suppAlg = new ScalarNSOElemSuppAlg(realm_, sdr_, dwdx_, evisc_, 0.0, 1.0);
+        }
+        else if (sourceName == "NSO_4TH_ALT" ) {
+          suppAlg = new ScalarNSOElemSuppAlg(realm_, sdr_, dwdx_, evisc_, 1.0, 1.0);
+        }
+        else if (sourceName == "NSO_KE_2ND" ) {
+          const double turbSc = realm_.get_turb_schmidt(sdr_->name());
+          suppAlg = new ScalarKeNSOElemSuppAlg(realm_, sdr_, dwdx_, turbSc, 0.0);
+        }
+        else if (sourceName == "NSO_KE_4TH" ) {
+          const double turbSc = realm_.get_turb_schmidt(sdr_->name());
+          suppAlg = new ScalarKeNSOElemSuppAlg(realm_, sdr_, dwdx_, turbSc, 1.0);
+        }
+        else if (sourceName == "specific_dissipation_rate_time_derivative" ) {
           useCMM = true;
           suppAlg = new ScalarMassElemSuppAlg(realm_, sdr_);
         }
