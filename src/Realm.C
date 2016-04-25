@@ -709,7 +709,7 @@ Realm::setup_nodal_fields()
   }
 
   // loop over all material props targets and register nodal fields
-  std::vector<std::string> targetNames = materialPropertys_.targetNames_;
+  std::vector<std::string> targetNames = get_physics_target_names();
   equationSystems_.register_nodal_fields(targetNames);
 }
 
@@ -720,7 +720,7 @@ void
 Realm::setup_edge_fields()
 {
   // loop over all material props targets and register edge fields
-  std::vector<std::string> targetNames = materialPropertys_.targetNames_;
+  std::vector<std::string> targetNames = get_physics_target_names();
   equationSystems_.register_edge_fields(targetNames);
 }
 //--------------------------------------------------------------------------
@@ -730,7 +730,7 @@ void
 Realm::setup_element_fields()
 {
   // loop over all material props targets and register element fields
-  std::vector<std::string> targetNames = materialPropertys_.targetNames_;
+  std::vector<std::string> targetNames = get_physics_target_names();
   equationSystems_.register_element_fields(targetNames);
 }
 
@@ -747,7 +747,7 @@ Realm::setup_interior_algorithms()
       errorIndicatorAlgDriver_ = new ErrorIndicatorAlgorithmDriver(*this);
   }
   // loop over all material props targets and register interior algs
-  std::vector<std::string> targetNames = materialPropertys_.targetNames_;
+  std::vector<std::string> targetNames = get_physics_target_names();
   equationSystems_.register_interior_algorithm(targetNames);
 }
 
@@ -970,7 +970,7 @@ void
 Realm::setup_property()
 {
   // loop over all target names
-  const std::vector<std::string> targetNames = materialPropertys_.targetNames_;
+  const std::vector<std::string> targetNames = get_physics_target_names();
   for (size_t itarget=0; itarget < targetNames.size(); ++itarget) {
 
     // target need not be subsetted since nothing below will depend on topo
@@ -1677,7 +1677,7 @@ Realm::pre_timestep_work()
   if ( has_mesh_deformation() ) {
     // extract target parts for this physics
     if ( solutionOptions_->externalMeshDeformation_ ) {
-      std::vector<std::string> targetNames = materialPropertys_.targetNames_;
+      std::vector<std::string> targetNames = get_physics_target_names();
       for ( size_t itarget = 0; itarget < targetNames.size(); ++itarget ) {
         stk::mesh::Part *targetPart = metaData_->get_part(targetNames[itarget]);
         set_current_coordinates(targetPart);
@@ -2584,7 +2584,7 @@ Realm::compute_l2_scaling()
 {
   // loop over all material propertys  and save off part vector
   stk::mesh::PartVector partVec;
-  const std::vector<std::string> targetNames = materialPropertys_.targetNames_;
+  const std::vector<std::string> targetNames = get_physics_target_names();
   for (size_t itarget=0; itarget < targetNames.size(); ++itarget) {
     // target need not be subsetted since nothing below will depend on topo
     stk::mesh::Part *targetPart = metaData_->get_part(targetNames[itarget]);
@@ -4503,6 +4503,8 @@ Realm::push_equation_to_systems(
 const std::vector<std::string> &
 Realm::get_physics_target_names()
 {
+  // in the future, possibly check for more advanced names;
+  // for now, material props holds this
   return materialPropertys_.targetNames_;
 }
 
