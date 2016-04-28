@@ -55,6 +55,9 @@
 #include <TurbulenceAveragingPostProcessing.h>
 #include <DataProbePostProcessing.h>
 
+// actuator line
+#include <ActuatorLine.h>
+
 // props; algs, evaluators and data
 #include <property_evaluator/GenericPropAlgorithm.h>
 #include <property_evaluator/HDF5TablePropAlgorithm.h>
@@ -176,6 +179,7 @@ namespace nalu{
     solutionNormPostProcessing_(NULL),
     turbulenceAveragingPostProcessing_(NULL),
     dataProbePostProcessing_(NULL),
+    actuatorLine_(NULL),
     nodeCount_(0),
     estimateMemoryOnly_(false),
     availableMemoryPerCoreGB_(0),
@@ -527,6 +531,15 @@ Realm::look_ahead_and_creation(const YAML::Node & node)
       throw std::runtime_error("look_ahead_and_create::error: Too many data probe blocks");
     dataProbePostProcessing_ =  new DataProbePostProcessing(*this, *foundProbe[0]);
   }
+
+  // look for ActuatorLine
+  std::vector<const YAML::Node *> foundActuatorLine;
+  NaluParsingHelper::find_nodes_given_key("actuator_line", node, foundActuatorLine);
+  if ( foundActuatorLine.size() > 0 ) {
+    if ( foundActuatorLine.size() != 1 )
+      throw std::runtime_error("look_ahead_and_create::error: Too many actuator line blocks");
+    actuatorLine_ =  new ActuatorLine(*this, *foundActuatorLine[0]);
+  }
 }
   
 //--------------------------------------------------------------------------
@@ -803,6 +816,10 @@ Realm::setup_post_processing_algorithms()
   // check for data probes
   if ( NULL != dataProbePostProcessing_ )
     dataProbePostProcessing_->setup();
+
+  // check for actuator line
+  if ( NULL != actuatorLine_ )
+    actuatorLine_->setup();
 
   // check for norm nodal fields
   if ( NULL != solutionNormPostProcessing_ )
@@ -1741,6 +1758,11 @@ Realm::advance_time_step()
   // compute velocity relative to mesh
   compute_vrtm();
 
+  // check for actuator line; assemble the source terms for this time step
+  if ( NULL != actuatorLine_ ) {
+    actuatorLine_->execute();
+  }
+
   const int numNonLinearIterations = equationSystems_.maxIterations_;
   for ( int i = 0; i < numNonLinearIterations; ++i ) {
     currentNonlinearIteration_ = i+1;
@@ -2225,6 +2247,11 @@ Realm::initialize_post_processing_algorithms()
   // check for data probes
   if ( NULL != dataProbePostProcessing_ )
     dataProbePostProcessing_->initialize();
+
+  // check for actuator line... probably a better place for this
+  if ( NULL != actuatorLine_ ) {
+    actuatorLine_->initialize();
+  }
 }
 
 //--------------------------------------------------------------------------

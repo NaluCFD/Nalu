@@ -71,6 +71,7 @@
 #include <LinearSolvers.h>
 #include <LinearSystem.h>
 #include <master_element/MasterElement.h>
+#include <MomentumActuatorLineSrcNodeSuppAlg.h>
 #include <MomentumBuoyancySrcNodeSuppAlg.h>
 #include <MomentumBuoyancySrcElemSuppAlg.h>
 #include <MomentumBoussinesqSrcNodeSuppAlg.h>
@@ -911,7 +912,17 @@ MomentumEquationSystem::register_nodal_fields(
   if (managePNG_ ) {
     // create temp vector field for duidx that will hold the active dudx
     VectorFieldType *duidx =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "duidx"));
-      stk::mesh::put_field(*duidx, *part, nDim);
+    stk::mesh::put_field(*duidx, *part, nDim);
+  }
+
+  // speciality source
+  if ( NULL != realm_.actuatorLine_ ) {
+    VectorFieldType *actuatorLineSource 
+      =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "actuator_line_source"));
+    ScalarFieldType *actuatorLineSourceLHS
+      =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "actuator_line_source_lhs"));
+    stk::mesh::put_field(*actuatorLineSource, *part);
+    stk::mesh::put_field(*actuatorLineSourceLHS, *part);
   }
 }
 
@@ -1117,6 +1128,9 @@ MomentumEquationSystem::register_interior_algorithm(
         }
         else if (sourceName == "VariableDensityNonIso" ) {
           suppAlg = new VariableDensityNonIsoMomentumSrcNodeSuppAlg(realm_);
+        }
+        else if ( sourceName == "actuator_line") {
+          suppAlg = new MomentumActuatorLineSrcNodeSuppAlg(realm_);
         }
         else {
           throw std::runtime_error("MomentumNodalSrcTerms::Error Source term is not supported: " + sourceName);
