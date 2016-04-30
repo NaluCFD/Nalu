@@ -333,9 +333,9 @@ ActuatorLine::initialize()
   elemsToGhost_.clear();
 
   // clear actuatorLinePointInfoMap_
-  std::map<uint64_t, ActuatorLinePointInfo *>::iterator ii;
-  for( ii=actuatorLinePointInfoMap_.begin(); ii!=actuatorLinePointInfoMap_.end(); ++ii )
-    delete (*ii).second;
+  std::map<size_t, ActuatorLinePointInfo *>::iterator iterPoint;
+  for( iterPoint=actuatorLinePointInfoMap_.begin(); iterPoint!=actuatorLinePointInfoMap_.end(); ++iterPoint )
+    delete (*iterPoint).second;
   actuatorLinePointInfoMap_.clear();
   
   bulkData.modification_begin();
@@ -368,7 +368,7 @@ ActuatorLine::initialize()
   // manage ghosting
   manage_ghosting();
   
-  // complete filling in the set of elements connected to the cenroid
+  // complete filling in the set of elements connected to the centroid
   complete_search();
 }
 
@@ -441,7 +441,7 @@ ActuatorLine::execute()
   }
 
   // loop over map and assemble source terms
-  std::map<uint64_t, ActuatorLinePointInfo *>::iterator iterPoint;
+  std::map<size_t, ActuatorLinePointInfo *>::iterator iterPoint;
   for (iterPoint  = actuatorLinePointInfoMap_.begin();
        iterPoint != actuatorLinePointInfoMap_.end();
        ++iterPoint) {
@@ -784,8 +784,8 @@ ActuatorLine::complete_search()
       if ( !(bulkData.is_valid(elem)) )
         throw std::runtime_error("no valid entry for element");
 
-      // find the point data sturcture
-      std::map<uint64_t, ActuatorLinePointInfo *>::iterator iterPoint;
+      // find the point data structure
+      std::map<size_t, ActuatorLinePointInfo *>::iterator iterPoint;
       iterPoint=actuatorLinePointInfoMap_.find(thePt);
       if ( iterPoint == actuatorLinePointInfoMap_.end() )
         throw std::runtime_error("no valid entry for actuatorLinePointInfoMap_");
