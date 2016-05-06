@@ -87,6 +87,8 @@ cmake \
   -DZlib_INCLUDE_DIRS:PATH="${z_install_dir}/include" \
   -DTPL_Zlib_LIBRARIES:PATH="${z_install_dir}/lib/libz.a" \
   -DTPL_Netcdf_Enables_Netcdf4:BOOL=TRUE \
+  -DTPL_Netcdf_PARALLEL:BOOL=ON \
+  -DTPL_Netcdf_PARALLEL:BOOL=ON \
 -DBoostLib_INCLUDE_DIRS:PATH="$boost_dir/include" \
 -DBoostLib_LIBRARY_DIRS:PATH="$boost_dir/lib" \
 -DTrilinos_ASSERT_MISSING_PACKAGES=OFF \
