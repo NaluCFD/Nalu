@@ -18,6 +18,7 @@ superlu_lib_dir=$nalu_build_dir/install/SuperLU_4.3/lib
 # Additional needed TPLS
 netcdf_install_dir=$nalu_build_dir/install
 hdf_install_dir=$nalu_build_dir/install
+parallel_netcdf_install_dir=$nalu_install_dir
 z_install_dir=$nalu_build_dir/install
 
 # Where trilinos will be installed
@@ -75,10 +76,10 @@ cmake \
 -DTrilinos_ENABLE_SEACASExodiff:BOOL=ON \
 -DTrilinos_ENABLE_SEACASNemspread:BOOL=ON \
 -DTrilinos_ENABLE_SEACASNemslice:BOOL=ON \
-  -DTPL_ENABLE_Netcdf:STRING=ON \
-  -DTPL_Netcdf_LIBRARIES:PATH="${netcdf_install_dir}/lib/libnetcdf.a;${hdf_install_dir}/lib/libhdf5_hl.a;${hdf_install_dir}/lib/libhdf5.a;${z_install_dir}/lib/libz.a" \
-  -DNetcdf_INCLUDE_DIRS:PATH="${netcdf_install_dir}/include" \
-  -DNetcdf_LIBRARY_DIRS:PATH="${netcdf_install_dir}/lib" \
+  -DTPL_ENABLE_Netcdf:STRING=ON 
+  -DTPL_Netcdf_LIBRARIES:PATH="${netcdf_install_dir}/lib/libnetcdf.a;${parallel_netcdf_install_dir}/lib/libpnetcdf.a;${hdf_install_dir}/lib/libhdf5_hl.a;${hdf_install_dir}/lib/libhdf5.a;${z_install_dir}/lib/libz.a" \
+  -DNetcdf_INCLUDE_DIRS:PATH="${netcdf_install_dir}/include;${parallel_netcdf_install_dir}/include" \
+  -DNetcdf_LIBRARY_DIRS:PATH="${netcdf_install_dir}/lib;${parallel_netcdf_install_dir}/lib" \
   -DTPL_ENABLE_HDF5:STRING=ON \
   -DHDF5_INCLUDE_DIRS:PATH="${hdf_install_dir}/include" \
   -DTPL_HDF5_LIBRARIES:PATH="${hdf_install_dir}/lib/libhdf5_hl.a;${hdf_install_dir}/lib/libhdf5.a;${z_install_dir}/lib/libz.a" \
