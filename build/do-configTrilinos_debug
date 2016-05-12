@@ -76,7 +76,7 @@ cmake \
 -DTrilinos_ENABLE_SEACASExodiff:BOOL=ON \
 -DTrilinos_ENABLE_SEACASNemspread:BOOL=ON \
 -DTrilinos_ENABLE_SEACASNemslice:BOOL=ON \
-  -DTPL_ENABLE_Netcdf:STRING=ON 
+  -DTPL_ENABLE_Netcdf:STRING=ON \
   -DTPL_Netcdf_LIBRARIES:PATH="${netcdf_install_dir}/lib/libnetcdf.a;${parallel_netcdf_install_dir}/lib/libpnetcdf.a;${hdf_install_dir}/lib/libhdf5_hl.a;${hdf_install_dir}/lib/libhdf5.a;${z_install_dir}/lib/libz.a" \
   -DNetcdf_INCLUDE_DIRS:PATH="${netcdf_install_dir}/include;${parallel_netcdf_install_dir}/include" \
   -DNetcdf_LIBRARY_DIRS:PATH="${netcdf_install_dir}/lib;${parallel_netcdf_install_dir}/lib" \
