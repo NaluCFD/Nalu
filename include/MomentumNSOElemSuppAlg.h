@@ -76,8 +76,7 @@ public:
 
   // fixed space
   std::vector<double> ws_dukdxScs_;
-  std::vector<double> ws_rhovScs_;
-  std::vector<double> ws_vrtmScs_;
+  std::vector<double> ws_rhoVrtmScs_;
   std::vector<double> ws_dpdxScs_;
   std::vector<double> ws_kd_;
 

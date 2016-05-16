@@ -83,8 +83,7 @@ MomentumNSOElemSuppAlg::MomentumNSOElemSuppAlg(
 
   // fixed size
   ws_dukdxScs_.resize(nDim_);
-  ws_rhovScs_.resize(nDim_);
-  ws_vrtmScs_.resize(nDim_);
+  ws_rhoVrtmScs_.resize(nDim_);
   ws_dpdxScs_.resize(nDim_);
   ws_kd_.resize(nDim_*nDim_,0);
   for ( int i = 0; i < nDim_; ++i )
@@ -231,8 +230,7 @@ MomentumNSOElemSuppAlg::elem_execute(
 
     // zero out vector
     for ( int i = 0; i < nDim_; ++i ) {
-      ws_vrtmScs_[i] = 0.0;
-      ws_rhovScs_[i] = 0.0;
+      ws_rhoVrtmScs_[i] = 0.0;
     }
     
     // determine scs values of interest
@@ -258,8 +256,7 @@ MomentumNSOElemSuppAlg::elem_execute(
       for ( int j = 0; j < nDim_; ++j ) {
         const double dnj = ws_dndx_[offSetDnDx+j];
         const double vrtmj = ws_velocityRTM_[icNdim+j];
-        ws_vrtmScs_[j] += r*vrtmj;
-        ws_rhovScs_[j] += r*rhoIC*vrtmj;
+        ws_rhoVrtmScs_[j] += r*rhoIC*vrtmj;
         divU += r*ws_Gju_[row_ws_Gju+j*nDim_+j];
         dFdxCont += rhoIC*vrtmj*dnj;
         ws_dpdxScs_[j] += pIC*dnj;
@@ -329,7 +326,7 @@ MomentumNSOElemSuppAlg::elem_execute(
       // compute residual for NSO; linearized first
       double residualAlt = dFdxkAdv - ukNp1Scs*dFdxCont;
       for ( int j = 0; j < nDim_; ++j )
-        residualAlt -= ws_rhovScs_[j]*ws_dukdxScs_[j];
+        residualAlt -= ws_rhoVrtmScs_[j]*ws_dukdxScs_[j];
       
       // compute residual for NSO; pde-based second
       const double time = (gamma1_*rhoNp1Scs*ukNp1Scs + gamma2_*rhoNScs*ukNScs + gamma3_*rhoNm1Scs*ukNm1Scs)/dt_;
@@ -338,15 +335,15 @@ MomentumNSOElemSuppAlg::elem_execute(
       // final form
       const double residual = residualAlt*altResFac_ + residualPde*om_altResFac_;
 
-      // demonominator for nu as well as terms for "upwind" nu
+      // denominator for nu as well as terms for "upwind" nu
       double gUpperMagGradQ = 0.0;
-      double uigLoweruj = 0.0;
+      double rhoVrtmiGLowerRhoVrtmj = 0.0;
       for ( int i = 0; i < nDim_; ++i ) {
         const double duidxScs = ws_dukdxScs_[i];
-        const double ui = ws_vrtmScs_[i];
+        const double rhoVrtmi = ws_rhoVrtmScs_[i];
         for ( int j = 0; j < nDim_; ++j ) {
           gUpperMagGradQ += duidxScs*p_gUpper[i*nDim_+j]*ws_dukdxScs_[j];
-          uigLoweruj += ui*p_gLower[i*nDim_+j]*ws_vrtmScs_[j];
+          rhoVrtmiGLowerRhoVrtmj += rhoVrtmi*p_gLower[i*nDim_+j]*ws_rhoVrtmScs_[j];
         }
       }      
       
@@ -355,7 +352,7 @@ MomentumNSOElemSuppAlg::elem_execute(
       
       // construct nu from first-order-like approach; SNL-internal write-up (eq 209)
       // for now, only include advection as full set of terms is too diffuse
-      const double nuFirstOrder = std::sqrt(rhoNp1Scs*rhoNp1Scs*uigLoweruj);
+      const double nuFirstOrder = std::sqrt(rhoVrtmiGLowerRhoVrtmj);
       
       // limit based on first order; Cupw_ is a fudge factor similar to Guermond's approach
       const double nu = std::min(Cupw_*nuFirstOrder, nuResidual);

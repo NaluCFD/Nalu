@@ -66,7 +66,7 @@ MomentumNSOGradElemSuppAlg::MomentumNSOGradElemSuppAlg(
 
   // fixed size
   ws_dukdxScs_.resize(nDim_);
-  ws_rhovScs_.resize(nDim_);
+  ws_rhoVrtmScs_.resize(nDim_);
   ws_dpdxScs_.resize(nDim_);
   ws_GjpScs_.resize(nDim_);
 }
@@ -193,7 +193,7 @@ MomentumNSOGradElemSuppAlg::elem_execute(
 
     // zero out vectors that prevail over all components
     for ( int i = 0; i < nDim_; ++i ) {
-      ws_rhovScs_[i] = 0.0;
+      ws_rhoVrtmScs_[i] = 0.0;
       ws_dpdxScs_[i] = 0.0;
       ws_GjpScs_[i] = 0.0;
     }
@@ -216,7 +216,7 @@ MomentumNSOGradElemSuppAlg::elem_execute(
       for ( int j = 0; j < nDim_; ++j ) {
         const double dnj = ws_dndx_[offSetDnDx+j];
         const double vrtmj = ws_velocityRTM_[icNdim+j];
-        ws_rhovScs_[j] += r*rhoIC*vrtmj;
+        ws_rhoVrtmScs_[j] += r*rhoIC*vrtmj;
         ws_dpdxScs_[j] += pIC*dnj;
         ws_GjpScs_[j] += r*ws_Gjp_[icNdim+j];
       }
@@ -261,15 +261,15 @@ MomentumNSOGradElemSuppAlg::elem_execute(
       // compute residual for NSO; based on fine scale momentum form used in Continuity
       const double residualRk = ws_dpdxScs_[k] - ws_GjpScs_[k];
       
-      // demonominator for nu as well as terms for "upwind" nu
+      // denominator for nu as well as terms for "upwind" nu
       double gUpperMagGradQ = 0.0;
-      double rhoui_gLower_rhouj = 0.0;
+      double rhoVrtmiGLowerRhoVrtmj = 0.0;
       for ( int i = 0; i < nDim_; ++i ) {
         const double duidxScs = ws_dukdxScs_[i];
-        const double rhoui = ws_rhovScs_[i];
+        const double rhoVrtmi = ws_rhoVrtmScs_[i];
         for ( int j = 0; j < nDim_; ++j ) {
           gUpperMagGradQ += duidxScs*p_gUpper[i*nDim_+j]*ws_dukdxScs_[j];
-          rhoui_gLower_rhouj += rhoui*p_gLower[i*nDim_+j]*ws_rhovScs_[j];
+          rhoVrtmiGLowerRhoVrtmj += rhoVrtmi*p_gLower[i*nDim_+j]*ws_rhoVrtmScs_[j];
         }
       }      
       
@@ -278,7 +278,7 @@ MomentumNSOGradElemSuppAlg::elem_execute(
       
       // construct nu from first-order-like approach; SNL-internal write-up (eq 209)
       // for now, only include advection as full set of terms is too diffuse
-      const double nuFirstOrder = std::sqrt(rhoui_gLower_rhouj);
+      const double nuFirstOrder = std::sqrt(rhoVrtmiGLowerRhoVrtmj);
       
       // limit based on first order; Cupw_ is a fudge factor similar to Guermond's approach
       const double nu = std::min(Cupw_*nuFirstOrder, nuResidual);
