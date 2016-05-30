@@ -23,6 +23,7 @@ namespace stk {
     class MetaData;
     class Part;
     typedef std::vector<Part*> PartVector;
+    class Selector;
   }
 }
 
@@ -48,7 +49,7 @@ public:
   // setup nodal field registration; parts, fields, etc
   void setup();
 
-  void register_field(
+  void register_field_from_primitive(
     const std::string primitiveName,
     const std::string averagedName,
     stk::mesh::MetaData &metaData,
@@ -61,11 +62,37 @@ public:
     std::vector<unsigned> &fieldSizeVec_,
     stk::mesh::MetaData &metaData);
 
+  void register_field(
+    const std::string fieldName,
+    const int fieldSize,
+    stk::mesh::MetaData &metaData,
+    stk::mesh::Part *targetPart);
+
   void review( 
     const AveragingInfo *avInfo);
 
   // populate nodal field and output norms (if appropriate)
   void execute();
+
+  // compute tke and stress for each type of operation
+  void compute_tke(
+    const bool isReynolds,
+    const std::string &averageBlockName,
+    stk::mesh::Selector s_all_nodes);
+
+  void compute_reynolds_stress(
+    const std::string &averageBlockName,
+    const double &oldTimeFilter,
+    const double &zeroCurrent,
+    const double &dt,
+    stk::mesh::Selector s_all_nodes);
+
+  void compute_favre_stress(
+    const std::string &averageBlockName,
+    const double &oldTimeFilter,
+    const double &zeroCurrent,
+    const double &dt,
+    stk::mesh::Selector s_all_nodes);
 
   // hold the realm
   Realm &realm_;
