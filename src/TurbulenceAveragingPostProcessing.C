@@ -673,7 +673,7 @@ TurbulenceAveragingPostProcessing::compute_favre_stress(
           const int component = componentCount;
           const double uj = uNp1[k*nDim+j];
           const double ujA = uNp1A[k*nDim+j];
-          const double newStress = (stress[k*stressSize+component]*oldTimeFilter*zeroCurrent + rhok*ui*uj*dt - rhoAk*uiA*ujA*dt)/currentTimeFilter_;
+          const double newStress = (stress[k*stressSize+component]*oldTimeFilter*zeroCurrent + (ui*uj*rhok/rhoAk - uiA*ujA)*dt)/currentTimeFilter_;
           stress[k*stressSize+component] = newStress;
           componentCount++;
         }
