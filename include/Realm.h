@@ -242,7 +242,7 @@ class Realm {
   virtual void populate_initial_condition();
   virtual void populate_boundary_data();
   virtual void boundary_data_to_state_data();
-  virtual void populate_variables_from_input();
+  virtual double populate_variables_from_input(const double currentTime);
   virtual double populate_restart( double &timeStepNm1, int &timeStepCount);
   virtual void populate_derived_quantities();
   virtual void evaluate_properties();

@@ -1491,7 +1491,8 @@ Realm::makeSureNodesHaveValidTopology()
   std::vector<stk::mesh::Entity> nodes_vector;
   stk::mesh::get_selected_entities(nodesNotInNodePart, bulkData_->buckets(stk::topology::NODE_RANK), nodes_vector);
   // now we require all nodes are in proper node part
-  if (nodes_vector.size()) std::cout << "nodes_vector= " << nodes_vector.size() << std::endl;
+  if (nodes_vector.size())
+    std::cout << "nodes_vector= " << nodes_vector.size() << std::endl;
   ThrowRequire(0 == nodes_vector.size());
 }
 
@@ -2013,6 +2014,12 @@ Realm::input_variables_from_mesh()
 {
   // no variables from an input mesh if this is a restart
   if ( !restarted_simulation()) {
+
+    // check whether to snap or interpolate data; all fields treated the same
+    const stk::io::MeshField::TimeMatchOption fieldInterpOption = solutionOptions_->inputVariablesInterpolateInTime_
+        ? stk::io::MeshField::LINEAR_INTERPOLATION
+        : stk::io::MeshField::CLOSEST;
+
     std::map<std::string, std::string>::const_iterator iter;
     for ( iter = solutionOptions_->inputVarFromFileMap_.begin();
           iter != solutionOptions_->inputVarFromFileMap_.end(); ++iter) {
@@ -2025,7 +2032,7 @@ Realm::input_variables_from_mesh()
         NaluEnv::self().naluOutputP0() << " Sorry, no field by the name " << varName << std::endl;
       }
       else {
-        ioBroker_->add_input_field(stk::io::MeshField(*theField, userName));
+        ioBroker_->add_input_field(stk::io::MeshField(*theField, userName, fieldInterpOption));
       }
     }
   }
@@ -3410,7 +3417,9 @@ Realm::populate_restart(
         NaluEnv::self().naluOutputP0() << "This is applicable for a BDF2 restart run from a previously run Backward Euler simulation" << std::endl;
       }
     }
-    
+    NaluEnv::self().naluOutputP0() << "Realm::populate_restart() candidate restart time: "
+        << foundRestartTime << " for Realm: " << name() << std::endl;
+
     // extract time parameters; okay if they are missing; no need to let the user know
     const bool abortIfNotFound = false;
     ioBroker_->get_global("timeStepNm1", timeStepNm1, abortIfNotFound);
@@ -3425,13 +3434,25 @@ Realm::populate_restart(
 //--------------------------------------------------------------------------
 //-------- populate_variables_from_input -----------------------------------
 //--------------------------------------------------------------------------
-void
-Realm::populate_variables_from_input()
+double
+Realm::populate_variables_from_input(const double currentTime)
 {
   // no reading fields from mesh if this is a restart
+  double foundTime = currentTime;
   if ( !restarted_simulation() && solutionOptions_->inputVarFromFileMap_.size() > 0 ) {
-    ioBroker_->read_defined_input_fields(solutionOptions_->inputVariablesRestorationTime_);
+    std::vector<stk::io::MeshField> missingFields;
+    foundTime = ioBroker_->read_defined_input_fields(solutionOptions_->inputVariablesRestorationTime_, &missingFields);
+    if ( missingFields.size() > 0 ) {
+      for ( size_t k = 0; k < missingFields.size(); ++k) {
+        NaluEnv::self().naluOutputP0() << "WARNING: Realm::populate_variables_from_input for field "
+            << missingFields[k].field()->name()
+            << " is missing; will default to IC specification" << std::endl;
+      }
+    }
+    NaluEnv::self().naluOutputP0() << "Realm::populate_variables_form_input() candidate input time: "
+        << foundTime << " for Realm: " << name() << std::endl;
   }
+  return foundTime;
 }
 
 //--------------------------------------------------------------------------
@@ -4272,7 +4293,7 @@ Realm::process_multi_physics_transfer()
 }
 
 //--------------------------------------------------------------------------
-//-------- process_init_transfer -------------------------------------------
+//-------- process_initialization_transfer ---------------------------------
 //--------------------------------------------------------------------------
 void
 Realm::process_initialization_transfer()

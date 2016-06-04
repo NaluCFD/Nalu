@@ -88,6 +88,7 @@ public:
   bool cvfemShiftPoisson_;
   bool cvfemReducedSensPoisson_;
   double inputVariablesRestorationTime_;
+  bool inputVariablesInterpolateInTime_;
   bool consistentMMPngDefault_;
   bool useConsolidatedSolverAlg_;
 

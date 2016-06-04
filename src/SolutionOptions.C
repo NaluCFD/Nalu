@@ -73,6 +73,7 @@ SolutionOptions::SolutionOptions()
     cvfemShiftPoisson_(false),
     cvfemReducedSensPoisson_(false),
     inputVariablesRestorationTime_(1.0e8),
+    inputVariablesInterpolateInTime_(false),
     consistentMMPngDefault_(false),
     useConsolidatedSolverAlg_(false)
 {
@@ -158,7 +159,12 @@ SolutionOptions::load(const YAML::Node & y_node)
     initialize_turbulence_constants();
 
     // extract possible copy from input fields restoration time
-    get_if_present(*y_solution_options, "input_variables_from_file_restoration_time", inputVariablesRestorationTime_, inputVariablesRestorationTime_);
+    get_if_present(*y_solution_options, "input_variables_from_file_restoration_time",
+      inputVariablesRestorationTime_, inputVariablesRestorationTime_);
+
+    // choice of interpolation or snapping to closest in the data base
+    get_if_present(*y_solution_options, "input_variables_interpolate_in_time",
+      inputVariablesInterpolateInTime_, inputVariablesInterpolateInTime_);
 
     // first set of options; hybrid, source, etc.
     const YAML::Node *y_options = expect_sequence(*y_solution_options, "options", required);
