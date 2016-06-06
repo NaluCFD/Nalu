@@ -38,17 +38,29 @@ namespace nalu{
 PeriodicManager::PeriodicManager(
    Realm &realm)
   : realm_(realm ),
-    searchTolerance_(1.0e-8),
+    searchTolerance_(1.0e8),
     periodicGhosting_(NULL),
     ghostingName_("nalu_periodic"),
-    timerSearch_(0.0)
+    timerSearch_(0.0),
+    errorCount_(0),
+    maxErrorCount_(10),
+    amplificationFactor_(5.0)
 {
-  // do nothing
+  // does nothing
 }
 
 PeriodicManager::~PeriodicManager()
 {
   // nothing to delete
+}
+
+//--------------------------------------------------------------------------
+//-------- initialize_error_count ------------------------------------------
+//--------------------------------------------------------------------------
+void
+PeriodicManager::initialize_error_count()
+{
+  errorCount_ = 0;
 }
 
 //--------------------------------------------------------------------------
@@ -58,12 +70,11 @@ void
 PeriodicManager::add_periodic_pair(
   stk::mesh::Part * masterMeshPart,
   stk::mesh::Part * slaveMeshPart,
-  const double &searchTolerance,
+  const double &userSearchTolerance,
   const std::string &searchMethodName)
 {
-  // use most stringent tolerance
-  if (searchTolerance < searchTolerance_)
-    searchTolerance_ = searchTolerance;
+  // use most stringent tolerance (min) for all of user specifications
+  searchTolerance_ = std::min(searchTolerance_, userSearchTolerance);
 
   // form the slave part vector
   slavePartVector_.push_back(slaveMeshPart);
@@ -116,9 +127,6 @@ PeriodicManager::build_constraints()
   NaluEnv::self().naluOutputP0() << "Periodic Review:  realm: " << realm_.name_ << std::endl;
   NaluEnv::self().naluOutputP0() << "=========================" << std::endl;
 
-  // clear vectors
-  searchKeyVector_.clear();
-
   augment_periodic_selector_pairs();
 
   // initialize translation and rotation vectors
@@ -133,18 +141,10 @@ PeriodicManager::build_constraints()
   remove_redundant_slave_nodes();
 
   // search and constraint mapping
-  for ( size_t k = 0; k < periodicSelectorPairs_.size(); ++k) {
-    populate_search_key_vec(periodicSelectorPairs_[k].first, periodicSelectorPairs_[k].second,
-        translationVector_[k], searchMethodVec_[k]);
-  }
-
-  create_ghosting_object();
-
-  error_check();
+  finalize_search();
 
   // provide Nalu id update
   update_global_id_field();
-
 }
 
 //--------------------------------------------------------------------------
@@ -367,7 +367,29 @@ PeriodicManager::remove_redundant_slave_nodes()
       break;
     }
   }
+}
 
+//--------------------------------------------------------------------------
+//-------- finalize_search -------------------------------------------------
+//--------------------------------------------------------------------------
+void
+PeriodicManager::finalize_search()
+{
+  // clear vectors
+  searchKeyVector_.clear();
+  masterSlaveCommunicator_.clear();
+
+  // process each pair
+  for ( size_t k = 0; k < periodicSelectorPairs_.size(); ++k) {
+    populate_search_key_vec(periodicSelectorPairs_[k].first, periodicSelectorPairs_[k].second,
+                            translationVector_[k], searchMethodVec_[k]);
+  }
+  
+  // manage ghosting
+  manage_ghosting_object();
+
+  // check to see if we need to attempt once more
+  error_check();
 }
 
 //--------------------------------------------------------------------------
@@ -380,7 +402,6 @@ PeriodicManager::populate_search_key_vec(
     std::vector<double> &translationVector,
     const stk::search::SearchMethod searchMethod)
 {
-
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   stk::mesh::BulkData & bulk_data = realm_.bulk_data();
 
@@ -459,7 +480,6 @@ PeriodicManager::populate_search_key_vec(
 
   // populate searchKeyVector_; culmination of all master/slaves
   searchKeyVector_.insert(searchKeyVector_.end(), searchKeyPair.begin(), searchKeyPair.end());
-
 }
 
 //--------------------------------------------------------------------------
@@ -495,27 +515,46 @@ PeriodicManager::error_check()
 
   // hard error check
   if ( g_totalNumber[0] != g_totalNumber[1]) {
-    NaluEnv::self().naluOutputP0() << "Probable issue with Search: " << std::endl;
+    // increment and report
+    errorCount_++;
+    NaluEnv::self().naluOutputP0() << "_____________________________________" << std::endl;
+    NaluEnv::self().naluOutputP0() << "Probable issue with Search on attempt: " << errorCount_ << std::endl;
     NaluEnv::self().naluOutputP0() << "the total number of slave nodes (" << g_totalNumber[0] << ")" << std::endl;
-    NaluEnv::self().naluOutputP0() << "does not equal the product of the search(" << g_totalNumber[1] << ")" << std::endl;
-    NaluEnv::self().naluOutputP0() <<" Try reducing the tolerance" << std::endl;
-    throw std::runtime_error("PeriodiocBC::Error: parallel consistency not noted in the master/slave pairings");
+    NaluEnv::self().naluOutputP0() << "does not equal the product of the search (" << g_totalNumber[1] << ")" << std::endl;
+
+    // check to see if we should try again..
+    if ( errorCount_ == maxErrorCount_ ) {
+      NaluEnv::self().naluOutputP0() << "ABORT: Too many attempts; please check your mesh" << std::endl;
+      throw std::runtime_error("PeriodiocBC::Error: Too many attempts; please check your mesh");
+    }
+    // reduce or increase search tolerance based on number of slaves and total
+    if ( g_totalNumber[0] > g_totalNumber[1] ) {
+      searchTolerance_ *= amplificationFactor_; // slave > total; increase tolerance
+      NaluEnv::self().naluOutputP0() << "The algorithm will increase the search tolerance: " << searchTolerance_ << std::endl;
+    }
+    else {
+      searchTolerance_ /= amplificationFactor_; // slave < total; reduce tolerance
+      NaluEnv::self().naluOutputP0() << "The algorithm will reduce the search tolerance: " << searchTolerance_ << std::endl;
+    }
+
+    // try again
+    finalize_search();
   }
   else {
+    NaluEnv::self().naluOutputP0() << "---------------------------------------------------" << std::endl;
     NaluEnv::self().naluOutputP0() << "Parallel consistency noted in master/slave pairings: "
-        << g_totalNumber[0] << "/"<< g_totalNumber[1] << std::endl;
-
+                                   << g_totalNumber[0] << "/"<< g_totalNumber[1] << std::endl;
+    NaluEnv::self().naluOutputP0() << "---------------------------------------------------" << std::endl;
+    NaluEnv::self().naluOutputP0() << std::endl;
   }
-
 }
 
 //--------------------------------------------------------------------------
-//-------- create_ghosting_object ------------------------------------------
+//-------- manage_ghosting_object ------------------------------------------
 //--------------------------------------------------------------------------
 void
-PeriodicManager::create_ghosting_object()
+PeriodicManager::manage_ghosting_object()
 {
-
   stk::mesh::BulkData & bulk_data = realm_.bulk_data();
   unsigned theRank = NaluEnv::self().parallel_rank();
 
@@ -541,7 +580,10 @@ PeriodicManager::create_ghosting_object()
   if ( g_numNodes > 0) {
     // check if we need to ghost
     bulk_data.modification_begin();
-    periodicGhosting_ = &bulk_data.create_ghosting(ghostingName_);
+    if ( periodicGhosting_ == NULL )
+      periodicGhosting_ = &bulk_data.create_ghosting(ghostingName_);
+    else
+      bulk_data.destroy_ghosting(*periodicGhosting_);
     bulk_data.change_ghosting(*periodicGhosting_, sendNodes);
     bulk_data.modification_end();
   }
@@ -554,7 +596,6 @@ PeriodicManager::create_ghosting_object()
      EntityPair theFirstPair = std::make_pair(rangeNode, domainNode);
      masterSlaveCommunicator_.push_back(theFirstPair);
   }
-
 }
 
 //--------------------------------------------------------------------------
@@ -625,7 +666,6 @@ PeriodicManager::update_global_id_field()
 
   // update all shared; aura and periodic
   parallel_communicate_field(realm_.naluGlobalId_);
-
 }
 
 //--------------------------------------------------------------------------
