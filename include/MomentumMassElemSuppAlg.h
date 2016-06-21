@@ -6,8 +6,8 @@
 /*------------------------------------------------------------------------*/
 
 
-#ifndef MomentumNSOElemSuppAlg_h
-#define MomentumNSOElemSuppAlg_h
+#ifndef MomentumMassElemSuppAlg_h
+#define MomentumMassElemSuppAlg_h
 
 #include <SupplementalAlgorithm.h>
 #include <FieldTypeDef.h>
@@ -21,19 +21,14 @@ namespace nalu{
 class Realm;
 class MasterElement;
 
-class MomentumNSOElemSuppAlg : public SupplementalAlgorithm
+class MomentumMassElemSuppAlg : public SupplementalAlgorithm
 {
 public:
 
-  MomentumNSOElemSuppAlg(
-    Realm &realm,
-    VectorFieldType *velocity,
-    GenericFieldType *Gju,
-    ScalarFieldType *viscosity,
-    const double fourthFac,
-    const double altResFac);
+  MomentumMassElemSuppAlg(
+    Realm &realm);
 
-  virtual ~MomentumNSOElemSuppAlg() {}
+  virtual ~MomentumMassElemSuppAlg() {}
 
   virtual void setup();
 
@@ -56,51 +51,32 @@ public:
   ScalarFieldType *densityNm1_;
   ScalarFieldType *densityN_;
   ScalarFieldType *densityNp1_;
-  ScalarFieldType *pressure_;
-  VectorFieldType *velocityRTM_;
+  VectorFieldType *Gjp_;
   VectorFieldType *coordinates_;
-  ScalarFieldType *viscosity_;
-  GenericFieldType *Gju_;
+
   double dt_;
-  const int nDim_;
   double gamma1_;
   double gamma2_;
   double gamma3_;
-  const double Cupw_;
-  const double small_;
-  const double fourthFac_;
-  const double altResFac_;
-  const double om_altResFac_;
-  const double nonConservedForm_;
-  const double includeDivU_;
+  const int nDim_;
+  const bool useShifted_;
 
-  // fixed space
-  std::vector<double> ws_dukdxScs_;
-  std::vector<double> ws_rhoVrtmScs_;
-  std::vector<double> ws_dpdxScs_;
-  std::vector<double> ws_kd_;
+  // scratch space
+  std::vector<double> uNm1Scv_;
+  std::vector<double> uNScv_;
+  std::vector<double> uNp1Scv_;
+  std::vector<double> GjpScv_;
 
-  // scratch space; geometry
-  std::vector<double> ws_scs_areav_;
-  std::vector<double> ws_dndx_;
-  std::vector<double> ws_deriv_;
-  std::vector<double> ws_det_j_;
   std::vector<double> ws_shape_function_;
-  std::vector<double> ws_gUpper_;
-  std::vector<double> ws_gLower_;
-
-  // scratch space; fields
   std::vector<double> ws_uNm1_;
   std::vector<double> ws_uN_;
   std::vector<double> ws_uNp1_;
+  std::vector<double> ws_Gjp_;
   std::vector<double> ws_rhoNm1_;
   std::vector<double> ws_rhoN_;
   std::vector<double> ws_rhoNp1_;
-  std::vector<double> ws_pressure_;
-  std::vector<double> ws_velocityRTM_;
   std::vector<double> ws_coordinates_;
-  std::vector<double> ws_viscosity_;
-  std::vector<double> ws_Gju_;
+  std::vector<double> ws_scv_volume_;
 };
 
 } // namespace nalu

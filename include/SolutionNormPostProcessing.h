@@ -37,7 +37,8 @@ class SolutionNormPostProcessing
 public:
   
   SolutionNormPostProcessing(
-    Realm &realm);
+    Realm &realm,
+    const YAML::Node &node);
   ~SolutionNormPostProcessing();
   
   // load all of the options
@@ -45,8 +46,7 @@ public:
     const YAML::Node & node);
 
   // setup nodal field registration; algorithms
-  void setup(
-    const std::vector<std::string> targetNames);
+  void setup();
 
   // create the algorithm to populate the exact field
   void analytical_function_factory(

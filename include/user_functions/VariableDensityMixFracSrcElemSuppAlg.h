@@ -47,7 +47,6 @@ public:
 
   VectorFieldType *coordinates_;
 
-  double dt_;
   const int nDim_;
   const double rhoP_;
   const double rhoS_;
@@ -61,7 +60,6 @@ public:
   const double amf_;
   const double Sc_;  
   const double pi_;
-
   const bool useShifted_;
 
   // scratch space (at constructor)

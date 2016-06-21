@@ -55,6 +55,9 @@
 #include <TurbulenceAveragingPostProcessing.h>
 #include <DataProbePostProcessing.h>
 
+// actuator line
+#include <ActuatorLine.h>
+
 // props; algs, evaluators and data
 #include <property_evaluator/GenericPropAlgorithm.h>
 #include <property_evaluator/HDF5TablePropAlgorithm.h>
@@ -160,7 +163,6 @@ namespace nalu{
     adapter_(0),
 #endif
     numInitialElements_(0),
-    postConvergedAlgDriver_(0),
     timeIntegrator_(0),
     boundaryConditions_(*this),
     initialConditions_(*this),
@@ -177,6 +179,7 @@ namespace nalu{
     solutionNormPostProcessing_(NULL),
     turbulenceAveragingPostProcessing_(NULL),
     dataProbePostProcessing_(NULL),
+    actuatorLine_(NULL),
     nodeCount_(0),
     estimateMemoryOnly_(false),
     availableMemoryPerCoreGB_(0),
@@ -245,9 +248,6 @@ Realm::~Realm()
     delete adapter_;
 #endif
 
-  if ( NULL != postConvergedAlgDriver_ )
-    delete postConvergedAlgDriver_;
-
   // prop algs
   std::vector<Algorithm *>::iterator ii;
   for( ii=initCondAlg_.begin(); ii!=initCondAlg_.end(); ++ii )
@@ -260,11 +260,6 @@ Realm::~Realm()
   std::vector<AuxFunctionAlgorithm *>::iterator iaux;
   for( iaux=bcDataAlg_.begin(); iaux!=bcDataAlg_.end(); ++iaux )
     delete *iaux;
-
-  // post converged algs
-  std::vector<Algorithm *>::iterator ipc;
-  for( ipc=postConvergedAlg_.begin(); ipc!=postConvergedAlg_.end(); ++ipc )
-    delete *ipc;
 
   // delete master elements that were saved off; surface
   std::map<stk::topology, MasterElement *>::iterator it;
@@ -281,8 +276,11 @@ Realm::~Realm()
   delete solutionOptions_;
   delete outputInfo_;
   delete postProcessingInfo_;
+
+  // post processing-like objects
   if ( NULL != solutionNormPostProcessing_ )
     delete solutionNormPostProcessing_;
+
   if ( NULL != turbulenceAveragingPostProcessing_ )
     delete turbulenceAveragingPostProcessing_;
 
@@ -522,7 +520,7 @@ Realm::look_ahead_and_creation(const YAML::Node & node)
   if ( foundNormPP.size() > 0 ) {
     if ( foundNormPP.size() != 1 )
       throw std::runtime_error("look_ahead_and_create::error: Too many Solution Norm blocks");
-    solutionNormPostProcessing_ =  new SolutionNormPostProcessing(*this);
+    solutionNormPostProcessing_ =  new SolutionNormPostProcessing(*this, *foundNormPP[0]);
   }
 
   // look for DataProbe
@@ -532,6 +530,15 @@ Realm::look_ahead_and_creation(const YAML::Node & node)
     if ( foundProbe.size() != 1 )
       throw std::runtime_error("look_ahead_and_create::error: Too many data probe blocks");
     dataProbePostProcessing_ =  new DataProbePostProcessing(*this, *foundProbe[0]);
+  }
+
+  // look for ActuatorLine
+  std::vector<const YAML::Node *> foundActuatorLine;
+  NaluParsingHelper::find_nodes_given_key("actuator_line", node, foundActuatorLine);
+  if ( foundActuatorLine.size() > 0 ) {
+    if ( foundActuatorLine.size() != 1 )
+      throw std::runtime_error("look_ahead_and_create::error: Too many actuator line blocks");
+    actuatorLine_ =  new ActuatorLine(*this, *foundActuatorLine[0]);
   }
 }
   
@@ -631,10 +638,6 @@ Realm::load(const YAML::Node & node)
   // post processing
   postProcessingInfo_->load(node);
 
-  // norms
-  if ( NULL != solutionNormPostProcessing_ )
-    solutionNormPostProcessing_->load(node);
-
   // boundary, init, material and equation systems "load"
   if ( type_ == "multi_physics" ) {
     NaluEnv::self().naluOutputP0() << std::endl;
@@ -719,12 +722,8 @@ Realm::setup_nodal_fields()
   }
 
   // loop over all material props targets and register nodal fields
-  std::vector<std::string> targetNames = materialPropertys_.targetNames_;
+  std::vector<std::string> targetNames = get_physics_target_names();
   equationSystems_.register_nodal_fields(targetNames);
-
-  // check for norm nodal fields
-  if ( NULL != solutionNormPostProcessing_ )
-    solutionNormPostProcessing_->setup(targetNames);
 }
 
 //--------------------------------------------------------------------------
@@ -734,7 +733,7 @@ void
 Realm::setup_edge_fields()
 {
   // loop over all material props targets and register edge fields
-  std::vector<std::string> targetNames = materialPropertys_.targetNames_;
+  std::vector<std::string> targetNames = get_physics_target_names();
   equationSystems_.register_edge_fields(targetNames);
 }
 //--------------------------------------------------------------------------
@@ -744,7 +743,7 @@ void
 Realm::setup_element_fields()
 {
   // loop over all material props targets and register element fields
-  std::vector<std::string> targetNames = materialPropertys_.targetNames_;
+  std::vector<std::string> targetNames = get_physics_target_names();
   equationSystems_.register_element_fields(targetNames);
 }
 
@@ -761,7 +760,7 @@ Realm::setup_interior_algorithms()
       errorIndicatorAlgDriver_ = new ErrorIndicatorAlgorithmDriver(*this);
   }
   // loop over all material props targets and register interior algs
-  std::vector<std::string> targetNames = materialPropertys_.targetNames_;
+  std::vector<std::string> targetNames = get_physics_target_names();
   equationSystems_.register_interior_algorithm(targetNames);
 }
 
@@ -817,6 +816,14 @@ Realm::setup_post_processing_algorithms()
   // check for data probes
   if ( NULL != dataProbePostProcessing_ )
     dataProbePostProcessing_->setup();
+
+  // check for actuator line
+  if ( NULL != actuatorLine_ )
+    actuatorLine_->setup();
+
+  // check for norm nodal fields
+  if ( NULL != solutionNormPostProcessing_ )
+    solutionNormPostProcessing_->setup();
 }
 
 //--------------------------------------------------------------------------
@@ -980,7 +987,7 @@ void
 Realm::setup_property()
 {
   // loop over all target names
-  const std::vector<std::string> targetNames = materialPropertys_.targetNames_;
+  const std::vector<std::string> targetNames = get_physics_target_names();
   for (size_t itarget=0; itarget < targetNames.size(); ++itarget) {
 
     // target need not be subsetted since nothing below will depend on topo
@@ -1484,7 +1491,8 @@ Realm::makeSureNodesHaveValidTopology()
   std::vector<stk::mesh::Entity> nodes_vector;
   stk::mesh::get_selected_entities(nodesNotInNodePart, bulkData_->buckets(stk::topology::NODE_RANK), nodes_vector);
   // now we require all nodes are in proper node part
-  if (nodes_vector.size()) std::cout << "nodes_vector= " << nodes_vector.size() << std::endl;
+  if (nodes_vector.size())
+    std::cout << "nodes_vector= " << nodes_vector.size() << std::endl;
   ThrowRequire(0 == nodes_vector.size());
 }
 
@@ -1687,7 +1695,7 @@ Realm::pre_timestep_work()
   if ( has_mesh_deformation() ) {
     // extract target parts for this physics
     if ( solutionOptions_->externalMeshDeformation_ ) {
-      std::vector<std::string> targetNames = materialPropertys_.targetNames_;
+      std::vector<std::string> targetNames = get_physics_target_names();
       for ( size_t itarget = 0; itarget < targetNames.size(); ++itarget ) {
         stk::mesh::Part *targetPart = metaData_->get_part(targetNames[itarget]);
         set_current_coordinates(targetPart);
@@ -1750,6 +1758,11 @@ Realm::advance_time_step()
 
   // compute velocity relative to mesh
   compute_vrtm();
+
+  // check for actuator line; assemble the source terms for this time step
+  if ( NULL != actuatorLine_ ) {
+    actuatorLine_->execute();
+  }
 
   const int numNonLinearIterations = equationSystems_.maxIterations_;
   for ( int i = 0; i < numNonLinearIterations; ++i ) {
@@ -2001,6 +2014,12 @@ Realm::input_variables_from_mesh()
 {
   // no variables from an input mesh if this is a restart
   if ( !restarted_simulation()) {
+
+    // check whether to snap or interpolate data; all fields treated the same
+    const stk::io::MeshField::TimeMatchOption fieldInterpOption = solutionOptions_->inputVariablesInterpolateInTime_
+        ? stk::io::MeshField::LINEAR_INTERPOLATION
+        : stk::io::MeshField::CLOSEST;
+
     std::map<std::string, std::string>::const_iterator iter;
     for ( iter = solutionOptions_->inputVarFromFileMap_.begin();
           iter != solutionOptions_->inputVarFromFileMap_.end(); ++iter) {
@@ -2013,7 +2032,7 @@ Realm::input_variables_from_mesh()
         NaluEnv::self().naluOutputP0() << " Sorry, no field by the name " << varName << std::endl;
       }
       else {
-        ioBroker_->add_input_field(stk::io::MeshField(*theField, userName));
+        ioBroker_->add_input_field(stk::io::MeshField(*theField, userName, fieldInterpOption));
       }
     }
   }
@@ -2235,6 +2254,11 @@ Realm::initialize_post_processing_algorithms()
   // check for data probes
   if ( NULL != dataProbePostProcessing_ )
     dataProbePostProcessing_->initialize();
+
+  // check for actuator line... probably a better place for this
+  if ( NULL != actuatorLine_ ) {
+    actuatorLine_->initialize();
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -2594,7 +2618,7 @@ Realm::compute_l2_scaling()
 {
   // loop over all material propertys  and save off part vector
   stk::mesh::PartVector partVec;
-  const std::vector<std::string> targetNames = materialPropertys_.targetNames_;
+  const std::vector<std::string> targetNames = get_physics_target_names();
   for (size_t itarget=0; itarget < targetNames.size(); ++itarget) {
     // target need not be subsetted since nothing below will depend on topo
     stk::mesh::Part *targetPart = metaData_->get_part(targetNames[itarget]);
@@ -3393,7 +3417,9 @@ Realm::populate_restart(
         NaluEnv::self().naluOutputP0() << "This is applicable for a BDF2 restart run from a previously run Backward Euler simulation" << std::endl;
       }
     }
-    
+    NaluEnv::self().naluOutputP0() << "Realm::populate_restart() candidate restart time: "
+        << foundRestartTime << " for Realm: " << name() << std::endl;
+
     // extract time parameters; okay if they are missing; no need to let the user know
     const bool abortIfNotFound = false;
     ioBroker_->get_global("timeStepNm1", timeStepNm1, abortIfNotFound);
@@ -3408,13 +3434,25 @@ Realm::populate_restart(
 //--------------------------------------------------------------------------
 //-------- populate_variables_from_input -----------------------------------
 //--------------------------------------------------------------------------
-void
-Realm::populate_variables_from_input()
+double
+Realm::populate_variables_from_input(const double currentTime)
 {
   // no reading fields from mesh if this is a restart
+  double foundTime = currentTime;
   if ( !restarted_simulation() && solutionOptions_->inputVarFromFileMap_.size() > 0 ) {
-    ioBroker_->read_defined_input_fields(solutionOptions_->inputVariablesRestorationTime_);
+    std::vector<stk::io::MeshField> missingFields;
+    foundTime = ioBroker_->read_defined_input_fields(solutionOptions_->inputVariablesRestorationTime_, &missingFields);
+    if ( missingFields.size() > 0 ) {
+      for ( size_t k = 0; k < missingFields.size(); ++k) {
+        NaluEnv::self().naluOutputP0() << "WARNING: Realm::populate_variables_from_input for field "
+            << missingFields[k].field()->name()
+            << " is missing; will default to IC specification" << std::endl;
+      }
+    }
+    NaluEnv::self().naluOutputP0() << "Realm::populate_variables_form_input() candidate input time: "
+        << foundTime << " for Realm: " << name() << std::endl;
   }
+  return foundTime;
 }
 
 //--------------------------------------------------------------------------
@@ -4255,7 +4293,7 @@ Realm::process_multi_physics_transfer()
 }
 
 //--------------------------------------------------------------------------
-//-------- process_init_transfer -------------------------------------------
+//-------- process_initialization_transfer ---------------------------------
 //--------------------------------------------------------------------------
 void
 Realm::process_initialization_transfer()
@@ -4300,18 +4338,12 @@ Realm::process_io_transfer()
 void
 Realm::post_converged_work()
 {
-  // FIXME: There is an opportunity for cleanup here...
-  if ( NULL != postConvergedAlgDriver_ )
-    postConvergedAlgDriver_->execute();
+  equationSystems_.post_converged_work();
 
-  for ( size_t k = 0; k < postConvergedAlg_.size(); ++k)
-    postConvergedAlg_[k]->execute();
-
+  // FIXME: Consider a unified collection of post processing work
   if ( NULL != solutionNormPostProcessing_ )
     solutionNormPostProcessing_->execute();
   
-  equationSystems_.post_converged_work();
-
   if ( NULL != turbulenceAveragingPostProcessing_ )
     turbulenceAveragingPostProcessing_->execute();
 
@@ -4511,6 +4543,17 @@ Realm::push_equation_to_systems(
   EquationSystem *eqSystem)
 {
   equationSystems_.equationSystemVector_.push_back(eqSystem);
+}
+
+//--------------------------------------------------------------------------
+//-------- get_physics_target_names() --------------------------------------
+//--------------------------------------------------------------------------
+const std::vector<std::string> &
+Realm::get_physics_target_names()
+{
+  // in the future, possibly check for more advanced names;
+  // for now, material props holds this
+  return materialPropertys_.targetNames_;
 }
 
 } // namespace nalu

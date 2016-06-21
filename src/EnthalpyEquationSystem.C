@@ -50,7 +50,7 @@
 #include <ScalarGclNodeSuppAlg.h>
 #include <ScalarMassBackwardEulerNodeSuppAlg.h>
 #include <ScalarMassBDF2NodeSuppAlg.h>
-#include <ScalarMassBDF2ElemSuppAlg.h>
+#include <ScalarMassElemSuppAlg.h>
 #include <ScalarKeNSOElemSuppAlg.h>
 #include <ScalarNSOElemSuppAlg.h>
 #include <Simulation.h>
@@ -392,15 +392,10 @@ EnthalpyEquationSystem::register_interior_algorithm(
         }
         else if (sourceName == "enthalpy_time_derivative" ) {
           useCMM = true;
-          if ( realm_.number_of_states() == 2 ) {
-            throw std::runtime_error("ElemSrcTermsError::enthalpy_time_derivative requires BDF2 activation");
-          }
-          else {
-            suppAlg = new ScalarMassBDF2ElemSuppAlg(realm_, enthalpy_); 
-          }
+          suppAlg = new ScalarMassElemSuppAlg(realm_, enthalpy_); 
         }
         else {
-          throw std::runtime_error("EnthalpyEquationSystem::register_interior_algorithm limited supported element src terms");
+          throw std::runtime_error("EnthalpyElemSrcTerms::Error Source term is not supported: " + sourceName);
         }     
         theAlg->supplementalAlg_.push_back(suppAlg); 
       }
@@ -462,7 +457,7 @@ EnthalpyEquationSystem::register_interior_algorithm(
           suppAlg = new VariableDensityNonIsoEnthalpySrcNodeSuppAlg(realm_);
         }
         else {
-          throw std::runtime_error("EnthalpyEquationSystem::register_interior_algorithm limited supported nodal src terms");
+          throw std::runtime_error("EnthalpyNodalSrcTerms::Error Source term is not supported: " + sourceName);
         }
         // add supplemental algorithm
         theAlg->supplementalAlg_.push_back(suppAlg);

@@ -47,10 +47,12 @@ class PeriodicManager {
 
   ~PeriodicManager();
 
+  void initialize_error_count();
+
   void add_periodic_pair(
     stk::mesh::Part* meshPartsMaster,
     stk::mesh::Part* meshPartsSlave,
-    const double &searchTolerance,
+    const double &userSearchTolerance,
     const std::string &searchMethodName);
 
   void build_constraints();
@@ -68,7 +70,7 @@ class PeriodicManager {
     stk::mesh::FieldBase *,
     const unsigned &sizeOfField);
 
-  void create_ghosting_object();
+  void manage_ghosting_object();
 
   stk::mesh::Ghosting * get_ghosting_object();
 
@@ -89,6 +91,8 @@ class PeriodicManager {
      std::vector<double> &rotationVector);
 
   void remove_redundant_slave_nodes();
+
+  void finalize_search();
 
   void populate_search_key_vec(
     stk::mesh::Selector masterSelector,
@@ -111,11 +115,18 @@ class PeriodicManager {
     stk::mesh::FieldBase *theField);
 
   Realm &realm_;
+
+  /* manage tolerances; each block specifies a user tolerance */
   double searchTolerance_;
 
   stk::mesh::Ghosting *periodicGhosting_;
   const std::string ghostingName_;
   double timerSearch_;
+
+  // algorithm to find/exclude points when M/S does not match
+  int errorCount_;
+  int maxErrorCount_;
+  const double amplificationFactor_;
 
   // the data structures to hold master/slave information
   typedef std::pair<stk::mesh::Entity, stk::mesh::Entity> EntityPair;

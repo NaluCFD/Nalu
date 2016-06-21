@@ -80,8 +80,7 @@ ScalarNSOElemSuppAlg::ScalarNSOElemSuppAlg(
 
   // fixed size
   ws_dqdxScs_.resize(nDim_);
-  ws_vrtmScs_.resize(nDim_);
-  ws_rhovScs_.resize(nDim_);
+  ws_rhoVrtmScs_.resize(nDim_);
 }
 
 //--------------------------------------------------------------------------
@@ -221,8 +220,7 @@ ScalarNSOElemSuppAlg::elem_execute(
     // zero out vector
     for ( int i = 0; i < nDim_; ++i ) {
       ws_dqdxScs_[i] = 0.0;
-      ws_vrtmScs_[i] = 0.0;
-      ws_rhovScs_[i] = 0.0;
+      ws_rhoVrtmScs_[i] = 0.0;
     }
     
     // determine scs values of interest
@@ -250,8 +248,7 @@ ScalarNSOElemSuppAlg::elem_execute(
         const double dnj = ws_dndx_[offSetDnDx+j];
         const double vrtmj = ws_velocityRTM_[ic*nDim_+j];
         ws_dqdxScs_[j] += qIC*dnj;
-        ws_vrtmScs_[j] += vrtmj*r;
-        ws_rhovScs_[j] += r*rhoIC*vrtmj;
+        ws_rhoVrtmScs_[j] += r*rhoIC*vrtmj;
         dFdxAdv += rhoIC*vrtmj*qIC*dnj;
         dFdxDiff += diffFluxCoeffIC*ws_Gjq_[ic*nDim_+j]*dnj;
         dFdxCont += rhoIC*vrtmj*dnj;
@@ -264,7 +261,7 @@ ScalarNSOElemSuppAlg::elem_execute(
     // compute residual for NSO; linearized first
     double residualAlt = dFdxAdv - qNp1Scs*dFdxCont;
     for ( int j = 0; j < nDim_; ++j )
-      residualAlt -= ws_rhovScs_[j]*ws_dqdxScs_[j];
+      residualAlt -= ws_rhoVrtmScs_[j]*ws_dqdxScs_[j];
     
     // compute residual for NSO; pde-based second
     const double time = (gamma1_*rhoNp1Scs*qNp1Scs + gamma2_*rhoNScs*qNScs + gamma3_*rhoNm1Scs*qNm1Scs)/dt_;
@@ -273,15 +270,15 @@ ScalarNSOElemSuppAlg::elem_execute(
     // final form
     const double residual = residualAlt*altResFac_ + residualPde*om_altResFac_;
 
-    // demonominator for nu as well as terms for "upwind" nu
+    // denominator for nu as well as terms for "upwind" nu
     double gUpperMagGradQ = 0.0;
-    double uigLoweruj = 0.0;
+    double rhoVrtmiGLowerRhoVrtmj = 0.0;
     for ( int i = 0; i < nDim_; ++i ) {
       const double dqdxScsi = ws_dqdxScs_[i];
-      const double ui = ws_vrtmScs_[i];
+      const double rhoVrtmi = ws_rhoVrtmScs_[i];
       for ( int j = 0; j < nDim_; ++j ) {
         gUpperMagGradQ += dqdxScsi*p_gUpper[i*nDim_+j]*ws_dqdxScs_[j];
-        uigLoweruj += ui*p_gLower[i*nDim_+j]*ws_vrtmScs_[j];
+        rhoVrtmiGLowerRhoVrtmj += rhoVrtmi*p_gLower[i*nDim_+j]*ws_rhoVrtmScs_[j];
       }
     }      
     
@@ -290,7 +287,7 @@ ScalarNSOElemSuppAlg::elem_execute(
     
     // construct nu from first-order-like approach; SNL-internal write-up (eq 209)
     // for now, only include advection as full set of terms is too diffuse
-    const double nuFirstOrder = std::sqrt(rhoNp1Scs*rhoNp1Scs*uigLoweruj);
+    const double nuFirstOrder = std::sqrt(rhoVrtmiGLowerRhoVrtmj);
 
     // limit based on first order; Cupw_ is a fudge factor similar to Guermond's approach
     const double nu = std::min(Cupw_*nuFirstOrder, nuResidual);

@@ -43,6 +43,9 @@
 #include <ScalarGclNodeSuppAlg.h>
 #include <ScalarMassBackwardEulerNodeSuppAlg.h>
 #include <ScalarMassBDF2NodeSuppAlg.h>
+#include <ScalarMassElemSuppAlg.h>
+#include <ScalarKeNSOElemSuppAlg.h>
+#include <ScalarNSOElemSuppAlg.h>
 #include <Simulation.h>
 #include <SolutionOptions.h>
 #include <TimeIntegrator.h>
@@ -202,6 +205,7 @@ SpecificDissipationRateEquationSystem::register_interior_algorithm(
   }
 
   // solver; interior contribution (advection + diffusion)
+  bool useCMM = false;
   std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi
     = solverAlgDriver_->solverAlgMap_.find(algType);
   if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
@@ -213,6 +217,38 @@ SpecificDissipationRateEquationSystem::register_interior_algorithm(
       theAlg = new AssembleScalarElemSolverAlgorithm(realm_, part, this, sdr_, dwdx_, evisc_);
     }
     solverAlgDriver_->solverAlgMap_[algType] = theAlg;
+
+    // look for src
+    std::map<std::string, std::vector<std::string> >::iterator isrc 
+      = realm_.solutionOptions_->elemSrcTermsMap_.find("specific_dissipation_rate");
+    if ( isrc != realm_.solutionOptions_->elemSrcTermsMap_.end() ) {
+      std::vector<std::string> mapNameVec = isrc->second;
+      for (size_t k = 0; k < mapNameVec.size(); ++k ) {
+        std::string sourceName = mapNameVec[k];
+        SupplementalAlgorithm *suppAlg = NULL;
+        if (sourceName == "NSO_2ND_ALT" ) {
+          suppAlg = new ScalarNSOElemSuppAlg(realm_, sdr_, dwdx_, evisc_, 0.0, 1.0);
+        }
+        else if (sourceName == "NSO_4TH_ALT" ) {
+          suppAlg = new ScalarNSOElemSuppAlg(realm_, sdr_, dwdx_, evisc_, 1.0, 1.0);
+        }
+        else if (sourceName == "NSO_KE_2ND" ) {
+          const double turbSc = realm_.get_turb_schmidt(sdr_->name());
+          suppAlg = new ScalarKeNSOElemSuppAlg(realm_, sdr_, dwdx_, turbSc, 0.0);
+        }
+        else if (sourceName == "NSO_KE_4TH" ) {
+          const double turbSc = realm_.get_turb_schmidt(sdr_->name());
+          suppAlg = new ScalarKeNSOElemSuppAlg(realm_, sdr_, dwdx_, turbSc, 1.0);
+        }
+        else if (sourceName == "specific_dissipation_rate_time_derivative" ) {
+          useCMM = true;
+          suppAlg = new ScalarMassElemSuppAlg(realm_, sdr_);
+        }
+        else {
+          throw std::runtime_error("SpecificDissipationElemSrcTerms::Error Source term is not supported: " + sourceName);
+        }     
+      }
+    }
   }
   else {
     itsi->second->partVec_.push_back(part);
@@ -229,15 +265,17 @@ SpecificDissipationRateEquationSystem::register_interior_algorithm(
     solverAlgDriver_->solverAlgMap_[algMass] = theAlg;
 
     // now create the supplemental alg for mass term
-    if ( realm_.number_of_states() == 2 ) {
-      ScalarMassBackwardEulerNodeSuppAlg *theMass
-        = new ScalarMassBackwardEulerNodeSuppAlg(realm_, sdr_);
-      theAlg->supplementalAlg_.push_back(theMass);
-    }
-    else {
-      ScalarMassBDF2NodeSuppAlg *theMass
-        = new ScalarMassBDF2NodeSuppAlg(realm_, sdr_);
-      theAlg->supplementalAlg_.push_back(theMass);
+    if ( !useCMM ) {
+      if ( realm_.number_of_states() == 2 ) {
+        ScalarMassBackwardEulerNodeSuppAlg *theMass
+          = new ScalarMassBackwardEulerNodeSuppAlg(realm_, sdr_);
+        theAlg->supplementalAlg_.push_back(theMass);
+      }
+      else {
+        ScalarMassBDF2NodeSuppAlg *theMass
+          = new ScalarMassBDF2NodeSuppAlg(realm_, sdr_);
+        theAlg->supplementalAlg_.push_back(theMass);
+      }
     }
 
     // now create the src alg for sdr source
@@ -257,7 +295,7 @@ SpecificDissipationRateEquationSystem::register_interior_algorithm(
           suppAlg = new ScalarGclNodeSuppAlg(sdr_,realm_);
         }
         else {
-          throw std::runtime_error("SpecificDissipationRateEquationSystem::only gcl source term(s) are supported");
+          throw std::runtime_error("SpecificDissipationRateNodalSrcTerms::Error Source term is not supported: " + sourceName);
         }
         // add supplemental algorithm
         theAlg->supplementalAlg_.push_back(suppAlg);

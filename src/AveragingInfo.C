@@ -25,7 +25,9 @@ namespace nalu{
 //--------------------------------------------------------------------------
 AveragingInfo::AveragingInfo() 
 : computeReynoldsStress_(false),
-  computeTke_(false)
+  computeTke_(false),
+  computeFavreStress_(false),
+  computeFavreTke_(false)
 {
   // does nothing
 }

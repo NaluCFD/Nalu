@@ -61,7 +61,7 @@ public:
   const double fourthFac_;
 
   // fixed space
-  std::vector<double> ws_vrtmScs_;
+  std::vector<double> ws_rhoVrtmScs_;
   std::vector<double> ws_uNp1Scs_;
   std::vector<double> ws_dpdxScs_;
   std::vector<double> ws_GjpScs_;

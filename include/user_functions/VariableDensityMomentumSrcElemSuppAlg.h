@@ -6,8 +6,8 @@
 /*------------------------------------------------------------------------*/
 
 
-#ifndef ScalarMassBDF2ElemSuppAlg_h
-#define ScalarMassBDF2ElemSuppAlg_h
+#ifndef VariableDensityMomentumSrcElemSuppAlg_h
+#define VariableDensityMomentumSrcElemSuppAlg_h
 
 #include <SupplementalAlgorithm.h>
 #include <FieldTypeDef.h>
@@ -21,15 +21,14 @@ namespace nalu{
 class Realm;
 class MasterElement;
 
-class ScalarMassBDF2ElemSuppAlg : public SupplementalAlgorithm
+class VariableDensityMomentumSrcElemSuppAlg : public SupplementalAlgorithm
 {
 public:
 
-  ScalarMassBDF2ElemSuppAlg(
-    Realm &realm,
-    ScalarFieldType *scalarQ);
+  VariableDensityMomentumSrcElemSuppAlg(
+    Realm &realm);
 
-  virtual ~ScalarMassBDF2ElemSuppAlg() {}
+  virtual ~VariableDensityMomentumSrcElemSuppAlg() {}
 
   virtual void setup();
 
@@ -46,29 +45,32 @@ public:
   
   const stk::mesh::BulkData *bulkData_;
 
-  ScalarFieldType *scalarQNm1_;
-  ScalarFieldType *scalarQN_;
-  ScalarFieldType *scalarQNp1_;
-  ScalarFieldType *densityNm1_;
-  ScalarFieldType *densityN_;
-  ScalarFieldType *densityNp1_;
   VectorFieldType *coordinates_;
 
-  double dt_;
-  double gamma1_;
-  double gamma2_;
-  double gamma3_;
   const int nDim_;
+  const double unot_;
+  const double vnot_;
+  const double wnot_;
+  const double pnot_;
+  const double znot_;
+  const double a_;
+  const double amf_;
+  const double visc_;
+  const double rhoP_;
+  const double rhoS_;
+  const double pi_;
+  const double twoThirds_;
+  double rhoRef_;
+  double gx_;
+  double gy_;
+  double gz_;
   const bool useShifted_;
 
-  // scratch space
+  // scratch space (at constructor)
+  std::vector<double> scvCoords_;
+  std::vector<double> srcXi_;
+  // at elem_resize
   std::vector<double> ws_shape_function_;
-  std::vector<double> ws_qNm1_;
-  std::vector<double> ws_qN_;
-  std::vector<double> ws_qNp1_;
-  std::vector<double> ws_rhoNm1_;
-  std::vector<double> ws_rhoN_;
-  std::vector<double> ws_rhoNp1_;
   std::vector<double> ws_coordinates_;
   std::vector<double> ws_scv_volume_;
 };

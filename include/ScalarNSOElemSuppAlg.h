@@ -75,8 +75,7 @@ public:
 
   // fixed space
   std::vector<double> ws_dqdxScs_;
-  std::vector<double> ws_vrtmScs_;
-  std::vector<double> ws_rhovScs_;
+  std::vector<double> ws_rhoVrtmScs_;
 
   // scratch space; geometry
   std::vector<double> ws_scs_areav_;

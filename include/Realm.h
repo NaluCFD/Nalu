@@ -73,6 +73,7 @@ class Transfer;
 class SolutionNormPostProcessing;
 class TurbulenceAveragingPostProcessing;
 class DataProbePostProcessing;
+class ActuatorLine;
 
 class Realm {
  public:
@@ -241,7 +242,7 @@ class Realm {
   virtual void populate_initial_condition();
   virtual void populate_boundary_data();
   virtual void boundary_data_to_state_data();
-  virtual void populate_variables_from_input();
+  virtual double populate_variables_from_input(const double currentTime);
   virtual double populate_restart( double &timeStepNm1, int &timeStepCount);
   virtual void populate_derived_quantities();
   virtual void evaluate_properties();
@@ -346,6 +347,9 @@ class Realm {
   void push_equation_to_systems(
     EquationSystem *eqSystem);
 
+  // provide all of the physics target names
+  const std::vector<std::string> &get_physics_target_names();
+
   Realms& realms_;
 
   std::string name_;
@@ -382,8 +386,6 @@ class Realm {
   // for element, side, edge, node rank (node not used)
   stk::mesh::Selector adapterSelector_[4];
   Teuchos::RCP<stk::mesh::Selector> activePartForIO_;
-  AlgorithmDriver *postConvergedAlgDriver_;
-  std::vector<Algorithm *> postConvergedAlg_;
 
   TimeIntegrator *timeIntegrator_;
 
@@ -405,6 +407,7 @@ class Realm {
   SolutionNormPostProcessing *solutionNormPostProcessing_;
   TurbulenceAveragingPostProcessing *turbulenceAveragingPostProcessing_;
   DataProbePostProcessing *dataProbePostProcessing_;
+  ActuatorLine *actuatorLine_;
 
   std::vector<Algorithm *> propertyAlg_;
   std::map<PropertyIdentifier, ScalarFieldType *> propertyMap_;

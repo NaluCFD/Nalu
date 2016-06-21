@@ -168,9 +168,9 @@ TimeIntegrator::integrate_realm()
     (*ii)->boundary_data_to_state_data();
   }
 
-  // read any fields from input file
+  // read any fields from input file; restoration time returned
   for ( ii = realmVec_.begin(); ii!=realmVec_.end(); ++ii) {
-    (*ii)->populate_variables_from_input();
+    currentTime_ = (*ii)->populate_variables_from_input(currentTime_);
   }
 
   // possible restart; need to extract current time (max wins)
@@ -181,7 +181,7 @@ TimeIntegrator::integrate_realm()
   // populate data from transfer
   for ( ii = realmVec_.begin(); ii!=realmVec_.end(); ++ii) {
     (*ii)->process_initialization_transfer();
-    // might erase the initialization Realm since it has performed its duty (requires shared pointers)
+    // FIXME: might erase the initialization Realm since it has performed its duty (requires shared pointers)
   }
   
   // nm1 dt from possible restart always prevails; input file overrides for fixed time stepping
@@ -303,7 +303,7 @@ TimeIntegrator::integrate_realm()
   // inform the user that the simulation is complete
   NaluEnv::self().naluOutputP0() << "*******************************************************" << std::endl;
   NaluEnv::self().naluOutputP0() << "Simulation Shall Complete: time/timestep: " 
-                                 << totalSimTime_ << "/" << timeStepCount_ << std::endl;
+                                 << currentTime_ << "/" << timeStepCount_ << std::endl;
   NaluEnv::self().naluOutputP0() << "*******************************************************" << std::endl;
   
   // dump time

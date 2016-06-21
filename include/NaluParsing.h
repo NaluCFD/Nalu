@@ -295,7 +295,7 @@ struct PeriodicUserData : public UserData {
 
   PeriodicUserData()
     : UserData(),
-      searchTolerance_(1.0e-16),
+      searchTolerance_(1.0e-8),
       searchMethodName_("na")
   {}
 };

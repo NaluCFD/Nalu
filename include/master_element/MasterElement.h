@@ -160,6 +160,8 @@ public:
     throw std::runtime_error("edgeAlignedArea not implement"); }
 
   double isoparametric_mapping(const double b, const double a, const double xi) const;
+  bool within_tolerance(const double & val, const double & tol);
+  double vector_norm_sq(const double * vect, int len);
 
   int nDim_;
   int nodesPerElement_;
@@ -309,9 +311,7 @@ public:
   const double * edgeAlignedArea();
   
   // helper
-  double vector_norm( const double * vect, int len );
   double parametric_distance(const std::vector<double> &x);
-  bool within_tol( const double & val, const double & tol );
 };
 
 class HexahedralP2Element : public MasterElement
@@ -778,8 +778,6 @@ public:
     double* shape_fcn);
 
   // helper functions to isInElement
-  bool within_tolerance( const double & val, const double & tol );
-  double vector_norm_sq( const double *theVector );
   double parametric_distance( const double X, const double Y);
   double parametric_distance( const std::vector<double> &x);
 };
@@ -1228,10 +1226,6 @@ public:
     const double *isoParCoord,
     double *shpfc);
 
-  bool within_tol( const double & val, const double & tol );
-  
-  double vector_norm2( const double * vect, int len );
-
   void non_unit_face_normal(
     const double * par_coord,
     const double * elem_nodal_coor,
@@ -1257,6 +1251,17 @@ public:
     double *areav,
     double * error );
 
+  double isInElement(
+    const double *elemNodalCoord,
+    const double *pointCoord,
+    double *isoParCoord);
+
+  void interpolatePoint(
+    const int &nComp,
+    const double *isoParCoord,
+    const double *field,
+    double *result);
+
 private:
   void set_interior_info();
   void eval_shape_functions_at_ips() final;
@@ -1281,6 +1286,13 @@ private:
     const double *par_coord,
     double* shape_fcn
   ) const;
+
+  void non_unit_face_normal(
+    const double *isoParCoord,
+    const double *elemNodalCoord,
+    double *normalVector);
+
+  double parametric_distance(const std::vector<double> &x);
 
   std::vector<double> ipWeight_;
   const int surfaceDimension_;

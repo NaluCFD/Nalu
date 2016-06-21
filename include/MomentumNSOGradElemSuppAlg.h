@@ -6,8 +6,8 @@
 /*------------------------------------------------------------------------*/
 
 
-#ifndef MomentumMassBackwardEulerElemSuppAlg_h
-#define MomentumMassBackwardEulerElemSuppAlg_h
+#ifndef MomentumNSOGradElemSuppAlg_h
+#define MomentumNSOGradElemSuppAlg_h
 
 #include <SupplementalAlgorithm.h>
 #include <FieldTypeDef.h>
@@ -21,14 +21,17 @@ namespace nalu{
 class Realm;
 class MasterElement;
 
-class MomentumMassBackwardEulerElemSuppAlg : public SupplementalAlgorithm
+class MomentumNSOGradElemSuppAlg : public SupplementalAlgorithm
 {
 public:
 
-  MomentumMassBackwardEulerElemSuppAlg(
-    Realm &realm);
+  MomentumNSOGradElemSuppAlg(
+    Realm &realm,
+    VectorFieldType *velocity,
+    GenericFieldType *Gju,
+    const double fourthFac);
 
-  virtual ~MomentumMassBackwardEulerElemSuppAlg() {}
+  virtual ~MomentumNSOGradElemSuppAlg() {}
 
   virtual void setup();
 
@@ -45,30 +48,42 @@ public:
   
   const stk::mesh::BulkData *bulkData_;
 
-  VectorFieldType *velocityN_;
   VectorFieldType *velocityNp1_;
-  ScalarFieldType *densityN_;
   ScalarFieldType *densityNp1_;
+  ScalarFieldType *pressure_;
   VectorFieldType *Gjp_;
+  VectorFieldType *velocityRTM_;
   VectorFieldType *coordinates_;
+  GenericFieldType *Gju_;
 
-  double dt_;
   const int nDim_;
-  const bool useShifted_;
+  const double Cupw_;
+  const double small_;
+  const double fourthFac_;
 
-  // scratch space
-  std::vector<double> uNScv_;
-  std::vector<double> uNp1Scv_;
-  std::vector<double> GjpScv_;
+  // fixed space
+  std::vector<double> ws_dukdxScs_;
+  std::vector<double> ws_rhoVrtmScs_;
+  std::vector<double> ws_dpdxScs_;
+  std::vector<double> ws_GjpScs_;
 
+  // scratch space; geometry
+  std::vector<double> ws_scs_areav_;
+  std::vector<double> ws_dndx_;
+  std::vector<double> ws_deriv_;
+  std::vector<double> ws_det_j_;
   std::vector<double> ws_shape_function_;
-  std::vector<double> ws_uN_;
+  std::vector<double> ws_gUpper_;
+  std::vector<double> ws_gLower_;
+
+  // scratch space; fields
   std::vector<double> ws_uNp1_;
-  std::vector<double> ws_Gjp_;
-  std::vector<double> ws_rhoN_;
   std::vector<double> ws_rhoNp1_;
+  std::vector<double> ws_pressure_;
+  std::vector<double> ws_Gjp_;
+  std::vector<double> ws_velocityRTM_;
   std::vector<double> ws_coordinates_;
-  std::vector<double> ws_scv_volume_;
+  std::vector<double> ws_Gju_;
 };
 
 } // namespace nalu

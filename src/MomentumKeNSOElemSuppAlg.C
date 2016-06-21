@@ -65,7 +65,7 @@ MomentumKeNSOElemSuppAlg::MomentumKeNSOElemSuppAlg(
   Gjp_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "dpdx");
   
   // fixed size
-  ws_vrtmScs_.resize(nDim_);
+  ws_rhoVrtmScs_.resize(nDim_);
   ws_uNp1Scs_.resize(nDim_);
   ws_dpdxScs_.resize(nDim_);
   ws_GjpScs_.resize(nDim_);
@@ -199,12 +199,9 @@ MomentumKeNSOElemSuppAlg::elem_execute(
     const double *p_gUpper = &ws_gUpper_[nDim_*nDim_*ip];
     const double *p_gLower = &ws_gLower_[nDim_*nDim_*ip];
 
-    // zero out; scalars that prevail over all components
-    double rhoNp1Scs = 0.0;
-
-    // zero out vector
+    // zero out vector that prevail over all components
     for ( int i = 0; i < nDim_; ++i ) {
-      ws_vrtmScs_[i] = 0.0;
+      ws_rhoVrtmScs_[i] = 0.0;
       ws_uNp1Scs_[i] = 0.0;
       ws_dpdxScs_[i] = 0.0;
       ws_GjpScs_[i] = 0.0;
@@ -220,13 +217,10 @@ MomentumKeNSOElemSuppAlg::elem_execute(
 
       const int icNdim = ic*nDim_;
       
-      // scalar
-      rhoNp1Scs += r*ws_rhoNp1_[ic];
-      
       // compute scs derivatives and flux derivative
       const int offSetDnDx = nDim_*nodesPerElement*ip + icNdim;
       const double pressureIC = ws_pressure_[ic];
-      
+      const double rhoIC = ws_rhoNp1_[ic];
       const double keIC = ws_ke_[ic];
       for ( int j = 0; j < nDim_; ++j ) {
         const double dnj = ws_dndx_[offSetDnDx+j];
@@ -234,7 +228,7 @@ MomentumKeNSOElemSuppAlg::elem_execute(
         const double uNp1 = ws_velocityNp1_[ic*nDim_+j];
         const double Gjp = ws_Gjp_[ic*nDim_+j];
      
-        ws_vrtmScs_[j] += r*vrtmj;
+        ws_rhoVrtmScs_[j] += r*rhoIC*vrtmj;
         ws_uNp1Scs_[j] += r*uNp1;
         ws_dpdxScs_[j] += pressureIC*dnj;
         ws_GjpScs_[j] += r*Gjp;
@@ -247,15 +241,15 @@ MomentumKeNSOElemSuppAlg::elem_execute(
     for ( int j = 0; j < nDim_; ++j )
       keResidual += ws_uNp1Scs_[j]*(ws_dpdxScs_[j] - ws_GjpScs_[j])/2.0;
 
-    // demonominator for nu as well as terms for "upwind" nu
+    // denominator for nu as well as terms for "upwind" nu
     double gUpperMagGradQ = 0.0;
-    double uigLoweruj = 0.0;
+    double rhoVrtmiGLowerRhoVrtmj = 0.0;
     for ( int i = 0; i < nDim_; ++i ) {
       const double dkedxScsi = ws_dkedxScs_[i];
-      const double vrtmi = ws_vrtmScs_[i];
+      const double rhoVrtmi = ws_rhoVrtmScs_[i];
       for ( int j = 0; j < nDim_; ++j ) {
         gUpperMagGradQ += dkedxScsi*p_gUpper[i*nDim_+j]*ws_dkedxScs_[j];
-        uigLoweruj += vrtmi*p_gLower[i*nDim_+j]*ws_vrtmScs_[j];
+        rhoVrtmiGLowerRhoVrtmj += rhoVrtmi*p_gLower[i*nDim_+j]*ws_rhoVrtmScs_[j];
       }
     }      
     
@@ -264,7 +258,7 @@ MomentumKeNSOElemSuppAlg::elem_execute(
     
     // construct nu from first-order-like approach; SNL-internal write-up (eq 209)
     // for now, only include advection as full set of terms is too diffuse
-    const double nuFirstOrder = std::sqrt(rhoNp1Scs*rhoNp1Scs*uigLoweruj);
+    const double nuFirstOrder = std::sqrt(rhoVrtmiGLowerRhoVrtmj);
 
     // limit based on first order; Cupw_ is a fudge factor similar to Guermond's approach
     const double nu = std::min(Cupw_*nuFirstOrder, nuResidual);

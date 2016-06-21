@@ -56,7 +56,7 @@
 #include <ContactManager.h>
 #include <ContinuityMassBackwardEulerNodeSuppAlg.h>
 #include <ContinuityMassBDF2NodeSuppAlg.h>
-#include <ContinuityMassBDF2ElemSuppAlg.h>
+#include <ContinuityMassElemSuppAlg.h>
 #include <ContinuityAdvElemSuppAlg.h>
 #include <CopyFieldAlgorithm.h>
 #include <DirichletBC.h>
@@ -71,17 +71,18 @@
 #include <LinearSolvers.h>
 #include <LinearSystem.h>
 #include <master_element/MasterElement.h>
+#include <MomentumActuatorLineSrcNodeSuppAlg.h>
 #include <MomentumBuoyancySrcNodeSuppAlg.h>
 #include <MomentumBuoyancySrcElemSuppAlg.h>
 #include <MomentumBoussinesqSrcNodeSuppAlg.h>
 #include <MomentumBodyForceSrcNodeSuppAlg.h>
 #include <MomentumGclSrcNodeSuppAlg.h>
 #include <MomentumMassBackwardEulerNodeSuppAlg.h>
-#include <MomentumMassBackwardEulerElemSuppAlg.h>
 #include <MomentumMassBDF2NodeSuppAlg.h>
-#include <MomentumMassBDF2ElemSuppAlg.h>
+#include <MomentumMassElemSuppAlg.h>
 #include <MomentumKeNSOElemSuppAlg.h>
 #include <MomentumNSOElemSuppAlg.h>
+#include <MomentumNSOGradElemSuppAlg.h>
 #include <MomentumAdvDiffElemSuppAlg.h>
 #include <NaluEnv.h>
 #include <NaluParsing.h>
@@ -119,7 +120,9 @@
 
 #include <user_functions/VariableDensityVelocityAuxFunction.h>
 #include <user_functions/VariableDensityPressureAuxFunction.h>
+#include <user_functions/VariableDensityContinuitySrcElemSuppAlg.h>
 #include <user_functions/VariableDensityContinuitySrcNodeSuppAlg.h>
+#include <user_functions/VariableDensityMomentumSrcElemSuppAlg.h>
 #include <user_functions/VariableDensityMomentumSrcNodeSuppAlg.h>
 
 #include <user_functions/VariableDensityNonIsoContinuitySrcNodeSuppAlg.h>
@@ -909,7 +912,17 @@ MomentumEquationSystem::register_nodal_fields(
   if (managePNG_ ) {
     // create temp vector field for duidx that will hold the active dudx
     VectorFieldType *duidx =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "duidx"));
-      stk::mesh::put_field(*duidx, *part, nDim);
+    stk::mesh::put_field(*duidx, *part, nDim);
+  }
+
+  // speciality source
+  if ( NULL != realm_.actuatorLine_ ) {
+    VectorFieldType *actuatorLineSource 
+      =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "actuator_line_source"));
+    ScalarFieldType *actuatorLineSourceLHS
+      =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "actuator_line_source_lhs"));
+    stk::mesh::put_field(*actuatorLineSource, *part);
+    stk::mesh::put_field(*actuatorLineSourceLHS, *part);
   }
 }
 
@@ -1007,15 +1020,13 @@ MomentumEquationSystem::register_interior_algorithm(
         SupplementalAlgorithm *suppAlg = NULL;
         if (sourceName == "momentum_time_derivative" ) {
           useCMM = true;
-          if ( realm_.number_of_states() == 2 ) {
-            suppAlg = new MomentumMassBackwardEulerElemSuppAlg(realm_);
-          }
-          else {
-            suppAlg = new MomentumMassBDF2ElemSuppAlg(realm_);
-          } 
+          suppAlg = new MomentumMassElemSuppAlg(realm_);
         }
         else if (sourceName == "SteadyTaylorVortex" ) {
           suppAlg = new SteadyTaylorVortexMomentumSrcElemSuppAlg(realm_);
+        }
+        else if (sourceName == "VariableDensity" ) {
+          suppAlg = new VariableDensityMomentumSrcElemSuppAlg(realm_);
         }
         else if (sourceName == "NSO_2ND" ) {
           suppAlg = new MomentumNSOElemSuppAlg(realm_, velocity_, dudx_, realm_.is_turbulent() ? evisc_ : visc_, 0.0, 0.0);
@@ -1035,6 +1046,12 @@ MomentumEquationSystem::register_interior_algorithm(
         else if (sourceName == "NSO_KE_4TH" ) {
           suppAlg = new MomentumKeNSOElemSuppAlg(realm_, velocity_, dudx_, 1.0);
         }
+        else if (sourceName == "NSO_GRAD_2ND" ) {
+          suppAlg = new MomentumNSOGradElemSuppAlg(realm_, velocity_, dudx_, 0.0);
+        }
+        else if (sourceName == "NSO_GRAD_4TH" ) {
+          suppAlg = new MomentumNSOGradElemSuppAlg(realm_, velocity_, dudx_, 1.0);
+        }
         else if (sourceName == "buoyancy" ) {
           suppAlg = new MomentumBuoyancySrcElemSuppAlg(realm_);
         }
@@ -1042,7 +1059,7 @@ MomentumEquationSystem::register_interior_algorithm(
           suppAlg = new MomentumAdvDiffElemSuppAlg(realm_, velocity_, realm_.is_turbulent() ? evisc_ : visc_);
         }
         else {
-          throw std::runtime_error("ElemSrcTermsError::only support CMM, nso_2nd, nso_4th, buoyancy, advection_diffusion and SteadyTaylorVortex");
+          throw std::runtime_error("MomentumElemSrcTerms::Error Source term is not supported: " + sourceName);
         }
         theSolverAlg->supplementalAlg_.push_back(suppAlg);
       }
@@ -1112,8 +1129,11 @@ MomentumEquationSystem::register_interior_algorithm(
         else if (sourceName == "VariableDensityNonIso" ) {
           suppAlg = new VariableDensityNonIsoMomentumSrcNodeSuppAlg(realm_);
         }
+        else if ( sourceName == "actuator_line") {
+          suppAlg = new MomentumActuatorLineSrcNodeSuppAlg(realm_);
+        }
         else {
-          throw std::runtime_error("MomentumEquationSystem::only buoyancy, buoyancy_boussinesq, body force or gcl are supported");
+          throw std::runtime_error("MomentumNodalSrcTerms::Error Source term is not supported: " + sourceName);
         }
         theAlg->supplementalAlg_.push_back(suppAlg);
       }
@@ -2097,14 +2117,17 @@ ContinuityEquationSystem::register_interior_algorithm(
           if (sourceName == "SteadyTaylorVortex" ) {
             suppAlg = new SteadyTaylorVortexContinuitySrcElemSuppAlg(realm_);
           }
+          else if ( sourceName == "VariableDensity" ) {
+            suppAlg = new VariableDensityContinuitySrcElemSuppAlg(realm_);
+          }
           else if (sourceName == "density_time_derivative" ) {
-            suppAlg = new ContinuityMassBDF2ElemSuppAlg(realm_);
+            suppAlg = new ContinuityMassElemSuppAlg(realm_);
           }
           else if (sourceName == "advection" ) {
             suppAlg = new ContinuityAdvElemSuppAlg(realm_);
           }
           else {
-            throw std::runtime_error("ElemSrcTermsError::only support SteadyTaylorVortex, density_time_derivative and advection");
+            throw std::runtime_error("ContinuityElemSrcTerms::Error Source term is not supported: " + sourceName);
           }
           theSolverAlg->supplementalAlg_.push_back(suppAlg);
         }
@@ -2157,7 +2180,7 @@ ContinuityEquationSystem::register_interior_algorithm(
           suppAlg = new VariableDensityNonIsoContinuitySrcNodeSuppAlg(realm_);
         }
         else {
-          throw std::runtime_error("ContinuityEquationSystem::src; limited source terms supported");
+          throw std::runtime_error("ContinuityNodalSrcTerms::Error Source term is not supported: " + sourceName);
         }
         // add supplemental algorithm
         theAlg->supplementalAlg_.push_back(suppAlg);
