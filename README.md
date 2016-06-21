@@ -1,4 +1,4 @@
-![NaluLogo](https://github.com/spdomin/Nalu/wiki/images/naluLogoSD2c.jpg "Feel free to use this logo; designed by SRDomino")
+![NaluLogo](https://github.com/spdomin/Nalu/wiki/images/naluLowMach.jpg "Feel free to use this logo; designed by SRDomino")
 
 Nalu, a generalized unstructured massively parallel low Mach flow code designed to support energy applications of interest.
 
