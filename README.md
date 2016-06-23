@@ -18,6 +18,8 @@ When disseminating technical work that includes Nalu simulations, please referen
 
 	Domino, S. "Sierra Low Mach Module: Nalu Theory Manual 1.0", SAND2015-3107W, Sandia National Laboratories Unclassified Unlimited Release (UUR), 2015. https://github.com/spdomin/NaluDoc
 	
+This laTex document can be found under the NaluDoc [repository](https://github.com/spdomin/NaluDoc/tree/master/theory)
+
 ### Building Nalu
 
 Detailed build instructions for Nalu and the accompanied required TPLs, e.g., Trilinos, YAML, etc.,
