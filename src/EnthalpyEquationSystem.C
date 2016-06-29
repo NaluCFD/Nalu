@@ -12,6 +12,7 @@
 #include <AssembleScalarEdgeContactSolverAlgorithm.h>
 #include <AssembleScalarEdgeOpenSolverAlgorithm.h>
 #include <AssembleScalarEdgeSolverAlgorithm.h>
+#include <AssembleScalarEigenEdgeSolverAlgorithm.h>
 #include <AssembleScalarElemSolverAlgorithm.h>
 #include <AssembleScalarElemOpenSolverAlgorithm.h>
 #include <AssembleScalarNonConformalSolverAlgorithm.h>
@@ -355,7 +356,11 @@ EnthalpyEquationSystem::register_interior_algorithm(
   if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
     SolverAlgorithm *theAlg = NULL;
     if ( realm_.realmUsesEdges_ ) {
-      theAlg = new AssembleScalarEdgeSolverAlgorithm(realm_, part, this, enthalpy_, dhdx_, evisc_);
+      if ( !realm_.solutionOptions_->eigenvaluePerturb_ )
+        theAlg = new AssembleScalarEdgeSolverAlgorithm(realm_, part, this, enthalpy_, dhdx_, evisc_);
+      else
+        theAlg = new AssembleScalarEigenEdgeSolverAlgorithm(realm_, part, this, enthalpy_, dhdx_, thermalCond_, specHeat_,
+                                                            tvisc_, realm_.get_turb_prandtl(enthalpy_->name()));
     }
     else {
       theAlg = new AssembleScalarElemSolverAlgorithm(realm_, part, this, enthalpy_, dhdx_, evisc_);

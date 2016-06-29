@@ -75,7 +75,10 @@ SolutionOptions::SolutionOptions()
     inputVariablesRestorationTime_(1.0e8),
     inputVariablesInterpolateInTime_(false),
     consistentMMPngDefault_(false),
-    useConsolidatedSolverAlg_(false)
+    useConsolidatedSolverAlg_(false),
+    eigenvaluePerturb_(false),
+    eigenvaluePerturbDelta_(0.0),
+    eigenvaluePerturbBiasTowards_(3)
 {
   // nothing to do
 }
@@ -141,6 +144,11 @@ SolutionOptions::load(const YAML::Node & y_node)
     // check for consolidated solver alg (AssembleSolver)
     get_if_present(*y_solution_options, "use_consolidated_solver_algorithm", useConsolidatedSolverAlg_, useConsolidatedSolverAlg_);
 
+    // eigenvalue purturbation; over all dofs...
+    get_if_present(*y_solution_options, "eigenvalue_perturbation", eigenvaluePerturb_);
+    get_if_present(*y_solution_options, "eigenvalue_perturbation_delta", eigenvaluePerturbDelta_);
+    get_if_present(*y_solution_options, "eigenvalue_perturbation_bias_towards", eigenvaluePerturbBiasTowards_);
+    
     // extract turbulence model; would be nice if we could parse an enum..
     std::string specifiedTurbModel;
     std::string defaultTurbModel = "laminar";

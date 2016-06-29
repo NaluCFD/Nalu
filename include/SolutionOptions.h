@@ -91,6 +91,9 @@ public:
   bool inputVariablesInterpolateInTime_;
   bool consistentMMPngDefault_;
   bool useConsolidatedSolverAlg_;
+  bool eigenvaluePerturb_;
+  double eigenvaluePerturbDelta_;
+  int eigenvaluePerturbBiasTowards_;
 
   // turbulence model coeffs
   std::map<TurbulenceModelConstant, double> turbModelConstantMap_;
