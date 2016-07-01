@@ -78,7 +78,8 @@ SolutionOptions::SolutionOptions()
     useConsolidatedSolverAlg_(false),
     eigenvaluePerturb_(false),
     eigenvaluePerturbDelta_(0.0),
-    eigenvaluePerturbBiasTowards_(3)
+    eigenvaluePerturbBiasTowards_(3),
+    eigenvaluePerturbTurbKe_(0.0)
 {
   // nothing to do
 }
@@ -148,6 +149,7 @@ SolutionOptions::load(const YAML::Node & y_node)
     get_if_present(*y_solution_options, "eigenvalue_perturbation", eigenvaluePerturb_);
     get_if_present(*y_solution_options, "eigenvalue_perturbation_delta", eigenvaluePerturbDelta_);
     get_if_present(*y_solution_options, "eigenvalue_perturbation_bias_towards", eigenvaluePerturbBiasTowards_);
+    get_if_present(*y_solution_options, "eigenvalue_perturbation_turbulent_ke", eigenvaluePerturbTurbKe_);
     
     // extract turbulence model; would be nice if we could parse an enum..
     std::string specifiedTurbModel;

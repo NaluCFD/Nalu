@@ -65,8 +65,8 @@ AssembleScalarEigenEdgeSolverAlgorithm::AssembleScalarEigenEdgeSolverAlgorithm(
     dudx_(NULL),
     pecletFunction_(NULL),
     cGGDH_(3.0/2.0*realm_.get_turb_model_constant(TM_cMu)/turbSigma),
-    cEps_(realm_.get_turb_model_constant(TM_cEps)),
-    deltaB_(realm_.solutionOptions_->eigenvaluePerturbDelta_)
+    deltaB_(realm_.solutionOptions_->eigenvaluePerturbDelta_),
+    perturbTurbKe_(realm_.solutionOptions_->eigenvaluePerturbTurbKe_)
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -105,8 +105,9 @@ AssembleScalarEigenEdgeSolverAlgorithm::AssembleScalarEigenEdgeSolverAlgorithm(
     BinvXt_[2] = 0.0;
   }
 
-  NaluEnv::self().naluOutputP0() << "Perturbation model active: towards/delta: " 
-                                 << biasTowards << "/" << deltaB_ << std::endl;
+  NaluEnv::self().naluOutputP0() << "Perturbation model active: towards/delta/tke: " 
+                                 << biasTowards << "/" << deltaB_ 
+                                 << "/" << perturbTurbKe_ << std::endl;
 }
 
 //--------------------------------------------------------------------------
@@ -340,9 +341,7 @@ AssembleScalarEigenEdgeSolverAlgorithm::execute()
       for ( int i = 0; i < nDim; ++i ) {
         for ( int j = 0; j < nDim; ++j ) {
           const double divUTerm = ( i == j ) ? 2.0/3.0*turbNuIp*divU*includeDivU_ : 0.0;
-          R_[i][j] = (-turbNuIp*(duidxj_[i][j] + duidxj_[j][i]) + divUTerm )/(2.0*turbKeIp);
-          // copy to scracth
-          Rs_[i][j] = R_[i][j];
+          R_[i][j] = -turbNuIp*((duidxj_[i][j] + duidxj_[j][i]) - divUTerm)/(2.0*turbKeIp);
         }
       }
       
@@ -358,12 +357,13 @@ AssembleScalarEigenEdgeSolverAlgorithm::execute()
       // form new stress
       form_perturbed_stress(D_, Q_, R_);
 
-      // remove normalization; add in tke
+      // remove normalization; add in tke (possibly perturbed)
+      const double turbKeIpPert = std::max(turbKeIp*(1.0 + perturbTurbKe_), 1.0e-16);
       for ( int i = 0; i < nDim; ++i ) {
         const int offSet = nDim*i;
         for ( int j = 0; j < nDim; ++j ) {
           const double fac = ( i == j ) ? 1.0/3.0 : 0.0;
-          R_[i][j] = (R_[i][j] + fac)*2.0*turbKeIp;
+          R_[i][j] = (R_[i][j] + fac)*2.0*turbKeIpPert;
         }
       }
       // R is now the perturbed Reynolds stress; rho*R is ready to be used in flux

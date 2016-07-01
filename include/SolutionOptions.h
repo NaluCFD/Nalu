@@ -94,6 +94,7 @@ public:
   bool eigenvaluePerturb_;
   double eigenvaluePerturbDelta_;
   int eigenvaluePerturbBiasTowards_;
+  double eigenvaluePerturbTurbKe_;
 
   // turbulence model coeffs
   std::map<TurbulenceModelConstant, double> turbModelConstantMap_;

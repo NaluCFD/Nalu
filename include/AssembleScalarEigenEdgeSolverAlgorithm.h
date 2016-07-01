@@ -78,9 +78,11 @@ public:
   // peclect function specifics
   PecletFunction * pecletFunction_;
 
+  // constants and perturbation from user
   const double cGGDH_;
-  const double cEps_;  
   const double deltaB_;
+  const double perturbTurbKe_;
+  double BinvXt_[3];
 
   // fixed size
   double duidxj_[3][3];
@@ -88,9 +90,7 @@ public:
   double R_[3][3];
   double D_[3][3];
   double Q_[3][3];
-  double Rs_[3][3];
   int rowMap_[3];
-  double BinvXt_[3];
 };
 
 } // namespace nalu
