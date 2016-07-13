@@ -340,13 +340,13 @@ AssembleScalarEigenEdgeSolverAlgorithm::execute()
       // compute the normalized Reynolds stress
       for ( int i = 0; i < nDim; ++i ) {
         for ( int j = 0; j < nDim; ++j ) {
-          const double divUTerm = ( i == j ) ? 2.0/3.0*turbNuIp*divU*includeDivU_ : 0.0;
-          R_[i][j] = -turbNuIp*((duidxj_[i][j] + duidxj_[j][i]) - divUTerm)/(2.0*turbKeIp);
+          const double divUTerm = ( i == j ) ? 2.0/3.0*divU*includeDivU_ : 0.0;
+          b_[i][j] = (-turbNuIp*(duidxj_[i][j] + duidxj_[j][i] - divUTerm))/(2.0*turbKeIp);
         }
       }
       
       // perform the decomposition
-      diagonalize(R_, Q_, D_);
+      diagonalize(b_, Q_, D_);
 
       // sort D
       sort(D_);
@@ -355,15 +355,14 @@ AssembleScalarEigenEdgeSolverAlgorithm::execute()
       perturb(D_);
 
       // form new stress
-      form_perturbed_stress(D_, Q_, R_);
+      form_perturbed_stress(D_, Q_, b_);
 
       // remove normalization; add in tke (possibly perturbed)
       const double turbKeIpPert = std::max(turbKeIp*(1.0 + perturbTurbKe_), 1.0e-16);
       for ( int i = 0; i < nDim; ++i ) {
-        const int offSet = nDim*i;
         for ( int j = 0; j < nDim; ++j ) {
           const double fac = ( i == j ) ? 1.0/3.0 : 0.0;
-          R_[i][j] = (R_[i][j] + fac)*2.0*turbKeIpPert;
+          R_[i][j] = (b_[i][j] + fac)*2.0*turbKeIpPert;
         }
       }
       // R is now the perturbed Reynolds stress; rho*R is ready to be used in flux

@@ -88,6 +88,7 @@ public:
   double duidxj_[3][3];
   double dqdxj_[3];
   double R_[3][3];
+  double b_[3][3];
   double D_[3][3];
   double Q_[3][3];
   int rowMap_[3];
