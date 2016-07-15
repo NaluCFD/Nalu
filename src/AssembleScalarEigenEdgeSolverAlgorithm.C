@@ -411,8 +411,8 @@ AssembleScalarEigenEdgeSolverAlgorithm::execute()
       for ( int i = 0; i < nDim; ++i ) {
         for ( int j = 0; j < nDim; ++j ) {
           const double ggFac = -cGGDH_*timeScaleIp*rhoIp*R_[i][j]*p_areaVec[j];
-          diffFlux += ggFac*dqdxj_[j];
-          lhsfac += ggFac*p_areaVec[j]*inv_axdx;
+          diffFlux += ggFac*dqdxj_[i];
+          lhsfac += ggFac*p_areaVec[i]*inv_axdx;
         }
       }
       
@@ -615,11 +615,11 @@ AssembleScalarEigenEdgeSolverAlgorithm::sort(
   rowMap_[2] = 2;
 
   int j = 0;
-  int tmp = 0;
-  for(int i=0;i<3;i++){
+  double tmp = 0;
+  for(int i=0; i < 3; ++i){
     j = i;
-    for(int k = i;k<3;k++){
-      if(data[j]<data[k]){
+    for(int k = i; k < 3; ++k){
+      if(data[j] < data[k]){
         j = k;
       }
     }
