@@ -182,7 +182,9 @@ public:
   std::vector<int> faceScsIpOnExtrudedElem_;
   std::vector<int> faceScsIpOnFaceEdges_;
   std::vector<double> edgeAlignedArea_;
-  
+
+  // FEM
+  std::vector<double>weights_;
 };
 
 // Hex 8 subcontrol volume
