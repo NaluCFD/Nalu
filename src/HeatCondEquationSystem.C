@@ -297,27 +297,57 @@ HeatCondEquationSystem::register_interior_algorithm(
     }
   }
 
-  // solver; interior edge contribution (diffusion); experiment with FEM
-  if ( !realm_.solutionOptions_->useConsolidatedSolverAlg_ ) {
-    std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi
-      = solverAlgDriver_->solverAlgMap_.find(algType);
-    if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
-      SolverAlgorithm *theSolverAlg = NULL;
-      if ( realm_.realmUsesEdges_ ) {
-        theSolverAlg = new AssembleScalarEdgeDiffSolverAlgorithm(realm_, part, this,
-          &tempNp1, &dtdxNone, thermalCond_);
-      }
-      else {
-        theSolverAlg = new AssembleScalarElemDiffSolverAlgorithm(realm_, part, this,
-          &tempNp1, &dtdxNone, thermalCond_,
-          collocationForViscousTerms_);
-      }
-      solverAlgDriver_->solverAlgMap_[algType] = theSolverAlg;
+  // solver; interior edge/element contribution (diffusion)
+  std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi
+    = solverAlgDriver_->solverAlgMap_.find(algType);
+  if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
+    SolverAlgorithm *theSolverAlg = NULL;
+    if ( realm_.realmUsesEdges_ ) {
+      theSolverAlg = new AssembleScalarEdgeDiffSolverAlgorithm(realm_, part, this,
+                                                               &tempNp1, &dtdxNone, thermalCond_);
     }
     else {
-      itsi->second->partVec_.push_back(part);
+      if ( !realm_.solutionOptions_->useConsolidatedSolverAlg_ ) {
+        theSolverAlg = new AssembleScalarElemDiffSolverAlgorithm(realm_, part, this,
+                                                                 &tempNp1, &dtdxNone, thermalCond_,
+                                                                 collocationForViscousTerms_);
+      }
+      else {
+        // create the generic solver algorithm
+        theSolverAlg = new AssembleElemSolverAlgorithm(realm_, part, this);
+      }
+    }
+    solverAlgDriver_->solverAlgMap_[algType] = theSolverAlg;
+    
+    // look for fully integrated source terms
+    std::map<std::string, std::vector<std::string> >::iterator isrc 
+      = realm_.solutionOptions_->elemSrcTermsMap_.find("temperature");
+    if ( isrc != realm_.solutionOptions_->elemSrcTermsMap_.end() ) {
+
+      if ( realm_.realmUsesEdges_ )
+        throw std::runtime_error("HeatCondElemSrcTerms::Error can not use element source terms for an edge-based scheme");
+
+      std::vector<std::string> mapNameVec = isrc->second;
+      for (size_t k = 0; k < mapNameVec.size(); ++k ) {
+        std::string sourceName = mapNameVec[k];
+        SupplementalAlgorithm *suppAlg = NULL;
+        if (sourceName == "steady_2d_thermal" ) {
+          suppAlg = new SteadyThermalContactSrcElemSuppAlg(realm_);
+        }
+        else if (sourceName == "FEM" ) {
+          suppAlg = new HeatCondFemElemSuppAlg(realm_);
+        }
+        else {
+          throw std::runtime_error("HeatCondElemSrcTerms::Error Source term is not supported: " + sourceName);
+        }
+        theSolverAlg->supplementalAlg_.push_back(suppAlg);
+      }
     }
   }
+  else {
+    itsi->second->partVec_.push_back(part);
+  }
+      
 
   // time term; nodally lumped
   const AlgorithmType algMass = MASS;
@@ -361,41 +391,6 @@ HeatCondEquationSystem::register_interior_algorithm(
   }
   else {
     itsm->second->partVec_.push_back(part);
-  }
-
-  // allow for fully integrated source terms
-  const AlgorithmType algElemSource = ELEM_SOURCE;
-  std::map<AlgorithmType, SolverAlgorithm *>::iterator itsrc
-    = solverAlgDriver_->solverAlgMap_.find(algElemSource);
-  if ( itsrc == solverAlgDriver_->solverAlgMap_.end() ) {
-    // create the solver alg
-    AssembleElemSolverAlgorithm *theAlg
-      = new AssembleElemSolverAlgorithm(realm_, part, this);
-    solverAlgDriver_->solverAlgMap_[algElemSource] = theAlg;
-
-    // Add src term via supp alg...; limited number supported
-    std::map<std::string, std::vector<std::string> >::iterator isrc 
-      = realm_.solutionOptions_->elemSrcTermsMap_.find("temperature");
-    if ( isrc != realm_.solutionOptions_->elemSrcTermsMap_.end() ) {
-      std::vector<std::string> mapNameVec = isrc->second;
-      for (size_t k = 0; k < mapNameVec.size(); ++k ) {
-        std::string sourceName = mapNameVec[k];
-        SupplementalAlgorithm *suppAlg = NULL;
-        if (sourceName == "steady_2d_thermal" ) {
-          suppAlg = new SteadyThermalContactSrcElemSuppAlg(realm_);
-        }
-        else if (sourceName == "FEM" ) {
-          suppAlg = new HeatCondFemElemSuppAlg(realm_);
-        }
-        else {
-          throw std::runtime_error("HeatCondElemSrcTerms::Error Source term is not supported: " + sourceName);
-        }
-        theAlg->supplementalAlg_.push_back(suppAlg);
-      }
-    }
-  }
-  else {
-    itsrc->second->partVec_.push_back(part);
   }
 
   // deal with adaptivity

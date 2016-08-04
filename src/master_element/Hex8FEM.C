@@ -27,18 +27,16 @@ Hex8FEM::Hex8FEM()
   nodesPerElement_ = 8;
   numIntPoints_ = 8;
 
-  // weights
+  // weights; -1:1
   weights_.resize(numIntPoints_);
   for ( int k = 0; k < numIntPoints_; ++k )
-    weights_[k] = 1.0/8.0;
+    weights_[k] = 1.0;
 
-  // standard integration location
+  // standard integration location +/ sqrt(3)/3
   intgLoc_.resize(24);
-  const double c1 = 0.78867513459*2.0-1.0;
-  const double c2 = -c1;
-  double c[2] = {c1,c2};
-
-  // fill them in
+  double c[2] = {std::sqrt(3.0)/3.0,-std::sqrt(3.0)/3.0};
+  
+  // tensor product
   int l = 0;
   for (int i = 0; i < 2; ++i) {
     for (int j = 0; j < 2; ++j) {

@@ -142,13 +142,10 @@ RadTransSupgElemSuppAlg::elem_execute(
     }
   }
 
-  // compute geometry (AGAIN)...
-  double me_error = 0.0;
-  meFEM_->determinant(1, &ws_coordinates_[0], &ws_det_j_[0], &me_error);
-  
   // compute dndx (AGAIN)...
+  double me_error = 0.0; 
   meFEM_->grad_op(1, &ws_coordinates_[0], &ws_dndx_[0], &ws_deriv_[0], &ws_det_j_[0], &me_error);
-
+  
   // compute gij; requires a proper ws_deriv from above
   meFEM_->gij(&ws_coordinates_[0], &ws_gUpper_[0], &ws_gLower_[0], &ws_deriv_[0]);
 

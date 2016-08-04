@@ -14,6 +14,7 @@
 #include <FieldTypeDef.h>
 #include <LinearSystem.h>
 #include <Realm.h>
+#include <SolutionOptions.h>
 #include <master_element/MasterElement.h>
 
 // stk_mesh/base/fem
@@ -47,7 +48,8 @@ AssembleRadTransElemSolverAlgorithm::AssembleRadTransElemSolverAlgorithm(
     scattering_(NULL),
     scalarFlux_(NULL),
     radiationSource_(NULL),
-    dualNodalVolume_(NULL)
+    dualNodalVolume_(NULL),
+    sucvFac_(radEqSystem->deactivateSucv_ ? 0.0 : 1.0)
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -286,7 +288,7 @@ AssembleRadTransElemSolverAlgorithm::execute()
 
         // form tau
         const double h = (useEdgeH) ? h_edge : h_vol;
-        const double tau = std::sqrt(1.0/((2.0/h)*(2.0/h) + extCoeffscs*extCoeffscs));
+        const double tau = std::sqrt(1.0/((2.0/h)*(2.0/h) + extCoeffscs*extCoeffscs))*sucvFac_;
 	
         double sidIdxi = 0.0;
         for ( int ic = 0; ic < nodesPerElement; ++ic ) {

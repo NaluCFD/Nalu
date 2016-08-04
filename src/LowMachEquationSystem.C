@@ -1010,10 +1010,14 @@ MomentumEquationSystem::register_interior_algorithm(
     }
     solverAlgDriver_->solverAlgMap_[algType] = theSolverAlg;
     
-    // look for fully integrated source terms, e.g., mass/src
+    // look for fully integrated source terms
     std::map<std::string, std::vector<std::string> >::iterator isrc 
       = realm_.solutionOptions_->elemSrcTermsMap_.find("momentum");
     if ( isrc != realm_.solutionOptions_->elemSrcTermsMap_.end() ) {
+
+      if ( realm_.realmUsesEdges_ )
+        throw std::runtime_error("MomentumElemSrcTerms::Error can not use element source terms for an edge-based scheme");
+
       std::vector<std::string> mapNameVec = isrc->second;
       for (size_t k = 0; k < mapNameVec.size(); ++k ) {
         std::string sourceName = mapNameVec[k];
@@ -2106,10 +2110,14 @@ ContinuityEquationSystem::register_interior_algorithm(
         theSolverAlg = new AssembleContinuityElemSolverAlgorithm(realm_, part, this);
       solverAlgDriver_->solverAlgMap_[algType] = theSolverAlg;
 
-      // look for src
+      // look for fully integrated source terms
       std::map<std::string, std::vector<std::string> >::iterator isrc 
         = realm_.solutionOptions_->elemSrcTermsMap_.find("continuity");
       if ( isrc != realm_.solutionOptions_->elemSrcTermsMap_.end() ) {
+
+        if ( realm_.realmUsesEdges_ )
+          throw std::runtime_error("ContinuityElemSrcTerms::Error can not use element source terms for an edge-based scheme");
+
         std::vector<std::string> mapNameVec = isrc->second;
         for (size_t k = 0; k < mapNameVec.size(); ++k ) {
           std::string sourceName = mapNameVec[k];

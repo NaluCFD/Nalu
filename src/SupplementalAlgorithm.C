@@ -26,6 +26,7 @@ SupplementalAlgorithm::SupplementalAlgorithm(
   Realm &realm) 
   : realm_(realm)
 {
+  // nothing to do
 }
 
 } // namespace nalu

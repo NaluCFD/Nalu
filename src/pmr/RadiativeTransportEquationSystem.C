@@ -8,7 +8,9 @@
 
 #include <pmr/RadiativeTransportEquationSystem.h>
 #include <pmr/RadTransBlackBodyNodeSuppAlg.h>
+#include <pmr/RadTransSupgElemSuppAlg.h>
 #include <pmr/RadTransIsoScatteringNodeSuppAlg.h>
+#include <AssembleElemSolverAlgorithm.h>
 #include <pmr/AssembleRadTransEdgeSolverAlgorithm.h>
 #include <pmr/AssembleRadTransEdgeUpwindSolverAlgorithm.h>
 #include <pmr/AssembleRadTransElemSolverAlgorithm.h>
@@ -30,6 +32,7 @@
 #include <Realm.h>
 #include <Realms.h>
 #include <Simulation.h>
+#include <SolutionOptions.h>
 #include <SolverAlgorithmDriver.h>
 
 // stk_util
@@ -74,11 +77,13 @@ RadiativeTransportEquationSystem::RadiativeTransportEquationSystem(
   const int quadratureOrder,
   const bool activateScattering,
   const bool activateUpwind,
+  const bool deactivateSucv,
   const bool externalCoupling)
   : EquationSystem(eqSystems, "RadiativeTransportEQS"),
     quadratureOrder_(quadratureOrder),
     activateScattering_(activateScattering),
     activateUpwind_(activateUpwind),
+    deactivateSucv_(deactivateSucv),
     externalCoupling_(externalCoupling),
     intensity_(NULL),
     currentIntensity_(NULL),
@@ -482,23 +487,45 @@ RadiativeTransportEquationSystem::register_interior_algorithm(
   std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi
     = solverAlgDriver_->solverAlgMap_.find(algType);
   if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
-    SolverAlgorithm *theAlg = NULL;
+    SolverAlgorithm *theSolverAlg = NULL;
     if ( realm_.realmUsesEdges_ ) {
       if ( activateUpwind_ ) // only supported for edge (constructor enforces this)
-        theAlg = new AssembleRadTransEdgeUpwindSolverAlgorithm(realm_, part, this);
+        theSolverAlg = new AssembleRadTransEdgeUpwindSolverAlgorithm(realm_, part, this);
       else
-        theAlg = new AssembleRadTransEdgeSolverAlgorithm(realm_, part, this);
+        theSolverAlg = new AssembleRadTransEdgeSolverAlgorithm(realm_, part, this);
     }
     else {
-      theAlg = new AssembleRadTransElemSolverAlgorithm(realm_, part, this);
+      theSolverAlg = new AssembleRadTransElemSolverAlgorithm(realm_, part, this);
     }
-    solverAlgDriver_->solverAlgMap_[algType] = theAlg;
+    solverAlgDriver_->solverAlgMap_[algType] = theSolverAlg;
+    
+    // look for fully integrated source terms, only one
+    std::map<std::string, std::vector<std::string> >::iterator itfisrc 
+      = realm_.solutionOptions_->elemSrcTermsMap_.find("intensity");
+    if ( itfisrc != realm_.solutionOptions_->elemSrcTermsMap_.end() ) {
+
+      if ( realm_.realmUsesEdges_ )
+        throw std::runtime_error("IntensityElemSrcTerms::Error can not use element source terms for an edge-based scheme");
+
+      std::vector<std::string> mapNameVec = itfisrc->second;
+      for (size_t k = 0; k < mapNameVec.size(); ++k ) {
+        std::string sourceName = mapNameVec[k];
+        SupplementalAlgorithm *suppAlg = NULL;
+        if (sourceName == "SUPG" ) {
+          suppAlg = new RadTransSupgElemSuppAlg(realm_, this);
+        }
+        else {
+          throw std::runtime_error("IntensityElemSrcTerms::Error Source term is not supported: " + sourceName);
+        }
+        theSolverAlg->supplementalAlg_.push_back(suppAlg);
+      }
+    }
   }
   else {
     itsi->second->partVec_.push_back(part);
   }
 
-  // source terms
+  // nodal source terms
   const AlgorithmType algMass = SRC;
   std::map<AlgorithmType, SolverAlgorithm *>::iterator itsrc =
     solverAlgDriver_->solverAlgMap_.find(algMass);
@@ -523,7 +550,7 @@ RadiativeTransportEquationSystem::register_interior_algorithm(
   else {
     itsrc->second->partVec_.push_back(part);
   }
-
+  
 }
 
 //--------------------------------------------------------------------------

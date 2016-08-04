@@ -45,6 +45,8 @@ public:
   ScalarFieldType *scalarFlux_;
   ScalarFieldType *radiationSource_;
   ScalarFieldType *dualNodalVolume_;
+  
+  const double sucvFac_;
 };
 
 } // namespace nalu

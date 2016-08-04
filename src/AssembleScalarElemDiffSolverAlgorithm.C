@@ -138,6 +138,10 @@ AssembleScalarElemDiffSolverAlgorithm::execute()
 
     diffusionOperator->bind_data(b, *meSCS, p_lhs, p_rhs, connected_nodes);
 
+    // resize possible supplemental element alg
+    for ( size_t i = 0; i < supplementalAlgSize; ++i )
+      supplementalAlg_[i]->elem_resize(meSCS, meSCV);
+    
     for ( size_t k = 0 ; k < length ; ++k ) {
 
       //WARNING: do not thread this functor.  It is not thread-safe because each element scatters to all of its nodes.
