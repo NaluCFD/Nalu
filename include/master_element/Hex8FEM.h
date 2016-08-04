@@ -46,6 +46,12 @@ public:
   void shape_fcn(
     double *shpfc);
 
+  void gij(
+    const double *coords,
+    double *gupperij,
+    double *glowerij,
+    double *deriv);
+
 private:
 
   void hex8_fem_shape_fcn(
@@ -56,7 +62,6 @@ private:
   void hex8_fem_derivative(
     const int npt, const double* par_coord,
     double* deriv);
-
 };
     
 } // namespace nalu
