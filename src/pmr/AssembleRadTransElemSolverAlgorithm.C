@@ -10,6 +10,7 @@
 #include <pmr/AssembleRadTransElemSolverAlgorithm.h>
 #include <pmr/RadiativeTransportEquationSystem.h>
 #include <SolverAlgorithm.h>
+#include <SupplementalAlgorithm.h>
 
 #include <FieldTypeDef.h>
 #include <LinearSystem.h>
@@ -60,6 +61,7 @@ AssembleRadTransElemSolverAlgorithm::AssembleRadTransElemSolverAlgorithm(
   radiationSource_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "radiation_source");
   dualNodalVolume_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
  
+  NaluEnv::self().naluOutputP0() << "sucvFac_ is: " << sucvFac_ << std::endl;
 }
 
 //--------------------------------------------------------------------------
@@ -99,6 +101,11 @@ AssembleRadTransElemSolverAlgorithm::execute()
   std::vector<double> scratchVals;
   std::vector<stk::mesh::Entity> connected_nodes;
 
+  // supplemental algorithm setup
+  const size_t supplementalAlgSize = supplementalAlg_.size();
+  for ( size_t i = 0; i < supplementalAlgSize; ++i )
+    supplementalAlg_[i]->setup();
+
   // nodal fields to gather
   std::vector<double> ws_coordinates;
   std::vector<double> ws_intensity;
@@ -128,6 +135,7 @@ AssembleRadTransElemSolverAlgorithm::execute()
 
     // extract master element
     MasterElement *meSCS = realm_.get_surface_master_element(b.topology());
+    MasterElement *meSCV = realm_.get_volume_master_element(b.topology());
 
     // extract master element specifics
     const int nodesPerElement = meSCS->nodesPerElement_;
@@ -172,6 +180,10 @@ AssembleRadTransElemSolverAlgorithm::execute()
     double *p_shape_function = &ws_shape_function[0];
 
     meSCS->shape_fcn(&p_shape_function[0]);
+
+    // resize possible supplemental element alg
+    for ( size_t i = 0; i < supplementalAlgSize; ++i )
+      supplementalAlg_[i]->elem_resize(meSCS, meSCV);
 
     for ( size_t k = 0 ; k < length ; ++k ) {
 
@@ -315,13 +327,17 @@ AssembleRadTransElemSolverAlgorithm::execute()
         }
 	
         // full sucv residual
-	const double residual = -tau*sjaj*(sidIdxi + extCoeffscs*Iscs - ePscs - isotropicScatterscs);
+        const double residual = -tau*sjaj*(sidIdxi + extCoeffscs*Iscs - ePscs - isotropicScatterscs);
 	
         // residual; left and right
         p_rhs[il] -= residual;
         p_rhs[ir] += residual;
 	
       }
+
+      // call supplemental
+      for ( size_t i = 0; i < supplementalAlgSize; ++i )
+        supplementalAlg_[i]->elem_execute( &lhs[0], &rhs[0], b[k], meSCS, meSCV);
 
       apply_coeff(connected_nodes, scratchIds, scratchVals, rhs, lhs, __FILE__);
     }

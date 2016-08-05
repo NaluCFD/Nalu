@@ -35,6 +35,7 @@ RadTransSupgElemSuppAlg::RadTransSupgElemSuppAlg(
   RadiativeTransportEquationSystem *radEqSystem)
 : SupplementalAlgorithm(realm),
     radEqSystem_(radEqSystem),
+    bulkData_(&realm.bulk_data()),
     intensity_(NULL),
     absorption_(NULL),
     scattering_(NULL),
@@ -44,7 +45,8 @@ RadTransSupgElemSuppAlg::RadTransSupgElemSuppAlg(
     meFEM_(new Hex8FEM()),
     ipWeight_(&meFEM_->weights_[0]),
     invPi_(1.0/std::acos(-1.0)),
-    nDim_(realm.meta_data().spatial_dimension())
+    nDim_(realm.meta_data().spatial_dimension()),
+    adHocL_(true)
 {
   // save off fields; for non-BDF2 gather in state N for Nm1 (gamma3_ will be zero)
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -142,12 +144,16 @@ RadTransSupgElemSuppAlg::elem_execute(
     }
   }
 
-  // compute dndx (AGAIN)...
+  // compute dndx and gij
   double me_error = 0.0; 
   meFEM_->grad_op(1, &ws_coordinates_[0], &ws_dndx_[0], &ws_deriv_[0], &ws_det_j_[0], &me_error);
-  
-  // compute gij; requires a proper ws_deriv from above
   meFEM_->gij(&ws_coordinates_[0], &ws_gUpper_[0], &ws_gLower_[0], &ws_deriv_[0]);
+
+  // compute the volume
+  double h_alt = 0.0;
+  for ( int ip = 0; ip < numIp; ++ip )
+    h_alt += ws_det_j_[ip]*ipWeight_[ip];
+  h_alt = std::pow(h_alt, 1.0/nDim_);
 
   for ( int ip = 0; ip < numIp; ++ip ) {
 
@@ -159,7 +165,6 @@ RadTransSupgElemSuppAlg::elem_execute(
     double radSrcIp = 0.0;
     double isotropicScatterIp = 0.0;
     double sdIdx = 0.0;
-    double sdWdx = 0.0;
     const int ipNpe = ip*nodesPerElement;
     for ( int ic = 0; ic < nodesPerElement; ++ic ) {
       const double r = ws_shape_function_[ipNpe+ic];
@@ -180,18 +185,20 @@ RadTransSupgElemSuppAlg::elem_execute(
       for ( int j = 0; j < nDim_; ++j ) {
         const double dnj = ws_dndx_[offSetDnDx+j];
         sdIdx += I*dnj*ws_Sk_[j];
-        sdWdx += ws_Sk_[j]*dnj;
       }
     }
-    
-    // compute tau; use "flow-aligned" length scale
+
+    // compute "flow-aligned" length scale
     double flowAligned = 0.0;
     for ( int i = 0; i < nDim_; ++i ) {
       for ( int j = 0; j < nDim_; ++j ) {
         flowAligned  += ws_Sk_[i]*p_gLower[i*nDim_+j]*ws_Sk_[j];
       }
     }      
-    const double tau = std::sqrt(1.0/(flowAligned + extCoeffIp*extCoeffIp));
+
+    // determine inverse length scale; ad-hoc works, however, not formally correct
+    const double hInvSq = adHocL_ ? 1.0/h_alt/h_alt : flowAligned;
+    const double tau = std::sqrt(1.0/(hInvSq + extCoeffIp*extCoeffIp));
     
     // compute scaled residual for this ip
     const double residual = sdIdx + extCoeffIp*Iip - radSrcIp - isotropicScatterIp;
@@ -221,11 +228,12 @@ RadTransSupgElemSuppAlg::elem_execute(
         }
 
         const double r = ws_shape_function_[ipNpe+ic];
-        lhs[ir*nodesPerElement+ic] += tau*sdWdx*ipFactor*(lhsSum + extCoeffIp*r);
+        lhs[ir*nodesPerElement+ic] += tau*sdWdx*(lhsSum + extCoeffIp*r)*ipFactor;
       }
 
       // right hand side is: weight*tau*sj*dWdxj*(Res)*detJ
       rhs[ir] -= tau*sdWdx*residual*ipFactor;
+
     }
   }
 
