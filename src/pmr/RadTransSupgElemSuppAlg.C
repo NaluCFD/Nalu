@@ -33,7 +33,7 @@ namespace nalu{
 RadTransSupgElemSuppAlg::RadTransSupgElemSuppAlg(
   Realm &realm,
   RadiativeTransportEquationSystem *radEqSystem)
-: SupplementalAlgorithm(realm),
+  : SupplementalAlgorithm(realm),
     radEqSystem_(radEqSystem),
     bulkData_(&realm.bulk_data()),
     intensity_(NULL),
@@ -46,7 +46,8 @@ RadTransSupgElemSuppAlg::RadTransSupgElemSuppAlg(
     ipWeight_(&meFEM_->weights_[0]),
     invPi_(1.0/std::acos(-1.0)),
     nDim_(realm.meta_data().spatial_dimension()),
-    adHocL_(true)
+    linearNorm_(true),
+    useUpper_(true)
 {
   // save off fields; for non-BDF2 gather in state N for Nm1 (gamma3_ will be zero)
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -58,6 +59,18 @@ RadTransSupgElemSuppAlg::RadTransSupgElemSuppAlg(
  
   // fixed size
   ws_Sk_.resize(nDim_);
+  
+  // tell the user what norm
+  if ( linearNorm_ ) 
+    NaluEnv::self().naluOutputP0() << "Linear Norm Activated " ;
+  else 
+    NaluEnv::self().naluOutputP0() << "Euclidean Norm Activated " ;
+
+  // and g^ij or g_ij
+  if ( useUpper_ )
+    NaluEnv::self().naluOutputP0() << "with g^ij form " << std::endl;
+  else
+    NaluEnv::self().naluOutputP0() << "with g_ij form " << std::endl;
 }
 
 //--------------------------------------------------------------------------
@@ -149,15 +162,10 @@ RadTransSupgElemSuppAlg::elem_execute(
   meFEM_->grad_op(1, &ws_coordinates_[0], &ws_dndx_[0], &ws_deriv_[0], &ws_det_j_[0], &me_error);
   meFEM_->gij(&ws_coordinates_[0], &ws_gUpper_[0], &ws_gLower_[0], &ws_deriv_[0]);
 
-  // compute the volume
-  double h_alt = 0.0;
-  for ( int ip = 0; ip < numIp; ++ip )
-    h_alt += ws_det_j_[ip]*ipWeight_[ip];
-  h_alt = std::pow(h_alt, 1.0/nDim_);
-
   for ( int ip = 0; ip < numIp; ++ip ) {
 
     // pointer to glowerij
+    const double *p_gUpper = &ws_gUpper_[nDim_*nDim_*ip];
     const double *p_gLower = &ws_gLower_[nDim_*nDim_*ip];
    
     double Iip = 0.0;
@@ -189,17 +197,32 @@ RadTransSupgElemSuppAlg::elem_execute(
     }
 
     // compute "flow-aligned" length scale
-    double flowAligned = 0.0;
+    double flowAlignedUp = 0.0;
+    double flowAlignedLow = 0.0;
     for ( int i = 0; i < nDim_; ++i ) {
       for ( int j = 0; j < nDim_; ++j ) {
-        flowAligned  += ws_Sk_[i]*p_gLower[i*nDim_+j]*ws_Sk_[j];
+        flowAlignedUp  += ws_Sk_[i]*p_gUpper[i*nDim_+j]*ws_Sk_[j];
+        flowAlignedLow  += ws_Sk_[i]*p_gLower[i*nDim_+j]*ws_Sk_[j];
       }
     }      
 
     // determine inverse length scale; ad-hoc works, however, not formally correct
-    const double hInvSq = adHocL_ ? 1.0/h_alt/h_alt : flowAligned;
-    const double tau = std::sqrt(1.0/(hInvSq + extCoeffIp*extCoeffIp));
-    
+    double tau = 0.0;
+    if ( useUpper_ ) {
+      // g^ij form; contravariant
+      if ( linearNorm_ )
+        tau = 1.0/(1.0/std::sqrt(flowAlignedUp) + extCoeffIp);
+      else
+        tau = 1.0/(std::sqrt(1.0/flowAlignedUp + extCoeffIp*extCoeffIp));
+    }
+    else {
+      // g_ij form; covariant
+      if ( linearNorm_ )
+        tau = 1.0/(std::sqrt(flowAlignedLow) + extCoeffIp);
+      else
+        tau = 1.0/(std::sqrt(flowAlignedLow + extCoeffIp*extCoeffIp));
+    }
+      
     // compute scaled residual for this ip
     const double residual = sdIdx + extCoeffIp*Iip - radSrcIp - isotropicScatterIp;
 

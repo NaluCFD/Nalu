@@ -62,7 +62,8 @@ public:
   double *ipWeight_;
   const double invPi_;
   const int nDim_;
-  const bool adHocL_;
+  const bool linearNorm_;
+  const bool useUpper_;
 
   // fixed space
   std::vector<double> ws_Sk_;
