@@ -1734,6 +1734,7 @@ Realm::advance_time_step()
   const bool advanceMe = (timeStepCount % solveFrequency_ ) == 0 ? true : false;
   if ( !advanceMe )
     return;
+  NaluEnv::self().naluOutputP0() << name_ << "::advance_time_step() " << std::endl;
 
   NaluEnv::self().naluOutputP0() << "NLI"
                   << std::setw(8) << std::right << "Name"
@@ -3514,7 +3515,7 @@ void
 Realm::output_banner()
 {
   if ( hasFluids_ )
-    NaluEnv::self().naluOutputP0() << " Max Courant: " << maxCourant_ << " Max Reynolds: " << maxReynolds_ << std::endl;
+    NaluEnv::self().naluOutputP0() << " Max Courant: " << maxCourant_ << " Max Reynolds: " << maxReynolds_ << " (" << name_ << ")" << std::endl;
 }
 
 //--------------------------------------------------------------------------
