@@ -8,6 +8,7 @@
 
 #include <pmr/RadiativeTransportEquationSystem.h>
 #include <pmr/RadTransBlackBodyNodeSuppAlg.h>
+#include <pmr/RadTransFemElemSuppAlg.h>
 #include <pmr/RadTransSupgElemSuppAlg.h>
 #include <pmr/RadTransIsoScatteringNodeSuppAlg.h>
 #include <AssembleElemSolverAlgorithm.h>
@@ -483,7 +484,7 @@ RadiativeTransportEquationSystem::register_interior_algorithm(
   // push back part vector
   interiorPartVec_.push_back(part);
 
-  // solver; interior contribution
+  // solver; interior contribution; many supported
   std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi
     = solverAlgDriver_->solverAlgMap_.find(algType);
   if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
@@ -495,7 +496,13 @@ RadiativeTransportEquationSystem::register_interior_algorithm(
         theSolverAlg = new AssembleRadTransEdgeSolverAlgorithm(realm_, part, this);
     }
     else {
-      theSolverAlg = new AssembleRadTransElemSolverAlgorithm(realm_, part, this);
+      if ( !realm_.solutionOptions_->useConsolidatedSolverAlg_ ) {
+        theSolverAlg = new AssembleRadTransElemSolverAlgorithm(realm_, part, this);
+      }
+      else {
+        // create the generic solver algorithm
+        theSolverAlg = new AssembleElemSolverAlgorithm(realm_, part, this);
+      }
     }
     solverAlgDriver_->solverAlgMap_[algType] = theSolverAlg;
     
@@ -514,6 +521,9 @@ RadiativeTransportEquationSystem::register_interior_algorithm(
         if (sourceName == "SUPG" ) {
           suppAlg = new RadTransSupgElemSuppAlg(realm_, this);
         }
+        else if (sourceName == "FEM_SUPG" ) {
+          suppAlg = new RadTransFemElemSuppAlg(realm_, this);
+        }
         else {
           throw std::runtime_error("IntensityElemSrcTerms::Error Source term is not supported: " + sourceName);
         }
@@ -525,7 +535,10 @@ RadiativeTransportEquationSystem::register_interior_algorithm(
     itsi->second->partVec_.push_back(part);
   }
 
-  // nodal source terms
+  // nodal source terms; not for consolidated
+  if ( realm_.solutionOptions_->useConsolidatedSolverAlg_ )
+    return;
+
   const AlgorithmType algMass = SRC;
   std::map<AlgorithmType, SolverAlgorithm *>::iterator itsrc =
     solverAlgDriver_->solverAlgMap_.find(algMass);
@@ -550,7 +563,6 @@ RadiativeTransportEquationSystem::register_interior_algorithm(
   else {
     itsrc->second->partVec_.push_back(part);
   }
-  
 }
 
 //--------------------------------------------------------------------------

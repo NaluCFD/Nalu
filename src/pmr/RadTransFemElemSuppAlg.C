@@ -6,7 +6,7 @@
 /*------------------------------------------------------------------------*/
 
 
-#include <pmr/RadTransSupgElemSuppAlg.h>
+#include <pmr/RadTransFemElemSuppAlg.h>
 #include <pmr/RadiativeTransportEquationSystem.h>
 #include <SupplementalAlgorithm.h>
 #include <FieldTypeDef.h>
@@ -25,12 +25,12 @@ namespace nalu{
 //==========================================================================
 // Class Definition
 //==========================================================================
-// RadTransSupgElemSuppAlg - hack hex8 FEM SUPG
+// RadTransFemElemSuppAlg - hack hex8 FEM SUPG
 //==========================================================================
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-RadTransSupgElemSuppAlg::RadTransSupgElemSuppAlg(
+RadTransFemElemSuppAlg::RadTransFemElemSuppAlg(
   Realm &realm,
   RadiativeTransportEquationSystem *radEqSystem)
   : SupplementalAlgorithm(realm),
@@ -46,6 +46,8 @@ RadTransSupgElemSuppAlg::RadTransSupgElemSuppAlg(
     ipWeight_(&meFEM_->weights_[0]),
     invPi_(1.0/std::acos(-1.0)),
     nDim_(realm.meta_data().spatial_dimension()),
+    rowSumLump_(0.0),
+    consistentMass_(1.0-rowSumLump_),
     linearNorm_(true),
     useUpper_(true)
 {
@@ -77,7 +79,7 @@ RadTransSupgElemSuppAlg::RadTransSupgElemSuppAlg(
 //-------- elem_resize -----------------------------------------------------
 //--------------------------------------------------------------------------
 void
-RadTransSupgElemSuppAlg::elem_resize(
+RadTransFemElemSuppAlg::elem_resize(
   MasterElement */*meFEM_*/,
   MasterElement */*meSCV*/)
 {
@@ -108,7 +110,7 @@ RadTransSupgElemSuppAlg::elem_resize(
 //-------- setup -----------------------------------------------------------
 //--------------------------------------------------------------------------
 void
-RadTransSupgElemSuppAlg::setup()
+RadTransFemElemSuppAlg::setup()
 {
   // extract current ordinate direction
   radEqSystem_->get_current_ordinate(&ws_Sk_[0]);
@@ -119,7 +121,7 @@ RadTransSupgElemSuppAlg::setup()
 //-------- elem_execute ----------------------------------------------------
 //--------------------------------------------------------------------------
 void
-RadTransSupgElemSuppAlg::elem_execute(
+RadTransFemElemSuppAlg::elem_execute(
   double *lhs,
   double *rhs,
   stk::mesh::Entity element,
@@ -234,32 +236,42 @@ RadTransSupgElemSuppAlg::elem_execute(
 
       // offset for row dndx
       const int offSetDnDxIr = nDim_*nodesPerElement*ip + ir*nDim_;
+      const double rIr = ws_shape_function_[ipNpe+ir];
 
       double sdWdx = 0.0;
       for ( int j = 0; j < nDim_; ++j) {
         sdWdx += ws_Sk_[j]*ws_dndx_[offSetDnDxIr+j];
       }
 
-      // column ic; left hand side picks off: si*dIdx + extCoeffIp*I
+      // consistent mass for mu*I
+      lhs[ir*nodesPerElement+ir] += rIr*extCoeffIp*ipFactor*rowSumLump_;
+
+      // column ic;
+      double rhsGalSum = 0.0;
       for ( int ic = 0; ic < nodesPerElement; ++ic) {
         // offset for column dndx
         const int offSetDnDxIc = nDim_*nodesPerElement*ip + ic*nDim_;
+        const double rIc = ws_shape_function_[ipNpe+ic];
 
-        double lhsSum = 0.0;
+        double lhsSupgSum = 0.0;
         for ( int j = 0; j < nDim_; ++j ) {
-          lhsSum += ws_Sk_[j]*ws_dndx_[offSetDnDxIc+j];
+          lhsSupgSum += ws_Sk_[j]*ws_dndx_[offSetDnDxIc+j];
         }
 
-        const double rIc = ws_shape_function_[ipNpe+ic];
-        lhs[ir*nodesPerElement+ic] += tau*sdWdx*(lhsSum + extCoeffIp*rIc)*ipFactor;
+        // Galerkin
+        lhs[ir*nodesPerElement+ic] += (-sdWdx + rIr*extCoeffIp*rIc*consistentMass_)*ipFactor;
+        rhsGalSum += (-sdWdx + rIr*extCoeffIp*rIc*consistentMass_)*ws_intensity_[ic];
+
+        // SUPG
+        lhs[ir*nodesPerElement+ic] += tau*sdWdx*(lhsSupgSum + extCoeffIp*rIc)*ipFactor;
       }
+      // Galerkin; (-sj I dwdxj + w extCoeff I_ip - w S_ip)*weight*detJ
+      rhs[ir] -= (rhsGalSum - rIr*(radSrcIp + isotropicScatterIp - extCoeffIp*ws_intensity_[ir]*rowSumLump_))*ipFactor;
 
-      // right hand side is: tau*sj*dWdxj*(Res)*weight*detJ
+      // SUPG right hand side is: tau*sj*dWdxj*(Res)*weight*detJ
       rhs[ir] -= tau*sdWdx*residual*ipFactor;
-
     }
   }
-
 }
   
 } // namespace nalu
