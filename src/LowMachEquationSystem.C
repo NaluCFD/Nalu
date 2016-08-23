@@ -133,7 +133,6 @@
 
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
-#include <stk_util/environment/CPUTime.hpp>
 #include <stk_util/parallel/ParallelReduce.hpp>
 
 // stk_mesh/base/fem
@@ -541,10 +540,10 @@ LowMachEquationSystem::solve_and_update()
   // wrap timing
   double timeA, timeB;
   if ( isInit_ ) {
-    timeA = stk::cpu_time();
+    timeA = NaluEnv::self().nalu_time();
     continuityEqSys_->compute_projected_nodal_gradient();
     continuityEqSys_->computeMdotAlgDriver_->execute();
-    timeB = stk::cpu_time();
+    timeB = NaluEnv::self().nalu_time();
     continuityEqSys_->timerMisc_ += (timeB-timeA);
     isInit_ = false;
   }
@@ -565,14 +564,14 @@ LowMachEquationSystem::solve_and_update()
     momentumEqSys_->assemble_and_solve(momentumEqSys_->uTmp_);
 
     // update all of velocity
-    timeA = stk::cpu_time();
+    timeA = NaluEnv::self().nalu_time();
     field_axpby(
       realm_.meta_data(),
       realm_.bulk_data(),
       1.0, *momentumEqSys_->uTmp_,
       1.0, momentumEqSys_->velocity_->field_of_state(stk::mesh::StateNP1),
       realm_.get_activate_aura());
-    timeB = stk::cpu_time();
+    timeB = NaluEnv::self().nalu_time();
     momentumEqSys_->timerAssemble_ += (timeB-timeA);
     
     // compute velocity relative to mesh with new velocity
@@ -582,26 +581,26 @@ LowMachEquationSystem::solve_and_update()
     continuityEqSys_->assemble_and_solve(continuityEqSys_->pTmp_);
 
     // update pressure
-    timeA = stk::cpu_time();
+    timeA = NaluEnv::self().nalu_time();
     field_axpby(
       realm_.meta_data(),
       realm_.bulk_data(),
       1.0, *continuityEqSys_->pTmp_,
       1.0, *continuityEqSys_->pressure_,
       realm_.get_activate_aura());
-    timeB = stk::cpu_time();
+    timeB = NaluEnv::self().nalu_time();
     continuityEqSys_->timerAssemble_ += (timeB-timeA);
     
     // compute mdot
-    timeA = stk::cpu_time();
+    timeA = NaluEnv::self().nalu_time();
     continuityEqSys_->computeMdotAlgDriver_->execute();
-    timeB = stk::cpu_time();
+    timeB = NaluEnv::self().nalu_time();
     continuityEqSys_->timerMisc_ += (timeB-timeA);
 
     // project nodal velocity
-    timeA = stk::cpu_time();
+    timeA = NaluEnv::self().nalu_time();
     project_nodal_velocity();
-    timeB = stk::cpu_time();
+    timeB = NaluEnv::self().nalu_time();
     timerMisc_ += (timeB-timeA);
 
     // compute velocity relative to mesh with new velocity
@@ -612,10 +611,10 @@ LowMachEquationSystem::solve_and_update()
     // we use this approach to avoid two evals per
     // solve/update since dudx is required for tke
     // production
-    timeA = stk::cpu_time();
+    timeA = NaluEnv::self().nalu_time();
     momentumEqSys_->compute_projected_nodal_gradient();
     momentumEqSys_->compute_wall_function_params();
-    timeB = stk::cpu_time();
+    timeB = NaluEnv::self().nalu_time();
     momentumEqSys_->timerMisc_ += (timeB-timeA);
 
   }
@@ -847,14 +846,14 @@ MomentumEquationSystem::initial_work()
   EquationSystem::initial_work();
 
   // proceed with a bunch of initial work; wrap in timer
-  const double timeA = stk::cpu_time();
+  const double timeA = NaluEnv::self().nalu_time();
   compute_projected_nodal_gradient();
   compute_wall_function_params();
   tviscAlgDriver_->execute();
   diffFluxCoeffAlgDriver_->execute();
   cflReyAlgDriver_->execute();
 
-  const double timeB = stk::cpu_time();
+  const double timeB = NaluEnv::self().nalu_time();
   timerMisc_ += (timeB-timeA);
 }
 
@@ -1839,9 +1838,9 @@ void
 MomentumEquationSystem::compute_projected_nodal_gradient()
 {
   if ( !managePNG_ ) {
-    const double timeA = -stk::cpu_time();
+    const double timeA = -NaluEnv::self().nalu_time();
     assembleNodalGradAlgDriver_->execute();
-    timerMisc_ += (stk::cpu_time() + timeA);
+    timerMisc_ += (NaluEnv::self().nalu_time() + timeA);
   }
   else {
     // this option is more complex... Rather than solving a nDim*nDim system, we
@@ -2720,9 +2719,9 @@ void
 ContinuityEquationSystem::compute_projected_nodal_gradient()
 {
   if ( !managePNG_ ) {
-    const double timeA = -stk::cpu_time();
+    const double timeA = -NaluEnv::self().nalu_time();
     assembleNodalGradAlgDriver_->execute();
-    timerMisc_ += (stk::cpu_time() + timeA);
+    timerMisc_ += (NaluEnv::self().nalu_time() + timeA);
   }
   else {
     projectedNodalGradEqs_->solve_and_update_external();

@@ -29,7 +29,6 @@
 // stk
 #include <stk_mesh/base/MetaData.hpp>
 
-#include <stk_util/environment/CPUTime.hpp>
 #include <stk_util/parallel/ParallelReduce.hpp>
 
 namespace sierra{
@@ -249,33 +248,33 @@ EquationSystem::assemble_and_solve(
   int error = 0;
   
   // zero the system
-  double timeA = stk::cpu_time();
+  double timeA = NaluEnv::self().nalu_time();
   linsys_->zeroSystem();
-  double timeB = stk::cpu_time();
+  double timeB = NaluEnv::self().nalu_time();
   timerAssemble_ += (timeB-timeA);
 
   // apply all flux and dirichlet algs
-  timeA = stk::cpu_time();
+  timeA = NaluEnv::self().nalu_time();
   solverAlgDriver_->execute();
-  timeB = stk::cpu_time();
+  timeB = NaluEnv::self().nalu_time();
   timerAssemble_ += (timeB-timeA);
 
   // load complete
-  timeA = stk::cpu_time();
+  timeA = NaluEnv::self().nalu_time();
   linsys_->loadComplete();
-  timeB = stk::cpu_time();
+  timeB = NaluEnv::self().nalu_time();
   timerLoadComplete_ += (timeB-timeA);
 
   // solve the system; extract delta
-  timeA = stk::cpu_time();
+  timeA = NaluEnv::self().nalu_time();
   error = linsys_->solve(deltaSolution);
-  timeB = stk::cpu_time();
+  timeB = NaluEnv::self().nalu_time();
   timerSolve_ += (timeB-timeA);
 
   if ( realm_.hasPeriodic_) {
-    timeA = stk::cpu_time();
+    timeA = NaluEnv::self().nalu_time();
     realm_.periodic_delta_solution_update(deltaSolution, linsys_->numDof());
-    timeB = stk::cpu_time();
+    timeB = NaluEnv::self().nalu_time();
     timerMisc_ += (timeB-timeA);
   }
 

@@ -58,7 +58,6 @@
 
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
-#include <stk_util/environment/CPUTime.hpp>
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/BulkData.hpp>
@@ -870,9 +869,9 @@ TurbKineticEnergyEquationSystem::solve_and_update()
     assemble_and_solve(kTmp_);
 
     // update
-    double timeA = stk::cpu_time();
+    double timeA = NaluEnv::self().nalu_time();
     update_and_clip();
-    double timeB = stk::cpu_time();
+    double timeB = NaluEnv::self().nalu_time();
     timerAssemble_ += (timeB-timeA);
 
     // projected nodal gradient
@@ -921,9 +920,9 @@ TurbKineticEnergyEquationSystem::initial_work()
 void
 TurbKineticEnergyEquationSystem::compute_effective_diff_flux_coeff()
 {
-  const double timeA = stk::cpu_time();
+  const double timeA = NaluEnv::self().nalu_time();
   diffFluxCoeffAlgDriver_->execute();
-  timerMisc_ += (stk::cpu_time() - timeA);
+  timerMisc_ += (NaluEnv::self().nalu_time() - timeA);
 }
 
 //--------------------------------------------------------------------------
@@ -1021,9 +1020,9 @@ void
 TurbKineticEnergyEquationSystem::compute_projected_nodal_gradient()
 {
   if ( !managePNG_ ) {
-    const double timeA = -stk::cpu_time();
+    const double timeA = -NaluEnv::self().nalu_time();
     assembleNodalGradAlgDriver_->execute();
-    timerMisc_ += (stk::cpu_time() + timeA);
+    timerMisc_ += (NaluEnv::self().nalu_time() + timeA);
   }
   else {
     projectedNodalGradEqs_->solve_and_update_external();

@@ -24,7 +24,6 @@
 
 // stk_util
 #include <stk_util/parallel/ParallelReduce.hpp>
-#include <stk_util/environment/CPUTime.hpp>
 
 // stk_search
 #include <stk_search/CoarseSearch.hpp>

@@ -36,9 +36,6 @@
 // stk_topo
 #include <stk_topology/topology.hpp>
 
-// stk_util
-#include <stk_util/environment/CPUTime.hpp>
-
 namespace sierra{
 namespace nalu{
 
@@ -643,19 +640,19 @@ void
 EquationSystems::initialize()
 {
   NaluEnv::self().naluOutputP0() << "EquationSystems::initialize(): Begin " << std::endl;
-  double start_time = stk::cpu_time();
+  double start_time = NaluEnv::self().nalu_time();
   EquationSystemVector::iterator ii;
   for( ii=equationSystemVector_.begin(); ii!=equationSystemVector_.end(); ++ii ) {
     if ( realm_.get_activate_memory_diagnostic() ) {
       NaluEnv::self().naluOutputP0() << "NaluMemory::EquationSystems::initialize(): " << (*ii)->name_ << std::endl;
       realm_.provide_memory_summary();
     }
-    double start_time_eq = stk::cpu_time();
+    double start_time_eq = NaluEnv::self().nalu_time();
     (*ii)->initialize();
-    double end_time_eq = stk::cpu_time();
+    double end_time_eq = NaluEnv::self().nalu_time();
     (*ii)->timerInit_ += (end_time_eq - start_time_eq);
   }
-  double end_time = stk::cpu_time();
+  double end_time = NaluEnv::self().nalu_time();
   realm_.timerInitializeEqs_ += (end_time-start_time);
   NaluEnv::self().naluOutputP0() << "EquationSystems::initialize(): End " << std::endl;
 }
@@ -666,15 +663,15 @@ EquationSystems::initialize()
 void
 EquationSystems::reinitialize_linear_system()
 {
-  double start_time = stk::cpu_time();
+  double start_time = NaluEnv::self().nalu_time();
   EquationSystemVector::iterator ii;
   for( ii=equationSystemVector_.begin(); ii!=equationSystemVector_.end(); ++ii ) {
-    double start_time_eq = stk::cpu_time();
+    double start_time_eq = NaluEnv::self().nalu_time();
     (*ii)->reinitialize_linear_system();
-    double end_time_eq = stk::cpu_time();
+    double end_time_eq = NaluEnv::self().nalu_time();
     (*ii)->timerInit_ += (end_time_eq - start_time_eq);
   }
-  double end_time = stk::cpu_time();
+  double end_time = NaluEnv::self().nalu_time();
   realm_.timerInitializeEqs_ += (end_time-start_time);
 }
 
@@ -684,7 +681,7 @@ EquationSystems::reinitialize_linear_system()
 void
 EquationSystems::post_adapt_work()
 {
-  double time = -stk::cpu_time();
+  double time = -NaluEnv::self().nalu_time();
   EquationSystemVector::iterator ii;
   for( ii=equationSystemVector_.begin(); ii!=equationSystemVector_.end(); ++ii )
     (*ii)->post_adapt_work();
@@ -693,7 +690,7 @@ EquationSystems::post_adapt_work()
   realm_.evaluate_properties();
 
   // load all time to adapt
-  time += stk::cpu_time();
+  time += NaluEnv::self().nalu_time();
   realm_.timerAdapt_ += time;
 }
 

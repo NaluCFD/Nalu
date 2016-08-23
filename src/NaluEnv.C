@@ -12,6 +12,8 @@
 #include <iostream>
 #include <string>
 
+#include <stk_util/environment/WallTime.hpp>
+
 namespace sierra{
 namespace nalu{
 
@@ -123,6 +125,15 @@ NaluEnv::~NaluEnv()
   close_log_file_stream();
   // shut down MPI
   MPI_Finalize();
+}
+
+//--------------------------------------------------------------------------
+//-------- nalu_time -------------------------------------------------------
+//--------------------------------------------------------------------------
+double
+NaluEnv::nalu_time()
+{
+  return stk::wall_time();
 }
 
 } // namespace nalu

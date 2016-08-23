@@ -17,7 +17,6 @@
 #include <NaluEnv.h>
 
 #include <stk_util/parallel/Parallel.hpp>
-#include <stk_util/environment/CPUTime.hpp>
 
 #include <stk_util/parallel/ParallelReduce.hpp>
 #include <stk_mesh/base/BulkData.hpp>
@@ -657,7 +656,7 @@ EpetraLinearSystem::applyDirichletBCs(
   const unsigned beginPos,
   const unsigned endPos)
 {
-  double adbc_time = -stk::cpu_time();
+  double adbc_time = -NaluEnv::self().nalu_time();
 
   stk::mesh::BulkData & bulk_data = realm_.bulk_data();
   const unsigned p_size = bulk_data.parallel_size();
@@ -728,7 +727,7 @@ EpetraLinearSystem::applyDirichletBCs(
     }
   }
 
-  adbc_time += stk::cpu_time();
+  adbc_time += NaluEnv::self().nalu_time();
 }
 
 void
@@ -760,7 +759,7 @@ EpetraLinearSystem::solve(stk::mesh::FieldBase * linearSolutionField)
   if (linearSolver->getConfig()->getWriteMatrixFiles())
     writeToFile(this->name_.c_str());
 
-  double solve_time = -stk::cpu_time();
+  double solve_time = -NaluEnv::self().nalu_time();
 
   int iters;
   double finalResidNorm;
@@ -775,7 +774,7 @@ EpetraLinearSystem::solve(stk::mesh::FieldBase * linearSolutionField)
       sln_,
       iters,
       finalResidNorm);
-  solve_time += stk::cpu_time();
+  solve_time += NaluEnv::self().nalu_time();
 
   if (linearSolver->getConfig()->getWriteMatrixFiles())
   {

@@ -79,7 +79,6 @@
 
 // stk_util
 #include <stk_util/parallel/ParallelReduce.hpp>
-#include <stk_util/environment/CPUTime.hpp>
 
 namespace sierra{
 namespace nalu{
@@ -946,20 +945,20 @@ HeatCondEquationSystem::solve_and_update()
     assemble_and_solve(tTmp_);
 
     // update
-    double timeA = stk::cpu_time();
+    double timeA = NaluEnv::self().nalu_time();
     field_axpby(
       realm_.meta_data(),
       realm_.bulk_data(),
       1.0, *tTmp_,
       1.0, *temperature_, 
       realm_.get_activate_aura());
-    double timeB = stk::cpu_time();
+    double timeB = NaluEnv::self().nalu_time();
     timerAssemble_ += (timeB-timeA);
    
     // projected nodal gradient
-    timeA = stk::cpu_time();
+    timeA = NaluEnv::self().nalu_time();
     compute_projected_nodal_gradient();
-    timeB = stk::cpu_time();
+    timeB = NaluEnv::self().nalu_time();
     timerMisc_ += (timeB-timeA);
   }  
 }

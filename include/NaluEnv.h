@@ -47,6 +47,7 @@ class NaluEnv
   int parallel_rank();
   void set_log_file_stream(std::string naluLogName);
   void close_log_file_stream();
+  double nalu_time();
 };
 
 } // namespace nalu

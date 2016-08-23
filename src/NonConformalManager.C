@@ -23,7 +23,6 @@
 
 // stk_util
 #include <stk_util/parallel/ParallelReduce.hpp>
-#include <stk_util/environment/CPUTime.hpp>
 
 // vector and pair
 #include <vector>
@@ -71,7 +70,7 @@ void
 NonConformalManager::initialize()
 {
 
-  const double timeA = stk::cpu_time();
+  const double timeA = NaluEnv::self().nalu_time();
 
   stk::mesh::BulkData & bulk_data = realm_.bulk_data();
  
@@ -110,7 +109,7 @@ NonConformalManager::initialize()
   }
 
   // end time
-  const double timeB = stk::cpu_time();
+  const double timeB = NaluEnv::self().nalu_time();
   realm_.timerContact_ += (timeB-timeA);
 
 }

@@ -57,7 +57,6 @@
 
 // stk_util
 #include <stk_util/parallel/ParallelReduce.hpp>
-#include <stk_util/environment/CPUTime.hpp>
 
 // basic c++
 #include <cmath>
@@ -828,14 +827,14 @@ RadiativeTransportEquationSystem::solve_and_update()
       assemble_and_solve(iTmp_);
       
       // update
-      double timeA = stk::cpu_time();
+      double timeA = NaluEnv::self().nalu_time();
       field_axpby(
         realm_.meta_data(),
         realm_.bulk_data(),
         1.0, *iTmp_,
         1.0, *intensity_, 
         realm_.get_activate_aura());
-      double timeB = stk::cpu_time();
+      double timeB = NaluEnv::self().nalu_time();
       timerAssemble_ += (timeB-timeA);
    
       // assemble qj, G; operates on intensity_

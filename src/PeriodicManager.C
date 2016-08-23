@@ -21,7 +21,6 @@
 
 // stk_util
 #include <stk_util/parallel/ParallelReduce.hpp>
-#include <stk_util/environment/CPUTime.hpp>
 
 // stk_search
 #include <stk_search/CoarseSearch.hpp>
@@ -474,9 +473,9 @@ PeriodicManager::populate_search_key_vec(
 
   // will want to stuff product of search to a single vector
   std::vector<std::pair<theEntityKey, theEntityKey> > searchKeyPair;
-  double timeA = stk::cpu_time();
+  double timeA = NaluEnv::self().nalu_time();
   stk::search::coarse_search(sphereBoundingBoxSlaveVec, sphereBoundingBoxMasterVec, searchMethod, NaluEnv::self().parallel_comm(), searchKeyPair);
-  timerSearch_ += (stk::cpu_time() - timeA);
+  timerSearch_ += (NaluEnv::self().nalu_time() - timeA);
 
   // populate searchKeyVector_; culmination of all master/slaves
   searchKeyVector_.insert(searchKeyVector_.end(), searchKeyPair.begin(), searchKeyPair.end());

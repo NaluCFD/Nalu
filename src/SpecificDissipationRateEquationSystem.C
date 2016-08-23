@@ -54,7 +54,6 @@
 
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
-#include <stk_util/environment/CPUTime.hpp>
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/BulkData.hpp>
@@ -736,9 +735,9 @@ SpecificDissipationRateEquationSystem::reinitialize_linear_system()
 void
 SpecificDissipationRateEquationSystem::assemble_nodal_gradient()
 {
-  const double timeA = -stk::cpu_time();
+  const double timeA = -NaluEnv::self().nalu_time();
   assembleNodalGradAlgDriver_->execute();
-  timerMisc_ += (stk::cpu_time() + timeA);
+  timerMisc_ += (NaluEnv::self().nalu_time() + timeA);
 }
 
 //--------------------------------------------------------------------------
@@ -747,9 +746,9 @@ SpecificDissipationRateEquationSystem::assemble_nodal_gradient()
 void
 SpecificDissipationRateEquationSystem::compute_effective_diff_flux_coeff()
 {
-  const double timeA = -stk::cpu_time();
+  const double timeA = -NaluEnv::self().nalu_time();
   diffFluxCoeffAlgDriver_->execute();
-  timerMisc_ += (stk::cpu_time() + timeA);
+  timerMisc_ += (NaluEnv::self().nalu_time() + timeA);
 }
 
 //--------------------------------------------------------------------------

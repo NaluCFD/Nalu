@@ -48,7 +48,6 @@
 
 // stk_util
 #include <stk_util/parallel/ParallelReduce.hpp>
-#include <stk_util/environment/CPUTime.hpp>
 
 namespace sierra{
 namespace nalu{
@@ -355,14 +354,14 @@ ProjectedNodalGradientEquationSystem::solve_and_update_external()
     assemble_and_solve(qTmp_);
     
     // update
-    double timeA = stk::cpu_time();
+    double timeA = NaluEnv::self().nalu_time();
     field_axpby(
       realm_.meta_data(),
       realm_.bulk_data(),
       1.0, *qTmp_,
       1.0, *dqdx_, 
       realm_.get_activate_aura());
-    double timeB = stk::cpu_time();
+    double timeB = NaluEnv::self().nalu_time();
     timerAssemble_ += (timeB-timeA);   
   }
 }

@@ -83,7 +83,6 @@
 
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
-#include <stk_util/environment/CPUTime.hpp>
 #include <stk_util/environment/WallTime.hpp>
 #include <stk_util/environment/perf_util.hpp>
 
@@ -423,9 +422,9 @@ Realm::initialize()
   // Populate_mesh fills in the entities (nodes/elements/etc) and
   // connectivities, but no field-data. Field-data is not allocated yet.
   NaluEnv::self().naluOutputP0() << "Realm::ioBroker_->populate_mesh() Begin" << std::endl;
-  double time = -stk::cpu_time();
+  double time = -NaluEnv::self().nalu_time();
   ioBroker_->populate_mesh();
-  time += stk::cpu_time();
+  time += NaluEnv::self().nalu_time();
   timerPopulateMesh_ += time;
   NaluEnv::self().naluOutputP0() << "Realm::ioBroker_->populate_mesh() End" << std::endl;
 
@@ -445,9 +444,9 @@ Realm::initialize()
   // field-data including coordinates, and attributes and/or distribution factors
   // if those exist on the input mesh file.
   NaluEnv::self().naluOutputP0() << "Realm::ioBroker_->populate_field_data() Begin" << std::endl;
-  time = -stk::cpu_time();
+  time = -NaluEnv::self().nalu_time();
   ioBroker_->populate_field_data();
-  time += stk::cpu_time();
+  time += NaluEnv::self().nalu_time();
   timerPopulateFieldData_ += time;
   NaluEnv::self().naluOutputP0() << "Realm::ioBroker_->populate_field_data() End" << std::endl;
 
@@ -875,7 +874,7 @@ Realm::setup_bc()
 void
 Realm::enforce_bc_on_exposed_faces()
 {
-  double start_time = stk::cpu_time();
+  double start_time = NaluEnv::self().nalu_time();
 
   NaluEnv::self().naluOutputP0() << "Realm::skin_mesh(): Begin" << std::endl;
 
@@ -907,7 +906,7 @@ Realm::enforce_bc_on_exposed_faces()
     throw std::runtime_error("Realm::Error: Please aply bc to problematic exposed surfaces ");
   }
 
-  const double end_time = stk::cpu_time();
+  const double end_time = NaluEnv::self().nalu_time();
 
   // set mesh reading
   timerSkinMesh_ = (end_time - start_time);
@@ -1568,7 +1567,7 @@ Realm::pre_timestep_work()
     static stk::diag::Timer timerReInitLinSys_("ReInitLinSys", timerAdaptRealm_);
 
     stk::diag::TimeBlock tbTimerAdapt_(timerAdaptRealm_);
-    double time = -stk::cpu_time();
+    double time = -NaluEnv::self().nalu_time();
     if ( process_adaptivity() ) {
 
 #if defined (NALU_USES_PERCEPT)
@@ -1664,7 +1663,7 @@ Realm::pre_timestep_work()
         }
 #endif
     }
-    time += stk::cpu_time();
+    time += NaluEnv::self().nalu_time();
     timerAdapt_ += time;
   }
 
@@ -1714,12 +1713,12 @@ Realm::pre_timestep_work()
 void
 Realm::evaluate_properties()
 {
-  double start_time = stk::cpu_time();
+  double start_time = NaluEnv::self().nalu_time();
   for ( size_t k = 0; k < propertyAlg_.size(); ++k ) {
     propertyAlg_[k]->execute();
   }
   equationSystems_.evaluate_properties();
-  double end_time = stk::cpu_time();
+  double end_time = NaluEnv::self().nalu_time();
   timerPropertyEval_ += (end_time - start_time);
 }
 
@@ -1836,7 +1835,7 @@ Realm::commit()
 void
 Realm::create_mesh()
 {
-  double start_time = stk::cpu_time();
+  double start_time = NaluEnv::self().nalu_time();
 
   NaluEnv::self().naluOutputP0() << "Realm::create_mesh(): Begin" << std::endl;
   stk::ParallelMachine pm = NaluEnv::self().parallel_comm();
@@ -1874,7 +1873,7 @@ Realm::create_mesh()
   }
 
   // set mesh creation
-  const double end_time = stk::cpu_time();
+  const double end_time = NaluEnv::self().nalu_time();
   timerCreateMesh_ = (end_time - start_time);
 
   NaluEnv::self().naluOutputP0() << "Realm::create_mesh() End" << std::endl;
@@ -1889,7 +1888,7 @@ Realm::create_output_mesh()
   // exodus output file creation
   if (outputInfo_->hasOutputBlock_ ) {
 
-    double start_time = stk::cpu_time();
+    double start_time = NaluEnv::self().nalu_time();
     NaluEnv::self().naluOutputP0() << "Realm::create_output_mesh(): Begin" << std::endl;
 
     if (outputInfo_->outputFreq_ == 0)
@@ -1951,7 +1950,7 @@ Realm::create_output_mesh()
     outputInfo_->meshAdapted_ = false;
 
     // set mesh creation
-    const double end_time = stk::cpu_time();
+    const double end_time = NaluEnv::self().nalu_time();
     timerCreateMesh_ = (end_time - start_time);
 
     NaluEnv::self().naluOutputP0() << "Realm::create_output_mesh() End" << std::endl;
@@ -2070,14 +2069,14 @@ Realm::create_edges()
   static stk::diag::Timer timerCE_("CreateEdges", Simulation::rootTimer());
   stk::diag::TimeBlock tbCreateEdges_(timerCE_);
 
-  double start_time = stk::cpu_time();
+  double start_time = NaluEnv::self().nalu_time();
   if (solutionOptions_->useAdapter_ && solutionOptions_->maxRefinementLevel_ > 0 ) {
     stk::mesh::create_edges(*bulkData_, adapterSelector_[stk::topology::ELEMENT_RANK], edgesPart_);
   }
   else {
     stk::mesh::create_edges(*bulkData_, metaData_->universal_part(), edgesPart_);
   }
-  double stop_time = stk::cpu_time();
+  double stop_time = NaluEnv::self().nalu_time();
 
   // timer close-out
   const double total_edge_time = stop_time - start_time;
@@ -3225,7 +3224,7 @@ Realm::provide_output()
     if (outputInfo_->outputFreq_ == 0)
       return;
 
-    const double start_time = stk::cpu_time();
+    const double start_time = NaluEnv::self().nalu_time();
 
     // process output via io
     const double currentTime = get_current_time();
@@ -3268,7 +3267,7 @@ Realm::provide_output()
       equationSystems_.provide_output();
     }
 
-    const double stop_time = stk::cpu_time();
+    const double stop_time = NaluEnv::self().nalu_time();
 
     // increment time for output
     timerOutputFields_ += (stop_time - start_time);
@@ -3288,7 +3287,7 @@ Realm::provide_restart_output()
     if (outputInfo_->restartFreq_ == 0)
       return;
 
-    const double start_time = stk::cpu_time();
+    const double start_time = NaluEnv::self().nalu_time();
 
     // process restart via io
     const double currentTime = get_current_time();
@@ -3348,7 +3347,7 @@ Realm::provide_restart_output()
       ioBroker_->end_output_step(restartFileIndex_);
     }
 
-    const double stop_time = stk::cpu_time();
+    const double stop_time = NaluEnv::self().nalu_time();
 
     // increment time for output
     timerOutputFields_ += (stop_time - start_time);
@@ -4285,11 +4284,11 @@ Realm::process_multi_physics_transfer()
   if ( !hasMultiPhysicsTransfer_ )
     return;
 
-  double timeXfer = -stk::cpu_time();
+  double timeXfer = -NaluEnv::self().nalu_time();
   std::vector<Transfer *>::iterator ii;
   for( ii=multiPhysicsTransferVec_.begin(); ii!=multiPhysicsTransferVec_.end(); ++ii )
     (*ii)->execute();
-  timeXfer += stk::cpu_time();
+  timeXfer += NaluEnv::self().nalu_time();
   timerTransferExecute_ += timeXfer;
 }
 
@@ -4302,12 +4301,12 @@ Realm::process_initialization_transfer()
   if ( !hasInitializationTransfer_ )
     return;
 
-  double timeXfer = -stk::cpu_time();
+  double timeXfer = -NaluEnv::self().nalu_time();
   std::vector<Transfer *>::iterator ii;
   for( ii=initializationTransferVec_.begin(); ii!=initializationTransferVec_.end(); ++ii ) {
     (*ii)->execute();
   }
-  timeXfer += stk::cpu_time();
+  timeXfer += NaluEnv::self().nalu_time();
   timerTransferExecute_ += timeXfer;
 }
 
@@ -4320,7 +4319,7 @@ Realm::process_io_transfer()
   if ( !hasIoTransfer_ )
     return;
 
-  double timeXfer = -stk::cpu_time();
+  double timeXfer = -NaluEnv::self().nalu_time();
   // only do at an IO step
   const int timeStepCount = get_time_step_count();
   const bool isOutput = (timeStepCount % outputInfo_->outputFreq_) == 0;
@@ -4329,7 +4328,7 @@ Realm::process_io_transfer()
     for( ii=ioTransferVec_.begin(); ii!=ioTransferVec_.end(); ++ii )
       (*ii)->execute();
   }
-  timeXfer += stk::cpu_time();
+  timeXfer += NaluEnv::self().nalu_time();
   timerTransferExecute_ += timeXfer;
 }
 

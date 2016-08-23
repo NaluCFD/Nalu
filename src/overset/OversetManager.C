@@ -32,7 +32,6 @@
 
 // stk_util
 #include <stk_util/parallel/ParallelReduce.hpp>
-#include <stk_util/environment/CPUTime.hpp>
 
 namespace sierra{
 namespace nalu{
@@ -561,7 +560,7 @@ OversetManager::populate_inactive_part()
 void
 OversetManager::skin_exposed_surface_on_inactive_part()
 {
-  double start_time = stk::cpu_time();
+  double start_time = NaluEnv::self().nalu_time();
 
   NaluEnv::self().naluOutputP0() << "OversetManager::skin_exposed_surface_on_inactive_part(): Begin" << std::endl;
 
@@ -573,7 +572,7 @@ OversetManager::skin_exposed_surface_on_inactive_part()
   partToPopulateVec.push_back(backgroundSurfacePart_); // e.g. surface_101
   stk::mesh::skin_mesh(*bulkData_, s_inactive, partToPopulateVec, &s_inactive);
 
-  const double end_time = stk::cpu_time();
+  const double end_time = NaluEnv::self().nalu_time();
 
   // set mesh reading
   realm_.timerSkinMesh_ = (end_time - start_time);

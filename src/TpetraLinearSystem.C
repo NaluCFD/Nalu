@@ -26,7 +26,6 @@
 #include <overset/OversetInfo.h>
 
 #include <stk_util/parallel/Parallel.hpp>
-#include <stk_util/environment/CPUTime.hpp>
 
 #include <stk_util/parallel/ParallelReduce.hpp>
 #include <stk_mesh/base/BulkData.hpp>
@@ -1010,7 +1009,7 @@ TpetraLinearSystem::applyDirichletBCs(
   stk::mesh::MetaData & metaData = realm_.meta_data();
   stk::mesh::BulkData & bulkData = realm_.bulk_data();
 
-  double adbc_time = -stk::cpu_time();
+  double adbc_time = -NaluEnv::self().nalu_time();
   const unsigned p_size = bulkData.parallel_size();
   (void)p_size;
 
@@ -1075,7 +1074,7 @@ TpetraLinearSystem::applyDirichletBCs(
       }
     }
   }
-  adbc_time += stk::cpu_time();
+  adbc_time += NaluEnv::self().nalu_time();
 }
 
 void
@@ -1166,7 +1165,7 @@ TpetraLinearSystem::solve(
     writeToFile(this->name_.c_str(), false);
   }
 
-  double solve_time = -stk::cpu_time();
+  double solve_time = -NaluEnv::self().nalu_time();
 
   int iters;
   double finalResidNorm;
@@ -1182,7 +1181,7 @@ TpetraLinearSystem::solve(
       iters,
       finalResidNorm);
 
-  solve_time += stk::cpu_time();
+  solve_time += NaluEnv::self().nalu_time();
 
   if (linearSolver->getConfig()->getWriteMatrixFiles()) {
     writeSolutionToFile(this->name_.c_str());

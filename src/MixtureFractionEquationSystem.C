@@ -58,7 +58,6 @@
 
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
-#include <stk_util/environment/CPUTime.hpp>
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/BulkData.hpp>
@@ -882,9 +881,9 @@ MixtureFractionEquationSystem::solve_and_update()
     assemble_and_solve(zTmp_);
 
     // update
-    double timeA = stk::cpu_time();
+    double timeA = NaluEnv::self().nalu_time();
     update_and_clip();
-    double timeB = stk::cpu_time();
+    double timeB = NaluEnv::self().nalu_time();
     timerAssemble_ += (timeB-timeA);
 
     // projected nodal gradient
@@ -1062,9 +1061,9 @@ void
 MixtureFractionEquationSystem::compute_projected_nodal_gradient()
 {
   if ( !managePNG_ ) {
-    const double timeA = -stk::cpu_time();
+    const double timeA = -NaluEnv::self().nalu_time();
     assembleNodalGradAlgDriver_->execute();
-    timerMisc_ += (stk::cpu_time() + timeA);
+    timerMisc_ += (NaluEnv::self().nalu_time() + timeA);
   }
   else {
     projectedNodalGradEqs_->solve_and_update_external();
