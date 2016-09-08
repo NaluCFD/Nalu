@@ -150,13 +150,6 @@ TurbulenceAveragingPostProcessing::load(
             // not found; add it
             avInfo->favreFieldNameVec_.push_back(velocityName);
           }
-          // check for density
-          const std::string densityName = "density";
-          if ( std::find(avInfo->favreFieldNameVec_.begin(), avInfo->favreFieldNameVec_.end(), densityName) == avInfo->favreFieldNameVec_.end() ) {
-            // not found; add it
-            avInfo->favreFieldNameVec_.push_back(velocityName);
-          }
-
         }
 
         // push back the object
