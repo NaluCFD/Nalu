@@ -760,13 +760,9 @@ ActuatorLine::set_current_coordinates(
   const double sinOT = sin(omega*currentTime);
   const double cosOT = cos(omega*currentTime);
 
-  double dx = 0.0;
-  double dy = sinOT*cZ + cosOT*cY + lineCentroid[1];
-  double dz = cosOT*cZ - sinOT*cY + lineCentroid[2];
-
-  centroidCoords[0] += dx;
-  centroidCoords[1] += dy;
-  centroidCoords[2] += dz;
+  // no change to x-coordinates
+  centroidCoords[1] = sinOT*cZ + cosOT*cY + lineCentroid[1];
+  centroidCoords[2] = cosOT*cZ - sinOT*cY + lineCentroid[2];
 }
 
 //--------------------------------------------------------------------------
