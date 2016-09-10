@@ -712,7 +712,7 @@ ActuatorLine::create_actuator_line_point_info_map() {
       const int numPoints = actuatorLineInfo->numPoints_;
       for ( int j = 0; j < nDim; ++j ) {
         dx[j] = (tipC[j] - tailC[j])/(double)(numPoints-1);
-        lineCentroid[j] = (tipC[j] = tailC[j])/2.0;
+        lineCentroid[j] = (tipC[j] - tailC[j])/2.0;
       }
 
       // loop over all points
