@@ -83,7 +83,8 @@ ActuatorLinePointInfo::ActuatorLinePointInfo(
   Point centroidCoords, 
   double radius, 
   double omega,
-  double twoSigSq) 
+  double twoSigSq,
+  double *velocity)
   : localId_(localId),
     centroidCoords_(centroidCoords),
     radius_(radius),
@@ -92,7 +93,10 @@ ActuatorLinePointInfo::ActuatorLinePointInfo(
     bestX_(1.0e16),
     bestElem_(stk::mesh::Entity())
 {
-  // nothing to do
+  // initialize point velocity and displacement
+  velocity_[0] = velocity[0];
+  velocity_[1] = velocity[1];
+  velocity_[2] = velocity[2];
 }
 
 //--------------------------------------------------------------------------
@@ -134,12 +138,12 @@ ActuatorLine::ActuatorLine(
         easier. This will remove the parallel sum contributions from ghosted elements.
         time will tell..
 
-     2) There can be many specifications with the number of points and omaga processed.
+     2) There can be many specifications with the number of points and omega processed.
 
      3) in the end, we fill the map of ActuatorLinePointInfo objects and iterate this guy
         to assemble source terms
 
-     4) at present, fake source terms on simple gaussian weighting
+     4) at present, fake source terms on simple Gaussian weighting
 
     actuator_line:
       search_method: stk_octree
@@ -152,7 +156,8 @@ ActuatorLine::ActuatorLine(
           omega: 1.0
           gaussian_decay_radius: 1.5
           gaussian_decay_target: 0.01
-          coodinates: [0.0, 0.0, 0.0]
+          tip_coodinates: [0.0, 0.0, 0.0]
+          tail_coodinates: [0.0, 0.0, 0.0]
   */
 }
 
@@ -173,17 +178,17 @@ void
 ActuatorLine::compute_point_drag( 
   const int &nDim,
   const double &pointRadius, 
+  const double *pointVelocity,
   const double *pointGasVelocity,
   const double &pointGasViscosity,
   const double &pointGasDensity,
   double *pointDrag,
   double &pointDragLHS)
 {
-  // HACK... assume point velocity is zero
-  double pointVelocity = 0.0;
+  // compute magnitude of velocity difference between point and gas
   double vRelMag = 0.0;
   for ( int j = 0; j < nDim; ++j )
-    vRelMag += (pointVelocity - pointGasVelocity[j] )*(pointVelocity - pointGasVelocity[j]);
+    vRelMag += (pointVelocity[j] - pointGasVelocity[j] )*(pointVelocity[j] - pointGasVelocity[j]);
   vRelMag = std::sqrt(vRelMag);
 
   // Reynolds number and friction factors
@@ -192,10 +197,10 @@ ActuatorLine::compute_point_drag(
   double fD = (ReP < 1000.0) ? (1.0 + CubeRtReP*CubeRtReP/6.0) : (0.424/24.0 * ReP);
   double coef = 6.0*pi_*pointGasViscosity*pointRadius;
 
-  // this is from the fluids perspective, not the psuego particle
+  // this is from the fluids perspective, not the psuedo particle
   pointDragLHS = 2.0*coef*fD;
   for ( int j = 0; j < nDim; ++j )
-    pointDrag[j] = coef*fD*(pointVelocity - pointGasVelocity[j]);
+    pointDrag[j] = coef*fD*(pointVelocity[j] - pointGasVelocity[j]);
 }
 
 //--------------------------------------------------------------------------
@@ -281,28 +286,40 @@ ActuatorLine::load(
 
         // number of points
         get_if_present(y_spec, "number_of_points", actuatorLineInfo->numPoints_, actuatorLineInfo->numPoints_);
-        if ( actuatorLineInfo->numPoints_ > 1 )
-          throw std::runtime_error("ActuatorLine: number of points must be unity");
+        if ( actuatorLineInfo->numPoints_ < 2 )
+          throw std::runtime_error("ActuatorLine: number of points must have at least two points");
 
         // radius and omega
         get_if_present(y_spec, "radius", actuatorLineInfo->radius_, actuatorLineInfo->radius_);
         get_if_present(y_spec, "omega", actuatorLineInfo->omega_, actuatorLineInfo->omega_);
-        if ( actuatorLineInfo->omega_ != 0.0 )
-          throw std::runtime_error("ActuatorLine: not ready for omega not equal to zero");
+        if ( actuatorLineInfo->omega_ > 0.0 ||  actuatorLineInfo->omega_ < 0.0 )
+          actuatorLineMotion_ = true;
         
-        // finally, the gaussian props
+        // Gaussian props
         double gaussDecayTarget = 0.01;
         double gaussDecayRadius = 1.5;
         get_if_present(y_spec, "gaussian_decay_radius", gaussDecayRadius, gaussDecayRadius);
         get_if_present(y_spec, "gaussian_decay_target", gaussDecayTarget, gaussDecayTarget);
         actuatorLineInfo->twoSigSq_ = -gaussDecayRadius*gaussDecayRadius/std::log(gaussDecayTarget);
+
+        // number of points for this line
+        double numPoints = 10;
+        get_if_present(y_spec, "number_of_points", numPoints, numPoints);
+        actuatorLineInfo->numPoints_ = numPoints;
         
-        // coordinates of this point
-        const YAML::Node *coord = y_spec.FindValue("coordinates");
-        if ( coord )
-          *coord >> actuatorLineInfo->coordinates_;
+        // tip coordinates of this point
+        const YAML::Node *tipCoord = y_spec.FindValue("tip_coordinates");
+        if ( tipCoord )
+          *tipCoord >> actuatorLineInfo->tipCoordinates_;
         else
-          throw std::runtime_error("ActuatorLine: lacking coordinates");
+          throw std::runtime_error("ActuatorLine: lacking tip_coordinates");
+
+        // tail coordinates of this point
+        const YAML::Node *tailCoord = y_spec.FindValue("tail_coordinates");
+        if ( tailCoord )
+          *tailCoord >> actuatorLineInfo->tailCoordinates_;
+        else
+          throw std::runtime_error("ActuatorLine: lacking tail_coordinates");
       }
     }
   }
@@ -488,7 +505,7 @@ ActuatorLine::execute()
                       &ws_density_[0], &ws_pointGasDensity);
     
     // point drag calculation
-    compute_point_drag(nDim, infoObject->radius_, &ws_pointGasVelocity[0], ws_pointGasViscosity, 
+    compute_point_drag(nDim, infoObject->radius_, &infoObject->velocity_[0], &ws_pointGasVelocity[0], ws_pointGasViscosity,
                        ws_pointGasDensity, &ws_pointDrag[0], ws_pointDragLHS);
         
     // assemble nodal quantity; radius should be zero, so we can apply fill point drag
@@ -523,7 +540,7 @@ ActuatorLine::execute()
     
       // get drag at this element centroid with proper Gaussian weighting
       compute_elem_drag_given_radius(nDim, radius, infoObject->twoSigSq_, &ws_pointDrag[0], &ws_elemDrag[0]);
-    
+
       // assemble nodal quantity; no LHS contribution here...
       assemble_source_to_nodes(nDim, elem, bulkData, elemVolume, &ws_elemDrag[0], ws_pointDragLHS, 
                                *actuator_line_source, *actuator_line_source_lhs, 0.0);
@@ -657,6 +674,9 @@ ActuatorLine::determine_elems_to_ghost()
 //--------------------------------------------------------------------------
 void
 ActuatorLine::create_actuator_line_point_info_map() {
+
+  const double currentTime = realm_.get_current_time();
+
   stk::mesh::MetaData & metaData = realm_.meta_data(); 
   const int nDim = metaData.spatial_dimension();
 
@@ -670,21 +690,47 @@ ActuatorLine::create_actuator_line_point_info_map() {
       // define a point that will hold the centroid
       Point centroidCoords;
       
+      // determine the distance between points and line centroid (for rotation)
+      double dx[3] = {};
+      double lineCentroid[3] = {};
+      double velocity[3] = {};
+      double currentCoords[3] = {};
+
+      std::vector<double> tipC(nDim);
+      tipC[0] = actuatorLineInfo->tipCoordinates_.x_;
+      tipC[1] = actuatorLineInfo->tipCoordinates_.y_;
+
+      std::vector<double> tailC(nDim);
+      tailC[0] = actuatorLineInfo->tailCoordinates_.x_;
+      tailC[1] = actuatorLineInfo->tailCoordinates_.y_;
+
+      if ( nDim > 2) {
+        tipC[2] = actuatorLineInfo->tipCoordinates_.z_;
+        tailC[2] = actuatorLineInfo->tailCoordinates_.z_;
+      }
+
+      const int numPoints = actuatorLineInfo->numPoints_;
+      for ( int j = 0; j < nDim; ++j ) {
+        dx[j] = (tipC[j] - tailC[j])/(double)(numPoints-1);
+        lineCentroid[j] = (tipC[j] = tailC[j])/2.0;
+      }
+
       // loop over all points
-      for ( int j = 0; j < actuatorLineInfo->numPoints_; ++j ) {
+      for ( int np = 0; np < numPoints; ++np ) {
         // extract current localPointId; increment for next one up...
         size_t localPointId = localPointId_++;
         stk::search::IdentProc<uint64_t,int> theIdent(localPointId, NaluEnv::self().parallel_rank());
         
-        // extract model coordinates
-        centroidCoords[0] = actuatorLineInfo->coordinates_.x_;
-        centroidCoords[1] = actuatorLineInfo->coordinates_.y_;
-        if ( nDim > 2 )
-          centroidCoords[2] = actuatorLineInfo->coordinates_.z_;
+        // set model coordinates
+        for ( int j = 0; j < nDim; ++j )
+          currentCoords[j] = tailC[j] + np*dx[j];
         
         // move the coordinates; set the velocity... may be better on the lineInfo object
-        set_current_coordinates(actuatorLineInfo->omega_);
-        set_current_velocity(actuatorLineInfo->omega_);
+        set_current_coordinates(lineCentroid, currentCoords, actuatorLineInfo->omega_, currentTime);
+        set_current_velocity(lineCentroid, currentCoords, velocity, actuatorLineInfo->omega_);
+
+        for ( int j = 0; j < nDim; ++j )
+          centroidCoords[j] = currentCoords[j];
 
         // create the bounding point sphere and push back
         boundingSphere theSphere( Sphere(centroidCoords, actuatorLineInfo->radius_), theIdent);
@@ -694,7 +740,7 @@ ActuatorLine::create_actuator_line_point_info_map() {
         ActuatorLinePointInfo *actuatorLinePointInfo 
           = new ActuatorLinePointInfo(localPointId, centroidCoords, 
                                       actuatorLineInfo->radius_, actuatorLineInfo->omega_, 
-                                      actuatorLineInfo->twoSigSq_);
+                                      actuatorLineInfo->twoSigSq_, velocity);
         actuatorLinePointInfoMap_[localPointId] = actuatorLinePointInfo;
       }
     }
@@ -705,27 +751,38 @@ ActuatorLine::create_actuator_line_point_info_map() {
 //-------- set_current_coordinates -----------------------------------------
 //--------------------------------------------------------------------------
 void
-ActuatorLine::set_current_coordinates() 
+ActuatorLine::set_current_coordinates(
+  double *lineCentroid, double *centroidCoords, const double &omega, const double &currentTime)
 {
-  // to do
-}
+  // hack for rotation only in the y-z plane
+  const double cY = centroidCoords[1] - lineCentroid[1];
+  const double cZ = centroidCoords[2] - lineCentroid[2];
+  const double sinOT = sin(omega*currentTime);
+  const double cosOT = cos(omega*currentTime);
 
-//--------------------------------------------------------------------------
-//-------- set_current_coordinates -----------------------------------------
-//--------------------------------------------------------------------------
-void
-ActuatorLine::set_current_coordinates( const double &/*omega*/) 
-{
-  // to do
+  double dx = 0.0;
+  double dy = sinOT*cZ + cosOT*cY + lineCentroid[1];
+  double dz = cosOT*cZ - sinOT*cY + lineCentroid[2];
+
+  centroidCoords[0] += dx;
+  centroidCoords[1] += dy;
+  centroidCoords[2] += dz;
 }
 
 //--------------------------------------------------------------------------
 //-------- set_current_velocity --------------------------------------------
 //--------------------------------------------------------------------------
 void
-ActuatorLine::set_current_velocity( const double &/*omega*/) 
+ActuatorLine::set_current_velocity(
+  double *lineCentroid, const double *centroidCoords, double *velocity, const double &omega)
 {
-  // to do
+  // hack for rotation only in the y-z plane
+  double cY = centroidCoords[1] - lineCentroid[1];
+  double cZ = centroidCoords[2] - lineCentroid[2];
+
+  velocity[0] = 0.0;
+  velocity[1] = -omega*cZ;
+  velocity[2] = +omega*cY;
 }
 
 //--------------------------------------------------------------------------

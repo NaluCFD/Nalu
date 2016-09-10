@@ -56,13 +56,16 @@ public:
   double radius_;
   double omega_;
   double twoSigSq_;
+  Coordinates tipCoordinates_;
+  Coordinates tailCoordinates_;
   Coordinates coordinates_;
 };
 
-// class that holds all of the action... for each point, hold the 
+// class that holds all of the action... for each point, hold the current location and other useful info
 class ActuatorLinePointInfo {
  public:
-  ActuatorLinePointInfo(size_t localId, Point centroidCoords, double radius, double omega, double twoSigSq);
+  ActuatorLinePointInfo(
+    size_t localId, Point centroidCoords, double radius, double omega, double twoSigSq, double *velocity);
   ~ActuatorLinePointInfo();
   size_t localId_;
   Point centroidCoords_;
@@ -71,6 +74,10 @@ class ActuatorLinePointInfo {
   double twoSigSq_;
   double bestX_;
   stk::mesh::Entity bestElem_;
+
+  // mesh motion specifics
+  double velocity_[3];
+
   std::vector<double> isoParCoords_;
   std::vector<stk::mesh::Entity> elementVec_;
 };
@@ -100,17 +107,17 @@ public:
   // fill in the map that will hold point and ghosted elements
   void create_actuator_line_point_info_map();
 
-  // possibly move the data points around
-  void set_current_coordinates();
-
   // figure out the set of elements that belong in the custom ghosting data structure
   void determine_elems_to_ghost();
 
   // deal with custom ghosting
   void manage_ghosting();
 
-  void set_current_coordinates(const double &omega);
-  void set_current_velocity(const double &omega);
+  // manage rotation, now only in the y-z plane
+  void set_current_coordinates(
+    double *lineCentroid, double *centroidCoords, const double &omega, const double &currentTime);
+  void set_current_velocity(
+    double *lineCentroid, const double *centroidCoords, double *velocity, const double &omega);
 
   // populate vector of elements
   void complete_search();
@@ -159,6 +166,7 @@ public:
   void compute_point_drag( 
     const int &nDim, 
     const double &pointRadius,
+    const double *pointVelocity,
     const double *pointGasVelocity,
     const double &pointGasViscosity,
     const double &pointGasDensity, 
@@ -214,7 +222,7 @@ public:
   uint64_t localPointId_;
 
   // does the actuator line move?
-  const bool actuatorLineMotion_;
+  bool actuatorLineMotion_;
 
   // everyone needs pi
   const double pi_;
