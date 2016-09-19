@@ -35,9 +35,11 @@ class NaluEnv
   int pRank_;
   std::ostream *naluLogStream_;
   std::ostream *naluParallelStream_;
+  bool parallelLog_;
   
   NaluEmptyStreamBuffer naluEmptyStreamBuffer_;
   std::filebuf naluStreamBuffer_;
+  std::filebuf naluParallelStreamBuffer_;
 
   std::ostream & naluOutputP0();
   std::ostream & naluOutput();
@@ -45,7 +47,7 @@ class NaluEnv
   MPI_Comm parallel_comm();
   int parallel_size();
   int parallel_rank();
-  void set_log_file_stream(std::string naluLogName);
+  void set_log_file_stream(std::string naluLogName, bool pprint = false);
   void close_log_file_stream();
   double nalu_time();
 };

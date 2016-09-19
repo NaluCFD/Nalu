@@ -179,6 +179,23 @@ void Simulation::high_level_banner() {
   NaluEnv::self().naluOutputP0() << "-----------------------------------------------------------------" << std::endl;
   NaluEnv::self().naluOutputP0() << std::endl;
 
+
+  NaluEnv::self().naluOutput() << std::endl;
+  NaluEnv::self().naluOutput() << "=================================================================" << std::endl;
+  NaluEnv::self().naluOutput() << "                            Nalu:                                " << std::endl;
+  NaluEnv::self().naluOutput() << "      A low Mach number, turbulent reacting flow code with       " << std::endl;
+  NaluEnv::self().naluOutput() << "            coupling to PMR and object response (CHT)            " << std::endl;
+  NaluEnv::self().naluOutput() << "=================================================================" << std::endl;
+  NaluEnv::self().naluOutput() << std::endl;
+  NaluEnv::self().naluOutput() << "   TPLs: Boost, HDF5, netCDF, STK, Trilinos, YAML_cpp and zlib   " << std::endl;
+  NaluEnv::self().naluOutput() << std::endl;
+  NaluEnv::self().naluOutput() << "              Copyright 2014 Sandia Corporation.                 " << std::endl;
+  NaluEnv::self().naluOutput() << "      This software is released under the license detailed       " << std::endl;
+  NaluEnv::self().naluOutput() << "   in the file, LICENSE, which is located in the top-level Nalu  " << std::endl;
+  NaluEnv::self().naluOutput() << "                     directory structure                         " << std::endl;
+  NaluEnv::self().naluOutput() << "-----------------------------------------------------------------" << std::endl;
+  NaluEnv::self().naluOutput() << std::endl;
+
 }
 } // namespace nalu
 } // namespace Sierra

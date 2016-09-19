@@ -30,7 +30,8 @@ NaluEnv::NaluEnv()
     pSize_(-1),
     pRank_(-1),
     naluLogStream_(&std::cout),
-    naluParallelStream_(&std::cout)
+    naluParallelStream_(new std::ostream(&naluParallelStreamBuffer_)),
+    parallelLog_(false)
 {
   // initialize
   MPI_Comm_size(parallelCommunicator_, &pSize_);
@@ -95,7 +96,7 @@ NaluEnv::parallel_comm()
 //-------- set_log_file_stream ---------------------------------------------
 //--------------------------------------------------------------------------
 void
-NaluEnv::set_log_file_stream(std::string naluLogName)
+NaluEnv::set_log_file_stream(std::string naluLogName, bool pprint)
 {
   if ( pRank_ == 0 ) {
     naluStreamBuffer_.open(naluLogName.c_str(), std::ios::out);
@@ -103,6 +104,21 @@ NaluEnv::set_log_file_stream(std::string naluLogName)
   }
   else {
     naluLogStream_->rdbuf(&naluEmptyStreamBuffer_);
+  }
+
+  // default to an empty stream buffer for parallel unless pprint is set
+  parallelLog_ = pprint;
+  if (parallelLog_) {
+    int dotPos = naluLogName.find_last_of(".");
+
+    // inputname.log -> inputname.02.log for the rank 2 proc
+    std::string parallelLogName = naluLogName.substr(0, dotPos)
+        + "." + std::to_string(parallel_rank()) + naluLogName.substr(dotPos);
+    naluParallelStreamBuffer_.open(parallelLogName.c_str(), std::ios::out);
+    naluParallelStream_->rdbuf(&naluParallelStreamBuffer_);
+  }
+  else {
+    naluParallelStream_->rdbuf(&naluEmptyStreamBuffer_);
   }
 }
 
@@ -114,7 +130,11 @@ NaluEnv::close_log_file_stream()
 {
   if ( pRank_ == 0 ) {
     naluStreamBuffer_.close();
-  }  
+  }
+  if (parallelLog_) {
+    naluParallelStreamBuffer_.close();
+  }
+
 }
 
 //--------------------------------------------------------------------------
@@ -123,6 +143,8 @@ NaluEnv::close_log_file_stream()
 NaluEnv::~NaluEnv()
 {
   close_log_file_stream();
+  delete naluParallelStream_;
+
   // shut down MPI
   MPI_Finalize();
 }
