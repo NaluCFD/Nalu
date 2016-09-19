@@ -94,9 +94,21 @@ public:
     const double &dt,
     stk::mesh::Selector s_all_nodes);
 
+  void compute_vorticity(
+    const std::string &averageBlockName,
+	stk::mesh::Selector s_all_nodes);
+
+  void compute_q_criterion(
+	const std::string &averageBlockName,
+	stk::mesh::Selector s_all_nodes);
+
+  void compute_lambda_ci(
+	const std::string &averageBlockName,
+	stk::mesh::Selector s_all_nodes);
+
   // hold the realm
   Realm &realm_;
-  
+
   double currentTimeFilter_; /* provided by restart */
   double timeFilterInterval_; /* user supplied */
   bool forcedReset_; /* allows forhard reset */

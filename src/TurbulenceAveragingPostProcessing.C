@@ -28,6 +28,8 @@
 #include <fstream>
 #include <iomanip>
 #include <algorithm>
+#include <complex>
+#include <cmath>
 
 namespace sierra{
 namespace nalu{
@@ -134,6 +136,9 @@ TurbulenceAveragingPostProcessing::load(
         get_if_present(y_spec, "compute_tke", avInfo->computeTke_, avInfo->computeTke_);
         get_if_present(y_spec, "compute_favre_stress", avInfo->computeFavreStress_, avInfo->computeFavreStress_);
         get_if_present(y_spec, "compute_favre_tke", avInfo->computeFavreTke_, avInfo->computeFavreTke_);
+        get_if_present(y_spec, "compute_vorticity", avInfo->computeVorticity_, avInfo->computeVorticity_);
+        get_if_present(y_spec, "compute_q_criterion", avInfo->computeQcriterion_, avInfo->computeQcriterion_);
+        get_if_present(y_spec, "compute_lambda_ci", avInfo->computeLambdaCI_, avInfo->computeLambdaCI_);
 
         // we will need Reynolds/Favre-averaged velocity if we need to compute TKE
         if ( avInfo->computeTke_ || avInfo->computeReynoldsStress_ ) {
@@ -190,31 +195,45 @@ TurbulenceAveragingPostProcessing::setup()
         avInfo->partVec_.push_back(targetPart);
       }
       
-      // first, register TKE
+      // register special fields whose name prevails over the averaging info name
       if ( avInfo->computeTke_ ) {
-        // hack a name; the name is not tied to the average info name
         const std::string tkeName = "resolved_turbulent_ke";
         const int sizeOfField = 1;
         register_field(tkeName, sizeOfField, metaData, targetPart);
       }
 
       if ( avInfo->computeFavreTke_ ) {
-        // hack a name; the name is not tied to the average info name
         const std::string tkeName = "resolved_favre_turbulent_ke";
         const int sizeOfField = 1;
         register_field(tkeName, sizeOfField, metaData, targetPart);
       }
 
-      // second, register stress
+      if ( avInfo->computeVorticity_ ) {
+        const int vortSize = realm_.spatialDimension_;
+        const std::string vorticityName = "vorticity";
+        VectorFieldType *vortField = &(metaData.declare_field<VectorFieldType>(stk::topology::NODE_RANK, vorticityName));
+        stk::mesh::put_field(*vortField, *targetPart, vortSize);
+      }
+
+      if ( avInfo->computeQcriterion_ ) {
+        const std::string QcritName = "q_criterion";
+        const int sizeOfField = 1;
+        register_field(QcritName, sizeOfField, metaData, targetPart);
+      }
+
+      if ( avInfo->computeLambdaCI_ ) {
+        const std::string lambdaName = "lambda_ci";
+        const int sizeOfField = 1;
+        register_field(lambdaName, sizeOfField, metaData, targetPart);
+      }
+
       const int stressSize = realm_.spatialDimension_ == 3 ? 6 : 3;
       if ( avInfo->computeReynoldsStress_ ) {
-        // hack a name; the name is not tied to the average info name
         const std::string stressName = "reynolds_stress";
         register_field(stressName, stressSize, metaData, targetPart);
       }
-
+      
       if ( avInfo->computeFavreStress_ ) {
-        // hack a name; the name is not tied to the average info name
         const std::string stressName = "favre_stress";
         register_field(stressName, stressSize, metaData, targetPart);
       }
@@ -390,6 +409,19 @@ TurbulenceAveragingPostProcessing::review(
     NaluEnv::self().naluOutputP0() << "Favre Stress will be computed; add favre_stress to output"<< std::endl;
   }
 
+  if ( avInfo->computeVorticity_ ) {
+    NaluEnv::self().naluOutputP0() << "Vorticity will be computed; add vorticity to output"<< std::endl;
+  }
+  
+  if ( avInfo->computeQcriterion_ ) {
+    NaluEnv::self().naluOutputP0() << "Q criterion will be computed; add q_criterion to output"<< std::endl;
+  }
+  
+  if ( avInfo->computeLambdaCI_ ) {
+    NaluEnv::self().naluOutputP0() << "Lambda CI will be computed; add lambda_ci to output"<< std::endl;
+  }
+
+
   NaluEnv::self().naluOutputP0() << "===========================" << std::endl;
 }
 
@@ -485,19 +517,31 @@ TurbulenceAveragingPostProcessing::execute()
       }
     }
   
-    // process tke
+    // process special fields; internal avInfo flag defines the field
     if ( avInfo->computeTke_ ) {
       compute_tke(true, avInfo->name_, s_all_nodes);
     }
+
     if ( avInfo->computeFavreTke_ ) {
       compute_tke(false, avInfo->name_, s_all_nodes);
     }
 
-    // process stress
+    if ( avInfo->computeVorticity_ ) {
+      compute_vorticity(avInfo->name_, s_all_nodes);
+    }
+
+    if ( avInfo->computeQcriterion_ ) {
+      compute_q_criterion(avInfo->name_, s_all_nodes);
+    }
+
+    if ( avInfo->computeLambdaCI_) {
+      compute_lambda_ci(avInfo->name_, s_all_nodes);
+    }
+    
     if ( avInfo->computeFavreStress_ ) {
       compute_favre_stress(avInfo->name_, oldTimeFilter, zeroCurrent, dt, s_all_nodes);
     }
-
+    
     if ( avInfo->computeReynoldsStress_ ) {
       compute_reynolds_stress(avInfo->name_, oldTimeFilter, zeroCurrent, dt, s_all_nodes);
     }
@@ -674,6 +718,231 @@ TurbulenceAveragingPostProcessing::compute_favre_stress(
     }
   }
 }
+
+//--------------------------------------------------------------------------
+//-------- compute_vortictiy -----------------------------------------------
+//--------------------------------------------------------------------------
+void
+TurbulenceAveragingPostProcessing::compute_vorticity(
+  const std::string &averageBlockName,
+  stk::mesh::Selector s_all_nodes)
+{
+  stk::mesh::MetaData & metaData = realm_.meta_data();
+  
+  const int nDim = realm_.spatialDimension_;
+  const std::string VortFieldName = "vorticity";
+  
+  // extract fields
+  stk::mesh::FieldBase *dudx_ = metaData.get_field(stk::topology::NODE_RANK, "dudx");
+  stk::mesh::FieldBase *Vort = metaData.get_field(stk::topology::NODE_RANK, VortFieldName);
+
+  stk::mesh::BucketVector const& node_buckets_vort =
+    realm_.get_buckets( stk::topology::NODE_RANK, s_all_nodes );
+  for ( stk::mesh::BucketVector::const_iterator ib = node_buckets_vort.begin();
+        ib != node_buckets_vort.end() ; ++ib ) {
+    stk::mesh::Bucket & b = **ib ;
+    const stk::mesh::Bucket::size_type length   = b.size();
+    
+    // fields
+    const double * du = (double*)stk::mesh::field_data(*dudx_, b);
+    double *vorticity_ = (double*)stk::mesh::field_data(*Vort,b);
+    const int offSet = nDim*nDim;
+    
+    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+      for ( int i = 0; i < nDim; ++i ) {
+    	const int vortswitch = nDim*i;
+    	for ( int j = 0; j < nDim; ++j ) {
+          // Vorticity is the difference in the off diagonals, calculate only those
+    	  if ( (i==0 && j==1) || (i==1 && j ==2) || (i==2 && j==0) ){
+            const double vort_ = du[k*offSet+(nDim*j+i)] - du[k*offSet+(vortswitch+j)] ;
+            // Store the x, y, z components of vorticity
+            vorticity_[k*nDim + (nDim-i-j)] = vort_;
+    	  }
+        }
+      }
+    }
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- compute_q_criterion----------------------------------------------
+//--------------------------------------------------------------------------
+void
+TurbulenceAveragingPostProcessing::compute_q_criterion(
+  const std::string &averageBlockName,
+  stk::mesh::Selector s_all_nodes)
+{
+  stk::mesh::MetaData & metaData = realm_.meta_data();
+
+  const int nDim = realm_.spatialDimension_;
+  const std::string QcritName = "q_criterion";
+
+  // extract fields
+  stk::mesh::FieldBase *dudx_ = metaData.get_field(stk::topology::NODE_RANK, "dudx");
+  stk::mesh::FieldBase *Qcrit = metaData.get_field(stk::topology::NODE_RANK, QcritName);
+
+  stk::mesh::BucketVector const& node_buckets_vort =
+    realm_.get_buckets( stk::topology::NODE_RANK, s_all_nodes );
+  for ( stk::mesh::BucketVector::const_iterator ib = node_buckets_vort.begin();
+        ib != node_buckets_vort.end() ; ++ib ) {
+    stk::mesh::Bucket & b = **ib ;
+    const stk::mesh::Bucket::size_type length   = b.size();
+
+    // fields
+    double *Qcriterion_ = (double*)stk::mesh::field_data(*Qcrit,b);
+
+    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+      const double *du = (double*)stk::mesh::field_data(*dudx_, b[k] );
+      double Sij = 0.0;
+      double Omegaij = 0.0;
+      double divsquared = 0.0;
+      for ( int i = 0; i < nDim; ++i){
+    	const int offSet = nDim*i;
+    	for( int j = 0; j < nDim; ++j){
+          // Compute the squares of strain rate tensor and vorticity tensor
+    	  const double rateOfStrain =  0.5*(du[offSet+j] + du[nDim*j +i]) ;
+    	  const double vorticityTensor =  0.5*(du[offSet+j] - du[nDim*j +i]) ;
+    	  Sij += rateOfStrain*rateOfStrain;
+    	  Omegaij += vorticityTensor*vorticityTensor;
+    	}
+      }
+      if ( nDim == 2 ) {
+        const double divergence = du[0] + du[3];
+        divsquared = divergence*divergence;
+      }
+      else {
+        const double divergence = du[0] + du[4] + du[8];
+        divsquared = divergence*divergence;
+      }
+      Qcriterion_[k] = 0.5*(Omegaij - Sij) +  0.5*divsquared ;
+    }
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- compute_lambda_ci -----------------------------------------------
+//--------------------------------------------------------------------------
+void
+TurbulenceAveragingPostProcessing::compute_lambda_ci(
+  const std::string &averageBlockName,
+  stk::mesh::Selector s_all_nodes)
+{
+  stk::mesh::MetaData & metaData = realm_.meta_data();
+
+  const int nDim = realm_.spatialDimension_;
+  const std::string lambdaName = "lambda_ci";
+
+  // extract fields
+  stk::mesh::FieldBase *Lambda = metaData.get_field(stk::topology::NODE_RANK, lambdaName);
+  GenericFieldType *dudx_ = metaData.get_field<GenericFieldType>(stk::topology::NODE_RANK, "dudx");
+
+  stk::mesh::BucketVector const& node_buckets_vort =
+    realm_.get_buckets( stk::topology::NODE_RANK, s_all_nodes );
+  for ( stk::mesh::BucketVector::const_iterator ib = node_buckets_vort.begin();
+        ib != node_buckets_vort.end() ; ++ib ) {
+    stk::mesh::Bucket & b = **ib ;
+    const stk::mesh::Bucket::size_type length   = b.size();
+
+    // fields
+    double *LambdaCI_ = (double*)stk::mesh::field_data(*Lambda,b);
+    
+    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+      stk::mesh::Entity node = b[k];
+      
+      const double *a_matrix = stk::mesh::field_data(*dudx_, node);
+      
+      // Check if 2-D or 3-D, which will determine whether to solve a quadratic or cubic equation
+      if ( nDim == 2 ) {
+        // Solve a quadratic eigenvalue equation, A*Lambda^2 + B*Lambda + C = 0
+        const double a11 = a_matrix[0];
+        const double a12 = a_matrix[1];
+        const double a21 = a_matrix[2];
+        const double a22 = a_matrix[3];
+        
+        // For a 2x2 matrix, the first and second invariant are the -trace and the determinant
+        const double trace = a11 + a22 ;
+        const double det = a11*a22 - a12*a21;
+        
+        std::complex<double> A (1.0,0.0);
+        const double Ar = 1.0;
+        std::complex<double> B(-trace,0.0) ;
+        const double Br = -trace;
+        std::complex<double> C(det,0.0) ;
+        const double Cr = det;
+        const double Discrim = Br*Br - 4*Ar*Cr;
+        
+        // Check whether real or complex eigenvalues
+        if ( Discrim >= 0 ){
+          // Two real eigenvalues, lambda_ci not applicable
+          LambdaCI_[k] = 0.0;
+        }
+        else{
+          // Two complex conjugate eigenvalues, lambda_ci applicable
+          std::complex<double> EIG1;
+          EIG1 = -B/2.0 + std::sqrt(B*B - A*C*4.0)/2.0 ;
+          std::complex<double> EIG2;
+          EIG2 = -B/2.0 - std::sqrt(B*B - A*C*4.0)/2.0 ;
+          LambdaCI_[k] = std::max(std::imag(EIG1), std::imag(EIG2)  );
+        }
+      }
+      else{
+        // Solve a cubic eigenvalue equation, A*Lambda^3 + B*Lambda^2 + C*Lambda + D = 0
+        const double a11 = a_matrix[0];
+        const double a12 = a_matrix[1];
+        const double a13 = a_matrix[2];
+        const double a21 = a_matrix[3];
+        const double a22 = a_matrix[4];
+        const double a23 = a_matrix[5];
+        const double a31 = a_matrix[6];
+        const double a32 = a_matrix[7];
+        const double a33 = a_matrix[8];
+        
+        // For a 3x3 matrix, the 3 invariants are the -trace, the sum of principal minors, and the -determinant
+        const double trace = a11 + a22 + a33;
+        const double trace2 = (a11*a11 + a12*a21 + a13*a31) + (a12*a21 + a22*a22 + a23*a32) + (a13*a31 + a23*a32 + a33*a33);
+        const double det = a11*(a22*a33 - a23*a32) - a12*(a21*a33 - a23*a31) + a13*(a21*a32 - a22*a31);
+        
+        std::complex<double> A (1.0,0.0);
+        const double Ar = 1.0;
+        std::complex<double> B(-trace,0.0) ;
+        const double Br = -trace;
+        std::complex<double> C(-0.5*(trace2 - trace*trace),0.0) ;
+        const double Cr = -0.5*(trace2 - trace*trace);
+        std::complex<double> D(-det,0.0) ;
+        const double Dr = -det;
+        const double Discrim = 18.0*Ar*Br*Cr*Dr - 4.0*Br*Br*Br*Dr + Br*Br*Cr*Cr - 4.0*Ar*Cr*Cr*Cr - 27.0*Ar*Ar*Dr*Dr ;
+        // Check whether real or complex eigenvalues
+        if ( Discrim >= 0 ){
+          // Equation has either 3 distinct real roots or a multiple root and all roots are real
+          // lambda_ci not applicable
+          LambdaCI_[k] = 0.0;
+        }
+        else{
+          // Equation has one real root and two complex conjugate roots
+          std::complex<double> Q ;
+          Q = std::sqrt( std::pow(B*B*B*2.0 - A*B*C*9.0 + A*A*D*27.0, 2.0) - 4.0*std::pow(B*B - A*C*3.0, 3.0) ) ;
+          std::complex<double> CC ;
+          CC = std::pow(0.5*(Q + 2.0*B*B*B - 9.0*A*B*C + 27.0*A*A*D), 1.0/3.0) ;
+          if(Br*Br - 3.0*Ar*Cr == 0.0){
+            Q = -Q;
+            CC = std::pow(0.5*(Q + 2.0*B*B*B - 9.0*A*B*C + 27.0*A*A*D), 1.0/3.0) ;
+          }
+          std::complex<double> II (0.0,-1.0);
+          std::complex<double> EIG1;
+          EIG1 = -B/(3.0*A) - CC/(3.0*A) - (B*B - 3.0*A*C)/(3.0*A*CC);
+          std::complex<double> EIG2;
+          EIG2 = -B/(3.0*A) + CC*(1.0 + II*std::sqrt(3.0) )/(6.0*A) + (1.0 - II*std::sqrt(3.0))*(B*B - 3.0*A*C)/(6.0*A*CC) ;
+          std::complex<double> EIG3;
+          EIG3 = -B/(3.0*A) + CC*(1.0 - II*std::sqrt(3.0) )/(6.0*A) + (1.0 + II*std::sqrt(3.0))*(B*B - 3.0*A*C)/(6.0*A*CC) ;
+          
+          double maxEIG12 = std::max(std::imag(EIG1), std::imag(EIG2));
+          LambdaCI_[k] = std::max(maxEIG12, std::imag(EIG3)  );
+        }
+      }
+    }
+  }
+}
+
 
 } // namespace nalu
 } // namespace Sierra

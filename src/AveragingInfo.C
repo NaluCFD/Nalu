@@ -27,7 +27,10 @@ AveragingInfo::AveragingInfo()
 : computeReynoldsStress_(false),
   computeTke_(false),
   computeFavreStress_(false),
-  computeFavreTke_(false)
+  computeFavreTke_(false),
+  computeVorticity_(false),
+  computeQcriterion_(false),
+  computeLambdaCI_(false)
 {
   // does nothing
 }
