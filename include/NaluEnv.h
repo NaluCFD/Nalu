@@ -33,6 +33,7 @@ class NaluEnv
   MPI_Comm parallelCommunicator_;
   int pSize_;
   int pRank_;
+  std::streambuf *stdoutStream_;
   std::ostream *naluLogStream_;
   std::ostream *naluParallelStream_;
   bool parallelLog_;

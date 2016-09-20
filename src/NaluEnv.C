@@ -29,7 +29,8 @@ NaluEnv::NaluEnv()
   : parallelCommunicator_(MPI_COMM_WORLD),
     pSize_(-1),
     pRank_(-1),
-    naluLogStream_(&std::cout),
+    stdoutStream_(std::cout.rdbuf()),
+    naluLogStream_(&std::cout), // std::cout redirects to log file
     naluParallelStream_(new std::ostream(&naluParallelStreamBuffer_)),
     parallelLog_(false)
 {
@@ -118,7 +119,7 @@ NaluEnv::set_log_file_stream(std::string naluLogName, bool pprint)
     naluParallelStream_->rdbuf(&naluParallelStreamBuffer_);
   }
   else {
-    naluParallelStream_->rdbuf(&naluEmptyStreamBuffer_);
+    naluParallelStream_->rdbuf(stdoutStream_);
   }
 }
 
