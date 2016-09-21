@@ -350,7 +350,7 @@ TpetraLinearSystem::beginLinearSystemConstruction()
   std::sort(ownedGids.begin(), ownedGids.end());
   std::sort(globallyOwnedGids.begin(), globallyOwnedGids.end());
 
-  const Teuchos::RCP<LinSys::Comm> tpetraComm = Tpetra::rcp(new LinSys::Comm(bulkData.parallel()));
+  const Teuchos::RCP<LinSys::Comm> tpetraComm = Teuchos::rcp(new LinSys::Comm(bulkData.parallel()));
   ownedRowsMap_ = Teuchos::rcp(new LinSys::Map(Teuchos::OrdinalTraits<Tpetra::global_size_t>::invalid(), ownedGids, 1, tpetraComm, node_));
   globallyOwnedRowsMap_ = Teuchos::rcp(new LinSys::Map(Teuchos::OrdinalTraits<Tpetra::global_size_t>::invalid(), globallyOwnedGids, 1, tpetraComm, node_));
 
@@ -847,7 +847,7 @@ TpetraLinearSystem::finalizeLinearSystem()
   }
 
   // This is the column map for the owned graph now
-  const Teuchos::RCP<LinSys::Comm> tpetraComm = Tpetra::rcp(new LinSys::Comm(bulkData.parallel()));
+  const Teuchos::RCP<LinSys::Comm> tpetraComm = Teuchos::rcp(new LinSys::Comm(bulkData.parallel()));
   totalColsMap_ = Teuchos::rcp(new LinSys::Map(Teuchos::OrdinalTraits<Tpetra::global_size_t>::invalid(), totalGids_, 1, tpetraComm, node_));
   ownedGraph_ = Teuchos::rcp(new LinSys::Graph(ownedRowsMap_, totalColsMap_, 8));
 
