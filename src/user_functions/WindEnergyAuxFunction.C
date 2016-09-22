@@ -22,12 +22,20 @@ WindEnergyAuxFunction::WindEnergyAuxFunction(
   const unsigned endPos,
   const std::vector<double> theParams) :
   AuxFunction(beginPos, endPos),
-  omega_(1.0)
+  omega_(1.0),
+  centroidX_(0.0),
+  centroidY_(0.0)
 {
   // nothing; note hard coded for 2D
-  if (theParams.size() != 1)
-    throw std::runtime_error("Wind_energy user function requires one parameter");
+  if (theParams.size() < 1 )
+    throw std::runtime_error("Wind_energy user function requires at least one parameter");
   omega_ = theParams[0];
+  
+  // check for possible centroids
+  if ( theParams.size() > 1)
+    centroidX_ = theParams[1];
+  if ( theParams.size() > 2)
+    centroidY_ = theParams[2];
 }
 
 
@@ -44,8 +52,8 @@ WindEnergyAuxFunction::do_evaluate(
 {
   for(unsigned p=0; p < numPoints; ++p) {
 
-    double cX = coords[0];
-    double cY = coords[1];
+    double cX = coords[0] - centroidX_;
+    double cY = coords[1] - centroidY_;
 
     fieldPtr[0] = -omega_*cY;
     fieldPtr[1] = +omega_*cX;

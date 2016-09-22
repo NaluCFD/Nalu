@@ -38,6 +38,8 @@ public:
   
 private:
   double omega_;
+  double centroidX_;
+  double centroidY_;
 };
 
 } // namespace nalu

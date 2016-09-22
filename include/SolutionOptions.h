@@ -133,6 +133,7 @@ public:
 
   // mesh motion
   std::map<std::string, std::pair<std::vector<std::string>, double > > meshMotionMap_;
+  std::map<std::string, Coordinates> meshMotionCentroidMap_;
 
   std::vector<double> gravity_;
 

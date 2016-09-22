@@ -362,6 +362,12 @@ SolutionOptions::load(const YAML::Node & y_node)
           // provide the map
           meshMotionMap_[motionName] = thePair;
           
+          // check for centroids; provide default
+          Coordinates cCoords;
+          const YAML::Node *coordsNode = y_option.FindValue("centroid_coordinates");
+          if ( coordsNode )
+            *coordsNode >> cCoords;
+          meshMotionCentroidMap_[motionName] = cCoords;
         }
       }
     }

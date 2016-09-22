@@ -2332,27 +2332,39 @@ Realm::query_for_overset()
 void
 Realm::process_mesh_motion()
 {
-  // extract parameters; allows for omega to change...
+  // extract parameters; allows for omega to change; save space for centroid
+  Coordinates centroidCoords;
+
   std::map<std::string, std::pair<std::vector<std::string>, double> >::const_iterator iter;
   for ( iter = solutionOptions_->meshMotionMap_.begin();
         iter != solutionOptions_->meshMotionMap_.end(); ++iter) {
 
+    // extract key and pair
+    std::string theKey = iter->first;
     std::pair<std::vector<std::string>, double> thePair = iter->second;
-
     std::vector<std::string> theVector = thePair.first;
     const double theOmega = thePair.second;
+
+    // extract centroids; map matches by construction
+    std::map<std::string, Coordinates>::const_iterator iterFind;
+    iterFind = solutionOptions_->meshMotionCentroidMap_.find(theKey);
+    if ( iterFind != solutionOptions_->meshMotionCentroidMap_.end() )
+      centroidCoords = iterFind->second;
+    else 
+      throw std::runtime_error("Realm::process_mesh_motion() Error, could not find the centroid coordinates for " + theKey);      
+    
     for (size_t k = 0; k < theVector.size(); ++k ) {
-
+      
       stk::mesh::Part *targetPart = metaData_->get_part(theVector[k]);
-
+      
       if ( NULL == targetPart ) {
-        throw std::runtime_error("Sorry, no part name found" + theVector[k]);
+        throw std::runtime_error("Realm::process_mesh_motion() Error Error, no part name found" + theVector[k]);
       }
       else {
         set_omega(targetPart, theOmega);
-        set_current_displacement(targetPart);
+        set_current_displacement(targetPart, centroidCoords);
         set_current_coordinates(targetPart);
-        set_mesh_velocity(targetPart);
+        set_mesh_velocity(targetPart, centroidCoords);
       }
     }
   }
@@ -2387,7 +2399,8 @@ Realm::set_omega(
 //--------------------------------------------------------------------------
 void
 Realm::set_current_displacement(
-  stk::mesh::Part *targetPart)
+  stk::mesh::Part *targetPart,
+  Coordinates centroidCoords)
 {
   const int nDim = metaData_->spatial_dimension();
   const double currentTime = get_current_time();
@@ -2414,13 +2427,13 @@ Realm::set_current_displacement(
 
       const int offSet = k*nDim;
       // hacked for 2D
-      const double cX = mCoords[offSet];
-      const double cY = mCoords[offSet+1];
-
-      dx[offSet] =  ((cos(theO*currentTime) - 1.0 )*cX
-                     - sin(theO*currentTime)*cY);
-      dx[offSet+1] =  (sin(theO*currentTime)*cX
-                       + (cos(theO*currentTime)-1.0)*cY);
+      const double modelX = mCoords[offSet];
+      const double modelY = mCoords[offSet+1];
+      const double centroidX = centroidCoords.x_;
+      const double centroidY = centroidCoords.y_;
+      
+      dx[offSet] = cos(theO*currentTime)*(modelX-centroidX) - sin(theO*currentTime)*(modelY-centroidY) + (centroidX-modelX);
+      dx[offSet+1] = sin(theO*currentTime)*(modelX-centroidX) + cos(theO*currentTime)*(modelY-centroidY) + (centroidY-modelY);
     }
   }
 }
@@ -2461,7 +2474,8 @@ Realm::set_current_coordinates(
 //--------------------------------------------------------------------------
 void
 Realm::set_mesh_velocity(
-  stk::mesh::Part *targetPart)
+  stk::mesh::Part *targetPart,
+  Coordinates centroidCoords)
 {
   const int nDim = metaData_->spatial_dimension();
 
@@ -2483,8 +2497,8 @@ Realm::set_mesh_velocity(
       const int offSet = k*nDim;
 
       // hacked for 2D
-      const double cX = cCoords[offSet];
-      const double cY = cCoords[offSet+1];
+      const double cX = cCoords[offSet] - centroidCoords.x_;
+      const double cY = cCoords[offSet+1] - centroidCoords.y_;
       const double theO = bigO[k];
       vnp1[offSet] =  -theO*cY;
       vnp1[offSet+1] = theO*cX;
