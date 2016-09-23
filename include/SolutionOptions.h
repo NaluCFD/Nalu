@@ -84,6 +84,7 @@ public:
   bool ncAlgUpwindAdvection_;
   bool ncAlgIncludePstab_;
   bool ncAlgDetailedOutput_;
+  bool ncAlgCurrentNormal_;
   bool cvfemShiftMdot_;
   bool cvfemShiftPoisson_;
   bool cvfemReducedSensPoisson_;

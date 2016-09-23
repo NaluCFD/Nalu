@@ -45,9 +45,10 @@ public:
 
   // options that prevail over all algorithms created
   bool robinStyle_;
-  double dsFactor_;
   const bool upwindAdvection_;
   const double includeDivU_;
+
+  const double useCurrentNormal_;
 
   std::vector< const stk::mesh::FieldBase *> ghostFieldVec_;
 

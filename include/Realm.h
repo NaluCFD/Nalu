@@ -314,6 +314,7 @@ class Realm {
   NonConformalAlgType get_nc_alg_type();
   bool get_nc_alg_upwind_advection();
   bool get_nc_alg_include_pstab();
+  bool get_nc_alg_current_normal();
 
   PropertyEvaluator *
   get_material_prop_eval(

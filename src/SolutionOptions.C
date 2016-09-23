@@ -69,6 +69,7 @@ SolutionOptions::SolutionOptions()
     ncAlgUpwindAdvection_(false),
     ncAlgIncludePstab_(true),
     ncAlgDetailedOutput_(false),
+    ncAlgCurrentNormal_(false),
     cvfemShiftMdot_(false),
     cvfemShiftPoisson_(false),
     cvfemReducedSensPoisson_(false),
@@ -281,6 +282,7 @@ SolutionOptions::load(const YAML::Node & y_node)
           get_if_present(y_nc, "upwind_advection",  ncAlgUpwindAdvection_, ncAlgUpwindAdvection_);
           get_if_present(y_nc, "include_pstab",  ncAlgIncludePstab_, ncAlgIncludePstab_);
           get_if_present(y_nc, "detailed_output",  ncAlgDetailedOutput_, ncAlgDetailedOutput_);
+          get_if_present(y_nc, "current_normal",  ncAlgCurrentNormal_, ncAlgCurrentNormal_);
           if (y_nc.FindValue("algorithm_type" )  ) {
             std::string algTypeString = "none";
             y_nc["algorithm_type"] >> algTypeString;

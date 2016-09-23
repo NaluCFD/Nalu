@@ -51,8 +51,7 @@ AssembleScalarDiffNonConformalSolverAlgorithm::AssembleScalarDiffNonConformalSol
     diffFluxCoeff_(diffFluxCoeff),
     coordinates_(NULL),
     exposedAreaVec_(NULL),
-    robinStyle_(false),
-    dsFactor_(1.0)
+    robinStyle_(false)
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -68,17 +67,10 @@ AssembleScalarDiffNonConformalSolverAlgorithm::AssembleScalarDiffNonConformalSol
   NonConformalAlgType algType = realm_.get_nc_alg_type();
   switch ( algType ) {
     case NC_ALG_TYPE_DG:
-      dsFactor_ = 1.0;
       robinStyle_ = false;
       break;
       
-    case NC_ALG_TYPE_DS: 
-      dsFactor_ = 0.0;
-      // robinStyle_ does not matter here..
-      break;
-    
     case NC_ALG_TYPE_RB:
-      dsFactor_ = 1.0;
       robinStyle_ = true;
       
     default:
@@ -86,7 +78,7 @@ AssembleScalarDiffNonConformalSolverAlgorithm::AssembleScalarDiffNonConformalSol
       break;
   }
 
-  NaluEnv::self().naluOutputP0() << "NC options: dsFactor/robinStyle: " << dsFactor_ << " " << robinStyle_ << std::endl;
+  NaluEnv::self().naluOutputP0() << "NC options: robinStyle: " << robinStyle_ << std::endl;
   
 }
 
@@ -445,7 +437,7 @@ AssembleScalarDiffNonConformalSolverAlgorithm::execute()
         const double ncDiffFlux =  robinStyle_ ? -opposingDiffFluxBip : 0.5*(currentDiffFluxBip - opposingDiffFluxBip);
        
         const int nn = ws_c_face_node_ordinals[currentGaussPointId];
-        p_rhs[nn] -= (dsFactor_*ncDiffFlux + penaltyIp*(currentScalarQBip-opposingScalarQBip))*c_amag;
+        p_rhs[nn] -= (ncDiffFlux + penaltyIp*(currentScalarQBip-opposingScalarQBip))*c_amag;
         
         // set-up row for matrix
         const int rowR = nn*totalNodes;

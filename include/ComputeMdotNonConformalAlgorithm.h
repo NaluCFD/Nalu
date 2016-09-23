@@ -42,9 +42,10 @@ public:
   GenericFieldType *ncMassFlowRate_;
 
   const bool meshMotion_;
+  const bool useCurrentNormal_;
+  const double includePstab_;
   
   std::vector< const stk::mesh::FieldBase *> ghostFieldVec_;
-
 };
 
 } // namespace nalu
