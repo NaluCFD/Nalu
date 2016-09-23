@@ -1,3 +1,5 @@
+#!/bin/bash
+
 #
 # Edited by Marc T. Henry de Frahan to compile Trilinos with the intel compilers (16 here)
 # Based on do-configTrilinos_release-intel in Nalu
@@ -12,10 +14,7 @@ nalu_build_dir=/home/mhenryde/nalu-build-intel
 #       You may also need to add to LD_LIBRARY_PATH the lib directory for the compiler
 #       used to create the mpi executables.
 
-# TPLS needed by trilinos, possibly provided by HomeBrew on a Mac
-#boost_dir=/usr/local/Cellar/boost/1.56.0/include/boost/
-#superlu_inc_dir=/usr/local/Cellar/superlu/4.3/include/superlu
-#superlu_lib_dir=/usr/local/Cellar/superlu/4.3/lib
+# TPLS needed by trilinos
 boost_dir=$nalu_build_dir
 superlu_inc_dir=$nalu_build_dir/SuperLU_4.3/include
 superlu_lib_dir=$nalu_build_dir/SuperLU_4.3/lib
@@ -25,9 +24,6 @@ netcdf_install_dir=$nalu_build_dir
 hdf_install_dir=$nalu_build_dir
 parallel_netcdf_install_dir=$nalu_build_dir
 z_install_dir=$nalu_build_dir
-
-# MKL libraries for BLAS/LAPACK
-intel_mkl_dir=/nopt/intel/16.0/compilers_and_libraries_2016.2.181/linux/mkl/lib/intel64
 
 # Where trilinos will be installed
 trilinos_install_dir=$nalu_build_dir
@@ -66,6 +62,7 @@ cmake \
 -DTPL_ENABLE_SuperLU=ON \
   -DSuperLU_INCLUDE_DIRS:PATH=$superlu_inc_dir \
   -DSuperLU_LIBRARY_DIRS:PATH=$superlu_lib_dir \
+  -DTPL_SuperLU_LIBRARIES:PATH="${superlu_lib_dir}/libsuperlu.a" \
 -DTrilinos_ENABLE_Epetra:BOOL=ON \
 -DTrilinos_ENABLE_Tpetra:BOOL=ON \
 -DTrilinos_ENABLE_ML:BOOL=ON \
@@ -123,11 +120,18 @@ cmake \
 \
   -DTrilinos_ASSERT_MISSING_PACKAGES=OFF \
 \
+  -DTPL_ENABLE_Pthread:BOOL=ON \
   -DTPL_ENABLE_BLAS:BOOL=ON \
   -DTPL_ENABLE_LAPACK:BOOL=ON \
-  -DBLAS_LIBRARY_DIRS:FILEPATH=${intel_mkl_dir} \
-  -DTPL_BLAS_LIBRARIES:STRING="${intel_mkl_dir}/libmkl_intel_lp64.a;${intel_mkl_dir}/libmkl_sequential.a;${intel_mkl_dir}/libmkl_core.a" \
-  -DLAPACK_LIBRARY_NAMES:STRING= \
-  -DLAPACK_LIBRARY_DIRS:FILEPATH=${intel_mkl_dir} \
+  -DBLAS_LIBRARY_DIRS:FILEPATH="${MKLROOT}/lib/intel64" \
+  -DBLAS_LIBRARY_NAMES:STRING="mkl_rt" \
+  -DBLAS_INCLUDE_DIRS:PATH="${MKLROOT}/include" \
+  -DLAPACK_LIBRARY_DIRS:FILEPATH="${MKLROOT}/lib/intel64" \
+  -DLAPACK_LIBRARY_NAMES:STRING="mkl_rt" \
+  -DLAPACK_INCLUDE_DIRS:PATH="${MKLROOT}/include" \
+  -DTPL_ENABLE_MKL:BOOL=ON \
+  -DMKL_LIBRARY_DIRS:FILEPATH="${MKLROOT}/lib/intel64" \
+  -DMKL_LIBRARY_NAMES:STRING="mkl_rt" \
+  -DMKL_INCLUDE_DIRS:FILEPATH="${MKLROOT}/include" \
 $EXTRA_ARGS \
 ../
