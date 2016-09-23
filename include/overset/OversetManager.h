@@ -94,6 +94,9 @@ public:
   // determine all of the intersected elements (coarse search on oversetBoxVec and backgroundBoxVec)
   void determine_intersected_elements();
 
+  // remove all elements from internally managed parts
+  void clear_parts();
+
   // add elements to the inactive part
   void populate_inactive_part();
 
@@ -147,6 +150,9 @@ public:
   // part associated with exposed surfaces for inactive elements
   stk::mesh::Part *backgroundSurfacePart_;
 
+  // internal flag to ensure that we declare parts once
+  bool firstInitialization_;
+  
   // vector of elements to ghost
   stk::mesh::EntityProcVec elemsToGhost_;
 

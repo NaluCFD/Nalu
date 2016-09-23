@@ -57,7 +57,8 @@ OversetManager::OversetManager(
   oversetGhosting_(NULL),
   needToGhostCount_(0),
   inActivePart_(NULL),
-  backgroundSurfacePart_(NULL)
+  backgroundSurfacePart_(NULL),
+  firstInitialization_(true)
 {
   // nothing to do
 }
@@ -82,12 +83,18 @@ OversetManager::initialize()
   // initialize all ghosting data structures
   initialize_ghosting();
 
-  // declare the part that represents the intersected elements/nodes;
-  declare_inactive_part();
+  if ( firstInitialization_ ) {
+    // declare the part that represents the intersected elements/nodes;
+    declare_inactive_part();
 
-  // declare create the part for the surface of the intersected elements/nodes
-  declare_background_surface_part();
-  
+    // declare create the part for the surface of the intersected elements/nodes
+    declare_background_surface_part();
+  }
+
+  // remove current set of elements/faces in parts; only required in mesh motion is active
+  if ( realm_.has_mesh_motion() )
+    clear_parts();
+
   // define overset bounding box for cutting
   define_overset_bounding_box();
 
@@ -117,6 +124,9 @@ OversetManager::initialize()
 
   // set elemental data on inactive part
   set_data_on_inactive_part();
+
+  // set flag for the next possible time we are through the initializtion method
+  firstInitialization_ = false;
 }
 
 //--------------------------------------------------------------------------
@@ -533,6 +543,71 @@ OversetManager::determine_intersected_elements()
       intersectedElementVec_.push_back(theElemMeshObj);
     }
   }
+}
+
+//--------------------------------------------------------------------------
+//-------- clear_parts -----------------------------------------------------
+//--------------------------------------------------------------------------
+void
+OversetManager::clear_parts()
+{  
+  // clear some internal data structures
+  boundingElementOversetBoxVec_.clear();
+  boundingElementOversetBoxesVec_.clear();
+  boundingElementBackgroundBoxesVec_.clear();
+  boundingPointVecBackground_.clear();
+  boundingPointVecOverset_.clear();
+  searchIntersectedElementMap_.clear();
+  searchKeyPairBackground_.clear();
+  searchKeyPairOverset_.clear();
+  orphanPointSurfaceVecOverset_.clear();
+  orphanPointSurfaceVecBackground_.clear();
+  oversetInfoVec_.clear();
+  oversetInfoMapOverset_.clear();
+  oversetInfoMapBackground_.clear();
+
+  // remove elements from current parts; at this point, do not try to figure out the delta...
+  stk::mesh::PartVector noneSkin, noneInactive, inactivePartVector(1,inActivePart_), backgroundPartVector(1,backgroundSurfacePart_);
+  
+  // load up elements within skinned mesh
+  std::vector<stk::mesh::Entity > backgroundSurfaceVec;
+  stk::mesh::Selector s_background = stk::mesh::Selector(*backgroundSurfacePart_);
+  stk::mesh::BucketVector const& bucket_surface =
+    bulkData_->get_buckets( stk::topology::ELEM_RANK, s_background );
+  for ( stk::mesh::BucketVector::const_iterator ib = bucket_surface.begin();
+        ib != bucket_surface.end() ; ++ib ) {
+    stk::mesh::Bucket & b = **ib;
+    const stk::mesh::Bucket::size_type length   = b.size();
+    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+      stk::mesh::Entity theElement = b[k];
+      backgroundSurfaceVec.push_back(theElement);
+    }
+  }
+
+  stk::mesh::Selector s_inactive = stk::mesh::Selector(*inActivePart_);
+
+  // clear the elements from the two parts in question
+  bulkData_->modification_begin();
+
+  // first intersected elements
+  for ( size_t k = 0; k < intersectedElementVec_.size(); ++k ) {
+    stk::mesh::Entity theElement = intersectedElementVec_[k];
+    if (s_inactive(bulkData_->bucket(theElement)))
+      bulkData_->change_entity_parts(theElement, noneInactive, inactivePartVector);
+  }
+  
+  // second background elements
+  for ( size_t k = 0; k < backgroundSurfaceVec.size(); ++k ) {
+    stk::mesh::Entity theElement = backgroundSurfaceVec[k];
+    if (s_background(bulkData_->bucket(theElement)))
+      bulkData_->change_entity_parts(theElement, noneSkin, backgroundPartVector);
+  }
+  
+  bulkData_->modification_end();
+
+  // clear
+  intersectedElementVec_.clear();
+
 }
 
 //--------------------------------------------------------------------------
