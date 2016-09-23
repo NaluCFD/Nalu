@@ -23,7 +23,7 @@ This laTex document can be found under the NaluDoc [repository](https://github.c
 ### Building Nalu
 
 Detailed build instructions for Nalu and the accompanied required TPLs, e.g., Trilinos, YAML, etc.,
-can be found under the Nalu Wiki [Build](https://github.com/spdomin/Nalu/wiki/Build_instructions)
+can be found under the Nalu Wiki [Build](https://github.com/marchdf/Nalu/wiki/Build_instructions)
 
 ### Help
 Projects that are using Nalu for sponsored activities should consult the ![NaluHelp Repository](https://github.com/spdomin/NaluHelp)
