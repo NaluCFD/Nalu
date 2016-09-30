@@ -87,7 +87,8 @@ int main( int argc, char ** argv )
     ("serialized-io-group-size,s",
      boost::program_options::value<int>(&serializedIOGroupSize)->default_value(0),
         "Specifies the number of processors which can concurrently perform I/O. Specifying zero disables serialization.")
-    ("debug,D", "debug print on");
+    ("debug,D", "debug print on")
+    ("pprint,p", "parallel print on");
 
   boost::program_options::variables_map vm;
   boost::program_options::store(boost::program_options::parse_command_line(argc, argv, desc), vm);
@@ -131,9 +132,13 @@ int main( int argc, char ** argv )
     }
   }
 
+  bool pprint = false;
+  if (vm.count("pprint")) {
+    pprint = true;
+  }
   // deal with log file stream
-  naluEnv.set_log_file_stream(logFileName);  
-  
+  naluEnv.set_log_file_stream(logFileName, pprint);
+
   // proceed with reading input file "document" from YAML
   YAML::Parser parser(fin);
   YAML::Node doc;
