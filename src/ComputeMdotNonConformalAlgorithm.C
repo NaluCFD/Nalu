@@ -15,7 +15,6 @@
 #include <NonConformalInfo.h>
 #include <NonConformalManager.h>
 #include <Realm.h>
-#include <SolutionOptions.h>
 #include <master_element/MasterElement.h>
 
 // stk_mesh/base/fem
@@ -49,7 +48,9 @@ ComputeMdotNonConformalAlgorithm::ComputeMdotNonConformalAlgorithm(
     density_(NULL),
     exposedAreaVec_(NULL),
     ncMassFlowRate_(NULL),
-    meshMotion_(realm_.does_mesh_move()) 
+    meshMotion_(realm_.does_mesh_move()) ,
+    useCurrentNormal_(realm_.get_nc_alg_current_normal()),
+    includePstab_(realm_.get_nc_alg_include_pstab() ? 1.0 : 0.0)
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -98,9 +99,6 @@ ComputeMdotNonConformalAlgorithm::execute()
   // deal with interpolation procedure
   const double interpTogether = realm_.get_mdot_interp();
   const double om_interpTogether = 1.0-interpTogether;
-
-  // pressure stabilization
-  const double includePstab = realm_.get_nc_alg_include_pstab() ? 1.0 : 0.0;
 
   // ip values; both boundary and opposing surface
   std::vector<double> currentIsoParCoords(nDim);
@@ -346,6 +344,12 @@ ComputeMdotNonConformalAlgorithm::execute()
           p_oNx[i] = o_areaVec[0*nDim+i]/o_amag;  
         }
 
+        // override opposing normal
+        if ( useCurrentNormal_ ) {
+          for ( int i = 0; i < nDim; ++i )
+            p_oNx[i] = -p_cNx[i];
+        }
+
         // project from side to element; method deals with the -1:1 isInElement range to the proper -0.5:0.5 CVFEM range
         meSCSCurrent->sidePcoords_to_elemPcoords(currentFaceOrdinal, 1, &currentIsoParCoords[0], &currentElementIsoParCoords[0]);
         meSCSOpposing->sidePcoords_to_elemPcoords(opposingFaceOrdinal, 1, &opposingIsoParCoords[0], &opposingElementIsoParCoords[0]);
@@ -508,7 +512,7 @@ ComputeMdotNonConformalAlgorithm::execute()
         }
 
         // scatter it
-        ncMassFlowRate[currentGaussPointId] = (ncFlux - includePstab*projTimeScale*ncPstabFlux 
+        ncMassFlowRate[currentGaussPointId] = (ncFlux - includePstab_*projTimeScale*ncPstabFlux 
                                                + penaltyIp*(currentPressureBip - opposingPressureBip))*c_amag;
       }
     }

@@ -200,14 +200,12 @@ static const std::string TurbulenceModelConstantNames[] = {
 
 enum NonConformalAlgType {
   NC_ALG_TYPE_DG = 0,
-  NC_ALG_TYPE_DS = 1,
-  NC_ALG_TYPE_RB = 2,
-  NC_ALG_TYPE_END = 3
+  NC_ALG_TYPE_RB = 1,
+  NC_ALG_TYPE_END = 2
 };
 
 const std::string NonConformalAlgTypeNames[] = {
   "dg",
-  "ds",
   "rb",
   "END" };
 

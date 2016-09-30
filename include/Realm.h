@@ -155,11 +155,13 @@ class Realm {
     stk::mesh::Part *targetPart,
     double omega);
   void set_current_displacement(
-    stk::mesh::Part *targetPart);
+    stk::mesh::Part *targetPart,
+    Coordinates centroidCoords);
   void set_current_coordinates(
     stk::mesh::Part *targetPart);
   void set_mesh_velocity(
-    stk::mesh::Part *targetPart);
+    stk::mesh::Part *targetPart,
+    Coordinates centroidCoords);
 
   // non-conformal-like algorithm suppoer
   void initialize_contact();
@@ -312,6 +314,7 @@ class Realm {
   NonConformalAlgType get_nc_alg_type();
   bool get_nc_alg_upwind_advection();
   bool get_nc_alg_include_pstab();
+  bool get_nc_alg_current_normal();
 
   PropertyEvaluator *
   get_material_prop_eval(

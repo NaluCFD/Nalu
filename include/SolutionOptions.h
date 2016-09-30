@@ -84,6 +84,7 @@ public:
   bool ncAlgUpwindAdvection_;
   bool ncAlgIncludePstab_;
   bool ncAlgDetailedOutput_;
+  bool ncAlgCurrentNormal_;
   bool cvfemShiftMdot_;
   bool cvfemShiftPoisson_;
   bool cvfemReducedSensPoisson_;
@@ -133,6 +134,7 @@ public:
 
   // mesh motion
   std::map<std::string, std::pair<std::vector<std::string>, double > > meshMotionMap_;
+  std::map<std::string, Coordinates> meshMotionCentroidMap_;
 
   std::vector<double> gravity_;
 

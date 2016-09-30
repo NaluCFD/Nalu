@@ -15,7 +15,6 @@
 #include <NonConformalInfo.h>
 #include <NonConformalManager.h>
 #include <Realm.h>
-#include <SolutionOptions.h>
 #include <TimeIntegrator.h>
 #include <master_element/MasterElement.h>
 
@@ -52,9 +51,9 @@ AssembleMomentumNonConformalSolverAlgorithm::AssembleMomentumNonConformalSolverA
     exposedAreaVec_(NULL),
     ncMassFlowRate_(NULL),
     robinStyle_(false),
-    dsFactor_(1.0),
     upwindAdvection_(realm_.get_nc_alg_upwind_advection()),
-    includeDivU_(realm_.get_divU())
+    includeDivU_(realm_.get_divU()),
+    useCurrentNormal_(realm_.get_nc_alg_current_normal())
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -71,17 +70,10 @@ AssembleMomentumNonConformalSolverAlgorithm::AssembleMomentumNonConformalSolverA
   NonConformalAlgType algType = realm_.get_nc_alg_type();
   switch ( algType ) {
     case NC_ALG_TYPE_DG:
-      dsFactor_ = 1.0;
       robinStyle_ = false;
-      break;
-      
-    case NC_ALG_TYPE_DS: 
-      dsFactor_ = 0.0;
-      // robinStyle_ does not matter here..
       break;
     
     case NC_ALG_TYPE_RB:
-      dsFactor_ = 1.0;
       robinStyle_ = true;
       
     default:
@@ -89,9 +81,8 @@ AssembleMomentumNonConformalSolverAlgorithm::AssembleMomentumNonConformalSolverA
       break;
   }
 
-  NaluEnv::self().naluOutputP0() << "NC Momentum options: dsFactor/robinStyle/upwind: " 
-                                 << dsFactor_ << " " << robinStyle_ << " " << upwindAdvection_ << std::endl;
-  
+  NaluEnv::self().naluOutputP0() << "NC Momentum options: robinStyle/upwind/useCurrentNormal: " 
+                                 << robinStyle_ << " " << upwindAdvection_ << " " << useCurrentNormal_ << std::endl;
 }
 
 //--------------------------------------------------------------------------
@@ -360,6 +351,12 @@ AssembleMomentumNonConformalSolverAlgorithm::execute()
           p_oNx[i] = o_areaVec[0*nDim+i]/o_amag;  
         }
 
+        // override opposing normal
+        if ( useCurrentNormal_ ) {
+          for ( int i = 0; i < nDim; ++i )
+            p_oNx[i] = -p_cNx[i];
+        }
+
         // project from side to element; method deals with the -1:1 isInElement range to the proper -0.5:0.5 CVFEM range
         meSCSCurrent->sidePcoords_to_elemPcoords(currentFaceOrdinal, 1, &currentIsoParCoords[0], &currentElementIsoParCoords[0]);
         meSCSOpposing->sidePcoords_to_elemPcoords(opposingFaceOrdinal, 1, &opposingIsoParCoords[0], &opposingElementIsoParCoords[0]);
@@ -505,7 +502,7 @@ AssembleMomentumNonConformalSolverAlgorithm::execute()
           // assemble residual; form proper rhs index for current face assembly
           const int nn = ws_c_face_node_ordinals[currentGaussPointId];
           const int indexR = nn*nDim + i;
-          p_rhs[indexR] -= ((dsFactor_*ncDiffFlux + penaltyIp*(currentUBip[i]-opposingUBip[i]))*c_amag + ncAdv*dsFactor_);
+          p_rhs[indexR] -= ((ncDiffFlux + penaltyIp*(currentUBip[i]-opposingUBip[i]))*c_amag + ncAdv);
 
           // set-up row for matrix
           const int rowR = indexR*totalNodes*nDim;
