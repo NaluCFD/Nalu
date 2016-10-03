@@ -10,7 +10,10 @@
 #include <mpi.h>
 #include <fstream>
 #include <iostream>
+#include <iomanip>
+#include <sstream>
 #include <string>
+#include <cmath>
 
 #include <stk_util/environment/WallTime.hpp>
 
@@ -29,8 +32,10 @@ NaluEnv::NaluEnv()
   : parallelCommunicator_(MPI_COMM_WORLD),
     pSize_(-1),
     pRank_(-1),
-    naluLogStream_(&std::cout),
-    naluParallelStream_(&std::cout)
+    stdoutStream_(std::cout.rdbuf()),
+    naluLogStream_(&std::cout), // std::cout redirects to log file
+    naluParallelStream_(new std::ostream(&naluParallelStreamBuffer_)),
+    parallelLog_(false)
 {
   // initialize
   MPI_Comm_size(parallelCommunicator_, &pSize_);
@@ -95,7 +100,7 @@ NaluEnv::parallel_comm()
 //-------- set_log_file_stream ---------------------------------------------
 //--------------------------------------------------------------------------
 void
-NaluEnv::set_log_file_stream(std::string naluLogName)
+NaluEnv::set_log_file_stream(std::string naluLogName, bool pprint)
 {
   if ( pRank_ == 0 ) {
     naluStreamBuffer_.open(naluLogName.c_str(), std::ios::out);
@@ -103,6 +108,24 @@ NaluEnv::set_log_file_stream(std::string naluLogName)
   }
   else {
     naluLogStream_->rdbuf(&naluEmptyStreamBuffer_);
+  }
+
+  // default to an empty stream buffer for parallel unless pprint is set
+  parallelLog_ = pprint;
+  if (parallelLog_) {
+    int numPlaces = static_cast<int>(std::log10(pSize_-1)+1);
+
+    std::stringstream paddedRank;
+    paddedRank << std::setw(numPlaces) << std::setfill('0') << parallel_rank();
+
+    // inputname.log -> inputname.log.16.02 for the rank 2 proc of a 16 proc job
+    std::string parallelLogName =
+        naluLogName + "." + std::to_string(pSize_) + "." + paddedRank.str();
+    naluParallelStreamBuffer_.open(parallelLogName.c_str(), std::ios::out);
+    naluParallelStream_->rdbuf(&naluParallelStreamBuffer_);
+  }
+  else {
+    naluParallelStream_->rdbuf(stdoutStream_);
   }
 }
 
@@ -114,7 +137,11 @@ NaluEnv::close_log_file_stream()
 {
   if ( pRank_ == 0 ) {
     naluStreamBuffer_.close();
-  }  
+  }
+  if (parallelLog_) {
+    naluParallelStreamBuffer_.close();
+  }
+
 }
 
 //--------------------------------------------------------------------------
@@ -123,6 +150,8 @@ NaluEnv::close_log_file_stream()
 NaluEnv::~NaluEnv()
 {
   close_log_file_stream();
+  delete naluParallelStream_;
+
   // shut down MPI
   MPI_Finalize();
 }
