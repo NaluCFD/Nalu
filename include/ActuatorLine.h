@@ -9,6 +9,8 @@
 #ifndef ActuatorLine_h
 #define ActuatorLine_h
 
+#include "ActuatorLineConfig.h"
+
 #include <NaluParsing.h>
 #include<FieldTypeDef.h>
 
@@ -30,6 +32,12 @@
 #include <string>
 #include <vector>
 #include <utility>
+
+#ifdef USE_FAST
+// FAST c interface
+#include "FAST_cInterface.h"
+#endif
+
 
 namespace sierra{
 namespace nalu{
@@ -249,7 +257,14 @@ public:
   std::vector<double> ws_velocity_;
   std::vector<double> ws_density_;
   std::vector<double> ws_viscosity_;
+
+#ifdef USE_FAST
+  // FAST cInterface handle
+  FAST_cInterface FAST;
+#endif
+
 };
+
 
 } // namespace nalu
 } // namespace Sierra

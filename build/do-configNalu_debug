@@ -1,4 +1,4 @@
-nalu_build_dir=/home/gvijayak/nalu2
+nalu_build_dir=~/nalu
 trilinos_install_dir=$nalu_build_dir/install/trilinos_debug
 yaml_install_dir=$nalu_build_dir/install
 
@@ -16,5 +16,9 @@ cmake \
   -DCMAKE_BUILD_TYPE=DEBUG \
   -DCMAKE_CXX_FLAGS_DEBUG='-std=c++11' \
   -DCMAKE_C_FLAGS_DEBUG='-std=c++11' \
+  -DFAST_DIR:PATH=$nalu_build_dir/packages/fastv8DriverProgram/fastv8 \
+  -DFAST_LIBRARY:PATH=FAST_glin64 \
+  -DFAST_CINTERFACE_LIBRARY:PATH=FAST_cInterface_glin64 \
+  -DFAST_YAML_LIBRARY:PATH=yaml-cpp11 \
 $EXTRA_ARGS \
 ../

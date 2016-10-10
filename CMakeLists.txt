@@ -11,6 +11,8 @@ cmake_minimum_required (VERSION 2.8.11)
 #
 #  THESE PATHS MAY NEED TO BE CHANGED DEPENDING ON WHERE THEY ARE STORED!!!
 #
+option(USE_FAST
+       "Use FAST tpl to get actuator line positions and forces" ON)
 
 SET(CMAKE_FIND_LIBRARY_PREFIXES lib)
 SET(CMAKE_FIND_LIBRARY_SUFFIXES a)
@@ -19,6 +21,25 @@ MESSAGE("   Trilinos_DIR = ${Trilinos_DIR}")
 SET(CMAKE_PREFIX_PATH ${Trilinos_DIR} ${CMAKE_PREFIX_PATH})
 SET(CMAKE_PREFIX_PATH ${Trilinos_PATH} ${CMAKE_PREFIX_PATH})
 find_package(Trilinos REQUIRED)
+
+# configure a header file to pass some of the CMake settings
+# to the source code
+configure_file (
+  "${CMAKE_SOURCE_DIR}/include/ActuatorLineConfig.h.in"
+  "${CMAKE_SOURCE_DIR}/include/ActuatorLineConfig.h"
+  )
+
+if (USE_FAST)
+   MESSAGE("   FAST_DIR = ${FAST_DIR}")
+   SET(CMAKE_PREFIX_PATH ${FAST_DIR} ${CMAKE_PREFIX_PATH})
+   SET(CMAKE_PREFIX_PATH ${FAST_PATH} ${CMAKE_PREFIX_PATH})
+   MESSAGE("   FAST Include dir =  ${FAST_DIR}/include")
+   include_directories(${FAST_DIR}/include)
+   LINK_DIRECTORIES(${FAST_DIR}/lib)
+
+   MESSAGE("   FAST_LIBRARY = ${FAST_LIBRARY}")
+   MESSAGE("   FAST_CINTERFACE_LIBRARY = ${FAST_CINTERFACE_LIBRARY}")
+endif (USE_FAST)
 
 # This needs to be cleaned up
 find_library(YAML_LIBRARY NAMES libyaml-cpp.a PATHS ${YAML_DIR}/lib )
@@ -97,6 +118,13 @@ include_directories (${CMAKE_SOURCE_DIR}/include)
 add_library (nalu ${SOURCE} ${HEADER})
 target_link_libraries(nalu ${Trilinos_LIBRARIES})
 target_link_libraries(nalu ${YAML_LIBRARY})
+if (USE_FAST)
+   target_link_libraries(nalu ${FAST_LIBRARY})
+   target_link_libraries(nalu ${FAST_YAML_LIBRARY})
+   target_link_libraries(nalu ${FAST_CINTERFACE_LIBRARY})
+   SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_FAST")
+   MESSAGE("-- CMAKE_CXX_FLAGS     = ${CMAKE_CXX_FLAGS}")
+endif (USE_FAST)
 
 file (GLOB UNIT_TESTS_SOURCES unit_tests/*.C)
 
@@ -109,6 +137,9 @@ if (CMAKE_BUILD_TYPE STREQUAL "DEBUG")
 endif()
 
 add_executable(${nalu_ex_name} nalu.C)
+if (USE_FAST)
+   target_link_libraries(${nalu_ex_name} ${FAST_YAML_LIBRARY})
+endif (USE_FAST)
 target_link_libraries(${nalu_ex_name} nalu)
 
 set(utest_ex_name "unittestX")

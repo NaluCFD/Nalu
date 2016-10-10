@@ -166,6 +166,11 @@ ActuatorLine::ActuatorLine(
 //--------------------------------------------------------------------------
 ActuatorLine::~ActuatorLine()
 {
+
+#ifdef USE_FAST  
+  FAST.end(); // Call destructors in FAST_cInterface
+#endif
+
   // delete data probes specifications vector
   for ( size_t k = 0; k < actuatorLineInfo_.size(); ++k )
     delete actuatorLineInfo_[k];
@@ -324,6 +329,15 @@ ActuatorLine::load(
           throw std::runtime_error("ActuatorLine: lacking tail_coordinates");
       }
     }
+
+#ifdef USE_FAST  
+    try {
+      FAST.readInputFile("cDriver.i");
+    }
+    catch( const std::runtime_error & ex) {
+    }
+#endif
+
   }
 }
 
@@ -397,6 +411,193 @@ ActuatorLine::initialize()
 void
 ActuatorLine::execute()
 {
+#ifdef USE_FAST
+  // meta/bulk data and nDim
+  stk::mesh::MetaData & metaData = realm_.meta_data();
+  stk::mesh::BulkData & bulkData = realm_.bulk_data();
+  const int nDim = metaData.spatial_dimension();
+
+  // extract fields
+  VectorFieldType *coordinates 
+    = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  VectorFieldType *velocity = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
+  VectorFieldType *actuator_line_source 
+    = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "actuator_line_source");
+  ScalarFieldType *actuator_line_source_lhs
+    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "actuator_line_source_lhs");
+  ScalarFieldType *density
+    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density"); 
+  // deal with proper viscosity
+  const std::string viscName = realm_.is_turbulent() ? "effective_viscosity" : "viscosity";
+  ScalarFieldType *viscosity
+    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, viscName); 
+
+  // fixed size scratch
+  std::vector<double> ws_pointGasVelocity(nDim);
+  std::vector<double> ws_elemCentroid(nDim);
+  std::vector<double> ws_pointForce(nDim);
+  std::vector<double> ws_elemDrag(nDim);
+  double ws_pointGasDensity;
+  double ws_pointGasViscosity;
+  double ws_pointForceLHS;
+  
+  // zero out source term; do this manually since there are custom ghosted entities
+  stk::mesh::Selector s_nodes = stk::mesh::selectField(*actuator_line_source);
+  stk::mesh::BucketVector const& node_buckets =
+    realm_.get_buckets( stk::topology::NODE_RANK, s_nodes );
+  for ( stk::mesh::BucketVector::const_iterator ib = node_buckets.begin() ;
+        ib != node_buckets.end() ; ++ib ) {
+    stk::mesh::Bucket & b = **ib ;
+    const stk::mesh::Bucket::size_type length   = b.size();
+    double * actSrc = stk::mesh::field_data(*actuator_line_source, b);
+    double * actSrcLhs = stk::mesh::field_data(*actuator_line_source_lhs, b);
+    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+      actSrcLhs[k] = 0.0;
+      const int offSet = k*nDim;
+      for ( int j = 0; j < nDim; ++j ) {
+        actSrc[offSet+j] = 0.0;
+      }
+    }
+  }
+
+  // parallel communicate data to the ghosted elements; again can communicate points to element ranks
+  if ( NULL != actuatorLineGhosting_ ) {
+    std::vector< const stk::mesh::FieldBase *> ghostFieldVec;
+    // fields that are needed
+    ghostFieldVec.push_back(coordinates);
+    ghostFieldVec.push_back(velocity);
+    ghostFieldVec.push_back(viscosity);
+    stk::mesh::communicate_field_data(*actuatorLineGhosting_, ghostFieldVec);
+  }
+
+  // loop over map and get velocity at points
+  std::map<size_t, ActuatorLinePointInfo *>::iterator iterPoint;
+  int np=0;
+  for (iterPoint  = actuatorLinePointInfoMap_.begin();
+       iterPoint != actuatorLinePointInfoMap_.end();
+       ++iterPoint) {
+
+    // actuator line info object of interest
+    ActuatorLinePointInfo * infoObject = (*iterPoint).second;
+
+    //==========================================================================
+    // extract the best element; compute drag given this velocity, property, etc
+    // this point drag value will be used by all other elements below
+    //==========================================================================
+    stk::mesh::Entity bestElem = infoObject->bestElem_;
+    int nodesPerElement = bulkData.num_nodes(bestElem);
+    
+    // resize some work vectors
+    resize_std_vector(nDim, ws_coordinates_, bestElem, bulkData);
+    resize_std_vector(nDim, ws_velocity_, bestElem, bulkData);
+    resize_std_vector(1, ws_viscosity_, bestElem, bulkData);
+    resize_std_vector(1, ws_density_, bestElem, bulkData);
+
+    // gather nodal data to element nodes; both vector and scalar; coords are used in determinant calc
+    gather_field(nDim, &ws_coordinates_[0], *coordinates, bulkData.begin_nodes(bestElem), 
+                 nodesPerElement);
+    gather_field_for_interp(nDim, &ws_velocity_[0], *velocity, bulkData.begin_nodes(bestElem), 
+                            nodesPerElement);
+    gather_field_for_interp(1, &ws_viscosity_[0], *viscosity, bulkData.begin_nodes(bestElem), 
+                            nodesPerElement);
+    gather_field_for_interp(1, &ws_density_[0], *density, bulkData.begin_nodes(bestElem), 
+                            nodesPerElement);
+
+    // compute volume
+    double elemVolume = compute_volume(nDim, bestElem, bulkData);
+
+    // interpolate velocity
+    interpolate_field(nDim, bestElem, bulkData, &(infoObject->isoParCoords_[0]), 
+                      &ws_velocity_[0], &ws_pointGasVelocity[0]);
+    
+    // interpolate viscosity
+    interpolate_field(1, bestElem, bulkData, &(infoObject->isoParCoords_[0]), 
+                      &ws_viscosity_[0], &ws_pointGasViscosity);
+
+    // interpolate density
+    interpolate_field(1, bestElem, bulkData, &(infoObject->isoParCoords_[0]), 
+                      &ws_density_[0], &ws_pointGasDensity);
+    
+    FAST.setVelocity(ws_velocity_, np);
+    np = np + 1;
+
+  }    
+
+  //Step FAST
+  FAST.step();
+ 
+  // do we have mesh motion?
+  if ( actuatorLineMotion_ )
+    initialize();
+
+  // loop over map and assemble source terms
+  np = 0;
+  for (iterPoint  = actuatorLinePointInfoMap_.begin();
+       iterPoint != actuatorLinePointInfoMap_.end();
+       ++iterPoint) {
+
+    // actuator line info object of interest
+    ActuatorLinePointInfo * infoObject = (*iterPoint).second;
+
+    //==========================================================================
+    // extract the best element; compute drag given this velocity, property, etc
+    // this point drag value will be used by all other elements below
+    //==========================================================================
+    stk::mesh::Entity bestElem = infoObject->bestElem_;
+    int nodesPerElement = bulkData.num_nodes(bestElem);
+    // compute volume
+    double elemVolume = compute_volume(nDim, bestElem, bulkData);
+
+    FAST.getForce(ws_pointForce, np);
+    ws_pointForce[0] = 0.0; //Setting to zero for now
+    ws_pointForce[1] = 0.0;
+    ws_pointForce[2] = 0.0;
+    ws_pointForceLHS = 0.0; //Not clear what this should be - FIGURE IT OUT
+    // assemble nodal quantity; radius should be zero, so we can apply fill point drag
+    assemble_source_to_nodes(nDim, bestElem, bulkData, elemVolume, &ws_pointForce[0], ws_pointForceLHS, 
+                             *actuator_line_source, *actuator_line_source_lhs, 1.0);
+
+    // get the vector of elements
+    std::vector<stk::mesh::Entity> elementVec = infoObject->elementVec_;
+
+    // iterate them and apply source term; gather coords
+    for ( size_t k = 0; k < elementVec.size(); ++k ) {
+
+      stk::mesh::Entity elem = elementVec[k];
+
+      nodesPerElement = bulkData.num_nodes(elem);
+    
+      // resize some work vectors
+      resize_std_vector(nDim, ws_coordinates_, elem, bulkData);
+
+      // gather coordinates
+      gather_field(nDim, &ws_coordinates_[0], *coordinates, bulkData.begin_nodes(elem), 
+                   nodesPerElement);
+
+      // compute volume
+      double elemVolume = compute_volume(nDim, elem, bulkData);
+
+      // determine element centroid
+      compute_elem_centroid(nDim, &ws_elemCentroid[0], nodesPerElement);
+
+      // compute radius
+      const double radius = compute_radius(nDim, &ws_elemCentroid[0], &(infoObject->centroidCoords_[0]));
+    
+      // get drag at this element centroid with proper Gaussian weighting
+      compute_elem_drag_given_radius(nDim, radius, infoObject->twoSigSq_, &ws_pointForce[0], &ws_elemDrag[0]);
+
+      // assemble nodal quantity; no LHS contribution here...
+      assemble_source_to_nodes(nDim, elem, bulkData, elemVolume, &ws_elemDrag[0], ws_pointForceLHS, 
+                               *actuator_line_source, *actuator_line_source_lhs, 0.0);
+    } 
+  }
+
+  // parallel assemble (contributions from ghosted and locally owned)
+  const std::vector<const stk::mesh::FieldBase*> sumFieldVec(1, actuator_line_source);
+  stk::mesh::parallel_sum_including_ghosts(bulkData, sumFieldVec);
+
+#else
+
   // do we have mesh motion?
   if ( actuatorLineMotion_ )
     initialize();
@@ -552,8 +753,10 @@ ActuatorLine::execute()
   // parallel assemble (contributions from ghosted and locally owned)
   const std::vector<const stk::mesh::FieldBase*> sumFieldVec(1, actuator_line_source);
   stk::mesh::parallel_sum_including_ghosts(bulkData, sumFieldVec);
-}
 
+#endif
+
+}
 //--------------------------------------------------------------------------
 //-------- populate_candidate_elements -------------------------------------
 //--------------------------------------------------------------------------
@@ -691,7 +894,48 @@ ActuatorLine::create_actuator_line_point_info_map() {
       
       // define a point that will hold the centroid
       Point centroidCoords;
-      
+    
+#ifdef USE_FAST
+      // scratch array for coordinates and dummy array for velocity
+      double velocity[3] = {};
+      double currentCoords[3] = {};
+
+      // loop over all points
+      int np = 0;
+      int nBlades = FAST.get_numBlades(0); // Number of blades per turbine - only Turbine 0 for now
+      int nNodesPerBlade = FAST.get_numNodesPerBlade(0) ; // Number of nodes per blade - only Turbine 0 for now
+      int nTowerNodes = FAST.get_numTwrNodes(0) ; // Number of tower elements - only Turbine 0 for now
+      int nNodes = FAST.get_numNodes(0); // Number of tower elements - only Turbine 0 for now
+
+      for(int iNode = 0; iNode < nNodes; iNode++) {
+        // extract current localPointId; increment for next one up...
+        size_t localPointId = localPointId_++;
+        stk::search::IdentProc<uint64_t,int> theIdent(localPointId, NaluEnv::self().parallel_rank());
+        
+        // set model coordinates from FAST
+        // move the coordinates; set the velocity... may be better on the lineInfo object
+        FAST.getCoordinates(currentCoords, iNode);
+	velocity[0] = 0.0;
+	velocity[1] = 0.0;
+	velocity[2] = 0.0;
+
+        for ( int j = 0; j < nDim; ++j )
+          centroidCoords[j] = currentCoords[j];
+
+        // create the bounding point sphere and push back
+        boundingSphere theSphere( Sphere(centroidCoords, actuatorLineInfo->radius_), theIdent);
+        boundingSphereVec_.push_back(theSphere);
+        
+        // create the point info and push back to map
+        ActuatorLinePointInfo *actuatorLinePointInfo 
+          = new ActuatorLinePointInfo(localPointId, centroidCoords, 
+                                      actuatorLineInfo->radius_, actuatorLineInfo->omega_, 
+                                      actuatorLineInfo->twoSigSq_, velocity);
+        actuatorLinePointInfoMap_[localPointId] = actuatorLinePointInfo;
+	
+	np=np+1;
+      }
+#else
       // determine the distance between points and line centroid (for rotation)
       double dx[3] = {};
       double lineCentroid[3] = {};
@@ -745,9 +989,11 @@ ActuatorLine::create_actuator_line_point_info_map() {
                                       actuatorLineInfo->twoSigSq_, velocity);
         actuatorLinePointInfoMap_[localPointId] = actuatorLinePointInfo;
       }
+#endif
     }
-  }  
+  }
 }
+
 
 //--------------------------------------------------------------------------
 //-------- set_current_coordinates -----------------------------------------
