@@ -182,8 +182,8 @@ ActuatorLine::compute_point_drag(
   const double *pointGasVelocity,
   const double &pointGasViscosity,
   const double &pointGasDensity,
-  double *pointDrag,
-  double &pointDragLHS)
+  double *pointForce,
+  double &pointForceLHS)
 {
   // compute magnitude of velocity difference between point and gas
   double vRelMag = 0.0;
@@ -198,9 +198,9 @@ ActuatorLine::compute_point_drag(
   double coef = 6.0*pi_*pointGasViscosity*pointRadius;
 
   // this is from the fluids perspective, not the psuedo particle
-  pointDragLHS = 2.0*coef*fD;
+  pointForceLHS = 2.0*coef*fD;
   for ( int j = 0; j < nDim; ++j )
-    pointDrag[j] = coef*fD*(pointVelocity[j] - pointGasVelocity[j]);
+    pointForce[j] = coef*fD*(pointVelocity[j] - pointGasVelocity[j]);
 }
 
 //--------------------------------------------------------------------------
@@ -211,13 +211,13 @@ ActuatorLine::compute_elem_drag_given_radius(
   const int &nDim,
   const double &radius, 
   const double &twoSigSq,
-  const double *pointDrag,
+  const double *pointForce,
   double *elemDrag)
 {
   // gaussian weight based on radius
   const double gaussWeight = std::exp(-radius*radius/twoSigSq);
   for ( int j = 0; j < nDim; ++j )
-    elemDrag[j] = pointDrag[j]*gaussWeight;
+    elemDrag[j] = pointForce[j]*gaussWeight;
 }
 
 //--------------------------------------------------------------------------
@@ -424,11 +424,11 @@ ActuatorLine::execute()
   // fixed size scratch
   std::vector<double> ws_pointGasVelocity(nDim);
   std::vector<double> ws_elemCentroid(nDim);
-  std::vector<double> ws_pointDrag(nDim);
+  std::vector<double> ws_pointForce(nDim);
   std::vector<double> ws_elemDrag(nDim);
   double ws_pointGasDensity;
   double ws_pointGasViscosity;
-  double ws_pointDragLHS;
+  double ws_pointForceLHS;
   
   // zero out source term; do this manually since there are custom ghosted entities
   stk::mesh::Selector s_nodes = stk::mesh::selectField(*actuator_line_source);
@@ -508,10 +508,10 @@ ActuatorLine::execute()
     
     // point drag calculation
     compute_point_drag(nDim, infoObject->radius_, &infoObject->velocity_[0], &ws_pointGasVelocity[0], ws_pointGasViscosity,
-                       ws_pointGasDensity, &ws_pointDrag[0], ws_pointDragLHS);
+                       ws_pointGasDensity, &ws_pointForce[0], ws_pointForceLHS);
         
     // assemble nodal quantity; radius should be zero, so we can apply fill point drag
-    assemble_source_to_nodes(nDim, bestElem, bulkData, elemVolume, &ws_pointDrag[0], ws_pointDragLHS, 
+    assemble_source_to_nodes(nDim, bestElem, bulkData, elemVolume, &ws_pointForce[0], ws_pointForceLHS, 
                              *actuator_line_source, *actuator_line_source_lhs, 1.0);
 
     // get the vector of elements
@@ -541,10 +541,10 @@ ActuatorLine::execute()
       const double radius = compute_radius(nDim, &ws_elemCentroid[0], &(infoObject->centroidCoords_[0]));
     
       // get drag at this element centroid with proper Gaussian weighting
-      compute_elem_drag_given_radius(nDim, radius, infoObject->twoSigSq_, &ws_pointDrag[0], &ws_elemDrag[0]);
+      compute_elem_drag_given_radius(nDim, radius, infoObject->twoSigSq_, &ws_pointForce[0], &ws_elemDrag[0]);
 
       // assemble nodal quantity; no LHS contribution here...
-      assemble_source_to_nodes(nDim, elem, bulkData, elemVolume, &ws_elemDrag[0], ws_pointDragLHS, 
+      assemble_source_to_nodes(nDim, elem, bulkData, elemVolume, &ws_elemDrag[0], ws_pointForceLHS, 
                                *actuator_line_source, *actuator_line_source_lhs, 0.0);
     } 
   }
