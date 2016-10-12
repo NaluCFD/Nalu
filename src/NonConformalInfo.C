@@ -93,6 +93,8 @@ NonConformalInfo::NonConformalInfo(
     searchMethod_ = stk::search::BOOST_RTREE;
   else if ( searchMethodName == "stk_octree" )
     searchMethod_ = stk::search::OCTREE;
+  else if ( searchMethodName == "stk_kdtree" )
+    searchMethod_ = stk::search::KDTREE;
   else
     NaluEnv::self().naluOutputP0() << "NonConformalInfo::search method not declared; will use BOOST_RTREE" << std::endl;
 
