@@ -111,7 +111,12 @@ endif()
 add_executable(${nalu_ex_name} nalu.C)
 target_link_libraries(${nalu_ex_name} nalu)
 
-add_executable(unit_tests unit_tests.C ${UNIT_TESTS_SOURCES})
-target_link_libraries(unit_tests nalu)
+set(utest_ex_name "unittestX")
+if (CMAKE_BUILD_TYPE STREQUAL "DEBUG")
+   set(utest_ex_name "unittestXd")
+endif()
+
+add_executable(${utest_ex_name} unit_tests.C ${UNIT_TESTS_SOURCES})
+target_link_libraries(${utest_ex_name} nalu)
 
 MESSAGE("\nAnd CMake says...:")
