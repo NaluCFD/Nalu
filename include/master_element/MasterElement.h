@@ -33,7 +33,7 @@ class MasterElement
 {
 public:
 
-  MasterElement();
+  MasterElement(std::string name="na");
   virtual ~MasterElement();
 
   virtual void determinant(
@@ -163,10 +163,14 @@ public:
   bool within_tolerance(const double & val, const double & tol);
   double vector_norm_sq(const double * vect, int len);
 
+  /* return a short name */
+  std::string name();
+
   int nDim_;
   int nodesPerElement_;
   int numIntPoints_;
   double scaleToStandardIsoFac_;
+  const std::string name_;
 
   std::vector<int> lrscv_;
   std::vector<int> ipNodeMap_;
@@ -319,7 +323,7 @@ public:
 class HexahedralP2Element : public MasterElement
 {
 public:
-  HexahedralP2Element();
+  HexahedralP2Element(std::string name);
   virtual ~HexahedralP2Element() {}
 
   void shape_fcn(double *shpfc);
@@ -916,7 +920,7 @@ public:
 class QuadrilateralP2Element : public MasterElement
 {
 public:
-  QuadrilateralP2Element();
+  QuadrilateralP2Element( std::string name );
   virtual ~QuadrilateralP2Element() {}
 
   void shape_fcn(double *shpfc);

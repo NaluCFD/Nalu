@@ -5,7 +5,6 @@
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
-
 #include <Algorithm.h>
 #include <SupplementalAlgorithm.h>
 
