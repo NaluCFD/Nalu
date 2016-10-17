@@ -330,9 +330,6 @@ NonConformalInfo::determine_elems_to_ghost()
       ThrowAssert( bulk_data.num_elements(face) == 1 );
       stk::mesh::Entity element = face_elem_rels[0];
           
-      // new element to ghost counter
-      realm_.nonConformalManager_->needToGhostCount_++;
-
       // deal with elements to push back to be ghosted; downward relations come for the ride...
       stk::mesh::EntityProc theElemPair(element, pt_proc);
       realm_.nonConformalManager_->elemsToGhost_.push_back(theElemPair);
