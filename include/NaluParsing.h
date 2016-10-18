@@ -156,13 +156,6 @@ struct NormalHeatFlux {
   {}
 };
 
-/*struct Gravity {
-  double gravity_;
-  Gravity()
-    :  gravity_(9.81)
-  {}
-  };*/
-
 struct RoughnessHeight {
   double z0_;
   RoughnessHeight()
