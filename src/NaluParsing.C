@@ -88,6 +88,10 @@ void operator >> (const YAML::Node& node, ReferenceTemperature& rt) {
   node >> rt.referenceTemperature_;
 }
 
+void operator >> (const YAML::Node& node, RoughnessHeight& z0) {
+  node >> z0.z0_;
+}
+
 void operator >> (const YAML::Node& node, HeatTransferCoefficient& htc) {
   node >> htc.heatTransferCoefficient_;
 }
@@ -155,6 +159,12 @@ void operator >> (const YAML::Node& node, WallUserData& wallData) {
     node["reference_temperature"] >> wallData.referenceTemperature_;
     wallData.refTempSpec_ = true;
   }
+  if ( node.FindValue("gravity_vector_component") ) {
+    node["gravity_vector_component"] >> wallData.gravityComponent_;
+  }
+  if ( node.FindValue("roughness_height") ) {
+    node["roughness_height"] >> wallData.z0_;
+  }
   if ( node.FindValue("heat_transfer_coefficient") ) {
     node["heat_transfer_coefficient"] >> wallData.heatTransferCoefficient_;
     wallData.htcSpec_ = true;
@@ -169,6 +179,10 @@ void operator >> (const YAML::Node& node, WallUserData& wallData) {
   }
   if ( node.FindValue("use_wall_function")) {
     node["use_wall_function"] >> wallData.wallFunctionApproach_;
+  }
+  if ( node.FindValue("use_abl_wall_function")) {
+    node["use_abl_wall_function"] >> wallData.wallFunctionApproach_;
+    node["use_abl_wall_function"] >> wallData.ablWallFunctionApproach_;
   }
   if ( node.FindValue("pressure") ) {
     node["pressure"] >> wallData.pressure_;

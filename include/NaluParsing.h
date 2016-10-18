@@ -156,6 +156,20 @@ struct NormalHeatFlux {
   {}
 };
 
+/*struct Gravity {
+  double gravity_;
+  Gravity()
+    :  gravity_(9.81)
+  {}
+  };*/
+
+struct RoughnessHeight {
+  double z0_;
+  RoughnessHeight()
+    :  z0_(0.1)
+  {}
+};
+
 struct MasterSlave {
   std::string master_;
   std::string slave_;
@@ -178,6 +192,9 @@ struct WallUserData : public UserData {
   HeatTransferCoefficient heatTransferCoefficient_;
   RobinCouplingParameter robinCouplingParameter_;
   Pressure pressure_;
+  unsigned gravityComponent_;
+  RoughnessHeight z0_;
+  
   
   bool isAdiabatic_;
   bool heatFluxSpec_;
@@ -189,11 +206,13 @@ struct WallUserData : public UserData {
   bool emissSpec_;
 
   bool wallFunctionApproach_;
+  bool ablWallFunctionApproach_;
 
   bool isFsiInterface_;
 
   WallUserData()
     : UserData(),
+      gravityComponent_(3),
       isAdiabatic_(false),
       heatFluxSpec_(false),
       isInterface_(false),
@@ -202,7 +221,8 @@ struct WallUserData : public UserData {
       robinParameterSpec_(false),
       irradSpec_(false),
       wallFunctionApproach_(false),
-      isFsiInterface_(false) {}
+      ablWallFunctionApproach_(false),
+      isFsiInterface_(false) {}    
 };
 
 struct InflowUserData : public UserData {
