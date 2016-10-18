@@ -24,6 +24,7 @@
 #include <AssembleMomentumEdgeSymmetrySolverAlgorithm.h>
 #include <AssembleMomentumElemSymmetrySolverAlgorithm.h>
 #include <AssembleMomentumWallFunctionSolverAlgorithm.h>
+#include <AssembleMomentumABLWallFunctionSolverAlgorithm.h>
 #include <AssembleMomentumNonConformalSolverAlgorithm.h>
 #include <AssembleElemSolverAlgorithm.h>
 #include <AssembleNodalGradAlgorithmDriver.h>
@@ -49,6 +50,7 @@
 #include <ComputeMdotElemOpenAlgorithm.h>
 #include <ComputeMdotNonConformalAlgorithm.h>
 #include <ComputeWallFrictionVelocityAlgorithm.h>
+#include <ComputeABLWallFrictionVelocityAlgorithm.h>
 #include <ConstantAuxFunction.h>
 #include <ContactInfo.h>
 #include <ContinuityGclNodeSuppAlg.h>
@@ -1406,6 +1408,7 @@ MomentumEquationSystem::register_wall_bc(
   // find out if this is a wall function approach
   WallUserData userData = wallBCData.userData_;
   const bool wallFunctionApproach = userData.wallFunctionApproach_;
+  const bool ablWallFunctionApproach = userData.ablWallFunctionApproach_;
 
   const std::string bcFieldName = wallFunctionApproach ? "wall_velocity_bc" : "velocity_bc";
 
@@ -1513,28 +1516,90 @@ MomentumEquationSystem::register_wall_bc(
     if ( NULL == wallFunctionParamsAlgDriver_)
       wallFunctionParamsAlgDriver_ = new AlgorithmDriver(realm_);
 
-    // create algorithm for utau, yp and assembled nodal wall area (_WallFunction)
-    std::map<AlgorithmType, Algorithm *>::iterator it_utau =
-        wallFunctionParamsAlgDriver_->algMap_.find(algType);
-    if ( it_utau == wallFunctionParamsAlgDriver_->algMap_.end() ) {
-      ComputeWallFrictionVelocityAlgorithm *theUtauAlg =
-          new ComputeWallFrictionVelocityAlgorithm(realm_, part, realm_.realmUsesEdges_);
-      wallFunctionParamsAlgDriver_->algMap_[algType] = theUtauAlg;
-    }
-    else {
-      it_utau->second->partVec_.push_back(part);
+    if (ablWallFunctionApproach) {
+
+      // register boundary data: heat_flux_bc
+      ScalarFieldType *theHeatFluxBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "heat_flux_bc"));
+      stk::mesh::put_field(*theHeatFluxBcField, *part);
+
+      NormalHeatFlux heatFlux = userData.q_;
+      std::vector<double> userSpec(1);
+      userSpec[0] = heatFlux.qn_;
+
+      // new it
+      ConstantAuxFunction *theHeatFluxAuxFunc = new ConstantAuxFunction(0, 1, userSpec);
+
+      // bc data alg
+      AuxFunctionAlgorithm *auxAlg
+	= new AuxFunctionAlgorithm(realm_, part,
+				   theHeatFluxBcField, theHeatFluxAuxFunc,
+				   stk::topology::NODE_RANK);
+      bcDataAlg_.push_back(auxAlg);
+
+      const AlgorithmType wfAlgType = WALL_ABL;
+
+      // create algorithm for utau, yp and assembled nodal wall area (_WallFunction)
+      //Gravity gravity = userData.gravity_;
+      //const double grav = gravity.gravity_;
+      std::vector<double> gravity;
+      gravity.resize(nDim);
+      gravity = realm_.solutionOptions_->gravity_;
+      const double grav = std::abs(gravity[userData.gravityComponent_ - 1]);
+      RoughnessHeight rough = userData.z0_;
+      const double z0 = rough.z0_;
+      ReferenceTemperature Tref = userData.referenceTemperature_;
+      const double referenceTemperature = Tref.referenceTemperature_;
+      std::map<AlgorithmType, Algorithm *>::iterator it_utau =
+        wallFunctionParamsAlgDriver_->algMap_.find(wfAlgType);
+      if ( it_utau == wallFunctionParamsAlgDriver_->algMap_.end() ) {
+	ComputeABLWallFrictionVelocityAlgorithm *theUtauAlg =
+          new ComputeABLWallFrictionVelocityAlgorithm(realm_, part, realm_.realmUsesEdges_, grav, z0, referenceTemperature);
+	wallFunctionParamsAlgDriver_->algMap_[wfAlgType] = theUtauAlg;
+      }
+      else {
+	it_utau->second->partVec_.push_back(part);
+      }
+
+      // create lhs/rhs algorithm; generalized for edge (nearest node usage) and element
+      std::map<AlgorithmType, SolverAlgorithm *>::iterator it_wf =
+	solverAlgDriver_->solverAlgMap_.find(wfAlgType);
+      if ( it_wf == solverAlgDriver_->solverAlgMap_.end() ) {
+	AssembleMomentumABLWallFunctionSolverAlgorithm *theAlg
+	  = new AssembleMomentumABLWallFunctionSolverAlgorithm(realm_, part, this, realm_.realmUsesEdges_, grav, z0, referenceTemperature);
+	solverAlgDriver_->solverAlgMap_[wfAlgType] = theAlg;
+      }
+      else {
+	it_wf->second->partVec_.push_back(part);
+      }
     }
 
-    // create lhs/rhs algorithm; generalized for edge (nearest node usage) and element
-    std::map<AlgorithmType, SolverAlgorithm *>::iterator it_wf =
-      solverAlgDriver_->solverAlgMap_.find(algType);
-    if ( it_wf == solverAlgDriver_->solverAlgMap_.end() ) {
-      AssembleMomentumWallFunctionSolverAlgorithm *theAlg
-        = new AssembleMomentumWallFunctionSolverAlgorithm(realm_, part, this, realm_.realmUsesEdges_);
-      solverAlgDriver_->solverAlgMap_[algType] = theAlg;
-    }
     else {
-      it_wf->second->partVec_.push_back(part);
+
+      const AlgorithmType wfAlgType = WALL;
+
+      // create algorithm for utau, yp and assembled nodal wall area (_WallFunction)
+      std::map<AlgorithmType, Algorithm *>::iterator it_utau =
+        wallFunctionParamsAlgDriver_->algMap_.find(wfAlgType);
+      if ( it_utau == wallFunctionParamsAlgDriver_->algMap_.end() ) {
+	ComputeWallFrictionVelocityAlgorithm *theUtauAlg =
+          new ComputeWallFrictionVelocityAlgorithm(realm_, part, realm_.realmUsesEdges_);
+	wallFunctionParamsAlgDriver_->algMap_[wfAlgType] = theUtauAlg;
+      }
+      else {
+	it_utau->second->partVec_.push_back(part);
+      }
+
+      // create lhs/rhs algorithm; generalized for edge (nearest node usage) and element
+      std::map<AlgorithmType, SolverAlgorithm *>::iterator it_wf =
+	solverAlgDriver_->solverAlgMap_.find(wfAlgType);
+      if ( it_wf == solverAlgDriver_->solverAlgMap_.end() ) {
+	AssembleMomentumWallFunctionSolverAlgorithm *theAlg
+	  = new AssembleMomentumWallFunctionSolverAlgorithm(realm_, part, this, realm_.realmUsesEdges_);
+	solverAlgDriver_->solverAlgMap_[wfAlgType] = theAlg;
+      }
+      else {
+	it_wf->second->partVec_.push_back(part);
+      }
     }
   }
   else {
