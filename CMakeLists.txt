@@ -98,6 +98,8 @@ add_library (nalu ${SOURCE} ${HEADER})
 target_link_libraries(nalu ${Trilinos_LIBRARIES})
 target_link_libraries(nalu ${YAML_LIBRARY})
 
+file (GLOB UNIT_TESTS_SOURCES unit_tests/*.C)
+
 set(nalu_ex_name "naluX")
 message("CMAKE_BUILD_TYPE = ${CMAKE_BUILD_TYPE}")
 if (CMAKE_BUILD_TYPE STREQUAL "DEBUG")
@@ -108,4 +110,13 @@ endif()
 
 add_executable(${nalu_ex_name} nalu.C)
 target_link_libraries(${nalu_ex_name} nalu)
+
+set(utest_ex_name "unittestX")
+if (CMAKE_BUILD_TYPE STREQUAL "DEBUG")
+   set(utest_ex_name "unittestXd")
+endif()
+
+add_executable(${utest_ex_name} unit_tests.C ${UNIT_TESTS_SOURCES})
+target_link_libraries(${utest_ex_name} nalu)
+
 MESSAGE("\nAnd CMake says...:")
