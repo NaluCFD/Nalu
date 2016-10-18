@@ -62,7 +62,7 @@ class NonConformalManager {
   stk::mesh::EntityProcVec elemsToGhost_;
   std::vector<NonConformalInfo *> nonConformalInfoVec_;
 
-  static void computePreciseGhostingLists(const stk::mesh::BulkData& bulk,
+  static void compute_precise_ghosting_lists(const stk::mesh::BulkData& bulk,
                                     stk::mesh::EntityProcVec& elemsToGhost,
                                     stk::mesh::EntityProcVec& curSendGhosts,
                                     std::vector<stk::mesh::EntityKey>& recvGhostsToRemove);

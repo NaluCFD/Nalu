@@ -69,6 +69,7 @@ ComputeMdotNonConformalAlgorithm::ComputeMdotNonConformalAlgorithm(
   ghostFieldVec_.push_back(coordinates_);
   ghostFieldVec_.push_back(velocityRTM_);
   ghostFieldVec_.push_back(density_);
+  ghostFieldVec_.push_back(exposedAreaVec_);
 }
 
 //--------------------------------------------------------------------------

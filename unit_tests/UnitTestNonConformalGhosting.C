@@ -131,7 +131,7 @@ void verify_ghosting_lists(const std::string& prefix, stk::mesh::BulkData& bulk,
     stk::mesh::EntityProcVec currentSendGhosts;
     fill_send_ghosts(bulk, currentSendGhosts);
 
-    sierra::nalu::NonConformalManager::computePreciseGhostingLists(bulk, elemsToGhost, currentSendGhosts, recvGhostsToRemove);
+    sierra::nalu::NonConformalManager::compute_precise_ghosting_lists(bulk, elemsToGhost, currentSendGhosts, recvGhostsToRemove);
 
     EXPECT_TRUE(compare_vectors(prefix+" elemsToGhost", bulk, expected_elemsToGhost, elemsToGhost));
     EXPECT_TRUE(compare_vectors(prefix+" recvGhostsToRemove", bulk.parallel_rank(), expected_recvGhostsToRemove, recvGhostsToRemove));
@@ -161,7 +161,7 @@ void print_entities_and_downward_connections(const stk::mesh::BulkData& bulk, co
 
 using stk::mesh::EntityKey;
 
-void check_computePreciseGhostingLists(stk::mesh::BulkData& bulk)
+void check_compute_precise_ghosting_lists(stk::mesh::BulkData& bulk)
 {
     int myProc = bulk.parallel_rank();
     std::vector<std::vector<stk::mesh::EntityKey> > expected_recvGhostsToRemovePerProc = { {}, {} };
@@ -185,7 +185,7 @@ void check_computePreciseGhostingLists(stk::mesh::BulkData& bulk)
 
 }//namespace
 
-TEST(NonConformalGhosting, computePreciseGhostingLists)
+TEST(NonConformalGhosting, compute_precise_ghosting_lists)
 {
     stk::ParallelMachine comm = MPI_COMM_WORLD;
     if (stk::parallel_machine_size(comm) == 2) {
@@ -196,7 +196,7 @@ TEST(NonConformalGhosting, computePreciseGhostingLists)
 
         unit_test_utils::fill_mesh_hex8(bulk, "generated:1x1x4");
 
-        check_computePreciseGhostingLists(bulk);
+        check_compute_precise_ghosting_lists(bulk);
     }
 }
 

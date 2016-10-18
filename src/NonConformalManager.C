@@ -64,7 +64,7 @@ NonConformalManager::~NonConformalManager()
     delete (*ic);
 }
 
-void combineElemsAndDownwardRelations(const stk::mesh::BulkData& bulk,
+void combine_elems_and_downward_relations(const stk::mesh::BulkData& bulk,
                                   const stk::mesh::EntityProcVec& elemsToGhost,
                                   stk::mesh::EntityProcVec& newSendGhosts)
 {
@@ -83,7 +83,7 @@ void combineElemsAndDownwardRelations(const stk::mesh::BulkData& bulk,
   stk::util::sort_and_unique(newSendGhosts);
 }
 
-void keepElemsNotAlreadyGhosted(const stk::mesh::BulkData& bulk,
+void keep_elems_not_already_ghosted(const stk::mesh::BulkData& bulk,
                                 const stk::mesh::EntityProcVec& newSendGhosts,
                                 const stk::mesh::EntityProcVec& intersection,
                                 stk::mesh::EntityProcVec& elemsToGhost)
@@ -98,7 +98,7 @@ void keepElemsNotAlreadyGhosted(const stk::mesh::BulkData& bulk,
   }
 }
 
-void fillSendGhostsToRemoveFromGhosting(const stk::mesh::EntityProcVec& curSendGhosts,
+void fill_send_ghosts_to_remove_from_ghosting(const stk::mesh::EntityProcVec& curSendGhosts,
                                         const stk::mesh::EntityProcVec& intersection,
                                         stk::mesh::EntityProcVec& sendGhostsToRemove)
 {
@@ -110,7 +110,7 @@ void fillSendGhostsToRemoveFromGhosting(const stk::mesh::EntityProcVec& curSendG
   }
 }
 
-void communicateToFillRecvGhostsToRemove(const stk::mesh::BulkData& bulk,
+void communicate_to_fill_recv_ghosts_to_remove(const stk::mesh::BulkData& bulk,
                                          const stk::mesh::EntityProcVec& sendGhostsToRemove,
                                          std::vector<stk::mesh::EntityKey>& recvGhostsToRemove)
 {
@@ -138,7 +138,7 @@ void communicateToFillRecvGhostsToRemove(const stk::mesh::BulkData& bulk,
 }
 
 void
-NonConformalManager::computePreciseGhostingLists(const stk::mesh::BulkData& bulk,
+NonConformalManager::compute_precise_ghosting_lists(const stk::mesh::BulkData& bulk,
                                                  stk::mesh::EntityProcVec& elemsToGhost,
                                                  stk::mesh::EntityProcVec& curSendGhosts,
                                                  std::vector<stk::mesh::EntityKey>& recvGhostsToRemove)
@@ -147,19 +147,19 @@ NonConformalManager::computePreciseGhostingLists(const stk::mesh::BulkData& bulk
   stk::util::sort_and_unique(elemsToGhost);
 
   stk::mesh::EntityProcVec newSendGhosts;
-  combineElemsAndDownwardRelations(bulk, elemsToGhost, newSendGhosts);
+  combine_elems_and_downward_relations(bulk, elemsToGhost, newSendGhosts);
 
   stk::mesh::EntityProcVec intersection;
   std::set_intersection(curSendGhosts.begin(), curSendGhosts.end(),
                         newSendGhosts.begin(), newSendGhosts.end(),
                         std::back_inserter(intersection));
 
-  keepElemsNotAlreadyGhosted(bulk, newSendGhosts, intersection, elemsToGhost);
+  keep_elems_not_already_ghosted(bulk, newSendGhosts, intersection, elemsToGhost);
 
   stk::mesh::EntityProcVec sendGhostsToRemove;
-  fillSendGhostsToRemoveFromGhosting(curSendGhosts, intersection, sendGhostsToRemove);
+  fill_send_ghosts_to_remove_from_ghosting(curSendGhosts, intersection, sendGhostsToRemove);
 
-  communicateToFillRecvGhostsToRemove(bulk, sendGhostsToRemove, recvGhostsToRemove);
+  communicate_to_fill_recv_ghosts_to_remove(bulk, sendGhostsToRemove, recvGhostsToRemove);
 }
 
 //--------------------------------------------------------------------------
@@ -186,7 +186,7 @@ NonConformalManager::initialize()
  
   //We want elemsToGhost_ to only contain elements not already ghosted, and
   //we want a list of receive-ghosts that no longer need to be ghosted.
-  computePreciseGhostingLists(realm_.bulk_data(), elemsToGhost_, currentSendGhosts, recvGhostsToRemove);
+  compute_precise_ghosting_lists(realm_.bulk_data(), elemsToGhost_, currentSendGhosts, recvGhostsToRemove);
 
   // check for ghosting need
   size_t local[2] = {elemsToGhost_.size(), recvGhostsToRemove.size()};
@@ -203,6 +203,12 @@ NonConformalManager::initialize()
     NaluEnv::self().naluOutputP0() << "NonConformal alg will NOT ghost entities: " << std::endl;
   }
 
+  if (nonConformalGhosting_ != NULL) {
+    VectorFieldType *coordinates = realm_.bulk_data().mesh_meta_data().get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+    std::vector<const stk::mesh::FieldBase*> fieldVec = {coordinates};
+    stk::mesh::communicate_field_data(*nonConformalGhosting_, fieldVec);
+  }
+
   // complete search
   for ( size_t k = 0; k < nonConformalInfoVec_.size(); ++k )
     nonConformalInfoVec_[k]->complete_search();
@@ -211,17 +217,6 @@ NonConformalManager::initialize()
   if ( ncAlgDetailedOutput_ ) {
     for ( size_t k = 0; k < nonConformalInfoVec_.size(); ++k )
       nonConformalInfoVec_[k]->provide_diagnosis();
-  }
-
-  if (nonConformalGhosting_ != nullptr) {
-    //refresh all fields on ghosts. potential optimization: only refresh needed fields?
-    const stk::mesh::FieldVector& fields = realm_.bulk_data().mesh_meta_data().get_fields();
-    std::vector<const stk::mesh::FieldBase*> const_fields;
-    const_fields.reserve(fields.size());
-    for(stk::mesh::FieldBase* fieldptr : fields) {
-      const_fields.push_back(fieldptr);
-    }
-    stk::mesh::communicate_field_data(*nonConformalGhosting_, const_fields);
   }
 
   // end time
