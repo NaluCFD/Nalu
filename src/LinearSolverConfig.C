@@ -59,8 +59,8 @@ void
 EpetraLinearSolverConfig::load(const YAML::Node & node)
 {
   AZ_defaults(az_options, az_params);
-  node["name"]   >> name_;
-  node["method"] >> method_;
+  name_ = node["name"].as<std::string>() ;
+  method_ = node["method"].as<std::string>() ;
   get_if_present(node, "preconditioner", precond_, std::string("default"));
   get_if_present(node, "subdomain_solver", subMethod_, std::string("default"));
   if (precond_ == "ML")
@@ -69,46 +69,46 @@ EpetraLinearSolverConfig::load(const YAML::Node & node)
 
     ML_Epetra::SetDefaults("SA", *mlParameterList_);
 
-    const YAML::Node * int_nodes = node.FindValue("ML_options_int");
+    const YAML::Node int_nodes = node["ML_options_int"];
     if ( int_nodes )
     {
-      for ( size_t inode = 0; inode <  int_nodes->size(); ++inode )
+      for ( YAML::const_iterator inode = int_nodes.begin() ; inode != int_nodes.end(); ++inode )
       {
-        const YAML::Node & integer_parameter_node = (* int_nodes)[inode];
+        const YAML::Node integer_parameter_node = inode->second ;
         std::string option_name;
         int option_value;
-        integer_parameter_node["name"] >> option_name;
-        integer_parameter_node["value"] >> option_value;
+        option_name = integer_parameter_node["name"].as<std::string>() ;
+        option_value = integer_parameter_node["value"].as<int>() ;
         mlParameterList_->set(option_name,option_value);
 
       }
     }
 
-    const YAML::Node * str_nodes = node.FindValue("ML_options_string");
+    const YAML::Node str_nodes = node["ML_options_string"];
     if ( str_nodes )
     {
-      for ( size_t inode = 0; inode <  str_nodes->size(); ++inode )
+      for ( YAML::const_iterator inode = str_nodes.begin() ; inode != str_nodes.end(); ++inode )
       {
-        const YAML::Node & integer_parameter_node = (* str_nodes)[inode];
+        const YAML::Node integer_parameter_node = inode->second ;
         std::string option_name;
-        std::string option_value;
-        integer_parameter_node["name"] >> option_name;
-        integer_parameter_node["value"] >> option_value;
-        mlParameterList_->set(option_name,option_value);
+        std::string option_value; 
+        option_name = integer_parameter_node["name"].as<std::string>() ;
+        option_value = integer_parameter_node["value"].as<std::string>() ;
+	mlParameterList_->set(option_name,option_value);
 
       }
     }
 
-    const YAML::Node * real_nodes = node.FindValue("ML_options_real");
+    const YAML::Node real_nodes = node["ML_options_real"];
     if ( real_nodes )
     {
-      for ( size_t inode = 0; inode <  real_nodes->size(); ++inode )
+      for ( YAML::const_iterator inode = real_nodes.begin() ; inode != real_nodes.end(); ++inode )
       {
-        const YAML::Node & integer_parameter_node = (* real_nodes)[inode];
+        const YAML::Node integer_parameter_node = inode->second ;
         std::string option_name;
-        double option_value;
-        integer_parameter_node["name"] >> option_name;
-        integer_parameter_node["value"] >> option_value;
+        double option_value; 
+        option_name = integer_parameter_node["name"].as<std::string>() ;
+        option_value = integer_parameter_node["value"].as<double>() ;
         mlParameterList_->set(option_name,option_value);
 
       }
@@ -246,8 +246,8 @@ TpetraLinearSolverConfig::paramsPrecond() const
 void
 TpetraLinearSolverConfig::load(const YAML::Node & node)
 {
-  node["name"]    >> name_;
-  node["method"]  >> method_;
+  name_ = node["name"].as<std::string>() ;
+  method_ = node["method"].as<std::string>() ;
   get_if_present(node, "preconditioner", precond_, std::string("default"));
 
   double tol;

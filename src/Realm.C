@@ -505,7 +505,7 @@ void
 Realm::look_ahead_and_creation(const YAML::Node & node)
 {
   // look for turbulence averaging
-  std::vector<const YAML::Node *> foundTurbAveraging;
+  std::vector<const YAML::Node*> foundTurbAveraging;
   NaluParsingHelper::find_nodes_given_key("turbulence_averaging", node, foundTurbAveraging);
   if ( foundTurbAveraging.size() > 0 ) {
     if ( foundTurbAveraging.size() != 1 )
@@ -514,7 +514,7 @@ Realm::look_ahead_and_creation(const YAML::Node & node)
   }
 
   // look for SolutionNormPostProcessing
-  std::vector<const YAML::Node *> foundNormPP;
+  std::vector<const YAML::Node*> foundNormPP;
   NaluParsingHelper::find_nodes_given_key("solution_norm", node, foundNormPP);
   if ( foundNormPP.size() > 0 ) {
     if ( foundNormPP.size() != 1 )
@@ -523,7 +523,7 @@ Realm::look_ahead_and_creation(const YAML::Node & node)
   }
 
   // look for DataProbe
-  std::vector<const YAML::Node *> foundProbe;
+  std::vector<const YAML::Node*> foundProbe;
   NaluParsingHelper::find_nodes_given_key("data_probes", node, foundProbe);
   if ( foundProbe.size() > 0 ) {
     if ( foundProbe.size() != 1 )
@@ -532,7 +532,7 @@ Realm::look_ahead_and_creation(const YAML::Node & node)
   }
 
   // look for ActuatorLine
-  std::vector<const YAML::Node *> foundActuatorLine;
+  std::vector<const YAML::Node*> foundActuatorLine;
   NaluParsingHelper::find_nodes_given_key("actuator_line", node, foundActuatorLine);
   if ( foundActuatorLine.size() > 0 ) {
     if ( foundActuatorLine.size() != 1 )
@@ -552,8 +552,8 @@ Realm::load(const YAML::Node & node)
   // realm commands first
   //======================================
 
-  node["name"] >> name_;
-  node["mesh"] >> inputDBName_;
+  name_ = node["name"].as<std::string>() ;
+  inputDBName_ = node["mesh"].as<std::string>() ;
   get_if_present(node, "type", type_, type_);
 
   // provide a high level banner
@@ -608,10 +608,10 @@ Realm::load(const YAML::Node & node)
 
   // time step control
   const bool dtOptional = true;
-  const YAML::Node *y_time_step = expect_map(node,"time_step_control", dtOptional);
+  const YAML::Node y_time_step = expect_map(node,"time_step_control", dtOptional);
   if ( y_time_step ) {
-    get_if_present(*y_time_step, "target_courant", targetCourant_, targetCourant_);
-    get_if_present(*y_time_step, "time_step_change_factor", timeStepChangeFactor_, timeStepChangeFactor_);
+    get_if_present(y_time_step, "target_courant", targetCourant_, targetCourant_);
+    get_if_present(y_time_step, "time_step_change_factor", timeStepChangeFactor_, timeStepChangeFactor_);
   }
 
   //======================================

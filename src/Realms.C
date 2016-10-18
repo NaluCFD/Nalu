@@ -40,10 +40,10 @@ Realms::~Realms()
 void 
 Realms::load(const YAML::Node & node) 
 {
-  const YAML::Node *realms = node.FindValue("realms");
+  const YAML::Node realms = node["realms"];
   if (realms) {
-    for ( size_t irealm = 0; irealm < realms->size(); ++irealm ) {
-      const YAML::Node & realm_node = (*realms)[irealm];
+    for ( YAML::const_iterator irealm = realms.begin(); irealm != realms.end(); ++irealm ) {
+      const YAML::Node realm_node = irealm->second;
       // check for multi_physics realm type...
       std::string realmType = "multi_physics";
       get_if_present(realm_node, "type", realmType, realmType);

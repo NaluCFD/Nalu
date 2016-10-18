@@ -35,12 +35,12 @@ Simulation *LinearSolvers::parent() { return root(); }
 void
 LinearSolvers::load(const YAML::Node & node)
 {
-  const YAML::Node * nodes = node.FindValue("linear_solvers");
+  const YAML::Node nodes = node["linear_solvers"];
   if ( nodes )
   {
-    for ( size_t inode = 0; inode <  nodes->size(); ++inode )
+    for ( YAML::const_iterator inode = nodes.begin(); inode != nodes.end(); ++inode )
     {
-      const YAML::Node & linear_solver_node = (* nodes)[inode];
+      const YAML::Node linear_solver_node = inode->second ;
       std::string solver_type = "epetra";
       get_if_present_no_default(linear_solver_node, "type", solver_type);
       if (root()->debug())
