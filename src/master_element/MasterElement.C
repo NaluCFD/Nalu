@@ -2531,6 +2531,98 @@ void Hex27SCS::gij(
 }
 
 //--------------------------------------------------------------------------
+//-------- general_face_grad_op --------------------------------------------
+//--------------------------------------------------------------------------
+void 
+Hex27SCS::general_face_grad_op(
+  const int face_ordinal,
+  const double *isoParCoord,
+  const double *coords,
+  double *gradop,
+  double *det_j,
+  double *error)
+{
+  int lerr = 0;
+  const int ipsPerFace = 1;
+  const int face_offset =  nDim_ * ipsPerFace * nodesPerElement_ * face_ordinal;
+  
+  double faceShapeFuncDerivs[81];
+
+  hex27_shape_deriv(
+    ipsPerFace,
+    isoParCoord,
+    faceShapeFuncDerivs);
+
+  gradient( &coords[0],
+            faceShapeFuncDerivs,
+            &gradop[0],
+            &det_j[0] );
+  
+  if (det_j[0] <= 0.0) {
+    *error = 1.0;
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- sidePcoords_to_elemPcoords --------------------------------------
+//--------------------------------------------------------------------------
+void 
+Hex27SCS::sidePcoords_to_elemPcoords(
+  const int & side_ordinal,
+  const int & npoints,
+  const double *side_pcoords,
+  double *elem_pcoords)
+{
+  // each ME are -1:1, e.g., hex27:quad93d
+  switch (side_ordinal) {
+  case 0:
+    for (int i=0; i<npoints; i++) {
+      elem_pcoords[i*3+0] = side_pcoords[2*i+0];
+      elem_pcoords[i*3+1] = -1.0;
+      elem_pcoords[i*3+2] = side_pcoords[2*i+1];
+    }
+    break;
+  case 1:
+    for (int i=0; i<npoints; i++) {
+      elem_pcoords[i*3+0] = 1.0;
+      elem_pcoords[i*3+1] = side_pcoords[2*i+0];
+      elem_pcoords[i*3+2] = side_pcoords[2*i+1];
+    }
+    break;
+  case 2:
+    for (int i=0; i<npoints; i++) {
+      elem_pcoords[i*3+0] = -side_pcoords[2*i+0];
+      elem_pcoords[i*3+1] = 1.0;
+      elem_pcoords[i*3+2] = side_pcoords[2*i+1];
+    }
+    break;
+  case 3:
+    for (int i=0; i<npoints; i++) {
+      elem_pcoords[i*3+0] = -1.0;
+      elem_pcoords[i*3+1] = side_pcoords[2*i+1];
+      elem_pcoords[i*3+2] = side_pcoords[2*i+0];
+    }
+    break;
+  case 4:
+    for (int i=0; i<npoints; i++) {
+      elem_pcoords[i*3+0] = side_pcoords[2*i+1];
+      elem_pcoords[i*3+1] = side_pcoords[2*i+0];
+      elem_pcoords[i*3+2] = -1.0;
+    }
+    break;
+  case 5:
+    for (int i=0; i<npoints; i++) {
+      elem_pcoords[i*3+0] = side_pcoords[2*i+0];
+      elem_pcoords[i*3+1] = side_pcoords[2*i+1];
+      elem_pcoords[i*3+2] = 1.0;
+    }
+    break;
+  default:
+    throw std::runtime_error("HexSCS::sideMap invalid ordinal");
+  }
+}
+
+//--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 TetSCV::TetSCV()
@@ -7170,6 +7262,17 @@ Quad93DSCS::interpolatePoint(
   }
 }
 
+//--------------------------------------------------------------------------
+//-------- general_shape_fcn -----------------------------------------------
+//--------------------------------------------------------------------------
+void
+Quad93DSCS::general_shape_fcn(
+  const int numIp,
+  const double *isoParCoord,
+  double *shpfc)
+{
+  quad9_shape_fcn(numIp, isoParCoord, shpfc);
+}
 
 //--------------------------------------------------------------------------
 //-------- general_normal --------------------------------------------------
@@ -7632,7 +7735,7 @@ Tri3DSCS::general_shape_fcn(
   const double *isoParCoord,
   double *shpfc)
 {
-  tri_shape_fcn(numIp, &isoParCoord[0], shpfc);
+  tri_shape_fcn(numIp, isoParCoord, shpfc);
 }
 
 

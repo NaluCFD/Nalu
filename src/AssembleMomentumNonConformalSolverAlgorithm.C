@@ -202,6 +202,9 @@ AssembleMomentumNonConformalSolverAlgorithm::execute()
         currentIsoParCoords = dgInfo->currentIsoParCoords_;
         opposingIsoParCoords = dgInfo->opposingIsoParCoords_;
         
+        // mapping from ip to nodes for this ordinal
+        const int *ipNodeMap = meSCSCurrent->ipNodeMap(currentFaceOrdinal);
+
         // extract some master element info
         const int currentNodesPerFace = meFCCurrent->nodesPerElement_;
         const int opposingNodesPerFace = meFCOpposing->nodesPerElement_;
@@ -358,7 +361,7 @@ AssembleMomentumNonConformalSolverAlgorithm::execute()
             p_oNx[i] = -p_cNx[i];
         }
 
-        // project from side to element; method deals with the -1:1 isInElement range to the proper -0.5:0.5 CVFEM range
+        // project from side to element; method deals with the -1:1 isInElement range to the proper underlying CVFEM range
         meSCSCurrent->sidePcoords_to_elemPcoords(currentFaceOrdinal, 1, &currentIsoParCoords[0], &currentElementIsoParCoords[0]);
         meSCSOpposing->sidePcoords_to_elemPcoords(opposingFaceOrdinal, 1, &opposingIsoParCoords[0], &opposingElementIsoParCoords[0]);
 
@@ -501,7 +504,7 @@ AssembleMomentumNonConformalSolverAlgorithm::execute()
             : 0.5*tmdot*(currentUBip[i] + opposingUBip[i]);
 
           // assemble residual; form proper rhs index for current face assembly
-          const int nn = ws_c_face_node_ordinals[currentGaussPointId];
+          const int nn = ipNodeMap[currentGaussPointId];
           const int indexR = nn*nDim + i;
           p_rhs[indexR] -= ((ncDiffFlux + penaltyIp*(currentUBip[i]-opposingUBip[i]))*c_amag + ncAdv);
 

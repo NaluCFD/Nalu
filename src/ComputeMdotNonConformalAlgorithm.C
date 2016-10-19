@@ -351,7 +351,7 @@ ComputeMdotNonConformalAlgorithm::execute()
             p_oNx[i] = -p_cNx[i];
         }
 
-        // project from side to element; method deals with the -1:1 isInElement range to the proper -0.5:0.5 CVFEM range
+        // project from side to element; method deals with the -1:1 isInElement range to the proper underlying CVFEM range
         meSCSCurrent->sidePcoords_to_elemPcoords(currentFaceOrdinal, 1, &currentIsoParCoords[0], &currentElementIsoParCoords[0]);
         meSCSOpposing->sidePcoords_to_elemPcoords(opposingFaceOrdinal, 1, &opposingIsoParCoords[0], &opposingElementIsoParCoords[0]);
         
