@@ -141,6 +141,7 @@ AssembleScalarNonConformalSolverAlgorithm::execute()
   std::vector<double> ws_o_elem_coordinates;
   std::vector<double> ws_c_diffFluxCoeff;
   std::vector<double> ws_o_diffFluxCoeff;  
+  std::vector<double> ws_o_coordinates;
 
   // master element data
   std::vector<double> ws_c_dndx;
@@ -231,7 +232,8 @@ AssembleScalarNonConformalSolverAlgorithm::execute()
         ws_o_diffFluxCoeff.resize(opposingNodesPerFace);
         ws_c_general_shape_function.resize(currentNodesPerFace);
         ws_o_general_shape_function.resize(opposingNodesPerFace);
-        
+        ws_o_coordinates.resize(opposingNodesPerFace*nDim);
+
         // face node identification
         ws_c_face_node_ordinals.resize(currentNodesPerFace);
         ws_o_face_node_ordinals.resize(opposingNodesPerFace);
@@ -248,7 +250,8 @@ AssembleScalarNonConformalSolverAlgorithm::execute()
         double *p_o_elem_coordinates = &ws_o_elem_coordinates[0];
         double *p_c_diffFluxCoeff = &ws_c_diffFluxCoeff[0];
         double *p_o_diffFluxCoeff = &ws_o_diffFluxCoeff[0];
-               
+        double *p_o_coordinates= &ws_o_coordinates[0];
+
         // me pointers
         double *p_c_general_shape_function = &ws_c_general_shape_function[0];
         double *p_o_general_shape_function = &ws_o_general_shape_function[0];
@@ -276,9 +279,14 @@ AssembleScalarNonConformalSolverAlgorithm::execute()
         const int opposing_num_face_nodes = bulk_data.num_nodes(opposingFace);
         for ( int ni = 0; ni < opposing_num_face_nodes; ++ni ) {
           stk::mesh::Entity node = opposing_face_node_rels[ni];
-          // gather...
+          // gather; scalar
           p_o_face_scalarQ[ni] = *stk::mesh::field_data(scalarQNp1, node);
           p_o_diffFluxCoeff[ni] = *stk::mesh::field_data(*diffFluxCoeff_, node);
+          // gather; vector
+          const double *coords = stk::mesh::field_data(*coordinates_, node);
+          for ( int i = 0; i < nDim; ++i ) {
+            p_o_coordinates[ni*nDim+i] = coords[i];
+          }
         }
         
         // gather current element data; sneak in first of connected nodes
@@ -315,27 +323,23 @@ AssembleScalarNonConformalSolverAlgorithm::execute()
           }
         }
 
+        // compute opposing normal through master element call, not using oppoing exposed area
+        meFCOpposing->general_normal(&opposingIsoParCoords[0], &p_o_coordinates[0], &p_oNx[0]);
+        
         // pointer to face data
         const double * c_areaVec = stk::mesh::field_data(*exposedAreaVec_, currentFace);
-        const double * o_areaVec = stk::mesh::field_data(*exposedAreaVec_, opposingFace);
         const double * ncMassFlowRate = stk::mesh::field_data(*ncMassFlowRate_, currentFace);
        
         double c_amag = 0.0;
-        double o_amag = 0.0;
         for ( int j = 0; j < nDim; ++j ) {
           const double c_axj = c_areaVec[currentGaussPointId*nDim+j];
           c_amag += c_axj*c_axj;
-          // FIXME: choose first area vector on opposing surface? probably need something better for HO
-          const double o_axj = o_areaVec[0*nDim+j];
-          o_amag += o_axj*o_axj;
         }
         c_amag = std::sqrt(c_amag);
-        o_amag = std::sqrt(o_amag);
         
         // now compute normal
         for ( int i = 0; i < nDim; ++i ) {
           p_cNx[i] = c_areaVec[currentGaussPointId*nDim+i]/c_amag;
-          p_oNx[i] = o_areaVec[0*nDim+i]/o_amag;  
         }
 
         // override opposing normal

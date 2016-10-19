@@ -136,6 +136,7 @@ ComputeMdotNonConformalAlgorithm::execute()
   std::vector<double> ws_o_vrtm;
   std::vector<double> ws_c_density;
   std::vector<double> ws_o_density;
+  std::vector<double> ws_o_coordinates;
 
   // element
   std::vector<double> ws_c_elem_pressure;
@@ -215,7 +216,8 @@ ComputeMdotNonConformalAlgorithm::execute()
         ws_o_vrtm.resize(opposingNodesPerFace*nDim);
         ws_c_density.resize(currentNodesPerFace);
         ws_o_density.resize(opposingNodesPerFace);
-       
+        ws_o_coordinates.resize(opposingNodesPerFace*nDim);
+
         // face node identification
         ws_c_face_node_ordinals.resize(currentNodesPerFace);
         ws_o_face_node_ordinals.resize(opposingNodesPerFace);
@@ -239,7 +241,8 @@ ComputeMdotNonConformalAlgorithm::execute()
         double *p_o_vrtm = &ws_o_vrtm[0];
         double *p_c_density = &ws_c_density[0];
         double *p_o_density = &ws_o_density[0];
-        
+        double *p_o_coordinates = &ws_o_coordinates[0];
+
         // element
         double *p_c_elem_pressure = &ws_c_elem_pressure[0];
         double *p_o_elem_pressure = &ws_o_elem_pressure[0];
@@ -285,10 +288,12 @@ ComputeMdotNonConformalAlgorithm::execute()
           // gather; vector
           const double *vrtm = stk::mesh::field_data(*velocityRTM_, node );
           const double *Gjp = stk::mesh::field_data(*Gjp_, node );
+          const double *coords = stk::mesh::field_data(*coordinates_, node);
           for ( int i = 0; i < nDim; ++i ) {
             const int offSet = i*opposing_num_face_nodes + ni;        
             p_o_vrtm[offSet] = vrtm[i];
             p_o_Gjp[offSet] = Gjp[i];
+            p_o_coordinates[ni*nDim+i] = coords[i];
           }
         }
 
@@ -322,26 +327,22 @@ ComputeMdotNonConformalAlgorithm::execute()
           }
         }
         
+        // compute opposing normal through master element call, not using oppoing exposed area
+        meFCOpposing->general_normal(&opposingIsoParCoords[0], &p_o_coordinates[0], &p_oNx[0]);
+
         // pointer to face data
         const double * c_areaVec = stk::mesh::field_data(*exposedAreaVec_, currentFace);
-        const double * o_areaVec = stk::mesh::field_data(*exposedAreaVec_, opposingFace);
         
         double c_amag = 0.0;
-        double o_amag = 0.0;
         for ( int j = 0; j < nDim; ++j ) {
           const double c_axj = c_areaVec[currentGaussPointId*nDim+j];
           c_amag += c_axj*c_axj;
-          // FIXME: choose first area vector on opposing surface? probably need something better for HO
-          const double o_axj = o_areaVec[0*nDim+j];
-          o_amag += o_axj*o_axj;
         }
         c_amag = std::sqrt(c_amag);
-        o_amag = std::sqrt(o_amag);
         
         // now compute normal
         for ( int i = 0; i < nDim; ++i ) {
           p_cNx[i] = c_areaVec[currentGaussPointId*nDim+i]/c_amag;
-          p_oNx[i] = o_areaVec[0*nDim+i]/o_amag;  
         }
 
         // override opposing normal

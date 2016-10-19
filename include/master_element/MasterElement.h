@@ -137,6 +137,12 @@ public:
     double * error ) {
     throw std::runtime_error("general_face_grad_op not implemented");}
 
+  virtual void general_normal(
+    const double *isoParCoord,
+    const double *coords,
+    double *normal) {
+    throw std::runtime_error("general_normal not implemented");}
+
   virtual void sidePcoords_to_elemPcoords(
     const int & side_ordinal,
     const int & npoints,
@@ -1228,6 +1234,11 @@ public:
     const double *isoParCoord,
     double *shpfc);
 
+  void general_normal(
+    const double *isoParCoord,
+    const double *coords,
+    double *normal);
+
   void non_unit_face_normal(
     const double * par_coord,
     const double * elem_nodal_coor,
@@ -1263,6 +1274,11 @@ public:
     const double *isoParCoord,
     const double *field,
     double *result);
+
+  void general_normal(
+    const double *isoParCoord,
+    const double *coords,
+    double *normal);
 
 private:
   void set_interior_info();
@@ -1346,6 +1362,10 @@ public:
     const double *isoParCoord,
     double *shpfc);
 
+  void general_normal(
+    const double *isoParCoord,
+    const double *coords,
+    double *normal);
 };
 
 // edge 2d
@@ -1384,6 +1404,11 @@ public:
     const int numIp,
     const double *isoParCoord,
     double *shpfc);
+
+  void general_normal(
+    const double *isoParCoord,
+    const double *coords,
+    double *normal);
 
   double parametric_distance(const std::vector<double> &x);
 
