@@ -71,7 +71,6 @@ AssembleNodalGradUNonConformalAlgorithm::~AssembleNodalGradUNonConformalAlgorith
 void
 AssembleNodalGradUNonConformalAlgorithm::execute()
 {
-
   stk::mesh::BulkData & bulk_data = realm_.bulk_data();
   stk::mesh::MetaData & meta_data = realm_.meta_data();
 
@@ -131,7 +130,7 @@ AssembleNodalGradUNonConformalAlgorithm::execute()
         opposingIsoParCoords = dgInfo->opposingIsoParCoords_;
 
         // mapping from ip to nodes for this ordinal
-        const int *ipNodeMap = meSCSCurrent->ipNodeMap(currentFaceOrdinal);
+        const int *faceIpNodeMap = meFCCurrent->ipNodeMap();
 
         // extract some master element info
         const int currentNodesPerFace = meFCCurrent->nodesPerElement_;
@@ -170,7 +169,7 @@ AssembleNodalGradUNonConformalAlgorithm::execute()
           }
         }
 
-        // gather current element node relations
+        // gather current element data
         stk::mesh::Entity const* current_elem_node_rels = bulk_data.begin_nodes(currentElement);
 
         meFCCurrent->interpolatePoint(
@@ -186,8 +185,9 @@ AssembleNodalGradUNonConformalAlgorithm::execute()
           &opposingVectorQBip[0]);
 
         // extract pointers to nearest node fields
-        const int nn = ipNodeMap[currentGaussPointId];
-        stk::mesh::Entity nNode = current_elem_node_rels[nn];
+        const int nn = faceIpNodeMap[currentGaussPointId];
+        stk::mesh::Entity nNode = current_face_node_rels[nn];
+
         const double volNN = *stk::mesh::field_data(*dualNodalVolume_, nNode);
         double *dqdx = stk::mesh::field_data(*dqdx_, nNode);
 

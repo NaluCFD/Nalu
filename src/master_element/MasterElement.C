@@ -1989,7 +1989,7 @@ Hex27SCS::set_boundary_info()
   const std::vector<int> stkFaceNodeMap = {
                                             0,  8,  1, 12, 25, 13,  4, 16,  5, // face 0(2): front face (cclockwise)
                                             1,  9,  2, 13, 24, 14,  5, 17,  6, // face 1(5): right face (cclockwise)
-                                            3, 10,  2, 15, 26, 14,  6, 18,  7, // face 2(3): back face  (clockwise)
+                                            3, 10,  2, 15, 26, 14,  7, 18,  6, // face 2(3): back face  (clockwise)
                                             0, 11,  3, 12, 23, 15,  4, 19,  7, // face 3(4): left face  (clockwise)
                                             0,  8,  1, 11, 21, 9,   3, 10,  2, // face 4(0): bottom face (clockwise)
                                             4, 16,  5, 19, 22,  17, 7, 18,  6  // face 5(1): top face (cclockwise)
