@@ -224,8 +224,8 @@ DataProbePostProcessing::load(
         // extract the output variables
         const YAML::Node y_outputs = expect_sequence(y_spec, "output_variables", false);
         if (y_outputs) {
-          for (YAML::const_iterator ioutput = y_outputs.begin(); ioutput != y_outputs.end(); ++ioutput) {
-            const YAML::Node y_output = ioutput->second ;
+          for (size_t ioutput = 0; ioutput < y_outputs.size(); ++ioutput) {
+            const YAML::Node y_output = y_outputs[ioutput];
   
             // find the name, size and type
             const YAML::Node fieldNameNode = y_output["field_name"];

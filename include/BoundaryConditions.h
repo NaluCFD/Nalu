@@ -69,8 +69,8 @@ class BoundaryCondition {
    
    if(node["boundary_conditions"]) {
      const YAML::Node boundary_conditions = node["boundary_conditions"];
-     for ( YAML::const_iterator iboundary_condition=boundary_conditions.begin() ; iboundary_condition != boundary_conditions.end(); ++iboundary_condition ) {
-       const YAML::Node boundary_condition_node = iboundary_condition->second;
+     for ( size_t iboundary_condition = 0; iboundary_condition < boundary_conditions.size(); ++iboundary_condition ) {
+       const YAML::Node boundary_condition_node = boundary_conditions[iboundary_condition];
        BoundaryCondition* bc = tmp_boundary_condition.load(boundary_condition_node);
        boundaryConditionVector_.push_back(bc);
      }

@@ -70,8 +70,8 @@ class InitialCondition {
    
    if(node["initial_conditions"]) {
      const YAML::Node initial_conditions = node["initial_conditions"];
-     for (YAML::const_iterator j_initial_condition = initial_conditions.begin(); j_initial_condition != initial_conditions.end(); ++j_initial_condition ) {
-       const YAML::Node & initial_condition_node = j_initial_condition->second;
+     for ( size_t j_initial_condition = 0; j_initial_condition < initial_conditions.size(); ++j_initial_condition ) {
+       const YAML::Node initial_condition_node = initial_conditions[j_initial_condition];
        InitialCondition* ic = tmp_initial_condition.load(initial_condition_node);
        initialConditionVector_.push_back(ic);
      }

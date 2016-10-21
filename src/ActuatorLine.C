@@ -270,9 +270,8 @@ ActuatorLine::load(
       const int divProcTower = std::max(numProcs/numTowers, numProcs);
 
       // each specification can have multiple machines
-      int iMachine = 0;
-      for (YAML::const_iterator ispec = y_specs.begin(); ispec != y_specs.end(); ++ispec, iMachine++) {
-        const YAML::Node y_spec = ispec->second ;
+      for (size_t ispec = 0; ispec < y_specs.size(); ++ispec) {
+        const YAML::Node y_spec = y_specs[ispec];
         
         ActuatorLineInfo *actuatorLineInfo = new ActuatorLineInfo();
         actuatorLineInfo_.push_back(actuatorLineInfo);
@@ -285,7 +284,7 @@ ActuatorLine::load(
           throw std::runtime_error("ActuatorLine: no name provided");
         
         // processor id; distribute los equally over the number of processors
-        actuatorLineInfo->processorId_ = divProcTower > 0 ? iMachine % divProcTower : 0;
+        actuatorLineInfo->processorId_ = divProcTower > 0 ? ispec % divProcTower : 0;
 
         // number of points
         get_if_present(y_spec, "number_of_points", actuatorLineInfo->numPoints_, actuatorLineInfo->numPoints_);

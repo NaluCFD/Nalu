@@ -122,8 +122,8 @@ MaterialPropertys::load(const YAML::Node & node)
     // extract the sequence of types
     const YAML::Node y_specs = expect_sequence(y_material_propertys, "specifications", false);
     if (y_specs) {
-      for (YAML::const_iterator ispec = y_specs.begin(); ispec != y_specs.end(); ++ispec) {
-        const YAML::Node y_spec = ispec->second;
+      for (size_t ispec = 0; ispec < y_specs.size(); ++ispec) {
+        const YAML::Node y_spec = y_specs[ispec];
 
         // new the info object
         MaterialPropertyData *matData = new MaterialPropertyData();

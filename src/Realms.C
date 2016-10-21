@@ -42,8 +42,8 @@ Realms::load(const YAML::Node & node)
 {
   const YAML::Node realms = node["realms"];
   if (realms) {
-    for ( YAML::const_iterator irealm = realms.begin(); irealm != realms.end(); ++irealm ) {
-      const YAML::Node realm_node = irealm->second;
+    for ( size_t irealm = 0; irealm < realms->size(); ++irealm ) {
+      const YAML::Node realm_node = realms[irealm];
       // check for multi_physics realm type...
       std::string realmType = "multi_physics";
       get_if_present(realm_node, "type", realmType, realmType);

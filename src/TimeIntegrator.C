@@ -114,8 +114,8 @@ void TimeIntegrator::load(const YAML::Node & node)
         
         const YAML::Node realms_node = standardTimeIntegrator_node["realms"] ;
 	int iRealm = 0;
-        for (YAML::const_iterator irealm=realms_node.begin(); irealm != realms_node.end(); ++irealm, iRealm++) {
-          std::string realm_name = irealm->second.as<std::string>() ;
+        for (size_t irealm=0; irealm < realms_node.size(); ++irealm) {
+          std::string realm_name = realms_node[irealm].as<std::string>() ;
           NaluEnv::self().naluOutputP0() << "StandardTimeIntegrator realm_name[" << iRealm << "]= "  << realm_name << std::endl;
           realmNamesVec_.push_back(realm_name);
         }

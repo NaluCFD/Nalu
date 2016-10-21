@@ -38,9 +38,9 @@ LinearSolvers::load(const YAML::Node & node)
   const YAML::Node nodes = node["linear_solvers"];
   if ( nodes )
   {
-    for ( YAML::const_iterator inode = nodes.begin(); inode != nodes.end(); ++inode )
+    for ( size_t inode = 0; inode <  nodes.size(); ++inode )
     {
-      const YAML::Node linear_solver_node = inode->second ;
+      const YAML::Node linear_solver_node = nodes[inode] ;
       std::string solver_type = "epetra";
       get_if_present_no_default(linear_solver_node, "type", solver_type);
       if (root()->debug())
