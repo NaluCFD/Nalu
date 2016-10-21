@@ -1989,7 +1989,7 @@ Hex27SCS::set_boundary_info()
   const std::vector<int> stkFaceNodeMap = {
                                             0,  8,  1, 12, 25, 13,  4, 16,  5, // face 0(2): front face (cclockwise)
                                             1,  9,  2, 13, 24, 14,  5, 17,  6, // face 1(5): right face (cclockwise)
-                                            3, 10,  2, 15, 26, 14,  6, 18,  7, // face 2(3): back face  (clockwise)
+                                            3, 10,  2, 15, 26, 14,  7, 18,  6, // face 2(3): back face  (clockwise)
                                             0, 11,  3, 12, 23, 15,  4, 19,  7, // face 3(4): left face  (clockwise)
                                             0,  8,  1, 11, 21, 9,   3, 10,  2, // face 4(0): bottom face (clockwise)
                                             4, 16,  5, 19, 22,  17, 7, 18,  6  // face 5(1): top face (cclockwise)
@@ -2528,6 +2528,98 @@ void Hex27SCS::gij(
       &numIntPoints_,
       deriv,
       coords, gupperij, glowerij);
+}
+
+//--------------------------------------------------------------------------
+//-------- general_face_grad_op --------------------------------------------
+//--------------------------------------------------------------------------
+void 
+Hex27SCS::general_face_grad_op(
+  const int face_ordinal,
+  const double *isoParCoord,
+  const double *coords,
+  double *gradop,
+  double *det_j,
+  double *error)
+{
+  int lerr = 0;
+  const int ipsPerFace = 1;
+  const int face_offset =  nDim_ * ipsPerFace * nodesPerElement_ * face_ordinal;
+  
+  double faceShapeFuncDerivs[81];
+
+  hex27_shape_deriv(
+    ipsPerFace,
+    isoParCoord,
+    faceShapeFuncDerivs);
+
+  gradient( &coords[0],
+            faceShapeFuncDerivs,
+            &gradop[0],
+            &det_j[0] );
+  
+  if (det_j[0] <= 0.0) {
+    *error = 1.0;
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- sidePcoords_to_elemPcoords --------------------------------------
+//--------------------------------------------------------------------------
+void 
+Hex27SCS::sidePcoords_to_elemPcoords(
+  const int & side_ordinal,
+  const int & npoints,
+  const double *side_pcoords,
+  double *elem_pcoords)
+{
+  // each ME are -1:1, e.g., hex27:quad93d
+  switch (side_ordinal) {
+  case 0:
+    for (int i=0; i<npoints; i++) {
+      elem_pcoords[i*3+0] = side_pcoords[2*i+0];
+      elem_pcoords[i*3+1] = -1.0;
+      elem_pcoords[i*3+2] = side_pcoords[2*i+1];
+    }
+    break;
+  case 1:
+    for (int i=0; i<npoints; i++) {
+      elem_pcoords[i*3+0] = 1.0;
+      elem_pcoords[i*3+1] = side_pcoords[2*i+0];
+      elem_pcoords[i*3+2] = side_pcoords[2*i+1];
+    }
+    break;
+  case 2:
+    for (int i=0; i<npoints; i++) {
+      elem_pcoords[i*3+0] = -side_pcoords[2*i+0];
+      elem_pcoords[i*3+1] = 1.0;
+      elem_pcoords[i*3+2] = side_pcoords[2*i+1];
+    }
+    break;
+  case 3:
+    for (int i=0; i<npoints; i++) {
+      elem_pcoords[i*3+0] = -1.0;
+      elem_pcoords[i*3+1] = side_pcoords[2*i+1];
+      elem_pcoords[i*3+2] = side_pcoords[2*i+0];
+    }
+    break;
+  case 4:
+    for (int i=0; i<npoints; i++) {
+      elem_pcoords[i*3+0] = side_pcoords[2*i+1];
+      elem_pcoords[i*3+1] = side_pcoords[2*i+0];
+      elem_pcoords[i*3+2] = -1.0;
+    }
+    break;
+  case 5:
+    for (int i=0; i<npoints; i++) {
+      elem_pcoords[i*3+0] = side_pcoords[2*i+0];
+      elem_pcoords[i*3+1] = side_pcoords[2*i+1];
+      elem_pcoords[i*3+2] = 1.0;
+    }
+    break;
+  default:
+    throw std::runtime_error("HexSCS::sideMap invalid ordinal");
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -6679,6 +6771,68 @@ Quad3DSCS::general_shape_fcn(
 }
 
 //--------------------------------------------------------------------------
+//-------- general_normal --------------------------------------------------
+//--------------------------------------------------------------------------
+void
+Quad3DSCS::general_normal(
+  const double *isoParCoord,
+  const double *coords,
+  double *normal)
+{
+  const int nDim = 3;
+
+  const double psi0Xi = -0.25 * (1.0 - isoParCoord[1]);
+  const double psi1Xi =  0.25 * (1.0 - isoParCoord[1]);
+  const double psi2Xi =  0.25 * (1.0 + isoParCoord[1]);
+  const double psi3Xi = -0.25 * (1.0 + isoParCoord[1]);
+  
+  const double psi0Eta =-0.25 * (1.0 - isoParCoord[0]);
+  const double psi1Eta =-0.25 * (1.0 + isoParCoord[0]);
+  const double psi2Eta = 0.25 * (1.0 + isoParCoord[0]);
+  const double psi3Eta = 0.25 * (1.0 - isoParCoord[0]);
+  
+  const double DxDxi = coords[0*nDim+0]*psi0Xi +
+    coords[1*nDim+0]*psi1Xi +
+    coords[2*nDim+0]*psi2Xi +
+    coords[3*nDim+0]*psi3Xi;  
+      
+  const double DyDxi = coords[0*nDim+1]*psi0Xi +
+    coords[1*nDim+1]*psi1Xi +
+    coords[2*nDim+1]*psi2Xi +
+    coords[3*nDim+1]*psi3Xi;
+  
+  const double DzDxi = coords[0*nDim+2]*psi0Xi +
+    coords[1*nDim+2]*psi1Xi +
+    coords[2*nDim+2]*psi2Xi +
+    coords[3*nDim+2]*psi3Xi;
+  
+  const double DxDeta = coords[0*nDim+0]*psi0Eta +
+    coords[1*nDim+0]*psi1Eta +
+    coords[2*nDim+0]*psi2Eta +
+    coords[3*nDim+0]*psi3Eta;
+
+  const double DyDeta = coords[0*nDim+1]*psi0Eta +
+    coords[1*nDim+1]*psi1Eta +
+    coords[2*nDim+1]*psi2Eta +
+    coords[3*nDim+1]*psi3Eta;
+  
+  const double DzDeta = coords[0*nDim+2]*psi0Eta +
+    coords[1*nDim+2]*psi1Eta +
+    coords[2*nDim+2]*psi2Eta +
+    coords[3*nDim+2]*psi3Eta;
+  
+  const double detXY =  DxDxi*DyDeta - DxDeta*DyDxi;
+  const double detYZ =  DyDxi*DzDeta - DyDeta*DzDxi;
+  const double detXZ = -DxDxi*DzDeta + DxDeta*DzDxi;
+  
+  const double det = std::sqrt( detXY*detXY + detYZ*detYZ + detXZ*detXZ );
+    
+  normal[0] = detYZ / det;
+  normal[1] = detXZ / det;
+  normal[2] = detXY / det;
+}
+
+//--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 Quad93DSCS::Quad93DSCS()
@@ -7109,6 +7263,127 @@ Quad93DSCS::interpolatePoint(
 }
 
 //--------------------------------------------------------------------------
+//-------- general_shape_fcn -----------------------------------------------
+//--------------------------------------------------------------------------
+void
+Quad93DSCS::general_shape_fcn(
+  const int numIp,
+  const double *isoParCoord,
+  double *shpfc)
+{
+  quad9_shape_fcn(numIp, isoParCoord, shpfc);
+}
+
+//--------------------------------------------------------------------------
+//-------- general_normal --------------------------------------------------
+//--------------------------------------------------------------------------
+void
+Quad93DSCS::general_normal(
+  const double *isoParCoord,
+  const double *coords,
+  double *normal)
+{
+  // coords(3,9)
+  const int nDim = 3;
+
+  const double s = isoParCoord[0];
+  const double t = isoParCoord[1];
+  
+  const double t2 = t*t;
+  const double s2 = s*s;
+  
+  const double psi0Xi  =  0.25 * (2.0 * s  * t2 - 2.0*s*t-t2+t);
+  const double psi1Xi  =  0.25 * (2.0 * s  * t2 - 2.0*s*t+t2-t);
+  const double psi2Xi  =  0.25 * (2.0 * s  * t2 + 2.0*s*t+t2+t);
+  const double psi3Xi  =  0.25 * (2.0 * s  * t2 + 2.0*s*t-t2-t);
+  const double psi4Xi  =  -0.5 * (2.0 * s  * t2 - 2.0*s*t);
+  const double psi5Xi  =  -0.5 * (2.0 * s  * t2 + t2 - 2.0*s-1.0);
+  const double psi6Xi  =  -0.5 * (2.0 * s  * t2 + 2.0*s*t);
+  const double psi7Xi  =  -0.5 * (2.0 * s  * t2 - t2 - 2.0*s+1.0);
+  const double psi8Xi  =          2.0 * s  * t2      - 2.0*s;
+  
+  const double psi0Eta = 0.25 * (2.0 * s2 * t  - 2.0*s*t-s2+s);
+  const double psi1Eta = 0.25 * (2.0 * s2 * t  + 2.0*s*t-s2-s);
+  const double psi2Eta = 0.25 * (2.0 * s2 * t  + 2.0*s*t+s2+s);
+  const double psi3Eta = 0.25 * (2.0 * s2 * t  - 2.0*s*t+s2-s);
+  const double psi4Eta = -0.5 * (2.0 * s2 * t  - s2 - 2.0*t+1.0);
+  const double psi5Eta = -0.5 * (2.0 * s2 * t  + 2.0*s*t);
+  const double psi6Eta = -0.5 * (2.0 * s2 * t  + s2 - 2.0*t-1.0);
+  const double psi7Eta = -0.5 * (2.0 * s2 * t  - 2.0*s*t);
+  const double psi8Eta =         2.0 * s2 * t       - 2.0*t;
+  
+  const double DxDxi = coords[0*nDim+0]*psi0Xi +
+    coords[1*nDim+0]*psi1Xi +
+    coords[2*nDim+0]*psi2Xi +
+    coords[3*nDim+0]*psi3Xi +
+    coords[4*nDim+0]*psi4Xi +
+    coords[5*nDim+0]*psi5Xi +
+    coords[6*nDim+0]*psi6Xi +
+    coords[7*nDim+0]*psi7Xi +
+    coords[8*nDim+0]*psi8Xi;
+  
+  const double DyDxi = coords[0*nDim+1]*psi0Xi +
+    coords[1*nDim+1]*psi1Xi +
+    coords[2*nDim+1]*psi2Xi +
+    coords[3*nDim+1]*psi3Xi +
+    coords[4*nDim+1]*psi4Xi +
+    coords[5*nDim+1]*psi5Xi +
+    coords[6*nDim+1]*psi6Xi +
+    coords[7*nDim+1]*psi7Xi +
+    coords[8*nDim+1]*psi8Xi;
+  
+  const double DzDxi = coords[0*nDim+2]*psi0Xi +
+    coords[1*nDim+2]*psi1Xi +
+    coords[2*nDim+2]*psi2Xi +
+    coords[3*nDim+2]*psi3Xi +
+    coords[4*nDim+2]*psi4Xi +
+    coords[5*nDim+2]*psi5Xi +
+    coords[6*nDim+2]*psi6Xi +
+    coords[7*nDim+2]*psi7Xi +
+    coords[8*nDim+2]*psi8Xi;
+  
+  const double DxDeta = coords[0*nDim+0]*psi0Eta +
+    coords[1*nDim+0]*psi1Eta +
+    coords[2*nDim+0]*psi2Eta +
+    coords[3*nDim+0]*psi3Eta +
+    coords[4*nDim+0]*psi4Eta +
+    coords[5*nDim+0]*psi5Eta +
+    coords[6*nDim+0]*psi6Eta +
+    coords[7*nDim+0]*psi7Eta +
+    coords[8*nDim+0]*psi8Eta;
+  
+  const double DyDeta = coords[0*nDim+1]*psi0Eta +
+    coords[1*nDim+1]*psi1Eta +
+    coords[2*nDim+1]*psi2Eta +
+    coords[3*nDim+1]*psi3Eta +
+    coords[4*nDim+1]*psi4Eta +
+    coords[5*nDim+1]*psi5Eta +
+    coords[6*nDim+1]*psi6Eta +
+    coords[7*nDim+1]*psi7Eta +
+    coords[8*nDim+1]*psi8Eta;
+
+  const double DzDeta = coords[0*nDim+2]*psi0Eta +
+    coords[1*nDim+2]*psi1Eta +
+    coords[2*nDim+2]*psi2Eta +
+    coords[3*nDim+2]*psi3Eta +
+    coords[4*nDim+2]*psi4Eta +
+    coords[5*nDim+2]*psi5Eta +
+    coords[6*nDim+2]*psi6Eta +
+    coords[7*nDim+2]*psi7Eta +
+    coords[8*nDim+2]*psi8Eta;
+  
+  const double detXY =  DxDxi*DyDeta - DxDeta*DyDxi;
+  const double detYZ =  DyDxi*DzDeta - DyDeta*DzDxi;
+  const double detXZ = -DxDxi*DzDeta + DxDeta*DzDxi;
+  
+  const double det = std::sqrt( detXY*detXY + detYZ*detYZ + detXZ*detXZ );
+  
+  normal[0] = detYZ / det;
+  normal[1] = detXZ / det;
+  normal[2] = detXY / det;
+}
+
+//--------------------------------------------------------------------------
 //-------- non_unit_face_normal --------------------------------------------
 //--------------------------------------------------------------------------
 void
@@ -7460,7 +7735,37 @@ Tri3DSCS::general_shape_fcn(
   const double *isoParCoord,
   double *shpfc)
 {
-  tri_shape_fcn(numIp, &isoParCoord[0], shpfc);
+  tri_shape_fcn(numIp, isoParCoord, shpfc);
+}
+
+
+//--------------------------------------------------------------------------
+//-------- general_normal --------------------------------------------------
+//--------------------------------------------------------------------------
+void
+Tri3DSCS::general_normal(
+  const double */*isoParCoord*/,
+  const double *coords,
+  double *normal)
+{
+  // can be only linear
+  const double ax  = coords[3] - coords[0];
+  const double ay  = coords[4] - coords[1];
+  const double az  = coords[5] - coords[2];
+  const double bx  = coords[6] - coords[0];
+  const double by  = coords[7] - coords[1];
+  const double bz  = coords[8] - coords[2];
+
+  normal[0] = ( ay*bz - az*by );
+  normal[1] = ( az*bx - ax*bz );
+  normal[2] = ( ax*by - ay*bx );
+
+  const double mag = std::sqrt( normal[0]*normal[0] +
+                                normal[1]*normal[1] +
+                                normal[2]*normal[2] );
+  normal[0] /= mag;
+  normal[1] /= mag;
+  normal[2] /= mag;
 }
 
 //--------------------------------------------------------------------------
@@ -7642,6 +7947,23 @@ Edge2DSCS::general_shape_fcn(
   }
 }
 
+//--------------------------------------------------------------------------
+//-------- general_normal --------------------------------------------------
+//--------------------------------------------------------------------------
+void
+Edge2DSCS::general_normal(
+  const double */*isoParCoord*/,
+  const double *coords,
+  double *normal)
+{
+  // can be only linear
+  const double dx  = coords[2] - coords[0];
+  const double dy  = coords[3] - coords[1];
+  const double mag = std::sqrt(dx*dx + dy*dy);
+
+  normal[0] =  dy/mag;
+  normal[1] = -dx/mag;
+}
 
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
