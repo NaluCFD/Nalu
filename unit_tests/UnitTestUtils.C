@@ -31,7 +31,7 @@ void create_one_hex27_element(stk::mesh::BulkData& bulk)
    stk::topology hex27 = stk::topology::HEX_27;
    stk::mesh::Part& block_1 = meta.declare_part_with_topology("block_1", hex27);
 
-   stk::mesh::PartVector surfaces(6);
+   stk::mesh::PartVector surfaces(hex27.num_faces());
    stk::topology quad9 = stk::topology::QUAD_9;
    surfaces[0] = &meta.declare_part_with_topology("surface_1", quad9);
    surfaces[1] = &meta.declare_part_with_topology("surface_2", quad9);
@@ -41,7 +41,7 @@ void create_one_hex27_element(stk::mesh::BulkData& bulk)
    surfaces[5] = &meta.declare_part_with_topology("surface_6", quad9);
    meta.commit();
 
-   stk::mesh::EntityIdVector nodeIds(27);
+   stk::mesh::EntityIdVector nodeIds(hex27.num_nodes());
    std::iota(nodeIds.begin(), nodeIds.end(), 1);
 
    std::vector<unsigned> sideNodeOrdinals(quad9.num_nodes());

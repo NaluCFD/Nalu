@@ -53,7 +53,6 @@ void check_Hex27_creation(const stk::mesh::BulkData& bulk)
 
 void check_Hex27_face_ip_node_ordering(const stk::mesh::BulkData& bulk)
 {
-
   stk::topology hex27 = stk::topology::HEX_27;
   stk::topology quad9 = stk::topology::QUAD_9;
   sierra::nalu::Hex27SCS hexSCS;
@@ -74,7 +73,7 @@ void check_Hex27_face_ip_node_ordering(const stk::mesh::BulkData& bulk)
 
       const int* ipNodeMap = hexSCS.ipNodeMap(ordinal);
       const int* faceIpNodeMap = quadSCS.ipNodeMap();
-      for(unsigned ip = 0; ip < quadSCS.numIntPoints_; ++ip) {
+      for (int ip = 0; ip < quadSCS.numIntPoints_; ++ip) {
         const int elemIpNearestNode = ipNodeMap[ip];
         const int faceIpNearestNode = faceIpNodeMap[ip];
 
@@ -91,6 +90,9 @@ void check_Hex27_face_ip_node_ordering(const stk::mesh::BulkData& bulk)
 TEST(Hex27,creation)
 {
   stk::ParallelMachine comm = MPI_COMM_WORLD;
+  if (stk::parallel_machine_size(comm) != 1) {
+    return; // serial test
+  }
 
   unsigned spatialDimension = 3;
   stk::mesh::MetaData meta(spatialDimension);
@@ -103,6 +105,9 @@ TEST(Hex27,creation)
 TEST(Hex27, face_node_ordering)
 {
   stk::ParallelMachine comm = MPI_COMM_WORLD;
+  if (stk::parallel_machine_size(comm) != 1) {
+    return; // serial test
+  }
 
   unsigned spatialDimension = 3;
   stk::mesh::MetaData meta(spatialDimension);
