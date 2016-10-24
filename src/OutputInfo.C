@@ -129,9 +129,9 @@ OutputInfo::load(
     if (y_vars)
     {
       size_t varSize = y_vars.size();
-      for (YAML::const_iterator ioption = y_vars.begin(); ioption != y_vars.end(); ++ioption)
+      for (size_t ioption = 0; ioption < varSize; ++ioption)
       {
-        const YAML::Node y_var = ioption->second;
+        const YAML::Node y_var = y_vars[ioption];
         std::string fieldName;
         fieldName = y_var.as<std::string>() ;
         outputFieldNameSet_.insert(fieldName);

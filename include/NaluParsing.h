@@ -597,6 +597,11 @@ template<> struct convert<sierra::nalu::MeshInput> {
   static bool decode(const Node& node, sierra::nalu::MeshInput& rhs) ;
 };
 
+
+template<> struct convert<std::map<std::string,std::vector<std::string> > > {
+    static bool decode(const Node& node, std::map<std::string,std::vector<std::string> >& t) ;
+  };
+
 }
 
 

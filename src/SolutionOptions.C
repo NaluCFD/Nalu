@@ -181,9 +181,9 @@ SolutionOptions::load(const YAML::Node & y_node)
     const YAML::Node y_options = expect_sequence(y_solution_options, "options", required);
     if (y_options)
     {
-      for (YAML::const_iterator ioption = y_options.begin(); ioption != y_options.end(); ++ioption)
+      for (size_t ioption = 0; ioption < y_options.size(); ++ioption)
       {
-        const YAML::Node y_option = ioption->second ;
+        const YAML::Node y_option = y_options[ioption] ;
         if (expect_map(y_option, "hybrid_factor", optional)) {
           hybridMap_ = y_option["hybrid_factor"].as<std::map<std::string, double> >() ;
         }

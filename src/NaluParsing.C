@@ -840,8 +840,33 @@ namespace YAML {
       meshInput.meshName_ = node["mesh_name"].as<std::string>() ;
       return true;
     }
-    
 
-}  
-
+    bool convert<std::map<std::string,std::vector<std::string> > >::decode(const YAML::Node& node, std::map<std::string,std::vector<std::string> >& mapName)
+    {
+      for (const_iterator i = node.begin(); i != node.end(); ++i)
+	{
+	  const YAML::Node & key = i->first;
+	  const YAML::Node & targets = i->second;
+	  std::string stringName;
+	  stringName = key.as<std::string>() ;
+	  
+	  std::vector<std::string> &vecOfStrings = mapName[stringName];
+	  std::string theName;
+	  if ( targets.Type() == YAML::NodeType::Scalar ) {
+	    theName = targets.as<std::string>();
+	    vecOfStrings.push_back(theName);
+	  }
+	  else {
+	    for (size_t it=0; it < targets.size(); ++it) {
+	      theName = targets[it].as<std::string>() ;
+	      vecOfStrings.push_back(theName);
+	    }
+	  }
+	}
+      
+      return true;
+    }
+  
+}
+  
       
