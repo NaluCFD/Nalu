@@ -165,6 +165,7 @@ AssembleContinuityNonConformalSolverAlgorithm::execute()
   std::vector<double> ws_o_vrtm;
   std::vector<double> ws_c_density;
   std::vector<double> ws_o_density;
+  std::vector<double> ws_o_coordinates;
 
   // element
   std::vector<double> ws_c_elem_pressure;
@@ -228,6 +229,9 @@ AssembleContinuityNonConformalSolverAlgorithm::execute()
         currentIsoParCoords = dgInfo->currentIsoParCoords_;
         opposingIsoParCoords = dgInfo->opposingIsoParCoords_;
         
+        // mapping from ip to nodes for this ordinal
+        const int *ipNodeMap = meSCSCurrent->ipNodeMap(currentFaceOrdinal);
+
         // extract some master element info
         const int currentNodesPerFace = meFCCurrent->nodesPerElement_;
         const int opposingNodesPerFace = meFCOpposing->nodesPerElement_;
@@ -253,6 +257,7 @@ AssembleContinuityNonConformalSolverAlgorithm::execute()
         ws_o_vrtm.resize(opposingNodesPerFace*nDim);
         ws_c_density.resize(currentNodesPerFace);
         ws_o_density.resize(opposingNodesPerFace);
+        ws_o_coordinates.resize(opposingNodesPerFace*nDim);
         ws_c_general_shape_function.resize(currentNodesPerFace);
         ws_o_general_shape_function.resize(opposingNodesPerFace);
         
@@ -283,6 +288,7 @@ AssembleContinuityNonConformalSolverAlgorithm::execute()
         double *p_o_vrtm = &ws_o_vrtm[0];
         double *p_c_density = &ws_c_density[0];
         double *p_o_density = &ws_o_density[0];
+        double *p_o_coordinates = &ws_o_coordinates[0];
 
         // element
         double *p_c_elem_pressure = &ws_c_elem_pressure[0];
@@ -331,10 +337,12 @@ AssembleContinuityNonConformalSolverAlgorithm::execute()
           // gather; vector
           const double *vrtm = stk::mesh::field_data(*velocityRTM_, node );
           const double *Gjp = stk::mesh::field_data(*Gjp_, node );
+          const double *coords = stk::mesh::field_data(*coordinates_, node);
           for ( int i = 0; i < nDim; ++i ) {
             const int offSet = i*opposing_num_face_nodes + ni;        
             p_o_vrtm[offSet] = vrtm[i];
             p_o_Gjp[offSet] = Gjp[i];
+            p_o_coordinates[ni*nDim+i] = coords[i];
           }
         }
         
@@ -371,27 +379,23 @@ AssembleContinuityNonConformalSolverAlgorithm::execute()
             p_o_elem_coordinates[niNdim+i] = coords[i];
           }
         }
- 
+
+        // compute opposing normal through master element call, not using oppoing exposed area
+        meFCOpposing->general_normal(&opposingIsoParCoords[0], &p_o_coordinates[0], &p_oNx[0]);
+        
         // pointer to face data
         const double * c_areaVec = stk::mesh::field_data(*exposedAreaVec_, currentFace);
-        const double * o_areaVec = stk::mesh::field_data(*exposedAreaVec_, opposingFace);
         
         double c_amag = 0.0;
-        double o_amag = 0.0;
         for ( int j = 0; j < nDim; ++j ) {
           const double c_axj = c_areaVec[currentGaussPointId*nDim+j];
           c_amag += c_axj*c_axj;
-          // FIXME: choose first area vector on opposing surface? probably need something better for HO
-          const double o_axj = o_areaVec[0*nDim+j];
-          o_amag += o_axj*o_axj;
         }
         c_amag = std::sqrt(c_amag);
-        o_amag = std::sqrt(o_amag);
-        
+
         // now compute normal
         for ( int i = 0; i < nDim; ++i ) {
           p_cNx[i] = c_areaVec[currentGaussPointId*nDim+i]/c_amag;
-          p_oNx[i] = o_areaVec[0*nDim+i]/o_amag;  
         }
         
         // override opposing normal
@@ -400,7 +404,7 @@ AssembleContinuityNonConformalSolverAlgorithm::execute()
             p_oNx[i] = -p_cNx[i];
         }
 
-        // project from side to element; method deals with the -1:1 isInElement range to the proper -0.5:0.5 CVFEM rang
+        // project from side to element; method deals with the -1:1 isInElement range to the proper underlying CVFEM range
         meSCSCurrent->sidePcoords_to_elemPcoords(currentFaceOrdinal, 1, &currentIsoParCoords[0], &currentElementIsoParCoords[0]);
         meSCSOpposing->sidePcoords_to_elemPcoords(opposingFaceOrdinal, 1, &opposingIsoParCoords[0], &opposingElementIsoParCoords[0]);
         
@@ -569,7 +573,7 @@ AssembleContinuityNonConformalSolverAlgorithm::execute()
         const double mdot = (ncFlux - includePstab_*projTimeScale*ncPstabFlux + penaltyIp*(currentPressureBip - opposingPressureBip))*c_amag;
         
         // form residual
-        const int nn = ws_c_face_node_ordinals[currentGaussPointId];
+        const int nn = ipNodeMap[currentGaussPointId];
         p_rhs[nn] -= mdot/projTimeScale;
 
         // set-up row for matrix

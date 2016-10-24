@@ -137,6 +137,12 @@ public:
     double * error ) {
     throw std::runtime_error("general_face_grad_op not implemented");}
 
+  virtual void general_normal(
+    const double *isoParCoord,
+    const double *coords,
+    double *normal) {
+    throw std::runtime_error("general_normal not implemented");}
+
   virtual void sidePcoords_to_elemPcoords(
     const int & side_ordinal,
     const int & npoints,
@@ -360,6 +366,12 @@ protected:
   void set_quadrature_rule();
   void GLLGLL_quadrature_weights();
 
+  void hex27_shape_deriv(
+    int npts,
+    const double *par_coord,
+    double* shape_fcn
+  ) const;
+
   const double scsDist_;
   const bool useGLLGLL_;
   const int nodes1D_;
@@ -382,12 +394,6 @@ protected:
 
 private:
   void hex27_shape_fcn(
-    int npts,
-    const double *par_coord,
-    double* shape_fcn
-  ) const;
-
-  void hex27_shape_deriv(
     int npts,
     const double *par_coord,
     double* shape_fcn
@@ -461,6 +467,20 @@ public:
     double *gupperij,
     double *glowerij,
     double *deriv);
+
+  void general_face_grad_op(
+    const int face_ordinal,
+    const double *isoParCoord,
+    const double *coords,
+    double *gradop,
+    double *det_j,
+    double * error );
+
+  void sidePcoords_to_elemPcoords(
+    const int & side_ordinal,
+    const int & npoints,
+    const double *side_pcoords,
+    double *elem_pcoords);
 
   const int * adjacentNodes();
 
@@ -1228,6 +1248,11 @@ public:
     const double *isoParCoord,
     double *shpfc);
 
+  void general_normal(
+    const double *isoParCoord,
+    const double *coords,
+    double *normal);
+
   void non_unit_face_normal(
     const double * par_coord,
     const double * elem_nodal_coor,
@@ -1263,6 +1288,16 @@ public:
     const double *isoParCoord,
     const double *field,
     double *result);
+
+  void general_shape_fcn(
+    const int numIp,
+    const double *isoParCoord,
+    double *shpfc);
+
+  void general_normal(
+    const double *isoParCoord,
+    const double *coords,
+    double *normal);
 
 private:
   void set_interior_info();
@@ -1346,6 +1381,10 @@ public:
     const double *isoParCoord,
     double *shpfc);
 
+  void general_normal(
+    const double *isoParCoord,
+    const double *coords,
+    double *normal);
 };
 
 // edge 2d
@@ -1384,6 +1423,11 @@ public:
     const int numIp,
     const double *isoParCoord,
     double *shpfc);
+
+  void general_normal(
+    const double *isoParCoord,
+    const double *coords,
+    double *normal);
 
   double parametric_distance(const std::vector<double> &x);
 

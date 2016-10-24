@@ -225,8 +225,8 @@ NonConformalInfo::construct_dgInfo_state()
       stk::mesh::Entity const * face_node_rels = bulk_data.begin_nodes(face);
       const int num_face_nodes = bulk_data.num_nodes(face);
       
-      // sanity check on num nodes (low order, P=1, check)
-      ThrowAssert( num_face_nodes == numScsBip ); ThrowAssert( num_face_nodes == nodesPerFace );
+      // sanity check on num nodes
+      ThrowAssert( num_face_nodes == nodesPerFace );
       for ( int ni = 0; ni < num_face_nodes; ++ni ) {
         stk::mesh::Entity node = face_node_rels[ni];
         double * coords = stk::mesh::field_data(*coordinates, node);

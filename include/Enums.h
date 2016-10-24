@@ -28,7 +28,8 @@ enum AlgorithmType{
   WALL_RAD  = 10,
   NON_CONFORMAL = 11,
   ELEM_SOURCE = 12,
-  OVERSET = 13
+  OVERSET = 13,
+  WALL_ABL = 14
 };
 
 enum BoundaryConditionType{
