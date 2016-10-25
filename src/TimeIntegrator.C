@@ -63,8 +63,8 @@ void TimeIntegrator::load(const YAML::Node & node)
   // FIXME - singleton... need TimeIntegrators class...
   const YAML::Node time_integrators = node["Time_Integrators"];
   if (time_integrators) {
-    for ( YAML::const_iterator itime_int = time_integrators.begin(); itime_int != time_integrators.end(); ++itime_int ) {
-      const YAML::Node time_int_node = itime_int->second ;
+    for ( size_t itime_int = 0; itime_int < time_integrators.size(); ++itime_int ) {
+      const YAML::Node time_int_node = time_integrators[itime_int] ;
       const YAML::Node standardTimeIntegrator_node = time_int_node["StandardTimeIntegrator"];
       //const YAML::Node *otherTimeIntegrator_node = time_int_node.FindValue("OtherTimeIntegrator");
       if (standardTimeIntegrator_node) {

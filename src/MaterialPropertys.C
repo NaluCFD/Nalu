@@ -99,8 +99,8 @@ MaterialPropertys::load(const YAML::Node & node)
     // reference quantities
     const YAML::Node y_refs = expect_sequence(y_material_propertys, "reference_quantities", true);
     if (y_refs) {
-      for (YAML::const_iterator ispec = y_refs.begin(); ispec != y_refs.end(); ++ispec) {
-        const YAML::Node y_ref = ispec->second ;
+      for (size_t ispec = 0; ispec < y_refs.size(); ++ispec) {
+        const YAML::Node y_ref = y_refs[ispec] ;
 
         // new the info object
         ReferencePropertyData *refData = new ReferencePropertyData();

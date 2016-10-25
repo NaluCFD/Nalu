@@ -164,13 +164,13 @@ namespace sierra{
       const YAML::Node & targets = node["target_name"];
       if (targets.Type() == YAML::NodeType::Scalar) {
 	fcnIC.targetNames_.resize(1);
-	fcnIC.targetNames_[0] = targets.as<double>();
+	fcnIC.targetNames_[0] = targets.as<std::string>();
       }
       else
 	{
 	  fcnIC.targetNames_.resize(targets.size());
 	  for (size_t i=0; i < targets.size(); ++i) {
-	    fcnIC.targetNames_[i] = targets[i].as<double>();
+	    fcnIC.targetNames_[i] = targets[i].as<std::string>();
 	  }
 	}
       
@@ -252,7 +252,7 @@ namespace sierra{
 namespace YAML {
 
     bool convert<sierra::nalu::Velocity>::decode(const Node& node, sierra::nalu::Velocity& v) {
-      if(!node.IsSequence() || node.size() != 3) {
+      if(!node.IsSequence() || node.size() < 2) {
 	return false;
       }
       
@@ -265,7 +265,7 @@ namespace YAML {
     }
     
     bool convert<sierra::nalu::Coordinates>::decode(const Node& node, sierra::nalu::Coordinates& cx) {
-      if(!node.IsSequence() || node.size() != 3) {
+      if(!node.IsSequence() || node.size() < 2) {
 	return false;
       }
       

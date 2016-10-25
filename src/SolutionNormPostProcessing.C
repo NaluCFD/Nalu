@@ -103,8 +103,8 @@ SolutionNormPostProcessing::load(
     if (y_dof_pair)
     {
       size_t varSize = y_dof_pair.size();
-      for (YAML::const_iterator ioption = y_dof_pair.begin(); ioption != y_dof_pair.end(); ++ioption) {
-        const YAML::Node y_var = ioption->second;
+      for (size_t ioption = 0; ioption < y_dof_pair.size(); ++ioption) {
+        const YAML::Node y_var = y_dof_pair[ioption];
         size_t varPairSize = y_var.size();
         if ( varPairSize != 2 )
           throw std::runtime_error("need two field name pairs for xfer");

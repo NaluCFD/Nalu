@@ -79,9 +79,9 @@ void EquationSystems::load(const YAML::Node & y_node)
     
     const YAML::Node y_systems = expect_sequence(y_equation_system, "systems");
     {
-      for ( YAML::const_iterator isystem = y_systems.begin(); isystem != y_systems.end(); ++isystem )
+      for ( size_t isystem = 0; isystem < y_systems.size(); ++isystem )
       {
-        const YAML::Node y_system = isystem->second ;
+        const YAML::Node y_system = y_systems[isystem] ;
         EquationSystem *eqSys = 0;
 	YAML::Node y_eqsys ;
         if ( expect_map(y_system, "LowMachEOM", true) ) {

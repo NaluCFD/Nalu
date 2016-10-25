@@ -109,8 +109,8 @@ TurbulenceAveragingPostProcessing::load(
         const YAML::Node y_reynolds = y_spec["reynolds_averaged_variables"];
         if (y_reynolds) {
           size_t varSize = y_reynolds.size();
-          for (YAML::const_iterator ioption = y_reynolds.begin(); ioption != y_reynolds.end(); ++ioption) {
-            const YAML::Node y_var = ioption->second;
+          for (size_t ioption = 0; ioption < y_reynolds.size(); ++ioption) {
+            const YAML::Node y_var = y_reynolds[ioption];
             std::string fieldName = y_var.as<std::string>() ;
             if ( fieldName != "density" )
               avInfo->reynoldsFieldNameVec_.push_back(fieldName);
@@ -121,8 +121,8 @@ TurbulenceAveragingPostProcessing::load(
         const YAML::Node y_favre = y_spec["favre_averaged_variables"];
         if (y_favre) {
           size_t varSize = y_favre.size();
-          for (YAML::const_iterator ioption = y_favre.begin(); ioption != y_favre.end(); ++ioption) {
-            const YAML::Node y_var = ioption->second;
+          for (size_t ioption = 0; ioption < y_favre.size(); ++ioption) {
+            const YAML::Node y_var = y_favre[ioption];
             std::string fieldName = y_var.as<std::string>() ;
             if ( fieldName != "density")
               avInfo->favreFieldNameVec_.push_back(fieldName);

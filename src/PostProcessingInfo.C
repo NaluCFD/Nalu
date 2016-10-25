@@ -53,10 +53,10 @@ PostProcessingInfo::load(
   const YAML::Node y_pp = expect_sequence(y_node, "post_processing", optional);
   if (y_pp) {
 
-    for (YAML::const_iterator itype = y_pp.begin(); itype != y_pp.end(); ++itype) {
+    for (size_t itype = 0; itype < y_pp.size(); ++itype) {
 
       // extract the particular type
-      const YAML::Node y_type = itype->second ;
+      const YAML::Node y_type = y_pp[itype] ;
   
       // create the data
       PostProcessingData *ppData = new PostProcessingData();      

@@ -72,9 +72,9 @@ EpetraLinearSolverConfig::load(const YAML::Node & node)
     const YAML::Node int_nodes = node["ML_options_int"];
     if ( int_nodes )
     {
-      for ( YAML::const_iterator inode = int_nodes.begin() ; inode != int_nodes.end(); ++inode )
+      for ( size_t inode = 0; inode < int_nodes.size(); ++inode )
       {
-        const YAML::Node integer_parameter_node = inode->second ;
+        const YAML::Node integer_parameter_node = int_nodes[inode] ;
         std::string option_name;
         int option_value;
         option_name = integer_parameter_node["name"].as<std::string>() ;
@@ -87,9 +87,9 @@ EpetraLinearSolverConfig::load(const YAML::Node & node)
     const YAML::Node str_nodes = node["ML_options_string"];
     if ( str_nodes )
     {
-      for ( YAML::const_iterator inode = str_nodes.begin() ; inode != str_nodes.end(); ++inode )
+      for ( size_t inode = 0 ; inode < str_nodes.size(); ++inode )
       {
-        const YAML::Node integer_parameter_node = inode->second ;
+        const YAML::Node integer_parameter_node = str_nodes[inode] ;
         std::string option_name;
         std::string option_value; 
         option_name = integer_parameter_node["name"].as<std::string>() ;
@@ -102,9 +102,9 @@ EpetraLinearSolverConfig::load(const YAML::Node & node)
     const YAML::Node real_nodes = node["ML_options_real"];
     if ( real_nodes )
     {
-      for ( YAML::const_iterator inode = real_nodes.begin() ; inode != real_nodes.end(); ++inode )
+      for ( size_t inode = 0 ; inode < real_nodes.size(); ++inode )
       {
-        const YAML::Node integer_parameter_node = inode->second ;
+        const YAML::Node integer_parameter_node = real_nodes[inode];
         std::string option_name;
         double option_value; 
         option_name = integer_parameter_node["name"].as<std::string>() ;
