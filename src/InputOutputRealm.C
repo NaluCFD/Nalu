@@ -118,20 +118,20 @@ InputOutputRealm::load(const YAML::Node & node)
     const YAML::Node y_specs = expect_sequence(y_field, "specifications", false);
     if (y_specs) {
       for (size_t ispec = 0; ispec < y_specs.size(); ++ispec) {
-        const YAML::Node y_spec = y_spec[ispec] ;
+        const YAML::Node y_spec = y_specs[ispec] ;
         
         // find the name, size and type
         const YAML::Node fieldNameNode = y_spec["field_name"];
         const YAML::Node fieldSizeNode = y_spec["field_size"];
         const YAML::Node fieldTypeNode = y_spec["field_type"];
         
-        if ( fieldNameNode ) 
+        if ( ! fieldNameNode ) 
           throw std::runtime_error("Sorry, field name must be provided");
         
-        if ( fieldSizeNode ) 
+        if ( ! fieldSizeNode ) 
           throw std::runtime_error("Sorry, field size must be provided");
         
-        if ( fieldTypeNode ) 
+        if ( ! fieldTypeNode ) 
           throw std::runtime_error("Sorry, field type must be provided");
         
         // new the data

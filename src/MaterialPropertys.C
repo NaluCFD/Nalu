@@ -165,8 +165,8 @@ MaterialPropertys::load(const YAML::Node & node)
             if (coeffDeclare) {
               const YAML::Node y_coeffds = expect_sequence(y_spec, "coefficient_declaration", true);
               if (y_coeffds) {
-                for (YAML::const_iterator icoef = y_coeffds.begin(); icoef != y_coeffds.end(); ++icoef) {
-                  const YAML::Node y_coeffd = icoef->second;
+                for (size_t icoef = 0; icoef < y_coeffds.size(); ++icoef) {
+                  const YAML::Node y_coeffd = y_coeffds[icoef];
                   std::string speciesName = "";
                   get_required(y_coeffd, "species_name", speciesName);
                   // standard coefficients single in size
@@ -218,13 +218,13 @@ MaterialPropertys::load(const YAML::Node & node)
           // check for coeff declaration
           const YAML::Node y_coeffds = expect_sequence(y_spec, "coefficient_declaration", true);
           if (y_coeffds) {
-            for (YAML::const_iterator icoef = y_coeffds.begin(); icoef != y_coeffds.end(); ++icoef) {
-              const YAML::Node y_coeffd = icoef->second;
+            for (size_t icoef = 0; icoef < y_coeffds.size(); ++icoef) {
+              const YAML::Node y_coeffd = y_coeffds[icoef];
               std::string speciesName = "";
               get_required(y_coeffd, "species_name", speciesName);
 
               // standard coefficients
-              const YAML::Node coeffds = y_coeffds["coefficients"];
+              const YAML::Node coeffds = y_coeffd["coefficients"];
               if ( coeffds ) {
                 const size_t coeffSize = coeffds.size();
                 std::vector<double> tmpPolyCoeffs(coeffSize);
@@ -233,7 +233,7 @@ MaterialPropertys::load(const YAML::Node & node)
               }
 
               // low temperature coefficient
-              const YAML::Node lowcoeffds = y_coeffds["low_coefficients"];
+              const YAML::Node lowcoeffds = y_coeffd["low_coefficients"];
               if ( lowcoeffds ) {
                 const size_t coeffSize = lowcoeffds.size();
                 std::vector<double> tmpPolyCoeffs(coeffSize);
@@ -251,12 +251,11 @@ MaterialPropertys::load(const YAML::Node & node)
               }
             }
           }
-	  
+	  else  {
           // complain if both are null
-          if ( NULL == y_coeffds )
             throw std::runtime_error("polynominal property did not provide a set of coefficients");
-
-        } 
+	  }
+        }
         else if ( thePropType == "ideal_gas_t" ) {
           matData->type_ = IDEAL_GAS_T_MAT;
           NaluEnv::self().naluOutputP0() << thePropName

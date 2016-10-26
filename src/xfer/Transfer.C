@@ -171,8 +171,8 @@ Transfer::load(const YAML::Node & node)
     transferVariablesSpecified_ = true;
     std::string fromName, toName;
     size_t varSize = y_vars.size();
-    for (YAML::const_iterator ioption = y_vars.begin(); ioption != y_vars.end(); ioption++) {
-      const YAML::Node y_var = ioption->second ;
+    for (size_t ioption = 0; ioption < y_vars.size(); ioption++) {
+      const YAML::Node y_var = y_vars[ioption] ;
       size_t varPairSize = y_var.size();
       if ( varPairSize != 2 )
         throw std::runtime_error("need two field name pairs for xfer");

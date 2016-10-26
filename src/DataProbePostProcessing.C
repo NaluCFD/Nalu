@@ -126,8 +126,8 @@ DataProbePostProcessing::load(
     if (y_specs) {
 
       // each specification can have multiple probes
-      for (YAML::const_iterator ispec = y_specs.begin(); ispec != y_specs.end(); ++ispec) {
-        const YAML::Node y_spec = ispec->second;
+      for (size_t ispec = 0; ispec < y_specs.size(); ++ispec) {
+        const YAML::Node y_spec = y_specs[ispec];
 
         DataProbeSpecInfo *probeSpec = new DataProbeSpecInfo();
         dataProbeSpecInfo_.push_back(probeSpec);
@@ -180,9 +180,8 @@ DataProbePostProcessing::load(
           const int numProcs = NaluEnv::self().parallel_size();
           const int divProcProbe = std::max(numProcs/numProbes, numProcs);
 	  
-	  int ilos = 0;
-          for (YAML::const_iterator iLineOfSite = y_loss.begin(); iLineOfSite != y_loss.end(); ++iLineOfSite, ilos++) {
-            const YAML::Node y_los = iLineOfSite->second ;
+          for (size_t ilos = 0; ilos < y_loss.size(); ++ilos, ilos++) {
+            const YAML::Node y_los = y_loss[ilos] ;
 
             // processor id; distribute los equally over the number of processors
             probeInfo->processorId_[ilos] = divProcProbe > 0 ? ilos % divProcProbe : 0;

@@ -357,7 +357,8 @@ namespace YAML {
       }
       
       irrad.irradiation_ = node.as<double>();
-      
+
+      return true;      
     }
     
     bool convert<sierra::nalu::Transmissivity>::decode(const Node& node, sierra::nalu::Transmissivity& tmiss) {

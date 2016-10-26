@@ -94,10 +94,8 @@ PostProcessingInfo::load(
         }
         else {
           ppData->parameters_.resize(targets.size());
-	  int iCount=0;
-          for (YAML::const_iterator i=targets.begin(); i != targets.end(); ++i) {
-            ppData->parameters_[iCount] = i->second.as<double>() ;
-	    iCount++ ;
+          for (size_t i=0; i < targets.size(); ++i) {
+            ppData->parameters_[i] = targets[i].as<double>() ;
           }
         }
       }
@@ -110,10 +108,8 @@ PostProcessingInfo::load(
       }
       else {
         ppData->targetNames_.resize(targets.size());
-	int iCount;
-	for (YAML::const_iterator i=targets.begin(); i != targets.end(); ++i) {
-          ppData->targetNames_[iCount] = i->second.as<std::string>() ;
-	  iCount++;
+	for (size_t i=0; i < targets.size(); ++i) {
+          ppData->targetNames_[i] = targets[i].as<std::string>() ;
         }
       }
     }

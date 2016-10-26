@@ -53,8 +53,8 @@ Transfers::load(const YAML::Node & node)
   // xfers are optional...
   const YAML::Node transfers = node["transfers"];
   if (transfers) {
-    for ( YAML::const_iterator itransfer = transfers.begin(); itransfer != transfers.end(); ++itransfer ) {
-      const YAML::Node transferNode = itransfer->second;
+    for ( size_t itransfer = 0; itransfer < transfers.size(); ++itransfer ) {
+      const YAML::Node transferNode = transfers[itransfer];
       Transfer *transferInfo = new Transfer(*this);
       transferInfo->load(transferNode);
       transferVector_.push_back(transferInfo);
