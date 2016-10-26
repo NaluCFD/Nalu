@@ -133,6 +133,8 @@
 #include <user_functions/TaylorGreenPressureAuxFunction.h>
 #include <user_functions/TaylorGreenVelocityAuxFunction.h>
 
+#include <user_functions/SinProfileChannelFlowVelocityAuxFunction.h>
+
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
 #include <stk_util/parallel/ParallelReduce.hpp>
@@ -518,6 +520,9 @@ LowMachEquationSystem::register_initial_condition_fcn(
     }
     else if ( fcnName == "TaylorGreen" ) {
       theAuxFunc = new TaylorGreenVelocityAuxFunction(0,nDim); 
+    }
+    else if ( fcnName == "SinProfileChannelFlow" ) {
+      theAuxFunc = new SinProfileChannelFlowVelocityAuxFunction(0,nDim);
     }
     else {
       throw std::runtime_error("InitialCondFunction::non-supported velocity IC"); 
