@@ -256,7 +256,7 @@ MomentumKeNSOElemSuppAlg::elem_execute(
     }      
     
     // construct nu from ke residual
-    const double nuResidual = std::sqrt((keResidual*keResidual)/(gUpperMagGradQ+small_));
+    const double nuResidual = rhoScs*std::sqrt((keResidual*keResidual)/(gUpperMagGradQ+small_));
     
     // construct nu from first-order-like approach; SNL-internal write-up (eq 209)
     // for now, only include advection as full set of terms is too diffuse
