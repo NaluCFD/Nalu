@@ -7,6 +7,11 @@
 
 #include <gtest/gtest.h>                // for InitGoogleTest, etc
 #include <mpi.h>                        // for MPI_Comm_rank, MPI_Finalize, etc
+#include <Kokkos_Core.hpp>
+#include <stk_util/parallel/Parallel.hpp>
+
+// can't use stk_unit_test_utils until Trilinos/stk is updated, configuration is changed...
+// #include <stk_unit_test_utils/ParallelGtestOutput.hpp>
 
 #include "include/NaluEnv.h"
 
@@ -16,6 +21,9 @@ char** gl_argv = 0;
 int main(int argc, char **argv)
 {
     MPI_Init(&argc, &argv);
+
+    Kokkos::initialize(argc, argv);
+
     //NaluEnv will call MPI_Finalize for us.
     sierra::nalu::NaluEnv::self();
 
@@ -24,8 +32,16 @@ int main(int argc, char **argv)
     gl_argc = argc;
     gl_argv = argv;
 
+// can't use stk_unit_test_utils until Trilinos/stk is updated, configuration is changed...
+//    int procId = stk::parallel_machine_rank(MPI_COMM_WORLD);
+//    stk::unit_test_util::create_parallel_output(procId);
+
     int returnVal = RUN_ALL_TESTS();
 
+    Kokkos::finalize_all();
+
+    //NaluEnv will call MPI_Finalize when the NaluEnv singleton is cleaned up,
+    //which is after we return.
     return returnVal;
 }
 
