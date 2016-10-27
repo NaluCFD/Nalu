@@ -74,10 +74,10 @@ public:
   static std::string line_info(const YAML::Node & node) {
     std::ostringstream sout;
     sout << "(pos,line,column) = ("
-      //         << node.GetMark().pos << ", "
-      //         << node.GetMark().line << ", "
-      //         << node.GetMark().column << ")";
-	 << "Unknown for now" ;
+	 << node.Mark().pos << ", "
+	 << node.Mark().line << ", "
+	 << node.Mark().column << ")" ;
+    //	 << "Unknown for now" ;
     return sout.str();
   }
 

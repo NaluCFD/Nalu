@@ -25,9 +25,10 @@ namespace sierra{
     expect_type(const YAML::Node& node, const std::string& key, YAML::NodeType::value type, bool optional)
     {
       static std::string types[] = {"Null", "Scalar", "Sequence", "Map"};
-      const YAML::Node value = node[key];
       std::ostringstream err_msg;
-      if (!optional && !value)
+      YAML::Node value;
+
+      if (!optional && !node[key])
 	{
 	  if (!NaluEnv::self().parallel_rank()) {
 	    err_msg << "Error: parsing expected required value " << key << " but it was not found at"
@@ -36,8 +37,16 @@ namespace sierra{
 	    NaluParsingHelper::emit(err_msg, node);
 	    std::cout << err_msg.str() << std::endl;
 	  }
-	  throw std::runtime_error("Error: parsing");
+	  throw std::runtime_error(err_msg.str());
 	}
+      
+      try {
+	value = node[key] ;
+      }
+      catch ( YAML::InvalidNode & e) {
+	err_msg << e.what() ;
+      }
+
       if (value && (value.Type() != type))
 	{
 	  if (!NaluEnv::self().parallel_rank()) {
@@ -49,9 +58,10 @@ namespace sierra{
 	    err_msg << "Check indentation of input file.";
 	    std::cout << err_msg.str() << std::endl;
 	  }
-	  throw std::runtime_error("Error: parsing - Check indentation of input file.");
+	  throw std::runtime_error(err_msg.str());
 	}
       return value;
+      
     }
 
     const YAML::Node 
