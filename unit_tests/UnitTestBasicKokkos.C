@@ -91,11 +91,18 @@ TEST(BasicKokkos, parallel_for)
     Kokkos::View<double**> device_view2D = Kokkos::create_mirror_view(host_view2D);
     Kokkos::deep_copy(device_view2D, host_view2D);
 
+//Important note: when the 'host' and 'device' share the same memory space, (as is the case for OpenMP),
+//device_vew2D is semantically just a pointer to host_view2D, and the deep_copy is a no-op.
+//That means that the parallel_for which comes next, is updating the values of host_view2D.
     Kokkos::parallel_for(N, KOKKOS_LAMBDA(const size_t& i) {
         for(size_t j=0; j<M; ++j) {
             device_view2D(i, j) *= 2;
         }
     });
+
+//This deep_copy is a no-op for OpenMP, but for Cuda it is necessary; otherwise the values
+//in host_view2D would not be updated and the following EXPECT_NEAR checks would fail.
+    Kokkos::deep_copy(host_view2D, device_view2D);
 
     Kokkos::View<double**>::HostMirror host_result("host_result", N, M);
     Kokkos::deep_copy(host_result, device_view2D);
@@ -110,8 +117,8 @@ TEST(BasicKokkos, parallel_for)
 TEST(BasicKokkos, nested_parallel_for_thread_teams)
 {
     const double tolerance = 0.0000001;
-    const size_t N = 100;
-    const size_t M = 200;
+    const size_t N = 8;
+    const size_t M = 8;
     Kokkos::View<double**>::HostMirror host_view2D("host_view2D", N, M);
 
     for(size_t i=0; i<N; ++i) {
@@ -126,6 +133,9 @@ TEST(BasicKokkos, nested_parallel_for_thread_teams)
     typedef Kokkos::Schedule<Kokkos::Dynamic> DynamicScheduleType;
     typedef typename Kokkos::TeamPolicy<typename Kokkos::DefaultExecutionSpace, DynamicScheduleType>::member_type TeamHandleType;
 
+//Important note: when the 'host' and 'device' share the same memory space, (as is the case for OpenMP),
+//device_vew2D is semantically just a pointer to host_view2D, and the deep_copy is a no-op.
+//That means that the parallel_for which comes next, is updating the values of host_view2D.
     Kokkos::parallel_for(Kokkos::TeamPolicy<Kokkos::DefaultExecutionSpace>(N, Kokkos::AUTO),
         KOKKOS_LAMBDA(const TeamHandleType& team) {
             size_t i = team.league_rank();
@@ -133,6 +143,10 @@ TEST(BasicKokkos, nested_parallel_for_thread_teams)
                 device_view2D(i, j) *= 2;
             });
         });
+
+//This deep_copy is a no-op for OpenMP, but for Cuda it is necessary; otherwise the values
+//in host_view2D would not be updated and the following EXPECT_NEAR checks would fail.
+    Kokkos::deep_copy(host_view2D, device_view2D);
 
     Kokkos::View<double**>::HostMirror host_result("host_result", N, M);
     Kokkos::deep_copy(host_result, device_view2D);
