@@ -2697,7 +2697,6 @@ Realm::register_nodal_fields(
   }
 }
 
-
 //--------------------------------------------------------------------------
 //-------- register_interior_algorithm -------------------------------------
 //--------------------------------------------------------------------------
@@ -3272,6 +3271,8 @@ Realm::provide_output()
       = (timeStepCount >=outputInfo_->outputStart_ && modStep % outputInfo_->outputFreq_ == 0) || forcedOutput;
 
     if ( isOutput ) {
+      NaluEnv::self().naluOutputP0() << "Realm shall provide output files at : currentTime/timeStepCount: "
+                                     << currentTime << "/" <<  timeStepCount << std::endl;      
       // when adaptivity has occurred, re-create the output mesh file
       if (outputInfo_->meshAdapted_)
         create_output_mesh();
@@ -3333,7 +3334,8 @@ Realm::provide_restart_output()
       = (timeStepCount >= outputInfo_->restartStart_ && modStep % outputInfo_->restartFreq_ == 0) || forcedOutput;
     
     if ( isRestartOutputStep ) {
-
+      NaluEnv::self().naluOutputP0() << "Realm shall provide restart files at: currentTime/timeStepCount: "
+                                     << currentTime << "/" <<  timeStepCount << std::endl;      
       // handle fields
       ioBroker_->begin_output_step(restartFileIndex_, currentTime);
       ioBroker_->write_defined_output_fields(restartFileIndex_);
@@ -3484,6 +3486,8 @@ Realm::populate_derived_quantities()
 void
 Realm::initial_work()
 {
+  if ( solutionOptions_->meshMotion_ )
+    process_mesh_motion();
   equationSystems_.initial_work();
 }
 
