@@ -26,42 +26,44 @@ namespace sierra{
     {
       static std::string types[] = {"Null", "Scalar", "Sequence", "Map"};
       std::ostringstream err_msg;
-      YAML::Node value;
 
-      if (!optional && !node[key])
-	{
-	  if (!NaluEnv::self().parallel_rank()) {
-	    err_msg << "Error: parsing expected required value " << key << " but it was not found at"
-		    << NaluParsingHelper::line_info(node)
-		    << " for Node= " << std::endl;
-	    NaluParsingHelper::emit(err_msg, node);
-	    std::cout << err_msg.str() << std::endl;
-	  }
-	  throw std::runtime_error(err_msg.str());
-	}
-      
-      try {
-	value = node[key] ;
-      }
-      catch ( YAML::InvalidNode & e) {
-	err_msg << e.what() ;
-      }
+      if (node[key]) {
+	const YAML::Node value = node[key] ;
 
-      if (value && (value.Type() != type))
-	{
-	  if (!NaluEnv::self().parallel_rank()) {
-	    err_msg << "Error: parsing expected type " << types[type] << " got type = " << types[value.Type()]
-		    << " for key= " << key
-		    << " at " << NaluParsingHelper::line_info(node)
-		    << " node= " << std::endl;
-	    NaluParsingHelper::emit(err_msg, node);
-	    err_msg << "Check indentation of input file.";
-	    std::cout << err_msg.str() << std::endl;
+	if ( (value.Type() != type))
+	  {
+	    if (!NaluEnv::self().parallel_rank()) {
+	      err_msg << "Error: parsing expected type " << types[type] << " got type = " << types[value.Type()]
+		      << " for key= " << key
+		      << " at " << NaluParsingHelper::line_info(node)
+		      << " node= " << std::endl;
+	      NaluParsingHelper::emit(err_msg, node);
+	      err_msg << "Check indentation of input file.";
+	      std::cout << err_msg.str() << std::endl;
+	    }
+	    throw std::runtime_error(err_msg.str());
 	  }
-	  throw std::runtime_error(err_msg.str());
-	}
-      return value;
+	return value;
+      } 
+      else {
+
+	if ((!optional)  )
+	  {
+	    if (!NaluEnv::self().parallel_rank()) {
+	      err_msg << "Error: parsing expected required value " << key << " but it was not found at"
+		      << NaluParsingHelper::line_info(node)
+		      << " for Node= " << std::endl;
+	      NaluParsingHelper::emit(err_msg, node);
+	      std::cout << err_msg.str() << std::endl;
+	    }
+	    throw std::runtime_error(err_msg.str());
+	  }
+
+	return node[key];
+      }
       
+      
+
     }
 
     const YAML::Node 
@@ -391,7 +393,7 @@ namespace YAML {
       return true;
     }
     
-    bool convert<sierra::nalu::NormalHeatFlux>::decode(const Node& node, sierra::Nalu::RoughnessHeight& z0) {
+    bool convert<sierra::nalu::RoughnessHeight>::decode(const Node& node, sierra::nalu::RoughnessHeight& z0) {
       if(!node.IsScalar()) {
 	return false;
       }
@@ -500,7 +502,7 @@ namespace YAML {
 	wallData.referenceTemperature_ = node["reference_temperature"].as<sierra::nalu::ReferenceTemperature>() ;
 	wallData.refTempSpec_ = true;
       }
-      if ( node.FindValue("gravity_vector_component") ) {
+      if ( node["gravity_vector_component"] ) {
 	wallData.gravityComponent_ = node["gravity_vector_component"].as<unsigned>() ;
       }
       if ( node["roughness_height"] ) {
