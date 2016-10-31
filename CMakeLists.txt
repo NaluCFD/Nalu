@@ -100,8 +100,6 @@ target_link_libraries(nalu ${YAML_LIBRARY})
 
 file (GLOB UNIT_TESTS_SOURCES unit_tests/*.C)
 
-add_definitions("-Wall")
-
 set(nalu_ex_name "naluX")
 message("CMAKE_BUILD_TYPE = ${CMAKE_BUILD_TYPE}")
 if (CMAKE_BUILD_TYPE STREQUAL "DEBUG")
