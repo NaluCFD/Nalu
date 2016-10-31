@@ -26,7 +26,7 @@ parallel_netcdf_install_dir=$nalu_build_dir
 z_install_dir=$nalu_build_dir
 
 # Where trilinos will be installed
-trilinos_install_dir=$nalu_build_dir
+trilinos_install_dir=$nalu_build_dir/trilinos-release-intel
 
 echo "nalu_build_dir = \"$nalu_build_dir\""
 
@@ -39,6 +39,7 @@ rm -f CMakeCache.txt
 
 cmake \
 -DCMAKE_INSTALL_PREFIX=$trilinos_install_dir \
+-DTrilinos_ENABLE_CXX11=ON \
 -DCMAKE_BUILD_TYPE=RELEASE \
   -DCMAKE_CXX_COMPILER:FILEPATH="${mpi_base_dir}/bin/mpiicpc" \
   -DCMAKE_C_COMPILER:FILEPATH="${mpi_base_dir}/bin/mpiicc" \
@@ -49,7 +50,6 @@ cmake \
   -DCMAKE_C_FLAGS:STRING="-O3 -DMPICH_IGNORE_CXX_SEEK -DMPICH_SKIP_MPICXX " \
   -DCMAKE_Fortran_FLAGS:STRING="-O3" \
 \
--DTrilinos_ENABLE_CXX11=ON \
 -DTrilinos_ENABLE_EXPLICIT_INSTANTIATION:BOOL=ON \
 -DTpetra_INST_DOUBLE:BOOL=ON \
 -DTpetra_INST_INT_LONG:BOOL=ON \
