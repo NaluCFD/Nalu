@@ -224,118 +224,90 @@ void check_derivatives(
   }
 }
 
+class MasterElementHexSerial : public ::testing::Test
+{
+protected:
+    MasterElementHexSerial()
+    : comm(MPI_COMM_WORLD), spatialDimension(3),
+      meta(spatialDimension), bulk(meta, comm),
+      poly_order(1), topo(stk::topology::HEX_8)
+    {
+    }
+
+    void setup_poly_order_1_hex_8() {
+      poly_order = 1;
+      topo = stk::topology::HEX_8;
+      unit_test_utils::create_one_reference_hex8_element(bulk);
+    }
+
+    void setup_poly_order_2_hex_27() {
+      poly_order = 2;
+      topo = stk::topology::HEX_27;
+      unit_test_utils::create_one_reference_hex27_element(bulk);
+    }
+
+    stk::ParallelMachine comm;
+    unsigned spatialDimension;
+    stk::mesh::MetaData meta;
+    stk::mesh::BulkData bulk;
+    unsigned poly_order;
+    stk::topology topo;
+};
+
+
+TEST_F(MasterElementHexSerial, hex8_scs_interpolation)
+{
+  if (stk::parallel_machine_size(comm) == 1) {
+    setup_poly_order_1_hex_8();
+    sierra::nalu::HexSCS hexscs;
+    check_interpolation(bulk, topo, hexscs, poly_order);
+  }
+}
+
+TEST_F(MasterElementHexSerial, hex8_scv_interpolation)
+{
+  if (stk::parallel_machine_size(comm) == 1) {
+    setup_poly_order_1_hex_8();
+    sierra::nalu::HexSCV hexscv;
+    check_interpolation(bulk, topo, hexscv, poly_order);
+  }
+}
+
+TEST_F(MasterElementHexSerial, hex8_scs_derivatives)
+{
+  if (stk::parallel_machine_size(comm) == 1) {
+    setup_poly_order_1_hex_8();
+    sierra::nalu::HexSCS hexscs;
+    check_derivatives(bulk, topo, hexscs, poly_order);
+  }
+}
+
+TEST_F(MasterElementHexSerial, hex27_scs_interpolation)
+{
+  if (stk::parallel_machine_size(comm) == 1) {
+    setup_poly_order_2_hex_27();
+    sierra::nalu::Hex27SCS hex27scs;
+    check_interpolation(bulk, topo, hex27scs, poly_order);
+  }
+}
+
+TEST_F(MasterElementHexSerial, hex27_scv_interpolation)
+{
+  if (stk::parallel_machine_size(comm) == 1) {
+    setup_poly_order_2_hex_27();
+    sierra::nalu::Hex27SCV hex27scv;
+    check_interpolation(bulk, topo, hex27scv, poly_order);
+  }
+}
+
+TEST_F(MasterElementHexSerial, hex27_scs_derivatives)
+{
+  if (stk::parallel_machine_size(comm) == 1) {
+    setup_poly_order_2_hex_27();
+    sierra::nalu::Hex27SCS hex27scs;
+    check_derivatives(bulk, topo, hex27scs, poly_order);
+  }
+}
+
 }//namespace
 
-TEST(MasterElement, hex8_scs_interpolation)
-{
-  stk::ParallelMachine comm = MPI_COMM_WORLD;
-  if (stk::parallel_machine_size(comm) != 1) {
-    return; // serial test
-  }
-
-  unsigned spatialDimension = 3;
-  stk::mesh::MetaData meta(spatialDimension);
-  stk::mesh::BulkData bulk(meta, comm);
-  unsigned poly_order = 1;
-  stk::topology topo = stk::topology::HEX_8;
-
-  unit_test_utils::create_one_reference_hex8_element(bulk);
-
-  sierra::nalu::HexSCS hexscs;
-  check_interpolation(bulk, topo, hexscs, poly_order);
-}
-
-TEST(MasterElement, hex8_scv_interpolation)
-{
-  stk::ParallelMachine comm = MPI_COMM_WORLD;
-  if (stk::parallel_machine_size(comm) != 1) {
-    return; // serial test
-  }
-
-  unsigned spatialDimension = 3;
-  stk::mesh::MetaData meta(spatialDimension);
-  stk::mesh::BulkData bulk(meta, comm);
-  unsigned poly_order = 1;
-  stk::topology topo = stk::topology::HEX_8;
-
-  unit_test_utils::create_one_reference_hex8_element(bulk);
-
-  sierra::nalu::HexSCV hexscv;
-  check_interpolation(bulk, topo, hexscv, poly_order);
-}
-
-TEST(MasterElement, hex8_scs_derivatives)
-{
-  stk::ParallelMachine comm = MPI_COMM_WORLD;
-  if (stk::parallel_machine_size(comm) != 1) {
-    return; // serial test
-  }
-
-  unsigned spatialDimension = 3;
-  stk::mesh::MetaData meta(spatialDimension);
-  stk::mesh::BulkData bulk(meta, comm);
-  unsigned poly_order = 1;
-  stk::topology topo = stk::topology::HEX_8;
-
-  unit_test_utils::create_one_reference_hex8_element(bulk);
-
-  sierra::nalu::HexSCS hexscs;
-  check_derivatives(bulk, topo, hexscs, poly_order);
-}
-
-TEST(MasterElement, hex27_scs_interpolation)
-{
-  stk::ParallelMachine comm = MPI_COMM_WORLD;
-  if (stk::parallel_machine_size(comm) != 1) {
-    return; // serial test
-  }
-
-  unsigned spatialDimension = 3;
-  stk::mesh::MetaData meta(spatialDimension);
-  stk::mesh::BulkData bulk(meta, comm);
-  unsigned poly_order = 2;
-  stk::topology topo = stk::topology::HEX_27;
-
-  unit_test_utils::create_one_reference_hex27_element(bulk);
-
-  sierra::nalu::Hex27SCS hex27scs;
-  check_interpolation(bulk, topo, hex27scs, poly_order);
-}
-
-TEST(MasterElement, hex27_scv_interpolation)
-{
-  stk::ParallelMachine comm = MPI_COMM_WORLD;
-  if (stk::parallel_machine_size(comm) != 1) {
-    return; // serial test
-  }
-
-  unsigned spatialDimension = 3;
-  stk::mesh::MetaData meta(spatialDimension);
-  stk::mesh::BulkData bulk(meta, comm);
-  unsigned poly_order = 2;
-  stk::topology topo = stk::topology::HEX_27;
-
-  unit_test_utils::create_one_reference_hex27_element(bulk);
-
-  sierra::nalu::Hex27SCV hex27scv;
-  check_interpolation(bulk, topo, hex27scv, poly_order);
-}
-
-TEST(MasterElement, hex27_scs_derivatives)
-{
-  stk::ParallelMachine comm = MPI_COMM_WORLD;
-  if (stk::parallel_machine_size(comm) != 1) {
-    return; // serial test
-  }
-
-  unsigned spatialDimension = 3;
-  stk::mesh::MetaData meta(spatialDimension);
-  stk::mesh::BulkData bulk(meta, comm);
-  unsigned poly_order = 2;
-  stk::topology topo = stk::topology::HEX_27;
-
-  unit_test_utils::create_one_reference_hex27_element(bulk);
-
-  sierra::nalu::Hex27SCS hex27scs;
-  check_derivatives(bulk, topo, hex27scs, poly_order);
-}
