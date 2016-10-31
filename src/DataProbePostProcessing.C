@@ -180,7 +180,7 @@ DataProbePostProcessing::load(
           const int numProcs = NaluEnv::self().parallel_size();
           const int divProcProbe = std::max(numProcs/numProbes, numProcs);
 	  
-          for (size_t ilos = 0; ilos < y_loss.size(); ++ilos, ilos++) {
+          for (size_t ilos = 0; ilos < y_loss.size(); ilos++) {
             const YAML::Node y_los = y_loss[ilos] ;
 
             // processor id; distribute los equally over the number of processors
