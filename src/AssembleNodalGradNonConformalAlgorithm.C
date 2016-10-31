@@ -55,6 +55,7 @@ AssembleNodalGradNonConformalAlgorithm::AssembleNodalGradNonConformalAlgorithm(
 
   // what do we need ghosted for this alg to work?
   ghostFieldVec_.push_back(scalarQ_);
+  ghostFieldVec_.push_back(exposedAreaVec_);
 }
 
 //--------------------------------------------------------------------------
