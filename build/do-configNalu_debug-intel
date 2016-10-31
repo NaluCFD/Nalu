@@ -1,7 +1,7 @@
 #!/bin/bash
 
 nalu_build_dir=/home/mhenryde/nalu-build-intel
-trilinos_install_dir=$nalu_build_dir/trilinos-release-intel
+trilinos_install_dir=$nalu_build_dir/trilinos-debug-intel
 yaml_install_dir=$nalu_build_dir
 
 EXTRA_ARGS=$@
@@ -15,6 +15,6 @@ cmake \
   -DTrilinos_DIR:PATH=$trilinos_install_dir \
   -DYAML_DIR:PATH=$yaml_install_dir \
   -DENABLE_INSTALL:BOOL=OFF \
-  -DCMAKE_BUILD_TYPE=RELEASE \
+  -DCMAKE_BUILD_TYPE=DEBUG \
 $EXTRA_ARGS \
 ../
