@@ -548,6 +548,10 @@ template<> struct convert<sierra::nalu::UserData> {
   static bool decode(const Node& node, sierra::nalu::UserData& rhs) ;
 };
 
+template<> struct convert<sierra::nalu::RoughnessHeight> {
+ static bool decode(const Node& node, sierra::nalu::RoughnessHeight& z0) ;
+};
+
 template<> struct convert<sierra::nalu::NormalHeatFlux> {
   static bool decode(const Node& node, sierra::nalu::NormalHeatFlux& rhs) ;
 };
