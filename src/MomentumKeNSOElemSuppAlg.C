@@ -207,7 +207,8 @@ MomentumKeNSOElemSuppAlg::elem_execute(
       ws_GjpScs_[i] = 0.0;
       ws_dkedxScs_[i] = 0.0;
     }
-    
+    double rhoScs = 0.0;
+
     // determine scs values of interest
     const int offSet = ip*nodesPerElement;
     for ( int ic = 0; ic < nodesPerElement; ++ic ) {
@@ -222,6 +223,7 @@ MomentumKeNSOElemSuppAlg::elem_execute(
       const double pressureIC = ws_pressure_[ic];
       const double rhoIC = ws_rhoNp1_[ic];
       const double keIC = ws_ke_[ic];
+      rhoScs += r*rhoIC;
       for ( int j = 0; j < nDim_; ++j ) {
         const double dnj = ws_dndx_[offSetDnDx+j];
         const double vrtmj = ws_velocityRTM_[icNdim+j];
@@ -239,7 +241,7 @@ MomentumKeNSOElemSuppAlg::elem_execute(
     // form ke residual (based on fine scale momentum residual used in Pstab)
     double keResidual = 0.0;
     for ( int j = 0; j < nDim_; ++j )
-      keResidual += ws_uNp1Scs_[j]*(ws_dpdxScs_[j] - ws_GjpScs_[j])/2.0;
+      keResidual += ws_uNp1Scs_[j]*(ws_dpdxScs_[j] - ws_GjpScs_[j])/rhoScs/2.0;
 
     // denominator for nu as well as terms for "upwind" nu
     double gUpperMagGradQ = 0.0;
@@ -254,7 +256,7 @@ MomentumKeNSOElemSuppAlg::elem_execute(
     }      
     
     // construct nu from ke residual
-    const double nuResidual = std::sqrt((keResidual*keResidual)/(gUpperMagGradQ+small_));
+    const double nuResidual = rhoScs*std::sqrt((keResidual*keResidual)/(gUpperMagGradQ+small_));
     
     // construct nu from first-order-like approach; SNL-internal write-up (eq 209)
     // for now, only include advection as full set of terms is too diffuse
