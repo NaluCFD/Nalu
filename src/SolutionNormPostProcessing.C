@@ -102,7 +102,6 @@ SolutionNormPostProcessing::load(
     std::string dofName, functionName;
     if (y_dof_pair)
     {
-      size_t varSize = y_dof_pair.size();
       for (size_t ioption = 0; ioption < y_dof_pair.size(); ++ioption) {
         const YAML::Node y_var = y_dof_pair[ioption];
         size_t varPairSize = y_var.size();
