@@ -478,6 +478,11 @@ void operator >> (const YAML::Node& node, ConstantInitialConditionData& rhs) ;
 
 void operator >> (const YAML::Node& node, UserFunctionInitialConditionData& rhs) ;
 
+void operator >> (const YAML::Node& node, std::map<std::string,bool>& mapName);
+void operator >> (const YAML::Node& node, std::map<std::string,double>& mapName);
+void operator >> (const YAML::Node& node, std::map<std::string,std::string>& mapName);
+void operator >> (const YAML::Node& node, std::map<std::string,std::vector<std::string> >& mapName);
+void operator >> (const YAML::Node& node, std::map<std::string,std::vector<double> >& mapName);
 
 } // namespace nalu
 } // namespace Sierra

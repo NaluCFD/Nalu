@@ -185,58 +185,58 @@ SolutionOptions::load(const YAML::Node & y_node)
       {
         const YAML::Node y_option = y_options[ioption] ;
         if (expect_map(y_option, "hybrid_factor", optional)) {
-          hybridMap_ = y_option["hybrid_factor"].as<std::map<std::string, double> >() ;
+          y_option["hybrid_factor"] >> hybridMap_ ;
         }
         else if (expect_map(y_option, "alpha", optional)) {
-          alphaMap_ = y_option["alpha"].as<std::map<std::string, double> >() ;
+          y_option["alpha"] >> alphaMap_ ;
         }
         else if (expect_map(y_option, "alpha_upw", optional)) {
-          alphaUpwMap_ = y_option["alpha_upw"].as<std::map<std::string, double> >() ;
+          y_option["alpha_upw"] >> alphaUpwMap_;
         }
         else if (expect_map(y_option, "upw_factor", optional)) {
-          upwMap_ = y_option["upw_factor"].as<std::map<std::string, double> >() ;
+          y_option["upw_factor"] >> upwMap_ ;
         }
         else if (expect_map(y_option, "limiter", optional)) {
-          limiterMap_ = y_option["limiter"].as<std::map<std::string, bool> >() ;
+          y_option["limiter"] >> limiterMap_ ;
         }
         else if (expect_map( y_option, "laminar_schmidt", optional)) {
-          lamScMap_ = y_option["laminar_schmidt"].as<std::map<std::string, double> >() ;
+          y_option["laminar_schmidt"] >> lamScMap_ ;
         }
         else if (expect_map( y_option, "laminar_prandtl", optional)) {
-          lamPrMap_ = y_option["laminar_prandtl"].as<std::map<std::string, double> >() ;
+          y_option["laminar_prandtl"] >> lamPrMap_ ;
         }
         else if (expect_map( y_option, "turbulent_schmidt", optional)) {
-          turbScMap_ = y_option["turbulent_schmidt"].as<std::map<std::string, double> >() ;
+          y_option["turbulent_schmidt"] >> turbScMap_ ;
         }
         else if (expect_map( y_option, "turbulent_prandtl", optional)) {
-          turbPrMap_ = y_option["turbulent_prandtl"].as<std::map<std::string, double> >() ;
+          y_option["turbulent_prandtl"] >> turbPrMap_ ;
         }
         else if (expect_map( y_option, "source_terms", optional)) {
           const YAML::Node ySrc = y_option["source_terms"];
-          srcTermsMap_ = ySrc.as<std::map<std::string, std::vector<std::string> > >() ;
+          ySrc >> srcTermsMap_ ;
         }
         else if (expect_map( y_option, "element_source_terms", optional)) {
           const YAML::Node ySrc = y_option["element_source_terms"];
-          elemSrcTermsMap_ = ySrc.as<std::map<std::string, std::vector<std::string> > >() ;
+          ySrc >> elemSrcTermsMap_ ;
         }
         else if (expect_map( y_option, "source_term_parameters", optional)) {
-	  srcTermParamMap_ = y_option["source_term_parameters"].as<std::map<std::string, std::vector<double> > >() ;
+	  y_option["source_term_parameters"] >> srcTermParamMap_ ;
         }
         else if (expect_map( y_option, "element_source_term_parameters", optional)) {
-          elemSrcTermParamMap_ = y_option["element_source_term_parameters"].as<std::map<std::string, std::vector<double> > >() ;
+          y_option["element_source_term_parameters"] >> elemSrcTermParamMap_ ;
         }
         else if (expect_map( y_option, "projected_nodal_gradient", optional)) {
-          nodalGradMap_ = y_option["projected_nodal_gradient"].as<std::map<std::string, std::string> >() ;
+          y_option["projected_nodal_gradient"] >> nodalGradMap_ ;
         }
         else if (expect_map( y_option, "noc_correction", optional)) {
-          nocMap_ = y_option["noc_correction"].as<std::map<std::string, bool> >() ;
+          y_option["noc_correction"] >> nocMap_ ;
         }
         else if (expect_map( y_option, "input_variables_from_file", optional)) {
-          inputVarFromFileMap_ = y_option["input_variables_from_file"].as<std::map<std::string, std::string> >() ;
+          y_option["input_variables_from_file"] >> inputVarFromFileMap_ ;
         }
         else if (expect_map( y_option, "turbulence_model_constants", optional)) {
           std::map<std::string, double> turbConstMap;
-          turbConstMap = y_option["turbulence_model_constants"].as<std::map<std::string, double> >() ;
+          y_option["turbulence_model_constants"] >> turbConstMap ;
           // iterate the parsed map
           std::map<std::string, double>::iterator it;
           for ( it = turbConstMap.begin(); it!= turbConstMap.end(); ++it ) {
@@ -301,16 +301,16 @@ SolutionOptions::load(const YAML::Node & y_node)
           }
         }
         else if (expect_map( y_option, "peclet_function_form", optional)) {
-          pecletFunctionalFormMap_ = y_option["peclet_function_form"].as<std::map<std::string, std::string> >() ;
+          y_option["peclet_function_form"] >> pecletFunctionalFormMap_ ;
         }
         else if (expect_map( y_option, "peclet_function_tanh_transition", optional)) {
-          pecletFunctionTanhTransMap_ = y_option["peclet_function_tanh_transition"].as<std::map<std::string, double> >() ;
+          y_option["peclet_function_tanh_transition"] >> pecletFunctionTanhTransMap_ ;
         }
         else if (expect_map( y_option, "peclet_function_tanh_width", optional)) {
-          pecletFunctionTanhWidthMap_ = y_option["peclet_function_tanh_width"].as<std::map<std::string, double> >() ;
+          y_option["peclet_function_tanh_width"] >> pecletFunctionTanhWidthMap_ ;
         }
         else if (expect_map( y_option, "consistent_mass_matrix_png", optional)) {
-          consistentMassMatrixPngMap_ = y_option["consistent_mass_matrix_png"].as<std::map<std::string, bool> >() ;
+          y_option["consistent_mass_matrix_png"] >> consistentMassMatrixPngMap_ ;
         }
         else {
           if (!NaluEnv::self().parallel_rank())

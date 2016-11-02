@@ -258,6 +258,98 @@ namespace sierra{
     }    
   }
 
+
+  void operator >> (const YAML::Node& node, std::map<std::string,bool> & mapName)
+  {
+    for (YAML::const_iterator i = node.begin(); i != node.end(); ++i)
+      {
+	const YAML::Node & key = i->first;
+	const YAML::Node & value = i->second;
+	std::string stringName;
+	stringName = key.as<std::string>() ;
+	bool data;
+	data = value.as<bool>() ;
+	mapName[stringName] = data;
+      }
+  }
+
+  void operator >> (const YAML::Node& node, std::map<std::string,double> & mapName)
+  {
+    for (YAML::const_iterator i = node.begin(); i != node.end(); ++i)
+      {
+	const YAML::Node & key = i->first;
+	const YAML::Node & value = i->second;
+	std::string stringName;
+	stringName = key.as<std::string>() ;
+	double data;
+	data = value.as<double>() ;
+	mapName[stringName] = data;
+      }
+  }
+    
+  void operator >> (const YAML::Node& node, std::map<std::string,std::string> & mapName)
+  {
+    for (YAML::const_iterator i = node.begin(); i != node.end(); ++i)
+      {
+	const YAML::Node & key = i->first;
+	const YAML::Node & value = i->second;
+	std::string stringName;
+	stringName = key.as<std::string>() ;
+	std::string data;
+	data = value.as<std::string>() ;
+	mapName[stringName] = data;
+      }
+  }
+    
+  void operator >> (const YAML::Node& node, std::map<std::string,std::vector<std::string> >& mapName)
+  {
+    for (YAML::const_iterator i = node.begin(); i != node.end(); ++i)
+      {
+	const YAML::Node & key = i->first;
+	const YAML::Node & targets = i->second;
+	std::string stringName;
+	stringName = key.as<std::string>() ;
+	
+	std::vector<std::string> &vecOfStrings = mapName[stringName];
+	std::string theName;
+	if ( targets.Type() == YAML::NodeType::Scalar ) {
+	  theName = targets.as<std::string>() ;
+	  vecOfStrings.push_back(theName);
+	}
+	else {
+	  for (size_t it=0; it < targets.size(); ++it) {
+	    theName = targets[it].as<std::string>() ;
+	    vecOfStrings.push_back(theName);
+	  }
+	}
+      }
+  }
+
+  void operator >> (const YAML::Node& node, std::map<std::string,std::vector<double> >& mapName)
+  {
+    for (YAML::const_iterator i = node.begin(); i != node.end(); ++i)
+      {
+	const YAML::Node & key = i->first;
+	const YAML::Node & targets = i->second;
+	std::string stringName;
+	stringName = key.as<std::string>() ;
+	
+	std::vector<double> &vecOfDoubles = mapName[stringName];
+	double value;
+	if ( targets.Type() == YAML::NodeType::Scalar ) {
+	  value = targets.as<double>() ;
+	  vecOfDoubles.push_back(value);
+	}
+	else {
+	  for (size_t it=0; it < targets.size(); ++it) {
+	    value = targets[it].as<double>() ;
+	    vecOfDoubles.push_back(value);
+	  }
+	}
+      }
+  }
+    
+    
   } // namespace nalu
 } // namespace Sierra
 
@@ -541,6 +633,11 @@ namespace YAML {
 	throw std::runtime_error("specific_dissipation rate at walls is provided by a model, not the user");
       }
       
+      if ( node["heat_flux"] ) {
+	wallData.q_ = node["heat_flux"].as<sierra::nalu::NormalHeatFlux>() ;
+	wallData.heatFluxSpec_ = true;
+      }
+      
       // function data
       const bool optional = true;
       const Node userFcnNode = sierra::nalu::expect_map(node, "user_function_name", optional);
@@ -558,12 +655,6 @@ namespace YAML {
 	// extract function name and parameters
 	if (sierra::nalu::expect_map( node, "user_function_parameters", true)) {
 	  wallData.functionParams_ = node["user_function_parameters"].as<std::map<std::string, std::vector<double> > >() ;
-	}
-	
-	
-	if ( node["heat_flux"] ) {
-	  wallData.q_ = node["heat_flux"].as<sierra::nalu::NormalHeatFlux>() ;
-	  wallData.heatFluxSpec_ = true;
 	}
 	
       }
