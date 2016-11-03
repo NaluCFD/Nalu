@@ -77,28 +77,28 @@ void
 Transfer::load(const YAML::Node & node)
 {
 
-  node["name"] >> name_;
-  node["type"] >> transferType_;
-  if ( node.FindValue("objective") ) {
-    node["objective"] >> transferObjective_;
+  name_ = node["name"].as<std::string>() ;
+  transferType_ = node["type"].as<std::string>() ;
+  if ( node["objective"] ) {
+    transferObjective_ = node["objective"].as<std::string>() ;
   }
 
-  if ( node.FindValue("coupling_physics") ) {
-    node["coupling_physics"] >> couplingPhysicsName_;
+  if ( node["coupling_physics"] ) {
+    couplingPhysicsName_ = node["coupling_physics"].as<std::string>() ;
     couplingPhysicsSpecified_ = true;
   }
 
   // realm names
-  const YAML::Node & realmPair = node["realm_pair"];
+  const YAML::Node realmPair = node["realm_pair"];
   if ( realmPair.size() != 2 )
     throw std::runtime_error("XFER::Error: need two realm pairs for xfer");
-  realmPair[0] >> realmPairName_.first;
-  realmPair[1] >> realmPairName_.second;
+  realmPairName_.first = realmPair[0].as<std::string>() ;
+  realmPairName_.second = realmPair[1].as<std::string>() ;
 
   // set bools for variety of mesh part declarations
-  const bool hasOld = node.FindValue("mesh_part_pair");
-  const bool hasNewFrom = node.FindValue("from_target_name");
-  const bool hasNewTo = node.FindValue("to_target_name");
+  const bool hasOld = node["mesh_part_pair"];
+  const bool hasNewFrom = node["from_target_name"];
+  const bool hasNewTo = node["to_target_name"];
 
   // mesh part pairs
   if ( hasOld ) {
@@ -107,14 +107,14 @@ Transfer::load(const YAML::Node & node)
       throw std::runtime_error("XFER::Error: part definition error: can not mix mesh part line commands");
 
     // proceed safely
-    const YAML::Node & meshPartPairName = node["mesh_part_pair"];
+    const YAML::Node meshPartPairName = node["mesh_part_pair"];
     if ( meshPartPairName.size() != 2 )
       throw std::runtime_error("need two mesh part pairs for xfer");
     // resize and set the value
     fromPartNameVec_.resize(1);
     toPartNameVec_.resize(1);
-    meshPartPairName[0] >> fromPartNameVec_[0];
-    meshPartPairName[1] >> toPartNameVec_[0];
+    fromPartNameVec_[0] = meshPartPairName[0].as<std::string>() ;
+    toPartNameVec_[0] = meshPartPairName[1].as<std::string>() ;
   }
   else {
     // new methodology that allows for full target; error check
@@ -124,15 +124,15 @@ Transfer::load(const YAML::Node & node)
       throw  std::runtime_error("XFER::Error: part definition error: missing a to_target_name");
 
     // proceed safely; manage "from" parts
-    const YAML::Node &targetsFrom = node["from_target_name"];
+    const YAML::Node targetsFrom = node["from_target_name"];
     if (targetsFrom.Type() == YAML::NodeType::Scalar) {
       fromPartNameVec_.resize(1);
-      targetsFrom >> fromPartNameVec_[0];
+      fromPartNameVec_[0] = targetsFrom.as<std::string>();
     }
     else {
       fromPartNameVec_.resize(targetsFrom.size());
       for (size_t i=0; i < targetsFrom.size(); ++i) {
-        targetsFrom[i] >> fromPartNameVec_[i];
+        fromPartNameVec_[i] = targetsFrom[i].as<std::string>();
       }
     }
     
@@ -140,44 +140,44 @@ Transfer::load(const YAML::Node & node)
     const YAML::Node &targetsTo = node["to_target_name"];
     if (targetsTo.Type() == YAML::NodeType::Scalar) {
       toPartNameVec_.resize(1);
-      targetsTo >> toPartNameVec_[0];
+      toPartNameVec_[0] = targetsTo.as<std::string>();
     }
     else {
       toPartNameVec_.resize(targetsTo.size());
       for (size_t i=0; i < targetsTo.size(); ++i) {
-        targetsTo[i] >> toPartNameVec_[i];
+        toPartNameVec_[i] = targetsTo[i].as<std::string>();
       }
     }
   }
 
   // search method
-  if ( node.FindValue("search_method") ) {
-    node["search_method"] >> searchMethodName_;
+  if ( node["search_method"] ) {
+    searchMethodName_ = node["search_method"].as<std::string>() ;
   }
 
   // search tolerance which forms the initail size of the radius
-  if ( node.FindValue("search_tolerance") ) {
-    node["search_tolerance"] >> searchTolerance_;
+  if ( node["search_tolerance"] ) {
+    searchTolerance_ = node["search_tolerance"].as<double>() ;
   }
 
   // search expansion factor if points are not found
-  if ( node.FindValue("search_expansion_factor") ) {
-    node["search_expansion_factor"] >> searchExpansionFactor_;
+  if ( node["search_expansion_factor"] ) {
+    searchExpansionFactor_ = node["search_expansion_factor"].as<double>() ;
   }
 
   // now possible field names
-  const YAML::Node *y_vars = node.FindValue("transfer_variables");
+  const YAML::Node y_vars = node["transfer_variables"];
   if (y_vars) {
     transferVariablesSpecified_ = true;
     std::string fromName, toName;
-    size_t varSize = y_vars->size();
-    for (size_t ioption = 0; ioption < varSize; ioption++) {
-      const YAML::Node & y_var = (*y_vars)[ioption];
+    size_t varSize = y_vars.size();
+    for (size_t ioption = 0; ioption < y_vars.size(); ioption++) {
+      const YAML::Node y_var = y_vars[ioption] ;
       size_t varPairSize = y_var.size();
       if ( varPairSize != 2 )
         throw std::runtime_error("need two field name pairs for xfer");
-      y_var[0] >> fromName;
-      y_var[1] >> toName;
+      fromName = y_var[0].as<std::string>() ;
+      toName = y_var[1].as<std::string>() ;
       transferVariablesPairName_.push_back(std::make_pair(fromName, toName));
     }
     

@@ -41,42 +41,42 @@ namespace nalu{
 
 BoundaryCondition * BoundaryCondition::load(const YAML::Node & node) 
 {
-  if ( node.FindValue("wall_boundary_condition") ){
+  if ( node["wall_boundary_condition"] ){
     WallBoundaryConditionData& wallBC = *new WallBoundaryConditionData(*parent());
     node >> wallBC;
     NaluEnv::self().naluOutputP0() << "Wall BC name:        " << wallBC.bcName_
                     << " on " << wallBC.targetName_ << std::endl;
     return &wallBC;
   }
-  else if (node.FindValue("inflow_boundary_condition")) {
+  else if (node["inflow_boundary_condition"]) {
     InflowBoundaryConditionData& inflowBC = *new InflowBoundaryConditionData(*parent());
     node >> inflowBC;
     NaluEnv::self().naluOutputP0() << "Inflow BC name:      " << inflowBC.bcName_
                     << " on " << inflowBC.targetName_ << std::endl;
     return &inflowBC;
   }
-  else if (node.FindValue("open_boundary_condition")) {
+  else if (node["open_boundary_condition"]) {
     OpenBoundaryConditionData& openBC = *new OpenBoundaryConditionData(*parent());
     node >> openBC;
     NaluEnv::self().naluOutputP0() << "Open BC name:        " << openBC.bcName_
                     << " on " << openBC.targetName_ << std::endl;
     return &openBC;
   }
-  else if (node.FindValue("contact_boundary_condition")) {
+  else if (node["contact_boundary_condition"]) {
     ContactBoundaryConditionData& contactBC = *new ContactBoundaryConditionData(*parent());
     node >> contactBC;
     NaluEnv::self().naluOutputP0() << "Contact BC name:     " << contactBC.bcName_
                     << " on " << contactBC.targetName_ << std::endl;
     return &contactBC;
   }
-  else if (node.FindValue("symmetry_boundary_condition")) {
+  else if (node["symmetry_boundary_condition"]) {
     SymmetryBoundaryConditionData& symmetryBC = *new SymmetryBoundaryConditionData(*parent());
     node >> symmetryBC;
     NaluEnv::self().naluOutputP0() << "Symmetry BC name:    " << symmetryBC.bcName_
                     << " on " << symmetryBC.targetName_ << std::endl;
     return &symmetryBC;
   }
-  else if (node.FindValue("periodic_boundary_condition")) {
+  else if (node["periodic_boundary_condition"]) {
     PeriodicBoundaryConditionData& periodicBC = *new PeriodicBoundaryConditionData(*parent());
     node >> periodicBC;
     NaluEnv::self().naluOutputP0() << "Periodic BC name:    " << periodicBC.bcName_
@@ -84,7 +84,7 @@ BoundaryCondition * BoundaryCondition::load(const YAML::Node & node)
                     << " and "<< periodicBC.masterSlave_.slave_ << std::endl;
     return &periodicBC;
   }
-  else if (node.FindValue("non_conformal_boundary_condition")) {
+  else if (node["non_conformal_boundary_condition"]) {
     NonConformalBoundaryConditionData& nonConformalBC = *new NonConformalBoundaryConditionData(*parent());
     node >> nonConformalBC;
     NaluEnv::self().naluOutputP0() << "NonConformal BC name:    " << nonConformalBC.bcName_
@@ -92,7 +92,7 @@ BoundaryCondition * BoundaryCondition::load(const YAML::Node & node)
                     << " and "<< nonConformalBC.masterSlave_.slave_ << std::endl;
     return &nonConformalBC;
   }
-  else if (node.FindValue("overset_boundary_condition")) {
+  else if (node["overset_boundary_condition"]) {
     OversetBoundaryConditionData& oversetBC = *new OversetBoundaryConditionData(*parent());
     node >> oversetBC;
     NaluEnv::self().naluOutputP0() << "Overset BC name: " << oversetBC.bcName_ << std::endl;
