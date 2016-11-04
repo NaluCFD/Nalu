@@ -19,748 +19,958 @@
 #include <string>
 
 namespace sierra{
-namespace nalu{
+  namespace nalu{
 
-// now the extraction operators for these types
-void operator >> (const YAML::Node& node, Velocity& v) {
-  node[0] >> v.ux_;
-  node[1] >> v.uy_;
-  if ( node.size() > 2 )
-    node[2] >> v.uz_;
-}
+    const YAML::Node 
+    expect_type(const YAML::Node& node, const std::string& key, YAML::NodeType::value type, bool optional)
+    {
+      static std::string types[] = {"Null", "Scalar", "Sequence", "Map"};
+      std::ostringstream err_msg;
 
-void operator >> (const YAML::Node& node, Coordinates& cx) {
-  node[0] >> cx.x_;
-  node[1] >> cx.y_;
-  if ( node.size() > 2 )
-    node[2] >> cx.z_;
-}
+      if (node[key]) {
+	const YAML::Node value = node[key] ;
 
-void operator >> (const YAML::Node& node, Pressure& p) {
-  node >> p.pressure_;
-}
+	if ( (value.Type() != type))
+	  {
+	    if (!NaluEnv::self().parallel_rank()) {
+	      err_msg << "Error: parsing expected type " << types[type] << " got type = " << types[value.Type()]
+		      << " for key= " << key
+		      << " at " << NaluParsingHelper::line_info(node)
+		      << " node= " << std::endl;
+	      NaluParsingHelper::emit(err_msg, node);
+	      err_msg << "Check indentation of input file.";
+	      std::cout << err_msg.str() << std::endl;
+	    }
+	    throw std::runtime_error(err_msg.str());
+	  }
+	return value;
+      } 
+      else {
 
-void operator >> (const YAML::Node& node, TurbKinEnergy& tke) {
-  node >> tke.turbKinEnergy_;
-}
+	if ((!optional)  )
+	  {
+	    if (!NaluEnv::self().parallel_rank()) {
+	      err_msg << "Error: parsing expected required value " << key << " but it was not found at"
+		      << NaluParsingHelper::line_info(node)
+		      << " for Node= " << std::endl;
+	      NaluParsingHelper::emit(err_msg, node);
+	      std::cout << err_msg.str() << std::endl;
+	    }
+	    throw std::runtime_error(err_msg.str());
+	  }
 
-void operator >> (const YAML::Node& node, SpecDissRate& sdr) {
-  node >> sdr.specDissRate_;
-}
+	return node[key];
+      }
+      
+      
 
-void operator >> (const YAML::Node& node, Temperature& t) {
-  node >> t.temperature_;
-}
-
-void operator >> (const YAML::Node& node, MixtureFraction& z) {
-  node >> z.mixFrac_;
-}
-
-void operator >> (const YAML::Node& node, MassFraction& yk) {
-  const size_t ykSize = node.size();
-  yk.massFraction_.resize(ykSize);
-  for ( size_t k = 0; k < ykSize; ++k ) {
-    node[k] >> yk.massFraction_[k];
-  }
-}
-
-void operator >> (const YAML::Node& node, Emissivity& emiss) {
-  node >> emiss.emissivity_;
-}
-
-void operator >> (const YAML::Node& node, Irradiation& irrad) {
-  node >> irrad.irradiation_;
-}
-
-void operator >> (const YAML::Node& node, Transmissivity& tmiss) {
-  node >> tmiss.transmissivity_;
-}
-
-void operator >> (const YAML::Node& node, EnvironmentalT& et) {
-  node >> et.environmentalT_;
-}
-
-void operator >> (const YAML::Node& node, NormalHeatFlux& q) {
-  node >> q.qn_;
-}
-
-void operator >> (const YAML::Node& node, ReferenceTemperature& rt) {
-  node >> rt.referenceTemperature_;
-}
-
-void operator >> (const YAML::Node& node, RoughnessHeight& z0) {
-  node >> z0.z0_;
-}
-
-void operator >> (const YAML::Node& node, HeatTransferCoefficient& htc) {
-  node >> htc.heatTransferCoefficient_;
-}
-
-void operator >> (const YAML::Node& node, RobinCouplingParameter& alpha) {
-  node >> alpha.robinCouplingParameter_;
-}
-
-void operator >> (const YAML::Node& node, MasterSlave& ms) {
-  node[0] >> ms.master_;
-  node[1] >> ms.slave_;
-}
-
-void operator >> (const YAML::Node& node, WallUserData& wallData) {
-
-  // constant data; all optional
-  if ( node.FindValue("velocity" )  ) {
-    node["velocity"] >> wallData.u_;
-    wallData.bcDataSpecifiedMap_["velocity"] = true;
-    wallData.bcDataTypeMap_["velocity"] = CONSTANT_UD;
-  }
-  if ( node.FindValue("mesh_displacement" )  ) {
-    node["mesh_displacement"] >> wallData.dx_;
-    wallData.bcDataSpecifiedMap_["mesh_displacement"] = true;
-    wallData.bcDataTypeMap_["mesh_displacement"] = CONSTANT_UD;
-  }
-  if ( node.FindValue("turbulent_ke") ) {
-    node["turbulent_ke"] >> wallData.tke_;
-    wallData.bcDataSpecifiedMap_["turbulent_ke"] = true;
-    wallData.bcDataTypeMap_["turbulent_ke"] = CONSTANT_UD;
-  }
-  if ( node.FindValue("temperature") ) {
-    node["temperature"] >> wallData.temperature_;
-    wallData.bcDataSpecifiedMap_["temperature"] = true;
-    wallData.bcDataTypeMap_["temperature"] = CONSTANT_UD;
-    wallData.tempSpec_ = true;
-  }
-  if ( node.FindValue("mixture_fraction") ) {
-    node["mixture_fraction"] >> wallData.mixFrac_;
-    wallData.bcDataSpecifiedMap_["mixture_fraction"] = true;
-    wallData.bcDataTypeMap_["mixture_fraction"] = CONSTANT_UD;
-  }
-  if ( node.FindValue("mass_fraction") ) {
-    node["mass_fraction"] >> wallData.massFraction_;
-    wallData.bcDataSpecifiedMap_["mass_fraction"] = true;
-    wallData.bcDataTypeMap_["mass_fraction"] = CONSTANT_UD;
-  }
-  if ( node.FindValue("emissivity") ) {
-    node["emissivity"] >> wallData.emissivity_; 
-    wallData.emissSpec_ = true;
-  }
-  if ( node.FindValue("transmissivity") ) {
-    node["transmissivity"] >> wallData.transmissivity_; 
-  }
-  if ( node.FindValue("environmental_temperature") ) {
-    node["environmental_temperature"] >> wallData.environmentalT_; 
-  }
-  if ( node.FindValue("adiabatic") ) {
-    node["adiabatic"] >> wallData.isAdiabatic_; 
-  }
-  if ( node.FindValue("interface") ) {
-    node["interface"] >> wallData.isInterface_; 
-  }
-  if ( node.FindValue("reference_temperature") ) {
-    node["reference_temperature"] >> wallData.referenceTemperature_;
-    wallData.refTempSpec_ = true;
-  }
-  if ( node.FindValue("gravity_vector_component") ) {
-    node["gravity_vector_component"] >> wallData.gravityComponent_;
-  }
-  if ( node.FindValue("roughness_height") ) {
-    node["roughness_height"] >> wallData.z0_;
-  }
-  if ( node.FindValue("heat_transfer_coefficient") ) {
-    node["heat_transfer_coefficient"] >> wallData.heatTransferCoefficient_;
-    wallData.htcSpec_ = true;
-  }
-  if ( node.FindValue("irradiation") ) {
-    node["irradiation"] >> wallData.irradiation_;
-    wallData.irradSpec_ = true;
-  }
-  if ( node.FindValue("robin_coupling_parameter") ) {
-    node["robin_coupling_parameter"] >> wallData.robinCouplingParameter_;
-    wallData.robinParameterSpec_ = true;
-  }
-  if ( node.FindValue("use_wall_function")) {
-    node["use_wall_function"] >> wallData.wallFunctionApproach_;
-  }
-  if ( node.FindValue("use_abl_wall_function")) {
-    node["use_abl_wall_function"] >> wallData.wallFunctionApproach_;
-    node["use_abl_wall_function"] >> wallData.ablWallFunctionApproach_;
-  }
-  if ( node.FindValue("pressure") ) {
-    node["pressure"] >> wallData.pressure_;
-    wallData.bcDataSpecifiedMap_["pressure"] = true;
-    wallData.bcDataTypeMap_["pressure"] = CONSTANT_UD;
-  }
-  if ( node.FindValue("fsi_interface") ) {
-    node["fsi_interface"] >> wallData.isFsiInterface_;
-  }
-
-  // not appropriate
-  if ( node.FindValue("specific_dissipation_rate")) {
-    throw std::runtime_error("specific_dissipation rate at walls is provided by a model, not the user");
-  }
-
-  // function data
-  const bool optional = true;
-  const YAML::Node *userFcnNode = expect_map(node, "user_function_name", optional);
-  if (NULL != userFcnNode ) {
-    for (YAML::Iterator i = userFcnNode->begin(); i != userFcnNode->end(); ++i) {
-      const YAML::Node & key = i.first();
-      const YAML::Node & value = i.second();
-      std::string stringName;
-      key >> stringName;
-      std::string data;
-      value >> data;
-      wallData.bcDataSpecifiedMap_[stringName] = true;
-      wallData.bcDataTypeMap_[stringName] = FUNCTION_UD;
-      wallData.userFunctionMap_[stringName] = data;
     }
 
-    // extract function name and parameters
-    if (expect_map( node, "user_function_parameters", true)) {
-      node["user_function_parameters"] >> wallData.functionParams_;
+    const YAML::Node 
+    expect_null(const YAML::Node& node, const std::string& key, bool optional)
+    {
+      return expect_type(node, key, YAML::NodeType::Null, optional);
     }
-  }
+    const YAML::Node 
+    expect_scalar(const YAML::Node& node, const std::string& key, bool optional)
+    {
+      return expect_type(node, key, YAML::NodeType::Scalar, optional);
+    }
+    const YAML::Node
+    expect_sequence(const YAML::Node& node, const std::string& key, bool optional)
+    {
+      return expect_type(node, key, YAML::NodeType::Sequence, optional);
+    }
+    const YAML::Node
+    expect_map(const YAML::Node& node, const std::string& key, bool optional)
+    {
+      return expect_type(node, key, YAML::NodeType::Map, optional);
+    }
 
-  if ( node.FindValue("heat_flux") ) {
-    node["heat_flux"] >> wallData.q_;
-    wallData.heatFluxSpec_ = true;
-  }
-
-}
-
-void operator >> (const YAML::Node& node, InflowUserData& inflowData) {
-
-  // optional
-  if ( node.FindValue("velocity" )  ) {
-    node["velocity"] >> inflowData.u_;
-    inflowData.uSpec_ = true;
-  }
-  if ( node.FindValue("turbulent_ke") ){
-    node["turbulent_ke"] >> inflowData.tke_;
-    inflowData.tkeSpec_ = true;
-  }
-  if ( node.FindValue("specific_dissipation_rate") ){
-    node["specific_dissipation_rate"] >> inflowData.sdr_;
-    inflowData.sdrSpec_ = true;
-  }
-  if ( node.FindValue("mixture_fraction") ){
-    node["mixture_fraction"] >> inflowData.mixFrac_;
-    inflowData.mixFracSpec_ = true;
-  }
-  if ( node.FindValue("mass_fraction") ){
-    node["mass_fraction"] >> inflowData.massFraction_;
-    inflowData.massFractionSpec_ = true;
-  }
-  if ( node.FindValue("temperature") ) {
-    node["temperature"] >> inflowData.temperature_;
-    inflowData.tempSpec_ = true;
-  }
-
-  const bool optional = true;
-  const YAML::Node *userFcnNode = expect_map(node, "user_function_name", optional);
-  if (NULL != userFcnNode ) {
-    for (YAML::Iterator i = userFcnNode->begin(); i != userFcnNode->end(); ++i) {
-      const YAML::Node & key = i.first();
-      const YAML::Node & value = i.second();
-      std::string stringName;
-      key >> stringName;
-      std::string data;
-      value >> data;
-      inflowData.bcDataSpecifiedMap_[stringName] = true;
-      inflowData.bcDataTypeMap_[stringName] = FUNCTION_UD;
-      inflowData.userFunctionMap_[stringName] = data;
+    void operator >> (const YAML::Node& node, WallBoundaryConditionData& wallBC) {
+      wallBC.bcName_ = node["wall_boundary_condition"].as<std::string>() ;
+      wallBC.targetName_ = node["target_name"].as<std::string>() ;
+      wallBC.theBcType_ = WALL_BC;
+      const YAML::Node wallUserData = node["wall_user_data"];
+      wallBC.userData_ = wallUserData.as<WallUserData>() ;
+      // check for typical rogue line command
+      if ( node["user_function_name"] )
+	throw std::runtime_error("user_function_data is misplaced; it must be under wall_user_data");
+      
     }
     
-    // extract function name and parameters
-    if (expect_map( node, "user_function_parameters", true)) {
-      node["user_function_parameters"] >> inflowData.functionParams_;
+    void operator >> (const YAML::Node& node, InflowBoundaryConditionData& inflowBC) {
+      inflowBC.bcName_ = node["inflow_boundary_condition"].as<std::string>() ;
+      inflowBC.targetName_ = node["target_name"].as<std::string>() ;
+      inflowBC.theBcType_ = INFLOW_BC;
+      const YAML::Node& inflowUserData = node["inflow_user_data"];
+      inflowBC.userData_ = inflowUserData.as<InflowUserData>() ;
+      // check for typical rogue line command
+      if ( node["user_function_name"] )
+	throw std::runtime_error("user_function_data is misplaced; it must be under inflow_user_data");
+      
     }
-  }
-  
-}
-void operator >> (const YAML::Node& node, OversetUserData& oversetData){
-  //nothing is optional
-  if ( node.FindValue("percent_overlap") ) {
-    node["percent_overlap"] >> oversetData.percentOverlap_;
-  }
-  else {
-    throw std::runtime_error("One MUST specify overset overlap percentage");
-  }
-
-  if ( node.FindValue("background_block") ) {
-    node["background_block"] >> oversetData.backgroundBlock_;
-  }
-  else {
-    throw std::runtime_error("One MUST specify background block");
-  }
-
-  if ( node.FindValue("overset_block") ) {
-    const YAML::Node &oversetBlock = *node.FindValue("overset_block");
-    if (oversetBlock.Type() == YAML::NodeType::Scalar) {
-      oversetData.oversetBlockVec_.resize(1);
-      oversetBlock >> oversetData.oversetBlockVec_[0];
-    }
-    else {
-      oversetData.oversetBlockVec_.resize(oversetBlock.size());
-      for (size_t i=0; i < oversetBlock.size(); ++i) {
-        oversetBlock[i] >> oversetData.oversetBlockVec_[i];
-      }
-    }
-  }
-  else {
-    throw std::runtime_error("One MUST specify overset block(s)");
-  }
-
-  if ( node.FindValue("background_cut_block") ) {
-    node["background_cut_block"] >> oversetData.backgroundCutBlock_;
-  }
-  else {
-    throw std::runtime_error("One MUST specify background cut block");
-  }
-
-  if ( node.FindValue("background_cut_surface") ) {
-    node["background_cut_surface"] >> oversetData.backgroundSurface_;
-  }
-  else {
-    throw std::runtime_error("One MUST specify background cut surface");
-  }
-
-  if ( node.FindValue("overset_surface") ) {
-    node["overset_surface"] >> oversetData.oversetSurface_;
-  }
-  else {
-    throw std::runtime_error("One MUST specify overset surface");
-  }
-
-  if ( node.FindValue("clip_isoparametric_coordinates") ) {
-     node["clip_isoparametric_coordinates"] >> oversetData.clipIsoParametricCoords_;
-  }
-
-  if ( node.FindValue("detailed_output") ) {
-     node["detailed_output"] >> oversetData.detailedOutput_;
-  }
-
-}
-
-void operator >> (const YAML::Node& node, ContactUserData& contactData) {
-  // nothing is optional
-  if ( node.FindValue("max_search_radius" )  ) {
-    node["max_search_radius"] >> contactData.maxSearchRadius_;
-  }
-  else {
-    throw std::runtime_error("One MUST specify max search radius at contact bcs");
-  }
-  
-  if ( node.FindValue("min_search_radius" )  ) {
-    node["min_search_radius"] >> contactData.minSearchRadius_;
-  }
-  else {
-    throw std::runtime_error("One MUST specify min search radius at contact bcs");
-  }
-
-  if ( node.FindValue("search_block" )  ) {
-    const YAML::Node &searchBlock = *node.FindValue("search_block");
-    if (searchBlock.Type() == YAML::NodeType::Scalar) {
-      contactData.searchBlock_.resize(1);
-      searchBlock >> contactData.searchBlock_[0];
-    }
-    else {
-      contactData.searchBlock_.resize(searchBlock.size());
-      for (size_t i=0; i < searchBlock.size(); ++i) {
-        searchBlock[i] >> contactData.searchBlock_[i];
-      }
-    }
-  }
-  else {
-    throw std::runtime_error("One MUST specify search block at contact bcs");
-  }
-
-  if ( node.FindValue("extrusion_distance" )  ) {
-    node["extrusion_distance"] >> contactData.extrusionDistance_;
-    contactData.useExtrusionAlg_ = true;
-  }
-  else {
-    throw std::runtime_error("Specify extrusion distance at contact bcs; simple halo disabled");
-  }
-  
-  if ( node.FindValue("search_method") ) {
-    node["search_method"] >> contactData.searchMethodName_;
-  }
-  
-  if ( node.FindValue("expand_box_percentage" )  ) {
-    node["expand_box_percentage"] >> contactData.expandBoxPercentage_;
-  }
-
-  if ( node.FindValue("clip_isoparametric_coordinates" )  ) {
-     node["clip_isoparametric_coordinates"] >> contactData.clipIsoParametricCoords_;
-  }
-
-  if ( node.FindValue("hermite_interpolation" )  ) {
-    node["hermite_interpolation"] >> contactData.useHermiteInterpolation_;
- }
-
-}
-
-void operator >> (const YAML::Node& node, OpenUserData& openData) {
-  // optional
-  if ( node.FindValue("velocity" ) ){
-    node["velocity"] >> openData.u_;
-    openData.uSpec_ = true;
-  }
-  // optional
-  if ( node.FindValue("turbulent_ke") ) {
-    node["turbulent_ke"] >> openData.tke_;
-    openData.tkeSpec_ = true;
-  }
-  if ( node.FindValue("specific_dissipation_rate") ){
-    node["specific_dissipation_rate"] >> openData.sdr_;
-    openData.sdrSpec_ = true;
-  }
-  if ( node.FindValue("pressure") ) {
-    node["pressure"] >> openData.p_;
-    openData.pSpec_ = true;
-  }
-  if ( node.FindValue("mixture_fraction") ){
-    node["mixture_fraction"] >> openData.mixFrac_;
-    openData.mixFracSpec_ = true;
-  }
-  if ( node.FindValue("mass_fraction") ){
-    node["mass_fraction"] >> openData.massFraction_;
-    openData.massFractionSpec_ = true;
-  }
-  if ( node.FindValue("temperature") ) {
-    node["temperature"] >> openData.temperature_;
-    openData.tempSpec_ = true;
-  }
-}
-
-void operator >> (const YAML::Node& node, SymmetryUserData& symmetryData) {
-  // nothing as of yet
-}
-
-void operator >> (const YAML::Node& node, PeriodicUserData& periodicData) {
-  // nothing is optional
-  if ( node.FindValue("search_tolerance" )  ) {
-    node["search_tolerance"] >> periodicData.searchTolerance_;
-  }
-  else {
-    throw std::runtime_error("One MUST specify search tolerance at periodic bcs");
-  }
-  if ( node.FindValue("search_method") ) {
-    node["search_method"] >> periodicData.searchMethodName_;
-  }
-}
-
-void operator >> (const YAML::Node& node, NonConformalUserData& nonConformalData) {
-
-  // everything is optional
-  if ( node.FindValue("search_method") ) {
-    node["search_method"] >> nonConformalData.searchMethodName_;
-  }
-  if ( node.FindValue("expand_box_percentage" )  ) {
-    node["expand_box_percentage"] >> nonConformalData.expandBoxPercentage_;
-  }
-  if ( node.FindValue("clip_isoparametric_coordinates" )  ) {
-     node["clip_isoparametric_coordinates"] >> nonConformalData.clipIsoParametricCoords_;
-  }
-  if ( node.FindValue("search_tolerance" )  ) {
-    node["search_tolerance"] >> nonConformalData.searchTolerance_;
-  }
- 
-}
-
-void operator >> (const YAML::Node& node, BoundaryConditionOptions& bcOptions) {
-  node["boundary_conditions"] >> bcOptions.bcSetName_;
-  node["wall_boundary_condition"] >> bcOptions.wallbc_;
-  node["inflow_boundary_condition"] >> bcOptions.inflowbc_;
-  node["open_boundary_condition"] >> bcOptions.openbc_;
-  node["overset_boundary_condition"] >> bcOptions.oversetbc_;
-  node["contact_boundary_condition"] >> bcOptions.contactbc_;
-  node["symmetry_boundary_condition"] >> bcOptions.symmetrybc_;
-  node["periodic_boundary_condition"] >> bcOptions.periodicbc_;
-  node["non_confomal_boundary_condition"] >> bcOptions.nonConformalbc_;
-}
-
-void operator >> (const YAML::Node& node, WallBoundaryConditionData& wallBC) {
-  node["wall_boundary_condition"] >> wallBC.bcName_;
-  node["target_name"] >> wallBC.targetName_;
-  wallBC.theBcType_ = WALL_BC;
-  const YAML::Node& wallUserData = node["wall_user_data"];
-  wallUserData >> wallBC.userData_;
-  // check for typical rogue line command
-  const YAML::Node *value = node.FindValue("user_function_name");
-  if ( NULL != value )
-    throw std::runtime_error("user_function_data is misplaced; it must be under wall_user_data");
-}
-
-void operator >> (const YAML::Node& node, InflowBoundaryConditionData& inflowBC) {
-  node["inflow_boundary_condition"] >> inflowBC.bcName_;
-  node["target_name"] >> inflowBC.targetName_;
-  inflowBC.theBcType_ = INFLOW_BC;
-  const YAML::Node& inflowUserData = node["inflow_user_data"];
-  inflowUserData >> inflowBC.userData_;
-  // check for typical rogue line command
-  const YAML::Node *value = node.FindValue("user_function_name");
-  if ( NULL != value )
-    throw std::runtime_error("user_function_data is misplaced; it must be under inflow_user_data");
-}
-
-void operator >> (const YAML::Node& node, OpenBoundaryConditionData& openBC) {
-  node["open_boundary_condition"] >> openBC.bcName_;
-  node["target_name"] >> openBC.targetName_;
-  openBC.theBcType_ = OPEN_BC;
-  const YAML::Node& openUserData = node["open_user_data"];
-  openUserData >> openBC.userData_;
-  // check for typical rogue line command
-  const YAML::Node *value = node.FindValue("user_function_name");
-  if ( NULL != value )
-    throw std::runtime_error("user_function_data is misplaced; it must be under open_user_data");
-}
-
-void operator >> (const YAML::Node& node, OversetBoundaryConditionData& oversetBC) {
-  node["overset_boundary_condition"] >> oversetBC.bcName_;
-  oversetBC.theBcType_ = OVERSET_BC;
-  const YAML::Node& oversetUserData = node["overset_user_data"];
-  oversetUserData >> oversetBC.userData_;
-}
-
-void operator >> (const YAML::Node& node, ContactBoundaryConditionData& contactBC) {
-  node["contact_boundary_condition"] >> contactBC.bcName_;
-  node["target_name"] >> contactBC.targetName_;
-  contactBC.theBcType_ = CONTACT_BC;
-  const YAML::Node& contactUserData = node["contact_user_data"];
-  contactUserData >> contactBC.userData_;
-}
-
-void operator >> (const YAML::Node& node, SymmetryBoundaryConditionData& symmetryBC) {
-  node["symmetry_boundary_condition"] >> symmetryBC.bcName_;
-  node["target_name"] >> symmetryBC.targetName_;
-  symmetryBC.theBcType_ = SYMMETRY_BC;
-  const YAML::Node& symmetryUserData = node["symmetry_user_data"];
-  symmetryUserData >> symmetryBC.userData_;
-}
-
-void operator >> (const YAML::Node& node, PeriodicBoundaryConditionData& periodicBC) {
-  node["periodic_boundary_condition"] >> periodicBC.bcName_;
-  node["target_name"] >> periodicBC.masterSlave_;
-  periodicBC.targetName_ = periodicBC.masterSlave_.master_ + "_" + periodicBC.masterSlave_.slave_;
-  periodicBC.theBcType_ = PERIODIC_BC;
-  const YAML::Node& periodicUserData = node["periodic_user_data"];
-  periodicUserData >> periodicBC.userData_;
-}
-
-void operator >> (const YAML::Node& node, NonConformalBoundaryConditionData& nonConformalBC) {
-  node["non_conformal_boundary_condition"] >> nonConformalBC.bcName_;
-  node["target_name"] >> nonConformalBC.masterSlave_;
-  nonConformalBC.targetName_ = nonConformalBC.masterSlave_.master_ + "_" + nonConformalBC.masterSlave_.slave_;
-  nonConformalBC.theBcType_ = NON_CONFORMAL_BC;
-  const YAML::Node& nonConformalUserData = node["non_conformal_user_data"];
-  nonConformalUserData >> nonConformalBC.userData_;
-}
-
-void operator >> (const YAML::Node& node, MeshInput& meshInput) {
-  node["mesh_name"] >> meshInput.meshName_;
-}
-
-void operator >> (const YAML::Node& node, ConstantInitialConditionData& constIC)
-{
-  constIC.theIcType_ = CONSTANT_UD;
-  node["constant"] >> constIC.icName_;
-  const YAML::Node & targets = node["target_name"];
-  if (targets.Type() == YAML::NodeType::Scalar)
-  {
-    constIC.targetNames_.resize(1);
-    targets >> constIC.targetNames_[0];
-    NaluEnv::self().naluOutputP0() << "constant IC: name: " << constIC.icName_ << " , target[" << 0 << "] = "
-              << constIC.targetNames_[0] << std::endl;
-    if (constIC.targetNames_[0].find(',') != std::string::npos)
-      throw std::runtime_error("In " + constIC.icName_ +
-                               " found ',' in target name - you must enclose in '[...]' for multiple targets");
-  }
-  else
-  {
-    constIC.targetNames_.resize(targets.size());
-    for (size_t i=0; i < targets.size(); ++i)
-    {
-      targets[i] >> constIC.targetNames_[i];
-      if (constIC.root()->debug())
-        NaluEnv::self().naluOutputP0() << "constant IC: name: " << constIC.icName_ << " , target[" << i << "] = "
-                  << constIC.targetNames_[i] << std::endl;
-    }
-  }
-
-  const YAML::Node & value_node = node["value"];
-  size_t value_size = value_node.size();
-  constIC.fieldNames_.resize(value_size);
-  constIC.data_.resize(value_size);
-  if (constIC.root()->debug())
-  {
-    NaluEnv::self().naluOutputP0() << "fieldNames_.size()= " << constIC.fieldNames_.size()
-              << " value.size= " << constIC.data_.size() << std::endl;
-  }
-  size_t jv = 0;
-  for (YAML::Iterator i = value_node.begin(); i != value_node.end(); ++i,++jv) {
-    const YAML::Node & key   = i.first();
-    const YAML::Node & value = i.second();
-    key >> constIC.fieldNames_[jv] ;
-    size_t nvals = value.size();
-    if (nvals)
-    {
-      constIC.data_[jv].resize(nvals);
-      for (size_t iv=0; iv < nvals; ++iv)
-      {
-        value[iv] >> constIC.data_[jv][iv];
-        if (constIC.root()->debug())
-        {
-          NaluEnv::self().naluOutputP0() << "fieldNames_= " << constIC.fieldNames_[jv] << " value= "
-                    << constIC.data_[jv][iv] << std::endl;
-        }
-      }
-    }
-    else
-    {
-      constIC.data_[jv].resize(1);
-      value >> constIC.data_[jv][0];
-      if (constIC.root()->debug())
-      {
-        NaluEnv::self().naluOutputP0() << "fieldNames_= " << constIC.fieldNames_[jv] << " value= " << constIC.data_[jv][0] << std::endl;
-      }
-    }
-  }
-}
-
-void operator >> (const YAML::Node& node, UserFunctionInitialConditionData& fcnIC)
-{
-  fcnIC.theIcType_ = FUNCTION_UD;
-  node["user_function"] >> fcnIC.icName_;
-  const YAML::Node & targets = node["target_name"];
-  if (targets.Type() == YAML::NodeType::Scalar) {
-    fcnIC.targetNames_.resize(1);
-    targets >> fcnIC.targetNames_[0];
-  }
-  else
-  {
-    fcnIC.targetNames_.resize(targets.size());
-    for (size_t i=0; i < targets.size(); ++i) {
-      targets[i] >> fcnIC.targetNames_[i];
-    }
-  }
-
-  // extract function name and parameters
-  if (expect_map( node, "user_function_name", false)) {
-    node["user_function_name"] >> fcnIC.functionNames_;
-  }
-
-  if (expect_map( node, "user_function_parameters", true)) {
-     node["user_function_parameters"] >> fcnIC.functionParams_;
-  }
-
-}
-
-void operator >> (const YAML::Node& node, std::map<std::string,double> & mapName)
-{
-  for (YAML::Iterator i = node.begin(); i != node.end(); ++i)
-  {
-    const YAML::Node & key = i.first();
-    const YAML::Node & value = i.second();
-    std::string stringName;
-    key >> stringName;
-    double data;
-    value >> data;
-    mapName[stringName] = data;
-  }
-}
-
-void operator >> (const YAML::Node& node, std::map<std::string,std::string> & mapName)
-{
-  for (YAML::Iterator i = node.begin(); i != node.end(); ++i)
-  {
-    const YAML::Node & key = i.first();
-    const YAML::Node & value = i.second();
-    std::string stringName;
-    key >> stringName;
-    std::string data;
-    value >> data;
-    mapName[stringName] = data;
-  }
-}
-
-void operator >> (const YAML::Node& node, std::map<std::string,std::vector<std::string> >& mapName)
-{
-  for (YAML::Iterator i = node.begin(); i != node.end(); ++i)
-  {
-    const YAML::Node & key = i.first();
-    const YAML::Node & targets = i.second();
-    std::string stringName;
-    key >> stringName;
     
-    std::vector<std::string> &vecOfStrings = mapName[stringName];
-    std::string theName;
-    if ( targets.Type() == YAML::NodeType::Scalar ) {
-      targets >> theName;
-      vecOfStrings.push_back(theName);
+    void operator >> (const YAML::Node& node, OpenBoundaryConditionData& openBC) {
+      openBC.bcName_ = node["open_boundary_condition"].as<std::string>() ;
+      openBC.targetName_ = node["target_name"].as<std::string>() ;
+      openBC.theBcType_ = OPEN_BC;
+      const YAML::Node& openUserData = node["open_user_data"];
+      openBC.userData_ = openUserData.as<OpenUserData>() ;
+      // check for typical rogue line command
+      if ( node["user_function_name"] )
+	throw std::runtime_error("user_function_data is misplaced; it must be under open_user_data");
+      
     }
-    else {
-      for (size_t it=0; it < targets.size(); ++it) {
-	targets[it] >> theName;
-	vecOfStrings.push_back(theName);
+    
+    void operator >> (const YAML::Node& node, OversetBoundaryConditionData& oversetBC) {
+      oversetBC.bcName_ = node["overset_boundary_condition"].as<std::string>() ;
+      oversetBC.theBcType_ = OVERSET_BC;
+      const YAML::Node& oversetUserData = node["overset_user_data"];
+      oversetBC.userData_ = oversetUserData.as<OversetUserData>() ;
+      
+    }
+                
+    void operator >> (const YAML::Node& node, ContactBoundaryConditionData& contactBC) {
+      contactBC.bcName_ = node["contact_boundary_condition"].as<std::string>() ;
+      contactBC.targetName_ = node["target_name"].as<std::string>() ;
+      contactBC.theBcType_ = CONTACT_BC;
+      const YAML::Node& contactUserData = node["contact_user_data"];
+      contactBC.userData_ = contactUserData.as<ContactUserData>() ;
+      
+    }
+    
+    void operator >> (const YAML::Node& node, SymmetryBoundaryConditionData& symmetryBC) {
+      symmetryBC.bcName_ = node["symmetry_boundary_condition"].as<std::string>() ;
+      symmetryBC.targetName_ = node["target_name"].as<std::string>() ;
+      symmetryBC.theBcType_ = SYMMETRY_BC;
+      const YAML::Node& symmetryUserData = node["symmetry_user_data"];
+      symmetryBC.userData_ = symmetryUserData.as<SymmetryUserData>() ;
+      
+    }
+    
+    void operator >> (const YAML::Node& node, PeriodicBoundaryConditionData& periodicBC) {
+      periodicBC.bcName_ = node["periodic_boundary_condition"].as<std::string>() ;
+      periodicBC.masterSlave_ = node["target_name"].as<MasterSlave>() ;
+      periodicBC.targetName_ = periodicBC.masterSlave_.master_ + "_" + periodicBC.masterSlave_.slave_;
+      periodicBC.theBcType_ = PERIODIC_BC;
+      const YAML::Node& periodicUserData = node["periodic_user_data"];
+      periodicBC.userData_ = periodicUserData.as<PeriodicUserData>() ;
+      
+    }
+    
+    void operator >> (const YAML::Node& node, NonConformalBoundaryConditionData& nonConformalBC) {
+      nonConformalBC.bcName_ = node["non_conformal_boundary_condition"].as<std::string>() ;
+      nonConformalBC.masterSlave_ = node["target_name"].as<MasterSlave>() ;
+      nonConformalBC.targetName_ = nonConformalBC.masterSlave_.master_ + "_" + nonConformalBC.masterSlave_.slave_;
+      nonConformalBC.theBcType_ = NON_CONFORMAL_BC;
+      const YAML::Node& nonConformalUserData = node["non_conformal_user_data"];
+      nonConformalBC.userData_ = nonConformalUserData.as<NonConformalUserData>() ;
+      
+    }
+
+    void operator >> (const YAML::Node& node, UserFunctionInitialConditionData& fcnIC) {
+      
+      fcnIC.theIcType_ = sierra::nalu::FUNCTION_UD;
+      fcnIC.icName_ = node["user_function"].as<std::string>() ;
+      const YAML::Node & targets = node["target_name"];
+      if (targets.Type() == YAML::NodeType::Scalar) {
+	fcnIC.targetNames_.resize(1);
+	fcnIC.targetNames_[0] = targets.as<std::string>();
       }
+      else
+	{
+	  fcnIC.targetNames_.resize(targets.size());
+	  for (size_t i=0; i < targets.size(); ++i) {
+	    fcnIC.targetNames_[i] = targets[i].as<std::string>();
+	  }
+	}
+      
+      // extract function name and parameters
+      if (expect_map( node, "user_function_name", false)) {
+	fcnIC.functionNames_ = node["user_function_name"].as<std::map<std::string, std::string> >() ;
+      }
+      
+      if (expect_map( node, "user_function_parameters", true)) {
+	fcnIC.functionParams_ = node["user_function_parameters"].as<std::map<std::string, std::vector<double> > >();
+      }
+
     }
+
+
+    void operator >> (const YAML::Node& node, ConstantInitialConditionData& constIC) {
+    
+    constIC.theIcType_ = sierra::nalu::CONSTANT_UD;
+    constIC.icName_ = node["constant"].as<std::string>() ;
+    const YAML::Node & targets = node["target_name"];
+
+    if (targets.Type() == YAML::NodeType::Scalar)     {
+	constIC.targetNames_.resize(1);
+	constIC.targetNames_[0] = targets.as<std::string>() ;
+	NaluEnv::self().naluOutputP0() << "constant IC: name: " << constIC.icName_ << " , target[" << 0 << "] = " << constIC.targetNames_[0] << std::endl;
+	if (constIC.targetNames_[0].find(',') != std::string::npos) {
+	  throw std::runtime_error("In " + constIC.icName_ +
+				   " found ',' in target name - you must enclose in '[...]' for multiple targets");
+	}
+
+    } else  {
+      constIC.targetNames_.resize(targets.size()) ; 
+      for (size_t i=0; i < targets.size(); ++i)	{ 
+	constIC.targetNames_[i] = targets[i].as<std::string>() ;
+	if (constIC.root()->debug())
+	  NaluEnv::self().naluOutputP0() << "constant IC: name: " << constIC.icName_ << " , target[" << i << "] = " << constIC.targetNames_[i] << std::endl;
+      }
+    }  
+    const YAML::Node value_node = node["value"];
+    size_t value_size = value_node.size();
+    constIC.fieldNames_.resize(value_size);
+    constIC.data_.resize(value_size);
+    if (constIC.root()->debug())  {
+      NaluEnv::self().naluOutputP0() << "fieldNames_.size()= " << constIC.fieldNames_.size()
+				     << " value.size= " << constIC.data_.size() << std::endl;
+    }
+    size_t jv = 0;    
+    for (YAML::const_iterator i = value_node.begin(); i != value_node.end(); ++i,++jv) {
+      const YAML::Node key   = i->first;
+      const YAML::Node value = i->second;
+      constIC.fieldNames_[jv] = key.as<std::string>() ;
+      size_t nvals = value.size();
+      if (nvals)  {
+	constIC.data_[jv].resize(nvals);
+	for (size_t iv=0; iv < nvals; ++iv)
+	  {
+	    constIC.data_[jv][iv] = value[iv].as<double>();
+	    if (constIC.root()->debug())
+	      {
+		NaluEnv::self().naluOutputP0() << "fieldNames_= " << constIC.fieldNames_[jv] << " value= "
+					       << constIC.data_[jv][iv] << std::endl;
+	      }
+	  }
+      } else  {
+	constIC.data_[jv].resize(1);
+	constIC.data_[jv][0] = value.as<double>();
+	if (constIC.root()->debug())
+	  {
+	    NaluEnv::self().naluOutputP0() << "fieldNames_= " << constIC.fieldNames_[jv] << " value= " << constIC.data_[jv][0] << std::endl;
+	  }
+      }
+      
+    }    
   }
-}
 
-const YAML::Node *
-expect_type(const YAML::Node& node, const std::string& key, YAML::NodeType::value type, bool optional)
-{
-  static std::string types[] = {"Null", "Scalar", "Sequence", "Map"};
-  const YAML::Node *value = node.FindValue(key);
-  std::ostringstream err_msg;
-  if (!optional && !value)
-    {
-      if (!NaluEnv::self().parallel_rank()) {
-        err_msg << "Error: parsing expected required value " << key << " but it was not found at"
-                << NaluParsingHelper::line_info(node)
-                << " for Node= " << std::endl;
-        NaluParsingHelper::emit(err_msg, node);
-        std::cout << err_msg.str() << std::endl;
+
+  void operator >> (const YAML::Node& node, std::map<std::string,bool> & mapName)
+  {
+    for (YAML::const_iterator i = node.begin(); i != node.end(); ++i)
+      {
+	const YAML::Node & key = i->first;
+	const YAML::Node & value = i->second;
+	std::string stringName;
+	stringName = key.as<std::string>() ;
+	bool data;
+	data = value.as<bool>() ;
+	mapName[stringName] = data;
       }
-      throw std::runtime_error("Error: parsing");
-    }
-  if (value && (value->Type() != type))
-    {
-      if (!NaluEnv::self().parallel_rank()) {
-        err_msg << "Error: parsing expected type " << types[type] << " got type = " << types[value->Type()]
-                << " for key= " << key
-                << " at " << NaluParsingHelper::line_info(node)
-                << " node= " << std::endl;
-        NaluParsingHelper::emit(err_msg, node);
-        err_msg << "Check indentation of input file.";
-        std::cout << err_msg.str() << std::endl;
+  }
+
+  void operator >> (const YAML::Node& node, std::map<std::string,double> & mapName)
+  {
+    for (YAML::const_iterator i = node.begin(); i != node.end(); ++i)
+      {
+	const YAML::Node & key = i->first;
+	const YAML::Node & value = i->second;
+	std::string stringName;
+	stringName = key.as<std::string>() ;
+	double data;
+	data = value.as<double>() ;
+	mapName[stringName] = data;
       }
-      throw std::runtime_error("Error: parsing - Check indentation of input file.");
-    }
-  return value;
-}
+  }
+    
+  void operator >> (const YAML::Node& node, std::map<std::string,std::string> & mapName)
+  {
+    for (YAML::const_iterator i = node.begin(); i != node.end(); ++i)
+      {
+	const YAML::Node & key = i->first;
+	const YAML::Node & value = i->second;
+	std::string stringName;
+	stringName = key.as<std::string>() ;
+	std::string data;
+	data = value.as<std::string>() ;
+	mapName[stringName] = data;
+      }
+  }
+    
+  void operator >> (const YAML::Node& node, std::map<std::string,std::vector<std::string> >& mapName)
+  {
+    for (YAML::const_iterator i = node.begin(); i != node.end(); ++i)
+      {
+	const YAML::Node & key = i->first;
+	const YAML::Node & targets = i->second;
+	std::string stringName;
+	stringName = key.as<std::string>() ;
+	
+	std::vector<std::string> &vecOfStrings = mapName[stringName];
+	std::string theName;
+	if ( targets.Type() == YAML::NodeType::Scalar ) {
+	  theName = targets.as<std::string>() ;
+	  vecOfStrings.push_back(theName);
+	}
+	else {
+	  for (size_t it=0; it < targets.size(); ++it) {
+	    theName = targets[it].as<std::string>() ;
+	    vecOfStrings.push_back(theName);
+	  }
+	}
+      }
+  }
 
-const YAML::Node *
-expect_null(const YAML::Node& node, const std::string& key, bool optional)
-{
-  return expect_type(node, key, YAML::NodeType::Null, optional);
-}
-const YAML::Node *
-expect_scalar(const YAML::Node& node, const std::string& key, bool optional)
-{
-  return expect_type(node, key, YAML::NodeType::Scalar, optional);
-}
-const YAML::Node *
-expect_sequence(const YAML::Node& node, const std::string& key, bool optional)
-{
-  return expect_type(node, key, YAML::NodeType::Sequence, optional);
-}
-const YAML::Node *
-expect_map(const YAML::Node& node, const std::string& key, bool optional)
-{
-  return expect_type(node, key, YAML::NodeType::Map, optional);
-}
-
-} // namespace nalu
+  void operator >> (const YAML::Node& node, std::map<std::string,std::vector<double> >& mapName)
+  {
+    for (YAML::const_iterator i = node.begin(); i != node.end(); ++i)
+      {
+	const YAML::Node & key = i->first;
+	const YAML::Node & targets = i->second;
+	std::string stringName;
+	stringName = key.as<std::string>() ;
+	
+	std::vector<double> &vecOfDoubles = mapName[stringName];
+	double value;
+	if ( targets.Type() == YAML::NodeType::Scalar ) {
+	  value = targets.as<double>() ;
+	  vecOfDoubles.push_back(value);
+	}
+	else {
+	  for (size_t it=0; it < targets.size(); ++it) {
+	    value = targets[it].as<double>() ;
+	    vecOfDoubles.push_back(value);
+	  }
+	}
+      }
+  }
+    
+    
+  } // namespace nalu
 } // namespace Sierra
+
+namespace YAML {
+
+    bool convert<sierra::nalu::Velocity>::decode(const Node& node, sierra::nalu::Velocity& v) {
+      if(!node.IsSequence() || node.size() < 2) {
+	return false;
+      }
+      
+      v.ux_ = node[0].as<double>();
+      v.uy_ = node[1].as<double>();
+      if ( node.size() > 2 )
+	v.uz_ = node[2].as<double>();
+      
+      return true;
+    }
+    
+    bool convert<sierra::nalu::Coordinates>::decode(const Node& node, sierra::nalu::Coordinates& cx) {
+      if(!node.IsSequence() || node.size() < 2) {
+	return false;
+      }
+      
+      cx.x_ = node[0].as<double>();
+      cx.y_ = node[1].as<double>();
+      if ( node.size() > 2 )
+	cx.z_ = node[2].as<double>(); 
+      
+      return true;
+    }
+    
+    bool convert<sierra::nalu::Pressure>::decode(const Node& node, sierra::nalu::Pressure& p) {
+      if(!node.IsScalar()) {
+	return false;
+      }
+      
+      p.pressure_ = node.as<double>();
+      
+      return true;
+    }
+    
+    bool convert<sierra::nalu::TurbKinEnergy>::decode(const Node& node, sierra::nalu::TurbKinEnergy& tke) {
+      if(!node.IsScalar()) {
+	return false;
+      }
+      
+      tke.turbKinEnergy_ = node.as<double>();
+      
+      return true;
+    }
+    
+    bool convert<sierra::nalu::SpecDissRate>::decode(const Node& node, sierra::nalu::SpecDissRate& sdr) {
+      if(!node.IsScalar()) {
+	return false;
+      }
+      
+      sdr.specDissRate_ = node.as<double>();
+      
+      return true;
+    }
+
+    bool convert<sierra::nalu::Temperature>::decode(const Node& node, sierra::nalu::Temperature& t) {
+      if(!node.IsScalar()) {
+	return false;
+      }
+      
+      t.temperature_ = node.as<double>();
+      
+      return true;
+    }
+    
+    bool convert<sierra::nalu::MixtureFraction>::decode(const Node& node, sierra::nalu::MixtureFraction& z) {
+      if(!node.IsScalar()) {
+	return false;
+      }
+      
+      z.mixFrac_ = node.as<double>(); 
+      
+      return true;
+    }
+    
+    bool convert<sierra::nalu::MassFraction>::decode(const Node& node, sierra::nalu::MassFraction& yk) {
+      if(!node.IsSequence()) {
+	return false;
+      } 
+      
+      yk.massFraction_.resize(node.size());
+      int ykSize = node.size() ;
+      for ( size_t k = 0; k < ykSize; ++k ) {
+	yk.massFraction_[k] = node[k].as<double>() ;
+      }
+      
+      return true;
+    }
+    
+    bool convert<sierra::nalu::Emissivity>::decode(const Node& node, sierra::nalu::Emissivity& emiss) {
+      if(!node.IsScalar()) {
+	return false;
+      }
+      
+      emiss.emissivity_ = node.as<double>();
+      
+      return true;
+    }
+    
+    bool convert<sierra::nalu::Irradiation>::decode(const Node& node, sierra::nalu::Irradiation& irrad) {
+      if(!node.IsScalar()) {
+	return false;
+      }
+      
+      irrad.irradiation_ = node.as<double>();
+
+      return true;      
+    }
+    
+    bool convert<sierra::nalu::Transmissivity>::decode(const Node& node, sierra::nalu::Transmissivity& tmiss) {
+      if(!node.IsScalar()) {
+	return false;
+      }
+      
+      tmiss.transmissivity_ = node.as<double>();
+      
+      return true;
+    }
+    
+    bool convert<sierra::nalu::EnvironmentalT>::decode(const Node& node, sierra::nalu::EnvironmentalT& et) {
+      if(!node.IsScalar()) {
+	return false;
+      }
+      
+      et.environmentalT_ = node.as<double>();
+      
+      return true;
+    }
+    
+    bool convert<sierra::nalu::RoughnessHeight>::decode(const Node& node, sierra::nalu::RoughnessHeight& z0) {
+      if(!node.IsScalar()) {
+	return false;
+      }
+
+      z0.z0_ = node.as<double>() ;
+      
+      return true;
+    }
+
+    bool convert<sierra::nalu::NormalHeatFlux>::decode(const Node& node, sierra::nalu::NormalHeatFlux& q) {
+      if(!node.IsScalar()) {
+	return false;
+      }
+      
+      q.qn_ = node.as<double>();
+      
+      return true;
+    }
+    
+    bool convert<sierra::nalu::ReferenceTemperature>::decode(const Node& node, sierra::nalu::ReferenceTemperature& rt) {
+      if(!node.IsScalar()) {
+	return false;
+      }
+      
+      rt.referenceTemperature_ = node.as<double>();
+      
+      return true;
+    }
+    
+    bool convert<sierra::nalu::HeatTransferCoefficient>::decode(const Node& node, sierra::nalu::HeatTransferCoefficient& htc) {
+      if(!node.IsScalar()) {
+	return false;
+      }
+      
+      htc.heatTransferCoefficient_ = node.as<double>();
+      
+      return true;
+    }
+    
+    bool convert<sierra::nalu::RobinCouplingParameter>::decode(const Node& node, sierra::nalu::RobinCouplingParameter& alpha) {
+      if(!node.IsScalar()) {
+	return false;
+      }
+      
+      alpha.robinCouplingParameter_ = node.as<double>();
+      
+      return true;
+    }
+    
+    bool convert<sierra::nalu::WallUserData>::decode(const Node& node, sierra::nalu::WallUserData& wallData) {
+      
+      
+      // constant data; all optional
+      if ( node["velocity"] ) {
+	wallData.u_ = node["velocity"].as<sierra::nalu::Velocity>() ;
+	wallData.bcDataSpecifiedMap_["velocity"] = true;
+	wallData.bcDataTypeMap_["velocity"] = sierra::nalu::CONSTANT_UD;
+      }
+      
+      if ( node["mesh_displacement"] ) {
+	wallData.dx_ = node["mesh_displacement"].as<sierra::nalu::Velocity>() ;
+	wallData.bcDataSpecifiedMap_["mesh_displacement"] = true;
+	wallData.bcDataTypeMap_["mesh_displacement"] = sierra::nalu::CONSTANT_UD;
+      }
+      if ( node["turbulent_ke"] ) {
+	wallData.tke_ = node["turbulent_ke"].as<sierra::nalu::TurbKinEnergy>() ;
+	wallData.bcDataSpecifiedMap_["turbulent_ke"] = true;
+	wallData.bcDataTypeMap_["turbulent_ke"] = sierra::nalu::CONSTANT_UD;
+      }
+      if ( node["temperature"] ) {
+	wallData.temperature_ = node["temperature"].as<sierra::nalu::Temperature>() ;
+	wallData.bcDataSpecifiedMap_["temperature"] = true;
+	wallData.bcDataTypeMap_["temperature"] = sierra::nalu::CONSTANT_UD;
+	wallData.tempSpec_ = true;
+      }
+      
+      if ( node["mixture_fraction"] ) {
+	wallData.mixFrac_ = node["mixture_fraction"].as<sierra::nalu::MixtureFraction>() ;
+	wallData.bcDataSpecifiedMap_["mixture_fraction"] = true;
+	wallData.bcDataTypeMap_["mixture_fraction"] = sierra::nalu::CONSTANT_UD;
+      }
+      
+      if ( node["mass_fraction"] ) {
+	wallData.massFraction_ = node["mass_fraction"].as<sierra::nalu::MassFraction>() ;
+	wallData.bcDataSpecifiedMap_["mass_fraction"] = true;
+	wallData.bcDataTypeMap_["mass_fraction"] = sierra::nalu::CONSTANT_UD;
+      }
+      if ( node["emissivity"] ) {
+	wallData.emissivity_ = node["emissivity"].as<sierra::nalu::Emissivity>() ; 
+	wallData.emissSpec_ = true;
+      }
+      if ( node["transmissivity"] ) {
+	wallData.transmissivity_ = node["transmissivity"].as<sierra::nalu::Transmissivity>() ; 
+      }
+      if ( node["environmental_temperature"] ) {
+	wallData.environmentalT_ = node["environmental_temperature"].as<sierra::nalu::EnvironmentalT>() ; 
+      }
+      if ( node["adiabatic"] ) {
+	wallData.isAdiabatic_ = node["adiabatic"].as<bool>() ; 
+      }
+      if ( node["interface"] ) {
+	wallData.isInterface_ = node["interface"].as<bool>() ; 
+      }
+      
+      if ( node["reference_temperature"] ) {
+	wallData.referenceTemperature_ = node["reference_temperature"].as<sierra::nalu::ReferenceTemperature>() ;
+	wallData.refTempSpec_ = true;
+      }
+      if ( node["gravity_vector_component"] ) {
+	wallData.gravityComponent_ = node["gravity_vector_component"].as<unsigned>() ;
+      }
+      if ( node["roughness_height"] ) {
+	wallData.z0_ = node["roughness_height"].as<sierra::nalu::RoughnessHeight>() ;
+      }
+      if ( node["heat_transfer_coefficient"] ) {
+	wallData.heatTransferCoefficient_ = node["heat_transfer_coefficient"].as<sierra::nalu::HeatTransferCoefficient>() ;
+	wallData.htcSpec_ = true;
+      }
+      if ( node["irradiation"] ) {
+	wallData.irradiation_ = node["irradiation"].as<sierra::nalu::Irradiation>() ;
+	wallData.irradSpec_ = true;
+      }
+      if ( node["robin_coupling_parameter"] ) {
+	wallData.robinCouplingParameter_ = node["robin_coupling_parameter"].as<sierra::nalu::RobinCouplingParameter>() ;
+	wallData.robinParameterSpec_ = true;
+      }
+      if ( node["use_wall_function"] ) {
+	wallData.wallFunctionApproach_ = node["use_wall_function"].as<bool>() ;
+      }
+      if ( node["use_abl_wall_function"] ) {
+	wallData.wallFunctionApproach_ = node["use_abl_wall_function"].as<bool>() ;
+	wallData.ablWallFunctionApproach_ = node["use_abl_wall_function"].as<bool>() ;
+      }
+      if ( node["pressure"] ) {
+	wallData.pressure_ = node["pressure"].as<sierra::nalu::Pressure>() ;
+	wallData.bcDataSpecifiedMap_["pressure"] = true;
+	wallData.bcDataTypeMap_["pressure"] = sierra::nalu::CONSTANT_UD;
+      }
+      if ( node["fsi_interface"] ) {
+	wallData.isFsiInterface_ = node["fsi_interface"].as<bool>() ;
+      }
+      
+      // not appropriate
+      if ( node["specific_dissipation_rate"] ) {
+	throw std::runtime_error("specific_dissipation rate at walls is provided by a model, not the user");
+      }
+      
+      if ( node["heat_flux"] ) {
+	wallData.q_ = node["heat_flux"].as<sierra::nalu::NormalHeatFlux>() ;
+	wallData.heatFluxSpec_ = true;
+      }
+      
+      // function data
+      const bool optional = true;
+      const Node userFcnNode = sierra::nalu::expect_map(node, "user_function_name", optional);
+      if ( userFcnNode ) {
+	for (const_iterator i = userFcnNode.begin(); i != userFcnNode.end(); ++i) {
+	  const Node & key = i->first;
+	  const Node & value = i->second;
+	  std::string stringName = key.as<std::string>() ;
+	  std::string data = value.as<std::string>() ;
+	  wallData.bcDataSpecifiedMap_[stringName] = true;
+	  wallData.bcDataTypeMap_[stringName] = sierra::nalu::FUNCTION_UD;
+	  wallData.userFunctionMap_[stringName] = data;
+	}
+	
+	// extract function name and parameters
+	if (sierra::nalu::expect_map( node, "user_function_parameters", true)) {
+	  wallData.functionParams_ = node["user_function_parameters"].as<std::map<std::string, std::vector<double> > >() ;
+	}
+	
+      }
+      
+      return true;
+      
+    }
+    
+    bool convert<sierra::nalu::MasterSlave>::decode(const Node& node, sierra::nalu::MasterSlave& ms) {
+      
+      if(!node.IsSequence() || node.size() != 2) {
+	return false;
+      }
+      
+      ms.master_ = node[0].as<std::string>() ;
+      ms.slave_ = node[1].as<std::string>() ;
+      
+      return true;
+    }
+    
+    bool convert<sierra::nalu::InflowUserData>::decode(const Node& node, sierra::nalu::InflowUserData& inflowData) {
+      // optional
+      if ( node["velocity"] ) {
+	inflowData.u_ = node["velocity"].as<sierra::nalu::Velocity>() ;
+	inflowData.uSpec_ = true;
+      }
+      if ( node["turbulent_ke"] ) {
+	inflowData.tke_ = node["turbulent_ke"].as<sierra::nalu::TurbKinEnergy>() ;
+	inflowData.tkeSpec_ = true;
+      }
+      if ( node["specific_dissipation_rate"] ) {
+	inflowData.sdr_ = node["specific_dissipation_rate"].as<sierra::nalu::SpecDissRate>() ;
+	inflowData.sdrSpec_ = true;
+      }
+      if ( node["mixture_fraction"] ) {
+	inflowData.mixFrac_ = node["mixture_fraction"].as<sierra::nalu::MixtureFraction>() ;
+	inflowData.mixFracSpec_ = true;
+      }
+      if ( node["mass_fraction"] ) {
+	inflowData.massFraction_ = node["mass_fraction"].as<sierra::nalu::MassFraction>() ;
+	inflowData.massFractionSpec_ = true;
+      }
+      if ( node["temperature"] ) {
+	inflowData.temperature_ = node["temperature"].as<sierra::nalu::Temperature>() ;
+	inflowData.tempSpec_ = true;
+      }
+      
+      const bool optional = true;
+      const Node userFcnNode = sierra::nalu::expect_map(node, "user_function_name", optional);
+      if ( userFcnNode ) {
+	for (const_iterator i = userFcnNode.begin(); i != userFcnNode.end(); ++i) {
+	  const Node & key = i->first;
+	  const Node & value = i->second;
+	  std::string stringName;
+	  stringName = key.as<std::string>() ;
+	  std::string data;
+	  data = value.as<std::string>() ;
+	  inflowData.bcDataSpecifiedMap_[stringName] = true;
+	  inflowData.bcDataTypeMap_[stringName] = sierra::nalu::FUNCTION_UD;
+	  inflowData.userFunctionMap_[stringName] = data;
+	}
+	
+	// extract function name and parameters
+	if (sierra::nalu::expect_map( node, "user_function_parameters", true)) {
+	  inflowData.functionParams_ = node["user_function_parameters"].as< std::map<std::string, std::vector<double> > >() ;
+	}
+      }
+      
+      return true;
+    }
+    
+    bool convert<sierra::nalu::OpenUserData>::decode(const Node& node, sierra::nalu::OpenUserData& openData) {
+      
+      // optional
+      if ( node["velocity"] ){
+	openData.u_ = node["velocity"].as<sierra::nalu::Velocity>() ;
+	openData.uSpec_ = true;
+      }
+      // optional
+      if ( node["turbulent_ke"] ) {
+	openData.tke_ = node["turbulent_ke"].as<sierra::nalu::TurbKinEnergy>() ;
+	openData.tkeSpec_ = true;
+      }
+      if ( node["specific_dissipation_rate"] ){
+	openData.sdr_ = node["specific_dissipation_rate"].as<sierra::nalu::SpecDissRate>() ;
+	openData.sdrSpec_ = true;
+      }
+      if ( node["pressure"] ) {
+	openData.p_ = node["pressure"].as<sierra::nalu::Pressure>() ;
+	openData.pSpec_ = true;
+      }
+      if ( node["mixture_fraction"] ){
+	openData.mixFrac_ = node["mixture_fraction"].as<sierra::nalu::MixtureFraction>() ;
+	openData.mixFracSpec_ = true;
+      }
+      if ( node["mass_fraction"]){
+	openData.massFraction_ = node["mass_fraction"].as<sierra::nalu::MassFraction>() ;
+	openData.massFractionSpec_ = true;
+      }
+      if ( node["temperature"]) {
+	openData.temperature_ = node["temperature"].as<sierra::nalu::Temperature>() ;
+	openData.tempSpec_ = true;
+      }
+      
+      return true;
+    }
+    
+    bool convert<sierra::nalu::ContactUserData>::decode(const Node& node, sierra::nalu::ContactUserData& contactData) {
+      
+      // nothing is optional
+      if ( node["max_search_radius"] ) {
+	contactData.maxSearchRadius_ = node["max_search_radius"].as<double>() ;
+      }
+      else {
+	throw std::runtime_error("One MUST specify max search radius at contact bcs");
+      }
+      
+      if ( node["min_search_radius"] ) {
+	contactData.minSearchRadius_ = node["min_search_radius"].as<double>() ;
+      }
+      else {
+	throw std::runtime_error("One MUST specify min search radius at contact bcs");
+      }
+      
+      if ( node["search_block"] ) {
+	const Node searchBlock = node["search_block"];
+	if (searchBlock.Type() == NodeType::Scalar) {
+	  contactData.searchBlock_.resize(1);
+	  contactData.searchBlock_[0] = searchBlock.as<std::string>() ;
+	}
+	else {
+	  contactData.searchBlock_.resize(searchBlock.size());
+	  contactData.searchBlock_ = searchBlock.as<std::vector<std::string> >() ;
+	}
+      }
+      else {
+	throw std::runtime_error("One MUST specify search block at contact bcs");
+      }
+      
+      if ( node["extrusion_distance"]  ) {
+	contactData.extrusionDistance_ = node["extrusion_distance"].as<double>() ;
+	contactData.useExtrusionAlg_ = true;
+      }
+      else {
+	throw std::runtime_error("Specify extrusion distance at contact bcs; simple halo disabled");
+      }
+      
+      if ( node["search_method"]) {
+	contactData.searchMethodName_ = node["search_method"].as<std::string>() ;
+      }
+      
+      if ( node["expand_box_percentage"]  ) {
+	contactData.expandBoxPercentage_ = node["expand_box_percentage"].as<double>();
+      }
+      
+      if ( node["clip_isoparametric_coordinates"]  ) {
+	contactData.clipIsoParametricCoords_ = node["clip_isoparametric_coordinates"].as<bool>() ;
+      }
+      
+      if ( node["hermite_interpolation"]  ) {
+	contactData.useHermiteInterpolation_ = node["hermite_interpolation"].as<bool>() ;
+      }
+      
+      return true;
+    }
+    
+    bool convert<sierra::nalu::OversetUserData>::decode(const Node& node, sierra::nalu::OversetUserData& oversetData) {
+      //nothing is optional
+      if ( node["percent_overlap"]) {
+	oversetData.percentOverlap_ = node["percent_overlap"].as<double>() ;
+      }
+      else {
+	throw std::runtime_error("One MUST specify overset overlap percentage");
+      }
+      
+      if ( node["background_block"]) {
+	oversetData.backgroundBlock_ = node["background_block"].as<std::string>() ;
+      }
+      else {
+	throw std::runtime_error("One MUST specify background block");
+      }
+      
+      if ( node["overset_block"]) {
+	const Node oversetBlock = node["overset_block"] ;
+	if (oversetBlock.Type() == NodeType::Scalar) {
+	  oversetData.oversetBlockVec_.resize(1);
+	  oversetData.oversetBlockVec_[0] = oversetBlock.as<std::string>() ;
+	}
+	else {
+	  oversetData.oversetBlockVec_.resize(oversetBlock.size());
+	  oversetData.oversetBlockVec_ = oversetBlock.as<std::vector<std::string> >() ;
+	}
+      }
+      else {
+	throw std::runtime_error("One MUST specify overset block(s)");
+      }
+      
+      if ( node["background_cut_block"]) {
+	oversetData.backgroundCutBlock_ = node["background_cut_block"].as<std::string>() ;
+      }
+      else {
+	throw std::runtime_error("One MUST specify background cut block");
+      }
+      
+      if ( node["background_cut_surface"]) {
+	oversetData.backgroundSurface_ = node["background_cut_surface"].as<std::string>() ;
+      }
+      else {
+	throw std::runtime_error("One MUST specify background cut surface");
+      }
+      
+      if ( node["overset_surface"]) {
+	oversetData.oversetSurface_ = node["overset_surface"].as<std::string>() ;
+      }
+      else {
+	throw std::runtime_error("One MUST specify overset surface");
+      }
+      
+      if ( node["clip_isoparametric_coordinates"]) {
+	oversetData.clipIsoParametricCoords_ = node["clip_isoparametric_coordinates"].as<bool>() ;
+      }
+      
+      if ( node["detailed_output"]) {
+	oversetData.detailedOutput_ = node["detailed_output"].as<bool>() ;
+      }
+      
+      return true;
+    }
+    
+    bool convert<sierra::nalu::SymmetryUserData>::decode(const Node& node, sierra::nalu::SymmetryUserData& symmetryData) {
+      // nothing as of yet
+      return true;
+    }
+    
+    bool convert<sierra::nalu::PeriodicUserData>::decode(const Node& node, sierra::nalu::PeriodicUserData& periodicData) {
+      // nothing is optional
+      if ( node["search_tolerance"]  ) {
+	periodicData.searchTolerance_ = node["search_tolerance"].as<double>() ;
+      }
+      else {
+	throw std::runtime_error("One MUST specify search tolerance at periodic bcs");
+      }
+      if ( node["search_method"]) {
+	periodicData.searchMethodName_ = node["search_method"].as<std::string>() ;
+      }
+      
+      return true;
+    }
+    
+    bool convert<sierra::nalu::NonConformalUserData>::decode(const Node& node, sierra::nalu::NonConformalUserData& nonConformalData) {
+      
+      // everything is optional
+      if ( node["search_method"]) {
+	nonConformalData.searchMethodName_ = node["search_method"].as<std::string>() ;
+      }
+      if ( node["expand_box_percentage"]  ) {
+	nonConformalData.expandBoxPercentage_ = node["expand_box_percentage"].as<double>() ;
+      }
+      if ( node["clip_isoparametric_coordinates"]  ) {
+	nonConformalData.clipIsoParametricCoords_ = node["clip_isoparametric_coordinates"].as<bool>() ;
+      }
+      if ( node["search_tolerance"]  ) {
+	nonConformalData.searchTolerance_ = node["search_tolerance"].as<double>() ;
+      }
+      
+      return true;
+      
+    }
+    
+   
+    bool convert<sierra::nalu::BoundaryConditionOptions>::decode(const Node& node, sierra::nalu::BoundaryConditionOptions& bcOptions) {
+      
+      bcOptions.bcSetName_ = node["boundary_conditions"].as<std::string>() ;
+      node["wall_boundary_condition"]  >> bcOptions.wallbc_ ;
+      node["inflow_boundary_condition"] >> bcOptions.inflowbc_ ;
+      node["open_boundary_condition"] >> bcOptions.openbc_ ;
+      node["overset_boundary_condition"] >> bcOptions.oversetbc_ ;
+      node["contact_boundary_condition"] >> bcOptions.contactbc_ ;
+      node["symmetry_boundary_condition"] >> bcOptions.symmetrybc_ ;
+      node["periodic_boundary_condition"]  >> bcOptions.periodicbc_ ;
+      node["non_confomal_boundary_condition"] >> bcOptions.nonConformalbc_ ;
+      
+      return true;
+    }
+    
+    bool convert<sierra::nalu::MeshInput>::decode(const Node& node, sierra::nalu::MeshInput& meshInput) {
+      meshInput.meshName_ = node["mesh_name"].as<std::string>() ;
+      return true;
+    }
+
+    bool convert<std::map<std::string,std::vector<std::string> > >::decode(const YAML::Node& node, std::map<std::string,std::vector<std::string> >& mapName)
+    {
+      for (const_iterator i = node.begin(); i != node.end(); ++i)
+	{
+	  const YAML::Node & key = i->first;
+	  const YAML::Node & targets = i->second;
+	  std::string stringName;
+	  stringName = key.as<std::string>() ;
+	  
+	  std::vector<std::string> &vecOfStrings = mapName[stringName];
+	  std::string theName;
+	  if ( targets.Type() == YAML::NodeType::Scalar ) {
+	    theName = targets.as<std::string>();
+	    vecOfStrings.push_back(theName);
+	  }
+	  else {
+	    for (size_t it=0; it < targets.size(); ++it) {
+	      theName = targets[it].as<std::string>() ;
+	      vecOfStrings.push_back(theName);
+	    }
+	  }
+	}
+      
+      return true;
+    }
+  
+}
+  
+      

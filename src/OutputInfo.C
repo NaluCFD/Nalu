@@ -73,40 +73,40 @@ OutputInfo::load(
   const YAML::Node & y_node)
 {
 
-  const YAML::Node *y_output = y_node.FindValue("output");
+  const YAML::Node y_output = y_node["output"];
   if (y_output)
   {
     // user desires output
     hasOutputBlock_ = true;
 
     // output data base name
-    get_if_present(*y_output, "output_data_base_name", outputDBName_, outputDBName_);
+    get_if_present(y_output, "output_data_base_name", outputDBName_, outputDBName_);
     
     // output frequency
-    get_if_present(*y_output, "output_frequency", outputFreq_, outputFreq_);
+    get_if_present(y_output, "output_frequency", outputFreq_, outputFreq_);
 
     // output start
-    get_if_present(*y_output, "output_start", outputStart_, outputStart_);
+    get_if_present(y_output, "output_start", outputStart_, outputStart_);
 
     // output at WALL time
-    if ( y_output->FindValue("output_forced_wall_time")) {
+    if ( y_output["output_forced_wall_time"]) {
       userWallTimeResults_.first = true;
-      *(y_output->FindValue("output_forced_wall_time")) >> userWallTimeResults_.second;
+      userWallTimeResults_.second = y_output["output_forced_wall_time"].as<double>() ;
     }
 
     // determine if we want nodeset output
-    get_if_present(*y_output, "output_node_set", outputNodeSet_, outputNodeSet_);
+    get_if_present(y_output, "output_node_set", outputNodeSet_, outputNodeSet_);
     
     // compression options; add to manager
-    if ( y_output->FindValue("compression_level") ) {
-      *(y_output->FindValue("compression_level")) >> outputCompressionLevel_;
+    if ( y_output["compression_level"] ) {
+      outputCompressionLevel_ = y_output["compression_level"].as<int>() ;
       outputPropertyManager_->add(Ioss::Property("COMPRESSION_LEVEL", outputCompressionLevel_));
       
       // when compression is active, add netcdf4 file type
       outputPropertyManager_->add(Ioss::Property("FILE_TYPE", "netcdf4"));
       
       // only allow for shuffle if compression is active
-      get_if_present(*y_output, "compression_shuffle", outputCompressionShuffle_, outputCompressionShuffle_);
+      get_if_present(y_output, "compression_shuffle", outputCompressionShuffle_, outputCompressionShuffle_);
       if ( outputCompressionShuffle_ ) {
         const int cs = 1;
         outputPropertyManager_->add(Ioss::Property("COMPRESSION_SHUFFLE", cs));
@@ -119,64 +119,64 @@ OutputInfo::load(
     
     // serialize io...
     {
-      get_if_present(*y_output, "serialized_io_group_size", serializedIOGroupSize_, serializedIOGroupSize_);
+      get_if_present(y_output, "serialized_io_group_size", serializedIOGroupSize_, serializedIOGroupSize_);
       if (serializedIOGroupSize_) {
         NaluEnv::self().naluOutputP0() << "Info: found non-zero serialized_io_group_size in input file= " << serializedIOGroupSize_ << std::endl;
       }
     }
 
-    const YAML::Node *y_vars = y_output->FindValue("output_variables");
+    const YAML::Node y_vars = y_output["output_variables"];
     if (y_vars)
     {
-      size_t varSize = y_vars->size();
+      size_t varSize = y_vars.size();
       for (size_t ioption = 0; ioption < varSize; ++ioption)
       {
-        const YAML::Node & y_var = (*y_vars)[ioption];
+        const YAML::Node y_var = y_vars[ioption];
         std::string fieldName;
-        y_var >> fieldName;
+        fieldName = y_var.as<std::string>() ;
         outputFieldNameSet_.insert(fieldName);
       }
     }
   }
   
   // output for restart
-  const YAML::Node *y_restart = y_node.FindValue("restart");
+  const YAML::Node y_restart = y_node["restart"];
   if (y_restart)
   {    
     // some sort of intent to manage a restart event - either clean or restart run
     hasRestartBlock_ = true;
 
     // restart output data base name
-    get_if_present(*y_restart, "restart_data_base_name", restartDBName_, restartDBName_);
+    get_if_present(y_restart, "restart_data_base_name", restartDBName_, restartDBName_);
     
     // restart output frequency
-    get_if_present(*y_restart, "restart_frequency", restartFreq_, restartFreq_);
+    get_if_present(y_restart, "restart_frequency", restartFreq_, restartFreq_);
     
     // restart start
-    get_if_present(*y_restart, "restart_start", restartStart_, restartStart_);
+    get_if_present(y_restart, "restart_start", restartStart_, restartStart_);
 
     // output at WALL time
-    if ( y_restart->FindValue("restart_forced_wall_time")) {
+    if ( y_restart["restart_forced_wall_time"]) {
       userWallTimeRestart_.first = true;
-      *(y_restart->FindValue("restart_forced_wall_time")) >> userWallTimeRestart_.second;
+      userWallTimeRestart_.second = y_restart["restart_forced_wall_time"].as<double>() ;
     }
 
     // determine if we want nodeset restart output
-    get_if_present(*y_restart, "restart_node_set", restartNodeSet_, restartNodeSet_);
+    get_if_present(y_restart, "restart_node_set", restartNodeSet_, restartNodeSet_);
     
     // max data base size for restart
-    get_if_present(*y_restart, "max_data_base_step_size", restartMaxDataBaseStepSize_, restartMaxDataBaseStepSize_);
+    get_if_present(y_restart, "max_data_base_step_size", restartMaxDataBaseStepSize_, restartMaxDataBaseStepSize_);
     
     // compression options; add to manager
-    if ( y_restart->FindValue("compression_level") ) {
-      *(y_restart->FindValue("compression_level")) >> restartCompressionLevel_;
+    if ( y_restart["compression_level"] ) {
+      restartCompressionLevel_ = y_restart["compression_level"].as<int>() ;
       restartPropertyManager_->add(Ioss::Property("COMPRESSION_LEVEL", restartCompressionLevel_));
       
       // when compression is active, add netcdf4 file type
       restartPropertyManager_->add(Ioss::Property("FILE_TYPE", "netcdf4"));
       
       // only allow for shuffle if compression is active
-      get_if_present(*y_restart, "compression_shuffle", restartCompressionShuffle_, restartCompressionShuffle_);
+      get_if_present(y_restart, "compression_shuffle", restartCompressionShuffle_, restartCompressionShuffle_);
       if ( restartCompressionShuffle_ ) {
         const int cs = 1;
         restartPropertyManager_->add(Ioss::Property("COMPRESSION_SHUFFLE", cs));
@@ -188,12 +188,12 @@ OutputInfo::load(
         NaluEnv::self().naluOutputP0() << "OutputInfo::load() Restart Warning: One should not shuffle if one is not compressing" << std::endl;
     
     // check to see if restart is active for this run
-    if ( y_restart->FindValue("restart_time") ) {
+    if ( y_restart["restart_time"] ) {
       activateRestart_ = true;
-      *(y_restart->FindValue("restart_time")) >> restartTime_;
+      restartTime_ = y_restart["restart_time"].as<double>() ;
     }
     
-    const YAML::Node *y_vars = y_restart->FindValue("restart_variables");
+    const YAML::Node y_vars = y_restart["restart_variables"];
     if (y_vars) {
       NaluEnv::self().naluOutputP0() << "Restart variable specification has been deprecated" << std::endl;
     }

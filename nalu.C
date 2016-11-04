@@ -140,11 +140,10 @@ int main( int argc, char ** argv )
   naluEnv.set_log_file_stream(logFileName, pprint);
 
   // proceed with reading input file "document" from YAML
-  YAML::Parser parser(fin);
   YAML::Node doc;
 
   try {
-    parser.GetNextDocument(doc);
+    doc = YAML::LoadFile(inputFileName.c_str());
     if (debug) {
       if (!naluEnv.parallel_rank())
         sierra::nalu::NaluParsingHelper::emit(std::cout, doc);
