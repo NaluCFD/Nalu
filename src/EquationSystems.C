@@ -68,76 +68,84 @@ EquationSystems::~EquationSystems()
 //--------------------------------------------------------------------------
 void EquationSystems::load(const YAML::Node & y_node)
 {
-  const YAML::Node *y_equation_system = expect_map(y_node,"equation_systems");
+  const YAML::Node y_equation_system = expect_map(y_node,"equation_systems");
   {
-    get_required(*y_equation_system, "name", name_);
-    get_required(*y_equation_system, "max_iterations", maxIterations_);
+    get_required(y_equation_system, "name", name_);
+    get_required(y_equation_system, "max_iterations", maxIterations_);
     
-    const YAML::Node &y_solver
-      = *(expect_map(*y_equation_system, "solver_system_specification"));
-    y_solver >> solverSpecMap_;
+    const YAML::Node y_solver
+      = expect_map(y_equation_system, "solver_system_specification");
+    solverSpecMap_ = y_solver.as<std::map<std::string, std::string> >();
     
-    const YAML::Node *y_systems = expect_sequence(*y_equation_system, "systems");
+    const YAML::Node y_systems = expect_sequence(y_equation_system, "systems");
     {
-      for ( size_t isystem = 0; isystem < y_systems->size(); ++isystem )
+      for ( size_t isystem = 0; isystem < y_systems.size(); ++isystem )
       {
-        const YAML::Node & y_system = (*y_systems)[isystem];
+        const YAML::Node y_system = y_systems[isystem] ;
         EquationSystem *eqSys = 0;
-        const YAML::Node *y_eqsys = 0;
-        if ( (y_eqsys = expect_map(y_system, "LowMachEOM", true) ) ) {
+	YAML::Node y_eqsys ;
+        if ( expect_map(y_system, "LowMachEOM", true) ) {
+	  y_eqsys =  expect_map(y_system, "LowMachEOM", true);
           if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = LowMachEOM " << std::endl;
           bool elemCont = (realm_.realmUsesEdges_) ? false : true;
-          get_if_present_no_default(*y_eqsys, "element_continuity_eqs", elemCont);
+          get_if_present_no_default(y_eqsys, "element_continuity_eqs", elemCont);
           eqSys = new LowMachEquationSystem(*this, elemCont);
         }
-        else if( (y_eqsys = expect_map(y_system, "ShearStressTransport", true)) ) {
+        else if( expect_map(y_system, "ShearStressTransport", true) ) {
+	  y_eqsys =  expect_map(y_system, "ShearStressTransport", true);
           if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = tke/sdr " << std::endl;
           eqSys = new ShearStressTransportEquationSystem(*this);
         }
-        else if( (y_eqsys = expect_map(y_system, "TurbKineticEnergy", true)) ) {
+        else if( expect_map(y_system, "TurbKineticEnergy", true) ) {
+	  y_eqsys =  expect_map(y_system, "TurbKineticEnergy", true) ;
           if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = tke " << std::endl;
           eqSys = new TurbKineticEnergyEquationSystem(*this);
         }
-        else if( (y_eqsys = expect_map(y_system, "MassFraction", true)) ) {
+        else if( expect_map(y_system, "MassFraction", true) ) {
+	  y_eqsys =  expect_map(y_system, "MassFraction", true);
           int numSpecies = 1.0;
-          get_if_present_no_default(*y_eqsys, "number_of_species", numSpecies);
+          get_if_present_no_default(y_eqsys, "number_of_species", numSpecies);
           if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = Yk " << std::endl;
           eqSys = new MassFractionEquationSystem(*this, numSpecies);
         }
-        else if( (y_eqsys = expect_map(y_system, "MixtureFraction", true)) ) {
+        else if( expect_map(y_system, "MixtureFraction", true) ) {
+	  y_eqsys =  expect_map(y_system, "MixtureFraction", true) ;
           if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = mixFrac " << std::endl;
           bool ouputClipDiag = false;
-          get_if_present_no_default(*y_eqsys, "output_clipping_diagnostic", ouputClipDiag);
+          get_if_present_no_default(y_eqsys, "output_clipping_diagnostic", ouputClipDiag);
           double deltaZClip = 0.0;
-          get_if_present_no_default(*y_eqsys, "clipping_delta", deltaZClip);
+          get_if_present_no_default(y_eqsys, "clipping_delta", deltaZClip);
           eqSys = new MixtureFractionEquationSystem(*this, ouputClipDiag, deltaZClip);
         }
-        else if( (y_eqsys = expect_map(y_system, "Enthalpy", true)) ) {
+        else if( expect_map(y_system, "Enthalpy", true) ) {
+	  y_eqsys =  expect_map(y_system, "Enthalpy", true);
           if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = enthalpy " << std::endl;
           double minT = 250.0;
           double maxT = 3000.0;
-          get_if_present_no_default(*y_eqsys, "minimum_temperature", minT);
-          get_if_present_no_default(*y_eqsys, "maximum_temperature", maxT);
+          get_if_present_no_default(y_eqsys, "minimum_temperature", minT);
+          get_if_present_no_default(y_eqsys, "maximum_temperature", maxT);
           bool ouputClipDiag = true;
-          get_if_present_no_default(*y_eqsys, "output_clipping_diagnostic", ouputClipDiag);
+          get_if_present_no_default(y_eqsys, "output_clipping_diagnostic", ouputClipDiag);
           eqSys = new EnthalpyEquationSystem(*this, minT, maxT, ouputClipDiag);
         }
-        else if( (y_eqsys = expect_map(y_system, "HeatConduction", true)) ) {
+        else if( expect_map(y_system, "HeatConduction", true) ) {
+	  y_eqsys =  expect_map(y_system, "HeatConduction", true);
           if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = HeatConduction " << std::endl;
           eqSys = new HeatCondEquationSystem(*this);
         }
-        else if( (y_eqsys = expect_map(y_system, "RadiativeTransport", true)) ) {
+        else if( expect_map(y_system, "RadiativeTransport", true) ) {
+	  y_eqsys =  expect_map(y_system, "RadiativeTransport", true);
           if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = RadiativeTransport " << std::endl;
           int quadratureOrder = 2;
-          get_if_present_no_default(*y_eqsys, "quadrature_order", quadratureOrder);
+          get_if_present_no_default(y_eqsys, "quadrature_order", quadratureOrder);
           bool activateScattering = false;
           bool activatePmrUpwind = false;
           bool deactivatePmrSucv = false;
           bool externalCoupling = false;
-          get_if_present_no_default(*y_eqsys, "activate_scattering", activateScattering);
-          get_if_present_no_default(*y_eqsys, "activate_upwind", activatePmrUpwind);
-          get_if_present_no_default(*y_eqsys, "deactivate_sucv", deactivatePmrSucv);
-          get_if_present_no_default(*y_eqsys, "external_coupling", externalCoupling);
+          get_if_present_no_default(y_eqsys, "activate_scattering", activateScattering);
+          get_if_present_no_default(y_eqsys, "activate_upwind", activatePmrUpwind);
+          get_if_present_no_default(y_eqsys, "deactivate_sucv", deactivatePmrSucv);
+          get_if_present_no_default(y_eqsys, "external_coupling", externalCoupling);
           if ( externalCoupling )
             NaluEnv::self().naluOutputP0() << "PMR External Coupling; absorption coefficient/radiation_source expected by xfer" << std::endl;
           if ( activatePmrUpwind )
@@ -146,11 +154,12 @@ void EquationSystems::load(const YAML::Node & y_node)
           eqSys = new RadiativeTransportEquationSystem(*this,
             quadratureOrder, activateScattering, activatePmrUpwind, deactivatePmrSucv, externalCoupling);
         }
-        else if( (y_eqsys = expect_map(y_system, "MeshDisplacement", true)) ) {
+        else if( expect_map(y_system, "MeshDisplacement", true) ) {
+	  y_eqsys =  expect_map(y_system, "MeshDisplacement", true) ;
           bool activateMass = false;
           bool deformWrtModelCoords = false;
-          get_if_present_no_default(*y_eqsys, "activate_mass", activateMass);
-          get_if_present_no_default(*y_eqsys, "deform_wrt_model_coordinates", deformWrtModelCoords);
+          get_if_present_no_default(y_eqsys, "activate_mass", activateMass);
+          get_if_present_no_default(y_eqsys, "deform_wrt_model_coordinates", deformWrtModelCoords);
           if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = MeshDisplacement " << std::endl;
           eqSys = new MeshDisplacementEquationSystem(*this, activateMass, deformWrtModelCoords);
         }
@@ -163,7 +172,7 @@ void EquationSystems::load(const YAML::Node & y_node)
         }
         
         // load; particular equation system push back to vector is controled by the constructor
-        eqSys->load(*y_eqsys);
+        eqSys->load(y_eqsys);
       }
     }
   }

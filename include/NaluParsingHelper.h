@@ -12,8 +12,6 @@
 // yaml for parsing..
 #include <yaml-cpp/yaml.h>
 
-#include <boost/lexical_cast.hpp>
-
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -32,23 +30,23 @@ public:
     switch (type)
       {
       case YAML::NodeType::Scalar:
-        node >> out;
+	out = node.as<std::string>();
         emout << out;
         break;
       case YAML::NodeType::Sequence:
         emout << YAML::BeginSeq;
         for (unsigned int i = 0; i < node.size(); ++i) {
-          const YAML::Node & subnode = node[i];
+          const YAML::Node subnode = node[i] ;
           emit(emout, subnode);
         }
         emout << YAML::EndSeq;
         break;
       case YAML::NodeType::Map:
         emout << YAML::BeginMap ;
-        for (YAML::Iterator i = node.begin(); i != node.end(); ++i) {
-          const YAML::Node & key   = i.first();
-          const YAML::Node & value = i.second();
-          key >> out;
+        for (YAML::const_iterator i = node.begin(); i != node.end(); ++i) {
+          const YAML::Node key   = i->first;
+          const YAML::Node value = i->second;
+          out = key.as<std::string>() ;
           emout << YAML::Key << out;
           emout << YAML::Value;
           emit(emout, value);
@@ -74,9 +72,10 @@ public:
   static std::string line_info(const YAML::Node & node) {
     std::ostringstream sout;
     sout << "(pos,line,column) = ("
-         << node.GetMark().pos << ", "
-         << node.GetMark().line << ", "
-         << node.GetMark().column << ")";
+	 << node.Mark().pos << ", "
+	 << node.Mark().line << ", "
+	 << node.Mark().column << ")" ;
+    //	 << "Unknown for now" ;
     return sout.str();
   }
 
@@ -98,7 +97,7 @@ public:
     switch (type)
       {
       case YAML::NodeType::Scalar:
-        node >> out;
+        out = node.as<std::string>();
         sout << indent << "Scalar: " << out << endl;
         break;
       case YAML::NodeType::Sequence:
@@ -111,10 +110,10 @@ public:
         break;
       case YAML::NodeType::Map:
         sout << indent << "Map:" << endl;
-        for (YAML::Iterator i = node.begin(); i != node.end(); ++i) {
-          const YAML::Node & key   = i.first();
-          const YAML::Node & value = i.second();
-          key >> out;
+        for (YAML::const_iterator i = node.begin(); i != node.end(); ++i) {
+          const YAML::Node key   = i->first;
+          const YAML::Node value = i->second;
+          out = key.as<std::string>();
           sout << indent << "Key: " << out << endl;
           sout << indent << "Value:" << endl;
           traverse(sout, value, depth + 1);
@@ -130,13 +129,12 @@ public:
   }
 
   /// returns a vector of nodes that match the given key (depth first traversal)
-  static void find_nodes_given_key(const std::string& key, const YAML::Node &node, std::vector<const YAML::Node *>& result)
+  static void find_nodes_given_key(const std::string& key, const YAML::Node &node, std::vector<const YAML::Node *> & result)
   {
     // recursive depth first
     YAML::NodeType::value type = node.Type();
     if (type != YAML::NodeType::Scalar && type != YAML::NodeType::Null) {
-      const YAML::Node *value = node.FindValue(key);
-      if (value)
+      if (node[key])
         result.push_back(&node);
     }
 
@@ -150,9 +148,9 @@ public:
       }
       break;
     case YAML::NodeType::Map:
-      for (YAML::Iterator i = node.begin(); i != node.end(); ++i) {
+      for (YAML::const_iterator i = node.begin(); i != node.end(); ++i) {
         //const YAML::Node & key1   = i.first();
-        const YAML::Node & value = i.second();
+        const YAML::Node value = i->second;
         find_nodes_given_key(key, value, result);
       }
       break;

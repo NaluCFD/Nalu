@@ -11,6 +11,8 @@
 #include <stk_mesh/base/SkinBoundary.hpp>
 #include <stk_topology/topology.hpp>
 
+#include "UnitTestUtils.h"
+
 #include <algorithm>
 #include <string>
 #include <array>
@@ -21,13 +23,18 @@ void fill_mesh_1_elem_per_proc_hex8(stk::mesh::BulkData& bulk)
 {
     int nprocs = bulk.parallel_size();
     std::string meshSpec = "generated:1x1x"+std::to_string(nprocs);
+    fill_hex8_mesh(meshSpec, bulk);
+}
 
+void fill_hex8_mesh(const std::string& meshSpec, stk::mesh::BulkData& bulk)
+{
     stk::io::StkMeshIoBroker io(bulk.parallel());
     io.set_bulk_data(bulk);
     io.add_mesh_database(meshSpec, stk::io::READ_MESH);
     io.create_input_mesh();
     io.populate_bulk_data();
 }
+
 void create_one_reference_hex8_element(stk::mesh::BulkData& bulk)
 {
   // Create one -1/2:1/2 reference element for the hex8 topology

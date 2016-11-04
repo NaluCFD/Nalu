@@ -102,32 +102,32 @@ SolutionOptions::load(const YAML::Node & y_node)
   const bool optional=true;
   const bool required=!optional;
 
-  const YAML::Node *y_solution_options = expect_map(y_node,"solution_options", optional);
+  const YAML::Node y_solution_options = expect_map(y_node,"solution_options", optional);
   if(y_solution_options)
   {
-    get_required(*y_solution_options, "name", name_);
-    get_if_present(*y_solution_options,
+    get_required(y_solution_options, "name", name_);
+    get_if_present(y_solution_options,
                    "nearest_face_entrainment",
                    nearestFaceEntrain_, nearestFaceEntrain_);
 
     // divU factor for stress
-    get_if_present(*y_solution_options, "divU_stress_scaling", includeDivU_, includeDivU_);
+    get_if_present(y_solution_options, "divU_stress_scaling", includeDivU_, includeDivU_);
 
     // mdot interpolation procedure 
-    get_if_present(*y_solution_options, "interp_rhou_together_for_mdot", mdotInterpRhoUTogether_, mdotInterpRhoUTogether_);
+    get_if_present(y_solution_options, "interp_rhou_together_for_mdot", mdotInterpRhoUTogether_, mdotInterpRhoUTogether_);
 
     // extrustion correction scaling
-    get_if_present(*y_solution_options, 
+    get_if_present(y_solution_options, 
                    "extrusion_correction_factor", 
                    extrusionCorrectionFac_, extrusionCorrectionFac_);
     
     // external mesh motion expected
-    get_if_present(*y_solution_options, "externally_provided_mesh_deformation", externalMeshDeformation_, externalMeshDeformation_);
+    get_if_present(y_solution_options, "externally_provided_mesh_deformation", externalMeshDeformation_, externalMeshDeformation_);
 
     // shifted CVFEM pressure poisson
-    get_if_present(*y_solution_options, "shift_cvfem_mdot", cvfemShiftMdot_, cvfemShiftMdot_);
-    get_if_present(*y_solution_options, "shift_cvfem_poisson", cvfemShiftPoisson_, cvfemShiftPoisson_);
-    get_if_present(*y_solution_options, "reduced_sens_cvfem_poisson", cvfemReducedSensPoisson_, cvfemReducedSensPoisson_);
+    get_if_present(y_solution_options, "shift_cvfem_mdot", cvfemShiftMdot_, cvfemShiftMdot_);
+    get_if_present(y_solution_options, "shift_cvfem_poisson", cvfemShiftPoisson_, cvfemShiftPoisson_);
+    get_if_present(y_solution_options, "reduced_sens_cvfem_poisson", cvfemReducedSensPoisson_, cvfemReducedSensPoisson_);
     if ( cvfemShiftMdot_ )
       NaluEnv::self().naluOutputP0() << "Shifted CVFEM mass flow rate" << std::endl;
     if ( cvfemShiftPoisson_ )
@@ -144,18 +144,18 @@ SolutionOptions::load(const YAML::Node & y_node)
     }
 
     // check for consolidated solver alg (AssembleSolver)
-    get_if_present(*y_solution_options, "use_consolidated_solver_algorithm", useConsolidatedSolverAlg_, useConsolidatedSolverAlg_);
+    get_if_present(y_solution_options, "use_consolidated_solver_algorithm", useConsolidatedSolverAlg_, useConsolidatedSolverAlg_);
 
     // eigenvalue purturbation; over all dofs...
-    get_if_present(*y_solution_options, "eigenvalue_perturbation", eigenvaluePerturb_);
-    get_if_present(*y_solution_options, "eigenvalue_perturbation_delta", eigenvaluePerturbDelta_);
-    get_if_present(*y_solution_options, "eigenvalue_perturbation_bias_towards", eigenvaluePerturbBiasTowards_);
-    get_if_present(*y_solution_options, "eigenvalue_perturbation_turbulent_ke", eigenvaluePerturbTurbKe_);
+    get_if_present(y_solution_options, "eigenvalue_perturbation", eigenvaluePerturb_);
+    get_if_present(y_solution_options, "eigenvalue_perturbation_delta", eigenvaluePerturbDelta_);
+    get_if_present(y_solution_options, "eigenvalue_perturbation_bias_towards", eigenvaluePerturbBiasTowards_);
+    get_if_present(y_solution_options, "eigenvalue_perturbation_turbulent_ke", eigenvaluePerturbTurbKe_);
     
     // extract turbulence model; would be nice if we could parse an enum..
     std::string specifiedTurbModel;
     std::string defaultTurbModel = "laminar";
-    get_if_present(*y_solution_options,
+    get_if_present(y_solution_options,
         "turbulence_model", specifiedTurbModel, defaultTurbModel);
     for ( int k=0; k < TurbulenceModel_END; ++k ) {
       if ( specifiedTurbModel == TurbulenceModelNames[k] ) {
@@ -170,73 +170,73 @@ SolutionOptions::load(const YAML::Node & y_node)
     initialize_turbulence_constants();
 
     // extract possible copy from input fields restoration time
-    get_if_present(*y_solution_options, "input_variables_from_file_restoration_time",
+    get_if_present(y_solution_options, "input_variables_from_file_restoration_time",
       inputVariablesRestorationTime_, inputVariablesRestorationTime_);
 
     // choice of interpolation or snapping to closest in the data base
-    get_if_present(*y_solution_options, "input_variables_interpolate_in_time",
+    get_if_present(y_solution_options, "input_variables_interpolate_in_time",
       inputVariablesInterpolateInTime_, inputVariablesInterpolateInTime_);
 
     // first set of options; hybrid, source, etc.
-    const YAML::Node *y_options = expect_sequence(*y_solution_options, "options", required);
+    const YAML::Node y_options = expect_sequence(y_solution_options, "options", required);
     if (y_options)
     {
-      for (size_t ioption = 0; ioption < y_options->size(); ++ioption)
+      for (size_t ioption = 0; ioption < y_options.size(); ++ioption)
       {
-        const YAML::Node & y_option = (*y_options)[ioption];
+        const YAML::Node y_option = y_options[ioption] ;
         if (expect_map(y_option, "hybrid_factor", optional)) {
-          y_option["hybrid_factor"] >> hybridMap_;
+          y_option["hybrid_factor"] >> hybridMap_ ;
         }
         else if (expect_map(y_option, "alpha", optional)) {
-          y_option["alpha"] >> alphaMap_;
+          y_option["alpha"] >> alphaMap_ ;
         }
         else if (expect_map(y_option, "alpha_upw", optional)) {
           y_option["alpha_upw"] >> alphaUpwMap_;
         }
         else if (expect_map(y_option, "upw_factor", optional)) {
-          y_option["upw_factor"] >> upwMap_;
+          y_option["upw_factor"] >> upwMap_ ;
         }
         else if (expect_map(y_option, "limiter", optional)) {
-          y_option["limiter"] >> limiterMap_;
+          y_option["limiter"] >> limiterMap_ ;
         }
         else if (expect_map( y_option, "laminar_schmidt", optional)) {
-          y_option["laminar_schmidt"] >> lamScMap_;
+          y_option["laminar_schmidt"] >> lamScMap_ ;
         }
         else if (expect_map( y_option, "laminar_prandtl", optional)) {
-          y_option["laminar_prandtl"] >> lamPrMap_;
+          y_option["laminar_prandtl"] >> lamPrMap_ ;
         }
         else if (expect_map( y_option, "turbulent_schmidt", optional)) {
-          y_option["turbulent_schmidt"] >> turbScMap_;
+          y_option["turbulent_schmidt"] >> turbScMap_ ;
         }
         else if (expect_map( y_option, "turbulent_prandtl", optional)) {
-          y_option["turbulent_prandtl"] >> turbPrMap_;
+          y_option["turbulent_prandtl"] >> turbPrMap_ ;
         }
         else if (expect_map( y_option, "source_terms", optional)) {
-          const YAML::Node& ySrc = *y_option.FindValue("source_terms");
-          ySrc >> srcTermsMap_;
+          const YAML::Node ySrc = y_option["source_terms"];
+          ySrc >> srcTermsMap_ ;
         }
         else if (expect_map( y_option, "element_source_terms", optional)) {
-          const YAML::Node& ySrc = *y_option.FindValue("element_source_terms");
-          ySrc >> elemSrcTermsMap_;
+          const YAML::Node ySrc = y_option["element_source_terms"];
+          ySrc >> elemSrcTermsMap_ ;
         }
         else if (expect_map( y_option, "source_term_parameters", optional)) {
-            y_option["source_term_parameters"] >> srcTermParamMap_;
+	  y_option["source_term_parameters"] >> srcTermParamMap_ ;
         }
         else if (expect_map( y_option, "element_source_term_parameters", optional)) {
-          y_option["element_source_term_parameters"] >> elemSrcTermParamMap_;
+          y_option["element_source_term_parameters"] >> elemSrcTermParamMap_ ;
         }
         else if (expect_map( y_option, "projected_nodal_gradient", optional)) {
-          y_option["projected_nodal_gradient"] >> nodalGradMap_;
+          y_option["projected_nodal_gradient"] >> nodalGradMap_ ;
         }
         else if (expect_map( y_option, "noc_correction", optional)) {
-          y_option["noc_correction"] >> nocMap_;
+          y_option["noc_correction"] >> nocMap_ ;
         }
         else if (expect_map( y_option, "input_variables_from_file", optional)) {
-          y_option["input_variables_from_file"] >> inputVarFromFileMap_;
+          y_option["input_variables_from_file"] >> inputVarFromFileMap_ ;
         }
         else if (expect_map( y_option, "turbulence_model_constants", optional)) {
           std::map<std::string, double> turbConstMap;
-          y_option["turbulence_model_constants"] >> turbConstMap;
+          y_option["turbulence_model_constants"] >> turbConstMap ;
           // iterate the parsed map
           std::map<std::string, double>::iterator it;
           for ( it = turbConstMap.begin(); it!= turbConstMap.end(); ++it ) {
@@ -263,7 +263,7 @@ SolutionOptions::load(const YAML::Node & y_node)
           }
         }
         else if (expect_map( y_option, "user_constants", optional)) {
-          const YAML::Node& y_user_constants = *y_option.FindValue("user_constants");
+          const YAML::Node y_user_constants = y_option["user_constants"];
           get_if_present(y_user_constants, "reference_density",  referenceDensity_, referenceDensity_);
           get_if_present(y_user_constants, "reference_temperature",  referenceTemperature_, referenceTemperature_);
           get_if_present(y_user_constants, "thermal_expansion_coefficient",  thermalExpansionCoeff_, thermalExpansionCoeff_);
@@ -272,20 +272,20 @@ SolutionOptions::load(const YAML::Node & y_node)
             const int gravSize = y_user_constants["gravity"].size();
             gravity_.resize(gravSize);
             for (int i = 0; i < gravSize; ++i ) {
-              y_user_constants["gravity"][i] >> gravity_[i];
+              gravity_[i] = y_user_constants["gravity"][i].as<double>() ;
             }
           }
         }
         else if (expect_map( y_option, "non_conformal", optional)) {
-          const YAML::Node& y_nc = *y_option.FindValue("non_conformal");
+          const YAML::Node y_nc = y_option["non_conformal"];
           get_if_present(y_nc, "gauss_labatto_quadrature",  ncAlgGaussLabatto_, ncAlgGaussLabatto_);
           get_if_present(y_nc, "upwind_advection",  ncAlgUpwindAdvection_, ncAlgUpwindAdvection_);
           get_if_present(y_nc, "include_pstab",  ncAlgIncludePstab_, ncAlgIncludePstab_);
           get_if_present(y_nc, "detailed_output",  ncAlgDetailedOutput_, ncAlgDetailedOutput_);
           get_if_present(y_nc, "current_normal",  ncAlgCurrentNormal_, ncAlgCurrentNormal_);
-          if (y_nc.FindValue("algorithm_type" )  ) {
+          if ( y_nc["algorithm_type"] ) {
             std::string algTypeString = "none";
-            y_nc["algorithm_type"] >> algTypeString;
+            algTypeString = y_nc["algorithm_type"].as<std::string>() ;
             // find the enum and set the value
             bool foundIt = false;
             for ( int k=0; k < NC_ALG_TYPE_END; ++k ) {
@@ -301,16 +301,16 @@ SolutionOptions::load(const YAML::Node & y_node)
           }
         }
         else if (expect_map( y_option, "peclet_function_form", optional)) {
-          y_option["peclet_function_form"] >> pecletFunctionalFormMap_;
+          y_option["peclet_function_form"] >> pecletFunctionalFormMap_ ;
         }
         else if (expect_map( y_option, "peclet_function_tanh_transition", optional)) {
-          y_option["peclet_function_tanh_transition"] >> pecletFunctionTanhTransMap_;
+          y_option["peclet_function_tanh_transition"] >> pecletFunctionTanhTransMap_ ;
         }
         else if (expect_map( y_option, "peclet_function_tanh_width", optional)) {
-          y_option["peclet_function_tanh_width"] >> pecletFunctionTanhWidthMap_;
+          y_option["peclet_function_tanh_width"] >> pecletFunctionTanhWidthMap_ ;
         }
         else if (expect_map( y_option, "consistent_mass_matrix_png", optional)) {
-          y_option["consistent_mass_matrix_png"] >> consistentMassMatrixPngMap_;
+          y_option["consistent_mass_matrix_png"] >> consistentMassMatrixPngMap_ ;
         }
         else {
           if (!NaluEnv::self().parallel_rank())
@@ -325,7 +325,7 @@ SolutionOptions::load(const YAML::Node & y_node)
     }
 
     // second set of options: mesh motion... this means that the Realm will expect to provide rotation-based motion
-    const YAML::Node *y_mesh_motion = expect_sequence(*y_solution_options, "mesh_motion", optional);
+    const YAML::Node y_mesh_motion = expect_sequence(y_solution_options, "mesh_motion", optional);
     if (y_mesh_motion)
     {
       // mesh motion is active
@@ -336,8 +336,8 @@ SolutionOptions::load(const YAML::Node & y_node)
         NaluEnv::self().naluOutputP0() << "mesh motion set to external (will prevail over mesh motion specification)!" << std::endl;
       }
       else {        
-        for (size_t ioption = 0; ioption < y_mesh_motion->size(); ++ioption) {
-          const YAML::Node &y_option = (*y_mesh_motion)[ioption];
+        for (size_t ioption = 0; ioption < y_mesh_motion.size(); ++ioption) {
+          const YAML::Node &y_option = y_mesh_motion[ioption];
           
           // extract mesh motion name and omega value
           std::string motionName = "na";
@@ -350,12 +350,12 @@ SolutionOptions::load(const YAML::Node & y_node)
           const YAML::Node &targets = y_option["target_name"];
           if (targets.Type() == YAML::NodeType::Scalar) {
             meshMotionBlock.resize(1);
-            targets >> meshMotionBlock[0];
+            meshMotionBlock[0] = targets.as<std::string>() ;
           }
           else {
             meshMotionBlock.resize(targets.size());
             for (size_t i=0; i < targets.size(); ++i) {
-              targets[i] >> meshMotionBlock[i];
+              meshMotionBlock[i] = targets[i].as<std::string>() ;
             }
           }
           std::pair<std::vector<std::string>, double > thePair;
@@ -366,9 +366,9 @@ SolutionOptions::load(const YAML::Node & y_node)
           
           // check for centroids; provide default
           Coordinates cCoords;
-          const YAML::Node *coordsNode = y_option.FindValue("centroid_coordinates");
+          const YAML::Node coordsNode = y_option["centroid_coordinates"];
           if ( coordsNode )
-            *coordsNode >> cCoords;
+            cCoords = coordsNode.as<Coordinates>() ;
           meshMotionCentroidMap_[motionName] = cCoords;
         }
       }
@@ -376,34 +376,34 @@ SolutionOptions::load(const YAML::Node & y_node)
 
     // uniform refinement options
     {
-      const YAML::Node *y_uniform = expect_map(*y_solution_options, "uniform_refinement", optional);
+      const YAML::Node y_uniform = expect_map(y_solution_options, "uniform_refinement", optional);
       if (y_uniform) {
 
         NaluEnv::self().naluOutputP0() << "Uniform refinement option found." << std::endl;
 
-        const YAML::Node *y_refine_at = expect_sequence(*y_uniform, "refine_at", required);
+        const YAML::Node y_refine_at = expect_sequence(y_uniform, "refine_at", required);
         if (y_refine_at) {
           activateUniformRefinement_ = true;
           std::vector<int> mvec;
-          *y_refine_at >> mvec;
+          mvec = y_refine_at.as<std::vector<int> >() ;
           for (unsigned i=0; i < mvec.size(); ++i) {
             NaluEnv::self().naluOutputP0() << "Uniform Refinement: refine_at[" << i << "]= " << mvec[i] << std::endl;
 
             if (i > 0 && mvec[i-1] > mvec[i])
-              throw std::runtime_error("refine_at option error: "+ NaluParsingHelper::info(*y_refine_at));
+              throw std::runtime_error("refine_at option error: "+ NaluParsingHelper::info(y_refine_at));
           }
           refineAt_ = mvec;
         }
         else {
-          throw std::runtime_error("refine_at option missing: "+ NaluParsingHelper::info(*y_uniform));
+          throw std::runtime_error("refine_at option missing: "+ NaluParsingHelper::info(y_uniform));
         }
-        get_if_present(*y_uniform, "save_mesh", uniformRefineSaveAfter_, uniformRefineSaveAfter_);
+        get_if_present(y_uniform, "save_mesh", uniformRefineSaveAfter_, uniformRefineSaveAfter_);
         NaluEnv::self().naluOutputP0() << "Uniform Refinement: save_mesh= " << uniformRefineSaveAfter_ << std::endl;
       }
     }
 
     // adaptivity options
-    const YAML::Node *y_adaptivity = expect_map(*y_solution_options, "adaptivity", optional);
+    const YAML::Node y_adaptivity = expect_map(y_solution_options, "adaptivity", optional);
     if (y_adaptivity) {
 
 #if defined (NALU_USES_PERCEPT)
@@ -412,18 +412,18 @@ SolutionOptions::load(const YAML::Node & y_node)
       throw std::runtime_error("Adaptivity not supported in NaluV1.0:");
 #endif
       
-      get_if_present(*y_adaptivity, "frequency", adaptivityFrequency_, adaptivityFrequency_);
-      get_if_present(*y_adaptivity, "activate", activateAdaptivity_, activateAdaptivity_);
+      get_if_present(y_adaptivity, "frequency", adaptivityFrequency_, adaptivityFrequency_);
+      get_if_present(y_adaptivity, "activate", activateAdaptivity_, activateAdaptivity_);
 
       if (activateAdaptivity_ && adaptivityFrequency_<1) {
-	throw std::runtime_error("When adaptivity is active, the frequency must by greater than 0:" + NaluParsingHelper::info(*y_adaptivity));
+	throw std::runtime_error("When adaptivity is active, the frequency must by greater than 0:" + NaluParsingHelper::info(y_adaptivity));
       }
 
-      const YAML::Node *y_error_indicator = expect_map(*y_adaptivity, "error_indicator", required);
+      const YAML::Node y_error_indicator = expect_map(y_adaptivity, "error_indicator", required);
       if (y_error_indicator)
       {
         std::string type = "";
-        get_if_present(*y_error_indicator, "type", type, type);
+        get_if_present(y_error_indicator, "type", type, type);
         if (type == "pstab")
           errorIndicatorType_ = EIT_PSTAB;
         else if (type == "limiter")
@@ -454,24 +454,24 @@ SolutionOptions::load(const YAML::Node & y_node)
                       << " limit: " << (errorIndicatorType_ & EIT_LIMITER)
                       << " freq : " << adaptivityFrequency_ << std::endl;
 
-      const YAML::Node *y_adapter = expect_map(*y_adaptivity, "adapter", optional);
+      const YAML::Node y_adapter = expect_map(y_adaptivity, "adapter", optional);
       bool marker_optional = true;
       if (y_adapter) {
-        get_if_present(*y_adapter, "activate", useAdapter_, useAdapter_);
-        get_if_present(*y_adapter, "max_refinement_level", maxRefinementLevel_, maxRefinementLevel_);
-        get_if_present(*y_adapter, "extra_output", adapterExtraOutput_, adapterExtraOutput_);
+        get_if_present(y_adapter, "activate", useAdapter_, useAdapter_);
+        get_if_present(y_adapter, "max_refinement_level", maxRefinementLevel_, maxRefinementLevel_);
+        get_if_present(y_adapter, "extra_output", adapterExtraOutput_, adapterExtraOutput_);
         marker_optional = false;
       }
 
-      const YAML::Node *y_marker = expect_map(*y_adaptivity, "marker", marker_optional);
+      const YAML::Node y_marker = expect_map(y_adaptivity, "marker", marker_optional);
       if (y_marker) {
         bool defaultUseMarker = true;
-        get_if_present(*y_marker, "activate", useMarker_, defaultUseMarker);
-        get_if_present(*y_marker, "refine_fraction", refineFraction_, refineFraction_);
-        get_if_present(*y_marker, "unrefine_fraction", unrefineFraction_, unrefineFraction_);
-        get_if_present(*y_marker, "max_number_elements_fraction", maxRefinementNumberOfElementsFraction_, maxRefinementNumberOfElementsFraction_);
-        get_if_present(*y_marker, "physical_error_criterion", physicalErrIndCriterion_, physicalErrIndCriterion_);
-        get_if_present(*y_marker, "physical_error_criterion_unrefine_multiplier", physicalErrIndUnrefCriterionMultipler_, physicalErrIndUnrefCriterionMultipler_);
+        get_if_present(y_marker, "activate", useMarker_, defaultUseMarker);
+        get_if_present(y_marker, "refine_fraction", refineFraction_, refineFraction_);
+        get_if_present(y_marker, "unrefine_fraction", unrefineFraction_, unrefineFraction_);
+        get_if_present(y_marker, "max_number_elements_fraction", maxRefinementNumberOfElementsFraction_, maxRefinementNumberOfElementsFraction_);
+        get_if_present(y_marker, "physical_error_criterion", physicalErrIndCriterion_, physicalErrIndCriterion_);
+        get_if_present(y_marker, "physical_error_criterion_unrefine_multiplier", physicalErrIndUnrefCriterionMultipler_, physicalErrIndUnrefCriterionMultipler_);
       }
 
 

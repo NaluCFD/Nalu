@@ -50,13 +50,13 @@ PostProcessingInfo::load(
 
   // post processing on?
   const bool optional = true;
-  const YAML::Node *y_pp = expect_sequence(y_node, "post_processing", optional);
+  const YAML::Node y_pp = expect_sequence(y_node, "post_processing", optional);
   if (y_pp) {
 
-    for (size_t itype = 0; itype < y_pp->size(); ++itype) {
+    for (size_t itype = 0; itype < y_pp.size(); ++itype) {
 
       // extract the particular type
-      const YAML::Node &y_type = (*y_pp)[itype];
+      const YAML::Node y_type = y_pp[itype] ;
   
       // create the data
       PostProcessingData *ppData = new PostProcessingData();      
@@ -65,51 +65,51 @@ PostProcessingInfo::load(
       ppDataVec_.push_back(ppData);
 
       // save the type; surface/node/volume
-      y_type["type"] >> ppData->type_;
+      ppData->type_ = y_type["type"].as<std::string>() ;
       
       // physics; traction, etc.
-      if ( y_type.FindValue("physics") )
-        y_type["physics"] >> ppData->physics_;
+      if ( y_type["physics"] )
+        ppData->physics_ = y_type["physics"].as<std::string>() ;
       else
         throw std::runtime_error("parser error PostProcessings::load: no physics type specified");
       
       // outfile file
-      if ( y_type.FindValue("output_file_name") )
-        y_type["output_file_name"] >> ppData->outputFileName_;
+      if ( y_type["output_file_name"] )
+        ppData->outputFileName_ = y_type["output_file_name"].as<std::string>() ;
       else
         throw std::runtime_error("parser error PostProcessings::load: no output file specified");
       
       // frequency
-      if ( y_type.FindValue("frequency"))
-        y_type["frequency"] >> ppData->frequency_;
+      if ( y_type["frequency"])
+        ppData->frequency_ = y_type["frequency"].as<int>() ;
 
       // misc parameters
-      if ( y_type.FindValue("parameters") ) {
+      if ( y_type["parameters"] ) {
 
         // extract the value(s)
-        const YAML::Node & targets = y_type["parameters"];
+        const YAML::Node targets = y_type["parameters"];
         if (targets.Type() == YAML::NodeType::Scalar) {
           ppData->parameters_.resize(1);
-          targets >> ppData->parameters_[0];
+          ppData->parameters_[0] = targets.as<double>() ;
         }
         else {
           ppData->parameters_.resize(targets.size());
           for (size_t i=0; i < targets.size(); ++i) {
-            targets[i] >> ppData->parameters_[i];
+            ppData->parameters_[i] = targets[i].as<double>() ;
           }
         }
       }
       
       // extract the target(s)
-      const YAML::Node & targets = y_type["target_name"];
+      const YAML::Node targets = y_type["target_name"];
       if (targets.Type() == YAML::NodeType::Scalar) {
         ppData->targetNames_.resize(1);
-        targets >> ppData->targetNames_[0];
+        ppData->targetNames_[0] = targets.as<std::string>() ;
       }
       else {
         ppData->targetNames_.resize(targets.size());
-        for (size_t i=0; i < targets.size(); ++i) {
-          targets[i] >> ppData->targetNames_[i];
+	for (size_t i=0; i < targets.size(); ++i) {
+          ppData->targetNames_[i] = targets[i].as<std::string>() ;
         }
       }
     }
