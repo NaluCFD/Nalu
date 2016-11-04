@@ -170,7 +170,6 @@ Transfer::load(const YAML::Node & node)
   if (y_vars) {
     transferVariablesSpecified_ = true;
     std::string fromName, toName;
-    size_t varSize = y_vars.size();
     for (size_t ioption = 0; ioption < y_vars.size(); ioption++) {
       const YAML::Node y_var = y_vars[ioption] ;
       size_t varPairSize = y_var.size();
