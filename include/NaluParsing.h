@@ -19,8 +19,6 @@
 // yaml for parsing..
 #include <yaml-cpp/yaml.h>
 
-#include <boost/lexical_cast.hpp>
-
 #include <iostream>
 #include <fstream>
 #include <string>

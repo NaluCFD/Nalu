@@ -114,9 +114,6 @@
 #include <NaluParsing.h>
 #include <NaluParsingHelper.h>
 
-// boost
-#include <boost/lexical_cast.hpp>
-
 // basic c++
 #include <map>
 #include <cmath>
