@@ -1,7 +1,7 @@
 #!/bin/bash
 
 nalu_build_dir=/home/mhenryde/nalu-build-intel
-trilinos_install_dir=$nalu_build_dir/trilinos-release-intel
+trilinos_install_dir=/scratch/mhenryde/build/trilinos-release-intel
 yaml_install_dir=$nalu_build_dir
 
 EXTRA_ARGS=$@
