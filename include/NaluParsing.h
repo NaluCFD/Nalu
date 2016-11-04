@@ -19,8 +19,6 @@
 // yaml for parsing..
 #include <yaml-cpp/yaml.h>
 
-#include <boost/lexical_cast.hpp>
-
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -398,100 +396,220 @@ struct UserFunctionInitialConditionData : public InitialCondition {
   std::map<std::string, std::vector<double> > functionParams_;
 };
 
-// now the extraction operators for these types
-void operator >> (const YAML::Node& node, Velocity& v);
-void operator >> (const YAML::Node& node, Coordinates& x);
-void operator >> (const YAML::Node& node, Pressure& p);
-void operator >> (const YAML::Node& node, TurbKinEnergy& tke);
-void operator >> (const YAML::Node& node, SpecDissRate& sdr);
-void operator >> (const YAML::Node& node, Temperature& t);
-void operator >> (const YAML::Node& node, MixtureFraction& z);
-void operator >> (const YAML::Node& node, MassFraction& yk);
-void operator >> (const YAML::Node& node, std::map<std::string,double>& mapName);
-void operator >> (const YAML::Node& node, std::map<std::string,std::string>& mapName);
-void operator >> (const YAML::Node& node, std::map<std::string,std::vector<std::string> >& mapName);
-
-void operator >> (const YAML::Node& node, WallUserData& wallData);
-void operator >> (const YAML::Node& node, InflowUserData& inflowData);
-void operator >> (const YAML::Node& node, OpenUserData& openData);
-void operator >> (const YAML::Node& node, OversetUserData& bcData);
-void operator >> (const YAML::Node& node, ContactUserData& bcData);
-void operator >> (const YAML::Node& node, NonConformalUserData& bcData);
-void operator >> (const YAML::Node& node, SymmetryUserData& bcData);
-void operator >> (const YAML::Node& node, PeriodicUserData& bcData);
-void operator >> (const YAML::Node& node, BoundaryConditionOptions& bcOptions);
-void operator >> (const YAML::Node& node, WallBoundaryConditionData& wallBC);
-void operator >> (const YAML::Node& node, InflowBoundaryConditionData& inflowBC);
-void operator >> (const YAML::Node& node, OpenBoundaryConditionData& openBC);
-void operator >> (const YAML::Node& node, OversetBoundaryConditionData& oversetBC);
-void operator >> (const YAML::Node& node, ContactBoundaryConditionData& contactBC);
-void operator >> (const YAML::Node& node, NonConformalBoundaryConditionData& nonConformalBC);
-void operator >> (const YAML::Node& node, SymmetryBoundaryConditionData& symmetryBC);
-void operator >> (const YAML::Node& node, PeriodicBoundaryConditionData& periodicBC);
-void operator >> (const YAML::Node& node, MeshInput& meshInput);
-void operator >> (const YAML::Node& node, ConstantInitialConditionData& constIC);
-void operator >> (const YAML::Node& node, UserFunctionInitialConditionData& fcnIC);
-
 /// Set @param result if the @param key is present in the @param node, else set it to the given default value
 template<typename T>
 void get_if_present(const YAML::Node & node, const std::string& key, T& result, const T& default_if_not_present = T())
 {
-  const YAML::Node *value = node.FindValue(key);
-  if (value)
-    *value >> result;
-  else
+  if (node[key]) {
+    const YAML::Node value = node[key];
+    result = value.as<T>();
+  }
+  else {
     result = default_if_not_present;
+  }
 }
 
 /// this version doesn't change @param result unless the @param key is present in the @param node
 template<typename T>
 void get_if_present_no_default(const YAML::Node & node, const std::string& key, T& result)
 {
-  const YAML::Node *value = node.FindValue(key);
-  if (value)
-    *value >> result;
+  if (node[key]) {
+    const YAML::Node value = node[key];
+    result = value.as<T>();
+  }
 }
 
 /// this version requires the @param key to be present
 template<typename T>
 void get_required(const YAML::Node & node, const std::string& key, T& result)
 {
-  const YAML::Node *value = node.FindValue(key);
-  if (value)
-    *value >> result;
-  else
-    {
-      if (!NaluEnv::self().parallel_rank()) {
-        std::ostringstream err_msg;
-        err_msg << "\n\nError: parsing missing required key: " << key 
-                  << " at " << NaluParsingHelper::line_info(node)
-                  << " for node= " << std::endl;
-        NaluParsingHelper::emit(err_msg, node);
-        std::cout << err_msg.str() << std::endl;
-      }
-      throw std::runtime_error("Error: parsing missing required key: " + key);
+  if (node[key]) {
+    const YAML::Node value = node[key];
+    result = value.as<T>();
+  }
+  else    {
+    if (!NaluEnv::self().parallel_rank()) {
+      std::ostringstream err_msg;
+      err_msg << "\n\nError: parsing missing required key: " << key 
+	      << " at " << NaluParsingHelper::line_info(node)
+	      << " for node= " << std::endl;
+      NaluParsingHelper::emit(err_msg, node);
+      std::cout << err_msg.str() << std::endl;
     }
+    throw std::runtime_error("Error: parsing missing required key: " + key);
+  }
 }
 
 /// these can be used to check and ensure a type of yaml node is as expected
-const YAML::Node *
+const YAML::Node 
 expect_type(const YAML::Node& node, const std::string& key, YAML::NodeType::value type, bool optional=false);
 
-const YAML::Node *
+const YAML::Node 
 expect_null(const YAML::Node& node, const std::string& key, bool optional=false);
 
-const YAML::Node *
+const YAML::Node 
 expect_scalar(const YAML::Node& node, const std::string& key, bool optional=false);
 
-const YAML::Node *
+const YAML::Node 
 expect_sequence(const YAML::Node& node, const std::string& key, bool optional=false);
 
-const YAML::Node *
+const YAML::Node 
 expect_map(const YAML::Node& node, const std::string& key, bool optional=false);
 
+void operator >> (const YAML::Node& node, WallBoundaryConditionData& rhs) ;
 
+void operator >> (const YAML::Node& node, InflowBoundaryConditionData& rhs) ;
+
+void operator >> (const YAML::Node& node, OpenBoundaryConditionData& rhs) ;
+
+void operator >> (const YAML::Node& node, OversetBoundaryConditionData& rhs) ;
+
+void operator >> (const YAML::Node& node, ContactBoundaryConditionData& rhs) ;
+
+void operator >> (const YAML::Node& node, SymmetryBoundaryConditionData& rhs) ;
+
+void operator >> (const YAML::Node& node, PeriodicBoundaryConditionData& rhs) ;
+
+void operator >> (const YAML::Node& node, NonConformalBoundaryConditionData& rhs) ;
+
+void operator >> (const YAML::Node& node, ConstantInitialConditionData& rhs) ;
+
+void operator >> (const YAML::Node& node, UserFunctionInitialConditionData& rhs) ;
+
+void operator >> (const YAML::Node& node, std::map<std::string,bool>& mapName);
+void operator >> (const YAML::Node& node, std::map<std::string,double>& mapName);
+void operator >> (const YAML::Node& node, std::map<std::string,std::string>& mapName);
+void operator >> (const YAML::Node& node, std::map<std::string,std::vector<std::string> >& mapName);
+void operator >> (const YAML::Node& node, std::map<std::string,std::vector<double> >& mapName);
 
 } // namespace nalu
 } // namespace Sierra
+
+namespace YAML {
+  
+template<> struct convert<sierra::nalu::Velocity> {
+  static bool decode(const Node& node, sierra::nalu::Velocity& rhs) ;
+};
+
+template<> struct convert<sierra::nalu::Coordinates> {
+  static bool decode(const Node& node, sierra::nalu::Coordinates& rhs) ;
+};
+
+template<> struct convert<sierra::nalu::Pressure> {
+  static bool decode(const Node& node, sierra::nalu::Pressure& rhs) ;
+};
+
+template<> struct convert<sierra::nalu::TurbKinEnergy> {
+  static bool decode(const Node& node, sierra::nalu::TurbKinEnergy& rhs) ;
+};
+
+template<> struct convert<sierra::nalu::SpecDissRate> {
+  static bool decode(const Node& node, sierra::nalu::SpecDissRate& rhs) ;
+};
+
+template<> struct convert<sierra::nalu::Temperature> {
+  static bool decode(const Node& node, sierra::nalu::Temperature& rhs) ;
+};
+
+template<> struct convert<sierra::nalu::MixtureFraction> {
+  static bool decode(const Node& node, sierra::nalu::MixtureFraction& rhs) ;
+};
+
+template<> struct convert<sierra::nalu::MassFraction> {
+  static bool decode(const Node& node, sierra::nalu::MassFraction& rhs) ;
+};
+
+template<> struct convert<sierra::nalu::Emissivity> {
+  static bool decode(const Node& node, sierra::nalu::Emissivity& rhs) ;
+};
+
+template<> struct convert<sierra::nalu::Irradiation> {
+  static bool decode(const Node& node, sierra::nalu::Irradiation& rhs) ;
+};
+
+template<> struct convert<sierra::nalu::Transmissivity> {
+  static bool decode(const Node& node, sierra::nalu::Transmissivity& rhs) ;
+};
+
+template<> struct convert<sierra::nalu::EnvironmentalT> {
+  static bool decode(const Node& node, sierra::nalu::EnvironmentalT& rhs) ;
+};
+
+template<> struct convert<sierra::nalu::ReferenceTemperature> {
+  static bool decode(const Node& node, sierra::nalu::ReferenceTemperature& rhs) ;
+};
+
+template<> struct convert<sierra::nalu::HeatTransferCoefficient> {
+  static bool decode(const Node& node, sierra::nalu::HeatTransferCoefficient& rhs) ;
+};
+
+template<> struct convert<sierra::nalu::RobinCouplingParameter> {
+  static bool decode(const Node& node, sierra::nalu::RobinCouplingParameter& rhs) ;
+};
+
+template<> struct convert<sierra::nalu::UserData> {
+  static bool decode(const Node& node, sierra::nalu::UserData& rhs) ;
+};
+
+template<> struct convert<sierra::nalu::RoughnessHeight> {
+ static bool decode(const Node& node, sierra::nalu::RoughnessHeight& z0) ;
+};
+
+template<> struct convert<sierra::nalu::NormalHeatFlux> {
+  static bool decode(const Node& node, sierra::nalu::NormalHeatFlux& rhs) ;
+};
+
+template<> struct convert<sierra::nalu::MasterSlave> {
+  static bool decode(const Node& node, sierra::nalu::MasterSlave& rhs) ;
+};
+
+template<> struct convert<sierra::nalu::WallUserData> {
+  static bool decode(const Node& node, sierra::nalu::WallUserData& rhs) ;
+};
+
+template<> struct convert<sierra::nalu::InflowUserData> {
+  static bool decode(const Node& node, sierra::nalu::InflowUserData& rhs) ;
+};
+
+template<> struct convert<sierra::nalu::OpenUserData> {
+  static bool decode(const Node& node, sierra::nalu::OpenUserData& rhs) ;
+};
+
+template<> struct convert<sierra::nalu::ContactUserData> {
+  static bool decode(const Node& node, sierra::nalu::ContactUserData& rhs) ;
+};
+
+template<> struct convert<sierra::nalu::OversetUserData> {
+  static bool decode(const Node& node, sierra::nalu::OversetUserData& rhs) ;
+};
+
+template<> struct convert<sierra::nalu::SymmetryUserData> {
+  static bool decode(const Node& node, sierra::nalu::SymmetryUserData& rhs) ;
+};
+
+template<> struct convert<sierra::nalu::PeriodicUserData> {
+  static bool decode(const Node& node, sierra::nalu::PeriodicUserData& rhs) ;
+};
+
+template<> struct convert<sierra::nalu::NonConformalUserData> {
+  static bool decode(const Node& node, sierra::nalu::NonConformalUserData& rhs) ;
+};
+
+
+template<> struct convert<sierra::nalu::BoundaryConditionOptions> {
+  static bool decode(const Node& node, sierra::nalu::BoundaryConditionOptions& rhs) ;
+};
+
+template<> struct convert<sierra::nalu::MeshInput> {
+  static bool decode(const Node& node, sierra::nalu::MeshInput& rhs) ;
+};
+
+
+template<> struct convert<std::map<std::string,std::vector<std::string> > > {
+    static bool decode(const Node& node, std::map<std::string,std::vector<std::string> >& t) ;
+  };
+
+}
+
 
 #endif
