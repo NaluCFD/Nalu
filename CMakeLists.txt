@@ -134,7 +134,5 @@ foreach(folder ${test_folders})
   get_filename_component(test_name ${folder} NAME)
   message("Found test ${test_name} ")
   add_test(NAME ${test_name}
-         COMMAND [ -f ${folder}/PASS ] )
+           COMMAND sh ${CMAKE_SOURCE_DIR}/build/test_voucher_exists.sh ${folder} )
 endforeach()
-
-
