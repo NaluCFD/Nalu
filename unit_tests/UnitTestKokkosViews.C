@@ -103,7 +103,7 @@ double quadratic(double a, const double* b, const double* H, const double* x)
               + x[1] * (H[3]*x[0] + H[4]*x[1] + H[5]*x[2])
               + x[2] * (H[6]*x[0] + H[7]*x[1] + H[8]*x[2]);
 
-  return (a + lin + quad);
+  return (a + lin + 0.5*quad);
 }
 
 double initialize_linear_scalar_field(
@@ -111,7 +111,7 @@ double initialize_linear_scalar_field(
   const VectorFieldType& coordField,
   const ScalarFieldType& qField)
 {
-  // q = a + b^T x + x^T H x
+  // q = a + b^T x + 1/2 x^T H x
 
   std::mt19937 rng;
   rng.seed(0); // fixed seed
@@ -132,7 +132,8 @@ double initialize_linear_scalar_field(
   const auto& meta = bulk.mesh_meta_data();
   EXPECT_EQ(meta.spatial_dimension(), 3);
 
-  const auto& buckets = bulk.get_buckets(stk::topology::NODE_RANK, meta.locally_owned_part());
+  const stk::mesh::Selector selector = meta.locally_owned_part() | meta.globally_shared_part();
+  const auto& buckets = bulk.get_buckets(stk::topology::NODE_RANK, selector);
   kokkos_thread_team_bucket_loop(buckets, [&](stk::mesh::Entity node)
   {
     const double* coords = stk::mesh::field_data(coordField, node);
@@ -141,7 +142,7 @@ double initialize_linear_scalar_field(
 
   double traceOfHessian = H[0] + H[4] + H[8];
 
-  return (2.0*traceOfHessian);
+  return (traceOfHessian);
 }
 
 TEST_F(Hex8Mesh, indexing_raw_arrays)
@@ -219,7 +220,8 @@ TEST_F(Hex8Mesh, indexing_raw_arrays)
         }
     });
 
-    const stk::mesh::BucketVector& nodeBuckets = bulk.get_buckets(stk::topology::NODE_RANK, meta.locally_owned_part());
+    const stk::mesh::Selector selector = meta.locally_owned_part() & !meta.globally_shared_part();
+    const stk::mesh::BucketVector& nodeBuckets = bulk.get_buckets(stk::topology::NODE_RANK, selector);
     kokkos_thread_team_bucket_loop(nodeBuckets, [&](stk::mesh::Entity node)
     {
       // we didn't include parallel communication or boundary stencil modification, so
@@ -299,7 +301,8 @@ TEST_F(Hex8Mesh, indexing_views)
         }
     });
 
-    const stk::mesh::BucketVector& nodeBuckets = bulk.get_buckets(stk::topology::NODE_RANK, meta.locally_owned_part());
+    const stk::mesh::Selector selector = meta.locally_owned_part() & !meta.globally_shared_part();
+    const stk::mesh::BucketVector& nodeBuckets = bulk.get_buckets(stk::topology::NODE_RANK, selector);
     kokkos_thread_team_bucket_loop(nodeBuckets, [&](stk::mesh::Entity node)
     {
       // we didn't include parallel communication or boundary stencil modification, so
