@@ -125,14 +125,4 @@ MESSAGE("\nAnd CMake says...:")
 enable_testing()
 include( CTest )
 
-# This set of test is not actual testing. It is just reporting on the
-# test voucher provided when running the tests in NaluRtest
 
-set(NIGHTLY_TEST_RESULT_DIRECTORY /scratch/mhenryde/nightlyBuildAndTest/runNaluRtest/nightly)
-file(GLOB test_folders "${NIGHTLY_TEST_RESULT_DIRECTORY}/*")
-foreach(folder ${test_folders})
-  get_filename_component(test_name ${folder} NAME)
-  message("Found test ${test_name} ")
-  add_test(NAME ${test_name}
-           COMMAND sh ${CMAKE_SOURCE_DIR}/build/test_voucher_exists.sh ${folder} )
-endforeach()

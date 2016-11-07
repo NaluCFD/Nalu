@@ -84,6 +84,12 @@ set(CTEST_CONFIGURE_COMMAND            "${CTEST_BINARY_DIRECTORY}/do-configNalu_
 ## -- Build Command
 set(CTEST_BUILD_COMMAND                "${MAKE} ${OPTION_BUILD}")
 
+# -----------------------------------------------------------
+# -- Configure CTest
+# -----------------------------------------------------------
+
+## -- CTest Testfile
+configure_file(${CTEST_SOURCE_DIRECTORY}/cmake/CTestTestfile.cmake ${CTEST_BINARY_DIRECTORY}/CTestTestfile.cmake)
 
 # -----------------------------------------------------------
 # -- Start CTest
