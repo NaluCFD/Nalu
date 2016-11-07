@@ -518,7 +518,7 @@ ActuatorLine::execute()
     interpolate_field(1, bestElem, bulkData, &(infoObject->isoParCoords_[0]), 
                       &ws_density_[0], &ws_pointGasDensity);
     
-    FAST.setVelocity(ws_velocity_, np);
+    FAST.setVelocity(ws_pointGasVelocity, np);
     np = np + 1;
 
   }    
@@ -590,6 +590,8 @@ ActuatorLine::execute()
       assemble_source_to_nodes(nDim, elem, bulkData, elemVolume, &ws_elemDrag[0], ws_pointForceLHS, 
                                *actuator_line_source, *actuator_line_source_lhs, 0.0);
     } 
+
+    np=np+1;
   }
 
   // parallel assemble (contributions from ghosted and locally owned)
