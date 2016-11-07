@@ -106,8 +106,8 @@ ENDIF(Trilinos_BUILD_SHARED_LIBS)
 
 PROJECT(Nalu)
 
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${Trilinos_CXX_COMPILER_FLAGS}")
-SET(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} ${Trilinos_Fortran_COMPILER_FLAGS}")
+#SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${Trilinos_CXX_COMPILER_FLAGS}")
+#SET(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} ${Trilinos_Fortran_COMPILER_FLAGS}")
 MESSAGE("-- CMAKE_CXX_FLAGS     = ${CMAKE_CXX_FLAGS}")
 MESSAGE("-- CMAKE_Fortran_FLAGS = ${CMAKE_Fortran_FLAGS}")
 
@@ -120,7 +120,6 @@ target_link_libraries(nalu ${Trilinos_LIBRARIES})
 target_link_libraries(nalu ${YAML_LIBRARY})
 if (USE_FAST)
    target_link_libraries(nalu ${FAST_LIBRARY})
-   target_link_libraries(nalu ${FAST_YAML_LIBRARY})
    target_link_libraries(nalu ${FAST_CINTERFACE_LIBRARY})
    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_FAST")
    MESSAGE("-- CMAKE_CXX_FLAGS     = ${CMAKE_CXX_FLAGS}")
@@ -137,9 +136,6 @@ if (CMAKE_BUILD_TYPE STREQUAL "DEBUG")
 endif()
 
 add_executable(${nalu_ex_name} nalu.C)
-if (USE_FAST)
-   target_link_libraries(${nalu_ex_name} ${FAST_YAML_LIBRARY})
-endif (USE_FAST)
 target_link_libraries(${nalu_ex_name} nalu)
 
 set(utest_ex_name "unittestX")
