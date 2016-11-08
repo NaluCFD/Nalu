@@ -80,6 +80,8 @@ OversetManager::~OversetManager()
 void
 OversetManager::initialize()
 {
+  const double timeA = NaluEnv::self().nalu_time();
+
   // initialize all ghosting data structures
   initialize_ghosting();
 
@@ -127,6 +129,10 @@ OversetManager::initialize()
 
   // set flag for the next possible time we are through the initializtion method
   firstInitialization_ = false;
+
+  // end time
+  const double timeB = NaluEnv::self().nalu_time();
+  realm_.timerContact_ += (timeB-timeA);
 }
 
 //--------------------------------------------------------------------------

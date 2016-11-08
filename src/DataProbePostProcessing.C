@@ -110,24 +110,24 @@ DataProbePostProcessing::load(
   const YAML::Node & y_node)
 {
   // check for any data probes
-  const YAML::Node *y_dataProbe = y_node.FindValue("data_probes");
+  const YAML::Node y_dataProbe = y_node["data_probes"];
   if (y_dataProbe) {
     NaluEnv::self().naluOutputP0() << "DataProbePostProcessing::load" << std::endl;
 
     // extract the frequency of output
-    get_if_present(*y_dataProbe, "output_frequency", outputFreq_, outputFreq_);
+    get_if_present(y_dataProbe, "output_frequency", outputFreq_, outputFreq_);
 
     // transfer specifications
-    get_if_present(*y_dataProbe, "search_method", searchMethodName_, searchMethodName_);
-    get_if_present(*y_dataProbe, "search_tolerance", searchTolerance_, searchTolerance_);
-    get_if_present(*y_dataProbe, "search_expansion_factor", searchExpansionFactor_, searchExpansionFactor_);
+    get_if_present(y_dataProbe, "search_method", searchMethodName_, searchMethodName_);
+    get_if_present(y_dataProbe, "search_tolerance", searchTolerance_, searchTolerance_);
+    get_if_present(y_dataProbe, "search_expansion_factor", searchExpansionFactor_, searchExpansionFactor_);
 
-    const YAML::Node *y_specs = expect_sequence(*y_dataProbe, "specifications", false);
+    const YAML::Node y_specs = expect_sequence(y_dataProbe, "specifications", false);
     if (y_specs) {
 
       // each specification can have multiple probes
-      for (size_t ispec = 0; ispec < y_specs->size(); ++ispec) {
-        const YAML::Node &y_spec = (*y_specs)[ispec];
+      for (size_t ispec = 0; ispec < y_specs.size(); ++ispec) {
+        const YAML::Node y_spec = y_specs[ispec];
 
         DataProbeSpecInfo *probeSpec = new DataProbeSpecInfo();
         dataProbeSpecInfo_.push_back(probeSpec);
@@ -136,34 +136,34 @@ DataProbePostProcessing::load(
         probeSpec->dataProbeInfo_.push_back(probeInfo);
         
         // name; will serve as the transfer name
-        const YAML::Node *theName = y_spec.FindValue("name");
+        const YAML::Node theName = y_spec["name"];
         if ( theName )
-          *theName >> probeSpec->xferName_;
+          probeSpec->xferName_ = theName.as<std::string>() ;
         else
           throw std::runtime_error("DataProbePostProcessing: no name provided");
 
         // extract the set of from target names; each spec is homogeneous in this respect
-        const YAML::Node &fromTargets = y_spec["from_target_part"];
+        const YAML::Node & fromTargets = y_spec["from_target_part"];
         if (fromTargets.Type() == YAML::NodeType::Scalar) {
           probeSpec->fromTargetNames_.resize(1);
-          fromTargets >> probeSpec->fromTargetNames_[0];
+          probeSpec->fromTargetNames_[0] = fromTargets.as<std::string>() ;
         }
         else {
           probeSpec->fromTargetNames_.resize(fromTargets.size());
           for (size_t i=0; i < fromTargets.size(); ++i) {
-            fromTargets[i] >> probeSpec->fromTargetNames_[i];
+            probeSpec->fromTargetNames_[i] = fromTargets[i].as<std::string>() ;
           }
         }
         
         // extract the type of probe, e.g., line of site, plane, etc
-        const YAML::Node *y_loss = expect_sequence(y_spec, "line_of_site_specifications", false);
+        const YAML::Node y_loss = expect_sequence(y_spec, "line_of_site_specifications", false);
         if (y_loss) {
 
           // l-o-s is active..
           probeInfo->isLineOfSite_ = true;
           
           // extract and save number of probes
-          const int numProbes = y_loss->size();
+          const int numProbes = y_loss.size();
           probeInfo->numProbes_ = numProbes;
 
           // resize everything...
@@ -179,38 +179,38 @@ DataProbePostProcessing::load(
           // deal with processors... Distribute each probe over subsequent procs
           const int numProcs = NaluEnv::self().parallel_size();
           const int divProcProbe = std::max(numProcs/numProbes, numProcs);
-
-          for (size_t ilos = 0; ilos < y_loss->size(); ++ilos) {
-            const YAML::Node &y_los = (*y_loss)[ilos];
+	  
+          for (size_t ilos = 0; ilos < y_loss.size(); ilos++) {
+            const YAML::Node y_los = y_loss[ilos] ;
 
             // processor id; distribute los equally over the number of processors
             probeInfo->processorId_[ilos] = divProcProbe > 0 ? ilos % divProcProbe : 0;
 
             // name; which is the part name of choice
-            const YAML::Node *nameNode = y_los.FindValue("name");
+            const YAML::Node nameNode = y_los["name"];
             if ( nameNode )
-              *nameNode >> probeInfo->partName_[ilos];
+	      probeInfo->partName_[ilos] = nameNode.as<std::string>() ;
             else
               throw std::runtime_error("DataProbePostProcessing: lacking the name");
 
             // number of points
-            const YAML::Node *numPoints = y_los.FindValue("number_of_points");
+            const YAML::Node numPoints = y_los["number_of_points"];
             if ( numPoints )
-              *numPoints >> probeInfo->numPoints_[ilos];
+              probeInfo->numPoints_[ilos] = numPoints.as<int>() ;
             else
               throw std::runtime_error("DataProbePostProcessing: lacking number of points");
 
             // coordinates; tip
-            const YAML::Node *tipCoord = y_los.FindValue("tip_coordinates");
+            const YAML::Node tipCoord = y_los["tip_coordinates"];
             if ( tipCoord )
-              *tipCoord >> probeInfo->tipCoordinates_[ilos];
+              probeInfo->tipCoordinates_[ilos] = tipCoord.as<sierra::nalu::Coordinates>() ;
             else
               throw std::runtime_error("DataProbePostProcessing: lacking tip coordinates");
 
             // coordinates; tail
-            const YAML::Node *tailCoord = y_los.FindValue("tail_coordinates");
+            const YAML::Node tailCoord = y_los["tail_coordinates"];
             if ( tailCoord )
-              *tailCoord >> probeInfo->tailCoordinates_[ilos];
+              probeInfo->tailCoordinates_[ilos] = tailCoord.as<sierra::nalu::Coordinates>() ;
             else
               throw std::runtime_error("DataProbePostProcessing: lacking tail coordinates");
         
@@ -221,26 +221,26 @@ DataProbePostProcessing::load(
         }
         
         // extract the output variables
-        const YAML::Node *y_outputs = expect_sequence(y_spec, "output_variables", false);
+        const YAML::Node y_outputs = expect_sequence(y_spec, "output_variables", false);
         if (y_outputs) {
-          for (size_t ioutput = 0; ioutput < y_outputs->size(); ++ioutput) {
-            const YAML::Node &y_output = (*y_outputs)[ioutput];
+          for (size_t ioutput = 0; ioutput < y_outputs.size(); ++ioutput) {
+            const YAML::Node y_output = y_outputs[ioutput];
   
             // find the name, size and type
-            const YAML::Node *fieldNameNode = y_output.FindValue("field_name");
-            const YAML::Node *fieldSizeNode = y_output.FindValue("field_size");
+            const YAML::Node fieldNameNode = y_output["field_name"];
+            const YAML::Node fieldSizeNode = y_output["field_size"];
     
-            if ( NULL == fieldNameNode ) 
+            if ( !fieldNameNode ) 
               throw std::runtime_error("DataProbePostProcessing::load() Sorry, field name must be provided");
             
-            if ( NULL == fieldSizeNode ) 
+            if ( !fieldSizeNode ) 
               throw std::runtime_error("DataProbePostProcessing::load() Sorry, field size must be provided");
             
             // extract data
             std::string fieldName;
             int fieldSize;
-            *fieldNameNode >> fieldName;
-            *fieldSizeNode >> fieldSize;
+            fieldName = fieldNameNode.as<std::string>() ;
+            fieldSize = fieldSizeNode.as<int>() ;
 
             // push to fromToName
             std::string fromName = fieldName;

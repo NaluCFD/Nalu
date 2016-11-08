@@ -111,46 +111,46 @@ InputOutputRealm::load(const YAML::Node & node)
   Realm::load(node);
 
   // now proceed with specific line commands to IO Realm
-  const YAML::Node *y_field = node.FindValue("field_registration");
+  const YAML::Node y_field = node["field_registration"];
   if (y_field) {    
     
     // extract the sequence of types
-    const YAML::Node *y_specs = expect_sequence(*y_field, "specifications", false);
+    const YAML::Node y_specs = expect_sequence(y_field, "specifications", false);
     if (y_specs) {
-      for (size_t ispec = 0; ispec < y_specs->size(); ++ispec) {
-        const YAML::Node &y_spec = (*y_specs)[ispec];
+      for (size_t ispec = 0; ispec < y_specs.size(); ++ispec) {
+        const YAML::Node y_spec = y_specs[ispec] ;
         
         // find the name, size and type
-        const YAML::Node *fieldNameNode = y_spec.FindValue("field_name");
-        const YAML::Node *fieldSizeNode = y_spec.FindValue("field_size");
-        const YAML::Node *fieldTypeNode = y_spec.FindValue("field_type");
+        const YAML::Node fieldNameNode = y_spec["field_name"];
+        const YAML::Node fieldSizeNode = y_spec["field_size"];
+        const YAML::Node fieldTypeNode = y_spec["field_type"];
         
-        if ( NULL == fieldNameNode ) 
+        if ( ! fieldNameNode ) 
           throw std::runtime_error("Sorry, field name must be provided");
         
-        if ( NULL == fieldSizeNode ) 
+        if ( ! fieldSizeNode ) 
           throw std::runtime_error("Sorry, field size must be provided");
         
-        if ( NULL == fieldTypeNode ) 
+        if ( ! fieldTypeNode ) 
           throw std::runtime_error("Sorry, field type must be provided");
         
         // new the data
         InputOutputInfo *theInfo = new InputOutputInfo();
 
         // push data to the info object
-        *fieldNameNode >> theInfo->fieldName_;
-        *fieldSizeNode >> theInfo->fieldSize_;
-        *fieldTypeNode >> theInfo->fieldType_;
+        theInfo->fieldName_ = fieldNameNode.as<std::string>() ;
+        theInfo->fieldSize_ = fieldSizeNode.as<int>() ;
+        theInfo->fieldType_ = fieldTypeNode.as<std::string>() ;
         
         const YAML::Node &targets = y_spec["target_name"];
         if (targets.Type() == YAML::NodeType::Scalar) {
           theInfo->targetNames_.resize(1);
-          targets >> theInfo->targetNames_[0];
+          theInfo->targetNames_[0] = targets.as<std::string>() ;
         }
         else {
           theInfo->targetNames_.resize(targets.size());
           for (size_t i=0; i < targets.size(); ++i) {
-            targets[i] >> theInfo->targetNames_[i];
+            theInfo->targetNames_[i] = targets[i].as<std::string>() ;
           }
         }
         

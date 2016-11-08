@@ -86,7 +86,7 @@ void Simulation::load(const YAML::Node & node)
 
   high_level_banner();
 
-  if (0 != node.FindValue("UnitTests"))
+  if (node["UnitTests"])
     {
       NaluEnv::self().naluOutputP0() << "\n\n Running Unit Tests \n\n" << std::endl;
       sierra::nalu::UnitTests unit_tests(*this);
