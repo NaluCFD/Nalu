@@ -111,7 +111,6 @@ NonConformalManager::initialize()
   // end time
   const double timeB = NaluEnv::self().nalu_time();
   realm_.timerContact_ += (timeB-timeA);
-
 }
 
 //--------------------------------------------------------------------------

@@ -3684,7 +3684,7 @@ Realm::dump_simulation_time()
   }
 
   // contact
-  if ( hasContact_ ) {
+  if ( has_non_matching_boundary_face_alg() ) {
     double g_totalContact = 0.0, g_minContact= 0.0, g_maxContact = 0.0;
     stk::all_reduce_min(NaluEnv::self().parallel_comm(), &timerContact_, &g_minContact, 1);
     stk::all_reduce_max(NaluEnv::self().parallel_comm(), &timerContact_, &g_maxContact, 1);
@@ -3697,7 +3697,6 @@ Realm::dump_simulation_time()
 
   // transfer
   if ( hasMultiPhysicsTransfer_ || hasInitializationTransfer_ || hasIoTransfer_ ) {
-    
     double totalXfer[2] = {timerTransferSearch_, timerTransferExecute_};
     double g_totalXfer[2] = {}, g_minXfer[2] = {}, g_maxXfer[2] = {};
     stk::all_reduce_min(NaluEnv::self().parallel_comm(), &totalXfer[0], &g_minXfer[0], 2);

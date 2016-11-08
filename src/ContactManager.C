@@ -68,7 +68,6 @@ ContactManager::~ContactManager()
 void
 ContactManager::initialize()
 {
-
   const double timeA = NaluEnv::self().nalu_time();
 
   stk::mesh::BulkData & bulk_data = realm_.bulk_data();
@@ -110,7 +109,6 @@ ContactManager::initialize()
   // end time
   const double timeB = NaluEnv::self().nalu_time();
   realm_.timerContact_ += (timeB-timeA);
-
 }
 
 //--------------------------------------------------------------------------
