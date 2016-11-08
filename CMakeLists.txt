@@ -121,8 +121,4 @@ target_link_libraries(${utest_ex_name} nalu)
 
 MESSAGE("\nAnd CMake says...:")
 
-# enable testing
-enable_testing()
-include( CTest )
-
 
