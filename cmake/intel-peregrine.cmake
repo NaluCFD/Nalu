@@ -1,8 +1,8 @@
 # -----------------------------------------------------------
-# -- Variables for gcc ctesting on peregrine
+# -- Variables for intel ctesting on peregrine
 # -----------------------------------------------------------
 
-set(compiler                            "gcc")
+set(compiler                            "intel")
 
 
 # -----------------------------------------------------------
