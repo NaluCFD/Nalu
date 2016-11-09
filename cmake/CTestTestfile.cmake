@@ -1,4 +1,6 @@
 # CMake Testfile
+
+# nightly tests
 add_test(dgNonConformalThreeBlade "[" "-f" "${NIGHTLY_TEST_RESULT_DIRECTORY}/dgNonConformalThreeBlade/PASS" "]")
 add_test(quad9HC "[" "-f" "${NIGHTLY_TEST_RESULT_DIRECTORY}/quad9HC/PASS" "]")
 add_test(milestoneRun "[" "-f" "${NIGHTLY_TEST_RESULT_DIRECTORY}/milestoneRun/PASS" "]")
@@ -52,3 +54,10 @@ add_test(overset "[" "-f" "${NIGHTLY_TEST_RESULT_DIRECTORY}/overset/PASS" "]")
 add_test(oversetFluids "[" "-f" "${NIGHTLY_TEST_RESULT_DIRECTORY}/oversetFluids/PASS" "]")
 add_test(dgNonConformalFluids "[" "-f" "${NIGHTLY_TEST_RESULT_DIRECTORY}/dgNonConformalFluids/PASS" "]")
 add_test(ductWedge "[" "-f" "${NIGHTLY_TEST_RESULT_DIRECTORY}/ductWedge/PASS" "]")
+
+
+# Performance tests
+add_test(oversetFluids "[" "-f" "${PERF_TEST_RESULT_DIRECTORY}/oversetHybrid/PASS" "]")
+add_test(dgNonConformalFluids "[" "-f" "${PERF_TEST_RESULT_DIRECTORY}/uqSlidingMesh/PASS" "]")
+add_test(ductWedge "[" "-f" "${PERF_TEST_RESULT_DIRECTORY}/uqSlidingMeshDG/PASS" "]")
+add_test(ductWedge "[" "-f" "${PERF_TEST_RESULT_DIRECTORY}/waleElemXflowMixFrac3.5m/PASS" "]")

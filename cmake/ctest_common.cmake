@@ -6,7 +6,7 @@ set(NIGHTLY_DIR                      "/scratch/mhenryde/nightlyBuildAndTest")
 set(NALU_DIR                         "${NIGHTLY_DIR}/Nalu")
 set(NALURTEST_DIR                    "${NIGHTLY_DIR}/NaluRtest")
 set(NIGHTLY_TEST_RESULT_DIRECTORY    "${NIGHTLY_DIR}/runNaluRtest/nightly")
-
+set(PERF_TEST_RESULT_DIRECTORY       "${NIGHTLY_DIR}/runNaluRtest/performance")
 
 # -----------------------------------------------------------
 # -- VARIABLES
@@ -21,7 +21,7 @@ set(NALURTEST_REPO_URL                  "https://github.com/NaluCFD/NaluRtest.gi
 ## -- Set hostname
 ## --------------------------
 find_program(HOSTNAME_CMD NAMES hostname)
-exec_program(${HOSTNAME_CMD} ARGS OUTPUT_VARIABLE HOSTNAME)
+exec_program("${HOSTNAME_CMD} -f" ARGS OUTPUT_VARIABLE HOSTNAME)
 
 set(CTEST_SITE                          "${HOSTNAME}")
 
@@ -127,6 +127,8 @@ endif(NOT EXISTS "${NALURTEST_DIR}")
 ## -- Clean the test vouchers
 file(GLOB old_vouchers "${NIGHTLY_TEST_RESULT_DIRECTORY}/*/PASS")
 file(REMOVE ${old_vouchers})
+file(GLOB old_vouchers "${PERF_TEST_RESULT_DIRECTORY}/*/PASS")
+file(REMOVE ${old_vouchers})
 
 ## -- Run the tests using the script
 message(" -- NaluRtest ${MODEL} - ${CTEST_BUILD_NAME} --")
@@ -136,6 +138,13 @@ execute_process(COMMAND "./run_tests.sh"
                 OUTPUT_VARIABLE nalurtestlog
                 ERROR_VARIABLE nalurtestlog)
 file(WRITE ${NIGHTLY_DIR}/NaluRtest.txt "${nalurtestlog}")
+
+execute_process(COMMAND "./run_perf_tests.sh"
+                WORKING_DIRECTORY ${NALURTEST_DIR}
+                RESULT_VARIABLE nalurtestres
+                OUTPUT_VARIABLE nalurtestlog
+                ERROR_VARIABLE nalurtestlog)
+file(APPEND ${NIGHTLY_DIR}/NaluRtest.txt "${nalurtestlog}")
 
 ## -- Run CTest 
 message(" -- Test ${MODEL} - ${CTEST_BUILD_NAME} --")
