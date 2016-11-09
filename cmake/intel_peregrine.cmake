@@ -8,4 +8,4 @@ set(compiler                            "intel")
 # -----------------------------------------------------------
 # -- Include common test config
 # -----------------------------------------------------------
-include("${CTEST_SOURCE_DIRECTORY}/cmake/ctest_common.cmake")
+include(../cmake/ctest_common.cmake)
