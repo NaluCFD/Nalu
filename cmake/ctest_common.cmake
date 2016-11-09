@@ -129,7 +129,7 @@ file(GLOB old_vouchers "${NIGHTLY_TEST_RESULT_DIRECTORY}/*/PASS")
 file(REMOVE ${old_vouchers})
 
 ## -- Run the tests using the script
-message(" --  NaluRtest ${MODEL} - ${CTEST_BUILD_NAME} --")
+message(" -- NaluRtest ${MODEL} - ${CTEST_BUILD_NAME} --")
 execute_process(COMMAND "./run_tests.sh"
                 WORKING_DIRECTORY ${NALURTEST_DIR}
                 RESULT_VARIABLE nalurtestres
