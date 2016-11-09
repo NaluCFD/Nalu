@@ -8,4 +8,4 @@ set(compiler                            "gcc")
 # -----------------------------------------------------------
 # -- Include common test config
 # -----------------------------------------------------------
-include(ctest_common.cmake)
+include("${CTEST_SOURCE_DIRECTORY}/cmake/ctest_common.cmake")
