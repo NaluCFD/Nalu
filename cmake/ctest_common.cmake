@@ -21,7 +21,7 @@ set(NALURTEST_REPO_URL                  "https://github.com/NaluCFD/NaluRtest.gi
 ## -- Set hostname
 ## --------------------------
 find_program(HOSTNAME_CMD NAMES hostname)
-exec_program("${HOSTNAME_CMD} -f" ARGS OUTPUT_VARIABLE HOSTNAME)
+exec_program("${HOSTNAME_CMD} -d" ARGS OUTPUT_VARIABLE HOSTNAME)
 
 set(CTEST_SITE                          "${HOSTNAME}")
 
