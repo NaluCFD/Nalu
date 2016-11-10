@@ -245,6 +245,7 @@ class Realm {
   virtual void populate_boundary_data();
   virtual void boundary_data_to_state_data();
   virtual double populate_variables_from_input(const double currentTime);
+  virtual void populate_external_variables_from_input(const double currentTime) {}
   virtual double populate_restart( double &timeStepNm1, int &timeStepCount);
   virtual void populate_derived_quantities();
   virtual void evaluate_properties();
@@ -446,6 +447,7 @@ class Realm {
   bool hasMultiPhysicsTransfer_;
   bool hasInitializationTransfer_;
   bool hasIoTransfer_;
+  bool hasExternalDataTransfer_;
 
   PeriodicManager *periodicManager_;
   bool hasPeriodic_;
@@ -499,11 +501,13 @@ class Realm {
   std::vector<Transfer *> multiPhysicsTransferVec_;
   std::vector<Transfer *> initializationTransferVec_;
   std::vector<Transfer *> ioTransferVec_;
+  std::vector<Transfer *> externalDataTransferVec_;
   void augment_transfer_vector(Transfer *transfer, const std::string transferObjective, Realm *toRealm);
   void process_multi_physics_transfer();
   void process_initialization_transfer();
   void process_io_transfer();
-
+  void process_external_data_transfer();
+  
   // process end of time step converged work
   void post_converged_work();
 

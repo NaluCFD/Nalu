@@ -416,7 +416,16 @@ TurbKineticEnergyEquationSystem::register_inflow_bc(
     = new AuxFunctionAlgorithm(realm_, part,
                                theBcField, theAuxFunc,
                                stk::topology::NODE_RANK);
-  bcDataAlg_.push_back(auxAlg);
+
+  // how to populate the field?
+  if ( userData.externalData_ ) {
+    // xfer will handle population; only need to populate the initial value
+    realm_.initCondAlg_.push_back(auxAlg);
+  }
+  else {
+    // put it on bcData
+    bcDataAlg_.push_back(auxAlg);
+  }
 
   // copy tke_bc to turbulent_ke np1...
   CopyFieldAlgorithm *theCopyAlg

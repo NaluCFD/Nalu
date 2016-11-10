@@ -108,7 +108,6 @@ TurbulenceAveragingPostProcessing::load(
         // reynolds
         const YAML::Node y_reynolds = y_spec["reynolds_averaged_variables"];
         if (y_reynolds) {
-          size_t varSize = y_reynolds.size();
           for (size_t ioption = 0; ioption < y_reynolds.size(); ++ioption) {
             const YAML::Node y_var = y_reynolds[ioption];
             std::string fieldName = y_var.as<std::string>() ;
@@ -120,7 +119,6 @@ TurbulenceAveragingPostProcessing::load(
         // Favre
         const YAML::Node y_favre = y_spec["favre_averaged_variables"];
         if (y_favre) {
-          size_t varSize = y_favre.size();
           for (size_t ioption = 0; ioption < y_favre.size(); ++ioption) {
             const YAML::Node y_var = y_favre[ioption];
             std::string fieldName = y_var.as<std::string>() ;

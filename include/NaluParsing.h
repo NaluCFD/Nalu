@@ -143,8 +143,8 @@ struct UserData
   // FIXME: must elevate temperature due to the temperature_bc_setup method
   Temperature temperature_;
   bool tempSpec_; 
-  
-UserData() : tempSpec_(false) {}
+  bool externalData_;
+UserData() : tempSpec_(false), externalData_(false) {}
 };
 
 struct NormalHeatFlux {
@@ -228,10 +228,9 @@ struct InflowUserData : public UserData {
   bool sdrSpec_;
   bool mixFracSpec_;
   bool massFractionSpec_;
-  
   InflowUserData()
     : UserData(),
-      uSpec_(false), tkeSpec_(false), sdrSpec_(false), mixFracSpec_(false), massFractionSpec_(false)
+    uSpec_(false), tkeSpec_(false), sdrSpec_(false), mixFracSpec_(false), massFractionSpec_(false)
   {}
 };
 
