@@ -200,7 +200,7 @@ namespace nalu{
     hasMultiPhysicsTransfer_(false),
     hasInitializationTransfer_(false),
     hasIoTransfer_(false),
-    hasExternalDataTransfer_(true),
+    hasExternalDataTransfer_(false),
     periodicManager_(NULL),
     hasPeriodic_(false),
     hasFluids_(false),
