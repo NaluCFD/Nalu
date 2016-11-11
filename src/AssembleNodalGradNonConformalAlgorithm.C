@@ -113,8 +113,6 @@ AssembleNodalGradNonConformalAlgorithm::execute()
         // extract current/opposing face/element
         stk::mesh::Entity currentFace = dgInfo->currentFace_;
         stk::mesh::Entity opposingFace = dgInfo->opposingFace_;
-        stk::mesh::Entity currentElement = dgInfo->currentElement_;
-        const int currentFaceOrdinal = dgInfo->currentFaceOrdinal_;
             
         // master element
         MasterElement * meFCCurrent = dgInfo->meFCCurrent_; 

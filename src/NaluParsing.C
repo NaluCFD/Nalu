@@ -722,7 +722,12 @@ namespace YAML {
 	  inflowData.functionParams_ = node["user_function_parameters"].as< std::map<std::string, std::vector<double> > >() ;
 	}
       }
-      
+
+      // check for external data
+      if ( node["external_data"] ) {
+	inflowData.externalData_ = node["external_data"].as<bool>() ; 
+      }
+     
       return true;
     }
     

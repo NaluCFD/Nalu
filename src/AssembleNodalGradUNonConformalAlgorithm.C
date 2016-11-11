@@ -116,13 +116,10 @@ AssembleNodalGradUNonConformalAlgorithm::execute()
         // extract current/opposing face/element
         stk::mesh::Entity currentFace = dgInfo->currentFace_;
         stk::mesh::Entity opposingFace = dgInfo->opposingFace_;
-        stk::mesh::Entity currentElement = dgInfo->currentElement_;
-        const int currentFaceOrdinal = dgInfo->currentFaceOrdinal_;
-    
+     
         // master element
         MasterElement * meFCCurrent = dgInfo->meFCCurrent_; 
         MasterElement * meFCOpposing = dgInfo->meFCOpposing_;
-        MasterElement * meSCSCurrent = dgInfo->meSCSCurrent_; 
       
         // local ip, ordinals, etc
         const int currentGaussPointId = dgInfo->currentGaussPointId_;
@@ -168,9 +165,6 @@ AssembleNodalGradUNonConformalAlgorithm::execute()
             p_o_vectorQ[offSet] = qNp1[i];
           }
         }
-
-        // gather current element data
-        stk::mesh::Entity const* current_elem_node_rels = bulk_data.begin_nodes(currentElement);
 
         meFCCurrent->interpolatePoint(
           sizeOfVectorField,

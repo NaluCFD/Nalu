@@ -8,6 +8,7 @@
 
 #include <InputOutputRealm.h>
 #include <Realm.h>
+#include <SolutionOptions.h>
 
 // transfer
 #include <xfer/Transfer.h>
@@ -21,6 +22,9 @@
 #include <stk_io/StkMeshIoBroker.hpp>
 #include <stk_io/IossBridge.hpp>
 #include <Ioss_SubSystem.h>
+
+// c++
+#include <string>
 
 namespace sierra{
 namespace nalu{
@@ -68,6 +72,7 @@ InputOutputRealm::initialize()
 void 
 InputOutputRealm::register_io_fields() {
   // register fields; extract vector of field/part; only nodal for now
+  std::string velocityName = "velocity"; 
   for ( size_t k = 0; k < inputOutputFieldInfo_.size(); ++ k ) {
     const std::string fieldName = inputOutputFieldInfo_[k]->fieldName_;
     const int fieldSize = inputOutputFieldInfo_[k]->fieldSize_;
@@ -86,9 +91,9 @@ InputOutputRealm::register_io_fields() {
       if ( NULL == targetPart ) {
         throw std::runtime_error("Sorry, no part name found by the name: " + targetName + " for field: " + fieldName);
       }
-      else {
-        if ( fieldName == "velocity" ) {
-          VectorFieldType *velocity = &(metaData_->declare_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity"));
+      else { 
+        if ( fieldName.find(velocityName) != std::string::npos ) { //FIXME: require FieldType?
+          VectorFieldType *velocity = &(metaData_->declare_field<VectorFieldType>(stk::topology::NODE_RANK, fieldName));
           stk::mesh::put_field(*velocity, *targetPart, fieldSize);
         }
         else {
@@ -168,6 +173,29 @@ InputOutputRealm::populate_restart(
   double &timeStepNm1, int &timeStepCount)
 {
   return get_current_time();
+}
+
+//--------------------------------------------------------------------------
+//-------- populate_external_variables_from_input --------------------------
+//--------------------------------------------------------------------------
+void
+InputOutputRealm::populate_external_variables_from_input(
+  const double currentTime)
+{
+  // only works for external field realm
+  if ( type_ == "external_field_provider" && solutionOptions_->inputVarFromFileMap_.size() > 0 ) {
+    std::vector<stk::io::MeshField> missingFields;
+    const double foundTime = ioBroker_->read_defined_input_fields(currentTime, &missingFields);
+    if ( missingFields.size() > 0 ) {
+      for ( size_t k = 0; k < missingFields.size(); ++k) {
+        NaluEnv::self().naluOutputP0() << "WARNING: Realm::populate_external_variables_from_input for field "
+            << missingFields[k].field()->name()
+            << " is missing; will default to IC specification" << std::endl;
+      }
+    }
+    NaluEnv::self().naluOutputP0() << "Realm::populate_external_variables_from_input() candidate input time: "
+                                   << foundTime << " for Realm: " << name() << std::endl;
+  }
 }
 
 } // namespace nalu
