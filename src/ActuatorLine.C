@@ -263,7 +263,47 @@ ActuatorLine::load(
         searchTargetNames_[i] = searchTargets[i].as<std::string>() ;
       }
     }
-    
+
+#ifdef USE_FAST
+
+    try {
+      FAST.readInputFile(y_actuatorLine);
+    }
+    catch( const std::runtime_error & ex) {
+    }
+
+    // save off number of towers
+    const int nTurbinesGlob = FAST.get_nTurbinesGlob() ;
+
+    // each specification can have multiple machines
+    for (size_t iTurb = 0; iTurb < nTurbinesGlob; ++iTurb) {
+      const YAML::Node cur_turbine = y_actuatorLine["Turbine"+std::to_string(iTurb)];
+      ActuatorLineInfo *actuatorLineInfo = new ActuatorLineInfo();
+      actuatorLineInfo_.push_back(actuatorLineInfo);
+      
+      // name
+      const YAML::Node theName = cur_turbine["turbine_name"];
+      if ( theName )
+	actuatorLineInfo->turbineName_ = theName.as<std::string>() ;
+      else
+	throw std::runtime_error("ActuatorLine: no name provided");
+      
+      // processor id - Get from FAST
+      actuatorLineInfo->processorId_ = FAST.get_procNo(iTurb) ;
+     
+      actuatorLineMotion_ = true;
+      
+      // Gaussian props
+      double gaussDecayTarget = 0.01;
+      double gaussDecayRadius = 1.5;
+      get_if_present(cur_turbine, "gaussian_decay_radius", gaussDecayRadius, gaussDecayRadius);
+      get_if_present(cur_turbine, "gaussian_decay_target", gaussDecayTarget, gaussDecayTarget);
+      actuatorLineInfo->twoSigSq_ = -gaussDecayRadius*gaussDecayRadius/std::log(gaussDecayTarget);
+
+  }
+  
+#else
+
     const YAML::Node y_specs = expect_sequence(y_actuatorLine, "specifications", false);
     if (y_specs) {
 
@@ -328,18 +368,12 @@ ActuatorLine::load(
         else
           throw std::runtime_error("ActuatorLine: lacking tail_coordinates");
       }
-    }
 
-#ifdef USE_FAST  
-    try {
-      FAST.readInputFile("cDriver.i");
-    }
-    catch( const std::runtime_error & ex) {
-    }
-#endif
+#endif    
 
-  }
+    }
 }
+
 
 //--------------------------------------------------------------------------
 //-------- setup -----------------------------------------------------------
@@ -348,6 +382,31 @@ void
 ActuatorLine::setup()
 {
   // objective: declare the part, register coordinates; must be before populate_mesh()
+
+
+#ifdef USE_FAST
+  double tStart;
+  double tEnd;
+  double dt ; 
+  FAST.setRestart( realm_.restarted_simulation() ) ;
+  tStart = realm_.get_current_time() ;
+  FAST.setTstart( tStart ) ;
+  dt = realm_.get_time_step_from_file();
+  FAST.setDt ( dt ) ;
+  if ( realm_.get_is_terminate_based_on_time() ) {
+    tEnd = realm_.get_total_sim_time() ;
+  } 
+  else {
+    const int ntEnd = realm_.get_max_time_step_count();
+    const int ntStart = realm_.get_time_step_count() ;
+    tEnd = (ntEnd - ntStart)*dt + tStart ;
+  }
+  FAST.setTend( tEnd );
+  
+  if ( ! FAST.isDryRun() ) {
+    FAST.init() ;
+  }
+#endif
 }
 
 //--------------------------------------------------------------------------
@@ -523,8 +582,10 @@ ActuatorLine::execute()
 
   }    
 
-  //Step FAST
-  FAST.step();
+  if ( ! FAST.isDryRun() ) {
+    //Step FAST
+    FAST.step();
+  }
  
   // do we have mesh motion?
   if ( actuatorLineMotion_ )
@@ -898,45 +959,56 @@ ActuatorLine::create_actuator_line_point_info_map() {
       Point centroidCoords;
     
 #ifdef USE_FAST
+      // local turbine id
+      const int iTurbLoc = FAST.get_localProcNo(k) ; // 'k' is the global turbine id here
       // scratch array for coordinates and dummy array for velocity
       double velocity[3] = {};
       double currentCoords[3] = {};
 
-      // loop over all points
+      // loop over all points for this turbine
       int np = 0;
-      int nBlades = FAST.get_numBlades(0); // Number of blades per turbine - only Turbine 0 for now
-      int nNodesPerBlade = FAST.get_numNodesPerBlade(0) ; // Number of nodes per blade - only Turbine 0 for now
-      int nTowerNodes = FAST.get_numTwrNodes(0) ; // Number of tower elements - only Turbine 0 for now
-      int nNodes = FAST.get_numNodes(0); // Number of tower elements - only Turbine 0 for now
+      const int nBlades = FAST.get_numBlades(iTurbLoc); // Number of blades per turbine - only Turbine 0 for now
+      const int nNodesPerBlade = FAST.get_numNodesPerBlade(iTurbLoc) ; // Number of nodes per blade - only Turbine 0 for now
+      const int nTowerNodes = FAST.get_numTwrNodes(iTurbLoc) ; // Number of tower elements - only Turbine 0 for now
+      const int nNodesTurbine = FAST.get_numNodes(iTurbLoc); // Number of tower elements - only Turbine 0 for now
+      //      actuatorLineInfo->numPoints_ = nNodesTurbine ; // Can't change a const pointer
+      
+      if (! FAST.isDryRun() ) {
 
-      for(int iNode = 0; iNode < nNodes; iNode++) {
-        // extract current localPointId; increment for next one up...
-        size_t localPointId = localPointId_++;
-        stk::search::IdentProc<uint64_t,int> theIdent(localPointId, NaluEnv::self().parallel_rank());
-        
-        // set model coordinates from FAST
-        // move the coordinates; set the velocity... may be better on the lineInfo object
-        FAST.getCoordinates(currentCoords, iNode);
-	velocity[0] = 0.0;
-	velocity[1] = 0.0;
-	velocity[2] = 0.0;
-
-        for ( int j = 0; j < nDim; ++j )
-          centroidCoords[j] = currentCoords[j];
-
-        // create the bounding point sphere and push back
-        boundingSphere theSphere( Sphere(centroidCoords, actuatorLineInfo->radius_), theIdent);
-        boundingSphereVec_.push_back(theSphere);
-        
-        // create the point info and push back to map
-        ActuatorLinePointInfo *actuatorLinePointInfo 
-          = new ActuatorLinePointInfo(localPointId, centroidCoords, 
-                                      actuatorLineInfo->radius_, actuatorLineInfo->omega_, 
-                                      actuatorLineInfo->twoSigSq_, velocity);
-        actuatorLinePointInfoMap_[localPointId] = actuatorLinePointInfo;
-	
-	np=np+1;
+	for(int iNode = 0; iNode < nNodesTurbine; iNode++) {
+	  // extract current localPointId; increment for next one up...
+	  size_t localPointId = localPointId_++;
+	  stk::search::IdentProc<uint64_t,int> theIdent(localPointId, NaluEnv::self().parallel_rank());
+	  
+	  // set model coordinates from FAST
+	  // move the coordinates; set the velocity... may be better on the lineInfo object
+	  FAST.getCoordinates(currentCoords, iNode);
+	  velocity[0] = 0.0;
+	  velocity[1] = 0.0;
+	  velocity[2] = 0.0;
+	  
+	  for ( int j = 0; j < nDim; ++j )
+	    centroidCoords[j] = currentCoords[j];
+	  
+	  // create the bounding point sphere and push back
+	  boundingSphere theSphere( Sphere(centroidCoords, actuatorLineInfo->radius_), theIdent);
+	  boundingSphereVec_.push_back(theSphere);
+	  
+	  // create the point info and push back to map
+	  ActuatorLinePointInfo *actuatorLinePointInfo 
+	    = new ActuatorLinePointInfo(localPointId, centroidCoords, 
+					actuatorLineInfo->radius_, actuatorLineInfo->omega_, 
+					actuatorLineInfo->twoSigSq_, velocity);
+	  actuatorLinePointInfoMap_[localPointId] = actuatorLinePointInfo;
+	  
+	  np=np+1;
+	}
       }
+      else {
+	NaluEnv::self().naluOutput() << "Proc " << NaluEnv::self().parallel_rank() << " loc iTurb " << iTurbLoc << " glob iTurb " << k << std::endl ;
+      }
+      
+    }
 #else
       // determine the distance between points and line centroid (for rotation)
       double dx[3] = {};
@@ -992,9 +1064,10 @@ ActuatorLine::create_actuator_line_point_info_map() {
         actuatorLinePointInfoMap_[localPointId] = actuatorLinePointInfo;
       }
 #endif
-    }
+
   }
 }
+
 
 
 //--------------------------------------------------------------------------

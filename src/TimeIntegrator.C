@@ -421,5 +421,43 @@ TimeIntegrator::get_time_step_count()
   return timeStepCount_;
 }
 
+double
+TimeIntegrator::get_time_step_from_file()
+{
+  return timeStepFromFile_;
+}
+
+bool
+TimeIntegrator::get_is_fixed_time_step()
+{
+  return ! adaptiveTimeStep_ ;
+}
+
+bool 
+TimeIntegrator::get_is_terminate_based_on_time()
+{
+  return terminateBasedOnTime_;
+}
+
+double 
+TimeIntegrator::get_total_sim_time()
+{
+  if ( terminateBasedOnTime_) 
+    return totalSimTime_;
+  else
+    return -1.0;
+}
+
+int
+TimeIntegrator::get_max_time_step_count()
+{
+  if ( ! terminateBasedOnTime_) 
+    return maxTimeStepCount_;
+  else
+    return -1;
+}
+
+
+
 } // namespace nalu
 } // namespace Sierra

@@ -4389,6 +4389,31 @@ Realm::get_time_step()
   return timeIntegrator_->get_time_step();
 }
 
+double 
+Realm::get_time_step_from_file() {
+  return timeIntegrator_->get_time_step_from_file();
+}
+
+bool 
+Realm::get_is_fixed_time_step() {
+  return timeIntegrator_->get_is_fixed_time_step();
+}
+
+bool 
+Realm::get_is_terminate_based_on_time() {
+  return timeIntegrator_->get_is_terminate_based_on_time();
+}
+
+double 
+Realm::get_total_sim_time() {
+  return timeIntegrator_->get_total_sim_time();
+}
+
+int
+Realm::get_max_time_step_count() {
+  return timeIntegrator_->get_max_time_step_count();
+}
+
 //--------------------------------------------------------------------------
 //-------- get_gamma1() ----------------------------------------------------
 //--------------------------------------------------------------------------
