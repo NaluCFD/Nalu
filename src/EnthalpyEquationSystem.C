@@ -1275,6 +1275,9 @@ EnthalpyEquationSystem::temperature_bc_setup(
   std::string temperatureName = "temperature";
   UserDataType theDataType = get_bc_data_type(userData, temperatureName);
 
+  // extract temperature as possibly external; similar to interface
+  const bool externalData = userData.externalData_;
+
   // populate temperature_bc
   AuxFunction *theAuxFunc = NULL;
   if ( CONSTANT_UD == theDataType ) {
@@ -1316,7 +1319,7 @@ EnthalpyEquationSystem::temperature_bc_setup(
   }
 
   // if this is an interface bc, then push algorithm to initial condition
-  if ( isInterface ) {
+  if ( isInterface || externalData ) {
     // xfer will handle population; only need to populate the initial value
     realm_.initCondAlg_.push_back(auxTempAlg);
     if ( copyBCVal )

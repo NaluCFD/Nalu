@@ -427,7 +427,15 @@ MixtureFractionEquationSystem::register_inflow_bc(
                                theBcField, theAuxFunc,
                                stk::topology::NODE_RANK);
 
-  bcDataAlg_.push_back(auxAlg);
+  // how to populate the field?
+  if ( userData.externalData_ ) {
+    // xfer will handle population; only need to populate the initial value
+    realm_.initCondAlg_.push_back(auxAlg);
+  }
+  else {
+    // put it on bcData
+    bcDataAlg_.push_back(auxAlg);
+  }
 
   // copy mixFrac_bc to mixture_fraction np1...
   CopyFieldAlgorithm *theCopyAlg

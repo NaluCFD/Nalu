@@ -200,6 +200,7 @@ namespace nalu{
     hasMultiPhysicsTransfer_(false),
     hasInitializationTransfer_(false),
     hasIoTransfer_(false),
+    hasExternalDataTransfer_(true),
     periodicManager_(NULL),
     hasPeriodic_(false),
     hasFluids_(false),
@@ -3269,7 +3270,7 @@ Realm::provide_output()
 
     if ( isOutput ) {
       NaluEnv::self().naluOutputP0() << "Realm shall provide output files at : currentTime/timeStepCount: "
-                                     << currentTime << "/" <<  timeStepCount << std::endl;      
+                                     << currentTime << "/" <<  timeStepCount << " (" << name_ << ")" << std::endl;      
       // when adaptivity has occurred, re-create the output mesh file
       if (outputInfo_->meshAdapted_)
         create_output_mesh();
@@ -3332,7 +3333,7 @@ Realm::provide_restart_output()
     
     if ( isRestartOutputStep ) {
       NaluEnv::self().naluOutputP0() << "Realm shall provide restart files at: currentTime/timeStepCount: "
-                                     << currentTime << "/" <<  timeStepCount << std::endl;      
+                                     << currentTime << "/" <<  timeStepCount << " (" << name_ << ")" << std::endl;      
       // handle fields
       ioBroker_->begin_output_step(restartFileIndex_, currentTime);
       ioBroker_->write_defined_output_fields(restartFileIndex_);
@@ -3696,7 +3697,7 @@ Realm::dump_simulation_time()
   }
 
   // transfer
-  if ( hasMultiPhysicsTransfer_ || hasInitializationTransfer_ || hasIoTransfer_ ) {
+  if ( hasMultiPhysicsTransfer_ || hasInitializationTransfer_ || hasIoTransfer_ || hasExternalDataTransfer_ ) {
     double totalXfer[2] = {timerTransferSearch_, timerTransferExecute_};
     double g_totalXfer[2] = {}, g_minXfer[2] = {}, g_maxXfer[2] = {};
     stk::all_reduce_min(NaluEnv::self().parallel_comm(), &totalXfer[0], &g_minXfer[0], 2);
@@ -3863,6 +3864,16 @@ Realm::get_surface_master_element(
 
       case stk::topology::LINE_3:
         theElem = new Edge32DSCS();
+        break;
+
+      case stk::topology::SHELL_QUAD_4:
+        theElem =  new Quad3DSCS();
+        NaluEnv::self().naluOutputP0() << "SHELL_QUAD_4 only supported for io surface transfer applications" << std::endl;
+        break;
+
+      case stk::topology::SHELL_TRI_3:
+        theElem = new Tri3DSCS();
+        NaluEnv::self().naluOutputP0() << "SHELL_TRI_3 only supported for io surface transfer applications" << std::endl;
         break;
 
       default:
@@ -4293,6 +4304,10 @@ Realm::augment_transfer_vector(Transfer *transfer, const std::string transferObj
     toRealm->ioTransferVec_.push_back(transfer);
     toRealm->hasIoTransfer_ = true;
   }
+  else if ( transferObjective == "external_data" ) {
+    toRealm->externalDataTransferVec_.push_back(transfer);
+    toRealm->hasExternalDataTransfer_ = true;
+  }
   else { 
     throw std::runtime_error("Real::augment_transfer_vector: Error, none supported transfer objective: " + transferObjective);
   }
@@ -4351,6 +4366,23 @@ Realm::process_io_transfer()
     for( ii=ioTransferVec_.begin(); ii!=ioTransferVec_.end(); ++ii )
       (*ii)->execute();
   }
+  timeXfer += NaluEnv::self().nalu_time();
+  timerTransferExecute_ += timeXfer;
+}
+
+//--------------------------------------------------------------------------
+//-------- process_external_data_transfer ----------------------------------
+//--------------------------------------------------------------------------
+void
+Realm::process_external_data_transfer()
+{
+  if ( !hasExternalDataTransfer_ )
+    return;
+
+  double timeXfer = -NaluEnv::self().nalu_time();
+  std::vector<Transfer *>::iterator ii;
+  for( ii=externalDataTransferVec_.begin(); ii!=externalDataTransferVec_.end(); ++ii )
+    (*ii)->execute();
   timeXfer += NaluEnv::self().nalu_time();
   timerTransferExecute_ += timeXfer;
 }

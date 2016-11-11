@@ -157,7 +157,7 @@ TimeIntegrator::integrate_realm()
   for ( ii = realmVec_.begin(); ii!=realmVec_.end(); ++ii) {
     (*ii)->populate_initial_condition();
   }
-
+  
   // populate boundary data
   for ( ii = realmVec_.begin(); ii!=realmVec_.end(); ++ii) {
     (*ii)->populate_boundary_data();
@@ -178,10 +178,23 @@ TimeIntegrator::integrate_realm()
     currentTime_ = std::max(currentTime_, (*ii)->populate_restart(timeStepNm1_, timeStepCount_));
   }
 
-  // populate data from transfer
+  // populate data from transfer; init, io and external
   for ( ii = realmVec_.begin(); ii!=realmVec_.end(); ++ii) {
     (*ii)->process_initialization_transfer();
     // FIXME: might erase the initialization Realm since it has performed its duty (requires shared pointers)
+  }
+
+  for ( ii = realmVec_.begin(); ii!=realmVec_.end(); ++ii) {
+    (*ii)->process_io_transfer();
+  }
+
+  // read any fields from input file that will serve at external fields
+  for ( ii = realmVec_.begin(); ii!=realmVec_.end(); ++ii) {
+    (*ii)->populate_external_variables_from_input(currentTime_);
+  }
+  // process transfer
+  for ( ii = realmVec_.begin(); ii!=realmVec_.end(); ++ii) {
+    (*ii)->process_external_data_transfer();
   }
   
   // nm1 dt from possible restart always prevails; input file overrides for fixed time stepping
@@ -252,6 +265,11 @@ TimeIntegrator::integrate_realm()
       (*ii)->swap_states();
       (*ii)->predict_state();
     }
+
+    // read any fields from input file that will serve as external fields
+    for ( ii = realmVec_.begin(); ii!=realmVec_.end(); ++ii) {
+      (*ii)->populate_external_variables_from_input(currentTime_);
+    }
     
     // pre-step work; mesh motion, search, etc
     for ( ii = realmVec_.begin(); ii!=realmVec_.end(); ++ii) {
@@ -266,6 +284,11 @@ TimeIntegrator::integrate_realm()
     // output banner
     for ( ii = realmVec_.begin(); ii!=realmVec_.end(); ++ii) {
       (*ii)->output_banner();
+    }
+
+    // for this time, extract all of the proper data
+    for ( ii = realmVec_.begin(); ii!=realmVec_.end(); ++ii) {
+      (*ii)->process_external_data_transfer();
     }
 
     // nonlinear iteration loop; Picard-style
