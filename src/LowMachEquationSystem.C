@@ -1455,7 +1455,7 @@ MomentumEquationSystem::register_wall_bc(
         theAuxFunc = new TornadoAuxFunction(0,nDim);
       }
       else if ( fcnName == "wind_energy" ) {
-     	theAuxFunc = new WindEnergyAuxFunction(0,nDim, theParams);
+     	theAuxFunc = new WindEnergyAuxFunction(0,nDim, theParams, realm_);
       }
       else {
         throw std::runtime_error("Only wind_energy and tornado user functions supported");

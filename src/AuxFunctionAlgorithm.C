@@ -53,6 +53,8 @@ AuxFunctionAlgorithm::execute()
   const double time = realm_.get_current_time();
   VectorFieldType *coordinates = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
 
+  auxFunction_->setup(time);
+
   stk::mesh::Selector selector = stk::mesh::selectUnion(partVec_) &
     stk::mesh::selectField(*field_);
 

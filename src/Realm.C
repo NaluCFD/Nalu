@@ -42,6 +42,7 @@
 #include <OutputInfo.h>
 #include <PostProcessingInfo.h>
 #include <PostProcessingData.h>
+#include <PecletFunction.h>
 #include <PeriodicManager.h>
 #include <Realms.h>
 #include <SolutionOptions.h>
@@ -228,7 +229,6 @@ namespace nalu{
 //--------------------------------------------------------------------------
 Realm::~Realm()
 {
-
   delete bulkData_;
   delete metaData_;
   delete ioBroker_;
@@ -2376,8 +2376,10 @@ Realm::set_omega(
   stk::mesh::Part *targetPart,
   double scalarOmega)
 {
+  // deal with tanh blending
+  const double omegaBlend = get_tanh_blending("omega");
   ScalarFieldType *omega = metaData_->get_field<ScalarFieldType>(stk::topology::NODE_RANK, "omega");
-
+  
   stk::mesh::Selector s_all_nodes = stk::mesh::Selector(*targetPart);
 
   stk::mesh::BucketVector const& node_buckets = bulkData_->get_buckets( stk::topology::NODE_RANK, s_all_nodes );
@@ -2387,7 +2389,7 @@ Realm::set_omega(
     const stk::mesh::Bucket::size_type length   = b.size();
     double * bigO = stk::mesh::field_data(*omega, b);
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
-      bigO[k] = scalarOmega;
+      bigO[k] = scalarOmega*omegaBlend;
     }
   }
 }
@@ -4061,48 +4063,48 @@ Realm::get_noc_usage(
 }
 
 //--------------------------------------------------------------------------
-//-------- get_peclet_functional_form --------------------------------------
+//-------- get_tanh_functional_form ----------------------------------------
 //--------------------------------------------------------------------------
 std::string
-Realm::get_peclet_functional_form(
+Realm::get_tanh_functional_form(
   const std::string dofName )
 {
-  std::string pecletForm = solutionOptions_->pecletFunctionalFormDefault_;
+  std::string tanhForm = solutionOptions_->tanhFormDefault_;
   std::map<std::string, std::string>::const_iterator iter
-    = solutionOptions_->pecletFunctionalFormMap_.find(dofName);
-  if (iter != solutionOptions_->pecletFunctionalFormMap_.end()) {
-    pecletForm = (*iter).second;
+    = solutionOptions_->tanhFormMap_.find(dofName);
+  if (iter != solutionOptions_->tanhFormMap_.end()) {
+    tanhForm = (*iter).second;
   }
-  return pecletForm;
+  return tanhForm;
 }
 
 //--------------------------------------------------------------------------
-//-------- get_peclet_tanh_trans -------------------------------------------
+//-------- get_tanh_trans --------------------------------------------------
 //--------------------------------------------------------------------------
 double
-Realm::get_peclet_tanh_trans(
+Realm::get_tanh_trans(
   const std::string dofName )
 {
-  double tanhTrans = solutionOptions_->pecletTanhTransDefault_;
+  double tanhTrans = solutionOptions_->tanhTransDefault_;
   std::map<std::string, double>::const_iterator iter
-    = solutionOptions_->pecletFunctionTanhTransMap_.find(dofName);
-  if (iter != solutionOptions_->pecletFunctionTanhTransMap_.end()) {
+    = solutionOptions_->tanhTransMap_.find(dofName);
+  if (iter != solutionOptions_->tanhTransMap_.end()) {
     tanhTrans = (*iter).second;
   }
   return tanhTrans;
 }
 
 //--------------------------------------------------------------------------
-//-------- get_peclet_tanh_width -------------------------------------------
+//-------- get_tanh_width --------------------------------------------------
 //--------------------------------------------------------------------------
 double
-Realm::get_peclet_tanh_width(
+Realm::get_tanh_width(
   const std::string dofName )
 {
-  double tanhWidth = solutionOptions_->pecletTanhWidthDefault_;
+  double tanhWidth = solutionOptions_->tanhWidthDefault_;
   std::map<std::string, double>::const_iterator iter
-    = solutionOptions_->pecletFunctionTanhWidthMap_.find(dofName);
-  if (iter != solutionOptions_->pecletFunctionTanhWidthMap_.end()) {
+    = solutionOptions_->tanhWidthMap_.find(dofName);
+  if (iter != solutionOptions_->tanhWidthMap_.end()) {
     tanhWidth = (*iter).second;
   }
   return tanhWidth;
@@ -4609,6 +4611,25 @@ Realm::get_physics_target_names()
   // in the future, possibly check for more advanced names;
   // for now, material props holds this
   return materialPropertys_.targetNames_;
+}
+
+//--------------------------------------------------------------------------
+//-------- get_tanh_blending() ---------------------------------------------
+//--------------------------------------------------------------------------
+double
+Realm::get_tanh_blending(
+ const std::string dofName)
+{
+  // assumes interval starts at a = 0 and ends at b = 1
+  double omegaBlend = 1.0;
+  if ( get_tanh_functional_form(dofName) == "tanh" ) {
+    const double c1 = get_tanh_trans(dofName);
+    const double c2 = get_tanh_width(dofName);
+    TanhFunction tanhFunction(c1,c2);
+    const double currentTime = get_current_time();
+    omegaBlend = tanhFunction.execute(currentTime);
+  }
+  return omegaBlend;
 }
 
 } // namespace nalu

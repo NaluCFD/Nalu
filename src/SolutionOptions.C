@@ -34,9 +34,9 @@ SolutionOptions::SolutionOptions()
     turbScDefault_(1.0),
     turbPrDefault_(1.0),
     nocDefault_(true),
-    pecletFunctionalFormDefault_("classic"),
-    pecletTanhTransDefault_(2.0),
-    pecletTanhWidthDefault_(4.0),
+    tanhFormDefault_("classic"),
+    tanhTransDefault_(2.0),
+    tanhWidthDefault_(4.0),
     referenceDensity_(0.0),
     referenceTemperature_(298.0),
     thermalExpansionCoeff_(1.0),
@@ -301,13 +301,23 @@ SolutionOptions::load(const YAML::Node & y_node)
           }
         }
         else if (expect_map( y_option, "peclet_function_form", optional)) {
-          y_option["peclet_function_form"] >> pecletFunctionalFormMap_ ;
+          y_option["peclet_function_form"] >> tanhFormMap_ ;
         }
         else if (expect_map( y_option, "peclet_function_tanh_transition", optional)) {
-          y_option["peclet_function_tanh_transition"] >> pecletFunctionTanhTransMap_ ;
+          y_option["peclet_function_tanh_transition"] >> tanhTransMap_ ;
         }
         else if (expect_map( y_option, "peclet_function_tanh_width", optional)) {
-          y_option["peclet_function_tanh_width"] >> pecletFunctionTanhWidthMap_ ;
+          y_option["peclet_function_tanh_width"] >> tanhWidthMap_ ;
+        }
+        // overload line command, however, push to the same tanh data structure
+        else if (expect_map( y_option, "blending_function_form", optional)) {
+          y_option["blending_function_form"] >> tanhFormMap_ ;
+        }
+        else if (expect_map( y_option, "tanh_transition", optional)) {
+          y_option["tanh_transition"] >> tanhTransMap_ ;
+        }
+        else if (expect_map( y_option, "tanh_width", optional)) {
+          y_option["tanh_width"] >> tanhWidthMap_ ;
         }
         else if (expect_map( y_option, "consistent_mass_matrix_png", optional)) {
           y_option["consistent_mass_matrix_png"] >> consistentMassMatrixPngMap_ ;
