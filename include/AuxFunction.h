@@ -55,6 +55,7 @@ public:
     else
       do_evaluate(coords, time, spatialDimension, numPoints, fieldPtr, fieldSize, beginPos_, endPos_);
   }
+  virtual void setup(const double time) {}
 
 private:
 
