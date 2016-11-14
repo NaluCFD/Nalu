@@ -126,15 +126,18 @@ endif(NOT EXISTS "${NALURTEST_DIR}")
 
 ## -- Clean the test vouchers
 file(GLOB old_vouchers "${NIGHTLY_TEST_RESULT_DIRECTORY}/*/PASS")
-IF(NOT ${old_vouchers} STREQUAL "")
+list(LENGTH old_vouchers old_vouchers_length)
+IF(NOT old_vouchers_length EQUAL 0)
   message("    removing old nightly test vouchers.")
   file(REMOVE ${old_vouchers})
-endif(NOT ${old_vouchers} STREQUAL "")
+endif(NOT old_vouchers_length EQUAL 0)
+
 file(GLOB old_vouchers "${PERF_TEST_RESULT_DIRECTORY}/*/PASS")
-if(NOT ${old_vouchers} STREQUAL "")
+list(LENGTH old_vouchers old_vouchers_length)
+IF(NOT old_vouchers_length EQUAL 0)
   message("    removing old performance test vouchers.")
   file(REMOVE ${old_vouchers})
-endif(NOT ${old_vouchers} STREQUAL "")
+endif(NOT old_vouchers_length EQUAL 0)
 
 ## -- Run the tests using the script
 message(" -- NaluRtest ${MODEL} - ${CTEST_BUILD_NAME} --")
