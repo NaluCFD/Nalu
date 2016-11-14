@@ -293,12 +293,12 @@ class Realm {
     const std::string dofname);
   double get_divU();
 
-  // peclet factor specifics
-  std::string get_peclet_functional_form(
+  // tanh factor specifics
+  std::string get_tanh_functional_form(
     const std::string dofname);
-  double get_peclet_tanh_trans(
+  double get_tanh_trans(
     const std::string dofname);
-  double get_peclet_tanh_width(
+  double get_tanh_width(
     const std::string dofname);
 
   // consistent mass matrix for projected nodal gradient
@@ -353,6 +353,7 @@ class Realm {
 
   // provide all of the physics target names
   const std::vector<std::string> &get_physics_target_names();
+  double get_tanh_blending(const std::string dofName);
 
   Realms& realms_;
 

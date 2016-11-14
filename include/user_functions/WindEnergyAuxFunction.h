@@ -15,6 +15,9 @@
 namespace sierra{
 namespace nalu{
 
+class Realm;
+class TanhFunction;
+
 class WindEnergyAuxFunction : public AuxFunction
 {
 public:
@@ -22,9 +25,10 @@ public:
   WindEnergyAuxFunction(
     const unsigned beginPos,
     const unsigned endPos,
-    std::vector<double> theParams);
+    std::vector<double> theParams,
+    Realm &realm);
 
-  virtual ~WindEnergyAuxFunction() {}
+  virtual ~WindEnergyAuxFunction();
   
   virtual void do_evaluate(
     const double * coords,
@@ -35,11 +39,15 @@ public:
     const unsigned fieldSize,
     const unsigned beginPos,
     const unsigned endPos) const;
-  
+
+  void setup(const double time);
+
 private:
-  double omega_;
   double centroidX_;
   double centroidY_;
+  double omega_;
+  double omegaBlend_;
+  TanhFunction *tanhFunction_;
 };
 
 } // namespace nalu
