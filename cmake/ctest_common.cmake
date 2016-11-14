@@ -118,11 +118,13 @@ ctest_build(BUILD  "${CTEST_BINARY_DIRECTORY}" RETURN_VALUE res)
 # The tests are in another repository and will run using those
 # scripts. CTest reports on the test vouchers
 
-## -- Clone the test repo if necessary
+## -- Clone (and pull) the test repo if necessary
 if(NOT EXISTS "${NALURTEST_DIR}")
-       execute_process(COMMAND "${CTEST_GIT_COMMAND} clone ${NALURTEST_REPO_URL} ${NALURTEST_DIR}"
+       execute_process(COMMAND "${CTEST_GIT_COMMAND}" "clone" "${NALURTEST_REPO_URL}" "${NALURTEST_DIR}"
                        WORKING_DIRECTORY ${NIGHTLY_DIR} )
 endif(NOT EXISTS "${NALURTEST_DIR}")
+execute_process(COMMAND "${CTEST_GIT_COMMAND}" "pull"
+                WORKING_DIRECTORY ${NALURTEST_DIR})
 
 ## -- Clean the test vouchers
 file(GLOB old_vouchers "${NIGHTLY_TEST_RESULT_DIRECTORY}/*/PASS")
