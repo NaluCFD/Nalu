@@ -218,7 +218,12 @@ EpetraLinearSolverConfig::string_to_AzSubdomainSolver(const std::string & solver
 TpetraLinearSolverConfig::TpetraLinearSolverConfig() :
   params_(Teuchos::rcp(new Teuchos::ParameterList)),
   paramsPrecond_(Teuchos::rcp(new Teuchos::ParameterList)),
-  useMueLu_(false)
+  useMueLu_(false),
+  recomputePreconditioner_(true),
+  reusePreconditioner_(false),
+  writeMatrixFiles_(false),
+  summarizeMueluTimer_(false),
+  preconditionerType_("RELAXATION")
 {}
 
 TpetraLinearSolverConfig::~TpetraLinearSolverConfig()
@@ -278,12 +283,20 @@ TpetraLinearSolverConfig::load(const YAML::Node & node)
   params_->set("Implicit Residual Scaling", "Norm of Preconditioned Initial Residual");
 
   if (precond_ == "sgs") {
+    preconditionerType_ = "RELAXATION";
     paramsPrecond_->set("relaxation: type","Symmetric Gauss-Seidel");
     paramsPrecond_->set("relaxation: sweeps",1);
   }
   else if (precond_ == "jacobi" || precond_ == "default") {
+    preconditionerType_ = "RELAXATION";
     paramsPrecond_->set("relaxation: type","Jacobi");
     paramsPrecond_->set("relaxation: sweeps",1);
+  }
+  else if (precond_ == "ilut" ) {
+    preconditionerType_ = "ILUT";
+  }
+  else if (precond_ == "riluk" ) {
+    preconditionerType_ = "RILUK";
   }
   else if (precond_ == "muelu") {
     muelu_xml_file_ = std::string("milestone.xml");
@@ -294,11 +307,11 @@ TpetraLinearSolverConfig::load(const YAML::Node & node)
     throw std::runtime_error("invalid linear solver preconditioner specified ");
   }
 
-  get_if_present(node, "write_matrix_files", writeMatrixFiles_, false);
-  get_if_present(node, "summarize_muelu_timer", summarizeMueluTimer_, false);
+  get_if_present(node, "write_matrix_files", writeMatrixFiles_, writeMatrixFiles_);
+  get_if_present(node, "summarize_muelu_timer", summarizeMueluTimer_, summarizeMueluTimer_);
 
-  get_if_present(node, "recompute_preconditioner", recomputePreconditioner_, true);
-  get_if_present(node, "reuse_preconditioner",     reusePreconditioner_,     false);
+  get_if_present(node, "recompute_preconditioner", recomputePreconditioner_, recomputePreconditioner_);
+  get_if_present(node, "reuse_preconditioner",     reusePreconditioner_,     reusePreconditioner_);
 
 }
 
