@@ -191,7 +191,8 @@ TpetraLinearSolver::TpetraLinearSolver(
     config_(config),
     params_(params),
     paramsPrecond_(paramsPrecond),
-    activateMueLu_(config->use_MueLu())
+    activateMueLu_(config->use_MueLu()),
+    preconditionerType_(config->preconditioner_type())
 {
 }
 
@@ -207,7 +208,6 @@ TpetraLinearSolver::setSystemObjects(
 {
   ThrowRequire(!matrix.is_null());
   ThrowRequire(!rhs.is_null());
-  //ThrowRequire(solver_);
 
   matrix_ = matrix;
   rhs_ = rhs;
@@ -228,10 +228,14 @@ void TpetraLinearSolver::setupLinearSolver(
   }
   else {
     Ifpack2::Factory factory;
-    const std::string preconditionerType ("RELAXATION");
-    preconditioner_ = factory.create (preconditionerType, Teuchos::rcp_const_cast<const LinSys::Matrix>(matrix_), 0);
+    preconditioner_ = factory.create (preconditionerType_, 
+                                      Teuchos::rcp_const_cast<const LinSys::Matrix>(matrix_), 0);
     preconditioner_->setParameters(*paramsPrecond_);
-    preconditioner_->initialize();
+    
+    // delay initialization for some preconditioners
+    if ( "RILUK" != preconditionerType_ ) {
+      preconditioner_->initialize();
+    }
     problem_->setRightPrec(preconditioner_);
 
     // create the solver, e.g., gmres, cg, tfqmr, bicgstab
@@ -328,6 +332,9 @@ TpetraLinearSolver::solve(
   }
   else
   {
+    if ( "RILUK" == preconditionerType_ ) {
+      preconditioner_->initialize();
+    }
     preconditioner_->compute();
   }
   time += NaluEnv::self().nalu_time();
