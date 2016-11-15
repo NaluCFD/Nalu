@@ -41,13 +41,13 @@ namespace nalu{
 
 InitialCondition * InitialCondition::load(const YAML::Node & node) 
 {
-   if ( node.FindValue("constant") ){
+   if ( node["constant"] ){
     NaluEnv::self().naluOutputP0() << "Initial Is Type constant " << std::endl;
     ConstantInitialConditionData& constIC = *new ConstantInitialConditionData(*parent());
     node >> constIC;
     return &constIC;
   }
-  else  if ( node.FindValue("user_function") ){
+  else  if ( node["user_function"] ){
     NaluEnv::self().naluOutputP0() << "Initial Is Type user-function " << std::endl;
     UserFunctionInitialConditionData& fcnIC = *new UserFunctionInitialConditionData(*parent());
     node >> fcnIC;

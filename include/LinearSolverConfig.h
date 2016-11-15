@@ -74,6 +74,7 @@ class TpetraLinearSolverConfig {
     bool recomputePreconditioner() { return recomputePreconditioner_; }
     bool reusePreconditioner() { return reusePreconditioner_; }
     std::string get_method() {return method_;}
+    std::string preconditioner_type(){ return preconditionerType_;}
 
   private:
     std::string name_;
@@ -81,15 +82,14 @@ class TpetraLinearSolverConfig {
     std::string precond_;
     Teuchos::RCP<Teuchos::ParameterList> params_;
     Teuchos::RCP<Teuchos::ParameterList> paramsPrecond_;
-    bool writeMatrixFiles_;
-    bool summarizeMueluTimer_;
 
     std::string muelu_xml_file_;
     bool useMueLu_;
-
     bool recomputePreconditioner_;
     bool reusePreconditioner_;
-
+    bool writeMatrixFiles_;
+    bool summarizeMueluTimer_;
+    std::string preconditionerType_;
 };
 
 } // namespace nalu

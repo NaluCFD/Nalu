@@ -67,17 +67,18 @@ class BoundaryCondition {
  {
    BoundaryCondition tmp_boundary_condition(*this);
    
-   const YAML::Node *boundary_conditions = node.FindValue("boundary_conditions");
-   if (boundary_conditions) {
-     for ( size_t iboundary_condition = 0; iboundary_condition < boundary_conditions->size(); ++iboundary_condition ) {
-       const YAML::Node & boundary_condition_node = (*boundary_conditions)[iboundary_condition];
+   if(node["boundary_conditions"]) {
+     const YAML::Node boundary_conditions = node["boundary_conditions"];
+     for ( size_t iboundary_condition = 0; iboundary_condition < boundary_conditions.size(); ++iboundary_condition ) {
+       const YAML::Node boundary_condition_node = boundary_conditions[iboundary_condition];
        BoundaryCondition* bc = tmp_boundary_condition.load(boundary_condition_node);
        boundaryConditionVector_.push_back(bc);
      }
    }
-   else
+   else {
      throw std::runtime_error("parser error BoundaryConditions::load");
-   
+   }
+
    return this;
  }
  

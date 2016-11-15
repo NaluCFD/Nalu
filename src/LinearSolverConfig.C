@@ -59,8 +59,8 @@ void
 EpetraLinearSolverConfig::load(const YAML::Node & node)
 {
   AZ_defaults(az_options, az_params);
-  node["name"]   >> name_;
-  node["method"] >> method_;
+  name_ = node["name"].as<std::string>() ;
+  method_ = node["method"].as<std::string>() ;
   get_if_present(node, "preconditioner", precond_, std::string("default"));
   get_if_present(node, "subdomain_solver", subMethod_, std::string("default"));
   if (precond_ == "ML")
@@ -69,46 +69,46 @@ EpetraLinearSolverConfig::load(const YAML::Node & node)
 
     ML_Epetra::SetDefaults("SA", *mlParameterList_);
 
-    const YAML::Node * int_nodes = node.FindValue("ML_options_int");
+    const YAML::Node int_nodes = node["ML_options_int"];
     if ( int_nodes )
     {
-      for ( size_t inode = 0; inode <  int_nodes->size(); ++inode )
+      for ( size_t inode = 0; inode < int_nodes.size(); ++inode )
       {
-        const YAML::Node & integer_parameter_node = (* int_nodes)[inode];
+        const YAML::Node integer_parameter_node = int_nodes[inode] ;
         std::string option_name;
         int option_value;
-        integer_parameter_node["name"] >> option_name;
-        integer_parameter_node["value"] >> option_value;
+        option_name = integer_parameter_node["name"].as<std::string>() ;
+        option_value = integer_parameter_node["value"].as<int>() ;
         mlParameterList_->set(option_name,option_value);
 
       }
     }
 
-    const YAML::Node * str_nodes = node.FindValue("ML_options_string");
+    const YAML::Node str_nodes = node["ML_options_string"];
     if ( str_nodes )
     {
-      for ( size_t inode = 0; inode <  str_nodes->size(); ++inode )
+      for ( size_t inode = 0 ; inode < str_nodes.size(); ++inode )
       {
-        const YAML::Node & integer_parameter_node = (* str_nodes)[inode];
+        const YAML::Node integer_parameter_node = str_nodes[inode] ;
         std::string option_name;
-        std::string option_value;
-        integer_parameter_node["name"] >> option_name;
-        integer_parameter_node["value"] >> option_value;
-        mlParameterList_->set(option_name,option_value);
+        std::string option_value; 
+        option_name = integer_parameter_node["name"].as<std::string>() ;
+        option_value = integer_parameter_node["value"].as<std::string>() ;
+	mlParameterList_->set(option_name,option_value);
 
       }
     }
 
-    const YAML::Node * real_nodes = node.FindValue("ML_options_real");
+    const YAML::Node real_nodes = node["ML_options_real"];
     if ( real_nodes )
     {
-      for ( size_t inode = 0; inode <  real_nodes->size(); ++inode )
+      for ( size_t inode = 0 ; inode < real_nodes.size(); ++inode )
       {
-        const YAML::Node & integer_parameter_node = (* real_nodes)[inode];
+        const YAML::Node integer_parameter_node = real_nodes[inode];
         std::string option_name;
-        double option_value;
-        integer_parameter_node["name"] >> option_name;
-        integer_parameter_node["value"] >> option_value;
+        double option_value; 
+        option_name = integer_parameter_node["name"].as<std::string>() ;
+        option_value = integer_parameter_node["value"].as<double>() ;
         mlParameterList_->set(option_name,option_value);
 
       }
@@ -218,7 +218,12 @@ EpetraLinearSolverConfig::string_to_AzSubdomainSolver(const std::string & solver
 TpetraLinearSolverConfig::TpetraLinearSolverConfig() :
   params_(Teuchos::rcp(new Teuchos::ParameterList)),
   paramsPrecond_(Teuchos::rcp(new Teuchos::ParameterList)),
-  useMueLu_(false)
+  useMueLu_(false),
+  recomputePreconditioner_(true),
+  reusePreconditioner_(false),
+  writeMatrixFiles_(false),
+  summarizeMueluTimer_(false),
+  preconditionerType_("RELAXATION")
 {}
 
 TpetraLinearSolverConfig::~TpetraLinearSolverConfig()
@@ -246,8 +251,8 @@ TpetraLinearSolverConfig::paramsPrecond() const
 void
 TpetraLinearSolverConfig::load(const YAML::Node & node)
 {
-  node["name"]    >> name_;
-  node["method"]  >> method_;
+  name_ = node["name"].as<std::string>() ;
+  method_ = node["method"].as<std::string>() ;
   get_if_present(node, "preconditioner", precond_, std::string("default"));
 
   double tol;
@@ -278,12 +283,20 @@ TpetraLinearSolverConfig::load(const YAML::Node & node)
   params_->set("Implicit Residual Scaling", "Norm of Preconditioned Initial Residual");
 
   if (precond_ == "sgs") {
+    preconditionerType_ = "RELAXATION";
     paramsPrecond_->set("relaxation: type","Symmetric Gauss-Seidel");
     paramsPrecond_->set("relaxation: sweeps",1);
   }
   else if (precond_ == "jacobi" || precond_ == "default") {
+    preconditionerType_ = "RELAXATION";
     paramsPrecond_->set("relaxation: type","Jacobi");
     paramsPrecond_->set("relaxation: sweeps",1);
+  }
+  else if (precond_ == "ilut" ) {
+    preconditionerType_ = "ILUT";
+  }
+  else if (precond_ == "riluk" ) {
+    preconditionerType_ = "RILUK";
   }
   else if (precond_ == "muelu") {
     muelu_xml_file_ = std::string("milestone.xml");
@@ -294,11 +307,11 @@ TpetraLinearSolverConfig::load(const YAML::Node & node)
     throw std::runtime_error("invalid linear solver preconditioner specified ");
   }
 
-  get_if_present(node, "write_matrix_files", writeMatrixFiles_, false);
-  get_if_present(node, "summarize_muelu_timer", summarizeMueluTimer_, false);
+  get_if_present(node, "write_matrix_files", writeMatrixFiles_, writeMatrixFiles_);
+  get_if_present(node, "summarize_muelu_timer", summarizeMueluTimer_, summarizeMueluTimer_);
 
-  get_if_present(node, "recompute_preconditioner", recomputePreconditioner_, true);
-  get_if_present(node, "reuse_preconditioner",     reusePreconditioner_,     false);
+  get_if_present(node, "recompute_preconditioner", recomputePreconditioner_, recomputePreconditioner_);
+  get_if_present(node, "reuse_preconditioner",     reusePreconditioner_,     reusePreconditioner_);
 
 }
 

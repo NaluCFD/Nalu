@@ -245,6 +245,7 @@ class Realm {
   virtual void populate_boundary_data();
   virtual void boundary_data_to_state_data();
   virtual double populate_variables_from_input(const double currentTime);
+  virtual void populate_external_variables_from_input(const double currentTime) {}
   virtual double populate_restart( double &timeStepNm1, int &timeStepCount);
   virtual void populate_derived_quantities();
   virtual void evaluate_properties();
@@ -292,12 +293,12 @@ class Realm {
     const std::string dofname);
   double get_divU();
 
-  // peclet factor specifics
-  std::string get_peclet_functional_form(
+  // tanh factor specifics
+  std::string get_tanh_functional_form(
     const std::string dofname);
-  double get_peclet_tanh_trans(
+  double get_tanh_trans(
     const std::string dofname);
-  double get_peclet_tanh_width(
+  double get_tanh_width(
     const std::string dofname);
 
   // consistent mass matrix for projected nodal gradient
@@ -352,6 +353,7 @@ class Realm {
 
   // provide all of the physics target names
   const std::vector<std::string> &get_physics_target_names();
+  double get_tanh_blending(const std::string dofName);
 
   Realms& realms_;
 
@@ -446,6 +448,7 @@ class Realm {
   bool hasMultiPhysicsTransfer_;
   bool hasInitializationTransfer_;
   bool hasIoTransfer_;
+  bool hasExternalDataTransfer_;
 
   PeriodicManager *periodicManager_;
   bool hasPeriodic_;
@@ -499,11 +502,13 @@ class Realm {
   std::vector<Transfer *> multiPhysicsTransferVec_;
   std::vector<Transfer *> initializationTransferVec_;
   std::vector<Transfer *> ioTransferVec_;
+  std::vector<Transfer *> externalDataTransferVec_;
   void augment_transfer_vector(Transfer *transfer, const std::string transferObjective, Realm *toRealm);
   void process_multi_physics_transfer();
   void process_initialization_transfer();
   void process_io_transfer();
-
+  void process_external_data_transfer();
+  
   // process end of time step converged work
   void post_converged_work();
 

@@ -32,16 +32,14 @@ public:
   double hf_;
 };
 
-class TanhPecletFunction : public PecletFunction
+class TanhFunction : public PecletFunction
 {
 public:
-  TanhPecletFunction( double c1, double c2 );
-  virtual ~TanhPecletFunction();
-  double execute(const double pecletNumber);
+  TanhFunction( double c1, double c2 );
+  virtual ~TanhFunction();
+  double execute(const double indVar);
   double c1_; // peclet number at which transition occurs
   double c2_; // width of the transtion
-  double shift_;
-  double delta_;
 };
 
 } // namespace nalu

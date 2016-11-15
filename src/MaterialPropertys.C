@@ -69,38 +69,38 @@ MaterialPropertys::~MaterialPropertys()
 void
 MaterialPropertys::load(const YAML::Node & node) 
 {
-  const YAML::Node *y_material_propertys = expect_map(node,"material_properties", false);
+  const YAML::Node y_material_propertys = expect_map(node,"material_properties", false);
   if (y_material_propertys) {
     
     // extract the set of target names
-    const YAML::Node &targets = (*y_material_propertys)["target_name"];
+    const YAML::Node targets = y_material_propertys["target_name"];
     if (targets.Type() == YAML::NodeType::Scalar) {
       targetNames_.resize(1);
-      targets >> targetNames_[0];
+      targetNames_[0] = targets.as<std::string>() ;
     }
     else {
       targetNames_.resize(targets.size());
       for (size_t i=0; i < targets.size(); ++i) {
-        targets[i] >> targetNames_[i];
+        targetNames_[i] = targets[i].as<std::string>() ;
       }
     }
     
     // has a table?
-    if ( (*y_material_propertys).FindValue("table_file_name")) {
-      (*y_material_propertys)["table_file_name"] >> propertyTableName_;
+    if ( y_material_propertys["table_file_name"] ) {
+      propertyTableName_ = y_material_propertys["table_file_name"].as<std::string>() ;
     }
 
     // property constants
-    const YAML::Node *y_prop = expect_map(*y_material_propertys, "constant_specification", true);
-    if ( NULL!= y_prop ) {
-      *y_prop >> universalConstantMap_;
+    const YAML::Node y_prop = expect_map(y_material_propertys, "constant_specification", true);
+    if ( y_prop ) {
+      universalConstantMap_ = y_prop.as<std::map<std::string, double> >() ;
     }
 
     // reference quantities
-    const YAML::Node *y_refs = expect_sequence(*y_material_propertys, "reference_quantities", true);
+    const YAML::Node y_refs = expect_sequence(y_material_propertys, "reference_quantities", true);
     if (y_refs) {
-      for (size_t ispec = 0; ispec < y_refs->size(); ++ispec) {
-        const YAML::Node & y_ref = (*y_refs)[ispec];
+      for (size_t ispec = 0; ispec < y_refs.size(); ++ispec) {
+        const YAML::Node y_ref = y_refs[ispec] ;
 
         // new the info object
         ReferencePropertyData *refData = new ReferencePropertyData();
@@ -120,10 +120,10 @@ MaterialPropertys::load(const YAML::Node & node)
     }
 
     // extract the sequence of types
-    const YAML::Node *y_specs = expect_sequence(*y_material_propertys, "specifications", false);
+    const YAML::Node y_specs = expect_sequence(y_material_propertys, "specifications", false);
     if (y_specs) {
-      for (size_t ispec = 0; ispec < y_specs->size(); ++ispec) {
-        const YAML::Node & y_spec = (*y_specs)[ispec];
+      for (size_t ispec = 0; ispec < y_specs.size(); ++ispec) {
+        const YAML::Node y_spec = y_specs[ispec];
 
         // new the info object
         MaterialPropertyData *matData = new MaterialPropertyData();
@@ -151,29 +151,29 @@ MaterialPropertys::load(const YAML::Node & node)
           matData->type_ = CONSTANT_MAT;
 
           // check for standard constant
-          const YAML::Node *standardConst = y_spec.FindValue("value");
+          const YAML::Node standardConst = y_spec["value"];
           if ( standardConst ) {
             double theValue = 0.0;
-            *standardConst >> theValue;
+            theValue = standardConst.as<double>() ;
             matData->constValue_ = theValue;
             NaluEnv::self().naluOutputP0() << thePropName
                 << " is a constant property: " << theValue << std::endl;
           }
           else {
             // check for possible species Cp_k specification
-            const YAML::Node *coeffDeclare = y_spec.FindValue("coefficient_declaration");
+            const YAML::Node coeffDeclare = y_spec["coefficient_declaration"];
             if (coeffDeclare) {
-              const YAML::Node *y_coeffds = expect_sequence(y_spec, "coefficient_declaration", true);
+              const YAML::Node y_coeffds = expect_sequence(y_spec, "coefficient_declaration", true);
               if (y_coeffds) {
-                for (size_t icoef = 0; icoef < y_coeffds->size(); ++icoef) {
-                  const YAML::Node & y_coeffd = (*y_coeffds)[icoef];
+                for (size_t icoef = 0; icoef < y_coeffds.size(); ++icoef) {
+                  const YAML::Node y_coeffd = y_coeffds[icoef];
                   std::string speciesName = "";
                   get_required(y_coeffd, "species_name", speciesName);
                   // standard coefficients single in size
-                  const YAML::Node *coeffds = y_coeffd.FindValue("coefficients");
+                  const YAML::Node coeffds = y_coeffd["coefficients"];
                   if ( coeffds ) {
                     double theValue = 0.0;
-                    *coeffds >> theValue;
+                    theValue = coeffds.as<double>() ;
                     matData->cpConstMap_[speciesName] = theValue;
                   }
                   else {
@@ -181,10 +181,10 @@ MaterialPropertys::load(const YAML::Node & node)
                   }
  
                   // standard hf single in size
-                  const YAML::Node *hfs = y_coeffd.FindValue("heat_of_formation");
+                  const YAML::Node hfs = y_coeffd["heat_of_formation"];
                   if ( hfs ) {
                     double theValue = 0.0;
-                    *hfs >> theValue;
+                    theValue = hfs.as<double>() ;
                     matData->hfConstMap_[speciesName] = theValue;
                   }
                   else {
@@ -216,53 +216,46 @@ MaterialPropertys::load(const YAML::Node & node)
           matData->type_ = POLYNOMIAL_MAT;
           
           // check for coeff declaration
-          const YAML::Node *y_coeffds = expect_sequence(y_spec, "coefficient_declaration", true);
+          const YAML::Node y_coeffds = expect_sequence(y_spec, "coefficient_declaration", true);
           if (y_coeffds) {
-            for (size_t icoef = 0; icoef < y_coeffds->size(); ++icoef) {
-              const YAML::Node & y_coeffd = (*y_coeffds)[icoef];
+            for (size_t icoef = 0; icoef < y_coeffds.size(); ++icoef) {
+              const YAML::Node y_coeffd = y_coeffds[icoef];
               std::string speciesName = "";
               get_required(y_coeffd, "species_name", speciesName);
 
               // standard coefficients
-              const YAML::Node *coeffds = y_coeffd.FindValue("coefficients");
+              const YAML::Node coeffds = y_coeffd["coefficients"];
               if ( coeffds ) {
-                const size_t coeffSize = coeffds->size();
+                const size_t coeffSize = coeffds.size();
                 std::vector<double> tmpPolyCoeffs(coeffSize);
-                for (size_t i=0; i < coeffSize; ++i) {
-                  (*coeffds)[i] >> tmpPolyCoeffs[i];
-                }
+		tmpPolyCoeffs = coeffds.as<std::vector<double> >();
                 matData->polynomialCoeffsMap_[speciesName] = tmpPolyCoeffs;
               }
 
               // low temperature coefficient
-              const YAML::Node *lowcoeffds = y_coeffd.FindValue("low_coefficients");
+              const YAML::Node lowcoeffds = y_coeffd["low_coefficients"];
               if ( lowcoeffds ) {
-                const size_t coeffSize = lowcoeffds->size();
+                const size_t coeffSize = lowcoeffds.size();
                 std::vector<double> tmpPolyCoeffs(coeffSize);
-                for (size_t i=0; i < coeffSize; ++i) {
-                  (*lowcoeffds)[i] >> tmpPolyCoeffs[i];
-                }
+		tmpPolyCoeffs = lowcoeffds.as<std::vector<double> >();
                 matData->lowPolynomialCoeffsMap_[speciesName] = tmpPolyCoeffs;
               }
 	      
               // high temperature coefficient
-              const YAML::Node *highcoeffds = y_coeffd.FindValue("high_coefficients");
+              const YAML::Node highcoeffds = y_coeffd["high_coefficients"];
               if ( highcoeffds ) {
-                const size_t coeffSize = highcoeffds->size();
+                const size_t coeffSize = highcoeffds.size();
                 std::vector<double> tmpPolyCoeffs(coeffSize);
-                for (size_t i=0; i < coeffSize; ++i) {
-                  (*highcoeffds)[i] >> tmpPolyCoeffs[i];
-                }
+		tmpPolyCoeffs = highcoeffds.as<std::vector<double> >();
                 matData->highPolynomialCoeffsMap_[speciesName] = tmpPolyCoeffs;
               }
             }
           }
-	  
+	  else  {
           // complain if both are null
-          if ( NULL == y_coeffds )
             throw std::runtime_error("polynominal property did not provide a set of coefficients");
-
-        } 
+	  }
+        }
         else if ( thePropType == "ideal_gas_t" ) {
           matData->type_ = IDEAL_GAS_T_MAT;
           NaluEnv::self().naluOutputP0() << thePropName
@@ -292,15 +285,15 @@ MaterialPropertys::load(const YAML::Node & node)
 	  std::string auxVarName = "na"; std::string tableAuxVarName = "na";
 
 	  // extract possible vector
-	  const YAML::Node &names = y_spec["independent_variable_set"];
+	  const YAML::Node names = y_spec["independent_variable_set"];
 	  if (names.Type() == YAML::NodeType::Scalar) {
 	    matData->indVarName_.resize(1);
-	    names >> matData->indVarName_[0];
+	    matData->indVarName_[0] = names.as<std::string>() ;
 	  }
 	  else {
 	    matData->indVarName_.resize(names.size());
 	    for (size_t i=0; i < names.size(); ++i) {
-	      names[i] >> matData->indVarName_[i];
+	      matData->indVarName_[i] = names[i].as<std::string>();
 	    }
 	  }
 	  
@@ -308,12 +301,12 @@ MaterialPropertys::load(const YAML::Node & node)
 	  const YAML::Node &tableNames = y_spec["table_name_for_independent_variable_set"];
 	  if (tableNames.Type() == YAML::NodeType::Scalar) {
 	    matData->indVarTableName_.resize(1);
-	    tableNames >> matData->indVarTableName_[0];
+	    matData->indVarTableName_[0] = tableNames.as<std::string>();
 	  }
 	  else {
 	    matData->indVarTableName_.resize(names.size());
 	    for (size_t i=0; i < tableNames.size(); ++i) {
-	      tableNames[i] >> matData->indVarTableName_[i];
+	      matData->indVarTableName_[i] = tableNames[i].as<std::string>() ;
 	    }
 	  }
 	  

@@ -190,6 +190,7 @@ class TpetraLinearSolver : public LinearSolver
     Teuchos::RCP<LinSys::MultiVector> coords_;
 
     bool activateMueLu_;
+    std::string preconditionerType_;
 };
 
 } // namespace nalu

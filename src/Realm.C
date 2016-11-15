@@ -42,6 +42,7 @@
 #include <OutputInfo.h>
 #include <PostProcessingInfo.h>
 #include <PostProcessingData.h>
+#include <PecletFunction.h>
 #include <PeriodicManager.h>
 #include <Realms.h>
 #include <SolutionOptions.h>
@@ -113,9 +114,6 @@
 #include <yaml-cpp/yaml.h>
 #include <NaluParsing.h>
 #include <NaluParsingHelper.h>
-
-// boost
-#include <boost/lexical_cast.hpp>
 
 // basic c++
 #include <map>
@@ -203,6 +201,7 @@ namespace nalu{
     hasMultiPhysicsTransfer_(false),
     hasInitializationTransfer_(false),
     hasIoTransfer_(false),
+    hasExternalDataTransfer_(false),
     periodicManager_(NULL),
     hasPeriodic_(false),
     hasFluids_(false),
@@ -230,7 +229,6 @@ namespace nalu{
 //--------------------------------------------------------------------------
 Realm::~Realm()
 {
-
   delete bulkData_;
   delete metaData_;
   delete ioBroker_;
@@ -505,7 +503,7 @@ void
 Realm::look_ahead_and_creation(const YAML::Node & node)
 {
   // look for turbulence averaging
-  std::vector<const YAML::Node *> foundTurbAveraging;
+  std::vector<const YAML::Node*> foundTurbAveraging;
   NaluParsingHelper::find_nodes_given_key("turbulence_averaging", node, foundTurbAveraging);
   if ( foundTurbAveraging.size() > 0 ) {
     if ( foundTurbAveraging.size() != 1 )
@@ -514,7 +512,7 @@ Realm::look_ahead_and_creation(const YAML::Node & node)
   }
 
   // look for SolutionNormPostProcessing
-  std::vector<const YAML::Node *> foundNormPP;
+  std::vector<const YAML::Node*> foundNormPP;
   NaluParsingHelper::find_nodes_given_key("solution_norm", node, foundNormPP);
   if ( foundNormPP.size() > 0 ) {
     if ( foundNormPP.size() != 1 )
@@ -523,7 +521,7 @@ Realm::look_ahead_and_creation(const YAML::Node & node)
   }
 
   // look for DataProbe
-  std::vector<const YAML::Node *> foundProbe;
+  std::vector<const YAML::Node*> foundProbe;
   NaluParsingHelper::find_nodes_given_key("data_probes", node, foundProbe);
   if ( foundProbe.size() > 0 ) {
     if ( foundProbe.size() != 1 )
@@ -532,7 +530,7 @@ Realm::look_ahead_and_creation(const YAML::Node & node)
   }
 
   // look for ActuatorLine
-  std::vector<const YAML::Node *> foundActuatorLine;
+  std::vector<const YAML::Node*> foundActuatorLine;
   NaluParsingHelper::find_nodes_given_key("actuator_line", node, foundActuatorLine);
   if ( foundActuatorLine.size() > 0 ) {
     if ( foundActuatorLine.size() != 1 )
@@ -552,8 +550,8 @@ Realm::load(const YAML::Node & node)
   // realm commands first
   //======================================
 
-  node["name"] >> name_;
-  node["mesh"] >> inputDBName_;
+  name_ = node["name"].as<std::string>() ;
+  inputDBName_ = node["mesh"].as<std::string>() ;
   get_if_present(node, "type", type_, type_);
 
   // provide a high level banner
@@ -608,10 +606,10 @@ Realm::load(const YAML::Node & node)
 
   // time step control
   const bool dtOptional = true;
-  const YAML::Node *y_time_step = expect_map(node,"time_step_control", dtOptional);
+  const YAML::Node y_time_step = expect_map(node,"time_step_control", dtOptional);
   if ( y_time_step ) {
-    get_if_present(*y_time_step, "target_courant", targetCourant_, targetCourant_);
-    get_if_present(*y_time_step, "time_step_change_factor", timeStepChangeFactor_, timeStepChangeFactor_);
+    get_if_present(y_time_step, "target_courant", targetCourant_, targetCourant_);
+    get_if_present(y_time_step, "time_step_change_factor", timeStepChangeFactor_, timeStepChangeFactor_);
   }
 
   //======================================
@@ -2378,8 +2376,10 @@ Realm::set_omega(
   stk::mesh::Part *targetPart,
   double scalarOmega)
 {
+  // deal with tanh blending
+  const double omegaBlend = get_tanh_blending("omega");
   ScalarFieldType *omega = metaData_->get_field<ScalarFieldType>(stk::topology::NODE_RANK, "omega");
-
+  
   stk::mesh::Selector s_all_nodes = stk::mesh::Selector(*targetPart);
 
   stk::mesh::BucketVector const& node_buckets = bulkData_->get_buckets( stk::topology::NODE_RANK, s_all_nodes );
@@ -2389,7 +2389,7 @@ Realm::set_omega(
     const stk::mesh::Bucket::size_type length   = b.size();
     double * bigO = stk::mesh::field_data(*omega, b);
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
-      bigO[k] = scalarOmega;
+      bigO[k] = scalarOmega*omegaBlend;
     }
   }
 }
@@ -2696,7 +2696,6 @@ Realm::register_nodal_fields(
     }
   }
 }
-
 
 //--------------------------------------------------------------------------
 //-------- register_interior_algorithm -------------------------------------
@@ -3272,6 +3271,8 @@ Realm::provide_output()
       = (timeStepCount >=outputInfo_->outputStart_ && modStep % outputInfo_->outputFreq_ == 0) || forcedOutput;
 
     if ( isOutput ) {
+      NaluEnv::self().naluOutputP0() << "Realm shall provide output files at : currentTime/timeStepCount: "
+                                     << currentTime << "/" <<  timeStepCount << " (" << name_ << ")" << std::endl;      
       // when adaptivity has occurred, re-create the output mesh file
       if (outputInfo_->meshAdapted_)
         create_output_mesh();
@@ -3333,7 +3334,8 @@ Realm::provide_restart_output()
       = (timeStepCount >= outputInfo_->restartStart_ && modStep % outputInfo_->restartFreq_ == 0) || forcedOutput;
     
     if ( isRestartOutputStep ) {
-
+      NaluEnv::self().naluOutputP0() << "Realm shall provide restart files at: currentTime/timeStepCount: "
+                                     << currentTime << "/" <<  timeStepCount << " (" << name_ << ")" << std::endl;      
       // handle fields
       ioBroker_->begin_output_step(restartFileIndex_, currentTime);
       ioBroker_->write_defined_output_fields(restartFileIndex_);
@@ -3484,6 +3486,8 @@ Realm::populate_derived_quantities()
 void
 Realm::initial_work()
 {
+  if ( solutionOptions_->meshMotion_ )
+    process_mesh_motion();
   equationSystems_.initial_work();
 }
 
@@ -3683,7 +3687,7 @@ Realm::dump_simulation_time()
   }
 
   // contact
-  if ( hasContact_ ) {
+  if ( has_non_matching_boundary_face_alg() ) {
     double g_totalContact = 0.0, g_minContact= 0.0, g_maxContact = 0.0;
     stk::all_reduce_min(NaluEnv::self().parallel_comm(), &timerContact_, &g_minContact, 1);
     stk::all_reduce_max(NaluEnv::self().parallel_comm(), &timerContact_, &g_maxContact, 1);
@@ -3695,8 +3699,7 @@ Realm::dump_simulation_time()
   }
 
   // transfer
-  if ( hasMultiPhysicsTransfer_ || hasInitializationTransfer_ || hasIoTransfer_ ) {
-    
+  if ( hasMultiPhysicsTransfer_ || hasInitializationTransfer_ || hasIoTransfer_ || hasExternalDataTransfer_ ) {
     double totalXfer[2] = {timerTransferSearch_, timerTransferExecute_};
     double g_totalXfer[2] = {}, g_minXfer[2] = {}, g_maxXfer[2] = {};
     stk::all_reduce_min(NaluEnv::self().parallel_comm(), &totalXfer[0], &g_minXfer[0], 2);
@@ -3863,6 +3866,16 @@ Realm::get_surface_master_element(
 
       case stk::topology::LINE_3:
         theElem = new Edge32DSCS();
+        break;
+
+      case stk::topology::SHELL_QUAD_4:
+        theElem =  new Quad3DSCS();
+        NaluEnv::self().naluOutputP0() << "SHELL_QUAD_4 only supported for io surface transfer applications" << std::endl;
+        break;
+
+      case stk::topology::SHELL_TRI_3:
+        theElem = new Tri3DSCS();
+        NaluEnv::self().naluOutputP0() << "SHELL_TRI_3 only supported for io surface transfer applications" << std::endl;
         break;
 
       default:
@@ -4050,48 +4063,48 @@ Realm::get_noc_usage(
 }
 
 //--------------------------------------------------------------------------
-//-------- get_peclet_functional_form --------------------------------------
+//-------- get_tanh_functional_form ----------------------------------------
 //--------------------------------------------------------------------------
 std::string
-Realm::get_peclet_functional_form(
+Realm::get_tanh_functional_form(
   const std::string dofName )
 {
-  std::string pecletForm = solutionOptions_->pecletFunctionalFormDefault_;
+  std::string tanhForm = solutionOptions_->tanhFormDefault_;
   std::map<std::string, std::string>::const_iterator iter
-    = solutionOptions_->pecletFunctionalFormMap_.find(dofName);
-  if (iter != solutionOptions_->pecletFunctionalFormMap_.end()) {
-    pecletForm = (*iter).second;
+    = solutionOptions_->tanhFormMap_.find(dofName);
+  if (iter != solutionOptions_->tanhFormMap_.end()) {
+    tanhForm = (*iter).second;
   }
-  return pecletForm;
+  return tanhForm;
 }
 
 //--------------------------------------------------------------------------
-//-------- get_peclet_tanh_trans -------------------------------------------
+//-------- get_tanh_trans --------------------------------------------------
 //--------------------------------------------------------------------------
 double
-Realm::get_peclet_tanh_trans(
+Realm::get_tanh_trans(
   const std::string dofName )
 {
-  double tanhTrans = solutionOptions_->pecletTanhTransDefault_;
+  double tanhTrans = solutionOptions_->tanhTransDefault_;
   std::map<std::string, double>::const_iterator iter
-    = solutionOptions_->pecletFunctionTanhTransMap_.find(dofName);
-  if (iter != solutionOptions_->pecletFunctionTanhTransMap_.end()) {
+    = solutionOptions_->tanhTransMap_.find(dofName);
+  if (iter != solutionOptions_->tanhTransMap_.end()) {
     tanhTrans = (*iter).second;
   }
   return tanhTrans;
 }
 
 //--------------------------------------------------------------------------
-//-------- get_peclet_tanh_width -------------------------------------------
+//-------- get_tanh_width --------------------------------------------------
 //--------------------------------------------------------------------------
 double
-Realm::get_peclet_tanh_width(
+Realm::get_tanh_width(
   const std::string dofName )
 {
-  double tanhWidth = solutionOptions_->pecletTanhWidthDefault_;
+  double tanhWidth = solutionOptions_->tanhWidthDefault_;
   std::map<std::string, double>::const_iterator iter
-    = solutionOptions_->pecletFunctionTanhWidthMap_.find(dofName);
-  if (iter != solutionOptions_->pecletFunctionTanhWidthMap_.end()) {
+    = solutionOptions_->tanhWidthMap_.find(dofName);
+  if (iter != solutionOptions_->tanhWidthMap_.end()) {
     tanhWidth = (*iter).second;
   }
   return tanhWidth;
@@ -4293,6 +4306,10 @@ Realm::augment_transfer_vector(Transfer *transfer, const std::string transferObj
     toRealm->ioTransferVec_.push_back(transfer);
     toRealm->hasIoTransfer_ = true;
   }
+  else if ( transferObjective == "external_data" ) {
+    toRealm->externalDataTransferVec_.push_back(transfer);
+    toRealm->hasExternalDataTransfer_ = true;
+  }
   else { 
     throw std::runtime_error("Real::augment_transfer_vector: Error, none supported transfer objective: " + transferObjective);
   }
@@ -4351,6 +4368,23 @@ Realm::process_io_transfer()
     for( ii=ioTransferVec_.begin(); ii!=ioTransferVec_.end(); ++ii )
       (*ii)->execute();
   }
+  timeXfer += NaluEnv::self().nalu_time();
+  timerTransferExecute_ += timeXfer;
+}
+
+//--------------------------------------------------------------------------
+//-------- process_external_data_transfer ----------------------------------
+//--------------------------------------------------------------------------
+void
+Realm::process_external_data_transfer()
+{
+  if ( !hasExternalDataTransfer_ )
+    return;
+
+  double timeXfer = -NaluEnv::self().nalu_time();
+  std::vector<Transfer *>::iterator ii;
+  for( ii=externalDataTransferVec_.begin(); ii!=externalDataTransferVec_.end(); ++ii )
+    (*ii)->execute();
   timeXfer += NaluEnv::self().nalu_time();
   timerTransferExecute_ += timeXfer;
 }
@@ -4577,6 +4611,25 @@ Realm::get_physics_target_names()
   // in the future, possibly check for more advanced names;
   // for now, material props holds this
   return materialPropertys_.targetNames_;
+}
+
+//--------------------------------------------------------------------------
+//-------- get_tanh_blending() ---------------------------------------------
+//--------------------------------------------------------------------------
+double
+Realm::get_tanh_blending(
+ const std::string dofName)
+{
+  // assumes interval starts at a = 0 and ends at b = 1
+  double omegaBlend = 1.0;
+  if ( get_tanh_functional_form(dofName) == "tanh" ) {
+    const double c1 = get_tanh_trans(dofName);
+    const double c2 = get_tanh_width(dofName);
+    TanhFunction tanhFunction(c1,c2);
+    const double currentTime = get_current_time();
+    omegaBlend = tanhFunction.execute(currentTime);
+  }
+  return omegaBlend;
 }
 
 } // namespace nalu

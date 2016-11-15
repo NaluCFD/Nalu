@@ -61,34 +61,34 @@ TimeIntegrator::~TimeIntegrator()
 void TimeIntegrator::load(const YAML::Node & node) 
 {
   // FIXME - singleton... need TimeIntegrators class...
-  const YAML::Node *time_integrators = node.FindValue("Time_Integrators");
+  const YAML::Node time_integrators = node["Time_Integrators"];
   if (time_integrators) {
-    for ( size_t itime_int = 0; itime_int < time_integrators->size(); ++itime_int ) {
-      const YAML::Node & time_int_node = (*time_integrators)[itime_int];
-      const YAML::Node *standardTimeIntegrator_node = time_int_node.FindValue("StandardTimeIntegrator");
+    for ( size_t itime_int = 0; itime_int < time_integrators.size(); ++itime_int ) {
+      const YAML::Node time_int_node = time_integrators[itime_int] ;
+      const YAML::Node standardTimeIntegrator_node = time_int_node["StandardTimeIntegrator"];
       //const YAML::Node *otherTimeIntegrator_node = time_int_node.FindValue("OtherTimeIntegrator");
       if (standardTimeIntegrator_node) {
-        (*standardTimeIntegrator_node)["name"] >> name_;
+        name_ = standardTimeIntegrator_node["name"].as<std::string>() ;
 	      
         // is termination based on cumulative time or cumulative step count
-        if ( (*standardTimeIntegrator_node).FindValue("termination_time") ) {
-          (*standardTimeIntegrator_node)["termination_time"] >> totalSimTime_;
+        if ( standardTimeIntegrator_node["termination_time"] ) {
+          totalSimTime_ = standardTimeIntegrator_node["termination_time"].as<double>() ;
           terminateBasedOnTime_ = true;
         }
 	      
         // check for max time step count; will prevail
-        if ( (*standardTimeIntegrator_node).FindValue("termination_step_count") ) {
-          (*standardTimeIntegrator_node)["termination_step_count"] >> maxTimeStepCount_;
+        if ( standardTimeIntegrator_node["termination_step_count"] ) {
+          maxTimeStepCount_ = standardTimeIntegrator_node["termination_step_count"].as<int>() ;
           if ( terminateBasedOnTime_  )
             NaluEnv::self().naluOutputP0() << "Both max time step and termination time provided, max step will prevail" << std::endl;
           terminateBasedOnTime_ = false;
         }
 	      
-        get_if_present(*standardTimeIntegrator_node, "time_step", timeStepFromFile_, timeStepFromFile_);
-        get_if_present(*standardTimeIntegrator_node, "start_time", currentTime_, currentTime_);
-        get_if_present(*standardTimeIntegrator_node, "time_step_count", timeStepCount_, timeStepCount_);
-        get_if_present(*standardTimeIntegrator_node, "second_order_accuracy", secondOrderTimeAccurate_, secondOrderTimeAccurate_);
-        get_if_present(*standardTimeIntegrator_node, "nonlinear_iterations", nonlinearIterations_, nonlinearIterations_);
+        get_if_present(standardTimeIntegrator_node, "time_step", timeStepFromFile_, timeStepFromFile_);
+        get_if_present(standardTimeIntegrator_node, "start_time", currentTime_, currentTime_);
+        get_if_present(standardTimeIntegrator_node, "time_step_count", timeStepCount_, timeStepCount_);
+        get_if_present(standardTimeIntegrator_node, "second_order_accuracy", secondOrderTimeAccurate_, secondOrderTimeAccurate_);
+        get_if_present(standardTimeIntegrator_node, "nonlinear_iterations", nonlinearIterations_, nonlinearIterations_);
 
         // set n and nm1 time step; restart will override
         timeStepN_ = timeStepFromFile_;
@@ -96,7 +96,7 @@ void TimeIntegrator::load(const YAML::Node & node)
 
         // deal with adaptive dt
         std::string timeStepType = "fixed";
-        get_if_present(*standardTimeIntegrator_node, "time_stepping_type", timeStepType, timeStepType);
+        get_if_present(standardTimeIntegrator_node, "time_stepping_type", timeStepType, timeStepType);
         adaptiveTimeStep_ = ( timeStepType == "fixed" ) ? false : true;
 
         NaluEnv::self().naluOutputP0() << "StandardTimeIntegrator " << std::endl
@@ -112,11 +112,11 @@ void TimeIntegrator::load(const YAML::Node & node)
         else
           NaluEnv::self().naluOutputP0() << " fixed time step is active  " << " with time step: " << timeStepN_ << std::endl;
         
-        const YAML::Node & realms_node = (*standardTimeIntegrator_node)["realms"] ;
+        const YAML::Node realms_node = standardTimeIntegrator_node["realms"] ;
+	int iRealm = 0;
         for (size_t irealm=0; irealm < realms_node.size(); ++irealm) {
-          std::string realm_name;
-          realms_node[irealm] >> realm_name;
-          NaluEnv::self().naluOutputP0() << "StandardTimeIntegrator realm_name[" << irealm << "]= "  << realm_name << std::endl;
+          std::string realm_name = realms_node[irealm].as<std::string>() ;
+          NaluEnv::self().naluOutputP0() << "StandardTimeIntegrator realm_name[" << iRealm << "]= "  << realm_name << std::endl;
           realmNamesVec_.push_back(realm_name);
         }
       }
@@ -157,7 +157,7 @@ TimeIntegrator::integrate_realm()
   for ( ii = realmVec_.begin(); ii!=realmVec_.end(); ++ii) {
     (*ii)->populate_initial_condition();
   }
-
+  
   // populate boundary data
   for ( ii = realmVec_.begin(); ii!=realmVec_.end(); ++ii) {
     (*ii)->populate_boundary_data();
@@ -178,10 +178,23 @@ TimeIntegrator::integrate_realm()
     currentTime_ = std::max(currentTime_, (*ii)->populate_restart(timeStepNm1_, timeStepCount_));
   }
 
-  // populate data from transfer
+  // populate data from transfer; init, io and external
   for ( ii = realmVec_.begin(); ii!=realmVec_.end(); ++ii) {
     (*ii)->process_initialization_transfer();
     // FIXME: might erase the initialization Realm since it has performed its duty (requires shared pointers)
+  }
+
+  for ( ii = realmVec_.begin(); ii!=realmVec_.end(); ++ii) {
+    (*ii)->process_io_transfer();
+  }
+
+  // read any fields from input file that will serve at external fields
+  for ( ii = realmVec_.begin(); ii!=realmVec_.end(); ++ii) {
+    (*ii)->populate_external_variables_from_input(currentTime_);
+  }
+  // process transfer
+  for ( ii = realmVec_.begin(); ii!=realmVec_.end(); ++ii) {
+    (*ii)->process_external_data_transfer();
   }
   
   // nm1 dt from possible restart always prevails; input file overrides for fixed time stepping
@@ -252,6 +265,11 @@ TimeIntegrator::integrate_realm()
       (*ii)->swap_states();
       (*ii)->predict_state();
     }
+
+    // read any fields from input file that will serve as external fields
+    for ( ii = realmVec_.begin(); ii!=realmVec_.end(); ++ii) {
+      (*ii)->populate_external_variables_from_input(currentTime_);
+    }
     
     // pre-step work; mesh motion, search, etc
     for ( ii = realmVec_.begin(); ii!=realmVec_.end(); ++ii) {
@@ -266,6 +284,11 @@ TimeIntegrator::integrate_realm()
     // output banner
     for ( ii = realmVec_.begin(); ii!=realmVec_.end(); ++ii) {
       (*ii)->output_banner();
+    }
+
+    // for this time, extract all of the proper data
+    for ( ii = realmVec_.begin(); ii!=realmVec_.end(); ++ii) {
+      (*ii)->process_external_data_transfer();
     }
 
     // nonlinear iteration loop; Picard-style

@@ -71,61 +71,57 @@ TurbulenceAveragingPostProcessing::load(
   const YAML::Node & y_node)
 {
   // output for results
-  const YAML::Node *y_average = y_node.FindValue("turbulence_averaging");
+  const YAML::Node y_average = y_node["turbulence_averaging"];
   if (y_average) {    
-    get_if_present(*y_average, "forced_reset", forcedReset_, forcedReset_);
-    get_if_present(*y_average, "time_filter_interval", timeFilterInterval_, timeFilterInterval_);
+    get_if_present(y_average, "forced_reset", forcedReset_, forcedReset_);
+    get_if_present(y_average, "time_filter_interval", timeFilterInterval_, timeFilterInterval_);
 
     // extract the sequence of types
-    const YAML::Node *y_specs = expect_sequence(*y_average, "specifications", false);
+    const YAML::Node y_specs = expect_sequence(y_average, "specifications", false);
     if (y_specs) {
-      for (size_t ispec = 0; ispec < y_specs->size(); ++ispec) {
-        const YAML::Node &y_spec = (*y_specs)[ispec];
+      for (size_t ispec = 0; ispec < y_specs.size(); ++ispec) {
+        const YAML::Node &y_spec = (y_specs)[ispec];
         
         // new the info object
         AveragingInfo *avInfo = new AveragingInfo();
         
         // find the name
-        const YAML::Node *theName = y_spec.FindValue("name");
+        const YAML::Node theName = y_spec["name"];
         if ( theName )
-          *theName >> avInfo->name_;
+          avInfo->name_ = theName.as<std::string>() ;
         else
           throw std::runtime_error("TurbulenceAveragingPostProcessing: no name provided");  
         
         // extract the set of target names
-        const YAML::Node &targets = y_spec["target_name"];
+        const YAML::Node targets = y_spec["target_name"];
         if (targets.Type() == YAML::NodeType::Scalar) {
           avInfo->targetNames_.resize(1);
-          targets >> avInfo->targetNames_[0];
+          avInfo->targetNames_[0] = targets.as<std::string>() ;
         }
         else {
           avInfo->targetNames_.resize(targets.size());
           for (size_t i=0; i < targets.size(); ++i) {
-            targets[i] >> avInfo->targetNames_[i];
+            avInfo->targetNames_[i] = targets[i].as<std::string>() ;
           }
         }
  
         // reynolds
-        const YAML::Node *y_reynolds = y_spec.FindValue("reynolds_averaged_variables");
+        const YAML::Node y_reynolds = y_spec["reynolds_averaged_variables"];
         if (y_reynolds) {
-          size_t varSize = y_reynolds->size();
-          for (size_t ioption = 0; ioption < varSize; ++ioption) {
-            const YAML::Node & y_var = (*y_reynolds)[ioption];
-            std::string fieldName;
-            y_var >> fieldName;
+          for (size_t ioption = 0; ioption < y_reynolds.size(); ++ioption) {
+            const YAML::Node y_var = y_reynolds[ioption];
+            std::string fieldName = y_var.as<std::string>() ;
             if ( fieldName != "density" )
               avInfo->reynoldsFieldNameVec_.push_back(fieldName);
           }
         }
         
         // Favre
-        const YAML::Node *y_favre = y_spec.FindValue("favre_averaged_variables");
+        const YAML::Node y_favre = y_spec["favre_averaged_variables"];
         if (y_favre) {
-          size_t varSize = y_favre->size();
-          for (size_t ioption = 0; ioption < varSize; ++ioption) {
-            const YAML::Node & y_var = (*y_favre)[ioption];
-            std::string fieldName;
-            y_var >> fieldName;
+          for (size_t ioption = 0; ioption < y_favre.size(); ++ioption) {
+            const YAML::Node y_var = y_favre[ioption];
+            std::string fieldName = y_var.as<std::string>() ;
             if ( fieldName != "density")
               avInfo->favreFieldNameVec_.push_back(fieldName);
           } 

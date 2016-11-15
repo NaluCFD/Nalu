@@ -5,8 +5,8 @@
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
-#ifndef WindEnergyAuxFunction_h
-#define WindEnergyAuxFunction_h
+#ifndef SinProfileChannelFlowVelocityAuxFunction_h
+#define SinProfileChannelFlowVelocityAuxFunction_h
 
 #include <AuxFunction.h>
 
@@ -15,20 +15,15 @@
 namespace sierra{
 namespace nalu{
 
-class Realm;
-class TanhFunction;
-
-class WindEnergyAuxFunction : public AuxFunction
+class SinProfileChannelFlowVelocityAuxFunction : public AuxFunction
 {
 public:
 
-  WindEnergyAuxFunction(
+  SinProfileChannelFlowVelocityAuxFunction(
     const unsigned beginPos,
-    const unsigned endPos,
-    std::vector<double> theParams,
-    Realm &realm);
+    const unsigned endPos);
 
-  virtual ~WindEnergyAuxFunction();
+  virtual ~SinProfileChannelFlowVelocityAuxFunction() {}
   
   virtual void do_evaluate(
     const double * coords,
@@ -39,15 +34,10 @@ public:
     const unsigned fieldSize,
     const unsigned beginPos,
     const unsigned endPos) const;
-
-  void setup(const double time);
-
+  
 private:
-  double centroidX_;
-  double centroidY_;
-  double omega_;
-  double omegaBlend_;
-  TanhFunction *tanhFunction_;
+  const double u_m;
+  const double pi_;
 };
 
 } // namespace nalu
