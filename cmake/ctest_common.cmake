@@ -169,17 +169,7 @@ ctest_start(${MODEL} TRACK ${MODEL})
 
 ## -- Prep test directory
 message(" -- Prep test directory ${MODEL} - ${CTEST_BUILD_NAME} --")
-
-# make a clean test directory
-file(REMOVE_RECURSE ${TEST_RESULT_DIRECTORY})
-file(MAKE_DIRECTORY ${TEST_RESULT_DIRECTORY})
-
-# copy executables to the test directory
-file(COPY ${CTEST_NALU_BINARY_NAME}
-          ${CTEST_UNITTEST_BINARY_NAME}
-          ${NALURTEST_DIR}/pass_fail.sh
-     DESTINATION ${TEST_RESULT_DIRECTORY})
-
+include(../cmake/prep_tests.cmake)
 
 ## -- Run CTest 
 message(" -- Test ${MODEL} - ${CTEST_BUILD_NAME} --")
