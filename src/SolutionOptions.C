@@ -282,14 +282,16 @@ SolutionOptions::load(const YAML::Node & y_node)
             const int vecSize = y_user_constants["east_vector"].size();
             eastVector_.resize(vecSize);
             for (int i = 0; i < vecSize; ++i ) {
-              y_user_constants["east_vector"][i] >> eastVector_[i];
+	      eastVector_[i] = y_user_constants["east_vector"][i].as<double>() ;
+              //y_user_constants["east_vector"][i] >> eastVector_[i];
             }
           }
           if (expect_sequence( y_user_constants, "north_vector", optional) ) {
             const int vecSize = y_user_constants["north_vector"].size();
             northVector_.resize(vecSize);
             for (int i = 0; i < vecSize; ++i ) {
-              y_user_constants["north_vector"][i] >> northVector_[i];
+	      northVector_[i] = y_user_constants["north_vector"][i].as<double>() ;
+              //y_user_constants["north_vector"][i] >> northVector_[i];
             }
           }
         }
