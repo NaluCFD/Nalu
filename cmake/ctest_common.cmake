@@ -108,64 +108,32 @@ configure_file(${CTEST_SOURCE_DIRECTORY}/cmake/CTestTestfile.cmake ${CTEST_BINAR
 message(" -- Start dashboard ${MODEL} - ${CTEST_BUILD_NAME} --")
 ctest_start(${MODEL} TRACK ${MODEL})
 
-# ## -- Update
-# message(" -- Update ${MODEL} - ${CTEST_BUILD_NAME} --")
-# ctest_update(SOURCE "${CTEST_SOURCE_DIRECTORY}" RETURN_VALUE res)
+## -- Update
+message(" -- Update ${MODEL} - ${CTEST_BUILD_NAME} --")
+ctest_update(SOURCE "${CTEST_SOURCE_DIRECTORY}" RETURN_VALUE res)
 
-# ## -- Configure
-# message(" -- Configure ${MODEL} - ${CTEST_BUILD_NAME} --")
-# ctest_configure(BUILD  "${CTEST_BINARY_DIRECTORY}" RETURN_VALUE res)
+## -- Configure
+message(" -- Configure ${MODEL} - ${CTEST_BUILD_NAME} --")
+ctest_configure(BUILD  "${CTEST_BINARY_DIRECTORY}" RETURN_VALUE res)
 
-# ## -- Build
-# message(" -- Build ${MODEL} - ${CTEST_BUILD_NAME} --")
-# ctest_build(BUILD  "${CTEST_BINARY_DIRECTORY}" RETURN_VALUE res)
+## -- Build
+message(" -- Build ${MODEL} - ${CTEST_BUILD_NAME} --")
+ctest_build(BUILD  "${CTEST_BINARY_DIRECTORY}" RETURN_VALUE res)
 
 
-# # -----------------------------------------------------------
-# # -- Actual testing
-# # -----------------------------------------------------------
-# # The tests are in another repository and will run using those
-# # scripts. CTest reports on the test vouchers
+# -----------------------------------------------------------
+# -- Actual testing
+# -----------------------------------------------------------
+# The tests are in another repository and will run using those
+# scripts. CTest reports on the test vouchers
 
-# ## -- Clone (and pull) the test repo if necessary
-# if(NOT EXISTS "${NALURTEST_DIR}")
-#        execute_process(COMMAND "${CTEST_GIT_COMMAND}" "clone" "${NALURTEST_REPO_URL}" "${NALURTEST_DIR}"
-#                        WORKING_DIRECTORY ${NIGHTLY_DIR} )
-# endif(NOT EXISTS "${NALURTEST_DIR}")
-# execute_process(COMMAND "${CTEST_GIT_COMMAND}" "pull"
-#                 WORKING_DIRECTORY ${NALURTEST_DIR})
-
-# ## -- Clean the test vouchers
-# file(GLOB old_vouchers "${NIGHTLY_TEST_RESULT_DIRECTORY}/*/PASS*")
-# list(LENGTH old_vouchers old_vouchers_length)
-# IF(NOT old_vouchers_length EQUAL 0)
-#   message("    removing old nightly test vouchers.")
-#   file(REMOVE ${old_vouchers})
-# endif(NOT old_vouchers_length EQUAL 0)
-
-# file(GLOB old_vouchers "${PERF_TEST_RESULT_DIRECTORY}/*/PASS*")
-# list(LENGTH old_vouchers old_vouchers_length)
-# IF(NOT old_vouchers_length EQUAL 0)
-#   message("    removing old performance test vouchers.")
-#   file(REMOVE ${old_vouchers})
-# endif(NOT old_vouchers_length EQUAL 0)
-
-# ## -- Run the tests using the script
-# message(" -- NaluRtest ${MODEL} - ${CTEST_BUILD_NAME} --")
-# execute_process(COMMAND "./run_tests.sh"
-#                 WORKING_DIRECTORY ${NALURTEST_DIR}
-#                 RESULT_VARIABLE nalurtestres
-#                 OUTPUT_VARIABLE nalurtestlog
-#                 ERROR_VARIABLE nalurtestlog)
-# file(WRITE ${NIGHTLY_DIR}/NaluRtest.txt "${nalurtestlog}")
-
-# execute_process(COMMAND "./run_perf_tests.sh"
-#                 WORKING_DIRECTORY ${NALURTEST_DIR}
-#                 RESULT_VARIABLE nalurtestres
-#                 OUTPUT_VARIABLE nalurtestlog
-#                 ERROR_VARIABLE nalurtestlog)
-# file(APPEND ${NIGHTLY_DIR}/NaluRtest.txt "${nalurtestlog}")
-
+## -- Clone (and pull) the test repo if necessary
+if(NOT EXISTS "${NALURTEST_DIR}")
+       execute_process(COMMAND "${CTEST_GIT_COMMAND}" "clone" "${NALURTEST_REPO_URL}" "${NALURTEST_DIR}"
+                       WORKING_DIRECTORY ${NIGHTLY_DIR} )
+endif(NOT EXISTS "${NALURTEST_DIR}")
+execute_process(COMMAND "${CTEST_GIT_COMMAND}" "pull"
+                WORKING_DIRECTORY ${NALURTEST_DIR})
 
 ## -- Prep test directory
 message(" -- Prep test directory ${MODEL} - ${CTEST_BUILD_NAME} --")
@@ -177,8 +145,8 @@ ctest_test(BUILD  "${CTEST_BINARY_DIRECTORY}"
            PARALLEL_LEVEL ${CTEST_PARALLEL_LEVEL}
            RETURN_VALUE res)
 
-# ## -- SUBMIT
-# message(" -- Submit ${MODEL} - ${CTEST_BUILD_NAME} --")
-# ctest_submit( RETURN_VALUE res)
+## -- SUBMIT
+message(" -- Submit ${MODEL} - ${CTEST_BUILD_NAME} --")
+ctest_submit( RETURN_VALUE res)
 
 message(" -- Finished ${MODEL}  - ${CTEST_BUILD_NAME} --")
