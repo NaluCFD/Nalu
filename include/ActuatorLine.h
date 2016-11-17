@@ -72,8 +72,13 @@ public:
 // class that holds all of the action... for each point, hold the current location and other useful info
 class ActuatorLinePointInfo {
  public:
+#ifdef USE_FAST
+  ActuatorLinePointInfo(
+    size_t localId, Point centroidCoords, double radius, double omega, double twoSigSq, double *velocity, ActuatorNodeType nType);
+#else
   ActuatorLinePointInfo(
     size_t localId, Point centroidCoords, double radius, double omega, double twoSigSq, double *velocity);
+#endif
   ~ActuatorLinePointInfo();
   size_t localId_;
   Point centroidCoords_;
@@ -83,6 +88,9 @@ class ActuatorLinePointInfo {
   double bestX_;
   stk::mesh::Entity bestElem_;
 
+  #ifdef USE_FAST
+  ActuatorNodeType nodeType_;
+  #endif
   // mesh motion specifics
   double velocity_[3];
 

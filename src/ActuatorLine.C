@@ -78,6 +78,30 @@ ActuatorLineInfo::~ActuatorLineInfo()
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
+#ifdef USE_FAST
+ActuatorLinePointInfo::ActuatorLinePointInfo( 
+  size_t localId, 
+  Point centroidCoords, 
+  double radius, 
+  double omega,
+  double twoSigSq,
+  double *velocity,
+  ActuatorNodeType nType)
+  : localId_(localId),
+    centroidCoords_(centroidCoords),
+    radius_(radius),
+    omega_(omega),
+    twoSigSq_(twoSigSq),
+    bestX_(1.0e16),
+    bestElem_(stk::mesh::Entity()),
+    nodeType_(nType)
+{
+  // initialize point velocity and displacement
+  velocity_[0] = velocity[0];
+  velocity_[1] = velocity[1];
+  velocity_[2] = velocity[2];
+}
+#else
 ActuatorLinePointInfo::ActuatorLinePointInfo( 
   size_t localId, 
   Point centroidCoords, 
@@ -98,7 +122,7 @@ ActuatorLinePointInfo::ActuatorLinePointInfo(
   velocity_[1] = velocity[1];
   velocity_[2] = velocity[2];
 }
-
+#endif
 //--------------------------------------------------------------------------
 //-------- destructor ------------------------------------------------------
 //--------------------------------------------------------------------------
@@ -622,7 +646,7 @@ ActuatorLine::execute()
 
     FAST.getForce(ws_pointForce, np);
     if (FAST.isDebug() ) {
-      NaluEnv::self().naluOutput() << "Node " << np << " Force = " << ws_pointForce[0] << " " << ws_pointForce[1] << " " << ws_pointForce[2] << " " << std::endl ;
+      NaluEnv::self().naluOutput() << "Node " << np << " Type " << infoObject->nodeType_ << " Force = " << ws_pointForce[0] << " " << ws_pointForce[1] << " " << ws_pointForce[2] << " " << std::endl ;
     }
     ws_pointForce[0] = 0.0; //Setting to zero for now
     ws_pointForce[1] = 0.0;
@@ -657,14 +681,36 @@ ActuatorLine::execute()
 
       // compute radius
       const double radius = compute_radius(nDim, &ws_elemCentroid[0], &(infoObject->centroidCoords_[0]));
-    
-      // get drag at this element centroid with proper Gaussian weighting
-      compute_elem_drag_given_radius(nDim, radius, infoObject->twoSigSq_, &ws_pointForce[0], &ws_elemDrag[0]);
+      
+      switch (infoObject->nodeType_) {
+	
+      case HUB:
+	// get drag at this element centroid with proper Gaussian weighting
+	compute_elem_drag_given_radius(nDim, radius, infoObject->twoSigSq_, &ws_pointForce[0], &ws_elemDrag[0]);
+	// assemble nodal quantity; no LHS contribution here...
+	assemble_source_to_nodes(nDim, elem, bulkData, elemVolume, &ws_elemDrag[0], ws_pointForceLHS, 
+				 *actuator_line_source, *actuator_line_source_lhs, 0.0);
+	break;
 
-      // assemble nodal quantity; no LHS contribution here...
-      assemble_source_to_nodes(nDim, elem, bulkData, elemVolume, &ws_elemDrag[0], ws_pointForceLHS, 
-                               *actuator_line_source, *actuator_line_source_lhs, 0.0);
-    } 
+      case BLADE:
+	// get drag at this element centroid with proper Gaussian weighting
+	compute_elem_drag_given_radius(nDim, radius, infoObject->twoSigSq_, &ws_pointForce[0], &ws_elemDrag[0]);
+	// assemble nodal quantity; no LHS contribution here...
+	assemble_source_to_nodes(nDim, elem, bulkData, elemVolume, &ws_elemDrag[0], ws_pointForceLHS, 
+				 *actuator_line_source, *actuator_line_source_lhs, 0.0);
+	break;
+
+      case TOWER:
+	// get drag at this element centroid with proper Gaussian weighting
+	compute_elem_drag_given_radius(nDim, radius, infoObject->twoSigSq_, &ws_pointForce[0], &ws_elemDrag[0]);
+	// assemble nodal quantity; no LHS contribution here...
+	assemble_source_to_nodes(nDim, elem, bulkData, elemVolume, &ws_elemDrag[0], ws_pointForceLHS, 
+				 *actuator_line_source, *actuator_line_source_lhs, 0.0);
+	break;
+
+      }
+
+    }
 
     np=np+1;
   }
@@ -974,7 +1020,7 @@ ActuatorLine::create_actuator_line_point_info_map() {
     
 #ifdef USE_FAST
       // local turbine id
-      const int iTurbLoc = FAST.get_localProcNo(k) ; // 'k' is the global turbine id here
+      const int iTurbLoc = FAST.get_localTurbNo(k) ; // 'k' is the global turbine id here
       // scratch array for coordinates and dummy array for velocity
       double velocity[3] = {};
       double currentCoords[3] = {};
@@ -1015,7 +1061,7 @@ ActuatorLine::create_actuator_line_point_info_map() {
 	  ActuatorLinePointInfo *actuatorLinePointInfo 
 	    = new ActuatorLinePointInfo(localPointId, centroidCoords, 
 					actuatorLineInfo->radius_, actuatorLineInfo->omega_, 
-					actuatorLineInfo->twoSigSq_, velocity);
+					actuatorLineInfo->twoSigSq_, velocity, FAST.getNodeType(k, iNode));
 	  actuatorLinePointInfoMap_[localPointId] = actuatorLinePointInfo;
 	  
 	  np=np+1;
