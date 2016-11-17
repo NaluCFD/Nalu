@@ -28,8 +28,9 @@ can be found under the Nalu Wiki [Build](https://github.com/NaluCFD/Nalu/wiki/Bu
 ### Status
 
 Nalu's current build status can be
-found [here](http://my.cdash.org/index.php?project=Nalu). More details
-on testing can be found [here](./cmake/README.md).
+found
+[at this CDash site](http://my.cdash.org/index.php?project=Nalu). More
+details on testing can be found [here](./cmake/README.md).
 
 ### Help
 Projects that are using Nalu for sponsored activities should consult the <nalucfd@googlegroups.com> 
