@@ -12,9 +12,9 @@ Testing is enabled through CTest and CDash and the results are posted
     
 ## Running
 	  
-The CTest script can be run using the following command: 
+The CTest script can be run using the following command, for example: 
 ```{bash}
 cd Nalu/build
-ctest -DNIGHTLY_DIR=$nightlyDirectory -S ../cmake/$ctest_script
+ctest -DNIGHTLY_DIR=$nightlyDirectory -S ../cmake/ctest_gcc.cmake
 ```
 where `$nightlyDirectory` is the directory where the tests are run.
