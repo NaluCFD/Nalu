@@ -293,6 +293,8 @@ ActuatorLine::load(
      
       actuatorLineMotion_ = true;
       
+      get_if_present(cur_turbine, "radius", actuatorLineInfo->radius_, actuatorLineInfo->radius_);
+      
       // Gaussian props
       double gaussDecayTarget = 0.01;
       double gaussDecayRadius = 1.5;
@@ -576,13 +578,22 @@ ActuatorLine::execute()
     // interpolate density
     interpolate_field(1, bestElem, bulkData, &(infoObject->isoParCoords_[0]), 
                       &ws_density_[0], &ws_pointGasDensity);
-    
+
+    if (FAST.isDebug() ) {
+      NaluEnv::self().naluOutput() << "Node " << np << " Velocity = " << ws_pointGasVelocity[0] << " " << ws_pointGasVelocity[1] << " " << ws_pointGasVelocity[2] << " " << std::endl ;
+    }
+
     FAST.setVelocity(ws_pointGasVelocity, np);
     np = np + 1;
 
   }    
 
   if ( ! FAST.isDryRun() ) {
+
+    if ( FAST.isTimeZero() ) {
+      FAST.solution0();
+    }
+
     //Step FAST
     FAST.step();
   }
@@ -610,6 +621,9 @@ ActuatorLine::execute()
     double elemVolume = compute_volume(nDim, bestElem, bulkData);
 
     FAST.getForce(ws_pointForce, np);
+    if (FAST.isDebug() ) {
+      NaluEnv::self().naluOutput() << "Node " << np << " Force = " << ws_pointForce[0] << " " << ws_pointForce[1] << " " << ws_pointForce[2] << " " << std::endl ;
+    }
     ws_pointForce[0] = 0.0; //Setting to zero for now
     ws_pointForce[1] = 0.0;
     ws_pointForce[2] = 0.0;
@@ -983,6 +997,9 @@ ActuatorLine::create_actuator_line_point_info_map() {
 	  // set model coordinates from FAST
 	  // move the coordinates; set the velocity... may be better on the lineInfo object
 	  FAST.getCoordinates(currentCoords, iNode);
+	  if (FAST.isDebug() ) {
+	    NaluEnv::self().naluOutput() << "Node " << np << " Position = " << currentCoords[0] << " " << currentCoords[1] << " " << currentCoords[2] << " " << std::endl ;
+	  }
 	  velocity[0] = 0.0;
 	  velocity[1] = 0.0;
 	  velocity[2] = 0.0;
