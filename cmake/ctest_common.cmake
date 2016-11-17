@@ -135,7 +135,7 @@ execute_process(COMMAND "${CTEST_GIT_COMMAND}" "pull"
 
 ## -- Prep test directory
 message(" -- Prep test directory ${MODEL} - ${CTEST_BUILD_NAME} --")
-include(../cmake/prep_tests.cmake)
+include(../cmake/ctest_prepare_tests.cmake)
 
 ## -- Run CTest 
 message(" -- Test ${MODEL} - ${CTEST_BUILD_NAME} --")
