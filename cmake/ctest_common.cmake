@@ -2,7 +2,12 @@
 # -- Directories
 # -----------------------------------------------------------
 
-set(NIGHTLY_DIR                      "/scratch/mhenryde/nightlyBuildAndTest")
+if(NOT ${NIGHTLY_DIR} STREQUAL "")
+  message("Nightly test directory is ${NIGHTLY_DIR}")
+else(NOT ${NIGHTLY_DIR} STREQUAL "")
+  message( FATAL_ERROR "You need to set the NIGHTLY_DIR variable. CMake will exit." )
+endif(NOT ${NIGHTLY_DIR} STREQUAL "")
+
 set(NALU_DIR                         "${NIGHTLY_DIR}/Nalu")
 set(NALURTEST_DIR                    "${NIGHTLY_DIR}/NaluRtest")
 set(NALURTEST_MESH_DIR               "${NALURTEST_DIR}/mesh")
@@ -14,7 +19,7 @@ set(NIGHTLY_TEST_RESULT_DIRECTORY    "${TEST_RESULT_DIRECTORY}/nightly")
 set(PERF_TEST_RESULT_DIRECTORY       "${TEST_RESULT_DIRECTORY}/performance")
 
 # -----------------------------------------------------------
-# -- VARIABLES
+# -- REPOS
 # -----------------------------------------------------------
 set(NALU_REPO_URL                       "git@github.com:marchdf/Nalu.git")
 set(NALURTEST_REPO_URL                  "https://github.com/NaluCFD/NaluRtest.git")
@@ -101,7 +106,7 @@ set(CTEST_BUILD_COMMAND                "${MAKE} ${OPTION_BUILD}")
 configure_file(${CTEST_SOURCE_DIRECTORY}/cmake/CTestTestfile.cmake ${CTEST_BINARY_DIRECTORY}/CTestTestfile.cmake)
 
 # -----------------------------------------------------------
-# -- Start CTest
+# -- Run CTest
 # -----------------------------------------------------------
 
 ## -- Start
@@ -119,13 +124,6 @@ ctest_configure(BUILD  "${CTEST_BINARY_DIRECTORY}" RETURN_VALUE res)
 ## -- Build
 message(" -- Build ${MODEL} - ${CTEST_BUILD_NAME} --")
 ctest_build(BUILD  "${CTEST_BINARY_DIRECTORY}" RETURN_VALUE res)
-
-
-# -----------------------------------------------------------
-# -- Actual testing
-# -----------------------------------------------------------
-# The tests are in another repository and will run using those
-# scripts. CTest reports on the test vouchers
 
 ## -- Clone (and pull) the test repo if necessary
 if(NOT EXISTS "${NALURTEST_DIR}")
@@ -145,7 +143,7 @@ ctest_test(BUILD  "${CTEST_BINARY_DIRECTORY}"
            PARALLEL_LEVEL ${CTEST_PARALLEL_LEVEL}
            RETURN_VALUE res)
 
-## -- SUBMIT
+## -- Submit results to CDash
 message(" -- Submit ${MODEL} - ${CTEST_BUILD_NAME} --")
 ctest_submit( RETURN_VALUE res)
 

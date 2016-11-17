@@ -33,6 +33,7 @@ file(COPY               "${NALURTEST_MESH_DIR}/periodic3d.g"
                         "${NALURTEST_XML_DIR}/milestone.xml"
      DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}/periodic3dElem")
 
+
 #=============================================================================
 # periodic3dEdge test
 #=============================================================================
@@ -42,6 +43,7 @@ file(COPY               "${NALURTEST_NIGHTLY_DIR}/periodic3dEdge"
 file(COPY               "${NALURTEST_MESH_DIR}/periodic3d.g" 
                         "${NALURTEST_XML_DIR}/milestone.xml"
      DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}/periodic3dEdge")
+
 
 #=============================================================================
 # quad9HC test
@@ -79,7 +81,7 @@ file(COPY               "${NALURTEST_NIGHTLY_DIR}/hoHelium"
      DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}")
 
 file(COPY               "${NALURTEST_XML_DIR}/milestone.xml"
-     DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}/periodic3dElem")
+     DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}/hoHelium")
 
 
 #=============================================================================
@@ -179,7 +181,7 @@ file(COPY               "${NALURTEST_MESH_DIR}/threeBladeMesh.g"
 file(COPY               "${NALURTEST_NIGHTLY_DIR}/overset"
      DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}")
 
-file(GLOB meshes        "${NALURTEST_MESH_DIR}/oversetMeshAligned.g.*")
+file(GLOB meshes        "${NALURTEST_MESH_DIR}/oversetMeshAligned.g*")
 file(COPY               ${meshes}
      DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}/overset")
 
@@ -190,7 +192,7 @@ file(COPY               ${meshes}
 file(COPY               "${NALURTEST_NIGHTLY_DIR}/oversetFluids"
      DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}")
 
-file(GLOB meshes        "${NALURTEST_MESH_DIR}/oversetMeshAligned.g.*")
+file(GLOB meshes        "${NALURTEST_MESH_DIR}/oversetMeshAligned.g*")
 file(COPY               ${meshes}
                         "${NALURTEST_XML_DIR}/milestone.xml"
      DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}/oversetFluids")
@@ -202,7 +204,7 @@ file(COPY               ${meshes}
 file(COPY               "${NALURTEST_NIGHTLY_DIR}/oversetFluidsEdge"
      DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}")
 
-file(GLOB meshes        "${NALURTEST_MESH_DIR}/oversetMeshAligned.g.*")
+file(GLOB meshes        "${NALURTEST_MESH_DIR}/oversetMeshAligned.g*")
 file(COPY               ${meshes}
                         "${NALURTEST_XML_DIR}/milestone.xml"
      DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}/oversetFluidsEdge")
@@ -235,7 +237,7 @@ file(COPY               "${NALURTEST_NIGHTLY_DIR}/elemBackStepLRSST"
 file(COPY               "${NALURTEST_NIGHTLY_DIR}/ductWedge"
      DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}")
 
-file(GLOB meshes        "${NALURTEST_MESH_DIR}/ductWedge.g.*")
+file(GLOB meshes        "${NALURTEST_MESH_DIR}/ductwedge.g.*")
 file(COPY               ${meshes}
                         "${NALURTEST_XML_DIR}/matches_ml_default.xml"
      DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}/ductWedge")
@@ -453,8 +455,7 @@ file(COPY               ${meshes}
 file(COPY               "${NALURTEST_NIGHTLY_DIR}/milestoneRun"
      DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}")
 
-file(GLOB meshes        "${NALURTEST_MESH_DIR}/1cm_ped_35K_mks.g*")
-file(COPY               ${meshes}
+file(COPY               "${NALURTEST_MESH_DIR}/1cm_ped_35K.g"
                         "${NALURTEST_XML_DIR}/milestone.xml"
      DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}/milestoneRun")
 
@@ -542,7 +543,7 @@ file(COPY               "${NALURTEST_NIGHTLY_DIR}/unitTests"
 file(COPY               "${NALURTEST_PERF_DIR}/waleElemXflowMixFrac3.5m"
      DESTINATION        "${PERF_TEST_RESULT_DIRECTORY}")
 
-file(COPY               "${NALURTEST_XML_DIR}/milestone.xml"
+file(COPY               "${NALURTEST_XML_DIR}/milestone_aspect_ratio_smooth.xml"
      DESTINATION        "${PERF_TEST_RESULT_DIRECTORY}/waleElemXflowMixFrac3.5m")
 
 

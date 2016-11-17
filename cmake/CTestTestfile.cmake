@@ -628,7 +628,7 @@ add_test(waleElemXflowMixFrac3.5m "waleElemXflowMixFrac3.5m.sh")
 set_tests_properties(waleElemXflowMixFrac3.5m
   PROPERTIES  PASS_REGULAR_EXPRESSION "PASSED"
               FAIL_REGULAR_EXPRESSION "FAILED"
-              TIMEOUT 1000
+              TIMEOUT 600
               PROCESSORS 8
   WORKING_DIRECTORY "${PERF_TEST_RESULT_DIRECTORY}/waleElemXflowMixFrac3.5m")
 
