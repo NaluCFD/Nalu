@@ -21,7 +21,7 @@ set(PERF_TEST_RESULT_DIRECTORY       "${TEST_RESULT_DIRECTORY}/performance")
 # -----------------------------------------------------------
 # -- REPOS
 # -----------------------------------------------------------
-set(NALU_REPO_URL                       "git@github.com:marchdf/Nalu.git")
+set(NALU_REPO_URL                       "https://github.com/NaluCFD/Nalu.git")
 set(NALURTEST_REPO_URL                  "https://github.com/NaluCFD/NaluRtest.git")
 
 # -----------------------------------------------------------
