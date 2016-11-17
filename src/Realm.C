@@ -280,6 +280,9 @@ Realm::~Realm()
   if ( NULL != turbulenceAveragingPostProcessing_ )
     delete turbulenceAveragingPostProcessing_;
 
+  if ( NULL != actuatorLine_ )
+    delete actuatorLine_;
+
   // delete contact related things
   if ( NULL != contactManager_ )
     delete contactManager_;
