@@ -18,7 +18,7 @@ cmake \
   -DCMAKE_Fortran_FLAGS='-O2 -g -DNDEBUG' \
   -DCMAKE_C_FLAGS='-std=c++11 -O2 -g -DNDEBUG' \
   -DFAST_DIR:PATH=$nalu_build_dir/packages/fastv8DriverProgram/fastv8 \
-  -DFAST_LIBRARY:PATH=FAST_glin64 \
-  -DFAST_CINTERFACE_LIBRARY:PATH=FAST_cInterface_glin64 \
+  -DFAST_LIBRARY:PATH=FAST_glin64_debug \
+  -DFAST_CINTERFACE_LIBRARY:PATH=FAST_cInterface_glin64_debug \
 $EXTRA_ARGS \
 ../
