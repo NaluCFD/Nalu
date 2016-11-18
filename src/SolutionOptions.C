@@ -80,7 +80,8 @@ SolutionOptions::SolutionOptions()
     eigenvaluePerturb_(false),
     eigenvaluePerturbDelta_(0.0),
     eigenvaluePerturbBiasTowards_(3),
-    eigenvaluePerturbTurbKe_(0.0)
+    eigenvaluePerturbTurbKe_(0.0),
+    earthAngularVelocity_(7.2921159e-5)
 {
   // nothing to do
 }
@@ -268,11 +269,29 @@ SolutionOptions::load(const YAML::Node & y_node)
           get_if_present(y_user_constants, "reference_temperature",  referenceTemperature_, referenceTemperature_);
           get_if_present(y_user_constants, "thermal_expansion_coefficient",  thermalExpansionCoeff_, thermalExpansionCoeff_);
           get_if_present(y_user_constants, "stefan_boltzmann",  stefanBoltzmann_, stefanBoltzmann_);
+	  get_if_present(y_user_constants, "earth_angular_velocity", earthAngularVelocity_, earthAngularVelocity_);
+	  get_if_present(y_user_constants, "latitude", latitude_, latitude_);
           if (expect_sequence( y_user_constants, "gravity", optional) ) {
             const int gravSize = y_user_constants["gravity"].size();
             gravity_.resize(gravSize);
             for (int i = 0; i < gravSize; ++i ) {
               gravity_[i] = y_user_constants["gravity"][i].as<double>() ;
+            }
+          }
+          if (expect_sequence( y_user_constants, "east_vector", optional) ) {
+            const int vecSize = y_user_constants["east_vector"].size();
+            eastVector_.resize(vecSize);
+            for (int i = 0; i < vecSize; ++i ) {
+	      eastVector_[i] = y_user_constants["east_vector"][i].as<double>() ;
+              //y_user_constants["east_vector"][i] >> eastVector_[i];
+            }
+          }
+          if (expect_sequence( y_user_constants, "north_vector", optional) ) {
+            const int vecSize = y_user_constants["north_vector"].size();
+            northVector_.resize(vecSize);
+            for (int i = 0; i < vecSize; ++i ) {
+	      northVector_[i] = y_user_constants["north_vector"][i].as<double>() ;
+              //y_user_constants["north_vector"][i] >> northVector_[i];
             }
           }
         }

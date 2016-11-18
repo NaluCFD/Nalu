@@ -96,6 +96,8 @@ public:
   double eigenvaluePerturbDelta_;
   int eigenvaluePerturbBiasTowards_;
   double eigenvaluePerturbTurbKe_;
+  double earthAngularVelocity_;
+  double latitude_;
 
   // turbulence model coeffs
   std::map<TurbulenceModelConstant, double> turbModelConstantMap_;
@@ -137,6 +139,10 @@ public:
   std::map<std::string, Coordinates> meshMotionCentroidMap_;
 
   std::vector<double> gravity_;
+
+  // Coriolis source term
+  std::vector<double> eastVector_;
+  std::vector<double> northVector_;
 
   std::string name_;
 

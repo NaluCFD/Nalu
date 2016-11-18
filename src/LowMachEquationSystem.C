@@ -78,6 +78,7 @@
 #include <MomentumBuoyancySrcElemSuppAlg.h>
 #include <MomentumBoussinesqSrcNodeSuppAlg.h>
 #include <MomentumBodyForceSrcNodeSuppAlg.h>
+#include <MomentumCoriolisSrcNodeSuppAlg.h>
 #include <MomentumGclSrcNodeSuppAlg.h>
 #include <MomentumMassBackwardEulerNodeSuppAlg.h>
 #include <MomentumMassBDF2NodeSuppAlg.h>
@@ -1142,6 +1143,9 @@ MomentumEquationSystem::register_interior_algorithm(
         else if ( sourceName == "actuator_line") {
           suppAlg = new MomentumActuatorLineSrcNodeSuppAlg(realm_);
         }
+	else if ( sourceName == "EarthCoriolis") {
+	  suppAlg = new MomentumCoriolisSrcNodeSuppAlg(realm_);
+	}
         else {
           throw std::runtime_error("MomentumNodalSrcTerms::Error Source term is not supported: " + sourceName);
         }
