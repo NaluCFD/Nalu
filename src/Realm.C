@@ -57,6 +57,10 @@
 
 // actuator line
 #include <ActuatorLine.h>
+#include <ActuatorLinePointDrag.h>
+#ifdef USE_FAST
+#include <ActuatorLineFAST.h>
+#endif
 
 // props; algs, evaluators and data
 #include <property_evaluator/GenericPropAlgorithm.h>
@@ -537,7 +541,31 @@ Realm::look_ahead_and_creation(const YAML::Node & node)
   if ( foundActuatorLine.size() > 0 ) {
     if ( foundActuatorLine.size() != 1 )
       throw std::runtime_error("look_ahead_and_create::error: Too many actuator line blocks");
-    actuatorLine_ =  new ActuatorLine(*this, *foundActuatorLine[0]);
+
+    if ( (*foundActuatorLine[0])["actuator_line"]["type"] ) {
+      const std::string ActuatorLineTypeName = (*foundActuatorLine[0])["actuator_line"]["type"].as<std::string>() ;
+      switch ( ActuatorLineTypeMap[ActuatorLineTypeName] ) {
+      case ActuatorLineType::PointDrag : {
+	actuatorLine_ =  new ActuatorLinePointDrag(*this, *foundActuatorLine[0]);
+	break;
+      }
+#ifdef USE_FAST
+      case ActuatorLineType::FAST : {
+	actuatorLine_ =  new ActuatorLineFAST(*this, *foundActuatorLine[0]);
+	break;
+      }
+#endif
+      default : {
+        throw std::runtime_error("look_ahead_and_create::error: unrecognized actuator_line type: " + ActuatorLineTypeName);
+        break;
+      }
+      }
+    }
+    else {
+      throw std::runtime_error("look_ahead_and_create::error: No 'type' specified in actuator_line");
+    }
+
+    
   }
 }
   

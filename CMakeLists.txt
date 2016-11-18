@@ -22,13 +22,6 @@ SET(CMAKE_PREFIX_PATH ${Trilinos_DIR} ${CMAKE_PREFIX_PATH})
 SET(CMAKE_PREFIX_PATH ${Trilinos_PATH} ${CMAKE_PREFIX_PATH})
 find_package(Trilinos REQUIRED)
 
-# configure a header file to pass some of the CMake settings
-# to the source code
-configure_file (
-  "${CMAKE_SOURCE_DIR}/include/ActuatorLineConfig.h.in"
-  "${CMAKE_SOURCE_DIR}/include/ActuatorLineConfig.h"
-  )
-
 if (USE_FAST)
    MESSAGE("   FAST_DIR = ${FAST_DIR}")
    SET(CMAKE_PREFIX_PATH ${FAST_DIR} ${CMAKE_PREFIX_PATH})
@@ -113,6 +106,13 @@ MESSAGE("-- CMAKE_Fortran_FLAGS = ${CMAKE_Fortran_FLAGS}")
 
 file (GLOB SOURCE src/*.C src/*/*.C src/*/*.F)
 file (GLOB HEADER include/*.h include/*/*.h)
+list(REMOVE_ITEM SOURCE src/ActuatorLine.C)
+list(REMOVE_ITEM SOURCE src/ActuatorLineFAST.C)
+list(REMOVE_ITEM HEADER include/ActuatorLineFAST.h)
+if (USE_FAST)
+   set(SOURCE "${SOURCE}" src/ActuatorLineFAST.C)
+   set(HEADER "${HEADER}" include/ActuatorLineFAST.h)
+endif (USE_FAST)
 
 include_directories (${CMAKE_SOURCE_DIR}/include)
 add_library (nalu ${SOURCE} ${HEADER})

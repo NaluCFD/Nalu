@@ -10,6 +10,7 @@
 #define Enums_h
 
 #include <string>
+#include <map>
 
 namespace sierra {
 namespace nalu {
@@ -209,6 +210,14 @@ const std::string NonConformalAlgTypeNames[] = {
   "dg",
   "rb",
   "END" };
+
+enum ActuatorLineType {
+  PointDrag = 0,
+  FAST = 1,
+  ActuatorLineType_END
+};
+
+static std::map<std::string, ActuatorLineType> ActuatorLineTypeMap = { {"PointDrag",ActuatorLineType::PointDrag}, {"FAST",ActuatorLineType::FAST} };
 
 } // namespace nalu
 } // namespace Sierra
