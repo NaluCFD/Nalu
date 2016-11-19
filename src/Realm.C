@@ -58,6 +58,8 @@
 // actuator line
 #include <Actuator.h>
 #include <ActuatorLinePointDrag.h>
+#include <ActuatorDisc.h>
+#include <ActuatorSector.h>
 #ifdef USE_FAST
 #include <ActuatorLineFAST.h>
 #endif
@@ -545,16 +547,24 @@ Realm::look_ahead_and_creation(const YAML::Node & node)
     if ( (*foundActuator[0])["actuator"]["type"] ) {
       const std::string ActuatorTypeName = (*foundActuator[0])["actuator"]["type"].as<std::string>() ;
       switch ( ActuatorTypeMap[ActuatorTypeName] ) {
-      case ActuatorType::PointDrag : {
+      case ActuatorType::ActLinePointDrag : {
 	actuator_ =  new ActuatorLinePointDrag(*this, *foundActuator[0]);
 	break;
       }
 #ifdef USE_FAST
-      case ActuatorType::FAST : {
+      case ActuatorType::ActLineFAST : {
 	actuator_ =  new ActuatorLineFAST(*this, *foundActuator[0]);
 	break;
       }
 #endif
+      case ActuatorType::ActDisc : {
+	actuator_ =  new ActuatorDisc(*this, *foundActuator[0]);
+	break;
+      }
+      case ActuatorType::ActSector : {
+	actuator_ =  new ActuatorSector(*this, *foundActuator[0]);
+	break;
+      }
       default : {
         throw std::runtime_error("look_ahead_and_create::error: unrecognized actuator type: " + ActuatorTypeName);
         break;

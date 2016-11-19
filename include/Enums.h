@@ -212,12 +212,14 @@ const std::string NonConformalAlgTypeNames[] = {
   "END" };
 
 enum ActuatorType {
-  PointDrag = 0,
-  FAST = 1,
+  ActLinePointDrag = 0,
+  ActLineFAST = 1,
+  ActDisc = 2,
+  ActSector = 3,
   ActuatorType_END
 };
 
-static std::map<std::string, ActuatorType> ActuatorTypeMap = { {"PointDrag",ActuatorType::PointDrag}, {"FAST",ActuatorType::FAST} };
+ static std::map<std::string, ActuatorType> ActuatorTypeMap = { {"ActLinePointDrag",ActuatorType::ActLinePointDrag}, {"ActLineFAST",ActuatorType::ActLineFAST}, {"ActDisc",ActuatorType::ActDisc}, {"ActSector",ActuatorType::ActSector}};
 
 } // namespace nalu
 } // namespace Sierra

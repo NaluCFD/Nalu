@@ -145,7 +145,7 @@ ActuatorLinePointDrag::ActuatorLinePointDrag(
 
      4) at present, fake source terms on simple Gaussian weighting
 
-    actuator_line:
+    actuator:
       search_method: stk_octree
       search_target_part: block_1
 
@@ -229,7 +229,7 @@ ActuatorLinePointDrag::load(
   const YAML::Node & y_node)
 {
   // check for any data probes
-  const YAML::Node y_actuatorLine = y_node["actuator_line"];
+  const YAML::Node y_actuatorLine = y_node["actuator"];
   if (y_actuatorLine) {
     NaluEnv::self().naluOutputP0() << "ActuatorLinePointDrag::load" << std::endl;
 

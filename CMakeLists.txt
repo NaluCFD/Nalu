@@ -106,7 +106,6 @@ MESSAGE("-- CMAKE_Fortran_FLAGS = ${CMAKE_Fortran_FLAGS}")
 
 file (GLOB SOURCE src/*.C src/*/*.C src/*/*.F)
 file (GLOB HEADER include/*.h include/*/*.h)
-list(REMOVE_ITEM SOURCE src/ActuatorLine.C)
 list(REMOVE_ITEM SOURCE src/ActuatorLineFAST.C)
 list(REMOVE_ITEM HEADER include/ActuatorLineFAST.h)
 if (USE_FAST)
