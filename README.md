@@ -27,7 +27,7 @@ can be found under the Nalu Wiki [Build](https://github.com/NaluCFD/Nalu/wiki/Bu
 
 ### Status
 
-[![Status][2]][1]
+[![alt text][2]][1]
   [1]: http://my.cdash.org/index.php?project=Nalu
   [2]: https://github.com/NaluCFD/Nalu/wiki/images/cDashLogo.gif (click here for build status)
 
