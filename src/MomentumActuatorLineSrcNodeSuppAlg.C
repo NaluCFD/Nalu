@@ -31,15 +31,15 @@ namespace nalu{
 MomentumActuatorLineSrcNodeSuppAlg::MomentumActuatorLineSrcNodeSuppAlg(
   Realm &realm)
   : SupplementalAlgorithm(realm),
-    actuatorLineSrc_(NULL),
-    actuatorLineSrcLHS_(NULL),
+    actuatorSrc_(NULL),
+    actuatorSrcLHS_(NULL),
     dualNodalVolume_(NULL),
     nDim_(1)
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
-  actuatorLineSrc_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "actuator_line_source");
-  actuatorLineSrcLHS_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "actuator_line_source_lhs");
+  actuatorSrc_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "actuator_source");
+  actuatorSrcLHS_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "actuator_source_lhs");
   dualNodalVolume_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
   nDim_ = meta_data.spatial_dimension();
 }
@@ -63,9 +63,9 @@ MomentumActuatorLineSrcNodeSuppAlg::node_execute(
   stk::mesh::Entity node)
 {
   // single point quadrature
-  const double *src = stk::mesh::field_data(*actuatorLineSrc_, node);
+  const double *src = stk::mesh::field_data(*actuatorSrc_, node);
   const double dualVolume = *stk::mesh::field_data(*dualNodalVolume_, node);
-  const double srcLHS = *stk::mesh::field_data(*actuatorLineSrcLHS_, node);
+  const double srcLHS = *stk::mesh::field_data(*actuatorSrcLHS_, node);
  
   const int nDim = nDim_;
   for ( int i = 0; i < nDim; ++i ) {

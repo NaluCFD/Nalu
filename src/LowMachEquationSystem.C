@@ -1139,7 +1139,7 @@ MomentumEquationSystem::register_interior_algorithm(
         else if (sourceName == "VariableDensityNonIso" ) {
           suppAlg = new VariableDensityNonIsoMomentumSrcNodeSuppAlg(realm_);
         }
-        else if ( sourceName == "actuator_line") {
+        else if ( sourceName == "actuator") {
           suppAlg = new MomentumActuatorLineSrcNodeSuppAlg(realm_);
         }
         else {
