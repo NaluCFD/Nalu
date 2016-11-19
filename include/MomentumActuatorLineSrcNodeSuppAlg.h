@@ -35,8 +35,8 @@ public:
     double *rhs,
     stk::mesh::Entity node);
   
-  VectorFieldType *actuatorLineSrc_;
-  ScalarFieldType *actuatorLineSrcLHS_;
+  VectorFieldType *actuatorSrc_;
+  ScalarFieldType *actuatorSrcLHS_;
   ScalarFieldType *dualNodalVolume_;
   int nDim_;
 };
