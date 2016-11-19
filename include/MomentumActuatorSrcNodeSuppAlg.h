@@ -6,8 +6,8 @@
 /*------------------------------------------------------------------------*/
 
 
-#ifndef MomentumActuatorLineSrcNodeSuppAlg_h
-#define MomentumActuatorLineSrcNodeSuppAlg_h
+#ifndef MomentumActuatorSrcNodeSuppAlg_h
+#define MomentumActuatorSrcNodeSuppAlg_h
 
 #include <SupplementalAlgorithm.h>
 #include <FieldTypeDef.h>
@@ -19,14 +19,14 @@ namespace nalu{
 
 class Realm;
 
-class MomentumActuatorLineSrcNodeSuppAlg : public SupplementalAlgorithm
+class MomentumActuatorSrcNodeSuppAlg : public SupplementalAlgorithm
 {
 public:
 
-  MomentumActuatorLineSrcNodeSuppAlg(
+  MomentumActuatorSrcNodeSuppAlg(
     Realm &realm);
 
-  virtual ~MomentumActuatorLineSrcNodeSuppAlg() {}
+  virtual ~MomentumActuatorSrcNodeSuppAlg() {}
 
   virtual void setup();
 

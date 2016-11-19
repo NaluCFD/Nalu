@@ -73,7 +73,7 @@
 #include <LinearSolvers.h>
 #include <LinearSystem.h>
 #include <master_element/MasterElement.h>
-#include <MomentumActuatorLineSrcNodeSuppAlg.h>
+#include <MomentumActuatorSrcNodeSuppAlg.h>
 #include <MomentumBuoyancySrcNodeSuppAlg.h>
 #include <MomentumBuoyancySrcElemSuppAlg.h>
 #include <MomentumBoussinesqSrcNodeSuppAlg.h>
@@ -1140,7 +1140,7 @@ MomentumEquationSystem::register_interior_algorithm(
           suppAlg = new VariableDensityNonIsoMomentumSrcNodeSuppAlg(realm_);
         }
         else if ( sourceName == "actuator") {
-          suppAlg = new MomentumActuatorLineSrcNodeSuppAlg(realm_);
+          suppAlg = new MomentumActuatorSrcNodeSuppAlg(realm_);
         }
         else {
           throw std::runtime_error("MomentumNodalSrcTerms::Error Source term is not supported: " + sourceName);
