@@ -27,10 +27,11 @@ can be found under the Nalu Wiki [Build](https://github.com/NaluCFD/Nalu/wiki/Bu
 
 ### Status
 
-Nalu's current build status can be
-found
-[at this CDash site](http://my.cdash.org/index.php?project=Nalu). More
-details on testing can be found [here](./cmake/README.md).
+[![alt text][2]][1]
+  [1]: http://my.cdash.org/index.php?project=Nalu
+  [2]: https://github.com/NaluCFD/Nalu/wiki/images/CDashLogo.jpg (click here for build status)
+
+More details on testing can be found [within the cmake directory](./cmake/README.md).
 
 ### Help
 Projects that are using Nalu for sponsored activities should consult the <nalucfd@googlegroups.com> 
