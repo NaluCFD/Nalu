@@ -73,7 +73,7 @@ class Transfer;
 class SolutionNormPostProcessing;
 class TurbulenceAveragingPostProcessing;
 class DataProbePostProcessing;
-class ActuatorLine;
+class Actuator;
 
 class Realm {
  public:
@@ -410,7 +410,7 @@ class Realm {
   SolutionNormPostProcessing *solutionNormPostProcessing_;
   TurbulenceAveragingPostProcessing *turbulenceAveragingPostProcessing_;
   DataProbePostProcessing *dataProbePostProcessing_;
-  ActuatorLine *actuatorLine_;
+  Actuator *actuator_;
 
   std::vector<Algorithm *> propertyAlg_;
   std::map<PropertyIdentifier, ScalarFieldType *> propertyMap_;

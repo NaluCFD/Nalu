@@ -922,13 +922,13 @@ MomentumEquationSystem::register_nodal_fields(
   }
 
   // speciality source
-  if ( NULL != realm_.actuatorLine_ ) {
-    VectorFieldType *actuatorLineSource 
-      =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "actuator_line_source"));
-    ScalarFieldType *actuatorLineSourceLHS
-      =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "actuator_line_source_lhs"));
-    stk::mesh::put_field(*actuatorLineSource, *part);
-    stk::mesh::put_field(*actuatorLineSourceLHS, *part);
+  if ( NULL != realm_.actuator_ ) {
+    VectorFieldType *actuatorSource 
+      =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "actuator_source"));
+    ScalarFieldType *actuatorSourceLHS
+      =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "actuator_source_lhs"));
+    stk::mesh::put_field(*actuatorSource, *part);
+    stk::mesh::put_field(*actuatorSourceLHS, *part);
   }
 }
 

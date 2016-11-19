@@ -56,7 +56,7 @@
 #include <DataProbePostProcessing.h>
 
 // actuator line
-#include <ActuatorLine.h>
+#include <Actuator.h>
 #include <ActuatorLinePointDrag.h>
 #ifdef USE_FAST
 #include <ActuatorLineFAST.h>
@@ -179,7 +179,7 @@ namespace nalu{
     solutionNormPostProcessing_(NULL),
     turbulenceAveragingPostProcessing_(NULL),
     dataProbePostProcessing_(NULL),
-    actuatorLine_(NULL),
+    actuator_(NULL),
     nodeCount_(0),
     estimateMemoryOnly_(false),
     availableMemoryPerCoreGB_(0),
@@ -284,8 +284,8 @@ Realm::~Realm()
   if ( NULL != turbulenceAveragingPostProcessing_ )
     delete turbulenceAveragingPostProcessing_;
 
-  if ( NULL != actuatorLine_ )
-    delete actuatorLine_;
+  if ( NULL != actuator_ )
+    delete actuator_;
 
   // delete contact related things
   if ( NULL != contactManager_ )
@@ -535,34 +535,34 @@ Realm::look_ahead_and_creation(const YAML::Node & node)
     dataProbePostProcessing_ =  new DataProbePostProcessing(*this, *foundProbe[0]);
   }
 
-  // look for ActuatorLine
-  std::vector<const YAML::Node*> foundActuatorLine;
-  NaluParsingHelper::find_nodes_given_key("actuator_line", node, foundActuatorLine);
-  if ( foundActuatorLine.size() > 0 ) {
-    if ( foundActuatorLine.size() != 1 )
+  // look for Actuator
+  std::vector<const YAML::Node*> foundActuator;
+  NaluParsingHelper::find_nodes_given_key("actuator", node, foundActuator);
+  if ( foundActuator.size() > 0 ) {
+    if ( foundActuator.size() != 1 )
       throw std::runtime_error("look_ahead_and_create::error: Too many actuator line blocks");
 
-    if ( (*foundActuatorLine[0])["actuator_line"]["type"] ) {
-      const std::string ActuatorLineTypeName = (*foundActuatorLine[0])["actuator_line"]["type"].as<std::string>() ;
-      switch ( ActuatorLineTypeMap[ActuatorLineTypeName] ) {
-      case ActuatorLineType::PointDrag : {
-	actuatorLine_ =  new ActuatorLinePointDrag(*this, *foundActuatorLine[0]);
+    if ( (*foundActuator[0])["actuator"]["type"] ) {
+      const std::string ActuatorTypeName = (*foundActuator[0])["actuator"]["type"].as<std::string>() ;
+      switch ( ActuatorTypeMap[ActuatorTypeName] ) {
+      case ActuatorType::PointDrag : {
+	actuator_ =  new ActuatorLinePointDrag(*this, *foundActuator[0]);
 	break;
       }
 #ifdef USE_FAST
-      case ActuatorLineType::FAST : {
-	actuatorLine_ =  new ActuatorLineFAST(*this, *foundActuatorLine[0]);
+      case ActuatorType::FAST : {
+	actuator_ =  new ActuatorLineFAST(*this, *foundActuator[0]);
 	break;
       }
 #endif
       default : {
-        throw std::runtime_error("look_ahead_and_create::error: unrecognized actuator_line type: " + ActuatorLineTypeName);
+        throw std::runtime_error("look_ahead_and_create::error: unrecognized actuator type: " + ActuatorTypeName);
         break;
       }
       }
     }
     else {
-      throw std::runtime_error("look_ahead_and_create::error: No 'type' specified in actuator_line");
+      throw std::runtime_error("look_ahead_and_create::error: No 'type' specified in actuator");
     }
 
     
@@ -845,8 +845,8 @@ Realm::setup_post_processing_algorithms()
     dataProbePostProcessing_->setup();
 
   // check for actuator line
-  if ( NULL != actuatorLine_ )
-    actuatorLine_->setup();
+  if ( NULL != actuator_ )
+    actuator_->setup();
 
   // check for norm nodal fields
   if ( NULL != solutionNormPostProcessing_ )
@@ -1788,8 +1788,8 @@ Realm::advance_time_step()
   compute_vrtm();
 
   // check for actuator line; assemble the source terms for this time step
-  if ( NULL != actuatorLine_ ) {
-    actuatorLine_->execute();
+  if ( NULL != actuator_ ) {
+    actuator_->execute();
   }
 
   const int numNonLinearIterations = equationSystems_.maxIterations_;
@@ -2283,9 +2283,9 @@ Realm::initialize_post_processing_algorithms()
   if ( NULL != dataProbePostProcessing_ )
     dataProbePostProcessing_->initialize();
 
-  // check for actuator line... probably a better place for this
-  if ( NULL != actuatorLine_ ) {
-    actuatorLine_->initialize();
+  // check for actuator... probably a better place for this
+  if ( NULL != actuator_ ) {
+    actuator_->initialize();
   }
 }
 

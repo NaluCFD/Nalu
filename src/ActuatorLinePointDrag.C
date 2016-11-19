@@ -117,7 +117,7 @@ ActuatorLinePointDragPointInfo::~ActuatorLinePointDragPointInfo()
 ActuatorLinePointDrag::ActuatorLinePointDrag(
   Realm &realm,
   const YAML::Node &node)
-  : ActuatorLine(realm, node),
+  : Actuator(realm, node),
     realm_(realm),
     searchMethod_(stk::search::BOOST_RTREE),
     actuatorLineGhosting_(NULL),
@@ -413,10 +413,10 @@ ActuatorLinePointDrag::execute()
   VectorFieldType *coordinates 
     = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   VectorFieldType *velocity = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
-  VectorFieldType *actuator_line_source 
-    = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "actuator_line_source");
-  ScalarFieldType *actuator_line_source_lhs
-    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "actuator_line_source_lhs");
+  VectorFieldType *actuator_source 
+    = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "actuator_source");
+  ScalarFieldType *actuator_source_lhs
+    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "actuator_source_lhs");
   ScalarFieldType *density
     = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density"); 
   // deal with proper viscosity
@@ -434,15 +434,15 @@ ActuatorLinePointDrag::execute()
   double ws_pointForceLHS;
   
   // zero out source term; do this manually since there are custom ghosted entities
-  stk::mesh::Selector s_nodes = stk::mesh::selectField(*actuator_line_source);
+  stk::mesh::Selector s_nodes = stk::mesh::selectField(*actuator_source);
   stk::mesh::BucketVector const& node_buckets =
     realm_.get_buckets( stk::topology::NODE_RANK, s_nodes );
   for ( stk::mesh::BucketVector::const_iterator ib = node_buckets.begin() ;
         ib != node_buckets.end() ; ++ib ) {
     stk::mesh::Bucket & b = **ib ;
     const stk::mesh::Bucket::size_type length   = b.size();
-    double * actSrc = stk::mesh::field_data(*actuator_line_source, b);
-    double * actSrcLhs = stk::mesh::field_data(*actuator_line_source_lhs, b);
+    double * actSrc = stk::mesh::field_data(*actuator_source, b);
+    double * actSrcLhs = stk::mesh::field_data(*actuator_source_lhs, b);
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
       actSrcLhs[k] = 0.0;
       const int offSet = k*nDim;
@@ -515,7 +515,7 @@ ActuatorLinePointDrag::execute()
         
     // assemble nodal quantity; radius should be zero, so we can apply fill point drag
     assemble_source_to_nodes(nDim, bestElem, bulkData, elemVolume, &ws_pointForce[0], ws_pointForceLHS, 
-                             *actuator_line_source, *actuator_line_source_lhs, 1.0);
+                             *actuator_source, *actuator_source_lhs, 1.0);
 
     // get the vector of elements
     std::vector<stk::mesh::Entity> elementVec = infoObject->elementVec_;
@@ -548,12 +548,12 @@ ActuatorLinePointDrag::execute()
 
       // assemble nodal quantity; no LHS contribution here...
       assemble_source_to_nodes(nDim, elem, bulkData, elemVolume, &ws_elemDrag[0], ws_pointForceLHS, 
-                               *actuator_line_source, *actuator_line_source_lhs, 0.0);
+                               *actuator_source, *actuator_source_lhs, 0.0);
     } 
   }
 
   // parallel assemble (contributions from ghosted and locally owned)
-  const std::vector<const stk::mesh::FieldBase*> sumFieldVec(1, actuator_line_source);
+  const std::vector<const stk::mesh::FieldBase*> sumFieldVec(1, actuator_source);
   stk::mesh::parallel_sum_including_ghosts(bulkData, sumFieldVec);
 
 }
@@ -1053,8 +1053,8 @@ ActuatorLinePointDrag::assemble_source_to_nodes(
   const double &elemVolume,
   const double *drag,
   const double &dragLHS,
-  stk::mesh::FieldBase &actuator_line_source,
-  stk::mesh::FieldBase &actuator_line_source_lhs,
+  stk::mesh::FieldBase &actuator_source,
+  stk::mesh::FieldBase &actuator_source_lhs,
   const double &lhsFac) 
 {
   // extract master element from the bucket in which the element resides
@@ -1075,8 +1075,8 @@ ActuatorLinePointDrag::assemble_source_to_nodes(
     
     // extract node and pointer to source term
     stk::mesh::Entity node = elem_node_rels[nearestNode];
-    double * sourceTerm = (double*)stk::mesh::field_data(actuator_line_source, node );
-    double * sourceTermLHS = (double*)stk::mesh::field_data(actuator_line_source_lhs, node );
+    double * sourceTerm = (double*)stk::mesh::field_data(actuator_source, node );
+    double * sourceTermLHS = (double*)stk::mesh::field_data(actuator_source_lhs, node );
     
     // nodal weight based on volume weight
     const double nodalWeight = ws_scv_volume_[ip]/elemVolume;

@@ -6,8 +6,8 @@
 /*------------------------------------------------------------------------*/
 
 
-#ifndef ActuatorLine_h
-#define ActuatorLine_h
+#ifndef Actuator_h
+#define Actuator_h
 
 #include <NaluParsing.h>
 #include<FieldTypeDef.h>
@@ -31,12 +31,6 @@
 #include <vector>
 #include <utility>
 
-#ifdef USE_FAST
-// FAST c interface
-#include "FAST_cInterface.h"
-#endif
-
-
 namespace sierra{
 namespace nalu{
 
@@ -50,14 +44,14 @@ typedef std::pair<Box,theKey> boundingElementBox;
 
 class Realm;
  
-class ActuatorLine
+class Actuator
 {
 public:
   
-  ActuatorLine(
+  Actuator(
     Realm &realm,
     const YAML::Node &node) {} 
-  virtual ~ActuatorLine() {}
+  virtual ~Actuator() {}
   
   // load all of the options
   virtual void load(

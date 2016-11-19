@@ -9,7 +9,7 @@
 #ifndef ActuatorLinePointDrag_h
 #define ActuatorLinePointDrag_h
 
-#include "ActuatorLine.h"
+#include "Actuator.h"
 
 namespace sierra{
 namespace nalu{
@@ -54,7 +54,7 @@ class ActuatorLinePointDragPointInfo {
   std::vector<stk::mesh::Entity> elementVec_;
 };
  
- class ActuatorLinePointDrag: public ActuatorLine
+ class ActuatorLinePointDrag: public Actuator
 {
 public:
   
@@ -173,8 +173,8 @@ public:
     const double &elemVolume,
     const double *drag,
     const double &dragLHS,
-    stk::mesh::FieldBase &actuator_line_source,
-    stk::mesh::FieldBase &actuator_line_source_lhs,
+    stk::mesh::FieldBase &actuator_source,
+    stk::mesh::FieldBase &actuator_source_lhs,
     const double &lhsFac); 
 
   // hold the realm

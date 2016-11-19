@@ -9,7 +9,7 @@
 #ifndef ActuatorLineFAST_h
 #define ActuatorLineFAST_h
 
-#include "ActuatorLine.h"
+#include "Actuator.h"
 
 // FAST c interface
 #include "FAST_cInterface.h"
@@ -58,7 +58,7 @@ class ActuatorLineFASTPointInfo {
   std::vector<stk::mesh::Entity> elementVec_;
 };
  
- class ActuatorLineFAST: public ActuatorLine
+ class ActuatorLineFAST: public Actuator
 {
 public:
   
@@ -177,8 +177,8 @@ public:
     const double &elemVolume,
     const double *drag,
     const double &dragLHS,
-    stk::mesh::FieldBase &actuator_line_source,
-    stk::mesh::FieldBase &actuator_line_source_lhs,
+    stk::mesh::FieldBase &actuator_source,
+    stk::mesh::FieldBase &actuator_source_lhs,
     const double &lhsFac); 
 
   // hold the realm
