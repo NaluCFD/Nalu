@@ -855,6 +855,7 @@ MomentumEquationSystem::initial_work()
 
   // proceed with a bunch of initial work; wrap in timer
   const double timeA = NaluEnv::self().nalu_time();
+  realm_.compute_vrtm();
   compute_projected_nodal_gradient();
   compute_wall_function_params();
   tviscAlgDriver_->execute();
