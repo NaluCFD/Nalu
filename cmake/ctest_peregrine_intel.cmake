@@ -1,9 +1,9 @@
 # -----------------------------------------------------------
-# -- Variables for intel ctesting
+# -- Variables for intel ctesting on Peregrine
 # -----------------------------------------------------------
 
 set(compiler                            "intel")
-
+set(CONFIG_FILE                         "do-configNalu_release-${compiler}")
 
 # -----------------------------------------------------------
 # -- Include common test config
