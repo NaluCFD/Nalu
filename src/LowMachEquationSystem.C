@@ -136,6 +136,8 @@
 
 #include <user_functions/SinProfileChannelFlowVelocityAuxFunction.h>
 
+#include <user_functions/BoundaryLayerPerturbationAuxFunction.h>
+
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
 #include <stk_util/parallel/ParallelReduce.hpp>
@@ -505,6 +507,20 @@ LowMachEquationSystem::register_initial_condition_fcn(
       }
       else {
         throw std::runtime_error("Wind_energy_taylor_vortex missing parameters");
+      }
+    }
+    else if ( fcnName == "boundary_layer_perturbation") {
+      
+      // extract the params
+      std::map<std::string, std::vector<double> >::const_iterator iterParams
+        = theParams.find(dofName);
+      if (iterParams != theParams.end()) {
+        std::vector<double> fcnParams = (*iterParams).second;	
+        // create the function
+        theAuxFunc = new BoundaryLayerPerturbationAuxFunction(0,nDim,fcnParams);
+      }
+      else {
+        throw std::runtime_error("Boundary_layer_perturbation missing parameters");
       }
     }
     else if ( fcnName == "SteadyTaylorVortex" ) {
