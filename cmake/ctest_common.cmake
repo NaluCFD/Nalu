@@ -93,7 +93,7 @@ endif(NOT EXISTS "${CTEST_SOURCE_DIRECTORY}")
 set(CTEST_UPDATE_COMMAND               "${CTEST_GIT_COMMAND}")
 
 ## -- Configure Command
-set(CTEST_CONFIGURE_COMMAND            "${CTEST_BINARY_DIRECTORY}/do-configNalu_release-${compiler}")
+set(CTEST_CONFIGURE_COMMAND            "${CTEST_BINARY_DIRECTORY}/${CONFIG_FILE}")
 
 ## -- Build Command
 set(CTEST_BUILD_COMMAND                "${MAKE} ${OPTION_BUILD}")
