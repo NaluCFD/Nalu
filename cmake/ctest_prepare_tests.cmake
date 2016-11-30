@@ -62,6 +62,9 @@ file(COPY               ${meshes}
 file(COPY               "${NALURTEST_NIGHTLY_DIR}/steadyTaylorVortex"
      DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}")
 
+file(COPY               "${NALURTEST_XML_DIR}/matches_ml_default.xml"
+     DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}/steadyTaylorVortex")
+
 
 #=============================================================================
 # hoVortex test
@@ -71,6 +74,7 @@ file(COPY               "${NALURTEST_NIGHTLY_DIR}/hoVortex"
 
 file(GLOB meshes        "${NALURTEST_MESH_DIR}/100x50_P2n.g.*")
 file(COPY               ${meshes}
+                        "${NALURTEST_XML_DIR}/matches_ml_default.xml"
      DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}/hoVortex")
 
    
@@ -223,12 +227,18 @@ file(COPY               "${NALURTEST_NIGHTLY_DIR}/concentricRad"
 file(COPY               "${NALURTEST_NIGHTLY_DIR}/movingCylinder"
      DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}")
 
+file(COPY               "${NALURTEST_XML_DIR}/milestone_aspect_ratio.xml"
+     DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}/movingCylinder")
+
 
 #=============================================================================
 # elemBackStepLRSST test
 #=============================================================================
 file(COPY               "${NALURTEST_NIGHTLY_DIR}/elemBackStepLRSST"
      DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}")
+
+file(COPY               "${NALURTEST_XML_DIR}/matches_ml_default.xml"
+     DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}/elemBackStepLRSST")
 
 
 #=============================================================================
@@ -263,6 +273,7 @@ file(GLOB meshes1       "${NALURTEST_MESH_DIR}/elbow.g.*")
 file(GLOB meshes2       "${NALURTEST_MESH_DIR}/horseshoe.g.*")
 file(COPY               ${meshes1}
                         ${meshes2}
+                        "${NALURTEST_XML_DIR}/matches_ml_default.xml"
      DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}/edgePipeCHT")
 
 
@@ -276,6 +287,7 @@ file(GLOB meshes1       "${NALURTEST_MESH_DIR}/elbow.g.*")
 file(GLOB meshes2       "${NALURTEST_MESH_DIR}/horseshoe.g.*")
 file(COPY               ${meshes1}
                         ${meshes2}
+                        "${NALURTEST_XML_DIR}/matches_ml_default.xml"
      DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}/elemPipeCHT")
 
 
@@ -319,6 +331,9 @@ file(COPY               ${meshes}
 file(COPY               "${NALURTEST_NIGHTLY_DIR}/fluidsPmrChtPeriodic"
      DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}")
 
+file(COPY               "${NALURTEST_XML_DIR}/matches_ml_default.xml"
+     DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}/fluidsPmrChtPeriodic")
+
 
 #=============================================================================
 # nonIsoElemOpenJet test
@@ -328,6 +343,7 @@ file(COPY               "${NALURTEST_NIGHTLY_DIR}/nonIsoElemOpenJet"
 
 file(GLOB meshes        "${NALURTEST_MESH_DIR}/2cm_ped_35K_mks.g*")
 file(COPY               ${meshes}
+                        "${NALURTEST_XML_DIR}/matches_ml_default.xml"
      DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}/nonIsoElemOpenJet")
 
 
@@ -339,6 +355,7 @@ file(COPY               "${NALURTEST_NIGHTLY_DIR}/nonIsoEdgeOpenJet"
 
 file(GLOB meshes        "${NALURTEST_MESH_DIR}/2cm_ped_35K_mks.g*")
 file(COPY               ${meshes}
+                        "${NALURTEST_XML_DIR}/matches_ml_default.xml"
      DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}/nonIsoEdgeOpenJet")
 
 
@@ -362,6 +379,7 @@ file(COPY               "${NALURTEST_NIGHTLY_DIR}/elemHybridFluids"
 
 file(GLOB meshes        "${NALURTEST_MESH_DIR}/hybrid.g*")
 file(COPY               ${meshes}
+                        "${NALURTEST_XML_DIR}/milestone_aspect_ratio.xml"
      DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}/elemHybridFluids")
 
 
@@ -373,6 +391,7 @@ file(COPY               "${NALURTEST_NIGHTLY_DIR}/elemHybridFluidsShift"
 
 file(GLOB meshes        "${NALURTEST_MESH_DIR}/hybrid.g*")
 file(COPY               ${meshes}
+                        "${NALURTEST_XML_DIR}/matches_ml_default.xml"
      DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}/elemHybridFluidsShift")
 
 
@@ -384,6 +403,7 @@ file(COPY               "${NALURTEST_NIGHTLY_DIR}/edgeHybridFluids"
 
 file(GLOB meshes        "${NALURTEST_MESH_DIR}/hybrid.g*")
 file(COPY               ${meshes}
+                        "${NALURTEST_XML_DIR}/matches_ml_default.xml"
      DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}/edgeHybridFluids")
 
 
@@ -392,6 +412,9 @@ file(COPY               ${meshes}
 #=============================================================================
 file(COPY               "${NALURTEST_NIGHTLY_DIR}/elemClosedDomain"
      DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}")
+
+file(COPY               "${NALURTEST_XML_DIR}/matches_ml_default.xml"
+     DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}/elemClosedDomain")
 
 
 #=============================================================================
@@ -402,6 +425,7 @@ file(COPY               "${NALURTEST_NIGHTLY_DIR}/mixedTetPipe"
 
 file(GLOB meshes        "${NALURTEST_MESH_DIR}/pipeTet.g*")
 file(COPY               ${meshes}
+                        "${NALURTEST_XML_DIR}/matches_ml_default.xml"
      DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}/mixedTetPipe")
 
 
@@ -435,6 +459,7 @@ file(COPY               "${NALURTEST_NIGHTLY_DIR}/nonIsoNonUniformElemOpenJet"
 
 file(GLOB meshes        "${NALURTEST_MESH_DIR}/2cm_ped_35K_mks.g*")
 file(COPY               ${meshes}
+                        "${NALURTEST_XML_DIR}/matches_ml_default.xml"
      DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}/nonIsoNonUniformElemOpenJet")
 
 
@@ -446,6 +471,7 @@ file(COPY               "${NALURTEST_NIGHTLY_DIR}/nonIsoNonUniformEdgeOpenJet"
 
 file(GLOB meshes        "${NALURTEST_MESH_DIR}/2cm_ped_35K_mks.g*")
 file(COPY               ${meshes}
+                        "${NALURTEST_XML_DIR}/matches_ml_default.xml"
      DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}/nonIsoNonUniformEdgeOpenJet")
 
 
@@ -522,6 +548,17 @@ file(COPY               "${NALURTEST_NIGHTLY_DIR}/ablStableElem"
 file(COPY               "${NALURTEST_MESH_DIR}/abl_1km_cube_toy.g"
                         "${NALURTEST_XML_DIR}/milestone.xml"
      DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}/ablStableElem")
+
+
+#=============================================================================
+# ekmanSpiral test
+#=============================================================================
+file(COPY               "${NALURTEST_NIGHTLY_DIR}/ekmanSpiral"
+     DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}")
+
+file(COPY               "${NALURTEST_MESH_DIR}/ekmanSpiral.g"
+                        "${NALURTEST_XML_DIR}/milestone.xml"
+     DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}/ekmanSpiral")
 
 
 #=============================================================================

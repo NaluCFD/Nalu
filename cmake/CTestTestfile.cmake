@@ -605,6 +605,18 @@ set_tests_properties(ablStableElem
 
 
 #=============================================================================
+# ekmanSpiral test
+#=============================================================================
+add_test(ekmanSpiral "ekmanSpiral.sh")
+set_tests_properties(ekmanSpiral
+  PROPERTIES  PASS_REGULAR_EXPRESSION "PASSED"
+              FAIL_REGULAR_EXPRESSION "FAILED"
+              TIMEOUT 400
+              PROCESSORS 4
+  WORKING_DIRECTORY "${NIGHTLY_TEST_RESULT_DIRECTORY}/ekmanSpiral")
+
+
+#=============================================================================
 # unit tests
 #=============================================================================
 add_test(unitTests "run_unit_tests.sh")
