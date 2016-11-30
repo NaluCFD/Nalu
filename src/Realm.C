@@ -3505,11 +3505,11 @@ Realm::set_global_id()
     const stk::mesh::Bucket & b = **ib;
     const stk::mesh::Bucket::size_type length = b.size();
     stk::mesh::EntityId *naluGlobalIds = stk::mesh::field_data(*naluGlobalId_, b);
-
+    
     for ( stk::mesh::Bucket::size_type k = 0; k < length; ++k ) {
       naluGlobalIds[k] = bulkData_->identifier(b[k]);
     }
-  }
+  }  
 }
 
 //--------------------------------------------------------------------------

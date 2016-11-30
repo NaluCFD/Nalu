@@ -22,9 +22,6 @@
 #include <Teuchos_GlobalMPISession.hpp>
 #include <Teuchos_oblackholestream.hpp>
 
-#include <MueLu_EpetraOperator.hpp>
-
-
 #include <Ifpack2_Factory.hpp>
 
 // Header files defining default types for template parameters.
@@ -44,16 +41,10 @@ typedef Teuchos::ScalarTraits<Scalar> STS;
 
 #include <MueLu_UseShortNames.hpp>    // => typedef MueLu::FooClass<Scalar, LocalOrdinal, ...> Foo
 
-class Epetra_FECrsMatrix;
-class Epetra_Vector;
-class Epetra_FEVector;
-class AztecOO;
-
 namespace sierra{
 namespace nalu{
 
   enum PetraType {
-    PT_EPETRA,
     PT_TPETRA,
     PT_END
   };
@@ -83,61 +74,6 @@ class LinearSolver
   bool & reusePreconditioner() {return reusePreconditioner_;}
   void zero_timer_precond() { timerPrecond_ = 0.0;}
   double get_timer_precond() { return timerPrecond_;}
-};
-
-class EpetraLinearSolver : public LinearSolver
-{
-  public:
-  EpetraLinearSolver(
-    std::string solverName,
-    EpetraLinearSolverConfig *config,
-    const int * options,
-    const double * params,
-    bool mlFlag, bool mueLuFlag,
-    const Teuchos::RCP<Teuchos::ParameterList> mlParams, LinearSolvers *linearSolvers);
-  
-   ~EpetraLinearSolver();
-
-    void setSystemObjects(
-      Epetra_FECrsMatrix * matrix,
-      Epetra_FEVector * rhs);
-
-    int solve(
-      Epetra_Vector * sln,
-      int & iterationCount,
-      double & scaledResidual);
-
-    void populateMLCoordinates(double * xcoords, double * ycoords, double * zcoords);
-
-    void setMueLuCoordinates(Teuchos::RCP<Epetra_MultiVector> coords);
-
-    void setMueLuMatrix(Teuchos::RCP<Epetra_CrsMatrix> matrix)
-    {
-       mueLuMat_ = matrix;
-    }
-
-    void destroyML();
-
-    void destroyMueLu();
-
-    bool & activateML() {return activateML_;}
-
-    bool & activateMueLu() {return activateMueLu_;}
-
-  virtual PetraType getType() { return PT_EPETRA; }
-  EpetraLinearSolverConfig *getConfig() { return config_; }
-
-  private:
-    EpetraLinearSolverConfig *config_;
-    AztecOO * solver_;
-    bool activateML_;
-    bool activateMueLu_;
-    ML_Epetra::MultiLevelPreconditioner * mlPreconditioner_;
-    Teuchos::RCP<MueLu::EpetraOperator> mueLuPreconditioner_;
-    Teuchos::RCP<Epetra_MultiVector> mueLuCoordinates_;
-    Teuchos::RCP<Epetra_CrsMatrix> mueLuMat_;
-
-    const Teuchos::RCP<Teuchos::ParameterList> mlParams_;
 };
 
 class TpetraLinearSolver : public LinearSolver
