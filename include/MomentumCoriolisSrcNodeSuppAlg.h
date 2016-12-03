@@ -11,6 +11,7 @@
 
 #include <SupplementalAlgorithm.h>
 #include <FieldTypeDef.h>
+#include <CoriolisSrc.h>
 
 #include <stk_mesh/base/Entity.hpp>
 
@@ -35,22 +36,10 @@ public:
     double *rhs,
     stk::mesh::Entity node);
 
-  void cross_product(std::vector<double> u, std::vector<double> v, std::vector<double> cross);
-
+  CoriolisSrc cor_;
   ScalarFieldType *densityNp1_;
   ScalarFieldType *dualNodalVolume_;
   VectorFieldType *velocityNp1_;
-  int nDim_;
-  double earthAngularVelocity_;
-  double latitude_;
-  double sinphi_;
-  double cosphi_;
-  double corfac_;
-  double Jxy_, Jxz_, Jyz_;
-  double pi_;
-  std::vector<double> eastVector_;
-  std::vector<double> northVector_;
-  std::vector<double> upVector_;
 
 };
 
