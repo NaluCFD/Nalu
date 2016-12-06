@@ -257,7 +257,7 @@ MassFractionEquationSystem::register_interior_algorithm(
       }
     }
     
-    // Add src term supp alg...; limited number supported
+    // Add src term supp alg...; limited number supported (exactly zero)
     std::map<std::string, std::vector<std::string> >::iterator isrc 
       = realm_.solutionOptions_->srcTermsMap_.find("mass_fraction");
     if ( isrc != realm_.solutionOptions_->srcTermsMap_.end() ) {

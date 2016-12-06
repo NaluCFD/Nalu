@@ -298,6 +298,7 @@ MixtureFractionEquationSystem::register_interior_algorithm(
         else {
           throw std::runtime_error("MixtureFractionElemSrcTerms::Error Source term is not supported: " + sourceName);
         }     
+        NaluEnv::self().naluOutputP0() << "MixtureFractionElemSrcTerms::added() " << sourceName << std::endl;
         theAlg->supplementalAlg_.push_back(suppAlg); 
       }
     }
@@ -347,7 +348,7 @@ MixtureFractionEquationSystem::register_interior_algorithm(
         else {
           throw std::runtime_error("MixtureFractionNodalSrcTerms::Error Source term is not supported: " + sourceName);
         }
-        // add supplemental algorithm
+        NaluEnv::self().naluOutputP0() << "MixtureFractionNodalSrcTerms::added() " << sourceName << std::endl;
         theAlg->supplementalAlg_.push_back(suppAlg);
       }
     }

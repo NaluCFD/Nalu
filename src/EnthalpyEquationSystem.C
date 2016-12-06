@@ -405,6 +405,7 @@ EnthalpyEquationSystem::register_interior_algorithm(
         else {
           throw std::runtime_error("EnthalpyElemSrcTerms::Error Source term is not supported: " + sourceName);
         }     
+        NaluEnv::self().naluOutputP0() << "EnthalpyElemSrcTerms::added() " << sourceName << std::endl;
         theAlg->supplementalAlg_.push_back(suppAlg); 
       }
     }
@@ -467,7 +468,7 @@ EnthalpyEquationSystem::register_interior_algorithm(
         else {
           throw std::runtime_error("EnthalpyNodalSrcTerms::Error Source term is not supported: " + sourceName);
         }
-        // add supplemental algorithm
+        NaluEnv::self().naluOutputP0() << "EnthalpyNodalSrcTerms::added() " << sourceName << std::endl;
         theAlg->supplementalAlg_.push_back(suppAlg);
       }
     }

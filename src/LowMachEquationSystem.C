@@ -1089,6 +1089,7 @@ MomentumEquationSystem::register_interior_algorithm(
         else {
           throw std::runtime_error("MomentumElemSrcTerms::Error Source term is not supported: " + sourceName);
         }
+        NaluEnv::self().naluOutputP0() << "MomentumElemSrcTerms::added() " << sourceName << std::endl;
         theSolverAlg->supplementalAlg_.push_back(suppAlg);
       }
     }
@@ -1166,6 +1167,7 @@ MomentumEquationSystem::register_interior_algorithm(
         else {
           throw std::runtime_error("MomentumNodalSrcTerms::Error Source term is not supported: " + sourceName);
         }
+        NaluEnv::self().naluOutputP0() << "MomentumNodalSrcTerms::added() " << sourceName << std::endl;
         theAlg->supplementalAlg_.push_back(suppAlg);
       }
     }
@@ -2235,6 +2237,7 @@ ContinuityEquationSystem::register_interior_algorithm(
           else {
             throw std::runtime_error("ContinuityElemSrcTerms::Error Source term is not supported: " + sourceName);
           }
+          NaluEnv::self().naluOutputP0() << "ContinuityElemSrcTerms::added " << sourceName << std::endl;
           theSolverAlg->supplementalAlg_.push_back(suppAlg);
         }
       }
@@ -2288,7 +2291,7 @@ ContinuityEquationSystem::register_interior_algorithm(
         else {
           throw std::runtime_error("ContinuityNodalSrcTerms::Error Source term is not supported: " + sourceName);
         }
-        // add supplemental algorithm
+        NaluEnv::self().naluOutputP0() << "ContinuityNodalSrcTerms::added " << sourceName << std::endl;
         theAlg->supplementalAlg_.push_back(suppAlg);
       }
     }

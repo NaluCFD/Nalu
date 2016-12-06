@@ -339,6 +339,7 @@ HeatCondEquationSystem::register_interior_algorithm(
         else {
           throw std::runtime_error("HeatCondElemSrcTerms::Error Source term is not supported: " + sourceName);
         }
+        NaluEnv::self().naluOutputP0() << "HeatCondElemSrcTerms::added() " << sourceName << std::endl;
         theSolverAlg->supplementalAlg_.push_back(suppAlg);
       }
     }
@@ -380,6 +381,7 @@ HeatCondEquationSystem::register_interior_algorithm(
         if (sourceName == "steady_2d_thermal" ) {
           SteadyThermalContactSrcNodeSuppAlg *theSrc
             = new SteadyThermalContactSrcNodeSuppAlg(realm_);
+          NaluEnv::self().naluOutputP0() << "HeatCondNodalSrcTerms::added() " << sourceName << std::endl;
           theAlg->supplementalAlg_.push_back(theSrc);
         }
         else {

@@ -271,6 +271,7 @@ TurbKineticEnergyEquationSystem::register_interior_algorithm(
         else {
           throw std::runtime_error("TurbKineticEnergyElemSrcTerms::Error Source term is not supported: " + sourceName);
         }     
+        NaluEnv::self().naluOutputP0() << "TurbKineticEnergyElemSrcTerms::added() " << sourceName << std::endl;
         theAlg->supplementalAlg_.push_back(suppAlg); 
       }
     }
@@ -340,7 +341,7 @@ TurbKineticEnergyEquationSystem::register_interior_algorithm(
         else {
           throw std::runtime_error("TurbKineticEnergyNodalSrcTerms::Error Source term is not supported: " + sourceName);
         }
-        // add supplemental algorithm
+        NaluEnv::self().naluOutputP0() << "TurbKineticEnergyNodalSrcTerms::added() " << sourceName << std::endl;
         theAlg->supplementalAlg_.push_back(suppAlg);
       }
     }

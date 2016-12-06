@@ -249,7 +249,9 @@ SpecificDissipationRateEquationSystem::register_interior_algorithm(
         }
         else {
           throw std::runtime_error("SpecificDissipationElemSrcTerms::Error Source term is not supported: " + sourceName);
-        }     
+        }
+        NaluEnv::self().naluOutputP0() << "SpecificDissipationElemSrcTerms::added() " << sourceName << std::endl;
+        theAlg->supplementalAlg_.push_back(suppAlg); 
       }
     }
   }
@@ -300,11 +302,10 @@ SpecificDissipationRateEquationSystem::register_interior_algorithm(
         else {
           throw std::runtime_error("SpecificDissipationRateNodalSrcTerms::Error Source term is not supported: " + sourceName);
         }
-        // add supplemental algorithm
+        NaluEnv::self().naluOutputP0() << "SpecificDissipationRateNodalSrcTerms::added() " << sourceName << std::endl;
         theAlg->supplementalAlg_.push_back(suppAlg);
       }
     }
-
   }
   else {
     itsm->second->partVec_.push_back(part);
