@@ -6,8 +6,8 @@
 /*------------------------------------------------------------------------*/
 
 
-#ifndef ScalarKeNSOElemSuppAlg_h
-#define ScalarKeNSOElemSuppAlg_h
+#ifndef ScalarNSOKeElemSuppAlg_h
+#define ScalarNSOKeElemSuppAlg_h
 
 #include <SupplementalAlgorithm.h>
 #include <FieldTypeDef.h>
@@ -21,18 +21,18 @@ namespace nalu{
 class Realm;
 class MasterElement;
 
-class ScalarKeNSOElemSuppAlg : public SupplementalAlgorithm
+class ScalarNSOKeElemSuppAlg : public SupplementalAlgorithm
 {
 public:
 
-  ScalarKeNSOElemSuppAlg(
+  ScalarNSOKeElemSuppAlg(
     Realm &realm,
     ScalarFieldType *scalarQ,
     VectorFieldType *Gjq,
     const double turbCoeff,
     const double fourthFac);
 
-  virtual ~ScalarKeNSOElemSuppAlg() {}
+  virtual ~ScalarNSOKeElemSuppAlg() {}
 
   virtual void setup();
 

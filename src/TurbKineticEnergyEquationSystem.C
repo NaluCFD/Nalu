@@ -45,7 +45,7 @@
 #include <ScalarMassBackwardEulerNodeSuppAlg.h>
 #include <ScalarMassBDF2NodeSuppAlg.h>
 #include <ScalarMassElemSuppAlg.h>
-#include <ScalarKeNSOElemSuppAlg.h>
+#include <ScalarNSOKeElemSuppAlg.h>
 #include <ScalarNSOElemSuppAlg.h>
 #include <Simulation.h>
 #include <SolutionOptions.h>
@@ -256,13 +256,13 @@ TurbKineticEnergyEquationSystem::register_interior_algorithm(
         else if (sourceName == "NSO_4TH_ALT" ) {
           suppAlg = new ScalarNSOElemSuppAlg(realm_, tke_, dkdx_, evisc_, 1.0, 1.0);
         }
-        else if (sourceName == "NSO_KE_2ND" ) {
+        else if (sourceName == "NSO_2ND_KE" ) {
           const double turbSc = realm_.get_turb_schmidt(tke_->name());
-          suppAlg = new ScalarKeNSOElemSuppAlg(realm_, tke_, dkdx_, turbSc, 0.0);
+          suppAlg = new ScalarNSOKeElemSuppAlg(realm_, tke_, dkdx_, turbSc, 0.0);
         }
-        else if (sourceName == "NSO_KE_4TH" ) {
+        else if (sourceName == "NSO_4TH_KE" ) {
           const double turbSc = realm_.get_turb_schmidt(tke_->name());
-          suppAlg = new ScalarKeNSOElemSuppAlg(realm_, tke_, dkdx_, turbSc, 1.0);
+          suppAlg = new ScalarNSOKeElemSuppAlg(realm_, tke_, dkdx_, turbSc, 1.0);
         }
         else if (sourceName == "turbulent_ke_time_derivative" ) {
           useCMM = true;

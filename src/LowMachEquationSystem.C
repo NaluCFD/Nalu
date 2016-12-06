@@ -1068,16 +1068,16 @@ MomentumEquationSystem::register_interior_algorithm(
         else if (sourceName == "NSO_4TH_ALT" ) {
           suppAlg = new MomentumNSOElemSuppAlg(realm_, velocity_, dudx_, realm_.is_turbulent() ? evisc_ : visc_, 1.0, 1.0);
         }
-        else if (sourceName == "NSO_KE_2ND" ) {
+        else if (sourceName == "NSO_2ND_KE" ) {
           suppAlg = new MomentumKeNSOElemSuppAlg(realm_, velocity_, dudx_, 0.0);
         }
-        else if (sourceName == "NSO_KE_4TH" ) {
+        else if (sourceName == "NSO_4TH_KE" ) {
           suppAlg = new MomentumKeNSOElemSuppAlg(realm_, velocity_, dudx_, 1.0);
         }
-        else if (sourceName == "NSO_GRAD_2ND" ) {
+        else if (sourceName == "NSO_2ND_GRAD" ) {
           suppAlg = new MomentumNSOGradElemSuppAlg(realm_, velocity_, dudx_, 0.0);
         }
-        else if (sourceName == "NSO_GRAD_4TH" ) {
+        else if (sourceName == "NSO_4TH_GRAD" ) {
           suppAlg = new MomentumNSOGradElemSuppAlg(realm_, velocity_, dudx_, 1.0);
         }
         else if (sourceName == "buoyancy" ) {

@@ -52,7 +52,7 @@
 #include <ScalarMassBackwardEulerNodeSuppAlg.h>
 #include <ScalarMassBDF2NodeSuppAlg.h>
 #include <ScalarMassElemSuppAlg.h>
-#include <ScalarKeNSOElemSuppAlg.h>
+#include <ScalarNSOKeElemSuppAlg.h>
 #include <ScalarNSOElemSuppAlg.h>
 #include <Simulation.h>
 #include <TimeIntegrator.h>
@@ -390,13 +390,13 @@ EnthalpyEquationSystem::register_interior_algorithm(
         else if (sourceName == "NSO_4TH_ALT" ) {
           suppAlg = new ScalarNSOElemSuppAlg(realm_, enthalpy_, dhdx_, evisc_, 1.0, 1.0);
         }
-        else if (sourceName == "NSO_KE_2ND" ) {
+        else if (sourceName == "NSO_2ND_KE" ) {
           const double turbPr = realm_.get_turb_prandtl(enthalpy_->name());
-          suppAlg = new ScalarKeNSOElemSuppAlg(realm_, enthalpy_, dhdx_, turbPr, 0.0);
+          suppAlg = new ScalarNSOKeElemSuppAlg(realm_, enthalpy_, dhdx_, turbPr, 0.0);
         }
-        else if (sourceName == "NSO_KE_4TH" ) {
+        else if (sourceName == "NSO_4TH_KE" ) {
           const double turbPr = realm_.get_turb_prandtl(enthalpy_->name());
-          suppAlg = new ScalarKeNSOElemSuppAlg(realm_, enthalpy_, dhdx_, turbPr, 1.0);
+          suppAlg = new ScalarNSOKeElemSuppAlg(realm_, enthalpy_, dhdx_, turbPr, 1.0);
         }
         else if (sourceName == "enthalpy_time_derivative" ) {
           useCMM = true;

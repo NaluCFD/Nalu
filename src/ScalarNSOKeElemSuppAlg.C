@@ -6,7 +6,7 @@
 /*------------------------------------------------------------------------*/
 
 
-#include <ScalarKeNSOElemSuppAlg.h>
+#include <ScalarNSOKeElemSuppAlg.h>
 #include <SupplementalAlgorithm.h>
 #include <FieldTypeDef.h>
 #include <Realm.h>
@@ -24,12 +24,12 @@ namespace nalu{
 //==========================================================================
 // Class Definition
 //==========================================================================
-// ScalarKeNSOElemSuppAlg - NSO for scalar equation
+// ScalarNSOKeElemSuppAlg - NSO for scalar equation
 //==========================================================================
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-ScalarKeNSOElemSuppAlg::ScalarKeNSOElemSuppAlg(
+ScalarNSOKeElemSuppAlg::ScalarNSOKeElemSuppAlg(
   Realm &realm,
   ScalarFieldType *scalarQ,
   VectorFieldType *Gjq,
@@ -80,7 +80,7 @@ ScalarKeNSOElemSuppAlg::ScalarKeNSOElemSuppAlg(
 //-------- elem_resize -----------------------------------------------------
 //--------------------------------------------------------------------------
 void
-ScalarKeNSOElemSuppAlg::elem_resize(
+ScalarNSOKeElemSuppAlg::elem_resize(
   MasterElement *meSCS,
   MasterElement */*meSCV*/)
 {
@@ -115,7 +115,7 @@ ScalarKeNSOElemSuppAlg::elem_resize(
 //-------- setup -----------------------------------------------------------
 //--------------------------------------------------------------------------
 void
-ScalarKeNSOElemSuppAlg::setup()
+ScalarNSOKeElemSuppAlg::setup()
 {
   // nothing
 }
@@ -124,7 +124,7 @@ ScalarKeNSOElemSuppAlg::setup()
 //-------- elem_execute ----------------------------------------------------
 //--------------------------------------------------------------------------
 void
-ScalarKeNSOElemSuppAlg::elem_execute(
+ScalarNSOKeElemSuppAlg::elem_execute(
   double *lhs,
   double *rhs,
   stk::mesh::Entity element,
