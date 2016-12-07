@@ -206,9 +206,7 @@ MomentumNSOGradElemSuppAlg::elem_execute(
       const double r = ws_shape_function_[offSet+ic];  
 
       const int icNdim = ic*nDim_;
-      
-      const int row_ws_Gju = icNdim*nDim_;
-  
+        
       // compute scs derivatives
       const int offSetDnDx = nDim_*nodesPerElement*ip + icNdim;
       const double pIC = ws_pressure_[ic];
@@ -241,19 +239,14 @@ MomentumNSOGradElemSuppAlg::elem_execute(
       for ( int ic = 0; ic < nodesPerElement; ++ic ) {
         
         const int icNdim = ic*nDim_;
-
-        // save off shape function
-        const double r = ws_shape_function_[offSet+ic];
-           
+   
         // save off velocity for component k
         const double ukNp1 = ws_uNp1_[icNdim+k];
 
         // compute scs derivatives and flux derivative (adv/diff)
         const int offSetDnDx = nDim_*nodesPerElement*ip + icNdim;
-        const double rhoIC = ws_rhoNp1_[ic];
         for ( int j = 0; j < nDim_; ++j ) {
           const double dnj = ws_dndx_[offSetDnDx+j];
-          const double vrtmj = ws_velocityRTM_[icNdim+j];
           ws_dukdxScs_[j] += ukNp1*dnj;
         }
       }

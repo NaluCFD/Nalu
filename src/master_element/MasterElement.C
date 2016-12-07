@@ -2542,10 +2542,7 @@ Hex27SCS::general_face_grad_op(
   double *det_j,
   double *error)
 {
-  int lerr = 0;
   const int ipsPerFace = 1;
-  const int face_offset =  nDim_ * ipsPerFace * nodesPerElement_ * face_ordinal;
-  
   double faceShapeFuncDerivs[81];
 
   hex27_shape_deriv(

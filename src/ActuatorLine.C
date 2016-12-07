@@ -198,7 +198,7 @@ ActuatorLine::compute_point_drag(
   double coef = 6.0*pi_*pointGasViscosity*pointRadius;
 
   // this is from the fluids perspective, not the psuedo particle
-  pointDragLHS = 2.0*coef*fD;
+  pointDragLHS = coef*fD;
   for ( int j = 0; j < nDim; ++j )
     pointDrag[j] = coef*fD*(pointVelocity[j] - pointGasVelocity[j]);
 }
@@ -343,8 +343,7 @@ void
 ActuatorLine::initialize()
 {
   stk::mesh::BulkData & bulkData = realm_.bulk_data();
-  stk::mesh::MetaData & metaData = realm_.meta_data();
- 
+  
   // initialize need to ghost and elems to ghost
   needToGhostCount_ = 0;
   elemsToGhost_.clear();
@@ -548,7 +547,9 @@ ActuatorLine::execute()
   }
 
   // parallel assemble (contributions from ghosted and locally owned)
-  const std::vector<const stk::mesh::FieldBase*> sumFieldVec(1, actuator_line_source);
+  std::vector<const stk::mesh::FieldBase*> sumFieldVec;
+  sumFieldVec.push_back(actuator_line_source);
+  sumFieldVec.push_back(actuator_line_source_lhs);
   stk::mesh::parallel_sum_including_ghosts(bulkData, sumFieldVec);
 }
 
@@ -1069,7 +1070,7 @@ ActuatorLine::assemble_source_to_nodes(
     double * sourceTerm = (double*)stk::mesh::field_data(actuator_line_source, node );
     double * sourceTermLHS = (double*)stk::mesh::field_data(actuator_line_source_lhs, node );
     
-    // nodal weight based on volume weight
+    // nodal weight based on volume weight; very ad-hoc
     const double nodalWeight = ws_scv_volume_[ip]/elemVolume;
     *sourceTermLHS += nodalWeight*dragLHS*lhsFac;
     for ( int j=0; j < nDim; ++j ) {

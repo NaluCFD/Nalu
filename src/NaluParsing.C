@@ -437,7 +437,7 @@ namespace YAML {
       } 
       
       yk.massFraction_.resize(node.size());
-      int ykSize = node.size() ;
+      size_t ykSize = node.size() ;
       for ( size_t k = 0; k < ykSize; ++k ) {
 	yk.massFraction_[k] = node[k].as<double>() ;
       }

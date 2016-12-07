@@ -36,11 +36,11 @@ public:
     double *rhs,
     stk::mesh::Entity node);
 
-  CoriolisSrc cor_;
   ScalarFieldType *densityNp1_;
-  ScalarFieldType *dualNodalVolume_;
   VectorFieldType *velocityNp1_;
-
+  ScalarFieldType *dualNodalVolume_;
+  
+  CoriolisSrc cor_;
 };
 
 } // namespace nalu
