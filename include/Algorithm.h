@@ -45,7 +45,6 @@ public:
   virtual void pre_work() {}
 
   Realm &realm_;
-
   stk::mesh::PartVector partVec_;
   std::vector<SupplementalAlgorithm *> supplementalAlg_;
 };

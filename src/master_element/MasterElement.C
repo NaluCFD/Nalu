@@ -27,13 +27,11 @@ namespace nalu{
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-MasterElement::MasterElement( 
-  std::string name)
+MasterElement::MasterElement()
   : nDim_(0),
     nodesPerElement_(0),
     numIntPoints_(0),
-    scaleToStandardIsoFac_(1.0),
-    name_(name)
+    scaleToStandardIsoFac_(1.0)
 {
   // nothing else
 }
@@ -81,19 +79,10 @@ MasterElement::vector_norm_sq( const double * vect, int len )
 }
 
 //--------------------------------------------------------------------------
-//-------- name ------------------------------------------------------------
-//--------------------------------------------------------------------------
-std::string
-MasterElement::name()
-{
-  return name_;
-}
-
-//--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 HexSCV::HexSCV()
-  : MasterElement("Hex8SCV")
+  : MasterElement()
 {
   nDim_ = 3;
   nodesPerElement_ = 8;
@@ -193,7 +182,7 @@ HexSCV::shape_fcn(double *shpfc)
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 HexSCS::HexSCS()
-  : MasterElement("HexSCS")
+  : MasterElement()
 {
   nDim_ = 3;
   nodesPerElement_ = 8;
@@ -1040,8 +1029,8 @@ double HexSCS::parametric_distance(const std::vector<double> &x)
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-HexahedralP2Element::HexahedralP2Element( std::string name)
-  : MasterElement(name),
+HexahedralP2Element::HexahedralP2Element()
+  : MasterElement(),
     scsDist_(std::sqrt(3.0)/3.0),
     useGLLGLL_(false),
     nodes1D_(3),
@@ -1642,7 +1631,7 @@ HexahedralP2Element::hex27_shape_deriv(
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 Hex27SCV::Hex27SCV()
-  : HexahedralP2Element("Hex27SCV")
+  : HexahedralP2Element()
 {
   // set up the one-dimensional quadrature rule
   set_quadrature_rule();
@@ -1798,7 +1787,7 @@ Hex27SCV::jacobian_determinant(
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 Hex27SCS::Hex27SCS()
-  : HexahedralP2Element("Hex27SCS")
+  : HexahedralP2Element()
 {
   // set up the one-dimensional quadrature rule
   set_quadrature_rule();
@@ -2634,7 +2623,7 @@ Hex27SCS::sidePcoords_to_elemPcoords(
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 TetSCV::TetSCV()
-  : MasterElement("TetSCV")
+  : MasterElement()
 {
   nDim_ = 3;
   nodesPerElement_ = 4;
@@ -2684,7 +2673,7 @@ void TetSCV::determinant(
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 TetSCS::TetSCS()
-  : MasterElement("TetSCS")
+  : MasterElement()
 {
   nDim_ = 3;
   nodesPerElement_ = 4;
@@ -3208,7 +3197,7 @@ TetSCS::parametric_distance(const std::vector<double> &x)
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 PyrSCV::PyrSCV()
-  : MasterElement("PyrSCV")
+  : MasterElement()
 {
   nDim_ = 3;
   nodesPerElement_ = 5;
@@ -3260,7 +3249,7 @@ void PyrSCV::determinant(
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 PyrSCS::PyrSCS()
-  : MasterElement("PyrSCS")
+  : MasterElement()
 {
   nDim_ = 3;
   nodesPerElement_ = 5;
@@ -3521,7 +3510,7 @@ PyrSCS::opposingNodes(
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 WedSCV::WedSCV()
-  : MasterElement("WedSCV")
+  : MasterElement()
 {
   nDim_ = 3;
   nodesPerElement_ = 6;
@@ -3572,7 +3561,7 @@ void WedSCV::determinant(
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 WedSCS::WedSCS()
-  : MasterElement("WedSCS")
+  : MasterElement()
 {
   nDim_ = 3;
   nodesPerElement_ = 6;
@@ -4168,7 +4157,7 @@ WedSCS::parametric_distance(const std::vector<double> &x)
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 Quad2DSCV::Quad2DSCV()
-  : MasterElement("Quad2DSCV")
+  : MasterElement()
 {
   nDim_ = 2;
   nodesPerElement_ = 4;
@@ -4271,7 +4260,7 @@ Quad2DSCV::quad_shape_fcn(
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 Quad2DSCS::Quad2DSCS()
-  : MasterElement("Quad2DSCS")
+  : MasterElement()
 {
   nDim_ = 2;
   nodesPerElement_ = 4;
@@ -4877,8 +4866,8 @@ Quad2DSCS::edgeAlignedArea()
 //--------------------------------------------------------------------------
 //-------- constructor------------------------------------------------------
 //--------------------------------------------------------------------------
-QuadrilateralP2Element::QuadrilateralP2Element( std::string name )
-  : MasterElement(name),
+QuadrilateralP2Element::QuadrilateralP2Element()
+  : MasterElement(),
     scsDist_(std::sqrt(3.0)/3.0),
     useGLLGLL_(false),
     nodes1D_(3),
@@ -5276,7 +5265,7 @@ QuadrilateralP2Element::quad9_shape_deriv(
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 Quad92DSCV::Quad92DSCV()
-: QuadrilateralP2Element("Quad92DSCV")
+: QuadrilateralP2Element()
 {
   // set up the one-dimensional quadrature rule
   set_quadrature_rule();
@@ -5413,7 +5402,7 @@ Quad92DSCV::jacobian_determinant(
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 Quad92DSCS::Quad92DSCS()
-  : QuadrilateralP2Element("Quad92DSCS")
+  : QuadrilateralP2Element()
 {
   // set up the one-dimensional quadrature rule
   set_quadrature_rule();
@@ -5898,7 +5887,7 @@ Quad92DSCS::area_vector(
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 Tri2DSCV::Tri2DSCV()
-  : MasterElement("Tri2DSCV")
+  : MasterElement()
 {
   nDim_ = 2;
   nodesPerElement_ = 3;
@@ -5948,7 +5937,7 @@ void Tri2DSCV::determinant(
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 Tri2DSCS::Tri2DSCS()
-  : MasterElement("Tri2DSCS")
+  : MasterElement()
 {
   nDim_ = 2;
   nodesPerElement_ = 3;
@@ -6426,7 +6415,7 @@ Tri2DSCS::sidePcoords_to_elemPcoords(
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 Quad3DSCS::Quad3DSCS()  
-  : MasterElement("Quad3DSCS"),
+  : MasterElement(),
     elemThickness_(0.1)
 {
   nDim_ = 3;
@@ -6844,7 +6833,7 @@ Quad3DSCS::general_normal(
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 Quad93DSCS::Quad93DSCS()
-  : HexahedralP2Element("Quad93DSCS"),
+  : HexahedralP2Element(),
     surfaceDimension_(2)
 {
   // set up the one-dimensional quadrature rule
@@ -7493,7 +7482,7 @@ Quad93DSCS::area_vector(
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 Tri3DSCS::Tri3DSCS()
-  : MasterElement("Tri3DSCS")
+  : MasterElement()
 {
   nDim_ = 3;
   nodesPerElement_ = 3;
@@ -7780,7 +7769,7 @@ Tri3DSCS::general_normal(
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 Edge2DSCS::Edge2DSCS()
-  : MasterElement("Edge2DSCS"),
+  : MasterElement(),
     elemThickness_(0.01)
 {
   nDim_ = 2;
@@ -7977,7 +7966,7 @@ Edge2DSCS::general_normal(
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 Edge32DSCS::Edge32DSCS()
-  : QuadrilateralP2Element("Edge32DSCS")
+  : QuadrilateralP2Element()
 {
   nodesPerElement_ = nodes1D_;
 

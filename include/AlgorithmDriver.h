@@ -33,7 +33,6 @@ public:
 
   Realm &realm_;
   std::map<AlgorithmType, Algorithm *> algMap_;
-  std::map<std::string, Algorithm *> algorithmMap_;
 };
 
 } // namespace nalu

@@ -23,21 +23,11 @@ public:
 
   AssembleCourantReynoldsElemAlgorithm(
     Realm &realm,
-    stk::mesh::Part *part, 
-    MasterElement *meSCS);
+    stk::mesh::Part *part);
   virtual ~AssembleCourantReynoldsElemAlgorithm() {}
 
   virtual void execute();
-
-  MasterElement *meSCS_;
-  const int nodesPerElement_;
-  const int numScsIp_;
-  const int *lrscv_;
-
-  const stk::mesh::BulkData *bulkData_;
-  const stk::mesh::MetaData *metaData_;
-  const int nDim_;
-
+  
   const bool meshMotion_;
 
   VectorFieldType *velocityRTM_;
@@ -46,12 +36,6 @@ public:
   ScalarFieldType *viscosity_;
   GenericFieldType *elemReynolds_;
   GenericFieldType *elemCourant_;
-
-  // ws fields
-  std::vector<double> ws_vrtm_;
-  std::vector<double> ws_coordinates_;
-  std::vector<double> ws_density_;
-  std::vector<double> ws_viscosity_;
 };
 
 } // namespace nalu

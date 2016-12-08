@@ -45,6 +45,7 @@ public:
   
   const stk::mesh::BulkData *bulkData_;
 
+
   // extract fields; nodal
   VectorFieldType *velocityRTM_;
   VectorFieldType *Gpdx_;
