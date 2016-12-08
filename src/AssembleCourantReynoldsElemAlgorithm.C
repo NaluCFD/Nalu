@@ -40,8 +40,16 @@ namespace nalu{
 //--------------------------------------------------------------------------
 AssembleCourantReynoldsElemAlgorithm::AssembleCourantReynoldsElemAlgorithm(
   Realm &realm,
-  stk::mesh::Part *part)
+  stk::mesh::Part *part, 
+  MasterElement *meSCS)
   : Algorithm(realm, part),
+    meSCS_(meSCS),
+    nodesPerElement_(meSCS->nodesPerElement_),
+    numScsIp_(meSCS->numIntPoints_),
+    lrscv_(meSCS->adjacentNodes()),
+    bulkData_(&realm.bulk_data()),
+    metaData_(&realm_.meta_data()),
+    nDim_(realm_.meta_data().spatial_dimension()),
     meshMotion_(realm_.does_mesh_move()),
     velocityRTM_(NULL),
     coordinates_(NULL),
@@ -51,20 +59,19 @@ AssembleCourantReynoldsElemAlgorithm::AssembleCourantReynoldsElemAlgorithm(
     elemCourant_(NULL)
 {
   // save off data
-  stk::mesh::MetaData & meta_data = realm_.meta_data();
   if ( meshMotion_ )
-    velocityRTM_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity_rtm");
+    velocityRTM_ = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity_rtm");
   else
-    velocityRTM_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
-  coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
-  density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
+    velocityRTM_ = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
+  coordinates_ = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  density_ = metaData_->get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
   const std::string viscName = (realm.is_turbulent())
-     ? "effective_viscosity_u" : "viscosity";
-  viscosity_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, viscName);
+    ? "effective_viscosity_u" : "viscosity";
+  viscosity_ = metaData_->get_field<ScalarFieldType>(stk::topology::NODE_RANK, viscName);
 
   // provide for elemental fields
-  elemReynolds_ = meta_data.get_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "element_reynolds");
-  elemCourant_ = meta_data.get_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "element_courant");
+  elemReynolds_ = metaData_->get_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "element_reynolds");
+  elemCourant_ = metaData_->get_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "element_courant");
 }
 
 //--------------------------------------------------------------------------
@@ -73,20 +80,20 @@ AssembleCourantReynoldsElemAlgorithm::AssembleCourantReynoldsElemAlgorithm(
 void
 AssembleCourantReynoldsElemAlgorithm::execute()
 {
-
-  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
-  stk::mesh::MetaData & meta_data = realm_.meta_data();
-
-  const int nDim = meta_data.spatial_dimension();
+  // size the workset fields; fixed over all elements
+  std::vector<double> ws_vrtm(nodesPerElement_*nDim_);
+  std::vector<double> ws_coordinates(nodesPerElement_*nDim_);
+  std::vector<double> ws_density(nodesPerElement_);
+  std::vector<double> ws_viscosity(nodesPerElement_);
+  
+  // pointers.
+  double *p_vrtm = &ws_vrtm[0];
+  double *p_coordinates = &ws_coordinates[0];
+  double *p_density = &ws_density[0];
+  double *p_viscosity = &ws_viscosity[0];
 
   const double dt = realm_.timeIntegrator_->get_time_step();
   const double small = 1.0e-16;
-
-  // nodal fields to gather; gather everything other than what we are assembling
-  std::vector<double> ws_vrtm;
-  std::vector<double> ws_coordinates;
-  std::vector<double> ws_density;
-  std::vector<double> ws_viscosity;
 
   // deal with state
   ScalarFieldType &densityNp1 = density_->field_of_state(stk::mesh::StateNP1);
@@ -95,7 +102,7 @@ AssembleCourantReynoldsElemAlgorithm::execute()
   double maxCR[2] = {-1.0, -1.0};
 
   // define some common selectors
-  stk::mesh::Selector s_locally_owned_union = meta_data.locally_owned_part()
+  stk::mesh::Selector s_locally_owned_union = metaData_->locally_owned_part()
     & stk::mesh::selectUnion(partVec_) 
     & !(realm_.get_inactive_selector());
 
@@ -105,27 +112,7 @@ AssembleCourantReynoldsElemAlgorithm::execute()
         ib != elem_buckets.end() ; ++ib ) {
     stk::mesh::Bucket & b = **ib ;
     const stk::mesh::Bucket::size_type length   = b.size();
-
-    // extract master element
-    MasterElement *meSCS = realm_.get_surface_master_element(b.topology());
-
-    // extract master element specifics
-    const int nodesPerElement = meSCS->nodesPerElement_;
-    const int numScsIp = meSCS->numIntPoints_;
-    const int *lrscv = meSCS->adjacentNodes();
-
-    // algorithm related
-    ws_vrtm.resize(nodesPerElement*nDim);
-    ws_coordinates.resize(nodesPerElement*nDim);
-    ws_density.resize(nodesPerElement);
-    ws_viscosity.resize(nodesPerElement);
-
-    // pointers.
-    double *p_vrtm = &ws_vrtm[0];
-    double *p_coordinates = &ws_coordinates[0];
-    double *p_density = &ws_density[0];
-    double *p_viscosity = &ws_viscosity[0];
-
+    
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
 
       // get elem
@@ -138,11 +125,11 @@ AssembleCourantReynoldsElemAlgorithm::execute()
       //===============================================
       // gather nodal data; this is how we do it now..
       //===============================================
-      stk::mesh::Entity const * node_rels = bulk_data.begin_nodes(elem);
-      int num_nodes = bulk_data.num_nodes(elem);
+      stk::mesh::Entity const * node_rels = bulkData_->begin_nodes(elem);
+      int num_nodes = bulkData_->num_nodes(elem);
 
       // sanity check on num nodes
-      ThrowAssert( num_nodes == nodesPerElement );
+      ThrowAssert( num_nodes == nodesPerElement_ );
 
       for ( int ni = 0; ni < num_nodes; ++ni ) {
         stk::mesh::Entity node = node_rels[ni];
@@ -156,8 +143,8 @@ AssembleCourantReynoldsElemAlgorithm::execute()
         p_viscosity[ni] = *stk::mesh::field_data(*viscosity_, node);
 
         // gather vectors
-        const int offSet = ni*nDim;
-        for ( int j = 0; j < nDim; ++j ) {
+        const int offSet = ni*nDim_;
+        for ( int j = 0; j < nDim_; ++j ) {
           p_coordinates[offSet+j] = coords[j];
           p_vrtm[offSet+j] = vrtm[j];
         }
@@ -166,17 +153,17 @@ AssembleCourantReynoldsElemAlgorithm::execute()
       // compute cfl and Re along each edge; set ip max to negative
       double eReynolds = -1.0;
       double eCourant = -1.0;
-      for ( int ip = 0; ip < numScsIp; ++ip ) {
+      for ( int ip = 0; ip < numScsIp_; ++ip ) {
 
         // left and right nodes for this ip
-        const int il = lrscv[2*ip];
-        const int ir = lrscv[2*ip+1];
+        const int il = lrscv_[2*ip];
+        const int ir = lrscv_[2*ip+1];
 
         double udotx = 0.0;
         double dxSq = 0.0;
-        for ( int j = 0; j < nDim; ++j ) {
-          double ujIp = 0.5*(p_vrtm[il*nDim+j]+p_vrtm[il*nDim+j]);
-          double dxj = p_coordinates[ir*nDim+j] - p_coordinates[il*nDim+j];
+        for ( int j = 0; j < nDim_; ++j ) {
+          double ujIp = 0.5*(p_vrtm[il*nDim_+j]+p_vrtm[il*nDim_+j]);
+          double dxj = p_coordinates[ir*nDim_+j] - p_coordinates[il*nDim_+j];
           udotx += dxj*ujIp;
           dxSq += dxj*dxj;
         }
@@ -205,10 +192,11 @@ AssembleCourantReynoldsElemAlgorithm::execute()
   stk::ParallelMachine comm = NaluEnv::self().parallel_comm();
   stk::all_reduce_max(comm, maxCR, g_maxCR, 2);
 
-  // sent to realm
-  realm_.maxCourant_ = g_maxCR[0];
-  realm_.maxReynolds_ = g_maxCR[1];
-
+  // FIXME: Tricky now since algorithms do not operate on all of the parts
+  // previous implementation was simply finding the max and setting the realm 
+  // member data. This suggests always having an algorithm driver...
+  realm_.maxCourant_ = std::max(realm_.maxCourant_, g_maxCR[0]);
+  realm_.maxReynolds_ = std::max(realm_.maxReynolds_, g_maxCR[1]);
 }
 
 } // namespace nalu

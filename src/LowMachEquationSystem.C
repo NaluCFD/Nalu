@@ -161,6 +161,7 @@
 
 // basic c++
 #include <vector>
+#include <string>
 
 namespace sierra{
 namespace nalu{
@@ -643,7 +644,9 @@ LowMachEquationSystem::solve_and_update()
 
   }
 
-  // process CFL/Reynolds
+  // process CFL/Reynolds; zero out...
+  realm_.maxCourant_ = 0.0;
+  realm_.maxReynolds_ = 0.0;
   momentumEqSys_->cflReyAlgDriver_->execute();
 }
 
@@ -983,16 +986,27 @@ MomentumEquationSystem::register_interior_algorithm(
   const AlgorithmType algType = INTERIOR;
   const AlgorithmType algMass = MASS;
 
+  // extract master element
+  MasterElement *meSCS = realm_.get_surface_master_element(part->topology());
+
+  // base names
+  const std::string baseSCSName = meSCS->name();
+  
   // non-solver CFL alg
-  std::map<AlgorithmType, Algorithm *>::iterator it
-    = cflReyAlgDriver_->algMap_.find(algType);
-  if ( it == cflReyAlgDriver_->algMap_.end() ) {
-    AssembleCourantReynoldsElemAlgorithm*theAlg
-      = new AssembleCourantReynoldsElemAlgorithm(realm_, part);
-    cflReyAlgDriver_->algMap_[algType] = theAlg;
+  /*
+    BuildVolumeAlgorithm<AssembleCourantReynoldsElemAlgorithm>(cflReyAlgDriver_, realm_, part, meSCS);
+    BuildSurfaceAlgorithm<AssembleCourantReynoldsElemAlgorithm>(cflReyAlgDriver_, realm_, part, meSCS, meFC);
+  */
+  const std::string cflAlgName = "cflAlgName_" + baseSCSName;
+  std::map<std::string, Algorithm *>::iterator its
+    = cflReyAlgDriver_->algorithmMap_.find(cflAlgName);
+  if ( its == cflReyAlgDriver_->algorithmMap_.end() ) {
+    AssembleCourantReynoldsElemAlgorithm *theAlg
+      = new AssembleCourantReynoldsElemAlgorithm(realm_, part, meSCS);
+    cflReyAlgDriver_->algorithmMap_[cflAlgName] = theAlg;
   }
   else {
-    it->second->partVec_.push_back(part);
+    its->second->partVec_.push_back(part);
   }
 
   VectorFieldType &velocityNp1 = velocity_->field_of_state(stk::mesh::StateNP1);
