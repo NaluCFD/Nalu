@@ -46,6 +46,12 @@ public:
   ScalarFieldType *viscosity_;
   GenericFieldType *elemReynolds_;
   GenericFieldType *elemCourant_;
+
+  // ws fields
+  std::vector<double> ws_vrtm_;
+  std::vector<double> ws_coordinates_;
+  std::vector<double> ws_density_;
+  std::vector<double> ws_viscosity_;
 };
 
 } // namespace nalu
