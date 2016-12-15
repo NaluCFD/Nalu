@@ -188,6 +188,10 @@ public:
   get_bc_function_params(
     const UserData&, std::string &name);
 
+  std::vector<std::string>
+  get_bc_function_string_params(
+    const UserData&, std::string &name);
+
   virtual void post_converged_work() {}
 
   std::vector<AuxFunctionAlgorithm *> bcDataAlg_;

@@ -9,6 +9,7 @@
 #include <SolutionOptions.h>
 #include <Enums.h>
 #include <NaluEnv.h>
+#include <MeshMotionInfo.h>
 
 // basic c++
 #include <stdexcept>
@@ -16,6 +17,7 @@
 
 namespace sierra{
 namespace nalu{
+
 
 //==========================================================================
 // Class Definition
@@ -91,7 +93,11 @@ SolutionOptions::SolutionOptions()
 //--------------------------------------------------------------------------
 SolutionOptions::~SolutionOptions()
 {
-  // nothing to do
+  std::map<std::string, MeshMotionInfo *>::iterator it;
+  for ( it = meshMotionInfoMap_.begin(); it!= meshMotionInfoMap_.end(); ++it ) {
+    MeshMotionInfo *info = it->second;
+    delete info;
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -387,18 +393,30 @@ SolutionOptions::load(const YAML::Node & y_node)
               meshMotionBlock[i] = targets[i].as<std::string>() ;
             }
           }
-          std::pair<std::vector<std::string>, double > thePair;
-          thePair = std::make_pair(meshMotionBlock, omega);
           
-          // provide the map
-          meshMotionMap_[motionName] = thePair;
+          // look for centroid coordinates; optional
+          std::vector<double> cCoordsVec(3,0.0); 
+          const YAML::Node coordsVecNode = y_option["centroid_coordinates"];
+          if ( coordsVecNode ) {
+            for ( size_t i = 0; i < coordsVecNode.size(); ++i )
+              cCoordsVec[i] = coordsVecNode[i].as<double>();
+          }
+
+          // look for unit vector; provide default
+          std::vector<double> unitVec(3,0.0); 
+          const YAML::Node uV = y_option["unit_vector"];
+          if ( uV ) {
+            for ( size_t i = 0; i < uV.size(); ++i )
+              unitVec[i] = uV[i].as<double>() ;
+          }
+          else {
+            NaluEnv::self().naluOutputP0() << "SolutionOptions::load() unit_vector not supplied; will use 0,0,1" << std::endl;
+            unitVec[2] = 1.0;
+          }
           
-          // check for centroids; provide default
-          Coordinates cCoords;
-          const YAML::Node coordsNode = y_option["centroid_coordinates"];
-          if ( coordsNode )
-            cCoords = coordsNode.as<Coordinates>() ;
-          meshMotionCentroidMap_[motionName] = cCoords;
+          MeshMotionInfo *meshInfo = new MeshMotionInfo(meshMotionBlock, omega, cCoordsVec, unitVec);
+          // set the map
+          meshMotionInfoMap_[motionName] = meshInfo;
         }
       }
     }
@@ -559,6 +577,6 @@ SolutionOptions::initialize_turbulence_constants()
   turbModelConstantMap_[TM_Cw] = 0.325;
   turbModelConstantMap_[TM_CbTwo] = 0.35;
 }
-
+ 
 } // namespace nalu
 } // namespace Sierra

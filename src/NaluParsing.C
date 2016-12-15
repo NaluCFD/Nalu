@@ -656,7 +656,12 @@ namespace YAML {
 	if (sierra::nalu::expect_map( node, "user_function_parameters", true)) {
 	  wallData.functionParams_ = node["user_function_parameters"].as<std::map<std::string, std::vector<double> > >() ;
 	}
-	
+
+	// extract function name and string parameters
+	if (sierra::nalu::expect_map( node, "user_function_string_parameters", true)) {
+	  wallData.functionStringParams_ 
+            = node["user_function_string_parameters"].as<std::map<std::string, std::vector<std::string> > >() ;
+	}
       }
       
       return true;

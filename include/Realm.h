@@ -156,12 +156,15 @@ class Realm {
     double omega);
   void set_current_displacement(
     stk::mesh::Part *targetPart,
-    Coordinates centroidCoords);
+    const std::vector<double> &centroidCoords,
+    const std::vector<double> &unitVec);
   void set_current_coordinates(
     stk::mesh::Part *targetPart);
   void set_mesh_velocity(
     stk::mesh::Part *targetPart,
-    Coordinates centroidCoords);
+    const std::vector<double> &centroidCoords,
+    const std::vector<double> &unitVec);
+  void mesh_velocity_cross_product(double *o, double *c, double *u);
 
   // non-conformal-like algorithm suppoer
   void initialize_contact();

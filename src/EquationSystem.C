@@ -357,6 +357,24 @@ EquationSystem::get_bc_function_params(
 }
 
 //--------------------------------------------------------------------------
+//-------- get_bc_function_string_params -----------------------------------
+//--------------------------------------------------------------------------
+std::vector<std::string>
+EquationSystem::get_bc_function_string_params(
+  const UserData &userData, std::string &name)
+{
+  std::vector<std::string> theParams;
+  std::map<std::string, std::vector<std::string> >::const_iterator iter
+    = userData.functionStringParams_.find(name);
+  if ( iter != userData.functionStringParams_.end() ) {
+    return (*iter).second;
+  }
+  else {
+    return theParams;
+  }
+}
+
+//--------------------------------------------------------------------------
 //-------- create_constraint_algorithm -------------------------------------
 //--------------------------------------------------------------------------
 void

@@ -139,6 +139,7 @@ struct UserData
   std::map<std::string, UserDataType> bcDataTypeMap_;
   std::map<std::string, std::string> userFunctionMap_;
   std::map<std::string, std::vector<double> > functionParams_;
+  std::map<std::string, std::vector<std::string> > functionStringParams_;
 
   // FIXME: must elevate temperature due to the temperature_bc_setup method
   Temperature temperature_;

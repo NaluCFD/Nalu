@@ -36,6 +36,7 @@
 #include <LinearSystem.h>
 #include <master_element/MasterElement.h>
 #include <MaterialPropertys.h>
+#include <MeshMotionInfo.h>
 #include <NaluParsing.h>
 #include <NonConformalManager.h>
 #include <NonConformalInfo.h>
@@ -2330,39 +2331,32 @@ Realm::query_for_overset()
 void
 Realm::process_mesh_motion()
 {
-  // extract parameters; allows for omega to change; save space for centroid
-  Coordinates centroidCoords;
+  // extract parameters; allows for omega to change
+  std::map<std::string, MeshMotionInfo *>::const_iterator iter;
+  for ( iter = solutionOptions_->meshMotionInfoMap_.begin();
+        iter != solutionOptions_->meshMotionInfoMap_.end(); ++iter) {
 
-  std::map<std::string, std::pair<std::vector<std::string>, double> >::const_iterator iter;
-  for ( iter = solutionOptions_->meshMotionMap_.begin();
-        iter != solutionOptions_->meshMotionMap_.end(); ++iter) {
+    // extract mesh info object
+    MeshMotionInfo *meshInfo = iter->second;
 
-    // extract key and pair
-    std::string theKey = iter->first;
-    std::pair<std::vector<std::string>, double> thePair = iter->second;
-    std::vector<std::string> theVector = thePair.first;
-    const double theOmega = thePair.second;
+    // mesh motion block, omega and centroid coordinates
+    const double theOmega = meshInfo->omega_;
+    std::vector<std::string> meshMotionBlock = meshInfo->meshMotionBlock_;
+    std::vector<double> unitVec = meshInfo->unitVec_;
+    std::vector<double> centroidCoords = meshInfo->centroid_;
 
-    // extract centroids; map matches by construction
-    std::map<std::string, Coordinates>::const_iterator iterFind;
-    iterFind = solutionOptions_->meshMotionCentroidMap_.find(theKey);
-    if ( iterFind != solutionOptions_->meshMotionCentroidMap_.end() )
-      centroidCoords = iterFind->second;
-    else 
-      throw std::runtime_error("Realm::process_mesh_motion() Error, could not find the centroid coordinates for " + theKey);      
-    
-    for (size_t k = 0; k < theVector.size(); ++k ) {
+    for (size_t k = 0; k < meshMotionBlock.size(); ++k ) {
       
-      stk::mesh::Part *targetPart = metaData_->get_part(theVector[k]);
+      stk::mesh::Part *targetPart = metaData_->get_part(meshMotionBlock[k]);
       
       if ( NULL == targetPart ) {
-        throw std::runtime_error("Realm::process_mesh_motion() Error Error, no part name found" + theVector[k]);
+        throw std::runtime_error("Realm::process_mesh_motion() Error Error, no part name found" + meshMotionBlock[k]);
       }
       else {
         set_omega(targetPart, theOmega);
-        set_current_displacement(targetPart, centroidCoords);
+        set_current_displacement(targetPart, centroidCoords, unitVec);
         set_current_coordinates(targetPart);
-        set_mesh_velocity(targetPart, centroidCoords);
+        set_mesh_velocity(targetPart, centroidCoords, unitVec);
       }
     }
   }
@@ -2400,10 +2394,15 @@ Realm::set_omega(
 void
 Realm::set_current_displacement(
   stk::mesh::Part *targetPart,
-  Coordinates centroidCoords)
+  const std::vector<double> &centroidCoords,
+  const std::vector<double> &unitVec)
 {
   const int nDim = metaData_->spatial_dimension();
   const double currentTime = get_current_time();
+
+  // local space; Nalu current coords and rotated coords; generalized for 2D and 3D
+  double mcX[3] = {0.0,0.0,0.0};
+  double rcX[3] = {0.0,0.0,0.0};
 
   VectorFieldType *modelCoords = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates");
   VectorFieldType *displacement = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_displacement");
@@ -2425,15 +2424,34 @@ Realm::set_current_displacement(
       // extract omega
       const double theO = bigO[k];
 
-      const int offSet = k*nDim;
-      // hacked for 2D
-      const double modelX = mCoords[offSet];
-      const double modelY = mCoords[offSet+1];
-      const double centroidX = centroidCoords.x_;
-      const double centroidY = centroidCoords.y_;
+      const int kNdim = k*nDim;
+    
+      // load the current and model coords
+      for ( int i = 0; i < nDim; ++i ) {
+        mcX[i] = mCoords[kNdim+i];
+      }
+
+      const double cX = mcX[0] - centroidCoords[0];
+      const double cY = mcX[1] - centroidCoords[1];
+      const double cZ = mcX[2] - centroidCoords[2];
+
+      const double sinOTby2 = sin(theO*currentTime*0.5);
+      const double cosOTby2 = cos(theO*currentTime*0.5);
       
-      dx[offSet] = cos(theO*currentTime)*(modelX-centroidX) - sin(theO*currentTime)*(modelY-centroidY) + (centroidX-modelX);
-      dx[offSet+1] = sin(theO*currentTime)*(modelX-centroidX) + cos(theO*currentTime)*(modelY-centroidY) + (centroidY-modelY);
+      const double q0 = cosOTby2;
+      const double q1 = sinOTby2*unitVec[0];
+      const double q2 = sinOTby2*unitVec[1];
+      const double q3 = sinOTby2*unitVec[2];    
+      
+      // rotated model coordinates; converted to displacement; add back in centroid
+      rcX[0] = (q0*q0 + q1*q1 - q2*q2 - q3*q3)*cX + 2.0*(q1*q2 - q0*q3)*cY + 2.0*(q0*q2 + q1*q3)*cZ - mcX[0] + centroidCoords[0];
+      rcX[1] = 2.0*(q1*q2 + q0*q3)*cX + (q0*q0 - q1*q1 + q2*q2 - q3*q3)*cY + 2.0*(q2*q3 - q0*q1)*cZ - mcX[1] + centroidCoords[1];
+      rcX[2] = 2.0*(q1*q3 - q0*q2)*cX + 2.0*(q0*q1 + q2*q3)*cY + (q0*q0 - q1*q1 - q2*q2 + q3*q3)*cZ - mcX[2] + centroidCoords[2];
+      
+      // set displacement
+      for ( int i = 0; i < nDim; ++i ) {
+        dx[kNdim+i] = rcX[i];
+      }
     }
   }
 }
@@ -2475,10 +2493,17 @@ Realm::set_current_coordinates(
 void
 Realm::set_mesh_velocity(
   stk::mesh::Part *targetPart,
-  Coordinates centroidCoords)
+  const std::vector<double> &centroidCoords,
+  const std::vector<double> &unitVec)
 {
   const int nDim = metaData_->spatial_dimension();
 
+  // local space; omega*normal, coords, velocity and Nalu current coords
+  double oX[3] = {0.0,0.0,0.0};
+  double cX[3] = {0.0,0.0,0.0};
+  double uX[3] = {0.0,0.0,0.0};
+  double ccX[3] = {0.0,0.0,0.0};
+  
   VectorFieldType *currentCoords = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, "current_coordinates");
   VectorFieldType *meshVelocity = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_velocity");
   ScalarFieldType *omega = metaData_->get_field<ScalarFieldType>(stk::topology::NODE_RANK, "omega");
@@ -2496,14 +2521,38 @@ Realm::set_mesh_velocity(
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
       const int offSet = k*nDim;
 
-      // hacked for 2D
-      const double cX = cCoords[offSet] - centroidCoords.x_;
-      const double cY = cCoords[offSet+1] - centroidCoords.y_;
+      // define distance from centroid and compute cross product
       const double theO = bigO[k];
-      vnp1[offSet] =  -theO*cY;
-      vnp1[offSet+1] = theO*cX;
+
+      // load the current coords
+      for ( unsigned i = 0; i < nDim; ++i ) {
+        ccX[i] = cCoords[offSet+i];    
+      }
+      
+      // compute relative coords and vector omega (dimension 3) for general cross product
+      for ( unsigned i = 0; i < 3; ++i ) {
+        cX[i] = ccX[i] - centroidCoords[i];    
+        oX[i] = theO*unitVec[i];
+      }
+      
+      mesh_velocity_cross_product(oX, cX, uX);
+      
+      for ( unsigned i = 0; i < nDim; ++i ) {
+        vnp1[offSet+i] =  uX[i];
+      }
     }
   }
+}
+
+//--------------------------------------------------------------------------
+//-------- mesh_velocity_cross_product -------------------------------------
+//--------------------------------------------------------------------------
+void
+Realm::mesh_velocity_cross_product(double *o, double *c, double *u)
+{
+  u[0] = o[1]*c[2] - o[2]*c[1];
+  u[1] = o[2]*c[0] - o[0]*c[2];
+  u[2] = o[0]*c[1] - o[1]*c[0];
 }
 
 //--------------------------------------------------------------------------

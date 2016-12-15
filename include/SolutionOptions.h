@@ -20,6 +20,8 @@
 namespace sierra{
 namespace nalu{
 
+class MeshMotionInfo;
+
 enum ErrorIndicatorType {
   EIT_NONE                = 0,
   EIT_PSTAB               = 1 << 1,
@@ -135,8 +137,7 @@ public:
   std::map<std::string, std::string> inputVarFromFileMap_;
 
   // mesh motion
-  std::map<std::string, std::pair<std::vector<std::string>, double > > meshMotionMap_;
-  std::map<std::string, Coordinates> meshMotionCentroidMap_;
+  std::map<std::string, MeshMotionInfo *> meshMotionInfoMap_;
 
   std::vector<double> gravity_;
 

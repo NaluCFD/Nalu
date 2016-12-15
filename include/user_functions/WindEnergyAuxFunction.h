@@ -10,6 +10,7 @@
 
 #include <AuxFunction.h>
 
+#include <string>
 #include <vector>
 
 namespace sierra{
@@ -25,7 +26,7 @@ public:
   WindEnergyAuxFunction(
     const unsigned beginPos,
     const unsigned endPos,
-    std::vector<double> theParams,
+    std::vector<std::string> theStringParams,
     Realm &realm);
 
   virtual ~WindEnergyAuxFunction();
@@ -41,13 +42,15 @@ public:
     const unsigned endPos) const;
 
   void setup(const double time);
+  void cross_product(double *c, double *u) const;
 
 private:
   double centroidX_;
   double centroidY_;
-  double omega_;
   double omegaBlend_;
   TanhFunction *tanhFunction_;
+  std::vector<double> omegaMM_;
+  std::vector<double> centroidMM_;
 };
 
 } // namespace nalu

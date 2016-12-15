@@ -1470,15 +1470,15 @@ MomentumEquationSystem::register_wall_bc(
       theAuxFunc = new ConstantAuxFunction(0, nDim, userSpec);
     }
     else if ( FUNCTION_UD == theDataType ) {
-      // extract the name
+      // extract the name and parameters (double and string)
       std::string fcnName = get_bc_function_name(userData, velocityName);
-      std::vector<double> theParams = get_bc_function_params(userData, velocityName);
       // switch on the name found...
       if ( fcnName == "tornado" ) {
         theAuxFunc = new TornadoAuxFunction(0,nDim);
       }
       else if ( fcnName == "wind_energy" ) {
-     	theAuxFunc = new WindEnergyAuxFunction(0,nDim, theParams, realm_);
+        std::vector<std::string> theStringParams  = get_bc_function_string_params(userData, velocityName);
+     	theAuxFunc = new WindEnergyAuxFunction(0,nDim, theStringParams, realm_);
       }
       else {
         throw std::runtime_error("Only wind_energy and tornado user functions supported");
