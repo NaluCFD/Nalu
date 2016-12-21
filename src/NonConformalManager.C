@@ -30,8 +30,6 @@
 namespace sierra{
 namespace nalu{
 
-class HaloInfo;
-
 //==========================================================================
 // Class Definition
 //==========================================================================
@@ -110,7 +108,7 @@ NonConformalManager::initialize()
 
   // end time
   const double timeB = NaluEnv::self().nalu_time();
-  realm_.timerContact_ += (timeB-timeA);
+  realm_.timerNonconformal_ += (timeB-timeA);
 }
 
 //--------------------------------------------------------------------------

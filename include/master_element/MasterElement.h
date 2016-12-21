@@ -150,21 +150,6 @@ public:
     double *elem_pcoords) {
     throw std::runtime_error("sidePcoords_to_elemPcoords");}
 
-  virtual const int * faceNodeOnExtrudedElem() {
-    throw std::runtime_error("faceNodeOnExtrudedElem not implement"); }
-
-  virtual const int * opposingNodeOnExtrudedElem() {
-    throw std::runtime_error("opposingNodeOnExtrudedElem not implement"); }
-
-  virtual const int * faceScsIpOnExtrudedElem() {
-    throw std::runtime_error("faceScsIpOnExtrudedElem not implement"); }
-
-  virtual const int * faceScsIpOnFaceEdges() {
-    throw std::runtime_error("faceScsIpOnFaceEdges not implement"); }
-
-  virtual const double * edgeAlignedArea() {
-    throw std::runtime_error("edgeAlignedArea not implement"); }
-
   double isoparametric_mapping(const double b, const double a, const double xi) const;
   bool within_tolerance(const double & val, const double & tol);
   double vector_norm_sq(const double * vect, int len);
@@ -182,12 +167,6 @@ public:
   std::vector<double> intgLocShift_;
   std::vector<double> intgExpFace_;
   std::vector<double> nodeLoc_;
-  // extrusion-based scheme
-  std::vector<int> faceNodeOnExtrudedElem_;
-  std::vector<int> opposingNodeOnExtrudedElem_;
-  std::vector<int> faceScsIpOnExtrudedElem_;
-  std::vector<int> faceScsIpOnFaceEdges_;
-  std::vector<double> edgeAlignedArea_;
 
   // FEM
   std::vector<double>weights_;
@@ -310,13 +289,6 @@ public:
     const int & npoints,
     const double *side_pcoords,
     double *elem_pcoords);
-
-  // extrusion data structure access
-  const int * faceNodeOnExtrudedElem();
-  const int * opposingNodeOnExtrudedElem();
-  const int * faceScsIpOnExtrudedElem();
-  const int * faceScsIpOnFaceEdges();
-  const double * edgeAlignedArea();
   
   // helper
   double parametric_distance(const std::vector<double> &x);
@@ -924,13 +896,6 @@ public:
     const int & npoints,
     const double *side_pcoords,
     double *elem_pcoords);
-
-  // extrusion data structure access
-  const int * faceNodeOnExtrudedElem();
-  const int * opposingNodeOnExtrudedElem();
-  const int * faceScsIpOnExtrudedElem();
-  const int * faceScsIpOnFaceEdges();
-  const double * edgeAlignedArea();
 };
 
 class QuadrilateralP2Element : public MasterElement

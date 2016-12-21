@@ -8,9 +8,6 @@
 
 #include <LinearSystem.h>
 #include <TpetraLinearSystem.h>
-#include <ContactInfo.h>
-#include <ContactManager.h>
-#include <HaloInfo.h>
 #include <Realm.h>
 #include <Simulation.h>
 #include <LinearSolver.h>

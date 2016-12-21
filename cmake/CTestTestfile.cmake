@@ -341,18 +341,6 @@ set_tests_properties(heliumPlume
 
 
 #=============================================================================
-# edgeContact3D test (cylinder)
-#=============================================================================
-add_test(edgeContact3D "edgeContact3D.sh")
-set_tests_properties(edgeContact3D
-  PROPERTIES  PASS_REGULAR_EXPRESSION "PASSED"
-              FAIL_REGULAR_EXPRESSION "FAILED"
-              TIMEOUT 400
-              PROCESSORS 8
-  WORKING_DIRECTORY "${NIGHTLY_TEST_RESULT_DIRECTORY}/edgeContact3D")
-
-
-#=============================================================================
 # dgNonConformalEdgeCylinder test
 #=============================================================================
 add_test(dgNonConformalEdgeCylinder "dgNonConformalEdgeCylinder.sh")
@@ -643,18 +631,6 @@ set_tests_properties(waleElemXflowMixFrac3.5m
               TIMEOUT 600
               PROCESSORS 8
   WORKING_DIRECTORY "${PERF_TEST_RESULT_DIRECTORY}/waleElemXflowMixFrac3.5m")
-
-
-#=============================================================================
-# uqSlidingMesh test
-#=============================================================================
-add_test(uqSlidingMesh "uqSlidingMesh.sh")
-set_tests_properties(uqSlidingMesh
-  PROPERTIES  PASS_REGULAR_EXPRESSION "PASSED"
-              FAIL_REGULAR_EXPRESSION "FAILED"
-              TIMEOUT 1000
-              PROCESSORS 8
-  WORKING_DIRECTORY "${PERF_TEST_RESULT_DIRECTORY}/uqSlidingMesh")
 
 
 #=============================================================================

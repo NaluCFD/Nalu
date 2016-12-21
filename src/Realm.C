@@ -22,16 +22,12 @@
 #include <AuxFunctionAlgorithm.h>
 #include <ComputeGeometryAlgorithmDriver.h>
 #include <ComputeGeometryBoundaryAlgorithm.h>
-#include <ComputeGeometryExtrusionBoundaryAlgorithm.h>
 #include <ComputeGeometryInteriorAlgorithm.h>
 #include <ConstantAuxFunction.h>
-#include <ContactInfo.h>
-#include <ContactManager.h>
 #include <Enums.h>
 #include <EquationSystem.h>
 #include <EquationSystems.h>
 #include <ErrorIndicatorAlgorithmDriver.h>
-#include <ExtrusionMeshDistanceBoundaryAlgorithm.h>
 #include <FieldTypeDef.h>
 #include <LinearSystem.h>
 #include <master_element/MasterElement.h>
@@ -155,7 +151,6 @@ namespace nalu{
     resultsFileIndex_(99),
     restartFileIndex_(99),
     computeGeometryAlgDriver_(0),
-    extrusionMeshDistanceAlgDriver_(0),
     errorIndicatorAlgDriver_(0),
 #if defined (NALU_USES_PERCEPT)
     adapter_(0),
@@ -186,17 +181,15 @@ namespace nalu{
     timerPopulateFieldData_(0.0),
     timerOutputFields_(0.0),
     timerCreateEdges_(0.0),
-    timerContact_(0.0),
+    timerNonconformal_(0.0),
     timerInitializeEqs_(0.0),
     timerPropertyEval_(0.0),
     timerAdapt_(0.0),
     timerTransferSearch_(0.0),
     timerTransferExecute_(0.0),
     timerSkinMesh_(0.0),
-    contactManager_(NULL),
     nonConformalManager_(NULL),
     oversetManager_(NULL),
-    hasContact_(false),
     hasNonConformal_(false),
     hasOverset_(false),
     hasMultiPhysicsTransfer_(false),
@@ -235,8 +228,6 @@ Realm::~Realm()
   delete ioBroker_;
 
   delete computeGeometryAlgDriver_;
-  if ( NULL != extrusionMeshDistanceAlgDriver_ )
-    delete extrusionMeshDistanceAlgDriver_;
 
   if ( NULL != errorIndicatorAlgDriver_)
     delete errorIndicatorAlgDriver_;
@@ -281,10 +272,6 @@ Realm::~Realm()
 
   if ( NULL != turbulenceAveragingPostProcessing_ )
     delete turbulenceAveragingPostProcessing_;
-
-  // delete contact related things
-  if ( NULL != contactManager_ )
-    delete contactManager_;
 
   // delete non-conformal related things
   if ( NULL != nonConformalManager_ )
@@ -475,9 +462,6 @@ Realm::initialize()
     periodicManager_->build_constraints();
 
   compute_geometry();
-
-  if ( hasContact_ )
-    initialize_contact();
 
   if ( hasNonConformal_ )
     initialize_non_conformal();
@@ -842,9 +826,6 @@ Realm::setup_bc()
         break;
       case OPEN_BC:
         equationSystems_.register_open_bc(bc.targetName_, *reinterpret_cast<const OpenBoundaryConditionData *>(&bc));
-        break;
-      case CONTACT_BC:
-        equationSystems_.register_contact_bc(bc.targetName_, *reinterpret_cast<const ContactBoundaryConditionData *>(&bc));
         break;
       case SYMMETRY_BC:
         equationSystems_.register_symmetry_bc(bc.targetName_, *reinterpret_cast<const SymmetryBoundaryConditionData *>(&bc));
@@ -1672,10 +1653,6 @@ Realm::pre_timestep_work()
     process_mesh_motion();
     compute_geometry();
 
-    // check for contact
-    if ( hasContact_ )
-      initialize_contact();
-
     // and non-conformal algorithm
     if ( hasNonConformal_ )
       initialize_non_conformal();
@@ -2218,15 +2195,6 @@ Realm::delete_edges()
 }
 
 //--------------------------------------------------------------------------
-//-------- initialize_contact ----------------------------------------------
-//--------------------------------------------------------------------------
-void
-Realm::initialize_contact()
-{
-  contactManager_->initialize();
-}
-
-//--------------------------------------------------------------------------
 //-------- initialize_non_conformal ----------------------------------------
 //--------------------------------------------------------------------------
 void
@@ -2303,7 +2271,7 @@ Realm::does_mesh_move()
 bool
 Realm::has_non_matching_boundary_face_alg()
 {
-  return hasContact_ | hasNonConformal_ | hasOverset_; 
+  return hasNonConformal_ | hasOverset_; 
 }
 
 //--------------------------------------------------------------------------
@@ -2561,9 +2529,7 @@ Realm::mesh_velocity_cross_product(double *o, double *c, double *u)
 void
 Realm::compute_geometry()
 {
-  // perform extrusion of mesh
-  if ( hasContact_ )
-    extrusionMeshDistanceAlgDriver_->execute();
+  // interior and boundary
   computeGeometryAlgDriver_->execute();
 
   // find total volume if the mesh moves at all
@@ -2897,155 +2863,6 @@ Realm::register_open_bc(
 }
 
 //--------------------------------------------------------------------------
-//-------- register_contact_bc ---------------------------------------------
-//--------------------------------------------------------------------------
-void
-Realm::register_contact_bc(
-  stk::mesh::Part *part,
-  const stk::topology &theTopo,
-  const ContactBoundaryConditionData &contactBCData)
-{
-
-  // push back the part for book keeping and, later, skin mesh
-  bcPartVec_.push_back(part);
-
-  const AlgorithmType algType = CONTACT;
-
-  hasContact_ = true;
-
-  if ( NULL == extrusionMeshDistanceAlgDriver_ )
-    extrusionMeshDistanceAlgDriver_ = new AlgorithmDriver(*this);
-
-  //====================================================
-  // Register boundary condition data
-  //====================================================
-
-  const int nDim = metaData_->spatial_dimension();
-
-  // register fields
-  MasterElement *meFC = get_surface_master_element(theTopo);
-  const int numScsIp = meFC->numIntPoints_;
-
-  // exposed area vector
-  GenericFieldType *exposedAreaVec_
-    = &(metaData_->declare_field<GenericFieldType>(static_cast<stk::topology::rank_t>(metaData_->side_rank()), "exposed_area_vector"));
-  stk::mesh::put_field(*exposedAreaVec_, *part, nDim*numScsIp );
-
-  // register nodal field that will hold important information
-  VectorFieldType *haloNormal =  &(metaData_->declare_field<VectorFieldType>(stk::topology::NODE_RANK, "halo_normal"));
-  stk::mesh::put_field(*haloNormal, *part, nDim);
-  VectorFieldType *haloDxj =  &(metaData_->declare_field<VectorFieldType>(stk::topology::NODE_RANK, "halo_dxj"));
-  stk::mesh::put_field(*haloDxj, *part, nDim);
-  ScalarFieldType *extDistance = &(metaData_->declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "extrusion_distance"));
-  stk::mesh::put_field(*extDistance, *part);
-
-  // correction for extrusion distance (for non-planar surfaces)
-  ScalarFieldType *extDistanceCorrFac 
-    = &(metaData_->declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "extrusion_distance_correct_fac"));
-  stk::mesh::put_field(*extDistanceCorrFac, *part);
-  ScalarFieldType *extDistanceCorrCount 
-    = &(metaData_->declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "extrusion_distance_correct_count"));
-  stk::mesh::put_field(*extDistanceCorrCount, *part);
-
-  if ( realmUsesEdges_ ) {
-    // need some extra nodal data for edge-based
-    ScalarFieldType *haloMdot =  &(metaData_->declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "halo_mdot"));
-    stk::mesh::put_field(*haloMdot, *part);
-
-    VectorFieldType *haloAxj =  &(metaData_->declare_field<VectorFieldType>(stk::topology::NODE_RANK, "halo_axj"));
-    stk::mesh::put_field(*haloAxj, *part, nDim);
-  }
-  else {
-    throw std::runtime_error("Element-based scheme not supported with contact bc");
-  }
-
-  // extract data
-  ContactUserData userData = contactBCData.userData_;
-
-  // extract params useful for search
-  const double maxSearchRadius = userData.maxSearchRadius_;
-  const double minSearchRadius = userData.minSearchRadius_;
-  const double extrusionDistance = userData.extrusionDistance_;
-  const std::string searchMethodName = userData.searchMethodName_;
-  const double expandBoxPercentage = userData.expandBoxPercentage_/100.0;
-  const bool clipIsoParametricCoords = userData.clipIsoParametricCoords_;
-
-  // what type of interpolation?
-  const bool useHermiteInterp = userData.useHermiteInterpolation_;
-
-  // some output for the user
-  NaluEnv::self().naluOutputP0() << "extrusion alg active with distance " << extrusionDistance << std::endl;
-  NaluEnv::self().naluOutputP0() << "min/max radius " << minSearchRadius << " " << maxSearchRadius << std::endl;
-  NaluEnv::self().naluOutputP0() << "search block name: " << std::endl;
-  for ( size_t k = 0; k < userData.searchBlock_.size(); ++k )
-    NaluEnv::self().naluOutputP0() << userData.searchBlock_[k] << std::endl;
-
-  // create manager
-  if ( NULL == contactManager_ ) {
-    contactManager_ = new ContactManager(*this);
-  }
-
-  // create contact info for this surface
-  ContactInfo *contactInfo
-    = new ContactInfo(*this,
-                      part->name(),
-                      maxSearchRadius,
-                      minSearchRadius,
-                      userData.searchBlock_,
-                      expandBoxPercentage,
-                      part,
-                      searchMethodName,
-                      clipIsoParametricCoords,
-                      useHermiteInterp);
-
-
-  contactManager_->contactInfoVec_.push_back(contactInfo);
-
-  //====================================================
-  // Register contact algorithms
-  //====================================================
-
-  // handle boundary data; for now this is constant extrusion distance (with non-planar correction)
-  std::vector<double> userSpecBc(1);
-  userSpecBc[0] = extrusionDistance;
-  ConstantAuxFunction *theAuxFuncBc = new ConstantAuxFunction(0, 1, userSpecBc);
-
-  // bc data alg
-  AuxFunctionAlgorithm *auxAlgBc
-    = new AuxFunctionAlgorithm(*this, part,
-                               extDistance, theAuxFuncBc,
-                               stk::topology::NODE_RANK);
-  bcDataAlg_.push_back(auxAlgBc);
-
-  // ExtrusionMeshDistanceBoundaryAlgorithm handles exposed area vector
-  std::map<AlgorithmType, Algorithm *>::iterator it
-    = extrusionMeshDistanceAlgDriver_->algMap_.find(algType);
-  if ( it == extrusionMeshDistanceAlgDriver_->algMap_.end() ) {
-    ExtrusionMeshDistanceBoundaryAlgorithm *theAlg
-      = new ExtrusionMeshDistanceBoundaryAlgorithm(*this, part );
-    extrusionMeshDistanceAlgDriver_->algMap_[algType] = theAlg;
-  }
-  else {
-    it->second->partVec_.push_back(part);
-  }
-
-  // extruded mesh (volume and area vector)
-  if ( realmUsesEdges_ ) {
-    std::map<AlgorithmType, Algorithm *>::iterator itext
-      = computeGeometryAlgDriver_->algMap_.find(algType);
-    if ( itext == computeGeometryAlgDriver_->algMap_.end() ) {
-      ComputeGeometryExtrusionBoundaryAlgorithm *theAlg
-        = new ComputeGeometryExtrusionBoundaryAlgorithm(*this, part);
-      computeGeometryAlgDriver_->algMap_[algType] = theAlg;
-    }
-    else {
-      itext->second->partVec_.push_back(part);
-    }
-  }
-
-}
-
-//--------------------------------------------------------------------------
 //-------- register_symmetry_bc --------------------------------------------
 //--------------------------------------------------------------------------
 void
@@ -3140,7 +2957,7 @@ Realm::setup_non_conformal_bc(
     nonConformalManager_ = new NonConformalManager(*this, ncAlgDetailedOutput);
   }
    
-  // create contact info for this surface
+  // create nonconformal info for this surface
   NonConformalInfo *nonConformalInfo
     = new NonConformalInfo(*this,
                            currentPart,
@@ -3735,16 +3552,16 @@ Realm::dump_simulation_time()
                      << " \tmin: " << g_minPeriodicSearchTime << " \tmax: " << g_maxPeriodicSearchTime << std::endl;
   }
 
-  // contact
+  // nonconformal
   if ( has_non_matching_boundary_face_alg() ) {
-    double g_totalContact = 0.0, g_minContact= 0.0, g_maxContact = 0.0;
-    stk::all_reduce_min(NaluEnv::self().parallel_comm(), &timerContact_, &g_minContact, 1);
-    stk::all_reduce_max(NaluEnv::self().parallel_comm(), &timerContact_, &g_maxContact, 1);
-    stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &timerContact_, &g_totalContact, 1);
+    double g_totalNonconformal = 0.0, g_minNonconformal= 0.0, g_maxNonconformal = 0.0;
+    stk::all_reduce_min(NaluEnv::self().parallel_comm(), &timerNonconformal_, &g_minNonconformal, 1);
+    stk::all_reduce_max(NaluEnv::self().parallel_comm(), &timerNonconformal_, &g_maxNonconformal, 1);
+    stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &timerNonconformal_, &g_totalNonconformal, 1);
 
-    NaluEnv::self().naluOutputP0() << "Timing for Contact: " << std::endl;
-    NaluEnv::self().naluOutputP0() << "       contact bc --  " << " \tavg: " << g_totalContact/double(nprocs)
-                    << " \tmin: " << g_minContact << " \tmax: " << g_maxContact << std::endl;
+    NaluEnv::self().naluOutputP0() << "Timing for Nonconformal: " << std::endl;
+    NaluEnv::self().naluOutputP0() << "  nonconformal bc --  " << " \tavg: " << g_totalNonconformal/double(nprocs)
+                                   << " \tmin: " << g_minNonconformal << " \tmax: " << g_maxNonconformal << std::endl;
   }
 
   // transfer

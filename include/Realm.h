@@ -49,8 +49,6 @@ class Algorithm;
 class AlgorithmDriver;
 class AuxFunctionAlgorithm;
 class ComputeGeometryAlgorithmDriver;
-class ContactInfo;
-class ContactManager;
 class OversetManager;
 class NonConformalManager;
 class ErrorIndicatorAlgorithmDriver;
@@ -167,7 +165,6 @@ class Realm {
   void mesh_velocity_cross_product(double *o, double *c, double *u);
 
   // non-conformal-like algorithm suppoer
-  void initialize_contact();
   void initialize_non_conformal();
   void initialize_overset();
   void initialize_post_processing_algorithms();
@@ -196,11 +193,6 @@ class Realm {
   void register_open_bc(
     stk::mesh::Part *part,
     const stk::topology &theTopo);
-
-  void register_contact_bc(
-    stk::mesh::Part *part,
-    const stk::topology &theTopo,
-    const ContactBoundaryConditionData &contactBCData);
 
   void register_symmetry_bc(
     stk::mesh::Part *part,
@@ -385,7 +377,6 @@ class Realm {
 
   // algorithm drivers managed by region
   ComputeGeometryAlgorithmDriver *computeGeometryAlgDriver_;
-  AlgorithmDriver *extrusionMeshDistanceAlgDriver_;
   ErrorIndicatorAlgorithmDriver *errorIndicatorAlgDriver_;
 # if defined (NALU_USES_PERCEPT)  
   Adapter *adapter_;
@@ -432,7 +423,7 @@ class Realm {
   double timerPopulateFieldData_;
   double timerOutputFields_;
   double timerCreateEdges_;
-  double timerContact_;
+  double timerNonconformal_;
   double timerInitializeEqs_;
   double timerPropertyEval_;
   double timerAdapt_;
@@ -440,10 +431,8 @@ class Realm {
   double timerTransferExecute_;
   double timerSkinMesh_;
 
-  ContactManager *contactManager_;
   NonConformalManager *nonConformalManager_;
   OversetManager *oversetManager_;
-  bool hasContact_;
   bool hasNonConformal_;
   bool hasOverset_;
 

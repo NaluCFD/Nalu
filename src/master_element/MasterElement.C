@@ -330,51 +330,6 @@ HexSCS::HexSCS()
   nodeLoc_[18] =  0.5; nodeLoc_[19] =  0.5; nodeLoc_[20] =  0.5;
   // node 7
   nodeLoc_[21] = -0.5; nodeLoc_[22] =  0.5; nodeLoc_[23] =  0.5;
-
-  // mapping between exposed face and extruded element's overlapping face   
-  faceNodeOnExtrudedElem_.resize(24);
-  faceNodeOnExtrudedElem_[0]  = 1; faceNodeOnExtrudedElem_[1]  = 0; faceNodeOnExtrudedElem_[2]  = 4; faceNodeOnExtrudedElem_[3]  = 5;
-  faceNodeOnExtrudedElem_[4]  = 1; faceNodeOnExtrudedElem_[5]  = 0; faceNodeOnExtrudedElem_[6]  = 4; faceNodeOnExtrudedElem_[7]  = 5;
-  faceNodeOnExtrudedElem_[8]  = 1; faceNodeOnExtrudedElem_[9]  = 0; faceNodeOnExtrudedElem_[10] = 4; faceNodeOnExtrudedElem_[11] = 5;
-  faceNodeOnExtrudedElem_[12] = 0; faceNodeOnExtrudedElem_[13] = 4; faceNodeOnExtrudedElem_[14] = 5; faceNodeOnExtrudedElem_[15] = 1;
-  faceNodeOnExtrudedElem_[16] = 0; faceNodeOnExtrudedElem_[17] = 4; faceNodeOnExtrudedElem_[18] = 5; faceNodeOnExtrudedElem_[19] = 1;
-  faceNodeOnExtrudedElem_[20] = 1; faceNodeOnExtrudedElem_[21] = 0; faceNodeOnExtrudedElem_[22] = 4; faceNodeOnExtrudedElem_[23] = 5;
-
-  // mapping between exposed face and extruded element's opposing face
-  opposingNodeOnExtrudedElem_.resize(24);
-  opposingNodeOnExtrudedElem_[0]  = 2; opposingNodeOnExtrudedElem_[1]  = 3; opposingNodeOnExtrudedElem_[2]  = 7; opposingNodeOnExtrudedElem_[3]  = 6;
-  opposingNodeOnExtrudedElem_[4]  = 2; opposingNodeOnExtrudedElem_[5]  = 3; opposingNodeOnExtrudedElem_[6]  = 7; opposingNodeOnExtrudedElem_[7]  = 6;
-  opposingNodeOnExtrudedElem_[8]  = 2; opposingNodeOnExtrudedElem_[9]  = 3; opposingNodeOnExtrudedElem_[10] = 7; opposingNodeOnExtrudedElem_[11] = 6;
-  opposingNodeOnExtrudedElem_[12] = 3; opposingNodeOnExtrudedElem_[13] = 7; opposingNodeOnExtrudedElem_[14] = 6; opposingNodeOnExtrudedElem_[15] = 2;
-  opposingNodeOnExtrudedElem_[16] = 3; opposingNodeOnExtrudedElem_[17] = 7; opposingNodeOnExtrudedElem_[18] = 6; opposingNodeOnExtrudedElem_[19] = 2;
-  opposingNodeOnExtrudedElem_[20] = 2; opposingNodeOnExtrudedElem_[21] = 3; opposingNodeOnExtrudedElem_[22] = 7; opposingNodeOnExtrudedElem_[23] = 6;
-
-  // mapping between exposed face scs ips and halo edge
-  faceScsIpOnExtrudedElem_.resize(24);
-  faceScsIpOnExtrudedElem_[0]  = 1; faceScsIpOnExtrudedElem_[1]  = 3; faceScsIpOnExtrudedElem_[2]  = 7; faceScsIpOnExtrudedElem_[3]  = 5;
-  faceScsIpOnExtrudedElem_[4]  = 1; faceScsIpOnExtrudedElem_[5]  = 3; faceScsIpOnExtrudedElem_[6]  = 7; faceScsIpOnExtrudedElem_[7]  = 5;
-  faceScsIpOnExtrudedElem_[8]  = 1; faceScsIpOnExtrudedElem_[9]  = 3; faceScsIpOnExtrudedElem_[10] = 7; faceScsIpOnExtrudedElem_[11] = 5;
-  faceScsIpOnExtrudedElem_[12] = 3; faceScsIpOnExtrudedElem_[13] = 7; faceScsIpOnExtrudedElem_[14] = 5; faceScsIpOnExtrudedElem_[15] = 1;
-  faceScsIpOnExtrudedElem_[16] = 3; faceScsIpOnExtrudedElem_[17] = 7; faceScsIpOnExtrudedElem_[18] = 5; faceScsIpOnExtrudedElem_[19] = 1;
-  faceScsIpOnExtrudedElem_[20] = 1; faceScsIpOnExtrudedElem_[21] = 3; faceScsIpOnExtrudedElem_[22] = 7; faceScsIpOnExtrudedElem_[23] = 5;
-
-  // mapping between exposed face scs ips and exposed face edge
-  faceScsIpOnFaceEdges_.resize(24);
-  faceScsIpOnFaceEdges_[0]  = 0; faceScsIpOnFaceEdges_[1]  = 8; faceScsIpOnFaceEdges_[2]  = 4; faceScsIpOnFaceEdges_[3]  = 9;
-  faceScsIpOnFaceEdges_[4]  = 0; faceScsIpOnFaceEdges_[5]  = 8; faceScsIpOnFaceEdges_[6]  = 4; faceScsIpOnFaceEdges_[7]  = 9;
-  faceScsIpOnFaceEdges_[8]  = 0; faceScsIpOnFaceEdges_[9]  = 8; faceScsIpOnFaceEdges_[10] = 4; faceScsIpOnFaceEdges_[11] = 9;
-  faceScsIpOnFaceEdges_[12] = 8; faceScsIpOnFaceEdges_[13] = 4; faceScsIpOnFaceEdges_[14] = 9; faceScsIpOnFaceEdges_[15] = 0;
-  faceScsIpOnFaceEdges_[16] = 8; faceScsIpOnFaceEdges_[17] = 4; faceScsIpOnFaceEdges_[18] = 9; faceScsIpOnFaceEdges_[19] = 0;
-  faceScsIpOnFaceEdges_[20] = 0; faceScsIpOnFaceEdges_[21] = 8; faceScsIpOnFaceEdges_[22] = 4; faceScsIpOnFaceEdges_[23] = 9;
-  
-  // alignment of face:edge ordering and scsip area vector
-  edgeAlignedArea_.resize(24);
-  edgeAlignedArea_[0]  = -1.0; edgeAlignedArea_[1]  = +1.0; edgeAlignedArea_[2]  = +1.0; edgeAlignedArea_[3]  = -1.0;
-  edgeAlignedArea_[4]  = -1.0; edgeAlignedArea_[5]  = +1.0; edgeAlignedArea_[6]  = +1.0; edgeAlignedArea_[7]  = -1.0;
-  edgeAlignedArea_[8]  = -1.0; edgeAlignedArea_[9]  = +1.0; edgeAlignedArea_[10] = +1.0; edgeAlignedArea_[11] = -1.0;
-  edgeAlignedArea_[12] = +1.0; edgeAlignedArea_[13] = +1.0; edgeAlignedArea_[14] = -1.0; edgeAlignedArea_[15] = -1.0;
-  edgeAlignedArea_[16] = +1.0; edgeAlignedArea_[17] = +1.0; edgeAlignedArea_[18] = -1.0; edgeAlignedArea_[19] = -1.0;
-  edgeAlignedArea_[20] = -1.0; edgeAlignedArea_[21] = +1.0; edgeAlignedArea_[22] = +1.0; edgeAlignedArea_[23] = -1.0;
 }
 
 //--------------------------------------------------------------------------
@@ -960,51 +915,6 @@ HexSCS::sidePcoords_to_elemPcoords(
   default:
     throw std::runtime_error("HexSCS::sideMap invalid ordinal");
   }
-}
-
-//--------------------------------------------------------------------------
-//-------- faceNodeOnExtrudedElem ------------------------------------------
-//--------------------------------------------------------------------------
-const int *
-HexSCS::faceNodeOnExtrudedElem()
-{
-  return &faceNodeOnExtrudedElem_[0];
-}
-
-//--------------------------------------------------------------------------
-//-------- opposingNodeOnExtrudedElem --------------------------------------
-//--------------------------------------------------------------------------
-const int *
-HexSCS::opposingNodeOnExtrudedElem()
-{
-  return &opposingNodeOnExtrudedElem_[0];
-}
-
-//--------------------------------------------------------------------------
-//-------- faceScsIpOnExtrudedElem -----------------------------------------
-//--------------------------------------------------------------------------
-const int *
-HexSCS::faceScsIpOnExtrudedElem()
-{
-  return &faceScsIpOnExtrudedElem_[0];
-}
-
-//--------------------------------------------------------------------------
-//-------- faceScsIpOnFaceEdges --------------------------------------------
-//--------------------------------------------------------------------------
-const int *
-HexSCS::faceScsIpOnFaceEdges()
-{
-  return &faceScsIpOnFaceEdges_[0];
-}
-
-//--------------------------------------------------------------------------
-//-------- edgeAlignedArea -------------------------------------------------
-//--------------------------------------------------------------------------
-const double *
-HexSCS::edgeAlignedArea()
-{
-  return &edgeAlignedArea_[0];
 }
 
 //--------------------------------------------------------------------------
@@ -4335,38 +4245,6 @@ Quad2DSCS::Quad2DSCS()
   ipNodeMap_[4] = 2;  ipNodeMap_[5] = 3;  
   // face 3;
   ipNodeMap_[6] = 3;  ipNodeMap_[7] = 0; 
-  
-  // mapping between exposed face and extruded element's overlapping face   
-  faceNodeOnExtrudedElem_.resize(8);
-  faceNodeOnExtrudedElem_[0] = 1; faceNodeOnExtrudedElem_[1] = 0;
-  faceNodeOnExtrudedElem_[2] = 1; faceNodeOnExtrudedElem_[3] = 0;
-  faceNodeOnExtrudedElem_[4] = 1; faceNodeOnExtrudedElem_[5] = 0;
-  faceNodeOnExtrudedElem_[6] = 1; faceNodeOnExtrudedElem_[7] = 0;
-
-  // mapping between exposed face and extruded element's opposing face
-  opposingNodeOnExtrudedElem_.resize(8);
-  opposingNodeOnExtrudedElem_[0] = 2; opposingNodeOnExtrudedElem_[1] = 3;
-  opposingNodeOnExtrudedElem_[2] = 2; opposingNodeOnExtrudedElem_[3] = 3;
-  opposingNodeOnExtrudedElem_[4] = 2; opposingNodeOnExtrudedElem_[5] = 3;
-  opposingNodeOnExtrudedElem_[6] = 2; opposingNodeOnExtrudedElem_[7] = 3;
-
-  // mapping between exposed face scs ips and halo edge
-  faceScsIpOnExtrudedElem_.resize(8);
-  faceScsIpOnExtrudedElem_[0] = 1; faceScsIpOnExtrudedElem_[1] = 3;
-  faceScsIpOnExtrudedElem_[2] = 1; faceScsIpOnExtrudedElem_[3] = 3;
-  faceScsIpOnExtrudedElem_[4] = 1; faceScsIpOnExtrudedElem_[5] = 3;
-  faceScsIpOnExtrudedElem_[6] = 1; faceScsIpOnExtrudedElem_[7] = 3;
-
-  // mapping between exposed face scs ips and exposed face edge
-  faceScsIpOnFaceEdges_.resize(4);
-  faceScsIpOnFaceEdges_[0] = 0; faceScsIpOnFaceEdges_[1] = 0;
-  faceScsIpOnFaceEdges_[2] = 0; faceScsIpOnFaceEdges_[3] = 0;
-  
-  // alignment of face:edge ordering and scsip area vector
-  edgeAlignedArea_.resize(4);
-  edgeAlignedArea_[0] = -1.0; edgeAlignedArea_[1] = -1.0;
-  edgeAlignedArea_[2] = -1.0; edgeAlignedArea_[3] = -1.0;
-
 }
 
 //--------------------------------------------------------------------------
@@ -4816,51 +4694,6 @@ Quad2DSCS::sidePcoords_to_elemPcoords(
   default:
     throw std::runtime_error("Quad2DSCS::sideMap invalid ordinal");
   }
-}
-
-//--------------------------------------------------------------------------
-//-------- faceNodeOnExtrudedElem ------------------------------------------
-//--------------------------------------------------------------------------
-const int *
-Quad2DSCS::faceNodeOnExtrudedElem()
-{
-  return &faceNodeOnExtrudedElem_[0];
-}
-
-//--------------------------------------------------------------------------
-//-------- opposingNodeOnExtrudedElem --------------------------------------
-//--------------------------------------------------------------------------
-const int *
-Quad2DSCS::opposingNodeOnExtrudedElem()
-{
-  return &opposingNodeOnExtrudedElem_[0];
-}
-
-//--------------------------------------------------------------------------
-//-------- faceScsIpOnExtrudedElem -----------------------------------------
-//--------------------------------------------------------------------------
-const int *
-Quad2DSCS::faceScsIpOnExtrudedElem()
-{
-  return &faceScsIpOnExtrudedElem_[0];
-}
-
-//--------------------------------------------------------------------------
-//-------- faceScsIpOnFaceEdges --------------------------------------------
-//--------------------------------------------------------------------------
-const int *
-Quad2DSCS::faceScsIpOnFaceEdges()
-{
-  return &faceScsIpOnFaceEdges_[0];
-}
-
-//--------------------------------------------------------------------------
-//-------- edgeAlignedArea -------------------------------------------------
-//--------------------------------------------------------------------------
-const double *
-Quad2DSCS::edgeAlignedArea()
-{
-  return &edgeAlignedArea_[0];
 }
 
 //--------------------------------------------------------------------------

@@ -80,7 +80,6 @@ public:
   bool adapterExtraOutput_;
   bool useAdapter_;
   int maxRefinementLevel_;
-  double extrusionCorrectionFac_;
   NonConformalAlgType ncAlgType_;
   bool ncAlgGaussLabatto_;
   bool ncAlgUpwindAdvection_;

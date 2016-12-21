@@ -256,26 +256,6 @@ struct OpenUserData : public UserData {
   {}
 };
 
-struct ContactUserData : public UserData {
-
-  double maxSearchRadius_;
-  double minSearchRadius_;
-  std::vector<std::string> searchBlock_;
-  double extrusionDistance_;
-  bool useExtrusionAlg_;
-  std::string searchMethodName_;
-  double expandBoxPercentage_;
-  bool clipIsoParametricCoords_;
-  bool useHermiteInterpolation_;
-
-  ContactUserData()
-    : UserData(),
-      maxSearchRadius_(0.0), minSearchRadius_(0.0),
-      extrusionDistance_(0.0), useExtrusionAlg_(false), searchMethodName_("na"), expandBoxPercentage_(0.0),
-      clipIsoParametricCoords_(false), useHermiteInterpolation_(false)
-  {}
-};
-
 struct OversetUserData : public UserData {
   // at present, simulation can have one background mesh with multiple, non-interacting overset blocks
   double percentOverlap_;
@@ -345,11 +325,6 @@ struct OversetBoundaryConditionData : public BoundaryCondition {
   OversetUserData userData_;
 };
 
-struct ContactBoundaryConditionData : public BoundaryCondition {
-  ContactBoundaryConditionData(BoundaryConditions& bcs) : BoundaryCondition(bcs){};
-  ContactUserData userData_;
-};
-
 struct SymmetryBoundaryConditionData : public BoundaryCondition {
   SymmetryBoundaryConditionData(BoundaryConditions& bcs) : BoundaryCondition(bcs){};
   SymmetryUserData userData_;
@@ -373,7 +348,6 @@ struct BoundaryConditionOptions{
   InflowBoundaryConditionData inflowbc_;
   OpenBoundaryConditionData openbc_;
   OversetBoundaryConditionData oversetbc_;
-  ContactBoundaryConditionData contactbc_;
   NonConformalBoundaryConditionData nonConformalbc_;
   SymmetryBoundaryConditionData symmetrybc_;
   PeriodicBoundaryConditionData periodicbc_;
@@ -463,8 +437,6 @@ void operator >> (const YAML::Node& node, InflowBoundaryConditionData& rhs) ;
 void operator >> (const YAML::Node& node, OpenBoundaryConditionData& rhs) ;
 
 void operator >> (const YAML::Node& node, OversetBoundaryConditionData& rhs) ;
-
-void operator >> (const YAML::Node& node, ContactBoundaryConditionData& rhs) ;
 
 void operator >> (const YAML::Node& node, SymmetryBoundaryConditionData& rhs) ;
 
@@ -573,10 +545,6 @@ template<> struct convert<sierra::nalu::InflowUserData> {
 
 template<> struct convert<sierra::nalu::OpenUserData> {
   static bool decode(const Node& node, sierra::nalu::OpenUserData& rhs) ;
-};
-
-template<> struct convert<sierra::nalu::ContactUserData> {
-  static bool decode(const Node& node, sierra::nalu::ContactUserData& rhs) ;
 };
 
 template<> struct convert<sierra::nalu::OversetUserData> {

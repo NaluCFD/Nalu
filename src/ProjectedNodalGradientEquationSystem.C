@@ -270,18 +270,6 @@ ProjectedNodalGradientEquationSystem::register_symmetry_bc(
 }
 
 //--------------------------------------------------------------------------
-//-------- register_contact_bc ---------------------------------------------
-//--------------------------------------------------------------------------
-void
-ProjectedNodalGradientEquationSystem::register_contact_bc(
-  stk::mesh::Part */*part*/,
-  const stk::topology &/*theTopo*/,
-  const ContactBoundaryConditionData &/*contactBCData*/) 
-{
-  throw std::runtime_error("ProjectedNodalGradientEquationSystem::register_contact_bc: bc not supported");
-}
-
-//--------------------------------------------------------------------------
 //-------- register_non_conformal_bc ---------------------------------------
 //--------------------------------------------------------------------------
 void

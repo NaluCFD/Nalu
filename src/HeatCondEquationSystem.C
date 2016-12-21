@@ -13,22 +13,18 @@
 #include <AssembleHeatCondIrradWallSolverAlgorithm.h>
 #include <AssembleScalarEdgeDiffSolverAlgorithm.h>
 #include <AssembleScalarElemDiffSolverAlgorithm.h>
-#include <AssembleScalarEdgeDiffContactSolverAlgorithm.h>
 #include <AssembleScalarDiffNonConformalSolverAlgorithm.h>
 #include <AssembleScalarFluxBCSolverAlgorithm.h>
 #include <AssembleNodalGradAlgorithmDriver.h>
 #include <AssembleNodalGradEdgeAlgorithm.h>
 #include <AssembleNodalGradElemAlgorithm.h>
 #include <AssembleNodalGradBoundaryAlgorithm.h>
-#include <AssembleNodalGradEdgeContactAlgorithm.h>
-#include <AssembleNodalGradElemContactAlgorithm.h>
 #include <AssembleNodalGradNonConformalAlgorithm.h>
 #include <AssembleNodeSolverAlgorithm.h>
 #include <HeatCondFemElemSuppAlg.h>
 #include <AuxFunctionAlgorithm.h>
 #include <ConstantAuxFunction.h>
 #include <CopyFieldAlgorithm.h>
-#include <ContactManager.h>
 #include <DirichletBC.h>
 #include <EquationSystem.h>
 #include <EquationSystems.h>
@@ -746,70 +742,6 @@ HeatCondEquationSystem::register_wall_bc(
       itsi->second->partVec_.push_back(part);
     }
     
-  }
-
-}
-
-//--------------------------------------------------------------------------
-//-------- register_contact_bc ---------------------------------------------
-//--------------------------------------------------------------------------
-void
-HeatCondEquationSystem::register_contact_bc(
-  stk::mesh::Part *part,
-  const stk::topology &theTopo,
-  const ContactBoundaryConditionData &contactBCData)
-{
-  const AlgorithmType algType = CONTACT;
-
-  ScalarFieldType &tempNp1 = temperature_->field_of_state(stk::mesh::StateNP1);
-  VectorFieldType &dtdxNone = dtdx_->field_of_state(stk::mesh::StateNone); 
-
-  ContactUserData userData = contactBCData.userData_;
-  const bool useHermiteInterpolation = userData.useHermiteInterpolation_;
-
-  if ( realm_.realmUsesEdges_ ) {
-
-    // register halo_t if using the element-based projected nodal gradient
-    ScalarFieldType *haloT = NULL;
-    if ( !edgeNodalGradient_ ) {
-      stk::mesh::MetaData &meta_data = realm_.meta_data();
-      haloT = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "halo_t"));
-      stk::mesh::put_field(*haloT, *part);
-    }
-    
-    // non-solver; contribution to Gjt
-    std::map<AlgorithmType, Algorithm *>::iterator it =
-      assembleNodalGradAlgDriver_->algMap_.find(algType);
-    if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-      Algorithm *theAlg = NULL;
-      if ( edgeNodalGradient_ ) {
-        theAlg = new AssembleNodalGradEdgeContactAlgorithm(realm_, part, &tempNp1, &dtdxNone);
-      }
-      else {
-        theAlg = new AssembleNodalGradElemContactAlgorithm(realm_, part, &tempNp1, &dtdxNone, haloT);
-      }
-      assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
-    }
-    else {
-      it->second->partVec_.push_back(part);
-    }
-  
-    // solver; lhs
-    std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi =
-      solverAlgDriver_->solverAlgMap_.find(algType);
-    if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
-      AssembleScalarEdgeDiffContactSolverAlgorithm *theAlg
-        = new AssembleScalarEdgeDiffContactSolverAlgorithm(realm_, part, this,
-                                                           temperature_, dtdx_, thermalCond_,
-                                                           useHermiteInterpolation);
-      solverAlgDriver_->solverAlgMap_[algType] = theAlg;
-    }
-    else {
-      itsi->second->partVec_.push_back(part);
-    }
-  }
-  else {
-    throw std::runtime_error("Element-based scheme not supported with contact bc");
   }
 }
 

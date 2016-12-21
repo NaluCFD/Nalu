@@ -302,18 +302,6 @@ file(COPY               "${NALURTEST_XML_DIR}/milestone.xml"
 
 
 #=============================================================================
-# edgeContact3D test (cylinder)
-#=============================================================================
-file(COPY               "${NALURTEST_NIGHTLY_DIR}/edgeContact3D"
-     DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}")
-
-file(GLOB meshes        "${NALURTEST_MESH_DIR}/rot_cyl_14.exo*")
-file(COPY               ${meshes}
-                        "${NALURTEST_XML_DIR}/milestone.xml"
-     DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}/edgeContact3D")
-
-
-#=============================================================================
 # dgNonConformalEdgeCylinder test
 #=============================================================================
 file(COPY               "${NALURTEST_NIGHTLY_DIR}/dgNonConformalEdgeCylinder"
@@ -582,18 +570,6 @@ file(COPY               "${NALURTEST_PERF_DIR}/waleElemXflowMixFrac3.5m"
 
 file(COPY               "${NALURTEST_XML_DIR}/milestone_aspect_ratio_smooth.xml"
      DESTINATION        "${PERF_TEST_RESULT_DIRECTORY}/waleElemXflowMixFrac3.5m")
-
-
-#=============================================================================
-# uqSlidingMesh test
-#=============================================================================
-file(COPY               "${NALURTEST_PERF_DIR}/uqSlidingMesh"
-     DESTINATION        "${PERF_TEST_RESULT_DIRECTORY}")
-
-file(GLOB meshes        "${NALURTEST_MESH_DIR}/uqvawt_corrected.exo.*")
-file(COPY               ${meshes}
-                        "${NALURTEST_XML_DIR}/milestone.xml"
-     DESTINATION        "${PERF_TEST_RESULT_DIRECTORY}/uqSlidingMesh")
 
 
 #=============================================================================

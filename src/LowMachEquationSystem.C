@@ -12,13 +12,11 @@
 #include <AssembleContinuityEdgeSolverAlgorithm.h>
 #include <AssembleContinuityElemSolverAlgorithm.h>
 #include <AssembleContinuityInflowSolverAlgorithm.h>
-#include <AssembleContinuityEdgeContactSolverAlgorithm.h>
 #include <AssembleContinuityEdgeOpenSolverAlgorithm.h>
 #include <AssembleContinuityElemOpenSolverAlgorithm.h>
 #include <AssembleContinuityNonConformalSolverAlgorithm.h>
 #include <AssembleMomentumEdgeSolverAlgorithm.h>
 #include <AssembleMomentumElemSolverAlgorithm.h>
-#include <AssembleMomentumEdgeContactSolverAlgorithm.h>
 #include <AssembleMomentumEdgeOpenSolverAlgorithm.h>
 #include <AssembleMomentumElemOpenSolverAlgorithm.h>
 #include <AssembleMomentumEdgeSymmetrySolverAlgorithm.h>
@@ -31,31 +29,24 @@
 #include <AssembleNodalGradEdgeAlgorithm.h>
 #include <AssembleNodalGradElemAlgorithm.h>
 #include <AssembleNodalGradBoundaryAlgorithm.h>
-#include <AssembleNodalGradEdgeContactAlgorithm.h>
-#include <AssembleNodalGradElemContactAlgorithm.h>
 #include <AssembleNodalGradNonConformalAlgorithm.h>
 #include <AssembleNodalGradUAlgorithmDriver.h>
 #include <AssembleNodalGradUEdgeAlgorithm.h>
 #include <AssembleNodalGradUElemAlgorithm.h>
 #include <AssembleNodalGradUBoundaryAlgorithm.h>
-#include <AssembleNodalGradUEdgeContactAlgorithm.h>
-#include <AssembleNodalGradUElemContactAlgorithm.h>
 #include <AssembleNodalGradUNonConformalAlgorithm.h>
 #include <AssembleNodeSolverAlgorithm.h>
 #include <AuxFunctionAlgorithm.h>
 #include <ComputeMdotEdgeAlgorithm.h>
 #include <ComputeMdotElemAlgorithm.h>
-#include <ComputeMdotEdgeContactAlgorithm.h>
 #include <ComputeMdotEdgeOpenAlgorithm.h>
 #include <ComputeMdotElemOpenAlgorithm.h>
 #include <ComputeMdotNonConformalAlgorithm.h>
 #include <ComputeWallFrictionVelocityAlgorithm.h>
 #include <ComputeABLWallFrictionVelocityAlgorithm.h>
 #include <ConstantAuxFunction.h>
-#include <ContactInfo.h>
 #include <ContinuityGclNodeSuppAlg.h>
 #include <ContinuityLowSpeedCompressibleNodeSuppAlg.h>
-#include <ContactManager.h>
 #include <ContinuityMassBackwardEulerNodeSuppAlg.h>
 #include <ContinuityMassBDF2NodeSuppAlg.h>
 #include <ContinuityMassElemSuppAlg.h>
@@ -67,7 +58,6 @@
 #include <EquationSystem.h>
 #include <EquationSystems.h>
 #include <ErrorIndicatorAlgorithmDriver.h>
-#include <HaloInfo.h>
 #include <FieldFunctions.h>
 #include <LinearSolver.h>
 #include <LinearSolvers.h>
@@ -1659,68 +1649,6 @@ MomentumEquationSystem::register_wall_bc(
 }
 
 //--------------------------------------------------------------------------
-//-------- register_contact_bc ---------------------------------------------
-//--------------------------------------------------------------------------
-void
-MomentumEquationSystem::register_contact_bc(
-  stk::mesh::Part *part,
-  const stk::topology &theTopo,
-  const ContactBoundaryConditionData &contactBCData) {
-
-  const AlgorithmType algType = CONTACT;
-
-  // np1 velocity
-  VectorFieldType &velocityNp1 = velocity_->field_of_state(stk::mesh::StateNP1);
-  GenericFieldType &dudxNone = dudx_->field_of_state(stk::mesh::StateNone);
-
-  if ( realm_.realmUsesEdges_ ) {
-    // register halo_ui if using the element-based projected nodal gradient
-    VectorFieldType *haloUi = NULL;
-    if ( !edgeNodalGradient_ ) {
-      stk::mesh::MetaData &meta_data = realm_.meta_data();
-      haloUi = &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "halo_ui"));
-      stk::mesh::put_field(*haloUi, *part);
-    }
-
-    // non-solver; dudx
-    std::map<AlgorithmType, Algorithm *>::iterator it =
-      assembleNodalGradAlgDriver_->algMap_.find(algType);
-    if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-      Algorithm *theAlg = NULL;
-      if ( edgeNodalGradient_ ) {
-        theAlg = new AssembleNodalGradUEdgeContactAlgorithm(realm_, part, &velocityNp1, &dudxNone);
-      }
-      else {
-        theAlg = new AssembleNodalGradUElemContactAlgorithm(realm_, part, &velocityNp1, &dudxNone, haloUi);
-      }
-      assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
-    }
-    else {
-      it->second->partVec_.push_back(part);
-    }
-
-    // solver; lhs
-    std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi =
-      solverAlgDriver_->solverAlgMap_.find(algType);
-    if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
-      AssembleMomentumEdgeContactSolverAlgorithm *theAlg
-        = new AssembleMomentumEdgeContactSolverAlgorithm(realm_, part, this);
-      solverAlgDriver_->solverAlgMap_[algType] = theAlg;
-    }
-    else {
-      itsi->second->partVec_.push_back(part);
-    }
-  }
-  else {
-    throw std::runtime_error("Sorry, element-based contact not supported");
-  }
-
-  // error checking; PNG not ready for prime time here
-  if ( managePNG_ )
-    throw std::runtime_error("Contact algorithm not set up for PNG");
-}
-
-//--------------------------------------------------------------------------
 //-------- register_symmetry_bc ------------------------------------------------
 //--------------------------------------------------------------------------
 void
@@ -2530,75 +2458,6 @@ ContinuityEquationSystem::register_wall_bc(
     else {
       it->second->partVec_.push_back(part);
     }
-  }
-
-}
-
-//--------------------------------------------------------------------------
-//-------- register_contact_bc ---------------------------------------------
-//--------------------------------------------------------------------------
-void
-ContinuityEquationSystem::register_contact_bc(
-  stk::mesh::Part *part,
-  const stk::topology &theTopo,
-  const ContactBoundaryConditionData &contactBCData) {
-
-  const AlgorithmType algType = CONTACT;
-
-  ScalarFieldType &pressureNone = pressure_->field_of_state(stk::mesh::StateNone);
-  VectorFieldType &dpdxNone = dpdx_->field_of_state(stk::mesh::StateNone);
-  if ( realm_.realmUsesEdges_ ) {
-    // register halo_p if using the element-based projected nodal gradient
-    ScalarFieldType *haloP = NULL;
-    if ( !edgeNodalGradient_ || elementContinuityEqs_) {
-      stk::mesh::MetaData &meta_data = realm_.meta_data();
-      haloP = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "halo_p"));
-      stk::mesh::put_field(*haloP, *part);
-    }
-    
-    // non-solver; contribution to GjP
-    std::map<AlgorithmType, Algorithm *>::iterator it =
-      assembleNodalGradAlgDriver_->algMap_.find(algType);
-    if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-      Algorithm *theAlg = NULL;
-      if ( edgeNodalGradient_ ) {
-        theAlg = new AssembleNodalGradEdgeContactAlgorithm(realm_, part, &pressureNone, &dpdxNone);
-      }
-      else {
-        theAlg = new AssembleNodalGradElemContactAlgorithm(realm_, part, &pressureNone, &dpdxNone, haloP);
-      }
-      assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
-    }
-    else {
-      it->second->partVec_.push_back(part);
-    }
-
-    // non-solver alg; compute contact mdot
-    std::map<AlgorithmType, Algorithm *>::iterator itm =
-      computeMdotAlgDriver_->algMap_.find(algType);
-    if ( itm == computeMdotAlgDriver_->algMap_.end() ) {
-      ComputeMdotEdgeContactAlgorithm *theAlg
-        = new ComputeMdotEdgeContactAlgorithm(realm_, part);
-      computeMdotAlgDriver_->algMap_[algType] = theAlg;
-    }
-    else {
-      itm->second->partVec_.push_back(part);
-    }
-
-    // solver; lhs
-    std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi =
-      solverAlgDriver_->solverAlgMap_.find(algType);
-    if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
-      AssembleContinuityEdgeContactSolverAlgorithm *theAlg
-        = new AssembleContinuityEdgeContactSolverAlgorithm(realm_, part, this);
-      solverAlgDriver_->solverAlgMap_[algType] = theAlg;
-    }
-    else {
-      itsi->second->partVec_.push_back(part);
-    }
-  }
-  else {
-    throw std::runtime_error("Sorry, element-based contact not supported");
   }
 }
 

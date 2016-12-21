@@ -57,7 +57,6 @@ public:
   void buildElemToNodeGraph(const stk::mesh::PartVector & parts); // elem->node assembly
   void buildReducedElemToNodeGraph(const stk::mesh::PartVector & parts); // elem (nearest nodes only)->node assembly
   void buildFaceElemToNodeGraph(const stk::mesh::PartVector & parts); // elem:face->node assembly
-  void buildEdgeHaloNodeGraph(const stk::mesh::PartVector & parts); // haloNode->elem_node assembly
   void buildNonConformalNodeGraph(const stk::mesh::PartVector & parts); // nonConformal->node assembly
   void buildOversetNodeGraph(const stk::mesh::PartVector & parts); // overset->elem_node assembly
   void finalizeLinearSystem();

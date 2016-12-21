@@ -89,10 +89,6 @@ class EquationSystems
     const std::string targetName,
     const OpenBoundaryConditionData &openBCData);
 
-  void register_contact_bc(
-    const std::string targetName,
-    const ContactBoundaryConditionData &contactBCData);
-
   void register_symmetry_bc(
     const std::string targetName,
     const SymmetryBoundaryConditionData &symmetryBCData);

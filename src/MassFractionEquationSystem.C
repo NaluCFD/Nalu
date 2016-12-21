@@ -8,7 +8,6 @@
 
 #include <MassFractionEquationSystem.h>
 #include <AlgorithmDriver.h>
-#include <AssembleScalarEdgeContactSolverAlgorithm.h>
 #include <AssembleScalarEdgeOpenSolverAlgorithm.h>
 #include <AssembleScalarEdgeSolverAlgorithm.h>
 #include <AssembleScalarElemSolverAlgorithm.h>
@@ -18,8 +17,6 @@
 #include <AssembleNodalGradEdgeAlgorithm.h>
 #include <AssembleNodalGradElemAlgorithm.h>
 #include <AssembleNodalGradBoundaryAlgorithm.h>
-#include <AssembleNodalGradEdgeContactAlgorithm.h>
-#include <AssembleNodalGradElemContactAlgorithm.h>
 #include <AssembleNodalGradNonConformalAlgorithm.h>
 #include <AssembleNodeSolverAlgorithm.h>
 #include <AuxFunctionAlgorithm.h>
@@ -522,64 +519,7 @@ MassFractionEquationSystem::register_wall_bc(
   }
   else {
     it->second->partVec_.push_back(part);
-  }
-  
-}
-
-//--------------------------------------------------------------------------
-//-------- register_contact_bc ---------------------------------------------
-//--------------------------------------------------------------------------
-void
-MassFractionEquationSystem::register_contact_bc(
-  stk::mesh::Part *part,
-  const stk::topology &theTopo,
-  const ContactBoundaryConditionData &contactBCData) {
-
-  const AlgorithmType algType = CONTACT;
-
-  if ( realm_.realmUsesEdges_ ) {
-
-    // register halo_yk if using the element-based projected nodal gradient
-    ScalarFieldType *haloYk = NULL;
-    if ( !edgeNodalGradient_ ) {
-      stk::mesh::MetaData &meta_data = realm_.meta_data();
-      haloYk = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "halo_yk"));
-      stk::mesh::put_field(*haloYk, *part);
-    }
-
-    // non-solver; contribution to dydx
-    std::map<AlgorithmType, Algorithm *>::iterator it =
-      assembleNodalGradAlgDriver_->algMap_.find(algType);
-    if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-      Algorithm *theAlg = NULL;
-      if ( edgeNodalGradient_ ) {
-        theAlg = new AssembleNodalGradEdgeContactAlgorithm(realm_, part, currentMassFraction_, dydx_);
-      }
-      else {
-        theAlg = new AssembleNodalGradElemContactAlgorithm(realm_, part, currentMassFraction_, dydx_, haloYk);
-      }
-      assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
-    }
-    else {
-      it->second->partVec_.push_back(part);
-    }
-
-    // solver; lhs
-    std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi =
-      solverAlgDriver_->solverAlgMap_.find(algType);
-    if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
-      AssembleScalarEdgeContactSolverAlgorithm *theAlg
-        = new AssembleScalarEdgeContactSolverAlgorithm(realm_, part, this,
-                                                       currentMassFraction_, dydx_, evisc_);
-      solverAlgDriver_->solverAlgMap_[algType] = theAlg;
-    }
-    else {
-      itsi->second->partVec_.push_back(part);
-    }
-  }
-  else {
-    throw std::runtime_error("Sorry, element-based contact not supported");
-  }
+  } 
 }
 
 //--------------------------------------------------------------------------

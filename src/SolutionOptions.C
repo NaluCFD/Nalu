@@ -65,7 +65,6 @@ SolutionOptions::SolutionOptions()
     adapterExtraOutput_(false),
     useAdapter_(false),
     maxRefinementLevel_(0),
-    extrusionCorrectionFac_(1.0),
     ncAlgType_(NC_ALG_TYPE_DG),
     ncAlgGaussLabatto_(true),
     ncAlgUpwindAdvection_(false),
@@ -122,11 +121,6 @@ SolutionOptions::load(const YAML::Node & y_node)
 
     // mdot interpolation procedure 
     get_if_present(y_solution_options, "interp_rhou_together_for_mdot", mdotInterpRhoUTogether_, mdotInterpRhoUTogether_);
-
-    // extrustion correction scaling
-    get_if_present(y_solution_options, 
-                   "extrusion_correction_factor", 
-                   extrusionCorrectionFac_, extrusionCorrectionFac_);
     
     // external mesh motion expected
     get_if_present(y_solution_options, "externally_provided_mesh_deformation", externalMeshDeformation_, externalMeshDeformation_);

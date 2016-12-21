@@ -7,12 +7,9 @@
 
 
 #include <TpetraLinearSystem.h>
-#include <ContactInfo.h>
-#include <ContactManager.h>
 #include <NonConformalInfo.h>
 #include <NonConformalManager.h>
 #include <FieldTypeDef.h>
-#include <HaloInfo.h>
 #include <DgInfo.h>
 #include <Realm.h>
 #include <PeriodicManager.h>
@@ -227,7 +224,7 @@ TpetraLinearSystem::beginLinearSystemConstruction()
   stk::mesh::BucketVector const& buckets =
       realm_.get_buckets( stk::topology::NODE_RANK, s_universal );
 
-  // we allow for ghosted nodes when contact is active. When periodic is active, we may
+  // we allow for ghosted nodes when nonconformal is active. When periodic is active, we may
   // also have ghosted nodes due to the periodicGhosting. However, we want to exclude these
   // nodes
 
@@ -302,7 +299,7 @@ TpetraLinearSystem::beginLinearSystemConstruction()
   for (unsigned inode=0; inode < owned_nodes.size(); ++inode) {
     const stk::mesh::Entity entity = owned_nodes[inode];
     const stk::mesh::EntityId entityId = *stk::mesh::field_data(*realm_.naluGlobalId_, entity);
-    // entityId can be duplicated in periodic or contact
+    // entityId can be duplicated in periodic or nonconformal
     MyLIDMapType::iterator found = myLIDs_.find(entityId);
     if (found == myLIDs_.end()) {
       myLIDs_[entityId] = localId++;
@@ -577,48 +574,6 @@ TpetraLinearSystem::buildFaceElemToNodeGraph(const stk::mesh::PartVector & parts
       entities.resize(numNodes);
       for(size_t n=0; n < numNodes; ++n) {
         entities[n] = elem_nodes[n];
-      }
-      addConnections(entities);
-    }
-  }
-}
-
-void
-TpetraLinearSystem::buildEdgeHaloNodeGraph(
-  const stk::mesh::PartVector &/*parts*/)
-{
-  stk::mesh::BulkData & bulkData = realm_.bulk_data();
-  beginLinearSystemConstruction();
-
-  std::vector<stk::mesh::Entity> entities;
-
-  // iterate contactInfoVec_
-  std::vector<ContactInfo *>::iterator ii;
-  for( ii=realm_.contactManager_->contactInfoVec_.begin();
-       ii!=realm_.contactManager_->contactInfoVec_.end(); ++ii ) {
-
-    // iterate halo face nodes
-    std::map<uint64_t, HaloInfo *>::iterator iterHalo;
-    for (iterHalo  = (*ii)->haloInfoMap_.begin();
-         iterHalo != (*ii)->haloInfoMap_.end();
-         ++iterHalo) {
-
-      // halo info object of interest
-      HaloInfo * infoObject = (*iterHalo).second;
-
-      // extract element mesh object and global id for face node
-      stk::mesh::Entity elem = infoObject->owningElement_;
-      stk::mesh::Entity node = infoObject->faceNode_;
-
-      // relations
-      stk::mesh::Entity const* elem_nodes = bulkData.begin_nodes(elem);
-      const size_t numNodes = bulkData.num_nodes(elem);
-      const size_t numEntities = numNodes+1;
-      entities.resize(numEntities);
-
-      entities[0] = node;
-      for(size_t n=0; n < numNodes; ++n) {
-        entities[n+1] = elem_nodes[n];
       }
       addConnections(entities);
     }

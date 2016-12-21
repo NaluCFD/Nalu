@@ -97,11 +97,6 @@ public:
     const stk::topology &theTopo,
     const OpenBoundaryConditionData &openBCData) {}
 
-  virtual void register_contact_bc(
-    stk::mesh::Part *part,
-    const stk::topology &theTopo,
-    const ContactBoundaryConditionData &contactBCData) {}
-
   virtual void register_symmetry_bc(
     stk::mesh::Part *part,
     const stk::topology &theTopo,
