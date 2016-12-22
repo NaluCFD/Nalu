@@ -55,13 +55,6 @@ IF (ENABLE_INSTALL)
     SET (INSTALL_NALU TRUE)
 ENDIF()
 
-IF (INSTALL_NALU)
-  set(BINARY_INSTALL_DIR bin)
-  set(INCLUDE_INSTALL_DIR include)
-  set(LIB_INSTALL_DIR lib)
-  include(CMakePackageConfigHelpers)
-ENDIF ()
-
 MESSAGE("Setting and checking of compilers:")
 SET(CMAKE_CXX_COMPILER ${Trilinos_CXX_COMPILER} )
 SET(CMAKE_C_COMPILER ${Trilinos_C_COMPILER} )
@@ -118,5 +111,14 @@ endif()
 
 add_executable(${utest_ex_name} unit_tests.C ${UNIT_TESTS_SOURCES})
 target_link_libraries(${utest_ex_name} nalu)
+
+IF (INSTALL_NALU)
+  install(TARGETS ${utest_ex_name} ${nalu_ex_name} nalu
+          RUNTIME DESTINATION bin
+          ARCHIVE DESTINATION lib
+          LIBRARY DESTINATION lib)
+  install(DIRECTORY include/ DESTINATION include)
+  include(CMakePackageConfigHelpers)
+ENDIF ()
 
 MESSAGE("\nAnd CMake says...:")
