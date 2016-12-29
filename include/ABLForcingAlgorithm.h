@@ -40,6 +40,7 @@ class Transfers;
  *       type: computed
  *       relaxation_factor: 1.0
  *       heights: [80.0]
+ *       target_part_format: "abl_height_%.1f"
  *       velocity_x:
  *         - [0.0, 10.0]                 # [Time0, vxH0, ... , vxHN]
  *         - [100000.0, 10.0]            # [TimeN, vxH0, ... , vxHN]
@@ -56,6 +57,7 @@ class Transfers;
  *       type: computed
  *       relaxation_factor: 1.0
  *       heights: [80.0]
+ *       target_part_format: "abl_height_%.1f"
  *       temperature:
  *         - [0.0, 300.0]
  *         - [10000.0, 300.0]
@@ -148,7 +150,9 @@ private:
     //! vertical level and ensures that part exists in the mesh database.
     void determine_part_names(
         std::vector<double>&,
-        std::vector<std::string>&);
+        std::vector<std::string>&,
+        bool,
+        std::string&);
 
     //! Register velocity and temperature fields on the appropriate parts based
     //! on user input.
@@ -240,6 +244,18 @@ private:
     stk::mesh::Selector inactiveSelector_;
 
     Transfers* transfers_;
+
+    //! Flag indicating whether to generate part names list for velocity field
+    bool velGenPartList_;
+
+    //! Flag indicating whether to generate part names list for temperature field
+    bool tempGenPartList_;
+
+    //! Format string specifier for generating velocity parts list
+    std::string velPartFmt_;
+
+    //! Format string specifier for generating temperature parts list
+    std::string tempPartFmt_;
 };
 
 }

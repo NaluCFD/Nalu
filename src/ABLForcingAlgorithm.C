@@ -18,6 +18,8 @@
 
 #include <stk_util/parallel/ParallelReduce.hpp>
 
+#include <boost/format.hpp>
+
 namespace sierra {
 namespace nalu {
 
@@ -52,7 +54,12 @@ ABLForcingAlgorithm::ABLForcingAlgorithm(
     tempPartNames_(),
     allPartNames_(),
     allParts_(0),
-    inactiveSelector_()
+    inactiveSelector_(),
+    transfers_(0),
+    velGenPartList_(false),
+    tempGenPartList_(false),
+    velPartFmt_(""),
+    tempPartFmt_("")
 {
     load(node);
 }
@@ -106,6 +113,22 @@ ABLForcingAlgorithm::load_momentum_info(const YAML::Node& node)
     }
     get_if_present(node, "relaxation_factor", alphaMomentum_);
     get_required<std::vector<double>>(node, "heights", velHeights_);
+    auto nHeights = velHeights_.size();
+
+    if (node["target_parts"]) { // Explicit target parts list provided
+        get_required<std::vector<std::string>>(node, "target_parts", velPartNames_);
+        ThrowAssertMsg(
+            (nHeights == velPartNames_.size()),
+            "ABL Forcing: Mismatch between sizes of heights and target parts "
+            "provided for momentum source");
+        velGenPartList_ = false;
+    } else if (node["target_part_format"]) { // Generate part names from printf style string
+        get_required<std::string>(node, "target_part_format", velPartFmt_);
+        velGenPartList_ = true;
+        velPartNames_.resize(nHeights);
+    } else {
+        throw std::runtime_error("ABL Forcing: No target part(s) provided for momentum forcing.");
+    }
 
     // Load momentum source time histories in temporary data structures, test
     // consistency of data with heights and then recast them into 2-D lookup
@@ -115,7 +138,6 @@ ABLForcingAlgorithm::load_momentum_info(const YAML::Node& node)
     get_required<Array2D<double>>(node, "velocity_y", vytmp);
     get_required<Array2D<double>>(node, "velocity_z", vztmp);
 
-    auto nHeights = velHeights_.size();
     create_interp_arrays(nHeights, vxtmp, velXTimes_, velX_);
     create_interp_arrays(nHeights, vytmp, velYTimes_, velY_);
     create_interp_arrays(nHeights, vztmp, velZTimes_, velZ_);
@@ -150,13 +172,28 @@ ABLForcingAlgorithm::load_temperature_info(const YAML::Node& node)
     }
     get_if_present(node, "relaxation_factor", alphaTemperature_);
     get_required<std::vector<double>>(node, "heights", tempHeights_);
+    auto nHeights = tempHeights_.size();
+
+    if (node["target_parts"]) { // Explicit target parts list provided
+        get_required<std::vector<std::string>>(node, "target_parts", tempPartNames_);
+        ThrowAssertMsg(
+            (nHeights == tempPartNames_.size()),
+            "ABL Forcing: Mismatch between sizes of heights and target parts "
+            "provided for momentum source");
+        tempGenPartList_ = false;
+    } else if (node["target_part_format"]) { // Generate part names from printf style string
+        get_required<std::string>(node, "target_part_format", tempPartFmt_);
+        tempGenPartList_ = true;
+        tempPartNames_.resize(nHeights);
+    } else {
+        throw std::runtime_error("ABL Forcing: No target part(s) provided for momentum forcing.");
+    }
 
     // Load temperature source time histories, check data consistency and create
     // interpolation lookup tables.
     Array2D<double> temp;
     get_required<Array2D<double>>(node, "temperature", temp);
 
-    auto nHeights = tempHeights_.size();
     create_interp_arrays(nHeights, temp, tempTimes_, temp_);
 
     TSource_.resize(nHeights);
@@ -198,9 +235,9 @@ ABLForcingAlgorithm::create_interp_arrays(
 void ABLForcingAlgorithm::setup()
 {
     // Momentum sources
-    determine_part_names(velHeights_, velPartNames_);
+    determine_part_names(velHeights_, velPartNames_,velGenPartList_,velPartFmt_);
     // Temperature sources
-    determine_part_names(tempHeights_, tempPartNames_);
+    determine_part_names(tempHeights_, tempPartNames_,tempGenPartList_,tempPartFmt_);
     // Register fields
     register_fields();
 }
@@ -208,21 +245,20 @@ void ABLForcingAlgorithm::setup()
 void
 ABLForcingAlgorithm::determine_part_names(
     std::vector<double>& heights,
-    std::vector<std::string>& nameSet)
+    std::vector<std::string>& nameSet,
+    bool flag,
+    std::string& nameFmt)
 {
     stk::mesh::MetaData& meta = realm_.meta_data();
 
-    for(auto ht: heights) {
-        // TODO: Naming should come from input file
-        std::ostringstream ss;
-        ss << ht;
-        std::string partName = "zplane_" + ss.str() + "m";
+    if (flag)
+        for(size_t i=0; i < heights.size(); i++)
+            nameSet[i] = (boost::format(nameFmt)%heights[i]).str();
 
+    for(auto partName: nameSet) {
         auto it = allPartNames_.find(partName);
-        if (it != allPartNames_.end()) {
-            nameSet.push_back(partName);
+        if (it != allPartNames_.end())
             continue;
-        }
 
         stk::mesh::Part* part = meta.get_part(partName);
         if (NULL == part) {
@@ -233,7 +269,6 @@ ABLForcingAlgorithm::determine_part_names(
         } else {
             // Add this part to the visited part list
             allPartNames_.insert(partName);
-            nameSet.push_back(partName);
         }
     }
 }
@@ -367,12 +402,12 @@ ABLForcingAlgorithm::compute_momentum_sources()
             double xval, yval;
             utils::linear_interp(velXTimes_,velX_[ih],currTime,xval);
             utils::linear_interp(velYTimes_,velY_[ih],currTime,yval);
-            USource_[0][ih] += (alphaMomentum_ / dt) * (
+            USource_[0][ih] = (alphaMomentum_ / dt) * (
                 xval - UmeanCalc_[ih][0]);
-            USource_[1][ih] += (alphaMomentum_ / dt) * (
+            USource_[1][ih] = (alphaMomentum_ / dt) * (
                 yval - UmeanCalc_[ih][1]);
             // No momentum source in z-direction
-            USource_[2][ih] += 0.0;
+            USource_[2][ih] = 0.0;
         }
     } else {
         for(size_t ih=0; ih < velHeights_.size(); ih++) {
@@ -394,7 +429,7 @@ ABLForcingAlgorithm::compute_temperature_sources()
         for(size_t ih=0; ih < tempHeights_.size(); ih++) {
             double tval;
             utils::linear_interp(tempTimes_,temp_[ih],currTime,tval);
-            TSource_[ih] += ( alphaTemperature_/dt ) * (
+            TSource_[ih] = ( alphaTemperature_/dt ) * (
                 tval - TmeanCalc_[ih]);
         }
     } else {
