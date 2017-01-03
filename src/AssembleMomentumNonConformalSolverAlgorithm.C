@@ -65,6 +65,7 @@ AssembleMomentumNonConformalSolverAlgorithm::AssembleMomentumNonConformalSolverA
   ghostFieldVec_.push_back(&(velocity_->field_of_state(stk::mesh::StateNP1)));
   ghostFieldVec_.push_back(diffFluxCoeff_);
   ghostFieldVec_.push_back(coordinates_);
+  ghostFieldVec_.push_back(exposedAreaVec_);
   
   // specific algorithm options
   NonConformalAlgType algType = realm_.get_nc_alg_type();
