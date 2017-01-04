@@ -3616,47 +3616,10 @@ Realm::get_volume_master_element(
     volumeMeMap_.find(theTopo);
   if ( it == volumeMeMap_.end() ) {
     // not found; will need to create it and add it
-    switch ( theTopo.value() ) {
-
-      case stk::topology::HEX_8:
-        theElem = new HexSCV();
-        break;
-
-      case stk::topology::HEX_27:
-        theElem = new Hex27SCV();
-        break;
-
-      case stk::topology::TET_4:
-        theElem = new TetSCV();
-        break;
-
-      case stk::topology::PYRAMID_5:
-        theElem = new PyrSCV();
-        break;
-
-      case stk::topology::WEDGE_6:
-        theElem = new WedSCV();
-        break;
-
-      case stk::topology::QUAD_4_2D:
-        theElem = new Quad2DSCV();
-        break;
-
-      case stk::topology::QUAD_9_2D:
-        theElem = new Quad92DSCV();
-        break;
-
-      case stk::topology::TRI_3_2D:
-        theElem = new Tri2DSCV();
-        break;
-
-      default:
-        NaluEnv::self().naluOutputP0() << "sorry, we only support hex8, tet4, wed6, pyr5, quad4, and tri3 volume elements" << std::endl;
-        break;
-    }
+    theElem = MasterElement::create_volume_master_element(theTopo);
+    ThrowRequire(theElem != nullptr);
 
     volumeMeMap_[theTopo] = theElem;
-
   }
   else {
     // found it
@@ -3680,79 +3643,10 @@ Realm::get_surface_master_element(
     surfaceMeMap_.find(theTopo);
   if ( it == surfaceMeMap_.end() ) {
     // not found; will need to create it and add it
-    switch ( theTopo.value() ) {
-
-      case stk::topology::HEX_8:
-        theElem = new HexSCS();
-        break;
-
-      case stk::topology::HEX_27:
-        theElem = new Hex27SCS();
-        break;
-
-      case stk::topology::TET_4:
-        theElem = new TetSCS();
-        break;
-
-      case stk::topology::PYRAMID_5:
-        theElem = new PyrSCS();
-        break;
-
-      case stk::topology::WEDGE_6:
-        theElem = new WedSCS();
-        break;
-
-      case stk::topology::QUAD_4:
-        theElem =  new Quad3DSCS();
-        break;
-
-      case stk::topology::QUAD_9:
-        theElem =  new Quad93DSCS();
-        break;
-
-      case stk::topology::TRI_3:
-        theElem = new Tri3DSCS();
-        break;
-
-      case stk::topology::QUAD_4_2D:
-        theElem =  new Quad2DSCS();
-        break;
-
-      case stk::topology::QUAD_9_2D:
-        theElem =  new Quad92DSCS();
-        break;
-
-      case stk::topology::TRI_3_2D:
-        theElem = new Tri2DSCS();
-        break;
-
-      case stk::topology::LINE_2:
-        theElem = new Edge2DSCS();
-        break;
-
-      case stk::topology::LINE_3:
-        theElem = new Edge32DSCS();
-        break;
-
-      case stk::topology::SHELL_QUAD_4:
-        theElem =  new Quad3DSCS();
-        NaluEnv::self().naluOutputP0() << "SHELL_QUAD_4 only supported for io surface transfer applications" << std::endl;
-        break;
-
-      case stk::topology::SHELL_TRI_3:
-        theElem = new Tri3DSCS();
-        NaluEnv::self().naluOutputP0() << "SHELL_TRI_3 only supported for io surface transfer applications" << std::endl;
-        break;
-
-      default:
-        NaluEnv::self().naluOutputP0() << "sorry, we only support hex8, tet4, pyr5, wed6, quad2d, quad3d, tri2d, tri3d and edge2d surface elements" << std::endl;
-        NaluEnv::self().naluOutputP0() << "you're type is " << theTopo.value() << std::endl;
-        break;
-
-    }
+    theElem = MasterElement::create_surface_master_element(theTopo);
+    ThrowRequire(theElem != nullptr);
 
     surfaceMeMap_[theTopo] = theElem;
-
   }
 
   else {

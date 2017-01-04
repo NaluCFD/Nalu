@@ -237,13 +237,13 @@ protected:
     void setup_poly_order_1_hex_8() {
       poly_order = 1;
       topo = stk::topology::HEX_8;
-      unit_test_utils::create_one_reference_hex8_element(bulk);
+      unit_test_utils::create_one_reference_element(bulk, stk::topology::HEX_8);
     }
 
     void setup_poly_order_2_hex_27() {
       poly_order = 2;
       topo = stk::topology::HEX_27;
-      unit_test_utils::create_one_reference_hex27_element(bulk);
+      unit_test_utils::create_one_reference_element(bulk, stk::topology::HEX_27);
     }
 
     stk::ParallelMachine comm;

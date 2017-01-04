@@ -97,7 +97,7 @@ TEST(Hex27,creation)
   stk::mesh::MetaData meta(spatialDimension);
   stk::mesh::BulkData bulk(meta, comm);
 
-  unit_test_utils::create_one_reference_hex27_element(bulk);
+  unit_test_utils::create_one_reference_element(bulk, stk::topology::HEX_27);
   check_Hex27_creation(bulk);
 }
 
@@ -112,7 +112,7 @@ TEST(Hex27, face_node_ordering)
   stk::mesh::MetaData meta(spatialDimension);
   stk::mesh::BulkData bulk(meta, comm);
 
-  unit_test_utils::create_one_reference_hex27_element(bulk);
+  unit_test_utils::create_one_reference_element(bulk, stk::topology::HEX_27);
   check_Hex27_face_ip_node_ordering(bulk);
 }
 
