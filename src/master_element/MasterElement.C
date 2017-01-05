@@ -7,6 +7,7 @@
 
 
 #include <master_element/MasterElement.h>
+#include <NaluEnv.h>
 #include <FORTRAN_Proto.h>
 
 #include <stk_topology/topology.hpp>
@@ -23,6 +24,113 @@
 
 namespace sierra{
 namespace nalu{
+
+
+//--------------------------------------------------------------------------
+//-------- factory for surface master elements -----------------------------
+//--------------------------------------------------------------------------
+MasterElement*
+MasterElement::create_surface_master_element(stk::topology topo)
+{
+  switch ( topo.value() ) {
+
+    case stk::topology::HEX_8:
+      return new HexSCS();
+
+    case stk::topology::HEX_27:
+      return new Hex27SCS();
+
+    case stk::topology::TET_4:
+      return new TetSCS();
+
+    case stk::topology::PYRAMID_5:
+      return new PyrSCS();
+
+    case stk::topology::WEDGE_6:
+      return new WedSCS();
+
+    case stk::topology::QUAD_4:
+      return new Quad3DSCS();
+
+    case stk::topology::QUAD_9:
+      return new Quad93DSCS();
+
+    case stk::topology::TRI_3:
+      return new Tri3DSCS();
+
+    case stk::topology::QUAD_4_2D:
+      return new Quad2DSCS();
+
+    case stk::topology::QUAD_9_2D:
+      return new Quad92DSCS();
+
+    case stk::topology::TRI_3_2D:
+      return new Tri2DSCS();
+
+    case stk::topology::LINE_2:
+      return new Edge2DSCS();
+
+    case stk::topology::LINE_3:
+      return new Edge32DSCS();
+
+    case stk::topology::SHELL_QUAD_4:
+      NaluEnv::self().naluOutputP0() << "SHELL_QUAD_4 only supported for io surface transfer applications" << std::endl;
+      return new Quad3DSCS();
+
+    case stk::topology::SHELL_TRI_3:
+      NaluEnv::self().naluOutputP0() << "SHELL_TRI_3 only supported for io surface transfer applications" << std::endl;
+      return new Tri3DSCS();
+
+    default:
+      NaluEnv::self().naluOutputP0() << "sorry, we only support hex8, tet4, pyr5, wed6,"
+                                        " quad2d, quad3d, tri2d, tri3d and edge2d surface elements" << std::endl;
+      NaluEnv::self().naluOutputP0() << "your type is " << topo.value() << std::endl;
+      break;
+
+  }
+  return nullptr;
+}
+
+//--------------------------------------------------------------------------
+//-------- factory for volume master elements ------------------------------
+//--------------------------------------------------------------------------
+MasterElement*
+MasterElement::create_volume_master_element(stk::topology topo)
+{
+  switch ( topo.value() ) {
+
+    case stk::topology::HEX_8:
+      return new HexSCV();
+
+    case stk::topology::HEX_27:
+      return new Hex27SCV();
+
+    case stk::topology::TET_4:
+      return new TetSCV();
+
+    case stk::topology::PYRAMID_5:
+      return new PyrSCV();
+
+    case stk::topology::WEDGE_6:
+      return  new WedSCV();
+
+    case stk::topology::QUAD_4_2D:
+      return new Quad2DSCV();
+
+    case stk::topology::QUAD_9_2D:
+      return new Quad92DSCV();
+
+    case stk::topology::TRI_3_2D:
+      return new Tri2DSCV();
+
+    default:
+      NaluEnv::self().naluOutputP0() << "sorry, we only support hex8, tet4, wed6, "
+                                        " pyr5, quad4, and tri3 volume elements" << std::endl;
+      NaluEnv::self().naluOutputP0() << "your type is " << topo.value() << std::endl;
+      break;
+  }
+  return nullptr;
+}
 
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------

@@ -1,4 +1,5 @@
-
+#include <gtest/gtest.h>
+#include <NaluEnv.h>
 
 #include <stk_io/StkMeshIoBroker.hpp>
 #include <stk_mesh/base/BulkData.hpp>
@@ -35,17 +36,21 @@ void fill_hex8_mesh(const std::string& meshSpec, stk::mesh::BulkData& bulk)
     io.populate_bulk_data();
 }
 
-void create_one_reference_hex8_element(stk::mesh::BulkData& bulk)
+std::ostream& nalu_out()
 {
-  // Create one -1/2:1/2 reference element for the hex8 topology
+  return sierra::nalu::NaluEnv::self().naluOutputP0();
+}
+
+void create_one_element(
+  stk::mesh::BulkData& bulk,
+  stk::topology topo, const
+  std::vector<std::vector<double>>& nodeLocations)
+{
+  // create just one element
 
    auto& meta = bulk.mesh_meta_data();
-
-   stk::topology hex8 = stk::topology::HEX_8;
-   stk::mesh::Part& block_1 = meta.declare_part_with_topology("block_1", hex8);
-
-   stk::topology quad4 = stk::topology::QUAD_4;
-   stk::mesh::PartVector allSurfaces = { &meta.declare_part_with_topology("all_surfaces", quad4) };
+   stk::mesh::Part& block_1 = meta.declare_part_with_topology("block_1", topo);
+   stk::mesh::PartVector allSurfaces = { &meta.declare_part("all_surfaces", meta.side_rank()) };
 
    // set a coordinate field
    using vector_field_type = stk::mesh::Field<double, stk::mesh::Cartesian3d>;
@@ -55,7 +60,7 @@ void create_one_reference_hex8_element(stk::mesh::BulkData& bulk)
    meta.set_coordinate_field(&coordField);
    meta.commit();
 
-   stk::mesh::EntityIdVector nodeIds(hex8.num_nodes());
+   stk::mesh::EntityIdVector nodeIds(topo.num_nodes());
    std::iota(nodeIds.begin(), nodeIds.end(), 1);
 
    bulk.modification_begin();
@@ -68,78 +73,142 @@ void create_one_reference_hex8_element(stk::mesh::BulkData& bulk)
 
    bulk.modification_end();
 
-   // coordinate map between ordinal and position for a -1/2:1/2 hex8 element
-   // from exodus standard for P=1 hex element
-   std::array<std::array<double, 3>, 8> locMap =
-   {{
-       {{-0.5,-0.5,-0.5}}, {{+0.5,-0.5,-0.5}}, {{+0.5,+0.5,-0.5}}, {{-0.5,+0.5,-0.5}},
-       {{-0.5,-0.5,+0.5}}, {{+0.5,-0.5,+0.5}}, {{+0.5,+0.5,+0.5}}, {{-0.5,+0.5,+0.5}}
-   }};
-
    const auto* nodes = bulk.begin_nodes(elem);
    for (unsigned j = 0; j  < bulk.num_nodes(elem); ++j) {
-     for (unsigned i = 0; i < 3; ++i) {
-       stk::mesh::field_data(coordField, nodes[j])[i] = locMap.at(j).at(i);
+     for (unsigned i = 0; i < topo.dimension(); ++i) {
+       stk::mesh::field_data(coordField, nodes[j])[i] = nodeLocations.at(j).at(i);
      }
    }
 }
 
+void create_one_reference_quad4_element(stk::mesh::BulkData& bulk)
+{
+  std::vector<std::vector<double>> nodeLocations =
+  {
+      {-0.5,-0.5}, {+0.5,-0.5},
+      {+0.5,+0.5}, {-0.5,+0.5}
+  };
+  create_one_element(bulk, stk::topology::QUADRILATERAL_4_2D, nodeLocations);
+}
+
+void create_one_reference_quad9_element(stk::mesh::BulkData& bulk)
+{
+  std::vector<std::vector<double>> nodeLocations =
+  {
+      {-1.0,-1.0}, {+1.0,-1.0},
+      {+1.0,+1.0}, {-1.0,+1.0},
+      {0.0, -1.0}, {+1.0, 0.0}, {0.0, +1.0}, {-1.0, 0.0},
+      {0.0, 0.0}
+  };
+  create_one_element(bulk, stk::topology::QUADRILATERAL_9_2D, nodeLocations);
+}
+
+void create_one_reference_tri3_element(stk::mesh::BulkData& bulk)
+{
+  std::vector<std::vector<double>> nodeLocations =
+  {
+      {-0.5,-0.5}, {+0.5,-0.5}, {-0.5,+0.5}
+  };
+  create_one_element(bulk, stk::topology::TRIANGLE_3_2D, nodeLocations);
+}
+
+void create_one_reference_tet4_element(stk::mesh::BulkData& bulk)
+{
+   std::vector<std::vector<double>> nodeLocations =
+   {
+       {-0.5,-0.5,-0.5}, {+0.5,-0.5,-0.5}, {-0.5,+0.5,-0.5}, {-0.5,-0.5,+0.5}
+   };
+   create_one_element(bulk, stk::topology::TET_4, nodeLocations);
+}
+
+void create_one_reference_hex8_element(stk::mesh::BulkData& bulk)
+{
+   std::vector<std::vector<double>> nodeLocations =
+   {
+       {-0.5,-0.5,-0.5}, {+0.5,-0.5,-0.5}, {+0.5,+0.5,-0.5}, {-0.5,+0.5,-0.5},
+       {-0.5,-0.5,+0.5}, {+0.5,-0.5,+0.5}, {+0.5,+0.5,+0.5}, {-0.5,+0.5,+0.5}
+   };
+   create_one_element(bulk, stk::topology::HEX_8, nodeLocations);
+}
 
 void create_one_reference_hex27_element(stk::mesh::BulkData& bulk)
 {
-  // Create one -1:1 reference element for the hex27 topology
-
-   auto& meta = bulk.mesh_meta_data();
-
-   stk::topology hex27 = stk::topology::HEX_27;
-   stk::mesh::Part& block_1 = meta.declare_part_with_topology("block_1", hex27);
-
-   stk::topology quad9 = stk::topology::QUAD_9;
-   stk::mesh::PartVector allSurfaces = { &meta.declare_part_with_topology("all_surfaces", quad9) };
-
-   // set a coordinate field
-   using vector_field_type = stk::mesh::Field<double, stk::mesh::Cartesian3d>;
-   auto& coordField = meta.declare_field<vector_field_type>(stk::topology::NODE_RANK, "coordinates");
-   stk::mesh::put_field(coordField, block_1);
-   stk::mesh::put_field(coordField, stk::mesh::selectUnion(allSurfaces));
-   meta.set_coordinate_field(&coordField);
-   meta.commit();
-
-   stk::mesh::EntityIdVector nodeIds(hex27.num_nodes());
-   std::iota(nodeIds.begin(), nodeIds.end(), 1);
-
-   bulk.modification_begin();
-
-   for (auto id : nodeIds) {
-     bulk.declare_entity(stk::topology::NODE_RANK, id);
-   }
-   auto elem = stk::mesh::declare_element (bulk, block_1, 1, nodeIds);
-   stk::mesh::create_all_sides(bulk, block_1, allSurfaces, false);
-
-   bulk.modification_end();
-
-   // coordinate map between ordinal and position for a -1:1 hex 27 element
-   // from exodus standard for P=2 hex element
-   std::array<std::array<double, 3>, 27> locMap =
-   {{
-       {{-1.0,-1.0,-1.0}}, {{+1.0,-1.0,-1.0}}, {{+1.0,+1.0,-1.0}}, {{-1.0,+1.0,-1.0}},
-       {{-1.0,-1.0,+1.0}}, {{+1.0,-1.0,+1.0}}, {{+1.0,+1.0,+1.0}}, {{-1.0,+1.0,+1.0}},
-       {{+0.0,-1.0,-1.0}}, {{+1.0,+0.0,-1.0}}, {{+0.0,+1.0,-1.0}}, {{-1.0,+0.0,-1.0}},
-       {{-1.0,-1.0,+0.0}}, {{+1.0,-1.0,+0.0}}, {{+1.0,+1.0, 0.0}}, {{-1.0,+1.0,+0.0}},
-       {{+0.0,-1.0,+1.0}}, {{+1.0,+0.0,+1.0}}, {{+0.0,+1.0,+1.0}}, {{-1.0,+0.0,+1.0}},
-       {{+0.0,+0.0,+0.0}},
-       {{+0.0,+0.0,-1.0}}, {{+0.0,+0.0,+1.0}},
-       {{-1.0,+0.0,+0.0}}, {{+1.0,+0.0,+0.0}},
-       {{+0.0,-1.0,+0.0}}, {{+0.0,+1.0,+0.0}}
-   }};
-
-   const auto* nodes = bulk.begin_nodes(elem);
-   for (unsigned j = 0; j  < bulk.num_nodes(elem); ++j) {
-     for (unsigned i = 0; i < 3; ++i) {
-       stk::mesh::field_data(coordField, nodes[j])[i] = locMap.at(j).at(i);
-     }
-   }
+   std::vector<std::vector<double>> nodeLocations =
+   {
+       {-1.0,-1.0,-1.0}, {+1.0,-1.0,-1.0}, {+1.0,+1.0,-1.0}, {-1.0,+1.0,-1.0},
+       {-1.0,-1.0,+1.0}, {+1.0,-1.0,+1.0}, {+1.0,+1.0,+1.0}, {-1.0,+1.0,+1.0},
+       {+0.0,-1.0,-1.0}, {+1.0,+0.0,-1.0}, {+0.0,+1.0,-1.0}, {-1.0,+0.0,-1.0},
+       {-1.0,-1.0,+0.0}, {+1.0,-1.0,+0.0}, {+1.0,+1.0, 0.0}, {-1.0,+1.0,+0.0},
+       {+0.0,-1.0,+1.0}, {+1.0,+0.0,+1.0}, {+0.0,+1.0,+1.0}, {-1.0,+0.0,+1.0},
+       {+0.0,+0.0,+0.0},
+       {+0.0,+0.0,-1.0}, {+0.0,+0.0,+1.0},
+       {-1.0,+0.0,+0.0}, {+1.0,+0.0,+0.0},
+       {+0.0,-1.0,+0.0}, {+0.0,+1.0,+0.0}
+   };
+   create_one_element(bulk, stk::topology::HEX_27, nodeLocations);
 }
+
+void create_one_reference_pyramid5_element(stk::mesh::BulkData& bulk)
+{
+  std::vector<std::vector<double>> nodeLocations =
+  {
+      {-1.0, -1.0, +0.0}, {+1.0, -1.0, +0.0}, {+1.0, +1.0, +0.0}, {-1.0, +1.0, +0.0},
+      {0.0, 0.0, +1.0}
+  };
+   create_one_element(bulk, stk::topology::PYRAMID_5, nodeLocations);
+}
+
+void create_one_reference_wedge6_element(stk::mesh::BulkData& bulk)
+{
+   std::vector<std::vector<double>> nodeLocations =
+   {
+       {-0.5,-0.5,-1.0}, {+0.5,-0.5,-1.0}, {-0.5,+0.5,-1.0},
+       {-0.5,-0.5,+1.0}, {+0.5,-0.5,+1.0}, {-0.5,+0.5,+1.0}
+   };
+   create_one_element(bulk, stk::topology::WEDGE_6, nodeLocations);
+}
+
+void create_one_reference_element(stk::mesh::BulkData& bulk, stk::topology topo)
+{
+  switch (topo.value())
+  {
+    case stk::topology::TRIANGLE_3_2D:
+      create_one_reference_tri3_element(bulk);
+      break;
+
+    case stk::topology::QUADRILATERAL_4_2D:
+      create_one_reference_quad4_element(bulk);
+      break;
+
+    case stk::topology::QUADRILATERAL_9_2D:
+      create_one_reference_quad9_element(bulk);
+      break;
+
+    case stk::topology::TETRAHEDRON_4:
+      create_one_reference_tet4_element(bulk);
+      break;
+
+    case stk::topology::PYRAMID_5:
+      create_one_reference_pyramid5_element(bulk);
+      break;
+
+    case stk::topology::WEDGE_6:
+      create_one_reference_wedge6_element(bulk);
+      break;
+
+    case stk::topology::HEXAHEDRON_8:
+      create_one_reference_hex8_element(bulk);
+      break;
+
+    case stk::topology::HEXAHEDRON_27:
+      create_one_reference_hex27_element(bulk);
+      break;
+
+    default: FAIL() << " Element type " + topo.name() + " not implemented";
+  }
+}
+
+
 
 }
 
