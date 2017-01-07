@@ -73,9 +73,6 @@
 #include <MomentumMassBackwardEulerNodeSuppAlg.h>
 #include <MomentumMassBDF2NodeSuppAlg.h>
 #include <MomentumMassElemSuppAlg.h>
-#include <MomentumKeNSOElemSuppAlg.h>
-#include <MomentumNSOElemSuppAlg.h>
-#include <MomentumNSOGradElemSuppAlg.h>
 #include <MomentumAdvDiffElemSuppAlg.h>
 #include <NaluEnv.h>
 #include <NaluParsing.h>
@@ -97,6 +94,11 @@
 #include <TurbViscSmagorinskyAlgorithm.h>
 #include <TurbViscSSTAlgorithm.h>
 #include <TurbViscWaleAlgorithm.h>
+
+// nso
+#include <nso/MomentumNSOKeElemSuppAlg.h>
+#include <nso/MomentumNSOElemSuppAlg.h>
+#include <nso/MomentumNSOGradElemSuppAlg.h>
 
 // user function
 #include <user_functions/ConvectingTaylorVortexVelocityAuxFunction.h>
@@ -1059,10 +1061,10 @@ MomentumEquationSystem::register_interior_algorithm(
           suppAlg = new MomentumNSOElemSuppAlg(realm_, velocity_, dudx_, realm_.is_turbulent() ? evisc_ : visc_, 1.0, 1.0);
         }
         else if (sourceName == "NSO_2ND_KE" ) {
-          suppAlg = new MomentumKeNSOElemSuppAlg(realm_, velocity_, dudx_, 0.0);
+          suppAlg = new MomentumNSOKeElemSuppAlg(realm_, velocity_, dudx_, 0.0);
         }
         else if (sourceName == "NSO_4TH_KE" ) {
-          suppAlg = new MomentumKeNSOElemSuppAlg(realm_, velocity_, dudx_, 1.0);
+          suppAlg = new MomentumNSOKeElemSuppAlg(realm_, velocity_, dudx_, 1.0);
         }
         else if (sourceName == "NSO_2ND_GRAD" ) {
           suppAlg = new MomentumNSOGradElemSuppAlg(realm_, velocity_, dudx_, 0.0);
