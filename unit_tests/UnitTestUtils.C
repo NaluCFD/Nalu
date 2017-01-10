@@ -66,7 +66,7 @@ void create_one_element(
    bulk.modification_begin();
 
    for (auto id : nodeIds) {
-     bulk.declare_entity(stk::topology::NODE_RANK, id);
+     bulk.declare_entity(stk::topology::NODE_RANK, id, {});
    }
    auto elem = stk::mesh::declare_element (bulk, block_1, 1, nodeIds);
    stk::mesh::create_all_sides(bulk, block_1, allSurfaces, false);
