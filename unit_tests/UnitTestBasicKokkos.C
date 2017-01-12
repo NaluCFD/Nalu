@@ -25,6 +25,7 @@ TEST(BasicKokkos, discover_execution_space)
 #endif
         std::cout << "Default execution space info: ";
         Kokkos::DefaultExecutionSpace::print_configuration(std::cout);
+        std::cout<<"\n concurrency: "<<Kokkos::DefaultExecutionSpace::concurrency()<<std::endl;
 
         std::cout << std::endl;
     }
