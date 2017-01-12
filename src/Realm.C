@@ -879,8 +879,30 @@ Realm::enforce_bc_on_exposed_faces()
       stk::mesh::Bucket & b = **ib ;
       const stk::mesh::Bucket::size_type length   = b.size();
       for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
-        // report offending set of faces; okay if to P0
-        NaluEnv::self().naluOutputP0() << "Face Id: " << bulkData_->identifier(b[k]) << " is not properly covered" << std::endl;
+        // extract the face
+        stk::mesh::Entity face = b[k];
+        
+        // report the offending face id
+        NaluEnv::self().naluOutput() << "Face Id: " << bulkData_->identifier(face) << " is not properly covered" << std::endl;
+      
+        // extract face nodes
+        const stk::mesh::Entity* face_node_rels = bulkData_->begin_nodes(face); 
+        const unsigned numberOfNodes = bulkData_->num_nodes(face);
+        NaluEnv::self().naluOutput() << " Number of nodes connected to this face is: " << numberOfNodes << std::endl;
+        for ( unsigned k = 0; k < numberOfNodes; ++k ) {
+          stk::mesh::Entity node = face_node_rels[k];
+          NaluEnv::self().naluOutput() << " attached node Id: " << bulkData_->identifier(node) << std::endl;
+        }
+      
+        // extract the element relations to report to the user and the number of elements connected
+        const stk::mesh::Entity* face_elem_rels = bulkData_->begin_elements(face);
+        const unsigned numberOfElems = bulkData_->num_elements(face);
+        NaluEnv::self().naluOutput() << " Number of elements connected to this face is: " << numberOfElems << std::endl;
+
+        for ( unsigned k = 0; k < numberOfElems; ++k ) {
+          stk::mesh::Entity element = face_elem_rels[k];
+          NaluEnv::self().naluOutput() << " attached element Id: " << bulkData_->identifier(element) << std::endl;
+        }
       }
     }
     throw std::runtime_error("Realm::Error: Please aply bc to problematic exposed surfaces ");
