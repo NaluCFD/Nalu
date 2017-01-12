@@ -23,28 +23,6 @@ typedef stk::mesh::Field<double> ScalarFieldType;
 typedef stk::mesh::Field<double,stk::mesh::Cartesian> VectorFieldType;
 
 sierra::nalu::MasterElement *
-get_volume_master_element(const stk::topology & theTopo)
-{
-  sierra::nalu::MasterElement *theElem = NULL;
-
-  static std::map<stk::topology, sierra::nalu::MasterElement*> s_topo_masterelem_map;
-
-  std::map<stk::topology, sierra::nalu::MasterElement *>::iterator it = 
-    s_topo_masterelem_map.find(theTopo);
-  if ( it == s_topo_masterelem_map.end() ) {
-    theElem = sierra::nalu::MasterElement::create_volume_master_element(theTopo);
-    ThrowRequire(theElem != nullptr);
-
-    s_topo_masterelem_map[theTopo] = theElem;
-  }
-  else {
-    theElem = it->second;
-  }
-
-  return theElem;
-}
-
-sierra::nalu::MasterElement *
 get_surface_master_element(const stk::topology & theTopo)
 {
   sierra::nalu::MasterElement *theElem = NULL;
@@ -100,15 +78,20 @@ SharedMemView<double**> get_shmem_view_2D(const TeamHandleType& team, size_t len
 
 //============= loop abstraction functions ==========================
 
-template<class LOOP_BODY>
-void bucket_loop(const stk::mesh::BucketVector& buckets, LOOP_BODY inner_loop_body)
+template<class OUTER_LOOP_BODY, class INNER_LOOP_BODY>
+void bucket_loop_serial_only(const stk::mesh::BucketVector& buckets, const OUTER_LOOP_BODY& outer_loop_body, const INNER_LOOP_BODY& inner_loop_body)
 {
     for(const stk::mesh::Bucket* bptr : buckets)
     {
         const stk::mesh::Bucket& bkt = *bptr;
+        stk::topology topo = bkt.topology();
+        sierra::nalu::MasterElement* meSCS = get_surface_master_element(topo);
+
+        outer_loop_body(topo,*meSCS);
+
         for(size_t j=0; j<bkt.size(); ++j)
         {
-            inner_loop_body(bkt[j]);
+            inner_loop_body(bkt[j], topo, *meSCS);
         }
     }
 }
@@ -139,33 +122,15 @@ void kokkos_thread_team_bucket_loop(const stk::mesh::BucketVector& buckets, LOOP
     });
 }
 
-template<class OUTER_LOOP_BODY, class LOOP_BODY>
-void kokkos_thread_team_bucket_loop(const stk::mesh::BucketVector& buckets,
-                                    OUTER_LOOP_BODY outer_loop_body, LOOP_BODY inner_loop_body)
+template<class LOOP_BODY>
+void kokkos_thread_team_bucket_loop_with_topo(const stk::mesh::BucketVector& buckets,
+                                    const LOOP_BODY& inner_loop_body)
 {
     Kokkos::parallel_for(Kokkos::TeamPolicy<Kokkos::DefaultExecutionSpace>(buckets.size(), Kokkos::AUTO), KOKKOS_LAMBDA(const TeamHandleType& team)
     {
         const stk::mesh::Bucket& bkt = *buckets[team.league_rank()];
         stk::topology topo = bkt.topology();
         sierra::nalu::MasterElement* meSCS = get_surface_master_element(topo);
-        outer_loop_body(topo,*meSCS);
-        Kokkos::parallel_for(Kokkos::TeamThreadRange(team, bkt.size()), [&](const size_t& j)
-        {
-            inner_loop_body(bkt[j], topo, *meSCS);
-        });
-    });
-}
-
-template<class OUTER_LOOP_BODY, class LOOP_BODY>
-void kokkos_thread_team_shared_mem_bucket_loop(DeviceTeamPolicy& teamPolicy, const stk::mesh::BucketVector& buckets,
-                                    OUTER_LOOP_BODY outer_loop_body, LOOP_BODY inner_loop_body)
-{
-    Kokkos::parallel_for(teamPolicy, KOKKOS_LAMBDA(const TeamHandleType& team)
-    {
-        const stk::mesh::Bucket& bkt = *buckets[team.league_rank()];
-        stk::topology topo = bkt.topology();
-        sierra::nalu::MasterElement* meSCS = get_surface_master_element(topo);
-        outer_loop_body(team, topo, *meSCS);
         Kokkos::parallel_for(Kokkos::TeamThreadRange(team, bkt.size()), [&](const size_t& j)
         {
             inner_loop_body(bkt[j], topo, *meSCS);
@@ -209,7 +174,7 @@ double initialize_linear_scalar_field(
   }
 
   const auto& meta = bulk.mesh_meta_data();
-  EXPECT_EQ(meta.spatial_dimension(), 3);
+  EXPECT_EQ(meta.spatial_dimension(), 3u);
 
   const stk::mesh::Selector selector = meta.locally_owned_part() | meta.globally_shared_part();
   const auto& buckets = bulk.get_buckets(stk::topology::NODE_RANK, selector);
@@ -298,12 +263,15 @@ void find_max_nodes_and_ips(const stk::mesh::BucketVector& buckets,
 {
   maxNodesPerElement = 0;
   maxScsIp = 0;
+  size_t numEntities = 0;
   for(const stk::mesh::Bucket* bptr : buckets) {
     stk::topology topo = bptr->topology();
     maxNodesPerElement = std::max(maxNodesPerElement, (int)topo.num_nodes());
     sierra::nalu::MasterElement *meSCS = get_surface_master_element(topo);
     maxScsIp = std::max(maxScsIp, meSCS->numIntPoints_);
+    numEntities += bptr->size();
   }
+  std::cout<<"num entities: "<<numEntities<<std::endl;
 }
 
 //=========== Test class that mimics an element algorithm ==============
@@ -351,7 +319,7 @@ public:
       find_max_nodes_and_ips(elemBuckets, maxNodesPerElement, maxNumScsIp);
       resizer(maxNodesPerElement, maxNumScsIp);
 
-      kokkos_thread_team_bucket_loop(elemBuckets,
+      bucket_loop_serial_only(elemBuckets,
           [&](stk::topology topo, sierra::nalu::MasterElement& meSCS)
           {
               const int nodesPerElem = topo.num_nodes();
@@ -417,6 +385,125 @@ private:
   const VectorFieldType* coordField;
 };
 
+
+//======= templated element kernel function ==================
+
+template<int nodesPerElem, int numScsIp>
+void element_discrete_laplacian_kernel_3d(stk::mesh::BulkData& bulkData, stk::mesh::Entity elem,
+                       sierra::nalu::MasterElement& meSCS,
+                       ScalarFieldType* discreteLaplacianOfPressure,
+                       ScalarFieldType* nodalPressureField,
+                       const VectorFieldType* coordField)
+{
+    const int nDim = 3;
+    const stk::mesh::Entity* elemNodes = bulkData.begin_nodes(elem);
+
+    double p_elemNodeCoords[nodesPerElem*nDim];
+    double p_elemNodePressures[nodesPerElem];
+
+    double p_scs_areav[numScsIp*nDim];
+    double p_dndx[nDim*numScsIp*nodesPerElem];
+    double p_deriv[nDim*numScsIp*nodesPerElem];
+    double p_det_j[numScsIp];
+    const int* lrscv = meSCS.adjacentNodes();
+
+    for(int n=0; n<nodesPerElem; ++n) {
+        const double* nodeCoords = stk::mesh::field_data(*coordField, elemNodes[n]);
+
+        const int nodeOffset = n*nDim;
+        for(int d=0; d<nDim; ++d) {
+            p_elemNodeCoords[nodeOffset+d] = nodeCoords[d];
+        }
+        const double* nodePressure = stk::mesh::field_data(*nodalPressureField, elemNodes[n]);
+        p_elemNodePressures[n] = nodePressure[0];
+    }
+
+    double scs_error = 0;
+    meSCS.determinant(1, p_elemNodeCoords, p_scs_areav, &scs_error);
+    meSCS.grad_op(1, p_elemNodeCoords, p_dndx, p_deriv, p_det_j, &scs_error);
+
+    for (int ip = 0; ip < numScsIp; ++ip ) {
+
+      double dpdxIp = 0.0;
+      const int ipOffset = nDim*nodesPerElem*ip;
+      for ( int ic = 0; ic < nodesPerElem; ++ic) {
+        const int offSetDnDx = ipOffset + ic*nDim;
+        for ( int j = 0; j < nDim; ++j ) {
+          dpdxIp += p_dndx[offSetDnDx+j]*p_elemNodePressures[ic]*p_scs_areav[ip*nDim+j];
+        }
+      }
+      EXPECT_TRUE(std::abs(dpdxIp) > tol);
+
+      const stk::mesh::Entity lNode = elemNodes[lrscv[2*ip+0]];
+      const stk::mesh::Entity rNode = elemNodes[lrscv[2*ip+1]];
+
+      Kokkos::atomic_add(stk::mesh::field_data(*discreteLaplacianOfPressure, lNode), dpdxIp);
+      Kokkos::atomic_add(stk::mesh::field_data(*discreteLaplacianOfPressure, rNode), -dpdxIp);
+    }
+}
+
+//=========== Test class that mimics an element algorithm ==============
+//=========== and uses a templated kernel (with compile-time scratch arrays)  ==============
+//
+class TestElemAlgorithmWithTemplate
+{
+public:
+  TestElemAlgorithmWithTemplate(stk::mesh::BulkData& bulk, const stk::mesh::PartVector& partVec,
+                    const VectorFieldType* coord, ScalarFieldType* discreteLaplacian,
+                    ScalarFieldType* nodalPressure)
+  : bulkData_(bulk), partVec_(partVec),
+    discreteLaplacianOfPressure(discreteLaplacian),
+    nodalPressureField(nodalPressure), coordField(coord)
+  {}
+
+  void execute()
+  {
+      const stk::mesh::MetaData& meta = bulkData_.mesh_meta_data();
+  
+      const stk::mesh::BucketVector& elemBuckets = bulkData_.get_buckets(stk::topology::ELEM_RANK, meta.locally_owned_part());
+  
+      kokkos_thread_team_bucket_loop_with_topo(elemBuckets,
+          [&](stk::mesh::Entity elem, stk::topology topo, sierra::nalu::MasterElement& meSCS)
+          {
+             //this is an incomplete switch, doesn't handle all possible topologies...
+             //just an illustration for this test.
+              switch(topo) {
+              case stk::topology::HEX_8:
+                  element_discrete_laplacian_kernel_3d<8,12>(bulkData_, elem, meSCS,
+                       discreteLaplacianOfPressure, nodalPressureField, coordField);
+                  break;
+              case stk::topology::HEX_27:
+                  element_discrete_laplacian_kernel_3d<27,216>(bulkData_, elem, meSCS,
+                       discreteLaplacianOfPressure, nodalPressureField, coordField);
+                  break;
+              case stk::topology::TET_4:
+                  element_discrete_laplacian_kernel_3d<4,6>(bulkData_, elem, meSCS,
+                       discreteLaplacianOfPressure, nodalPressureField, coordField);
+                  break;
+              case stk::topology::PYRAMID_5:
+                  element_discrete_laplacian_kernel_3d<5,8>(bulkData_, elem, meSCS,
+                       discreteLaplacianOfPressure, nodalPressureField, coordField);
+                  break;
+              case stk::topology::WEDGE_6:
+                  element_discrete_laplacian_kernel_3d<6,9>(bulkData_, elem, meSCS,
+                       discreteLaplacianOfPressure, nodalPressureField, coordField);
+                  break;
+              default:
+                  std::cerr<<"ERROR! Unhandled topology: "<<topo<<std::endl;
+                  break;
+              }
+          }
+      );
+  }
+
+private:
+  stk::mesh::BulkData& bulkData_;
+  const stk::mesh::PartVector& partVec_;
+  ScalarFieldType* discreteLaplacianOfPressure;
+  ScalarFieldType* nodalPressureField;
+  const VectorFieldType* coordField;
+};
+
 //=========== Test class that mimics an element algorithm ==============
 //=========== and uses Kokkos::views for scratch arrays    ==============
 //
@@ -433,54 +520,54 @@ public:
 
   void execute()
   {
-      double scs_error = 0.0;
-      const stk::mesh::MetaData& meta = bulkData_.mesh_meta_data();
-  
-      const int nDim = meta.spatial_dimension();
-  
-      SharedMemView<double**> elemNodeCoords;
-      SharedMemView<double*> elemNodePressures;
-  
-      SharedMemView<double**> scs_areav;
-      SharedMemView<double**> dndx;
-      SharedMemView<double**> deriv;
-      SharedMemView<double*> det_j;
-  
-      const stk::mesh::BucketVector& elemBuckets = bulkData_.get_buckets(stk::topology::ELEM_RANK, meta.locally_owned_part());
-  
-      int maxNodesPerElement = 0, maxNumScsIp = 0;
-      find_max_nodes_and_ips(elemBuckets, maxNodesPerElement, maxNumScsIp);
+    double scs_error = 0.0;
+    const stk::mesh::MetaData& meta = bulkData_.mesh_meta_data();
 
-      const int bytes_per_team = SharedMemView<double**>::shmem_size(maxNumScsIp, maxNodesPerElement);
-      const int bytes_per_thread =
-         SharedMemView<double**>::shmem_size(maxNodesPerElement, nDim) +
-         SharedMemView<double*>::shmem_size(maxNodesPerElement) +
-         SharedMemView<double**>::shmem_size(maxNumScsIp, nDim) +
-         SharedMemView<double**>::shmem_size(maxNumScsIp, maxNodesPerElement*nDim) +
-         SharedMemView<double**>::shmem_size(maxNumScsIp, maxNodesPerElement*nDim) +
-         SharedMemView<double*>::shmem_size(maxNumScsIp);
+    const int nDim = meta.spatial_dimension();
 
-      auto team_exec = get_team_policy(elemBuckets.size(), bytes_per_team, bytes_per_thread);
-      kokkos_thread_team_shared_mem_bucket_loop(team_exec, elemBuckets,
-          [&](const TeamHandleType& team, stk::topology topo, sierra::nalu::MasterElement& meSCS)
-          {
-              const int nodesPerElem = topo.num_nodes();
-              const int numScsIp = meSCS.numIntPoints_;
-  
-              elemNodeCoords = get_shmem_view_2D(team, nodesPerElem, nDim);
-              elemNodePressures = get_shmem_view_1D(team, nodesPerElem);
-              scs_areav = get_shmem_view_2D(team, numScsIp, nDim);
-              dndx = get_shmem_view_2D(team, numScsIp, nodesPerElem*nDim);
-              deriv = get_shmem_view_2D(team, numScsIp, nodesPerElem*nDim);
-              det_j = get_shmem_view_1D(team, numScsIp);
-          }
-          ,
-          [&](stk::mesh::Entity elem, stk::topology topo, sierra::nalu::MasterElement& meSCS)
-          {
+    const stk::mesh::BucketVector& elemBuckets = bulkData_.get_buckets(stk::topology::ELEM_RANK, meta.locally_owned_part());
+
+    int maxNodesPerElement = 0, maxNumScsIp = 0;
+    find_max_nodes_and_ips(elemBuckets, maxNodesPerElement, maxNumScsIp);
+
+    const int bytes_per_team = 0;
+    const int bytes_per_thread =
+       SharedMemView<double**>::shmem_size(maxNodesPerElement, nDim) +
+       SharedMemView<double*>::shmem_size(maxNodesPerElement) +
+       SharedMemView<double**>::shmem_size(maxNumScsIp, nDim) +
+       SharedMemView<double**>::shmem_size(maxNumScsIp, maxNodesPerElement*nDim) +
+       SharedMemView<double**>::shmem_size(maxNumScsIp, maxNodesPerElement*nDim) +
+       SharedMemView<double*>::shmem_size(maxNumScsIp);
+
+    auto team_exec = get_team_policy(elemBuckets.size(), bytes_per_team, bytes_per_thread);
+    Kokkos::parallel_for(team_exec, [&](const TeamHandleType& team)
+    {
+        const stk::mesh::Bucket& bkt = *elemBuckets[team.league_rank()];
+        stk::topology topo = bkt.topology();
+        sierra::nalu::MasterElement& meSCS = *get_surface_master_element(topo);
+
+        const int nodesPerElem = topo.num_nodes();
+        const int numScsIp = meSCS.numIntPoints_;
+
+        SharedMemView<double**> elemNodeCoords;
+        SharedMemView<double*> elemNodePressures;
+     
+        SharedMemView<double**> scs_areav;
+        SharedMemView<double**> dndx;
+        SharedMemView<double**> deriv;
+        SharedMemView<double*> det_j;
+
+        elemNodeCoords = get_shmem_view_2D(team, nodesPerElem, nDim);
+        elemNodePressures = get_shmem_view_1D(team, nodesPerElem);
+        scs_areav = get_shmem_view_2D(team, numScsIp, nDim);
+        dndx = get_shmem_view_2D(team, numScsIp, nodesPerElem*nDim);
+        deriv = get_shmem_view_2D(team, numScsIp, nodesPerElem*nDim);
+        det_j = get_shmem_view_1D(team, numScsIp);
+
+        Kokkos::parallel_for(Kokkos::TeamThreadRange(team, bkt.size()), [&](const size_t& jj)
+        {
+             stk::mesh::Entity elem = bkt[jj];
               const stk::mesh::Entity* elemNodes = bulkData_.begin_nodes(elem);
-              const int nodesPerElem = topo.num_nodes();
-              const int numScsIp = meSCS.numIntPoints_;
-
               for(int n=0; n<nodesPerElem; ++n) {
                   const double* nodeCoords = stk::mesh::field_data(*coordField, elemNodes[n]);
       
@@ -511,8 +598,8 @@ public:
                 Kokkos::atomic_add(stk::mesh::field_data(*discreteLaplacianOfPressure, lNode), dpdxIp);
                 Kokkos::atomic_add(stk::mesh::field_data(*discreteLaplacianOfPressure, rNode), -dpdxIp);
               }
-          }
-      );
+        });
+    });
   }
 
 private:
@@ -530,6 +617,18 @@ TEST_F(Hex8Mesh, indexing_vectors)
     fill_mesh_and_initialize_test_fields();
 
     TestElemAlgorithmWithVectors testAlgorithm(bulk, partVec, coordField,
+                          discreteLaplacianOfPressure, nodalPressureField);
+
+    testAlgorithm.execute();
+
+    check_discrete_laplacian(exactLaplacian);
+}
+
+TEST_F(Hex8Mesh, indexing_template_raw_arrays)
+{
+    fill_mesh_and_initialize_test_fields();
+
+    TestElemAlgorithmWithTemplate testAlgorithm(bulk, partVec, coordField,
                           discreteLaplacianOfPressure, nodalPressureField);
 
     testAlgorithm.execute();
