@@ -89,7 +89,9 @@ public:
   bool system_is_converged();
   double provide_scaled_norm();
   double provide_norm();
-  
+
+  const bool managePNG_;
+
   const int numMassFraction_;
   
   GenericFieldType *massFraction_;

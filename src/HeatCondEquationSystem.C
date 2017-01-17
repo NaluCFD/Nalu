@@ -53,6 +53,8 @@
 #include <user_functions/SteadyThermalContactAuxFunction.h>
 #include <user_functions/SteadyThermalContactSrcNodeSuppAlg.h>
 #include <user_functions/SteadyThermalContactSrcElemSuppAlg.h>
+#include <user_functions/SteadyThermal3dContactAuxFunction.h>
+#include <user_functions/SteadyThermal3dContactSrcElemSuppAlg.h>
 
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
@@ -329,6 +331,9 @@ HeatCondEquationSystem::register_interior_algorithm(
         if (sourceName == "steady_2d_thermal" ) {
           suppAlg = new SteadyThermalContactSrcElemSuppAlg(realm_);
         }
+        else if (sourceName == "steady_3d_thermal" ) {
+          suppAlg = new SteadyThermal3dContactSrcElemSuppAlg(realm_);
+        }
         else if (sourceName == "FEM" ) {
           suppAlg = new HeatCondFemElemSuppAlg(realm_);
         }
@@ -476,8 +481,11 @@ HeatCondEquationSystem::register_wall_bc(
       if ( fcnName == "steady_2d_thermal" ) {
         theAuxFunc = new SteadyThermalContactAuxFunction();
       }
+      else if ( fcnName == "steady_3d_thermal" ) {
+        theAuxFunc = new SteadyThermal3dContactAuxFunction();
+      }
       else {
-        throw std::runtime_error("Only steady_2d_thermal user functions supported");
+        throw std::runtime_error("Only steady_2d/3d_thermal user functions supported");
       }
     }
     
@@ -753,7 +761,6 @@ HeatCondEquationSystem::register_non_conformal_bc(
   stk::mesh::Part *part,
   const stk::topology &/*theTopo*/)
 {
-  
   const AlgorithmType algType = NON_CONFORMAL;
 
   // np1
@@ -761,29 +768,31 @@ HeatCondEquationSystem::register_non_conformal_bc(
   VectorFieldType &dtdxNone = dtdx_->field_of_state(stk::mesh::StateNone);
 
   // non-solver; contribution to dtdx; DG algorithm decides on locations for integration points
-  if ( edgeNodalGradient_ ) {    
-    std::map<AlgorithmType, Algorithm *>::iterator it
-      = assembleNodalGradAlgDriver_->algMap_.find(algType);
-    if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-      Algorithm *theAlg 
-        = new AssembleNodalGradBoundaryAlgorithm(realm_, part, &tempNp1, &dtdxNone, edgeNodalGradient_);
-      assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+  if ( !managePNG_ ) {
+    if ( edgeNodalGradient_ ) {    
+      std::map<AlgorithmType, Algorithm *>::iterator it
+        = assembleNodalGradAlgDriver_->algMap_.find(algType);
+      if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+        Algorithm *theAlg 
+          = new AssembleNodalGradBoundaryAlgorithm(realm_, part, &tempNp1, &dtdxNone, edgeNodalGradient_);
+        assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+      }
+      else {
+        it->second->partVec_.push_back(part);
+      }
     }
     else {
-      it->second->partVec_.push_back(part);
-    }
-  }
-  else {
-    // proceed with DG
-    std::map<AlgorithmType, Algorithm *>::iterator it
-      = assembleNodalGradAlgDriver_->algMap_.find(algType);
-    if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-      AssembleNodalGradNonConformalAlgorithm *theAlg 
-        = new AssembleNodalGradNonConformalAlgorithm(realm_, part, &tempNp1, &dtdxNone);
-      assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
-    }
-    else {
-      it->second->partVec_.push_back(part);
+      // proceed with DG
+      std::map<AlgorithmType, Algorithm *>::iterator it
+        = assembleNodalGradAlgDriver_->algMap_.find(algType);
+      if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+        AssembleNodalGradNonConformalAlgorithm *theAlg 
+          = new AssembleNodalGradNonConformalAlgorithm(realm_, part, &tempNp1, &dtdxNone);
+        assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+      }
+      else {
+        it->second->partVec_.push_back(part);
+      }
     }
   }
   
@@ -931,8 +940,12 @@ HeatCondEquationSystem::register_initial_condition_fcn(
       // create the function
       theAuxFunc = new SteadyThermalContactAuxFunction();      
     }
+    else if ( fcnName == "steady_3d_thermal" ) {
+      // create the function
+      theAuxFunc = new SteadyThermal3dContactAuxFunction();      
+    }
     else {
-      throw std::runtime_error("HeatCondEquationSystem::register_initial_condition_fcn: steady_2d_thermal only supported");
+      throw std::runtime_error("HeatCondEquationSystem::register_initial_condition_fcn: steady_2d/3d_thermal only supported");
     }
     
     // create the algorithm

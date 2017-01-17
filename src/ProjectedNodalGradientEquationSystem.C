@@ -10,6 +10,7 @@
 
 #include <AssemblePNGElemSolverAlgorithm.h>
 #include <AssemblePNGBoundarySolverAlgorithm.h>
+#include <AssemblePNGNonConformalSolverAlgorithm.h>
 #include <EquationSystem.h>
 #include <EquationSystems.h>
 #include <Enums.h>
@@ -251,7 +252,6 @@ ProjectedNodalGradientEquationSystem::register_symmetry_bc(
   const stk::topology &/*theTopo*/,
   const SymmetryBoundaryConditionData &/*symmetryBCData*/)
 {
-
   const AlgorithmType algType = SYMMETRY;
 
   // extract the field name for this bc type
@@ -274,10 +274,23 @@ ProjectedNodalGradientEquationSystem::register_symmetry_bc(
 //--------------------------------------------------------------------------
 void
 ProjectedNodalGradientEquationSystem::register_non_conformal_bc(
-  stk::mesh::Part */*part*/,
+  stk::mesh::Part *part,
   const stk::topology &/*theTopo*/)
 {
-  throw std::runtime_error("ProjectedNodalGradientEquationSystem::register_non_conformal_bc: bc not supported");
+  // FIX THIS
+  const AlgorithmType algType = NON_CONFORMAL;
+
+  // create lhs/rhs algorithm;
+  std::map<AlgorithmType, SolverAlgorithm *>::iterator its =
+    solverAlgDriver_->solverAlgMap_.find(algType);
+  if ( its == solverAlgDriver_->solverAlgMap_.end() ) {
+    AssemblePNGNonConformalSolverAlgorithm *theAlg
+      = new AssemblePNGNonConformalSolverAlgorithm(realm_, part, this, independentDofName_, dofName_ );
+    solverAlgDriver_->solverAlgMap_[algType] = theAlg;
+  }
+  else {
+    its->second->partVec_.push_back(part);
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -331,7 +344,7 @@ ProjectedNodalGradientEquationSystem::solve_and_update()
 }
 
 //--------------------------------------------------------------------------
-//-------- solve_and_update_external ------------------------------------------------
+//-------- solve_and_update_external ---------------------------------------
 //--------------------------------------------------------------------------
 void
 ProjectedNodalGradientEquationSystem::solve_and_update_external()

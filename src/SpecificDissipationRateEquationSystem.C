@@ -86,6 +86,7 @@ namespace nalu{
 SpecificDissipationRateEquationSystem::SpecificDissipationRateEquationSystem(
   EquationSystems& eqSystems)
   : EquationSystem(eqSystems, "SpecDissRateEQS"),
+    managePNG_(realm_.get_consistent_mass_matrix_png("specific_dissipation_rate")),
     sdr_(NULL),
     dwdx_(NULL),
     wTmp_(NULL),
@@ -109,6 +110,10 @@ SpecificDissipationRateEquationSystem::SpecificDissipationRateEquationSystem(
 
   // push back EQ to manager
   realm_.push_equation_to_systems(this);
+
+  // create projected nodal gradient equation system
+  if ( managePNG_ )
+    throw std::runtime_error("SpecificDissipationRateEquationSystem::Error managePNG is not complete");
 }
 
 //--------------------------------------------------------------------------

@@ -1724,29 +1724,31 @@ MomentumEquationSystem::register_non_conformal_bc(
   stk::mesh::put_field(*mdotBip, *part, numScsBip );
 
   // non-solver; contribution to Gjui; DG algorithm decides on locations for integration points
-  if ( edgeNodalGradient_ ) {
-    std::map<AlgorithmType, Algorithm *>::iterator it
-      = assembleNodalGradAlgDriver_->algMap_.find(algType);
-    if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-      Algorithm *theAlg
-        = new AssembleNodalGradUBoundaryAlgorithm(realm_, part, &velocityNp1, &dudxNone, edgeNodalGradient_);
-      assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+  if ( !managePNG_ ) {
+    if ( edgeNodalGradient_ ) {
+      std::map<AlgorithmType, Algorithm *>::iterator it
+        = assembleNodalGradAlgDriver_->algMap_.find(algType);
+      if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+        Algorithm *theAlg
+          = new AssembleNodalGradUBoundaryAlgorithm(realm_, part, &velocityNp1, &dudxNone, edgeNodalGradient_);
+        assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+      }
+      else {
+        it->second->partVec_.push_back(part);
+      }
     }
-    else {
-      it->second->partVec_.push_back(part);
-    }
-  }
-  else { 
-    // proceed with DG
-    std::map<AlgorithmType, Algorithm *>::iterator it
-      = assembleNodalGradAlgDriver_->algMap_.find(algType);
-    if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-      AssembleNodalGradUNonConformalAlgorithm *theAlg 
-        = new AssembleNodalGradUNonConformalAlgorithm(realm_, part, &velocityNp1, &dudxNone);
-      assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
-    }
-    else {
-      it->second->partVec_.push_back(part);
+    else { 
+      // proceed with DG
+      std::map<AlgorithmType, Algorithm *>::iterator it
+        = assembleNodalGradAlgDriver_->algMap_.find(algType);
+      if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+        AssembleNodalGradUNonConformalAlgorithm *theAlg 
+          = new AssembleNodalGradUNonConformalAlgorithm(realm_, part, &velocityNp1, &dudxNone);
+        assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+      }
+      else {
+        it->second->partVec_.push_back(part);
+      }
     }
   }
   
@@ -2515,32 +2517,34 @@ ContinuityEquationSystem::register_non_conformal_bc(
   stk::mesh::put_field(*mdotBip, *part, numScsBip );
 
   // non-solver; contribution to Gjp; DG algorithm decides on locations for integration points
-  if ( edgeNodalGradient_ ) {    
-    std::map<AlgorithmType, Algorithm *>::iterator it
-      = assembleNodalGradAlgDriver_->algMap_.find(algType);
-    if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-      Algorithm *theAlg 
-        = new AssembleNodalGradBoundaryAlgorithm(realm_, part, pressure_, dpdx_, edgeNodalGradient_);
-      assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+  if ( !managePNG_ ) {
+    if ( edgeNodalGradient_ ) {    
+      std::map<AlgorithmType, Algorithm *>::iterator it
+        = assembleNodalGradAlgDriver_->algMap_.find(algType);
+      if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+        Algorithm *theAlg 
+          = new AssembleNodalGradBoundaryAlgorithm(realm_, part, pressure_, dpdx_, edgeNodalGradient_);
+        assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+      }
+      else {
+        it->second->partVec_.push_back(part);
+      }
     }
     else {
-      it->second->partVec_.push_back(part);
+      // proceed with DG
+      std::map<AlgorithmType, Algorithm *>::iterator it
+        = assembleNodalGradAlgDriver_->algMap_.find(algType);
+      if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+        AssembleNodalGradNonConformalAlgorithm *theAlg 
+          = new AssembleNodalGradNonConformalAlgorithm(realm_, part, pressure_, dpdx_);
+        assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+      }
+      else {
+        it->second->partVec_.push_back(part);
+      }
     }
   }
-  else {
-    // proceed with DG
-    std::map<AlgorithmType, Algorithm *>::iterator it
-      = assembleNodalGradAlgDriver_->algMap_.find(algType);
-    if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-      AssembleNodalGradNonConformalAlgorithm *theAlg 
-        = new AssembleNodalGradNonConformalAlgorithm(realm_, part, pressure_, dpdx_);
-      assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
-    }
-    else {
-      it->second->partVec_.push_back(part);
-    }
-  }
-  
+
   // non-solver alg; compute nc mdot (same for edge and element-based)
   std::map<AlgorithmType, Algorithm *>::iterator itm =
     computeMdotAlgDriver_->algMap_.find(algType);
