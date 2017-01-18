@@ -14,6 +14,7 @@
 
 // the factory of aux functions
 #include <user_functions/SteadyThermal3dContactAuxFunction.h>
+#include <user_functions/SteadyThermal3dContactDtDxAuxFunction.h>
 #include <user_functions/SteadyThermalContactAuxFunction.h>
 #include <user_functions/SteadyTaylorVortexVelocityAuxFunction.h>
 #include <user_functions/SteadyTaylorVortexGradPressureAuxFunction.h>
@@ -214,6 +215,9 @@ SolutionNormPostProcessing::analytical_function_factory(
   }
   else if ( functionName == "steady_3d_thermal" ) {
     theAuxFunc = new SteadyThermal3dContactAuxFunction();
+  }
+  else if ( functionName == "steady_3d_thermal_dtdx" ) {
+    theAuxFunc = new SteadyThermal3dContactDtDxAuxFunction(0,realm_.meta_data().spatial_dimension());
   }
   else if ( functionName == "SteadyTaylorVortexVelocity" ) {
     theAuxFunc = new SteadyTaylorVortexVelocityAuxFunction(0,realm_.meta_data().spatial_dimension());
