@@ -1764,10 +1764,6 @@ MomentumEquationSystem::register_non_conformal_bc(
   else {
     itsi->second->partVec_.push_back(part);
   }
-
-  // error checking; DG algorithm not ready for primetime
-  if ( managePNG_ )
-    throw std::runtime_error("Nonconformal algorithm not set up for PNG");
 }
 
 //--------------------------------------------------------------------------
@@ -1933,9 +1929,9 @@ MomentumEquationSystem::compute_projected_nodal_gradient()
     const int nameOffset = pngName.length()+8;
     NaluEnv::self().naluOutputP0()
         << std::setw(nameOffset) << std::right << pngName
-        << std::setw(32-nameOffset)  << std::right << sumLinearIterations
-        << std::setw(18) << std::right << sumLinearResidual
-        << std::setw(15) << std::right << sumNonlinearResidual
+        << std::setw(32-nameOffset)  << std::right << sumLinearIterations/(int)nDim
+        << std::setw(18) << std::right << sumLinearResidual/(int)nDim
+        << std::setw(15) << std::right << sumNonlinearResidual/(int)nDim
         << std::setw(14) << std::right << scaledNonLinearResidual << std::endl;
 
     // a bit covert, provide linsys with the new norm which is the sum of all norms

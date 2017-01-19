@@ -2515,7 +2515,7 @@ Realm::set_mesh_velocity(
       const double theO = bigO[k];
 
       // load the current coords
-      for ( unsigned i = 0; i < nDim; ++i ) {
+      for ( int i = 0; i < nDim; ++i ) {
         ccX[i] = cCoords[offSet+i];    
       }
       
@@ -2527,7 +2527,7 @@ Realm::set_mesh_velocity(
       
       mesh_velocity_cross_product(oX, cX, uX);
       
-      for ( unsigned i = 0; i < nDim; ++i ) {
+      for ( int i = 0; i < nDim; ++i ) {
         vnp1[offSet+i] =  uX[i];
       }
     }
