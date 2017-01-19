@@ -150,6 +150,10 @@ double quadratic(double a, const double* b, const double* H, const double* x)
   return (a + lin + 0.5*quad);
 }
 
+#ifndef KOKKOS_HAVE_CUDA
+//following tests can't run on cuda due to variety of reasons, including
+//use of std::vectors, use of MasterElement functions (defined for host), etc.
+
 double initialize_linear_scalar_field(
   const stk::mesh::BulkData& bulk,
   const VectorFieldType& coordField,
@@ -647,6 +651,9 @@ TEST_F(Hex8Mesh, indexing_views)
 
     check_discrete_laplacian(exactLaplacian);
 }
+
+//end of stuff that's ifndef'd for KOKKOS_HAVE_CUDA
+#endif
 
 }
 
