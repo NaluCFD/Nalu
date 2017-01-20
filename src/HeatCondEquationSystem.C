@@ -144,7 +144,7 @@ HeatCondEquationSystem::manage_png(
   EquationSystems& eqSystems)
 {
   projectedNodalGradEqs_ 
-    = new ProjectedNodalGradientEquationSystem(eqSystems, EQ_PNG, "dqdxCMM", "qTmp", "temperature", "PNGGradEQS");
+    = new ProjectedNodalGradientEquationSystem(eqSystems, EQ_PNG, "dtdx", "qTmp", "temperature", "PNGGradEQS");
   // fill the map; only require wall (which is the same name)...
   projectedNodalGradEqs_->set_data_map(WALL_BC, "temperature");
 }
@@ -208,10 +208,6 @@ HeatCondEquationSystem::register_nodal_fields(
 
     copyStateAlg_.push_back(theCopyAlgA);
   }
-
-  // WIP; register dqdxCMM for norm calculation
-  VectorFieldType *dqdxCMM = &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "dqdxCMM"));
-  stk::mesh::put_field(*dqdxCMM, *part, nDim);
 }
 
 //--------------------------------------------------------------------------
