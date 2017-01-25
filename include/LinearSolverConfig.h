@@ -10,7 +10,6 @@
 #define LinearSolverConfig_h
 
 #include <string>
-#include <AztecOO.h>
 #include <Teuchos_ParameterList.hpp>
 #include <Teuchos_RCP.hpp>
 

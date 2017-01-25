@@ -12,7 +12,6 @@
 #include <yaml-cpp/yaml.h>
 #include <Teuchos_ParameterList.hpp>
 #include <Teuchos_RCP.hpp>
-#include <ml_MultiLevelPreconditioner.h>
 #include <BelosTypes.hpp>
 
 #include <ostream>
