@@ -6,7 +6,7 @@
 /*------------------------------------------------------------------------*/
 
 
-#include <ScalarNSOElemSuppAlg.h>
+#include <nso/ScalarNSOElemSuppAlg.h>
 #include <SupplementalAlgorithm.h>
 #include <FieldTypeDef.h>
 #include <Realm.h>

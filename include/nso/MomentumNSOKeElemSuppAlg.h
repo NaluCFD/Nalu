@@ -6,8 +6,8 @@
 /*------------------------------------------------------------------------*/
 
 
-#ifndef MomentumKeNSOElemSuppAlg_h
-#define MomentumKeNSOElemSuppAlg_h
+#ifndef MomentumNSOKeElemSuppAlg_h
+#define MomentumNSOKeElemSuppAlg_h
 
 #include <SupplementalAlgorithm.h>
 #include <FieldTypeDef.h>
@@ -21,17 +21,17 @@ namespace nalu{
 class Realm;
 class MasterElement;
 
-class MomentumKeNSOElemSuppAlg : public SupplementalAlgorithm
+class MomentumNSOKeElemSuppAlg : public SupplementalAlgorithm
 {
 public:
 
-  MomentumKeNSOElemSuppAlg(
+  MomentumNSOKeElemSuppAlg(
     Realm &realm,
     VectorFieldType *velocity,
     GenericFieldType *Gju,
     const double fourthFac);
 
-  virtual ~MomentumKeNSOElemSuppAlg() {}
+  virtual ~MomentumNSOKeElemSuppAlg() {}
 
   virtual void setup();
 

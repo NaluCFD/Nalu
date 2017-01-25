@@ -32,6 +32,8 @@ enum Direction
 class MasterElement
 {
 public:
+  static MasterElement* create_surface_master_element(stk::topology topo);
+  static MasterElement* create_volume_master_element(stk::topology topo);
 
   MasterElement();
   virtual ~MasterElement();

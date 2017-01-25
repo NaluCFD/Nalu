@@ -42,8 +42,6 @@
 #include <ScalarMassBackwardEulerNodeSuppAlg.h>
 #include <ScalarMassBDF2NodeSuppAlg.h>
 #include <ScalarMassElemSuppAlg.h>
-#include <ScalarNSOKeElemSuppAlg.h>
-#include <ScalarNSOElemSuppAlg.h>
 #include <Simulation.h>
 #include <SolutionOptions.h>
 #include <TimeIntegrator.h>
@@ -52,6 +50,10 @@
 #include <TurbKineticEnergySSTDESNodeSourceSuppAlg.h>
 #include <TurbKineticEnergyKsgsBuoyantElemSuppAlg.h>
 #include <SolverAlgorithmDriver.h>
+
+// nso
+#include <nso/ScalarNSOKeElemSuppAlg.h>
+#include <nso/ScalarNSOElemSuppAlg.h>
 
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>

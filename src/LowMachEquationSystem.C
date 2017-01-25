@@ -74,9 +74,6 @@
 #include <MomentumMassBackwardEulerNodeSuppAlg.h>
 #include <MomentumMassBDF2NodeSuppAlg.h>
 #include <MomentumMassElemSuppAlg.h>
-#include <MomentumKeNSOElemSuppAlg.h>
-#include <MomentumNSOElemSuppAlg.h>
-#include <MomentumNSOGradElemSuppAlg.h>
 #include <MomentumAdvDiffElemSuppAlg.h>
 #include <NaluEnv.h>
 #include <NaluParsing.h>
@@ -98,6 +95,11 @@
 #include <TurbViscSmagorinskyAlgorithm.h>
 #include <TurbViscSSTAlgorithm.h>
 #include <TurbViscWaleAlgorithm.h>
+
+// nso
+#include <nso/MomentumNSOKeElemSuppAlg.h>
+#include <nso/MomentumNSOElemSuppAlg.h>
+#include <nso/MomentumNSOGradElemSuppAlg.h>
 
 // user function
 #include <user_functions/ConvectingTaylorVortexVelocityAuxFunction.h>
@@ -1060,10 +1062,10 @@ MomentumEquationSystem::register_interior_algorithm(
           suppAlg = new MomentumNSOElemSuppAlg(realm_, velocity_, dudx_, realm_.is_turbulent() ? evisc_ : visc_, 1.0, 1.0);
         }
         else if (sourceName == "NSO_2ND_KE" ) {
-          suppAlg = new MomentumKeNSOElemSuppAlg(realm_, velocity_, dudx_, 0.0);
+          suppAlg = new MomentumNSOKeElemSuppAlg(realm_, velocity_, dudx_, 0.0);
         }
         else if (sourceName == "NSO_4TH_KE" ) {
-          suppAlg = new MomentumKeNSOElemSuppAlg(realm_, velocity_, dudx_, 1.0);
+          suppAlg = new MomentumNSOKeElemSuppAlg(realm_, velocity_, dudx_, 1.0);
         }
         else if (sourceName == "NSO_2ND_GRAD" ) {
           suppAlg = new MomentumNSOGradElemSuppAlg(realm_, velocity_, dudx_, 0.0);
@@ -1731,29 +1733,31 @@ MomentumEquationSystem::register_non_conformal_bc(
   stk::mesh::put_field(*mdotBip, *part, numScsBip );
 
   // non-solver; contribution to Gjui; DG algorithm decides on locations for integration points
-  if ( edgeNodalGradient_ ) {
-    std::map<AlgorithmType, Algorithm *>::iterator it
-      = assembleNodalGradAlgDriver_->algMap_.find(algType);
-    if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-      Algorithm *theAlg
-        = new AssembleNodalGradUBoundaryAlgorithm(realm_, part, &velocityNp1, &dudxNone, edgeNodalGradient_);
-      assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+  if ( !managePNG_ ) {
+    if ( edgeNodalGradient_ ) {
+      std::map<AlgorithmType, Algorithm *>::iterator it
+        = assembleNodalGradAlgDriver_->algMap_.find(algType);
+      if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+        Algorithm *theAlg
+          = new AssembleNodalGradUBoundaryAlgorithm(realm_, part, &velocityNp1, &dudxNone, edgeNodalGradient_);
+        assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+      }
+      else {
+        it->second->partVec_.push_back(part);
+      }
     }
-    else {
-      it->second->partVec_.push_back(part);
-    }
-  }
-  else { 
-    // proceed with DG
-    std::map<AlgorithmType, Algorithm *>::iterator it
-      = assembleNodalGradAlgDriver_->algMap_.find(algType);
-    if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-      AssembleNodalGradUNonConformalAlgorithm *theAlg 
-        = new AssembleNodalGradUNonConformalAlgorithm(realm_, part, &velocityNp1, &dudxNone);
-      assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
-    }
-    else {
-      it->second->partVec_.push_back(part);
+    else { 
+      // proceed with DG
+      std::map<AlgorithmType, Algorithm *>::iterator it
+        = assembleNodalGradAlgDriver_->algMap_.find(algType);
+      if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+        AssembleNodalGradUNonConformalAlgorithm *theAlg 
+          = new AssembleNodalGradUNonConformalAlgorithm(realm_, part, &velocityNp1, &dudxNone);
+        assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+      }
+      else {
+        it->second->partVec_.push_back(part);
+      }
     }
   }
   
@@ -1769,10 +1773,6 @@ MomentumEquationSystem::register_non_conformal_bc(
   else {
     itsi->second->partVec_.push_back(part);
   }
-
-  // error checking; DG algorithm not ready for primetime
-  if ( managePNG_ )
-    throw std::runtime_error("Nonconformal algorithm not set up for PNG");
 }
 
 //--------------------------------------------------------------------------
@@ -1938,9 +1938,9 @@ MomentumEquationSystem::compute_projected_nodal_gradient()
     const int nameOffset = pngName.length()+8;
     NaluEnv::self().naluOutputP0()
         << std::setw(nameOffset) << std::right << pngName
-        << std::setw(32-nameOffset)  << std::right << sumLinearIterations
-        << std::setw(18) << std::right << sumLinearResidual
-        << std::setw(15) << std::right << sumNonlinearResidual
+        << std::setw(32-nameOffset)  << std::right << sumLinearIterations/(int)nDim
+        << std::setw(18) << std::right << sumLinearResidual/(int)nDim
+        << std::setw(15) << std::right << sumNonlinearResidual/(int)nDim
         << std::setw(14) << std::right << scaledNonLinearResidual << std::endl;
 
     // a bit covert, provide linsys with the new norm which is the sum of all norms
@@ -2522,32 +2522,34 @@ ContinuityEquationSystem::register_non_conformal_bc(
   stk::mesh::put_field(*mdotBip, *part, numScsBip );
 
   // non-solver; contribution to Gjp; DG algorithm decides on locations for integration points
-  if ( edgeNodalGradient_ ) {    
-    std::map<AlgorithmType, Algorithm *>::iterator it
-      = assembleNodalGradAlgDriver_->algMap_.find(algType);
-    if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-      Algorithm *theAlg 
-        = new AssembleNodalGradBoundaryAlgorithm(realm_, part, pressure_, dpdx_, edgeNodalGradient_);
-      assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+  if ( !managePNG_ ) {
+    if ( edgeNodalGradient_ ) {    
+      std::map<AlgorithmType, Algorithm *>::iterator it
+        = assembleNodalGradAlgDriver_->algMap_.find(algType);
+      if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+        Algorithm *theAlg 
+          = new AssembleNodalGradBoundaryAlgorithm(realm_, part, pressure_, dpdx_, edgeNodalGradient_);
+        assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+      }
+      else {
+        it->second->partVec_.push_back(part);
+      }
     }
     else {
-      it->second->partVec_.push_back(part);
+      // proceed with DG
+      std::map<AlgorithmType, Algorithm *>::iterator it
+        = assembleNodalGradAlgDriver_->algMap_.find(algType);
+      if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+        AssembleNodalGradNonConformalAlgorithm *theAlg 
+          = new AssembleNodalGradNonConformalAlgorithm(realm_, part, pressure_, dpdx_);
+        assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+      }
+      else {
+        it->second->partVec_.push_back(part);
+      }
     }
   }
-  else {
-    // proceed with DG
-    std::map<AlgorithmType, Algorithm *>::iterator it
-      = assembleNodalGradAlgDriver_->algMap_.find(algType);
-    if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-      AssembleNodalGradNonConformalAlgorithm *theAlg 
-        = new AssembleNodalGradNonConformalAlgorithm(realm_, part, pressure_, dpdx_);
-      assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
-    }
-    else {
-      it->second->partVec_.push_back(part);
-    }
-  }
-  
+
   // non-solver alg; compute nc mdot (same for edge and element-based)
   std::map<AlgorithmType, Algorithm *>::iterator itm =
     computeMdotAlgDriver_->algMap_.find(algType);

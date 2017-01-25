@@ -40,12 +40,14 @@
 #include <ScalarMassBackwardEulerNodeSuppAlg.h>
 #include <ScalarMassBDF2NodeSuppAlg.h>
 #include <ScalarMassElemSuppAlg.h>
-#include <ScalarNSOElemSuppAlg.h>
-#include <ScalarNSOKeElemSuppAlg.h>
 #include <Simulation.h>
 #include <SolutionOptions.h>
 #include <TimeIntegrator.h>
 #include <SolverAlgorithmDriver.h>
+
+// nso
+#include <nso/ScalarNSOElemSuppAlg.h>
+#include <nso/ScalarNSOKeElemSuppAlg.h>
 
 // user function
 #include <user_functions/VariableDensityMixFracSrcElemSuppAlg.h>

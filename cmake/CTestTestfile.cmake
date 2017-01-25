@@ -605,6 +605,18 @@ set_tests_properties(ekmanSpiral
 
 
 #=============================================================================
+# dgMMS test
+#=============================================================================
+add_test(dgMMS "dgMMS.sh")
+set_tests_properties(dgMMS
+  PROPERTIES  PASS_REGULAR_EXPRESSION "PASSED"
+              FAIL_REGULAR_EXPRESSION "FAILED"
+              TIMEOUT 400
+              PROCESSORS 6
+  WORKING_DIRECTORY "${NIGHTLY_TEST_RESULT_DIRECTORY}/dgMMS")
+
+
+#=============================================================================
 # unit tests
 #=============================================================================
 add_test(unitTests "run_unit_tests.sh")

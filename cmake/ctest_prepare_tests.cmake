@@ -548,6 +548,11 @@ file(COPY               "${NALURTEST_MESH_DIR}/ekmanSpiral.g"
                         "${NALURTEST_XML_DIR}/milestone.xml"
      DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}/ekmanSpiral")
 
+#=============================================================================
+# dgMMS test
+#=============================================================================
+file(COPY               "${NALURTEST_NIGHTLY_DIR}/dgMMS"
+     DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}")
 
 #=============================================================================
 # unit tests

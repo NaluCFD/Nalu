@@ -84,6 +84,7 @@ MassFractionEquationSystem::MassFractionEquationSystem(
   EquationSystems& eqSystems,
   const int numMassFraction)
   : EquationSystem(eqSystems, "MassFractionEQS"),
+    managePNG_(realm_.get_consistent_mass_matrix_png("note_follow_momentum_approach")),
     numMassFraction_(numMassFraction),
     massFraction_(NULL),
     currentMassFraction_(NULL),
@@ -110,6 +111,10 @@ MassFractionEquationSystem::MassFractionEquationSystem(
 
   // advertise as non-uniform
   realm_.uniformFlow_ = false;
+
+  // create projected nodal gradient equation system
+  if ( managePNG_ )
+    throw std::runtime_error("MassFractionEquationSystem::Error managePNG is not complete");
 }
 
 //--------------------------------------------------------------------------
@@ -561,29 +566,31 @@ MassFractionEquationSystem::register_non_conformal_bc(
   const AlgorithmType algType = NON_CONFORMAL;
 
   // non-solver; contribution to dwdx; DG algorithm decides on locations for integration points
-  if ( edgeNodalGradient_ ) {    
-    std::map<AlgorithmType, Algorithm *>::iterator it
-      = assembleNodalGradAlgDriver_->algMap_.find(algType);
-    if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-      Algorithm *theAlg 
-        = new AssembleNodalGradBoundaryAlgorithm(realm_, part, currentMassFraction_, dydx_, edgeNodalGradient_);
-      assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+  if ( !managePNG_ ) {
+    if ( edgeNodalGradient_ ) {    
+      std::map<AlgorithmType, Algorithm *>::iterator it
+        = assembleNodalGradAlgDriver_->algMap_.find(algType);
+      if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+        Algorithm *theAlg 
+          = new AssembleNodalGradBoundaryAlgorithm(realm_, part, currentMassFraction_, dydx_, edgeNodalGradient_);
+        assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+      }
+      else {
+        it->second->partVec_.push_back(part);
+      }
     }
     else {
-      it->second->partVec_.push_back(part);
-    }
-  }
-  else {
-    // proceed with DG
-    std::map<AlgorithmType, Algorithm *>::iterator it
-      = assembleNodalGradAlgDriver_->algMap_.find(algType);
-    if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-      AssembleNodalGradNonConformalAlgorithm *theAlg 
-        = new AssembleNodalGradNonConformalAlgorithm(realm_, part, currentMassFraction_, dydx_);
-      assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
-    }
-    else {
-      it->second->partVec_.push_back(part);
+      // proceed with DG
+      std::map<AlgorithmType, Algorithm *>::iterator it
+        = assembleNodalGradAlgDriver_->algMap_.find(algType);
+      if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+        AssembleNodalGradNonConformalAlgorithm *theAlg 
+          = new AssembleNodalGradNonConformalAlgorithm(realm_, part, currentMassFraction_, dydx_);
+        assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+      }
+      else {
+        it->second->partVec_.push_back(part);
+      }
     }
   }
 

@@ -534,12 +534,16 @@ TurbulenceAveragingPostProcessing::execute()
       compute_lambda_ci(avInfo->name_, s_all_nodes);
     }
     
-    if ( avInfo->computeFavreStress_ ) {
-      compute_favre_stress(avInfo->name_, oldTimeFilter, zeroCurrent, dt, s_all_nodes);
-    }
-    
-    if ( avInfo->computeReynoldsStress_ ) {
-      compute_reynolds_stress(avInfo->name_, oldTimeFilter, zeroCurrent, dt, s_all_nodes);
+    // avoid computing stresses when when oldTimeFilter is not zero
+    // this will occur only on a first time step of a new simulation
+    if (oldTimeFilter > 0.0 ) {
+      if ( avInfo->computeFavreStress_ ) {
+        compute_favre_stress(avInfo->name_, oldTimeFilter, zeroCurrent, dt, s_all_nodes);
+      }
+      
+      if ( avInfo->computeReynoldsStress_ ) {
+        compute_reynolds_stress(avInfo->name_, oldTimeFilter, zeroCurrent, dt, s_all_nodes);
+      }
     }
   }
 }
@@ -637,11 +641,16 @@ TurbulenceAveragingPostProcessing::compute_reynolds_stress(
       for ( int i = 0; i < nDim; ++i ) {
         const double ui = uNp1[k*nDim+i];
         const double uiA = uNp1A[k*nDim+i];
+        double uiAOld = (currentTimeFilter_*uiA - ui*dt)/oldTimeFilter;
+
         for ( int j = i; j < nDim; ++j ) {
           const int component = componentCount;
           const double uj = uNp1[k*nDim+j];
           const double ujA = uNp1A[k*nDim+j];
-          const double newStress = (stress[k*stressSize+component]*oldTimeFilter*zeroCurrent + ui*uj*dt - uiA*ujA*dt)/currentTimeFilter_;
+          double ujAOld = (currentTimeFilter_*ujA - uj*dt)/oldTimeFilter;
+          const double newStress 
+            = ((stress[k*stressSize+component]+uiAOld*ujAOld)*oldTimeFilter*zeroCurrent 
+               + ui*uj*dt)/currentTimeFilter_ - uiA*ujA;
           stress[k*stressSize+component] = newStress;
           componentCount++;
         }
@@ -696,17 +705,28 @@ TurbulenceAveragingPostProcessing::compute_favre_stress(
       // save off density
       const double rhok = rho[k];
       const double rhoAk = rhoA[k];
+      const double rhoAOld = (currentTimeFilter_*rhoAk - rhok*dt)/oldTimeFilter;
+
+      // save off some ratios
+      const double rhoAOldByRhoA = rhoAOld/rhoAk;
+      const double rhoByRhoA = rhok/rhoAk;
 
       // stress is symmetric, so only save off 6 or 3 components
       int componentCount = 0;
       for ( int i = 0; i < nDim; ++i ) {
         const double ui = uNp1[k*nDim+i];
         const double uiA = uNp1A[k*nDim+i];
+        double uiAOld = (currentTimeFilter_*rhoAk*uiA - rhok*ui*dt)/oldTimeFilter/rhoAOld;
+
         for ( int j = i; j < nDim; ++j ) {
           const int component = componentCount;
           const double uj = uNp1[k*nDim+j];
           const double ujA = uNp1A[k*nDim+j];
-          const double newStress = (stress[k*stressSize+component]*oldTimeFilter*zeroCurrent + (ui*uj*rhok/rhoAk - uiA*ujA)*dt)/currentTimeFilter_;
+          double ujAOld = (currentTimeFilter_*rhoAk*ujA - rhok*uj*dt)/oldTimeFilter/rhoAOld;
+          
+          const double newStress 
+            = ((stress[k*stressSize+component] + uiAOld*ujAOld)*rhoAOldByRhoA*oldTimeFilter*zeroCurrent 
+               + rhoByRhoA*ui*uj*dt)/currentTimeFilter_ - uiA*ujA;
           stress[k*stressSize+component] = newStress;
           componentCount++;
         }

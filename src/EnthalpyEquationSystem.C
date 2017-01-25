@@ -49,13 +49,15 @@
 #include <ScalarMassBackwardEulerNodeSuppAlg.h>
 #include <ScalarMassBDF2NodeSuppAlg.h>
 #include <ScalarMassElemSuppAlg.h>
-#include <ScalarNSOKeElemSuppAlg.h>
-#include <ScalarNSOElemSuppAlg.h>
 #include <EnthalpyABLSrcNodeSuppAlg.h>
 #include <Simulation.h>
 #include <TimeIntegrator.h>
 #include <SolverAlgorithmDriver.h>
 #include <SolutionOptions.h>
+
+// nso
+#include <nso/ScalarNSOKeElemSuppAlg.h>
+#include <nso/ScalarNSOElemSuppAlg.h>
 
 // props
 #include <property_evaluator/EnthalpyPropertyEvaluator.h>

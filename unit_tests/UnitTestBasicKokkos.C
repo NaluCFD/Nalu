@@ -34,12 +34,12 @@ TEST(BasicKokkos, simple_views_1D)
 {
     const double tolerance = 0.0000001;
     const size_t N = 10;
-    Kokkos::View<double*>::HostMirror host_view1D("host_view1D", N);
+    Kokkos::View<double*> device_view1D("device_view1D", N);
+    Kokkos::View<double*>::HostMirror host_view1D = Kokkos::create_mirror_view(device_view1D);
     for(size_t i=0; i<N; ++i) {
         host_view1D(i) = i+1;
     }
 
-    Kokkos::View<double*> device_view1D = Kokkos::create_mirror_view(host_view1D);
     Kokkos::deep_copy(device_view1D, host_view1D);
 
     Kokkos::View<double*>::HostMirror host_view1D_2("host_view1D_2", N);
@@ -55,14 +55,14 @@ TEST(BasicKokkos, simple_views_2D)
     const double tolerance = 0.0000001;
     const size_t N = 10;
     const size_t M = 20;
-    Kokkos::View<double**>::HostMirror host_view2D("host_view2D", N, M);
+    Kokkos::View<double**> device_view2D("device_view2D", N, M);
+    Kokkos::View<double**>::HostMirror host_view2D = Kokkos::create_mirror_view(device_view2D);
     for(size_t i=0; i<N; ++i) {
         for(size_t j=0; j<M; ++j) {
             host_view2D(i,j) = i+j+1;
         }
     }
 
-    Kokkos::View<double**> device_view2D = Kokkos::create_mirror_view(host_view2D);
     Kokkos::deep_copy(device_view2D, host_view2D);
 
     Kokkos::View<double**>::HostMirror host_view2D_2("host_view2D_2", N, M);
@@ -75,12 +75,13 @@ TEST(BasicKokkos, simple_views_2D)
     }
 }
 
-TEST(BasicKokkos, parallel_for)
+void run_parallel_for_test()
 {
     const double tolerance = 0.0000001;
     const size_t N = 10;
     const size_t M = 20;
-    Kokkos::View<double**>::HostMirror host_view2D("host_view2D", N, M);
+    Kokkos::View<double**> device_view2D("host_view2D", N, M);
+    Kokkos::View<double**>::HostMirror host_view2D = Kokkos::create_mirror_view(device_view2D);
 
     for(size_t i=0; i<N; ++i) {
         for(size_t j=0; j<M; ++j) {
@@ -88,7 +89,6 @@ TEST(BasicKokkos, parallel_for)
         }
     }
 
-    Kokkos::View<double**> device_view2D = Kokkos::create_mirror_view(host_view2D);
     Kokkos::deep_copy(device_view2D, host_view2D);
 
 //Important note: when the 'host' and 'device' share the same memory space, (as is the case for OpenMP),
@@ -114,12 +114,18 @@ TEST(BasicKokkos, parallel_for)
     }
 }
 
-TEST(BasicKokkos, nested_parallel_for_thread_teams)
+TEST(BasicKokkos, parallel_for)
+{
+    run_parallel_for_test();
+}
+
+void run_nested_parallel_for_thread_teams_test()
 {
     const double tolerance = 0.0000001;
     const size_t N = 8;
     const size_t M = 8;
-    Kokkos::View<double**>::HostMirror host_view2D("host_view2D", N, M);
+    Kokkos::View<double**> device_view2D("device_view2D", N, M);
+    Kokkos::View<double**>::HostMirror host_view2D = Kokkos::create_mirror_view(device_view2D);
 
     for(size_t i=0; i<N; ++i) {
         for(size_t j=0; j<M; ++j) {
@@ -127,7 +133,6 @@ TEST(BasicKokkos, nested_parallel_for_thread_teams)
         }
     }
 
-    Kokkos::View<double**> device_view2D = Kokkos::create_mirror_view(host_view2D);
     Kokkos::deep_copy(device_view2D, host_view2D);
 
     typedef Kokkos::Schedule<Kokkos::Dynamic> DynamicScheduleType;
@@ -139,7 +144,7 @@ TEST(BasicKokkos, nested_parallel_for_thread_teams)
     Kokkos::parallel_for(Kokkos::TeamPolicy<Kokkos::DefaultExecutionSpace>(N, Kokkos::AUTO),
         KOKKOS_LAMBDA(const TeamHandleType& team) {
             size_t i = team.league_rank();
-            Kokkos::parallel_for(Kokkos::TeamThreadRange(team, (size_t)0, M), KOKKOS_LAMBDA(const size_t& j) {
+            Kokkos::parallel_for(Kokkos::TeamThreadRange(team, (size_t)0, M), [&](const size_t& j) {
                 device_view2D(i, j) *= 2;
             });
         });
@@ -156,5 +161,10 @@ TEST(BasicKokkos, nested_parallel_for_thread_teams)
             EXPECT_NEAR(host_result(i,j), host_view2D(i,j), tolerance);
         }
     }
+}
+
+TEST(BasicKokkos, nested_parallel_for_thread_teams)
+{
+    run_nested_parallel_for_thread_teams_test();
 }
 

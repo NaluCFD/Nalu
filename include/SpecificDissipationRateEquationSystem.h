@@ -76,6 +76,8 @@ public:
   void assemble_nodal_gradient();
   void compute_effective_diff_flux_coeff();
   
+  const bool managePNG_;
+
   ScalarFieldType *sdr_;
   VectorFieldType *dwdx_;
   ScalarFieldType *wTmp_;

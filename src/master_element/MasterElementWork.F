@@ -2950,7 +2950,7 @@ c
                gupperij(i,j,ki) = 
      $              dx_ds(i,1)*dx_ds(j,1)+dx_ds(i,2)*dx_ds(j,2)
                glowerij(i,j,ki) = 
-     $              ds_dx(i,1)*ds_dx(j,1)+ds_dx(i,2)*ds_dx(j,2)
+     $              ds_dx(1,i)*ds_dx(1,j)+ds_dx(2,i)*ds_dx(2,j)
             end do
          end do
 c     
@@ -3040,8 +3040,8 @@ C
      $              dx_ds(i,1)*dx_ds(j,1)+dx_ds(i,2)*dx_ds(j,2)
      $              +dx_ds(i,3)*dx_ds(j,3)
                glowerij(i,j,ki) = 
-     $              ds_dx(i,1)*ds_dx(j,1)+ds_dx(i,2)*ds_dx(j,2)
-     $              +ds_dx(i,3)*ds_dx(j,3)
+     $              ds_dx(1,i)*ds_dx(1,j)+ds_dx(2,i)*ds_dx(2,j)
+     $              +ds_dx(3,i)*ds_dx(3,j)
             end do
          end do
 c     

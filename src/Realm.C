@@ -896,8 +896,30 @@ Realm::enforce_bc_on_exposed_faces()
       stk::mesh::Bucket & b = **ib ;
       const stk::mesh::Bucket::size_type length   = b.size();
       for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
-        // report offending set of faces; okay if to P0
-        NaluEnv::self().naluOutputP0() << "Face Id: " << bulkData_->identifier(b[k]) << " is not properly covered" << std::endl;
+        // extract the face
+        stk::mesh::Entity face = b[k];
+        
+        // report the offending face id
+        NaluEnv::self().naluOutput() << "Face Id: " << bulkData_->identifier(face) << " is not properly covered" << std::endl;
+      
+        // extract face nodes
+        const stk::mesh::Entity* face_node_rels = bulkData_->begin_nodes(face); 
+        const unsigned numberOfNodes = bulkData_->num_nodes(face);
+        NaluEnv::self().naluOutput() << " Number of nodes connected to this face is: " << numberOfNodes << std::endl;
+        for ( unsigned k = 0; k < numberOfNodes; ++k ) {
+          stk::mesh::Entity node = face_node_rels[k];
+          NaluEnv::self().naluOutput() << " attached node Id: " << bulkData_->identifier(node) << std::endl;
+        }
+      
+        // extract the element relations to report to the user and the number of elements connected
+        const stk::mesh::Entity* face_elem_rels = bulkData_->begin_elements(face);
+        const unsigned numberOfElems = bulkData_->num_elements(face);
+        NaluEnv::self().naluOutput() << " Number of elements connected to this face is: " << numberOfElems << std::endl;
+
+        for ( unsigned k = 0; k < numberOfElems; ++k ) {
+          stk::mesh::Entity element = face_elem_rels[k];
+          NaluEnv::self().naluOutput() << " attached element Id: " << bulkData_->identifier(element) << std::endl;
+        }
       }
     }
     throw std::runtime_error("Realm::Error: Please aply bc to problematic exposed surfaces ");
@@ -2519,7 +2541,7 @@ Realm::set_mesh_velocity(
       const double theO = bigO[k];
 
       // load the current coords
-      for ( unsigned i = 0; i < nDim; ++i ) {
+      for ( int i = 0; i < nDim; ++i ) {
         ccX[i] = cCoords[offSet+i];    
       }
       
@@ -2531,7 +2553,7 @@ Realm::set_mesh_velocity(
       
       mesh_velocity_cross_product(oX, cX, uX);
       
-      for ( unsigned i = 0; i < nDim; ++i ) {
+      for ( int i = 0; i < nDim; ++i ) {
         vnp1[offSet+i] =  uX[i];
       }
     }
@@ -3642,47 +3664,10 @@ Realm::get_volume_master_element(
     volumeMeMap_.find(theTopo);
   if ( it == volumeMeMap_.end() ) {
     // not found; will need to create it and add it
-    switch ( theTopo.value() ) {
-
-      case stk::topology::HEX_8:
-        theElem = new HexSCV();
-        break;
-
-      case stk::topology::HEX_27:
-        theElem = new Hex27SCV();
-        break;
-
-      case stk::topology::TET_4:
-        theElem = new TetSCV();
-        break;
-
-      case stk::topology::PYRAMID_5:
-        theElem = new PyrSCV();
-        break;
-
-      case stk::topology::WEDGE_6:
-        theElem = new WedSCV();
-        break;
-
-      case stk::topology::QUAD_4_2D:
-        theElem = new Quad2DSCV();
-        break;
-
-      case stk::topology::QUAD_9_2D:
-        theElem = new Quad92DSCV();
-        break;
-
-      case stk::topology::TRI_3_2D:
-        theElem = new Tri2DSCV();
-        break;
-
-      default:
-        NaluEnv::self().naluOutputP0() << "sorry, we only support hex8, tet4, wed6, pyr5, quad4, and tri3 volume elements" << std::endl;
-        break;
-    }
+    theElem = MasterElement::create_volume_master_element(theTopo);
+    ThrowRequire(theElem != nullptr);
 
     volumeMeMap_[theTopo] = theElem;
-
   }
   else {
     // found it
@@ -3706,79 +3691,10 @@ Realm::get_surface_master_element(
     surfaceMeMap_.find(theTopo);
   if ( it == surfaceMeMap_.end() ) {
     // not found; will need to create it and add it
-    switch ( theTopo.value() ) {
-
-      case stk::topology::HEX_8:
-        theElem = new HexSCS();
-        break;
-
-      case stk::topology::HEX_27:
-        theElem = new Hex27SCS();
-        break;
-
-      case stk::topology::TET_4:
-        theElem = new TetSCS();
-        break;
-
-      case stk::topology::PYRAMID_5:
-        theElem = new PyrSCS();
-        break;
-
-      case stk::topology::WEDGE_6:
-        theElem = new WedSCS();
-        break;
-
-      case stk::topology::QUAD_4:
-        theElem =  new Quad3DSCS();
-        break;
-
-      case stk::topology::QUAD_9:
-        theElem =  new Quad93DSCS();
-        break;
-
-      case stk::topology::TRI_3:
-        theElem = new Tri3DSCS();
-        break;
-
-      case stk::topology::QUAD_4_2D:
-        theElem =  new Quad2DSCS();
-        break;
-
-      case stk::topology::QUAD_9_2D:
-        theElem =  new Quad92DSCS();
-        break;
-
-      case stk::topology::TRI_3_2D:
-        theElem = new Tri2DSCS();
-        break;
-
-      case stk::topology::LINE_2:
-        theElem = new Edge2DSCS();
-        break;
-
-      case stk::topology::LINE_3:
-        theElem = new Edge32DSCS();
-        break;
-
-      case stk::topology::SHELL_QUAD_4:
-        theElem =  new Quad3DSCS();
-        NaluEnv::self().naluOutputP0() << "SHELL_QUAD_4 only supported for io surface transfer applications" << std::endl;
-        break;
-
-      case stk::topology::SHELL_TRI_3:
-        theElem = new Tri3DSCS();
-        NaluEnv::self().naluOutputP0() << "SHELL_TRI_3 only supported for io surface transfer applications" << std::endl;
-        break;
-
-      default:
-        NaluEnv::self().naluOutputP0() << "sorry, we only support hex8, tet4, pyr5, wed6, quad2d, quad3d, tri2d, tri3d and edge2d surface elements" << std::endl;
-        NaluEnv::self().naluOutputP0() << "you're type is " << theTopo.value() << std::endl;
-        break;
-
-    }
+    theElem = MasterElement::create_surface_master_element(theTopo);
+    ThrowRequire(theElem != nullptr);
 
     surfaceMeMap_[theTopo] = theElem;
-
   }
 
   else {
