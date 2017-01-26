@@ -59,7 +59,7 @@ cmake \
 -DTrilinos_ENABLE_Ifpack2:BOOL=ON \
 -DTrilinos_ENABLE_Amesos2:BOOL=ON \
 -DTrilinos_ENABLE_Zoltan2:BOOL=ON \
--DTrilinos_ENABLE_Ifpack:BOOL=ON \
+-DTrilinos_ENABLE_Ifpack:BOOL=OFF \
 -DTrilinos_ENABLE_Amesos:BOOL=OFF \
 -DTrilinos_ENABLE_Zoltan:BOOL=ON \
 -DTrilinos_ENABLE_STKMesh:BOOL=ON \
