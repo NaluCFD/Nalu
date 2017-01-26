@@ -21,38 +21,34 @@ class ABLForcingAlgorithm;
 class EnthalpyABLSrcNodeSuppAlg : public SupplementalAlgorithm
 {
 public:
-    EnthalpyABLSrcNodeSuppAlg(
-        Realm&,
-        ABLForcingAlgorithm*
-    );
+  EnthalpyABLSrcNodeSuppAlg(Realm&, ABLForcingAlgorithm*);
 
-    virtual ~EnthalpyABLSrcNodeSuppAlg() {}
+  virtual ~EnthalpyABLSrcNodeSuppAlg() {}
 
-    virtual void setup() {}
+  virtual void setup() {}
 
-    virtual void node_execute(
-        double*, double*, stk::mesh::Entity);
+  virtual void node_execute(double*, double*, stk::mesh::Entity);
 
 private:
-    EnthalpyABLSrcNodeSuppAlg();
-    EnthalpyABLSrcNodeSuppAlg(const EnthalpyABLSrcNodeSuppAlg&);
+  EnthalpyABLSrcNodeSuppAlg();
+  EnthalpyABLSrcNodeSuppAlg(const EnthalpyABLSrcNodeSuppAlg&);
 
-    //! Pointer to ABL Forcing algorithm object
-    ABLForcingAlgorithm* ablSrc_;
+  //! Pointer to ABL Forcing algorithm object
+  ABLForcingAlgorithm* ablSrc_;
 
-    //! Pointer to mesh coordinates
-    VectorFieldType* coords_;
+  //! Pointer to mesh coordinates
+  VectorFieldType* coords_;
 
-    //! Pointer to dual volume of the mesh
-    ScalarFieldType* dualNodalVolume_;
+  //! Pointer to dual volume of the mesh
+  ScalarFieldType* dualNodalVolume_;
 
-    //! Pointer to the density of the mesh
-    ScalarFieldType* density_;
+  //! Pointer to the density of the mesh
+  ScalarFieldType* density_;
 
-    //! Pointer to specific heat 
-    ScalarFieldType* specificHeat_;
+  //! Pointer to specific heat
+  ScalarFieldType* specificHeat_;
 
-    const int nDim_;
+  const int nDim_;
 };
 
 } // namespace nalu

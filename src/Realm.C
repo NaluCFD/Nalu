@@ -533,8 +533,8 @@ Realm::look_ahead_and_creation(const YAML::Node & node)
 
   // ABL Forcing parameters
   if (node["abl_forcing"]) {
-      const YAML::Node ablNode = node["abl_forcing"];
-      ablForcingAlg_ = new ABLForcingAlgorithm(*this, ablNode);
+    const YAML::Node ablNode = node["abl_forcing"];
+    ablForcingAlg_ = new ABLForcingAlgorithm(*this, ablNode);
   }
 }
   
@@ -818,7 +818,7 @@ Realm::setup_post_processing_algorithms()
     actuatorLine_->setup();
 
   if ( NULL != ablForcingAlg_)
-      ablForcingAlg_->setup();
+    ablForcingAlg_->setup();
 
   // check for norm nodal fields
   if ( NULL != solutionNormPostProcessing_ )
@@ -1781,7 +1781,7 @@ Realm::advance_time_step()
 
   // Check for ABL forcing; estimate source terms for this time step
   if ( NULL != ablForcingAlg_) {
-      ablForcingAlg_->execute();
+    ablForcingAlg_->execute();
   }
 
   const int numNonLinearIterations = equationSystems_.maxIterations_;
@@ -2272,7 +2272,7 @@ Realm::initialize_post_processing_algorithms()
   }
 
   if ( NULL != ablForcingAlg_) {
-      ablForcingAlg_->initialize();
+    ablForcingAlg_->initialize();
   }
 }
 
@@ -4398,9 +4398,9 @@ Realm::get_inactive_selector()
     : stk::mesh::Selector();
 
   stk::mesh::Selector inactiveABLForcing = (
-      ( NULL != ablForcingAlg_)
-      ? (ablForcingAlg_->inactive_selector())
-      : stk::mesh::Selector());
+    ( NULL != ablForcingAlg_)
+    ? (ablForcingAlg_->inactive_selector())
+    : stk::mesh::Selector());
   
   return inactiveOverSetSelector | inactiveDataProbeSelector | inactiveABLForcing;
 }

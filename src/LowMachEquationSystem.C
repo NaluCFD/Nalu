@@ -1140,12 +1140,11 @@ MomentumEquationSystem::register_interior_algorithm(
           }
         }
         else if ( sourceName == "abl_forcing" ) {
-            ThrowAssertMsg(
-                ((NULL != realm_.ablForcingAlg_) &&
-                 (realm_.ablForcingAlg_->momentumForcingOn())),
-                "ERROR! ABL Forcing parameters must be initialized to use Momentum source.");
-            suppAlg = new MomentumABLForceSrcNodeSuppAlg(
-                realm_, realm_.ablForcingAlg_);
+          ThrowAssertMsg(
+            ((NULL != realm_.ablForcingAlg_) &&
+             (realm_.ablForcingAlg_->momentumForcingOn())),
+            "ERROR! ABL Forcing parameters must be initialized to use Momentum source.");
+          suppAlg = new MomentumABLForceSrcNodeSuppAlg(realm_, realm_.ablForcingAlg_);
         }
         else if ( sourceName == "gcl") {
           suppAlg = new MomentumGclSrcNodeSuppAlg(realm_);

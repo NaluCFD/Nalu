@@ -466,12 +466,11 @@ EnthalpyEquationSystem::register_interior_algorithm(
           suppAlg = new VariableDensityNonIsoEnthalpySrcNodeSuppAlg(realm_);
         }
         else if (sourceName == "abl_forcing") {
-            ThrowAssertMsg(
-                ((NULL != realm_.ablForcingAlg_) &&
-                 (realm_.ablForcingAlg_->temperatureForcingOn())),
-                "EnthalpyNodalSrcTerms::ERROR! ABL Forcing parameters must be initialized to use temperature source.");
-            suppAlg = new EnthalpyABLSrcNodeSuppAlg(realm_,
-                                                    realm_.ablForcingAlg_);
+          ThrowAssertMsg(
+            ((NULL != realm_.ablForcingAlg_) &&
+             (realm_.ablForcingAlg_->temperatureForcingOn())),
+            "EnthalpyNodalSrcTerms::ERROR! ABL Forcing parameters must be initialized to use temperature source.");
+          suppAlg = new EnthalpyABLSrcNodeSuppAlg(realm_, realm_.ablForcingAlg_);
         }
         else {
           throw std::runtime_error("EnthalpyNodalSrcTerms::Error Source term is not supported: " + sourceName);
