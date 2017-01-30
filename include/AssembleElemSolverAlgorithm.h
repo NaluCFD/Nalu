@@ -15,6 +15,7 @@
 namespace stk {
 namespace mesh {
 class Part;
+class Topology;
 }
 }
 
@@ -30,12 +31,17 @@ public:
   AssembleElemSolverAlgorithm(
     Realm &realm,
     stk::mesh::Part *part,
-    EquationSystem *eqSystem);
+    EquationSystem *eqSystem,
+    const stk::topology &theTopo);
   virtual ~AssembleElemSolverAlgorithm() {}
   virtual void initialize_connectivity();
   virtual void execute();
 
-  const int sizeOfSystem_;
+  std::vector<double> lhs_;
+  std::vector<double> rhs_;
+  std::vector<int> scratchIds_;
+  std::vector<double> scratchVals_;
+  std::vector<stk::mesh::Entity> connectedNodes_;
 };
 
 } // namespace nalu

@@ -6,14 +6,15 @@
 /*------------------------------------------------------------------------*/
 
 
-#ifndef SteadyThermal3dContactSrcElemSuppAlg_h
-#define SteadyThermal3dContactSrcElemSuppAlg_h
+#ifndef ScalarDiffElemSuppAlg_h
+#define ScalarDiffElemSuppAlg_h
 
 #include <SupplementalAlgorithm.h>
 #include <FieldTypeDef.h>
 
 #include <stk_mesh/base/BulkData.hpp>
 #include <stk_mesh/base/Entity.hpp>
+#include <stk_topology/topology.hpp>
 
 namespace sierra{
 namespace nalu{
@@ -21,15 +22,21 @@ namespace nalu{
 class Realm;
 class MasterElement;
 
-class SteadyThermal3dContactSrcElemSuppAlg : public SupplementalAlgorithm
+class ScalarDiffElemSuppAlg : public SupplementalAlgorithm
 {
 public:
 
-  SteadyThermal3dContactSrcElemSuppAlg(
+  ScalarDiffElemSuppAlg(
     Realm &realm,
+    ScalarFieldType *scalarQ,
+    ScalarFieldType *diffFluxCoeff,
     const stk::topology &theTopo);
 
-  virtual ~SteadyThermal3dContactSrcElemSuppAlg() {}
+  virtual ~ScalarDiffElemSuppAlg() {}
+
+  virtual void setup();
+
+  virtual void elem_resize() {}
 
   virtual void element_execute(
     double *lhs,
@@ -38,26 +45,28 @@ public:
   
   const stk::mesh::BulkData *bulkData_;
 
+  ScalarFieldType *scalarQ_;
+  ScalarFieldType *diffFluxCoeff_;
   VectorFieldType *coordinates_;
 
-  MasterElement *meSCV_;
-  const int *ipNodeMap_;
+  // master element
+  MasterElement  *meSCS_;
+  const int *lrscv_;
   const int nodesPerElement_;
-  const int numScvIp_;
-
-  const double a_;
-  const double k_;
-  const double pi_;
-  const bool useShifted_;
+  const int numScsIp_;
   const int nDim_;
-  const bool evalAtIps_;
 
-  // scratch space
-  std::vector<double> scvCoords_;
+  // scratch space; geometry
+  std::vector<double> ws_scs_areav_;
+  std::vector<double> ws_dndx_;
+  std::vector<double> ws_deriv_;
+  std::vector<double> ws_det_j_;
   std::vector<double> ws_shape_function_;
+
+  // scratch space; fields
+  std::vector<double> ws_scalarQ_;
+  std::vector<double> ws_diffFluxCoeff_;
   std::vector<double> ws_coordinates_;
-  std::vector<double> ws_scv_volume_;
-  std::vector<double> ws_nodalSrc_;
 };
 
 } // namespace nalu

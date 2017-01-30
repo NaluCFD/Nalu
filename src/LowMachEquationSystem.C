@@ -24,7 +24,7 @@
 #include <AssembleMomentumWallFunctionSolverAlgorithm.h>
 #include <AssembleMomentumABLWallFunctionSolverAlgorithm.h>
 #include <AssembleMomentumNonConformalSolverAlgorithm.h>
-#include <AssembleElemSolverAlgorithm.h>
+#include <AssembleElemSolverAlgorithmDep.h>
 #include <AssembleNodalGradAlgorithmDriver.h>
 #include <AssembleNodalGradEdgeAlgorithm.h>
 #include <AssembleNodalGradElemAlgorithm.h>
@@ -1020,7 +1020,7 @@ MomentumEquationSystem::register_interior_algorithm(
     }
     else {
       if ( realm_.solutionOptions_->useConsolidatedSolverAlg_ )
-        theSolverAlg = new AssembleElemSolverAlgorithm(realm_, part, this); // WIP
+        theSolverAlg = new AssembleElemSolverAlgorithmDep(realm_, part, this); // WIP
       else
         theSolverAlg = new AssembleMomentumElemSolverAlgorithm(realm_, part, this);
     }
@@ -2133,7 +2133,7 @@ ContinuityEquationSystem::register_interior_algorithm(
     if ( its == solverAlgDriver_->solverAlgMap_.end() ) {
       SolverAlgorithm *theSolverAlg = NULL;
       if ( realm_.solutionOptions_->useConsolidatedSolverAlg_ )
-        theSolverAlg = new AssembleElemSolverAlgorithm(realm_, part, this);
+        theSolverAlg = new AssembleElemSolverAlgorithmDep(realm_, part, this);
       else
         theSolverAlg = new AssembleContinuityElemSolverAlgorithm(realm_, part, this);
       solverAlgDriver_->solverAlgMap_[algType] = theSolverAlg;

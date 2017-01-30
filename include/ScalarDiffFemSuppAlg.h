@@ -6,8 +6,8 @@
 /*------------------------------------------------------------------------*/
 
 
-#ifndef HeatCondFemElemSuppAlg_h
-#define HeatCondFemElemSuppAlg_h
+#ifndef ScalarDiffFemSuppAlg_h
+#define ScalarDiffFemSuppAlg_h
 
 #include <SupplementalAlgorithm.h>
 #include <FieldTypeDef.h>
@@ -22,27 +22,21 @@ class Realm;
 class MasterElement;
 class Hex8FEM;
 
-class HeatCondFemElemSuppAlg : public SupplementalAlgorithm
+class ScalarDiffFemSuppAlg : public SupplementalAlgorithm
 {
 public:
 
-  HeatCondFemElemSuppAlg(
-    Realm &realm);
+  ScalarDiffFemSuppAlg(
+    Realm &realm,
+    ScalarFieldType *temperature,
+    ScalarFieldType *thermalCond);
 
-  virtual ~HeatCondFemElemSuppAlg() {}
+  virtual ~ScalarDiffFemSuppAlg() {}
 
-  virtual void setup();
-
-  virtual void elem_resize(
-    MasterElement *meSCS,
-    MasterElement *meSCV);
-
-  virtual void elem_execute(
+  virtual void element_execute(
     double *lhs,
     double *rhs,
-    stk::mesh::Entity element,
-    MasterElement *meSCS,
-    MasterElement *meSCV);
+    stk::mesh::Entity element);
   
   const stk::mesh::BulkData *bulkData_;
 
@@ -52,6 +46,8 @@ public:
 
   // master element
   Hex8FEM * meFEM_;
+  const int nodesPerElement_;
+  const int numIp_;
   double *ipWeight_;
   const int nDim_;
 

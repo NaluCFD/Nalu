@@ -34,6 +34,7 @@ public:
   virtual void post_work();
   
   // different types of algorithms... interior/flux; constraints and dirichlet
+  std::map<std::string, SolverAlgorithm *> solverAlgorithmMap_;
   std::map<AlgorithmType, SolverAlgorithm *> solverAlgMap_;
   std::map<AlgorithmType, SolverAlgorithm *> solverConstraintAlgMap_;
   std::map<AlgorithmType, SolverAlgorithm *> solverDirichAlgMap_;

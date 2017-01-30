@@ -6,7 +6,7 @@
 /*------------------------------------------------------------------------*/
 
 
-#include <HeatCondFemElemSuppAlg.h>
+#include <ScalarDiffFemSuppAlg.h>
 #include <SupplementalAlgorithm.h>
 #include <FieldTypeDef.h>
 #include <Realm.h>
@@ -24,85 +24,60 @@ namespace nalu{
 //==========================================================================
 // Class Definition
 //==========================================================================
-// HeatCondFemElemSuppAlg - hack hex8 FEM heat conduction
+// ScalarDiffFemSuppAlg - hack hex8 FEM heat conduction
 //==========================================================================
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-HeatCondFemElemSuppAlg::HeatCondFemElemSuppAlg(
-  Realm &realm)
-: SupplementalAlgorithm(realm),
+ScalarDiffFemSuppAlg::ScalarDiffFemSuppAlg(
+  Realm &realm,
+  ScalarFieldType *temperature,
+  ScalarFieldType *thermalCond)
+  : SupplementalAlgorithm(realm),
     bulkData_(&realm.bulk_data()),
-    temperature_(NULL),
-    thermalCond_(NULL),
+    temperature_(temperature),
+    thermalCond_(thermalCond),
     coordinates_(NULL),
     meFEM_(new Hex8FEM()),
+    nodesPerElement_(meFEM_->nodesPerElement_),
+    numIp_(meFEM_->numIntPoints_),
     ipWeight_(&meFEM_->weights_[0]),
     nDim_(realm.meta_data().spatial_dimension())
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
-  temperature_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature");
-  thermalCond_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "thermal_conductivity");
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates");
-}
-
-//--------------------------------------------------------------------------
-//-------- elem_resize -----------------------------------------------------
-//--------------------------------------------------------------------------
-void
-HeatCondFemElemSuppAlg::elem_resize(
-  MasterElement */*meFEM_*/,
-  MasterElement */*meSCV*/)
-{
-  const int nodesPerElement = meFEM_->nodesPerElement_;
-  const int numIp = meFEM_->numIntPoints_;
 
   // resize; geometry
-  ws_dndx_.resize(nDim_*numIp*nodesPerElement);
-  ws_deriv_.resize(nDim_*numIp*nodesPerElement);
-  ws_det_j_.resize(numIp);
-  ws_shape_function_.resize(numIp*nodesPerElement);
+  ws_dndx_.resize(nDim_*numIp_*nodesPerElement_);
+  ws_deriv_.resize(nDim_*numIp_*nodesPerElement_);
+  ws_det_j_.resize(numIp_);
+  ws_shape_function_.resize(numIp_*nodesPerElement_);
 
   // resize; fields
-  ws_temperature_.resize(nodesPerElement);
-  ws_thermalCond_.resize(nodesPerElement);
-  ws_coordinates_.resize(nDim_*nodesPerElement);
+  ws_temperature_.resize(nodesPerElement_);
+  ws_thermalCond_.resize(nodesPerElement_);
+  ws_coordinates_.resize(nDim_*nodesPerElement_);
   
   // compute shape function
   meFEM_->shape_fcn(&ws_shape_function_[0]);
 }
 
 //--------------------------------------------------------------------------
-//-------- setup -----------------------------------------------------------
+//-------- element_execute -------------------------------------------------
 //--------------------------------------------------------------------------
 void
-HeatCondFemElemSuppAlg::setup()
-{
-  // nothing to do
-}
-
-//--------------------------------------------------------------------------
-//-------- elem_execute ----------------------------------------------------
-//--------------------------------------------------------------------------
-void
-HeatCondFemElemSuppAlg::elem_execute(
+ScalarDiffFemSuppAlg::element_execute(
   double *lhs,
   double *rhs,
-  stk::mesh::Entity element,
-  MasterElement */*meSCS_*/,
-  MasterElement */*meSCV*/)
-{
-  // details on this element topo
-  const int nodesPerElement = meFEM_->nodesPerElement_;
-  const int numIp = meFEM_->numIntPoints_;
-  
+  stk::mesh::Entity element)
+{  
   // gather
   stk::mesh::Entity const *  node_rels = bulkData_->begin_nodes(element);
   int num_nodes = bulkData_->num_nodes(element);
 
   // sanity check on num nodes
-  ThrowAssert( num_nodes == nodesPerElement );
+  ThrowAssert( num_nodes == nodesPerElement_ );
   for ( int ni = 0; ni < num_nodes; ++ni ) {
     stk::mesh::Entity node = node_rels[ni];
     
@@ -124,12 +99,12 @@ HeatCondFemElemSuppAlg::elem_execute(
   double me_error = 0.0;
   meFEM_->grad_op(1, &ws_coordinates_[0], &ws_dndx_[0], &ws_deriv_[0], &ws_det_j_[0], &me_error);
 
-  for ( int ip = 0; ip < numIp; ++ip ) {
+  for ( int ip = 0; ip < numIp_; ++ip ) {
 
     // compute ip property
     double thermalCondIp = 0.0;
-    const int ipNpe = ip*nodesPerElement;
-    for ( int ic = 0; ic < nodesPerElement; ++ic ) {
+    const int ipNpe = ip*nodesPerElement_;
+    for ( int ic = 0; ic < nodesPerElement_; ++ic ) {
       const double r = ws_shape_function_[ipNpe+ic];
       thermalCondIp += r*ws_thermalCond_[ic];
     }
@@ -138,16 +113,16 @@ HeatCondFemElemSuppAlg::elem_execute(
     const double ipFactor = ws_det_j_[ip]*ipWeight_[ip];
 
     // row ir
-    for ( int ir = 0; ir < nodesPerElement; ++ir) {
+    for ( int ir = 0; ir < nodesPerElement_; ++ir) {
 
       // offset for row dndx
-      const int offSetDnDxIr = nDim_*nodesPerElement*ip + ir*nDim_;
+      const int offSetDnDxIr = nDim_*nodesPerElement_*ip + ir*nDim_;
 
       // column ic
       double rhsSum = 0.0;
-      for ( int ic = 0; ic < nodesPerElement; ++ic ) {
+      for ( int ic = 0; ic < nodesPerElement_; ++ic ) {
         // offset for column dndx
-        const int offSetDnDxIc = nDim_*nodesPerElement*ip + ic*nDim_;
+        const int offSetDnDxIc = nDim_*nodesPerElement_*ip + ic*nDim_;
 
         double lhsSum = 0.0;
         double T = ws_temperature_[ic];
@@ -156,7 +131,7 @@ HeatCondFemElemSuppAlg::elem_execute(
           lhsSum += fac;
           rhsSum += fac*T;
         }
-        lhs[ir*nodesPerElement+ic] += lhsSum*ipFactor;
+        lhs[ir*nodesPerElement_+ic] += lhsSum*ipFactor;
       }
       rhs[ir] -= rhsSum*ipFactor;
     }

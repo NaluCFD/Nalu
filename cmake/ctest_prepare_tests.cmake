@@ -516,6 +516,16 @@ file(COPY               "${NALURTEST_MESH_DIR}/periodic3d.g"
 
 
 #=============================================================================
+# cvfemHC test
+#=============================================================================i
+file(COPY               "${NALURTEST_NIGHTLY_DIR}/cvfemHC"
+     DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}")
+
+file(COPY               "${NALURTEST_MESH_DIR}/periodic3d.g"
+     DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}/cvfemHC")
+
+
+#=============================================================================
 # ablUnstableEdge test
 #=============================================================================
 file(COPY               "${NALURTEST_NIGHTLY_DIR}/ablUnstableEdge"

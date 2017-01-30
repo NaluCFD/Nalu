@@ -31,6 +31,11 @@ public:
 
   virtual void setup() {}
 
+  virtual void element_execute(
+    double *lhs,
+    double *rhs,
+    stk::mesh::Entity element) {}
+
   virtual void elem_execute(
     double *lhs,
     double *rhs,

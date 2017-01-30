@@ -18,6 +18,9 @@
 #include <stk_mesh/base/BulkData.hpp>
 #include <stk_mesh/base/Field.hpp>
 
+// topology
+#include <stk_topology/topology.hpp>
+
 namespace sierra{
 namespace nalu{
 
@@ -30,10 +33,15 @@ namespace nalu{
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 SteadyThermal3dContactSrcElemSuppAlg::SteadyThermal3dContactSrcElemSuppAlg(
-  Realm &realm)
+  Realm &realm,
+  const stk::topology &theTopo)
   : SupplementalAlgorithm(realm),
     bulkData_(&realm.bulk_data()),
     coordinates_(NULL),
+    meSCV_(realm.get_volume_master_element(theTopo)),
+    ipNodeMap_(meSCV_->ipNodeMap()),
+    nodesPerElement_(meSCV_->nodesPerElement_),
+    numScvIp_(meSCV_->numIntPoints_),
     a_(1.0),
     k_(1.0),
     pi_(std::acos(-1.0)),
@@ -45,63 +53,36 @@ SteadyThermal3dContactSrcElemSuppAlg::SteadyThermal3dContactSrcElemSuppAlg(
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
  
-  // scratch vecs
+  // scratch vecs; fixed
   scvCoords_.resize(nDim_);
-}
 
-//--------------------------------------------------------------------------
-//-------- elem_resize -----------------------------------------------------
-//--------------------------------------------------------------------------
-void
-SteadyThermal3dContactSrcElemSuppAlg::elem_resize(
-  MasterElement */*meSCS*/,
-  MasterElement *meSCV)
-{
-  const int nodesPerElement = meSCV->nodesPerElement_;
-  const int numScvIp = meSCV->numIntPoints_;
-  ws_shape_function_.resize(numScvIp*nodesPerElement);
-  ws_coordinates_.resize(nDim_*nodesPerElement);
-  ws_scv_volume_.resize(numScvIp);
-  ws_nodalSrc_.resize(nodesPerElement);
+  ws_shape_function_.resize(numScvIp_*nodesPerElement_);
+  ws_coordinates_.resize(nDim_*nodesPerElement_);
+  ws_scv_volume_.resize(numScvIp_);
+  ws_nodalSrc_.resize(nodesPerElement_);
 
   // compute shape function
   if ( useShifted_ )
-    meSCV->shifted_shape_fcn(&ws_shape_function_[0]);
+    meSCV_->shifted_shape_fcn(&ws_shape_function_[0]);
   else
-    meSCV->shape_fcn(&ws_shape_function_[0]);
+    meSCV_->shape_fcn(&ws_shape_function_[0]);
 }
 
 //--------------------------------------------------------------------------
-//-------- setup -----------------------------------------------------------
+//-------- element_execute -------------------------------------------------
 //--------------------------------------------------------------------------
 void
-SteadyThermal3dContactSrcElemSuppAlg::setup()
-{
-  // nothing
-}
-
-//--------------------------------------------------------------------------
-//-------- elem_execute ----------------------------------------------------
-//--------------------------------------------------------------------------
-void
-SteadyThermal3dContactSrcElemSuppAlg::elem_execute(
+SteadyThermal3dContactSrcElemSuppAlg::element_execute(
   double */*lhs*/,
   double *rhs,
-  stk::mesh::Entity element,
-  MasterElement */*meSCS*/,
-  MasterElement *meSCV)
+  stk::mesh::Entity element)
 {
-  // pointer to ME methods
-  const int *ipNodeMap = meSCV->ipNodeMap();
-  const int nodesPerElement = meSCV->nodesPerElement_;
-  const int numScvIp = meSCV->numIntPoints_;
-
   // gather
   stk::mesh::Entity const *  node_rels = bulkData_->begin_nodes(element);
   int num_nodes = bulkData_->num_nodes(element);
 
   // sanity check on num nodes
-  ThrowAssert( num_nodes == nodesPerElement );
+  ThrowAssert( num_nodes == nodesPerElement_ );
 
   for ( int ni = 0; ni < num_nodes; ++ni ) {
     stk::mesh::Entity node = node_rels[ni];
@@ -116,22 +97,22 @@ SteadyThermal3dContactSrcElemSuppAlg::elem_execute(
 
   // compute geometry
   double scv_error = 0.0;
-  meSCV->determinant(1, &ws_coordinates_[0], &ws_scv_volume_[0], &scv_error);
+  meSCV_->determinant(1, &ws_coordinates_[0], &ws_scv_volume_[0], &scv_error);
 
   // choose a form...
   if ( evalAtIps_ ) {
     // interpolate to ips and evaluate source
-    for ( int ip = 0; ip < numScvIp; ++ip ) {
+    for ( int ip = 0; ip < numScvIp_; ++ip ) {
       
       // nearest node to ip
-      const int nearestNode = ipNodeMap[ip];
+      const int nearestNode = ipNodeMap_[ip];
       
       // zero out
       for ( int j =0; j < nDim_; ++j )
         scvCoords_[j] = 0.0;
       
-      const int offSet = ip*nodesPerElement;
-      for ( int ic = 0; ic < nodesPerElement; ++ic ) {
+      const int offSet = ip*nodesPerElement_;
+      for ( int ic = 0; ic < nodesPerElement_; ++ic ) {
         const double r = ws_shape_function_[offSet+ic];
         for ( int j = 0; j < nDim_; ++j )
           scvCoords_[j] += r*ws_coordinates_[ic*nDim_+j];
@@ -144,7 +125,7 @@ SteadyThermal3dContactSrcElemSuppAlg::elem_execute(
   }
   else {
     // evaluate source at nodal location
-    for ( int ni = 0; ni < nodesPerElement; ++ni ) {
+    for ( int ni = 0; ni < nodesPerElement_; ++ni ) {
       const double x = ws_coordinates_[ni*nDim_+0];
       const double y = ws_coordinates_[ni*nDim_+1];
       const double z = ws_coordinates_[ni*nDim_+2];
@@ -152,15 +133,15 @@ SteadyThermal3dContactSrcElemSuppAlg::elem_execute(
     }
 
     // interpolate nodal source term to ips and assemble to nodes
-    for ( int ip = 0; ip < numScvIp; ++ip ) {
+    for ( int ip = 0; ip < numScvIp_; ++ip ) {
       
       // nearest node to ip
-      const int nearestNode = ipNodeMap[ip];
+      const int nearestNode = ipNodeMap_[ip];
       
       double ipSource = 0.0;
 
-      const int offSet = ip*nodesPerElement;
-      for ( int ic = 0; ic < nodesPerElement; ++ic ) {
+      const int offSet = ip*nodesPerElement_;
+      for ( int ic = 0; ic < nodesPerElement_; ++ic ) {
         const double r = ws_shape_function_[offSet+ic];
         ipSource += r*ws_nodalSrc_[ic];
       }

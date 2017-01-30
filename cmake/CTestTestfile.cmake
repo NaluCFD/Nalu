@@ -569,6 +569,18 @@ set_tests_properties(femHC
 
 
 #=============================================================================
+# cvfemHC test
+#=============================================================================
+add_test(cvfemHC "cvfemHC.sh")
+set_tests_properties(cvfemHC
+  PROPERTIES  PASS_REGULAR_EXPRESSION "PASSED"
+              FAIL_REGULAR_EXPRESSION "FAILED"
+              TIMEOUT 400
+              PROCESSORS 2
+  WORKING_DIRECTORY "${NIGHTLY_TEST_RESULT_DIRECTORY}/cvfemHC")
+
+
+#=============================================================================
 # ablUnstableEdge test
 #=============================================================================
 add_test(ablUnstableEdge "ablUnstableEdge.sh")

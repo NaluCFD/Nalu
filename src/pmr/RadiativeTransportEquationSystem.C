@@ -11,7 +11,7 @@
 #include <pmr/RadTransFemElemSuppAlg.h>
 #include <pmr/RadTransSupgElemSuppAlg.h>
 #include <pmr/RadTransIsoScatteringNodeSuppAlg.h>
-#include <AssembleElemSolverAlgorithm.h>
+#include <AssembleElemSolverAlgorithmDep.h>
 #include <pmr/AssembleRadTransEdgeSolverAlgorithm.h>
 #include <pmr/AssembleRadTransEdgeUpwindSolverAlgorithm.h>
 #include <pmr/AssembleRadTransElemSolverAlgorithm.h>
@@ -500,7 +500,7 @@ RadiativeTransportEquationSystem::register_interior_algorithm(
       }
       else {
         // create the generic solver algorithm
-        theSolverAlg = new AssembleElemSolverAlgorithm(realm_, part, this);
+        theSolverAlg = new AssembleElemSolverAlgorithmDep(realm_, part, this);
       }
     }
     solverAlgDriver_->solverAlgMap_[algType] = theSolverAlg;
