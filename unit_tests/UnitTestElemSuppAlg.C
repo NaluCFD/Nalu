@@ -107,8 +107,6 @@ public:
   double det_j[MAX_NUM_SCS_IP];
 };
 
-//======= templated element kernel function ==================
-
 void element_discrete_laplacian_kernel_3d(
                        sierra::nalu::MasterElement& meSCS,
                        ScalarFieldType* discreteLaplacianOfPressure,
