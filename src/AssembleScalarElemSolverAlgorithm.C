@@ -233,7 +233,6 @@ AssembleScalarElemSolverAlgorithm::execute()
       for ( int p = 0; p < rhsSize; ++p )
         p_rhs[p] = 0.0;
 
-
       // ip data for this element; scs and scv
       const double *mdot = stk::mesh::field_data(*massFlowRate_, elem );
 
