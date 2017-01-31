@@ -22,6 +22,7 @@
 #include <stk_mesh/base/GetBuckets.hpp>
 #include <stk_mesh/base/Part.hpp>
 #include <stk_mesh/base/Selector.hpp>
+#include <stk_mesh/base/SkinBoundary.hpp>
 
 // stk_search
 #include <stk_search/CoarseSearch.hpp>
@@ -647,11 +648,12 @@ OversetManager::skin_exposed_surface_on_inactive_part()
 
   // skin the inactive part to obtain all exposed surface
   stk::mesh::Selector s_inactive = stk::mesh::Selector(*inActivePart_);
+  stk::mesh::Selector s_active = !s_inactive;
   stk::mesh::PartVector partToSkinVec;
   stk::mesh::PartVector partToPopulateVec;
   partToSkinVec.push_back(inActivePart_); // e.g. block_3
   partToPopulateVec.push_back(backgroundSurfacePart_); // e.g. surface_101
-  stk::mesh::skin_mesh(*bulkData_, s_inactive, partToPopulateVec, &s_inactive);
+  stk::mesh::create_exposed_block_boundary_sides(*bulkData_, s_inactive, partToPopulateVec, &s_active);
 
   const double end_time = NaluEnv::self().nalu_time();
 
