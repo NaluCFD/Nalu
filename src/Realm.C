@@ -94,7 +94,7 @@
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/Comm.hpp>
 #include <stk_mesh/base/CreateEdges.hpp>
-#include <stk_mesh/base/SkinMesh.hpp>
+#include <stk_mesh/base/SkinBoundary.hpp>
 
 // stk_io
 #include <stk_io/StkMeshIoBroker.hpp>
@@ -862,7 +862,7 @@ Realm::enforce_bc_on_exposed_faces()
   stk::mesh::Selector activePart = metaData_->locally_owned_part() | metaData_->globally_shared_part();
   stk::mesh::PartVector partVec;
   partVec.push_back(exposedBoundaryPart_);
-  stk::mesh::skin_mesh(*bulkData_, activePart, partVec);
+  stk::mesh::create_exposed_block_boundary_sides(*bulkData_, activePart, partVec);
 
   stk::mesh::Selector selectRule = stk::mesh::Selector(*exposedBoundaryPart_)
     & !stk::mesh::selectUnion(bcPartVec_);
