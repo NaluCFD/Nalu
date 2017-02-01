@@ -2,6 +2,8 @@
 #define _UnitTestKokkosUtils_h_
 
 #include <master_element/MasterElement.h>
+#include <stk_mesh/base/Types.hpp>
+#include <stk_mesh/base/Bucket.hpp>
 #include <Kokkos_Core.hpp>
 
 typedef Kokkos::Schedule<Kokkos::Dynamic> DynamicScheduleType;
@@ -18,6 +20,12 @@ inline DeviceTeamPolicy get_team_policy(const size_t sz, const size_t bytes_per_
 {
   DeviceTeamPolicy policy(sz, Kokkos::AUTO);
   return policy.set_scratch_size(0, Kokkos::PerTeam(bytes_per_team), Kokkos::PerThread(bytes_per_thread));
+}
+
+inline
+SharedMemView<stk::mesh::Entity*> get_entity_shmem_view_1D(const TeamHandleType& team, size_t len)
+{
+  return Kokkos::subview(SharedMemView<stk::mesh::Entity**>(team.team_shmem(), team.team_size(), len), team.team_rank(), Kokkos::ALL());
 }
 
 inline
