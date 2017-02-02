@@ -69,7 +69,15 @@ OversetManager::OversetManager(
 //--------------------------------------------------------------------------
 OversetManager::~OversetManager()
 {
-  // delete the overset info objects
+  delete_info_vec();
+}
+
+//--------------------------------------------------------------------------
+//-------- delete_info_vec -------------------------------------------------
+//--------------------------------------------------------------------------
+void
+OversetManager::delete_info_vec()
+{
   std::vector<OversetInfo*>::iterator ii;
   for( ii=oversetInfoVec_.begin(); ii!=oversetInfoVec_.end(); ++ii )
     delete (*ii);
@@ -569,7 +577,11 @@ OversetManager::clear_parts()
   searchKeyPairOverset_.clear();
   orphanPointSurfaceVecOverset_.clear();
   orphanPointSurfaceVecBackground_.clear();
+
+  // delete info vec before clear
+  delete_info_vec();
   oversetInfoVec_.clear();
+
   oversetInfoMapOverset_.clear();
   oversetInfoMapBackground_.clear();
 

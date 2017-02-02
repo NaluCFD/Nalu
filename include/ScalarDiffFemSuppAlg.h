@@ -31,7 +31,7 @@ public:
     ScalarFieldType *temperature,
     ScalarFieldType *thermalCond);
 
-  virtual ~ScalarDiffFemSuppAlg() {}
+  virtual ~ScalarDiffFemSuppAlg();
 
   virtual void element_execute(
     double *lhs,

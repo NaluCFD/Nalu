@@ -73,6 +73,9 @@ class NonConformalInfo {
 
   ~NonConformalInfo();
 
+  // general method to delete "new" entries within info vec
+  void delete_info_vec();
+
   void initialize();
   void construct_dgInfo_state();
   void find_possible_face_elements();

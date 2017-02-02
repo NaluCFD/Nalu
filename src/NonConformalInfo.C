@@ -105,7 +105,15 @@ NonConformalInfo::NonConformalInfo(
 //--------------------------------------------------------------------------
 NonConformalInfo::~NonConformalInfo()
 {
-  // delete dgInfo info objects:
+  delete_info_vec();
+}
+
+//--------------------------------------------------------------------------
+//-------- delete_info_vec -------------------------------------------------
+//--------------------------------------------------------------------------
+void
+NonConformalInfo::delete_info_vec()
+{
   std::vector<std::vector<DgInfo*> >::iterator ii;
   for( ii=dgInfoVec_.begin(); ii!=dgInfoVec_.end(); ++ii ) {
     std::vector<DgInfo *> &faceDgInfoVec = (*ii);
@@ -126,15 +134,10 @@ NonConformalInfo::initialize()
   boundingFaceElementBoxVec_.clear();
   searchKeyPair_.clear();
 
-  // delete dgInfoVec_
-  std::vector<std::vector<DgInfo *> >::iterator ii;
-  for( ii=dgInfoVec_.begin(); ii!=dgInfoVec_.end(); ++ii ) {
-    std::vector<DgInfo *> &faceDgInfoVec = (*ii);
-    for ( size_t k = 0; k < faceDgInfoVec.size(); ++k )
-      delete faceDgInfoVec[k];
-  }
+  // delete info vec before clear
+  delete_info_vec();
   dgInfoVec_.clear();
-
+  
   construct_dgInfo_state();
 
   find_possible_face_elements();

@@ -64,6 +64,9 @@ public:
 
   ~OversetManager();
 
+  // general method to delete "new" entries within info vec
+  void delete_info_vec();
+
   // main method called for initialization
   void initialize();
   

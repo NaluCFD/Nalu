@@ -166,9 +166,13 @@ ActuatorLine::ActuatorLine(
 //--------------------------------------------------------------------------
 ActuatorLine::~ActuatorLine()
 {
-  // delete data probes specifications vector
+  // delete data probes specifications vector and map
   for ( size_t k = 0; k < actuatorLineInfo_.size(); ++k )
     delete actuatorLineInfo_[k];
+
+  std::map<size_t, ActuatorLinePointInfo *>::iterator iterPoint;
+  for( iterPoint=actuatorLinePointInfoMap_.begin(); iterPoint!=actuatorLinePointInfoMap_.end(); ++iterPoint )
+    delete (*iterPoint).second;
 }
 
 //--------------------------------------------------------------------------
