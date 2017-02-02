@@ -16,6 +16,9 @@
 #include <stk_mesh/base/Entity.hpp>
 #include <stk_topology/topology.hpp>
 
+// Kokkos
+#include <Kokkos_Core.hpp>
+
 namespace sierra{
 namespace nalu{
 
@@ -57,16 +60,16 @@ public:
   const int nDim_;
 
   // scratch space; geometry
-  std::vector<double> ws_scs_areav_;
-  std::vector<double> ws_dndx_;
-  std::vector<double> ws_deriv_;
-  std::vector<double> ws_det_j_;
-  std::vector<double> ws_shape_function_;
+  Kokkos::View<double**> ws_scs_areav_;
+  Kokkos::View<double***> ws_dndx_;
+  Kokkos::View<double*> ws_deriv_;
+  Kokkos::View<double*> ws_det_j_;
+  Kokkos::View<double**> ws_shape_function_;
 
   // scratch space; fields
-  std::vector<double> ws_scalarQ_;
-  std::vector<double> ws_diffFluxCoeff_;
-  std::vector<double> ws_coordinates_;
+  Kokkos::View<double*> ws_scalarQ_;
+  Kokkos::View<double*> ws_diffFluxCoeff_;
+  Kokkos::View<double**> ws_coordinates_;
 };
 
 } // namespace nalu

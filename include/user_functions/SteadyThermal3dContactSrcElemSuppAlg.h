@@ -15,6 +15,9 @@
 #include <stk_mesh/base/BulkData.hpp>
 #include <stk_mesh/base/Entity.hpp>
 
+// Kokkos
+#include <Kokkos_Core.hpp>
+
 namespace sierra{
 namespace nalu{
 
@@ -53,11 +56,11 @@ public:
   const bool evalAtIps_;
 
   // scratch space
-  std::vector<double> scvCoords_;
-  std::vector<double> ws_shape_function_;
-  std::vector<double> ws_coordinates_;
-  std::vector<double> ws_scv_volume_;
-  std::vector<double> ws_nodalSrc_;
+  Kokkos::View<double**> ws_shape_function_;
+  Kokkos::View<double**> ws_coordinates_;
+  Kokkos::View<double*> ws_scv_volume_;
+  Kokkos::View<double*> ws_nodalSrc_;
+  Kokkos::View<double*> ws_scvCoords_;
 };
 
 } // namespace nalu

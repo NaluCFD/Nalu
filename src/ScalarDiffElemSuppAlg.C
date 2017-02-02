@@ -21,6 +21,9 @@
 // topology
 #include <stk_topology/topology.hpp>
 
+// Kokkos
+#include <Kokkos_Core.hpp>
+
 namespace sierra{
 namespace nalu{
 
@@ -46,24 +49,22 @@ ScalarDiffElemSuppAlg::ScalarDiffElemSuppAlg(
     lrscv_(meSCS_->adjacentNodes()),
     nodesPerElement_(meSCS_->nodesPerElement_),
     numScsIp_(meSCS_->numIntPoints_),
-    nDim_(realm.meta_data().spatial_dimension())
+    nDim_(realm.meta_data().spatial_dimension()),
+    ws_scs_areav_("ws_scs_areav", numScsIp_, nDim_),
+    ws_dndx_("ws_dndx", numScsIp_, nodesPerElement_, nDim_),
+    ws_deriv_("ws_deriv", nDim_*numScsIp_*nodesPerElement_ ),
+    ws_det_j_("ws_det_j", numScsIp_),
+    ws_shape_function_("ws_shape_function", numScsIp_, nodesPerElement_),
+    ws_scalarQ_("ws_scalarQ", nodesPerElement_),
+    ws_diffFluxCoeff_("ws_diffFluxCoeff", nodesPerElement_),
+    ws_coordinates_("ws_coordinates", nodesPerElement_, nDim_)
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
-  
-  // geometry
-  ws_scs_areav_.resize(nDim_*numScsIp_);
-  ws_dndx_.resize(nDim_*numScsIp_*nodesPerElement_);
-  ws_deriv_.resize(nDim_*numScsIp_*nodesPerElement_);
-  ws_det_j_.resize(numScsIp_);
-  ws_shape_function_.resize(numScsIp_*nodesPerElement_);
-  meSCS_->shape_fcn(&ws_shape_function_[0]);
-  
-  // fields
-  ws_scalarQ_.resize(nodesPerElement_);
-  ws_diffFluxCoeff_.resize(nodesPerElement_);
-  ws_coordinates_.resize(nDim_*nodesPerElement_);
+
+  // compute shape function
+  meSCS_->shape_fcn(&ws_shape_function_(0,0));
 }
 
 //--------------------------------------------------------------------------
@@ -94,23 +95,22 @@ ScalarDiffElemSuppAlg::element_execute(
     stk::mesh::Entity node = node_rels[ni];
     
     // gather scalars
-    ws_scalarQ_[ni] = *stk::mesh::field_data(*scalarQ_, node);
-    ws_diffFluxCoeff_[ni] = *stk::mesh::field_data(*diffFluxCoeff_, node );
+    ws_scalarQ_(ni) = *stk::mesh::field_data(*scalarQ_, node);
+    ws_diffFluxCoeff_(ni) = *stk::mesh::field_data(*diffFluxCoeff_, node );
 
     // pointers to real data
     const double * coords = stk::mesh::field_data(*coordinates_, node );
 
     // gather vectors
-    const int offSet = ni*nDim_;
     for ( int j=0; j < nDim_; ++j ) {
-      ws_coordinates_[offSet+j] = coords[j];
+      ws_coordinates_(ni,j) = coords[j];
     }
   }
 
   // compute geometry and dndx
   double scs_error = 0.0;
-  meSCS_->determinant(1, &ws_coordinates_[0], &ws_scs_areav_[0], &scs_error);
-  meSCS_->grad_op(1, &ws_coordinates_[0], &ws_dndx_[0], &ws_deriv_[0], &ws_det_j_[0], &scs_error);
+  meSCS_->determinant(1, &ws_coordinates_(0,0), &ws_scs_areav_(0,0), &scs_error);
+  meSCS_->grad_op(1, &ws_coordinates_(0,0), &ws_dndx_(0,0,0), &ws_deriv_(0), &ws_det_j_(0), &scs_error);
   
   // start the assembly
   for ( int ip = 0; ip < numScsIp_; ++ip ) {
@@ -125,21 +125,19 @@ ScalarDiffElemSuppAlg::element_execute(
 
     // compute ip property
     double diffFluxCoeffIp = 0.0;
-    const int ipNpe = ip*nodesPerElement_;
     for ( int ic = 0; ic < nodesPerElement_; ++ic ) {
-      const double r = ws_shape_function_[ipNpe+ic];
-      diffFluxCoeffIp += r*ws_diffFluxCoeff_[ic];
+      const double r = ws_shape_function_(ip,ic);
+      diffFluxCoeffIp += r*ws_diffFluxCoeff_(ic);
     }
 
     // assemble to rhs and lhs
     double qDiff = 0.0;
     for ( int ic = 0; ic < nodesPerElement_; ++ic ) {      
       double lhsfacDiff = 0.0;
-      const int offSetDnDx = nDim_*nodesPerElement_*ip + ic*nDim_;
       for ( int j = 0; j < nDim_; ++j ) {
-        lhsfacDiff += -diffFluxCoeffIp*ws_dndx_[offSetDnDx+j]*ws_scs_areav_[ip*nDim_+j];
+        lhsfacDiff += -diffFluxCoeffIp*ws_dndx_(ip,ic,j)*ws_scs_areav_(ip,j);
       }
-      qDiff += lhsfacDiff*ws_scalarQ_[ic];
+      qDiff += lhsfacDiff*ws_scalarQ_(ic);
       
       // lhs; il then ir
       lhs[rowL+ic] += lhsfacDiff;
