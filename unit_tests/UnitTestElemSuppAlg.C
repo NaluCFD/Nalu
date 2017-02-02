@@ -17,58 +17,85 @@
 
 namespace {
 
-const double tol = 1.0e-10;
-
 #ifndef KOKKOS_HAVE_CUDA
-//following tests can't run on cuda due to variety of reasons, including
-//use of MasterElement functions (defined for host), etc.
 
-void gather_elem_node_coords(int numNodes,
-                             int nDim,
-                             const stk::mesh::Entity* elemNodes,
-                             const VectorFieldType* coordField,
-                             double* coordinates)
+void gather_elem_node_field(const stk::mesh::FieldBase& field,
+                            stk::mesh::Entity elem,
+                            int numNodes,
+                            const stk::mesh::Entity* elemNodes,
+                            SharedMemView<double*>& shmemView)
 {
+  unsigned scalarsPerEntity = field.max_size(stk::topology::NODE_RANK);
   for(int i=0; i<numNodes; ++i) {
-    const double* nodeCoords = stk::mesh::field_data(*coordField, elemNodes[i]);
-    for(int d=0; d<nDim; ++d) {
-      coordinates[i*nDim+d] = nodeCoords[d];
-    }
-  }
-}
-
-void gather_elem_node_coords(int numNodes,
-                             int nDim,
-                             const stk::mesh::Entity* elemNodes,
-                             const VectorFieldType* coordField,
-                             SharedMemView<double*>& coordinates)
-{
-  for(int i=0; i<numNodes; ++i) {
-    const double* nodeCoords = stk::mesh::field_data(*coordField, elemNodes[i]);
-    for(int d=0; d<nDim; ++d) {
-      coordinates[i*nDim+d] = nodeCoords[d];
+    const double* dataPtr = static_cast<const double*>(stk::mesh::field_data(field, elemNodes[i]));
+    for(unsigned d=0; d<scalarsPerEntity; ++d) {
+      shmemView[i*scalarsPerEntity+d] = dataPtr[d];
     }
   }
 }
 
 enum ELEM_DATA_NEEDED {
   NODES = 0,
-  COORDS,
   SCS_AREAV,
   SCS_GRAD_OP
 };
 
-int scratch_data_bytes(int nDim, const std::set<ELEM_DATA_NEEDED>& dataNeededBySuppAlgs)
+struct FieldBaseLess
+{
+  bool operator()(const stk::mesh::FieldBase* lhs, const stk::mesh::FieldBase* rhs) const
+  {
+    return lhs->mesh_meta_data_ordinal() < rhs->mesh_meta_data_ordinal();
+  }
+};
+
+typedef std::set<const stk::mesh::FieldBase*,FieldBaseLess> FieldSet;
+
+class ElemDataRequests
+{
+public:
+  ElemDataRequests()
+  : dataEnums(), fields()
+  {
+  }
+
+  void add(ELEM_DATA_NEEDED data)
+  {
+    dataEnums.insert(data);
+  }
+
+  void add(const stk::mesh::FieldBase& field)
+  {
+    fields.insert(&field);
+  }
+
+  const std::set<ELEM_DATA_NEEDED>& get_data_enums() const { return dataEnums; }
+
+  const FieldSet& get_fields() const { return fields; }
+
+private:
+  std::set<ELEM_DATA_NEEDED> dataEnums;
+  FieldSet fields;
+};
+
+int get_num_bytes_pre_req_data(int nDim, const ElemDataRequests& dataNeededBySuppAlgs)
 {
     const int MAX_NODES_PER_ELEM = 27;
     const int MAX_NUM_SCS_IP = 216;
     int numBytes = 0;
-    for(ELEM_DATA_NEEDED data : dataNeededBySuppAlgs) {
+
+    const FieldSet& neededFields = dataNeededBySuppAlgs.get_fields();
+    for(const stk::mesh::FieldBase* fieldPtr : neededFields) {
+      stk::mesh::EntityRank fieldEntityRank = fieldPtr->entity_rank();
+      ThrowAssertMsg(fieldEntityRank == stk::topology::NODE_RANK || fieldEntityRank == stk::topology::ELEM_RANK, "Currently only node and element fields are supported.");
+      unsigned scalarsPerEntity = fieldPtr->max_size(fieldEntityRank);
+      numBytes += scalarsPerEntity*sizeof(double);
+    }
+
+    const std::set<ELEM_DATA_NEEDED>& dataEnums = dataNeededBySuppAlgs.get_data_enums();
+    for(ELEM_DATA_NEEDED data : dataEnums) {
       switch(data)
       {
         case NODES: numBytes += MAX_NODES_PER_ELEM * sizeof(stk::mesh::Entity);
-                    break;
-        case COORDS: numBytes += nDim * MAX_NODES_PER_ELEM * sizeof(double);
                     break;
         case SCS_AREAV: numBytes += nDim * MAX_NUM_SCS_IP * sizeof(double);
                     break;
@@ -77,6 +104,7 @@ int scratch_data_bytes(int nDim, const std::set<ELEM_DATA_NEEDED>& dataNeededByS
         default: break;
       }
     }
+
     return numBytes;
 }
 
@@ -87,22 +115,36 @@ public:
                const stk::mesh::BulkData& bulkData,
                stk::topology topo,
                const sierra::nalu::MasterElement& meSCS,
-               const std::set<ELEM_DATA_NEEDED>& dataNeeded)
-  : elemNodes(), coordinates(), scs_areav(), dndx(), deriv(), det_j()
+               const ElemDataRequests& dataNeeded)
+  : elemNodes(), scs_areav(), dndx(), deriv(), det_j()
   {
     int nDim = bulkData.mesh_meta_data().spatial_dimension();
     int nodesPerElem = topo.num_nodes();
     int numScsIp = meSCS.numIntPoints_;
 
-    for(ELEM_DATA_NEEDED data : dataNeeded) {
+    const stk::mesh::MetaData& meta = bulkData.mesh_meta_data();
+    unsigned numRanks = meta.entity_rank_count();
+    unsigned numFields = meta.get_fields().size();
+    fieldViews.resize(numRanks);
+    for(unsigned i=0; i<numRanks; ++i) {
+      fieldViews[i].resize(numFields);
+    }
+
+    const FieldSet& neededFields = dataNeeded.get_fields();
+    for(const stk::mesh::FieldBase* fieldPtr : neededFields) {
+      stk::mesh::EntityRank fieldEntityRank = fieldPtr->entity_rank();
+      ThrowAssertMsg(fieldEntityRank == stk::topology::NODE_RANK || fieldEntityRank == stk::topology::ELEM_RANK, "Currently only node and element fields are supported.");
+      unsigned scalarsPerEntity = fieldPtr->max_size(fieldEntityRank);
+      unsigned viewLength = fieldEntityRank==stk::topology::ELEM_RANK ? scalarsPerEntity : nodesPerElem*scalarsPerEntity;
+      fieldViews[fieldEntityRank][fieldPtr->mesh_meta_data_ordinal()] = get_shmem_view_1D(team, viewLength);
+    }
+
+    const std::set<ELEM_DATA_NEEDED>& dataEnums = dataNeeded.get_data_enums();
+    for(ELEM_DATA_NEEDED data : dataEnums) {
       switch(data)
       {
         case NODES:
            elemNodes = get_entity_shmem_view_1D(team, nodesPerElem);
-           break;
-
-        case COORDS:
-           coordinates = get_shmem_view_1D(team, nodesPerElem*nDim);
            break;
 
         case SCS_AREAV:
@@ -120,46 +162,68 @@ public:
     }
   }
 
+  SharedMemView<double*>& get_scratch_view(const stk::mesh::FieldBase& field)
+  {
+    return fieldViews[field.entity_rank()][field.mesh_meta_data_ordinal()];
+  }
+
   SharedMemView<stk::mesh::Entity*> elemNodes;
-  SharedMemView<double*> coordinates;
   SharedMemView<double*> scs_areav;
   SharedMemView<double*> dndx;
   SharedMemView<double*> deriv;
   SharedMemView<double*> det_j;
+
+  std::vector<std::vector<SharedMemView<double*>>> fieldViews;
 };
 
-void fill_scratch_views(const std::set<ELEM_DATA_NEEDED>& dataNeeded,
+void fill_pre_req_data(const ElemDataRequests& dataNeeded,
                         const stk::mesh::BulkData& bulkData,
                         stk::topology topo, sierra::nalu::MasterElement& meSCS,
                         stk::mesh::Entity elem,
                         const VectorFieldType* coordField,
-                        ScratchViews& scratchViews)
+                        ScratchViews& prereqData)
 {
   double scs_error = 0;
-  int nDim = bulkData.mesh_meta_data().spatial_dimension();
   int nodesPerElem = topo.num_nodes();
   const stk::mesh::Entity* nodes = nullptr;
 
-  for(ELEM_DATA_NEEDED data : dataNeeded) {
+  const FieldSet& neededFields = dataNeeded.get_fields();
+  for(const stk::mesh::FieldBase* fieldPtr : neededFields) {
+    stk::mesh::EntityRank fieldEntityRank = fieldPtr->entity_rank();
+    SharedMemView<double*>& shmemView = prereqData.get_scratch_view(*fieldPtr);
+    if (fieldEntityRank==stk::topology::ELEM_RANK) {
+      unsigned len = shmemView.dimension(0);
+      double* fieldDataPtr = static_cast<double*>(stk::mesh::field_data(*fieldPtr, elem));
+      for(unsigned i=0; i<len; ++i) {
+        shmemView(i) = fieldDataPtr[i];
+      }
+    }
+    else if (fieldEntityRank == stk::topology::NODE_RANK) {
+      gather_elem_node_field(*fieldPtr, elem, nodesPerElem, bulkData.begin_nodes(elem), shmemView);
+    }
+    else {
+      ThrowRequireMsg(false, "Only node and element fields supported currently.");
+    }
+  }
+
+  SharedMemView<double*>& coords = prereqData.get_scratch_view(*coordField);
+  const std::set<ELEM_DATA_NEEDED>& dataEnums = dataNeeded.get_data_enums();
+  for(ELEM_DATA_NEEDED data : dataEnums) {
     switch(data)
     {
       case NODES:
          nodes = bulkData.begin_nodes(elem);
          for(int i=0; i<nodesPerElem; ++i) {
-           scratchViews.elemNodes(i) = nodes[i];
+           prereqData.elemNodes(i) = nodes[i];
          }
          break;
 
-      case COORDS:
-         gather_elem_node_coords(topo.num_nodes(), nDim, bulkData.begin_nodes(elem), coordField, scratchViews.coordinates);
-         break;
-
       case SCS_AREAV:
-         meSCS.determinant(1, &scratchViews.coordinates(0), &scratchViews.scs_areav(0), &scs_error);
+         meSCS.determinant(1, &coords(0), &prereqData.scs_areav(0), &scs_error);
          break;
 
       case SCS_GRAD_OP:
-         meSCS.grad_op(1, &scratchViews.coordinates(0), &scratchViews.dndx(0), &scratchViews.deriv(0), &scratchViews.det_j(0), &scs_error);
+         meSCS.grad_op(1, &coords(0), &prereqData.dndx(0), &prereqData.deriv(0), &prereqData.det_j(0), &scs_error);
          break;
 
       default: break;
@@ -167,136 +231,26 @@ void fill_scratch_views(const std::set<ELEM_DATA_NEEDED>& dataNeeded,
   }
 }
 
-class ComputedElemData
-{
-public:
-  ComputedElemData(const stk::mesh::BulkData& bulkData,
-                   sierra::nalu::MasterElement& meSCS,
-                   stk::topology topo,
-                   stk::mesh::Entity elem,
-                   const std::set<ELEM_DATA_NEEDED>& dataNeeded,
-                   const VectorFieldType* coordField)
-  {
-    int nDim = bulkData.mesh_meta_data().spatial_dimension();
-    double scs_error = 0;
-    for(ELEM_DATA_NEEDED data : dataNeeded) {
-      switch(data)
-      {
-        case NODES:
-           elemNodes = bulkData.begin_nodes(elem);
-           haveNodes = true;
-           break;
-        case COORDS:
-           gather_elem_node_coords(topo.num_nodes(), nDim, bulkData.begin_nodes(elem), coordField, coordinates);
-           haveCoordinates = true;
-           break;
-        case SCS_AREAV:
-           if (haveCoordinates) {
-             meSCS.determinant(1, coordinates, scs_areav, &scs_error);
-             haveScsAreav = true;
-           }
-           break;
-        case SCS_GRAD_OP:
-           if (haveCoordinates) {
-             meSCS.grad_op(1, coordinates, dndx, deriv, det_j, &scs_error);
-             haveScsGradOp = true;
-           }
-           break;
-        default: break;
-      }
-    }
-  }
-
-  //the following arrays are sized using 'max' numbers since this is a
-  //non-templated version of this class. A templated class could use
-  //precisely-sized arrays.
-  //
-  static const int MAX_NODES_PER_ELEM = 27;
-  static const int MAX_NUM_SCS_IP = 216;
-  static const int MAX_SPATIAL_DIM = 3;
-
-  bool haveNodes = false;
-  const stk::mesh::Entity* elemNodes = nullptr;
-
-  bool haveCoordinates = false;
-  double coordinates[MAX_NODES_PER_ELEM * MAX_SPATIAL_DIM];
-
-  bool haveScsAreav = false;
-  double scs_areav[MAX_NUM_SCS_IP * MAX_SPATIAL_DIM];
-
-  bool haveScsGradOp = false;
-  double dndx[MAX_NODES_PER_ELEM * MAX_NUM_SCS_IP * MAX_SPATIAL_DIM];
-  double deriv[MAX_NODES_PER_ELEM * MAX_NUM_SCS_IP * MAX_SPATIAL_DIM];
-  double det_j[MAX_NUM_SCS_IP];
-};
-
 void element_discrete_laplacian_kernel_3d(
                        sierra::nalu::MasterElement& meSCS,
-                       ScalarFieldType* discreteLaplacianOfPressure,
-                       ScalarFieldType* nodalPressureField,
-                       const ComputedElemData& elemData)
-{
-    const int nDim = 3;
-    const int nodesPerElem = meSCS.nodesPerElement_;
-    const int numScsIp = meSCS.numIntPoints_;
-
-    double p_elemNodePressures[nodesPerElem];
-
-    const int* lrscv = meSCS.adjacentNodes();
-
-    const stk::mesh::Entity* elemNodes = elemData.elemNodes;
-    for(int n=0; n<nodesPerElem; ++n) {
-        const double* nodePressure = stk::mesh::field_data(*nodalPressureField, elemNodes[n]);
-        p_elemNodePressures[n] = nodePressure[0];
-    }
-
-    const double* scs_areav = elemData.scs_areav;
-
-    const double* p_dndx = elemData.dndx;
-
-    for (int ip = 0; ip < numScsIp; ++ip ) {
-
-      double dpdxIp = 0.0;
-      const int ipOffset = nDim*nodesPerElem*ip;
-      for ( int ic = 0; ic < nodesPerElem; ++ic) {
-        const int offSetDnDx = ipOffset + ic*nDim;
-        for ( int j = 0; j < nDim; ++j ) {
-          dpdxIp += p_dndx[offSetDnDx+j]*p_elemNodePressures[ic]*scs_areav[ip*nDim+j];
-        }
-      }
-      EXPECT_TRUE(std::abs(dpdxIp) > tol);
-
-      const stk::mesh::Entity lNode = elemNodes[lrscv[2*ip+0]];
-      const stk::mesh::Entity rNode = elemNodes[lrscv[2*ip+1]];
-
-      Kokkos::atomic_add(stk::mesh::field_data(*discreteLaplacianOfPressure, lNode), dpdxIp);
-      Kokkos::atomic_add(stk::mesh::field_data(*discreteLaplacianOfPressure, rNode), -dpdxIp);
-    }
-}
-
-void element_discrete_laplacian_kernel_3d(
-                       sierra::nalu::MasterElement& meSCS,
-                       ScalarFieldType* discreteLaplacianOfPressure,
-                       ScalarFieldType* nodalPressureField,
+                       const ScalarFieldType* discreteLaplacianOfPressure,
+                       const ScalarFieldType* nodalPressureField,
                        ScratchViews& elemData)
 {
     const int nDim = 3;
     const int nodesPerElem = meSCS.nodesPerElement_;
     const int numScsIp = meSCS.numIntPoints_;
 
-    double p_elemNodePressures[nodesPerElem];
-
     const int* lrscv = meSCS.adjacentNodes();
 
-    const stk::mesh::Entity* elemNodes = &elemData.elemNodes(0);
-    for(int n=0; n<nodesPerElem; ++n) {
-        const double* nodePressure = stk::mesh::field_data(*nodalPressureField, elemNodes[n]);
-        p_elemNodePressures[n] = nodePressure[0];
-    }
+    SharedMemView<double*> nodalPressureView = elemData.get_scratch_view(*nodalPressureField);
+    const double* p_elemNodePressures = &nodalPressureView(0);
 
     const double* scs_areav = &elemData.scs_areav(0);
 
     const double* p_dndx = &elemData.dndx(0);
+
+    const stk::mesh::Entity* elemNodes = &elemData.elemNodes(0);
 
     for (int ip = 0; ip < numScsIp; ++ip ) {
 
@@ -325,40 +279,30 @@ public:
 
   virtual void elem_execute(stk::topology topo,
                     sierra::nalu::MasterElement& meSCS,
-                    const ComputedElemData& elemData) = 0;
-
-  virtual void elem_execute(stk::topology topo,
-                    sierra::nalu::MasterElement& meSCS,
                     ScratchViews& elemData) = 0;
 };
 
 class DiscreteLaplacianSuppAlg : public SuppAlg
 {
 public:
-  DiscreteLaplacianSuppAlg(std::set<ELEM_DATA_NEEDED>& dataNeeded,
-                           ScalarFieldType* discreteLaplacianOfPressure,
-                           ScalarFieldType* nodalPressureField
+  DiscreteLaplacianSuppAlg(ElemDataRequests& dataNeeded,
+                           const VectorFieldType* coordField,
+                           const ScalarFieldType* discreteLaplacianOfPressure,
+                           const ScalarFieldType* nodalPressureField
                           )
    : discreteLaplacianOfPressure_(discreteLaplacianOfPressure),
      nodalPressureField_(nodalPressureField)
   {
-    //here's the kinds of element-data we want pre-computed before
+    //here are the element-data pre-requisites we want computed before
     //our elem_execute method is called.
-    dataNeeded.insert(NODES);
-    dataNeeded.insert(COORDS);
-    dataNeeded.insert(SCS_AREAV);
-    dataNeeded.insert(SCS_GRAD_OP);
+    dataNeeded.add(NODES);
+    dataNeeded.add(SCS_AREAV);
+    dataNeeded.add(SCS_GRAD_OP);
+    dataNeeded.add(*coordField);
+    dataNeeded.add(*nodalPressureField);
   }
 
   virtual ~DiscreteLaplacianSuppAlg() {}
-
-  virtual void elem_execute(stk::topology topo,
-                    sierra::nalu::MasterElement& meSCS,
-                    const ComputedElemData& elemData)
-  {
-      element_discrete_laplacian_kernel_3d(meSCS,
-            discreteLaplacianOfPressure_, nodalPressureField_, elemData);
-  }
 
   virtual void elem_execute(stk::topology topo,
                     sierra::nalu::MasterElement& meSCS,
@@ -369,53 +313,8 @@ public:
   }
 
 private:
-  ScalarFieldType* discreteLaplacianOfPressure_;
-  ScalarFieldType* nodalPressureField_;
-};
-
-//=========== Test class that mimics an element alg with supplemental alg ==============
-//
-class TestElemAlgorithmWithSuppAlg
-{
-public:
-  TestElemAlgorithmWithSuppAlg(stk::mesh::BulkData& bulk, const stk::mesh::PartVector& partVec,
-                    const VectorFieldType* coord, ScalarFieldType* discreteLaplacian,
-                    ScalarFieldType* nodalPressure)
-  : suppAlgs_(), bulkData_(bulk), partVec_(partVec),
-    discreteLaplacianOfPressure(discreteLaplacian),
-    nodalPressureField(nodalPressure), coordField(coord)
-  {}
-
-  void execute()
-  {
-      const stk::mesh::MetaData& meta = bulkData_.mesh_meta_data();
-  
-      const stk::mesh::BucketVector& elemBuckets = bulkData_.get_buckets(stk::topology::ELEM_RANK, meta.locally_owned_part());
-  
-      kokkos_thread_team_bucket_loop_with_topo(elemBuckets,
-          [&](stk::mesh::Entity elem, stk::topology topo, sierra::nalu::MasterElement& meSCS)
-          {
-             //ComputedElemData must be declared in the inner loop, so that its
-             //(compile-time) data is unique for each thread.
-             ComputedElemData elemData(bulkData_, meSCS, topo, elem,
-                                       dataNeededBySuppAlgs_, coordField);
-
-             for(SuppAlg* alg : suppAlgs_) {
-               alg->elem_execute(topo, meSCS, elemData);
-             }
-          }
-      );
-  }
-
-  std::vector<SuppAlg*> suppAlgs_;
-  std::set<ELEM_DATA_NEEDED> dataNeededBySuppAlgs_;
-
-private:
-  stk::mesh::BulkData& bulkData_;
-  const stk::mesh::PartVector& partVec_;
-  ScalarFieldType* discreteLaplacianOfPressure;
-  ScalarFieldType* nodalPressureField;
-  const VectorFieldType* coordField;
+  const ScalarFieldType* discreteLaplacianOfPressure_;
+  const ScalarFieldType* nodalPressureField_;
 };
 
 //=========== Test class that mimics an element alg with supplemental alg and views ========
@@ -424,11 +323,9 @@ class TestElemAlgorithmWithSuppAlgViews
 {
 public:
   TestElemAlgorithmWithSuppAlgViews(stk::mesh::BulkData& bulk, const stk::mesh::PartVector& partVec,
-                    const VectorFieldType* coord, ScalarFieldType* discreteLaplacian,
-                    ScalarFieldType* nodalPressure)
+                    const VectorFieldType* coord)
   : suppAlgs_(), bulkData_(bulk), partVec_(partVec),
-    discreteLaplacianOfPressure(discreteLaplacian),
-    nodalPressureField(nodalPressure), coordField(coord)
+    coordField(coord)
   {}
 
   void execute()
@@ -438,7 +335,7 @@ public:
       const stk::mesh::BucketVector& elemBuckets = bulkData_.get_buckets(stk::topology::ELEM_RANK, meta.locally_owned_part());
   
       const int bytes_per_team = 0;
-      const int bytes_per_thread = scratch_data_bytes(meta.spatial_dimension(), dataNeededBySuppAlgs_);
+      const int bytes_per_thread = get_num_bytes_pre_req_data(meta.spatial_dimension(), dataNeededBySuppAlgs_);
       auto team_exec = get_team_policy(elemBuckets.size(), bytes_per_team, bytes_per_thread);
       Kokkos::parallel_for(team_exec, [&](const TeamHandleType& team)
       {
@@ -446,61 +343,40 @@ public:
           stk::topology topo = bkt.topology();
           sierra::nalu::MasterElement& meSCS = *unit_test_utils::get_surface_master_element(topo);
 
-          ScratchViews scratchViews(team, bulkData_, topo, meSCS, dataNeededBySuppAlgs_);
+          ScratchViews prereqData(team, bulkData_, topo, meSCS, dataNeededBySuppAlgs_);
 
           Kokkos::parallel_for(Kokkos::TeamThreadRange(team, bkt.size()), [&](const size_t& jj)
           {
-             fill_scratch_views(dataNeededBySuppAlgs_, bulkData_, topo, meSCS,
-                                bkt[jj], coordField, scratchViews);
+             fill_pre_req_data(dataNeededBySuppAlgs_, bulkData_, topo, meSCS,
+                                bkt[jj], coordField, prereqData);
 
              for(SuppAlg* alg : suppAlgs_) {
-               alg->elem_execute(topo, meSCS, scratchViews);
+               alg->elem_execute(topo, meSCS, prereqData);
              }
           });
       });
   }
 
   std::vector<SuppAlg*> suppAlgs_;
-  std::set<ELEM_DATA_NEEDED> dataNeededBySuppAlgs_;
+  ElemDataRequests dataNeededBySuppAlgs_;
 
 private:
   stk::mesh::BulkData& bulkData_;
   const stk::mesh::PartVector& partVec_;
-  ScalarFieldType* discreteLaplacianOfPressure;
-  ScalarFieldType* nodalPressureField;
   const VectorFieldType* coordField;
 };
 
-
-TEST_F(Hex8Mesh, elem_supp_alg)
-{
-    fill_mesh_and_initialize_test_fields();
-
-    TestElemAlgorithmWithSuppAlg testAlgorithm(bulk, partVec, coordField,
-                          discreteLaplacianOfPressure, nodalPressureField);
-
-    //DiscreteLapacianSuppAlg constructor says which data it needs, by inserting
-    //things into the 'dataNeededBySuppAlgs_' container.
-    SuppAlg* suppAlg = new DiscreteLaplacianSuppAlg(testAlgorithm.dataNeededBySuppAlgs_,
-                                           discreteLaplacianOfPressure, nodalPressureField);
-
-    testAlgorithm.suppAlgs_.push_back(suppAlg);
-
-    testAlgorithm.execute();
-
-    check_discrete_laplacian(exactLaplacian);
-}
 
 TEST_F(Hex8Mesh, elem_supp_alg_views)
 {
     fill_mesh_and_initialize_test_fields();
 
-    TestElemAlgorithmWithSuppAlgViews testAlgorithm(bulk, partVec, coordField,
-                          discreteLaplacianOfPressure, nodalPressureField);
+    TestElemAlgorithmWithSuppAlgViews testAlgorithm(bulk, partVec, coordField);
 
     //DiscreteLapacianSuppAlg constructor says which data it needs, by inserting
     //things into the 'dataNeededBySuppAlgs_' container.
     SuppAlg* suppAlg = new DiscreteLaplacianSuppAlg(testAlgorithm.dataNeededBySuppAlgs_,
+                                           coordField,
                                            discreteLaplacianOfPressure, nodalPressureField);
 
     testAlgorithm.suppAlgs_.push_back(suppAlg);
@@ -508,6 +384,8 @@ TEST_F(Hex8Mesh, elem_supp_alg_views)
     testAlgorithm.execute();
 
     check_discrete_laplacian(exactLaplacian);
+
+    delete suppAlg;
 }
 
 //end of stuff that's ifndef'd for KOKKOS_HAVE_CUDA
