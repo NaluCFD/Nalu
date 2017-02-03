@@ -10,6 +10,7 @@
 #define ScalarDiffElemSuppAlg_h
 
 #include <SupplementalAlgorithm.h>
+#include <AlgTraits.h>
 #include <FieldTypeDef.h>
 
 #include <stk_mesh/base/BulkData.hpp>
@@ -25,6 +26,7 @@ namespace nalu{
 class Realm;
 class MasterElement;
 
+template<class AlgTraits>
 class ScalarDiffElemSuppAlg : public SupplementalAlgorithm
 {
 public:
@@ -37,11 +39,7 @@ public:
 
   virtual ~ScalarDiffElemSuppAlg() {}
 
-  virtual void setup();
-
-  virtual void elem_resize() {}
-
-  virtual void element_execute(
+  void element_execute(
     double *lhs,
     double *rhs,
     stk::mesh::Entity element);
@@ -55,9 +53,6 @@ public:
   // master element
   MasterElement  *meSCS_;
   const int *lrscv_;
-  const int nodesPerElement_;
-  const int numScsIp_;
-  const int nDim_;
 
   // scratch space; geometry
   Kokkos::View<double**> ws_scs_areav_;

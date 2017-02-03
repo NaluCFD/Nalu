@@ -50,6 +50,9 @@
 #include <TimeIntegrator.h>
 #include <SolverAlgorithmDriver.h>
 
+// template for supp algs
+#include <AlgTraits.h>
+
 // supp algs
 #include <ScalarDiffElemSuppAlg.h>
 
@@ -346,7 +349,10 @@ HeatCondEquationSystem::register_interior_algorithm(
     } 
   }
   else {
-    // supplemental algs plug into one homogeneous kernel, AssembleElemSolverAlgorithm; valid for element-based only
+    //========================================================================================
+    // WIP... supplemental algs plug into one homogeneous kernel, AssembleElemSolverAlgorithm
+    // currently valid for P=1 3D hex tet pyr wedge and P=2 3D hex
+    //========================================================================================
     if ( realm_.realmUsesEdges_ )
       throw std::runtime_error("HeatCondElem::Error can not use supplemental design for an edge-based scheme");
     
@@ -378,21 +384,76 @@ HeatCondEquationSystem::register_interior_algorithm(
 
         for (size_t k = 0; k < mapNameVec.size(); ++k ) {
           std::string sourceName = mapNameVec[k];
-          SupplementalAlgorithm *suppAlg = NULL;
-          if (sourceName == "steady_3d_thermal" ) {
-            suppAlg = new SteadyThermal3dContactSrcElemSuppAlg(realm_, partTopo);
-          }
-          else if (sourceName == "CVFEM_DIFF" ) {
-            suppAlg = new ScalarDiffElemSuppAlg(realm_, temperature_, thermalCond_, partTopo);
-          }
-          else if (sourceName == "FEM_DIFF" ) {
-            suppAlg = new ScalarDiffFemSuppAlg(realm_, temperature_, thermalCond_);
-          }
-          else {
-            throw std::runtime_error("HeatCondElemSuppSrcTerms::Error Source term is not supported: " + sourceName);
+          switch (partTopo.value()) {
+          case stk::topology::HEX_8:
+            if (sourceName == "steady_3d_thermal" ) {
+              SteadyThermal3dContactSrcElemSuppAlg<AlgTraitsHex8> *suppAlg 
+                = new SteadyThermal3dContactSrcElemSuppAlg<AlgTraitsHex8>(realm_, partTopo);
+              theSolverAlg->supplementalAlg_.push_back(suppAlg);
+            }
+            else if (sourceName == "CVFEM_DIFF" ) { 
+              ScalarDiffElemSuppAlg<AlgTraitsHex8> *suppAlg 
+                = new ScalarDiffElemSuppAlg<AlgTraitsHex8>(realm_, temperature_, thermalCond_, partTopo);
+              theSolverAlg->supplementalAlg_.push_back(suppAlg);
+            }
+            else if ( sourceName == "FEM_DIFF" ) {
+              ScalarDiffFemSuppAlg<AlgTraitsHex8> *suppAlg 
+                = new ScalarDiffFemSuppAlg<AlgTraitsHex8>(realm_, temperature_, thermalCond_);
+              theSolverAlg->supplementalAlg_.push_back(suppAlg);
+            }
+            else {
+              throw std::runtime_error("HeatCondElemSuppSrcTerms::Error Source term is not supported: " + sourceName);
+            }
+            break; 
+          case stk::topology::TET_4:
+            if (sourceName == "steady_3d_thermal" ) {
+              SteadyThermal3dContactSrcElemSuppAlg<AlgTraitsTet4> *suppAlg 
+                = new SteadyThermal3dContactSrcElemSuppAlg<AlgTraitsTet4>(realm_, partTopo);
+              theSolverAlg->supplementalAlg_.push_back(suppAlg);
+            }
+            else if (sourceName == "CVFEM_DIFF" ) {
+              ScalarDiffElemSuppAlg<AlgTraitsTet4> *suppAlg 
+                = new ScalarDiffElemSuppAlg<AlgTraitsTet4>(realm_, temperature_, thermalCond_, partTopo);
+              theSolverAlg->supplementalAlg_.push_back(suppAlg);
+            }
+            else {
+              throw std::runtime_error("HeatCondElemSuppSrcTerms::Error Source term is not supported: " + sourceName);
+              }
+            break;
+          case stk::topology::PYRAMID_5:
+            if (sourceName == "steady_3d_thermal" ) {
+              SteadyThermal3dContactSrcElemSuppAlg<AlgTraitsPyr5> *suppAlg 
+                = new SteadyThermal3dContactSrcElemSuppAlg<AlgTraitsPyr5>(realm_, partTopo);
+              theSolverAlg->supplementalAlg_.push_back(suppAlg);
+            }
+            else if (sourceName == "CVFEM_DIFF" ) {
+              ScalarDiffElemSuppAlg<AlgTraitsPyr5> *suppAlg 
+                = new ScalarDiffElemSuppAlg<AlgTraitsPyr5>(realm_, temperature_, thermalCond_, partTopo);
+              theSolverAlg->supplementalAlg_.push_back(suppAlg);
+            }
+            else {
+              throw std::runtime_error("HeatCondElemSuppSrcTerms::Error Source term is not supported: " + sourceName);
+            }
+            break;
+          case stk::topology::WEDGE_6:
+            if (sourceName == "steady_3d_thermal" ) {
+              SteadyThermal3dContactSrcElemSuppAlg<AlgTraitsWed6> *suppAlg 
+                = new SteadyThermal3dContactSrcElemSuppAlg<AlgTraitsWed6>(realm_, partTopo);
+              theSolverAlg->supplementalAlg_.push_back(suppAlg);
+            }
+            else if (sourceName == "CVFEM_DIFF" ) {
+              ScalarDiffElemSuppAlg<AlgTraitsWed6> *suppAlg 
+                = new ScalarDiffElemSuppAlg<AlgTraitsWed6>(realm_, temperature_, thermalCond_, partTopo);
+              theSolverAlg->supplementalAlg_.push_back(suppAlg);
+            }
+            else {
+              throw std::runtime_error("HeatCondElemSuppSrcTerms::Error Source term is not supported: " + sourceName);
+            }
+            break;
+          default:
+            throw std::runtime_error("Unsupported topology type for supp alg; only 3D p1 supported");
           }
           NaluEnv::self().naluOutputP0() << "HeatCondSuppElemSrcTerms::added() " << sourceName << std::endl;
-          theSolverAlg->supplementalAlg_.push_back(suppAlg);
         }
       }
     }

@@ -10,6 +10,7 @@
 #define ScalarDiffFemSuppAlg_h
 
 #include <SupplementalAlgorithm.h>
+#include <AlgTraits.h>
 #include <FieldTypeDef.h>
 
 #include <stk_mesh/base/BulkData.hpp>
@@ -22,6 +23,7 @@ class Realm;
 class MasterElement;
 class Hex8FEM;
 
+template<class AlgTraits>
 class ScalarDiffFemSuppAlg : public SupplementalAlgorithm
 {
 public:
@@ -46,10 +48,7 @@ public:
 
   // master element
   Hex8FEM * meFEM_;
-  const int nodesPerElement_;
-  const int numIp_;
   double *ipWeight_;
-  const int nDim_;
 
   // scratch space; geometry
   std::vector<double> ws_dndx_;

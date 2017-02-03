@@ -12,6 +12,9 @@
 #include <Realm.h>
 #include <master_element/MasterElement.h>
 
+// manage supplemental algorithms that are templated
+#include <BuildTemplates.h>
+
 // stk_mesh/base/fem
 #include <stk_mesh/base/Entity.hpp>
 #include <stk_mesh/base/MetaData.hpp>
@@ -35,7 +38,8 @@ namespace nalu{
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-ScalarDiffElemSuppAlg::ScalarDiffElemSuppAlg(
+template<class AlgTraits>
+ScalarDiffElemSuppAlg<AlgTraits>::ScalarDiffElemSuppAlg(
   Realm &realm,
   ScalarFieldType *scalarQ,
   ScalarFieldType *diffFluxCoeff,
@@ -47,17 +51,14 @@ ScalarDiffElemSuppAlg::ScalarDiffElemSuppAlg(
     coordinates_(NULL),
     meSCS_(realm.get_surface_master_element(theTopo)),
     lrscv_(meSCS_->adjacentNodes()),
-    nodesPerElement_(meSCS_->nodesPerElement_),
-    numScsIp_(meSCS_->numIntPoints_),
-    nDim_(realm.meta_data().spatial_dimension()),
-    ws_scs_areav_("ws_scs_areav", numScsIp_, nDim_),
-    ws_dndx_("ws_dndx", numScsIp_, nodesPerElement_, nDim_),
-    ws_deriv_("ws_deriv", nDim_*numScsIp_*nodesPerElement_ ),
-    ws_det_j_("ws_det_j", numScsIp_),
-    ws_shape_function_("ws_shape_function", numScsIp_, nodesPerElement_),
-    ws_scalarQ_("ws_scalarQ", nodesPerElement_),
-    ws_diffFluxCoeff_("ws_diffFluxCoeff", nodesPerElement_),
-    ws_coordinates_("ws_coordinates", nodesPerElement_, nDim_)
+    ws_scs_areav_("ws_scs_areav", AlgTraits::numScsIp_, AlgTraits::nDim_),
+    ws_dndx_("ws_dndx", AlgTraits::numScsIp_, AlgTraits::nodesPerElement_, AlgTraits::nDim_),
+    ws_deriv_("ws_deriv", AlgTraits::nDim_*AlgTraits::numScsIp_*AlgTraits::nodesPerElement_ ),
+    ws_det_j_("ws_det_j", AlgTraits::numScsIp_),
+    ws_shape_function_("ws_shape_function", AlgTraits::numScsIp_, AlgTraits::nodesPerElement_),
+    ws_scalarQ_("ws_scalarQ", AlgTraits::nodesPerElement_),
+    ws_diffFluxCoeff_("ws_diffFluxCoeff", AlgTraits::nodesPerElement_),
+    ws_coordinates_("ws_coordinates", AlgTraits::nodesPerElement_, AlgTraits::nDim_)
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -68,19 +69,11 @@ ScalarDiffElemSuppAlg::ScalarDiffElemSuppAlg(
 }
 
 //--------------------------------------------------------------------------
-//-------- setup -----------------------------------------------------------
-//--------------------------------------------------------------------------
-void
-ScalarDiffElemSuppAlg::setup()
-{
-  // nothing to do
-}
-
-//--------------------------------------------------------------------------
 //-------- element_execute -------------------------------------------------
 //--------------------------------------------------------------------------
+template<class AlgTraits>
 void
-ScalarDiffElemSuppAlg::element_execute(
+ScalarDiffElemSuppAlg<AlgTraits>::element_execute(
   double *lhs,
   double *rhs,
   stk::mesh::Entity element)
@@ -90,7 +83,7 @@ ScalarDiffElemSuppAlg::element_execute(
   int num_nodes = bulkData_->num_nodes(element);
 
   // sanity check on num nodes
-  ThrowAssert( num_nodes == nodesPerElement_ );
+  ThrowAssert( num_nodes == AlgTraits::nodesPerElement_ );
   for ( int ni = 0; ni < num_nodes; ++ni ) {
     stk::mesh::Entity node = node_rels[ni];
     
@@ -102,7 +95,7 @@ ScalarDiffElemSuppAlg::element_execute(
     const double * coords = stk::mesh::field_data(*coordinates_, node );
 
     // gather vectors
-    for ( int j=0; j < nDim_; ++j ) {
+    for ( int j=0; j < AlgTraits::nDim_; ++j ) {
       ws_coordinates_(ni,j) = coords[j];
     }
   }
@@ -113,28 +106,28 @@ ScalarDiffElemSuppAlg::element_execute(
   meSCS_->grad_op(1, &ws_coordinates_(0,0), &ws_dndx_(0,0,0), &ws_deriv_(0), &ws_det_j_(0), &scs_error);
   
   // start the assembly
-  for ( int ip = 0; ip < numScsIp_; ++ip ) {
+  for ( int ip = 0; ip < AlgTraits::numScsIp_; ++ip ) {
     
     // left and right nodes for this ip
     const int il = lrscv_[2*ip];
     const int ir = lrscv_[2*ip+1];
     
     // corresponding matrix rows
-    const int rowL = il*nodesPerElement_;
-    const int rowR = ir*nodesPerElement_;
+    const int rowL = il*AlgTraits::nodesPerElement_;
+    const int rowR = ir*AlgTraits::nodesPerElement_;
 
     // compute ip property
     double diffFluxCoeffIp = 0.0;
-    for ( int ic = 0; ic < nodesPerElement_; ++ic ) {
+    for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
       const double r = ws_shape_function_(ip,ic);
       diffFluxCoeffIp += r*ws_diffFluxCoeff_(ic);
     }
 
     // assemble to rhs and lhs
     double qDiff = 0.0;
-    for ( int ic = 0; ic < nodesPerElement_; ++ic ) {      
+    for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {      
       double lhsfacDiff = 0.0;
-      for ( int j = 0; j < nDim_; ++j ) {
+      for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
         lhsfacDiff += -diffFluxCoeffIp*ws_dndx_(ip,ic,j)*ws_scs_areav_(ip,j);
       }
       qDiff += lhsfacDiff*ws_scalarQ_(ic);
@@ -149,6 +142,8 @@ ScalarDiffElemSuppAlg::element_execute(
     rhs[ir] += qDiff;
   }
 }
+
+INSTANTIATE_SUPPLEMENTAL_ALGORITHM(ScalarDiffElemSuppAlg);
   
 } // namespace nalu
 } // namespace Sierra

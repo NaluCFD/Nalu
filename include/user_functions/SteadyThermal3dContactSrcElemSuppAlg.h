@@ -10,6 +10,7 @@
 #define SteadyThermal3dContactSrcElemSuppAlg_h
 
 #include <SupplementalAlgorithm.h>
+#include <AlgTraits.h>
 #include <FieldTypeDef.h>
 
 #include <stk_mesh/base/BulkData.hpp>
@@ -24,6 +25,7 @@ namespace nalu{
 class Realm;
 class MasterElement;
 
+template<class IntAlgTraits>
 class SteadyThermal3dContactSrcElemSuppAlg : public SupplementalAlgorithm
 {
 public:
@@ -45,21 +47,15 @@ public:
 
   MasterElement *meSCV_;
   const int *ipNodeMap_;
-  const int nodesPerElement_;
-  const int numScvIp_;
 
   const double a_;
   const double k_;
   const double pi_;
-  const bool useShifted_;
-  const int nDim_;
-  const bool evalAtIps_;
 
   // scratch space
   Kokkos::View<double**> ws_shape_function_;
   Kokkos::View<double**> ws_coordinates_;
   Kokkos::View<double*> ws_scv_volume_;
-  Kokkos::View<double*> ws_nodalSrc_;
   Kokkos::View<double*> ws_scvCoords_;
 };
 
