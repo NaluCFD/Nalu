@@ -200,6 +200,9 @@ public:
 
   void shape_fcn(
     double *shpfc);
+
+  void shifted_shape_fcn(
+    double *shpfc);
 };
 
 // Hex 8 subcontrol surface

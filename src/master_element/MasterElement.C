@@ -211,6 +211,17 @@ HexSCV::HexSCV()
   intgLoc_[15] = +0.25; intgLoc_[16] = -0.25; intgLoc_[17] = +0.25;
   intgLoc_[18] = +0.25; intgLoc_[19] = +0.25; intgLoc_[20] = +0.25;
   intgLoc_[21] = -0.25; intgLoc_[22] = +0.25; intgLoc_[23] = +0.25;
+
+  // shifted integration location
+  intgLocShift_.resize(24);    
+  intgLocShift_[0]  = -0.5; intgLocShift_[1]  = -0.5; intgLocShift_[2]  = -0.5; 
+  intgLocShift_[3]  = +0.5; intgLocShift_[4]  = -0.5; intgLocShift_[5]  = -0.5; 
+  intgLocShift_[6]  = +0.5; intgLocShift_[7]  = +0.5; intgLocShift_[8]  = -0.5;
+  intgLocShift_[9]  = -0.5; intgLocShift_[10] = +0.5; intgLocShift_[11] = -0.5;
+  intgLocShift_[12] = -0.5; intgLocShift_[13] = -0.5; intgLocShift_[14] = +0.5;
+  intgLocShift_[15] = +0.5; intgLocShift_[16] = -0.5; intgLocShift_[17] = +0.5;
+  intgLocShift_[18] = +0.5; intgLocShift_[19] = +0.5; intgLocShift_[20] = +0.5;
+  intgLocShift_[21] = -0.5; intgLocShift_[22] = +0.5; intgLocShift_[23] = +0.5;
 }
 
 //--------------------------------------------------------------------------
@@ -284,6 +295,16 @@ HexSCV::shape_fcn(double *shpfc)
 {
   SIERRA_FORTRAN(hex_shape_fcn)
     (&numIntPoints_,&intgLoc_[0],shpfc);
+}
+
+//--------------------------------------------------------------------------
+//-------- shifted_shape_fcn -----------------------------------------------
+//--------------------------------------------------------------------------
+void
+HexSCV::shifted_shape_fcn(double *shpfc)
+{
+  SIERRA_FORTRAN(hex_shape_fcn)
+    (&numIntPoints_,&intgLocShift_[0],shpfc);
 }
 
 //--------------------------------------------------------------------------
