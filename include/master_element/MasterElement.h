@@ -501,6 +501,17 @@ public:
     const double *coords,
     double *areav,
     double * error );
+
+  void shape_fcn(
+    double *shpfc);
+
+  void shifted_shape_fcn(
+    double *shpfc);
+  
+  void tet_shape_fcn(
+    const int &npts,
+    const double *par_coord, 
+    double* shape_fcn);
 };
 
 // Tet 4 subcontrol surface
@@ -617,6 +628,17 @@ public:
     const double *coords,
     double *areav,
     double * error );
+
+  void shape_fcn(
+    double *shpfc);
+
+  void shifted_shape_fcn(
+    double *shpfc);
+  
+  void pyr_shape_fcn(
+    const int &npts,
+    const double *par_coord, 
+    double* shape_fcn);
 };
 
 // Pyramid 5 subcontrol surface
@@ -691,6 +713,17 @@ public:
     const double *coords,
     double *areav,
     double * error );
+
+  void shape_fcn(
+    double *shpfc);
+
+  void shifted_shape_fcn(
+    double *shpfc);
+
+  void wedge_shape_fcn(
+    const int &npts,
+    const double *par_coord, 
+    double* shape_fcn);
 };
 
 // Wedge 6 subcontrol surface
