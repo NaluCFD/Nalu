@@ -9,6 +9,8 @@
 #ifndef BuildTemplates_h
 #define BuildTemplates_h
 
+#include <AlgTraits.h>
+
 namespace sierra{
 namespace nalu{
 
