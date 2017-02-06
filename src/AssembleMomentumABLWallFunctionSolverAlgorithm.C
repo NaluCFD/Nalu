@@ -204,9 +204,9 @@ AssembleMomentumABLWallFunctionSolverAlgorithm::execute()
         connected_nodes[ni] = node;
 
         // gather scalars
-	p_bcHeatFlux[ni] = *stk::mesh::field_data(*bcHeatFlux_, node);
-	p_density[ni]    = *stk::mesh::field_data(densityNp1, node);
-	p_specificHeat[ni] = *stk::mesh::field_data(*specificHeat_, node);
+        p_bcHeatFlux[ni] = *stk::mesh::field_data(*bcHeatFlux_, node);
+        p_density[ni]    = *stk::mesh::field_data(densityNp1, node);
+        p_specificHeat[ni] = *stk::mesh::field_data(*specificHeat_, node);
 
         // gather vectors
         double * uNp1 = stk::mesh::field_data(velocityNp1, node);
@@ -242,14 +242,14 @@ AssembleMomentumABLWallFunctionSolverAlgorithm::execute()
         aMag = std::sqrt(aMag);
 
         // interpolate to bip
-	double heatFluxBip = 0.0;
-	double rhoBip = 0.0;
-	double CpBip = 0.0;
+        double heatFluxBip = 0.0;
+        double rhoBip = 0.0;
+        double CpBip = 0.0;
         for ( int ic = 0; ic < nodesPerFace; ++ic ) {
           const double r = p_face_shape_function[offSetSF_face+ic];
-	  rhoBip += r*p_density[ic];
-	  CpBip += r*p_specificHeat[ic];
-	  heatFluxBip += r*p_bcHeatFlux[ic];
+          rhoBip += r*p_density[ic];
+          CpBip += r*p_specificHeat[ic];
+          heatFluxBip += r*p_bcHeatFlux[ic];
           const int offSetFN = ic*nDim;
           for ( int j = 0; j < nDim; ++j ) {
             p_uBip[j] += r*p_velocityNp1[offSetFN+j];
@@ -262,66 +262,45 @@ AssembleMomentumABLWallFunctionSolverAlgorithm::execute()
           p_unitNormal[j] = areaVec[offSetAveraVec+j]/aMag;
         }
 
-        // determine tangential velocity
-        double uTangential = 0.0;
-        for ( int i = 0; i < nDim; ++i ) {
-          double uiTan = 0.0;
-          double uiBcTan = 0.0;
-          for ( int j = 0; j < nDim; ++j ) {
-            const double ninj = p_unitNormal[i]*p_unitNormal[j];
-            if ( i==j ) {
-              const double om_nini = 1.0 - ninj;
-              uiTan += om_nini*p_uBip[j];
-              uiBcTan += om_nini*p_uBcBip[j];
-            }
-            else {
-              uiTan -= ninj*p_uBip[j];
-              uiBcTan -= ninj*p_uBcBip[j];
-            }
-          }
-          uTangential += (uiTan-uiBcTan)*(uiTan-uiBcTan);
-        }
-        uTangential = std::sqrt(uTangential);
-
         // extract bip data
         const double yp = wallNormalDistanceBip[ip];
         const double utau= wallFrictionVelocityBip[ip];
 
-	// determine lambda = tau_w / (rho * u_* * u_tan)
+        // determine lambda = tau_w / (rho * u_* * u_tan)
         // NOTE:
-	// density should be obtained from the wall function for
-	// temperature and a relation rho = rho(T)
-	const double TfluxBip = heatFluxBip / (rhoBip * CpBip);
+        // density should be obtained from the wall function for
+        // temperature and a relation rho = rho(T)
+        const double TfluxBip = heatFluxBip / (rhoBip * CpBip);
 
-	const double eps_heat_flux = 1.0e-8;
-	const double largenum = 1.0e8;
-	double Lfac;
-	if (TfluxBip < eps_heat_flux) {
-	  p_ABLProfFun = &StableProfFun;
-	}
-	else if (TfluxBip > eps_heat_flux) {
-	  p_ABLProfFun = &UnstableProfFun;
-	}
-	else {
-	  p_ABLProfFun = &NeutralProfFun;
-	}
-	if (std::abs(TfluxBip) < eps_heat_flux) {
-	  Lfac = largenum;
-	}
-	else {
-	  Lfac = -Tref_ / (kappa_ * gravity_ * TfluxBip);
-	}
-	double L = utau*utau*utau * Lfac;
-	// limit the values of L...
-	//   to be negative and finite for q>0 (unstable)
-	//   to be positive and finite for q<0 (stable)
-	double sgnq = (TfluxBip > 0.0)?1.0:-1.0;
-	L = - sgnq * std::max(1.0e-10,std::abs(L));
+        const double eps_heat_flux = 1.0e-8;
+        const double largenum = 1.0e8;
+        double Lfac;
+        if (TfluxBip < eps_heat_flux) {
+          p_ABLProfFun = &StableProfFun;
+        }
+        else if (TfluxBip > eps_heat_flux) {
+          p_ABLProfFun = &UnstableProfFun;
+        }
+        else {
+          p_ABLProfFun = &NeutralProfFun;
+        }
+        if (std::abs(TfluxBip) < eps_heat_flux) {
+          Lfac = largenum;
+        }
+        else {
+          Lfac = -Tref_ / (kappa_ * gravity_ * TfluxBip);
+        }
+        double L = utau*utau*utau * Lfac;
+        // limit the values of L...
+        //   to be negative and finite for q>0 (unstable)
+        //   to be positive and finite for q<0 (stable)
+        double sgnq = (TfluxBip > 0.0)?1.0:-1.0;
+        L = - sgnq * std::max(1.0e-10,std::abs(L));
 
-	//const double theta_star = -TfluxBip / utau;
-	//need TBip from temperature field - this is T(yp);
-	//const double Tsurf = TBip - theta_star/kappa_*(alpha_h_*std::log(yp/z0_) + gamma_h_*yp/L);
-	// evaluate rhosurf = f(Tsurf) and use rhosurf in place of rhoBip below
+        //const double theta_star = -TfluxBip / utau;
+        //need TBip from temperature field - this is T(yp);
+        //const double Tsurf = TBip - theta_star/kappa_*(alpha_h_*std::log(yp/z0_) + gamma_h_*yp/L);
+        // evaluate rhosurf = f(Tsurf) and use rhosurf in place of rhoBip below
         double lambda = rhoBip*kappa_*utau/(std::log(yp/z0_) - p_ABLProfFun->velocity(yp/L));
 
         // start the lhs assembly
