@@ -30,7 +30,7 @@ this would look something like:
 Run CMake Configure
 -------------------
 
-In the Nalu repository checkout, create a ``build`` directory.
+In the Nalu repository checkout, create a ``mybuild`` directory.
 Change to the build directory and run CMake with ``BUILD_DOCUMENTATION``
 on. For example:
 
@@ -38,7 +38,8 @@ on. For example:
 
   cmake -DTrilinos_DIR:PATH=`spack location -i nalu-trilinos` \
   -DYAML_DIR:PATH=`spack location -i yaml-cpp` \
-  -DENABLE_INSTALL:BOOL=ON -DCMAKE_BUILD_TYPE=RELEASE -DBUILD_DOCUMENTATION:BOOL=ON \
+  -DENABLE_INSTALL:BOOL=ON -DCMAKE_BUILD_TYPE=RELEASE \
+  -DBUILD_DOCUMENTATION:BOOL=ON \
   ..
 
 If all of the main tools are found successfully, CMake should configure with the ability
@@ -51,4 +52,4 @@ Make the Docs
 
 Issue the command ``make docs`` which should first build the Doxygen documentation and
 then the Sphinx documentation. If this completes successfully, the entry point to
-the documentation should be in ``build/docs/sphinx/html/index.html``.
+the documentation should be in ``mybuild/docs/html/index.html``.

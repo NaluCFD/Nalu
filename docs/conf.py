@@ -15,7 +15,7 @@
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-#
+
 import os
 import sys
 import subprocess
@@ -28,6 +28,7 @@ sourcedir = sys.argv[-2]
 builddir = sys.argv[-1]
 
 # This function was adapted from https://gitlab.kitware.com/cmb/smtk
+# Only run when on readthedocs
 def runDoxygen(sourcfile, doxyfileIn, doxyfileOut):
     dx = open(os.path.join(sourcedir, doxyfileIn), 'r')
     cfg = dx.read()
@@ -41,20 +42,6 @@ def runDoxygen(sourcfile, doxyfileIn, doxyfileOut):
     dox.close()
     print 'Running Doxygen on %s' % doxyfileOut
     doxproc = subprocess.call(('doxygen', doxname))
-    # doxproc = subprocess.Popen(['doxygen', doxname], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    # while True:
-    #     output = doxproc.stdout.readline()
-    #     if output == '' and doxproc.poll() is not None:
-    #         break
-    #     if output:
-    #         print output.strip()
-    #     rc = doxproc.poll()
-    # print '   Doxygen returned %s' % doxproc
-    # Debugging code
-    # with open(doxname, 'r') as fin:
-    #     print fin.read()
-    # print os.listdir(srcdir)
-    # print os.listdir(os.path.join(builddir, '..', '..', 'doxygen', 'html'))
 
 if readTheDocs:
     runDoxygen(sourcedir, 'Doxyfile.in', 'Doxyfile')
@@ -90,7 +77,7 @@ autoclass_content = 'both'
 
 mathjax_path = 'https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML'
 
-# Naively assuming build directory one level up locally, and two up on readthedocs
+# FIXME: Naively assuming build directory one level up locally, and two up on readthedocs
 if readTheDocs:
     doxylink = {
         'nalu' : (
@@ -142,6 +129,7 @@ language = None
 # This patterns also effect to html_static_path and html_extra_path
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
+# FIXME: Naively assuming build directory one level up locally, and two up on readthedocs
 if readTheDocs:
    html_extra_path = [os.path.join(builddir, '..', '..', 'doxygen')]
 else:
