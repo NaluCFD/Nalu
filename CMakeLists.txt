@@ -14,6 +14,7 @@ cmake_minimum_required (VERSION 2.8.11)
 
 SET(CMAKE_FIND_LIBRARY_PREFIXES lib)
 SET(CMAKE_FIND_LIBRARY_SUFFIXES a)
+set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 MESSAGE("   Trilinos_DIR = ${Trilinos_DIR}")
 SET(CMAKE_PREFIX_PATH ${Trilinos_DIR} ${CMAKE_PREFIX_PATH})
@@ -120,5 +121,10 @@ IF (INSTALL_NALU)
   install(DIRECTORY include/ DESTINATION include)
   include(CMakePackageConfigHelpers)
 ENDIF ()
+
+option(BUILD_DOCUMENTATION "Build documentation." OFF)
+if(BUILD_DOCUMENTATION)
+   add_subdirectory(docs)
+endif()
 
 MESSAGE("\nAnd CMake says...:")
