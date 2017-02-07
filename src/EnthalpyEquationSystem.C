@@ -888,7 +888,7 @@ EnthalpyEquationSystem::reinitialize_linear_system()
   delete linsys_;
 
   // create new solver
-  std::string solverName = realm_.equationSystems_.get_solver_block_name("enthalpyNp1");
+  std::string solverName = realm_.equationSystems_.get_solver_block_name("enthalpy");
   LinearSolver *solver = realm_.root()->linearSolvers_->create_solver(solverName, EQ_ENTHALPY);
   linsys_ = LinearSystem::create(realm_, 1, name_, solver);
 
