@@ -238,27 +238,6 @@ AssembleMomentumWallFunctionSolverAlgorithm::execute()
           p_unitNormal[j] = areaVec[offSetAveraVec+j]/aMag;
         }
 
-        // determine tangential velocity
-        double uTangential = 0.0;
-        for ( int i = 0; i < nDim; ++i ) {
-          double uiTan = 0.0;
-          double uiBcTan = 0.0;
-          for ( int j = 0; j < nDim; ++j ) {
-            const double ninj = p_unitNormal[i]*p_unitNormal[j];
-            if ( i==j ) {
-              const double om_nini = 1.0 - ninj;
-              uiTan += om_nini*p_uBip[j];
-              uiBcTan += om_nini*p_uBcBip[j];
-            }
-            else {
-              uiTan -= ninj*p_uBip[j];
-              uiBcTan -= ninj*p_uBcBip[j];
-            }
-          }
-          uTangential += (uiTan-uiBcTan)*(uiTan-uiBcTan);
-        }
-        uTangential = std::sqrt(uTangential);
-
         // extract bip data
         const double yp = wallNormalDistanceBip[ip];
         const double utau= wallFrictionVelocityBip[ip];
