@@ -35,11 +35,23 @@ namespace nalu{
 ComputeMdotEdgeOpenAlgorithm::ComputeMdotEdgeOpenAlgorithm(
   Realm &realm,
   stk::mesh::Part *part)
-  : Algorithm(realm, part)
+  : Algorithm(realm, part),
+    meshMotion_(realm_.does_mesh_move()),
+    velocityRTM_(NULL),
+    Gpdx_(NULL),
+    coordinates_(NULL),
+    pressure_(NULL),
+    density_(NULL),
+    exposedAreaVec_(NULL),
+    openMassFlowRate_(NULL),
+    pressureBc_(NULL)
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
-  velocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
+  if ( meshMotion_ )
+    velocityRTM_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity_rtm");
+  else
+    velocityRTM_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
   Gpdx_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "dpdx");
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   pressure_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure");
@@ -74,7 +86,6 @@ ComputeMdotEdgeOpenAlgorithm::execute()
   // interpolation for mdot uses nearest node, therefore, n/a
 
   // deal with state
-  VectorFieldType &velocityNp1 = velocity_->field_of_state(stk::mesh::StateNP1);
   ScalarFieldType &densityNp1 = density_->field_of_state(stk::mesh::StateNP1);
 
   // define vector of parent topos; should always be UNITY in size
@@ -138,10 +149,10 @@ ComputeMdotEdgeOpenAlgorithm::execute()
         const double pressureIp = 0.5*(pressureL + pressureR);
 
         // nearest nodes
-        const double * GpdxR        =  stk::mesh::field_data(*Gpdx_, nodeR );
-        const double * velocityNp1R =  stk::mesh::field_data(velocityNp1, nodeR );
-        const double densityR       = *stk::mesh::field_data(densityNp1, nodeR );
-        const double bcPressure     = *stk::mesh::field_data(*pressureBc_, nodeR );
+        const double * GpdxR =  stk::mesh::field_data(*Gpdx_, nodeR );
+        const double * vrtm =  stk::mesh::field_data(*velocityRTM_, nodeR );
+        const double densityR = *stk::mesh::field_data(densityNp1, nodeR );
+        const double bcPressure = *stk::mesh::field_data(*pressureBc_, nodeR );
 
         // offset for bip area vector
         const int faceOffSet = ip*nDim;
@@ -168,7 +179,7 @@ ComputeMdotEdgeOpenAlgorithm::execute()
           const double dxj = coordR[j]  - coordIp;
           const double kxj = axj - asq*inv_axdx*dxj;
           const double Gjp = GpdxR[j];
-          tmdot += (rhoBip*velocityNp1R[j]+projTimeScale*Gjp)*axj
+          tmdot += (rhoBip*vrtm[j]+projTimeScale*Gjp)*axj
             - projTimeScale*kxj*Gjp*nocFac;
         }
         // scatter to mdot

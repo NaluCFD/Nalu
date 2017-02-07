@@ -40,7 +40,14 @@ AssembleMomentumEdgeOpenSolverAlgorithm::AssembleMomentumEdgeOpenSolverAlgorithm
   stk::mesh::Part *part,
   EquationSystem *eqSystem)
   : SolverAlgorithm(realm, part, eqSystem),
-    includeDivU_(realm_.get_divU())
+    includeDivU_(realm_.get_divU()),
+    velocity_(NULL),
+    dudx_(NULL),
+    coordinates_(NULL),
+    viscosity_(NULL),
+    exposedAreaVec_(NULL),
+    openMassFlowRate_(NULL),
+    velocityBc_(NULL)
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();

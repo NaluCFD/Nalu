@@ -41,10 +41,24 @@ AssembleMomentumElemOpenSolverAlgorithm::AssembleMomentumElemOpenSolverAlgorithm
   EquationSystem *eqSystem)
   : SolverAlgorithm(realm, part, eqSystem),
     includeDivU_(realm_.get_divU()),
+    meshMotion_(realm_.does_mesh_move()),
+    velocityRTM_(NULL),
+    velocity_(NULL),
+    dudx_(NULL),
+    coordinates_(NULL),
+    density_(NULL),
+    viscosity_(NULL),
+    exposedAreaVec_(NULL),
+    openMassFlowRate_(NULL),
+    velocityBc_(NULL),
     pecletFunction_(NULL)
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
+  if ( meshMotion_ )
+    velocityRTM_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity_rtm");
+  else
+    velocityRTM_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
   velocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
   dudx_ = meta_data.get_field<GenericFieldType>(stk::topology::NODE_RANK, "dudx");
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
@@ -351,8 +365,10 @@ AssembleMomentumElemOpenSolverAlgorithm::execute()
         const double densR   = *stk::mesh::field_data(densityNp1, nodeR);
         const double viscL   = *stk::mesh::field_data(*viscosity_, nodeL);
         const double viscR   = *stk::mesh::field_data(*viscosity_, nodeR);
-        const double *uNp1L  =  stk::mesh::field_data(velocityNp1, nodeL);
         const double *uNp1R  =  stk::mesh::field_data(velocityNp1, nodeR);
+        const double *vrtmL  =  stk::mesh::field_data(*velocityRTM_, nodeL);
+        const double *vrtmR  =  stk::mesh::field_data(*velocityRTM_, nodeR);
+        
         const double *coordL =  stk::mesh::field_data(*coordinates_, nodeL);
         const double *coordR =  stk::mesh::field_data(*coordinates_, nodeR);
 
@@ -360,7 +376,7 @@ AssembleMomentumElemOpenSolverAlgorithm::execute()
         const int row_p_dudxR = localFaceNode*nDim*nDim; // tricky here with localFaceNode
         for ( int i = 0; i < nDim; ++i ) {
           const double dxi = coordR[i]  - coordL[i];
-          udotx += 0.5*dxi*(uNp1L[i] + uNp1R[i]);
+          udotx += 0.5*dxi*(vrtmL[i] + vrtmR[i]);
           p_nx[i] = areaVec[faceOffSet+i]/amag;
           // extrapolation
           double duR = 0.0;
