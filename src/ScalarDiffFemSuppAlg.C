@@ -81,7 +81,8 @@ void
 ScalarDiffFemSuppAlg<AlgTraits>::element_execute(
   double *lhs,
   double *rhs,
-  stk::mesh::Entity element)
+  stk::mesh::Entity element,
+  ScratchViews &/*scratchViews*/)
 {  
   // gather
   stk::mesh::Entity const *  node_rels = bulkData_->begin_nodes(element);

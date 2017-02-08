@@ -11,6 +11,7 @@
 
 #include <SupplementalAlgorithm.h>
 #include <AlgTraits.h>
+#include <ElemDataRequests.h>
 #include <FieldTypeDef.h>
 
 #include <stk_mesh/base/BulkData.hpp>
@@ -38,7 +39,8 @@ public:
   virtual void element_execute(
     double *lhs,
     double *rhs,
-    stk::mesh::Entity element);
+    stk::mesh::Entity element,
+    ScratchViews &scratchViews);
   
   const stk::mesh::BulkData *bulkData_;
 

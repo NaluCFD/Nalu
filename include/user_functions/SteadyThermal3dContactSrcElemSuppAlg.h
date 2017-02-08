@@ -15,6 +15,7 @@
 
 #include <stk_mesh/base/BulkData.hpp>
 #include <stk_mesh/base/Entity.hpp>
+#include <stk_topology/topology.hpp>
 
 // Kokkos
 #include <Kokkos_Core.hpp>
@@ -22,7 +23,9 @@
 namespace sierra{
 namespace nalu{
 
+class ElemDataRequests;
 class Realm;
+class ScratchViews;
 class MasterElement;
 
 template<class IntAlgTraits>
@@ -32,20 +35,21 @@ public:
 
   SteadyThermal3dContactSrcElemSuppAlg(
     Realm &realm,
-    const stk::topology &theTopo);
+    const stk::topology &theTopo,
+    ElemDataRequests& dataPreReqs);
 
   virtual ~SteadyThermal3dContactSrcElemSuppAlg() {}
 
   virtual void element_execute(
     double *lhs,
     double *rhs,
-    stk::mesh::Entity element);
+    stk::mesh::Entity element,
+    ScratchViews& scratchViews);
   
   const stk::mesh::BulkData *bulkData_;
 
   VectorFieldType *coordinates_;
 
-  MasterElement *meSCV_;
   const int *ipNodeMap_;
 
   const double a_;
@@ -54,8 +58,6 @@ public:
 
   // scratch space
   Kokkos::View<double**> ws_shape_function_;
-  Kokkos::View<double**> ws_coordinates_;
-  Kokkos::View<double*> ws_scv_volume_;
   Kokkos::View<double*> ws_scvCoords_;
 };
 

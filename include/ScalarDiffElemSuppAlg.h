@@ -23,7 +23,9 @@
 namespace sierra{
 namespace nalu{
 
+class ElemDataRequests;
 class Realm;
+class ScratchViews;
 class MasterElement;
 
 template<class AlgTraits>
@@ -35,14 +37,16 @@ public:
     Realm &realm,
     ScalarFieldType *scalarQ,
     ScalarFieldType *diffFluxCoeff,
-    const stk::topology &theTopo);
+    const stk::topology &theTopo,
+    ElemDataRequests& dataPreReqs);
 
   virtual ~ScalarDiffElemSuppAlg() {}
 
   void element_execute(
     double *lhs,
     double *rhs,
-    stk::mesh::Entity element);
+    stk::mesh::Entity element,
+    ScratchViews& scratchViews);
   
   const stk::mesh::BulkData *bulkData_;
 
@@ -51,20 +55,10 @@ public:
   VectorFieldType *coordinates_;
 
   // master element
-  MasterElement  *meSCS_;
   const int *lrscv_;
 
   // scratch space; geometry
-  Kokkos::View<double**> ws_scs_areav_;
-  Kokkos::View<double***> ws_dndx_;
-  Kokkos::View<double*> ws_deriv_;
-  Kokkos::View<double*> ws_det_j_;
   Kokkos::View<double**> ws_shape_function_;
-
-  // scratch space; fields
-  Kokkos::View<double*> ws_scalarQ_;
-  Kokkos::View<double*> ws_diffFluxCoeff_;
-  Kokkos::View<double**> ws_coordinates_;
 };
 
 } // namespace nalu

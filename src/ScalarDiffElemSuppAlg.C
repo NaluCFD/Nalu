@@ -12,8 +12,9 @@
 #include <Realm.h>
 #include <master_element/MasterElement.h>
 
-// manage supplemental algorithms that are templated
+// template and scratch space
 #include <BuildTemplates.h>
+#include <ScratchViews.h>
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/Entity.hpp>
@@ -43,29 +44,33 @@ ScalarDiffElemSuppAlg<AlgTraits>::ScalarDiffElemSuppAlg(
   Realm &realm,
   ScalarFieldType *scalarQ,
   ScalarFieldType *diffFluxCoeff,
-  const stk::topology &theTopo)
+  const stk::topology &theTopo,
+  ElemDataRequests& dataPreReqs)
   : SupplementalAlgorithm(realm),
     bulkData_(&realm.bulk_data()),
     scalarQ_(scalarQ),
     diffFluxCoeff_(diffFluxCoeff),
     coordinates_(NULL),
-    meSCS_(realm.get_surface_master_element(theTopo)),
-    lrscv_(meSCS_->adjacentNodes()),
-    ws_scs_areav_("ws_scs_areav", AlgTraits::numScsIp_, AlgTraits::nDim_),
-    ws_dndx_("ws_dndx", AlgTraits::numScsIp_, AlgTraits::nodesPerElement_, AlgTraits::nDim_),
-    ws_deriv_("ws_deriv", AlgTraits::nDim_*AlgTraits::numScsIp_*AlgTraits::nodesPerElement_ ),
-    ws_det_j_("ws_det_j", AlgTraits::numScsIp_),
-    ws_shape_function_("ws_shape_function", AlgTraits::numScsIp_, AlgTraits::nodesPerElement_),
-    ws_scalarQ_("ws_scalarQ", AlgTraits::nodesPerElement_),
-    ws_diffFluxCoeff_("ws_diffFluxCoeff", AlgTraits::nodesPerElement_),
-    ws_coordinates_("ws_coordinates", AlgTraits::nodesPerElement_, AlgTraits::nDim_)
+    lrscv_(realm.get_surface_master_element(theTopo)->adjacentNodes()),
+    ws_shape_function_("ws_shape_function", AlgTraits::numScsIp_, AlgTraits::nodesPerElement_)
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
 
-  // compute shape function
-  meSCS_->shape_fcn(&ws_shape_function_(0,0));
+  // compute shape function; do we want to push this to dataPreReqs?
+  MasterElement *meSCS = realm.get_surface_master_element(theTopo);
+  meSCS->shape_fcn(&ws_shape_function_(0,0));
+  
+  // add master elements
+  dataPreReqs.add_cvfem_surface_me(meSCS);
+
+  // fields and data
+  dataPreReqs.add_gathered_nodal_field(*coordinates_);
+  dataPreReqs.add_gathered_nodal_field(*scalarQ);
+  dataPreReqs.add_gathered_nodal_field(*diffFluxCoeff);
+  dataPreReqs.add_master_element_call(SCS_AREAV);
+  dataPreReqs.add_master_element_call(SCS_GRAD_OP);
 }
 
 //--------------------------------------------------------------------------
@@ -76,35 +81,15 @@ void
 ScalarDiffElemSuppAlg<AlgTraits>::element_execute(
   double *lhs,
   double *rhs,
-  stk::mesh::Entity element)
+  stk::mesh::Entity element,
+  ScratchViews& scratchViews)
 {
-  // gather
-  stk::mesh::Entity const *  node_rels = bulkData_->begin_nodes(element);
-  int num_nodes = bulkData_->num_nodes(element);
+  SharedMemView<double*>& scalarQ_view = scratchViews.get_scratch_view_1D(*scalarQ_);
+  SharedMemView<double*>& diffFluxCoeff_view = scratchViews.get_scratch_view_1D(*diffFluxCoeff_);
 
-  // sanity check on num nodes
-  ThrowAssert( num_nodes == AlgTraits::nodesPerElement_ );
-  for ( int ni = 0; ni < num_nodes; ++ni ) {
-    stk::mesh::Entity node = node_rels[ni];
-    
-    // gather scalars
-    ws_scalarQ_(ni) = *stk::mesh::field_data(*scalarQ_, node);
-    ws_diffFluxCoeff_(ni) = *stk::mesh::field_data(*diffFluxCoeff_, node );
+  SharedMemView<double**>& scs_areav = scratchViews.scs_areav;
+  SharedMemView<double***>& dndx = scratchViews.dndx;
 
-    // pointers to real data
-    const double * coords = stk::mesh::field_data(*coordinates_, node );
-
-    // gather vectors
-    for ( int j=0; j < AlgTraits::nDim_; ++j ) {
-      ws_coordinates_(ni,j) = coords[j];
-    }
-  }
-
-  // compute geometry and dndx
-  double scs_error = 0.0;
-  meSCS_->determinant(1, &ws_coordinates_(0,0), &ws_scs_areav_(0,0), &scs_error);
-  meSCS_->grad_op(1, &ws_coordinates_(0,0), &ws_dndx_(0,0,0), &ws_deriv_(0), &ws_det_j_(0), &scs_error);
-  
   // start the assembly
   for ( int ip = 0; ip < AlgTraits::numScsIp_; ++ip ) {
     
@@ -120,7 +105,7 @@ ScalarDiffElemSuppAlg<AlgTraits>::element_execute(
     double diffFluxCoeffIp = 0.0;
     for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
       const double r = ws_shape_function_(ip,ic);
-      diffFluxCoeffIp += r*ws_diffFluxCoeff_(ic);
+      diffFluxCoeffIp += r*diffFluxCoeff_view(ic);
     }
 
     // assemble to rhs and lhs
@@ -128,9 +113,9 @@ ScalarDiffElemSuppAlg<AlgTraits>::element_execute(
     for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {      
       double lhsfacDiff = 0.0;
       for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
-        lhsfacDiff += -diffFluxCoeffIp*ws_dndx_(ip,ic,j)*ws_scs_areav_(ip,j);
+        lhsfacDiff += -diffFluxCoeffIp*dndx(ip,ic,j)*scs_areav(ip,j);
       }
-      qDiff += lhsfacDiff*ws_scalarQ_(ic);
+      qDiff += lhsfacDiff*scalarQ_view(ic);
       
       // lhs; il then ir
       lhs[rowL+ic] += lhsfacDiff;

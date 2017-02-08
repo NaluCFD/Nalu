@@ -66,7 +66,7 @@ protected:
     {   
         fill_mesh(meshSpec);
 
-        partVec = {&meta.locally_owned_part()};
+        partVec = {meta.get_part("block_1")};
 
         coordField = static_cast<const VectorFieldType*>(meta.coordinate_field());
         EXPECT_TRUE(coordField != nullptr);

@@ -295,15 +295,15 @@ public:
 
     const int bytes_per_team = 0;
     const int bytes_per_thread =
-       SharedMemView<double**>::shmem_size(maxNodesPerElement, nDim) +
-       SharedMemView<double*>::shmem_size(maxNodesPerElement) +
-       SharedMemView<double**>::shmem_size(maxNumScsIp, nDim) +
-       SharedMemView<double**>::shmem_size(maxNumScsIp, maxNodesPerElement*nDim) +
-       SharedMemView<double**>::shmem_size(maxNumScsIp, maxNodesPerElement*nDim) +
-       SharedMemView<double*>::shmem_size(maxNumScsIp);
+       sierra::nalu::SharedMemView<double**>::shmem_size(maxNodesPerElement, nDim) +
+       sierra::nalu::SharedMemView<double*>::shmem_size(maxNodesPerElement) +
+       sierra::nalu::SharedMemView<double**>::shmem_size(maxNumScsIp, nDim) +
+       sierra::nalu::SharedMemView<double**>::shmem_size(maxNumScsIp, maxNodesPerElement*nDim) +
+       sierra::nalu::SharedMemView<double**>::shmem_size(maxNumScsIp, maxNodesPerElement*nDim) +
+       sierra::nalu::SharedMemView<double*>::shmem_size(maxNumScsIp);
 
-    auto team_exec = get_team_policy(elemBuckets.size(), bytes_per_team, bytes_per_thread);
-    Kokkos::parallel_for(team_exec, [&](const TeamHandleType& team)
+    auto team_exec = sierra::nalu::get_team_policy(elemBuckets.size(), bytes_per_team, bytes_per_thread);
+    Kokkos::parallel_for(team_exec, [&](const sierra::nalu::TeamHandleType& team)
     {
         const stk::mesh::Bucket& bkt = *elemBuckets[team.league_rank()];
         stk::topology topo = bkt.topology();
@@ -312,13 +312,13 @@ public:
         const int nodesPerElem = topo.num_nodes();
         const int numScsIp = meSCS.numIntPoints_;
 
-        SharedMemView<double**> elemNodeCoords = get_shmem_view_2D(team, nodesPerElem, nDim);
-        SharedMemView<double*> elemNodePressures = get_shmem_view_1D(team, nodesPerElem);
+        sierra::nalu::SharedMemView<double**> elemNodeCoords = sierra::nalu::get_shmem_view_2D(team, nodesPerElem, nDim);
+        sierra::nalu::SharedMemView<double*> elemNodePressures = sierra::nalu::get_shmem_view_1D(team, nodesPerElem);
      
-        SharedMemView<double**> scs_areav = get_shmem_view_2D(team, numScsIp, nDim);
-        SharedMemView<double**> dndx = get_shmem_view_2D(team, numScsIp, nodesPerElem*nDim);
-        SharedMemView<double**> deriv = get_shmem_view_2D(team, numScsIp, nodesPerElem*nDim);
-        SharedMemView<double*> det_j = get_shmem_view_1D(team, numScsIp);
+        sierra::nalu::SharedMemView<double**> scs_areav = sierra::nalu::get_shmem_view_2D(team, numScsIp, nDim);
+        sierra::nalu::SharedMemView<double**> dndx = sierra::nalu::get_shmem_view_2D(team, numScsIp, nodesPerElem*nDim);
+        sierra::nalu::SharedMemView<double**> deriv = sierra::nalu::get_shmem_view_2D(team, numScsIp, nodesPerElem*nDim);
+        sierra::nalu::SharedMemView<double*> det_j = sierra::nalu::get_shmem_view_1D(team, numScsIp);
 
         Kokkos::parallel_for(Kokkos::TeamThreadRange(team, bkt.size()), [&](const size_t& jj)
         {

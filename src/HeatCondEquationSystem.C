@@ -367,7 +367,7 @@ HeatCondEquationSystem::register_interior_algorithm(
       = solverAlgDriver_->solverAlgorithmMap_.find(algName);
     if ( itc == solverAlgDriver_->solverAlgorithmMap_.end() ) {
       // new the algorithm and add it
-      SolverAlgorithm *theSolverAlg = new AssembleElemSolverAlgorithm(realm_, part, this, partTopo);
+      AssembleElemSolverAlgorithm *theSolverAlg = new AssembleElemSolverAlgorithm(realm_, part, this, partTopo);
       solverAlgDriver_->solverAlgorithmMap_[algName] = theSolverAlg;
 
       NaluEnv::self().naluOutputP0() << "Created the following alg: " << algName << std::endl;
@@ -382,18 +382,20 @@ HeatCondEquationSystem::register_interior_algorithm(
         
         std::vector<std::string> mapNameVec = isrc->second;
 
+        ElemDataRequests& dataPreReqs = theSolverAlg->dataNeededBySuppAlgs_;
+
         for (size_t k = 0; k < mapNameVec.size(); ++k ) {
           std::string sourceName = mapNameVec[k];
           switch (partTopo.value()) {
           case stk::topology::HEX_8:
             if (sourceName == "steady_3d_thermal" ) {
               SteadyThermal3dContactSrcElemSuppAlg<AlgTraitsHex8> *suppAlg 
-                = new SteadyThermal3dContactSrcElemSuppAlg<AlgTraitsHex8>(realm_, partTopo);
+                = new SteadyThermal3dContactSrcElemSuppAlg<AlgTraitsHex8>(realm_, partTopo, dataPreReqs);
               theSolverAlg->supplementalAlg_.push_back(suppAlg);
             }
             else if (sourceName == "CVFEM_DIFF" ) { 
               ScalarDiffElemSuppAlg<AlgTraitsHex8> *suppAlg 
-                = new ScalarDiffElemSuppAlg<AlgTraitsHex8>(realm_, temperature_, thermalCond_, partTopo);
+                = new ScalarDiffElemSuppAlg<AlgTraitsHex8>(realm_, temperature_, thermalCond_, partTopo, dataPreReqs);
               theSolverAlg->supplementalAlg_.push_back(suppAlg);
             }
             else if ( sourceName == "FEM_DIFF" ) {
@@ -408,12 +410,12 @@ HeatCondEquationSystem::register_interior_algorithm(
           case stk::topology::TET_4:
             if (sourceName == "steady_3d_thermal" ) {
               SteadyThermal3dContactSrcElemSuppAlg<AlgTraitsTet4> *suppAlg 
-                = new SteadyThermal3dContactSrcElemSuppAlg<AlgTraitsTet4>(realm_, partTopo);
+                = new SteadyThermal3dContactSrcElemSuppAlg<AlgTraitsTet4>(realm_, partTopo, dataPreReqs);
               theSolverAlg->supplementalAlg_.push_back(suppAlg);
             }
             else if (sourceName == "CVFEM_DIFF" ) {
               ScalarDiffElemSuppAlg<AlgTraitsTet4> *suppAlg 
-                = new ScalarDiffElemSuppAlg<AlgTraitsTet4>(realm_, temperature_, thermalCond_, partTopo);
+                = new ScalarDiffElemSuppAlg<AlgTraitsTet4>(realm_, temperature_, thermalCond_, partTopo, dataPreReqs);
               theSolverAlg->supplementalAlg_.push_back(suppAlg);
             }
             else {
@@ -423,12 +425,12 @@ HeatCondEquationSystem::register_interior_algorithm(
           case stk::topology::PYRAMID_5:
             if (sourceName == "steady_3d_thermal" ) {
               SteadyThermal3dContactSrcElemSuppAlg<AlgTraitsPyr5> *suppAlg 
-                = new SteadyThermal3dContactSrcElemSuppAlg<AlgTraitsPyr5>(realm_, partTopo);
+                = new SteadyThermal3dContactSrcElemSuppAlg<AlgTraitsPyr5>(realm_, partTopo, dataPreReqs);
               theSolverAlg->supplementalAlg_.push_back(suppAlg);
             }
             else if (sourceName == "CVFEM_DIFF" ) {
               ScalarDiffElemSuppAlg<AlgTraitsPyr5> *suppAlg 
-                = new ScalarDiffElemSuppAlg<AlgTraitsPyr5>(realm_, temperature_, thermalCond_, partTopo);
+                = new ScalarDiffElemSuppAlg<AlgTraitsPyr5>(realm_, temperature_, thermalCond_, partTopo, dataPreReqs);
               theSolverAlg->supplementalAlg_.push_back(suppAlg);
             }
             else {
@@ -438,12 +440,12 @@ HeatCondEquationSystem::register_interior_algorithm(
           case stk::topology::WEDGE_6:
             if (sourceName == "steady_3d_thermal" ) {
               SteadyThermal3dContactSrcElemSuppAlg<AlgTraitsWed6> *suppAlg 
-                = new SteadyThermal3dContactSrcElemSuppAlg<AlgTraitsWed6>(realm_, partTopo);
+                = new SteadyThermal3dContactSrcElemSuppAlg<AlgTraitsWed6>(realm_, partTopo, dataPreReqs);
               theSolverAlg->supplementalAlg_.push_back(suppAlg);
             }
             else if (sourceName == "CVFEM_DIFF" ) {
               ScalarDiffElemSuppAlg<AlgTraitsWed6> *suppAlg 
-                = new ScalarDiffElemSuppAlg<AlgTraitsWed6>(realm_, temperature_, thermalCond_, partTopo);
+                = new ScalarDiffElemSuppAlg<AlgTraitsWed6>(realm_, temperature_, thermalCond_, partTopo, dataPreReqs);
               theSolverAlg->supplementalAlg_.push_back(suppAlg);
             }
             else {

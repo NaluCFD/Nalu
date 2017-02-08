@@ -19,6 +19,7 @@ namespace sierra{
 namespace nalu{
 
 class Realm;
+class ScratchViews;
 
 class SupplementalAlgorithm
 {
@@ -34,7 +35,8 @@ public:
   virtual void element_execute(
     double *lhs,
     double *rhs,
-    stk::mesh::Entity element) {}
+    stk::mesh::Entity element,
+    ScratchViews& scratchViews) {}
 
   virtual void elem_execute(
     double *lhs,
