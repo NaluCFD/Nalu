@@ -44,14 +44,13 @@ ScalarDiffElemSuppAlg<AlgTraits>::ScalarDiffElemSuppAlg(
   Realm &realm,
   ScalarFieldType *scalarQ,
   ScalarFieldType *diffFluxCoeff,
-  const stk::topology &theTopo,
   ElemDataRequests& dataPreReqs)
   : SupplementalAlgorithm(realm),
     bulkData_(&realm.bulk_data()),
     scalarQ_(scalarQ),
     diffFluxCoeff_(diffFluxCoeff),
     coordinates_(NULL),
-    lrscv_(realm.get_surface_master_element(theTopo)->adjacentNodes()),
+    lrscv_(realm.get_surface_master_element(AlgTraits::topo_)->adjacentNodes()),
     ws_shape_function_("ws_shape_function", AlgTraits::numScsIp_, AlgTraits::nodesPerElement_)
 {
   // save off fields
@@ -59,7 +58,7 @@ ScalarDiffElemSuppAlg<AlgTraits>::ScalarDiffElemSuppAlg(
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
 
   // compute shape function; do we want to push this to dataPreReqs?
-  MasterElement *meSCS = realm.get_surface_master_element(theTopo);
+  MasterElement *meSCS = realm.get_surface_master_element(AlgTraits::topo_);
   meSCS->shape_fcn(&ws_shape_function_(0,0));
   
   // add master elements
