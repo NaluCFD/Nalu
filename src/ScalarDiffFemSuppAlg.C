@@ -45,8 +45,6 @@ ScalarDiffFemSuppAlg<AlgTraits>::ScalarDiffFemSuppAlg(
     meFEM_(new Hex8FEM()),
     ipWeight_(&meFEM_->weights_[0])
 {
-  ThrowRequireMsg(AlgTraits::topo_ == stk::topology::HEX_8, std::string(name) + " only available for hexes currently");
-
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates");

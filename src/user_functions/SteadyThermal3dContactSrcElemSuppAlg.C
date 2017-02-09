@@ -42,11 +42,12 @@ namespace nalu{
 template<class AlgTraits>
 SteadyThermal3dContactSrcElemSuppAlg<AlgTraits>::SteadyThermal3dContactSrcElemSuppAlg(
   Realm &realm,
+  const stk::topology &theTopo,
   ElemDataRequests& dataPreReqs)
   : SupplementalAlgorithm(realm),
     bulkData_(&realm.bulk_data()),
     coordinates_(NULL),
-    ipNodeMap_(realm.get_volume_master_element(AlgTraits::topo_)->ipNodeMap()),
+    ipNodeMap_(realm.get_volume_master_element(theTopo)->ipNodeMap()),
     a_(1.0),
     k_(1.0),
     pi_(std::acos(-1.0)),
@@ -58,7 +59,7 @@ SteadyThermal3dContactSrcElemSuppAlg<AlgTraits>::SteadyThermal3dContactSrcElemSu
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
  
   // compute shape function; possibly push this to dataPreReqs?
-  MasterElement *meSCV = realm.get_volume_master_element(AlgTraits::topo_);
+  MasterElement *meSCV = realm.get_volume_master_element(theTopo);
   meSCV->shape_fcn(&ws_shape_function_(0,0));
 
   // add master elements

@@ -28,7 +28,6 @@ template<class AlgTraits>
 class ScalarDiffFemSuppAlg : public SupplementalAlgorithm
 {
 public:
-  static constexpr auto name = "FEM_DIFF";
 
   ScalarDiffFemSuppAlg(
     Realm &realm,
