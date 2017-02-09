@@ -82,11 +82,7 @@ public:
     EquationSystem::load(node);
     get_if_present(node, "use_collocation", collocationForViscousTerms_, false);
   }
-
-  void report_invalid_supp_alg_names();
-  void report_built_supp_alg_names();
-
-
+  
   // allow equation system to manage a projected nodal gradient
   const bool managePNG_;
 
@@ -109,8 +105,6 @@ public:
   bool isInit_;
   bool collocationForViscousTerms_;
   ProjectedNodalGradientEquationSystem *projectedNodalGradEqs_;
-
-  const std::string suppAlgTypeName_;
 };
 
 } // namespace nalu
