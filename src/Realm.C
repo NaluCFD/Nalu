@@ -2955,17 +2955,17 @@ Realm::register_periodic_bc(
 //--------------------------------------------------------------------------
 void
 Realm::setup_non_conformal_bc(
-  stk::mesh::Part *currentPart,
-  stk::mesh::Part *opposingPart,
+  stk::mesh::PartVector currentPartVec,
+  stk::mesh::PartVector opposingPartVec,
   const NonConformalBoundaryConditionData &nonConformalBCData)
 {
-
   hasNonConformal_ = true;
   
   // extract data
   NonConformalUserData userData = nonConformalBCData.userData_;
 
   // extract params useful for search
+  const std::string debugName = nonConformalBCData.targetName_;
   const std::string searchMethodName = userData.searchMethodName_;
   const double expandBoxPercentage = userData.expandBoxPercentage_/100.0;
   const bool clipIsoParametricCoords = userData.clipIsoParametricCoords_; 
@@ -2982,12 +2982,13 @@ Realm::setup_non_conformal_bc(
   // create nonconformal info for this surface
   NonConformalInfo *nonConformalInfo
     = new NonConformalInfo(*this,
-                           currentPart,
-                           opposingPart,
+                           currentPartVec,
+                           opposingPartVec,
                            expandBoxPercentage,
                            searchMethodName,
                            clipIsoParametricCoords,
-                           searchTolerance);
+                           searchTolerance,
+                           debugName);
   
   nonConformalManager_->nonConformalInfoVec_.push_back(nonConformalInfo);
 }

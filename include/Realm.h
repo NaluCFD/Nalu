@@ -205,8 +205,8 @@ class Realm {
     const std::string &searchMethodName);
 
   void setup_non_conformal_bc(
-    stk::mesh::Part *currentPart,
-    stk::mesh::Part *opposingPart,
+    stk::mesh::PartVector currentPartVec,
+    stk::mesh::PartVector opposingPartVec,
     const NonConformalBoundaryConditionData &nonConformalBCData);
 
   void register_non_conformal_bc(

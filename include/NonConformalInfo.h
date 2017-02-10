@@ -64,12 +64,13 @@ class NonConformalInfo {
   // constructor and destructor
   NonConformalInfo(
     Realm & realm,
-    const stk::mesh::Part *currentPart,
-    const stk::mesh::Part *opposingPart,
+    const stk::mesh::PartVector currentPartVec,
+    const stk::mesh::PartVector opposingPartVec,
     const double expandBoxPercentage,
     const std::string &searchMethodName,
     const bool clipIsoParametricCoords,
-    const double searchTolerance);
+    const double searchTolerance,
+    const std::string debugName);
 
   ~NonConformalInfo();
 
@@ -88,8 +89,8 @@ class NonConformalInfo {
   const std::string name_;
 
   // master slave parts; slave part can be subsetted while master is not..
-  const stk::mesh::Part *currentPart_;
-  const stk::mesh::Part *opposingPart_;
+  const stk::mesh::PartVector currentPartVec_;
+  const stk::mesh::PartVector opposingPartVec_;
 
   /* expand search box */
   double expandBoxPercentage_;

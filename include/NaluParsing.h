@@ -292,16 +292,13 @@ struct PeriodicUserData : public UserData {
 };
 
 struct NonConformalUserData : public UserData {
-
   std::string searchMethodName_;
   double expandBoxPercentage_;
   bool clipIsoParametricCoords_;
   double searchTolerance_;
-
   NonConformalUserData()
     : UserData(),
-      searchMethodName_("na"), expandBoxPercentage_(0.0),
-    clipIsoParametricCoords_(false), searchTolerance_(1.0e-16)
+    searchMethodName_("na"), expandBoxPercentage_(0.0), clipIsoParametricCoords_(false), searchTolerance_(1.0e-16)
   {}
 };
 
@@ -338,7 +335,8 @@ struct PeriodicBoundaryConditionData : public BoundaryCondition {
 
 struct NonConformalBoundaryConditionData : public BoundaryCondition {
   NonConformalBoundaryConditionData(BoundaryConditions& bcs) : BoundaryCondition(bcs){};
-  MasterSlave masterSlave_;
+  std::vector<std::string> currentPartNameVec_;
+  std::vector<std::string> opposingPartNameVec_;
   NonConformalUserData userData_;
 };
 

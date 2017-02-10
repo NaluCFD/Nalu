@@ -147,11 +147,62 @@ namespace sierra{
     
     void operator >> (const YAML::Node& node, NonConformalBoundaryConditionData& nonConformalBC) {
       nonConformalBC.bcName_ = node["non_conformal_boundary_condition"].as<std::string>() ;
-      nonConformalBC.masterSlave_ = node["target_name"].as<MasterSlave>() ;
-      nonConformalBC.targetName_ = nonConformalBC.masterSlave_.master_ + "_" + nonConformalBC.masterSlave_.slave_;
       nonConformalBC.theBcType_ = NON_CONFORMAL_BC;
       const YAML::Node& nonConformalUserData = node["non_conformal_user_data"];
       nonConformalBC.userData_ = nonConformalUserData.as<NonConformalUserData>() ;
+
+      // check for old/new syntax; one of the two is required to define the current/opposing part(s)
+      const YAML::Node targetPairName = node["target_name"];
+      const YAML::Node targetsCurrent = node["current_target_name"];
+      const YAML::Node targetsOpposing = node["opposing_target_name"];
+
+      if ( targetPairName ) {
+        if ( targetPairName.size() != 2 )
+          throw std::runtime_error("For non-conformal algorithms, ne must specify two targets, e.g., [surf_1, surf_2]");
+        nonConformalBC.currentPartNameVec_.resize(1);
+        nonConformalBC.opposingPartNameVec_.resize(1);
+        nonConformalBC.currentPartNameVec_[0] = targetPairName[0].as<std::string>();
+        nonConformalBC.opposingPartNameVec_[0] = targetPairName[1].as<std::string>();
+      }
+      else {
+        if ( !targetsCurrent )
+          throw  std::runtime_error("NonConformal::Error: part definition error: missing current_target_name");
+        if ( !targetsOpposing )
+          throw  std::runtime_error("NonConformal::Error: part definition error: missing opposing_target_name");
+
+        // set current
+        if (targetsCurrent.Type() == YAML::NodeType::Scalar) {
+          nonConformalBC.currentPartNameVec_.resize(1);
+          nonConformalBC.currentPartNameVec_[0] = targetsCurrent.as<std::string>();
+        }
+        else {
+          nonConformalBC.currentPartNameVec_.resize(targetsCurrent.size());
+          for (size_t i=0; i < targetsCurrent.size(); ++i) {
+            nonConformalBC.currentPartNameVec_[i] = targetsCurrent[i].as<std::string>();
+          } 
+        }
+
+        // set opposing
+        if (targetsOpposing.Type() == YAML::NodeType::Scalar) {
+          nonConformalBC.opposingPartNameVec_.resize(1);
+          nonConformalBC.opposingPartNameVec_[0] = targetsOpposing.as<std::string>();
+        }
+        else {
+          nonConformalBC.opposingPartNameVec_.resize(targetsOpposing.size());
+          for (size_t i=0; i < targetsOpposing.size(); ++i) {
+            nonConformalBC.opposingPartNameVec_[i] = targetsOpposing[i].as<std::string>();
+          } 
+        }
+      }
+      
+      // set target name for debug
+      std::string debugName = "_Current_";
+      for ( size_t k = 0; k < nonConformalBC.currentPartNameVec_.size(); ++k )
+        debugName += nonConformalBC.currentPartNameVec_[k] + "_";
+      debugName += "_Opposing_";
+      for ( size_t k = 0; k < nonConformalBC.opposingPartNameVec_.size(); ++k )
+        debugName += nonConformalBC.opposingPartNameVec_[k] + "_";
+      nonConformalBC.targetName_ = debugName;
     }
 
     void operator >> (const YAML::Node& node, UserFunctionInitialConditionData& fcnIC) {
@@ -855,10 +906,8 @@ namespace YAML {
 	nonConformalData.searchTolerance_ = node["search_tolerance"].as<double>() ;
       }
       
-      return true;
-      
-    }
-    
+      return true;      
+    }    
    
     bool convert<sierra::nalu::BoundaryConditionOptions>::decode(const Node& node, sierra::nalu::BoundaryConditionOptions& bcOptions) {
       

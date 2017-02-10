@@ -81,8 +81,7 @@ BoundaryCondition * BoundaryCondition::load(const YAML::Node & node)
     NonConformalBoundaryConditionData& nonConformalBC = *new NonConformalBoundaryConditionData(*parent());
     node >> nonConformalBC;
     NaluEnv::self().naluOutputP0() << "NonConformal BC name:    " << nonConformalBC.bcName_
-                    << " between " << nonConformalBC.masterSlave_.master_
-                    << " and "<< nonConformalBC.masterSlave_.slave_ << std::endl;
+                    << " using " << nonConformalBC.targetName_ << std::endl;
     return &nonConformalBC;
   }
   else if (node["overset_boundary_condition"]) {
