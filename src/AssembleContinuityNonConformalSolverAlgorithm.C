@@ -52,7 +52,6 @@ AssembleContinuityNonConformalSolverAlgorithm::AssembleContinuityNonConformalSol
     density_(NULL),
     exposedAreaVec_(NULL),
     meshMotion_(realm_.does_mesh_move()),
-    robinStyle_(false),
     useCurrentNormal_(realm_.get_nc_alg_current_normal()),
     includePstab_(realm_.get_nc_alg_include_pstab() ? 1.0 : 0.0)
 {
@@ -74,23 +73,8 @@ AssembleContinuityNonConformalSolverAlgorithm::AssembleContinuityNonConformalSol
   ghostFieldVec_.push_back(density_);
   ghostFieldVec_.push_back(exposedAreaVec_);
 
-  // specific algorithm options
-  NonConformalAlgType algType = realm_.get_nc_alg_type();
-  switch ( algType ) {
-    case NC_ALG_TYPE_DG:
-      robinStyle_ = false;
-      break;
-     
-    case NC_ALG_TYPE_RB:
-      robinStyle_ = true;
-      
-    default:
-      // nothing to do... parsing should have caught this...
-      break;
-  }
-
-  NaluEnv::self().naluOutputP0() << "NC Continuity options: robinStyle/useCurrentNormal/includePstab: " 
-                                 << robinStyle_ << " " << useCurrentNormal_ << " " << includePstab_ << std::endl;
+  NaluEnv::self().naluOutputP0() << "NC Continuity options: useCurrentNormal/includePstab: "
+                                 << useCurrentNormal_ << " " << includePstab_ << std::endl;
 }
 
 //--------------------------------------------------------------------------

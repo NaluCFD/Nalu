@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <string>
 #include <array>
+#include <random>
 
 namespace unit_test_utils {
 
