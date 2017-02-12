@@ -69,10 +69,9 @@ AssembleScalarDiffNonConformalSolverAlgorithm::AssembleScalarDiffNonConformalSol
     case NC_ALG_TYPE_DG:
       robinStyle_ = false;
       break;
-      
     case NC_ALG_TYPE_RB:
       robinStyle_ = true;
-      
+      break;  
     default:
       // nothing to do... parsing should have caught this...
       break;
