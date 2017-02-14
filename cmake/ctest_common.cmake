@@ -21,8 +21,8 @@ set(PERF_TEST_RESULT_DIRECTORY       "${TEST_RESULT_DIRECTORY}/performance")
 # -----------------------------------------------------------
 # -- REPOS
 # -----------------------------------------------------------
-set(NALU_REPO_URL                       "https://github.com/NaluCFD/Nalu.git")
-set(NALURTEST_REPO_URL                  "https://github.com/NaluCFD/NaluRtest.git")
+set(NALU_REPO_URL                    "https://github.com/NaluCFD/Nalu.git")
+set(NALURTEST_REPO_URL               "https://github.com/NaluCFD/NaluRtest.git")
 
 # -----------------------------------------------------------
 # -- Get environment
@@ -46,7 +46,7 @@ getuname(osname -s)
 getuname(osrel  -r)
 getuname(cpu    -m)
 
-set(CTEST_BUILD_NAME                    "${osname}-${cpu}-${compiler}")
+set(CTEST_BUILD_NAME                    "${osname}-${cpu}-${COMPILER_NAME}-${TRILINOS_BRANCH}")
 
 ## -- Git command
 ## ----------------
@@ -93,7 +93,7 @@ endif(NOT EXISTS "${CTEST_SOURCE_DIRECTORY}")
 set(CTEST_UPDATE_COMMAND               "${CTEST_GIT_COMMAND}")
 
 ## -- Configure Command
-set(CTEST_CONFIGURE_COMMAND            "${CTEST_BINARY_DIRECTORY}/${CONFIG_FILE}")
+set(CTEST_CONFIGURE_COMMAND            "cmake -DTrilinos_DIR:PATH=${TRILINOS_DIR} -DYAML_DIR:PATH=${YAML_DIR} -DENABLE_INSTALL:BOOL=OFF -DCMAKE_BUILD_TYPE=RELEASE ${CTEST_SOURCE_DIRECTORY}")
 
 ## -- Build Command
 set(CTEST_BUILD_COMMAND                "${MAKE} ${OPTION_BUILD}")
