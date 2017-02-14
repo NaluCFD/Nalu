@@ -48,9 +48,8 @@ AssembleMomentumNonConformalSolverAlgorithm::AssembleMomentumNonConformalSolverA
     diffFluxCoeff_(diffFluxCoeff),
     coordinates_(NULL),
     exposedAreaVec_(NULL),
-    ncMassFlowRate_(NULL),
-    robinStyle_(false),
-    upwindAdvection_(realm_.get_nc_alg_upwind_advection()),
+    ncMassFlowRate_(NULL),    
+    eta_(realm_.get_nc_alg_upwind_advection() ? 1.0 : 0.0),
     includeDivU_(realm_.get_divU()),
     useCurrentNormal_(realm_.get_nc_alg_current_normal())
 {
@@ -65,23 +64,12 @@ AssembleMomentumNonConformalSolverAlgorithm::AssembleMomentumNonConformalSolverA
   ghostFieldVec_.push_back(diffFluxCoeff_);
   ghostFieldVec_.push_back(coordinates_);
   ghostFieldVec_.push_back(exposedAreaVec_);
-  
-  // specific algorithm options
-  NonConformalAlgType algType = realm_.get_nc_alg_type();
-  switch ( algType ) {
-    case NC_ALG_TYPE_DG:
-      robinStyle_ = false;
-      break;
-    case NC_ALG_TYPE_RB:
-      robinStyle_ = true;
-      break;
-    default:
-      // nothing to do... parsing should have caught this...
-      break;
-  }
-
-  NaluEnv::self().naluOutputP0() << "NC Momentum options: robinStyle/upwind/useCurrentNormal: " 
-                                 << robinStyle_ << " " << upwindAdvection_ << " " << useCurrentNormal_ << std::endl;
+ 
+  // provide output to user
+  if ( useCurrentNormal_ ) 
+    NaluEnv::self().naluOutputP0() << "AssembleMomentumNonConformalSolverAlgorithm::Options: use_current_normal is active " << std::endl;   
+  if ( realm_.get_nc_alg_upwind_advection() ) 
+    NaluEnv::self().naluOutputP0() << "AssembleMomentumNonConformalSolverAlgorithm::Options: upwind advective flux is active " << std::endl;   
 }
 
 //--------------------------------------------------------------------------
@@ -99,7 +87,6 @@ AssembleMomentumNonConformalSolverAlgorithm::initialize_connectivity()
 void
 AssembleMomentumNonConformalSolverAlgorithm::execute()
 {
-
   stk::mesh::BulkData & bulk_data = realm_.bulk_data();
   stk::mesh::MetaData & meta_data = realm_.meta_data();
 
@@ -493,21 +480,20 @@ AssembleMomentumNonConformalSolverAlgorithm::execute()
         
         // save mdot
         const double tmdot = ncMassFlowRate[currentGaussPointId];
+        const double abs_tmdot = std::abs(tmdot);
 
         // compute penalty
-        const double penaltyIp = 0.5*(currentDiffFluxCoeffBip*currentInverseLength + opposingDiffFluxCoeffBip*opposingInverseLength) 
-          + std::abs(tmdot)/2.0;
+        const double penaltyIp 
+          = (currentDiffFluxCoeffBip*currentInverseLength + opposingDiffFluxCoeffBip*opposingInverseLength)/2.0;
    
         for ( int i = 0; i < nDim; ++i ) {
          
           // non conformal diffusive flux
-          const double ncDiffFlux =  robinStyle_ ? -opposingDiffFluxBip[i] 
-            : 0.5*(currentDiffFluxBip[i] - opposingDiffFluxBip[i]);
+          const double ncDiffFlux = (currentDiffFluxBip[i] - opposingDiffFluxBip[i])/2.0;
 
-          // non conformal advection; find upwind (upwind prevails over Robin or DG approach)
-          const double upwindUBip = tmdot > 0.0 ? currentUBip[i] : opposingUBip[i];
-          const double ncAdv = upwindAdvection_ ? tmdot*upwindUBip : robinStyle_ ? tmdot*opposingUBip[i]
-            : 0.5*tmdot*(currentUBip[i] + opposingUBip[i]);
+          // non conformal advection
+          const double ncAdv = tmdot*(currentUBip[i] + opposingUBip[i])/2.0 
+            + eta_*abs_tmdot*(currentUBip[i] - opposingUBip[i])/2.0;
 
           // assemble residual; form proper rhs index for current face assembly
           const int indexR = nn*nDim + i;
@@ -517,11 +503,11 @@ AssembleMomentumNonConformalSolverAlgorithm::execute()
           const int rowR = indexR*totalNodes*nDim;
         
           // sensitivities; current face (penalty and advection); use general shape function for this single ip
-          double lhsFac = penaltyIp*c_amag;
+          const double lhsFacC = penaltyIp*c_amag + (eta_*abs_tmdot + tmdot)/2.0;
           for ( int ic = 0; ic < currentNodesPerFace; ++ic ) {
             const int icNdim = ws_c_face_node_ordinals[ic]*nDim;
             const double r = p_c_general_shape_function[ic];
-            p_lhs[rowR+icNdim+i] += r*(lhsFac+0.5*tmdot);
+            p_lhs[rowR+icNdim+i] += r*lhsFacC;
           }
         
           // sensitivities; current element (diffusion)
@@ -534,18 +520,19 @@ AssembleMomentumNonConformalSolverAlgorithm::execute()
               for ( int i = 0; i < nDim; ++i ) {
                 const double dndxi = p_c_dndx[offSetDnDx+i];
                 // -mu*dui/dxj*Aj (divU neglected)
-                p_lhs[rowR+icNdim+i] += -0.5*currentDiffFluxCoeffBip*dndxj*nxj*c_amag; 
+                p_lhs[rowR+icNdim+i] += -currentDiffFluxCoeffBip*dndxj*nxj*c_amag/2.0; 
                 // -mu*duj/dxi*Aj
-                p_lhs[rowR+icNdim+j] += -0.5*currentDiffFluxCoeffBip*dndxi*nxj*c_amag;
+                p_lhs[rowR+icNdim+j] += -currentDiffFluxCoeffBip*dndxi*nxj*c_amag/2.0;
               }
             }
           }
 
           // sensitivities; opposing face (penalty and advection); use general shape function for this single ip
+          const double lhsFacO = penaltyIp*c_amag + (eta_*abs_tmdot - tmdot)/2.0;
           for ( int ic = 0; ic < opposingNodesPerFace; ++ic ) {
             const int icNdim = (ws_o_face_node_ordinals[ic]+currentNodesPerElement)*nDim;
             const double r = p_o_general_shape_function[ic];
-            p_lhs[rowR+icNdim+i] -= r*(lhsFac-0.5*tmdot);
+            p_lhs[rowR+icNdim+i] -= r*lhsFacO;
           }          
           
           // sensitivities; opposing element (diffusion)
@@ -558,9 +545,9 @@ AssembleMomentumNonConformalSolverAlgorithm::execute()
               for ( int i = 0; i < nDim; ++i ) {
                 const double dndxi = p_o_dndx[offSetDnDx+i];
                 // -mu*dui/dxj*Aj (divU neglected)
-                p_lhs[rowR+icNdim+i] -= -0.5*currentDiffFluxCoeffBip*dndxj*nxj*c_amag;                
+                p_lhs[rowR+icNdim+i] -= -currentDiffFluxCoeffBip*dndxj*nxj*c_amag/2.0;                
                 // -mu*duj/dxi*Aj
-                p_lhs[rowR+icNdim+j] -= -0.5*currentDiffFluxCoeffBip*dndxi*nxj*c_amag;
+                p_lhs[rowR+icNdim+j] -= -currentDiffFluxCoeffBip*dndxi*nxj*c_amag/2.0;
               }
             }
           }

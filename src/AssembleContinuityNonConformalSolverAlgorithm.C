@@ -73,8 +73,10 @@ AssembleContinuityNonConformalSolverAlgorithm::AssembleContinuityNonConformalSol
   ghostFieldVec_.push_back(density_);
   ghostFieldVec_.push_back(exposedAreaVec_);
 
-  NaluEnv::self().naluOutputP0() << "NC Continuity options: useCurrentNormal/includePstab: "
-                                 << useCurrentNormal_ << " " << includePstab_ << std::endl;
+  if ( useCurrentNormal_ )
+    NaluEnv::self().naluOutputP0() << "AssembleContinuityNonConformalSolverAlgorithm::Options: use_current_normal is active" << std::endl;
+  if ( includePstab_ )
+    NaluEnv::self().naluOutputP0() << "AssembleContinuityNonConformalSolverAlgorithm::Options: include_pstab is active" << std::endl;
 }
 
 //--------------------------------------------------------------------------

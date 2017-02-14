@@ -307,7 +307,6 @@ class Realm {
   bool get_cvfem_reduced_sens_poisson();
   
   bool has_nc_gauss_labatto_quadrature();
-  NonConformalAlgType get_nc_alg_type();
   bool get_nc_alg_upwind_advection();
   bool get_nc_alg_include_pstab();
   bool get_nc_alg_current_normal();

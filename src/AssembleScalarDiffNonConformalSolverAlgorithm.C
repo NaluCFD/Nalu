@@ -51,7 +51,7 @@ AssembleScalarDiffNonConformalSolverAlgorithm::AssembleScalarDiffNonConformalSol
     diffFluxCoeff_(diffFluxCoeff),
     coordinates_(NULL),
     exposedAreaVec_(NULL),
-    robinStyle_(false)
+    useCurrentNormal_(realm_.get_nc_alg_current_normal())
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -63,22 +63,8 @@ AssembleScalarDiffNonConformalSolverAlgorithm::AssembleScalarDiffNonConformalSol
   ghostFieldVec_.push_back(coordinates_);
   ghostFieldVec_.push_back(diffFluxCoeff_);
  
-  // specific algorithm options
-  NonConformalAlgType algType = realm_.get_nc_alg_type();
-  switch ( algType ) {
-    case NC_ALG_TYPE_DG:
-      robinStyle_ = false;
-      break;
-    case NC_ALG_TYPE_RB:
-      robinStyle_ = true;
-      break;  
-    default:
-      // nothing to do... parsing should have caught this...
-      break;
-  }
-
-  NaluEnv::self().naluOutputP0() << "NC options: robinStyle: " << robinStyle_ << std::endl;
-  
+  if ( useCurrentNormal_ ) 
+    NaluEnv::self().naluOutputP0() << "AssembleScalarDiffNonConformalSolverAlgorithm::Options: use_current_normal is active " << std::endl; 
 }
 
 //--------------------------------------------------------------------------
@@ -337,6 +323,12 @@ AssembleScalarDiffNonConformalSolverAlgorithm::execute()
           p_cNx[i] = c_areaVec[currentGaussPointId*nDim+i]/c_amag;
         }
 
+        // override opposing normal
+        if ( useCurrentNormal_ ) {
+          for ( int i = 0; i < nDim; ++i )
+            p_oNx[i] = -p_cNx[i];
+        }
+
         // project from side to element; method deals with the -1:1 isInElement range to the proper underlying CVFEM range
         meSCSCurrent->sidePcoords_to_elemPcoords(currentFaceOrdinal, 1, &currentIsoParCoords[0], &currentElementIsoParCoords[0]);
         meSCSOpposing->sidePcoords_to_elemPcoords(opposingFaceOrdinal, 1, &opposingIsoParCoords[0], &opposingElementIsoParCoords[0]);
@@ -356,7 +348,7 @@ AssembleScalarDiffNonConformalSolverAlgorithm::execute()
           for ( int j = 0; j < nDim; ++j ) {
             const double nxj = p_cNx[j];
             const double dndxj = p_c_dndx[offSetDnDx+j];
-            currentDiffFluxBip += dndxj*nxj*scalarQIC;
+            currentDiffFluxBip -= dndxj*nxj*scalarQIC;
           }
         }
 
@@ -380,7 +372,7 @@ AssembleScalarDiffNonConformalSolverAlgorithm::execute()
           for ( int j = 0; j < nDim; ++j ) {
             const double nxj = p_oNx[j];
             const double dndxj = p_o_dndx[offSetDnDx+j];
-            opposingDiffFluxBip += dndxj*nxj*scalarQIC;
+            opposingDiffFluxBip -= dndxj*nxj*scalarQIC;
           }
         }
 
@@ -426,8 +418,8 @@ AssembleScalarDiffNonConformalSolverAlgorithm::execute()
           &opposingDiffFluxCoeffBip);
                 
         // properly scaled diffusive flux
-        currentDiffFluxBip *= -currentDiffFluxCoeffBip;
-        opposingDiffFluxBip *= -opposingDiffFluxCoeffBip;
+        currentDiffFluxBip *= currentDiffFluxCoeffBip;
+        opposingDiffFluxBip *= opposingDiffFluxCoeffBip;
 
         // zero lhs/rhs
         for ( int p = 0; p < lhsSize; ++p )
@@ -439,7 +431,7 @@ AssembleScalarDiffNonConformalSolverAlgorithm::execute()
         const double penaltyIp = 0.5*(currentDiffFluxCoeffBip*currentInverseLength + opposingDiffFluxCoeffBip*opposingInverseLength);
 
         // non conformal diffusive flux
-        const double ncDiffFlux =  robinStyle_ ? -opposingDiffFluxBip : 0.5*(currentDiffFluxBip - opposingDiffFluxBip);
+        const double ncDiffFlux =  (currentDiffFluxBip - opposingDiffFluxBip)/2.0;
        
         const int nn = ipNodeMap[currentGaussPointId];
         p_rhs[nn] -= (ncDiffFlux + penaltyIp*(currentScalarQBip-opposingScalarQBip))*c_amag;
@@ -465,7 +457,7 @@ AssembleScalarDiffNonConformalSolverAlgorithm::execute()
             const double dndxj = p_c_dndx[offSetDnDx+j];
             lhscd -= dndxj*nxj;
           }
-          p_lhs[rowR+ic] += 0.5*currentDiffFluxCoeffBip*lhscd*c_amag;
+          p_lhs[rowR+ic] += currentDiffFluxCoeffBip*lhscd*c_amag/2.0;
         }
         
         // sensitivities; opposing face (penalty); use general shape function for this single ip
@@ -485,7 +477,7 @@ AssembleScalarDiffNonConformalSolverAlgorithm::execute()
             const double dndxj = p_o_dndx[offSetDnDx+j];
             lhscd -= dndxj*nxj;
           }
-          p_lhs[rowR+ic+currentNodesPerElement] -= 0.5*opposingDiffFluxCoeffBip*lhscd*c_amag;
+          p_lhs[rowR+ic+currentNodesPerElement] -= opposingDiffFluxCoeffBip*lhscd*c_amag/2.0;
         }
         
         apply_coeff(connected_nodes, scratchIds, scratchVals, rhs, lhs, __FILE__);

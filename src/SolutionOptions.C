@@ -65,9 +65,8 @@ SolutionOptions::SolutionOptions()
     adapterExtraOutput_(false),
     useAdapter_(false),
     maxRefinementLevel_(0),
-    ncAlgType_(NC_ALG_TYPE_DG),
     ncAlgGaussLabatto_(true),
-    ncAlgUpwindAdvection_(false),
+    ncAlgUpwindAdvection_(true),
     ncAlgIncludePstab_(true),
     ncAlgDetailedOutput_(false),
     ncAlgCurrentNormal_(false),
@@ -302,22 +301,6 @@ SolutionOptions::load(const YAML::Node & y_node)
           get_if_present(y_nc, "include_pstab",  ncAlgIncludePstab_, ncAlgIncludePstab_);
           get_if_present(y_nc, "detailed_output",  ncAlgDetailedOutput_, ncAlgDetailedOutput_);
           get_if_present(y_nc, "current_normal",  ncAlgCurrentNormal_, ncAlgCurrentNormal_);
-          if ( y_nc["algorithm_type"] ) {
-            std::string algTypeString = "none";
-            algTypeString = y_nc["algorithm_type"].as<std::string>() ;
-            // find the enum and set the value
-            bool foundIt = false;
-            for ( int k=0; k < NC_ALG_TYPE_END; ++k ) {
-              if ( algTypeString == NonConformalAlgTypeNames[k] ) {
-                NonConformalAlgType algTypeEnum = NonConformalAlgType(k);
-                foundIt = true;
-                ncAlgType_ = algTypeEnum;
-                break;
-              }
-            }
-            if ( !foundIt )
-              NaluEnv::self().naluOutputP0() << "Cound not find: " << algTypeString << std::endl;
-          }
         }
         else if (expect_map( y_option, "peclet_function_form", optional)) {
           y_option["peclet_function_form"] >> tanhFormMap_ ;

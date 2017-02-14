@@ -44,8 +44,7 @@ public:
   GenericFieldType *ncMassFlowRate_;
 
   // options that prevail over all algorithms created
-  bool robinStyle_;
-  const bool upwindAdvection_;
+  const double eta_;
   const bool useCurrentNormal_;
 
   std::vector< const stk::mesh::FieldBase *> ghostFieldVec_;
