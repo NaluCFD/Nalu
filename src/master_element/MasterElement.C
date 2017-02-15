@@ -4024,7 +4024,8 @@ void WedSCS::wedge_derivative(
 //--------------------------------------------------------------------------
 //-------- face_grad_op ----------------------------------------------------
 //--------------------------------------------------------------------------
-void WedSCS::face_grad_op(
+void 
+WedSCS::face_grad_op(
   const int nelem,
   const int face_ordinal,
   const double *coords,
@@ -4369,6 +4370,90 @@ WedSCS::parametric_distance(const std::vector<double> &x)
   const double dist_z = std::fabs(Z);
   const double dist = std::max(dist_z, dist_t);
   return dist;
+}
+
+//--------------------------------------------------------------------------
+//-------- general_face_grad_op --------------------------------------------
+//--------------------------------------------------------------------------
+void 
+WedSCS::general_face_grad_op(
+  const int face_ordinal,
+  const double *isoParCoord,
+  const double *coords,
+  double *gradop,
+  double *det_j,
+  double *error)
+{
+  int lerr = 0;
+  const int nface = 1;
+  double dpsi[18], grad[18];
+      
+  wedge_derivative(nface, &isoParCoord[0], dpsi);
+      
+  SIERRA_FORTRAN(wed_gradient_operator) 
+    ( &nface,
+      &nodesPerElement_,
+      &nface,
+      dpsi,
+      &coords[0], grad, &det_j[0], error, &lerr );
+      
+  if ( lerr )
+    std::cout << "problem with EwedSCS::general_face_grad" << std::endl;
+  
+  for ( int j=0; j<18; ++j) {
+    gradop[j] = grad[j];
+  }  
+}
+
+//--------------------------------------------------------------------------
+//-------- sidePcoords_to_elemPcoords --------------------------------------
+//--------------------------------------------------------------------------
+void 
+WedSCS::sidePcoords_to_elemPcoords(
+  const int & side_ordinal,
+  const int & npoints,
+  const double *side_pcoords,
+  double *elem_pcoords)
+{
+  switch (side_ordinal) {
+  case 0:
+    for (int i=0; i<npoints; i++) {//face0:quad: (x,y) -> (0.5*(1 + x),0,y)
+      elem_pcoords[i*3+0] = 0.5*(1.0+side_pcoords[2*i+0]);
+      elem_pcoords[i*3+1] = 0.0;
+      elem_pcoords[i*3+2] = side_pcoords[2*i+1];
+    }
+    break;
+  case 1:
+    for (int i=0; i<npoints; i++) {//face1:quad: (x,y) -> (0.5*(1-y),0.5*(1 + y),x)
+      elem_pcoords[i*3+0] = 0.5*(1.0-side_pcoords[2*i+1]);
+      elem_pcoords[i*3+1] = 0.5*(1.0+side_pcoords[2*i+1]);
+      elem_pcoords[i*3+2] = side_pcoords[2*i+0];
+    }
+    break;
+  case 2:
+    for (int i=0; i<npoints; i++) {//face2:quad: (x,y) -> (0,0.5*(1 + x),y)
+      elem_pcoords[i*3+0] = 0.0;
+      elem_pcoords[i*3+1] = 0.5*(1.0+side_pcoords[2*i+0]);
+      elem_pcoords[i*3+2] = side_pcoords[2*i+1];
+    }
+    break;
+  case 3:
+    for (int i=0; i<npoints; i++) {//face3:tri: (x,y) -> (x,y,-1)
+      elem_pcoords[i*3+0] = side_pcoords[2*i+0];
+      elem_pcoords[i*3+1] = side_pcoords[2*i+1];
+      elem_pcoords[i*3+2] = -1.0;
+    }
+    break;
+  case 4:
+    for (int i=0; i<npoints; i++) {//face4:tri: (x,y) -> (x,y,+1 )
+      elem_pcoords[i*3+0] = side_pcoords[2*i+0];
+      elem_pcoords[i*3+1] = side_pcoords[2*i+1];
+      elem_pcoords[i*3+2] = 1.0;
+    }
+    break;
+  default:
+    throw std::runtime_error("WedSCS::sidePcoords_to_elemPcoords invalid ordinal");
+  }
 }
 
 //--------------------------------------------------------------------------
