@@ -9,6 +9,7 @@
 #include <Realm.h>
 #include <Simulation.h>
 #include <NaluEnv.h>
+#include <InterfaceBalancer.h>
 
 // percept
 #if defined (NALU_USES_PERCEPT)
@@ -211,6 +212,8 @@ namespace nalu{
     activateAura_(false),
     activateMemoryDiagnostic_(false),
     supportInconsistentRestart_(false),
+    doBalanceNodes_(false),
+    balanceNodeOptions_(),
     wallTimeStart_(stk::wall_time())
 {
   // deal with specialty options that live off of the realm; 
@@ -414,6 +417,10 @@ Realm::initialize()
   timerPopulateMesh_ += time;
   NaluEnv::self().naluOutputP0() << "Realm::ioBroker_->populate_mesh() End" << std::endl;
 
+  if (doBalanceNodes_) {
+    balance_nodes();
+  }
+
   // If we want to create all internal edges, we want to do it before
   // field-data is allocated because that allows better performance in
   // the create-edges code.
@@ -596,6 +603,14 @@ Realm::load(const YAML::Node & node)
     get_if_present(y_time_step, "target_courant", targetCourant_, targetCourant_);
     get_if_present(y_time_step, "time_step_change_factor", timeStepChangeFactor_, timeStepChangeFactor_);
   }
+
+  get_if_present(node, "balance_nodes", doBalanceNodes_, doBalanceNodes_);
+  get_if_present(node, "balance_nodes_iterations", balanceNodeOptions_.numIters, balanceNodeOptions_.numIters);
+  get_if_present(node, "balance_nodes_target", balanceNodeOptions_.target, balanceNodeOptions_.target);
+  if (node["balance_nodes_iterations"] || node["balance_nodes_target"] ) {
+    doBalanceNodes_ = true;
+  }
+
 
   //======================================
   // now other commands/actions
@@ -4404,6 +4419,15 @@ Realm::get_tanh_blending(
     omegaBlend = tanhFunction.execute(currentTime);
   }
   return omegaBlend;
+}
+
+//--------------------------------------------------------------------------
+//-------- balance_nodes() ---------------------------------------------
+//--------------------------------------------------------------------------
+void Realm::balance_nodes()
+{
+  InterfaceBalancer balancer(meta_data(), bulk_data());
+  balancer.balance_node_entities(balanceNodeOptions_.target, balanceNodeOptions_.numIters);
 }
 
 } // namespace nalu
