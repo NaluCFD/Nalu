@@ -521,7 +521,8 @@ file(COPY               "${NALURTEST_MESH_DIR}/periodic3d.g"
 file(COPY               "${NALURTEST_NIGHTLY_DIR}/cvfemHC"
      DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}")
 
-file(COPY               "${NALURTEST_MESH_DIR}/rot_cyl_14.exo*"
+file(GLOB meshes        "${NALURTEST_MESH_DIR}/rot_cyl_14.exo*")
+file(COPY               ${meshes}
      DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}/cvfemHC")
 
 
