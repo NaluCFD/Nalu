@@ -26,16 +26,18 @@ BoundaryLayerPerturbationAuxFunction::BoundaryLayerPerturbationAuxFunction(
   kx_(0.1),
   ky_(0.1),
   thickness_(0.05),
-  uInf_(10.0)
+  uInf_(10.0),
+  vInf_(0.0)
 {
   // check size and populate
-  if ( params.size() != 5 )
-    throw std::runtime_error("Realm::setup_initial_conditions: boundary_layer_perturbation requires 5 params: ");
+  if ( params.size() != 6 )
+    throw std::runtime_error("Realm::setup_initial_conditions: boundary_layer_perturbation requires 6 params: ");
   amplitude_ = params[0];
   kx_        = params[1];
   ky_        = params[2];
   thickness_ = params[3];
   uInf_      = params[4];
+  vInf_      = params[5];
 }
 
 
@@ -58,10 +60,13 @@ BoundaryLayerPerturbationAuxFunction::do_evaluate(
 
     const double dampfun = std::exp(-cZ/thickness_)*cZ/thickness_/std::exp(-1.0);
     const double Upower = std::pow((cZ/(5.0*thickness_)),1.0/7.0);
-    const double Umean = std::min(Upower, 1.0)*uInf_;
+    const double UmeanMag = std::min(Upower, 1.0)*std::sqrt(uInf_*uInf_+vInf_*vInf_);
 
-    const double velX = Umean + amplitude_*std::cos(kx_*cX)*std::cos(ky_*cY)*dampfun;
-    const double velY = amplitude_*kx_/ky_*std::sin(kx_*cX)*std::sin(ky_*cY)*dampfun;
+    const double eX = std::cos(std::atan2(vInf_,uInf_));
+    const double eY = std::sin(std::atan2(vInf_,uInf_));
+
+    const double velX = UmeanMag*eX + amplitude_*std::cos(kx_*cX)*std::cos(ky_*cY)*dampfun;
+    const double velY = UmeanMag*eY + amplitude_*kx_/ky_*std::sin(kx_*cX)*std::sin(ky_*cY)*dampfun;
     const double velZ = 0.0;
 
     fieldPtr[0] = velX;

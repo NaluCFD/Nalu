@@ -654,6 +654,11 @@ namespace YAML {
 	wallData.wallFunctionApproach_ = node["use_abl_wall_function"].as<bool>() ;
 	wallData.ablWallFunctionApproach_ = node["use_abl_wall_function"].as<bool>() ;
       }
+      if ( node["use_moeng_wall_function"] ) {
+	wallData.wallFunctionApproach_ = node["use_moeng_wall_function"].as<bool>() ;
+	wallData.ablWallFunctionApproach_ = node["use_moeng_wall_function"].as<bool>() ;
+        wallData.ablMoengWallFunctionApproach_ = node["use_moeng_wall_function"].as<bool>() ;
+      }
       if ( node["pressure"] ) {
 	wallData.pressure_ = node["pressure"].as<sierra::nalu::Pressure>() ;
 	wallData.bcDataSpecifiedMap_["pressure"] = true;
