@@ -25,20 +25,66 @@ namespace nalu{
 
 inline
 void gather_elem_node_field(const stk::mesh::FieldBase& field,
-                            stk::mesh::Entity elem,
                             int numNodes,
                             const stk::mesh::Entity* elemNodes,
                             SharedMemView<double*>& shmemView)
 {
   for(int i=0; i<numNodes; ++i) {
+    shmemView[i] = *static_cast<const double*>(stk::mesh::field_data(field, elemNodes[i]));
+  }
+}
+
+inline
+void gather_elem_node_tensor_field(const stk::mesh::FieldBase& field,
+                            int numNodes,
+                            int tensorDim1,
+                            int tensorDim2,
+                            const stk::mesh::Entity* elemNodes,
+                            SharedMemView<double***>& shmemView)
+{
+  for(int i=0; i<numNodes; ++i) {
     const double* dataPtr = static_cast<const double*>(stk::mesh::field_data(field, elemNodes[i]));
-    shmemView[i] = *dataPtr;
+    unsigned counter = 0;
+    for(int d1=0; d1<tensorDim1; ++d1) {
+      for(int d2=0; d2<tensorDim2; ++d2) {
+        shmemView(i,d1,d2) = dataPtr[counter++];
+      }
+    }
+  }
+}
+
+inline
+void gather_elem_tensor_field(const stk::mesh::FieldBase& field,
+                              stk::mesh::Entity elem,
+                              int tensorDim1,
+                              int tensorDim2,
+                              SharedMemView<double**>& shmemView)
+{
+  const double* dataPtr = static_cast<const double*>(stk::mesh::field_data(field, elem));
+  unsigned counter = 0;
+  for(int d1=0; d1<tensorDim1; ++d1) {
+    for(int d2=0; d2<tensorDim2; ++d2) {
+      shmemView(d1,d2) = dataPtr[counter++];
+    }
+  }
+}
+
+inline
+void gather_elem_node_field_3D(const stk::mesh::FieldBase& field,
+                            int numNodes,
+                            const stk::mesh::Entity* elemNodes,
+                            SharedMemView<double**>& shmemView)
+{
+  for(int i=0; i<numNodes; ++i) {
+    const double* dataPtr = static_cast<const double*>(stk::mesh::field_data(field, elemNodes[i]));
+    shmemView(i,0) = dataPtr[0];
+    shmemView(i,1) = dataPtr[1];
+    shmemView(i,2) = dataPtr[2];
   }
 }
 
 inline
 void gather_elem_node_field(const stk::mesh::FieldBase& field,
-                            stk::mesh::Entity elem,
                             int numNodes,
                             int scalarsPerNode,
                             const stk::mesh::Entity* elemNodes,
@@ -48,7 +94,7 @@ void gather_elem_node_field(const stk::mesh::FieldBase& field,
     const double* dataPtr = static_cast<const double*>(stk::mesh::field_data(field, elemNodes[i]));
     for(int d=0; d<scalarsPerNode; ++d) {
       shmemView(i,d) = dataPtr[d];
-    }    
+    }
   }
 }
 
@@ -142,16 +188,28 @@ private:
     for(const FieldInfo& fieldInfo : neededFields) {
       stk::mesh::EntityRank fieldEntityRank = fieldInfo.field->entity_rank();
       ThrowAssertMsg(fieldEntityRank == stk::topology::NODE_RANK || fieldEntityRank == stk::topology::ELEM_RANK, "Currently only node and element fields are supported.");
-      unsigned scalarsPerEntity = fieldInfo.scalarsPerEntity;
+      unsigned scalarsDim1 = fieldInfo.scalarsDim1;
+      unsigned scalarsDim2 = fieldInfo.scalarsDim2;
+
       if (fieldEntityRank==stk::topology::ELEM_RANK) {
-        fieldViews[fieldInfo.field->mesh_meta_data_ordinal()] = new ViewT<SharedMemView<double*>>(get_shmem_view_1D(team, scalarsPerEntity));
-      }
-      else if (fieldEntityRank==stk::topology::NODE_RANK) {
-        if (scalarsPerEntity == 1) {
-          fieldViews[fieldInfo.field->mesh_meta_data_ordinal()] = new ViewT<SharedMemView<double*>>(get_shmem_view_1D(team, nodesPerElem));
+        if (scalarsDim2 == 0) {
+          fieldViews[fieldInfo.field->mesh_meta_data_ordinal()] = new ViewT<SharedMemView<double*>>(get_shmem_view_1D(team, scalarsDim1));
         }
         else {
-          fieldViews[fieldInfo.field->mesh_meta_data_ordinal()] = new ViewT<SharedMemView<double**>>(get_shmem_view_2D(team, nodesPerElem, scalarsPerEntity));
+          fieldViews[fieldInfo.field->mesh_meta_data_ordinal()] = new ViewT<SharedMemView<double**>>(get_shmem_view_2D(team, scalarsDim1, scalarsDim2));
+        }
+      }
+      else if (fieldEntityRank==stk::topology::NODE_RANK) {
+        if (scalarsDim2 == 0) {
+          if (scalarsDim1 == 1) {
+            fieldViews[fieldInfo.field->mesh_meta_data_ordinal()] = new ViewT<SharedMemView<double*>>(get_shmem_view_1D(team, nodesPerElem));
+          }
+          else {
+            fieldViews[fieldInfo.field->mesh_meta_data_ordinal()] = new ViewT<SharedMemView<double**>>(get_shmem_view_2D(team, nodesPerElem, scalarsDim1));
+          }
+        }
+        else {
+            fieldViews[fieldInfo.field->mesh_meta_data_ordinal()] = new ViewT<SharedMemView<double***>>(get_shmem_view_3D(team, nodesPerElem, scalarsDim1, scalarsDim2));
         }
       }
       else {
@@ -212,8 +270,11 @@ int get_num_bytes_pre_req_data(
   for(const FieldInfo& fieldInfo : neededFields) {
     stk::mesh::EntityRank fieldEntityRank = fieldInfo.field->entity_rank();
     ThrowAssertMsg(fieldEntityRank == stk::topology::NODE_RANK || fieldEntityRank == stk::topology::ELEM_RANK, "Currently only node and element fields are supported.");
-    unsigned scalarsPerEntity = fieldInfo.scalarsPerEntity;
+    unsigned scalarsPerEntity = fieldInfo.scalarsDim1;
     unsigned entitiesPerElem = fieldEntityRank==stk::topology::ELEM_RANK ? 1 : nodesPerElem;
+    if (fieldInfo.scalarsDim2 > 1) {
+      scalarsPerEntity *= fieldInfo.scalarsDim2;
+    }
     numBytes += entitiesPerElem*scalarsPerEntity*sizeof(double);
   }
   
@@ -256,23 +317,42 @@ void fill_pre_req_data(
   const FieldSet& neededFields = dataNeeded.get_fields();
   for(const FieldInfo& fieldInfo : neededFields) {
     stk::mesh::EntityRank fieldEntityRank = fieldInfo.field->entity_rank();
-    unsigned scalarsPerEntity = fieldInfo.scalarsPerEntity;
+    unsigned scalarsDim1 = fieldInfo.scalarsDim1;
+    bool isTensorField = fieldInfo.scalarsDim2 > 1;
+
     if (fieldEntityRank==stk::topology::ELEM_RANK) {
-      SharedMemView<double*>& shmemView = prereqData.get_scratch_view_1D(*fieldInfo.field);
-      unsigned len = shmemView.dimension(0);
-      double* fieldDataPtr = static_cast<double*>(stk::mesh::field_data(*fieldInfo.field, elem));
-      for(unsigned i=0; i<len; ++i) {
-        shmemView(i) = fieldDataPtr[i];
+      if (isTensorField) {
+        SharedMemView<double**>& shmemView = prereqData.get_scratch_view_2D(*fieldInfo.field);
+        gather_elem_tensor_field(*fieldInfo.field, elem, scalarsDim1, fieldInfo.scalarsDim2, shmemView);
+      }
+      else {
+        SharedMemView<double*>& shmemView = prereqData.get_scratch_view_1D(*fieldInfo.field);
+        unsigned len = shmemView.dimension(0);
+        double* fieldDataPtr = static_cast<double*>(stk::mesh::field_data(*fieldInfo.field, elem));
+        for(unsigned i=0; i<len; ++i) {
+          shmemView(i) = fieldDataPtr[i];
+        }
       }
     }
     else if (fieldEntityRank == stk::topology::NODE_RANK) {
-      if (scalarsPerEntity == 1) {
-        SharedMemView<double*>& shmemView1D = prereqData.get_scratch_view_1D(*fieldInfo.field);
-        gather_elem_node_field(*fieldInfo.field, elem, nodesPerElem, bulkData.begin_nodes(elem), shmemView1D);
+      if (isTensorField) {
+        SharedMemView<double***>& shmemView3D = prereqData.get_scratch_view_3D(*fieldInfo.field);
+        gather_elem_node_tensor_field(*fieldInfo.field, nodesPerElem, scalarsDim1, fieldInfo.scalarsDim2, bulkData.begin_nodes(elem), shmemView3D);
       }
       else {
-        SharedMemView<double**>& shmemView2D = prereqData.get_scratch_view_2D(*fieldInfo.field);
-        gather_elem_node_field(*fieldInfo.field, elem, nodesPerElem, scalarsPerEntity, bulkData.begin_nodes(elem), shmemView2D);
+        if (scalarsDim1 == 1) {
+          SharedMemView<double*>& shmemView1D = prereqData.get_scratch_view_1D(*fieldInfo.field);
+          gather_elem_node_field(*fieldInfo.field, nodesPerElem, bulkData.begin_nodes(elem), shmemView1D);
+        }
+        else {
+          SharedMemView<double**>& shmemView2D = prereqData.get_scratch_view_2D(*fieldInfo.field);
+          if (scalarsDim1 == 3) {
+            gather_elem_node_field_3D(*fieldInfo.field, nodesPerElem, bulkData.begin_nodes(elem), shmemView2D);
+          }
+          else {
+            gather_elem_node_field(*fieldInfo.field, nodesPerElem, scalarsDim1, bulkData.begin_nodes(elem), shmemView2D);
+          }
+        }
       }
     }
     else {
