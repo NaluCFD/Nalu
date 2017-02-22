@@ -27,8 +27,6 @@ WindEnergyAuxFunction::WindEnergyAuxFunction(
   const std::vector<std::string> theStringParams,
   Realm &realm) :
   AuxFunction(beginPos, endPos),
-  centroidX_(0.0),
-  centroidY_(0.0),
   omegaBlend_(1.0),
   tanhFunction_(NULL),
   omegaMM_(3,0.0),

@@ -45,8 +45,6 @@ public:
   void cross_product(double *c, double *u) const;
 
 private:
-  double centroidX_;
-  double centroidY_;
   double omegaBlend_;
   TanhFunction *tanhFunction_;
   std::vector<double> omegaMM_;
