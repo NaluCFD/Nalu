@@ -1,3 +1,6 @@
+#ifndef _UnitTestUtils_h_
+#define _UnitTestUtils_h_
+
 #include <string>
 #include <ostream>
 
@@ -13,6 +16,7 @@
 
 typedef stk::mesh::Field<double> ScalarFieldType;
 typedef stk::mesh::Field<double,stk::mesh::Cartesian> VectorFieldType;
+typedef stk::mesh::Field<double,stk::mesh::Cartesian,stk::mesh::Cartesian> TensorFieldType;
 
 namespace unit_test_utils {
 
@@ -57,12 +61,12 @@ protected:
 
     ~Hex8Mesh() {}
 
-    void fill_mesh(const std::string& meshSpec = "generated:70x70x70")
+    void fill_mesh(const std::string& meshSpec = "generated:20x20x20")
     { 
       unit_test_utils::fill_hex8_mesh(meshSpec, bulk);
     }
 
-    void fill_mesh_and_initialize_test_fields(const std::string& meshSpec = "generated:70x70x70")
+    void fill_mesh_and_initialize_test_fields(const std::string& meshSpec = "generated:20x20x20")
     {   
         fill_mesh(meshSpec);
 
@@ -89,6 +93,8 @@ protected:
     const VectorFieldType* coordField;
     double exactLaplacian; 
 };
+
+#endif
 
 #endif
 

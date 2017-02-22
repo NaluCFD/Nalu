@@ -39,8 +39,7 @@ struct FieldInfo {
   unsigned scalarsDim2;
 };
 
-struct FieldInfoLess
-{
+struct FieldInfoLess {
   bool operator()(const FieldInfo& lhs, const FieldInfo& rhs) const
   {
     return lhs.field->mesh_meta_data_ordinal() < rhs.field->mesh_meta_data_ordinal();
@@ -62,61 +61,13 @@ public:
     dataEnums.insert(data);
   }
 
-  void add_gathered_nodal_field(const stk::mesh::FieldBase& field, unsigned scalarsPerNode)
-  {
-    ThrowAssertMsg(field.entity_rank()==stk::topology::NODE_RANK,"ElemDataRequests ERROR, add_gathered_nodal_field called with field "<<field.name()<<" which has entity-rank=="<<field.entity_rank()<<" but is expected to have rank==NODE_RANK");
+  void add_gathered_nodal_field(const stk::mesh::FieldBase& field, unsigned scalarsPerNode);
 
-    FieldInfo fieldInfo(&field, scalarsPerNode);
-    FieldSet::iterator iter = fields.find(fieldInfo);
-    if (iter == fields.end()) {
-      fields.insert(fieldInfo);
-    }
-    else {
-      ThrowAssertMsg(iter->scalarsDim1 == scalarsPerNode, "ElemDataRequests ERROR, gathered-nodal-field "<<field.name()<<" requested with scalarsPerNode=="<<scalarsPerNode<<", but previously requested with scalarsPerNode=="<<iter->scalarsDim1);
-    }
-  }
+  void add_gathered_nodal_field(const stk::mesh::FieldBase& field, unsigned tensorDim1, unsigned tensorDim2);
 
-  void add_gathered_nodal_field(const stk::mesh::FieldBase& field, unsigned tensorDim1, unsigned tensorDim2)
-  {
-    ThrowAssertMsg(field.entity_rank()==stk::topology::NODE_RANK,"ElemDataRequests ERROR, add_gathered_nodal_field called with field "<<field.name()<<" which has entity-rank=="<<field.entity_rank()<<" but is expected to have rank==NODE_RANK");
+  void add_element_field(const stk::mesh::FieldBase& field, unsigned scalarsPerElement);
 
-    FieldInfo fieldInfo(&field, tensorDim1, tensorDim2);
-    FieldSet::iterator iter = fields.find(fieldInfo);
-    if (iter == fields.end()) {
-      fields.insert(fieldInfo);
-    }
-    else {
-      ThrowAssertMsg(iter->scalarsDim1 == tensorDim1 && iter->scalarsDim2 == tensorDim2, "ElemDataRequests ERROR, gathered-nodal-field "<<field.name()<<" requested with tensorDim1=="<<tensorDim1<<",tensorDim2=="<<tensorDim2<<", but previously requested with tensorDim1=="<<iter->scalarsDim1<<",tensorDim2=="<<iter->scalarsDim2);
-    }
-  }
-
-  void add_element_field(const stk::mesh::FieldBase& field, unsigned scalarsPerElement)
-  {
-    ThrowAssertMsg(field.entity_rank()==stk::topology::ELEM_RANK,"ElemDataRequests ERROR, add_element_field called with field "<<field.name()<<" which has entity-rank=="<<field.entity_rank()<<" but is expected to have rank==ELEM_RANK");
-
-    FieldInfo fieldInfo(&field, scalarsPerElement);
-    FieldSet::iterator iter = fields.find(fieldInfo);
-    if (iter == fields.end()) {
-      fields.insert(fieldInfo);
-    }
-    else {
-      ThrowAssertMsg(iter->scalarsDim1 == scalarsPerElement, "ElemDataRequests ERROR, element-field "<<field.name()<<" requested with scalarsPerElement=="<<scalarsPerElement<<", but previously requested with scalarsPerElement=="<<iter->scalarsDim1);
-    }
-  }
-
-  void add_element_field(const stk::mesh::FieldBase& field, unsigned tensorDim1, unsigned tensorDim2)
-  {
-    ThrowAssertMsg(field.entity_rank()==stk::topology::ELEM_RANK,"ElemDataRequests ERROR, add_element_field called with field "<<field.name()<<" which has entity-rank=="<<field.entity_rank()<<" but is expected to have rank==ELEM_RANK");
-
-    FieldInfo fieldInfo(&field, tensorDim1, tensorDim2);
-    FieldSet::iterator iter = fields.find(fieldInfo);
-    if (iter == fields.end()) {
-      fields.insert(fieldInfo);
-    }
-    else {
-      ThrowAssertMsg(iter->scalarsDim1 == tensorDim1 && iter->scalarsDim2 == tensorDim2, "ElemDataRequests ERROR, element-field "<<field.name()<<" requested with tensorDim1=="<<tensorDim1<<",tensorDim2=="<<tensorDim2<<", but previously requested with tensorDim1=="<<iter->scalarsDim1<<",tensorDim2=="<<iter->scalarsDim2);
-    }
-  }
+  void add_element_field(const stk::mesh::FieldBase& field, unsigned tensorDim1, unsigned tensorDim2);
 
   void add_cvfem_volume_me(MasterElement *meSCV)
   {
