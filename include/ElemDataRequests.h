@@ -22,21 +22,28 @@ namespace nalu{
 class MasterElement;
 
 enum ELEM_DATA_NEEDED {
-  NODES = 0,
-  SCS_AREAV,
+  SCS_AREAV = 0,
   SCS_GRAD_OP,
   SCV_VOLUME
 };
 
-struct FieldBaseLess
+struct FieldInfo {
+  FieldInfo(const stk::mesh::FieldBase* fld, unsigned scalars)
+  : field(fld), scalarsPerEntity(scalars)
+  {}
+  const stk::mesh::FieldBase* field;
+  unsigned scalarsPerEntity;
+};
+
+struct FieldInfoLess
 {
-  bool operator()(const stk::mesh::FieldBase* lhs, const stk::mesh::FieldBase* rhs) const
+  bool operator()(const FieldInfo& lhs, const FieldInfo& rhs) const
   {
-    return lhs->mesh_meta_data_ordinal() < rhs->mesh_meta_data_ordinal();
+    return lhs.field->mesh_meta_data_ordinal() < rhs.field->mesh_meta_data_ordinal();
   }
 };
 
-typedef std::set<const stk::mesh::FieldBase*,FieldBaseLess> FieldSet;
+typedef std::set<FieldInfo,FieldInfoLess> FieldSet;
 
 class ElemDataRequests
 {
@@ -46,22 +53,21 @@ public:
   {
   }
 
-  void add(ELEM_DATA_NEEDED data)
-  {
-    dataEnums.insert(data);
-  }
   void add_master_element_call(ELEM_DATA_NEEDED data)
   {
     dataEnums.insert(data);
   }
 
-  void add(const stk::mesh::FieldBase& field)
+  void add_gathered_nodal_field(const stk::mesh::FieldBase& field, unsigned scalarsPerNode)
   {
-    fields.insert(&field);
-  }
-  void add_gathered_nodal_field(const stk::mesh::FieldBase& field)
-  {
-    fields.insert(&field);
+    FieldInfo fieldInfo(&field, scalarsPerNode);
+    FieldSet::iterator iter = fields.find(fieldInfo);
+    if (iter == fields.end()) {
+      fields.insert(FieldInfo(&field, scalarsPerNode));
+    }
+    else {
+      ThrowAssertMsg(iter->scalarsPerEntity == scalarsPerNode, "ElemDataRequests ERROR, gathered-nodal-field "<<field.name()<<" requested with scalarsPerNode=="<<scalarsPerNode<<", but previously requested with scalarsPerNode=="<<iter->scalarsPerEntity);
+    }
   }
 
   void add_cvfem_volume_me(MasterElement *meSCV)

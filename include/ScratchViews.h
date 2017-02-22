@@ -52,6 +52,17 @@ void gather_elem_node_field(const stk::mesh::FieldBase& field,
   }
 }
 
+struct ViewHolder {
+  virtual ~ViewHolder() {}
+};
+
+template<typename T>
+struct ViewT : public ViewHolder {
+  ViewT(T view) : view_(view) {}
+  virtual ~ViewT(){}
+  T view_;
+};
+
 class ScratchViews
 {
 public:
@@ -59,7 +70,7 @@ public:
                const stk::mesh::BulkData& bulkData,
                stk::topology topo,
                ElemDataRequests& dataNeeded)
-  : elemNodes(), scs_areav(), dndx(), deriv(), det_j()
+  : elemNodes(nullptr), scs_areav(), dndx(), deriv(), det_j()
   {
     // master elements are allowed to be null if they are not required
     MasterElement *meSCS = dataNeeded.get_cvfem_surface_me();
@@ -75,22 +86,41 @@ public:
     create_needed_master_element_views(team, dataNeeded, nDim, nodesPerElem, numScsIp, numScvIp);
   }
 
+  virtual ~ScratchViews() {
+    for(ViewHolder* vh : fieldViews) {
+      delete vh;
+    }
+  }
+
   SharedMemView<double*>& get_scratch_view_1D(const stk::mesh::FieldBase& field)
   {
-    return fieldViews1D[field.mesh_meta_data_ordinal()];
+    ThrowAssertMsg(fieldViews[field.mesh_meta_data_ordinal()] != nullptr, "ScratchViews ERROR, trying to get 1D scratch-view for field "<<field.name()<<" which wasn't declared as pre-req field.");
+    ViewT<SharedMemView<double*>>* vt = static_cast<ViewT<SharedMemView<double*>>*>(fieldViews[field.mesh_meta_data_ordinal()]);
+    return vt->view_;
   }
 
   SharedMemView<double**>& get_scratch_view_2D(const stk::mesh::FieldBase& field)
   {
-    return fieldViews2D[field.mesh_meta_data_ordinal()];
+    ThrowAssertMsg(fieldViews[field.mesh_meta_data_ordinal()] != nullptr, "ScratchViews ERROR, trying to get 2D scratch-view for field "<<field.name()<<" which wasn't declared as pre-req field.");
+    ViewT<SharedMemView<double**>>* vt = static_cast<ViewT<SharedMemView<double**>>*>(fieldViews[field.mesh_meta_data_ordinal()]);
+    return vt->view_;
   }
 
   SharedMemView<double***>& get_scratch_view_3D(const stk::mesh::FieldBase& field)
   {
-    return fieldViews3D[field.mesh_meta_data_ordinal()];
+    ThrowAssertMsg(fieldViews[field.mesh_meta_data_ordinal()] != nullptr, "ScratchViews ERROR, trying to get 3D scratch-view for field "<<field.name()<<" which wasn't declared as pre-req field.");
+    ViewT<SharedMemView<double***>>* vt = static_cast<ViewT<SharedMemView<double***>>*>(fieldViews[field.mesh_meta_data_ordinal()]);
+    return vt->view_;
   }
 
-  SharedMemView<stk::mesh::Entity*> elemNodes;
+  SharedMemView<double****>& get_scratch_view_4D(const stk::mesh::FieldBase& field)
+  {
+    ThrowAssertMsg(fieldViews[field.mesh_meta_data_ordinal()] != nullptr, "ScratchViews ERROR, trying to get 4D scratch-view for field "<<field.name()<<" which wasn't declared as pre-req field.");
+    ViewT<SharedMemView<double****>>* vt = static_cast<ViewT<SharedMemView<double****>>*>(fieldViews[field.mesh_meta_data_ordinal()]);
+    return vt->view_;
+  }
+
+  const stk::mesh::Entity* elemNodes;
   SharedMemView<double**> scs_areav;
   SharedMemView<double***> dndx;
   SharedMemView<double*> deriv;
@@ -106,24 +136,22 @@ private:
     const stk::mesh::MetaData& meta = bulkData.mesh_meta_data();
     unsigned numFields = meta.get_fields().size();
     // FIXME: Ideally, size based on what was actually added; waht about fast access?
-    fieldViews1D.resize(numFields);
-    fieldViews2D.resize(numFields);
-    fieldViews3D.resize(numFields);
+    fieldViews.resize(numFields, nullptr);
 
     const FieldSet& neededFields = dataNeeded.get_fields();
-    for(const stk::mesh::FieldBase* fieldPtr : neededFields) {
-      stk::mesh::EntityRank fieldEntityRank = fieldPtr->entity_rank();
+    for(const FieldInfo& fieldInfo : neededFields) {
+      stk::mesh::EntityRank fieldEntityRank = fieldInfo.field->entity_rank();
       ThrowAssertMsg(fieldEntityRank == stk::topology::NODE_RANK || fieldEntityRank == stk::topology::ELEM_RANK, "Currently only node and element fields are supported.");
-      unsigned scalarsPerEntity = fieldPtr->max_size(fieldEntityRank);
+      unsigned scalarsPerEntity = fieldInfo.scalarsPerEntity;
       if (fieldEntityRank==stk::topology::ELEM_RANK) {
-        fieldViews1D[fieldPtr->mesh_meta_data_ordinal()] = get_shmem_view_1D(team, scalarsPerEntity);
+        fieldViews[fieldInfo.field->mesh_meta_data_ordinal()] = new ViewT<SharedMemView<double*>>(get_shmem_view_1D(team, scalarsPerEntity));
       }
       else if (fieldEntityRank==stk::topology::NODE_RANK) {
         if (scalarsPerEntity == 1) {
-          fieldViews1D[fieldPtr->mesh_meta_data_ordinal()] = get_shmem_view_1D(team, nodesPerElem);
+          fieldViews[fieldInfo.field->mesh_meta_data_ordinal()] = new ViewT<SharedMemView<double*>>(get_shmem_view_1D(team, nodesPerElem));
         }
         else {
-          fieldViews2D[fieldPtr->mesh_meta_data_ordinal()] = get_shmem_view_2D(team, nodesPerElem, scalarsPerEntity);
+          fieldViews[fieldInfo.field->mesh_meta_data_ordinal()] = new ViewT<SharedMemView<double**>>(get_shmem_view_2D(team, nodesPerElem, scalarsPerEntity));
         }
       }
       else {
@@ -141,10 +169,6 @@ private:
     for(ELEM_DATA_NEEDED data : dataEnums) {
       switch(data)
       {
-        case NODES:
-           elemNodes = get_entity_shmem_view_1D(team, nodesPerElem);
-           break;
-
         case SCS_AREAV:
            ThrowRequireMsg(numScsIp > 0, "ERROR, meSCS must be non-null if SCS_AREAV is requested.");
            scs_areav = get_shmem_view_2D(team, numScsIp, nDim);
@@ -167,9 +191,7 @@ private:
     }
   }
 
-  std::vector<SharedMemView<double*> > fieldViews1D;
-  std::vector<SharedMemView<double**> > fieldViews2D;
-  std::vector<SharedMemView<double***> > fieldViews3D;
+  std::vector<ViewHolder*> fieldViews;
 };
 
 inline
@@ -187,23 +209,26 @@ int get_num_bytes_pre_req_data(
   int numBytes = 0;
   
   const FieldSet& neededFields = dataNeededBySuppAlgs.get_fields();
-  for(const stk::mesh::FieldBase* fieldPtr : neededFields) {
-    stk::mesh::EntityRank fieldEntityRank = fieldPtr->entity_rank();
+  for(const FieldInfo& fieldInfo : neededFields) {
+    stk::mesh::EntityRank fieldEntityRank = fieldInfo.field->entity_rank();
     ThrowAssertMsg(fieldEntityRank == stk::topology::NODE_RANK || fieldEntityRank == stk::topology::ELEM_RANK, "Currently only node and element fields are supported.");
-    unsigned scalarsPerEntity = fieldPtr->max_size(fieldEntityRank);
+    unsigned scalarsPerEntity = fieldInfo.scalarsPerEntity;
     unsigned entitiesPerElem = fieldEntityRank==stk::topology::ELEM_RANK ? 1 : nodesPerElem;
     numBytes += entitiesPerElem*scalarsPerEntity*sizeof(double);
   }
   
   const std::set<ELEM_DATA_NEEDED>& dataEnums = dataNeededBySuppAlgs.get_data_enums();
+  int dndxLength = 0, derivLength = 0, detJLength = 0;
   for(ELEM_DATA_NEEDED data : dataEnums) {
     switch(data)
       {
-      case NODES: numBytes += nodesPerElem * sizeof(stk::mesh::Entity);
-        break;
       case SCS_AREAV: numBytes += nDim * numScsIp * sizeof(double);
         break;
-      case SCS_GRAD_OP: numBytes += (nodesPerElem*numScsIp*nDim*2 + numScsIp) * sizeof(double); // dndx, deriv and detJ
+      case SCS_GRAD_OP:
+        dndxLength = nodesPerElem*numScsIp*nDim;
+        derivLength = nodesPerElem*numScsIp*nDim;
+        detJLength = numScsIp;
+        numBytes += (dndxLength + derivLength + detJLength) * sizeof(double);
         break;
       case SCV_VOLUME: numBytes += numScvIp * sizeof(double);
       default: break;
@@ -223,32 +248,31 @@ void fill_pre_req_data(
   ScratchViews& prereqData)
 {
   int nodesPerElem = topo.num_nodes();
-  const stk::mesh::Entity* nodes = nullptr;
 
   // extract master elements
   MasterElement *meSCS = dataNeeded.get_cvfem_surface_me();
   MasterElement *meSCV = dataNeeded.get_cvfem_volume_me();
 
   const FieldSet& neededFields = dataNeeded.get_fields();
-  for(const stk::mesh::FieldBase* fieldPtr : neededFields) {
-    stk::mesh::EntityRank fieldEntityRank = fieldPtr->entity_rank();
+  for(const FieldInfo& fieldInfo : neededFields) {
+    stk::mesh::EntityRank fieldEntityRank = fieldInfo.field->entity_rank();
+    unsigned scalarsPerEntity = fieldInfo.scalarsPerEntity;
     if (fieldEntityRank==stk::topology::ELEM_RANK) {
-      SharedMemView<double*>& shmemView = prereqData.get_scratch_view_1D(*fieldPtr);
+      SharedMemView<double*>& shmemView = prereqData.get_scratch_view_1D(*fieldInfo.field);
       unsigned len = shmemView.dimension(0);
-      double* fieldDataPtr = static_cast<double*>(stk::mesh::field_data(*fieldPtr, elem));
+      double* fieldDataPtr = static_cast<double*>(stk::mesh::field_data(*fieldInfo.field, elem));
       for(unsigned i=0; i<len; ++i) {
         shmemView(i) = fieldDataPtr[i];
       }
     }
     else if (fieldEntityRank == stk::topology::NODE_RANK) {
-      SharedMemView<double*>& shmemView1D = prereqData.get_scratch_view_1D(*fieldPtr);
-      if (shmemView1D.dimension(0) > 0) {
-        gather_elem_node_field(*fieldPtr, elem, nodesPerElem, bulkData.begin_nodes(elem), shmemView1D);
+      if (scalarsPerEntity == 1) {
+        SharedMemView<double*>& shmemView1D = prereqData.get_scratch_view_1D(*fieldInfo.field);
+        gather_elem_node_field(*fieldInfo.field, elem, nodesPerElem, bulkData.begin_nodes(elem), shmemView1D);
       }
       else {
-        SharedMemView<double**>& shmemView2D = prereqData.get_scratch_view_2D(*fieldPtr);
-        int scalarsPerNode = shmemView2D.dimension(1);
-        gather_elem_node_field(*fieldPtr, elem, nodesPerElem, scalarsPerNode, bulkData.begin_nodes(elem), shmemView2D);
+        SharedMemView<double**>& shmemView2D = prereqData.get_scratch_view_2D(*fieldInfo.field);
+        gather_elem_node_field(*fieldInfo.field, elem, nodesPerElem, scalarsPerEntity, bulkData.begin_nodes(elem), shmemView2D);
       }
     }
     else {
@@ -257,18 +281,12 @@ void fill_pre_req_data(
   }
 
   SharedMemView<double**>& coords = prereqData.get_scratch_view_2D(*coordField);
+  prereqData.elemNodes = bulkData.begin_nodes(elem);
   const std::set<ELEM_DATA_NEEDED>& dataEnums = dataNeeded.get_data_enums();
   double error = 0;
   for(ELEM_DATA_NEEDED data : dataEnums) {
     switch(data)
     {
-      case NODES:
-         nodes = bulkData.begin_nodes(elem);
-         for(int i=0; i<nodesPerElem; ++i) {
-           prereqData.elemNodes(i) = nodes[i];
-         }
-         break;
-
       case SCS_AREAV:
          ThrowRequireMsg(meSCS != nullptr, "ERROR, meSCS needs to be non-null if SCS_AREAV is requested.");
          meSCS->determinant(1, &coords(0,0), &prereqData.scs_areav(0,0), &error);

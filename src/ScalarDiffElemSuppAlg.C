@@ -65,9 +65,9 @@ ScalarDiffElemSuppAlg<AlgTraits>::ScalarDiffElemSuppAlg(
   dataPreReqs.add_cvfem_surface_me(meSCS);
 
   // fields and data
-  dataPreReqs.add_gathered_nodal_field(*coordinates_);
-  dataPreReqs.add_gathered_nodal_field(*scalarQ);
-  dataPreReqs.add_gathered_nodal_field(*diffFluxCoeff);
+  dataPreReqs.add_gathered_nodal_field(*coordinates_, AlgTraits::nDim_);
+  dataPreReqs.add_gathered_nodal_field(*scalarQ, 1);
+  dataPreReqs.add_gathered_nodal_field(*diffFluxCoeff, 1);
   dataPreReqs.add_master_element_call(SCS_AREAV);
   dataPreReqs.add_master_element_call(SCS_GRAD_OP);
 }
