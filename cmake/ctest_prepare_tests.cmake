@@ -538,6 +538,16 @@ file(COPY               "${NALURTEST_MESH_DIR}/abl_1km_cube_toy.g"
      DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}/ablUnstableEdge")
 
 
+# ablForcingEdge test
+#=============================================================================
+file(COPY               "${NALURTEST_NIGHTLY_DIR}/ablForcingEdge"
+     DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}")
+
+file(COPY               "${NALURTEST_MESH_DIR}/abl_1km_cube_sample.g"
+                        "${NALURTEST_XML_DIR}/milestone.xml"
+     DESTINATION        "${NIGHTLY_TEST_RESULT_DIRECTORY}/ablForcingEdge")
+
+
 #=============================================================================
 # ablStableElem test
 #=============================================================================
