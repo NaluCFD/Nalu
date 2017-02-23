@@ -26,7 +26,8 @@ class MomentumMassElemSuppAlg : public SupplementalAlgorithm
 public:
 
   MomentumMassElemSuppAlg(
-    Realm &realm);
+    Realm &realm,
+    const bool lumpedMass);
 
   virtual ~MomentumMassElemSuppAlg() {}
 
@@ -59,7 +60,7 @@ public:
   double gamma2_;
   double gamma3_;
   const int nDim_;
-  const bool useShifted_;
+  const bool lumpedMass_;
 
   // scratch space
   std::vector<double> uNm1Scv_;

@@ -26,7 +26,8 @@ class ContinuityMassElemSuppAlg : public SupplementalAlgorithm
 public:
 
   ContinuityMassElemSuppAlg(
-    Realm &realm);
+    Realm &realm,
+    const bool lumpedMass);
 
   virtual ~ContinuityMassElemSuppAlg() {}
 
@@ -55,7 +56,7 @@ public:
   double gamma2_;
   double gamma3_;
   const int nDim_;
-  const bool useShifted_;
+  const bool lumpedMass_;
 
   // scratch space
   std::vector<double> ws_shape_function_;

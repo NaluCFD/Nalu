@@ -1041,7 +1041,11 @@ MomentumEquationSystem::register_interior_algorithm(
         SupplementalAlgorithm *suppAlg = NULL;
         if (sourceName == "momentum_time_derivative" ) {
           useCMM = true;
-          suppAlg = new MomentumMassElemSuppAlg(realm_);
+          suppAlg = new MomentumMassElemSuppAlg(realm_, false);
+        }
+        else if (sourceName == "lumped_momentum_time_derivative" ) {
+          useCMM = true;
+          suppAlg = new MomentumMassElemSuppAlg(realm_, true);
         }
         else if (sourceName == "SteadyTaylorVortex" ) {
           suppAlg = new SteadyTaylorVortexMomentumSrcElemSuppAlg(realm_);
@@ -2165,7 +2169,10 @@ ContinuityEquationSystem::register_interior_algorithm(
             suppAlg = new VariableDensityContinuitySrcElemSuppAlg(realm_);
           }
           else if (sourceName == "density_time_derivative" ) {
-            suppAlg = new ContinuityMassElemSuppAlg(realm_);
+            suppAlg = new ContinuityMassElemSuppAlg(realm_, false);
+          }
+          else if (sourceName == "lumped_density_time_derivative" ) {
+            suppAlg = new ContinuityMassElemSuppAlg(realm_, true);
           }
           else if (sourceName == "advection" ) {
             suppAlg = new ContinuityAdvElemSuppAlg(realm_);

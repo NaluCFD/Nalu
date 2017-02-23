@@ -292,7 +292,11 @@ MixtureFractionEquationSystem::register_interior_algorithm(
         }
         else if (sourceName == "mixture_fraction_time_derivative" ) {
           useCMM = true;
-          suppAlg = new ScalarMassElemSuppAlg(realm_, mixFrac_); 
+          suppAlg = new ScalarMassElemSuppAlg(realm_, mixFrac_, false); 
+        }
+        else if (sourceName == "lumped_mixture_fraction_time_derivative" ) {
+          useCMM = true;
+          suppAlg = new ScalarMassElemSuppAlg(realm_, mixFrac_, true); 
         }
         else {
           throw std::runtime_error("MixtureFractionElemSrcTerms::Error Source term is not supported: " + sourceName);

@@ -400,7 +400,11 @@ EnthalpyEquationSystem::register_interior_algorithm(
         }
         else if (sourceName == "enthalpy_time_derivative" ) {
           useCMM = true;
-          suppAlg = new ScalarMassElemSuppAlg(realm_, enthalpy_); 
+          suppAlg = new ScalarMassElemSuppAlg(realm_, enthalpy_, false); 
+        }
+        else if (sourceName == "lumped_enthalpy_time_derivative" ) {
+          useCMM = true;
+          suppAlg = new ScalarMassElemSuppAlg(realm_, enthalpy_, true); 
         }
         else {
           throw std::runtime_error("EnthalpyElemSrcTerms::Error Source term is not supported: " + sourceName);

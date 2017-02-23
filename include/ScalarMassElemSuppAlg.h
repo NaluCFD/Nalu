@@ -27,7 +27,8 @@ public:
 
   ScalarMassElemSuppAlg(
     Realm &realm,
-    ScalarFieldType *scalarQ);
+    ScalarFieldType *scalarQ,
+    const bool lumpedMass);
 
   virtual ~ScalarMassElemSuppAlg() {}
 
@@ -59,7 +60,7 @@ public:
   double gamma2_;
   double gamma3_;
   const int nDim_;
-  const bool useShifted_;
+  const bool lumpedMass_;
 
   // scratch space
   std::vector<double> ws_shape_function_;

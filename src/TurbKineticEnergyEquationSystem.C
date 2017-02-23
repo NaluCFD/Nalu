@@ -265,7 +265,11 @@ TurbKineticEnergyEquationSystem::register_interior_algorithm(
         }
         else if (sourceName == "turbulent_ke_time_derivative" ) {
           useCMM = true;
-          suppAlg = new ScalarMassElemSuppAlg(realm_, tke_);
+          suppAlg = new ScalarMassElemSuppAlg(realm_, tke_, false);
+        }
+        else if (sourceName == "lumped_turbulent_ke_time_derivative" ) {
+          useCMM = true;
+          suppAlg = new ScalarMassElemSuppAlg(realm_, tke_, true);
         }
         else {
           throw std::runtime_error("TurbKineticEnergyElemSrcTerms::Error Source term is not supported: " + sourceName);

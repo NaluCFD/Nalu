@@ -30,7 +30,8 @@ namespace nalu{
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 ContinuityMassElemSuppAlg::ContinuityMassElemSuppAlg(
-  Realm &realm)
+   Realm &realm,
+   const bool lumpedMass)
   : SupplementalAlgorithm(realm),
     bulkData_(&realm.bulk_data()),
     densityNm1_(NULL),
@@ -42,7 +43,7 @@ ContinuityMassElemSuppAlg::ContinuityMassElemSuppAlg(
     gamma2_(0.0),
     gamma3_(0.0),
     nDim_(realm_.spatialDimension_),
-    useShifted_(false)
+    lumpedMass_(lumpedMass)
 {
   // save off fields; shove state N into Nm1 if this is BE
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -73,7 +74,7 @@ ContinuityMassElemSuppAlg::elem_resize(
   ws_scv_volume_.resize(numScvIp);
 
   // compute shape function
-  if ( useShifted_ )
+  if ( lumpedMass_ )
     meSCV->shifted_shape_fcn(&ws_shape_function_[0]);
   else
     meSCV->shape_fcn(&ws_shape_function_[0]);

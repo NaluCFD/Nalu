@@ -249,7 +249,11 @@ SpecificDissipationRateEquationSystem::register_interior_algorithm(
         }
         else if (sourceName == "specific_dissipation_rate_time_derivative" ) {
           useCMM = true;
-          suppAlg = new ScalarMassElemSuppAlg(realm_, sdr_);
+          suppAlg = new ScalarMassElemSuppAlg(realm_, sdr_, false);
+        }
+        else if (sourceName == "lumped_specific_dissipation_rate_time_derivative" ) {
+          useCMM = true;
+          suppAlg = new ScalarMassElemSuppAlg(realm_, sdr_, true);
         }
         else {
           throw std::runtime_error("SpecificDissipationElemSrcTerms::Error Source term is not supported: " + sourceName);
