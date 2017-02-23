@@ -72,6 +72,7 @@ class SolutionNormPostProcessing;
 class TurbulenceAveragingPostProcessing;
 class DataProbePostProcessing;
 class ActuatorLine;
+class ABLForcingAlgorithm;
 
 class Realm {
  public:
@@ -406,6 +407,7 @@ class Realm {
   TurbulenceAveragingPostProcessing *turbulenceAveragingPostProcessing_;
   DataProbePostProcessing *dataProbePostProcessing_;
   ActuatorLine *actuatorLine_;
+  ABLForcingAlgorithm *ablForcingAlg_;
 
   std::vector<Algorithm *> propertyAlg_;
   std::map<PropertyIdentifier, ScalarFieldType *> propertyMap_;

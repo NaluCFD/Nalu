@@ -68,6 +68,7 @@
 #include <MomentumBuoyancySrcElemSuppAlg.h>
 #include <MomentumBoussinesqSrcNodeSuppAlg.h>
 #include <MomentumBodyForceSrcNodeSuppAlg.h>
+#include <MomentumABLForceSrcNodeSuppAlg.h>
 #include <MomentumCoriolisSrcNodeSuppAlg.h>
 #include <MomentumGclSrcNodeSuppAlg.h>
 #include <MomentumMassBackwardEulerNodeSuppAlg.h>
@@ -1137,6 +1138,13 @@ MomentumEquationSystem::register_interior_algorithm(
           else {
             throw std::runtime_error("SrcTermsError::body_force: No params found");
           }
+        }
+        else if ( sourceName == "abl_forcing" ) {
+          ThrowAssertMsg(
+            ((NULL != realm_.ablForcingAlg_) &&
+             (realm_.ablForcingAlg_->momentumForcingOn())),
+            "ERROR! ABL Forcing parameters must be initialized to use Momentum source.");
+          suppAlg = new MomentumABLForceSrcNodeSuppAlg(realm_, realm_.ablForcingAlg_);
         }
         else if ( sourceName == "gcl") {
           suppAlg = new MomentumGclSrcNodeSuppAlg(realm_);
