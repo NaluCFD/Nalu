@@ -1,4 +1,5 @@
-# Testing with CTest
+
+# This is out-of-date at the moment
 
 Testing is enabled through CTest and CDash and the results are posted
 [here](http://my.cdash.org/index.php?project=Nalu).

@@ -29,7 +29,6 @@ set(NALURTEST_REPO_URL              "https://github.com/NaluCFD/NaluRtest.git")
 # -----------------------------------------------------------
 
 ## -- Set hostname
-## --------------------------
 find_program(HOSTNAME_CMD NAMES hostname)
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   exec_program("${HOSTNAME_CMD} -f" ARGS OUTPUT_VARIABLE HOSTNAME)
@@ -41,7 +40,6 @@ if(${HOSTNAME} MATCHES "hpc.nrel.gov")
 endif()
 
 ## -- Set site / build name
-## --------------------------
 find_program(UNAME NAMES uname)
 macro(getuname name flag)
   exec_program("${UNAME}" ARGS "${flag}" OUTPUT_VARIABLE "${name}")
@@ -52,11 +50,9 @@ set(CTEST_SITE "${HOSTNAME}")
 set(CTEST_BUILD_NAME "${CMAKE_SYSTEM_NAME}-${CPU}-${COMPILER_NAME}-${TRILINOS_BRANCH}")
 
 ## -- Git command
-## ----------------
 find_program(CTEST_GIT_COMMAND NAMES git)
 
 ## -- make command
-## -----------------
 find_program(MAKE NAMES make)
 
 # -----------------------------------------------------------
@@ -64,14 +60,8 @@ find_program(MAKE NAMES make)
 # -----------------------------------------------------------
 
 set(MODEL                           "nightly")
-
-## -- SRC Dir
 set(CTEST_SOURCE_DIRECTORY          "${NALU_DIR}")
-
-## -- BIN Dir
 set(CTEST_BINARY_DIRECTORY          "${NALU_DIR}/build")
-
-## -- Binary names
 set(CTEST_NALU_BINARY_NAME          "${CTEST_BINARY_DIRECTORY}/naluX")
 set(CTEST_UNITTEST_BINARY_NAME      "${CTEST_BINARY_DIRECTORY}/unittestX")
 
@@ -89,7 +79,7 @@ set(OPTION_BUILD                    "-j${NP}")
 
 ## -- Checkout command
 if(NOT EXISTS "${CTEST_SOURCE_DIRECTORY}")
-        set(CTEST_CHECKOUT_COMMAND "${CTEST_GIT_COMMAND} clone ${NALU_REPO_URL} ${CTEST_SOURCE_DIRECTORY}")
+  set(CTEST_CHECKOUT_COMMAND "${CTEST_GIT_COMMAND} clone ${NALU_REPO_URL} ${CTEST_SOURCE_DIRECTORY}")
 endif(NOT EXISTS "${CTEST_SOURCE_DIRECTORY}")
        
 ## -- Update Command
@@ -105,8 +95,28 @@ set(CTEST_BUILD_COMMAND "${MAKE} ${OPTION_BUILD}")
 # -- Configure CTest
 # -----------------------------------------------------------
 
-## -- CTest Testfile
-configure_file(${CTEST_SOURCE_DIRECTORY}/cmake/CTestTestfile.cmake ${CTEST_BINARY_DIRECTORY}/CTestTestfile.cmake)
+## -- Set TOLERANCE for test
+set(TOLERANCE 0.000000001) # Default
+if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+  if(${COMPILER_NAME} MATCHES "gcc")
+    set(TOLERANCE 0.000000001)
+  elseif(${COMPILER_NAME} MATCHES "clang")
+    set(TOLERANCE 0.000000001)
+  endif()
+elseif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+  if(${COMPILER_NAME} MATCHES "gcc")
+    set(TOLERANCE 0.000000001)
+  elseif(${COMPILER_NAME} MATCHES "intel")
+    set(TOLERANCE 0.000000001)
+  endif()
+endif()
+message(" -- Using tolerance of ${TOLERANCE} --")
+
+## -- CTest Test List and Customizations
+configure_file(${CTEST_SOURCE_DIRECTORY}/cmake/CTestTestfile.cmake.in
+               ${CTEST_BINARY_DIRECTORY}/CTestTestfile.cmake @ONLY)
+file(COPY ${CTEST_SOURCE_DIRECTORY}/cmake/pass_fail.sh
+     DESTINATION ${CTEST_BINARY_DIRECTORY}/)
 
 # -----------------------------------------------------------
 # -- Run CTest
@@ -130,15 +140,14 @@ ctest_build(BUILD  "${CTEST_BINARY_DIRECTORY}" RETURN_VALUE res)
 
 ## -- Clone (and pull) the test repo if necessary
 if(NOT EXISTS "${NALURTEST_DIR}")
-       execute_process(COMMAND "${CTEST_GIT_COMMAND}" "clone" "${NALURTEST_REPO_URL}" "${NALURTEST_DIR}"
-                       WORKING_DIRECTORY ${NIGHTLY_DIR} )
+  execute_process(COMMAND "${CTEST_GIT_COMMAND}" "clone" "${NALURTEST_REPO_URL}" "${NALURTEST_DIR}"
+                  WORKING_DIRECTORY ${NIGHTLY_DIR} )
 endif(NOT EXISTS "${NALURTEST_DIR}")
-execute_process(COMMAND "${CTEST_GIT_COMMAND}" "pull"
-                WORKING_DIRECTORY ${NALURTEST_DIR})
+execute_process(COMMAND "${CTEST_GIT_COMMAND}" "pull" WORKING_DIRECTORY ${NALURTEST_DIR})
 
 ## -- Prep test directory
 message(" -- Prep test directory ${MODEL} - ${CTEST_BUILD_NAME} --")
-include(../cmake/ctest_prepare_tests.cmake)
+include(${CTEST_SOURCE_DIRECTORY}/cmake/ctest_prepare_tests.cmake)
 
 ## -- Run CTest 
 message(" -- Test ${MODEL} - ${CTEST_BUILD_NAME} --")
