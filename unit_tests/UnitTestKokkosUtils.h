@@ -7,6 +7,7 @@
 #include <Kokkos_Core.hpp>
 
 #include <KokkosInterface.h>
+#include "UnitTestUtils.h"
 
 template<class OUTER_LOOP_BODY, class INNER_LOOP_BODY>
 void bucket_loop_serial_only(const stk::mesh::BucketVector& buckets, const OUTER_LOOP_BODY& outer_loop_body, const INNER_LOOP_BODY& inner_loop_body)

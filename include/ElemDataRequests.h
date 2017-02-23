@@ -22,21 +22,31 @@ namespace nalu{
 class MasterElement;
 
 enum ELEM_DATA_NEEDED {
-  NODES = 0,
-  SCS_AREAV,
+  SCS_AREAV = 0,
   SCS_GRAD_OP,
   SCV_VOLUME
 };
 
-struct FieldBaseLess
-{
-  bool operator()(const stk::mesh::FieldBase* lhs, const stk::mesh::FieldBase* rhs) const
+struct FieldInfo {
+  FieldInfo(const stk::mesh::FieldBase* fld, unsigned scalars)
+  : field(fld), scalarsDim1(scalars), scalarsDim2(0)
+  {}
+  FieldInfo(const stk::mesh::FieldBase* fld, unsigned tensorDim1, unsigned tensorDim2)
+  : field(fld), scalarsDim1(tensorDim1), scalarsDim2(tensorDim2)
+  {}
+  const stk::mesh::FieldBase* field;
+  unsigned scalarsDim1;
+  unsigned scalarsDim2;
+};
+
+struct FieldInfoLess {
+  bool operator()(const FieldInfo& lhs, const FieldInfo& rhs) const
   {
-    return lhs->mesh_meta_data_ordinal() < rhs->mesh_meta_data_ordinal();
+    return lhs.field->mesh_meta_data_ordinal() < rhs.field->mesh_meta_data_ordinal();
   }
 };
 
-typedef std::set<const stk::mesh::FieldBase*,FieldBaseLess> FieldSet;
+typedef std::set<FieldInfo,FieldInfoLess> FieldSet;
 
 class ElemDataRequests
 {
@@ -46,23 +56,18 @@ public:
   {
   }
 
-  void add(ELEM_DATA_NEEDED data)
-  {
-    dataEnums.insert(data);
-  }
   void add_master_element_call(ELEM_DATA_NEEDED data)
   {
     dataEnums.insert(data);
   }
 
-  void add(const stk::mesh::FieldBase& field)
-  {
-    fields.insert(&field);
-  }
-  void add_gathered_nodal_field(const stk::mesh::FieldBase& field)
-  {
-    fields.insert(&field);
-  }
+  void add_gathered_nodal_field(const stk::mesh::FieldBase& field, unsigned scalarsPerNode);
+
+  void add_gathered_nodal_field(const stk::mesh::FieldBase& field, unsigned tensorDim1, unsigned tensorDim2);
+
+  void add_element_field(const stk::mesh::FieldBase& field, unsigned scalarsPerElement);
+
+  void add_element_field(const stk::mesh::FieldBase& field, unsigned tensorDim1, unsigned tensorDim2);
 
   void add_cvfem_volume_me(MasterElement *meSCV)
   {

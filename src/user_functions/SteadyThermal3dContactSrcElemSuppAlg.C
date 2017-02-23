@@ -65,7 +65,7 @@ SteadyThermal3dContactSrcElemSuppAlg<AlgTraits>::SteadyThermal3dContactSrcElemSu
   dataPreReqs.add_cvfem_volume_me(meSCV);
 
   // fields and data
-  dataPreReqs.add_gathered_nodal_field(*coordinates_);
+  dataPreReqs.add_gathered_nodal_field(*coordinates_, AlgTraits::nDim_);
   dataPreReqs.add_master_element_call(SCV_VOLUME);
 }
 
