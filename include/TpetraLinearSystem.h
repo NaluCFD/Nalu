@@ -90,7 +90,7 @@ public:
   void writeToFile(const char * filename, bool useOwned=true);
   void printInfo(bool useOwned=true);
   void writeSolutionToFile(const char * filename, bool useOwned=true);
-  size_t lookup_myLID(MyLIDMapType& myLIDs, stk::mesh::EntityId entityId, const std::string& msg="", stk::mesh::Entity entity = stk::mesh::Entity());
+  size_t lookup_myLID(MyLIDMapType& myLIDs, stk::mesh::EntityId entityId, const char* msg=nullptr, stk::mesh::Entity entity = stk::mesh::Entity());
 
   enum DOFStatus {
     DS_NotSet           = 0,
@@ -118,7 +118,7 @@ private:
   void copy_stk_to_tpetra(stk::mesh::FieldBase * stkField,
     const Teuchos::RCP<LinSys::MultiVector> tpetraVector);
 
-  void addConnections(const std::vector<stk::mesh::Entity> & entities);
+  void addConnections(const stk::mesh::Entity* entities, size_t num_entities);
   void checkForNaN(bool useOwned);
   bool checkForZeroRow(bool useOwned, bool doThrow, bool doPrint=false);
 
