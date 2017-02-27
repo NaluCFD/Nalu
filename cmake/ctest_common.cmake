@@ -157,6 +157,8 @@ ctest_test(BUILD  "${CTEST_BINARY_DIRECTORY}"
 
 ## -- Submit results to CDash
 message(" -- Submit ${MODEL} - ${CTEST_BUILD_NAME} --")
-ctest_submit( RETURN_VALUE res)
+ctest_submit(RETRY_COUNT 10
+             RETRY_DELAY 20
+             RETURN_VALUE res)
 
 message(" -- Finished ${MODEL}  - ${CTEST_BUILD_NAME} --")
