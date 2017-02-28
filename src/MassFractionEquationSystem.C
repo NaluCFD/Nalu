@@ -83,7 +83,7 @@ namespace nalu{
 MassFractionEquationSystem::MassFractionEquationSystem(
   EquationSystems& eqSystems,
   const int numMassFraction)
-  : EquationSystem(eqSystems, "MassFractionEQS"),
+  : EquationSystem(eqSystems, "MassFractionEQS","mass_fraction"),
     managePNG_(realm_.get_consistent_mass_matrix_png("note_follow_momentum_approach")),
     numMassFraction_(numMassFraction),
     massFraction_(NULL),

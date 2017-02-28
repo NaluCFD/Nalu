@@ -85,7 +85,7 @@ namespace nalu{
 //--------------------------------------------------------------------------
 SpecificDissipationRateEquationSystem::SpecificDissipationRateEquationSystem(
   EquationSystems& eqSystems)
-  : EquationSystem(eqSystems, "SpecDissRateEQS"),
+  : EquationSystem(eqSystems, "SpecDissRateEQS","specific_dissipation_rate"),
     managePNG_(realm_.get_consistent_mass_matrix_png("specific_dissipation_rate")),
     sdr_(NULL),
     dwdx_(NULL),

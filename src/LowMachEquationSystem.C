@@ -169,7 +169,7 @@ namespace nalu{
 LowMachEquationSystem::LowMachEquationSystem(
   EquationSystems& eqSystems,
   const bool elementContinuityEqs)
-  : EquationSystem(eqSystems, "LowMachEOSWrap"),
+  : EquationSystem(eqSystems, "LowMachEOSWrap","low_mach_type"),
     elementContinuityEqs_(elementContinuityEqs),
     density_(NULL),
     viscosity_(NULL),
@@ -805,7 +805,7 @@ LowMachEquationSystem::post_converged_work()
 //--------------------------------------------------------------------------
 MomentumEquationSystem::MomentumEquationSystem(
   EquationSystems& eqSystems)
-  : EquationSystem(eqSystems, "MomentumEQS"),
+  : EquationSystem(eqSystems, "MomentumEQS","momentum"),
     managePNG_(realm_.get_consistent_mass_matrix_png("velocity")),
     velocity_(NULL),
     dudx_(NULL),
@@ -1962,7 +1962,7 @@ MomentumEquationSystem::compute_projected_nodal_gradient()
 ContinuityEquationSystem::ContinuityEquationSystem(
   EquationSystems& eqSystems,
   const bool elementContinuityEqs)
-  : EquationSystem(eqSystems, "ContinuityEQS"),
+  : EquationSystem(eqSystems, "ContinuityEQS","continuity"),
     elementContinuityEqs_(elementContinuityEqs),
     managePNG_(realm_.get_consistent_mass_matrix_png("pressure")),
     pressure_(NULL),

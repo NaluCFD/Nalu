@@ -101,7 +101,7 @@ namespace nalu{
 //--------------------------------------------------------------------------
 HeatCondEquationSystem::HeatCondEquationSystem(
   EquationSystems& eqSystems)
-  : EquationSystem(eqSystems, "HeatCondEQS"),
+  : EquationSystem(eqSystems, "HeatCondEQS", "temperature"),
     managePNG_(realm_.get_consistent_mass_matrix_png("temperature")),
     temperature_(NULL),
     dtdx_(NULL),
@@ -118,8 +118,7 @@ HeatCondEquationSystem::HeatCondEquationSystem(
     assembleNodalGradAlgDriver_(new AssembleNodalGradAlgorithmDriver(realm_, "temperature", "dtdx")),
     isInit_(true),
     collocationForViscousTerms_(false),
-    projectedNodalGradEqs_(NULL),
-    suppAlgTypeName_("temperature")
+    projectedNodalGradEqs_(NULL)
 {
   // extract solver name and solver object
   std::string solverName = realm_.equationSystems_.get_solver_block_name("temperature");
@@ -268,29 +267,6 @@ HeatCondEquationSystem::register_element_fields(
   }
 }
 //--------------------------------------------------------------------------
-void
-HeatCondEquationSystem::report_invalid_supp_alg_names()
-{
-  bool noInvalidNamesFound = SuppAlgBuilderLog::self().print_invalid_supp_alg_names(
-    suppAlgTypeName_, realm_.solutionOptions_->elemSrcTermsMap_
-  );
-
-  if (!noInvalidNamesFound) {
-    SuppAlgBuilderLog::self().print_valid_supp_alg_names(suppAlgTypeName_);
-
-    std::string msg =
-        "Invalid supplemental algorithms name(s) for " + suppAlgTypeName_ + ". See log for details.";
-
-    throw std::runtime_error(msg);
-  }
-}
-//--------------------------------------------------------------------------
-void
-HeatCondEquationSystem::report_built_supp_alg_names()
-{
-  SuppAlgBuilderLog::self().print_built_supp_alg_names(suppAlgTypeName_);
-}
-//--------------------------------------------------------------------------
 //-------- register_interior_algorithm -------------------------------------
 //--------------------------------------------------------------------------
 void
@@ -397,17 +373,17 @@ HeatCondEquationSystem::register_interior_algorithm(
 
     if (solverAlgWasBuilt) {
       build_topo_supp_alg_if_requested<SteadyThermal3dContactSrcElemSuppAlg>(
-        partTopo, reqSuppAlgNameMap, suppAlgVec, suppAlgTypeName_,
+        partTopo, reqSuppAlgNameMap, suppAlgVec, eqnTypeName_,
         realm_, dataPreReqs
       );
 
       build_topo_supp_alg_if_requested<ScalarDiffElemSuppAlg>(
-        partTopo, reqSuppAlgNameMap, suppAlgVec, suppAlgTypeName_,
+        partTopo, reqSuppAlgNameMap, suppAlgVec, eqnTypeName_,
         realm_, temperature_, thermalCond_, dataPreReqs
       );
 
       build_topo_supp_alg_if_requested<ScalarDiffFemSuppAlg>(
-        partTopo, reqSuppAlgNameMap, suppAlgVec, suppAlgTypeName_,
+        partTopo, reqSuppAlgNameMap, suppAlgVec, eqnTypeName_,
         realm_, temperature_, thermalCond_
       );
 

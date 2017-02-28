@@ -89,7 +89,7 @@ namespace nalu{
 //--------------------------------------------------------------------------
 TurbKineticEnergyEquationSystem::TurbKineticEnergyEquationSystem(
   EquationSystems& eqSystems)
-  : EquationSystem(eqSystems, "TurbKineticEnergyEQS"),
+  : EquationSystem(eqSystems, "TurbKineticEnergyEQS","turbulent_ke"),
     managePNG_(realm_.get_consistent_mass_matrix_png("turbulent_ke")),
     tke_(NULL),
     dkdx_(NULL),

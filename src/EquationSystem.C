@@ -20,6 +20,7 @@
 #include <LinearSystem.h>
 #include <ConstantAuxFunction.h>
 #include <Enums.h>
+#include <SupplementalAlgorithmBuilderLog.h>
 
 // overset
 #include <overset/AssembleOversetSolverConstraintAlgorithm.h>
@@ -36,10 +37,12 @@ namespace nalu{
 
 EquationSystem::EquationSystem(
   EquationSystems& eqSystems,
-  const std::string name) 
+  const std::string name,
+  const std::string eqnTypeName)
   : equationSystems_(eqSystems),
     realm_(eqSystems.realm_),
     name_(name),
+    eqnTypeName_(eqnTypeName),
     maxIterations_(1),
     convergenceTolerance_(1.0),
     solverAlgDriver_(new SolverAlgorithmDriver(realm_)),
@@ -429,5 +432,28 @@ EquationSystem::create_peclet_function(
   return pecletFunction;
 }
 
+//--------------------------------------------------------------------------
+void
+EquationSystem::report_invalid_supp_alg_names()
+{
+  bool noInvalidNamesFound = SuppAlgBuilderLog::self().print_invalid_supp_alg_names(
+    eqnTypeName_, realm_.solutionOptions_->elemSrcTermsMap_
+  );
+
+  if (!noInvalidNamesFound) {
+    SuppAlgBuilderLog::self().print_valid_supp_alg_names(eqnTypeName_);
+
+    std::string msg =
+      "Invalid supplemental algorithms name(s) for " + eqnTypeName_ + ". See log for details.";
+
+    throw std::runtime_error(msg);
+  }
+}
+//--------------------------------------------------------------------------
+void
+EquationSystem::report_built_supp_alg_names()
+{
+  SuppAlgBuilderLog::self().print_built_supp_alg_names(eqnTypeName_);
+}
 } // namespace nalu
 } // namespace Sierra
