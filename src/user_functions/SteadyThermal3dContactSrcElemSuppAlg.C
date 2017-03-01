@@ -49,9 +49,7 @@ SteadyThermal3dContactSrcElemSuppAlg<AlgTraits>::SteadyThermal3dContactSrcElemSu
     ipNodeMap_(realm.get_volume_master_element(AlgTraits::topo_)->ipNodeMap()),
     a_(1.0),
     k_(1.0),
-    pi_(std::acos(-1.0)),
-    ws_shape_function_("ws_shape_function", AlgTraits::numScvIp_, AlgTraits::nodesPerElement_),
-    ws_scvCoords_("ws_scvCoords", AlgTraits::nDim_)
+    pi_(std::acos(-1.0))
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -59,7 +57,7 @@ SteadyThermal3dContactSrcElemSuppAlg<AlgTraits>::SteadyThermal3dContactSrcElemSu
  
   // compute shape function; possibly push this to dataPreReqs?
   MasterElement *meSCV = realm.get_volume_master_element(AlgTraits::topo_);
-  meSCV->shape_fcn(&ws_shape_function_(0,0));
+  meSCV->shape_fcn(&v_shape_function_(0,0));
 
   // add master elements
   dataPreReqs.add_cvfem_volume_me(meSCV);
@@ -80,8 +78,8 @@ SteadyThermal3dContactSrcElemSuppAlg<AlgTraits>::element_execute(
   stk::mesh::Entity element,
   ScratchViews& scratchViews)
 {
-  SharedMemView<double**>& coordinates = scratchViews.get_scratch_view_2D(*coordinates_);
-  SharedMemView<double*>& scv_volume = scratchViews.scv_volume;
+  SharedMemView<double**>& v_coordinates = scratchViews.get_scratch_view_2D(*coordinates_);
+  SharedMemView<double*>& v_scv_volume = scratchViews.scv_volume;
 
   // interpolate to ips and evaluate source
   for ( int ip = 0; ip < AlgTraits::numScvIp_; ++ip ) {
@@ -91,19 +89,19 @@ SteadyThermal3dContactSrcElemSuppAlg<AlgTraits>::element_execute(
     
     // zero out
     for ( int j =0; j < AlgTraits::nDim_; ++j )
-      ws_scvCoords_(j) = 0.0;
+      v_scvCoords_(j) = 0.0;
     
     for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
-      const double r = ws_shape_function_(ip,ic);
+      const double r = v_shape_function_(ip,ic);
       for ( int j = 0; j < AlgTraits::nDim_; ++j )
-        ws_scvCoords_(j) += r*coordinates(ic,j);
+        v_scvCoords_(j) += r*v_coordinates(ic,j);
     }
-    const double x = ws_scvCoords_(0);
-    const double y = ws_scvCoords_(1);
-    const double z = ws_scvCoords_(2);
+    const double x = v_scvCoords_(0);
+    const double y = v_scvCoords_(1);
+    const double z = v_scvCoords_(2);
     rhs[nearestNode] += k_/4.0*(2.0*a_*pi_)*(2.0*a_*pi_)*(cos(2.0*a_*pi_*x) 
                                                           + cos(2.0*a_*pi_*y) 
-                                                          + cos(2.0*a_*pi_*z))*scv_volume(ip);
+                                                          + cos(2.0*a_*pi_*z))*v_scv_volume(ip);
   }
 }
 

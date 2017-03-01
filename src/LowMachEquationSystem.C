@@ -96,10 +96,13 @@
 #include <TurbViscSSTAlgorithm.h>
 #include <TurbViscWaleAlgorithm.h>
 
-// nso
+// nso; dep
 #include <nso/MomentumNSOKeElemSuppAlg.h>
-#include <nso/MomentumNSOElemSuppAlg.h>
+#include <nso/MomentumNSOElemSuppAlgDep.h>
 #include <nso/MomentumNSOGradElemSuppAlg.h>
+
+// nso
+#include <nso/MomentumNSOElemSuppAlg.h>
 
 // user function
 #include <user_functions/ConvectingTaylorVortexVelocityAuxFunction.h>
@@ -1054,16 +1057,16 @@ MomentumEquationSystem::register_interior_algorithm(
           suppAlg = new VariableDensityMomentumSrcElemSuppAlg(realm_);
         }
         else if (sourceName == "NSO_2ND" ) {
-          suppAlg = new MomentumNSOElemSuppAlg(realm_, velocity_, dudx_, realm_.is_turbulent() ? evisc_ : visc_, 0.0, 0.0);
+          suppAlg = new MomentumNSOElemSuppAlgDep(realm_, velocity_, dudx_, realm_.is_turbulent() ? evisc_ : visc_, 0.0, 0.0);
         }
         else if (sourceName == "NSO_2ND_ALT" ) {
-          suppAlg = new MomentumNSOElemSuppAlg(realm_, velocity_, dudx_, realm_.is_turbulent() ? evisc_ : visc_, 0.0, 1.0);
+          suppAlg = new MomentumNSOElemSuppAlgDep(realm_, velocity_, dudx_, realm_.is_turbulent() ? evisc_ : visc_, 0.0, 1.0);
         }
         else if (sourceName == "NSO_4TH" ) {
-          suppAlg = new MomentumNSOElemSuppAlg(realm_, velocity_, dudx_, realm_.is_turbulent() ? evisc_ : visc_, 1.0, 0.0);
+          suppAlg = new MomentumNSOElemSuppAlgDep(realm_, velocity_, dudx_, realm_.is_turbulent() ? evisc_ : visc_, 1.0, 0.0);
         }
         else if (sourceName == "NSO_4TH_ALT" ) {
-          suppAlg = new MomentumNSOElemSuppAlg(realm_, velocity_, dudx_, realm_.is_turbulent() ? evisc_ : visc_, 1.0, 1.0);
+          suppAlg = new MomentumNSOElemSuppAlgDep(realm_, velocity_, dudx_, realm_.is_turbulent() ? evisc_ : visc_, 1.0, 1.0);
         }
         else if (sourceName == "NSO_2ND_KE" ) {
           suppAlg = new MomentumNSOKeElemSuppAlg(realm_, velocity_, dudx_, 0.0);

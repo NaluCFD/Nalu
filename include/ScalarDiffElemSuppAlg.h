@@ -13,7 +13,6 @@
 #include <AlgTraits.h>
 #include <FieldTypeDef.h>
 
-#include <stk_mesh/base/BulkData.hpp>
 #include <stk_mesh/base/Entity.hpp>
 #include <stk_topology/topology.hpp>
 
@@ -48,8 +47,6 @@ public:
     stk::mesh::Entity element,
     ScratchViews& scratchViews);
   
-  const stk::mesh::BulkData *bulkData_;
-
   ScalarFieldType *scalarQ_;
   ScalarFieldType *diffFluxCoeff_;
   VectorFieldType *coordinates_;
@@ -57,8 +54,8 @@ public:
   // master element
   const int *lrscv_;
 
-  // scratch space; geometry
-  Kokkos::View<double**> ws_shape_function_;
+  // fixed scratch space
+  Kokkos::View<double[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_{"v_shape_function"};
 };
 
 } // namespace nalu

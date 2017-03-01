@@ -28,7 +28,7 @@ class Realm;
 class ScratchViews;
 class MasterElement;
 
-template<class IntAlgTraits>
+template<class AlgTraits>
 class SteadyThermal3dContactSrcElemSuppAlg : public SupplementalAlgorithm
 {
 public:
@@ -56,9 +56,9 @@ public:
   const double k_;
   const double pi_;
 
-  // scratch space
-  Kokkos::View<double**> ws_shape_function_;
-  Kokkos::View<double*> ws_scvCoords_;
+  // fixed scratch space
+  Kokkos::View<double[AlgTraits::numScvIp_][AlgTraits::nodesPerElement_]> v_shape_function_{"v_shape_function"};
+  Kokkos::View<double[AlgTraits::nDim_]> v_scvCoords_{"v_scvCoords"};
 };
 
 } // namespace nalu
