@@ -66,6 +66,9 @@ public:
   SharedMemView<double*> deriv;
   SharedMemView<double*> det_j;
   SharedMemView<double*> scv_volume;
+  SharedMemView<double***> gijUpper;
+  SharedMemView<double***> gijLower;
+
 
 private:
   void create_needed_field_views(const TeamHandleType& team,

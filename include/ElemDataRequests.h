@@ -24,7 +24,8 @@ class MasterElement;
 enum ELEM_DATA_NEEDED {
   SCS_AREAV = 0,
   SCS_GRAD_OP,
-  SCV_VOLUME
+  SCS_GIJ,
+  SCV_VOLUME,
 };
 
 struct FieldInfo {

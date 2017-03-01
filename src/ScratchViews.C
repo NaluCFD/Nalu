@@ -89,7 +89,7 @@ ScratchViews::ScratchViews(const TeamHandleType& team,
              const stk::mesh::BulkData& bulkData,
              stk::topology topo,
              ElemDataRequests& dataNeeded)
-: elemNodes(nullptr), scs_areav(), dndx(), deriv(), det_j()
+  : elemNodes(nullptr), scs_areav(), dndx(), deriv(), det_j(), scv_volume(), gijUpper(), gijLower()
 {
   /* master elements are allowed to be null if they are not required */
   MasterElement *meSCS = dataNeeded.get_cvfem_surface_me();
@@ -169,6 +169,13 @@ void ScratchViews::create_needed_master_element_views(const TeamHandleType& team
          det_j = get_shmem_view_1D(team, numScsIp);
          break;
 
+      case SCS_GIJ:
+         ThrowRequireMsg(numScsIp > 0, "ERROR, meSCS must be non-null if SCS_GIJ is requested.");
+         deriv = get_shmem_view_1D(team, numScsIp*nodesPerElem*nDim);
+         gijUpper = get_shmem_view_3D(team, nDim, nDim, numScsIp);
+         gijLower = get_shmem_view_3D(team, nDim, nDim, numScsIp);
+         break;
+
       case SCV_VOLUME:
          ThrowRequireMsg(numScvIp > 0, "ERROR, meSCV must be non-null if SCV_VOLUME is requested.");
          scv_volume = get_shmem_view_1D(team, numScvIp);
@@ -203,7 +210,7 @@ int get_num_bytes_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDim)
   }
   
   const std::set<ELEM_DATA_NEEDED>& dataEnums = dataNeededBySuppAlgs.get_data_enums();
-  int dndxLength = 0, derivLength = 0, detJLength = 0;
+  int dndxLength = 0, derivLength = 0, detJLength = 0, gUpperLength = 0, gLowerLength = 0;
   for(ELEM_DATA_NEEDED data : dataEnums) {
     switch(data)
       {
@@ -216,6 +223,19 @@ int get_num_bytes_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDim)
         numBytes += (dndxLength + derivLength + detJLength) * sizeof(double);
         break;
       case SCV_VOLUME: numBytes += numScvIp * sizeof(double);
+      case SCS_GIJ: 
+        gUpperLength = nDim*nDim*numScsIp;
+        gLowerLength = nDim*nDim*numScsIp;
+        // set derivative length, however, first check to see if grad_op is active
+        derivLength = nodesPerElem*numScsIp*nDim;
+        for(ELEM_DATA_NEEDED data : dataEnums) {
+          if ( data == SCS_GRAD_OP ) {
+            derivLength = 0;
+            break;
+          }
+        }
+        numBytes += (gUpperLength + gLowerLength + derivLength ) * sizeof(double);
+        break;
       default: break;
       }
   }
@@ -298,17 +318,19 @@ void fill_pre_req_data(
          ThrowRequireMsg(coordsView != nullptr, "ERROR, coords null but SCS_AREAV requested.");
          meSCS->determinant(1, &((*coordsView)(0,0)), &prereqData.scs_areav(0,0), &error);
          break;
-
       case SCS_GRAD_OP:
          ThrowRequireMsg(meSCS != nullptr, "ERROR, meSCS needs to be non-null if SCS_GRAD_OP is requested.");
          ThrowRequireMsg(coordsView != nullptr, "ERROR, coords null but SCS_GRAD_OP requested.");
          meSCS->grad_op(1, &((*coordsView)(0,0)), &prereqData.dndx(0,0,0), &prereqData.deriv(0), &prereqData.det_j(0), &error);
          break;
+      case SCS_GIJ:
+         ThrowRequireMsg(meSCS != nullptr, "ERROR, meSCS needs to be non-null if SCS_GIJ is requested.");
+         ThrowRequireMsg(coordsView != nullptr, "ERROR, coords null but SCS_GIJ requested.");
+         meSCS->gij(&((*coordsView)(0,0)), &prereqData.gijUpper(0,0,0), &prereqData.gijLower(0,0,0), &prereqData.deriv(0));
       case SCV_VOLUME:
          ThrowRequireMsg(meSCV != nullptr, "ERROR, meSCV needs to be non-null if SCV_VOLUME is requested.");
          ThrowRequireMsg(coordsView != nullptr, "ERROR, coords null but SCV_VOLUME requested.");
          meSCV->determinant(1, &((*coordsView)(0,0)), &prereqData.scv_volume(0), &error);
-
       default: break;
     }
   }
