@@ -223,6 +223,7 @@ int get_num_bytes_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDim)
         numBytes += (dndxLength + derivLength + detJLength) * sizeof(double);
         break;
       case SCV_VOLUME: numBytes += numScvIp * sizeof(double);
+        break;
       case SCS_GIJ: 
         gUpperLength = nDim*nDim*numScsIp;
         gLowerLength = nDim*nDim*numScsIp;
@@ -327,10 +328,12 @@ void fill_pre_req_data(
          ThrowRequireMsg(meSCS != nullptr, "ERROR, meSCS needs to be non-null if SCS_GIJ is requested.");
          ThrowRequireMsg(coordsView != nullptr, "ERROR, coords null but SCS_GIJ requested.");
          meSCS->gij(&((*coordsView)(0,0)), &prereqData.gijUpper(0,0,0), &prereqData.gijLower(0,0,0), &prereqData.deriv(0));
+         break;
       case SCV_VOLUME:
          ThrowRequireMsg(meSCV != nullptr, "ERROR, meSCV needs to be non-null if SCV_VOLUME is requested.");
          ThrowRequireMsg(coordsView != nullptr, "ERROR, coords null but SCV_VOLUME requested.");
          meSCV->determinant(1, &((*coordsView)(0,0)), &prereqData.scv_volume(0), &error);
+         break;
       default: break;
     }
   }
