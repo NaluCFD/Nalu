@@ -50,7 +50,9 @@
 #include <ContinuityMassBackwardEulerNodeSuppAlg.h>
 #include <ContinuityMassBDF2NodeSuppAlg.h>
 #include <ContinuityMassElemSuppAlg.h>
+#include <ContinuityMassElemSuppAlgDep.h>
 #include <ContinuityAdvElemSuppAlg.h>
+#include <ContinuityAdvElemSuppAlgDep.h>
 #include <CopyFieldAlgorithm.h>
 #include <DirichletBC.h>
 #include <EffectiveDiffFluxCoeffAlgorithm.h>
@@ -100,6 +102,11 @@
 #include <nso/MomentumNSOKeElemSuppAlg.h>
 #include <nso/MomentumNSOElemSuppAlgDep.h>
 #include <nso/MomentumNSOGradElemSuppAlg.h>
+
+// template for supp algs
+#include <AlgTraits.h>
+#include <SupplementalAlgorithmBuilder.h>
+#include <SupplementalAlgorithmBuilderLog.h>
 
 // nso
 #include <nso/MomentumNSOElemSuppAlg.h>
@@ -2143,56 +2150,86 @@ ContinuityEquationSystem::register_interior_algorithm(
     }
 
     // solver
-    std::map<AlgorithmType, SolverAlgorithm *>::iterator its
-      = solverAlgDriver_->solverAlgMap_.find(algType);
-    if ( its == solverAlgDriver_->solverAlgMap_.end() ) {
-      SolverAlgorithm *theSolverAlg = NULL;
-      if ( realm_.solutionOptions_->useConsolidatedSolverAlg_ )
-        theSolverAlg = new AssembleElemSolverAlgorithmDep(realm_, part, this);
-      else
+    if (! realm_.solutionOptions_->useConsolidatedSolverAlg_) {
+      std::map<AlgorithmType, SolverAlgorithm *>::iterator its
+        = solverAlgDriver_->solverAlgMap_.find(algType);
+      if ( its == solverAlgDriver_->solverAlgMap_.end() ) {
+        SolverAlgorithm *theSolverAlg = NULL;
         theSolverAlg = new AssembleContinuityElemSolverAlgorithm(realm_, part, this);
-      solverAlgDriver_->solverAlgMap_[algType] = theSolverAlg;
+        solverAlgDriver_->solverAlgMap_[algType] = theSolverAlg;
 
-      // look for fully integrated source terms
-      std::map<std::string, std::vector<std::string> >::iterator isrc 
-        = realm_.solutionOptions_->elemSrcTermsMap_.find("continuity");
-      if ( isrc != realm_.solutionOptions_->elemSrcTermsMap_.end() ) {
+        // look for fully integrated source terms
+        std::map<std::string, std::vector<std::string> >::iterator isrc
+          = realm_.solutionOptions_->elemSrcTermsMap_.find("continuity");
 
-        if ( realm_.realmUsesEdges_ )
-          throw std::runtime_error("ContinuityElemSrcTerms::Error can not use element source terms for an edge-based scheme");
+        if ( isrc != realm_.solutionOptions_->elemSrcTermsMap_.end() ) {
 
-        std::vector<std::string> mapNameVec = isrc->second;
-        for (size_t k = 0; k < mapNameVec.size(); ++k ) {
-          std::string sourceName = mapNameVec[k];
-          SupplementalAlgorithm *suppAlg = NULL;
-          if (sourceName == "SteadyTaylorVortex" ) {
-            suppAlg = new SteadyTaylorVortexContinuitySrcElemSuppAlg(realm_);
+          if ( realm_.realmUsesEdges_ )
+            throw std::runtime_error("ContinuityElemSrcTerms::Error can not use element source terms for an edge-based scheme");
+
+          std::vector<std::string> mapNameVec = isrc->second;
+          for (size_t k = 0; k < mapNameVec.size(); ++k ) {
+            std::string sourceName = mapNameVec[k];
+            SupplementalAlgorithm *suppAlg = NULL;
+            if (sourceName == "SteadyTaylorVortex" ) {
+              suppAlg = new SteadyTaylorVortexContinuitySrcElemSuppAlg(realm_);
+            }
+            else if ( sourceName == "VariableDensity" ) {
+              suppAlg = new VariableDensityContinuitySrcElemSuppAlg(realm_);
+            }
+            else if (sourceName == "density_time_derivative" ) {
+              suppAlg = new ContinuityMassElemSuppAlgDep(realm_, false);
+            }
+            else if (sourceName == "lumped_density_time_derivative" ) {
+              suppAlg = new ContinuityMassElemSuppAlgDep(realm_, true);
+            }
+            else if (sourceName == "advection" ) {
+              suppAlg = new ContinuityAdvElemSuppAlgDep(realm_);
+            }
+            else {
+              throw std::runtime_error("ContinuityElemSrcTerms::Error Source term is not supported: " + sourceName);
+            }
+            NaluEnv::self().naluOutputP0() << "ContinuityElemSrcTerms::added " << sourceName << std::endl;
+            theSolverAlg->supplementalAlg_.push_back(suppAlg);
           }
-          else if ( sourceName == "VariableDensity" ) {
-            suppAlg = new VariableDensityContinuitySrcElemSuppAlg(realm_);
-          }
-          else if (sourceName == "density_time_derivative" ) {
-            suppAlg = new ContinuityMassElemSuppAlg(realm_, false);
-          }
-          else if (sourceName == "lumped_density_time_derivative" ) {
-            suppAlg = new ContinuityMassElemSuppAlg(realm_, true);
-          }
-          else if (sourceName == "advection" ) {
-            suppAlg = new ContinuityAdvElemSuppAlg(realm_);
-          }
-          else {
-            throw std::runtime_error("ContinuityElemSrcTerms::Error Source term is not supported: " + sourceName);
-          }
-          NaluEnv::self().naluOutputP0() << "ContinuityElemSrcTerms::added " << sourceName << std::endl;
-          theSolverAlg->supplementalAlg_.push_back(suppAlg);
         }
+      } else {
+        its->second->partVec_.push_back(part);
       }
-    }
-    else {
-      its->second->partVec_.push_back(part);
+    } else {
+      // Homogeneous kernel implementation
+      if ( realm_.realmUsesEdges_ )
+        throw std::runtime_error("ContinuityElemSrcTerms::Error can not use element source terms for an edge-based scheme");
+
+      stk::topology partTopo = part->topology();
+      auto& solverAlgMap = solverAlgDriver_->solverAlgorithmMap_;
+      auto& reqSuppAlgNameMap = realm_.solutionOptions_->elemSrcTermsMap_;
+
+      AssembleElemSolverAlgorithm* solverAlg = nullptr;
+      bool solverAlgWasBuilt = false;
+
+      std::tie(solverAlg, solverAlgWasBuilt) = build_or_add_part_to_solver_alg
+        (*this, *part, solverAlgMap);
+
+      ElemDataRequests& dataPreReqs = solverAlg->dataNeededBySuppAlgs_;
+      auto& suppAlgVec = solverAlg->supplementalAlg_;
+
+      if (solverAlgWasBuilt) {
+        // TODO: Handle lumped vs non-lumped density_time_derivative
+        build_topo_supp_alg_if_requested<ContinuityMassElemSuppAlg>
+          (partTopo, reqSuppAlgNameMap, suppAlgVec, eqnTypeName_,
+           realm_, dataPreReqs, false);
+
+        build_topo_supp_alg_if_requested<ContinuityAdvElemSuppAlg>
+          (partTopo, reqSuppAlgNameMap, suppAlgVec, eqnTypeName_,
+           realm_, dataPreReqs);
+      }
+
+      report_invalid_supp_alg_names();
+      report_built_supp_alg_names();
     }
   }
-  
+
   // time term using lumped mass
   std::map<std::string, std::vector<std::string> >::iterator isrc =
     realm_.solutionOptions_->srcTermsMap_.find("continuity");

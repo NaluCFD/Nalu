@@ -16,6 +16,7 @@ namespace nalu{
 
 #define INSTANTIATE_SUPPLEMENTAL_ALGORITHM(ClassName)             \
 template class ClassName<AlgTraitsHex8>;                          \
+template class ClassName<AlgTraitsHex27>;                         \
 template class ClassName<AlgTraitsTet4>;                          \
 template class ClassName<AlgTraitsPyr5>;                          \
 template class ClassName<AlgTraitsWed6>;                          \

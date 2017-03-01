@@ -73,6 +73,11 @@ namespace nalu{
           append_new_supp_alg_if_requested<T<AlgTraitsWed6>>(algNameVec, algVec, suppAlgTypeName,
               std::forward<Args>(args)...);
           break;
+        case stk::topology::HEX_27:
+          append_new_supp_alg_if_requested<T<AlgTraitsHex27>>(
+            algNameVec, algVec, suppAlgTypeName,
+            std::forward<Args>(args)...);
+          break;
         default: break;
       }
     }

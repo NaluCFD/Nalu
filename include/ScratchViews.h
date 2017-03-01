@@ -63,6 +63,7 @@ public:
   const stk::mesh::Entity* elemNodes;
   SharedMemView<double**> scs_areav;
   SharedMemView<double***> dndx;
+  SharedMemView<double***> dndx_shifted;
   SharedMemView<double*> deriv;
   SharedMemView<double*> det_j;
   SharedMemView<double*> scv_volume;

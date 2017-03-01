@@ -6,46 +6,42 @@
 /*------------------------------------------------------------------------*/
 
 
-#ifndef ContinuityAdvElemSuppAlg_h
-#define ContinuityAdvElemSuppAlg_h
+#ifndef ContinuityAdvElemSuppAlgDep_h
+#define ContinuityAdvElemSuppAlgDep_h
 
 #include <SupplementalAlgorithm.h>
 #include <FieldTypeDef.h>
-#include <AlgTraits.h>
 
 #include <stk_mesh/base/BulkData.hpp>
 #include <stk_mesh/base/Entity.hpp>
-
-#include <Kokkos_Core.hpp>
 
 namespace sierra{
 namespace nalu{
 
 class Realm;
 class MasterElement;
-class ElemDataRequests;
-class ScratchViews;
 
-template<typename AlgTraits>
-class ContinuityAdvElemSuppAlg : public SupplementalAlgorithm
+class ContinuityAdvElemSuppAlgDep : public SupplementalAlgorithm
 {
 public:
-  static constexpr auto name = "advection";
 
-  ContinuityAdvElemSuppAlg(
-    Realm &realm,
-    ElemDataRequests& dataPreReqs);
+  ContinuityAdvElemSuppAlgDep(
+    Realm &realm);
 
-  virtual ~ContinuityAdvElemSuppAlg() {}
+  virtual ~ContinuityAdvElemSuppAlgDep() {}
 
   virtual void setup();
 
-  virtual void element_execute(
+  virtual void elem_resize(
+    MasterElement *meSCS,
+    MasterElement *meSCV);
+
+  virtual void elem_execute(
     double *lhs,
     double *rhs,
     stk::mesh::Entity element,
-    ScratchViews& scratchViews
-  );
+    MasterElement *meSCS,
+    MasterElement *meSCV);
   
   const stk::mesh::BulkData *bulkData_;
 
@@ -58,6 +54,7 @@ public:
   VectorFieldType *coordinates_;
 
   double projTimeScale_;
+  const int nDim_;
 
   const bool meshMotion_;
   const bool shiftMdot_;
@@ -67,15 +64,23 @@ public:
   const double om_interpTogether_;
 
   // fixed size
-  Kokkos::View<double[AlgTraits::nDim_]> v_uIp_{"view_uIp"};
-  Kokkos::View<double[AlgTraits::nDim_]> v_rho_uIp_{"view_rhoUIp"};
-  Kokkos::View<double[AlgTraits::nDim_]> v_Gpdx_Ip_{"view_GpdxIp"};
-  Kokkos::View<double[AlgTraits::nDim_]> v_dpdxIp_{"view_dpdxIp"};
+  std::vector<double> ws_uIp_;
+  std::vector<double> ws_rho_uIp_;
+  std::vector<double> ws_Gpdx_Ip_;
+  std::vector<double> ws_dpdxIp_;
 
   // scratch space
-  Kokkos::View<double[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_ { "view_shape_func" };
-
-  const int* lrscv_;
+  std::vector<double> ws_velocityRTM_;
+  std::vector<double> ws_Gpdx_;
+  std::vector<double> ws_pressure_;
+  std::vector<double> ws_densityNp1_;
+  std::vector<double> ws_coordinates_;
+  std::vector<double> ws_scs_areav_;
+  std::vector<double> ws_dndx_;
+  std::vector<double> ws_dndx_lhs_;
+  std::vector<double> ws_deriv_;
+  std::vector<double> ws_det_j_;
+  std::vector<double> ws_shape_function_;
 };
 
 } // namespace nalu
