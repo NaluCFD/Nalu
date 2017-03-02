@@ -30,6 +30,8 @@ namespace nalu{
     switch(topo.value()) {
       case stk::topology::HEX_8:
         return new T<AlgTraitsHex8>(std::forward<Args>(args)...);
+      case stk::topology::HEX_27:
+        return new T<AlgTraitsHex27>(std::forward<Args>(args)...);
       case stk::topology::TET_4:
         return new T<AlgTraitsTet4>(std::forward<Args>(args)...);
       case stk::topology::PYRAMID_5:

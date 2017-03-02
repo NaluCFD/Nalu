@@ -24,6 +24,15 @@ struct AlgTraitsHex8 {
   static constexpr stk::topology::topology_t topo_ = stk::topology::HEX_8;
 };
 
+struct AlgTraitsHex27 {
+  static constexpr int nDim_ = 3;
+  static constexpr int nodesPerElement_ = 27;
+  static constexpr int numScsIp_ = 216;
+  static constexpr int numScvIp_ = 216;
+  static constexpr int numGp_ = 27; // for FEM
+  static constexpr stk::topology::topology_t topo_ = stk::topology::HEX_27;
+};
+
 struct AlgTraitsTet4 {
   static constexpr int nDim_ = 3;
   static constexpr int nodesPerElement_ = 4;
