@@ -99,14 +99,14 @@ ContinuityMassElemSuppAlg<AlgTraits>::element_execute(
 {
   const double projTimeScale = dt_/gamma1_;
 
-  SharedMemView<double*>& densityNm1_view = scratchViews.get_scratch_view_1D(
+  SharedMemView<double*>& v_densityNm1 = scratchViews.get_scratch_view_1D(
     *densityNm1_);
-  SharedMemView<double*>& densityN_view = scratchViews.get_scratch_view_1D(
+  SharedMemView<double*>& v_densityN = scratchViews.get_scratch_view_1D(
     *densityN_);
-  SharedMemView<double*>& densityNp1_view = scratchViews.get_scratch_view_1D(
+  SharedMemView<double*>& v_densityNp1 = scratchViews.get_scratch_view_1D(
     *densityNp1_);
 
-  SharedMemView<double*>& scv_volume = scratchViews.scv_volume;
+  SharedMemView<double*>& v_scs_volume = scratchViews.scv_volume;
 
   for (int ip=0; ip < AlgTraits::numScvIp_; ++ip) {
     const int nearestNode = ipNodeMap_[ip];
@@ -117,14 +117,14 @@ ContinuityMassElemSuppAlg<AlgTraits>::element_execute(
     for (int ic=0; ic < AlgTraits::nodesPerElement_; ++ic) {
       const double r = v_shape_function_(ip, ic);
 
-      rhoNm1 += r * densityNm1_view(ic);
-      rhoN   += r * densityN_view(ic);
-      rhoNp1 += r * densityNp1_view(ic);
+      rhoNm1 += r * v_densityNm1(ic);
+      rhoN   += r * v_densityN(ic);
+      rhoNp1 += r * v_densityNp1(ic);
     }
 
-    const double scV = scv_volume(ip);
+    const double scV = v_scs_volume(ip);
     rhs[nearestNode] += - ( gamma1_ * rhoNp1 + gamma2_ * rhoN +
-                            gamma3_ * rhoNm1 ) * (scV / dt_ / projTimeScale);
+                            gamma3_ * rhoNm1 ) * scV / dt_ / projTimeScale;
 
     // manage LHS : N/A
   }
