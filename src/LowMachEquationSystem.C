@@ -2204,7 +2204,6 @@ ContinuityEquationSystem::register_interior_algorithm(
 
       stk::topology partTopo = part->topology();
       auto& solverAlgMap = solverAlgDriver_->solverAlgorithmMap_;
-      auto& reqSuppAlgNameMap = realm_.solutionOptions_->elemSrcTermsMap_;
 
       AssembleElemSolverAlgorithm* solverAlg = nullptr;
       bool solverAlgWasBuilt = false;
@@ -2216,13 +2215,16 @@ ContinuityEquationSystem::register_interior_algorithm(
       auto& suppAlgVec = solverAlg->supplementalAlg_;
 
       if (solverAlgWasBuilt) {
-        // TODO: Handle lumped vs non-lumped density_time_derivative
         build_topo_supp_alg_if_requested<ContinuityMassElemSuppAlg>
-          (partTopo, reqSuppAlgNameMap, suppAlgVec, eqnTypeName_,
+          (partTopo, *this, suppAlgVec, "density_time_derivative",
            realm_, dataPreReqs, false);
 
+        build_topo_supp_alg_if_requested<ContinuityMassElemSuppAlg>
+          (partTopo, *this, suppAlgVec, "lumped_density_time_derivative",
+           realm_, dataPreReqs, true);
+
         build_topo_supp_alg_if_requested<ContinuityAdvElemSuppAlg>
-          (partTopo, reqSuppAlgNameMap, suppAlgVec, eqnTypeName_,
+          (partTopo, *this, suppAlgVec, "advection",
            realm_, dataPreReqs);
       }
 

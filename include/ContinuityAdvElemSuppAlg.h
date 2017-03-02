@@ -30,7 +30,6 @@ template<typename AlgTraits>
 class ContinuityAdvElemSuppAlg : public SupplementalAlgorithm
 {
 public:
-  static constexpr auto name = "advection";
 
   ContinuityAdvElemSuppAlg(
     Realm &realm,

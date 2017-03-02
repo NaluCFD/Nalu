@@ -31,7 +31,6 @@ template<typename AlgTraits>
 class ContinuityMassElemSuppAlg : public SupplementalAlgorithm
 {
 public:
-  static constexpr auto name = "density_time_derivative";
 
   ContinuityMassElemSuppAlg(
     Realm &realm,
