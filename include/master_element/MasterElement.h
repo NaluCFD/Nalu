@@ -29,11 +29,15 @@ enum Direction
 };
 }
 
+struct ElementDescription;
+
 class MasterElement
 {
 public:
   static MasterElement* create_surface_master_element(stk::topology topo);
   static MasterElement* create_volume_master_element(stk::topology topo);
+  static MasterElement* create_surface_master_element(stk::topology topo, const ElementDescription& desc, std::string quadType);
+  static MasterElement* create_volume_master_element(stk::topology topo, const ElementDescription& desc, std::string quadType);
 
   MasterElement();
   virtual ~MasterElement();
@@ -152,6 +156,10 @@ public:
     double *elem_pcoords) {
     throw std::runtime_error("sidePcoords_to_elemPcoords");}
 
+  virtual const int* side_node_ordinals(int sideOrdinal) {
+    throw std::runtime_error("side_node_ordinals not implemented");
+  }
+
   double isoparametric_mapping(const double b, const double a, const double xi) const;
   bool within_tolerance(const double & val, const double & tol);
   double vector_norm_sq(const double * vect, int len);
@@ -169,6 +177,8 @@ public:
   std::vector<double> intgLocShift_;
   std::vector<double> intgExpFace_;
   std::vector<double> nodeLoc_;
+  std::vector<int> sideNodeOrdinals_;
+  std::vector<int> sideOffset_;
 
   // FEM
   std::vector<double>weights_;
@@ -203,6 +213,7 @@ public:
 
   void shifted_shape_fcn(
     double *shpfc);
+
 };
 
 // Hex 8 subcontrol surface
@@ -295,7 +306,8 @@ public:
     const double *side_pcoords,
     double *elem_pcoords);
   
-  // helper
+  const int* side_node_ordinals(int sideOrdinal) final;
+
   double parametric_distance(const std::vector<double> &x);
 };
 
@@ -469,6 +481,8 @@ public:
   int opposingFace(
     const int ordinal, const int node);
 
+  const int* side_node_ordinals(int sideOrdinal) final;
+
 private:
   void set_interior_info();
   void set_boundary_info();
@@ -614,6 +628,9 @@ public:
 
   // helper
   double parametric_distance(const std::vector<double> &x);
+
+  const int* side_node_ordinals(int sideOrdinal) final;
+
 };
 
 // Pyramid 5 subcontrol volume
@@ -700,6 +717,9 @@ public:
 
   int opposingNodes(
     const int ordinal, const int node);
+
+  const int* side_node_ordinals(int sideOrdinal) final;
+
 };
 
 // Wedge 6 subcontrol volume
@@ -826,6 +846,9 @@ public:
   // helper functions to isInElement
   double parametric_distance( const double X, const double Y);
   double parametric_distance( const std::vector<double> &x);
+
+  const int* side_node_ordinals(int sideOrdinal) final;
+
 };
 
 // 2D Quad 4 subcontrol volume
@@ -948,6 +971,10 @@ public:
     const int & npoints,
     const double *side_pcoords,
     double *elem_pcoords);
+
+  const int* side_node_ordinals(int sideOrdinal) final;
+
+
 };
 
 class QuadrilateralP2Element : public MasterElement
@@ -1102,6 +1129,9 @@ public:
   int opposingFace(
     const int ordinal, const int node);
 
+  const int* side_node_ordinals(int sideOrdinal) final;
+
+
 private:
   void set_interior_info();
   void set_boundary_info();
@@ -1224,6 +1254,9 @@ public:
     const int & npoints,
     const double *side_pcoords,
     double *elem_pcoords);
+
+  const int* side_node_ordinals(int sideOrdinal) final;
+
 
 };
 

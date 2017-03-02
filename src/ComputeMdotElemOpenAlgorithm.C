@@ -145,7 +145,7 @@ ComputeMdotElemOpenAlgorithm::execute()
     MasterElement *meFC = realm_.get_surface_master_element(b.topology());
     const int nodesPerFace = b.topology().num_nodes();
     const int numScsBip = meFC->numIntPoints_;
-    std::vector<int> face_node_ordinal_vec(nodesPerFace);
+
 
     // algorithm related; element
     ws_coordinates.resize(nodesPerElement*nDim);
@@ -218,10 +218,10 @@ ComputeMdotElemOpenAlgorithm::execute()
       const stk::mesh::Entity* face_elem_rels = bulk_data.begin_elements(face);
       ThrowAssert( bulk_data.num_elements(face) == 1 );
 
-      // get element; its face ordinal number and populate face_node_ordinal_vec
+      // get element; its face ordinal number and populate face_node_ordinals
       stk::mesh::Entity element = face_elem_rels[0];
       const int face_ordinal = bulk_data.begin_element_ordinals(face)[0];
-      theElemTopo.side_node_ordinals(face_ordinal, face_node_ordinal_vec.begin());
+      const int *face_node_ordinals = meSCS->side_node_ordinals(face_ordinal);
 
       //======================================
       // gather nodal data off of element
@@ -263,7 +263,7 @@ ComputeMdotElemOpenAlgorithm::execute()
         double pBip = 0.0;
         const int offSetSF_face = ip*nodesPerFace;
         for ( int ic = 0; ic < nodesPerFace; ++ic ) {
-          const int fn = face_node_ordinal_vec[ic];
+          const int fn = face_node_ordinals[ic];
           const double r = p_face_shape_function[offSetSF_face+ic];
           const double rhoIC = p_density[ic];
           rhoBip += r*rhoIC;

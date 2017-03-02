@@ -7,6 +7,7 @@
 
 
 #include <LowMachEquationSystem.h>
+#include <ABLForcingAlgorithm.h>
 #include <AlgorithmDriver.h>
 #include <AssembleCourantReynoldsElemAlgorithm.h>
 #include <AssembleContinuityEdgeSolverAlgorithm.h>
@@ -103,6 +104,7 @@
 
 // nso
 #include <nso/MomentumNSOElemSuppAlg.h>
+
 
 // user function
 #include <user_functions/ConvectingTaylorVortexVelocityAuxFunction.h>
@@ -751,7 +753,7 @@ LowMachEquationSystem::project_nodal_velocity()
   
   // selector and node_buckets (only projected nodes)
   stk::mesh::Selector s_projected_nodes
-    = !stk::mesh::selectUnion(momentumEqSys_->notProjectedPart_) &
+    = (!stk::mesh::selectUnion(momentumEqSys_->notProjectedPart_)) &
     stk::mesh::selectField(*dpdx);
   stk::mesh::BucketVector const& p_node_buckets =
     realm_.get_buckets( stk::topology::NODE_RANK, s_projected_nodes );

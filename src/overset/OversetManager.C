@@ -33,6 +33,7 @@
 
 // stk_util
 #include <stk_util/parallel/ParallelReduce.hpp>
+#include <stk_util/environment/CPUTime.hpp>
 
 namespace sierra{
 namespace nalu{
@@ -1051,5 +1052,5 @@ OversetManager::complete_search(
   }  
 }
 
-} // namespace naluUnit
+} // namespace nalu
 } // namespace Sierra

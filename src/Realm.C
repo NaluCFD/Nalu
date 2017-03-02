@@ -45,6 +45,14 @@
 #include <SolutionOptions.h>
 #include <TimeIntegrator.h>
 
+#include <element_promotion/PromoteElement.h>
+#include <element_promotion/PromotedElementIO.h>
+#include <element_promotion/ElementDescription.h>
+#include <element_promotion/PromotedPartHelper.h>
+#include <element_promotion/MasterElementHO.h>
+
+#include <nalu_make_unique.h>
+
 // overset
 #include <overset/OversetManager.h>
 
@@ -213,7 +221,10 @@ namespace nalu{
     activateAura_(false),
     activateMemoryDiagnostic_(false),
     supportInconsistentRestart_(false),
-    wallTimeStart_(stk::wall_time())
+    wallTimeStart_(stk::wall_time()),
+    doPromotion_(false),
+    promotionOrder_(0u),
+    quadType_("GaussLegendre")
 {
   // deal with specialty options that live off of the realm; 
   // choose to do this now rather than waiting for the load stage
@@ -390,6 +401,9 @@ Realm::initialize()
   // initialize adaptivity - note: must be done before field registration
   setup_adaptivity();
 
+  if (doPromotion_) {
+    setup_element_promotion();
+  }
   // field registration
   setup_nodal_fields();
   setup_edge_fields();
@@ -443,6 +457,11 @@ Realm::initialize()
   time += NaluEnv::self().nalu_time();
   timerPopulateFieldData_ += time;
   NaluEnv::self().naluOutputP0() << "Realm::ioBroker_->populate_field_data() End" << std::endl;
+
+  if (doPromotion_) {
+    promote_mesh();
+    create_promoted_output_mesh();
+  }
 
   // manage NaluGlobalId for linear system
   set_global_id();
@@ -513,8 +532,9 @@ Realm::look_ahead_and_creation(const YAML::Node & node)
     solutionNormPostProcessing_ =  new SolutionNormPostProcessing(*this, *foundNormPP[0]);
   }
 
+
   // look for DataProbe
-  std::vector<const YAML::Node*> foundProbe;
+  std::vector<const YAML::Node *> foundProbe;
   NaluParsingHelper::find_nodes_given_key("data_probes", node, foundProbe);
   if ( foundProbe.size() > 0 ) {
     if ( foundProbe.size() != 1 )
@@ -523,7 +543,7 @@ Realm::look_ahead_and_creation(const YAML::Node & node)
   }
 
   // look for ActuatorLine
-  std::vector<const YAML::Node*> foundActuatorLine;
+  std::vector<const YAML::Node *> foundActuatorLine;
   NaluParsingHelper::find_nodes_given_key("actuator_line", node, foundActuatorLine);
   if ( foundActuatorLine.size() > 0 ) {
     if ( foundActuatorLine.size() != 1 )
@@ -569,6 +589,18 @@ Realm::load(const YAML::Node & node)
 
   // determine if edges are required and whether or not stk handles this
   get_if_present(node, "use_edges", realmUsesEdges_, realmUsesEdges_);
+
+  get_if_present(node, "polynomial_order", promotionOrder_, promotionOrder_);
+  if (promotionOrder_ >=1) {
+    doPromotion_ = true;
+
+    // with polynomial order set to 1, the HO method defaults down to the consistent mass matrix P1 discretization
+    // super-element/faces are activated despite being unnecessary
+    if (promotionOrder_ == 1) {
+      NaluEnv::self().naluOutputP0() << "Activating the consistent-mass matrix P1 discretization..." << std::endl;
+    }
+  }
+  get_if_present(node, "quadrature_type", quadType_, quadType_ );
 
   // let everyone know about core algorithm
   if ( realmUsesEdges_ ) {
@@ -834,25 +866,31 @@ Realm::setup_bc()
   // loop over all bcs and register
   for (size_t ibc = 0; ibc < boundaryConditions_.size(); ++ibc) {
     BoundaryCondition& bc = *boundaryConditions_[ibc];
+    std::string name = physics_part_name(bc.targetName_);
+
     switch(bc.theBcType_) {
       case WALL_BC:
-        equationSystems_.register_wall_bc(bc.targetName_, *reinterpret_cast<const WallBoundaryConditionData *>(&bc));
+        equationSystems_.register_wall_bc(name, *reinterpret_cast<const WallBoundaryConditionData *>(&bc));
         break;
       case INFLOW_BC:
-        equationSystems_.register_inflow_bc(bc.targetName_, *reinterpret_cast<const InflowBoundaryConditionData *>(&bc));
+        equationSystems_.register_inflow_bc(name, *reinterpret_cast<const InflowBoundaryConditionData *>(&bc));
         break;
       case OPEN_BC:
-        equationSystems_.register_open_bc(bc.targetName_, *reinterpret_cast<const OpenBoundaryConditionData *>(&bc));
+        equationSystems_.register_open_bc(name, *reinterpret_cast<const OpenBoundaryConditionData *>(&bc));
         break;
       case SYMMETRY_BC:
-        equationSystems_.register_symmetry_bc(bc.targetName_, *reinterpret_cast<const SymmetryBoundaryConditionData *>(&bc));
+        equationSystems_.register_symmetry_bc(name, *reinterpret_cast<const SymmetryBoundaryConditionData *>(&bc));
         break;
       case PERIODIC_BC:
-        equationSystems_.register_periodic_bc(
-          (*reinterpret_cast<const PeriodicBoundaryConditionData *>(&bc)).masterSlave_.master_,
-          (*reinterpret_cast<const PeriodicBoundaryConditionData *>(&bc)).masterSlave_.slave_,
-          *reinterpret_cast<const PeriodicBoundaryConditionData *>(&bc));
+      {
+        ThrowAssert(reinterpret_cast<const PeriodicBoundaryConditionData *>(&bc) != nullptr);
+        const auto& pbc = (*reinterpret_cast<const PeriodicBoundaryConditionData *>(&bc));
+
+        std::string masterName = physics_part_name(pbc.masterSlave_.master_);
+        std::string slaveName = physics_part_name(pbc.masterSlave_.slave_);
+        equationSystems_.register_periodic_bc(masterName, slaveName, pbc);
         break;
+      }
       case NON_CONFORMAL_BC:
         equationSystems_.register_non_conformal_bc(*reinterpret_cast<const NonConformalBoundaryConditionData *>(&bc));
         break;
@@ -872,6 +910,8 @@ void
 Realm::enforce_bc_on_exposed_faces()
 {
   double start_time = NaluEnv::self().nalu_time();
+
+  NaluEnv::self().naluOutputP0() << "Realm::skin_mesh(): Begin" << std::endl;
 
   NaluEnv::self().naluOutputP0() << "Realm::skin_mesh(): Begin" << std::endl;
 
@@ -946,9 +986,10 @@ Realm::setup_initial_conditions()
     const std::vector<std::string> targetNames = initCond.targetNames_;
 
     for (size_t itarget=0; itarget < targetNames.size(); ++itarget) {
+      const std::string targetName = physics_part_name(targetNames[itarget]);
 
       // target need not be subsetted since nothing below will depend on topo
-      stk::mesh::Part *targetPart = metaData_->get_part(targetNames[itarget]);
+      stk::mesh::Part *targetPart = metaData_->get_part(targetName);
 
       switch(initCond.theIcType_) {
 
@@ -2021,7 +2062,6 @@ Realm::create_restart_mesh()
 
     // set max size for restart data base
     ioBroker_->get_output_io_region(restartFileIndex_)->get_database()->set_cycle_count(outputInfo_->restartMaxDataBaseStepSize_);
-
   }
 
 }
@@ -3193,7 +3233,12 @@ Realm::provide_output()
         create_output_mesh();
 
       // not set up for globals
-      ioBroker_->process_output_request(resultsFileIndex_, currentTime);
+      if (!doPromotion_) {
+        ioBroker_->process_output_request(resultsFileIndex_, currentTime);
+      }
+      else {
+        promotionIO_->write_database_data(currentTime);
+      }
       equationSystems_.provide_output();
     }
 
@@ -3466,11 +3511,42 @@ Realm::check_job(bool get_node_count)
     size_t localNodeCount = ioBroker_->get_input_io_region()->get_property("node_count").get_int();
     stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &localNodeCount, &nodeCount_, 1);
     NaluEnv::self().naluOutputP0() << "Node count from meta data = " << nodeCount_ << std::endl;
+
+    if (doPromotion_) {
+      if (metaData_->is_commit()) {
+        std::vector<size_t> counts;
+        stk::mesh::comm_mesh_counts( *bulkData_ , counts);
+        nodeCount_ = counts[0];
+        NaluEnv::self().naluOutputP0() << "Node count after promotion = " << nodeCount_ << std::endl;
+      }
+      else {
+        nodeCount_ = std::pow(promotionOrder_,spatialDimension_) * nodeCount_;
+        NaluEnv::self().naluOutputP0() << "(Roughly) Estimated node count after promotion = " << nodeCount_ << std::endl;
+      }
+    }
   }
 
   /// estimate memory based on N*bandwidth, N = nodeCount*nDOF,
   ///   bandwidth = NCon(=27 for Hex mesh)*nDOF - we are very conservative here
-  const unsigned HexBWFactor = 27;
+  unsigned BWFactor = 27;
+  if (doPromotion_) {
+    // Ignore boundary terms and assume a structured mesh
+    unsigned cornerBWFactor = std::pow((2 * promotionOrder_ + 1), spatialDimension_);
+    unsigned edgeBWFactor = std::pow((2*promotionOrder_+1), spatialDimension_-1) * (promotionOrder_+1);
+    unsigned faceBWFactor = (2*promotionOrder_ + 1) * (promotionOrder_+1) * (promotionOrder_ + 1); // only 3D
+    unsigned interiorBWFactor = std::pow(promotionOrder_ + 1, spatialDimension_);
+
+    unsigned numCornerNodes = (spatialDimension_ == 3) ? 8 : 4;
+    unsigned numEdgeNodes = (spatialDimension_ == 3) ? 12*(promotionOrder_-1) : 4*(promotionOrder_-1);
+    unsigned numFaceNodes = (spatialDimension_ == 3) ? 6*std::pow(promotionOrder_ - 1, 2) : 0;
+    unsigned numInteriorNodes = std::pow(promotionOrder_ - 1, spatialDimension_);
+    unsigned numNodes = std::pow(promotionOrder_ + 1,spatialDimension_);
+
+    BWFactor = ( cornerBWFactor * numCornerNodes
+             +   edgeBWFactor   * numEdgeNodes
+             +   faceBWFactor   * numFaceNodes
+             +   interiorBWFactor * numInteriorNodes ) / numNodes;
+  }
   const unsigned MatrixStorageFactor = 3;  // for CRS storage, need one A_IJ, and one I and one J, approx
   SizeType memoryEstimate = 0;
   double procGBScale = double(NaluEnv::self().parallel_size())*(1024.*1024.*1024.);
@@ -3480,28 +3556,41 @@ Realm::check_job(bool get_node_count)
         continue;
       SizeType numDof = equationSystems_[ieq]->linsys_->numDof();
       SizeType N = nodeCount_ * numDof;
-      SizeType bandwidth = HexBWFactor * numDof;
+      SizeType bandwidth = BWFactor * numDof;
       memoryEstimate += MatrixStorageFactor * N*bandwidth * sizeof(double);
     }
   NaluEnv::self().naluOutputP0() << "Total memory estimate for Matrix solve (per core)= "
                   << double(memoryEstimate)/procGBScale << " GB." << std::endl;
 
   SizeType memoryEstimateFields = 0;
-  if (metaData_->is_commit())
-    {
-      const stk::mesh::FieldVector & fields =  metaData_->get_fields();
-      unsigned nfields = fields.size();
-      for (unsigned ifld = 0; ifld < nfields; ++ifld)
-        {
-          stk::mesh::FieldBase *field = fields[ifld];
-          // FIXME for element, edge, face-based fields
-          unsigned fsz = field->max_size(stk::topology::NODE_RANK);
-          memoryEstimateFields += nodeCount_ * fsz * sizeof(double);
-        }
-      NaluEnv::self().naluOutputP0() << "Total memory estimate for Fields (per core)= "
-                      << double(memoryEstimateFields)/procGBScale << " GB." << std::endl;
-      memoryEstimate += memoryEstimateFields;
+  if (metaData_->is_commit()) {
+    std::vector<size_t> counts;
+    stk::mesh::comm_mesh_counts( *bulkData_ , counts);
+    ThrowRequire(counts.size() >= 4);
+    size_t nodeCount = counts[stk::topology::NODE_RANK];
+    size_t edgeCount = counts[stk::topology::EDGE_RANK];
+    size_t faceCount = counts[stk::topology::FACE_RANK];
+    size_t elemCount = counts[stk::topology::ELEM_RANK];
+
+    const stk::mesh::FieldVector & fields =  metaData_->get_fields();
+    unsigned nfields = fields.size();
+    for (unsigned ifld = 0; ifld < nfields; ++ifld)  {
+      stk::mesh::FieldBase *field = fields[ifld];
+      unsigned fszNode = field->max_size(stk::topology::NODE_RANK);
+      unsigned fszEdge = field->max_size(stk::topology::EDGE_RANK);
+      unsigned fszFace = field->max_size(stk::topology::FACE_RANK);
+      unsigned fszElem = field->max_size(stk::topology::ELEM_RANK);
+
+      memoryEstimateFields +=
+          ( nodeCount * fszNode
+          + edgeCount * fszEdge
+          + faceCount * fszFace
+          + elemCount * fszElem ) * sizeof(double);
     }
+    NaluEnv::self().naluOutputP0() << "Total memory estimate for Fields (per core)= "
+        << double(memoryEstimateFields)/procGBScale << " GB." << std::endl;
+    memoryEstimate += memoryEstimateFields;
+  }
 
   NaluEnv::self().naluOutputP0() << "Total memory estimate (per core) = "
                   << double(memoryEstimate)/procGBScale << " GB." << std::endl;
@@ -3538,9 +3627,9 @@ Realm::dump_simulation_time()
   const int nprocs = NaluEnv::self().parallel_size();
 
   // common
-  const unsigned ntimers = 6;
+  const unsigned ntimers = 7;
   double total_time[ntimers] = {timerCreateMesh_, timerOutputFields_, timerInitializeEqs_, 
-                                timerPropertyEval_, timerPopulateMesh_, timerPopulateFieldData_};
+                                timerPropertyEval_, timerPopulateMesh_, timerPopulateFieldData_ , timerPromoteMesh_};
   double g_min_time[ntimers] = {}, g_max_time[ntimers] = {}, g_total_time[ntimers] = {};
 
   // get min, max and sum over processes
@@ -3557,6 +3646,8 @@ Realm::dump_simulation_time()
                   << " \tmin: " << g_min_time[4] << " \tmax: " << g_max_time[4] << std::endl;
   NaluEnv::self().naluOutputP0() << " io populate fd   --  " << " \tavg: " << g_total_time[5]/double(nprocs)
                   << " \tmin: " << g_min_time[5] << " \tmax: " << g_max_time[5] << std::endl;
+  NaluEnv::self().naluOutputP0() << " io promote mesh  --  " << " \tavg: " << g_total_time[6]/double(nprocs)
+                  << " \tmin: " << g_min_time[6] << " \tmax: " << g_max_time[6] << std::endl;
   NaluEnv::self().naluOutputP0() << "Timing for connectivity/finalize lysys: " << std::endl;
   NaluEnv::self().naluOutputP0() << "         eqs init --  " << " \tavg: " << g_total_time[2]/double(nprocs)
                   << " \tmin: " << g_min_time[2] << " \tmax: " << g_max_time[2] << std::endl;
@@ -3665,7 +3756,12 @@ Realm::get_volume_master_element(
     volumeMeMap_.find(theTopo);
   if ( it == volumeMeMap_.end() ) {
     // not found; will need to create it and add it
-    theElem = MasterElement::create_volume_master_element(theTopo);
+    if (!theTopo.is_super_topology()) {
+      theElem = MasterElement::create_volume_master_element(theTopo);
+    }
+    else {
+      theElem = MasterElement::create_volume_master_element(theTopo, *desc_, quadType_);
+    }
     ThrowRequire(theElem != nullptr);
 
     volumeMeMap_[theTopo] = theElem;
@@ -3685,19 +3781,22 @@ MasterElement *
 Realm::get_surface_master_element(
   const stk::topology & theTopo)
 {
-
   MasterElement *theElem = NULL;
 
   std::map<stk::topology, MasterElement *>::iterator it =
     surfaceMeMap_.find(theTopo);
   if ( it == surfaceMeMap_.end() ) {
     // not found; will need to create it and add it
-    theElem = MasterElement::create_surface_master_element(theTopo);
-    ThrowRequire(theElem != nullptr);
 
+    if (!theTopo.is_super_topology()) {
+      theElem = MasterElement::create_surface_master_element(theTopo);
+    }
+    else {
+      theElem = MasterElement::create_surface_master_element(theTopo, *desc_, quadType_);
+    }
+    ThrowRequire(theElem != nullptr);
     surfaceMeMap_[theTopo] = theElem;
   }
-
   else {
     // found it!
     theElem = it->second;
@@ -4209,6 +4308,155 @@ Realm::post_converged_work()
 }
 
 //--------------------------------------------------------------------------
+//-------- setup_element_promotion() ---------------------------------------
+//--------------------------------------------------------------------------
+void
+Realm::setup_element_promotion()
+{
+  // Create a description of the element and deal with the part naming styles
+
+  // Struct containing information about the element (e.g. number of nodes, nodes per face, etc.)
+  // tools for numerically interpolating / taking derivatives of the reference element
+  desc_ = ElementDescription::create(meta_data().spatial_dimension(), promotionOrder_);
+
+  // Every mesh part is promoted for now
+  basePartVector_ = metaData_->get_mesh_parts();
+
+  // Create new parts if not restarted
+  // otherwise, super element parts are read from the restart file
+  // However, the super face / edge parts are not and must be re-created
+  for (const auto& targetName : materialPropertys_.targetNames_) {
+    auto* basePart = metaData_->get_part(targetName);
+
+    if (basePart->topology().rank() == stk::topology::ELEM_RANK) {
+      const auto superName = super_element_part_name(targetName);
+
+      // declare the part then set the topology.  Change to declaring the part with topology
+      // when STK fixes declare_part_with_topology to work with super elements
+      stk::mesh::Part* superPart;
+      if (!restarted_simulation()) {
+        if (metaData_->get_part(superName) != nullptr) {
+          throw std::runtime_error("A part with name " + superName + " already exists in the mesh.  "
+              "This can happen if a restart mesh was used but a restart_time was not specified");
+        }
+
+        superPart = &metaData_->declare_part_with_topology(
+          superName,
+          stk::create_superelement_topology(static_cast<unsigned>(desc_->nodesPerElement))
+        );
+        stk::io::put_io_part_attribute(*superPart);
+      }
+      else {
+        superPart = metaData_->get_part(superName);
+        if (superPart == nullptr) {
+          throw std::runtime_error("A restart was requested with promotion, "
+              "but the promoted mesh parts are not in the restart file.");
+        }
+      }
+      superPartVector_.push_back(superPart);
+      superTargetNames_.push_back(superName);
+    }
+  }
+
+  // always create side-ranked super parts
+  for (auto* targetPart : basePartVector_) {
+    if (!targetPart->subsets().empty()) {
+      auto sideRank = metaData_->side_rank();
+      auto* superSuperset = &metaData_->declare_part(super_element_part_name(targetPart->name()), sideRank);
+      for (const auto* subset : targetPart->subsets()) {
+        if (subset->topology().rank() == sideRank) {
+          unsigned nodesPerSide = desc_->nodesPerSide;
+          auto sideTopo = (metaData_->spatial_dimension() == 2) ?
+              stk::create_superedge_topology(nodesPerSide)
+            : stk::create_superface_topology(nodesPerSide);
+
+          // parts are named like "surface_se_super_super_1"
+          auto partName = super_subset_part_name(subset->name());
+          stk::mesh::Part* superFacePart = &metaData_->declare_part_with_topology(partName,sideTopo);
+          superPartVector_.push_back(superFacePart);
+          metaData_->declare_part_subset(*superSuperset, *superFacePart);
+        }
+      }
+    }
+  }
+
+  metaData_->declare_part("edge_part", stk::topology::EDGE_RANK);
+  if (metaData_->spatial_dimension() == 3) {
+    metaData_->declare_part("face_part", stk::topology::FACE_RANK);
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- promote_element -------------------------------------------------
+//--------------------------------------------------------------------------
+void
+Realm::promote_mesh()
+{
+  NaluEnv::self().naluOutputP0() << "Realm::promote_elements() Begin " << std::endl;
+  auto timeA = stk::wall_time();
+
+  auto* coords = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates");
+
+  auto* edgePart = metaData_->get_part("edge_part");
+  auto* facePart = metaData_->get_part("face_part");
+
+  if (!restarted_simulation()) {
+    promotion::promote_elements(*bulkData_, *desc_, *coords, basePartVector_, edgePart, facePart);
+  }
+  else {
+    promotion::create_boundary_elements(*bulkData_, *desc_, basePartVector_);
+  }
+
+  auto timeB = stk::wall_time();
+  timerPromoteMesh_ = timeB-timeA;
+  NaluEnv::self().naluOutputP0() << "Realm::promote_elements() End " << std::endl;
+}
+
+//--------------------------------------------------------------------------
+//-------- create_promoted_output_mesh -------------------------------------
+//--------------------------------------------------------------------------
+void
+Realm::create_promoted_output_mesh()
+{
+  NaluEnv::self().naluOutputP0() << "Realm::create_promoted_output_mesh() Begin " << std::endl;
+
+  if (outputInfo_->hasOutputBlock_ ) {
+    if (outputInfo_->outputFreq_ == 0) {
+      return;
+    }
+
+    auto* coords = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates");
+    promotionIO_ = make_unique<PromotedElementIO>(
+      *desc_,
+      *metaData_,
+      *bulkData_,
+      metaData_->get_mesh_parts(),
+      outputInfo_->outputDBName_,
+      *coords
+    );
+
+    std::vector<stk::mesh::FieldBase*> outputFields;
+    for (const auto& varName : outputInfo_->outputFieldNameSet_) {
+      outputFields.push_back(stk::mesh::get_field_by_name(varName, *metaData_));
+    }
+    promotionIO_->add_fields(outputFields);
+  }
+  NaluEnv::self().naluOutputP0() << "Realm::create_promoted_output_mesh() End " << std::endl;
+}
+
+//--------------------------------------------------------------------------
+//-------- part_name(std::string) ----------------------------------------------
+//--------------------------------------------------------------------------
+std::string
+Realm::physics_part_name(std::string name) const
+{
+  if (doPromotion_) {
+    return super_element_part_name(name);
+  }
+  return name;
+}
+
+//--------------------------------------------------------------------------
 //-------- get_current_time() ----------------------------------------------
 //--------------------------------------------------------------------------
 double
@@ -4414,7 +4662,10 @@ const std::vector<std::string> &
 Realm::get_physics_target_names()
 {
   // in the future, possibly check for more advanced names;
-  // for now, material props holds this
+  // for now, material props holds this'
+  if (doPromotion_) {
+    return superTargetNames_;
+  }
   return materialPropertys_.targetNames_;
 }
 

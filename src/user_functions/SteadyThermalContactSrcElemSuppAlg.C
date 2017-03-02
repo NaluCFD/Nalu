@@ -11,6 +11,8 @@
 #include <FieldTypeDef.h>
 #include <Realm.h>
 #include <master_element/MasterElement.h>
+#include <element_promotion/QuadratureKernels.h>
+#include <nalu_make_unique.h>
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/Entity.hpp>
@@ -39,7 +41,7 @@ SteadyThermalContactSrcElemSuppAlg::SteadyThermalContactSrcElemSuppAlg(
     pi_(std::acos(-1.0)),
     useShifted_(false),
     nDim_(realm_.spatialDimension_),
-    evalAtIps_(true)
+    useSGL_(false)
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -47,6 +49,11 @@ SteadyThermalContactSrcElemSuppAlg::SteadyThermalContactSrcElemSuppAlg(
  
   // scratch vecs
   scvCoords_.resize(nDim_);
+
+  if (realm_.using_SGL_quadrature()) {
+    quadOp_ = make_unique<SGLQuadratureOps>(*realm_.desc_);
+    useSGL_ = true;
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -63,6 +70,9 @@ SteadyThermalContactSrcElemSuppAlg::elem_resize(
   ws_coordinates_.resize(nDim_*nodesPerElement);
   ws_scv_volume_.resize(numScvIp);
   ws_nodalSrc_.resize(nodesPerElement);
+  ws_source_integrand_.resize(numScvIp);
+  ws_source_integrated_.resize(numScvIp);
+
 
   // compute shape function
   if ( useShifted_ )
@@ -119,7 +129,7 @@ SteadyThermalContactSrcElemSuppAlg::elem_execute(
   meSCV->determinant(1, &ws_coordinates_[0], &ws_scv_volume_[0], &scv_error);
 
   // choose a form...
-  if ( evalAtIps_ ) {
+  if ( !useSGL_ ) {
     // interpolate to ips and evaluate source
     for ( int ip = 0; ip < numScvIp; ++ip ) {
       
@@ -142,28 +152,26 @@ SteadyThermalContactSrcElemSuppAlg::elem_execute(
     }
   }
   else {
-    // evaluate source at nodal location
-    for ( int ni = 0; ni < nodesPerElement; ++ni ) {
-      const double x = ws_coordinates_[ni*nDim_+0];
-      const double y = ws_coordinates_[ni*nDim_+1];
-      ws_nodalSrc_[ni] = k_/4.0*(2.0*a_*pi_)*(2.0*a_*pi_)*(cos(2.0*a_*pi_*x) + cos(2.0*a_*pi_*y));
-    }
-
-    // interpolate nodal source term to ips and assemble to nodes
     for ( int ip = 0; ip < numScvIp; ++ip ) {
-      
-      // nearest node to ip
-      const int nearestNode = ipNodeMap[ip];
-      
-      double ipSource = 0.0;
+      for ( int j =0; j < nDim_; ++j )
+        scvCoords_[j] = 0.0;
 
       const int offSet = ip*nodesPerElement;
       for ( int ic = 0; ic < nodesPerElement; ++ic ) {
         const double r = ws_shape_function_[offSet+ic];
-        ipSource += r*ws_nodalSrc_[ic];
+        for ( int j = 0; j < nDim_; ++j )
+          scvCoords_[j] += r*ws_coordinates_[ic*nDim_+j];
       }
-      rhs[nearestNode] += ipSource*ws_scv_volume_[ip];
-    } 
+      const double x = scvCoords_[0];
+      const double y = scvCoords_[1];
+      ws_source_integrand_[ip] = k_/4.0*(2.0*a_*pi_)*(2.0*a_*pi_)*(cos(2.0*a_*pi_*x) + cos(2.0*a_*pi_*y))*ws_scv_volume_[ip];
+    }
+
+    quadOp_->volume_2D(ws_source_integrand_.data(), ws_source_integrated_.data());
+
+    for (int ni = 0; ni < nodesPerElement; ++ni) {
+      rhs[ipNodeMap[ni]] += ws_source_integrated_[ni];
+    }
   }
 }
 

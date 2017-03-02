@@ -139,7 +139,7 @@ AssembleContinuityEdgeOpenSolverAlgorithm::execute()
 
     // size some things that are useful
     const int num_face_nodes = b.topology().num_nodes();
-    std::vector<int> face_node_ordinals(num_face_nodes);
+    
 
     const stk::mesh::Bucket::size_type length   = b.size();
 
@@ -161,7 +161,7 @@ AssembleContinuityEdgeOpenSolverAlgorithm::execute()
       // get element; its face ordinal number and populate face_node_ordinals
       stk::mesh::Entity element = face_elem_rels[0];
       const int face_ordinal = b.begin_element_ordinals(k)[0];
-      theElemTopo.side_node_ordinals(face_ordinal, face_node_ordinals.begin());
+      const int *face_node_ordinals = meSCS->side_node_ordinals(face_ordinal);
 
       // get the relations from element
       stk::mesh::Entity const * elem_node_rels = bulk_data.begin_nodes(element);

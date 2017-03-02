@@ -43,5 +43,5 @@ OversetInfo::~OversetInfo()
   // nothing to delete
 }
 
-} // namespace NaluUnit
+} // namespace nalu
 } // namespace sierra
