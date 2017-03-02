@@ -192,7 +192,7 @@ MomentumNSOElemSuppAlg<AlgTraits>::element_execute(
     for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
 
       // save off shape function
-      const double r = v_shape_function_(ip,ic);  
+      const double r = v_shape_function_(ip,ic);
   
       // time term, density
       rhoNm1Scs += r*v_rhoNm1(ic);
@@ -274,7 +274,7 @@ MomentumNSOElemSuppAlg<AlgTraits>::element_execute(
       
       // compute residual for NSO; pde-based second
       const double time = (gamma1_*rhoNp1Scs*ukNp1Scs + gamma2_*rhoNScs*ukNScs + gamma3_*rhoNm1Scs*ukNm1Scs)/dt_;
-      const double residualPde = time + dFdxkAdv - dFdxkDiff + v_dpdxScs_[k] - contRes*ukNp1Scs*nonConservedForm_; 
+      const double residualPde = time + dFdxkAdv - dFdxkDiff + v_dpdxScs_[k] - contRes*ukNp1Scs*nonConservedForm_;
 
       // final form
       const double residual = residualAlt*altResFac_ + residualPde*om_altResFac_;
@@ -289,7 +289,7 @@ MomentumNSOElemSuppAlg<AlgTraits>::element_execute(
           gUpperMagGradQ += duidxScs*v_gijUpper(ip,i,j)*v_dukdxScs_(j);
           rhoVrtmiGLowerRhoVrtmj += rhoVrtmi*v_gijLower(ip,i,j)*v_rhoVrtmScs_(j);
         }
-      }      
+      }
       
       // construct nu from residual
       const double nuResidual = std::sqrt((residual*residual)/(gUpperMagGradQ+small_));
@@ -338,7 +338,7 @@ MomentumNSOElemSuppAlg<AlgTraits>::element_execute(
       const double residualNSO = -nu*gijFac;
       rhs[indexL] -= residualNSO;
       rhs[indexR] += residualNSO;
-    }      
+    }
   }
 }
 

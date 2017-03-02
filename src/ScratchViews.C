@@ -185,8 +185,8 @@ void ScratchViews::create_needed_master_element_views(const TeamHandleType& team
       case SCS_GIJ:
          ThrowRequireMsg(numScsIp > 0, "ERROR, meSCS must be non-null if SCS_GIJ is requested.");
          // deriv = get_shmem_view_1D(team, numScsIp*nodesPerElem*nDim);
-         gijUpper = get_shmem_view_3D(team, nDim, nDim, numScsIp);
-         gijLower = get_shmem_view_3D(team, nDim, nDim, numScsIp);
+         gijUpper = get_shmem_view_3D(team, numScsIp, nDim, nDim);
+         gijLower = get_shmem_view_3D(team, numScsIp, nDim, nDim);
          needDeriv = true;
          break;
 

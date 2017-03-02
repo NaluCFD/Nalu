@@ -77,6 +77,11 @@
 #include <MomentumMassBDF2NodeSuppAlg.h>
 #include <MomentumMassElemSuppAlg.h>
 #include <MomentumAdvDiffElemSuppAlgDep.h>
+#include <MomentumMassElemSuppAlgDep.h>
+#include <MomentumBuoyancySrcElemSuppAlgDep.h>
+#include <MomentumAdvDiffElemSuppAlg.h>
+#include <MomentumMassElemSuppAlg.h>
+#include <MomentumBuoyancySrcElemSuppAlg.h>
 #include <NaluEnv.h>
 #include <NaluParsing.h>
 #include <ProjectedNodalGradientEquationSystem.h>
@@ -1029,76 +1034,139 @@ MomentumEquationSystem::register_interior_algorithm(
     SolverAlgorithm *theSolverAlg = NULL;
     if ( realm_.realmUsesEdges_ ) {
       theSolverAlg = new AssembleMomentumEdgeSolverAlgorithm(realm_, part, this);
+      solverAlgDriver_->solverAlgMap_[algType] = theSolverAlg;
     }
     else {
-      if ( realm_.solutionOptions_->useConsolidatedSolverAlg_ )
-        theSolverAlg = new AssembleElemSolverAlgorithmDep(realm_, part, this); // WIP
-      else
+      if ( !realm_.solutionOptions_->useConsolidatedSolverAlg_ ) {
         theSolverAlg = new AssembleMomentumElemSolverAlgorithm(realm_, part, this);
-    }
-    solverAlgDriver_->solverAlgMap_[algType] = theSolverAlg;
-    
-    // look for fully integrated source terms
-    std::map<std::string, std::vector<std::string> >::iterator isrc 
-      = realm_.solutionOptions_->elemSrcTermsMap_.find("momentum");
-    if ( isrc != realm_.solutionOptions_->elemSrcTermsMap_.end() ) {
+        solverAlgDriver_->solverAlgMap_[algType] = theSolverAlg;
 
-      if ( realm_.realmUsesEdges_ )
-        throw std::runtime_error("MomentumElemSrcTerms::Error can not use element source terms for an edge-based scheme");
+        // look for fully integrated source terms
+        std::map<std::string, std::vector<std::string> >::iterator isrc
+          = realm_.solutionOptions_->elemSrcTermsMap_.find("momentum");
+        if ( isrc != realm_.solutionOptions_->elemSrcTermsMap_.end() ) {
 
-      std::vector<std::string> mapNameVec = isrc->second;
-      for (size_t k = 0; k < mapNameVec.size(); ++k ) {
-        std::string sourceName = mapNameVec[k];
-        SupplementalAlgorithm *suppAlg = NULL;
-        if (sourceName == "momentum_time_derivative" ) {
-          useCMM = true;
-          suppAlg = new MomentumMassElemSuppAlg(realm_, false);
+          if ( realm_.realmUsesEdges_ )
+            throw std::runtime_error("MomentumElemSrcTerms::Error can not use element source terms for an edge-based scheme");
+
+          std::vector<std::string> mapNameVec = isrc->second;
+          for (size_t k = 0; k < mapNameVec.size(); ++k ) {
+            std::string sourceName = mapNameVec[k];
+            SupplementalAlgorithm *suppAlg = NULL;
+            if (sourceName == "momentum_time_derivative" ) {
+              useCMM = true;
+              suppAlg = new MomentumMassElemSuppAlgDep(realm_, false);
+            }
+            else if (sourceName == "lumped_momentum_time_derivative" ) {
+              useCMM = true;
+              suppAlg = new MomentumMassElemSuppAlgDep(realm_, true);
+            }
+            else if (sourceName == "SteadyTaylorVortex" ) {
+              suppAlg = new SteadyTaylorVortexMomentumSrcElemSuppAlg(realm_);
+            }
+            else if (sourceName == "VariableDensity" ) {
+              suppAlg = new VariableDensityMomentumSrcElemSuppAlg(realm_);
+            }
+            else if (sourceName == "NSO_2ND" ) {
+              suppAlg = new MomentumNSOElemSuppAlgDep(realm_, velocity_, dudx_, realm_.is_turbulent() ? evisc_ : visc_, 0.0, 0.0);
+            }
+            else if (sourceName == "NSO_2ND_ALT" ) {
+              suppAlg = new MomentumNSOElemSuppAlgDep(realm_, velocity_, dudx_, realm_.is_turbulent() ? evisc_ : visc_, 0.0, 1.0);
+            }
+            else if (sourceName == "NSO_4TH" ) {
+              suppAlg = new MomentumNSOElemSuppAlgDep(realm_, velocity_, dudx_, realm_.is_turbulent() ? evisc_ : visc_, 1.0, 0.0);
+            }
+            else if (sourceName == "NSO_4TH_ALT" ) {
+              suppAlg = new MomentumNSOElemSuppAlgDep(realm_, velocity_, dudx_, realm_.is_turbulent() ? evisc_ : visc_, 1.0, 1.0);
+            }
+            else if (sourceName == "NSO_2ND_KE" ) {
+              suppAlg = new MomentumNSOKeElemSuppAlg(realm_, velocity_, dudx_, 0.0);
+            }
+            else if (sourceName == "NSO_4TH_KE" ) {
+              suppAlg = new MomentumNSOKeElemSuppAlg(realm_, velocity_, dudx_, 1.0);
+            }
+            else if (sourceName == "NSO_2ND_GRAD" ) {
+              suppAlg = new MomentumNSOGradElemSuppAlg(realm_, velocity_, dudx_, 0.0);
+            }
+            else if (sourceName == "NSO_4TH_GRAD" ) {
+              suppAlg = new MomentumNSOGradElemSuppAlg(realm_, velocity_, dudx_, 1.0);
+            }
+            else if (sourceName == "buoyancy" ) {
+              suppAlg = new MomentumBuoyancySrcElemSuppAlgDep(realm_);
+            }
+            else if (sourceName == "advection_diffusion" ) {
+              suppAlg = new MomentumAdvDiffElemSuppAlgDep(realm_, velocity_, realm_.is_turbulent() ? evisc_ : visc_);
+            }
+            else {
+              throw std::runtime_error("MomentumElemSrcTerms::Error Source term is not supported: " + sourceName);
+            }
+            NaluEnv::self().naluOutputP0() << "MomentumElemSrcTerms::added() " << sourceName << std::endl;
+            theSolverAlg->supplementalAlg_.push_back(suppAlg);
+          }
         }
-        else if (sourceName == "lumped_momentum_time_derivative" ) {
-          useCMM = true;
-          suppAlg = new MomentumMassElemSuppAlg(realm_, true);
+      } else {
+        // Homogeneous implementation
+        if ( realm_.realmUsesEdges_ )
+          throw std::runtime_error("MomentumElemSrcTerms::Error can not use element source terms for an edge-based scheme");
+
+        stk::topology partTopo = part->topology();
+        auto& solverAlgMap = solverAlgDriver_->solverAlgorithmMap_;
+
+        AssembleElemSolverAlgorithm* solverAlg = nullptr;
+        bool solverAlgWasBuilt = false;
+
+        std::tie(solverAlg, solverAlgWasBuilt) = build_or_add_part_to_solver_alg
+          (*this, *part, solverAlgMap);
+
+        ElemDataRequests& dataPreReqs = solverAlg->dataNeededBySuppAlgs_;
+        auto& suppAlgVec = solverAlg->supplementalAlg_;
+
+        if (solverAlgWasBuilt) {
+          build_topo_supp_alg_if_requested<MomentumMassElemSuppAlg>
+            (partTopo, *this, suppAlgVec, "momentum_time_derivative",
+             realm_, dataPreReqs, false);
+
+          build_topo_supp_alg_if_requested<MomentumMassElemSuppAlg>
+            (partTopo, *this, suppAlgVec, "lumped_momentum_time_derivative",
+             realm_, dataPreReqs, true);
+
+          build_topo_supp_alg_if_requested<MomentumNSOElemSuppAlg>
+            (partTopo, *this, suppAlgVec, "NSO_2ND",
+             realm_, velocity_, dudx_,
+             realm_.is_turbulent()? evisc_ : visc_,
+             0.0, 0.0, dataPreReqs);
+
+          build_topo_supp_alg_if_requested<MomentumNSOElemSuppAlg>
+            (partTopo, *this, suppAlgVec, "NSO_2ND_ALT",
+             realm_, velocity_, dudx_,
+             realm_.is_turbulent()? evisc_ : visc_,
+             0.0, 1.0, dataPreReqs);
+
+          build_topo_supp_alg_if_requested<MomentumNSOElemSuppAlg>
+            (partTopo, *this, suppAlgVec, "NSO_4TH",
+             realm_, velocity_, dudx_,
+             realm_.is_turbulent()? evisc_ : visc_,
+             1.0, 0.0, dataPreReqs);
+
+          build_topo_supp_alg_if_requested<MomentumNSOElemSuppAlg>
+            (partTopo, *this, suppAlgVec, "NSO_4TH_ALT",
+             realm_, velocity_, dudx_,
+             realm_.is_turbulent()? evisc_ : visc_,
+             1.0, 1.0, dataPreReqs);
+
+          build_topo_supp_alg_if_requested<MomentumBuoyancySrcElemSuppAlg>
+            (partTopo, *this, suppAlgVec, "buoyancy",
+             realm_, dataPreReqs);
+
+          build_topo_supp_alg_if_requested<MomentumAdvDiffElemSuppAlg>
+            (partTopo, *this, suppAlgVec, "advection_diffusion",
+             realm_, velocity_,
+             realm_.is_turbulent()? evisc_ : visc_,
+             dataPreReqs);
+
+          report_invalid_supp_alg_names();
+          report_built_supp_alg_names();
         }
-        else if (sourceName == "SteadyTaylorVortex" ) {
-          suppAlg = new SteadyTaylorVortexMomentumSrcElemSuppAlg(realm_);
-        }
-        else if (sourceName == "VariableDensity" ) {
-          suppAlg = new VariableDensityMomentumSrcElemSuppAlg(realm_);
-        }
-        else if (sourceName == "NSO_2ND" ) {
-          suppAlg = new MomentumNSOElemSuppAlgDep(realm_, velocity_, dudx_, realm_.is_turbulent() ? evisc_ : visc_, 0.0, 0.0);
-        }
-        else if (sourceName == "NSO_2ND_ALT" ) {
-          suppAlg = new MomentumNSOElemSuppAlgDep(realm_, velocity_, dudx_, realm_.is_turbulent() ? evisc_ : visc_, 0.0, 1.0);
-        }
-        else if (sourceName == "NSO_4TH" ) {
-          suppAlg = new MomentumNSOElemSuppAlgDep(realm_, velocity_, dudx_, realm_.is_turbulent() ? evisc_ : visc_, 1.0, 0.0);
-        }
-        else if (sourceName == "NSO_4TH_ALT" ) {
-          suppAlg = new MomentumNSOElemSuppAlgDep(realm_, velocity_, dudx_, realm_.is_turbulent() ? evisc_ : visc_, 1.0, 1.0);
-        }
-        else if (sourceName == "NSO_2ND_KE" ) {
-          suppAlg = new MomentumNSOKeElemSuppAlg(realm_, velocity_, dudx_, 0.0);
-        }
-        else if (sourceName == "NSO_4TH_KE" ) {
-          suppAlg = new MomentumNSOKeElemSuppAlg(realm_, velocity_, dudx_, 1.0);
-        }
-        else if (sourceName == "NSO_2ND_GRAD" ) {
-          suppAlg = new MomentumNSOGradElemSuppAlg(realm_, velocity_, dudx_, 0.0);
-        }
-        else if (sourceName == "NSO_4TH_GRAD" ) {
-          suppAlg = new MomentumNSOGradElemSuppAlg(realm_, velocity_, dudx_, 1.0);
-        }
-        else if (sourceName == "buoyancy" ) {
-          suppAlg = new MomentumBuoyancySrcElemSuppAlg(realm_);
-        }
-        else if (sourceName == "advection_diffusion" ) {
-          suppAlg = new MomentumAdvDiffElemSuppAlgDep(realm_, velocity_, realm_.is_turbulent() ? evisc_ : visc_);
-        }
-        else {
-          throw std::runtime_error("MomentumElemSrcTerms::Error Source term is not supported: " + sourceName);
-        }
-        NaluEnv::self().naluOutputP0() << "MomentumElemSrcTerms::added() " << sourceName << std::endl;
-        theSolverAlg->supplementalAlg_.push_back(suppAlg);
       }
     }
   }
