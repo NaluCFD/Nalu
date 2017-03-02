@@ -32,7 +32,6 @@ class ProjectedNodalGradientEquationSystem;
 class HeatCondEquationSystem : public EquationSystem {
 
 public:
-
   HeatCondEquationSystem(
     EquationSystems& equationSystems);
   virtual ~HeatCondEquationSystem();

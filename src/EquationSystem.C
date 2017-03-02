@@ -455,5 +455,22 @@ EquationSystem::report_built_supp_alg_names()
 {
   SuppAlgBuilderLog::self().print_built_supp_alg_names(eqnTypeName_);
 }
+//--------------------------------------------------------------------------
+bool
+EquationSystem::supp_alg_is_requested(std::string suppAlgName)
+{
+  const auto& nameMap = realm_.solutionOptions_->elemSrcTermsMap_;
+  auto it = nameMap.find(eqnTypeName_);
+  if (it == nameMap.end()) {
+    return false;
+  }
+  const std::vector<std::string>& nameVec = it->second;
+
+  if (std::find(nameVec.begin(), nameVec.end(), suppAlgName) == nameVec.end()) {
+    return false;
+  }
+  return true;
+}
+
 } // namespace nalu
 } // namespace Sierra
