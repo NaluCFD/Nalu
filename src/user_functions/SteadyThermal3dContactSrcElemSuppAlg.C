@@ -19,7 +19,6 @@
 // stk_mesh/base/fem
 #include <stk_mesh/base/Entity.hpp>
 #include <stk_mesh/base/MetaData.hpp>
-#include <stk_mesh/base/BulkData.hpp>
 #include <stk_mesh/base/Field.hpp>
 
 // topology
@@ -44,7 +43,6 @@ SteadyThermal3dContactSrcElemSuppAlg<AlgTraits>::SteadyThermal3dContactSrcElemSu
   Realm &realm,
   ElemDataRequests& dataPreReqs)
   : SupplementalAlgorithm(realm),
-    bulkData_(&realm.bulk_data()),
     coordinates_(NULL),
     ipNodeMap_(realm.get_volume_master_element(AlgTraits::topo_)->ipNodeMap()),
     a_(1.0),

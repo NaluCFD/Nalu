@@ -13,7 +13,6 @@
 #include <AlgTraits.h>
 #include <FieldTypeDef.h>
 
-#include <stk_mesh/base/BulkData.hpp>
 #include <stk_mesh/base/Entity.hpp>
 
 // Kokkos

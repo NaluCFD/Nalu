@@ -10,55 +10,65 @@
 #define MomentumAdvDiffElemSuppAlg_h
 
 #include <SupplementalAlgorithm.h>
-#include <AlgTraits.h>
 #include <FieldTypeDef.h>
 
+#include <stk_mesh/base/BulkData.hpp>
 #include <stk_mesh/base/Entity.hpp>
-
-// Kokkos
-#include <Kokkos_Core.hpp>
 
 namespace sierra{
 namespace nalu{
 
-class ElemDataRequests;
 class Realm;
-class ScratchViews;
 class MasterElement;
 
-template<class AlgTraits>
-class MomentumAdvDiffElemSuppAlg : public SupplementalAlgorithm
+class MomentumAdvDiffElemSuppAlgDep : public SupplementalAlgorithm
 {
 public:
-  static constexpr auto name = "advection_diffusion";
 
-  MomentumAdvDiffElemSuppAlg(
+  MomentumAdvDiffElemSuppAlgDep(
     Realm &realm,
     VectorFieldType *velocity,
-    ScalarFieldType *viscosity,
-    ElemDataRequests& dataPreReqs);
+    ScalarFieldType *viscosity);
 
-  virtual ~MomentumAdvDiffElemSuppAlg() {}
+  virtual ~MomentumAdvDiffElemSuppAlgDep() {}
 
-  void element_execute(
+  virtual void setup();
+
+  virtual void elem_resize(
+    MasterElement *meSCS,
+    MasterElement *meSCV);
+
+  virtual void elem_execute(
     double *lhs,
     double *rhs,
     stk::mesh::Entity element,
-    ScratchViews& scratchViews);
+    MasterElement *meSCS,
+    MasterElement *meSCV);
+  
+  const stk::mesh::BulkData *bulkData_;
 
   VectorFieldType *velocityNp1_;
   VectorFieldType *coordinates_;
   ScalarFieldType *viscosity_;
   GenericFieldType *massFlowRate_;
 
-  // master element
-  const int *lrscv_;
-
+  const int nDim_;
   const double includeDivU_;
 
-  // fixed scratch space
-  Kokkos::View<double[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_{"v_shape_function"};
-  Kokkos::View<double[AlgTraits::nDim_]> v_uIp_{"v_uIp"};
+  // fixed space
+  std::vector<double> ws_uIp_;
+
+  // scratch space; geometry
+  std::vector<double> ws_scs_areav_;
+  std::vector<double> ws_dndx_;
+  std::vector<double> ws_deriv_;
+  std::vector<double> ws_det_j_;
+  std::vector<double> ws_shape_function_;
+
+  // scratch space; fields
+  std::vector<double> ws_uNp1_;
+  std::vector<double> ws_coordinates_;
+  std::vector<double> ws_viscosity_;
 };
 
 } // namespace nalu

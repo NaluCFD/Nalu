@@ -12,11 +12,20 @@
 #include <Realm.h>
 #include <master_element/MasterElement.h>
 
+// template and scratch space
+#include <BuildTemplates.h>
+#include <ScratchViews.h>
+
 // stk_mesh/base/fem
 #include <stk_mesh/base/Entity.hpp>
 #include <stk_mesh/base/MetaData.hpp>
-#include <stk_mesh/base/BulkData.hpp>
 #include <stk_mesh/base/Field.hpp>
+
+// topology
+#include <stk_topology/topology.hpp>
+
+// Kokkos
+#include <Kokkos_Core.hpp>
 
 namespace sierra{
 namespace nalu{
@@ -29,17 +38,18 @@ namespace nalu{
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-MomentumAdvDiffElemSuppAlg::MomentumAdvDiffElemSuppAlg(
+template<class AlgTraits>
+MomentumAdvDiffElemSuppAlg<AlgTraits>::MomentumAdvDiffElemSuppAlg(
   Realm &realm,
   VectorFieldType *velocity,
-  ScalarFieldType *viscosity)
+  ScalarFieldType *viscosity,
+  ElemDataRequests& dataPreReqs)
   : SupplementalAlgorithm(realm),
-    bulkData_(&realm.bulk_data()),
     velocityNp1_(NULL),
     coordinates_(NULL),
     viscosity_(viscosity),
     massFlowRate_(NULL),
-    nDim_(realm_.meta_data().spatial_dimension()),
+    lrscv_(realm.get_surface_master_element(AlgTraits::topo_)->adjacentNodes()),
     includeDivU_(realm_.get_divU())
 {
   // save off fields; for non-BDF2 gather in state N for Nm1 (gamma3_ will be zero)
@@ -48,140 +58,82 @@ MomentumAdvDiffElemSuppAlg::MomentumAdvDiffElemSuppAlg(
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   massFlowRate_ = meta_data.get_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "mass_flow_rate_scs");
 
-  // fixed size
-  ws_uIp_.resize(nDim_);
+  // compute shape function; do we want to push this to dataPreReqs?
+  MasterElement *meSCS = realm.get_surface_master_element(AlgTraits::topo_);
+  meSCS->shape_fcn(&v_shape_function_(0,0));
+
+  // add master elements
+  dataPreReqs.add_cvfem_surface_me(meSCS);
+
+  // fields and data; mdot not gathered as element data
+  dataPreReqs.add_gathered_nodal_field(*coordinates_, AlgTraits::nDim_);
+  dataPreReqs.add_gathered_nodal_field(*velocity, AlgTraits::nDim_);
+  dataPreReqs.add_gathered_nodal_field(*viscosity_, 1);
+  dataPreReqs.add_master_element_call(SCS_AREAV);
+  dataPreReqs.add_master_element_call(SCS_GRAD_OP);
 }
 
 //--------------------------------------------------------------------------
-//-------- elem_resize -----------------------------------------------------
+//-------- element_execute -------------------------------------------------
 //--------------------------------------------------------------------------
+template<class AlgTraits>
 void
-MomentumAdvDiffElemSuppAlg::elem_resize(
-  MasterElement *meSCS,
-  MasterElement */*meSCV*/)
-{
-  const int nodesPerElement = meSCS->nodesPerElement_;
-  const int numScsIp = meSCS->numIntPoints_;
-
-  // resize; geometry
-  ws_scs_areav_.resize(numScsIp*nDim_);
-  ws_dndx_.resize(nDim_*numScsIp*nodesPerElement);
-  ws_deriv_.resize(nDim_*numScsIp*nodesPerElement);
-  ws_det_j_.resize(numScsIp);
-  ws_shape_function_.resize(numScsIp*nodesPerElement);
-
-  // resize; fields
-  ws_uNp1_.resize(nDim_*nodesPerElement);
-  ws_coordinates_.resize(nDim_*nodesPerElement);
-  ws_viscosity_.resize(nodesPerElement);
-  
-  // compute shape function
-  meSCS->shape_fcn(&ws_shape_function_[0]);
-}
-
-//--------------------------------------------------------------------------
-//-------- setup -----------------------------------------------------------
-//--------------------------------------------------------------------------
-void
-MomentumAdvDiffElemSuppAlg::setup()
-{
-  // nothing to extract
-}
-
-//--------------------------------------------------------------------------
-//-------- elem_execute ----------------------------------------------------
-//--------------------------------------------------------------------------
-void
-MomentumAdvDiffElemSuppAlg::elem_execute(
+MomentumAdvDiffElemSuppAlg<AlgTraits>::element_execute(
   double *lhs,
   double *rhs,
   stk::mesh::Entity element,
-  MasterElement *meSCS,
-  MasterElement */*meSCV*/)
+  ScratchViews& scratchViews)
 {
-  // details on this element topo
-  const int nodesPerElement = meSCS->nodesPerElement_;
-  const int numScsIp = meSCS->numIntPoints_;
-  const int *lrscv = meSCS->adjacentNodes();    
-  
-  // gather
-  stk::mesh::Entity const *  node_rels = bulkData_->begin_nodes(element);
-  int num_nodes = bulkData_->num_nodes(element);
+  SharedMemView<double**>& v_uNp1 = scratchViews.get_scratch_view_2D(*velocityNp1_);
+  SharedMemView<double*>& v_viscosity = scratchViews.get_scratch_view_1D(*viscosity_);
 
-  // sanity check on num nodes
-  ThrowAssert( num_nodes == nodesPerElement );
-
-  for ( int ni = 0; ni < num_nodes; ++ni ) {
-    stk::mesh::Entity node = node_rels[ni];
-    
-    // gather scalars
-    ws_viscosity_[ni] = *stk::mesh::field_data(*viscosity_, node);
-
-    // pointers to real data
-    const double * uNp1   = stk::mesh::field_data(*velocityNp1_, node );
-    const double * coords = stk::mesh::field_data(*coordinates_, node );
-
-    // gather vectors
-    const int niNdim = ni*nDim_;
-    for ( int i=0; i < nDim_; ++i ) {
-      ws_uNp1_[niNdim+i] = uNp1[i];
-      ws_coordinates_[niNdim+i] = coords[i];
-    }
-  }
-  
-  // compute geometry (AGAIN)...
-  double scs_error = 0.0;
-  meSCS->determinant(1, &ws_coordinates_[0], &ws_scs_areav_[0], &scs_error);
-  
-  // compute dndx (AGAIN)...
-  meSCS->grad_op(1, &ws_coordinates_[0], &ws_dndx_[0], &ws_deriv_[0], &ws_det_j_[0], &scs_error);
+  SharedMemView<double**>& v_scs_areav = scratchViews.scs_areav;
+  SharedMemView<double***>& v_dndx = scratchViews.dndx;
 
   // ip data for this element
   const double *mdot = stk::mesh::field_data(*massFlowRate_, element);
 
-  for ( int ip = 0; ip < numScsIp; ++ip ) {
+  for ( int ip = 0; ip < AlgTraits::numScsIp_; ++ip ) {
 
     // left and right nodes for this ip
-    const int il = lrscv[2*ip];
-    const int ir = lrscv[2*ip+1];
+    const int il = lrscv_[2*ip];
+    const int ir = lrscv_[2*ip+1];
 
     // save off some offsets
-    const int ilNdim = il*nDim_;
-    const int irNdim = ir*nDim_;
-    const int ipNdim = ip*nDim_;
-    const int offSetSF = ip*nodesPerElement;
+    const int ilNdim = il*AlgTraits::nDim_;
+    const int irNdim = ir*AlgTraits::nDim_;
+    const int ipNdim = ip*AlgTraits::nDim_;
 
     // save off mdot
     const double tmdot = mdot[ip];
 
-    // compute scs point values; offset to Shape Function; sneak in divU
+    // compute scs point values; sneak in divU
     double muIp = 0.0;
     double divU = 0.0;
-    for ( int i = 0; i < nDim_; ++i )
-      ws_uIp_[i] = 0.0;
+    for ( int i = 0; i < AlgTraits::nDim_; ++i )
+      v_uIp_(i) = 0.0;
 
-    for ( int ic = 0; ic < nodesPerElement; ++ic ) {
-      const double r = ws_shape_function_[offSetSF+ic];
-      muIp += r*ws_viscosity_[ic];
-      const int offSetDnDx = nDim_*nodesPerElement*ip + ic*nDim_;
-      for ( int j = 0; j < nDim_; ++j ) {
-        const double uj = ws_uNp1_[ic*nDim_+j];
-        ws_uIp_[j] += r*uj;
-        divU += uj*ws_dndx_[offSetDnDx+j];
+    for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
+      const double r = v_shape_function_(ip,ic);
+      muIp += r*v_viscosity(ic);
+      for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
+        const double uj = v_uNp1(ic,j);
+        v_uIp_[j] += r*uj;
+        divU += uj*v_dndx(ip,ic,j);
       }
     }
 
     // assemble advection; rhs only; add in divU stress (explicit)
-    for ( int i = 0; i < nDim_; ++i ) {
+    for ( int i = 0; i < AlgTraits::nDim_; ++i ) {
 
       // 2nd order central
-      const double uiIp = ws_uIp_[i];
+      const double uiIp = v_uIp_(i);
 
-      // total advection; pressure contribution in time term
+      // total advection; (pressure contribution in time term)
       const double aflux = tmdot*uiIp;
 
       // divU stress term
-      const double divUstress = 2.0/3.0*muIp*divU*ws_scs_areav_[ipNdim+i]*includeDivU_;
+      const double divUstress = 2.0/3.0*muIp*divU*v_scs_areav(ip,i)*includeDivU_;
 
       const int indexL = ilNdim + i;
       const int indexR = irNdim + i;
@@ -191,23 +143,23 @@ MomentumAdvDiffElemSuppAlg::elem_execute(
       rhs[indexR] += aflux + divUstress;
     }
 
-    for ( int ic = 0; ic < nodesPerElement; ++ic ) {
+    for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
 
-      const int icNdim = ic*nDim_;
+      const int icNdim = ic*AlgTraits::nDim_;
 
       // shape function
-      const double r = ws_shape_function_[offSetSF+ic];
+      const double r = v_shape_function_(ip,ic);
 
       // advection and diffusion
       const double lhsfacAdv = r*tmdot;
       
-      for ( int i = 0; i < nDim_; ++i ) {
+      for ( int i = 0; i < AlgTraits::nDim_; ++i ) {
 
         const int indexL = ilNdim + i;
         const int indexR = irNdim + i;
 
-        const int rowL = indexL*nodesPerElement*nDim_;
-        const int rowR = indexR*nodesPerElement*nDim_;
+        const int rowL = indexL*AlgTraits::nodesPerElement_*AlgTraits::nDim_;
+        const int rowR = indexR*AlgTraits::nodesPerElement_*AlgTraits::nDim_;
 
         const int rLiC_i = rowL+icNdim+i;
         const int rRiC_i = rowR+icNdim+i;
@@ -218,20 +170,19 @@ MomentumAdvDiffElemSuppAlg::elem_execute(
         lhs[rRiC_i] -= lhsfacAdv;
 
         // viscous stress
-        const int offSetDnDx = nDim_*nodesPerElement*ip + icNdim;
         double lhs_riC_i = 0.0;
-        for ( int j = 0; j < nDim_; ++j ) {
+        for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
 
-          const double axj = ws_scs_areav_[ipNdim+j];
-          const double uj = ws_uNp1_[icNdim+j];
+          const double axj = v_scs_areav(ip,j);
+          const double uj = v_uNp1(ic,j);
 
           // -mu*dui/dxj*A_j; fixed i over j loop; see below..
-          const double lhsfacDiff_i = -muIp*ws_dndx_[offSetDnDx+j]*axj;
+          const double lhsfacDiff_i = -muIp*v_dndx(ip,ic,j)*axj;
           // lhs; il then ir
           lhs_riC_i += lhsfacDiff_i;
 
           // -mu*duj/dxi*A_j
-          const double lhsfacDiff_j = -muIp*ws_dndx_[offSetDnDx+i]*axj;
+          const double lhsfacDiff_j = -muIp*v_dndx(ip,ic,i)*axj;
           // lhs; il then ir
           lhs[rowL+icNdim+j] += lhsfacDiff_j;
           lhs[rowR+icNdim+j] -= lhsfacDiff_j;
@@ -243,7 +194,7 @@ MomentumAdvDiffElemSuppAlg::elem_execute(
         // deal with accumulated lhs and flux for -mu*dui/dxj*Aj
         lhs[rLiC_i] += lhs_riC_i;
         lhs[rRiC_i] -= lhs_riC_i;
-        const double ui = ws_uNp1_[icNdim+i];
+        const double ui = v_uNp1(ic,i);
         rhs[indexL] -= lhs_riC_i*ui;
         rhs[indexR] += lhs_riC_i*ui;
       }
@@ -251,5 +202,7 @@ MomentumAdvDiffElemSuppAlg::elem_execute(
   }
 }
   
+INSTANTIATE_SUPPLEMENTAL_ALGORITHM(MomentumAdvDiffElemSuppAlg);
+
 } // namespace nalu
 } // namespace Sierra

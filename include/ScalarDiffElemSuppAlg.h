@@ -14,7 +14,6 @@
 #include <FieldTypeDef.h>
 
 #include <stk_mesh/base/Entity.hpp>
-#include <stk_topology/topology.hpp>
 
 // Kokkos
 #include <Kokkos_Core.hpp>

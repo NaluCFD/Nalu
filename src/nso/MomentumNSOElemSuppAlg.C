@@ -21,6 +21,12 @@
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/Field.hpp>
 
+// topology
+#include <stk_topology/topology.hpp>
+
+// Kokkos
+#include <Kokkos_Core.hpp>
+
 namespace sierra{
 namespace nalu{
 

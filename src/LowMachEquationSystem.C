@@ -74,7 +74,7 @@
 #include <MomentumMassBackwardEulerNodeSuppAlg.h>
 #include <MomentumMassBDF2NodeSuppAlg.h>
 #include <MomentumMassElemSuppAlg.h>
-#include <MomentumAdvDiffElemSuppAlg.h>
+#include <MomentumAdvDiffElemSuppAlgDep.h>
 #include <NaluEnv.h>
 #include <NaluParsing.h>
 #include <ProjectedNodalGradientEquationSystem.h>
@@ -1084,7 +1084,7 @@ MomentumEquationSystem::register_interior_algorithm(
           suppAlg = new MomentumBuoyancySrcElemSuppAlg(realm_);
         }
         else if (sourceName == "advection_diffusion" ) {
-          suppAlg = new MomentumAdvDiffElemSuppAlg(realm_, velocity_, realm_.is_turbulent() ? evisc_ : visc_);
+          suppAlg = new MomentumAdvDiffElemSuppAlgDep(realm_, velocity_, realm_.is_turbulent() ? evisc_ : visc_);
         }
         else {
           throw std::runtime_error("MomentumElemSrcTerms::Error Source term is not supported: " + sourceName);
