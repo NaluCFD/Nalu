@@ -81,13 +81,11 @@ ContinuityAdvElemSuppAlg<AlgTraits>::ContinuityAdvElemSuppAlg(
   dataPreReqs.add_gathered_nodal_field(*Gpdx_, AlgTraits::nDim_);
   dataPreReqs.add_master_element_call(SCS_AREAV);
 
-  // TODO: Integrate checks for shiftPoisson and reducedSensitivities
-  dataPreReqs.add_master_element_call(SCS_GRAD_OP);
-  dataPreReqs.add_master_element_call(SCS_SHIFTED_GRAD_OP);
-
-  // Implementation details: code is designed to manage the following
-  // When shiftPoisson_ is TRUE, reducedSensitivities_ is enforced to be TRUE
-  // However, shiftPoisson_ can be FALSE while reducedSensitivities_ is TRUE
+  // manage dndx
+  if ( !shiftPoisson_ || !reducedSensitivities_ )
+    dataPreReqs.add_master_element_call(SCS_GRAD_OP);
+  if ( shiftPoisson_ || reducedSensitivities_ )
+    dataPreReqs.add_master_element_call(SCS_SHIFTED_GRAD_OP);
 }
 
 
@@ -114,22 +112,20 @@ ContinuityAdvElemSuppAlg<AlgTraits>::element_execute(
   stk::mesh::Entity /*element*/,
   ScratchViews& scratchViews)
 {
-  SharedMemView<double*>& densityNp1_view = scratchViews.get_scratch_view_1D(*densityNp1_);
-  SharedMemView<double*>& pressure_view = scratchViews.get_scratch_view_1D(*pressure_);
+  SharedMemView<double*>& v_densityNp1 = scratchViews.get_scratch_view_1D(*densityNp1_);
+  SharedMemView<double*>& v_pressure = scratchViews.get_scratch_view_1D(*pressure_);
 
-  SharedMemView<double**>& velocity_view = scratchViews.get_scratch_view_2D(*velocityRTM_);
-  SharedMemView<double**>& Gpdx_view = scratchViews.get_scratch_view_2D(*Gpdx_);
+  SharedMemView<double**>& v_velocity = scratchViews.get_scratch_view_2D(*velocityRTM_);
+  SharedMemView<double**>& v_Gpdx = scratchViews.get_scratch_view_2D(*Gpdx_);
 
-  SharedMemView<double**>& scs_areav = scratchViews.scs_areav;
-  // SharedMemView<double***>& dndx = scratchViews.dndx;
-  // SharedMemView<double***>& dndx_shifted = scratchViews.dndx_shifted;
+  SharedMemView<double**>& v_scs_areav = scratchViews.scs_areav;
 
-  SharedMemView<double***>& dndx = shiftPoisson_?
+  SharedMemView<double***>& v_dndx = shiftPoisson_ ?
     scratchViews.dndx_shifted : scratchViews.dndx;
-  SharedMemView<double***>& dndx_lhs = (!shiftPoisson_ && reducedSensitivities_)?
+  SharedMemView<double***>& v_dndx_lhs = (!shiftPoisson_ && reducedSensitivities_)?
     scratchViews.dndx_shifted : scratchViews.dndx;
 
-  for (int ip=0; ip < AlgTraits::numScsIp_; ++ip) {
+  for (int ip = 0; ip < AlgTraits::numScsIp_; ++ip) {
     const int il = lrscv_[2*ip];
     const int ir = lrscv_[2*ip+1];
 
@@ -137,39 +133,38 @@ ContinuityAdvElemSuppAlg<AlgTraits>::element_execute(
     const int rowR = ir * AlgTraits::nodesPerElement_;
 
     double rhoIp = 0.0;
-    for (int j=0; j<AlgTraits::nDim_; ++j) {
+    for (int j = 0; j < AlgTraits::nDim_; ++j) {
       v_uIp_(j) = 0.0;
       v_rho_uIp_(j) = 0.0;
       v_Gpdx_Ip_(j) = 0.0;
       v_dpdxIp_(j) = 0.0;
     }
 
-    for (int ic=0; ic < AlgTraits::nodesPerElement_; ++ic) {
+    for (int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic) {
       const double r = v_shape_function_(ip, ic);
-      const double nodalPressure = pressure_view(ic);
-      const double nodalRho = densityNp1_view(ic);
+      const double nodalPressure = v_pressure(ic);
+      const double nodalRho = v_densityNp1(ic);
 
       rhoIp += r * nodalRho;
-      double lhsfac = 0.0;
 
-      for (int j=0; j<AlgTraits::nDim_; j++) {
-        v_Gpdx_Ip_(j) += r * Gpdx_view(ic, j);
-        v_uIp_(j)     += r * velocity_view(ic, j);
-        v_rho_uIp_(j) += r * nodalRho * velocity_view(ic, j);
-        v_dpdxIp_(j)  += dndx(ip, ic, j) * nodalPressure;
-        lhsfac += -dndx_lhs(ip, ic, j) * scs_areav(ip, j);
+      double lhsfac = 0.0;
+      for (int j = 0; j < AlgTraits::nDim_; ++j) {
+        v_Gpdx_Ip_(j) += r * v_Gpdx(ic, j);
+        v_uIp_(j)     += r * v_velocity(ic, j);
+        v_rho_uIp_(j) += r * nodalRho * v_velocity(ic, j);
+        v_dpdxIp_(j)  += v_dndx(ip, ic, j) * nodalPressure;
+        lhsfac += -v_dndx_lhs(ip, ic, j) * v_scs_areav(ip, j);
       }
 
-      lhs[rowL + ic] += lhsfac;
-      lhs[rowR + ic] -= lhsfac;
+      lhs[rowL+ic] += lhsfac;
+      lhs[rowR+ic] -= lhsfac;
     }
 
     // assemble mdot
     double mdot = 0.0;
-    for (int j=0; j<AlgTraits::nDim_; j++) {
-      mdot += (interpTogether_ * v_rho_uIp_(j) +
-               om_interpTogether_ * rhoIp * v_uIp_(j) -
-               projTimeScale_ * ( v_dpdxIp_(j) - v_Gpdx_Ip_(j))) * scs_areav(ip,j);
+    for (int j = 0; j < AlgTraits::nDim_; ++j) {
+      mdot += (interpTogether_ * v_rho_uIp_(j) + om_interpTogether_ * rhoIp * v_uIp_(j) -
+               projTimeScale_ * ( v_dpdxIp_(j) - v_Gpdx_Ip_(j))) * v_scs_areav(ip,j);
     }
 
     // residuals
