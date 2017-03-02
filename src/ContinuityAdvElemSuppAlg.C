@@ -121,8 +121,13 @@ ContinuityAdvElemSuppAlg<AlgTraits>::element_execute(
   SharedMemView<double**>& Gpdx_view = scratchViews.get_scratch_view_2D(*Gpdx_);
 
   SharedMemView<double**>& scs_areav = scratchViews.scs_areav;
-  SharedMemView<double***>& dndx = scratchViews.dndx;
-  SharedMemView<double***>& dndx_shifted = scratchViews.dndx_shifted;
+  // SharedMemView<double***>& dndx = scratchViews.dndx;
+  // SharedMemView<double***>& dndx_shifted = scratchViews.dndx_shifted;
+
+  SharedMemView<double***>& dndx = shiftPoisson_?
+    scratchViews.dndx_shifted : scratchViews.dndx;
+  SharedMemView<double***>& dndx_lhs = (!shiftPoisson_ && reducedSensitivities_)?
+    scratchViews.dndx_shifted : scratchViews.dndx;
 
   for (int ip=0; ip < AlgTraits::numScsIp_; ++ip) {
     const int il = lrscv_[2*ip];
@@ -151,17 +156,8 @@ ContinuityAdvElemSuppAlg<AlgTraits>::element_execute(
         v_Gpdx_Ip_(j) += r * Gpdx_view(ic, j);
         v_uIp_(j)     += r * velocity_view(ic, j);
         v_rho_uIp_(j) += r * nodalRho * velocity_view(ic, j);
-
-        // FIX THIS!!!
-        if (shiftPoisson_)
-          v_dpdxIp_(j)  += dndx_shifted(ip, ic, j) * nodalPressure;
-        else
-          v_dpdxIp_(j)  += dndx(ip, ic, j) * nodalPressure;
-
-        if (!shiftPoisson_ && reducedSensitivities_)
-          lhsfac += -dndx_shifted(ip, ic, j) * scs_areav(ip, j);
-        else
-          lhsfac += -dndx(ip, ic, j) * scs_areav(ip, j);
+        v_dpdxIp_(j)  += dndx(ip, ic, j) * nodalPressure;
+        lhsfac += -dndx_lhs(ip, ic, j) * scs_areav(ip, j);
       }
 
       lhs[rowL + ic] += lhsfac;
