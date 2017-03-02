@@ -54,6 +54,7 @@
 #include <TimeIntegrator.h>
 #include <SolverAlgorithmDriver.h>
 #include <SolutionOptions.h>
+#include <ABLForcingAlgorithm.h>
 
 // nso
 #include <nso/ScalarNSOKeElemSuppAlg.h>
