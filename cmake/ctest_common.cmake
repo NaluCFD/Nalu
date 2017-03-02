@@ -96,20 +96,20 @@ set(CTEST_BUILD_COMMAND "${MAKE} ${OPTION_BUILD}")
 # -----------------------------------------------------------
 
 ## -- Set TOLERANCE for test
-set(TOLERANCE 0.000000001) # Default
-if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-  if(${COMPILER_NAME} MATCHES "gcc")
-    set(TOLERANCE 0.000000001)
-  elseif(${COMPILER_NAME} MATCHES "clang")
-    set(TOLERANCE 0.000000001)
-  endif()
-elseif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-  if(${COMPILER_NAME} MATCHES "gcc")
-    set(TOLERANCE 0.000000001)
-  elseif(${COMPILER_NAME} MATCHES "intel")
-    set(TOLERANCE 0.000000001)
-  endif()
-endif()
+set(TOLERANCE 0.0000001) # Default
+#if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+#  if(${COMPILER_NAME} MATCHES "gcc")
+#    set(TOLERANCE 0.000000001)
+#  elseif(${COMPILER_NAME} MATCHES "clang")
+#    set(TOLERANCE 0.000000001)
+#  endif()
+#elseif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+#  if(${COMPILER_NAME} MATCHES "gcc")
+#    set(TOLERANCE 0.000000001)
+#  elseif(${COMPILER_NAME} MATCHES "intel")
+#    set(TOLERANCE 0.000000001)
+#  endif()
+#endif()
 message(" -- Using tolerance of ${TOLERANCE} --")
 
 ## -- CTest Test List and Customizations

@@ -30,8 +30,6 @@ template<class AlgTraits>
 class SteadyThermal3dContactSrcElemSuppAlg : public SupplementalAlgorithm
 {
 public:
-  static constexpr auto name = "steady_3d_thermal";
-
   SteadyThermal3dContactSrcElemSuppAlg(
     Realm &realm,
     ElemDataRequests& dataPreReqs);

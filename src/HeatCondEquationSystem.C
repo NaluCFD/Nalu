@@ -373,17 +373,17 @@ HeatCondEquationSystem::register_interior_algorithm(
 
     if (solverAlgWasBuilt) {
       build_topo_supp_alg_if_requested<SteadyThermal3dContactSrcElemSuppAlg>(
-        partTopo, reqSuppAlgNameMap, suppAlgVec, eqnTypeName_,
+        partTopo, *this, suppAlgVec, "steady_3d_thermal",
         realm_, dataPreReqs
       );
 
       build_topo_supp_alg_if_requested<ScalarDiffElemSuppAlg>(
-        partTopo, reqSuppAlgNameMap, suppAlgVec, eqnTypeName_,
+        partTopo, *this, suppAlgVec, "CVFEM_DIFF",
         realm_, temperature_, thermalCond_, dataPreReqs
       );
 
       build_topo_supp_alg_if_requested<ScalarDiffFemSuppAlg>(
-        partTopo, reqSuppAlgNameMap, suppAlgVec, eqnTypeName_,
+        partTopo, *this, suppAlgVec, "FEM_DIFF",
         realm_, temperature_, thermalCond_
       );
 
