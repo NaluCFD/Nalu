@@ -362,7 +362,6 @@ HeatCondEquationSystem::register_interior_algorithm(
     NaluEnv::self().naluOutputP0() << "The name of this part is " << partTopo.name() << std::endl;
 
     auto& solverAlgMap = solverAlgDriver_->solverAlgorithmMap_;
-    auto& reqSuppAlgNameMap = realm_.solutionOptions_->elemSrcTermsMap_;
 
     AssembleElemSolverAlgorithm* solverAlg =  nullptr;
     bool solverAlgWasBuilt =  false;
