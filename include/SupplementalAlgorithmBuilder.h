@@ -51,16 +51,16 @@ namespace nalu{
     std::string name,
     Args&&... args)
   {
-    bool wasCreated = false;
+    bool isCreated = false;
     SuppAlgBuilderLog::self().add_valid_name(eqSys.eqnTypeName_,  name);
     if (eqSys.supp_alg_is_requested(name)) {
       SupplementalAlgorithm* suppAlg = build_topo_supp_alg<T>(topo, std::forward<Args>(args)...);
       ThrowRequire(suppAlg != nullptr);
       SuppAlgBuilderLog::self().add_built_name(eqSys.eqnTypeName_,  name);
       algVec.push_back(suppAlg);
-      wasCreated = true;
+      isCreated = true;
     }
-    return wasCreated;
+    return isCreated;
   }
 
   inline std::pair<AssembleElemSolverAlgorithm*, bool>

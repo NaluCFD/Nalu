@@ -6,19 +6,16 @@
 /*------------------------------------------------------------------------*/
 
 
-#include <ScalarMassElemSuppAlg.h>
+#include <ScalarMassElemSuppAlgDep.h>
 #include <SupplementalAlgorithm.h>
 #include <FieldTypeDef.h>
 #include <Realm.h>
 #include <master_element/MasterElement.h>
 
-// template and scratch space
-#include <BuildTemplates.h>
-#include <ScratchViews.h>
-
 // stk_mesh/base/fem
 #include <stk_mesh/base/Entity.hpp>
 #include <stk_mesh/base/MetaData.hpp>
+#include <stk_mesh/base/BulkData.hpp>
 #include <stk_mesh/base/Field.hpp>
 
 namespace sierra{
@@ -27,18 +24,17 @@ namespace nalu{
 //==========================================================================
 // Class Definition
 //==========================================================================
-// ScalarMassElemSuppAlg - CMM (BDF2/BE) for scalar equation
+// ScalarMassElemSuppAlgDep - CMM (BDF2/BE) for scalar equation
 //==========================================================================
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-template<typename AlgTraits>
-ScalarMassElemSuppAlg<AlgTraits>::ScalarMassElemSuppAlg(
+ScalarMassElemSuppAlgDep::ScalarMassElemSuppAlgDep(
   Realm &realm,
   ScalarFieldType *scalarQ,
-  ElemDataRequests& dataPreReqs,
   const bool lumpedMass)
   : SupplementalAlgorithm(realm),
+    bulkData_(&realm.bulk_data()),
     scalarQNm1_(NULL),
     scalarQN_(NULL),
     scalarQNp1_(NULL),
@@ -50,8 +46,8 @@ ScalarMassElemSuppAlg<AlgTraits>::ScalarMassElemSuppAlg(
     gamma1_(0.0),
     gamma2_(0.0),
     gamma3_(0.0),
-    lumpedMass_(lumpedMass),
-    ipNodeMap_(realm.get_volume_master_element(AlgTraits::topo_)->ipNodeMap())
+    nDim_(realm_.spatialDimension_),
+    lumpedMass_(false)
 {
   // save off fields; shove state N into Nm1 if this is BE
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -63,30 +59,42 @@ ScalarMassElemSuppAlg<AlgTraits>::ScalarMassElemSuppAlg(
   densityN_ = &(density->field_of_state(stk::mesh::StateN));
   densityNp1_ = &(density->field_of_state(stk::mesh::StateNP1));
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+}
 
-  MasterElement *meSCV = realm.get_volume_master_element(AlgTraits::topo_);
-  meSCV->shape_fcn(&v_shape_function_(0,0));
+//--------------------------------------------------------------------------
+//-------- elem_resize -----------------------------------------------------
+//--------------------------------------------------------------------------
+void
+ScalarMassElemSuppAlgDep::elem_resize(
+  MasterElement */*meSCS*/,
+  MasterElement *meSCV)
+{
+  const int nodesPerElement = meSCV->nodesPerElement_;
+  const int numScvIp = meSCV->numIntPoints_;
 
-  // add master elements
-  dataPreReqs.add_cvfem_volume_me(meSCV);
+  // resize
+  ws_shape_function_.resize(numScvIp*nodesPerElement);
+  ws_qNm1_.resize(nodesPerElement);
+  ws_qN_.resize(nodesPerElement);
+  ws_qNp1_.resize(nodesPerElement);
+  ws_rhoNp1_.resize(nodesPerElement);
+  ws_rhoN_.resize(nodesPerElement);
+  ws_rhoNm1_.resize(nodesPerElement);
+  ws_coordinates_.resize(nDim_*nodesPerElement);
+  ws_scv_volume_.resize(numScvIp);
 
-  // fields and data
-  dataPreReqs.add_gathered_nodal_field(*coordinates_, AlgTraits::nDim_);
-  dataPreReqs.add_gathered_nodal_field(*scalarQNm1_, 1);
-  dataPreReqs.add_gathered_nodal_field(*scalarQN_, 1);
-  dataPreReqs.add_gathered_nodal_field(*scalarQNp1_, 1);
-  dataPreReqs.add_gathered_nodal_field(*densityNm1_, 1);
-  dataPreReqs.add_gathered_nodal_field(*densityN_, 1);
-  dataPreReqs.add_gathered_nodal_field(*densityNp1_, 1);
-  dataPreReqs.add_master_element_call(SCV_VOLUME);
+  // compute shape function
+  if ( lumpedMass_ )
+    meSCV->shifted_shape_fcn(&ws_shape_function_[0]);
+  else
+    meSCV->shape_fcn(&ws_shape_function_[0]);
 }
 
 //--------------------------------------------------------------------------
 //-------- setup -----------------------------------------------------------
 //--------------------------------------------------------------------------
-template<typename AlgTraits>
 void
-ScalarMassElemSuppAlg<AlgTraits>::setup()
+ScalarMassElemSuppAlgDep::setup()
 {
   dt_ = realm_.get_time_step();
   gamma1_ = realm_.get_gamma1();
@@ -97,33 +105,56 @@ ScalarMassElemSuppAlg<AlgTraits>::setup()
 //--------------------------------------------------------------------------
 //-------- elem_execute ----------------------------------------------------
 //--------------------------------------------------------------------------
-template<typename AlgTraits>
 void
-ScalarMassElemSuppAlg<AlgTraits>::element_execute(
+ScalarMassElemSuppAlgDep::elem_execute(
   double *lhs,
   double *rhs,
-  stk::mesh::Entity /* element */,
-  ScratchViews& scratchViews)
+  stk::mesh::Entity element,
+  MasterElement */*meSCS*/,
+  MasterElement *meSCV)
 {
-  SharedMemView<double*>& v_qNm1 = scratchViews.get_scratch_view_1D(
-    *scalarQNm1_);
-  SharedMemView<double*>& v_qN = scratchViews.get_scratch_view_1D(
-    *scalarQN_);
-  SharedMemView<double*>& v_qNp1 = scratchViews.get_scratch_view_1D(
-    *scalarQNp1_);
-  SharedMemView<double*>& v_rhoNm1 = scratchViews.get_scratch_view_1D(
-    *densityNm1_);
-  SharedMemView<double*>& v_rhoN = scratchViews.get_scratch_view_1D(
-    *densityN_);
-  SharedMemView<double*>& v_rhoNp1 = scratchViews.get_scratch_view_1D(
-    *densityNp1_);
+  // pointer to ME methods
+  const int *ipNodeMap = meSCV->ipNodeMap();
+  const int nodesPerElement = meSCV->nodesPerElement_;
+  const int numScvIp = meSCV->numIntPoints_;
 
-  SharedMemView<double*>& v_scv_volume = scratchViews.scv_volume;
+  // gather
+  stk::mesh::Entity const *  node_rels = bulkData_->begin_nodes(element);
+  int num_nodes = bulkData_->num_nodes(element);
 
-  for ( int ip = 0; ip < AlgTraits::numScvIp_; ++ip ) {
+  // sanity check on num nodes
+  ThrowAssert( num_nodes == nodesPerElement );
+
+  for ( int ni = 0; ni < num_nodes; ++ni ) {
+    stk::mesh::Entity node = node_rels[ni];
+    
+    // pointers to real data
+    const double * coords =  stk::mesh::field_data(*coordinates_, node);
+  
+    // gather scalars
+    ws_qNm1_[ni] = *stk::mesh::field_data(*scalarQNm1_, node);
+    ws_qN_[ni] = *stk::mesh::field_data(*scalarQN_, node);
+    ws_qNp1_[ni] = *stk::mesh::field_data(*scalarQNp1_, node);
+
+    ws_rhoNm1_[ni] = *stk::mesh::field_data(*densityNm1_, node);
+    ws_rhoN_[ni] = *stk::mesh::field_data(*densityN_, node);
+    ws_rhoNp1_[ni] = *stk::mesh::field_data(*densityNp1_, node);
+
+    // gather vectors
+    const int niNdim = ni*nDim_;
+    for ( int i=0; i < nDim_; ++i ) {
+      ws_coordinates_[niNdim+i] = coords[i];
+    }
+  }
+
+  // compute geometry
+  double scv_error = 0.0;
+  meSCV->determinant(1, &ws_coordinates_[0], &ws_scv_volume_[0], &scv_error);
+
+  for ( int ip = 0; ip < numScvIp; ++ip ) {
       
     // nearest node to ip
-    const int nearestNode = ipNodeMap_[ip];
+    const int nearestNode = ipNodeMap[ip];
     
     // zero out; scalar
     double qNm1Scv = 0.0;
@@ -133,38 +164,37 @@ ScalarMassElemSuppAlg<AlgTraits>::element_execute(
     double rhoNScv = 0.0;
     double rhoNp1Scv = 0.0;
       
-    for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
+    const int offSet = ip*nodesPerElement;
+    for ( int ic = 0; ic < nodesPerElement; ++ic ) {
       // save off shape function
-      const double r = v_shape_function_(ip,ic);
+      const double r = ws_shape_function_[offSet+ic];
 
       // scalar q
-      qNm1Scv += r*v_qNm1(ic);
-      qNScv += r*v_qN(ic);
-      qNp1Scv += r*v_qNp1(ic);
+      qNm1Scv += r*ws_qNm1_[ic];
+      qNScv += r*ws_qN_[ic];
+      qNp1Scv += r*ws_qNp1_[ic];
 
       // density
-      rhoNm1Scv += r*v_rhoNm1(ic);
-      rhoNScv += r*v_rhoN(ic);
-      rhoNp1Scv += r*v_rhoNp1(ic);
+      rhoNm1Scv += r*ws_rhoNm1_[ic];
+      rhoNScv += r*ws_rhoN_[ic];
+      rhoNp1Scv += r*ws_rhoNp1_[ic];
     }
 
     // assemble rhs
-    const double scV = v_scv_volume(ip);
+    const double scV = ws_scv_volume_[ip];
     rhs[nearestNode] += 
       -(gamma1_*rhoNp1Scv*qNp1Scv + gamma2_*rhoNScv*qNScv + gamma3_*rhoNm1Scv*qNm1Scv)*scV/dt_;
     
     // manage LHS
-    for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
+    for ( int ic = 0; ic < nodesPerElement; ++ic ) {
       // save off shape function
-      const double r = v_shape_function_(ip,ic);
+      const double r = ws_shape_function_[offSet+ic];
       const double lhsfac = r*gamma1_*rhoNp1Scv*scV/dt_;
-      const int rNNiC = nearestNode*AlgTraits::nodesPerElement_+ic;
+      const int rNNiC = nearestNode*nodesPerElement+ic;
       lhs[rNNiC] += lhsfac;
     }   
   }
 }
   
-INSTANTIATE_SUPPLEMENTAL_ALGORITHM(ScalarMassElemSuppAlg);
-
 } // namespace nalu
 } // namespace Sierra
