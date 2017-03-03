@@ -6,8 +6,8 @@
 /*------------------------------------------------------------------------*/
 
 
-#ifndef ScalarNSOElemSuppAlg_h
-#define ScalarNSOElemSuppAlg_h
+#ifndef ScalarAdvDiffElemSuppAlg_h
+#define ScalarAdvDiffElemSuppAlg_h
 
 #include <SupplementalAlgorithm.h>
 #include <AlgTraits.h>
@@ -21,64 +21,39 @@
 namespace sierra{
 namespace nalu{
 
-class Realm;
-class MasterElement;
 class ElemDataRequests;
+class Realm;
 class ScratchViews;
+class MasterElement;
 
 template<class AlgTraits>
-class ScalarNSOElemSuppAlg : public SupplementalAlgorithm
+class ScalarAdvDiffElemSuppAlg : public SupplementalAlgorithm
 {
 public:
-
-  ScalarNSOElemSuppAlg(
+  ScalarAdvDiffElemSuppAlg(
     Realm &realm,
     ScalarFieldType *scalarQ,
-    VectorFieldType *Gjq,
     ScalarFieldType *diffFluxCoeff,
-    const double fourthFac,
-    const double altResFac,
     ElemDataRequests& dataPreReqs);
 
-  virtual ~ScalarNSOElemSuppAlg() {}
+  virtual ~ScalarAdvDiffElemSuppAlg() {}
 
-  virtual void setup();
-
-  virtual void element_execute(
+  void element_execute(
     double *lhs,
     double *rhs,
     stk::mesh::Entity element,
     ScratchViews& scratchViews);
   
-  ScalarFieldType *scalarQNm1_;
-  ScalarFieldType *scalarQN_;
-  ScalarFieldType *scalarQNp1_;
-  ScalarFieldType *densityNm1_;
-  ScalarFieldType *densityN_;
-  ScalarFieldType *densityNp1_;
+  ScalarFieldType *scalarQ_;
   ScalarFieldType *diffFluxCoeff_;
-  VectorFieldType *velocityRTM_;
-  VectorFieldType *Gjq_;
   VectorFieldType *coordinates_;
+  GenericFieldType *massFlowRate_;
 
   // master element
   const int *lrscv_;
 
-  double dt_;
-  double gamma1_;
-  double gamma2_;
-  double gamma3_;
-  const double Cupw_;
-  const double small_;
-  const double fourthFac_;
-  const double altResFac_;
-  const double om_altResFac_;
-  const double nonConservedForm_;
-
-  // fixed space
+  // fixed scratch space
   Kokkos::View<double[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_{"v_shape_function"};
-  Kokkos::View<double[AlgTraits::nDim_]> v_dqdxScs_{"v_dukdxScs"};
-  Kokkos::View<double[AlgTraits::nDim_]> v_rhoVrtmScs_{"v_rhoVrtmScs"};
 };
 
 } // namespace nalu

@@ -13,10 +13,10 @@
 #include <FieldTypeDef.h>
 #include <AlgTraits.h>
 
-#include <stk_mesh/base/BulkData.hpp>
+// stk
 #include <stk_mesh/base/Entity.hpp>
-#include <stk_topology/topology.hpp>
 
+//kokkos
 #include <Kokkos_Core.hpp>
 
 namespace sierra{
@@ -47,8 +47,6 @@ public:
     stk::mesh::Entity element,
     ScratchViews& scratchViews
   );
-  
-  const stk::mesh::BulkData *bulkData_;
 
   ScalarFieldType *densityNm1_;
   ScalarFieldType *densityN_;
@@ -66,7 +64,6 @@ public:
 
   // scratch space; geometry
   Kokkos::View<double[AlgTraits::numScvIp_][AlgTraits::nodesPerElement_]> v_shape_function_ {"view_shape_func"};
-
 };
 
 } // namespace nalu

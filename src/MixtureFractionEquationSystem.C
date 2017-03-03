@@ -39,11 +39,24 @@
 #include <ScalarGclNodeSuppAlg.h>
 #include <ScalarMassBackwardEulerNodeSuppAlg.h>
 #include <ScalarMassBDF2NodeSuppAlg.h>
-#include <ScalarMassElemSuppAlg.h>
 #include <Simulation.h>
 #include <SolutionOptions.h>
 #include <TimeIntegrator.h>
 #include <SolverAlgorithmDriver.h>
+
+// template for supp algs
+#include <AlgTraits.h>
+#include <SupplementalAlgorithmBuilder.h>
+#include <SupplementalAlgorithmBuilderLog.h>
+
+// consolidated
+#include <AssembleElemSolverAlgorithm.h>
+#include <ScalarMassElemSuppAlg.h>
+#include <ScalarAdvDiffElemSuppAlg.h>
+
+// deprecated
+#include <ScalarMassElemSuppAlgDep.h>
+#include <nso/ScalarNSOElemSuppAlgDep.h>
 
 // nso
 #include <nso/ScalarNSOElemSuppAlg.h>
@@ -242,122 +255,174 @@ MixtureFractionEquationSystem::register_interior_algorithm(
   }
 
   // solver; interior edge contribution (advection + diffusion)
-  bool useCMM = false;
-  std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi
-    = solverAlgDriver_->solverAlgMap_.find(algType);
-  if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
-    SolverAlgorithm *theAlg = NULL;
-    if ( realm_.realmUsesEdges_ ) {
-      theAlg = new AssembleScalarEdgeSolverAlgorithm(realm_, part, this, mixFrac_, dzdx_, evisc_);
-    }
-    else {
-      theAlg = new AssembleScalarElemSolverAlgorithm(realm_, part, this, mixFrac_, dzdx_, evisc_);
-    }
-    solverAlgDriver_->solverAlgMap_[algType] = theAlg;
-
-    // look for fully integrated source terms
-    std::map<std::string, std::vector<std::string> >::iterator isrc 
-      = realm_.solutionOptions_->elemSrcTermsMap_.find("mixture_fraction");
-    if ( isrc != realm_.solutionOptions_->elemSrcTermsMap_.end() ) {
-
-      if ( realm_.realmUsesEdges_ )
-        throw std::runtime_error("MixtureFractionElemSrcTerms::Error can not use element source terms for an edge-based scheme");
-
-      std::vector<std::string> mapNameVec = isrc->second;
-      for (size_t k = 0; k < mapNameVec.size(); ++k ) {
-        std::string sourceName = mapNameVec[k];
-        SupplementalAlgorithm *suppAlg = NULL;
-        if (sourceName == "VariableDensity" ) {
-          suppAlg = new VariableDensityMixFracSrcElemSuppAlg(realm_);
-        }
-        else if (sourceName == "NSO_2ND" ) {
-          suppAlg = new ScalarNSOElemSuppAlg(realm_, mixFrac_, dzdx_, evisc_, 0.0, 0.0);
-        }
-        else if (sourceName == "NSO_2ND_ALT" ) {
-          suppAlg = new ScalarNSOElemSuppAlg(realm_, mixFrac_, dzdx_, evisc_, 0.0, 1.0);
-        }
-        else if (sourceName == "NSO_4TH" ) {
-          suppAlg = new ScalarNSOElemSuppAlg(realm_, mixFrac_, dzdx_, evisc_, 1.0, 0.0);
-        }
-        else if (sourceName == "NSO_4TH_ALT" ) {
-          suppAlg = new ScalarNSOElemSuppAlg(realm_, mixFrac_, dzdx_, evisc_, 1.0, 1.0);
-        }
-        else if (sourceName == "NSO_2ND_KE" ) {
-          const double turbSc = realm_.get_turb_schmidt(mixFrac_->name());
-          suppAlg = new ScalarNSOKeElemSuppAlg(realm_, mixFrac_, dzdx_, turbSc, 0.0);
-        }
-        else if (sourceName == "NSO_4TH_KE" ) {
-          const double turbSc = realm_.get_turb_schmidt(mixFrac_->name());
-          suppAlg = new ScalarNSOKeElemSuppAlg(realm_, mixFrac_, dzdx_, turbSc, 1.0);
-        }
-        else if (sourceName == "mixture_fraction_time_derivative" ) {
-          useCMM = true;
-          suppAlg = new ScalarMassElemSuppAlg(realm_, mixFrac_, false); 
-        }
-        else if (sourceName == "lumped_mixture_fraction_time_derivative" ) {
-          useCMM = true;
-          suppAlg = new ScalarMassElemSuppAlg(realm_, mixFrac_, true); 
-        }
-        else {
-          throw std::runtime_error("MixtureFractionElemSrcTerms::Error Source term is not supported: " + sourceName);
-        }     
-        NaluEnv::self().naluOutputP0() << "MixtureFractionElemSrcTerms::added() " << sourceName << std::endl;
-        theAlg->supplementalAlg_.push_back(suppAlg); 
-      }
-    }
-  }
-  else {
-    itsi->second->partVec_.push_back(part);
-  }
-
-  // time term; nodally lumped
-  const AlgorithmType algMass = MASS;
-  std::map<AlgorithmType, SolverAlgorithm *>::iterator itsm =
-    solverAlgDriver_->solverAlgMap_.find(algMass);
-  if ( itsm == solverAlgDriver_->solverAlgMap_.end() ) {
-    // create the solver alg
-    AssembleNodeSolverAlgorithm *theAlg
-      = new AssembleNodeSolverAlgorithm(realm_, part, this);
-    solverAlgDriver_->solverAlgMap_[algMass] = theAlg;
-
-    // now create the supplemental alg for mass term
-    if ( !useCMM ) {
-      if ( realm_.number_of_states() == 2 ) {
-        ScalarMassBackwardEulerNodeSuppAlg *theMass
-          = new ScalarMassBackwardEulerNodeSuppAlg(realm_, mixFrac_);
-        theAlg->supplementalAlg_.push_back(theMass);
+  if ( !realm_.solutionOptions_->useConsolidatedSolverAlg_ ) {
+    bool useCMM = false;
+    std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi
+      = solverAlgDriver_->solverAlgMap_.find(algType);
+    if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
+      SolverAlgorithm *theAlg = NULL;
+      if ( realm_.realmUsesEdges_ ) {
+        theAlg = new AssembleScalarEdgeSolverAlgorithm(realm_, part, this, mixFrac_, dzdx_, evisc_);
       }
       else {
-        ScalarMassBDF2NodeSuppAlg *theMass
-          = new ScalarMassBDF2NodeSuppAlg(realm_, mixFrac_);
-        theAlg->supplementalAlg_.push_back(theMass);
+        theAlg = new AssembleScalarElemSolverAlgorithm(realm_, part, this, mixFrac_, dzdx_, evisc_);
+      }
+      solverAlgDriver_->solverAlgMap_[algType] = theAlg;
+      
+      // look for fully integrated source terms
+      std::map<std::string, std::vector<std::string> >::iterator isrc 
+        = realm_.solutionOptions_->elemSrcTermsMap_.find("mixture_fraction");
+      if ( isrc != realm_.solutionOptions_->elemSrcTermsMap_.end() ) {
+        
+        if ( realm_.realmUsesEdges_ )
+          throw std::runtime_error("MixtureFractionElemSrcTerms::Error can not use element source terms for an edge-based scheme");
+        
+        std::vector<std::string> mapNameVec = isrc->second;
+        for (size_t k = 0; k < mapNameVec.size(); ++k ) {
+          std::string sourceName = mapNameVec[k];
+          SupplementalAlgorithm *suppAlg = NULL;
+          if (sourceName == "VariableDensity" ) {
+            suppAlg = new VariableDensityMixFracSrcElemSuppAlg(realm_);
+          }
+          else if (sourceName == "NSO_2ND" ) {
+            suppAlg = new ScalarNSOElemSuppAlgDep(realm_, mixFrac_, dzdx_, evisc_, 0.0, 0.0);
+          }
+          else if (sourceName == "NSO_2ND_ALT" ) {
+            suppAlg = new ScalarNSOElemSuppAlgDep(realm_, mixFrac_, dzdx_, evisc_, 0.0, 1.0);
+          }
+          else if (sourceName == "NSO_4TH" ) {
+            suppAlg = new ScalarNSOElemSuppAlgDep(realm_, mixFrac_, dzdx_, evisc_, 1.0, 0.0);
+          }
+          else if (sourceName == "NSO_4TH_ALT" ) {
+            suppAlg = new ScalarNSOElemSuppAlgDep(realm_, mixFrac_, dzdx_, evisc_, 1.0, 1.0);
+          }
+          else if (sourceName == "NSO_2ND_KE" ) {
+            const double turbSc = realm_.get_turb_schmidt(mixFrac_->name());
+            suppAlg = new ScalarNSOKeElemSuppAlg(realm_, mixFrac_, dzdx_, turbSc, 0.0);
+          }
+          else if (sourceName == "NSO_4TH_KE" ) {
+            const double turbSc = realm_.get_turb_schmidt(mixFrac_->name());
+            suppAlg = new ScalarNSOKeElemSuppAlg(realm_, mixFrac_, dzdx_, turbSc, 1.0);
+          }
+          else if (sourceName == "mixture_fraction_time_derivative" ) {
+            useCMM = true;
+            suppAlg = new ScalarMassElemSuppAlgDep(realm_, mixFrac_, false); 
+          }
+          else if (sourceName == "lumped_mixture_fraction_time_derivative" ) {
+            useCMM = true;
+            suppAlg = new ScalarMassElemSuppAlgDep(realm_, mixFrac_, true); 
+          }
+          else {
+            throw std::runtime_error("MixtureFractionElemSrcTerms::Error Source term is not supported: " + sourceName);
+          }     
+          NaluEnv::self().naluOutputP0() << "MixtureFractionElemSrcTerms::added() " << sourceName << std::endl;
+          theAlg->supplementalAlg_.push_back(suppAlg); 
+        }
       }
     }
+    else {
+      itsi->second->partVec_.push_back(part);
+    }
     
-    // Add src term supp alg...; limited number supported
-    std::map<std::string, std::vector<std::string> >::iterator isrc 
-      = realm_.solutionOptions_->srcTermsMap_.find("mixture_fraction");
-    if ( isrc != realm_.solutionOptions_->srcTermsMap_.end() ) {
-      std::vector<std::string> mapNameVec = isrc->second;   
-      for (size_t k = 0; k < mapNameVec.size(); ++k ) {
-        std::string sourceName = mapNameVec[k];
-        SupplementalAlgorithm *suppAlg = NULL;
-        if ( sourceName == "gcl" ) {
-          suppAlg = new ScalarGclNodeSuppAlg(mixFrac_,realm_);
-        }
-        else if ( sourceName == "VariableDensity" ) {
-          suppAlg = new VariableDensityMixFracSrcNodeSuppAlg(realm_);
+    // time term; nodally lumped
+    const AlgorithmType algMass = MASS;
+    std::map<AlgorithmType, SolverAlgorithm *>::iterator itsm =
+      solverAlgDriver_->solverAlgMap_.find(algMass);
+    if ( itsm == solverAlgDriver_->solverAlgMap_.end() ) {
+      // create the solver alg
+      AssembleNodeSolverAlgorithm *theAlg
+        = new AssembleNodeSolverAlgorithm(realm_, part, this);
+      solverAlgDriver_->solverAlgMap_[algMass] = theAlg;
+      
+      // now create the supplemental alg for mass term
+      if ( !useCMM ) {
+        if ( realm_.number_of_states() == 2 ) {
+          ScalarMassBackwardEulerNodeSuppAlg *theMass
+            = new ScalarMassBackwardEulerNodeSuppAlg(realm_, mixFrac_);
+          theAlg->supplementalAlg_.push_back(theMass);
         }
         else {
-          throw std::runtime_error("MixtureFractionNodalSrcTerms::Error Source term is not supported: " + sourceName);
+          ScalarMassBDF2NodeSuppAlg *theMass
+            = new ScalarMassBDF2NodeSuppAlg(realm_, mixFrac_);
+          theAlg->supplementalAlg_.push_back(theMass);
         }
-        NaluEnv::self().naluOutputP0() << "MixtureFractionNodalSrcTerms::added() " << sourceName << std::endl;
-        theAlg->supplementalAlg_.push_back(suppAlg);
       }
+      
+      // Add src term supp alg...; limited number supported
+      std::map<std::string, std::vector<std::string> >::iterator isrc 
+        = realm_.solutionOptions_->srcTermsMap_.find("mixture_fraction");
+      if ( isrc != realm_.solutionOptions_->srcTermsMap_.end() ) {
+        std::vector<std::string> mapNameVec = isrc->second;   
+        for (size_t k = 0; k < mapNameVec.size(); ++k ) {
+          std::string sourceName = mapNameVec[k];
+          SupplementalAlgorithm *suppAlg = NULL;
+          if ( sourceName == "gcl" ) {
+            suppAlg = new ScalarGclNodeSuppAlg(mixFrac_,realm_);
+          }
+          else if ( sourceName == "VariableDensity" ) {
+            suppAlg = new VariableDensityMixFracSrcNodeSuppAlg(realm_);
+          }
+          else {
+            throw std::runtime_error("MixtureFractionNodalSrcTerms::Error Source term is not supported: " + sourceName);
+          }
+          NaluEnv::self().naluOutputP0() << "MixtureFractionNodalSrcTerms::added() " << sourceName << std::endl;
+          theAlg->supplementalAlg_.push_back(suppAlg);
+        }
+      }
+    }
+    else {
+      itsm->second->partVec_.push_back(part);
     }
   }
   else {
-    itsm->second->partVec_.push_back(part);
+    // Homogeneous kernel implementation
+    if ( realm_.realmUsesEdges_ )
+      throw std::runtime_error("ContinuityElemSrcTerms::Error can not use element source terms for an edge-based scheme");
+    
+    stk::topology partTopo = part->topology();
+    auto& solverAlgMap = solverAlgDriver_->solverAlgorithmMap_;
+    
+    AssembleElemSolverAlgorithm* solverAlg = nullptr;
+    bool solverAlgWasBuilt = false;
+    
+    std::tie(solverAlg, solverAlgWasBuilt) = build_or_add_part_to_solver_alg
+      (*this, *part, solverAlgMap);
+    
+    ElemDataRequests& dataPreReqs = solverAlg->dataNeededBySuppAlgs_;
+    auto& suppAlgVec = solverAlg->supplementalAlg_;
+
+    if (solverAlgWasBuilt) {
+      build_topo_supp_alg_if_requested<ScalarMassElemSuppAlg>
+        (partTopo, *this, suppAlgVec, "mixture_fraction_time_derivative",
+         realm_, mixFrac_, dataPreReqs, false);
+      
+      build_topo_supp_alg_if_requested<ScalarMassElemSuppAlg>
+        (partTopo, *this, suppAlgVec, "lumped_mixture_fraction_time_derivative",
+         realm_, mixFrac_, dataPreReqs, true);
+      
+      build_topo_supp_alg_if_requested<ScalarAdvDiffElemSuppAlg>
+        (partTopo, *this, suppAlgVec, "advection_diffusion",
+         realm_, mixFrac_, evisc_, dataPreReqs);
+      
+      build_topo_supp_alg_if_requested<ScalarNSOElemSuppAlg>
+        (partTopo, *this, suppAlgVec, "NSO_2ND",
+         realm_, mixFrac_, dzdx_, evisc_, 0.0, 0.0, dataPreReqs); 
+      
+      build_topo_supp_alg_if_requested<ScalarNSOElemSuppAlg>
+        (partTopo, *this, suppAlgVec, "NSO_2ND_ALT",
+         realm_, mixFrac_, dzdx_, evisc_, 0.0, 1.0, dataPreReqs); 
+      
+      build_topo_supp_alg_if_requested<ScalarNSOElemSuppAlg>
+        (partTopo, *this, suppAlgVec, "NSO_4TH",
+         realm_, mixFrac_, dzdx_, evisc_, 1.0, 0.0, dataPreReqs); 
+      
+      build_topo_supp_alg_if_requested<ScalarNSOElemSuppAlg>
+        (partTopo, *this, suppAlgVec, "NSO_4TH_ALT",
+         realm_, mixFrac_, dzdx_, evisc_, 1.0, 1.0, dataPreReqs); 
+    }
+
+    report_invalid_supp_alg_names();
+    report_built_supp_alg_names();
   }
 
   // effective viscosity alg

@@ -19,7 +19,6 @@
 // stk_mesh/base/fem
 #include <stk_mesh/base/Entity.hpp>
 #include <stk_mesh/base/MetaData.hpp>
-#include <stk_mesh/base/BulkData.hpp>
 #include <stk_mesh/base/Field.hpp>
 
 namespace sierra{
@@ -39,7 +38,6 @@ ContinuityMassElemSuppAlg<AlgTraits>::ContinuityMassElemSuppAlg(
    ElemDataRequests& dataPreReqs,
    const bool lumpedMass)
   : SupplementalAlgorithm(realm),
-    bulkData_(&realm.bulk_data()),
     densityNm1_(NULL),
     densityN_(NULL),
     densityNp1_(NULL),
@@ -106,7 +104,7 @@ ContinuityMassElemSuppAlg<AlgTraits>::element_execute(
   SharedMemView<double*>& v_densityNp1 = scratchViews.get_scratch_view_1D(
     *densityNp1_);
 
-  SharedMemView<double*>& v_scs_volume = scratchViews.scv_volume;
+  SharedMemView<double*>& v_scv_volume = scratchViews.scv_volume;
 
   for (int ip=0; ip < AlgTraits::numScvIp_; ++ip) {
     const int nearestNode = ipNodeMap_[ip];
@@ -122,7 +120,7 @@ ContinuityMassElemSuppAlg<AlgTraits>::element_execute(
       rhoNp1 += r * v_densityNp1(ic);
     }
 
-    const double scV = v_scs_volume(ip);
+    const double scV = v_scv_volume(ip);
     rhs[nearestNode] += - ( gamma1_ * rhoNp1 + gamma2_ * rhoN +
                             gamma3_ * rhoNm1 ) * scV / dt_ / projTimeScale;
 

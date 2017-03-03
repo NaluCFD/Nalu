@@ -6,26 +6,17 @@
 /*------------------------------------------------------------------------*/
 
 
-#include <nso/ScalarNSOElemSuppAlg.h>
+#include <nso/ScalarNSOElemSuppAlgDep.h>
 #include <SupplementalAlgorithm.h>
 #include <FieldTypeDef.h>
 #include <Realm.h>
 #include <master_element/MasterElement.h>
 
-// template and scratch space
-#include <BuildTemplates.h>
-#include <ScratchViews.h>
-
 // stk_mesh/base/fem
 #include <stk_mesh/base/Entity.hpp>
 #include <stk_mesh/base/MetaData.hpp>
+#include <stk_mesh/base/BulkData.hpp>
 #include <stk_mesh/base/Field.hpp>
-
-// topology
-#include <stk_topology/topology.hpp>
-
-// Kokkos
-#include <Kokkos_Core.hpp>
 
 namespace sierra{
 namespace nalu{
@@ -33,21 +24,20 @@ namespace nalu{
 //==========================================================================
 // Class Definition
 //==========================================================================
-// ScalarNSOElemSuppAlg - NSO for scalar equation
+// ScalarNSOElemSuppAlgDep - NSO for scalar equation
 //==========================================================================
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-template<class AlgTraits>
-ScalarNSOElemSuppAlg<AlgTraits>::ScalarNSOElemSuppAlg(
+ScalarNSOElemSuppAlgDep::ScalarNSOElemSuppAlgDep(
   Realm &realm,
   ScalarFieldType *scalarQ,
   VectorFieldType *Gjq,
   ScalarFieldType *diffFluxCoeff,
   const double fourthFac,
-  const double altResFac,
-  ElemDataRequests& dataPreReqs)
+  const double altResFac)
   : SupplementalAlgorithm(realm),
+    bulkData_(&realm.bulk_data()),
     scalarQNm1_(NULL),
     scalarQN_(NULL),
     scalarQNp1_(NULL),
@@ -58,8 +48,8 @@ ScalarNSOElemSuppAlg<AlgTraits>::ScalarNSOElemSuppAlg(
     velocityRTM_(NULL),
     Gjq_(Gjq),
     coordinates_(NULL),
-    lrscv_(realm.get_surface_master_element(AlgTraits::topo_)->adjacentNodes()),
     dt_(0.0),
+    nDim_(realm_.spatialDimension_),
     gamma1_(0.0),
     gamma2_(0.0),
     gamma3_(0.0),
@@ -88,38 +78,52 @@ ScalarNSOElemSuppAlg<AlgTraits>::ScalarNSOElemSuppAlg(
     velocityRTM_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
 
-  // compute shape function; do we want to push this to dataPreReqs?
-  MasterElement *meSCS = realm.get_surface_master_element(AlgTraits::topo_);
-  meSCS->shape_fcn(&v_shape_function_(0,0));
+  // fixed size
+  ws_dqdxScs_.resize(nDim_);
+  ws_rhoVrtmScs_.resize(nDim_);
+}
 
-  // add master elements
-  dataPreReqs.add_cvfem_surface_me(meSCS);
+//--------------------------------------------------------------------------
+//-------- elem_resize -----------------------------------------------------
+//--------------------------------------------------------------------------
+void
+ScalarNSOElemSuppAlgDep::elem_resize(
+  MasterElement *meSCS,
+  MasterElement */*meSCV*/)
+{
+  const int nodesPerElement = meSCS->nodesPerElement_;
+  const int numScsIp = meSCS->numIntPoints_;
 
-  // fields
-  dataPreReqs.add_gathered_nodal_field(*coordinates_, AlgTraits::nDim_);
-  dataPreReqs.add_gathered_nodal_field(*velocityRTM_, AlgTraits::nDim_);
-  dataPreReqs.add_gathered_nodal_field(*Gjq_, AlgTraits::nDim_);
-  dataPreReqs.add_gathered_nodal_field(*scalarQNm1_, 1);
-  dataPreReqs.add_gathered_nodal_field(*scalarQN_, 1);
-  dataPreReqs.add_gathered_nodal_field(*scalarQNp1_, 1);
+  // resize; geometry
+  ws_scs_areav_.resize(numScsIp*nDim_);
+  ws_dndx_.resize(nDim_*numScsIp*nodesPerElement);
+  ws_deriv_.resize(nDim_*numScsIp*nodesPerElement);
+  ws_det_j_.resize(numScsIp);
+  ws_shape_function_.resize(numScsIp*nodesPerElement);
+  ws_gUpper_.resize(nDim_*nDim_*numScsIp); // g^ij (covariant)
+  ws_gLower_.resize(nDim_*nDim_*numScsIp); // g_ij (contravariat)
+
+  // resize; fields
+  ws_qNm1_.resize(nodesPerElement);
+  ws_qN_.resize(nodesPerElement);
+  ws_qNp1_.resize(nodesPerElement);
+  ws_rhoNp1_.resize(nodesPerElement);
+  ws_rhoN_.resize(nodesPerElement);
+  ws_rhoNm1_.resize(nodesPerElement);
+  ws_velocityRTM_.resize(nDim_*nodesPerElement);
+  ws_diffFluxCoeff_.resize(nodesPerElement);
+  ws_Gjq_.resize(nDim_*nodesPerElement);
+  ws_coordinates_.resize(nDim_*nodesPerElement);
   
-  dataPreReqs.add_gathered_nodal_field(*densityNm1_,1);
-  dataPreReqs.add_gathered_nodal_field(*densityN_,1);
-  dataPreReqs.add_gathered_nodal_field(*densityNp1_,1);
-  dataPreReqs.add_gathered_nodal_field(*diffFluxCoeff_,1);
-  
-  // master element data
-  dataPreReqs.add_master_element_call(SCS_AREAV);
-  dataPreReqs.add_master_element_call(SCS_GRAD_OP);
-  dataPreReqs.add_master_element_call(SCS_GIJ); 
+  // compute shape function
+  meSCS->shape_fcn(&ws_shape_function_[0]);
 }
 
 //--------------------------------------------------------------------------
 //-------- setup -----------------------------------------------------------
 //--------------------------------------------------------------------------
-template<class AlgTraits>
 void
-ScalarNSOElemSuppAlg<AlgTraits>::setup()
+ScalarNSOElemSuppAlgDep::setup()
 {
   dt_ = realm_.get_time_step();
   gamma1_ = realm_.get_gamma1();
@@ -128,40 +132,79 @@ ScalarNSOElemSuppAlg<AlgTraits>::setup()
 }
 
 //--------------------------------------------------------------------------
-//-------- element_execute -------------------------------------------------
+//-------- elem_execute ----------------------------------------------------
 //--------------------------------------------------------------------------
-template<class AlgTraits>
 void
-ScalarNSOElemSuppAlg<AlgTraits>::element_execute(
+ScalarNSOElemSuppAlgDep::elem_execute(
   double *lhs,
   double *rhs,
   stk::mesh::Entity element,
-  ScratchViews& scratchViews)
+  MasterElement *meSCS,
+  MasterElement */*meSCV*/)
 {
-  SharedMemView<double**>& v_Gjq = scratchViews.get_scratch_view_2D(*Gjq_);
-  SharedMemView<double**>& v_velocityRTM = scratchViews.get_scratch_view_2D(*velocityRTM_);
-  SharedMemView<double*>& v_qNm1 = scratchViews.get_scratch_view_1D(*scalarQNm1_);
-  SharedMemView<double*>& v_qN = scratchViews.get_scratch_view_1D(*scalarQN_);
-  SharedMemView<double*>& v_qNp1 = scratchViews.get_scratch_view_1D(*scalarQNp1_);
-  SharedMemView<double*>& v_rhoNm1 = scratchViews.get_scratch_view_1D(*densityNm1_);
-  SharedMemView<double*>& v_rhoN = scratchViews.get_scratch_view_1D(*densityN_);
-  SharedMemView<double*>& v_rhoNp1 = scratchViews.get_scratch_view_1D(*densityNp1_);
-  SharedMemView<double*>& v_diffFluxCoeff = scratchViews.get_scratch_view_1D(*diffFluxCoeff_);
- 
-  SharedMemView<double**>& v_scs_areav = scratchViews.scs_areav;
-  SharedMemView<double***>& v_dndx = scratchViews.dndx;
-  SharedMemView<double***>& v_gijUpper = scratchViews.gijUpper;
-  SharedMemView<double***>& v_gijLower = scratchViews.gijLower;
+  // details on this element topo
+  const int nodesPerElement = meSCS->nodesPerElement_;
+  const int numScsIp = meSCS->numIntPoints_;
+  const int *lrscv = meSCS->adjacentNodes();    
+  
+  // gather
+  stk::mesh::Entity const *  node_rels = bulkData_->begin_nodes(element);
+  int num_nodes = bulkData_->num_nodes(element);
 
-  for ( int ip = 0; ip < AlgTraits::numScsIp_; ++ip ) {
+  // sanity check on num nodes
+  ThrowAssert( num_nodes == nodesPerElement );
+
+  for ( int ni = 0; ni < num_nodes; ++ni ) {
+    stk::mesh::Entity node = node_rels[ni];
+    
+    // gather scalars
+    ws_qNm1_[ni] = *stk::mesh::field_data(*scalarQNm1_, node);
+    ws_qN_[ni] = *stk::mesh::field_data(*scalarQN_, node);
+    ws_qNp1_[ni] = *stk::mesh::field_data(*scalarQNp1_, node);
+ 
+    ws_rhoNm1_[ni] = *stk::mesh::field_data(*densityNm1_, node);
+    ws_rhoN_[ni] = *stk::mesh::field_data(*densityN_, node);
+    ws_rhoNp1_[ni] = *stk::mesh::field_data(*densityNp1_, node);
+    
+    ws_diffFluxCoeff_[ni] = *stk::mesh::field_data(*diffFluxCoeff_, node);
+
+    // pointers to real data
+    const double * vrtm   = stk::mesh::field_data(*velocityRTM_, node );
+    const double * coords = stk::mesh::field_data(*coordinates_, node );
+    const double * Gjq    = stk::mesh::field_data(*Gjq_, node );
+
+    // gather vectors
+    const int offSet = ni*nDim_;
+    for ( int j=0; j < nDim_; ++j ) {
+      ws_coordinates_[offSet+j] = coords[j];
+      ws_velocityRTM_[offSet+j] = vrtm[j];
+      ws_Gjq_[offSet+j] = Gjq[j];
+    }
+  }
+
+  // compute geometry (AGAIN)...
+  double scs_error = 0.0;
+  meSCS->determinant(1, &ws_coordinates_[0], &ws_scs_areav_[0], &scs_error);
+  
+  // compute dndx (AGAIN)...
+  meSCS->grad_op(1, &ws_coordinates_[0], &ws_dndx_[0], &ws_deriv_[0], &ws_det_j_[0], &scs_error);
+
+  // compute gij; requires a proper ws_deriv from above
+  meSCS->gij(&ws_coordinates_[0], &ws_gUpper_[0], &ws_gLower_[0], &ws_deriv_[0]);
+
+  for ( int ip = 0; ip < numScsIp; ++ip ) {
 
     // left and right nodes for this ip
-    const int il = lrscv_[2*ip];
-    const int ir = lrscv_[2*ip+1];
+    const int il = lrscv[2*ip];
+    const int ir = lrscv[2*ip+1];
 
     // corresponding matrix rows
-    const int rowL = il*AlgTraits::nodesPerElement_;
-    const int rowR = ir*AlgTraits::nodesPerElement_;
+    const int rowL = il*nodesPerElement;
+    const int rowR = ir*nodesPerElement;
+
+    // pointer to gupperij and glowerij
+    const double *p_gUpper = &ws_gUpper_[nDim_*nDim_*ip];
+    const double *p_gLower = &ws_gLower_[nDim_*nDim_*ip];
    
     // zero out; scalar
     double qNm1Scs = 0.0;
@@ -175,37 +218,39 @@ ScalarNSOElemSuppAlg<AlgTraits>::element_execute(
     double dFdxCont = 0.0;
    
     // zero out vector
-    for ( int i = 0; i < AlgTraits::nDim_; ++i ) {
-      v_dqdxScs_(i) = 0.0;
-      v_rhoVrtmScs_(i) = 0.0;
+    for ( int i = 0; i < nDim_; ++i ) {
+      ws_dqdxScs_[i] = 0.0;
+      ws_rhoVrtmScs_[i] = 0.0;
     }
     
     // determine scs values of interest
-    for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
+    const int offSet = ip*nodesPerElement;
+    for ( int ic = 0; ic < nodesPerElement; ++ic ) {
       // save off shape function
-      const double r = v_shape_function_(ip,ic);
+      const double r = ws_shape_function_[offSet+ic];
 
       // time term; scalar q
-      qNm1Scs += r*v_qNm1(ic);
-      qNScs += r*v_qN(ic);
-      qNp1Scs += r*v_qNp1(ic);
+      qNm1Scs += r*ws_qNm1_[ic];
+      qNScs += r*ws_qN_[ic];
+      qNp1Scs += r*ws_qNp1_[ic];
 
       // time term, density
-      rhoNm1Scs += r*v_rhoNm1(ic);
-      rhoNScs += r*v_rhoN(ic);
-      rhoNp1Scs += r*v_rhoNp1(ic);
+      rhoNm1Scs += r*ws_rhoNm1_[ic];
+      rhoNScs += r*ws_rhoN_[ic];
+      rhoNp1Scs += r*ws_rhoNp1_[ic];
 
       // compute scs derivatives and flux derivative
-      const double qIC = v_qNp1(ic);
-      const double rhoIC = v_rhoNp1(ic);
-      const double diffFluxCoeffIC = v_diffFluxCoeff(ic);
-      for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
-        const double dnj = v_dndx(ip,ic,j);
-        const double vrtmj = v_velocityRTM(ic,j);
-        v_dqdxScs_(j) += qIC*dnj;
-        v_rhoVrtmScs_(j) += r*rhoIC*vrtmj;
+      const int offSetDnDx = nDim_*nodesPerElement*ip + ic*nDim_;
+      const double qIC = ws_qNp1_[ic];
+      const double rhoIC = ws_rhoNp1_[ic];
+      const double diffFluxCoeffIC = ws_diffFluxCoeff_[ic];
+      for ( int j = 0; j < nDim_; ++j ) {
+        const double dnj = ws_dndx_[offSetDnDx+j];
+        const double vrtmj = ws_velocityRTM_[ic*nDim_+j];
+        ws_dqdxScs_[j] += qIC*dnj;
+        ws_rhoVrtmScs_[j] += r*rhoIC*vrtmj;
         dFdxAdv += rhoIC*vrtmj*qIC*dnj;
-        dFdxDiff += diffFluxCoeffIC*v_Gjq(ic,j)*dnj;
+        dFdxDiff += diffFluxCoeffIC*ws_Gjq_[ic*nDim_+j]*dnj;
         dFdxCont += rhoIC*vrtmj*dnj;
       }
     }
@@ -215,8 +260,8 @@ ScalarNSOElemSuppAlg<AlgTraits>::element_execute(
 
     // compute residual for NSO; linearized first
     double residualAlt = dFdxAdv - qNp1Scs*dFdxCont;
-    for ( int j = 0; j < AlgTraits::nDim_; ++j )
-      residualAlt -= v_rhoVrtmScs_(j)*v_dqdxScs_(j);
+    for ( int j = 0; j < nDim_; ++j )
+      residualAlt -= ws_rhoVrtmScs_[j]*ws_dqdxScs_[j];
     
     // compute residual for NSO; pde-based second
     const double time = (gamma1_*rhoNp1Scs*qNp1Scs + gamma2_*rhoNScs*qNScs + gamma3_*rhoNm1Scs*qNm1Scs)/dt_;
@@ -228,12 +273,12 @@ ScalarNSOElemSuppAlg<AlgTraits>::element_execute(
     // denominator for nu as well as terms for "upwind" nu
     double gUpperMagGradQ = 0.0;
     double rhoVrtmiGLowerRhoVrtmj = 0.0;
-    for ( int i = 0; i < AlgTraits::nDim_; ++i ) {
-      const double dqdxScsi = v_dqdxScs_(i);
-      const double rhoVrtmi = v_rhoVrtmScs_(i);
-      for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
-        gUpperMagGradQ += dqdxScsi*v_gijUpper(ip,i,j)*v_dqdxScs_[j];
-        rhoVrtmiGLowerRhoVrtmj += rhoVrtmi*v_gijLower(ip,i,j)*v_rhoVrtmScs_[j];
+    for ( int i = 0; i < nDim_; ++i ) {
+      const double dqdxScsi = ws_dqdxScs_[i];
+      const double rhoVrtmi = ws_rhoVrtmScs_[i];
+      for ( int j = 0; j < nDim_; ++j ) {
+        gUpperMagGradQ += dqdxScsi*p_gUpper[i*nDim_+j]*ws_dqdxScs_[j];
+        rhoVrtmiGLowerRhoVrtmj += rhoVrtmi*p_gLower[i*nDim_+j]*ws_rhoVrtmScs_[j];
       }
     }      
     
@@ -248,22 +293,23 @@ ScalarNSOElemSuppAlg<AlgTraits>::element_execute(
     const double nu = std::min(Cupw_*nuFirstOrder, nuResidual);
     
     double gijFac = 0.0;
-    for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
+    for ( int ic = 0; ic < nodesPerElement; ++ic ) {
       
       // save off shape function
-      const double r = v_shape_function_(ip,ic);
+      const double r = ws_shape_function_[offSet+ic];
       
       // save of some variables
-      const double qIC = v_qNp1(ic);
+      const double qIC = ws_qNp1_[ic];
       
       // NSO diffusion-like term; -nu*gUpper*(dQ/dxj - Gjq)*ai (residual below)
       double lhsfac = 0.0;
-      for ( int i = 0; i < AlgTraits::nDim_; ++i ) {
-        const double axi = v_scs_areav(ip,i);
-        for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
-          const double dnxj = v_dndx(ip,ic,j);
-          const double fac = v_gijUpper(ip,i,j)*dnxj*axi;
-          const double facGj = r*v_gijUpper(ip,i,j)*v_Gjq(ic,j)*axi;
+      const int offSetDnDx = nDim_*nodesPerElement*ip + ic*nDim_;
+      for ( int i = 0; i < nDim_; ++i ) {
+        const double axi = ws_scs_areav_[ip*nDim_+i];
+        for ( int j = 0; j < nDim_; ++j ) {
+          const double dnxj = ws_dndx_[offSetDnDx+j];
+          const double fac = p_gUpper[i*nDim_+j]*dnxj*axi;
+          const double facGj = r*p_gUpper[i*nDim_+j]*ws_Gjq_[ic*nDim_+j]*axi;
           gijFac += fac*qIC - facGj*fourthFac_;
           lhsfac += -fac;
         }
@@ -279,8 +325,6 @@ ScalarNSOElemSuppAlg<AlgTraits>::element_execute(
     rhs[ir] += residualNSO;
   }      
 }
-
-INSTANTIATE_SUPPLEMENTAL_ALGORITHM(ScalarNSOElemSuppAlg);
   
 } // namespace nalu
 } // namespace Sierra

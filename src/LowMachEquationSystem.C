@@ -2197,7 +2197,61 @@ ContinuityEquationSystem::register_interior_algorithm(
       } else {
         its->second->partVec_.push_back(part);
       }
-    } else {
+
+      // time term using lumped mass
+      std::map<std::string, std::vector<std::string> >::iterator isrc =
+        realm_.solutionOptions_->srcTermsMap_.find("continuity");
+      if ( isrc != realm_.solutionOptions_->srcTermsMap_.end() ) {
+        const AlgorithmType algMass = MASS;
+        std::map<AlgorithmType, SolverAlgorithm *>::iterator itsm =
+          solverAlgDriver_->solverAlgMap_.find(algMass);
+        if ( itsm == solverAlgDriver_->solverAlgMap_.end() ) {
+          // create the solver alg
+          AssembleNodeSolverAlgorithm *theAlg
+            = new AssembleNodeSolverAlgorithm(realm_, part, this);
+          solverAlgDriver_->solverAlgMap_[algMass] = theAlg;
+          
+          std::vector<std::string> mapNameVec = isrc->second;
+          
+          for (size_t k = 0; k < mapNameVec.size(); ++k ) {
+            
+            std::string sourceName = mapNameVec[k];
+            
+            SupplementalAlgorithm *suppAlg = NULL;
+            if ( sourceName == "density_time_derivative" ) {
+              // now create the supplemental alg for mass term
+              if ( realm_.number_of_states() == 2 ) {
+                suppAlg = new ContinuityMassBackwardEulerNodeSuppAlg(realm_);
+              }
+              else {
+                suppAlg = new ContinuityMassBDF2NodeSuppAlg(realm_);
+              }
+            }
+            else if ( sourceName == "low_speed_compressible" ) {
+              suppAlg = new ContinuityLowSpeedCompressibleNodeSuppAlg(realm_);
+            }
+            else if ( sourceName == "gcl" ) {
+              suppAlg = new ContinuityGclNodeSuppAlg(realm_);
+            }
+            else if ( sourceName == "VariableDensity" ) {
+              suppAlg = new VariableDensityContinuitySrcNodeSuppAlg(realm_);
+            }
+            else if ( sourceName == "VariableDensityNonIso" ) {
+              suppAlg = new VariableDensityNonIsoContinuitySrcNodeSuppAlg(realm_);
+            }
+            else {
+              throw std::runtime_error("ContinuityNodalSrcTerms::Error Source term is not supported: " + sourceName);
+            }
+            NaluEnv::self().naluOutputP0() << "ContinuityNodalSrcTerms::added " << sourceName << std::endl;
+            theAlg->supplementalAlg_.push_back(suppAlg);
+          }
+        }
+        else {
+          itsm->second->partVec_.push_back(part);
+        }
+      } 
+    }
+    else {
       // Homogeneous kernel implementation
       if ( realm_.realmUsesEdges_ )
         throw std::runtime_error("ContinuityElemSrcTerms::Error can not use element source terms for an edge-based scheme");
@@ -2230,59 +2284,6 @@ ContinuityEquationSystem::register_interior_algorithm(
 
       report_invalid_supp_alg_names();
       report_built_supp_alg_names();
-    }
-  }
-
-  // time term using lumped mass
-  std::map<std::string, std::vector<std::string> >::iterator isrc =
-    realm_.solutionOptions_->srcTermsMap_.find("continuity");
-  if ( isrc != realm_.solutionOptions_->srcTermsMap_.end() ) {
-    const AlgorithmType algMass = MASS;
-    std::map<AlgorithmType, SolverAlgorithm *>::iterator itsm =
-      solverAlgDriver_->solverAlgMap_.find(algMass);
-    if ( itsm == solverAlgDriver_->solverAlgMap_.end() ) {
-      // create the solver alg
-      AssembleNodeSolverAlgorithm *theAlg
-      = new AssembleNodeSolverAlgorithm(realm_, part, this);
-      solverAlgDriver_->solverAlgMap_[algMass] = theAlg;
-      
-      std::vector<std::string> mapNameVec = isrc->second;
-      
-      for (size_t k = 0; k < mapNameVec.size(); ++k ) {
-	
-        std::string sourceName = mapNameVec[k];
-
-        SupplementalAlgorithm *suppAlg = NULL;
-        if ( sourceName == "density_time_derivative" ) {
-          // now create the supplemental alg for mass term
-          if ( realm_.number_of_states() == 2 ) {
-            suppAlg = new ContinuityMassBackwardEulerNodeSuppAlg(realm_);
-          }
-          else {
-            suppAlg = new ContinuityMassBDF2NodeSuppAlg(realm_);
-          }
-        }
-        else if ( sourceName == "low_speed_compressible" ) {
-          suppAlg = new ContinuityLowSpeedCompressibleNodeSuppAlg(realm_);
-        }
-        else if ( sourceName == "gcl" ) {
-          suppAlg = new ContinuityGclNodeSuppAlg(realm_);
-        }
-        else if ( sourceName == "VariableDensity" ) {
-          suppAlg = new VariableDensityContinuitySrcNodeSuppAlg(realm_);
-        }
-        else if ( sourceName == "VariableDensityNonIso" ) {
-          suppAlg = new VariableDensityNonIsoContinuitySrcNodeSuppAlg(realm_);
-        }
-        else {
-          throw std::runtime_error("ContinuityNodalSrcTerms::Error Source term is not supported: " + sourceName);
-        }
-        NaluEnv::self().naluOutputP0() << "ContinuityNodalSrcTerms::added " << sourceName << std::endl;
-        theAlg->supplementalAlg_.push_back(suppAlg);
-      }
-    }
-    else {
-      itsm->second->partVec_.push_back(part);
     }
   }
 }

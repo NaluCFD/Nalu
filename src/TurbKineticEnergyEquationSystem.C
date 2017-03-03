@@ -41,7 +41,7 @@
 #include <ScalarGclNodeSuppAlg.h>
 #include <ScalarMassBackwardEulerNodeSuppAlg.h>
 #include <ScalarMassBDF2NodeSuppAlg.h>
-#include <ScalarMassElemSuppAlg.h>
+#include <ScalarMassElemSuppAlgDep.h>
 #include <Simulation.h>
 #include <SolutionOptions.h>
 #include <TimeIntegrator.h>
@@ -53,7 +53,7 @@
 
 // nso
 #include <nso/ScalarNSOKeElemSuppAlg.h>
-#include <nso/ScalarNSOElemSuppAlg.h>
+#include <nso/ScalarNSOElemSuppAlgDep.h>
 
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
@@ -250,10 +250,10 @@ TurbKineticEnergyEquationSystem::register_interior_algorithm(
           suppAlg = new TurbKineticEnergyKsgsBuoyantElemSuppAlg(realm_);
         }
         else if (sourceName == "NSO_2ND_ALT" ) {
-          suppAlg = new ScalarNSOElemSuppAlg(realm_, tke_, dkdx_, evisc_, 0.0, 1.0);
+          suppAlg = new ScalarNSOElemSuppAlgDep(realm_, tke_, dkdx_, evisc_, 0.0, 1.0);
         }
         else if (sourceName == "NSO_4TH_ALT" ) {
-          suppAlg = new ScalarNSOElemSuppAlg(realm_, tke_, dkdx_, evisc_, 1.0, 1.0);
+          suppAlg = new ScalarNSOElemSuppAlgDep(realm_, tke_, dkdx_, evisc_, 1.0, 1.0);
         }
         else if (sourceName == "NSO_2ND_KE" ) {
           const double turbSc = realm_.get_turb_schmidt(tke_->name());
@@ -265,11 +265,11 @@ TurbKineticEnergyEquationSystem::register_interior_algorithm(
         }
         else if (sourceName == "turbulent_ke_time_derivative" ) {
           useCMM = true;
-          suppAlg = new ScalarMassElemSuppAlg(realm_, tke_, false);
+          suppAlg = new ScalarMassElemSuppAlgDep(realm_, tke_, false);
         }
         else if (sourceName == "lumped_turbulent_ke_time_derivative" ) {
           useCMM = true;
-          suppAlg = new ScalarMassElemSuppAlg(realm_, tke_, true);
+          suppAlg = new ScalarMassElemSuppAlgDep(realm_, tke_, true);
         }
         else {
           throw std::runtime_error("TurbKineticEnergyElemSrcTerms::Error Source term is not supported: " + sourceName);
