@@ -1180,7 +1180,7 @@ MomentumEquationSystem::register_interior_algorithm(
   }
 
   // solver; time contribution (lumped mass matrix)
-  if ( !useCMM && (realm_.solutionOptions_->srcTermsMap_.size() > 0) ) {
+  if ( !useCMM || (realm_.solutionOptions_->srcTermsMap_.size() > 0) ) {
     std::map<AlgorithmType, SolverAlgorithm *>::iterator itsm =
       solverAlgDriver_->solverAlgMap_.find(algMass);
     if ( itsm == solverAlgDriver_->solverAlgMap_.end() ) {
