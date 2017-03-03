@@ -44,20 +44,23 @@ namespace nalu{
   }
 
   template <template <typename> class T, typename... Args>
-  void build_topo_supp_alg_if_requested(
+  bool build_topo_supp_alg_if_requested(
     stk::topology topo,
     EquationSystem& eqSys,
     std::vector<SupplementalAlgorithm*>& algVec,
     std::string name,
     Args&&... args)
   {
+    bool wasCreated = false;
     SuppAlgBuilderLog::self().add_valid_name(eqSys.eqnTypeName_,  name);
     if (eqSys.supp_alg_is_requested(name)) {
       SupplementalAlgorithm* suppAlg = build_topo_supp_alg<T>(topo, std::forward<Args>(args)...);
       ThrowRequire(suppAlg != nullptr);
       SuppAlgBuilderLog::self().add_built_name(eqSys.eqnTypeName_,  name);
       algVec.push_back(suppAlg);
+      wasCreated = true;
     }
+    return wasCreated;
   }
 
   inline std::pair<AssembleElemSolverAlgorithm*, bool>
