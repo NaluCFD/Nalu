@@ -231,6 +231,7 @@ MomentumNSOElemSuppAlgDep::elem_execute(
     // zero out vector
     for ( int i = 0; i < nDim_; ++i ) {
       ws_rhoVrtmScs_[i] = 0.0;
+      ws_dpdxScs_[i] = 0.0;
     }
     
     // determine scs values of interest
