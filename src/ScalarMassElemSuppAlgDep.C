@@ -47,7 +47,7 @@ ScalarMassElemSuppAlgDep::ScalarMassElemSuppAlgDep(
     gamma2_(0.0),
     gamma3_(0.0),
     nDim_(realm_.spatialDimension_),
-    lumpedMass_(false)
+    lumpedMass_(lumpedMass)
 {
   // save off fields; shove state N into Nm1 if this is BE
   stk::mesh::MetaData & meta_data = realm_.meta_data();

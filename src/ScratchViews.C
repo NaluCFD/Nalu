@@ -167,8 +167,6 @@ void ScratchViews::create_needed_master_element_views(const TeamHandleType& team
       case SCS_GRAD_OP:
          ThrowRequireMsg(numScsIp > 0, "ERROR, meSCS must be non-null if SCS_GRAD_OP is requested.");
          dndx = get_shmem_view_3D(team, numScsIp, nodesPerElem, nDim);
-         // deriv = get_shmem_view_1D(team, numScsIp*nodesPerElem*nDim);
-         // det_j = get_shmem_view_1D(team, numScsIp);
          needDeriv = true;
          needDetj = true;
          break;
@@ -176,15 +174,12 @@ void ScratchViews::create_needed_master_element_views(const TeamHandleType& team
       case SCS_SHIFTED_GRAD_OP:
         ThrowRequireMsg(numScsIp > 0, "ERROR, meSCS must be non-null if SCS_SHIFTED_GRAD_OP is requested.");
         dndx_shifted = get_shmem_view_3D(team, numScsIp, nodesPerElem, nDim);
-        // deriv = get_shmem_view_1D(team, numScsIp*nodesPerElem*nDim);
-        // det_j = get_shmem_view_1D(team, numScsIp);
         needDeriv = true;
         needDetj = true;
         break;
 
       case SCS_GIJ:
          ThrowRequireMsg(numScsIp > 0, "ERROR, meSCS must be non-null if SCS_GIJ is requested.");
-         // deriv = get_shmem_view_1D(team, numScsIp*nodesPerElem*nDim);
          gijUpper = get_shmem_view_3D(team, numScsIp, nDim, nDim);
          gijLower = get_shmem_view_3D(team, numScsIp, nDim, nDim);
          needDeriv = true;
