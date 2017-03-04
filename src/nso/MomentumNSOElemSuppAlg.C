@@ -183,16 +183,17 @@ MomentumNSOElemSuppAlg<AlgTraits>::element_execute(
     double dFdxCont = 0.0;
     double divU = 0.0;
 
-    // zero out vector
+    // zero out vectors that prevail over all components of k
     for ( int i = 0; i < AlgTraits::nDim_; ++i ) {
       v_rhoVrtmScs_(i) = 0.0;
+      v_dpdxScs_(i) = 0.0;
     }
     
     // determine scs values of interest
     for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
 
       // save off shape function
-      const double r = v_shape_function_(ip,ic);  
+      const double r = v_shape_function_(ip,ic);
   
       // time term, density
       rhoNm1Scs += r*v_rhoNm1(ic);
@@ -245,14 +246,13 @@ MomentumNSOElemSuppAlg<AlgTraits>::element_execute(
         // save off shape function
         const double r = v_shape_function_(ip,ic);
            
-        // save off velocity for component k
-        const double ukNm1 = v_uNm1(ic,k);
-        const double ukN = v_uN(ic,k);
+        // save off velocityUnp1 for component k
         const double ukNp1 = v_uNp1(ic,k);
 
-        ukNm1Scs += r*ukNm1;
-        ukNScs += r*ukN;
-        ukNp1Scs += r*ukNm1;
+        // interpolate all velocity states
+        ukNm1Scs += r*v_uNm1(ic,k);
+        ukNScs += r*v_uN(ic,k);
+        ukNp1Scs += r*ukNp1;
     
         // compute scs derivatives and flux derivative (adv/diff)
         const double rhoIC = v_rhoNp1(ic);
@@ -261,8 +261,7 @@ MomentumNSOElemSuppAlg<AlgTraits>::element_execute(
           const double dnj = v_dndx(ip,ic,j);
           const double vrtmj = v_velocityRTM(ic,j);
           v_dukdxScs_(j) += ukNp1*dnj;
-          const double uk = v_uNp1(ic,j);
-          dFdxkAdv += rhoIC*vrtmj*uk*dnj;
+          dFdxkAdv += rhoIC*vrtmj*ukNp1*dnj;
           dFdxkDiff += viscIC*(v_Gju(ic,k,j) + v_Gju(ic,j,k) - 2.0/3.0*divU*v_kd_(k,j)*includeDivU_)*dnj;
         }
       }
@@ -274,7 +273,7 @@ MomentumNSOElemSuppAlg<AlgTraits>::element_execute(
       
       // compute residual for NSO; pde-based second
       const double time = (gamma1_*rhoNp1Scs*ukNp1Scs + gamma2_*rhoNScs*ukNScs + gamma3_*rhoNm1Scs*ukNm1Scs)/dt_;
-      const double residualPde = time + dFdxkAdv - dFdxkDiff + v_dpdxScs_[k] - contRes*ukNp1Scs*nonConservedForm_; 
+      const double residualPde = time + dFdxkAdv - dFdxkDiff + v_dpdxScs_[k] - contRes*ukNp1Scs*nonConservedForm_;
 
       // final form
       const double residual = residualAlt*altResFac_ + residualPde*om_altResFac_;
@@ -289,7 +288,7 @@ MomentumNSOElemSuppAlg<AlgTraits>::element_execute(
           gUpperMagGradQ += duidxScs*v_gijUpper(ip,i,j)*v_dukdxScs_(j);
           rhoVrtmiGLowerRhoVrtmj += rhoVrtmi*v_gijLower(ip,i,j)*v_rhoVrtmScs_(j);
         }
-      }      
+      }
       
       // construct nu from residual
       const double nuResidual = std::sqrt((residual*residual)/(gUpperMagGradQ+small_));
@@ -338,7 +337,7 @@ MomentumNSOElemSuppAlg<AlgTraits>::element_execute(
       const double residualNSO = -nu*gijFac;
       rhs[indexL] -= residualNSO;
       rhs[indexR] += residualNSO;
-    }      
+    }
   }
 }
 
