@@ -6,8 +6,8 @@
 /*------------------------------------------------------------------------*/
 
 
-#ifndef MomentumAdvDiffElemSuppAlgDep_h
-#define MomentumAdvDiffElemSuppAlgDep_h
+#ifndef MomentumBuoyancySrcElemSuppAlgDep_h
+#define MomentumBuoyancySrcElemSuppAlgDep_h
 
 #include <SupplementalAlgorithm.h>
 #include <FieldTypeDef.h>
@@ -21,16 +21,14 @@ namespace nalu{
 class Realm;
 class MasterElement;
 
-class MomentumAdvDiffElemSuppAlgDep : public SupplementalAlgorithm
+class MomentumBuoyancySrcElemSuppAlgDep : public SupplementalAlgorithm
 {
 public:
 
-  MomentumAdvDiffElemSuppAlgDep(
-    Realm &realm,
-    VectorFieldType *velocity,
-    ScalarFieldType *viscosity);
+  MomentumBuoyancySrcElemSuppAlgDep(
+    Realm &realm);
 
-  virtual ~MomentumAdvDiffElemSuppAlgDep() {}
+  virtual ~MomentumBuoyancySrcElemSuppAlgDep() {}
 
   virtual void setup();
 
@@ -47,28 +45,19 @@ public:
   
   const stk::mesh::BulkData *bulkData_;
 
-  VectorFieldType *velocityNp1_;
+  ScalarFieldType *densityNp1_;
   VectorFieldType *coordinates_;
-  ScalarFieldType *viscosity_;
-  GenericFieldType *massFlowRate_;
 
   const int nDim_;
-  const double includeDivU_;
+  double rhoRef_;
+  const bool useShifted_;
+  std::vector<double> gravity_;
 
-  // fixed space
-  std::vector<double> ws_uIp_;
-
-  // scratch space; geometry
-  std::vector<double> ws_scs_areav_;
-  std::vector<double> ws_dndx_;
-  std::vector<double> ws_deriv_;
-  std::vector<double> ws_det_j_;
+  // scratch space
   std::vector<double> ws_shape_function_;
-
-  // scratch space; fields
-  std::vector<double> ws_uNp1_;
+  std::vector<double> ws_rhoNp1_;
   std::vector<double> ws_coordinates_;
-  std::vector<double> ws_viscosity_;
+  std::vector<double> ws_scv_volume_;
 };
 
 } // namespace nalu
