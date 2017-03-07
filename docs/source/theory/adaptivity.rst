@@ -8,7 +8,7 @@ for the manner by which hanging nodes are removed in a vertex-centered
 code base.
 
 A typical h-adapted patch of elements is shown in
-Figure :num:`hadapt-convol`. The “hanging nodes" do not have control volumes
+Figure :numref:`hadapt-convol`. The “hanging nodes" do not have control volumes
 associated with them. Rather, they are constrained to be a linear
 combination of the two parent edge nodes. There is no element assembly
 procedure to compute fluxes for the “hanging sub-faces" associated with
@@ -31,7 +31,7 @@ the topology of refined elements is the same as the parent element.
 Aftosmis :cite:`Aftosmis:94` describes a vertex-centered
 finite-volume scheme on unstructured Cartesian meshes. A transitional
 set of control volumes are formed about the hanging nodes, shown in
-Figure :num:`aftosmis-convol`. on unstructured meshes. This approach would
+Figure :numref:`aftosmis-convol`. on unstructured meshes. This approach would
 require a series of specialized master elements to deal with the
 different transition possibilities.
 
@@ -57,7 +57,7 @@ Hanging nodes are removed by splitting the elements on the “unrefined"
 side of the refinement boundary.
 Mavriplis :cite:`Mavriplis:00` uses a similar technique,
 however, extends it to a general set of heterogeneous elements, shown in
-Figure :num:`kallin-convol`.
+Figure :numref:`kallin-convol`.
 
 .. _kallin-convol:
 

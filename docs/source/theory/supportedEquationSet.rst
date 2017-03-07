@@ -806,7 +806,7 @@ the directional radiative intensity at a point,
            s_i \sin \theta_{zn} d \theta_{zn} d \theta_{az} ,
 
 where :math:`\theta_{zn}` and :math:`\theta_{az}` are the zenith and
-azimuthal angles respectively as shown in Figure :num:`ord-dir`.
+azimuthal angles respectively as shown in Figure :numref:`ord-dir`.
 
 .. _ord-dir:
 

@@ -21,7 +21,7 @@ import sys
 import subprocess
 import re
 
-sys.path.append(os.path.abspath('_extensions/'))
+#sys.path.append(os.path.abspath('_extensions/'))
 
 readTheDocs = os.environ.get('READTHEDOCS', None) == 'True'
 sourcedir = sys.argv[-2]
@@ -57,18 +57,11 @@ if readTheDocs:
 # ones.
 extensions = [
               'sphinx.ext.autodoc',
-              'sphinx.ext.todo',
               'sphinx.ext.autosummary',
               'sphinx.ext.mathjax',
-              'sphinxcontrib.doxylink',
-              'fix_equation_ref',
               'sphinx.ext.intersphinx',
+              'sphinxcontrib.doxylink',
               'sphinxcontrib.bibtex',
-              'numfig',
-              'numsec',
-              'figtable',
-              'singlehtml_toc',
-              'singletext',
              ]
 
 autodoc_default_flags = ['members','show-inheritance','undoc-members']
@@ -92,7 +85,7 @@ else:
     }
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ['_templates']
+#templates_path = ['_templates']
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
@@ -123,6 +116,7 @@ release = u'1.0'
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
 language = None
+numfig = True
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.

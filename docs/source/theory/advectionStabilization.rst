@@ -32,7 +32,7 @@ added (:math:`\eta = 0`) or that full upwind stabilization is included
 (as will be shown, even with limiter functions). The hybrid upwind
 factor allows one to modify the functional blending function; values of
 unity result in the normal blending function response in
-Figure :num:`pec-blend`; values of zero yield a pure central operator, i.e.,
+Figure :numref:`pec-blend`; values of zero yield a pure central operator, i.e.,
 blending function of zero; values :math:`>>` unity result in a blending
 function value of unity, i.e., pure upwind. The constant :math:`A` is
 implemented with a value of 5. The value of this constant can not be
