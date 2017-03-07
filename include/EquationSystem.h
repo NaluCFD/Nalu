@@ -147,7 +147,9 @@ public:
   void report_invalid_supp_alg_names();
   void report_built_supp_alg_names();
   bool supp_alg_is_requested(std::string name);
+  bool supp_alg_is_requested(std::vector<std::string>);
 
+  bool nodal_src_is_requested();
 
   EquationSystems &equationSystems_;
   Realm &realm_;

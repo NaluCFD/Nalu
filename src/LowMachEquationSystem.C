@@ -1027,7 +1027,6 @@ MomentumEquationSystem::register_interior_algorithm(
   }
 
   // solver; interior contribution (advection + diffusion) [possible CMM time]
-  bool useCMM = false;
   if ( !realm_.solutionOptions_->useConsolidatedSolverAlg_ ) {
     std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi
       = solverAlgDriver_->solverAlgMap_.find(algType);
@@ -1054,11 +1053,9 @@ MomentumEquationSystem::register_interior_algorithm(
           std::string sourceName = mapNameVec[k];
           SupplementalAlgorithm *suppAlg = NULL;
           if (sourceName == "momentum_time_derivative" ) {
-            useCMM = true;
             suppAlg = new MomentumMassElemSuppAlgDep(realm_, false);
           }
           else if (sourceName == "lumped_momentum_time_derivative" ) {
-            useCMM = true;
             suppAlg = new MomentumMassElemSuppAlgDep(realm_, true);
           }
           else if (sourceName == "SteadyTaylorVortex" ) {
@@ -1108,94 +1105,8 @@ MomentumEquationSystem::register_interior_algorithm(
     else {
       itsi->second->partVec_.push_back(part);
     }
-
-    // solver; time contribution (lumped mass matrix)
-    if ( !useCMM || (realm_.solutionOptions_->srcTermsMap_.size() > 0) ) {
-      std::map<AlgorithmType, SolverAlgorithm *>::iterator itsm =
-        solverAlgDriver_->solverAlgMap_.find(algMass);
-      if ( itsm == solverAlgDriver_->solverAlgMap_.end() ) {
-        AssembleNodeSolverAlgorithm *theAlg
-          = new AssembleNodeSolverAlgorithm(realm_, part, this);
-        solverAlgDriver_->solverAlgMap_[algMass] = theAlg;
-
-        // now create the supplemental alg for mass term (only when CMM is not in use)
-        if ( !useCMM ) {
-          if ( realm_.number_of_states() == 2 ) {
-            MomentumMassBackwardEulerNodeSuppAlg *theMass
-              = new MomentumMassBackwardEulerNodeSuppAlg(realm_);
-            theAlg->supplementalAlg_.push_back(theMass);
-          }
-          else {
-            MomentumMassBDF2NodeSuppAlg *theMass
-              = new MomentumMassBDF2NodeSuppAlg(realm_);
-            theAlg->supplementalAlg_.push_back(theMass);
-          }
-        }
-
-        // Add src term supp alg...; limited number supported
-        std::map<std::string, std::vector<std::string> >::iterator isrc
-          = realm_.solutionOptions_->srcTermsMap_.find("momentum");
-        if ( isrc != realm_.solutionOptions_->srcTermsMap_.end() ) {
-          std::vector<std::string> mapNameVec = isrc->second;
-          for (size_t k = 0; k < mapNameVec.size(); ++k ) {
-            std::string sourceName = mapNameVec[k];
-            SupplementalAlgorithm *suppAlg = NULL;
-            if (sourceName == "buoyancy" ) {
-              suppAlg = new MomentumBuoyancySrcNodeSuppAlg(realm_);
-            }
-            else if ( sourceName == "buoyancy_boussinesq") {
-              suppAlg = new MomentumBoussinesqSrcNodeSuppAlg(realm_);
-            }
-            else if ( sourceName == "body_force") {
-              // extract params
-              std::map<std::string, std::vector<double> >::iterator iparams
-                = realm_.solutionOptions_->srcTermParamMap_.find("momentum");
-              if ( iparams != realm_.solutionOptions_->srcTermParamMap_.end()) {
-                std::vector<double> theParams = iparams->second;
-                suppAlg = new MomentumBodyForceSrcNodeSuppAlg(realm_, theParams);
-              }
-              else {
-                throw std::runtime_error("SrcTermsError::body_force: No params found");
-              }
-            }
-            else if ( sourceName == "abl_forcing" ) {
-              ThrowAssertMsg(
-                ((NULL != realm_.ablForcingAlg_) &&
-                 (realm_.ablForcingAlg_->momentumForcingOn())),
-                "ERROR! ABL Forcing parameters must be initialized to use Momentum source.");
-              suppAlg = new MomentumABLForceSrcNodeSuppAlg(realm_, realm_.ablForcingAlg_);
-            }
-            else if ( sourceName == "gcl") {
-              suppAlg = new MomentumGclSrcNodeSuppAlg(realm_);
-            }
-            else if (sourceName == "SteadyTaylorVortex" ) {
-              suppAlg = new SteadyTaylorVortexMomentumSrcNodeSuppAlg(realm_);
-            }
-            else if (sourceName == "VariableDensity" ) {
-              suppAlg = new VariableDensityMomentumSrcNodeSuppAlg(realm_);
-            }
-            else if (sourceName == "VariableDensityNonIso" ) {
-              suppAlg = new VariableDensityNonIsoMomentumSrcNodeSuppAlg(realm_);
-            }
-            else if ( sourceName == "actuator_line") {
-              suppAlg = new MomentumActuatorLineSrcNodeSuppAlg(realm_);
-            }
-            else if ( sourceName == "EarthCoriolis") {
-              suppAlg = new MomentumCoriolisSrcNodeSuppAlg(realm_);
-            }
-            else {
-              throw std::runtime_error("MomentumNodalSrcTerms::Error Source term is not supported: " + sourceName);
-            }
-            NaluEnv::self().naluOutputP0() << "MomentumNodalSrcTerms::added() " << sourceName << std::endl;
-            theAlg->supplementalAlg_.push_back(suppAlg);
-          }
-        }
-      }
-      else {
-        itsm->second->partVec_.push_back(part);
-      }
-    }
-  } else {
+  }
+  else {
     // Homogeneous implementation
     if ( realm_.realmUsesEdges_ )
       throw std::runtime_error("MomentumElemSrcTerms::Error can not use element source terms for an edge-based scheme");
@@ -1213,18 +1124,14 @@ MomentumEquationSystem::register_interior_algorithm(
     auto& suppAlgVec = solverAlg->supplementalAlg_;
 
     if (solverAlgWasBuilt) {
-      bool hasMass1, hasMass2;
 
-      hasMass1 = build_topo_supp_alg_if_requested<MomentumMassElemSuppAlg>
+      build_topo_supp_alg_if_requested<MomentumMassElemSuppAlg>
         (partTopo, *this, suppAlgVec, "momentum_time_derivative",
          realm_, dataPreReqs, false);
 
-      hasMass2 = build_topo_supp_alg_if_requested<MomentumMassElemSuppAlg>
+      build_topo_supp_alg_if_requested<MomentumMassElemSuppAlg>
         (partTopo, *this, suppAlgVec, "lumped_momentum_time_derivative",
          realm_, dataPreReqs, true);
-
-      // Update CMM so that nodal term is not included
-      useCMM = hasMass1 || hasMass2;
 
       build_topo_supp_alg_if_requested<MomentumAdvDiffElemSuppAlg>
         (partTopo, *this, suppAlgVec, "advection_diffusion",
@@ -1265,6 +1172,97 @@ MomentumEquationSystem::register_interior_algorithm(
     }
   }
 
+  // Check if the user has requested CMM or LMM algorithms; if so, do not
+  // include Nodal Mass algorithms
+  std::vector<std::string> checkAlgNames = {"momentum_time_derivative",
+                                            "lumped_momentum_time_derivative"};
+  bool elementMassAlg = supp_alg_is_requested(checkAlgNames);
+  // solver; time contribution (lumped mass matrix)
+  if ( !elementMassAlg || nodal_src_is_requested() ) {
+    std::map<AlgorithmType, SolverAlgorithm *>::iterator itsm =
+      solverAlgDriver_->solverAlgMap_.find(algMass);
+    if ( itsm == solverAlgDriver_->solverAlgMap_.end() ) {
+      AssembleNodeSolverAlgorithm *theAlg
+        = new AssembleNodeSolverAlgorithm(realm_, part, this);
+      solverAlgDriver_->solverAlgMap_[algMass] = theAlg;
+    
+      // now create the supplemental alg for mass term (only when CMM is not in use)
+      if ( !elementMassAlg ) {
+        if ( realm_.number_of_states() == 2 ) {
+          MomentumMassBackwardEulerNodeSuppAlg *theMass
+            = new MomentumMassBackwardEulerNodeSuppAlg(realm_);
+          theAlg->supplementalAlg_.push_back(theMass);
+        }
+        else {
+          MomentumMassBDF2NodeSuppAlg *theMass
+            = new MomentumMassBDF2NodeSuppAlg(realm_);
+          theAlg->supplementalAlg_.push_back(theMass);
+        }
+      }
+
+      // Add src term supp alg...; limited number supported
+      std::map<std::string, std::vector<std::string> >::iterator isrc
+        = realm_.solutionOptions_->srcTermsMap_.find("momentum");
+      if ( isrc != realm_.solutionOptions_->srcTermsMap_.end() ) {
+        std::vector<std::string> mapNameVec = isrc->second;
+        for (size_t k = 0; k < mapNameVec.size(); ++k ) {
+          std::string sourceName = mapNameVec[k];
+          SupplementalAlgorithm *suppAlg = NULL;
+          if (sourceName == "buoyancy" ) {
+            suppAlg = new MomentumBuoyancySrcNodeSuppAlg(realm_);
+          }
+          else if ( sourceName == "buoyancy_boussinesq") {
+            suppAlg = new MomentumBoussinesqSrcNodeSuppAlg(realm_);
+          }
+          else if ( sourceName == "body_force") {
+            // extract params
+            std::map<std::string, std::vector<double> >::iterator iparams
+              = realm_.solutionOptions_->srcTermParamMap_.find("momentum");
+            if ( iparams != realm_.solutionOptions_->srcTermParamMap_.end()) {
+              std::vector<double> theParams = iparams->second;
+              suppAlg = new MomentumBodyForceSrcNodeSuppAlg(realm_, theParams);
+            }
+            else {
+              throw std::runtime_error("SrcTermsError::body_force: No params found");
+            }
+          }
+          else if ( sourceName == "abl_forcing" ) {
+            ThrowAssertMsg(
+                           ((NULL != realm_.ablForcingAlg_) &&
+                            (realm_.ablForcingAlg_->momentumForcingOn())),
+                           "ERROR! ABL Forcing parameters must be initialized to use Momentum source.");
+            suppAlg = new MomentumABLForceSrcNodeSuppAlg(realm_, realm_.ablForcingAlg_);
+          }
+          else if ( sourceName == "gcl") {
+            suppAlg = new MomentumGclSrcNodeSuppAlg(realm_);
+          }
+          else if (sourceName == "SteadyTaylorVortex" ) {
+            suppAlg = new SteadyTaylorVortexMomentumSrcNodeSuppAlg(realm_);
+          }
+          else if (sourceName == "VariableDensity" ) {
+            suppAlg = new VariableDensityMomentumSrcNodeSuppAlg(realm_);
+          }
+          else if (sourceName == "VariableDensityNonIso" ) {
+            suppAlg = new VariableDensityNonIsoMomentumSrcNodeSuppAlg(realm_);
+          }
+          else if ( sourceName == "actuator_line") {
+            suppAlg = new MomentumActuatorLineSrcNodeSuppAlg(realm_);
+          }
+          else if ( sourceName == "EarthCoriolis") {
+            suppAlg = new MomentumCoriolisSrcNodeSuppAlg(realm_);
+          }
+          else {
+            throw std::runtime_error("MomentumNodalSrcTerms::Error Source term is not supported: " + sourceName);
+          }
+          NaluEnv::self().naluOutputP0() << "MomentumNodalSrcTerms::added() " << sourceName << std::endl;
+          theAlg->supplementalAlg_.push_back(suppAlg);
+        }
+      }
+    }
+    else {
+      itsm->second->partVec_.push_back(part);
+    }
+  }
 
   // effective viscosity alg
   if ( realm_.is_turbulent() ) {
@@ -2301,12 +2299,16 @@ ContinuityEquationSystem::register_interior_algorithm(
         build_topo_supp_alg_if_requested<ContinuityAdvElemSuppAlg>
           (partTopo, *this, suppAlgVec, "advection",
            realm_, dataPreReqs);
-      }
 
-      report_invalid_supp_alg_names();
-      report_built_supp_alg_names();
+        report_invalid_supp_alg_names();
+        report_built_supp_alg_names();
+      }
     }
   }
+
+  // std::vector<std::string> checkAlgNames = {"density_time_derivative",
+  //                                           "lumped_density_time_derivative"};
+  // bool elementMassAlg = supp_alg_is_requested(checkAlgNames);
 
   // time term using lumped mass
   std::map<std::string, std::vector<std::string> >::iterator isrc =

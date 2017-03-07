@@ -195,7 +195,6 @@ MassFractionEquationSystem::register_interior_algorithm(
   }
 
   // solver; interior contribution (advection + diffusion)
-  bool useCMM = false;
   std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi
     = solverAlgDriver_->solverAlgMap_.find(algType);
   if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
@@ -221,11 +220,9 @@ MassFractionEquationSystem::register_interior_algorithm(
         std::string sourceName = mapNameVec[k];
         SupplementalAlgorithm *suppAlg = NULL;
         if (sourceName == "mass_fraction_time_derivative" ) {
-          useCMM = true;
           suppAlg = new ScalarMassElemSuppAlgDep(realm_, currentMassFraction_, false);
         }
         else if (sourceName == "lumped_mass_fraction_time_derivative" ) {
-          useCMM = true;
           suppAlg = new ScalarMassElemSuppAlgDep(realm_, currentMassFraction_, true);
         }
         else {
@@ -241,6 +238,11 @@ MassFractionEquationSystem::register_interior_algorithm(
   
   // time term; nodally lumped
   const AlgorithmType algMass = MASS;
+  // Check if the user has requested CMM or LMM algorithms; if so, do not
+  // include Nodal Mass algorithms
+  std::vector<std::string> checkAlgNames = {"mass_fraction_time_derivative",
+                                            "lumped_mass_fraction_time_derivative"};
+  bool elementMassAlg = supp_alg_is_requested(checkAlgNames);
   std::map<AlgorithmType, SolverAlgorithm *>::iterator itsm =
     solverAlgDriver_->solverAlgMap_.find(algMass);
   if ( itsm == solverAlgDriver_->solverAlgMap_.end() ) {
@@ -250,7 +252,7 @@ MassFractionEquationSystem::register_interior_algorithm(
     solverAlgDriver_->solverAlgMap_[algMass] = theAlg;
     
     // now create the supplemental alg for mass term
-    if ( !useCMM ) {
+    if ( !elementMassAlg ) {
       if ( realm_.number_of_states() == 2 ) {
         ScalarMassBackwardEulerNodeSuppAlg *theMass
           = new ScalarMassBackwardEulerNodeSuppAlg(realm_, currentMassFraction_);
