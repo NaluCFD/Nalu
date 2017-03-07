@@ -105,7 +105,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Nalu'
-copyright = u'2017, Sandia National Labs'
+copyright = u'2017, Nalu Development Team'
 author = u'Nalu Team'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -148,6 +148,7 @@ todo_include_todos = False
 # a list of builtin themes.
 #
 # html_theme = 'bizstyle'
+html_theme = 'sphinx_rtd_theme'
 html_logo = 'naluLowMach.jpg'
 
 # Theme options are theme-specific and customize the look and feel of a theme
@@ -193,7 +194,7 @@ latex_elements = {
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
     (master_doc, 'Nalu.tex', u'Nalu Documentation',
-     u'Sandia National Labs', 'manual'),
+     u'Nalu Development Team', 'manual'),
 ]
 
 

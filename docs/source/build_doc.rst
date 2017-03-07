@@ -4,7 +4,7 @@ Building the Documentation
 This document describes how to build Nalu's documentation.
 The documentation is based on the use of Doxygen, Sphinx,
 and Doxylink. Therefore we will need to install these tools
-as well as many extensions of Sphinx that are utilized.
+as well as some extensions of Sphinx that are utilized.
 
 Install the Tools
 -----------------
@@ -26,30 +26,35 @@ this would look something like:
   pip install sphinx
   pip install sphinxcontrib-doxylink
   pip install sphinxcontrib-bibtex
+  pip install sphinx_rtd_theme
+
+On Linux, CMake, Python, Doxygen, and GraphViz could be installed
+using your package manager, e.g. ``sudo apt-get install cmake``.
 
 Run CMake Configure
 -------------------
 
-In the Nalu repository checkout, create a ``mybuild`` directory.
-Change to the build directory and run CMake with ``BUILD_DOCUMENTATION``
+In the `Nalu repository <https://github.com/NaluCFD/Nalu>`__ checkout, 
+create your own or use the ``build`` directory that already exists in the repo.
+Change to your designated build directory and run CMake with ``-DBUILD_DOCUMENTATION``
 on. For example:
 
 ::
 
   cmake -DTrilinos_DIR:PATH=`spack location -i nalu-trilinos` \
-  -DYAML_DIR:PATH=`spack location -i yaml-cpp` \
-  -DENABLE_INSTALL:BOOL=ON -DCMAKE_BUILD_TYPE=RELEASE \
-  -DBUILD_DOCUMENTATION:BOOL=ON \
-  ..
+        -DYAML_DIR:PATH=`spack location -i yaml-cpp` \
+        -DCMAKE_BUILD_TYPE=RELEASE \
+        -DBUILD_DOCUMENTATION:BOOL=ON \
+        ..
 
 If all of the main tools are found successfully, CMake should configure with the ability
 to build the documentation. If Sphinx or Doxygen aren't found, the configure will skip
 the documentation.
 
-
 Make the Docs
 -------------
 
-Issue the command ``make docs`` which should first build the Doxygen documentation and
-then the Sphinx documentation. If this completes successfully, the entry point to
-the documentation should be in ``mybuild/docs/html/index.html``.
+In your designated build directory, issue the command ``make docs`` which 
+should first build the Doxygen documentation and then the Sphinx documentation. 
+If this completes successfully, the entry point to
+the documentation should be in ``build/docs/html/index.html``.

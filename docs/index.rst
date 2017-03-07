@@ -8,9 +8,11 @@ Nalu Documentation
 
    Nalu Homepage <http://nalucfd.org>
    Nalu Github Homepage <https://github.com/nalucfd/nalu>
+   Building Nalu Using Spack <source/build_spack.rst>
+   Building Nalu Manually <source/build_manually.rst>
+   Building the Nalu Documentation <source/build_doc.rst>
+   Using Nalu <source/using.rst>
    Theory Manual <source/theory/index.rst>
-   Building This Documentation <source/build_doc.rst>
-   Installation on Mac OS X <source/install_mac.rst>
-   Installation on Linux <source/install_linux.rst>
-   Source Code Documentation <source/code.rst>
+   Verification Manual <source/verification/index.rst>
+   Developer Documentation <source/developer/index.rst>
 

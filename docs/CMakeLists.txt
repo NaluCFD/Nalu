@@ -3,7 +3,6 @@ find_package(Sphinx)
 
 if(DOXYGEN_FOUND)
     configure_file(Doxyfile.in Doxyfile @ONLY)
-    #file(COPY "Doxyfile" DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
     add_custom_target(doxygen
         COMMAND ${DOXYGEN_EXECUTABLE} "${CMAKE_CURRENT_BINARY_DIR}/Doxyfile" )
 else()
@@ -21,7 +20,7 @@ if(SPHINX_FOUND)
     add_custom_target(sphinx
         COMMAND ${SPHINX_EXECUTABLE} -b ${SPHINX_GENERATOR} 
         -c ${CMAKE_CURRENT_BINARY_DIR}
-        "${CMAKE_CURRENT_BINARY_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/${SPHINX_GENERATOR}"
+        "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/${SPHINX_GENERATOR}"
         )
     add_dependencies(sphinx doxygen)
     add_custom_target(docs DEPENDS sphinx)
