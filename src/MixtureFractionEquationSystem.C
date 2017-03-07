@@ -256,7 +256,6 @@ MixtureFractionEquationSystem::register_interior_algorithm(
 
   // solver; interior edge contribution (advection + diffusion)
   if ( !realm_.solutionOptions_->useConsolidatedSolverAlg_ ) {
-    bool useCMM = false;
     std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi
       = solverAlgDriver_->solverAlgMap_.find(algType);
     if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
@@ -305,12 +304,10 @@ MixtureFractionEquationSystem::register_interior_algorithm(
             suppAlg = new ScalarNSOKeElemSuppAlg(realm_, mixFrac_, dzdx_, turbSc, 1.0);
           }
           else if (sourceName == "mixture_fraction_time_derivative" ) {
-            useCMM = true;
-            suppAlg = new ScalarMassElemSuppAlgDep(realm_, mixFrac_, false); 
+            suppAlg = new ScalarMassElemSuppAlgDep(realm_, mixFrac_, false);
           }
           else if (sourceName == "lumped_mixture_fraction_time_derivative" ) {
-            useCMM = true;
-            suppAlg = new ScalarMassElemSuppAlgDep(realm_, mixFrac_, true); 
+            suppAlg = new ScalarMassElemSuppAlgDep(realm_, mixFrac_, true);
           }
           else {
             throw std::runtime_error("MixtureFractionElemSrcTerms::Error Source term is not supported: " + sourceName);
@@ -326,6 +323,11 @@ MixtureFractionEquationSystem::register_interior_algorithm(
     
     // time term; nodally lumped
     const AlgorithmType algMass = MASS;
+    // Check if the user has requested CMM or LMM algorithms; if so, do not
+    // include Nodal Mass algorithms
+    std::vector<std::string> checkAlgNames = {"mixture_fraction_time_derivative",
+                                              "lumped_mixture_fraction_time_derivative"};
+    bool elementMassAlg = supp_alg_is_requested(checkAlgNames);
     std::map<AlgorithmType, SolverAlgorithm *>::iterator itsm =
       solverAlgDriver_->solverAlgMap_.find(algMass);
     if ( itsm == solverAlgDriver_->solverAlgMap_.end() ) {
@@ -335,7 +337,7 @@ MixtureFractionEquationSystem::register_interior_algorithm(
       solverAlgDriver_->solverAlgMap_[algMass] = theAlg;
       
       // now create the supplemental alg for mass term
-      if ( !useCMM ) {
+      if ( !elementMassAlg ) {
         if ( realm_.number_of_states() == 2 ) {
           ScalarMassBackwardEulerNodeSuppAlg *theMass
             = new ScalarMassBackwardEulerNodeSuppAlg(realm_, mixFrac_);

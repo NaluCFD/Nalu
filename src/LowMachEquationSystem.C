@@ -823,7 +823,6 @@ MomentumEquationSystem::MomentumEquationSystem(
   EquationSystems& eqSystems)
   : EquationSystem(eqSystems, "MomentumEQS","momentum"),
     managePNG_(realm_.get_consistent_mass_matrix_png("velocity")),
-    elementMassAlg_(false),
     velocity_(NULL),
     dudx_(NULL),
     coordinates_(NULL),
@@ -1054,11 +1053,9 @@ MomentumEquationSystem::register_interior_algorithm(
           std::string sourceName = mapNameVec[k];
           SupplementalAlgorithm *suppAlg = NULL;
           if (sourceName == "momentum_time_derivative" ) {
-            elementMassAlg_ = true;
             suppAlg = new MomentumMassElemSuppAlgDep(realm_, false);
           }
           else if (sourceName == "lumped_momentum_time_derivative" ) {
-            elementMassAlg_ = true;
             suppAlg = new MomentumMassElemSuppAlgDep(realm_, true);
           }
           else if (sourceName == "SteadyTaylorVortex" ) {
@@ -1136,15 +1133,6 @@ MomentumEquationSystem::register_interior_algorithm(
         (partTopo, *this, suppAlgVec, "lumped_momentum_time_derivative",
          realm_, dataPreReqs, true);
 
-      bool elemMassAlg = hasMass1 || hasMass2;
-      // This should  never happen
-      if (elementMassAlg_ && !elemMassAlg) {
-        throw std::runtime_error(
-          "Inconsistency in initializing element mass algorithm for hybrid meshes.");
-      }
-      // Update CMM so that nodal term is not included
-      elementMassAlg_ = hasMass1 || hasMass2;
-
       build_topo_supp_alg_if_requested<MomentumAdvDiffElemSuppAlg>
         (partTopo, *this, suppAlgVec, "advection_diffusion",
          realm_, velocity_,
@@ -1184,8 +1172,13 @@ MomentumEquationSystem::register_interior_algorithm(
     }
   }
 
+  // Check if the user has requested CMM or LMM algorithms; if so, do not
+  // include Nodal Mass algorithms
+  std::vector<std::string> checkAlgNames = {"momentum_time_derivative",
+                                            "lumped_momentum_time_derivative"};
+  bool elementMassAlg = supp_alg_is_requested(checkAlgNames);
   // solver; time contribution (lumped mass matrix)
-  if ( !elementMassAlg_ || (realm_.solutionOptions_->srcTermsMap_.size() > 0) ) {
+  if ( !elementMassAlg || nodal_src_is_requested() ) {
     std::map<AlgorithmType, SolverAlgorithm *>::iterator itsm =
       solverAlgDriver_->solverAlgMap_.find(algMass);
     if ( itsm == solverAlgDriver_->solverAlgMap_.end() ) {
@@ -1194,7 +1187,7 @@ MomentumEquationSystem::register_interior_algorithm(
       solverAlgDriver_->solverAlgMap_[algMass] = theAlg;
     
       // now create the supplemental alg for mass term (only when CMM is not in use)
-      if ( !elementMassAlg_ ) {
+      if ( !elementMassAlg ) {
         if ( realm_.number_of_states() == 2 ) {
           MomentumMassBackwardEulerNodeSuppAlg *theMass
             = new MomentumMassBackwardEulerNodeSuppAlg(realm_);
@@ -2306,12 +2299,16 @@ ContinuityEquationSystem::register_interior_algorithm(
         build_topo_supp_alg_if_requested<ContinuityAdvElemSuppAlg>
           (partTopo, *this, suppAlgVec, "advection",
            realm_, dataPreReqs);
-      }
 
-      report_invalid_supp_alg_names();
-      report_built_supp_alg_names();
+        report_invalid_supp_alg_names();
+        report_built_supp_alg_names();
+      }
     }
   }
+
+  // std::vector<std::string> checkAlgNames = {"density_time_derivative",
+  //                                           "lumped_density_time_derivative"};
+  // bool elementMassAlg = supp_alg_is_requested(checkAlgNames);
 
   // time term using lumped mass
   std::map<std::string, std::vector<std::string> >::iterator isrc =
