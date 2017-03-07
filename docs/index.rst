@@ -10,7 +10,6 @@ Nalu Documentation
    Nalu Github Homepage <https://github.com/nalucfd/nalu>
    Building Nalu Using Spack <source/build_spack.rst>
    Building Nalu Manually <source/build_manually.rst>
-   Building the Nalu Documentation <source/build_doc.rst>
    Using Nalu <source/using.rst>
    Theory Manual <source/theory/index.rst>
    Verification Manual <source/verification/index.rst>
