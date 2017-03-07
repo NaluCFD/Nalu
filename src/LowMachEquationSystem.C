@@ -1124,13 +1124,12 @@ MomentumEquationSystem::register_interior_algorithm(
     auto& suppAlgVec = solverAlg->supplementalAlg_;
 
     if (solverAlgWasBuilt) {
-      bool hasMass1, hasMass2;
 
-      hasMass1 = build_topo_supp_alg_if_requested<MomentumMassElemSuppAlg>
+      build_topo_supp_alg_if_requested<MomentumMassElemSuppAlg>
         (partTopo, *this, suppAlgVec, "momentum_time_derivative",
          realm_, dataPreReqs, false);
 
-      hasMass2 = build_topo_supp_alg_if_requested<MomentumMassElemSuppAlg>
+      build_topo_supp_alg_if_requested<MomentumMassElemSuppAlg>
         (partTopo, *this, suppAlgVec, "lumped_momentum_time_derivative",
          realm_, dataPreReqs, true);
 
