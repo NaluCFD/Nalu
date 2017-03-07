@@ -1105,7 +1105,8 @@ MomentumEquationSystem::register_interior_algorithm(
     else {
       itsi->second->partVec_.push_back(part);
     }
-  } else {
+  }
+  else {
     // Homogeneous implementation
     if ( realm_.realmUsesEdges_ )
       throw std::runtime_error("MomentumElemSrcTerms::Error can not use element source terms for an edge-based scheme");
@@ -1228,9 +1229,9 @@ MomentumEquationSystem::register_interior_algorithm(
           }
           else if ( sourceName == "abl_forcing" ) {
             ThrowAssertMsg(
-              ((NULL != realm_.ablForcingAlg_) &&
-               (realm_.ablForcingAlg_->momentumForcingOn())),
-              "ERROR! ABL Forcing parameters must be initialized to use Momentum source.");
+                           ((NULL != realm_.ablForcingAlg_) &&
+                            (realm_.ablForcingAlg_->momentumForcingOn())),
+                           "ERROR! ABL Forcing parameters must be initialized to use Momentum source.");
             suppAlg = new MomentumABLForceSrcNodeSuppAlg(realm_, realm_.ablForcingAlg_);
           }
           else if ( sourceName == "gcl") {
