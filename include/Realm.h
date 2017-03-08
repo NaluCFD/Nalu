@@ -479,6 +479,8 @@ class Realm {
   // allow detailed output (memory) to be provided
   bool activateMemoryDiagnostic_;
 
+  // sometimes restarts can be missing states or dofs
+  bool supportInconsistentRestart_;
 
   bool doBalanceNodes_;
   struct BalanceNodeOptions
@@ -492,9 +494,6 @@ class Realm {
     int numIters;
   };
   BalanceNodeOptions balanceNodeOptions_;
-
-  // sometimes restarts can be missing states or dofs
-  bool supportInconsistentRestart_;
 
   // beginning wall time
   double wallTimeStart_;
