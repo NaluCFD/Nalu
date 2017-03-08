@@ -24,7 +24,6 @@
 #include <AssembleMomentumWallFunctionSolverAlgorithm.h>
 #include <AssembleMomentumABLWallFunctionSolverAlgorithm.h>
 #include <AssembleMomentumNonConformalSolverAlgorithm.h>
-#include <AssembleElemSolverAlgorithmDep.h>
 #include <AssembleNodalGradAlgorithmDriver.h>
 #include <AssembleNodalGradEdgeAlgorithm.h>
 #include <AssembleNodalGradElemAlgorithm.h>
@@ -49,10 +48,6 @@
 #include <ContinuityLowSpeedCompressibleNodeSuppAlg.h>
 #include <ContinuityMassBackwardEulerNodeSuppAlg.h>
 #include <ContinuityMassBDF2NodeSuppAlg.h>
-#include <ContinuityMassElemSuppAlg.h>
-#include <ContinuityMassElemSuppAlgDep.h>
-#include <ContinuityAdvElemSuppAlg.h>
-#include <ContinuityAdvElemSuppAlgDep.h>
 #include <CopyFieldAlgorithm.h>
 #include <DirichletBC.h>
 #include <EffectiveDiffFluxCoeffAlgorithm.h>
@@ -67,7 +62,6 @@
 #include <master_element/MasterElement.h>
 #include <MomentumActuatorLineSrcNodeSuppAlg.h>
 #include <MomentumBuoyancySrcNodeSuppAlg.h>
-#include <MomentumBuoyancySrcElemSuppAlg.h>
 #include <MomentumBoussinesqSrcNodeSuppAlg.h>
 #include <MomentumBodyForceSrcNodeSuppAlg.h>
 #include <MomentumABLForceSrcNodeSuppAlg.h>
@@ -75,13 +69,6 @@
 #include <MomentumGclSrcNodeSuppAlg.h>
 #include <MomentumMassBackwardEulerNodeSuppAlg.h>
 #include <MomentumMassBDF2NodeSuppAlg.h>
-#include <MomentumMassElemSuppAlg.h>
-#include <MomentumAdvDiffElemSuppAlgDep.h>
-#include <MomentumMassElemSuppAlgDep.h>
-#include <MomentumBuoyancySrcElemSuppAlgDep.h>
-#include <MomentumAdvDiffElemSuppAlg.h>
-#include <MomentumMassElemSuppAlg.h>
-#include <MomentumBuoyancySrcElemSuppAlg.h>
 #include <NaluEnv.h>
 #include <NaluParsing.h>
 #include <ProjectedNodalGradientEquationSystem.h>
@@ -104,18 +91,22 @@
 #include <TurbViscWaleAlgorithm.h>
 #include <ABLForcingAlgorithm.h>
 
-// nso; dep
+// consolidated approach
+#include <ContinuityAdvElemSuppAlg.h>
+#include <ContinuityMassElemSuppAlg.h>
+#include <MomentumAdvDiffElemSuppAlg.h>
+#include <MomentumBuoyancySrcElemSuppAlg.h>
+#include <MomentumMassElemSuppAlg.h>
+
+// nso
+#include <nso/MomentumNSOElemSuppAlg.h>
 #include <nso/MomentumNSOKeElemSuppAlg.h>
-#include <nso/MomentumNSOElemSuppAlgDep.h>
 #include <nso/MomentumNSOGradElemSuppAlg.h>
 
 // template for supp algs
 #include <AlgTraits.h>
 #include <SupplementalAlgorithmBuilder.h>
 #include <SupplementalAlgorithmBuilderLog.h>
-
-// nso
-#include <nso/MomentumNSOElemSuppAlg.h>
 
 // user function
 #include <user_functions/ConvectingTaylorVortexVelocityAuxFunction.h>
@@ -146,6 +137,13 @@
 #include <user_functions/SinProfileChannelFlowVelocityAuxFunction.h>
 
 #include <user_functions/BoundaryLayerPerturbationAuxFunction.h>
+
+// deprecated
+#include <ContinuityMassElemSuppAlgDep.h>
+#include <MomentumMassElemSuppAlgDep.h>
+#include <MomentumBuoyancySrcElemSuppAlgDep.h>
+#include <nso/MomentumNSOKeElemSuppAlgDep.h>
+#include <nso/MomentumNSOElemSuppAlgDep.h>
 
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
@@ -1077,10 +1075,10 @@ MomentumEquationSystem::register_interior_algorithm(
             suppAlg = new MomentumNSOElemSuppAlgDep(realm_, velocity_, dudx_, realm_.is_turbulent() ? evisc_ : visc_, 1.0, 1.0);
           }
           else if (sourceName == "NSO_2ND_KE" ) {
-            suppAlg = new MomentumNSOKeElemSuppAlg(realm_, velocity_, dudx_, 0.0);
+            suppAlg = new MomentumNSOKeElemSuppAlgDep(realm_, velocity_, dudx_, 0.0);
           }
           else if (sourceName == "NSO_4TH_KE" ) {
-            suppAlg = new MomentumNSOKeElemSuppAlg(realm_, velocity_, dudx_, 1.0);
+            suppAlg = new MomentumNSOKeElemSuppAlgDep(realm_, velocity_, dudx_, 1.0);
           }
           else if (sourceName == "NSO_2ND_GRAD" ) {
             suppAlg = new MomentumNSOGradElemSuppAlg(realm_, velocity_, dudx_, 0.0);
@@ -1090,9 +1088,6 @@ MomentumEquationSystem::register_interior_algorithm(
           }
           else if (sourceName == "buoyancy" ) {
             suppAlg = new MomentumBuoyancySrcElemSuppAlgDep(realm_);
-          }
-          else if (sourceName == "advection_diffusion" ) {
-            suppAlg = new MomentumAdvDiffElemSuppAlgDep(realm_, velocity_, realm_.is_turbulent() ? evisc_ : visc_);
           }
           else {
             throw std::runtime_error("MomentumElemSrcTerms::Error Source term is not supported: " + sourceName);
@@ -1154,6 +1149,10 @@ MomentumEquationSystem::register_interior_algorithm(
          realm_, velocity_, dudx_,
          realm_.is_turbulent()? evisc_ : visc_,
          0.0, 1.0, dataPreReqs);
+      
+      build_topo_supp_alg_if_requested<MomentumNSOKeElemSuppAlg>
+        (partTopo, *this, suppAlgVec, "NSO_2ND_KE",
+         realm_, velocity_, dudx_, 0.0, dataPreReqs);
 
       build_topo_supp_alg_if_requested<MomentumNSOElemSuppAlg>
         (partTopo, *this, suppAlgVec, "NSO_4TH",
@@ -1167,6 +1166,10 @@ MomentumEquationSystem::register_interior_algorithm(
          realm_.is_turbulent()? evisc_ : visc_,
          1.0, 1.0, dataPreReqs);
 
+      build_topo_supp_alg_if_requested<MomentumNSOKeElemSuppAlg>
+        (partTopo, *this, suppAlgVec, "NSO_4TH_KE",
+         realm_, velocity_, dudx_, 1.0, dataPreReqs);
+ 
       report_invalid_supp_alg_names();
       report_built_supp_alg_names();
     }
@@ -2257,9 +2260,6 @@ ContinuityEquationSystem::register_interior_algorithm(
             else if (sourceName == "lumped_density_time_derivative" ) {
               suppAlg = new ContinuityMassElemSuppAlgDep(realm_, true);
             }
-            else if (sourceName == "advection" ) {
-              suppAlg = new ContinuityAdvElemSuppAlgDep(realm_);
-            }
             else {
               throw std::runtime_error("ContinuityElemSrcTerms::Error Source term is not supported: " + sourceName);
             }
@@ -2305,10 +2305,6 @@ ContinuityEquationSystem::register_interior_algorithm(
       }
     }
   }
-
-  // std::vector<std::string> checkAlgNames = {"density_time_derivative",
-  //                                           "lumped_density_time_derivative"};
-  // bool elementMassAlg = supp_alg_is_requested(checkAlgNames);
 
   // time term using lumped mass
   std::map<std::string, std::vector<std::string> >::iterator isrc =

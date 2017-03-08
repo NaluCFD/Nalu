@@ -66,7 +66,6 @@ public:
   const int *lrscv_;
 
   double dt_;
-  const int nDim_;
   double gamma1_;
   double gamma2_;
   double gamma3_;

@@ -379,7 +379,7 @@ MixtureFractionEquationSystem::register_interior_algorithm(
   else {
     // Homogeneous kernel implementation
     if ( realm_.realmUsesEdges_ )
-      throw std::runtime_error("ContinuityElemSrcTerms::Error can not use element source terms for an edge-based scheme");
+      throw std::runtime_error("MixtureFraction::Error can not use element source terms for an edge-based scheme");
     
     stk::topology partTopo = part->topology();
     auto& solverAlgMap = solverAlgDriver_->solverAlgorithmMap_;
@@ -421,10 +421,10 @@ MixtureFractionEquationSystem::register_interior_algorithm(
       build_topo_supp_alg_if_requested<ScalarNSOElemSuppAlg>
         (partTopo, *this, suppAlgVec, "NSO_4TH_ALT",
          realm_, mixFrac_, dzdx_, evisc_, 1.0, 1.0, dataPreReqs); 
-    }
 
-    report_invalid_supp_alg_names();
-    report_built_supp_alg_names();
+      report_invalid_supp_alg_names();
+      report_built_supp_alg_names();
+   }
   }
 
   // effective viscosity alg

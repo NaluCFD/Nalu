@@ -4481,7 +4481,7 @@ Quad2DSCV::Quad2DSCV()
   intgLocShift_.resize(8);    
   intgLocShift_[0]  = -0.50; intgLocShift_[1]  = -0.50; 
   intgLocShift_[2]  = +0.50; intgLocShift_[3]  = -0.50; 
-  intgLocShift_[4]  = +0.05; intgLocShift_[5]  = +0.50; 
+  intgLocShift_[4]  = +0.50; intgLocShift_[5]  = +0.50; 
   intgLocShift_[6]  = -0.50; intgLocShift_[7]  = +0.50; 
 }
 

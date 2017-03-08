@@ -10,17 +10,23 @@
 #define MomentumNSOKeElemSuppAlg_h
 
 #include <SupplementalAlgorithm.h>
+#include <AlgTraits.h>
 #include <FieldTypeDef.h>
 
-#include <stk_mesh/base/BulkData.hpp>
 #include <stk_mesh/base/Entity.hpp>
+
+// Kokkos
+#include <Kokkos_Core.hpp>
 
 namespace sierra{
 namespace nalu{
 
+class ElemDataRequests;
 class Realm;
+class ScratchViews;
 class MasterElement;
 
+template<class AlgTraits>
 class MomentumNSOKeElemSuppAlg : public SupplementalAlgorithm
 {
 public:
@@ -29,24 +35,16 @@ public:
     Realm &realm,
     VectorFieldType *velocity,
     GenericFieldType *Gju,
-    const double fourthFac);
+    const double fourthFac,
+    ElemDataRequests& dataPreReqs);
 
   virtual ~MomentumNSOKeElemSuppAlg() {}
 
-  virtual void setup();
-
-  virtual void elem_resize(
-    MasterElement *meSCS,
-    MasterElement *meSCV);
-
-  virtual void elem_execute(
+  void element_execute(
     double *lhs,
     double *rhs,
     stk::mesh::Entity element,
-    MasterElement *meSCS,
-    MasterElement *meSCV);
-  
-  const stk::mesh::BulkData *bulkData_;
+    ScratchViews& scratchViews);
 
   VectorFieldType *velocityNp1_;
   ScalarFieldType *densityNp1_;
@@ -55,37 +53,22 @@ public:
   VectorFieldType *coordinates_;
   GenericFieldType *Gju_;
   VectorFieldType *Gjp_;
-  const int nDim_;
+
+  // master element
+  const int *lrscv_;
+
   const double Cupw_;
   const double small_;
   const double fourthFac_;
 
-  // fixed space
-  std::vector<double> ws_rhoVrtmScs_;
-  std::vector<double> ws_uNp1Scs_;
-  std::vector<double> ws_dpdxScs_;
-  std::vector<double> ws_GjpScs_;
-  std::vector<double> ws_dkedxScs_;
-  std::vector<double> ws_kd_;
-
-  // scratch space; geometry
-  std::vector<double> ws_scs_areav_;
-  std::vector<double> ws_dndx_;
-  std::vector<double> ws_deriv_;
-  std::vector<double> ws_det_j_;
-  std::vector<double> ws_shape_function_;
-  std::vector<double> ws_gUpper_;
-  std::vector<double> ws_gLower_;
-
-  // scratch space; fields
-  std::vector<double> ws_velocityNp1_;
-  std::vector<double> ws_rhoNp1_;
-  std::vector<double> ws_pressure_;
-  std::vector<double> ws_velocityRTM_;
-  std::vector<double> ws_coordinates_;
-  std::vector<double> ws_Gju_;
-  std::vector<double> ws_Gjp_;
-  std::vector<double> ws_ke_;
+  // fixed scratch space
+  Kokkos::View<double[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_{"v_shape_function"};
+  Kokkos::View<double[AlgTraits::nodesPerElement_]> v_ke_{"v_ke"};
+  Kokkos::View<double[AlgTraits::nDim_]> v_rhoVrtmScs_{"v_rhoVrtmScs"};
+  Kokkos::View<double[AlgTraits::nDim_]> v_uNp1Scs_{"v_uNp1Scs"};
+  Kokkos::View<double[AlgTraits::nDim_]> v_dpdxScs_{"v_dpdxScs"};
+  Kokkos::View<double[AlgTraits::nDim_]> v_GjpScs_{"v_GjpScs"};
+  Kokkos::View<double[AlgTraits::nDim_]> v_dkedxScs_{"v_dkedxScs_"};
 };
 
 } // namespace nalu

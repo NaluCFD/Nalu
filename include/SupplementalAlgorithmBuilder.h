@@ -38,6 +38,10 @@ namespace nalu{
         return new T<AlgTraitsPyr5>(std::forward<Args>(args)...);
       case stk::topology::WEDGE_6:
         return new T<AlgTraitsWed6>(std::forward<Args>(args)...);
+      case stk::topology::QUAD_4_2D:
+        return new T<AlgTraitsQuad4_2D>(std::forward<Args>(args)...);
+      case stk::topology::TRI_3_2D:
+        return new T<AlgTraitsTri3_2D>(std::forward<Args>(args)...);
       default:
         return nullptr;
     }

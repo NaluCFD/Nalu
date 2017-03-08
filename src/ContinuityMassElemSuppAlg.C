@@ -58,7 +58,12 @@ ContinuityMassElemSuppAlg<AlgTraits>::ContinuityMassElemSuppAlg(
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
 
   MasterElement *meSCV = realm.get_volume_master_element(AlgTraits::topo_);
-  meSCV->shape_fcn(&v_shape_function_(0,0));
+
+  // compute shape function
+  if ( lumpedMass_ )
+    meSCV->shifted_shape_fcn(&v_shape_function_(0,0));
+  else
+    meSCV->shape_fcn(&v_shape_function_(0,0));
 
   // add master elements
   dataPreReqs.add_cvfem_volume_me(meSCV);

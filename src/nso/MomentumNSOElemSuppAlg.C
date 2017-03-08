@@ -61,7 +61,6 @@ MomentumNSOElemSuppAlg<AlgTraits>::MomentumNSOElemSuppAlg(
     Gju_(Gju),
     lrscv_(realm.get_surface_master_element(AlgTraits::topo_)->adjacentNodes()),
     dt_(0.0),
-    nDim_(realm_.spatialDimension_),
     gamma1_(0.0),
     gamma2_(0.0),
     gamma3_(0.0),
@@ -238,11 +237,8 @@ MomentumNSOElemSuppAlg<AlgTraits>::element_execute(
       }
     
       // determine scs values of interest
-      const int offSet = ip*AlgTraits::nodesPerElement_;
       for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
         
-        const int icNdim = ic*AlgTraits::nDim_;
-
         // save off shape function
         const double r = v_shape_function_(ip,ic);
            
