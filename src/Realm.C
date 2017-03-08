@@ -222,7 +222,6 @@ namespace nalu{
     activateAura_(false),
     activateMemoryDiagnostic_(false),
     supportInconsistentRestart_(false),
-    wallTimeStart_(stk::wall_time()),
     doPromotion_(false),
     promotionOrder_(0u),
     quadType_("GaussLegendre"),
