@@ -1,30 +1,27 @@
-#=============================================================================
-# Nightly tests
-#=============================================================================
 
 function(add_test_r testname np)
-    add_test(${testname} sh -c "mpiexec -np ${np} @CMAKE_CURRENT_BINARY_DIR@/naluX -i ${testname}.i -o ${testname}.log && @CMAKE_CURRENT_BINARY_DIR@/pass_fail.sh ${testname} @TOLERANCE@")
-    set_tests_properties(${testname} PROPERTIES TIMEOUT 500 PROCESSORS ${np} WORKING_DIRECTORY "@NIGHTLY_TEST_RESULT_DIRECTORY@/${testname}")
+    add_test(${testname} sh -c "mpiexec -np ${np} ${CMAKE_BINARY_DIR}/naluX -i ${testname}.i -o ${testname}.log && ${CMAKE_BINARY_DIR}/pass_fail.sh ${testname} ${TOLERANCE}")
+    set_tests_properties(${testname} PROPERTIES TIMEOUT 500 PROCESSORS ${np} WORKING_DIRECTORY "${NIGHTLY_TEST_RESULT_DIRECTORY}/${testname}")
 endfunction(add_test_r)
 
 function(add_test_u testname np)
-    add_test(${testname} sh -c "mpiexec -np ${np} @CMAKE_CURRENT_BINARY_DIR@/unittestX")
-    set_tests_properties(${testname} PROPERTIES TIMEOUT 500 PROCESSORS ${np} WORKING_DIRECTORY "@NIGHTLY_TEST_RESULT_DIRECTORY@/unitTests")
+    add_test(${testname} sh -c "mpiexec -np ${np} ${CMAKE_BINARY_DIR}/unittestX")
+    set_tests_properties(${testname} PROPERTIES TIMEOUT 500 PROCESSORS ${np} WORKING_DIRECTORY "${NIGHTLY_TEST_RESULT_DIRECTORY}/unitTests")
 endfunction(add_test_u)
 
 function(add_test_r_rst testname np)
-    add_test(${testname} sh -c "mpiexec -np ${np} @CMAKE_CURRENT_BINARY_DIR@/naluX -i ${testname}.i -o ${testname}.log && @CMAKE_CURRENT_BINARY_DIR@/pass_fail.sh ${testname} @TOLERANCE@ && mpiexec -np ${np} @CMAKE_CURRENT_BINARY_DIR@/naluX -i ${testname}_rst.i -o ${testname}_rst.log && @CMAKE_CURRENT_BINARY_DIR@/pass_fail.sh ${testname}_rst @TOLERANCE@")
-    set_tests_properties(${testname} PROPERTIES TIMEOUT 500 PROCESSORS ${np} WORKING_DIRECTORY "@NIGHTLY_TEST_RESULT_DIRECTORY@/${testname}")
+    add_test(${testname} sh -c "mpiexec -np ${np} ${CMAKE_BINARY_DIR}/naluX -i ${testname}.i -o ${testname}.log && ${CMAKE_BINARY_DIR}/pass_fail.sh ${testname} ${TOLERANCE} && mpiexec -np ${np} ${CMAKE_BINARY_DIR}/naluX -i ${testname}_rst.i -o ${testname}_rst.log && ${CMAKE_BINARY_DIR}/pass_fail.sh ${testname}_rst ${TOLERANCE}")
+    set_tests_properties(${testname} PROPERTIES TIMEOUT 500 PROCESSORS ${np} WORKING_DIRECTORY "${NIGHTLY_TEST_RESULT_DIRECTORY}/${testname}")
 endfunction(add_test_r_rst)
 
 function(add_test_r_np testname np)
-    add_test(${testname}Np${np} sh -c "mpiexec -np ${np} @CMAKE_CURRENT_BINARY_DIR@/naluX -i ${testname}.i -o ${testname}Np${np}.log && @CMAKE_CURRENT_BINARY_DIR@/pass_fail.sh ${testname}Np${np} @TOLERANCE@")
-    set_tests_properties(${testname}Np${np} PROPERTIES TIMEOUT 500 PROCESSORS ${np} WORKING_DIRECTORY "@NIGHTLY_TEST_RESULT_DIRECTORY@/${testname}")
+    add_test(${testname}Np${np} sh -c "mpiexec -np ${np} ${CMAKE_BINARY_DIR}/naluX -i ${testname}.i -o ${testname}Np${np}.log && ${CMAKE_BINARY_DIR}/pass_fail.sh ${testname}Np${np} ${TOLERANCE}")
+    set_tests_properties(${testname}Np${np} PROPERTIES TIMEOUT 500 PROCESSORS ${np} WORKING_DIRECTORY "${NIGHTLY_TEST_RESULT_DIRECTORY}/${testname}")
 endfunction(add_test_r_np)
 
 function(add_test_p testname np timeo)
-    add_test(${testname} sh -c "mpiexec -np ${np} @CMAKE_CURRENT_BINARY_DIR@/naluX -i ${testname}.i -o ${testname}.log && @CMAKE_CURRENT_BINARY_DIR@/pass_fail.sh ${testname} @TOLERANCE@")
-    set_tests_properties(${testname} PROPERTIES TIMEOUT ${timeo} PROCESSORS ${np} WORKING_DIRECTORY "@PERF_TEST_RESULT_DIRECTORY@/${testname}")
+    add_test(${testname} sh -c "mpiexec -np ${np} ${CMAKE_BINARY_DIR}/naluX -i ${testname}.i -o ${testname}.log && ${CMAKE_BINARY_DIR}/pass_fail.sh ${testname} ${TOLERANCE}")
+    set_tests_properties(${testname} PROPERTIES TIMEOUT ${timeo} PROCESSORS ${np} WORKING_DIRECTORY "${PERF_TEST_RESULT_DIRECTORY}/${testname}")
 endfunction(add_test_p)
 
 #=============================================================================
