@@ -231,6 +231,7 @@ MomentumNSOElemSuppAlgDep::elem_execute(
     // zero out vector
     for ( int i = 0; i < nDim_; ++i ) {
       ws_rhoVrtmScs_[i] = 0.0;
+      ws_dpdxScs_[i] = 0.0;
     }
     
     // determine scs values of interest
@@ -303,7 +304,7 @@ MomentumNSOElemSuppAlgDep::elem_execute(
 
         ukNm1Scs += r*ukNm1;
         ukNScs += r*ukN;
-        ukNp1Scs += r*ukNm1;
+        ukNp1Scs += r*ukNp1;
     
         // save off offset into the row for the tensor projected nodal gradient gathered
         const int row_ws_Gju = icNdim*nDim_;
@@ -319,15 +320,15 @@ MomentumNSOElemSuppAlgDep::elem_execute(
           const double uk = ws_uNp1_[icNdim+k];
           dFdxkAdv += rhoIC*vrtmj*uk*dnj;
           dFdxkDiff += viscIC*(ws_Gju_[row_ws_Gju+k*nDim_+j] + ws_Gju_[row_ws_Gju+j*nDim_+k] 
-                               - 2.0/3.0*divU*ws_kd_[k*nDim_+j]*includeDivU_)*dnj;
+                               - 2.0/3.0*divU*ws_kd_[k*nDim_+j]*includeDivU_)*dnj;      
         }
       }
       
       // compute residual for NSO; linearized first
-      double residualAlt = dFdxkAdv - ukNp1Scs*dFdxCont;
+      double residualAlt = dFdxkAdv - ukNp1Scs*dFdxCont;   
       for ( int j = 0; j < nDim_; ++j )
         residualAlt -= ws_rhoVrtmScs_[j]*ws_dukdxScs_[j];
-      
+       
       // compute residual for NSO; pde-based second
       const double time = (gamma1_*rhoNp1Scs*ukNp1Scs + gamma2_*rhoNScs*ukNScs + gamma3_*rhoNm1Scs*ukNm1Scs)/dt_;
       const double residualPde = time + dFdxkAdv - dFdxkDiff + ws_dpdxScs_[k] - contRes*ukNp1Scs*nonConservedForm_; 

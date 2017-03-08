@@ -12,11 +12,20 @@
 #include <Realm.h>
 #include <master_element/MasterElement.h>
 
+// template and scratch space
+#include <BuildTemplates.h>
+#include <ScratchViews.h>
+
 // stk_mesh/base/fem
 #include <stk_mesh/base/Entity.hpp>
 #include <stk_mesh/base/MetaData.hpp>
-#include <stk_mesh/base/BulkData.hpp>
 #include <stk_mesh/base/Field.hpp>
+
+// topology
+#include <stk_topology/topology.hpp>
+
+// Kokkos
+#include <Kokkos_Core.hpp>
 
 namespace sierra{
 namespace nalu{
@@ -29,13 +38,14 @@ namespace nalu{
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-MomentumNSOKeElemSuppAlg::MomentumNSOKeElemSuppAlg(
+template<class AlgTraits>
+MomentumNSOKeElemSuppAlg<AlgTraits>::MomentumNSOKeElemSuppAlg(
   Realm &realm,
   VectorFieldType *velocity,
   GenericFieldType *Gju,
-  const double fourthFac)
+  const double fourthFac,
+  ElemDataRequests& dataPreReqs)
   : SupplementalAlgorithm(realm),
-    bulkData_(&realm.bulk_data()),
     velocityNp1_(NULL),
     densityNp1_(NULL),
     pressure_(NULL),
@@ -43,7 +53,7 @@ MomentumNSOKeElemSuppAlg::MomentumNSOKeElemSuppAlg(
     coordinates_(NULL),
     Gju_(Gju),
     Gjp_(NULL),
-    nDim_(realm_.spatialDimension_),
+    lrscv_(realm.get_surface_master_element(AlgTraits::topo_)->adjacentNodes()),
     Cupw_(0.1),
     small_(1.0e-16),
     fourthFac_(fourthFac)
@@ -63,195 +73,120 @@ MomentumNSOKeElemSuppAlg::MomentumNSOKeElemSuppAlg(
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
 
   Gjp_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "dpdx");
-  
-  // fixed size
-  ws_rhoVrtmScs_.resize(nDim_);
-  ws_uNp1Scs_.resize(nDim_);
-  ws_dpdxScs_.resize(nDim_);
-  ws_GjpScs_.resize(nDim_);
-  ws_dkedxScs_.resize(nDim_);
-  ws_kd_.resize(nDim_*nDim_,0);
-  for ( int i = 0; i < nDim_; ++i )
-    ws_kd_[i*nDim_+i] = 1.0;
-}
-
-//--------------------------------------------------------------------------
-//-------- elem_resize -----------------------------------------------------
-//--------------------------------------------------------------------------
-void
-MomentumNSOKeElemSuppAlg::elem_resize(
-  MasterElement *meSCS,
-  MasterElement */*meSCV*/)
-{
-  const int nodesPerElement = meSCS->nodesPerElement_;
-  const int numScsIp = meSCS->numIntPoints_;
-
-  // resize; geometry
-  ws_scs_areav_.resize(numScsIp*nDim_);
-  ws_dndx_.resize(nDim_*numScsIp*nodesPerElement);
-  ws_deriv_.resize(nDim_*numScsIp*nodesPerElement);
-  ws_det_j_.resize(numScsIp);
-  ws_shape_function_.resize(numScsIp*nodesPerElement);
-  ws_gUpper_.resize(nDim_*nDim_*numScsIp); // g^ij (covariant)
-  ws_gLower_.resize(nDim_*nDim_*numScsIp); // g_ij (contravariat)
-
-  // resize; fields
-  ws_velocityNp1_.resize(nDim_*nodesPerElement);
-  ws_rhoNp1_.resize(nodesPerElement);
-  ws_pressure_.resize(nodesPerElement);
-  ws_velocityRTM_.resize(nDim_*nodesPerElement);
-  ws_coordinates_.resize(nDim_*nodesPerElement);
-  ws_Gju_.resize(nDim_*nDim_*nodesPerElement);
-  ws_Gjp_.resize(nDim_*nodesPerElement);
-  ws_ke_.resize(nodesPerElement);
 
   // compute shape function
-  meSCS->shape_fcn(&ws_shape_function_[0]);
+  MasterElement *meSCS = realm.get_surface_master_element(AlgTraits::topo_);
+  meSCS->shape_fcn(&v_shape_function_(0,0));
+
+  // add master elements
+  dataPreReqs.add_cvfem_surface_me(meSCS);
+
+  // fields
+  dataPreReqs.add_gathered_nodal_field(*Gju_, AlgTraits::nDim_, AlgTraits::nDim_);
+  dataPreReqs.add_gathered_nodal_field(*coordinates_, AlgTraits::nDim_);
+  dataPreReqs.add_gathered_nodal_field(*velocityNp1_, AlgTraits::nDim_);
+  dataPreReqs.add_gathered_nodal_field(*velocityRTM_, AlgTraits::nDim_);
+  dataPreReqs.add_gathered_nodal_field(*Gjp_, AlgTraits::nDim_);
+  dataPreReqs.add_gathered_nodal_field(*densityNp1_,1);
+  dataPreReqs.add_gathered_nodal_field(*pressure_,1);
+  
+  // master element data
+  dataPreReqs.add_master_element_call(SCS_AREAV);
+  dataPreReqs.add_master_element_call(SCS_GRAD_OP);
+  dataPreReqs.add_master_element_call(SCS_GIJ);   
 }
 
 //--------------------------------------------------------------------------
-//-------- setup -----------------------------------------------------------
+//-------- element_execute -------------------------------------------------
 //--------------------------------------------------------------------------
+template<class AlgTraits>
 void
-MomentumNSOKeElemSuppAlg::setup()
-{
-  // nothing to do
-}
-
-//--------------------------------------------------------------------------
-//-------- elem_execute ----------------------------------------------------
-//--------------------------------------------------------------------------
-void
-MomentumNSOKeElemSuppAlg::elem_execute(
+MomentumNSOKeElemSuppAlg<AlgTraits>::element_execute(
   double *lhs,
   double *rhs,
   stk::mesh::Entity element,
-  MasterElement *meSCS,
-  MasterElement */*meSCV*/)
+  ScratchViews& scratchViews)
 {
-  // details on this element topo
-  const int nodesPerElement = meSCS->nodesPerElement_;
-  const int numScsIp = meSCS->numIntPoints_;
-  const int *lrscv = meSCS->adjacentNodes();    
-  
-  // gather
-  stk::mesh::Entity const *  node_rels = bulkData_->begin_nodes(element);
-  int num_nodes = bulkData_->num_nodes(element);
+  SharedMemView<double***>& v_Gju = scratchViews.get_scratch_view_3D(*Gju_);
+  SharedMemView<double**>& v_uNp1 = scratchViews.get_scratch_view_2D(*velocityNp1_);
+  SharedMemView<double**>& v_velocityRTM = scratchViews.get_scratch_view_2D(*velocityRTM_);
+  SharedMemView<double**>& v_Gjp = scratchViews.get_scratch_view_2D(*Gjp_);
+  SharedMemView<double*>& v_rhoNp1 = scratchViews.get_scratch_view_1D(*densityNp1_);
+  SharedMemView<double*>& v_pressure = scratchViews.get_scratch_view_1D(*pressure_);
 
-  // sanity check on num nodes
-  ThrowAssert( num_nodes == nodesPerElement );
+  SharedMemView<double**>& v_scs_areav = scratchViews.scs_areav;
+  SharedMemView<double***>& v_dndx = scratchViews.dndx;
+  SharedMemView<double***>& v_gijUpper = scratchViews.gijUpper;
+  SharedMemView<double***>& v_gijLower = scratchViews.gijLower;
 
-  for ( int ni = 0; ni < num_nodes; ++ni ) {
-    stk::mesh::Entity node = node_rels[ni];
-    
-    // gather scalars
-    ws_rhoNp1_[ni] = *stk::mesh::field_data(*densityNp1_, node);
-    ws_pressure_[ni] = *stk::mesh::field_data(*pressure_, node);
-
-    // pointers to real data
-    const double * uNp1   = stk::mesh::field_data(*velocityNp1_, node );
-    const double * vrtm   = stk::mesh::field_data(*velocityRTM_, node );
-    const double * coords = stk::mesh::field_data(*coordinates_, node );
-    const double * Gjp    = stk::mesh::field_data(*Gjp_, node );
-    const double * Gju    = stk::mesh::field_data(*Gju_, node );
-
-    // gather vectors
-    const int niNdim = ni*nDim_;
-    // row for ws_Gju
-    const int row_ws_Gju = niNdim*nDim_;
+  // compute nodal ke
+  for ( int n = 0; n < AlgTraits::nodesPerElement_; ++n ) {
     double ke = 0.0;
-    for ( int i=0; i < nDim_; ++i ) {
-      ws_velocityNp1_[niNdim+i] = uNp1[i];
-      ws_velocityRTM_[niNdim+i] = vrtm[i];
-      ws_Gjp_[niNdim+i] = Gjp[i];
-      ws_coordinates_[niNdim+i] = coords[i];
-      ke += uNp1[i]*uNp1[i]/2.0;
-      // gather tensor projected nodal gradients
-      const int row_Gju = i*nDim_;
-      for ( int j=0; j < nDim_; ++j ) {
-        ws_Gju_[row_ws_Gju+row_Gju+j] = Gju[row_Gju+j];
-      }
-    }
-    ws_ke_[ni] = ke;
+    for ( int j = 0; j < AlgTraits::nDim_; ++j )
+      ke += v_uNp1(n,j)*v_uNp1(n,j)/2.0;
+    v_ke_(n) = ke;
   }
   
-  // compute geometry (AGAIN)...
-  double scs_error = 0.0;
-  meSCS->determinant(1, &ws_coordinates_[0], &ws_scs_areav_[0], &scs_error);
-  
-  // compute dndx (AGAIN)...
-  meSCS->grad_op(1, &ws_coordinates_[0], &ws_dndx_[0], &ws_deriv_[0], &ws_det_j_[0], &scs_error);
-
-  // compute gij; requires a proper ws_deriv from above
-  meSCS->gij(&ws_coordinates_[0], &ws_gUpper_[0], &ws_gLower_[0], &ws_deriv_[0]);
-
-  for ( int ip = 0; ip < numScsIp; ++ip ) {
+  for ( int ip = 0; ip < AlgTraits::numScsIp_; ++ip ) {
 
     // left and right nodes for this ip
-    const int il = lrscv[2*ip];
-    const int ir = lrscv[2*ip+1];
+    const int il = lrscv_[2*ip];
+    const int ir = lrscv_[2*ip+1];
 
     // save off some offsets
-    const int ilNdim = il*nDim_;
-    const int irNdim = ir*nDim_;
-
-    // pointer to gupperij and glowerij
-    const double *p_gUpper = &ws_gUpper_[nDim_*nDim_*ip];
-    const double *p_gLower = &ws_gLower_[nDim_*nDim_*ip];
+    const int ilNdim = il*AlgTraits::nDim_;
+    const int irNdim = ir*AlgTraits::nDim_;
 
     // zero out vector that prevail over all components
-    for ( int i = 0; i < nDim_; ++i ) {
-      ws_rhoVrtmScs_[i] = 0.0;
-      ws_uNp1Scs_[i] = 0.0;
-      ws_dpdxScs_[i] = 0.0;
-      ws_GjpScs_[i] = 0.0;
-      ws_dkedxScs_[i] = 0.0;
+    for ( int i = 0; i < AlgTraits::nDim_; ++i ) {
+      v_rhoVrtmScs_(i) = 0.0;
+      v_uNp1Scs_(i) = 0.0;
+      v_dpdxScs_(i) = 0.0;
+      v_GjpScs_(i) = 0.0;
+      v_dkedxScs_(i) = 0.0;
     }
     double rhoScs = 0.0;
 
     // determine scs values of interest
-    const int offSet = ip*nodesPerElement;
-    for ( int ic = 0; ic < nodesPerElement; ++ic ) {
+    for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
 
       // save off shape function
-      const double r = ws_shape_function_[offSet+ic];  
-
-      const int icNdim = ic*nDim_;
+      const double r = v_shape_function_(ip,ic);  
       
       // compute scs derivatives and flux derivative
-      const int offSetDnDx = nDim_*nodesPerElement*ip + icNdim;
-      const double pressureIC = ws_pressure_[ic];
-      const double rhoIC = ws_rhoNp1_[ic];
-      const double keIC = ws_ke_[ic];
+      const double pressureIC = v_pressure(ic);
+      const double rhoIC = v_rhoNp1(ic);
+      const double keIC = v_ke_(ic);
       rhoScs += r*rhoIC;
-      for ( int j = 0; j < nDim_; ++j ) {
-        const double dnj = ws_dndx_[offSetDnDx+j];
-        const double vrtmj = ws_velocityRTM_[icNdim+j];
-        const double uNp1 = ws_velocityNp1_[ic*nDim_+j];
-        const double Gjp = ws_Gjp_[ic*nDim_+j];
+      for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
+        const double dnj = v_dndx(ip,ic,j);
+        const double vrtmj = v_velocityRTM(ic,j);
+        const double uNp1 = v_uNp1(ic,j);
+        const double Gjp = v_Gjp(ic,j);
      
-        ws_rhoVrtmScs_[j] += r*rhoIC*vrtmj;
-        ws_uNp1Scs_[j] += r*uNp1;
-        ws_dpdxScs_[j] += pressureIC*dnj;
-        ws_GjpScs_[j] += r*Gjp;
-        ws_dkedxScs_[j] += keIC*dnj;
+        v_rhoVrtmScs_(j) += r*rhoIC*vrtmj;
+        v_uNp1Scs_(j) += r*uNp1;
+        v_dpdxScs_(j) += pressureIC*dnj;
+        v_GjpScs_(j) += r*Gjp;
+        v_dkedxScs_(j) += keIC*dnj;
       }
     }
     
     // form ke residual (based on fine scale momentum residual used in Pstab)
     double keResidual = 0.0;
-    for ( int j = 0; j < nDim_; ++j )
-      keResidual += ws_uNp1Scs_[j]*(ws_dpdxScs_[j] - ws_GjpScs_[j])/rhoScs/2.0;
+    for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
+      keResidual += v_uNp1Scs_(j)*(v_dpdxScs_(j) - v_GjpScs_(j))/rhoScs/2.0;
+    }
 
     // denominator for nu as well as terms for "upwind" nu
     double gUpperMagGradQ = 0.0;
     double rhoVrtmiGLowerRhoVrtmj = 0.0;
-    for ( int i = 0; i < nDim_; ++i ) {
-      const double dkedxScsi = ws_dkedxScs_[i];
-      const double rhoVrtmi = ws_rhoVrtmScs_[i];
-      for ( int j = 0; j < nDim_; ++j ) {
-        gUpperMagGradQ += dkedxScsi*p_gUpper[i*nDim_+j]*ws_dkedxScs_[j];
-        rhoVrtmiGLowerRhoVrtmj += rhoVrtmi*p_gLower[i*nDim_+j]*ws_rhoVrtmScs_[j];
+    for ( int i = 0; i < AlgTraits::nDim_; ++i ) {
+      const double dkedxScsi = v_dkedxScs_(i);
+      const double rhoVrtmi = v_rhoVrtmScs_(i);
+      for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
+        gUpperMagGradQ += dkedxScsi*v_gijUpper(ip,i,j)*v_dkedxScs_(j);
+        rhoVrtmiGLowerRhoVrtmj += rhoVrtmi*v_gijLower(ip,i,j)*v_rhoVrtmScs_(j);
       }
     }      
     
@@ -261,45 +196,41 @@ MomentumNSOKeElemSuppAlg::elem_execute(
     // construct nu from first-order-like approach; SNL-internal write-up (eq 209)
     // for now, only include advection as full set of terms is too diffuse
     const double nuFirstOrder = std::sqrt(rhoVrtmiGLowerRhoVrtmj);
-
+    
     // limit based on first order; Cupw_ is a fudge factor similar to Guermond's approach
     const double nu = std::min(Cupw_*nuFirstOrder, nuResidual);
  
     // assemble each component
-    for ( int k = 0; k < nDim_; ++k ) {
+    for ( int k = 0; k < AlgTraits::nDim_; ++k ) {
 
       const int indexL = ilNdim + k;
       const int indexR = irNdim + k;
       
-      const int rowL = indexL*nodesPerElement*nDim_;
-      const int rowR = indexR*nodesPerElement*nDim_;
+      const int rowL = indexL*AlgTraits::nodesPerElement_*AlgTraits::nDim_;
+      const int rowR = indexR*AlgTraits::nodesPerElement_*AlgTraits::nDim_;
       
       double gijFac = 0.0;
-      for ( int ic = 0; ic < nodesPerElement; ++ic ) {
+      for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
 
         // save off shape function
-        const double r = ws_shape_function_[offSet+ic];
+        const double r = v_shape_function_(ip,ic);
 
         // find the row
-        const int icNdim = ic*nDim_;
-
-        const int row_ws_Gju = icNdim*nDim_;
-
+        const int icNdim = ic*AlgTraits::nDim_;
         const int rLkC_k = rowL+icNdim+k;
         const int rRkC_k = rowR+icNdim+k;
 
         // save of some variables
-        const double ukNp1 = ws_velocityNp1_[ic*nDim_+k];
+        const double ukNp1 = v_uNp1(ic,k);
         
         // NSO diffusion-like term; -nu*gUpper*dQ/dxj*ai (residual below)
         double lhsfac = 0.0;
-        const int offSetDnDx = nDim_*nodesPerElement*ip + ic*nDim_;
-        for ( int i = 0; i < nDim_; ++i ) {
-          const double axi = ws_scs_areav_[ip*nDim_+i];
-          for ( int j = 0; j < nDim_; ++j ) {
-            const double dnxj = ws_dndx_[offSetDnDx+j];
-            const double fac = p_gUpper[i*nDim_+j]*dnxj*axi;
-            const double facGj = r*p_gUpper[i*nDim_+j]*ws_Gju_[row_ws_Gju+k*nDim_+j]*axi;
+        for ( int i = 0; i < AlgTraits::nDim_; ++i ) {
+          const double axi = v_scs_areav(ip,i);
+          for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
+            const double dnxj = v_dndx(ip,ic,j);
+            const double fac = v_gijUpper(ip,i,j)*dnxj*axi;
+            const double facGj = r*v_gijUpper(ip,i,j)*v_Gju(ic,k,j)*axi;
             gijFac += fac*ukNp1 - facGj*fourthFac_;
             lhsfac += -fac;
           }
@@ -318,5 +249,7 @@ MomentumNSOKeElemSuppAlg::elem_execute(
   }
 }
   
+INSTANTIATE_SUPPLEMENTAL_ALGORITHM(MomentumNSOKeElemSuppAlg);
+
 } // namespace nalu
 } // namespace Sierra

@@ -40,7 +40,7 @@
 #include <ScalarGclNodeSuppAlg.h>
 #include <ScalarMassBackwardEulerNodeSuppAlg.h>
 #include <ScalarMassBDF2NodeSuppAlg.h>
-#include <ScalarMassElemSuppAlg.h>
+#include <ScalarMassElemSuppAlgDep.h>
 #include <Simulation.h>
 #include <SolutionOptions.h>
 #include <TimeIntegrator.h>
@@ -49,7 +49,7 @@
 
 // nso
 #include <nso/ScalarNSOKeElemSuppAlg.h>
-#include <nso/ScalarNSOElemSuppAlg.h>
+#include <nso/ScalarNSOElemSuppAlgDep.h>
 
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
@@ -208,7 +208,6 @@ SpecificDissipationRateEquationSystem::register_interior_algorithm(
   }
 
   // solver; interior contribution (advection + diffusion)
-  bool useCMM = false;
   std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi
     = solverAlgDriver_->solverAlgMap_.find(algType);
   if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
@@ -234,10 +233,10 @@ SpecificDissipationRateEquationSystem::register_interior_algorithm(
         std::string sourceName = mapNameVec[k];
         SupplementalAlgorithm *suppAlg = NULL;
         if (sourceName == "NSO_2ND_ALT" ) {
-          suppAlg = new ScalarNSOElemSuppAlg(realm_, sdr_, dwdx_, evisc_, 0.0, 1.0);
+          suppAlg = new ScalarNSOElemSuppAlgDep(realm_, sdr_, dwdx_, evisc_, 0.0, 1.0);
         }
         else if (sourceName == "NSO_4TH_ALT" ) {
-          suppAlg = new ScalarNSOElemSuppAlg(realm_, sdr_, dwdx_, evisc_, 1.0, 1.0);
+          suppAlg = new ScalarNSOElemSuppAlgDep(realm_, sdr_, dwdx_, evisc_, 1.0, 1.0);
         }
         else if (sourceName == "NSO_2ND_KE" ) {
           const double turbSc = realm_.get_turb_schmidt(sdr_->name());
@@ -248,12 +247,10 @@ SpecificDissipationRateEquationSystem::register_interior_algorithm(
           suppAlg = new ScalarNSOKeElemSuppAlg(realm_, sdr_, dwdx_, turbSc, 1.0);
         }
         else if (sourceName == "specific_dissipation_rate_time_derivative" ) {
-          useCMM = true;
-          suppAlg = new ScalarMassElemSuppAlg(realm_, sdr_, false);
+          suppAlg = new ScalarMassElemSuppAlgDep(realm_, sdr_, false);
         }
         else if (sourceName == "lumped_specific_dissipation_rate_time_derivative" ) {
-          useCMM = true;
-          suppAlg = new ScalarMassElemSuppAlg(realm_, sdr_, true);
+          suppAlg = new ScalarMassElemSuppAlgDep(realm_, sdr_, true);
         }
         else {
           throw std::runtime_error("SpecificDissipationElemSrcTerms::Error Source term is not supported: " + sourceName);
@@ -269,6 +266,12 @@ SpecificDissipationRateEquationSystem::register_interior_algorithm(
 
   // time term; src; both nodally lumped
   const AlgorithmType algMass = MASS;
+  // Check if the user has requested CMM or LMM algorithms; if so, do not
+  // include Nodal Mass algorithms
+  std::vector<std::string> checkAlgNames = {
+    "specific_dissipation_rate_time_derivative",
+    "lumped_specific_dissipation_rate_time_derivative"};
+  bool elementMassAlg = supp_alg_is_requested(checkAlgNames);
   std::map<AlgorithmType, SolverAlgorithm *>::iterator itsm =
     solverAlgDriver_->solverAlgMap_.find(algMass);
   if ( itsm == solverAlgDriver_->solverAlgMap_.end() ) {
@@ -278,7 +281,7 @@ SpecificDissipationRateEquationSystem::register_interior_algorithm(
     solverAlgDriver_->solverAlgMap_[algMass] = theAlg;
 
     // now create the supplemental alg for mass term
-    if ( !useCMM ) {
+    if ( !elementMassAlg ) {
       if ( realm_.number_of_states() == 2 ) {
         ScalarMassBackwardEulerNodeSuppAlg *theMass
           = new ScalarMassBackwardEulerNodeSuppAlg(realm_, sdr_);

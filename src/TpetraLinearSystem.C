@@ -888,8 +888,6 @@ TpetraLinearSystem::sumInto(
   const char *trace_tag
   )
 {
-  stk::mesh::BulkData & bulkData = realm_.bulk_data();
-
   const size_t n_obj = entities.size();
   const size_t numRows = n_obj * numDof_;
 

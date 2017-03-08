@@ -455,5 +455,54 @@ EquationSystem::report_built_supp_alg_names()
 {
   SuppAlgBuilderLog::self().print_built_supp_alg_names(eqnTypeName_);
 }
+//--------------------------------------------------------------------------
+bool
+EquationSystem::supp_alg_is_requested(std::string suppAlgName)
+{
+  const auto& nameMap = realm_.solutionOptions_->elemSrcTermsMap_;
+  auto it = nameMap.find(eqnTypeName_);
+  if (it == nameMap.end()) {
+    return false;
+  }
+  const std::vector<std::string>& nameVec = it->second;
+
+  if (std::find(nameVec.begin(), nameVec.end(), suppAlgName) == nameVec.end()) {
+    return false;
+  }
+  return true;
+}
+
+bool
+EquationSystem::supp_alg_is_requested(std::vector<std::string> names)
+{
+  const auto& nameMap = realm_.solutionOptions_->elemSrcTermsMap_;
+  auto it = nameMap.find(eqnTypeName_);
+
+  if (it == nameMap.end()) {
+    return false;
+  }
+
+  const std::vector<std::string>& nameVec = it->second;
+
+  bool found = false;
+  for(auto algName: names) {
+    if (std::find(nameVec.begin(), nameVec.end(), algName) != nameVec.end()) {
+      found = true;
+      break;
+    }
+  }
+  return found;
+}
+
+
+bool
+EquationSystem::nodal_src_is_requested()
+{
+  auto isrc = realm_.solutionOptions_->srcTermsMap_.find(eqnTypeName_);
+
+  return (isrc != realm_.solutionOptions_->srcTermsMap_.end());
+}
+
+
 } // namespace nalu
 } // namespace Sierra

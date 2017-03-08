@@ -151,7 +151,7 @@ ABLForcingAlgorithm::load_momentum_info(const YAML::Node& node)
   }
 
   USource_.resize(ndim);
-  for (size_t i = 0; i < ndim; i++) {
+  for (int i = 0; i < ndim; i++) {
     USource_[i].resize(nHeights);
   }
 }
@@ -381,8 +381,6 @@ ABLForcingAlgorithm::populate_transfer_data(
 void
 ABLForcingAlgorithm::execute()
 {
-  const double currTime = realm_.get_current_time();
-
   // Map fields from fluidRealm onto averaging planes
   transfers_->execute();
 
@@ -398,8 +396,7 @@ ABLForcingAlgorithm::compute_momentum_sources()
 {
   const double dt = realm_.get_time_step();
   const double currTime = realm_.get_current_time();
-  const int nDim = realm_.spatialDimension_;
-
+ 
   if (momSrcType_ == COMPUTED) {
     calc_mean_velocity();
     for (size_t ih = 0; ih < velHeights_.size(); ih++) {
@@ -446,7 +443,6 @@ ABLForcingAlgorithm::calc_mean_velocity()
   stk::mesh::MetaData& meta = realm_.meta_data();
   stk::mesh::BulkData& bulk = realm_.bulk_data();
   const int nDim = meta.spatial_dimension();
-  const double currTime = realm_.get_current_time();
 
   VectorFieldType* velocity =
     meta.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
@@ -503,8 +499,7 @@ ABLForcingAlgorithm::calc_mean_temperature()
 {
   stk::mesh::MetaData& meta = realm_.meta_data();
   stk::mesh::BulkData& bulk = realm_.bulk_data();
-  const int nDim = meta.spatial_dimension();
-
+ 
   ScalarFieldType* temperature =
     meta.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature");
   const size_t numPlanes = tempHeights_.size();
@@ -549,13 +544,13 @@ ABLForcingAlgorithm::eval_momentum_source(
   const int nDim = realm_.spatialDimension_;
   if (velHeights_.size() == 1) {
     // Constant source term throughout the domain
-    for (size_t i = 0; i < nDim; i++) {
+    for (int i = 0; i < nDim; i++) {
       momSrc[i] = USource_[i][0];
     }
   } else {
     // Linearly interpolate source term within the planes, maintain constant
     // source term above and below the heights provided
-    for (size_t i = 0; i < nDim; i++) {
+    for (int i = 0; i < nDim; i++) {
       utils::linear_interp(velHeights_, USource_[i], zp, momSrc[i]);
     }
   }

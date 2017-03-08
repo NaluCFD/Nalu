@@ -24,6 +24,7 @@ class MasterElement;
 enum ELEM_DATA_NEEDED {
   SCS_AREAV = 0,
   SCS_GRAD_OP,
+  SCS_SHIFTED_GRAD_OP,
   SCS_GIJ,
   SCV_VOLUME,
 };

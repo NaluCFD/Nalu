@@ -32,7 +32,7 @@ The classic low Mach algorithm uses the finite volume technique known as
 the control volume finite element method, see
 Schneider, :cite:`Schneider:1987`, or
 Domino, :cite:`Domino:2006`. Control volumes (the mesh dual)
-are constructed about the nodes, shown in Figure :num:`cvfemnodes` (upper left).
+are constructed about the nodes, shown in Figure :numref:`cvfemnodes` (upper left).
 Each element contains a set of sub-faces that define control-volume
 surfaces. The sub-faces consist of line segments (2D) or surfaces (3D).
 The 2D segments are connected between the element centroid and the edge
@@ -47,9 +47,9 @@ code base supports the usage of P=2 elements (quadratic) for both 2D and
 3D quad/hex topologies. This method has been formally demonstrated to be
 third-order spatially accurate and second-order in-time accurate.
 General polynomial promotion has been deployed in the higher order
-github branch. Figure :num:`cvfemnodes` illustrates a general polynomial
+github branch. Figure :numref:`cvfemnodes` illustrates a general polynomial
 promotion from P=1 to P=6 and demonstrated spectral convergence
-using the method of manufactured solutions in Figure :num:`cvfemconv`.
+using the method of manufactured solutions in Figure :numref:`cvfemconv`.
 
 .. _cvfemnodes:
 
@@ -111,8 +111,8 @@ integrated-by-parts quantities, e.g., advection and diffusion terms).
    
    A control volume centered about a finite-element node in a collection of 2-D quadrilateral elements (from :cite:`Domino:2006`.)
 
-Consider Figure :num:`cvfem-onecv`, which is the original set of CVFEM dual mesh
-quadrature points shown above in Figure :num:`cvfemnodes`. Specifically, there are four subcontrol
+Consider Figure :numref:`cvfem-onecv`, which is the original set of CVFEM dual mesh
+quadrature points shown above in Figure :numref:`cvfemnodes`. Specifically, there are four subcontrol
 volumes about node 5 that contribute to the nodal volume dual mesh. In
 an edge-based scheme, the time and source terms use single point
 quadrature by assembling these four subcontrol volume contributions

@@ -128,6 +128,8 @@ class Realm {
 
   void initialize_global_variables();
 
+  void balance_nodes();
+
   void create_output_mesh();
   void create_restart_mesh();
   void input_variables_from_mesh();
@@ -484,6 +486,19 @@ class Realm {
 
   // sometimes restarts can be missing states or dofs
   bool supportInconsistentRestart_;
+
+  bool doBalanceNodes_;
+  struct BalanceNodeOptions
+  {
+    BalanceNodeOptions() :
+      target(1.0),
+      numIters(5)
+    {};
+
+    double target;
+    int numIters;
+  };
+  BalanceNodeOptions balanceNodeOptions_;
 
   // beginning wall time
   double wallTimeStart_;

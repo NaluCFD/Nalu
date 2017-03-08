@@ -127,4 +127,11 @@ if(BUILD_DOCUMENTATION)
    add_subdirectory(docs)
 endif()
 
+option(ENABLE_TESTS "Enable regression testing." OFF)
+if(ENABLE_TESTS)
+   ENABLE_TESTING()
+   INCLUDE(CTest)
+   add_subdirectory(reg_tests)
+endif()
+
 MESSAGE("\nAnd CMake says...:")

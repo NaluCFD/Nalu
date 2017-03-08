@@ -24,58 +24,47 @@ namespace sierra{
 namespace nalu{
   class Realm;
 
-  template <class T,  typename... Args>
-  void append_new_supp_alg_if_requested(
-    std::vector<std::string> algNameVec,
-    std::vector<SupplementalAlgorithm*>& algVec,
-    std::string suppAlgTypeName,
-    Args&&... args)
+  template <template <typename> class T, typename... Args>
+  SupplementalAlgorithm* build_topo_supp_alg(stk::topology topo, Args&&... args)
   {
-    std::string name = T::name;
-
-    bool isRequested = std::find(algNameVec.begin(), algNameVec.end(), name) != algNameVec.end();
-    if (isRequested) {
-      auto* suppAlg = new T(std::forward<Args>(args)...);
-      ThrowRequire(suppAlg != nullptr);
-      algVec.push_back(suppAlg);
-      SuppAlgBuilderLog::self().add_built_name(suppAlgTypeName, name);
+    switch(topo.value()) {
+      case stk::topology::HEX_8:
+        return new T<AlgTraitsHex8>(std::forward<Args>(args)...);
+      case stk::topology::HEX_27:
+        return new T<AlgTraitsHex27>(std::forward<Args>(args)...);
+      case stk::topology::TET_4:
+        return new T<AlgTraitsTet4>(std::forward<Args>(args)...);
+      case stk::topology::PYRAMID_5:
+        return new T<AlgTraitsPyr5>(std::forward<Args>(args)...);
+      case stk::topology::WEDGE_6:
+        return new T<AlgTraitsWed6>(std::forward<Args>(args)...);
+      case stk::topology::QUAD_4_2D:
+        return new T<AlgTraitsQuad4_2D>(std::forward<Args>(args)...);
+      case stk::topology::TRI_3_2D:
+        return new T<AlgTraitsTri3_2D>(std::forward<Args>(args)...);
+      default:
+        return nullptr;
     }
-    SuppAlgBuilderLog::self().add_valid_name(suppAlgTypeName, name);
   }
 
   template <template <typename> class T, typename... Args>
-  void build_topo_supp_alg_if_requested(
+  bool build_topo_supp_alg_if_requested(
     stk::topology topo,
-    const std::map<std::string, std::vector<std::string>>& algNameMap,
+    EquationSystem& eqSys,
     std::vector<SupplementalAlgorithm*>& algVec,
-    std::string suppAlgTypeName,
+    std::string name,
     Args&&... args)
   {
-    auto it = algNameMap.find(suppAlgTypeName);
-    if (it != algNameMap.end())
-    {
-      const auto& algNameVec = it->second;
-
-      switch(topo.value()) {
-        case stk::topology::HEX_8:
-          append_new_supp_alg_if_requested<T<AlgTraitsHex8>>(algNameVec, algVec, suppAlgTypeName,
-              std::forward<Args>(args)...);
-          break;
-        case stk::topology::TET_4:
-          append_new_supp_alg_if_requested<T<AlgTraitsTet4>>(algNameVec, algVec, suppAlgTypeName,
-              std::forward<Args>(args)...);
-          break;
-        case stk::topology::PYRAMID_5:
-          append_new_supp_alg_if_requested<T<AlgTraitsPyr5>>(algNameVec, algVec, suppAlgTypeName,
-              std::forward<Args>(args)...);
-          break;
-        case stk::topology::WEDGE_6:
-          append_new_supp_alg_if_requested<T<AlgTraitsWed6>>(algNameVec, algVec, suppAlgTypeName,
-              std::forward<Args>(args)...);
-          break;
-        default: break;
-      }
+    bool isCreated = false;
+    SuppAlgBuilderLog::self().add_valid_name(eqSys.eqnTypeName_,  name);
+    if (eqSys.supp_alg_is_requested(name)) {
+      SupplementalAlgorithm* suppAlg = build_topo_supp_alg<T>(topo, std::forward<Args>(args)...);
+      ThrowRequire(suppAlg != nullptr);
+      SuppAlgBuilderLog::self().add_built_name(eqSys.eqnTypeName_,  name);
+      algVec.push_back(suppAlg);
+      isCreated = true;
     }
+    return isCreated;
   }
 
   inline std::pair<AssembleElemSolverAlgorithm*, bool>
@@ -106,7 +95,7 @@ namespace nalu{
     auto* theSolverAlg = dynamic_cast<AssembleElemSolverAlgorithm*>(solverAlgs.at(algName));
     ThrowRequire(theSolverAlg != nullptr);
 
-    return {theSolverAlg, createNewAlg} ;
+    return {theSolverAlg, createNewAlg};
   }
 
 } // namespace nalu

@@ -544,7 +544,7 @@ set of edges and the dual volume at the exposed side nodes.
 
    Quadraleteral mapping
 
-In Figure :num:`quad-halo`, consider that the side that is comprised by node
+In Figure :numref:`quad-halo`, consider that the side that is comprised by node
 2 and node 3 represents the exposed surface in question. This exposed
 surface, as defined by the Exodus II standard, is ordinal number two.
 Conceptually, the extruded element is obtained by orientating ordinal
@@ -581,7 +581,7 @@ surface always points from local node low to local node high, e.g, node
    Hexahedron mapping
 
 The same procedure is repeated for the extruded hex element,
-Figure :num:`hex-halo`. In this case, each three dimensional quad face on the
+Figure :numref:`hex-halo`. In this case, each three dimensional quad face on the
 exposed contact surface is extruded into a hex element. For the hex
 case, the common face ordinal 1 is matched with each of the possible six
 exposed surfaces on the exposed face. Again, mappings are defined that
@@ -636,7 +636,7 @@ code base using the CVFEM and EBVC approaches.
 
 Consider two domains, :math:`A` and :math:`B`, which have a common
 interface, :math:`\Gamma_{AB}`, and a set of interfaces not in common,
-:math:`\Gamma \backslash \Gamma_{AB}` (see Figure :num:`domain-ab`), and
+:math:`\Gamma \backslash \Gamma_{AB}` (see Figure :numref:`domain-ab`), and
 assume that the solution of the time-dependent advection/diffusion
 equation is to be solved in both domains. Each domain has a set of
 outwardly pointing normals. In this cartoon, the interface is well
@@ -684,7 +684,7 @@ boundary conditions first with block :math:`A` integration points as
 :math:`current` (integrations points for block B are :math:`opposing`)
 and then with block :math:`B` integration points as :math:`current`
 (surfaces for block A are, therefore, :math:`opposing`).
-Figure :num:`domain-ab` graphically demonstrates the procedure in which
+Figure :numref:`domain-ab` graphically demonstrates the procedure in which
 integration point values of the flux and penalty term are computed on
 the block :math:`A` surface and at the projected location of block
 :math:`B`.
@@ -746,7 +746,7 @@ within the linear system. As such, for sliding mesh configurations, the
 linear system connectivity graph changes each time step. Recent
 prototyping of the dG-based and the overset scheme has allowed this
 method to be used across both disparate low-order topologies (see
-Figure :num:`dg-quad4-quad9` and Figure :num:`dg-hex8-tet4`).
+Figure :numref:`dg-quad4-quad9` and Figure :numref:`dg-hex8-tet4`).
 
 
 .. _dg-quad4-quad9:

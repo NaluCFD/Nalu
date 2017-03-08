@@ -49,16 +49,17 @@
 #include <ScalarGclNodeSuppAlg.h>
 #include <ScalarMassBackwardEulerNodeSuppAlg.h>
 #include <ScalarMassBDF2NodeSuppAlg.h>
-#include <ScalarMassElemSuppAlg.h>
+#include <ScalarMassElemSuppAlgDep.h>
 #include <EnthalpyABLSrcNodeSuppAlg.h>
 #include <Simulation.h>
 #include <TimeIntegrator.h>
 #include <SolverAlgorithmDriver.h>
 #include <SolutionOptions.h>
+#include <ABLForcingAlgorithm.h>
 
 // nso
 #include <nso/ScalarNSOKeElemSuppAlg.h>
-#include <nso/ScalarNSOElemSuppAlg.h>
+#include <nso/ScalarNSOElemSuppAlgDep.h>
 
 // props
 #include <property_evaluator/EnthalpyPropertyEvaluator.h>
@@ -350,7 +351,6 @@ EnthalpyEquationSystem::register_interior_algorithm(
   }
 
   // solver; interior contribution (advection + diffusion)
-  bool useCMM = false;
   std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi
     = solverAlgDriver_->solverAlgMap_.find(algType);
   if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
@@ -380,16 +380,16 @@ EnthalpyEquationSystem::register_interior_algorithm(
         std::string sourceName = mapNameVec[k];
         SupplementalAlgorithm *suppAlg = NULL;
         if (sourceName == "NSO_2ND" ) {
-          suppAlg = new ScalarNSOElemSuppAlg(realm_, enthalpy_, dhdx_, evisc_, 0.0, 0.0);
+          suppAlg = new ScalarNSOElemSuppAlgDep(realm_, enthalpy_, dhdx_, evisc_, 0.0, 0.0);
         }
         else if (sourceName == "NSO_2ND_ALT" ) {
-          suppAlg = new ScalarNSOElemSuppAlg(realm_, enthalpy_, dhdx_, evisc_, 0.0, 1.0);
+          suppAlg = new ScalarNSOElemSuppAlgDep(realm_, enthalpy_, dhdx_, evisc_, 0.0, 1.0);
         }
         else if (sourceName == "NSO_4TH" ) {
-          suppAlg = new ScalarNSOElemSuppAlg(realm_, enthalpy_, dhdx_, evisc_, 1.0, 0.0);
+          suppAlg = new ScalarNSOElemSuppAlgDep(realm_, enthalpy_, dhdx_, evisc_, 1.0, 0.0);
         }
         else if (sourceName == "NSO_4TH_ALT" ) {
-          suppAlg = new ScalarNSOElemSuppAlg(realm_, enthalpy_, dhdx_, evisc_, 1.0, 1.0);
+          suppAlg = new ScalarNSOElemSuppAlgDep(realm_, enthalpy_, dhdx_, evisc_, 1.0, 1.0);
         }
         else if (sourceName == "NSO_2ND_KE" ) {
           const double turbPr = realm_.get_turb_prandtl(enthalpy_->name());
@@ -400,12 +400,10 @@ EnthalpyEquationSystem::register_interior_algorithm(
           suppAlg = new ScalarNSOKeElemSuppAlg(realm_, enthalpy_, dhdx_, turbPr, 1.0);
         }
         else if (sourceName == "enthalpy_time_derivative" ) {
-          useCMM = true;
-          suppAlg = new ScalarMassElemSuppAlg(realm_, enthalpy_, false); 
+          suppAlg = new ScalarMassElemSuppAlgDep(realm_, enthalpy_, false);
         }
         else if (sourceName == "lumped_enthalpy_time_derivative" ) {
-          useCMM = true;
-          suppAlg = new ScalarMassElemSuppAlg(realm_, enthalpy_, true); 
+          suppAlg = new ScalarMassElemSuppAlgDep(realm_, enthalpy_, true);
         }
         else {
           throw std::runtime_error("EnthalpyElemSrcTerms::Error Source term is not supported: " + sourceName);
@@ -421,6 +419,11 @@ EnthalpyEquationSystem::register_interior_algorithm(
 
   // time term; nodally lumped
   const AlgorithmType algMass = MASS;
+  // Check if the user has requested CMM or LMM algorithms; if so, do not
+  // include Nodal Mass algorithms
+  std::vector<std::string> checkAlgNames = {"enthalpy_time_derivative",
+                                            "lumped_enthalpy_time_derivative"};
+  bool elementMassAlg = supp_alg_is_requested(checkAlgNames);
   std::map<AlgorithmType, SolverAlgorithm *>::iterator itsm =
     solverAlgDriver_->solverAlgMap_.find(algMass);
   
@@ -431,7 +434,7 @@ EnthalpyEquationSystem::register_interior_algorithm(
     solverAlgDriver_->solverAlgMap_[algMass] = theAlg;
 
     // now create the supplemental alg for mass term
-    if ( !useCMM ) {
+    if ( !elementMassAlg ) {
       if ( realm_.number_of_states() == 2 ) {
         ScalarMassBackwardEulerNodeSuppAlg *theMass
           = new ScalarMassBackwardEulerNodeSuppAlg(realm_, enthalpy_);

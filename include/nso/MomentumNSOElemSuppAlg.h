@@ -30,8 +30,7 @@ template<class AlgTraits>
 class MomentumNSOElemSuppAlg : public SupplementalAlgorithm
 {
 public:
-  static constexpr auto name = "NS0_4TH_ALT";
-
+ 
   MomentumNSOElemSuppAlg(
     Realm &realm,
     VectorFieldType *velocity,
@@ -67,7 +66,6 @@ public:
   const int *lrscv_;
 
   double dt_;
-  const int nDim_;
   double gamma1_;
   double gamma2_;
   double gamma3_;

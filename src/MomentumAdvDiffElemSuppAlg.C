@@ -102,8 +102,7 @@ MomentumAdvDiffElemSuppAlg<AlgTraits>::element_execute(
     // save off some offsets
     const int ilNdim = il*AlgTraits::nDim_;
     const int irNdim = ir*AlgTraits::nDim_;
-    const int ipNdim = ip*AlgTraits::nDim_;
-
+  
     // save off mdot
     const double tmdot = mdot[ip];
 

@@ -30,8 +30,6 @@ template<class AlgTraits>
 class ScalarDiffElemSuppAlg : public SupplementalAlgorithm
 {
 public:
-  static constexpr auto name = "CVFEM_DIFF";
-
   ScalarDiffElemSuppAlg(
     Realm &realm,
     ScalarFieldType *scalarQ,

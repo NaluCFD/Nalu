@@ -30,8 +30,7 @@ template<class AlgTraits>
 class MomentumAdvDiffElemSuppAlg : public SupplementalAlgorithm
 {
 public:
-  static constexpr auto name = "advection_diffusion";
-
+ 
   MomentumAdvDiffElemSuppAlg(
     Realm &realm,
     VectorFieldType *velocity,
