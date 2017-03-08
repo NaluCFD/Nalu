@@ -28,6 +28,15 @@ endfunction(add_test_p)
 # Regression tests
 #=============================================================================
 
+set(this_test periodic3dElem)
+add_test_r_np(${this_test} 1)
+add_test_r_np(${this_test} 4)
+add_test_r_np(${this_test} 8)
+set(this_test periodic3dEdge)
+add_test_r_np(${this_test} 1)
+add_test_r_np(${this_test} 4)
+add_test_r_np(${this_test} 8)
+
 add_test_r(quad9HC 2)
 add_test_r(steadyTaylorVortex 4)
 add_test_r(hoVortex 2)
