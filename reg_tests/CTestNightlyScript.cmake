@@ -8,15 +8,9 @@ else(NOT ${NIGHTLY_DIR} STREQUAL "")
   message( FATAL_ERROR "You need to set the NIGHTLY_DIR variable. CMake will exit." )
 endif(NOT ${NIGHTLY_DIR} STREQUAL "")
 
-set(NALU_DIR                        "${NIGHTLY_DIR}/Nalu")
-set(NALURTEST_DIR                   "${NIGHTLY_DIR}/NaluRtest")
-set(NALURTEST_MESH_DIR              "${NALURTEST_DIR}/mesh")
-set(NALURTEST_XML_DIR               "${NALURTEST_DIR}/xml")
-set(NALURTEST_NIGHTLY_DIR           "${NALURTEST_DIR}/nightly")
-set(NALURTEST_PERF_DIR              "${NALURTEST_DIR}/performance")
-set(TEST_RESULT_DIRECTORY           "${NIGHTLY_DIR}/runNaluRtest")
-set(NIGHTLY_TEST_RESULT_DIRECTORY   "${TEST_RESULT_DIRECTORY}/nightly")
-set(PERF_TEST_RESULT_DIRECTORY      "${TEST_RESULT_DIRECTORY}/performance")
+set(NIGHTLY_NALU_DIR                        "${NIGHTLY_DIR}/Nalu")
+set(NIGHTLY_NALURTEST_DIR                   "${NIGHTLY_DIR}/NaluRtest")
+set(NIGHTLY_TEST_RESULT_DIRECTORY           "${NIGHTLY_DIR}/runNaluRtest")
 
 # -----------------------------------------------------------
 # -- REPOS
@@ -60,8 +54,8 @@ find_program(MAKE NAMES make)
 # -----------------------------------------------------------
 
 set(MODEL                           "nightly")
-set(CTEST_SOURCE_DIRECTORY          "${NALU_DIR}")
-set(CTEST_BINARY_DIRECTORY          "${NALU_DIR}/build")
+set(CTEST_SOURCE_DIRECTORY          "${NIGHTLY_NALU_DIR}")
+set(CTEST_BINARY_DIRECTORY          "${NIGHTLY_NALU_DIR}/build")
 set(CTEST_NALU_BINARY_NAME          "${CTEST_BINARY_DIRECTORY}/naluX")
 set(CTEST_UNITTEST_BINARY_NAME      "${CTEST_BINARY_DIRECTORY}/unittestX")
 
@@ -86,37 +80,10 @@ endif(NOT EXISTS "${CTEST_SOURCE_DIRECTORY}")
 set(CTEST_UPDATE_COMMAND "${CTEST_GIT_COMMAND}")
 
 ## -- Configure Command
-set(CTEST_CONFIGURE_COMMAND "cmake -DTrilinos_DIR:PATH=${TRILINOS_DIR} -DYAML_DIR:PATH=${YAML_DIR} -DENABLE_INSTALL:BOOL=OFF -DCMAKE_BUILD_TYPE=RELEASE ${CTEST_SOURCE_DIRECTORY}")
+set(CTEST_CONFIGURE_COMMAND "cmake -DTrilinos_DIR:PATH=${TRILINOS_DIR} -DYAML_DIR:PATH=${YAML_DIR} -DENABLE_INSTALL:BOOL=OFF -DCMAKE_BUILD_TYPE=RELEASE -DENABLE_TESTS=ON -DNALURTEST_DIR:PATH=${NIGHTLY_NALURTEST_DIR} -DRUNNALURTEST_DIR:PATH=${NIGHTLY_TEST_RESULT_DIRECTORY} ${CTEST_SOURCE_DIRECTORY}")
 
 ## -- Build Command
 set(CTEST_BUILD_COMMAND "${MAKE} ${OPTION_BUILD}")
-
-# -----------------------------------------------------------
-# -- Configure CTest
-# -----------------------------------------------------------
-
-## -- Set TOLERANCE for test
-set(TOLERANCE 0.0000001) # Default
-if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-  if(${COMPILER_NAME} MATCHES "gcc")
-    set(TOLERANCE 0.0000001)
-  elseif(${COMPILER_NAME} MATCHES "clang")
-    set(TOLERANCE 0.0000001)
-  endif()
-elseif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-  if(${COMPILER_NAME} MATCHES "gcc")
-    set(TOLERANCE 0.0000001)
-  elseif(${COMPILER_NAME} MATCHES "intel")
-    set(TOLERANCE 0.0001)
-  endif()
-endif()
-message(" -- Using tolerance of ${TOLERANCE} --")
-
-## -- CTest Test List and Customizations
-configure_file(${CTEST_SOURCE_DIRECTORY}/cmake/CTestTestfile.cmake.in
-               ${CTEST_BINARY_DIRECTORY}/CTestTestfile.cmake @ONLY)
-file(COPY ${CTEST_SOURCE_DIRECTORY}/cmake/pass_fail.sh
-     DESTINATION ${CTEST_BINARY_DIRECTORY}/)
 
 # -----------------------------------------------------------
 # -- Run CTest
@@ -139,15 +106,11 @@ message(" -- Build ${MODEL} - ${CTEST_BUILD_NAME} --")
 ctest_build(BUILD  "${CTEST_BINARY_DIRECTORY}" RETURN_VALUE res)
 
 ## -- Clone (and pull) the test repo if necessary
-if(NOT EXISTS "${NALURTEST_DIR}")
-  execute_process(COMMAND "${CTEST_GIT_COMMAND}" "clone" "${NALURTEST_REPO_URL}" "${NALURTEST_DIR}"
+if(NOT EXISTS "${NIGHTLY_NALURTEST_DIR}")
+  execute_process(COMMAND "${CTEST_GIT_COMMAND}" "clone" "${NALURTEST_REPO_URL}" "${NIGHTLY_NALURTEST_DIR}"
                   WORKING_DIRECTORY ${NIGHTLY_DIR} )
-endif(NOT EXISTS "${NALURTEST_DIR}")
-execute_process(COMMAND "${CTEST_GIT_COMMAND}" "pull" WORKING_DIRECTORY ${NALURTEST_DIR})
-
-## -- Prep test directory
-message(" -- Prep test directory ${MODEL} - ${CTEST_BUILD_NAME} --")
-include(${CTEST_SOURCE_DIRECTORY}/cmake/ctest_prepare_tests.cmake)
+endif(NOT EXISTS "${NIGHTLY_NALURTEST_DIR}")
+execute_process(COMMAND "${CTEST_GIT_COMMAND}" "pull" WORKING_DIRECTORY ${NIGHTLY_NALURTEST_DIR})
 
 ## -- Run CTest 
 message(" -- Test ${MODEL} - ${CTEST_BUILD_NAME} --")

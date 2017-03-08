@@ -1,0 +1,4 @@
+
+set(CTEST_CUSTOM_PRE_TEST
+  ${CTEST_CUSTOM_PRE_TEST}
+  "cmake -P @CMAKE_BINARY_DIR@/CTestPrepareTests.cmake")
