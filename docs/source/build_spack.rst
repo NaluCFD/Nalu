@@ -50,8 +50,8 @@ script from the repo:
 ::
 
     cd ${HOME} && git clone https://github.com/jrood-nrel/NaluSpack.git
-    cp -R ${HOME}/NaluSpack/nalu ${SPACK_ROOT}/var/spack/repos/builtin/packages/
-    cp -R ${HOME}/NaluSpack/nalu-trilinos ${SPACK_ROOT}/var/spack/repos/builtin/packages/
+    cp -R ${HOME}/NaluSpack/spack_config/nalu ${SPACK_ROOT}/var/spack/repos/builtin/packages/
+    cp -R ${HOME}/NaluSpack/spack_config/nalu-trilinos ${SPACK_ROOT}/var/spack/repos/builtin/packages/
 
 Step 5
 ~~~~~~
