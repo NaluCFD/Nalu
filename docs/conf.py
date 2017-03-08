@@ -75,13 +75,15 @@ if readTheDocs:
     doxylink = {
         'nalu' : (
           os.path.join(builddir, '..', '..', 'nalu.tag'),
-          os.path.join('..', '..', 'doxygen', 'html'))
+          os.path.join('html')
+        )
     }
 else:
     doxylink = {
         'nalu' : (
           os.path.join(builddir, '..', 'nalu.tag'),
-          os.path.join('..', 'doxygen', 'html'))
+          os.path.join('html')
+        )
     }
 
 # Add any paths that contain templates here, relative to this directory.
