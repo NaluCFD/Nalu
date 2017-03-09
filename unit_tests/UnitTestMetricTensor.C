@@ -99,17 +99,17 @@ calculate_metric_tensor(sierra::nalu::MasterElement& me, const std::vector<doubl
   return {contravariant_metric_tensor, covariant_metric_tensor};
 }
 
+using VectorFieldType = stk::mesh::Field<double, stk::mesh::Cartesian>;
+
 void test_metric_for_topo_2D(stk::topology topo, double tol) {
   int dim = topo.dimension();
   ASSERT_EQ(dim, 2);
 
   stk::mesh::MetaData meta(dim);
   stk::mesh::BulkData bulk(meta, MPI_COMM_WORLD);
-  unit_test_utils::create_one_reference_element(bulk, topo);
+  stk::mesh::Entity elem = unit_test_utils::create_one_reference_element(bulk, topo);
 
-  auto mescs = std::unique_ptr<sierra::nalu::MasterElement>(
-    sierra::nalu::MasterElement::create_surface_master_element(topo)
-  );
+  auto* mescs = unit_test_utils::get_surface_master_element(topo);
 
   // apply some arbitrary linear map the reference element
   std::mt19937 rng;
@@ -124,14 +124,8 @@ void test_metric_for_topo_2D(stk::topology topo, double tol) {
   double metric_exact[4];
   mxm22(Q,Qt,metric_exact);
 
-  stk::mesh::EntityVector elems;
-  stk::mesh::get_entities(bulk, stk::topology::ELEM_RANK, elems);
-  ASSERT_EQ(elems.size(), 1u); // single element test
-  auto elem = elems.front();
 
-  using VectorFieldType = stk::mesh::Field<double, stk::mesh::Cartesian>;
   const auto& coordField = *static_cast<const VectorFieldType*>(meta.coordinate_field());
-
   std::vector<double> ws_coords(topo.num_nodes() * dim);
   const auto* nodes = bulk.begin_nodes(elem);
   for (unsigned j = 0; j < topo.num_nodes(); ++j) {
@@ -159,11 +153,9 @@ void test_metric_for_topo_3D(stk::topology topo, double tol) {
 
   stk::mesh::MetaData meta(dim);
   stk::mesh::BulkData bulk(meta, MPI_COMM_WORLD);
-  unit_test_utils::create_one_reference_element(bulk, topo);
+  stk::mesh::Entity elem = unit_test_utils::create_one_reference_element(bulk, topo);
 
-  auto mescs = std::unique_ptr<sierra::nalu::MasterElement>(
-    sierra::nalu::MasterElement::create_surface_master_element(topo)
-  );
+  auto* mescs = unit_test_utils::get_surface_master_element(topo);
 
   // apply some arbitrary linear map the reference element
   std::mt19937 rng;
@@ -182,12 +174,7 @@ void test_metric_for_topo_3D(stk::topology topo, double tol) {
   double metric_exact[9];
   mxm33(Q,Qt,metric_exact);
 
-  stk::mesh::EntityVector elems;
-  stk::mesh::get_entities(bulk, stk::topology::ELEM_RANK, elems);
-  ASSERT_EQ(elems.size(), 1u); // single element test
-  auto elem = elems.front();
 
-  using VectorFieldType = stk::mesh::Field<double, stk::mesh::Cartesian>;
   const auto& coordField = *static_cast<const VectorFieldType*>(meta.coordinate_field());
 
   std::vector<double> ws_coords(topo.num_nodes() * dim);
@@ -220,56 +207,34 @@ void test_metric_for_topo_3D(stk::topology topo, double tol) {
 
 TEST(MetricTensor, tri3)
 {
-  if (stk::parallel_machine_size(MPI_COMM_WORLD) > 1) {
-    return; // serial
-  }
   test_metric_for_topo_2D(stk::topology::TRIANGLE_3_2D, 1.0e-10);
 }
 
 TEST(MetricTensor, quad4)
 {
-  if (stk::parallel_machine_size(MPI_COMM_WORLD) > 1) {
-    return; // serial
-  }
   test_metric_for_topo_2D(stk::topology::QUADRILATERAL_4_2D,1.0e-10);
 }
 
 TEST(MetricTensor, quad9)
 {
-  if (stk::parallel_machine_size(MPI_COMM_WORLD) > 1) {
-    return; // serial
-  }
   test_metric_for_topo_2D(stk::topology::QUADRILATERAL_9_2D,1.0e-10);
 }
 
 TEST(MetricTensor, tet4)
 {
-  if (stk::parallel_machine_size(MPI_COMM_WORLD) > 1) {
-    return; // serial
-  }
   test_metric_for_topo_3D(stk::topology::TET_4,1.0e-10);
 }
 
 TEST(MetricTensor, wedge6)
 {
-  if (stk::parallel_machine_size(MPI_COMM_WORLD) > 1) {
-    return; // serial
-  }
   test_metric_for_topo_3D(stk::topology::WEDGE_6,1.0e-10);
 }
 
 TEST(MetricTensor, hex8)
 {
-  if (stk::parallel_machine_size(MPI_COMM_WORLD) > 1) {
-    return; // serial
-  }
-
   test_metric_for_topo_3D(stk::topology::HEX_8,1.0e-10);
 }
 TEST(MetricTensor, hex27)
 {
-  if (stk::parallel_machine_size(MPI_COMM_WORLD) > 1) {
-    return; // serial
-  }
   test_metric_for_topo_3D(stk::topology::HEX_27,1.0e-10);
 }

@@ -23,16 +23,21 @@ namespace unit_test_utils {
 void fill_mesh_1_elem_per_proc_hex8(stk::mesh::BulkData& bulk);
 void fill_hex8_mesh(const std::string& meshSpec, stk::mesh::BulkData& bulk);
 std::ostream& nalu_out();
-void create_one_reference_element(stk::mesh::BulkData& bulk, stk::topology topo);
+
+stk::mesh::Entity create_one_reference_element(stk::mesh::BulkData& bulk, stk::topology topo);
 
 double quadratic(double a, const double* b, const double* H, const double* x);
 
-double initialize_linear_scalar_field(const stk::mesh::BulkData& bulk,
+double initialize_quadratic_scalar_field(const stk::mesh::BulkData& bulk,
                                       const VectorFieldType& coordField,
                                       const ScalarFieldType& qField);
 
 sierra::nalu::MasterElement *
 get_surface_master_element(const stk::topology & theTopo);
+
+sierra::nalu::MasterElement *
+get_volume_master_element(const stk::topology & theTopo);
+
 
 }
 
@@ -75,7 +80,7 @@ protected:
         coordField = static_cast<const VectorFieldType*>(meta.coordinate_field());
         EXPECT_TRUE(coordField != nullptr);
 
-        exactLaplacian = unit_test_utils::initialize_linear_scalar_field(bulk, *coordField, *nodalPressureField);
+        exactLaplacian = unit_test_utils::initialize_quadratic_scalar_field(bulk, *coordField, *nodalPressureField);
         stk::mesh::field_fill(0.0, *discreteLaplacianOfPressure);
     }
 

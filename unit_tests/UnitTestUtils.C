@@ -43,7 +43,7 @@ std::ostream& nalu_out()
   return sierra::nalu::NaluEnv::self().naluOutputP0();
 }
 
-void create_one_element(
+stk::mesh::Entity create_one_element(
   stk::mesh::BulkData& bulk,
   stk::topology topo, const
   std::vector<std::vector<double>>& nodeLocations)
@@ -81,19 +81,21 @@ void create_one_element(
        stk::mesh::field_data(coordField, nodes[j])[i] = nodeLocations.at(j).at(i);
      }
    }
+
+   return elem;
 }
 
-void create_one_reference_quad4_element(stk::mesh::BulkData& bulk)
+stk::mesh::Entity create_one_reference_quad4_element(stk::mesh::BulkData& bulk)
 {
   std::vector<std::vector<double>> nodeLocations =
   {
       {-0.5,-0.5}, {+0.5,-0.5},
       {+0.5,+0.5}, {-0.5,+0.5}
   };
-  create_one_element(bulk, stk::topology::QUADRILATERAL_4_2D, nodeLocations);
+  return create_one_element(bulk, stk::topology::QUADRILATERAL_4_2D, nodeLocations);
 }
 
-void create_one_reference_quad9_element(stk::mesh::BulkData& bulk)
+stk::mesh::Entity create_one_reference_quad9_element(stk::mesh::BulkData& bulk)
 {
   std::vector<std::vector<double>> nodeLocations =
   {
@@ -102,38 +104,38 @@ void create_one_reference_quad9_element(stk::mesh::BulkData& bulk)
       {0.0, -1.0}, {+1.0, 0.0}, {0.0, +1.0}, {-1.0, 0.0},
       {0.0, 0.0}
   };
-  create_one_element(bulk, stk::topology::QUADRILATERAL_9_2D, nodeLocations);
+  return create_one_element(bulk, stk::topology::QUADRILATERAL_9_2D, nodeLocations);
 }
 
-void create_one_reference_tri3_element(stk::mesh::BulkData& bulk)
+stk::mesh::Entity create_one_reference_tri3_element(stk::mesh::BulkData& bulk)
 {
   std::vector<std::vector<double>> nodeLocations =
   {
-      {-0.5,-0.5}, {+0.5,-0.5}, {-0.5,+0.5}
+      {0.0,0.0}, {1.0,0}, {0.0,1.0}
   };
-  create_one_element(bulk, stk::topology::TRIANGLE_3_2D, nodeLocations);
+  return create_one_element(bulk, stk::topology::TRIANGLE_3_2D, nodeLocations);
 }
 
-void create_one_reference_tet4_element(stk::mesh::BulkData& bulk)
+stk::mesh::Entity create_one_reference_tet4_element(stk::mesh::BulkData& bulk)
 {
-   std::vector<std::vector<double>> nodeLocations =
-   {
-       {-0.5,-0.5,-0.5}, {+0.5,-0.5,-0.5}, {-0.5,+0.5,-0.5}, {-0.5,-0.5,+0.5}
-   };
-   create_one_element(bulk, stk::topology::TET_4, nodeLocations);
+  std::vector<std::vector<double>> nodeLocations =
+  {
+      {0,0,0}, {1,0,0}, {0,1,0}, {0,0,1}
+  };
+   return create_one_element(bulk, stk::topology::TET_4, nodeLocations);
 }
 
-void create_one_reference_hex8_element(stk::mesh::BulkData& bulk)
+stk::mesh::Entity create_one_reference_hex8_element(stk::mesh::BulkData& bulk)
 {
    std::vector<std::vector<double>> nodeLocations =
    {
        {-0.5,-0.5,-0.5}, {+0.5,-0.5,-0.5}, {+0.5,+0.5,-0.5}, {-0.5,+0.5,-0.5},
        {-0.5,-0.5,+0.5}, {+0.5,-0.5,+0.5}, {+0.5,+0.5,+0.5}, {-0.5,+0.5,+0.5}
    };
-   create_one_element(bulk, stk::topology::HEX_8, nodeLocations);
+   return create_one_element(bulk, stk::topology::HEX_8, nodeLocations);
 }
 
-void create_one_reference_hex27_element(stk::mesh::BulkData& bulk)
+stk::mesh::Entity create_one_reference_hex27_element(stk::mesh::BulkData& bulk)
 {
    std::vector<std::vector<double>> nodeLocations =
    {
@@ -147,77 +149,74 @@ void create_one_reference_hex27_element(stk::mesh::BulkData& bulk)
        {-1.0,+0.0,+0.0}, {+1.0,+0.0,+0.0},
        {+0.0,-1.0,+0.0}, {+0.0,+1.0,+0.0}
    };
-   create_one_element(bulk, stk::topology::HEX_27, nodeLocations);
+   return create_one_element(bulk, stk::topology::HEX_27, nodeLocations);
 }
 
-void create_one_reference_pyramid5_element(stk::mesh::BulkData& bulk)
+stk::mesh::Entity create_one_reference_pyramid5_element(stk::mesh::BulkData& bulk)
 {
   std::vector<std::vector<double>> nodeLocations =
   {
       {-1.0, -1.0, +0.0}, {+1.0, -1.0, +0.0}, {+1.0, +1.0, +0.0}, {-1.0, +1.0, +0.0},
       {0.0, 0.0, +1.0}
   };
-   create_one_element(bulk, stk::topology::PYRAMID_5, nodeLocations);
+  return create_one_element(bulk, stk::topology::PYRAMID_5, nodeLocations);
 }
 
-void create_one_reference_wedge6_element(stk::mesh::BulkData& bulk)
+stk::mesh::Entity create_one_reference_wedge6_element(stk::mesh::BulkData& bulk)
 {
-   std::vector<std::vector<double>> nodeLocations =
-   {
-       {-0.5,-0.5,-1.0}, {+0.5,-0.5,-1.0}, {-0.5,+0.5,-1.0},
-       {-0.5,-0.5,+1.0}, {+0.5,-0.5,+1.0}, {-0.5,+0.5,+1.0}
-   };
-   create_one_element(bulk, stk::topology::WEDGE_6, nodeLocations);
+  std::vector<std::vector<double>> nodeLocations =
+  {
+      {0.0,0.0,-1.0}, {+1.0,0.0,-1.0}, {0.0,+1.0,-1.0},
+      {0.0,0.0,+1.0}, {+1.0,0.0,+1.0}, {0.0,+1.0,+1.0}
+  };
+  return create_one_element(bulk, stk::topology::WEDGE_6, nodeLocations);
 }
 
-void create_one_reference_element(stk::mesh::BulkData& bulk, stk::topology topo)
+stk::mesh::Entity create_one_reference_element(stk::mesh::BulkData& bulk, stk::topology topo)
 {
   switch (topo.value())
   {
     case stk::topology::TRIANGLE_3_2D:
-      create_one_reference_tri3_element(bulk);
-      break;
+      return create_one_reference_tri3_element(bulk);
 
     case stk::topology::QUADRILATERAL_4_2D:
-      create_one_reference_quad4_element(bulk);
-      break;
+      return create_one_reference_quad4_element(bulk);
 
     case stk::topology::QUADRILATERAL_9_2D:
-      create_one_reference_quad9_element(bulk);
-      break;
+      return create_one_reference_quad9_element(bulk);
 
     case stk::topology::TETRAHEDRON_4:
-      create_one_reference_tet4_element(bulk);
-      break;
+      return create_one_reference_tet4_element(bulk);
 
     case stk::topology::PYRAMID_5:
-      create_one_reference_pyramid5_element(bulk);
-      break;
+      return create_one_reference_pyramid5_element(bulk);
 
     case stk::topology::WEDGE_6:
-      create_one_reference_wedge6_element(bulk);
-      break;
+      return create_one_reference_wedge6_element(bulk);
 
     case stk::topology::HEXAHEDRON_8:
-      create_one_reference_hex8_element(bulk);
-      break;
+      return create_one_reference_hex8_element(bulk);
 
     case stk::topology::HEXAHEDRON_27:
-      create_one_reference_hex27_element(bulk);
-      break;
+      return create_one_reference_hex27_element(bulk);
 
-    default: FAIL() << " Element type " + topo.name() + " not implemented";
+    default:
+      EXPECT_TRUE(false) << " Element type " + topo.name() + " not implemented";
+      return stk::mesh::Entity(0u);
   }
+}
+
+double linear(double a, const double* b, const double* x) {
+  return (a + b[0]*x[0] + b[1]*x[1] + b[2]*x[2]);
 }
 
 double quadratic(double a, const double* b, const double* H, const double* x)
 {
-  double lin = b[0]*x[0] + b[1]*x[1] + b[2]*x[2];
   double quad = x[0] * (H[0]*x[0] + H[1]*x[1] + H[2]*x[2])
               + x[1] * (H[3]*x[0] + H[4]*x[1] + H[5]*x[2])
               + x[2] * (H[6]*x[0] + H[7]*x[1] + H[8]*x[2]);
 
-  return (a + lin + 0.5*quad);
+  return (linear(a,b,x) + 0.5*quad);
 }
 
 sierra::nalu::MasterElement *
@@ -234,6 +233,28 @@ get_surface_master_element(const stk::topology & theTopo)
     ThrowRequire(theElem != nullptr);
 
     s_topo_masterelem_map[theTopo] = theElem;
+  }
+  else {
+    theElem = it->second;
+  }
+
+  return theElem;
+}
+
+sierra::nalu::MasterElement *
+get_volume_master_element(const stk::topology & theTopo)
+{
+  sierra::nalu::MasterElement *theElem = NULL;
+
+  static std::map<stk::topology, sierra::nalu::MasterElement*> s_topov_masterelem_map;
+
+  std::map<stk::topology, sierra::nalu::MasterElement *>::iterator it =
+    s_topov_masterelem_map.find(theTopo);
+  if ( it == s_topov_masterelem_map.end() ) {
+    theElem = sierra::nalu::MasterElement::create_volume_master_element(theTopo);
+    ThrowRequire(theElem != nullptr);
+
+    s_topov_masterelem_map[theTopo] = theElem;
   }
   else {
     theElem = it->second;
@@ -261,10 +282,45 @@ double initialize_linear_scalar_field(
     b[j] = coeff(rng);
   }
 
+  const auto& meta = bulk.mesh_meta_data();
+  EXPECT_EQ(meta.spatial_dimension(), 3u);
+
+  const stk::mesh::Selector selector = meta.locally_owned_part() | meta.globally_shared_part();
+  const auto& buckets = bulk.get_buckets(stk::topology::NODE_RANK, selector);
+  kokkos_thread_team_bucket_loop(buckets, [&](stk::mesh::Entity node)
+  {
+    const double* coords = stk::mesh::field_data(coordField, node);
+    *stk::mesh::field_data(qField, node) = linear(a, b, coords);
+  });
+
+  return std::sqrt(b[0] * b[0] + b[1]* b[1] + b[2] * b[2]);
+}
+
+
+double initialize_quadratic_scalar_field(
+  const stk::mesh::BulkData& bulk,
+  const VectorFieldType& coordField,
+  const ScalarFieldType& qField)
+{
+  // q = a + b^T x + 1/2 x^T H x
+  std::mt19937 rng;
+  rng.seed(0); // fixed seed
+  std::uniform_real_distribution<double> coeff(-1.0, 1.0);
+
+  double a  = coeff(rng);
+
+  double b[3];
+  for (unsigned j = 0; j < 3; ++j) {
+    b[j] = coeff(rng);
+  }
+
   double H[9];
   for (unsigned j = 0; j < 9; ++j) {
     H[j] = coeff(rng);
   }
+  H[3] = H[1];
+  H[6] = H[2];
+  H[7] = H[5];
 
   const auto& meta = bulk.mesh_meta_data();
   EXPECT_EQ(meta.spatial_dimension(), 3u);

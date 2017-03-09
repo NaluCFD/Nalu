@@ -1131,6 +1131,17 @@ public:
     double *areav,
     double * error );
 
+  void shape_fcn(
+    double *shpfc);
+
+  void shifted_shape_fcn(
+    double *shpfc);
+
+  void tri_shape_fcn(
+    const int &npts,
+    const double *par_coord,
+    double* shape_fcn);
+
 };
 
 // 2D Tri 3 subcontrol surface

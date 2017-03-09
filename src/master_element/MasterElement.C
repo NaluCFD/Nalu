@@ -4150,7 +4150,7 @@ WedSCS::isInElement(
   // ------------------------------------------------------------------
 
   // Translate element so that (x,y,z) coordinates of first node are (0,0,0)
-  
+
   double x[] = {0.0,
                 elemNodalCoord[ 1] - elemNodalCoord[ 0],
                 elemNodalCoord[ 2] - elemNodalCoord[ 0],
@@ -4169,7 +4169,7 @@ WedSCS::isInElement(
                 elemNodalCoord[15] - elemNodalCoord[12],
                 elemNodalCoord[16] - elemNodalCoord[12],
                 elemNodalCoord[17] - elemNodalCoord[12] };
-  
+
   // (xp,yp,zp) is the point to be mapped into (r,s,xi) coordinate system.
   // This point must also be translated as above.
 
@@ -4289,7 +4289,6 @@ WedSCS::isInElement(
 
     dist = parametric_distance(xx);
   }
-
   return dist;
 }
 
@@ -6122,6 +6121,18 @@ Tri2DSCV::Tri2DSCV()
   // define ip node mappings
   ipNodeMap_.resize(3);
   ipNodeMap_[0] = 0; ipNodeMap_[1] = 1; ipNodeMap_[2] = 2;
+
+  intgLoc_ = {
+      5.0/24.0, 5.0/24.0,
+      7.0/12.0, 5.0/24.0,
+      5.0/24.0, 7.0/12.0
+  };
+
+  intgLocShift_ = {
+      0.0,  0.0,
+      1.0,  0.0,
+      0.0,  1.0
+  };
 }
 
 //--------------------------------------------------------------------------
@@ -6141,6 +6152,44 @@ Tri2DSCV::ipNodeMap(
 {
   // define scv->node mappings
   return &ipNodeMap_[0];
+}
+
+//--------------------------------------------------------------------------
+//-------- shape_fcn -------------------------------------------------------
+//--------------------------------------------------------------------------
+void
+Tri2DSCV::shape_fcn(double *shpfc)
+{
+  tri_shape_fcn(numIntPoints_, &intgLoc_[0], shpfc);
+}
+
+//--------------------------------------------------------------------------
+//-------- shifted_shape_fcn -----------------------------------------------
+//--------------------------------------------------------------------------
+void
+Tri2DSCV::shifted_shape_fcn(double *shpfc)
+{
+  tri_shape_fcn(numIntPoints_, &intgLocShift_[0], shpfc);
+}
+
+//--------------------------------------------------------------------------
+//-------- tri_shape_fcn ---------------------------------------------------
+//--------------------------------------------------------------------------
+void
+Tri2DSCV::tri_shape_fcn(
+  const int  &npts,
+  const double *isoParCoord,
+  double *shape_fcn)
+{
+  for (int j = 0; j < npts; ++j ) {
+    const int threej = 3*j;
+    const int k = 2*j;
+    const double xi = isoParCoord[k];
+    const double eta = isoParCoord[k+1];
+    shape_fcn[threej] = 1.0 - xi - eta;
+    shape_fcn[1 + threej] = xi;
+    shape_fcn[2 + threej] = eta;
+  }
 }
 
 //--------------------------------------------------------------------------
