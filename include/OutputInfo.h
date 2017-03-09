@@ -37,6 +37,9 @@ public:
   int get_restart_compression();
   bool get_restart_shuffle();
   
+  std::string catalystFileName_;
+  std::string paraviewScriptName_;
+  std::string catalystParseJson_;
   std::string outputDBName_;
   int outputFreq_;
   int outputStart_;
