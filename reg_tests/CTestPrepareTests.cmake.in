@@ -251,6 +251,18 @@ file(COPY               ${meshes}
 
 
 #=============================================================================
+# ductElemWedge test
+#=============================================================================
+file(COPY               "@NALURTEST_NIGHTLY_DIR@/ductElemWedge"
+     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+
+file(GLOB meshes        "@NALURTEST_MESH_DIR@/ductwedge.g.*")
+file(COPY               ${meshes}
+                        "@NALURTEST_XML_DIR@/matches_ml_default.xml"
+     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/ductElemWedge")
+
+
+#=============================================================================
 # heatedBackStep test
 #=============================================================================
 file(COPY               "@NALURTEST_NIGHTLY_DIR@/heatedBackStep"
@@ -308,6 +320,18 @@ file(GLOB meshes        "@NALURTEST_MESH_DIR@/rot_cyl_14.exo*")
 file(COPY               ${meshes}
                         "@NALURTEST_XML_DIR@/milestone.xml"
      DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/dgNonConformalEdgeCylinder")
+
+
+#=============================================================================
+# dgNonConformalElemCylinder test
+#=============================================================================
+file(COPY               "@NALURTEST_NIGHTLY_DIR@/dgNonConformalElemCylinder"
+     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+
+file(GLOB meshes        "@NALURTEST_MESH_DIR@/rot_cyl_14.exo*")
+file(COPY               ${meshes}
+                        "@NALURTEST_XML_DIR@/milestone.xml"
+     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/dgNonConformalElemCylinder")
 
 
 #=============================================================================
