@@ -112,6 +112,9 @@ if(NOT EXISTS "${NALURTEST_DIR}")
 endif(NOT EXISTS "${NALURTEST_DIR}")
 execute_process(COMMAND "${CTEST_GIT_COMMAND}" "pull" WORKING_DIRECTORY ${NALURTEST_DIR})
 
+## -- Prepare tests
+execute_process(COMMAND "cmake" "-P" "${CTEST_BINARY_DIRECTORY}/CTestPrepareTests.cmake")
+
 ## -- Run CTest 
 message(" -- Test ${MODEL} - ${CTEST_BUILD_NAME} --")
 ctest_test(BUILD  "${CTEST_BINARY_DIRECTORY}"
