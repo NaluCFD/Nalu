@@ -232,8 +232,8 @@ ScalarNSOElemSuppAlg<AlgTraits>::element_execute(
       const double dqdxScsi = v_dqdxScs_(i);
       const double rhoVrtmi = v_rhoVrtmScs_(i);
       for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
-        gUpperMagGradQ += dqdxScsi*v_gijUpper(ip,i,j)*v_dqdxScs_[j];
-        rhoVrtmiGLowerRhoVrtmj += rhoVrtmi*v_gijLower(ip,i,j)*v_rhoVrtmScs_[j];
+        gUpperMagGradQ += dqdxScsi*v_gijUpper(ip,i,j)*v_dqdxScs_(j);
+        rhoVrtmiGLowerRhoVrtmj += rhoVrtmi*v_gijLower(ip,i,j)*v_rhoVrtmScs_(j);
       }
     }      
     

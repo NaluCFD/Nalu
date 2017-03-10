@@ -269,7 +269,7 @@ MomentumNSOElemSuppAlg<AlgTraits>::element_execute(
       
       // compute residual for NSO; pde-based second
       const double time = (gamma1_*rhoNp1Scs*ukNp1Scs + gamma2_*rhoNScs*ukNScs + gamma3_*rhoNm1Scs*ukNm1Scs)/dt_;
-      const double residualPde = time + dFdxkAdv - dFdxkDiff + v_dpdxScs_[k] - contRes*ukNp1Scs*nonConservedForm_;
+      const double residualPde = time + dFdxkAdv - dFdxkDiff + v_dpdxScs_(k) - contRes*ukNp1Scs*nonConservedForm_;
 
       // final form
       const double residual = residualAlt*altResFac_ + residualPde*om_altResFac_;

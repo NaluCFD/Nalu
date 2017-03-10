@@ -117,7 +117,7 @@ MomentumAdvDiffElemSuppAlg<AlgTraits>::element_execute(
       muIp += r*v_viscosity(ic);
       for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
         const double uj = v_uNp1(ic,j);
-        v_uIp_[j] += r*uj;
+        v_uIp_(j) += r*uj;
         divU += uj*v_dndx(ip,ic,j);
       }
     }
