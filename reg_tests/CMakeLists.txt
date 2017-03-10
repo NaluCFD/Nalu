@@ -14,14 +14,6 @@ else(NOT ${RUNNALURTEST_DIR} STREQUAL "")
   message( FATAL_ERROR "You need to set the ${RUNNALURTEST_DIR} variable. CMake will exit." )
 endif()
 
-set(NALURTEST_MESH_DIR              "${NALURTEST_DIR}/mesh")
-set(NALURTEST_XML_DIR               "${NALURTEST_DIR}/xml")
-set(NALURTEST_NIGHTLY_DIR           "${NALURTEST_DIR}/nightly")
-set(NALURTEST_PERF_DIR              "${NALURTEST_DIR}/performance")
-set(TEST_RESULT_DIRECTORY           "${RUNNALURTEST_DIR}")
-set(NIGHTLY_TEST_RESULT_DIRECTORY   "${TEST_RESULT_DIRECTORY}/nightly")
-set(PERF_TEST_RESULT_DIRECTORY      "${TEST_RESULT_DIRECTORY}/performance")
-
 ## -- Set TOLERANCE for test
 set(TOLERANCE 0.0000001) # Default
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")

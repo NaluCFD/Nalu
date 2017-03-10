@@ -5,13 +5,13 @@
 #=============================================================================
 
 # make a clean test directory
-file(REMOVE_RECURSE @TEST_RESULT_DIRECTORY@)
-file(MAKE_DIRECTORY @TEST_RESULT_DIRECTORY@)
+file(REMOVE_RECURSE @RUNNALURTEST_DIR@)
+file(MAKE_DIRECTORY @RUNNALURTEST_DIR@)
 
 # copy executables to the test directory
 file(COPY @CMAKE_BINARY_DIR@/naluX
           @CMAKE_BINARY_DIR@/unittestX
-     DESTINATION @TEST_RESULT_DIRECTORY@)
+     DESTINATION @RUNNALURTEST_DIR@)
 
 
 #=============================================================================
@@ -23,585 +23,585 @@ file(COPY @CMAKE_BINARY_DIR@/naluX
 #=============================================================================
 # periodic3dElem test
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/periodic3dElem"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/periodic3dElem"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(COPY               "@NALURTEST_MESH_DIR@/periodic3d.g" 
-                        "@NALURTEST_XML_DIR@/milestone.xml"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/periodic3dElem")
+file(COPY               "@NALURTEST_DIR@/mesh/periodic3d.g" 
+                        "@NALURTEST_DIR@/xml/milestone.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/periodic3dElem")
 
 
 #=============================================================================
 # periodic3dEdge test
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/periodic3dEdge"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/periodic3dEdge"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(COPY               "@NALURTEST_MESH_DIR@/periodic3d.g" 
-                        "@NALURTEST_XML_DIR@/milestone.xml"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/periodic3dEdge")
+file(COPY               "@NALURTEST_DIR@/mesh/periodic3d.g" 
+                        "@NALURTEST_DIR@/xml/milestone.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/periodic3dEdge")
 
 
 #=============================================================================
 # quad9HC test
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/quad9HC"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/quad9HC"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(GLOB meshes        "@NALURTEST_MESH_DIR@/100x50_P2n.g.*")
+file(GLOB meshes        "@NALURTEST_DIR@/mesh/100x50_P2n.g.*")
 file(COPY               ${meshes}
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/quad9HC")
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/quad9HC")
 
 
 #=============================================================================
 # steadyTaylorVortex test
 #=============================================================================i
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/steadyTaylorVortex"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/steadyTaylorVortex"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(COPY               "@NALURTEST_XML_DIR@/matches_ml_default.xml"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/steadyTaylorVortex")
+file(COPY               "@NALURTEST_DIR@/xml/matches_ml_default.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/steadyTaylorVortex")
 
 
 #=============================================================================
 # hoVortex test
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/hoVortex"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/hoVortex"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(GLOB meshes        "@NALURTEST_MESH_DIR@/100x50_P2n.g.*")
+file(GLOB meshes        "@NALURTEST_DIR@/mesh/100x50_P2n.g.*")
 file(COPY               ${meshes}
-                        "@NALURTEST_XML_DIR@/matches_ml_default.xml"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/hoVortex")
+                        "@NALURTEST_DIR@/xml/matches_ml_default.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/hoVortex")
 
    
 #=============================================================================
 # hoHelium test
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/hoHelium"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/hoHelium"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(COPY               "@NALURTEST_XML_DIR@/milestone.xml"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/hoHelium")
+file(COPY               "@NALURTEST_DIR@/xml/milestone.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/hoHelium")
 
 
 #=============================================================================
 # dgNonConformal test
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/dgNonConformal"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/dgNonConformal"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(GLOB meshes        "@NALURTEST_MESH_DIR@/2DTwoBlock_R0_rev.g.*")
+file(GLOB meshes        "@NALURTEST_DIR@/mesh/2DTwoBlock_R0_rev.g.*")
 file(COPY               ${meshes}
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/dgNonConformal")
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/dgNonConformal")
 
 
 #=============================================================================
 # dgNonConformalEdge test
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/dgNonConformalEdge"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/dgNonConformalEdge"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(GLOB meshes        "@NALURTEST_MESH_DIR@/2DTwoBlock_R0_rev.g.*")
+file(GLOB meshes        "@NALURTEST_DIR@/mesh/2DTwoBlock_R0_rev.g.*")
 file(COPY               ${meshes}
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/dgNonConformalEdge")
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/dgNonConformalEdge")
 
 
 #=============================================================================
 # dgNonConformalFluids test
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/dgNonConformalFluids"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/dgNonConformalFluids"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(GLOB meshes        "@NALURTEST_MESH_DIR@/NACA.g.*")
+file(GLOB meshes        "@NALURTEST_DIR@/mesh/NACA.g.*")
 file(COPY               ${meshes}
-                        "@NALURTEST_XML_DIR@/milestone.xml"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/dgNonConformalFluids")
+                        "@NALURTEST_DIR@/xml/milestone.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/dgNonConformalFluids")
 
 
 #=============================================================================
 # dgNonConformalFluidsEdge test
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/dgNonConformalFluidsEdge"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/dgNonConformalFluidsEdge"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(GLOB meshes        "@NALURTEST_MESH_DIR@/NACA.g.*")
+file(GLOB meshes        "@NALURTEST_DIR@/mesh/NACA.g.*")
 file(COPY               ${meshes}
-                        "@NALURTEST_XML_DIR@/milestone.xml"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/dgNonConformalFluidsEdge")
+                        "@NALURTEST_DIR@/xml/milestone.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/dgNonConformalFluidsEdge")
 
 
 #=============================================================================
 # dgNonConformal3dFluids test
 #=============================================================================i
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/dgNonConformal3dFluids"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/dgNonConformal3dFluids"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(GLOB meshes        "@NALURTEST_MESH_DIR@/twoBlockMesh_cgs.g.*")
+file(GLOB meshes        "@NALURTEST_DIR@/mesh/twoBlockMesh_cgs.g.*")
 file(COPY               ${meshes}
-                        "@NALURTEST_XML_DIR@/milestone.xml"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/dgNonConformal3dFluids")
+                        "@NALURTEST_DIR@/xml/milestone.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/dgNonConformal3dFluids")
 
 
 #=============================================================================
 # dgNonConformal3dFluidsP1P2 test
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/dgNonConformal3dFluidsP1P2"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/dgNonConformal3dFluidsP1P2"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(COPY               "@NALURTEST_XML_DIR@/milestone.xml"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/dgNonConformal3dFluidsP1P2")
+file(COPY               "@NALURTEST_DIR@/xml/milestone.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/dgNonConformal3dFluidsP1P2")
 
 
 #=============================================================================
 # dgNonConformal3dFluidsHexTet test
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/dgNonConformal3dFluidsHexTet"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/dgNonConformal3dFluidsHexTet"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(GLOB meshes        "@NALURTEST_MESH_DIR@/twoBlockMeshHexTet_cgs.g.*")
+file(GLOB meshes        "@NALURTEST_DIR@/mesh/twoBlockMeshHexTet_cgs.g.*")
 file(COPY               ${meshes}
-                        "@NALURTEST_XML_DIR@/milestone.xml"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/dgNonConformal3dFluidsHexTet")
+                        "@NALURTEST_DIR@/xml/milestone.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/dgNonConformal3dFluidsHexTet")
 
 
 #=============================================================================
 # dgNonConformalThreeBlade test
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/dgNonConformalThreeBlade"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/dgNonConformalThreeBlade"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(COPY               "@NALURTEST_MESH_DIR@/threeBladeMesh.g"
-                        "@NALURTEST_XML_DIR@/milestone.xml"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/dgNonConformalThreeBlade")
+file(COPY               "@NALURTEST_DIR@/mesh/threeBladeMesh.g"
+                        "@NALURTEST_DIR@/xml/milestone.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/dgNonConformalThreeBlade")
 
 
 #=============================================================================
 # overset test
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/overset"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/overset"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(GLOB meshes        "@NALURTEST_MESH_DIR@/oversetMeshAligned.g*")
+file(GLOB meshes        "@NALURTEST_DIR@/mesh/oversetMeshAligned.g*")
 file(COPY               ${meshes}
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/overset")
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/overset")
 
 
 #=============================================================================
 # oversetFluids test
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/oversetFluids"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/oversetFluids"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(GLOB meshes        "@NALURTEST_MESH_DIR@/oversetMeshAligned.g*")
+file(GLOB meshes        "@NALURTEST_DIR@/mesh/oversetMeshAligned.g*")
 file(COPY               ${meshes}
-                        "@NALURTEST_XML_DIR@/milestone.xml"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/oversetFluids")
+                        "@NALURTEST_DIR@/xml/milestone.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/oversetFluids")
 
 
 #=============================================================================
 # oversetFluidsEdge test
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/oversetFluidsEdge"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/oversetFluidsEdge"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(GLOB meshes        "@NALURTEST_MESH_DIR@/oversetMeshAligned.g*")
+file(GLOB meshes        "@NALURTEST_DIR@/mesh/oversetMeshAligned.g*")
 file(COPY               ${meshes}
-                        "@NALURTEST_XML_DIR@/milestone.xml"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/oversetFluidsEdge")
+                        "@NALURTEST_DIR@/xml/milestone.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/oversetFluidsEdge")
 
 
 #=============================================================================
 # concentricRad test
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/concentricRad"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/concentricRad"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
 
 #=============================================================================
 # movingCylinder test
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/movingCylinder"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/movingCylinder"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(COPY               "@NALURTEST_XML_DIR@/milestone_aspect_ratio.xml"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/movingCylinder")
+file(COPY               "@NALURTEST_DIR@/xml/milestone_aspect_ratio.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/movingCylinder")
 
 
 #=============================================================================
 # elemBackStepLRSST test
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/elemBackStepLRSST"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/elemBackStepLRSST"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(COPY               "@NALURTEST_XML_DIR@/matches_ml_default.xml"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/elemBackStepLRSST")
+file(COPY               "@NALURTEST_DIR@/xml/matches_ml_default.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/elemBackStepLRSST")
 
 
 #=============================================================================
 # ductWedge test
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/ductWedge"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/ductWedge"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(GLOB meshes        "@NALURTEST_MESH_DIR@/ductwedge.g.*")
+file(GLOB meshes        "@NALURTEST_DIR@/mesh/ductwedge.g.*")
 file(COPY               ${meshes}
-                        "@NALURTEST_XML_DIR@/matches_ml_default.xml"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/ductWedge")
+                        "@NALURTEST_DIR@/xml/matches_ml_default.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/ductWedge")
 
 
 #=============================================================================
 # ductElemWedge test
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/ductElemWedge"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/ductElemWedge"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(GLOB meshes        "@NALURTEST_MESH_DIR@/ductwedge.g.*")
+file(GLOB meshes        "@NALURTEST_DIR@/mesh/ductwedge.g.*")
 file(COPY               ${meshes}
-                        "@NALURTEST_XML_DIR@/matches_ml_default.xml"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/ductElemWedge")
+                        "@NALURTEST_DIR@/xml/matches_ml_default.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/ductElemWedge")
 
 
 #=============================================================================
 # heatedBackStep test
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/heatedBackStep"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/heatedBackStep"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(COPY               "@NALURTEST_XML_DIR@/milestone.xml"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/heatedBackStep")
+file(COPY               "@NALURTEST_DIR@/xml/milestone.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/heatedBackStep")
 
 
 #=============================================================================
 # edgePipeCHT test
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/edgePipeCHT"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/edgePipeCHT"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(GLOB meshes1       "@NALURTEST_MESH_DIR@/elbow.g.*")
-file(GLOB meshes2       "@NALURTEST_MESH_DIR@/horseshoe.g.*")
+file(GLOB meshes1       "@NALURTEST_DIR@/mesh/elbow.g.*")
+file(GLOB meshes2       "@NALURTEST_DIR@/mesh/horseshoe.g.*")
 file(COPY               ${meshes1}
                         ${meshes2}
-                        "@NALURTEST_XML_DIR@/matches_ml_default.xml"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/edgePipeCHT")
+                        "@NALURTEST_DIR@/xml/matches_ml_default.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/edgePipeCHT")
 
 
 #=============================================================================
 # elemPipeCHT test
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/elemPipeCHT"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/elemPipeCHT"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(GLOB meshes1       "@NALURTEST_MESH_DIR@/elbow.g.*")
-file(GLOB meshes2       "@NALURTEST_MESH_DIR@/horseshoe.g.*")
+file(GLOB meshes1       "@NALURTEST_DIR@/mesh/elbow.g.*")
+file(GLOB meshes2       "@NALURTEST_DIR@/mesh/horseshoe.g.*")
 file(COPY               ${meshes1}
                         ${meshes2}
-                        "@NALURTEST_XML_DIR@/matches_ml_default.xml"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/elemPipeCHT")
+                        "@NALURTEST_DIR@/xml/matches_ml_default.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/elemPipeCHT")
 
 
 #=============================================================================
 # heliumPlume test (with restart; mixed edge/element)
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/heliumPlume"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/heliumPlume"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(COPY               "@NALURTEST_XML_DIR@/milestone.xml"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/heliumPlume")
+file(COPY               "@NALURTEST_DIR@/xml/milestone.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/heliumPlume")
 
 
 #=============================================================================
 # dgNonConformalEdgeCylinder test
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/dgNonConformalEdgeCylinder"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/dgNonConformalEdgeCylinder"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(GLOB meshes        "@NALURTEST_MESH_DIR@/rot_cyl_14.exo*")
+file(GLOB meshes        "@NALURTEST_DIR@/mesh/rot_cyl_14.exo*")
 file(COPY               ${meshes}
-                        "@NALURTEST_XML_DIR@/milestone.xml"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/dgNonConformalEdgeCylinder")
+                        "@NALURTEST_DIR@/xml/milestone.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/dgNonConformalEdgeCylinder")
 
 
 #=============================================================================
 # dgNonConformalElemCylinder test
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/dgNonConformalElemCylinder"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/dgNonConformalElemCylinder"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(GLOB meshes        "@NALURTEST_MESH_DIR@/rot_cyl_14.exo*")
+file(GLOB meshes        "@NALURTEST_DIR@/mesh/rot_cyl_14.exo*")
 file(COPY               ${meshes}
-                        "@NALURTEST_XML_DIR@/milestone.xml"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/dgNonConformalElemCylinder")
+                        "@NALURTEST_DIR@/xml/milestone.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/dgNonConformalElemCylinder")
 
 
 #=============================================================================
 # fluidsPmrChtPeriodic test
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/fluidsPmrChtPeriodic"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/fluidsPmrChtPeriodic"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(COPY               "@NALURTEST_XML_DIR@/matches_ml_default.xml"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/fluidsPmrChtPeriodic")
+file(COPY               "@NALURTEST_DIR@/xml/matches_ml_default.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/fluidsPmrChtPeriodic")
 
 
 #=============================================================================
 # nonIsoElemOpenJet test
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/nonIsoElemOpenJet"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/nonIsoElemOpenJet"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(GLOB meshes        "@NALURTEST_MESH_DIR@/2cm_ped_35K_mks.g*")
+file(GLOB meshes        "@NALURTEST_DIR@/mesh/2cm_ped_35K_mks.g*")
 file(COPY               ${meshes}
-                        "@NALURTEST_XML_DIR@/matches_ml_default.xml"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/nonIsoElemOpenJet")
+                        "@NALURTEST_DIR@/xml/matches_ml_default.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/nonIsoElemOpenJet")
 
 
 #=============================================================================
 # nonIsoEdgeOpenJet test
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/nonIsoEdgeOpenJet"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/nonIsoEdgeOpenJet"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(GLOB meshes        "@NALURTEST_MESH_DIR@/2cm_ped_35K_mks.g*")
+file(GLOB meshes        "@NALURTEST_DIR@/mesh/2cm_ped_35K_mks.g*")
 file(COPY               ${meshes}
-                        "@NALURTEST_XML_DIR@/matches_ml_default.xml"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/nonIsoEdgeOpenJet")
+                        "@NALURTEST_DIR@/xml/matches_ml_default.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/nonIsoEdgeOpenJet")
 
 
 #=============================================================================
 # hdf5VarZChi test
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/hdf5VarZChi"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/hdf5VarZChi"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(GLOB meshes        "@NALURTEST_MESH_DIR@/2cm_ped_35K_mks.g*")
+file(GLOB meshes        "@NALURTEST_DIR@/mesh/2cm_ped_35K_mks.g*")
 file(COPY               ${meshes}
-                        "@NALURTEST_XML_DIR@/milestone.xml"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/hdf5VarZChi")
+                        "@NALURTEST_DIR@/xml/milestone.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/hdf5VarZChi")
 
 
 #=============================================================================
 # elemHybridFluids test
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/elemHybridFluids"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/elemHybridFluids"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(GLOB meshes        "@NALURTEST_MESH_DIR@/hybrid.g*")
+file(GLOB meshes        "@NALURTEST_DIR@/mesh/hybrid.g*")
 file(COPY               ${meshes}
-                        "@NALURTEST_XML_DIR@/milestone_aspect_ratio.xml"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/elemHybridFluids")
+                        "@NALURTEST_DIR@/xml/milestone_aspect_ratio.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/elemHybridFluids")
 
 
 #=============================================================================
 # elemHybridFluidsShift test
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/elemHybridFluidsShift"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/elemHybridFluidsShift"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(GLOB meshes        "@NALURTEST_MESH_DIR@/hybrid.g*")
+file(GLOB meshes        "@NALURTEST_DIR@/mesh/hybrid.g*")
 file(COPY               ${meshes}
-                        "@NALURTEST_XML_DIR@/matches_ml_default.xml"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/elemHybridFluidsShift")
+                        "@NALURTEST_DIR@/xml/matches_ml_default.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/elemHybridFluidsShift")
 
 
 #=============================================================================
 # edgeHybridFluids test
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/edgeHybridFluids"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/edgeHybridFluids"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(GLOB meshes        "@NALURTEST_MESH_DIR@/hybrid.g*")
+file(GLOB meshes        "@NALURTEST_DIR@/mesh/hybrid.g*")
 file(COPY               ${meshes}
-                        "@NALURTEST_XML_DIR@/matches_ml_default.xml"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/edgeHybridFluids")
+                        "@NALURTEST_DIR@/xml/matches_ml_default.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/edgeHybridFluids")
 
 
 #=============================================================================
 # elemClosedDomain test
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/elemClosedDomain"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/elemClosedDomain"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(COPY               "@NALURTEST_XML_DIR@/matches_ml_default.xml"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/elemClosedDomain")
+file(COPY               "@NALURTEST_DIR@/xml/matches_ml_default.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/elemClosedDomain")
 
 
 #=============================================================================
 # mixedTetPipe test
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/mixedTetPipe"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/mixedTetPipe"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(GLOB meshes        "@NALURTEST_MESH_DIR@/pipeTet.g*")
+file(GLOB meshes        "@NALURTEST_DIR@/mesh/pipeTet.g*")
 file(COPY               ${meshes}
-                        "@NALURTEST_XML_DIR@/matches_ml_default.xml"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/mixedTetPipe")
+                        "@NALURTEST_DIR@/xml/matches_ml_default.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/mixedTetPipe")
 
 
 #=============================================================================
 # inputFireEdgeUpwind test
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/inputFireEdgeUpwind"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/inputFireEdgeUpwind"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(GLOB meshes        "@NALURTEST_MESH_DIR@/13K_oneWay.e.*")
+file(GLOB meshes        "@NALURTEST_DIR@/mesh/13K_oneWay.e.*")
 file(COPY               ${meshes}
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/inputFireEdgeUpwind")
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/inputFireEdgeUpwind")
 
 
 #=============================================================================
 # inputFireElem test
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/inputFireElem"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/inputFireElem"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(GLOB meshes        "@NALURTEST_MESH_DIR@/13K_oneWay.e.*")
+file(GLOB meshes        "@NALURTEST_DIR@/mesh/13K_oneWay.e.*")
 file(COPY               ${meshes}
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/inputFireElem")
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/inputFireElem")
 
 
 #=============================================================================
 # nonIsoNonUniformElemOpenJet test
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/nonIsoNonUniformElemOpenJet"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/nonIsoNonUniformElemOpenJet"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(GLOB meshes        "@NALURTEST_MESH_DIR@/2cm_ped_35K_mks.g*")
+file(GLOB meshes        "@NALURTEST_DIR@/mesh/2cm_ped_35K_mks.g*")
 file(COPY               ${meshes}
-                        "@NALURTEST_XML_DIR@/matches_ml_default.xml"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/nonIsoNonUniformElemOpenJet")
+                        "@NALURTEST_DIR@/xml/matches_ml_default.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/nonIsoNonUniformElemOpenJet")
 
 
 #=============================================================================
 # nonIsoNonUniformEdgeOpenJet test
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/nonIsoNonUniformEdgeOpenJet"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/nonIsoNonUniformEdgeOpenJet"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(GLOB meshes        "@NALURTEST_MESH_DIR@/2cm_ped_35K_mks.g*")
+file(GLOB meshes        "@NALURTEST_DIR@/mesh/2cm_ped_35K_mks.g*")
 file(COPY               ${meshes}
-                        "@NALURTEST_XML_DIR@/matches_ml_default.xml"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/nonIsoNonUniformEdgeOpenJet")
+                        "@NALURTEST_DIR@/xml/matches_ml_default.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/nonIsoNonUniformEdgeOpenJet")
 
 
 #=============================================================================
 # milestoneRun test
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/milestoneRun"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/milestoneRun"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(COPY               "@NALURTEST_MESH_DIR@/1cm_ped_35K.g"
-                        "@NALURTEST_XML_DIR@/milestone.xml"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/milestoneRun")
+file(COPY               "@NALURTEST_DIR@/mesh/1cm_ped_35K.g"
+                        "@NALURTEST_DIR@/xml/milestone.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/milestoneRun")
 
 
 #=============================================================================
 # heatedWaterChannel test
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/heatedWaterChannel"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/heatedWaterChannel"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(COPY               "@NALURTEST_XML_DIR@/milestone.xml"
-                        "@NALURTEST_XML_DIR@/milestone_aspect_ratio.xml"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/heatedWaterChannel")
+file(COPY               "@NALURTEST_DIR@/xml/milestone.xml"
+                        "@NALURTEST_DIR@/xml/milestone_aspect_ratio.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/heatedWaterChannel")
 
 
 #=============================================================================
 # variableDensMMS test (edge and element)
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/variableDensMMS"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/variableDensMMS"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(COPY               "@NALURTEST_XML_DIR@/milestone.xml"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/variableDensMMS")
+file(COPY               "@NALURTEST_DIR@/xml/milestone.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/variableDensMMS")
 
 
 #=============================================================================
 # actuatorLine test
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/actuatorLine"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/actuatorLine"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(COPY               "@NALURTEST_XML_DIR@/milestone.xml"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/actuatorLine")
+file(COPY               "@NALURTEST_DIR@/xml/milestone.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/actuatorLine")
 
 
 #=============================================================================
 # femHC test
 #=============================================================================i
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/femHC"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/femHC"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(COPY               "@NALURTEST_MESH_DIR@/periodic3d.g"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/femHC")
+file(COPY               "@NALURTEST_DIR@/mesh/periodic3d.g"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/femHC")
 
 
 #=============================================================================
 # cvfemHC test
 #=============================================================================i
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/cvfemHC"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/cvfemHC"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(GLOB meshes        "@NALURTEST_MESH_DIR@/rot_cyl_14.exo*")
+file(GLOB meshes        "@NALURTEST_DIR@/mesh/rot_cyl_14.exo*")
 file(COPY               ${meshes}
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/cvfemHC")
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/cvfemHC")
 
 
 #=============================================================================
 # ablUnstableEdge test
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/ablUnstableEdge"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/ablUnstableEdge"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(COPY               "@NALURTEST_MESH_DIR@/abl_1km_cube_toy.g"
-                        "@NALURTEST_MESH_DIR@/abl_io.g"
-                        "@NALURTEST_XML_DIR@/milestone.xml"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/ablUnstableEdge")
+file(COPY               "@NALURTEST_DIR@/mesh/abl_1km_cube_toy.g"
+                        "@NALURTEST_DIR@/mesh/abl_io.g"
+                        "@NALURTEST_DIR@/xml/milestone.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/ablUnstableEdge")
 
 
 #=============================================================================
 # ablForcingEdge test
 #=============================================================================
-#file(COPY               "@NALURTEST_NIGHTLY_DIR@/ablForcingEdge"
-#     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+#file(COPY               "@NALURTEST_DIR@/nightly/ablForcingEdge"
+#     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-#file(COPY               "@NALURTEST_MESH_DIR@/abl_1km_cube_sample.g"
-#                        "@NALURTEST_XML_DIR@/milestone.xml"
-#     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/ablForcingEdge")
+#file(COPY               "@NALURTEST_DIR@/mesh/abl_1km_cube_sample.g"
+#                        "@NALURTEST_DIR@/xml/milestone.xml"
+#     DESTINATION        "@RUNNALURTEST_DIR@/nightly/ablForcingEdge")
 
 
 #=============================================================================
 # ablStableElem test
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/ablStableElem"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/ablStableElem"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(COPY               "@NALURTEST_MESH_DIR@/abl_1km_cube_toy.g"
-                        "@NALURTEST_XML_DIR@/milestone.xml"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/ablStableElem")
+file(COPY               "@NALURTEST_DIR@/mesh/abl_1km_cube_toy.g"
+                        "@NALURTEST_DIR@/xml/milestone.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/ablStableElem")
 
 
 #=============================================================================
 # ekmanSpiral test
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/ekmanSpiral"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/ekmanSpiral"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(COPY               "@NALURTEST_MESH_DIR@/ekmanSpiral.g"
-                        "@NALURTEST_XML_DIR@/milestone.xml"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@/ekmanSpiral")
+file(COPY               "@NALURTEST_DIR@/mesh/ekmanSpiral.g"
+                        "@NALURTEST_DIR@/xml/milestone.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/ekmanSpiral")
 
 #=============================================================================
 # dgMMS test
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/dgMMS"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/dgMMS"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
 #=============================================================================
 # unit tests
 #=============================================================================
-file(COPY               "@NALURTEST_NIGHTLY_DIR@/unitTests"
-     DESTINATION        "@NIGHTLY_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/nightly/unitTests"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
 
 #=============================================================================
@@ -613,31 +613,31 @@ file(COPY               "@NALURTEST_NIGHTLY_DIR@/unitTests"
 #=============================================================================
 # waleElemXflowMixFrac3.5m test
 #=============================================================================
-file(COPY               "@NALURTEST_PERF_DIR@/waleElemXflowMixFrac3.5m"
-     DESTINATION        "@PERF_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/performance/waleElemXflowMixFrac3.5m"
+     DESTINATION        "@RUNNALURTEST_DIR@/performance")
 
-file(COPY               "@NALURTEST_XML_DIR@/milestone_aspect_ratio_smooth.xml"
-     DESTINATION        "@PERF_TEST_RESULT_DIRECTORY@/waleElemXflowMixFrac3.5m")
+file(COPY               "@NALURTEST_DIR@/xml/milestone_aspect_ratio_smooth.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/performance/waleElemXflowMixFrac3.5m")
 
 
 #=============================================================================
 # uqSlidingMeshDG test
 #=============================================================================
-file(COPY               "@NALURTEST_PERF_DIR@/uqSlidingMeshDG"
-     DESTINATION        "@PERF_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/performance/uqSlidingMeshDG"
+     DESTINATION        "@RUNNALURTEST_DIR@/performance")
 
-file(GLOB meshes        "@NALURTEST_MESH_DIR@/uqvawt_corrected.exo.*")
+file(GLOB meshes        "@NALURTEST_DIR@/mesh/uqvawt_corrected.exo.*")
 file(COPY               ${meshes}
-                        "@NALURTEST_XML_DIR@/milestone_aspect_ratio_smooth.xml"
-     DESTINATION        "@PERF_TEST_RESULT_DIRECTORY@/uqSlidingMeshDG")
+                        "@NALURTEST_DIR@/xml/milestone_aspect_ratio_smooth.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/performance/uqSlidingMeshDG")
 
 
 #=============================================================================
 # oversetHybrid test
 #=============================================================================
-file(COPY               "@NALURTEST_PERF_DIR@/oversetHybrid"
-     DESTINATION        "@PERF_TEST_RESULT_DIRECTORY@")
+file(COPY               "@NALURTEST_DIR@/performance/oversetHybrid"
+     DESTINATION        "@RUNNALURTEST_DIR@/performance")
 
-file(COPY               "@NALURTEST_XML_DIR@/milestone.xml"
-     DESTINATION        "@PERF_TEST_RESULT_DIRECTORY@/oversetHybrid")
+file(COPY               "@NALURTEST_DIR@/xml/milestone.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/performance/oversetHybrid")
 
