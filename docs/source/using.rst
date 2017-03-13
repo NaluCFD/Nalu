@@ -8,6 +8,11 @@ Input File Specification
 
 Here we describe the input file specification.
 
+.. literalinclude:: myinput.i
+  :linenos:
+  :language: yaml
+  :caption: myinput.i
+
 Examples
 --------
 
