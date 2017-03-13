@@ -927,8 +927,11 @@ MomentumEquationSystem::register_nodal_fields(
       =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "actuator_source"));
     ScalarFieldType *actuatorSourceLHS
       =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "actuator_source_lhs"));
+    ScalarFieldType *g
+      =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "g"));
     stk::mesh::put_field(*actuatorSource, *part);
     stk::mesh::put_field(*actuatorSourceLHS, *part);
+    stk::mesh::put_field(*g, *part);
   }
 }
 

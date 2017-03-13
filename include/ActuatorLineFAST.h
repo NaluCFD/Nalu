@@ -28,25 +28,19 @@ public:
   int processorId_;
   int numPoints_;
   std::string turbineName_;
-  double radius_;
-  double omega_;
-  double twoSigSq_;
-  Coordinates tipCoordinates_;
-  Coordinates tailCoordinates_;
-  Coordinates coordinates_;
+  Coordinates epsilon_;
 };
 
 // class that holds all of the action... for each point, hold the current location and other useful info
 class ActuatorLineFASTPointInfo {
  public:
   ActuatorLineFASTPointInfo(
-    size_t localId, Point centroidCoords, double radius, double omega, double twoSigSq, double *velocity, ActuatorNodeType nType);
+    size_t localId, Point centroidCoords, double searchRadius, Coordinates epsilon, double *velocity, ActuatorNodeType nType);
   ~ActuatorLineFASTPointInfo();
   size_t localId_;
   Point centroidCoords_;
-  double radius_;
-  double omega_;
-  double twoSigSq_;
+  double searchRadius_;
+  Coordinates epsilon_;
   double bestX_;
   stk::mesh::Entity bestElem_;
 
@@ -138,48 +132,45 @@ public:
     const double *fieldAtNodes,
     double *pointField);
 
-  // drag at the point centroid
-  void compute_point_drag( 
-    const int &nDim, 
-    const double &pointRadius,
-    const double *pointVelocity,
-    const double *pointGasVelocity,
-    const double &pointGasViscosity,
-    const double &pointGasDensity, 
-    double *pointDrag,
-    double &pointDragLHS);
-
   // centroid of the element
   void compute_elem_centroid( 
     const int &nDim,
     double *elemCentroid,
     const int &nodesPerElement);
 
-  // radius from element centroid to point centroid
-  double compute_radius( 
+  // distance from element centroid to point centroid
+  double compute_distance( 
     const int &nDim,
     const double *elemCentroid,
     const double *pointCentroid);
 
-  // drag fource at given radius
-  void compute_elem_drag_given_radius( 
+  // compute the body force at an element given a
+  // projection weighting.
+  void compute_elem_force_given_weight(
     const int &nDim,
-    const double &radius, 
-    const double &twoSigSq, 
-    const double *pointDrag,
-    double *elemDrag);
+    const double &g,
+    const double *pointForce,
+    double *elemForce);
+
+  // isotropic Gaussian projection function.
+  double isotropic_Gaussian_projection(
+    const int &nDim,
+    const double &dis,
+    const Coordinates &epsilon);
 
   // finally, perform the assembly
   void assemble_source_to_nodes(
     const int &nDim,
-    stk::mesh::Entity elem, 
+    stk::mesh::Entity elem,
     const stk::mesh::BulkData & bulkData,
     const double &elemVolume,
     const double *drag,
     const double &dragLHS,
+    const double &gLocal,
     stk::mesh::FieldBase &actuator_source,
     stk::mesh::FieldBase &actuator_source_lhs,
-    const double &lhsFac); 
+    stk::mesh::FieldBase &g,
+    const double &lhsFac);
 
   // hold the realm
   Realm &realm_;

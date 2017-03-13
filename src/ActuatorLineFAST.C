@@ -43,6 +43,7 @@
 namespace sierra{
 namespace nalu{
 
+
 //==========================================================================
 // Class Definition
 //==========================================================================
@@ -54,13 +55,11 @@ namespace nalu{
 ActuatorLineFASTInfo::ActuatorLineFASTInfo() 
   : processorId_(0),
     numPoints_(1),
-    turbineName_("machine_one"),
-    radius_(0),
-    omega_(0.0),
-    twoSigSq_(0.0)
+    turbineName_("machine_one")
 {
   // nothing to do
 }
+
 
 //--------------------------------------------------------------------------
 //-------- destructor ------------------------------------------------------
@@ -69,6 +68,7 @@ ActuatorLineFASTInfo::~ActuatorLineFASTInfo()
 {
   // nothing to do
 }
+
 
 //==========================================================================
 // Class Definition
@@ -81,16 +81,14 @@ ActuatorLineFASTInfo::~ActuatorLineFASTInfo()
 ActuatorLineFASTPointInfo::ActuatorLineFASTPointInfo( 
   size_t localId, 
   Point centroidCoords, 
-  double radius, 
-  double omega,
-  double twoSigSq,
+  double searchRadius,
+  Coordinates epsilon,
   double *velocity,
   ActuatorNodeType nType)
   : localId_(localId),
     centroidCoords_(centroidCoords),
-    radius_(radius),
-    omega_(omega),
-    twoSigSq_(twoSigSq),
+    searchRadius_(searchRadius),
+    epsilon_(epsilon),
     bestX_(1.0e16),
     bestElem_(stk::mesh::Entity()),
     nodeType_(nType)
@@ -100,6 +98,8 @@ ActuatorLineFASTPointInfo::ActuatorLineFASTPointInfo(
   velocity_[1] = velocity[1];
   velocity_[2] = velocity[2];
 }
+
+
 //--------------------------------------------------------------------------
 //-------- destructor ------------------------------------------------------
 //--------------------------------------------------------------------------
@@ -107,6 +107,7 @@ ActuatorLineFASTPointInfo::~ActuatorLineFASTPointInfo()
 {
   // nothing to do
 }
+
 
 //==========================================================================
 // Class Definition
@@ -153,15 +154,17 @@ ActuatorLineFAST::ActuatorLineFAST(
 
       specifications:
 
-        - name: machine_one 
-          radius: 2.0
-          omega: 1.0
-          gaussian_decay_radius: 1.5
-          gaussian_decay_target: 0.01
-          tip_coodinates: [0.0, 0.0, 0.0]
-          tail_coodinates: [0.0, 0.0, 0.0]
+        - name: machine_zero
+          procNo: 0
+          epsilon: [ 2.0, 0.0, 0.0 ]
+          turbine_pos: [ 0.0, 0.0, 0.0 ]
+          restart_filename: "blah"
+          FAST_input_filename: "Test01.fst"
+          turb_id:  1
+          turbine_name: machine_zero
   */
 }
+
 
 //--------------------------------------------------------------------------
 //-------- destructor ------------------------------------------------------
@@ -176,54 +179,46 @@ ActuatorLineFAST::~ActuatorLineFAST()
     delete actuatorLineInfo_[k];
 }
 
+
 //--------------------------------------------------------------------------
-//-------- compute_point_drag ----------------------------------------------
+//-------- compute_elem_force_given_weight ----------------------------------
 //--------------------------------------------------------------------------
 void
-ActuatorLineFAST::compute_point_drag( 
+ActuatorLineFAST::compute_elem_force_given_weight(
   const int &nDim,
-  const double &pointRadius, 
-  const double *pointVelocity,
-  const double *pointGasVelocity,
-  const double &pointGasViscosity,
-  const double &pointGasDensity,
-  double *pointForce,
-  double &pointForceLHS)
-{
-  // compute magnitude of velocity difference between point and gas
-  double vRelMag = 0.0;
-  for ( int j = 0; j < nDim; ++j )
-    vRelMag += (pointVelocity[j] - pointGasVelocity[j] )*(pointVelocity[j] - pointGasVelocity[j]);
-  vRelMag = std::sqrt(vRelMag);
-
-  // Reynolds number and friction factors
-  double ReP = 2.0*pointGasDensity*pointRadius*vRelMag/pointGasViscosity;
-  double CubeRtReP = (ReP < 1000.) ? std::cbrt(ReP) : 0.0;
-  double fD = (ReP < 1000.0) ? (1.0 + CubeRtReP*CubeRtReP/6.0) : (0.424/24.0 * ReP);
-  double coef = 6.0*pi_*pointGasViscosity*pointRadius;
-
-  // this is from the fluids perspective, not the psuedo particle
-  pointForceLHS = 2.0*coef*fD;
-  for ( int j = 0; j < nDim; ++j )
-    pointForce[j] = coef*fD*(pointVelocity[j] - pointGasVelocity[j]);
-}
-
-//--------------------------------------------------------------------------
-//-------- compute_elem_drag_given_radius ----------------------------------
-//--------------------------------------------------------------------------
-void
-ActuatorLineFAST::compute_elem_drag_given_radius( 
-  const int &nDim,
-  const double &radius, 
-  const double &twoSigSq,
+  const double &g,
   const double *pointForce,
-  double *elemDrag)
+  double *elemForce)
 {
-  // gaussian weight based on radius
-  const double gaussWeight = std::exp(-radius*radius/twoSigSq);
+  // Multiply the point force by the weight at this element location.
   for ( int j = 0; j < nDim; ++j )
-    elemDrag[j] = pointForce[j]*gaussWeight;
+    elemForce[j] = pointForce[j]*g;
 }
+
+
+//--------------------------------------------------------------------------
+//-------- isotropic_Gaussian_projection -----------------------------------
+//--------------------------------------------------------------------------
+double
+ActuatorLineFAST::isotropic_Gaussian_projection(
+  const int &nDim,
+  const double &dis,
+  const Coordinates &epsilon)
+{
+  // Compute the force projection weight at this location using an
+  // isotropic Gaussian.
+  double g;
+  const double pi = acos(-1.0);
+  if ( nDim == 2 )
+    g = (1.0 / (pow(epsilon.x_,2.0) * pi)) * exp(-pow((dis/epsilon.x_),2.0));
+  else
+    g = (1.0 / (pow(epsilon.x_,3.0) * pow(pi,1.5))) * exp(-pow((dis/epsilon.x_),2.0));
+
+//std::cout << "g = " << g << std::endl;
+
+  return g;
+}
+
 
 //--------------------------------------------------------------------------
 //-------- load ------------------------------------------------------------
@@ -291,15 +286,12 @@ ActuatorLineFAST::load(
      
       actuatorLineMotion_ = true;
       
-      get_if_present(cur_turbine, "radius", actuatorLineInfo->radius_, actuatorLineInfo->radius_);
-      
-      // Gaussian props
-      double gaussDecayTarget = 0.01;
-      double gaussDecayRadius = 1.5;
-      get_if_present(cur_turbine, "gaussian_decay_radius", gaussDecayRadius, gaussDecayRadius);
-      get_if_present(cur_turbine, "gaussian_decay_target", gaussDecayTarget, gaussDecayTarget);
-      actuatorLineInfo->twoSigSq_ = -gaussDecayRadius*gaussDecayRadius/std::log(gaussDecayTarget);
-
+      // Force projection function properties
+      const YAML::Node epsilon = cur_turbine["epsilon"];
+        if ( epsilon )
+          actuatorLineInfo->epsilon_ = epsilon.as<Coordinates>() ;
+        else
+          throw std::runtime_error("ActuatorLineFAST: lacking epsilon vector");
     }
   }
 }
@@ -336,6 +328,7 @@ ActuatorLineFAST::setup()
   }
 
 }
+
 
 //--------------------------------------------------------------------------
 //-------- initialize ------------------------------------------------------
@@ -392,6 +385,7 @@ ActuatorLineFAST::initialize()
   complete_search();
 }
 
+
 //--------------------------------------------------------------------------
 //-------- execute ---------------------------------------------------------
 //--------------------------------------------------------------------------
@@ -411,6 +405,8 @@ ActuatorLineFAST::execute()
     = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "actuator_source");
   ScalarFieldType *actuator_source_lhs
     = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "actuator_source_lhs");
+  ScalarFieldType *g
+    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "g");
   ScalarFieldType *density
     = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density"); 
   // deal with proper viscosity
@@ -422,7 +418,7 @@ ActuatorLineFAST::execute()
   std::vector<double> ws_pointGasVelocity(nDim);
   std::vector<double> ws_elemCentroid(nDim);
   std::vector<double> ws_pointForce(nDim);
-  std::vector<double> ws_elemDrag(nDim);
+  std::vector<double> ws_elemForce(nDim);
   double ws_pointGasDensity;
   double ws_pointGasViscosity;
   double ws_pointForceLHS;
@@ -437,8 +433,10 @@ ActuatorLineFAST::execute()
     const stk::mesh::Bucket::size_type length   = b.size();
     double * actSrc = stk::mesh::field_data(*actuator_source, b);
     double * actSrcLhs = stk::mesh::field_data(*actuator_source_lhs, b);
+    double * gF = stk::mesh::field_data(*g, b);
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
       actSrcLhs[k] = 0.0;
+      gF[k] = 0.0;
       const int offSet = k*nDim;
       for ( int j = 0; j < nDim; ++j ) {
         actSrc[offSet+j] = 0.0;
@@ -549,16 +547,25 @@ ActuatorLineFAST::execute()
     if (FAST.isDebug() ) {
       NaluEnv::self().naluOutput() << "Node " << np << " Type " << infoObject->nodeType_ << " Force = " << ws_pointForce[0] << " " << ws_pointForce[1] << " " << ws_pointForce[2] << " " << std::endl ;
     }
-    ws_pointForce[0] = 0.0; //Setting to zero for now
-    ws_pointForce[1] = 0.0;
-    ws_pointForce[2] = 0.0;
-    ws_pointForceLHS = 0.0; //Not clear what this should be - FIGURE IT OUT
+  //ws_pointForce[0] = 0.0; //Setting to zero for now
+  //ws_pointForce[1] = 0.0;
+  //ws_pointForce[2] = 0.0;
+  //ws_pointForceLHS = 0.0; //Not clear what this should be - FIGURE IT OUT
     // assemble nodal quantity; radius should be zero, so we can apply fill point drag
-    assemble_source_to_nodes(nDim, bestElem, bulkData, elemVolume, &ws_pointForce[0], ws_pointForceLHS, 
-                             *actuator_source, *actuator_source_lhs, 1.0);
+  //assemble_source_to_nodes(nDim, bestElem, bulkData, elemVolume, &ws_pointForce[0], ws_pointForceLHS, 
+  //                         *actuator_source, *actuator_source_lhs, 1.0);
 
     // get the vector of elements
     std::vector<stk::mesh::Entity> elementVec = infoObject->elementVec_;
+
+    // Set up the necessary variables to check that forces/projection function are integrating up correctly.
+    double gSum = 0.0;
+    double forceSum[nDim];
+    forceSum[0] = 0.0;
+    forceSum[1] = 0.0;
+    if (nDim>2){
+      forceSum[2] = 0.0;
+    }
 
     // iterate them and apply source term; gather coords
     for ( size_t k = 0; k < elementVec.size(); ++k ) {
@@ -580,38 +587,65 @@ ActuatorLineFAST::execute()
       // determine element centroid
       compute_elem_centroid(nDim, &ws_elemCentroid[0], nodesPerElement);
 
-      // compute radius
-      const double radius = compute_radius(nDim, &ws_elemCentroid[0], &(infoObject->centroidCoords_[0]));
+      // compute distance
+      const double distance = compute_distance(nDim, &ws_elemCentroid[0], &(infoObject->centroidCoords_[0]));
+
+      double gA = 0.0;
       
       switch (infoObject->nodeType_) {
-	
       case HUB:
-	// get drag at this element centroid with proper Gaussian weighting
-	compute_elem_drag_given_radius(nDim, radius, infoObject->twoSigSq_, &ws_pointForce[0], &ws_elemDrag[0]);
-	// assemble nodal quantity; no LHS contribution here...
-	assemble_source_to_nodes(nDim, elem, bulkData, elemVolume, &ws_elemDrag[0], ws_pointForceLHS, 
-				 *actuator_source, *actuator_source_lhs, 0.0);
-	break;
+        // project the force to this element centroid with projection function
+        gA = isotropic_Gaussian_projection(nDim, distance, infoObject->epsilon_);
+        compute_elem_force_given_weight(nDim, gA, &ws_pointForce[0], &ws_elemForce[0]);
+        // assemble nodal quantity; no LHS contribution here...
+        assemble_source_to_nodes(nDim, elem, bulkData, elemVolume, &ws_elemForce[0], ws_pointForceLHS,
+                                 0.0, *actuator_source, *actuator_source_lhs, *g, 0.0);
+        forceSum[0] += ws_elemForce[0]*elemVolume;
+        forceSum[1] += ws_elemForce[1]*elemVolume;
+        if (nDim > 2){
+          forceSum[2] += ws_elemForce[2]*elemVolume;
+        }
+        gSum += gA*elemVolume;
+        break;
 
       case BLADE:
-	// get drag at this element centroid with proper Gaussian weighting
-	compute_elem_drag_given_radius(nDim, radius, infoObject->twoSigSq_, &ws_pointForce[0], &ws_elemDrag[0]);
-	// assemble nodal quantity; no LHS contribution here...
-	assemble_source_to_nodes(nDim, elem, bulkData, elemVolume, &ws_elemDrag[0], ws_pointForceLHS, 
-				 *actuator_source, *actuator_source_lhs, 0.0);
-	break;
+        // project the force to this element centroid with projection function
+        gA = isotropic_Gaussian_projection(nDim, distance, infoObject->epsilon_);
+        compute_elem_force_given_weight(nDim, gA, &ws_pointForce[0], &ws_elemForce[0]);
+        // assemble nodal quantity; no LHS contribution here...
+        assemble_source_to_nodes(nDim, elem, bulkData, elemVolume, &ws_elemForce[0], ws_pointForceLHS,
+                                 gA, *actuator_source, *actuator_source_lhs, *g, 0.0);
+        forceSum[0] += ws_elemForce[0]*elemVolume;
+        forceSum[1] += ws_elemForce[1]*elemVolume;
+        if (nDim > 2){
+          forceSum[2] += ws_elemForce[2]*elemVolume;
+        }
+        gSum += gA*elemVolume;
+        break;
 
       case TOWER:
-	// get drag at this element centroid with proper Gaussian weighting
-	compute_elem_drag_given_radius(nDim, radius, infoObject->twoSigSq_, &ws_pointForce[0], &ws_elemDrag[0]);
-	// assemble nodal quantity; no LHS contribution here...
-	assemble_source_to_nodes(nDim, elem, bulkData, elemVolume, &ws_elemDrag[0], ws_pointForceLHS, 
-				 *actuator_source, *actuator_source_lhs, 0.0);
-	break;
-
+        // project the force to this element centroid with projection function
+        gA = isotropic_Gaussian_projection(nDim, distance, infoObject->epsilon_);
+        compute_elem_force_given_weight(nDim, gA, &ws_pointForce[0], &ws_elemForce[0]);
+        // assemble nodal quantity; no LHS contribution here...
+        assemble_source_to_nodes(nDim, elem, bulkData, elemVolume, &ws_elemForce[0], ws_pointForceLHS,
+                                 gA, *actuator_source, *actuator_source_lhs, *g, 0.0);
+        forceSum[0] += ws_elemForce[0]*elemVolume;
+        forceSum[1] += ws_elemForce[1]*elemVolume;
+        if (nDim > 2){
+          forceSum[2] += ws_elemForce[2]*elemVolume;
+        }
+        gSum += gA*elemVolume;
+        break;	
       }
 
     }
+
+    NaluEnv::self().naluOutput() << "Actuator Point " << np << ", " << "# elems " << elementVec.size() << ", " << " Type " << infoObject->nodeType_ << std::endl;
+    NaluEnv::self().naluOutput() << "  -Body force = " << forceSum[0] << " " << forceSum[1] << " " << forceSum[2] << " " << std::endl;
+    NaluEnv::self().naluOutput() << "  -Act. force = " << ws_pointForce[0] << " " << ws_pointForce[1] << " " << ws_pointForce[2] << std::endl;
+    NaluEnv::self().naluOutput() << "  -Ratio = " << forceSum[0]/ws_pointForce[0] << " " << forceSum[1]/ws_pointForce[1] << " " << forceSum[2]/ws_pointForce[2] << std::endl;
+    NaluEnv::self().naluOutput() << "  -gSum = " << gSum << std::endl;
 
     np=np+1;
   }
@@ -620,7 +654,11 @@ ActuatorLineFAST::execute()
   const std::vector<const stk::mesh::FieldBase*> sumFieldVec(1, actuator_source);
   stk::mesh::parallel_sum_including_ghosts(bulkData, sumFieldVec);
 
+  const std::vector<const stk::mesh::FieldBase*> sumFieldG(1, g);
+  stk::mesh::parallel_sum_including_ghosts(bulkData, sumFieldG);
 }
+
+
 //--------------------------------------------------------------------------
 //-------- populate_candidate_elements -------------------------------------
 //--------------------------------------------------------------------------
@@ -789,19 +827,21 @@ ActuatorLineFAST::create_actuator_line_point_info_map() {
 	  velocity[0] = 0.0;
 	  velocity[1] = 0.0;
 	  velocity[2] = 0.0;
+
+          double searchRadius = actuatorLineInfo->epsilon_.x_ * sqrt(log(1.0/0.001));
 	  
 	  for ( int j = 0; j < nDim; ++j )
 	    centroidCoords[j] = currentCoords[j];
 	  
 	  // create the bounding point sphere and push back
-	  boundingSphere theSphere( Sphere(centroidCoords, actuatorLineInfo->radius_), theIdent);
+	  boundingSphere theSphere( Sphere(centroidCoords, searchRadius), theIdent);
 	  boundingSphereVec_.push_back(theSphere);
 	  
 	  // create the point info and push back to map
 	  ActuatorLineFASTPointInfo *actuatorLinePointInfo 
 	    = new ActuatorLineFASTPointInfo(localPointId, centroidCoords, 
-					actuatorLineInfo->radius_, actuatorLineInfo->omega_, 
-					actuatorLineInfo->twoSigSq_, velocity, FAST.getNodeType(k, iNode));
+					searchRadius, actuatorLineInfo->epsilon_,
+                                        velocity, FAST.getNodeType(k, iNode));
 	  actuatorLinePointInfoMap_[localPointId] = actuatorLinePointInfo;
 	  
 	  np=np+1;
@@ -816,41 +856,6 @@ ActuatorLineFAST::create_actuator_line_point_info_map() {
   }
 }
 
-
-
-//--------------------------------------------------------------------------
-//-------- set_current_coordinates -----------------------------------------
-//--------------------------------------------------------------------------
-void
-ActuatorLineFAST::set_current_coordinates(
-  double *lineCentroid, double *centroidCoords, const double &omega, const double &currentTime)
-{
-  // hack for rotation only in the y-z plane
-  const double cY = centroidCoords[1] - lineCentroid[1];
-  const double cZ = centroidCoords[2] - lineCentroid[2];
-  const double sinOT = sin(omega*currentTime);
-  const double cosOT = cos(omega*currentTime);
-
-  // no change to x-coordinates
-  centroidCoords[1] = sinOT*cZ + cosOT*cY + lineCentroid[1];
-  centroidCoords[2] = cosOT*cZ - sinOT*cY + lineCentroid[2];
-}
-
-//--------------------------------------------------------------------------
-//-------- set_current_velocity --------------------------------------------
-//--------------------------------------------------------------------------
-void
-ActuatorLineFAST::set_current_velocity(
-  double *lineCentroid, const double *centroidCoords, double *velocity, const double &omega)
-{
-  // hack for rotation only in the y-z plane
-  double cY = centroidCoords[1] - lineCentroid[1];
-  double cZ = centroidCoords[2] - lineCentroid[2];
-
-  velocity[0] = 0.0;
-  velocity[1] = -omega*cZ;
-  velocity[2] = +omega*cY;
-}
 
 //--------------------------------------------------------------------------
 //-------- manage_ghosting -------------------------------------------------
@@ -874,7 +879,8 @@ ActuatorLineFAST::manage_ghosting()
     NaluEnv::self().naluOutputP0() << "ActuatorLineFAST alg will NOT ghost entities: " << std::endl;
   }
 }
-  
+ 
+ 
 //--------------------------------------------------------------------------
 //-------- complete_search -------------------------------------------------
 //--------------------------------------------------------------------------
@@ -935,30 +941,22 @@ ActuatorLineFAST::complete_search()
       const double nearestDistance = meSCS->isInElement(&elementCoords[0],
                                                         &(actuatorLinePointInfo->centroidCoords_[0]),
                                                         &(isoParCoords[0]));
-      
+ 
+
       // save off best element and its isoparametric coordinates for this point
-      if ( nearestDistance < actuatorLinePointInfo->bestX_ ) { 
-        actuatorLinePointInfo->bestX_ = nearestDistance;    
+      if ( nearestDistance < actuatorLinePointInfo->bestX_ ) {
+        actuatorLinePointInfo->bestX_ = nearestDistance;
         actuatorLinePointInfo->isoParCoords_ = isoParCoords;
-        if ( stk::mesh::Entity() == actuatorLinePointInfo->bestElem_ ) {
-          actuatorLinePointInfo->bestElem_ = elem;
-        }
-        else { 
-          // swap the current best element
-          actuatorLinePointInfo->elementVec_.push_back(actuatorLinePointInfo->bestElem_);
-          actuatorLinePointInfo->bestElem_ = elem;
-        }
-      }   
-      else {
-        // regular element
-        actuatorLinePointInfo->elementVec_.push_back(elem);
+        actuatorLinePointInfo->bestElem_ = elem;
       }
+        actuatorLinePointInfo->elementVec_.push_back(elem);
     }
     else {
       // not this proc's issue
     }
   }
 }
+
 
 //--------------------------------------------------------------------------
 //-------- resize_std_vector -----------------------------------------------
@@ -975,6 +973,7 @@ ActuatorLineFAST::resize_std_vector(
   const int nodesPerElement = meSCS->nodesPerElement_;
   theVector.resize(nodesPerElement*sizeOfField);
 }
+
 
 //--------------------------------------------------------------------------
 //-------- gather_field ----------------------------------------------------
@@ -997,6 +996,7 @@ ActuatorLineFAST::gather_field(
   }   
 }
 
+
 //--------------------------------------------------------------------------
 //-------- gather_field_for_interp -----------------------------------------
 //--------------------------------------------------------------------------
@@ -1017,6 +1017,7 @@ ActuatorLineFAST::gather_field_for_interp(
     }   
   }   
 }
+
 
 //--------------------------------------------------------------------------
 //-------- compute_volume --------------------------------------------------
@@ -1045,6 +1046,7 @@ ActuatorLineFAST::compute_volume(
   return elemVolume;
 }
 
+
 //--------------------------------------------------------------------------
 //-------- interpolate_field -----------------------------------------------
 //--------------------------------------------------------------------------
@@ -1069,6 +1071,7 @@ ActuatorLineFAST::interpolate_field(
     pointField); 
 }
 
+
 //--------------------------------------------------------------------------
 //-------- compute_elem_centroid -------------------------------------------
 //--------------------------------------------------------------------------
@@ -1090,36 +1093,40 @@ ActuatorLineFAST::compute_elem_centroid(
   }
 }
 
+
 //--------------------------------------------------------------------------
-//-------- compute_radius ------------------------------------------------
+//-------- compute_distance ------------------------------------------------
 //--------------------------------------------------------------------------
 double
-ActuatorLineFAST::compute_radius(
+ActuatorLineFAST::compute_distance(
   const int &nDim,
   const double *elemCentroid,
   const double *pointCentroid) 
 { 
-  double radius = 0.0;
+  double distance = 0.0;
   for ( int j = 0; j < nDim; ++j )
-    radius += std::pow(elemCentroid[j] - pointCentroid[j], 2);
-  radius = std::sqrt(radius);
-  return radius;
+    distance += std::pow(elemCentroid[j] - pointCentroid[j], 2);
+  distance = std::sqrt(distance);
+  return distance;
 }
+
 
 //--------------------------------------------------------------------------
 //-------- assemble_source_to_nodes ----------------------------------------
-//-------------------------------------------------------------------------
+//--------------------------------------------------------------------------
 void
 ActuatorLineFAST::assemble_source_to_nodes(
   const int &nDim,
-  stk::mesh::Entity elem, 
+  stk::mesh::Entity elem,
   const stk::mesh::BulkData & bulkData,
   const double &elemVolume,
   const double *drag,
   const double &dragLHS,
+  const double &gLocal,
   stk::mesh::FieldBase &actuator_source,
   stk::mesh::FieldBase &actuator_source_lhs,
-  const double &lhsFac) 
+  stk::mesh::FieldBase &g,
+  const double &lhsFac)
 {
   // extract master element from the bucket in which the element resides
   const stk::topology &elemTopo = bulkData.bucket(elem).topology();
@@ -1133,23 +1140,27 @@ ActuatorLineFAST::assemble_source_to_nodes(
   // assemble to nodes
   const int *ipNodeMap = meSCV->ipNodeMap();
   for ( int ip = 0; ip < numScvIp; ++ip ) {
-      
+
     // nearest node to ip
     const int nearestNode = ipNodeMap[ip];
-    
+
     // extract node and pointer to source term
     stk::mesh::Entity node = elem_node_rels[nearestNode];
     double * sourceTerm = (double*)stk::mesh::field_data(actuator_source, node );
     double * sourceTermLHS = (double*)stk::mesh::field_data(actuator_source_lhs, node );
-    
+    double * gGlobal = (double*)stk::mesh::field_data(g, node);
+
+
     // nodal weight based on volume weight
     const double nodalWeight = ws_scv_volume_[ip]/elemVolume;
     *sourceTermLHS += nodalWeight*dragLHS*lhsFac;
+    *gGlobal += gLocal;
     for ( int j=0; j < nDim; ++j ) {
       sourceTerm[j] += nodalWeight*drag[j];
     }
-  } 
-}
-  
+  }
+} 
+ 
+
 } // namespace nalu
 } // namespace Sierra
