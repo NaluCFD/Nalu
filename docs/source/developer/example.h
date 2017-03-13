@@ -1,6 +1,13 @@
-/** Here is a brief description of the class.
+/** @file example.h
+ *  @brief Brief description of a documented file.
+ *   
+ *  Longer description of a documented file.
+*/
+
+/** Here is a brief description of the example class.
  *
- * This is a more in-depth description. This class is meant as an example. 
+ * This is a more in-depth description of the class. 
+ * This class is meant as an example. 
  * It is not useful by itself, rather its usefulness is only a 
  * function of how much it helps the reader. It is in a sense 
  * defined by the person who reads it and otherwise does 

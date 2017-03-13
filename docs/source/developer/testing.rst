@@ -54,8 +54,8 @@ matching a particular regular expression for example. To do so, in the ``build``
 ``ctest -R femHC`` to run the test matching the ``femHC`` regular expression. See ``ctest -h`` for 
 more options in running tests.
 
-To define your own tolerance for tests, at configure time, add ``-DTEST_TOLERANCE=0.0001`` to the 
-Nalu CMake configure line.
+To define your own tolerance for tests, at configure time, add ``-DTEST_TOLERANCE=0.0001`` for example 
+to the Nalu CMake configure line.
 
 Updating Reference Data for Your Machine
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -73,18 +73,25 @@ in ``NaluRtest`` to overwrite the current 'gold' norms.
 Adding Tests to Nalu
 --------------------
 
+.. _add-test:
+
 The testing infrastructure is almost completely confined to the ``reg_tests`` directory. To add a test 
 to Nalu, we need to most likely modify two files. First we modify ``CTestPrepareTests.cmake.in`` to 
-copy the files and setup the directory in ``runNaluRtest`` necessary for our new test. It should be 
-sufficient to use the same structure as the existing tests for the new test to accomplish this. Once 
-the test has preparation steps established, the test itself can be added to the list of CTest tests 
-by adding the test to the ``CTestList.cmake`` file. For a single regression test, provided it is uniform 
-like the existing tests, it can likely be added by adding a single line with the test name and 
-amount of processes you would like to run the test with. For example:
+copy the files and setup the directory in ``runNaluRtest`` necessary for our new test. Make sure to copy 
+the ``*.xml`` file if necessary. This CMake file is automatically run before the tests are run to prepare 
+the directories they run in. It should be sufficient to use the same structure as the existing 
+tests for the new test to accomplish this. Once the test has preparation steps established, the test 
+itself can be added to the list of CTest tests by adding the test to the ``CTestList.cmake`` file. 
+For a single regression test, provided it is uniform like the existing tests, it can likely be 
+added by adding a single line with the test name and amount of processes you would like to run the 
+test with. For example:
 
 ::
 
     add_test_r(mytest 6)
+
+After this has been done, in the ``NaluRtest`` repo, you should add a directory corresponding to your 
+test name and include the input file, ``mytest.i``, and reference output file ``mytest.norm.gold``.
 
 To see commands used when running the tests, see the functions in the ``CTestList.cmake`` file. These 
 functions ultimately create ``CTestTestFile.cmake`` files in the CMake build directory at configure time. 
