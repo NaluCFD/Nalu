@@ -7,6 +7,7 @@
 
 
 #include <EnthalpyEquationSystem.h>
+#include <ABLForcingAlgorithm.h>
 #include <AlgorithmDriver.h>
 #include <AssembleScalarFluxBCSolverAlgorithm.h>
 #include <AssembleScalarEdgeOpenSolverAlgorithm.h>

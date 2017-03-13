@@ -181,10 +181,10 @@ TurbulenceAveragingPostProcessing::setup()
 
     // loop over all target names, extract the part; register the fields
     for ( size_t itarget = 0; itarget < avInfo->targetNames_.size(); ++itarget ) {
-      stk::mesh::Part *targetPart = metaData.get_part(avInfo->targetNames_[itarget]);
+      stk::mesh::Part *targetPart = metaData.get_part(realm_.physics_part_name(avInfo->targetNames_[itarget]));
       if ( NULL == targetPart ) {
         NaluEnv::self().naluOutputP0() << "Trouble with part " << avInfo->targetNames_[itarget] << std::endl;
-        throw std::runtime_error("Sorry, no part name found by the name: " + avInfo->targetNames_[itarget]);
+        throw std::runtime_error("Sorry, no part name found by the name: " + realm_.physics_part_name(avInfo->targetNames_[itarget]));
       }
       else {
         // push back

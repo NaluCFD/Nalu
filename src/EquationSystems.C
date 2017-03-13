@@ -328,6 +328,7 @@ EquationSystems::register_wall_bc(
     for( std::vector<stk::mesh::Part*>::const_iterator i = mesh_parts.begin();
          i != mesh_parts.end(); ++i )
     {
+      ThrowRequire(*i != nullptr);
       stk::mesh::Part * const part = *i ;
       const stk::topology the_topo = part->topology();
 

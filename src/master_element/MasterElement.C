@@ -7,9 +7,15 @@
 
 
 #include <master_element/MasterElement.h>
+
+#include <element_promotion/LagrangeBasis.h>
+#include <element_promotion/TensorProductQuadratureRule.h>
+#include <element_promotion/MasterElementHO.h>
+
 #include <NaluEnv.h>
 #include <FORTRAN_Proto.h>
 
+#include <stk_util/environment/ReportHandler.hpp>
 #include <stk_topology/topology.hpp>
 
 #include <iostream>
@@ -25,13 +31,15 @@
 namespace sierra{
 namespace nalu{
 
-
-//--------------------------------------------------------------------------
-//-------- factory for surface master elements -----------------------------
 //--------------------------------------------------------------------------
 MasterElement*
 MasterElement::create_surface_master_element(stk::topology topo)
 {
+  if (topo.is_super_topology()) {
+    // super topologies uses different master element type
+    return nullptr;
+  }
+
   switch ( topo.value() ) {
 
     case stk::topology::HEX_8:
@@ -90,13 +98,15 @@ MasterElement::create_surface_master_element(stk::topology topo)
   }
   return nullptr;
 }
-
-//--------------------------------------------------------------------------
-//-------- factory for volume master elements ------------------------------
 //--------------------------------------------------------------------------
 MasterElement*
 MasterElement::create_volume_master_element(stk::topology topo)
 {
+  if (topo.is_super_topology()) {
+    // super topologies uses different master element type
+    return nullptr;
+  }
+
   switch ( topo.value() ) {
 
     case stk::topology::HEX_8:
@@ -131,7 +141,70 @@ MasterElement::create_volume_master_element(stk::topology topo)
   }
   return nullptr;
 }
+//--------------------------------------------------------------------------
+MasterElement*
+MasterElement::create_surface_master_element(
+  stk::topology topo,
+  const ElementDescription& desc,
+  std::string quadType)
+{
+  if (!topo.is_super_topology()) {
+    // regular topologies uses different master element type
+    return nullptr;
+  }
 
+  auto basis = (topo.is_superelement()) ?
+      LagrangeBasis(desc.inverseNodeMap, desc.nodeLocs1D)
+    : LagrangeBasis(desc.inverseNodeMapBC, desc.nodeLocs1D);
+
+  auto quad = TensorProductQuadratureRule(quadType, desc.polyOrder);
+
+  if (topo.is_superedge()) {
+    ThrowRequire(desc.baseTopo == stk::topology::QUAD_4_2D);
+    return new HigherOrderEdge2DSCS(desc, basis, quad);
+  }
+
+  if (topo.is_superface()) {
+    ThrowRequire(desc.baseTopo == stk::topology::HEX_8);
+    return new HigherOrderQuad3DSCS(desc, basis, quad);
+  }
+
+  if (topo.is_superelement() && desc.baseTopo == stk::topology::QUAD_4_2D) {
+    return new HigherOrderQuad2DSCS(desc, basis, quad);
+  }
+
+  if (topo.is_superelement() && desc.baseTopo == stk::topology::HEX_8) {
+    return new HigherOrderHexSCS(desc, basis, quad);
+  }
+
+  return nullptr;
+}
+//--------------------------------------------------------------------------
+MasterElement*
+MasterElement::create_volume_master_element(
+  stk::topology topo,
+  const ElementDescription& desc,
+  std::string quadType)
+{
+  if (!topo.is_super_topology()) {
+    // regular topologies uses different master element type
+    return nullptr;
+  }
+
+  auto basis = LagrangeBasis(desc.inverseNodeMap, desc.nodeLocs1D);
+  auto quad = TensorProductQuadratureRule(quadType, desc.polyOrder);
+
+  switch (desc.baseTopo.value()) {
+    case stk::topology::QUADRILATERAL_4_2D:
+      return new HigherOrderQuad2DSCV(desc, basis, quad);
+    case stk::topology::HEXAHEDRON_8:
+      return new HigherOrderHexSCV(desc, basis, quad);
+    default:
+      NaluEnv::self().naluOutputP0() << "High order elements only support base quad4 and hex8 meshes" << std::endl;
+      break;
+  }
+  return nullptr;
+}
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
@@ -459,6 +532,16 @@ HexSCS::HexSCS()
   nodeLoc_[18] =  0.5; nodeLoc_[19] =  0.5; nodeLoc_[20] =  0.5;
   // node 7
   nodeLoc_[21] = -0.5; nodeLoc_[22] =  0.5; nodeLoc_[23] =  0.5;
+
+  // mapping from a side ordinal to the node ordinals on that side
+  sideNodeOrdinals_ = {
+      0, 1, 5, 4, // ordinal 0
+      1, 2, 6, 5, // ordinal 1
+      2, 3, 7, 6, // ordinal 2
+      0, 4, 7, 3, // ordinal 3
+      0, 3, 2, 1, // ordinal 4
+      4, 5, 6, 7  // ordinal 5
+  };
 }
 
 //--------------------------------------------------------------------------
@@ -478,6 +561,17 @@ HexSCS::ipNodeMap(
 {
   // define ip->node mappings for each face (ordinal); 
   return &ipNodeMap_[ordinal*4];
+}
+
+//--------------------------------------------------------------------------
+//-------- side_node_ordinals ----------------------------------------------
+//--------------------------------------------------------------------------
+const int *
+HexSCS::side_node_ordinals(
+  int ordinal)
+{
+  // define face_ordinal->node_ordinal mappings for each face (ordinal);
+  return &sideNodeOrdinals_[ordinal*4];
 }
 
 //--------------------------------------------------------------------------
@@ -889,36 +983,26 @@ HexSCS::interpolatePoint(
   double eta  = par_coord[1];
   double zeta = par_coord[2];
 
+  // NOTE: this uses a [-1,1] definition of the reference element,
+  // contrary to the rest of the code
+
   for ( int i = 0; i < ncomp_field; i++ )
   {
     // Base 'field array' index for ith component
     int b = 8*i;
 
-    result[i] = 0.125000000000000*(1.00000000000000-eta )*
-				  (1.00000000000000-xi  )*
-				  (1.00000000000000-zeta)*field[b+0]+
-				  0.125000000000000*(1.00000000000000-eta )*
-				  (1.00000000000000+xi  )*
-				  (1.00000000000000-zeta)*field[b+1]+
-				  0.125000000000000*(1.00000000000000+eta )*
-				  (1.00000000000000+xi  )*
-				  (1.00000000000000-zeta)*field[b+2]+
-				  0.125000000000000*(1.00000000000000+eta )*
-				  (1.00000000000000-xi  )*
-				  (1.00000000000000-zeta)*field[b+3]+
-				  0.125000000000000*(1.00000000000000-eta )*
-				  (1.00000000000000-xi  )*
-				  (1.00000000000000+zeta)*field[b+4]+
-				  0.125000000000000*(1.00000000000000-eta )*
-				  (1.00000000000000+xi  )*
-				  (1.00000000000000+zeta)*field[b+5]+
-				  0.125000000000000*(1.00000000000000+eta )*
-				  (1.00000000000000+xi  )*
-				  (1.00000000000000+zeta)*field[b+6]+
-				  0.125000000000000*(1.00000000000000+eta )*
-				  (1.00000000000000-xi  )*
-				  (1.00000000000000+zeta)*field[b+7];
+    result[i] = 0.125 * (
+        (1 - xi) * (1 - eta) * (1 - zeta) * field[b + 0]
+      + (1 + xi) * (1 - eta) * (1 - zeta) * field[b + 1]
+      + (1 + xi) * (1 + eta) * (1 - zeta) * field[b + 2]
+      + (1 - xi) * (1 + eta) * (1 - zeta) * field[b + 3]
+      + (1 - xi) * (1 - eta) * (1 + zeta) * field[b + 4]
+      + (1 + xi) * (1 - eta) * (1 + zeta) * field[b + 5]
+      + (1 + xi) * (1 + eta) * (1 + zeta) * field[b + 6]
+      + (1 - xi) * (1 + eta) * (1 + zeta) * field[b + 7]
+    );
   }
+
 }
 
 //--------------------------------------------------------------------------
@@ -1090,6 +1174,15 @@ HexahedralP2Element::HexahedralP2Element()
                   19, 22, 17, // top mid-front edge
                    7, 18,  6  // top back edge
                 };
+
+  sideNodeOrdinals_ = {
+       0, 1, 5, 4, 8,13,16,12,25, //ordinal 0
+       1, 2, 6, 5, 9,14,17,13,24, //ordinal 1
+       2, 3, 7, 6,10,15,18,14,26, //ordinal 2
+       0, 4, 7, 3,12,19,15,11,23, //ordinal 3
+       0, 3, 2, 1,11,10, 9, 8,21, //ordinal 4
+       4, 5, 6, 7,16,17,18,19,22  //ordinal 5
+  };
 
   // a padded list of the scs locations
   scsEndLoc_ = { -1.0, -scsDist_, scsDist_, 1.0 };
@@ -2253,6 +2346,17 @@ Hex27SCS::ipNodeMap(
 }
 
 //--------------------------------------------------------------------------
+//-------- side_node_ordinals ----------------------------------------------
+//--------------------------------------------------------------------------
+const int *
+Hex27SCS::side_node_ordinals(
+  int ordinal)
+{
+  // define face_ordinal->node_ordinal mappings for each face (ordinal);
+  return &sideNodeOrdinals_[ordinal*9];
+}
+
+//--------------------------------------------------------------------------
 //-------- opposingNodes --------------------------------------------------
 //--------------------------------------------------------------------------
 int
@@ -2856,6 +2960,14 @@ TetSCS::TetSCS()
   ipNodeMap_[6] = 0;  ipNodeMap_[7] = 3;  ipNodeMap_[8] = 2;  
   // face 3;
   ipNodeMap_[9] = 0; ipNodeMap_[10] = 2; ipNodeMap_[11] = 1;
+
+
+  sideNodeOrdinals_ = {
+      0, 1, 3, //ordinal 0
+      1, 2, 3, //ordinal 1
+      0, 3, 2, //ordinal 2
+      0, 2, 1  //ordinal 3
+  };
 }
 
 //--------------------------------------------------------------------------
@@ -2875,6 +2987,17 @@ TetSCS::ipNodeMap(
 {
   // define ip->node mappings for each face (ordinal); 
   return &ipNodeMap_[ordinal*3];
+}
+
+//--------------------------------------------------------------------------
+//-------- side_node_ordinals ----------------------------------------------
+//--------------------------------------------------------------------------
+const int *
+TetSCS::side_node_ordinals(
+  int ordinal)
+{
+  // define face_ordinal->node_ordinal mappings for each face (ordinal);
+  return &sideNodeOrdinals_[ordinal*3];
 }
 
 //--------------------------------------------------------------------------
@@ -3463,6 +3586,13 @@ PyrSCS::PyrSCS()
   intgLocShift_[21] = -0.50; intgLocShift_[22] =  0.50; intgLocShift_[23] =  0.50; // surf 8    4->5
 
   // exposed face; n/a
+  sideNodeOrdinals_ = {
+      0, 1, 4,    // ordinal 0
+      1, 2, 4,    // ordinal 1
+      2, 3, 4,    // ordinal 2
+      3, 0, 4,    // ordinal 3
+      0, 3, 2, 1  // ordinal 4
+  };
 }
 
 //--------------------------------------------------------------------------
@@ -3471,6 +3601,17 @@ PyrSCS::PyrSCS()
 PyrSCS::~PyrSCS()
 {
   // does nothing
+}
+
+//--------------------------------------------------------------------------
+//-------- side_node_ordinals ----------------------------------------------
+//--------------------------------------------------------------------------
+const int *
+PyrSCS::side_node_ordinals(
+  int ordinal)
+{
+  // define face_ordinal->node_ordinal mappings for each face (ordinal);
+  return &sideNodeOrdinals_[ordinal*3];
 }
 
 //--------------------------------------------------------------------------
@@ -3886,6 +4027,18 @@ WedSCS::WedSCS()
   ipNodeMap_[12] = 0; ipNodeMap_[13] = 1; ipNodeMap_[14] = 1; ipNodeMap_[15] = 0; //empty 
   // face 4;
   ipNodeMap_[16] = 3; ipNodeMap_[17] = 4; ipNodeMap_[18] = 5; ipNodeMap_[19] = 0; // empty 
+
+
+  sideNodeOrdinals_ = {
+      0, 1, 4, 3, // ordinal 0
+      1, 2, 5, 4, // ordinal 1
+      0, 3, 5, 2, // ordinal 2
+      0, 2, 1,    // ordinal 3
+      3, 4, 5     // ordinal 4
+  };
+
+  // ordinal to vector offset map.  Really only convenient for the wedge.
+  sideOffset_ = { 0, 4, 8, 12, 15};
 }
 
 //--------------------------------------------------------------------------
@@ -3905,6 +4058,17 @@ WedSCS::ipNodeMap(
 {
   // define ip->node mappings for each face (ordinal); 
   return &ipNodeMap_[ordinal*4];
+}
+
+//--------------------------------------------------------------------------
+//-------- side_node_ordinals ----------------------------------------------
+//--------------------------------------------------------------------------
+const int *
+WedSCS::side_node_ordinals(
+  int ordinal)
+{
+  // define face_ordinal->node_ordinal mappings for each face (ordinal);
+  return &sideNodeOrdinals_[sideOffset_[ordinal]];
 }
 
 //--------------------------------------------------------------------------
@@ -4637,6 +4801,13 @@ Quad2DSCS::Quad2DSCS()
   ipNodeMap_[4] = 2;  ipNodeMap_[5] = 3;  
   // face 3;
   ipNodeMap_[6] = 3;  ipNodeMap_[7] = 0; 
+
+  sideNodeOrdinals_ = {
+      0, 1,
+      1, 2,
+      2, 3,
+      3, 0
+  };
 }
 
 //--------------------------------------------------------------------------
@@ -4656,6 +4827,18 @@ Quad2DSCS::ipNodeMap(
 {
   // define ip->node mappings for each face (ordinal); 
   return &ipNodeMap_[ordinal*2];
+}
+
+
+//--------------------------------------------------------------------------
+//-------- side_node_ordinals ----------------------------------------------
+//--------------------------------------------------------------------------
+const int *
+Quad2DSCS::side_node_ordinals(
+  int ordinal)
+{
+  // define face_ordinal->node_ordinal mappings for each face (ordinal);
+  return &sideNodeOrdinals_[ordinal*2];
 }
 
 //--------------------------------------------------------------------------
@@ -4978,11 +5161,11 @@ Quad2DSCS::interpolatePoint(
     // Base 'field array' index for ith component
     int b = 4*i;
 
-    result[i] = 0.250000000000000 * (
-      (1.00000000000000-eta) * (1.00000000000000-xi ) * field[b+0] +
-      (1.00000000000000-eta) * (1.00000000000000+xi ) * field[b+1] +
-      (1.00000000000000+eta) * (1.00000000000000+xi ) * field[b+2] +
-      (1.00000000000000+eta) * (1.00000000000000-xi ) * field[b+3] ) ;
+    result[i] = 0.25 * (
+      (1-eta) * (1-xi) * field[b+0] +
+      (1-eta) * (1+xi) * field[b+1] +
+      (1+eta) * (1+xi) * field[b+2] +
+      (1+eta) * (1-xi) * field[b+3] ) ;
   }  
 }
 
@@ -5110,6 +5293,13 @@ QuadrilateralP2Element::QuadrilateralP2Element()
                   7, 8, 5, // middle row of nodes
                   3, 6, 2  // top row of nodes
                 };
+
+  sideNodeOrdinals_ = {
+      0, 1, 4,
+      1, 2, 5,
+      2, 3, 6,
+      3, 0, 7
+  };
 
   // a padded list of scs locations
   scsEndLoc_ = { -1.0, -scsDist_, scsDist_, +1.0 };
@@ -5886,6 +6076,17 @@ Quad92DSCS::ipNodeMap(
 }
 
 //--------------------------------------------------------------------------
+//-------- side_node_ordinals ----------------------------------------------
+//--------------------------------------------------------------------------
+const int *
+Quad92DSCS::side_node_ordinals(
+  int ordinal)
+{
+  // define face_ordinal->node_ordinal mappings for each face (ordinal);
+  return &sideNodeOrdinals_[ordinal*3];
+}
+
+//--------------------------------------------------------------------------
 //-------- determinant -----------------------------------------------------
 //--------------------------------------------------------------------------
 void
@@ -6276,6 +6477,13 @@ Tri2DSCS::Tri2DSCS()
   ipNodeMap_[2] = 1;  ipNodeMap_[3] = 2; 
   // face 2;
   ipNodeMap_[4] = 2;  ipNodeMap_[5] = 0;  
+
+
+  sideNodeOrdinals_ = {
+      0, 1,  // ordinal 0
+      1, 2,  // ordinal 1
+      2, 0   // ordinal 2
+  };
 }
 
 //--------------------------------------------------------------------------
@@ -6295,6 +6503,17 @@ Tri2DSCS::ipNodeMap(
 {
   // define ip->node mappings for each face (ordinal); 
   return &ipNodeMap_[ordinal*2];
+}
+
+//--------------------------------------------------------------------------
+//-------- side_node_ordinals ----------------------------------------------
+//--------------------------------------------------------------------------
+const int *
+Tri2DSCS::side_node_ordinals(
+  int ordinal)
+{
+  // define face_ordinal->node_ordinal mappings for each face (ordinal);
+  return &sideNodeOrdinals_[ordinal*2];
 }
 
 //--------------------------------------------------------------------------

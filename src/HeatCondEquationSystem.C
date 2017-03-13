@@ -64,6 +64,7 @@
 #include <user_functions/SteadyThermalContactSrcElemSuppAlg.h>
 #include <user_functions/SteadyThermal3dContactAuxFunction.h>
 #include <user_functions/SteadyThermal3dContactSrcElemSuppAlg.h>
+#include <user_functions/SteadyThermalContact3DSrcNodeSuppAlg.h>
 #include <user_functions/SteadyThermal3dContactSrcElemSuppAlgDep.h>
 
 // stk_util
@@ -424,6 +425,12 @@ HeatCondEquationSystem::register_interior_algorithm(
           SteadyThermalContactSrcNodeSuppAlg *theSrc
             = new SteadyThermalContactSrcNodeSuppAlg(realm_);
           NaluEnv::self().naluOutputP0() << "HeatCondNodalSrcTerms::added() " << sourceName << std::endl;
+
+          theAlg->supplementalAlg_.push_back(theSrc);
+        }
+        else if (sourceName == "steady_3d_thermal" ) {
+          SteadyThermalContact3DSrcNodeSuppAlg *theSrc
+          = new SteadyThermalContact3DSrcNodeSuppAlg(realm_);
           theAlg->supplementalAlg_.push_back(theSrc);
         }
         else {
@@ -527,6 +534,7 @@ HeatCondEquationSystem::register_wall_bc(
       }
       else {
         throw std::runtime_error("Only steady_2d/3d_thermal user functions supported");
+
       }
     }
     

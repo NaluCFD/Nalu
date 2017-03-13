@@ -100,7 +100,7 @@ ComputeWallModelSDRWallAlgorithm::execute()
 
     // face master element
     const int nodesPerFace = b.topology().num_nodes();
-    std::vector<int> face_node_ordinal_vec(nodesPerFace);
+
 
     const stk::mesh::Bucket::size_type length   = b.size();
 
@@ -124,10 +124,10 @@ ComputeWallModelSDRWallAlgorithm::execute()
       const stk::mesh::Entity* face_elem_rels = bulk_data.begin_elements(face);
       ThrowAssert( bulk_data.num_elements(face) == 1 );
 
-      // get element; its face ordinal number and populate face_node_ordinal_vec
+      // get element; its face ordinal number and populate face_node_ordinals
       stk::mesh::Entity element = face_elem_rels[0];
       const int face_ordinal = bulk_data.begin_element_ordinals(face)[0];
-      theElemTopo.side_node_ordinals(face_ordinal, face_node_ordinal_vec.begin());
+      const int *face_node_ordinals = meSCS->side_node_ordinals(face_ordinal);
 
       // get the relations off of element
       stk::mesh::Entity const * elem_node_rels = bulk_data.begin_nodes(element);
@@ -138,7 +138,7 @@ ComputeWallModelSDRWallAlgorithm::execute()
         const int offSetAveraVec = ip*nDim;
 
         const int opposingNode = meSCS->opposingNodes(face_ordinal,ip);
-        const int nearestNode = face_node_ordinal_vec[ip];
+        const int nearestNode = face_node_ordinals[ip];
 
         // left and right nodes; right is on the face; left is the opposing node
         stk::mesh::Entity nodeL = elem_node_rels[opposingNode];

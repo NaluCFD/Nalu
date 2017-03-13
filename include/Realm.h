@@ -74,6 +74,11 @@ class DataProbePostProcessing;
 class ActuatorLine;
 class ABLForcingAlgorithm;
 
+class TensorProductQuadratureRule;
+class LagrangeBasis;
+class PromotedElementIO;
+struct ElementDescription;
+
 class Realm {
  public:
 
@@ -504,6 +509,10 @@ class Realm {
   // empty part vector should it be required
   stk::mesh::PartVector emptyPartVector_;
 
+  // base and promote mesh parts
+  stk::mesh::PartVector basePartVector_;
+  stk::mesh::PartVector superPartVector_;
+
   std::vector<AuxFunctionAlgorithm *> bcDataAlg_;
 
   // transfer information; three types
@@ -536,6 +545,30 @@ class Realm {
   double get_turb_model_constant(
     const TurbulenceModelConstant turbModelEnum);
   bool process_adaptivity();
+
+
+  // element promotion
+
+  // options
+  bool doPromotion_; // conto
+  unsigned promotionOrder_;
+  std::string quadType_;
+
+  // tools
+  std::unique_ptr<ElementDescription> desc_; // holds topo info
+  std::unique_ptr<PromotedElementIO> promotionIO_; // mesh outputer
+  std::vector<std::string> superTargetNames_;
+
+  void setup_element_promotion(); // create super parts
+  void promote_mesh(); // create new super element / sides on parts
+  void create_promoted_output_mesh(); // method to create output of linear subelements
+  bool using_SGL_quadrature() const { return quadType_ == "SGL"; };
+  bool high_order_active() const { return doPromotion_; };
+
+  std::string physics_part_name(std::string) const;
+
+  double timerPromoteMesh_; // timer
+
 };
 
 } // namespace nalu
