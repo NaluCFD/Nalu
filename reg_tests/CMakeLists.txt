@@ -15,21 +15,30 @@ else(NOT ${RUNNALURTEST_DIR} STREQUAL "")
 endif()
 
 ## -- Set TOLERANCE for test
-set(TOLERANCE 0.0000001) # Default
-if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-  if(${COMPILER_NAME} MATCHES "gcc")
-    set(TOLERANCE 0.0000001)
-  elseif(${COMPILER_NAME} MATCHES "clang")
-    set(TOLERANCE 0.0000001)
-  endif()
-elseif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-  if(${COMPILER_NAME} MATCHES "gcc")
-    set(TOLERANCE 0.0000001)
-  elseif(${COMPILER_NAME} MATCHES "intel")
-    set(TOLERANCE 0.0001)
+if(NOT ${TEST_TOLERANCE} STREQUAL "")
+  set(TOLERANCE ${TEST_TOLERANCE}) # Default
+else(NOT ${TEST_TOLERANCE} STREQUAL "")
+  if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    if(${COMPILER_NAME} MATCHES "gcc")
+      set(TOLERANCE 0.0000001)
+    elseif(${COMPILER_NAME} MATCHES "clang")
+      set(TOLERANCE 0.0000001)
+    else()
+      # Set a default Mac tolerance
+      set(TOLERANCE 0.0000001)
+    endif()
+  elseif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+    if(${COMPILER_NAME} MATCHES "gcc")
+      set(TOLERANCE 0.0000001)
+    elseif(${COMPILER_NAME} MATCHES "intel")
+      set(TOLERANCE 0.0001)
+    else()
+      # Set a default Linux tolerance
+      set(TOLERANCE 0.0000001)
+    endif()
   endif()
 endif()
-message(" -- Using tolerance of ${TOLERANCE} --")
+message(" -- Using test tolerance of ${TOLERANCE} --")
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/CTestCustom.cmake.in
                ${CMAKE_BINARY_DIR}/CTestCustom.cmake @ONLY)
