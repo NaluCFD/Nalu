@@ -24,9 +24,10 @@
 #include <NaluEnv.h>
 #include <BucketLoop.h>
 
+#include <memory>
 #include <random>
 
-#include "../include/element_promotion/ElementDescription.h"
+#include <element_promotion/ElementDescription.h>
 #include "UnitTestUtils.h"
 
 namespace {

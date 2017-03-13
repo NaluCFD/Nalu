@@ -1,6 +1,8 @@
 #ifndef nalu_make_unique_h
 #define nalu_make_unique_h
 
+#include <memory>
+
 namespace sierra {
 namespace nalu {
 
