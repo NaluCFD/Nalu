@@ -8,7 +8,7 @@ namespace {
   {
     auto* me = unit_test_utils::get_surface_master_element(topo);
 
-    for (unsigned side_ordinal; side_ordinal < topo.num_sides(); ++side_ordinal) {
+    for (unsigned side_ordinal = 0; side_ordinal < topo.num_sides(); ++side_ordinal) {
       int numSideNodes = topo.side_topology(side_ordinal).num_nodes();
       std::vector<unsigned> topoSideNodeOrdinals(numSideNodes);
       topo.side_node_ordinals(side_ordinal, topoSideNodeOrdinals.begin());
