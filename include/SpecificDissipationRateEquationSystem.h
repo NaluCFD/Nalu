@@ -56,11 +56,6 @@ public:
     stk::mesh::Part *part,
     const stk::topology &theTopo,
     const WallBoundaryConditionData &wallBCData);
-
-  void register_contact_bc(
-    stk::mesh::Part *part,
-    const stk::topology &theTopo,
-    const ContactBoundaryConditionData &contactBCData);
   
   virtual void register_symmetry_bc(
     stk::mesh::Part *part,
@@ -81,6 +76,8 @@ public:
   void assemble_nodal_gradient();
   void compute_effective_diff_flux_coeff();
   
+  const bool managePNG_;
+
   ScalarFieldType *sdr_;
   VectorFieldType *dwdx_;
   ScalarFieldType *wTmp_;

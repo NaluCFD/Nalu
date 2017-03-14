@@ -25,6 +25,14 @@ This laTex document can be found under the NaluDoc [repository](https://github.c
 Detailed build instructions for Nalu and the accompanied required TPLs, e.g., Trilinos, YAML, etc.,
 can be found under the Nalu Wiki [Build](https://github.com/NaluCFD/Nalu/wiki/Build_instructions)
 
+### Status
+
+[![alt text][4]][3]
+  [3]: http://my.cdash.org/index.php?project=Nalu
+  [4]: https://github.com/NaluCFD/Nalu/wiki/images/cDashLogo.gif (click here for build status)
+
+More details on testing can be found [within the cmake directory](./cmake/README.md).
+
 ### Help
 Projects that are using Nalu for sponsored activities should consult the <nalucfd@googlegroups.com> 
 

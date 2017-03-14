@@ -22,7 +22,6 @@ namespace sierra{
 namespace nalu{
 
 class LinearSolver;
-class EpetraLinearSolverConfig;
 class TpetraLinearSolverConfig;
 class Simulation;
 
@@ -40,11 +39,9 @@ public:
   Simulation *parent();
   
   typedef std::map<EquationType, LinearSolver *> SolverMap;
-  typedef std::map<std::string, EpetraLinearSolverConfig *> SolverEpetraConfigMap;
   typedef std::map<std::string, TpetraLinearSolverConfig *> SolverTpetraConfigMap;
 
   SolverMap solvers_;
-  SolverEpetraConfigMap solverEpetraConfig_;
   SolverTpetraConfigMap solverTpetraConfig_;
   
   Simulation& sim_;

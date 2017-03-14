@@ -51,7 +51,7 @@ AssembleScalarDiffNonConformalSolverAlgorithm::AssembleScalarDiffNonConformalSol
     diffFluxCoeff_(diffFluxCoeff),
     coordinates_(NULL),
     exposedAreaVec_(NULL),
-    robinStyle_(false)
+    useCurrentNormal_(realm_.get_nc_alg_current_normal())
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -63,23 +63,8 @@ AssembleScalarDiffNonConformalSolverAlgorithm::AssembleScalarDiffNonConformalSol
   ghostFieldVec_.push_back(coordinates_);
   ghostFieldVec_.push_back(diffFluxCoeff_);
  
-  // specific algorithm options
-  NonConformalAlgType algType = realm_.get_nc_alg_type();
-  switch ( algType ) {
-    case NC_ALG_TYPE_DG:
-      robinStyle_ = false;
-      break;
-      
-    case NC_ALG_TYPE_RB:
-      robinStyle_ = true;
-      
-    default:
-      // nothing to do... parsing should have caught this...
-      break;
-  }
-
-  NaluEnv::self().naluOutputP0() << "NC options: robinStyle: " << robinStyle_ << std::endl;
-  
+  if ( useCurrentNormal_ ) 
+    NaluEnv::self().naluOutputP0() << "AssembleScalarDiffNonConformalSolverAlgorithm::Options: use_current_normal is active " << std::endl; 
 }
 
 //--------------------------------------------------------------------------
@@ -145,8 +130,8 @@ AssembleScalarDiffNonConformalSolverAlgorithm::execute()
   std::vector<double> ws_o_det_j;
   std::vector <double > ws_c_general_shape_function;
   std::vector <double > ws_o_general_shape_function;
-  std::vector<int> ws_c_face_node_ordinals;
-  std::vector<int> ws_o_face_node_ordinals;
+
+
 
   // deal with state
   ScalarFieldType &scalarQNp1 = scalarQ_->field_of_state(stk::mesh::StateNP1);
@@ -178,8 +163,6 @@ AssembleScalarDiffNonConformalSolverAlgorithm::execute()
         stk::mesh::Entity opposingFace = dgInfo->opposingFace_;
         stk::mesh::Entity currentElement = dgInfo->currentElement_;
         stk::mesh::Entity opposingElement = dgInfo->opposingElement_;
-        stk::topology currentElementTopo = dgInfo->currentElementTopo_;
-        stk::topology opposingElementTopo = dgInfo->opposingElementTopo_;
         const int currentFaceOrdinal = dgInfo->currentFaceOrdinal_;
         const int opposingFaceOrdinal = dgInfo->opposingFaceOrdinal_;
 
@@ -232,10 +215,6 @@ AssembleScalarDiffNonConformalSolverAlgorithm::execute()
         ws_c_general_shape_function.resize(currentNodesPerFace);
         ws_o_general_shape_function.resize(opposingNodesPerFace);
         
-        // face node identification
-        ws_c_face_node_ordinals.resize(currentNodesPerFace);
-        ws_o_face_node_ordinals.resize(opposingNodesPerFace);
-
         // pointers
         double *p_lhs = &lhs[0];
         double *p_rhs = &rhs[0];
@@ -257,7 +236,7 @@ AssembleScalarDiffNonConformalSolverAlgorithm::execute()
         double *p_o_dndx = &ws_o_dndx[0];
         
         // populate current face_node_ordinals
-        currentElementTopo.side_node_ordinals(currentFaceOrdinal, ws_c_face_node_ordinals.begin());
+        const int *c_face_node_ordinals = meSCSCurrent->side_node_ordinals(currentFaceOrdinal);
 
         // gather current face data
         stk::mesh::Entity const* current_face_node_rels = bulk_data.begin_nodes(currentFace);
@@ -270,7 +249,7 @@ AssembleScalarDiffNonConformalSolverAlgorithm::execute()
         }
         
         // populate opposing face_node_ordinals
-        opposingElementTopo.side_node_ordinals(opposingFaceOrdinal, ws_o_face_node_ordinals.begin());
+        const int *o_face_node_ordinals = meSCSOpposing->side_node_ordinals(opposingFaceOrdinal);
 
         // gather opposing face data
         stk::mesh::Entity const* opposing_face_node_rels = bulk_data.begin_nodes(opposingFace);
@@ -338,6 +317,12 @@ AssembleScalarDiffNonConformalSolverAlgorithm::execute()
           p_cNx[i] = c_areaVec[currentGaussPointId*nDim+i]/c_amag;
         }
 
+        // override opposing normal
+        if ( useCurrentNormal_ ) {
+          for ( int i = 0; i < nDim; ++i )
+            p_oNx[i] = -p_cNx[i];
+        }
+
         // project from side to element; method deals with the -1:1 isInElement range to the proper underlying CVFEM range
         meSCSCurrent->sidePcoords_to_elemPcoords(currentFaceOrdinal, 1, &currentIsoParCoords[0], &currentElementIsoParCoords[0]);
         meSCSOpposing->sidePcoords_to_elemPcoords(opposingFaceOrdinal, 1, &opposingIsoParCoords[0], &opposingElementIsoParCoords[0]);
@@ -357,14 +342,14 @@ AssembleScalarDiffNonConformalSolverAlgorithm::execute()
           for ( int j = 0; j < nDim; ++j ) {
             const double nxj = p_cNx[j];
             const double dndxj = p_c_dndx[offSetDnDx+j];
-            currentDiffFluxBip += dndxj*nxj*scalarQIC;
+            currentDiffFluxBip -= dndxj*nxj*scalarQIC;
           }
         }
 
         // current inverse length scale; can loop over face nodes to avoid "nodesOnFace" array
         double currentInverseLength = 0.0;
         for ( int ic = 0; ic < current_num_face_nodes; ++ic ) {
-          const int faceNodeNumber = ws_c_face_node_ordinals[ic];
+          const int faceNodeNumber = c_face_node_ordinals[ic];
           const int offSetDnDx = faceNodeNumber*nDim; // single intg. point
           for ( int j = 0; j < nDim; ++j ) {
             const double nxj = p_cNx[j];
@@ -381,14 +366,14 @@ AssembleScalarDiffNonConformalSolverAlgorithm::execute()
           for ( int j = 0; j < nDim; ++j ) {
             const double nxj = p_oNx[j];
             const double dndxj = p_o_dndx[offSetDnDx+j];
-            opposingDiffFluxBip += dndxj*nxj*scalarQIC;
+            opposingDiffFluxBip -= dndxj*nxj*scalarQIC;
           }
         }
 
         // opposing inverse length scale; can loop over face nodes to avoid "nodesOnFace" array
         double opposingInverseLength = 0.0;
         for ( int ic = 0; ic < opposing_num_face_nodes; ++ic ) {
-          const int faceNodeNumber = ws_o_face_node_ordinals[ic];
+          const int faceNodeNumber = o_face_node_ordinals[ic];
           const int offSetDnDx = faceNodeNumber*nDim; // single intg. point
           for ( int j = 0; j < nDim; ++j ) {
             const double nxj = p_oNx[j];
@@ -427,8 +412,8 @@ AssembleScalarDiffNonConformalSolverAlgorithm::execute()
           &opposingDiffFluxCoeffBip);
                 
         // properly scaled diffusive flux
-        currentDiffFluxBip *= -currentDiffFluxCoeffBip;
-        opposingDiffFluxBip *= -opposingDiffFluxCoeffBip;
+        currentDiffFluxBip *= currentDiffFluxCoeffBip;
+        opposingDiffFluxBip *= opposingDiffFluxCoeffBip;
 
         // zero lhs/rhs
         for ( int p = 0; p < lhsSize; ++p )
@@ -440,7 +425,7 @@ AssembleScalarDiffNonConformalSolverAlgorithm::execute()
         const double penaltyIp = 0.5*(currentDiffFluxCoeffBip*currentInverseLength + opposingDiffFluxCoeffBip*opposingInverseLength);
 
         // non conformal diffusive flux
-        const double ncDiffFlux =  robinStyle_ ? -opposingDiffFluxBip : 0.5*(currentDiffFluxBip - opposingDiffFluxBip);
+        const double ncDiffFlux =  (currentDiffFluxBip - opposingDiffFluxBip)/2.0;
        
         const int nn = ipNodeMap[currentGaussPointId];
         p_rhs[nn] -= (ncDiffFlux + penaltyIp*(currentScalarQBip-opposingScalarQBip))*c_amag;
@@ -452,7 +437,7 @@ AssembleScalarDiffNonConformalSolverAlgorithm::execute()
         // sensitivities; current face (penalty); use general shape function for this single ip
         meFCCurrent->general_shape_fcn(1, &currentIsoParCoords[0], &ws_c_general_shape_function[0]);
         for ( int ic = 0; ic < currentNodesPerFace; ++ic ) {
-          const int icnn = ws_c_face_node_ordinals[ic];
+          const int icnn = c_face_node_ordinals[ic];
           const double r = p_c_general_shape_function[ic];
           p_lhs[rowR+icnn] += r*lhsFac;
         }
@@ -466,13 +451,13 @@ AssembleScalarDiffNonConformalSolverAlgorithm::execute()
             const double dndxj = p_c_dndx[offSetDnDx+j];
             lhscd -= dndxj*nxj;
           }
-          p_lhs[rowR+ic] += 0.5*currentDiffFluxCoeffBip*lhscd*c_amag;
+          p_lhs[rowR+ic] += currentDiffFluxCoeffBip*lhscd*c_amag/2.0;
         }
         
         // sensitivities; opposing face (penalty); use general shape function for this single ip
         meFCOpposing->general_shape_fcn(1, &opposingIsoParCoords[0], &ws_o_general_shape_function[0]);
         for ( int ic = 0; ic < opposingNodesPerFace; ++ic ) {
-          const int icnn = ws_o_face_node_ordinals[ic];
+          const int icnn = o_face_node_ordinals[ic];
           const double r = p_o_general_shape_function[ic];
           p_lhs[rowR+icnn+currentNodesPerElement] -= r*lhsFac;
         }
@@ -486,7 +471,7 @@ AssembleScalarDiffNonConformalSolverAlgorithm::execute()
             const double dndxj = p_o_dndx[offSetDnDx+j];
             lhscd -= dndxj*nxj;
           }
-          p_lhs[rowR+ic+currentNodesPerElement] -= 0.5*opposingDiffFluxCoeffBip*lhscd*c_amag;
+          p_lhs[rowR+ic+currentNodesPerElement] -= opposingDiffFluxCoeffBip*lhscd*c_amag/2.0;
         }
         
         apply_coeff(connected_nodes, scratchIds, scratchVals, rhs, lhs, __FILE__);

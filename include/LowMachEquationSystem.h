@@ -129,12 +129,7 @@ public:
     stk::mesh::Part *part,
     const stk::topology &theTopo,
     const WallBoundaryConditionData &wallBCData);
-  
-  virtual void register_contact_bc(
-    stk::mesh::Part *part,
-    const stk::topology &theTopo,
-    const ContactBoundaryConditionData &contactBCData);
-  
+    
   virtual void register_symmetry_bc(
     stk::mesh::Part *part,
     const stk::topology &theTopo,
@@ -219,12 +214,7 @@ public:
     stk::mesh::Part *part,
     const stk::topology &theTopo,
     const WallBoundaryConditionData &wallBCData);
-  
-  virtual void register_contact_bc(
-    stk::mesh::Part *part,
-    const stk::topology &theTopo,
-    const ContactBoundaryConditionData &contactBCData);
-  
+    
   virtual void register_symmetry_bc(
     stk::mesh::Part *part,
     const stk::topology &theTopo,

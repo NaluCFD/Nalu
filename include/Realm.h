@@ -49,8 +49,6 @@ class Algorithm;
 class AlgorithmDriver;
 class AuxFunctionAlgorithm;
 class ComputeGeometryAlgorithmDriver;
-class ContactInfo;
-class ContactManager;
 class OversetManager;
 class NonConformalManager;
 class ErrorIndicatorAlgorithmDriver;
@@ -74,6 +72,12 @@ class SolutionNormPostProcessing;
 class TurbulenceAveragingPostProcessing;
 class DataProbePostProcessing;
 class Actuator;
+class ABLForcingAlgorithm;
+
+class TensorProductQuadratureRule;
+class LagrangeBasis;
+class PromotedElementIO;
+struct ElementDescription;
 
 class Realm {
  public:
@@ -124,6 +128,8 @@ class Realm {
 
   void initialize_global_variables();
 
+  void balance_nodes();
+
   void create_output_mesh();
   void create_restart_mesh();
   void input_variables_from_mesh();
@@ -156,15 +162,17 @@ class Realm {
     double omega);
   void set_current_displacement(
     stk::mesh::Part *targetPart,
-    Coordinates centroidCoords);
+    const std::vector<double> &centroidCoords,
+    const std::vector<double> &unitVec);
   void set_current_coordinates(
     stk::mesh::Part *targetPart);
   void set_mesh_velocity(
     stk::mesh::Part *targetPart,
-    Coordinates centroidCoords);
+    const std::vector<double> &centroidCoords,
+    const std::vector<double> &unitVec);
+  void mesh_velocity_cross_product(double *o, double *c, double *u);
 
   // non-conformal-like algorithm suppoer
-  void initialize_contact();
   void initialize_non_conformal();
   void initialize_overset();
   void initialize_post_processing_algorithms();
@@ -194,11 +202,6 @@ class Realm {
     stk::mesh::Part *part,
     const stk::topology &theTopo);
 
-  void register_contact_bc(
-    stk::mesh::Part *part,
-    const stk::topology &theTopo,
-    const ContactBoundaryConditionData &contactBCData);
-
   void register_symmetry_bc(
     stk::mesh::Part *part,
     const stk::topology &theTopo);
@@ -210,8 +213,8 @@ class Realm {
     const std::string &searchMethodName);
 
   void setup_non_conformal_bc(
-    stk::mesh::Part *currentPart,
-    stk::mesh::Part *opposingPart,
+    stk::mesh::PartVector currentPartVec,
+    stk::mesh::PartVector opposingPartVec,
     const NonConformalBoundaryConditionData &nonConformalBCData);
 
   void register_non_conformal_bc(
@@ -245,6 +248,7 @@ class Realm {
   virtual void populate_boundary_data();
   virtual void boundary_data_to_state_data();
   virtual double populate_variables_from_input(const double currentTime);
+  virtual void populate_external_variables_from_input(const double currentTime) {}
   virtual double populate_restart( double &timeStepNm1, int &timeStepCount);
   virtual void populate_derived_quantities();
   virtual void evaluate_properties();
@@ -292,12 +296,12 @@ class Realm {
     const std::string dofname);
   double get_divU();
 
-  // peclet factor specifics
-  std::string get_peclet_functional_form(
+  // tanh factor specifics
+  std::string get_tanh_functional_form(
     const std::string dofname);
-  double get_peclet_tanh_trans(
+  double get_tanh_trans(
     const std::string dofname);
-  double get_peclet_tanh_width(
+  double get_tanh_width(
     const std::string dofname);
 
   // consistent mass matrix for projected nodal gradient
@@ -311,7 +315,6 @@ class Realm {
   bool get_cvfem_reduced_sens_poisson();
   
   bool has_nc_gauss_labatto_quadrature();
-  NonConformalAlgType get_nc_alg_type();
   bool get_nc_alg_upwind_advection();
   bool get_nc_alg_include_pstab();
   bool get_nc_alg_current_normal();
@@ -352,6 +355,7 @@ class Realm {
 
   // provide all of the physics target names
   const std::vector<std::string> &get_physics_target_names();
+  double get_tanh_blending(const std::string dofName);
 
   Realms& realms_;
 
@@ -380,7 +384,6 @@ class Realm {
 
   // algorithm drivers managed by region
   ComputeGeometryAlgorithmDriver *computeGeometryAlgDriver_;
-  AlgorithmDriver *extrusionMeshDistanceAlgDriver_;
   ErrorIndicatorAlgorithmDriver *errorIndicatorAlgDriver_;
 # if defined (NALU_USES_PERCEPT)  
   Adapter *adapter_;
@@ -411,6 +414,7 @@ class Realm {
   TurbulenceAveragingPostProcessing *turbulenceAveragingPostProcessing_;
   DataProbePostProcessing *dataProbePostProcessing_;
   Actuator *actuator_;
+  ABLForcingAlgorithm *ablForcingAlg_;
 
   std::vector<Algorithm *> propertyAlg_;
   std::map<PropertyIdentifier, ScalarFieldType *> propertyMap_;
@@ -427,7 +431,7 @@ class Realm {
   double timerPopulateFieldData_;
   double timerOutputFields_;
   double timerCreateEdges_;
-  double timerContact_;
+  double timerNonconformal_;
   double timerInitializeEqs_;
   double timerPropertyEval_;
   double timerAdapt_;
@@ -435,10 +439,8 @@ class Realm {
   double timerTransferExecute_;
   double timerSkinMesh_;
 
-  ContactManager *contactManager_;
   NonConformalManager *nonConformalManager_;
   OversetManager *oversetManager_;
-  bool hasContact_;
   bool hasNonConformal_;
   bool hasOverset_;
 
@@ -446,6 +448,7 @@ class Realm {
   bool hasMultiPhysicsTransfer_;
   bool hasInitializationTransfer_;
   bool hasIoTransfer_;
+  bool hasExternalDataTransfer_;
 
   PeriodicManager *periodicManager_;
   bool hasPeriodic_;
@@ -484,6 +487,19 @@ class Realm {
   // sometimes restarts can be missing states or dofs
   bool supportInconsistentRestart_;
 
+  bool doBalanceNodes_;
+  struct BalanceNodeOptions
+  {
+    BalanceNodeOptions() :
+      target(1.0),
+      numIters(5)
+    {};
+
+    double target;
+    int numIters;
+  };
+  BalanceNodeOptions balanceNodeOptions_;
+
   // beginning wall time
   double wallTimeStart_;
 
@@ -493,17 +509,23 @@ class Realm {
   // empty part vector should it be required
   stk::mesh::PartVector emptyPartVector_;
 
+  // base and promote mesh parts
+  stk::mesh::PartVector basePartVector_;
+  stk::mesh::PartVector superPartVector_;
+
   std::vector<AuxFunctionAlgorithm *> bcDataAlg_;
 
   // transfer information; three types
   std::vector<Transfer *> multiPhysicsTransferVec_;
   std::vector<Transfer *> initializationTransferVec_;
   std::vector<Transfer *> ioTransferVec_;
+  std::vector<Transfer *> externalDataTransferVec_;
   void augment_transfer_vector(Transfer *transfer, const std::string transferObjective, Realm *toRealm);
   void process_multi_physics_transfer();
   void process_initialization_transfer();
   void process_io_transfer();
-
+  void process_external_data_transfer();
+  
   // process end of time step converged work
   void post_converged_work();
 
@@ -528,6 +550,30 @@ class Realm {
   double get_turb_model_constant(
     const TurbulenceModelConstant turbModelEnum);
   bool process_adaptivity();
+
+
+  // element promotion
+
+  // options
+  bool doPromotion_; // conto
+  unsigned promotionOrder_;
+  std::string quadType_;
+
+  // tools
+  std::unique_ptr<ElementDescription> desc_; // holds topo info
+  std::unique_ptr<PromotedElementIO> promotionIO_; // mesh outputer
+  std::vector<std::string> superTargetNames_;
+
+  void setup_element_promotion(); // create super parts
+  void promote_mesh(); // create new super element / sides on parts
+  void create_promoted_output_mesh(); // method to create output of linear subelements
+  bool using_SGL_quadrature() const { return quadType_ == "SGL"; };
+  bool high_order_active() const { return doPromotion_; };
+
+  std::string physics_part_name(std::string) const;
+
+  double timerPromoteMesh_; // timer
+
 };
 
 } // namespace nalu

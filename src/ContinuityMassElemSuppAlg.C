@@ -12,10 +12,13 @@
 #include <Realm.h>
 #include <master_element/MasterElement.h>
 
+// template and scratch space
+#include <BuildTemplates.h>
+#include <ScratchViews.h>
+
 // stk_mesh/base/fem
 #include <stk_mesh/base/Entity.hpp>
 #include <stk_mesh/base/MetaData.hpp>
-#include <stk_mesh/base/BulkData.hpp>
 #include <stk_mesh/base/Field.hpp>
 
 namespace sierra{
@@ -29,10 +32,12 @@ namespace nalu{
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-ContinuityMassElemSuppAlg::ContinuityMassElemSuppAlg(
-  Realm &realm)
+template<typename AlgTraits>
+ContinuityMassElemSuppAlg<AlgTraits>::ContinuityMassElemSuppAlg(
+   Realm &realm,
+   ElemDataRequests& dataPreReqs,
+   const bool lumpedMass)
   : SupplementalAlgorithm(realm),
-    bulkData_(&realm.bulk_data()),
     densityNm1_(NULL),
     densityN_(NULL),
     densityNp1_(NULL),
@@ -41,8 +46,8 @@ ContinuityMassElemSuppAlg::ContinuityMassElemSuppAlg(
     gamma1_(0.0),
     gamma2_(0.0),
     gamma3_(0.0),
-    nDim_(realm_.spatialDimension_),
-    useShifted_(false)
+    lumpedMass_(lumpedMass),
+    ipNodeMap_(realm.get_volume_master_element(AlgTraits::topo_)->ipNodeMap())
 {
   // save off fields; shove state N into Nm1 if this is BE
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -51,39 +56,32 @@ ContinuityMassElemSuppAlg::ContinuityMassElemSuppAlg(
   densityN_ = &(density->field_of_state(stk::mesh::StateN));
   densityNp1_ = &(density->field_of_state(stk::mesh::StateNP1));
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
-}
 
-//--------------------------------------------------------------------------
-//-------- elem_resize -----------------------------------------------------
-//--------------------------------------------------------------------------
-void
-ContinuityMassElemSuppAlg::elem_resize(
-  MasterElement */*meSCS*/,
-  MasterElement *meSCV)
-{
-  const int nodesPerElement = meSCV->nodesPerElement_;
-  const int numScvIp = meSCV->numIntPoints_;
-
-  // resize
-  ws_shape_function_.resize(numScvIp*nodesPerElement);
-  ws_rhoNp1_.resize(nodesPerElement);
-  ws_rhoN_.resize(nodesPerElement);
-  ws_rhoNm1_.resize(nodesPerElement);
-  ws_coordinates_.resize(nDim_*nodesPerElement);
-  ws_scv_volume_.resize(numScvIp);
+  MasterElement *meSCV = realm.get_volume_master_element(AlgTraits::topo_);
 
   // compute shape function
-  if ( useShifted_ )
-    meSCV->shifted_shape_fcn(&ws_shape_function_[0]);
+  if ( lumpedMass_ )
+    meSCV->shifted_shape_fcn(&v_shape_function_(0,0));
   else
-    meSCV->shape_fcn(&ws_shape_function_[0]);
+    meSCV->shape_fcn(&v_shape_function_(0,0));
+
+  // add master elements
+  dataPreReqs.add_cvfem_volume_me(meSCV);
+
+  // fields and data
+  dataPreReqs.add_gathered_nodal_field(*coordinates_, AlgTraits::nDim_);
+  dataPreReqs.add_gathered_nodal_field(*densityNm1_, 1);
+  dataPreReqs.add_gathered_nodal_field(*densityN_, 1);
+  dataPreReqs.add_gathered_nodal_field(*densityNp1_, 1);
+  dataPreReqs.add_master_element_call(SCV_VOLUME);
 }
 
 //--------------------------------------------------------------------------
 //-------- setup -----------------------------------------------------------
 //--------------------------------------------------------------------------
+template<typename AlgTraits>
 void
-ContinuityMassElemSuppAlg::setup()
+ContinuityMassElemSuppAlg<AlgTraits>::setup()
 {
   dt_ = realm_.get_time_step();
   gamma1_ = realm_.get_gamma1();
@@ -94,78 +92,48 @@ ContinuityMassElemSuppAlg::setup()
 //--------------------------------------------------------------------------
 //-------- elem_execute ----------------------------------------------------
 //--------------------------------------------------------------------------
+template<typename AlgTraits>
 void
-ContinuityMassElemSuppAlg::elem_execute(
+ContinuityMassElemSuppAlg<AlgTraits>::element_execute(
   double */*lhs*/,
   double *rhs,
-  stk::mesh::Entity element,
-  MasterElement */*meSCS*/,
-  MasterElement *meSCV)
+  stk::mesh::Entity /* element */,
+  ScratchViews& scratchViews)
 {
   const double projTimeScale = dt_/gamma1_;
-  
-  // pointer to ME methods
-  const int *ipNodeMap = meSCV->ipNodeMap();
-  const int nodesPerElement = meSCV->nodesPerElement_;
-  const int numScvIp = meSCV->numIntPoints_;
 
-  // gather
-  stk::mesh::Entity const *  node_rels = bulkData_->begin_nodes(element);
-  int num_nodes = bulkData_->num_nodes(element);
+  SharedMemView<double*>& v_densityNm1 = scratchViews.get_scratch_view_1D(
+    *densityNm1_);
+  SharedMemView<double*>& v_densityN = scratchViews.get_scratch_view_1D(
+    *densityN_);
+  SharedMemView<double*>& v_densityNp1 = scratchViews.get_scratch_view_1D(
+    *densityNp1_);
 
-  // sanity check on num nodes
-  ThrowAssert( num_nodes == nodesPerElement );
+  SharedMemView<double*>& v_scv_volume = scratchViews.scv_volume;
 
-  for ( int ni = 0; ni < num_nodes; ++ni ) {
-    stk::mesh::Entity node = node_rels[ni];
-    
-    // pointers to real data
-    const double * coords =  stk::mesh::field_data(*coordinates_, node);
-      
-    // gather scalars
-    ws_rhoNm1_[ni] = *stk::mesh::field_data(*densityNm1_, node);
-    ws_rhoN_[ni] = *stk::mesh::field_data(*densityN_, node);
-    ws_rhoNp1_[ni] = *stk::mesh::field_data(*densityNp1_, node);
+  for (int ip=0; ip < AlgTraits::numScvIp_; ++ip) {
+    const int nearestNode = ipNodeMap_[ip];
 
-    // gather vectors
-    const int niNdim = ni*nDim_;
-    for ( int i=0; i < nDim_; ++i ) {
-      ws_coordinates_[niNdim+i] = coords[i];
-    }
-  }
+    double rhoNm1 = 0.0;
+    double rhoN   = 0.0;
+    double rhoNp1 = 0.0;
+    for (int ic=0; ic < AlgTraits::nodesPerElement_; ++ic) {
+      const double r = v_shape_function_(ip, ic);
 
-  // compute geometry
-  double scv_error = 0.0;
-  meSCV->determinant(1, &ws_coordinates_[0], &ws_scv_volume_[0], &scv_error);
-
-  for ( int ip = 0; ip < numScvIp; ++ip ) {
-      
-    // nearest node to ip
-    const int nearestNode = ipNodeMap[ip];
-    
-    // zero out; scalar
-    double rhoNm1Scv = 0.0;
-    double rhoNScv = 0.0;
-    double rhoNp1Scv = 0.0;
-      
-    const int offSet = ip*nodesPerElement;
-    for ( int ic = 0; ic < nodesPerElement; ++ic ) {
-      // save off shape function
-      const double r = ws_shape_function_[offSet+ic];
-
-      // density
-      rhoNm1Scv += r*ws_rhoNm1_[ic];
-      rhoNScv += r*ws_rhoN_[ic];
-      rhoNp1Scv += r*ws_rhoNp1_[ic];
+      rhoNm1 += r * v_densityNm1(ic);
+      rhoN   += r * v_densityN(ic);
+      rhoNp1 += r * v_densityNp1(ic);
     }
 
-    // assemble rhs
-    const double scV = ws_scv_volume_[ip];
-    rhs[nearestNode] += 
-      -(gamma1_*rhoNp1Scv + gamma2_*rhoNScv + gamma3_*rhoNm1Scv)*scV/dt_/projTimeScale;
-    // manage LHS; n/a
+    const double scV = v_scv_volume(ip);
+    rhs[nearestNode] += - ( gamma1_ * rhoNp1 + gamma2_ * rhoN +
+                            gamma3_ * rhoNm1 ) * scV / dt_ / projTimeScale;
+
+    // manage LHS : N/A
   }
 }
-  
+
+INSTANTIATE_SUPPLEMENTAL_ALGORITHM(ContinuityMassElemSuppAlg);
+
 } // namespace nalu
 } // namespace Sierra

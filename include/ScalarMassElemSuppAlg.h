@@ -11,41 +11,44 @@
 
 #include <SupplementalAlgorithm.h>
 #include <FieldTypeDef.h>
+#include <AlgTraits.h>
 
-#include <stk_mesh/base/BulkData.hpp>
+// stk
 #include <stk_mesh/base/Entity.hpp>
+
+// kokkos
+#include <Kokkos_Core.hpp>
 
 namespace sierra{
 namespace nalu{
 
 class Realm;
 class MasterElement;
+class ElemDataRequests;
+class ScratchViews;
 
+template<typename AlgTraits>
 class ScalarMassElemSuppAlg : public SupplementalAlgorithm
 {
 public:
 
   ScalarMassElemSuppAlg(
     Realm &realm,
-    ScalarFieldType *scalarQ);
+    ScalarFieldType *scalarQ,
+    ElemDataRequests& dataPreReqs,
+    const bool lumpedMass);
 
   virtual ~ScalarMassElemSuppAlg() {}
 
   virtual void setup();
 
-  virtual void elem_resize(
-    MasterElement *meSCS,
-    MasterElement *meSCV);
-
-  virtual void elem_execute(
+  virtual void element_execute(
     double *lhs,
     double *rhs,
     stk::mesh::Entity element,
-    MasterElement *meSCS,
-    MasterElement *meSCV);
+    ScratchViews& scratchViews
+  );
   
-  const stk::mesh::BulkData *bulkData_;
-
   ScalarFieldType *scalarQNm1_;
   ScalarFieldType *scalarQN_;
   ScalarFieldType *scalarQNp1_;
@@ -58,19 +61,13 @@ public:
   double gamma1_;
   double gamma2_;
   double gamma3_;
-  const int nDim_;
-  const bool useShifted_;
+  const bool lumpedMass_;
 
-  // scratch space
-  std::vector<double> ws_shape_function_;
-  std::vector<double> ws_qNm1_;
-  std::vector<double> ws_qN_;
-  std::vector<double> ws_qNp1_;
-  std::vector<double> ws_rhoNm1_;
-  std::vector<double> ws_rhoN_;
-  std::vector<double> ws_rhoNp1_;
-  std::vector<double> ws_coordinates_;
-  std::vector<double> ws_scv_volume_;
+  // master element
+  const int* ipNodeMap_;
+
+  // scratch space; geometry
+  Kokkos::View<double[AlgTraits::numScvIp_][AlgTraits::nodesPerElement_]> v_shape_function_ {"view_shape_func"};
 };
 
 } // namespace nalu

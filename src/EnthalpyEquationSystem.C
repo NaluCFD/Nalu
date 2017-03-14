@@ -7,9 +7,9 @@
 
 
 #include <EnthalpyEquationSystem.h>
+#include <ABLForcingAlgorithm.h>
 #include <AlgorithmDriver.h>
 #include <AssembleScalarFluxBCSolverAlgorithm.h>
-#include <AssembleScalarEdgeContactSolverAlgorithm.h>
 #include <AssembleScalarEdgeOpenSolverAlgorithm.h>
 #include <AssembleScalarEdgeSolverAlgorithm.h>
 #include <AssembleScalarEigenEdgeSolverAlgorithm.h>
@@ -20,8 +20,6 @@
 #include <AssembleNodalGradEdgeAlgorithm.h>
 #include <AssembleNodalGradElemAlgorithm.h>
 #include <AssembleNodalGradBoundaryAlgorithm.h>
-#include <AssembleNodalGradEdgeContactAlgorithm.h>
-#include <AssembleNodalGradElemContactAlgorithm.h>
 #include <AssembleNodalGradNonConformalAlgorithm.h>
 #include <AssembleNodeSolverAlgorithm.h>
 #include <AssembleWallHeatTransferAlgorithmDriver.h>
@@ -51,13 +49,17 @@
 #include <ScalarGclNodeSuppAlg.h>
 #include <ScalarMassBackwardEulerNodeSuppAlg.h>
 #include <ScalarMassBDF2NodeSuppAlg.h>
-#include <ScalarMassElemSuppAlg.h>
-#include <ScalarKeNSOElemSuppAlg.h>
-#include <ScalarNSOElemSuppAlg.h>
+#include <ScalarMassElemSuppAlgDep.h>
+#include <EnthalpyABLSrcNodeSuppAlg.h>
 #include <Simulation.h>
 #include <TimeIntegrator.h>
 #include <SolverAlgorithmDriver.h>
 #include <SolutionOptions.h>
+#include <ABLForcingAlgorithm.h>
+
+// nso
+#include <nso/ScalarNSOKeElemSuppAlg.h>
+#include <nso/ScalarNSOElemSuppAlgDep.h>
 
 // props
 #include <property_evaluator/EnthalpyPropertyEvaluator.h>
@@ -108,7 +110,7 @@ EnthalpyEquationSystem::EnthalpyEquationSystem(
   const double minT,
   const double maxT,
   const bool outputClippingDiag)
-  : EquationSystem(eqSystems, "EnthalpyEQS"),
+  : EquationSystem(eqSystems, "EnthalpyEQS", "enthalpy"),
     minimumT_(minT),
     maximumT_(maxT),
     managePNG_(realm_.get_consistent_mass_matrix_png("enthalpy")),
@@ -349,7 +351,6 @@ EnthalpyEquationSystem::register_interior_algorithm(
   }
 
   // solver; interior contribution (advection + diffusion)
-  bool useCMM = false;
   std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi
     = solverAlgDriver_->solverAlgMap_.find(algType);
   if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
@@ -379,32 +380,35 @@ EnthalpyEquationSystem::register_interior_algorithm(
         std::string sourceName = mapNameVec[k];
         SupplementalAlgorithm *suppAlg = NULL;
         if (sourceName == "NSO_2ND" ) {
-          suppAlg = new ScalarNSOElemSuppAlg(realm_, enthalpy_, dhdx_, evisc_, 0.0, 0.0);
+          suppAlg = new ScalarNSOElemSuppAlgDep(realm_, enthalpy_, dhdx_, evisc_, 0.0, 0.0);
         }
         else if (sourceName == "NSO_2ND_ALT" ) {
-          suppAlg = new ScalarNSOElemSuppAlg(realm_, enthalpy_, dhdx_, evisc_, 0.0, 1.0);
+          suppAlg = new ScalarNSOElemSuppAlgDep(realm_, enthalpy_, dhdx_, evisc_, 0.0, 1.0);
         }
         else if (sourceName == "NSO_4TH" ) {
-          suppAlg = new ScalarNSOElemSuppAlg(realm_, enthalpy_, dhdx_, evisc_, 1.0, 0.0);
+          suppAlg = new ScalarNSOElemSuppAlgDep(realm_, enthalpy_, dhdx_, evisc_, 1.0, 0.0);
         }
         else if (sourceName == "NSO_4TH_ALT" ) {
-          suppAlg = new ScalarNSOElemSuppAlg(realm_, enthalpy_, dhdx_, evisc_, 1.0, 1.0);
+          suppAlg = new ScalarNSOElemSuppAlgDep(realm_, enthalpy_, dhdx_, evisc_, 1.0, 1.0);
         }
-        else if (sourceName == "NSO_KE_2ND" ) {
+        else if (sourceName == "NSO_2ND_KE" ) {
           const double turbPr = realm_.get_turb_prandtl(enthalpy_->name());
-          suppAlg = new ScalarKeNSOElemSuppAlg(realm_, enthalpy_, dhdx_, turbPr, 0.0);
+          suppAlg = new ScalarNSOKeElemSuppAlg(realm_, enthalpy_, dhdx_, turbPr, 0.0);
         }
-        else if (sourceName == "NSO_KE_4TH" ) {
+        else if (sourceName == "NSO_4TH_KE" ) {
           const double turbPr = realm_.get_turb_prandtl(enthalpy_->name());
-          suppAlg = new ScalarKeNSOElemSuppAlg(realm_, enthalpy_, dhdx_, turbPr, 1.0);
+          suppAlg = new ScalarNSOKeElemSuppAlg(realm_, enthalpy_, dhdx_, turbPr, 1.0);
         }
         else if (sourceName == "enthalpy_time_derivative" ) {
-          useCMM = true;
-          suppAlg = new ScalarMassElemSuppAlg(realm_, enthalpy_); 
+          suppAlg = new ScalarMassElemSuppAlgDep(realm_, enthalpy_, false);
+        }
+        else if (sourceName == "lumped_enthalpy_time_derivative" ) {
+          suppAlg = new ScalarMassElemSuppAlgDep(realm_, enthalpy_, true);
         }
         else {
           throw std::runtime_error("EnthalpyElemSrcTerms::Error Source term is not supported: " + sourceName);
         }     
+        NaluEnv::self().naluOutputP0() << "EnthalpyElemSrcTerms::added() " << sourceName << std::endl;
         theAlg->supplementalAlg_.push_back(suppAlg); 
       }
     }
@@ -415,6 +419,11 @@ EnthalpyEquationSystem::register_interior_algorithm(
 
   // time term; nodally lumped
   const AlgorithmType algMass = MASS;
+  // Check if the user has requested CMM or LMM algorithms; if so, do not
+  // include Nodal Mass algorithms
+  std::vector<std::string> checkAlgNames = {"enthalpy_time_derivative",
+                                            "lumped_enthalpy_time_derivative"};
+  bool elementMassAlg = supp_alg_is_requested(checkAlgNames);
   std::map<AlgorithmType, SolverAlgorithm *>::iterator itsm =
     solverAlgDriver_->solverAlgMap_.find(algMass);
   
@@ -425,7 +434,7 @@ EnthalpyEquationSystem::register_interior_algorithm(
     solverAlgDriver_->solverAlgMap_[algMass] = theAlg;
 
     // now create the supplemental alg for mass term
-    if ( !useCMM ) {
+    if ( !elementMassAlg ) {
       if ( realm_.number_of_states() == 2 ) {
         ScalarMassBackwardEulerNodeSuppAlg *theMass
           = new ScalarMassBackwardEulerNodeSuppAlg(realm_, enthalpy_);
@@ -464,10 +473,17 @@ EnthalpyEquationSystem::register_interior_algorithm(
         else if (sourceName == "VariableDensityNonIso" ) {
           suppAlg = new VariableDensityNonIsoEnthalpySrcNodeSuppAlg(realm_);
         }
+        else if (sourceName == "abl_forcing") {
+          ThrowAssertMsg(
+            ((NULL != realm_.ablForcingAlg_) &&
+             (realm_.ablForcingAlg_->temperatureForcingOn())),
+            "EnthalpyNodalSrcTerms::ERROR! ABL Forcing parameters must be initialized to use temperature source.");
+          suppAlg = new EnthalpyABLSrcNodeSuppAlg(realm_, realm_.ablForcingAlg_);
+        }
         else {
           throw std::runtime_error("EnthalpyNodalSrcTerms::Error Source term is not supported: " + sourceName);
         }
-        // add supplemental algorithm
+        NaluEnv::self().naluOutputP0() << "EnthalpyNodalSrcTerms::added() " << sourceName << std::endl;
         theAlg->supplementalAlg_.push_back(suppAlg);
       }
     }
@@ -761,67 +777,6 @@ EnthalpyEquationSystem::register_wall_bc(
 }
 
 //--------------------------------------------------------------------------
-//-------- register_contact_bc ---------------------------------------------
-//--------------------------------------------------------------------------
-void
-EnthalpyEquationSystem::register_contact_bc(
-  stk::mesh::Part *part,
-  const stk::topology &theTopo,
-  const ContactBoundaryConditionData &contactBCData) {
-
-  const AlgorithmType algType = CONTACT;
-
-  ScalarFieldType &enthalpyNp1 = enthalpy_->field_of_state(stk::mesh::StateNP1);
-  VectorFieldType &dhdxNone = dhdx_->field_of_state(stk::mesh::StateNone);
-
-  if ( realm_.realmUsesEdges_ ) {
-
-    // register halo_h if using the element-based projected nodal gradient
-    ScalarFieldType *haloH = NULL;
-    if ( !edgeNodalGradient_ ) {
-      stk::mesh::MetaData &meta_data = realm_.meta_data();
-      haloH = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "halo_h"));
-      stk::mesh::put_field(*haloH, *part);
-    }
-
-    // non-solver; contribution to dhdx
-    if ( !managePNG_ ) {
-      std::map<AlgorithmType, Algorithm *>::iterator it =
-        assembleNodalGradAlgDriver_->algMap_.find(algType);
-      if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-        Algorithm *theAlg = NULL;
-        if ( edgeNodalGradient_ ) {
-          theAlg = new AssembleNodalGradEdgeContactAlgorithm(realm_, part, &enthalpyNp1, &dhdxNone);
-        }
-        else {
-          theAlg = new AssembleNodalGradElemContactAlgorithm(realm_, part, &enthalpyNp1, &dhdxNone, haloH);
-        }
-        assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
-      }
-      else {
-        it->second->partVec_.push_back(part);
-      }
-    }
-
-    // solver; lhs
-    std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi =
-      solverAlgDriver_->solverAlgMap_.find(algType);
-    if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
-      AssembleScalarEdgeContactSolverAlgorithm *theAlg
-        = new AssembleScalarEdgeContactSolverAlgorithm(realm_, part, this,
-                                                       enthalpy_, dhdx_, evisc_);
-      solverAlgDriver_->solverAlgMap_[algType] = theAlg;
-    }
-    else {
-      itsi->second->partVec_.push_back(part);
-    }
-  }
-  else {
-    throw std::runtime_error("Sorry, element-based contact not supported");
-  }
-}
-
-//--------------------------------------------------------------------------
 //-------- register_symmetry_bc --------------------------------------------
 //--------------------------------------------------------------------------
 void
@@ -949,7 +904,7 @@ EnthalpyEquationSystem::reinitialize_linear_system()
   delete linsys_;
 
   // create new solver
-  std::string solverName = realm_.equationSystems_.get_solver_block_name("enthalpyNp1");
+  std::string solverName = realm_.equationSystems_.get_solver_block_name("enthalpy");
   LinearSolver *solver = realm_.root()->linearSolvers_->create_solver(solverName, EQ_ENTHALPY);
   linsys_ = LinearSystem::create(realm_, 1, name_, solver);
 
@@ -1275,6 +1230,9 @@ EnthalpyEquationSystem::temperature_bc_setup(
   std::string temperatureName = "temperature";
   UserDataType theDataType = get_bc_data_type(userData, temperatureName);
 
+  // extract temperature as possibly external; similar to interface
+  const bool externalData = userData.externalData_;
+
   // populate temperature_bc
   AuxFunction *theAuxFunc = NULL;
   if ( CONSTANT_UD == theDataType ) {
@@ -1316,7 +1274,7 @@ EnthalpyEquationSystem::temperature_bc_setup(
   }
 
   // if this is an interface bc, then push algorithm to initial condition
-  if ( isInterface ) {
+  if ( isInterface || externalData ) {
     // xfer will handle population; only need to populate the initial value
     realm_.initCondAlg_.push_back(auxTempAlg);
     if ( copyBCVal )

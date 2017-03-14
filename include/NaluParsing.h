@@ -139,12 +139,13 @@ struct UserData
   std::map<std::string, UserDataType> bcDataTypeMap_;
   std::map<std::string, std::string> userFunctionMap_;
   std::map<std::string, std::vector<double> > functionParams_;
+  std::map<std::string, std::vector<std::string> > functionStringParams_;
 
   // FIXME: must elevate temperature due to the temperature_bc_setup method
   Temperature temperature_;
   bool tempSpec_; 
-  
-UserData() : tempSpec_(false) {}
+  bool externalData_;
+UserData() : tempSpec_(false), externalData_(false) {}
 };
 
 struct NormalHeatFlux {
@@ -228,10 +229,9 @@ struct InflowUserData : public UserData {
   bool sdrSpec_;
   bool mixFracSpec_;
   bool massFractionSpec_;
-  
   InflowUserData()
     : UserData(),
-      uSpec_(false), tkeSpec_(false), sdrSpec_(false), mixFracSpec_(false), massFractionSpec_(false)
+    uSpec_(false), tkeSpec_(false), sdrSpec_(false), mixFracSpec_(false), massFractionSpec_(false)
   {}
 };
 
@@ -253,26 +253,6 @@ struct OpenUserData : public UserData {
   OpenUserData()
     : UserData(),
       uSpec_(false), pSpec_(false), tkeSpec_(false), sdrSpec_(false), mixFracSpec_(false), massFractionSpec_(false)
-  {}
-};
-
-struct ContactUserData : public UserData {
-
-  double maxSearchRadius_;
-  double minSearchRadius_;
-  std::vector<std::string> searchBlock_;
-  double extrusionDistance_;
-  bool useExtrusionAlg_;
-  std::string searchMethodName_;
-  double expandBoxPercentage_;
-  bool clipIsoParametricCoords_;
-  bool useHermiteInterpolation_;
-
-  ContactUserData()
-    : UserData(),
-      maxSearchRadius_(0.0), minSearchRadius_(0.0),
-      extrusionDistance_(0.0), useExtrusionAlg_(false), searchMethodName_("na"), expandBoxPercentage_(0.0),
-      clipIsoParametricCoords_(false), useHermiteInterpolation_(false)
   {}
 };
 
@@ -312,16 +292,13 @@ struct PeriodicUserData : public UserData {
 };
 
 struct NonConformalUserData : public UserData {
-
   std::string searchMethodName_;
   double expandBoxPercentage_;
   bool clipIsoParametricCoords_;
   double searchTolerance_;
-
   NonConformalUserData()
     : UserData(),
-      searchMethodName_("na"), expandBoxPercentage_(0.0),
-    clipIsoParametricCoords_(false), searchTolerance_(1.0e-16)
+    searchMethodName_("na"), expandBoxPercentage_(0.0), clipIsoParametricCoords_(false), searchTolerance_(1.0e-16)
   {}
 };
 
@@ -345,11 +322,6 @@ struct OversetBoundaryConditionData : public BoundaryCondition {
   OversetUserData userData_;
 };
 
-struct ContactBoundaryConditionData : public BoundaryCondition {
-  ContactBoundaryConditionData(BoundaryConditions& bcs) : BoundaryCondition(bcs){};
-  ContactUserData userData_;
-};
-
 struct SymmetryBoundaryConditionData : public BoundaryCondition {
   SymmetryBoundaryConditionData(BoundaryConditions& bcs) : BoundaryCondition(bcs){};
   SymmetryUserData userData_;
@@ -363,7 +335,8 @@ struct PeriodicBoundaryConditionData : public BoundaryCondition {
 
 struct NonConformalBoundaryConditionData : public BoundaryCondition {
   NonConformalBoundaryConditionData(BoundaryConditions& bcs) : BoundaryCondition(bcs){};
-  MasterSlave masterSlave_;
+  std::vector<std::string> currentPartNameVec_;
+  std::vector<std::string> opposingPartNameVec_;
   NonConformalUserData userData_;
 };
 
@@ -373,7 +346,6 @@ struct BoundaryConditionOptions{
   InflowBoundaryConditionData inflowbc_;
   OpenBoundaryConditionData openbc_;
   OversetBoundaryConditionData oversetbc_;
-  ContactBoundaryConditionData contactbc_;
   NonConformalBoundaryConditionData nonConformalbc_;
   SymmetryBoundaryConditionData symmetrybc_;
   PeriodicBoundaryConditionData periodicbc_;
@@ -463,8 +435,6 @@ void operator >> (const YAML::Node& node, InflowBoundaryConditionData& rhs) ;
 void operator >> (const YAML::Node& node, OpenBoundaryConditionData& rhs) ;
 
 void operator >> (const YAML::Node& node, OversetBoundaryConditionData& rhs) ;
-
-void operator >> (const YAML::Node& node, ContactBoundaryConditionData& rhs) ;
 
 void operator >> (const YAML::Node& node, SymmetryBoundaryConditionData& rhs) ;
 
@@ -573,10 +543,6 @@ template<> struct convert<sierra::nalu::InflowUserData> {
 
 template<> struct convert<sierra::nalu::OpenUserData> {
   static bool decode(const Node& node, sierra::nalu::OpenUserData& rhs) ;
-};
-
-template<> struct convert<sierra::nalu::ContactUserData> {
-  static bool decode(const Node& node, sierra::nalu::ContactUserData& rhs) ;
 };
 
 template<> struct convert<sierra::nalu::OversetUserData> {

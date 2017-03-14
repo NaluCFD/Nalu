@@ -22,26 +22,24 @@ enum AlgorithmType{
   OPEN      = 3,
   MASS      = 4,
   SRC       = 5,
-  CONTACT   = 6,
-  SYMMETRY  = 7,
-  WALL_HF   = 8,
-  WALL_CHT  = 9,
-  WALL_RAD  = 10,
-  NON_CONFORMAL = 11,
-  ELEM_SOURCE = 12,
-  OVERSET = 13,
-  WALL_ABL = 14
+  SYMMETRY  = 6,
+  WALL_HF   = 7,
+  WALL_CHT  = 8,
+  WALL_RAD  = 9,
+  NON_CONFORMAL = 10,
+  ELEM_SOURCE = 11,
+  OVERSET = 12,
+  WALL_ABL = 13
 };
 
 enum BoundaryConditionType{
   INFLOW_BC    = 1,
   OPEN_BC      = 2,
   WALL_BC      = 3,
-  CONTACT_BC   = 4,
-  SYMMETRY_BC  = 5,
-  PERIODIC_BC  = 6,
-  NON_CONFORMAL_BC = 7,
-  OVERSET_BC = 8
+  SYMMETRY_BC  = 4,
+  PERIODIC_BC  = 5,
+  NON_CONFORMAL_BC = 6,
+  OVERSET_BC = 7
 };
 
 enum EquationType {
@@ -199,17 +197,6 @@ static const std::string TurbulenceModelConstantNames[] = {
   "Cw",
   "Cb2",
   "END"};
-
-enum NonConformalAlgType {
-  NC_ALG_TYPE_DG = 0,
-  NC_ALG_TYPE_RB = 1,
-  NC_ALG_TYPE_END = 2
-};
-
-const std::string NonConformalAlgTypeNames[] = {
-  "dg",
-  "rb",
-  "END" };
 
 enum ActuatorType {
   ActLinePointDrag = 0,

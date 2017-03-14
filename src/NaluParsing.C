@@ -96,7 +96,6 @@ namespace sierra{
       // check for typical rogue line command
       if ( node["user_function_name"] )
 	throw std::runtime_error("user_function_data is misplaced; it must be under wall_user_data");
-      
     }
     
     void operator >> (const YAML::Node& node, InflowBoundaryConditionData& inflowBC) {
@@ -108,7 +107,6 @@ namespace sierra{
       // check for typical rogue line command
       if ( node["user_function_name"] )
 	throw std::runtime_error("user_function_data is misplaced; it must be under inflow_user_data");
-      
     }
     
     void operator >> (const YAML::Node& node, OpenBoundaryConditionData& openBC) {
@@ -120,25 +118,15 @@ namespace sierra{
       // check for typical rogue line command
       if ( node["user_function_name"] )
 	throw std::runtime_error("user_function_data is misplaced; it must be under open_user_data");
-      
     }
     
     void operator >> (const YAML::Node& node, OversetBoundaryConditionData& oversetBC) {
       oversetBC.bcName_ = node["overset_boundary_condition"].as<std::string>() ;
       oversetBC.theBcType_ = OVERSET_BC;
       const YAML::Node& oversetUserData = node["overset_user_data"];
-      oversetBC.userData_ = oversetUserData.as<OversetUserData>() ;
-      
+      oversetBC.userData_ = oversetUserData.as<OversetUserData>() ;      
     }
                 
-    void operator >> (const YAML::Node& node, ContactBoundaryConditionData& contactBC) {
-      contactBC.bcName_ = node["contact_boundary_condition"].as<std::string>() ;
-      contactBC.targetName_ = node["target_name"].as<std::string>() ;
-      contactBC.theBcType_ = CONTACT_BC;
-      const YAML::Node& contactUserData = node["contact_user_data"];
-      contactBC.userData_ = contactUserData.as<ContactUserData>() ;
-      
-    }
     
     void operator >> (const YAML::Node& node, SymmetryBoundaryConditionData& symmetryBC) {
       symmetryBC.bcName_ = node["symmetry_boundary_condition"].as<std::string>() ;
@@ -146,7 +134,6 @@ namespace sierra{
       symmetryBC.theBcType_ = SYMMETRY_BC;
       const YAML::Node& symmetryUserData = node["symmetry_user_data"];
       symmetryBC.userData_ = symmetryUserData.as<SymmetryUserData>() ;
-      
     }
     
     void operator >> (const YAML::Node& node, PeriodicBoundaryConditionData& periodicBC) {
@@ -155,18 +142,67 @@ namespace sierra{
       periodicBC.targetName_ = periodicBC.masterSlave_.master_ + "_" + periodicBC.masterSlave_.slave_;
       periodicBC.theBcType_ = PERIODIC_BC;
       const YAML::Node& periodicUserData = node["periodic_user_data"];
-      periodicBC.userData_ = periodicUserData.as<PeriodicUserData>() ;
-      
+      periodicBC.userData_ = periodicUserData.as<PeriodicUserData>() ;      
     }
     
     void operator >> (const YAML::Node& node, NonConformalBoundaryConditionData& nonConformalBC) {
       nonConformalBC.bcName_ = node["non_conformal_boundary_condition"].as<std::string>() ;
-      nonConformalBC.masterSlave_ = node["target_name"].as<MasterSlave>() ;
-      nonConformalBC.targetName_ = nonConformalBC.masterSlave_.master_ + "_" + nonConformalBC.masterSlave_.slave_;
       nonConformalBC.theBcType_ = NON_CONFORMAL_BC;
       const YAML::Node& nonConformalUserData = node["non_conformal_user_data"];
       nonConformalBC.userData_ = nonConformalUserData.as<NonConformalUserData>() ;
+
+      // check for old/new syntax; one of the two is required to define the current/opposing part(s)
+      const YAML::Node targetPairName = node["target_name"];
+      const YAML::Node targetsCurrent = node["current_target_name"];
+      const YAML::Node targetsOpposing = node["opposing_target_name"];
+
+      if ( targetPairName ) {
+        if ( targetPairName.size() != 2 )
+          throw std::runtime_error("For non-conformal algorithms, ne must specify two targets, e.g., [surf_1, surf_2]");
+        nonConformalBC.currentPartNameVec_.resize(1);
+        nonConformalBC.opposingPartNameVec_.resize(1);
+        nonConformalBC.currentPartNameVec_[0] = targetPairName[0].as<std::string>();
+        nonConformalBC.opposingPartNameVec_[0] = targetPairName[1].as<std::string>();
+      }
+      else {
+        if ( !targetsCurrent )
+          throw  std::runtime_error("NonConformal::Error: part definition error: missing current_target_name");
+        if ( !targetsOpposing )
+          throw  std::runtime_error("NonConformal::Error: part definition error: missing opposing_target_name");
+
+        // set current
+        if (targetsCurrent.Type() == YAML::NodeType::Scalar) {
+          nonConformalBC.currentPartNameVec_.resize(1);
+          nonConformalBC.currentPartNameVec_[0] = targetsCurrent.as<std::string>();
+        }
+        else {
+          nonConformalBC.currentPartNameVec_.resize(targetsCurrent.size());
+          for (size_t i=0; i < targetsCurrent.size(); ++i) {
+            nonConformalBC.currentPartNameVec_[i] = targetsCurrent[i].as<std::string>();
+          } 
+        }
+
+        // set opposing
+        if (targetsOpposing.Type() == YAML::NodeType::Scalar) {
+          nonConformalBC.opposingPartNameVec_.resize(1);
+          nonConformalBC.opposingPartNameVec_[0] = targetsOpposing.as<std::string>();
+        }
+        else {
+          nonConformalBC.opposingPartNameVec_.resize(targetsOpposing.size());
+          for (size_t i=0; i < targetsOpposing.size(); ++i) {
+            nonConformalBC.opposingPartNameVec_[i] = targetsOpposing[i].as<std::string>();
+          } 
+        }
+      }
       
+      // set target name for debug
+      std::string debugName = "_Current_";
+      for ( size_t k = 0; k < nonConformalBC.currentPartNameVec_.size(); ++k )
+        debugName += nonConformalBC.currentPartNameVec_[k] + "_";
+      debugName += "_Opposing_";
+      for ( size_t k = 0; k < nonConformalBC.opposingPartNameVec_.size(); ++k )
+        debugName += nonConformalBC.opposingPartNameVec_[k] + "_";
+      nonConformalBC.targetName_ = debugName;
     }
 
     void operator >> (const YAML::Node& node, UserFunctionInitialConditionData& fcnIC) {
@@ -178,13 +214,12 @@ namespace sierra{
 	fcnIC.targetNames_.resize(1);
 	fcnIC.targetNames_[0] = targets.as<std::string>();
       }
-      else
-	{
-	  fcnIC.targetNames_.resize(targets.size());
-	  for (size_t i=0; i < targets.size(); ++i) {
-	    fcnIC.targetNames_[i] = targets[i].as<std::string>();
-	  }
-	}
+      else {
+        fcnIC.targetNames_.resize(targets.size());
+        for (size_t i=0; i < targets.size(); ++i) {
+          fcnIC.targetNames_[i] = targets[i].as<std::string>();
+        }
+      }
       
       // extract function name and parameters
       if (expect_map( node, "user_function_name", false)) {
@@ -437,7 +472,7 @@ namespace YAML {
       } 
       
       yk.massFraction_.resize(node.size());
-      int ykSize = node.size() ;
+      size_t ykSize = node.size() ;
       for ( size_t k = 0; k < ykSize; ++k ) {
 	yk.massFraction_[k] = node[k].as<double>() ;
       }
@@ -656,7 +691,12 @@ namespace YAML {
 	if (sierra::nalu::expect_map( node, "user_function_parameters", true)) {
 	  wallData.functionParams_ = node["user_function_parameters"].as<std::map<std::string, std::vector<double> > >() ;
 	}
-	
+
+	// extract function name and string parameters
+	if (sierra::nalu::expect_map( node, "user_function_string_parameters", true)) {
+	  wallData.functionStringParams_ 
+            = node["user_function_string_parameters"].as<std::map<std::string, std::vector<std::string> > >() ;
+	}
       }
       
       return true;
@@ -722,7 +762,12 @@ namespace YAML {
 	  inflowData.functionParams_ = node["user_function_parameters"].as< std::map<std::string, std::vector<double> > >() ;
 	}
       }
-      
+
+      // check for external data
+      if ( node["external_data"] ) {
+	inflowData.externalData_ = node["external_data"].as<bool>() ; 
+      }
+     
       return true;
     }
     
@@ -760,66 +805,7 @@ namespace YAML {
       }
       
       return true;
-    }
-    
-    bool convert<sierra::nalu::ContactUserData>::decode(const Node& node, sierra::nalu::ContactUserData& contactData) {
-      
-      // nothing is optional
-      if ( node["max_search_radius"] ) {
-	contactData.maxSearchRadius_ = node["max_search_radius"].as<double>() ;
-      }
-      else {
-	throw std::runtime_error("One MUST specify max search radius at contact bcs");
-      }
-      
-      if ( node["min_search_radius"] ) {
-	contactData.minSearchRadius_ = node["min_search_radius"].as<double>() ;
-      }
-      else {
-	throw std::runtime_error("One MUST specify min search radius at contact bcs");
-      }
-      
-      if ( node["search_block"] ) {
-	const Node searchBlock = node["search_block"];
-	if (searchBlock.Type() == NodeType::Scalar) {
-	  contactData.searchBlock_.resize(1);
-	  contactData.searchBlock_[0] = searchBlock.as<std::string>() ;
-	}
-	else {
-	  contactData.searchBlock_.resize(searchBlock.size());
-	  contactData.searchBlock_ = searchBlock.as<std::vector<std::string> >() ;
-	}
-      }
-      else {
-	throw std::runtime_error("One MUST specify search block at contact bcs");
-      }
-      
-      if ( node["extrusion_distance"]  ) {
-	contactData.extrusionDistance_ = node["extrusion_distance"].as<double>() ;
-	contactData.useExtrusionAlg_ = true;
-      }
-      else {
-	throw std::runtime_error("Specify extrusion distance at contact bcs; simple halo disabled");
-      }
-      
-      if ( node["search_method"]) {
-	contactData.searchMethodName_ = node["search_method"].as<std::string>() ;
-      }
-      
-      if ( node["expand_box_percentage"]  ) {
-	contactData.expandBoxPercentage_ = node["expand_box_percentage"].as<double>();
-      }
-      
-      if ( node["clip_isoparametric_coordinates"]  ) {
-	contactData.clipIsoParametricCoords_ = node["clip_isoparametric_coordinates"].as<bool>() ;
-      }
-      
-      if ( node["hermite_interpolation"]  ) {
-	contactData.useHermiteInterpolation_ = node["hermite_interpolation"].as<bool>() ;
-      }
-      
-      return true;
-    }
+    }    
     
     bool convert<sierra::nalu::OversetUserData>::decode(const Node& node, sierra::nalu::OversetUserData& oversetData) {
       //nothing is optional
@@ -920,10 +906,8 @@ namespace YAML {
 	nonConformalData.searchTolerance_ = node["search_tolerance"].as<double>() ;
       }
       
-      return true;
-      
-    }
-    
+      return true;      
+    }    
    
     bool convert<sierra::nalu::BoundaryConditionOptions>::decode(const Node& node, sierra::nalu::BoundaryConditionOptions& bcOptions) {
       
@@ -932,7 +916,6 @@ namespace YAML {
       node["inflow_boundary_condition"] >> bcOptions.inflowbc_ ;
       node["open_boundary_condition"] >> bcOptions.openbc_ ;
       node["overset_boundary_condition"] >> bcOptions.oversetbc_ ;
-      node["contact_boundary_condition"] >> bcOptions.contactbc_ ;
       node["symmetry_boundary_condition"] >> bcOptions.symmetrybc_ ;
       node["periodic_boundary_condition"]  >> bcOptions.periodicbc_ ;
       node["non_confomal_boundary_condition"] >> bcOptions.nonConformalbc_ ;

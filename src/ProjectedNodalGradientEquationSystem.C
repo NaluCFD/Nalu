@@ -10,6 +10,7 @@
 
 #include <AssemblePNGElemSolverAlgorithm.h>
 #include <AssemblePNGBoundarySolverAlgorithm.h>
+#include <AssemblePNGNonConformalSolverAlgorithm.h>
 #include <EquationSystem.h>
 #include <EquationSystems.h>
 #include <Enums.h>
@@ -251,7 +252,6 @@ ProjectedNodalGradientEquationSystem::register_symmetry_bc(
   const stk::topology &/*theTopo*/,
   const SymmetryBoundaryConditionData &/*symmetryBCData*/)
 {
-
   const AlgorithmType algType = SYMMETRY;
 
   // extract the field name for this bc type
@@ -270,26 +270,27 @@ ProjectedNodalGradientEquationSystem::register_symmetry_bc(
 }
 
 //--------------------------------------------------------------------------
-//-------- register_contact_bc ---------------------------------------------
-//--------------------------------------------------------------------------
-void
-ProjectedNodalGradientEquationSystem::register_contact_bc(
-  stk::mesh::Part */*part*/,
-  const stk::topology &/*theTopo*/,
-  const ContactBoundaryConditionData &/*contactBCData*/) 
-{
-  throw std::runtime_error("ProjectedNodalGradientEquationSystem::register_contact_bc: bc not supported");
-}
-
-//--------------------------------------------------------------------------
 //-------- register_non_conformal_bc ---------------------------------------
 //--------------------------------------------------------------------------
 void
 ProjectedNodalGradientEquationSystem::register_non_conformal_bc(
-  stk::mesh::Part */*part*/,
+  stk::mesh::Part *part,
   const stk::topology &/*theTopo*/)
 {
-  throw std::runtime_error("ProjectedNodalGradientEquationSystem::register_non_conformal_bc: bc not supported");
+  // FIX THIS
+  const AlgorithmType algType = NON_CONFORMAL;
+
+  // create lhs/rhs algorithm;
+  std::map<AlgorithmType, SolverAlgorithm *>::iterator its =
+    solverAlgDriver_->solverAlgMap_.find(algType);
+  if ( its == solverAlgDriver_->solverAlgMap_.end() ) {
+    AssemblePNGNonConformalSolverAlgorithm *theAlg
+      = new AssemblePNGNonConformalSolverAlgorithm(realm_, part, this, independentDofName_, dofName_ );
+    solverAlgDriver_->solverAlgMap_[algType] = theAlg;
+  }
+  else {
+    its->second->partVec_.push_back(part);
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -308,8 +309,8 @@ ProjectedNodalGradientEquationSystem::initialize()
 void
 ProjectedNodalGradientEquationSystem::reinitialize_linear_system()
 {
-
-  // delete linsys
+  // delete linsys; set previously set parameters on linsys
+  const bool provideOutput = linsys_->provideOutput_;
   delete linsys_;
 
   // delete old solver
@@ -322,10 +323,11 @@ ProjectedNodalGradientEquationSystem::reinitialize_linear_system()
     delete theSolver;
   }
 
-  // create new solver
+  // create new solver; reset parameters
   std::string solverName = realm_.equationSystems_.get_solver_block_name(dofName_);
   LinearSolver *solver = realm_.root()->linearSolvers_->create_solver(solverName, eqType_);
-  linsys_ = LinearSystem::create(realm_, 1, eqSysName_, solver);
+  linsys_ = LinearSystem::create(realm_, realm_.spatialDimension_, eqSysName_, solver);
+  linsys_->provideOutput_ = provideOutput;
 
   // initialize
   solverAlgDriver_->initialize_connectivity();
@@ -343,7 +345,7 @@ ProjectedNodalGradientEquationSystem::solve_and_update()
 }
 
 //--------------------------------------------------------------------------
-//-------- solve_and_update_external ------------------------------------------------
+//-------- solve_and_update_external ---------------------------------------
 //--------------------------------------------------------------------------
 void
 ProjectedNodalGradientEquationSystem::solve_and_update_external()

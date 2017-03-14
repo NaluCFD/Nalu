@@ -62,13 +62,6 @@ BoundaryCondition * BoundaryCondition::load(const YAML::Node & node)
                     << " on " << openBC.targetName_ << std::endl;
     return &openBC;
   }
-  else if (node["contact_boundary_condition"]) {
-    ContactBoundaryConditionData& contactBC = *new ContactBoundaryConditionData(*parent());
-    node >> contactBC;
-    NaluEnv::self().naluOutputP0() << "Contact BC name:     " << contactBC.bcName_
-                    << " on " << contactBC.targetName_ << std::endl;
-    return &contactBC;
-  }
   else if (node["symmetry_boundary_condition"]) {
     SymmetryBoundaryConditionData& symmetryBC = *new SymmetryBoundaryConditionData(*parent());
     node >> symmetryBC;
@@ -88,8 +81,7 @@ BoundaryCondition * BoundaryCondition::load(const YAML::Node & node)
     NonConformalBoundaryConditionData& nonConformalBC = *new NonConformalBoundaryConditionData(*parent());
     node >> nonConformalBC;
     NaluEnv::self().naluOutputP0() << "NonConformal BC name:    " << nonConformalBC.bcName_
-                    << " between " << nonConformalBC.masterSlave_.master_
-                    << " and "<< nonConformalBC.masterSlave_.slave_ << std::endl;
+                    << " using " << nonConformalBC.targetName_ << std::endl;
     return &nonConformalBC;
   }
   else if (node["overset_boundary_condition"]) {

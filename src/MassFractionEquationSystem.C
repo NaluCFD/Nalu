@@ -8,7 +8,6 @@
 
 #include <MassFractionEquationSystem.h>
 #include <AlgorithmDriver.h>
-#include <AssembleScalarEdgeContactSolverAlgorithm.h>
 #include <AssembleScalarEdgeOpenSolverAlgorithm.h>
 #include <AssembleScalarEdgeSolverAlgorithm.h>
 #include <AssembleScalarElemSolverAlgorithm.h>
@@ -18,8 +17,6 @@
 #include <AssembleNodalGradEdgeAlgorithm.h>
 #include <AssembleNodalGradElemAlgorithm.h>
 #include <AssembleNodalGradBoundaryAlgorithm.h>
-#include <AssembleNodalGradEdgeContactAlgorithm.h>
-#include <AssembleNodalGradElemContactAlgorithm.h>
 #include <AssembleNodalGradNonConformalAlgorithm.h>
 #include <AssembleNodeSolverAlgorithm.h>
 #include <AuxFunctionAlgorithm.h>
@@ -40,7 +37,7 @@
 #include <Realms.h>
 #include <ScalarMassBackwardEulerNodeSuppAlg.h>
 #include <ScalarMassBDF2NodeSuppAlg.h>
-#include <ScalarMassElemSuppAlg.h>
+#include <ScalarMassElemSuppAlgDep.h>
 #include <Simulation.h>
 #include <SolutionOptions.h>
 #include <SolverAlgorithmDriver.h>
@@ -86,7 +83,8 @@ namespace nalu{
 MassFractionEquationSystem::MassFractionEquationSystem(
   EquationSystems& eqSystems,
   const int numMassFraction)
-  : EquationSystem(eqSystems, "MassFractionEQS"),
+  : EquationSystem(eqSystems, "MassFractionEQS","mass_fraction"),
+    managePNG_(realm_.get_consistent_mass_matrix_png("note_follow_momentum_approach")),
     numMassFraction_(numMassFraction),
     massFraction_(NULL),
     currentMassFraction_(NULL),
@@ -113,6 +111,10 @@ MassFractionEquationSystem::MassFractionEquationSystem(
 
   // advertise as non-uniform
   realm_.uniformFlow_ = false;
+
+  // create projected nodal gradient equation system
+  if ( managePNG_ )
+    throw std::runtime_error("MassFractionEquationSystem::Error managePNG is not complete");
 }
 
 //--------------------------------------------------------------------------
@@ -193,7 +195,6 @@ MassFractionEquationSystem::register_interior_algorithm(
   }
 
   // solver; interior contribution (advection + diffusion)
-  bool useCMM = false;
   std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi
     = solverAlgDriver_->solverAlgMap_.find(algType);
   if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
@@ -219,12 +220,15 @@ MassFractionEquationSystem::register_interior_algorithm(
         std::string sourceName = mapNameVec[k];
         SupplementalAlgorithm *suppAlg = NULL;
         if (sourceName == "mass_fraction_time_derivative" ) {
-          useCMM = true;
-          suppAlg = new ScalarMassElemSuppAlg(realm_, currentMassFraction_);
+          suppAlg = new ScalarMassElemSuppAlgDep(realm_, currentMassFraction_, false);
+        }
+        else if (sourceName == "lumped_mass_fraction_time_derivative" ) {
+          suppAlg = new ScalarMassElemSuppAlgDep(realm_, currentMassFraction_, true);
         }
         else {
           throw std::runtime_error("MassFractionElemSrcTerms::Error Source term is not supported: " + sourceName);
-        }     
+        }
+        theAlg->supplementalAlg_.push_back(suppAlg);      
       }
     }
   }
@@ -234,6 +238,11 @@ MassFractionEquationSystem::register_interior_algorithm(
   
   // time term; nodally lumped
   const AlgorithmType algMass = MASS;
+  // Check if the user has requested CMM or LMM algorithms; if so, do not
+  // include Nodal Mass algorithms
+  std::vector<std::string> checkAlgNames = {"mass_fraction_time_derivative",
+                                            "lumped_mass_fraction_time_derivative"};
+  bool elementMassAlg = supp_alg_is_requested(checkAlgNames);
   std::map<AlgorithmType, SolverAlgorithm *>::iterator itsm =
     solverAlgDriver_->solverAlgMap_.find(algMass);
   if ( itsm == solverAlgDriver_->solverAlgMap_.end() ) {
@@ -243,7 +252,7 @@ MassFractionEquationSystem::register_interior_algorithm(
     solverAlgDriver_->solverAlgMap_[algMass] = theAlg;
     
     // now create the supplemental alg for mass term
-    if ( !useCMM ) {
+    if ( !elementMassAlg ) {
       if ( realm_.number_of_states() == 2 ) {
         ScalarMassBackwardEulerNodeSuppAlg *theMass
           = new ScalarMassBackwardEulerNodeSuppAlg(realm_, currentMassFraction_);
@@ -256,7 +265,7 @@ MassFractionEquationSystem::register_interior_algorithm(
       }
     }
     
-    // Add src term supp alg...; limited number supported
+    // Add src term supp alg...; limited number supported (exactly zero)
     std::map<std::string, std::vector<std::string> >::iterator isrc 
       = realm_.solutionOptions_->srcTermsMap_.find("mass_fraction");
     if ( isrc != realm_.solutionOptions_->srcTermsMap_.end() ) {
@@ -322,7 +331,16 @@ MassFractionEquationSystem::register_inflow_bc(
     = new AuxFunctionAlgorithm(realm_, part,
                                theBcField, theAuxFunc,
                                stk::topology::NODE_RANK);
-  bcDataAlg_.push_back(auxAlg);
+
+  // how to populate the field?
+  if ( userData.externalData_ ) {
+    // xfer will handle population; only need to populate the initial value
+    realm_.initCondAlg_.push_back(auxAlg);
+  }
+  else {
+    // put it on bcData
+    bcDataAlg_.push_back(auxAlg);
+  }
 
   // copy mass fraction_bc to mass fraction np1...
   CopyFieldAlgorithm *theCopyAlg
@@ -512,64 +530,7 @@ MassFractionEquationSystem::register_wall_bc(
   }
   else {
     it->second->partVec_.push_back(part);
-  }
-  
-}
-
-//--------------------------------------------------------------------------
-//-------- register_contact_bc ---------------------------------------------
-//--------------------------------------------------------------------------
-void
-MassFractionEquationSystem::register_contact_bc(
-  stk::mesh::Part *part,
-  const stk::topology &theTopo,
-  const ContactBoundaryConditionData &contactBCData) {
-
-  const AlgorithmType algType = CONTACT;
-
-  if ( realm_.realmUsesEdges_ ) {
-
-    // register halo_yk if using the element-based projected nodal gradient
-    ScalarFieldType *haloYk = NULL;
-    if ( !edgeNodalGradient_ ) {
-      stk::mesh::MetaData &meta_data = realm_.meta_data();
-      haloYk = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "halo_yk"));
-      stk::mesh::put_field(*haloYk, *part);
-    }
-
-    // non-solver; contribution to dydx
-    std::map<AlgorithmType, Algorithm *>::iterator it =
-      assembleNodalGradAlgDriver_->algMap_.find(algType);
-    if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-      Algorithm *theAlg = NULL;
-      if ( edgeNodalGradient_ ) {
-        theAlg = new AssembleNodalGradEdgeContactAlgorithm(realm_, part, currentMassFraction_, dydx_);
-      }
-      else {
-        theAlg = new AssembleNodalGradElemContactAlgorithm(realm_, part, currentMassFraction_, dydx_, haloYk);
-      }
-      assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
-    }
-    else {
-      it->second->partVec_.push_back(part);
-    }
-
-    // solver; lhs
-    std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi =
-      solverAlgDriver_->solverAlgMap_.find(algType);
-    if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
-      AssembleScalarEdgeContactSolverAlgorithm *theAlg
-        = new AssembleScalarEdgeContactSolverAlgorithm(realm_, part, this,
-                                                       currentMassFraction_, dydx_, evisc_);
-      solverAlgDriver_->solverAlgMap_[algType] = theAlg;
-    }
-    else {
-      itsi->second->partVec_.push_back(part);
-    }
-  }
-  else {
-    throw std::runtime_error("Sorry, element-based contact not supported");
-  }
+  } 
 }
 
 //--------------------------------------------------------------------------
@@ -611,29 +572,31 @@ MassFractionEquationSystem::register_non_conformal_bc(
   const AlgorithmType algType = NON_CONFORMAL;
 
   // non-solver; contribution to dwdx; DG algorithm decides on locations for integration points
-  if ( edgeNodalGradient_ ) {    
-    std::map<AlgorithmType, Algorithm *>::iterator it
-      = assembleNodalGradAlgDriver_->algMap_.find(algType);
-    if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-      Algorithm *theAlg 
-        = new AssembleNodalGradBoundaryAlgorithm(realm_, part, currentMassFraction_, dydx_, edgeNodalGradient_);
-      assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+  if ( !managePNG_ ) {
+    if ( edgeNodalGradient_ ) {    
+      std::map<AlgorithmType, Algorithm *>::iterator it
+        = assembleNodalGradAlgDriver_->algMap_.find(algType);
+      if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+        Algorithm *theAlg 
+          = new AssembleNodalGradBoundaryAlgorithm(realm_, part, currentMassFraction_, dydx_, edgeNodalGradient_);
+        assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+      }
+      else {
+        it->second->partVec_.push_back(part);
+      }
     }
     else {
-      it->second->partVec_.push_back(part);
-    }
-  }
-  else {
-    // proceed with DG
-    std::map<AlgorithmType, Algorithm *>::iterator it
-      = assembleNodalGradAlgDriver_->algMap_.find(algType);
-    if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-      AssembleNodalGradNonConformalAlgorithm *theAlg 
-        = new AssembleNodalGradNonConformalAlgorithm(realm_, part, currentMassFraction_, dydx_);
-      assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
-    }
-    else {
-      it->second->partVec_.push_back(part);
+      // proceed with DG
+      std::map<AlgorithmType, Algorithm *>::iterator it
+        = assembleNodalGradAlgDriver_->algMap_.find(algType);
+      if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
+        AssembleNodalGradNonConformalAlgorithm *theAlg 
+          = new AssembleNodalGradNonConformalAlgorithm(realm_, part, currentMassFraction_, dydx_);
+        assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
+      }
+      else {
+        it->second->partVec_.push_back(part);
+      }
     }
   }
 

@@ -16,6 +16,7 @@ option(USE_FAST
 
 SET(CMAKE_FIND_LIBRARY_PREFIXES lib)
 SET(CMAKE_FIND_LIBRARY_SUFFIXES a)
+set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 MESSAGE("   Trilinos_DIR = ${Trilinos_DIR}")
 SET(CMAKE_PREFIX_PATH ${Trilinos_DIR} ${CMAKE_PREFIX_PATH})
@@ -68,13 +69,6 @@ SET (INSTALL_NALU FALSE)
 IF (ENABLE_INSTALL)
     SET (INSTALL_NALU TRUE)
 ENDIF()
-
-IF (INSTALL_NALU)
-  set(BINARY_INSTALL_DIR bin)
-  set(INCLUDE_INSTALL_DIR include)
-  set(LIB_INSTALL_DIR lib)
-  include(CMakePackageConfigHelpers)
-ENDIF ()
 
 MESSAGE("Setting and checking of compilers:")
 SET(CMAKE_CXX_COMPILER ${Trilinos_CXX_COMPILER} )
@@ -144,5 +138,26 @@ endif()
 
 add_executable(${utest_ex_name} unit_tests.C ${UNIT_TESTS_SOURCES})
 target_link_libraries(${utest_ex_name} nalu)
+
+IF (INSTALL_NALU)
+  install(TARGETS ${utest_ex_name} ${nalu_ex_name} nalu
+          RUNTIME DESTINATION bin
+          ARCHIVE DESTINATION lib
+          LIBRARY DESTINATION lib)
+  install(DIRECTORY include/ DESTINATION include)
+  include(CMakePackageConfigHelpers)
+ENDIF ()
+
+option(BUILD_DOCUMENTATION "Build documentation." OFF)
+if(BUILD_DOCUMENTATION)
+   add_subdirectory(docs)
+endif()
+
+option(ENABLE_TESTS "Enable regression testing." OFF)
+if(ENABLE_TESTS)
+   ENABLE_TESTING()
+   INCLUDE(CTest)
+   add_subdirectory(reg_tests)
+endif()
 
 MESSAGE("\nAnd CMake says...:")

@@ -48,7 +48,6 @@ public:
   const bool meshMotion_;
   
   // options that prevail over all algorithms created
-  bool robinStyle_;
   const bool useCurrentNormal_;
   const double includePstab_;
 

@@ -233,7 +233,6 @@ AssembleScalarElemSolverAlgorithm::execute()
       for ( int p = 0; p < rhsSize; ++p )
         p_rhs[p] = 0.0;
 
-
       // ip data for this element; scs and scv
       const double *mdot = stk::mesh::field_data(*massFlowRate_, elem );
 
@@ -276,7 +275,7 @@ AssembleScalarElemSolverAlgorithm::execute()
       meSCS->determinant(1, &p_coordinates[0], &p_scs_areav[0], &scs_error);
 
       // compute dndx
-      meSCS->grad_op(1, &p_coordinates[0], &p_dndx[0], &ws_deriv[0], &ws_det_j[0], &scs_error);
+      meSCS->grad_op(1, &ws_coordinates[0], &ws_dndx[0], &ws_deriv[0], &ws_det_j[0], &scs_error);
 
       for ( int ip = 0; ip < numScsIp; ++ip ) {
 

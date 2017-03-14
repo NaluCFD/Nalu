@@ -11,53 +11,51 @@
 
 #include <SupplementalAlgorithm.h>
 #include <FieldTypeDef.h>
+#include <AlgTraits.h>
 
 #include <stk_mesh/base/BulkData.hpp>
 #include <stk_mesh/base/Entity.hpp>
+#include <stk_topology/topology.hpp>
+
+#include <Kokkos_Core.hpp>
 
 namespace sierra{
 namespace nalu{
 
 class Realm;
 class MasterElement;
+class ElemDataRequests;
+class ScratchViews;
 
+template<typename AlgTraits>
 class MomentumBuoyancySrcElemSuppAlg : public SupplementalAlgorithm
 {
 public:
-
   MomentumBuoyancySrcElemSuppAlg(
-    Realm &realm);
+    Realm &realm,
+    ElemDataRequests& dataPreReqs);
 
   virtual ~MomentumBuoyancySrcElemSuppAlg() {}
 
-  virtual void setup();
-
-  virtual void elem_resize(
-    MasterElement *meSCS,
-    MasterElement *meSCV);
-
-  virtual void elem_execute(
+  virtual void element_execute(
     double *lhs,
     double *rhs,
     stk::mesh::Entity element,
-    MasterElement *meSCS,
-    MasterElement *meSCV);
+    ScratchViews& scratchViews);
   
   const stk::mesh::BulkData *bulkData_;
 
   ScalarFieldType *densityNp1_;
   VectorFieldType *coordinates_;
 
-  const int nDim_;
   double rhoRef_;
   const bool useShifted_;
-  std::vector<double> gravity_;
+  Kokkos::View<double[AlgTraits::nDim_]> gravity_{ "view_gravity"};
+
+  const int* ipNodeMap_;
 
   // scratch space
-  std::vector<double> ws_shape_function_;
-  std::vector<double> ws_rhoNp1_;
-  std::vector<double> ws_coordinates_;
-  std::vector<double> ws_scv_volume_;
+  Kokkos::View<double[AlgTraits::numScvIp_][AlgTraits::nodesPerElement_]> v_shape_function_ { "view_shape_func" };
 };
 
 } // namespace nalu

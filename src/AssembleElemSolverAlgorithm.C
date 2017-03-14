@@ -26,6 +26,12 @@
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/Part.hpp>
 
+// stk topo
+#include <stk_topology/topology.hpp>
+
+#include <KokkosInterface.h>
+#include <ScratchViews.h>
+
 namespace sierra{
 namespace nalu{
 
@@ -40,11 +46,19 @@ namespace nalu{
 AssembleElemSolverAlgorithm::AssembleElemSolverAlgorithm(
   Realm &realm,
   stk::mesh::Part *part,
-  EquationSystem *eqSystem)
+  EquationSystem *eqSystem,
+  const stk::topology &theTopo)
   : SolverAlgorithm(realm, part, eqSystem),
-    sizeOfSystem_(eqSystem->linsys_->numDof())
+    topo_(theTopo)
 {
-  // nothing
+  // size some things; matrix related; LHS/RHS not yet a View..
+  const int nodesPerElement = realm.get_surface_master_element(theTopo)->nodesPerElement_;
+  const int rhsSize = nodesPerElement*(eqSystem->linsys_->numDof());
+  lhs_.resize(rhsSize*rhsSize);
+  rhs_.resize(rhsSize);
+  scratchIds_.resize(rhsSize);
+  scratchVals_.resize(rhsSize);
+  connectedNodes_.resize(nodesPerElement);
 }
 
 //--------------------------------------------------------------------------
@@ -63,18 +77,18 @@ void
 AssembleElemSolverAlgorithm::execute()
 {
   stk::mesh::MetaData & meta_data = realm_.meta_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
 
-  // space for LHS/RHS
-  std::vector<double> lhs;
-  std::vector<double> rhs;
-  std::vector<int> scratchIds;
-  std::vector<double> scratchVals;
-  std::vector<stk::mesh::Entity> connected_nodes;
+  stk::mesh::FieldBase* coordField = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
 
-  // supplemental algorithm size and setup
+  // set any data
   const size_t supplementalAlgSize = supplementalAlg_.size();
   for ( size_t i = 0; i < supplementalAlgSize; ++i )
     supplementalAlg_[i]->setup();
+
+  // fixed size for this homogeneous algorithm
+  const int bytes_per_team = 0;
+  const int bytes_per_thread = get_num_bytes_pre_req_data(dataNeededBySuppAlgs_, meta_data.spatial_dimension());
 
   // define some common selectors
   stk::mesh::Selector s_locally_owned_union = meta_data.locally_owned_part()
@@ -82,66 +96,47 @@ AssembleElemSolverAlgorithm::execute()
 
   stk::mesh::BucketVector const& elem_buckets =
     realm_.get_buckets( stk::topology::ELEMENT_RANK, s_locally_owned_union );
-  for ( stk::mesh::BucketVector::const_iterator ib = elem_buckets.begin();
-        ib != elem_buckets.end() ; ++ib ) {
-    stk::mesh::Bucket & b = **ib ;
+
+  auto team_exec = sierra::nalu::get_team_policy(elem_buckets.size(), bytes_per_team, bytes_per_thread);
+  Kokkos::parallel_for(team_exec, [&](const sierra::nalu::TeamHandleType& team)
+  {
+    stk::mesh::Bucket & b = *elem_buckets[team.league_rank()];
+    
+    ThrowAssert(b.topology() == topo_);
+
+    sierra::nalu::ScratchViews prereqData(team, bulk_data, topo_, dataNeededBySuppAlgs_);
+
     const stk::mesh::Bucket::size_type length   = b.size();
 
-    // extract master element
-    MasterElement *meSCS = realm_.get_surface_master_element(b.topology());
-    MasterElement *meSCV = realm_.get_volume_master_element(b.topology());
-
-    // extract master element specifics
-    const int nodesPerElement = meSCS->nodesPerElement_;
-
-    // resize some things; matrix related
-    const int lhsSize = nodesPerElement*sizeOfSystem_*nodesPerElement*sizeOfSystem_;
-    const int rhsSize = nodesPerElement*sizeOfSystem_;
-    lhs.resize(lhsSize);
-    rhs.resize(rhsSize);
-    scratchIds.resize(rhsSize);
-    scratchVals.resize(rhsSize);
-    connected_nodes.resize(nodesPerElement);
-
-    // resize possible supplemental element alg
-    for ( size_t i = 0; i < supplementalAlgSize; ++i )
-      supplementalAlg_[i]->elem_resize(meSCS, meSCV);
-
-    // pointers
-    double *p_lhs = &lhs[0];
-    double *p_rhs = &rhs[0];
-
-    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
-
+    Kokkos::parallel_for(Kokkos::TeamThreadRange(team, length), [&](const size_t& k)
+    {
       // get element
       stk::mesh::Entity element = b[k];
+      fill_pre_req_data(dataNeededBySuppAlgs_, bulk_data, topo_, element,
+                        coordField, prereqData);
 
       // extract node relations and provide connected nodes
       stk::mesh::Entity const * node_rels = b.begin_nodes(k);
       int num_nodes = b.num_nodes(k);
 
-      // sanity check on num nodes
-      ThrowAssert( num_nodes == nodesPerElement );
-
       for ( int ni = 0; ni < num_nodes; ++ni ) {
         stk::mesh::Entity node = node_rels[ni];
         // set connected nodes
-        connected_nodes[ni] = node;
+        connectedNodes_[ni] = node;
       }
 
-      for ( int i = 0; i < lhsSize; ++i )
-        p_lhs[i] = 0.0;
-      for ( int i = 0; i < rhsSize; ++i )
-        p_rhs[i] = 0.0;
+      for ( size_t i = 0; i < lhs_.size(); ++i )
+        lhs_[i] = 0.0;
+      for ( size_t i = 0; i < rhs_.size(); ++i )
+        rhs_[i] = 0.0;
 
       // call supplemental; gathers happen inside the elem_execute method
       for ( size_t i = 0; i < supplementalAlgSize; ++i )
-        supplementalAlg_[i]->elem_execute( &lhs[0], &rhs[0], element, meSCS, meSCV);
-
-      apply_coeff(connected_nodes, scratchIds, scratchVals, rhs, lhs, __FILE__);
-
-    }
-  }
+        supplementalAlg_[i]->element_execute( &lhs_[0], &rhs_[0], element, prereqData );
+      
+      apply_coeff(connectedNodes_, scratchIds_, scratchVals_, rhs_, lhs_, __FILE__);
+    });
+  });
 }
 
 } // namespace nalu

@@ -346,10 +346,7 @@ void
 ActuatorSector::initialize()
 {
   stk::mesh::BulkData & bulkData = realm_.bulk_data();
-  stk::mesh::MetaData & metaData = realm_.meta_data();
- 
-  const int nDim = metaData.spatial_dimension();
-
+  
   // initialize need to ghost and elems to ghost
   needToGhostCount_ = 0;
   elemsToGhost_.clear();
@@ -966,7 +963,6 @@ ActuatorSector::compute_volume(
   // extract master element from the bucket in which the element resides
   const stk::topology &elemTopo = bulkData.bucket(elem).topology();
   MasterElement *meSCV = realm_.get_volume_master_element(elemTopo);
-  int nodesPerElement = meSCV->nodesPerElement_;
   const int numScvIp = meSCV->numIntPoints_;
 
   // compute scv for this element
@@ -1060,7 +1056,6 @@ ActuatorSector::assemble_source_to_nodes(
   // extract master element from the bucket in which the element resides
   const stk::topology &elemTopo = bulkData.bucket(elem).topology();
   MasterElement *meSCV = realm_.get_volume_master_element(elemTopo);
-  int nodesPerElement = meSCV->nodesPerElement_;
   const int numScvIp = meSCV->numIntPoints_;
 
   // extract elem_node_relations
@@ -1078,7 +1073,7 @@ ActuatorSector::assemble_source_to_nodes(
     double * sourceTerm = (double*)stk::mesh::field_data(actuator_source, node );
     double * sourceTermLHS = (double*)stk::mesh::field_data(actuator_source_lhs, node );
     
-    // nodal weight based on volume weight
+    // nodal weight based on volume weight; very ad-hoc
     const double nodalWeight = ws_scv_volume_[ip]/elemVolume;
     *sourceTermLHS += nodalWeight*dragLHS*lhsFac;
     for ( int j=0; j < nDim; ++j ) {

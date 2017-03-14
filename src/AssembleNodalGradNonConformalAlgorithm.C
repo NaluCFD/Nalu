@@ -55,6 +55,9 @@ AssembleNodalGradNonConformalAlgorithm::AssembleNodalGradNonConformalAlgorithm(
 
   // what do we need ghosted for this alg to work?
   ghostFieldVec_.push_back(scalarQ_);
+  ghostFieldVec_.push_back(dualNodalVolume_);
+  ghostFieldVec_.push_back(exposedAreaVec_);
+  ghostFieldVec_.push_back(dqdx_);
 }
 
 //--------------------------------------------------------------------------
@@ -113,8 +116,6 @@ AssembleNodalGradNonConformalAlgorithm::execute()
         // extract current/opposing face/element
         stk::mesh::Entity currentFace = dgInfo->currentFace_;
         stk::mesh::Entity opposingFace = dgInfo->opposingFace_;
-        stk::mesh::Entity currentElement = dgInfo->currentElement_;
-        const int currentFaceOrdinal = dgInfo->currentFaceOrdinal_;
             
         // master element
         MasterElement * meFCCurrent = dgInfo->meFCCurrent_; 

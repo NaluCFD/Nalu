@@ -31,7 +31,7 @@ public:
     Realm &realm,
     RadiativeTransportEquationSystem *radEqSystem);
 
-  virtual ~RadTransFemElemSuppAlg() {}
+  virtual ~RadTransFemElemSuppAlg();
 
   virtual void setup();
 

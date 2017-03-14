@@ -20,7 +20,6 @@ namespace nalu{
 
 VariableDensityNonIsoTemperatureAuxFunction::VariableDensityNonIsoTemperatureAuxFunction() :
   AuxFunction(0,1),
-  hnot_(1.0),
   ah_(10.0),
   Cp_(0.01),
   Tref_(300.0),

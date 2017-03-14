@@ -275,7 +275,7 @@ AssemblePNGElemSolverAlgorithm::execute()
             const int indexNN = nnNdim + i;
             const int rowNN = indexNN*nodesPerElement*nDim;
             const int rNNiC_i = rowNN+icNdim+i;
-            lhs[rNNiC_i] += lhsfac;
+            p_lhs[rNNiC_i] += lhsfac;
           }
         }
       }

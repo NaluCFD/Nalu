@@ -72,29 +72,22 @@ ClassicPecletFunction::execute(const double pecletNumber)
 //==========================================================================
 // Class Definition
 //==========================================================================
-// TanhPecletFunction - classic 
+// TanhFunction - classic 
 //==========================================================================
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-TanhPecletFunction::TanhPecletFunction(double c1, double c2)
+TanhFunction::TanhFunction(double c1, double c2)
   : c1_(c1),
-    c2_(c2),
-    shift_(0.0),
-    delta_(1.0)
+    c2_(c2)
 {
-  // make sure c2_ is greater than something small
-  c2_ = std::max(c2_, 1.0e-16);
-  const double pecMin = execute(0.0);
-  const double pecMax = execute(1.0e16);
-  shift_ = pecMin;
-  delta_ = pecMax - pecMin;
+  // nothing to do; assume that the functional form varies between 0 and 1
 }
 
 //--------------------------------------------------------------------------
 //-------- destructor ------------------------------------------------------
 //--------------------------------------------------------------------------
-TanhPecletFunction::~TanhPecletFunction()
+TanhFunction::~TanhFunction()
 {
   // nothing to do
 }
@@ -103,9 +96,9 @@ TanhPecletFunction::~TanhPecletFunction()
 //-------- execute ---------------------------------------------------------
 //--------------------------------------------------------------------------
 double 
-TanhPecletFunction::execute(const double pecletNumber)
+TanhFunction::execute(const double indVar)
 {
-  return (0.50*(1.0+std::tanh((pecletNumber-c1_)/c2_))-shift_)/delta_;
+  return 0.50*(1.0+std::tanh((indVar-c1_)/c2_));
 }
 
 } // namespace nalu

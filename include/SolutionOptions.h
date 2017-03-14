@@ -20,6 +20,8 @@
 namespace sierra{
 namespace nalu{
 
+class MeshMotionInfo;
+
 enum ErrorIndicatorType {
   EIT_NONE                = 0,
   EIT_PSTAB               = 1 << 1,
@@ -48,9 +50,9 @@ public:
   double turbScDefault_;
   double turbPrDefault_;
   bool nocDefault_;
-  std::string pecletFunctionalFormDefault_;
-  double pecletTanhTransDefault_;
-  double pecletTanhWidthDefault_;
+  std::string tanhFormDefault_;
+  double tanhTransDefault_;
+  double tanhWidthDefault_;
   double referenceDensity_;
   double referenceTemperature_;
   double thermalExpansionCoeff_;
@@ -78,8 +80,6 @@ public:
   bool adapterExtraOutput_;
   bool useAdapter_;
   int maxRefinementLevel_;
-  double extrusionCorrectionFac_;
-  NonConformalAlgType ncAlgType_;
   bool ncAlgGaussLabatto_;
   bool ncAlgUpwindAdvection_;
   bool ncAlgIncludePstab_;
@@ -96,6 +96,8 @@ public:
   double eigenvaluePerturbDelta_;
   int eigenvaluePerturbBiasTowards_;
   double eigenvaluePerturbTurbKe_;
+  double earthAngularVelocity_;
+  double latitude_;
 
   // turbulence model coeffs
   std::map<TurbulenceModelConstant, double> turbModelConstantMap_;
@@ -106,9 +108,9 @@ public:
   std::map<std::string, double> alphaUpwMap_;
   std::map<std::string, double> upwMap_;
   std::map<std::string, bool> limiterMap_;
-  std::map<std::string, std::string> pecletFunctionalFormMap_;
-  std::map<std::string, double> pecletFunctionTanhTransMap_;
-  std::map<std::string, double> pecletFunctionTanhWidthMap_;
+  std::map<std::string, std::string> tanhFormMap_;
+  std::map<std::string, double> tanhTransMap_;
+  std::map<std::string, double> tanhWidthMap_;
   std::map<std::string, bool> consistentMassMatrixPngMap_;
 
   // property related
@@ -133,10 +135,13 @@ public:
   std::map<std::string, std::string> inputVarFromFileMap_;
 
   // mesh motion
-  std::map<std::string, std::pair<std::vector<std::string>, double > > meshMotionMap_;
-  std::map<std::string, Coordinates> meshMotionCentroidMap_;
+  std::map<std::string, MeshMotionInfo *> meshMotionInfoMap_;
 
   std::vector<double> gravity_;
+
+  // Coriolis source term
+  std::vector<double> eastVector_;
+  std::vector<double> northVector_;
 
   std::string name_;
 

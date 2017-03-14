@@ -34,7 +34,6 @@ public:
     const unsigned endPos) const;
   
 private:
-  const double hnot_;
   const double ah_;
   const double Cp_;
   const double Tref_;

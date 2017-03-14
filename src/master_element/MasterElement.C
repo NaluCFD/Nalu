@@ -7,8 +7,15 @@
 
 
 #include <master_element/MasterElement.h>
+
+#include <element_promotion/LagrangeBasis.h>
+#include <element_promotion/TensorProductQuadratureRule.h>
+#include <element_promotion/MasterElementHO.h>
+
+#include <NaluEnv.h>
 #include <FORTRAN_Proto.h>
 
+#include <stk_util/environment/ReportHandler.hpp>
 #include <stk_topology/topology.hpp>
 
 #include <iostream>
@@ -24,6 +31,180 @@
 namespace sierra{
 namespace nalu{
 
+//--------------------------------------------------------------------------
+MasterElement*
+MasterElement::create_surface_master_element(stk::topology topo)
+{
+  if (topo.is_super_topology()) {
+    // super topologies uses different master element type
+    return nullptr;
+  }
+
+  switch ( topo.value() ) {
+
+    case stk::topology::HEX_8:
+      return new HexSCS();
+
+    case stk::topology::HEX_27:
+      return new Hex27SCS();
+
+    case stk::topology::TET_4:
+      return new TetSCS();
+
+    case stk::topology::PYRAMID_5:
+      return new PyrSCS();
+
+    case stk::topology::WEDGE_6:
+      return new WedSCS();
+
+    case stk::topology::QUAD_4:
+      return new Quad3DSCS();
+
+    case stk::topology::QUAD_9:
+      return new Quad93DSCS();
+
+    case stk::topology::TRI_3:
+      return new Tri3DSCS();
+
+    case stk::topology::QUAD_4_2D:
+      return new Quad2DSCS();
+
+    case stk::topology::QUAD_9_2D:
+      return new Quad92DSCS();
+
+    case stk::topology::TRI_3_2D:
+      return new Tri2DSCS();
+
+    case stk::topology::LINE_2:
+      return new Edge2DSCS();
+
+    case stk::topology::LINE_3:
+      return new Edge32DSCS();
+
+    case stk::topology::SHELL_QUAD_4:
+      NaluEnv::self().naluOutputP0() << "SHELL_QUAD_4 only supported for io surface transfer applications" << std::endl;
+      return new Quad3DSCS();
+
+    case stk::topology::SHELL_TRI_3:
+      NaluEnv::self().naluOutputP0() << "SHELL_TRI_3 only supported for io surface transfer applications" << std::endl;
+      return new Tri3DSCS();
+
+    default:
+      NaluEnv::self().naluOutputP0() << "sorry, we only support hex8, tet4, pyr5, wed6,"
+                                        " quad2d, quad3d, tri2d, tri3d and edge2d surface elements" << std::endl;
+      NaluEnv::self().naluOutputP0() << "your type is " << topo.value() << std::endl;
+      break;
+
+  }
+  return nullptr;
+}
+//--------------------------------------------------------------------------
+MasterElement*
+MasterElement::create_volume_master_element(stk::topology topo)
+{
+  if (topo.is_super_topology()) {
+    // super topologies uses different master element type
+    return nullptr;
+  }
+
+  switch ( topo.value() ) {
+
+    case stk::topology::HEX_8:
+      return new HexSCV();
+
+    case stk::topology::HEX_27:
+      return new Hex27SCV();
+
+    case stk::topology::TET_4:
+      return new TetSCV();
+
+    case stk::topology::PYRAMID_5:
+      return new PyrSCV();
+
+    case stk::topology::WEDGE_6:
+      return  new WedSCV();
+
+    case stk::topology::QUAD_4_2D:
+      return new Quad2DSCV();
+
+    case stk::topology::QUAD_9_2D:
+      return new Quad92DSCV();
+
+    case stk::topology::TRI_3_2D:
+      return new Tri2DSCV();
+
+    default:
+      NaluEnv::self().naluOutputP0() << "sorry, we only support hex8, tet4, wed6, "
+                                        " pyr5, quad4, and tri3 volume elements" << std::endl;
+      NaluEnv::self().naluOutputP0() << "your type is " << topo.value() << std::endl;
+      break;
+  }
+  return nullptr;
+}
+//--------------------------------------------------------------------------
+MasterElement*
+MasterElement::create_surface_master_element(
+  stk::topology topo,
+  const ElementDescription& desc,
+  std::string quadType)
+{
+  if (!topo.is_super_topology()) {
+    // regular topologies uses different master element type
+    return nullptr;
+  }
+
+  auto basis = (topo.is_superelement()) ?
+      LagrangeBasis(desc.inverseNodeMap, desc.nodeLocs1D)
+    : LagrangeBasis(desc.inverseNodeMapBC, desc.nodeLocs1D);
+
+  auto quad = TensorProductQuadratureRule(quadType, desc.polyOrder);
+
+  if (topo.is_superedge()) {
+    ThrowRequire(desc.baseTopo == stk::topology::QUAD_4_2D);
+    return new HigherOrderEdge2DSCS(desc, basis, quad);
+  }
+
+  if (topo.is_superface()) {
+    ThrowRequire(desc.baseTopo == stk::topology::HEX_8);
+    return new HigherOrderQuad3DSCS(desc, basis, quad);
+  }
+
+  if (topo.is_superelement() && desc.baseTopo == stk::topology::QUAD_4_2D) {
+    return new HigherOrderQuad2DSCS(desc, basis, quad);
+  }
+
+  if (topo.is_superelement() && desc.baseTopo == stk::topology::HEX_8) {
+    return new HigherOrderHexSCS(desc, basis, quad);
+  }
+
+  return nullptr;
+}
+//--------------------------------------------------------------------------
+MasterElement*
+MasterElement::create_volume_master_element(
+  stk::topology topo,
+  const ElementDescription& desc,
+  std::string quadType)
+{
+  if (!topo.is_super_topology()) {
+    // regular topologies uses different master element type
+    return nullptr;
+  }
+
+  auto basis = LagrangeBasis(desc.inverseNodeMap, desc.nodeLocs1D);
+  auto quad = TensorProductQuadratureRule(quadType, desc.polyOrder);
+
+  switch (desc.baseTopo.value()) {
+    case stk::topology::QUADRILATERAL_4_2D:
+      return new HigherOrderQuad2DSCV(desc, basis, quad);
+    case stk::topology::HEXAHEDRON_8:
+      return new HigherOrderHexSCV(desc, basis, quad);
+    default:
+      NaluEnv::self().naluOutputP0() << "High order elements only support base quad4 and hex8 meshes" << std::endl;
+      break;
+  }
+  return nullptr;
+}
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
@@ -103,6 +284,17 @@ HexSCV::HexSCV()
   intgLoc_[15] = +0.25; intgLoc_[16] = -0.25; intgLoc_[17] = +0.25;
   intgLoc_[18] = +0.25; intgLoc_[19] = +0.25; intgLoc_[20] = +0.25;
   intgLoc_[21] = -0.25; intgLoc_[22] = +0.25; intgLoc_[23] = +0.25;
+
+  // shifted integration location
+  intgLocShift_.resize(24);    
+  intgLocShift_[0]  = -0.5; intgLocShift_[1]  = -0.5; intgLocShift_[2]  = -0.5; 
+  intgLocShift_[3]  = +0.5; intgLocShift_[4]  = -0.5; intgLocShift_[5]  = -0.5; 
+  intgLocShift_[6]  = +0.5; intgLocShift_[7]  = +0.5; intgLocShift_[8]  = -0.5;
+  intgLocShift_[9]  = -0.5; intgLocShift_[10] = +0.5; intgLocShift_[11] = -0.5;
+  intgLocShift_[12] = -0.5; intgLocShift_[13] = -0.5; intgLocShift_[14] = +0.5;
+  intgLocShift_[15] = +0.5; intgLocShift_[16] = -0.5; intgLocShift_[17] = +0.5;
+  intgLocShift_[18] = +0.5; intgLocShift_[19] = +0.5; intgLocShift_[20] = +0.5;
+  intgLocShift_[21] = -0.5; intgLocShift_[22] = +0.5; intgLocShift_[23] = +0.5;
 }
 
 //--------------------------------------------------------------------------
@@ -176,6 +368,16 @@ HexSCV::shape_fcn(double *shpfc)
 {
   SIERRA_FORTRAN(hex_shape_fcn)
     (&numIntPoints_,&intgLoc_[0],shpfc);
+}
+
+//--------------------------------------------------------------------------
+//-------- shifted_shape_fcn -----------------------------------------------
+//--------------------------------------------------------------------------
+void
+HexSCV::shifted_shape_fcn(double *shpfc)
+{
+  SIERRA_FORTRAN(hex_shape_fcn)
+    (&numIntPoints_,&intgLocShift_[0],shpfc);
 }
 
 //--------------------------------------------------------------------------
@@ -331,50 +533,15 @@ HexSCS::HexSCS()
   // node 7
   nodeLoc_[21] = -0.5; nodeLoc_[22] =  0.5; nodeLoc_[23] =  0.5;
 
-  // mapping between exposed face and extruded element's overlapping face   
-  faceNodeOnExtrudedElem_.resize(24);
-  faceNodeOnExtrudedElem_[0]  = 1; faceNodeOnExtrudedElem_[1]  = 0; faceNodeOnExtrudedElem_[2]  = 4; faceNodeOnExtrudedElem_[3]  = 5;
-  faceNodeOnExtrudedElem_[4]  = 1; faceNodeOnExtrudedElem_[5]  = 0; faceNodeOnExtrudedElem_[6]  = 4; faceNodeOnExtrudedElem_[7]  = 5;
-  faceNodeOnExtrudedElem_[8]  = 1; faceNodeOnExtrudedElem_[9]  = 0; faceNodeOnExtrudedElem_[10] = 4; faceNodeOnExtrudedElem_[11] = 5;
-  faceNodeOnExtrudedElem_[12] = 0; faceNodeOnExtrudedElem_[13] = 4; faceNodeOnExtrudedElem_[14] = 5; faceNodeOnExtrudedElem_[15] = 1;
-  faceNodeOnExtrudedElem_[16] = 0; faceNodeOnExtrudedElem_[17] = 4; faceNodeOnExtrudedElem_[18] = 5; faceNodeOnExtrudedElem_[19] = 1;
-  faceNodeOnExtrudedElem_[20] = 1; faceNodeOnExtrudedElem_[21] = 0; faceNodeOnExtrudedElem_[22] = 4; faceNodeOnExtrudedElem_[23] = 5;
-
-  // mapping between exposed face and extruded element's opposing face
-  opposingNodeOnExtrudedElem_.resize(24);
-  opposingNodeOnExtrudedElem_[0]  = 2; opposingNodeOnExtrudedElem_[1]  = 3; opposingNodeOnExtrudedElem_[2]  = 7; opposingNodeOnExtrudedElem_[3]  = 6;
-  opposingNodeOnExtrudedElem_[4]  = 2; opposingNodeOnExtrudedElem_[5]  = 3; opposingNodeOnExtrudedElem_[6]  = 7; opposingNodeOnExtrudedElem_[7]  = 6;
-  opposingNodeOnExtrudedElem_[8]  = 2; opposingNodeOnExtrudedElem_[9]  = 3; opposingNodeOnExtrudedElem_[10] = 7; opposingNodeOnExtrudedElem_[11] = 6;
-  opposingNodeOnExtrudedElem_[12] = 3; opposingNodeOnExtrudedElem_[13] = 7; opposingNodeOnExtrudedElem_[14] = 6; opposingNodeOnExtrudedElem_[15] = 2;
-  opposingNodeOnExtrudedElem_[16] = 3; opposingNodeOnExtrudedElem_[17] = 7; opposingNodeOnExtrudedElem_[18] = 6; opposingNodeOnExtrudedElem_[19] = 2;
-  opposingNodeOnExtrudedElem_[20] = 2; opposingNodeOnExtrudedElem_[21] = 3; opposingNodeOnExtrudedElem_[22] = 7; opposingNodeOnExtrudedElem_[23] = 6;
-
-  // mapping between exposed face scs ips and halo edge
-  faceScsIpOnExtrudedElem_.resize(24);
-  faceScsIpOnExtrudedElem_[0]  = 1; faceScsIpOnExtrudedElem_[1]  = 3; faceScsIpOnExtrudedElem_[2]  = 7; faceScsIpOnExtrudedElem_[3]  = 5;
-  faceScsIpOnExtrudedElem_[4]  = 1; faceScsIpOnExtrudedElem_[5]  = 3; faceScsIpOnExtrudedElem_[6]  = 7; faceScsIpOnExtrudedElem_[7]  = 5;
-  faceScsIpOnExtrudedElem_[8]  = 1; faceScsIpOnExtrudedElem_[9]  = 3; faceScsIpOnExtrudedElem_[10] = 7; faceScsIpOnExtrudedElem_[11] = 5;
-  faceScsIpOnExtrudedElem_[12] = 3; faceScsIpOnExtrudedElem_[13] = 7; faceScsIpOnExtrudedElem_[14] = 5; faceScsIpOnExtrudedElem_[15] = 1;
-  faceScsIpOnExtrudedElem_[16] = 3; faceScsIpOnExtrudedElem_[17] = 7; faceScsIpOnExtrudedElem_[18] = 5; faceScsIpOnExtrudedElem_[19] = 1;
-  faceScsIpOnExtrudedElem_[20] = 1; faceScsIpOnExtrudedElem_[21] = 3; faceScsIpOnExtrudedElem_[22] = 7; faceScsIpOnExtrudedElem_[23] = 5;
-
-  // mapping between exposed face scs ips and exposed face edge
-  faceScsIpOnFaceEdges_.resize(24);
-  faceScsIpOnFaceEdges_[0]  = 0; faceScsIpOnFaceEdges_[1]  = 8; faceScsIpOnFaceEdges_[2]  = 4; faceScsIpOnFaceEdges_[3]  = 9;
-  faceScsIpOnFaceEdges_[4]  = 0; faceScsIpOnFaceEdges_[5]  = 8; faceScsIpOnFaceEdges_[6]  = 4; faceScsIpOnFaceEdges_[7]  = 9;
-  faceScsIpOnFaceEdges_[8]  = 0; faceScsIpOnFaceEdges_[9]  = 8; faceScsIpOnFaceEdges_[10] = 4; faceScsIpOnFaceEdges_[11] = 9;
-  faceScsIpOnFaceEdges_[12] = 8; faceScsIpOnFaceEdges_[13] = 4; faceScsIpOnFaceEdges_[14] = 9; faceScsIpOnFaceEdges_[15] = 0;
-  faceScsIpOnFaceEdges_[16] = 8; faceScsIpOnFaceEdges_[17] = 4; faceScsIpOnFaceEdges_[18] = 9; faceScsIpOnFaceEdges_[19] = 0;
-  faceScsIpOnFaceEdges_[20] = 0; faceScsIpOnFaceEdges_[21] = 8; faceScsIpOnFaceEdges_[22] = 4; faceScsIpOnFaceEdges_[23] = 9;
-  
-  // alignment of face:edge ordering and scsip area vector
-  edgeAlignedArea_.resize(24);
-  edgeAlignedArea_[0]  = -1.0; edgeAlignedArea_[1]  = +1.0; edgeAlignedArea_[2]  = +1.0; edgeAlignedArea_[3]  = -1.0;
-  edgeAlignedArea_[4]  = -1.0; edgeAlignedArea_[5]  = +1.0; edgeAlignedArea_[6]  = +1.0; edgeAlignedArea_[7]  = -1.0;
-  edgeAlignedArea_[8]  = -1.0; edgeAlignedArea_[9]  = +1.0; edgeAlignedArea_[10] = +1.0; edgeAlignedArea_[11] = -1.0;
-  edgeAlignedArea_[12] = +1.0; edgeAlignedArea_[13] = +1.0; edgeAlignedArea_[14] = -1.0; edgeAlignedArea_[15] = -1.0;
-  edgeAlignedArea_[16] = +1.0; edgeAlignedArea_[17] = +1.0; edgeAlignedArea_[18] = -1.0; edgeAlignedArea_[19] = -1.0;
-  edgeAlignedArea_[20] = -1.0; edgeAlignedArea_[21] = +1.0; edgeAlignedArea_[22] = +1.0; edgeAlignedArea_[23] = -1.0;
+  // mapping from a side ordinal to the node ordinals on that side
+  sideNodeOrdinals_ = {
+      0, 1, 5, 4, // ordinal 0
+      1, 2, 6, 5, // ordinal 1
+      2, 3, 7, 6, // ordinal 2
+      0, 4, 7, 3, // ordinal 3
+      0, 3, 2, 1, // ordinal 4
+      4, 5, 6, 7  // ordinal 5
+  };
 }
 
 //--------------------------------------------------------------------------
@@ -394,6 +561,17 @@ HexSCS::ipNodeMap(
 {
   // define ip->node mappings for each face (ordinal); 
   return &ipNodeMap_[ordinal*4];
+}
+
+//--------------------------------------------------------------------------
+//-------- side_node_ordinals ----------------------------------------------
+//--------------------------------------------------------------------------
+const int *
+HexSCS::side_node_ordinals(
+  int ordinal)
+{
+  // define face_ordinal->node_ordinal mappings for each face (ordinal);
+  return &sideNodeOrdinals_[ordinal*4];
 }
 
 //--------------------------------------------------------------------------
@@ -805,36 +983,26 @@ HexSCS::interpolatePoint(
   double eta  = par_coord[1];
   double zeta = par_coord[2];
 
+  // NOTE: this uses a [-1,1] definition of the reference element,
+  // contrary to the rest of the code
+
   for ( int i = 0; i < ncomp_field; i++ )
   {
     // Base 'field array' index for ith component
     int b = 8*i;
 
-    result[i] = 0.125000000000000*(1.00000000000000-eta )*
-				  (1.00000000000000-xi  )*
-				  (1.00000000000000-zeta)*field[b+0]+
-				  0.125000000000000*(1.00000000000000-eta )*
-				  (1.00000000000000+xi  )*
-				  (1.00000000000000-zeta)*field[b+1]+
-				  0.125000000000000*(1.00000000000000+eta )*
-				  (1.00000000000000+xi  )*
-				  (1.00000000000000-zeta)*field[b+2]+
-				  0.125000000000000*(1.00000000000000+eta )*
-				  (1.00000000000000-xi  )*
-				  (1.00000000000000-zeta)*field[b+3]+
-				  0.125000000000000*(1.00000000000000-eta )*
-				  (1.00000000000000-xi  )*
-				  (1.00000000000000+zeta)*field[b+4]+
-				  0.125000000000000*(1.00000000000000-eta )*
-				  (1.00000000000000+xi  )*
-				  (1.00000000000000+zeta)*field[b+5]+
-				  0.125000000000000*(1.00000000000000+eta )*
-				  (1.00000000000000+xi  )*
-				  (1.00000000000000+zeta)*field[b+6]+
-				  0.125000000000000*(1.00000000000000+eta )*
-				  (1.00000000000000-xi  )*
-				  (1.00000000000000+zeta)*field[b+7];
+    result[i] = 0.125 * (
+        (1 - xi) * (1 - eta) * (1 - zeta) * field[b + 0]
+      + (1 + xi) * (1 - eta) * (1 - zeta) * field[b + 1]
+      + (1 + xi) * (1 + eta) * (1 - zeta) * field[b + 2]
+      + (1 - xi) * (1 + eta) * (1 - zeta) * field[b + 3]
+      + (1 - xi) * (1 - eta) * (1 + zeta) * field[b + 4]
+      + (1 + xi) * (1 - eta) * (1 + zeta) * field[b + 5]
+      + (1 + xi) * (1 + eta) * (1 + zeta) * field[b + 6]
+      + (1 - xi) * (1 + eta) * (1 + zeta) * field[b + 7]
+    );
   }
+
 }
 
 //--------------------------------------------------------------------------
@@ -963,51 +1131,6 @@ HexSCS::sidePcoords_to_elemPcoords(
 }
 
 //--------------------------------------------------------------------------
-//-------- faceNodeOnExtrudedElem ------------------------------------------
-//--------------------------------------------------------------------------
-const int *
-HexSCS::faceNodeOnExtrudedElem()
-{
-  return &faceNodeOnExtrudedElem_[0];
-}
-
-//--------------------------------------------------------------------------
-//-------- opposingNodeOnExtrudedElem --------------------------------------
-//--------------------------------------------------------------------------
-const int *
-HexSCS::opposingNodeOnExtrudedElem()
-{
-  return &opposingNodeOnExtrudedElem_[0];
-}
-
-//--------------------------------------------------------------------------
-//-------- faceScsIpOnExtrudedElem -----------------------------------------
-//--------------------------------------------------------------------------
-const int *
-HexSCS::faceScsIpOnExtrudedElem()
-{
-  return &faceScsIpOnExtrudedElem_[0];
-}
-
-//--------------------------------------------------------------------------
-//-------- faceScsIpOnFaceEdges --------------------------------------------
-//--------------------------------------------------------------------------
-const int *
-HexSCS::faceScsIpOnFaceEdges()
-{
-  return &faceScsIpOnFaceEdges_[0];
-}
-
-//--------------------------------------------------------------------------
-//-------- edgeAlignedArea -------------------------------------------------
-//--------------------------------------------------------------------------
-const double *
-HexSCS::edgeAlignedArea()
-{
-  return &edgeAlignedArea_[0];
-}
-
-//--------------------------------------------------------------------------
 //-------- parametric_distance ---------------------------------------------
 //--------------------------------------------------------------------------
 double HexSCS::parametric_distance(const std::vector<double> &x)
@@ -1051,6 +1174,15 @@ HexahedralP2Element::HexahedralP2Element()
                   19, 22, 17, // top mid-front edge
                    7, 18,  6  // top back edge
                 };
+
+  sideNodeOrdinals_ = {
+       0, 1, 5, 4, 8,13,16,12,25, //ordinal 0
+       1, 2, 6, 5, 9,14,17,13,24, //ordinal 1
+       2, 3, 7, 6,10,15,18,14,26, //ordinal 2
+       0, 4, 7, 3,12,19,15,11,23, //ordinal 3
+       0, 3, 2, 1,11,10, 9, 8,21, //ordinal 4
+       4, 5, 6, 7,16,17,18,19,22  //ordinal 5
+  };
 
   // a padded list of the scs locations
   scsEndLoc_ = { -1.0, -scsDist_, scsDist_, 1.0 };
@@ -2214,6 +2346,17 @@ Hex27SCS::ipNodeMap(
 }
 
 //--------------------------------------------------------------------------
+//-------- side_node_ordinals ----------------------------------------------
+//--------------------------------------------------------------------------
+const int *
+Hex27SCS::side_node_ordinals(
+  int ordinal)
+{
+  // define face_ordinal->node_ordinal mappings for each face (ordinal);
+  return &sideNodeOrdinals_[ordinal*9];
+}
+
+//--------------------------------------------------------------------------
 //-------- opposingNodes --------------------------------------------------
 //--------------------------------------------------------------------------
 int
@@ -2542,10 +2685,7 @@ Hex27SCS::general_face_grad_op(
   double *det_j,
   double *error)
 {
-  int lerr = 0;
   const int ipsPerFace = 1;
-  const int face_offset =  nDim_ * ipsPerFace * nodesPerElement_ * face_ordinal;
-  
   double faceShapeFuncDerivs[81];
 
   hex27_shape_deriv(
@@ -2635,6 +2775,22 @@ TetSCV::TetSCV()
   // define ip node mappings
   ipNodeMap_.resize(4);
   ipNodeMap_[0] = 0; ipNodeMap_[1] = 1; ipNodeMap_[2] = 2; ipNodeMap_[3] = 3;
+
+  // standard integration location
+  intgLoc_.resize(12);
+  const double seventeen96ths = 17.0/96.0;
+  const double fourfive96ths  = 45.0/96.0;
+  intgLoc_[0] = seventeen96ths; intgLoc_[1]  = seventeen96ths; intgLoc_[2]  = seventeen96ths; // vol 1
+  intgLoc_[3] = fourfive96ths;  intgLoc_[4]  = seventeen96ths; intgLoc_[5]  = seventeen96ths; // vol 2
+  intgLoc_[6] = seventeen96ths; intgLoc_[7]  = fourfive96ths;  intgLoc_[8]  = seventeen96ths; // vol 3
+  intgLoc_[9] = seventeen96ths; intgLoc_[10] = seventeen96ths; intgLoc_[11] = fourfive96ths;  // vol 4
+
+  // shifted
+  intgLocShift_.resize(12);
+  intgLocShift_[0] = 0.0; intgLocShift_[1]  = 0.0;  intgLocShift_[2] = 0.0;
+  intgLocShift_[3] = 1.0; intgLocShift_[4]  = 0.0;  intgLocShift_[5] = 0.0;
+  intgLocShift_[6] = 0.0; intgLocShift_[7]  = 1.0;  intgLocShift_[8] = 0.0;
+  intgLocShift_[9] = 0.0; intgLocShift_[10] = 0.0; intgLocShift_[11] = 1.0;
 }
 
 //--------------------------------------------------------------------------
@@ -2670,6 +2826,46 @@ void TetSCV::determinant(
   SIERRA_FORTRAN(tet_scv_det)
     ( &nelem, &nodesPerElement_, &numIntPoints_, coords,
       volume, error, &lerr );
+}
+
+//--------------------------------------------------------------------------
+//-------- shape_fcn -------------------------------------------------------
+//--------------------------------------------------------------------------
+void
+TetSCV::shape_fcn(double *shpfc)
+{
+  tet_shape_fcn(numIntPoints_, &intgLoc_[0], shpfc);
+}
+
+//--------------------------------------------------------------------------
+//-------- shifted_shape_fcn -----------------------------------------------
+//--------------------------------------------------------------------------
+void
+TetSCV::shifted_shape_fcn(double *shpfc)
+{
+  tet_shape_fcn(numIntPoints_, &intgLocShift_[0], shpfc);
+}
+
+//--------------------------------------------------------------------------
+//-------- tet_shape_fcn ---------------------------------------------------
+//--------------------------------------------------------------------------
+void
+TetSCV::tet_shape_fcn(
+  const int  &npts,
+  const double *par_coord, 
+  double *shape_fcn)
+{
+  for (int j = 0; j < npts; ++j ) {
+    const int fourj = 4*j;
+    const int k = 3*j;
+    const double xi = par_coord[k];
+    const double eta = par_coord[k+1];
+    const double zeta = par_coord[k+2];
+    shape_fcn[fourj] = 1.0 - xi - eta - zeta;
+    shape_fcn[1 + fourj] = xi;
+    shape_fcn[2 + fourj] = eta;
+    shape_fcn[3 + fourj] = zeta;
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -2764,6 +2960,14 @@ TetSCS::TetSCS()
   ipNodeMap_[6] = 0;  ipNodeMap_[7] = 3;  ipNodeMap_[8] = 2;  
   // face 3;
   ipNodeMap_[9] = 0; ipNodeMap_[10] = 2; ipNodeMap_[11] = 1;
+
+
+  sideNodeOrdinals_ = {
+      0, 1, 3, //ordinal 0
+      1, 2, 3, //ordinal 1
+      0, 3, 2, //ordinal 2
+      0, 2, 1  //ordinal 3
+  };
 }
 
 //--------------------------------------------------------------------------
@@ -2783,6 +2987,17 @@ TetSCS::ipNodeMap(
 {
   // define ip->node mappings for each face (ordinal); 
   return &ipNodeMap_[ordinal*3];
+}
+
+//--------------------------------------------------------------------------
+//-------- side_node_ordinals ----------------------------------------------
+//--------------------------------------------------------------------------
+const int *
+TetSCS::side_node_ordinals(
+  int ordinal)
+{
+  // define face_ordinal->node_ordinal mappings for each face (ordinal);
+  return &sideNodeOrdinals_[ordinal*3];
 }
 
 //--------------------------------------------------------------------------
@@ -3210,6 +3425,22 @@ PyrSCV::PyrSCV()
   ipNodeMap_.resize(5);
   ipNodeMap_[0] = 0; ipNodeMap_[1] = 1; ipNodeMap_[2] = 2; ipNodeMap_[3] = 3;
   ipNodeMap_[4] = 4;
+
+  // standard integration location
+  intgLoc_.resize(15);
+  intgLoc_[0]  = -19.0/48.0; intgLoc_[1]  = -19.0/48.0; intgLoc_[2]  = 41.0/240.0;  // vol 0
+  intgLoc_[3]  =  19.0/48.0; intgLoc_[4]  = -19.0/48.0; intgLoc_[5]  = 41.0/240.0;  // vol 1
+  intgLoc_[6]  =  19.0/48.0; intgLoc_[7]  =  19.0/48.0; intgLoc_[8]  = 41.0/240.0;  // vol 2
+  intgLoc_[9]  = -19.0/48.0; intgLoc_[10] =  19.0/48.0; intgLoc_[11] = 41.0/240.0;  // vol 3
+  intgLoc_[12] =   0.0;      intgLoc_[13] =   0.0;      intgLoc_[14] = 0.6 ;        // vol 4
+
+  // shifted
+  intgLocShift_.resize(15);
+  intgLocShift_[0]  = -1.0; intgLocShift_[1]  = -1.0; intgLocShift_[2]  = 0.0;  // vol 0
+  intgLocShift_[3]  =  1.0; intgLocShift_[4]  = -1.0; intgLocShift_[5]  = 0.0;  // vol 1
+  intgLocShift_[6]  =  1.0; intgLocShift_[7]  =  1.0; intgLocShift_[8]  = 0.0;  // vol 2
+  intgLocShift_[9]  = -1.0; intgLocShift_[10] =  1.0; intgLocShift_[11] = 0.0;  // vol 3
+  intgLocShift_[12] =  0.0; intgLocShift_[13] =  0.0; intgLocShift_[14] = 1.0;  // vol 4
 }
 
 //--------------------------------------------------------------------------
@@ -3246,6 +3477,50 @@ void PyrSCV::determinant(
   SIERRA_FORTRAN(pyr_scv_det)
     ( &nelem, &nodesPerElement_, &numIntPoints_, coords,
       volume, error, &lerr );
+}
+
+
+//--------------------------------------------------------------------------
+//-------- shape_fcn -------------------------------------------------------
+//--------------------------------------------------------------------------
+void
+PyrSCV::shape_fcn(double *shpfc)
+{
+  pyr_shape_fcn(numIntPoints_, &intgLoc_[0], shpfc);
+}
+
+//--------------------------------------------------------------------------
+//-------- shifted_shape_fcn -----------------------------------------------
+//--------------------------------------------------------------------------
+void
+PyrSCV::shifted_shape_fcn(double *shpfc)
+{
+  pyr_shape_fcn(numIntPoints_, &intgLocShift_[0], shpfc);
+}
+
+//--------------------------------------------------------------------------
+//-------- pyr_shape_fcn ---------------------------------------------------
+//--------------------------------------------------------------------------
+void
+PyrSCV::pyr_shape_fcn(
+  const int  &npts,
+  const double *par_coord, 
+  double *shape_fcn)
+{
+  const double one  = 1.0;
+  for ( int j = 0; j < npts; ++j ) {
+    const int fivej = 5*j;
+    const int k     = 3*j;
+    const double r    = par_coord[k+0];
+    const double s    = par_coord[k+1];
+    const double t    = par_coord[k+2];
+
+    shape_fcn[0 + fivej] = 0.25*(1.0-r)*(1.0-s)*(one-t);
+    shape_fcn[1 + fivej] = 0.25*(1.0+r)*(1.0-s)*(one-t);
+    shape_fcn[2 + fivej] = 0.25*(1.0+r)*(1.0+s)*(one-t);
+    shape_fcn[3 + fivej] = 0.25*(1.0-r)*(1.0+s)*(one-t);
+    shape_fcn[4 + fivej] = t;
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -3311,6 +3586,13 @@ PyrSCS::PyrSCS()
   intgLocShift_[21] = -0.50; intgLocShift_[22] =  0.50; intgLocShift_[23] =  0.50; // surf 8    4->5
 
   // exposed face; n/a
+  sideNodeOrdinals_ = {
+      0, 1, 4,    // ordinal 0
+      1, 2, 4,    // ordinal 1
+      2, 3, 4,    // ordinal 2
+      3, 0, 4,    // ordinal 3
+      0, 3, 2, 1  // ordinal 4
+  };
 }
 
 //--------------------------------------------------------------------------
@@ -3319,6 +3601,17 @@ PyrSCS::PyrSCS()
 PyrSCS::~PyrSCS()
 {
   // does nothing
+}
+
+//--------------------------------------------------------------------------
+//-------- side_node_ordinals ----------------------------------------------
+//--------------------------------------------------------------------------
+const int *
+PyrSCS::side_node_ordinals(
+  int ordinal)
+{
+  // define face_ordinal->node_ordinal mappings for each face (ordinal);
+  return &sideNodeOrdinals_[ordinal*3];
 }
 
 //--------------------------------------------------------------------------
@@ -3523,6 +3816,26 @@ WedSCV::WedSCV()
   ipNodeMap_.resize(6);
   ipNodeMap_[0] = 0; ipNodeMap_[1] = 1; ipNodeMap_[2] = 2;
   ipNodeMap_[3] = 3; ipNodeMap_[4] = 4; ipNodeMap_[5] = 5;
+
+  // standard integration location
+  intgLoc_.resize(18);
+  const double seven12th = 7.0/12.0;
+  const double five24th = 5.0/24.0;
+  intgLoc_[0]  = five24th;  intgLoc_[1]  = five24th;  intgLoc_[2]  = -0.5; // vol 0
+  intgLoc_[3]  = seven12th; intgLoc_[4]  = five24th;  intgLoc_[5]  = -0.5; // vol 1
+  intgLoc_[6]  = five24th;  intgLoc_[7]  = seven12th; intgLoc_[8]  = -0.5; // vol 2
+  intgLoc_[9]  = five24th;  intgLoc_[10] = five24th;  intgLoc_[11] = 0.5;  // vol 3
+  intgLoc_[12] = seven12th; intgLoc_[13] = five24th;  intgLoc_[14] = 0.5;  // vol 4
+  intgLoc_[15] = five24th;  intgLoc_[16] = seven12th; intgLoc_[17] = 0.5;  // vol 5
+
+  // shifted
+  intgLocShift_.resize(18);
+  intgLocShift_[0]  = 0.0;  intgLocShift_[1]  = 0.0; intgLocShift_[2]  = -1.0; // vol 0
+  intgLocShift_[3]  = 1.0;  intgLocShift_[4]  = 0.0; intgLocShift_[5]  = -1.0; // vol 1
+  intgLocShift_[6]  = 0.0;  intgLocShift_[7]  = 1.0; intgLocShift_[8]  = -1.0; // vol 2
+  intgLocShift_[9]  = 0.0;  intgLocShift_[10] = 0.0; intgLocShift_[11] =  1.0; // vol 3
+  intgLocShift_[12] = 1.0;  intgLocShift_[13] = 0.0; intgLocShift_[14] = 1.0;  // vol 4
+  intgLocShift_[15] = 0.0;  intgLocShift_[16] = 1.0; intgLocShift_[17] = 1.0;  // vol 5
 }
 
 //--------------------------------------------------------------------------
@@ -3559,6 +3872,49 @@ void WedSCV::determinant(
       volume, error, &lerr );
 }
 
+//--------------------------------------------------------------------------
+//-------- shape_fcn -------------------------------------------------------
+//--------------------------------------------------------------------------
+void
+WedSCV::shape_fcn(double *shpfc)
+{
+  wedge_shape_fcn(numIntPoints_, &intgLoc_[0], shpfc);
+}
+
+//--------------------------------------------------------------------------
+//-------- shifted_shape_fcn -----------------------------------------------
+//--------------------------------------------------------------------------
+void
+WedSCV::shifted_shape_fcn(double *shpfc)
+{
+  wedge_shape_fcn(numIntPoints_, &intgLocShift_[0], shpfc);
+}
+
+
+//--------------------------------------------------------------------------
+//-------- wedge_shape_fcn -------------------------------------------------
+//--------------------------------------------------------------------------
+void
+WedSCV::wedge_shape_fcn(
+  const int  &npts,
+  const double *isoParCoord, 
+  double *shape_fcn)
+{
+  for (int j = 0; j < npts; ++j ) {
+    int sixj = 6 * j;
+    int k    = 3 * j;
+    double r    = isoParCoord[k];
+    double s    = isoParCoord[k + 1];
+    double t    = 1.0 - r - s;
+    double xi   = isoParCoord[k + 2];
+    shape_fcn[    sixj] = 0.5 * t * (1.0 - xi);
+    shape_fcn[1 + sixj] = 0.5 * r * (1.0 - xi);
+    shape_fcn[2 + sixj] = 0.5 * s * (1.0 - xi);
+    shape_fcn[3 + sixj] = 0.5 * t * (1.0 + xi);
+    shape_fcn[4 + sixj] = 0.5 * r * (1.0 + xi);
+    shape_fcn[5 + sixj] = 0.5 * s * (1.0 + xi);
+  }
+}
 
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
@@ -3671,6 +4027,18 @@ WedSCS::WedSCS()
   ipNodeMap_[12] = 0; ipNodeMap_[13] = 1; ipNodeMap_[14] = 1; ipNodeMap_[15] = 0; //empty 
   // face 4;
   ipNodeMap_[16] = 3; ipNodeMap_[17] = 4; ipNodeMap_[18] = 5; ipNodeMap_[19] = 0; // empty 
+
+
+  sideNodeOrdinals_ = {
+      0, 1, 4, 3, // ordinal 0
+      1, 2, 5, 4, // ordinal 1
+      0, 3, 5, 2, // ordinal 2
+      0, 2, 1,    // ordinal 3
+      3, 4, 5     // ordinal 4
+  };
+
+  // ordinal to vector offset map.  Really only convenient for the wedge.
+  sideOffset_ = { 0, 4, 8, 12, 15};
 }
 
 //--------------------------------------------------------------------------
@@ -3690,6 +4058,17 @@ WedSCS::ipNodeMap(
 {
   // define ip->node mappings for each face (ordinal); 
   return &ipNodeMap_[ordinal*4];
+}
+
+//--------------------------------------------------------------------------
+//-------- side_node_ordinals ----------------------------------------------
+//--------------------------------------------------------------------------
+const int *
+WedSCS::side_node_ordinals(
+  int ordinal)
+{
+  // define face_ordinal->node_ordinal mappings for each face (ordinal);
+  return &sideNodeOrdinals_[sideOffset_[ordinal]];
 }
 
 //--------------------------------------------------------------------------
@@ -3809,7 +4188,8 @@ void WedSCS::wedge_derivative(
 //--------------------------------------------------------------------------
 //-------- face_grad_op ----------------------------------------------------
 //--------------------------------------------------------------------------
-void WedSCS::face_grad_op(
+void 
+WedSCS::face_grad_op(
   const int nelem,
   const int face_ordinal,
   const double *coords,
@@ -3934,7 +4314,7 @@ WedSCS::isInElement(
   // ------------------------------------------------------------------
 
   // Translate element so that (x,y,z) coordinates of first node are (0,0,0)
-  
+
   double x[] = {0.0,
                 elemNodalCoord[ 1] - elemNodalCoord[ 0],
                 elemNodalCoord[ 2] - elemNodalCoord[ 0],
@@ -3953,7 +4333,7 @@ WedSCS::isInElement(
                 elemNodalCoord[15] - elemNodalCoord[12],
                 elemNodalCoord[16] - elemNodalCoord[12],
                 elemNodalCoord[17] - elemNodalCoord[12] };
-  
+
   // (xp,yp,zp) is the point to be mapped into (r,s,xi) coordinate system.
   // This point must also be translated as above.
 
@@ -4073,7 +4453,6 @@ WedSCS::isInElement(
 
     dist = parametric_distance(xx);
   }
-
   return dist;
 }
 
@@ -4157,6 +4536,90 @@ WedSCS::parametric_distance(const std::vector<double> &x)
 }
 
 //--------------------------------------------------------------------------
+//-------- general_face_grad_op --------------------------------------------
+//--------------------------------------------------------------------------
+void 
+WedSCS::general_face_grad_op(
+  const int face_ordinal,
+  const double *isoParCoord,
+  const double *coords,
+  double *gradop,
+  double *det_j,
+  double *error)
+{
+  int lerr = 0;
+  const int nface = 1;
+  double dpsi[18], grad[18];
+      
+  wedge_derivative(nface, &isoParCoord[0], dpsi);
+      
+  SIERRA_FORTRAN(wed_gradient_operator) 
+    ( &nface,
+      &nodesPerElement_,
+      &nface,
+      dpsi,
+      &coords[0], grad, &det_j[0], error, &lerr );
+      
+  if ( lerr )
+    std::cout << "problem with EwedSCS::general_face_grad" << std::endl;
+  
+  for ( int j=0; j<18; ++j) {
+    gradop[j] = grad[j];
+  }  
+}
+
+//--------------------------------------------------------------------------
+//-------- sidePcoords_to_elemPcoords --------------------------------------
+//--------------------------------------------------------------------------
+void 
+WedSCS::sidePcoords_to_elemPcoords(
+  const int & side_ordinal,
+  const int & npoints,
+  const double *side_pcoords,
+  double *elem_pcoords)
+{
+  switch (side_ordinal) {
+  case 0:
+    for (int i=0; i<npoints; i++) {//face0:quad: (x,y) -> (0.5*(1 + x),0,y)
+      elem_pcoords[i*3+0] = 0.5*(1.0+side_pcoords[2*i+0]);
+      elem_pcoords[i*3+1] = 0.0;
+      elem_pcoords[i*3+2] = side_pcoords[2*i+1];
+    }
+    break;
+  case 1:
+    for (int i=0; i<npoints; i++) {//face1:quad: (x,y) -> (0.5*(1-y),0.5*(1 + y),x)
+      elem_pcoords[i*3+0] = 0.5*(1.0-side_pcoords[2*i+1]);
+      elem_pcoords[i*3+1] = 0.5*(1.0+side_pcoords[2*i+1]);
+      elem_pcoords[i*3+2] = side_pcoords[2*i+0];
+    }
+    break;
+  case 2:
+    for (int i=0; i<npoints; i++) {//face2:quad: (x,y) -> (0,0.5*(1 + x),y)
+      elem_pcoords[i*3+0] = 0.0;
+      elem_pcoords[i*3+1] = 0.5*(1.0+side_pcoords[2*i+0]);
+      elem_pcoords[i*3+2] = side_pcoords[2*i+1];
+    }
+    break;
+  case 3:
+    for (int i=0; i<npoints; i++) {//face3:tri: (x,y) -> (x,y,-1)
+      elem_pcoords[i*3+0] = side_pcoords[2*i+0];
+      elem_pcoords[i*3+1] = side_pcoords[2*i+1];
+      elem_pcoords[i*3+2] = -1.0;
+    }
+    break;
+  case 4:
+    for (int i=0; i<npoints; i++) {//face4:tri: (x,y) -> (x,y,+1 )
+      elem_pcoords[i*3+0] = side_pcoords[2*i+0];
+      elem_pcoords[i*3+1] = side_pcoords[2*i+1];
+      elem_pcoords[i*3+2] = 1.0;
+    }
+    break;
+  default:
+    throw std::runtime_error("WedSCS::sidePcoords_to_elemPcoords invalid ordinal");
+  }
+}
+
+//--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 Quad2DSCV::Quad2DSCV()
@@ -4181,7 +4644,7 @@ Quad2DSCV::Quad2DSCV()
   intgLocShift_.resize(8);    
   intgLocShift_[0]  = -0.50; intgLocShift_[1]  = -0.50; 
   intgLocShift_[2]  = +0.50; intgLocShift_[3]  = -0.50; 
-  intgLocShift_[4]  = +0.05; intgLocShift_[5]  = +0.50; 
+  intgLocShift_[4]  = +0.50; intgLocShift_[5]  = +0.50; 
   intgLocShift_[6]  = -0.50; intgLocShift_[7]  = +0.50; 
 }
 
@@ -4338,38 +4801,13 @@ Quad2DSCS::Quad2DSCS()
   ipNodeMap_[4] = 2;  ipNodeMap_[5] = 3;  
   // face 3;
   ipNodeMap_[6] = 3;  ipNodeMap_[7] = 0; 
-  
-  // mapping between exposed face and extruded element's overlapping face   
-  faceNodeOnExtrudedElem_.resize(8);
-  faceNodeOnExtrudedElem_[0] = 1; faceNodeOnExtrudedElem_[1] = 0;
-  faceNodeOnExtrudedElem_[2] = 1; faceNodeOnExtrudedElem_[3] = 0;
-  faceNodeOnExtrudedElem_[4] = 1; faceNodeOnExtrudedElem_[5] = 0;
-  faceNodeOnExtrudedElem_[6] = 1; faceNodeOnExtrudedElem_[7] = 0;
 
-  // mapping between exposed face and extruded element's opposing face
-  opposingNodeOnExtrudedElem_.resize(8);
-  opposingNodeOnExtrudedElem_[0] = 2; opposingNodeOnExtrudedElem_[1] = 3;
-  opposingNodeOnExtrudedElem_[2] = 2; opposingNodeOnExtrudedElem_[3] = 3;
-  opposingNodeOnExtrudedElem_[4] = 2; opposingNodeOnExtrudedElem_[5] = 3;
-  opposingNodeOnExtrudedElem_[6] = 2; opposingNodeOnExtrudedElem_[7] = 3;
-
-  // mapping between exposed face scs ips and halo edge
-  faceScsIpOnExtrudedElem_.resize(8);
-  faceScsIpOnExtrudedElem_[0] = 1; faceScsIpOnExtrudedElem_[1] = 3;
-  faceScsIpOnExtrudedElem_[2] = 1; faceScsIpOnExtrudedElem_[3] = 3;
-  faceScsIpOnExtrudedElem_[4] = 1; faceScsIpOnExtrudedElem_[5] = 3;
-  faceScsIpOnExtrudedElem_[6] = 1; faceScsIpOnExtrudedElem_[7] = 3;
-
-  // mapping between exposed face scs ips and exposed face edge
-  faceScsIpOnFaceEdges_.resize(4);
-  faceScsIpOnFaceEdges_[0] = 0; faceScsIpOnFaceEdges_[1] = 0;
-  faceScsIpOnFaceEdges_[2] = 0; faceScsIpOnFaceEdges_[3] = 0;
-  
-  // alignment of face:edge ordering and scsip area vector
-  edgeAlignedArea_.resize(4);
-  edgeAlignedArea_[0] = -1.0; edgeAlignedArea_[1] = -1.0;
-  edgeAlignedArea_[2] = -1.0; edgeAlignedArea_[3] = -1.0;
-
+  sideNodeOrdinals_ = {
+      0, 1,
+      1, 2,
+      2, 3,
+      3, 0
+  };
 }
 
 //--------------------------------------------------------------------------
@@ -4389,6 +4827,18 @@ Quad2DSCS::ipNodeMap(
 {
   // define ip->node mappings for each face (ordinal); 
   return &ipNodeMap_[ordinal*2];
+}
+
+
+//--------------------------------------------------------------------------
+//-------- side_node_ordinals ----------------------------------------------
+//--------------------------------------------------------------------------
+const int *
+Quad2DSCS::side_node_ordinals(
+  int ordinal)
+{
+  // define face_ordinal->node_ordinal mappings for each face (ordinal);
+  return &sideNodeOrdinals_[ordinal*2];
 }
 
 //--------------------------------------------------------------------------
@@ -4711,11 +5161,11 @@ Quad2DSCS::interpolatePoint(
     // Base 'field array' index for ith component
     int b = 4*i;
 
-    result[i] = 0.250000000000000 * (
-      (1.00000000000000-eta) * (1.00000000000000-xi ) * field[b+0] +
-      (1.00000000000000-eta) * (1.00000000000000+xi ) * field[b+1] +
-      (1.00000000000000+eta) * (1.00000000000000+xi ) * field[b+2] +
-      (1.00000000000000+eta) * (1.00000000000000-xi ) * field[b+3] ) ;
+    result[i] = 0.25 * (
+      (1-eta) * (1-xi) * field[b+0] +
+      (1-eta) * (1+xi) * field[b+1] +
+      (1+eta) * (1+xi) * field[b+2] +
+      (1+eta) * (1-xi) * field[b+3] ) ;
   }  
 }
 
@@ -4822,51 +5272,6 @@ Quad2DSCS::sidePcoords_to_elemPcoords(
 }
 
 //--------------------------------------------------------------------------
-//-------- faceNodeOnExtrudedElem ------------------------------------------
-//--------------------------------------------------------------------------
-const int *
-Quad2DSCS::faceNodeOnExtrudedElem()
-{
-  return &faceNodeOnExtrudedElem_[0];
-}
-
-//--------------------------------------------------------------------------
-//-------- opposingNodeOnExtrudedElem --------------------------------------
-//--------------------------------------------------------------------------
-const int *
-Quad2DSCS::opposingNodeOnExtrudedElem()
-{
-  return &opposingNodeOnExtrudedElem_[0];
-}
-
-//--------------------------------------------------------------------------
-//-------- faceScsIpOnExtrudedElem -----------------------------------------
-//--------------------------------------------------------------------------
-const int *
-Quad2DSCS::faceScsIpOnExtrudedElem()
-{
-  return &faceScsIpOnExtrudedElem_[0];
-}
-
-//--------------------------------------------------------------------------
-//-------- faceScsIpOnFaceEdges --------------------------------------------
-//--------------------------------------------------------------------------
-const int *
-Quad2DSCS::faceScsIpOnFaceEdges()
-{
-  return &faceScsIpOnFaceEdges_[0];
-}
-
-//--------------------------------------------------------------------------
-//-------- edgeAlignedArea -------------------------------------------------
-//--------------------------------------------------------------------------
-const double *
-Quad2DSCS::edgeAlignedArea()
-{
-  return &edgeAlignedArea_[0];
-}
-
-//--------------------------------------------------------------------------
 //-------- constructor------------------------------------------------------
 //--------------------------------------------------------------------------
 QuadrilateralP2Element::QuadrilateralP2Element()
@@ -4888,6 +5293,13 @@ QuadrilateralP2Element::QuadrilateralP2Element()
                   7, 8, 5, // middle row of nodes
                   3, 6, 2  // top row of nodes
                 };
+
+  sideNodeOrdinals_ = {
+      0, 1, 4,
+      1, 2, 5,
+      2, 3, 6,
+      3, 0, 7
+  };
 
   // a padded list of scs locations
   scsEndLoc_ = { -1.0, -scsDist_, scsDist_, +1.0 };
@@ -5664,6 +6076,17 @@ Quad92DSCS::ipNodeMap(
 }
 
 //--------------------------------------------------------------------------
+//-------- side_node_ordinals ----------------------------------------------
+//--------------------------------------------------------------------------
+const int *
+Quad92DSCS::side_node_ordinals(
+  int ordinal)
+{
+  // define face_ordinal->node_ordinal mappings for each face (ordinal);
+  return &sideNodeOrdinals_[ordinal*3];
+}
+
+//--------------------------------------------------------------------------
 //-------- determinant -----------------------------------------------------
 //--------------------------------------------------------------------------
 void
@@ -5899,6 +6322,18 @@ Tri2DSCV::Tri2DSCV()
   // define ip node mappings
   ipNodeMap_.resize(3);
   ipNodeMap_[0] = 0; ipNodeMap_[1] = 1; ipNodeMap_[2] = 2;
+
+  intgLoc_ = {
+      5.0/24.0, 5.0/24.0,
+      7.0/12.0, 5.0/24.0,
+      5.0/24.0, 7.0/12.0
+  };
+
+  intgLocShift_ = {
+      0.0,  0.0,
+      1.0,  0.0,
+      0.0,  1.0
+  };
 }
 
 //--------------------------------------------------------------------------
@@ -5918,6 +6353,44 @@ Tri2DSCV::ipNodeMap(
 {
   // define scv->node mappings
   return &ipNodeMap_[0];
+}
+
+//--------------------------------------------------------------------------
+//-------- shape_fcn -------------------------------------------------------
+//--------------------------------------------------------------------------
+void
+Tri2DSCV::shape_fcn(double *shpfc)
+{
+  tri_shape_fcn(numIntPoints_, &intgLoc_[0], shpfc);
+}
+
+//--------------------------------------------------------------------------
+//-------- shifted_shape_fcn -----------------------------------------------
+//--------------------------------------------------------------------------
+void
+Tri2DSCV::shifted_shape_fcn(double *shpfc)
+{
+  tri_shape_fcn(numIntPoints_, &intgLocShift_[0], shpfc);
+}
+
+//--------------------------------------------------------------------------
+//-------- tri_shape_fcn ---------------------------------------------------
+//--------------------------------------------------------------------------
+void
+Tri2DSCV::tri_shape_fcn(
+  const int  &npts,
+  const double *isoParCoord,
+  double *shape_fcn)
+{
+  for (int j = 0; j < npts; ++j ) {
+    const int threej = 3*j;
+    const int k = 2*j;
+    const double xi = isoParCoord[k];
+    const double eta = isoParCoord[k+1];
+    shape_fcn[threej] = 1.0 - xi - eta;
+    shape_fcn[1 + threej] = xi;
+    shape_fcn[2 + threej] = eta;
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -6004,6 +6477,13 @@ Tri2DSCS::Tri2DSCS()
   ipNodeMap_[2] = 1;  ipNodeMap_[3] = 2; 
   // face 2;
   ipNodeMap_[4] = 2;  ipNodeMap_[5] = 0;  
+
+
+  sideNodeOrdinals_ = {
+      0, 1,  // ordinal 0
+      1, 2,  // ordinal 1
+      2, 0   // ordinal 2
+  };
 }
 
 //--------------------------------------------------------------------------
@@ -6023,6 +6503,17 @@ Tri2DSCS::ipNodeMap(
 {
   // define ip->node mappings for each face (ordinal); 
   return &ipNodeMap_[ordinal*2];
+}
+
+//--------------------------------------------------------------------------
+//-------- side_node_ordinals ----------------------------------------------
+//--------------------------------------------------------------------------
+const int *
+Tri2DSCS::side_node_ordinals(
+  int ordinal)
+{
+  // define face_ordinal->node_ordinal mappings for each face (ordinal);
+  return &sideNodeOrdinals_[ordinal*2];
 }
 
 //--------------------------------------------------------------------------

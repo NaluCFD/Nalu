@@ -72,16 +72,17 @@ struct sortIntLowHigh {
 //--------------------------------------------------------------------------
 NonConformalInfo::NonConformalInfo(
    Realm &realm,
-   const stk::mesh::Part *currentPart,
-   const stk::mesh::Part *opposingPart,
+   const stk::mesh::PartVector currentPartVec,
+   const stk::mesh::PartVector opposingPartVec,
    const double expandBoxPercentage,
    const std::string &searchMethodName,
    const bool clipIsoParametricCoords,
-   const double searchTolerance)
+   const double searchTolerance,
+   const std::string debugName)
   : realm_(realm ),
-    name_(currentPart->name()),
-    currentPart_(currentPart),
-    opposingPart_(opposingPart),
+    name_(debugName),
+    currentPartVec_(currentPartVec),
+    opposingPartVec_(opposingPartVec),
     expandBoxPercentage_(expandBoxPercentage),
     searchMethod_(stk::search::BOOST_RTREE),
     clipIsoParametricCoords_(clipIsoParametricCoords),
@@ -105,7 +106,15 @@ NonConformalInfo::NonConformalInfo(
 //--------------------------------------------------------------------------
 NonConformalInfo::~NonConformalInfo()
 {
-  // delete dgInfo info objects:
+  delete_info_vec();
+}
+
+//--------------------------------------------------------------------------
+//-------- delete_info_vec -------------------------------------------------
+//--------------------------------------------------------------------------
+void
+NonConformalInfo::delete_info_vec()
+{
   std::vector<std::vector<DgInfo*> >::iterator ii;
   for( ii=dgInfoVec_.begin(); ii!=dgInfoVec_.end(); ++ii ) {
     std::vector<DgInfo *> &faceDgInfoVec = (*ii);
@@ -126,15 +135,10 @@ NonConformalInfo::initialize()
   boundingFaceElementBoxVec_.clear();
   searchKeyPair_.clear();
 
-  // delete dgInfoVec_
-  std::vector<std::vector<DgInfo *> >::iterator ii;
-  for( ii=dgInfoVec_.begin(); ii!=dgInfoVec_.end(); ++ii ) {
-    std::vector<DgInfo *> &faceDgInfoVec = (*ii);
-    for ( size_t k = 0; k < faceDgInfoVec.size(); ++k )
-      delete faceDgInfoVec[k];
-  }
+  // delete info vec before clear
+  delete_info_vec();
   dgInfoVec_.clear();
-
+  
   construct_dgInfo_state();
 
   find_possible_face_elements();
@@ -172,7 +176,7 @@ NonConformalInfo::construct_dgInfo_state()
   VectorFieldType *coordinates = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
 
   stk::mesh::Selector s_locally_owned_union = meta_data.locally_owned_part()
-    &stk::mesh::Selector(*currentPart_);
+    &stk::mesh::selectUnion(currentPartVec_);
 
   stk::mesh::BucketVector const& face_buckets =
     realm_.get_buckets( meta_data.side_rank(), s_locally_owned_union );
@@ -330,9 +334,6 @@ NonConformalInfo::determine_elems_to_ghost()
       ThrowAssert( bulk_data.num_elements(face) == 1 );
       stk::mesh::Entity element = face_elem_rels[0];
           
-      // new element to ghost counter
-      realm_.nonConformalManager_->needToGhostCount_++;
-
       // deal with elements to push back to be ghosted; downward relations come for the ride...
       stk::mesh::EntityProc theElemPair(element, pt_proc);
       realm_.nonConformalManager_->elemsToGhost_.push_back(theElemPair);
@@ -452,7 +453,7 @@ NonConformalInfo::complete_search()
   
   // check for problems... will want to be more pro-active in the near future, e.g., expand and search...
   if ( problemDgInfoVec.size() > 0 ) {
-    NaluEnv::self().naluOutputP0() << "NonConformalInfo::complete_search issue with " << currentPart_->name() << " " << opposingPart_->name() << " Size of issue is " << problemDgInfoVec.size() << std::endl; 
+    NaluEnv::self().naluOutputP0() << "NonConformalInfo::complete_search issue with " << name_ << " Size of issue is " << problemDgInfoVec.size() << std::endl; 
     NaluEnv::self().naluOutputP0() << "Problem ips are as follows: " << std::endl; 
     for ( size_t k = 0; k < problemDgInfoVec.size(); ++k ) {
       const uint64_t localGaussPointId  = problemDgInfoVec[k]->localGaussPointId_; 
@@ -485,7 +486,7 @@ NonConformalInfo::find_possible_face_elements()
   Point minCorner, maxCorner;
 
   stk::mesh::Selector s_locally_owned_union = meta_data.locally_owned_part()
-    &stk::mesh::Selector(*opposingPart_);
+    &stk::mesh::selectUnion(opposingPartVec_);
 
   stk::mesh::BucketVector const& face_buckets =
     realm_.get_buckets( meta_data.side_rank(), s_locally_owned_union );

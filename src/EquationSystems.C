@@ -328,6 +328,7 @@ EquationSystems::register_wall_bc(
     for( std::vector<stk::mesh::Part*>::const_iterator i = mesh_parts.begin();
          i != mesh_parts.end(); ++i )
     {
+      ThrowRequire(*i != nullptr);
       stk::mesh::Part * const part = *i ;
       const stk::topology the_topo = part->topology();
 
@@ -410,41 +411,6 @@ EquationSystems::register_open_bc(
         EquationSystemVector::iterator ii;
         for( ii=equationSystemVector_.begin(); ii!=equationSystemVector_.end(); ++ii )
           (*ii)->register_open_bc(part, the_topo, openBCData);
-      }
-    }
-  }
-}
-
-//--------------------------------------------------------------------------
-//-------- register_contact_bc ---------------------------------------------
-//--------------------------------------------------------------------------
-void
-EquationSystems::register_contact_bc(
-  const std::string targetName,
-  const ContactBoundaryConditionData &contactBCData)
-{
-  stk::mesh::MetaData &meta_data = realm_.meta_data();
-
-  stk::mesh::Part *targetPart = meta_data.get_part(targetName);
-  if ( NULL == targetPart ) {
-    NaluEnv::self().naluOutputP0() << "Sorry, no part name found by the name " << targetName << std::endl;
-  }
-  else {
-    // found the part
-    const std::vector<stk::mesh::Part*> & mesh_parts = targetPart->subsets();
-    for( std::vector<stk::mesh::Part*>::const_iterator i = mesh_parts.begin();
-         i != mesh_parts.end(); ++i )
-    {
-      stk::mesh::Part * const part = *i ;
-      const stk::topology the_topo = part->topology();
-      if ( !(meta_data.side_rank() == part->primary_entity_rank()) ) {
-        NaluEnv::self().naluOutputP0() << "Sorry, part is not a face " << targetName;
-      }
-      else {
-        realm_.register_contact_bc(part, the_topo, contactBCData);
-        EquationSystemVector::iterator ii;
-        for( ii=equationSystemVector_.begin(); ii!=equationSystemVector_.end(); ++ii )
-          (*ii)->register_contact_bc(part, the_topo, contactBCData);
       }
     }
   }
@@ -536,29 +502,37 @@ EquationSystems::register_non_conformal_bc(
 {
   stk::mesh::MetaData &meta_data = realm_.meta_data();
 
-  const std::string targetNameCurrent = nonConformalBCData.masterSlave_.master_;
-  const std::string targetNameOpposing = nonConformalBCData.masterSlave_.slave_;
- 
-  stk::mesh::Part *currentMeshPart= meta_data.get_part(targetNameCurrent);
-  stk::mesh::Part *opposingMeshPart= meta_data.get_part(targetNameOpposing);
-
-  if ( NULL == currentMeshPart) {
-    NaluEnv::self().naluOutputP0() << "Sorry, no part name found by the name " << targetNameCurrent << std::endl;
-    throw std::runtime_error("EquationSystems::fatal_error()");
+  // extract current part vector
+  stk::mesh::PartVector currentMeshPartVec;
+  for ( size_t k = 0; k < nonConformalBCData.currentPartNameVec_.size(); ++k ) {
+    stk::mesh::Part *currentMeshPart = meta_data.get_part(nonConformalBCData.currentPartNameVec_[k]);
+    if ( NULL == currentMeshPart) {
+      NaluEnv::self().naluOutputP0() << "Sorry, no part name found by the name " 
+                                     << nonConformalBCData.currentPartNameVec_[k] << std::endl;
+    }
+    currentMeshPartVec.push_back(currentMeshPart);
   }
-  else if ( NULL == opposingMeshPart) {
-    NaluEnv::self().naluOutputP0() << "Sorry, no part name found by the name " << targetNameOpposing << std::endl;
-    throw std::runtime_error("EquationSystems::fatal_error()");
+  
+  // extract opposing part vector
+  stk::mesh::PartVector opposingMeshPartVec;
+  for ( size_t k = 0; k < nonConformalBCData.opposingPartNameVec_.size(); ++k ) {
+    stk::mesh::Part *opposingMeshPart = meta_data.get_part(nonConformalBCData.opposingPartNameVec_[k]);
+    if ( NULL == opposingMeshPart) {
+      NaluEnv::self().naluOutputP0() << "Sorry, no part name found by the name " 
+                                     << nonConformalBCData.opposingPartNameVec_[k] << std::endl;
+    }
+    opposingMeshPartVec.push_back(opposingMeshPart);
   }
-  else {
-    // set up the non-conformal bc, e.g., manager, parts, etc.
-    realm_.setup_non_conformal_bc(currentMeshPart, opposingMeshPart, nonConformalBCData);
 
-    // subset the current part for current part explosed surface field registration and algorithm creation
-    const std::vector<stk::mesh::Part*> & mesh_parts = currentMeshPart->subsets();
+  // set up the non-conformal bc, e.g., manager, parts, etc.
+  realm_.setup_non_conformal_bc(currentMeshPartVec, opposingMeshPartVec, nonConformalBCData);
+  
+  // subset the current part for current part explosed surface field registration and algorithm creation
+  for ( size_t k = 0; k < currentMeshPartVec.size(); ++k ) {
+    
+    const std::vector<stk::mesh::Part*> & mesh_parts = currentMeshPartVec[k]->subsets();
     for( std::vector<stk::mesh::Part*>::const_iterator i = mesh_parts.begin();
-         i != mesh_parts.end(); ++i )
-    {
+         i != mesh_parts.end(); ++i ) {
       stk::mesh::Part * const part = *i ;
       const stk::topology the_topo = part->topology();
       if ( !(meta_data.side_rank() == part->primary_entity_rank()) ) {

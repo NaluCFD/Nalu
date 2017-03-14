@@ -7,11 +7,7 @@
 
 
 #include <LinearSystem.h>
-#include <EpetraLinearSystem.h>
 #include <TpetraLinearSystem.h>
-#include <ContactInfo.h>
-#include <ContactManager.h>
-#include <HaloInfo.h>
 #include <Realm.h>
 #include <Simulation.h>
 #include <LinearSolver.h>
@@ -87,24 +83,17 @@ bool LinearSystem::debug()
 // static method
 LinearSystem *LinearSystem::create(Realm& realm, const unsigned numDof, const std::string & name, LinearSolver *solver)
 {
-  switch(solver->getType())
-    {
-    case PT_EPETRA:
-      return new EpetraLinearSystem(realm,
-                                    numDof,
-                                    name,
-                                    solver);
-      break;
-    case PT_TPETRA:
-      return new TpetraLinearSystem(realm,
-                                    numDof,
-                                    name,
-                                    solver);
-      break;
-    case PT_END:
-    default:
-      throw std::logic_error("create lin sys");
-    }
+  switch(solver->getType()) {
+  case PT_TPETRA:
+    return new TpetraLinearSystem(realm,
+                                  numDof,
+                                  name,
+                                  solver);
+    break;
+  case PT_END:
+  default:
+    throw std::logic_error("create lin sys");
+  }
   return 0;
 }
 

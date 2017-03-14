@@ -59,11 +59,6 @@ public:
       const stk::topology &theTopo,
       const WallBoundaryConditionData &wallBCData);
 
-  void register_contact_bc(
-      stk::mesh::Part *part,
-      const stk::topology &theTopo,
-      const ContactBoundaryConditionData &contactBCData);
-
   virtual void register_symmetry_bc(
     stk::mesh::Part *part,
     const stk::topology &theTopo,
@@ -94,7 +89,9 @@ public:
   bool system_is_converged();
   double provide_scaled_norm();
   double provide_norm();
-  
+
+  const bool managePNG_;
+
   const int numMassFraction_;
   
   GenericFieldType *massFraction_;

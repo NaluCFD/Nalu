@@ -10,65 +10,54 @@
 #define MomentumAdvDiffElemSuppAlg_h
 
 #include <SupplementalAlgorithm.h>
+#include <AlgTraits.h>
 #include <FieldTypeDef.h>
 
-#include <stk_mesh/base/BulkData.hpp>
 #include <stk_mesh/base/Entity.hpp>
+
+// Kokkos
+#include <Kokkos_Core.hpp>
 
 namespace sierra{
 namespace nalu{
 
+class ElemDataRequests;
 class Realm;
+class ScratchViews;
 class MasterElement;
 
+template<class AlgTraits>
 class MomentumAdvDiffElemSuppAlg : public SupplementalAlgorithm
 {
 public:
-
+ 
   MomentumAdvDiffElemSuppAlg(
     Realm &realm,
     VectorFieldType *velocity,
-    ScalarFieldType *viscosity);
+    ScalarFieldType *viscosity,
+    ElemDataRequests& dataPreReqs);
 
   virtual ~MomentumAdvDiffElemSuppAlg() {}
 
-  virtual void setup();
-
-  virtual void elem_resize(
-    MasterElement *meSCS,
-    MasterElement *meSCV);
-
-  virtual void elem_execute(
+  void element_execute(
     double *lhs,
     double *rhs,
     stk::mesh::Entity element,
-    MasterElement *meSCS,
-    MasterElement *meSCV);
-  
-  const stk::mesh::BulkData *bulkData_;
+    ScratchViews& scratchViews);
 
   VectorFieldType *velocityNp1_;
   VectorFieldType *coordinates_;
   ScalarFieldType *viscosity_;
   GenericFieldType *massFlowRate_;
 
-  const int nDim_;
+  // master element
+  const int *lrscv_;
+
   const double includeDivU_;
 
-  // fixed space
-  std::vector<double> ws_uIp_;
-
-  // scratch space; geometry
-  std::vector<double> ws_scs_areav_;
-  std::vector<double> ws_dndx_;
-  std::vector<double> ws_deriv_;
-  std::vector<double> ws_det_j_;
-  std::vector<double> ws_shape_function_;
-
-  // scratch space; fields
-  std::vector<double> ws_uNp1_;
-  std::vector<double> ws_coordinates_;
-  std::vector<double> ws_viscosity_;
+  // fixed scratch space
+  Kokkos::View<double[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_{"v_shape_function"};
+  Kokkos::View<double[AlgTraits::nDim_]> v_uIp_{"v_uIp"};
 };
 
 } // namespace nalu

@@ -10,10 +10,14 @@
 
 #include <AuxFunction.h>
 
+#include <string>
 #include <vector>
 
 namespace sierra{
 namespace nalu{
+
+class Realm;
+class TanhFunction;
 
 class WindEnergyAuxFunction : public AuxFunction
 {
@@ -22,9 +26,10 @@ public:
   WindEnergyAuxFunction(
     const unsigned beginPos,
     const unsigned endPos,
-    std::vector<double> theParams);
+    std::vector<std::string> theStringParams,
+    Realm &realm);
 
-  virtual ~WindEnergyAuxFunction() {}
+  virtual ~WindEnergyAuxFunction();
   
   virtual void do_evaluate(
     const double * coords,
@@ -35,11 +40,15 @@ public:
     const unsigned fieldSize,
     const unsigned beginPos,
     const unsigned endPos) const;
-  
+
+  void setup(const double time);
+  void cross_product(double *c, double *u) const;
+
 private:
-  double omega_;
-  double centroidX_;
-  double centroidY_;
+  double omegaBlend_;
+  TanhFunction *tanhFunction_;
+  std::vector<double> omegaMM_;
+  std::vector<double> centroidMM_;
 };
 
 } // namespace nalu

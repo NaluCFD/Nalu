@@ -11,37 +11,40 @@
 
 #include <SupplementalAlgorithm.h>
 #include <FieldTypeDef.h>
+#include <AlgTraits.h>
 
 #include <stk_mesh/base/BulkData.hpp>
 #include <stk_mesh/base/Entity.hpp>
+#include <stk_topology/topology.hpp>
+
+#include <Kokkos_Core.hpp>
 
 namespace sierra{
 namespace nalu{
 
 class Realm;
 class MasterElement;
+class ElemDataRequests;
+class ScratchViews;
 
+template<typename AlgTraits>
 class MomentumMassElemSuppAlg : public SupplementalAlgorithm
 {
 public:
-
   MomentumMassElemSuppAlg(
-    Realm &realm);
+    Realm &realm,
+    ElemDataRequests& dataPreReqs,
+    const bool lumpedMass);
 
   virtual ~MomentumMassElemSuppAlg() {}
 
   virtual void setup();
 
-  virtual void elem_resize(
-    MasterElement *meSCS,
-    MasterElement *meSCV);
-
-  virtual void elem_execute(
+  virtual void element_execute(
     double *lhs,
     double *rhs,
     stk::mesh::Entity element,
-    MasterElement *meSCS,
-    MasterElement *meSCV);
+    ScratchViews& scratchViews);
   
   const stk::mesh::BulkData *bulkData_;
 
@@ -58,25 +61,18 @@ public:
   double gamma1_;
   double gamma2_;
   double gamma3_;
-  const int nDim_;
-  const bool useShifted_;
+  const bool lumpedMass_;
+
+  // master element
+  const int* ipNodeMap_;
 
   // scratch space
-  std::vector<double> uNm1Scv_;
-  std::vector<double> uNScv_;
-  std::vector<double> uNp1Scv_;
-  std::vector<double> GjpScv_;
+  Kokkos::View<double[AlgTraits::nDim_]> v_uNm1_ {"v_uNm1"};
+  Kokkos::View<double[AlgTraits::nDim_]> v_uN_   {"v_uN"};
+  Kokkos::View<double[AlgTraits::nDim_]> v_uNp1_ {"v_uNp1"};
+  Kokkos::View<double[AlgTraits::nDim_]> v_Gjp_  {"v_Gjp"};
 
-  std::vector<double> ws_shape_function_;
-  std::vector<double> ws_uNm1_;
-  std::vector<double> ws_uN_;
-  std::vector<double> ws_uNp1_;
-  std::vector<double> ws_Gjp_;
-  std::vector<double> ws_rhoNm1_;
-  std::vector<double> ws_rhoN_;
-  std::vector<double> ws_rhoNp1_;
-  std::vector<double> ws_coordinates_;
-  std::vector<double> ws_scv_volume_;
+  Kokkos::View<double[AlgTraits::numScvIp_][AlgTraits::nodesPerElement_]> v_shape_function_ {"view_shape_func"};
 };
 
 } // namespace nalu

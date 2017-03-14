@@ -37,6 +37,12 @@ SolverAlgorithmDriver::SolverAlgorithmDriver(
 //--------------------------------------------------------------------------
 SolverAlgorithmDriver::~SolverAlgorithmDriver()
 {
+  std::map<std::string, SolverAlgorithm *>::iterator is;
+  for( is=solverAlgorithmMap_.begin(); is != solverAlgorithmMap_.end(); ++is ) {
+    Algorithm *theAlg = is->second;
+    delete theAlg;
+  }
+
   std::map<AlgorithmType, SolverAlgorithm *>::iterator ii;
   for( ii=solverAlgMap_.begin(); ii!=solverAlgMap_.end(); ++ii ) {
     Algorithm *theAlg = ii->second;
@@ -60,6 +66,10 @@ SolverAlgorithmDriver::~SolverAlgorithmDriver()
 void
 SolverAlgorithmDriver::initialize_connectivity()
 {
+  std::map<std::string, SolverAlgorithm *>::iterator itc;
+  for ( itc = solverAlgorithmMap_.begin(); itc != solverAlgorithmMap_.end(); ++itc ) {
+    itc->second->initialize_connectivity();
+  }
   std::map<AlgorithmType, SolverAlgorithm *>::iterator it;
   for ( it = solverAlgMap_.begin(); it != solverAlgMap_.end(); ++it ) {
     it->second->initialize_connectivity();
@@ -96,6 +106,12 @@ SolverAlgorithmDriver::execute()
 {
   pre_work();
   
+  // assemble all interior and boundary contributions; consolidated homogeneous approach
+  std::map<std::string, SolverAlgorithm *>::iterator itc;
+  for ( itc = solverAlgorithmMap_.begin(); itc != solverAlgorithmMap_.end(); ++itc ) {
+    itc->second->execute();
+  }
+
   // assemble all interior and boundary contributions
   std::map<AlgorithmType, SolverAlgorithm *>::iterator it;
   for ( it = solverAlgMap_.begin(); it != solverAlgMap_.end(); ++it ) {

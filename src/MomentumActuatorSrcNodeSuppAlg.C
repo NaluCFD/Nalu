@@ -71,7 +71,7 @@ MomentumActuatorSrcNodeSuppAlg::node_execute(
   for ( int i = 0; i < nDim; ++i ) {
     rhs[i] += src[i]*dualVolume;
     const int row = i*nDim;
-    lhs[row+i] += srcLHS;
+    lhs[row+i] += srcLHS*dualVolume;
   }
 }
 

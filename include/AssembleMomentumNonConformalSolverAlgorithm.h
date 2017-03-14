@@ -44,14 +44,11 @@ public:
   GenericFieldType *ncMassFlowRate_;
 
   // options that prevail over all algorithms created
-  bool robinStyle_;
-  const bool upwindAdvection_;
+  const double eta_;
   const double includeDivU_;
-
   const double useCurrentNormal_;
 
   std::vector< const stk::mesh::FieldBase *> ghostFieldVec_;
-
 };
 
 } // namespace nalu

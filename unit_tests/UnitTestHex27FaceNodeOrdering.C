@@ -54,7 +54,6 @@ void check_Hex27_creation(const stk::mesh::BulkData& bulk)
 void check_Hex27_face_ip_node_ordering(const stk::mesh::BulkData& bulk)
 {
   stk::topology hex27 = stk::topology::HEX_27;
-  stk::topology quad9 = stk::topology::QUAD_9;
   sierra::nalu::Hex27SCS hexSCS;
   sierra::nalu::Quad93DSCS quadSCS;
 
@@ -98,7 +97,7 @@ TEST(Hex27,creation)
   stk::mesh::MetaData meta(spatialDimension);
   stk::mesh::BulkData bulk(meta, comm);
 
-  unit_test_utils::create_one_hex27_element(bulk);
+  unit_test_utils::create_one_reference_element(bulk, stk::topology::HEX_27);
   check_Hex27_creation(bulk);
 }
 
@@ -113,7 +112,7 @@ TEST(Hex27, face_node_ordering)
   stk::mesh::MetaData meta(spatialDimension);
   stk::mesh::BulkData bulk(meta, comm);
 
-  unit_test_utils::create_one_hex27_element(bulk);
+  unit_test_utils::create_one_reference_element(bulk, stk::topology::HEX_27);
   check_Hex27_face_ip_node_ordering(bulk);
 }
 

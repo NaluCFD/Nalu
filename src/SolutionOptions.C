@@ -9,6 +9,7 @@
 #include <SolutionOptions.h>
 #include <Enums.h>
 #include <NaluEnv.h>
+#include <MeshMotionInfo.h>
 
 // basic c++
 #include <stdexcept>
@@ -16,6 +17,7 @@
 
 namespace sierra{
 namespace nalu{
+
 
 //==========================================================================
 // Class Definition
@@ -34,9 +36,9 @@ SolutionOptions::SolutionOptions()
     turbScDefault_(1.0),
     turbPrDefault_(1.0),
     nocDefault_(true),
-    pecletFunctionalFormDefault_("classic"),
-    pecletTanhTransDefault_(2.0),
-    pecletTanhWidthDefault_(4.0),
+    tanhFormDefault_("classic"),
+    tanhTransDefault_(2.0),
+    tanhWidthDefault_(4.0),
     referenceDensity_(0.0),
     referenceTemperature_(298.0),
     thermalExpansionCoeff_(1.0),
@@ -63,10 +65,8 @@ SolutionOptions::SolutionOptions()
     adapterExtraOutput_(false),
     useAdapter_(false),
     maxRefinementLevel_(0),
-    extrusionCorrectionFac_(1.0),
-    ncAlgType_(NC_ALG_TYPE_DG),
     ncAlgGaussLabatto_(true),
-    ncAlgUpwindAdvection_(false),
+    ncAlgUpwindAdvection_(true),
     ncAlgIncludePstab_(true),
     ncAlgDetailedOutput_(false),
     ncAlgCurrentNormal_(false),
@@ -80,7 +80,8 @@ SolutionOptions::SolutionOptions()
     eigenvaluePerturb_(false),
     eigenvaluePerturbDelta_(0.0),
     eigenvaluePerturbBiasTowards_(3),
-    eigenvaluePerturbTurbKe_(0.0)
+    eigenvaluePerturbTurbKe_(0.0),
+    earthAngularVelocity_(7.2921159e-5)
 {
   // nothing to do
 }
@@ -90,7 +91,11 @@ SolutionOptions::SolutionOptions()
 //--------------------------------------------------------------------------
 SolutionOptions::~SolutionOptions()
 {
-  // nothing to do
+  std::map<std::string, MeshMotionInfo *>::iterator it;
+  for ( it = meshMotionInfoMap_.begin(); it!= meshMotionInfoMap_.end(); ++it ) {
+    MeshMotionInfo *info = it->second;
+    delete info;
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -115,11 +120,6 @@ SolutionOptions::load(const YAML::Node & y_node)
 
     // mdot interpolation procedure 
     get_if_present(y_solution_options, "interp_rhou_together_for_mdot", mdotInterpRhoUTogether_, mdotInterpRhoUTogether_);
-
-    // extrustion correction scaling
-    get_if_present(y_solution_options, 
-                   "extrusion_correction_factor", 
-                   extrusionCorrectionFac_, extrusionCorrectionFac_);
     
     // external mesh motion expected
     get_if_present(y_solution_options, "externally_provided_mesh_deformation", externalMeshDeformation_, externalMeshDeformation_);
@@ -268,11 +268,29 @@ SolutionOptions::load(const YAML::Node & y_node)
           get_if_present(y_user_constants, "reference_temperature",  referenceTemperature_, referenceTemperature_);
           get_if_present(y_user_constants, "thermal_expansion_coefficient",  thermalExpansionCoeff_, thermalExpansionCoeff_);
           get_if_present(y_user_constants, "stefan_boltzmann",  stefanBoltzmann_, stefanBoltzmann_);
+	  get_if_present(y_user_constants, "earth_angular_velocity", earthAngularVelocity_, earthAngularVelocity_);
+	  get_if_present(y_user_constants, "latitude", latitude_, latitude_);
           if (expect_sequence( y_user_constants, "gravity", optional) ) {
             const int gravSize = y_user_constants["gravity"].size();
             gravity_.resize(gravSize);
             for (int i = 0; i < gravSize; ++i ) {
               gravity_[i] = y_user_constants["gravity"][i].as<double>() ;
+            }
+          }
+          if (expect_sequence( y_user_constants, "east_vector", optional) ) {
+            const int vecSize = y_user_constants["east_vector"].size();
+            eastVector_.resize(vecSize);
+            for (int i = 0; i < vecSize; ++i ) {
+	      eastVector_[i] = y_user_constants["east_vector"][i].as<double>() ;
+              //y_user_constants["east_vector"][i] >> eastVector_[i];
+            }
+          }
+          if (expect_sequence( y_user_constants, "north_vector", optional) ) {
+            const int vecSize = y_user_constants["north_vector"].size();
+            northVector_.resize(vecSize);
+            for (int i = 0; i < vecSize; ++i ) {
+	      northVector_[i] = y_user_constants["north_vector"][i].as<double>() ;
+              //y_user_constants["north_vector"][i] >> northVector_[i];
             }
           }
         }
@@ -283,31 +301,25 @@ SolutionOptions::load(const YAML::Node & y_node)
           get_if_present(y_nc, "include_pstab",  ncAlgIncludePstab_, ncAlgIncludePstab_);
           get_if_present(y_nc, "detailed_output",  ncAlgDetailedOutput_, ncAlgDetailedOutput_);
           get_if_present(y_nc, "current_normal",  ncAlgCurrentNormal_, ncAlgCurrentNormal_);
-          if ( y_nc["algorithm_type"] ) {
-            std::string algTypeString = "none";
-            algTypeString = y_nc["algorithm_type"].as<std::string>() ;
-            // find the enum and set the value
-            bool foundIt = false;
-            for ( int k=0; k < NC_ALG_TYPE_END; ++k ) {
-              if ( algTypeString == NonConformalAlgTypeNames[k] ) {
-                NonConformalAlgType algTypeEnum = NonConformalAlgType(k);
-                foundIt = true;
-                ncAlgType_ = algTypeEnum;
-                break;
-              }
-            }
-            if ( !foundIt )
-              NaluEnv::self().naluOutputP0() << "Cound not find: " << algTypeString << std::endl;
-          }
         }
         else if (expect_map( y_option, "peclet_function_form", optional)) {
-          y_option["peclet_function_form"] >> pecletFunctionalFormMap_ ;
+          y_option["peclet_function_form"] >> tanhFormMap_ ;
         }
         else if (expect_map( y_option, "peclet_function_tanh_transition", optional)) {
-          y_option["peclet_function_tanh_transition"] >> pecletFunctionTanhTransMap_ ;
+          y_option["peclet_function_tanh_transition"] >> tanhTransMap_ ;
         }
         else if (expect_map( y_option, "peclet_function_tanh_width", optional)) {
-          y_option["peclet_function_tanh_width"] >> pecletFunctionTanhWidthMap_ ;
+          y_option["peclet_function_tanh_width"] >> tanhWidthMap_ ;
+        }
+        // overload line command, however, push to the same tanh data structure
+        else if (expect_map( y_option, "blending_function_form", optional)) {
+          y_option["blending_function_form"] >> tanhFormMap_ ;
+        }
+        else if (expect_map( y_option, "tanh_transition", optional)) {
+          y_option["tanh_transition"] >> tanhTransMap_ ;
+        }
+        else if (expect_map( y_option, "tanh_width", optional)) {
+          y_option["tanh_width"] >> tanhWidthMap_ ;
         }
         else if (expect_map( y_option, "consistent_mass_matrix_png", optional)) {
           y_option["consistent_mass_matrix_png"] >> consistentMassMatrixPngMap_ ;
@@ -358,18 +370,30 @@ SolutionOptions::load(const YAML::Node & y_node)
               meshMotionBlock[i] = targets[i].as<std::string>() ;
             }
           }
-          std::pair<std::vector<std::string>, double > thePair;
-          thePair = std::make_pair(meshMotionBlock, omega);
           
-          // provide the map
-          meshMotionMap_[motionName] = thePair;
+          // look for centroid coordinates; optional
+          std::vector<double> cCoordsVec(3,0.0); 
+          const YAML::Node coordsVecNode = y_option["centroid_coordinates"];
+          if ( coordsVecNode ) {
+            for ( size_t i = 0; i < coordsVecNode.size(); ++i )
+              cCoordsVec[i] = coordsVecNode[i].as<double>();
+          }
+
+          // look for unit vector; provide default
+          std::vector<double> unitVec(3,0.0); 
+          const YAML::Node uV = y_option["unit_vector"];
+          if ( uV ) {
+            for ( size_t i = 0; i < uV.size(); ++i )
+              unitVec[i] = uV[i].as<double>() ;
+          }
+          else {
+            NaluEnv::self().naluOutputP0() << "SolutionOptions::load() unit_vector not supplied; will use 0,0,1" << std::endl;
+            unitVec[2] = 1.0;
+          }
           
-          // check for centroids; provide default
-          Coordinates cCoords;
-          const YAML::Node coordsNode = y_option["centroid_coordinates"];
-          if ( coordsNode )
-            cCoords = coordsNode.as<Coordinates>() ;
-          meshMotionCentroidMap_[motionName] = cCoords;
+          MeshMotionInfo *meshInfo = new MeshMotionInfo(meshMotionBlock, omega, cCoordsVec, unitVec);
+          // set the map
+          meshMotionInfoMap_[motionName] = meshInfo;
         }
       }
     }
@@ -530,6 +554,6 @@ SolutionOptions::initialize_turbulence_constants()
   turbModelConstantMap_[TM_Cw] = 0.325;
   turbModelConstantMap_[TM_CbTwo] = 0.35;
 }
-
+ 
 } // namespace nalu
 } // namespace Sierra

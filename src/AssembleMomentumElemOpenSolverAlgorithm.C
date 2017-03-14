@@ -41,10 +41,24 @@ AssembleMomentumElemOpenSolverAlgorithm::AssembleMomentumElemOpenSolverAlgorithm
   EquationSystem *eqSystem)
   : SolverAlgorithm(realm, part, eqSystem),
     includeDivU_(realm_.get_divU()),
+    meshMotion_(realm_.does_mesh_move()),
+    velocityRTM_(NULL),
+    velocity_(NULL),
+    dudx_(NULL),
+    coordinates_(NULL),
+    density_(NULL),
+    viscosity_(NULL),
+    exposedAreaVec_(NULL),
+    openMassFlowRate_(NULL),
+    velocityBc_(NULL),
     pecletFunction_(NULL)
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
+  if ( meshMotion_ )
+    velocityRTM_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity_rtm");
+  else
+    velocityRTM_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
   velocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
   dudx_ = meta_data.get_field<GenericFieldType>(stk::topology::NODE_RANK, "dudx");
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
@@ -169,7 +183,7 @@ AssembleMomentumElemOpenSolverAlgorithm::execute()
     MasterElement *meFC = realm_.get_surface_master_element(b.topology());
     const int nodesPerFace = meFC->nodesPerElement_;
     const int numScsBip = meFC->numIntPoints_;
-    std::vector<int> face_node_ordinal_vec(nodesPerFace);
+
 
     // resize some things; matrix related
     const int lhsSize = nodesPerElement*nDim*nodesPerElement*nDim;
@@ -258,11 +272,10 @@ AssembleMomentumElemOpenSolverAlgorithm::execute()
       stk::mesh::Entity const * face_elem_rels = bulk_data.begin_elements(face);
       ThrowAssert( bulk_data.num_elements(face) == 1 );
 
-      // get element; its face ordinal number and populate face_node_ordinal_vec
+      // get element; its face ordinal number and populate face_node_ordinals
       stk::mesh::Entity element = face_elem_rels[0];
       const int face_ordinal = bulk_data.begin_element_ordinals(face)[0];
-
-      theElemTopo.side_node_ordinals(face_ordinal, face_node_ordinal_vec.begin());
+      const int *face_node_ordinals = meSCS->side_node_ordinals(face_ordinal);
 
       // mapping from ip to nodes for this ordinal; 
       const int *ipNodeMap = meSCS->ipNodeMap(face_ordinal); // use with elem_node_rels
@@ -328,7 +341,7 @@ AssembleMomentumElemOpenSolverAlgorithm::execute()
           const double r = p_face_shape_function[offSetSF_face+ic];
           viscBip += r*p_viscosity[ic];
           const int offSetFN = ic*nDim;
-          const int nn = face_node_ordinal_vec[ic];
+          const int nn = face_node_ordinals[ic];
           const int offSetEN = nn*nDim;
           for ( int j = 0; j < nDim; ++j ) {
             p_uspecBip[j] += r*p_bcVelocity[offSetFN+j];
@@ -351,8 +364,10 @@ AssembleMomentumElemOpenSolverAlgorithm::execute()
         const double densR   = *stk::mesh::field_data(densityNp1, nodeR);
         const double viscL   = *stk::mesh::field_data(*viscosity_, nodeL);
         const double viscR   = *stk::mesh::field_data(*viscosity_, nodeR);
-        const double *uNp1L  =  stk::mesh::field_data(velocityNp1, nodeL);
         const double *uNp1R  =  stk::mesh::field_data(velocityNp1, nodeR);
+        const double *vrtmL  =  stk::mesh::field_data(*velocityRTM_, nodeL);
+        const double *vrtmR  =  stk::mesh::field_data(*velocityRTM_, nodeR);
+        
         const double *coordL =  stk::mesh::field_data(*coordinates_, nodeL);
         const double *coordR =  stk::mesh::field_data(*coordinates_, nodeR);
 
@@ -360,7 +375,7 @@ AssembleMomentumElemOpenSolverAlgorithm::execute()
         const int row_p_dudxR = localFaceNode*nDim*nDim; // tricky here with localFaceNode
         for ( int i = 0; i < nDim; ++i ) {
           const double dxi = coordR[i]  - coordL[i];
-          udotx += 0.5*dxi*(uNp1L[i] + uNp1R[i]);
+          udotx += 0.5*dxi*(vrtmL[i] + vrtmR[i]);
           p_nx[i] = areaVec[faceOffSet+i]/amag;
           // extrapolation
           double duR = 0.0;
@@ -406,7 +421,7 @@ AssembleMomentumElemOpenSolverAlgorithm::execute()
             const double fac = tmdot*(pecfac*om_alphaUpw+om_pecfac);
             for ( int ic = 0; ic < nodesPerFace; ++ic ) {
               const double r = p_face_shape_function[offSetSF_face+ic];
-              const int nn = face_node_ordinal_vec[ic];
+              const int nn = face_node_ordinals[ic];
               p_lhs[rowR+nn*nDim+i] += r*fac;
             }
           }
@@ -448,7 +463,7 @@ AssembleMomentumElemOpenSolverAlgorithm::execute()
               double fac = tmdot*(pecfac*om_alphaUpw+om_pecfac*nfEntrain)*nxinxj;
               for ( int ic = 0; ic < nodesPerFace; ++ic ) {
                 const double r = p_face_shape_function[offSetSF_face+ic];
-                const int nn = face_node_ordinal_vec[ic];
+                const int nn = face_node_ordinals[ic];
                 p_lhs[rowR+nn*nDim+j] += r*fac;
               }
 

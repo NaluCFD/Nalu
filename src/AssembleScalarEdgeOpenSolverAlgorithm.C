@@ -107,10 +107,6 @@ AssembleScalarEdgeOpenSolverAlgorithm::execute()
     MasterElement *meSCS = realm_.get_surface_master_element(theElemTopo);
     const int nodesPerElement = meSCS->nodesPerElement_;
 
-    // face master element
-    MasterElement *meFC = realm_.get_surface_master_element(b.topology());
-    const int nodesPerFace = meFC->nodesPerElement_;
-    std::vector<int> face_node_ordinal_vec(nodesPerFace);
 
     // resize some things; matrix related
     const int lhsSize = nodesPerElement*nodesPerElement;
@@ -127,7 +123,7 @@ AssembleScalarEdgeOpenSolverAlgorithm::execute()
 
     // size some things that are useful
     const int num_face_nodes = b.topology().num_nodes();
-    std::vector<int> face_node_ordinals(num_face_nodes);
+    
 
     const stk::mesh::Bucket::size_type length   = b.size();
 
@@ -149,10 +145,10 @@ AssembleScalarEdgeOpenSolverAlgorithm::execute()
       const stk::mesh::Entity* face_elem_rels = bulk_data.begin_elements(face);
       ThrowAssert( bulk_data.num_elements(face) == 1 );
 
-      // get element; its face ordinal number and populate face_node_ordinal_vec
+      // get element; its face ordinal number and populate face_node_ordinals
       stk::mesh::Entity element = face_elem_rels[0];
       const int face_ordinal = bulk_data.begin_element_ordinals(face)[0];
-      theElemTopo.side_node_ordinals(face_ordinal, face_node_ordinal_vec.begin());
+      const int *face_node_ordinals = meSCS->side_node_ordinals(face_ordinal);
 
       //==========================================
       // gather nodal data off of element; n/a
@@ -170,7 +166,7 @@ AssembleScalarEdgeOpenSolverAlgorithm::execute()
       // loop over face nodes
       for ( int ip = 0; ip < num_face_nodes; ++ip ) {
 
-        const int nearestNode = face_node_ordinal_vec[ip];
+        const int nearestNode = face_node_ordinals[ip];
 
         // left and right nodes; right is on the face; left is the opposing node
         stk::mesh::Entity nodeR = elem_node_rels[nearestNode];

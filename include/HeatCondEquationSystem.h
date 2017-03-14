@@ -32,7 +32,6 @@ class ProjectedNodalGradientEquationSystem;
 class HeatCondEquationSystem : public EquationSystem {
 
 public:
-
   HeatCondEquationSystem(
     EquationSystems& equationSystems);
   virtual ~HeatCondEquationSystem();
@@ -58,11 +57,6 @@ public:
     const stk::topology &theTopo,
     const WallBoundaryConditionData &wallBCData);
  
-  virtual void register_contact_bc(
-    stk::mesh::Part *part,
-    const stk::topology &theTopo,
-    const ContactBoundaryConditionData &contactBCData);
-
   virtual void register_non_conformal_bc(
     stk::mesh::Part *part,
     const stk::topology &theTopo);
@@ -87,7 +81,8 @@ public:
     EquationSystem::load(node);
     get_if_present(node, "use_collocation", collocationForViscousTerms_, false);
   }
-  
+
+
   // allow equation system to manage a projected nodal gradient
   const bool managePNG_;
 
@@ -110,6 +105,7 @@ public:
   bool isInit_;
   bool collocationForViscousTerms_;
   ProjectedNodalGradientEquationSystem *projectedNodalGradEqs_;
+
 };
 
 } // namespace nalu

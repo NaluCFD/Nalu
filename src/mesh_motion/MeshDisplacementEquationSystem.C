@@ -117,7 +117,7 @@ MeshDisplacementEquationSystem::MeshDisplacementEquationSystem(
 //--------------------------------------------------------------------------
 MeshDisplacementEquationSystem::~MeshDisplacementEquationSystem()
 {
-  // does nothing
+  delete assembleNodalGradAlgDriver_;
 }
 
 //--------------------------------------------------------------------------

@@ -69,6 +69,7 @@ ComputeMdotNonConformalAlgorithm::ComputeMdotNonConformalAlgorithm(
   ghostFieldVec_.push_back(coordinates_);
   ghostFieldVec_.push_back(velocityRTM_);
   ghostFieldVec_.push_back(density_);
+  ghostFieldVec_.push_back(exposedAreaVec_);
 }
 
 //--------------------------------------------------------------------------
@@ -149,8 +150,8 @@ ComputeMdotNonConformalAlgorithm::execute()
   std::vector<double> ws_o_dndx;
   std::vector<double> ws_c_det_j;
   std::vector<double> ws_o_det_j;
-  std::vector<int> ws_c_face_node_ordinals;
-  std::vector<int> ws_o_face_node_ordinals;
+
+
 
   // deal with state
   ScalarFieldType &pressureNp1 = pressure_->field_of_state(stk::mesh::StateNP1);
@@ -182,8 +183,6 @@ ComputeMdotNonConformalAlgorithm::execute()
         stk::mesh::Entity opposingFace = dgInfo->opposingFace_;
         stk::mesh::Entity currentElement = dgInfo->currentElement_;
         stk::mesh::Entity opposingElement = dgInfo->opposingElement_;
-        stk::topology currentElementTopo = dgInfo->currentElementTopo_;
-        stk::topology opposingElementTopo = dgInfo->opposingElementTopo_;
         const int currentFaceOrdinal = dgInfo->currentFaceOrdinal_;
         const int opposingFaceOrdinal = dgInfo->opposingFaceOrdinal_;
         
@@ -218,10 +217,6 @@ ComputeMdotNonConformalAlgorithm::execute()
         ws_o_density.resize(opposingNodesPerFace);
         ws_o_coordinates.resize(opposingNodesPerFace*nDim);
 
-        // face node identification
-        ws_c_face_node_ordinals.resize(currentNodesPerFace);
-        ws_o_face_node_ordinals.resize(opposingNodesPerFace);
-
         // algorithm related; element; dndx will be at a single gauss point
         ws_c_elem_pressure.resize(currentNodesPerElement);
         ws_o_elem_pressure.resize(opposingNodesPerElement);
@@ -254,7 +249,7 @@ ComputeMdotNonConformalAlgorithm::execute()
         double *p_o_dndx = &ws_o_dndx[0];
         
         // populate current face_node_ordinals
-        currentElementTopo.side_node_ordinals(currentFaceOrdinal, ws_c_face_node_ordinals.begin());
+        const int *c_face_node_ordinals = meSCSCurrent->side_node_ordinals(currentFaceOrdinal);
 
         // gather current face data
         stk::mesh::Entity const* current_face_node_rels = bulk_data.begin_nodes(currentFace);
@@ -275,7 +270,7 @@ ComputeMdotNonConformalAlgorithm::execute()
         }
         
         // populate opposing face_node_ordinals
-        opposingElementTopo.side_node_ordinals(opposingFaceOrdinal, ws_o_face_node_ordinals.begin());
+        const int *o_face_node_ordinals = meSCSOpposing->side_node_ordinals(opposingFaceOrdinal);
 
         // gather opposing face data
         stk::mesh::Entity const* opposing_face_node_rels = bulk_data.begin_nodes(opposingFace);
@@ -365,7 +360,7 @@ ComputeMdotNonConformalAlgorithm::execute()
         // current inverse length scale; can loop over face nodes to avoid "nodesOnFace" array
         double currentInverseLength = 0.0;
         for ( int ic = 0; ic < current_num_face_nodes; ++ic ) {
-          const int faceNodeNumber = ws_c_face_node_ordinals[ic];
+          const int faceNodeNumber = c_face_node_ordinals[ic];
           const int offSetDnDx = faceNodeNumber*nDim; // single intg. point
           for ( int j = 0; j < nDim; ++j ) {
             const double nxj = p_cNx[j];
@@ -377,7 +372,7 @@ ComputeMdotNonConformalAlgorithm::execute()
         // opposing inverse length scale; can loop over face nodes to avoid "nodesOnFace" array
         double opposingInverseLength = 0.0;
         for ( int ic = 0; ic < opposing_num_face_nodes; ++ic ) {
-          const int faceNodeNumber = ws_o_face_node_ordinals[ic];
+          const int faceNodeNumber = o_face_node_ordinals[ic];
           const int offSetDnDx = faceNodeNumber*nDim; // single intg. point
           for ( int j = 0; j < nDim; ++j ) {
             const double nxj = p_oNx[j];
