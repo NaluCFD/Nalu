@@ -67,7 +67,7 @@ SurfaceForceAndMomentAlgorithm::SurfaceForceAndMomentAlgorithm(
     dudx_(NULL),
     exposedAreaVec_(NULL),
     assembledArea_(NULL),
-    w_(12)
+    w_(16)
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -96,7 +96,7 @@ SurfaceForceAndMomentAlgorithm::SurfaceForceAndMomentAlgorithm(
     myfile << std::setw(w_) 
            << "Time" << std::setw(w_) 
            << "Fpx"  << std::setw(w_) << "Fpy" << std::setw(w_)  << "Fpz" << std::setw(w_) 
-           << "Fvx"  << std::setw(w_) << "Fvy" << std::setw(w_)  << "Fxz" << std::setw(w_) 
+           << "Fvx"  << std::setw(w_) << "Fvy" << std::setw(w_)  << "Fvz" << std::setw(w_) 
            << "Mtx"  << std::setw(w_) << "Mty" << std::setw(w_)  << "Mtz" << std::setw(w_) 
            << "Y+min" << std::setw(w_) << "Y+max"<< std::endl;
   }
