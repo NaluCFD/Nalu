@@ -385,7 +385,7 @@ TEST_F(PromoteElementQuadTestV2, node_count)
 
     EXPECT_EQ(promotedNodeCount, expected_node_count(originalNodeCount));
 
-    bool outputMesh = true;
+    bool outputMesh = false;
     if (outputMesh) {
       EXPECT_NO_THROW(output_mesh());
     }
@@ -533,7 +533,7 @@ TEST_F(PromoteElementQuadTestV2, png)
       EXPECT_NEAR(dqdxMag, exactGradMag, tol);
     });
 
-    bool outputMesh = true;
+    bool outputMesh = false;
     if (outputMesh) {
       EXPECT_NO_THROW(output_mesh());
     }
