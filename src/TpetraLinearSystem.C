@@ -877,6 +877,51 @@ TpetraLinearSystem::zeroSystem()
 
 }
 
+void
+TpetraLinearSystem::sumInto(
+      unsigned numEntities,
+      const stk::mesh::Entity* entities,
+      const SharedMemView<const double*> & rhs,
+      const SharedMemView<const double**> & lhs,
+      const SharedMemView<int*> & localIds,
+      const char * trace_tag)
+{
+  stk::mesh::BulkData & bulkData = realm_.bulk_data();
+
+  const int n_obj = numEntities;
+  const int numRows = n_obj * numDof_;
+
+  for(int i = 0; i < n_obj; i++) {
+    const stk::mesh::Entity entity = entities[i];
+    const stk::mesh::EntityId entityId = bulkData.identifier(entity);
+    (void)entityId;
+    const stk::mesh::EntityId naluId = *stk::mesh::field_data(*realm_.naluGlobalId_, entity);
+    const LocalOrdinal localOffset = lookup_myLID(myLIDs_, naluId, "sumInto", entity) * numDof_;
+    for(size_t d=0; d < numDof_; ++d) {
+      size_t lid = i*numDof_ + d;
+      localIds[lid] = localOffset + d;
+    }
+  }
+
+  for(int r = 0; r < numRows; r++) {
+    const LocalOrdinal localId = localIds[r];
+
+    if(localId < maxOwnedRowId_) {
+      /* TODO: If I try to use the View's that are ppased in directly I get template */
+      /* argument deduction errors for reasons I don't understand. Need to ask Mark. */
+      ownedMatrix_->sumIntoLocalValues<SharedMemView<int*>, SharedMemView<const double*> >
+         (localId,localIds,Kokkos::subview(lhs,r,Kokkos::ALL()));
+      ownedRhs_->sumIntoLocalValue(localId, rhs(r));
+    }
+    else if(localId < maxGloballyOwnedRowId_) {
+      const LocalOrdinal actualLocalId = localId - maxOwnedRowId_;
+      globallyOwnedMatrix_->sumIntoLocalValues<SharedMemView<int*>,SharedMemView<const double*> >
+         (actualLocalId,localIds,Kokkos::subview(lhs,r,Kokkos::ALL()));
+      globallyOwnedRhs_->sumIntoLocalValue(actualLocalId, rhs(r));
+    }
+  }
+}
+
 
 void
 TpetraLinearSystem::sumInto(

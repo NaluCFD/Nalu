@@ -109,8 +109,8 @@ MomentumMassElemSuppAlg<AlgTraits>::setup()
 template<typename AlgTraits>
 void
 MomentumMassElemSuppAlg<AlgTraits>::element_execute(
-  double *lhs,
-  double *rhs,
+  SharedMemView<double **>& lhs,
+  SharedMemView<double *>& rhs,
   stk::mesh::Entity /* element */,
   ScratchViews& scratchViews
 )
@@ -156,7 +156,7 @@ MomentumMassElemSuppAlg<AlgTraits>::element_execute(
     const int nnNdim = nearestNode * AlgTraits::nDim_;
     // Compute RHS
     for (int j=0; j < AlgTraits::nDim_; ++j) {
-      rhs[nnNdim + j] +=
+      rhs(nnNdim + j) +=
         - ( gamma1_ * rhoNp1 * v_uNp1_(j) +
             gamma2_ * rhoN   * v_uN_(j) +
             gamma3_ * rhoNm1 * v_uNm1_(j)) * scV / dt_
@@ -164,7 +164,6 @@ MomentumMassElemSuppAlg<AlgTraits>::element_execute(
     }
 
     // Compute LHS
-    const int npeNdim = AlgTraits::nodesPerElement_ * AlgTraits::nDim_;
     for (int ic=0; ic < AlgTraits::nodesPerElement_; ++ic) {
       const int icNdim = ic * AlgTraits::nDim_;
       const double r = v_shape_function_(ip, ic);
@@ -172,9 +171,7 @@ MomentumMassElemSuppAlg<AlgTraits>::element_execute(
 
       for (int j=0; j<AlgTraits::nDim_; ++j) {
         const int indexNN = nnNdim + j;
-        const int rowNN = indexNN * npeNdim;
-        const int rNNiC_j = rowNN + icNdim + j;
-        lhs[rNNiC_j] += lhsfac;
+        lhs(indexNN,icNdim+j) += lhsfac;
       }
     }
   }

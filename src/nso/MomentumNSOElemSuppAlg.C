@@ -144,8 +144,8 @@ MomentumNSOElemSuppAlg<AlgTraits>::setup()
 template<class AlgTraits>
 void
 MomentumNSOElemSuppAlg<AlgTraits>::element_execute(
-  double *lhs,
-  double *rhs,
+  SharedMemView<double **>& lhs,
+  SharedMemView<double *>& rhs,
   stk::mesh::Entity element,
   ScratchViews& scratchViews)
 {
@@ -221,9 +221,6 @@ MomentumNSOElemSuppAlg<AlgTraits>::element_execute(
       const int indexL = ilNdim + k;
       const int indexR = irNdim + k;
       
-      const int rowL = indexL*AlgTraits::nodesPerElement_*AlgTraits::nDim_;
-      const int rowR = indexR*AlgTraits::nodesPerElement_*AlgTraits::nDim_;
-
       // zero out residual_k and interpolated velocity_k to scs
       double dFdxkAdv = 0.0;
       double dFdxkDiff = 0.0;
@@ -305,10 +302,7 @@ MomentumNSOElemSuppAlg<AlgTraits>::element_execute(
         // find the row
         const int icNdim = ic*AlgTraits::nDim_;
 
-        const int rLkC_k = rowL+icNdim+k;
-        const int rRkC_k = rowR+icNdim+k;
-
-        // save of some variables
+        // save off some variables
         const double ukNp1 = v_uNp1(ic,k);
         
         // NSO diffusion-like term; -nu*gUpper*dQ/dxj*ai (residual below)
@@ -325,14 +319,14 @@ MomentumNSOElemSuppAlg<AlgTraits>::element_execute(
         }
         
         // no coupling between components
-        lhs[rLkC_k] += nu*lhsfac;
-        lhs[rRkC_k] -= nu*lhsfac;
+        lhs(indexL,icNdim+k) += nu*lhsfac;
+        lhs(indexR,icNdim+k) -= nu*lhsfac;
       }
       
       // residual; left and right
       const double residualNSO = -nu*gijFac;
-      rhs[indexL] -= residualNSO;
-      rhs[indexR] += residualNSO;
+      rhs(indexL) -= residualNSO;
+      rhs(indexR) += residualNSO;
     }
   }
 }

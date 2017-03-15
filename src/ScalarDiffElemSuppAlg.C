@@ -75,8 +75,8 @@ ScalarDiffElemSuppAlg<AlgTraits>::ScalarDiffElemSuppAlg(
 template<class AlgTraits>
 void
 ScalarDiffElemSuppAlg<AlgTraits>::element_execute(
-  double *lhs,
-  double *rhs,
+  SharedMemView<double **>& lhs,
+  SharedMemView<double*>& rhs,
   stk::mesh::Entity element,
   ScratchViews& scratchViews)
 {
@@ -93,10 +93,6 @@ ScalarDiffElemSuppAlg<AlgTraits>::element_execute(
     const int il = lrscv_[2*ip];
     const int ir = lrscv_[2*ip+1];
     
-    // corresponding matrix rows
-    const int rowL = il*AlgTraits::nodesPerElement_;
-    const int rowR = ir*AlgTraits::nodesPerElement_;
-
     // compute ip property
     double diffFluxCoeffIp = 0.0;
     for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
@@ -114,8 +110,8 @@ ScalarDiffElemSuppAlg<AlgTraits>::element_execute(
       qDiff += lhsfacDiff*v_scalarQ(ic);
       
       // lhs; il then ir
-      lhs[rowL+ic] += lhsfacDiff;
-      lhs[rowR+ic] -= lhsfacDiff;
+      lhs(il,ic) += lhsfacDiff;
+      lhs(ir,ic) -= lhsfacDiff;
     }
     
     // rhs; il then ir

@@ -40,8 +40,8 @@ public:
   virtual ~MomentumAdvDiffElemSuppAlg() {}
 
   void element_execute(
-    double *lhs,
-    double *rhs,
+    SharedMemView<double **>& lhs,
+    SharedMemView<double *>& rhs,
     stk::mesh::Entity element,
     ScratchViews& scratchViews);
 

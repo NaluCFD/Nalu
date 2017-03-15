@@ -102,8 +102,8 @@ MomentumNSOKeElemSuppAlg<AlgTraits>::MomentumNSOKeElemSuppAlg(
 template<class AlgTraits>
 void
 MomentumNSOKeElemSuppAlg<AlgTraits>::element_execute(
-  double *lhs,
-  double *rhs,
+  SharedMemView<double **>& lhs,
+  SharedMemView<double *>& rhs,
   stk::mesh::Entity element,
   ScratchViews& scratchViews)
 {
@@ -206,9 +206,6 @@ MomentumNSOKeElemSuppAlg<AlgTraits>::element_execute(
       const int indexL = ilNdim + k;
       const int indexR = irNdim + k;
       
-      const int rowL = indexL*AlgTraits::nodesPerElement_*AlgTraits::nDim_;
-      const int rowR = indexR*AlgTraits::nodesPerElement_*AlgTraits::nDim_;
-      
       double gijFac = 0.0;
       for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
 
@@ -217,8 +214,6 @@ MomentumNSOKeElemSuppAlg<AlgTraits>::element_execute(
 
         // find the row
         const int icNdim = ic*AlgTraits::nDim_;
-        const int rLkC_k = rowL+icNdim+k;
-        const int rRkC_k = rowR+icNdim+k;
 
         // save of some variables
         const double ukNp1 = v_uNp1(ic,k);
@@ -237,8 +232,8 @@ MomentumNSOKeElemSuppAlg<AlgTraits>::element_execute(
         }
         
         // no coupling between components
-        lhs[rLkC_k] += nu*lhsfac;
-        lhs[rRkC_k] -= nu*lhsfac;
+        lhs(indexL,icNdim+k) += nu*lhsfac;
+        lhs(indexR,icNdim+k) -= nu*lhsfac;
       }
       
       // residual; left and right

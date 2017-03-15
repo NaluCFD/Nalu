@@ -95,8 +95,8 @@ ContinuityMassElemSuppAlg<AlgTraits>::setup()
 template<typename AlgTraits>
 void
 ContinuityMassElemSuppAlg<AlgTraits>::element_execute(
-  double */*lhs*/,
-  double *rhs,
+  SharedMemView<double **>&/*lhs*/,
+  SharedMemView<double *>&rhs,
   stk::mesh::Entity /* element */,
   ScratchViews& scratchViews)
 {
@@ -126,7 +126,7 @@ ContinuityMassElemSuppAlg<AlgTraits>::element_execute(
     }
 
     const double scV = v_scv_volume(ip);
-    rhs[nearestNode] += - ( gamma1_ * rhoNp1 + gamma2_ * rhoN +
+    rhs(nearestNode) += - ( gamma1_ * rhoNp1 + gamma2_ * rhoN +
                             gamma3_ * rhoNm1 ) * scV / dt_ / projTimeScale;
 
     // manage LHS : N/A
