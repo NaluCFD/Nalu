@@ -10,6 +10,7 @@
 #define SupplementalAlgorithm_h
 
 #include <master_element/MasterElement.h>
+#include <KokkosInterface.h>
 #include <vector>
 
 #include <stk_mesh/base/Types.hpp>
@@ -33,8 +34,8 @@ public:
   virtual void setup() {}
 
   virtual void element_execute(
-    double *lhs,
-    double *rhs,
+    SharedMemView<double**>& lhs,
+    SharedMemView<double*>& rhs,
     stk::mesh::Entity element,
     ScratchViews& scratchViews) {}
 

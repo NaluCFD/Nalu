@@ -10,6 +10,7 @@
 #define LinearSystem_h
 
 #include <LinearSolverTypes.h>
+#include <KokkosInterface.h>
 
 #include <Teuchos_RCP.hpp>
 #include <Tpetra_DefaultPlatform.hpp>
@@ -62,6 +63,15 @@ public:
 
   // Matrix Assembly
   virtual void zeroSystem()=0;
+
+  virtual void sumInto(
+      unsigned numEntities,
+      const stk::mesh::Entity* entities,
+      const SharedMemView<const double*> & rhs,
+      const SharedMemView<const double**> & lhs,
+      const SharedMemView<int*> & localIds,
+      const char * trace_tag
+      )=0;
 
   virtual void sumInto(
     const std::vector<stk::mesh::Entity> & sym_meshobj,

@@ -107,8 +107,8 @@ ContinuityAdvElemSuppAlg<AlgTraits>::setup()
 template<typename AlgTraits>
 void
 ContinuityAdvElemSuppAlg<AlgTraits>::element_execute(
-  double *lhs,
-  double *rhs,
+  SharedMemView<double **>& lhs,
+  SharedMemView<double *>& rhs,
   stk::mesh::Entity /*element*/,
   ScratchViews& scratchViews)
 {
@@ -128,9 +128,6 @@ ContinuityAdvElemSuppAlg<AlgTraits>::element_execute(
   for (int ip = 0; ip < AlgTraits::numScsIp_; ++ip) {
     const int il = lrscv_[2*ip];
     const int ir = lrscv_[2*ip+1];
-
-    const int rowL = il * AlgTraits::nodesPerElement_;
-    const int rowR = ir * AlgTraits::nodesPerElement_;
 
     double rhoIp = 0.0;
     for (int j = 0; j < AlgTraits::nDim_; ++j) {
@@ -156,8 +153,8 @@ ContinuityAdvElemSuppAlg<AlgTraits>::element_execute(
         lhsfac += -v_dndx_lhs(ip, ic, j) * v_scs_areav(ip, j);
       }
 
-      lhs[rowL+ic] += lhsfac;
-      lhs[rowR+ic] -= lhsfac;
+      lhs(il,ic) += lhsfac;
+      lhs(ir,ic) -= lhsfac;
     }
 
     // assemble mdot
@@ -168,8 +165,8 @@ ContinuityAdvElemSuppAlg<AlgTraits>::element_execute(
     }
 
     // residuals
-    rhs[il] -= mdot / projTimeScale_;
-    rhs[ir] += mdot / projTimeScale_;
+    rhs(il) -= mdot / projTimeScale_;
+    rhs(ir) += mdot / projTimeScale_;
   }
 }
 

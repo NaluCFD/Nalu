@@ -105,8 +105,8 @@ ScalarMassElemSuppAlg<AlgTraits>::setup()
 template<typename AlgTraits>
 void
 ScalarMassElemSuppAlg<AlgTraits>::element_execute(
-  double *lhs,
-  double *rhs,
+  SharedMemView<double **>& lhs,
+  SharedMemView<double *>& rhs,
   stk::mesh::Entity /* element */,
   ScratchViews& scratchViews)
 {
@@ -155,7 +155,7 @@ ScalarMassElemSuppAlg<AlgTraits>::element_execute(
 
     // assemble rhs
     const double scV = v_scv_volume(ip);
-    rhs[nearestNode] += 
+    rhs(nearestNode) += 
       -(gamma1_*rhoNp1Scv*qNp1Scv + gamma2_*rhoNScv*qNScv + gamma3_*rhoNm1Scv*qNm1Scv)*scV/dt_;
     
     // manage LHS
@@ -163,8 +163,7 @@ ScalarMassElemSuppAlg<AlgTraits>::element_execute(
       // save off shape function
       const double r = v_shape_function_(ip,ic);
       const double lhsfac = r*gamma1_*rhoNp1Scv*scV/dt_;
-      const int rNNiC = nearestNode*AlgTraits::nodesPerElement_+ic;
-      lhs[rNNiC] += lhsfac;
+      lhs(nearestNode,ic) += lhsfac;
     }   
   }
 }

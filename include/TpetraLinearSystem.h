@@ -64,6 +64,14 @@ public:
   // Matrix Assembly
   void zeroSystem();
 
+void sumInto(
+      unsigned numEntities,
+      const stk::mesh::Entity* entities,
+      const SharedMemView<const double*> & rhs,
+      const SharedMemView<const double**> & lhs,
+      const SharedMemView<int*> & localIds,
+      const char * trace_tag);
+
   void sumInto(
     const std::vector<stk::mesh::Entity> & entities,
     std::vector<int> &scratchIds,

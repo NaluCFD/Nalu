@@ -10,6 +10,7 @@
 #define SolverAlgorithm_h
 
 #include <Algorithm.h>
+#include <KokkosInterface.h>
 
 #include <stk_mesh/base/Entity.hpp>
 #include <vector>
@@ -44,6 +45,14 @@ protected:
     const std::vector<double> &lhs,
     const char *trace_tag=0);
   
+  void apply_coeff(
+    unsigned numMeshobjs,
+    const stk::mesh::Entity* symMeshobjs,
+    const SharedMemView<int*> & scratchIds,
+    const SharedMemView<const double*> & rhs,
+    const SharedMemView<const double**> & lhs,
+    const char *trace_tag);
+
   EquationSystem *eqSystem_;
 };
 

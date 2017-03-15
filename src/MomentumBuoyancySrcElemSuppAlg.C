@@ -76,8 +76,8 @@ MomentumBuoyancySrcElemSuppAlg<AlgTraits>::MomentumBuoyancySrcElemSuppAlg(
 template<typename AlgTraits>
 void
 MomentumBuoyancySrcElemSuppAlg<AlgTraits>::element_execute(
-  double* /* lhs */,
-  double* rhs,
+  SharedMemView<double **>& /* lhs */,
+  SharedMemView<double*>& rhs,
   stk::mesh::Entity /*element*/,
   ScratchViews& scratchViews)
 {
@@ -98,7 +98,7 @@ MomentumBuoyancySrcElemSuppAlg<AlgTraits>::element_execute(
     const int nnNdim = nearestNode * AlgTraits::nDim_;
     const double fac = (rhoNp1 - rhoRef_) * scV;
     for (int j=0; j < AlgTraits::nDim_; j++) {
-      rhs[nnNdim + j] += fac * gravity_(j);
+      rhs(nnNdim + j) += fac * gravity_(j);
     }
 
     // No LHS contributions

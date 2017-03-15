@@ -54,5 +54,17 @@ SolverAlgorithm::apply_coeff(
   eqSystem_->linsys_->sumInto(sym_meshobj, scratchIds, scratchVals, rhs, lhs, trace_tag);
 }
 
+void
+SolverAlgorithm::apply_coeff(
+  unsigned numMeshobjs,
+  const stk::mesh::Entity* symMeshobjs,
+  const SharedMemView<int*> & scratchIds,
+  const SharedMemView<const double*> & rhs,
+  const SharedMemView<const double**> & lhs,
+  const char *trace_tag)
+{
+  eqSystem_->linsys_->sumInto(numMeshobjs, symMeshobjs, rhs, lhs, scratchIds, trace_tag);
+}
+
 } // namespace nalu
 } // namespace Sierra

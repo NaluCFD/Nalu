@@ -131,8 +131,8 @@ ScalarUpwAdvDiffElemSuppAlg<AlgTraits>::setup()
 template<class AlgTraits>
 void
 ScalarUpwAdvDiffElemSuppAlg<AlgTraits>::element_execute(
-  double *lhs,
-  double *rhs,
+  SharedMemView<double **>& lhs,
+  SharedMemView<double *>& rhs,
   stk::mesh::Entity element,
   ScratchViews& scratchViews)
 {
@@ -156,10 +156,6 @@ ScalarUpwAdvDiffElemSuppAlg<AlgTraits>::element_execute(
     const int il = lrscv_[2*ip];
     const int ir = lrscv_[2*ip+1];
     
-    // corresponding matrix rows
-    const int rowL = il*AlgTraits::nodesPerElement_;
-    const int rowR = ir*AlgTraits::nodesPerElement_;
-
     // save off mdot
     const double tmdot = mdot[ip];
 
@@ -232,20 +228,20 @@ ScalarUpwAdvDiffElemSuppAlg<AlgTraits>::element_execute(
     const double aflux = tmdot*(pecfac*qUpwind + om_pecfac*qCds);
 
     // right hand side; L and R
-    rhs[il] -= aflux;
-    rhs[ir] += aflux; 
+    rhs(il) -= aflux;
+    rhs(ir) += aflux; 
 
     // upwind advection (includes 4th); left node
     const double alhsfacL = 0.5*(tmdot+std::abs(tmdot))*pecfac*alphaUpw_
       + 0.5*alpha_*om_pecfac*tmdot;
-    lhs[rowL+il] += alhsfacL;
-    lhs[rowR+il] -= alhsfacL;
+    lhs(il,il) += alhsfacL;
+    lhs(ir,il) -= alhsfacL;
     
     // upwind advection; right node
     const double alhsfacR = 0.5*(tmdot-std::abs(tmdot))*pecfac*alphaUpw_
       + 0.5*alpha_*om_pecfac*tmdot;
-    lhs[rowR+ir] -= alhsfacR;
-    lhs[rowL+ir] += alhsfacR;
+    lhs(ir,ir) -= alhsfacR;
+    lhs(il,ir) += alhsfacR;
 
     // advection and diffusion 
     double qDiff = 0.0;
@@ -258,8 +254,8 @@ ScalarUpwAdvDiffElemSuppAlg<AlgTraits>::element_execute(
       const double lhsfacAdv = r*tmdot*(pecfac*om_alphaUpw_ + om_pecfac*om_alpha_);
       
       // advection operator lhs; rhs handled above
-      lhs[rowL+ic] += lhsfacAdv;
-      lhs[rowR+ic] -= lhsfacAdv;
+      lhs(il,ic) += lhsfacAdv;
+      lhs(ir,ic) -= lhsfacAdv;
 
       // diffusion
       double lhsfacDiff = 0.0;
@@ -269,13 +265,13 @@ ScalarUpwAdvDiffElemSuppAlg<AlgTraits>::element_execute(
       qDiff += lhsfacDiff*v_scalarQ(ic);
       
       // lhs; il then ir
-      lhs[rowL+ic] +=  lhsfacDiff;
-      lhs[rowR+ic] -= lhsfacDiff;
+      lhs(il,ic) +=  lhsfacDiff;
+      lhs(ir,ic) -= lhsfacDiff;
     }
     
     // rhs; il then ir
-    rhs[il] -= qDiff;
-    rhs[ir] += qDiff;
+    rhs(il) -= qDiff;
+    rhs(ir) += qDiff;
   }
 }
 

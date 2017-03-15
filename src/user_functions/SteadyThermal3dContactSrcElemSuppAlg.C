@@ -71,8 +71,8 @@ SteadyThermal3dContactSrcElemSuppAlg<AlgTraits>::SteadyThermal3dContactSrcElemSu
 template<class AlgTraits>
 void
 SteadyThermal3dContactSrcElemSuppAlg<AlgTraits>::element_execute(
-  double */*lhs*/,
-  double *rhs,
+  SharedMemView<double **>& /*lhs*/,
+  SharedMemView<double *>& rhs,
   stk::mesh::Entity element,
   ScratchViews& scratchViews)
 {
@@ -97,7 +97,7 @@ SteadyThermal3dContactSrcElemSuppAlg<AlgTraits>::element_execute(
     const double x = v_scvCoords_(0);
     const double y = v_scvCoords_(1);
     const double z = v_scvCoords_(2);
-    rhs[nearestNode] += k_/4.0*(2.0*a_*pi_)*(2.0*a_*pi_)*(cos(2.0*a_*pi_*x) 
+    rhs(nearestNode) += k_/4.0*(2.0*a_*pi_)*(2.0*a_*pi_)*(cos(2.0*a_*pi_*x) 
                                                           + cos(2.0*a_*pi_*y) 
                                                           + cos(2.0*a_*pi_*z))*v_scv_volume(ip);
   }

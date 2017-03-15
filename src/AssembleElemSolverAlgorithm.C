@@ -49,16 +49,9 @@ AssembleElemSolverAlgorithm::AssembleElemSolverAlgorithm(
   EquationSystem *eqSystem,
   const stk::topology &theTopo)
   : SolverAlgorithm(realm, part, eqSystem),
-    topo_(theTopo)
+    topo_(theTopo),
+    rhsSize_(theTopo.num_nodes()*eqSystem->linsys_->numDof())
 {
-  // size some things; matrix related; LHS/RHS not yet a View..
-  const int nodesPerElement = realm.get_surface_master_element(theTopo)->nodesPerElement_;
-  const int rhsSize = nodesPerElement*(eqSystem->linsys_->numDof());
-  lhs_.resize(rhsSize*rhsSize);
-  rhs_.resize(rhsSize);
-  scratchIds_.resize(rhsSize);
-  scratchVals_.resize(rhsSize);
-  connectedNodes_.resize(nodesPerElement);
 }
 
 //--------------------------------------------------------------------------
@@ -86,9 +79,13 @@ AssembleElemSolverAlgorithm::execute()
   for ( size_t i = 0; i < supplementalAlgSize; ++i )
     supplementalAlg_[i]->setup();
 
+  const int lhsSize = rhsSize_*rhsSize_;
+  const int scratchIdsSize = rhsSize_;
+
   // fixed size for this homogeneous algorithm
   const int bytes_per_team = 0;
-  const int bytes_per_thread = get_num_bytes_pre_req_data(dataNeededBySuppAlgs_, meta_data.spatial_dimension());
+  const int bytes_per_thread = (rhsSize_ + lhsSize)*sizeof(double) + scratchIdsSize*sizeof(int) +
+       get_num_bytes_pre_req_data(dataNeededBySuppAlgs_, meta_data.spatial_dimension());
 
   // define some common selectors
   stk::mesh::Selector s_locally_owned_union = meta_data.locally_owned_part()
@@ -106,6 +103,10 @@ AssembleElemSolverAlgorithm::execute()
 
     sierra::nalu::ScratchViews prereqData(team, bulk_data, topo_, dataNeededBySuppAlgs_);
 
+    SharedMemView<int*> scratchIds = get_int_shmem_view_1D(team, scratchIdsSize);
+    SharedMemView<double*> rhs = get_shmem_view_1D(team, rhsSize_);
+    SharedMemView<double**> lhs = get_shmem_view_2D(team, rhsSize_, rhsSize_);
+
     const stk::mesh::Bucket::size_type length   = b.size();
 
     Kokkos::parallel_for(Kokkos::TeamThreadRange(team, length), [&](const size_t& k)
@@ -117,24 +118,20 @@ AssembleElemSolverAlgorithm::execute()
 
       // extract node relations and provide connected nodes
       stk::mesh::Entity const * node_rels = b.begin_nodes(k);
-      int num_nodes = b.num_nodes(k);
+      unsigned num_nodes = b.num_nodes(k);
 
-      for ( int ni = 0; ni < num_nodes; ++ni ) {
-        stk::mesh::Entity node = node_rels[ni];
-        // set connected nodes
-        connectedNodes_[ni] = node;
+      for ( size_t j = 0; j < rhs.size(); ++j ) {
+        rhs(j) = 0.0;
+        for ( size_t i = 0; i < rhs.size(); ++i ) {
+          lhs(i,j) = 0.0;
+        }
       }
-
-      for ( size_t i = 0; i < lhs_.size(); ++i )
-        lhs_[i] = 0.0;
-      for ( size_t i = 0; i < rhs_.size(); ++i )
-        rhs_[i] = 0.0;
 
       // call supplemental; gathers happen inside the elem_execute method
       for ( size_t i = 0; i < supplementalAlgSize; ++i )
-        supplementalAlg_[i]->element_execute( &lhs_[0], &rhs_[0], element, prereqData );
+        supplementalAlg_[i]->element_execute( lhs, rhs, element, prereqData );
       
-      apply_coeff(connectedNodes_, scratchIds_, scratchVals_, rhs_, lhs_, __FILE__);
+      apply_coeff(num_nodes, node_rels, scratchIds, rhs, lhs, __FILE__);
     });
   });
 }
