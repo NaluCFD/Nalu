@@ -19,7 +19,7 @@ will not build CMake with GCC anymore, so these instructions won't work
 in that case, but we have built Nalu using Spack on MacOS Sierra by
 using Homebrew to install ``cmake`` and ``pkg-config`` and defining these 
 as external packages in Spack (see 
-`packages.yaml.mac_sierra <https://github.com/jrood-nrel/NaluSpack/blob/master/spack_config/packages.yaml.mac_sierra>`__).
+`packages.yaml.mac_sierra <https://github.com/NaluCFD/NaluSpack/blob/master/spack_config/packages.yaml.mac_sierra>`__).
 
 Step 2
 ~~~~~~
@@ -42,14 +42,14 @@ Step 4
 ~~~~~~
 
 Copy the ``nalu`` and ``nalu-trilinos`` package files from the 
-`NaluSpack <https://github.com/jrood-nrel/NaluSpack>`__ repo to
+`NaluSpack <https://github.com/NaluCFD/NaluSpack>`__ repo to
 your installation of Spack or run the 
-`copy_config.sh <https://github.com/jrood-nrel/NaluSpack/blob/master/spack_config/copy_config.sh>`__
+`copy_config.sh <https://github.com/NaluCFD/NaluSpack/blob/master/spack_config/copy_config.sh>`__
 script from the repo:
 
 ::
 
-    cd ${HOME} && git clone https://github.com/jrood-nrel/NaluSpack.git
+    cd ${HOME} && git clone https://github.com/NaluCFD/NaluSpack.git
     cp -R ${HOME}/NaluSpack/spack_config/nalu ${SPACK_ROOT}/var/spack/repos/builtin/packages/
     cp -R ${HOME}/NaluSpack/spack_config/nalu-trilinos ${SPACK_ROOT}/var/spack/repos/builtin/packages/
 
@@ -99,12 +99,12 @@ used as a template to help build Nalu on any Linux system with Spack.
 Step 1
 ~~~~~~
 
-Login to Peregrine, and checkout the ``https://github.com/jrood-nrel/NaluSpack.git`` 
+Login to Peregrine, and checkout the ``https://github.com/NaluCFD/NaluSpack.git`` 
 repo (we will be cloning into the ${HOME} directory):
 
 ::
 
-   cd ${HOME} && git clone https://github.com/jrood-nrel/NaluSpack.git
+   cd ${HOME} && git clone https://github.com/NaluCFD/NaluSpack.git
 
 One first thing to note is that the login nodes and the compute nodes on Peregrine 
 run different OSes. So programs will be organized in Spack according to the OS 
@@ -125,7 +125,7 @@ Step 3
 
 Configure your environment in the recommended way. You should purge all 
 modules and only load GCC 5.2.0 in your login script. In the example 
-`.bash_profile <https://github.com/jrood-nrel/NaluSpack/blob/master/spack_config/dot_bash_profile.sh>`__
+`.bash_profile <https://github.com/NaluCFD/NaluSpack/blob/master/spack_config/dot_bash_profile.sh>`__
 in the repo we also load Python. If you have problems building with Spack on 
 Peregrine, it is most likely your environment has deviated from this 
 recommended one. Even when building with the Intel compiler in Spack, 
@@ -140,7 +140,7 @@ this is the recommended environment.
    } &> /dev/null
 
 Also add Spack shell support to your ``.bash_profile`` as shown in the example 
-`.bash_profile <https://github.com/jrood-nrel/NaluSpack/blob/master/spack_config/dot_bash_profile.sh>`__
+`.bash_profile <https://github.com/NaluCFD/NaluSpack/blob/master/spack_config/dot_bash_profile.sh>`__
 in the repo or the following lines:
 
 ::
@@ -157,7 +157,7 @@ files/directories from the NaluSpack repo into your local ``${SPACK_ROOT}`` dire
 These provide local configurations we need for Peregrine that override Spack's 
 default configuration and the custom package files to install Nalu and the custom 
 Trilinos build for Nalu. You can do this using the
-`copy_config.sh <https://github.com/jrood-nrel/NaluSpack/blob/master/spack_config/dot_bash_profile.sh>`__
+`copy_config.sh <https://github.com/NaluCFD/NaluSpack/blob/master/spack_config/dot_bash_profile.sh>`__
 script provided or by doing it manually as such:
 
 ::
@@ -181,7 +181,7 @@ Step 6
 Install Nalu using a compute node either interactively 
 (``qsub -V -I -l nodes=1:ppn=24,walltime=4:00:00 -A <allocation> -q short``) 
 or with the example batch script  
-`install_nalu_gcc.sh <https://github.com/jrood-nrel/NaluSpack/blob/master/install_scripts/install_nalu_gcc.sh>`__
+`install_nalu_gcc.sh <https://github.com/NaluCFD/NaluSpack/blob/master/install_scripts/install_nalu_gcc.sh>`__
 (``qsub install_nalu_gcc.sh``):
 
 ::
@@ -196,7 +196,7 @@ command installs the entire set of dependencies and you get a working build
 of Nalu on Peregrine...after about 2 hours of waiting for it to build.
 
 To build with the Intel compiler, note the necessary commands in 
-`install_nalu_intel.sh <https://github.com/jrood-nrel/NaluSpack/blob/master/install_scripts/install_nalu_intel.sh>`__ 
+`install_nalu_intel.sh <https://github.com/NaluCFD/NaluSpack/blob/master/install_scripts/install_nalu_intel.sh>`__ 
 batch script (note you will need to point ``${TMPDIR}`` to disk as it defaults to 
 RAM and will cause problems when building Trilinos, and also enabling accelerated 
 message protocols segfaults the MPI wrappers when using the Intel compiler so 
