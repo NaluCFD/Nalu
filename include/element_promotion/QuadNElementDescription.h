@@ -12,7 +12,7 @@
 #include <map>
 #include <memory>
 #include <vector>
-#include "ElementDescription.h"
+#include <element_promotion/ElementDescription.h>
 
 namespace sierra {
 namespace nalu {

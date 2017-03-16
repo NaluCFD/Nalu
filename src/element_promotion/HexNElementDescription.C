@@ -21,6 +21,7 @@
 #include <stdexcept>
 #include <tuple>
 #include <utility>
+#include <array>
 #include <element_promotion/ElementDescription.h>
 
 namespace sierra {
