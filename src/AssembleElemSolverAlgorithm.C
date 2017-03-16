@@ -120,9 +120,12 @@ AssembleElemSolverAlgorithm::execute()
       stk::mesh::Entity const * node_rels = b.begin_nodes(k);
       unsigned num_nodes = b.num_nodes(k);
 
-      for ( size_t j = 0; j < rhs.size(); ++j ) {
-        rhs(j) = 0.0;
-        for ( size_t i = 0; i < rhs.size(); ++i ) {
+      for ( size_t i = 0; i < rhsSize_; ++i ) {
+        rhs(i) = 0.0;
+      }
+
+      for ( size_t i = 0; i < rhsSize_; ++i ) {
+        for ( size_t j = 0; j < rhsSize_; ++j ) {
           lhs(i,j) = 0.0;
         }
       }
