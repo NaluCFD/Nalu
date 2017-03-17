@@ -436,7 +436,7 @@ connectivity_map_for_parent_rank(
   auto beginIterator = newNodeIds.begin();
   bucket_loop(buckets, [&](stk::mesh::Entity entity) {
     auto endIterator = beginIterator + numNewNodesOnTopo;
-    map.emplace(entity, stk::mesh::EntityIdVector{beginIterator, endIterator});
+    map.insert({entity, stk::mesh::EntityIdVector{beginIterator, endIterator}});
     beginIterator = endIterator;
   });
 
@@ -765,7 +765,7 @@ make_base_nodes_to_elem_map_at_boundary(
       parents.at(j) = mesh.identifier(node_rels[j]);
     }
     std::sort(parents.begin(), parents.end());
-    nodesToElemMap.emplace(parents, parent_elem);
+    nodesToElemMap.insert({parents, parent_elem});
   });
   return nodesToElemMap;
 }
@@ -809,7 +809,7 @@ exposed_side_to_super_elem_map(
     auto it = nodesToElemMap.find(parents);
     if (it != nodesToElemMap.end()) {
       const stk::mesh::Entity baseElem = it->second;
-      auto result = elemToSuperElemMap.emplace(baseElem, superElem);
+      auto result = elemToSuperElemMap.insert({baseElem, superElem});
       ThrowRequireMsg(result.second,
         "Multiple superElems with same parent nodes as the base elements found");
     }
@@ -827,7 +827,7 @@ exposed_side_to_super_elem_map(
     ThrowAssert(bulk.num_elements(side) == 1u);
     const stk::mesh::Entity baseElem = bulk.begin_elements(side)[0];
     const stk::mesh::Entity superElem = elemToSuperElemMap.at(baseElem);
-    auto result = exposedSideToSuperElemMap.emplace(side, superElem);
+    auto result = exposedSideToSuperElemMap.insert({side, superElem});
     ThrowRequireMsg(result.second,
       "Multiple super elements associated with the same face");
   });
