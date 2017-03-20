@@ -5,11 +5,16 @@
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
-#include "overset/OversetManager.h"
+#ifdef NALU_USES_TIOGA
 
-#include "Realm.h"
-#include "master_element/MasterElement.h"
+#include "overset/OversetManagerTIOGA.h"
+
 #include "overset/OversetInfo.h"
+
+#include <NaluEnv.h>
+#include <NaluParsing.h>
+#include <Realm.h>
+#include <master_element/MasterElement.h>
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/BulkData.hpp>
@@ -20,41 +25,56 @@
 #include <stk_mesh/base/Part.hpp>
 #include <stk_mesh/base/Selector.hpp>
 
+
 namespace sierra {
 namespace nalu {
 
-OversetManager::OversetManager(Realm& realm)
-  : realm_(realm),
-    metaData_(&realm.meta_data()),
-    bulkData_(&realm_.bulk_data())
+OversetManagerTIOGA::OversetManagerTIOGA(
+  Realm& realm,
+  const OversetUserData& oversetUserData)
+  : OversetManager(realm),
+    oversetUserData_(oversetUserData),
+    tiogaIface_(*this, oversetUserData.oversetBlocks_)
+{
+  ThrowRequireMsg(
+    metaData_->spatial_dimension() == 3u,
+    "TIOGA only supports 3-D meshes.");
+}
+
+OversetManagerTIOGA::~OversetManagerTIOGA()
 {}
 
-OversetManager::~OversetManager()
+void
+OversetManagerTIOGA::setup()
 {
+  tiogaIface_.setup();
+}
+
+void
+OversetManagerTIOGA::initialize()
+{
+  const double timeA = NaluEnv::self().nalu_time();
+  if (isInit_) {
+    tiogaIface_.initialize();
+    isInit_ = false;
+  }
+
   delete_info_vec();
+  oversetInfoVec_.clear();
+
+  tiogaIface_.execute();
+
+  const double timeB = NaluEnv::self().nalu_time();
+  realm_.timerNonconformal_ += (timeB - timeA);
+
+#if 0
+  NaluEnv::self().naluOutputP0() 
+      << "TIOGA connectivity updated: " << (timeB - timeA) << std::endl;
+#endif
 }
 
 void
-OversetManager::delete_info_vec()
-{
-  for (auto ii=oversetInfoVec_.begin();
-       ii != oversetInfoVec_.end(); ++ii)
-    delete (*ii);
-}
-
-void
-OversetManager::setup()
-{}
-
-stk::mesh::Selector
-OversetManager::get_inactive_selector()
-{
-  return (stk::mesh::Selector(*inActivePart_) &
-          !(stk::mesh::selectUnion(orphanPointSurfaceVecBackground_)));
-}
-
-void
-OversetManager::overset_orphan_node_field_update(
+OversetManagerTIOGA::overset_orphan_node_field_update(
   stk::mesh::FieldBase *theField,
   const int sizeRow,
   const int sizeCol)
@@ -70,8 +90,7 @@ OversetManager::overset_orphan_node_field_update(
 
   // iterate oversetInfoVec_
   std::vector<OversetInfo *>::iterator ii;
-  for( ii=oversetInfoVec_.begin();
-       ii!=oversetInfoVec_.end(); ++ii ) {
+  for( ii=oversetInfoVec_.begin(); ii!=oversetInfoVec_.end(); ++ii ) {
 
     // overset info object of interest
     OversetInfo * infoObject = (*ii);
@@ -128,3 +147,5 @@ OversetManager::overset_orphan_node_field_update(
 
 }  // nalu
 }  // sierra
+
+#endif
