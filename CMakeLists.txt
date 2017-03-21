@@ -79,12 +79,14 @@ ENDIF(Trilinos_BUILD_SHARED_LIBS)
 
 PROJECT(Nalu)
 
+# Suppress deprecated declarations until next Yaml-cpp
+# release uses unique_ptr instead of the deprecated auto_ptr
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-  SET(EXTRA_FLAGS "")
+  SET(EXTRA_FLAGS "-Wno-deprecated-declarations")
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-  SET(EXTRA_FLAGS "")
+  SET(EXTRA_FLAGS "-Wno-deprecated-declarations")
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
-  SET(EXTRA_FLAGS "-restrict")
+  SET(EXTRA_FLAGS "-Wno-deprecated -restrict")
 endif()
 
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${Trilinos_CXX_COMPILER_FLAGS} ${EXTRA_FLAGS}")
