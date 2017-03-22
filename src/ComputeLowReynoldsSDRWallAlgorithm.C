@@ -46,7 +46,7 @@ ComputeLowReynoldsSDRWallAlgorithm::ComputeLowReynoldsSDRWallAlgorithm(
   : Algorithm(realm, part),
     useShifted_(useShifted),
     betaOne_(realm.get_turb_model_constant(TM_betaOne)),
-    wallFactor_(1.0)
+    wallFactor_(realm.get_turb_model_constant(TM_SDRWallFactor))
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();

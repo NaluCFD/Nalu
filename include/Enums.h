@@ -171,7 +171,8 @@ enum TurbulenceModelConstant {
   TM_cmuCs = 17,
   TM_Cw = 18,
   TM_CbTwo = 19,
-  TM_END = 20
+  TM_SDRWallFactor = 20,
+  TM_END = 21
 };
 
 static const std::string TurbulenceModelConstantNames[] = {
@@ -195,6 +196,7 @@ static const std::string TurbulenceModelConstantNames[] = {
   "cmuCs",
   "Cw",
   "Cb2",
+  "SDRWallFactor",
   "END"};
 
 } // namespace nalu
