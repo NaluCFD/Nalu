@@ -14,27 +14,29 @@ else(NOT ${RUNNALURTEST_DIR} STREQUAL "")
   message( FATAL_ERROR "You need to set the ${RUNNALURTEST_DIR} variable. CMake will exit." )
 endif()
 
-## -- Set TOLERANCE for test
+## -- Set TOLERANCE for testing
 if(NOT ${TEST_TOLERANCE} STREQUAL "")
-  set(TOLERANCE ${TEST_TOLERANCE}) # Default
+  set(TOLERANCE ${TEST_TOLERANCE}) # User defined
 else(NOT ${TEST_TOLERANCE} STREQUAL "")
   if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-    if(${COMPILER_NAME} MATCHES "gcc")
+    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
       set(TOLERANCE 0.0000001)
-    elseif(${COMPILER_NAME} MATCHES "clang")
+    elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+      set(TOLERANCE 0.0000001)
+    elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
       set(TOLERANCE 0.0000001)
     else()
-      # Set a default Mac tolerance
-      set(TOLERANCE 0.0000001)
+      set(TOLERANCE 0.0000001) # Mac default
     endif()
   elseif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-    if(${COMPILER_NAME} MATCHES "gcc")
-      set(TOLERANCE 0.000000000001)
-    elseif(${COMPILER_NAME} MATCHES "intel")
-      set(TOLERANCE 0.001)
-    else()
-      # Set a default Linux tolerance
+    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
       set(TOLERANCE 0.0000001)
+    elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+      set(TOLERANCE 0.000000000001)
+    elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
+      set(TOLERANCE 0.0001)
+    else()
+      set(TOLERANCE 0.0000001) # Linux default
     endif()
   endif()
 endif()
