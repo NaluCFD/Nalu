@@ -16,13 +16,18 @@
 #include <Simulation.h>
 #include <LinearSolver.h>
 #include <master_element/MasterElement.h>
+#include <EquationSystems.h>
+#include <EquationSystem.h>
 #include <NaluEnv.h>
+
+#include <KokkosInterface.h>
 
 // overset
 #include <overset/OversetManager.h>
 #include <overset/OversetInfo.h>
 
 #include <stk_util/parallel/Parallel.hpp>
+#include <stk_util/environment/WallTime.hpp>
 
 #include <stk_util/parallel/ParallelReduce.hpp>
 #include <stk_mesh/base/BulkData.hpp>
@@ -56,7 +61,7 @@
 #include <limits>
 
 #include <sstream>
-
+#define KK_MAP
 namespace sierra{
 namespace nalu{
 
@@ -70,6 +75,17 @@ namespace nalu{
 ///======== T P E T R A ===============================================================================================================
 ///====================================================================================================================================
 
+EquationSystem* find_equation_system_by_name(Realm& realm, const std::string& name)
+{
+  EquationSystemVector& eqSysVec = realm.equationSystems_.equationSystemVector_;
+  for(EquationSystem* eqSys : eqSysVec) {
+    if (eqSys->name_ == name) {
+      return eqSys;
+    }
+  }
+  return nullptr;
+}
+
 //==========================================================================
 // Class Definition
 //==========================================================================
@@ -80,7 +96,8 @@ TpetraLinearSystem::TpetraLinearSystem(
   const unsigned numDof,
   const std::string & name,
   LinearSolver * linearSolver)
-  : LinearSystem(realm, numDof, name, linearSolver)
+  : LinearSystem(realm, numDof, name, linearSolver),
+    eqSys_(nullptr)
 {
   Teuchos::ParameterList junk;
   node_ = Teuchos::rcp(new LinSys::Node(junk));
@@ -109,12 +126,18 @@ struct CompareEntityById
     const stk::mesh::EntityId e1Id = *stk::mesh::field_data(*m_naluGlobalId, e1);
     return e0Id < e1Id ;
   }
+  bool operator() (const Connection& c0, const Connection& c1)
+  {
+    const stk::mesh::EntityId c0firstId = *stk::mesh::field_data(*m_naluGlobalId, c0.first);
+    const stk::mesh::EntityId c1firstId = *stk::mesh::field_data(*m_naluGlobalId, c1.first);
+    if (c0firstId != c1firstId) {
+      return c0firstId < c1firstId;
+    }
+    const stk::mesh::EntityId c0secondId = *stk::mesh::field_data(*m_naluGlobalId, c0.second);
+    const stk::mesh::EntityId c1secondId = *stk::mesh::field_data(*m_naluGlobalId, c1.second);
+    return c0secondId < c1secondId;
+  }
 };
-
-size_t TpetraLinearSystem::lookup_myLID(MyLIDMapType& myLIDs, stk::mesh::EntityId entityId, const char* msg, stk::mesh::Entity entity)
-{
-  return myLIDs[entityId];
-}
 
 // determines whether the node is to be put into which map/graph/matrix
 // FIXME - note that the DOFStatus enum can be Or'd together if need be to
@@ -123,8 +146,6 @@ size_t TpetraLinearSystem::lookup_myLID(MyLIDMapType& myLIDs, stk::mesh::EntityI
 int TpetraLinearSystem::getDofStatus(stk::mesh::Entity node)
 {
   stk::mesh::BulkData & bulkData = realm_.bulk_data();
-  const unsigned p_rank = bulkData.parallel_rank();
-  (void)p_rank;
 
   const stk::mesh::Bucket & b = bulkData.bucket(node);
   const bool entityIsOwned = b.owned();
@@ -214,8 +235,6 @@ TpetraLinearSystem::beginLinearSystemConstruction()
   stk::mesh::MetaData & metaData = realm_.meta_data();
   const unsigned p_rank = bulkData.parallel_rank();
   (void)p_rank;
-  const unsigned p_size = bulkData.parallel_size();
-  (void)p_size;
 
   // create a localID for all active nodes in the mesh...
   const stk::mesh::Selector s_universal = metaData.universal_part()
@@ -233,11 +252,11 @@ TpetraLinearSystem::beginLinearSystemConstruction()
   LocalOrdinal numNodes = 0;
   LocalOrdinal numGloballyOwnedNotLocallyOwned = 0; // these are nodes on other procs
   // First, get the number of owned and globallyOwned (or num_globallyOwned_nodes = num_nodes - num_owned_nodes)
-  for ( stk::mesh::BucketVector::const_iterator ib = buckets.begin() ;
-        ib != buckets.end() ; ++ib ) {
-    const stk::mesh::Bucket & b = **ib ;
+  //KOKKOS: BucketLoop parallel reduce
+  kokkos_parallel_for("Nalu::TpetraLinearSystem::beginLinearSystemConstructionA", buckets.size(), [&] (const int& ib) {
+    stk::mesh::Bucket & b = *buckets[ib];
     const stk::mesh::Bucket::size_type length = b.size();
-
+    //KOKKOS: intra BucketLoop parallel reduce
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
 
       // get node
@@ -261,7 +280,7 @@ TpetraLinearSystem::beginLinearSystemConstruction()
         numGhostNodes++;
       }
     }
-  }
+  });
 
   maxOwnedRowId_ = numOwnedNodes * numDof_;
   maxGloballyOwnedRowId_ = numNodes * numDof_;
@@ -279,55 +298,61 @@ TpetraLinearSystem::beginLinearSystemConstruction()
   std::vector<GlobalOrdinal> ownedGids, globallyOwnedGids;
 
   // owned first:
-  for ( stk::mesh::BucketVector::const_iterator ib = buckets.begin() ; ib != buckets.end() ; ++ib ) {
-    stk::mesh::Bucket & b = **ib ;
-    {
-      const stk::mesh::Bucket::size_type length   = b.size();
-      for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
-        const stk::mesh::Entity entity = b[k];
+  //KOKKOS: BucketLoop
+  kokkos_parallel_for("Nalu::TpetraLinearSystem::beginLinearSystemConstructionB", buckets.size(), [&] (const int& ib) {
+    stk::mesh::Bucket & b = *buckets[ib];
+    const stk::mesh::Bucket::size_type length   = b.size();
+    //KOKKOS: intra BucketLoop noparallel push_back
+    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+      const stk::mesh::Entity entity = b[k];
 
-        int status = getDofStatus(entity);
-        if (!(status & DS_SkippedDOF) && (status & DS_OwnedDOF))
-          owned_nodes.push_back(entity);
-      }
+      int status = getDofStatus(entity);
+      if (!(status & DS_SkippedDOF) && (status & DS_OwnedDOF))
+        owned_nodes.push_back(entity);
     }
-  }
-  
+  });
+
   std::sort(owned_nodes.begin(), owned_nodes.end(), CompareEntityById(bulkData, realm_.naluGlobalId_) );
-  
+
   myLIDs_.clear();
-  for (unsigned inode=0; inode < owned_nodes.size(); ++inode) {
+  //KOKKOS: Loop noparallel push_back totalGids_ (std::vector)
+  kokkos_parallel_for("Nalu::TpetraLinearSystem::beginLinearSystemConstructionC", owned_nodes.size(), [&] (const unsigned& inode) {
     const stk::mesh::Entity entity = owned_nodes[inode];
     const stk::mesh::EntityId entityId = *stk::mesh::field_data(*realm_.naluGlobalId_, entity);
     // entityId can be duplicated in periodic or nonconformal
     MyLIDMapType::iterator found = myLIDs_.find(entityId);
     if (found == myLIDs_.end()) {
       myLIDs_[entityId] = localId++;
+      //KOKKOS: NestedLoop push_back noparallel totalGids (std::vector)
       for(unsigned idof=0; idof < numDof_; ++ idof) {
         const GlobalOrdinal gid = GID_(entityId, numDof_, idof);
         totalGids_.push_back(gid);
         ownedGids.push_back(gid);
       }
     }
-  }
+  });
+  ThrowRequire(localId == numOwnedNodes);
   
   // now globallyOwned:
-  for ( stk::mesh::BucketVector::const_iterator ib = buckets.begin() ; ib != buckets.end() ; ++ib ) {
-    stk::mesh::Bucket & b = **ib ;
+  //KOKKOS: BucketLoop noparallel push_back globally_owned_nodes (std::vector)
+  kokkos_parallel_for("Nalu::TpetraLinearSystem::beginLinearSystemConstructionC", buckets.size(), [&] (const int& ib) {
+    stk::mesh::Bucket & b = *buckets[ib];
+
     {
       const stk::mesh::Bucket::size_type length   = b.size();
+      //KOKKOS: Intra BucketLoop push_back globally_owned_nodes (std::vector) noparallel
       for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
         const stk::mesh::Entity node = b[k];
-        
+
         int status = getDofStatus(node);
         if (!(status & DS_SkippedDOF) && (status & DS_GloballyOwnedDOF))
           globally_owned_nodes.push_back(node);
       }
     }
-  }
-
+  });
   std::sort(globally_owned_nodes.begin(), globally_owned_nodes.end(), CompareEntityById(bulkData, realm_.naluGlobalId_) );
 
+  //KOKKOS: Loop noparallel push_back totalGids_ (std::vector)
   for (unsigned inode=0; inode < globally_owned_nodes.size(); ++inode) {
     const stk::mesh::Entity entity = globally_owned_nodes[inode];
     const stk::mesh::EntityId naluId = *stk::mesh::field_data(*realm_.naluGlobalId_, entity);
@@ -344,7 +369,7 @@ TpetraLinearSystem::beginLinearSystemConstruction()
   
   const int numOwnedRows = numOwnedNodes * numDof_;
   (void)numOwnedRows;
-  
+
   std::sort(ownedGids.begin(), ownedGids.end());
   std::sort(globallyOwnedGids.begin(), globallyOwnedGids.end());
 
@@ -357,12 +382,21 @@ TpetraLinearSystem::beginLinearSystemConstruction()
 
   ownedPlusGloballyOwnedRowsMap_ = Teuchos::rcp(new LinSys::Map(Teuchos::OrdinalTraits<Tpetra::global_size_t>::invalid(), totalGids_, 1, tpetraComm, node_));
 
+  if (eqSys_ == nullptr) {
+    eqSys_ = find_equation_system_by_name(realm_, name_);
+  }
   // Now, we're ready to have Algs call the build*Graph() methods and build up the connection list (row,col).
-  // We'll finish this off in finalizeLinearSystem()
+  size_t numGraphEntriesGuess = 15*numOwnedNodes;
+  if (eqSys_ && eqSys_->num_graph_entries_ > 0) {
+    numGraphEntriesGuess = 1.1*eqSys_->num_graph_entries_;
+  }
+
+  connectionSetKK_ = ConnectionSetKK(numGraphEntriesGuess);
 }
 
-void TpetraLinearSystem::addConnections(const stk::mesh::Entity* entities, size_t num_entities)
+int TpetraLinearSystem::addConnections(const stk::mesh::Entity* entities, const size_t& num_entities)
 {
+  int fail_count = 0;
   stk::mesh::BulkData & bulkData = realm_.bulk_data();
   const unsigned p_rank = bulkData.parallel_rank();
   (void)p_rank;
@@ -370,7 +404,8 @@ void TpetraLinearSystem::addConnections(const stk::mesh::Entity* entities, size_
   for(size_t a=0; a < num_entities; ++a) {
     const stk::mesh::Entity entity_a = entities[a];
     const stk::mesh::EntityId id_a = *stk::mesh::field_data(*realm_.naluGlobalId_, entity_a);
-    connectionSet_.insert( Connection(entity_a, entity_a) );
+    auto insert_result = connectionSetKK_.insert( Connection(entity_a, entity_a) );
+    fail_count += insert_result.failed() ? 1 : 0;
 
     for(size_t b=a+1; b < num_entities; ++b) {
       const stk::mesh::Entity entity_b = entities[b];
@@ -378,9 +413,18 @@ void TpetraLinearSystem::addConnections(const stk::mesh::Entity* entities, size_
       const bool a_then_b = id_a < id_b;
       const stk::mesh::Entity entity_min = a_then_b ? entity_a : entity_b;
       const stk::mesh::Entity entity_max = a_then_b ? entity_b : entity_a;
-      connectionSet_.insert( Connection(entity_min, entity_max) );
+      insert_result = connectionSetKK_.insert( Connection(entity_min, entity_max) );
+      fail_count += insert_result.failed() ? 1 : 0;
     }
   }
+  return fail_count;
+}
+
+void TpetraLinearSystem::expand_unordered_map(unsigned newCapacityNeeded)
+{
+  ConnectionSetKK tmp(connectionSetKK_.capacity()+newCapacityNeeded);
+  copy_kokkos_unordered_map(connectionSetKK_, tmp);
+  connectionSetKK_ = tmp;
 }
 
 void
@@ -388,6 +432,7 @@ TpetraLinearSystem::buildNodeGraph(const stk::mesh::PartVector & parts)
 {
   beginLinearSystemConstruction();
   stk::mesh::MetaData & metaData = realm_.meta_data();
+//if (realm_.bulk_data().parallel_rank()==0) std::cerr<<"buildNodeGraph"<<std::endl;
 
   const stk::mesh::Selector s_owned = metaData.locally_owned_part()
     & stk::mesh::selectUnion(parts) 
@@ -396,14 +441,21 @@ TpetraLinearSystem::buildNodeGraph(const stk::mesh::PartVector & parts)
 
   stk::mesh::BucketVector const& buckets =
     realm_.get_buckets( stk::topology::NODE_RANK, s_owned );
-  for ( stk::mesh::BucketVector::const_iterator ib = buckets.begin() ;
-        ib != buckets.end() ; ++ib ) {
-    const stk::mesh::Bucket & b = **ib ;
+  std::vector<stk::mesh::Entity> entities(1);
+  int insert_failure_count = 0;
+  kokkos_parallel_reduce(buckets.size(), [&] (const int& ib, int& fail_count) {
+    const stk::mesh::Bucket & b = *buckets[ib];
     const stk::mesh::Bucket::size_type length   = b.size();
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
-      stk::mesh::Entity node = b[k];
-      addConnections(&node, 1);
+      entities[0] = b[k];
+      fail_count += addConnections(entities.data(), entities.size());
     }
+  }, insert_failure_count, "Nalu::TpetraLinearSystem::buildNodeGraph");
+  if(insert_failure_count > 0)
+  {
+//std::cerr<<"buildNodeGraph expanding unordered map, proc "<<realm_.bulkData_->parallel_rank()<<std::endl;
+    expand_unordered_map(insert_failure_count);
+    buildNodeGraph(parts);
   }
 }
 
@@ -412,6 +464,7 @@ TpetraLinearSystem::buildEdgeToNodeGraph(const stk::mesh::PartVector & parts)
 {
   beginLinearSystemConstruction();
   stk::mesh::MetaData & metaData = realm_.meta_data();
+//if (realm_.bulk_data().parallel_rank()==0) std::cerr<<"buildEdgeToNodeGraph"<<std::endl;
 
   const stk::mesh::Selector s_owned = metaData.locally_owned_part()
     & stk::mesh::selectUnion(parts) 
@@ -420,15 +473,27 @@ TpetraLinearSystem::buildEdgeToNodeGraph(const stk::mesh::PartVector & parts)
   stk::mesh::BucketVector const& buckets =
     realm_.get_buckets( stk::topology::EDGE_RANK, s_owned );
   const size_t numNodes = 2; // Edges are easy...
-  for ( stk::mesh::BucketVector::const_iterator ib = buckets.begin() ;
-        ib != buckets.end() ; ++ib ) {
-    const stk::mesh::Bucket & b = **ib ;
+  std::vector<stk::mesh::Entity> entities(numNodes);
+  int insert_failure_count = 0;
+  kokkos_parallel_reduce(buckets.size(), [&] (const int& ib, int& fail_count) {
+    const stk::mesh::Bucket & b = *buckets[ib];
     const stk::mesh::Bucket::size_type length   = b.size();
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
       stk::mesh::Entity const * edge_nodes = b.begin_nodes(k);
 
-      addConnections(edge_nodes, numNodes);
+      // figure out the global dof ids for each dof on each node
+      //KOKKOS: nested Loop parallel
+      for(size_t n=0; n < numNodes; ++n) {
+        entities[n] = edge_nodes[n];
+      }
+      fail_count += addConnections(entities.data(), entities.size());
     }
+  }, insert_failure_count, "Nalu::TpetraLinearSystem::buildEdgeToNodeGraph");
+  if(insert_failure_count > 0)
+  {
+//std::cerr<<"buildEdgeToNodeGraph expanding unordered map, proc "<<realm_.bulkData_->parallel_rank()<<std::endl;
+    expand_unordered_map(insert_failure_count);
+    buildEdgeToNodeGraph(parts);
   }
 }
 
@@ -437,6 +502,7 @@ TpetraLinearSystem::buildFaceToNodeGraph(const stk::mesh::PartVector & parts)
 {
   beginLinearSystemConstruction();
   stk::mesh::MetaData & metaData = realm_.meta_data();
+//if (realm_.bulk_data().parallel_rank()==0) std::cerr<<"buildFaceToNodeGraph"<<std::endl;
 
   const stk::mesh::Selector s_owned = metaData.locally_owned_part()
     & stk::mesh::selectUnion(parts) 
@@ -444,16 +510,29 @@ TpetraLinearSystem::buildFaceToNodeGraph(const stk::mesh::PartVector & parts)
 
   stk::mesh::BucketVector const& buckets =
     realm_.get_buckets( metaData.side_rank(), s_owned );
-  for ( stk::mesh::BucketVector::const_iterator ib = buckets.begin() ;
-        ib != buckets.end() ; ++ib ) {
-    const stk::mesh::Bucket & b = **ib ;
+  std::vector<stk::mesh::Entity> entities;
+  int insert_failure_count = 0;
+  kokkos_parallel_reduce(buckets.size(), [&] (const int& ib, int & fail_count) {
+    const stk::mesh::Bucket & b = *buckets[ib];
     const stk::mesh::Bucket::size_type length   = b.size();
-    size_t numNodes = b.topology().num_nodes();
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
       stk::mesh::Entity const * face_nodes = b.begin_nodes(k);
 
-      addConnections(face_nodes, numNodes);
+      // figure out the global dof ids for each dof on each node
+      const size_t numNodes = b.num_nodes(k);
+      entities.resize(numNodes);
+      //KOKKOS: nested Loop parallel
+      for(size_t n=0; n < numNodes; ++n) {
+        entities[n] = face_nodes[n];
+      }
+      fail_count += addConnections(entities.data(), entities.size());
     }
+  }, insert_failure_count, "Nalu::TpetraLinearSystem::buildFaceToNodeGraph");
+  if(insert_failure_count > 0)
+  {
+//std::cerr<<"buildFaceToNodeGraph expanding unordered map, proc "<<realm_.bulkData_->parallel_rank()<<std::endl;
+    expand_unordered_map(insert_failure_count);
+    buildFaceToNodeGraph(parts);
   }
 }
 
@@ -462,23 +541,39 @@ TpetraLinearSystem::buildElemToNodeGraph(const stk::mesh::PartVector & parts)
 {
   beginLinearSystemConstruction();
   stk::mesh::MetaData & metaData = realm_.meta_data();
+//if (realm_.bulk_data().parallel_rank()==0) std::cerr<<"buildElemToNodeGraph"<<std::endl;
 
   const stk::mesh::Selector s_owned = metaData.locally_owned_part()
     & stk::mesh::selectUnion(parts) 
     & !(realm_.get_inactive_selector());
 
+  connectionSetKK_.reset_failed_insert_flag();
   stk::mesh::BucketVector const& buckets =
     realm_.get_buckets( stk::topology::ELEMENT_RANK, s_owned );
-  for ( stk::mesh::BucketVector::const_iterator ib = buckets.begin() ;
-        ib != buckets.end(); ++ib ) {
-    const stk::mesh::Bucket & b = **ib ;
-    const size_t numNodes = b.topology().num_nodes();
+  std::vector<stk::mesh::Entity> entities;
+  int insert_failure_count = 0;
+  for(const stk::mesh::Bucket* bptr : buckets) {
+    const stk::mesh::Bucket & b = *bptr;
+    entities.resize(b.topology().num_nodes());
     const stk::mesh::Bucket::size_type length   = b.size();
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
       stk::mesh::Entity const * elem_nodes = b.begin_nodes(k);
-      addConnections(elem_nodes, numNodes);
+      // figure out the global dof ids for each dof on each node
+      const size_t numNodes = b.num_nodes(k);
+      //KOKKOS: nested Loop parallel
+      for(size_t n=0; n < numNodes; ++n) {
+        entities[n] = elem_nodes[n];
+      }
+      insert_failure_count += addConnections(entities.data(),numNodes);
     }
   }
+  if(insert_failure_count > 0)
+  {
+//std::cerr<<"buildElemToNodeGraph expanding unordered map, proc "<<realm_.bulkData_->parallel_rank()<<std::endl;
+    expand_unordered_map(insert_failure_count);
+    buildElemToNodeGraph(parts);
+  }
+  //std::cout<<"KK HashTableSize: "<<connectionSetKK_.size() << " failed_inserts:" << connectionSetKK_.failed_insert() << " load_factor:" << 1.0*connectionSetKK_.size()/connectionSetKK_.capacity() << std::endl;
 }
 
 void
@@ -486,6 +581,7 @@ TpetraLinearSystem::buildReducedElemToNodeGraph(const stk::mesh::PartVector & pa
 {
   beginLinearSystemConstruction();
   stk::mesh::MetaData & metaData = realm_.meta_data();
+//if (realm_.bulk_data().parallel_rank()==0) std::cerr<<"buildReducedElemToNodeGraph"<<std::endl;
 
   const stk::mesh::Selector s_owned = metaData.locally_owned_part()
     & stk::mesh::selectUnion(parts) 
@@ -494,9 +590,9 @@ TpetraLinearSystem::buildReducedElemToNodeGraph(const stk::mesh::PartVector & pa
   stk::mesh::BucketVector const& buckets =
     realm_.get_buckets( stk::topology::ELEMENT_RANK, s_owned );
   std::vector<stk::mesh::Entity> entities;
-  for ( stk::mesh::BucketVector::const_iterator ib = buckets.begin() ;
-        ib != buckets.end() ; ++ib ) {
-    const stk::mesh::Bucket & b = **ib ;
+  int insert_failure_count = 0;
+  kokkos_parallel_reduce(buckets.size(), [&] (const int& ib, int& fail_count) {
+    const stk::mesh::Bucket & b = *buckets[ib];
 
     // extract master element
     MasterElement *meSCS = realm_.get_surface_master_element(b.topology());
@@ -505,19 +601,28 @@ TpetraLinearSystem::buildReducedElemToNodeGraph(const stk::mesh::PartVector & pa
     const int *lrscv = meSCS->adjacentNodes();
 
     const stk::mesh::Bucket::size_type length   = b.size();
+    //KOKKOS: intra BucketLoop noparallel addConnections insert (std::set)
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
       stk::mesh::Entity const * elem_nodes = b.begin_nodes(k);
 
       // figure out the global dof ids for each dof on each node
       const size_t numNodes = 2;
       entities.resize(numNodes);
+      //KOKKOS: nested Loop noparallel addConnections insert (std::set)
       for (int j = 0; j < numScsIp; ++j){
+        //KOKKOS: nested Loop parallel
         for(size_t n=0; n < numNodes; ++n) {
           entities[n] = elem_nodes[lrscv[2*j+n]];
         }
-        addConnections(entities.data(), numNodes);
+        fail_count += addConnections(entities.data(), entities.size());
       }
     }
+  }, insert_failure_count, "Nalu::TpetraLinearSystem::buildReducedElemToNodeGraph");
+  if(insert_failure_count > 0)
+  {
+//std::cerr<<"buildReducedElemToNodeGraph expanding unordered map, proc "<<realm_.bulkData_->parallel_rank()<<std::endl;
+    expand_unordered_map(insert_failure_count);
+    buildReducedElemToNodeGraph(parts);
   }
 }
 
@@ -527,6 +632,7 @@ TpetraLinearSystem::buildFaceElemToNodeGraph(const stk::mesh::PartVector & parts
   beginLinearSystemConstruction();
   stk::mesh::BulkData & bulkData = realm_.bulk_data();
   stk::mesh::MetaData & metaData = realm_.meta_data();
+//if (realm_.bulk_data().parallel_rank()==0) std::cerr<<"buildFaceElemToNodeGraph"<<std::endl;
 
   const stk::mesh::Selector s_owned = metaData.locally_owned_part()
     & stk::mesh::selectUnion(parts) 
@@ -534,9 +640,10 @@ TpetraLinearSystem::buildFaceElemToNodeGraph(const stk::mesh::PartVector & parts
 
   stk::mesh::BucketVector const& face_buckets =
     realm_.get_buckets( metaData.side_rank(), s_owned );
-  for ( stk::mesh::BucketVector::const_iterator ib = face_buckets.begin() ;
-        ib != face_buckets.end() ; ++ib ) {
-    const stk::mesh::Bucket & b = **ib ;
+  std::vector<stk::mesh::Entity> entities;
+  int insert_failure_count = 0;
+  kokkos_parallel_reduce(face_buckets.size(), [&] (const int& ib, int& fail_count) {
+    const stk::mesh::Bucket & b = *face_buckets[ib];
     const stk::mesh::Bucket::size_type length   = b.size();
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
       const stk::mesh::Entity face = b[k];
@@ -551,20 +658,32 @@ TpetraLinearSystem::buildFaceElemToNodeGraph(const stk::mesh::PartVector & parts
 
       // figure out the global dof ids for each dof on each node
       const size_t numNodes = bulkData.num_nodes(element);
-      addConnections(elem_nodes, numNodes);
+      entities.resize(numNodes);
+      //KOKKOS: nested Loop parallel
+      for(size_t n=0; n < numNodes; ++n) {
+        entities[n] = elem_nodes[n];
+      }
+      fail_count += addConnections(entities.data(), entities.size());
     }
+  }, insert_failure_count, "Nalu::TpetraLinearSystem::buildFaceElemToNodeGraph");
+  if(insert_failure_count > 0)
+  {
+//std::cerr<<"buildFaceElemToNodeGraph expanding unordered map, proc "<<realm_.bulkData_->parallel_rank()<<std::endl;
+    expand_unordered_map(insert_failure_count);
+    buildFaceElemToNodeGraph(parts);
   }
 }
 
 void
-TpetraLinearSystem::buildNonConformalNodeGraph(
-  const stk::mesh::PartVector &/*parts*/)
+TpetraLinearSystem::buildNonConformalNodeGraph(const stk::mesh::PartVector &parts)
 {
   stk::mesh::BulkData & bulkData = realm_.bulk_data();
   beginLinearSystemConstruction();
+//if (realm_.bulk_data().parallel_rank()==0) std::cerr<<"buildNonConformalNodeGraph"<<std::endl;
 
   std::vector<stk::mesh::Entity> entities;
 
+  int insert_failure_count = 0;
   // iterate nonConformalManager's dgInfoVec
   std::vector<NonConformalInfo *>::iterator ii;
   for( ii=realm_.nonConformalManager_->nonConformalInfoVec_.begin();
@@ -597,35 +716,43 @@ TpetraLinearSystem::buildNonConformalNodeGraph(
         entities.resize(current_num_elem_nodes+opposing_num_elem_nodes);
         
         // fill in connected nodes; current
+        //KOKKOS: nested Loop parallel
         for ( int ni = 0; ni < current_num_elem_nodes; ++ni ) {
           entities[ni] = current_elem_node_rels[ni];
         }
         
         // fill in connected nodes; opposing
+        //KOKKOS: nested Loop parallel
         for ( int ni = 0; ni < opposing_num_elem_nodes; ++ni ) {
           entities[current_num_elem_nodes+ni] = opposing_elem_node_rels[ni];
         }
         
         // okay, now add the connections; will be symmetric 
         // columns of current node row (opposing nodes) will add columns to opposing nodes row
-        addConnections(entities.data(), entities.size());
+        insert_failure_count += addConnections(entities.data(), entities.size());
       }
     }
+  }
+  if (insert_failure_count > 0) {
+//std::cerr<<"buildNonConformalNodeGraph expanding unordered map, proc "<<realm_.bulkData_->parallel_rank()<<std::endl;
+    expand_unordered_map(insert_failure_count);
+    buildNonConformalNodeGraph(parts);
   }
 }
 
 void
-TpetraLinearSystem::buildOversetNodeGraph(
-  const stk::mesh::PartVector &/*parts*/)
+TpetraLinearSystem::buildOversetNodeGraph(const stk::mesh::PartVector &parts)
 {
   // extract the rank
   const int theRank = NaluEnv::self().parallel_rank();
 
   stk::mesh::BulkData & bulkData = realm_.bulk_data();
   beginLinearSystemConstruction();
+//if (realm_.bulk_data().parallel_rank()==0) std::cerr<<"buildOversetNodeGraph"<<std::endl;
 
   std::vector<stk::mesh::Entity> entities;
 
+  int insert_failure_count = 0;
   // iterate oversetInfoVec_
   std::vector<OversetInfo *>::iterator ii;
   for( ii=realm_.oversetManager_->oversetInfoVec_.begin();
@@ -652,7 +779,12 @@ TpetraLinearSystem::buildOversetNodeGraph(
     for(size_t n=0; n < numNodes; ++n) {
       entities[n+1] = elem_nodes[n];
     }
-    addConnections(entities.data(), entities.size());
+    insert_failure_count += addConnections(entities.data(), entities.size());
+  }
+  if (insert_failure_count > 0) {
+//std::cerr<<"buildOversetNodeGraph expanding unordered map, proc "<<realm_.bulkData_->parallel_rank()<<std::endl;
+    expand_unordered_map(insert_failure_count);
+    buildOversetNodeGraph(parts);
   }
 }
 
@@ -675,9 +807,10 @@ TpetraLinearSystem::copy_stk_to_tpetra(
 
   stk::mesh::BucketVector const& buckets = bulkData.get_buckets(stk::topology::NODE_RANK, selector);
 
-  for ( stk::mesh::BucketVector::const_iterator ib = buckets.begin();
-        ib != buckets.end() ; ++ib ) {
-    stk::mesh::Bucket & b = **ib ;
+  //KOKKOS: BucketLoop noparallel replaceLocalValue
+  kokkos_parallel_for("Nalu::TpetraLinearSystem::copy_stk_to_tpetra",
+      buckets.size(), [&] (const int& ib) {
+    const stk::mesh::Bucket & b = *buckets[ib];
 
     const int fieldSize = field_bytes_per_entity(*stkField, b) / (sizeof(double));
 
@@ -687,6 +820,7 @@ TpetraLinearSystem::copy_stk_to_tpetra(
 
     const double * stkFieldPtr = (double*)stk::mesh::field_data(*stkField, b);
 
+    //KOKKOS: intra BucketLoop noparallel replaceLocalValue
     for (stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k )
     {
       const stk::mesh::Entity node = b[k];
@@ -696,17 +830,15 @@ TpetraLinearSystem::copy_stk_to_tpetra(
         continue;
 
       const stk::mesh::EntityId nodeId = *stk::mesh::field_data(*realm_.naluGlobalId_, node);
+      //KOKKOS: nested Loop noparallel replaceLocalValue
       for(int d=0; d < fieldSize; ++d)
       {
         const size_t stkIndex = k*fieldSize + d;
         tpetraField->replaceGlobalValue(nodeId, d, stkFieldPtr[stkIndex]);
       }
     }
-
-  }
-
+  });
 }
-
 
 void
 TpetraLinearSystem::finalizeLinearSystem()
@@ -721,17 +853,39 @@ TpetraLinearSystem::finalizeLinearSystem()
   (void)this_mpi_rank;
 
   globallyOwnedGraph_ = Teuchos::rcp(new LinSys::Graph(globallyOwnedRowsMap_, ownedPlusGloballyOwnedRowsMap_, 8));
+ 
+  ConnectionVec connectionVec(connectionSetKK_.size());
+  Kokkos::parallel_scan("Nalu::TpetraLinearSystem::finalizeLinearSystemAA",
+      connectionSetKK_.capacity(), [&] (const int& i, int & ikk, const bool final) {
+    if(connectionSetKK_.valid_at(i))
+    {
+      if(final)
+        connectionVec[ikk] = connectionSetKK_.key_at(i);
 
+      ikk++;
+    }
+  });
+  size_t actualNumGraphEntries = connectionSetKK_.size();
+  //std::cerr<<"finalize, actual graph entries: "<<connectionSetKK_.size()<<std::endl;
+  if (eqSys_ && actualNumGraphEntries > eqSys_->num_graph_entries_) {
+    eqSys_->num_graph_entries_ = actualNumGraphEntries;
+  }
+
+  connectionSetKK_ = ConnectionSetKK(0);
+
+  std::sort(connectionVec.begin(), connectionVec.end());
   std::vector<GlobalOrdinal> globalDofs_a(numDof_);
   std::vector<GlobalOrdinal> globalDofs_b(numDof_);
-  std::ostringstream out2;
-  for (const Connection& connection : connectionSet_) {
-    const stk::mesh::Entity entity_a = connection.first;
-    const stk::mesh::Entity entity_b = connection.second;
+  const size_t numConnections = connectionVec.size();
+   //KOKKOS: Loop noparallel Graph insertGlobalIndices
+  kokkos_parallel_for("Nalu::TpetraLinearSystem::finalizeLinearSystemA", numConnections, [&] (const size_t& i) {
+    const stk::mesh::Entity entity_a = connectionVec[i].first;
+    const stk::mesh::Entity entity_b = connectionVec[i].second;
 
     const stk::mesh::EntityId entityId_a = *stk::mesh::field_data(*realm_.naluGlobalId_, entity_a);
     const stk::mesh::EntityId entityId_b = *stk::mesh::field_data(*realm_.naluGlobalId_, entity_b);
 
+    //KOKKOS: small Loop parallel
     for (size_t d=0; d < numDof_; ++d) {
       globalDofs_a[d] = GID_(entityId_a, numDof_ , d);
       globalDofs_b[d] = GID_(entityId_b, numDof_ , d);
@@ -744,6 +898,8 @@ TpetraLinearSystem::finalizeLinearSystem()
 
     // for dofs on entity_a add columns due to entity_b dofs
     if (getDofStatus(entity_a) & DS_GloballyOwnedDOF) { // !Locally owned
+
+      //KOKKOS: small Loop noparallel insertGlobalIndices
       for (size_t d=0; d < numDof_; ++d) {
         const GlobalOrdinal globalRow_a = GID_(entityId_a, numDof_, d);
         globallyOwnedGraph_->insertGlobalIndices(globalRow_a, globalDofs_b);
@@ -752,14 +908,14 @@ TpetraLinearSystem::finalizeLinearSystem()
 
     // for dofs on entity_b add columns due to entity_a dofs
     if (getDofStatus(entity_b) & DS_GloballyOwnedDOF) { // !Locally owned
+      //KOKKOS: small Loop noparallel insertGlobalIndices
       for (size_t d=0; d < numDof_; ++d) {
         const GlobalOrdinal globalRow_b = GID_(entityId_b, numDof_ , d);
         globallyOwnedGraph_->insertGlobalIndices(globalRow_b, globalDofs_a);
       }
     }
-  }
+  });
 
-  std::ostringstream out3;
   globallyOwnedGraph_->fillComplete();
 
   LinSys::Graph ownedPlusGloballyOwnedGraph(ownedRowsMap_, 8);
@@ -768,11 +924,12 @@ TpetraLinearSystem::finalizeLinearSystem()
 
   // Add columns that are imported to the totalGids_ array
   const Teuchos::RCP<const LinSys::Map> & map = ownedPlusGloballyOwnedGraph.getColMap();
-  for (size_t i=0; i < map->getNodeNumElements(); ++i) {
-    const GlobalOrdinal gid = map->getGlobalElement(i);
-    if(!ownedPlusGloballyOwnedRowsMap_->isNodeGlobalElement(gid))
-      totalGids_.push_back(gid);
-  }
+  //KOKKOS: Loop noparallel totalGids push_back (std::vector)
+  kokkos_parallel_for("Nalu::TpetraLinearSystem::finalizeLinearSystemB", map->getNodeNumElements(), [&] (const size_t& i) {
+      const GlobalOrdinal gid = map->getGlobalElement(i);
+      if(!ownedPlusGloballyOwnedRowsMap_->isNodeGlobalElement(gid))
+        totalGids_.push_back(gid);
+  });
 
   // This is the column map for the owned graph now
   const Teuchos::RCP<LinSys::Comm> tpetraComm = Teuchos::rcp(new LinSys::Comm(bulkData.parallel()));
@@ -780,13 +937,15 @@ TpetraLinearSystem::finalizeLinearSystem()
   ownedGraph_ = Teuchos::rcp(new LinSys::Graph(ownedRowsMap_, totalColsMap_, 8));
 
   // Insert all the local connection data
-  for (const Connection& connection : connectionSet_) {
-    const stk::mesh::Entity entity_a = connection.first;
-    const stk::mesh::Entity entity_b = connection.second;
+  //KOKKOS: Loop noparallel Graph insertGlobalIndices
+  kokkos_parallel_for("Nalu::TpetraLinearSystem::finalizeLinearSystemA", numConnections, [&] (const size_t& i) {
+    const stk::mesh::Entity entity_a = connectionVec[i].first;
+    const stk::mesh::Entity entity_b = connectionVec[i].second;
 
     const stk::mesh::EntityId entityId_a = *stk::mesh::field_data(*realm_.naluGlobalId_, entity_a);
     const stk::mesh::EntityId entityId_b = *stk::mesh::field_data(*realm_.naluGlobalId_, entity_b);
 
+    //KOKKOS: small Loop noparallel insertGlobalIndices
     for (size_t d=0; d < numDof_; ++d) {
       globalDofs_a[d] = GID_(entityId_a, numDof_, d);
       globalDofs_b[d] = GID_(entityId_b, numDof_, d);
@@ -798,6 +957,7 @@ TpetraLinearSystem::finalizeLinearSystem()
     // etc.
 
     if (getDofStatus(entity_a) & DS_OwnedDOF) { // Locally owned
+      //KOKKOS: small Loop noparallel insertGlobalIndices
       for (size_t d=0; d < numDof_; ++d) {
         const GlobalOrdinal globalRow_a = GID_(entityId_a, numDof_ , d);
         ownedGraph_->insertGlobalIndices(globalRow_a, globalDofs_b);
@@ -805,12 +965,13 @@ TpetraLinearSystem::finalizeLinearSystem()
     }
 
     if (getDofStatus(entity_b) & DS_OwnedDOF) { // Locally owned
+      //KOKKOS: small Loop noparallel insertGlobalIndices
       for (size_t d=0; d < numDof_; ++d) {
         const GlobalOrdinal globalRow_b = GID_(entityId_b, numDof_ , d);
         ownedGraph_->insertGlobalIndices(globalRow_b, globalDofs_a);
       }
     }
-  }
+  });
 
   // add imported graph information
   {
@@ -818,7 +979,8 @@ TpetraLinearSystem::finalizeLinearSystem()
     const LinSys::Map & colMap = *ownedPlusGloballyOwnedGraph.getColMap();
     const size_t numRows = rowMap.getNodeNumElements();
     std::vector<GlobalOrdinal> newInd;
-    for(size_t localRow=0; localRow < numRows; ++localRow) {
+    //KOKKOS: Loop noparallel Graph insertGlobalIndices
+    kokkos_parallel_for("Nalu::TpetraLinearSystem::finalizeLinearSystemB", numRows, [&] (const size_t& localRow) {
       const GlobalOrdinal row = rowMap.getGlobalElement(localRow);
       Teuchos::ArrayView<const LocalOrdinal> ind;
       ownedPlusGloballyOwnedGraph.getLocalRowView(localRow, ind);
@@ -829,7 +991,7 @@ TpetraLinearSystem::finalizeLinearSystem()
           newInd[j] = colMap.getGlobalElement(ind[j]);
         }
       ownedGraph_->insertGlobalIndices(row, newInd);
-    }
+    });
   }
   ownedGraph_->fillComplete(ownedRowsMap_, ownedRowsMap_);
 
@@ -854,7 +1016,6 @@ TpetraLinearSystem::finalizeLinearSystem()
 
   linearSolver->setupLinearSolver(sln_, ownedMatrix_, ownedRhs_, coords);
 
-  connectionSet_.clear();
 }
 
 void
@@ -881,8 +1042,8 @@ void
 TpetraLinearSystem::sumInto(
       unsigned numEntities,
       const stk::mesh::Entity* entities,
-      const SharedMemView<const double*> & rhs,
-      const SharedMemView<const double**> & lhs,
+      const SharedMemView<const double*> & rhs, 
+      const SharedMemView<const double**> & lhs, 
       const SharedMemView<int*> & localIds,
       const char * trace_tag)
 {
@@ -893,6 +1054,50 @@ TpetraLinearSystem::sumInto(
 
   for(int i = 0; i < n_obj; i++) {
     const stk::mesh::Entity entity = entities[i];
+    const stk::mesh::EntityId entityId = bulkData.identifier(entity);
+    (void)entityId;
+    const stk::mesh::EntityId naluId = *stk::mesh::field_data(*realm_.naluGlobalId_, entity);
+    const LocalOrdinal localOffset = lookup_myLID(myLIDs_, naluId, "sumInto", entity) * numDof_;
+    for(size_t d=0; d < numDof_; ++d) {
+      size_t lid = i*numDof_ + d; 
+      localIds[lid] = localOffset + d; 
+    }    
+  }
+
+  for(int r = 0; r < numRows; r++) {
+    const LocalOrdinal localId = localIds[r];
+
+    if(localId < maxOwnedRowId_) {
+      /* TODO: If I try to use the View's that are ppased in directly I get template */
+      /* argument deduction errors for reasons I don't understand. Need to ask Mark. */
+      ownedMatrix_->sumIntoLocalValues<SharedMemView<int*>, SharedMemView<const double*> >
+         (localId,localIds,Kokkos::subview(lhs,r,Kokkos::ALL()));
+      ownedRhs_->sumIntoLocalValue(localId, rhs(r));
+    }    
+    else if(localId < maxGloballyOwnedRowId_) {
+      const LocalOrdinal actualLocalId = localId - maxOwnedRowId_;
+      globallyOwnedMatrix_->sumIntoLocalValues<SharedMemView<int*>,SharedMemView<const double*> >
+         (actualLocalId,localIds,Kokkos::subview(lhs,r,Kokkos::ALL()));
+      globallyOwnedRhs_->sumIntoLocalValue(actualLocalId, rhs(r));
+    }    
+  }
+}
+
+void
+TpetraLinearSystem::sumInto(
+      const SharedMemView<const stk::mesh::Entity*> & entities,
+      const SharedMemView<const double*> & rhs,
+      const SharedMemView<const double*> & lhs,
+      const SharedMemView<int*> & localIds,
+      const char * trace_tag)
+{
+  stk::mesh::BulkData & bulkData = realm_.bulk_data();
+
+  const int n_obj = entities.dimension_0();
+  const int numRows = n_obj * numDof_;
+
+  for(int i = 0; i < n_obj; i++) {
+    const stk::mesh::Entity entity = entities(i);
     const stk::mesh::EntityId entityId = bulkData.identifier(entity);
     (void)entityId;
     const stk::mesh::EntityId naluId = *stk::mesh::field_data(*realm_.naluGlobalId_, entity);
@@ -910,13 +1115,13 @@ TpetraLinearSystem::sumInto(
       /* TODO: If I try to use the View's that are ppased in directly I get template */
       /* argument deduction errors for reasons I don't understand. Need to ask Mark. */
       ownedMatrix_->sumIntoLocalValues<SharedMemView<int*>, SharedMemView<const double*> >
-         (localId,localIds,Kokkos::subview(lhs,r,Kokkos::ALL()));
+         (localId,localIds,Kokkos::subview(lhs,std::pair<int,int>(numRows*r,numRows*(r+1))));
       ownedRhs_->sumIntoLocalValue(localId, rhs(r));
     }
     else if(localId < maxGloballyOwnedRowId_) {
       const LocalOrdinal actualLocalId = localId - maxOwnedRowId_;
       globallyOwnedMatrix_->sumIntoLocalValues<SharedMemView<int*>,SharedMemView<const double*> >
-         (actualLocalId,localIds,Kokkos::subview(lhs,r,Kokkos::ALL()));
+         (actualLocalId,localIds,Kokkos::subview(lhs,std::pair<int,int>(numRows*r,numRows*(r+1))));
       globallyOwnedRhs_->sumIntoLocalValue(actualLocalId, rhs(r));
     }
   }
@@ -933,40 +1138,43 @@ TpetraLinearSystem::sumInto(
   const char *trace_tag
   )
 {
+  stk::mesh::BulkData & bulkData = realm_.bulk_data();
+
   const size_t n_obj = entities.size();
   const size_t numRows = n_obj * numDof_;
 
   ThrowAssert(numRows == rhs.size());
   ThrowAssert(numRows*numRows == lhs.size());
 
-  for(size_t i=0; i < n_obj; ++i) {
+  scratchIds.resize(numRows);
+  for(size_t i = 0; i < n_obj; i++) {
     const stk::mesh::Entity entity = entities[i];
+    const stk::mesh::EntityId entityId = bulkData.identifier(entity);
+    (void)entityId;
     const stk::mesh::EntityId naluId = *stk::mesh::field_data(*realm_.naluGlobalId_, entity);
     const LocalOrdinal localOffset = lookup_myLID(myLIDs_, naluId, "sumInto", entity) * numDof_;
-
     for(size_t d=0; d < numDof_; ++d) {
       size_t lid = i*numDof_ + d;
       scratchIds[lid] = localOffset + d;
     }
   }
 
-  for(size_t r=0; r < numRows; ++r) {
+  for(size_t r = 0; r < numRows; r++) {
     const LocalOrdinal localId = scratchIds[r];
 
-    for(size_t c=0; c < numRows; ++c) // numRows == numCols
-      scratchVals[c] = lhs[r*numRows + c];
+    const int* idsPtr = &scratchIds[0];
+    const double* lhsPtr = &lhs[r*numRows];
 
     if(localId < maxOwnedRowId_) {
-      ownedMatrix_->sumIntoLocalValues(localId, scratchIds, scratchVals);
+      ownedMatrix_->sumIntoLocalValues(localId, numRows, lhsPtr, idsPtr);
       ownedRhs_->sumIntoLocalValue(localId, rhs[r]);
     }
     else if(localId < maxGloballyOwnedRowId_) {
       const LocalOrdinal actualLocalId = localId - maxOwnedRowId_;
-      globallyOwnedMatrix_->sumIntoLocalValues(actualLocalId, scratchIds, scratchVals);
+      globallyOwnedMatrix_->sumIntoLocalValues(actualLocalId, numRows, lhsPtr, idsPtr);
       globallyOwnedRhs_->sumIntoLocalValue(actualLocalId, rhs[r]);
     }
   }
-
 }
 
 void
@@ -978,11 +1186,8 @@ TpetraLinearSystem::applyDirichletBCs(
   const unsigned endPos)
 {
   stk::mesh::MetaData & metaData = realm_.meta_data();
-  stk::mesh::BulkData & bulkData = realm_.bulk_data();
 
   double adbc_time = -NaluEnv::self().nalu_time();
-  const unsigned p_size = bulkData.parallel_size();
-  (void)p_size;
 
   const stk::mesh::Selector selector 
     = (metaData.locally_owned_part() | metaData.globally_shared_part())
@@ -994,9 +1199,9 @@ TpetraLinearSystem::applyDirichletBCs(
     realm_.get_buckets( stk::topology::NODE_RANK, selector );
 
   int nbc=0;
-  for ( stk::mesh::BucketVector::const_iterator ib = buckets.begin();
-        ib != buckets.end() ; ++ib ) {
-    stk::mesh::Bucket & b = **ib ;
+  //KOKKOS: BucketLoop noparallel RCP Matrix replaceLocalValues
+  kokkos_parallel_for("Nalu::TpetraLinearSystem::applyDirichletBCs", buckets.size(), [&] (const int& ib) {
+    const stk::mesh::Bucket & b = *buckets[ib];
 
     const unsigned fieldSize = field_bytes_per_entity(*solutionField, b) / sizeof(double);
     ThrowRequire(fieldSize == numDof_);
@@ -1009,11 +1214,13 @@ TpetraLinearSystem::applyDirichletBCs(
     Teuchos::ArrayView<const double> values;
     std::vector<double> new_values;
 
+    //KOKKOS: intra BucketLoop noparallel RCP Matrix replaceLocalValues
     for (stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
       const stk::mesh::Entity entity = b[k];
       const stk::mesh::EntityId naluId = *stk::mesh::field_data(*realm_.naluGlobalId_, entity);
       const LocalOrdinal localIdOffset = lookup_myLID(myLIDs_, naluId, "applyDirichletBCs") * numDof_;
 
+      //KOKKOS: nested Loop noparallel RCP Matrix replaceLocalValues
       for(unsigned d=beginPos; d < endPos; ++d) {
         const LocalOrdinal localId = localIdOffset + d;
         const bool useOwned = localId < maxOwnedRowId_;
@@ -1021,7 +1228,7 @@ TpetraLinearSystem::applyDirichletBCs(
         Teuchos::RCP<LinSys::Matrix> matrix = useOwned ? ownedMatrix_ : globallyOwnedMatrix_;
 
         if(localId > maxGloballyOwnedRowId_) {
-          std::cout << "localId > maxGloballyOwnedRowId_:: localId= " << localId << " maxGloballyOwnedRowId_= " << maxGloballyOwnedRowId_ << " useOwned = " << (localId < maxOwnedRowId_ ) << std::endl;
+          std::cerr << "localId > maxGloballyOwnedRowId_:: localId= " << localId << " maxGloballyOwnedRowId_= " << maxGloballyOwnedRowId_ << " useOwned = " << (localId < maxOwnedRowId_ ) << std::endl;
           throw std::runtime_error("logic error: localId > maxGloballyOwnedRowId_");
         }
 
@@ -1044,7 +1251,7 @@ TpetraLinearSystem::applyDirichletBCs(
         ++nbc;
       }
     }
-  }
+  });
   adbc_time += NaluEnv::self().nalu_time();
 }
 
@@ -1059,6 +1266,7 @@ TpetraLinearSystem::prepareConstraints(
 
   // iterate oversetInfoVec_
   std::vector<OversetInfo *>::iterator ii;
+  //KOKKOS: Loop noparallel RCP Vector Matrix replaceLocalValues
   for( ii=realm_.oversetManager_->oversetInfoVec_.begin();
        ii!=realm_.oversetManager_->oversetInfoVec_.end(); ++ii ) {
 
@@ -1067,6 +1275,7 @@ TpetraLinearSystem::prepareConstraints(
     const stk::mesh::EntityId naluId = *stk::mesh::field_data(*realm_.naluGlobalId_, orphanNode);
     const LocalOrdinal localIdOffset = lookup_myLID(myLIDs_, naluId, "prepareConstraints") * numDof_;
 
+    //KOKKOS: Nested Loop noparallel RCP Vector Matrix replaceLocalValues
     for(unsigned d=beginPos; d < endPos; ++d) {
       const LocalOrdinal localId = localIdOffset + d;
       const bool useOwned = localId < maxOwnedRowId_;
@@ -1197,25 +1406,29 @@ TpetraLinearSystem::checkForNaN(bool useOwned)
   Teuchos::ArrayView<const double> values;
 
   int n = matrix->getRowMap()->getNodeNumElements();
-  for (int i=0; i < n; ++i) {
+  //KOKKOS: Loop noparallel throw
+  kokkos_parallel_for("Nalu::TpetraLinearSystem::checkForNaNA", n, [&] (const size_t& i) {
+
     matrix->getLocalRowView(i, indices, values);
     const size_t rowLength = values.size();
+    //KOKKOS: nested Loop noparallel throw
     for(size_t k=0; k < rowLength; ++k) {
       if (values[k] != values[k])	{
-        std::cout << "LHS NaN: " << i << std::endl;
+        std::cerr << "LHS NaN: " << i << std::endl;
         throw std::runtime_error("bad LHS");
       }
     }
-  }
+  });
 
   Teuchos::ArrayRCP<const Scalar> rhs_data = rhs->getData();
   n = rhs_data.size();
-  for (int i=0; i < n; ++i) {
+  //KOKKOS: Loop noparallel throw
+  kokkos_parallel_for("Nalu::TpetraLinearSystem::checkForNaNB", n, [&] (const size_t& i) {
     if (rhs_data[i] != rhs_data[i]) {
-      std::cout << "rhs NaN: " << i << std::endl;
+      std::cerr << "rhs NaN: " << i << std::endl;
       throw std::runtime_error("bad rhs");
     }
-  }
+  });
 }
 
 bool
@@ -1231,10 +1444,11 @@ TpetraLinearSystem::checkForZeroRow(bool useOwned, bool doThrow, bool doPrint)
   size_t nrowG = matrix->getRangeMap()->getGlobalNumElements();
   int n = matrix->getRowMap()->getNodeNumElements();
   GlobalOrdinal max_gid = 0, g_max_gid=0;
-  for (int i=0; i < n; ++i) {
+  //KOKKOS: Loop parallel reduce
+  kokkos_parallel_for("Nalu::TpetraLinearSystem::checkForZeroRowA", n, [&] (const size_t& i) {
     GlobalOrdinal gid = matrix->getGraph()->getRowMap()->getGlobalElement(i);
     max_gid = std::max(gid, max_gid);
-  }
+  });
   stk::all_reduce_max(bulkData.parallel(), &max_gid, &g_max_gid, 1);
 
   nrowG = g_max_gid+1;
@@ -1243,33 +1457,35 @@ TpetraLinearSystem::checkForZeroRow(bool useOwned, bool doThrow, bool doPrint)
   std::vector<double> global_row_sums(nrowG, 0.0);
   std::vector<int> global_row_exists(nrowG, 0);
 
-  for (int i=0; i < n; ++i) {
+  //KOKKOS: Loop noparallel throw
+  kokkos_parallel_for("Nalu::TpetraLinearSystem::checkForZeroRowB", n, [&] (const size_t& i) {
     GlobalOrdinal gid = matrix->getGraph()->getRowMap()->getGlobalElement(i);
     matrix->getLocalRowView(i, indices, values);
     const size_t rowLength = values.size();
     double row_sum = 0.0;
+    //KOKKOS: nested Loop parallel reduce
     for(size_t k=0; k < rowLength; ++k) {
       row_sum += std::abs(values[k]);
     }
     if (gid-1 >= (GlobalOrdinal)local_row_sums.size() || gid <= 0) {
-      std::cout << "gid= " << gid << " nrowG= " << nrowG << std::endl;
+      std::cerr << "gid= " << gid << " nrowG= " << nrowG << std::endl;
       throw std::runtime_error("bad gid");
     }
     local_row_sums[gid-1] = row_sum;
     local_row_exists[gid-1] = 1;
-  }
+  });
 
   stk::all_reduce_sum(bulkData.parallel(), &local_row_sums[0], &global_row_sums[0], (unsigned)nrowG);
   stk::all_reduce_max(bulkData.parallel(), &local_row_exists[0], &global_row_exists[0], (unsigned)nrowG);
 
   bool found=false;
-  for (size_t ii=0; ii < nrowG; ++ii) {
+  //KOKKOS: Loop parallel
+  kokkos_parallel_for("Nalu::TpetraLinearSystem::checkForZeroRowC", nrowG, [&] (const size_t& ii) {
     double row_sum = global_row_sums[ii];
     if (global_row_exists[ii] && bulkData.parallel_rank() == 0 && row_sum < 1.e-10) {
       found = true;
       GlobalOrdinal gid = ii+1;
       stk::mesh::EntityId nid = GLOBAL_ENTITY_ID(gid, numDof_);
-      std::cout << "nid= " << nid << std::endl;
       stk::mesh::Entity node = bulkData.get_entity(stk::topology::NODE_RANK, nid);
       stk::mesh::EntityId naluGlobalId;
       if (bulkData.is_valid(node)) naluGlobalId = *stk::mesh::field_data(*realm_.naluGlobalId_, node);
@@ -1296,7 +1512,7 @@ TpetraLinearSystem::checkForZeroRow(bool useOwned, bool doThrow, bool doPrint)
                         << std::endl;
       }
     }
-  }
+  });
 
   if (found && doThrow) {
     throw std::runtime_error("bad zero row LHS");
@@ -1468,7 +1684,6 @@ TpetraLinearSystem::copy_tpetra_to_stk(
   const LinSys::ConstOneDVector & tpetraVector = tpetraField->get1dView();
 
   const unsigned p_rank = bulkData.parallel_rank();
-  (void)p_rank;
 
   const stk::mesh::Selector selector = stk::mesh::selectField(*stkField)
     & metaData.locally_owned_part() 

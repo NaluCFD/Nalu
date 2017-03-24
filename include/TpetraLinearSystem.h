@@ -11,31 +11,35 @@
 
 #include <LinearSystem.h>
 
+#include <KokkosInterface.h>
+
 #include <Tpetra_DefaultPlatform.hpp>
 #include <Kokkos_DefaultNode.hpp>
 #include <Tpetra_Vector.hpp>
 #include <Tpetra_DefaultPlatform.hpp>
 #include <Tpetra_CrsMatrix.hpp>
 
+#include <stk_mesh/base/Types.hpp>
 #include <stk_mesh/base/Entity.hpp>
+#include <stk_mesh/base/FieldBase.hpp>
 
 #include <vector>
 #include <string>
 #include <boost/unordered_map.hpp>
 
-namespace stk {
-namespace mesh {
-  typedef uint64_t EntityId;
-}
-}
+#include <Kokkos_UnorderedMap.hpp>
 
-namespace sierra{
-namespace nalu{
+namespace sierra {
+namespace nalu {
 
 class Realm;
+class EquationSystem;
 class LinearSolver;
 
 typedef boost::unordered_map<stk::mesh::EntityId, size_t>  MyLIDMapType;
+
+typedef std::pair<stk::mesh::Entity, stk::mesh::Entity> Connection;
+typedef Kokkos::UnorderedMap<Connection,void> ConnectionSetKK;
 
 class TpetraLinearSystem : public LinearSystem
 {
@@ -64,7 +68,7 @@ public:
   // Matrix Assembly
   void zeroSystem();
 
-void sumInto(
+  void sumInto(
       unsigned numEntities,
       const stk::mesh::Entity* entities,
       const SharedMemView<const double*> & rhs,
@@ -80,6 +84,13 @@ void sumInto(
     const std::vector<double> & lhs,
     const char *trace_tag=0
     );
+
+  virtual void sumInto(
+      const SharedMemView<const stk::mesh::Entity*> & entities,
+      const SharedMemView<const double*> & rhs,
+      const SharedMemView<const double*> & lhs,
+      const SharedMemView<int*> & local_id_scratch,
+      const char *trace_tag=0);
 
   void applyDirichletBCs(
     stk::mesh::FieldBase * solutionField,
@@ -98,7 +109,11 @@ void sumInto(
   void writeToFile(const char * filename, bool useOwned=true);
   void printInfo(bool useOwned=true);
   void writeSolutionToFile(const char * filename, bool useOwned=true);
-  size_t lookup_myLID(MyLIDMapType& myLIDs, stk::mesh::EntityId entityId, const char* msg=nullptr, stk::mesh::Entity entity = stk::mesh::Entity());
+  size_t lookup_myLID(MyLIDMapType& myLIDs, stk::mesh::EntityId entityId, const char* msg=nullptr, stk::mesh::Entity entity = stk::mesh::Entity())
+  {
+    return myLIDs[entityId];
+  }
+
 
   enum DOFStatus {
     DS_NotSet           = 0,
@@ -126,14 +141,13 @@ private:
   void copy_stk_to_tpetra(stk::mesh::FieldBase * stkField,
     const Teuchos::RCP<LinSys::MultiVector> tpetraVector);
 
-  void addConnections(const stk::mesh::Entity* entities, size_t num_entities);
+  int addConnections(const stk::mesh::Entity* entities,const size_t&);
+  void expand_unordered_map(unsigned newCapacityNeeded);
   void checkForNaN(bool useOwned);
   bool checkForZeroRow(bool useOwned, bool doThrow, bool doPrint=false);
 
-  typedef std::pair<stk::mesh::Entity, stk::mesh::Entity> Connection;
-  typedef std::set< Connection > ConnectionSet;
   typedef std::vector< Connection > ConnectionVec;
-  ConnectionSet connectionSet_;
+  ConnectionSetKK connectionSetKK_ ;
   std::vector<GlobalOrdinal> totalGids_;
 
   Teuchos::RCP<LinSys::Node>   node_;
@@ -167,8 +181,27 @@ private:
   MyLIDMapType myLIDs_;
   LocalOrdinal maxOwnedRowId_; // = num_owned_nodes * numDof_
   LocalOrdinal maxGloballyOwnedRowId_; // = (num_owned_nodes + num_globallyOwned_nodes) * numDof_
+  EquationSystem* eqSys_;
 };
 
+template<typename T1, typename T2>
+void copy_kokkos_unordered_map(const Kokkos::UnorderedMap<T1,T2>& src,
+                               Kokkos::UnorderedMap<T1,T2>& dest)
+{
+  if (src.capacity() > dest.capacity()) {
+    dest = Kokkos::UnorderedMap<T1,T2>(src.capacity());
+  }
+
+  unsigned capacity = src.capacity();
+  unsigned fail_count = 0;
+  for(unsigned i=0; i<capacity; ++i) {
+    if (src.valid_at(i)) {
+      auto insert_result = dest.insert(src.key_at(i));
+      fail_count += insert_result.failed() ? 1 : 0;
+    }
+  }
+  ThrowRequire(fail_count == 0);
+}
 
 } // namespace nalu
 } // namespace Sierra
