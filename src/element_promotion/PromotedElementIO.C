@@ -135,23 +135,26 @@ PromotedElementIO::write_database_data(double currentTime)
     stk::mesh::BucketVector const& nodeBuckets = bulkData_.get_buckets(
       stk::topology::NODE_RANK, stk::mesh::selectUnion(superElemParts_));
 
+    std::vector<int64_t> ids;
+    nodeBlock_->get_field_data("ids", ids);
+
     for (const auto& pair : fields_) {
       ThrowRequire(pair.second != nullptr);
       const stk::mesh::FieldBase& field = *pair.second;
       if (field.type_is<int>()) {
-        put_data_on_node_block<int32_t>(*nodeBlock_, field, nodeBuckets);
+        put_data_on_node_block<int32_t>(*nodeBlock_, ids, field, nodeBuckets);
       }
       else if (field.type_is<uint32_t>()) {
-        put_data_on_node_block<uint32_t>(*nodeBlock_, field, nodeBuckets);
+        put_data_on_node_block<uint32_t>(*nodeBlock_, ids, field, nodeBuckets);
       }
       else if (field.type_is<int64_t>()) {
-        put_data_on_node_block<int64_t>(*nodeBlock_, field, nodeBuckets);
+        put_data_on_node_block<int64_t>(*nodeBlock_, ids, field, nodeBuckets);
       }
       else if (field.type_is<uint64_t>()) {
-        put_data_on_node_block<uint64_t>(*nodeBlock_, field, nodeBuckets);
+        put_data_on_node_block<uint64_t>(*nodeBlock_, ids, field, nodeBuckets);
       }
       else if (field.type_is<double>()) {
-        put_data_on_node_block<double>(*nodeBlock_, field, nodeBuckets);
+        put_data_on_node_block<double>(*nodeBlock_, ids, field, nodeBuckets);
       }
       else {
         ThrowRequireMsg(false, "Unsupported type for output");
@@ -165,6 +168,7 @@ PromotedElementIO::write_database_data(double currentTime)
 template<typename T> void
 PromotedElementIO::put_data_on_node_block(
   Ioss::NodeBlock& nodeBlock,
+  const std::vector<int64_t>& ids,
   const stk::mesh::FieldBase& field,
   const stk::mesh::BucketVector& buckets) const
 {
@@ -173,16 +177,12 @@ PromotedElementIO::put_data_on_node_block(
   std::vector<T> flatArray(count_entities(buckets)*fieldLength);
 
   size_t index = 0;
-  for (const auto* bucketPtr : buckets) {
-    const auto* field_data = static_cast<T*>(
-      stk::mesh::field_data(field, *bucketPtr));
-    const size_t length = bucketPtr->size();
-    size_t field_index = 0;
-    for (size_t k = 0; k < length; ++k) {
-      for (int j = 0; j < fieldLength; ++j) {
-        flatArray[index] = field_data[field_index];
-        ++index; ++field_index;
-      }
+  for (size_t k = 0; k < ids.size(); ++k) {
+    stk::mesh::Entity node = bulkData_.get_entity(stk::topology::NODE_RANK, ids[k]);
+    const T* field_data = static_cast<T*>(stk::mesh::field_data(field, node));
+    for (int j = 0; j < fieldLength; ++j) {
+      flatArray[index] = field_data[j];
+      ++index;
     }
   }
   nodeBlock.put_field_data(field.name(), flatArray.data(), flatArray.size() * sizeof(T));
