@@ -36,8 +36,9 @@ public:
 class ActuatorLineFASTPointInfo {
  public:
   ActuatorLineFASTPointInfo(
-    size_t localId, Point centroidCoords, double searchRadius, Coordinates epsilon, double *velocity, ActuatorNodeType nType);
+			    size_t localId, Point centroidCoords, double searchRadius, Coordinates epsilon, double *velocity, ActuatorNodeType nType, size_t globTurbId);
   ~ActuatorLineFASTPointInfo();
+  size_t globTurbId_; // Global turbine number
   size_t localId_;
   Point centroidCoords_;
   double searchRadius_;
@@ -199,9 +200,6 @@ public:
   // how many elements to ghost?
   uint64_t needToGhostForceCount_;
   stk::mesh::EntityProcVec elemsToGhostForce_;
-
-  // local id for set of points
-  uint64_t localPointId_;
 
   // does the actuator line move?
   bool actuatorLineMotion_;

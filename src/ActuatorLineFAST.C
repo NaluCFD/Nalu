@@ -84,14 +84,16 @@ ActuatorLineFASTPointInfo::ActuatorLineFASTPointInfo(
   double searchRadius,
   Coordinates epsilon,
   double *velocity,
-  ActuatorNodeType nType)
+  ActuatorNodeType nType,
+  size_t globTurbId)
   : localId_(localId),
     centroidCoords_(centroidCoords),
     searchRadius_(searchRadius),
     epsilon_(epsilon),
     bestX_(1.0e16),
     bestElem_(stk::mesh::Entity()),
-    nodeType_(nType)
+    nodeType_(nType),
+    globTurbId_(globTurbId)
 {
   // initialize point velocity and displacement
   velocity_[0] = velocity[0];
@@ -125,7 +127,6 @@ ActuatorLineFAST::ActuatorLineFAST(
     searchMethod_(stk::search::BOOST_RTREE),
     actuatorLineGhosting_(NULL),
     needToGhostCount_(0),
-    localPointId_(0),
     actuatorLineMotion_(false),
     pi_(acos(-1.0))
 {
@@ -280,9 +281,6 @@ ActuatorLineFAST::load(
 	actuatorLineInfo->turbineName_ = theName.as<std::string>() ;
       else
 	throw std::runtime_error("ActuatorLineFAST: no name provided");
-      
-      // // processor id - Get from FAST
-      // actuatorLineInfo->processorId_ = FAST.get_procNo(iTurb) ;
      
       actuatorLineMotion_ = true;
       
@@ -388,13 +386,13 @@ ActuatorLineFAST::initialize()
 
   allocateTurbinesToProcs();
 
-  FAST.setup();
+  FAST.allocateInputData();
 
   if ( ! FAST.isDryRun() ) {
     FAST.init() ;
   }
 
-  update();
+  update(); // Update location of actuator points, ghosting etc.
 }
 
 //--------------------------------------------------------------------------
@@ -590,7 +588,7 @@ ActuatorLineFAST::execute()
       NaluEnv::self().naluOutput() << "Node " << np << " Velocity = " << ws_pointGasVelocity[0] << " " << ws_pointGasVelocity[1] << " " << ws_pointGasVelocity[2] << " " << std::endl ;
     }
 
-    FAST.setVelocity(ws_pointGasVelocity, np);
+    FAST.setVelocity(ws_pointGasVelocity, np, infoObject->globTurbId_);
     np = np + 1;
 
   }    
@@ -627,7 +625,7 @@ ActuatorLineFAST::execute()
     // compute volume
     double elemVolume = compute_volume(nDim, bestElem, bulkData);
 
-    FAST.getForce(ws_pointForce, np);
+    FAST.getForce(ws_pointForce, np, infoObject->globTurbId_);
     if (FAST.isDebug() ) {
       NaluEnv::self().naluOutput() << "Node " << np << " Type " << infoObject->nodeType_ << " Force = " << ws_pointForce[0] << " " << ws_pointForce[1] << " " << ws_pointForce[2] << " " << std::endl ;
     }
@@ -980,44 +978,42 @@ ActuatorLineFAST::create_actuator_line_point_info_map() {
   stk::mesh::MetaData & metaData = realm_.meta_data(); 
   const int nDim = metaData.spatial_dimension();
 
-  for ( size_t k = 0; k < actuatorLineInfo_.size(); ++k ) {
+  size_t npVel = 0;
+  size_t npForce = 0;
+
+  for ( size_t iTurb = 0; iTurb < actuatorLineInfo_.size(); ++iTurb ) {
     
-    const ActuatorLineFASTInfo *actuatorLineInfo = actuatorLineInfo_[k];
+    const ActuatorLineFASTInfo *actuatorLineInfo = actuatorLineInfo_[iTurb];
     
-    int processorId = actuatorLineInfo->processorId_;
+    int processorId = FAST.get_procNo(iTurb);
     if ( processorId == NaluEnv::self().parallel_rank() ) {
       
       // define a point that will hold the centroid
       Point centroidCoords;
     
-      // local turbine id
-      const int iTurbLoc = FAST.get_localTurbNo(k) ; // 'k' is the global turbine id here
       // scratch array for coordinates and dummy array for velocity
       double velocity[3] = {};
       double currentCoords[3] = {};
 
       // loop over all points for this turbine
-      const int nBlades = FAST.get_numBlades(iTurbLoc); // Number of blades per turbine - only Turbine 0 for now
-      const int numVelPtsBlade = FAST.get_numVelPtsBlade(iTurbLoc) ; // Number of nodes per blade - only Turbine 0 for now
-      const int numVelPtsTwr = FAST.get_numVelPtsTwr(iTurbLoc) ; // Number of tower elements - only Turbine 0 for now
-      const int numVelPts = FAST.get_numVelPts(iTurbLoc); // Total number of elements - only Turbine 0 for now
-      const int numForcePtsBlade = FAST.get_numForcePtsBlade(iTurbLoc) ; // Number of nodes per blade - only Turbine 0 for now
-      const int numForcePtsTwr = FAST.get_numForcePtsTwr(iTurbLoc) ; // Number of tower elements - only Turbine 0 for now
-      const int numForcePts = FAST.get_numForcePts(iTurbLoc); // Total number of elements - only Turbine 0 for now
+      const int nBlades = FAST.get_numBlades(iTurb); // Number of blades per turbine 
+      const int numVelPtsBlade = FAST.get_numVelPtsBlade(iTurb) ; // Number of nodes per blade
+      const int numVelPtsTwr = FAST.get_numVelPtsTwr(iTurb) ; // Number of tower elements 
+      const int numVelPts = FAST.get_numVelPts(iTurb); // Total number of elements 
+      const int numForcePtsBlade = FAST.get_numForcePtsBlade(iTurb) ; // Number of nodes per blade 
+      const int numForcePtsTwr = FAST.get_numForcePtsTwr(iTurb) ; // Number of tower elements
+      const int numForcePts = FAST.get_numForcePts(iTurb); // Total number of elements 
       //      actuatorLineInfo->numPoints_ = numVelPts ; // Can't change a const pointer
       
       if (! FAST.isDryRun() ) {
-	int np = 0;
 	for(int iNode = 0; iNode < numVelPts; iNode++) {
-	  // extract current localPointId; increment for next one up...
-	  size_t localPointId = localPointId_++;
-	  stk::search::IdentProc<uint64_t,int> theIdent(localPointId, NaluEnv::self().parallel_rank());
+	  stk::search::IdentProc<uint64_t,int> theIdent(npVel, NaluEnv::self().parallel_rank());
 	  
 	  // set model coordinates from FAST
 	  // move the coordinates; set the velocity... may be better on the lineInfo object
-	  FAST.getVelNodeCoordinates(currentCoords, iNode);
+	  FAST.getVelNodeCoordinates(currentCoords, npVel, iTurb);
 	  if (FAST.isDebug() ) {
-	    NaluEnv::self().naluOutput() << "Vel Node " << np << " Position = " << currentCoords[0] << " " << currentCoords[1] << " " << currentCoords[2] << " " << std::endl ;
+	    NaluEnv::self().naluOutput() << "Vel Node " << npVel << " Position = " << currentCoords[0] << " " << currentCoords[1] << " " << currentCoords[2] << " " << std::endl ;
 	  }
 	  velocity[0] = 0.0;
 	  velocity[1] = 0.0;
@@ -1034,25 +1030,24 @@ ActuatorLineFAST::create_actuator_line_point_info_map() {
 	  
 	  // create the point info and push back to map
 	  ActuatorLineFASTPointInfo *actuatorLinePointInfo 
-	    = new ActuatorLineFASTPointInfo(localPointId, centroidCoords, 
-					searchRadius, actuatorLineInfo->epsilon_,
-                                        velocity, FAST.getVelNodeType(k, iNode));
-	  actuatorLinePointInfoMap_[localPointId] = actuatorLinePointInfo;
+	    = new ActuatorLineFASTPointInfo(npVel, centroidCoords, 
+					    searchRadius, actuatorLineInfo->epsilon_,
+					    velocity, 
+					    FAST.getVelNodeType(iTurb, npVel),
+					    iTurb);
+	  actuatorLinePointInfoMap_[npVel] = actuatorLinePointInfo;
 	  
-	  np=np+1;
+	  npVel=npVel+1;
 	}
 
-	np = 0;
 	for(int iNode = 0; iNode < numForcePts; iNode++) {
-	  // extract current localPointId; increment for next one up...
-	  size_t localPointId = localPointId_++;
-	  stk::search::IdentProc<uint64_t,int> theIdent(localPointId, NaluEnv::self().parallel_rank());
+	  stk::search::IdentProc<uint64_t,int> theIdent(npForce, NaluEnv::self().parallel_rank());
 	  
 	  // set model coordinates from FAST
 	  // move the coordinates; set the velocity... may be better on the lineInfo object
-	  FAST.getForceNodeCoordinates(currentCoords, iNode);
+	  FAST.getForceNodeCoordinates(currentCoords, npForce, iTurb);
 	  if (FAST.isDebug() ) {
-	    NaluEnv::self().naluOutput() << "Force Node " << np << " Position = " << currentCoords[0] << " " << currentCoords[1] << " " << currentCoords[2] << " " << std::endl ;
+	    NaluEnv::self().naluOutput() << "Force Node " << npForce << " Position = " << currentCoords[0] << " " << currentCoords[1] << " " << currentCoords[2] << " " << std::endl ;
 	  }
 	  velocity[0] = 0.0;
 	  velocity[1] = 0.0;
@@ -1069,17 +1064,20 @@ ActuatorLineFAST::create_actuator_line_point_info_map() {
 	  
 	  // create the point info and push back to map
 	  ActuatorLineFASTPointInfo *actuatorLinePointInfo 
-	    = new ActuatorLineFASTPointInfo(localPointId, centroidCoords, 
-					searchRadius, actuatorLineInfo->epsilon_,
-                                        velocity, FAST.getForceNodeType(k, iNode));
-	  actuatorLineForcePointInfoMap_[localPointId] = actuatorLinePointInfo;
+	    = new ActuatorLineFASTPointInfo(npForce, centroidCoords, 
+					    searchRadius, actuatorLineInfo->epsilon_,
+					    velocity, 
+					    FAST.getForceNodeType(iTurb, npForce),
+					    iTurb);
+
+	  actuatorLineForcePointInfoMap_[npForce] = actuatorLinePointInfo;
 	  
-	  np=np+1;
+	  npForce=npForce+1;
 	}
 
       }
       else {
-	NaluEnv::self().naluOutput() << "Proc " << NaluEnv::self().parallel_rank() << " loc iTurb " << iTurbLoc << " glob iTurb " << k << std::endl ;
+	NaluEnv::self().naluOutput() << "Proc " << NaluEnv::self().parallel_rank() << " glob iTurb " << iTurb << std::endl ;
       }
       
     }
