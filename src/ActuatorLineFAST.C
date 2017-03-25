@@ -281,8 +281,8 @@ ActuatorLineFAST::load(
       else
 	throw std::runtime_error("ActuatorLineFAST: no name provided");
       
-      // processor id - Get from FAST
-      actuatorLineInfo->processorId_ = FAST.get_procNo(iTurb) ;
+      // // processor id - Get from FAST
+      // actuatorLineInfo->processorId_ = FAST.get_procNo(iTurb) ;
      
       actuatorLineMotion_ = true;
       
@@ -322,10 +322,59 @@ ActuatorLineFAST::setup()
     tEnd = (ntEnd - ntStart)*dt + tStart ;
   }
   FAST.setTend( tEnd );
-  
-  if ( ! FAST.isDryRun() ) {
-    FAST.init() ;
+
+}
+
+//--------------------------------------------------------------------------
+//-------- initialize ------------------------------------------------------
+//--------------------------------------------------------------------------
+void
+ActuatorLineFAST::allocateTurbinesToProcs()
+{
+  stk::mesh::BulkData & bulkData = realm_.bulk_data();
+  stk::mesh::MetaData & metaData = realm_.meta_data();
+
+  // clear some of the search info
+  boundingHubSphereVec_.clear();
+  boundingProcBoxVec_.clear();
+  searchKeyPair_.clear();
+
+  const int nDim = metaData.spatial_dimension();
+
+  // set all of the candidate elements in the search target names
+  populate_candidate_procs();
+
+  const int nTurbinesGlob = FAST.get_nTurbinesGlob() ;
+  for (size_t iTurb = 0; iTurb < nTurbinesGlob; ++iTurb) {
+
+    theKey theIdent(NaluEnv::self().parallel_rank(), NaluEnv::self().parallel_rank());
+
+    // define a point that will hold the hub location
+    Point hubPointCoords;
+    double hubCoords[3] = {};
+    FAST.getHubPos(hubCoords, iTurb);
+    for ( int j = 0; j < nDim; ++j )  hubPointCoords[j] = hubCoords[j];
+    boundingSphere theSphere( Sphere(hubPointCoords, 1.0), theIdent);
+    boundingHubSphereVec_.push_back(theSphere);
+    
   }
+  stk::search::coarse_search(boundingHubSphereVec_, boundingProcBoxVec_, searchMethod_, NaluEnv::self().parallel_comm(), searchKeyPair_, false);
+
+  int iTurb=0;
+  std::vector<std::pair<boundingSphere::second_type, boundingElementBox::second_type> >::const_iterator ii;
+  for( ii=searchKeyPair_.begin(); ii!=searchKeyPair_.end(); ++ii ) {
+    const uint64_t theBox = ii->second.id();
+    unsigned theRank = NaluEnv::self().parallel_rank();
+    const unsigned pt_proc = ii->first.proc();
+    const unsigned box_proc = ii->second.proc();
+
+    NaluEnv::self().naluOutput() << "rank: " << theRank << " pt_proc: " << pt_proc << " box_proc: " << box_proc << std::endl ;
+    
+    FAST.setTurbineProcNo(iTurb, box_proc);
+    iTurb++;
+  }  
+
+  
 
 }
 
@@ -335,6 +384,24 @@ ActuatorLineFAST::setup()
 //--------------------------------------------------------------------------
 void
 ActuatorLineFAST::initialize()
+{
+
+  allocateTurbinesToProcs();
+
+  FAST.setup();
+
+  if ( ! FAST.isDryRun() ) {
+    FAST.init() ;
+  }
+
+  update();
+}
+
+//--------------------------------------------------------------------------
+//-------- update---- ------------------------------------------------------
+//--------------------------------------------------------------------------
+void
+ActuatorLineFAST::update()
 {
   stk::mesh::BulkData & bulkData = realm_.bulk_data();
   stk::mesh::MetaData & metaData = realm_.meta_data();
@@ -540,7 +607,7 @@ ActuatorLineFAST::execute()
  
   // do we have mesh motion?
   if ( actuatorLineMotion_ )
-    initialize();
+    update();
 
   // loop over map and assemble source terms
   np = 0;
@@ -753,6 +820,88 @@ ActuatorLineFAST::populate_candidate_elements()
       boundingElementBoxVec_.push_back(theBox);
     }
   }
+}
+
+//--------------------------------------------------------------------------
+//-------- populate_candidate_procs ----------------------------------------
+//--------------------------------------------------------------------------
+void
+ActuatorLineFAST::populate_candidate_procs() 
+{
+  stk::mesh::MetaData & metaData = realm_.meta_data();
+  stk::mesh::BulkData & bulkData = realm_.bulk_data();
+
+  const int nDim = metaData.spatial_dimension();
+
+  // fields
+  VectorFieldType *coordinates = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+
+  // point data structures
+  //  Point minCorner, maxCorner;
+  std::vector<Point> minCorner(1), maxCorner(1);
+  std::vector<Point> gMinCorner, gMaxCorner;
+
+  // initialize max and min
+  for (int j = 0; j < nDim; ++j ) {
+    minCorner[0][j] = +1.0e16;
+    maxCorner[0][j] = -1.0e16;
+  }
+
+  // extract part
+  stk::mesh::PartVector searchParts;
+  for ( size_t k = 0; k < searchTargetNames_.size(); ++k ) {
+    stk::mesh::Part *thePart = metaData.get_part(searchTargetNames_[k]);
+    if ( NULL != thePart )
+      searchParts.push_back(thePart);
+    else
+      throw std::runtime_error("ActuatorLineFAST: Part is null" + searchTargetNames_[k]);     
+  }
+
+  // selector and bucket loop
+  stk::mesh::Selector s_locally_owned = metaData.locally_owned_part()
+    &stk::mesh::selectUnion(searchParts);
+  
+  stk::mesh::BucketVector const& elem_buckets =
+    realm_.get_buckets( stk::topology::NODE_RANK, s_locally_owned );
+
+  for ( stk::mesh::BucketVector::const_iterator ib = elem_buckets.begin();
+        ib != elem_buckets.end() ; ++ib ) {
+    
+    stk::mesh::Bucket & b = **ib;
+
+    const stk::mesh::Bucket::size_type length   = b.size();
+
+    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+
+      // get element
+      stk::mesh::Entity node = b[k];
+
+      // pointers to real data
+      const double * coords = stk::mesh::field_data(*coordinates, node );
+        
+      // check max/min
+      for ( int j = 0; j < nDim; ++j ) {
+	minCorner[0][j] = std::min(minCorner[0][j], coords[j]);
+	maxCorner[0][j] = std::max(maxCorner[0][j], coords[j]);
+      }
+
+    }      
+  }
+
+  stk::parallel_vector_concat(NaluEnv::self().parallel_comm(), minCorner, gMinCorner);
+  stk::parallel_vector_concat(NaluEnv::self().parallel_comm(), maxCorner, gMaxCorner);
+  
+  for(unsigned j = 0; j < NaluEnv::self().parallel_size(); j++) {
+    // setup ident
+    stk::search::IdentProc<uint64_t,int> theIdent(j, j);
+    NaluEnv::self().naluOutput() << "proc " << j << " minCorner: " << gMinCorner[j] << " maxCorner: " << gMaxCorner[j] << std::endl ;
+    
+    // create the bounding point box and push back
+    boundingElementBox theBox(Box(gMinCorner[j],gMaxCorner[j]), theIdent);
+    boundingProcBoxVec_.push_back(theBox);
+    
+  }
+
 }
 
 //--------------------------------------------------------------------------

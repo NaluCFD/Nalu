@@ -9,6 +9,7 @@
 #ifndef ActuatorLineFAST_h
 #define ActuatorLineFAST_h
 
+#include <stk_util/parallel/ParallelVectorConcat.hpp>
 #include "Actuator.h"
 
 // FAST c interface
@@ -68,8 +69,17 @@ public:
   // setup part creation and nodal field registration (before populate_mesh())
   void setup();
 
-  // setup part creation and nodal field registration (after populate_mesh())
+  // allocate turbines to processors containing hub location
+  void allocateTurbinesToProcs() ;
+  
+  // Allocate turbines to processors, initialize FAST and get location of actuator points
   void initialize();
+
+  // setup part creation and nodal field registration (after populate_mesh())
+  void update();
+
+  // determine processor bounding box in the mesh
+  void populate_candidate_procs();
 
   // determine element bounding box in the mesh
   void populate_candidate_elements();
@@ -206,6 +216,8 @@ public:
   // bounding box data types for stk_search */
   std::vector<boundingSphere> boundingSphereVec_;
   std::vector<boundingElementBox> boundingElementBoxVec_;
+  std::vector<boundingSphere> boundingHubSphereVec_;
+  std::vector<boundingElementBox> boundingProcBoxVec_;
   std::vector<boundingSphere> boundingSphereForceVec_;
 
   // target names for set of bounding boxes
