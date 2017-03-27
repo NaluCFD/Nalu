@@ -99,6 +99,7 @@ SurfaceForceAndMomentAlgorithm::SurfaceForceAndMomentAlgorithm(
            << "Fvx"  << std::setw(w_) << "Fvy" << std::setw(w_)  << "Fvz" << std::setw(w_) 
            << "Mtx"  << std::setw(w_) << "Mty" << std::setw(w_)  << "Mtz" << std::setw(w_) 
            << "Y+min" << std::setw(w_) << "Y+max"<< std::endl;
+    myfile.close();
   }
  }
 
