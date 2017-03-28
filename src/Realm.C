@@ -227,7 +227,8 @@ namespace nalu{
     wallTimeStart_(stk::wall_time()),
     doPromotion_(false),
     promotionOrder_(0u),
-    quadType_("GaussLegendre")
+    quadType_("GaussLegendre"),
+    timerPromoteMesh_(0.0)
 {
   // deal with specialty options that live off of the realm; 
   // choose to do this now rather than waiting for the load stage
@@ -3642,9 +3643,9 @@ Realm::dump_simulation_time()
   const int nprocs = NaluEnv::self().parallel_size();
 
   // common
-  const unsigned ntimers = 7;
+  const unsigned ntimers = 6;
   double total_time[ntimers] = {timerCreateMesh_, timerOutputFields_, timerInitializeEqs_, 
-                                timerPropertyEval_, timerPopulateMesh_, timerPopulateFieldData_ , timerPromoteMesh_};
+                                timerPropertyEval_, timerPopulateMesh_, timerPopulateFieldData_ };
   double g_min_time[ntimers] = {}, g_max_time[ntimers] = {}, g_total_time[ntimers] = {};
 
   // get min, max and sum over processes
@@ -3661,8 +3662,6 @@ Realm::dump_simulation_time()
                   << " \tmin: " << g_min_time[4] << " \tmax: " << g_max_time[4] << std::endl;
   NaluEnv::self().naluOutputP0() << " io populate fd   --  " << " \tavg: " << g_total_time[5]/double(nprocs)
                   << " \tmin: " << g_min_time[5] << " \tmax: " << g_max_time[5] << std::endl;
-  NaluEnv::self().naluOutputP0() << " io promote mesh  --  " << " \tavg: " << g_total_time[6]/double(nprocs)
-                  << " \tmin: " << g_min_time[6] << " \tmax: " << g_max_time[6] << std::endl;
   NaluEnv::self().naluOutputP0() << "Timing for connectivity/finalize lysys: " << std::endl;
   NaluEnv::self().naluOutputP0() << "         eqs init --  " << " \tavg: " << g_total_time[2]/double(nprocs)
                   << " \tmin: " << g_min_time[2] << " \tmax: " << g_max_time[2] << std::endl;
@@ -3745,6 +3744,19 @@ Realm::dump_simulation_time()
     NaluEnv::self().naluOutputP0() << "        skin_mesh --  " << " \tavg: " << g_totalSkin/double(nprocs)
                                    << " \tmin: " << g_minSkin << " \tmax: " << g_maxSkin << std::endl;
   }
+
+  // promotion
+  if (doPromotion_) {
+    double g_totalPromote = 0.0, g_minPromote= 0.0, g_maxPromote = 0.0;
+    stk::all_reduce_min(NaluEnv::self().parallel_comm(), &timerPromoteMesh_, &g_minPromote, 1);
+    stk::all_reduce_max(NaluEnv::self().parallel_comm(), &timerPromoteMesh_, &g_maxPromote, 1);
+    stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &timerPromoteMesh_, &g_totalPromote, 1);
+
+    NaluEnv::self().naluOutputP0() << "Timing for promote_mesh :    " << std::endl;
+    NaluEnv::self().naluOutputP0() << "        promote_mesh --  " << " \tavg: " << g_totalPromote/double(nprocs)
+                                         << " \tmin: " << g_minPromote << " \tmax: " << g_maxPromote << std::endl;
+  }
+
   NaluEnv::self().naluOutputP0() << std::endl;
 }
 
