@@ -85,6 +85,7 @@ public:
   bool ncAlgIncludePstab_;
   bool ncAlgDetailedOutput_;
   bool ncAlgCurrentNormal_;
+  bool ncAlgPngPenalty_;
   bool cvfemShiftMdot_;
   bool cvfemShiftPoisson_;
   bool cvfemReducedSensPoisson_;

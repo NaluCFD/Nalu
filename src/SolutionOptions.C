@@ -70,6 +70,7 @@ SolutionOptions::SolutionOptions()
     ncAlgIncludePstab_(true),
     ncAlgDetailedOutput_(false),
     ncAlgCurrentNormal_(false),
+    ncAlgPngPenalty_(true),
     cvfemShiftMdot_(false),
     cvfemShiftPoisson_(false),
     cvfemReducedSensPoisson_(false),
@@ -301,6 +302,7 @@ SolutionOptions::load(const YAML::Node & y_node)
           get_if_present(y_nc, "include_pstab",  ncAlgIncludePstab_, ncAlgIncludePstab_);
           get_if_present(y_nc, "detailed_output",  ncAlgDetailedOutput_, ncAlgDetailedOutput_);
           get_if_present(y_nc, "current_normal",  ncAlgCurrentNormal_, ncAlgCurrentNormal_);
+          get_if_present(y_nc, "include_png_penalty",  ncAlgPngPenalty_, ncAlgPngPenalty_);
         }
         else if (expect_map( y_option, "peclet_function_form", optional)) {
           y_option["peclet_function_form"] >> tanhFormMap_ ;

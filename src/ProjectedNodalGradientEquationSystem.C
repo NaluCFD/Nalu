@@ -285,7 +285,7 @@ ProjectedNodalGradientEquationSystem::register_non_conformal_bc(
     solverAlgDriver_->solverAlgMap_.find(algType);
   if ( its == solverAlgDriver_->solverAlgMap_.end() ) {
     AssemblePNGNonConformalSolverAlgorithm *theAlg
-      = new AssemblePNGNonConformalSolverAlgorithm(realm_, part, this, independentDofName_, dofName_ );
+      = new AssemblePNGNonConformalSolverAlgorithm(realm_, part, this, independentDofName_, dofName_, realm_.solutionOptions_->ncAlgPngPenalty_);
     solverAlgDriver_->solverAlgMap_[algType] = theAlg;
   }
   else {
