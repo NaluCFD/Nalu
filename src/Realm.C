@@ -67,7 +67,7 @@
 #include <ActuatorLinePointDrag.h>
 #include <ActuatorDisc.h>
 #include <ActuatorSector.h>
-#ifdef USE_FAST
+#ifdef NALU_USES_OPENFAST
 #include <ActuatorLineFAST.h>
 #endif
 
@@ -570,7 +570,7 @@ Realm::look_ahead_and_creation(const YAML::Node & node)
 	actuator_ =  new ActuatorLinePointDrag(*this, *foundActuator[0]);
 	break;
       }
-#ifdef USE_FAST
+#ifdef NALU_USES_OPENFAST
       case ActuatorType::ActLineFAST : {
 	actuator_ =  new ActuatorLineFAST(*this, *foundActuator[0]);
 	break;

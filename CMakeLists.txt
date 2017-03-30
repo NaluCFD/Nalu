@@ -11,8 +11,8 @@ cmake_minimum_required (VERSION 2.8.11)
 #
 #  THESE PATHS MAY NEED TO BE CHANGED DEPENDING ON WHERE THEY ARE STORED!!!
 #
-option(USE_FAST
-       "Use FAST tpl to get actuator line positions and forces" ON)
+option(NALU_USES_OPENFAST
+       "Use OPENFAST tpl to get actuator line positions and forces" ON)
 
 SET(CMAKE_FIND_LIBRARY_PREFIXES lib)
 SET(CMAKE_FIND_LIBRARY_SUFFIXES a)
@@ -23,17 +23,18 @@ SET(CMAKE_PREFIX_PATH ${Trilinos_DIR} ${CMAKE_PREFIX_PATH})
 SET(CMAKE_PREFIX_PATH ${Trilinos_PATH} ${CMAKE_PREFIX_PATH})
 find_package(Trilinos REQUIRED)
 
-if (USE_FAST)
-   MESSAGE("   FAST_DIR = ${FAST_DIR}")
-   SET(CMAKE_PREFIX_PATH ${FAST_DIR} ${CMAKE_PREFIX_PATH})
-   SET(CMAKE_PREFIX_PATH ${FAST_PATH} ${CMAKE_PREFIX_PATH})
-   MESSAGE("   FAST Include dir =  ${FAST_DIR}/include")
-   include_directories(${FAST_DIR}/include)
-   LINK_DIRECTORIES(${FAST_DIR}/lib)
+if (NALU_USES_OPENFAST)
+   MESSAGE("   OPENFAST_DIR = ${OPENFAST_DIR}")
+   SET(CMAKE_PREFIX_PATH ${OPENFAST_DIR} ${CMAKE_PREFIX_PATH})
+   SET(CMAKE_PREFIX_PATH ${OPENFAST_PATH} ${CMAKE_PREFIX_PATH})
+   MESSAGE("   OPENFAST Include dir =  ${OPENFAST_DIR}/include")
+   include_directories(${OPENFAST_DIR}/include)
+   LINK_DIRECTORIES(${OPENFAST_DIR}/lib)
+   add_definitions("-DNALU_USES_OPENFAST")
 
-   MESSAGE("   FAST_LIBRARY = ${FAST_LIBRARY}")
-   MESSAGE("   FAST_CINTERFACE_LIBRARY = ${FAST_CINTERFACE_LIBRARY}")
-endif (USE_FAST)
+   MESSAGE("   OPENFAST_LIBRARY = ${OPENFAST_LIBRARY}")
+   MESSAGE("   OPENFASTCPP_LIBRARY = ${OPENFASTCPP_LIBRARY}")
+endif (NALU_USES_OPENFAST)
 
 # This needs to be cleaned up
 find_library(YAML_LIBRARY NAMES libyaml-cpp.a PATHS ${YAML_DIR}/lib )
@@ -102,21 +103,19 @@ file (GLOB SOURCE src/*.C src/*/*.C src/*/*.F)
 file (GLOB HEADER include/*.h include/*/*.h)
 list(REMOVE_ITEM SOURCE src/ActuatorLineFAST.C)
 list(REMOVE_ITEM HEADER include/ActuatorLineFAST.h)
-if (USE_FAST)
+if (NALU_USES_OPENFAST)
    set(SOURCE "${SOURCE}" src/ActuatorLineFAST.C)
    set(HEADER "${HEADER}" include/ActuatorLineFAST.h)
-endif (USE_FAST)
+endif (NALU_USES_OPENFAST)
 
 include_directories (${CMAKE_SOURCE_DIR}/include)
 add_library (nalu ${SOURCE} ${HEADER})
 target_link_libraries(nalu ${Trilinos_LIBRARIES})
 target_link_libraries(nalu ${YAML_LIBRARY})
-if (USE_FAST)
-   target_link_libraries(nalu ${FAST_LIBRARY})
-   target_link_libraries(nalu ${FAST_CINTERFACE_LIBRARY})
-   SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_FAST")
-   MESSAGE("-- CMAKE_CXX_FLAGS     = ${CMAKE_CXX_FLAGS}")
-endif (USE_FAST)
+if (NALU_USES_OPENFAST)
+   target_link_libraries(nalu ${OPENFASTCPP_LIBRARY})
+   target_link_libraries(nalu ${OPENFAST_LIBRARY})
+endif (NALU_USES_OPENFAST)
 
 file (GLOB UNIT_TESTS_SOURCES unit_tests/*.C)
 

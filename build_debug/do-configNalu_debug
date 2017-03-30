@@ -1,4 +1,4 @@
-nalu_build_dir=~/nalu
+nalu_build_dir=~/nalu-gcc-5.2.0/
 trilinos_install_dir=$nalu_build_dir/install/trilinos
 yaml_install_dir=$nalu_build_dir/install/
 
@@ -17,8 +17,8 @@ cmake \
   -DCMAKE_CXX_FLAGS='-std=c++11 -O2 -g -DNDEBUG' \
   -DCMAKE_Fortran_FLAGS='-O2 -g -DNDEBUG' \
   -DCMAKE_C_FLAGS='-std=c++11 -O2 -g -DNDEBUG' \
-  -DFAST_DIR:PATH=$nalu_build_dir/packages/fastv8DriverProgram/fastv8 \
-  -DFAST_LIBRARY:PATH=FAST_glin64_debug \
-  -DFAST_CINTERFACE_LIBRARY:PATH=FAST_cInterface_glin64_debug \
+  -DOPENFAST_DIR:PATH=/home/gvijayak/CurrentProjects/OpenFAST/install/ \
+  -DOPENFAST_LIBRARY:PATH=openfastlib \
+  -DOPENFASTCPP_LIBRARY:PATH=openfastcpplib \
 $EXTRA_ARGS \
 ../

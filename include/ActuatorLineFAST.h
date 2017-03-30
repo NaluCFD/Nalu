@@ -12,8 +12,8 @@
 #include <stk_util/parallel/ParallelVectorConcat.hpp>
 #include "Actuator.h"
 
-// FAST c interface
-#include "FAST_cInterface.h"
+// FAST C++ API
+#include "OpenFAST.H"
 
 namespace sierra{
 namespace nalu{
@@ -36,7 +36,7 @@ public:
 class ActuatorLineFASTPointInfo {
  public:
   ActuatorLineFASTPointInfo(
-			    size_t localId, Point centroidCoords, double searchRadius, Coordinates epsilon, double *velocity, ActuatorNodeType nType, size_t globTurbId);
+			    size_t localId, Point centroidCoords, double searchRadius, Coordinates epsilon, double *velocity, fast::ActuatorNodeType nType, size_t globTurbId);
   ~ActuatorLineFASTPointInfo();
   size_t globTurbId_; // Global turbine number
   size_t localId_;
@@ -46,7 +46,7 @@ class ActuatorLineFASTPointInfo {
   double bestX_;
   stk::mesh::Entity bestElem_;
 
-  ActuatorNodeType nodeType_;
+  fast::ActuatorNodeType nodeType_;
   // mesh motion specifics
   double velocity_[3];
 
@@ -237,8 +237,8 @@ public:
   std::vector<double> ws_density_;
   std::vector<double> ws_viscosity_;
 
-  // FAST cInterface handle
-  FAST_cInterface FAST;
+  // FAST C++ API handle
+  fast::OpenFAST FAST;
 
 };
 

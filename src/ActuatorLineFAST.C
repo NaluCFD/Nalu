@@ -84,7 +84,7 @@ ActuatorLineFASTPointInfo::ActuatorLineFASTPointInfo(
   double searchRadius,
   Coordinates epsilon,
   double *velocity,
-  ActuatorNodeType nType,
+  fast::ActuatorNodeType nType,
   size_t globTurbId)
   : localId_(localId),
     centroidCoords_(centroidCoords),
@@ -675,7 +675,7 @@ ActuatorLineFAST::execute()
       double gA = 0.0;
       
       switch (infoObject->nodeType_) {
-      case HUB:
+      case fast::HUB:
         // project the force to this element centroid with projection function
         gA = isotropic_Gaussian_projection(nDim, distance, infoObject->epsilon_);
         compute_elem_force_given_weight(nDim, gA, &ws_pointForce[0], &ws_elemForce[0]);
@@ -690,7 +690,7 @@ ActuatorLineFAST::execute()
         gSum += gA*elemVolume;
         break;
 
-      case BLADE:
+      case fast::BLADE:
         // project the force to this element centroid with projection function
         gA = isotropic_Gaussian_projection(nDim, distance, infoObject->epsilon_);
         compute_elem_force_given_weight(nDim, gA, &ws_pointForce[0], &ws_elemForce[0]);
@@ -705,7 +705,7 @@ ActuatorLineFAST::execute()
         gSum += gA*elemVolume;
         break;
 
-      case TOWER:
+      case fast::TOWER:
         // project the force to this element centroid with projection function
         gA = isotropic_Gaussian_projection(nDim, distance, infoObject->epsilon_);
         compute_elem_force_given_weight(nDim, gA, &ws_pointForce[0], &ws_elemForce[0]);
