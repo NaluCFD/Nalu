@@ -84,6 +84,7 @@ public:
   bool ncAlgUpwindAdvection_;
   bool ncAlgIncludePstab_;
   bool ncAlgDetailedOutput_;
+  bool ncAlgCoincidentNodesErrorCheck_;
   bool ncAlgCurrentNormal_;
   bool ncAlgPngPenalty_;
   bool cvfemShiftMdot_;

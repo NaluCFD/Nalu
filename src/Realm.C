@@ -3043,34 +3043,24 @@ Realm::setup_non_conformal_bc(
 {
   hasNonConformal_ = true;
   
-  // extract data
-  NonConformalUserData userData = nonConformalBCData.userData_;
-
-  // extract params useful for search
-  const std::string debugName = nonConformalBCData.targetName_;
-  const std::string searchMethodName = userData.searchMethodName_;
-  const double expandBoxPercentage = userData.expandBoxPercentage_/100.0;
-  const bool clipIsoParametricCoords = userData.clipIsoParametricCoords_; 
-  const double searchTolerance = userData.searchTolerance_;
-
-  // deal with output
-  const bool ncAlgDetailedOutput = solutionOptions_->ncAlgDetailedOutput_;
-
   // create manager
   if ( NULL == nonConformalManager_ ) {
-    nonConformalManager_ = new NonConformalManager(*this, ncAlgDetailedOutput);
+    nonConformalManager_ = new NonConformalManager(*this, solutionOptions_->ncAlgDetailedOutput_, 
+                                                   solutionOptions_->ncAlgCoincidentNodesErrorCheck_);
   }
    
-  // create nonconformal info for this surface
+  // create nonconformal info for this surface, extract user data 
+  NonConformalUserData userData = nonConformalBCData.userData_;
+  
   NonConformalInfo *nonConformalInfo
     = new NonConformalInfo(*this,
                            currentPartVec,
                            opposingPartVec,
-                           expandBoxPercentage,
-                           searchMethodName,
-                           clipIsoParametricCoords,
-                           searchTolerance,
-                           debugName);
+                           userData.expandBoxPercentage_/100.0,
+                           userData.searchMethodName_,
+                           userData.clipIsoParametricCoords_,
+                           userData.searchTolerance_,
+                           nonConformalBCData.targetName_);
   
   nonConformalManager_->nonConformalInfoVec_.push_back(nonConformalInfo);
 }

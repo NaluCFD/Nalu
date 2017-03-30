@@ -69,6 +69,7 @@ SolutionOptions::SolutionOptions()
     ncAlgUpwindAdvection_(true),
     ncAlgIncludePstab_(true),
     ncAlgDetailedOutput_(false),
+    ncAlgCoincidentNodesErrorCheck_(false),
     ncAlgCurrentNormal_(false),
     ncAlgPngPenalty_(true),
     cvfemShiftMdot_(false),
@@ -301,6 +302,7 @@ SolutionOptions::load(const YAML::Node & y_node)
           get_if_present(y_nc, "upwind_advection",  ncAlgUpwindAdvection_, ncAlgUpwindAdvection_);
           get_if_present(y_nc, "include_pstab",  ncAlgIncludePstab_, ncAlgIncludePstab_);
           get_if_present(y_nc, "detailed_output",  ncAlgDetailedOutput_, ncAlgDetailedOutput_);
+          get_if_present(y_nc, "activate_coincident_node_error_check",  ncAlgCoincidentNodesErrorCheck_, ncAlgCoincidentNodesErrorCheck_);
           get_if_present(y_nc, "current_normal",  ncAlgCurrentNormal_, ncAlgCurrentNormal_);
           get_if_present(y_nc, "include_png_penalty",  ncAlgPngPenalty_, ncAlgPngPenalty_);
         }

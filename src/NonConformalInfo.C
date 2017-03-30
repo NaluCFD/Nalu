@@ -697,5 +697,46 @@ NonConformalInfo::provide_diagnosis()
   }
 }
 
+//--------------------------------------------------------------------------
+//-------- error_check -----------------------------------------------------
+//--------------------------------------------------------------------------
+size_t
+NonConformalInfo::error_check()
+{
+  // check for coincident nodes via intersection of parts provided
+  std::vector<stk::mesh::EntityId> coindidentNodesVec;
+
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
+
+  stk::mesh::Selector s_locally_owned_intersected = meta_data.locally_owned_part()
+    &stk::mesh::selectUnion(currentPartVec_) 
+    &stk::mesh::selectUnion(opposingPartVec_);
+  
+  stk::mesh::BucketVector const& node_buckets =
+    realm_.get_buckets( stk::topology::NODE_RANK, s_locally_owned_intersected );
+  
+  for ( stk::mesh::BucketVector::const_iterator ib = node_buckets.begin() ;
+        ib != node_buckets.end() ; ++ib ) {
+    stk::mesh::Bucket & b = **ib ;
+    const stk::mesh::Bucket::size_type length   = b.size();
+    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+      coindidentNodesVec.push_back(bulk_data.identifier(b[k]));
+    }
+  } 
+   
+  // report the data if problem nodes were found
+  if ( coindidentNodesVec.size() > 0 ) {
+    NaluEnv::self().naluOutput() << std::endl;
+    NaluEnv::self().naluOutput() << "Non Conformal Alg (P" << NaluEnv::self().parallel_rank() << ") error found on surface: " 
+                                 << name_ << std::endl;
+    NaluEnv::self().naluOutput() << "========================================= " << std::endl;
+    for ( size_t k = 0; k < coindidentNodesVec.size(); ++k )
+      NaluEnv::self().naluOutput() << "coincident nodeId found: " << coindidentNodesVec[k] << std::endl;
+  }
+
+  return coindidentNodesVec.size();
+}
+
 } // namespace nalu
 } // namespace sierra
