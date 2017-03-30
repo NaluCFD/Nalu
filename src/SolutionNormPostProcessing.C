@@ -21,6 +21,8 @@
 #include <user_functions/VariableDensityVelocityAuxFunction.h>
 #include <user_functions/VariableDensityNonIsoTemperatureAuxFunction.h>
 #include <user_functions/VariableDensityMixFracAuxFunction.h>
+#include <user_functions/KovasznayVelocityAuxFunction.h>
+#include <user_functions/KovasznayPressureAuxFunction.h>
 
 // stk_util
 #include <stk_util/parallel/ParallelReduce.hpp>
@@ -236,6 +238,12 @@ SolutionNormPostProcessing::analytical_function_factory(
   }
   else if ( functionName == "VariableDensityNonIsoTemperature" ) {
     theAuxFunc = new VariableDensityNonIsoTemperatureAuxFunction();
+  }
+  else if ( functionName == "kovasznay" ) {
+    theAuxFunc = new KovasznayVelocityAuxFunction(0,realm_.meta_data().spatial_dimension());
+  }
+  else if ( functionName == "kovasznay_dpdx" ) {
+    theAuxFunc = new KovasznayPressureGradientAuxFunction(0,realm_.meta_data().spatial_dimension());
   }
   else {
     throw std::runtime_error("SolutionNormPostProcessing::setup: Only steady_2d_thermal user functions supported");

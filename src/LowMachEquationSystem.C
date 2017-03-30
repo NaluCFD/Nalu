@@ -140,6 +140,9 @@
 
 #include <user_functions/BoundaryLayerPerturbationAuxFunction.h>
 
+#include <user_functions/KovasznayVelocityAuxFunction.h>
+#include <user_functions/KovasznayPressureAuxFunction.h>
+
 // deprecated
 #include <ContinuityMassElemSuppAlgDep.h>
 #include <MomentumMassElemSuppAlgDep.h>
@@ -531,6 +534,9 @@ LowMachEquationSystem::register_initial_condition_fcn(
       else {
         throw std::runtime_error("Boundary_layer_perturbation missing parameters");
       }
+    }
+    else if (fcnName == "kovasznay") {
+      theAuxFunc = new KovasznayVelocityAuxFunction(0, nDim);
     }
     else if ( fcnName == "SteadyTaylorVortex" ) {
       theAuxFunc = new SteadyTaylorVortexVelocityAuxFunction(0,nDim);
@@ -1375,6 +1381,9 @@ MomentumEquationSystem::register_inflow_bc(
     }
     else if ( fcnName == "VariableDensityNonIso" ) {
       theAuxFunc = new VariableDensityVelocityAuxFunction(0,nDim);
+    }
+    else if ( fcnName == "kovasznay") {
+      theAuxFunc = new KovasznayVelocityAuxFunction(0,nDim);
     }
     else {
       throw std::runtime_error("MomentumEquationSystem::register_inflow_bc: limited functions supported");
@@ -2422,6 +2431,9 @@ ContinuityEquationSystem::register_inflow_bc(
     else if ( fcnName == "VariableDensityNonIso" ) {
       theAuxFunc = new VariableDensityVelocityAuxFunction(0,nDim);
     }
+    else if ( fcnName == "kovasznay") {
+      theAuxFunc = new KovasznayVelocityAuxFunction(0,nDim);
+    }
     else {
       throw std::runtime_error("ContEquationSystem::register_inflow_bc: limited functions supported");
     }
@@ -2782,6 +2794,9 @@ ContinuityEquationSystem::register_initial_condition_fcn(
     else if ( fcnName == "TaylorGreen" ) {
       // create the function
       theAuxFunc = new TaylorGreenPressureAuxFunction();      
+    }
+    else if ( fcnName == "kovasznay" ) {
+      theAuxFunc = new KovasznayPressureAuxFunction();
     }
     else {
       throw std::runtime_error("ContinuityEquationSystem::register_initial_condition_fcn: limited functions supported");
