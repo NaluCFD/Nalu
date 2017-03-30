@@ -1,4 +1,3 @@
-#
 #	This is the top level CMakeLists.txt file
 #	It should be located within master/nalu
 #	But not in the BUILD folder itself
@@ -32,8 +31,7 @@ if (NALU_USES_OPENFAST)
    LINK_DIRECTORIES(${OPENFAST_DIR}/lib)
    add_definitions("-DNALU_USES_OPENFAST")
 
-   MESSAGE("   OPENFAST_LIBRARY = ${OPENFAST_LIBRARY}")
-   MESSAGE("   OPENFASTCPP_LIBRARY = ${OPENFASTCPP_LIBRARY}")
+   MESSAGE("   OPENFAST_LIBRARIES = ${OPENFAST_LIBRARIES}")
 endif (NALU_USES_OPENFAST)
 
 # This needs to be cleaned up
@@ -113,8 +111,7 @@ add_library (nalu ${SOURCE} ${HEADER})
 target_link_libraries(nalu ${Trilinos_LIBRARIES})
 target_link_libraries(nalu ${YAML_LIBRARY})
 if (NALU_USES_OPENFAST)
-   target_link_libraries(nalu ${OPENFASTCPP_LIBRARY})
-   target_link_libraries(nalu ${OPENFAST_LIBRARY})
+   target_link_libraries(nalu ${OPENFAST_LIBRARIES})
 endif (NALU_USES_OPENFAST)
 
 file (GLOB UNIT_TESTS_SOURCES unit_tests/*.C)

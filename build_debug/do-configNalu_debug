@@ -6,8 +6,8 @@ EXTRA_ARGS=$@
 
 # Cleanup old cache before we configure
 # Note:  This does not remove files produced by make.  Use "make clean" for this.
-find . -name "CMakeFiles" -exec rm -rf {} \;
-rm -f CMakeCache.txt
+#find . -name "CMakeFiles" -exec rm -rf {} \;
+#rm -f CMakeCache.txt
 
 cmake \
   -DTrilinos_DIR:PATH=$trilinos_install_dir \
@@ -18,7 +18,6 @@ cmake \
   -DCMAKE_Fortran_FLAGS='-O2 -g -DNDEBUG' \
   -DCMAKE_C_FLAGS='-std=c++11 -O2 -g -DNDEBUG' \
   -DOPENFAST_DIR:PATH=/home/gvijayak/CurrentProjects/OpenFAST/install/ \
-  -DOPENFAST_LIBRARY:PATH=openfastlib \
-  -DOPENFASTCPP_LIBRARY:PATH=openfastcpplib \
+  -DOPENFAST_LIBRARIES:="openfastcpplib -lopenfastlib -lopenfast_postlib -lscfastlib -lfoamfastlib -lopenfast_prelib -lifwlib -laerodynlib -laerodyn14lib -lelastodynlib -lservodynlib -lbeamdynlib -lsubdynlib -lhydrodynlib -lorcaflexlib -lextptfm_mckflib -lsctypeslib -lfeamlib -lmoordynlib -licedynlib -licefloelib -lmaplib -lmapcpplib -lopenfoamtypeslib -lnwtclibs" \
 $EXTRA_ARGS \
 ../
