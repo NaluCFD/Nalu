@@ -66,7 +66,7 @@ namespace {
 PromotedElementIO::PromotedElementIO(
   const ElementDescription& elem,
   const stk::mesh::MetaData& metaData,
-  const stk::mesh::BulkData& bulkData,
+  stk::mesh::BulkData& bulkData,
   const stk::mesh::PartVector& baseParts,
   const std::string& fileName,
   const VectorFieldType& coordField
@@ -105,12 +105,12 @@ PromotedElementIO::PromotedElementIO(
   size_t numSubElems = num_sub_elements(nDim_, elem_buckets, elem_.polyOrder);
   std::vector<stk::mesh::EntityId> subElemIds;
 
-  // generate new global ids
-  bulkData_.generate_new_ids(stk::topology::ELEM_RANK,  numSubElems,  subElemIds);
-  ThrowAssert(subElemIds.size() == numSubElems);
+  bulkData.generate_new_ids(stk::topology::ELEM_RANK,  numSubElems,  subElemIds);
+  ThrowRequire(subElemIds.size() == numSubElems);
 
   superElemParts_ = super_elem_part_vector(baseParts);
-  ThrowAssertMsg(part_vector_is_valid_and_nonempty(superElemParts_), "Not all element parts have a super-element mirror");
+  ThrowRequireMsg(part_vector_is_valid_and_nonempty(superElemParts_),
+    "Not all element parts have a super-element mirror");
 
   output_->begin_mode(Ioss::STATE_DEFINE_MODEL);
   write_node_block_definitions(superElemParts_);

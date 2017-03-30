@@ -60,7 +60,7 @@ public:
   PromotedElementIO(
     const ElementDescription& elem,
     const stk::mesh::MetaData& metaData,
-    const stk::mesh::BulkData& bulkData,
+    stk::mesh::BulkData& bulkData,
     const stk::mesh::PartVector& baseParts,
     const std::string& fileName,
     const VectorFieldType& coordField

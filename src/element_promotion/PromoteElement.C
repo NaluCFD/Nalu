@@ -409,7 +409,7 @@ create_nodes_for_connectivity_map(
     std::vector<int> procs;
     bulk.comm_shared_procs(bulk.entity_key(pair.first), procs);
     for (stk::mesh::EntityId id : pair.second) {
-      stk::mesh::Entity node = bulk.declare_entity(stk::topology::NODE_RANK, id);
+      stk::mesh::Entity node = bulk.declare_entity(stk::topology::NODE_RANK, id, stk::mesh::PartVector{});
       for (int proc : procs) {
         if (proc != bulk.parallel_rank()) {
           bulk.add_node_sharing(node, proc);
