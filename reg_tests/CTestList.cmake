@@ -86,6 +86,7 @@ add_test_r(ablUnstableEdge 4)
 add_test_r(ablStableElem 4)
 add_test_r(ekmanSpiral 4)
 add_test_r(dgMMS 6)
+add_test_r(kovasznay_P7 1)
 
 #=============================================================================
 # Unit tests

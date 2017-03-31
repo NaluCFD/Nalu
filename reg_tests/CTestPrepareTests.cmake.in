@@ -598,6 +598,13 @@ file(COPY               "@NALURTEST_DIR@/nightly/dgMMS"
      DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
 #=============================================================================
+# kovasznay_P7 test
+#=============================================================================
+file(COPY               "@NALURTEST_DIR@/nightly/kovasznay_P7"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
+
+
+#=============================================================================
 # unit tests
 #=============================================================================
 file(COPY               "@NALURTEST_DIR@/nightly/unitTests"
