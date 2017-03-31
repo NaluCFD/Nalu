@@ -60,7 +60,7 @@ add_test_r(ductElemWedge 2)
 add_test_r(heatedBackStep 4)
 add_test_r(edgePipeCHT 4)
 add_test_r(elemPipeCHT 4)
-#add_test_r_rst(heliumPlume 8) # Input file does not exist error
+add_test_r_rst(heliumPlume 8)
 add_test_r(dgNonConformalEdgeCylinder 8)
 add_test_r(dgNonConformalElemCylinder 8)
 add_test_r(fluidsPmrChtPeriodic 8)
@@ -98,6 +98,6 @@ add_test_u(unitTest2 2)
 # Performance tests
 #=============================================================================
 
-#add_test_p(waleElemXflowMixFrac3 8 600) # Gives BAD_COMMAND error
+add_test_p(waleElemXflowMixFrac3.5m 8 600)
 add_test_p(uqSlidingMeshDG 8 1000)
 add_test_p(oversetHybrid 8 1000)
