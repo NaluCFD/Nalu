@@ -195,12 +195,6 @@ public:
   uint64_t needToGhostCount_;
   stk::mesh::EntityProcVec elemsToGhost_;
 
-  // custom ghosting
-  stk::mesh::Ghosting *actuatorLineForceGhosting_;
-  // how many elements to ghost?
-  uint64_t needToGhostForceCount_;
-  stk::mesh::EntityProcVec elemsToGhostForce_;
-
   // does the actuator line move?
   bool actuatorLineMotion_;
 
@@ -209,14 +203,12 @@ public:
 
   // save off product of search
   std::vector<std::pair<theKey, theKey> > searchKeyPair_;
-  std::vector<std::pair<theKey, theKey> > searchKeyPairForce_;
 
   // bounding box data types for stk_search */
   std::vector<boundingSphere> boundingSphereVec_;
   std::vector<boundingElementBox> boundingElementBoxVec_;
   std::vector<boundingSphere> boundingHubSphereVec_;
   std::vector<boundingElementBox> boundingProcBoxVec_;
-  std::vector<boundingSphere> boundingSphereForceVec_;
 
   // target names for set of bounding boxes
   std::vector<std::string> searchTargetNames_;
@@ -226,9 +218,6 @@ public:
 
   // map of point info objects
   std::map<size_t, ActuatorLineFASTPointInfo *> actuatorLinePointInfoMap_;
-
-  // map of point info objects
-  std::map<size_t, ActuatorLineFASTPointInfo *> actuatorLineForcePointInfoMap_;
 
   // scratch space
   std::vector<double> ws_coordinates_;

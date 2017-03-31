@@ -409,18 +409,12 @@ ActuatorLineFAST::update()
   // initialize need to ghost and elems to ghost
   needToGhostCount_ = 0;
   elemsToGhost_.clear();
-  // initialize need to ghost and elems to ghost
-  needToGhostForceCount_ = 0;
-  elemsToGhostForce_.clear();
 
   // clear actuatorLinePointInfoMap_
   std::map<size_t, ActuatorLineFASTPointInfo *>::iterator iterPoint;
   for( iterPoint=actuatorLinePointInfoMap_.begin(); iterPoint!=actuatorLinePointInfoMap_.end(); ++iterPoint )
     delete (*iterPoint).second;
   actuatorLinePointInfoMap_.clear();
-  for( iterPoint=actuatorLineForcePointInfoMap_.begin(); iterPoint!=actuatorLineForcePointInfoMap_.end(); ++iterPoint )
-    delete (*iterPoint).second;
-  actuatorLineForcePointInfoMap_.clear();
   
   bulkData.modification_begin();
   
@@ -433,23 +427,12 @@ ActuatorLineFAST::update()
     bulkData.destroy_ghosting(*actuatorLineGhosting_);
   }
   
-  if ( actuatorLineForceGhosting_ == NULL) {
-    // create new ghosting
-    std::string theGhostName = "nalu_actuator_line_force_ghosting";
-    actuatorLineForceGhosting_ = &bulkData.create_ghosting( theGhostName );
-  }
-  else {
-    bulkData.destroy_ghosting(*actuatorLineForceGhosting_);
-  }
-
   bulkData.modification_end();
   
   // clear some of the search info
   boundingSphereVec_.clear();
-  boundingSphereForceVec_.clear();
   boundingElementBoxVec_.clear();
   searchKeyPair_.clear();
-  searchKeyPairForce_.clear();
 
   // set all of the candidate elements in the search target names
   populate_candidate_elements();
@@ -609,8 +592,8 @@ ActuatorLineFAST::execute()
 
   // loop over map and assemble source terms
   np = 0;
-  for (iterPoint  = actuatorLineForcePointInfoMap_.begin();
-       iterPoint != actuatorLineForcePointInfoMap_.end();
+  for (iterPoint  = actuatorLinePointInfoMap_.begin();
+       iterPoint != actuatorLinePointInfoMap_.end();
        ++iterPoint) {
 
     // actuator line info object of interest
@@ -912,8 +895,6 @@ ActuatorLineFAST::determine_elems_to_ghost()
 
   stk::search::coarse_search(boundingSphereVec_, boundingElementBoxVec_, searchMethod_, 
                              NaluEnv::self().parallel_comm(), searchKeyPair_);
-  stk::search::coarse_search(boundingSphereForceVec_, boundingElementBoxVec_, searchMethod_, 
-                             NaluEnv::self().parallel_comm(), searchKeyPairForce_);
 
   // lowest effort is to ghost elements to the owning rank of the point; can just as easily do the opposite
   std::vector<std::pair<boundingSphere::second_type, boundingElementBox::second_type> >::const_iterator ii;
@@ -941,30 +922,6 @@ ActuatorLineFAST::determine_elems_to_ghost()
     }
   }
 
-  for( ii=searchKeyPairForce_.begin(); ii!=searchKeyPairForce_.end(); ++ii ) {
-
-    const uint64_t theBox = ii->second.id();
-    unsigned theRank = NaluEnv::self().parallel_rank();
-    const unsigned pt_proc = ii->first.proc();
-    const unsigned box_proc = ii->second.proc();
-    if ( (box_proc == theRank) && (pt_proc != theRank) ) {
-
-      // Send box to pt proc
-      
-      // find the element
-      stk::mesh::Entity theElemMeshObj = bulkData.get_entity(stk::topology::ELEMENT_RANK, theBox);
-      if ( !(bulkData.is_valid(theElemMeshObj)) )
-        throw std::runtime_error("no valid entry for element");
-
-      // new element to ghost counter
-      needToGhostForceCount_++;
-
-      // deal with elements to push back to be ghosted
-      stk::mesh::EntityProc theElemPair(theElemMeshObj, pt_proc);
-      elemsToGhostForce_.push_back(theElemPair);
-    }
-  }
-
 }
 
 //--------------------------------------------------------------------------
@@ -978,8 +935,7 @@ ActuatorLineFAST::create_actuator_line_point_info_map() {
   stk::mesh::MetaData & metaData = realm_.meta_data(); 
   const int nDim = metaData.spatial_dimension();
 
-  size_t npVel = 0;
-  size_t npForce = 0;
+  size_t np = 0;
 
   for ( size_t iTurb = 0; iTurb < actuatorLineInfo_.size(); ++iTurb ) {
     
@@ -997,23 +953,20 @@ ActuatorLineFAST::create_actuator_line_point_info_map() {
 
       // loop over all points for this turbine
       const int nBlades = FAST.get_numBlades(iTurb); // Number of blades per turbine 
-      const int numVelPtsBlade = FAST.get_numVelPtsBlade(iTurb) ; // Number of nodes per blade
-      const int numVelPtsTwr = FAST.get_numVelPtsTwr(iTurb) ; // Number of tower elements 
-      const int numVelPts = FAST.get_numVelPts(iTurb); // Total number of elements 
       const int numForcePtsBlade = FAST.get_numForcePtsBlade(iTurb) ; // Number of nodes per blade 
       const int numForcePtsTwr = FAST.get_numForcePtsTwr(iTurb) ; // Number of tower elements
       const int numForcePts = FAST.get_numForcePts(iTurb); // Total number of elements 
       //      actuatorLineInfo->numPoints_ = numVelPts ; // Can't change a const pointer
       
       if (! FAST.isDryRun() ) {
-	for(int iNode = 0; iNode < numVelPts; iNode++) {
-	  stk::search::IdentProc<uint64_t,int> theIdent(npVel, NaluEnv::self().parallel_rank());
+	for(int iNode = 0; iNode < numForcePts; iNode++) {
+	  stk::search::IdentProc<uint64_t,int> theIdent(np, NaluEnv::self().parallel_rank());
 	  
 	  // set model coordinates from FAST
 	  // move the coordinates; set the velocity... may be better on the lineInfo object
-	  FAST.getVelNodeCoordinates(currentCoords, npVel, iTurb);
+	  FAST.getForceNodeCoordinates(currentCoords, np, iTurb);
 	  if (FAST.isDebug() ) {
-	    NaluEnv::self().naluOutput() << "Vel Node " << npVel << " Position = " << currentCoords[0] << " " << currentCoords[1] << " " << currentCoords[2] << " " << std::endl ;
+	    NaluEnv::self().naluOutput() << "Vel Node " << np << " Position = " << currentCoords[0] << " " << currentCoords[1] << " " << currentCoords[2] << " " << std::endl ;
 	  }
 	  velocity[0] = 0.0;
 	  velocity[1] = 0.0;
@@ -1030,49 +983,14 @@ ActuatorLineFAST::create_actuator_line_point_info_map() {
 	  
 	  // create the point info and push back to map
 	  ActuatorLineFASTPointInfo *actuatorLinePointInfo 
-	    = new ActuatorLineFASTPointInfo(npVel, centroidCoords, 
+	    = new ActuatorLineFASTPointInfo(np, centroidCoords, 
 					    searchRadius, actuatorLineInfo->epsilon_,
 					    velocity, 
-					    FAST.getVelNodeType(iTurb, npVel),
+					    FAST.getVelNodeType(iTurb, np),
 					    iTurb);
-	  actuatorLinePointInfoMap_[npVel] = actuatorLinePointInfo;
+	  actuatorLinePointInfoMap_[np] = actuatorLinePointInfo;
 	  
-	  npVel=npVel+1;
-	}
-
-	for(int iNode = 0; iNode < numForcePts; iNode++) {
-	  stk::search::IdentProc<uint64_t,int> theIdent(npForce, NaluEnv::self().parallel_rank());
-	  
-	  // set model coordinates from FAST
-	  // move the coordinates; set the velocity... may be better on the lineInfo object
-	  FAST.getForceNodeCoordinates(currentCoords, npForce, iTurb);
-	  if (FAST.isDebug() ) {
-	    NaluEnv::self().naluOutput() << "Force Node " << npForce << " Position = " << currentCoords[0] << " " << currentCoords[1] << " " << currentCoords[2] << " " << std::endl ;
-	  }
-	  velocity[0] = 0.0;
-	  velocity[1] = 0.0;
-	  velocity[2] = 0.0;
-
-          double searchRadius = actuatorLineInfo->epsilon_.x_ * sqrt(log(1.0/0.001));
-	  
-	  for ( int j = 0; j < nDim; ++j )
-	    centroidCoords[j] = currentCoords[j];
-	  
-	  // create the bounding point sphere and push back
-	  boundingSphere theSphere( Sphere(centroidCoords, searchRadius), theIdent);
-	  boundingSphereForceVec_.push_back(theSphere);
-	  
-	  // create the point info and push back to map
-	  ActuatorLineFASTPointInfo *actuatorLinePointInfo 
-	    = new ActuatorLineFASTPointInfo(npForce, centroidCoords, 
-					    searchRadius, actuatorLineInfo->epsilon_,
-					    velocity, 
-					    FAST.getForceNodeType(iTurb, npForce),
-					    iTurb);
-
-	  actuatorLineForcePointInfoMap_[npForce] = actuatorLinePointInfo;
-	  
-	  npForce=npForce+1;
+	  np=np+1;
 	}
 
       }
@@ -1106,19 +1024,6 @@ ActuatorLineFAST::manage_ghosting()
   }
   else {
     NaluEnv::self().naluOutputP0() << "ActuatorLineFAST alg will NOT ghost entities for velcity actuator nodes: " << std::endl;
-  }
-
-  uint64_t g_needToGhostForceCount = 0;
-  stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &needToGhostForceCount_, &g_needToGhostForceCount, 1);
-  if (g_needToGhostForceCount > 0) {
-    NaluEnv::self().naluOutputP0() << "ActuatorLineFAST alg will ghost a number of entities for force actuator nodes: "
-                                   << g_needToGhostForceCount  << std::endl;
-    bulkData.modification_begin();
-    bulkData.change_ghosting( *actuatorLineForceGhosting_, elemsToGhostForce_);
-    bulkData.modification_end();
-  }
-  else {
-    NaluEnv::self().naluOutputP0() << "ActuatorLineFAST alg will NOT ghost entities for force actuator nodes: " << std::endl;
   }
 
 }
@@ -1199,65 +1104,6 @@ ActuatorLineFAST::complete_search()
     }
   }
 
-  for( ii=searchKeyPairForce_.begin(); ii!=searchKeyPairForce_.end(); ++ii ) {
-
-    const uint64_t thePt = ii->first.id();
-    const uint64_t theBox = ii->second.id();
-    const unsigned theRank = NaluEnv::self().parallel_rank();
-    const unsigned pt_proc = ii->first.proc();
-
-    // check if I own the point...
-    if ( theRank == pt_proc ) {
-
-      // yes, I own the point... 
-
-      // proceed as required; all elements should have already been ghosted via the coarse search
-      stk::mesh::Entity elem = bulkData.get_entity(stk::topology::ELEMENT_RANK, theBox);
-      if ( !(bulkData.is_valid(elem)) )
-        throw std::runtime_error("no valid entry for element");
-
-
-      // find the point data structure
-      std::map<size_t, ActuatorLineFASTPointInfo *>::iterator iterPoint;
-      iterPoint=actuatorLineForcePointInfoMap_.find(thePt);
-      if ( iterPoint == actuatorLineForcePointInfoMap_.end() )
-        throw std::runtime_error("no valid entry for actuatorLineForcePointInfoMap_");
-      
-      // extract the point object and push back the element to either the best 
-      // candidate or the standard vector of elements
-      ActuatorLineFASTPointInfo *actuatorLineForcePointInfo = iterPoint->second;
-
-      // extract topo and master element for this topo
-      const stk::mesh::Bucket &theBucket = bulkData.bucket(elem);
-      const stk::topology &elemTopo = theBucket.topology();
-      MasterElement *meSCS = realm_.get_surface_master_element(elemTopo);
-      const int nodesPerElement = meSCS->nodesPerElement_;
-
-      // gather elemental coords
-      std::vector<double> elementCoords(nDim*nodesPerElement);
-      gather_field(nDim, &elementCoords[0], *coordinates, bulkData.begin_nodes(elem), 
-                   nodesPerElement);
-
-      
-      // find isoparametric points
-      std::vector<double> isoParCoords(nDim);
-      const double nearestDistance = meSCS->isInElement(&elementCoords[0],
-                                                        &(actuatorLineForcePointInfo->centroidCoords_[0]),
-                                                        &(isoParCoords[0]));
- 
-
-      // save off best element and its isoparametric coordinates for this point
-      if ( nearestDistance < actuatorLineForcePointInfo->bestX_ ) {
-        actuatorLineForcePointInfo->bestX_ = nearestDistance;
-        actuatorLineForcePointInfo->isoParCoords_ = isoParCoords;
-        actuatorLineForcePointInfo->bestElem_ = elem;
-      }
-      actuatorLineForcePointInfo->elementVec_.push_back(elem);
-    }
-    else {
-      // not this proc's issue
-    }
-  }
 
 }
 
