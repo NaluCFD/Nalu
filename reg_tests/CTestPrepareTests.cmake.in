@@ -55,12 +55,19 @@ file(COPY               ${meshes}
 
 #=============================================================================
 # steadyTaylorVortex test
-#=============================================================================i
+#=============================================================================
 file(COPY               "@NALURTEST_DIR@/nightly/steadyTaylorVortex"
      DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
 file(COPY               "@NALURTEST_DIR@/xml/matches_ml_default.xml"
      DESTINATION        "@RUNNALURTEST_DIR@/nightly/steadyTaylorVortex")
+
+
+#=============================================================================
+# steadyTaylorVortex_P4 test
+#=============================================================================
+#file(COPY               "@NALURTEST_DIR@/nightly/steadyTaylorVortex_P4"
+#     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
 
 #=============================================================================
@@ -133,7 +140,7 @@ file(COPY               ${meshes}
 
 #=============================================================================
 # dgNonConformal3dFluids test
-#=============================================================================i
+#=============================================================================
 file(COPY               "@NALURTEST_DIR@/nightly/dgNonConformal3dFluids"
      DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
@@ -517,6 +524,16 @@ file(COPY               "@NALURTEST_DIR@/xml/milestone.xml"
 
 
 #=============================================================================
+# variableDensNonUniform_P5 test
+#=============================================================================
+#file(COPY               "@NALURTEST_DIR@/nightly/variableDensNonUniform_P5"
+#     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
+#
+#file(COPY               "@NALURTEST_DIR@/xml/milestone.xml"
+#     DESTINATION        "@RUNNALURTEST_DIR@/nightly/variableDensNonUniform_P5")
+
+
+#=============================================================================
 # actuatorLine test
 #=============================================================================
 file(COPY               "@NALURTEST_DIR@/nightly/actuatorLine"
@@ -528,7 +545,7 @@ file(COPY               "@NALURTEST_DIR@/xml/milestone.xml"
 
 #=============================================================================
 # femHC test
-#=============================================================================i
+#=============================================================================
 file(COPY               "@NALURTEST_DIR@/nightly/femHC"
      DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
@@ -538,13 +555,22 @@ file(COPY               "@NALURTEST_DIR@/mesh/periodic3d.g"
 
 #=============================================================================
 # cvfemHC test
-#=============================================================================i
+#=============================================================================
 file(COPY               "@NALURTEST_DIR@/nightly/cvfemHC"
      DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
 file(GLOB meshes        "@NALURTEST_DIR@/mesh/rot_cyl_14.exo*")
 file(COPY               ${meshes}
      DESTINATION        "@RUNNALURTEST_DIR@/nightly/cvfemHC")
+
+#=============================================================================
+# cvfemHexHC_P3 test
+#=============================================================================
+file(COPY               "@NALURTEST_DIR@/nightly/cvfemHexHC_P3"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
+
+file(COPY               "@NALURTEST_DIR@/xml/milestone.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/cvfemHexHC_P3")
 
 
 #=============================================================================
