@@ -562,12 +562,11 @@ file(COPY               "@NALURTEST_DIR@/mesh/abl_1km_cube_toy.g"
 #=============================================================================
 # ablForcingEdge test
 #=============================================================================
-#file(COPY               "@NALURTEST_DIR@/nightly/ablForcingEdge"
-#     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
+file(COPY               "@NALURTEST_DIR@/nightly/ablForcingEdge"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-#file(COPY               "@NALURTEST_DIR@/mesh/abl_1km_cube_sample.g"
-#                        "@NALURTEST_DIR@/xml/milestone.xml"
-#     DESTINATION        "@RUNNALURTEST_DIR@/nightly/ablForcingEdge")
+file(COPY               "@NALURTEST_DIR@/xml/milestone.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/ablForcingEdge")
 
 
 #=============================================================================
