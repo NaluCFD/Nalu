@@ -835,12 +835,24 @@ OversetManager::set_data_on_inactive_part()
   GenericFieldType *intersectedElement
     = metaData_->get_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "intersected_element");
 
-  stk::mesh::Selector s_inactive = stk::mesh::Selector(*inActivePart_);
-  
-  // set element fields
-  stk::mesh::BucketVector const& elem_buckets = bulkData_->get_buckets( stk::topology::ELEMENT_RANK, s_inactive );
+  // first, initialize element field to zero everywhere
+  stk::mesh::Selector s_everywhere = stk::mesh::selectField(*intersectedElement);
+  stk::mesh::BucketVector const& elem_buckets = bulkData_->get_buckets( stk::topology::ELEMENT_RANK, s_everywhere);
   for ( stk::mesh::BucketVector::const_iterator ib = elem_buckets.begin() ;
-      ib != elem_buckets.end() ; ++ib ) {
+        ib != elem_buckets.end() ; ++ib ) {
+    stk::mesh::Bucket & b = **ib ;
+    const stk::mesh::Bucket::size_type length   = b.size();
+    double * interElem = stk::mesh::field_data(*intersectedElement, b);
+    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+      interElem[k] = 0.0;
+    }
+  }
+  
+  // now, set inactive field on inactive bucket
+  stk::mesh::Selector s_inactive = stk::mesh::Selector(*inActivePart_);
+  stk::mesh::BucketVector const& inactive_elem_buckets = bulkData_->get_buckets( stk::topology::ELEMENT_RANK, s_inactive );
+  for ( stk::mesh::BucketVector::const_iterator ib = inactive_elem_buckets.begin() ;
+        ib != inactive_elem_buckets.end() ; ++ib ) {
     stk::mesh::Bucket & b = **ib ;
     const stk::mesh::Bucket::size_type length   = b.size();
     double * interElem = stk::mesh::field_data(*intersectedElement, b);
