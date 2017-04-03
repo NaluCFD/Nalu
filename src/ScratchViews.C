@@ -259,7 +259,7 @@ int get_num_bytes_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDim)
   if (needDetj)
     numBytes += numScsIp * sizeof(double);
   
-  return numBytes*2;
+  return numBytes;
 }
 
 void fill_pre_req_data(
