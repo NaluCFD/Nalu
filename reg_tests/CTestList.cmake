@@ -92,9 +92,9 @@ add_test_r_np(periodic3dEdge 4)
 add_test_r_np(periodic3dEdge 8)
 add_test_r(quad9HC 2)
 add_test_r(steadyTaylorVortex 4)
-#add_test_r_rst2(steadyTaylorVortex_P4 4)
+add_test_r_rst2(steadyTaylorVortex_P4 8)
 #add_test_r(variableDensMMS 2)
-#add_test_r(variableDensNonUniform_P5 8)
+add_test_r(variableDensNonUniform_P5 8)
 
 #=============================================================================
 # Unit tests
