@@ -157,7 +157,7 @@ files/directories from the NaluSpack repo into your local ``${SPACK_ROOT}`` dire
 These provide local configurations we need for Peregrine that override Spack's 
 default configuration and the custom package files to install Nalu and the custom 
 Trilinos build for Nalu. You can do this using the
-`copy_config.sh <https://github.com/NaluCFD/NaluSpack/blob/master/spack_config/dot_bash_profile.sh>`__
+`copy_config.sh <https://github.com/NaluCFD/NaluSpack/blob/master/spack_config/copy_config.sh>`__
 script provided or by doing it manually as such:
 
 ::
@@ -206,15 +206,29 @@ Then to load Nalu (and you will need Spack's openmpi for Nalu now) into your pat
 will need to ``spack load openmpi %compiler`` and ``spack load nalu %compiler``, using 
 ``%gcc`` or ``%intel`` to specify which to load.
 
-Development Build
------------------
+Development Build of Nalu
+-------------------------
 
-When building Nalu with Spack, Spack will cache downloaded archive files such as 
+When building Nalu with Spack, Spack will cache downloaded archive files such as
 ``*.tar.gz`` files. However, by default Spack will also erase extracted or
 checked out ('staged') source files after it has built a package successfully. 
 Therefore if your build succeeds, Spack will have erased the Nalu source code 
-it checked out from Github. To get a version of Nalu you can develop in, 
-the idea is to checkout Nalu yourself outside of Spack and build this version 
+it checked out from Github. 
+
+There are two routes to getting a development build of Nalu where you will be able to modify the
+code and rebuild. The first is to use ``--keep-stage`` during the ``spack install`` 
+command. This will keep the source code around after the package has been installed. 
+It is also useful because Spack will have a directory in the code called ``spack-build``
+that is alreay set up for building because it configured and built the package there. 
+Refer to the ``spack-build.out`` file to see the CMake configure line Spack used and rerun that
+command to reconfigure and then rebuild with ``make`` and ``make install`` where the prefixes
+are already setup for you. This option is also nice because all of the rpath information 
+is already set in the CMake configure. You can get to the stage directory by using 
+``spack cd nalu`` for example, or you can find where Spack's stage directory is 
+by using ``spack location -S``.
+
+Another way to get a version of Nalu you can develop in, 
+is to checkout Nalu yourself outside of Spack and build this version 
 using the dependencies Spack has built for you. To do so, checkout Nalu:
 
 ::
@@ -234,10 +248,19 @@ the dependencies by using ``spack location -i <package>``. For example in the
          ..
    make
 
-This should allow you to have a build of Nalu in which you are able to continuosly modify 
-the source code and rebuild.
+There is also a script available for this `here <https://github.com/NaluCFD/NaluSpack/blob/master/spack_config/do-configNalu-Spack.sh>`__. This should allow you to have 
+a build of Nalu in which you are able to continuosly modify the source code and rebuild.
 
 One more thing to note is there is an option for Trilinos in which you can build with 
 debug symbols. At the ``spack install`` command, to turn debug on (we use the CMake ``RelWithDebInfo`` 
 type), specify it with ``^nalu-trilinos+debug@master``. Then in your development build 
 of Nalu, you can specify the ``RelWithDebInfo`` build type in CMake.
+
+
+Development Build of Trilinos 
+-----------------------------
+
+If you want to go even further into having a development build of Trilinos while
+using TPLs Spack has built for you, use the ``--keep-stage`` option in Spack 
+as described earlier or checkout Trilinos somewhere and see the example configure 
+script for Trilinos `here <https://github.com/NaluCFD/NaluSpack/blob/master/spack_config/do-configTrilinos-Spack.sh>`__.
