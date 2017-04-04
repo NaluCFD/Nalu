@@ -88,8 +88,7 @@ AssembleElemSolverAlgorithm::execute()
   //    scratch views size + LHS + RHS + node IDs + padding for alignment
   const int bytes_per_thread =
     (rhsSize_ + lhsSize)*sizeof(double) + scratchIdsSize*sizeof(int) +
-    get_num_bytes_pre_req_data(dataNeededBySuppAlgs_, meta_data.spatial_dimension()) +
-    8 * sizeof(double);
+    get_num_bytes_pre_req_data(dataNeededBySuppAlgs_, meta_data.spatial_dimension());
 
   // define some common selectors
   stk::mesh::Selector s_locally_owned_union = meta_data.locally_owned_part()
