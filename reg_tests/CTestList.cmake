@@ -2,35 +2,41 @@
 # Functions for adding tests / Categories of tests
 #=============================================================================
 
+# Standard regression test
 function(add_test_r testname np)
     add_test(${testname} sh -c "mpiexec -np ${np} ${CMAKE_BINARY_DIR}/naluX -i ${testname}.i -o ${testname}.log && ${CMAKE_BINARY_DIR}/pass_fail.sh ${testname} ${TOLERANCE}")
     set_tests_properties(${testname} PROPERTIES TIMEOUT 500 PROCESSORS ${np} WORKING_DIRECTORY "${RUNNALURTEST_DIR}/nightly/${testname}")
 endfunction(add_test_r)
 
-function(add_test_u testname np)
-    add_test(${testname} sh -c "mpiexec -np ${np} ${CMAKE_BINARY_DIR}/unittestX")
-    set_tests_properties(${testname} PROPERTIES TIMEOUT 500 PROCESSORS ${np} WORKING_DIRECTORY "${RUNNALURTEST_DIR}/nightly/unitTests")
-endfunction(add_test_u)
-
+# Regression test with single restart
 function(add_test_r_rst testname np)
     add_test(${testname} sh -c "mpiexec -np ${np} ${CMAKE_BINARY_DIR}/naluX -i ${testname}.i -o ${testname}.log && ${CMAKE_BINARY_DIR}/pass_fail.sh ${testname} ${TOLERANCE} && mpiexec -np ${np} ${CMAKE_BINARY_DIR}/naluX -i ${testname}_rst.i -o ${testname}_rst.log && ${CMAKE_BINARY_DIR}/pass_fail.sh ${testname}_rst ${TOLERANCE}")
     set_tests_properties(${testname} PROPERTIES TIMEOUT 500 PROCESSORS ${np} WORKING_DIRECTORY "${RUNNALURTEST_DIR}/nightly/${testname}")
 endfunction(add_test_r_rst)
 
+# Regression test with two restarts
+function(add_test_r_rst2 testname np)
+    add_test(${testname} sh -c "mpiexec -np ${np} ${CMAKE_BINARY_DIR}/naluX -i ${testname}_R0.i -o ${testname}_R0.log && mpiexec -np ${np} ${CMAKE_BINARY_DIR}/naluX -i ${testname}_R1.i -o ${testname}_R1.log && mpiexec -np ${np} ${CMAKE_BINARY_DIR}/naluX -i ${testname}_R2.i -o ${testname}_R2.log && python norms.py")
+    set_tests_properties(${testname} PROPERTIES TIMEOUT 500 PROCESSORS ${np} WORKING_DIRECTORY "${RUNNALURTEST_DIR}/nightly/${testname}")
+endfunction(add_test_r_rst2)
+
+# Regression test that runs with different numbers of processes
 function(add_test_r_np testname np)
     add_test(${testname}Np${np} sh -c "mpiexec -np ${np} ${CMAKE_BINARY_DIR}/naluX -i ${testname}.i -o ${testname}Np${np}.log && ${CMAKE_BINARY_DIR}/pass_fail.sh ${testname}Np${np} ${TOLERANCE}")
     set_tests_properties(${testname}Np${np} PROPERTIES TIMEOUT 500 PROCESSORS ${np} WORKING_DIRECTORY "${RUNNALURTEST_DIR}/nightly/${testname}")
 endfunction(add_test_r_np)
 
+# Standard unit test
+function(add_test_u testname np)
+    add_test(${testname} sh -c "mpiexec -np ${np} ${CMAKE_BINARY_DIR}/unittestX")
+    set_tests_properties(${testname} PROPERTIES TIMEOUT 500 PROCESSORS ${np} WORKING_DIRECTORY "${RUNNALURTEST_DIR}/nightly/unitTests")
+endfunction(add_test_u)
+
+# Standard performance test
 function(add_test_p testname np timeo)
     add_test(${testname} sh -c "mpiexec -np ${np} ${CMAKE_BINARY_DIR}/naluX -i ${testname}.i -o ${testname}.log && ${CMAKE_BINARY_DIR}/pass_fail.sh ${testname} ${TOLERANCE}")
     set_tests_properties(${testname} PROPERTIES TIMEOUT ${timeo} PROCESSORS ${np} WORKING_DIRECTORY "${RUNNALURTEST_DIR}/performance/${testname}")
 endfunction(add_test_p)
-
-function(add_test_r_rst2 testname np)
-    add_test(${testname} sh -c "mpiexec -np ${np} ${CMAKE_BINARY_DIR}/naluX -i ${testname}_R0.i -o ${testname}_R0.log && mpiexec -np ${np} ${CMAKE_BINARY_DIR}/naluX -i ${testname}_R1.i -o ${testname}_R1.log && mpiexec -np ${np} ${CMAKE_BINARY_DIR}/naluX -i ${testname}_R2.i -o ${testname}_R2.log && python norms.py")
-    set_tests_properties(${testname} PROPERTIES TIMEOUT 500 PROCESSORS ${np} WORKING_DIRECTORY "${RUNNALURTEST_DIR}/nightly/${testname}")
-endfunction(add_test_r_rst2)
 
 #=============================================================================
 # Regression tests
@@ -93,7 +99,8 @@ add_test_r_np(periodic3dEdge 8)
 add_test_r(quad9HC 2)
 add_test_r(steadyTaylorVortex 4)
 add_test_r_rst2(steadyTaylorVortex_P4 8)
-#add_test_r(variableDensMMS 2)
+add_test_r(variableDensNonIso 2)
+add_test_r(variableDensNonUniform 2)
 add_test_r(variableDensNonUniform_P5 8)
 
 #=============================================================================

@@ -514,13 +514,25 @@ file(COPY               "@NALURTEST_DIR@/xml/milestone.xml"
 
 
 #=============================================================================
-# variableDensMMS test (edge and element)
+# variableDensNonIso
 #=============================================================================
-file(COPY               "@NALURTEST_DIR@/nightly/variableDensMMS"
+file(COPY               "@NALURTEST_DIR@/nightly/variableDensNonIso"
      DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(COPY               "@NALURTEST_DIR@/xml/milestone.xml"
-     DESTINATION        "@RUNNALURTEST_DIR@/nightly/variableDensMMS")
+file(COPY               "@NALURTEST_DIR@/mesh/3D_50.g"
+                        "@NALURTEST_DIR@/xml/milestone.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/variableDensNonIso")
+
+
+#=============================================================================
+# variableDensNonUniform
+#=============================================================================
+file(COPY               "@NALURTEST_DIR@/nightly/variableDensNonUniform"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
+
+file(COPY               "@NALURTEST_DIR@/mesh/3D_50.g"
+                        "@NALURTEST_DIR@/xml/milestone.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/variableDensNonUniform")
 
 
 #=============================================================================
