@@ -503,14 +503,29 @@ file(COPY               "@NALURTEST_DIR@/mesh/1cm_ped_35K.g"
 
 
 #=============================================================================
-# heatedWaterChannel test
+# heatedWaterChannelEdge test
 #=============================================================================
-file(COPY               "@NALURTEST_DIR@/nightly/heatedWaterChannel"
+file(COPY               "@NALURTEST_DIR@/nightly/heatedWaterChannelEdge"
      DESTINATION        "@RUNNALURTEST_DIR@/nightly")
 
-file(COPY               "@NALURTEST_DIR@/xml/milestone.xml"
+file(GLOB meshes        "@NALURTEST_DIR@/mesh/waterChannel_mks.g.*")
+file(COPY               ${meshes}
+                        "@NALURTEST_DIR@/xml/milestone.xml"
                         "@NALURTEST_DIR@/xml/milestone_aspect_ratio.xml"
-     DESTINATION        "@RUNNALURTEST_DIR@/nightly/heatedWaterChannel")
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/heatedWaterChannelEdge")
+
+
+#=============================================================================
+# heatedWaterChannelElem test
+#=============================================================================
+file(COPY               "@NALURTEST_DIR@/nightly/heatedWaterChannelElem"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly")
+
+file(GLOB meshes        "@NALURTEST_DIR@/mesh/waterChannel_mks.g.*")
+file(COPY               ${meshes}
+                        "@NALURTEST_DIR@/xml/milestone.xml"
+                        "@NALURTEST_DIR@/xml/milestone_aspect_ratio.xml"
+     DESTINATION        "@RUNNALURTEST_DIR@/nightly/heatedWaterChannelElem")
 
 
 #=============================================================================
