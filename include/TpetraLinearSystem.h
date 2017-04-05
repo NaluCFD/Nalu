@@ -40,6 +40,7 @@ typedef boost::unordered_map<stk::mesh::EntityId, size_t>  MyLIDMapType;
 
 typedef std::pair<stk::mesh::Entity, stk::mesh::Entity> Connection;
 typedef Kokkos::UnorderedMap<Connection,void> ConnectionSetKK;
+typedef std::vector< Connection > ConnectionVec;
 
 class TpetraLinearSystem : public LinearSystem
 {
@@ -85,13 +86,6 @@ public:
     const char *trace_tag=0
     );
 
-  virtual void sumInto(
-      const SharedMemView<const stk::mesh::Entity*> & entities,
-      const SharedMemView<const double*> & rhs,
-      const SharedMemView<const double*> & lhs,
-      const SharedMemView<int*> & local_id_scratch,
-      const char *trace_tag=0);
-
   void applyDirichletBCs(
     stk::mesh::FieldBase * solutionField,
     stk::mesh::FieldBase * bcValuesField,
@@ -132,6 +126,19 @@ private:
     const int err_code,
     const char * msg) {}
 
+  void copy_kokkos_unordered_map_to_sorted_vector(const ConnectionSetKK& connectionSetKK,
+                                                  ConnectionVec& connectionVec);
+
+  void compute_graph_row_lengths(const ConnectionVec& connectionVec,
+                                 LinSys::RowLengths& globallyOwnedRowLengths,
+                                 LinSys::RowLengths& locallyOwnedRowLengths);
+
+  void insert_graph_connections(const ConnectionVec& connectionVec,
+                                LinSys::Graph& ownedGraph,
+                                int ownedOrSharedMask);
+
+  void fill_entity_to_LID_mapping();
+
   void copy_tpetra_to_stk(
     const Teuchos::RCP<LinSys::Vector> tpetraVector,
     stk::mesh::FieldBase * stkField);
@@ -146,7 +153,6 @@ private:
   void checkForNaN(bool useOwned);
   bool checkForZeroRow(bool useOwned, bool doThrow, bool doPrint=false);
 
-  typedef std::vector< Connection > ConnectionVec;
   ConnectionSetKK connectionSetKK_ ;
   std::vector<GlobalOrdinal> totalGids_;
 
@@ -179,6 +185,7 @@ private:
   Teuchos::RCP<LinSys::Import> importer_;
 
   MyLIDMapType myLIDs_;
+  std::vector<LocalOrdinal> entityToLID_;
   LocalOrdinal maxOwnedRowId_; // = num_owned_nodes * numDof_
   LocalOrdinal maxGloballyOwnedRowId_; // = (num_owned_nodes + num_globallyOwned_nodes) * numDof_
   EquationSystem* eqSys_;
