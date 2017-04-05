@@ -17,7 +17,6 @@ cmake \
   -DCMAKE_CXX_FLAGS='-std=c++11 -O2 -g -DNDEBUG' \
   -DCMAKE_Fortran_FLAGS='-O2 -g -DNDEBUG' \
   -DCMAKE_C_FLAGS='-std=c++11 -O2 -g -DNDEBUG' \
-  -DOPENFAST_DIR:PATH=/home/gvijayak/CurrentProjects/OpenFAST/install/ \
-  -DOPENFAST_LIBRARIES:="openfastcpplib -lopenfastlib -lopenfast_postlib -lscfastlib -lfoamfastlib -lopenfast_prelib -lifwlib -laerodynlib -laerodyn14lib -lelastodynlib -lservodynlib -lbeamdynlib -lsubdynlib -lhydrodynlib -lorcaflexlib -lextptfm_mckflib -lsctypeslib -lfeamlib -lmoordynlib -licedynlib -licefloelib -lmaplib -lmapcpplib -lopenfoamtypeslib -lnwtclibs" \
+  -DOpenFAST_DIR:PATH=/home/gvijayak/CurrentProjects/OpenFAST/install/ \
 $EXTRA_ARGS \
 ../
