@@ -79,6 +79,9 @@ class LagrangeBasis;
 class PromotedElementIO;
 struct ElementDescription;
 
+struct PeriodicPartAttribute {};
+struct NonConformalPartAttribute {};
+
 class Realm {
  public:
 
@@ -546,7 +549,6 @@ class Realm {
     const TurbulenceModelConstant turbModelEnum);
   bool process_adaptivity();
 
-
   // element promotion
 
   // options
@@ -569,6 +571,8 @@ class Realm {
 
   double timerPromoteMesh_; // timer
 
+  static PeriodicPartAttribute periodic_part_attribute_;
+  static NonConformalPartAttribute nonconformal_part_attribute_;
 };
 
 } // namespace nalu

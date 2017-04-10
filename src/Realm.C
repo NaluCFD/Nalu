@@ -136,6 +136,9 @@
 namespace sierra{
 namespace nalu{
 
+  PeriodicPartAttribute   Realm::periodic_part_attribute_;
+  NonConformalPartAttribute Realm::nonconformal_part_attribute_;
+
 //==========================================================================
 // Class Definition
 //==========================================================================
@@ -3018,6 +3021,11 @@ Realm::register_periodic_bc(
   const double &searchTolerance,
   const std::string &searchMethodName)
 {
+  metaData_->declare_attribute_no_delete(*masterMeshPart, &periodic_part_attribute_);
+  metaData_->declare_attribute_no_delete(*slaveMeshPart, &periodic_part_attribute_);
+
+  // std::cerr << "declare_attribute_no_delete: masterMeshPart= " << masterMeshPart->name() << std::endl;
+  // std::cerr << "declare_attribute_no_delete: slaveMeshPart= " << slaveMeshPart->name() << std::endl;
 
   // push back the part for book keeping and, later, skin mesh
   bcPartVec_.push_back(masterMeshPart);
@@ -3073,6 +3081,8 @@ Realm::register_non_conformal_bc(
   stk::mesh::Part *part,
   const stk::topology &theTopo)
 {
+  metaData_->declare_attribute_no_delete(*part, &nonconformal_part_attribute_);
+  //std::cerr << "declare_attribute_no_delete: nonconformal_part_attribute_= " << part->name() << std::endl;
 
   // push back the part for book keeping and, later, skin mesh
   bcPartVec_.push_back(part);
