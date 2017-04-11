@@ -155,28 +155,28 @@ int TpetraLinearSystem::getDofStatus(stk::mesh::Entity node)
   bool has_non_matching_boundary_face_alg = false;
   bool hasPeriodic = false;
 
-  bool debug = false;
+  if (NULL == realm_.allPeriodicInteractingSelector_ && realm_.allPeriodicInteractingParts_.size())
+    {
+      realm_.allPeriodicInteractingSelector_ = new stk::mesh::Selector(stk::mesh::selectUnion(realm_.allPeriodicInteractingParts_));
+    }
+  if (NULL == realm_.allNonConformalInteractingSelector_ && realm_.allNonConformalInteractingParts_.size())
+    {
+      realm_.allNonConformalInteractingSelector_ = new stk::mesh::Selector(stk::mesh::selectUnion(realm_.allNonConformalInteractingParts_));
+    }
 
-  stk::mesh::Part *periodicPart = 0, *nonConformalPart = 0;
   for (auto part : b.supersets())
     {
-      const PeriodicPartAttribute *isPeriodic = part->attribute<PeriodicPartAttribute>();
-      const NonConformalPartAttribute *isNonConformal = part->attribute<NonConformalPartAttribute>();
+      bool isPeriodic = false;
+      bool isNonConformal = false;
+      if (realm_.allPeriodicInteractingSelector_) isPeriodic = (*realm_.allPeriodicInteractingSelector_)(*part);
+      if (realm_.allNonConformalInteractingSelector_) isNonConformal = (*realm_.allNonConformalInteractingSelector_)(*part);
 
       if (isPeriodic) {
-        periodicPart = part;
         hasPeriodic = true;
       }
       if (isNonConformal) {
-        nonConformalPart = part;
         has_non_matching_boundary_face_alg = true;
       }
-
-      if (debug) std::cerr << "part= " << part->name() << " A= " << (periodicPart ? periodicPart->name() : "") << " " << (nonConformalPart ? nonConformalPart->name() : "")
-              << " node= " << realm_.bulkData_->identifier(node)
-              << " has_non_matching_boundary_face_alg= " << has_non_matching_boundary_face_alg
-              << " hasPeriodic= " << hasPeriodic << std::endl;
-
     }
 
   if (has_non_matching_boundary_face_alg && hasPeriodic)
@@ -185,13 +185,6 @@ int TpetraLinearSystem::getDofStatus(stk::mesh::Entity node)
       ostr << "node id= " << realm_.bulkData_->identifier(node);
       throw std::logic_error("not ready for primetime to combine periodic and non-matching algorithm on same node: "+ostr.str());
     }
-
-  if (debug && (hasPeriodic || has_non_matching_boundary_face_alg)) {
-    std::cerr << "part= " << (periodicPart ? periodicPart->name() : "") << " " << (nonConformalPart ? nonConformalPart->name() : "")
-              << " node= " << realm_.bulkData_->identifier(node)
-              << " has_non_matching_boundary_face_alg= " << has_non_matching_boundary_face_alg
-              << " hasPeriodic= " << hasPeriodic << std::endl;
-  }
 
   // simple case
   if (!hasPeriodic && !has_non_matching_boundary_face_alg) {

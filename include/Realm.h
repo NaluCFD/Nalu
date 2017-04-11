@@ -79,9 +79,6 @@ class LagrangeBasis;
 class PromotedElementIO;
 struct ElementDescription;
 
-struct PeriodicPartAttribute {};
-struct NonConformalPartAttribute {};
-
 class Realm {
  public:
 
@@ -571,8 +568,10 @@ class Realm {
 
   double timerPromoteMesh_; // timer
 
-  static PeriodicPartAttribute periodic_part_attribute_;
-  static NonConformalPartAttribute nonconformal_part_attribute_;
+  stk::mesh::PartVector allPeriodicInteractingParts_;
+  stk::mesh::PartVector allNonConformalInteractingParts_;
+  stk::mesh::Selector *allPeriodicInteractingSelector_;
+  stk::mesh::Selector *allNonConformalInteractingSelector_;
 };
 
 } // namespace nalu
