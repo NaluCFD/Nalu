@@ -9,14 +9,11 @@ else(NOT ${NIGHTLY_DIR} STREQUAL "")
 endif(NOT ${NIGHTLY_DIR} STREQUAL "")
 
 set(NALU_DIR                        "${NIGHTLY_DIR}/Nalu")
-set(NALURTEST_DIR                   "${NIGHTLY_DIR}/NaluRtest")
-set(RUNNALURTEST_DIR                "${NIGHTLY_DIR}/runNaluRtest")
 
 # -----------------------------------------------------------
 # -- REPOS
 # -----------------------------------------------------------
 set(NALU_REPO_URL                   "https://github.com/NaluCFD/Nalu.git")
-set(NALURTEST_REPO_URL              "https://github.com/NaluCFD/NaluRtest.git")
 
 # -----------------------------------------------------------
 # -- Get environment
@@ -56,8 +53,6 @@ find_program(MAKE NAMES make)
 set(MODEL                           "nightly")
 set(CTEST_SOURCE_DIRECTORY          "${NALU_DIR}")
 set(CTEST_BINARY_DIRECTORY          "${NALU_DIR}/build")
-set(CTEST_NALU_BINARY_NAME          "${CTEST_BINARY_DIRECTORY}/naluX")
-set(CTEST_UNITTEST_BINARY_NAME      "${CTEST_BINARY_DIRECTORY}/unittestX")
 
 ## -- Build options 
 include(ProcessorCount)
@@ -72,15 +67,15 @@ set(OPTION_BUILD                    "-j${NP}")
 # -----------------------------------------------------------
 
 ## -- Checkout command
-if(NOT EXISTS "${CTEST_SOURCE_DIRECTORY}")
-  set(CTEST_CHECKOUT_COMMAND "${CTEST_GIT_COMMAND} clone ${NALU_REPO_URL} ${CTEST_SOURCE_DIRECTORY}")
-endif(NOT EXISTS "${CTEST_SOURCE_DIRECTORY}")
+#if(NOT EXISTS "${CTEST_SOURCE_DIRECTORY}")
+#  set(CTEST_CHECKOUT_COMMAND "${CTEST_GIT_COMMAND} clone ${NALU_REPO_URL} ${CTEST_SOURCE_DIRECTORY}")
+#endif(NOT EXISTS "${CTEST_SOURCE_DIRECTORY}")
        
 ## -- Update Command
 set(CTEST_UPDATE_COMMAND "${CTEST_GIT_COMMAND}")
 
 ## -- Configure Command
-set(CTEST_CONFIGURE_COMMAND "cmake -DTrilinos_DIR:PATH=${TRILINOS_DIR} -DYAML_DIR:PATH=${YAML_DIR} -DENABLE_INSTALL:BOOL=OFF -DCMAKE_BUILD_TYPE=RELEASE -DENABLE_TESTS=ON -DNALURTEST_DIR:PATH=${NALURTEST_DIR} -DRUNNALURTEST_DIR:PATH=${RUNNALURTEST_DIR} ${CTEST_SOURCE_DIRECTORY}")
+set(CTEST_CONFIGURE_COMMAND "cmake -DTrilinos_DIR:PATH=${TRILINOS_DIR} -DYAML_DIR:PATH=${YAML_DIR} -DENABLE_INSTALL:BOOL=OFF -DCMAKE_BUILD_TYPE=RELEASE -DENABLE_TESTS=ON ${CTEST_SOURCE_DIRECTORY}")
 
 ## -- Build Command
 set(CTEST_BUILD_COMMAND "${MAKE} ${OPTION_BUILD}")
@@ -104,16 +99,6 @@ ctest_configure(BUILD  "${CTEST_BINARY_DIRECTORY}" RETURN_VALUE res)
 ## -- Build
 message(" -- Build ${MODEL} - ${CTEST_BUILD_NAME} --")
 ctest_build(BUILD  "${CTEST_BINARY_DIRECTORY}" RETURN_VALUE res)
-
-## -- Clone (and pull) the test repo if necessary
-if(NOT EXISTS "${NALURTEST_DIR}")
-  execute_process(COMMAND "${CTEST_GIT_COMMAND}" "clone" "${NALURTEST_REPO_URL}" "${NALURTEST_DIR}"
-                  WORKING_DIRECTORY ${NIGHTLY_DIR} )
-endif(NOT EXISTS "${NALURTEST_DIR}")
-execute_process(COMMAND "${CTEST_GIT_COMMAND}" "pull" WORKING_DIRECTORY ${NALURTEST_DIR})
-
-## -- Prepare tests
-execute_process(COMMAND "cmake" "-P" "${CTEST_BINARY_DIRECTORY}/CTestPrepareTests.cmake")
 
 ## -- Run CTest 
 message(" -- Test ${MODEL} - ${CTEST_BUILD_NAME} --")
