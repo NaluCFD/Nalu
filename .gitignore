@@ -16,4 +16,3 @@
 tags
 *.save
 .nfs*
-reg_tests/mesh/*
