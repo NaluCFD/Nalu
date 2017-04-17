@@ -1951,26 +1951,6 @@ Realm::create_output_mesh()
       stk::util::filename_substitution(input_deck_name);
       outputInfo_->outputPropertyManager_->add(Ioss::Property("CATALYST_BLOCK_PARSE_INPUT_DECK_NAME", input_deck_name));
 
-      /*std::string cod = catalyst_output_directory;
-      boost::filesystem::path full_path(cod);
-      full_path = boost::filesystem::system_complete(full_path);
-
-      try {
-        boost::filesystem::create_directory(full_path);
-      }
-      catch(boost::filesystem::filesystem_error& e) {
-        std::cerr << e.what() << std::endl;
-        throw std::runtime_error("Directory: " + full_path.string() + "\nCould not be created \n");
-      }
-      outputInfo_->outputPropertyManager_->add(Ioss::Property("CATALYST_OUTPUT_DIRECTORY", full_path.c_str()));
-
-      std::ostringstream s;
-      s << input_deck_name << "." << number_of_catalyst_blocks << catalyst_file_suffix;
-      full_path = full_path / s.str();
-      std::string fn(full_path.string());
-      number_of_catalyst_blocks++;
-*/
-
       if(!outputInfo_->paraviewScriptName_.empty())
         outputInfo_->outputPropertyManager_->add(Ioss::Property("CATALYST_SCRIPT", outputInfo_->paraviewScriptName_.c_str()));
 
