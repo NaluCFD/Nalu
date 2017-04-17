@@ -75,10 +75,12 @@ ABLForcingAlgorithm::~ABLForcingAlgorithm()
 void
 ABLForcingAlgorithm::load(const YAML::Node& node)
 {
-  get_if_present(node, "search_method", searchMethod_);
-  get_if_present(node, "search_tolerance", searchTolerance_);
-  get_if_present(node, "search_expansion_factor", searchExpansionFactor_);
-  get_if_present(node, "output_frequency", outputFreq_);
+  get_if_present(node, "search_method", searchMethod_, searchMethod_);
+  get_if_present(node, "search_tolerance", searchTolerance_, searchTolerance_);
+  get_if_present(node, "search_expansion_factor", searchExpansionFactor_,
+                 searchExpansionFactor_);
+  get_if_present(node, "output_frequency", outputFreq_, outputFreq_);
+  get_if_present(node, "output_format", outFileFmt_, outFileFmt_);
 
   if (node["momentum"])
     load_momentum_info(node["momentum"]);
