@@ -117,7 +117,7 @@ ABLForcingAlgorithm::load_momentum_info(const YAML::Node& node)
       "ABLForcingAlgorithm: Invalid type specification for momentum. "
       "Valid types are: [user_defined, computed]");
   }
-  get_if_present(node, "relaxation_factor", alphaMomentum_);
+  get_if_present(node, "relaxation_factor", alphaMomentum_, alphaMomentum_);
   get_required<std::vector<double>>(node, "heights", velHeights_);
   auto nHeights = velHeights_.size();
 
@@ -177,7 +177,7 @@ ABLForcingAlgorithm::load_temperature_info(const YAML::Node& node)
       "ABLForcingAlgorithm: Invalid type specification for temperature. "
       "Valid types are: [user_defined, computed]");
   }
-  get_if_present(node, "relaxation_factor", alphaTemperature_);
+  get_if_present(node, "relaxation_factor", alphaTemperature_, alphaTemperature_);
   get_required<std::vector<double>>(node, "heights", tempHeights_);
   auto nHeights = tempHeights_.size();
 
