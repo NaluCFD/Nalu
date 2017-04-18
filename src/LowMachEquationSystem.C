@@ -103,6 +103,7 @@
 #include <nso/MomentumNSOElemSuppAlg.h>
 #include <nso/MomentumNSOKeElemSuppAlg.h>
 #include <nso/MomentumNSOGradElemSuppAlg.h>
+#include <nso/MomentumNSOSijElemSuppAlg.h>
 
 // template for supp algs
 #include <AlgTraits.h>
@@ -1161,6 +1162,10 @@ MomentumEquationSystem::register_interior_algorithm(
       build_topo_supp_alg_if_requested<MomentumNSOKeElemSuppAlg>
         (partTopo, *this, suppAlgVec, "NSO_2ND_KE",
          realm_, velocity_, dudx_, 0.0, dataPreReqs);
+
+      build_topo_supp_alg_if_requested<MomentumNSOSijElemSuppAlg>
+        (partTopo, *this, suppAlgVec, "NSO_2ND_SIJ",
+         realm_, velocity_, dataPreReqs);
 
       build_topo_supp_alg_if_requested<MomentumNSOElemSuppAlg>
         (partTopo, *this, suppAlgVec, "NSO_4TH",
