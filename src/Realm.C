@@ -232,7 +232,9 @@ namespace nalu{
     doPromotion_(false),
     promotionOrder_(0u),
     quadType_("GaussLegendre"),
-    timerPromoteMesh_(0.0)
+    timerPromoteMesh_(0.0),
+    allPeriodicInteractingSelector_(NULL),
+    allNonConformalInteractingSelector_(NULL)
 {
   // deal with specialty options that live off of the realm; 
   // choose to do this now rather than waiting for the load stage
@@ -311,6 +313,11 @@ Realm::~Realm()
 
   // Delete abl forcing pointer
   if (NULL != ablForcingAlg_) delete ablForcingAlg_;
+
+  // getDofStatus pointers
+  if (NULL != allNonConformalInteractingSelector_) delete allNonConformalInteractingSelector_;
+  if (NULL != allPeriodicInteractingSelector_) delete allPeriodicInteractingSelector_;
+
 }
 
 void
@@ -3051,6 +3058,8 @@ Realm::register_periodic_bc(
   const double &searchTolerance,
   const std::string &searchMethodName)
 {
+  allPeriodicInteractingParts_.push_back(masterMeshPart);
+  allPeriodicInteractingParts_.push_back(slaveMeshPart);
 
   // push back the part for book keeping and, later, skin mesh
   bcPartVec_.push_back(masterMeshPart);
@@ -3096,6 +3105,11 @@ Realm::setup_non_conformal_bc(
                            nonConformalBCData.targetName_);
   
   nonConformalManager_->nonConformalInfoVec_.push_back(nonConformalInfo);
+
+  for (auto part : currentPartVec)
+    allNonConformalInteractingParts_.push_back(part);
+  for (auto part : opposingPartVec)
+    allNonConformalInteractingParts_.push_back(part);
 }
 
 //--------------------------------------------------------------------------
@@ -3106,7 +3120,6 @@ Realm::register_non_conformal_bc(
   stk::mesh::Part *part,
   const stk::topology &theTopo)
 {
-
   // push back the part for book keeping and, later, skin mesh
   bcPartVec_.push_back(part);
 
