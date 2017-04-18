@@ -5,7 +5,6 @@
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
-
 #ifndef AlgTraits_h
 #define AlgTraits_h
 
@@ -60,6 +59,7 @@ struct AlgTraitsWed6 {
   static constexpr stk::topology::topology_t topo_ = stk::topology::WEDGE_6;
 };
 
+
 struct AlgTraitsQuad4_2D {
   static constexpr int nDim_ = 2;
   static constexpr int nodesPerElement_ = 4;
@@ -76,6 +76,23 @@ struct AlgTraitsTri3_2D {
   static constexpr int numScvIp_ = 3;
   static constexpr int numGp_ = 3; // for FEM (not supported)
   static constexpr stk::topology::topology_t topo_ = stk::topology::TRI_3_2D;
+};
+
+template <int p>
+struct AlgTraitsQuad
+{
+  static constexpr int nDim_ = 2;
+  static constexpr int nodesPerElement_ = (p+1) * (p+1);
+  static constexpr int numScsIp_ = 2 * p * (p+1);
+  static constexpr int numScvIp_ = (p+1) * (p+1);
+  static constexpr int numGp_ = (p+1) * (p+1);
+  static constexpr stk::topology::topology_t topo_ = static_cast<stk::topology::topology_t>(stk::topology::SUPERELEMENT_START + nodesPerElement_);
+
+  // some higher order information
+  static constexpr int polyOrder_ = p;
+  static constexpr int nodes1D_ = p + 1;
+  static constexpr int nscs_ = p;
+  static constexpr stk::topology::topology_t baseTopo_ = stk::topology::QUAD_4_2D;
 };
 
 } // namespace nalu
