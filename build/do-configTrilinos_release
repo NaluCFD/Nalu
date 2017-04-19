@@ -18,7 +18,7 @@ superlu_lib_dir=$nalu_build_dir/install/SuperLU_4.3/lib
 # Additional needed TPLS
 netcdf_install_dir=$nalu_build_dir/install
 hdf_install_dir=$nalu_build_dir/install
-parallel_netcdf_install_dir=$nalu_install_dir
+pnetcdf_install_dir=$nalu_install_dir
 z_install_dir=$nalu_build_dir/install
 
 # Where trilinos will be installed
