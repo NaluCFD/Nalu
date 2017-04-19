@@ -546,7 +546,6 @@ class Realm {
     const TurbulenceModelConstant turbModelEnum);
   bool process_adaptivity();
 
-
   // element promotion
 
   // options
@@ -569,6 +568,10 @@ class Realm {
 
   double timerPromoteMesh_; // timer
 
+  stk::mesh::PartVector allPeriodicInteractingParts_;
+  stk::mesh::PartVector allNonConformalInteractingParts_;
+  stk::mesh::Selector *allPeriodicInteractingSelector_;
+  stk::mesh::Selector *allNonConformalInteractingSelector_;
 };
 
 } // namespace nalu
