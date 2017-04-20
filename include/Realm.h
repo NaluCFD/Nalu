@@ -438,6 +438,7 @@ class Realm {
   double timerTransferSearch_;
   double timerTransferExecute_;
   double timerSkinMesh_;
+  double timerPromoteMesh_;
 
   NonConformalManager *nonConformalManager_;
   OversetManager *oversetManager_;
@@ -546,13 +547,13 @@ class Realm {
     const TurbulenceModelConstant turbModelEnum);
   bool process_adaptivity();
 
-
-  // element promotion
-
-  // options
+  // element promotion options
   bool doPromotion_; // conto
   unsigned promotionOrder_;
   std::string quadType_;
+  
+  // id for the input mesh
+  size_t inputMeshIdx_;
 
   // tools
   std::unique_ptr<ElementDescription> desc_; // holds topo info
@@ -566,9 +567,6 @@ class Realm {
   bool high_order_active() const { return doPromotion_; };
 
   std::string physics_part_name(std::string) const;
-
-  double timerPromoteMesh_; // timer
-
 };
 
 } // namespace nalu

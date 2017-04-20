@@ -77,6 +77,7 @@ SolutionOptions::SolutionOptions()
     cvfemReducedSensPoisson_(false),
     inputVariablesRestorationTime_(1.0e8),
     inputVariablesInterpolateInTime_(false),
+    inputVariablesPeriodicTime_(0.0),
     consistentMMPngDefault_(false),
     useConsolidatedSolverAlg_(false),
     eigenvaluePerturb_(false),
@@ -178,6 +179,10 @@ SolutionOptions::load(const YAML::Node & y_node)
     // choice of interpolation or snapping to closest in the data base
     get_if_present(y_solution_options, "input_variables_interpolate_in_time",
       inputVariablesInterpolateInTime_, inputVariablesInterpolateInTime_);
+
+    // allow for periodic sampling in time
+    get_if_present(y_solution_options, "input_variables_from_file_periodic_time",
+      inputVariablesPeriodicTime_, inputVariablesPeriodicTime_);
 
     // first set of options; hybrid, source, etc.
     const YAML::Node y_options = expect_sequence(y_solution_options, "options", required);
