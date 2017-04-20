@@ -128,7 +128,17 @@ ActuatorLineFAST::ActuatorLineFAST(
     actuatorLineGhosting_(NULL),
     needToGhostCount_(0),
     actuatorLineMotion_(false),
-    pi_(acos(-1.0))
+    pi_(acos(-1.0)),
+    timerExecute_(0.0),
+    timerUpdate_(0.0),
+    timerVelSearch_(0.0),
+    timerForceSpread_(0.0),
+    timerCALPIM_(0.0),
+    timerPCE_(0.0),
+    timerCompleteSearch_(0.0),
+    timerCoarseSearch_(0.0),
+    timerDETG_(0.0),
+    timerMG_(0.0)
 {
   // load the data
   load(node);
@@ -172,6 +182,17 @@ ActuatorLineFAST::ActuatorLineFAST(
 //--------------------------------------------------------------------------
 ActuatorLineFAST::~ActuatorLineFAST()
 {
+
+  NaluEnv::self().naluOutput() << "Total time taken for Actuator->execute function = " << timerExecute_ << "s" << std::endl;
+  NaluEnv::self().naluOutput() << "Total time taken for Actuator->update function = " << timerUpdate_ << "s" << std::endl;
+  NaluEnv::self().naluOutput() << "Total time taken for Actuator->vel search = " << timerVelSearch_ << "s" << std::endl;
+  NaluEnv::self().naluOutput() << "Total time taken for Actuator->force spread = " << timerForceSpread_ << "s" << std::endl;
+  NaluEnv::self().naluOutput() << "Total time taken for Actuator->create_actuator_line_point_info_map = " << timerCALPIM_ << "s" << std::endl;
+  NaluEnv::self().naluOutput() << "Total time taken for Actuator->populate_candidate_elements = " << timerPCE_ << "s" << std::endl;
+  NaluEnv::self().naluOutput() << "Total time taken for Actuator->complete_search = " << timerCompleteSearch_ << "s" << std::endl;
+  NaluEnv::self().naluOutput() << "Total time taken for Actuator->coarse_search = " << timerCoarseSearch_ << "s" << std::endl;
+  NaluEnv::self().naluOutput() << "Total time taken for Actuator->determine_elements_to_ghost = " << timerDETG_ << "s" << std::endl;
+  NaluEnv::self().naluOutput() << "Total time taken for Actuator->manage_ghosting = " << timerMG_ << "s" << std::endl;
 
   FAST.end(); // Call destructors in FAST_cInterface
 
@@ -410,6 +431,8 @@ ActuatorLineFAST::update()
   needToGhostCount_ = 0;
   elemsToGhost_.clear();
 
+  double timeA = NaluEnv::self().nalu_time();
+
   // clear actuatorLinePointInfoMap_
   std::map<size_t, ActuatorLineFASTPointInfo *>::iterator iterPoint;
   for( iterPoint=actuatorLinePointInfoMap_.begin(); iterPoint!=actuatorLinePointInfoMap_.end(); ++iterPoint )
@@ -448,6 +471,10 @@ ActuatorLineFAST::update()
   
   // complete filling in the set of elements connected to the centroid
   complete_search();
+
+  double timeB = NaluEnv::self().nalu_time();
+  timerUpdate_ += (timeB - timeA);
+
 }
 
 
@@ -462,6 +489,8 @@ ActuatorLineFAST::execute()
   stk::mesh::BulkData & bulkData = realm_.bulk_data();
   const int nDim = metaData.spatial_dimension();
 
+  double timeA = NaluEnv::self().nalu_time();
+
   // extract fields
   VectorFieldType *coordinates 
     = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
@@ -475,9 +504,9 @@ ActuatorLineFAST::execute()
   ScalarFieldType *density
     = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density"); 
   // deal with proper viscosity
-  const std::string viscName = realm_.is_turbulent() ? "effective_viscosity" : "viscosity";
-  ScalarFieldType *viscosity
-    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, viscName); 
+  //  const std::string viscName = realm_.is_turbulent() ? "effective_viscosity" : "viscosity";
+  //  ScalarFieldType *viscosity
+  //    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, viscName); 
 
   // fixed size scratch
   std::vector<double> ws_pointGasVelocity(nDim);
@@ -485,7 +514,7 @@ ActuatorLineFAST::execute()
   std::vector<double> ws_pointForce(nDim);
   std::vector<double> ws_elemForce(nDim);
   double ws_pointGasDensity;
-  double ws_pointGasViscosity;
+  //  double ws_pointGasViscosity;
   double ws_pointForceLHS;
   
   // zero out source term; do this manually since there are custom ghosted entities
@@ -515,7 +544,7 @@ ActuatorLineFAST::execute()
     // fields that are needed
     ghostFieldVec.push_back(coordinates);
     ghostFieldVec.push_back(velocity);
-    ghostFieldVec.push_back(viscosity);
+    //    ghostFieldVec.push_back(viscosity);
     stk::mesh::communicate_field_data(*actuatorLineGhosting_, ghostFieldVec);
   }
 
@@ -539,7 +568,7 @@ ActuatorLineFAST::execute()
     // resize some work vectors
     resize_std_vector(nDim, ws_coordinates_, bestElem, bulkData);
     resize_std_vector(nDim, ws_velocity_, bestElem, bulkData);
-    resize_std_vector(1, ws_viscosity_, bestElem, bulkData);
+    //    resize_std_vector(1, ws_viscosity_, bestElem, bulkData);
     resize_std_vector(1, ws_density_, bestElem, bulkData);
 
     // gather nodal data to element nodes; both vector and scalar; coords are used in determinant calc
@@ -547,8 +576,8 @@ ActuatorLineFAST::execute()
                  nodesPerElement);
     gather_field_for_interp(nDim, &ws_velocity_[0], *velocity, bulkData.begin_nodes(bestElem), 
                             nodesPerElement);
-    gather_field_for_interp(1, &ws_viscosity_[0], *viscosity, bulkData.begin_nodes(bestElem), 
-                            nodesPerElement);
+    //    gather_field_for_interp(1, &ws_viscosity_[0], *viscosity, bulkData.begin_nodes(bestElem), 
+    //                            nodesPerElement);
     gather_field_for_interp(1, &ws_density_[0], *density, bulkData.begin_nodes(bestElem), 
                             nodesPerElement);
 
@@ -560,8 +589,8 @@ ActuatorLineFAST::execute()
                       &ws_velocity_[0], &ws_pointGasVelocity[0]);
     
     // interpolate viscosity
-    interpolate_field(1, bestElem, bulkData, &(infoObject->isoParCoords_[0]), 
-                      &ws_viscosity_[0], &ws_pointGasViscosity);
+    //    interpolate_field(1, bestElem, bulkData, &(infoObject->isoParCoords_[0]), 
+    //                      &ws_viscosity_[0], &ws_pointGasViscosity);
 
     // interpolate density
     interpolate_field(1, bestElem, bulkData, &(infoObject->isoParCoords_[0]), 
@@ -571,10 +600,12 @@ ActuatorLineFAST::execute()
       NaluEnv::self().naluOutput() << "Node " << np << " Velocity = " << ws_pointGasVelocity[0] << " " << ws_pointGasVelocity[1] << " " << ws_pointGasVelocity[2] << " " << std::endl ;
     }
 
-    FAST.setVelocity(ws_pointGasVelocity, np, infoObject->globTurbId_);
+    FAST.setVelocity(&(ws_pointGasVelocity[0]), np, infoObject->globTurbId_);
     np = np + 1;
 
   }    
+
+
 
   if ( ! FAST.isDryRun() ) {
 
@@ -583,12 +614,17 @@ ActuatorLineFAST::execute()
     }
 
     //Step FAST
-    FAST.step();
+    for(int j=0; j < 10; j++) FAST.step();
   }
  
+  double tVS = NaluEnv::self().nalu_time();
+  timerVelSearch_ += (tVS - timeA);
+
   // do we have mesh motion?
   if ( actuatorLineMotion_ )
     update();
+
+  double tFS = NaluEnv::self().nalu_time();
 
   // loop over map and assemble source terms
   np = 0;
@@ -721,6 +757,11 @@ ActuatorLineFAST::execute()
 
   const std::vector<const stk::mesh::FieldBase*> sumFieldG(1, g);
   stk::mesh::parallel_sum_including_ghosts(bulkData, sumFieldG);
+
+  double timeB = NaluEnv::self().nalu_time();
+  timerExecute_ += (timeB - timeA);
+  timerForceSpread_ += (timeB - tFS);
+
 }
 
 
@@ -730,6 +771,8 @@ ActuatorLineFAST::execute()
 void
 ActuatorLineFAST::populate_candidate_elements() 
 {
+  double timeA = NaluEnv::self().nalu_time();
+
   stk::mesh::MetaData & metaData = realm_.meta_data();
   stk::mesh::BulkData & bulkData = realm_.bulk_data();
 
@@ -801,6 +844,10 @@ ActuatorLineFAST::populate_candidate_elements()
       boundingElementBoxVec_.push_back(theBox);
     }
   }
+
+  double timeB = NaluEnv::self().nalu_time();
+  timerPCE_ += (timeB - timeA);
+
 }
 
 //--------------------------------------------------------------------------
@@ -893,8 +940,13 @@ ActuatorLineFAST::determine_elems_to_ghost()
 {
   stk::mesh::BulkData & bulkData = realm_.bulk_data();
 
+  double timeA = NaluEnv::self().nalu_time();
+
   stk::search::coarse_search(boundingSphereVec_, boundingElementBoxVec_, searchMethod_, 
                              NaluEnv::self().parallel_comm(), searchKeyPair_);
+
+  double timeCSA = NaluEnv::self().nalu_time();
+  timerCoarseSearch_ += (timeCSA - timeA);
 
   // lowest effort is to ghost elements to the owning rank of the point; can just as easily do the opposite
   std::vector<std::pair<boundingSphere::second_type, boundingElementBox::second_type> >::const_iterator ii;
@@ -922,6 +974,9 @@ ActuatorLineFAST::determine_elems_to_ghost()
     }
   }
 
+  double timeB = NaluEnv::self().nalu_time();
+  timerDETG_ += (timeB - timeA);
+
 }
 
 //--------------------------------------------------------------------------
@@ -929,6 +984,8 @@ ActuatorLineFAST::determine_elems_to_ghost()
 //--------------------------------------------------------------------------
 void
 ActuatorLineFAST::create_actuator_line_point_info_map() {
+
+  double timeA = NaluEnv::self().nalu_time();
 
   const double currentTime = realm_.get_current_time();
 
@@ -1001,6 +1058,10 @@ ActuatorLineFAST::create_actuator_line_point_info_map() {
     }
 
   }
+
+  double timeB = NaluEnv::self().nalu_time();
+  timerCALPIM_ += (timeB - timeA);
+
 }
 
 
@@ -1011,7 +1072,9 @@ void
 ActuatorLineFAST::manage_ghosting() 
 {
   stk::mesh::BulkData & bulkData = realm_.bulk_data();
-  
+
+  double timeA = NaluEnv::self().nalu_time();
+
   // check for ghosting need
   uint64_t g_needToGhostCount = 0;
   stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &needToGhostCount_, &g_needToGhostCount, 1);
@@ -1026,6 +1089,9 @@ ActuatorLineFAST::manage_ghosting()
     NaluEnv::self().naluOutputP0() << "ActuatorLineFAST alg will NOT ghost entities for velcity actuator nodes: " << std::endl;
   }
 
+  double timeB = NaluEnv::self().nalu_time();
+  timerMG_ += (timeB - timeA);
+
 }
  
  
@@ -1038,6 +1104,8 @@ ActuatorLineFAST::complete_search()
   stk::mesh::MetaData & metaData = realm_.meta_data();
   stk::mesh::BulkData & bulkData = realm_.bulk_data();
   const int nDim = metaData.spatial_dimension();
+
+  double timeA = NaluEnv::self().nalu_time();
 
   // extract fields
   VectorFieldType *coordinates 
@@ -1104,6 +1172,8 @@ ActuatorLineFAST::complete_search()
     }
   }
 
+  double timeB = NaluEnv::self().nalu_time();
+  timerCompleteSearch_ += (timeB - timeA);
 
 }
 
