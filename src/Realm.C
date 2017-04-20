@@ -110,6 +110,7 @@
 // stk_io
 #include <stk_io/StkMeshIoBroker.hpp>
 #include <stk_io/IossBridge.hpp>
+#include <stk_io/InputFile.hpp>
 #include <Ioss_SubSystem.h>
 
 // stk_util
@@ -203,6 +204,7 @@ namespace nalu{
     timerTransferSearch_(0.0),
     timerTransferExecute_(0.0),
     timerSkinMesh_(0.0),
+    timerPromoteMesh_(0.0),
     nonConformalManager_(NULL),
     oversetManager_(NULL),
     hasNonConformal_(false),
@@ -232,7 +234,7 @@ namespace nalu{
     doPromotion_(false),
     promotionOrder_(0u),
     quadType_("GaussLegendre"),
-    timerPromoteMesh_(0.0)
+    inputMeshIdx_(-1)
 {
   // deal with specialty options that live off of the realm; 
   // choose to do this now rather than waiting for the load stage
@@ -1949,8 +1951,8 @@ Realm::create_mesh()
   }
 
   // Initialize meta data (from exodus file); can possibly be a restart file..
-  ioBroker_->add_mesh_database( inputDBName_,
-      restarted_simulation() ? stk::io::READ_RESTART : stk::io::READ_MESH );
+  inputMeshIdx_ = ioBroker_->add_mesh_database( 
+   inputDBName_, restarted_simulation() ? stk::io::READ_RESTART : stk::io::READ_MESH );
   ioBroker_->create_input_mesh();
 
   // declare an exposed part for later bc coverage check
@@ -2012,8 +2014,7 @@ Realm::create_output_mesh()
         outputInfo_->outputPropertyManager_->add(Ioss::Property("CATALYST_SCRIPT", outputInfo_->paraviewScriptName_.c_str()));
 
       outputInfo_->outputPropertyManager_->add(Ioss::Property("CATALYST_CREATE_SIDE_SETS", 1));
-
-      //resultsFileIndex_ = ioBroker_->create_output_mesh( fn, stk::io::WRITE_RESULTS, *outputInfo_->outputPropertyManager_, "catalyst" );
+      
       resultsFileIndex_ = ioBroker_->create_output_mesh( oname, stk::io::WRITE_RESULTS, *outputInfo_->outputPropertyManager_, "catalyst" );
    }
    else {
@@ -2129,6 +2130,15 @@ Realm::input_variables_from_mesh()
         ? stk::io::MeshField::LINEAR_INTERPOLATION
         : stk::io::MeshField::CLOSEST;
 
+    // check for periodic cycling of data based on start time and periodic time; scale time set to unity
+    if ( solutionOptions_->inputVariablesPeriodicTime_ > 0.0 ) {
+      ioBroker_->get_mesh_database(inputMeshIdx_)
+        .set_periodic_time(solutionOptions_->inputVariablesPeriodicTime_, 
+                           solutionOptions_->inputVariablesRestorationTime_, 
+                           stk::io::InputFile::CYCLIC)
+        .set_scale_time(1.0);
+    }
+    
     std::map<std::string, std::string>::const_iterator iter;
     for ( iter = solutionOptions_->inputVarFromFileMap_.begin();
           iter != solutionOptions_->inputVarFromFileMap_.end(); ++iter) {

@@ -92,6 +92,7 @@ public:
   bool cvfemReducedSensPoisson_;
   double inputVariablesRestorationTime_;
   bool inputVariablesInterpolateInTime_;
+  double inputVariablesPeriodicTime_;
   bool consistentMMPngDefault_;
   bool useConsolidatedSolverAlg_;
   bool eigenvaluePerturb_;
