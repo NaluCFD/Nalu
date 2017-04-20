@@ -10,6 +10,7 @@
 #include <Algorithm.h>
 #include <EquationSystem.h>
 #include <LinearSystem.h>
+#include <SupplementalAlgorithm.h>
 
 #include <stk_mesh/base/Entity.hpp>
 
@@ -38,6 +39,13 @@ SolverAlgorithm::SolverAlgorithm(
     eqSystem_(eqSystem)
 {
   // does nothing
+}
+
+SolverAlgorithm::~SolverAlgorithm()
+{
+  std::vector<SupplementalAlgorithm *>::iterator ii;
+  for( ii=supplementalAlg_.begin(); ii!=supplementalAlg_.end(); ++ii )
+    delete *ii;
 }
 
 //--------------------------------------------------------------------------
