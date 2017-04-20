@@ -5,13 +5,13 @@
 if(NOT ${NALURTEST_DIR} STREQUAL "")
   message("NaluRtest directory is ${NALURTEST_DIR}")
 else(NOT ${NALURTEST_DIR} STREQUAL "")
-  message( FATAL_ERROR "You need to set the ${NALURTEST_DIR} variable. CMake will exit." )
+  message( FATAL_ERROR "You need to set the 'NALURTEST_DIR' variable. CMake will exit." )
 endif()
 
 if(NOT ${RUNNALURTEST_DIR} STREQUAL "")
   message("runNaluRtest directory is ${RUNNALURTEST_DIR}")
 else(NOT ${RUNNALURTEST_DIR} STREQUAL "")
-  message( FATAL_ERROR "You need to set the ${RUNNALURTEST_DIR} variable. CMake will exit." )
+  message( FATAL_ERROR "You need to set the 'RUNNALURTEST_DIR' variable. CMake will exit." )
 endif()
 
 ## -- Set TOLERANCE for testing
