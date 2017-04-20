@@ -51,7 +51,7 @@ ContinuityAdvElemSuppAlg<AlgTraits>::ContinuityAdvElemSuppAlg(
     reducedSensitivities_(realm_.get_cvfem_reduced_sens_poisson()),
     interpTogether_(realm_.get_mdot_interp()),
     om_interpTogether_(1.0-interpTogether_),
-    lrscv_(realm.get_surface_master_element(AlgTraits::topo_)->adjacentNodes())
+    lrscv_(sierra::nalu::get_surface_master_element(AlgTraits::topo_)->adjacentNodes())
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -65,7 +65,7 @@ ContinuityAdvElemSuppAlg<AlgTraits>::ContinuityAdvElemSuppAlg(
   densityNp1_ = &(density->field_of_state(stk::mesh::StateNP1));
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
 
-  MasterElement *meSCS = realm.get_surface_master_element(AlgTraits::topo_);
+  MasterElement *meSCS = sierra::nalu::get_surface_master_element(AlgTraits::topo_);
   if ( shiftMdot_ )
     meSCS->shifted_shape_fcn(&v_shape_function_(0,0));
   else

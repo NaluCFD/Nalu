@@ -100,7 +100,7 @@ ComputeHeatTransferEdgeWallAlgorithm::execute()
     b.parent_topology(stk::topology::ELEMENT_RANK, parentTopo);
     ThrowAssert ( parentTopo.size() == 1 );
     stk::topology theElemTopo = parentTopo[0];
-    MasterElement *meSCS = realm_.get_surface_master_element(theElemTopo);
+    MasterElement *meSCS = sierra::nalu::get_surface_master_element(theElemTopo);
 
     // size some things that are useful
     const int num_face_nodes = b.topology().num_nodes();

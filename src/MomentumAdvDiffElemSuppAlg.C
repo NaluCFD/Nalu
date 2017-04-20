@@ -49,7 +49,7 @@ MomentumAdvDiffElemSuppAlg<AlgTraits>::MomentumAdvDiffElemSuppAlg(
     coordinates_(NULL),
     viscosity_(viscosity),
     massFlowRate_(NULL),
-    lrscv_(realm.get_surface_master_element(AlgTraits::topo_)->adjacentNodes()),
+    lrscv_(sierra::nalu::get_surface_master_element(AlgTraits::topo_)->adjacentNodes()),
     includeDivU_(realm_.get_divU())
 {
   // save off fields; for non-BDF2 gather in state N for Nm1 (gamma3_ will be zero)
@@ -59,7 +59,7 @@ MomentumAdvDiffElemSuppAlg<AlgTraits>::MomentumAdvDiffElemSuppAlg(
   massFlowRate_ = meta_data.get_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "mass_flow_rate_scs");
 
   // compute shape function; do we want to push this to dataPreReqs?
-  MasterElement *meSCS = realm.get_surface_master_element(AlgTraits::topo_);
+  MasterElement *meSCS = sierra::nalu::get_surface_master_element(AlgTraits::topo_);
   meSCS->shape_fcn(&v_shape_function_(0,0));
 
   // add master elements

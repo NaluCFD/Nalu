@@ -35,13 +35,6 @@ double initialize_quadratic_scalar_field(const stk::mesh::BulkData& bulk,
                                       const VectorFieldType& coordField,
                                       const ScalarFieldType& qField);
 
-sierra::nalu::MasterElement *
-get_surface_master_element(const stk::topology & theTopo);
-
-sierra::nalu::MasterElement *
-get_volume_master_element(const stk::topology & theTopo);
-
-
 }
 
 const double tol = 1.e-10;

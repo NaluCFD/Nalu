@@ -53,7 +53,7 @@ MomentumNSOKeElemSuppAlg<AlgTraits>::MomentumNSOKeElemSuppAlg(
     coordinates_(NULL),
     Gju_(Gju),
     Gjp_(NULL),
-    lrscv_(realm.get_surface_master_element(AlgTraits::topo_)->adjacentNodes()),
+    lrscv_(sierra::nalu::get_surface_master_element(AlgTraits::topo_)->adjacentNodes()),
     Cupw_(0.1),
     small_(1.0e-16),
     fourthFac_(fourthFac)
@@ -75,7 +75,7 @@ MomentumNSOKeElemSuppAlg<AlgTraits>::MomentumNSOKeElemSuppAlg(
   Gjp_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "dpdx");
 
   // compute shape function
-  MasterElement *meSCS = realm.get_surface_master_element(AlgTraits::topo_);
+  MasterElement *meSCS = sierra::nalu::get_surface_master_element(AlgTraits::topo_);
   meSCS->shape_fcn(&v_shape_function_(0,0));
 
   // add master elements

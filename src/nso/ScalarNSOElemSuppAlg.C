@@ -58,7 +58,7 @@ ScalarNSOElemSuppAlg<AlgTraits>::ScalarNSOElemSuppAlg(
     velocityRTM_(NULL),
     Gjq_(Gjq),
     coordinates_(NULL),
-    lrscv_(realm.get_surface_master_element(AlgTraits::topo_)->adjacentNodes()),
+    lrscv_(sierra::nalu::get_surface_master_element(AlgTraits::topo_)->adjacentNodes()),
     dt_(0.0),
     gamma1_(0.0),
     gamma2_(0.0),
@@ -89,7 +89,7 @@ ScalarNSOElemSuppAlg<AlgTraits>::ScalarNSOElemSuppAlg(
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
 
   // compute shape function; do we want to push this to dataPreReqs?
-  MasterElement *meSCS = realm.get_surface_master_element(AlgTraits::topo_);
+  MasterElement *meSCS = sierra::nalu::get_surface_master_element(AlgTraits::topo_);
   meSCS->shape_fcn(&v_shape_function_(0,0));
 
   // add master elements

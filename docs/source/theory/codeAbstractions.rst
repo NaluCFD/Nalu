@@ -196,7 +196,7 @@ entities that are provided to the developer.
       const stk::mesh::Bucket::size_type length   = b.size();
 
       // extract master element (homogeneous over buckets)
-      MasterElement *meSCS = realm_.get_surface_master_element(b.topology());
+      MasterElement *meSCS = sierra::nalu::get_surface_master_element(b.topology());
       
       for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
         

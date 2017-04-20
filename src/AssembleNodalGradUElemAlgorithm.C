@@ -87,7 +87,7 @@ AssembleNodalGradUElemAlgorithm::execute()
     const stk::mesh::Bucket::size_type length   = b.size();
 
     // extract master element
-    MasterElement *meSCS = realm_.get_surface_master_element(b.topology());
+    MasterElement *meSCS = sierra::nalu::get_surface_master_element(b.topology());
 
     // extract master element specifics
     const int nodesPerElement = meSCS->nodesPerElement_;

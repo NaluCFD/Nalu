@@ -269,11 +269,6 @@ class Realm {
   void dump_simulation_time();
   double provide_mean_norm();
 
-  MasterElement* get_surface_master_element(
-    const stk::topology & theTopo);
-  MasterElement* get_volume_master_element(
-    const stk::topology & theTopo);
-
   double get_hybrid_factor(
     const std::string dofname);
   double get_alpha_factor(
@@ -419,9 +414,6 @@ class Realm {
   std::vector<Algorithm *> propertyAlg_;
   std::map<PropertyIdentifier, ScalarFieldType *> propertyMap_;
   std::vector<Algorithm *> initCondAlg_;
-
-  std::map<stk::topology, MasterElement *> surfaceMeMap_;
-  std::map<stk::topology, MasterElement *> volumeMeMap_;
 
   SizeType nodeCount_;
   bool estimateMemoryOnly_;
