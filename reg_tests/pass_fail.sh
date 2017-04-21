@@ -84,9 +84,10 @@ determine_pass_fail() {
 # $1 is the test name
 main() {
   testName=$1
-  mytolerance=$2
+  goldFile=$2
+  mytolerance=$3
   maxSolutionDiff=-1000000000.0
-  determine_pass_fail ${mytolerance} "${testName}.log" "${testName}.norm" "${testName}.norm.gold"
+  determine_pass_fail ${mytolerance} "${testName}.log" "${testName}.norm" "${goldFile}"
   passStatus="$?"
   performanceTime=`grep "STKPERF: Total Time" ${testName}.log  | awk '{print $4}'`
   if [ ${passStatus} -eq 0 ]; then
@@ -98,5 +99,5 @@ main() {
   fi
 }
 
-# ./pass_fail.sh testName tolerance
+# ./pass_fail.sh testName normFile tolerance
 main "$@"
