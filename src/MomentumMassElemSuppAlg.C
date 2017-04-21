@@ -52,7 +52,7 @@ MomentumMassElemSuppAlg<AlgTraits>::MomentumMassElemSuppAlg(
     gamma2_(0.0),
     gamma3_(0.0),
     lumpedMass_(lumpedMass),
-    ipNodeMap_(realm.get_volume_master_element(AlgTraits::topo_)->ipNodeMap())
+    ipNodeMap_(sierra::nalu::get_volume_master_element(AlgTraits::topo_)->ipNodeMap())
 {
   // save off fields; shove state N into Nm1 if this is BE
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -67,7 +67,7 @@ MomentumMassElemSuppAlg<AlgTraits>::MomentumMassElemSuppAlg(
   Gjp_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "dpdx");
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
 
-  MasterElement* meSCV = realm.get_volume_master_element(AlgTraits::topo_);
+  MasterElement* meSCV = sierra::nalu::get_volume_master_element(AlgTraits::topo_);
 
   // compute shape function
   if ( lumpedMass_ )

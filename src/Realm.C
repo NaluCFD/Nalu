@@ -273,18 +273,6 @@ Realm::~Realm()
   for( iaux=bcDataAlg_.begin(); iaux!=bcDataAlg_.end(); ++iaux )
     delete *iaux;
 
-  // delete master elements that were saved off; surface
-  std::map<stk::topology, MasterElement *>::iterator it;
-  for ( it = surfaceMeMap_.begin(); it!= surfaceMeMap_.end(); ++it ) {
-    MasterElement *theElem = it->second;
-    delete theElem;
-  }
-  // volume
-  for ( it = volumeMeMap_.begin(); it!= volumeMeMap_.end(); ++it ) {
-    MasterElement *theElem = it->second;
-    delete theElem;
-  }
-
   delete solutionOptions_;
   delete outputInfo_;
   delete postProcessingInfo_;
@@ -3803,70 +3791,6 @@ Realm::provide_mean_norm()
 }
 
 //--------------------------------------------------------------------------
-//-------- get_volume_master_element ---------------------------------------
-//--------------------------------------------------------------------------
-MasterElement *
-Realm::get_volume_master_element(
-  const stk::topology & theTopo)
-{
-
-  MasterElement *theElem = NULL;
-
-  std::map<stk::topology, MasterElement *>::iterator it =
-    volumeMeMap_.find(theTopo);
-  if ( it == volumeMeMap_.end() ) {
-    // not found; will need to create it and add it
-    if (!theTopo.is_super_topology()) {
-      theElem = MasterElement::create_volume_master_element(theTopo);
-    }
-    else {
-      theElem = MasterElement::create_volume_master_element(theTopo, *desc_, quadType_);
-    }
-    ThrowRequire(theElem != nullptr);
-
-    volumeMeMap_[theTopo] = theElem;
-  }
-  else {
-    // found it
-    theElem = it->second;
-  }
-
-  return theElem;
-}
-
-//--------------------------------------------------------------------------
-//-------- get_surface_master_element ---------------------------------------
-//--------------------------------------------------------------------------
-MasterElement *
-Realm::get_surface_master_element(
-  const stk::topology & theTopo)
-{
-  MasterElement *theElem = NULL;
-
-  std::map<stk::topology, MasterElement *>::iterator it =
-    surfaceMeMap_.find(theTopo);
-  if ( it == surfaceMeMap_.end() ) {
-    // not found; will need to create it and add it
-
-    if (!theTopo.is_super_topology()) {
-      theElem = MasterElement::create_surface_master_element(theTopo);
-    }
-    else {
-      theElem = MasterElement::create_surface_master_element(theTopo, *desc_, quadType_);
-    }
-    ThrowRequire(theElem != nullptr);
-    surfaceMeMap_[theTopo] = theElem;
-  }
-  else {
-    // found it!
-    theElem = it->second;
-  }
-
-  return theElem;
-
-}
-
-//--------------------------------------------------------------------------
 //-------- get_hybrid_factor -----------------------------------------------
 //--------------------------------------------------------------------------
 double
@@ -4415,6 +4339,10 @@ Realm::setup_element_promotion()
       }
       superPartVector_.push_back(superPart);
       superTargetNames_.push_back(superName);
+
+      // Create elements for future use
+      sierra::nalu::get_surface_master_element(superPart->topology(), desc_.get(), quadType_);
+      sierra::nalu::get_volume_master_element(superPart->topology(), desc_.get(), quadType_);
     }
   }
 
@@ -4435,6 +4363,10 @@ Realm::setup_element_promotion()
           stk::mesh::Part* superFacePart = &metaData_->declare_part_with_topology(partName,sideTopo);
           superPartVector_.push_back(superFacePart);
           metaData_->declare_part_subset(*superSuperset, *superFacePart);
+
+          // Create elements for future use
+          sierra::nalu::get_surface_master_element(sideTopo, desc_.get(), quadType_);
+          sierra::nalu::get_volume_master_element(sideTopo, desc_.get(), quadType_);
         }
       }
     }

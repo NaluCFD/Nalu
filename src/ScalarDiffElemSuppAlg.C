@@ -48,14 +48,14 @@ ScalarDiffElemSuppAlg<AlgTraits>::ScalarDiffElemSuppAlg(
     scalarQ_(scalarQ),
     diffFluxCoeff_(diffFluxCoeff),
     coordinates_(NULL),
-    lrscv_(realm.get_surface_master_element(AlgTraits::topo_)->adjacentNodes())
+    lrscv_(sierra::nalu::get_surface_master_element(AlgTraits::topo_)->adjacentNodes())
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
 
   // compute shape function; do we want to push this to dataPreReqs?
-  MasterElement *meSCS = realm.get_surface_master_element(AlgTraits::topo_);
+  MasterElement *meSCS = sierra::nalu::get_surface_master_element(AlgTraits::topo_);
   meSCS->shape_fcn(&v_shape_function_(0,0));
   
   // add master elements

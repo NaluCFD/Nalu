@@ -187,7 +187,7 @@ AssembleNodalGradElemAlgorithm::execute()
     const stk::mesh::Bucket::size_type length   = b.size();
 
     // extract master element
-    MasterElement *meSCS = realm_.get_surface_master_element(b.topology());
+    MasterElement *meSCS = sierra::nalu::get_surface_master_element(b.topology());
     const int nodesPerElement = meSCS->nodesPerElement_;
     const int numScsIp = meSCS->numIntPoints_;
     ws_shape_function.resize(numScsIp*nodesPerElement);

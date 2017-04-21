@@ -96,7 +96,7 @@ ComputeWallModelSDRWallAlgorithm::execute()
     stk::topology theElemTopo = parentTopo[0];
 
     // extract master element
-    MasterElement *meSCS = realm_.get_surface_master_element(theElemTopo);
+    MasterElement *meSCS = sierra::nalu::get_surface_master_element(theElemTopo);
 
     // face master element
     const int nodesPerFace = b.topology().num_nodes();

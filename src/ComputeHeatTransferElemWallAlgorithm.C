@@ -113,11 +113,11 @@ ComputeHeatTransferElemWallAlgorithm::execute()
     b.parent_topology(stk::topology::ELEMENT_RANK, parentTopo);
     ThrowAssert ( parentTopo.size() == 1 );
     stk::topology theElemTopo = parentTopo[0];
-    MasterElement *meSCS = realm_.get_surface_master_element(theElemTopo);
+    MasterElement *meSCS = sierra::nalu::get_surface_master_element(theElemTopo);
     const int nodesPerElement = meSCS->nodesPerElement_;
 
     // face master element
-    MasterElement *meFC = realm_.get_surface_master_element(b.topology());
+    MasterElement *meFC = sierra::nalu::get_surface_master_element(b.topology());
     const int nodesPerFace = meFC->nodesPerElement_;
     const int numScsBip = meFC->numIntPoints_;
 

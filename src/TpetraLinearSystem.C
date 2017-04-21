@@ -580,7 +580,7 @@ TpetraLinearSystem::buildReducedElemToNodeGraph(const stk::mesh::PartVector & pa
     const stk::mesh::Bucket & b = *buckets[ib];
 
     // extract master element
-    MasterElement *meSCS = realm_.get_surface_master_element(b.topology());
+    MasterElement *meSCS = sierra::nalu::get_surface_master_element(b.topology());
     // extract master element specifics
     const int numScsIp = meSCS->numIntPoints_;
     const int *lrscv = meSCS->adjacentNodes();

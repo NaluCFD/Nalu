@@ -23,6 +23,8 @@
 #include <cmath>
 #include <limits>
 #include <array>
+#include <map>
+#include <memory>
 #include "Teuchos_SerialDenseMatrix.hpp"
 #include "Teuchos_SerialDenseVector.hpp"
 #include "Teuchos_SerialDenseSolver.hpp"
@@ -31,9 +33,10 @@
 namespace sierra{
 namespace nalu{
 
+
 //--------------------------------------------------------------------------
 MasterElement*
-MasterElement::create_surface_master_element(stk::topology topo)
+create_surface_master_element(stk::topology topo)
 {
   if (topo.is_super_topology()) {
     // super topologies uses different master element type
@@ -100,7 +103,7 @@ MasterElement::create_surface_master_element(stk::topology topo)
 }
 //--------------------------------------------------------------------------
 MasterElement*
-MasterElement::create_volume_master_element(stk::topology topo)
+create_volume_master_element(stk::topology topo)
 {
   if (topo.is_super_topology()) {
     // super topologies uses different master element type
@@ -143,7 +146,7 @@ MasterElement::create_volume_master_element(stk::topology topo)
 }
 //--------------------------------------------------------------------------
 MasterElement*
-MasterElement::create_surface_master_element(
+create_surface_master_element(
   stk::topology topo,
   const ElementDescription& desc,
   std::string quadType)
@@ -181,7 +184,7 @@ MasterElement::create_surface_master_element(
 }
 //--------------------------------------------------------------------------
 MasterElement*
-MasterElement::create_volume_master_element(
+create_volume_master_element(
   stk::topology topo,
   const ElementDescription& desc,
   std::string quadType)
@@ -205,6 +208,61 @@ MasterElement::create_volume_master_element(
   }
   return nullptr;
 }
+
+
+MasterElement*
+get_surface_master_element(
+  const stk::topology& theTopo,
+  ElementDescription* desc,
+  std::string quadType)
+{
+  static std::map<stk::topology, std::unique_ptr<MasterElement>> surfaceMeMap;
+  MasterElement* theElem = nullptr;
+
+  auto it = surfaceMeMap.find(theTopo);
+  if (it == surfaceMeMap.end()) {
+    if (!theTopo.is_super_topology()) {
+      theElem = create_surface_master_element(theTopo);
+    } else {
+      ThrowRequire(desc != nullptr);
+      theElem = create_surface_master_element(theTopo, *desc, quadType);
+    }
+
+    ThrowRequire(theElem != nullptr);
+    surfaceMeMap[theTopo] = std::unique_ptr<MasterElement>(theElem);
+  } else {
+    theElem = (it->second).get();
+  }
+  return theElem;
+}
+
+MasterElement*
+get_volume_master_element(
+  const stk::topology& theTopo,
+  ElementDescription* desc,
+  std::string quadType)
+{
+  static std::map<stk::topology, std::unique_ptr<MasterElement>> volumeMeMap;
+  MasterElement* theElem = nullptr;
+
+  auto it = volumeMeMap.find(theTopo);
+  if (it == volumeMeMap.end()) {
+    if (!theTopo.is_super_topology()) {
+      theElem = create_volume_master_element(theTopo);
+    } else {
+      ThrowRequire(desc != nullptr);
+      theElem = create_volume_master_element(theTopo, *desc, quadType);
+    }
+
+    ThrowRequire(theElem != nullptr);
+    volumeMeMap[theTopo] = std::unique_ptr<MasterElement>(theElem);
+  } else {
+    theElem = (it->second).get();
+  }
+  return theElem;
+}
+
+
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------

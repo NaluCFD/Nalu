@@ -134,8 +134,8 @@ AssembleRadTransElemSolverAlgorithm::execute()
     const size_t length   = b.size();
 
     // extract master element
-    MasterElement *meSCS = realm_.get_surface_master_element(b.topology());
-    MasterElement *meSCV = realm_.get_volume_master_element(b.topology());
+    MasterElement *meSCS = sierra::nalu::get_surface_master_element(b.topology());
+    MasterElement *meSCV = sierra::nalu::get_volume_master_element(b.topology());
 
     // extract master element specifics
     const int nodesPerElement = meSCS->nodesPerElement_;

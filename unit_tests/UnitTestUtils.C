@@ -282,50 +282,6 @@ double quadratic(double a, const double* b, const double* H, const double* x)
   return (linear(a,b,x) + 0.5*quad);
 }
 
-sierra::nalu::MasterElement *
-get_surface_master_element(const stk::topology & theTopo)
-{
-  sierra::nalu::MasterElement *theElem = NULL;
-
-  static std::map<stk::topology, sierra::nalu::MasterElement*> s_topo_masterelem_map;
-
-  std::map<stk::topology, sierra::nalu::MasterElement *>::iterator it =
-    s_topo_masterelem_map.find(theTopo);
-  if ( it == s_topo_masterelem_map.end() ) {
-    theElem = sierra::nalu::MasterElement::create_surface_master_element(theTopo);
-    ThrowRequire(theElem != nullptr);
-
-    s_topo_masterelem_map[theTopo] = theElem;
-  }
-  else {
-    theElem = it->second;
-  }
-
-  return theElem;
-}
-
-sierra::nalu::MasterElement *
-get_volume_master_element(const stk::topology & theTopo)
-{
-  sierra::nalu::MasterElement *theElem = NULL;
-
-  static std::map<stk::topology, sierra::nalu::MasterElement*> s_topov_masterelem_map;
-
-  std::map<stk::topology, sierra::nalu::MasterElement *>::iterator it =
-    s_topov_masterelem_map.find(theTopo);
-  if ( it == s_topov_masterelem_map.end() ) {
-    theElem = sierra::nalu::MasterElement::create_volume_master_element(theTopo);
-    ThrowRequire(theElem != nullptr);
-
-    s_topov_masterelem_map[theTopo] = theElem;
-  }
-  else {
-    theElem = it->second;
-  }
-
-  return theElem;
-}
-
 #ifndef KOKKOS_HAVE_CUDA
 
 double initialize_linear_scalar_field(
