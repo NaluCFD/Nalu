@@ -7,6 +7,7 @@
 
 
 #include <Algorithm.h>
+#include <SupplementalAlgorithm.h>
 
 namespace sierra{
 namespace nalu{
@@ -42,7 +43,11 @@ Algorithm::Algorithm(
 //-------- destructor ------------------------------------------------------
 //--------------------------------------------------------------------------
 Algorithm::~Algorithm()
-{}
+{
+  std::vector<SupplementalAlgorithm *>::iterator ii;
+  for( ii=supplementalAlg_.begin(); ii!=supplementalAlg_.end(); ++ii )
+    delete *ii;
+}
 
 } // namespace nalu
 } // namespace Sierra
