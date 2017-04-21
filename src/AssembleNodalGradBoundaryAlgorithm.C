@@ -81,7 +81,7 @@ AssembleNodalGradBoundaryAlgorithm::execute()
     const stk::mesh::Bucket::size_type length   = b.size();
 
     // extract master element
-    MasterElement *meFC = realm_.get_surface_master_element(b.topology());
+    MasterElement *meFC = sierra::nalu::get_surface_master_element(b.topology());
 
     // extract master element specifics
     const int nodesPerFace = meFC->nodesPerElement_;

@@ -57,7 +57,7 @@ ScalarUpwAdvDiffElemSuppAlg<AlgTraits>::ScalarUpwAdvDiffElemSuppAlg(
     coordinates_(NULL),
     density_(NULL),
     massFlowRate_(NULL),
-    lrscv_(realm.get_surface_master_element(AlgTraits::topo_)->adjacentNodes()),
+    lrscv_(sierra::nalu::get_surface_master_element(AlgTraits::topo_)->adjacentNodes()),
     dofName_(scalarQ_->name()),
     alpha_(realm.get_alpha_factor(dofName_)),
     alphaUpw_(realm.get_alpha_upw_factor(dofName_)),
@@ -82,7 +82,7 @@ ScalarUpwAdvDiffElemSuppAlg<AlgTraits>::ScalarUpwAdvDiffElemSuppAlg(
   pecletFunction_ = eqSystem->create_peclet_function(scalarQ_->name());
 
   // compute shape function; do we want to push this to dataPreReqs?
-  MasterElement *meSCS = realm.get_surface_master_element(AlgTraits::topo_);
+  MasterElement *meSCS = sierra::nalu::get_surface_master_element(AlgTraits::topo_);
   meSCS->shape_fcn(&v_shape_function_(0,0));
   
   // add master elements

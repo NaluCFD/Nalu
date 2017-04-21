@@ -995,7 +995,7 @@ OversetManager::complete_search(
       }
       
       // extract master element
-      MasterElement *meSCS = realm_.get_surface_master_element(elementTopo);
+      MasterElement *meSCS = sierra::nalu::get_surface_master_element(elementTopo);
       const double nearestDistance = meSCS->isInElement(&elementCoords[0],
         &(orphanCoords[0]),
         &(isoParCoords[0]));

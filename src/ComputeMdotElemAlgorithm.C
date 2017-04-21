@@ -141,7 +141,7 @@ ComputeMdotElemAlgorithm::execute()
     const stk::mesh::Bucket::size_type length   = b.size();
 
     // extract master element
-    MasterElement *meSCS = realm_.get_surface_master_element(b.topology());
+    MasterElement *meSCS = sierra::nalu::get_surface_master_element(b.topology());
 
     // extract master element specifics
     const int nodesPerElement = meSCS->nodesPerElement_;
@@ -304,7 +304,7 @@ ComputeMdotElemAlgorithm::assemble_edge_mdot()
     stk::mesh::Bucket & b = **ib ;
 
     // extract master element
-    MasterElement *meSCS = realm_.get_surface_master_element(b.topology());
+    MasterElement *meSCS = sierra::nalu::get_surface_master_element(b.topology());
 
     // extract master element specifics
     const int *lrscv = meSCS->adjacentNodes();

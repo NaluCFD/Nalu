@@ -414,7 +414,7 @@ ShearStressTransportEquationSystem::clip_min_distance_to_wall()
      stk::topology theElemTopo = parentTopo[0];
 
      // extract master element
-     MasterElement *meSCS = realm_.get_surface_master_element(theElemTopo);
+     MasterElement *meSCS = sierra::nalu::get_surface_master_element(theElemTopo);
 
      const stk::mesh::Bucket::size_type length   = b.size();
 
