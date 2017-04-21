@@ -59,7 +59,7 @@ ScalarDiffHOElemSuppAlg<AlgTraits>::ScalarDiffHOElemSuppAlg(
   }
 
   // only necessary for correctly sizing scratch views
-  dataPreReqs.add_cvfem_surface_me(realm_.get_surface_master_element(AlgTraits::topo_));
+  dataPreReqs.add_cvfem_surface_me(get_surface_master_element(AlgTraits::topo_));
 
   dataPreReqs.add_gathered_nodal_field(*coordinates_, AlgTraits::nDim_);
   dataPreReqs.add_gathered_nodal_field(*scalarQ, 1);

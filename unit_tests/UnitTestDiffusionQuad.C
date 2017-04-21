@@ -15,6 +15,7 @@
 #include <random>
 
 #include <element_promotion/ElementDescription.h>
+#include "UnitTestViewUtils.h"
 #include "UnitTestUtils.h"
 
 namespace {

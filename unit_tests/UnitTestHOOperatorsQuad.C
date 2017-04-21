@@ -15,6 +15,7 @@
 #include <element_promotion/CVFEMTypeDefs.h>
 #include <element_promotion/operators/HighOrderOperatorsQuad.h>
 
+#include "UnitTestViewUtils.h"
 #include "UnitTestUtils.h"
 
 namespace {

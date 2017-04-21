@@ -49,7 +49,7 @@ SteadyThermalContactSrcHOElemSuppAlg<AlgTraits>::SteadyThermalContactSrcHOElemSu
     }
   }
 
-  dataPreReqs.add_cvfem_volume_me(realm_.get_volume_master_element(AlgTraits::topo_));
+  dataPreReqs.add_cvfem_volume_me(get_volume_master_element(AlgTraits::topo_));
   dataPreReqs.add_gathered_nodal_field(*coordinates_, AlgTraits::nDim_);
 }
 //--------------------------------------------------------------------------
