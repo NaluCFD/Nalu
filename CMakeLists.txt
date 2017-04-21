@@ -92,8 +92,8 @@ SET(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} ${Trilinos_Fortran_COMPILER_FLAG
 MESSAGE("-- CMAKE_CXX_FLAGS     = ${CMAKE_CXX_FLAGS}")
 MESSAGE("-- CMAKE_Fortran_FLAGS = ${CMAKE_Fortran_FLAGS}")
 
-file (GLOB SOURCE src/*.C src/*/*.C src/*/*.F)
-file (GLOB HEADER include/*.h include/*/*.h)
+file (GLOB SOURCE src/*.C src/*/*.C src/*/*/*.C  src/*/*.F)
+file (GLOB HEADER include/*.h include/*/*.h include/*/*/*.h)
 
 include_directories (${CMAKE_SOURCE_DIR}/include)
 add_library (nalu ${SOURCE} ${HEADER})

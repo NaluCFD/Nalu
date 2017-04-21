@@ -45,7 +45,7 @@ public:
     stk::mesh::Entity element,
     MasterElement *meSCS,
     MasterElement *meSCV);
-  
+
   const stk::mesh::BulkData *bulkData_;
 
   VectorFieldType *coordinates_;

@@ -23,6 +23,16 @@ template class ClassName<AlgTraitsWed6>;                          \
 template class ClassName<AlgTraitsQuad4_2D>;                      \
 template class ClassName<AlgTraitsTri3_2D>;                       \
 
+
+#ifndef SPECIAL_POLY_ORDER
+#define SPECIAL_POLY_ORDER 4
+#endif
+
+#define INSTANTIATE_HOQUAD_ALGORITHM(ClassName)                   \
+template class ClassName<AlgTraitsQuad<3>>;                       \
+template class ClassName<AlgTraitsQuad<7>>;                       \
+template class ClassName<AlgTraitsQuad<SPECIAL_POLY_ORDER>>;      \
+
 } // namespace nalu
 } // namespace Sierra
 
