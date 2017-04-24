@@ -8,6 +8,7 @@
 
 #include <Algorithm.h>
 #include <SupplementalAlgorithm.h>
+#include <Kernel.h>
 
 namespace sierra{
 namespace nalu{
@@ -47,6 +48,10 @@ Algorithm::~Algorithm()
   std::vector<SupplementalAlgorithm *>::iterator ii;
   for( ii=supplementalAlg_.begin(); ii!=supplementalAlg_.end(); ++ii )
     delete *ii;
+
+  std::vector<Kernel*>::iterator ij;
+  for (ij = activeKernels_.begin(); ij != activeKernels_.end(); ++ij)
+    delete *ij;
 }
 
 } // namespace nalu

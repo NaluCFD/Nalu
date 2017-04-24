@@ -22,7 +22,6 @@
 #include <AssembleNodalGradBoundaryAlgorithm.h>
 #include <AssembleNodalGradNonConformalAlgorithm.h>
 #include <AssembleNodeSolverAlgorithm.h>
-#include <ScalarDiffFemSuppAlg.h>
 #include <AuxFunctionAlgorithm.h>
 #include <ConstantAuxFunction.h>
 #include <CopyFieldAlgorithm.h>
@@ -52,20 +51,21 @@
 
 // template for supp algs
 #include <AlgTraits.h>
-#include <SupplementalAlgorithmBuilder.h>
-#include <SupplementalAlgorithmBuilderLog.h>
+#include <KernelBuilder.h>
+#include <KernelBuilderLog.h>
 
 // supp algs
-#include <ScalarDiffElemSuppAlg.h>
+#include <ScalarDiffElemKernel.h>
+#include <ScalarDiffFemKernel.h>
 
 // user functions
 #include <user_functions/SteadyThermalContactAuxFunction.h>
 #include <user_functions/SteadyThermalContactSrcNodeSuppAlg.h>
 #include <user_functions/SteadyThermalContactSrcElemSuppAlg.h>
 #include <user_functions/SteadyThermal3dContactAuxFunction.h>
-#include <user_functions/SteadyThermal3dContactSrcElemSuppAlg.h>
 #include <user_functions/SteadyThermalContact3DSrcNodeSuppAlg.h>
 #include <user_functions/SteadyThermal3dContactSrcElemSuppAlgDep.h>
+#include <user_functions/SteadyThermal3dContactSrcElemKernel.h>
 
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
@@ -369,22 +369,23 @@ HeatCondEquationSystem::register_interior_algorithm(
     std::tie(solverAlg, solverAlgWasBuilt) = build_or_add_part_to_solver_alg(*this, *part, solverAlgMap);
 
     ElemDataRequests& dataPreReqs = solverAlg->dataNeededBySuppAlgs_;
-    std::vector<SupplementalAlgorithm*>& suppAlgVec = solverAlg->supplementalAlg_;
+    auto& activeKernels = solverAlg->activeKernels_;
 
     if (solverAlgWasBuilt) {
-      build_topo_supp_alg_if_requested<SteadyThermal3dContactSrcElemSuppAlg>(
-        partTopo, *this, suppAlgVec, "steady_3d_thermal",
-        realm_, dataPreReqs
+      build_topo_kernel_if_requested<SteadyThermal3dContactSrcElemKernel>(
+        partTopo, *this, activeKernels, "steady_3d_thermal",
+        realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs
       );
 
-      build_topo_supp_alg_if_requested<ScalarDiffElemSuppAlg>(
-        partTopo, *this, suppAlgVec, "CVFEM_DIFF",
-        realm_, temperature_, thermalCond_, dataPreReqs
+      build_topo_kernel_if_requested<ScalarDiffElemKernel>(
+        partTopo, *this, activeKernels, "CVFEM_DIFF",
+        realm_.bulk_data(), *realm_.solutionOptions_,
+        temperature_, thermalCond_, dataPreReqs
       );
 
-      build_topo_supp_alg_if_requested<ScalarDiffFemSuppAlg>(
-        partTopo, *this, suppAlgVec, "FEM_DIFF",
-        realm_, temperature_, thermalCond_
+      build_topo_kernel_if_requested<ScalarDiffFemKernel>(
+        partTopo, *this, activeKernels, "FEM_DIFF",
+        realm_.bulk_data(), temperature_, thermalCond_
       );
 
       report_invalid_supp_alg_names();

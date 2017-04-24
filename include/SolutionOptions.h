@@ -42,6 +42,35 @@ public:
 
   void load(const YAML::Node & node);
   void initialize_turbulence_constants();
+
+  inline bool has_mesh_motion() const { return meshMotion_; }
+
+  inline bool has_mesh_deformation() const
+  {
+    return externalMeshDeformation_ | meshDeformation_;
+  }
+
+  inline bool does_mesh_move() const
+  {
+    return has_mesh_motion() | has_mesh_deformation();
+  }
+
+  inline std::string get_coordinates_name() const
+  {
+    return does_mesh_move() ? "current_coordinates" : "coordinates";
+  }
+
+  inline double get_mdot_interp() const
+  { return mdotInterpRhoUTogether_ ? 1.0 : 0.0; }
+
+  double get_alpha_factor(const std::string&) const;
+
+  double get_alpha_upw_factor(const std::string&) const;
+
+  double get_upw_factor(const std::string&) const;
+
+  bool primitive_uses_limiter(const std::string&) const;
+
   double hybridDefault_;
   double alphaDefault_;
   double alphaUpwDefault_;

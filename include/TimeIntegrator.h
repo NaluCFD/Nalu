@@ -65,12 +65,12 @@ public:
   std::vector<Realm*> realmVec_;
 
   double get_time_step(
-    const NaluState &theState = NALU_STATE_N);
-  double get_current_time();
-  double get_gamma1();
-  double get_gamma2();
-  double get_gamma3();
-  int get_time_step_count();
+    const NaluState &theState = NALU_STATE_N) const;
+  double get_current_time() const;
+  double get_gamma1() const;
+  double get_gamma2() const;
+  double get_gamma3() const;
+  int get_time_step_count() const;
   void compute_gamma();
  
 };

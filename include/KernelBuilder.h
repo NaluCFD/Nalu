@@ -4,14 +4,14 @@
 /*  in the file, LICENSE, which is located in the top-level Nalu          */
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
-#ifndef SupplementalAlgorithmBuilder_h
-#define SupplementalAlgorithmBuilder_h
+#ifndef KernelBuilder_h
+#define KernelBuilder_h
 
-#include <SupplementalAlgorithm.h>
+#include <Kernel.h>
 #include <AssembleElemSolverAlgorithm.h>
 #include <EquationSystem.h>
 #include <AlgTraits.h>
-#include <SupplementalAlgorithmBuilderLog.h>
+#include <KernelBuilderLog.h>
 
 #include <stk_mesh/base/BulkData.hpp>
 #include <stk_mesh/base/Entity.hpp>
@@ -25,7 +25,7 @@ namespace nalu{
   class Realm;
 
   template <template <typename> class T, typename... Args>
-  SupplementalAlgorithm* build_topo_supp_alg(stk::topology topo, Args&&... args)
+  Kernel* build_topo_kernel(stk::topology topo, Args&&... args)
   {
     switch(topo.value()) {
       case stk::topology::HEX_8:
@@ -48,20 +48,20 @@ namespace nalu{
   }
 
   template <template <typename> class T, typename... Args>
-  bool build_topo_supp_alg_if_requested(
+  bool build_topo_kernel_if_requested(
     stk::topology topo,
     EquationSystem& eqSys,
-    std::vector<SupplementalAlgorithm*>& algVec,
+    std::vector<Kernel*>& kernelVec,
     std::string name,
     Args&&... args)
   {
     bool isCreated = false;
-    SuppAlgBuilderLog::self().add_valid_name(eqSys.eqnTypeName_,  name);
+    KernelBuilderLog::self().add_valid_name(eqSys.eqnTypeName_,  name);
     if (eqSys.supp_alg_is_requested(name)) {
-      SupplementalAlgorithm* suppAlg = build_topo_supp_alg<T>(topo, std::forward<Args>(args)...);
-      ThrowRequire(suppAlg != nullptr);
-      SuppAlgBuilderLog::self().add_built_name(eqSys.eqnTypeName_,  name);
-      algVec.push_back(suppAlg);
+      Kernel* compKernel = build_topo_kernel<T>(topo, std::forward<Args>(args)...);
+      ThrowRequire(compKernel != nullptr);
+      KernelBuilderLog::self().add_built_name(eqSys.eqnTypeName_,  name);
+      kernelVec.push_back(compKernel);
       isCreated = true;
     }
     return isCreated;

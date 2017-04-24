@@ -564,6 +564,54 @@ SolutionOptions::initialize_turbulence_constants()
   turbModelConstantMap_[TM_CbTwo] = 0.35;
   turbModelConstantMap_[TM_SDRWallFactor] = 1.0;
 }
- 
+
+
+double
+SolutionOptions::get_alpha_factor(const std::string& dofName) const
+{
+  double factor = alphaDefault_;
+  auto iter = alphaMap_.find(dofName);
+
+  if (iter != alphaMap_.end())
+    factor = iter->second;
+
+  return factor;
+}
+
+double
+SolutionOptions::get_alpha_upw_factor(const std::string& dofName) const
+{
+  double factor = alphaUpwDefault_;
+  auto iter = alphaUpwMap_.find(dofName);
+
+  if (iter != alphaUpwMap_.end())
+    factor = iter->second;
+
+  return factor;
+}
+
+double
+SolutionOptions::get_upw_factor(const std::string& dofName) const
+{
+  double factor = upwDefault_;
+  auto iter = upwMap_.find(dofName);
+
+  if (iter != upwMap_.end())
+    factor = iter->second;
+
+  return factor;
+}
+
+bool
+SolutionOptions::primitive_uses_limiter(const std::string& dofName) const
+{
+  bool usesIt = false;
+  auto iter = limiterMap_.find(dofName);
+  if (iter != limiterMap_.end())
+    usesIt = iter->second;
+
+  return usesIt;
+}
+
 } // namespace nalu
 } // namespace Sierra

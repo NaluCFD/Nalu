@@ -20,7 +20,7 @@
 #include <LinearSystem.h>
 #include <ConstantAuxFunction.h>
 #include <Enums.h>
-#include <SupplementalAlgorithmBuilderLog.h>
+#include <KernelBuilderLog.h>
 
 // overset
 #include <overset/AssembleOversetSolverConstraintAlgorithm.h>
@@ -437,12 +437,12 @@ EquationSystem::create_peclet_function(
 void
 EquationSystem::report_invalid_supp_alg_names()
 {
-  bool noInvalidNamesFound = SuppAlgBuilderLog::self().print_invalid_supp_alg_names(
+  bool noInvalidNamesFound = KernelBuilderLog::self().print_invalid_kernel_names(
     eqnTypeName_, realm_.solutionOptions_->elemSrcTermsMap_
   );
 
   if (!noInvalidNamesFound) {
-    SuppAlgBuilderLog::self().print_valid_supp_alg_names(eqnTypeName_);
+    KernelBuilderLog::self().print_valid_kernel_names(eqnTypeName_);
 
     std::string msg =
       "Invalid supplemental algorithms name(s) for " + eqnTypeName_ + ". See log for details.";
@@ -454,7 +454,7 @@ EquationSystem::report_invalid_supp_alg_names()
 void
 EquationSystem::report_built_supp_alg_names()
 {
-  SuppAlgBuilderLog::self().print_built_supp_alg_names(eqnTypeName_);
+  KernelBuilderLog::self().print_built_kernel_names(eqnTypeName_);
 }
 //--------------------------------------------------------------------------
 bool

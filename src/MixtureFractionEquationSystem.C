@@ -46,21 +46,21 @@
 
 // template for supp algs
 #include <AlgTraits.h>
-#include <SupplementalAlgorithmBuilder.h>
-#include <SupplementalAlgorithmBuilderLog.h>
+#include <KernelBuilder.h>
+#include <KernelBuilderLog.h>
 
 // consolidated
 #include <AssembleElemSolverAlgorithm.h>
-#include <ScalarMassElemSuppAlg.h>
-#include <ScalarAdvDiffElemSuppAlg.h>
-#include <ScalarUpwAdvDiffElemSuppAlg.h>
+#include <ScalarMassElemKernel.h>
+#include <ScalarAdvDiffElemKernel.h>
+#include <ScalarUpwAdvDiffElemKernel.h>
 
 // deprecated
 #include <ScalarMassElemSuppAlgDep.h>
 #include <nso/ScalarNSOElemSuppAlgDep.h>
 
 // nso
-#include <nso/ScalarNSOElemSuppAlg.h>
+#include <nso/ScalarNSOElemKernel.h>
 #include <nso/ScalarNSOKeElemSuppAlg.h>
 
 // user function
@@ -392,40 +392,40 @@ MixtureFractionEquationSystem::register_interior_algorithm(
       (*this, *part, solverAlgMap);
     
     ElemDataRequests& dataPreReqs = solverAlg->dataNeededBySuppAlgs_;
-    auto& suppAlgVec = solverAlg->supplementalAlg_;
+    auto& activeKernels = solverAlg->activeKernels_;
 
     if (solverAlgWasBuilt) {
-      build_topo_supp_alg_if_requested<ScalarMassElemSuppAlg>
-        (partTopo, *this, suppAlgVec, "mixture_fraction_time_derivative",
-         realm_, mixFrac_, dataPreReqs, false);
+      build_topo_kernel_if_requested<ScalarMassElemKernel>
+        (partTopo, *this, activeKernels, "mixture_fraction_time_derivative",
+         realm_.bulk_data(), *realm_.solutionOptions_, mixFrac_, dataPreReqs, false);
       
-      build_topo_supp_alg_if_requested<ScalarMassElemSuppAlg>
-        (partTopo, *this, suppAlgVec, "lumped_mixture_fraction_time_derivative",
-         realm_, mixFrac_, dataPreReqs, true);
+      build_topo_kernel_if_requested<ScalarMassElemKernel>
+        (partTopo, *this, activeKernels, "lumped_mixture_fraction_time_derivative",
+         realm_.bulk_data(), *realm_.solutionOptions_, mixFrac_, dataPreReqs, true);
       
-      build_topo_supp_alg_if_requested<ScalarAdvDiffElemSuppAlg>
-        (partTopo, *this, suppAlgVec, "advection_diffusion",
-         realm_, mixFrac_, evisc_, dataPreReqs);
+      build_topo_kernel_if_requested<ScalarAdvDiffElemKernel>
+        (partTopo, *this, activeKernels, "advection_diffusion",
+         realm_.bulk_data(), *realm_.solutionOptions_, mixFrac_, evisc_, dataPreReqs);
       
-      build_topo_supp_alg_if_requested<ScalarUpwAdvDiffElemSuppAlg>
-        (partTopo, *this, suppAlgVec, "upw_advection_diffusion",
-         realm_, this, mixFrac_, dzdx_, evisc_, dataPreReqs);
+      build_topo_kernel_if_requested<ScalarUpwAdvDiffElemKernel>
+        (partTopo, *this, activeKernels, "upw_advection_diffusion",
+         realm_.bulk_data(), *realm_.solutionOptions_, this, mixFrac_, dzdx_, evisc_, dataPreReqs);
 
-      build_topo_supp_alg_if_requested<ScalarNSOElemSuppAlg>
-        (partTopo, *this, suppAlgVec, "NSO_2ND",
-         realm_, mixFrac_, dzdx_, evisc_, 0.0, 0.0, dataPreReqs); 
+      build_topo_kernel_if_requested<ScalarNSOElemKernel>
+        (partTopo, *this, activeKernels, "NSO_2ND",
+         realm_.bulk_data(), *realm_.solutionOptions_, mixFrac_, dzdx_, evisc_, 0.0, 0.0, dataPreReqs);
       
-      build_topo_supp_alg_if_requested<ScalarNSOElemSuppAlg>
-        (partTopo, *this, suppAlgVec, "NSO_2ND_ALT",
-         realm_, mixFrac_, dzdx_, evisc_, 0.0, 1.0, dataPreReqs); 
+      build_topo_kernel_if_requested<ScalarNSOElemKernel>
+        (partTopo, *this, activeKernels, "NSO_2ND_ALT",
+         realm_.bulk_data(), *realm_.solutionOptions_, mixFrac_, dzdx_, evisc_, 0.0, 1.0, dataPreReqs);
       
-      build_topo_supp_alg_if_requested<ScalarNSOElemSuppAlg>
-        (partTopo, *this, suppAlgVec, "NSO_4TH",
-         realm_, mixFrac_, dzdx_, evisc_, 1.0, 0.0, dataPreReqs); 
+      build_topo_kernel_if_requested<ScalarNSOElemKernel>
+        (partTopo, *this, activeKernels, "NSO_4TH",
+         realm_.bulk_data(), *realm_.solutionOptions_, mixFrac_, dzdx_, evisc_, 1.0, 0.0, dataPreReqs);
       
-      build_topo_supp_alg_if_requested<ScalarNSOElemSuppAlg>
-        (partTopo, *this, suppAlgVec, "NSO_4TH_ALT",
-         realm_, mixFrac_, dzdx_, evisc_, 1.0, 1.0, dataPreReqs); 
+      build_topo_kernel_if_requested<ScalarNSOElemKernel>
+        (partTopo, *this, activeKernels, "NSO_4TH_ALT",
+         realm_.bulk_data(), *realm_.solutionOptions_, mixFrac_, dzdx_, evisc_, 1.0, 1.0, dataPreReqs);
 
       report_invalid_supp_alg_names();
       report_built_supp_alg_names();

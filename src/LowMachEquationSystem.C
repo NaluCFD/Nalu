@@ -93,22 +93,22 @@
 #include <ABLForcingAlgorithm.h>
 
 // consolidated approach
-#include <ContinuityAdvElemSuppAlg.h>
-#include <ContinuityMassElemSuppAlg.h>
-#include <MomentumAdvDiffElemSuppAlg.h>
-#include <MomentumBuoyancySrcElemSuppAlg.h>
-#include <MomentumMassElemSuppAlg.h>
+#include <ContinuityAdvElemKernel.h>
+#include <ContinuityMassElemKernel.h>
+#include <MomentumAdvDiffElemKernel.h>
+#include <MomentumBuoyancySrcElemKernel.h>
+#include <MomentumMassElemKernel.h>
 
 // nso
-#include <nso/MomentumNSOElemSuppAlg.h>
-#include <nso/MomentumNSOKeElemSuppAlg.h>
+#include <nso/MomentumNSOElemKernel.h>
+#include <nso/MomentumNSOKeElemKernel.h>
+#include <nso/MomentumNSOSijElemKernel.h>
 #include <nso/MomentumNSOGradElemSuppAlg.h>
-#include <nso/MomentumNSOSijElemSuppAlg.h>
 
 // template for supp algs
 #include <AlgTraits.h>
-#include <SupplementalAlgorithmBuilder.h>
-#include <SupplementalAlgorithmBuilderLog.h>
+#include <KernelBuilder.h>
+#include <KernelBuilderLog.h>
 
 
 // user function
@@ -1125,63 +1125,63 @@ MomentumEquationSystem::register_interior_algorithm(
       (*this, *part, solverAlgMap);
 
     ElemDataRequests& dataPreReqs = solverAlg->dataNeededBySuppAlgs_;
-    auto& suppAlgVec = solverAlg->supplementalAlg_;
+    auto& activeKernels = solverAlg->activeKernels_;
 
     if (solverAlgWasBuilt) {
 
-      build_topo_supp_alg_if_requested<MomentumMassElemSuppAlg>
-        (partTopo, *this, suppAlgVec, "momentum_time_derivative",
-         realm_, dataPreReqs, false);
+      build_topo_kernel_if_requested<MomentumMassElemKernel>
+        (partTopo, *this, activeKernels, "momentum_time_derivative",
+         realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs, false);
 
-      build_topo_supp_alg_if_requested<MomentumMassElemSuppAlg>
-        (partTopo, *this, suppAlgVec, "lumped_momentum_time_derivative",
-         realm_, dataPreReqs, true);
+      build_topo_kernel_if_requested<MomentumMassElemKernel>
+        (partTopo, *this, activeKernels, "lumped_momentum_time_derivative",
+         realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs, true);
 
-      build_topo_supp_alg_if_requested<MomentumAdvDiffElemSuppAlg>
-        (partTopo, *this, suppAlgVec, "advection_diffusion",
-         realm_, velocity_,
+      build_topo_kernel_if_requested<MomentumAdvDiffElemKernel>
+        (partTopo, *this, activeKernels, "advection_diffusion",
+         realm_.bulk_data(), *realm_.solutionOptions_, velocity_,
          realm_.is_turbulent()? evisc_ : visc_,
          dataPreReqs);
 
-      build_topo_supp_alg_if_requested<MomentumBuoyancySrcElemSuppAlg>
-        (partTopo, *this, suppAlgVec, "buoyancy",
-         realm_, dataPreReqs);
+      build_topo_kernel_if_requested<MomentumBuoyancySrcElemKernel>
+        (partTopo, *this, activeKernels, "buoyancy",
+         realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs);
 
-      build_topo_supp_alg_if_requested<MomentumNSOElemSuppAlg>
-        (partTopo, *this, suppAlgVec, "NSO_2ND",
-         realm_, velocity_, dudx_,
+      build_topo_kernel_if_requested<MomentumNSOElemKernel>
+        (partTopo, *this, activeKernels, "NSO_2ND",
+         realm_.bulk_data(), *realm_.solutionOptions_, velocity_, dudx_,
          realm_.is_turbulent()? evisc_ : visc_,
          0.0, 0.0, dataPreReqs);
 
-      build_topo_supp_alg_if_requested<MomentumNSOElemSuppAlg>
-        (partTopo, *this, suppAlgVec, "NSO_2ND_ALT",
-         realm_, velocity_, dudx_,
+      build_topo_kernel_if_requested<MomentumNSOElemKernel>
+        (partTopo, *this, activeKernels, "NSO_2ND_ALT",
+         realm_.bulk_data(), *realm_.solutionOptions_, velocity_, dudx_,
          realm_.is_turbulent()? evisc_ : visc_,
          0.0, 1.0, dataPreReqs);
       
-      build_topo_supp_alg_if_requested<MomentumNSOKeElemSuppAlg>
-        (partTopo, *this, suppAlgVec, "NSO_2ND_KE",
-         realm_, velocity_, dudx_, 0.0, dataPreReqs);
+      build_topo_kernel_if_requested<MomentumNSOKeElemKernel>
+        (partTopo, *this, activeKernels, "NSO_2ND_KE",
+         realm_.bulk_data(), *realm_.solutionOptions_, velocity_, dudx_, 0.0, dataPreReqs);
 
-      build_topo_supp_alg_if_requested<MomentumNSOSijElemSuppAlg>
-        (partTopo, *this, suppAlgVec, "NSO_2ND_SIJ",
-         realm_, velocity_, dataPreReqs);
+      build_topo_kernel_if_requested<MomentumNSOSijElemKernel>
+        (partTopo, *this, activeKernels, "NSO_2ND_SIJ",
+         realm_.bulk_data(), *realm_.solutionOptions_, velocity_, dataPreReqs);
 
-      build_topo_supp_alg_if_requested<MomentumNSOElemSuppAlg>
-        (partTopo, *this, suppAlgVec, "NSO_4TH",
-         realm_, velocity_, dudx_,
+      build_topo_kernel_if_requested<MomentumNSOElemKernel>
+        (partTopo, *this, activeKernels, "NSO_4TH",
+         realm_.bulk_data(), *realm_.solutionOptions_, velocity_, dudx_,
          realm_.is_turbulent()? evisc_ : visc_,
          1.0, 0.0, dataPreReqs);
 
-      build_topo_supp_alg_if_requested<MomentumNSOElemSuppAlg>
-        (partTopo, *this, suppAlgVec, "NSO_4TH_ALT",
-         realm_, velocity_, dudx_,
+      build_topo_kernel_if_requested<MomentumNSOElemKernel>
+        (partTopo, *this, activeKernels, "NSO_4TH_ALT",
+         realm_.bulk_data(), *realm_.solutionOptions_, velocity_, dudx_,
          realm_.is_turbulent()? evisc_ : visc_,
          1.0, 1.0, dataPreReqs);
 
-      build_topo_supp_alg_if_requested<MomentumNSOKeElemSuppAlg>
-        (partTopo, *this, suppAlgVec, "NSO_4TH_KE",
-         realm_, velocity_, dudx_, 1.0, dataPreReqs);
+      build_topo_kernel_if_requested<MomentumNSOKeElemKernel>
+        (partTopo, *this, activeKernels, "NSO_4TH_KE",
+         realm_.bulk_data(), *realm_.solutionOptions_, velocity_, dudx_, 1.0, dataPreReqs);
  
       report_invalid_supp_alg_names();
       report_built_supp_alg_names();
@@ -2301,20 +2301,20 @@ ContinuityEquationSystem::register_interior_algorithm(
         (*this, *part, solverAlgMap);
 
       ElemDataRequests& dataPreReqs = solverAlg->dataNeededBySuppAlgs_;
-      auto& suppAlgVec = solverAlg->supplementalAlg_;
+      auto& activeKernels = solverAlg->activeKernels_;
 
       if (solverAlgWasBuilt) {
-        build_topo_supp_alg_if_requested<ContinuityMassElemSuppAlg>
-          (partTopo, *this, suppAlgVec, "density_time_derivative",
-           realm_, dataPreReqs, false);
+        build_topo_kernel_if_requested<ContinuityMassElemKernel>
+          (partTopo, *this, activeKernels, "density_time_derivative",
+           realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs, false);
 
-        build_topo_supp_alg_if_requested<ContinuityMassElemSuppAlg>
-          (partTopo, *this, suppAlgVec, "lumped_density_time_derivative",
-           realm_, dataPreReqs, true);
+        build_topo_kernel_if_requested<ContinuityMassElemKernel>
+          (partTopo, *this, activeKernels, "lumped_density_time_derivative",
+           realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs, true);
 
-        build_topo_supp_alg_if_requested<ContinuityAdvElemSuppAlg>
-          (partTopo, *this, suppAlgVec, "advection",
-           realm_, dataPreReqs);
+        build_topo_kernel_if_requested<ContinuityAdvElemKernel>
+          (partTopo, *this, activeKernels, "advection",
+           realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs);
 
         report_invalid_supp_alg_names();
         report_built_supp_alg_names();
