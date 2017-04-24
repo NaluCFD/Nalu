@@ -1,0 +1,129 @@
+/*------------------------------------------------------------------------*/
+/*  Copyright 2014 National Renewable Energy Laboratory.                  */
+/*  This software is released under the license detailed                  */
+/*  in the file, LICENSE, which is located in the top-level Nalu          */
+/*  directory structure                                                   */
+/*------------------------------------------------------------------------*/
+
+#include "ContinuityMassElemKernel.h"
+#include "AlgTraits.h"
+#include "master_element/MasterElement.h"
+#include "TimeIntegrator.h"
+#include "SolutionOptions.h"
+
+// template and scratch space
+#include "BuildTemplates.h"
+#include "ScratchViews.h"
+
+// stk_mesh/base/fem
+#include <stk_mesh/base/Entity.hpp>
+#include <stk_mesh/base/MetaData.hpp>
+#include <stk_mesh/base/BulkData.hpp>
+#include <stk_mesh/base/Field.hpp>
+
+namespace sierra {
+namespace nalu {
+
+template<typename AlgTraits>
+ContinuityMassElemKernel<AlgTraits>::ContinuityMassElemKernel(
+  const stk::mesh::BulkData& bulkData,
+  SolutionOptions& solnOpts,
+  ElemDataRequests& dataPreReqs,
+  const bool lumpedMass)
+  : Kernel(),
+    lumpedMass_(lumpedMass),
+    ipNodeMap_(sierra::nalu::get_volume_master_element(AlgTraits::topo_)->ipNodeMap())
+{
+  // save off fields
+  const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
+
+  ScalarFieldType* density = metaData.get_field<ScalarFieldType>(
+    stk::topology::NODE_RANK, "density");
+  densityN_ = &(density->field_of_state(stk::mesh::StateN));
+  densityNp1_ = &(density->field_of_state(stk::mesh::StateNP1));
+
+  if (density->number_of_states() == 2)
+    densityNm1_ = densityN_;
+  else
+    densityNm1_ = &(density->field_of_state(stk::mesh::StateNM1));
+  coordinates_ = metaData.get_field<VectorFieldType>(
+    stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
+
+  MasterElement *meSCV = sierra::nalu::get_volume_master_element(AlgTraits::topo_);
+
+  // compute shape function
+  if ( lumpedMass_ )
+    meSCV->shifted_shape_fcn(&v_shape_function_(0,0));
+  else
+    meSCV->shape_fcn(&v_shape_function_(0,0));
+
+  // add master elements
+  dataPreReqs.add_cvfem_volume_me(meSCV);
+
+  // fields and data
+  dataPreReqs.add_gathered_nodal_field(*coordinates_, AlgTraits::nDim_);
+  dataPreReqs.add_gathered_nodal_field(*densityNm1_, 1);
+  dataPreReqs.add_gathered_nodal_field(*densityN_, 1);
+  dataPreReqs.add_gathered_nodal_field(*densityNp1_, 1);
+  dataPreReqs.add_master_element_call(SCV_VOLUME);
+}
+
+template<typename AlgTraits>
+ContinuityMassElemKernel<AlgTraits>::~ContinuityMassElemKernel()
+{}
+
+template<typename AlgTraits>
+void
+ContinuityMassElemKernel<AlgTraits>::setup(const TimeIntegrator& timeIntegrator)
+{
+  dt_ = timeIntegrator.get_time_step();
+  gamma1_ = timeIntegrator.get_gamma1();
+  gamma2_ = timeIntegrator.get_gamma2();
+  gamma3_ = timeIntegrator.get_gamma3(); // gamma3 may be zero
+}
+
+template<typename AlgTraits>
+void
+ContinuityMassElemKernel<AlgTraits>::execute(
+  SharedMemView<double **>&/*lhs*/,
+  SharedMemView<double *>&rhs,
+  stk::mesh::Entity /* element */,
+  ScratchViews& scratchViews)
+{
+  const double projTimeScale = dt_/gamma1_;
+
+  SharedMemView<double*>& v_densityNm1 = scratchViews.get_scratch_view_1D(
+    *densityNm1_);
+  SharedMemView<double*>& v_densityN = scratchViews.get_scratch_view_1D(
+    *densityN_);
+  SharedMemView<double*>& v_densityNp1 = scratchViews.get_scratch_view_1D(
+    *densityNp1_);
+
+  SharedMemView<double*>& v_scv_volume = scratchViews.scv_volume;
+
+  for (int ip=0; ip < AlgTraits::numScvIp_; ++ip) {
+    const int nearestNode = ipNodeMap_[ip];
+
+    double rhoNm1 = 0.0;
+    double rhoN   = 0.0;
+    double rhoNp1 = 0.0;
+    for (int ic=0; ic < AlgTraits::nodesPerElement_; ++ic) {
+      const double r = v_shape_function_(ip, ic);
+
+      rhoNm1 += r * v_densityNm1(ic);
+      rhoN   += r * v_densityN(ic);
+      rhoNp1 += r * v_densityNp1(ic);
+    }
+
+    const double scV = v_scv_volume(ip);
+    rhs(nearestNode) += - ( gamma1_ * rhoNp1 + gamma2_ * rhoN +
+                            gamma3_ * rhoNm1 ) * scV / dt_ / projTimeScale;
+
+    // manage LHS : N/A
+  }
+}
+
+INSTANTIATE_SUPPLEMENTAL_ALGORITHM(ContinuityMassElemKernel);
+
+}  // nalu
+}  // sierra

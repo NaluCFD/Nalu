@@ -4,7 +4,7 @@
 /*  in the file, LICENSE, which is located in the top-level Nalu          */
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
-#include <SupplementalAlgorithmBuilderLog.h>
+#include <KernelBuilderLog.h>
 #include <NaluEnv.h>
 
 #include <map>
@@ -16,40 +16,40 @@
 namespace sierra{
 namespace nalu{
 //--------------------------------------------------------------------------
-SuppAlgBuilderLog&
-SuppAlgBuilderLog::self()
+KernelBuilderLog&
+KernelBuilderLog::self()
 {
-  static SuppAlgBuilderLog instance;
+  static KernelBuilderLog instance;
   return instance;
 }
 //--------------------------------------------------------------------------
 void
-SuppAlgBuilderLog::add_valid_name(std::string suppAlgTypeName, std::string name)
+KernelBuilderLog::add_valid_name(std::string kernelTypeName, std::string name)
 {
-  validSuppAlgNames_[suppAlgTypeName].insert(name);
+  validKernelNames_[kernelTypeName].insert(name);
 }
 //--------------------------------------------------------------------------
 void
-SuppAlgBuilderLog::add_built_name(std::string suppAlgTypeName, std::string name)
+KernelBuilderLog::add_built_name(std::string kernelTypeName, std::string name)
 {
-  builtSuppAlgNames_[suppAlgTypeName].insert(name);
+  builtKernelNames_[kernelTypeName].insert(name);
 }
 //--------------------------------------------------------------------------
 bool
-SuppAlgBuilderLog::print_invalid_supp_alg_names(
-  std::string suppAlgTypeName,
+KernelBuilderLog::print_invalid_kernel_names(
+  std::string kernelTypeName,
   const std::map<std::string, std::vector<std::string>>& srcTermsMap )
 {
-  auto it = srcTermsMap.find(suppAlgTypeName);
+  auto it = srcTermsMap.find(kernelTypeName);
   if (it == srcTermsMap.end()) {
     return false;
   }
   const std::vector<std::string>& inputFileNames = it->second;
-  const std::set<std::string> implementedSuppAlgNames = valid_supp_alg_names(suppAlgTypeName);
+  const std::set<std::string> implementedKernelNames = valid_kernel_names(kernelTypeName);
 
   std::vector<std::string> badNames;
   for (const auto& inputFileName : inputFileNames) {
-    if (implementedSuppAlgNames.find(inputFileName) == implementedSuppAlgNames.end()) {
+    if (implementedKernelNames.find(inputFileName) == implementedKernelNames.end()) {
       badNames.push_back(inputFileName);
     }
   }
@@ -67,19 +67,19 @@ SuppAlgBuilderLog::print_invalid_supp_alg_names(
 }
 //--------------------------------------------------------------------------
 void
-SuppAlgBuilderLog::print_valid_supp_alg_names(std::string suppAlgTypeName )
+KernelBuilderLog::print_valid_kernel_names(std::string kernelTypeName )
 {
-  const auto implementedSuppAlgNames = valid_supp_alg_names(suppAlgTypeName);
+  const auto implementedKernelNames = valid_kernel_names(kernelTypeName);
 
   std::string msgList = "";
-  for (const auto& name : implementedSuppAlgNames) {
+  for (const auto& name : implementedKernelNames) {
     msgList += "`" + name + "', ";
   }
   msgList = msgList.substr(0, msgList.size()-2);
 
   NaluEnv::self().naluOutputP0()
       << "Valid Supplemental Algorithm names for "
-      << suppAlgTypeName
+      << kernelTypeName
       << " are "
       << msgList
       << "."
@@ -87,19 +87,19 @@ SuppAlgBuilderLog::print_valid_supp_alg_names(std::string suppAlgTypeName )
 }
 //--------------------------------------------------------------------------
 void
-SuppAlgBuilderLog::print_built_supp_alg_names(std::string suppAlgTypeName)
+KernelBuilderLog::print_built_kernel_names(std::string kernelTypeName)
 {
-  const auto builtSuppAlgNames = built_supp_alg_names(suppAlgTypeName);
+  const auto builtKernelNames = built_kernel_names(kernelTypeName);
 
   std::string msgList = "";
-  for (const auto& name : builtSuppAlgNames) {
+  for (const auto& name : builtKernelNames) {
     msgList += "`" + name + "', ";
   }
   msgList = msgList.substr(0, msgList.size()-2);
 
   NaluEnv::self().naluOutputP0()
       << "Built Supplemental Algortihms for "
-      << suppAlgTypeName
+      << kernelTypeName
       << " are "
       << msgList
       << "."
@@ -107,20 +107,20 @@ SuppAlgBuilderLog::print_built_supp_alg_names(std::string suppAlgTypeName)
 }
 //--------------------------------------------------------------------------
 std::set<std::string>
-SuppAlgBuilderLog::valid_supp_alg_names(std::string suppAlgTypeName)
+KernelBuilderLog::valid_kernel_names(std::string kernelTypeName)
 {
-  auto it = validSuppAlgNames_.find(suppAlgTypeName);
-  if (it == validSuppAlgNames_.end()) {
+  auto it = validKernelNames_.find(kernelTypeName);
+  if (it == validKernelNames_.end()) {
     return std::set<std::string>();
   }
   return it->second;
 }
 //--------------------------------------------------------------------------
 std::set<std::string>
-SuppAlgBuilderLog::built_supp_alg_names(std::string suppAlgTypeName)
+KernelBuilderLog::built_kernel_names(std::string kernelTypeName)
 {
-  auto it = builtSuppAlgNames_.find(suppAlgTypeName);
-  if (it == builtSuppAlgNames_.end()) {
+  auto it = builtKernelNames_.find(kernelTypeName);
+  if (it == builtKernelNames_.end()) {
     return std::set<std::string>();
   }
   return it->second;

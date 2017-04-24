@@ -15,7 +15,7 @@
 #include <FieldTypeDef.h>
 #include <LinearSystem.h>
 #include <Realm.h>
-#include <SupplementalAlgorithm.h>
+#include <Kernel.h>
 #include <TimeIntegrator.h>
 
 // stk_mesh/base/fem
@@ -75,9 +75,9 @@ AssembleElemSolverAlgorithm::execute()
   stk::mesh::FieldBase* coordField = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
 
   // set any data
-  const size_t supplementalAlgSize = supplementalAlg_.size();
-  for ( size_t i = 0; i < supplementalAlgSize; ++i )
-    supplementalAlg_[i]->setup();
+  const size_t activeKernelsSize = activeKernels_.size();
+  for ( size_t i = 0; i < activeKernelsSize; ++i )
+    activeKernels_[i]->setup(*realm_.timeIntegrator_);
 
   const int lhsSize = rhsSize_*rhsSize_;
   const int scratchIdsSize = rhsSize_;
@@ -134,8 +134,8 @@ AssembleElemSolverAlgorithm::execute()
       }
 
       // call supplemental; gathers happen inside the elem_execute method
-      for ( size_t i = 0; i < supplementalAlgSize; ++i )
-        supplementalAlg_[i]->element_execute( lhs, rhs, element, prereqData );
+      for ( size_t i = 0; i < activeKernelsSize; ++i )
+        activeKernels_[i]->execute( lhs, rhs, element, prereqData );
       
       apply_coeff(num_nodes, node_rels, scratchIds, rhs, lhs, __FILE__);
     });
