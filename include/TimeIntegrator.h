@@ -27,7 +27,8 @@ class TimeIntegrator
 {
 public:
 
-  TimeIntegrator(Simulation& sim);
+  TimeIntegrator() {}
+  TimeIntegrator(Simulation* sim);
   ~TimeIntegrator();
 
   void load(const YAML::Node & node) ;
@@ -41,7 +42,7 @@ public:
   void integrate_realm();
   void provide_mean_norm();
   bool simulation_proceeds();
-  Simulation& sim_;
+  Simulation* sim_{nullptr};
 
   double totalSimTime_;
   double currentTime_;
