@@ -44,14 +44,7 @@ namespace sierra{
 namespace nalu{
 
 
-//==========================================================================
-// Class Definition
-//==========================================================================
-// ActuatorLineFASTInfo - holds all points in the tower specification
-//==========================================================================
-//--------------------------------------------------------------------------
-//-------- constructor -----------------------------------------------------
-//--------------------------------------------------------------------------
+// constructor
 ActuatorLineFASTInfo::ActuatorLineFASTInfo() 
   : processorId_(0),
     numPoints_(1),
@@ -61,64 +54,41 @@ ActuatorLineFASTInfo::ActuatorLineFASTInfo()
 }
 
 
-//--------------------------------------------------------------------------
-//-------- destructor ------------------------------------------------------
-//--------------------------------------------------------------------------
+// destructor
 ActuatorLineFASTInfo::~ActuatorLineFASTInfo()
 {
   // nothing to do
 }
 
 
-//==========================================================================
-// Class Definition
-//==========================================================================
-// ActuatorLineFASTPointInfo - holds individual points information
-//==========================================================================
-//--------------------------------------------------------------------------
-//-------- constructor -----------------------------------------------------
-//--------------------------------------------------------------------------
+// constructor
 ActuatorLineFASTPointInfo::ActuatorLineFASTPointInfo( 
-  size_t localId, 
+  size_t globTurbId,
   Point centroidCoords, 
   double searchRadius,
   Coordinates epsilon,
-  double *velocity,
-  ActuatorNodeType nType,
-  size_t globTurbId)
-  : localId_(localId),
+  ActuatorNodeType nType
+  )
+  : globTurbId_(globTurbId),
     centroidCoords_(centroidCoords),
     searchRadius_(searchRadius),
     epsilon_(epsilon),
     bestX_(1.0e16),
     bestElem_(stk::mesh::Entity()),
-    nodeType_(nType),
-    globTurbId_(globTurbId)
+    nodeType_(nType)    
 {
-  // initialize point velocity and displacement
-  velocity_[0] = velocity[0];
-  velocity_[1] = velocity[1];
-  velocity_[2] = velocity[2];
+  // nothing to do
 }
 
 
-//--------------------------------------------------------------------------
-//-------- destructor ------------------------------------------------------
-//--------------------------------------------------------------------------
+// destructor
 ActuatorLineFASTPointInfo::~ActuatorLineFASTPointInfo()
 {
   // nothing to do
 }
 
 
-//==========================================================================
-// Class Definition
-//==========================================================================
-// ActuatorLineFAST - assemble source term for subgrin turbine; WIP
-//==========================================================================
-//--------------------------------------------------------------------------
-//-------- constructor -----------------------------------------------------
-//--------------------------------------------------------------------------
+// constructor
 ActuatorLineFAST::ActuatorLineFAST(
   Realm &realm,
   const YAML::Node &node)
@@ -127,8 +97,6 @@ ActuatorLineFAST::ActuatorLineFAST(
     searchMethod_(stk::search::BOOST_RTREE),
     actuatorLineGhosting_(NULL),
     needToGhostCount_(0),
-    actuatorLineMotion_(false),
-    pi_(acos(-1.0)),
     timerExecute_(0.0),
     timerUpdate_(0.0),
     timerVelSearch_(0.0),
@@ -143,37 +111,6 @@ ActuatorLineFAST::ActuatorLineFAST(
   // load the data
   load(node);
 
-  /*
-    current WIP prototype
-    Design concepts:
-     1) First and foremost, elements are ghosted to the owning point rank. This 
-        probably should be changed since the number of elements might be larger
-        than the number of points. Therefore, ghosting points to elements is probably
-        easier. This will remove the parallel sum contributions from ghosted elements.
-        time will tell..
-
-     2) There can be many specifications with the number of points and omega processed.
-
-     3) in the end, we fill the map of ActuatorLineFASTPointInfo objects and iterate this guy
-        to assemble source terms
-
-     4) at present, fake source terms on simple Gaussian weighting
-
-    actuator:
-      search_method: stk_octree
-      search_target_part: block_1
-
-      specifications:
-
-        - name: machine_zero
-          procNo: 0
-          epsilon: [ 2.0, 0.0, 0.0 ]
-          turbine_pos: [ 0.0, 0.0, 0.0 ]
-          restart_filename: "blah"
-          FAST_input_filename: "Test01.fst"
-          turb_id:  1
-          turbine_name: machine_zero
-  */
 }
 
 
@@ -281,40 +218,85 @@ ActuatorLineFAST::load(
       }
     }
 
-    try {
-      FAST.readInputFile(y_actuatorLine);
-    }
-    catch( const std::runtime_error & ex) {
+    // Populate object of inputs class to FAST
+    fi.comm = NaluEnv::self().parallel_comm() ;
+  
+    fi.nTurbinesGlob = y_actuatorLine["nTurbinesGlob"].as<int>();
+
+    if (fi.nTurbinesGlob > 0) {
+      
+      if(y_actuatorLine["dryRun"]) {
+	fi.dryRun = y_actuatorLine["dryRun"].as<bool>();
+      } 
+      
+      if(y_actuatorLine["debug"]) {
+	fi.debug = y_actuatorLine["debug"].as<bool>();
+      } 
+      
+      fi.tStart = y_actuatorLine["tStart"].as<double>();
+      fi.nEveryCheckPoint = y_actuatorLine["nEveryCheckPoint"].as<int>();
+      fi.dtFAST = y_actuatorLine["dtFAST"].as<double>();
+      fi.tMax = y_actuatorLine["tMax"].as<double>(); // tMax is the total duration to which you want to run FAST. This should be the same or greater than the max time given in the FAST fst file. Choose this carefully as FAST writes the output file only at this point if you choose the binary file output.
+      
+      if(y_actuatorLine["superController"]) {
+	fi.scStatus = y_actuatorLine["superController"].as<bool>();
+	fi.scLibFile = y_actuatorLine["scLibFile"].as<std::string>();
+	fi.numScInputs = y_actuatorLine["numScInputs"].as<int>();
+	fi.numScOutputs = y_actuatorLine["numScOutputs"].as<int>();
+      }
+      
+      fi.globTurbineData.resize(fi.nTurbinesGlob);
+      for (int iTurb=0; iTurb < fi.nTurbinesGlob; iTurb++) {
+	if (y_actuatorLine["Turbine" + std::to_string(iTurb)]) {
+
+	  const YAML::Node cur_turbine = y_actuatorLine["Turbine"+std::to_string(iTurb)];
+	  ActuatorLineFASTInfo *actuatorLineInfo = new ActuatorLineFASTInfo();
+	  actuatorLineInfo_.push_back(actuatorLineInfo);
+	  
+	  // name
+	  const YAML::Node theName = cur_turbine["turbine_name"];
+	  if ( theName )
+	    actuatorLineInfo->turbineName_ = theName.as<std::string>() ;
+	  else
+	    throw std::runtime_error("ActuatorLineFAST: no name provided");
+	  
+	  // Force projection function properties
+	  const YAML::Node epsilon = cur_turbine["epsilon"];
+	  if ( epsilon )
+	    actuatorLineInfo->epsilon_ = epsilon.as<Coordinates>() ;
+	  else
+	    throw std::runtime_error("ActuatorLineFAST: lacking epsilon vector");
+	  
+	  readTurbineData(iTurb, fi, y_actuatorLine["Turbine" + std::to_string(iTurb)] );
+	} else {
+	  throw std::runtime_error("Node for Turbine" + std::to_string(iTurb) + " not present in input file or I cannot read it");
+	}
+      }
+      
+    } else {
+      throw std::runtime_error("Number of turbines <= 0 ");
     }
 
-    // save off number of towers
-    const int nTurbinesGlob = FAST.get_nTurbinesGlob() ;
-
-    // each specification can have multiple machines
-    for (size_t iTurb = 0; iTurb < nTurbinesGlob; ++iTurb) {
-      const YAML::Node cur_turbine = y_actuatorLine["Turbine"+std::to_string(iTurb)];
-      ActuatorLineFASTInfo *actuatorLineInfo = new ActuatorLineFASTInfo();
-      actuatorLineInfo_.push_back(actuatorLineInfo);
-      
-      // name
-      const YAML::Node theName = cur_turbine["turbine_name"];
-      if ( theName )
-	actuatorLineInfo->turbineName_ = theName.as<std::string>() ;
-      else
-	throw std::runtime_error("ActuatorLineFAST: no name provided");
-     
-      actuatorLineMotion_ = true;
-      
-      // Force projection function properties
-      const YAML::Node epsilon = cur_turbine["epsilon"];
-        if ( epsilon )
-          actuatorLineInfo->epsilon_ = epsilon.as<Coordinates>() ;
-        else
-          throw std::runtime_error("ActuatorLineFAST: lacking epsilon vector");
-    }
+    FAST.setInputs(fi);
   }
 }
 
+void ActuatorLineFAST::readTurbineData(int iTurb, fastInputs & fi, YAML::Node turbNode) {
+
+  //Read turbine data for a given turbine using the YAML node
+  fi.globTurbineData[iTurb].TurbID = turbNode["turb_id"].as<int>();
+  fi.globTurbineData[iTurb].FASTInputFileName = turbNode["FAST_input_filename"].as<std::string>() ;
+  fi.globTurbineData[iTurb].FASTRestartFileName = turbNode["restart_filename"].as<std::string>() ;
+  if (turbNode["turbine_base_pos"].IsSequence() ) {
+    fi.globTurbineData[iTurb].TurbineBasePos = turbNode["turbine_base_pos"].as<std::vector<double> >() ;
+  }
+  if (turbNode["turbine_hub_pos"].IsSequence() ) {
+    fi.globTurbineData[iTurb].TurbineHubPos = turbNode["turbine_hub_pos"].as<std::vector<double> >() ;
+  }
+  fi.globTurbineData[iTurb].numForcePtsBlade = turbNode["num_force_pts_blade"].as<int>();
+  fi.globTurbineData[iTurb].numForcePtsTwr = turbNode["num_force_pts_tower"].as<int>();
+
+}
 
 //--------------------------------------------------------------------------
 //-------- setup -----------------------------------------------------------
@@ -324,24 +306,15 @@ ActuatorLineFAST::setup()
 {
   // objective: declare the part, register coordinates; must be before populate_mesh()
 
-  double tStart;
-  double tEnd;
-  double dt ; 
-  FAST.setRestart( realm_.restarted_simulation() ) ;
-  tStart = realm_.get_current_time() ;
-  FAST.setTstart( tStart ) ;
-  dt = realm_.get_time_step_from_file();
-  FAST.setDt ( dt ) ;
-  if ( realm_.get_is_terminate_based_on_time() ) {
-    tEnd = realm_.get_total_sim_time() ;
-  } 
-  else {
-    const int ntEnd = realm_.get_max_time_step_count();
-    const int ntStart = realm_.get_time_step_count() ;
-    tEnd = (ntEnd - ntStart)*dt + tStart ;
+  // TODO: Check that the Nalu time step is an integral multiple of the FAST time step
+  double dtNalu = realm_.get_time_step_from_file();
+  
+  if (std::fmod(dtNalu, fi.dtFAST) < 0.001) {// TODO: Fix arbitrary number 0.001 
+    tStepRatio_ = dtNalu/fi.dtFAST ;
+  } else {
+    throw std::runtime_error("ActuatorLineFAST: Ratio of Nalu's time step is not an integral multiple of FAST time step");     
   }
-  FAST.setTend( tEnd );
-
+  
 }
 
 //--------------------------------------------------------------------------
@@ -350,7 +323,6 @@ ActuatorLineFAST::setup()
 void
 ActuatorLineFAST::allocateTurbinesToProcs()
 {
-  stk::mesh::BulkData & bulkData = realm_.bulk_data();
   stk::mesh::MetaData & metaData = realm_.meta_data();
 
   // clear some of the search info
@@ -363,14 +335,14 @@ ActuatorLineFAST::allocateTurbinesToProcs()
   // set all of the candidate elements in the search target names
   populate_candidate_procs();
 
-  const int nTurbinesGlob = FAST.get_nTurbinesGlob() ;
+  const size_t nTurbinesGlob = FAST.get_nTurbinesGlob() ;
   for (size_t iTurb = 0; iTurb < nTurbinesGlob; ++iTurb) {
 
     theKey theIdent(NaluEnv::self().parallel_rank(), NaluEnv::self().parallel_rank());
 
     // define a point that will hold the hub location
     Point hubPointCoords;
-    double hubCoords[3] = {};
+    std::vector<double> hubCoords (3, 0.0);
     FAST.getHubPos(hubCoords, iTurb);
     for ( int j = 0; j < nDim; ++j )  hubPointCoords[j] = hubCoords[j];
     boundingSphere theSphere( Sphere(hubPointCoords, 1.0), theIdent);
@@ -382,7 +354,6 @@ ActuatorLineFAST::allocateTurbinesToProcs()
   int iTurb=0;
   std::vector<std::pair<boundingSphere::second_type, boundingElementBox::second_type> >::const_iterator ii;
   for( ii=searchKeyPair_.begin(); ii!=searchKeyPair_.end(); ++ii ) {
-    const uint64_t theBox = ii->second.id();
     unsigned theRank = NaluEnv::self().parallel_rank();
     const unsigned pt_proc = ii->first.proc();
     const unsigned box_proc = ii->second.proc();
@@ -407,11 +378,7 @@ ActuatorLineFAST::initialize()
 
   allocateTurbinesToProcs();
 
-  FAST.allocateInputData();
-
-  if ( ! FAST.isDryRun() ) {
-    FAST.init() ;
-  }
+  FAST.init() ;
 
   update(); // Update location of actuator points, ghosting etc.
 }
@@ -423,10 +390,7 @@ void
 ActuatorLineFAST::update()
 {
   stk::mesh::BulkData & bulkData = realm_.bulk_data();
-  stk::mesh::MetaData & metaData = realm_.meta_data();
  
-  const int nDim = metaData.spatial_dimension();
-
   // initialize need to ghost and elems to ghost
   needToGhostCount_ = 0;
   elemsToGhost_.clear();
@@ -581,26 +545,23 @@ ActuatorLineFAST::execute()
     gather_field_for_interp(1, &ws_density_[0], *density, bulkData.begin_nodes(bestElem), 
                             nodesPerElement);
 
-    // compute volume
-    double elemVolume = compute_volume(nDim, bestElem, bulkData);
-
     // interpolate velocity
-    interpolate_field(nDim, bestElem, bulkData, &(infoObject->isoParCoords_[0]), 
-                      &ws_velocity_[0], &ws_pointGasVelocity[0]);
+    interpolate_field(nDim, bestElem, bulkData, infoObject->isoParCoords_.data(), 
+                      &ws_velocity_[0], ws_pointGasVelocity.data());
     
     // interpolate viscosity
     //    interpolate_field(1, bestElem, bulkData, &(infoObject->isoParCoords_[0]), 
     //                      &ws_viscosity_[0], &ws_pointGasViscosity);
 
     // interpolate density
-    interpolate_field(1, bestElem, bulkData, &(infoObject->isoParCoords_[0]), 
+    interpolate_field(1, bestElem, bulkData, infoObject->isoParCoords_.data(), 
                       &ws_density_[0], &ws_pointGasDensity);
 
     if (FAST.isDebug() ) {
       NaluEnv::self().naluOutput() << "Node " << np << " Velocity = " << ws_pointGasVelocity[0] << " " << ws_pointGasVelocity[1] << " " << ws_pointGasVelocity[2] << " " << std::endl ;
     }
 
-    FAST.setVelocity(&(ws_pointGasVelocity[0]), np, infoObject->globTurbId_);
+    FAST.setVelocity(ws_pointGasVelocity, np, infoObject->globTurbId_);
     np = np + 1;
 
   }    
@@ -614,15 +575,13 @@ ActuatorLineFAST::execute()
     }
 
     //Step FAST
-    for(int j=0; j < 10; j++) FAST.step();
+    for(int j=0; j < tStepRatio_; j++) FAST.step();
   }
  
   double tVS = NaluEnv::self().nalu_time();
   timerVelSearch_ += (tVS - timeA);
 
-  // do we have mesh motion?
-  if ( actuatorLineMotion_ )
-    update();
+  update();
 
   double tFS = NaluEnv::self().nalu_time();
 
@@ -641,20 +600,11 @@ ActuatorLineFAST::execute()
     //==========================================================================
     stk::mesh::Entity bestElem = infoObject->bestElem_;
     int nodesPerElement = bulkData.num_nodes(bestElem);
-    // compute volume
-    double elemVolume = compute_volume(nDim, bestElem, bulkData);
 
     FAST.getForce(ws_pointForce, np, infoObject->globTurbId_);
     if (FAST.isDebug() ) {
       NaluEnv::self().naluOutput() << "Node " << np << " Type " << infoObject->nodeType_ << " Force = " << ws_pointForce[0] << " " << ws_pointForce[1] << " " << ws_pointForce[2] << " " << std::endl ;
     }
-  //ws_pointForce[0] = 0.0; //Setting to zero for now
-  //ws_pointForce[1] = 0.0;
-  //ws_pointForce[2] = 0.0;
-  //ws_pointForceLHS = 0.0; //Not clear what this should be - FIGURE IT OUT
-    // assemble nodal quantity; radius should be zero, so we can apply fill point drag
-  //assemble_source_to_nodes(nDim, bestElem, bulkData, elemVolume, &ws_pointForce[0], ws_pointForceLHS, 
-  //                         *actuator_source, *actuator_source_lhs, 1.0);
 
     // get the vector of elements
     std::vector<stk::mesh::Entity> elementVec = infoObject->elementVec_;
@@ -738,6 +688,10 @@ ActuatorLineFAST::execute()
         }
         gSum += gA*elemVolume;
         break;	
+
+      case ActuatorNodeType_END:
+	break;
+	
       }
 
     }
@@ -857,7 +811,6 @@ void
 ActuatorLineFAST::populate_candidate_procs() 
 {
   stk::mesh::MetaData & metaData = realm_.meta_data();
-  stk::mesh::BulkData & bulkData = realm_.bulk_data();
 
   const int nDim = metaData.spatial_dimension();
 
@@ -919,7 +872,7 @@ ActuatorLineFAST::populate_candidate_procs()
   stk::parallel_vector_concat(NaluEnv::self().parallel_comm(), minCorner, gMinCorner);
   stk::parallel_vector_concat(NaluEnv::self().parallel_comm(), maxCorner, gMaxCorner);
   
-  for(unsigned j = 0; j < NaluEnv::self().parallel_size(); j++) {
+  for(int j = 0; j < NaluEnv::self().parallel_size(); j++) {
     // setup ident
     stk::search::IdentProc<uint64_t,int> theIdent(j, j);
     NaluEnv::self().naluOutput() << "proc " << j << " minCorner: " << gMinCorner[j] << " maxCorner: " << gMaxCorner[j] << std::endl ;
@@ -987,8 +940,6 @@ ActuatorLineFAST::create_actuator_line_point_info_map() {
 
   double timeA = NaluEnv::self().nalu_time();
 
-  const double currentTime = realm_.get_current_time();
-
   stk::mesh::MetaData & metaData = realm_.meta_data(); 
   const int nDim = metaData.spatial_dimension();
 
@@ -1005,13 +956,10 @@ ActuatorLineFAST::create_actuator_line_point_info_map() {
       Point centroidCoords;
     
       // scratch array for coordinates and dummy array for velocity
-      double velocity[3] = {};
-      double currentCoords[3] = {};
+      std::vector<double> velocity (3, 0.0);
+      std::vector<double> currentCoords (3,0.0);
 
       // loop over all points for this turbine
-      const int nBlades = FAST.get_numBlades(iTurb); // Number of blades per turbine 
-      const int numForcePtsBlade = FAST.get_numForcePtsBlade(iTurb) ; // Number of nodes per blade 
-      const int numForcePtsTwr = FAST.get_numForcePtsTwr(iTurb) ; // Number of tower elements
       const int numForcePts = FAST.get_numForcePts(iTurb); // Total number of elements 
       //      actuatorLineInfo->numPoints_ = numVelPts ; // Can't change a const pointer
       
@@ -1040,11 +988,9 @@ ActuatorLineFAST::create_actuator_line_point_info_map() {
 	  
 	  // create the point info and push back to map
 	  ActuatorLineFASTPointInfo *actuatorLinePointInfo 
-	    = new ActuatorLineFASTPointInfo(np, centroidCoords, 
+	    = new ActuatorLineFASTPointInfo(iTurb, centroidCoords, 
 					    searchRadius, actuatorLineInfo->epsilon_,
-					    velocity, 
-					    FAST.getVelNodeType(iTurb, np),
-					    iTurb);
+					    FAST.getVelNodeType(iTurb, np));
 	  actuatorLinePointInfoMap_[np] = actuatorLinePointInfo;
 	  
 	  np=np+1;
@@ -1251,7 +1197,6 @@ ActuatorLineFAST::compute_volume(
   // extract master element from the bucket in which the element resides
   const stk::topology &elemTopo = bulkData.bucket(elem).topology();
   MasterElement *meSCV = realm_.get_volume_master_element(elemTopo);
-  int nodesPerElement = meSCV->nodesPerElement_;
   const int numScvIp = meSCV->numIntPoints_;
 
   // compute scv for this element
@@ -1351,7 +1296,6 @@ ActuatorLineFAST::assemble_source_to_nodes(
   // extract master element from the bucket in which the element resides
   const stk::topology &elemTopo = bulkData.bucket(elem).topology();
   MasterElement *meSCV = realm_.get_volume_master_element(elemTopo);
-  int nodesPerElement = meSCV->nodesPerElement_;
   const int numScvIp = meSCV->numIntPoints_;
 
   // extract elem_node_relations

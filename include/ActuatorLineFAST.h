@@ -5,6 +5,10 @@
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
+/** @file ActuatorLineFAST.h
+ *  @brief A class to couple Nalu with FAST for actuator line simulations of wind turbines
+ *  
+ */
 
 #ifndef ActuatorLineFAST_h
 #define ActuatorLineFAST_h
@@ -20,43 +24,118 @@ namespace nalu{
 
 class Realm;
 
+/** Class that holds all of the information relevant to each turbine
+ *
+ *  
+ */
+// 
 class ActuatorLineFASTInfo {
 public:
   ActuatorLineFASTInfo();
   ~ActuatorLineFASTInfo();
 
-  // for each type of probe, e.g., line of site, hold some stuff
-  int processorId_;
-  int numPoints_;
-  std::string turbineName_;
-  Coordinates epsilon_;
+  int processorId_; ///< The processor on which OpenFAST is run for this turbine
+  int numPoints_; ///< The total number of actuator points for this turbine
+  std::string turbineName_; ///< The turbine name
+  Coordinates epsilon_; ///< The Gaussian spreading width in (chordwise, spanwise, thickness) directions
 };
 
-// class that holds all of the action... for each point, hold the current location and other useful info
+/** Class that holds all of the search action for each actuator point
+ *
+ *  
+ */
+// 
 class ActuatorLineFASTPointInfo {
  public:
   ActuatorLineFASTPointInfo(
-			    size_t localId, Point centroidCoords, double searchRadius, Coordinates epsilon, double *velocity, ActuatorNodeType nType, size_t globTurbId);
+			    size_t globTurbId, Point centroidCoords, double searchRadius, Coordinates epsilon, ActuatorNodeType nType);
   ~ActuatorLineFASTPointInfo();
-  size_t globTurbId_; // Global turbine number
-  size_t localId_;
-  Point centroidCoords_;
-  double searchRadius_;
-  Coordinates epsilon_;
-  double bestX_;
-  stk::mesh::Entity bestElem_;
+  size_t globTurbId_; ///< Global turbine number.
+  Point centroidCoords_; ///< The coordinates of the actuator point.
+  double searchRadius_; ///< Elements within this search radius will be affected by this actuator point.
+  Coordinates epsilon_; ///< The Gaussian spreading width in (chordwise, spanwise, thickness) directions for this actuator point.
+  double bestX_; ///< A number returned by stk::isInElement that determines whether an actuator point is inside (< 1) or outside an element (> 1). However, we choose the bestElem_ for this actuator point to be the one with the lowest bestX_.
+  stk::mesh::Entity bestElem_; ///< The element within which the actuator point lies.
 
-  ActuatorNodeType nodeType_;
-  // mesh motion specifics
-  double velocity_[3];
+  ActuatorNodeType nodeType_; ///< HUB, BLADE or TOWER - Defined by an enum.
 
-  std::vector<double> isoParCoords_;
-  std::vector<stk::mesh::Entity> elementVec_;
+  std::vector<double> isoParCoords_; ///< The isoparametric coordinates of the bestElem_.
+  std::vector<stk::mesh::Entity> elementVec_; ///< A list of elements that lie within the searchRadius_ around the actuator point.
 };
+
+/** The ActuatorLineFAST class couples Nalu with the third party library OpenFAST for actuator line simulations of wind turbines
+ *
+ * OpenFAST (https://nwtc.nrel.gov/FAST) available from https://github.com/OpenFAST/openfast is
+ * a aero-hydro-servo-elastic tool to model wind turbine developed by the 
+ * National Renewable Energy Laboratory (NREL). The ActuatorLineFAST class will help Nalu 
+ * effectively act as an inflow module to OpenFAST by supplying the velocity field information. 
+ * The effect of the turbine on the flow field is modeled using the actuator line approach. 
+ * The force exerted by the wind turbine on the flow field is lumpled into a set of body forces 
+ * at a discrete set of actuator points. This class spreads the the body force at each actuator 
+ * point using a Gaussian function.
+
+ * 1) During the load phase - the turbine data from the yaml file is read and stored in an 
+ *    object of the fastInputs class 
+
+ * 2) During the initialize phase - The processor containing the hub of each turbine is found 
+ *    through a search and assigned to be the one controlling OpenFAST for that turbine. All 
+ *    processors controlling > 0 turbines initialize FAST, populate the map of ActuatorLinePointInfo
+ *    and initialize element searches for all the actuator points associated with the turbines.
+ *  
+ * 3) Elements are ghosted to the owning point rank. We tried the opposite approach of 
+ *    ghosting the actuator points to the processor owning the elements. The second approach 
+ *    was found to peform poorly compared to the first method.
+ *
+ * 4) A time lagged simple FSI model is used to interface Nalu with the turbine model:
+ *    + The velocity at time step at time step 'n' is sampled at the actuator points and sent 
+ *       to OpenFAST
+ *    + OpenFAST advances the turbines upto the next Nalu time step 'n+1'
+ *    + The body forces at the actuator points are converted to the source terms of the momentum 
+ *      equation to advance Nalu to the next time step 'n+1'.
+ *   
+ * 5) During the execute phase called every time step, we sample the velocity at each actuator 
+ *    point and pass it to OpenFAST. All the OpenFAST turbine models are advanced upto Nalu's 
+ *    next time step to get the body forces at the actuator points. We then iterate over the 
+ *    ActuatorLinePointInfoMap to assemble source terms.
+ *
+ *    actuator:
+ *     type: ActLineFAST
+ *     search_method: boost_rtree
+ *     search_target_part: Unspecified-2-HEX
+ *
+ *     n_turbines_glob: 2
+ *     dry_run:  False
+ *     debug:    False
+ *     tMax:    5.0
+ *     n_every_checkpoint: 100
+ *
+ *     Turbine0:
+ *       procNo: 0
+ *       num_force_pts_blade: 50
+ *       num_force_pts_tower: 20
+ *       epsilon: [ 5.0, 5.0, 5.0 ]
+ *       turbine_base_pos: [ 0.0, 0.0, -90.0 ]
+ *       turbine_hub_pos: [ 0.0, 0.0, 0.0 ]
+ *       restart_filename: "blah"
+ *       FAST_input_filename: "Test01.fst"
+ *       turb_id:  1
+ *       turbine_name: machine_zero
+ *
+ *     Turbine1:
+ *       procNo: 0
+ *       num_force_pts_blade: 50
+ *       num_force_pts_tower: 20
+ *       epsilon: [ 5.0, 5.0, 5.0 ]
+ *       turbine_base_pos: [ 250.0, 0.0, -90.0 ]
+ *       turbine_hub_pos: [ 250.0, 0.0, 0.0 ]
+ *       restart_filename: "blah"
+ *       FAST_input_filename: "Test02.fst"
+ *       turb_id:  2
+ *       turbine_name: machine_one
+*/
  
- class ActuatorLineFAST: public Actuator
-{
-public:
+class ActuatorLineFAST: public Actuator {
+ public:
   
   ActuatorLineFAST(
     Realm &realm,
@@ -66,6 +145,9 @@ public:
   // load all of the options
   void load(
     const YAML::Node & node);
+
+  // load the options for each turbine
+  void readTurbineData(int iTurb, fastInputs & fi, YAML::Node turbNode);
 
   // setup part creation and nodal field registration (before populate_mesh())
   void setup();
@@ -93,12 +175,6 @@ public:
 
   // deal with custom ghosting
   void manage_ghosting();
-
-  // manage rotation, now only in the y-z plane
-  void set_current_coordinates(
-    double *lineCentroid, double *centroidCoords, const double &omega, const double &currentTime);
-  void set_current_velocity(
-    double *lineCentroid, const double *centroidCoords, double *velocity, const double &omega);
 
   // populate vector of elements
   void complete_search();
@@ -183,41 +259,29 @@ public:
     stk::mesh::FieldBase &g,
     const double &lhsFac);
 
-  // hold the realm
-  Realm &realm_;
+  Realm &realm_; ///< hold the realm
 
-  // type of stk search
-  stk::search::SearchMethod searchMethod_;
+  stk::search::SearchMethod searchMethod_; ///< type of stk search
   
-  // custom ghosting
-  stk::mesh::Ghosting *actuatorLineGhosting_;
-  // how many elements to ghost?
-  uint64_t needToGhostCount_;
-  stk::mesh::EntityProcVec elemsToGhost_;
+  stk::mesh::Ghosting *actuatorLineGhosting_;  ///< custom ghosting
+  uint64_t needToGhostCount_;  ///< how many elements to ghost?
+  stk::mesh::EntityProcVec elemsToGhost_; ///< elements to ghost
 
-  // does the actuator line move?
-  bool actuatorLineMotion_;
+  int tStepRatio_;  ///< Ratio of Nalu time step to FAST time step (dtNalu/dtFAST) - Should be an integral number
 
-  // everyone needs pi
-  const double pi_;
+  std::vector<std::pair<theKey, theKey> > searchKeyPair_;  ///< save off product of search
 
-  // save off product of search
-  std::vector<std::pair<theKey, theKey> > searchKeyPair_;
+  // bounding box data types for stk_search 
+  std::vector<boundingSphere> boundingSphereVec_; ///< bounding box around each actuator point
+  std::vector<boundingElementBox> boundingElementBoxVec_; ///< bounding box around elements
+  std::vector<boundingSphere> boundingHubSphereVec_; ///< bounding box around the hub point of each turbine
+  std::vector<boundingElementBox> boundingProcBoxVec_; ///< bounding box around all the nodes residing locally on each processor
 
-  // bounding box data types for stk_search */
-  std::vector<boundingSphere> boundingSphereVec_;
-  std::vector<boundingElementBox> boundingElementBoxVec_;
-  std::vector<boundingSphere> boundingHubSphereVec_;
-  std::vector<boundingElementBox> boundingProcBoxVec_;
-
-  // target names for set of bounding boxes
-  std::vector<std::string> searchTargetNames_;
+  std::vector<std::string> searchTargetNames_;  ///< target names for set of bounding boxes
  
-  // vector of averaging information
-  std::vector<ActuatorLineFASTInfo *> actuatorLineInfo_; 
+  std::vector<ActuatorLineFASTInfo *> actuatorLineInfo_;   ///< vector of objects containing information for each turbine
 
-  // map of point info objects
-  std::map<size_t, ActuatorLineFASTPointInfo *> actuatorLinePointInfoMap_;
+  std::map<size_t, ActuatorLineFASTPointInfo *> actuatorLinePointInfoMap_;  ///< map of point info objects
 
   // scratch space
   std::vector<double> ws_coordinates_;
@@ -226,19 +290,19 @@ public:
   std::vector<double> ws_density_;
   std::vector<double> ws_viscosity_;
 
-  // FAST cInterface handle
-  FAST_cInterface FAST;
+  fastInputs fi; ///< Object to hold input information for the FAST cInterface
+  FAST_cInterface FAST; ///< FAST cInterface handle
 
-  double timerExecute_; // Keep track of total time spent in actuator line execute function;
-  double timerUpdate_; // Keep track of total time spent in actuator line update function;
-  double timerVelSearch_; // Keep track of total time spent in velocity sampling
-  double timerForceSpread_; // Keep track of total time spent in body force spreading
-  double timerCALPIM_; // Keep track of time spent in create_actuator_line_point_info_map
-  double timerPCE_; // Keep track of total time spent in populate_candidate_elements
-  double timerCompleteSearch_ ; // Keep track of total time spent in complete_search
-  double timerCoarseSearch_ ; // Keep track of total time spent in complete_search
-  double timerDETG_; // Keep track of total time spent in determine_elements_to_ghost
-  double timerMG_;  // Keep track of total time spent in manage_ghosting
+  double timerExecute_; ///< Keep track of total time spent in actuator line execute function;
+  double timerUpdate_; ///< Keep track of total time spent in actuator line update function;
+  double timerVelSearch_; ///< Keep track of total time spent in velocity sampling
+  double timerForceSpread_; ///< Keep track of total time spent in body force spreading
+  double timerCALPIM_; ///< Keep track of time spent in create_actuator_line_point_info_map
+  double timerPCE_; ///< Keep track of total time spent in populate_candidate_elements
+  double timerCompleteSearch_ ; ///< Keep track of total time spent in complete_search
+  double timerCoarseSearch_ ; ///< Keep track of total time spent in complete_search
+  double timerDETG_; ///< Keep track of total time spent in determine_elements_to_ghost
+  double timerMG_;  ///< Keep track of total time spent in manage_ghosting
 
 };
 
