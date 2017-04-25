@@ -105,7 +105,7 @@ void Simulation::load(const YAML::Node & node)
   NaluEnv::self().naluOutputP0() << std::endl;
   NaluEnv::self().naluOutputP0() << "Time Integrator Review:  " << std::endl;
   NaluEnv::self().naluOutputP0() << "=========================" << std::endl;
-  timeIntegrator_ = new TimeIntegrator(*this);
+  timeIntegrator_ = new TimeIntegrator(this);
   timeIntegrator_->load(node);
 
   // create the transfers; mesh is already loaded in realm

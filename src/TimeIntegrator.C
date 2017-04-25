@@ -30,7 +30,7 @@ namespace nalu{
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-TimeIntegrator::TimeIntegrator(Simulation& sim) 
+TimeIntegrator::TimeIntegrator(Simulation* sim)
   : sim_(sim),
     totalSimTime_(1.0),
     currentTime_(0.0),
@@ -129,7 +129,7 @@ void TimeIntegrator::load(const YAML::Node & node)
 void TimeIntegrator::breadboard()
 {
   for (size_t irealm = 0; irealm < realmNamesVec_.size(); ++irealm) {
-    Realm * realm = sim_.realms_->find_realm(realmNamesVec_[irealm]);
+    Realm * realm = sim_->realms_->find_realm(realmNamesVec_[irealm]);
     realm->timeIntegrator_ = this;
     realmVec_.push_back(realm);
   }
@@ -141,7 +141,7 @@ void TimeIntegrator::initialize()
 }
 
 Simulation *TimeIntegrator::root() { return parent()->root(); }
-Simulation *TimeIntegrator::parent() { return &sim_; }
+Simulation *TimeIntegrator::parent() { return sim_; }
 
 //--------------------------------------------------------------------------
 void

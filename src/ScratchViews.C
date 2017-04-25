@@ -227,7 +227,8 @@ int get_num_bytes_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDim)
   MasterElement *meSCS = dataNeededBySuppAlgs.get_cvfem_surface_me();
   MasterElement *meSCV = dataNeededBySuppAlgs.get_cvfem_volume_me();
   
-  const int nodesPerElem = meSCS != nullptr ? meSCS->nodesPerElement_ : 0;
+  const int nodesPerElem = meSCS != nullptr ? meSCS->nodesPerElement_ :
+    (meSCV != nullptr ? meSCV->nodesPerElement_ : 0);
   const int numScsIp = meSCS != nullptr ? meSCS->numIntPoints_ : 0;
   const int numScvIp = meSCV != nullptr ? meSCV->numIntPoints_ : 0;
   int numBytes = 0;
