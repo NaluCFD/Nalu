@@ -118,9 +118,7 @@ ActuatorLineFAST::~ActuatorLineFAST()
 }
 
 
-//--------------------------------------------------------------------------
-//-------- compute_elem_force_given_weight ----------------------------------
-//--------------------------------------------------------------------------
+// Multiply the point force by the weight at this element location.
 void
 ActuatorLineFAST::compute_elem_force_given_weight(
   const int &nDim,
@@ -128,15 +126,18 @@ ActuatorLineFAST::compute_elem_force_given_weight(
   const double *pointForce,
   double *elemForce)
 {
-  // Multiply the point force by the weight at this element location.
+  
   for ( int j = 0; j < nDim; ++j )
     elemForce[j] = pointForce[j]*g;
 }
 
-
-//--------------------------------------------------------------------------
-//-------- isotropic_Gaussian_projection -----------------------------------
-//--------------------------------------------------------------------------
+/**
+ * This method calculates the isotropic Gaussian projection of width epsilon of 
+ * a unit body force at the actuator point to another point at a distance *dis*
+ * \f[
+ * g(dis) = \frac{1}{\pi^{3/2}} \epsilon^3} e^{-\left( dis/ \epsilon \right)^2}
+ * \f]
+*/
 double
 ActuatorLineFAST::isotropic_Gaussian_projection(
   const int &nDim,
@@ -277,15 +278,16 @@ void ActuatorLineFAST::readTurbineData(int iTurb, fastInputs & fi, YAML::Node tu
 
 }
 
-//--------------------------------------------------------------------------
-//-------- setup -----------------------------------------------------------
-//--------------------------------------------------------------------------
+
+/** Called after load, but before initialize. The mesh isn't loaded yet. For now, this function only
+    checks that the Nalu time step is an integral multiple of the FAST time step
+*/
 void
 ActuatorLineFAST::setup()
 {
   // objective: declare the part, register coordinates; must be before populate_mesh()
 
-  // TODO: Check that the Nalu time step is an integral multiple of the FAST time step
+  // TODO: 
   double dtNalu = realm_.get_time_step_from_file();
   
   if (std::fmod(dtNalu, fi.dtFAST) < 0.001) {// TODO: Fix arbitrary number 0.001 
@@ -296,9 +298,9 @@ ActuatorLineFAST::setup()
   
 }
 
-//--------------------------------------------------------------------------
-//-------- initialize ------------------------------------------------------
-//--------------------------------------------------------------------------
+/** This function searches for the processor containing the hub point of each turbine and allocates the turbine 
+ *  to that processor. It does this through a stk::coarse_search of bounding boxes around the processor domains.
+*/
 void
 ActuatorLineFAST::allocateTurbinesToProcs()
 {
@@ -347,10 +349,10 @@ ActuatorLineFAST::allocateTurbinesToProcs()
 
 }
 
-
-//--------------------------------------------------------------------------
-//-------- initialize ------------------------------------------------------
-//--------------------------------------------------------------------------
+/** This method allocates the turbines to processors, initializes the OpenFAST instances of each turbine, populates the 
+ *  map of ActuatorLinePointInfo with the actuator points of all turbines and determines the elements associated with each
+ *  actuator point.
+*/
 void
 ActuatorLineFAST::initialize()
 {
@@ -362,9 +364,16 @@ ActuatorLineFAST::initialize()
   update(); // Update location of actuator points, ghosting etc.
 }
 
-//--------------------------------------------------------------------------
-//-------- update---- ------------------------------------------------------
-//--------------------------------------------------------------------------
+
+/** 
+ * This method should be called whenever the actuator points have moved and does the following:
+ *
+ * + creates a new map of actuator points in ActuatorLinePointInfoMap,
+ * + searches the element bounding boxes for the elements within the search radius of each 
+ *   actuator point,
+ * + identifies the elements to be ghosted to the processor controlling the turbine,
+ * + identifies the bestElem_ that contains each actuator point.
+*/
 void
 ActuatorLineFAST::update()
 {
@@ -416,9 +425,10 @@ ActuatorLineFAST::update()
 }
 
 
-//--------------------------------------------------------------------------
-//-------- execute ---------------------------------------------------------
-//--------------------------------------------------------------------------
+/** This function is called at each time step. This samples the velocity at each actuator point, 
+ *  advances the OpenFAST turbine models to Nalu's next time step and assembles the source terms 
+ *  in the momentum equation for Nalu.
+*/
 void
 ActuatorLineFAST::execute()
 {
@@ -682,10 +692,7 @@ ActuatorLineFAST::execute()
 
 }
 
-
-//--------------------------------------------------------------------------
-//-------- populate_candidate_elements -------------------------------------
-//--------------------------------------------------------------------------
+// creates bounding boxes around elements belonging to the searchParts
 void
 ActuatorLineFAST::populate_candidate_elements() 
 {
@@ -763,9 +770,7 @@ ActuatorLineFAST::populate_candidate_elements()
 
 }
 
-//--------------------------------------------------------------------------
-//-------- populate_candidate_procs ----------------------------------------
-//--------------------------------------------------------------------------
+// Creates bounding boxes around the subdomain of each processor
 void
 ActuatorLineFAST::populate_candidate_procs() 
 {
@@ -844,9 +849,7 @@ ActuatorLineFAST::populate_candidate_procs()
 
 }
 
-//--------------------------------------------------------------------------
-//-------- determine_elems_to_ghost ----------------------------------------
-//--------------------------------------------------------------------------
+// Determine elements to be ghosted to the owning rank of the turbine
 void
 ActuatorLineFAST::determine_elems_to_ghost()
 {
