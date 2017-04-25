@@ -293,17 +293,6 @@ class ActuatorLineFAST: public Actuator {
   fastInputs fi; ///< Object to hold input information for the FAST cInterface
   FAST_cInterface FAST; ///< FAST cInterface handle
 
-  double timerExecute_; ///< Keep track of total time spent in actuator line execute function;
-  double timerUpdate_; ///< Keep track of total time spent in actuator line update function;
-  double timerVelSearch_; ///< Keep track of total time spent in velocity sampling
-  double timerForceSpread_; ///< Keep track of total time spent in body force spreading
-  double timerCALPIM_; ///< Keep track of time spent in create_actuator_line_point_info_map
-  double timerPCE_; ///< Keep track of total time spent in populate_candidate_elements
-  double timerCompleteSearch_ ; ///< Keep track of total time spent in complete_search
-  double timerCoarseSearch_ ; ///< Keep track of total time spent in complete_search
-  double timerDETG_; ///< Keep track of total time spent in determine_elements_to_ghost
-  double timerMG_;  ///< Keep track of total time spent in manage_ghosting
-
 };
 
 
