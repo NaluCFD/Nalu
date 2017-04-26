@@ -22,7 +22,6 @@ namespace nalu{
 
 class Realm;
 class MasterElement;
-class SupplementalAlgorithm;
 
 class Algorithm
 {
@@ -46,7 +45,6 @@ public:
 
   Realm &realm_;
   stk::mesh::PartVector partVec_;
-  std::vector<SupplementalAlgorithm *> supplementalAlg_;
 };
 
 } // namespace nalu

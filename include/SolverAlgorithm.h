@@ -20,6 +20,7 @@ namespace nalu{
 
 class EquationSystem;
 class Realm;
+class SupplementalAlgorithm;
 
 class SolverAlgorithm : public Algorithm
 {
@@ -29,11 +30,12 @@ public:
     Realm &realm,
     stk::mesh::Part *part,
     EquationSystem *eqSystem);
-  virtual ~SolverAlgorithm() {}
+  virtual ~SolverAlgorithm();
 
   virtual void execute() = 0;
   virtual void initialize_connectivity() = 0;
 
+  std::vector<SupplementalAlgorithm *> supplementalAlg_;
 protected:
 
   // Need to find out whether this ever gets called inside a modification cycle.
