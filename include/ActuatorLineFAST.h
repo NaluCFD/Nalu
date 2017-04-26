@@ -16,8 +16,8 @@
 #include <stk_util/parallel/ParallelVectorConcat.hpp>
 #include "Actuator.h"
 
-// FAST c interface
-#include "FAST_cInterface.h"
+// OpenFAST C++ API
+#include "OpenFAST.H"
 
 namespace sierra{
 namespace nalu{
@@ -48,7 +48,7 @@ public:
 class ActuatorLineFASTPointInfo {
  public:
   ActuatorLineFASTPointInfo(
-			    size_t globTurbId, Point centroidCoords, double searchRadius, Coordinates epsilon, ActuatorNodeType nType);
+			    size_t globTurbId, Point centroidCoords, double searchRadius, Coordinates epsilon, fast::ActuatorNodeType nType);
   ~ActuatorLineFASTPointInfo();
   size_t globTurbId_; ///< Global turbine number.
   Point centroidCoords_; ///< The coordinates of the actuator point.
@@ -57,7 +57,7 @@ class ActuatorLineFASTPointInfo {
   double bestX_; ///< A number returned by stk::isInElement that determines whether an actuator point is inside (< 1) or outside an element (> 1). However, we choose the bestElem_ for this actuator point to be the one with the lowest bestX_.
   stk::mesh::Entity bestElem_; ///< The element within which the actuator point lies.
 
-  ActuatorNodeType nodeType_; ///< HUB, BLADE or TOWER - Defined by an enum.
+  fast::ActuatorNodeType nodeType_; ///< HUB, BLADE or TOWER - Defined by an enum.
 
   std::vector<double> isoParCoords_; ///< The isoparametric coordinates of the bestElem_.
   std::vector<stk::mesh::Entity> elementVec_; ///< A list of elements that lie within the searchRadius_ around the actuator point.
@@ -75,7 +75,7 @@ class ActuatorLineFASTPointInfo {
  * point using a Gaussian function.
 
  * 1) During the load phase - the turbine data from the yaml file is read and stored in an 
- *    object of the fastInputs class 
+ *    object of the fast::fastInputs class 
 
  * 2) During the initialize phase - The processor containing the hub of each turbine is found 
  *    through a search and assigned to be the one controlling OpenFAST for that turbine. All 
@@ -147,7 +147,7 @@ class ActuatorLineFAST: public Actuator {
     const YAML::Node & node);
 
   // load the options for each turbine
-  void readTurbineData(int iTurb, fastInputs & fi, YAML::Node turbNode);
+  void readTurbineData(int iTurb, fast::fastInputs & fi, YAML::Node turbNode);
 
   // setup part creation and nodal field registration (before populate_mesh())
   void setup();
@@ -290,8 +290,8 @@ class ActuatorLineFAST: public Actuator {
   std::vector<double> ws_density_;
   std::vector<double> ws_viscosity_;
 
-  fastInputs fi; ///< Object to hold input information for the FAST cInterface
-  FAST_cInterface FAST; ///< FAST cInterface handle
+  fast::fastInputs fi; ///< Object to hold input information for OpenFAST  
+  fast::OpenFAST FAST; ///< OpenFAST C++ API handle
 
 };
 

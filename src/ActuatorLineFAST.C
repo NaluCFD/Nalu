@@ -67,7 +67,7 @@ ActuatorLineFASTPointInfo::ActuatorLineFASTPointInfo(
   Point centroidCoords, 
   double searchRadius,
   Coordinates epsilon,
-  ActuatorNodeType nType
+  fast::ActuatorNodeType nType
   )
   : globTurbId_(globTurbId),
     centroidCoords_(centroidCoords),
@@ -96,7 +96,7 @@ ActuatorLineFAST::ActuatorLineFAST(
     realm_(realm),
     searchMethod_(stk::search::BOOST_RTREE),
     actuatorLineGhosting_(NULL),
-    needToGhostCount_(0),
+    needToGhostCount_(0)
 {
   // load the data
   load(node);
@@ -152,8 +152,6 @@ ActuatorLineFAST::isotropic_Gaussian_projection(
     g = (1.0 / (pow(epsilon.x_,2.0) * pi)) * exp(-pow((dis/epsilon.x_),2.0));
   else
     g = (1.0 / (pow(epsilon.x_,3.0) * pow(pi,1.5))) * exp(-pow((dis/epsilon.x_),2.0));
-
-//std::cout << "g = " << g << std::endl;
 
   return g;
 }
@@ -261,7 +259,7 @@ ActuatorLineFAST::load(
   }
 }
 
-void ActuatorLineFAST::readTurbineData(int iTurb, fastInputs & fi, YAML::Node turbNode) {
+void ActuatorLineFAST::readTurbineData(int iTurb, fast::fastInputs & fi, YAML::Node turbNode) {
 
   //Read turbine data for a given turbine using the YAML node
   fi.globTurbineData[iTurb].TurbID = turbNode["turb_id"].as<int>();
@@ -621,7 +619,7 @@ ActuatorLineFAST::execute()
       double gA = 0.0;
       
       switch (infoObject->nodeType_) {
-      case HUB:
+      case fast::HUB:
         // project the force to this element centroid with projection function
         gA = isotropic_Gaussian_projection(nDim, distance, infoObject->epsilon_);
         compute_elem_force_given_weight(nDim, gA, &ws_pointForce[0], &ws_elemForce[0]);
@@ -636,7 +634,7 @@ ActuatorLineFAST::execute()
         gSum += gA*elemVolume;
         break;
 
-      case BLADE:
+      case fast::BLADE:
         // project the force to this element centroid with projection function
         gA = isotropic_Gaussian_projection(nDim, distance, infoObject->epsilon_);
         compute_elem_force_given_weight(nDim, gA, &ws_pointForce[0], &ws_elemForce[0]);
@@ -651,7 +649,7 @@ ActuatorLineFAST::execute()
         gSum += gA*elemVolume;
         break;
 
-      case TOWER:
+      case fast::TOWER:
         // project the force to this element centroid with projection function
         gA = isotropic_Gaussian_projection(nDim, distance, infoObject->epsilon_);
         compute_elem_force_given_weight(nDim, gA, &ws_pointForce[0], &ws_elemForce[0]);
@@ -666,7 +664,7 @@ ActuatorLineFAST::execute()
         gSum += gA*elemVolume;
         break;	
 
-      case ActuatorNodeType_END:
+      case fast::ActuatorNodeType_END:
 	break;
 	
       }
