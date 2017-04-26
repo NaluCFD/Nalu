@@ -5,6 +5,7 @@
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
+#ifdef NALU_USES_OPENFAST
 
 #include <ActuatorLineFAST.h>
 #include <FieldTypeDef.h>
@@ -1265,3 +1266,5 @@ ActuatorLineFAST::assemble_source_to_nodes(
 
 } // namespace nalu
 } // namespace Sierra
+
+#endif

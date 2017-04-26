@@ -5,6 +5,8 @@
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
+#ifdef NALU_USES_OPENFAST
+
 /** @file ActuatorLineFAST.h
  *  @brief A class to couple Nalu with FAST for actuator line simulations of wind turbines
  *  
@@ -298,5 +300,7 @@ class ActuatorLineFAST: public Actuator {
 
 } // namespace nalu
 } // namespace Sierra
+
+#endif
 
 #endif
