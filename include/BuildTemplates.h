@@ -14,7 +14,7 @@
 namespace sierra{
 namespace nalu{
 
-#define INSTANTIATE_SUPPLEMENTAL_ALGORITHM(ClassName)             \
+#define INSTANTIATE_KERNEL(ClassName)                             \
 template class ClassName<AlgTraitsHex8>;                          \
 template class ClassName<AlgTraitsHex27>;                         \
 template class ClassName<AlgTraitsTet4>;                          \

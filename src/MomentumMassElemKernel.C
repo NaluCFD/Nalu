@@ -166,7 +166,7 @@ MomentumMassElemKernel<AlgTraits>::execute(
   }
 }
 
-INSTANTIATE_SUPPLEMENTAL_ALGORITHM(MomentumMassElemKernel);
+INSTANTIATE_KERNEL(MomentumMassElemKernel);
 
 }  // nalu
 }  // sierra

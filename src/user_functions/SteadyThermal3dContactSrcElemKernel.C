@@ -88,7 +88,7 @@ SteadyThermal3dContactSrcElemKernel<AlgTraits>::execute(
   }
 }
 
-INSTANTIATE_SUPPLEMENTAL_ALGORITHM(SteadyThermal3dContactSrcElemKernel);
+INSTANTIATE_KERNEL(SteadyThermal3dContactSrcElemKernel);
 
 }  // nalu
 }  // sierra

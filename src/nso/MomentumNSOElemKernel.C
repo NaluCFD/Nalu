@@ -306,7 +306,7 @@ MomentumNSOElemKernel<AlgTraits>::execute(
   }
 }
 
-INSTANTIATE_SUPPLEMENTAL_ALGORITHM(MomentumNSOElemKernel);
+INSTANTIATE_KERNEL(MomentumNSOElemKernel);
 
 }  // nalu
 }  // sierra
