@@ -159,7 +159,7 @@ ScalarMassElemKernel<AlgTraits>::execute(
   }
 }
 
-INSTANTIATE_SUPPLEMENTAL_ALGORITHM(ScalarMassElemKernel);
+INSTANTIATE_KERNEL(ScalarMassElemKernel);
 
 }  // nalu
 }  // sierra

@@ -179,7 +179,7 @@ MomentumAdvDiffElemKernel<AlgTraits>::execute(
   }
 }
 
-INSTANTIATE_SUPPLEMENTAL_ALGORITHM(MomentumAdvDiffElemKernel);
+INSTANTIATE_KERNEL(MomentumAdvDiffElemKernel);
 
 }  // nalu
 }  // sierra

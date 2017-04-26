@@ -224,7 +224,7 @@ MomentumNSOSijElemKernel<AlgTraits>::execute(
   }
 }
 
-INSTANTIATE_SUPPLEMENTAL_ALGORITHM(MomentumNSOSijElemKernel);
+INSTANTIATE_KERNEL(MomentumNSOSijElemKernel);
 
 }  // nalu
 }  // sierra

@@ -137,7 +137,7 @@ ScalarDiffFemKernel<AlgTraits>::execute(
   }
 }
 
-INSTANTIATE_SUPPLEMENTAL_ALGORITHM(ScalarDiffFemKernel);
+INSTANTIATE_KERNEL(ScalarDiffFemKernel);
 
 }  // nalu
 }  // sierra

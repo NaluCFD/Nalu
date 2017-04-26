@@ -260,7 +260,7 @@ ScalarUpwAdvDiffElemKernel<AlgTraits>::van_leer(
   return limit;
 }
 
-INSTANTIATE_SUPPLEMENTAL_ALGORITHM(ScalarUpwAdvDiffElemKernel);
+INSTANTIATE_KERNEL(ScalarUpwAdvDiffElemKernel);
 
 }  // nalu
 }  // sierra

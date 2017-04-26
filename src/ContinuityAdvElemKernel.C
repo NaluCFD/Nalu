@@ -154,7 +154,7 @@ ContinuityAdvElemKernel<AlgTraits>::execute(
   }
 }
 
-INSTANTIATE_SUPPLEMENTAL_ALGORITHM(ContinuityAdvElemKernel);
+INSTANTIATE_KERNEL(ContinuityAdvElemKernel);
 
 }  // nalu
 }  // sierra
