@@ -47,7 +47,7 @@ ContinuityMassElemSuppAlg<AlgTraits>::ContinuityMassElemSuppAlg(
     gamma2_(0.0),
     gamma3_(0.0),
     lumpedMass_(lumpedMass),
-    ipNodeMap_(realm.get_volume_master_element(AlgTraits::topo_)->ipNodeMap())
+    ipNodeMap_(sierra::nalu::get_volume_master_element(AlgTraits::topo_)->ipNodeMap())
 {
   // save off fields; shove state N into Nm1 if this is BE
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -57,7 +57,7 @@ ContinuityMassElemSuppAlg<AlgTraits>::ContinuityMassElemSuppAlg(
   densityNp1_ = &(density->field_of_state(stk::mesh::StateNP1));
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
 
-  MasterElement *meSCV = realm.get_volume_master_element(AlgTraits::topo_);
+  MasterElement *meSCV = sierra::nalu::get_volume_master_element(AlgTraits::topo_);
 
   // compute shape function
   if ( lumpedMass_ )
@@ -95,8 +95,8 @@ ContinuityMassElemSuppAlg<AlgTraits>::setup()
 template<typename AlgTraits>
 void
 ContinuityMassElemSuppAlg<AlgTraits>::element_execute(
-  double */*lhs*/,
-  double *rhs,
+  SharedMemView<double **>&/*lhs*/,
+  SharedMemView<double *>&rhs,
   stk::mesh::Entity /* element */,
   ScratchViews& scratchViews)
 {
@@ -126,7 +126,7 @@ ContinuityMassElemSuppAlg<AlgTraits>::element_execute(
     }
 
     const double scV = v_scv_volume(ip);
-    rhs[nearestNode] += - ( gamma1_ * rhoNp1 + gamma2_ * rhoN +
+    rhs(nearestNode) += - ( gamma1_ * rhoNp1 + gamma2_ * rhoN +
                             gamma3_ * rhoNm1 ) * scV / dt_ / projTimeScale;
 
     // manage LHS : N/A

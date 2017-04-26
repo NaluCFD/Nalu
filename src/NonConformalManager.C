@@ -42,9 +42,11 @@ namespace nalu{
 //--------------------------------------------------------------------------
 NonConformalManager::NonConformalManager(
   Realm &realm,
-  const bool ncAlgDetailedOutput)
+  const bool ncAlgDetailedOutput,
+  const bool ncAlgCoincidentNodesErrorCheck)
   : realm_(realm ),
     ncAlgDetailedOutput_(ncAlgDetailedOutput),
+    ncAlgCoincidentNodesErrorCheck_(ncAlgCoincidentNodesErrorCheck),
     nonConformalGhosting_(NULL)
 {
   // do nothing
@@ -269,6 +271,22 @@ NonConformalManager::initialize()
       nonConformalInfoVec_[k]->provide_diagnosis();
   }
 
+  // error check for coincident nodes
+  if ( ncAlgCoincidentNodesErrorCheck_ ) {
+    size_t l_problemNodes = 0; size_t g_problemNodes = 0;
+    for ( size_t k = 0; k < nonConformalInfoVec_.size(); ++k )
+      l_problemNodes += nonConformalInfoVec_[k]->error_check();
+    
+    // report and terminate if there is an issue
+    stk::ParallelMachine comm = NaluEnv::self().parallel_comm();
+    stk::all_reduce_sum(comm, &l_problemNodes, &g_problemNodes, 1);
+    if ( g_problemNodes > 0 ) {
+      NaluEnv::self().naluOutputP0() << "NonConformalManager::Error() Too many coincident nodes found on NCAlg interface(s): " 
+                                     << g_problemNodes <<  " ...ABORTING..." << std::endl;
+      throw std::runtime_error("NonConformalManager::Error() Please remesh taking care to avoid coincident nodes");
+    }
+  }
+  
   // end time
   const double timeB = NaluEnv::self().nalu_time();
   realm_.timerNonconformal_ += (timeB-timeA);

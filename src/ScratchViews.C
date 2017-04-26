@@ -110,6 +110,7 @@ void ScratchViews::create_needed_field_views(const TeamHandleType& team,
                                const stk::mesh::BulkData& bulkData,
                                int nodesPerElem)
 {
+  int numScalars = 0;
   const stk::mesh::MetaData& meta = bulkData.mesh_meta_data();
   unsigned numFields = meta.get_fields().size();
   fieldViews.resize(numFields, nullptr);
@@ -124,28 +125,36 @@ void ScratchViews::create_needed_field_views(const TeamHandleType& team,
     if (fieldEntityRank==stk::topology::ELEM_RANK) {
       if (scalarsDim2 == 0) {
         fieldViews[fieldInfo.field->mesh_meta_data_ordinal()] = new ViewT<SharedMemView<double*>>(get_shmem_view_1D(team, scalarsDim1));
+        numScalars += scalarsDim1;
       }
       else {
         fieldViews[fieldInfo.field->mesh_meta_data_ordinal()] = new ViewT<SharedMemView<double**>>(get_shmem_view_2D(team, scalarsDim1, scalarsDim2));
+        numScalars += scalarsDim1 * scalarsDim2;
       }
     }
     else if (fieldEntityRank==stk::topology::NODE_RANK) {
       if (scalarsDim2 == 0) {
         if (scalarsDim1 == 1) {
           fieldViews[fieldInfo.field->mesh_meta_data_ordinal()] = new ViewT<SharedMemView<double*>>(get_shmem_view_1D(team, nodesPerElem));
+          numScalars += nodesPerElem;
         }
         else {
           fieldViews[fieldInfo.field->mesh_meta_data_ordinal()] = new ViewT<SharedMemView<double**>>(get_shmem_view_2D(team, nodesPerElem, scalarsDim1));
+          numScalars += nodesPerElem * scalarsDim1;
         }
       }
       else {
           fieldViews[fieldInfo.field->mesh_meta_data_ordinal()] = new ViewT<SharedMemView<double***>>(get_shmem_view_3D(team, nodesPerElem, scalarsDim1, scalarsDim2));
+          numScalars += nodesPerElem * scalarsDim1 * scalarsDim2;
       }
     }
     else {
       ThrowRequireMsg(false,"Only elem-rank and node-rank fields supported for scratch-views currently.");
     }
   }
+
+  // Track total bytes required for field allocations
+  num_bytes_required += numScalars * sizeof(double);
 }
 
 void ScratchViews::create_needed_master_element_views(const TeamHandleType& team,
@@ -153,6 +162,7 @@ void ScratchViews::create_needed_master_element_views(const TeamHandleType& team
                                         int nDim, int nodesPerElem,
                                         int numScsIp, int numScvIp)
 {
+  int numScalars = 0;
   bool needDeriv = false;
   bool needDetj = false;
   const std::set<ELEM_DATA_NEEDED>& dataEnums = dataNeeded.get_data_enums();
@@ -162,11 +172,13 @@ void ScratchViews::create_needed_master_element_views(const TeamHandleType& team
       case SCS_AREAV:
          ThrowRequireMsg(numScsIp > 0, "ERROR, meSCS must be non-null if SCS_AREAV is requested.");
          scs_areav = get_shmem_view_2D(team, numScsIp, nDim);
+         numScalars += numScsIp * nDim;
          break;
 
       case SCS_GRAD_OP:
          ThrowRequireMsg(numScsIp > 0, "ERROR, meSCS must be non-null if SCS_GRAD_OP is requested.");
          dndx = get_shmem_view_3D(team, numScsIp, nodesPerElem, nDim);
+         numScalars += nodesPerElem * numScsIp * nDim;
          needDeriv = true;
          needDetj = true;
          break;
@@ -174,6 +186,7 @@ void ScratchViews::create_needed_master_element_views(const TeamHandleType& team
       case SCS_SHIFTED_GRAD_OP:
         ThrowRequireMsg(numScsIp > 0, "ERROR, meSCS must be non-null if SCS_SHIFTED_GRAD_OP is requested.");
         dndx_shifted = get_shmem_view_3D(team, numScsIp, nodesPerElem, nDim);
+        numScalars += nodesPerElem * numScsIp * nDim;
         needDeriv = true;
         needDetj = true;
         break;
@@ -182,22 +195,30 @@ void ScratchViews::create_needed_master_element_views(const TeamHandleType& team
          ThrowRequireMsg(numScsIp > 0, "ERROR, meSCS must be non-null if SCS_GIJ is requested.");
          gijUpper = get_shmem_view_3D(team, numScsIp, nDim, nDim);
          gijLower = get_shmem_view_3D(team, numScsIp, nDim, nDim);
+         numScalars += 2 * numScsIp * nDim * nDim;
          needDeriv = true;
          break;
 
       case SCV_VOLUME:
          ThrowRequireMsg(numScvIp > 0, "ERROR, meSCV must be non-null if SCV_VOLUME is requested.");
          scv_volume = get_shmem_view_1D(team, numScvIp);
+         numScalars += numScvIp;
          break;
 
       default: break;
     }
   }
-  if (needDeriv)
+  if (needDeriv) {
     deriv = get_shmem_view_1D(team, numScsIp*nodesPerElem*nDim);
+    numScalars += numScsIp * nodesPerElem * nDim;
+  }
 
-  if (needDetj)
+  if (needDetj) {
     det_j = get_shmem_view_1D(team, numScsIp);
+    numScalars += numScsIp;
+  }
+
+  num_bytes_required += numScalars * sizeof(double);
 }
 
 int get_num_bytes_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDim)
@@ -259,7 +280,8 @@ int get_num_bytes_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDim)
   if (needDetj)
     numBytes += numScsIp * sizeof(double);
   
-  return numBytes*2;
+  // Add a 64 byte padding to the buffer size requested
+  return numBytes + 8 * sizeof(double);
 }
 
 void fill_pre_req_data(

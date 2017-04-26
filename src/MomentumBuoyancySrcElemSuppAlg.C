@@ -45,7 +45,7 @@ MomentumBuoyancySrcElemSuppAlg<AlgTraits>::MomentumBuoyancySrcElemSuppAlg(
     coordinates_(NULL),
     rhoRef_(0.0),
     useShifted_(false),
-    ipNodeMap_(realm.get_volume_master_element(AlgTraits::topo_)->ipNodeMap())
+    ipNodeMap_(sierra::nalu::get_volume_master_element(AlgTraits::topo_)->ipNodeMap())
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -57,7 +57,7 @@ MomentumBuoyancySrcElemSuppAlg<AlgTraits>::MomentumBuoyancySrcElemSuppAlg(
     gravity_(j) = realm_.solutionOptions_->gravity_[j];
   rhoRef_ = realm_.solutionOptions_->referenceDensity_;
 
-  MasterElement* meSCV = realm.get_volume_master_element(AlgTraits::topo_);
+  MasterElement* meSCV = sierra::nalu::get_volume_master_element(AlgTraits::topo_);
 
   meSCV->shape_fcn(&v_shape_function_(0,0));
 
@@ -76,8 +76,8 @@ MomentumBuoyancySrcElemSuppAlg<AlgTraits>::MomentumBuoyancySrcElemSuppAlg(
 template<typename AlgTraits>
 void
 MomentumBuoyancySrcElemSuppAlg<AlgTraits>::element_execute(
-  double* /* lhs */,
-  double* rhs,
+  SharedMemView<double **>& /* lhs */,
+  SharedMemView<double*>& rhs,
   stk::mesh::Entity /*element*/,
   ScratchViews& scratchViews)
 {
@@ -98,7 +98,7 @@ MomentumBuoyancySrcElemSuppAlg<AlgTraits>::element_execute(
     const int nnNdim = nearestNode * AlgTraits::nDim_;
     const double fac = (rhoNp1 - rhoRef_) * scV;
     for (int j=0; j < AlgTraits::nDim_; j++) {
-      rhs[nnNdim + j] += fac * gravity_(j);
+      rhs(nnNdim + j) += fac * gravity_(j);
     }
 
     // No LHS contributions

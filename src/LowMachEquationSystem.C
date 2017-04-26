@@ -103,6 +103,7 @@
 #include <nso/MomentumNSOElemSuppAlg.h>
 #include <nso/MomentumNSOKeElemSuppAlg.h>
 #include <nso/MomentumNSOGradElemSuppAlg.h>
+#include <nso/MomentumNSOSijElemSuppAlg.h>
 
 // template for supp algs
 #include <AlgTraits.h>
@@ -139,6 +140,9 @@
 #include <user_functions/SinProfileChannelFlowVelocityAuxFunction.h>
 
 #include <user_functions/BoundaryLayerPerturbationAuxFunction.h>
+
+#include <user_functions/KovasznayVelocityAuxFunction.h>
+#include <user_functions/KovasznayPressureAuxFunction.h>
 
 // deprecated
 #include <ContinuityMassElemSuppAlgDep.h>
@@ -280,7 +284,7 @@ LowMachEquationSystem::register_element_fields(
   // register mdot for element-based scheme...
   if ( elementContinuityEqs_ ) {
     // extract master element and get scs points
-    MasterElement *meSCS = realm_.get_surface_master_element(theTopo);
+    MasterElement *meSCS = sierra::nalu::get_surface_master_element(theTopo);
     const int numScsIp = meSCS->numIntPoints_;
     GenericFieldType *massFlowRate = &(meta_data.declare_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "mass_flow_rate_scs"));
     stk::mesh::put_field(*massFlowRate, *part, numScsIp );
@@ -420,7 +424,7 @@ LowMachEquationSystem::register_open_bc(
   bcDataAlg_.push_back(auxAlgPbc);
 
   // mdot at open bc; register field
-  MasterElement *meFC = realm_.get_surface_master_element(theTopo);
+  MasterElement *meFC = sierra::nalu::get_surface_master_element(theTopo);
   const int numScsBip = meFC->numIntPoints_;
   GenericFieldType *mdotBip 
     = &(metaData.declare_field<GenericFieldType>(static_cast<stk::topology::rank_t>(metaData.side_rank()), 
@@ -531,6 +535,9 @@ LowMachEquationSystem::register_initial_condition_fcn(
       else {
         throw std::runtime_error("Boundary_layer_perturbation missing parameters");
       }
+    }
+    else if (fcnName == "kovasznay") {
+      theAuxFunc = new KovasznayVelocityAuxFunction(0, nDim);
     }
     else if ( fcnName == "SteadyTaylorVortex" ) {
       theAuxFunc = new SteadyTaylorVortexVelocityAuxFunction(0,nDim);
@@ -1159,6 +1166,10 @@ MomentumEquationSystem::register_interior_algorithm(
         (partTopo, *this, suppAlgVec, "NSO_2ND_KE",
          realm_, velocity_, dudx_, 0.0, dataPreReqs);
 
+      build_topo_supp_alg_if_requested<MomentumNSOSijElemSuppAlg>
+        (partTopo, *this, suppAlgVec, "NSO_2ND_SIJ",
+         realm_, velocity_, dataPreReqs);
+
       build_topo_supp_alg_if_requested<MomentumNSOElemSuppAlg>
         (partTopo, *this, suppAlgVec, "NSO_4TH",
          realm_, velocity_, dudx_,
@@ -1378,6 +1389,9 @@ MomentumEquationSystem::register_inflow_bc(
     }
     else if ( fcnName == "VariableDensityNonIso" ) {
       theAuxFunc = new VariableDensityVelocityAuxFunction(0,nDim);
+    }
+    else if ( fcnName == "kovasznay") {
+      theAuxFunc = new KovasznayVelocityAuxFunction(0,nDim);
     }
     else {
       throw std::runtime_error("MomentumEquationSystem::register_inflow_bc: limited functions supported");
@@ -1632,7 +1646,7 @@ MomentumEquationSystem::register_wall_bc(
     stk::mesh::put_field(*assembledWallNormalDistance, *part);
 
     // integration point; size it based on number of boundary integration points
-    MasterElement *meFC = realm_.get_surface_master_element(theTopo);
+    MasterElement *meFC = sierra::nalu::get_surface_master_element(theTopo);
     const int numScsBip = meFC->numIntPoints_;
 
     stk::topology::rank_t sideRank = static_cast<stk::topology::rank_t>(meta_data.side_rank());
@@ -1819,7 +1833,7 @@ MomentumEquationSystem::register_non_conformal_bc(
   stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   // mdot at nc bc; register field; require topo and num ips
-  MasterElement *meFC = realm_.get_surface_master_element(theTopo);
+  MasterElement *meFC = sierra::nalu::get_surface_master_element(theTopo);
   const int numScsBip = meFC->numIntPoints_;
 
   stk::topology::rank_t sideRank = static_cast<stk::topology::rank_t>(meta_data.side_rank());
@@ -2425,6 +2439,9 @@ ContinuityEquationSystem::register_inflow_bc(
     else if ( fcnName == "VariableDensityNonIso" ) {
       theAuxFunc = new VariableDensityVelocityAuxFunction(0,nDim);
     }
+    else if ( fcnName == "kovasznay") {
+      theAuxFunc = new KovasznayVelocityAuxFunction(0,nDim);
+    }
     else {
       throw std::runtime_error("ContEquationSystem::register_inflow_bc: limited functions supported");
     }
@@ -2640,7 +2657,7 @@ ContinuityEquationSystem::register_non_conformal_bc(
   stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   // mdot at nc bc; register field; require topo and num ips
-  MasterElement *meFC = realm_.get_surface_master_element(theTopo);
+  MasterElement *meFC = sierra::nalu::get_surface_master_element(theTopo);
   const int numScsBip = meFC->numIntPoints_;
   
   stk::topology::rank_t sideRank = static_cast<stk::topology::rank_t>(meta_data.side_rank());
@@ -2785,6 +2802,9 @@ ContinuityEquationSystem::register_initial_condition_fcn(
     else if ( fcnName == "TaylorGreen" ) {
       // create the function
       theAuxFunc = new TaylorGreenPressureAuxFunction();      
+    }
+    else if ( fcnName == "kovasznay" ) {
+      theAuxFunc = new KovasznayPressureAuxFunction();
     }
     else {
       throw std::runtime_error("ContinuityEquationSystem::register_initial_condition_fcn: limited functions supported");

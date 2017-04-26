@@ -8,6 +8,7 @@
 #ifndef INCLUDE_KOKKOSINTERFACE_H_
 #define INCLUDE_KOKKOSINTERFACE_H_
 
+#include <stk_mesh/base/Entity.hpp>
 #include <Kokkos_Core.hpp>
 
 namespace sierra {
@@ -30,6 +31,12 @@ inline DeviceTeamPolicy get_team_policy(const size_t sz, const size_t bytes_per_
 {
   DeviceTeamPolicy policy(sz, Kokkos::AUTO);
   return policy.set_scratch_size(0, Kokkos::PerTeam(bytes_per_team), Kokkos::PerThread(bytes_per_thread));
+}
+
+inline
+SharedMemView<int*> get_int_shmem_view_1D(const TeamHandleType& team, size_t len)
+{
+  return Kokkos::subview(SharedMemView<int**>(team.team_shmem(), team.team_size(), len), team.team_rank(), Kokkos::ALL());
 }
 
 inline

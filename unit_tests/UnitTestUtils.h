@@ -22,6 +22,9 @@ namespace unit_test_utils {
 
 void fill_mesh_1_elem_per_proc_hex8(stk::mesh::BulkData& bulk);
 void fill_hex8_mesh(const std::string& meshSpec, stk::mesh::BulkData& bulk);
+void fill_and_promote_hex_mesh(const std::string& meshSpec, stk::mesh::BulkData& bulk, int polyOrder);
+void dump_promoted_mesh_file(stk::mesh::BulkData& bulk, int polyOrder);
+
 std::ostream& nalu_out();
 
 stk::mesh::Entity create_one_reference_element(stk::mesh::BulkData& bulk, stk::topology topo);
@@ -31,13 +34,6 @@ double quadratic(double a, const double* b, const double* H, const double* x);
 double initialize_quadratic_scalar_field(const stk::mesh::BulkData& bulk,
                                       const VectorFieldType& coordField,
                                       const ScalarFieldType& qField);
-
-sierra::nalu::MasterElement *
-get_surface_master_element(const stk::topology & theTopo);
-
-sierra::nalu::MasterElement *
-get_volume_master_element(const stk::topology & theTopo);
-
 
 }
 

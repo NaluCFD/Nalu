@@ -84,6 +84,7 @@ class NonConformalInfo {
   void determine_elems_to_ghost();
   void complete_search();
   void provide_diagnosis();
+  size_t error_check();
 
   Realm &realm_;
   const std::string name_;

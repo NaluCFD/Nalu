@@ -19,6 +19,9 @@
 #include <stk_util/parallel/ParallelReduce.hpp>
 
 #include <boost/format.hpp>
+#include <fstream>
+#include <iostream>
+#include <iomanip>
 
 namespace sierra {
 namespace nalu {
@@ -56,7 +59,9 @@ ABLForcingAlgorithm::ABLForcingAlgorithm(Realm& realm, const YAML::Node& node)
     velGenPartList_(false),
     tempGenPartList_(false),
     velPartFmt_(""),
-    tempPartFmt_("")
+    tempPartFmt_(""),
+    outputFreq_(10),
+    outFileFmt_("abl_%s_sources.dat")
 {
   load(node);
 }
@@ -70,9 +75,12 @@ ABLForcingAlgorithm::~ABLForcingAlgorithm()
 void
 ABLForcingAlgorithm::load(const YAML::Node& node)
 {
-  get_if_present(node, "search_method", searchMethod_);
-  get_if_present(node, "search_tolerance", searchTolerance_);
-  get_if_present(node, "search_expansion_factor", searchExpansionFactor_);
+  get_if_present(node, "search_method", searchMethod_, searchMethod_);
+  get_if_present(node, "search_tolerance", searchTolerance_, searchTolerance_);
+  get_if_present(node, "search_expansion_factor", searchExpansionFactor_,
+                 searchExpansionFactor_);
+  get_if_present(node, "output_frequency", outputFreq_, outputFreq_);
+  get_if_present(node, "output_format", outFileFmt_, outFileFmt_);
 
   if (node["momentum"])
     load_momentum_info(node["momentum"]);
@@ -109,7 +117,7 @@ ABLForcingAlgorithm::load_momentum_info(const YAML::Node& node)
       "ABLForcingAlgorithm: Invalid type specification for momentum. "
       "Valid types are: [user_defined, computed]");
   }
-  get_if_present(node, "relaxation_factor", alphaMomentum_);
+  get_if_present(node, "relaxation_factor", alphaMomentum_, alphaMomentum_);
   get_required<std::vector<double>>(node, "heights", velHeights_);
   auto nHeights = velHeights_.size();
 
@@ -169,7 +177,7 @@ ABLForcingAlgorithm::load_temperature_info(const YAML::Node& node)
       "ABLForcingAlgorithm: Invalid type specification for temperature. "
       "Valid types are: [user_defined, computed]");
   }
-  get_if_present(node, "relaxation_factor", alphaTemperature_);
+  get_if_present(node, "relaxation_factor", alphaTemperature_, alphaTemperature_);
   get_required<std::vector<double>>(node, "heights", tempHeights_);
   auto nHeights = tempHeights_.size();
 
@@ -336,6 +344,33 @@ ABLForcingAlgorithm::initialize()
       << "\n\t Number of time steps: " << tempTimes_.size() << std::endl
       << std::endl;
   }
+
+  // Prepare output files to dump sources when computed during precursor phase
+  if (( NaluEnv::self().parallel_rank() == 0 ) &&
+      ( momSrcType_ == COMPUTED )) {
+    std::string uxname((boost::format(outFileFmt_)%"Ux").str());
+    std::string uyname((boost::format(outFileFmt_)%"Uy").str());
+    std::string uzname((boost::format(outFileFmt_)%"Uz").str());
+    std::fstream uxFile, uyFile, uzFile;
+    uxFile.open(uxname.c_str(), std::fstream::out);
+    uyFile.open(uyname.c_str(), std::fstream::out);
+    uzFile.open(uzname.c_str(), std::fstream::out);
+
+    uxFile << "# Time, " ;
+    uyFile << "# Time, " ;
+    uzFile << "# Time, " ;
+    for (size_t ih = 0; ih < velHeights_.size(); ih++) {
+      uxFile << velHeights_[ih] << ", ";
+      uyFile << velHeights_[ih] << ", ";
+      uzFile << velHeights_[ih] << ", ";
+    }
+    uxFile << std::endl ;
+    uyFile << std::endl ;
+    uzFile << std::endl ;
+    uxFile.close();
+    uyFile.close();
+    uzFile.close();
+  }
 }
 
 void
@@ -415,6 +450,40 @@ ABLForcingAlgorithm::compute_momentum_sources()
       utils::linear_interp(velZTimes_, velZ_[ih], currTime, USource_[2][ih]);
     }
   }
+
+  const int tcount = realm_.get_time_step_count();
+  if (( NaluEnv::self().parallel_rank() == 0 ) &&
+      ( momSrcType_ == COMPUTED ) &&
+      ( tcount % outputFreq_ == 0)) {
+    std::string uxname((boost::format(outFileFmt_)%"Ux").str());
+    std::string uyname((boost::format(outFileFmt_)%"Uy").str());
+    std::string uzname((boost::format(outFileFmt_)%"Uz").str());
+    std::fstream uxFile, uyFile, uzFile;
+    uxFile.open(uxname.c_str(), std::fstream::app);
+    uyFile.open(uyname.c_str(), std::fstream::app);
+    uzFile.open(uzname.c_str(), std::fstream::app);
+
+    uxFile << std::setw(12) << currTime << ", ";
+    uyFile << std::setw(12) << currTime << ", ";
+    uzFile << std::setw(12) << currTime << ", ";
+    for (size_t ih = 0; ih < velHeights_.size(); ih++) {
+      uxFile << std::setprecision(6)
+             << std::setw(15)
+             << USource_[0][ih] << ", ";
+      uyFile << std::setprecision(6)
+             << std::setw(15)
+             << USource_[1][ih] << ", ";
+      uzFile << std::setprecision(6)
+             << std::setw(15)
+             << USource_[2][ih] << ", ";
+    }
+    uxFile << std::endl;
+    uyFile << std::endl;
+    uzFile << std::endl;
+    uxFile.close();
+    uyFile.close();
+    uzFile.close();
+  }
 }
 
 void
@@ -434,6 +503,24 @@ ABLForcingAlgorithm::compute_temperature_sources()
     for (size_t ih = 0; ih < tempHeights_.size(); ih++) {
       utils::linear_interp(tempTimes_, temp_[ih], currTime, TSource_[ih]);
     }
+  }
+
+  const int tcount = realm_.get_time_step_count();
+  if (( NaluEnv::self().parallel_rank() == 0 ) &&
+      ( tempSrcType_ == COMPUTED ) &&
+      ( tcount % outputFreq_ == 0)) {
+    std::string fname((boost::format(outFileFmt_)%"T").str());
+    std::fstream tFile;
+    tFile.open(fname.c_str(), std::fstream::app);
+
+    tFile << currTime << ", ";
+    for (size_t ih = 0; ih < tempHeights_.size(); ih++) {
+      tFile << std::setprecision(6)
+            << std::setw(15)
+            << TSource_[ih] << ", ";
+    }
+    tFile << std::endl;
+    tFile.close();
   }
 }
 

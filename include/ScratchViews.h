@@ -60,6 +60,8 @@ public:
   inline
   SharedMemView<double****>& get_scratch_view_4D(const stk::mesh::FieldBase& field);
 
+  inline const int total_bytes() const { return num_bytes_required; }
+
   const stk::mesh::Entity* elemNodes;
   SharedMemView<double**> scs_areav;
   SharedMemView<double***> dndx;
@@ -83,6 +85,8 @@ private:
                                           int numScsIp, int numScvIp);
 
   std::vector<ViewHolder*> fieldViews;
+
+  int num_bytes_required{0};
 };
 
 inline

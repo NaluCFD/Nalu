@@ -269,11 +269,6 @@ class Realm {
   void dump_simulation_time();
   double provide_mean_norm();
 
-  MasterElement* get_surface_master_element(
-    const stk::topology & theTopo);
-  MasterElement* get_volume_master_element(
-    const stk::topology & theTopo);
-
   double get_hybrid_factor(
     const std::string dofname);
   double get_alpha_factor(
@@ -420,9 +415,6 @@ class Realm {
   std::map<PropertyIdentifier, ScalarFieldType *> propertyMap_;
   std::vector<Algorithm *> initCondAlg_;
 
-  std::map<stk::topology, MasterElement *> surfaceMeMap_;
-  std::map<stk::topology, MasterElement *> volumeMeMap_;
-
   SizeType nodeCount_;
   bool estimateMemoryOnly_;
   double availableMemoryPerCoreGB_;
@@ -438,6 +430,7 @@ class Realm {
   double timerTransferSearch_;
   double timerTransferExecute_;
   double timerSkinMesh_;
+  double timerPromoteMesh_;
 
   NonConformalManager *nonConformalManager_;
   OversetManager *oversetManager_;
@@ -551,13 +544,13 @@ class Realm {
     const TurbulenceModelConstant turbModelEnum);
   bool process_adaptivity();
 
-
-  // element promotion
-
-  // options
+  // element promotion options
   bool doPromotion_; // conto
   unsigned promotionOrder_;
   std::string quadType_;
+  
+  // id for the input mesh
+  size_t inputMeshIdx_;
 
   // tools
   std::unique_ptr<ElementDescription> desc_; // holds topo info
@@ -571,9 +564,6 @@ class Realm {
   bool high_order_active() const { return doPromotion_; };
 
   std::string physics_part_name(std::string) const;
-
-  double timerPromoteMesh_; // timer
-
 };
 
 } // namespace nalu

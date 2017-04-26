@@ -53,6 +53,7 @@
 #include <AssembleElemSolverAlgorithm.h>
 #include <ScalarMassElemSuppAlg.h>
 #include <ScalarAdvDiffElemSuppAlg.h>
+#include <ScalarUpwAdvDiffElemSuppAlg.h>
 
 // deprecated
 #include <ScalarMassElemSuppAlgDep.h>
@@ -406,6 +407,10 @@ MixtureFractionEquationSystem::register_interior_algorithm(
         (partTopo, *this, suppAlgVec, "advection_diffusion",
          realm_, mixFrac_, evisc_, dataPreReqs);
       
+      build_topo_supp_alg_if_requested<ScalarUpwAdvDiffElemSuppAlg>
+        (partTopo, *this, suppAlgVec, "upw_advection_diffusion",
+         realm_, this, mixFrac_, dzdx_, evisc_, dataPreReqs);
+
       build_topo_supp_alg_if_requested<ScalarNSOElemSuppAlg>
         (partTopo, *this, suppAlgVec, "NSO_2ND",
          realm_, mixFrac_, dzdx_, evisc_, 0.0, 0.0, dataPreReqs); 

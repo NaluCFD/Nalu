@@ -86,7 +86,7 @@ public:
     dataNeeded.add_gathered_nodal_field(*nodalPressureField, 1);
 
     // add the master element
-    sierra::nalu::MasterElement* meSCS = unit_test_utils::get_surface_master_element(topo);
+    sierra::nalu::MasterElement* meSCS = sierra::nalu::get_surface_master_element(topo);
     dataNeeded.add_cvfem_surface_me(meSCS);
   }
 

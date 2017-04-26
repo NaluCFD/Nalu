@@ -11,31 +11,36 @@
 
 #include <LinearSystem.h>
 
+#include <KokkosInterface.h>
+
 #include <Tpetra_DefaultPlatform.hpp>
 #include <Kokkos_DefaultNode.hpp>
 #include <Tpetra_Vector.hpp>
 #include <Tpetra_DefaultPlatform.hpp>
 #include <Tpetra_CrsMatrix.hpp>
 
+#include <stk_mesh/base/Types.hpp>
 #include <stk_mesh/base/Entity.hpp>
+#include <stk_mesh/base/FieldBase.hpp>
 
 #include <vector>
 #include <string>
 #include <boost/unordered_map.hpp>
 
-namespace stk {
-namespace mesh {
-  typedef uint64_t EntityId;
-}
-}
+#include <Kokkos_UnorderedMap.hpp>
 
-namespace sierra{
-namespace nalu{
+namespace sierra {
+namespace nalu {
 
 class Realm;
+class EquationSystem;
 class LinearSolver;
 
 typedef boost::unordered_map<stk::mesh::EntityId, size_t>  MyLIDMapType;
+
+typedef std::pair<stk::mesh::Entity, stk::mesh::Entity> Connection;
+typedef Kokkos::UnorderedMap<Connection,void> ConnectionSetKK;
+typedef std::vector< Connection > ConnectionVec;
 
 class TpetraLinearSystem : public LinearSystem
 {
@@ -65,6 +70,14 @@ public:
   void zeroSystem();
 
   void sumInto(
+      unsigned numEntities,
+      const stk::mesh::Entity* entities,
+      const SharedMemView<const double*> & rhs,
+      const SharedMemView<const double**> & lhs,
+      const SharedMemView<int*> & localIds,
+      const char * trace_tag);
+
+  void sumInto(
     const std::vector<stk::mesh::Entity> & entities,
     std::vector<int> &scratchIds,
     std::vector<double> &scratchVals,
@@ -90,7 +103,11 @@ public:
   void writeToFile(const char * filename, bool useOwned=true);
   void printInfo(bool useOwned=true);
   void writeSolutionToFile(const char * filename, bool useOwned=true);
-  size_t lookup_myLID(MyLIDMapType& myLIDs, stk::mesh::EntityId entityId, const char* msg=nullptr, stk::mesh::Entity entity = stk::mesh::Entity());
+  size_t lookup_myLID(MyLIDMapType& myLIDs, stk::mesh::EntityId entityId, const char* msg=nullptr, stk::mesh::Entity entity = stk::mesh::Entity())
+  {
+    return myLIDs[entityId];
+  }
+
 
   enum DOFStatus {
     DS_NotSet           = 0,
@@ -109,6 +126,19 @@ private:
     const int err_code,
     const char * msg) {}
 
+  void copy_kokkos_unordered_map_to_sorted_vector(const ConnectionSetKK& connectionSetKK,
+                                                  ConnectionVec& connectionVec);
+
+  void compute_graph_row_lengths(const ConnectionVec& connectionVec,
+                                 LinSys::RowLengths& globallyOwnedRowLengths,
+                                 LinSys::RowLengths& locallyOwnedRowLengths);
+
+  void insert_graph_connections(const ConnectionVec& connectionVec,
+                                LinSys::Graph& ownedGraph,
+                                int ownedOrSharedMask);
+
+  void fill_entity_to_LID_mapping();
+
   void copy_tpetra_to_stk(
     const Teuchos::RCP<LinSys::Vector> tpetraVector,
     stk::mesh::FieldBase * stkField);
@@ -118,14 +148,12 @@ private:
   void copy_stk_to_tpetra(stk::mesh::FieldBase * stkField,
     const Teuchos::RCP<LinSys::MultiVector> tpetraVector);
 
-  void addConnections(const stk::mesh::Entity* entities, size_t num_entities);
+  int addConnections(const stk::mesh::Entity* entities,const size_t&);
+  void expand_unordered_map(unsigned newCapacityNeeded);
   void checkForNaN(bool useOwned);
   bool checkForZeroRow(bool useOwned, bool doThrow, bool doPrint=false);
 
-  typedef std::pair<stk::mesh::Entity, stk::mesh::Entity> Connection;
-  typedef std::set< Connection > ConnectionSet;
-  typedef std::vector< Connection > ConnectionVec;
-  ConnectionSet connectionSet_;
+  ConnectionSetKK connectionSetKK_ ;
   std::vector<GlobalOrdinal> totalGids_;
 
   Teuchos::RCP<LinSys::Node>   node_;
@@ -157,10 +185,30 @@ private:
   Teuchos::RCP<LinSys::Import> importer_;
 
   MyLIDMapType myLIDs_;
+  std::vector<LocalOrdinal> entityToLID_;
   LocalOrdinal maxOwnedRowId_; // = num_owned_nodes * numDof_
   LocalOrdinal maxGloballyOwnedRowId_; // = (num_owned_nodes + num_globallyOwned_nodes) * numDof_
+  EquationSystem* eqSys_;
 };
 
+template<typename T1, typename T2>
+void copy_kokkos_unordered_map(const Kokkos::UnorderedMap<T1,T2>& src,
+                               Kokkos::UnorderedMap<T1,T2>& dest)
+{
+  if (src.capacity() > dest.capacity()) {
+    dest = Kokkos::UnorderedMap<T1,T2>(src.capacity());
+  }
+
+  unsigned capacity = src.capacity();
+  unsigned fail_count = 0;
+  for(unsigned i=0; i<capacity; ++i) {
+    if (src.valid_at(i)) {
+      auto insert_result = dest.insert(src.key_at(i));
+      fail_count += insert_result.failed() ? 1 : 0;
+    }
+  }
+  ThrowRequire(fail_count == 0);
+}
 
 } // namespace nalu
 } // namespace Sierra

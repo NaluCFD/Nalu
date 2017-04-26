@@ -49,7 +49,7 @@ MomentumAdvDiffElemSuppAlg<AlgTraits>::MomentumAdvDiffElemSuppAlg(
     coordinates_(NULL),
     viscosity_(viscosity),
     massFlowRate_(NULL),
-    lrscv_(realm.get_surface_master_element(AlgTraits::topo_)->adjacentNodes()),
+    lrscv_(sierra::nalu::get_surface_master_element(AlgTraits::topo_)->adjacentNodes()),
     includeDivU_(realm_.get_divU())
 {
   // save off fields; for non-BDF2 gather in state N for Nm1 (gamma3_ will be zero)
@@ -59,7 +59,7 @@ MomentumAdvDiffElemSuppAlg<AlgTraits>::MomentumAdvDiffElemSuppAlg(
   massFlowRate_ = meta_data.get_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "mass_flow_rate_scs");
 
   // compute shape function; do we want to push this to dataPreReqs?
-  MasterElement *meSCS = realm.get_surface_master_element(AlgTraits::topo_);
+  MasterElement *meSCS = sierra::nalu::get_surface_master_element(AlgTraits::topo_);
   meSCS->shape_fcn(&v_shape_function_(0,0));
 
   // add master elements
@@ -79,8 +79,8 @@ MomentumAdvDiffElemSuppAlg<AlgTraits>::MomentumAdvDiffElemSuppAlg(
 template<class AlgTraits>
 void
 MomentumAdvDiffElemSuppAlg<AlgTraits>::element_execute(
-  double *lhs,
-  double *rhs,
+  SharedMemView<double **>& lhs,
+  SharedMemView<double *>& rhs,
   stk::mesh::Entity element,
   ScratchViews& scratchViews)
 {
@@ -138,8 +138,8 @@ MomentumAdvDiffElemSuppAlg<AlgTraits>::element_execute(
       const int indexR = irNdim + i;
 
       // right hand side; L and R
-      rhs[indexL] -= aflux + divUstress;
-      rhs[indexR] += aflux + divUstress;
+      rhs(indexL) -= aflux + divUstress;
+      rhs(indexR) += aflux + divUstress;
     }
 
     for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
@@ -157,16 +157,10 @@ MomentumAdvDiffElemSuppAlg<AlgTraits>::element_execute(
         const int indexL = ilNdim + i;
         const int indexR = irNdim + i;
 
-        const int rowL = indexL*AlgTraits::nodesPerElement_*AlgTraits::nDim_;
-        const int rowR = indexR*AlgTraits::nodesPerElement_*AlgTraits::nDim_;
-
-        const int rLiC_i = rowL+icNdim+i;
-        const int rRiC_i = rowR+icNdim+i;
-
         // advection operator lhs; rhs handled above
         // lhs; il then ir
-        lhs[rLiC_i] += lhsfacAdv;
-        lhs[rRiC_i] -= lhsfacAdv;
+        lhs(indexL,icNdim+i) += lhsfacAdv;
+        lhs(indexR,icNdim+i) -= lhsfacAdv;
 
         // viscous stress
         double lhs_riC_i = 0.0;
@@ -183,19 +177,19 @@ MomentumAdvDiffElemSuppAlg<AlgTraits>::element_execute(
           // -mu*duj/dxi*A_j
           const double lhsfacDiff_j = -muIp*v_dndx(ip,ic,i)*axj;
           // lhs; il then ir
-          lhs[rowL+icNdim+j] += lhsfacDiff_j;
-          lhs[rowR+icNdim+j] -= lhsfacDiff_j;
+          lhs(indexL,icNdim+j) += lhsfacDiff_j;
+          lhs(indexR,icNdim+j) -= lhsfacDiff_j;
           // rhs; il then ir
-          rhs[indexL] -= lhsfacDiff_j*uj;
-          rhs[indexR] += lhsfacDiff_j*uj;
+          rhs(indexL) -= lhsfacDiff_j*uj;
+          rhs(indexR) += lhsfacDiff_j*uj;
         }
 
         // deal with accumulated lhs and flux for -mu*dui/dxj*Aj
-        lhs[rLiC_i] += lhs_riC_i;
-        lhs[rRiC_i] -= lhs_riC_i;
+        lhs(indexL,icNdim+i) += lhs_riC_i;
+        lhs(indexR,icNdim+i) -= lhs_riC_i;
         const double ui = v_uNp1(ic,i);
-        rhs[indexL] -= lhs_riC_i*ui;
-        rhs[indexR] += lhs_riC_i*ui;
+        rhs(indexL) -= lhs_riC_i*ui;
+        rhs(indexR) += lhs_riC_i*ui;
       }
     }
   }

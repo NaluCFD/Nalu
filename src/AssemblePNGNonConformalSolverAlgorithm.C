@@ -40,13 +40,15 @@ AssemblePNGNonConformalSolverAlgorithm::AssemblePNGNonConformalSolverAlgorithm(
   stk::mesh::Part *part,
   EquationSystem *eqSystem,
   std::string independentDofName,
-  std::string dofName)
+  std::string dofName,
+  const bool includePenalty)
   : SolverAlgorithm(realm, part, eqSystem),
     scalarQ_(NULL),
     Gjq_(NULL),
     coordinates_(NULL),
     exposedAreaVec_(NULL),
-    useCurrentNormal_(realm_.get_nc_alg_current_normal())
+    useCurrentNormal_(realm_.get_nc_alg_current_normal()),
+    includePenalty_(includePenalty)
 {
   // save off data
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -85,12 +87,12 @@ AssemblePNGNonConformalSolverAlgorithm::initialize_connectivity()
 void
 AssemblePNGNonConformalSolverAlgorithm::execute()
 {
-
   stk::mesh::BulkData & bulk_data = realm_.bulk_data();
   stk::mesh::MetaData & meta_data = realm_.meta_data();
 
-  const int nDim = meta_data.spatial_dimension();
- 
+  const int nDim = meta_data.spatial_dimension(); 
+  const double penaltyFac = includePenalty_ ? 1.0 : 0.0;
+
   // space for LHS/RHS; nodesPerElem*nDim*nodesPerElem*nDim and nodesPerElem*nDim
   std::vector<double> lhs;
   std::vector<double> rhs;
@@ -403,7 +405,7 @@ AssemblePNGNonConformalSolverAlgorithm::execute()
           p_rhs[p] = 0.0;
         
         // form penalty and mean value of scalarQ at this bip; penalty term includes an interesting recursion
-        const double penaltyIp = 0.5*(1.0/currentInverseLength + 1.0/opposingInverseLength);
+        const double penaltyIp = 0.5*(1.0/currentInverseLength + 1.0/opposingInverseLength)*penaltyFac;
         const double ncScalarQ =  0.5*(currentScalarQBip+opposingScalarQBip);
 
         // extract nearset node

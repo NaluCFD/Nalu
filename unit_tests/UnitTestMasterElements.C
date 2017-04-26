@@ -304,8 +304,8 @@ protected:
       meta = std::unique_ptr<stk::mesh::MetaData>(new stk::mesh::MetaData(topo.dimension()));
       bulk = std::unique_ptr<stk::mesh::BulkData>(new stk::mesh::BulkData(*meta, comm));
       elem = unit_test_utils::create_one_reference_element(*bulk, topo);
-      meSS = unit_test_utils::get_surface_master_element(topo);
-      meSV = unit_test_utils::get_volume_master_element(topo);
+      meSS = sierra::nalu::get_surface_master_element(topo);
+      meSV = sierra::nalu::get_volume_master_element(topo);
     }
 
     void scs_interpolation(stk::topology topo) {

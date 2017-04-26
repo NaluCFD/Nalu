@@ -46,7 +46,7 @@ ComputeLowReynoldsSDRWallAlgorithm::ComputeLowReynoldsSDRWallAlgorithm(
   : Algorithm(realm, part),
     useShifted_(useShifted),
     betaOne_(realm.get_turb_model_constant(TM_betaOne)),
-    wallFactor_(1.0)
+    wallFactor_(realm.get_turb_model_constant(TM_SDRWallFactor))
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -107,10 +107,10 @@ ComputeLowReynoldsSDRWallAlgorithm::execute()
     stk::topology theElemTopo = parentTopo[0];
 
     // extract master element
-    MasterElement *meSCS = realm_.get_surface_master_element(theElemTopo);
+    MasterElement *meSCS = sierra::nalu::get_surface_master_element(theElemTopo);
 
     // face master element
-    MasterElement *meFC = realm_.get_surface_master_element(b.topology());
+    MasterElement *meFC = sierra::nalu::get_surface_master_element(b.topology());
     const int nodesPerFace = b.topology().num_nodes();
     const int numScsBip = meFC->numIntPoints_;
 

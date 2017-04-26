@@ -44,13 +44,8 @@ public:
   MasterElement *meSCS_;
   MasterElement *meSCV_;
 
-  std::vector<double> lhs_;
-  std::vector<double> rhs_;
-  std::vector<int> scratchIds_;
-  std::vector<double> scratchVals_;
-  std::vector<stk::mesh::Entity> connectedNodes_;
-
   ElemDataRequests dataNeededBySuppAlgs_;
+  int rhsSize_;
 };
 
 } // namespace nalu

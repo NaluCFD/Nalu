@@ -12,6 +12,12 @@
 #include <stk_mesh/base/SkinBoundary.hpp>
 #include <stk_topology/topology.hpp>
 
+#include <element_promotion/PromotedPartHelper.h>
+#include <element_promotion/ElementDescription.h>
+#include <element_promotion/PromoteElement.h>
+#include <element_promotion/PromotedElementIO.h>
+#include <nalu_make_unique.h>
+
 #include "UnitTestUtils.h"
 #include "UnitTestKokkosUtils.h"
 
@@ -36,6 +42,62 @@ void fill_hex8_mesh(const std::string& meshSpec, stk::mesh::BulkData& bulk)
     io.add_mesh_database(meshSpec, stk::io::READ_MESH);
     io.create_input_mesh();
     io.populate_bulk_data();
+}
+
+void fill_and_promote_hex_mesh(const std::string& meshSpec, stk::mesh::BulkData& bulk, int polyOrder)
+{
+    stk::io::StkMeshIoBroker io(bulk.parallel());
+    io.set_bulk_data(bulk);
+    io.add_mesh_database(meshSpec, stk::io::READ_MESH);
+    io.create_input_mesh();
+
+    stk::mesh::MetaData& meta = bulk.mesh_meta_data();
+    stk::mesh::Part* blockPart = meta.get_part("block_1");
+    stk::mesh::Part* surfPart = &meta.declare_part_with_topology("surface_1", stk::topology::QUAD_4);
+
+    auto elemDesc = sierra::nalu::ElementDescription::create(3,polyOrder);
+
+    const std::string superName = sierra::nalu::super_element_part_name("block_1");
+    stk::topology topo = stk::create_superelement_topology(static_cast<unsigned>(elemDesc->nodesPerElement));
+    meta.declare_part_with_topology(superName, topo);
+
+    stk::mesh::Part* superSuperPart =
+        &meta.declare_part(sierra::nalu::super_element_part_name("surface_1"), stk::topology::FACE_RANK);
+
+    const auto sidePartName = sierra::nalu::super_subset_part_name("surface_1");
+    auto sideTopo = stk::create_superface_topology(static_cast<unsigned>(elemDesc->nodesPerSide));
+    stk::mesh::Part* superSidePart = &meta.declare_part_with_topology(sidePartName, sideTopo);
+    meta.declare_part_subset(*superSuperPart, *superSidePart);
+
+    stk::mesh::Part* edgePart = &meta.declare_part("edge_part", stk::topology::EDGE_RANK);
+    stk::mesh::Part* facePart = &meta.declare_part("face_part", stk::topology::FACE_RANK);
+
+    io.populate_bulk_data();
+    stk::mesh::create_exposed_block_boundary_sides(bulk, *blockPart, {surfPart});
+
+    VectorFieldType* coords = meta.get_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates");
+    stk::mesh::PartVector baseParts = {blockPart, surfPart};
+    sierra::nalu::promotion::promote_elements(bulk, *elemDesc, *coords, baseParts, edgePart, facePart);
+}
+
+void dump_promoted_mesh_file(stk::mesh::BulkData& bulk, int polyOrder)
+{
+    const auto& meta = bulk.mesh_meta_data();
+    const stk::mesh::PartVector& outParts = meta.get_mesh_parts();
+    std::string fileName = "out.e" ;
+
+    auto desc = sierra::nalu::ElementDescription::create(meta.spatial_dimension(), polyOrder);
+    VectorFieldType* coordField = meta.get_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates");
+
+    auto io = sierra::nalu::make_unique<sierra::nalu::PromotedElementIO>(
+      *desc,
+      meta,
+      bulk,
+      outParts,
+      fileName,
+      *coordField
+    );
+    io->write_database_data(0.0);
 }
 
 std::ostream& nalu_out()
@@ -172,6 +234,7 @@ stk::mesh::Entity create_one_reference_wedge6_element(stk::mesh::BulkData& bulk)
   return create_one_element(bulk, stk::topology::WEDGE_6, nodeLocations);
 }
 
+
 stk::mesh::Entity create_one_reference_element(stk::mesh::BulkData& bulk, stk::topology topo)
 {
   switch (topo.value())
@@ -217,50 +280,6 @@ double quadratic(double a, const double* b, const double* H, const double* x)
               + x[2] * (H[6]*x[0] + H[7]*x[1] + H[8]*x[2]);
 
   return (linear(a,b,x) + 0.5*quad);
-}
-
-sierra::nalu::MasterElement *
-get_surface_master_element(const stk::topology & theTopo)
-{
-  sierra::nalu::MasterElement *theElem = NULL;
-
-  static std::map<stk::topology, sierra::nalu::MasterElement*> s_topo_masterelem_map;
-
-  std::map<stk::topology, sierra::nalu::MasterElement *>::iterator it =
-    s_topo_masterelem_map.find(theTopo);
-  if ( it == s_topo_masterelem_map.end() ) {
-    theElem = sierra::nalu::MasterElement::create_surface_master_element(theTopo);
-    ThrowRequire(theElem != nullptr);
-
-    s_topo_masterelem_map[theTopo] = theElem;
-  }
-  else {
-    theElem = it->second;
-  }
-
-  return theElem;
-}
-
-sierra::nalu::MasterElement *
-get_volume_master_element(const stk::topology & theTopo)
-{
-  sierra::nalu::MasterElement *theElem = NULL;
-
-  static std::map<stk::topology, sierra::nalu::MasterElement*> s_topov_masterelem_map;
-
-  std::map<stk::topology, sierra::nalu::MasterElement *>::iterator it =
-    s_topov_masterelem_map.find(theTopo);
-  if ( it == s_topov_masterelem_map.end() ) {
-    theElem = sierra::nalu::MasterElement::create_volume_master_element(theTopo);
-    ThrowRequire(theElem != nullptr);
-
-    s_topov_masterelem_map[theTopo] = theElem;
-  }
-  else {
-    theElem = it->second;
-  }
-
-  return theElem;
 }
 
 #ifndef KOKKOS_HAVE_CUDA

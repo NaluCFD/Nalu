@@ -69,12 +69,15 @@ SolutionOptions::SolutionOptions()
     ncAlgUpwindAdvection_(true),
     ncAlgIncludePstab_(true),
     ncAlgDetailedOutput_(false),
+    ncAlgCoincidentNodesErrorCheck_(false),
     ncAlgCurrentNormal_(false),
+    ncAlgPngPenalty_(true),
     cvfemShiftMdot_(false),
     cvfemShiftPoisson_(false),
     cvfemReducedSensPoisson_(false),
     inputVariablesRestorationTime_(1.0e8),
     inputVariablesInterpolateInTime_(false),
+    inputVariablesPeriodicTime_(0.0),
     consistentMMPngDefault_(false),
     useConsolidatedSolverAlg_(false),
     eigenvaluePerturb_(false),
@@ -176,6 +179,10 @@ SolutionOptions::load(const YAML::Node & y_node)
     // choice of interpolation or snapping to closest in the data base
     get_if_present(y_solution_options, "input_variables_interpolate_in_time",
       inputVariablesInterpolateInTime_, inputVariablesInterpolateInTime_);
+
+    // allow for periodic sampling in time
+    get_if_present(y_solution_options, "input_variables_from_file_periodic_time",
+      inputVariablesPeriodicTime_, inputVariablesPeriodicTime_);
 
     // first set of options; hybrid, source, etc.
     const YAML::Node y_options = expect_sequence(y_solution_options, "options", required);
@@ -300,7 +307,9 @@ SolutionOptions::load(const YAML::Node & y_node)
           get_if_present(y_nc, "upwind_advection",  ncAlgUpwindAdvection_, ncAlgUpwindAdvection_);
           get_if_present(y_nc, "include_pstab",  ncAlgIncludePstab_, ncAlgIncludePstab_);
           get_if_present(y_nc, "detailed_output",  ncAlgDetailedOutput_, ncAlgDetailedOutput_);
+          get_if_present(y_nc, "activate_coincident_node_error_check",  ncAlgCoincidentNodesErrorCheck_, ncAlgCoincidentNodesErrorCheck_);
           get_if_present(y_nc, "current_normal",  ncAlgCurrentNormal_, ncAlgCurrentNormal_);
+          get_if_present(y_nc, "include_png_penalty",  ncAlgPngPenalty_, ncAlgPngPenalty_);
         }
         else if (expect_map( y_option, "peclet_function_form", optional)) {
           y_option["peclet_function_form"] >> tanhFormMap_ ;
@@ -553,6 +562,7 @@ SolutionOptions::initialize_turbulence_constants()
   turbModelConstantMap_[TM_cmuCs] = 0.17;
   turbModelConstantMap_[TM_Cw] = 0.325;
   turbModelConstantMap_[TM_CbTwo] = 0.35;
+  turbModelConstantMap_[TM_SDRWallFactor] = 1.0;
 }
  
 } // namespace nalu

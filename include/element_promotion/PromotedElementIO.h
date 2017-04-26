@@ -60,7 +60,7 @@ public:
   PromotedElementIO(
     const ElementDescription& elem,
     const stk::mesh::MetaData& metaData,
-    const stk::mesh::BulkData& bulkData,
+    stk::mesh::BulkData& bulkData,
     const stk::mesh::PartVector& baseParts,
     const std::string& fileName,
     const VectorFieldType& coordField
@@ -92,6 +92,7 @@ private:
   template<typename T> void
   put_data_on_node_block(
     Ioss::NodeBlock& nodeBlock,
+    const std::vector<int64_t>& ids,
     const stk::mesh::FieldBase& field,
     const stk::mesh::BucketVector& buckets) const;
 

@@ -58,7 +58,7 @@ ScalarNSOElemSuppAlg<AlgTraits>::ScalarNSOElemSuppAlg(
     velocityRTM_(NULL),
     Gjq_(Gjq),
     coordinates_(NULL),
-    lrscv_(realm.get_surface_master_element(AlgTraits::topo_)->adjacentNodes()),
+    lrscv_(sierra::nalu::get_surface_master_element(AlgTraits::topo_)->adjacentNodes()),
     dt_(0.0),
     gamma1_(0.0),
     gamma2_(0.0),
@@ -89,7 +89,7 @@ ScalarNSOElemSuppAlg<AlgTraits>::ScalarNSOElemSuppAlg(
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
 
   // compute shape function; do we want to push this to dataPreReqs?
-  MasterElement *meSCS = realm.get_surface_master_element(AlgTraits::topo_);
+  MasterElement *meSCS = sierra::nalu::get_surface_master_element(AlgTraits::topo_);
   meSCS->shape_fcn(&v_shape_function_(0,0));
 
   // add master elements
@@ -133,8 +133,8 @@ ScalarNSOElemSuppAlg<AlgTraits>::setup()
 template<class AlgTraits>
 void
 ScalarNSOElemSuppAlg<AlgTraits>::element_execute(
-  double *lhs,
-  double *rhs,
+  SharedMemView<double **>& lhs,
+  SharedMemView<double *>& rhs,
   stk::mesh::Entity element,
   ScratchViews& scratchViews)
 {
@@ -159,10 +159,6 @@ ScalarNSOElemSuppAlg<AlgTraits>::element_execute(
     const int il = lrscv_[2*ip];
     const int ir = lrscv_[2*ip+1];
 
-    // corresponding matrix rows
-    const int rowL = il*AlgTraits::nodesPerElement_;
-    const int rowR = ir*AlgTraits::nodesPerElement_;
-   
     // zero out; scalar
     double qNm1Scs = 0.0;
     double qNScs = 0.0;
@@ -269,14 +265,14 @@ ScalarNSOElemSuppAlg<AlgTraits>::element_execute(
         }
       }
       
-      lhs[rowL+ic] += nu*lhsfac;
-      lhs[rowR+ic] -= nu*lhsfac;
+      lhs(il,ic) += nu*lhsfac;
+      lhs(ir,ic) -= nu*lhsfac;
     }
     
     // residual; left and right
     const double residualNSO = -nu*gijFac;
-    rhs[il] -= residualNSO;
-    rhs[ir] += residualNSO;
+    rhs(il) -= residualNSO;
+    rhs(ir) += residualNSO;
   }      
 }
 

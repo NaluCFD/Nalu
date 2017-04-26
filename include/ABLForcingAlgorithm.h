@@ -245,6 +245,14 @@ private:
 
   //! Format string specifier for generating temperature parts list
   std::string tempPartFmt_;
+
+  //! Write frequency for source term output
+  int outputFreq_;
+
+  //! Format string specifier indicating the file name for output. The
+  //! specification takes one `%s` specifier that is used to populate Ux, Uy,
+  //! Uz, T. Default is "abl_sources_%s.dat"
+  std::string outFileFmt_;
 };
 }
 }

@@ -102,15 +102,13 @@ class PromoteElementQuadTestV2 : public ::testing::Test
         stk::mesh::PartVector surfParts = {surfSubPart};
         stk::mesh::skin_mesh(*bulk, surfParts);
 
-        // quadfixture has its coordinates as ints, but we assume everywhere that coordinates are double-precision
-        const auto& coordIntField =
-            *static_cast<const stk::mesh::Field<int,stk::mesh::Cartesian>*>(meta->coordinate_field());
-
-        sierra::nalu::bucket_loop(bulk->get_buckets(stk::topology::NODE_RANK, meta->universal_part()), [&](stk::mesh::Entity node) {
-          const int* const coordInt = stk::mesh::field_data(coordIntField, node);
+        const auto& coordFieldFromMetaData = *static_cast<const VectorFieldType*>(meta->coordinate_field());
+        const auto& buckets = bulk->get_buckets(stk::topology::NODE_RANK, meta->universal_part());
+        sierra::nalu::bucket_loop(buckets, [&](stk::mesh::Entity node) {
+          const double* const coordOriginal = stk::mesh::field_data(coordFieldFromMetaData, node);
           double* const coords = stk::mesh::field_data(*coordField, node);
           for (unsigned j = 0; j < meta->spatial_dimension(); ++j) {
-            coords[j] = 2 * coordInt[j] - 1;
+            coords[j] = 2 * coordOriginal[j] - 1;
           }
         });
       }
@@ -385,7 +383,7 @@ TEST_F(PromoteElementQuadTestV2, node_count)
 
     EXPECT_EQ(promotedNodeCount, expected_node_count(originalNodeCount));
 
-    bool outputMesh = true;
+    bool outputMesh = false;
     if (outputMesh) {
       EXPECT_NO_THROW(output_mesh());
     }
@@ -533,7 +531,7 @@ TEST_F(PromoteElementQuadTestV2, png)
       EXPECT_NEAR(dqdxMag, exactGradMag, tol);
     });
 
-    bool outputMesh = true;
+    bool outputMesh = false;
     if (outputMesh) {
       EXPECT_NO_THROW(output_mesh());
     }

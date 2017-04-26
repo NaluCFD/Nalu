@@ -81,8 +81,8 @@ ScalarDiffFemSuppAlg<AlgTraits>::~ScalarDiffFemSuppAlg()
 template<class AlgTraits>
 void
 ScalarDiffFemSuppAlg<AlgTraits>::element_execute(
-  double *lhs,
-  double *rhs,
+  SharedMemView<double **>& lhs,
+  SharedMemView<double *>& rhs,
   stk::mesh::Entity element,
   ScratchViews &/*scratchViews*/)
 {  
@@ -145,9 +145,9 @@ ScalarDiffFemSuppAlg<AlgTraits>::element_execute(
           lhsSum += fac;
           rhsSum += fac*T;
         }
-        lhs[ir*AlgTraits::nodesPerElement_+ic] += lhsSum*ipFactor;
+        lhs(ir,ic) += lhsSum*ipFactor;
       }
-      rhs[ir] -= rhsSum*ipFactor;
+      rhs(ir) -= rhsSum*ipFactor;
     }
   }
 }

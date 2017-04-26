@@ -204,6 +204,8 @@ public:
   
   LinearSystem *linsys_;
 
+  size_t num_graph_entries_;
+
   // vector of property algorithms
   std::vector<Algorithm *> propertyAlg_;
 

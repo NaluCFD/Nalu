@@ -30,6 +30,9 @@ namespace nalu{
 //--------------------------------------------------------------------------
 OutputInfo::OutputInfo() 
   : outputDBName_("output.e"),
+    catalystFileName_(""),
+    catalystParseJson_(""),
+    paraviewScriptName_(""),
     outputFreq_(1),
     outputStart_(0),
     outputNodeSet_(false),
@@ -81,6 +84,12 @@ OutputInfo::load(
 
     // output data base name
     get_if_present(y_output, "output_data_base_name", outputDBName_, outputDBName_);
+
+    // catalyst file name
+    get_if_present(y_output, "catalyst_file_name", catalystFileName_, catalystFileName_);
+
+    // paraview script name
+    get_if_present(y_output, "paraview_script_name", paraviewScriptName_, paraviewScriptName_);
     
     // output frequency
     get_if_present(y_output, "output_frequency", outputFreq_, outputFreq_);

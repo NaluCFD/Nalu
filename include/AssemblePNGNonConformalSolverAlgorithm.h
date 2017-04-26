@@ -29,7 +29,8 @@ public:
     stk::mesh::Part *part,
     EquationSystem *eqSystem,
     std::string independentDofName,
-    std::string dofName);
+    std::string dofName,
+    const bool includePenalty);
 
   ~AssemblePNGNonConformalSolverAlgorithm();
 
@@ -43,7 +44,7 @@ public:
 
   // options that prevail over all algorithms created
   const double useCurrentNormal_;
-
+  const double includePenalty_;
   std::vector< const stk::mesh::FieldBase *> ghostFieldVec_;
 };
 

@@ -58,7 +58,8 @@ EquationSystem::EquationSystem(
     nonLinearIterationCount_(0),
     reportLinearIterations_(false),
     edgeNodalGradient_(realm_.realmUsesEdges_),
-    linsys_(NULL)
+    linsys_(NULL),
+    num_graph_entries_(0)
 {
   // nothing to do
 }

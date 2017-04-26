@@ -53,7 +53,7 @@ MomentumNSOKeElemSuppAlg<AlgTraits>::MomentumNSOKeElemSuppAlg(
     coordinates_(NULL),
     Gju_(Gju),
     Gjp_(NULL),
-    lrscv_(realm.get_surface_master_element(AlgTraits::topo_)->adjacentNodes()),
+    lrscv_(sierra::nalu::get_surface_master_element(AlgTraits::topo_)->adjacentNodes()),
     Cupw_(0.1),
     small_(1.0e-16),
     fourthFac_(fourthFac)
@@ -75,7 +75,7 @@ MomentumNSOKeElemSuppAlg<AlgTraits>::MomentumNSOKeElemSuppAlg(
   Gjp_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "dpdx");
 
   // compute shape function
-  MasterElement *meSCS = realm.get_surface_master_element(AlgTraits::topo_);
+  MasterElement *meSCS = sierra::nalu::get_surface_master_element(AlgTraits::topo_);
   meSCS->shape_fcn(&v_shape_function_(0,0));
 
   // add master elements
@@ -102,8 +102,8 @@ MomentumNSOKeElemSuppAlg<AlgTraits>::MomentumNSOKeElemSuppAlg(
 template<class AlgTraits>
 void
 MomentumNSOKeElemSuppAlg<AlgTraits>::element_execute(
-  double *lhs,
-  double *rhs,
+  SharedMemView<double **>& lhs,
+  SharedMemView<double *>& rhs,
   stk::mesh::Entity element,
   ScratchViews& scratchViews)
 {
@@ -206,9 +206,6 @@ MomentumNSOKeElemSuppAlg<AlgTraits>::element_execute(
       const int indexL = ilNdim + k;
       const int indexR = irNdim + k;
       
-      const int rowL = indexL*AlgTraits::nodesPerElement_*AlgTraits::nDim_;
-      const int rowR = indexR*AlgTraits::nodesPerElement_*AlgTraits::nDim_;
-      
       double gijFac = 0.0;
       for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
 
@@ -217,8 +214,6 @@ MomentumNSOKeElemSuppAlg<AlgTraits>::element_execute(
 
         // find the row
         const int icNdim = ic*AlgTraits::nDim_;
-        const int rLkC_k = rowL+icNdim+k;
-        const int rRkC_k = rowR+icNdim+k;
 
         // save of some variables
         const double ukNp1 = v_uNp1(ic,k);
@@ -237,8 +232,8 @@ MomentumNSOKeElemSuppAlg<AlgTraits>::element_execute(
         }
         
         // no coupling between components
-        lhs[rLkC_k] += nu*lhsfac;
-        lhs[rRkC_k] -= nu*lhsfac;
+        lhs(indexL,icNdim+k) += nu*lhsfac;
+        lhs(indexR,icNdim+k) -= nu*lhsfac;
       }
       
       // residual; left and right

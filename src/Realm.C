@@ -100,6 +100,7 @@
 #include <stk_util/parallel/Parallel.hpp>
 #include <stk_util/environment/WallTime.hpp>
 #include <stk_util/environment/perf_util.hpp>
+#include <stk_util/environment/FileUtils.hpp>
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/BulkData.hpp>
@@ -116,6 +117,7 @@
 // stk_io
 #include <stk_io/StkMeshIoBroker.hpp>
 #include <stk_io/IossBridge.hpp>
+#include <stk_io/InputFile.hpp>
 #include <Ioss_SubSystem.h>
 
 // stk_util
@@ -134,6 +136,9 @@
 #include <cmath>
 #include <utility>
 #include <stdint.h>
+
+// catalyst visualization output
+#include <Iovs_DatabaseIO.h>
 
 #define USE_NALU_PERFORMANCE_TESTING_CALLGRIND 0
 #if USE_NALU_PERFORMANCE_TESTING_CALLGRIND
@@ -206,6 +211,7 @@ namespace nalu{
     timerTransferSearch_(0.0),
     timerTransferExecute_(0.0),
     timerSkinMesh_(0.0),
+    timerPromoteMesh_(0.0),
     nonConformalManager_(NULL),
     oversetManager_(NULL),
     hasNonConformal_(false),
@@ -234,7 +240,8 @@ namespace nalu{
     wallTimeStart_(stk::wall_time()),
     doPromotion_(false),
     promotionOrder_(0u),
-    quadType_("GaussLegendre")
+    quadType_("GaussLegendre"),
+    inputMeshIdx_(-1)
 {
   // deal with specialty options that live off of the realm; 
   // choose to do this now rather than waiting for the load stage
@@ -272,18 +279,6 @@ Realm::~Realm()
   std::vector<AuxFunctionAlgorithm *>::iterator iaux;
   for( iaux=bcDataAlg_.begin(); iaux!=bcDataAlg_.end(); ++iaux )
     delete *iaux;
-
-  // delete master elements that were saved off; surface
-  std::map<stk::topology, MasterElement *>::iterator it;
-  for ( it = surfaceMeMap_.begin(); it!= surfaceMeMap_.end(); ++it ) {
-    MasterElement *theElem = it->second;
-    delete theElem;
-  }
-  // volume
-  for ( it = volumeMeMap_.begin(); it!= volumeMeMap_.end(); ++it ) {
-    MasterElement *theElem = it->second;
-    delete theElem;
-  }
 
   delete solutionOptions_;
   delete outputInfo_;
@@ -707,6 +702,16 @@ Realm::load(const YAML::Node & node)
   {
     // only set from input file if command-line didn't set it
     root()->setSerializedIOGroupSize(outputInfo_->serializedIOGroupSize_);
+  }
+
+
+  // Parse catalyst input file if requested
+  if(!outputInfo_->catalystFileName_.empty())
+  {
+  int error = Iovs::DatabaseIO::parseCatalystFile(outputInfo_->catalystFileName_,
+                                                  outputInfo_->catalystParseJson_);
+  if(error)
+    throw std::runtime_error("Catalyst file parse failed: " + outputInfo_->catalystFileName_);
   }
 
   // solution options - loaded before create_mesh since we need to know if
@@ -1973,8 +1978,8 @@ Realm::create_mesh()
   }
 
   // Initialize meta data (from exodus file); can possibly be a restart file..
-  ioBroker_->add_mesh_database( inputDBName_,
-      restarted_simulation() ? stk::io::READ_RESTART : stk::io::READ_MESH );
+  inputMeshIdx_ = ioBroker_->add_mesh_database( 
+   inputDBName_, restarted_simulation() ? stk::io::READ_RESTART : stk::io::READ_MESH );
   ioBroker_->create_input_mesh();
 
   // declare an exposed part for later bc coverage check
@@ -2023,7 +2028,25 @@ Realm::create_output_mesh()
       if (fileid++ > 0) oname += "-s" + fileid_ss.str();
     }
 
-    resultsFileIndex_ = ioBroker_->create_output_mesh( oname, stk::io::WRITE_RESULTS, *outputInfo_->outputPropertyManager_);
+
+    if(!outputInfo_->catalystFileName_.empty()||
+       !outputInfo_->paraviewScriptName_.empty()) {
+      outputInfo_->outputPropertyManager_->add(Ioss::Property("CATALYST_BLOCK_PARSE_JSON_STRING",
+                                               outputInfo_->catalystParseJson_));
+      std::string input_deck_name = "%B";
+      stk::util::filename_substitution(input_deck_name);
+      outputInfo_->outputPropertyManager_->add(Ioss::Property("CATALYST_BLOCK_PARSE_INPUT_DECK_NAME", input_deck_name));
+
+      if(!outputInfo_->paraviewScriptName_.empty())
+        outputInfo_->outputPropertyManager_->add(Ioss::Property("CATALYST_SCRIPT", outputInfo_->paraviewScriptName_.c_str()));
+
+      outputInfo_->outputPropertyManager_->add(Ioss::Property("CATALYST_CREATE_SIDE_SETS", 1));
+      
+      resultsFileIndex_ = ioBroker_->create_output_mesh( oname, stk::io::WRITE_RESULTS, *outputInfo_->outputPropertyManager_, "catalyst" );
+   }
+   else {
+      resultsFileIndex_ = ioBroker_->create_output_mesh( oname, stk::io::WRITE_RESULTS, *outputInfo_->outputPropertyManager_);
+   }
 
 #if defined (NALU_USES_PERCEPT)
 
@@ -2134,6 +2157,15 @@ Realm::input_variables_from_mesh()
         ? stk::io::MeshField::LINEAR_INTERPOLATION
         : stk::io::MeshField::CLOSEST;
 
+    // check for periodic cycling of data based on start time and periodic time; scale time set to unity
+    if ( solutionOptions_->inputVariablesPeriodicTime_ > 0.0 ) {
+      ioBroker_->get_mesh_database(inputMeshIdx_)
+        .set_periodic_time(solutionOptions_->inputVariablesPeriodicTime_, 
+                           solutionOptions_->inputVariablesRestorationTime_, 
+                           stk::io::InputFile::CYCLIC)
+        .set_scale_time(1.0);
+    }
+    
     std::map<std::string, std::string>::const_iterator iter;
     for ( iter = solutionOptions_->inputVarFromFileMap_.begin();
           iter != solutionOptions_->inputVarFromFileMap_.end(); ++iter) {
@@ -3081,34 +3113,24 @@ Realm::setup_non_conformal_bc(
 {
   hasNonConformal_ = true;
   
-  // extract data
-  NonConformalUserData userData = nonConformalBCData.userData_;
-
-  // extract params useful for search
-  const std::string debugName = nonConformalBCData.targetName_;
-  const std::string searchMethodName = userData.searchMethodName_;
-  const double expandBoxPercentage = userData.expandBoxPercentage_/100.0;
-  const bool clipIsoParametricCoords = userData.clipIsoParametricCoords_; 
-  const double searchTolerance = userData.searchTolerance_;
-
-  // deal with output
-  const bool ncAlgDetailedOutput = solutionOptions_->ncAlgDetailedOutput_;
-
   // create manager
   if ( NULL == nonConformalManager_ ) {
-    nonConformalManager_ = new NonConformalManager(*this, ncAlgDetailedOutput);
+    nonConformalManager_ = new NonConformalManager(*this, solutionOptions_->ncAlgDetailedOutput_, 
+                                                   solutionOptions_->ncAlgCoincidentNodesErrorCheck_);
   }
    
-  // create nonconformal info for this surface
+  // create nonconformal info for this surface, extract user data 
+  NonConformalUserData userData = nonConformalBCData.userData_;
+  
   NonConformalInfo *nonConformalInfo
     = new NonConformalInfo(*this,
                            currentPartVec,
                            opposingPartVec,
-                           expandBoxPercentage,
-                           searchMethodName,
-                           clipIsoParametricCoords,
-                           searchTolerance,
-                           debugName);
+                           userData.expandBoxPercentage_/100.0,
+                           userData.searchMethodName_,
+                           userData.clipIsoParametricCoords_,
+                           userData.searchTolerance_,
+                           nonConformalBCData.targetName_);
   
   nonConformalManager_->nonConformalInfoVec_.push_back(nonConformalInfo);
 }
@@ -3681,9 +3703,9 @@ Realm::dump_simulation_time()
   const int nprocs = NaluEnv::self().parallel_size();
 
   // common
-  const unsigned ntimers = 7;
+  const unsigned ntimers = 6;
   double total_time[ntimers] = {timerCreateMesh_, timerOutputFields_, timerInitializeEqs_, 
-                                timerPropertyEval_, timerPopulateMesh_, timerPopulateFieldData_ , timerPromoteMesh_};
+                                timerPropertyEval_, timerPopulateMesh_, timerPopulateFieldData_ };
   double g_min_time[ntimers] = {}, g_max_time[ntimers] = {}, g_total_time[ntimers] = {};
 
   // get min, max and sum over processes
@@ -3700,8 +3722,6 @@ Realm::dump_simulation_time()
                   << " \tmin: " << g_min_time[4] << " \tmax: " << g_max_time[4] << std::endl;
   NaluEnv::self().naluOutputP0() << " io populate fd   --  " << " \tavg: " << g_total_time[5]/double(nprocs)
                   << " \tmin: " << g_min_time[5] << " \tmax: " << g_max_time[5] << std::endl;
-  NaluEnv::self().naluOutputP0() << " io promote mesh  --  " << " \tavg: " << g_total_time[6]/double(nprocs)
-                  << " \tmin: " << g_min_time[6] << " \tmax: " << g_max_time[6] << std::endl;
   NaluEnv::self().naluOutputP0() << "Timing for connectivity/finalize lysys: " << std::endl;
   NaluEnv::self().naluOutputP0() << "         eqs init --  " << " \tavg: " << g_total_time[2]/double(nprocs)
                   << " \tmin: " << g_min_time[2] << " \tmax: " << g_max_time[2] << std::endl;
@@ -3784,6 +3804,19 @@ Realm::dump_simulation_time()
     NaluEnv::self().naluOutputP0() << "        skin_mesh --  " << " \tavg: " << g_totalSkin/double(nprocs)
                                    << " \tmin: " << g_minSkin << " \tmax: " << g_maxSkin << std::endl;
   }
+
+  // promotion
+  if (doPromotion_) {
+    double g_totalPromote = 0.0, g_minPromote= 0.0, g_maxPromote = 0.0;
+    stk::all_reduce_min(NaluEnv::self().parallel_comm(), &timerPromoteMesh_, &g_minPromote, 1);
+    stk::all_reduce_max(NaluEnv::self().parallel_comm(), &timerPromoteMesh_, &g_maxPromote, 1);
+    stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &timerPromoteMesh_, &g_totalPromote, 1);
+
+    NaluEnv::self().naluOutputP0() << "Timing for promote_mesh :    " << std::endl;
+    NaluEnv::self().naluOutputP0() << "        promote_mesh --  " << " \tavg: " << g_totalPromote/double(nprocs)
+                                         << " \tmin: " << g_minPromote << " \tmax: " << g_maxPromote << std::endl;
+  }
+
   NaluEnv::self().naluOutputP0() << std::endl;
 }
 
@@ -3794,70 +3827,6 @@ double
 Realm::provide_mean_norm()
 {
   return equationSystems_.provide_mean_system_norm();
-}
-
-//--------------------------------------------------------------------------
-//-------- get_volume_master_element ---------------------------------------
-//--------------------------------------------------------------------------
-MasterElement *
-Realm::get_volume_master_element(
-  const stk::topology & theTopo)
-{
-
-  MasterElement *theElem = NULL;
-
-  std::map<stk::topology, MasterElement *>::iterator it =
-    volumeMeMap_.find(theTopo);
-  if ( it == volumeMeMap_.end() ) {
-    // not found; will need to create it and add it
-    if (!theTopo.is_super_topology()) {
-      theElem = MasterElement::create_volume_master_element(theTopo);
-    }
-    else {
-      theElem = MasterElement::create_volume_master_element(theTopo, *desc_, quadType_);
-    }
-    ThrowRequire(theElem != nullptr);
-
-    volumeMeMap_[theTopo] = theElem;
-  }
-  else {
-    // found it
-    theElem = it->second;
-  }
-
-  return theElem;
-}
-
-//--------------------------------------------------------------------------
-//-------- get_surface_master_element ---------------------------------------
-//--------------------------------------------------------------------------
-MasterElement *
-Realm::get_surface_master_element(
-  const stk::topology & theTopo)
-{
-  MasterElement *theElem = NULL;
-
-  std::map<stk::topology, MasterElement *>::iterator it =
-    surfaceMeMap_.find(theTopo);
-  if ( it == surfaceMeMap_.end() ) {
-    // not found; will need to create it and add it
-
-    if (!theTopo.is_super_topology()) {
-      theElem = MasterElement::create_surface_master_element(theTopo);
-    }
-    else {
-      theElem = MasterElement::create_surface_master_element(theTopo, *desc_, quadType_);
-    }
-    ThrowRequire(theElem != nullptr);
-    surfaceMeMap_[theTopo] = theElem;
-  }
-  else {
-    // found it!
-    theElem = it->second;
-  }
-
-  return theElem;
-
 }
 
 //--------------------------------------------------------------------------
@@ -4409,6 +4378,10 @@ Realm::setup_element_promotion()
       }
       superPartVector_.push_back(superPart);
       superTargetNames_.push_back(superName);
+
+      // Create elements for future use
+      sierra::nalu::get_surface_master_element(superPart->topology(), desc_.get(), quadType_);
+      sierra::nalu::get_volume_master_element(superPart->topology(), desc_.get(), quadType_);
     }
   }
 
@@ -4429,6 +4402,10 @@ Realm::setup_element_promotion()
           stk::mesh::Part* superFacePart = &metaData_->declare_part_with_topology(partName,sideTopo);
           superPartVector_.push_back(superFacePart);
           metaData_->declare_part_subset(*superSuperset, *superFacePart);
+
+          // Create elements for future use
+          sierra::nalu::get_surface_master_element(sideTopo, desc_.get(), quadType_);
+          sierra::nalu::get_volume_master_element(sideTopo, desc_.get(), quadType_);
         }
       }
     }

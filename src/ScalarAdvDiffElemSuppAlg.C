@@ -49,7 +49,7 @@ ScalarAdvDiffElemSuppAlg<AlgTraits>::ScalarAdvDiffElemSuppAlg(
     diffFluxCoeff_(diffFluxCoeff),
     coordinates_(NULL),
     massFlowRate_(NULL),
-    lrscv_(realm.get_surface_master_element(AlgTraits::topo_)->adjacentNodes())
+    lrscv_(sierra::nalu::get_surface_master_element(AlgTraits::topo_)->adjacentNodes())
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -57,7 +57,7 @@ ScalarAdvDiffElemSuppAlg<AlgTraits>::ScalarAdvDiffElemSuppAlg(
   massFlowRate_ = meta_data.get_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "mass_flow_rate_scs");
 
   // compute shape function; do we want to push this to dataPreReqs?
-  MasterElement *meSCS = realm.get_surface_master_element(AlgTraits::topo_);
+  MasterElement *meSCS = sierra::nalu::get_surface_master_element(AlgTraits::topo_);
   meSCS->shape_fcn(&v_shape_function_(0,0));
   
   // add master elements
@@ -77,8 +77,8 @@ ScalarAdvDiffElemSuppAlg<AlgTraits>::ScalarAdvDiffElemSuppAlg(
 template<class AlgTraits>
 void
 ScalarAdvDiffElemSuppAlg<AlgTraits>::element_execute(
-  double *lhs,
-  double *rhs,
+  SharedMemView<double **>& lhs,
+  SharedMemView<double *>& rhs,
   stk::mesh::Entity element,
   ScratchViews& scratchViews)
 {
@@ -98,10 +98,6 @@ ScalarAdvDiffElemSuppAlg<AlgTraits>::element_execute(
     const int il = lrscv_[2*ip];
     const int ir = lrscv_[2*ip+1];
     
-    // corresponding matrix rows
-    const int rowL = il*AlgTraits::nodesPerElement_;
-    const int rowR = ir*AlgTraits::nodesPerElement_;
-
     // save off mdot
     const double tmdot = mdot[ip];
 
@@ -130,13 +126,13 @@ ScalarAdvDiffElemSuppAlg<AlgTraits>::element_execute(
       qDiff += lhsfacDiff*v_scalarQ(ic);
       
       // lhs; il then ir
-      lhs[rowL+ic] += lhsfacAdv + lhsfacDiff;
-      lhs[rowR+ic] -= lhsfacAdv + lhsfacDiff;
+      lhs(il,ic) += lhsfacAdv + lhsfacDiff;
+      lhs(ir,ic) -= lhsfacAdv + lhsfacDiff;
     }
     
     // rhs; il then ir
-    rhs[il] -= qAdv + qDiff;
-    rhs[ir] += qAdv + qDiff;
+    rhs(il) -= qAdv + qDiff;
+    rhs(ir) += qAdv + qDiff;
   }
 }
 

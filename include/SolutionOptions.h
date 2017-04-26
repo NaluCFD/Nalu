@@ -84,12 +84,15 @@ public:
   bool ncAlgUpwindAdvection_;
   bool ncAlgIncludePstab_;
   bool ncAlgDetailedOutput_;
+  bool ncAlgCoincidentNodesErrorCheck_;
   bool ncAlgCurrentNormal_;
+  bool ncAlgPngPenalty_;
   bool cvfemShiftMdot_;
   bool cvfemShiftPoisson_;
   bool cvfemReducedSensPoisson_;
   double inputVariablesRestorationTime_;
   bool inputVariablesInterpolateInTime_;
+  double inputVariablesPeriodicTime_;
   bool consistentMMPngDefault_;
   bool useConsolidatedSolverAlg_;
   bool eigenvaluePerturb_;

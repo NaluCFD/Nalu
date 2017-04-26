@@ -47,7 +47,8 @@ class NonConformalManager {
   // constructor and destructor
   NonConformalManager(
     Realm & realm,
-    const bool ncAlgDetailedOutput );
+    const bool ncAlgDetailedOutput,
+    const bool ncAlgCoincidentNodesErrorCheck);
 
   ~NonConformalManager();
 
@@ -55,6 +56,7 @@ class NonConformalManager {
 
   Realm &realm_;
   const bool ncAlgDetailedOutput_;
+  const bool ncAlgCoincidentNodesErrorCheck_;
 
   /* ghosting for all surface:block pair */
   stk::mesh::Ghosting *nonConformalGhosting_;

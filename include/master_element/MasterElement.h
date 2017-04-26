@@ -12,6 +12,7 @@
 #include <vector>
 #include <cstdlib>
 #include <stdexcept>
+#include <string>
 
 namespace stk {
 struct topology;
@@ -30,15 +31,23 @@ enum Direction
 }
 
 struct ElementDescription;
+class MasterElement;
+
+MasterElement*
+get_surface_master_element(
+  const stk::topology& theTopo,
+  ElementDescription* desc = nullptr,
+  std::string quadType = "GaussLegendre");
+
+MasterElement*
+get_volume_master_element(
+  const stk::topology& theTopo,
+  ElementDescription* desc = nullptr,
+  std::string quadType = "GaussLegendre");
 
 class MasterElement
 {
 public:
-  static MasterElement* create_surface_master_element(stk::topology topo);
-  static MasterElement* create_volume_master_element(stk::topology topo);
-  static MasterElement* create_surface_master_element(stk::topology topo, const ElementDescription& desc, std::string quadType);
-  static MasterElement* create_volume_master_element(stk::topology topo, const ElementDescription& desc, std::string quadType);
-
   MasterElement();
   virtual ~MasterElement();
 
