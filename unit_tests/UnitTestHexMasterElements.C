@@ -111,7 +111,7 @@ void check_interpolation(
   std::vector<std::vector<double>> coeffs(dim);
   for (unsigned j = 0; j < dim; ++j) {
     coeffs[j].resize(poly_order+1);
-    for (unsigned i = 0; i < coeffs.size(); ++i) {
+    for (unsigned i = 0; i < coeffs[j].size(); ++i) {
       coeffs[j][i] = coeff(rng);
     }
   }
@@ -170,7 +170,7 @@ void check_derivatives(
   std::vector<std::vector<double>> coeffs(dim);
   for (unsigned j = 0; j < dim; ++j) {
     coeffs[j].resize(poly_order+1);
-    for (unsigned i = 0; i < coeffs.size(); ++i) {
+    for (unsigned i = 0; i < coeffs[j].size(); ++i) {
       coeffs[j][i] = coeff(rng);
     }
   }
