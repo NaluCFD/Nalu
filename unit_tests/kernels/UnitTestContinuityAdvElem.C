@@ -6,10 +6,54 @@
 /*------------------------------------------------------------------------*/
 
 #include "kernels/UnitTestKernelUtils.h"
-#include "kernels/UnitTestKernelGolds.h"
 #include "UnitTestUtils.h"
 
 #include "ContinuityAdvElemKernel.h"
+
+namespace {
+namespace hex8_golds {
+namespace advection_default {
+
+static constexpr double rhs[8] = {
+  3.84734138744e-14,  6.12323399574e-16,
+  -3.84734138744e-14, -6.12323399574e-16,
+  3.84734138744e-14,  6.12323399574e-16,
+  -3.84734138744e-14, -6.12323399574e-16,
+};
+
+static constexpr double lhs[8][8] = {
+  {0.421875, -0.046875, -0.078125, -0.046875, -0.046875, -0.078125, -0.046875, -0.078125},
+  {-0.046875, 0.421875, -0.046875, -0.078125, -0.078125, -0.046875, -0.078125, -0.046875},
+  {-0.078125, -0.046875, 0.421875, -0.046875, -0.046875, -0.078125, -0.046875, -0.078125},
+  {-0.046875, -0.078125, -0.046875, 0.421875, -0.078125, -0.046875, -0.078125, -0.046875},
+  {-0.046875, -0.078125, -0.046875, -0.078125, 0.421875, -0.046875, -0.078125, -0.046875},
+  {-0.078125, -0.046875, -0.078125, -0.046875, -0.046875, 0.421875, -0.046875, -0.078125},
+  {-0.046875, -0.078125, -0.046875, -0.078125, -0.078125, -0.046875, 0.421875, -0.046875},
+  {-0.078125, -0.046875, -0.078125, -0.046875, -0.046875, -0.078125, -0.046875, 0.421875},
+};
+} // advection_default
+
+namespace advection_reduced_sensitivities
+{
+static constexpr double rhs[8] = {
+  3.84734138744e-14, 6.12323399574e-16,
+  -3.84734138744e-14, -6.12323399574e-16,
+  3.84734138744e-14, 6.12323399574e-16,
+  -3.84734138744e-14, -6.12323399574e-16, };
+
+static constexpr double lhs[8][8] = {
+  { 0.75, -0.25, 0, -0.25, -0.25, 0, 0, 0,  },
+  { -0.25, 0.75, -0.25, 0, 0, -0.25, 0, 0,  },
+  { 0, -0.25, 0.75, -0.25, 0, 0, -0.25, 0,  },
+  { -0.25, 0, -0.25, 0.75, 0, 0, 0, -0.25,  },
+  { -0.25, 0, 0, 0, 0.75, -0.25, 0, -0.25,  },
+  { 0, -0.25, 0, 0, -0.25, 0.75, -0.25, 0,  },
+  { 0, 0, -0.25, 0, 0, -0.25, 0.75, -0.25,  },
+  { 0, 0, 0, -0.25, -0.25, 0, -0.25, 0.75,  },
+};
+} // advection_reduced_sensitivities
+} // hex8_golds
+} // anonymous namespace
 
 /// Continuity advection with default Solution options
 TEST_F(ContinuityKernelHex8Mesh, advection_default)
@@ -40,7 +84,11 @@ TEST_F(ContinuityKernelHex8Mesh, advection_default)
   // Populate LHS and RHS
   assembleKernels.execute();
 
-  namespace gold_values = unit_test_golds::hex8_golds::continuity::advection_default;
+  EXPECT_EQ(assembleKernels.lhs_.dimension(0), 8u);
+  EXPECT_EQ(assembleKernels.lhs_.dimension(1), 8u);
+  EXPECT_EQ(assembleKernels.rhs_.dimension(0), 8u);
+
+  namespace gold_values = hex8_golds::advection_default;
 
   unit_test_kernel_utils::expect_all_near(assembleKernels.rhs_, gold_values::rhs);
   unit_test_kernel_utils::expect_all_near<8>(assembleKernels.lhs_, gold_values::lhs);
@@ -78,8 +126,11 @@ TEST_F(ContinuityKernelHex8Mesh, advection_reduced_sens_cvfem_poisson)
   // Populate LHS and RHS
   assembleKernels.execute();
 
-  namespace gold_values =
-    unit_test_golds::hex8_golds::continuity::advection_reduced_sensitivities;
+  EXPECT_EQ(assembleKernels.lhs_.dimension(0), 8u);
+  EXPECT_EQ(assembleKernels.lhs_.dimension(1), 8u);
+  EXPECT_EQ(assembleKernels.rhs_.dimension(0), 8u);
+
+  namespace gold_values = hex8_golds::advection_reduced_sensitivities;
 
   unit_test_kernel_utils::expect_all_near(assembleKernels.rhs_, gold_values::rhs);
   unit_test_kernel_utils::expect_all_near<8>(assembleKernels.lhs_, gold_values::lhs);

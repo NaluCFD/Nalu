@@ -6,7 +6,6 @@
 /*------------------------------------------------------------------------*/
 
 #include "kernels/UnitTestKernelUtils.h"
-#include "kernels/UnitTestKernelGolds.h"
 #include "UnitTestUtils.h"
 
 #include "ContinuityMassElemKernel.h"
@@ -46,6 +45,10 @@ TEST_F(ContinuityKernelHex8Mesh, density_time_derivative)
   // Populate LHS and RHS
   assembleKernels.execute();
 
+  EXPECT_EQ(assembleKernels.lhs_.dimension(0), 8u);
+  EXPECT_EQ(assembleKernels.lhs_.dimension(1), 8u);
+  EXPECT_EQ(assembleKernels.rhs_.dimension(0), 8u);
+
   unit_test_kernel_utils::expect_all_near(assembleKernels.rhs_,-12.5);
   unit_test_kernel_utils::expect_all_near<8>(assembleKernels.lhs_,0.0);
 }
@@ -84,6 +87,10 @@ TEST_F(ContinuityKernelHex8Mesh, density_time_derivative_lumped)
 
   // Populate LHS and RHS
   assembleKernels.execute();
+
+  EXPECT_EQ(assembleKernels.lhs_.dimension(0), 8u);
+  EXPECT_EQ(assembleKernels.lhs_.dimension(1), 8u);
+  EXPECT_EQ(assembleKernels.rhs_.dimension(0), 8u);
 
   unit_test_kernel_utils::expect_all_near(assembleKernels.rhs_,-12.5);
   unit_test_kernel_utils::expect_all_near<8>(assembleKernels.lhs_,0.0);

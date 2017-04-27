@@ -58,6 +58,11 @@ void expect_all_near(
   const double exactValue,
   const double tol = 1.0e-15);
 
+void expect_all_near(
+  const sierra::nalu::SharedMemView<double**>& calcValue,
+  const double* exactValue,
+  const double tol = 1.0e-15);
+
 template<int N>
 void expect_all_near(
   const sierra::nalu::SharedMemView<double**>& calcValue,
@@ -238,7 +243,7 @@ public:
       solnOpts_()
   {}
 
-  ~TestKernelHex8Mesh() {}
+  virtual ~TestKernelHex8Mesh() {}
 
   void fill_mesh()
   {
@@ -294,6 +299,8 @@ public:
     stk::mesh::put_field(*pressure_, meta_.universal_part(), 1);
   }
 
+  virtual ~LowMachKernelHex8Mesh() {}
+
   void fill_mesh_and_init_fields()
   {
     fill_mesh();
@@ -311,10 +318,16 @@ public:
 };
 
 class ContinuityKernelHex8Mesh : public LowMachKernelHex8Mesh
-{};
+{
+public:
+  virtual ~ContinuityKernelHex8Mesh() {}
+};
 
 class MomentumKernelHex8Mesh : public LowMachKernelHex8Mesh
-{};
+{
+public:
+  virtual ~MomentumKernelHex8Mesh() {}
+};
 
 /** Text fixture for heat conduction equation kernels
  *

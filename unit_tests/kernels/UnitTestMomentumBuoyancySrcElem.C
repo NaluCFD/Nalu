@@ -8,39 +8,33 @@
 #include "kernels/UnitTestKernelUtils.h"
 #include "UnitTestUtils.h"
 
-#include "user_functions/SteadyThermal3dContactSrcElemKernel.h"
+#include "MomentumBuoyancySrcElemKernel.h"
 
-namespace {
-namespace hex8_golds {
-namespace steady_3d_thermal {
+#include <random>
 
-static constexpr double rhs[8] = {
-  2.26627114475e-16, -7.55423714915e-17,
-  -3.77711857458e-16, -7.55423714915e-17,
-  -7.55423714915e-17, -3.77711857458e-16,
-  -6.79881343424e-16, -3.77711857458e-16,
-};
-} // steady_3d_thermal
-} // hex8_golds
-} // anonymous namespace
-
-/// Steady 3D MMS source term
-TEST_F(HeatCondKernelHex8Mesh, steady_3d_thermal)
+TEST_F(MomentumKernelHex8Mesh, buoyancy)
 {
+  std::mt19937 rng;
+  rng.seed(0); // fixed seed
+  std::uniform_real_distribution<double> ref_densities(0.8,1.3);
+
   fill_mesh_and_init_fields();
 
   // Setup solution options for default advection kernel
   solnOpts_.meshMotion_ = false;
   solnOpts_.meshDeformation_ = false;
   solnOpts_.externalMeshDeformation_ = false;
+  solnOpts_.gravity_.resize(spatialDim_, 0.0);
+  solnOpts_.gravity_[2] = -9.81;
+  solnOpts_.referenceDensity_ = ref_densities(rng);
 
   // Initialize the kernel driver
   unit_test_kernel_utils::TestKernelDriver assembleKernels(
-    bulk_, partVec_, coordinates_, 1, stk::topology::HEX_8);
+    bulk_, partVec_, coordinates_, spatialDim_, stk::topology::HEX_8);
 
   // Initialize the kernel
   std::unique_ptr<sierra::nalu::Kernel> kernel(
-    new sierra::nalu::SteadyThermal3dContactSrcElemKernel<sierra::nalu::AlgTraitsHex8>(
+    new sierra::nalu::MomentumBuoyancySrcElemKernel<sierra::nalu::AlgTraitsHex8>(
       bulk_, solnOpts_, assembleKernels.dataNeededByKernels_));
 
   // Add to kernels to be tested
@@ -48,12 +42,14 @@ TEST_F(HeatCondKernelHex8Mesh, steady_3d_thermal)
 
   assembleKernels.execute();
 
-  EXPECT_EQ(assembleKernels.lhs_.dimension(0), 8u);
-  EXPECT_EQ(assembleKernels.lhs_.dimension(1), 8u);
-  EXPECT_EQ(assembleKernels.rhs_.dimension(0), 8u);
+  EXPECT_EQ(assembleKernels.lhs_.dimension(0), 24u);
+  EXPECT_EQ(assembleKernels.lhs_.dimension(1), 24u);
+  EXPECT_EQ(assembleKernels.rhs_.dimension(0), 24u);
 
-  namespace gold_values = ::hex8_golds::steady_3d_thermal;
+  // Exact solution
+  std::vector<double> rhsExact(24,0.0);
+  for (size_t i=2; i < 24; i += 3)
+    rhsExact[i] = 0.125 * solnOpts_.gravity_[2] * (1.0 - solnOpts_.referenceDensity_);
 
-  unit_test_kernel_utils::expect_all_near(assembleKernels.rhs_, gold_values::rhs);
-  unit_test_kernel_utils::expect_all_near<8>(assembleKernels.lhs_, 0.0);
+  unit_test_kernel_utils::expect_all_near(assembleKernels.rhs_,rhsExact.data());
 }

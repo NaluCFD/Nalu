@@ -188,4 +188,18 @@ void expect_all_near(
     EXPECT_NEAR(calcValue[i], exactValue, tol);
   }
 }
+
+void expect_all_near(
+  const sierra::nalu::SharedMemView<double**>& calcValue,
+  const double* exactValue,
+  const double tol)
+{
+  const int dim1 = calcValue.dimension(0);
+  const int dim2 = calcValue.dimension(1);
+
+  for (int i=0; i < dim1; i++)
+    for (int j=0; j < dim2; j++)
+      EXPECT_NEAR(calcValue(i,j),exactValue[i*dim2+j], tol);
+}
+
 } // unit_test_kernel_utils
