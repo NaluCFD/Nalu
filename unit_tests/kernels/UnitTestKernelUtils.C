@@ -5,7 +5,7 @@
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
-#include "UnitTestKernelUtils.h"
+#include "kernels/UnitTestKernelUtils.h"
 #include "UnitTestKokkosUtils.h"
 
 #include <cmath>
@@ -165,4 +165,27 @@ void temperature_test_function(
   init_trigonometric_field(bulk, coordinates, temperature);
 }
 
+void expect_all_near(
+  const sierra::nalu::SharedMemView<double*>& calcValue,
+  const double* exactValue,
+  const double tol)
+{
+  const int length = calcValue.dimension(0);
+
+  for (int i=0; i < length; ++i) {
+    EXPECT_NEAR(calcValue[i], exactValue[i], tol);
+  }
+}
+
+void expect_all_near(
+  const sierra::nalu::SharedMemView<double*>& calcValue,
+  const double exactValue,
+  const double tol)
+{
+  const int length = calcValue.dimension(0);
+
+  for (int i=0; i < length; ++i) {
+    EXPECT_NEAR(calcValue[i], exactValue, tol);
+  }
+}
 } // unit_test_kernel_utils

@@ -1,0 +1,90 @@
+/*------------------------------------------------------------------------*/
+/*  Copyright 2014 National Renewable Energy Laboratory.                  */
+/*  This software is released under the license detailed                  */
+/*  in the file, LICENSE, which is located in the top-level Nalu          */
+/*  directory structure                                                   */
+/*------------------------------------------------------------------------*/
+
+#include "kernels/UnitTestKernelUtils.h"
+#include "kernels/UnitTestKernelGolds.h"
+#include "UnitTestUtils.h"
+
+#include "ContinuityMassElemKernel.h"
+
+TEST_F(ContinuityKernelHex8Mesh, density_time_derivative)
+{
+  fill_mesh_and_init_fields();
+
+  // Setup solution options for default advection kernel
+  solnOpts_.meshMotion_ = false;
+  solnOpts_.meshDeformation_ = false;
+  solnOpts_.externalMeshDeformation_ = false;
+
+  // Initialize the kernel driver
+  unit_test_kernel_utils::TestKernelDriver assembleKernels(
+    bulk_, partVec_, coordinates_, 1, stk::topology::HEX_8);
+
+  // Initialize the kernel
+  std::unique_ptr<sierra::nalu::Kernel> massKernel(
+    new sierra::nalu::ContinuityMassElemKernel<sierra::nalu::AlgTraitsHex8>(
+      bulk_, solnOpts_, assembleKernels.dataNeededByKernels_, false));
+
+  // Add to kernels to be tested
+  assembleKernels.activeKernels_.push_back(massKernel.get());
+
+  // Mass terms need time integration information
+  sierra::nalu::TimeIntegrator timeIntegrator;
+  timeIntegrator.timeStepN_ = 0.1;
+  timeIntegrator.timeStepNm1_ = 0.1;
+  timeIntegrator.gamma1_ = 1.0;
+  timeIntegrator.gamma2_ = -1.0;
+  timeIntegrator.gamma3_ = 0.0;
+
+  // Call Kernel setup with the time integrator to setup Kernel values
+  massKernel->setup(timeIntegrator);
+
+  // Populate LHS and RHS
+  assembleKernels.execute();
+
+  unit_test_kernel_utils::expect_all_near(assembleKernels.rhs_,-12.5);
+  unit_test_kernel_utils::expect_all_near<8>(assembleKernels.lhs_,0.0);
+}
+
+TEST_F(ContinuityKernelHex8Mesh, density_time_derivative_lumped)
+{
+  fill_mesh_and_init_fields();
+
+  // Setup solution options for default advection kernel
+  solnOpts_.meshMotion_ = false;
+  solnOpts_.meshDeformation_ = false;
+  solnOpts_.externalMeshDeformation_ = false;
+
+  // Initialize the kernel driver
+  unit_test_kernel_utils::TestKernelDriver assembleKernels(
+    bulk_, partVec_, coordinates_, 1, stk::topology::HEX_8);
+
+  // Initialize the kernel
+  std::unique_ptr<sierra::nalu::Kernel> massKernel(
+    new sierra::nalu::ContinuityMassElemKernel<sierra::nalu::AlgTraitsHex8>(
+      bulk_, solnOpts_, assembleKernels.dataNeededByKernels_, true));
+
+  // Add to kernels to be tested
+  assembleKernels.activeKernels_.push_back(massKernel.get());
+
+  // Mass terms need time integration information
+  sierra::nalu::TimeIntegrator timeIntegrator;
+  timeIntegrator.timeStepN_ = 0.1;
+  timeIntegrator.timeStepNm1_ = 0.1;
+  timeIntegrator.gamma1_ = 1.0;
+  timeIntegrator.gamma2_ = -1.0;
+  timeIntegrator.gamma3_ = 0.0;
+
+  // Call Kernel setup with the time integrator to setup Kernel values
+  massKernel->setup(timeIntegrator);
+
+  // Populate LHS and RHS
+  assembleKernels.execute();
+
+  unit_test_kernel_utils::expect_all_near(assembleKernels.rhs_,-12.5);
+  unit_test_kernel_utils::expect_all_near<8>(assembleKernels.lhs_,0.0);
+}

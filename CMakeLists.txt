@@ -100,7 +100,7 @@ add_library (nalu ${SOURCE} ${HEADER})
 target_link_libraries(nalu ${Trilinos_LIBRARIES})
 target_link_libraries(nalu ${YAML_LIBRARY})
 
-file (GLOB UNIT_TESTS_SOURCES unit_tests/*.C)
+file (GLOB UNIT_TESTS_SOURCES unit_tests/*.C unit_tests/*/*.C)
 
 set(nalu_ex_name "naluX")
 message("CMAKE_BUILD_TYPE = ${CMAKE_BUILD_TYPE}")
@@ -120,6 +120,7 @@ endif()
 
 add_executable(${utest_ex_name} unit_tests.C ${UNIT_TESTS_SOURCES})
 target_link_libraries(${utest_ex_name} nalu)
+target_include_directories(${utest_ex_name} PUBLIC "${CMAKE_SOURCE_DIR}/unit_tests")
 
 IF (INSTALL_NALU)
   install(TARGETS ${utest_ex_name} ${nalu_ex_name} nalu
