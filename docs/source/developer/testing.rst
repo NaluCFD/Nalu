@@ -10,22 +10,23 @@ Running Tests Locally
 ---------------------
 
 The nightly tests are implemented using `CTest <https://cmake.org/cmake/help/v3.7/manual/ctest.1.html>`__ and
-are available to developers to run locally as well. Due to the nature of error propagation of 
+these same tests are available to developers to run locally as well. Due to the nature of error propagation of 
 calculations in computers, results of regression testing can be difficult to keep consistent. 
 Output from Nalu can vary from established reference data for the regression tests based on the compiler you 
 are using, the types of optimizations set, and the versions of the third-party libraries Nalu 
 utilizes, along with the blas/lapack implementation in use. Therefore it may make sense when 
 you checkout Nalu to create your own reference data for the tests for the machine and 
-configuration you are using, though we won't describe that here. Or you can use a lower tolerance 
-when running the tests. The following instructions will describe how to run Nalu's tests.
+configuration you are using, which is described later in this document. Or you can use a lower tolerance 
+when running the tests. At the moment, single tolerance is chosen in which to use for all the tests. 
+The following instructions will describe how to run Nalu's tests.
 
 Since Nalu's tests require a large amount of data (meshes), this data is hosted in a separate repository 
 from Nalu. This mesh repo is set as a submodule in the ``reg_tests/mesh`` directory in the main 
 Nalu repository. Submodule repos are not checked out by default, so either use ``git submodule init`` 
-in your checkout of Nalu, or when you first clone Nalu you can also use 
+and then ``git submodule update`` to clone it in your checkout of Nalu, or when you first clone Nalu you can also use 
 ``git clone --recursive <repo_url>`` to checkout all submodules as well.
 
-Once this submodule is intialized, you will need to configure Nalu with testing on.
+Once this submodule is intialized and cloned, you will need to configure Nalu with testing on.
 To configure Nalu with testing enabled, in Nalu's existing ``build`` directory, we will run this command:
 
 ::
@@ -46,23 +47,46 @@ you can run tests and choose which tests to run.
 
 For example, there are advantages to using CTest, such as being able to run subsets of the tests, or tests 
 matching a particular regular expression for example. To do so, in the ``build`` directory, you can run 
-``ctest -R femHC`` to run the test matching the ``femHC`` regular expression.
+``ctest -R femHC`` to run the test matching the ``femHC`` regular expression. Other useful capabilities are 
+``ctest --output-on-failure`` to see test outputs when they fail, ``ctest --rerun-failed`` to only run 
+the tests that previously failed, ``ctest --print-labels`` to see the test labels, and ``ctest -L unit`` 
+to run the tests with label 'unit' for example. All testing related log files and output can be seen in 
+``Nalu/build/Testing/Temporary`` and ``Nalu/build/reg_tests`` after the test have been run.
 
 To define your own tolerance for tests, at configure time, add ``-DTEST_TOLERANCE=0.0001`` for example 
 to the Nalu CMake configure line.
+
 
 Updating Reference Data for Your Machine
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 When running the tests, the norms for each test are the output and they are 'diffed' against 
-the 'gold' norms that we have established for each test. To dictate whether or not test passes, 
+the 'gold' norms that we have established for each test. To dictate whether or not a test passes, 
 we use a chosen tolerance in which we allow the results to deviate from the 'gold' norm.  As stated 
-earlier, these 'gold' norms do not reflect every configuration of Nalu, per compiler, optimization, 
+earlier, these 'gold' norms are not able to reflect every configuration of Nalu, per compiler, optimization, 
 TPL versions, blas/lapack version, etc. This tolerance is currently defined in the ``CMakeLists.txt`` 
 in Nalu's ``reg_tests`` directory. This tolerance can also be passed into Nalu at configure time using 
-``-DTEST_TOLERANCE=0.0000001`` for example. To update the 'gold' norms to your configuration, merely 
+``-DTEST_TOLERANCE=0.0000001`` for example. To update the 'gold' norms locally to your configuration, merely 
 run the tests once, and copy the ``*.norm`` files in the ``build/reg_tests/test_files`` directory 
 to the corresponding test location in ``reg_tests/test_files`` while overwriting the current 'gold' norms.
+
+In regards to 'official' gold norms, Linux with GCC 4.8.5, netlib-blas/lapack, and the following 
+TPL versions are officially tested:
+
+::
+
+  boost@1.60.0
+  cmake@3.6.1
+  parallel-netcdf@1.6.1
+  yaml-cpp@0.5.3
+  hdf5@1.8.16
+  netcdf@4.3.3.1
+  pkg-config@0.29.2
+  zlib@1.2.11
+  hwloc@1.11.6
+  m4@1.4.17
+  superlu@4.3 
+
 
 Adding Tests to Nalu
 --------------------
@@ -83,7 +107,7 @@ For example:
 
 After this has been done, in the ``reg_tests/test_files`` directory, you should add a directory corresponding to your 
 test name and include the input file, ``mytest.i``, and reference output file ``mytest.norm.gold``. If you are using 
-and xml file that doesn't exist in the ``xml`` directory, you will need to commit that as well.
+an xml file that doesn't exist in the ``xml`` directory, you will need to commit that as well.
 
 To see commands used when running the tests, see the functions at the top of the ``CTestList.cmake`` file. These 
 functions ultimately create ``CTestTestFile.cmake`` files in the CMake build directory at configure time. 
@@ -116,5 +140,6 @@ can be run for example as:
 In this case ``${NALU_TESTING_DIR}`` is one directory above where the Nalu repo has been checked out. 
 This runs CTest in scripting mode with verbosity on and it will update the Nalu repo with the latest 
 revisions, configure, build, test, and finally submit results to the CDash site. Since CTest does 
-the building, it needs to know the locations of Yaml and Trilinos. For more examples of nightly testing, 
-refer to the testing scripts `here <https://github.com/NaluCFD/NaluSpack/tree/master/test_scripts>`__.
+the building, it needs to know the locations of Yaml and Trilinos. For examples of nightly testing, 
+refer to the testing scripts currently being run 
+`here <https://github.com/NaluCFD/NaluSpack/tree/master/test_scripts>`__.
