@@ -448,6 +448,8 @@ ActuatorLineFAST::execute()
     = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "g");
   ScalarFieldType *density
     = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density"); 
+  ScalarFieldType *dualNodalVolume
+    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dualNodalVolume_"); 
   // deal with proper viscosity
   //  const std::string viscName = realm_.is_turbulent() ? "effective_viscosity" : "viscosity";
   //  ScalarFieldType *viscosity
@@ -460,7 +462,6 @@ ActuatorLineFAST::execute()
   std::vector<double> ws_elemForce(nDim);
   double ws_pointGasDensity;
   //  double ws_pointGasViscosity;
-  double ws_pointForceLHS;
   
   // zero out source term; do this manually since there are custom ghosted entities
   stk::mesh::Selector s_nodes = stk::mesh::selectField(*actuator_source);
@@ -581,6 +582,12 @@ ActuatorLineFAST::execute()
     if (FAST.isDebug() ) {
       NaluEnv::self().naluOutput() << "Node " << np << " Type " << infoObject->nodeType_ << " Force = " << ws_pointForce[0] << " " << ws_pointForce[1] << " " << ws_pointForce[2] << " " << std::endl ;
     }
+    
+    std::vector<double> hubPos(3);
+    std::vector<double> hubShftVec(3);
+    int iTurbGlob = infoObject->globTurbId_;
+    FAST.getHubPos(hubPos, iTurbGlob);
+    FAST.getHubShftDir(hubShftVec, iTurbGlob);
 
     // get the vector of elements
     std::vector<stk::mesh::Entity> elementVec = infoObject->elementVec_;
@@ -625,8 +632,9 @@ ActuatorLineFAST::execute()
         gA = isotropic_Gaussian_projection(nDim, distance, infoObject->epsilon_);
         compute_elem_force_given_weight(nDim, gA, &ws_pointForce[0], &ws_elemForce[0]);
         // assemble nodal quantity; no LHS contribution here...
-        assemble_source_to_nodes(nDim, elem, bulkData, elemVolume, &ws_elemForce[0], ws_pointForceLHS,
-                                 0.0, *actuator_source, *actuator_source_lhs, *g, 0.0);
+        assemble_source_to_nodes(nDim, elem, bulkData, elemVolume, ws_elemForce,
+                                 0.0, *coordinates, *actuator_source, *g, *dualNodalVolume, 
+				 hubPos, hubShftVec, thrust[iTurbGlob], torque[iTurbGlob]);
         forceSum[0] += ws_elemForce[0]*elemVolume;
         forceSum[1] += ws_elemForce[1]*elemVolume;
         if (nDim > 2){
@@ -640,8 +648,9 @@ ActuatorLineFAST::execute()
         gA = isotropic_Gaussian_projection(nDim, distance, infoObject->epsilon_);
         compute_elem_force_given_weight(nDim, gA, &ws_pointForce[0], &ws_elemForce[0]);
         // assemble nodal quantity; no LHS contribution here...
-        assemble_source_to_nodes(nDim, elem, bulkData, elemVolume, &ws_elemForce[0], ws_pointForceLHS,
-                                 gA, *actuator_source, *actuator_source_lhs, *g, 0.0);
+        assemble_source_to_nodes(nDim, elem, bulkData, elemVolume, ws_elemForce, 
+                                 gA, *coordinates, *actuator_source, *g, *dualNodalVolume,
+				 hubPos, hubShftVec, thrust[iTurbGlob], torque[iTurbGlob]);
         forceSum[0] += ws_elemForce[0]*elemVolume;
         forceSum[1] += ws_elemForce[1]*elemVolume;
         if (nDim > 2){
@@ -655,8 +664,9 @@ ActuatorLineFAST::execute()
         gA = isotropic_Gaussian_projection(nDim, distance, infoObject->epsilon_);
         compute_elem_force_given_weight(nDim, gA, &ws_pointForce[0], &ws_elemForce[0]);
         // assemble nodal quantity; no LHS contribution here...
-        assemble_source_to_nodes(nDim, elem, bulkData, elemVolume, &ws_elemForce[0], ws_pointForceLHS,
-                                 gA, *actuator_source, *actuator_source_lhs, *g, 0.0);
+        assemble_source_to_nodes(nDim, elem, bulkData, elemVolume, ws_elemForce, 
+                                 gA, *coordinates, *actuator_source, *g, *dualNodalVolume,
+				 hubPos, hubShftVec, thrust[iTurbGlob], torque[iTurbGlob]);
         forceSum[0] += ws_elemForce[0]*elemVolume;
         forceSum[1] += ws_elemForce[1]*elemVolume;
         if (nDim > 2){
@@ -1223,13 +1233,17 @@ ActuatorLineFAST::assemble_source_to_nodes(
   stk::mesh::Entity elem,
   const stk::mesh::BulkData & bulkData,
   const double &elemVolume,
-  const double *drag,
-  const double &dragLHS,
+  const std::vector<double> & elemForce,
   const double &gLocal,
-  stk::mesh::FieldBase &actuator_source,
-  stk::mesh::FieldBase &actuator_source_lhs,
-  stk::mesh::FieldBase &g,
-  const double &lhsFac)
+  stk::mesh::FieldBase & elemCoords,
+  stk::mesh::FieldBase & actuator_source,
+  stk::mesh::FieldBase & g,
+  stk::mesh::FieldBase & dualNodalVolume,
+  const std::vector<double> & hubPt,
+  const std::vector<double> & hubShftDir,
+  std::vector<double> & thr,
+  std::vector<double> & tor
+)
 {
   // extract master element from the bucket in which the element resides
   const stk::topology &elemTopo = bulkData.bucket(elem).topology();
@@ -1249,17 +1263,35 @@ ActuatorLineFAST::assemble_source_to_nodes(
     // extract node and pointer to source term
     stk::mesh::Entity node = elem_node_rels[nearestNode];
     double * sourceTerm = (double*)stk::mesh::field_data(actuator_source, node );
-    double * sourceTermLHS = (double*)stk::mesh::field_data(actuator_source_lhs, node );
+    double * dVol = (double*)stk::mesh::field_data(dualNodalVolume, node );
     double * gGlobal = (double*)stk::mesh::field_data(g, node);
+    const double * nodeCoords = (double*)stk::mesh::field_data(elemCoords, node );
 
-
+    std::vector<double> nodeForce(nDim);
     // nodal weight based on volume weight
     const double nodalWeight = ws_scv_volume_[ip]/elemVolume;
-    *sourceTermLHS += nodalWeight*dragLHS*lhsFac;
     *gGlobal += gLocal;
     for ( int j=0; j < nDim; ++j ) {
-      sourceTerm[j] += nodalWeight*drag[j];
+      nodeForce[j] = nodalWeight * elemForce[j] * (*dVol);
+      sourceTerm[j] += nodalWeight * elemForce[j];
     }
+
+    std::vector<double> rPerpShft(nDim);
+    std::vector<double> r(nDim);
+    for (int j=0; j < nDim; j++) {
+      r[j] = nodeCoords[j] - hubPt[j];
+    }
+    double rDotHubShftVec = std::inner_product(r.begin(), r.end(), hubShftDir.begin(), 0);
+    for (int j=0; j < nDim; j++) {
+      rPerpShft[j] = r[j] - rDotHubShftVec * hubShftDir[j];
+    }
+
+    for (int j=0; j < nDim; j++) {
+      thr[j] += nodeForce[j];
+    }
+    tor[0] += rPerpShft[1]*nodeForce[2] - rPerpShft[2]*nodeForce[1];
+    tor[1] += rPerpShft[2]*nodeForce[0] - rPerpShft[0]*nodeForce[2];
+    tor[2] += rPerpShft[0]*nodeForce[1] - rPerpShft[1]*nodeForce[0];
   }
 } 
  

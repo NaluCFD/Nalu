@@ -253,13 +253,16 @@ class ActuatorLineFAST: public Actuator {
     stk::mesh::Entity elem,
     const stk::mesh::BulkData & bulkData,
     const double &elemVolume,
-    const double *drag,
-    const double &dragLHS,
+    const std::vector<double> & elemForce,
     const double &gLocal,
+    stk::mesh::FieldBase & elemCoords,    
     stk::mesh::FieldBase &actuator_source,
-    stk::mesh::FieldBase &actuator_source_lhs,
     stk::mesh::FieldBase &g,
-    const double &lhsFac);
+    stk::mesh::FieldBase &dualNodalVolume,
+    const std::vector<double> & hubPt,
+    const std::vector<double> & hubShftDir,
+    std::vector<double> & thr,
+    std::vector<double> & tor);
 
   Realm &realm_; ///< hold the realm
 
@@ -294,6 +297,9 @@ class ActuatorLineFAST: public Actuator {
 
   fast::fastInputs fi; ///< Object to hold input information for OpenFAST  
   fast::OpenFAST FAST; ///< OpenFAST C++ API handle
+
+  std::vector<std::vector<double>> thrust;
+  std::vector<std::vector<double>> torque;
 
 };
 
