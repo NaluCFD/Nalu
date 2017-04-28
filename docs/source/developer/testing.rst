@@ -6,8 +6,8 @@ compilers against the Trilinos master and development branches on a machine
 at NREL. The results can be seen at the `CDash Nalu website <http://my.cdash.org/index.php?project=Nalu>`__.
 
 
-Run Tests Locally
------------------
+Running Tests Locally
+---------------------
 
 The nightly tests are implemented using `CTest <https://cmake.org/cmake/help/v3.7/manual/ctest.1.html>`__ and
 are available to developers to run locally as well. Due to the nature of error propagation of 
@@ -15,19 +15,18 @@ calculations in computers, results of regression testing can be difficult to kee
 Output from Nalu can vary from established reference data for the regression tests based on the compiler you 
 are using, the types of optimizations set, and the versions of the third-party libraries Nalu 
 utilizes, along with the blas/lapack implementation in use. Therefore it may make sense when 
-you first checkout Nalu, to create your own reference data for the tests for the machine and 
-configuration you are using. The following instructions will describe how to run Nalu's tests.
+you checkout Nalu to create your own reference data for the tests for the machine and 
+configuration you are using, though we won't describe that here. Or you can use a lower tolerance 
+when running the tests. The following instructions will describe how to run Nalu's tests.
 
-Since Nalu's tests require a large amount of data, this data is hosted in a separate repository 
-from Nalu. The first step is to checkout this repo. We will be checking out in our ``${HOME}`` directory.
+Since Nalu's tests require a large amount of data (meshes), this data is hosted in a separate repository 
+from Nalu. This mesh repo is set as a submodule in the ``reg_tests/mesh`` directory in the main 
+Nalu repository. Submodule repos are not checked out by default, so either use ``git submodule init`` 
+in your checkout of Nalu, or when you first clone Nalu you can also use 
+``git clone --recursive <repo_url>`` to checkout all submodules as well.
 
-::
-
-   cd ${HOME} && git clone https://github.com/NaluCFD/NaluRtest.git
-
-Once this repo is cloned, you will need to configure Nalu with testing on and with the location 
-of this repo and another directory where the tests will be run. To configure Nalu with testing 
-enabled, in Nalu's existing ``build`` directory, we will run this command:
+Once this submodule is intialized, you will need to configure Nalu with testing on.
+To configure Nalu with testing enabled, in Nalu's existing ``build`` directory, we will run this command:
 
 ::
 
@@ -36,23 +35,18 @@ enabled, in Nalu's existing ``build`` directory, we will run this command:
          -DENABLE_INSTALL:BOOL=ON \
          -DCMAKE_BUILD_TYPE=RELEASE \
          -DENABLE_TESTS:BOOL=ON \
-         -DNALURTEST_DIR:PATH=${HOME}/NaluRtest \
-         -DRUNNALURTEST_DIR:PATH=${HOME}/runNaluRtest \
          ..
 
-Note we have chosen to originally build Nalu with Spack in our case, hence the use 
+Note we have chosen to originally build Nalu with Spack in this case, hence the use 
 of ``spack location -i <package>`` to locate our Yaml and Trilinos installations. 
-So we use ``-DENABLE_TESTS:BOOL=ON`` to enable CTest, ``-DNALURTEST_DIR:PATH=${HOME}/NaluRtest`` 
-to tell Nalu where the ``NaluRtest`` repo is, and finally ``-DRUNNALURTEST_DIR:PATH=${HOME}/runNaluRtest`` 
-to tell Nalu where it is allowed to run the tests. The ``runNaluRtest`` directory will be created if it 
-doesn't exist during testing, and this directory will also be erased each time the tests are run. Once 
-Nalu is configured, you should be able to run the tests by building Nalu in the ``build`` directory, 
-and running ``make test``.
+Then we use ``-DENABLE_TESTS:BOOL=ON`` to enable CTest. Once Nalu is configured, 
+you should be able to run the tests by building Nalu in the ``build`` directory, 
+and running ``make test`` or ``ctest``. Looking at ``ctest -h`` will show you many ways 
+you can run tests and choose which tests to run.
 
-There are advantages to using CTest here, such as being able to run subsets of the tests, or tests 
+For example, there are advantages to using CTest, such as being able to run subsets of the tests, or tests 
 matching a particular regular expression for example. To do so, in the ``build`` directory, you can run 
-``ctest -R femHC`` to run the test matching the ``femHC`` regular expression. See ``ctest -h`` for 
-more options in running tests.
+``ctest -R femHC`` to run the test matching the ``femHC`` regular expression.
 
 To define your own tolerance for tests, at configure time, add ``-DTEST_TOLERANCE=0.0001`` for example 
 to the Nalu CMake configure line.
@@ -67,8 +61,8 @@ earlier, these 'gold' norms do not reflect every configuration of Nalu, per comp
 TPL versions, blas/lapack version, etc. This tolerance is currently defined in the ``CMakeLists.txt`` 
 in Nalu's ``reg_tests`` directory. This tolerance can also be passed into Nalu at configure time using 
 ``-DTEST_TOLERANCE=0.0000001`` for example. To update the 'gold' norms to your configuration, merely 
-run the tests once, and copy the ``*.norm`` files in ``runNaluRtest`` to the corresponding test location 
-in ``NaluRtest`` to overwrite the current 'gold' norms.
+run the tests once, and copy the ``*.norm`` files in the ``build/reg_tests/test_files`` directory 
+to the corresponding test location in ``reg_tests/test_files`` while overwriting the current 'gold' norms.
 
 Adding Tests to Nalu
 --------------------
@@ -76,24 +70,51 @@ Adding Tests to Nalu
 .. _add-test:
 
 The testing infrastructure is almost completely confined to the ``reg_tests`` directory. To add a test 
-to Nalu, we need to most likely modify two files. First we modify ``CTestPrepareTests.cmake.in`` to 
-copy the files and setup the directory in ``runNaluRtest`` necessary for our new test. Make sure to copy 
-the ``*.xml`` file if necessary. This CMake file is automatically run before the tests are run to prepare 
-the directories they run in. It should be sufficient to use the same structure as the existing 
-tests for the new test to accomplish this. Once the test has preparation steps established, the test 
-itself can be added to the list of CTest tests by adding the test to the ``CTestList.cmake`` file. 
-For a single regression test, provided it is uniform like the existing tests, it can likely be 
-added by adding a single line with the test name and amount of processes you would like to run the 
-test with. For example:
+to Nalu, we need to add the test name, and create a test directory to place the input files and gold norms 
+for the test. First, the test itself can be added to the list of CTest tests by adding a line to the 
+``CTestList.cmake`` file. For a single regression test, provided it is similar to the categories shown at 
+the top of the ``CTestList.cmake`` file, it can likely be added with a single line using the test 
+name and amount of processes you would like to run the test with and choosing the correct function to use. 
+For example:
 
 ::
 
     add_test_r(mytest 6)
 
-After this has been done, in the ``NaluRtest`` repo, you should add a directory corresponding to your 
-test name and include the input file, ``mytest.i``, and reference output file ``mytest.norm.gold``.
+After this has been done, in the ``reg_tests/test_files`` directory, you should add a directory corresponding to your 
+test name and include the input file, ``mytest.i``, and reference output file ``mytest.norm.gold``. If you are using 
+and xml file that doesn't exist in the ``xml`` directory, you will need to commit that as well.
 
-To see commands used when running the tests, see the functions in the ``CTestList.cmake`` file. These 
+To see commands used when running the tests, see the functions at the top of the ``CTestList.cmake`` file. These 
 functions ultimately create ``CTestTestFile.cmake`` files in the CMake build directory at configure time. 
 You can see the exact commands used for each test after configure in the 
 ``build/reg_tests/CTestTestFile.cmake`` file.
+
+Note if your test doesn't conform to an existing archetype, a new function in ``CTestList.cmake`` may need to be 
+created. Also, if you are using a mesh file that doesn't exist in the mesh repo, you will need to add it, and 
+update the submodule in the Nalu main repo to use the latest commit of the mesh submodule repo.
+
+
+Adding Testing Machines to CDash
+--------------------------------
+
+To add a testing machine that will post results to CDash first means that you should have all software 
+dependencies satisified for Nalu. Next the script located at  
+`CTestNightlyScript.cmake <https://github.com/NaluCFD/Nalu/blob/master/reg_tests/CTestNightlyScript.cmake>`__ 
+can be run for example as:
+
+::
+
+   ctest \
+     -DNIGHTLY_DIR=${NALU_TESTING_DIR} \
+     -DYAML_DIR=${YAML_INSTALL_DIR} \
+     -DTRILINOS_DIR=${TRILINOS_INSTALL_DIR} \
+     -DHOST_NAME=machine.domain.com \
+     -DEXTRA_BUILD_NAME=Linux-gcc-whatever \
+     -VV -S ${NALU_DIR}/reg_tests/CTestNightlyScript.cmake
+
+In this case ``${NALU_TESTING_DIR}`` is one directory above where the Nalu repo has been checked out. 
+This runs CTest in scripting mode with verbosity on and it will update the Nalu repo with the latest 
+revisions, configure, build, test, and finally submit results to the CDash site. Since CTest does 
+the building, it needs to know the locations of Yaml and Trilinos. For more examples of nightly testing, 
+refer to the testing scripts `here <https://github.com/NaluCFD/NaluSpack/tree/master/test_scripts>`__.

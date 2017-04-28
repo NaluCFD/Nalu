@@ -125,7 +125,7 @@ Step 3
 
 Configure your environment in the recommended way. You should purge all 
 modules and only load GCC 5.2.0 in your login script. In the example 
-`.bash_profile <https://github.com/NaluCFD/NaluSpack/blob/master/spack_config/dot_bash_profile.sh>`__
+`.bash_profile <https://github.com/NaluCFD/NaluSpack/blob/master/spack_config/dot_bash_profile_peregrine.sh>`__
 in the repo we also load Python. If you have problems building with Spack on 
 Peregrine, it is most likely your environment has deviated from this 
 recommended one. Even when building with the Intel compiler in Spack, 
@@ -140,7 +140,7 @@ this is the recommended environment.
    } &> /dev/null
 
 Also add Spack shell support to your ``.bash_profile`` as shown in the example 
-`.bash_profile <https://github.com/NaluCFD/NaluSpack/blob/master/spack_config/dot_bash_profile.sh>`__
+`.bash_profile <https://github.com/NaluCFD/NaluSpack/blob/master/spack_config/dot_bash_profile_peregrine.sh>`__
 in the repo or the following lines:
 
 ::
@@ -162,9 +162,9 @@ script provided or by doing it manually as such:
 
 ::
 
-   cp config.yaml ${SPACK_ROOT}/etc/spack/
-   cp packages.yaml ${SPACK_ROOT}/etc/spack/
-   cp compilers.yaml ${SPACK_ROOT}/etc/spack/
+   cp config.yaml.peregrine ${SPACK_ROOT}/etc/spack/config.yaml
+   cp packages.yaml.peregrine ${SPACK_ROOT}/etc/spack/packages.yaml
+   cp compilers.yaml.peregrine ${SPACK_ROOT}/etc/spack/compilers.yaml
    cp -R nalu ${SPACK_ROOT}/var/spack/repos/builtin/packages/
    cp -R nalu-trilinos ${SPACK_ROOT}/var/spack/repos/builtin/packages/
    cp -R openmpi ${SPACK_ROOT}/var/spack/repos/builtin/packages/
@@ -178,11 +178,19 @@ shell support loaded. Try ``spack info nalu`` to see if Spack works.
 Step 6
 ~~~~~~
 
+Note the build scripts provided here adhere to the official versions of the third party libraries 
+we test with, and that you may want to adhere to using them as well. Also note that
+when you checkout the latest Spack, it also means you will be using the latest packages 
+available if you do not specify a package version at install time and the newest packages 
+may not have been tested to build correctly on NREL machines yet. So specifying
+versions of the TPL dependencies in this step is recommended, but not completely listed 
+here for brevity.
+
 Install Nalu using a compute node either interactively 
 (``qsub -V -I -l nodes=1:ppn=24,walltime=4:00:00 -A <allocation> -q short``) 
 or with the example batch script  
-`install_nalu_gcc.sh <https://github.com/NaluCFD/NaluSpack/blob/master/install_scripts/install_nalu_gcc.sh>`__
-(``qsub install_nalu_gcc.sh``):
+`install_nalu_gcc_peregrine.sh <https://github.com/NaluCFD/NaluSpack/blob/master/install_scripts/install_nalu_gcc_peregrine.sh>`__
+(``qsub install_nalu_gcc_peregrine.sh``):
 
 ::
 
@@ -196,15 +204,126 @@ command installs the entire set of dependencies and you get a working build
 of Nalu on Peregrine...after about 2 hours of waiting for it to build.
 
 To build with the Intel compiler, note the necessary commands in 
-`install_nalu_intel.sh <https://github.com/NaluCFD/NaluSpack/blob/master/install_scripts/install_nalu_intel.sh>`__ 
+`install_nalu_intel_peregrine.sh <https://github.com/NaluCFD/NaluSpack/blob/master/install_scripts/install_nalu_intel_peregrine.sh>`__ 
 batch script (note you will need to point ``${TMPDIR}`` to disk as it defaults to 
 RAM and will cause problems when building Trilinos, and also enabling accelerated 
 message protocols segfaults the MPI wrappers when using the Intel compiler so 
-remove ``+mxm`` too; also the latest m4 doesn't build with Intel).
+remove ``+mxm`` too).
 
 Then to load Nalu (and you will need Spack's openmpi for Nalu now) into your path you 
 will need to ``spack load openmpi %compiler`` and ``spack load nalu %compiler``, using 
 ``%gcc`` or ``%intel`` to specify which to load.
+
+NREL's Merlin Machine
+---------------------
+
+The following describes how to build Nalu and its dependencies
+mostly automatically on NREL's Merlin machine using Spack.
+
+Step 1
+~~~~~~
+
+Login to Merlin, and checkout the ``https://github.com/NaluCFD/NaluSpack.git`` 
+repo (we will be cloning into the ${HOME} directory):
+
+::
+
+   cd ${HOME} && git clone https://github.com/NaluCFD/NaluSpack.git
+
+On Merlin, thankfully the login nodes and compute nodes use the same OS (centos7), 
+so building on the login node will still allow the package to be loaded on the compute node.
+Spack will default to using all cores, so be mindful using it on a compute node. You should probably 
+build on a compute node, or set Spack to use a small number of processes when building.
+
+Step 2
+~~~~~~
+
+Checkout the official Spack repo from github:
+
+``cd ${HOME} && git clone https://github.com/LLNL/spack.git``
+
+Step 3
+~~~~~~
+
+Configure your environment in the recommended way. You should purge all 
+modules and load nothing in your login script. See the example 
+`.bash_profile <https://github.com/NaluCFD/NaluSpack/blob/master/spack_config/dot_bash_profile_merlin.sh>`__
+. If you have problems building with Spack on 
+Merlin, it is most likely your environment has deviated from this 
+recommended one. Even when building with the Intel compiler in Spack, 
+this is the recommended environment.
+
+::
+
+   module purge
+
+Also add Spack shell support to your ``.bash_profile`` as shown in the example 
+`.bash_profile <https://github.com/NaluCFD/NaluSpack/blob/master/spack_config/dot_bash_profile_merlin.sh>`__
+in the repo or the following lines:
+
+::
+
+   export SPACK_ROOT=${HOME}/spack
+   . $SPACK_ROOT/share/spack/setup-env.sh
+
+Step 4
+~~~~~~
+
+Configure Spack for Merlin. This is done by copying the ``compilers.yaml``, 
+``config.yaml``, ``packages.yaml``, ``nalu``, and ``nalu-trilinos`` 
+files/directories from the NaluSpack repo into your local ``${SPACK_ROOT}`` directory. 
+These provide local configurations we need for Merlin that override Spack's 
+default configuration and the custom package files to install Nalu and the custom 
+Trilinos build for Nalu. You can do this using the
+`copy_config.sh <https://github.com/NaluCFD/NaluSpack/blob/master/spack_config/copy_config.sh>`__
+script provided or by doing it manually as such:
+
+::
+
+   cp config.yaml.merlin ${SPACK_ROOT}/etc/spack/config.yaml
+   cp packages.yaml.merlin ${SPACK_ROOT}/etc/spack/packages.yaml
+   cp compilers.yaml.merlin ${SPACK_ROOT}/etc/spack/compilers.yaml
+   cp -R nalu ${SPACK_ROOT}/var/spack/repos/builtin/packages/
+   cp -R nalu-trilinos ${SPACK_ROOT}/var/spack/repos/builtin/packages/
+
+Step 5
+~~~~~~
+
+Log out and log back in or source your ``.bash_profile`` to get the Spack 
+shell support loaded. Try ``spack info nalu`` to see if Spack works.
+
+Step 6
+~~~~~~
+
+Note the build scripts provided here adhere to the official versions of the third party libraries 
+we test with, and that you may want to adhere to using them as well. Also note that
+when you checkout the latest Spack, it also means you will be using the latest packages 
+available if you do not specify a package version at install time and the newest packages 
+may not have been tested to build correctly on NREL machines yet. So specifying
+versions of the TPL dependencies in this step is recommended, but not completely listed 
+here for brevity.
+
+Install Nalu using a compute node either interactively 
+(``qsub -V -I -l nodes=1:ppn=24,walltime=4:00:00 -A <allocation> -q batch``) 
+or with the example batch script  
+`install_nalu_gcc_merlin.sh <https://github.com/NaluCFD/NaluSpack/blob/master/install_scripts/install_nalu_gcc_merlin.sh>`__
+(``qsub install_nalu_gcc_merlin.sh``):
+
+::
+
+   spack install nalu %gcc ^openmpi@1.10.3
+
+That's it! Hopefully that command installs the entire set of dependencies 
+and you get a working build of Nalu on Merlin.
+
+To build with the Intel compiler, note the necessary commands in 
+`install_nalu_intel_merlin.sh <https://github.com/NaluCFD/NaluSpack/blob/master/install_scripts/install_nalu_intel_merlin.sh>`__ 
+batch script (note you will need to point ``${TMPDIR}`` to disk.
+
+Then to load Nalu (and you will need Spack's openmpi for Nalu now) into your path you 
+will need to ``spack load openmpi %compiler`` and ``spack load nalu %compiler``, using 
+``%gcc`` or ``%intel`` to specify which to load.
+
 
 Development Build of Nalu
 -------------------------
