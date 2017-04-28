@@ -346,10 +346,7 @@ void
 ActuatorLinePointDrag::initialize()
 {
   stk::mesh::BulkData & bulkData = realm_.bulk_data();
-  stk::mesh::MetaData & metaData = realm_.meta_data();
  
-  const int nDim = metaData.spatial_dimension();
-
   // initialize need to ghost and elems to ghost
   needToGhostCount_ = 0;
   elemsToGhost_.clear();
@@ -966,7 +963,6 @@ ActuatorLinePointDrag::compute_volume(
   // extract master element from the bucket in which the element resides
   const stk::topology &elemTopo = bulkData.bucket(elem).topology();
   MasterElement *meSCV = sierra::nalu::get_volume_master_element(elemTopo);
-  int nodesPerElement = meSCV->nodesPerElement_;
   const int numScvIp = meSCV->numIntPoints_;
 
   // compute scv for this element
@@ -1060,7 +1056,6 @@ ActuatorLinePointDrag::assemble_source_to_nodes(
   // extract master element from the bucket in which the element resides
   const stk::topology &elemTopo = bulkData.bucket(elem).topology();
   MasterElement *meSCV = sierra::nalu::get_volume_master_element(elemTopo);
-  int nodesPerElement = meSCV->nodesPerElement_;
   const int numScvIp = meSCV->numIntPoints_;
 
   // extract elem_node_relations

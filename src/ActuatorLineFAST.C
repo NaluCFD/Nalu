@@ -200,28 +200,22 @@ ActuatorLineFAST::load(
     // Populate object of inputs class to FAST
     fi.comm = NaluEnv::self().parallel_comm() ;
   
-    fi.nTurbinesGlob = y_actuatorLine["nTurbinesGlob"].as<int>();
-
+    get_required(y_actuatorLine, "nTurbinesGlob", fi.nTurbinesGlob);
+    
     if (fi.nTurbinesGlob > 0) {
       
-      if(y_actuatorLine["dryRun"]) {
-	fi.dryRun = y_actuatorLine["dryRun"].as<bool>();
-      } 
-      
-      if(y_actuatorLine["debug"]) {
-	fi.debug = y_actuatorLine["debug"].as<bool>();
-      } 
-      
-      fi.tStart = y_actuatorLine["tStart"].as<double>();
-      fi.nEveryCheckPoint = y_actuatorLine["nEveryCheckPoint"].as<int>();
-      fi.dtFAST = y_actuatorLine["dtFAST"].as<double>();
-      fi.tMax = y_actuatorLine["tMax"].as<double>(); // tMax is the total duration to which you want to run FAST. This should be the same or greater than the max time given in the FAST fst file. Choose this carefully as FAST writes the output file only at this point if you choose the binary file output.
+      get_if_present(y_actuatorLine, "dryRun", fi.dryRun, false);
+      get_if_present(y_actuatorLine, "debug", fi.dryRun, false);
+      get_required(y_actuatorLine, "tStart", fi.tStart);
+      get_required(y_actuatorLine, "nEveryCheckPoint", fi.nEveryCheckPoint);
+      get_required(y_actuatorLine, "dtFAST", fi.dtFAST);
+      get_required(y_actuatorLine, "tMax", fi.tMax); // tMax is the total duration to which you want to run FAST. This should be the same or greater than the max time given in the FAST fst file. Choose this carefully as FAST writes the output file only at this point if you choose the binary file output.
       
       if(y_actuatorLine["superController"]) {
-	fi.scStatus = y_actuatorLine["superController"].as<bool>();
-	fi.scLibFile = y_actuatorLine["scLibFile"].as<std::string>();
-	fi.numScInputs = y_actuatorLine["numScInputs"].as<int>();
-	fi.numScOutputs = y_actuatorLine["numScOutputs"].as<int>();
+          get_required(y_actuatorLine, "superController", fi.scStatus);
+          get_required(y_actuatorLine, "scLibFile", fi.scLibFile);
+          get_required(y_actuatorLine, "numScInputs", fi.numScInputs);
+          get_required(y_actuatorLine, "numScOutputs", fi.numScOutputs);
       }
       
       fi.globTurbineData.resize(fi.nTurbinesGlob);
@@ -232,12 +226,7 @@ ActuatorLineFAST::load(
 	  ActuatorLineFASTInfo *actuatorLineInfo = new ActuatorLineFASTInfo();
 	  actuatorLineInfo_.push_back(actuatorLineInfo);
 	  
-	  // name
-	  const YAML::Node theName = cur_turbine["turbine_name"];
-	  if ( theName )
-	    actuatorLineInfo->turbineName_ = theName.as<std::string>() ;
-	  else
-	    throw std::runtime_error("ActuatorLineFAST: no name provided");
+          get_required(cur_turbine, "turbine_name", actuatorLineInfo->turbineName_)  ;
 	  
 	  // Force projection function properties
 	  const YAML::Node epsilon = cur_turbine["epsilon"];
@@ -262,18 +251,18 @@ ActuatorLineFAST::load(
 
 void ActuatorLineFAST::readTurbineData(int iTurb, fast::fastInputs & fi, YAML::Node turbNode) {
 
-  //Read turbine data for a given turbine using the YAML node
-  fi.globTurbineData[iTurb].TurbID = turbNode["turb_id"].as<int>();
-  fi.globTurbineData[iTurb].FASTInputFileName = turbNode["FAST_input_filename"].as<std::string>() ;
-  fi.globTurbineData[iTurb].FASTRestartFileName = turbNode["restart_filename"].as<std::string>() ;
-  if (turbNode["turbine_base_pos"].IsSequence() ) {
-    fi.globTurbineData[iTurb].TurbineBasePos = turbNode["turbine_base_pos"].as<std::vector<double> >() ;
-  }
-  if (turbNode["turbine_hub_pos"].IsSequence() ) {
-    fi.globTurbineData[iTurb].TurbineHubPos = turbNode["turbine_hub_pos"].as<std::vector<double> >() ;
-  }
-  fi.globTurbineData[iTurb].numForcePtsBlade = turbNode["num_force_pts_blade"].as<int>();
-  fi.globTurbineData[iTurb].numForcePtsTwr = turbNode["num_force_pts_tower"].as<int>();
+    //Read turbine data for a given turbine using the YAML node
+    get_required(turbNode, "turb_id", fi.globTurbineData[iTurb].TurbID);
+    get_required(turbNode, "FAST_input_filename", fi.globTurbineData[iTurb].FASTInputFileName);
+    get_required(turbNode, "restart_filename", fi.globTurbineData[iTurb].FASTRestartFileName);
+    if (turbNode["turbine_base_pos"].IsSequence() ) {
+        fi.globTurbineData[iTurb].TurbineBasePos = turbNode["turbine_base_pos"].as<std::vector<double> >() ;
+    }
+    if (turbNode["turbine_hub_pos"].IsSequence() ) {
+        fi.globTurbineData[iTurb].TurbineHubPos = turbNode["turbine_hub_pos"].as<std::vector<double> >() ;
+    }
+    get_required(turbNode, "num_force_pts_blade", fi.globTurbineData[iTurb].numForcePtsBlade);
+    get_required(turbNode, "num_force_pts_tower", fi.globTurbineData[iTurb].numForcePtsTwr);
 
 }
 
