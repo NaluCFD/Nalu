@@ -25,6 +25,7 @@
 #include <memory>
 #include <iostream>
 #include <iomanip>
+#include <cmath>
 
 namespace unit_test_kernel_utils {
 
@@ -47,6 +48,14 @@ void temperature_test_function(
   const stk::mesh::BulkData& bulk,
   const VectorFieldType& coordinates,
   ScalarFieldType& temperature);
+
+void calc_mass_flow_rate_scs(
+  const stk::mesh::BulkData&,
+  const stk::topology&,
+  const VectorFieldType&,
+  const ScalarFieldType&,
+  const VectorFieldType&,
+  const GenericFieldType&);
 
 void expect_all_near(
   const sierra::nalu::SharedMemView<double*>& calcValue,
@@ -181,7 +190,7 @@ public:
    *
    * Used to generate the gold values as well as for debugging
    */
-  void dump_lhs_and_rhs()
+  void dump_lhs_and_rhs(double tol = 1.0e-15)
   {
     using unit_test_utils::nalu_out;
     const int rhsSize = rhs_.dimension(0);
@@ -191,7 +200,8 @@ public:
                << "static constexpr double rhs[" << rhsSize << "] = {"
                << std::endl << "  ";
     for (int i=0; i < rhsSize; i++) {
-      nalu_out() << std::setprecision(12) << rhs_(i) << ", ";
+      nalu_out() << std::setprecision(12)
+                 << (std::fabs(rhs_(i)) < tol ? 0.0 : rhs_(i)) << ", ";
     }
     nalu_out() << "};" << std::endl;
 
@@ -202,7 +212,8 @@ public:
     for (int i=0; i < rhsSize; i++) {
       nalu_out() << "  { ";
       for (int j=0; j < rhsSize; j++) {
-        nalu_out() << std::setprecision(12) << lhs_(i,j) << ", ";
+        nalu_out() << std::setprecision(12)
+                   << (std::fabs(lhs_(i,j)) < tol ? 0.0 : lhs_(i,j)) << ", ";
       }
       std::cerr << " }," << std::endl;
     }
@@ -301,7 +312,7 @@ public:
 
   virtual ~LowMachKernelHex8Mesh() {}
 
-  void fill_mesh_and_init_fields()
+  virtual void fill_mesh_and_init_fields()
   {
     fill_mesh();
 
@@ -326,7 +337,32 @@ public:
 class MomentumKernelHex8Mesh : public LowMachKernelHex8Mesh
 {
 public:
+  MomentumKernelHex8Mesh()
+    : LowMachKernelHex8Mesh(),
+      massFlowRate_(
+        &meta_.declare_field<GenericFieldType>(
+          stk::topology::ELEM_RANK, "mass_flow_rate_scs")),
+      viscosity_(
+        &meta_.declare_field<ScalarFieldType>(
+          stk::topology::NODE_RANK, "viscosity"))
+  {
+    const auto& meSCS = sierra::nalu::get_surface_master_element(stk::topology::HEX_8);
+    stk::mesh::put_field(*massFlowRate_, meta_.universal_part(), meSCS->numIntPoints_);
+    stk::mesh::put_field(*viscosity_, meta_.universal_part(), 1);
+  }
+
   virtual ~MomentumKernelHex8Mesh() {}
+
+  virtual void fill_mesh_and_init_fields()
+  {
+    LowMachKernelHex8Mesh::fill_mesh_and_init_fields();
+    unit_test_kernel_utils::calc_mass_flow_rate_scs(
+      bulk_, stk::topology::HEX_8, *coordinates_, *density_, *velocity_, *massFlowRate_);
+    stk::mesh::field_fill(0.1, *viscosity_);
+  }
+
+  GenericFieldType* massFlowRate_{nullptr};
+  ScalarFieldType* viscosity_{nullptr};
 };
 
 /** Text fixture for heat conduction equation kernels
