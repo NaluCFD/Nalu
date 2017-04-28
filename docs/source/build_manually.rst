@@ -545,19 +545,6 @@ created.
 Other useful tools from, e.g., seacas, are under
 ``/usr/local/packages/install/trilinos/bin``
 
-Testing
-~~~~~~~
-
-After the ``naluX`` executable is created, please proceed with
-regression testing to ensure a proper build.
-
-Instructions for the regression testing can be found under the
-`NaluRtest <https://github.com/NaluCFD/NaluRtest>`__ directory.
-
-Please take care to ensure that the NaluRtest branch is consistent with
-the Trilinos and Nalu version desired. One may also need to checkout the
-v1.0.0-release code base.
-
 
 Mac OS X
 --------
@@ -1012,17 +999,4 @@ Setting the DEBUG CMake option will create a naluXd executable.
 
 Other useful tools from, e.g., seacas, are under
 ``/usr/local/packages/install/trilinos/bin``.
-
-Testing
-~~~~~~~
-
-After the ``naluX`` executable is created, please proceed with
-regression testing to ensure a proper build.
-
-Instructions for the regression testing can be found under the
-`NaluRtest <https://github.com/NaluCFD/NaluRtest>`__ directory.
-
-Please take care to ensure that the NaluRtest branch is consistent with
-the Trilinos and Nalu version desired. One may also need to checkout the
-v1.0.0-release code base.
 
