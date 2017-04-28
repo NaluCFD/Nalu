@@ -14,5 +14,6 @@ cmake \
   -DYAML_DIR:PATH=$yaml_install_dir \
   -DENABLE_INSTALL:BOOL=OFF \
   -DCMAKE_BUILD_TYPE=RELEASE \
+  -DENABLE_TESTS:BOOL=ON \
 $EXTRA_ARGS \
 ../

@@ -16,5 +16,6 @@ cmake \
   -DCMAKE_BUILD_TYPE=DEBUG \
   -DCMAKE_CXX_FLAGS_DEBUG='-std=c++11' \
   -DCMAKE_C_FLAGS_DEBUG='-std=c++11' \
+  -DENABLE_TESTS:BOOL=ON \
 $EXTRA_ARGS \
 ../
