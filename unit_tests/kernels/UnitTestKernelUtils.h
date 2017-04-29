@@ -34,6 +34,11 @@ void velocity_test_function(
   const VectorFieldType& coordinates,
   VectorFieldType& velocity);
 
+void dudx_test_function(
+  const stk::mesh::BulkData& bulk,
+  const VectorFieldType& coordinates,
+  GenericFieldType& dudx);
+
 void pressure_test_function(
   const stk::mesh::BulkData&,
   const VectorFieldType& coordinates,
@@ -48,6 +53,11 @@ void temperature_test_function(
   const stk::mesh::BulkData& bulk,
   const VectorFieldType& coordinates,
   ScalarFieldType& temperature);
+
+void density_test_function(
+  const stk::mesh::BulkData& bulk,
+  const VectorFieldType& coordinates,
+  ScalarFieldType& density);
 
 void calc_mass_flow_rate_scs(
   const stk::mesh::BulkData&,
@@ -195,16 +205,6 @@ public:
     using unit_test_utils::nalu_out;
     const int rhsSize = rhs_.dimension(0);
 
-    // Dump the RHS
-    nalu_out() << std::endl
-               << "static constexpr double rhs[" << rhsSize << "] = {"
-               << std::endl << "  ";
-    for (int i=0; i < rhsSize; i++) {
-      nalu_out() << std::setprecision(12)
-                 << (std::fabs(rhs_(i)) < tol ? 0.0 : rhs_(i)) << ", ";
-    }
-    nalu_out() << "};" << std::endl;
-
     // Dump the LHS
     nalu_out() << std::endl
                << "static constexpr double lhs[" << rhsSize << "]["
@@ -212,10 +212,20 @@ public:
     for (int i=0; i < rhsSize; i++) {
       nalu_out() << "  { ";
       for (int j=0; j < rhsSize; j++) {
-        nalu_out() << std::setprecision(12)
+        nalu_out() << std::setprecision(16) << std::fixed
                    << (std::fabs(lhs_(i,j)) < tol ? 0.0 : lhs_(i,j)) << ", ";
       }
-      std::cerr << " }," << std::endl;
+      nalu_out() << " }," << std::endl;
+    }
+    nalu_out() << "};" << std::endl << std::endl;
+
+    // Dump the RHS
+    nalu_out() << std::endl
+               << "static constexpr double rhs[" << rhsSize << "] = {"
+               << std::endl << "  ";
+    for (int i=0; i < rhsSize; i++) {
+      nalu_out() << std::setprecision(16) << std::fixed
+                 << (std::fabs(rhs_(i)) < tol ? 0.0 : rhs_(i)) << ", ";
     }
     nalu_out() << "};" << std::endl << std::endl;
   }
@@ -344,11 +354,15 @@ public:
           stk::topology::ELEM_RANK, "mass_flow_rate_scs")),
       viscosity_(
         &meta_.declare_field<ScalarFieldType>(
-          stk::topology::NODE_RANK, "viscosity"))
+          stk::topology::NODE_RANK, "viscosity")),
+      dudx_(
+        &meta_.declare_field<GenericFieldType>(
+          stk::topology::ELEM_RANK, "dudx"))
   {
     const auto& meSCS = sierra::nalu::get_surface_master_element(stk::topology::HEX_8);
     stk::mesh::put_field(*massFlowRate_, meta_.universal_part(), meSCS->numIntPoints_);
     stk::mesh::put_field(*viscosity_, meta_.universal_part(), 1);
+    stk::mesh::put_field(*dudx_, meta_.universal_part(), spatialDim_ * spatialDim_);
   }
 
   virtual ~MomentumKernelHex8Mesh() {}
@@ -363,6 +377,7 @@ public:
 
   GenericFieldType* massFlowRate_{nullptr};
   ScalarFieldType* viscosity_{nullptr};
+  GenericFieldType* dudx_{nullptr};
 };
 
 /** Text fixture for heat conduction equation kernels

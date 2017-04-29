@@ -32,6 +32,33 @@ struct TrigFieldFunction
     qField[1] = +vnot * std::sin(a * pi * x) * std::cos(a * pi * y);
   }
 
+  void dudx(const double* coords, double* qField) const
+  {
+    const double x = coords[0];
+    const double y = coords[1];
+
+    const double a_pi = a * pi;
+    const double cosx = std::cos(a_pi * x);
+    const double sinx = std::sin(a_pi * x);
+    const double cosy = std::cos(a_pi * y);
+    const double siny = std::sin(a_pi * y);
+
+    // du_1 / dx_j
+    qField[0] = unot * a_pi * sinx * siny;
+    qField[1] = -unot * a_pi * cosx * cosy;
+    qField[2] = 0.0;
+
+    // du_2 / dx_j
+    qField[3] = vnot * a_pi * cosx * cosy;
+    qField[4] = -vnot * a_pi * sinx * siny;
+    qField[5] = 0.0;
+
+    // z components = 0.0
+    qField[6] = 0.0;
+    qField[7] = 0.0;
+    qField[8] = 0.0;
+  }
+
   void pressure(const double* coords, double* qField) const
   {
     const double x = coords[0];
@@ -62,6 +89,18 @@ struct TrigFieldFunction
       std::cos(2.0 * aT * pi * z));
   }
 
+  void density(const double* coords, double* qField) const
+  {
+    double x = coords[0];
+    double y = coords[1];
+    double z = coords[2];
+
+    qField[0] = rhonot * (
+      std::cos(a * pi * x) *
+      std::cos(a * pi * y) *
+      std::cos(a * pi * z));
+  }
+
 private:
   /// Factor for u-component of velocity
   static constexpr double unot{1.0};
@@ -76,10 +115,13 @@ private:
   static constexpr double k{1.0};
 
   /// Frequency multiplier for velocity and pressure fields
-  static constexpr double a{20.0};
+  static constexpr double a{0.3};
 
   /// Frequency for temperature fields
   static constexpr double aT{1.0};
+
+  /// Factor for density field
+  static constexpr double rhonot{1.0};
 
   const double pi;
 };
@@ -102,12 +144,16 @@ void init_trigonometric_field(
 
   if (fieldName == "velocity")
     funcPtr = &TrigFieldFunction::velocity;
+  else if (fieldName == "dudx")
+    funcPtr = &TrigFieldFunction::dudx;
   else if (fieldName == "pressure")
     funcPtr = &TrigFieldFunction::pressure;
   else if (fieldName == "dpdx")
     funcPtr = &TrigFieldFunction::dpdx;
   else if (fieldName == "temperature")
     funcPtr = &TrigFieldFunction::temperature;
+  else if (fieldName == "density")
+    funcPtr = &TrigFieldFunction::density;
   else
     funcPtr = nullptr;
 
@@ -141,6 +187,15 @@ void velocity_test_function(
   init_trigonometric_field(bulk, coordinates, velocity);
 }
 
+void dudx_test_function(
+  const stk::mesh::BulkData& bulk,
+  const VectorFieldType& coordinates,
+  GenericFieldType& dudx)
+{
+  // Add additional test functions in future?
+  init_trigonometric_field(bulk, coordinates, dudx);
+}
+
 void pressure_test_function(
   const stk::mesh::BulkData& bulk,
   const VectorFieldType& coordinates,
@@ -165,6 +220,13 @@ void temperature_test_function(
   init_trigonometric_field(bulk, coordinates, temperature);
 }
 
+void density_test_function(
+  const stk::mesh::BulkData& bulk,
+  const VectorFieldType& coordinates,
+  ScalarFieldType& density)
+{
+  init_trigonometric_field(bulk, coordinates, density);
+}
 
 void calc_mass_flow_rate_scs(
   const stk::mesh::BulkData& bulk,
