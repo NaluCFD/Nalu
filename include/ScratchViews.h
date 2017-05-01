@@ -60,7 +60,7 @@ public:
   inline
   SharedMemView<double****>& get_scratch_view_4D(const stk::mesh::FieldBase& field);
 
-  inline const int total_bytes() const { return num_bytes_required; }
+  inline int total_bytes() const { return num_bytes_required; }
 
   const stk::mesh::Entity* elemNodes;
   SharedMemView<double**> scs_areav;
