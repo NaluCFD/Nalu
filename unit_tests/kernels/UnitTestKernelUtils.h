@@ -357,7 +357,7 @@ public:
           stk::topology::NODE_RANK, "viscosity")),
       dudx_(
         &meta_.declare_field<GenericFieldType>(
-          stk::topology::ELEM_RANK, "dudx"))
+          stk::topology::NODE_RANK, "dudx"))
   {
     const auto& meSCS = sierra::nalu::get_surface_master_element(stk::topology::HEX_8);
     stk::mesh::put_field(*massFlowRate_, meta_.universal_part(), meSCS->numIntPoints_);
@@ -372,6 +372,7 @@ public:
     LowMachKernelHex8Mesh::fill_mesh_and_init_fields();
     unit_test_kernel_utils::calc_mass_flow_rate_scs(
       bulk_, stk::topology::HEX_8, *coordinates_, *density_, *velocity_, *massFlowRate_);
+    unit_test_kernel_utils::dudx_test_function(bulk_, *coordinates_, *dudx_);
     stk::mesh::field_fill(0.1, *viscosity_);
   }
 
