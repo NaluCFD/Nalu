@@ -23,12 +23,17 @@ namespace unit_test_utils {
 
 void fill_mesh_1_elem_per_proc_hex8(stk::mesh::BulkData& bulk);
 void fill_hex8_mesh(const std::string& meshSpec, stk::mesh::BulkData& bulk);
+void perturb_coord_hex_8(stk::mesh::BulkData& bulk, double perturbationSize = 0.125);
+
+
 void fill_and_promote_hex_mesh(const std::string& meshSpec, stk::mesh::BulkData& bulk, int polyOrder);
+
 void dump_promoted_mesh_file(stk::mesh::BulkData& bulk, int polyOrder);
 
 std::ostream& nalu_out();
 
 stk::mesh::Entity create_one_reference_element(stk::mesh::BulkData& bulk, stk::topology topo);
+stk::mesh::Entity create_one_perturbed_element(stk::mesh::BulkData& bulk, stk::topology topo);
 
 double quadratic(double a, const double* b, const double* H, const double* x);
 

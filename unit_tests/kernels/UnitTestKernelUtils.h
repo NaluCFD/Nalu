@@ -287,9 +287,13 @@ public:
 
   virtual ~TestKernelHex8Mesh() {}
 
-  void fill_mesh()
+  void fill_mesh(bool doPerturb = false)
   {
+
     unit_test_utils::fill_mesh_1_elem_per_proc_hex8(bulk_);
+    if (doPerturb) {
+      unit_test_utils::perturb_coord_hex_8(bulk_, 0.125);
+    }
 
     partVec_ = {meta_.get_part("block_1")};
 
@@ -343,9 +347,9 @@ public:
 
   virtual ~LowMachKernelHex8Mesh() {}
 
-  virtual void fill_mesh_and_init_fields()
+  virtual void fill_mesh_and_init_fields(bool doPerturb = false)
   {
-    fill_mesh();
+    fill_mesh(doPerturb);
 
     unit_test_kernel_utils::velocity_test_function(bulk_, *coordinates_, *velocity_);
     unit_test_kernel_utils::pressure_test_function(bulk_, *coordinates_, *pressure_);
@@ -388,9 +392,9 @@ public:
 
   virtual ~MomentumKernelHex8Mesh() {}
 
-  virtual void fill_mesh_and_init_fields()
+  virtual void fill_mesh_and_init_fields(bool doPerturb = false)
   {
-    LowMachKernelHex8Mesh::fill_mesh_and_init_fields();
+    LowMachKernelHex8Mesh::fill_mesh_and_init_fields(doPerturb);
     unit_test_kernel_utils::calc_mass_flow_rate_scs(
       bulk_, stk::topology::HEX_8, *coordinates_, *density_, *velocity_, *massFlowRate_);
     unit_test_kernel_utils::dudx_test_function(bulk_, *coordinates_, *dudx_);
@@ -426,9 +430,9 @@ public:
     stk::mesh::put_field(*thermalCond_, meta_.universal_part(), 1);
   }
 
-  void fill_mesh_and_init_fields()
+  void fill_mesh_and_init_fields(bool doPerturb = false)
   {
-    fill_mesh();
+    fill_mesh(doPerturb);
 
     unit_test_kernel_utils::temperature_test_function(bulk_, *coordinates_, *temperature_);
     stk::mesh::field_fill(1.0, *thermalCond_);
@@ -480,9 +484,9 @@ public:
   }
   virtual ~MixtureFractionKernelHex8Mesh() {}
 
-  virtual void fill_mesh_and_init_fields()
+  virtual void fill_mesh_and_init_fields(bool doPerturb = false)
   {
-    fill_mesh();
+    fill_mesh(doPerturb);
 
     unit_test_kernel_utils::mixture_fraction_test_function(bulk_, *coordinates_, *mixFraction_, amf_, znot_);
     unit_test_kernel_utils::velocity_test_function(bulk_, *coordinates_, *velocity_);
