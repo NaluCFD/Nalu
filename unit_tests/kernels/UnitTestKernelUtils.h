@@ -59,6 +59,27 @@ void density_test_function(
   const VectorFieldType& coordinates,
   ScalarFieldType& density);
 
+void property_from_mixture_fraction_test_function(
+  const stk::mesh::BulkData&,
+  const ScalarFieldType& mixFraction,
+  ScalarFieldType& property,
+  const double primary,
+  const double secondary);
+
+void inverse_property_from_mixture_fraction_test_function(
+  const stk::mesh::BulkData&,
+  const ScalarFieldType& mixFraction,
+  ScalarFieldType& property,
+  const double primary,
+  const double secondary);
+
+void mixture_fraction_test_function(
+  const stk::mesh::BulkData& bulk,
+  const VectorFieldType& coordinates,
+  const ScalarFieldType& mixFrac,
+  const double znot,
+  const double amf);
+
 void calc_mass_flow_rate_scs(
   const stk::mesh::BulkData&,
   const stk::topology&,
@@ -415,6 +436,79 @@ public:
 
   ScalarFieldType* temperature_{nullptr};
   ScalarFieldType* thermalCond_{nullptr};
+};
+
+/** Text fixture for mixture fraction equation kernels
+ *
+ *  This test fixture performs the following actions:
+ *    - Create a HEX8 mesh with one element
+ *    - Declare all of the set of fields required (autonomous from LowMach/Mom/Cont)
+ *    - Initialize the fields with steady 3-D solution; properties of helium/air
+ */
+class MixtureFractionKernelHex8Mesh : public TestKernelHex8Mesh
+{
+public:
+  MixtureFractionKernelHex8Mesh()
+    : TestKernelHex8Mesh(),
+    mixFraction_(&meta_.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, 
+                                                       "mixture_fraction")),
+    velocity_(&meta_.declare_field<VectorFieldType>(stk::topology::NODE_RANK, 
+                                                    "velocity")),
+    density_(&meta_.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, 
+                                                   "density")),
+    viscosity_(&meta_.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, 
+                                                     "viscosity")),
+    effectiveViscosity_(&meta_.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, 
+                                                              "effective_viscosity")),
+    massFlowRate_(&meta_.declare_field<GenericFieldType>(stk::topology::ELEM_RANK, 
+                                                         "mass_flow_rate_scs")),
+    znot_(1.0),
+    amf_(2.0),
+    lamSc_(0.9),
+    trbSc_(1.1),
+    rhoPrimary_(0.163),
+    rhoSecondary_(1.18),
+    viscPrimary_(1.967e-5),
+    viscSecondary_(1.85e-5)
+  {
+    const auto& meSCS = sierra::nalu::get_surface_master_element(stk::topology::HEX_8);
+    stk::mesh::put_field(*mixFraction_, meta_.universal_part(), 1);
+    stk::mesh::put_field(*velocity_, meta_.universal_part(), spatialDim_);
+    stk::mesh::put_field(*density_, meta_.universal_part(), 1);
+    stk::mesh::put_field(*viscosity_, meta_.universal_part(), 1);
+    stk::mesh::put_field(*massFlowRate_, meta_.universal_part(), meSCS->numIntPoints_);
+  }
+  virtual ~MixtureFractionKernelHex8Mesh() {}
+
+  virtual void fill_mesh_and_init_fields()
+  {
+    fill_mesh();
+
+    unit_test_kernel_utils::mixture_fraction_test_function(bulk_, *coordinates_, *mixFraction_, amf_, znot_);
+    unit_test_kernel_utils::velocity_test_function(bulk_, *coordinates_, *velocity_);
+    unit_test_kernel_utils::inverse_property_from_mixture_fraction_test_function(bulk_, *mixFraction_, *density_,
+                                                                                 rhoPrimary_, rhoSecondary_);
+    unit_test_kernel_utils::property_from_mixture_fraction_test_function(bulk_, *mixFraction_, *viscosity_,
+                                                                         viscPrimary_, viscSecondary_);
+    unit_test_kernel_utils::calc_mass_flow_rate_scs(
+      bulk_, stk::topology::HEX_8, *coordinates_, *density_, *velocity_, *massFlowRate_);
+  }
+
+  ScalarFieldType* mixFraction_{nullptr};
+  VectorFieldType* velocity_{nullptr};
+  ScalarFieldType* density_{nullptr};
+  ScalarFieldType* viscosity_{nullptr};
+  ScalarFieldType* effectiveViscosity_{nullptr};
+  GenericFieldType* massFlowRate_{nullptr};
+
+  const double znot_;
+  const double amf_;
+  const double lamSc_;
+  const double trbSc_;
+  const double rhoPrimary_;
+  const double rhoSecondary_;
+  const double viscPrimary_;
+  const double viscSecondary_;
 };
 
 #endif /* KOKKOS_HAVE_CUDA */

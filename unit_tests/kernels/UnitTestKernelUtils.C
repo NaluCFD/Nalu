@@ -174,6 +174,24 @@ void init_trigonometric_field(
     });
 }
 
+template<typename LOOP_BODY>
+void init_trigonometric_field(
+    const stk::mesh::BulkData& bulk,
+    const LOOP_BODY& inner_loop_body)
+{
+    const auto& meta = bulk.mesh_meta_data();
+    EXPECT_EQ(meta.spatial_dimension(), 3u);
+
+    const stk::mesh::Selector selector =
+        meta.locally_owned_part() | meta.globally_shared_part();
+    const auto& buckets = bulk.get_buckets(stk::topology::NODE_RANK, selector);
+
+    kokkos_thread_team_bucket_loop(
+        buckets, [&](stk::mesh::Entity node) {
+            inner_loop_body(node);
+        });
+}
+
 } // anonymous namespace
 
 namespace unit_test_kernel_utils {
@@ -226,6 +244,58 @@ void density_test_function(
   ScalarFieldType& density)
 {
   init_trigonometric_field(bulk, coordinates, density);
+}
+
+void property_from_mixture_fraction_test_function(
+  const stk::mesh::BulkData& bulk,
+  const ScalarFieldType& mixFraction,
+  ScalarFieldType& property,
+  const double primary,
+  const double secondary)
+{  
+  init_trigonometric_field(
+    bulk,
+    [&](stk::mesh::Entity node){
+      const double mixFrac = *stk::mesh::field_data(mixFraction, node);
+      double *theProp = stk::mesh::field_data(property, node);
+      *theProp = primary*mixFrac + secondary*(1.0-mixFrac);
+    });
+}
+
+void inverse_property_from_mixture_fraction_test_function(
+  const stk::mesh::BulkData& bulk,
+  const ScalarFieldType& mixFraction,
+  ScalarFieldType& property,
+  const double primary,
+  const double secondary)
+{  
+  init_trigonometric_field(
+    bulk,
+    [&](stk::mesh::Entity node){
+      const double z = *stk::mesh::field_data(mixFraction, node);
+      double *theProp = stk::mesh::field_data(property, node);
+      *theProp = 1.0/(z/primary + (1.0-z)/secondary);
+    });
+}
+
+void mixture_fraction_test_function(
+  const stk::mesh::BulkData& bulk,
+  const VectorFieldType& coordinates,
+  const ScalarFieldType& mixtureFrac,
+  const double znot,
+  const double amf)
+{  
+  const double pi = acos(-1.0);
+  init_trigonometric_field(
+    bulk,
+    [&](stk::mesh::Entity node){
+      const double *coords = stk::mesh::field_data(coordinates, node);
+      double *mixFrac = stk::mesh::field_data(mixtureFrac, node);      
+      const double x = coords[0];
+      const double y = coords[1];
+      const double z = coords[2];
+      *mixFrac = znot*cos(amf*pi*x)*cos(amf*pi*y)*cos(amf*pi*z);
+    });
 }
 
 void calc_mass_flow_rate_scs(
