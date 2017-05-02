@@ -33,7 +33,7 @@ class ContinuityMassElemKernel: public Kernel
 public:
   ContinuityMassElemKernel(
     const stk::mesh::BulkData&,
-    SolutionOptions&,
+    const SolutionOptions&,
     ElemDataRequests&,
     const bool);
 

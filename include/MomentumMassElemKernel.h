@@ -33,7 +33,7 @@ class MomentumMassElemKernel: public Kernel
 public:
   MomentumMassElemKernel(
     const stk::mesh::BulkData&,
-    SolutionOptions&,
+    const SolutionOptions&,
     ElemDataRequests&,
     const bool);
 

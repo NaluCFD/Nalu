@@ -27,7 +27,7 @@ namespace nalu {
 template<typename AlgTraits>
 MomentumNSOElemKernel<AlgTraits>::MomentumNSOElemKernel(
   const stk::mesh::BulkData& bulkData,
-  SolutionOptions& solnOpts,
+  const SolutionOptions& solnOpts,
   VectorFieldType* velocity,
   GenericFieldType* Gju,
   ScalarFieldType* viscosity,

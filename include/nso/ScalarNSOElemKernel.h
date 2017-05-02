@@ -33,7 +33,7 @@ class ScalarNSOElemKernel : public Kernel
 public:
   ScalarNSOElemKernel(
     const stk::mesh::BulkData&,
-    SolutionOptions&,
+    const SolutionOptions&,
     ScalarFieldType*,
     VectorFieldType*,
     ScalarFieldType*,

@@ -28,7 +28,7 @@ namespace nalu {
 template<typename AlgTraits>
 ScalarUpwAdvDiffElemKernel<AlgTraits>::ScalarUpwAdvDiffElemKernel(
   const stk::mesh::BulkData& bulkData,
-  SolutionOptions& solnOpts,
+  const SolutionOptions& solnOpts,
   EquationSystem* eqSystem,
   ScalarFieldType* scalarQ,
   VectorFieldType* Gjq,

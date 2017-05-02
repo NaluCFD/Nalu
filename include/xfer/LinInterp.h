@@ -56,7 +56,6 @@ template <class FROM, class TO>  void LinInterp<FROM,TO>::filter_to_nearest (
 
   const stk::mesh::BulkData &fromBulkData = FromElem.fromBulkData_;
   stk::mesh::BulkData &toBulkData = ToPoints.toBulkData_;
-  Realm &fromRealm = FromElem.fromRealm_;
 
   const VectorFieldType *fromcoordinates = FromElem.fromcoordinates_;
   const VectorFieldType *tocoordinates   = ToPoints.tocoordinates_;
@@ -151,8 +150,7 @@ template <class FROM, class TO>  void LinInterp<FROM,TO>::apply
   
   const stk::mesh::BulkData &fromBulkData = FromElem.fromBulkData_;
   stk::mesh::BulkData         &toBulkData = ToPoints.toBulkData_;
-  Realm &fromRealm = FromElem.fromRealm_;
-
+ 
   typename EntityKeyMap::const_iterator ii;
   for(ii=RangeToDomain.begin(); ii!=RangeToDomain.end(); ++ii ) { 
     

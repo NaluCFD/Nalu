@@ -26,7 +26,7 @@ namespace nalu {
 template<class AlgTraits>
 MomentumAdvDiffElemKernel<AlgTraits>::MomentumAdvDiffElemKernel(
   const stk::mesh::BulkData& bulkData,
-  SolutionOptions& solnOpts,
+  const SolutionOptions& solnOpts,
   VectorFieldType* velocity,
   ScalarFieldType* viscosity,
   ElemDataRequests& dataPreReqs)

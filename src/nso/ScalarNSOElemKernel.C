@@ -27,7 +27,7 @@ namespace nalu {
 template<typename AlgTraits>
 ScalarNSOElemKernel<AlgTraits>::ScalarNSOElemKernel(
   const stk::mesh::BulkData& bulkData,
-  SolutionOptions& solnOpts,
+  const SolutionOptions& solnOpts,
   ScalarFieldType* scalarQ,
   VectorFieldType* Gjq,
   ScalarFieldType* diffFluxCoeff,

@@ -71,6 +71,8 @@ public:
 
   bool primitive_uses_limiter(const std::string&) const;
 
+  std::vector<double> get_gravity_vector(const unsigned nDim) const;
+
   double hybridDefault_;
   double alphaDefault_;
   double alphaUpwDefault_;

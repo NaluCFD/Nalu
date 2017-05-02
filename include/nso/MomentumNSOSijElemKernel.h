@@ -33,7 +33,7 @@ class MomentumNSOSijElemKernel : public Kernel
 public:
   MomentumNSOSijElemKernel(
     const stk::mesh::BulkData&,
-    SolutionOptions&,
+    const SolutionOptions&,
     VectorFieldType*,
     ElemDataRequests&);
 

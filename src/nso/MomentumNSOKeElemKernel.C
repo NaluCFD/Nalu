@@ -27,7 +27,7 @@ namespace nalu {
 template<typename AlgTraits>
 MomentumNSOKeElemKernel<AlgTraits>::MomentumNSOKeElemKernel(
   const stk::mesh::BulkData& bulkData,
-  SolutionOptions& solnOpts,
+  const SolutionOptions& solnOpts,
   VectorFieldType* ,
   GenericFieldType* Gju,
   const double fourthFac,

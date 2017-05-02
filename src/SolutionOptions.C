@@ -613,5 +613,14 @@ SolutionOptions::primitive_uses_limiter(const std::string& dofName) const
   return usesIt;
 }
 
+std::vector<double>
+SolutionOptions::get_gravity_vector(const unsigned nDim) const
+{
+  if ( nDim != gravity_.size() )
+    throw std::runtime_error("SolutionOptions::get_gravity_vector():Error Expected size does not equaly nDim");
+  else
+    return gravity_;
+}
+
 } // namespace nalu
 } // namespace Sierra

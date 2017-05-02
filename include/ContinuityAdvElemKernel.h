@@ -33,7 +33,7 @@ class ContinuityAdvElemKernel: public Kernel
 public:
   ContinuityAdvElemKernel(
     const stk::mesh::BulkData&,
-    SolutionOptions&,
+    const SolutionOptions&,
     ElemDataRequests&);
 
   virtual ~ContinuityAdvElemKernel();

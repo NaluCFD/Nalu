@@ -34,7 +34,7 @@ class ScalarUpwAdvDiffElemKernel: public Kernel
 public:
   ScalarUpwAdvDiffElemKernel(
     const stk::mesh::BulkData&,
-    SolutionOptions&,
+    const SolutionOptions&,
     EquationSystem*,
     ScalarFieldType*,
     VectorFieldType*,
@@ -61,7 +61,7 @@ public:
 private:
   ScalarUpwAdvDiffElemKernel() = delete;
 
-  SolutionOptions& solnOpts_;
+  const SolutionOptions& solnOpts_;
 
   ScalarFieldType *scalarQ_{nullptr};
   VectorFieldType *Gjq_{nullptr};

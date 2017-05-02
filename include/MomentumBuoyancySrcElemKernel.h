@@ -32,7 +32,7 @@ class MomentumBuoyancySrcElemKernel: public Kernel
 public:
   MomentumBuoyancySrcElemKernel(
     const stk::mesh::BulkData&,
-    SolutionOptions&,
+    const SolutionOptions&,
     ElemDataRequests&);
 
   virtual ~MomentumBuoyancySrcElemKernel();
@@ -53,12 +53,12 @@ private:
   VectorFieldType *coordinates_{nullptr};
 
   double rhoRef_;
-  Kokkos::View<double[AlgTraits::nDim_]> gravity_{ "view_gravity"};
+  Kokkos::View<double[AlgTraits::nDim_]> gravity_{ "v_gravity"};
 
   const int* ipNodeMap_;
 
   // scratch space
-  Kokkos::View<double[AlgTraits::numScvIp_][AlgTraits::nodesPerElement_]> v_shape_function_ { "view_shape_func" };
+  Kokkos::View<double[AlgTraits::numScvIp_][AlgTraits::nodesPerElement_]> v_shape_function_ { "v_shape_func" };
 };
 
 }  // nalu

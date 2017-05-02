@@ -33,7 +33,7 @@ class MomentumNSOKeElemKernel : public Kernel
 public:
   MomentumNSOKeElemKernel(
     const stk::mesh::BulkData&,
-    SolutionOptions&,
+    const SolutionOptions&,
     VectorFieldType*,
     GenericFieldType*,
     const double,

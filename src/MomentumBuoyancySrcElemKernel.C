@@ -26,7 +26,7 @@ namespace nalu {
 template<class AlgTraits>
 MomentumBuoyancySrcElemKernel<AlgTraits>::MomentumBuoyancySrcElemKernel(
   const stk::mesh::BulkData& bulkData,
-  SolutionOptions& solnOpts,
+  const SolutionOptions& solnOpts,
   ElemDataRequests& dataPreReqs)
   : Kernel(),
     rhoRef_(solnOpts.referenceDensity_),
@@ -38,9 +38,10 @@ MomentumBuoyancySrcElemKernel<AlgTraits>::MomentumBuoyancySrcElemKernel(
   densityNp1_ = &(density->field_of_state(stk::mesh::StateNP1));
   coordinates_ = metaData.get_field<VectorFieldType>(
     stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
-
+  
+  std::vector<double> solnOptsGravity = solnOpts.get_gravity_vector(AlgTraits::nDim_);
   for (int i = 0; i < AlgTraits::nDim_; i++)
-    gravity_(i) = solnOpts.gravity_[i];
+    gravity_(i) = solnOptsGravity[i];
 
   MasterElement* meSCV = sierra::nalu::get_volume_master_element(AlgTraits::topo_);
 

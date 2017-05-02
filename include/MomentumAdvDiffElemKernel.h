@@ -32,7 +32,7 @@ class MomentumAdvDiffElemKernel: public Kernel
 public:
   MomentumAdvDiffElemKernel(
     const stk::mesh::BulkData&,
-    SolutionOptions&,
+    const SolutionOptions&,
     VectorFieldType*,
     ScalarFieldType*,
     ElemDataRequests&);

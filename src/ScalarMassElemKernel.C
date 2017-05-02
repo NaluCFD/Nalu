@@ -27,7 +27,7 @@ namespace nalu {
 template<typename AlgTraits>
 ScalarMassElemKernel<AlgTraits>::ScalarMassElemKernel(
   const stk::mesh::BulkData& bulkData,
-  SolutionOptions& solnOpts,
+  const SolutionOptions& solnOpts,
   ScalarFieldType* scalarQ,
   ElemDataRequests& dataPreReqs,
   const bool lumpedMass)

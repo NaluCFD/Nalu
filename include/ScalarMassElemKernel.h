@@ -33,7 +33,7 @@ class ScalarMassElemKernel: public Kernel
 public:
   ScalarMassElemKernel(
     const stk::mesh::BulkData&,
-    SolutionOptions&,
+    const SolutionOptions&,
     ScalarFieldType*,
     ElemDataRequests&,
     const bool);

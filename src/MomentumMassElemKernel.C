@@ -27,7 +27,7 @@ namespace nalu {
 template<typename AlgTraits>
 MomentumMassElemKernel<AlgTraits>::MomentumMassElemKernel(
   const stk::mesh::BulkData& bulkData,
-  SolutionOptions& solnOpts,
+  const SolutionOptions& solnOpts,
   ElemDataRequests& dataPreReqs,
   const bool lumpedMass)
   : Kernel(),

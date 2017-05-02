@@ -33,7 +33,7 @@ class ScalarDiffElemKernel: public Kernel
 public:
   ScalarDiffElemKernel(
     const stk::mesh::BulkData&,
-    SolutionOptions&,
+    const SolutionOptions&,
     ScalarFieldType*,
     ScalarFieldType*,
     ElemDataRequests&);

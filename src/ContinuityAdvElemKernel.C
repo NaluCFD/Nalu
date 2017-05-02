@@ -27,7 +27,7 @@ namespace nalu {
 template<typename AlgTraits>
 ContinuityAdvElemKernel<AlgTraits>::ContinuityAdvElemKernel(
   const stk::mesh::BulkData& bulkData,
-  SolutionOptions& solnOpts,
+  const SolutionOptions& solnOpts,
   ElemDataRequests& dataPreReqs)
   : Kernel(),
     meshMotion_(solnOpts.does_mesh_move()),
