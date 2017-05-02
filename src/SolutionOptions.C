@@ -160,11 +160,25 @@ SolutionOptions::load(const YAML::Node & y_node)
     std::string defaultTurbModel = "laminar";
     get_if_present(y_solution_options,
         "turbulence_model", specifiedTurbModel, defaultTurbModel);
+
+    bool matchedTurbulenceModel = false;
     for ( int k=0; k < TurbulenceModel_END; ++k ) {
-      if ( specifiedTurbModel == TurbulenceModelNames[k] ) {
+      if (case_insensitive_compare(specifiedTurbModel, TurbulenceModelNames[k])) {
         turbulenceModel_ = TurbulenceModel(k);
+        matchedTurbulenceModel = true;
         break;
       }
+    }
+
+    if (!matchedTurbulenceModel) {
+      std::string msg = "Turbulence model `" + specifiedTurbModel +
+          "' not implemented.\n  Available turbulence models are ";
+
+     for ( int k=0; k < TurbulenceModel_END; ++k ) {
+       msg += "`" + TurbulenceModelNames[k] + "'";
+       if ( k != TurbulenceModel_END-1) { msg += ", "; }
+     }
+      throw std::runtime_error(msg);
     }
     if ( turbulenceModel_ != LAMINAR ) {
       isTurbulent_ = true;
