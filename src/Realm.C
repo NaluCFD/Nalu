@@ -3049,6 +3049,8 @@ Realm::register_periodic_bc(
   const double &searchTolerance,
   const std::string &searchMethodName)
 {
+  allPeriodicInteractingParts_.push_back(masterMeshPart);
+  allPeriodicInteractingParts_.push_back(slaveMeshPart);
 
   // push back the part for book keeping and, later, skin mesh
   bcPartVec_.push_back(masterMeshPart);
@@ -3094,6 +3096,11 @@ Realm::setup_non_conformal_bc(
                            nonConformalBCData.targetName_);
   
   nonConformalManager_->nonConformalInfoVec_.push_back(nonConformalInfo);
+
+  for (auto part : currentPartVec)
+    allNonConformalInteractingParts_.push_back(part);
+  for (auto part : opposingPartVec)
+    allNonConformalInteractingParts_.push_back(part);
 }
 
 //--------------------------------------------------------------------------

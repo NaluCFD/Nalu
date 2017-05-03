@@ -152,11 +152,37 @@ int TpetraLinearSystem::getDofStatus(stk::mesh::Entity node)
   const bool entityIsShared = b.shared();
   const bool entityIsGhosted = !entityIsOwned && !entityIsShared;
 
-  if (realm_.hasPeriodic_ && realm_.has_non_matching_boundary_face_alg())
-    throw std::logic_error("not ready for primetime to compbine periodic and non-matching algorithm suite");
+  bool has_non_matching_boundary_face_alg = realm_.has_non_matching_boundary_face_alg();
+  bool hasPeriodic = realm_.hasPeriodic_;
+
+  if (realm_.hasPeriodic_ && realm_.has_non_matching_boundary_face_alg()) {
+    has_non_matching_boundary_face_alg = false;
+    hasPeriodic = false;
+
+    stk::mesh::Selector perSel = stk::mesh::selectUnion(realm_.allPeriodicInteractingParts_);
+    stk::mesh::Selector nonConfSel = stk::mesh::selectUnion(realm_.allNonConformalInteractingParts_);
+    //std::cout << "nonConfSel= " << nonConfSel << std::endl;
+
+    for (auto part : b.supersets()) {
+      if (perSel(*part)) {
+        hasPeriodic = true;
+      }
+      if (nonConfSel(*part)) {
+        has_non_matching_boundary_face_alg = true;
+      }
+    }
+  }
+
+  //std::cerr << "has_non_matching_boundary_face_alg= " << has_non_matching_boundary_face_alg << " hasPeriodic= " << hasPeriodic << std::endl;
+
+  if (has_non_matching_boundary_face_alg && hasPeriodic) {
+    std::ostringstream ostr;
+    ostr << "node id= " << realm_.bulkData_->identifier(node);
+    throw std::logic_error("not ready for primetime to combine periodic and non-matching algorithm on same node: "+ostr.str());
+  }
 
   // simple case
-  if (!realm_.hasPeriodic_ && !realm_.has_non_matching_boundary_face_alg()) {
+  if (!hasPeriodic && !has_non_matching_boundary_face_alg) {
     if (entityIsGhosted)
       return DS_GhostedDOF;
     if (entityIsOwned)
@@ -165,15 +191,17 @@ int TpetraLinearSystem::getDofStatus(stk::mesh::Entity node)
       return DS_GloballyOwnedDOF;
   }
 
-  if (realm_.has_non_matching_boundary_face_alg()) {
+  if (has_non_matching_boundary_face_alg) {
     if (entityIsOwned)
       return DS_OwnedDOF;
+    //if (entityIsShared && !entityIsOwned) {
     if (!entityIsOwned && (entityIsGhosted || entityIsShared)){
       return DS_GloballyOwnedDOF;
     }
+    // maybe return DS_GhostedDOF if entityIsGhosted
   }
 
-  if (realm_.hasPeriodic_) {
+  if (hasPeriodic) {
     const stk::mesh::EntityId stkId = bulkData.identifier(node);
     const stk::mesh::EntityId naluId = *stk::mesh::field_data(*realm_.naluGlobalId_, node);
 

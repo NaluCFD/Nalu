@@ -559,6 +559,9 @@ class Realm {
   bool high_order_active() const { return doPromotion_; };
 
   std::string physics_part_name(std::string) const;
+
+  stk::mesh::PartVector allPeriodicInteractingParts_;
+  stk::mesh::PartVector allNonConformalInteractingParts_;
 };
 
 } // namespace nalu
