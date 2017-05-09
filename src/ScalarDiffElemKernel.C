@@ -47,7 +47,7 @@ ScalarDiffElemKernel<AlgTraits>::ScalarDiffElemKernel(
   dataPreReqs.add_cvfem_surface_me(meSCS);
 
   // fields and data
-  dataPreReqs.add_gathered_nodal_field(*coordinates_, AlgTraits::nDim_);
+  dataPreReqs.add_coordinates_field(*coordinates_, AlgTraits::nDim_);
   dataPreReqs.add_gathered_nodal_field(*scalarQ_, 1);
   dataPreReqs.add_gathered_nodal_field(*diffFluxCoeff_, 1);
   dataPreReqs.add_master_element_call(SCS_AREAV);
@@ -69,8 +69,8 @@ ScalarDiffElemKernel<AlgTraits>::execute(
   SharedMemView<double*>& v_scalarQ = scratchViews.get_scratch_view_1D(*scalarQ_);
   SharedMemView<double*>& v_diffFluxCoeff = scratchViews.get_scratch_view_1D(*diffFluxCoeff_);
 
-  SharedMemView<double**>& v_scs_areav = scratchViews.scs_areav;
-  SharedMemView<double***>& v_dndx = scratchViews.dndx;
+  SharedMemView<double**>& v_scs_areav = scratchViews.get_me_views().scs_areav;
+  SharedMemView<double***>& v_dndx = scratchViews.get_me_views().dndx;
 
   // start the assembly
   for ( int ip = 0; ip < AlgTraits::numScsIp_; ++ip ) {

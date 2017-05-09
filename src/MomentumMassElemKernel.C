@@ -71,7 +71,7 @@ MomentumMassElemKernel<AlgTraits>::MomentumMassElemKernel(
   dataPreReqs.add_cvfem_volume_me(meSCV);
 
   // fields and data
-  dataPreReqs.add_gathered_nodal_field(*coordinates_, AlgTraits::nDim_);
+  dataPreReqs.add_coordinates_field(*coordinates_, AlgTraits::nDim_);
   dataPreReqs.add_gathered_nodal_field(*densityNm1_, 1);
   dataPreReqs.add_gathered_nodal_field(*densityN_, 1);
   dataPreReqs.add_gathered_nodal_field(*densityNp1_, 1);
@@ -112,7 +112,7 @@ MomentumMassElemKernel<AlgTraits>::execute(
   SharedMemView<double**>& v_velocityNp1 = scratchViews.get_scratch_view_2D(*velocityNp1_);
   SharedMemView<double**>& v_Gpdx = scratchViews.get_scratch_view_2D(*Gjp_);
 
-  SharedMemView<double*>& v_scv_volume = scratchViews.scv_volume;
+  SharedMemView<double*>& v_scv_volume = scratchViews.get_me_views().scv_volume;
 
   for (int ip=0; ip < AlgTraits::numScvIp_; ++ip) {
     const int nearestNode = ipNodeMap_[ip];

@@ -66,6 +66,15 @@ void ElemDataRequests::add_element_field(const stk::mesh::FieldBase& field, unsi
   }
 }
 
+void ElemDataRequests::add_coordinates_field(
+  const stk::mesh::FieldBase& field,
+  unsigned scalarsPerNode,
+  COORDS_TYPES cType)
+{
+  coordsFields_[cType] = &field;
+  add_gathered_nodal_field(field, scalarsPerNode);
+}
+
 }
 }
 

@@ -81,7 +81,7 @@ MomentumNSOElemKernel<AlgTraits>::MomentumNSOElemKernel(
 
   // fields
   dataPreReqs.add_gathered_nodal_field(*Gju_, AlgTraits::nDim_, AlgTraits::nDim_);
-  dataPreReqs.add_gathered_nodal_field(*coordinates_, AlgTraits::nDim_);
+  dataPreReqs.add_coordinates_field(*coordinates_, AlgTraits::nDim_);
   dataPreReqs.add_gathered_nodal_field(*velocityNm1_, AlgTraits::nDim_);
   dataPreReqs.add_gathered_nodal_field(*velocityN_, AlgTraits::nDim_);
   dataPreReqs.add_gathered_nodal_field(*velocityNp1_, AlgTraits::nDim_);
@@ -135,10 +135,10 @@ MomentumNSOElemKernel<AlgTraits>::execute(
   SharedMemView<double*>& v_viscosity = scratchViews.get_scratch_view_1D(*viscosity_);
   SharedMemView<double*>& v_pressure = scratchViews.get_scratch_view_1D(*pressure_);
 
-  SharedMemView<double**>& v_scs_areav = scratchViews.scs_areav;
-  SharedMemView<double***>& v_dndx = scratchViews.dndx;
-  SharedMemView<double***>& v_gijUpper = scratchViews.gijUpper;
-  SharedMemView<double***>& v_gijLower = scratchViews.gijLower;
+  SharedMemView<double**>& v_scs_areav = scratchViews.get_me_views().scs_areav;
+  SharedMemView<double***>& v_dndx = scratchViews.get_me_views().dndx;
+  SharedMemView<double***>& v_gijUpper = scratchViews.get_me_views().gijUpper;
+  SharedMemView<double***>& v_gijLower = scratchViews.get_me_views().gijLower;
 
   for ( int ip = 0; ip < AlgTraits::numScsIp_; ++ip ) {
 

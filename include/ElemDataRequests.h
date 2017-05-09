@@ -29,6 +29,17 @@ enum ELEM_DATA_NEEDED {
   SCV_VOLUME,
 };
 
+enum COORDS_TYPES {
+  CURRENT_COORDINATES = 0,
+  MODEL_COORDINATES,
+  MAX_COORDS_TYPES,
+};
+
+static const std::string CoordinatesTypeNames[] = {
+  "current_coordinates",
+  "model_coordinates"
+};
+
 struct FieldInfo {
   FieldInfo(const stk::mesh::FieldBase* fld, unsigned scalars)
   : field(fld), scalarsDim1(scalars), scalarsDim2(0)
@@ -54,13 +65,24 @@ class ElemDataRequests
 {
 public:
   ElemDataRequests()
-    : dataEnums(), fields(), meSCS_(NULL), meSCV_(NULL)
+    : dataEnums(),
+      coordsFields_(),
+      fields(), meSCS_(NULL), meSCV_(NULL)
   {
   }
 
-  void add_master_element_call(ELEM_DATA_NEEDED data)
+  void add_master_element_call(
+    ELEM_DATA_NEEDED data,
+    COORDS_TYPES cType = CURRENT_COORDINATES
+  )
   {
-    dataEnums.insert(data);
+    auto it = coordsFields_.find(cType);
+    ThrowRequireMsg(
+      it != coordsFields_.end(),
+      "ElemDataRequests::add_master_element_call: Coordinates field (" +
+      CoordinatesTypeNames[cType] +
+      ") must be registered to ElemDataRequests before registering MasterElement calls");
+    dataEnums[cType].insert(data);
   }
 
   void add_gathered_nodal_field(const stk::mesh::FieldBase& field, unsigned scalarsPerNode);
@@ -71,6 +93,11 @@ public:
 
   void add_element_field(const stk::mesh::FieldBase& field, unsigned tensorDim1, unsigned tensorDim2);
 
+  void add_coordinates_field(
+    const stk::mesh::FieldBase&,
+    unsigned scalarsPerNode,
+    COORDS_TYPES cType = CURRENT_COORDINATES);
+
   void add_cvfem_volume_me(MasterElement *meSCV)
   {
     meSCV_ = meSCV;
@@ -80,14 +107,33 @@ public:
     meSCS_ = meSCS;
   }
 
-  const std::set<ELEM_DATA_NEEDED>& get_data_enums() const { return dataEnums; }
+  const std::set<ELEM_DATA_NEEDED>& get_data_enums(
+    const COORDS_TYPES cType = CURRENT_COORDINATES) const
+  { return dataEnums[cType]; }
+
+  const stk::mesh::FieldBase* get_coordinates_field(
+    const COORDS_TYPES cType = CURRENT_COORDINATES) const
+  {
+    auto it = coordsFields_.find(cType);
+    ThrowRequireMsg(
+      it != coordsFields_.end(),
+      "ElemDataRequests::get_coordinates_field: Coordinates field (" +
+      CoordinatesTypeNames[cType] +
+      ") must be registered to ElemDataRequests before access");
+    return it->second;
+  }
+
+  const std::map<COORDS_TYPES, const stk::mesh::FieldBase*>&
+  get_coordinates_map() const
+  { return coordsFields_; }
 
   const FieldSet& get_fields() const { return fields; }  
   MasterElement *get_cvfem_volume_me() {return meSCV_;}
   MasterElement *get_cvfem_surface_me() {return meSCS_;}
 
 private:
-  std::set<ELEM_DATA_NEEDED> dataEnums;
+  std::array<std::set<ELEM_DATA_NEEDED>, MAX_COORDS_TYPES> dataEnums;
+  std::map<COORDS_TYPES, const stk::mesh::FieldBase*> coordsFields_;
   FieldSet fields;
   MasterElement *meSCS_;
   MasterElement *meSCV_;

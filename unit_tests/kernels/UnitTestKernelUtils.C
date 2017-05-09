@@ -317,7 +317,7 @@ void calc_mass_flow_rate_scs(
   auto meSCS = sierra::nalu::get_surface_master_element(topo);
 
   dataNeeded.add_cvfem_surface_me(meSCS);
-  dataNeeded.add_gathered_nodal_field(coordinates, ndim);
+  dataNeeded.add_coordinates_field(coordinates, ndim);
   dataNeeded.add_gathered_nodal_field(densityNp1, 1);
   dataNeeded.add_gathered_nodal_field(velocityNp1, ndim);
   dataNeeded.add_master_element_call(sierra::nalu::SCS_AREAV);
@@ -346,7 +346,7 @@ void calc_mass_flow_rate_scs(
         Kokkos::TeamThreadRange(team, length), [&](const size_t& k) {
           stk::mesh::Entity element = b[k];
           sierra::nalu::fill_pre_req_data(
-            dataNeeded, bulk, topo, element, &coordinates, preReqData);
+            dataNeeded, bulk, topo, element, preReqData);
 
           std::vector<double> rhoU(ndim);
           std::vector<double> v_shape_function(
@@ -355,7 +355,7 @@ void calc_mass_flow_rate_scs(
           double *mdot = stk::mesh::field_data(massFlowRate, element);
           auto& v_densityNp1 = preReqData.get_scratch_view_1D(densityNp1);
           auto& v_velocityNp1 = preReqData.get_scratch_view_2D(velocityNp1);
-          auto& v_scs_areav = preReqData.scs_areav;
+          auto& v_scs_areav = preReqData.get_me_views().scs_areav;
 
           for (int ip=0; ip < meSCS->numIntPoints_; ++ip) {
             for (int j=0; j < ndim; ++j) {

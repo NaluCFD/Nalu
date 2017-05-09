@@ -69,7 +69,7 @@ ScalarMassElemKernel<AlgTraits>::ScalarMassElemKernel(
   dataPreReqs.add_cvfem_volume_me(meSCV);
 
   // fields and data
-  dataPreReqs.add_gathered_nodal_field(*coordinates_, AlgTraits::nDim_);
+  dataPreReqs.add_coordinates_field(*coordinates_, AlgTraits::nDim_);
   dataPreReqs.add_gathered_nodal_field(*scalarQNm1_, 1);
   dataPreReqs.add_gathered_nodal_field(*scalarQN_, 1);
   dataPreReqs.add_gathered_nodal_field(*scalarQNp1_, 1);
@@ -114,7 +114,7 @@ ScalarMassElemKernel<AlgTraits>::execute(
   SharedMemView<double*>& v_rhoNp1 = scratchViews.get_scratch_view_1D(
     *densityNp1_);
 
-  SharedMemView<double*>& v_scv_volume = scratchViews.scv_volume;
+  SharedMemView<double*>& v_scv_volume = scratchViews.get_me_views().scv_volume;
 
   for ( int ip = 0; ip < AlgTraits::numScvIp_; ++ip ) {
 

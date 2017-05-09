@@ -48,7 +48,7 @@ SteadyThermal3dContactSrcElemKernel<AlgTraits>::SteadyThermal3dContactSrcElemKer
   dataPreReqs.add_cvfem_volume_me(meSCV);
 
   // fields and data
-  dataPreReqs.add_gathered_nodal_field(*coordinates_, AlgTraits::nDim_);
+  dataPreReqs.add_coordinates_field(*coordinates_, AlgTraits::nDim_);
   dataPreReqs.add_master_element_call(SCV_VOLUME);
 }
 
@@ -61,7 +61,7 @@ SteadyThermal3dContactSrcElemKernel<AlgTraits>::execute(
   ScratchViews& scratchViews)
 {
   SharedMemView<double**>& v_coordinates = scratchViews.get_scratch_view_2D(*coordinates_);
-  SharedMemView<double*>& v_scv_volume = scratchViews.scv_volume;
+  SharedMemView<double*>& v_scv_volume = scratchViews.get_me_views().scv_volume;
 
   // interpolate to ips and evaluate source
   for ( int ip = 0; ip < AlgTraits::numScvIp_; ++ip ) {
