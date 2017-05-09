@@ -195,9 +195,6 @@ ScratchViews::ScratchViews(const TeamHandleType& team,
              const stk::mesh::BulkData& bulkData,
              stk::topology topo,
              ElemDataRequests& dataNeeded)
-  :
-    meViews(MAX_COORDS_TYPES),
-    hasCoordField(MAX_COORDS_TYPES,false)
 {
   /* master elements are allowed to be null if they are not required */
   MasterElement *meSCS = dataNeeded.get_cvfem_surface_me();

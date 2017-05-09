@@ -77,7 +77,7 @@ ScalarNSOElemKernel<AlgTraits>::ScalarNSOElemKernel(
   dataPreReqs.add_cvfem_surface_me(meSCS);
 
   // fields
-  dataPreReqs.add_coordinates_field(*coordinates_, AlgTraits::nDim_);
+  dataPreReqs.add_coordinates_field(*coordinates_, AlgTraits::nDim_, CURRENT_COORDINATES);
   dataPreReqs.add_gathered_nodal_field(*velocityRTM_, AlgTraits::nDim_);
   dataPreReqs.add_gathered_nodal_field(*Gjq_, AlgTraits::nDim_);
   dataPreReqs.add_gathered_nodal_field(*scalarQNm1_, 1);
@@ -90,9 +90,9 @@ ScalarNSOElemKernel<AlgTraits>::ScalarNSOElemKernel(
   dataPreReqs.add_gathered_nodal_field(*diffFluxCoeff_,1);
 
   // master element data
-  dataPreReqs.add_master_element_call(SCS_AREAV);
-  dataPreReqs.add_master_element_call(SCS_GRAD_OP);
-  dataPreReqs.add_master_element_call(SCS_GIJ);
+  dataPreReqs.add_master_element_call(SCS_AREAV, CURRENT_COORDINATES);
+  dataPreReqs.add_master_element_call(SCS_GRAD_OP, CURRENT_COORDINATES);
+  dataPreReqs.add_master_element_call(SCS_GIJ, CURRENT_COORDINATES);
 }
 
 template<typename AlgTraits>
@@ -123,10 +123,10 @@ ScalarNSOElemKernel<AlgTraits>::execute(
   SharedMemView<double*>& v_rhoNp1 = scratchViews.get_scratch_view_1D(*densityNp1_);
   SharedMemView<double*>& v_diffFluxCoeff = scratchViews.get_scratch_view_1D(*diffFluxCoeff_);
 
-  SharedMemView<double**>& v_scs_areav = scratchViews.get_me_views().scs_areav;
-  SharedMemView<double***>& v_dndx = scratchViews.get_me_views().dndx;
-  SharedMemView<double***>& v_gijUpper = scratchViews.get_me_views().gijUpper;
-  SharedMemView<double***>& v_gijLower = scratchViews.get_me_views().gijLower;
+  SharedMemView<double**>& v_scs_areav = scratchViews.get_me_views(CURRENT_COORDINATES).scs_areav;
+  SharedMemView<double***>& v_dndx = scratchViews.get_me_views(CURRENT_COORDINATES).dndx;
+  SharedMemView<double***>& v_gijUpper = scratchViews.get_me_views(CURRENT_COORDINATES).gijUpper;
+  SharedMemView<double***>& v_gijLower = scratchViews.get_me_views(CURRENT_COORDINATES).gijLower;
 
   for ( int ip = 0; ip < AlgTraits::numScsIp_; ++ip ) {
 

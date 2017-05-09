@@ -256,6 +256,8 @@ public:
   sierra::nalu::SharedMemView<double*> rhs_;
   sierra::nalu::SharedMemView<double**> lhs_;
 
+  const VectorFieldType* coordinates() const { return coordinates_; }
+
 private:
   const stk::mesh::BulkData& bulk_;
   const stk::mesh::PartVector& partVec_;

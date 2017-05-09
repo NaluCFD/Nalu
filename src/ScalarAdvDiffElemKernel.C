@@ -48,11 +48,11 @@ ScalarAdvDiffElemKernel<AlgTraits>::ScalarAdvDiffElemKernel(
   dataPreReqs.add_cvfem_surface_me(meSCS);
 
   // fields and data
-  dataPreReqs.add_coordinates_field(*coordinates_, AlgTraits::nDim_);
+  dataPreReqs.add_coordinates_field(*coordinates_, AlgTraits::nDim_, CURRENT_COORDINATES);
   dataPreReqs.add_gathered_nodal_field(*scalarQ_, 1);
   dataPreReqs.add_gathered_nodal_field(*diffFluxCoeff_, 1);
-  dataPreReqs.add_master_element_call(SCS_AREAV);
-  dataPreReqs.add_master_element_call(SCS_GRAD_OP);
+  dataPreReqs.add_master_element_call(SCS_AREAV, CURRENT_COORDINATES);
+  dataPreReqs.add_master_element_call(SCS_GRAD_OP, CURRENT_COORDINATES);
 }
 
 template<typename AlgTraits>
@@ -70,8 +70,8 @@ ScalarAdvDiffElemKernel<AlgTraits>::execute(
   SharedMemView<double*>& v_scalarQ = scratchViews.get_scratch_view_1D(*scalarQ_);
   SharedMemView<double*>& v_diffFluxCoeff = scratchViews.get_scratch_view_1D(*diffFluxCoeff_);
 
-  SharedMemView<double**>& v_scs_areav = scratchViews.get_me_views().scs_areav;
-  SharedMemView<double***>& v_dndx = scratchViews.get_me_views().dndx;
+  SharedMemView<double**>& v_scs_areav = scratchViews.get_me_views(CURRENT_COORDINATES).scs_areav;
+  SharedMemView<double***>& v_dndx = scratchViews.get_me_views(CURRENT_COORDINATES).dndx;
 
   // ip data for this element
   const double *mdot = stk::mesh::field_data(*massFlowRate_, element);

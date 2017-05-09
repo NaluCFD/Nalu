@@ -61,18 +61,18 @@ ContinuityAdvElemKernel<AlgTraits>::ContinuityAdvElemKernel(
   dataPreReqs.add_cvfem_surface_me(meSCS);
 
   // fields and data
-  dataPreReqs.add_coordinates_field(*coordinates_, AlgTraits::nDim_);
+  dataPreReqs.add_coordinates_field(*coordinates_, AlgTraits::nDim_, CURRENT_COORDINATES);
   dataPreReqs.add_gathered_nodal_field(*velocityRTM_, AlgTraits::nDim_);
   dataPreReqs.add_gathered_nodal_field(*densityNp1_, 1);
   dataPreReqs.add_gathered_nodal_field(*pressure_, 1);
   dataPreReqs.add_gathered_nodal_field(*Gpdx_, AlgTraits::nDim_);
-  dataPreReqs.add_master_element_call(SCS_AREAV);
+  dataPreReqs.add_master_element_call(SCS_AREAV, CURRENT_COORDINATES);
 
   // manage dndx
   if ( !shiftPoisson_ || !reducedSensitivities_ )
-    dataPreReqs.add_master_element_call(SCS_GRAD_OP);
+    dataPreReqs.add_master_element_call(SCS_GRAD_OP, CURRENT_COORDINATES);
   if ( shiftPoisson_ || reducedSensitivities_ )
-    dataPreReqs.add_master_element_call(SCS_SHIFTED_GRAD_OP);
+    dataPreReqs.add_master_element_call(SCS_SHIFTED_GRAD_OP, CURRENT_COORDINATES);
 }
 
 template<typename AlgTraits>
@@ -102,12 +102,12 @@ ContinuityAdvElemKernel<AlgTraits>::execute(
   SharedMemView<double**>& v_velocity = scratchViews.get_scratch_view_2D(*velocityRTM_);
   SharedMemView<double**>& v_Gpdx = scratchViews.get_scratch_view_2D(*Gpdx_);
 
-  SharedMemView<double**>& v_scs_areav = scratchViews.get_me_views().scs_areav;
+  SharedMemView<double**>& v_scs_areav = scratchViews.get_me_views(CURRENT_COORDINATES).scs_areav;
 
   SharedMemView<double***>& v_dndx = shiftPoisson_ ?
-    scratchViews.get_me_views().dndx_shifted : scratchViews.get_me_views().dndx;
+    scratchViews.get_me_views(CURRENT_COORDINATES).dndx_shifted : scratchViews.get_me_views(CURRENT_COORDINATES).dndx;
   SharedMemView<double***>& v_dndx_lhs = (!shiftPoisson_ && reducedSensitivities_)?
-    scratchViews.get_me_views().dndx_shifted : scratchViews.get_me_views().dndx;
+    scratchViews.get_me_views(CURRENT_COORDINATES).dndx_shifted : scratchViews.get_me_views(CURRENT_COORDINATES).dndx;
 
   for (int ip = 0; ip < AlgTraits::numScsIp_; ++ip) {
     const int il = lrscv_[2*ip];

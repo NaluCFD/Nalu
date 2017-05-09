@@ -317,10 +317,11 @@ void calc_mass_flow_rate_scs(
   auto meSCS = sierra::nalu::get_surface_master_element(topo);
 
   dataNeeded.add_cvfem_surface_me(meSCS);
-  dataNeeded.add_coordinates_field(coordinates, ndim);
+  dataNeeded.add_coordinates_field(coordinates, ndim, sierra::nalu::CURRENT_COORDINATES);
   dataNeeded.add_gathered_nodal_field(densityNp1, 1);
   dataNeeded.add_gathered_nodal_field(velocityNp1, ndim);
-  dataNeeded.add_master_element_call(sierra::nalu::SCS_AREAV);
+  dataNeeded.add_master_element_call(sierra::nalu::SCS_AREAV,
+                                     sierra::nalu::CURRENT_COORDINATES);
 
   const stk::mesh::Selector selector =
     meta.locally_owned_part() | meta.globally_shared_part();
@@ -355,7 +356,8 @@ void calc_mass_flow_rate_scs(
           double *mdot = stk::mesh::field_data(massFlowRate, element);
           auto& v_densityNp1 = preReqData.get_scratch_view_1D(densityNp1);
           auto& v_velocityNp1 = preReqData.get_scratch_view_2D(velocityNp1);
-          auto& v_scs_areav = preReqData.get_me_views().scs_areav;
+          auto& v_scs_areav = preReqData.get_me_views(
+            sierra::nalu::CURRENT_COORDINATES).scs_areav;
 
           for (int ip=0; ip < meSCS->numIntPoints_; ++ip) {
             for (int j=0; j < ndim; ++j) {

@@ -94,9 +94,9 @@ public:
   void add_element_field(const stk::mesh::FieldBase& field, unsigned tensorDim1, unsigned tensorDim2);
 
   void add_coordinates_field(
-    const stk::mesh::FieldBase&,
+    const stk::mesh::FieldBase& field,
     unsigned scalarsPerNode,
-    COORDS_TYPES cType = CURRENT_COORDINATES);
+    COORDS_TYPES cType);
 
   void add_cvfem_volume_me(MasterElement *meSCV)
   {
@@ -108,11 +108,11 @@ public:
   }
 
   const std::set<ELEM_DATA_NEEDED>& get_data_enums(
-    const COORDS_TYPES cType = CURRENT_COORDINATES) const
+    const COORDS_TYPES cType) const
   { return dataEnums[cType]; }
 
   const stk::mesh::FieldBase* get_coordinates_field(
-    const COORDS_TYPES cType = CURRENT_COORDINATES) const
+    const COORDS_TYPES cType) const
   {
     auto it = coordsFields_.find(cType);
     ThrowRequireMsg(

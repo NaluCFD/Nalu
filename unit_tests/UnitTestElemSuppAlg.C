@@ -35,8 +35,10 @@ void element_discrete_laplacian_kernel_3d(
     const int* lrscv = meSCS.adjacentNodes();
 
     sierra::nalu::SharedMemView<double*>& elemNodePressures = elemData.get_scratch_view_1D(*nodalPressureField);
-    sierra::nalu::SharedMemView<double**>& scs_areav = elemData.get_me_views().scs_areav;
-    sierra::nalu::SharedMemView<double***>& dndx = elemData.get_me_views().dndx;
+    sierra::nalu::SharedMemView<double**>& scs_areav =
+      elemData.get_me_views(sierra::nalu::CURRENT_COORDINATES).scs_areav;
+    sierra::nalu::SharedMemView<double***>& dndx =
+      elemData.get_me_views(sierra::nalu::CURRENT_COORDINATES).dndx;
     const stk::mesh::Entity* elemNodes = elemData.elemNodes;
 
     for (int ip = 0; ip < numScsIp; ++ip ) {
@@ -80,9 +82,12 @@ public:
   {
     //here are the element-data pre-requisites we want computed before
     //our elem_execute method is called.
-    dataNeeded.add_coordinates_field(*coordField, 3);
-    dataNeeded.add_master_element_call(sierra::nalu::SCS_AREAV);
-    dataNeeded.add_master_element_call(sierra::nalu::SCS_GRAD_OP);
+    dataNeeded.add_coordinates_field(*coordField, 3,
+                                     sierra::nalu::CURRENT_COORDINATES);
+    dataNeeded.add_master_element_call(sierra::nalu::SCS_AREAV,
+                                       sierra::nalu::CURRENT_COORDINATES);
+    dataNeeded.add_master_element_call(sierra::nalu::SCS_GRAD_OP,
+                                       sierra::nalu::CURRENT_COORDINATES);
     dataNeeded.add_gathered_nodal_field(*nodalPressureField, 1);
 
     // add the master element
