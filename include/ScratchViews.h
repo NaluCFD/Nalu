@@ -34,6 +34,34 @@ struct ViewT : public ViewHolder {
   T view_;
 };
 
+class MasterElementViews
+{
+public:
+  MasterElementViews() = default;
+  virtual ~MasterElementViews() = default;
+
+  int create_master_element_views(
+    const TeamHandleType& team,
+    const std::set<ELEM_DATA_NEEDED>& dataEnums,
+    int nDim, int nodesPerElem,
+    int numScsIp, int numScvIp);
+
+  void fill_master_element_views(
+    const std::set<ELEM_DATA_NEEDED>& dataEnums,
+    SharedMemView<double**>* coordsView,
+    MasterElement* meSCS,
+    MasterElement* meSCV);
+
+  SharedMemView<double**> scs_areav;
+  SharedMemView<double***> dndx;
+  SharedMemView<double***> dndx_shifted;
+  SharedMemView<double*> deriv;
+  SharedMemView<double*> det_j;
+  SharedMemView<double*> scv_volume;
+  SharedMemView<double***> gijUpper;
+  SharedMemView<double***> gijLower;
+};
+
 class ScratchViews
 {
 public:
@@ -60,18 +88,16 @@ public:
   inline
   SharedMemView<double****>& get_scratch_view_4D(const stk::mesh::FieldBase& field);
 
+  inline
+  MasterElementViews& get_me_views(const COORDS_TYPES cType = CURRENT_COORDINATES)
+  {
+    ThrowRequire(hasCoordField[cType] == true);
+    return meViews[cType];
+  }
+
   inline int total_bytes() const { return num_bytes_required; }
 
   const stk::mesh::Entity* elemNodes;
-  SharedMemView<double**> scs_areav;
-  SharedMemView<double***> dndx;
-  SharedMemView<double***> dndx_shifted;
-  SharedMemView<double*> deriv;
-  SharedMemView<double*> det_j;
-  SharedMemView<double*> scv_volume;
-  SharedMemView<double***> gijUpper;
-  SharedMemView<double***> gijLower;
-
 
 private:
   void create_needed_field_views(const TeamHandleType& team,
@@ -86,6 +112,8 @@ private:
 
   std::vector<ViewHolder*> fieldViews;
 
+  std::vector<MasterElementViews> meViews;
+  std::vector<bool> hasCoordField;
   int num_bytes_required{0};
 };
 
@@ -127,7 +155,6 @@ void fill_pre_req_data(ElemDataRequests& dataNeeded,
                        const stk::mesh::BulkData& bulkData,
                        stk::topology topo,
                        stk::mesh::Entity elem,
-                       const stk::mesh::FieldBase* coordField,
                        ScratchViews& prereqData);
 
 } // namespace nalu

@@ -61,7 +61,7 @@ ContinuityAdvElemKernel<AlgTraits>::ContinuityAdvElemKernel(
   dataPreReqs.add_cvfem_surface_me(meSCS);
 
   // fields and data
-  dataPreReqs.add_gathered_nodal_field(*coordinates_, AlgTraits::nDim_);
+  dataPreReqs.add_coordinates_field(*coordinates_, AlgTraits::nDim_);
   dataPreReqs.add_gathered_nodal_field(*velocityRTM_, AlgTraits::nDim_);
   dataPreReqs.add_gathered_nodal_field(*densityNp1_, 1);
   dataPreReqs.add_gathered_nodal_field(*pressure_, 1);
@@ -102,12 +102,12 @@ ContinuityAdvElemKernel<AlgTraits>::execute(
   SharedMemView<double**>& v_velocity = scratchViews.get_scratch_view_2D(*velocityRTM_);
   SharedMemView<double**>& v_Gpdx = scratchViews.get_scratch_view_2D(*Gpdx_);
 
-  SharedMemView<double**>& v_scs_areav = scratchViews.scs_areav;
+  SharedMemView<double**>& v_scs_areav = scratchViews.get_me_views().scs_areav;
 
   SharedMemView<double***>& v_dndx = shiftPoisson_ ?
-    scratchViews.dndx_shifted : scratchViews.dndx;
+    scratchViews.get_me_views().dndx_shifted : scratchViews.get_me_views().dndx;
   SharedMemView<double***>& v_dndx_lhs = (!shiftPoisson_ && reducedSensitivities_)?
-    scratchViews.dndx_shifted : scratchViews.dndx;
+    scratchViews.get_me_views().dndx_shifted : scratchViews.get_me_views().dndx;
 
   for (int ip = 0; ip < AlgTraits::numScsIp_; ++ip) {
     const int il = lrscv_[2*ip];

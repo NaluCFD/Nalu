@@ -201,7 +201,7 @@ public:
           Kokkos::TeamThreadRange(team, length), [&](const size_t& k) {
             stk::mesh::Entity element = b[k];
             sierra::nalu::fill_pre_req_data(
-              dataNeededByKernels_, bulk_, topo_, element, coordinates_, preReqData);
+              dataNeededByKernels_, bulk_, topo_, element, preReqData);
 
             for (int i=0; i < rhsSize; i++) {
               rhs_(i) = 0.0;

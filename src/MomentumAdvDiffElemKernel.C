@@ -49,7 +49,7 @@ MomentumAdvDiffElemKernel<AlgTraits>::MomentumAdvDiffElemKernel(
   dataPreReqs.add_cvfem_surface_me(meSCS);
 
   // fields and data; mdot not gathered as element data
-  dataPreReqs.add_gathered_nodal_field(*coordinates_, AlgTraits::nDim_);
+  dataPreReqs.add_coordinates_field(*coordinates_, AlgTraits::nDim_);
   dataPreReqs.add_gathered_nodal_field(*velocity, AlgTraits::nDim_);
   dataPreReqs.add_gathered_nodal_field(*viscosity_, 1);
   dataPreReqs.add_master_element_call(SCS_AREAV);
@@ -71,8 +71,8 @@ MomentumAdvDiffElemKernel<AlgTraits>::execute(
   SharedMemView<double**>& v_uNp1 = scratchViews.get_scratch_view_2D(*velocityNp1_);
   SharedMemView<double*>& v_viscosity = scratchViews.get_scratch_view_1D(*viscosity_);
 
-  SharedMemView<double**>& v_scs_areav = scratchViews.scs_areav;
-  SharedMemView<double***>& v_dndx = scratchViews.dndx;
+  SharedMemView<double**>& v_scs_areav = scratchViews.get_me_views().scs_areav;
+  SharedMemView<double***>& v_dndx = scratchViews.get_me_views().dndx;
 
   // ip data for this element
   const double *mdot = stk::mesh::field_data(*massFlowRate_, element);

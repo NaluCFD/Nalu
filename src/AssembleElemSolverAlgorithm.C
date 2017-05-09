@@ -72,8 +72,6 @@ AssembleElemSolverAlgorithm::execute()
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   stk::mesh::BulkData & bulk_data = realm_.bulk_data();
 
-  stk::mesh::FieldBase* coordField = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
-
   // set any data
   const size_t activeKernelsSize = activeKernels_.size();
   for ( size_t i = 0; i < activeKernelsSize; ++i )
@@ -117,7 +115,7 @@ AssembleElemSolverAlgorithm::execute()
       // get element
       stk::mesh::Entity element = b[k];
       fill_pre_req_data(dataNeededBySuppAlgs_, bulk_data, topo_, element,
-                        coordField, prereqData);
+                        prereqData);
 
       // extract node relations and provide connected nodes
       stk::mesh::Entity const * node_rels = b.begin_nodes(k);

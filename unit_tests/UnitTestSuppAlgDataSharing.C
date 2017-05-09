@@ -132,7 +132,7 @@ public:
           Kokkos::parallel_for(Kokkos::TeamThreadRange(team, bkt.size()), [&](const size_t& jj)
           {
              fill_pre_req_data(dataNeededBySuppAlgs_, bulkData_, topo,
-                               bkt[jj], nullptr, prereqData);
+                               bkt[jj], prereqData);
             
              for(SuppAlg* alg : suppAlgs_) {
                alg->elem_execute(topo, prereqData);

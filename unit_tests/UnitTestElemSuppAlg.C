@@ -35,8 +35,8 @@ void element_discrete_laplacian_kernel_3d(
     const int* lrscv = meSCS.adjacentNodes();
 
     sierra::nalu::SharedMemView<double*>& elemNodePressures = elemData.get_scratch_view_1D(*nodalPressureField);
-    sierra::nalu::SharedMemView<double**>& scs_areav = elemData.scs_areav;
-    sierra::nalu::SharedMemView<double***>& dndx = elemData.dndx;
+    sierra::nalu::SharedMemView<double**>& scs_areav = elemData.get_me_views().scs_areav;
+    sierra::nalu::SharedMemView<double***>& dndx = elemData.get_me_views().dndx;
     const stk::mesh::Entity* elemNodes = elemData.elemNodes;
 
     for (int ip = 0; ip < numScsIp; ++ip ) {
@@ -80,9 +80,9 @@ public:
   {
     //here are the element-data pre-requisites we want computed before
     //our elem_execute method is called.
+    dataNeeded.add_coordinates_field(*coordField, 3);
     dataNeeded.add_master_element_call(sierra::nalu::SCS_AREAV);
     dataNeeded.add_master_element_call(sierra::nalu::SCS_GRAD_OP);
-    dataNeeded.add_gathered_nodal_field(*coordField, 3);
     dataNeeded.add_gathered_nodal_field(*nodalPressureField, 1);
 
     // add the master element
@@ -92,7 +92,7 @@ public:
 
   virtual ~DiscreteLaplacianSuppAlg() {}
 
-  virtual void elem_execute(stk::topology topo,
+  virtual void elem_execute(stk::topology /* topo */,
                     sierra::nalu::MasterElement& meSCS,
                     sierra::nalu::ScratchViews& elemData)
   {
@@ -136,7 +136,7 @@ public:
           Kokkos::parallel_for(Kokkos::TeamThreadRange(team, bkt.size()), [&](const size_t& jj)
           {
              fill_pre_req_data(dataNeededBySuppAlgs_, bulkData_, topo,
-                               bkt[jj], coordField, prereqData);
+                               bkt[jj], prereqData);
             
              for(SuppAlg* alg : suppAlgs_) {
                alg->elem_execute(topo, *meSCS, prereqData);
