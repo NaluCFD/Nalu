@@ -81,7 +81,7 @@ MomentumNSOElemKernel<AlgTraits>::MomentumNSOElemKernel(
 
   // fields
   dataPreReqs.add_gathered_nodal_field(*Gju_, AlgTraits::nDim_, AlgTraits::nDim_);
-  dataPreReqs.add_coordinates_field(*coordinates_, AlgTraits::nDim_);
+  dataPreReqs.add_coordinates_field(*coordinates_, AlgTraits::nDim_, CURRENT_COORDINATES);
   dataPreReqs.add_gathered_nodal_field(*velocityNm1_, AlgTraits::nDim_);
   dataPreReqs.add_gathered_nodal_field(*velocityN_, AlgTraits::nDim_);
   dataPreReqs.add_gathered_nodal_field(*velocityNp1_, AlgTraits::nDim_);
@@ -94,9 +94,9 @@ MomentumNSOElemKernel<AlgTraits>::MomentumNSOElemKernel(
   dataPreReqs.add_gathered_nodal_field(*pressure_,1);
 
   // master element data
-  dataPreReqs.add_master_element_call(SCS_AREAV);
-  dataPreReqs.add_master_element_call(SCS_GRAD_OP);
-  dataPreReqs.add_master_element_call(SCS_GIJ);
+  dataPreReqs.add_master_element_call(SCS_AREAV, CURRENT_COORDINATES);
+  dataPreReqs.add_master_element_call(SCS_GRAD_OP, CURRENT_COORDINATES);
+  dataPreReqs.add_master_element_call(SCS_GIJ, CURRENT_COORDINATES);
 
   // initialize kd
   for ( int i = 0; i < AlgTraits::nDim_; ++i ) {
@@ -135,10 +135,10 @@ MomentumNSOElemKernel<AlgTraits>::execute(
   SharedMemView<double*>& v_viscosity = scratchViews.get_scratch_view_1D(*viscosity_);
   SharedMemView<double*>& v_pressure = scratchViews.get_scratch_view_1D(*pressure_);
 
-  SharedMemView<double**>& v_scs_areav = scratchViews.get_me_views().scs_areav;
-  SharedMemView<double***>& v_dndx = scratchViews.get_me_views().dndx;
-  SharedMemView<double***>& v_gijUpper = scratchViews.get_me_views().gijUpper;
-  SharedMemView<double***>& v_gijLower = scratchViews.get_me_views().gijLower;
+  SharedMemView<double**>& v_scs_areav = scratchViews.get_me_views(CURRENT_COORDINATES).scs_areav;
+  SharedMemView<double***>& v_dndx = scratchViews.get_me_views(CURRENT_COORDINATES).dndx;
+  SharedMemView<double***>& v_gijUpper = scratchViews.get_me_views(CURRENT_COORDINATES).gijUpper;
+  SharedMemView<double***>& v_gijLower = scratchViews.get_me_views(CURRENT_COORDINATES).gijLower;
 
   for ( int ip = 0; ip < AlgTraits::numScsIp_; ++ip ) {
 

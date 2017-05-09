@@ -89,7 +89,7 @@ public:
   SharedMemView<double****>& get_scratch_view_4D(const stk::mesh::FieldBase& field);
 
   inline
-  MasterElementViews& get_me_views(const COORDS_TYPES cType = CURRENT_COORDINATES)
+  MasterElementViews& get_me_views(const COORDS_TYPES cType)
   {
     ThrowRequire(hasCoordField[cType] == true);
     return meViews[cType];
@@ -111,9 +111,8 @@ private:
                                           int numScsIp, int numScvIp);
 
   std::vector<ViewHolder*> fieldViews;
-
-  std::vector<MasterElementViews> meViews;
-  std::vector<bool> hasCoordField;
+  MasterElementViews meViews[MAX_COORDS_TYPES];
+  bool hasCoordField[MAX_COORDS_TYPES] = {false, false};
   int num_bytes_required{0};
 };
 
