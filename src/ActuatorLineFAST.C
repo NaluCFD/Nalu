@@ -200,22 +200,22 @@ ActuatorLineFAST::load(
     // Populate object of inputs class to FAST
     fi.comm = NaluEnv::self().parallel_comm() ;
   
-    get_required(y_actuatorLine, "nTurbinesGlob", fi.nTurbinesGlob);
+    get_required(y_actuatorLine, "n_turbines_glob", fi.nTurbinesGlob);
     
     if (fi.nTurbinesGlob > 0) {
       
-      get_if_present(y_actuatorLine, "dryRun", fi.dryRun, false);
-      get_if_present(y_actuatorLine, "debug", fi.dryRun, false);
-      get_required(y_actuatorLine, "tStart", fi.tStart);
-      get_required(y_actuatorLine, "nEveryCheckPoint", fi.nEveryCheckPoint);
-      get_required(y_actuatorLine, "dtFAST", fi.dtFAST);
-      get_required(y_actuatorLine, "tMax", fi.tMax); // tMax is the total duration to which you want to run FAST. This should be the same or greater than the max time given in the FAST fst file. Choose this carefully as FAST writes the output file only at this point if you choose the binary file output.
+      get_if_present(y_actuatorLine, "dry_run", fi.dryRun, false);
+      get_if_present(y_actuatorLine, "debug", fi.debug, false);
+      get_required(y_actuatorLine, "t_start", fi.tStart);
+      get_required(y_actuatorLine, "n_every_checkpoint", fi.nEveryCheckPoint);
+      get_required(y_actuatorLine, "dt_fast", fi.dtFAST);
+      get_required(y_actuatorLine, "t_max", fi.tMax); // tMax is the total duration to which you want to run FAST. This should be the same or greater than the max time given in the FAST fst file. Choose this carefully as FAST writes the output file only at this point if you choose the binary file output.
       
-      if(y_actuatorLine["superController"]) {
-          get_required(y_actuatorLine, "superController", fi.scStatus);
-          get_required(y_actuatorLine, "scLibFile", fi.scLibFile);
-          get_required(y_actuatorLine, "numScInputs", fi.numScInputs);
-          get_required(y_actuatorLine, "numScOutputs", fi.numScOutputs);
+      if(y_actuatorLine["super_controller"]) {
+          get_required(y_actuatorLine, "super_controller", fi.scStatus);
+          get_required(y_actuatorLine, "sc_libFile", fi.scLibFile);
+          get_required(y_actuatorLine, "num_sc_inputs", fi.numScInputs);
+          get_required(y_actuatorLine, "num_sc_outputs", fi.numScOutputs);
       }
       
       fi.globTurbineData.resize(fi.nTurbinesGlob);
@@ -253,7 +253,7 @@ void ActuatorLineFAST::readTurbineData(int iTurb, fast::fastInputs & fi, YAML::N
 
     //Read turbine data for a given turbine using the YAML node
     get_required(turbNode, "turb_id", fi.globTurbineData[iTurb].TurbID);
-    get_required(turbNode, "FAST_input_filename", fi.globTurbineData[iTurb].FASTInputFileName);
+    get_required(turbNode, "fast_input_filename", fi.globTurbineData[iTurb].FASTInputFileName);
     get_required(turbNode, "restart_filename", fi.globTurbineData[iTurb].FASTRestartFileName);
     if (turbNode["turbine_base_pos"].IsSequence() ) {
         fi.globTurbineData[iTurb].TurbineBasePos = turbNode["turbine_base_pos"].as<std::vector<double> >() ;
@@ -275,11 +275,10 @@ ActuatorLineFAST::setup()
 {
   // objective: declare the part, register coordinates; must be before populate_mesh()
 
-  // TODO: 
   double dtNalu = realm_.get_time_step_from_file();
-  
-  if (std::fmod(dtNalu, fi.dtFAST) < 0.001) {// TODO: Fix arbitrary number 0.001 
-    tStepRatio_ = dtNalu/fi.dtFAST ;
+  tStepRatio_ = dtNalu/fi.dtFAST ;  
+  if (std::abs(dtNalu - tStepRatio_ * fi.dtFAST) < 0.001) {// TODO: Fix arbitrary number 0.001 
+    NaluEnv::self().naluOutputP0() << "Time step raio  dtNalu/dtFAST: " << tStepRatio_ << std::endl ;
   } else {
     throw std::runtime_error("ActuatorLineFAST: Ratio of Nalu's time step is not an integral multiple of FAST time step");     
   }
@@ -305,6 +304,13 @@ ActuatorLineFAST::allocateTurbinesToProcs()
   populate_candidate_procs();
 
   const size_t nTurbinesGlob = FAST.get_nTurbinesGlob() ;
+  thrust.resize(nTurbinesGlob);  
+  torque.resize(nTurbinesGlob);
+  for (size_t iTurb = 0; iTurb < nTurbinesGlob; ++iTurb) {
+    thrust[iTurb].resize(nDim);
+    torque[iTurb].resize(nDim);
+  }
+  
   for (size_t iTurb = 0; iTurb < nTurbinesGlob; ++iTurb) {
 
     theKey theIdent(NaluEnv::self().parallel_rank(), NaluEnv::self().parallel_rank());
@@ -312,7 +318,7 @@ ActuatorLineFAST::allocateTurbinesToProcs()
     // define a point that will hold the hub location
     Point hubPointCoords;
     std::vector<double> hubCoords (3, 0.0);
-    FAST.getHubPos(hubCoords, iTurb);
+    FAST.getApproxHubPos(hubCoords, iTurb);
     for ( int j = 0; j < nDim; ++j )  hubPointCoords[j] = hubCoords[j];
     boundingSphere theSphere( Sphere(hubPointCoords, 1.0), theIdent);
     boundingHubSphereVec_.push_back(theSphere);
@@ -438,7 +444,7 @@ ActuatorLineFAST::execute()
   ScalarFieldType *density
     = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density"); 
   ScalarFieldType *dualNodalVolume
-    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dualNodalVolume_"); 
+    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume"); 
   // deal with proper viscosity
   //  const std::string viscName = realm_.is_turbulent() ? "effective_viscosity" : "viscosity";
   //  ScalarFieldType *viscosity
@@ -528,10 +534,6 @@ ActuatorLineFAST::execute()
     interpolate_field(1, bestElem, bulkData, infoObject->isoParCoords_.data(), 
                       &ws_density_[0], &ws_pointGasDensity);
 
-    if (FAST.isDebug() ) {
-      NaluEnv::self().naluOutput() << "Node " << np << " Velocity = " << ws_pointGasVelocity[0] << " " << ws_pointGasVelocity[1] << " " << ws_pointGasVelocity[2] << " " << std::endl ;
-    }
-
     FAST.setVelocity(ws_pointGasVelocity, np, infoObject->globTurbId_);
     np = np + 1;
 
@@ -540,6 +542,8 @@ ActuatorLineFAST::execute()
 
 
   if ( ! FAST.isDryRun() ) {
+
+    FAST.interpolateVel_ForceToVelNodes();
 
     if ( FAST.isTimeZero() ) {
       FAST.solution0();
@@ -568,9 +572,6 @@ ActuatorLineFAST::execute()
     int nodesPerElement = bulkData.num_nodes(bestElem);
 
     FAST.getForce(ws_pointForce, np, infoObject->globTurbId_);
-    if (FAST.isDebug() ) {
-      NaluEnv::self().naluOutput() << "Node " << np << " Type " << infoObject->nodeType_ << " Force = " << ws_pointForce[0] << " " << ws_pointForce[1] << " " << ws_pointForce[2] << " " << std::endl ;
-    }
     
     std::vector<double> hubPos(3);
     std::vector<double> hubShftVec(3);
@@ -578,17 +579,16 @@ ActuatorLineFAST::execute()
     FAST.getHubPos(hubPos, iTurbGlob);
     FAST.getHubShftDir(hubShftVec, iTurbGlob);
 
+    NaluEnv::self().naluOutput() << "Hub location = " << hubPos[0] << " " << hubPos[1] << " " << hubPos[2] << std::endl ;
+    NaluEnv::self().naluOutput() << "Hub Shft dir = " << hubShftVec[0] << " " << hubShftVec[1] << " " << hubShftVec[2] << std::endl ;
+    
     // get the vector of elements
     std::vector<stk::mesh::Entity> elementVec = infoObject->elementVec_;
 
     // Set up the necessary variables to check that forces/projection function are integrating up correctly.
     double gSum = 0.0;
-    double forceSum[nDim];
-    forceSum[0] = 0.0;
-    forceSum[1] = 0.0;
-    if (nDim>2){
-      forceSum[2] = 0.0;
-    }
+    std::vector<double> forceSum(nDim);
+    for(int j=0; j < nDim; j++) forceSum[j] = 0.0;
 
     // iterate them and apply source term; gather coords
     for ( size_t k = 0; k < elementVec.size(); ++k ) {
@@ -623,12 +623,8 @@ ActuatorLineFAST::execute()
         // assemble nodal quantity; no LHS contribution here...
         assemble_source_to_nodes(nDim, elem, bulkData, elemVolume, ws_elemForce,
                                  0.0, *coordinates, *actuator_source, *g, *dualNodalVolume, 
-				 hubPos, hubShftVec, thrust[iTurbGlob], torque[iTurbGlob]);
-        forceSum[0] += ws_elemForce[0]*elemVolume;
-        forceSum[1] += ws_elemForce[1]*elemVolume;
-        if (nDim > 2){
-          forceSum[2] += ws_elemForce[2]*elemVolume;
-        }
+  				 hubPos, hubShftVec, thrust[iTurbGlob], torque[iTurbGlob]);
+	for(int j=0; j < nDim; j++) forceSum[j] += ws_elemForce[j]*elemVolume;
         gSum += gA*elemVolume;
         break;
 
@@ -639,12 +635,8 @@ ActuatorLineFAST::execute()
         // assemble nodal quantity; no LHS contribution here...
         assemble_source_to_nodes(nDim, elem, bulkData, elemVolume, ws_elemForce, 
                                  gA, *coordinates, *actuator_source, *g, *dualNodalVolume,
-				 hubPos, hubShftVec, thrust[iTurbGlob], torque[iTurbGlob]);
-        forceSum[0] += ws_elemForce[0]*elemVolume;
-        forceSum[1] += ws_elemForce[1]*elemVolume;
-        if (nDim > 2){
-          forceSum[2] += ws_elemForce[2]*elemVolume;
-        }
+  				 hubPos, hubShftVec, thrust[iTurbGlob], torque[iTurbGlob]);
+	for(int j=0; j < nDim; j++) forceSum[j] += ws_elemForce[j]*elemVolume;
         gSum += gA*elemVolume;
         break;
 
@@ -655,30 +647,42 @@ ActuatorLineFAST::execute()
         // assemble nodal quantity; no LHS contribution here...
         assemble_source_to_nodes(nDim, elem, bulkData, elemVolume, ws_elemForce, 
                                  gA, *coordinates, *actuator_source, *g, *dualNodalVolume,
-				 hubPos, hubShftVec, thrust[iTurbGlob], torque[iTurbGlob]);
-        forceSum[0] += ws_elemForce[0]*elemVolume;
-        forceSum[1] += ws_elemForce[1]*elemVolume;
-        if (nDim > 2){
-          forceSum[2] += ws_elemForce[2]*elemVolume;
-        }
+  				 hubPos, hubShftVec, thrust[iTurbGlob], torque[iTurbGlob]);
+	for(int j=0; j < nDim; j++) forceSum[j] += ws_elemForce[j]*elemVolume;
         gSum += gA*elemVolume;
         break;	
 
       case fast::ActuatorNodeType_END:
-	break;
+  	break;
 	
       }
 
     }
 
-    NaluEnv::self().naluOutput() << "Actuator Point " << np << ", " << "# elems " << elementVec.size() << ", " << " Type " << infoObject->nodeType_ << std::endl;
-    NaluEnv::self().naluOutput() << "  -Body force = " << forceSum[0] << " " << forceSum[1] << " " << forceSum[2] << " " << std::endl;
-    NaluEnv::self().naluOutput() << "  -Act. force = " << ws_pointForce[0] << " " << ws_pointForce[1] << " " << ws_pointForce[2] << std::endl;
-    NaluEnv::self().naluOutput() << "  -Ratio = " << forceSum[0]/ws_pointForce[0] << " " << forceSum[1]/ws_pointForce[1] << " " << forceSum[2]/ws_pointForce[2] << std::endl;
-    NaluEnv::self().naluOutput() << "  -gSum = " << gSum << std::endl;
+    // NaluEnv::self().naluOutput() << "Actuator Point " << np << ", " << "# elems " << elementVec.size() << ", " << " Type " << infoObject->nodeType_ << std::endl;
+    // NaluEnv::self().naluOutput() << "  -Body force = " << forceSum[0] << " " << forceSum[1] << " " << forceSum[2] << " " << std::endl;
+    // NaluEnv::self().naluOutput() << "  -Act. force = " << ws_pointForce[0] << " " << ws_pointForce[1] << " " << ws_pointForce[2] << std::endl;
+    // NaluEnv::self().naluOutput() << "  -Ratio = " << forceSum[0]/ws_pointForce[0] << " " << forceSum[1]/ws_pointForce[1] << " " << forceSum[2]/ws_pointForce[2] << std::endl;
+    // NaluEnv::self().naluOutput() << "  -gSum = " << gSum << std::endl;
 
     np=np+1;
   }
+
+  const size_t nTurbinesGlob = FAST.get_nTurbinesGlob() ;
+  for(int iTurb=0; iTurb < nTurbinesGlob; iTurb++) {
+    NaluEnv::self().naluOutput() << "  Thrust[" << iTurb << "] = " << thrust[iTurb][0] << " " << thrust[iTurb][1] << " " << thrust[iTurb][2] << " " << std::endl;
+    NaluEnv::self().naluOutput() << "  Torque[" << iTurb << "] = " << torque[iTurb][0] << " " << torque[iTurb][1] << " " << torque[iTurb][2] << " " << std::endl;
+
+    int processorId = FAST.get_procNo(iTurb);
+    if (NaluEnv::self().parallel_rank() == processorId) {
+
+      FAST.computeTorqueThrust(iTurb, torque[iTurb], thrust[iTurb]);
+      NaluEnv::self().naluOutput() << "  Thrust[" << iTurb << "] = " << thrust[iTurb][0] << " " << thrust[iTurb][1] << " " << thrust[iTurb][2] << " " << std::endl;
+      NaluEnv::self().naluOutput() << "  Torque[" << iTurb << "] = " << torque[iTurb][0] << " " << torque[iTurb][1] << " " << torque[iTurb][2] << " " << std::endl;
+    }
+  }
+
+
 
   // parallel assemble (contributions from ghosted and locally owned)
   const std::vector<const stk::mesh::FieldBase*> sumFieldVec(1, actuator_source);
@@ -906,7 +910,6 @@ ActuatorLineFAST::create_actuator_line_point_info_map() {
       Point centroidCoords;
     
       // scratch array for coordinates and dummy array for velocity
-      std::vector<double> velocity (3, 0.0);
       std::vector<double> currentCoords (3,0.0);
 
       // loop over all points for this turbine
@@ -920,12 +923,6 @@ ActuatorLineFAST::create_actuator_line_point_info_map() {
 	  // set model coordinates from FAST
 	  // move the coordinates; set the velocity... may be better on the lineInfo object
 	  FAST.getForceNodeCoordinates(currentCoords, np, iTurb);
-	  if (FAST.isDebug() ) {
-	    NaluEnv::self().naluOutput() << "Vel Node " << np << " Position = " << currentCoords[0] << " " << currentCoords[1] << " " << currentCoords[2] << " " << std::endl ;
-	  }
-	  velocity[0] = 0.0;
-	  velocity[1] = 0.0;
-	  velocity[2] = 0.0;
 
           double searchRadius = actuatorLineInfo->epsilon_.x_ * sqrt(log(1.0/0.001));
 	  
@@ -1241,7 +1238,7 @@ ActuatorLineFAST::assemble_source_to_nodes(
 
   // extract elem_node_relations
   stk::mesh::Entity const* elem_node_rels = bulkData.begin_nodes(elem);
-
+  
   // assemble to nodes
   const int *ipNodeMap = meSCV->ipNodeMap();
   for ( int ip = 0; ip < numScvIp; ++ip ) {
@@ -1254,7 +1251,8 @@ ActuatorLineFAST::assemble_source_to_nodes(
     double * sourceTerm = (double*)stk::mesh::field_data(actuator_source, node );
     double * dVol = (double*)stk::mesh::field_data(dualNodalVolume, node );
     double * gGlobal = (double*)stk::mesh::field_data(g, node);
-    const double * nodeCoords = (double*)stk::mesh::field_data(elemCoords, node );
+    double * nodeCoords = (double*)stk::mesh::field_data(elemCoords, node );
+
 
     std::vector<double> nodeForce(nDim);
     // nodal weight based on volume weight
@@ -1270,10 +1268,13 @@ ActuatorLineFAST::assemble_source_to_nodes(
     for (int j=0; j < nDim; j++) {
       r[j] = nodeCoords[j] - hubPt[j];
     }
-    double rDotHubShftVec = std::inner_product(r.begin(), r.end(), hubShftDir.begin(), 0);
+    double rDotHubShftVec = r[0]*hubShftDir[0] + r[1]*hubShftDir[1] + r[2]*hubShftDir[2]; //std::inner_product(r.begin(), r.end(), hubShftDir.begin(), 0.0);
+    NaluEnv::self().naluOutput() << "r = " << r[0] << " " << r[1] << " " << r[2] << std::endl;    
+    NaluEnv::self().naluOutput() << "rDotHubShftVec = " << rDotHubShftVec << std::endl;    
     for (int j=0; j < nDim; j++) {
       rPerpShft[j] = r[j] - rDotHubShftVec * hubShftDir[j];
     }
+    NaluEnv::self().naluOutput() << "rPerpShft = " << rPerpShft[0] << " " << rPerpShft[1] << " " << rPerpShft[2] << std::endl;    
 
     for (int j=0; j < nDim; j++) {
       thr[j] += nodeForce[j];
