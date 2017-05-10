@@ -18,6 +18,7 @@
 #include <user_functions/SteadyThermalContactAuxFunction.h>
 #include <user_functions/SteadyTaylorVortexVelocityAuxFunction.h>
 #include <user_functions/SteadyTaylorVortexGradPressureAuxFunction.h>
+#include <user_functions/ConvectingTaylorVortexVelocityAuxFunction.h>
 #include <user_functions/VariableDensityVelocityAuxFunction.h>
 #include <user_functions/VariableDensityNonIsoTemperatureAuxFunction.h>
 #include <user_functions/VariableDensityMixFracAuxFunction.h>
@@ -244,6 +245,9 @@ SolutionNormPostProcessing::analytical_function_factory(
   }
   else if ( functionName == "kovasznay_dpdx" ) {
     theAuxFunc = new KovasznayPressureGradientAuxFunction(0,realm_.meta_data().spatial_dimension());
+  }
+  else if ( functionName == "convecting_taylor_vortex" ) {
+    theAuxFunc = new ConvectingTaylorVortexVelocityAuxFunction(0,realm_.meta_data().spatial_dimension());
   }
   else {
     throw std::runtime_error("SolutionNormPostProcessing::setup: Only steady_2d_thermal user functions supported");
