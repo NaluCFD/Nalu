@@ -1,3 +1,3 @@
 [submodule "reg_tests/mesh"]
 	path = reg_tests/mesh
-	url = git@github.com:NaluCFD/NaluMesh.git
+	url = https://github.com/NaluCFD/NaluMesh.git
