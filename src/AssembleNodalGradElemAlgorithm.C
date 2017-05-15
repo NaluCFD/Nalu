@@ -47,6 +47,12 @@ private:
   const int numScsIp_;
   const int nodesPerElement_;
 
+  // temporary arrays
+  std::vector<double> p_scalarQ;
+  std::vector<double> p_dualVolume;
+  std::vector<double> p_coordinates;
+  std::vector<double> p_scs_areav;
+
 public:
   nodalGradientElem(stk::mesh::Bucket & b, MasterElement & meSCS,
       double * p_shape_function,
@@ -62,7 +68,11 @@ public:
       dqdx_(dqdx),
       nDim_(nDim),
       numScsIp_(meSCS_.numIntPoints_),
-      nodesPerElement_(meSCS_.nodesPerElement_)
+      nodesPerElement_(meSCS_.nodesPerElement_),
+      p_scalarQ(nodesPerElement_),
+      p_dualVolume(nodesPerElement_),
+      p_coordinates(nodesPerElement_*nDim_),
+      p_scs_areav(numScsIp_*nDim_)
   {
     lrscv = meSCS_.adjacentNodes();
   }
@@ -73,12 +83,6 @@ public:
     //===============================================
     stk::mesh::Entity const * node_rels = b_.begin_nodes(elem_offset);
     const int num_nodes = b_.num_nodes(elem_offset);
-
-    // temporary arrays
-    double p_scalarQ[nodesPerElement_];
-    double p_dualVolume[nodesPerElement_];
-    double p_coordinates[nodesPerElement_*nDim_];
-    double p_scs_areav[numScsIp_*nDim_];
 
     for ( int ni = 0; ni < num_nodes; ++ni ) {
       stk::mesh::Entity node = node_rels[ni];
