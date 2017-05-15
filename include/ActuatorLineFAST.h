@@ -264,6 +264,20 @@ class ActuatorLineFAST: public Actuator {
     std::vector<double> & thr,
     std::vector<double> & tor);
 
+  void assemble_source_to_nodes(
+    const int &nDim,
+    stk::mesh::Entity elem,
+    const stk::mesh::BulkData & bulkData,
+    const double &elemVolume,
+    const std::vector<double> & elemForce,
+    const double &gLocal,
+    stk::mesh::FieldBase & elemCoords,    
+    stk::mesh::FieldBase &actuator_source,
+    stk::mesh::FieldBase &g,
+    stk::mesh::FieldBase &dualNodalVolume,
+    const std::vector<double> & hubPt,
+    const std::vector<double> & hubShftDir);
+
   Realm &realm_; ///< hold the realm
 
   stk::search::SearchMethod searchMethod_; ///< type of stk search

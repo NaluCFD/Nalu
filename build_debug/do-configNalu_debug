@@ -6,17 +6,15 @@ EXTRA_ARGS=$@
 
 # Cleanup old cache before we configure
 # Note:  This does not remove files produced by make.  Use "make clean" for this.
-#find . -name "CMakeFiles" -exec rm -rf {} \;
-#rm -f CMakeCache.txt
+find . -name "CMakeFiles" -exec rm -rf {} \;
+rm -f CMakeCache.txt
 
 cmake \
   -DTrilinos_DIR:PATH=$trilinos_install_dir \
   -DYAML_DIR:PATH=$yaml_install_dir \
   -DENABLE_INSTALL:BOOL=OFF \
   -DCMAKE_BUILD_TYPE=DEBUG \
-  -DCMAKE_CXX_FLAGS='-std=c++11 -O2 -g -DNDEBUG' \
-  -DCMAKE_Fortran_FLAGS='-O2 -g -DNDEBUG' \
-  -DCMAKE_C_FLAGS='-std=c++11 -O2 -g -DNDEBUG' \
+  -DENABLE_TESTS:BOOL=ON \
   -DOpenFAST_DIR:PATH=/home/gvijayak/CurrentProjects/OpenFAST/install/ \
 $EXTRA_ARGS \
 ../
