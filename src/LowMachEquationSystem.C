@@ -115,8 +115,10 @@
 #include <user_functions/ConvectingTaylorVortexVelocityAuxFunction.h>
 #include <user_functions/ConvectingTaylorVortexPressureAuxFunction.h>
 #include <user_functions/TornadoAuxFunction.h>
+
 #include <user_functions/WindEnergyAuxFunction.h>
 #include <user_functions/WindEnergyTaylorVortexAuxFunction.h>
+#include <user_functions/WindEnergyTaylorVortexPressureAuxFunction.h>
 
 #include <user_functions/SteadyTaylorVortexMomentumSrcElemSuppAlg.h>
 #include <user_functions/SteadyTaylorVortexContinuitySrcElemSuppAlg.h>
@@ -2771,7 +2773,7 @@ void
 ContinuityEquationSystem::register_initial_condition_fcn(
   stk::mesh::Part *part,
   const std::map<std::string, std::string> &theNames,
-  const std::map<std::string, std::vector<double> > &/*theParams*/)
+  const std::map<std::string, std::vector<double> >& theParams)
 {
   // iterate map and check for name
   const std::string dofName = "pressure";
@@ -2783,6 +2785,12 @@ ContinuityEquationSystem::register_initial_condition_fcn(
     if ( fcnName == "convecting_taylor_vortex" ) {
       // create the function
       theAuxFunc = new ConvectingTaylorVortexPressureAuxFunction();      
+    }
+    else if ( fcnName == "wind_energy_taylor_vortex") {
+      // extract the params
+      auto iterParams = theParams.find(dofName);
+      std::vector<double> fcnParams = (iterParams != theParams.end()) ? (*iterParams).second : std::vector<double>();
+      theAuxFunc = new WindEnergyTaylorVortexPressureAuxFunction(fcnParams);
     }
     else if ( fcnName == "SteadyTaylorVortex" ) {
       // create the function

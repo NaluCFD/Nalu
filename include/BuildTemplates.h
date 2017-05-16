@@ -21,6 +21,7 @@ template class ClassName<AlgTraitsTet4>;                          \
 template class ClassName<AlgTraitsPyr5>;                          \
 template class ClassName<AlgTraitsWed6>;                          \
 template class ClassName<AlgTraitsQuad4_2D>;                      \
+template class ClassName<AlgTraitsQuad9_2D>;                      \
 template class ClassName<AlgTraitsTri3_2D>;                       \
 
 } // namespace nalu
