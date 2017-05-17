@@ -28,28 +28,33 @@ WindEnergyTaylorVortexPressureAuxFunction::WindEnergyTaylorVortexPressureAuxFunc
   uInf_(10.0),
   density_(1.0e-3)
 {
-  if ( params.size() != 5 && !params.empty() )
-    throw std::runtime_error("Realm::setup_initial_conditions: wind_energy_taylor_vortex takes five parameters:"
-        " centroidX, centroidY, initial vortex radius, utheta0, uInf.");
+  //  check size and populate
+   if ( !(params.size() > 4 && params.size() < 7) && !params.empty() )
+     throw std::runtime_error("Realm::setup_initial_conditions: wind_energy_taylor_vortex takes 5 - 6 parameters:"
+         " centroidX, centroidY, initial vortex radius, utheta0, uInf,  Optionally, density");
 
-  if (!params.empty()) {
-    centroidX_ = params[0];
-    centroidY_ = params[1];
-    rVortex_ = params[2];
-    beta_ = params[3];
-    uInf_ = params[4];
-  }
-  else {
-    NaluEnv::self().naluOutputP0()
-        << "wind_energy_taylor_vortex proceeding with default parameters."
-        << "\n  centroidX: " << centroidX_
-        << "\n  centroidY: " << centroidY_
-        << "\n  rVortex: " << rVortex_
-        << "\n  beta: " << beta_
-        << "\n  uinf: " << uInf_
-        << "\n density: " << density_
-        << std::endl;
-  }
+   if (!params.empty()) {
+     centroidX_ = params[0];
+     centroidY_ = params[1];
+     rVortex_ = params[2];
+     beta_ = params[3];
+     uInf_ = params[4];
+
+     if (params.size() > 5) {
+       density_ = params[5];
+     }
+   }
+   else {
+     NaluEnv::self().naluOutputP0()
+         << "wind_energy_taylor_vortex proceeding with default parameters."
+         << "\n  centroidX: " << centroidX_
+         << "\n  centroidY: " << centroidY_
+         << "\n  rVortex: " << rVortex_
+         << "\n  beta: " << beta_
+         << "\n  uinf: " << uInf_
+         << "\n density: " << density_
+         << std::endl;
+   }
 }
 
 void
@@ -90,29 +95,38 @@ WindEnergyTaylorVortexPressureGradAuxFunction::WindEnergyTaylorVortexPressureGra
   density_(1.0e-3),
   visc_(1.0e-4)
 {
-  if ( params.size() != 5 && !params.empty() )
-    throw std::runtime_error("Realm::setup_initial_conditions: wind_energy_taylor_vortex takes five parameters:"
-        " centroidX, centroidY, initial vortex radius, utheta0, uInf.");
+  //  check size and populate
+   if ( !(params.size() > 4 && params.size() < 8) && !params.empty() )
+     throw std::runtime_error("Realm::setup_initial_conditions: wind_energy_taylor_vortex takes 5 - 7 parameters:"
+         " centroidX, centroidY, initial vortex radius, utheta0, uInf,  Optionally, density, and viscosity");
 
-  if (!params.empty()) {
-    centroidX_ = params[0];
-    centroidY_ = params[1];
-    rVortex_ = params[2];
-    beta_ = params[3];
-    uInf_ = params[4];
-  }
-  else {
-    NaluEnv::self().naluOutputP0()
-        << "wind_energy_taylor_vortex proceeding with default parameters."
-        << "\n  centroidX: " << centroidX_
-        << "\n  centroidY: " << centroidY_
-        << "\n  rVortex: " << rVortex_
-        << "\n  beta: " << beta_
-        << "\n  uinf: " << uInf_
-        << "\n density: " << density_
-        << "\n visc: " << visc_
-        << std::endl;
-  }
+   if (!params.empty()) {
+     centroidX_ = params[0];
+     centroidY_ = params[1];
+     rVortex_ = params[2];
+     beta_ = params[3];
+     uInf_ = params[4];
+
+     if (params.size() > 5) {
+       density_ = params[5];
+     }
+
+     if (params.size() > 6) {
+       visc_ = params[6];
+     }
+   }
+   else {
+     NaluEnv::self().naluOutputP0()
+         << "wind_energy_taylor_vortex proceeding with default parameters."
+         << "\n  centroidX: " << centroidX_
+         << "\n  centroidY: " << centroidY_
+         << "\n  rVortex: " << rVortex_
+         << "\n  beta: " << beta_
+         << "\n  uinf: " << uInf_
+         << "\n density: " << density_
+         << "\n visc: " << visc_
+         << std::endl;
+   }
 }
 
 void

@@ -33,17 +33,24 @@ WindEnergyTaylorVortexAuxFunction::WindEnergyTaylorVortexAuxFunction(
   Lx_(5.)
 {
  //  check size and populate
-  if ( params.size() != 5 && !params.empty() )
-    throw std::runtime_error("Realm::setup_initial_conditions: wind_energy_taylor_vortex takes five parameters:"
-        " centroidX, centroidY, initial vortex radius, utheta0, uInf.");
+  if ( !(params.size() > 4 && params.size() < 8) && !params.empty() )
+    throw std::runtime_error("Realm::setup_initial_conditions: wind_energy_taylor_vortex takes 5 - 7 parameters:"
+        " centroidX, centroidY, initial vortex radius, utheta0, uInf,  Optionally, density, and viscosity");
 
   if (!params.empty()) {
-
     centroidX_ = params[0];
     centroidY_ = params[1];
     rVortex_ = params[2];
     beta_ = params[3];
     uInf_ = params[4];
+
+    if (params.size() > 5) {
+      density_ = params[5];
+    }
+
+    if (params.size() > 6) {
+      visc_ = params[6];
+    }
   }
   else {
     NaluEnv::self().naluOutputP0()
@@ -70,10 +77,6 @@ WindEnergyTaylorVortexAuxFunction::do_evaluate(
   const unsigned /*beginPos*/,
   const unsigned /*endPos*/) const
 {
-  double xCentroid = centroidX_ + uInf_ * time;
-  double travelDist = Lx_ - centroidX_;
-  xCentroid = (xCentroid > travelDist) ? xCentroid - Lx_ : xCentroid;
-
   const double tHat = (visc_ > 1.0e-30) ? time * beta_ / rVortex_ : 0.0; // zero out viscous terms if mu ~ 0
   const double Re = (visc_ > 1.0e-30) ? density_ * beta_ * rVortex_ / visc_ : 0.0; // zero out viscous terms if mu ~ 0
   const double tFac = 1.0 + 2.0 * tHat / Re;

@@ -74,6 +74,8 @@ realms:
             - *rVortex
             - *beta
             - *uInf
+            - *dens
+            - *visc
 
           pressure:
             - *centroidX
@@ -81,6 +83,7 @@ realms:
             - *rVortex
             - *beta
             - *uInf
+            - *dens
 
     material_properties:
       target_name: block_1
@@ -105,7 +108,6 @@ realms:
       target_name: surface_2
       open_user_data:
         pressure: 0
-
 
     - symmetry_boundary_condition: bc_top
       target_name: surface_3
