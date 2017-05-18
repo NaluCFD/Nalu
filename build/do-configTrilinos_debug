@@ -63,6 +63,7 @@ cmake \
 -DTrilinos_ENABLE_Amesos:BOOL=OFF \
 -DTrilinos_ENABLE_Zoltan:BOOL=ON \
 -DTrilinos_ENABLE_STKMesh:BOOL=ON \
+-DTrilinos_ENABLE_STKSimd:BOOL=ON \
 -DTrilinos_ENABLE_STKIO:BOOL=ON \
 -DTrilinos_ENABLE_STKTransfer:BOOL=ON \
 -DTrilinos_ENABLE_STKSearch:BOOL=ON \
