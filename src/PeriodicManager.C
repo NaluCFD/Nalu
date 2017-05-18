@@ -86,15 +86,13 @@ PeriodicManager::add_periodic_pair(
   periodicSelectorPairs_.push_back(periodicSelectorPair);
 
   // determine search method for this pair; default is boost_rtree
-  stk::search::SearchMethod searchMethod = stk::search::BOOST_RTREE;
+  stk::search::SearchMethod searchMethod = stk::search::KDTREE;
   if ( searchMethodName == "boost_rtree" )
     searchMethod = stk::search::BOOST_RTREE;
-  else if ( searchMethodName == "stk_octree" )
-    searchMethod = stk::search::OCTREE;
   else if ( searchMethodName == "stk_kdtree" )
     searchMethod = stk::search::KDTREE;
   else
-    NaluEnv::self().naluOutputP0() << "PeriodicManager::search method not declared; will use BOOST_RTREE" << std::endl;
+    NaluEnv::self().naluOutputP0() << "PeriodicManager::search method not declared; will use stk_kdtree" << std::endl;
   searchMethodVec_.push_back(searchMethod);
 }
 

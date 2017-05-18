@@ -180,7 +180,7 @@ realms:
        - viscosity
 
     abl_forcing:
-      search_method: stk_octree
+      search_method: stk_kdtree
       search_tolerance: 0.0001
       search_expansion_factor: 1.5
 
