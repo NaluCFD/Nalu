@@ -97,6 +97,7 @@
 #include <ContinuityMassElemKernel.h>
 #include <MomentumAdvDiffElemKernel.h>
 #include <MomentumBuoyancySrcElemKernel.h>
+#include <MomentumBodyForceSrcElemKernel.h>
 #include <MomentumMassElemKernel.h>
 
 // nso
@@ -1184,6 +1185,11 @@ MomentumEquationSystem::register_interior_algorithm(
       build_topo_kernel_if_requested<MomentumNSOKeElemKernel>
         (partTopo, *this, activeKernels, "NSO_4TH_KE",
          realm_.bulk_data(), *realm_.solutionOptions_, velocity_, dudx_, 1.0, dataPreReqs);
+
+      // extract params for special kernels
+      build_topo_kernel_if_requested<MomentumBodyForceSrcElemKernel>
+        (partTopo, *this, activeKernels, "body_force",
+         realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs);
  
       report_invalid_supp_alg_names();
       report_built_supp_alg_names();
