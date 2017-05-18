@@ -1186,7 +1186,6 @@ MomentumEquationSystem::register_interior_algorithm(
         (partTopo, *this, activeKernels, "NSO_4TH_KE",
          realm_.bulk_data(), *realm_.solutionOptions_, velocity_, dudx_, 1.0, dataPreReqs);
 
-      // extract params for special kernels
       build_topo_kernel_if_requested<MomentumBodyForceSrcElemKernel>
         (partTopo, *this, activeKernels, "body_force",
          realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs);
