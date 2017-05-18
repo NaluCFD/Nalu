@@ -5,9 +5,11 @@
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 #include <element_promotion/MasterElementHO.h>
+#include <element_promotion/MasterElementUtils.h>
 #include <element_promotion/TensorProductQuadratureRule.h>
 #include <element_promotion/LagrangeBasis.h>
 
+#include <NaluEnv.h>
 #include <master_element/MasterElement.h>
 #include <FORTRAN_Proto.h>
 
@@ -22,10 +24,6 @@
 
 namespace sierra{
 namespace nalu{
-
-constexpr double small_value() {
-  return (1.0e6*std::numeric_limits<double>::min());
-}
 
 HigherOrderHexSCV::HigherOrderHexSCV(
   ElementDescription elem,
@@ -122,7 +120,7 @@ void HigherOrderHexSCV::determinant(
     const double det_j = jacobian_determinant( coords,  &geoShapeDerivs_[geo_grad_offset]);
     volume[ip] = ipWeights_[ip] * det_j;
 
-    if (det_j < small_value()) {
+    if (det_j < tiny_positive_value()) {
       *error = 1.0;
     }
   }
@@ -724,7 +722,7 @@ void HigherOrderHexSCS::grad_op(
       &gradop[grad_offset],
       &det_j[ip] );
 
-    if (det_j[ip] < small_value()) {
+    if (det_j[ip] < tiny_positive_value()) {
       *error = 1.0;
     }
 
@@ -760,7 +758,7 @@ void HigherOrderHexSCS::face_grad_op(
       &det_j[ip]
     );
 
-    if (det_j[ip] < small_value()) {
+    if (det_j[ip] < tiny_positive_value()) {
       *error = 1.0;
     }
 
@@ -928,6 +926,61 @@ void HigherOrderHexSCS::gij(
       deriv,
       coords, gupperij, glowerij);
 }
+//--------------------------------------------------------------------------
+double parametric_distance_hex(const double* x)
+{
+  std::array<double, 3> y;
+  for (int i=0; i<3; ++i) {
+    y[i] = std::fabs(x[i]);
+  }
+
+  double d = 0;
+  for (int i=0; i<3; ++i) {
+    if (d < y[i]) {
+      d = y[i];
+    }
+  }
+  return d;
+}
+//--------------------------------------------------------------------------
+double HigherOrderHexSCS::isInElement(
+    const double *elemNodalCoord,
+    const double *pointCoord,
+    double *isoParCoord)
+{
+  std::array<double, 3> initialGuess = {{ 0.0, 0.0, 0.0 }};
+  int maxIter = 50;
+  double tolerance = 1.0e-16;
+  double deltaLimit = 1.0e4;
+
+  bool converged = isoparameteric_coordinates_for_point_3d(
+      basis_,
+      elemNodalCoord,
+      pointCoord,
+      isoParCoord,
+      initialGuess,
+      maxIter,
+      tolerance,
+      deltaLimit
+  );
+  ThrowAssertMsg(parametric_distance_hex(isoParCoord) < 1.0 + 1.0e-6 || !converged,
+      "Inconsistency in parametric distance calculation");
+
+  return (converged) ? parametric_distance_hex(isoParCoord) : std::numeric_limits<double>::max();
+}
+//--------------------------------------------------------------------------
+void HigherOrderHexSCS::interpolatePoint(
+  const int &nComp,
+  const double *isoParCoord,
+  const double *field,
+  double *result)
+{
+  const auto& weights = basis_.point_interpolation_weights(isoParCoord);
+  for (int n = 0; n < nComp; ++n) {
+    result[n] = ddot(weights.data(), field + n * nodesPerElement_, nodesPerElement_);
+  }
+}
+
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
@@ -1162,7 +1215,7 @@ HigherOrderQuad2DSCV::determinant(
     volume[ip] = ipWeights_[ip] * det_j;
 
     //flag error
-    if (det_j < small_value()) {
+    if (det_j < tiny_positive_value()) {
       *error = 1.0;
     }
 
@@ -1224,6 +1277,52 @@ HigherOrderQuad2DSCS::HigherOrderQuad2DSCS(
 
   geometricShapeDerivs_ = shapeDerivs_;
   geometricNodesPerElement_ = nodesPerElement_;
+}
+
+double parametric_distance_quad(const double* x)
+{
+  double absXi  = std::abs(x[0]);
+  double absEta = std::abs(x[1]);
+  return (absXi > absEta) ? absXi : absEta;
+}
+
+//--------------------------------------------------------------------------
+double HigherOrderQuad2DSCS::isInElement(
+    const double *elemNodalCoord,
+    const double *pointCoord,
+    double *isoParCoord)
+{
+  std::array<double, 2> initialGuess = {{ 0.0, 0.0 }};
+  int maxIter = 50;
+  double tolerance = 1.0e-16;
+  double deltaLimit = 1.0e4;
+
+  bool converged = isoparameteric_coordinates_for_point_2d(
+      basis_,
+      elemNodalCoord,
+      pointCoord,
+      isoParCoord,
+      initialGuess,
+      maxIter,
+      tolerance,
+      deltaLimit
+  );
+  ThrowAssertMsg(parametric_distance_quad(isoParCoord) < 1.0 + 1.0e-6 || !converged,
+      "Inconsistency in parametric distance calculation");
+
+  return (converged) ? parametric_distance_quad(isoParCoord) : std::numeric_limits<double>::max();
+}
+//--------------------------------------------------------------------------
+void HigherOrderQuad2DSCS::interpolatePoint(
+  const int &nComp,
+  const double *isoParCoord,
+  const double *field,
+  double *result)
+{
+  const auto& weights = basis_.point_interpolation_weights(isoParCoord);
+  for (int n = 0; n < nComp; ++n) {
+    result[n] = ddot(weights.data(), field + n * nodesPerElement_, nodesPerElement_);
+  }
 }
 //--------------------------------------------------------------------------
 void
@@ -1531,7 +1630,7 @@ void HigherOrderQuad2DSCS::grad_op(
       &det_j[ip]
     );
 
-    if (det_j[ip] < small_value()) {
+    if (det_j[ip] < tiny_positive_value()) {
       *error = 1.0;
     }
     grad_offset += grad_inc;
@@ -1563,7 +1662,7 @@ HigherOrderQuad2DSCS::face_grad_op(
       &gradop[grad_offset],
       &det_j[ip] );
 
-    if (det_j[ip] < small_value()) {
+    if (det_j[ip] < tiny_positive_value()) {
       *error = 1.0;
     }
 

@@ -102,9 +102,46 @@ LagrangeBasis::LagrangeBasis(
   for (auto& indices : indicesMap) {
     ThrowRequire(indices.size() == dim_);
   }
+
+  numNodes_ = std::pow(numNodes1D_, dim_);
+
+  interpWeightsAtPoint_.resize(numNodes_);
+  derivWeightsAtPoint_.resize(numNodes_ * dim_);
 }
 //--------------------------------------------------------------------------
 LagrangeBasis::~LagrangeBasis() = default;
+//--------------------------------------------------------------------------
+void LagrangeBasis::interpolation_weights(const double* isoParCoords, double* weights) const
+{
+  for (unsigned nodeNumber = 0; nodeNumber < numNodes_; ++nodeNumber) {
+    const int* idx = indicesMap_[nodeNumber].data();
+    weights[nodeNumber] = tensor_lagrange_interpolant(dim_, isoParCoords, idx);
+  }
+}
+//--------------------------------------------------------------------------
+void LagrangeBasis::derivative_weights(const double* isoParCoords, double* weights) const
+{
+  int derivIndex = 0;
+  for (unsigned nodeNumber = 0; nodeNumber < numNodes_; ++nodeNumber) {
+    const int* idx = indicesMap_[nodeNumber].data();
+    for (unsigned d = 0; d < dim_; ++d) {
+      weights[derivIndex] = tensor_lagrange_derivative(dim_, isoParCoords, idx, d);
+      ++derivIndex;
+    }
+  }
+}
+//--------------------------------------------------------------------------
+const std::vector<double>& LagrangeBasis::point_interpolation_weights(const double* isoParCoords)
+{
+  interpolation_weights(isoParCoords, interpWeightsAtPoint_.data());
+  return interpWeightsAtPoint_;
+}
+//--------------------------------------------------------------------------
+const std::vector<double>& LagrangeBasis::point_derivative_weights(const double* isoParCoords)
+{
+  derivative_weights(isoParCoords, derivWeightsAtPoint_.data());
+  return derivWeightsAtPoint_;
+}
 //--------------------------------------------------------------------------
 std::vector<double>
 LagrangeBasis::eval_basis_weights(const std::vector<double>& intgLoc) const
@@ -112,19 +149,9 @@ LagrangeBasis::eval_basis_weights(const std::vector<double>& intgLoc) const
   auto numIps = intgLoc.size() / dim_;
   ThrowAssert(numIps * dim_ == intgLoc.size());
 
-  auto numNodes = std::pow(numNodes1D_, dim_);
-  std::vector<double> interpolationWeights(numIps*numNodes);
-
+  std::vector<double> interpolationWeights(numIps*numNodes_);
   for (unsigned ip = 0; ip < numIps; ++ip) {
-    unsigned scalar_ip_offset = ip*numNodes;
-    unsigned vector_offset = ip * dim_;
-    const double* ipLoc = &intgLoc[vector_offset];
-
-    for (unsigned nodeNumber = 0; nodeNumber < numNodes; ++nodeNumber) {
-      unsigned scalar_offset = scalar_ip_offset+nodeNumber;
-      const int* idx = indicesMap_[nodeNumber].data();
-      interpolationWeights[scalar_offset] = tensor_lagrange_interpolant(dim_, ipLoc, idx);
-    }
+    interpolation_weights(&intgLoc[ip*dim_], &interpolationWeights[ip*numNodes_]);
   }
   return interpolationWeights;
 }
@@ -136,19 +163,8 @@ LagrangeBasis::eval_deriv_weights(const std::vector<double>& intgLoc) const
   auto numNodes = std::pow(numNodes1D_,dim_);
   std::vector<double> derivWeights(numIps * numNodes * dim_);
 
-  unsigned derivIndex = 0;
   for (unsigned ip = 0; ip < numIps; ++ip) {
-    unsigned vector_offset = ip*dim_;
-    const double* ipLoc = &intgLoc[vector_offset];
-
-    for (unsigned nodeNumber = 0; nodeNumber < numNodes; ++nodeNumber) {
-      const int* idx = indicesMap_[nodeNumber].data();
-
-      for (unsigned d = 0; d < dim_; ++d) {
-        derivWeights[derivIndex] = tensor_lagrange_derivative(dim_, ipLoc, idx, d);
-        ++derivIndex;
-      }
-    }
+    derivative_weights(&intgLoc[ip*dim_], &derivWeights[ip*dim_*numNodes_]);
   }
   return derivWeights;
 }

@@ -79,7 +79,7 @@ private:
     const double* POINTER_RESTRICT shapeDerivs ) const;
 
   const ElementDescription elem_;
-  const LagrangeBasis basis_;
+  LagrangeBasis basis_;
   const TensorProductQuadratureRule quadrature_;
 
   std::vector<double> shapeFunctionVals_;
@@ -129,6 +129,17 @@ public:
     double *glowerij,
     double *deriv) final;
 
+  double isInElement(
+      const double *elemNodalCoord,
+      const double *pointCoord,
+      double *isoParCoord) final;
+
+  void interpolatePoint(
+      const int &nComp,
+      const double *isoParCoord,
+      const double *field,
+      double *result) final;
+
   const int * adjacentNodes() final;
 
   const int * ipNodeMap(int ordinal = 0) final;
@@ -174,7 +185,7 @@ private:
     double* POINTER_RESTRICT det_j ) const;
 
   const ElementDescription elem_;
-  const LagrangeBasis basis_;
+  LagrangeBasis basis_;
   const TensorProductQuadratureRule quadrature_;
 
   std::vector<double> shapeFunctionVals_;
@@ -230,7 +241,7 @@ private:
     std::array<double,3>& areaVector) const;
 
   const ElementDescription elem_;
-  const LagrangeBasis basis_;
+  LagrangeBasis basis_;
   const TensorProductQuadratureRule quadrature_;
 
   std::vector<double> shapeFunctionVals_;
@@ -278,7 +289,7 @@ private:
     const double* POINTER_RESTRICT shapeDerivs ) const;
 
   const ElementDescription elem_;
-  const LagrangeBasis basis_;
+  LagrangeBasis basis_;
   const TensorProductQuadratureRule quadrature_;
 
   std::vector<double> shapeFunctionVals_;
@@ -326,6 +337,17 @@ public:
     double *glowerij,
     double *deriv) final;
 
+  double isInElement(
+      const double *elemNodalCoord,
+      const double *pointCoord,
+      double *isoParCoord) final;
+
+  void interpolatePoint(
+      const int &nComp,
+      const double *isoParCoord,
+      const double *field,
+      double *result) final;
+
   const int * adjacentNodes() final;
 
   const int * ipNodeMap(int ordinal = 0) final;
@@ -370,7 +392,7 @@ private:
     double* POINTER_RESTRICT det_j ) const;
 
   const ElementDescription elem_;
-  const LagrangeBasis basis_;
+  LagrangeBasis basis_;
   const TensorProductQuadratureRule quadrature_;
 
   std::vector<double> shapeFunctionVals_;
@@ -421,7 +443,7 @@ private:
     std::array<double,2>& areaVector) const;
 
   const ElementDescription elem_;
-  const LagrangeBasis basis_;
+  LagrangeBasis basis_;
   const TensorProductQuadratureRule quadrature_;
 
   std::vector<double> shapeFunctionVals_;
