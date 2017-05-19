@@ -52,12 +52,12 @@ exact point at which the Peclet factor transitions from pure upwind to
 pure central. Therefore, an alternative form is provided that has a
 hyperbolic tangeant functional form. This form allows one to specify the
 transition point and the width of the transition (see
-Equation :eq:`tanhPF`). The tanh form is as follows,
+Equation :eq:`tanhPF`). The general tanh form is as follows,
 
 .. math::
    :label: tanhPF
 
-   \eta = \frac {\frac {1}{2}[1+tanh(\frac{\rm Pe - c_{trans}}{c_{width}})] -\lambda}{\delta}.
+   \eta = \frac {1}{2}[(a+b) + (b-a)tanh(\frac{\rm Pe - c_{trans}}{c_{width}})]
 
 
 Above, the constant :math:`c_{trans}` represents the transition Peclet
@@ -66,7 +66,12 @@ The value of :math:`\lambda` is simply the shift between of the raw tanh
 function from zero while :math:`\delta` is the difference between the
 max Peclet factor (unity) and the minimum value prior to normalization.
 This approach ensures that the function starts at zero and asymptotes to
-unity.
+unity,
+
+.. math::
+
+   \eta = \frac {1}{2}[1+tanh(\frac{\rm Pe - c_{trans}}{c_{width}})].
+
 
 The cell-Peclet number is computed for each sub-face in the element from
 the two adjacent left (L) and right (R) nodes,
@@ -123,7 +128,7 @@ points and the integration point (for both edge or element-based),
 
 In the case of all transported quantities, a Van Leer
 limiter of the extrapolated value is supported and can be activated
-withing the input file (using the solution options “limiter”
+within the input file (using the solution options “limiter”
 specification).
 
 Second order central is simply written as a linear combination of the
@@ -163,9 +168,22 @@ stencil and is specified in the user input file.
 The above set of advection operators can be used to define an idealized
 one dimensional stencil denoted by (:math:`i-2`, :math:`i-1`, :math:`i`,
 :math:`i+1`, :math:`i+2`), where :math:`i` represents the particular row
-for the given transported variable. Below, in Table [tab-stencil] the
+for the given transported variable. Below, in the table, the
 stencil can be noted for each value of :math:`\alpha` and
 :math:`\alpha_{upw}`.
+
+=====================  =====================  ====================  =====================  =====================  ===================  ====================
+
+=====================  =====================  ====================  =====================  =====================  ===================  ====================
+:math:`i-2`            :math:`i-1`            :math:`i`             :math:`i+1`            :math:`i+2`            :math:`\alpha`       :math:`\alpha_{upw}`
+:math:`0`              :math:`-\frac{1}{2}`   :math:`0`             :math:`+\frac{1}{2}`   :math:`0`              :math:`0`            n/a
+:math:`+\frac{1}{8}`   :math:`-\frac{6}{8}`   :math:`0`             :math:`+\frac{6}{8}`   :math:`-\frac{1}{8}`   :math:`\frac{1}{2}`  n/a
+:math:`+\frac{1}{12}`  :math:`-\frac{8}{12}`  :math:`0`             :math:`+\frac{8}{12}`  :math:`-\frac{1}{12}`  :math:`\frac{2}{3}`  n/a
+:math:`+\frac{1}{4}`   :math:`-\frac{5}{4}`   :math:`+\frac{3}{4}`  :math:`+\frac{1}{4}`   :math:`0`              :math:`\dot m > 0`   :math:`1`
+:math:`0`              :math:`-\frac{1}{4}`   :math:`-\frac{3}{4}`  :math:`+\frac{5}{4}`   :math:`-\frac{1}{4}`   :math:`\dot m < 0`   :math:`1`
+:math:`+\frac{1}{6}`   :math:`-\frac{6}{6}`   :math:`+\frac{3}{6}`  :math:`+\frac{2}{6}`   :math:`0`              :math:`\dot m > 0`   :math:`\frac{1}{2}`
+:math:`0`              :math:`-\frac{2}{6}`   :math:`-\frac{3}{6}`  :math:`+\frac{6}{6}`   :math:`-\frac{1}{6}`   :math:`\dot m < 0`   :math:`\frac{1}{2}`
+=====================  =====================  ====================  =====================  =====================  ===================  ====================
 
 It is noted that by varying these numerical parameters, both high
 quality, low dissipation operators suitable for LES usage or limited,

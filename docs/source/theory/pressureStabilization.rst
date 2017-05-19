@@ -49,7 +49,7 @@ The Role of :math:`\dot m`
 
 In all of the above equations, the advection term is written in terms of
 a linearized mass flow rate including a sum over all subcontrol surface
-integration points. The mass flow rate includes the full
+integration points, Eq :eq:`adv-form`. The mass flow rate includes the full
 set of stabilization terms obtained from the continuity solve,
 
 .. math::
@@ -59,7 +59,7 @@ set of stabilization terms obtained from the continuity solve,
 
 The inclusion of the pressure stabilization terms in the advective
 transport for the primitives is a required step for ensuring that the
-advection velocity is mass conserving. In practive, the mass flow rate
+advection velocity is mass conserving. In practice, the mass flow rate
 is stored at each integration point in the mesh (edge midpoints for the
 edge-based scheme and subcontrol surfaces for the element-based scheme).
 When the mixed CVFEM/EBVC scheme is used, the continuity equation solves

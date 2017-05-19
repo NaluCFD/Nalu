@@ -42,7 +42,7 @@ Integration points also exist within the sub-control volume centroids.
 
 Recent work by Domino, :cite:`Domino:2014`, has provided a
 proof-of-concept higher order CVFEM implementation whereby the linear
-basis and dual mesh definition is extended to higher order. The curent
+basis and dual mesh definition is extended to higher order. The current
 code base supports the usage of P=2 elements (quadratic) for both 2D and
 3D quad/hex topologies. This method has been formally demonstrated to be
 third-order spatially accurate and second-order in-time accurate.
@@ -278,8 +278,6 @@ over-relaxed approach is used. The form of any gradient for direction
    \frac{\partial \phi}{\partial x_j}_{ip} = \bar{G_j\phi} + \left[ \left(\phi_R - \phi_L \right) 
    - \bar{G_l\phi}dx_l \right] \frac{A_j}{A_k dx_k}.
 
-[generalGrad]
-
 In the above expression, we are iterating edges with a Left node
 :math:`L` and Right node :math:`R` along with edge-area vector,
 :math:`A_j`. The :math:`\bar{G_j \phi}` is simple averaging of the left
@@ -302,7 +300,7 @@ discretization. The viscous force for component :math:`i` is given by,
 
 .. math:: -\int \tau_{ij} A_j = -\int \mu_{ip}\left( \frac{\partial u_i}{\partial x_j} + \frac{\partial u_j}{\partial x_i} \right) A_j.
 
-[viscousStress] For example, the x and y-component of viscous force is
+For example, the x and y-component of viscous force is
 given by,
 
 .. math::
@@ -338,10 +336,10 @@ Eq. :eq:`generalGrad`.
    \frac{\partial u_i}{\partial x_j}_{ip} = \bar{G_j u_i} + \left[ \left({u_i}_R - {u_i}_L \right) 
    - \bar{G_l u_i}dx_l \right] \frac{A_j}{A_k dx_k}.
 
-[vectorGrad] Common approaches in the cell-centered community are to use
+Common approaches in the cell-centered community are to use
 the projected nodal gradients for the
 :math:`\frac{\partial u_j}{\partial x_i}` stress component. However, in
-nalu, the above form of equation is used.
+Nalu, the above form of equation is used.
 
 Substituting the relations of the velocity gradients for the x and
 y-componnet of force above provides the following expression used for

@@ -95,24 +95,21 @@ subgrid eddy viscosity is modeled simply as (Smagorinsky)
 .. math::
    :label: mut-smag
 
-   \mu_t = \rho \left(C_s \Delta \right)^2 MAG(\tilde {S}),
+   \mu_t = \rho \left(C_s \Delta \right)^2 | \tilde {S} |,
 
 
-where the strain rate tensor magnitude is defined as
-:math:`MAG(\tilde{S}) \equiv (2 \tilde{S}_{ij} \tilde{S}_{ij})^{{1} \over {2}}`.
-The constant coefficient :math:`C_s` typically varies between
-:math:`0.1` and :math:`0.24` and should be carefully tuned to match the
-problem being solved (Rogallo and
-Moin, :cite:`Rogallo:1984`). The default value of
-:math:`0.17` is assigned in the code base.
+The constant coefficient :math:`C_s` typically varies between 0.1 and
+0.24 and should be carefully tuned to match the problem being solved
+(Rogallo and Moin, :cite:`Rogallo:1984`).  The default value of 0.17 is assigned in the code base.
 
 Although this model is desirable due to its simplicity and efficiency,
-care should be taken in its application. It is known to predict subgrid
+care should be taken in its application.  It is known to predict subgrid
 turbulent eddy viscosity proportional to the shear rate in the flow,
-independent of the local turbulence intensity. Non-zero subgrid
-turbulent eddy viscosity is even predicted in completely laminar regions
-of the flow, sometimes even preventing a natural transition to
-turbulence.
+independent of the local turbulence intensity.  Non-zero subgrid turbulent
+eddy viscosity is even predicted in completely laminar regions of the
+flow, sometimes even preventing a natural transition to turbulence. The model also
+does not asymptotically replicate near wall behavior without either dampening or a
+dynamic procedure.
 
 Wall Adapting Local Eddy-Viscosity, WALE
 ++++++++++++++++++++++++++++++++++++++++
@@ -150,15 +147,15 @@ Finally, the velocity gradient squared ters are
 .. math::
    :label: wale-sqij
 
-   g^2_{ij} = \frac{\partial u_i}{\partial x_k} \frac{\partial u_k}{\partial x_j}
+    g^2_{ij} = \frac{\partial u_i}{\partial x_k} \frac{\partial u_k}{\partial x_j}
 
 
- and
+and
 
 .. math::
    :label: wale-gsqji
 
-   g^2_{ji} = \frac{\partial u_j}{\partial x_k} \frac{\partial u_k}{\partial x_i}.
+    g^2_{ji} = \frac{\partial u_j}{\partial x_k} \frac{\partial u_k}{\partial x_i}.
 
 
 One Equation :math:`k^{sgs}`
