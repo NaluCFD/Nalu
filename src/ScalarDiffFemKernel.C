@@ -26,35 +26,32 @@ namespace nalu {
 template<typename AlgTraits>
 ScalarDiffFemKernel<AlgTraits>::ScalarDiffFemKernel(
   const stk::mesh::BulkData& bulkData,
-  ScalarFieldType* temperature,
-  ScalarFieldType* thermalCond)
+  ScalarFieldType* scalarQ,
+  ScalarFieldType* diffFluxCoeff,
+  ElemDataRequests& dataPreReqs)
   : Kernel(),
     bulkData_(&bulkData),
-    temperature_(temperature),
-    thermalCond_(thermalCond),
+    scalarQ_(scalarQ),
+    diffFluxCoeff_(diffFluxCoeff),
     meFEM_(new Hex8FEM()),
     ipWeight_(&meFEM_->weights_[0])
 {
   ThrowRequireMsg(AlgTraits::topo_ == stk::topology::HEX_8,
                   "FEM_DIFF only available for hexes currently");
 
-  // save off fields
-  const stk::mesh::MetaData & meta_data = bulkData.mesh_meta_data();
-  coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates");
+  // Save of required fields
+  const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
+  coordinates_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates");
 
-  // resize; geometry
-  ws_dndx_.resize(AlgTraits::nDim_*AlgTraits::numGp_*AlgTraits::nodesPerElement_);
-  ws_deriv_.resize(AlgTraits::nDim_*AlgTraits::numGp_*AlgTraits::nodesPerElement_);
-  ws_det_j_.resize(AlgTraits::numGp_);
-  ws_shape_function_.resize(AlgTraits::numGp_*AlgTraits::nodesPerElement_);
+  // master element
+  meFEM_->shape_fcn(&v_shape_function_(0,0));
+  dataPreReqs.add_fem_volume_me(meFEM_);
 
-  // resize; fields
-  ws_temperature_.resize(AlgTraits::nodesPerElement_);
-  ws_thermalCond_.resize(AlgTraits::nodesPerElement_);
-  ws_coordinates_.resize(AlgTraits::nDim_*AlgTraits::nodesPerElement_);
-
-  // compute shape function
-  meFEM_->shape_fcn(&ws_shape_function_[0]);
+  // fields and data
+  dataPreReqs.add_coordinates_field(*coordinates_, AlgTraits::nDim_, CURRENT_COORDINATES);
+  dataPreReqs.add_gathered_nodal_field(*scalarQ_, 1);
+  dataPreReqs.add_gathered_nodal_field(*diffFluxCoeff_, 1);
+  dataPreReqs.add_master_element_call(FEM_GRAD_OP, CURRENT_COORDINATES);
 }
 
 template<typename AlgTraits>
@@ -68,67 +65,40 @@ void
 ScalarDiffFemKernel<AlgTraits>::execute(
   SharedMemView<double**>& lhs,
   SharedMemView<double*>& rhs,
-  stk::mesh::Entity element,
-  ScratchViews& /* scratchViews */)
+  stk::mesh::Entity /* element */,
+  ScratchViews& scratchViews)
 {
-  // gather
-  stk::mesh::Entity const *  node_rels = bulkData_->begin_nodes(element);
-  int num_nodes = bulkData_->num_nodes(element);
-
-  // sanity check on num nodes
-  ThrowAssert( num_nodes == AlgTraits::nodesPerElement_ );
-  for ( int ni = 0; ni < num_nodes; ++ni ) {
-    stk::mesh::Entity node = node_rels[ni];
-
-    // gather scalars
-    ws_temperature_[ni] = *stk::mesh::field_data(*temperature_, node);
-    ws_thermalCond_[ni] = *stk::mesh::field_data(*thermalCond_, node );
-
-    // pointers to real data
-    const double * coords = stk::mesh::field_data(*coordinates_, node );
-
-    // gather vectors
-    const int offSet = ni*AlgTraits::nDim_;
-    for ( int j=0; j < AlgTraits::nDim_; ++j ) {
-      ws_coordinates_[offSet+j] = coords[j];
-    }
-  }
-
-  // compute dndx; det_j comes for free
-  double me_error = 0.0;
-  meFEM_->grad_op(1, &ws_coordinates_[0], &ws_dndx_[0], &ws_deriv_[0], &ws_det_j_[0], &me_error);
+  SharedMemView<double*>& v_scalarQ = scratchViews.get_scratch_view_1D(*scalarQ_);
+  SharedMemView<double*>& v_diffFluxCoeff = scratchViews.get_scratch_view_1D(*diffFluxCoeff_);
+  
+  SharedMemView<double***>& v_dndx = scratchViews.get_me_views(CURRENT_COORDINATES).dndx_fem;
+  SharedMemView<double*>& v_det_j = scratchViews.get_me_views(CURRENT_COORDINATES).det_j_fem;
 
   for ( int ip = 0; ip < AlgTraits::numGp_; ++ip ) {
 
     // compute ip property
-    double thermalCondIp = 0.0;
-    const int ipNpe = ip*AlgTraits::nodesPerElement_;
+    double diffFluxCoeffIp = 0.0;
     for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
-      const double r = ws_shape_function_[ipNpe+ic];
-      thermalCondIp += r*ws_thermalCond_[ic];
+      const double r = v_shape_function_(ip,ic);
+      diffFluxCoeffIp += r*v_diffFluxCoeff(ic);
     }
 
     // start the assembly
-    const double ipFactor = ws_det_j_[ip]*ipWeight_[ip];
+    const double ipFactor = v_det_j(ip)*ipWeight_[ip];
 
     // row ir
     for ( int ir = 0; ir < AlgTraits::nodesPerElement_; ++ir) {
 
-      // offset for row dndx
-      const int offSetDnDxIr = AlgTraits::nDim_*AlgTraits::nodesPerElement_*ip + ir*AlgTraits::nDim_;
-
       // column ic
       double rhsSum = 0.0;
       for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
-        // offset for column dndx
-        const int offSetDnDxIc = AlgTraits::nDim_*AlgTraits::nodesPerElement_*ip + ic*AlgTraits::nDim_;
 
         double lhsSum = 0.0;
-        double T = ws_temperature_[ic];
+        double scalarQ = v_scalarQ(ic);
         for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
-          const double fac = ws_dndx_[offSetDnDxIr+j]*thermalCondIp*ws_dndx_[offSetDnDxIc+j];
+          const double fac = v_dndx(ip,ir,j)*diffFluxCoeffIp*v_dndx(ip,ic,j);
           lhsSum += fac;
-          rhsSum += fac*T;
+          rhsSum += fac*scalarQ;
         }
         lhs(ir,ic) += lhsSum*ipFactor;
       }

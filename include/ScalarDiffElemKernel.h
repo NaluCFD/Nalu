@@ -19,7 +19,6 @@
 namespace sierra {
 namespace nalu {
 
-class TimeIntegrator;
 class SolutionOptions;
 class MasterElement;
 class ElemDataRequests;
@@ -60,7 +59,7 @@ private:
   const int* lrscv_;
 
   /// Shape functions
-  Kokkos::View<double[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_ { "view_shape_func" };
+  Kokkos::View<double[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_ { "v_shape_func" };
 };
 
 }  // nalu

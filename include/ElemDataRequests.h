@@ -27,6 +27,7 @@ enum ELEM_DATA_NEEDED {
   SCS_SHIFTED_GRAD_OP,
   SCS_GIJ,
   SCV_VOLUME,
+  FEM_GRAD_OP
 };
 
 enum COORDS_TYPES {
@@ -67,7 +68,7 @@ public:
   ElemDataRequests()
     : dataEnums(),
       coordsFields_(),
-      fields(), meSCS_(NULL), meSCV_(NULL)
+    fields(), meSCS_(NULL), meSCV_(NULL), meFEM_(NULL)
   {
   }
 
@@ -102,9 +103,15 @@ public:
   {
     meSCV_ = meSCV;
   }
+
   void add_cvfem_surface_me(MasterElement *meSCS)
   {
     meSCS_ = meSCS;
+  }
+
+  void add_fem_volume_me(MasterElement *meFEM)
+  {
+    meFEM_ = meFEM;
   }
 
   const std::set<ELEM_DATA_NEEDED>& get_data_enums(
@@ -130,6 +137,7 @@ public:
   const FieldSet& get_fields() const { return fields; }  
   MasterElement *get_cvfem_volume_me() {return meSCV_;}
   MasterElement *get_cvfem_surface_me() {return meSCS_;}
+  MasterElement *get_fem_volume_me() {return meFEM_;}
 
 private:
   std::array<std::set<ELEM_DATA_NEEDED>, MAX_COORDS_TYPES> dataEnums;
@@ -137,6 +145,7 @@ private:
   FieldSet fields;
   MasterElement *meSCS_;
   MasterElement *meSCV_;
+  MasterElement *meFEM_;
 };
 
 } // namespace nalu

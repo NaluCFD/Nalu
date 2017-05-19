@@ -22,6 +22,7 @@ namespace nalu {
 
 class MasterElement;
 class Hex8FEM;
+class ElemDataRequests;
 class ScratchViews;
 
 /** CVFEM scalar advection/diffusion kernel
@@ -33,7 +34,8 @@ public:
   ScalarDiffFemKernel(
     const stk::mesh::BulkData&,
     ScalarFieldType*,
-    ScalarFieldType*);
+    ScalarFieldType*,
+    ElemDataRequests&);
 
   virtual ~ScalarDiffFemKernel();
 
@@ -51,24 +53,16 @@ private:
 
   const stk::mesh::BulkData* bulkData_;
 
-  ScalarFieldType *temperature_;
-  ScalarFieldType *thermalCond_;
-  VectorFieldType *coordinates_;
+  ScalarFieldType *scalarQ_{nullptr};
+  ScalarFieldType *diffFluxCoeff_{nullptr};
+  VectorFieldType *coordinates_{nullptr};
 
   // master element
   Hex8FEM * meFEM_;
   double *ipWeight_;
 
-  // scratch space; geometry
-  std::vector<double> ws_dndx_;
-  std::vector<double> ws_deriv_;
-  std::vector<double> ws_det_j_;
-  std::vector<double> ws_shape_function_;
-
-  // scratch space; fields
-  std::vector<double> ws_temperature_;
-  std::vector<double> ws_thermalCond_;
-  std::vector<double> ws_coordinates_;
+  /// Shape functions
+  Kokkos::View<double[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_ { "v_shape_func" };
 };
 
 }  // nalu
