@@ -52,6 +52,7 @@ MomentumAdvDiffElemKernel<AlgTraits>::MomentumAdvDiffElemKernel(
   dataPreReqs.add_coordinates_field(*coordinates_, AlgTraits::nDim_, CURRENT_COORDINATES);
   dataPreReqs.add_gathered_nodal_field(*velocity, AlgTraits::nDim_);
   dataPreReqs.add_gathered_nodal_field(*viscosity_, 1);
+  dataPreReqs.add_element_field(*massFlowRate_, AlgTraits::numScsIp_);
   dataPreReqs.add_master_element_call(SCS_AREAV, CURRENT_COORDINATES);
   dataPreReqs.add_master_element_call(SCS_GRAD_OP, CURRENT_COORDINATES);
 }
@@ -65,17 +66,15 @@ void
 MomentumAdvDiffElemKernel<AlgTraits>::execute(
   SharedMemView<double **>& lhs,
   SharedMemView<double *>& rhs,
-  stk::mesh::Entity element,
+  stk::mesh::Entity /* element */,
   ScratchViews& scratchViews)
 {
   SharedMemView<double**>& v_uNp1 = scratchViews.get_scratch_view_2D(*velocityNp1_);
   SharedMemView<double*>& v_viscosity = scratchViews.get_scratch_view_1D(*viscosity_);
+  SharedMemView<double*>& v_mdot = scratchViews.get_scratch_view_1D(*massFlowRate_);
 
   SharedMemView<double**>& v_scs_areav = scratchViews.get_me_views(CURRENT_COORDINATES).scs_areav;
   SharedMemView<double***>& v_dndx = scratchViews.get_me_views(CURRENT_COORDINATES).dndx;
-
-  // ip data for this element
-  const double *mdot = stk::mesh::field_data(*massFlowRate_, element);
 
   for ( int ip = 0; ip < AlgTraits::numScsIp_; ++ip ) {
 
@@ -88,7 +87,8 @@ MomentumAdvDiffElemKernel<AlgTraits>::execute(
     const int irNdim = ir*AlgTraits::nDim_;
 
     // save off mdot
-    const double tmdot = mdot[ip];
+    // const double tmdot = mdot[ip];
+    const double tmdot = v_mdot(ip);
 
     // compute scs point values; sneak in divU
     double muIp = 0.0;

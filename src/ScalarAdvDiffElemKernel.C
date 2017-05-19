@@ -51,6 +51,7 @@ ScalarAdvDiffElemKernel<AlgTraits>::ScalarAdvDiffElemKernel(
   dataPreReqs.add_coordinates_field(*coordinates_, AlgTraits::nDim_, CURRENT_COORDINATES);
   dataPreReqs.add_gathered_nodal_field(*scalarQ_, 1);
   dataPreReqs.add_gathered_nodal_field(*diffFluxCoeff_, 1);
+  dataPreReqs.add_element_field(*massFlowRate_, AlgTraits::numScsIp_);
   dataPreReqs.add_master_element_call(SCS_AREAV, CURRENT_COORDINATES);
   dataPreReqs.add_master_element_call(SCS_GRAD_OP, CURRENT_COORDINATES);
 }
@@ -64,17 +65,15 @@ void
 ScalarAdvDiffElemKernel<AlgTraits>::execute(
   SharedMemView<double**>& lhs,
   SharedMemView<double*>& rhs,
-  stk::mesh::Entity element,
+  stk::mesh::Entity /* element */,
   ScratchViews& scratchViews)
 {
   SharedMemView<double*>& v_scalarQ = scratchViews.get_scratch_view_1D(*scalarQ_);
   SharedMemView<double*>& v_diffFluxCoeff = scratchViews.get_scratch_view_1D(*diffFluxCoeff_);
+  SharedMemView<double*>& v_mdot = scratchViews.get_scratch_view_1D(*massFlowRate_);
 
   SharedMemView<double**>& v_scs_areav = scratchViews.get_me_views(CURRENT_COORDINATES).scs_areav;
   SharedMemView<double***>& v_dndx = scratchViews.get_me_views(CURRENT_COORDINATES).dndx;
-
-  // ip data for this element
-  const double *mdot = stk::mesh::field_data(*massFlowRate_, element);
 
   // start the assembly
   for ( int ip = 0; ip < AlgTraits::numScsIp_; ++ip ) {
@@ -84,7 +83,7 @@ ScalarAdvDiffElemKernel<AlgTraits>::execute(
     const int ir = lrscv_[2*ip+1];
 
     // save off mdot
-    const double tmdot = mdot[ip];
+    const double tmdot = v_mdot(ip);
 
     // compute ip property and
     double diffFluxCoeffIp = 0.0;
