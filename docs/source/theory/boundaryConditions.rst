@@ -791,7 +791,7 @@ With the substitution of :math:`\eta` to be unity, the effective convective term
 
     \int \rho \hat{u}_j \phi n_j^A dS^A = \frac{ (\dot m^A + |\dot m^A|) \phi^A +  (\dot m^A - |\dot m^A|)\phi^B}{2}.
 
-Note that this form reduces to a standard upwing operator.
+Note that this form reduces to a standard upwind operator.
 
 Since this algorithm is a dual pass approach, a numerical flux can be
 written for the integration point on block :math:`B`,
@@ -799,12 +799,42 @@ written for the integration point on block :math:`B`,
 .. math::
    :label: numericalFluxB
 
-   \int \hat Q^B dS = \int [\frac{(q_j^B n_j^B + q_j^A n_j^A)}{2} 
-                   + \lambda^B ( \phi^B - \phi^A) ]dS^B
-                   + \dot{m}^B \frac{(\phi^B + \phi^A)}{2}.
+    \int \hat Q^B dS = \int [\frac{(q_j^B n_j^B - q_j^A n_j^A)}{2}
+    + \lambda^B ( \phi^B - \phi^A) ]dS^A
+    + \dot m^B \frac{(\phi^B + \phi^A)}{2} 
+    + \eta \frac{|\dot{m}^B|}{2} (\phi^B - \phi^A).
 
 
-Note that in each case, normals are outward facing.
+As with Equation :eq:`numericalFluxB`, :math:`\dot{m}^B` (see Equation :eq:`mdotB`) 
+is of similar form to :math:`\dot{m}^A`,
+
+.. math::
+   :label: mdotB
+
+   \dot {m}^B = [\frac{(\rho u_j^B + \gamma(\tau G_j^B p -\tau \frac{\partial p^B}{\partial x_j}))n_j^B
+   - (\rho u_j^A + \gamma(\tau G_j^A p -\tau \frac{\partial p^A}{\partial x_j}))n_j^A}{2}
+   + \lambda^A ( p^B - p^A)] dS^B.
+
+For low-order meshes with curved surface, faceting will occur. In this case, the outward facing normals may 
+not be (sign)-unity factors of each other. In this case, it may be adventageous to define the opposing 
+outward normal as, :math:`n_j^B = -n_j^A`. 
+
+Domino, :cite:`Domino:2010` provided an overview of a FEM fluids implementation. In such a formulation, the
+interior penalty term appears, i.e.,
+
+.. math::
+
+   \int_{\Gamma_{AB}} \frac {\partial w^A}{\partial x_j} n_j \lambda (\phi^A-\phi^B) d\Gamma,
+
+and
+
+.. math::
+
+   \int_{\Gamma_{BA}} \frac {\partial w^B}{\partial x_j} n_j \lambda (\phi^B-\phi^A) d\Gamma.
+
+Although the sign of this term is often debated in the literature, the above set of expressions acts 
+to increase penalty term stencil to include the full element contribution. 
+As the CVFEM uses a piecewise-constant test function, this term is currently neglected.	
 
 Average fluxes are computed based on the current and opposing
 integration point locations. The appropriate DG terms are assembled as
@@ -827,40 +857,24 @@ either the Gauss Labatto or Gauss Legendre locations (input file
 specification). For each equation (momentum, continuity, enthalpy, etc.)
 the numerical flux is computed at each exposed non-conformal surface.
 
-The value of the penalty parameter, :math:`\lambda` contains advection
-and diffusion contributions. The current formulation defines this
-quantity as follows (here shown for current side :math:`A`):
+As noted, for most equations other than continuity and heat condition, the numerical flux includes advection and 
+diffusion contributions. The diffusive contribution is easily provided using elemental shape function derivatives 
+at the current and opposing surface. 
 
-.. math::
-   :label: lamdbaA
+.. _non-conformal:
 
-   \lambda^A = \frac{(\Gamma^A / L^A + \Gamma^B / L^B )}{2} + |\dot{m}^A|,
+.. figure:: images/contactSearchAndEval.pdf
+   :width: 500px
+   :align: center
+   
+   Description of the numerical flux calculation for the DG algorithm. The 
+   value of fluxes and penalty values on the current block (:math:`A`) and the opposing block (:math:`B`) are used 
+   for the calculation of numerical fluxes. :math:`\tilde \varphi` represents the projected value.
 
-
-where :math:`\Gamma^k` is the diffusive flux coefficient evaluated at
-current and opposing element location, respectively, and :math:`L^k` is
-an elemental length scale normal to the surface (again for current and
-opposing locations, :math:`A` and :math:`B`). Again, the form of the
-penalty term is somewhat arbitrary in that the advection mass flow rate
-could have been upwinded or blended.
-
-As noted, for most equations other than continuity and heat condition,
-the numerical flux includes advection and diffusion contributions. The
-diffusive contribution is easily provided using elemental shape function
-derivatives at the current and opposing surface.
-
-Above, special care is taken for the value of the mass flow rate at the
-non-conformal interface. Also, note that the above written form does not
-upwind the advective flux, although the code allows for an upwinded
-approach. In general, the advective term contains contributions from
-both elements identified at the interface, specifically,
-
-.. math::
-   :label: mdotA
-
-   \dot {m}^A = \int [\frac{(\rho u_j^A + \tau G_j^A p -\tau \frac{\partial p^A}{\partial x_j}) 
-                                  + (\rho u_j^B+ \tau G_j^B p -\tau \frac{\partial p^A}{\partial x_j})}{2}
-                          + \lambda^A ( p^A - p^B)] dS^A.
+Above, special care is taken for the value of the mass flow rate at the non-conformal interface. Also,
+note that the above written form does not upwind the advective flux, although the code allows for an upwinded 
+approach. In general, the advective term contains contributions from both elements identified at the interface, 
+specifically.
 
 The penalty coefficient for the mass flow rate at the non-conformal
 boundary points is again a function of the blended inverse length scale
