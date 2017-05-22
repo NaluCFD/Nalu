@@ -101,7 +101,6 @@ void
 MomentumMassElemKernel<AlgTraits>::execute(
   SharedMemView<double**>& lhs,
   SharedMemView<double *>& rhs,
-  stk::mesh::Entity /* element */,
   ScratchViews& scratchViews)
 {
   SharedMemView<double*>& v_densityNm1 = scratchViews.get_scratch_view_1D(*densityNm1_);

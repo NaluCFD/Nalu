@@ -65,7 +65,6 @@ void
 ScalarDiffFemKernel<AlgTraits>::execute(
   SharedMemView<double**>& lhs,
   SharedMemView<double*>& rhs,
-  stk::mesh::Entity /* element */,
   ScratchViews& scratchViews)
 {
   SharedMemView<double*>& v_scalarQ = scratchViews.get_scratch_view_1D(*scalarQ_);

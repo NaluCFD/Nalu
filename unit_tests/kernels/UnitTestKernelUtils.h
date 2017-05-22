@@ -211,7 +211,7 @@ public:
             }
 
             for (size_t i=0; i < activeKernels_.size(); ++i)
-              activeKernels_[i]->execute(lhs_, rhs_, element, preReqData);
+              activeKernels_[i]->execute(lhs_, rhs_, preReqData);
           });
 
       });

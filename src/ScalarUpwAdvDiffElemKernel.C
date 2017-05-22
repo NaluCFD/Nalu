@@ -108,7 +108,6 @@ void
 ScalarUpwAdvDiffElemKernel<AlgTraits>::execute(
   SharedMemView<double**>& lhs,
   SharedMemView<double*>& rhs,
-  stk::mesh::Entity /* element */,
   ScratchViews& scratchViews)
 {
   SharedMemView<double**>& v_velocityRTM = scratchViews.get_scratch_view_2D(*velocityRTM_);

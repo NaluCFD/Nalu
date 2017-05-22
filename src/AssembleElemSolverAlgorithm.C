@@ -133,7 +133,7 @@ AssembleElemSolverAlgorithm::execute()
 
       // call supplemental; gathers happen inside the elem_execute method
       for ( size_t i = 0; i < activeKernelsSize; ++i )
-        activeKernels_[i]->execute( lhs, rhs, element, prereqData );
+        activeKernels_[i]->execute( lhs, rhs, prereqData );
       
       apply_coeff(num_nodes, node_rels, scratchIds, rhs, lhs, __FILE__);
     });

@@ -110,7 +110,6 @@ void
 ScalarNSOElemKernel<AlgTraits>::execute(
   SharedMemView<double**>& lhs,
   SharedMemView<double *>& rhs,
-  stk::mesh::Entity ,
   ScratchViews& scratchViews)
 {
   SharedMemView<double**>& v_Gjq = scratchViews.get_scratch_view_2D(*Gjq_);

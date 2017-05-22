@@ -121,7 +121,6 @@ void
 MomentumNSOElemKernel<AlgTraits>::execute(
   SharedMemView<double**>& lhs,
   SharedMemView<double *>& rhs,
-  stk::mesh::Entity ,
   ScratchViews& scratchViews)
 {
   SharedMemView<double***>& v_Gju = scratchViews.get_scratch_view_3D(*Gju_);

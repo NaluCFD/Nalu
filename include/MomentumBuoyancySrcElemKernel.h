@@ -43,7 +43,6 @@ public:
   virtual void execute(
     SharedMemView<double**>&,
     SharedMemView<double*>&,
-    stk::mesh::Entity,
     ScratchViews&);
 
 private:

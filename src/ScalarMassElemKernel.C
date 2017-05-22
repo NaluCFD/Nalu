@@ -98,7 +98,6 @@ void
 ScalarMassElemKernel<AlgTraits>::execute(
   SharedMemView<double **>& lhs,
   SharedMemView<double *>&rhs,
-  stk::mesh::Entity /* element */,
   ScratchViews& scratchViews)
 {
   SharedMemView<double*>& v_qNm1 = scratchViews.get_scratch_view_1D(

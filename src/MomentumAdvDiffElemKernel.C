@@ -66,7 +66,6 @@ void
 MomentumAdvDiffElemKernel<AlgTraits>::execute(
   SharedMemView<double **>& lhs,
   SharedMemView<double *>& rhs,
-  stk::mesh::Entity /* element */,
   ScratchViews& scratchViews)
 {
   SharedMemView<double**>& v_uNp1 = scratchViews.get_scratch_view_2D(*velocityNp1_);

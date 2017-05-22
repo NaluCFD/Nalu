@@ -51,7 +51,6 @@ public:
   virtual void execute(
     SharedMemView<double**>&,
     SharedMemView<double*>&,
-    stk::mesh::Entity,
     ScratchViews&);
 
   virtual double van_leer(
