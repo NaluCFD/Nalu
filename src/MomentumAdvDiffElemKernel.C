@@ -86,7 +86,6 @@ MomentumAdvDiffElemKernel<AlgTraits>::execute(
     const int irNdim = ir*AlgTraits::nDim_;
 
     // save off mdot
-    // const double tmdot = mdot[ip];
     const double tmdot = v_mdot(ip);
 
     // compute scs point values; sneak in divU
