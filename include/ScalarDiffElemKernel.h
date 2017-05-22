@@ -19,7 +19,6 @@
 namespace sierra {
 namespace nalu {
 
-class TimeIntegrator;
 class SolutionOptions;
 class MasterElement;
 class ElemDataRequests;
@@ -46,7 +45,6 @@ public:
   virtual void execute(
     SharedMemView<double**>&,
     SharedMemView<double*>&,
-    stk::mesh::Entity,
     ScratchViews&);
 
 private:
@@ -60,7 +58,7 @@ private:
   const int* lrscv_;
 
   /// Shape functions
-  Kokkos::View<double[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_ { "view_shape_func" };
+  Kokkos::View<double[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_ { "v_shape_func" };
 };
 
 }  // nalu

@@ -44,19 +44,23 @@ public:
     const TeamHandleType& team,
     const std::set<ELEM_DATA_NEEDED>& dataEnums,
     int nDim, int nodesPerElem,
-    int numScsIp, int numScvIp);
+    int numScsIp, int numScvIp, int numFemIp);
 
   void fill_master_element_views(
     const std::set<ELEM_DATA_NEEDED>& dataEnums,
     SharedMemView<double**>* coordsView,
     MasterElement* meSCS,
-    MasterElement* meSCV);
+    MasterElement* meSCV,
+    MasterElement* meFEM);
 
   SharedMemView<double**> scs_areav;
   SharedMemView<double***> dndx;
   SharedMemView<double***> dndx_shifted;
+  SharedMemView<double***> dndx_fem;
   SharedMemView<double*> deriv;
+  SharedMemView<double*> deriv_fem;
   SharedMemView<double*> det_j;
+  SharedMemView<double*> det_j_fem;
   SharedMemView<double*> scv_volume;
   SharedMemView<double***> gijUpper;
   SharedMemView<double***> gijLower;
@@ -108,7 +112,7 @@ private:
   void create_needed_master_element_views(const TeamHandleType& team,
                                           const ElemDataRequests& dataNeeded,
                                           int nDim, int nodesPerElem,
-                                          int numScsIp, int numScvIp);
+                                          int numScsIp, int numScvIp, int numFemIp);
 
   std::vector<ViewHolder*> fieldViews;
   MasterElementViews meViews[MAX_COORDS_TYPES];

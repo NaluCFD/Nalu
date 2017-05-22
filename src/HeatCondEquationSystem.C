@@ -385,7 +385,7 @@ HeatCondEquationSystem::register_interior_algorithm(
 
       build_topo_kernel_if_requested<ScalarDiffFemKernel>(
         partTopo, *this, activeKernels, "FEM_DIFF",
-        realm_.bulk_data(), temperature_, thermalCond_
+        realm_.bulk_data(), temperature_, thermalCond_, dataPreReqs
       );
 
       report_invalid_supp_alg_names();

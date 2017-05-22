@@ -87,7 +87,6 @@ void
 ContinuityMassElemKernel<AlgTraits>::execute(
   SharedMemView<double **>&/*lhs*/,
   SharedMemView<double *>&rhs,
-  stk::mesh::Entity /* element */,
   ScratchViews& scratchViews)
 {
   const double projTimeScale = dt_/gamma1_;
