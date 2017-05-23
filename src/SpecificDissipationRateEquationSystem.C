@@ -51,6 +51,8 @@
 #include <nso/ScalarNSOKeElemSuppAlg.h>
 #include <nso/ScalarNSOElemSuppAlgDep.h>
 
+#include <overset/UpdateOversetFringeAlgorithmDriver.h>
+
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
 
@@ -650,6 +652,12 @@ void
 SpecificDissipationRateEquationSystem::register_overset_bc()
 {
   create_constraint_algorithm(sdr_);
+
+  UpdateOversetFringeAlgorithmDriver* theAlg = new UpdateOversetFringeAlgorithmDriver(realm_);
+  preIterAlgDriver_.push_back(theAlg);
+
+  theAlg->fields_.push_back(
+    std::unique_ptr<OversetFieldData>(new OversetFieldData(sdr_,1,1)));
 }
 
 //--------------------------------------------------------------------------

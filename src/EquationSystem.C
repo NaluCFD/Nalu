@@ -91,6 +91,10 @@ EquationSystem::~EquationSystem()
   for( iip=propertyAlg_.begin(); iip!=propertyAlg_.end(); ++iip ) {
     delete *iip;
   }
+
+  for (auto it = preIterAlgDriver_.begin(); it != preIterAlgDriver_.end(); ++it) {
+    delete *it;
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -502,6 +506,14 @@ EquationSystem::nodal_src_is_requested()
   auto isrc = realm_.solutionOptions_->srcTermsMap_.find(eqnTypeName_);
 
   return (isrc != realm_.solutionOptions_->srcTermsMap_.end());
+}
+
+void
+EquationSystem::pre_iter_work()
+{
+  for (auto it: preIterAlgDriver_) {
+    it->execute();
+  }
 }
 
 

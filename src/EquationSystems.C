@@ -706,6 +706,10 @@ bool
 EquationSystems::solve_and_update()
 {
   EquationSystemVector::iterator ii;
+  // Perform necessary setup tasks before iterations
+  for( ii=equationSystemVector_.begin(); ii!=equationSystemVector_.end(); ++ii )
+    (*ii)->pre_iter_work();
+
   for( ii=equationSystemVector_.begin(); ii!=equationSystemVector_.end(); ++ii )
     (*ii)->solve_and_update();
   
