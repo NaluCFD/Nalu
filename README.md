@@ -16,21 +16,21 @@ When disseminating technical work that includes Nalu simulations, please referen
 
 	Domino, S. "Sierra Low Mach Module: Nalu Theory Manual 1.0", SAND2015-3107W, Sandia National Laboratories Unclassified Unlimited Release (UUR), 2015. https://github.com/NaluCFD/NaluDoc
 	
-This document can be found under the [Nalu Documentation](http://nalu.readthedocs.io/en/latest/source/theory/index.html)
+This document can be found under the [Nalu Documentation](http://nalu.readthedocs.io/en/latest/source/theory/index.html).
 
 ### Building Nalu
 
 Detailed build instructions for Nalu and the accompanied required TPLs, e.g., Trilinos, YAML, etc.,
-can be found in the [Nalu Documentation](http://nalu.readthedocs.io/en/latest/)
+can be found in the [Nalu Documentation](http://nalu.readthedocs.io/en/latest/).
 
 ### Status
 
-[![CDash Logo](http://my.cdash.org/index.php?project=Nalu)](https://github.com/NaluCFD/Nalu/wiki/images/cDashLogo.gif)
+[![CDash Logo](https://github.com/NaluCFD/Nalu/wiki/images/cDashLogo.gif)](http://my.cdash.org/index.php?project=Nalu)
 
 More details on testing can be found [here](http://nalu.readthedocs.io/en/latest/source/developer/testing.html).
 
 ### Help
-Projects that are using Nalu for sponsored activities should consult the <nalucfd@googlegroups.com> 
+Projects that are using Nalu for sponsored activities should consult the <nalucfd@googlegroups.com>.
 
 ### For consulting
 
