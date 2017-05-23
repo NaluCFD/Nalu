@@ -146,6 +146,8 @@
 #include <user_functions/KovasznayVelocityAuxFunction.h>
 #include <user_functions/KovasznayPressureAuxFunction.h>
 
+#include <overset/UpdateOversetFringeAlgorithmDriver.h>
+
 // deprecated
 #include <ContinuityMassElemSuppAlgDep.h>
 #include <MomentumMassElemSuppAlgDep.h>
@@ -571,6 +573,13 @@ LowMachEquationSystem::register_initial_condition_fcn(
     // push to ic
     realm_.initCondAlg_.push_back(auxAlg);
   }
+}
+
+void
+LowMachEquationSystem::pre_iter_work()
+{
+  momentumEqSys_->pre_iter_work();
+  continuityEqSys_->pre_iter_work();
 }
 
 //--------------------------------------------------------------------------
@@ -1890,6 +1899,13 @@ void
 MomentumEquationSystem::register_overset_bc()
 {
   create_constraint_algorithm(velocity_);
+
+  int nDim = realm_.meta_data().spatial_dimension();
+  UpdateOversetFringeAlgorithmDriver* theAlg = new UpdateOversetFringeAlgorithmDriver(realm_);
+  preIterAlgDriver_.push_back(theAlg);
+
+  theAlg->fields_.push_back(
+    std::unique_ptr<OversetFieldData>(new OversetFieldData(velocity_,1,nDim)));
 }
 
 //--------------------------------------------------------------------------
@@ -2724,6 +2740,12 @@ void
 ContinuityEquationSystem::register_overset_bc()
 {
   create_constraint_algorithm(pressure_);
+
+  UpdateOversetFringeAlgorithmDriver* theAlg = new UpdateOversetFringeAlgorithmDriver(realm_);
+  preIterAlgDriver_.push_back(theAlg);
+
+  theAlg->fields_.push_back(
+    std::unique_ptr<OversetFieldData>(new OversetFieldData(pressure_,1,1)));
 }
 
 //--------------------------------------------------------------------------

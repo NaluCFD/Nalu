@@ -69,6 +69,8 @@
 #include <user_functions/VariableDensityMixFracAuxFunction.h>
 #include <user_functions/RayleighTaylorMixFracAuxFunction.h>
 
+#include <overset/UpdateOversetFringeAlgorithmDriver.h>
+
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
 
@@ -797,6 +799,12 @@ void
 MixtureFractionEquationSystem::register_overset_bc()
 {
   create_constraint_algorithm(mixFrac_);
+
+  UpdateOversetFringeAlgorithmDriver* theAlg = new UpdateOversetFringeAlgorithmDriver(realm_);
+  preIterAlgDriver_.push_back(theAlg);
+
+  theAlg->fields_.push_back(
+    std::unique_ptr<OversetFieldData>(new OversetFieldData(mixFrac_,1,1)));
 }
 
 //--------------------------------------------------------------------------

@@ -67,6 +67,7 @@ public:
 
   virtual void initialize() {}
   virtual void solve_and_update() {}
+  virtual void pre_iter_work();
   virtual void post_iter_work() {}
   virtual void assemble_and_solve(
     stk::mesh::FieldBase *deltaSolution);
@@ -210,7 +211,7 @@ public:
   std::vector<Algorithm *> propertyAlg_;
 
   // vector of pre-iteration work algorithm drivers
-  /*std::vector<AlgorithmDriver *> preIterAlgDriver_;*/
+  std::vector<AlgorithmDriver *> preIterAlgDriver_;
 
   // owner equation system
   /*EquationSystem *ownerEqs_;*/

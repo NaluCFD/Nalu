@@ -68,6 +68,7 @@ public:
       const std::map<std::string, std::string> &theNames,
       const std::map<std::string, std::vector<double> > &theParams);
 
+  virtual void pre_iter_work();
   virtual void solve_and_update();
   virtual void post_adapt_work();
 

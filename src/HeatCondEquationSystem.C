@@ -67,6 +67,8 @@
 #include <user_functions/SteadyThermal3dContactSrcElemSuppAlgDep.h>
 #include <user_functions/SteadyThermal3dContactSrcElemKernel.h>
 
+#include <overset/UpdateOversetFringeAlgorithmDriver.h>
+
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
 
@@ -866,6 +868,12 @@ void
 HeatCondEquationSystem::register_overset_bc()
 {
   create_constraint_algorithm(temperature_);
+
+  UpdateOversetFringeAlgorithmDriver* theAlg = new UpdateOversetFringeAlgorithmDriver(realm_);
+  preIterAlgDriver_.push_back(theAlg);
+
+  theAlg->fields_.push_back(
+    std::unique_ptr<OversetFieldData>(new OversetFieldData(temperature_,1,1)));
 }
 
 //--------------------------------------------------------------------------
