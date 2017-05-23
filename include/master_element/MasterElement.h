@@ -678,6 +678,8 @@ public:
   PyrSCS();
   virtual ~PyrSCS();
 
+  const int * ipNodeMap(int ordinal = 0);
+
   void determinant(
     const int nelem,
     const double *coords,
@@ -726,6 +728,17 @@ public:
 
   int opposingNodes(
     const int ordinal, const int node);
+
+  int opposingFace(
+    const int ordinal, const int node);
+
+  void face_grad_op(
+    const int nelem,
+    const int face_ordinal,
+    const double *coords,
+    double *gradop,
+    double *det_j,
+    double *error);
 
   const int* side_node_ordinals(int sideOrdinal) final;
 
