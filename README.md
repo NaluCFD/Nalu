@@ -9,29 +9,25 @@ its copyright in software entitled "Nalu v 1.0".
 
 ### Follow us!
 
-[![alt text][2]][1]
-  [1]: https://twitter.com/nalucfd 
-  [2]: https://github.com/NaluCFD/Nalu/wiki/images/twitterIcon.jpg (click here for @naluCFD)
+[![Twitter Logo](https://github.com/NaluCFD/Nalu/wiki/images/twitterIcon.jpg)](https://twitter.com/nalucfd)
   
 ### Referencing Nalu
 When disseminating technical work that includes Nalu simulations, please reference the following citation:
 
 	Domino, S. "Sierra Low Mach Module: Nalu Theory Manual 1.0", SAND2015-3107W, Sandia National Laboratories Unclassified Unlimited Release (UUR), 2015. https://github.com/NaluCFD/NaluDoc
 	
-This laTex document can be found under the NaluDoc [repository](https://github.com/NaluCFD/NaluDoc/tree/master/theory)
+This document can be found under the [Nalu Documentation](http://nalu.readthedocs.io/en/latest/source/theory/index.html)
 
 ### Building Nalu
 
 Detailed build instructions for Nalu and the accompanied required TPLs, e.g., Trilinos, YAML, etc.,
-can be found under the Nalu Wiki [Build](https://github.com/NaluCFD/Nalu/wiki/Build_instructions)
+can be found in the [Nalu Documentation](http://nalu.readthedocs.io/en/latest/)
 
 ### Status
 
-[![alt text][4]][3]
-  [3]: http://my.cdash.org/index.php?project=Nalu
-  [4]: https://github.com/NaluCFD/Nalu/wiki/images/cDashLogo.gif (click here for build status)
+[![CDash Logo](http://my.cdash.org/index.php?project=Nalu)](https://github.com/NaluCFD/Nalu/wiki/images/cDashLogo.gif)
 
-More details on testing can be found [within the cmake directory](./cmake/README.md).
+More details on testing can be found [here](http://nalu.readthedocs.io/en/latest/source/developer/testing.html).
 
 ### Help
 Projects that are using Nalu for sponsored activities should consult the <nalucfd@googlegroups.com> 
