@@ -3603,19 +3603,32 @@ PyrSCS::PyrSCS()
   lrscv_[14] = 3; lrscv_[15] = 4;
   
   // define opposing node
+  // opposing node for node 4 is never uniquely defined: pick one
   oppNode_.resize(20);
   // face 0; nodes 0,1,4
-  oppNode_[0] = 3; oppNode_[1] = 2; oppNode_[2] = 4; oppNode_[3] = -1;
+  oppNode_[0] = 3; oppNode_[1] = 2; oppNode_[2] = 2; oppNode_[3] = -1;
   // face 1; nodes 1,2,4
-  oppNode_[4] = 0; oppNode_[5] = 3; oppNode_[6] = 4; oppNode_[7] = -1;
+  oppNode_[4] = 0; oppNode_[5] = 3; oppNode_[6] = 3; oppNode_[7] = -1;
   // face 2; nodes 2,3,4
-  oppNode_[8] = 1; oppNode_[9] = 4; oppNode_[10] = 2; oppNode_[11] = -1;
-  // face 3; nodes 0,4,3
-  oppNode_[12] = 1; oppNode_[13] = 5; oppNode_[14] = 6; oppNode_[15] = 2;
-  // face 4; nodes 1,3,2,1
+  oppNode_[8] = 1; oppNode_[9] = 0; oppNode_[10] = 0; oppNode_[11] = -1;
+  // face 3; nodes 3,0,4
+  oppNode_[12] = 2; oppNode_[13] = 1; oppNode_[14] = 1; oppNode_[15] = 2;
+  // face 4; nodes 0,3,2,1
   oppNode_[16] = 4; oppNode_[17] = 4; oppNode_[18] = 4; oppNode_[19] = 4;
 
   // define opposing face
+  // the 5th node maps to two opposing sub-faces, we pick one
+  oppFace_.resize(20);
+  // face 0
+  oppFace_[0] = 3;  oppFace_[1] = 1;  oppFace_[2] = 6;  oppFace_[3] = -1;
+  // face 1
+  oppFace_[4] = 0;  oppFace_[5] = 2;  oppFace_[6] = 7;  oppFace_[7] = -1;
+  // face 2
+  oppFace_[8] = 1;  oppFace_[9] = 3;  oppFace_[10] = 4; oppFace_[11] = -1;
+  // face 3
+  oppFace_[12] = 2; oppFace_[13] = 0; oppFace_[14] = 5; oppFace_[15] = -1;
+  // face 4
+  oppFace_[16] = 4; oppFace_[17] = 7; oppFace_[18] = 6; oppFace_[19] = 5;
 
   // standard integration location
   intgLoc_.resize(24);
@@ -3643,7 +3656,35 @@ PyrSCS::PyrSCS()
   intgLocShift_[18] =  0.50; intgLocShift_[19] =  0.50; intgLocShift_[20] =  0.50; // surf 7    3->5
   intgLocShift_[21] = -0.50; intgLocShift_[22] =  0.50; intgLocShift_[23] =  0.50; // surf 8    4->5
 
-  // exposed face; n/a
+  // exposed face
+  intgExpFace_.resize(48);
+  const double five24ths = 5.0/24.0;
+  const double nineteen24ths = 19.0/24.0;
+  const double three8ths = 3.0/8.0;
+  const double one3rd = 1.0/3.0;
+  const double two3rds = 2.0/3.0;
+  // face 0; nodes 0,1,4: scs 0, 1, 2
+  intgExpFace_[0]  = -three8ths;     intgExpFace_[1]  = -nineteen24ths; intgExpFace_[2]  = five24ths;
+  intgExpFace_[3]  =  three8ths;     intgExpFace_[4]  = -nineteen24ths; intgExpFace_[5]  = five24ths;
+  intgExpFace_[6]  =  0.0;           intgExpFace_[7]  = -one3rd;        intgExpFace_[8]  = two3rds;
+  // face 1; nodes 1,2,4; scs 0, 1, 2
+  intgExpFace_[9]  = nineteen24ths;  intgExpFace_[10] = -three8ths;     intgExpFace_[11] = five24ths;
+  intgExpFace_[12] = nineteen24ths;  intgExpFace_[13] =  three8ths;     intgExpFace_[14] = five24ths;
+  intgExpFace_[15] = one3rd;         intgExpFace_[16] =  0.0;           intgExpFace_[17] = two3rds;
+  // face 2; nodes 2,3,4; scs 0, 1, 2
+  intgExpFace_[18] =  three8ths;     intgExpFace_[19] = nineteen24ths;  intgExpFace_[20] = five24ths;
+  intgExpFace_[21] = -three8ths;     intgExpFace_[22] = nineteen24ths;  intgExpFace_[23] = five24ths;
+  intgExpFace_[24] =  0.00;          intgExpFace_[25] = one3rd;         intgExpFace_[26] = two3rds;
+  //face 3; nodes 3,0,4; scs 0, 1, 2
+  intgExpFace_[27] = -nineteen24ths; intgExpFace_[28] =  three8ths;     intgExpFace_[29] = five24ths;
+  intgExpFace_[30] = -nineteen24ths; intgExpFace_[31] = -three8ths;     intgExpFace_[32] = five24ths;
+  intgExpFace_[33] = -one3rd;        intgExpFace_[34] = 0.0;            intgExpFace_[35] = two3rds;
+  // face 4; nodes 0,3,2,1; scs 0, 1, 2
+  intgExpFace_[36] = -0.5;           intgExpFace_[37] = -0.5;           intgExpFace_[38] = 0.0;
+  intgExpFace_[39] = -0.5;           intgExpFace_[40] =  0.5;           intgExpFace_[41] = 0.0;
+  intgExpFace_[42] =  0.5;           intgExpFace_[43] =  0.5;           intgExpFace_[44] = 0.0;
+  intgExpFace_[45] =  0.5;           intgExpFace_[46] = -0.5;           intgExpFace_[47] = 0.0;
+
   sideNodeOrdinals_ = {
       0, 1, 4,    // ordinal 0
       1, 2, 4,    // ordinal 1
@@ -3651,6 +3692,18 @@ PyrSCS::PyrSCS()
       3, 0, 4,    // ordinal 3
       0, 3, 2, 1  // ordinal 4
   };
+
+  ipNodeMap_.resize(16);
+  // Face 0
+  ipNodeMap_[0]  = 0; ipNodeMap_[1]  = 1; ipNodeMap_[2]  = 4;
+  // Face 1
+  ipNodeMap_[3]  = 1; ipNodeMap_[4]  = 2; ipNodeMap_[5]  = 4;
+  // Face 2
+  ipNodeMap_[6]  = 2; ipNodeMap_[7]  = 3; ipNodeMap_[8]  = 4;
+  // Face 3
+  ipNodeMap_[9]  = 3; ipNodeMap_[10] = 0; ipNodeMap_[11] = 4;
+  // Face 4 (quad face)
+  ipNodeMap_[12] = 0; ipNodeMap_[13] = 3; ipNodeMap_[14] = 2; ipNodeMap_[15] = 1;
 }
 
 //--------------------------------------------------------------------------
@@ -3738,6 +3791,52 @@ void PyrSCS::shifted_grad_op(
 
   if ( lerr )
     std::cout << "sorry, negative PyrSCS volume.." << std::endl;
+}
+
+//--------------------------------------------------------------------------
+//-------- face_grad_op ----------------------------------------------------
+//--------------------------------------------------------------------------
+void PyrSCS::face_grad_op(
+  const int nelem,
+  const int face_ordinal,
+  const double *coords,
+  double *gradop,
+  double *det_j,
+  double *error)
+{
+  int lerr = 0;
+  int npf = 4;
+  int ndim = 3;
+  
+  const int nface = 1;
+  double dpsi[15];
+  double grad[15];
+
+  if (face_ordinal != 4)
+    throw std::runtime_error("face_grad_op : pyramid exposed boundary face must be a quad");
+  
+  for ( int n=0; n<nelem; n++ ) {
+    
+    for ( int k=0; k<npf; k++ ) {
+
+      const int row = 9*face_ordinal + k*ndim;
+      pyr_derivative(nface, &intgExpFace_[row], dpsi);
+      
+      SIERRA_FORTRAN(pyr_gradient_operator)
+        ( &nface,
+          &nodesPerElement_,
+          &nface,
+          dpsi,
+          &coords[15*n], grad, &det_j[npf*n+k], error, &lerr );
+      
+      if ( lerr )
+        std::cout << "problem with PyrSCS::face_grad_op." << std::endl;
+       
+      for ( int j=0; j<15; j++) {
+        gradop[k*nelem*15+n*15+j] = grad[j];
+      }
+    }
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -3858,6 +3957,28 @@ PyrSCS::opposingNodes(
   const int node)
 {
   return oppNode_[ordinal*4+node];
+}
+
+//--------------------------------------------------------------------------
+//-------- opposingFace --------------------------------------------------
+//--------------------------------------------------------------------------
+int
+PyrSCS::opposingFace(
+  const int ordinal,
+  const int node)
+{
+  return oppNode_[ordinal*4+node];
+}
+
+//--------------------------------------------------------------------------
+//-------- ipNodeMap -------------------------------------------------------
+//--------------------------------------------------------------------------
+const int *
+PyrSCS::ipNodeMap(
+  int ordinal)
+{
+  // define ip->node mappings for each face (ordinal); 
+  return &ipNodeMap_[ordinal*3];
 }
 
 //--------------------------------------------------------------------------
