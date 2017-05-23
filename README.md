@@ -18,21 +18,25 @@ When disseminating technical work that includes Nalu simulations, please referen
 	
 This document can be found under the [Nalu Documentation](http://nalu.readthedocs.io/en/latest/source/theory/index.html).
 
+### Nalu Documentation
+
+The Nalu documentation website is located [here](http://nalu.readthedocs.io/en/latest/).
+
 ### Building Nalu
 
 Detailed build instructions for Nalu and the accompanied required TPLs, e.g., Trilinos, YAML, etc.,
 can be found in the [Nalu Documentation](http://nalu.readthedocs.io/en/latest/).
 
-### Status
+### Nightly Testing Status
 
 [![CDash Logo](https://github.com/NaluCFD/Nalu/wiki/images/cDashLogo.gif)](http://my.cdash.org/index.php?project=Nalu)
 
-More details on testing can be found [here](http://nalu.readthedocs.io/en/latest/source/developer/testing.html).
+Nightly testing results can be seen by clicking the CDash logo above. More details on testing can be found [here](http://nalu.readthedocs.io/en/latest/source/developer/testing.html).
 
 ### Help
-Projects that are using Nalu for sponsored activities should consult the <nalucfd@googlegroups.com>.
+Projects that are using Nalu for sponsored activities should consult <nalucfd@googlegroups.com>.
 
 ### For consulting
 
-Consulting for Nalu is available through the consulting <naluconsulting@gmail.com>.
+Consulting for Nalu is available through the consulting email <naluconsulting@gmail.com>.
 
