@@ -40,6 +40,7 @@ class Realm;
 class EquationSystem;
 class PostProcessingData;
 class Simulation;
+class AlgorithmDriver;
 
 typedef std::vector<EquationSystem *> EquationSystemVector;
 
@@ -128,6 +129,9 @@ class EquationSystems
   void pre_timestep_work();
   void post_converged_work();
   void evaluate_properties();
+
+  void pre_iter_work();
+  void post_iter_work();
   
   Realm &realm_;
   std::string name_;
@@ -135,6 +139,12 @@ class EquationSystems
 
   EquationSystemVector equationSystemVector_;
   std::map<std::string, std::string> solverSpecMap_;
+
+  /// A list of tasks to be performed before all EquationSystem solve_and_update
+  std::vector<AlgorithmDriver*> preIterAlgDriver_;
+
+  /// A list of tasks to be performed after all EquationSystem solve_and_update
+  std::vector<AlgorithmDriver*> postIterAlgDriver_;
 };
 
 } // namespace nalu

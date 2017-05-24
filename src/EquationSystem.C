@@ -95,6 +95,10 @@ EquationSystem::~EquationSystem()
   for (auto it = preIterAlgDriver_.begin(); it != preIterAlgDriver_.end(); ++it) {
     delete *it;
   }
+
+  for (auto it = postIterAlgDriver_.begin(); it != postIterAlgDriver_.end(); ++it) {
+    delete *it;
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -516,6 +520,13 @@ EquationSystem::pre_iter_work()
   }
 }
 
+void
+EquationSystem::post_iter_work()
+{
+  for (auto it: postIterAlgDriver_) {
+    it->execute();
+  }
+}
 
 } // namespace nalu
 } // namespace Sierra

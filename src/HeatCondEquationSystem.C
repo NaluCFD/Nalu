@@ -870,7 +870,8 @@ HeatCondEquationSystem::register_overset_bc()
   create_constraint_algorithm(temperature_);
 
   UpdateOversetFringeAlgorithmDriver* theAlg = new UpdateOversetFringeAlgorithmDriver(realm_);
-  preIterAlgDriver_.push_back(theAlg);
+  // Perform fringe updates before all equation system solves
+  equationSystems_.preIterAlgDriver_.push_back(theAlg);
 
   theAlg->fields_.push_back(
     std::unique_ptr<OversetFieldData>(new OversetFieldData(temperature_,1,1)));

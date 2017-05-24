@@ -16,6 +16,7 @@
 #include <PostProcessingData.h>
 #include <Simulation.h>
 #include <SolutionOptions.h>
+#include <AlgorithmDriver.h>
 
 // all concrete EquationSystem's
 #include <EnthalpyEquationSystem.h>
@@ -61,6 +62,14 @@ EquationSystems::~EquationSystems()
 {
   for (size_t ie = 0; ie < equationSystemVector_.size(); ++ie)
     delete equationSystemVector_[ie];
+
+  for (auto it = preIterAlgDriver_.begin(); it != preIterAlgDriver_.end(); ++it) {
+    delete (*it);
+  }
+
+  for (auto it = postIterAlgDriver_.begin(); it != postIterAlgDriver_.end(); ++it) {
+    delete (*it);
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -707,12 +716,14 @@ EquationSystems::solve_and_update()
 {
   EquationSystemVector::iterator ii;
   // Perform necessary setup tasks before iterations
-  for( ii=equationSystemVector_.begin(); ii!=equationSystemVector_.end(); ++ii )
-    (*ii)->pre_iter_work();
+  pre_iter_work();
 
   for( ii=equationSystemVector_.begin(); ii!=equationSystemVector_.end(); ++ii )
+  {
+    (*ii)->pre_iter_work();
     (*ii)->solve_and_update();
-  
+  }
+
   // memory diagnostic
   if ( realm_.get_activate_memory_diagnostic() ) {
     NaluEnv::self().naluOutputP0() << "NaluMemory::EquationSystem::solve_and_update()" << std::endl;
@@ -720,9 +731,13 @@ EquationSystems::solve_and_update()
   }
 
   // add a post iteration work section
+  // TODO: Refactor EquationSystem::post_iter_work
   for( ii=equationSystemVector_.begin(); ii!=equationSystemVector_.end(); ++ii )
     (*ii)->post_iter_work();
-  
+
+  // Perform tasks after all EQS have been solved
+  post_iter_work();
+
   // check equations for convergence
   bool overallConvergence = true;
   for( ii=equationSystemVector_.begin(); ii!=equationSystemVector_.end(); ++ii ) {
@@ -858,6 +873,22 @@ EquationSystems::evaluate_properties()
   EquationSystemVector::iterator ii;
   for( ii=equationSystemVector_.begin(); ii!=equationSystemVector_.end(); ++ii )
     (*ii)->evaluate_properties();
+}
+
+void
+EquationSystems::pre_iter_work()
+{
+  for (auto alg: preIterAlgDriver_) {
+    alg->execute();
+  }
+}
+
+void
+EquationSystems::post_iter_work()
+{
+  for (auto alg: postIterAlgDriver_) {
+    alg->execute();
+  }
 }
 
 } // namespace nalu
