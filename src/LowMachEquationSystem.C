@@ -24,6 +24,7 @@
 #include <AssembleMomentumElemSymmetrySolverAlgorithm.h>
 #include <AssembleMomentumWallFunctionSolverAlgorithm.h>
 #include <AssembleMomentumABLWallFunctionSolverAlgorithm.h>
+#include <AssembleMomentumMoengWallFunctionSolverAlgorithm.h>
 #include <AssembleMomentumNonConformalSolverAlgorithm.h>
 #include <AssembleNodalGradAlgorithmDriver.h>
 #include <AssembleNodalGradEdgeAlgorithm.h>
@@ -83,6 +84,7 @@
 #include <SurfaceForceAndMomentAlgorithmDriver.h>
 #include <SurfaceForceAndMomentAlgorithm.h>
 #include <SurfaceForceAndMomentWallFunctionAlgorithm.h>
+#include <SurfaceForceAndMomentMoengWallFunctionAlgorithm.h>
 #include <Simulation.h>
 #include <SolutionOptions.h>
 #include <SolverAlgorithmDriver.h>
@@ -479,6 +481,17 @@ LowMachEquationSystem::register_surface_pp_algorithm(
       surfaceForceAndMomentAlgDriver_ = new SurfaceForceAndMomentAlgorithmDriver(realm_);
     SurfaceForceAndMomentWallFunctionAlgorithm *ppAlg
       = new SurfaceForceAndMomentWallFunctionAlgorithm(
+          realm_, partVector, theData.outputFileName_, theData.frequency_,
+          theData.parameters_, realm_.realmUsesEdges_);
+    surfaceForceAndMomentAlgDriver_->algVec_.push_back(ppAlg);
+  }
+  else if ( thePhysics == "surface_force_and_moment_moeng" ) {
+    ScalarFieldType *assembledArea =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "assembled_area_force_moment_wf"));
+    stk::mesh::put_field(*assembledArea, stk::mesh::selectUnion(partVector));
+    if ( NULL == surfaceForceAndMomentAlgDriver_ )
+      surfaceForceAndMomentAlgDriver_ = new SurfaceForceAndMomentAlgorithmDriver(realm_);
+    SurfaceForceAndMomentMoengWallFunctionAlgorithm *ppAlg
+      = new SurfaceForceAndMomentMoengWallFunctionAlgorithm(
           realm_, partVector, theData.outputFileName_, theData.frequency_,
           theData.parameters_, realm_.realmUsesEdges_);
     surfaceForceAndMomentAlgDriver_->algVec_.push_back(ppAlg);
@@ -1563,6 +1576,7 @@ MomentumEquationSystem::register_wall_bc(
   WallUserData userData = wallBCData.userData_;
   const bool wallFunctionApproach = userData.wallFunctionApproach_;
   const bool ablWallFunctionApproach = userData.ablWallFunctionApproach_;
+  const bool ablMoengWallFunctionApproach = userData.ablMoengWallFunctionApproach_;
 
   const std::string bcFieldName = wallFunctionApproach ? "wall_velocity_bc" : "velocity_bc";
 
@@ -1672,7 +1686,7 @@ MomentumEquationSystem::register_wall_bc(
 
     if (ablWallFunctionApproach) {
 
-      // register boundary data: heat_flux_bc
+     // register boundary data: heat_flux_bc
       ScalarFieldType *theHeatFluxBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "heat_flux_bc"));
       stk::mesh::put_field(*theHeatFluxBcField, *part);
 
@@ -1703,31 +1717,51 @@ MomentumEquationSystem::register_wall_bc(
       const double z0 = rough.z0_;
       ReferenceTemperature Tref = userData.referenceTemperature_;
       const double referenceTemperature = Tref.referenceTemperature_;
-      std::map<AlgorithmType, Algorithm *>::iterator it_utau =
-        wallFunctionParamsAlgDriver_->algMap_.find(wfAlgType);
-      if ( it_utau == wallFunctionParamsAlgDriver_->algMap_.end() ) {
-        ComputeABLWallFrictionVelocityAlgorithm *theUtauAlg =
-          new ComputeABLWallFrictionVelocityAlgorithm(realm_, part, realm_.realmUsesEdges_, grav, z0, referenceTemperature);
-        wallFunctionParamsAlgDriver_->algMap_[wfAlgType] = theUtauAlg;
-      }
-      else {
-        it_utau->second->partVec_.push_back(part);
-      }
 
-      // create lhs/rhs algorithm; generalized for edge (nearest node usage) and element
-      std::map<AlgorithmType, SolverAlgorithm *>::iterator it_wf =
-        solverAlgDriver_->solverAlgMap_.find(wfAlgType);
-      if ( it_wf == solverAlgDriver_->solverAlgMap_.end() ) {
-        AssembleMomentumABLWallFunctionSolverAlgorithm *theAlg
-          = new AssembleMomentumABLWallFunctionSolverAlgorithm(realm_, part, this, realm_.realmUsesEdges_, grav, z0, referenceTemperature);
-        solverAlgDriver_->solverAlgMap_[wfAlgType] = theAlg;
+      if (ablMoengWallFunctionApproach) {
+        // Create a field that stores wall shear stress at the boundary face ips
+        GenericFieldType *tauWallBip 
+           =  &(meta_data.declare_field<GenericFieldType>(sideRank, "tau_wall_bip"));
+        stk::mesh::put_field(*tauWallBip, *part, nDim*numScsBip);
+	// create lhs/rhs algorithm; generalized for edge (nearest node usage) and element
+	std::map<AlgorithmType, SolverAlgorithm *>::iterator it_wf =
+	  solverAlgDriver_->solverAlgMap_.find(wfAlgType);
+	if ( it_wf == solverAlgDriver_->solverAlgMap_.end() ) {
+	  AssembleMomentumMoengWallFunctionSolverAlgorithm *theAlg
+	    = new AssembleMomentumMoengWallFunctionSolverAlgorithm(realm_, part, this, realm_.realmUsesEdges_, grav, z0, referenceTemperature);
+	  solverAlgDriver_->solverAlgMap_[wfAlgType] = theAlg;
+	}
+	else {
+	  it_wf->second->partVec_.push_back(part);
+	}
       }
-      else {
-        it_wf->second->partVec_.push_back(part);
+      else { 
+	std::map<AlgorithmType, Algorithm *>::iterator it_utau =
+	  wallFunctionParamsAlgDriver_->algMap_.find(wfAlgType);
+	if ( it_utau == wallFunctionParamsAlgDriver_->algMap_.end() ) {
+	  ComputeABLWallFrictionVelocityAlgorithm *theUtauAlg =
+	    new ComputeABLWallFrictionVelocityAlgorithm(realm_, part, realm_.realmUsesEdges_, grav, z0, referenceTemperature);
+	  wallFunctionParamsAlgDriver_->algMap_[wfAlgType] = theUtauAlg;
+	}
+	else {
+	  it_utau->second->partVec_.push_back(part);
+	}
+
+	// create lhs/rhs algorithm; generalized for edge (nearest node usage) and element
+	std::map<AlgorithmType, SolverAlgorithm *>::iterator it_wf =
+	  solverAlgDriver_->solverAlgMap_.find(wfAlgType);
+	if ( it_wf == solverAlgDriver_->solverAlgMap_.end() ) {
+	  AssembleMomentumABLWallFunctionSolverAlgorithm *theAlg
+	    = new AssembleMomentumABLWallFunctionSolverAlgorithm(realm_, part, this, realm_.realmUsesEdges_, grav, z0, referenceTemperature);
+	  solverAlgDriver_->solverAlgMap_[wfAlgType] = theAlg;
+	}
+	else {
+	  it_wf->second->partVec_.push_back(part);
+	}
       }
     }
-
-    else {
+      
+    else { // smooth aerodynamic wall - wall function approach
 
       const AlgorithmType wfAlgType = WALL;
 

@@ -42,6 +42,7 @@ private:
   double ky_;
   double thickness_;
   double uInf_;
+  double vInf_;
 
 };
 
