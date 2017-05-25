@@ -1010,7 +1010,7 @@ EnthalpyEquationSystem::solve_and_update()
 //-------- post_iter_work --------------------------------------------------
 //--------------------------------------------------------------------------
 void
-EnthalpyEquationSystem::post_iter_work()
+EnthalpyEquationSystem::post_iter_work_dep()
 {
 
   // compute bc enthalpy based on converged species

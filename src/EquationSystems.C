@@ -722,6 +722,7 @@ EquationSystems::solve_and_update()
   {
     (*ii)->pre_iter_work();
     (*ii)->solve_and_update();
+    (*ii)->post_iter_work();
   }
 
   // memory diagnostic
@@ -730,10 +731,9 @@ EquationSystems::solve_and_update()
     realm_.provide_memory_summary();
   }
 
-  // add a post iteration work section
-  // TODO: Refactor EquationSystem::post_iter_work
+  // TODO: Refactor code to adhere to pre and post iter_work design
   for( ii=equationSystemVector_.begin(); ii!=equationSystemVector_.end(); ++ii )
-    (*ii)->post_iter_work();
+    (*ii)->post_iter_work_dep();
 
   // Perform tasks after all EQS have been solved
   post_iter_work();

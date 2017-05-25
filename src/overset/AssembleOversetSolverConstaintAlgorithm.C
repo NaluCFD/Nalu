@@ -93,9 +93,8 @@ AssembleOversetSolverConstraintAlgorithm::execute()
   // size interpolated value
   std::vector<double> qNp1Orphan(sizeOfDof, 0.0);
 
-  // parallel communicate ghosted entities
-  if ( NULL != realm_.oversetManager_->oversetGhosting_ )
-    stk::mesh::communicate_field_data(*(realm_.oversetManager_->oversetGhosting_), ghostFieldVec_);  
+  // Parallel communication of ghosted entities has been already handled in
+  // EquationSystems::pre_iter_work
 
   // iterate oversetInfoVec_
   std::vector<OversetInfo *>::iterator ii;
