@@ -84,7 +84,6 @@ public:
   void solve_and_update();
   void update_and_clip();
   void compute_scalar_var_diss();
-  void post_iter_work();
 
   void manage_projected_nodal_gradient(
     EquationSystems& eqSystems);
