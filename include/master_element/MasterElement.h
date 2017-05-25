@@ -726,6 +726,12 @@ public:
     const double *par_coord, 
     double* shape_fcn);
 
+  void sidePcoords_to_elemPcoords(
+    const int & side_ordinal,
+    const int & npoints,
+    const double *side_pcoords,
+    double *elem_pcoords);
+
   int opposingNodes(
     const int ordinal, const int node);
 

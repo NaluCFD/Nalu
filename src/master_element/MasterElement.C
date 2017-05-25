@@ -3982,6 +3982,35 @@ PyrSCS::ipNodeMap(
 }
 
 //--------------------------------------------------------------------------
+//-------- sidePcoords_to_elemPcoords --------------------------------------
+//--------------------------------------------------------------------------
+void 
+PyrSCS::sidePcoords_to_elemPcoords(
+  const int & side_ordinal,
+  const int & npoints,
+  const double *side_pcoords,
+  double *elem_pcoords)
+{
+  switch (side_ordinal) {
+  case 0:
+  case 1:
+  case 2:
+  case 3:
+    throw std::runtime_error("sidePcoords_to_elemPcoords: pyramid exposed boundary face must be a quad4");
+    break;
+  case 4:
+    for (int i=0; i<npoints; i++) {//face3: quad4
+      elem_pcoords[i*3+0] = side_pcoords[2*i+0];
+      elem_pcoords[i*3+1] = side_pcoords[2*i+1];
+      elem_pcoords[i*3+2] = 0.0;
+    }
+    break;
+  default:
+    throw std::runtime_error("PyrSCS::sidePcoords_to_elemPcoords invalid ordinal");
+  }
+}
+
+//--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 WedSCV::WedSCV()
@@ -4024,6 +4053,7 @@ WedSCV::~WedSCV()
 {
   // does nothing
 }
+
 //--------------------------------------------------------------------------
 //-------- ipNodeMap -------------------------------------------------------
 //--------------------------------------------------------------------------
