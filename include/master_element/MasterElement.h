@@ -9,10 +9,19 @@
 #ifndef MasterElement_h
 #define MasterElement_h
 
+#include <AlgTraits.h>
+
 #include <vector>
 #include <cstdlib>
 #include <stdexcept>
 #include <string>
+#include <array>
+
+#ifdef __INTEL_COMPILER
+#define POINTER_RESTRICT restrict
+#else
+#define POINTER_RESTRICT __restrict__
+#endif
 
 namespace stk {
 struct topology;
@@ -323,6 +332,8 @@ public:
 class HexahedralP2Element : public MasterElement
 {
 public:
+  using Traits = AlgTraitsHex27;
+
   HexahedralP2Element();
   virtual ~HexahedralP2Element() {}
 
@@ -370,8 +381,20 @@ protected:
     double* shape_fcn
   ) const;
 
+  double parametric_distance(const std::array<double, 3>& x);
+
+  virtual void interpolatePoint(
+    const int &nComp,
+    const double *isoParCoord,
+    const double *field,
+    double *result);
+
+  virtual double isInElement(
+    const double *elemNodalCoord,
+    const double *pointCoord,
+    double *isoParCoord);
+
   const double scsDist_;
-  const bool useGLLGLL_;
   const int nodes1D_;
   const int numQuad_;
 
@@ -417,8 +440,8 @@ private:
   void set_interior_info();
 
   double jacobian_determinant(
-    const double *elemNodalCoords,
-    const double *shapeDerivs ) const;
+    const double *POINTER_RESTRICT elemNodalCoords,
+    const double *POINTER_RESTRICT shapeDerivs ) const;
 
   std::vector<double> ipWeight_;
 };
@@ -491,22 +514,20 @@ public:
     const int ordinal, const int node);
 
   const int* side_node_ordinals(int sideOrdinal) final;
-
 private:
   void set_interior_info();
   void set_boundary_info();
 
-  void area_vector(
-    const Jacobian::Direction direction,
-    const double *elemNodalCoords,
-    double *shapeDeriv,
-    double *areaVector ) const;
+  template <Jacobian::Direction dir>
+  void area_vector(const double *POINTER_RESTRICT elemNodalCoords,
+    double *POINTER_RESTRICT shapeDeriv,
+    double *POINTER_RESTRICT areaVector ) const;
 
   void gradient(
-    const double* elemNodalCoords,
-    const double* shapeDeriv,
-    double* grad,
-    double* det_j ) const;
+    const double *POINTER_RESTRICT elemNodalCoords,
+    const double *POINTER_RESTRICT shapeDeriv,
+    double *POINTER_RESTRICT grad,
+    double *POINTER_RESTRICT det_j ) const;
 
   std::vector<ContourData> ipInfo_;
   int ipsPerFace_;
@@ -748,6 +769,18 @@ public:
 
   const int* side_node_ordinals(int sideOrdinal) final;
 
+  double parametric_distance(const std::array<double,3>& x);
+
+  double isInElement(
+    const double *elemNodalCoord,
+    const double *pointCoord,
+    double *isoParCoord);
+
+  void interpolatePoint(
+    const int &nComp,
+    const double *isoParCoord,
+    const double *field,
+    double *result);
 };
 
 // Wedge 6 subcontrol volume
@@ -1001,13 +1034,13 @@ public:
     double *elem_pcoords);
 
   const int* side_node_ordinals(int sideOrdinal) final;
-
-
 };
 
 class QuadrilateralP2Element : public MasterElement
 {
 public:
+  using Traits = AlgTraitsQuad9_2D;
+
   QuadrilateralP2Element();
   virtual ~QuadrilateralP2Element() {}
 
@@ -1038,6 +1071,19 @@ protected:
 
   double tensor_product_weight(int s1Node, int s1Ip) const;
 
+  double parametric_distance(const std::array<double, 2>& x);
+
+  virtual void interpolatePoint(
+    const int &nComp,
+    const double *isoParCoord,
+    const double *field,
+    double *result);
+
+  virtual double isInElement(
+    const double *elemNodalCoord,
+    const double *pointCoord,
+    double *isoParCoord);
+
   void eval_shape_functions_at_ips();
   void eval_shape_functions_at_shifted_ips();
 
@@ -1047,7 +1093,6 @@ protected:
   void eval_shape_derivs_at_face_ips();
 
   const double scsDist_;
-  bool useGLLGLL_;
   const int nodes1D_;
   int numQuad_;
 
@@ -1098,8 +1143,8 @@ private:
   void set_interior_info();
 
   double jacobian_determinant(
-    const double *elemNodalCoords,
-    const double *shapeDerivs ) const;
+    const double *POINTER_RESTRICT elemNodalCoords,
+    const double *POINTER_RESTRICT shapeDerivs ) const;
 
   std::vector<double> ipWeight_;
 };
@@ -1164,11 +1209,11 @@ private:
   void set_interior_info();
   void set_boundary_info();
 
-  void area_vector(
-    const Jacobian::Direction direction,
-    const double *elemNodalCoords,
-    double *shapeDeriv,
-    double *areaVector ) const;
+  template <Jacobian::Direction direction> void
+  area_vector(
+    const double *POINTER_RESTRICT elemNodalCoords,
+    double *POINTER_RESTRICT shapeDeriv,
+    double *POINTER_RESTRICT areaVector ) const;
 
   std::vector<ContourData> ipInfo_;
   int ipsPerFace_;
@@ -1397,9 +1442,9 @@ private:
   void eval_shape_derivs_at_shifted_ips() final;
 
   void area_vector(
-    const double *coords,
-    const double *shapeDerivs,
-    double *areaVector) const;
+    const double *POINTER_RESTRICT coords,
+    const double *POINTER_RESTRICT shapeDerivs,
+    double *POINTER_RESTRICT areaVector) const;
 
   void quad9_shape_fcn(
     int npts,
@@ -1546,9 +1591,9 @@ public:
 
 private:
   void area_vector(
-    const double *coords,
+    const double *POINTER_RESTRICT coords,
     const double s,
-    double *areaVector) const;
+    double *POINTER_RESTRICT areaVector) const;
 
   std::vector<double> ipWeight_;
 };

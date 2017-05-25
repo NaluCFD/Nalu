@@ -34,6 +34,18 @@ namespace nalu{
 
   double ddot(const double* u, const double* v, int n);
 
+  // computes b = A^-1 x;
+  void action_of_inverse22(
+    const double* POINTER_RESTRICT A,
+    const double* POINTER_RESTRICT x,
+    double*  POINTER_RESTRICT b);
+
+  // computes b = A^-1 x;
+  void action_of_inverse33(
+    const double* POINTER_RESTRICT A,
+    const double* POINTER_RESTRICT x,
+    double*  POINTER_RESTRICT b);
+
   bool isoparameteric_coordinates_for_point_3d(
     sierra::nalu::LagrangeBasis& basis,
     const double* POINTER_RESTRICT elemNodalCoords,

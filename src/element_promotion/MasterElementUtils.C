@@ -17,10 +17,12 @@
 #include <cmath>
 #include <memory>
 #include <stdexcept>
-#include <element_promotion/ElementDescription.h>
+
 
 namespace sierra{
 namespace nalu{
+
+
 
   double ddot(const double* u, const double* v, int n)
   {
@@ -49,16 +51,16 @@ namespace nalu{
 
     const double inv_detA = 1.0 / determinant33(A);
     b[X_RANK1] = ((A[YY] * A[ZZ] - A[YZ] * A[ZY]) * x[X_RANK1] + (A[XZ] * A[ZY] - A[XY] * A[ZZ]) * x[Y_RANK1] +
-        (A[XY] * A[YZ] - A[XZ] * A[YY]) * x[Z_RANK1]) *
-        inv_detA;
+                  (A[XY] * A[YZ] - A[XZ] * A[YY]) * x[Z_RANK1]) *
+                 inv_detA;
 
-    b[Y_RANK1] = ((A[YZ] * A[ZX] - A[YX] * A[ZZ]) * x[X_RANK1] + (A[XX] * A[ZZ] - A[XZ] * A[ZY]) * x[Y_RANK1] +
-        (A[YX] * A[ZY] - A[YY] * A[ZX]) * x[Z_RANK1]) *
-        inv_detA;
+    b[Y_RANK1] = ((A[YZ] * A[ZX] - A[YX] * A[ZZ]) * x[X_RANK1] + (A[XX] * A[ZZ] - A[XZ] * A[ZX]) * x[Y_RANK1] +
+                  (A[XZ] * A[YX] - A[XX] * A[YZ]) * x[Z_RANK1]) *
+                 inv_detA;
 
-    b[Z_RANK1] = ((A[YX] * A[ZY] - A[YY] * A[ZX]) * x[X_RANK1] + (A[XY] * A[XY] - A[ZX] * A[XX]) * x[Y_RANK1] +
-        (A[XX] * A[YY] - A[XY] * A[YX]) * x[Z_RANK1]) *
-        inv_detA;
+    b[Z_RANK1] = ((A[YX] * A[ZY] - A[YY] * A[ZX]) * x[X_RANK1] + (A[XY] * A[ZX] - A[XX] * A[ZY]) * x[Y_RANK1] +
+                  (A[XX] * A[YY] - A[XY] * A[YX]) * x[Z_RANK1]) *
+                 inv_detA;
   }
 
   double vecnorm_sq3(const double* x) {
@@ -97,15 +99,15 @@ namespace nalu{
       std::array<double, dim * dim> jact{};
       for(int j = 0; j < nNodes; ++j) {
         jact[0] += deriv[0 + j * dim] * elemNodalCoords[j + 0 * nNodes];
-        jact[1] += deriv[0 + j * dim] * elemNodalCoords[j + 1 * nNodes];
-        jact[2] += deriv[0 + j * dim] * elemNodalCoords[j + 2 * nNodes];
+        jact[1] += deriv[1 + j * dim] * elemNodalCoords[j + 0 * nNodes];
+        jact[2] += deriv[2 + j * dim] * elemNodalCoords[j + 0 * nNodes];
 
-        jact[3] += deriv[1 + j * dim] * elemNodalCoords[j + 0 * nNodes];
+        jact[3] += deriv[0 + j * dim] * elemNodalCoords[j + 1 * nNodes];
         jact[4] += deriv[1 + j * dim] * elemNodalCoords[j + 1 * nNodes];
-        jact[5] += deriv[1 + j * dim] * elemNodalCoords[j + 2 * nNodes];
+        jact[5] += deriv[2 + j * dim] * elemNodalCoords[j + 1 * nNodes];
 
-        jact[6] += deriv[2 + j * dim] * elemNodalCoords[j + 0 * nNodes];
-        jact[7] += deriv[2 + j * dim] * elemNodalCoords[j + 1 * nNodes];
+        jact[6] += deriv[0 + j * dim] * elemNodalCoords[j + 2 * nNodes];
+        jact[7] += deriv[1 + j * dim] * elemNodalCoords[j + 2 * nNodes];
         jact[8] += deriv[2 + j * dim] * elemNodalCoords[j + 2 * nNodes];
       }
 
@@ -186,9 +188,8 @@ namespace nalu{
       std::array<double, dim * dim> jact{};
       for(int j = 0; j < nNodes; ++j) {
         jact[0] += deriv[0 + j * dim] * elemNodalCoords[j + 0 * nNodes];
-        jact[1] += deriv[0 + j * dim] * elemNodalCoords[j + 1 * nNodes];
-
-        jact[2] += deriv[1 + j * dim] * elemNodalCoords[j + 0 * nNodes];
+        jact[1] += deriv[1 + j * dim] * elemNodalCoords[j + 0 * nNodes];
+        jact[2] += deriv[0 + j * dim] * elemNodalCoords[j + 1 * nNodes];
         jact[3] += deriv[1 + j * dim] * elemNodalCoords[j + 1 * nNodes];
       }
 
