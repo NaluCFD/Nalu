@@ -165,11 +165,11 @@ private:
   void set_interior_info();
   void set_boundary_info();
 
-  void area_vector(
-    const Jacobian::Direction direction,
-    const double* POINTER_RESTRICT elemNodalCoords,
-    double* POINTER_RESTRICT shapeDeriv,
-    std::array<double,3>& areaVector) const;
+  template <Jacobian::Direction direction> void
+  area_vector(
+    const double *POINTER_RESTRICT elemNodalCoords,
+    double *POINTER_RESTRICT shapeDeriv,
+    double *POINTER_RESTRICT areaVector) const;
 
   void gradient(
     const double* POINTER_RESTRICT elemNodalCoords,
@@ -372,11 +372,11 @@ private:
   void set_interior_info();
   void set_boundary_info();
 
-  void area_vector(
-    const Jacobian::Direction direction,
-    const double* POINTER_RESTRICT elemNodalCoords,
-    const double* POINTER_RESTRICT shapeDeriv,
-    std::array<double,2>& areaVector) const;
+  template <Jacobian::Direction direction> void
+  area_vector(
+    const double *POINTER_RESTRICT elemNodalCoords,
+    double *POINTER_RESTRICT shapeDeriv,
+    double *POINTER_RESTRICT normalVec ) const;
 
   void gradient(
     const double* POINTER_RESTRICT elemNodalCoords,
