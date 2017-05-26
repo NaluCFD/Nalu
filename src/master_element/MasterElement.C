@@ -3654,7 +3654,7 @@ PyrSCS::PyrSCS()
       0, 1, 4,    // ordinal 0
       1, 2, 4,    // ordinal 1
       2, 3, 4,    // ordinal 2
-      3, 0, 4,    // ordinal 3
+      0, 4, 3,    // ordinal 3
       0, 3, 2, 1  // ordinal 4
   };
 
@@ -3777,9 +3777,6 @@ void PyrSCS::face_grad_op(
   double dpsi[15];
   double grad[15];
 
-  if (face_ordinal != 4)
-    throw std::runtime_error("face_grad_op : pyramid exposed boundary face must be a quad");
-  
   for ( int n=0; n<nelem; n++ ) {
     
     for ( int k=0; k<npf; k++ ) {
