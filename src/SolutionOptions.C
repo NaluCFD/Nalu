@@ -394,12 +394,22 @@ SolutionOptions::load(const YAML::Node & y_node)
             }
           }
           
-          // look for centroid coordinates; optional
+          // look for centroid coordinates; optional, provide a default
           std::vector<double> cCoordsVec(3,0.0); 
           const YAML::Node coordsVecNode = y_option["centroid_coordinates"];
           if ( coordsVecNode ) {
             for ( size_t i = 0; i < coordsVecNode.size(); ++i )
               cCoordsVec[i] = coordsVecNode[i].as<double>();
+          }
+          
+          // check for calculation of centroid
+          bool computeCentroid = false;
+          get_if_present(y_option, "compute_centroid", computeCentroid, computeCentroid);
+          // user specified prevails
+          if ( coordsVecNode && computeCentroid ) {
+            NaluEnv::self().naluOutputP0() 
+              << "centroid_coordinates and compute_centroid both active, user-specified centroid will prevail" << std::endl;
+            computeCentroid = false;
           }
 
           // look for unit vector; provide default
@@ -414,7 +424,7 @@ SolutionOptions::load(const YAML::Node & y_node)
             unitVec[2] = 1.0;
           }
           
-          MeshMotionInfo *meshInfo = new MeshMotionInfo(meshMotionBlock, omega, cCoordsVec, unitVec);
+          MeshMotionInfo *meshInfo = new MeshMotionInfo(meshMotionBlock, omega, cCoordsVec, unitVec, computeCentroid);
           // set the map
           meshMotionInfoMap_[motionName] = meshInfo;
         }

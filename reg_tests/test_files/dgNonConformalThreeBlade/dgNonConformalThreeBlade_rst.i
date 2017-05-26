@@ -175,19 +175,19 @@ realms:
           target_name: [block_2]
           omega: 3.14
           unit_vector: [0.0,0.0,1.0]
-          centroid_coordinates: [-0.3, 0.0]
+          compute_centroid: yes
 
         - name: mmTop_ss7
           target_name: [block_3]
           omega: 6.28
           unit_vector: [0.0,0.0,1.0]
-          centroid_coordinates: [0.0, 0.125]
+          compute_centroid: yes
 
         - name: mmBot_ss6
           target_name: [block_4]
           omega: -1.57
           unit_vector: [0.0,0.0,1.0]
-          centroid_coordinates: [0.0, -0.125]
+          compute_centroid: yes
 
       options:
 
