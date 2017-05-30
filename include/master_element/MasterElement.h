@@ -767,6 +767,14 @@ public:
     double *det_j,
     double *error);
 
+  void general_face_grad_op(
+    const int face_ordinal,
+    const double *isoParCoord,
+    const double *coords,
+    double *gradop,
+    double *det_j,
+    double *error);
+
   const int* side_node_ordinals(int sideOrdinal) final;
 
   double parametric_distance(const std::array<double,3>& x);
