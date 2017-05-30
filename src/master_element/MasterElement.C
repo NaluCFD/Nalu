@@ -1110,7 +1110,6 @@ HexSCS::general_face_grad_op(
   const int nface = 1;
 
   double dpsi[24];
-  double grad[24];
 
   SIERRA_FORTRAN(hex_derivative)
     ( &nface, &isoParCoord[0], dpsi );
@@ -1120,14 +1119,11 @@ HexSCS::general_face_grad_op(
       &nodesPerElement_,
       &nface,
       dpsi,
-      &coords[0], grad, &det_j[0], error, &lerr );
+      &coords[0], &gradop[0], &det_j[0], error, &lerr );
   
   if ( lerr )
     std::cout << "HexSCS::general_face_grad_op: issue.." << std::endl;
   
-  for ( int j=0; j<24; j++) {
-    gradop[j] = grad[j];
-  }
 }
 
 //--------------------------------------------------------------------------
@@ -3351,7 +3347,6 @@ TetSCS::general_face_grad_op(
 
   const int nface = 1;
   double dpsi[12];
-  double grad[12];
 
   // derivatives are constant
   SIERRA_FORTRAN(tet_derivative)
@@ -3362,14 +3357,11 @@ TetSCS::general_face_grad_op(
       &nodesPerElement_,
       &nface,
       dpsi,
-      &coords[0], grad, &det_j[0], error, &lerr );
+      &coords[0], &gradop[0], &det_j[0], error, &lerr );
   
   if ( lerr )
     throw std::runtime_error("TetSCS::general_face_grad_op issue");
  
-  for ( int j=0; j<12; j++) {
-    gradop[j] = grad[j];
-  }
 }
 
 //--------------------------------------------------------------------------
@@ -3911,6 +3903,37 @@ double PyrSCS::isInElement(
     dist = parametric_distance(guess);
   }
   return dist;
+}
+
+//--------------------------------------------------------------------------
+//-------- general_face_grad_op --------------------------------------------
+//--------------------------------------------------------------------------
+void 
+PyrSCS::general_face_grad_op(
+  const int face_ordinal,
+  const double *isoParCoord,
+  const double *coords,
+  double *gradop,
+  double *det_j,
+  double *error)
+{
+  int lerr = 0;
+  const int nface = 1;
+
+  double dpsi[15];
+
+  pyr_derivative(nface, &isoParCoord[0], dpsi);
+      
+  SIERRA_FORTRAN(pyr_gradient_operator)
+    ( &nface,
+      &nodesPerElement_,
+      &nface,
+      dpsi,
+      &coords[0], &gradop[0], &det_j[0], error, &lerr );
+  
+  if ( lerr )
+    std::cout << "PyrSCS::general_face_grad_op: issue.." << std::endl;
+  
 }
 
 //--------------------------------------------------------------------------
@@ -4832,7 +4855,7 @@ WedSCS::general_face_grad_op(
 {
   int lerr = 0;
   const int nface = 1;
-  double dpsi[18], grad[18];
+  double dpsi[18];
       
   wedge_derivative(nface, &isoParCoord[0], dpsi);
       
@@ -4841,14 +4864,11 @@ WedSCS::general_face_grad_op(
       &nodesPerElement_,
       &nface,
       dpsi,
-      &coords[0], grad, &det_j[0], error, &lerr );
+      &coords[0], &gradop[0], &det_j[0], error, &lerr );
       
   if ( lerr )
     std::cout << "problem with EwedSCS::general_face_grad" << std::endl;
   
-  for ( int j=0; j<18; ++j) {
-    gradop[j] = grad[j];
-  }  
 }
 
 //--------------------------------------------------------------------------
@@ -5494,7 +5514,6 @@ Quad2DSCS::general_face_grad_op(
   const int nface = 1;
 
   double dpsi[8];
-  double grad[8];
 
   SIERRA_FORTRAN(quad_derivative)
     ( &nface, &isoParCoord[0], dpsi );
@@ -5504,14 +5523,11 @@ Quad2DSCS::general_face_grad_op(
       &nodesPerElement_,
       &nface,
       dpsi,
-      &coords[0], grad, &det_j[0], error, &lerr );
+      &coords[0], &gradop[0], &det_j[0], error, &lerr );
   
   if ( lerr )
     std::cout << "Quad2DSCS::general_face_grad_op: issue.." << std::endl;
   
-  for ( int j=0; j<8; j++) {
-    gradop[j] = grad[j];
-  }
 }
 
 //--------------------------------------------------------------------------
@@ -7093,7 +7109,6 @@ Tri2DSCS::general_face_grad_op(
   
   const int nface = 1;
   double dpsi[6];
-  double grad[6];
   
   // derivatives are constant
   SIERRA_FORTRAN(tri_derivative)
@@ -7104,14 +7119,11 @@ Tri2DSCS::general_face_grad_op(
       &nodesPerElement_,
       &nface,
       dpsi,
-      &coords[0], grad, &det_j[0], error, &lerr );
+      &coords[0], &gradop[0], &det_j[0], error, &lerr );
       
   if ( lerr )
     std::cout << "sorry, issue with face_grad_op.." << std::endl;
   
-  for ( int j=0; j<6; j++) {
-    gradop[j] = grad[j];
-  }
 }
 
 
