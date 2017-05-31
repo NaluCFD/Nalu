@@ -74,11 +74,17 @@ void perturb_coord_hex_8(stk::mesh::BulkData& bulk, double perturbSize)
 
 void fill_hex8_mesh(const std::string& meshSpec, stk::mesh::BulkData& bulk)
 {
+    auto& meta = bulk.mesh_meta_data();
+    auto& surfPart = meta.declare_part_with_topology("surface_1", stk::topology::QUAD_4);
+
     stk::io::StkMeshIoBroker io(bulk.parallel());
     io.set_bulk_data(bulk);
     io.add_mesh_database(meshSpec, stk::io::READ_MESH);
     io.create_input_mesh();
     io.populate_bulk_data();
+
+    auto& blockPart = meta.get_topology_root_part(stk::topology::HEX_8);
+    stk::mesh::create_exposed_block_boundary_sides(bulk,  blockPart, {&surfPart});
 }
 
 void fill_and_promote_hex_mesh(const std::string& meshSpec, stk::mesh::BulkData& bulk, int polyOrder)
@@ -115,6 +121,19 @@ void fill_and_promote_hex_mesh(const std::string& meshSpec, stk::mesh::BulkData&
     VectorFieldType* coords = meta.get_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates");
     stk::mesh::PartVector baseParts = {blockPart, surfPart};
     sierra::nalu::promotion::promote_elements(bulk, *elemDesc, *coords, baseParts, edgePart, facePart);
+}
+
+void dump_mesh(stk::mesh::BulkData& bulk, std::vector<stk::mesh::FieldBase*> fields)
+{
+  stk::io::StkMeshIoBroker io(bulk.parallel());
+  io.set_bulk_data(bulk);
+  auto fileId = io.create_output_mesh("out.e", stk::io::WRITE_RESULTS);
+
+  for (auto* field : fields) {
+    io.add_field(fileId, *field);
+  }
+
+  io.process_output_request(fileId, 0.0);
 }
 
 void dump_promoted_mesh_file(stk::mesh::BulkData& bulk, int polyOrder)
@@ -429,7 +448,6 @@ stk::mesh::Entity create_one_perturbed_element(stk::mesh::BulkData& bulk, stk::t
 
   return create_one_element(bulk, topo, nodeLocations);
 }
-
 
 double linear(double a, const double* b, const double* x) {
   return (a + b[0]*x[0] + b[1]*x[1] + b[2]*x[2]);

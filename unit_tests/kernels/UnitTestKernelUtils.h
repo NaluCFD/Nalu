@@ -88,6 +88,22 @@ void calc_mass_flow_rate_scs(
   const VectorFieldType&,
   const GenericFieldType&);
 
+void calc_projected_nodal_gradient(
+  const stk::mesh::BulkData& bulk,
+  const stk::topology& topo,
+  const VectorFieldType& coordinates,
+  ScalarFieldType& dualNodalVolume,
+  const ScalarFieldType& scalarField,
+  VectorFieldType& vectorField);
+
+void calc_projected_nodal_gradient(
+  const stk::mesh::BulkData& bulk,
+  const stk::topology& topo,
+  const VectorFieldType& coordinates,
+  ScalarFieldType& dualNodalVolume,
+  const VectorFieldType& vectorField,
+  GenericFieldType& tensorField);
+
 void expect_all_near(
   const sierra::nalu::SharedMemView<double*>& calcValue,
   const double* exactValue,
@@ -468,6 +484,7 @@ public:
                                                               "effective_viscosity")),
     massFlowRate_(&meta_.declare_field<GenericFieldType>(stk::topology::ELEM_RANK, 
                                                          "mass_flow_rate_scs")),
+
     znot_(1.0),
     amf_(2.0),
     lamSc_(0.9),
