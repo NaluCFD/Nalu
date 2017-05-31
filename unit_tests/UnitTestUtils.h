@@ -19,6 +19,8 @@ typedef stk::mesh::Field<double,stk::mesh::Cartesian> VectorFieldType;
 typedef stk::mesh::Field<double,stk::mesh::Cartesian,stk::mesh::Cartesian> TensorFieldType;
 typedef stk::mesh::Field<double, stk::mesh::SimpleArrayTag>  GenericFieldType;
 
+namespace stk { namespace mesh { class FieldBase; } }
+
 namespace unit_test_utils {
 
 void fill_mesh_1_elem_per_proc_hex8(stk::mesh::BulkData& bulk);
@@ -27,6 +29,8 @@ void perturb_coord_hex_8(stk::mesh::BulkData& bulk, double perturbationSize = 0.
 
 
 void fill_and_promote_hex_mesh(const std::string& meshSpec, stk::mesh::BulkData& bulk, int polyOrder);
+
+void dump_mesh(stk::mesh::BulkData& bulk, std::vector<stk::mesh::FieldBase*> fields);
 
 void dump_promoted_mesh_file(stk::mesh::BulkData& bulk, int polyOrder);
 
