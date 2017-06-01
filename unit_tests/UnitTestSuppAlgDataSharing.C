@@ -67,13 +67,13 @@ public:
   {
     unsigned nodesPerElem = topo.num_nodes();
 
-    SharedMemView<double*>& nodalScalarView = elemData.get_scratch_view_1D(*nodalScalarField);
-    SharedMemView<double**>& nodalVectorView = elemData.get_scratch_view_2D(*nodalVectorField);
-    SharedMemView<double***>& nodalTensorView = elemData.get_scratch_view_3D(*nodalTensorField);
+    SharedMemView<DoubleType*>& nodalScalarView = elemData.get_scratch_view_1D(*nodalScalarField);
+    SharedMemView<DoubleType**>& nodalVectorView = elemData.get_scratch_view_2D(*nodalVectorField);
+    SharedMemView<DoubleType***>& nodalTensorView = elemData.get_scratch_view_3D(*nodalTensorField);
 
-    SharedMemView<double*>& elemScalarView = elemData.get_scratch_view_1D(*elemScalarField);
-    SharedMemView<double*>& elemVectorView = elemData.get_scratch_view_1D(*elemVectorField);
-    SharedMemView<double**>& elemTensorView = elemData.get_scratch_view_2D(*elemTensorField);
+    SharedMemView<DoubleType*>& elemScalarView = elemData.get_scratch_view_1D(*elemScalarField);
+    SharedMemView<DoubleType*>& elemVectorView = elemData.get_scratch_view_1D(*elemVectorField);
+    SharedMemView<DoubleType**>& elemTensorView = elemData.get_scratch_view_2D(*elemTensorField);
 
     EXPECT_EQ(nodesPerElem, nodalScalarView.dimension(0));
     EXPECT_EQ(nodesPerElem, nodalVectorView.dimension(0));

@@ -105,8 +105,8 @@ AssembleElemSolverAlgorithm::execute()
     sierra::nalu::ScratchViews prereqData(team, bulk_data, topo_, dataNeededBySuppAlgs_);
 
     SharedMemView<int*> scratchIds = get_int_shmem_view_1D(team, scratchIdsSize);
-    SharedMemView<double*> rhs = get_shmem_view_1D(team, rhsSize_);
-    SharedMemView<double**> lhs = get_shmem_view_2D(team, rhsSize_, rhsSize_);
+    SharedMemView<DoubleType*> rhs = get_shmem_view_1D(team, rhsSize_);
+    SharedMemView<DoubleType**> lhs = get_shmem_view_2D(team, rhsSize_, rhsSize_);
 
     const stk::mesh::Bucket::size_type length   = b.size();
     team.team_barrier();
