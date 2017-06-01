@@ -67,16 +67,16 @@ ScalarAdvDiffElemKernel<AlgTraits>::~ScalarAdvDiffElemKernel()
 template<typename AlgTraits>
 void
 ScalarAdvDiffElemKernel<AlgTraits>::execute(
-  SharedMemView<double**>& lhs,
-  SharedMemView<double*>& rhs,
+  SharedMemView<DoubleType**>& lhs,
+  SharedMemView<DoubleType*>& rhs,
   ScratchViews& scratchViews)
 {
-  SharedMemView<double*>& v_scalarQ = scratchViews.get_scratch_view_1D(*scalarQ_);
-  SharedMemView<double*>& v_diffFluxCoeff = scratchViews.get_scratch_view_1D(*diffFluxCoeff_);
-  SharedMemView<double*>& v_mdot = scratchViews.get_scratch_view_1D(*massFlowRate_);
+  SharedMemView<DoubleType*>& v_scalarQ = scratchViews.get_scratch_view_1D(*scalarQ_);
+  SharedMemView<DoubleType*>& v_diffFluxCoeff = scratchViews.get_scratch_view_1D(*diffFluxCoeff_);
+  SharedMemView<DoubleType*>& v_mdot = scratchViews.get_scratch_view_1D(*massFlowRate_);
 
-  SharedMemView<double**>& v_scs_areav = scratchViews.get_me_views(CURRENT_COORDINATES).scs_areav;
-  SharedMemView<double***>& v_dndx = shiftedGradOp_ 
+  SharedMemView<DoubleType**>& v_scs_areav = scratchViews.get_me_views(CURRENT_COORDINATES).scs_areav;
+  SharedMemView<DoubleType***>& v_dndx = shiftedGradOp_
     ? scratchViews.get_me_views(CURRENT_COORDINATES).dndx_shifted 
     : scratchViews.get_me_views(CURRENT_COORDINATES).dndx;
 
@@ -88,27 +88,27 @@ ScalarAdvDiffElemKernel<AlgTraits>::execute(
     const int ir = lrscv_[2*ip+1];
 
     // save off mdot
-    const double tmdot = v_mdot(ip);
+    const DoubleType tmdot = v_mdot(ip);
 
     // compute ip property and
-    double diffFluxCoeffIp = 0.0;
+    DoubleType diffFluxCoeffIp = 0.0;
     for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
-      const double r = v_shape_function_(ip,ic);
+      const DoubleType r = v_shape_function_(ip,ic);
       diffFluxCoeffIp += r*v_diffFluxCoeff(ic);
     }
 
     // advection and diffusion
-    double qAdv = 0.0;
-    double qDiff = 0.0;
+    DoubleType qAdv = 0.0;
+    DoubleType qDiff = 0.0;
     for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
 
       // advection
-      const double r = v_shape_function_(ip,ic);
-      const double lhsfacAdv = r*tmdot;
+      const DoubleType r = v_shape_function_(ip,ic);
+      const DoubleType lhsfacAdv = r*tmdot;
       qAdv += lhsfacAdv*v_scalarQ(ic);
 
       // diffusion
-      double lhsfacDiff = 0.0;
+      DoubleType lhsfacDiff = 0.0;
       for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
         lhsfacDiff += -diffFluxCoeffIp*v_dndx(ip,ic,j)*v_scs_areav(ip,j);
       }
