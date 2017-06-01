@@ -110,20 +110,20 @@ ScalarUpwAdvDiffElemKernel<AlgTraits>::setup(const TimeIntegrator&)
 template<typename AlgTraits>
 void
 ScalarUpwAdvDiffElemKernel<AlgTraits>::execute(
-  SharedMemView<double**>& lhs,
-  SharedMemView<double*>& rhs,
+  SharedMemView<DoubleType**>& lhs,
+  SharedMemView<DoubleType*>& rhs,
   ScratchViews& scratchViews)
 {
-  SharedMemView<double**>& v_velocityRTM = scratchViews.get_scratch_view_2D(*velocityRTM_);
-  SharedMemView<double**>& v_coordinates = scratchViews.get_scratch_view_2D(*coordinates_);
-  SharedMemView<double**>& v_Gjq = scratchViews.get_scratch_view_2D(*Gjq_);
-  SharedMemView<double*>& v_scalarQ = scratchViews.get_scratch_view_1D(*scalarQ_);
-  SharedMemView<double*>& v_density = scratchViews.get_scratch_view_1D(*density_);
-  SharedMemView<double*>& v_diffFluxCoeff = scratchViews.get_scratch_view_1D(*diffFluxCoeff_);
-  SharedMemView<double*>& v_mdot = scratchViews.get_scratch_view_1D(*massFlowRate_);
+  SharedMemView<DoubleType**>& v_velocityRTM = scratchViews.get_scratch_view_2D(*velocityRTM_);
+  SharedMemView<DoubleType**>& v_coordinates = scratchViews.get_scratch_view_2D(*coordinates_);
+  SharedMemView<DoubleType**>& v_Gjq = scratchViews.get_scratch_view_2D(*Gjq_);
+  SharedMemView<DoubleType*>& v_scalarQ = scratchViews.get_scratch_view_1D(*scalarQ_);
+  SharedMemView<DoubleType*>& v_density = scratchViews.get_scratch_view_1D(*density_);
+  SharedMemView<DoubleType*>& v_diffFluxCoeff = scratchViews.get_scratch_view_1D(*diffFluxCoeff_);
+  SharedMemView<DoubleType*>& v_mdot = scratchViews.get_scratch_view_1D(*massFlowRate_);
 
-  SharedMemView<double**>& v_scs_areav = scratchViews.get_me_views(CURRENT_COORDINATES).scs_areav;
-  SharedMemView<double***>& v_dndx = shiftedGradOp_ 
+  SharedMemView<DoubleType**>& v_scs_areav = scratchViews.get_me_views(CURRENT_COORDINATES).scs_areav;
+  SharedMemView<DoubleType***>& v_dndx = shiftedGradOp_
     ? scratchViews.get_me_views(CURRENT_COORDINATES).dndx_shifted 
     : scratchViews.get_me_views(CURRENT_COORDINATES).dndx;
 
@@ -135,7 +135,7 @@ ScalarUpwAdvDiffElemKernel<AlgTraits>::execute(
     const int ir = lrscv_[2*ip+1];
 
     // save off mdot
-    const double tmdot = v_mdot(ip);
+    const DoubleType tmdot = v_mdot(ip);
 
     // zero out values of interest for this ip
     for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
@@ -143,11 +143,11 @@ ScalarUpwAdvDiffElemKernel<AlgTraits>::execute(
     }
 
     // compute ip property and
-    double qIp = 0.0;
-    double rhoIp = 0.0;
-    double diffFluxCoeffIp = 0.0;
+    DoubleType qIp = 0.0;
+    DoubleType rhoIp = 0.0;
+    DoubleType diffFluxCoeffIp = 0.0;
     for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
-      const double r = v_shape_function_(ip,ic);
+      const DoubleType r = v_shape_function_(ip,ic);
       qIp += r*v_scalarQ(ic);
       rhoIp += r*v_density(ic);
       diffFluxCoeffIp += r*v_diffFluxCoeff(ic);
@@ -157,86 +157,86 @@ ScalarUpwAdvDiffElemKernel<AlgTraits>::execute(
     }
 
     // Peclet factor; along the edge
-    const double diffIp = 0.5*(v_diffFluxCoeff(il)/v_density(il)
+    const DoubleType diffIp = 0.5*(v_diffFluxCoeff(il)/v_density(il)
                                + v_diffFluxCoeff(ir)/v_density(ir));
-    double udotx = 0.0;
+    DoubleType udotx = 0.0;
     for(int j = 0; j < AlgTraits::nDim_; ++j ) {
-      const double dxj = v_coordinates(ir,j) - v_coordinates(il,j);;
-      const double uj = 0.5*(v_velocityRTM(il,j) + v_velocityRTM(ir,j));
+      const DoubleType dxj = v_coordinates(ir,j) - v_coordinates(il,j);;
+      const DoubleType uj = 0.5*(v_velocityRTM(il,j) + v_velocityRTM(ir,j));
       udotx += uj*dxj;
     }
-    const double pecfac = pecletFunction_->execute(std::abs(udotx)/(diffIp+small_));
-    const double om_pecfac = 1.0-pecfac;
+    const DoubleType pecfac = pecletFunction_->execute(std::abs(udotx)/(diffIp+small_));
+    const DoubleType om_pecfac = 1.0-pecfac;
 
     // left and right extrapolation
-    double dqL = 0.0;
-    double dqR = 0.0;
+    DoubleType dqL = 0.0;
+    DoubleType dqR = 0.0;
     for(int j = 0; j < AlgTraits::nDim_; ++j ) {
-      const double dxjL = v_coordIp_(j) - v_coordinates(il,j);
-      const double dxjR = v_coordinates(ir,j) - v_coordIp_(j);
+      const DoubleType dxjL = v_coordIp_(j) - v_coordinates(il,j);
+      const DoubleType dxjR = v_coordinates(ir,j) - v_coordIp_(j);
       dqL += dxjL*v_Gjq(il,j);
       dqR += dxjR*v_Gjq(ir,j);
     }
 
     // add limiter if appropriate
-    double limitL = 1.0;
-    double limitR = 1.0;
+    DoubleType limitL = 1.0;
+    DoubleType limitR = 1.0;
     if ( useLimiter_ ) {
-      const double dq = v_scalarQ(ir) - v_scalarQ(il);
-      const double dqMl = 2.0*2.0*dqL - dq;
-      const double dqMr = 2.0*2.0*dqR - dq;
+      const DoubleType dq = v_scalarQ(ir) - v_scalarQ(il);
+      const DoubleType dqMl = 2.0*2.0*dqL - dq;
+      const DoubleType dqMr = 2.0*2.0*dqR - dq;
       limitL = van_leer(dqMl, dq);
       limitR = van_leer(dqMr, dq);
     }
 
     // extrapolated; for now limit (along edge is fine)
-    const double qIpL = v_scalarQ(il) + dqL*hoUpwind_*limitL;
-    const double qIpR = v_scalarQ(ir) - dqR*hoUpwind_*limitR;
+    const DoubleType qIpL = v_scalarQ(il) + dqL*hoUpwind_*limitL;
+    const DoubleType qIpR = v_scalarQ(ir) - dqR*hoUpwind_*limitR;
 
     // upwind
-    const double qUpwind = (tmdot > 0) ? alphaUpw_*qIpL + om_alphaUpw_*qIp
+    const DoubleType qUpwind = (tmdot > 0) ? alphaUpw_*qIpL + om_alphaUpw_*qIp
       : alphaUpw_*qIpR + om_alphaUpw_*qIp;
 
     // generalized central (2nd and 4th order)
-    const double qHatL = alpha_*qIpL + om_alpha_*qIp;
-    const double qHatR = alpha_*qIpR + om_alpha_*qIp;
-    const double qCds = 0.5*(qHatL + qHatR);
+    const DoubleType qHatL = alpha_*qIpL + om_alpha_*qIp;
+    const DoubleType qHatR = alpha_*qIpR + om_alpha_*qIp;
+    const DoubleType qCds = 0.5*(qHatL + qHatR);
 
     // total advection
-    const double aflux = tmdot*(pecfac*qUpwind + om_pecfac*qCds);
+    const DoubleType aflux = tmdot*(pecfac*qUpwind + om_pecfac*qCds);
 
     // right hand side; L and R
     rhs(il) -= aflux;
     rhs(ir) += aflux;
 
     // upwind advection (includes 4th); left node
-    const double alhsfacL = 0.5*(tmdot+std::abs(tmdot))*pecfac*alphaUpw_
+    const DoubleType alhsfacL = 0.5*(tmdot+std::abs(tmdot))*pecfac*alphaUpw_
       + 0.5*alpha_*om_pecfac*tmdot;
     lhs(il,il) += alhsfacL;
     lhs(ir,il) -= alhsfacL;
 
     // upwind advection; right node
-    const double alhsfacR = 0.5*(tmdot-std::abs(tmdot))*pecfac*alphaUpw_
+    const DoubleType alhsfacR = 0.5*(tmdot-std::abs(tmdot))*pecfac*alphaUpw_
       + 0.5*alpha_*om_pecfac*tmdot;
     lhs(ir,ir) -= alhsfacR;
     lhs(il,ir) += alhsfacR;
 
     // advection and diffusion
-    double qDiff = 0.0;
+    DoubleType qDiff = 0.0;
     for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
 
       // shape function
-      const double r = v_shape_function_(ip,ic);
+      const DoubleType r = v_shape_function_(ip,ic);
 
       // upwind (il/ir) handled above; collect terms on alpha and alphaUpw
-      const double lhsfacAdv = r*tmdot*(pecfac*om_alphaUpw_ + om_pecfac*om_alpha_);
+      const DoubleType lhsfacAdv = r*tmdot*(pecfac*om_alphaUpw_ + om_pecfac*om_alpha_);
 
       // advection operator lhs; rhs handled above
       lhs(il,ic) += lhsfacAdv;
       lhs(ir,ic) -= lhsfacAdv;
 
       // diffusion
-      double lhsfacDiff = 0.0;
+      DoubleType lhsfacDiff = 0.0;
       for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
         lhsfacDiff += -diffFluxCoeffIp*v_dndx(ip,ic,j)*v_scs_areav(ip,j);
       }
@@ -254,12 +254,12 @@ ScalarUpwAdvDiffElemKernel<AlgTraits>::execute(
 }
 
 template<class AlgTraits>
-double
+DoubleType
 ScalarUpwAdvDiffElemKernel<AlgTraits>::van_leer(
-  const double &dqm,
-  const double &dqp)
+  const DoubleType &dqm,
+  const DoubleType &dqp)
 {
-  double limit = (2.0*(dqm*dqp+std::abs(dqm*dqp))) /
+  DoubleType limit = (2.0*(dqm*dqp+std::abs(dqm*dqp))) /
     ((dqm+dqp)*(dqm+dqp)+small_);
   return limit;
 }

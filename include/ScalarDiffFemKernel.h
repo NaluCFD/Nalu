@@ -45,8 +45,8 @@ public:
    *  the linear solve
    */
   virtual void execute(
-    SharedMemView<double**>&,
-    SharedMemView<double*>&,
+    SharedMemView<DoubleType**>&,
+    SharedMemView<DoubleType*>&,
     ScratchViews&);
 
 private:
@@ -63,7 +63,7 @@ private:
   const bool shiftedGradOp_;
   
   /// Shape functions
-  Kokkos::View<double[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_ { "v_shape_func" };
+  Kokkos::View<DoubleType[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_ { "v_shape_func" };
 };
 
 }  // nalu

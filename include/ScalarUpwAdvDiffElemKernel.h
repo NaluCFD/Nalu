@@ -49,8 +49,8 @@ public:
    *  the linear solve
    */
   virtual void execute(
-    SharedMemView<double**>&,
-    SharedMemView<double*>&,
+    SharedMemView<DoubleType**>&,
+    SharedMemView<DoubleType*>&,
     ScratchViews&);
 
   virtual double van_leer(
@@ -89,10 +89,10 @@ private:
   PecletFunction* pecletFunction_{nullptr};
 
   /// Shape functions
-  Kokkos::View<double[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_ { "view_shape_func" };
+  Kokkos::View<DoubleType[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_ { "view_shape_func" };
 
   /// Scratch space to hold coordinates at the integration point
-  Kokkos::View<double[AlgTraits::nDim_]> v_coordIp_{"v_coordIp"};
+  Kokkos::View<DoubleType[AlgTraits::nDim_]> v_coordIp_{"v_coordIp"};
 };
 
 }  // nalu

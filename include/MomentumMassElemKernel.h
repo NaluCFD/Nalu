@@ -47,8 +47,8 @@ public:
    *  the linear solve
    */
   virtual void execute(
-    SharedMemView<double**>&,
-    SharedMemView<double*>&,
+    SharedMemView<DoubleType**>&,
+    SharedMemView<DoubleType*>&,
     ScratchViews&);
 
 private:
@@ -72,13 +72,13 @@ private:
   /// Integration point to node mapping
   const int* ipNodeMap_;
 
-  Kokkos::View<double[AlgTraits::nDim_]> v_uNm1_ {"v_uNm1"};
-  Kokkos::View<double[AlgTraits::nDim_]> v_uN_   {"v_uN"};
-  Kokkos::View<double[AlgTraits::nDim_]> v_uNp1_ {"v_uNp1"};
-  Kokkos::View<double[AlgTraits::nDim_]> v_Gjp_  {"v_Gjp"};
+  Kokkos::View<DoubleType[AlgTraits::nDim_]> v_uNm1_ {"v_uNm1"};
+  Kokkos::View<DoubleType[AlgTraits::nDim_]> v_uN_   {"v_uN"};
+  Kokkos::View<DoubleType[AlgTraits::nDim_]> v_uNp1_ {"v_uNp1"};
+  Kokkos::View<DoubleType[AlgTraits::nDim_]> v_Gjp_  {"v_Gjp"};
 
   /// Shape functions
-  Kokkos::View<double[AlgTraits::numScvIp_][AlgTraits::nodesPerElement_]> v_shape_function_ {"view_shape_func"};
+  Kokkos::View<DoubleType[AlgTraits::numScvIp_][AlgTraits::nodesPerElement_]> v_shape_function_ {"view_shape_func"};
 };
 
 }  // nalu

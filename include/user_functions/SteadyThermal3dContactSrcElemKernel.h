@@ -36,8 +36,8 @@ public:
   virtual ~SteadyThermal3dContactSrcElemKernel() {}
 
   virtual void execute(
-    SharedMemView<double**>&,
-    SharedMemView<double*>&,
+    SharedMemView<DoubleType**>&,
+    SharedMemView<DoubleType*>&,
     ScratchViews&);
 
 private:

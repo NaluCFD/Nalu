@@ -9,6 +9,7 @@
 #define KERNEL_H
 
 #include "KokkosInterface.h"
+#include "SimdInterface.h"
 
 #include <stk_mesh/base/Entity.hpp>
 
@@ -39,8 +40,8 @@ public:
    *  the linear solve
    */
   virtual void execute(
-    SharedMemView<double**>&,
-    SharedMemView<double*>&,
+    SharedMemView<DoubleType**>&,
+    SharedMemView<DoubleType*>&,
     ScratchViews&)
   {}
 };

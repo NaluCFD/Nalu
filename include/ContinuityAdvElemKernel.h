@@ -46,8 +46,8 @@ public:
    *  the linear solve
    */
   virtual void execute(
-    SharedMemView<double**>&,
-    SharedMemView<double*>&,
+    SharedMemView<DoubleType**>&,
+    SharedMemView<DoubleType*>&,
     ScratchViews&);
 
 private:
@@ -70,13 +70,13 @@ private:
   const double om_interpTogether_;
 
   // fixed size
-  Kokkos::View<double[AlgTraits::nDim_]> v_uIp_{"view_uIp"};
-  Kokkos::View<double[AlgTraits::nDim_]> v_rho_uIp_{"view_rhoUIp"};
-  Kokkos::View<double[AlgTraits::nDim_]> v_Gpdx_Ip_{"view_GpdxIp"};
-  Kokkos::View<double[AlgTraits::nDim_]> v_dpdxIp_{"view_dpdxIp"};
+  Kokkos::View<DoubleType[AlgTraits::nDim_]> v_uIp_{"view_uIp"};
+  Kokkos::View<DoubleType[AlgTraits::nDim_]> v_rho_uIp_{"view_rhoUIp"};
+  Kokkos::View<DoubleType[AlgTraits::nDim_]> v_Gpdx_Ip_{"view_GpdxIp"};
+  Kokkos::View<DoubleType[AlgTraits::nDim_]> v_dpdxIp_{"view_dpdxIp"};
 
   // scratch space
-  Kokkos::View<double[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_ { "view_shape_func" };
+  Kokkos::View<DoubleType[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_ { "view_shape_func" };
 
   const int* lrscv_;
 };

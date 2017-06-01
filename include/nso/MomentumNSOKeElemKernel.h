@@ -42,8 +42,8 @@ public:
   virtual ~MomentumNSOKeElemKernel() {}
 
   virtual void execute(
-    SharedMemView<double**>&,
-    SharedMemView<double*>&,
+    SharedMemView<DoubleType**>&,
+    SharedMemView<DoubleType*>&,
     ScratchViews&);
 
 private:
@@ -66,13 +66,13 @@ private:
   const bool shiftedGradOp_;
 
   // fixed scratch space
-  Kokkos::View<double[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_{"v_shape_function"};
-  Kokkos::View<double[AlgTraits::nodesPerElement_]> v_ke_{"v_ke"};
-  Kokkos::View<double[AlgTraits::nDim_]> v_rhoVrtmScs_{"v_rhoVrtmScs"};
-  Kokkos::View<double[AlgTraits::nDim_]> v_uNp1Scs_{"v_uNp1Scs"};
-  Kokkos::View<double[AlgTraits::nDim_]> v_dpdxScs_{"v_dpdxScs"};
-  Kokkos::View<double[AlgTraits::nDim_]> v_GjpScs_{"v_GjpScs"};
-  Kokkos::View<double[AlgTraits::nDim_]> v_dkedxScs_{"v_dkedxScs_"};
+  Kokkos::View<DoubleType[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_{"v_shape_function"};
+  Kokkos::View<DoubleType[AlgTraits::nodesPerElement_]> v_ke_{"v_ke"};
+  Kokkos::View<DoubleType[AlgTraits::nDim_]> v_rhoVrtmScs_{"v_rhoVrtmScs"};
+  Kokkos::View<DoubleType[AlgTraits::nDim_]> v_uNp1Scs_{"v_uNp1Scs"};
+  Kokkos::View<DoubleType[AlgTraits::nDim_]> v_dpdxScs_{"v_dpdxScs"};
+  Kokkos::View<DoubleType[AlgTraits::nDim_]> v_GjpScs_{"v_GjpScs"};
+  Kokkos::View<DoubleType[AlgTraits::nDim_]> v_dkedxScs_{"v_dkedxScs_"};
 };
 
 }  // nalu
