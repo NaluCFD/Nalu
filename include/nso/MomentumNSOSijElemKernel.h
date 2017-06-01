@@ -40,8 +40,8 @@ public:
   virtual ~MomentumNSOSijElemKernel() {}
 
   virtual void execute(
-    SharedMemView<double**>&,
-    SharedMemView<double*>&,
+    SharedMemView<DoubleType**>&,
+    SharedMemView<DoubleType*>&,
     ScratchViews&);
 
 private:
@@ -63,7 +63,7 @@ private:
   const bool shiftedGradOp_;
 
   // fixed scratch space
-  Kokkos::View<double[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_{"v_shape_function"};
+  Kokkos::View<DoubleType[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_{"v_shape_function"};
 };
 
 }  // nalu

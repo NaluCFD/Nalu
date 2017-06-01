@@ -41,8 +41,8 @@ public:
    *  the linear solve
    */
   virtual void execute(
-    SharedMemView<double**>&,
-    SharedMemView<double*>&,
+    SharedMemView<DoubleType**>&,
+    SharedMemView<DoubleType*>&,
     ScratchViews&);
 
 private:
@@ -52,12 +52,12 @@ private:
   VectorFieldType *coordinates_{nullptr};
 
   double rhoRef_;
-  Kokkos::View<double[AlgTraits::nDim_]> gravity_{ "v_gravity"};
+  Kokkos::View<DoubleType[AlgTraits::nDim_]> gravity_{ "v_gravity"};
 
   const int* ipNodeMap_;
 
   // scratch space
-  Kokkos::View<double[AlgTraits::numScvIp_][AlgTraits::nodesPerElement_]> v_shape_function_ { "v_shape_func" };
+  Kokkos::View<DoubleType[AlgTraits::numScvIp_][AlgTraits::nodesPerElement_]> v_shape_function_ { "v_shape_func" };
 };
 
 }  // nalu
