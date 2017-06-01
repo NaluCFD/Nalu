@@ -34,10 +34,10 @@ void element_discrete_laplacian_kernel_3d(
 
     const int* lrscv = meSCS.adjacentNodes();
 
-    sierra::nalu::SharedMemView<double*>& elemNodePressures = elemData.get_scratch_view_1D(*nodalPressureField);
-    sierra::nalu::SharedMemView<double**>& scs_areav =
+    sierra::nalu::SharedMemView<DoubleType*>& elemNodePressures = elemData.get_scratch_view_1D(*nodalPressureField);
+    sierra::nalu::SharedMemView<DoubleType**>& scs_areav =
       elemData.get_me_views(sierra::nalu::CURRENT_COORDINATES).scs_areav;
-    sierra::nalu::SharedMemView<double***>& dndx =
+    sierra::nalu::SharedMemView<DoubleType***>& dndx =
       elemData.get_me_views(sierra::nalu::CURRENT_COORDINATES).dndx;
     const stk::mesh::Entity* elemNodes = elemData.elemNodes;
 

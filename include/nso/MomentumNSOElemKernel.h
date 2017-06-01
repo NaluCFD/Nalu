@@ -46,8 +46,8 @@ public:
   virtual void setup(const TimeIntegrator&);
 
   virtual void execute(
-    SharedMemView<double**>&,
-    SharedMemView<double*>&,
+    SharedMemView<DoubleType**>&,
+    SharedMemView<DoubleType*>&,
     ScratchViews&);
 
 private:
@@ -81,8 +81,8 @@ private:
   const double small_{1.0e-16};
 
   // fixed scratch space
-  Kokkos::View<double[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_{"v_shape_function"};
-  Kokkos::View<double[AlgTraits::nDim_][AlgTraits::nDim_]> v_kd_{"v_kd"};
+  Kokkos::View<DoubleType[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_{"v_shape_function"};
+  Kokkos::View<DoubleType[AlgTraits::nDim_][AlgTraits::nDim_]> v_kd_{"v_kd"};
 };
 
 }  // nalu

@@ -11,6 +11,7 @@
 #include <stk_mesh/base/CoordinateSystems.hpp>
 
 #include <Kokkos_Core.hpp>
+#include <SimdInterface.h>
 
 #include <master_element/MasterElement.h>
 
@@ -18,6 +19,7 @@ typedef stk::mesh::Field<double> ScalarFieldType;
 typedef stk::mesh::Field<double,stk::mesh::Cartesian> VectorFieldType;
 typedef stk::mesh::Field<double,stk::mesh::Cartesian,stk::mesh::Cartesian> TensorFieldType;
 typedef stk::mesh::Field<double, stk::mesh::SimpleArrayTag>  GenericFieldType;
+typedef sierra::nalu::DoubleType DoubleType;
 
 namespace stk { namespace mesh { class FieldBase; } }
 
