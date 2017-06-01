@@ -29,7 +29,7 @@ public:
   virtual ~SuppAlg(){}
 
   virtual void elem_execute(stk::topology topo,
-                    sierra::nalu::ScratchViews& elemData) = 0;
+                    sierra::nalu::ScratchViews<DoubleType>& elemData) = 0;
 };
 
 class TestSuppAlg : public SuppAlg
@@ -63,17 +63,17 @@ public:
   virtual ~TestSuppAlg() {}
 
   virtual void elem_execute(stk::topology topo,
-                    sierra::nalu::ScratchViews& elemData)
+                    sierra::nalu::ScratchViews<DoubleType>& elemData)
   {
     unsigned nodesPerElem = topo.num_nodes();
 
-    SharedMemView<double*>& nodalScalarView = elemData.get_scratch_view_1D(*nodalScalarField);
-    SharedMemView<double**>& nodalVectorView = elemData.get_scratch_view_2D(*nodalVectorField);
-    SharedMemView<double***>& nodalTensorView = elemData.get_scratch_view_3D(*nodalTensorField);
+    SharedMemView<DoubleType*>& nodalScalarView = elemData.get_scratch_view_1D(*nodalScalarField);
+    SharedMemView<DoubleType**>& nodalVectorView = elemData.get_scratch_view_2D(*nodalVectorField);
+    SharedMemView<DoubleType***>& nodalTensorView = elemData.get_scratch_view_3D(*nodalTensorField);
 
-    SharedMemView<double*>& elemScalarView = elemData.get_scratch_view_1D(*elemScalarField);
-    SharedMemView<double*>& elemVectorView = elemData.get_scratch_view_1D(*elemVectorField);
-    SharedMemView<double**>& elemTensorView = elemData.get_scratch_view_2D(*elemTensorField);
+    SharedMemView<DoubleType*>& elemScalarView = elemData.get_scratch_view_1D(*elemScalarField);
+    SharedMemView<DoubleType*>& elemVectorView = elemData.get_scratch_view_1D(*elemVectorField);
+    SharedMemView<DoubleType**>& elemTensorView = elemData.get_scratch_view_2D(*elemTensorField);
 
     EXPECT_EQ(nodesPerElem, nodalScalarView.dimension(0));
     EXPECT_EQ(nodesPerElem, nodalVectorView.dimension(0));
@@ -124,7 +124,7 @@ public:
           const stk::mesh::Bucket& bkt = *elemBuckets[team.league_rank()];
           stk::topology topo = bkt.topology();
 
-          sierra::nalu::ScratchViews prereqData(team, bulkData_, topo, dataNeededBySuppAlgs_);
+          sierra::nalu::ScratchViews<DoubleType> prereqData(team, bulkData_, topo, dataNeededBySuppAlgs_);
 
           // See get_num_bytes_pre_req_data for padding
           EXPECT_EQ(static_cast<unsigned>(bytes_per_thread), prereqData.total_bytes() + 8 * sizeof(double));

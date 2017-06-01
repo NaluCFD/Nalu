@@ -55,17 +55,17 @@ SteadyThermal3dContactSrcElemKernel<AlgTraits>::SteadyThermal3dContactSrcElemKer
 template<typename AlgTraits>
 void
 SteadyThermal3dContactSrcElemKernel<AlgTraits>::execute(
-  SharedMemView<double**>& /* lhs */,
-  SharedMemView<double *>& rhs,
-  ScratchViews& scratchViews)
+  SharedMemView<DoubleType**>& /* lhs */,
+  SharedMemView<DoubleType *>& rhs,
+  ScratchViews<DoubleType>& scratchViews)
 {
   // FIXME: Workaround warning issued for 2-D topologies. This Kernel should
   // only be used with 3-D topologies. However, using it in that sense causes
   // build errors because of build_topo_kernel interface in KernelBuilder
-  double w_scvCoords[3];
+  DoubleType w_scvCoords[3];
 
-  SharedMemView<double**>& v_coordinates = scratchViews.get_scratch_view_2D(*coordinates_);
-  SharedMemView<double*>& v_scv_volume = scratchViews.get_me_views(CURRENT_COORDINATES).scv_volume;
+  SharedMemView<DoubleType**>& v_coordinates = scratchViews.get_scratch_view_2D(*coordinates_);
+  SharedMemView<DoubleType*>& v_scv_volume = scratchViews.get_me_views(CURRENT_COORDINATES).scv_volume;
 
   // interpolate to ips and evaluate source
   for ( int ip = 0; ip < AlgTraits::numScvIp_; ++ip ) {

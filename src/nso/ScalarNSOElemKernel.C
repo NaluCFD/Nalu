@@ -31,8 +31,8 @@ ScalarNSOElemKernel<AlgTraits>::ScalarNSOElemKernel(
   ScalarFieldType* scalarQ,
   VectorFieldType* Gjq,
   ScalarFieldType* diffFluxCoeff,
-  const double fourthFac,
-  const double altResFac,
+  const DoubleType fourthFac,
+  const DoubleType altResFac,
   ElemDataRequests& dataPreReqs)
   : Kernel(),
     diffFluxCoeff_(diffFluxCoeff),
@@ -112,29 +112,29 @@ ScalarNSOElemKernel<AlgTraits>::setup(const TimeIntegrator& timeIntegrator)
 template<typename AlgTraits>
 void
 ScalarNSOElemKernel<AlgTraits>::execute(
-  SharedMemView<double**>& lhs,
-  SharedMemView<double *>& rhs,
-  ScratchViews& scratchViews)
+  SharedMemView<DoubleType**>& lhs,
+  SharedMemView<DoubleType *>& rhs,
+  ScratchViews<DoubleType>& scratchViews)
 {
-  double w_dqdxScs    [AlgTraits::nDim_];
-  double w_rhoVrtmScs [AlgTraits::nDim_];
+  DoubleType w_dqdxScs    [AlgTraits::nDim_];
+  DoubleType w_rhoVrtmScs [AlgTraits::nDim_];
 
-  SharedMemView<double**>& v_Gjq = scratchViews.get_scratch_view_2D(*Gjq_);
-  SharedMemView<double**>& v_velocityRTM = scratchViews.get_scratch_view_2D(*velocityRTM_);
-  SharedMemView<double*>& v_qNm1 = scratchViews.get_scratch_view_1D(*scalarQNm1_);
-  SharedMemView<double*>& v_qN = scratchViews.get_scratch_view_1D(*scalarQN_);
-  SharedMemView<double*>& v_qNp1 = scratchViews.get_scratch_view_1D(*scalarQNp1_);
-  SharedMemView<double*>& v_rhoNm1 = scratchViews.get_scratch_view_1D(*densityNm1_);
-  SharedMemView<double*>& v_rhoN = scratchViews.get_scratch_view_1D(*densityN_);
-  SharedMemView<double*>& v_rhoNp1 = scratchViews.get_scratch_view_1D(*densityNp1_);
-  SharedMemView<double*>& v_diffFluxCoeff = scratchViews.get_scratch_view_1D(*diffFluxCoeff_);
+  SharedMemView<DoubleType**>& v_Gjq = scratchViews.get_scratch_view_2D(*Gjq_);
+  SharedMemView<DoubleType**>& v_velocityRTM = scratchViews.get_scratch_view_2D(*velocityRTM_);
+  SharedMemView<DoubleType*>& v_qNm1 = scratchViews.get_scratch_view_1D(*scalarQNm1_);
+  SharedMemView<DoubleType*>& v_qN = scratchViews.get_scratch_view_1D(*scalarQN_);
+  SharedMemView<DoubleType*>& v_qNp1 = scratchViews.get_scratch_view_1D(*scalarQNp1_);
+  SharedMemView<DoubleType*>& v_rhoNm1 = scratchViews.get_scratch_view_1D(*densityNm1_);
+  SharedMemView<DoubleType*>& v_rhoN = scratchViews.get_scratch_view_1D(*densityN_);
+  SharedMemView<DoubleType*>& v_rhoNp1 = scratchViews.get_scratch_view_1D(*densityNp1_);
+  SharedMemView<DoubleType*>& v_diffFluxCoeff = scratchViews.get_scratch_view_1D(*diffFluxCoeff_);
 
-  SharedMemView<double**>& v_scs_areav = scratchViews.get_me_views(CURRENT_COORDINATES).scs_areav;
-  SharedMemView<double***>& v_dndx = shiftedGradOp_ 
-    ? scratchViews.get_me_views(CURRENT_COORDINATES).dndx_shifted 
+  SharedMemView<DoubleType**>& v_scs_areav = scratchViews.get_me_views(CURRENT_COORDINATES).scs_areav;
+  SharedMemView<DoubleType***>& v_dndx = shiftedGradOp_
+    ? scratchViews.get_me_views(CURRENT_COORDINATES).dndx_shifted
     : scratchViews.get_me_views(CURRENT_COORDINATES).dndx;
-  SharedMemView<double***>& v_gijUpper = scratchViews.get_me_views(CURRENT_COORDINATES).gijUpper;
-  SharedMemView<double***>& v_gijLower = scratchViews.get_me_views(CURRENT_COORDINATES).gijLower;
+  SharedMemView<DoubleType***>& v_gijUpper = scratchViews.get_me_views(CURRENT_COORDINATES).gijUpper;
+  SharedMemView<DoubleType***>& v_gijLower = scratchViews.get_me_views(CURRENT_COORDINATES).gijLower;
 
   for ( int ip = 0; ip < AlgTraits::numScsIp_; ++ip ) {
 
@@ -143,15 +143,15 @@ ScalarNSOElemKernel<AlgTraits>::execute(
     const int ir = lrscv_[2*ip+1];
 
     // zero out; scalar
-    double qNm1Scs = 0.0;
-    double qNScs = 0.0;
-    double qNp1Scs = 0.0;
-    double rhoNm1Scs = 0.0;
-    double rhoNScs = 0.0;
-    double rhoNp1Scs = 0.0;
-    double dFdxAdv = 0.0;
-    double dFdxDiff = 0.0;
-    double dFdxCont = 0.0;
+    DoubleType qNm1Scs = 0.0;
+    DoubleType qNScs = 0.0;
+    DoubleType qNp1Scs = 0.0;
+    DoubleType rhoNm1Scs = 0.0;
+    DoubleType rhoNScs = 0.0;
+    DoubleType rhoNp1Scs = 0.0;
+    DoubleType dFdxAdv = 0.0;
+    DoubleType dFdxDiff = 0.0;
+    DoubleType dFdxCont = 0.0;
 
     // zero out vector
     for ( int i = 0; i < AlgTraits::nDim_; ++i ) {
@@ -162,7 +162,7 @@ ScalarNSOElemKernel<AlgTraits>::execute(
     // determine scs values of interest
     for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
       // save off shape function
-      const double r = v_shape_function_(ip,ic);
+      const DoubleType r = v_shape_function_(ip,ic);
 
       // time term; scalar q
       qNm1Scs += r*v_qNm1(ic);
@@ -175,12 +175,12 @@ ScalarNSOElemKernel<AlgTraits>::execute(
       rhoNp1Scs += r*v_rhoNp1(ic);
 
       // compute scs derivatives and flux derivative
-      const double qIC = v_qNp1(ic);
-      const double rhoIC = v_rhoNp1(ic);
-      const double diffFluxCoeffIC = v_diffFluxCoeff(ic);
+      const DoubleType qIC = v_qNp1(ic);
+      const DoubleType rhoIC = v_rhoNp1(ic);
+      const DoubleType diffFluxCoeffIC = v_diffFluxCoeff(ic);
       for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
-        const double dnj = v_dndx(ip,ic,j);
-        const double vrtmj = v_velocityRTM(ic,j);
+        const DoubleType dnj = v_dndx(ip,ic,j);
+        const DoubleType vrtmj = v_velocityRTM(ic,j);
         w_dqdxScs[j] += qIC*dnj;
         w_rhoVrtmScs[j] += r*rhoIC*vrtmj;
         dFdxAdv += rhoIC*vrtmj*qIC*dnj;
@@ -190,26 +190,26 @@ ScalarNSOElemKernel<AlgTraits>::execute(
     }
 
     // full continuity residual
-    const double contRes = (gamma1_*rhoNp1Scs + gamma2_*rhoNScs + gamma3_*rhoNm1Scs)/dt_ + dFdxCont;
+    const DoubleType contRes = (gamma1_*rhoNp1Scs + gamma2_*rhoNScs + gamma3_*rhoNm1Scs)/dt_ + dFdxCont;
 
     // compute residual for NSO; linearized first
-    double residualAlt = dFdxAdv - qNp1Scs*dFdxCont;
+    DoubleType residualAlt = dFdxAdv - qNp1Scs*dFdxCont;
     for ( int j = 0; j < AlgTraits::nDim_; ++j )
       residualAlt -= w_rhoVrtmScs[j]*w_dqdxScs[j];
 
     // compute residual for NSO; pde-based second
-    const double time = (gamma1_*rhoNp1Scs*qNp1Scs + gamma2_*rhoNScs*qNScs + gamma3_*rhoNm1Scs*qNm1Scs)/dt_;
-    const double residualPde = time + dFdxAdv - dFdxDiff - contRes*qNp1Scs*nonConservedForm_;
+    const DoubleType time = (gamma1_*rhoNp1Scs*qNp1Scs + gamma2_*rhoNScs*qNScs + gamma3_*rhoNm1Scs*qNm1Scs)/dt_;
+    const DoubleType residualPde = time + dFdxAdv - dFdxDiff - contRes*qNp1Scs*nonConservedForm_;
 
     // final form
-    const double residual = residualAlt*altResFac_ + residualPde*om_altResFac_;
+    const DoubleType residual = residualAlt*altResFac_ + residualPde*om_altResFac_;
 
     // denominator for nu as well as terms for "upwind" nu
-    double gUpperMagGradQ = 0.0;
-    double rhoVrtmiGLowerRhoVrtmj = 0.0;
+    DoubleType gUpperMagGradQ = 0.0;
+    DoubleType rhoVrtmiGLowerRhoVrtmj = 0.0;
     for ( int i = 0; i < AlgTraits::nDim_; ++i ) {
-      const double dqdxScsi = w_dqdxScs[i];
-      const double rhoVrtmi = w_rhoVrtmScs[i];
+      const DoubleType dqdxScsi = w_dqdxScs[i];
+      const DoubleType rhoVrtmi = w_rhoVrtmScs[i];
       for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
         gUpperMagGradQ += dqdxScsi*v_gijUpper(ip,i,j)*w_dqdxScs[j];
         rhoVrtmiGLowerRhoVrtmj += rhoVrtmi*v_gijLower(ip,i,j)*w_rhoVrtmScs[j];
@@ -217,32 +217,32 @@ ScalarNSOElemKernel<AlgTraits>::execute(
     }
 
     // construct nu from residual
-    const double nuResidual = std::sqrt((residual*residual)/(gUpperMagGradQ+small_));
+    const DoubleType nuResidual = std::sqrt((residual*residual)/(gUpperMagGradQ+small_));
 
     // construct nu from first-order-like approach; SNL-internal write-up (eq 209)
     // for now, only include advection as full set of terms is too diffuse
-    const double nuFirstOrder = std::sqrt(rhoVrtmiGLowerRhoVrtmj);
+    const DoubleType nuFirstOrder = std::sqrt(rhoVrtmiGLowerRhoVrtmj);
 
     // limit based on first order; Cupw_ is a fudge factor similar to Guermond's approach
-    const double nu = std::min(Cupw_*nuFirstOrder, nuResidual);
+    const DoubleType nu = std::min(Cupw_*nuFirstOrder, nuResidual);
 
-    double gijFac = 0.0;
+    DoubleType gijFac = 0.0;
     for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
 
       // save off shape function
-      const double r = v_shape_function_(ip,ic);
+      const DoubleType r = v_shape_function_(ip,ic);
 
       // save of some variables
-      const double qIC = v_qNp1(ic);
+      const DoubleType qIC = v_qNp1(ic);
 
       // NSO diffusion-like term; -nu*gUpper*(dQ/dxj - Gjq)*ai (residual below)
-      double lhsfac = 0.0;
+      DoubleType lhsfac = 0.0;
       for ( int i = 0; i < AlgTraits::nDim_; ++i ) {
-        const double axi = v_scs_areav(ip,i);
+        const DoubleType axi = v_scs_areav(ip,i);
         for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
-          const double dnxj = v_dndx(ip,ic,j);
-          const double fac = v_gijUpper(ip,i,j)*dnxj*axi;
-          const double facGj = r*v_gijUpper(ip,i,j)*v_Gjq(ic,j)*axi;
+          const DoubleType dnxj = v_dndx(ip,ic,j);
+          const DoubleType fac = v_gijUpper(ip,i,j)*dnxj*axi;
+          const DoubleType facGj = r*v_gijUpper(ip,i,j)*v_Gjq(ic,j)*axi;
           gijFac += fac*qIC - facGj*fourthFac_;
           lhsfac += -fac;
         }
@@ -253,7 +253,7 @@ ScalarNSOElemKernel<AlgTraits>::execute(
     }
 
     // residual; left and right
-    const double residualNSO = -nu*gijFac;
+    const DoubleType residualNSO = -nu*gijFac;
     rhs(il) -= residualNSO;
     rhs(ir) += residualNSO;
   }

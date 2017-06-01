@@ -23,7 +23,6 @@ class TimeIntegrator;
 class SolutionOptions;
 class MasterElement;
 class ElemDataRequests;
-class ScratchViews;
 
 /** CMM (BDF2) for continuity equation (pressure DOF)
  */
@@ -46,9 +45,9 @@ public:
    *  the linear solve
    */
   virtual void execute(
-    SharedMemView<double**>&,
-    SharedMemView<double*>&,
-    ScratchViews&);
+    SharedMemView<DoubleType**>&,
+    SharedMemView<DoubleType*>&,
+    ScratchViews<DoubleType>&);
 
 private:
   ContinuityAdvElemKernel() = delete;
@@ -70,7 +69,7 @@ private:
   const double om_interpTogether_;
 
   // scratch space
-  Kokkos::View<double[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_ { "view_shape_func" };
+  Kokkos::View<DoubleType[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_ { "view_shape_func" };
 
   const int* lrscv_;
 };

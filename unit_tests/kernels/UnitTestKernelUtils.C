@@ -534,7 +534,7 @@ void calc_mass_flow_rate_scs(
 
       EXPECT_EQ(b.topology(), topo);
 
-      sierra::nalu::ScratchViews preReqData(
+      sierra::nalu::ScratchViews<DoubleType> preReqData(
         team, bulk, topo, dataNeeded);
 
       Kokkos::parallel_for(
