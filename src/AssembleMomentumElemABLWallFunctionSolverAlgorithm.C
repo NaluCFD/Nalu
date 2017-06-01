@@ -7,7 +7,7 @@
 
 
 // nalu
-#include <AssembleMomentumABLWallFunctionSolverAlgorithm.h>
+#include <AssembleMomentumElemABLWallFunctionSolverAlgorithm.h>
 #include <SolverAlgorithm.h>
 #include <EquationSystem.h>
 #include <LinearSystem.h>
@@ -34,12 +34,12 @@ namespace nalu{
 //==========================================================================
 // Class Definition
 //==========================================================================
-// AssembleMomentumABLWallFunctionSolverAlgorithm - ABL utau at wall bc
+// AssembleMomentumElemABLWallFunctionSolverAlgorithm - ABL elem wall function
 //==========================================================================
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-AssembleMomentumABLWallFunctionSolverAlgorithm::AssembleMomentumABLWallFunctionSolverAlgorithm(
+AssembleMomentumElemABLWallFunctionSolverAlgorithm::AssembleMomentumElemABLWallFunctionSolverAlgorithm(
   Realm &realm,
   stk::mesh::Part *part,
   EquationSystem *eqSystem,
@@ -75,7 +75,7 @@ AssembleMomentumABLWallFunctionSolverAlgorithm::AssembleMomentumABLWallFunctionS
 //-------- initialize_connectivity -----------------------------------------
 //--------------------------------------------------------------------------
 void
-AssembleMomentumABLWallFunctionSolverAlgorithm::initialize_connectivity()
+AssembleMomentumElemABLWallFunctionSolverAlgorithm::initialize_connectivity()
 {
   eqSystem_->linsys_->buildFaceToNodeGraph(partVec_);
 }
@@ -84,7 +84,7 @@ AssembleMomentumABLWallFunctionSolverAlgorithm::initialize_connectivity()
 //-------- execute ---------------------------------------------------------
 //--------------------------------------------------------------------------
 void
-AssembleMomentumABLWallFunctionSolverAlgorithm::execute()
+AssembleMomentumElemABLWallFunctionSolverAlgorithm::execute()
 {
 
   ABLProfileFunction *p_ABLProfFun;

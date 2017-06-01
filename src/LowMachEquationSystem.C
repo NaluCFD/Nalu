@@ -22,8 +22,10 @@
 #include <AssembleMomentumElemOpenSolverAlgorithm.h>
 #include <AssembleMomentumEdgeSymmetrySolverAlgorithm.h>
 #include <AssembleMomentumElemSymmetrySolverAlgorithm.h>
-#include <AssembleMomentumWallFunctionSolverAlgorithm.h>
-#include <AssembleMomentumABLWallFunctionSolverAlgorithm.h>
+#include <AssembleMomentumEdgeWallFunctionSolverAlgorithm.h>
+#include <AssembleMomentumElemWallFunctionSolverAlgorithm.h>
+#include <AssembleMomentumElemABLWallFunctionSolverAlgorithm.h>
+#include <AssembleMomentumEdgeABLWallFunctionSolverAlgorithm.h>
 #include <AssembleMomentumNonConformalSolverAlgorithm.h>
 #include <AssembleNodalGradAlgorithmDriver.h>
 #include <AssembleNodalGradEdgeAlgorithm.h>
@@ -1718,8 +1720,15 @@ MomentumEquationSystem::register_wall_bc(
       std::map<AlgorithmType, SolverAlgorithm *>::iterator it_wf =
         solverAlgDriver_->solverAlgMap_.find(wfAlgType);
       if ( it_wf == solverAlgDriver_->solverAlgMap_.end() ) {
-        AssembleMomentumABLWallFunctionSolverAlgorithm *theAlg
-          = new AssembleMomentumABLWallFunctionSolverAlgorithm(realm_, part, this, realm_.realmUsesEdges_, grav, z0, referenceTemperature);
+        SolverAlgorithm *theAlg = NULL;
+        if ( realm_.realmUsesEdges_ ) {
+          theAlg = new AssembleMomentumEdgeABLWallFunctionSolverAlgorithm(realm_, part, this, 
+                                                                          grav, z0, referenceTemperature);
+        }
+        else {
+          theAlg = new AssembleMomentumElemABLWallFunctionSolverAlgorithm(realm_, part, this, realm_.realmUsesEdges_, 
+                                                                          grav, z0, referenceTemperature);     
+        }
         solverAlgDriver_->solverAlgMap_[wfAlgType] = theAlg;
       }
       else {
@@ -1747,8 +1756,13 @@ MomentumEquationSystem::register_wall_bc(
       std::map<AlgorithmType, SolverAlgorithm *>::iterator it_wf =
         solverAlgDriver_->solverAlgMap_.find(wfAlgType);
       if ( it_wf == solverAlgDriver_->solverAlgMap_.end() ) {
-        AssembleMomentumWallFunctionSolverAlgorithm *theAlg
-          = new AssembleMomentumWallFunctionSolverAlgorithm(realm_, part, this, realm_.realmUsesEdges_);
+        SolverAlgorithm *theAlg = NULL;
+        if ( realm_.realmUsesEdges_ ) {
+          theAlg = new AssembleMomentumEdgeWallFunctionSolverAlgorithm(realm_, part, this);
+        }
+        else {
+          theAlg = new AssembleMomentumElemWallFunctionSolverAlgorithm(realm_, part, this, realm_.realmUsesEdges_);
+        }
         solverAlgDriver_->solverAlgMap_[wfAlgType] = theAlg;
       }
       else {
