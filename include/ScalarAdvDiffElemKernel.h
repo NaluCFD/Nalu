@@ -22,7 +22,6 @@ namespace nalu {
 class SolutionOptions;
 class MasterElement;
 class ElemDataRequests;
-class ScratchViews;
 
 /** CVFEM scalar advection/diffusion kernel
  */
@@ -43,9 +42,9 @@ public:
    *  the linear solve
    */
   virtual void execute(
-    SharedMemView<double**>&,
-    SharedMemView<double*>&,
-    ScratchViews&);
+    SharedMemView<DoubleType**>&,
+    SharedMemView<DoubleType*>&,
+    ScratchViews<DoubleType>&);
 
 private:
   ScalarAdvDiffElemKernel() = delete;
@@ -61,7 +60,7 @@ private:
   const bool shiftedGradOp_;
 
   /// Shape functions
-  Kokkos::View<double[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_ { "view_shape_func" };
+  Kokkos::View<DoubleType[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_ { "view_shape_func" };
 };
 
 }  // nalu
