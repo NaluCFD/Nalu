@@ -114,7 +114,7 @@ void
 ScalarNSOElemKernel<AlgTraits>::execute(
   SharedMemView<DoubleType**>& lhs,
   SharedMemView<DoubleType *>& rhs,
-  ScratchViews& scratchViews)
+  ScratchViews<DoubleType>& scratchViews)
 {
   DoubleType w_dqdxScs    [AlgTraits::nDim_];
   DoubleType w_rhoVrtmScs [AlgTraits::nDim_];

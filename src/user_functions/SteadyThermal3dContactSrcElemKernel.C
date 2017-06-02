@@ -57,7 +57,7 @@ void
 SteadyThermal3dContactSrcElemKernel<AlgTraits>::execute(
   SharedMemView<DoubleType**>& /* lhs */,
   SharedMemView<DoubleType *>& rhs,
-  ScratchViews& scratchViews)
+  ScratchViews<DoubleType>& scratchViews)
 {
   // FIXME: Workaround warning issued for 2-D topologies. This Kernel should
   // only be used with 3-D topologies. However, using it in that sense causes

@@ -243,10 +243,10 @@ public:
         // For LHS/RHS golds expect only one element in the mesh
         EXPECT_EQ(length, 1u);
 
-        sierra::nalu::ScratchViews preReqData(
+        sierra::nalu::ScratchViews<DoubleType> preReqData(
           team, bulk_, topo_, dataNeededByKernels_);
-        rhs_ = sierra::nalu::get_shmem_view_1D(team, rhsSize);
-        lhs_ = sierra::nalu::get_shmem_view_2D(team, rhsSize, rhsSize);
+        rhs_ = sierra::nalu::get_shmem_view_1D<DoubleType>(team, rhsSize);
+        lhs_ = sierra::nalu::get_shmem_view_2D<DoubleType>(team, rhsSize, rhsSize);
 
         Kokkos::parallel_for(
           Kokkos::TeamThreadRange(team, length), [&](const size_t& k) {

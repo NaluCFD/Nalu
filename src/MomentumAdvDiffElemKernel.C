@@ -70,7 +70,7 @@ void
 MomentumAdvDiffElemKernel<AlgTraits>::execute(
   SharedMemView<DoubleType **>& lhs,
   SharedMemView<DoubleType *>& rhs,
-  ScratchViews& scratchViews)
+  ScratchViews<DoubleType>& scratchViews)
 {
   DoubleType w_uIp[AlgTraits::nDim_];
 

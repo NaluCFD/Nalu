@@ -46,22 +46,22 @@ SharedMemView<stk::mesh::Entity*> get_entity_shmem_view_1D(const TeamHandleType&
   return Kokkos::subview(SharedMemView<stk::mesh::Entity**>(team.team_shmem(), team.team_size(), len), team.team_rank(), Kokkos::ALL());
 }
 
-inline
-SharedMemView<double*> get_shmem_view_1D(const TeamHandleType& team, size_t len)
+template<typename T>
+SharedMemView<T*> get_shmem_view_1D(const TeamHandleType& team, size_t len)
 {
-  return Kokkos::subview(SharedMemView<double**>(team.team_shmem(), team.team_size(), len), team.team_rank(), Kokkos::ALL());
+  return Kokkos::subview(SharedMemView<T**>(team.team_shmem(), team.team_size(), len), team.team_rank(), Kokkos::ALL());
 }
 
-inline
-SharedMemView<double**> get_shmem_view_2D(const TeamHandleType& team, size_t len1, size_t len2)
+template<typename T>
+SharedMemView<T**> get_shmem_view_2D(const TeamHandleType& team, size_t len1, size_t len2)
 {
-  return Kokkos::subview(SharedMemView<double***>(team.team_shmem(), team.team_size(), len1, len2), team.team_rank(), Kokkos::ALL(), Kokkos::ALL());
+  return Kokkos::subview(SharedMemView<T***>(team.team_shmem(), team.team_size(), len1, len2), team.team_rank(), Kokkos::ALL(), Kokkos::ALL());
 }
 
-inline
-SharedMemView<double***> get_shmem_view_3D(const TeamHandleType& team, size_t len1, size_t len2, size_t len3)
+template<typename T>
+SharedMemView<T***> get_shmem_view_3D(const TeamHandleType& team, size_t len1, size_t len2, size_t len3)
 {
-  return Kokkos::subview(SharedMemView<double****>(team.team_shmem(), team.team_size(), len1, len2, len3), team.team_rank(), Kokkos::ALL(), Kokkos::ALL(), Kokkos::ALL());
+  return Kokkos::subview(SharedMemView<T****>(team.team_shmem(), team.team_size(), len1, len2, len3), team.team_rank(), Kokkos::ALL(), Kokkos::ALL(), Kokkos::ALL());
 }
 
 template<typename SizeType, class Function>

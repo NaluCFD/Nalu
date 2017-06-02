@@ -10,6 +10,7 @@
 
 #include "KokkosInterface.h"
 #include "SimdInterface.h"
+#include "ScratchViews.h"
 
 #include <stk_mesh/base/Entity.hpp>
 
@@ -18,7 +19,6 @@ namespace nalu {
 
 class TimeIntegrator;
 class SolutionOptions;
-class ScratchViews;
 
 /** Base class for computational kernels in Nalu
  *
@@ -42,7 +42,7 @@ public:
   virtual void execute(
     SharedMemView<DoubleType**>&,
     SharedMemView<DoubleType*>&,
-    ScratchViews&)
+    ScratchViews<DoubleType>&)
   {}
 };
 
