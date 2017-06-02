@@ -7,7 +7,7 @@
 
 
 // nalu
-#include <AssembleMomentumWallFunctionSolverAlgorithm.h>
+#include <AssembleMomentumEdgeWallFunctionSolverAlgorithm.h>
 #include <SolverAlgorithm.h>
 #include <EquationSystem.h>
 #include <LinearSystem.h>
@@ -33,18 +33,16 @@ namespace nalu{
 //==========================================================================
 // Class Definition
 //==========================================================================
-// AssembleMomentumWallFunctionSolverAlgorithm - utau at wall bc
+// AssembleMomentumEdgeWallFunctionSolverAlgorithm - edde wall function
 //==========================================================================
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-AssembleMomentumWallFunctionSolverAlgorithm::AssembleMomentumWallFunctionSolverAlgorithm(
+AssembleMomentumEdgeWallFunctionSolverAlgorithm::AssembleMomentumEdgeWallFunctionSolverAlgorithm(
   Realm &realm,
   stk::mesh::Part *part,
-  EquationSystem *eqSystem,
-  const bool &useShifted)
+  EquationSystem *eqSystem)
   : SolverAlgorithm(realm, part, eqSystem),
-    useShifted_(useShifted),
     yplusCrit_(11.63),
     elog_(9.8),
     kappa_(realm.get_turb_model_constant(TM_kappa))
@@ -64,7 +62,7 @@ AssembleMomentumWallFunctionSolverAlgorithm::AssembleMomentumWallFunctionSolverA
 //-------- initialize_connectivity -----------------------------------------
 //--------------------------------------------------------------------------
 void
-AssembleMomentumWallFunctionSolverAlgorithm::initialize_connectivity()
+AssembleMomentumEdgeWallFunctionSolverAlgorithm::initialize_connectivity()
 {
   eqSystem_->linsys_->buildFaceToNodeGraph(partVec_);
 }
@@ -73,7 +71,7 @@ AssembleMomentumWallFunctionSolverAlgorithm::initialize_connectivity()
 //-------- execute ---------------------------------------------------------
 //--------------------------------------------------------------------------
 void
-AssembleMomentumWallFunctionSolverAlgorithm::execute()
+AssembleMomentumEdgeWallFunctionSolverAlgorithm::execute()
 {
 
   stk::mesh::BulkData & bulk_data = realm_.bulk_data();
@@ -98,19 +96,8 @@ AssembleMomentumWallFunctionSolverAlgorithm::execute()
   double *p_uBcBip = &uBcBip[0];
   double *p_unitNormal= &unitNormal[0];
 
-  // nodal fields to gather
-  std::vector<double> ws_velocityNp1;
-  std::vector<double> ws_bcVelocity;
-  std::vector<double> ws_density;
-  std::vector<double> ws_viscosity;
-
-  // master element
-  std::vector<double> ws_shape_function;
-  std::vector<double> ws_face_shape_function;
-
   // deal with state
   VectorFieldType &velocityNp1 = velocity_->field_of_state(stk::mesh::StateNP1);
-  ScalarFieldType &densityNp1 = density_->field_of_state(stk::mesh::StateNP1);
 
   // define some common selectors
   stk::mesh::Selector s_locally_owned_union = meta_data.locally_owned_part()
@@ -139,27 +126,9 @@ AssembleMomentumWallFunctionSolverAlgorithm::execute()
     scratchVals.resize(rhsSize);
     connected_nodes.resize(nodesPerFace);
 
-    // algorithm related; element
-    ws_velocityNp1.resize(nodesPerFace*nDim);
-    ws_bcVelocity.resize(nodesPerFace*nDim);
-    ws_density.resize(nodesPerFace);
-    ws_viscosity.resize(nodesPerFace);
-    ws_face_shape_function.resize(numScsBip*nodesPerFace);
-
     // pointers
     double *p_lhs = &lhs[0];
     double *p_rhs = &rhs[0];
-    double *p_velocityNp1 = &ws_velocityNp1[0];
-    double *p_bcVelocity = &ws_bcVelocity[0];
-    double *p_density = &ws_density[0];
-    double *p_viscosity = &ws_viscosity[0];
-    double *p_face_shape_function = &ws_face_shape_function[0];
-
-    // shape functions
-    if ( useShifted_ )
-      meFC->shifted_shape_fcn(&p_face_shape_function[0]);
-    else
-      meFC->shape_fcn(&p_face_shape_function[0]);
 
     const stk::mesh::Bucket::size_type length   = b.size();
 
@@ -174,26 +143,11 @@ AssembleMomentumWallFunctionSolverAlgorithm::execute()
       // get face
       stk::mesh::Entity face = b[k];
 
-      //======================================
-      // gather nodal data off of face
-      //======================================
+      // fill connected nodes
       stk::mesh::Entity const * face_node_rels = bulk_data.begin_nodes(face);
       for ( int ni = 0; ni < nodesPerFace; ++ni ) {
         stk::mesh::Entity node = face_node_rels[ni];
         connected_nodes[ni] = node;
-
-        // gather scalars
-        p_density[ni]    = *stk::mesh::field_data(densityNp1, node);
-        p_viscosity[ni] = *stk::mesh::field_data(*viscosity_, node);
-
-        // gather vectors
-        double * uNp1 = stk::mesh::field_data(velocityNp1, node);
-        double * uBc = stk::mesh::field_data(*bcVelocity_, node);
-        const int offSet = ni*nDim;
-        for ( int j=0; j < nDim; ++j ) {
-          p_velocityNp1[offSet+j] = uNp1[j];
-          p_bcVelocity[offSet+j] = uBc[j];
-        }
       }
 
       // pointer to face data
@@ -205,32 +159,27 @@ AssembleMomentumWallFunctionSolverAlgorithm::execute()
       for ( int ip = 0; ip < numScsBip; ++ip ) {
 
         const int offSetAveraVec = ip*nDim;
-        const int offSetSF_face = ip*nodesPerFace;
 
-        const int localFaceNode = faceIpNodeMap[ip];
-
-        // zero out vector quantities; squeeze in aMag
+        // compute aMag
         double aMag = 0.0;
         for ( int j = 0; j < nDim; ++j ) {
-          p_uBip[j] = 0.0;
-          p_uBcBip[j] = 0.0;
           const double axj = areaVec[offSetAveraVec+j];
           aMag += axj*axj;
         }
         aMag = std::sqrt(aMag);
 
-        // interpolate to bip
-        double rhoBip = 0.0;
-        double muBip = 0.0;
-        for ( int ic = 0; ic < nodesPerFace; ++ic ) {
-          const double r = p_face_shape_function[offSetSF_face+ic];
-          rhoBip += r*p_density[ic];
-          muBip += r*p_viscosity[ic];
-          const int offSetFN = ic*nDim;
-          for ( int j = 0; j < nDim; ++j ) {
-            p_uBip[j] += r*p_velocityNp1[offSetFN+j];
-            p_uBcBip[j] += r*p_bcVelocity[offSetFN+j];
-          }
+        // assign bip values, i.e., nearest node
+        const int localFaceNode = faceIpNodeMap[ip];
+        stk::mesh::Entity nodeR = face_node_rels[localFaceNode];
+
+        const double rhoBip = *stk::mesh::field_data(*density_, nodeR);
+        const double muBip = *stk::mesh::field_data(*viscosity_, nodeR);
+
+        for ( int j = 0; j < nDim; ++j ) {
+          const double *uNp1 = stk::mesh::field_data(velocityNp1, nodeR);
+          const double *uBc = stk::mesh::field_data(*bcVelocity_, nodeR);
+          p_uBip[j] = uNp1[j];
+          p_uBcBip[j] = uBc[j];
         }
 
         // form unit normal
@@ -263,14 +212,12 @@ AssembleMomentumWallFunctionSolverAlgorithm::execute()
               const double om_nini = 1.0 - ninj;
               uiTan += om_nini*p_uBip[j];
               uiBcTan += om_nini*p_uBcBip[j];
-              for (int ic = 0; ic < nodesPerFace; ++ic)
-                p_lhs[rowR+ic*nDim+i] += lambda*om_nini*p_face_shape_function[offSetSF_face+ic];
+              p_lhs[rowR+localFaceNode*nDim+i] += lambda*om_nini;
             }
             else {
               uiTan -= ninj*p_uBip[j];
               uiBcTan -= ninj*p_uBcBip[j];
-              for (int ic = 0; ic < nodesPerFace; ++ic)
-                p_lhs[rowR+ic*nDim+j] -= lambda*ninj*p_face_shape_function[offSetSF_face+ic];
+              p_lhs[rowR+localFaceNode*nDim+j] -= lambda*ninj;
             }
           }
           p_rhs[indexR] -= lambda*(uiTan-uiBcTan);

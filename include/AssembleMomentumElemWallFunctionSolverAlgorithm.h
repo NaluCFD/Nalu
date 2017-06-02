@@ -6,8 +6,8 @@
 /*------------------------------------------------------------------------*/
 
 
-#ifndef AssembleMomentumWallFunctionSolverAlgorithm_h
-#define AssembleMomentumWallFunctionSolverAlgorithm_h
+#ifndef AssembleMomentumElemWallFunctionSolverAlgorithm_h
+#define AssembleMomentumElemWallFunctionSolverAlgorithm_h
 
 #include<SolverAlgorithm.h>
 #include<FieldTypeDef.h>
@@ -23,16 +23,16 @@ namespace nalu{
 
 class Realm;
 
-class AssembleMomentumWallFunctionSolverAlgorithm : public SolverAlgorithm
+class AssembleMomentumElemWallFunctionSolverAlgorithm : public SolverAlgorithm
 {
 public:
 
-  AssembleMomentumWallFunctionSolverAlgorithm(
+  AssembleMomentumElemWallFunctionSolverAlgorithm(
     Realm &realm,
     stk::mesh::Part *part,
     EquationSystem *eqSystem,
     const bool &useShifted);
-  virtual ~AssembleMomentumWallFunctionSolverAlgorithm() {}
+  virtual ~AssembleMomentumElemWallFunctionSolverAlgorithm() {}
   virtual void initialize_connectivity();
   virtual void execute();
 
