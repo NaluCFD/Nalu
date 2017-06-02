@@ -135,7 +135,10 @@ Implementation
    + The ``assemble_source_to_nodes`` function then distributes the force :math:`F_e` at the center of an element to a node :math:`i` surrounding it proportional to the subcontrol volume corresponding to that node as :math:`F_e^i = F_e \; (V_{scv}^i / V_e)`, where :math:`V_e` is the volume of the element.
 
 
-     
+Restart capability
+==================
+
+While Nalu itself supports a full restart capability, OpenFAST may not support a full restart capability for specific use cases. To account for this, the OpenFAST - C++ API supports two kinds of restart capabilities. To restart a Nalu - OpenFAST coupled simulation one must set `t_start` in the line commands to a positive non-zero value and set `simStart` to either `trueRestart` or `restartDriverInitFAST`. Use `trueRestart` when OpenFAST supports a full restart capability for the specific use case. `restartDriverInitFAST` will start OpenFAST from `t=0` again for all turbines and run upto the restart time and then run the coupled Nalu + OpenFAST simulation normally. During the Nalu - OpenFAST he sampled velocity data at the actuator nodes is stored in a `hdf5` file at every OpenFAST time step and then read back in when using the `restart 
    
 
 The command line options for the actuator line with coupling to OpenFAST looks as follows for two turbines:
@@ -151,7 +154,9 @@ The command line options for the actuator line with coupling to OpenFAST looks a
    n_turbines_glob: 2
    dry_run:  False
    debug:    False
-   tMax:    5.0
+   t_start: 0.0
+   simStart: init # init/trueRestart/restartDriverInitFAST
+   t_max:    5.0
    n_every_checkpoint: 100
    
    Turbine0:
