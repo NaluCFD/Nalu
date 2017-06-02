@@ -22,7 +22,6 @@ namespace nalu {
 class SolutionOptions;
 class MasterElement;
 class ElemDataRequests;
-class ScratchViews;
 
 /** Advection diffusion term for momentum equation (velocity DOF)
  */
@@ -45,7 +44,7 @@ public:
   virtual void execute(
     SharedMemView<DoubleType**>&,
     SharedMemView<DoubleType*>&,
-    ScratchViews&);
+    ScratchViews<DoubleType>&);
 
 private:
   MomentumAdvDiffElemKernel() = delete;

@@ -23,7 +23,6 @@ class TimeIntegrator;
 class SolutionOptions;
 class MasterElement;
 class ElemDataRequests;
-class ScratchViews;
 
 /** CMM (BDF2/BE) for momentum equation (velocity DOF)
  */
@@ -49,7 +48,7 @@ public:
   virtual void execute(
     SharedMemView<DoubleType**>&,
     SharedMemView<DoubleType*>&,
-    ScratchViews&);
+    ScratchViews<DoubleType>&);
 
 private:
   MomentumMassElemKernel() = delete;

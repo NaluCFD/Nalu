@@ -57,7 +57,7 @@ void
 SteadyThermal3dContactSrcElemKernel<AlgTraits>::execute(
   SharedMemView<DoubleType**>& /* lhs */,
   SharedMemView<DoubleType *>& rhs,
-  ScratchViews& scratchViews)
+  ScratchViews<DoubleType>& scratchViews)
 {
   SharedMemView<DoubleType**>& v_coordinates = scratchViews.get_scratch_view_2D(*coordinates_);
   SharedMemView<DoubleType*>& v_scv_volume = scratchViews.get_me_views(CURRENT_COORDINATES).scv_volume;

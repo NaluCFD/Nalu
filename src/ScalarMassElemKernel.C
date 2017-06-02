@@ -98,7 +98,7 @@ void
 ScalarMassElemKernel<AlgTraits>::execute(
   SharedMemView<DoubleType **>& lhs,
   SharedMemView<DoubleType *>&rhs,
-  ScratchViews& scratchViews)
+  ScratchViews<DoubleType>& scratchViews)
 {
   SharedMemView<DoubleType*>& v_qNm1 = scratchViews.get_scratch_view_1D(
     *scalarQNm1_);

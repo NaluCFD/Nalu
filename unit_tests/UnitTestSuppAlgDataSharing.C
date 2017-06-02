@@ -29,7 +29,7 @@ public:
   virtual ~SuppAlg(){}
 
   virtual void elem_execute(stk::topology topo,
-                    sierra::nalu::ScratchViews& elemData) = 0;
+                    sierra::nalu::ScratchViews<DoubleType>& elemData) = 0;
 };
 
 class TestSuppAlg : public SuppAlg
@@ -63,7 +63,7 @@ public:
   virtual ~TestSuppAlg() {}
 
   virtual void elem_execute(stk::topology topo,
-                    sierra::nalu::ScratchViews& elemData)
+                    sierra::nalu::ScratchViews<DoubleType>& elemData)
   {
     unsigned nodesPerElem = topo.num_nodes();
 
@@ -124,7 +124,7 @@ public:
           const stk::mesh::Bucket& bkt = *elemBuckets[team.league_rank()];
           stk::topology topo = bkt.topology();
 
-          sierra::nalu::ScratchViews prereqData(team, bulkData_, topo, dataNeededBySuppAlgs_);
+          sierra::nalu::ScratchViews<DoubleType> prereqData(team, bulkData_, topo, dataNeededBySuppAlgs_);
 
           // See get_num_bytes_pre_req_data for padding
           EXPECT_EQ(static_cast<unsigned>(bytes_per_thread), prereqData.total_bytes() + 8 * sizeof(double));

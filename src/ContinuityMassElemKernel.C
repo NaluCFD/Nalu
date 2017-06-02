@@ -87,7 +87,7 @@ void
 ContinuityMassElemKernel<AlgTraits>::execute(
   SharedMemView<DoubleType **>&/*lhs*/,
   SharedMemView<DoubleType *>&rhs,
-  ScratchViews& scratchViews)
+  ScratchViews<DoubleType>& scratchViews)
 {
   const DoubleType projTimeScale = dt_/gamma1_;
 
