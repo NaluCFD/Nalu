@@ -312,13 +312,13 @@ public:
         const int nodesPerElem = topo.num_nodes();
         const int numScsIp = meSCS.numIntPoints_;
 
-        sierra::nalu::SharedMemView<double**> elemNodeCoords = sierra::nalu::get_shmem_view_2D(team, nodesPerElem, nDim);
-        sierra::nalu::SharedMemView<double*> elemNodePressures = sierra::nalu::get_shmem_view_1D(team, nodesPerElem);
+        sierra::nalu::SharedMemView<double**> elemNodeCoords = sierra::nalu::get_shmem_view_2D<double>(team, nodesPerElem, nDim);
+        sierra::nalu::SharedMemView<double*> elemNodePressures = sierra::nalu::get_shmem_view_1D<double>(team, nodesPerElem);
      
-        sierra::nalu::SharedMemView<double**> scs_areav = sierra::nalu::get_shmem_view_2D(team, numScsIp, nDim);
-        sierra::nalu::SharedMemView<double**> dndx = sierra::nalu::get_shmem_view_2D(team, numScsIp, nodesPerElem*nDim);
-        sierra::nalu::SharedMemView<double**> deriv = sierra::nalu::get_shmem_view_2D(team, numScsIp, nodesPerElem*nDim);
-        sierra::nalu::SharedMemView<double*> det_j = sierra::nalu::get_shmem_view_1D(team, numScsIp);
+        sierra::nalu::SharedMemView<double**> scs_areav = sierra::nalu::get_shmem_view_2D<double>(team, numScsIp, nDim);
+        sierra::nalu::SharedMemView<double**> dndx = sierra::nalu::get_shmem_view_2D<double>(team, numScsIp, nodesPerElem*nDim);
+        sierra::nalu::SharedMemView<double**> deriv = sierra::nalu::get_shmem_view_2D<double>(team, numScsIp, nodesPerElem*nDim);
+        sierra::nalu::SharedMemView<double*> det_j = sierra::nalu::get_shmem_view_1D<double>(team, numScsIp);
 
         Kokkos::parallel_for(Kokkos::TeamThreadRange(team, bkt.size()), [&](const size_t& jj)
         {

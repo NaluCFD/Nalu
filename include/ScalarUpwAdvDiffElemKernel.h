@@ -22,7 +22,6 @@ namespace nalu {
 class SolutionOptions;
 class MasterElement;
 class ElemDataRequests;
-class ScratchViews;
 class PecletFunction;
 class EquationSystem;
 
@@ -51,7 +50,7 @@ public:
   virtual void execute(
     SharedMemView<DoubleType**>&,
     SharedMemView<DoubleType*>&,
-    ScratchViews&);
+    ScratchViews<DoubleType>&);
 
   virtual double van_leer(
     const double &dqm,

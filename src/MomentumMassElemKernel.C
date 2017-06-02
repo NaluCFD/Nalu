@@ -101,7 +101,7 @@ void
 MomentumMassElemKernel<AlgTraits>::execute(
   SharedMemView<DoubleType**>& lhs,
   SharedMemView<DoubleType *>& rhs,
-  ScratchViews& scratchViews)
+  ScratchViews<DoubleType>& scratchViews)
 {
   DoubleType w_uNm1 [AlgTraits::nDim_];
   DoubleType w_uN   [AlgTraits::nDim_];

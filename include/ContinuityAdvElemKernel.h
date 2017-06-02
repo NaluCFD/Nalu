@@ -23,7 +23,6 @@ class TimeIntegrator;
 class SolutionOptions;
 class MasterElement;
 class ElemDataRequests;
-class ScratchViews;
 
 /** CMM (BDF2) for continuity equation (pressure DOF)
  */
@@ -48,7 +47,7 @@ public:
   virtual void execute(
     SharedMemView<DoubleType**>&,
     SharedMemView<DoubleType*>&,
-    ScratchViews&);
+    ScratchViews<DoubleType>&);
 
 private:
   ContinuityAdvElemKernel() = delete;
