@@ -207,6 +207,20 @@ ActuatorLineFAST::load(
       get_if_present(y_actuatorLine, "dry_run", fi.dryRun, false);
       get_if_present(y_actuatorLine, "debug", fi.debug, false);
       get_required(y_actuatorLine, "t_start", fi.tStart);
+      std::string simStartType = "na";
+      get_required(y_actuatorLine, "simStart", simStartType);
+      if (simStartType == "init") {
+	if (fi.tStart == 0) {
+	  fi.simStart = fast::init;
+	}
+	else {
+	  throw std::runtime_error("actuator_line: simStart type not consistent with start time for FAST");
+	}
+      } else if(simStartType == "trueRestart") {
+	fi.simStart = fast::trueRestart;
+      } else if(simStartType == "restartDriverInitFAST") {
+	fi.simStart = fast::restartDriverInitFAST;
+      }
       get_required(y_actuatorLine, "n_every_checkpoint", fi.nEveryCheckPoint);
       get_required(y_actuatorLine, "dt_fast", fi.dtFAST);
       get_required(y_actuatorLine, "t_max", fi.tMax); // tMax is the total duration to which you want to run FAST. This should be the same or greater than the max time given in the FAST fst file. Choose this carefully as FAST writes the output file only at this point if you choose the binary file output.
@@ -533,7 +547,7 @@ ActuatorLineFAST::execute()
     interpolate_field(1, bestElem, bulkData, infoObject->isoParCoords_.data(), 
                       &ws_density_[0], &ws_pointGasDensity);
 
-    FAST.setVelocity(ws_pointGasVelocity, np, infoObject->globTurbId_);
+    FAST.setVelocityForceNode(ws_pointGasVelocity, np, infoObject->globTurbId_);
     np = np + 1;
 
   }    
