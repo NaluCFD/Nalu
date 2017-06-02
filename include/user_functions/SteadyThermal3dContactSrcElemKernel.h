@@ -22,7 +22,6 @@ namespace nalu {
 class SolutionOptions;
 class MasterElement;
 class ElemDataRequests;
-class ScratchViews;
 
 template<typename AlgTraits>
 class SteadyThermal3dContactSrcElemKernel: public Kernel
@@ -38,7 +37,7 @@ public:
   virtual void execute(
     SharedMemView<DoubleType**>&,
     SharedMemView<DoubleType*>&,
-    ScratchViews&);
+    ScratchViews<DoubleType>&);
 
 private:
   SteadyThermal3dContactSrcElemKernel() = delete;

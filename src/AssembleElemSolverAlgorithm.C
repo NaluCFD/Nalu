@@ -86,7 +86,7 @@ AssembleElemSolverAlgorithm::execute()
   //    scratch views size + LHS + RHS + node IDs + padding for alignment
   const int bytes_per_thread =
     (rhsSize_ + lhsSize)*sizeof(double) + scratchIdsSize*sizeof(int) +
-    get_num_bytes_pre_req_data(dataNeededBySuppAlgs_, meta_data.spatial_dimension());
+    get_num_bytes_pre_req_data<double>(dataNeededBySuppAlgs_, meta_data.spatial_dimension());
 
   // define some common selectors
   stk::mesh::Selector s_locally_owned_union = meta_data.locally_owned_part()
@@ -102,11 +102,11 @@ AssembleElemSolverAlgorithm::execute()
     
     ThrowAssert(b.topology() == topo_);
 
-    sierra::nalu::ScratchViews prereqData(team, bulk_data, topo_, dataNeededBySuppAlgs_);
+    sierra::nalu::ScratchViews<DoubleType> prereqData(team, bulk_data, topo_, dataNeededBySuppAlgs_);
 
     SharedMemView<int*> scratchIds = get_int_shmem_view_1D(team, scratchIdsSize);
-    SharedMemView<DoubleType*> rhs = get_shmem_view_1D(team, rhsSize_);
-    SharedMemView<DoubleType**> lhs = get_shmem_view_2D(team, rhsSize_, rhsSize_);
+    SharedMemView<DoubleType*> rhs = get_shmem_view_1D<DoubleType>(team, rhsSize_);
+    SharedMemView<DoubleType**> lhs = get_shmem_view_2D<DoubleType>(team, rhsSize_, rhsSize_);
 
     const stk::mesh::Bucket::size_type length   = b.size();
     team.team_barrier();

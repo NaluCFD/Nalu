@@ -112,7 +112,7 @@ void
 ScalarUpwAdvDiffElemKernel<AlgTraits>::execute(
   SharedMemView<DoubleType**>& lhs,
   SharedMemView<DoubleType*>& rhs,
-  ScratchViews& scratchViews)
+  ScratchViews<DoubleType>& scratchViews)
 {
   /// Scratch space to hold coordinates at the integration point
   DoubleType w_coordIp[AlgTraits::nDim_];

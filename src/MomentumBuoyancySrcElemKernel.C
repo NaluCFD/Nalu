@@ -65,7 +65,7 @@ void
 MomentumBuoyancySrcElemKernel<AlgTraits>::execute(
   SharedMemView<DoubleType**>& /* lhs */,
   SharedMemView<DoubleType*>& rhs,
-  ScratchViews& scratchViews)
+  ScratchViews<DoubleType>& scratchViews)
 {
   SharedMemView<DoubleType*>& v_densityNp1 = scratchViews.get_scratch_view_1D(*densityNp1_);
   SharedMemView<DoubleType*>& v_scv_volume = scratchViews.get_me_views(CURRENT_COORDINATES).scv_volume;

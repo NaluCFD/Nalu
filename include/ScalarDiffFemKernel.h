@@ -23,7 +23,6 @@ namespace nalu {
 class ElemDataRequests;
 class Hex8FEM;
 class MasterElement;
-class ScratchViews;
 class SolutionOptions;
 
 /** CVFEM scalar advection/diffusion kernel
@@ -47,7 +46,7 @@ public:
   virtual void execute(
     SharedMemView<DoubleType**>&,
     SharedMemView<DoubleType*>&,
-    ScratchViews&);
+    ScratchViews<DoubleType>&);
 
 private:
   ScalarDiffFemKernel() = delete;
