@@ -93,7 +93,7 @@ void
 ContinuityAdvElemKernel<AlgTraits>::execute(
   SharedMemView<DoubleType **>& lhs,
   SharedMemView<DoubleType *>& rhs,
-  ScratchViews& scratchViews)
+  ScratchViews<DoubleType>& scratchViews)
 {
   // Work arrays (fixed size)
   DoubleType w_uIp     [AlgTraits::nDim_];

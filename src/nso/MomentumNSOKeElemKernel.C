@@ -90,7 +90,7 @@ void
 MomentumNSOKeElemKernel<AlgTraits>::execute(
   SharedMemView<DoubleType**>& lhs,
   SharedMemView<DoubleType *>& rhs,
-  ScratchViews& scratchViews)
+  ScratchViews<DoubleType>& scratchViews)
 {
   DoubleType w_ke         [AlgTraits::nodesPerElement_];
   DoubleType w_rhoVrtmScs [AlgTraits::nDim_];
