@@ -4891,22 +4891,22 @@ WedSCS::sidePcoords_to_elemPcoords(
     break;
   case 1:
     for (int i=0; i<npoints; i++) {//face1:quad: (x,y) -> (0.5*(1-y),0.5*(1 + y),x)
-      elem_pcoords[i*3+0] = 0.5*(1.0-side_pcoords[2*i+1]);
-      elem_pcoords[i*3+1] = 0.5*(1.0+side_pcoords[2*i+1]);
-      elem_pcoords[i*3+2] = side_pcoords[2*i+0];
+      elem_pcoords[i*3+0] = 0.5*(1.0-side_pcoords[2*i+0]);
+      elem_pcoords[i*3+1] = 0.5*(1.0+side_pcoords[2*i+0]);
+      elem_pcoords[i*3+2] = side_pcoords[2*i+1];
     }
     break;
   case 2:
     for (int i=0; i<npoints; i++) {//face2:quad: (x,y) -> (0,0.5*(1 + x),y)
       elem_pcoords[i*3+0] = 0.0;
-      elem_pcoords[i*3+1] = 0.5*(1.0+side_pcoords[2*i+0]);
-      elem_pcoords[i*3+2] = side_pcoords[2*i+1];
+      elem_pcoords[i*3+1] = 0.5*(1.0+side_pcoords[2*i+1]);
+      elem_pcoords[i*3+2] = side_pcoords[2*i+0];
     }
     break;
   case 3:
     for (int i=0; i<npoints; i++) {//face3:tri: (x,y) -> (x,y,-1)
-      elem_pcoords[i*3+0] = side_pcoords[2*i+0];
-      elem_pcoords[i*3+1] = side_pcoords[2*i+1];
+      elem_pcoords[i*3+0] = side_pcoords[2*i+1];
+      elem_pcoords[i*3+1] = side_pcoords[2*i+0];
       elem_pcoords[i*3+2] = -1.0;
     }
     break;
@@ -5940,6 +5940,44 @@ double QuadrilateralP2Element::isInElement(
   }
   return dist;
 }
+
+void
+QuadrilateralP2Element::sidePcoords_to_elemPcoords(
+  const int & side_ordinal,
+  const int & npoints,
+  const double *side_pcoords,
+  double *elem_pcoords)
+{
+  switch (side_ordinal) {
+  case 0:
+    for (int i=0; i<npoints; i++) {
+      elem_pcoords[i*2+0] = side_pcoords[i];
+      elem_pcoords[i*2+1] = -1;
+    }
+    break;
+  case 1:
+    for (int i=0; i<npoints; i++) {
+      elem_pcoords[i*2+0] = 1;
+      elem_pcoords[i*2+1] = side_pcoords[i];
+    }
+    break;
+  case 2:
+    for (int i=0; i<npoints; i++) {
+      elem_pcoords[i*2+0] = -side_pcoords[i];
+      elem_pcoords[i*2+1] = 1;
+    }
+    break;
+  case 3:
+    for (int i=0; i<npoints; i++) {
+      elem_pcoords[i*2+0] = -1;
+      elem_pcoords[i*2+1] = -side_pcoords[i];
+    }
+    break;
+  default:
+    throw std::runtime_error("QuadrilateralP2Element::sideMap invalid ordinal");
+  }
+}
+
 
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
@@ -8820,6 +8858,26 @@ Edge32DSCS::shifted_shape_fcn(double *shpfc)
     shpfc[j  ] = -s*(1.0-s)*0.5;
     shpfc[j+1] = s*(1.0+s)*0.5;
     shpfc[j+2] = (1.0-s)*(1.0+s);
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- interpolate_point -----------------------------------------------
+//--------------------------------------------------------------------------
+void
+Edge32DSCS::interpolatePoint(
+  const int &nComp,
+  const double *isoParCoord,
+  const double *field,
+  double *result)
+{
+  constexpr int nNodes = 3;
+
+  double s = isoParCoord[0];
+  std::array<double, nNodes> shapefct = {{-0.5*s*(1-s), +0.5*s*(1+s), (1-s)*(1+s)}};
+
+  for ( int i =0; i< nComp; ++i ) {
+    result[i] = shapefct[0] * field[3*i+0] + shapefct[1] * field[3*i+1] + shapefct[2] * field[3*i+2];
   }
 }
 
