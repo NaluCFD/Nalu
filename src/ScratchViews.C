@@ -95,6 +95,7 @@ MasterElementViews::create_master_element_views(
   int numScalars = 0;
   bool needDeriv = false; bool needDerivFem = false;
   bool needDetj = false; bool needDetjFem = false;
+  bool femGradOp = false; bool femShiftedGradOp = false;
   for(ELEM_DATA_NEEDED data : dataEnums) {
     switch(data)
     {
@@ -140,6 +141,16 @@ MasterElementViews::create_master_element_views(
          numScalars += nodesPerElem * numFemIp * nDim;
          needDerivFem = true;
          needDetjFem = true;
+         femGradOp = true;
+         break;
+
+      case FEM_SHIFTED_GRAD_OP:
+         ThrowRequireMsg(numFemIp > 0, "ERROR, meFEM must be non-null if FEM_SHIFTED_GRAD_OP is requested.");
+         dndx_fem = get_shmem_view_3D(team, numFemIp, nodesPerElem, nDim);
+         numScalars += nodesPerElem * numFemIp * nDim;
+         needDerivFem = true;
+         needDetjFem = true;
+         femShiftedGradOp = true;
          break;
 
       default: break;
@@ -165,6 +176,10 @@ MasterElementViews::create_master_element_views(
     det_j_fem = get_shmem_view_1D(team, numFemIp);
     numScalars += numFemIp;
   }
+
+  // error check
+  if ( femGradOp && femShiftedGradOp )
+    ThrowRequireMsg(numFemIp > 0, "ERROR, femGradOp and femShiftedGradOp both requested.");
 
   return numScalars;
 }
@@ -210,6 +225,12 @@ MasterElementViews::fill_master_element_views(
          ThrowRequireMsg(meFEM != nullptr, "ERROR, meFEM needs to be non-null if FEM_GRAD_OP is requested.");
          ThrowRequireMsg(coordsView != nullptr, "ERROR, coords null but FEM_GRAD_OP requested.");
          meFEM->grad_op(1, &((*coordsView)(0,0)), &dndx_fem(0,0,0), &deriv_fem(0), &det_j_fem(0), &error);
+         break;
+      case FEM_SHIFTED_GRAD_OP:
+         ThrowRequireMsg(meFEM != nullptr, "ERROR, meFEM needs to be non-null if FEM_SHIFTED_GRAD_OP is requested.");
+         ThrowRequireMsg(coordsView != nullptr, "ERROR, coords null but FEM_GRAD_OP requested.");
+         meFEM->shifted_grad_op(1, &((*coordsView)(0,0)), &dndx_fem(0,0,0), &deriv_fem(0), &det_j_fem(0), &error);
+         break;
       default: break;
     }
   }
@@ -371,6 +392,7 @@ int get_num_bytes_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDim)
         numBytes += (gUpperLength + gLowerLength ) * sizeof(double);
         break;
       case FEM_GRAD_OP:
+      case FEM_SHIFTED_GRAD_OP:
         dndxLength = nodesPerElem*numFemIp*nDim;
         needDerivFem = true;
         needDetjFem = true;
