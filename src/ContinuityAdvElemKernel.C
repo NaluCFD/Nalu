@@ -105,7 +105,7 @@ ContinuityAdvElemKernel<AlgTraits>::execute(
 
   SharedMemView<double***>& v_dndx = shiftPoisson_ ?
     scratchViews.get_me_views(CURRENT_COORDINATES).dndx_shifted : scratchViews.get_me_views(CURRENT_COORDINATES).dndx;
-  SharedMemView<double***>& v_dndx_lhs = (!shiftPoisson_ && reducedSensitivities_)?
+  SharedMemView<double***>& v_dndx_lhs = (shiftPoisson_ || reducedSensitivities_)?
     scratchViews.get_me_views(CURRENT_COORDINATES).dndx_shifted : scratchViews.get_me_views(CURRENT_COORDINATES).dndx;
 
   for (int ip = 0; ip < AlgTraits::numScsIp_; ++ip) {
