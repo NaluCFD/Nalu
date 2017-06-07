@@ -102,11 +102,14 @@ AssembleElemSolverAlgorithm::execute()
     
     ThrowAssert(b.topology() == topo_);
 
-    sierra::nalu::ScratchViews<DoubleType> prereqData(team, bulk_data, topo_, dataNeededBySuppAlgs_);
+    sierra::nalu::ScratchViews<double> prereqData(team, bulk_data, topo_, dataNeededBySuppAlgs_);
+    sierra::nalu::ScratchViews<DoubleType> simdPrereqData(team, bulk_data, topo_, dataNeededBySuppAlgs_);
 
     SharedMemView<int*> scratchIds = get_int_shmem_view_1D(team, scratchIdsSize);
-    SharedMemView<DoubleType*> rhs = get_shmem_view_1D<DoubleType>(team, rhsSize_);
-    SharedMemView<DoubleType**> lhs = get_shmem_view_2D<DoubleType>(team, rhsSize_, rhsSize_);
+    SharedMemView<double*> rhs = get_shmem_view_1D<double>(team, rhsSize_);
+    SharedMemView<double**> lhs = get_shmem_view_2D<double>(team, rhsSize_, rhsSize_);
+    SharedMemView<DoubleType*> simdrhs = get_shmem_view_1D<DoubleType>(team, rhsSize_);
+    SharedMemView<DoubleType**> simdlhs = get_shmem_view_2D<DoubleType>(team, rhsSize_, rhsSize_);
 
     const stk::mesh::Bucket::size_type length   = b.size();
 
@@ -133,7 +136,7 @@ AssembleElemSolverAlgorithm::execute()
 
       // call supplemental; gathers happen inside the elem_execute method
       for ( size_t i = 0; i < activeKernelsSize; ++i )
-        activeKernels_[i]->execute( lhs, rhs, prereqData );
+        activeKernels_[i]->execute( simdlhs, simdrhs, simdPrereqData );
       
       apply_coeff(num_nodes, node_rels, scratchIds, rhs, lhs, __FILE__);
     });

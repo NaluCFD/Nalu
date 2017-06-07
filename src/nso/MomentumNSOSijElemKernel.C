@@ -59,7 +59,7 @@ MomentumNSOSijElemKernel<AlgTraits>::MomentumNSOSijElemKernel(
   Gjp_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "dpdx");
 
   MasterElement *meSCS = sierra::nalu::get_surface_master_element(AlgTraits::topo_);
-  meSCS->shape_fcn(&v_shape_function_(0,0));
+  get_scs_shape_fn_data<AlgTraits>([&](double* ptr){meSCS->shape_fcn(ptr);}, v_shape_function_);
 
   // add master elements
   dataPreReqs.add_cvfem_surface_me(meSCS);
@@ -175,14 +175,14 @@ MomentumNSOSijElemKernel<AlgTraits>::execute(
     }
 
     // construct nu from ke residual
-    const DoubleType nuResidual = rhoScs*std::sqrt((keResidual*keResidual)/(gUpperMagGradQ+small_));
+    const DoubleType nuResidual = rhoScs*stk::math::sqrt((keResidual*keResidual)/(gUpperMagGradQ+small_));
 
     // construct nu from first-order-like approach; SNL-internal write-up (eq 209)
     // for now, only include advection as full set of terms is too diffuse
-    const DoubleType nuFirstOrder = std::sqrt(rhoVrtmiGLowerRhoVrtmj);
+    const DoubleType nuFirstOrder = stk::math::sqrt(rhoVrtmiGLowerRhoVrtmj);
 
     // limit based on first order; Cupw_ is a fudge factor similar to Guermond's approach
-    const DoubleType nu = std::min(Cupw_*nuFirstOrder, nuResidual);
+    const DoubleType nu = stk::math::min(Cupw_*nuFirstOrder, nuResidual);
 
     for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
 

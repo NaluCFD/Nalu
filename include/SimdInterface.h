@@ -24,7 +24,7 @@ namespace nalu {
 
 typedef stk::simd::Double SimdDouble;
 
-typedef double DoubleType;
+typedef SimdDouble DoubleType;
 
 template<typename T>
 using AlignedVector = std::vector<T, non_std::AlignedAllocator<T, 64>>;
@@ -34,4 +34,5 @@ using ScalarAlignedVector = AlignedVector<DoubleType>;
 }  // nalu
 }  // sierra
 
+typedef sierra::nalu::DoubleType DoubleType;
 #endif /* SIMDINTERFACE_H */

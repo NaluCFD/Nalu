@@ -31,8 +31,8 @@ ScalarNSOElemKernel<AlgTraits>::ScalarNSOElemKernel(
   ScalarFieldType* scalarQ,
   VectorFieldType* Gjq,
   ScalarFieldType* diffFluxCoeff,
-  const DoubleType fourthFac,
-  const DoubleType altResFac,
+  const double fourthFac,
+  const double altResFac,
   ElemDataRequests& dataPreReqs)
   : Kernel(),
     diffFluxCoeff_(diffFluxCoeff),
@@ -72,7 +72,7 @@ ScalarNSOElemKernel<AlgTraits>::ScalarNSOElemKernel(
     stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
 
   MasterElement *meSCS = sierra::nalu::get_surface_master_element(AlgTraits::topo_);
-  meSCS->shape_fcn(&v_shape_function_(0,0));
+  get_scs_shape_fn_data<AlgTraits>([&](double* ptr){meSCS->shape_fcn(ptr);}, v_shape_function_);
 
   // add master elements
   dataPreReqs.add_cvfem_surface_me(meSCS);
@@ -214,14 +214,14 @@ ScalarNSOElemKernel<AlgTraits>::execute(
     }
 
     // construct nu from residual
-    const DoubleType nuResidual = std::sqrt((residual*residual)/(gUpperMagGradQ+small_));
+    const DoubleType nuResidual = stk::math::sqrt((residual*residual)/(gUpperMagGradQ+small_));
 
     // construct nu from first-order-like approach; SNL-internal write-up (eq 209)
     // for now, only include advection as full set of terms is too diffuse
-    const DoubleType nuFirstOrder = std::sqrt(rhoVrtmiGLowerRhoVrtmj);
+    const DoubleType nuFirstOrder = stk::math::sqrt(rhoVrtmiGLowerRhoVrtmj);
 
     // limit based on first order; Cupw_ is a fudge factor similar to Guermond's approach
-    const DoubleType nu = std::min(Cupw_*nuFirstOrder, nuResidual);
+    const DoubleType nu = stk::math::min(Cupw_*nuFirstOrder, nuResidual);
 
     DoubleType gijFac = 0.0;
     for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {

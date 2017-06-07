@@ -67,7 +67,7 @@ ScalarUpwAdvDiffElemKernel<AlgTraits>::ScalarUpwAdvDiffElemKernel(
       stk::topology::NODE_RANK, "velocity");
 
   MasterElement *meSCS = sierra::nalu::get_surface_master_element(AlgTraits::topo_);
-  meSCS->shape_fcn(&v_shape_function_(0,0));
+  get_scs_shape_fn_data<AlgTraits>([&](double* ptr){meSCS->shape_fcn(ptr);}, v_shape_function_);
 
   // add master elements
   dataPreReqs.add_cvfem_surface_me(meSCS);
@@ -165,7 +165,13 @@ ScalarUpwAdvDiffElemKernel<AlgTraits>::execute(
       const DoubleType uj = 0.5*(v_velocityRTM(il,j) + v_velocityRTM(ir,j));
       udotx += uj*dxj;
     }
-    const DoubleType pecfac = pecletFunction_->execute(std::abs(udotx)/(diffIp+small_));
+    const DoubleType tmp = stk::math::abs(udotx)/(diffIp+small_);
+    //ugh, should we do this tedious loop over ndoubles, or convert PecletFunction to DoubleType?
+    DoubleType pecfac = 0.0;
+    for(int simdIndex=0; simdIndex<stk::simd::ndoubles; ++simdIndex) {
+      stk::simd::set_data(pecfac, simdIndex, pecletFunction_->execute(stk::simd::get_data(tmp, simdIndex)));
+    }
+
     const DoubleType om_pecfac = 1.0-pecfac;
 
     // left and right extrapolation
@@ -194,8 +200,9 @@ ScalarUpwAdvDiffElemKernel<AlgTraits>::execute(
     const DoubleType qIpR = v_scalarQ(ir) - dqR*hoUpwind_*limitR;
 
     // upwind
-    const DoubleType qUpwind = (tmdot > 0) ? alphaUpw_*qIpL + om_alphaUpw_*qIp
-      : alphaUpw_*qIpR + om_alphaUpw_*qIp;
+    const DoubleType qUpwind = stk::math::if_then_else(tmdot > 0,
+                                                       alphaUpw_*qIpL + om_alphaUpw_*qIp,
+                                                       alphaUpw_*qIpR + om_alphaUpw_*qIp);
 
     // generalized central (2nd and 4th order)
     const DoubleType qHatL = alpha_*qIpL + om_alpha_*qIp;
@@ -210,13 +217,13 @@ ScalarUpwAdvDiffElemKernel<AlgTraits>::execute(
     rhs(ir) += aflux;
 
     // upwind advection (includes 4th); left node
-    const DoubleType alhsfacL = 0.5*(tmdot+std::abs(tmdot))*pecfac*alphaUpw_
+    const DoubleType alhsfacL = 0.5*(tmdot+stk::math::abs(tmdot))*pecfac*alphaUpw_
       + 0.5*alpha_*om_pecfac*tmdot;
     lhs(il,il) += alhsfacL;
     lhs(ir,il) -= alhsfacL;
 
     // upwind advection; right node
-    const DoubleType alhsfacR = 0.5*(tmdot-std::abs(tmdot))*pecfac*alphaUpw_
+    const DoubleType alhsfacR = 0.5*(tmdot-stk::math::abs(tmdot))*pecfac*alphaUpw_
       + 0.5*alpha_*om_pecfac*tmdot;
     lhs(ir,ir) -= alhsfacR;
     lhs(il,ir) += alhsfacR;
@@ -259,7 +266,7 @@ ScalarUpwAdvDiffElemKernel<AlgTraits>::van_leer(
   const DoubleType &dqm,
   const DoubleType &dqp)
 {
-  DoubleType limit = (2.0*(dqm*dqp+std::abs(dqm*dqp))) /
+  DoubleType limit = (2.0*(dqm*dqp+stk::math::abs(dqm*dqp))) /
     ((dqm+dqp)*(dqm+dqp)+small_);
   return limit;
 }

@@ -53,10 +53,11 @@ ContinuityAdvElemKernel<AlgTraits>::ContinuityAdvElemKernel(
     stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
 
   MasterElement *meSCS = sierra::nalu::get_surface_master_element(AlgTraits::topo_);
+
   if ( shiftMdot_ )
-    meSCS->shifted_shape_fcn(&v_shape_function_(0,0));
+    get_scs_shape_fn_data<AlgTraits>([&](double* ptr){meSCS->shifted_shape_fcn(ptr);}, v_shape_function_);
   else
-    meSCS->shape_fcn(&v_shape_function_(0,0));
+    get_scs_shape_fn_data<AlgTraits>([&](double* ptr){meSCS->shape_fcn(ptr);}, v_shape_function_);
 
   dataPreReqs.add_cvfem_surface_me(meSCS);
 
@@ -83,8 +84,8 @@ template<typename AlgTraits>
 void
 ContinuityAdvElemKernel<AlgTraits>::setup(const TimeIntegrator& timeIntegrator)
 {
-  const DoubleType dt = timeIntegrator.get_time_step();
-  const DoubleType gamma1 = timeIntegrator.get_gamma1();
+  const double dt = timeIntegrator.get_time_step();
+  const double gamma1 = timeIntegrator.get_gamma1();
   projTimeScale_ = dt / gamma1;
 }
 

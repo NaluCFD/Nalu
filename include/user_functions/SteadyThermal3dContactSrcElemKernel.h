@@ -51,8 +51,8 @@ private:
   const double pi_;
 
   // fixed scratch space
-  Kokkos::View<double[AlgTraits::numScvIp_][AlgTraits::nodesPerElement_]> v_shape_function_{"v_shape_function"};
-  Kokkos::View<double[AlgTraits::nDim_]> v_scvCoords_{"v_scvCoords"};
+  Kokkos::View<DoubleType[AlgTraits::numScvIp_][AlgTraits::nodesPerElement_]> v_shape_function_{"v_shape_function"};
+  Kokkos::View<DoubleType[AlgTraits::nDim_]> v_scvCoords_{"v_scvCoords"};
 };
 
 }  // nalu
