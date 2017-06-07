@@ -182,7 +182,8 @@ void fill_pre_req_data(
   const stk::mesh::BulkData& bulkData,
   stk::topology topo,
   stk::mesh::Entity elem,
-  ScratchViews<double>& prereqData)
+  ScratchViews<double>& prereqData,
+  bool fillMEViews)
 {
   int nodesPerElem = topo.num_nodes();
 
@@ -237,17 +238,19 @@ void fill_pre_req_data(
     }
   } 
 
-
-  for (auto it = dataNeeded.get_coordinates_map().begin();
-       it != dataNeeded.get_coordinates_map().end(); ++it) {
-    auto cType = it->first;
-    auto coordField = it->second;
-
-    const std::set<ELEM_DATA_NEEDED>& dataEnums = dataNeeded.get_data_enums(cType);
-    SharedMemView<double**>* coordsView = &prereqData.get_scratch_view_2D(*coordField);
-    auto& meData = prereqData.get_me_views(cType);
-
-    meData.fill_master_element_views(dataEnums, coordsView, meSCS, meSCV, meFEM);
+  if (fillMEViews)
+  {
+    for (auto it = dataNeeded.get_coordinates_map().begin();
+         it != dataNeeded.get_coordinates_map().end(); ++it) {
+      auto cType = it->first;
+      auto coordField = it->second;
+  
+      const std::set<ELEM_DATA_NEEDED>& dataEnums = dataNeeded.get_data_enums(cType);
+      SharedMemView<double**>* coordsView = &prereqData.get_scratch_view_2D(*coordField);
+      auto& meData = prereqData.get_me_views(cType);
+  
+      meData.fill_master_element_views(dataEnums, coordsView, meSCS, meSCV, meFEM);
+    }
   }
 }
 

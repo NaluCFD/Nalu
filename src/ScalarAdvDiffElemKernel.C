@@ -44,7 +44,8 @@ ScalarAdvDiffElemKernel<AlgTraits>::ScalarAdvDiffElemKernel(
     stk::topology::ELEMENT_RANK, "mass_flow_rate_scs");
 
   MasterElement *meSCS = sierra::nalu::get_surface_master_element(AlgTraits::topo_);
-  meSCS->shape_fcn(&v_shape_function_(0,0));
+
+  get_scs_shape_fn_data<AlgTraits>([&](double* ptr){meSCS->shape_fcn(ptr);}, v_shape_function_);
 
   dataPreReqs.add_cvfem_surface_me(meSCS);
 

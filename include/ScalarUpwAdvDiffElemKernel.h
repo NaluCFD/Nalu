@@ -52,9 +52,9 @@ public:
     SharedMemView<DoubleType*>&,
     ScratchViews<DoubleType>&);
 
-  virtual double van_leer(
-    const double &dqm,
-    const double &dqp);
+  virtual DoubleType van_leer(
+    const DoubleType &dqm,
+    const DoubleType &dqp);
 
 private:
   ScalarUpwAdvDiffElemKernel() = delete;
