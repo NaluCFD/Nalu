@@ -39,13 +39,13 @@ MomentumBuoyancySrcElemKernel<AlgTraits>::MomentumBuoyancySrcElemKernel(
   coordinates_ = metaData.get_field<VectorFieldType>(
     stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
   
-  std::vector<DoubleType> solnOptsGravity = solnOpts.get_gravity_vector(AlgTraits::nDim_);
+  const std::vector<double>& solnOptsGravity = solnOpts.get_gravity_vector(AlgTraits::nDim_);
   for (int i = 0; i < AlgTraits::nDim_; i++)
     gravity_(i) = solnOptsGravity[i];
 
   MasterElement* meSCV = sierra::nalu::get_volume_master_element(AlgTraits::topo_);
 
-  meSCV->shape_fcn(&v_shape_function_(0,0));
+  get_scv_shape_fn_data<AlgTraits>([&](double* ptr){meSCV->shape_fcn(ptr);}, v_shape_function_);
 
   // add master elements
   dataPreReqs.add_cvfem_volume_me(meSCV);

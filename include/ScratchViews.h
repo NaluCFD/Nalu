@@ -26,11 +26,12 @@ namespace nalu{
 
 struct ViewHolder {
   virtual ~ViewHolder() {}
+  int dim_;
 };
 
 template<typename T>
 struct ViewT : public ViewHolder {
-  ViewT(T view) : view_(view) {}
+  ViewT(T view, int dim) : view_(view) {dim_ = dim;}
   virtual ~ViewT(){}
   T view_;
 };
@@ -105,10 +106,13 @@ public:
     ThrowRequire(hasCoordField[cType] == true);
     return meViews[cType];
   }
+  inline bool has_coord_field(const COORDS_TYPES cType) const { return hasCoordField[cType]; }
 
   inline int total_bytes() const { return num_bytes_required; }
 
   const stk::mesh::Entity* elemNodes;
+
+  inline const std::vector<ViewHolder*> get_field_views() const { return fieldViews; }
 
 private:
   void create_needed_field_views(const TeamHandleType& team,
@@ -357,27 +361,27 @@ void ScratchViews<T>::create_needed_field_views(const TeamHandleType& team,
 
     if (fieldEntityRank==stk::topology::ELEM_RANK) {
       if (scalarsDim2 == 0) {
-        fieldViews[fieldInfo.field->mesh_meta_data_ordinal()] = new ViewT<SharedMemView<T*>>(get_shmem_view_1D<T>(team, scalarsDim1));
+        fieldViews[fieldInfo.field->mesh_meta_data_ordinal()] = new ViewT<SharedMemView<T*>>(get_shmem_view_1D<T>(team, scalarsDim1), 1);
         numScalars += scalarsDim1;
       }
       else {
-        fieldViews[fieldInfo.field->mesh_meta_data_ordinal()] = new ViewT<SharedMemView<T**>>(get_shmem_view_2D<T>(team, scalarsDim1, scalarsDim2));
+        fieldViews[fieldInfo.field->mesh_meta_data_ordinal()] = new ViewT<SharedMemView<T**>>(get_shmem_view_2D<T>(team, scalarsDim1, scalarsDim2),2);
         numScalars += scalarsDim1 * scalarsDim2;
       }
     }
     else if (fieldEntityRank==stk::topology::NODE_RANK) {
       if (scalarsDim2 == 0) {
         if (scalarsDim1 == 1) {
-          fieldViews[fieldInfo.field->mesh_meta_data_ordinal()] = new ViewT<SharedMemView<T*>>(get_shmem_view_1D<T>(team, nodesPerElem));
+          fieldViews[fieldInfo.field->mesh_meta_data_ordinal()] = new ViewT<SharedMemView<T*>>(get_shmem_view_1D<T>(team, nodesPerElem),1);
           numScalars += nodesPerElem;
         }
         else {
-          fieldViews[fieldInfo.field->mesh_meta_data_ordinal()] = new ViewT<SharedMemView<T**>>(get_shmem_view_2D<T>(team, nodesPerElem, scalarsDim1));
+          fieldViews[fieldInfo.field->mesh_meta_data_ordinal()] = new ViewT<SharedMemView<T**>>(get_shmem_view_2D<T>(team, nodesPerElem, scalarsDim1),2);
           numScalars += nodesPerElem * scalarsDim1;
         }
       }
       else {
-          fieldViews[fieldInfo.field->mesh_meta_data_ordinal()] = new ViewT<SharedMemView<T***>>(get_shmem_view_3D<T>(team, nodesPerElem, scalarsDim1, scalarsDim2));
+          fieldViews[fieldInfo.field->mesh_meta_data_ordinal()] = new ViewT<SharedMemView<T***>>(get_shmem_view_3D<T>(team, nodesPerElem, scalarsDim1, scalarsDim2),3);
           numScalars += nodesPerElem * scalarsDim1 * scalarsDim2;
       }
     }
@@ -425,5 +429,7 @@ int get_num_bytes_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDim)
 
 } // namespace nalu
 } // namespace Sierra
+
+#include <CopyAndInterleave.h>
 
 #endif
