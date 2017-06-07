@@ -42,7 +42,7 @@ SteadyThermal3dContactSrcElemKernel<AlgTraits>::SteadyThermal3dContactSrcElemKer
     stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
 
   MasterElement *meSCV = sierra::nalu::get_volume_master_element(AlgTraits::topo_);
-  meSCV->shape_fcn(&v_shape_function_(0,0));
+  get_scv_shape_fn_data<AlgTraits>([&](double* ptr){meSCV->shape_fcn(ptr);}, v_shape_function_);
 
   // add master elements
   dataPreReqs.add_cvfem_volume_me(meSCV);
@@ -78,17 +78,17 @@ SteadyThermal3dContactSrcElemKernel<AlgTraits>::execute(
       w_scvCoords[j] = 0.0;
 
     for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
-      const double r = v_shape_function_(ip,ic);
+      const DoubleType r = v_shape_function_(ip,ic);
       for ( int j = 0; j < AlgTraits::nDim_; ++j )
         w_scvCoords[j] += r*v_coordinates(ic,j);
     }
-    const double x = w_scvCoords[0];
-    const double y = w_scvCoords[1];
-    const double z = w_scvCoords[2];
+    const DoubleType x = w_scvCoords[0];
+    const DoubleType y = w_scvCoords[1];
+    const DoubleType z = w_scvCoords[2];
     rhs(nearestNode) += k_/4.0*(2.0*a_*pi_)*(2.0*a_*pi_)*(
-      cos(2.0*a_*pi_*x)
-      + cos(2.0*a_*pi_*y)
-      + cos(2.0*a_*pi_*z))*v_scv_volume(ip);
+      stk::math::cos(2.0*a_*pi_*x)
+      + stk::math::cos(2.0*a_*pi_*y)
+      + stk::math::cos(2.0*a_*pi_*z))*v_scv_volume(ip);
   }
 }
 
