@@ -598,7 +598,7 @@ void calc_projected_nodal_gradient_interior(
 
     EXPECT_EQ(b.topology(), topo);
 
-    sierra::nalu::ScratchViews preReqData(
+    sierra::nalu::ScratchViews<double> preReqData(
       team, bulk, topo, dataNeeded);
 
     Kokkos::parallel_for(
@@ -676,7 +676,7 @@ void calc_projected_nodal_gradient_interior(
 
     EXPECT_EQ(b.topology(), topo);
 
-    sierra::nalu::ScratchViews preReqData(
+    sierra::nalu::ScratchViews<double> preReqData(
       team, bulk, topo, dataNeeded);
 
     Kokkos::parallel_for(
@@ -757,7 +757,7 @@ void calc_projected_nodal_gradient_boundary(
 
     EXPECT_EQ(b.topology(), topo);
 
-    sierra::nalu::ScratchViews preReqData(
+    sierra::nalu::ScratchViews<double> preReqData(
       team, bulk, topo, dataNeeded);
 
     Kokkos::parallel_for(
@@ -830,7 +830,7 @@ void calc_projected_nodal_gradient_boundary(
 
     EXPECT_EQ(b.topology(), topo);
 
-    sierra::nalu::ScratchViews preReqData(
+    sierra::nalu::ScratchViews<double> preReqData(
       team, bulk, topo, dataNeeded);
 
     Kokkos::parallel_for(
@@ -899,7 +899,7 @@ void calc_dual_nodal_volume(
 
     EXPECT_EQ(b.topology(), topo);
 
-    sierra::nalu::ScratchViews preReqData(
+    sierra::nalu::ScratchViews<double> preReqData(
       team, bulk, topo, dataNeeded);
 
     Kokkos::parallel_for(

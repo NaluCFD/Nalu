@@ -18,7 +18,7 @@ namespace sierra{
 namespace nalu{
 
 template<typename DTYPE>
-void interleave_3D(SharedMemView<DTYPE***>& dview, const SharedMemView<double***> sview, int simdIndex)
+void interleave_3D(SharedMemView<DTYPE***>& dview, const SharedMemView<double***>& sview, int simdIndex)
 {
     int dim0 = dview.dimension(0);
     int dim1 = dview.dimension(1);
@@ -126,6 +126,24 @@ void copy_and_interleave(const std::vector<ScratchViews<double>*>& data,
         interleave_me_views(simdData.get_me_views(MODEL_COORDINATES), data[simdIndex]->get_me_views(MODEL_COORDINATES), simdIndex);
       }
     }
+}
+
+inline
+void extract_vector_lane(const SharedMemView<DoubleType*>& simdrhs, int simdIndex, SharedMemView<double*>& rhs)
+{
+  for(size_t i=0; i<simdrhs.dimension(0); ++i) {
+    rhs(i) = stk::simd::get_data(simdrhs(i), simdIndex);
+  }
+}
+
+inline
+void extract_vector_lane(const SharedMemView<DoubleType**>& simdlhs, int simdIndex, SharedMemView<double**>& lhs)
+{
+  for(size_t i=0; i<simdlhs.dimension(0); ++i) {
+    for(size_t j=0; j<simdlhs.dimension(1); ++j) {
+      lhs(i,j) = stk::simd::get_data(simdlhs(i,j), simdIndex);
+    }
+  }
 }
 
 } // namespace nalu
