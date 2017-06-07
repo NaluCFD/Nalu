@@ -20,6 +20,32 @@ namespace nalu {
 class TimeIntegrator;
 class SolutionOptions;
 
+template<typename AlgTraits, typename LambdaFunction>
+void get_scv_shape_fn_data(LambdaFunction lambdaFunction,
+                       Kokkos::View<DoubleType[AlgTraits::numScvIp_][AlgTraits::nodesPerElement_]>& shape_fn_view)
+{
+  double tmp_data[AlgTraits::numScvIp_*AlgTraits::nodesPerElement_];
+  lambdaFunction(tmp_data);
+
+  DoubleType* data = &shape_fn_view(0,0);
+  for(int i=0; i<AlgTraits::numScvIp_*AlgTraits::nodesPerElement_; ++i) {
+    data[i] = tmp_data[i];
+  }
+}
+
+template<typename AlgTraits, typename LambdaFunction>
+void get_scs_shape_fn_data(LambdaFunction lambdaFunction,
+                       Kokkos::View<DoubleType[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]>& shape_fn_view)
+{
+  double tmp_data[AlgTraits::numScsIp_*AlgTraits::nodesPerElement_];
+  lambdaFunction(tmp_data);
+
+  DoubleType* data = &shape_fn_view(0,0);
+  for(int i=0; i<AlgTraits::numScsIp_*AlgTraits::nodesPerElement_; ++i) {
+    data[i] = tmp_data[i];
+  }
+}
+
 /** Base class for computational kernels in Nalu
  *
  * A kernel represents an atomic unit of computation applied over a given set of

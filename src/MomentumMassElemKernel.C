@@ -63,9 +63,9 @@ MomentumMassElemKernel<AlgTraits>::MomentumMassElemKernel(
 
   // compute shape function
   if ( lumpedMass_ )
-    meSCV->shifted_shape_fcn(&v_shape_function_(0,0));
+    get_scv_shape_fn_data<AlgTraits>([&](double* ptr){meSCV->shifted_shape_fcn(ptr);}, v_shape_function_);
   else
-    meSCV->shape_fcn(&v_shape_function_(0,0));
+    get_scv_shape_fn_data<AlgTraits>([&](double* ptr){meSCV->shape_fcn(ptr);}, v_shape_function_);
 
   // add master elements
   dataPreReqs.add_cvfem_volume_me(meSCV);
