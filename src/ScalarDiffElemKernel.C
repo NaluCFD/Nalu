@@ -43,7 +43,7 @@ ScalarDiffElemKernel<AlgTraits>::ScalarDiffElemKernel(
     stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
 
   MasterElement *meSCS = sierra::nalu::get_surface_master_element(AlgTraits::topo_);
-  meSCS->shape_fcn(&v_shape_function_(0,0));
+  get_scs_shape_fn_data<AlgTraits>([&](double* ptr){meSCS->shape_fcn(ptr);}, v_shape_function_);
 
   dataPreReqs.add_cvfem_surface_me(meSCS);
 
