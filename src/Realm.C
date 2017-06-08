@@ -4033,6 +4033,22 @@ Realm::get_noc_usage(
 }
 
 //--------------------------------------------------------------------------
+//-------- get_shifted_grad_op ---------------------------------------------
+//--------------------------------------------------------------------------
+bool
+Realm::get_shifted_grad_op(
+  const std::string dofName )
+{
+  bool factor = solutionOptions_->shiftedGradOpDefault_;
+  std::map<std::string, bool>::const_iterator iter
+    = solutionOptions_->shiftedGradOpMap_.find(dofName);
+  if (iter != solutionOptions_->shiftedGradOpMap_.end()) {
+    factor = (*iter).second;
+  }
+  return factor;
+}
+
+//--------------------------------------------------------------------------
 //-------- get_tanh_functional_form ----------------------------------------
 //--------------------------------------------------------------------------
 std::string
@@ -4121,15 +4137,6 @@ bool
 Realm::get_cvfem_shifted_mdot()
 {
   return solutionOptions_->cvfemShiftMdot_;
-}
-
-//--------------------------------------------------------------------------
-//-------- get_cvfem_shifted_poisson ---------------------------------------
-//--------------------------------------------------------------------------
-bool
-Realm::get_cvfem_shifted_poisson()
-{
-  return solutionOptions_->cvfemShiftPoisson_;
 }
 
 //--------------------------------------------------------------------------

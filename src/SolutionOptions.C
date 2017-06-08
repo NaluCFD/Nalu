@@ -36,6 +36,7 @@ SolutionOptions::SolutionOptions()
     turbScDefault_(1.0),
     turbPrDefault_(1.0),
     nocDefault_(true),
+    shiftedGradOpDefault_(false),
     tanhFormDefault_("classic"),
     tanhTransDefault_(2.0),
     tanhWidthDefault_(4.0),
@@ -73,7 +74,6 @@ SolutionOptions::SolutionOptions()
     ncAlgCurrentNormal_(false),
     ncAlgPngPenalty_(true),
     cvfemShiftMdot_(false),
-    cvfemShiftPoisson_(false),
     cvfemReducedSensPoisson_(false),
     inputVariablesRestorationTime_(1.0e8),
     inputVariablesInterpolateInTime_(false),
@@ -127,24 +127,16 @@ SolutionOptions::load(const YAML::Node & y_node)
     // external mesh motion expected
     get_if_present(y_solution_options, "externally_provided_mesh_deformation", externalMeshDeformation_, externalMeshDeformation_);
 
-    // shifted CVFEM pressure poisson
+    // shift mdot for continuity (CVFEM)
     get_if_present(y_solution_options, "shift_cvfem_mdot", cvfemShiftMdot_, cvfemShiftMdot_);
-    get_if_present(y_solution_options, "shift_cvfem_poisson", cvfemShiftPoisson_, cvfemShiftPoisson_);
-    get_if_present(y_solution_options, "reduced_sens_cvfem_poisson", cvfemReducedSensPoisson_, cvfemReducedSensPoisson_);
-    if ( cvfemShiftMdot_ )
-      NaluEnv::self().naluOutputP0() << "Shifted CVFEM mass flow rate" << std::endl;
-    if ( cvfemShiftPoisson_ )
-      NaluEnv::self().naluOutputP0() << "Shifted CVFEM Poisson" << std::endl;
-    if ( cvfemReducedSensPoisson_)
-      NaluEnv::self().naluOutputP0() << "Reduced sensitivities CVFEM Poisson" << std::endl;
 
-    // sanity checks; if user asked for shifted Poisson, then user will have reduced sensitivities
-    if ( cvfemShiftPoisson_ ) {
-      if ( !cvfemReducedSensPoisson_) {
-        NaluEnv::self().naluOutputP0() << "Reduced sensitivities CVFEM Poisson will be set" << std::endl;
-        cvfemReducedSensPoisson_ = true;
-      }
+    // DEPRECATED shifted CVFEM pressure poisson;
+    if ( y_solution_options["shift_cvfem_poisson"] ) {
+      throw std::runtime_error("shift_cvfem_poisson line command is deprecated to the generalized solution options block command, shifted_gradient_operator");
     }
+
+    // Reduce sensitivities for CVFEM PPE: M delta_p = b - A p; M has quadrature at edge midpoints of the element
+    get_if_present(y_solution_options, "reduced_sens_cvfem_poisson", cvfemReducedSensPoisson_, cvfemReducedSensPoisson_);
 
     // check for consolidated solver alg (AssembleSolver)
     get_if_present(y_solution_options, "use_consolidated_solver_algorithm", useConsolidatedSolverAlg_, useConsolidatedSolverAlg_);
@@ -251,6 +243,9 @@ SolutionOptions::load(const YAML::Node & y_node)
         }
         else if (expect_map( y_option, "noc_correction", optional)) {
           y_option["noc_correction"] >> nocMap_ ;
+        }
+        else if (expect_map( y_option, "shifted_gradient_operator", optional)) {
+          y_option["shifted_gradient_operator"] >> shiftedGradOpMap_ ;
         }
         else if (expect_map( y_option, "input_variables_from_file", optional)) {
           y_option["input_variables_from_file"] >> inputVarFromFileMap_ ;
@@ -557,6 +552,23 @@ SolutionOptions::load(const YAML::Node & y_node)
    NaluEnv::self().naluOutputP0() << "Turbulence Model is: "
        << TurbulenceModelNames[turbulenceModel_] << " " << isTurbulent_ <<std::endl;
 
+   // over view PPE specifications
+   NaluEnv::self().naluOutputP0() << std::endl;
+   NaluEnv::self().naluOutputP0() << "PPE review:   " << std::endl;
+   NaluEnv::self().naluOutputP0() << "===========================" << std::endl;
+
+   if ( cvfemShiftMdot_ )
+     NaluEnv::self().naluOutputP0() << "Shifted CVFEM mass flow rate" << std::endl;
+   if ( cvfemReducedSensPoisson_)
+     NaluEnv::self().naluOutputP0() << "Reduced sensitivities CVFEM Poisson" << std::endl;
+
+   // sanity checks; if user asked for shifted Poisson, then user will have reduced sensitivities
+   if ( get_shifted_grad_op("pressure") ) {
+     if ( !cvfemReducedSensPoisson_) {
+       NaluEnv::self().naluOutputP0() << "Reduced sensitivities CVFEM Poisson will be set since reduced grad_op is requested" << std::endl;
+       cvfemReducedSensPoisson_ = true;
+     }
+   }
 }
 
 //--------------------------------------------------------------------------
@@ -635,6 +647,18 @@ SolutionOptions::primitive_uses_limiter(const std::string& dofName) const
     usesIt = iter->second;
 
   return usesIt;
+}
+
+bool
+SolutionOptions::get_shifted_grad_op(const std::string& dofName) const
+{
+  bool factor = shiftedGradOpDefault_;
+  auto iter = shiftedGradOpMap_.find(dofName);
+
+  if (iter != shiftedGradOpMap_.end())
+    factor = iter->second;
+
+  return factor;
 }
 
 std::vector<double>

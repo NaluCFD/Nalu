@@ -32,7 +32,7 @@ ContinuityAdvElemKernel<AlgTraits>::ContinuityAdvElemKernel(
   : Kernel(),
     meshMotion_(solnOpts.does_mesh_move()),
     shiftMdot_(solnOpts.cvfemShiftMdot_),
-    shiftPoisson_(solnOpts.cvfemShiftPoisson_),
+    shiftPoisson_(solnOpts.get_shifted_grad_op("pressure")),
     reducedSensitivities_(solnOpts.cvfemReducedSensPoisson_),
     interpTogether_(solnOpts.get_mdot_interp()),
     om_interpTogether_(1.0 - interpTogether_),

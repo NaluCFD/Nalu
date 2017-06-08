@@ -194,6 +194,7 @@ public:
   std::vector<double> intgLoc_;
   std::vector<double> intgLocShift_;
   std::vector<double> intgExpFace_;
+  std::vector<double> intgExpFaceShift_;
   std::vector<double> nodeLoc_;
   std::vector<int> sideNodeOrdinals_;
   std::vector<int> sideOffset_;

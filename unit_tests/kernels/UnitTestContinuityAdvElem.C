@@ -67,7 +67,7 @@ TEST_F(ContinuityKernelHex8Mesh, advection_default)
   solnOpts_.meshDeformation_ = false;
   solnOpts_.externalMeshDeformation_ = false;
   solnOpts_.cvfemShiftMdot_ = false;
-  solnOpts_.cvfemShiftPoisson_ = false;
+  solnOpts_.shiftedGradOpMap_["pressure"] = false;
   solnOpts_.cvfemReducedSensPoisson_ = false;
   solnOpts_.mdotInterpRhoUTogether_ = true;
 
@@ -109,7 +109,7 @@ TEST_F(ContinuityKernelHex8Mesh, advection_reduced_sens_cvfem_poisson)
   solnOpts_.meshDeformation_ = false;
   solnOpts_.externalMeshDeformation_ = false;
   solnOpts_.cvfemShiftMdot_ = false;
-  solnOpts_.cvfemShiftPoisson_ = false;
+  solnOpts_.shiftedGradOpMap_["pressure"] = false;
   solnOpts_.cvfemReducedSensPoisson_ = true;
   solnOpts_.mdotInterpRhoUTogether_ = true;
 
@@ -151,7 +151,7 @@ TEST_F(ContinuityKernelHex8Mesh, advection_reduced_shift_cvfem_poisson)
   solnOpts_.meshDeformation_ = false;
   solnOpts_.externalMeshDeformation_ = false;
   solnOpts_.cvfemShiftMdot_ = false;
-  solnOpts_.cvfemShiftPoisson_ = true;
+  solnOpts_.shiftedGradOpMap_["pressure"] = true;
   solnOpts_.cvfemReducedSensPoisson_ = true;
   solnOpts_.mdotInterpRhoUTogether_ = true;
 
