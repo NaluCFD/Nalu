@@ -74,6 +74,7 @@ private:
   const double fourthFac_;
   const double altResFac_;
   const double om_altResFac_;
+  const bool shiftedGradOp_;
   const double nonConservedForm_{0.0};
   const double small_{1.0e-16};
 

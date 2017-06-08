@@ -111,7 +111,6 @@ realms:
       name: myOptions
       turbulence_model: smagorinsky  
       shift_cvfem_mdot: yes
-      shift_cvfem_poisson: yes
 
       options:
         - hybrid_factor:
@@ -127,6 +126,11 @@ realms:
 
         - turbulent_schmidt:
             mixture_fraction: 1.0
+
+        - shifted_gradient_operator:
+            velocity: no
+            pressure: yes
+            mixture_fraction: no
           
     output:
       output_data_base_name: output.e

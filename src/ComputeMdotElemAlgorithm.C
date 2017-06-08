@@ -49,7 +49,7 @@ ComputeMdotElemAlgorithm::ComputeMdotElemAlgorithm(
     massFlowRate_(NULL),
     edgeMassFlowRate_(NULL),
     shiftMdot_(realm_.get_cvfem_shifted_mdot()),
-    shiftPoisson_(realm_.get_cvfem_shifted_poisson())
+    shiftPoisson_(realm_.get_shifted_grad_op("pressure"))
 {
    // extract fields; nodal
   stk::mesh::MetaData & meta_data = realm_.meta_data();
