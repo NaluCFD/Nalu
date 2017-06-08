@@ -47,7 +47,7 @@ AssembleContinuityElemSolverAlgorithm::AssembleContinuityElemSolverAlgorithm(
     pressure_(NULL),
     density_(NULL),
     shiftMdot_(realm_.get_cvfem_shifted_mdot()),
-    shiftPoisson_(realm_.get_cvfem_shifted_poisson()),
+    shiftPoisson_(realm_.get_shifted_grad_op("pressure")),
     reducedSensitivities_(realm_.get_cvfem_reduced_sens_poisson())
 {
   // extract fields; nodal

@@ -60,6 +60,7 @@ private:
   const double Cupw_{0.1};
   const double small_{1.0e-16};
   const double includeDivU_;
+  const bool shiftedGradOp_;
 
   // fixed scratch space
   Kokkos::View<double[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_{"v_shape_function"};

@@ -58,7 +58,8 @@ ScalarNSOElemSuppAlgDep::ScalarNSOElemSuppAlgDep(
     fourthFac_(fourthFac),
     altResFac_(altResFac),
     om_altResFac_(1.0-altResFac),
-    nonConservedForm_(0.0)
+    nonConservedForm_(0.0),
+    useShiftedGradOp_(realm.get_shifted_grad_op(scalarQ->name()))
 {
   // save off fields; for non-BDF2 gather in state N for Nm1 (gamma3_ will be zero)
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -187,7 +188,10 @@ ScalarNSOElemSuppAlgDep::elem_execute(
   meSCS->determinant(1, &ws_coordinates_[0], &ws_scs_areav_[0], &scs_error);
   
   // compute dndx (AGAIN)...
-  meSCS->grad_op(1, &ws_coordinates_[0], &ws_dndx_[0], &ws_deriv_[0], &ws_det_j_[0], &scs_error);
+  if ( useShiftedGradOp_ )
+    meSCS->shifted_grad_op(1, &ws_coordinates_[0], &ws_dndx_[0], &ws_deriv_[0], &ws_det_j_[0], &scs_error);
+  else
+    meSCS->grad_op(1, &ws_coordinates_[0], &ws_dndx_[0], &ws_deriv_[0], &ws_det_j_[0], &scs_error);
 
   // compute gij; requires a proper ws_deriv from above
   meSCS->gij(&ws_coordinates_[0], &ws_gUpper_[0], &ws_gLower_[0], &ws_deriv_[0]);

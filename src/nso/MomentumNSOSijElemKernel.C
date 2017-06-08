@@ -32,7 +32,8 @@ MomentumNSOSijElemKernel<AlgTraits>::MomentumNSOSijElemKernel(
   ElemDataRequests& dataPreReqs)
   : Kernel(),
     lrscv_(sierra::nalu::get_surface_master_element(AlgTraits::topo_)->adjacentNodes()),
-    includeDivU_(solnOpts.includeDivU_)
+    includeDivU_(solnOpts.includeDivU_),
+    shiftedGradOp_(solnOpts.get_shifted_grad_op("velocity"))
 {
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
   velocityNp1_ = metaData.get_field<VectorFieldType>(
@@ -73,7 +74,10 @@ MomentumNSOSijElemKernel<AlgTraits>::MomentumNSOSijElemKernel(
 
   // master element data
   dataPreReqs.add_master_element_call(SCS_AREAV, CURRENT_COORDINATES);
-  dataPreReqs.add_master_element_call(SCS_GRAD_OP, CURRENT_COORDINATES);
+  if ( shiftedGradOp_ )
+    dataPreReqs.add_master_element_call(SCS_SHIFTED_GRAD_OP, CURRENT_COORDINATES);
+  else
+    dataPreReqs.add_master_element_call(SCS_GRAD_OP, CURRENT_COORDINATES);
   dataPreReqs.add_master_element_call(SCS_GIJ, CURRENT_COORDINATES);
 }
 
@@ -91,7 +95,9 @@ MomentumNSOSijElemKernel<AlgTraits>::execute(
   SharedMemView<double*>& v_pressure = scratchViews.get_scratch_view_1D(*pressure_);
 
   SharedMemView<double**>& v_scs_areav = scratchViews.get_me_views(CURRENT_COORDINATES).scs_areav;
-  SharedMemView<double***>& v_dndx = scratchViews.get_me_views(CURRENT_COORDINATES).dndx;
+  SharedMemView<double***>& v_dndx = shiftedGradOp_ 
+    ? scratchViews.get_me_views(CURRENT_COORDINATES).dndx_shifted 
+    : scratchViews.get_me_views(CURRENT_COORDINATES).dndx;
   SharedMemView<double***>& v_gijUpper = scratchViews.get_me_views(CURRENT_COORDINATES).gijUpper;
   SharedMemView<double***>& v_gijLower = scratchViews.get_me_views(CURRENT_COORDINATES).gijLower;
 

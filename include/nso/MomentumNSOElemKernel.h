@@ -77,6 +77,7 @@ private:
   const double om_altResFac_;
   const double nonConservedForm_{0.0};
   const double includeDivU_;
+  const bool shiftedGradOp_;
   const double small_{1.0e-16};
 
   // fixed scratch space

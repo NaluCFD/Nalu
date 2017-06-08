@@ -63,6 +63,7 @@ public:
   const double small_;
   const double turbCoeff_; // turbulent Schmidt/Prandtl number
   const double fourthFac_;
+  const bool useShiftedGradOp_;
 
   // fixed space
   std::vector<double> ws_rhoVrtmScs_;
