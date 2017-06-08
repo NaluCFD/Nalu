@@ -28,6 +28,7 @@ ScalarDiffFemKernel<AlgTraits>::ScalarDiffFemKernel(
   const stk::mesh::BulkData& bulkData,
   ScalarFieldType* scalarQ,
   ScalarFieldType* diffFluxCoeff,
+  const bool gaussianQuadrature,
   ElemDataRequests& dataPreReqs)
   : Kernel(),
     bulkData_(&bulkData),
@@ -44,14 +45,21 @@ ScalarDiffFemKernel<AlgTraits>::ScalarDiffFemKernel(
   coordinates_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates");
 
   // master element
-  meFEM_->shape_fcn(&v_shape_function_(0,0));
+  if ( gaussianQuadrature )
+    meFEM_->shape_fcn(&v_shape_function_(0,0));
+  else
+    meFEM_->shifted_shape_fcn(&v_shape_function_(0,0));
+
   dataPreReqs.add_fem_volume_me(meFEM_);
 
   // fields and data
   dataPreReqs.add_coordinates_field(*coordinates_, AlgTraits::nDim_, CURRENT_COORDINATES);
   dataPreReqs.add_gathered_nodal_field(*scalarQ_, 1);
   dataPreReqs.add_gathered_nodal_field(*diffFluxCoeff_, 1);
-  dataPreReqs.add_master_element_call(FEM_GRAD_OP, CURRENT_COORDINATES);
+  if ( gaussianQuadrature ) 
+    dataPreReqs.add_master_element_call(FEM_GRAD_OP, CURRENT_COORDINATES);
+  else
+    dataPreReqs.add_master_element_call(FEM_SHIFTED_GRAD_OP, CURRENT_COORDINATES);
 }
 
 template<typename AlgTraits>

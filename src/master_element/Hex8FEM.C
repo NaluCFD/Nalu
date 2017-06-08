@@ -35,7 +35,11 @@ Hex8FEM::Hex8FEM()
   // standard integration location +/ sqrt(3)/3
   intgLoc_.resize(24);
   double c[2] = {std::sqrt(3.0)/3.0,-std::sqrt(3.0)/3.0};
-  
+
+  // Gauss-Labatto
+  intgLocShift_.resize(24);
+  double cGL[2] = {1.0,-1.0};
+
   // tensor product
   int l = 0;
   for (int i = 0; i < 2; ++i) {
@@ -44,6 +48,9 @@ Hex8FEM::Hex8FEM()
         intgLoc_[l*3] = c[i];
         intgLoc_[l*3+1] = c[j];
         intgLoc_[l*3+2] = c[k];
+        intgLocShift_[l*3] = cGL[i];
+        intgLocShift_[l*3+1] = cGL[j];
+        intgLocShift_[l*3+2] = cGL[k];
       }
     }
   }
@@ -82,8 +89,30 @@ void Hex8FEM::grad_op(
       &nodesPerElement_,
       &numIntPoints_,
       deriv,
-      coords, gradop, det_j, error, &lerr );
- 
+      coords, gradop, det_j, error, &lerr ); 
+}
+
+//--------------------------------------------------------------------------
+//-------- shifted_grad_op -------------------------------------------------
+//--------------------------------------------------------------------------
+void Hex8FEM::shifted_grad_op(
+  const int nelem,
+  const double *coords,
+  double *gradop,
+  double *deriv,
+  double *det_j,
+  double *error)
+{
+  int lerr = 0;
+
+  hex8_fem_derivative(numIntPoints_, &intgLocShift_[0], deriv);
+  
+  SIERRA_FORTRAN(hex_gradient_operator)
+    ( &nelem,
+      &nodesPerElement_,
+      &numIntPoints_,
+      deriv,
+      coords, gradop, det_j, error, &lerr ); 
 }
 
 //--------------------------------------------------------------------------
@@ -150,6 +179,15 @@ void
 Hex8FEM::shape_fcn(double *shpfc)
 {
   hex8_fem_shape_fcn(numIntPoints_,&intgLoc_[0],shpfc);
+}
+
+//--------------------------------------------------------------------------
+//-------- shifted_shape_fcn -----------------------------------------------
+//--------------------------------------------------------------------------
+void
+Hex8FEM::shifted_shape_fcn(double *shpfc)
+{
+  hex8_fem_shape_fcn(numIntPoints_,&intgLocShift_[0],shpfc);
 }
 
 //--------------------------------------------------------------------------

@@ -35,6 +35,7 @@ public:
     const stk::mesh::BulkData&,
     ScalarFieldType*,
     ScalarFieldType*,
+    bool,
     ElemDataRequests&);
 
   virtual ~ScalarDiffFemKernel();
@@ -51,7 +52,6 @@ private:
   ScalarDiffFemKernel() = delete;
 
   const stk::mesh::BulkData* bulkData_;
-
   ScalarFieldType *scalarQ_{nullptr};
   ScalarFieldType *diffFluxCoeff_{nullptr};
   VectorFieldType *coordinates_{nullptr};
