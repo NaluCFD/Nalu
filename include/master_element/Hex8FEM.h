@@ -30,6 +30,14 @@ public:
     double *det_j,
     double * error );
 
+  void shifted_grad_op(
+    const int nelem,
+    const double *coords,
+    double *gradop,
+    double *deriv,
+    double *det_j,
+    double * error );
+
   void face_grad_op(
     const int nelem,
     const int face_ordinal,
@@ -44,6 +52,9 @@ public:
     double *shpfc);
 
   void shape_fcn(
+    double *shpfc);
+
+  void shifted_shape_fcn(
     double *shpfc);
 
   void gij(
