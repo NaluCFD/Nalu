@@ -152,7 +152,6 @@ realms:
       name: myOptions
       turbulence_model: wale
       shift_cvfem_mdot: no
-      shift_cvfem_poisson: no
       reduced_sens_cvfem_poisson: yes 
 
       interp_rhou_together_for_mdot: no
@@ -183,6 +182,11 @@ realms:
             velocity: no
             enthalpy: yes
             mass_fraction: yes
+
+        - shifted_gradient_operator:
+            velocity: no
+            pressure: no
+            enthalpy: no
 
     output:
       output_data_base_name: nonIsoNonUniformElemOpenJet.e

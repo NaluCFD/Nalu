@@ -73,6 +73,7 @@ public:
   const double om_altResFac_;
   const double nonConservedForm_;
   const double includeDivU_;
+  const bool useShiftedGradOp_;
 
   // fixed space
   std::vector<double> ws_dukdxScs_;

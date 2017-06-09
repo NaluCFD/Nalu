@@ -107,6 +107,16 @@ public:
     double * error ) {
     throw std::runtime_error("face_grad_op not implemented; avoid this element type at open bcs, walls and symms");}
   
+
+  virtual void shifted_face_grad_op(
+     const int nelem,
+     const int face_ordinal,
+     const double *coords,
+     double *gradop,
+     double *det_j,
+     double * error ) {
+     throw std::runtime_error("shifted_face_grad_op not implemented");}
+
   virtual const int * adjacentNodes() {
     throw std::runtime_error("adjacentNodes not implementedunknown bc");
     return NULL;}
@@ -194,6 +204,7 @@ public:
   std::vector<double> intgLoc_;
   std::vector<double> intgLocShift_;
   std::vector<double> intgExpFace_;
+  std::vector<double> intgExpFaceShift_;
   std::vector<double> nodeLoc_;
   std::vector<int> sideNodeOrdinals_;
   std::vector<int> sideOffset_;
@@ -267,6 +278,14 @@ public:
     double * error );
 
   void face_grad_op(
+    const int nelem,
+    const int face_ordinal,
+    const double *coords,
+    double *gradop,
+    double *det_j,
+    double * error );
+
+  void shifted_face_grad_op(
     const int nelem,
     const int face_ordinal,
     const double *coords,
@@ -601,6 +620,14 @@ public:
     double *det_j,
     double * error );
 
+  void shifted_face_grad_op(
+    const int nelem,
+    const int face_ordinal,
+    const double *coords,
+    double *gradop,
+    double *det_j,
+    double * error );
+
   void gij(
     const double *coords,
     double *gupperij,
@@ -767,6 +794,14 @@ public:
     double *det_j,
     double *error);
 
+  void shifted_face_grad_op(
+    const int nelem,
+    const int face_ordinal,
+    const double *coords,
+    double *gradop,
+    double *det_j,
+    double * error );
+
   void general_face_grad_op(
     const int face_ordinal,
     const double *isoParCoord,
@@ -855,6 +890,14 @@ public:
     double *deriv);
 
   void face_grad_op(
+    const int nelem,
+    const int face_ordinal,
+    const double *coords,
+    double *gradop,
+    double *det_j,
+    double * error );
+
+  void shifted_face_grad_op(
     const int nelem,
     const int face_ordinal,
     const double *coords,
@@ -979,6 +1022,14 @@ public:
     double * error );
 
   void face_grad_op(
+    const int nelem,
+    const int face_ordinal,
+    const double *coords,
+    double *gradop,
+    double *det_j,
+    double * error );
+
+  void shifted_face_grad_op(
     const int nelem,
     const int face_ordinal,
     const double *coords,
@@ -1293,6 +1344,14 @@ public:
     double * error );
 
   void face_grad_op(
+    const int nelem,
+    const int face_ordinal,
+    const double *coords,
+    double *gradop,
+    double *det_j,
+    double * error );
+
+  void shifted_face_grad_op(
     const int nelem,
     const int face_ordinal,
     const double *coords,

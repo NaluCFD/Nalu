@@ -72,6 +72,7 @@ public:
   const double altResFac_;
   const double om_altResFac_;
   const double nonConservedForm_;
+  const bool useShiftedGradOp_;
 
   // fixed space
   std::vector<double> ws_dqdxScs_;

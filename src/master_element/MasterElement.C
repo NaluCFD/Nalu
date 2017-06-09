@@ -600,6 +600,26 @@ HexSCS::HexSCS()
       0, 3, 2, 1, // ordinal 4
       4, 5, 6, 7  // ordinal 5
   };
+
+  std::vector<std::vector<double>> nodeLocations =
+  {
+      {-0.5,-0.5,-0.5}, {+0.5,-0.5,-0.5}, {+0.5,+0.5,-0.5}, {-0.5,+0.5,-0.5},
+      {-0.5,-0.5,+0.5}, {+0.5,-0.5,+0.5}, {+0.5,+0.5,+0.5}, {-0.5,+0.5,+0.5}
+  };
+
+  intgExpFaceShift_.resize(72);
+  int index = 0;
+  stk::topology topo = stk::topology::HEX_8;
+  for (unsigned k = 0; k < topo.num_sides(); ++k) {
+    stk::topology side_topo = topo.side_topology(k);
+    const int* ordinals = side_node_ordinals(k);
+    for (unsigned n = 0; n < side_topo.num_nodes(); ++n) {
+      intgExpFaceShift_[3*index + 0] = nodeLocations[ordinals[n]][0];
+      intgExpFaceShift_[3*index + 1] = nodeLocations[ordinals[n]][1];
+      intgExpFaceShift_[3*index + 2] = nodeLocations[ordinals[n]][2];
+      ++index;
+    }
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -721,7 +741,6 @@ void HexSCS::face_grad_op(
   
   const int nface = 1;
   double dpsi[24];
-  double grad[24];
   
   for ( int n=0; n<nelem; n++ ) {
     
@@ -737,14 +756,50 @@ void HexSCS::face_grad_op(
           &nodesPerElement_,
           &nface,
           dpsi,
-          &coords[24*n], grad, &det_j[npf*n+k], error, &lerr );
+          &coords[24*n], &gradop[k*nelem*24+n*24], &det_j[npf*n+k], error, &lerr );
       
       if ( lerr )
         std::cout << "sorry, issue with face_grad_op.." << std::endl;
-       
-      for ( int j=0; j<24; j++) {
-        gradop[k*nelem*24+n*24+j] = grad[j];
-      }
+    }
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- shifted_face_grad_op --------------------------------------------
+//--------------------------------------------------------------------------
+void HexSCS::shifted_face_grad_op(
+  const int nelem,
+  const int face_ordinal,
+  const double *coords,
+  double *gradop,
+  double *det_j,
+  double *error)
+{
+  int lerr = 0;
+  int npf = 4;
+  int ndim = 3;
+
+  const int nface = 1;
+  double dpsi[24];
+
+  for ( int n=0; n<nelem; n++ ) {
+
+    for ( int k=0; k<npf; k++ ) {
+
+      const int row = 12*face_ordinal + k*ndim;
+      SIERRA_FORTRAN(hex_derivative)
+        ( &nface,
+          &intgExpFaceShift_[row], dpsi );
+
+      SIERRA_FORTRAN(hex_gradient_operator)
+        ( &nface,
+          &nodesPerElement_,
+          &nface,
+          dpsi,
+          &coords[24*n], &gradop[k*nelem*24+n*24], &det_j[npf*n+k], error, &lerr );
+
+      if ( lerr )
+        std::cout << "sorry, issue with face_grad_op.." << std::endl;
     }
   }
 }
@@ -1871,6 +1926,7 @@ Hex27SCV::set_interior_info()
       }
     }
   }
+
 }
 
 //--------------------------------------------------------------------------
@@ -2980,13 +3036,31 @@ TetSCS::TetSCS()
   // face 3;
   ipNodeMap_[9] = 0; ipNodeMap_[10] = 2; ipNodeMap_[11] = 1;
 
-
   sideNodeOrdinals_ = {
       0, 1, 3, //ordinal 0
       1, 2, 3, //ordinal 1
       0, 3, 2, //ordinal 2
       0, 2, 1  //ordinal 3
   };
+
+  std::vector<std::vector<double>> nodeLocations =
+  {
+      {0,0,0}, {1,0,0}, {0,1,0}, {0,0,1}
+  };
+
+  intgExpFaceShift_.resize(3*3*4);
+  int index = 0;
+  stk::topology topo = stk::topology::TET_4;
+  for (unsigned k = 0; k < topo.num_sides(); ++k) {
+    stk::topology side_topo = topo.side_topology(k);
+    const int* ordinals = side_node_ordinals(k);
+    for (unsigned n = 0; n < side_topo.num_nodes(); ++n) {
+      intgExpFaceShift_[3*index + 0] = nodeLocations[ordinals[n]][0];
+      intgExpFaceShift_[3*index + 1] = nodeLocations[ordinals[n]][1];
+      intgExpFaceShift_[3*index + 2] = nodeLocations[ordinals[n]][2];
+      ++index;
+    }
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -3105,7 +3179,6 @@ void TetSCS::face_grad_op(
 
   const int nface = 1;
   double dpsi[12];
-  double grad[12];
 
   for ( int n=0; n<nelem; n++ ) {
 
@@ -3120,14 +3193,51 @@ void TetSCS::face_grad_op(
           &nodesPerElement_,
           &nface,
           dpsi,
-          &coords[12*n], grad, &det_j[npf*n+k], error, &lerr );
+          &coords[12*n], &gradop[k*nelem*12+n*12], &det_j[npf*n+k], error, &lerr );
 
       if ( lerr )
         std::cout << "sorry, issue with face_grad_op.." << std::endl;
 
-      for ( int j=0; j<12; j++) {
-        gradop[k*nelem*12+n*12+j] = grad[j];
-      }
+    }
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- shifted_face_grad_op --------------------------------------------
+//--------------------------------------------------------------------------
+void TetSCS::shifted_face_grad_op(
+  const int nelem,
+  const int /*face_ordinal*/,
+  const double *coords,
+  double *gradop,
+  double *det_j,
+  double *error)
+{
+  // no difference for regular face_grad_op
+
+  int lerr = 0;
+  int npf = 3;
+
+  const int nface = 1;
+  double dpsi[12];
+
+  for ( int n=0; n<nelem; n++ ) {
+
+    for ( int k=0; k<npf; k++ ) {
+
+      // derivatives are constant
+      SIERRA_FORTRAN(tet_derivative)
+        ( &nface, dpsi );
+
+      SIERRA_FORTRAN(tet_gradient_operator)
+        ( &nface,
+          &nodesPerElement_,
+          &nface,
+          dpsi,
+          &coords[12*n], &gradop[k*nelem*12+n*12], &det_j[npf*n+k], error, &lerr );
+
+      if ( lerr )
+        std::cout << "sorry, issue with face_grad_op.." << std::endl;
     }
   }
 }
@@ -3661,6 +3771,26 @@ PyrSCS::PyrSCS()
   ipNodeMap_[9]  = 3; ipNodeMap_[10] = 0; ipNodeMap_[11] = 4;
   // Face 4 (quad face)
   ipNodeMap_[12] = 0; ipNodeMap_[13] = 3; ipNodeMap_[14] = 2; ipNodeMap_[15] = 1;
+
+  std::vector<std::vector<double>> nodeLocations =
+  {
+      {-1.0, -1.0, +0.0}, {+1.0, -1.0, +0.0}, {+1.0, +1.0, +0.0}, {-1.0, +1.0, +0.0},
+      {0.0, 0.0, +1.0}
+  };
+
+  intgExpFaceShift_.resize(48);
+  int index = 0;
+  stk::topology topo = stk::topology::PYRAMID_5;
+  for (unsigned k = 0; k < topo.num_sides(); ++k) {
+    stk::topology side_topo = topo.side_topology(k);
+    const int* ordinals = side_node_ordinals(k);
+    for (unsigned n = 0; n < side_topo.num_nodes(); ++n) {
+      intgExpFaceShift_[3*index + 0] = nodeLocations[ordinals[n]][0];
+      intgExpFaceShift_[3*index + 1] = nodeLocations[ordinals[n]][1];
+      intgExpFaceShift_[3*index + 2] = nodeLocations[ordinals[n]][2];
+      ++index;
+    }
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -3781,14 +3911,49 @@ void PyrSCS::face_grad_op(
           &nodesPerElement_,
           &nface,
           dpsi,
-          &coords[15*n], grad, &det_j[npf*n+k], error, &lerr );
+          &coords[15*n], &gradop[k*nelem*15+n*15], &det_j[npf*n+k], error, &lerr );
       
       if ( lerr )
         std::cout << "problem with PyrSCS::face_grad_op." << std::endl;
-       
-      for ( int j=0; j<15; j++) {
-        gradop[k*nelem*15+n*15+j] = grad[j];
-      }
+    }
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- shifted_face_grad_op -------------------------------------------
+//--------------------------------------------------------------------------
+void PyrSCS::shifted_face_grad_op(
+  const int nelem,
+  const int face_ordinal,
+  const double *coords,
+  double *gradop,
+  double *det_j,
+  double *error)
+{
+  int lerr = 0;
+  int npf = 4;
+  int ndim = 3;
+
+  const int nface = 1;
+  double dpsi[15];
+
+  for ( int n=0; n<nelem; n++ ) {
+
+    for ( int k=0; k<npf; k++ ) {
+
+      const int row = 9*face_ordinal + k*ndim;
+      pyr_derivative(nface, &intgExpFaceShift_[row], dpsi);
+
+      SIERRA_FORTRAN(pyr_gradient_operator)
+        ( &nface,
+          &nodesPerElement_,
+          &nface,
+          dpsi,
+          &coords[15*n], &gradop[k*nelem*15+n*15], &det_j[npf*n+k], error, &lerr );
+
+      if ( lerr )
+        std::cout << "problem with PyrSCS::face_grad_op." << std::endl;
+
     }
   }
 }
@@ -4345,6 +4510,26 @@ WedSCS::WedSCS()
 
   // ordinal to vector offset map.  Really only convenient for the wedge.
   sideOffset_ = { 0, 4, 8, 12, 15};
+
+
+  std::vector<std::vector<double>> nodeLocations =
+  {
+      {0.0,0.0, -1.0}, {+1.0, 0.0, -1.0}, {0.0, +1.0, -1.0},
+      {0.0,0.0, +1.0}, {+1.0, 0.0, +1.0}, {0.0, +1.0, +1.0}
+  };
+  intgExpFaceShift_.resize(54); // no blanked entries
+  int index = 0;
+  stk::topology topo = stk::topology::WEDGE_6;
+  for (unsigned k = 0; k < topo.num_sides(); ++k) {
+    stk::topology side_topo = topo.side_topology(k);
+    const int* ordinals = side_node_ordinals(k);
+    for (unsigned n = 0; n < side_topo.num_nodes(); ++n) {
+      intgExpFaceShift_.at(3 * index + 0) = nodeLocations[ordinals[n]][0];
+      intgExpFaceShift_.at(3 * index + 1) = nodeLocations[ordinals[n]][1];
+      intgExpFaceShift_.at(3 * index + 2) = nodeLocations[ordinals[n]][2];
+      ++index;
+    }
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -4506,7 +4691,7 @@ WedSCS::face_grad_op(
   int lerr = 0;
   const int ndim = 3;
   const int nface = 1;
-  double dpsi[18], grad[18];
+  double dpsi[18];
 
   // nodes per face... ordinal 0, 1, 2 are quad faces, 3 and 4 are tri
   const int npf = (face_ordinal < 3 ) ? 4 : 3;
@@ -4523,14 +4708,52 @@ WedSCS::face_grad_op(
           &nodesPerElement_,
           &nface,
           dpsi,
-          &coords[18*n], grad, &det_j[npf*n+k], error, &lerr );
+          &coords[18*n], &gradop[k*nelem*18+n*18], &det_j[npf*n+k], error, &lerr );
       
       if ( lerr )
         std::cout << "problem with EwedSCS::face_grad" << std::endl;
       
-      for ( int j=0; j<18; j++) {
-        gradop[k*nelem*18+n*18+j] = grad[j];
-      }
+    }
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- shifted_face_grad_op --------------------------------------------
+//--------------------------------------------------------------------------
+void
+WedSCS::shifted_face_grad_op(
+  const int nelem,
+  const int face_ordinal,
+  const double *coords,
+  double *gradop,
+  double *det_j,
+  double *error)
+{
+  int lerr = 0;
+  const int ndim = 3;
+  const int nface = 1;
+  double dpsi[18];
+
+  // nodes per face... ordinal 0, 1, 2 are quad faces, 3 and 4 are tri
+  const int npf = (face_ordinal < 3 ) ? 4 : 3;
+
+  for ( int n = 0; n < nelem; ++n ) {
+
+    for ( int k=0; k<npf; ++k ) {
+      // no blank entries for shifted_face_grad_op . . . have to use offset
+      const int row = (sideOffset_[face_ordinal]+k)*ndim;
+      wedge_derivative(nface, &intgExpFaceShift_[row], dpsi);
+
+      SIERRA_FORTRAN(wed_gradient_operator) (
+          &nface,
+          &nodesPerElement_,
+          &nface,
+          dpsi,
+          &coords[18*n], &gradop[k*nelem*18+n*18], &det_j[npf*n+k], error, &lerr );
+
+      if ( lerr )
+        std::cout << "problem with EwedSCS::face_grad" << std::endl;
+
     }
   }
 }
@@ -5111,6 +5334,24 @@ Quad2DSCS::Quad2DSCS()
       2, 3,
       3, 0
   };
+
+  std::vector<std::vector<double>> nodeLocations =
+  {
+      {-0.5,-0.5}, {+0.5,-0.5},
+      {+0.5,+0.5}, {-0.5,+0.5}
+  };
+  intgExpFaceShift_.resize(16);
+  int index = 0;
+  stk::topology topo = stk::topology::QUADRILATERAL_4_2D;
+  for (unsigned k = 0; k < topo.num_sides(); ++k) {
+    stk::topology side_topo = topo.side_topology(k);
+    const int* ordinals = side_node_ordinals(k);
+    for (unsigned n = 0; n < side_topo.num_nodes(); ++n) {
+      intgExpFaceShift_[2*index + 0] = nodeLocations[ordinals[n]][0];
+      intgExpFaceShift_[2*index + 1] = nodeLocations[ordinals[n]][1];
+      ++index;
+    }
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -5231,7 +5472,6 @@ void Quad2DSCS::face_grad_op(
 
   const int nface = 1;
   double dpsi[8];
-  double grad[8];
 
   for ( int n=0; n<nelem; n++ ) {
     
@@ -5246,14 +5486,52 @@ void Quad2DSCS::face_grad_op(
           &nodesPerElement_,
           &nface,
           dpsi,
-          &coords[8*n], grad, &det_j[npf*n+k], error, &lerr );
+          &coords[8*n], &gradop[k*nelem*8+n*8], &det_j[npf*n+k], error, &lerr );
       
       if ( lerr )
         std::cout << "sorry, issue with face_grad_op.." << std::endl;
       
-      for ( int j=0; j<8; j++) {
-        gradop[k*nelem*8+n*8+j] = grad[j];
-      }
+    }
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- shifted_face_grad_op --------------------------------------------
+//--------------------------------------------------------------------------
+void Quad2DSCS::shifted_face_grad_op(
+  const int nelem,
+  const int face_ordinal,
+  const double *coords,
+  double *gradop,
+  double *det_j,
+  double *error)
+{
+  int lerr = 0;
+  int npf = 2;
+  int ndim = 2;
+
+  const int nface = 1;
+  double dpsi[8];
+  double grad[8];
+
+  for ( int n=0; n<nelem; n++ ) {
+
+    for ( int k=0; k<npf; k++ ) {
+
+      const int row = 4*face_ordinal + k*ndim;
+      SIERRA_FORTRAN(quad_derivative)
+        ( &nface, &intgExpFaceShift_[row], dpsi );
+
+      SIERRA_FORTRAN(quad_gradient_operator)
+        ( &nface,
+          &nodesPerElement_,
+          &nface,
+          dpsi,
+          &coords[8*n], &gradop[k*nelem*8+n*8], &det_j[npf*n+k], error, &lerr );
+
+      if ( lerr )
+        std::cout << "sorry, issue with face_grad_op.." << std::endl;
+
     }
   }
 }
@@ -6782,6 +7060,23 @@ Tri2DSCS::Tri2DSCS()
       1, 2,  // ordinal 1
       2, 0   // ordinal 2
   };
+
+  std::vector<std::vector<double>> nodeLocations =
+  {
+      {0.0,0.0}, {1.0,0}, {0.0,1.0}
+  };
+  intgExpFaceShift_.resize(12);
+  int index = 0;
+  stk::topology topo = stk::topology::TRIANGLE_3_2D;
+  for (unsigned k = 0; k < topo.num_sides(); ++k) {
+    stk::topology side_topo = topo.side_topology(k);
+    const int* ordinals = side_node_ordinals(k);
+    for (unsigned n = 0; n < side_topo.num_nodes(); ++n) {
+      intgExpFaceShift_[2*index + 0] = nodeLocations[ordinals[n]][0];
+      intgExpFaceShift_[2*index + 1] = nodeLocations[ordinals[n]][1];
+      ++index;
+    }
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -6923,6 +7218,47 @@ void Tri2DSCS::face_grad_op(
       for ( int j=0; j<6; j++) {
         gradop[k*nelem*6+n*6+j] = grad[j];
       }
+    }
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- shifted_face_grad_op --------------------------------------------
+//--------------------------------------------------------------------------
+void Tri2DSCS::shifted_face_grad_op(
+  const int nelem,
+  const int /*face_ordinal*/,
+  const double *coords,
+  double *gradop,
+  double *det_j,
+  double *error)
+{
+  // same as regular face_grad_op
+
+  int lerr = 0;
+  int npf = 2;
+
+  const int nface = 1;
+  double dpsi[6];
+
+  for ( int n=0; n<nelem; n++ ) {
+
+    for ( int k=0; k<npf; k++ ) {
+
+      // derivatives are constant
+      SIERRA_FORTRAN(tri_derivative)
+        ( &nface, dpsi );
+
+      SIERRA_FORTRAN(tri_gradient_operator)
+        ( &nface,
+          &nodesPerElement_,
+          &nface,
+          dpsi,
+          &coords[12*n], &gradop[k*nelem*6+n*6], &det_j[npf*n+k], error, &lerr );
+
+      if ( lerr )
+        std::cout << "sorry, issue with face_grad_op.." << std::endl;
+
     }
   }
 }
