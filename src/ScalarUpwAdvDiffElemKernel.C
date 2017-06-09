@@ -47,6 +47,7 @@ ScalarUpwAdvDiffElemKernel<AlgTraits>::ScalarUpwAdvDiffElemKernel(
     useLimiter_(solnOpts.primitive_uses_limiter(dofName_)),
     om_alpha_(1.0 - alpha_),
     om_alphaUpw_(1.0 - alphaUpw_),
+    shiftedGradOp_(solnOpts.get_shifted_grad_op(scalarQ->name())),
     pecletFunction_(eqSystem->create_peclet_function(dofName_))
 {
   // Save of required fields
@@ -80,7 +81,10 @@ ScalarUpwAdvDiffElemKernel<AlgTraits>::ScalarUpwAdvDiffElemKernel(
   dataPreReqs.add_gathered_nodal_field(*diffFluxCoeff, 1);
   dataPreReqs.add_element_field(*massFlowRate_, AlgTraits::numScsIp_);
   dataPreReqs.add_master_element_call(SCS_AREAV, CURRENT_COORDINATES);
-  dataPreReqs.add_master_element_call(SCS_GRAD_OP, CURRENT_COORDINATES);
+  if ( shiftedGradOp_ )
+    dataPreReqs.add_master_element_call(SCS_GRAD_OP, CURRENT_COORDINATES);
+  else
+    dataPreReqs.add_master_element_call(SCS_GRAD_OP, CURRENT_COORDINATES);
 }
 
 template<typename AlgTraits>
@@ -119,7 +123,9 @@ ScalarUpwAdvDiffElemKernel<AlgTraits>::execute(
   SharedMemView<double*>& v_mdot = scratchViews.get_scratch_view_1D(*massFlowRate_);
 
   SharedMemView<double**>& v_scs_areav = scratchViews.get_me_views(CURRENT_COORDINATES).scs_areav;
-  SharedMemView<double***>& v_dndx = scratchViews.get_me_views(CURRENT_COORDINATES).dndx;
+  SharedMemView<double***>& v_dndx = shiftedGradOp_ 
+    ? scratchViews.get_me_views(CURRENT_COORDINATES).dndx_shifted 
+    : scratchViews.get_me_views(CURRENT_COORDINATES).dndx;
 
   // start the assembly
   for ( int ip = 0; ip < AlgTraits::numScsIp_; ++ip ) {

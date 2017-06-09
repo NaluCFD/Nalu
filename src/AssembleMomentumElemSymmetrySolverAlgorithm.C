@@ -72,7 +72,11 @@ AssembleMomentumElemSymmetrySolverAlgorithm::execute()
   stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const int nDim = meta_data.spatial_dimension();
-
+  
+  // extract user options (allow to potentially change over time)
+  const std::string dofName = "velocity";
+  const bool useShiftedGradOp = realm_.get_shifted_grad_op(dofName);
+ 
   // space for LHS/RHS; nodesPerElem*nDim*nodesPerElem*nDim and nodesPerElem*nDim
   std::vector<double> lhs;
   std::vector<double> rhs;
@@ -218,8 +222,11 @@ AssembleMomentumElemSymmetrySolverAlgorithm::execute()
 
       // compute dndx
       double scs_error = 0.0;
-      meSCS->face_grad_op(1, face_ordinal, &p_coordinates[0], &p_dndx[0], &ws_det_j[0], &scs_error);
-
+      if ( useShiftedGradOp )
+        meSCS->shifted_face_grad_op(1, face_ordinal, &p_coordinates[0], &p_dndx[0], &ws_det_j[0], &scs_error);
+      else
+        meSCS->face_grad_op(1, face_ordinal, &p_coordinates[0], &p_dndx[0], &ws_det_j[0], &scs_error);
+      
       // loop over boundary ips
       for ( int ip = 0; ip < numScsBip; ++ip ) {
 

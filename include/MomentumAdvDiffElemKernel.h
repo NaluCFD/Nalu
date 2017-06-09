@@ -58,6 +58,7 @@ private:
   const int* lrscv_;
 
   const double includeDivU_;
+  const bool shiftedGradOp_;
 
   // fixed scratch space
   Kokkos::View<double[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_{"v_shape_function"};

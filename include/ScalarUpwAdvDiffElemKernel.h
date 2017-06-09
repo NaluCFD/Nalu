@@ -82,6 +82,7 @@ private:
   bool useLimiter_;
   double om_alpha_;
   double om_alphaUpw_;
+  const bool shiftedGradOp_;
   const double small_{1.0e-16};
 
   /// Peclet function
