@@ -109,6 +109,7 @@ AssembleMomentumElemOpenSolverAlgorithm::execute()
   const std::string dofName = "velocity";
   const double alphaUpw = realm_.get_alpha_upw_factor(dofName);
   const double hoUpwind = realm_.get_upw_factor(dofName);
+  const bool useShiftedGradOp = realm_.get_shifted_grad_op(dofName);
   
   // one minus flavor..
   const double om_alphaUpw = 1.0-alphaUpw;
@@ -304,8 +305,11 @@ AssembleMomentumElemOpenSolverAlgorithm::execute()
 
       // compute dndx
       double scs_error = 0.0;
-      meSCS->face_grad_op(1, face_ordinal, &p_coordinates[0], &p_dndx[0], &ws_det_j[0], &scs_error);
-
+      if ( useShiftedGradOp )
+        meSCS->shifted_face_grad_op(1, face_ordinal, &p_coordinates[0], &p_dndx[0], &ws_det_j[0], &scs_error);
+      else
+        meSCS->face_grad_op(1, face_ordinal, &p_coordinates[0], &p_dndx[0], &ws_det_j[0], &scs_error);
+      
       // loop over boundary ips
       for ( int ip = 0; ip < numScsBip; ++ip ) {
 

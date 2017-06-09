@@ -33,7 +33,8 @@ MomentumAdvDiffElemKernel<AlgTraits>::MomentumAdvDiffElemKernel(
   : Kernel(),
     viscosity_(viscosity),
     lrscv_(sierra::nalu::get_surface_master_element(AlgTraits::topo_)->adjacentNodes()),
-    includeDivU_(solnOpts.includeDivU_)
+    includeDivU_(solnOpts.includeDivU_),
+    shiftedGradOp_(solnOpts.get_shifted_grad_op(velocity->name()))
 {
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
   velocityNp1_ = &(velocity->field_of_state(stk::mesh::StateNP1));
@@ -54,7 +55,10 @@ MomentumAdvDiffElemKernel<AlgTraits>::MomentumAdvDiffElemKernel(
   dataPreReqs.add_gathered_nodal_field(*viscosity_, 1);
   dataPreReqs.add_element_field(*massFlowRate_, AlgTraits::numScsIp_);
   dataPreReqs.add_master_element_call(SCS_AREAV, CURRENT_COORDINATES);
-  dataPreReqs.add_master_element_call(SCS_GRAD_OP, CURRENT_COORDINATES);
+  if ( shiftedGradOp_ )
+    dataPreReqs.add_master_element_call(SCS_SHIFTED_GRAD_OP, CURRENT_COORDINATES);
+  else
+    dataPreReqs.add_master_element_call(SCS_GRAD_OP, CURRENT_COORDINATES);
 }
 
 template<class AlgTraits>
@@ -73,7 +77,9 @@ MomentumAdvDiffElemKernel<AlgTraits>::execute(
   SharedMemView<double*>& v_mdot = scratchViews.get_scratch_view_1D(*massFlowRate_);
 
   SharedMemView<double**>& v_scs_areav = scratchViews.get_me_views(CURRENT_COORDINATES).scs_areav;
-  SharedMemView<double***>& v_dndx = scratchViews.get_me_views(CURRENT_COORDINATES).dndx;
+  SharedMemView<double***>& v_dndx = shiftedGradOp_ 
+    ? scratchViews.get_me_views(CURRENT_COORDINATES).dndx_shifted 
+    : scratchViews.get_me_views(CURRENT_COORDINATES).dndx;
 
   for ( int ip = 0; ip < AlgTraits::numScsIp_; ++ip ) {
 
