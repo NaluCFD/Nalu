@@ -128,9 +128,9 @@ realms:
             mixture_fraction: 1.0
 
         - shifted_gradient_operator:
-            velocity: no
+            velocity: yes 
             pressure: yes
-            mixture_fraction: no
+            mixture_fraction: yes 
           
     output:
       output_data_base_name: output.e
