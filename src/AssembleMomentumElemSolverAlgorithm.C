@@ -114,8 +114,6 @@ AssembleMomentumElemSolverAlgorithm::execute()
 
   const int nDim = meta_data.spatial_dimension();
 
-  const bool useShifted = false;
-
   const double small = 1.0e-16;
 
   // extract user advection options (allow to potentially change over time)
@@ -124,7 +122,8 @@ AssembleMomentumElemSolverAlgorithm::execute()
   const double alphaUpw = realm_.get_alpha_upw_factor(dofName);
   const double hoUpwind = realm_.get_upw_factor(dofName);
   const bool useLimiter = realm_.primitive_uses_limiter(dofName);
- 
+  const bool useShiftedGradOp = realm_.get_shifted_grad_op(dofName);
+
   // one minus flavor..
   const double om_alpha = 1.0-alpha;
   const double om_alphaUpw = 1.0-alphaUpw;
@@ -243,10 +242,7 @@ AssembleMomentumElemSolverAlgorithm::execute()
     double *p_shape_function = &ws_shape_function[0];
 
     // extract shape function
-    if ( useShifted )
-      meSCS->shifted_shape_fcn(&p_shape_function[0]);
-    else
-      meSCS->shape_fcn(&p_shape_function[0]);
+    meSCS->shape_fcn(&p_shape_function[0]);
 
     // resize possible supplemental element alg
     for ( size_t i = 0; i < supplementalAlgSize; ++i )
@@ -315,7 +311,10 @@ AssembleMomentumElemSolverAlgorithm::execute()
       meSCS->determinant(1, &p_coordinates[0], &p_scs_areav[0], &scs_error);
 
       // compute dndx
-      meSCS->grad_op(1, &p_coordinates[0], &p_dndx[0], &ws_deriv[0], &ws_det_j[0], &scs_error);
+      if ( useShiftedGradOp )
+        meSCS->shifted_grad_op(1, &p_coordinates[0], &p_dndx[0], &ws_deriv[0], &ws_det_j[0], &scs_error);
+      else 
+        meSCS->grad_op(1, &p_coordinates[0], &p_dndx[0], &ws_deriv[0], &ws_det_j[0], &scs_error);
 
       for ( int ip = 0; ip < numScsIp; ++ip ) {
 

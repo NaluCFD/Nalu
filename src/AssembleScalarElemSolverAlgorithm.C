@@ -117,6 +117,7 @@ AssembleScalarElemSolverAlgorithm::execute()
   const double alphaUpw = realm_.get_alpha_upw_factor(dofName);
   const double hoUpwind = realm_.get_upw_factor(dofName);
   const bool useLimiter = realm_.primitive_uses_limiter(dofName);
+  const bool useShiftedGradOp = realm_.get_shifted_grad_op(dofName);
 
   // one minus flavor..
   const double om_alpha = 1.0-alpha;
@@ -275,8 +276,11 @@ AssembleScalarElemSolverAlgorithm::execute()
       meSCS->determinant(1, &p_coordinates[0], &p_scs_areav[0], &scs_error);
 
       // compute dndx
-      meSCS->grad_op(1, &ws_coordinates[0], &ws_dndx[0], &ws_deriv[0], &ws_det_j[0], &scs_error);
-
+      if ( useShiftedGradOp )
+        meSCS->shifted_grad_op(1, &ws_coordinates[0], &ws_dndx[0], &ws_deriv[0], &ws_det_j[0], &scs_error);
+      else
+        meSCS->grad_op(1, &ws_coordinates[0], &ws_dndx[0], &ws_deriv[0], &ws_det_j[0], &scs_error);
+        
       for ( int ip = 0; ip < numScsIp; ++ip ) {
 
         // left and right nodes for this ip
