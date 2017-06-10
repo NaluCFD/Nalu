@@ -20,10 +20,11 @@
 namespace sierra {
 namespace nalu {
 
-class MasterElement;
-class Hex8FEM;
 class ElemDataRequests;
+class Hex8FEM;
+class MasterElement;
 class ScratchViews;
+class SolutionOptions;
 
 /** CVFEM scalar advection/diffusion kernel
  */
@@ -33,9 +34,9 @@ class ScalarDiffFemKernel: public Kernel
 public:
   ScalarDiffFemKernel(
     const stk::mesh::BulkData&,
+    const SolutionOptions&,
     ScalarFieldType*,
     ScalarFieldType*,
-    bool,
     ElemDataRequests&);
 
   virtual ~ScalarDiffFemKernel();
@@ -59,7 +60,8 @@ private:
   // master element
   Hex8FEM * meFEM_;
   double *ipWeight_;
-
+  const bool shiftedGradOp_;
+  
   /// Shape functions
   Kokkos::View<double[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_ { "v_shape_func" };
 };

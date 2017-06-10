@@ -56,6 +56,7 @@ private:
 
   /// Left right node indicators
   const int* lrscv_;
+  const bool shiftedGradOp_;
 
   /// Shape functions
   Kokkos::View<double[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_ { "v_shape_func" };

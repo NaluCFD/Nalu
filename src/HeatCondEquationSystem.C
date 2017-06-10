@@ -120,7 +120,6 @@ HeatCondEquationSystem::HeatCondEquationSystem(
     edgeAreaVec_(NULL),
     assembleNodalGradAlgDriver_(new AssembleNodalGradAlgorithmDriver(realm_, "temperature", "dtdx")),
     isInit_(true),
-    collocationForViscousTerms_(false),
     projectedNodalGradEqs_(NULL)
 {
   // extract solver name and solver object
@@ -314,8 +313,7 @@ HeatCondEquationSystem::register_interior_algorithm(
       }
       else {
         theSolverAlg = new AssembleScalarElemDiffSolverAlgorithm(realm_, part, this,
-                                                                 &tempNp1, &dtdxNone, thermalCond_,
-                                                                 collocationForViscousTerms_);
+                                                                 &tempNp1, &dtdxNone, thermalCond_);
       }
       solverAlgDriver_->solverAlgMap_[algType] = theSolverAlg;
       
@@ -387,12 +385,7 @@ HeatCondEquationSystem::register_interior_algorithm(
 
       build_topo_kernel_if_requested<ScalarDiffFemKernel>(
         partTopo, *this, activeKernels, "FEM_DIFF",
-        realm_.bulk_data(), temperature_, thermalCond_, true, dataPreReqs
-      );
-
-      build_topo_kernel_if_requested<ScalarDiffFemKernel>(
-        partTopo, *this, activeKernels, "FEM_GL_DIFF",
-        realm_.bulk_data(), temperature_, thermalCond_, false, dataPreReqs
+        realm_.bulk_data(), *realm_.solutionOptions_, temperature_, thermalCond_, dataPreReqs
       );
 
       report_invalid_supp_alg_names();

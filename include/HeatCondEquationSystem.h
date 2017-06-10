@@ -79,7 +79,6 @@ public:
   virtual void load(const YAML::Node & node)
   {
     EquationSystem::load(node);
-    get_if_present(node, "use_collocation", collocationForViscousTerms_, false);
   }
 
 
@@ -103,9 +102,7 @@ public:
  
   AssembleNodalGradAlgorithmDriver *assembleNodalGradAlgDriver_;
   bool isInit_;
-  bool collocationForViscousTerms_;
   ProjectedNodalGradientEquationSystem *projectedNodalGradEqs_;
-
 };
 
 } // namespace nalu

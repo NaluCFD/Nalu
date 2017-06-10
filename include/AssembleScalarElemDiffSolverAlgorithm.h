@@ -34,8 +34,7 @@ public:
     EquationSystem *eqSystem,
     ScalarFieldType *scalarQ,
     VectorFieldType *dqdx,
-    ScalarFieldType *diffFluxCoeff,
-    bool useCollcation);
+    ScalarFieldType *diffFluxCoeff);
   virtual ~AssembleScalarElemDiffSolverAlgorithm() {}
   virtual void initialize_connectivity();
   virtual void execute();
@@ -46,8 +45,7 @@ private:
   ScalarFieldType *diffFluxCoeff_;
   VectorFieldType *coordinates_;
 
-  bool useCollocation_;
-
+  const bool shiftedGradOp_;
 };
 
 } // namespace nalu

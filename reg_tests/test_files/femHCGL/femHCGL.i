@@ -75,7 +75,10 @@ realms:
       options:
  
       - element_source_terms:
-          temperature: FEM_GL_DIFF
+          temperature: FEM_DIFF
+
+      - shifted_gradient_operator:
+          temperature: yes 
 
     output:
       output_data_base_name: femHCGL.e

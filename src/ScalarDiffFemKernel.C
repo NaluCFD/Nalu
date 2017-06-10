@@ -26,16 +26,17 @@ namespace nalu {
 template<typename AlgTraits>
 ScalarDiffFemKernel<AlgTraits>::ScalarDiffFemKernel(
   const stk::mesh::BulkData& bulkData,
+  const SolutionOptions& solnOpts,
   ScalarFieldType* scalarQ,
   ScalarFieldType* diffFluxCoeff,
-  const bool gaussianQuadrature,
   ElemDataRequests& dataPreReqs)
   : Kernel(),
     bulkData_(&bulkData),
     scalarQ_(scalarQ),
     diffFluxCoeff_(diffFluxCoeff),
     meFEM_(new Hex8FEM()),
-    ipWeight_(&meFEM_->weights_[0])
+    ipWeight_(&meFEM_->weights_[0]),
+    shiftedGradOp_(solnOpts.get_shifted_grad_op(scalarQ_->name()))
 {
   ThrowRequireMsg(AlgTraits::topo_ == stk::topology::HEX_8,
                   "FEM_DIFF only available for hexes currently");
@@ -44,11 +45,11 @@ ScalarDiffFemKernel<AlgTraits>::ScalarDiffFemKernel(
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
   coordinates_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates");
 
-  // master element
-  if ( gaussianQuadrature )
-    meFEM_->shape_fcn(&v_shape_function_(0,0));
-  else
+  // master element, shape function is shifted consistently
+  if ( shiftedGradOp_ )
     meFEM_->shifted_shape_fcn(&v_shape_function_(0,0));
+  else
+    meFEM_->shape_fcn(&v_shape_function_(0,0));
 
   dataPreReqs.add_fem_volume_me(meFEM_);
 
@@ -56,10 +57,10 @@ ScalarDiffFemKernel<AlgTraits>::ScalarDiffFemKernel(
   dataPreReqs.add_coordinates_field(*coordinates_, AlgTraits::nDim_, CURRENT_COORDINATES);
   dataPreReqs.add_gathered_nodal_field(*scalarQ_, 1);
   dataPreReqs.add_gathered_nodal_field(*diffFluxCoeff_, 1);
-  if ( gaussianQuadrature ) 
-    dataPreReqs.add_master_element_call(FEM_GRAD_OP, CURRENT_COORDINATES);
-  else
+  if ( shiftedGradOp_ )
     dataPreReqs.add_master_element_call(FEM_SHIFTED_GRAD_OP, CURRENT_COORDINATES);
+  else
+    dataPreReqs.add_master_element_call(FEM_GRAD_OP, CURRENT_COORDINATES);
 }
 
 template<typename AlgTraits>
@@ -77,7 +78,7 @@ ScalarDiffFemKernel<AlgTraits>::execute(
 {
   SharedMemView<double*>& v_scalarQ = scratchViews.get_scratch_view_1D(*scalarQ_);
   SharedMemView<double*>& v_diffFluxCoeff = scratchViews.get_scratch_view_1D(*diffFluxCoeff_);
-  
+
   SharedMemView<double***>& v_dndx = scratchViews.get_me_views(CURRENT_COORDINATES).dndx_fem;
   SharedMemView<double*>& v_det_j = scratchViews.get_me_views(CURRENT_COORDINATES).det_j_fem;
 
