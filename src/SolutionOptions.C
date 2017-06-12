@@ -569,6 +569,17 @@ SolutionOptions::load(const YAML::Node & y_node)
        cvfemReducedSensPoisson_ = true;
      }
    }
+   
+   // overview gradient operator for CVFEM
+   if ( shiftedGradOpMap_.size() > 0 ) {
+     NaluEnv::self().naluOutputP0() << std::endl;
+     NaluEnv::self().naluOutputP0() << "CVFEM gradient operator review:   " << std::endl;
+     NaluEnv::self().naluOutputP0() << "===========================" << std::endl;
+     for ( const auto& shiftIt : shiftedGradOpMap_ ) {
+       NaluEnv::self().naluOutputP0() << " dof: " << shiftIt.first
+                                      << " shifted: " << (shiftIt.second ? "yes" : "no") << std::endl; 
+     }
+   }
 }
 
 //--------------------------------------------------------------------------
