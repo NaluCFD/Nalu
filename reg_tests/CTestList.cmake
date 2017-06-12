@@ -48,7 +48,6 @@ endfunction(add_test_u)
 # Regression tests
 #=============================================================================
 
-<<<<<<< HEAD
 add_test_r(ablForcingEdge 4)
 add_test_r(ablStableElem 4)
 add_test_r(ablUnstableEdge 4)
@@ -90,7 +89,10 @@ add_test_r(inputFireEdgeUpwind 4)
 add_test_r(inputFireElem 4)
 add_test_r(kovasznay_P7 1)
 add_test_r(milestoneRun 4)
+<<<<<<< HEAD
 add_test_r(milestoneRunConsolidated 4)
+=======
+>>>>>>> Revert change where all the regression tests were disabled
 add_test_r(mixedTetPipe 8)
 add_test_r(movingCylinder 4)
 add_test_r(nonConformalWithPeriodic 2)
@@ -114,6 +116,7 @@ add_test_r_rst2(hoVortex_P2 8)
 add_test_r(variableDensNonIso 2)
 add_test_r(variableDensNonUniform 2)
 add_test_r(variableDensNonUniform_P5 8)
+<<<<<<< HEAD
 =======
 # add_test_r(ablForcingEdge 4)
 # add_test_r(ablStableElem 4)
