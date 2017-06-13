@@ -18,6 +18,8 @@ Examples
 
 Here we describe any examples we have for users to try running Nalu.
 
+.. include:: mcalister.rst
+ 
 Tutorials
 ---------
 
