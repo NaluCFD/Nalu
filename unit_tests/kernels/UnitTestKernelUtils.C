@@ -104,6 +104,101 @@ struct TrigFieldFunction
       std::cos(a * pi * z));
   }
 
+  void tke(const double* coords, double* qField) const
+  {
+    double x = coords[0];
+    double y = coords[1];
+    double z = coords[2];
+
+    qField[0] = 2*tkenot + tkenot * (
+      std::cos(a * pi * x) *
+      std::sin(a * pi * y) *
+      std::cos(a * pi * z));
+  }
+
+  void dkdx(const double* coords, double* qField) const
+  {
+    const double x = coords[0];
+    const double y = coords[1];
+    const double z = coords[2];
+
+    const double a_pi = a * pi;
+    const double cosx = std::cos(a_pi * x);
+    const double sinx = std::sin(a_pi * x);
+    const double cosy = std::cos(a_pi * y);
+    const double siny = std::sin(a_pi * y);
+    const double cosz = std::cos(a_pi * z);
+    const double sinz = std::sin(a_pi * z);
+
+    qField[0] = -tkenot * a_pi * sinx * siny * cosz;
+    qField[1] = tkenot * a_pi * cosx * cosy * cosz;
+    qField[2] = -tkenot * a_pi * cosx * siny * sinz;
+  }
+
+  void sdr(const double* coords, double* qField) const
+  {
+    double x = coords[0];
+    double y = coords[1];
+    double z = coords[2];
+
+    qField[0] = 2*sdrnot + sdrnot * (
+      std::cos(a * pi * x) *
+      std::sin(a * pi * y) *
+      std::sin(a * pi * z));
+  }
+
+  void dwdx(const double* coords, double* qField) const
+  {
+    const double x = coords[0];
+    const double y = coords[1];
+    const double z = coords[2];
+
+    const double a_pi = a * pi;
+    const double cosx = std::cos(a_pi * x);
+    const double sinx = std::sin(a_pi * x);
+    const double cosy = std::cos(a_pi * y);
+    const double siny = std::sin(a_pi * y);
+    const double cosz = std::cos(a_pi * z);
+    const double sinz = std::sin(a_pi * z);
+
+    qField[0] = -tkenot * a_pi * sinx * siny * sinz;
+    qField[1] = tkenot * a_pi * cosx * cosy * sinz;
+    qField[2] = tkenot * a_pi * cosx * siny * cosz;
+  }
+
+  void turbulent_viscosity(const double* coords, double* qField) const
+  {
+    double x = coords[0];
+    double y = coords[1];
+    double z = coords[2];
+
+    qField[0] = 2*tviscnot + tviscnot * (
+      std::cos(a * pi * x) *
+      std::cos(a * pi * y) *
+      std::cos(a * pi * z));
+  }
+
+  void sst_f_one_blending(const double* coords, double* qField) const
+  {
+    double x = coords[0];
+    double y = coords[1];
+    double z = coords[2];
+
+    qField[0] = sst_f_one_blendingnot * (
+      std::sin(a * pi * x) *
+      std::cos(a * pi * y) *
+      std::sin(a * pi * z));
+  }
+
+  void minimum_distance_to_wall(const double* coords, double* qField) const
+  {
+    double x = coords[0];
+    double y = coords[1];
+    double z = coords[2];
+
+    qField[0] = 10*x+10;
+  }
+
 private:
   /// Factor for u-component of velocity
   static constexpr double unot{1.0};
@@ -125,6 +220,18 @@ private:
 
   /// Factor for density field
   static constexpr double rhonot{1.0};
+
+  /// Factor for tke field
+  static constexpr double tkenot{1.0};
+
+  /// Factor for sdr field
+  static constexpr double sdrnot{1.0};
+
+  /// Factor for tvisc field
+  static constexpr double tviscnot{1.0};
+
+  /// Factor for fOneBlend field
+  static constexpr double sst_f_one_blendingnot{1.0};
 
   const double pi;
 };
@@ -157,6 +264,20 @@ void init_trigonometric_field(
     funcPtr = &TrigFieldFunction::temperature;
   else if (fieldName == "density")
     funcPtr = &TrigFieldFunction::density;
+  else if (fieldName == "turbulent_ke")
+    funcPtr = &TrigFieldFunction::tke;
+  else if (fieldName == "dkdx")
+    funcPtr = &TrigFieldFunction::dkdx;
+  else if (fieldName == "specific_dissipation_rate")
+    funcPtr = &TrigFieldFunction::sdr;
+  else if (fieldName == "dwdx")
+    funcPtr = &TrigFieldFunction::dwdx;
+  else if (fieldName == "turbulent_viscosity")
+    funcPtr = &TrigFieldFunction::turbulent_viscosity;
+  else if (fieldName == "sst_f_one_blending")
+    funcPtr = &TrigFieldFunction::sst_f_one_blending;
+  else if (fieldName == "minimum_distance_to_wall")
+    funcPtr = &TrigFieldFunction::minimum_distance_to_wall;
   else
     funcPtr = nullptr;
 
@@ -247,6 +368,62 @@ void density_test_function(
   ScalarFieldType& density)
 {
   init_trigonometric_field(bulk, coordinates, density);
+}
+
+void tke_test_function(
+  const stk::mesh::BulkData& bulk,
+  const VectorFieldType& coordinates,
+  ScalarFieldType& tke)
+{
+  init_trigonometric_field(bulk, coordinates, tke);
+}
+
+void dkdx_test_function(
+  const stk::mesh::BulkData& bulk,
+  const VectorFieldType& coordinates,
+  VectorFieldType& dkdx)
+{
+  init_trigonometric_field(bulk, coordinates, dkdx);
+}
+
+void sdr_test_function(
+  const stk::mesh::BulkData& bulk,
+  const VectorFieldType& coordinates,
+  ScalarFieldType& sdr)
+{
+  init_trigonometric_field(bulk, coordinates, sdr);
+}
+
+void dwdx_test_function(
+  const stk::mesh::BulkData& bulk,
+  const VectorFieldType& coordinates,
+  VectorFieldType& dwdx)
+{
+  init_trigonometric_field(bulk, coordinates, dwdx);
+}
+
+void turbulent_viscosity_test_function(
+  const stk::mesh::BulkData& bulk,
+  const VectorFieldType& coordinates,
+  ScalarFieldType& turbulent_viscosity)
+{
+  init_trigonometric_field(bulk, coordinates, turbulent_viscosity);
+}
+
+void sst_f_one_blending_test_function(
+  const stk::mesh::BulkData& bulk,
+  const VectorFieldType& coordinates,
+  ScalarFieldType& sst_f_one_blending)
+{
+  init_trigonometric_field(bulk, coordinates, sst_f_one_blending);
+}
+
+void minimum_distance_to_wall_test_function(
+  const stk::mesh::BulkData& bulk,
+  const VectorFieldType& coordinates,
+  ScalarFieldType& minimum_distance_to_wall)
+{
+  init_trigonometric_field(bulk, coordinates, minimum_distance_to_wall);
 }
 
 void property_from_mixture_fraction_test_function(

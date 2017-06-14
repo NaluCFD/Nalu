@@ -59,6 +59,41 @@ void density_test_function(
   const VectorFieldType& coordinates,
   ScalarFieldType& density);
 
+void tke_test_function(
+  const stk::mesh::BulkData& bulk,
+  const VectorFieldType& coordinates,
+  ScalarFieldType& tke);
+
+void dkdx_test_function(
+  const stk::mesh::BulkData& bulk,
+  const VectorFieldType& coordinates,
+  VectorFieldType& dkdx);
+
+void sdr_test_function(
+  const stk::mesh::BulkData& bulk,
+  const VectorFieldType& coordinates,
+  ScalarFieldType& sdr);
+
+void dwdx_test_function(
+  const stk::mesh::BulkData& bulk,
+  const VectorFieldType& coordinates,
+  VectorFieldType& dwdx);
+
+void turbulent_viscosity_test_function(
+  const stk::mesh::BulkData& bulk,
+  const VectorFieldType& coordinates,
+  ScalarFieldType& turbulent_viscosity);
+
+void sst_f_one_blending_test_function(
+  const stk::mesh::BulkData& bulk,
+  const VectorFieldType& coordinates,
+  ScalarFieldType& sst_f_one_blending);
+
+void minimum_distance_to_wall_test_function(
+  const stk::mesh::BulkData& bulk,
+  const VectorFieldType& coordinates,
+  ScalarFieldType& minimum_distance_to_wall);
+
 void property_from_mixture_fraction_test_function(
   const stk::mesh::BulkData&,
   const ScalarFieldType& mixFraction,

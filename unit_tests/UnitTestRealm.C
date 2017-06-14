@@ -77,13 +77,16 @@ const std::string realmDefaultSettings =
   "    interp_rhou_together_for_mdot: yes                                 \n"
   "    use_consolidated_solver_algorithm: no                              \n"
   "    reduced_sens_cvfem_poisson: no                                     \n"
-  "    shift_cvfem_poisson: no                                            \n"
   "                                                                       \n"
   "    options:                                                           \n"
   "      - laminar_prandtl:                                               \n"
   "          enthalpy: 0.7                                                \n"
   "      - turbulent_prandtl:                                             \n"
   "          enthalpy: 1.0                                                \n"
+  "      - shifted_gradient_operator:                                     \n"
+  "          velocity: no                                                 \n"
+  "          pressure: no                                                 \n"
+  "          mixture_fraction: no                                         \n"
   ;
 }
 
@@ -156,7 +159,6 @@ TEST(NaluMock, test_nalu_mock)
 
   // 3. Create the Realm node
   sierra::nalu::Realm& realm = naluObj.create_realm(realm_node);
-  std::cout << realm.solutionOptions_->cvfemShiftPoisson_;
 
   // 4. Create mesh and get the default part for registration with Algorithm
   unit_test_utils::fill_hex8_mesh("generated:10x10x10", *realm.bulkData_);

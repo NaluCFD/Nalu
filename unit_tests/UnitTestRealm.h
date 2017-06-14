@@ -20,7 +20,7 @@ namespace unit_test_utils {
 
 YAML::Node get_default_inputs();
 
-YAML::Node get_default_realm_node();
+YAML::Node get_realm_default_node();
 
 class NaluTest
 {
