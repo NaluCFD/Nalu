@@ -5,6 +5,12 @@ project(Nalu)
 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
+############################     OPTIONS     ##################################
+
+option(BUILD_DOCUMENTATION "Build documentation." OFF)
+option(ENABLE_TESTS "Enable regression testing." OFF)
+option(USE_TRILINOS_COMPILERS "Force Nalu to use compilers used for Trilinos." ON)
+
 ############################     YAML     ######################################
 
 find_library(YAML_LIBRARY NAMES yaml-cpp PATHS ${YAML_DIR}/lib )
@@ -38,9 +44,11 @@ message("   Trilinos_CXX_COMPILER_FLAGS = ${Trilinos_CXX_COMPILER_FLAGS}")
 message("End of Trilinos details\n")
 
 message("Setting and checking of compilers:")
-set(CMAKE_CXX_COMPILER ${Trilinos_CXX_COMPILER})
-set(CMAKE_C_COMPILER ${Trilinos_C_COMPILER})
-set(CMAKE_Fortran_COMPILER ${Trilinos_Fortran_COMPILER})
+if(USE_TRILINOS_COMPILERS)
+  set(CMAKE_CXX_COMPILER ${Trilinos_CXX_COMPILER})
+  set(CMAKE_C_COMPILER ${Trilinos_C_COMPILER})
+  set(CMAKE_Fortran_COMPILER ${Trilinos_Fortran_COMPILER})
+endif()
 
 # Enable Fortran if it is enabled in Trilinos
 if(CMAKE_Fortran_COMPILER)
@@ -52,9 +60,9 @@ if(Trilinos_BUILD_SHARED_LIBS)
   set(Nalu_LIBRARY_TYPE SHARED)
   set(BUILD_SHARED_LIBS ON)
   message("-- Building Nalu with shared libraries")
-else(Trilinos_BUILD_SHARED_LIBS)
+else()
   set(Nalu_LIBRARY_TYPE STATIC)
-endif(Trilinos_BUILD_SHARED_LIBS)
+endif()
 
 ############################     NALU     ##################################
 
@@ -107,14 +115,10 @@ install(TARGETS ${utest_ex_name} ${nalu_ex_name} nalu
         LIBRARY DESTINATION lib)
 install(DIRECTORY include/ DESTINATION include)
 
-############################     OPTIONS     ##################################
-
-option(BUILD_DOCUMENTATION "Build documentation." OFF)
 if(BUILD_DOCUMENTATION)
    add_subdirectory(docs)
 endif()
 
-option(ENABLE_TESTS "Enable regression testing." OFF)
 if(ENABLE_TESTS)
    enable_testing()
    include(CTest)
