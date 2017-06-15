@@ -3678,8 +3678,8 @@ PyrSCS::PyrSCS()
   oppNode_[4] = 0; oppNode_[5] = 3; oppNode_[6] = 3; oppNode_[7] = -1;
   // face 2; nodes 2,3,4
   oppNode_[8] = 1; oppNode_[9] = 0; oppNode_[10] = 0; oppNode_[11] = -1;
-  // face 3; nodes 3,0,4
-  oppNode_[12] = 2; oppNode_[13] = 1; oppNode_[14] = 1; oppNode_[15] = 2;
+  // face 3; nodes 0,4,3
+  oppNode_[12] = 1; oppNode_[13] = 1; oppNode_[14] = 2; oppNode_[15] = -1;
   // face 4; nodes 0,3,2,1
   oppNode_[16] = 4; oppNode_[17] = 4; oppNode_[18] = 4; oppNode_[19] = 4;
 
@@ -3693,7 +3693,7 @@ PyrSCS::PyrSCS()
   // face 2
   oppFace_[8] = 1;  oppFace_[9] = 3;  oppFace_[10] = 4; oppFace_[11] = -1;
   // face 3
-  oppFace_[12] = 2; oppFace_[13] = 0; oppFace_[14] = 5; oppFace_[15] = -1;
+  oppFace_[12] = 0; oppFace_[13] = 5; oppFace_[14] = 2; oppFace_[15] = -1;
   // face 4
   oppFace_[16] = 4; oppFace_[17] = 7; oppFace_[18] = 6; oppFace_[19] = 5;
 
@@ -3742,10 +3742,10 @@ PyrSCS::PyrSCS()
   intgExpFace_[18] =  three8ths;     intgExpFace_[19] = nineteen24ths;  intgExpFace_[20] = five24ths;
   intgExpFace_[21] = -three8ths;     intgExpFace_[22] = nineteen24ths;  intgExpFace_[23] = five24ths;
   intgExpFace_[24] =  0.00;          intgExpFace_[25] = one3rd;         intgExpFace_[26] = two3rds;
-  //face 3; nodes 3,0,4; scs 0, 1, 2
-  intgExpFace_[27] = -nineteen24ths; intgExpFace_[28] =  three8ths;     intgExpFace_[29] = five24ths;
-  intgExpFace_[30] = -nineteen24ths; intgExpFace_[31] = -three8ths;     intgExpFace_[32] = five24ths;
-  intgExpFace_[33] = -one3rd;        intgExpFace_[34] = 0.0;            intgExpFace_[35] = two3rds;
+  //face 3; nodes 0,4,3; scs 0, 1, 2
+  intgExpFace_[27] = -nineteen24ths; intgExpFace_[28] = -three8ths;     intgExpFace_[29] = five24ths;
+  intgExpFace_[30] = -one3rd;        intgExpFace_[31] = 0.0;            intgExpFace_[32] = two3rds;
+  intgExpFace_[33] = -nineteen24ths; intgExpFace_[34] =  three8ths;     intgExpFace_[35] = five24ths;
   // face 4; nodes 0,3,2,1; scs 0, 1, 2
   intgExpFace_[36] = -0.5;           intgExpFace_[37] = -0.5;           intgExpFace_[38] = 0.0;
   intgExpFace_[39] = -0.5;           intgExpFace_[40] =  0.5;           intgExpFace_[41] = 0.0;
@@ -3768,7 +3768,7 @@ PyrSCS::PyrSCS()
   // Face 2
   ipNodeMap_[6]  = 2; ipNodeMap_[7]  = 3; ipNodeMap_[8]  = 4;
   // Face 3
-  ipNodeMap_[9]  = 3; ipNodeMap_[10] = 0; ipNodeMap_[11] = 4;
+  ipNodeMap_[9]  = 0; ipNodeMap_[10] = 4; ipNodeMap_[11] = 3;
   // Face 4 (quad face)
   ipNodeMap_[12] = 0; ipNodeMap_[13] = 3; ipNodeMap_[14] = 2; ipNodeMap_[15] = 1;
 
