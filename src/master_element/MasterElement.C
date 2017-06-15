@@ -3892,12 +3892,12 @@ void PyrSCS::face_grad_op(
   double *error)
 {
   int lerr = 0;
-  int npf = 4;
-  int ndim = 3;
-  
+  const int ndim = 3;  
   const int nface = 1;
   double dpsi[15];
-  double grad[15];
+
+  // ordinal four is a quad4
+  const int npf = (face_ordinal < 4 ) ? 3 : 4;
 
   for ( int n=0; n<nelem; n++ ) {
     
@@ -3931,11 +3931,12 @@ void PyrSCS::shifted_face_grad_op(
   double *error)
 {
   int lerr = 0;
-  int npf = 4;
-  int ndim = 3;
-
+  const int ndim = 3;
   const int nface = 1;
   double dpsi[15];
+
+  // ordinal four is a quad4
+  const int npf = (face_ordinal < 4 ) ? 3 : 4;
 
   for ( int n=0; n<nelem; n++ ) {
 
@@ -3952,7 +3953,7 @@ void PyrSCS::shifted_face_grad_op(
           &coords[15*n], &gradop[k*nelem*15+n*15], &det_j[npf*n+k], error, &lerr );
 
       if ( lerr )
-        std::cout << "problem with PyrSCS::face_grad_op." << std::endl;
+        std::cout << "problem with PyrSCS::shifted_face_grad_op." << std::endl;
 
     }
   }

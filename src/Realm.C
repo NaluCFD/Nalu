@@ -931,6 +931,173 @@ Realm::enforce_bc_on_exposed_faces()
 {
   double start_time = NaluEnv::self().nalu_time();
 
+  {    
+    NaluEnv::self().naluOutputP0() << "starting enforce_bc_on_exposed_faces" << std::endl;
+    // define vector of parent topos; should always be UNITY in size
+    std::vector<stk::topology> parentTopo;
+
+    // model coords are fine in this case
+    VectorFieldType *coordinates_ = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates");
+
+    const int nDim = metaData_->spatial_dimension();
+
+    std::vector<double> ws_coordinates;
+    std::vector<double> ws_dndx;
+    std::vector<double> ws_dndx_shift;
+    std::vector<double> ws_det_j;
+    
+    // define some common selectors
+    stk::mesh::Selector s_locally_owned_union = metaData_->locally_owned_part()
+      &stk::mesh::selectUnion(bcPartVec_);
+    
+    stk::mesh::BucketVector const& face_buckets =
+      get_buckets( metaData_->side_rank(), s_locally_owned_union );
+    for ( stk::mesh::BucketVector::const_iterator ib = face_buckets.begin();
+          ib != face_buckets.end() ; ++ib ) {
+      stk::mesh::Bucket & b = **ib ;
+      
+      // extract connected element topology
+      b.parent_topology(stk::topology::ELEMENT_RANK, parentTopo);
+      ThrowAssert ( parentTopo.size() == 1 );
+      stk::topology theElemTopo = parentTopo[0];
+      
+      // volume master element
+      MasterElement *meSCS = sierra::nalu::get_surface_master_element(theElemTopo);
+      const int nodesPerElement = meSCS->nodesPerElement_;
+      
+      // face master element
+      MasterElement *meFC = sierra::nalu::get_surface_master_element(b.topology());
+      const int nodesPerFace = meFC->nodesPerElement_;
+      const int numScsBip = meFC->numIntPoints_;
+      
+      // algorithm related; element
+      ws_coordinates.resize(nodesPerElement*nDim);
+      ws_dndx.resize(nDim*numScsBip*nodesPerElement);
+      ws_dndx_shift.resize(nDim*numScsBip*nodesPerElement);
+      ws_det_j.resize(numScsBip);
+      
+      // pointers
+      double *p_coordinates = &ws_coordinates[0];
+      double *p_dndx = &ws_dndx[0];
+      double *p_dndx_shift = &ws_dndx_shift[0];
+      
+      const stk::mesh::Bucket::size_type length   = b.size();
+      
+      for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+        
+        // get face
+        stk::mesh::Entity face = b[k];
+
+        // extract the connected element to this exposed face; should be single in size!
+        stk::mesh::Entity const * face_elem_rels = bulkData_->begin_elements(face);
+        ThrowAssert( bulkData_->num_elements(face) == 1 );
+        
+        // get element; its face ordinal number
+        stk::mesh::Entity element = face_elem_rels[0];
+        const stk::mesh::ConnectivityOrdinal* face_elem_ords = bulkData_->begin_element_ordinals(face);
+        const int face_ordinal = face_elem_ords[0];
+        
+        // mapping from ip to nodes for this ordinal
+        const int *ipNodeMap = meSCS->ipNodeMap(face_ordinal);
+        
+        //==========================================
+        // gather nodal data off of element
+        //==========================================
+        stk::mesh::Entity const * elem_node_rels = bulkData_->begin_nodes(element);
+        int num_nodes = bulkData_->num_nodes(element);
+        // sanity check on num nodes
+        ThrowAssert( num_nodes == nodesPerElement );
+        for ( int ni = 0; ni < num_nodes; ++ni ) {
+          stk::mesh::Entity node = elem_node_rels[ni];
+          double * coords = stk::mesh::field_data(*coordinates_, node);
+          const int offSet = ni*nDim;
+          for ( int j=0; j < nDim; ++j ) {
+            p_coordinates[offSet+j] = coords[j];
+          }
+        }
+        
+        // compute dndx
+        double scs_error = 0.0;
+        meSCS->face_grad_op(1, face_ordinal, &p_coordinates[0], &p_dndx[0], &ws_det_j[0], &scs_error);
+        if ( scs_error > 0.0 ) {
+          NaluEnv::self().naluOutput() << " face_grad_op problem on element "
+                                       << bulkData_->identifier(element) 
+                                       << " ordinal: " << face_ordinal << std::endl;
+          for ( int ni = 0; ni < num_nodes; ++ni ) {
+            stk::mesh::Entity node = elem_node_rels[ni];
+            double * coords = stk::mesh::field_data(*coordinates_, node);
+            const int offSet = ni*nDim;
+            for ( int j=0; j < nDim; ++j ) {
+              NaluEnv::self().naluOutput() << p_coordinates[offSet+j] << std::endl;
+            }
+          }
+        }
+
+        scs_error = 0.0;
+        meSCS->shifted_face_grad_op(1, face_ordinal, &p_coordinates[0], &p_dndx_shift[0], &ws_det_j[0], &scs_error);
+        if ( scs_error > 0.0 ) {
+          NaluEnv::self().naluOutput() << " shifted_face_grad_op problem on element "
+                                       << bulkData_->identifier(element) 
+                                       << " ordinal: " << face_ordinal << std::endl;
+          for ( int ni = 0; ni < num_nodes; ++ni ) {
+            stk::mesh::Entity node = elem_node_rels[ni];
+            double * coords = stk::mesh::field_data(*coordinates_, node);
+            const int offSet = ni*nDim;
+            for ( int j=0; j < nDim; ++j ) {
+              NaluEnv::self().naluOutput() << p_coordinates[offSet+j] << std::endl;
+            }
+          }
+        }
+        
+        // loop over boundary ips
+        for ( int ip = 0; ip < numScsBip; ++ip ) {
+          
+          const int nearestNode = ipNodeMap[ip];
+          
+          // offset for bip area vector and types of shape function
+          const int faceOffSet = ip*nDim;
+          const int offSetSF_face = ip*nodesPerFace;
+          
+          //================================
+          // diffusion second
+          //================================
+          for ( int ic = 0; ic < nodesPerElement; ++ic ) {
+            
+            const int offSetDnDx = nDim*nodesPerElement*ip + ic*nDim;
+            
+            for ( int j = 0; j < nDim; ++j ) {
+              
+              const double dndxj = p_dndx[offSetDnDx+j];
+              const double dndxj_shift = p_dndx_shift[offSetDnDx+j];
+              
+              for ( int i = 0; i < nDim; ++i ) {
+                
+                const double dndxi = p_dndx[offSetDnDx+i];
+                const double dndxi_shift = p_dndx_shift[offSetDnDx+i];
+                
+                // -mu*dui/dxj*Aj*ni*ni; sneak in divU (explicit)
+                double lhsfac = dndxj  + dndxj_shift;
+                
+                // -mu*duj/dxi*Aj*ni*ni
+                lhsfac = dndxi + dndxi_shift;
+                
+                for ( int l = 0; l < nDim; ++l ) {
+                  
+                  if ( i != l ) {
+                    const double dndxl = p_dndx[offSetDnDx+l];
+                    const double dndxl_shift = p_dndx_shift[offSetDnDx+l];
+                    // -ni*nl*mu*duj/dxl*Aj
+                    lhsfac = dndxl + dndxl_shift;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
   NaluEnv::self().naluOutputP0() << "Realm::skin_mesh(): Begin" << std::endl;
 
   NaluEnv::self().naluOutputP0() << "Realm::skin_mesh(): Begin" << std::endl;

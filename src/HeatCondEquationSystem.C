@@ -881,8 +881,8 @@ HeatCondEquationSystem::register_overset_bc()
 void
 HeatCondEquationSystem::initialize()
 {
-  solverAlgDriver_->initialize_connectivity();
-  linsys_->finalizeLinearSystem();
+  //solverAlgDriver_->initialize_connectivity();
+  //linsys_->finalizeLinearSystem();
 }
 
 //--------------------------------------------------------------------------
@@ -891,7 +891,7 @@ HeatCondEquationSystem::initialize()
 void
 HeatCondEquationSystem::reinitialize_linear_system()
 {
-
+  return;
   // delete linsys
   delete linsys_;
 
@@ -930,6 +930,7 @@ HeatCondEquationSystem::predict_state()
 void
 HeatCondEquationSystem::solve_and_update()
 {
+  return;
   // initialize fields
   if ( isInit_ ) {
     compute_projected_nodal_gradient();
