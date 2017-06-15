@@ -3791,10 +3791,6 @@ PyrSCS::PyrSCS()
       ++index;
     }
   }
-
-  for ( int k = 0; k < 48; ++k ) {
-    NaluEnv::self().naluOutputP0() << intgExpFaceShift_[k] << std::endl;
-  }
 }
 
 //--------------------------------------------------------------------------
