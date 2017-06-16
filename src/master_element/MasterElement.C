@@ -3938,12 +3938,14 @@ void PyrSCS::shifted_face_grad_op(
   // ordinal four is a quad4
   const int npf = (face_ordinal < 4 ) ? 3 : 4;
 
+  // quad4 is the only face that can be safely shifted
+  const double *p_intgExp = (face_ordinal < 4 ) ? &intgExpFace_[0] : &intgExpFaceShift_[0];
   for ( int n=0; n<nelem; n++ ) {
 
     for ( int k=0; k<npf; k++ ) {
 
       const int row = 9*face_ordinal + k*ndim;
-      pyr_derivative(nface, &intgExpFaceShift_[row], dpsi);
+      pyr_derivative(nface, &p_intgExp[row], dpsi);
 
       SIERRA_FORTRAN(pyr_gradient_operator)
         ( &nface,
