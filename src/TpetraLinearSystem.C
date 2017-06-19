@@ -1319,6 +1319,51 @@ TpetraLinearSystem::prepareConstraints(
 }
 
 void
+TpetraLinearSystem::resetRows(
+  const std::vector<stk::mesh::Entity> nodeList,
+  const unsigned beginPos,
+  const unsigned endPos)
+{
+  Teuchos::ArrayView<const LocalOrdinal> indices;
+  Teuchos::ArrayView<const double> values;
+  std::vector<double> new_values;
+  constexpr double rhs_residual = 0.0;
+
+  for (auto node: nodeList) {
+    const auto naluId = *stk::mesh::field_data(*realm_.naluGlobalId_, node);
+    const LocalOrdinal localIdOffset = lookup_myLID(
+      myLIDs_, naluId, "resetRows") * numDof_;
+
+    for (unsigned d=beginPos; d < endPos; ++d) {
+      const LocalOrdinal localId = localIdOffset + d;
+      const bool useOwned = (localId < maxOwnedRowId_);
+      const LocalOrdinal actualLocalId =
+        useOwned ? localId : (localId - maxOwnedRowId_);
+      Teuchos::RCP<LinSys::Matrix> matrix =
+        useOwned ? ownedMatrix_ : globallyOwnedMatrix_;
+
+      if (localId > maxGloballyOwnedRowId_) {
+        throw std::runtime_error("logic error: localId > maxGloballyOwnedRowId");
+      }
+
+      // Adjust the LHS; zero out all entries (including diagonal)
+      matrix->getLocalRowView(actualLocalId, indices, values);
+      const size_t rowLength = values.size();
+      new_values.resize(rowLength);
+      for (size_t i=0; i < rowLength; i++) {
+        new_values[i] = 0.0;
+      }
+      matrix->replaceLocalValues(actualLocalId, indices, new_values);
+
+      // Replace RHS residual entry = 0.0
+      Teuchos::RCP<LinSys::Vector> rhs =
+        useOwned ? ownedRhs_ : globallyOwnedRhs_;
+      rhs->replaceLocalValue(actualLocalId, rhs_residual);
+    }
+  }
+}
+
+void
 TpetraLinearSystem::loadComplete()
 {
   // LHS
