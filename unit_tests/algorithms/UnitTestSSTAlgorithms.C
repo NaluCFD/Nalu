@@ -90,7 +90,7 @@ TEST_F(TestTurbulenceAlgorithm, turbkineticenergysstnodesourcesuppalg)
   const double lhs_norm = assembleSuppAlgs.get_lhs_norm();
   const double rhs_norm = assembleSuppAlgs.get_rhs_norm();
   const double lhs_gold_norm = 0.014564571309018231;
-  const double rhs_gold_norm = 10.448455484893882;
+  const double rhs_gold_norm = 10.448455484893881;
   EXPECT_NEAR(lhs_norm, lhs_gold_norm, tol);
   EXPECT_NEAR(rhs_norm, rhs_gold_norm, tol);
 }
@@ -114,7 +114,7 @@ TEST_F(TestTurbulenceAlgorithm, turbkineticenergysstdesnodesourcesuppalg)
   const double lhs_norm = assembleSuppAlgs.get_lhs_norm();
   const double rhs_norm = assembleSuppAlgs.get_rhs_norm();
   const double lhs_gold_norm = 0.56267322649917717;
-  const double rhs_gold_norm = 277.31214722069694;
+  const double rhs_gold_norm = 277.31214722069728;
   EXPECT_NEAR(lhs_norm, lhs_gold_norm, tol);
   EXPECT_NEAR(rhs_norm, rhs_gold_norm, tol);
 }

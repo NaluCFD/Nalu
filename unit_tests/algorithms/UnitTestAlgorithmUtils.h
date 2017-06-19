@@ -53,31 +53,8 @@ public:
       });
   }
 
-  /** Compute norm of the LHS/RHS
-   *
-   * Used to generate the gold values and testing
-   */
-  double norm(const std::vector<double> & vec)
-  {
-    stk::ParallelMachine comm = bulk_.parallel();
-
-    size_t N = vec.size();
-    size_t g_N = 0;
-    double norm = 0.0;
-    double g_norm = 0.0;
-
-    for (int i = 0; i < N; ++i) {
-      norm += vec[i]*vec[i];
-    }
-    stk::all_reduce_sum(comm, &N, &g_N, 1);
-    stk::all_reduce_sum(comm, &norm, &g_norm, 1);
-    g_norm = std::sqrt(g_norm/g_N);
-
-    return g_norm;
-  }
-
-  inline double get_lhs_norm() {return norm(lhs_);}
-  inline double get_rhs_norm() {return norm(rhs_);}
+  inline double get_lhs_norm() {return unit_test_utils::vector_norm(lhs_, bulk_);}
+  inline double get_rhs_norm() {return unit_test_utils::vector_norm(rhs_, bulk_);}
 
   std::vector<sierra::nalu::SupplementalAlgorithm*> activeSuppAlgs_;
 

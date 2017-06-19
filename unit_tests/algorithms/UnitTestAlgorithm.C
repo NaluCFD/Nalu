@@ -54,24 +54,6 @@ TestAlgorithm::field_norm(const ScalarFieldType & field, stk::mesh::Selector* se
   return unit_test_utils::field_norm(field, bulk, sel);
 }
 
-double
-TestAlgorithm::calc_vector_norm(const std::vector<double> & vec)
-{
-  size_t N = vec.size();
-  size_t g_N = 0;
-  double norm = 0.0;
-  double g_norm = 0.0;
-
-  for (int i = 0; i < N; ++i) {
-    norm += vec[i]*vec[i];
-  }
-  stk::all_reduce_sum(comm_, &N, &g_N, 1);
-  stk::all_reduce_sum(comm_, &norm, &g_norm, 1);
-  g_norm = std::sqrt(g_norm/g_N);
-
-  return g_norm;
-}
-
 void
 TestTurbulenceAlgorithm::declare_fields()
 {

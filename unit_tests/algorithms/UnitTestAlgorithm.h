@@ -72,8 +72,6 @@ public:
 
   double field_norm(const ScalarFieldType & field, stk::mesh::Selector* selector = nullptr);
 
-  double calc_vector_norm(const std::vector<double> & vec);
-
   //! Reference to test Nalu instance used to hold Simulation and Realm
   std::unique_ptr<unit_test_utils::NaluTest> naluObj_;
 

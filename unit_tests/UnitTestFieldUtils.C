@@ -14,8 +14,8 @@ double field_max(const ScalarFieldType& field, const stk::mesh::BulkData& bulk, 
   stk::ParallelMachine comm = bulk.parallel();
   const auto& buckets = bulk.get_buckets(stk::topology::NODE_RANK, selector);
 
-  double maxVal = -1.0e16;
-  double g_maxVal = -1.0e16;
+  double maxVal = -std::numeric_limits<double>::max();
+  double g_maxVal = -std::numeric_limits<double>::max();
   kokkos_thread_team_bucket_loop(buckets, [&](stk::mesh::Entity node) {
       double nodeVal = *stk::mesh::field_data(field, node);
       maxVal = std::max(maxVal, nodeVal);
@@ -30,8 +30,8 @@ double field_min(const ScalarFieldType& field, const stk::mesh::BulkData& bulk, 
   stk::ParallelMachine comm = bulk.parallel();
   const auto& buckets = bulk.get_buckets(stk::topology::NODE_RANK, selector);
 
-  double minVal = 1.0e16;
-  double g_minVal = 1.0e16;
+  double minVal = std::numeric_limits<double>::max();
+  double g_minVal = std::numeric_limits<double>::max();
   kokkos_thread_team_bucket_loop(buckets, [&](stk::mesh::Entity node) {
       double nodeVal = *stk::mesh::field_data(field, node);
       minVal = std::min(minVal, nodeVal);
