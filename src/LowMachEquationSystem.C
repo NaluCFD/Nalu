@@ -95,6 +95,8 @@
 #include <TurbViscSSTAlgorithm.h>
 #include <TurbViscWaleAlgorithm.h>
 #include <ABLForcingAlgorithm.h>
+#include <FixPressureAtNodeAlgorithm.h>
+#include <FixPressureAtNodeInfo.h>
 
 // consolidated approach
 #include <ContinuityAdvElemKernel.h>
@@ -2797,6 +2799,28 @@ ContinuityEquationSystem::register_overset_bc()
 void
 ContinuityEquationSystem::initialize()
 {
+  if (realm_.solutionOptions_->needPressureReference_) {
+    const AlgorithmType algType = REF_PRESSURE;
+    // Process parts if necessary
+    realm_.solutionOptions_->fixPressureInfo_->create_part_vector(realm_.meta_data());
+    stk::mesh::PartVector& pvec = realm_.solutionOptions_->fixPressureInfo_->partVec_;
+
+    // The user could have provided just a Node ID instead of a part vector
+    stk::mesh::Part* firstPart = pvec.size() > 0? pvec.at(0) : nullptr;
+
+    auto it = solverAlgDriver_->solverDirichAlgMap_.find(algType);
+    if (it == solverAlgDriver_->solverDirichAlgMap_.end()) {
+      FixPressureAtNodeAlgorithm* theAlg = new FixPressureAtNodeAlgorithm(
+        realm_, firstPart, this);
+      // populate the remaining parts if necessary
+      for(size_t i=1; i < pvec.size(); i++)
+        theAlg->partVec_.push_back( pvec[i]);
+      solverAlgDriver_->solverDirichAlgMap_[algType] = theAlg;
+    } else {
+      throw std::runtime_error("ContinuityEquationSystem::initialize: logic error. Multiple initializations of FixPressureAtNodeAlgorithm.");
+    }
+  }
+
   solverAlgDriver_->initialize_connectivity();
   linsys_->finalizeLinearSystem();
 }
