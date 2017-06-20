@@ -17,7 +17,12 @@ namespace nalu {
 using HostSpace = Kokkos::HostSpace;
 //!!!! Important: the 'Kokkos::Serial' here makes sure we only run serial. !!!!
 // using DeviceSpace = Kokkos::DefaultExecutionSpace;
+#ifdef KOKKOS_HAVE_SERIAL
 using DeviceSpace = Kokkos::Serial;
+#else
+#error "Kokkos does not have Serial space enabled"
+#endif
+
 using DeviceShmem = DeviceSpace::scratch_memory_space;
 using DynamicScheduleType = Kokkos::Schedule<Kokkos::Dynamic>;
 using TeamHandleType = Kokkos::TeamPolicy<DeviceSpace, DynamicScheduleType>::member_type;
