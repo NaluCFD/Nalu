@@ -462,10 +462,8 @@ double quadratic(double a, const double* b, const double* H, const double* x)
   return (linear(a,b,x) + 0.5*quad);
 }
 
-double vector_norm(const std::vector<double> & vec, const stk::mesh::BulkData& bulk)
+double vector_norm(const std::vector<double> & vec, const stk::ParallelMachine& comm)
 {
-  stk::ParallelMachine comm = bulk.parallel();
-
   size_t N = vec.size();
   size_t g_N = 0;
   double norm = 0.0;

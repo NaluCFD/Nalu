@@ -56,8 +56,8 @@ public:
       });
   }
 
-  inline double get_lhs_norm() {return unit_test_utils::vector_norm(lhs_, bulk_);}
-  inline double get_rhs_norm() {return unit_test_utils::vector_norm(rhs_, bulk_);}
+  inline double get_lhs_norm() {return unit_test_utils::vector_norm(lhs_, bulk_.parallel());}
+  inline double get_rhs_norm() {return unit_test_utils::vector_norm(rhs_, bulk_.parallel());}
 
   std::vector<sierra::nalu::SupplementalAlgorithm*> activeSuppAlgs_;
 
