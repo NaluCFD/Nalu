@@ -40,13 +40,16 @@ public:
     const auto& buckets = bulk_.get_buckets(stk::topology::NODE_RANK,
                                             selector);
 
+    double lhs_value = 0.0;
+    double rhs_value = 0.0;
+
     kokkos_thread_team_bucket_loop(buckets, [&](stk::mesh::Entity node) {
-
-      double lhs_value = 0.0;
-      double rhs_value = 0.0;
-
       for (size_t i=0; i < activeSuppAlgs_.size(); ++i){
+	lhs_value = 0.0;
+	rhs_value = 0.0;
+
         activeSuppAlgs_[i]->node_execute(&lhs_value, &rhs_value, node);
+
         lhs_.push_back(lhs_value);
         rhs_.push_back(rhs_value);
       }
