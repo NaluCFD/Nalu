@@ -43,7 +43,7 @@ void kokkos_bucket_loop(const stk::mesh::BucketVector& buckets, LOOP_BODY inner_
 template<class LOOP_BODY>
 void kokkos_thread_team_bucket_loop(const stk::mesh::BucketVector& buckets, LOOP_BODY inner_loop_body)
 {
-    Kokkos::parallel_for(Kokkos::TeamPolicy<Kokkos::DefaultExecutionSpace>(buckets.size(), Kokkos::AUTO), KOKKOS_LAMBDA(const sierra::nalu::TeamHandleType& team)
+    Kokkos::parallel_for(sierra::nalu::DeviceTeamPolicy(buckets.size(), Kokkos::AUTO), KOKKOS_LAMBDA(const sierra::nalu::TeamHandleType& team)
     {
         const stk::mesh::Bucket& bkt = *buckets[team.league_rank()];
         Kokkos::parallel_for(Kokkos::TeamThreadRange(team, bkt.size()), [&](const size_t& j)
@@ -57,7 +57,7 @@ template<class LOOP_BODY>
 void kokkos_thread_team_bucket_loop_with_topo(const stk::mesh::BucketVector& buckets,
                                     const LOOP_BODY& inner_loop_body)
 {
-    Kokkos::parallel_for(Kokkos::TeamPolicy<Kokkos::DefaultExecutionSpace>(buckets.size(), Kokkos::AUTO), KOKKOS_LAMBDA(const sierra::nalu::TeamHandleType& team)
+    Kokkos::parallel_for(sierra::nalu::DeviceTeamPolicy(buckets.size(), Kokkos::AUTO), KOKKOS_LAMBDA(const sierra::nalu::TeamHandleType& team)
     {
         const stk::mesh::Bucket& bkt = *buckets[team.league_rank()];
         stk::topology topo = bkt.topology();

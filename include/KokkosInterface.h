@@ -15,15 +15,17 @@ namespace sierra {
 namespace nalu {
 
 using HostSpace = Kokkos::HostSpace;
-using DeviceSpace = Kokkos::DefaultExecutionSpace;
+//!!!! Important: the 'Kokkos::Serial' here makes sure we only run serial. !!!!
+// using DeviceSpace = Kokkos::DefaultExecutionSpace;
+using DeviceSpace = Kokkos::Serial;
 using DeviceShmem = DeviceSpace::scratch_memory_space;
-typedef Kokkos::Schedule<Kokkos::Dynamic> DynamicScheduleType;
-typedef typename Kokkos::TeamPolicy<typename Kokkos::DefaultExecutionSpace, DynamicScheduleType>::member_type TeamHandleType;
+using DynamicScheduleType = Kokkos::Schedule<Kokkos::Dynamic>;
+using TeamHandleType = Kokkos::TeamPolicy<DeviceSpace, DynamicScheduleType>::member_type;
+
 template <typename T>
 using SharedMemView = Kokkos::View<T, Kokkos::LayoutRight, DeviceShmem, Kokkos::MemoryUnmanaged>;
 
-//!!!! Important: the 'Kokkos::Serial' here makes sure we only run serial. !!!!
-using DeviceTeamPolicy = Kokkos::TeamPolicy<Kokkos::Serial>;
+using DeviceTeamPolicy = Kokkos::TeamPolicy<DeviceSpace>;
 using DeviceTeam = DeviceTeamPolicy::member_type;
 
 inline DeviceTeamPolicy get_team_policy(const size_t sz, const size_t bytes_per_team,
