@@ -462,6 +462,23 @@ double quadratic(double a, const double* b, const double* H, const double* x)
   return (linear(a,b,x) + 0.5*quad);
 }
 
+double vector_norm(const std::vector<double> & vec, const stk::ParallelMachine& comm)
+{
+  size_t N = vec.size();
+  size_t g_N = 0;
+  double norm = 0.0;
+  double g_norm = 0.0;
+
+  for (int i = 0; i < N; ++i) {
+    norm += vec[i]*vec[i];
+  }
+  stk::all_reduce_sum(comm, &N, &g_N, 1);
+  stk::all_reduce_sum(comm, &norm, &g_norm, 1);
+  g_norm = std::sqrt(g_norm/g_N);
+
+  return g_norm;
+}
+
 #ifndef KOKKOS_HAVE_CUDA
 
 double initialize_linear_scalar_field(
