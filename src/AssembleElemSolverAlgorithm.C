@@ -126,8 +126,8 @@ AssembleElemSolverAlgorithm::execute()
     unsigned num_nodes = b.topology().num_nodes();
 //of<<"P"<<bulk_data.parallel_rank()<<" bkt["<<team.league_rank()<<" of "<<elem_buckets.size()<<"] "<<&b<<", len "<<b.size()<<", topo "<<topo_<<std::endl;
     const stk::mesh::Bucket::size_type length   = b.size();
-    stk::mesh::Bucket::size_type simdBucketLen = length/stk::simd::ndoubles;
-    const stk::mesh::Bucket::size_type remainder = length%stk::simd::ndoubles;
+    stk::mesh::Bucket::size_type simdBucketLen = length/simdLen;
+    const stk::mesh::Bucket::size_type remainder = length%simdLen;
     if (remainder > 0) {
       simdBucketLen += 1;
     }
@@ -143,9 +143,9 @@ AssembleElemSolverAlgorithm::execute()
          simdElems = 0;
       }
 
-      if (simdElems < simdLen) {
-        std::cout<<"simdElems: "<<simdElems<<std::endl;
-      }
+//      if (simdElems < simdLen) {
+//        std::cerr<<"simdElems: "<<simdElems<<", bktIndex: "<<bktIndex<<", length: "<<length<<std::endl;
+//      }
 
       stk::mesh::Entity element;
       for(int simdElemIndex=0; simdElemIndex<simdElems; ++simdElemIndex) {
@@ -155,15 +155,8 @@ AssembleElemSolverAlgorithm::execute()
         fill_pre_req_data(dataNeededBySuppAlgs_, bulk_data, topo_, element,
                           *prereqData[simdElemIndex]);
       }
-      if (simdElems > 0) {
-        for(int simdElemIndex=simdElems; simdElemIndex<simdLen; ++simdElemIndex) {
-          // get element
-          fill_pre_req_data(dataNeededBySuppAlgs_, bulk_data, topo_, element,
-                            *prereqData[simdElemIndex]);
-        }
-      }
 
-      copy_and_interleave(prereqData, simdElems, simdPrereqData);
+      copy_and_interleave(prereqData, simdElems, simdLen, simdPrereqData);
       for ( int i = 0; i < rhsSize_; ++i ) {
         simdrhs(i) = 0.0;
       }
