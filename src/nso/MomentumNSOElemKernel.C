@@ -196,6 +196,7 @@ MomentumNSOElemKernel<AlgTraits>::execute(
     // full continuity residual (constant for all component k)
     const DoubleType contRes = (gamma1_*rhoNp1Scs + gamma2_*rhoNScs + gamma3_*rhoNm1Scs)/dt_ + dFdxCont;
 
+    const double twoThirds = 2.0/3.0;
     // assemble each component
     for ( int k = 0; k < AlgTraits::nDim_; ++k ) {
 
@@ -221,7 +222,7 @@ MomentumNSOElemKernel<AlgTraits>::execute(
         const DoubleType r = v_shape_function_(ip,ic);
 
         // save off velocityUnp1 for component k
-        const DoubleType ukNp1 = v_uNp1(ic,k);
+        const DoubleType& ukNp1 = v_uNp1(ic,k);
 
         // interpolate all velocity states
         ukNm1Scs += r*v_uNm1(ic,k);
@@ -233,10 +234,9 @@ MomentumNSOElemKernel<AlgTraits>::execute(
         const DoubleType viscIC = v_viscosity(ic);
         for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
           const DoubleType dnj = v_dndx(ip,ic,j);
-          const DoubleType vrtmj = v_velocityRTM(ic,j);
           v_dukdxScs_(j) += ukNp1*dnj;
-          dFdxkAdv += rhoIC*vrtmj*ukNp1*dnj;
-          dFdxkDiff += viscIC*(v_Gju(ic,k,j) + v_Gju(ic,j,k) - 2.0/3.0*divU*v_kd_(k,j)*includeDivU_)*dnj;
+          dFdxkAdv += rhoIC*v_velocityRTM(ic,j)*ukNp1*dnj;
+          dFdxkDiff += viscIC*(v_Gju(ic,k,j) + v_Gju(ic,j,k) - twoThirds*divU*v_kd_(k,j)*includeDivU_)*dnj;
         }
       }
 
@@ -291,16 +291,15 @@ MomentumNSOElemKernel<AlgTraits>::execute(
         for ( int i = 0; i < AlgTraits::nDim_; ++i ) {
           const DoubleType axi = v_scs_areav(ip,i);
           for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
-            const DoubleType dnxj = v_dndx(ip,ic,j);
-            const DoubleType fac = v_gijUpper(ip,i,j)*dnxj*axi;
+            const DoubleType fac = v_gijUpper(ip,i,j)*v_dndx(ip,ic,j)*axi;
             const DoubleType facGj = r*v_gijUpper(ip,i,j)*v_Gju(ic,k,j)*axi;
-            gijFac += fac*ukNp1 - facGj*fourthFac_;
-            lhsfac += -fac;
+            gijFac = stk::math::fmadd(fac,ukNp1,gijFac) - facGj*fourthFac_;
+            lhsfac -= fac;
           }
         }
 
         // no coupling between components
-        lhs(indexL,icNdim+k) += nu*lhsfac;
+        lhs(indexL,icNdim+k) = stk::math::fmadd(nu,lhsfac,lhs(indexL,icNdim+k));
         lhs(indexR,icNdim+k) -= nu*lhsfac;
       }
 

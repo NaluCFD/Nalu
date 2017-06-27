@@ -185,7 +185,7 @@ TEST_F(Hex8MeshWithNSOFields, twoMomentumKernelsSimd)
         stk::mesh::Entity elem = bkt[bktIndex+simdElemIndex];
         fill_pre_req_data(dataNeeded, bulk, bkt.topology(), elem, *prereqData[simdElemIndex]);
       }
-      copy_and_interleave(prereqData, nelem, prereqDataSimd);
+      copy_and_interleave(prereqData, nelem, simdLen, prereqDataSimd);
       zero(lhs, rhs);
 
       ++calls;
