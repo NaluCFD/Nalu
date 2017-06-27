@@ -265,7 +265,7 @@ public:
             sierra::nalu::fill_pre_req_data(
               dataNeededByKernels_, bulk_, topo_, element, *preReqData[0]);
 
-            sierra::nalu::copy_and_interleave(preReqData, simdLen, simdPreReqData);
+            sierra::nalu::copy_and_interleave(preReqData, simdLen, simdLen, simdPreReqData);
 
             for (int i=0; i < rhsSize; i++) {
               simdRhs(i) = 0.0;
