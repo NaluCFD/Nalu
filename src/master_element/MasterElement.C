@@ -669,14 +669,14 @@ HexSCS::hex8_shape_fcn(
   const double *isoParCoord, 
   SharedMemView<DoubleType**> &shape_fcn)
 {
-  const double half = 0.50;
-  const double one4th = 0.25;
-  const double one8th = 0.125;
+  const DoubleType half = 0.50;
+  const DoubleType one4th = 0.25;
+  const DoubleType one8th = 0.125;
   for ( int j = 0; j < numIntPoints_; ++j ) {
 
-    const double s1 = isoParCoord[j*3];
-    const double s2 = isoParCoord[j*3+1];
-    const double s3 = isoParCoord[j*3+2];
+    const DoubleType s1 = isoParCoord[j*3];
+    const DoubleType s2 = isoParCoord[j*3+1];
+    const DoubleType s3 = isoParCoord[j*3+2];
     
     shape_fcn(j,0) = one8th + one4th*(-s1 - s2 - s3)
       + half*( s2*s3 + s3*s1 + s1*s2 ) - s1*s2*s3;
@@ -705,15 +705,15 @@ void HexSCS::hex8_derivative(
   const double *intgLoc,
   SharedMemView<DoubleType***> &deriv)
 {
-  const double half = 0.50;
-  const double one4th = 0.25;
+  const DoubleType half = 0.50;
+  const DoubleType one4th = 0.25;
   for (int  ip = 0; ip < npts; ++ip) {
-    const double s1 = intgLoc[ip*3];
-    const double s2 = intgLoc[ip*3+1];
-    const double s3 = intgLoc[ip*3+2];
-    const double s1s2 = s1*s2;
-    const double s2s3 = s2*s3;
-    const double s1s3 = s1*s3;
+    const DoubleType s1 = intgLoc[ip*3];
+    const DoubleType s2 = intgLoc[ip*3+1];
+    const DoubleType s3 = intgLoc[ip*3+2];
+    const DoubleType s1s2 = s1*s2;
+    const DoubleType s2s3 = s2*s3;
+    const DoubleType s1s3 = s1*s3;
 
     // shape function derivative in the s1 direction -
     deriv(ip,0,0) = half*( s3 + s2 ) - s2s3 - one4th;
