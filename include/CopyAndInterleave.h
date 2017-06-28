@@ -116,7 +116,8 @@ inline
 void copy_and_interleave(const std::vector<ScratchViews<double>*>& data,
                          int simdElems,
                          int simdLen,
-                         ScratchViews<DoubleType>& simdData)
+                         ScratchViews<DoubleType>& simdData,
+                         bool copyMEViews = true)
 {
     const std::vector<ViewHolder*>& simdFieldViews = simdData.get_field_views();
 
@@ -135,12 +136,15 @@ void copy_and_interleave(const std::vector<ScratchViews<double>*>& data,
       }
     }
 
-    for(int simdIndex=0; simdIndex<simdElems; ++simdIndex) {
-      if (simdData.has_coord_field(CURRENT_COORDINATES)) {
-        interleave_me_views(simdData.get_me_views(CURRENT_COORDINATES), data[simdIndex]->get_me_views(CURRENT_COORDINATES), simdIndex, simdLen);
-      }
-      if (simdData.has_coord_field(MODEL_COORDINATES)) {
-        interleave_me_views(simdData.get_me_views(MODEL_COORDINATES), data[simdIndex]->get_me_views(MODEL_COORDINATES), simdIndex, simdLen);
+    if (copyMEViews)
+    {
+      for(int simdIndex=0; simdIndex<simdElems; ++simdIndex) {
+        if (simdData.has_coord_field(CURRENT_COORDINATES)) {
+          interleave_me_views(simdData.get_me_views(CURRENT_COORDINATES), data[simdIndex]->get_me_views(CURRENT_COORDINATES), simdIndex, simdLen);
+        }
+        if (simdData.has_coord_field(MODEL_COORDINATES)) {
+          interleave_me_views(simdData.get_me_views(MODEL_COORDINATES), data[simdIndex]->get_me_views(MODEL_COORDINATES), simdIndex, simdLen);
+        }
       }
     }
 }
