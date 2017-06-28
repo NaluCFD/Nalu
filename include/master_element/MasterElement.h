@@ -11,6 +11,10 @@
 
 #include <AlgTraits.h>
 
+// NGP-based includes
+#include "SimdInterface.h"
+#include "KokkosInterface.h"
+
 #include <vector>
 #include <cstdlib>
 #include <stdexcept>
@@ -60,6 +64,37 @@ public:
   MasterElement();
   virtual ~MasterElement();
 
+  // NGP-ready methods first
+  virtual void shape_fcn(
+    SharedMemView<DoubleType**> &shpfc) {
+    throw std::runtime_error("shape_fcn using SharedMemView is not implemented");}
+
+  virtual void shifted_shape_fcn(
+    SharedMemView<DoubleType**> &shpfc) {
+    throw std::runtime_error("shifted_shape_fcn using SharedMemView is not implemented");}
+
+  virtual void grad_op(
+    SharedMemView<DoubleType**>&coords,
+    SharedMemView<DoubleType***>&gradop,
+    SharedMemView<DoubleType***>&deriv,
+    SharedMemView<DoubleType*>&det_j,
+    DoubleType &error) {
+    throw std::runtime_error("grad_op using SharedMemView is not implemented");}
+
+  virtual void shifted_grad_op(
+    SharedMemView<DoubleType**>&coords,
+    SharedMemView<DoubleType***>&gradop,
+    SharedMemView<DoubleType***>&deriv,
+    SharedMemView<DoubleType*>&det_j,
+    DoubleType &error) {
+    throw std::runtime_error("shifted_grad_op using SharedMemView is not implemented");}
+
+  virtual void determinant(
+    SharedMemView<DoubleType**>&coords,
+    SharedMemView<DoubleType**>&areav) {
+    throw std::runtime_error("determinant using SharedMemView is not implemented");}
+
+  // non-NGP-ready methods second
   virtual void determinant(
     const int nelem,
     const double *coords,
@@ -106,7 +141,6 @@ public:
     double *det_j,
     double * error ) {
     throw std::runtime_error("face_grad_op not implemented; avoid this element type at open bcs, walls and symms");}
-  
 
   virtual void shifted_face_grad_op(
      const int nelem,
@@ -255,6 +289,52 @@ public:
 
   const int * ipNodeMap(int ordinal = 0);
 
+  // NGP-ready methods first
+  void shape_fcn(
+    SharedMemView<DoubleType**> &shpfc);
+
+  void shifted_shape_fcn(
+    SharedMemView<DoubleType**> &shpfc);
+
+  void hex8_shape_fcn(
+    const int  &numIp,
+    const double *isoParCoord,
+    SharedMemView<DoubleType**> &shpfc);
+
+  void hex8_derivative(
+    const int npt, 
+    const double *par_coord,
+    SharedMemView<DoubleType***> &deriv);
+
+  void hex8_gradient_operator(
+    const int nodesPerElem, 
+    const int numIntgPts, 
+    SharedMemView<DoubleType***> &deriv, 
+    SharedMemView<DoubleType**> cordel, 
+    SharedMemView<DoubleType***>gradop, 
+    SharedMemView<DoubleType*>det_j, 
+    DoubleType &error, 
+    int &lerr);
+
+  void grad_op(
+    SharedMemView<DoubleType**>&coords,
+    SharedMemView<DoubleType***>&gradop,
+    SharedMemView<DoubleType***>&deriv,
+    SharedMemView<DoubleType*>&det_j,
+    DoubleType &error);
+
+  void shifted_grad_op(
+    SharedMemView<DoubleType**>&coords,
+    SharedMemView<DoubleType***>&gradop,
+    SharedMemView<DoubleType***>&deriv,
+    SharedMemView<DoubleType*>&det_j,
+    DoubleType &error );
+
+  void determinant(
+    SharedMemView<DoubleType**>&coords,
+    SharedMemView<DoubleType**>&areav);
+
+  // non NGP-ready methods second
   void determinant(
     const int nelem,
     const double *coords,
