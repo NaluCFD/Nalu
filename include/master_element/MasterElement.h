@@ -310,9 +310,9 @@ public:
     const int nodesPerElem, 
     const int numIntgPts, 
     SharedMemView<DoubleType***> &deriv, 
-    SharedMemView<DoubleType**> cordel, 
-    SharedMemView<DoubleType***>gradop, 
-    SharedMemView<DoubleType*>det_j, 
+    SharedMemView<DoubleType**> &cordel, 
+    SharedMemView<DoubleType***> &gradop, 
+    SharedMemView<DoubleType*> &det_j, 
     DoubleType &error, 
     int &lerr);
 
