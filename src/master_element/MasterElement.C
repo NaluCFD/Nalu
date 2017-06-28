@@ -719,10 +719,10 @@ void HexSCS::hex8_derivative(
     deriv(ip,0,0) = half*( s3 + s2 ) - s2s3 - one4th;
     deriv(ip,1,0) = half*(-s3 - s2 ) + s2s3 + one4th;
     deriv(ip,2,0) = half*(-s3 + s2 ) - s2s3 + one4th;
-    deriv(ip,3,0) = half*(+s3 - s2 ) + s2s3 - one4th;
+    deriv(ip,3,0) = half*( s3 - s2 ) + s2s3 - one4th;
     deriv(ip,4,0) = half*(-s3 + s2 ) + s2s3 - one4th;
-    deriv(ip,5,0) = half*(+s3 - s2 ) - s2s3 + one4th;
-    deriv(ip,6,0) = half*(+s3 + s2 ) + s2s3 + one4th;
+    deriv(ip,5,0) = half*( s3 - s2 ) - s2s3 + one4th;
+    deriv(ip,6,0) = half*( s3 + s2 ) + s2s3 + one4th;
     deriv(ip,7,0) = half*(-s3 - s2 ) - s2s3 - one4th;
 
     // shape function derivative in the s2 direction -
@@ -755,13 +755,13 @@ HexSCS::hex8_gradient_operator(
   const int nodesPerElem, 
   const int numIntgPts, 
   SharedMemView<DoubleType***> &deriv, 
-  SharedMemView<DoubleType**> cordel, 
-  SharedMemView<DoubleType***>gradop, 
-  SharedMemView<DoubleType*>det_j, 
+  SharedMemView<DoubleType**> &cordel, 
+  SharedMemView<DoubleType***> &gradop, 
+  SharedMemView<DoubleType*> &det_j, 
   DoubleType &error,  
   int &lerr)
 {
-  const DoubleType realMin = std::numeric_limits<DoubleType>::min()*1e6;
+  const double realMin = std::numeric_limits<double>::min()*1e6;
   for ( int ip = 0; ip < numIntgPts; ++ip ) {
 
     DoubleType dx_ds1 = 0.0;

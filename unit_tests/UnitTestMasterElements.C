@@ -183,7 +183,7 @@ void check_exposed_face_shifted_ips_are_nodal(
 
   int index = 0;
   std::vector<std::vector<double>> shiftedIpList(shiftedIps.size() / dim);
-  for (unsigned j = 0; j < shiftedIps.size()/meSS.nDim_; ++j) {
+  for (int j = 0; j < (int)shiftedIps.size()/meSS.nDim_; ++j) {
     shiftedIpList.at(j).resize(dim);
     for (int d = 0; d < dim; ++d) {
       shiftedIpList.at(j).at(d) = shiftedIps[index];

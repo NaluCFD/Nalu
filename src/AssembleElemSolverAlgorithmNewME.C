@@ -7,7 +7,7 @@
 
 
 // nalu
-#include <AssembleElemSolverAlgorithm.h>
+#include <AssembleElemSolverAlgorithmNewME.h>
 #include <EquationSystem.h>
 #include <SolverAlgorithm.h>
 #include <master_element/MasterElement.h>
@@ -38,12 +38,12 @@ namespace nalu{
 //==========================================================================
 // Class Definition
 //==========================================================================
-// AssembleElemSolverAlgorithm - add LHS/RHS for element-based contribution
+// AssembleElemSolverAlgorithmNewME - add LHS/RHS for element-based contribution
 //==========================================================================
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-AssembleElemSolverAlgorithm::AssembleElemSolverAlgorithm(
+AssembleElemSolverAlgorithmNewME::AssembleElemSolverAlgorithmNewME(
   Realm &realm,
   stk::mesh::Part *part,
   EquationSystem *eqSystem,
@@ -58,7 +58,7 @@ AssembleElemSolverAlgorithm::AssembleElemSolverAlgorithm(
 //-------- initialize_connectivity -----------------------------------------
 //--------------------------------------------------------------------------
 void
-AssembleElemSolverAlgorithm::initialize_connectivity()
+AssembleElemSolverAlgorithmNewME::initialize_connectivity()
 {
   eqSystem_->linsys_->buildElemToNodeGraph(partVec_);
 }
@@ -67,7 +67,7 @@ AssembleElemSolverAlgorithm::initialize_connectivity()
 //-------- execute ---------------------------------------------------------
 //--------------------------------------------------------------------------
 void
-AssembleElemSolverAlgorithm::execute()
+AssembleElemSolverAlgorithmNewME::execute()
 {
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   stk::mesh::BulkData & bulk_data = realm_.bulk_data();
@@ -80,9 +80,6 @@ AssembleElemSolverAlgorithm::execute()
   const int lhsSize = rhsSize_*rhsSize_;
   const int scratchIdsSize = rhsSize_;
 
-//  std::string filename("out."+std::to_string(bulk_data.parallel_rank()));
-//  std::ofstream of(filename, std::ios_base::app);
-
   // fixed size for this homogeneous algorithm
   const int bytes_per_team = 0;
   // Bytes per thread =
@@ -93,7 +90,6 @@ AssembleElemSolverAlgorithm::execute()
   constexpr int simdLen = stk::simd::ndoubles;
   bytes_per_thread *= 3*simdLen;//3 is wrong, still need to debug this!!! should be 2 but seems to have memory problems.
 
-//std::cerr<<"bytes_per_thread: "<<bytes_per_thread<<std::endl;
   // define some common selectors
   stk::mesh::Selector s_locally_owned_union = meta_data.locally_owned_part()
     &stk::mesh::selectUnion(partVec_);
@@ -124,13 +120,14 @@ AssembleElemSolverAlgorithm::execute()
 
     const stk::mesh::Entity* elemNodes[simdLen];
     unsigned num_nodes = b.topology().num_nodes();
-//of<<"P"<<bulk_data.parallel_rank()<<" bkt["<<team.league_rank()<<" of "<<elem_buckets.size()<<"] "<<&b<<", len "<<b.size()<<", topo "<<topo_<<std::endl;
     const stk::mesh::Bucket::size_type length   = b.size();
     stk::mesh::Bucket::size_type simdBucketLen = length/simdLen;
     const stk::mesh::Bucket::size_type remainder = length%simdLen;
     if (remainder > 0) {
       simdBucketLen += 1;
     }
+
+    const bool alsoProcessMEViews = false;
 
     Kokkos::parallel_for(Kokkos::TeamThreadRange(team, simdBucketLen), [&](const size_t& bktIndex)
     {
@@ -143,20 +140,19 @@ AssembleElemSolverAlgorithm::execute()
          simdElems = 0;
       }
 
-//      if (simdElems < simdLen) {
-//        std::cerr<<"simdElems: "<<simdElems<<", bktIndex: "<<bktIndex<<", length: "<<length<<std::endl;
-//      }
-
       stk::mesh::Entity element;
       for(int simdElemIndex=0; simdElemIndex<simdElems; ++simdElemIndex) {
         // get element
         element = b[bktIndex*simdLen + simdElemIndex];
         elemNodes[simdElemIndex] = bulk_data.begin_nodes(element);
         fill_pre_req_data(dataNeededBySuppAlgs_, bulk_data, topo_, element,
-                          *prereqData[simdElemIndex]);
+                          *prereqData[simdElemIndex], alsoProcessMEViews);
       }
 
-      copy_and_interleave(prereqData, simdElems, simdLen, simdPrereqData);
+      copy_and_interleave(prereqData, simdElems, simdLen, simdPrereqData, alsoProcessMEViews);
+
+      fill_master_element_views(dataNeededBySuppAlgs_, bulk_data, topo_, element, simdPrereqData);
+
       for ( int i = 0; i < rhsSize_; ++i ) {
         simdrhs(i) = 0.0;
       }
