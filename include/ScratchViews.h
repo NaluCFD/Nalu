@@ -419,7 +419,8 @@ void fill_pre_req_data(ElemDataRequests& dataNeeded,
                        const stk::mesh::BulkData& bulkData,
                        stk::topology topo,
                        stk::mesh::Entity elem,
-                       ScratchViews<double>& prereqData);
+                       ScratchViews<double>& prereqData,
+                       bool fillMEViews = true);
 
 template<typename T = double>
 int get_num_bytes_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDim)
