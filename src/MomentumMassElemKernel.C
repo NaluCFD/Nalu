@@ -103,6 +103,11 @@ MomentumMassElemKernel<AlgTraits>::execute(
   SharedMemView<double *>& rhs,
   ScratchViews& scratchViews)
 {
+  double w_uNm1 [AlgTraits::nDim_];
+  double w_uN   [AlgTraits::nDim_];
+  double w_uNp1 [AlgTraits::nDim_];
+  double w_Gjp  [AlgTraits::nDim_];
+
   SharedMemView<double*>& v_densityNm1 = scratchViews.get_scratch_view_1D(*densityNm1_);
   SharedMemView<double*>& v_densityN = scratchViews.get_scratch_view_1D(*densityN_);
   SharedMemView<double*>& v_densityNp1 = scratchViews.get_scratch_view_1D(*densityNp1_);
@@ -120,10 +125,10 @@ MomentumMassElemKernel<AlgTraits>::execute(
     double rhoN   = 0.0;
     double rhoNp1 = 0.0;
     for (int j=0; j < AlgTraits::nDim_; j++) {
-      v_uNm1_(j) = 0.0;
-      v_uN_(j) = 0.0;
-      v_uNp1_(j) = 0.0;
-      v_Gjp_(j) = 0.0;
+      w_uNm1[j] = 0.0;
+      w_uN[j] = 0.0;
+      w_uNp1[j] = 0.0;
+      w_Gjp[j] = 0.0;
     }
 
     for (int ic=0; ic < AlgTraits::nodesPerElement_; ++ic) {
@@ -133,10 +138,10 @@ MomentumMassElemKernel<AlgTraits>::execute(
       rhoN   += r * v_densityN(ic);
       rhoNp1 += r * v_densityNp1(ic);
       for (int j=0; j < AlgTraits::nDim_; j++) {
-        v_uNm1_(j) += r * v_velocityNm1(ic, j);
-        v_uN_(j)   += r * v_velocityN(ic, j);
-        v_uNp1_(j) += r * v_velocityNp1(ic, j);
-        v_Gjp_(j)  += r * v_Gpdx(ic, j);
+        w_uNm1[j] += r * v_velocityNm1(ic, j);
+        w_uN[j]   += r * v_velocityN(ic, j);
+        w_uNp1[j] += r * v_velocityNp1(ic, j);
+        w_Gjp[j]  += r * v_Gpdx(ic, j);
       }
     }
 
@@ -145,10 +150,10 @@ MomentumMassElemKernel<AlgTraits>::execute(
     // Compute RHS
     for (int j=0; j < AlgTraits::nDim_; ++j) {
       rhs(nnNdim + j) +=
-        - ( gamma1_ * rhoNp1 * v_uNp1_(j) +
-            gamma2_ * rhoN   * v_uN_(j) +
-            gamma3_ * rhoNm1 * v_uNm1_(j)) * scV / dt_
-        - v_Gjp_(j) * scV;
+        - ( gamma1_ * rhoNp1 * w_uNp1[j] +
+            gamma2_ * rhoN   * w_uN[j] +
+            gamma3_ * rhoNm1 * w_uNm1[j]) * scV / dt_
+        - w_Gjp[j] * scV;
     }
 
     // Compute LHS

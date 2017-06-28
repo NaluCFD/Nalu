@@ -114,6 +114,9 @@ ScalarUpwAdvDiffElemKernel<AlgTraits>::execute(
   SharedMemView<double*>& rhs,
   ScratchViews& scratchViews)
 {
+  /// Scratch space to hold coordinates at the integration point
+  double w_coordIp[AlgTraits::nDim_];
+
   SharedMemView<double**>& v_velocityRTM = scratchViews.get_scratch_view_2D(*velocityRTM_);
   SharedMemView<double**>& v_coordinates = scratchViews.get_scratch_view_2D(*coordinates_);
   SharedMemView<double**>& v_Gjq = scratchViews.get_scratch_view_2D(*Gjq_);
@@ -139,7 +142,7 @@ ScalarUpwAdvDiffElemKernel<AlgTraits>::execute(
 
     // zero out values of interest for this ip
     for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
-      v_coordIp_(j) = 0.0;
+      w_coordIp[j] = 0.0;
     }
 
     // compute ip property and
@@ -152,7 +155,7 @@ ScalarUpwAdvDiffElemKernel<AlgTraits>::execute(
       rhoIp += r*v_density(ic);
       diffFluxCoeffIp += r*v_diffFluxCoeff(ic);
       for ( int i = 0; i < AlgTraits::nDim_; ++i ) {
-        v_coordIp_(i) += r*v_coordinates(ic,i);
+        w_coordIp[i] += r*v_coordinates(ic,i);
       }
     }
 
@@ -172,8 +175,8 @@ ScalarUpwAdvDiffElemKernel<AlgTraits>::execute(
     double dqL = 0.0;
     double dqR = 0.0;
     for(int j = 0; j < AlgTraits::nDim_; ++j ) {
-      const double dxjL = v_coordIp_(j) - v_coordinates(il,j);
-      const double dxjR = v_coordinates(ir,j) - v_coordIp_(j);
+      const double dxjL = w_coordIp[j] - v_coordinates(il,j);
+      const double dxjR = v_coordinates(ir,j) - w_coordIp[j];
       dqL += dxjL*v_Gjq(il,j);
       dqR += dxjR*v_Gjq(ir,j);
     }

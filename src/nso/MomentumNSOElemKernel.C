@@ -128,6 +128,10 @@ MomentumNSOElemKernel<AlgTraits>::execute(
   SharedMemView<double *>& rhs,
   ScratchViews& scratchViews)
 {
+  double w_dukdxScs   [AlgTraits::nDim_];
+  double w_rhoVrtmScs [AlgTraits::nDim_];
+  double w_dpdxScs    [AlgTraits::nDim_];
+
   SharedMemView<double***>& v_Gju = scratchViews.get_scratch_view_3D(*Gju_);
   SharedMemView<double**>& v_uNm1 = scratchViews.get_scratch_view_2D(*velocityNm1_);
   SharedMemView<double**>& v_uN = scratchViews.get_scratch_view_2D(*velocityN_);
@@ -165,8 +169,8 @@ MomentumNSOElemKernel<AlgTraits>::execute(
 
     // zero out vectors that prevail over all components of k
     for ( int i = 0; i < AlgTraits::nDim_; ++i ) {
-      v_rhoVrtmScs_(i) = 0.0;
-      v_dpdxScs_(i) = 0.0;
+      w_rhoVrtmScs[i] = 0.0;
+      w_dpdxScs[i] = 0.0;
     }
 
     // determine scs values of interest
@@ -186,10 +190,10 @@ MomentumNSOElemKernel<AlgTraits>::execute(
       for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
         const double dnj = v_dndx(ip,ic,j);
         const double vrtmj = v_velocityRTM(ic,j);
-        v_rhoVrtmScs_(j) += r*rhoIC*vrtmj;
+        w_rhoVrtmScs[j] += r*rhoIC*vrtmj;
         divU += r*v_Gju(ic,j,j);
         dFdxCont += rhoIC*vrtmj*dnj;
-        v_dpdxScs_(j) += pIC*dnj;
+        w_dpdxScs[j] += pIC*dnj;
       }
     }
 
@@ -211,7 +215,7 @@ MomentumNSOElemKernel<AlgTraits>::execute(
 
       // zero out vector of local derivatives (duk/dxj)
       for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
-        v_dukdxScs_(j) = 0.0;
+        w_dukdxScs[j] = 0.0;
       }
 
       // determine scs values of interest
@@ -234,7 +238,7 @@ MomentumNSOElemKernel<AlgTraits>::execute(
         for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
           const double dnj = v_dndx(ip,ic,j);
           const double vrtmj = v_velocityRTM(ic,j);
-          v_dukdxScs_(j) += ukNp1*dnj;
+          w_dukdxScs[j] += ukNp1*dnj;
           dFdxkAdv += rhoIC*vrtmj*ukNp1*dnj;
           dFdxkDiff += viscIC*(v_Gju(ic,k,j) + v_Gju(ic,j,k) - 2.0/3.0*divU*v_kd_(k,j)*includeDivU_)*dnj;
         }
@@ -243,11 +247,11 @@ MomentumNSOElemKernel<AlgTraits>::execute(
       // compute residual for NSO; linearized first
       double residualAlt = dFdxkAdv - ukNp1Scs*dFdxCont;
       for ( int j = 0; j < AlgTraits::nDim_; ++j )
-        residualAlt -= v_rhoVrtmScs_(j)*v_dukdxScs_(j);
+        residualAlt -= w_rhoVrtmScs[j]*w_dukdxScs[j];
 
       // compute residual for NSO; pde-based second
       const double time = (gamma1_*rhoNp1Scs*ukNp1Scs + gamma2_*rhoNScs*ukNScs + gamma3_*rhoNm1Scs*ukNm1Scs)/dt_;
-      const double residualPde = time + dFdxkAdv - dFdxkDiff + v_dpdxScs_(k) - contRes*ukNp1Scs*nonConservedForm_;
+      const double residualPde = time + dFdxkAdv - dFdxkDiff + w_dpdxScs[k] - contRes*ukNp1Scs*nonConservedForm_;
 
       // final form
       const double residual = residualAlt*altResFac_ + residualPde*om_altResFac_;
@@ -256,11 +260,11 @@ MomentumNSOElemKernel<AlgTraits>::execute(
       double gUpperMagGradQ = 0.0;
       double rhoVrtmiGLowerRhoVrtmj = 0.0;
       for ( int i = 0; i < AlgTraits::nDim_; ++i ) {
-        const double duidxScs = v_dukdxScs_(i);
-        const double rhoVrtmi = v_rhoVrtmScs_(i);
+        const double duidxScs = w_dukdxScs[i];
+        const double rhoVrtmi = w_rhoVrtmScs[i];
         for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
-          gUpperMagGradQ += duidxScs*v_gijUpper(ip,i,j)*v_dukdxScs_(j);
-          rhoVrtmiGLowerRhoVrtmj += rhoVrtmi*v_gijLower(ip,i,j)*v_rhoVrtmScs_(j);
+          gUpperMagGradQ += duidxScs*v_gijUpper(ip,i,j)*w_dukdxScs[j];
+          rhoVrtmiGLowerRhoVrtmj += rhoVrtmi*v_gijLower(ip,i,j)*w_rhoVrtmScs[j];
         }
       }
 

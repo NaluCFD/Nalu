@@ -95,6 +95,12 @@ ContinuityAdvElemKernel<AlgTraits>::execute(
   SharedMemView<double *>& rhs,
   ScratchViews& scratchViews)
 {
+  // Work arrays (fixed size)
+  double w_uIp     [AlgTraits::nDim_];
+  double w_rho_uIp [AlgTraits::nDim_];
+  double w_Gpdx_Ip [AlgTraits::nDim_];
+  double w_dpdxIp  [AlgTraits::nDim_];
+
   SharedMemView<double*>& v_densityNp1 = scratchViews.get_scratch_view_1D(*densityNp1_);
   SharedMemView<double*>& v_pressure = scratchViews.get_scratch_view_1D(*pressure_);
 
@@ -114,10 +120,10 @@ ContinuityAdvElemKernel<AlgTraits>::execute(
 
     double rhoIp = 0.0;
     for (int j = 0; j < AlgTraits::nDim_; ++j) {
-      v_uIp_(j) = 0.0;
-      v_rho_uIp_(j) = 0.0;
-      v_Gpdx_Ip_(j) = 0.0;
-      v_dpdxIp_(j) = 0.0;
+      w_uIp[j] = 0.0;
+      w_rho_uIp[j] = 0.0;
+      w_Gpdx_Ip[j] = 0.0;
+      w_dpdxIp[j] = 0.0;
     }
 
     for (int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic) {
@@ -129,10 +135,10 @@ ContinuityAdvElemKernel<AlgTraits>::execute(
 
       double lhsfac = 0.0;
       for (int j = 0; j < AlgTraits::nDim_; ++j) {
-        v_Gpdx_Ip_(j) += r * v_Gpdx(ic, j);
-        v_uIp_(j)     += r * v_velocity(ic, j);
-        v_rho_uIp_(j) += r * nodalRho * v_velocity(ic, j);
-        v_dpdxIp_(j)  += v_dndx(ip, ic, j) * nodalPressure;
+        w_Gpdx_Ip[j] += r * v_Gpdx(ic, j);
+        w_uIp[j]     += r * v_velocity(ic, j);
+        w_rho_uIp[j] += r * nodalRho * v_velocity(ic, j);
+        w_dpdxIp[j]  += v_dndx(ip, ic, j) * nodalPressure;
         lhsfac += -v_dndx_lhs(ip, ic, j) * v_scs_areav(ip, j);
       }
 
@@ -143,8 +149,8 @@ ContinuityAdvElemKernel<AlgTraits>::execute(
     // assemble mdot
     double mdot = 0.0;
     for (int j = 0; j < AlgTraits::nDim_; ++j) {
-      mdot += (interpTogether_ * v_rho_uIp_(j) + om_interpTogether_ * rhoIp * v_uIp_(j) -
-               projTimeScale_ * ( v_dpdxIp_(j) - v_Gpdx_Ip_(j))) * v_scs_areav(ip,j);
+      mdot += (interpTogether_ * w_rho_uIp[j] + om_interpTogether_ * rhoIp * w_uIp[j] -
+               projTimeScale_ * ( w_dpdxIp[j] - w_Gpdx_Ip[j])) * v_scs_areav(ip,j);
     }
 
     // residuals
