@@ -469,7 +469,7 @@ double vector_norm(const std::vector<double> & vec, const stk::ParallelMachine& 
   double norm = 0.0;
   double g_norm = 0.0;
 
-  for (int i = 0; i < N; ++i) {
+  for (size_t i = 0; i < N; ++i) {
     norm += vec[i]*vec[i];
   }
   stk::all_reduce_sum(comm, &N, &g_N, 1);
