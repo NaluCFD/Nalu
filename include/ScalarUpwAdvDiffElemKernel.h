@@ -91,8 +91,6 @@ private:
   /// Shape functions
   Kokkos::View<double[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_ { "view_shape_func" };
 
-  /// Scratch space to hold coordinates at the integration point
-  Kokkos::View<double[AlgTraits::nDim_]> v_coordIp_{"v_coordIp"};
 };
 
 }  // nalu

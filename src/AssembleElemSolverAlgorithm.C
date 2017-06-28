@@ -109,6 +109,7 @@ AssembleElemSolverAlgorithm::execute()
     SharedMemView<double**> lhs = get_shmem_view_2D(team, rhsSize_, rhsSize_);
 
     const stk::mesh::Bucket::size_type length   = b.size();
+    team.team_barrier();
 
     Kokkos::parallel_for(Kokkos::TeamThreadRange(team, length), [&](const size_t& k)
     {

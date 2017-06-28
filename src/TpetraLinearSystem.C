@@ -59,6 +59,7 @@
 
 #include <set>
 #include <limits>
+#include <type_traits>
 
 #include <sstream>
 #define KK_MAP
@@ -1128,6 +1129,8 @@ TpetraLinearSystem::sumInto(
       const SharedMemView<int*> & localIds,
       const char * trace_tag)
 {
+  constexpr bool forceAtomic = !std::is_same<sierra::nalu::DeviceSpace,
+                                             Kokkos::Serial>::value;
   const int n_obj = numEntities;
   const int numRows = n_obj * numDof_;
 
@@ -1154,13 +1157,13 @@ TpetraLinearSystem::sumInto(
     }
 
     if(localId < maxOwnedRowId_) {
-      ownedLocalMatrix.sumIntoValues(localId,localIds.data(),numRows,lhs_row.data(), internalIndicesAreSorted);
-      ownedRhs_->sumIntoLocalValue(localId, rhs(r));
+      ownedLocalMatrix.sumIntoValues(localId,localIds.data(),numRows,lhs_row.data(), internalIndicesAreSorted, forceAtomic);
+      ownedRhs_->sumIntoLocalValue(localId, rhs(r), forceAtomic);
     }    
     else if(localId < maxGloballyOwnedRowId_) {
       const LocalOrdinal actualLocalId = localId - maxOwnedRowId_;
-      globallyOwnedLocalMatrix.sumIntoValues(actualLocalId,localIds.data(),numRows,lhs_row.data(), internalIndicesAreSorted);
-      globallyOwnedRhs_->sumIntoLocalValue(actualLocalId, rhs(r));
+      globallyOwnedLocalMatrix.sumIntoValues(actualLocalId,localIds.data(),numRows,lhs_row.data(), internalIndicesAreSorted, forceAtomic);
+      globallyOwnedRhs_->sumIntoLocalValue(actualLocalId, rhs(r), forceAtomic);
     }    
   }
 }

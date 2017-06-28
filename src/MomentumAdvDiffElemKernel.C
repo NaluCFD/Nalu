@@ -72,6 +72,8 @@ MomentumAdvDiffElemKernel<AlgTraits>::execute(
   SharedMemView<double *>& rhs,
   ScratchViews& scratchViews)
 {
+  double w_uIp[AlgTraits::nDim_];
+
   SharedMemView<double**>& v_uNp1 = scratchViews.get_scratch_view_2D(*velocityNp1_);
   SharedMemView<double*>& v_viscosity = scratchViews.get_scratch_view_1D(*viscosity_);
   SharedMemView<double*>& v_mdot = scratchViews.get_scratch_view_1D(*massFlowRate_);
@@ -98,14 +100,14 @@ MomentumAdvDiffElemKernel<AlgTraits>::execute(
     double muIp = 0.0;
     double divU = 0.0;
     for ( int i = 0; i < AlgTraits::nDim_; ++i )
-      v_uIp_(i) = 0.0;
+      w_uIp[i] = 0.0;
 
     for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
       const double r = v_shape_function_(ip,ic);
       muIp += r*v_viscosity(ic);
       for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
         const double uj = v_uNp1(ic,j);
-        v_uIp_(j) += r*uj;
+        w_uIp[j] += r*uj;
         divU += uj*v_dndx(ip,ic,j);
       }
     }
@@ -114,7 +116,7 @@ MomentumAdvDiffElemKernel<AlgTraits>::execute(
     for ( int i = 0; i < AlgTraits::nDim_; ++i ) {
 
       // 2nd order central
-      const double uiIp = v_uIp_(i);
+      const double uiIp = w_uIp[i];
 
       // total advection; (pressure contribution in time term)
       const double aflux = tmdot*uiIp;

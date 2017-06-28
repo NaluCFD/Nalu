@@ -59,6 +59,11 @@ SteadyThermal3dContactSrcElemKernel<AlgTraits>::execute(
   SharedMemView<double *>& rhs,
   ScratchViews& scratchViews)
 {
+  // FIXME: Workaround warning issued for 2-D topologies. This Kernel should
+  // only be used with 3-D topologies. However, using it in that sense causes
+  // build errors because of build_topo_kernel interface in KernelBuilder
+  double w_scvCoords[3];
+
   SharedMemView<double**>& v_coordinates = scratchViews.get_scratch_view_2D(*coordinates_);
   SharedMemView<double*>& v_scv_volume = scratchViews.get_me_views(CURRENT_COORDINATES).scv_volume;
 
@@ -70,16 +75,16 @@ SteadyThermal3dContactSrcElemKernel<AlgTraits>::execute(
 
     // zero out
     for ( int j =0; j < AlgTraits::nDim_; ++j )
-      v_scvCoords_(j) = 0.0;
+      w_scvCoords[j] = 0.0;
 
     for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
       const double r = v_shape_function_(ip,ic);
       for ( int j = 0; j < AlgTraits::nDim_; ++j )
-        v_scvCoords_(j) += r*v_coordinates(ic,j);
+        w_scvCoords[j] += r*v_coordinates(ic,j);
     }
-    const double x = v_scvCoords_(0);
-    const double y = v_scvCoords_(1);
-    const double z = v_scvCoords_(2);
+    const double x = w_scvCoords[0];
+    const double y = w_scvCoords[1];
+    const double z = w_scvCoords[2];
     rhs(nearestNode) += k_/4.0*(2.0*a_*pi_)*(2.0*a_*pi_)*(
       cos(2.0*a_*pi_*x)
       + cos(2.0*a_*pi_*y)

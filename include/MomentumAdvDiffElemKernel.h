@@ -62,7 +62,6 @@ private:
 
   // fixed scratch space
   Kokkos::View<double[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_{"v_shape_function"};
-  Kokkos::View<double[AlgTraits::nDim_]> v_uIp_{"v_uIp"};
 };
 
 }  // nalu
