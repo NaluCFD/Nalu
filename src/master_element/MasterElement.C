@@ -641,6 +641,317 @@ HexSCS::ipNodeMap(
   return &ipNodeMap_[ordinal*4];
 }
 
+
+//--------------------------------------------------------------------------
+//-------- shape_fcn -------------------------------------------------------
+//--------------------------------------------------------------------------
+void
+HexSCS::shape_fcn(SharedMemView<DoubleType**> &shpfc)
+{
+  hex8_shape_fcn(numIntPoints_, &intgLoc_[0], shpfc);
+}
+
+//--------------------------------------------------------------------------
+//-------- shifted_shape_fcn -----------------------------------------------
+//--------------------------------------------------------------------------
+void
+HexSCS::shifted_shape_fcn(SharedMemView<DoubleType**> &shpfc)
+{
+  hex8_shape_fcn(numIntPoints_, &intgLocShift_[0], shpfc);
+}
+
+//--------------------------------------------------------------------------
+//-------- hex8_shape_fcn --------------------------------------------------
+//--------------------------------------------------------------------------
+void
+HexSCS::hex8_shape_fcn(
+  const int  &npts,
+  const double *isoParCoord, 
+  SharedMemView<DoubleType**> &shape_fcn)
+{
+  const double half = 0.50;
+  const double one4th = 0.25;
+  const double one8th = 0.125;
+  for ( int j = 0; j < numIntPoints_; ++j ) {
+
+    const double s1 = isoParCoord[j*3];
+    const double s2 = isoParCoord[j*3+1];
+    const double s3 = isoParCoord[j*3+2];
+    
+    shape_fcn(j,0) = one8th + one4th*(-s1 - s2 - s3)
+      + half*( s2*s3 + s3*s1 + s1*s2 ) - s1*s2*s3;
+    shape_fcn(j,1) = one8th + one4th*( s1 - s2 - s3)
+      + half*( s2*s3 - s3*s1 - s1*s2 ) + s1*s2*s3;
+    shape_fcn(j,2) = one8th + one4th*( s1 + s2 - s3)
+      + half*(-s2*s3 - s3*s1 + s1*s2 ) - s1*s2*s3;
+    shape_fcn(j,3) = one8th + one4th*(-s1 + s2 - s3)
+      + half*(-s2*s3 + s3*s1 - s1*s2 ) + s1*s2*s3;
+    shape_fcn(j,4) = one8th + one4th*(-s1 - s2 + s3)
+      + half*(-s2*s3 - s3*s1 + s1*s2 ) + s1*s2*s3;
+    shape_fcn(j,5) = one8th + one4th*( s1 - s2 + s3)
+      + half*(-s2*s3 + s3*s1 - s1*s2 ) - s1*s2*s3;
+    shape_fcn(j,6) = one8th + one4th*( s1 + s2 + s3)
+      + half*( s2*s3 + s3*s1 + s1*s2 ) + s1*s2*s3;
+    shape_fcn(j,7) = one8th + one4th*(-s1 + s2 + s3)
+      + half*( s2*s3 - s3*s1 - s1*s2 ) - s1*s2*s3;    
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- hex8_derivative -------------------------------------------------
+//--------------------------------------------------------------------------
+void HexSCS::hex8_derivative(
+  const int npts,
+  const double *intgLoc,
+  SharedMemView<DoubleType***> &deriv)
+{
+  const double half = 0.50;
+  const double one4th = 0.25;
+  for (int  ip = 0; ip < npts; ++ip) {
+    const double s1 = intgLoc[ip*3];
+    const double s2 = intgLoc[ip*3+1];
+    const double s3 = intgLoc[ip*3+2];
+    const double s1s2 = s1*s2;
+    const double s2s3 = s2*s3;
+    const double s1s3 = s1*s3;
+
+    // shape function derivative in the s1 direction -
+    deriv(ip,0,0) = half*( s3 + s2 ) - s2s3 - one4th;
+    deriv(ip,1,0) = half*(-s3 - s2 ) + s2s3 + one4th;
+    deriv(ip,2,0) = half*(-s3 + s2 ) - s2s3 + one4th;
+    deriv(ip,3,0) = half*(+s3 - s2 ) + s2s3 - one4th;
+    deriv(ip,4,0) = half*(-s3 + s2 ) + s2s3 - one4th;
+    deriv(ip,5,0) = half*(+s3 - s2 ) - s2s3 + one4th;
+    deriv(ip,6,0) = half*(+s3 + s2 ) + s2s3 + one4th;
+    deriv(ip,7,0) = half*(-s3 - s2 ) - s2s3 - one4th;
+
+    // shape function derivative in the s2 direction -
+    deriv(ip,0,1) = half*( s3 + s1 ) - s1s3 - one4th;
+    deriv(ip,1,1) = half*( s3 - s1 ) + s1s3 - one4th;
+    deriv(ip,2,1) = half*(-s3 + s1 ) - s1s3 + one4th;
+    deriv(ip,3,1) = half*(-s3 - s1 ) + s1s3 + one4th;
+    deriv(ip,4,1) = half*(-s3 + s1 ) + s1s3 - one4th;
+    deriv(ip,5,1) = half*(-s3 - s1 ) - s1s3 - one4th;
+    deriv(ip,6,1) = half*( s3 + s1 ) + s1s3 + one4th;
+    deriv(ip,7,1) = half*( s3 - s1 ) - s1s3 + one4th;
+    
+    // shape function derivative in the s3 direction -
+    deriv(ip,0,2) = half*( s2 + s1 ) - s1s2 - one4th;
+    deriv(ip,1,2) = half*( s2 - s1 ) + s1s2 - one4th;
+    deriv(ip,2,2) = half*(-s2 - s1 ) - s1s2 - one4th;
+    deriv(ip,3,2) = half*(-s2 + s1 ) + s1s2 - one4th;
+    deriv(ip,4,2) = half*(-s2 - s1 ) + s1s2 + one4th;
+    deriv(ip,5,2) = half*(-s2 + s1 ) - s1s2 + one4th;
+    deriv(ip,6,2) = half*( s2 + s1 ) + s1s2 + one4th;
+    deriv(ip,7,2) = half*( s2 - s1 ) - s1s2 + one4th;
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- hex8_gradient_operator ------------------------------------------
+//--------------------------------------------------------------------------
+void
+HexSCS::hex8_gradient_operator( 
+  const int nodesPerElem, 
+  const int numIntgPts, 
+  SharedMemView<DoubleType***> &deriv, 
+  SharedMemView<DoubleType**> cordel, 
+  SharedMemView<DoubleType***>gradop, 
+  SharedMemView<DoubleType*>det_j, 
+  DoubleType &error,  
+  int &lerr)
+{
+  const DoubleType realMin = std::numeric_limits<DoubleType>::min()*1e6;
+  for ( int ip = 0; ip < numIntgPts; ++ip ) {
+
+    DoubleType dx_ds1 = 0.0;
+    DoubleType dx_ds2 = 0.0;
+    DoubleType dx_ds3 = 0.0;
+    DoubleType dy_ds1 = 0.0;
+    DoubleType dy_ds2 = 0.0;
+    DoubleType dy_ds3 = 0.0;
+    DoubleType dz_ds1 = 0.0;
+    DoubleType dz_ds2 = 0.0;
+    DoubleType dz_ds3 = 0.0;
+ 
+    // calculate the jacobian at the integration station -
+    for ( int ic = 0; ic < nodesPerElem; ++ic ) {              
+
+      dx_ds1 += deriv(ip,ic,0)*cordel(ic,0);
+      dx_ds2 += deriv(ip,ic,1)*cordel(ic,0);
+      dx_ds3 += deriv(ip,ic,2)*cordel(ic,0);
+      
+      dy_ds1 += deriv(ip,ic,0)*cordel(ic,1);
+      dy_ds2 += deriv(ip,ic,1)*cordel(ic,1);
+      dy_ds3 += deriv(ip,ic,2)*cordel(ic,1);
+                                          
+      dz_ds1 += deriv(ip,ic,0)*cordel(ic,2);
+      dz_ds2 += deriv(ip,ic,1)*cordel(ic,2);
+      dz_ds3 += deriv(ip,ic,2)*cordel(ic,2);
+    }
+
+    // calculate the determinate of the jacobian at the integration station -
+    det_j(ip) = dx_ds1*( dy_ds2*dz_ds3 - dz_ds2*dy_ds3 )
+      + dy_ds1*( dz_ds2*dx_ds3 - dx_ds2*dz_ds3 )
+      + dz_ds1*( dx_ds2*dy_ds3 - dy_ds2*dx_ds3 );
+
+    // protect against a negative or small value for the determinate of the jacobian
+    DoubleType test = det_j(ip);
+    if (stk::simd::are_any(test < realMin)) {
+      error = test;
+      lerr = 1;
+      test = 1.0;
+    }
+    const DoubleType denom = 1.0/test;
+
+    // compute the gradient operators at the integration station -
+    const DoubleType ds1_dx = denom*(dy_ds2*dz_ds3 - dz_ds2*dy_ds3);
+    const DoubleType ds2_dx = denom*(dz_ds1*dy_ds3 - dy_ds1*dz_ds3);
+    const DoubleType ds3_dx = denom*(dy_ds1*dz_ds2 - dz_ds1*dy_ds2);
+
+    const DoubleType ds1_dy = denom*(dz_ds2*dx_ds3 - dx_ds2*dz_ds3);
+    const DoubleType ds2_dy = denom*(dx_ds1*dz_ds3 - dz_ds1*dx_ds3);
+    const DoubleType ds3_dy = denom*(dz_ds1*dx_ds2 - dx_ds1*dz_ds2);
+
+    const DoubleType ds1_dz = denom*(dx_ds2*dy_ds3 - dy_ds2*dx_ds3);
+    const DoubleType ds2_dz = denom*(dy_ds1*dx_ds3 - dx_ds1*dy_ds3);
+    const DoubleType ds3_dz = denom*(dx_ds1*dy_ds2 - dy_ds1*dx_ds2);
+    
+    for (int ic = 0; ic < nodesPerElem; ++ic ) { 
+      
+      gradop(ip,ic,0) = deriv(ip,ic,0)*ds1_dx
+        + deriv(ip,ic,1)*ds2_dx
+        + deriv(ip,ic,2)*ds3_dx;
+     
+      gradop(ip,ic,1) = deriv(ip,ic,0)*ds1_dy
+        + deriv(ip,ic,1)*ds2_dy
+        + deriv(ip,ic,2)*ds3_dy;
+       
+      gradop(ip,ic,2) = deriv(ip,ic,0)*ds1_dz
+        + deriv(ip,ic,1)*ds2_dz
+        + deriv(ip,ic,2)*ds3_dz;
+    }
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- grad_op ---------------------------------------------------------
+//--------------------------------------------------------------------------
+void HexSCS::grad_op(
+  SharedMemView<DoubleType**>&coords,
+  SharedMemView<DoubleType***>&gradop,
+  SharedMemView<DoubleType***>&deriv,
+  SharedMemView<DoubleType*>&det_j,
+  DoubleType &error)
+{
+  int lerr = 0;
+
+  hex8_derivative(numIntPoints_, &intgLoc_[0], deriv);
+  
+  hex8_gradient_operator(
+    nodesPerElement_, numIntPoints_, deriv, coords, gradop, det_j, error, lerr );
+
+  if ( lerr )
+    std::cout << "sorry, negative HexSCS volume.." << std::endl;
+ }
+
+//--------------------------------------------------------------------------
+//-------- shifted_grad_op -------------------------------------------------
+//--------------------------------------------------------------------------
+void HexSCS::shifted_grad_op(
+  SharedMemView<DoubleType**>&coords,
+  SharedMemView<DoubleType***>&gradop,
+  SharedMemView<DoubleType***>&deriv,
+  SharedMemView<DoubleType*>&det_j,
+  DoubleType &error)
+{
+  int lerr = 0;
+
+  hex8_derivative(numIntPoints_, &intgLoc_[0], deriv);
+  
+  hex8_gradient_operator(
+    nodesPerElement_, numIntPoints_, deriv, coords, gradop, det_j, error, lerr );
+
+  if ( lerr )
+    std::cout << "sorry, negative HexSCS volume.." << std::endl;
+ }
+
+//--------------------------------------------------------------------------
+//-------- determinant -----------------------------------------------------
+//--------------------------------------------------------------------------
+void HexSCS::determinant(
+  SharedMemView<DoubleType**>&coords,
+  SharedMemView<DoubleType**>&areav)
+{
+  static constexpr int ix2[12] = {0, 1, 2, 4, 5, 5, 5, 3, 3, 0, 1, 2};
+  static constexpr int ix4[12] = {4, 4, 4, 3, 0, 1, 2, 5, 0, 1, 2, 3};
+  DoubleType coord_mid_face[6][3];
+  DoubleType coord_mid_edge[12][3];
+
+  DoubleType centroid[3] = {0.0,0.0,0.0};
+  for (int i = 0; i < 8; ++i) {
+    centroid[0] += coords(i, 0);
+    centroid[1] += coords(i, 1);
+    centroid[2] += coords(i, 2);
+  }
+  centroid[0] *= 0.125;
+  centroid[1] *= 0.125;
+  centroid[2] *= 0.125;
+  
+  for (int d = 0; d < 3; ++d) {
+    coord_mid_face[0][d] = 0.25 * (coords(0, d) + coords(1, d) +
+                                   coords(5, d) + coords(4, d));
+    coord_mid_face[1][d] = 0.25 * (coords(1, d) + coords(2, d) +
+                                   coords(6, d) + coords(5, d));
+    coord_mid_face[2][d] = 0.25 * (coords(2, d) + coords(3, d) +
+                                   coords(7, d) + coords(6, d));
+    coord_mid_face[3][d] = 0.25 * (coords(3, d) + coords(0, d) +
+                                   coords(4, d) + coords(7, d));
+    coord_mid_face[4][d] = 0.25 * (coords(3, d) + coords(2, d) +
+                                   coords(1, d) + coords(0, d));
+    coord_mid_face[5][d] = 0.25 * (coords(4, d) + coords(5, d) +
+                                   coords(6, d) + coords(7, d));
+  }
+  
+  for (int d = 0; d < 3; ++d) {
+    coord_mid_edge[0][d] = 0.5 * (coords(0, d) + coords(1, d));
+    coord_mid_edge[1][d] = 0.5 * (coords(1, d) + coords(2, d));
+    coord_mid_edge[2][d] = 0.5 * (coords(2, d) + coords(3, d));
+    coord_mid_edge[3][d] = 0.5 * (coords(3, d) + coords(0, d));
+    coord_mid_edge[4][d] = 0.5 * (coords(4, d) + coords(5, d));
+    coord_mid_edge[5][d] = 0.5 * (coords(5, d) + coords(6, d));
+    coord_mid_edge[6][d] = 0.5 * (coords(6, d) + coords(7, d));
+    coord_mid_edge[7][d] = 0.5 * (coords(7, d) + coords(4, d));
+    coord_mid_edge[8][d] = 0.5 * (coords(0, d) + coords(4, d));
+    coord_mid_edge[9][d] = 0.5 * (coords(1, d) + coords(5, d));
+    coord_mid_edge[10][d] = 0.5 * (coords(2, d) + coords(6, d));
+    coord_mid_edge[11][d] = 0.5 * (coords(3, d) + coords(7, d));
+  }
+  
+  for (int j = 0; j < 12; ++j) {
+    DoubleType x2 = coord_mid_face[ix2[j]][0];
+    DoubleType x3 = coord_mid_edge[j][0];
+    DoubleType x4 = coord_mid_face[ix4[j]][0];
+    DoubleType y2 = coord_mid_face[ix2[j]][1];
+    DoubleType y3 = coord_mid_edge[j][1];
+    DoubleType y4 = coord_mid_face[ix4[j]][1];
+    DoubleType z2 = coord_mid_face[ix2[j]][2];
+    DoubleType z3 = coord_mid_edge[j][2];
+    DoubleType z4 = coord_mid_face[ix4[j]][2];
+    
+    DoubleType dx13 = centroid[0] - x3;
+    DoubleType dx24 = x2 - x4;
+    DoubleType dy13 = centroid[1] - y3;
+    DoubleType dy24 = y2 - y4;
+    DoubleType dz13 = centroid[2] - z3;
+    DoubleType dz24 = z2 - z4;
+    
+    areav(j, 0) = 0.5 * (dz24 * dy13 - dz13 * dy24);
+    areav(j, 1) = 0.5 * (dx24 * dz13 - dx13 * dz24);
+    areav(j, 2) = 0.5 * (dy24 * dx13 - dy13 * dx24);
+  }
+}
+
 //--------------------------------------------------------------------------
 //-------- side_node_ordinals ----------------------------------------------
 //--------------------------------------------------------------------------
