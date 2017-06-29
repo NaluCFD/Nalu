@@ -254,6 +254,30 @@ void fill_pre_req_data(
   }
 }
 
+void fill_master_element_views(
+  ElemDataRequests& dataNeeded,
+  const stk::mesh::BulkData& bulkData,
+  stk::topology topo,
+  stk::mesh::Entity elem,
+  ScratchViews<DoubleType>& prereqData)
+{
+    MasterElement *meSCS = dataNeeded.get_cvfem_surface_me();
+    MasterElement *meSCV = dataNeeded.get_cvfem_volume_me();
+    MasterElement *meFEM = dataNeeded.get_fem_volume_me();
+
+    for (auto it = dataNeeded.get_coordinates_map().begin();
+         it != dataNeeded.get_coordinates_map().end(); ++it) {
+      auto cType = it->first;
+      auto coordField = it->second;
+  
+      const std::set<ELEM_DATA_NEEDED>& dataEnums = dataNeeded.get_data_enums(cType);
+      SharedMemView<DoubleType**>* coordsView = &prereqData.get_scratch_view_2D(*coordField);
+      auto& meData = prereqData.get_me_views(cType);
+  
+      meData.fill_master_element_views_new_me(dataEnums, coordsView, meSCS, meSCV, meFEM);
+    }
+}
+
 }
 }
 
