@@ -719,10 +719,10 @@ void HexSCS::hex8_derivative(
     deriv(ip,0,0) = half*( s3 + s2 ) - s2s3 - one4th;
     deriv(ip,1,0) = half*(-s3 - s2 ) + s2s3 + one4th;
     deriv(ip,2,0) = half*(-s3 + s2 ) - s2s3 + one4th;
-    deriv(ip,3,0) = half*(+s3 - s2 ) + s2s3 - one4th;
+    deriv(ip,3,0) = half*( s3 - s2 ) + s2s3 - one4th;
     deriv(ip,4,0) = half*(-s3 + s2 ) + s2s3 - one4th;
-    deriv(ip,5,0) = half*(+s3 - s2 ) - s2s3 + one4th;
-    deriv(ip,6,0) = half*(+s3 + s2 ) + s2s3 + one4th;
+    deriv(ip,5,0) = half*( s3 - s2 ) - s2s3 + one4th;
+    deriv(ip,6,0) = half*( s3 + s2 ) + s2s3 + one4th;
     deriv(ip,7,0) = half*(-s3 - s2 ) - s2s3 - one4th;
 
     // shape function derivative in the s2 direction -
