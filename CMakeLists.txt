@@ -48,6 +48,8 @@ if(USE_TRILINOS_COMPILERS)
   set(CMAKE_CXX_COMPILER ${Trilinos_CXX_COMPILER})
   set(CMAKE_C_COMPILER ${Trilinos_C_COMPILER})
   set(CMAKE_Fortran_COMPILER ${Trilinos_Fortran_COMPILER})
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${Trilinos_CXX_COMPILER_FLAGS}")
+  set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} ${Trilinos_Fortran_COMPILER_FLAGS}")
 endif()
 
 # Enable Fortran if it is enabled in Trilinos
@@ -74,8 +76,7 @@ elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
   set(EXTRA_FLAGS "-restrict")
 endif()
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${Trilinos_CXX_COMPILER_FLAGS} ${EXTRA_FLAGS}")
-set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} ${Trilinos_Fortran_COMPILER_FLAGS}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${EXTRA_FLAGS}")
 message("-- CMAKE_CXX_FLAGS     = ${CMAKE_CXX_FLAGS}")
 message("-- CMAKE_Fortran_FLAGS = ${CMAKE_Fortran_FLAGS}")
 
