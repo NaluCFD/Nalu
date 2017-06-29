@@ -129,6 +129,7 @@ protected:
       massFlowRate(&meta.declare_field<VectorFieldType>(stk::topology::ELEM_RANK, "massFlowRate")),   
       Gju(&meta.declare_field<GenericFieldType>(stk::topology::NODE_RANK, "Gju", 1/*num-states*/)), 
       velocity(&meta.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity", 3/*num-states*/)), 
+      dpdx(&meta.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "dpdx", 3/*num-states*/)), 
       density(&meta.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "density", 3/*num-states*/)), 
       viscosity(&meta.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity")),
       pressure(&meta.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure"))
@@ -138,6 +139,7 @@ protected:
       stk::mesh::put_field(*massFlowRate, meta.universal_part(), hex8SCS.numIntPoints_, &one);
       stk::mesh::put_field(*Gju, meta.universal_part(), 3, &one);
       stk::mesh::put_field(*velocity, meta.universal_part(), 3, &one);
+      stk::mesh::put_field(*dpdx, meta.universal_part(), 3, &one);
       stk::mesh::put_field(*density, meta.universal_part(), 1, &one);
       stk::mesh::put_field(*viscosity, meta.universal_part(), 1, &one);
       stk::mesh::put_field(*pressure, meta.universal_part(), 1, &one);
@@ -146,6 +148,7 @@ protected:
     VectorFieldType* massFlowRate;
     GenericFieldType* Gju;
     VectorFieldType* velocity;
+    VectorFieldType* dpdx;
     ScalarFieldType* density;
     ScalarFieldType* viscosity;
     ScalarFieldType* pressure;
