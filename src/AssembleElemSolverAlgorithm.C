@@ -106,7 +106,7 @@ AssembleElemSolverAlgorithm::execute()
   {
     stk::mesh::Bucket & b = *elem_buckets[team.league_rank()];
     
-    ThrowAssert(b.topology() == topo_);
+    ThrowAssertMsg(b.topology() == topo_,"topo_ = "<<topo_<<", b.topology() = "<<b.topology());
 
     std::vector<sierra::nalu::ScratchViews<double>*> prereqData(simdLen, nullptr);
 

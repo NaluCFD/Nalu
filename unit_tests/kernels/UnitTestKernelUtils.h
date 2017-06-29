@@ -140,6 +140,11 @@ void calc_projected_nodal_gradient(
   GenericFieldType& tensorField);
 
 void expect_all_near(
+  const Kokkos::View<double*>& calcValue,
+  const double* exactValue,
+  const double tol = 1.0e-15);
+
+void expect_all_near(
   const sierra::nalu::SharedMemView<double*>& calcValue,
   const double* exactValue,
   const double tol = 1.0e-15);
@@ -153,6 +158,23 @@ void expect_all_near(
   const sierra::nalu::SharedMemView<double**>& calcValue,
   const double* exactValue,
   const double tol = 1.0e-15);
+
+template<int N>
+void expect_all_near(
+  const Kokkos::View<double**>& calcValue,
+  const double (*exactValue)[N],
+  const double tol = 1.0e-15)
+{
+  const int dim1 = calcValue.dimension(0);
+  const int dim2 = calcValue.dimension(1);
+  EXPECT_EQ(dim2, N);
+
+  for (int i=0; i < dim1; ++i) {
+    for (int j=0; j < dim2; ++j) {
+      EXPECT_NEAR(calcValue(i,j), exactValue[i][j], tol);
+    }
+  }
+}
 
 template<int N>
 void expect_all_near(
