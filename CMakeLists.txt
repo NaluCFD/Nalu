@@ -43,8 +43,8 @@ message("   Trilinos_BUILD_SHARED_LIBS = ${Trilinos_BUILD_SHARED_LIBS}")
 message("   Trilinos_CXX_COMPILER_FLAGS = ${Trilinos_CXX_COMPILER_FLAGS}")
 message("End of Trilinos details\n")
 
-message("Setting and checking of compilers:")
 if(USE_TRILINOS_COMPILERS)
+  message("Setting and checking of compilers:")
   set(CMAKE_CXX_COMPILER ${Trilinos_CXX_COMPILER})
   set(CMAKE_C_COMPILER ${Trilinos_C_COMPILER})
   set(CMAKE_Fortran_COMPILER ${Trilinos_Fortran_COMPILER})
@@ -52,12 +52,12 @@ if(USE_TRILINOS_COMPILERS)
   set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} ${Trilinos_Fortran_COMPILER_FLAGS}")
 endif()
 
-# Enable Fortran if it is enabled in Trilinos
+# Enable Fortran if Fortran compiler is specified
 if(CMAKE_Fortran_COMPILER)
   enable_language(Fortran)
 endif()
 
-# Build Nalu as shared libraries if Trilinos was compiled that way
+# Build Nalu as shared library if Trilinos was compiled that way
 if(Trilinos_BUILD_SHARED_LIBS)
   set(Nalu_LIBRARY_TYPE SHARED)
   set(BUILD_SHARED_LIBS ON)
