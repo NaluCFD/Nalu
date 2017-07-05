@@ -34,19 +34,27 @@ Hex8FEM::Hex8FEM()
 
   // standard integration location +/ sqrt(3)/3
   intgLoc_.resize(24);
-  double c[2] = {std::sqrt(3.0)/3.0,-std::sqrt(3.0)/3.0};
-  
-  // tensor product
-  int l = 0;
-  for (int i = 0; i < 2; ++i) {
-    for (int j = 0; j < 2; ++j) {
-      for (int k = 0; k < 2; ++k, ++l) {
-        intgLoc_[l*3] = c[i];
-        intgLoc_[l*3+1] = c[j];
-        intgLoc_[l*3+2] = c[k];
-      }
-    }
-  }
+  const double gIP = std::sqrt(3.0)/3.0;
+  intgLoc_[0]  = -gIP; intgLoc_[1]  = -gIP; intgLoc_[2]  = -gIP; 
+  intgLoc_[3]  = +gIP; intgLoc_[4]  = -gIP; intgLoc_[5]  = -gIP; 
+  intgLoc_[6]  = +gIP; intgLoc_[7]  = +gIP; intgLoc_[8]  = -gIP;
+  intgLoc_[9]  = -gIP; intgLoc_[10] = +gIP; intgLoc_[11] = -gIP;
+  intgLoc_[12] = -gIP; intgLoc_[13] = -gIP; intgLoc_[14] = +gIP;
+  intgLoc_[15] = +gIP; intgLoc_[16] = -gIP; intgLoc_[17] = +gIP;
+  intgLoc_[18] = +gIP; intgLoc_[19] = +gIP; intgLoc_[20] = +gIP;
+  intgLoc_[21] = -gIP; intgLoc_[22] = +gIP; intgLoc_[23] = +gIP;
+
+  // shifted to nodes (Gauss Lobatto)
+  intgLocShift_.resize(24);
+  const double glIP = 1.0;
+  intgLocShift_[0]  = -glIP; intgLocShift_[1]  = -glIP; intgLocShift_[2]  = -glIP; 
+  intgLocShift_[3]  = +glIP; intgLocShift_[4]  = -glIP; intgLocShift_[5]  = -glIP; 
+  intgLocShift_[6]  = +glIP; intgLocShift_[7]  = +glIP; intgLocShift_[8]  = -glIP;
+  intgLocShift_[9]  = -glIP; intgLocShift_[10] = +glIP; intgLocShift_[11] = -glIP;
+  intgLocShift_[12] = -glIP; intgLocShift_[13] = -glIP; intgLocShift_[14] = +glIP;
+  intgLocShift_[15] = +glIP; intgLocShift_[16] = -glIP; intgLocShift_[17] = +glIP;
+  intgLocShift_[18] = +glIP; intgLocShift_[19] = +glIP; intgLocShift_[20] = +glIP;
+  intgLocShift_[21] = -glIP; intgLocShift_[22] = +glIP; intgLocShift_[23] = +glIP;
 }
 
 //--------------------------------------------------------------------------
@@ -82,8 +90,30 @@ void Hex8FEM::grad_op(
       &nodesPerElement_,
       &numIntPoints_,
       deriv,
-      coords, gradop, det_j, error, &lerr );
- 
+      coords, gradop, det_j, error, &lerr ); 
+}
+
+//--------------------------------------------------------------------------
+//-------- shifted_grad_op -------------------------------------------------
+//--------------------------------------------------------------------------
+void Hex8FEM::shifted_grad_op(
+  const int nelem,
+  const double *coords,
+  double *gradop,
+  double *deriv,
+  double *det_j,
+  double *error)
+{
+  int lerr = 0;
+
+  hex8_fem_derivative(numIntPoints_, &intgLocShift_[0], deriv);
+  
+  SIERRA_FORTRAN(hex_gradient_operator)
+    ( &nelem,
+      &nodesPerElement_,
+      &numIntPoints_,
+      deriv,
+      coords, gradop, det_j, error, &lerr ); 
 }
 
 //--------------------------------------------------------------------------
@@ -153,6 +183,15 @@ Hex8FEM::shape_fcn(double *shpfc)
 }
 
 //--------------------------------------------------------------------------
+//-------- shifted_shape_fcn -----------------------------------------------
+//--------------------------------------------------------------------------
+void
+Hex8FEM::shifted_shape_fcn(double *shpfc)
+{
+  hex8_fem_shape_fcn(numIntPoints_,&intgLocShift_[0],shpfc);
+}
+
+//--------------------------------------------------------------------------
 //-------- gij -------------------------------------------------------------
 //--------------------------------------------------------------------------
 void Hex8FEM::gij(
@@ -178,7 +217,7 @@ Hex8FEM::hex8_fem_shape_fcn(
   double *shpfc)
 {
   // -1:1 isoparametric range
-  const double npe = nodesPerElement_;
+  const int npe = nodesPerElement_;
   for ( int ip = 0; ip < numIp; ++ip ) {
     
     const int rowIpc = 3*ip;

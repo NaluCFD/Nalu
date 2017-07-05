@@ -119,7 +119,7 @@ ActuatorSector::ActuatorSector(
   const YAML::Node &node)
   : Actuator(realm, node),
     realm_(realm),
-    searchMethod_(stk::search::BOOST_RTREE),
+    searchMethod_(stk::search::KDTREE),
     actuatorSectorGhosting_(NULL),
     needToGhostCount_(0),
     localPointId_(0),
@@ -146,7 +146,7 @@ ActuatorSector::ActuatorSector(
      4) at present, fake source terms on simple Gaussian weighting
 
     actuator:
-      search_method: stk_octree
+      search_method: kd_tree
       search_target_part: block_1
 
       specifications:
@@ -240,12 +240,10 @@ ActuatorSector::load(
     // determine search method for this pair
     if ( searchMethodName == "boost_rtree" )
       searchMethod_ = stk::search::BOOST_RTREE;
-    else if ( searchMethodName == "stk_octree" )
-      searchMethod_ = stk::search::OCTREE;
     else if ( searchMethodName == "stk_kdtree" )
       searchMethod_ = stk::search::KDTREE;
     else
-      NaluEnv::self().naluOutputP0() << "ActuatorSector::search method not declared; will use BOOST_RTREE" << std::endl;
+      NaluEnv::self().naluOutputP0() << "ActuatorLine::search method not declared; will use stk_kdtree" << std::endl;
 
     // extract the set of from target names; each spec is homogeneous in this respect
     const YAML::Node searchTargets = y_actuatorSector["search_target_part"];

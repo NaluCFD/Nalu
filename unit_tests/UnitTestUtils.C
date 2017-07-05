@@ -7,6 +7,7 @@
 #include <stk_mesh/base/FEMHelpers.hpp>
 #include <stk_mesh/base/Field.hpp>
 #include <stk_mesh/base/FieldBase.hpp>
+#include <stk_mesh/base/FieldParallel.hpp>
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/Selector.hpp>
 #include <stk_mesh/base/SkinBoundary.hpp>
@@ -35,13 +36,55 @@ void fill_mesh_1_elem_per_proc_hex8(stk::mesh::BulkData& bulk)
     fill_hex8_mesh(meshSpec, bulk);
 }
 
+void perturb_coord_hex_8(stk::mesh::BulkData& bulk, double perturbSize)
+{
+
+  // ensure that the rng isn't machine/compiler dependent.
+  struct Lcg {
+    Lcg(uint32_t seed) : prev(seed) {};
+
+    double operator()()
+    {
+      prev = (a * static_cast<uint64_t>(prev) + c) % m;
+      return (2. * (prev / static_cast<double>(m)) - 1.);
+    }
+    uint32_t a{1103515245};
+    uint32_t c{12345};
+    uint32_t m{2147483647};
+    uint32_t prev;
+  };
+  Lcg lcg(bulk.parallel_rank() + 1);
+
+  const auto& meta = bulk.mesh_meta_data();
+  const VectorFieldType* coordField = dynamic_cast<const VectorFieldType*>(meta.coordinate_field());
+  ThrowRequire(coordField != nullptr);
+
+  for (const auto* ib : bulk.get_buckets(stk::topology::NODE_RANK, meta.locally_owned_part())) {
+    const auto& b = *ib;
+    double* coords = stk::mesh::field_data(*coordField, b);
+    for (size_t k = 0u; k < b.size(); ++k) {
+      size_t offset = k * meta.spatial_dimension();
+      for (unsigned d = 0; d < meta.spatial_dimension(); ++d) {
+        coords[offset + d] += perturbSize * lcg();
+      }
+    }
+  }
+  stk::mesh::copy_owned_to_shared(bulk, {coordField});
+}
+
 void fill_hex8_mesh(const std::string& meshSpec, stk::mesh::BulkData& bulk)
 {
+    auto& meta = bulk.mesh_meta_data();
+    auto& surfPart = meta.declare_part_with_topology("surface_1", stk::topology::QUAD_4);
+
     stk::io::StkMeshIoBroker io(bulk.parallel());
     io.set_bulk_data(bulk);
     io.add_mesh_database(meshSpec, stk::io::READ_MESH);
     io.create_input_mesh();
     io.populate_bulk_data();
+
+    auto& blockPart = meta.get_topology_root_part(stk::topology::HEX_8);
+    stk::mesh::create_exposed_block_boundary_sides(bulk,  blockPart, {&surfPart});
 }
 
 void fill_and_promote_hex_mesh(const std::string& meshSpec, stk::mesh::BulkData& bulk, int polyOrder)
@@ -78,6 +121,19 @@ void fill_and_promote_hex_mesh(const std::string& meshSpec, stk::mesh::BulkData&
     VectorFieldType* coords = meta.get_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates");
     stk::mesh::PartVector baseParts = {blockPart, surfPart};
     sierra::nalu::promotion::promote_elements(bulk, *elemDesc, *coords, baseParts, edgePart, facePart);
+}
+
+void dump_mesh(stk::mesh::BulkData& bulk, std::vector<stk::mesh::FieldBase*> fields)
+{
+  stk::io::StkMeshIoBroker io(bulk.parallel());
+  io.set_bulk_data(bulk);
+  auto fileId = io.create_output_mesh("out.e", stk::io::WRITE_RESULTS);
+
+  for (auto* field : fields) {
+    io.add_field(fileId, *field);
+  }
+
+  io.process_output_request(fileId, 0.0);
 }
 
 void dump_promoted_mesh_file(stk::mesh::BulkData& bulk, int polyOrder)
@@ -127,12 +183,13 @@ stk::mesh::Entity create_one_element(
    stk::mesh::EntityIdVector nodeIds(topo.num_nodes());
    std::iota(nodeIds.begin(), nodeIds.end(), 1);
 
+
    bulk.modification_begin();
 
    for (auto id : nodeIds) {
      bulk.declare_entity(stk::topology::NODE_RANK, id, {});
    }
-   auto elem = stk::mesh::declare_element (bulk, block_1, 1, nodeIds);
+   auto elem = stk::mesh::declare_element(bulk, block_1, bulk.parallel_rank()+1, nodeIds);
    stk::mesh::create_all_sides(bulk, block_1, allSurfaces, false);
 
    bulk.modification_end();
@@ -265,8 +322,131 @@ stk::mesh::Entity create_one_reference_element(stk::mesh::BulkData& bulk, stk::t
 
     default:
       EXPECT_TRUE(false) << " Element type " + topo.name() + " not implemented";
-      return stk::mesh::Entity(0u);
+      return stk::mesh::Entity(stk::mesh::Entity::InvalidEntity);
   }
+}
+
+
+stk::mesh::Entity create_one_perturbed_element(stk::mesh::BulkData& bulk, stk::topology topo)
+{
+
+  std::vector<std::vector<double>> nodeLocations{{}};
+
+  switch (topo.value())
+  {
+    case stk::topology::TRIANGLE_3_2D:
+       nodeLocations = {
+          {0.0464223, 0.172133},
+          {1.17897, 0.173626},
+          {0.0617818, 0.942191}
+      };
+      break;
+
+    case stk::topology::QUADRILATERAL_4_2D:
+      nodeLocations = {
+         {-0.453578, -0.327867},
+         {0.678973, -0.326374},
+         {0.561782, 0.442191},
+         {-0.601233, 0.278356}
+     };
+     break;
+
+    case stk::topology::QUADRILATERAL_9_2D:
+      nodeLocations = {
+         {-0.953578, -0.827867},
+         {1.17897, -0.826374},
+         {1.06178, 0.942191},
+         {-1.10123, 0.778356},
+         {-0.113672, -1.01117},
+         {1.15608, -0.0100114},
+         {-0.0536076, 1.16804},
+         {-1.0813, 0.0740859},
+         {-0.0658792, 0.228578}
+     };
+     break;
+
+    case stk::topology::TETRAHEDRON_4:
+      nodeLocations = {
+         {0.0464223, 0.172133, 0.178973},
+         {1.17363, 0.0617818, -0.0578091},
+         {-0.101233, 0.778356, -0.113672},
+         {-0.0111674, 0.156084, 0.989989}
+     };
+     break;
+
+    case stk::topology::PYRAMID_5:
+      nodeLocations = {
+         {-0.953578, -0.827867, 0.178973},
+         {1.17363, -0.938218, -0.0578091},
+         {0.898767, 0.778356, -0.113672},
+         {-1.01117, 1.15608, -0.0100114},
+         {-0.0536076, 0.168039, 0.918698}
+     };
+     break;
+
+    case stk::topology::WEDGE_6:
+      nodeLocations = {
+         {0.0464223, 0.172133, -0.821027},
+         {1.17363, 0.0617818, -1.05781},
+         {-0.101233, 0.778356, -1.11367},
+         {-0.0111674, 0.156084, 0.989989},
+         {0.946392, 0.168039, 0.918698},
+         {0.0740859, 0.934121, 1.22858}
+     };
+     break;
+
+
+    case stk::topology::HEXAHEDRON_8:
+      nodeLocations = {
+         {-0.453578, -0.327867, -0.321027},
+         {0.673626, -0.438218, -0.557809},
+         {0.398767, 0.278356, -0.613672},
+         {-0.511167, 0.656084, -0.510011},
+         {-0.553608, -0.331961, 0.418698},
+         {0.574086, -0.565879, 0.728578},
+         {0.320175, 0.685044, 0.486804},
+         {-0.349545, 0.510239, 0.58944}
+     };
+     break;
+
+    case stk::topology::HEXAHEDRON_27:
+      nodeLocations = {
+         {-0.953578, -0.827867, -0.821027},
+         {1.17363, -0.938218, -1.05781},
+         {0.898767, 0.778356, -1.11367},
+         {-1.01117, 1.15608, -1.01001},
+         {-1.05361, -0.831961, 0.918698},
+         {1.07409, -1.06588, 1.22858},
+         {0.820175, 1.18504, 0.986804},
+         {-0.849545, 1.01024, 1.08944},
+         {0.110316, -0.95899, -0.981313},
+         {1.12931, -0.197046, -1.0132},
+         {-0.156834, 1.11846, -1.14172},
+         {-1.18239, -0.0879295, -1.17516},
+         {-1.13884, -1.05676, 0.201299},
+         {0.974975, -0.943468, 0.201174},
+         {0.79964, 1.2349, 0.07657},
+         {-1.16455, 0.929076, 0.125343},
+         {0.0539153, -1.08748, 0.769213},
+         {1.06714, 0.229475, 1.0764},
+         {0.0675294, 1.24765, 1.04093},
+         {-1.04282, -0.0126512, 1.06176},
+         {-0.0809962, 0.0873762, -0.0913991},
+         {0.139173, 0.224786, -0.918737},
+         {-0.243214, 0.061423, 1.08683},
+         {-0.764028, 0.189097, 0.00481219},
+         {0.777857, -0.0244204, -0.240006},
+         {-0.0291445, -0.760207, -0.0702778},
+         {-0.00955323, 1.09433, 0.190238}
+     };
+     break;
+
+    default:
+      EXPECT_TRUE(false) << " Element type " + topo.name() + " not implemented";
+      return stk::mesh::Entity(stk::mesh::Entity::InvalidEntity);
+  }
+
+  return create_one_element(bulk, topo, nodeLocations);
 }
 
 double linear(double a, const double* b, const double* x) {
@@ -280,6 +460,23 @@ double quadratic(double a, const double* b, const double* H, const double* x)
               + x[2] * (H[6]*x[0] + H[7]*x[1] + H[8]*x[2]);
 
   return (linear(a,b,x) + 0.5*quad);
+}
+
+double vector_norm(const std::vector<double> & vec, const stk::ParallelMachine& comm)
+{
+  size_t N = vec.size();
+  size_t g_N = 0;
+  double norm = 0.0;
+  double g_norm = 0.0;
+
+  for (int i = 0; i < N; ++i) {
+    norm += vec[i]*vec[i];
+  }
+  stk::all_reduce_sum(comm, &N, &g_N, 1);
+  stk::all_reduce_sum(comm, &norm, &g_norm, 1);
+  g_norm = std::sqrt(g_norm/g_N);
+
+  return g_norm;
 }
 
 #ifndef KOKKOS_HAVE_CUDA

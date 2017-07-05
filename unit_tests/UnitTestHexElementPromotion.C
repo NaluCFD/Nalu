@@ -12,7 +12,7 @@
 #include <stk_mesh/base/Field.hpp>
 #include <stk_mesh/base/FieldBLAS.hpp>
 #include <stk_mesh/base/GetEntities.hpp>
-#include <stk_mesh/fixtures/HexFixture.hpp>
+#include <stk_unit_tests/stk_mesh_fixtures/HexFixture.hpp>
 #include <stk_mesh/base/SkinMesh.hpp>
 
 #include <element_promotion/MasterElementHO.h>
@@ -38,8 +38,7 @@ namespace {
 
   size_t count_nodes(
     const stk::mesh::BulkData& bulk,
-    const stk::mesh::Selector& selector
-  )
+    const stk::mesh::Selector& selector)
   {
     size_t nodeCount = 0u;
     for (const auto* ib : bulk.get_buckets(stk::topology::NODE_RANK, selector)) {
@@ -469,7 +468,7 @@ TEST_F(PromoteElementHexTestV2, png)
     const auto& buckets = bulk->get_buckets(stk::topology::NODE_RANK, stk::mesh::selectUnion(superParts));
     sierra::nalu::bucket_loop(buckets, [&](stk::mesh::Entity node) {
       const double* dqdx = stk::mesh::field_data(*dqdxField, node);
-      double dqdxMag = std::sqrt(dqdx[0]*dqdx[0] + dqdx[1]*dqdx[1]+dqdx[2]*dqdx[2]);
+      double dqdxMag = std::sqrt(dqdx[0] * dqdx[0] + dqdx[1] * dqdx[1]+dqdx[2]*dqdx[2]);
       EXPECT_NEAR(dqdxMag, exactGradMag, tol);
     });
 

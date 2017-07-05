@@ -2485,8 +2485,22 @@ Realm::process_mesh_motion()
     const double theOmega = meshInfo->omega_;
     std::vector<std::string> meshMotionBlock = meshInfo->meshMotionBlock_;
     std::vector<double> unitVec = meshInfo->unitVec_;
-    std::vector<double> centroidCoords = meshInfo->centroid_;
 
+    // extract compute centroid option
+    const bool computeCentroid = meshInfo->computeCentroid_;
+    const bool computeCentroidCompleted = meshInfo->computeCentroidCompleted_;
+    if ( computeCentroid && !computeCentroidCompleted ) {
+      NaluEnv::self().naluOutputP0() << "Realm::process_mesh_motion() Centroid for: " << iter->first << std::endl;
+      compute_centroid_on_parts(meshMotionBlock, meshInfo->centroid_);
+      // tell the user
+      const int nDim = metaData_->spatial_dimension();
+      for ( int j = 0; j < nDim; ++j ) {
+        NaluEnv::self().naluOutputP0() << "  centroid[" << j << "] = " << meshInfo->centroid_[j] <<  std::endl;
+      }
+      meshInfo->computeCentroidCompleted_ = true;
+    }
+
+    // proceed with setting mesh motion information on the Nalu mesh
     for (size_t k = 0; k < meshMotionBlock.size(); ++k ) {
       
       stk::mesh::Part *targetPart = metaData_->get_part(meshMotionBlock[k]);
@@ -2496,13 +2510,70 @@ Realm::process_mesh_motion()
       }
       else {
         set_omega(targetPart, theOmega);
-        set_current_displacement(targetPart, centroidCoords, unitVec);
+        set_current_displacement(targetPart, meshInfo->centroid_, unitVec);
         set_current_coordinates(targetPart);
-        set_mesh_velocity(targetPart, centroidCoords, unitVec);
+        set_mesh_velocity(targetPart, meshInfo->centroid_, unitVec);
       }
     }
   }
 }
+
+//--------------------------------------------------------------------------
+//-------- compute_centroid_on_parts ---------------------------------------
+//--------------------------------------------------------------------------
+void
+Realm::compute_centroid_on_parts(
+  std::vector<std::string> partNames,
+  std::vector<double> &centroid)
+{
+  stk::mesh::PartVector partVec;
+  for (size_t k = 0; k < partNames.size(); ++k ) {
+    stk::mesh::Part *targetPart = metaData_->get_part(partNames[k]);
+    if ( NULL == targetPart ) {
+      throw std::runtime_error("Realm::compute_centroid() Error Error, no part name found" + partNames[k]);
+    }
+    else {
+      partVec.push_back(targetPart);
+    }
+  }
+
+  // set min/max
+  const int nDim = metaData_->spatial_dimension();
+  const double largeNumber = 1.0e16;
+  double minCoord[3] = {largeNumber, largeNumber, largeNumber};
+  double maxCoord[3] = {-largeNumber, -largeNumber, -largeNumber};
+
+  // model coords are fine in this case
+  VectorFieldType *modelCoords = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates");
+
+  // select all nodes
+  stk::mesh::Selector s_all_nodes = stk::mesh::selectUnion(partVec);
+
+  // select all locally owned nodes for bounding box
+  stk::mesh::BucketVector const& node_buckets = bulkData_->get_buckets( stk::topology::NODE_RANK, s_all_nodes );
+  for ( stk::mesh::BucketVector::const_iterator ib = node_buckets.begin() ;
+        ib != node_buckets.end() ; ++ib ) {
+    stk::mesh::Bucket & b = **ib ;
+    const stk::mesh::Bucket::size_type length   = b.size();
+    double * mCoord = stk::mesh::field_data(*modelCoords, b);
+    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+      for ( int j = 0; j < nDim; ++j ) {
+        minCoord[j] = std::min(minCoord[j], mCoord[k*nDim+j]);
+        maxCoord[j] = std::max(maxCoord[j], mCoord[k*nDim+j]);
+      }
+    }
+  }
+
+  // parallel reduction on min/max
+  double g_minCoord[3] = {};
+  double g_maxCoord[3] = {};
+  stk::ParallelMachine comm = NaluEnv::self().parallel_comm();
+  stk::all_reduce_min(comm, minCoord, g_minCoord, 3);
+  stk::all_reduce_max(comm, maxCoord, g_maxCoord, 3);
+  for ( int j = 0; j < nDim; ++j )
+    centroid[j] = 0.5*(g_maxCoord[j] + g_minCoord[j]);
+}
+
 
 //--------------------------------------------------------------------------
 //-------- set_omega -------------------------------------------------------
@@ -3088,6 +3159,8 @@ Realm::register_periodic_bc(
   const double &searchTolerance,
   const std::string &searchMethodName)
 {
+  allPeriodicInteractingParts_.push_back(masterMeshPart);
+  allPeriodicInteractingParts_.push_back(slaveMeshPart);
 
   // push back the part for book keeping and, later, skin mesh
   bcPartVec_.push_back(masterMeshPart);
@@ -3133,6 +3206,11 @@ Realm::setup_non_conformal_bc(
                            nonConformalBCData.targetName_);
   
   nonConformalManager_->nonConformalInfoVec_.push_back(nonConformalInfo);
+
+  for (auto part : currentPartVec)
+    allNonConformalInteractingParts_.push_back(part);
+  for (auto part : opposingPartVec)
+    allNonConformalInteractingParts_.push_back(part);
 }
 
 //--------------------------------------------------------------------------
@@ -3994,6 +4072,22 @@ Realm::get_noc_usage(
 }
 
 //--------------------------------------------------------------------------
+//-------- get_shifted_grad_op ---------------------------------------------
+//--------------------------------------------------------------------------
+bool
+Realm::get_shifted_grad_op(
+  const std::string dofName )
+{
+  bool factor = solutionOptions_->shiftedGradOpDefault_;
+  std::map<std::string, bool>::const_iterator iter
+    = solutionOptions_->shiftedGradOpMap_.find(dofName);
+  if (iter != solutionOptions_->shiftedGradOpMap_.end()) {
+    factor = (*iter).second;
+  }
+  return factor;
+}
+
+//--------------------------------------------------------------------------
 //-------- get_tanh_functional_form ----------------------------------------
 //--------------------------------------------------------------------------
 std::string
@@ -4082,15 +4176,6 @@ bool
 Realm::get_cvfem_shifted_mdot()
 {
   return solutionOptions_->cvfemShiftMdot_;
-}
-
-//--------------------------------------------------------------------------
-//-------- get_cvfem_shifted_poisson ---------------------------------------
-//--------------------------------------------------------------------------
-bool
-Realm::get_cvfem_shifted_poisson()
-{
-  return solutionOptions_->cvfemShiftPoisson_;
 }
 
 //--------------------------------------------------------------------------

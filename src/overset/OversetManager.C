@@ -51,7 +51,7 @@ OversetManager::OversetManager(
   const OversetUserData &oversetUserData)
 : realm_(realm ),
   oversetUserData_(oversetUserData),
-  searchMethod_(stk::search::BOOST_RTREE),
+  searchMethod_(stk::search::KDTREE),
   nDim_(realm.spatialDimension_),
   metaData_(&realm.meta_data()),
   bulkData_(&realm.bulk_data()),

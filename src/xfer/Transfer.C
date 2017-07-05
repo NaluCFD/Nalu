@@ -355,15 +355,13 @@ void Transfer::allocate_stk_transfer() {
   typedef stk::transfer::GeometricTransfer< class LinInterp< class FromMesh, class ToMesh > > STKTransfer;
 
   // extract search type
-  stk::search::SearchMethod searchMethod = stk::search::BOOST_RTREE;
+  stk::search::SearchMethod searchMethod = stk::search::KDTREE;
   if ( searchMethodName_ == "boost_rtree" )
     searchMethod = stk::search::BOOST_RTREE;
-  else if ( searchMethodName_ == "stk_octree" )
-    searchMethod = stk::search::OCTREE;
   else if ( searchMethodName_ == "stk_kdtree" )
     searchMethod = stk::search::KDTREE;
   else
-    NaluEnv::self().naluOutputP0() << "Transfer::search method not declared; will use BOOST_RTREE" << std::endl;
+    NaluEnv::self().naluOutputP0() << "Transfer::search method not declared; will use stk_kdtree" << std::endl;
   transfer_.reset(new STKTransfer(from_mesh, to_mesh, name_, searchExpansionFactor_, searchMethod));
 }
 

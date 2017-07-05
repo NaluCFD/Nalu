@@ -42,6 +42,9 @@ private:
   double rVortex_;
   double beta_;
   double uInf_;
+  double density_;
+  double visc_;
+  double Lx_;
 
 };
 

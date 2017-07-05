@@ -22,8 +22,10 @@
 #include <AssembleMomentumElemOpenSolverAlgorithm.h>
 #include <AssembleMomentumEdgeSymmetrySolverAlgorithm.h>
 #include <AssembleMomentumElemSymmetrySolverAlgorithm.h>
-#include <AssembleMomentumWallFunctionSolverAlgorithm.h>
-#include <AssembleMomentumABLWallFunctionSolverAlgorithm.h>
+#include <AssembleMomentumEdgeWallFunctionSolverAlgorithm.h>
+#include <AssembleMomentumElemWallFunctionSolverAlgorithm.h>
+#include <AssembleMomentumElemABLWallFunctionSolverAlgorithm.h>
+#include <AssembleMomentumEdgeABLWallFunctionSolverAlgorithm.h>
 #include <AssembleMomentumNonConformalSolverAlgorithm.h>
 #include <AssembleNodalGradAlgorithmDriver.h>
 #include <AssembleNodalGradEdgeAlgorithm.h>
@@ -93,30 +95,32 @@
 #include <ABLForcingAlgorithm.h>
 
 // consolidated approach
-#include <ContinuityAdvElemSuppAlg.h>
-#include <ContinuityMassElemSuppAlg.h>
-#include <MomentumAdvDiffElemSuppAlg.h>
-#include <MomentumBuoyancySrcElemSuppAlg.h>
-#include <MomentumMassElemSuppAlg.h>
+#include <ContinuityAdvElemKernel.h>
+#include <ContinuityMassElemKernel.h>
+#include <MomentumAdvDiffElemKernel.h>
+#include <MomentumBuoyancySrcElemKernel.h>
+#include <MomentumMassElemKernel.h>
 
 // nso
-#include <nso/MomentumNSOElemSuppAlg.h>
-#include <nso/MomentumNSOKeElemSuppAlg.h>
+#include <nso/MomentumNSOElemKernel.h>
+#include <nso/MomentumNSOKeElemKernel.h>
+#include <nso/MomentumNSOSijElemKernel.h>
 #include <nso/MomentumNSOGradElemSuppAlg.h>
-#include <nso/MomentumNSOSijElemSuppAlg.h>
 
 // template for supp algs
 #include <AlgTraits.h>
-#include <SupplementalAlgorithmBuilder.h>
-#include <SupplementalAlgorithmBuilderLog.h>
+#include <KernelBuilder.h>
+#include <KernelBuilderLog.h>
 
 
 // user function
 #include <user_functions/ConvectingTaylorVortexVelocityAuxFunction.h>
 #include <user_functions/ConvectingTaylorVortexPressureAuxFunction.h>
 #include <user_functions/TornadoAuxFunction.h>
+
 #include <user_functions/WindEnergyAuxFunction.h>
 #include <user_functions/WindEnergyTaylorVortexAuxFunction.h>
+#include <user_functions/WindEnergyTaylorVortexPressureAuxFunction.h>
 
 #include <user_functions/SteadyTaylorVortexMomentumSrcElemSuppAlg.h>
 #include <user_functions/SteadyTaylorVortexContinuitySrcElemSuppAlg.h>
@@ -143,6 +147,8 @@
 
 #include <user_functions/KovasznayVelocityAuxFunction.h>
 #include <user_functions/KovasznayPressureAuxFunction.h>
+
+#include <overset/UpdateOversetFringeAlgorithmDriver.h>
 
 // deprecated
 #include <ContinuityMassElemSuppAlgDep.h>
@@ -569,6 +575,13 @@ LowMachEquationSystem::register_initial_condition_fcn(
     // push to ic
     realm_.initCondAlg_.push_back(auxAlg);
   }
+}
+
+void
+LowMachEquationSystem::pre_iter_work()
+{
+  momentumEqSys_->pre_iter_work();
+  continuityEqSys_->pre_iter_work();
 }
 
 //--------------------------------------------------------------------------
@@ -1128,63 +1141,63 @@ MomentumEquationSystem::register_interior_algorithm(
       (*this, *part, solverAlgMap);
 
     ElemDataRequests& dataPreReqs = solverAlg->dataNeededBySuppAlgs_;
-    auto& suppAlgVec = solverAlg->supplementalAlg_;
+    auto& activeKernels = solverAlg->activeKernels_;
 
     if (solverAlgWasBuilt) {
 
-      build_topo_supp_alg_if_requested<MomentumMassElemSuppAlg>
-        (partTopo, *this, suppAlgVec, "momentum_time_derivative",
-         realm_, dataPreReqs, false);
+      build_topo_kernel_if_requested<MomentumMassElemKernel>
+        (partTopo, *this, activeKernels, "momentum_time_derivative",
+         realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs, false);
 
-      build_topo_supp_alg_if_requested<MomentumMassElemSuppAlg>
-        (partTopo, *this, suppAlgVec, "lumped_momentum_time_derivative",
-         realm_, dataPreReqs, true);
+      build_topo_kernel_if_requested<MomentumMassElemKernel>
+        (partTopo, *this, activeKernels, "lumped_momentum_time_derivative",
+         realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs, true);
 
-      build_topo_supp_alg_if_requested<MomentumAdvDiffElemSuppAlg>
-        (partTopo, *this, suppAlgVec, "advection_diffusion",
-         realm_, velocity_,
+      build_topo_kernel_if_requested<MomentumAdvDiffElemKernel>
+        (partTopo, *this, activeKernels, "advection_diffusion",
+         realm_.bulk_data(), *realm_.solutionOptions_, velocity_,
          realm_.is_turbulent()? evisc_ : visc_,
          dataPreReqs);
 
-      build_topo_supp_alg_if_requested<MomentumBuoyancySrcElemSuppAlg>
-        (partTopo, *this, suppAlgVec, "buoyancy",
-         realm_, dataPreReqs);
+      build_topo_kernel_if_requested<MomentumBuoyancySrcElemKernel>
+        (partTopo, *this, activeKernels, "buoyancy",
+         realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs);
 
-      build_topo_supp_alg_if_requested<MomentumNSOElemSuppAlg>
-        (partTopo, *this, suppAlgVec, "NSO_2ND",
-         realm_, velocity_, dudx_,
+      build_topo_kernel_if_requested<MomentumNSOElemKernel>
+        (partTopo, *this, activeKernels, "NSO_2ND",
+         realm_.bulk_data(), *realm_.solutionOptions_, velocity_, dudx_,
          realm_.is_turbulent()? evisc_ : visc_,
          0.0, 0.0, dataPreReqs);
 
-      build_topo_supp_alg_if_requested<MomentumNSOElemSuppAlg>
-        (partTopo, *this, suppAlgVec, "NSO_2ND_ALT",
-         realm_, velocity_, dudx_,
+      build_topo_kernel_if_requested<MomentumNSOElemKernel>
+        (partTopo, *this, activeKernels, "NSO_2ND_ALT",
+         realm_.bulk_data(), *realm_.solutionOptions_, velocity_, dudx_,
          realm_.is_turbulent()? evisc_ : visc_,
          0.0, 1.0, dataPreReqs);
       
-      build_topo_supp_alg_if_requested<MomentumNSOKeElemSuppAlg>
-        (partTopo, *this, suppAlgVec, "NSO_2ND_KE",
-         realm_, velocity_, dudx_, 0.0, dataPreReqs);
+      build_topo_kernel_if_requested<MomentumNSOKeElemKernel>
+        (partTopo, *this, activeKernels, "NSO_2ND_KE",
+         realm_.bulk_data(), *realm_.solutionOptions_, velocity_, dudx_, 0.0, dataPreReqs);
 
-      build_topo_supp_alg_if_requested<MomentumNSOSijElemSuppAlg>
-        (partTopo, *this, suppAlgVec, "NSO_2ND_SIJ",
-         realm_, velocity_, dataPreReqs);
+      build_topo_kernel_if_requested<MomentumNSOSijElemKernel>
+        (partTopo, *this, activeKernels, "NSO_2ND_SIJ",
+         realm_.bulk_data(), *realm_.solutionOptions_, velocity_, dataPreReqs);
 
-      build_topo_supp_alg_if_requested<MomentumNSOElemSuppAlg>
-        (partTopo, *this, suppAlgVec, "NSO_4TH",
-         realm_, velocity_, dudx_,
+      build_topo_kernel_if_requested<MomentumNSOElemKernel>
+        (partTopo, *this, activeKernels, "NSO_4TH",
+         realm_.bulk_data(), *realm_.solutionOptions_, velocity_, dudx_,
          realm_.is_turbulent()? evisc_ : visc_,
          1.0, 0.0, dataPreReqs);
 
-      build_topo_supp_alg_if_requested<MomentumNSOElemSuppAlg>
-        (partTopo, *this, suppAlgVec, "NSO_4TH_ALT",
-         realm_, velocity_, dudx_,
+      build_topo_kernel_if_requested<MomentumNSOElemKernel>
+        (partTopo, *this, activeKernels, "NSO_4TH_ALT",
+         realm_.bulk_data(), *realm_.solutionOptions_, velocity_, dudx_,
          realm_.is_turbulent()? evisc_ : visc_,
          1.0, 1.0, dataPreReqs);
 
-      build_topo_supp_alg_if_requested<MomentumNSOKeElemSuppAlg>
-        (partTopo, *this, suppAlgVec, "NSO_4TH_KE",
-         realm_, velocity_, dudx_, 1.0, dataPreReqs);
+      build_topo_kernel_if_requested<MomentumNSOKeElemKernel>
+        (partTopo, *this, activeKernels, "NSO_4TH_KE",
+         realm_.bulk_data(), *realm_.solutionOptions_, velocity_, dudx_, 1.0, dataPreReqs);
  
       report_invalid_supp_alg_names();
       report_built_supp_alg_names();
@@ -1710,8 +1723,15 @@ MomentumEquationSystem::register_wall_bc(
       std::map<AlgorithmType, SolverAlgorithm *>::iterator it_wf =
         solverAlgDriver_->solverAlgMap_.find(wfAlgType);
       if ( it_wf == solverAlgDriver_->solverAlgMap_.end() ) {
-        AssembleMomentumABLWallFunctionSolverAlgorithm *theAlg
-          = new AssembleMomentumABLWallFunctionSolverAlgorithm(realm_, part, this, realm_.realmUsesEdges_, grav, z0, referenceTemperature);
+        SolverAlgorithm *theAlg = NULL;
+        if ( realm_.realmUsesEdges_ ) {
+          theAlg = new AssembleMomentumEdgeABLWallFunctionSolverAlgorithm(realm_, part, this, 
+                                                                          grav, z0, referenceTemperature);
+        }
+        else {
+          theAlg = new AssembleMomentumElemABLWallFunctionSolverAlgorithm(realm_, part, this, realm_.realmUsesEdges_, 
+                                                                          grav, z0, referenceTemperature);     
+        }
         solverAlgDriver_->solverAlgMap_[wfAlgType] = theAlg;
       }
       else {
@@ -1739,8 +1759,13 @@ MomentumEquationSystem::register_wall_bc(
       std::map<AlgorithmType, SolverAlgorithm *>::iterator it_wf =
         solverAlgDriver_->solverAlgMap_.find(wfAlgType);
       if ( it_wf == solverAlgDriver_->solverAlgMap_.end() ) {
-        AssembleMomentumWallFunctionSolverAlgorithm *theAlg
-          = new AssembleMomentumWallFunctionSolverAlgorithm(realm_, part, this, realm_.realmUsesEdges_);
+        SolverAlgorithm *theAlg = NULL;
+        if ( realm_.realmUsesEdges_ ) {
+          theAlg = new AssembleMomentumEdgeWallFunctionSolverAlgorithm(realm_, part, this);
+        }
+        else {
+          theAlg = new AssembleMomentumElemWallFunctionSolverAlgorithm(realm_, part, this, realm_.realmUsesEdges_);
+        }
         solverAlgDriver_->solverAlgMap_[wfAlgType] = theAlg;
       }
       else {
@@ -1891,6 +1916,14 @@ void
 MomentumEquationSystem::register_overset_bc()
 {
   create_constraint_algorithm(velocity_);
+
+  int nDim = realm_.meta_data().spatial_dimension();
+  UpdateOversetFringeAlgorithmDriver* theAlg = new UpdateOversetFringeAlgorithmDriver(realm_);
+  // Perform fringe updates before all equation system solves
+  equationSystems_.preIterAlgDriver_.push_back(theAlg);
+
+  theAlg->fields_.push_back(
+    std::unique_ptr<OversetFieldData>(new OversetFieldData(velocity_,1,nDim)));
 }
 
 //--------------------------------------------------------------------------
@@ -2304,20 +2337,20 @@ ContinuityEquationSystem::register_interior_algorithm(
         (*this, *part, solverAlgMap);
 
       ElemDataRequests& dataPreReqs = solverAlg->dataNeededBySuppAlgs_;
-      auto& suppAlgVec = solverAlg->supplementalAlg_;
+      auto& activeKernels = solverAlg->activeKernels_;
 
       if (solverAlgWasBuilt) {
-        build_topo_supp_alg_if_requested<ContinuityMassElemSuppAlg>
-          (partTopo, *this, suppAlgVec, "density_time_derivative",
-           realm_, dataPreReqs, false);
+        build_topo_kernel_if_requested<ContinuityMassElemKernel>
+          (partTopo, *this, activeKernels, "density_time_derivative",
+           realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs, false);
 
-        build_topo_supp_alg_if_requested<ContinuityMassElemSuppAlg>
-          (partTopo, *this, suppAlgVec, "lumped_density_time_derivative",
-           realm_, dataPreReqs, true);
+        build_topo_kernel_if_requested<ContinuityMassElemKernel>
+          (partTopo, *this, activeKernels, "lumped_density_time_derivative",
+           realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs, true);
 
-        build_topo_supp_alg_if_requested<ContinuityAdvElemSuppAlg>
-          (partTopo, *this, suppAlgVec, "advection",
-           realm_, dataPreReqs);
+        build_topo_kernel_if_requested<ContinuityAdvElemKernel>
+          (partTopo, *this, activeKernels, "advection",
+           realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs);
 
         report_invalid_supp_alg_names();
         report_built_supp_alg_names();
@@ -2725,6 +2758,13 @@ void
 ContinuityEquationSystem::register_overset_bc()
 {
   create_constraint_algorithm(pressure_);
+
+  UpdateOversetFringeAlgorithmDriver* theAlg = new UpdateOversetFringeAlgorithmDriver(realm_);
+  // Perform fringe updates before all equation system solves
+  equationSystems_.preIterAlgDriver_.push_back(theAlg);
+
+  theAlg->fields_.push_back(
+    std::unique_ptr<OversetFieldData>(new OversetFieldData(pressure_,1,1)));
 }
 
 //--------------------------------------------------------------------------
@@ -2774,7 +2814,7 @@ void
 ContinuityEquationSystem::register_initial_condition_fcn(
   stk::mesh::Part *part,
   const std::map<std::string, std::string> &theNames,
-  const std::map<std::string, std::vector<double> > &/*theParams*/)
+  const std::map<std::string, std::vector<double> >& theParams)
 {
   // iterate map and check for name
   const std::string dofName = "pressure";
@@ -2786,6 +2826,12 @@ ContinuityEquationSystem::register_initial_condition_fcn(
     if ( fcnName == "convecting_taylor_vortex" ) {
       // create the function
       theAuxFunc = new ConvectingTaylorVortexPressureAuxFunction();      
+    }
+    else if ( fcnName == "wind_energy_taylor_vortex") {
+      // extract the params
+      auto iterParams = theParams.find(dofName);
+      std::vector<double> fcnParams = (iterParams != theParams.end()) ? (*iterParams).second : std::vector<double>();
+      theAuxFunc = new WindEnergyTaylorVortexPressureAuxFunction(fcnParams);
     }
     else if ( fcnName == "SteadyTaylorVortex" ) {
       // create the function

@@ -42,6 +42,35 @@ private:
 
 };
 
+class ConvectingTaylorVortexPressureGradAuxFunction : public AuxFunction
+{
+public:
+
+  ConvectingTaylorVortexPressureGradAuxFunction(
+    const unsigned beginPos,
+    const unsigned endPos);
+
+  virtual ~ConvectingTaylorVortexPressureGradAuxFunction() {}
+
+  virtual void do_evaluate(
+    const double * coords,
+    const double time,
+    const unsigned spatialDimension,
+    const unsigned numPoints,
+    double * fieldPtr,
+    const unsigned fieldSize,
+    const unsigned beginPos,
+    const unsigned endPos) const;
+
+private:
+  double uNot_;
+  double vNot_;
+  double pNot_;
+  double visc_;
+  double pi_;
+
+};
+
 } // namespace nalu
 } // namespace Sierra
 

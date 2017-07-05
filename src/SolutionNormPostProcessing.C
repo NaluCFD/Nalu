@@ -18,11 +18,16 @@
 #include <user_functions/SteadyThermalContactAuxFunction.h>
 #include <user_functions/SteadyTaylorVortexVelocityAuxFunction.h>
 #include <user_functions/SteadyTaylorVortexGradPressureAuxFunction.h>
+#include <user_functions/ConvectingTaylorVortexVelocityAuxFunction.h>
+#include <user_functions/ConvectingTaylorVortexPressureAuxFunction.h>
 #include <user_functions/VariableDensityVelocityAuxFunction.h>
 #include <user_functions/VariableDensityNonIsoTemperatureAuxFunction.h>
 #include <user_functions/VariableDensityMixFracAuxFunction.h>
 #include <user_functions/KovasznayVelocityAuxFunction.h>
 #include <user_functions/KovasznayPressureAuxFunction.h>
+
+#include <user_functions/WindEnergyTaylorVortexAuxFunction.h>
+#include <user_functions/WindEnergyTaylorVortexPressureAuxFunction.h>
 
 // stk_util
 #include <stk_util/parallel/ParallelReduce.hpp>
@@ -98,6 +103,8 @@ SolutionNormPostProcessing::load(
 
     // percision
     get_if_present(y_norm, "percision", percision_, percision_);
+    get_if_present(y_norm, "precision", percision_, percision_);
+
 
     // target matches the physics description (see Material model)
     
@@ -245,8 +252,27 @@ SolutionNormPostProcessing::analytical_function_factory(
   else if ( functionName == "kovasznay_dpdx" ) {
     theAuxFunc = new KovasznayPressureGradientAuxFunction(0,realm_.meta_data().spatial_dimension());
   }
+  else if ( functionName == "convecting_taylor_vortex" ) {
+    theAuxFunc = new ConvectingTaylorVortexVelocityAuxFunction(0,realm_.meta_data().spatial_dimension());
+  }
+  else if ( functionName == "convecting_taylor_vortex_dpdx" ) {
+    theAuxFunc = new ConvectingTaylorVortexPressureGradAuxFunction(0,realm_.meta_data().spatial_dimension());
+  }
+  else if ( functionName == "wind_energy_taylor_vortex" ) {
+    theAuxFunc = new WindEnergyTaylorVortexAuxFunction(0,realm_.meta_data().spatial_dimension(), std::vector<double>());
+  }
+  else if ( functionName == "wind_energy_taylor_vortex_dpdx" ) {
+    theAuxFunc = new WindEnergyTaylorVortexPressureGradAuxFunction(0,realm_.meta_data().spatial_dimension(), std::vector<double>());
+  }
   else {
-    throw std::runtime_error("SolutionNormPostProcessing::setup: Only steady_2d_thermal user functions supported");
+    throw std::runtime_error(
+      "SolutionNormPostProcessing::setup: Only "
+      "steady_2d_thermal, steady_3d_thermal, steady_3d_thermal_dtdx, SteadyTaylorVortexVelocity, "
+      "VariableDensityVelocity, VariableDensityNonIsoVelocity, SteadyTaylorVortexGradPressure, "
+      "SteadyTaylorVortexGradPressure, VariableDensityNonIsoTemperature, kovasznay, "
+      "kovasznay_dpdx, convecting_taylor_vortex, convecting_taylor_vortex_dpdx, "
+      "wind_energy_taylor_vortex, wind_energy_taylor_vortex_dpdx "
+      "user functions supported");
   }
 
   // create the aux function

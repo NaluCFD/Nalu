@@ -186,3 +186,35 @@ with specific interest on scalar transport, e.g, momentum, mixture
 fraction and static enthalpy transport. When using the :math:`4^{th}`
 order method, the consistent mass matrix approach for the projected
 nodal gradients is supported for higher order.
+
+NSO as a Turbulence Model
++++++++++++++++++++++++++
+
+The kinetic energy residual form has been suggested to be used as a turbulence model (Guermond and Larios, 2015). However,
+inspection of the above NSO kernel form suggests that the model form is not symmetric. Rather, in the context of
+turbulence modeling, is closer to the metric tensor acting on the difference between the rate of strain and antisymmetric
+tensor. As such, the theory developed, e.g., for eigenvalue perturbations of the stress tensor (see Jofre and Domino, 2017) can not be applied. In this section,
+a new form of the NSO is provided in an effort to be used for an LES closure.
+
+In this proposed NSO formulation, the subgrid stress tensor, :math:`\tau^{sgs}_{ij} = \overline{u_i u_j} - \bar u_i \bar u_j`, 
+is given by,
+
+.. math::
+   :label: nsoTurbForm
+
+   \tau^{sgs}_{ij} = - 2 \rho \nu g^{ij} (S_{ij} - \frac{1}{3}\frac{\partial u_k} {\partial x_k} \delta_{ij}) 
+                = - 2 \rho \nu g^{ij} S^*_{ij}.
+
+
+Interestingly, the units of :math:`\nu` are of an inverse time scale while the product :math:`2 \rho \nu g^{ij}` can be viewed
+as an non-isotropic eddy viscosity, :math:`\mu^t_{ij}`.
+
+The first order clipping may be relaxed by defining :math:`\nu` as,
+
+.. math::
+   :label: nuTurb
+
+   \nu = \frac{| \mathbf{R}_{ke} |} {||ke||_\infty}.
+
+
+The above form would be closer to what Guermond uses and would avoid the divide-by-zero noted in regions of uniform flow.

@@ -29,7 +29,7 @@ linear_solvers:
 realms:
 
   - name: realm_1
-    mesh: ../../mesh/tquad4_64.g
+    mesh: ../../mesh/tquad4_32.g
     use_edges: no
     polynomial_order: 4
     automatic_decomposition_type: rcb     

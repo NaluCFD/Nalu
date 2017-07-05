@@ -2,6 +2,16 @@
 # Nalu Testing
 #=============================================================================
 
+# Check if mesh submodule is populated
+file(GLOB RESULT ${CMAKE_SOURCE_DIR}/reg_tests/mesh/*)
+list(LENGTH RESULT RES_LEN)
+if(RES_LEN EQUAL 0)
+  message(WARNING
+"Testing is enabled, but the mesh submodule is not initialized.\
+ You should 'git submodule init' and 'git submodule update'\
+ before running the tests.")
+endif()
+
 # Set TOLERANCE for testing
 if(NOT ${TEST_TOLERANCE} STREQUAL "")
   set(TOLERANCE ${TEST_TOLERANCE}) # User defined
@@ -20,7 +30,7 @@ else(NOT ${TEST_TOLERANCE} STREQUAL "")
     if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
       set(TOLERANCE 0.0000001)
     elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-      set(TOLERANCE 0.0000000000001)
+      set(TOLERANCE 0.000000000000001)
     elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
       set(TOLERANCE 0.0001)
     else()
@@ -28,7 +38,7 @@ else(NOT ${TEST_TOLERANCE} STREQUAL "")
     endif()
   endif()
 endif()
-message(" -- Using test tolerance of ${TOLERANCE} --")
+message("-- Using test tolerance of ${TOLERANCE} --")
 
 # Create symlinks to mesh and xml directories
 execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink

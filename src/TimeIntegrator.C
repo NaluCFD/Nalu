@@ -30,7 +30,7 @@ namespace nalu{
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-TimeIntegrator::TimeIntegrator(Simulation& sim) 
+TimeIntegrator::TimeIntegrator(Simulation* sim)
   : sim_(sim),
     totalSimTime_(1.0),
     currentTime_(0.0),
@@ -129,7 +129,7 @@ void TimeIntegrator::load(const YAML::Node & node)
 void TimeIntegrator::breadboard()
 {
   for (size_t irealm = 0; irealm < realmNamesVec_.size(); ++irealm) {
-    Realm * realm = sim_.realms_->find_realm(realmNamesVec_[irealm]);
+    Realm * realm = sim_->realms_->find_realm(realmNamesVec_[irealm]);
     realm->timeIntegrator_ = this;
     realmVec_.push_back(realm);
   }
@@ -141,7 +141,7 @@ void TimeIntegrator::initialize()
 }
 
 Simulation *TimeIntegrator::root() { return parent()->root(); }
-Simulation *TimeIntegrator::parent() { return &sim_; }
+Simulation *TimeIntegrator::parent() { return sim_; }
 
 //--------------------------------------------------------------------------
 void
@@ -375,7 +375,7 @@ TimeIntegrator::simulation_proceeds()
 //--------------------------------------------------------------------------
 double
 TimeIntegrator::get_time_step(
-  const NaluState &theState)
+  const NaluState &theState) const
 {
   double dt = timeStepN_;
   switch ( theState ) {
@@ -393,7 +393,7 @@ TimeIntegrator::get_time_step(
 
 //--------------------------------------------------------------------------
 double
-TimeIntegrator::get_current_time()
+TimeIntegrator::get_current_time() const
 {
   return currentTime_;
 }
@@ -419,27 +419,27 @@ TimeIntegrator::compute_gamma()
 
 //--------------------------------------------------------------------------
 double
-TimeIntegrator::get_gamma1()
+TimeIntegrator::get_gamma1() const
 {
   return gamma1_;
 }
 
 //--------------------------------------------------------------------------
 double
-TimeIntegrator::get_gamma2()
+TimeIntegrator::get_gamma2() const
 {
   return gamma2_;
 }
 
 //--------------------------------------------------------------------------
 double
-TimeIntegrator::get_gamma3()
+TimeIntegrator::get_gamma3() const
 {
   return gamma3_;
 }
 
 int
-TimeIntegrator::get_time_step_count()
+TimeIntegrator::get_time_step_count() const
 {
   return timeStepCount_;
 }

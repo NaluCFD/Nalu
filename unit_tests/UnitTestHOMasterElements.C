@@ -612,85 +612,311 @@ check_volume_quadrature_hex_SGL(int polyOrder, double tol)
   }
 }
 
+double linear_scalar_value(int dim, double a, const double* b, const double* x)
+{
+  if (dim == 2u) {
+    return (a + b[0] * x[0] + b[1] * x[1]);
+  }
+  return (a + b[0] * x[0] + b[1] * x[1] + b[2] * x[2]);
+}
+
+void check_is_in_element_hex(int poly_order, double tol)
+{
+  auto desc = sierra::nalu::ElementDescription::create(3,  poly_order);
+  auto basis = sierra::nalu::LagrangeBasis(desc->inverseNodeMap, desc->nodeLocs1D);
+  auto quad = sierra::nalu::TensorProductQuadratureRule("GaussLegendre", desc->polyOrder);
+  auto masterElement = sierra::nalu::HigherOrderHexSCS(*desc, basis, quad);
+  constexpr int dim = 3;
+
+  std::mt19937 rng;
+  rng.seed(0);
+
+  // randomly select a point within (boxmin, boxmax)^3 \subset reference element domain
+  const double boxmin = 0.125;
+  const double boxmax = 0.25;
+  std::uniform_real_distribution<double> coeff(boxmin, boxmax);
+  std::vector<double> random_pt(dim);
+  for (int j = 0; j < dim; ++j) {
+    random_pt[j] = coeff(rng);
+  }
+
+  // is in element uses a different stride for the coordinate data
+  // compared to the gradient computation
+  std::vector<double> ws_field(desc->nodesPerElement);
+  std::vector<double> ws_coords(desc->nodesPerElement * dim);
+
+  // Hex8/Quad4's is_in_element and interpolatePoint routines use a different,
+  // but self-consistent reference element compared to the core shape functions
+  // and derivatives
+  for (int i = 0; i < desc->nodes1D; ++i) {
+    for (int j = 0; j < desc->nodes1D; ++j) {
+      for (int k = 0; k < desc->nodes1D; ++k) {
+        int index = desc->node_map(i,j,k);
+        ws_coords[0 * desc->nodesPerElement + index] = desc->nodeLocs1D[i];
+        ws_coords[1 * desc->nodesPerElement + index] = desc->nodeLocs1D[j];
+        ws_coords[2 * desc->nodesPerElement + index] = desc->nodeLocs1D[k];
+      }
+    }
+  }
+
+  std::array<double, dim> mePt;
+  auto dist = masterElement.isInElement(ws_coords.data(), random_pt.data(), mePt.data());
+  EXPECT_LT(dist, 1.0 + tol);
+  for (int d = 0; d < dim; ++d) {
+    EXPECT_NEAR(random_pt[d], mePt[d], tol);
+  }
+}
+
+void check_is_not_in_element_hex(int poly_order, double tol)
+{
+  constexpr int dim = 3;
+  auto desc = sierra::nalu::ElementDescription::create(dim,  poly_order);
+  auto basis = sierra::nalu::LagrangeBasis(desc->inverseNodeMap, desc->nodeLocs1D);
+  auto quad = sierra::nalu::TensorProductQuadratureRule("GaussLegendre", desc->polyOrder);
+  auto masterElement = sierra::nalu::HigherOrderHexSCS(*desc, basis, quad);
+
+
+  std::array<double, dim> exterior_pt = {{ 100., 100., 100.}};
+
+  std::vector<double> ws_field(desc->nodesPerElement);
+  std::vector<double> ws_coords(desc->nodesPerElement * dim);
+
+  for (int i = 0; i < desc->nodes1D; ++i) {
+    for (int j = 0; j < desc->nodes1D; ++j) {
+      for (int k = 0; k < desc->nodes1D; ++k) {
+        int index = desc->node_map(i,j,k);
+        ws_coords[0 * desc->nodesPerElement + index] = desc->nodeLocs1D[i];
+        ws_coords[1 * desc->nodesPerElement + index] = desc->nodeLocs1D[j];
+        ws_coords[2 * desc->nodesPerElement + index] = desc->nodeLocs1D[k];
+      }
+    }
+  }
+
+  std::array<double, dim> mePt;
+  double dist = masterElement.isInElement(ws_coords.data(), exterior_pt.data(), mePt.data());
+  EXPECT_GT(dist, 1 + tol);
+}
+
+void check_point_interpolation_hex(int poly_order, double tol)
+{
+  auto desc = sierra::nalu::ElementDescription::create(3,  poly_order);
+  auto basis = sierra::nalu::LagrangeBasis(desc->inverseNodeMap, desc->nodeLocs1D);
+  auto quad = sierra::nalu::TensorProductQuadratureRule("GaussLegendre", desc->polyOrder);
+  auto masterElement = sierra::nalu::HigherOrderHexSCS(*desc, basis, quad);
+  constexpr int dim = 3;
+
+  std::mt19937 rng;
+  rng.seed(0);
+
+  // randomly select a point within (boxmin, boxmax)^3 \subset reference element domain
+  const double boxmin = 0.125;
+  const double boxmax = 0.25;
+  std::uniform_real_distribution<double> coeff(boxmin, boxmax);
+  std::vector<double> random_pt(dim);
+  for (int j = 0; j < dim; ++j) {
+    random_pt[j] = coeff(rng);
+  }
+
+  double const_value = coeff(rng);
+  std::array<double, 3> coeffs;
+  for (int d = 0; d < dim; ++d) {
+    coeffs[d] = coeff(rng);
+  }
+
+  std::vector<double> ws_field(desc->nodesPerElement);
+  std::vector<double> ws_coords(desc->nodesPerElement * dim);
+
+  const double delta = 0.25;
+  std::uniform_real_distribution<double> coord_perturb(-delta/2, delta/2);
+
+  for (int i = 0; i < desc->nodes1D; ++i) {
+    for (int j = 0; j < desc->nodes1D; ++j) {
+      for (int k = 0; k < desc->nodes1D; ++k) {
+        std::array<double, 3> perturbed_coords = {{
+            desc->nodeLocs1D[i] + coord_perturb(rng),
+            desc->nodeLocs1D[j] + coord_perturb(rng),
+            desc->nodeLocs1D[k] + coord_perturb(rng)
+        }};
+
+        int index = desc->node_map(i,j,k);
+        ws_field[index] = linear_scalar_value(dim, const_value , coeffs.data(), perturbed_coords.data());
+
+        ws_coords[0 * desc->nodesPerElement + index] = perturbed_coords[0];
+        ws_coords[1 * desc->nodesPerElement + index] = perturbed_coords[1];
+        ws_coords[2 * desc->nodesPerElement + index] = perturbed_coords[2];
+      }
+    }
+  }
+
+  std::array<double, dim> mePt;
+  double dist = masterElement.isInElement(ws_coords.data(), random_pt.data(), mePt.data());
+  EXPECT_LT(dist, 1.0+tol);
+
+  double meInterp = 0.0;
+  masterElement.interpolatePoint(1, mePt.data(), ws_field.data(), &meInterp);
+  double exactVal = linear_scalar_value(dim, const_value , coeffs.data(), random_pt.data());
+  EXPECT_NEAR(meInterp, exactVal, tol);
+}
+
+void check_is_in_element_quad(int poly_order, double tol)
+{
+  constexpr int dim = 2;
+  auto desc = sierra::nalu::ElementDescription::create(dim,  poly_order);
+  auto basis = sierra::nalu::LagrangeBasis(desc->inverseNodeMap, desc->nodeLocs1D);
+  auto quad = sierra::nalu::TensorProductQuadratureRule("GaussLegendre", desc->polyOrder);
+  auto masterElement = sierra::nalu::HigherOrderQuad2DSCS(*desc, basis, quad);
+
+  std::mt19937 rng;
+  rng.seed(0);
+
+  // randomly select a point within (boxmin, boxmax)^3 \subset reference element domain
+  const double boxmin = 0.125;
+  const double boxmax = 0.25;
+  std::uniform_real_distribution<double> coeff(boxmin, boxmax);
+  std::vector<double> random_pt(dim);
+  for (int j = 0; j < dim; ++j) {
+    random_pt[j] = coeff(rng);
+  }
+
+  // is in element uses a different stride for the coordinate data
+  // compared to the gradient computation
+  std::vector<double> ws_field(desc->nodesPerElement);
+  std::vector<double> ws_coords(desc->nodesPerElement * dim);
+
+  // Hex8/Quad4's is_in_element and interpolatePoint routines use a different,
+  // but self-consistent reference element compared to the core shape functions
+  // and derivatives
+  for (int i = 0; i < desc->nodes1D; ++i) {
+    for (int j = 0; j < desc->nodes1D; ++j) {
+      int index = desc->node_map(i,j);
+      ws_coords[0 * desc->nodesPerElement + index] = desc->nodeLocs1D[i];
+      ws_coords[1 * desc->nodesPerElement + index] = desc->nodeLocs1D[j];
+    }
+  }
+
+  std::array<double, dim> mePt;
+  auto dist = masterElement.isInElement(ws_coords.data(), random_pt.data(), mePt.data());
+  EXPECT_LT(dist, 1.0 + tol);
+  for (int d = 0; d < dim; ++d) {
+    EXPECT_NEAR(random_pt[d], mePt[d], tol);
+  }
+}
+
+void check_is_not_in_element_quad(int poly_order, double tol)
+{
+  constexpr int dim = 2;
+  auto desc = sierra::nalu::ElementDescription::create(dim,  poly_order);
+  auto basis = sierra::nalu::LagrangeBasis(desc->inverseNodeMap, desc->nodeLocs1D);
+  auto quad = sierra::nalu::TensorProductQuadratureRule("GaussLegendre", desc->polyOrder);
+  auto masterElement = sierra::nalu::HigherOrderQuad2DSCS(*desc, basis, quad);
+
+
+  std::array<double, dim> exterior_pt = {{ 100., 100.}};
+
+  std::vector<double> ws_field(desc->nodesPerElement);
+  std::vector<double> ws_coords(desc->nodesPerElement * dim);
+
+  for (int i = 0; i < desc->nodes1D; ++i) {
+    for (int j = 0; j < desc->nodes1D; ++j) {
+      int index = desc->node_map(i,j);
+      ws_coords[0 * desc->nodesPerElement + index] = desc->nodeLocs1D[i];
+      ws_coords[1 * desc->nodesPerElement + index] = desc->nodeLocs1D[j];
+    }
+  }
+
+  std::array<double, dim> mePt;
+  auto dist = masterElement.isInElement(ws_coords.data(), exterior_pt.data(), mePt.data());
+  EXPECT_GT(dist, 1 + tol);
+}
+
+void check_point_interpolation_quad(int poly_order, double tol)
+{
+  constexpr int dim = 2;
+  auto desc = sierra::nalu::ElementDescription::create(dim,  poly_order);
+  auto basis = sierra::nalu::LagrangeBasis(desc->inverseNodeMap, desc->nodeLocs1D);
+  auto quad = sierra::nalu::TensorProductQuadratureRule("GaussLegendre", desc->polyOrder);
+  auto masterElement = sierra::nalu::HigherOrderQuad2DSCS(*desc, basis, quad);
+
+  std::mt19937 rng;
+  rng.seed(0);
+
+  // randomly select a point within (boxmin, boxmax)^3 \subset reference element domain
+  const double boxmin = 0.125;
+  const double boxmax = 0.25;
+  std::uniform_real_distribution<double> coeff(boxmin, boxmax);
+  std::vector<double> random_pt(dim);
+  for (int j = 0; j < dim; ++j) {
+    random_pt[j] = coeff(rng);
+  }
+
+  double const_value = coeff(rng);
+  std::array<double, dim> coeffs;
+  for (int d = 0; d < dim; ++d) {
+    coeffs[d] = coeff(rng);
+  }
+
+  std::vector<double> ws_field(desc->nodesPerElement);
+  std::vector<double> ws_coords(desc->nodesPerElement * dim);
+
+  const double delta = 0.25;
+  std::uniform_real_distribution<double> coord_perturb(-delta/2, delta/2);
+
+  for (int i = 0; i < desc->nodes1D; ++i) {
+    for (int j = 0; j < desc->nodes1D; ++j) {
+      std::array<double, 2> perturbed_coords = {{
+          desc->nodeLocs1D[i] + coord_perturb(rng),
+          desc->nodeLocs1D[j] + coord_perturb(rng)
+      }};
+
+      int index = desc->node_map(i,j);
+      ws_field[index] = linear_scalar_value(dim, const_value , coeffs.data(), perturbed_coords.data());
+
+      ws_coords[0 * desc->nodesPerElement + index] = perturbed_coords[0];
+      ws_coords[1 * desc->nodesPerElement + index] = perturbed_coords[1];
+    }
+  }
+
+  std::array<double, dim> mePt;
+  double dist = masterElement.isInElement(ws_coords.data(), random_pt.data(), mePt.data());
+  EXPECT_LT(dist, 1.0+tol);
+
+  double meInterp = 0.0;
+  masterElement.interpolatePoint(1, mePt.data(), ws_field.data(), &meInterp);
+  double exactVal = linear_scalar_value(dim, const_value , coeffs.data(), random_pt.data());
+  EXPECT_NEAR(meInterp, exactVal, tol);
+}
+
 
 }//namespace
 
-constexpr int MAX_POLY_ORDER = 6;
-
-TEST(HOMasterElements, interp_quad)
-{
-  double tol = 1.0e-10;
-  int numIps = 10;
-
-  for (int p = 1; p < MAX_POLY_ORDER; ++p) {
-    check_interpolation_quad(p, numIps, tol);
-  }
+constexpr int MAX_POLY_ORDER = 5;
+#define TEST_IPS(x, y, z) \
+    TEST(HOMasterElements, x) \
+{ \
+    for (int p = 1; p < MAX_POLY_ORDER + 1; ++p) { \
+      x(p, y, z); \
+    } \
 }
 
-TEST(HOMasterElements, interp_hex)
-{
-  double tol = 1.0e-10;
-  int numIps = 10;
-
-  for (int p = 1; p < MAX_POLY_ORDER; ++p) {
-    check_interpolation_hex(p, numIps, tol);
-  }
+#define TEST_POLY_SINGLE(x, y) \
+    TEST(HOMasterElements, x) \
+{ \
+    for (int p = 1; p < MAX_POLY_ORDER + 1; ++p) { \
+      x(p, y); \
+    } \
 }
 
-TEST(HOMasterElements, deriv_quad)
-{
-  double tol = 1.0e-10;
-  int numIps = 10;
-
-  for (int p = 1; p < MAX_POLY_ORDER; ++p) {
-    check_derivative_quad(p, numIps, tol);
-  }
-}
-
-TEST(HOMasterElements, deriv_hex)
-{
-  double tol = 1.0e-10;
-  int numIps = 10;
-
-  for (int p = 1; p < MAX_POLY_ORDER; ++p) {
-    check_derivative_hex(p, numIps, tol);
-  }
-}
-
-TEST(HOMasterElements, integ_GL_quad)
-{
-  double tol = 1.0e-10;
-
-  for (int p = 1; p < MAX_POLY_ORDER; ++p) {
-    check_volume_quadrature_quad(p,  tol);
-  }
-}
-
-TEST(HOMasterElements, integ_GL_hex)
-{
-  double tol = 1.0e-10;
-
-  for (int p = 1; p < MAX_POLY_ORDER; ++p) {
-    check_volume_quadrature_hex(p,  tol);
-  }
-}
-
-TEST(HOMasterElements, integ_SGL_quad)
-{
-  double tol = 1.0e-10;
-
-  for (int p = 1; p < MAX_POLY_ORDER; ++p) {
-    check_volume_quadrature_quad_SGL(p,  tol);
-  }
-}
-
-TEST(HOMasterElements, integ_SGL_hex)
-{
-  double tol = 1.0e-10;
-
-  for (int p = 1; p < MAX_POLY_ORDER; ++p) {
-    check_volume_quadrature_hex_SGL(p,  tol);
-  }
-}
-
-
+TEST_IPS(check_interpolation_quad, 10, 1.0e-10);
+TEST_IPS(check_interpolation_hex, 10, 1.0e-10);
+TEST_IPS(check_derivative_quad, 10, 1.0e-10);
+TEST_IPS(check_derivative_hex, 10, 1.0e-10);
+TEST_POLY_SINGLE(check_volume_quadrature_quad, 1.0e-10);
+TEST_POLY_SINGLE(check_volume_quadrature_hex, 1.0e-10);
+TEST_POLY_SINGLE(check_volume_quadrature_quad_SGL, 1.0e-10);
+TEST_POLY_SINGLE(check_volume_quadrature_hex_SGL, 1.0e-10);
+TEST_POLY_SINGLE(check_is_in_element_quad, 1.0e-10);
+TEST_POLY_SINGLE(check_is_in_element_hex, 1.0e-10);
+TEST_POLY_SINGLE(check_is_not_in_element_quad, 1.0e-10);
+TEST_POLY_SINGLE(check_is_not_in_element_hex, 1.0e-10);
+TEST_POLY_SINGLE(check_point_interpolation_quad, 1.0e-8);
+TEST_POLY_SINGLE(check_point_interpolation_hex, 1.0e-8);

@@ -27,7 +27,8 @@ class TimeIntegrator
 {
 public:
 
-  TimeIntegrator(Simulation& sim);
+  TimeIntegrator() {}
+  TimeIntegrator(Simulation* sim);
   ~TimeIntegrator();
 
   void load(const YAML::Node & node) ;
@@ -41,7 +42,7 @@ public:
   void integrate_realm();
   void provide_mean_norm();
   bool simulation_proceeds();
-  Simulation& sim_;
+  Simulation* sim_{nullptr};
 
   double totalSimTime_;
   double currentTime_;
@@ -65,17 +66,12 @@ public:
   std::vector<Realm*> realmVec_;
 
   double get_time_step(
-    const NaluState &theState = NALU_STATE_N);
-  double get_current_time();
-  double get_gamma1();
-  double get_gamma2();
-  double get_gamma3();
-  int get_time_step_count();
-  double get_time_step_from_file();
-  bool get_is_fixed_time_step();
-  bool get_is_terminate_based_on_time();
-  double get_total_sim_time();
-  int get_max_time_step_count();
+  const NaluState &theState = NALU_STATE_N) const;
+  double get_current_time() const;
+  double get_gamma1() const;
+  double get_gamma2() const;
+  double get_gamma3() const;
+  int get_time_step_count() const;
   void compute_gamma();
  
 };

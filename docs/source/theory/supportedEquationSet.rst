@@ -33,71 +33,76 @@ realized.
 Conservation of Momentum
 ++++++++++++++++++++++++
 
-The integral form of the Favre-filtered momentum equations used for
-turbulent transport are
+The integral form of the Favre-filtered momentum equations used for turbulent transport are
 
 .. math::
-   :label: fav-mom
+   :label: favmom
 
-     \int {{\partial \bar{\rho} \tilde{u}_i} \over {\partial t}} {\rm d}V
-     +  \int \bar{\rho} \tilde{u}_i \tilde{u}_j n_j {\rm d}S 
-     +  \int \bar{P} n_i {\rm d}S  &=
-     \int \bar{\tau}_{ij} n_j {\rm d}S 
-     + \int \tau_{u_i u_j} n_j {\rm d}S \nonumber \\ 
-     &+ \int \left(\bar{\rho} - \rho_{\circ} \right) g_i {\rm d}V,
+   \int {{\partial \bar{\rho} \tilde{u}_i} \over {\partial t}} {\rm d}V
+   + \int \bar{\rho} \tilde{u}_i \tilde{u}_j n_j {\rm d}S 
+   &=& 
+   \int \tilde{\sigma}_{ij} n_j {\rm d}S 
+   -\int \tau^{sgs}_{ij} n_j {\rm d}S \nonumber \\ 
+   &+& \int \left(\bar{\rho} - \rho_{\circ} \right) g_i {\rm d}V,
 
+where the subgrid scale turbulent stress :math:`\tau^{sgs}_{ij}` is defined as
 
-where the turbulent stress :math:`\tau_{u_i u_j}` is defined as
+.. math::
+   :label: sgsStress
+
+   \tau^{sgs}_{ij} \equiv \bar{\rho} ( \widetilde{u_i u_j} - 
+     \tilde{u}_i \tilde{u}_j ).
+
+The Cauchy stress is provided by,
 
 .. math::
 
-   \tau_{u_i u_j} \equiv - \bar{\rho} ( \widetilde{u_i u_j} - 
-        \tilde{u}_i \tilde{u}_j ).
+   \sigma_{ij}  = 2 \mu \tilde S^*_{ij} - \bar P \delta_{ij}
+
+and the traceless rate-of-strain tensor defined as follows:
+
+.. math::
+
+   \tilde S^*_{ij} &=& \tilde S_{ij} - \frac{1}{3} \delta_{ij} \tilde S_{kk} \nonumber \\
+   &=& \tilde S_{ij} - \frac{1}{3} \frac{\partial \tilde u_k }{\partial x_k}\delta_{ij}.
 
 In a low Mach flow, as described in the low Mach theory section, the
 above pressure, :math:`\bar P` is the purturbation about the
 thermodynamic pressure, :math:`P^{th}`. In a low speed compressible
-flow, i.e., flows confinded to a closed domain with energy or mass
+flow, i.e., flows confined to a closed domain with energy or mass
 addition in which the continuity equation has been modifed to accomodate
 accoustics, this pressure is interpreted at the thermodynamic pressure
 itself.
 
-For LES, :math:`\tau_{u_i u_j}` in Equation :eq:`fav-mom` represents the
-subgrid stress tensor. The deviatoric part of the subgrid stress tensor
-is defined as
+For LES, :math:`\tau^{sgs}_{ij}` that appears in Equation :eq:`favmom` and 
+defined in Equation :eq:`sgsStress` represents the subgrid stress tensor that 
+must be closed. The deviatoric part of the subgrid stress tensor is defined as
 
 .. math::
    :label: deviatoric-stress-les
 
-   \tau_{u_i u_j}^D & \equiv \tau_{u_i u_j} - \frac{1}{3} \tau_{u_k u_k}
-                               \delta_{ij} \nonumber \\
-   & = \tau_{u_i u_j} + \frac{2}{3} \bar{\rho} q^2 \delta_{ij},
-
+   \tau^{sgs}_{ij} = \tau^{sgs}_{ij} - \frac{1}{3} \delta_{ij} \tau^{sgs}_{kk}
 
 where the subgrid turbulent kinetic energy is defined as
-:math:`q^2 \equiv \frac{1}{2} (\widetilde{u_k u_k} - \tilde{u_k} \tilde{u_k} )`.
-The deviatoric part of the subgrid stress tensor is then modeled similar
-to RANS closures as,
+:math:`\tau^{sgs}_{kk} = 2 \bar \rho k`. Note that here,
+k represents the modeled turbulent kinetic energy as is formally defined as,
 
 .. math::
 
-   \tau_{u_i u_j}^D = 2 \mu_t \left( \tilde{S}_{ij} - \frac{1}{3} \tilde{S}_{kk}
-        \delta_{ij} \right).
+   \bar \rho k = \frac{1}{2} \bar\rho ( \widetilde{u_k u_k} - \tilde u_k \tilde u_k).
 
-Substituting this into Equation :eq:`deviatoric-stress-les` yields the
-modeled form of the full subgrid stress tensor
+Model closures can use, Yoshikawa's approach when k is not transported:
 
 .. math::
-   :label: mod-stress-les
 
-   \tau_{u_i u_j} = 2 \mu_t \left( \tilde{S}_{ij} - \frac{1}{3} \tilde{S}_{kk}
-   \delta_{ij} \right) - \frac{2}{3} \bar{\rho} q^2 \delta_{ij}.
-   
+   \tau^{sgs}_{kk} = 2 C_I \bar \rho \Delta^2 | \tilde S | ^2.
+
+Above, :math:`| \tilde S | = \sqrt {2 \tilde S_{ij} \tilde S_{ij}}`.
 
 For low Mach-number flows, a vast majority of the turbulent kinetic
 energy is contained at resolved scales. For this reason, the subgrid
-turbulent kinetic energy :math:`q^2` will not be directly treated and
-will instead be included in the pressure as an additional normal stress.
+turbulent kinetic energy is not directly treated and, rather, is included 
+in the pressure as an additional normal stress.
 The Favre-filtered momentum equations then become
 
 .. math::
@@ -105,7 +110,7 @@ The Favre-filtered momentum equations then become
 
    &\int {{\partial \bar{\rho} \tilde{u}_i} \over {\partial t}}
    {\rm d}V + \int \bar{\rho} \tilde{u}_i \tilde{u}_j n_j {\rm d}S 
-   + \int \left( \bar{P} + \frac{2}{3} \bar{\rho} q^2 \right)
+   + \int \left( \bar{P} + \frac{2}{3} \bar{\rho} k \right)
    n_i {\rm d}S = \nonumber \\
    & \int 2 (\mu + \mu_t) \left( \tilde{S}_{ij} - \frac{1}{3}
    \tilde{S}_{kk} \delta_{ij} \right) n_j {\rm d}S
@@ -115,6 +120,74 @@ where LES closure models for the subgrid turbulent eddy viscosity
 :math:`\mu_t` are either the constant coefficient Smagorinsky, WALE or
 the constant coefficient :math:`k_{sgs}` model (see the turbulence
 section).
+
+Earth Coriolis Force
+++++++++++++++++++++
+
+For simulation of large-scale atmospheric flows, the following Coriolis 
+force term can be added to the right-hand-side of the momentum equation (:eq:`favmom`):
+
+.. math::
+   :label: cor-term
+
+   \int -2\bar{\rho}\epsilon_{ijk}\Omega_ju_k ~{\rm d}V.
+
+Here, :math:`\Omega` is the Earth's angular velocity vector,
+and :math:`\epsilon_{ijk}` is the Levi-Civita symbol denoting the cross product
+of the Earth's angular velocity with the local fluid velocity
+vector. Consider an "East-North-Up" coordinate system on the Earth's
+surface, with the domain centered on a latitude angle :math:`\phi` (changes
+in latitude within the computational domain are neglected). In this
+coordinate system, the integrand of (cor-term), or the Coriolis
+acceleration vector, is
+
+.. math::
+   :label: coracc
+
+   2 \bar{\rho} \omega
+   \begin{bmatrix} u_n \sin\phi - u_u \cos\phi \\
+                   -u_e \sin\phi \\
+                   u_e \cos\phi
+   \end{bmatrix},
+
+where :math:`\omega \equiv ||\Omega||`.  Often, in geophysical flows it is
+assumed that the vertical component of velocity is small and that the
+vertical component of the acceleration is small relative to gravity,
+such that the terms containing :math:`\cos\phi` are neglected.  However,
+there is evidence that this so-called traditional approximation is not
+valid for some mesoscale atmospheric phenomena \cite{Gerkema_etal:08},
+and so the full Coriolis term is retained in Nalu. The implementation
+proceeds by first finding the velocity vector in the East-North-Up
+coordinate system, then calculating the Coriolis acceleration vector
+(:eq:`coracc`), then transforming this vector back to the model
+:math:`x-y-z` coordinate system.  The coordinate transformations are made
+using user-supplied North and East unit vectors given in the model
+coordinate system.
+
+ABL Forcing Source Terms
+++++++++++++++++++++++++
+
+In LES simulations of wind plant atmospheric flows, it is often necessary to
+drive the flow a predetermined vertical velocity and/or temperature profile. In
+Nalu, this is achieved by adding appropriate source terms :math:`\mathbf{S}_u` to the
+momentum equations (:eq:`favmom`). The present implementation can vary the
+source terms as a function of time and space using either a user-defined table
+of previously computed source terms (e.g., from a *precursor* simulation or
+another model such as WRF), or compute the source term as a function of the
+transient flow solution using the following equation:
+
+.. math::
+  :label: abl-mom-source
+
+   \mathbf{S}_u^n = \alpha_u \bar{\rho} \left( \frac{\mathbf{U}^n_\mathrm{ref}
+    - \left<\mathbf{u}^n\right>}{\Delta t^n}\right)
+
+where :math:`\left<\mathbf{u}^n\right>` is the horizontally averaged velocity at a
+given height and instance in time :math:`t=t_n`, :math:`\mathbf{U}^n_\mathrm{ref}` are the desired
+velocities at the corresponding heights and time. The implementation allows the
+user to prescribe relaxation factors :math:`\alpha_u` for the source terms that are
+applied. Nalu uses a default value of 1.0 for the relaxation factors if no
+values are defined in the input file during initialization.
 
 Filtered Mixture Fraction
 +++++++++++++++++++++++++
@@ -132,8 +205,8 @@ transported in laminar flow by the equation,
    :label: eqn:lam_Z
 
    \frac{\partial \rho Z}{\partial t}
-   + \frac{ \partial \rho u_i Z }{ \partial x_i}
-   = \frac{\partial}{\partial x_i} \left( \rho D \frac{\partial Z}{\partial x_i}
+   + \frac{ \partial \rho u_j Z }{ \partial x_j}
+   = \frac{\partial}{\partial x_j} \left( \rho D \frac{\partial Z}{\partial x_j}
    \right),  
 
 where :math:`D` is an effective molecular mass diffusivity.
@@ -146,7 +219,7 @@ spatial Favre filtering for LES-based treatments yields
 
    \int \frac{\partial \bar{\rho} \tilde{Z}}{\partial t} {\rm d}V
    + \int \bar{\rho} \tilde{u}_j \tilde{Z} n_j {\rm d}S
-   = - \int \tau_{Zu_j} n_j {\rm d}S + \int \bar{\rho} D \frac{\partial \tilde{Z}}{\partial x_j} n_j {\rm d}S,  
+   = - \int \tau^{sgs}_{Z,j} n_j {\rm d}S + \int \bar{\rho} D \frac{\partial \tilde{Z}}{\partial x_j} n_j {\rm d}S,  
 
 where sub-filter correlations have been neglected in the molecular
 diffusive flux vector and the turbulent diffusive flux vector is defined
@@ -154,13 +227,14 @@ as
 
 .. math::
 
-   \tau_{Z u_j} \equiv \bar{\rho} \left( \widetilde{Z u_j} -
+   \tau^{sgs}_{Z,j} \equiv \bar{\rho} \left( \widetilde{Z u_j} -
    \tilde{Z} \tilde{u}_j \right).
 
-This sub-filter correlation is modeled in both RANS and LES closures
-with the gradient transport approximation
+This subgrid scale closure is modeled using the gradient diffusion hypothesis,
 
-.. math:: \tau_{Z u_j} \approx - \bar{\rho} D_t \frac{\partial Z}{\partial x_j},
+.. math::
+
+   \tau^{sgs}_{Z,j} = - \bar{\rho} D_t \frac{\partial Z}{\partial x_j},
 
 where :math:`D_t` is the turbulent mass diffusivity, modeled as
 :math:`\bar{\rho} D_t = \mu_t / \mathrm{Sc}_t` where :math:`\mu_t` is the modeled turbulent
@@ -173,19 +247,19 @@ equation is
 .. math::
 
    \frac{\partial \bar{\rho} \tilde{Z}}{\partial t}
-     + \frac{ \partial \bar{\rho} \tilde{u}_i \tilde{Z} }{ \partial x_i}
-     = \frac{\partial}{\partial x_i} 
+     + \frac{ \partial \bar{\rho} \tilde{u}_j \tilde{Z} }{ \partial x_j}
+     = \frac{\partial}{\partial x_j} 
        \left[ \left( \frac{\mu}{\mathrm{Sc}} + \frac{\mu_t}{\mathrm{Sc}_t} \right)
-       \frac{\partial \tilde{Z}}{\partial x_i} \right].
+       \frac{\partial \tilde{Z}}{\partial x_j} \right].
 
 In integral form the mixture fraction transport equation is
 
 .. math::
 
    \int \frac{\partial \bar{\rho} \tilde{Z}}{\partial t}\, dV
-     + \int \bar{\rho} \tilde{u}_i \tilde{Z} n_i\, dS
+     + \int \bar{\rho} \tilde{u}_j \tilde{Z} n_j\, dS
      = \int \left( \frac{\mu}{\mathrm{Sc}} + \frac{\mu_t}{\mathrm{Sc}_t} \right)
-       \frac{\partial \tilde{Z}}{\partial x_i} n_i\, dS.
+       \frac{\partial \tilde{Z}}{\partial x_j} n_j\, dS.
 
 Conservation of Energy
 ++++++++++++++++++++++
@@ -199,7 +273,7 @@ used for turbulent transport is
      \int {{\partial \bar{\rho} \tilde{h}} \over {\partial t}} {\rm d}V
      + \int \bar{\rho} \tilde{h} \tilde{u}_j n_j {\rm d}S 
      &= - \int \bar{q}_j n_j {\rm d}S
-     - \int \tau_{h u_j} n_j {\rm d}S 
+     - \int \tau^{sgs}_{h,j} n_j {\rm d}S 
      - \int {{\partial \bar{q}_i^r} \over {\partial x_i}} {\rm d}V \nonumber \\
      &+ \int \left({{\partial \bar{P}} \over {\partial t}} + \tilde{u}_j {{\partial \bar{P}} \over {\partial x_j}}\right){\rm d}V
      + \int \overline{\tau_{ij} {{\partial u_i} \over {\partial x_j }}} {\rm d}V.
@@ -209,7 +283,7 @@ The above equation is derived by starting with the total internal
 energy equation, subtracting the mechanical energy equation and
 enforcing the variable density continuity equation. Note that the above
 equation includes possible source terms due to thermal radiatitive
-transport, viscouss dissipation, and pressure work.
+transport, viscous dissipation, and pressure work.
 
 The simple Fickian diffusion velocity approximation,
 Equation :eq:`diffvel1`, is assumed, so that the mean diffusive heat flux
@@ -248,7 +322,7 @@ The viscous dissipation term is closed by
          \delta_{ij} \right) - \frac{2}{3} \bar{\rho} \tilde{k}
          \delta_{ij} \right] \frac{\partial \tilde{u}_i}{\partial x_j}.
 
-The turbulent diffusive flux vector :math:`\tau_{h u_j}` in
+The subgrid scale turbulent flux vector :math:`\tau^{sgs}_{h}` in
 Equation :eq:`fav-enth` is defined as
 
 .. math::
@@ -256,32 +330,16 @@ Equation :eq:`fav-enth` is defined as
    \tau_{h u_j} \equiv \bar{\rho} \left( \widetilde{h u_j} - 
         \tilde{h} \tilde{u}_j \right).
 
-For RANS simulations, :math:`\tau_{h u_j}` represents the turbulent
-energy diffusive flux vector and is simplified to the form
-:math:`\tau_{h u_j} = \overline{\rho h'' u_j''}` by substitution of the
-Favre decomposition of each variable. It is then modeled by
+As with species transport, the gradient diffusion hypothesis is used to close
+this subgrid scale model,
 
 .. math::
 
-   \tau_{h u_j} = \overline{\rho h'' u_j''}
-   = - \frac{\mu_t}{\mathrm{Pr}_t} \frac{\partial \tilde{h}}{\partial x_j},
+   \tau^{sgs}_{h,j} = - \frac{\mu_t}{\mathrm{Pr}_t} \frac{\partial \tilde{h}}{\partial x_j},
 
-where :math:`\mathrm{Pr}_t` is the turbulent Prandtl number and
-:math:`\mu_t` is the modeled turbulent eddy viscosity from momentum
-closure. For LES, :math:`\tau_{h u_j}` represents the subgrid turbulent
-energy diffusive flux vector, and is modeled in the same way as
-
-.. math::
-
-   \tau_{h u_j} = - \frac{\mu_t}{\mathrm{Pr}_t} \frac{\partial 
-   \tilde{h}}{\partial x_j},
-
-where :math:`\mathrm{Pr}_t` is the subgrid turbulent Prandtl number and
-:math:`\mu_t` is the modeled subgrid turbulent eddy viscosity from
-momentum closure.
-
-The resulting filtered and modeled turbulent energy equation for both
-RANS and LES is given by,
+where :math:`\mathrm{Pr}_t` is the turbulent Prandtl number and :math:`\mu_t` is 
+the modeled turbulent eddy viscosity from momentum closure.  
+The resulting filtered and modeled turbulent energy equation is given by,
 
 .. math::
    :label: mod-enth
@@ -362,7 +420,9 @@ is supported.
 where :math:`q_j` is again the energy flux vector, however, now in the
 following temperature form:
 
-.. math:: q_j = -\kappa \frac{\partial T}{\partial x_j}.
+.. math::
+
+   q_j = -\kappa \frac{\partial T}{\partial x_j}.
 
 Conservation of Species
 +++++++++++++++++++++++
@@ -375,7 +435,7 @@ turbulent transport is
 
    \int {{\partial \bar{\rho} \tilde{Y}_k} \over {\partial t}} {\rm d}V
    + \int \bar{\rho} \tilde{Y}_k \tilde{u}_j n_j {\rm d}S = 
-   - \int \tau_{Y_k u_j} n_j {\rm d}S
+   - \int \tau^{sgs}_{Y_k,j} n_j {\rm d}S
    - \int \overline{\rho Y_k \hat{u}_{j,k}} n_j {\rm d}S + 
    \int \overline{\dot{\omega}_k} {\rm d}V,
 
@@ -393,40 +453,26 @@ same value of mass diffusivity for all species,
    {{\partial Y_k} \over {\partial x_j}} .
 
 
-The turbulent diffusive flux vector :math:`\tau_{Y_k u_j}` is defined
+The subgrid scale turbulent diffusive flux vector :math:`\tau^{sgs}_{Y_kj}` is defined
 as
 
 .. math::
 
-   \tau_{Y_k u_j} \equiv \bar{\rho} \left( \widetilde{Y_k u_j} - 
+   \tau^{sgs}_{Y_k,j} \equiv \bar{\rho} \left( \widetilde{Y_k u_j} - 
    \tilde{Y_k} \tilde{u}_j \right).
 
-For RANS simulations, :math:`\tau_{Y_k u_j}` represents the turbulent
-species diffusive flux vector and is simplified to the form
-:math:`\tau_{Y_k u_j} = \overline{\rho Y_k'' u_j''}` by substitution of
-the Favre decomposition of each variable. It is then modeled as
+The closure for this model takes on its usual gradient diffusion hypothesis, i.e.,
 
 .. math::
 
-   \tau_{Y_k u_j} = \overline{\rho Y_k'' u_j''}
-   = - \frac{\mu_t}{\mathrm{Sc}_t} \frac{\partial \tilde{Y}_k}{\partial x_j},
+   \tau^{sgs}_{Y_k,j} = - \frac{\mu_t}{\mathrm{Sc}_t} \frac{\partial 
+     \tilde{Y}_k}{\partial x_j}, 
 
 where :math:`\mathrm{Sc}_t` is the turbulent Schmidt number for all
 species and :math:`\mu_t` is the modeled turbulent eddy viscosity from
-momentum closure. For LES, :math:`\tau_{Y_k u_j}` represents the subgrid
-turbulent species diffusive flux vector, and is modeled identically as
+momentum closure.
 
-.. math::
-
-   \tau_{Y_k u_j} = - \frac{\mu_t}{\mathrm{Sc}_t} \frac{\partial 
-   \tilde{Y}_k}{\partial x_j},
-
-where :math:`\mathrm{Sc}_t` is the subgrid turbulent Schmidt number for
-all species and :math:`\mu_t` is the subgrid modeled turbulent eddy
-viscosity from momentum closure.
-
-The Favre-filtered and modeled turbulent species transport equation for
-both RANS and LES then becomes
+The Favre-filtered and modeled turbulent species transport equation is,
 
 .. math::
    :label: mod-species
@@ -448,7 +494,9 @@ for each species in a mixture of :math:`n` species, only :math:`n-1`
 species equations need to be solved since the mass fractions sum to
 unity and
 
-.. math:: \tilde{Y}_n = 1 - \sum_{j \ne n}^{n} \tilde{Y}_j .
+.. math::
+
+   \tilde{Y}_n = 1 - \sum_{j \ne n}^{n} \tilde{Y}_j .
 
 Finally, the reaction rate source term is expected to be added based on
 an operator split approach wherebye the set of ODEs are integrated over
@@ -459,7 +507,9 @@ The following system of ODEs are numerically integrated over a time step
 :math:`\Delta t` for a fixed temperature and pressure starting from the
 initial values of gas phase mass fraction and density,
 
-.. math:: \dot{Y}_k = {{\dot{\omega}_k \left( Y_k \right) } \over \rho} \ .
+.. math::
+
+   \dot{Y}_k = {{\dot{\omega}_k \left( Y_k \right) } \over \rho} \ .
 
 The sources for the sub-integration are computed with the composition
 and density at the new time level which are used to approximate a mean
@@ -552,7 +602,9 @@ the Mentor 2003 model are then
 The model coefficients, :math:`\hat\sigma_k`, :math:`\hat\sigma_{\omega}`, :math:`\hat\gamma` and :math:`\hat\beta`
 must also be blended, which is represented by
 
-.. math:: \hat \phi = F\phi_1+ (1-F)\phi_2.
+.. math::
+
+   \hat \phi = F\phi_1+ (1-F)\phi_2.
 
 where :math:`\sigma_{k1} = 0.85`, :math:`\sigma_{k2} = 1.0`,
 :math:`\sigma_{\omega1} = 0.5`, :math:`\sigma_{\omega2} = 0.856`,
@@ -560,28 +612,40 @@ where :math:`\sigma_{k1} = 0.85`, :math:`\sigma_{k2} = 1.0`,
 :math:`\beta_1 = 0.075` and :math:`\beta_2 = 0.0828`. The blending
 function is given by
 
-.. math:: F = \tanh(arg_{1}^{4}),
+.. math::
+
+   F = \tanh(arg_{1}^{4}),
 
 where
 
-.. math:: arg_{1} = \min \left( \max \left( {\sqrt{k} \over \beta^* \omega y}, {500 \mu \over \bar{\rho} y^{2} \omega}\right), {4 \bar{\rho} \sigma_{\omega2} k \over CD_{k\omega} y^{2}} \right).
+.. math::
+
+   arg_{1} = \min \left( \max \left( {\sqrt{k} \over \beta^* \omega y}, {500 \mu \over \bar{\rho} y^{2} \omega}\right), {4 \bar{\rho} \sigma_{\omega2} k \over CD_{k\omega} y^{2}} \right).
 
 The final parameter is
 
-.. math:: CD_{k\omega} = \max \left( 2 \bar{\rho} \sigma_{\omega2} \frac{1}{\omega} {\partial k \over \partial x_{j}} {\partial \omega \over \partial x_{j}}, 10^{-10} \right).
+.. math::
+
+   CD_{k\omega} = \max \left( 2 \bar{\rho} \sigma_{\omega2} \frac{1}{\omega} {\partial k \over \partial x_{j}} {\partial \omega \over \partial x_{j}}, 10^{-10} \right).
 
 An important component of the SST model is the different expression used
 for the turbulent viscosity,
 
-.. math:: \mu_{t} = \frac {a_1 \bar{\rho} k} {\max\left( a_1 \omega, S F_2 \right) },
+.. math::
+
+   \mu_{t} = \frac {a_1 \bar{\rho} k} {\max\left( a_1 \omega, S F_2 \right) },
 
 where :math:`F_2` is another blending function given by
 
-.. math:: F_2 = \tanh(arg_{2}^{2}).
+.. math::
+
+   F_2 = \tanh(arg_{2}^{2}).
 
 The final parameter is
 
-.. math:: arg_{2} = \max\left({2 \sqrt{k} \over \beta^* \omega y}, {500 \mu \over \bar{\rho} \omega y^{2}} \right).
+.. math::
+
+   arg_{2} = \max\left({2 \sqrt{k} \over \beta^* \omega y}, {500 \mu \over \bar{\rho} \omega y^{2}} \right).
 
 Direct Eddy Simulation (DES) Formulation
 ++++++++++++++++++++++++++++++++++++++++
@@ -595,7 +659,9 @@ decribed by Tieszen, :cite:`Tieszen:2005`.
 The SST DES model simply changes the turbulent kinetic energy equation
 to include a new minimum scale that manipulates the dissipation term.
 
-.. math:: D_k = \frac{\rho k^{3/2}} {l_{DES}},
+.. math::
+
+   D_k = \frac{\rho k^{3/2}} {l_{DES}},
 
 where :math:`l_{DES}` is the min(\ :math:`l_{SST}, c_{DES}l_{DES}`). The
 constants are given by, :math:`l_{SST}=\frac{k^{1/2}}{\beta^* \omega}`
@@ -717,7 +783,7 @@ velocity. Mesh velocities and the mesh velocity spatial derivatives are
 provided by the mesh smoothing solve. Activating the external mesh
 deformation or mesh motion block will result in the velocity relative to
 mesh calculation in the advection terms. The line command for source
-term, “:math:`gcl`” must be activated for each equation for the volume
+term, ":math:`gcl`" must be activated for each equation for the volume
 integral to be included in the set of PDE solves. Finally, transfers are
 expected between the physics. For example, the solids solve is to
 provide mesh displacements to the mesh smoothing realm. The mesh
@@ -833,7 +899,6 @@ intensity leaving a diffuse surface in all directions is given by
                      + \epsilon \sigma T_w^4
                      + \left(1 - \epsilon - \tau \right) K \right] ,
 
-
 where :math:`\epsilon` is the total normal emissivity of the surface,
 :math:`\tau` is the transmissivity of the surface, :math:`T_w` is the
 temperature of the boundary, :math:`T_\infty` is the environmental
@@ -842,6 +907,8 @@ temperature and :math:`H` is the incident radiation, or irradiation
 Kirchoff’s Law that relates emissivity, transmissivity and reflectivity,
 :math:`\rho`, is
 
-.. math:: \rho + \tau + \epsilon = 1.
+.. math::
+
+   \rho + \tau + \epsilon = 1.
 
 where it is implied that :math:`\alpha = \epsilon`.

@@ -5,9 +5,11 @@
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 #include <element_promotion/MasterElementHO.h>
+#include <element_promotion/MasterElementUtils.h>
 #include <element_promotion/TensorProductQuadratureRule.h>
 #include <element_promotion/LagrangeBasis.h>
 
+#include <NaluEnv.h>
 #include <master_element/MasterElement.h>
 #include <FORTRAN_Proto.h>
 
@@ -22,10 +24,6 @@
 
 namespace sierra{
 namespace nalu{
-
-constexpr double small_value() {
-  return (1.0e6*std::numeric_limits<double>::min());
-}
 
 HigherOrderHexSCV::HigherOrderHexSCV(
   ElementDescription elem,
@@ -122,7 +120,7 @@ void HigherOrderHexSCV::determinant(
     const double det_j = jacobian_determinant( coords,  &geoShapeDerivs_[geo_grad_offset]);
     volume[ip] = ipWeights_[ip] * det_j;
 
-    if (det_j < small_value()) {
+    if (det_j < tiny_positive_value()) {
       *error = 1.0;
     }
   }
@@ -614,63 +612,61 @@ HigherOrderHexSCS::determinant(
   double *areav,
   double *error)
 {
-  //returns the normal vector x_t x x_u for constant s curves
-  //returns the normal vector x_u x x_s for constant t curves
-  //returns the normal vector x_s x x_t for constant u curves
-  *error = 0.0;
-  ThrowRequireMsg(nelem == 1, "determinant is executed one element at a time for HO");
-  int geometric_grad_offset = 0;
-  const int geometric_grad_inc = nDim_ * geometricNodesPerElement_;
-  int vector_offset = 0;
-  std::array<double,3> areaVector;
-  for (int ip = 0; ip < numIntPoints_; ++ip) {
+   constexpr int dim = 3;
+   int ipsPerDirection = numIntPoints_ / dim;
+   int deriv_increment = dim * nodesPerElement_;
 
-    //compute area vector for this ip
-    area_vector( ipInfo_[ip].direction,
-      coords,
-      &geometricShapeDerivs_[geometric_grad_offset],
-      areaVector );
+   int index = 0;
 
-    // apply quadrature weight and orientation (combined as weight)
-    for (int j = 0; j < nDim_; ++j) {
-      areav[vector_offset+j]  = ipInfo_[ip].weight * areaVector[j];
-    }
-    geometric_grad_offset += geometric_grad_inc;
-    vector_offset += nDim_;
-  }
+   //returns the normal vector x_s x x_t for constant u surfaces
+   for (int ip = 0; ip < ipsPerDirection; ++ip) {
+     ThrowAssert(ipInfo_[index].direction == Jacobian::U_DIRECTION);
+     area_vector<Jacobian::U_DIRECTION>(coords, &shapeDerivs_[deriv_increment * index], &areav[index*dim]);
+     ++index;
+   }
+
+   //returns the normal vector x_u x x_s for constant t surfaces
+   for (int ip = 0; ip < ipsPerDirection; ++ip) {
+     ThrowAssert(ipInfo_[index].direction == Jacobian::T_DIRECTION);
+     area_vector<Jacobian::T_DIRECTION>(coords, &shapeDerivs_[deriv_increment * index], &areav[index*dim]);
+     ++index;
+   }
+
+   //returns the normal vector x_t x x_u for constant s curves
+   for (int ip = 0; ip < ipsPerDirection; ++ip) {
+     ThrowAssert(ipInfo_[index].direction == Jacobian::S_DIRECTION);
+     area_vector<Jacobian::S_DIRECTION>(coords, &shapeDerivs_[deriv_increment * index], &areav[index*dim]);
+     ++index;
+   }
+
+   // Multiply with the integration point weighting
+   for (int ip = 0; ip < numIntPoints_; ++ip) {
+     double weight = ipInfo_[ip].weight;
+     areav[ip * dim + 0] *= weight;
+     areav[ip * dim + 1] *= weight;
+     areav[ip * dim + 2] *= weight;
+   }
+
+   *error = 0; // no error checking available
 }
 //--------------------------------------------------------------------------
-void
+template <Jacobian::Direction direction> void
 HigherOrderHexSCS::area_vector(
-  const Jacobian::Direction direction,
-  const double* POINTER_RESTRICT elemNodalCoords,
-  double* POINTER_RESTRICT shapeDeriv,
-  std::array<double,3>& areaVector) const
+  const double *POINTER_RESTRICT elemNodalCoords,
+  double *POINTER_RESTRICT shapeDeriv,
+  double *POINTER_RESTRICT areaVector) const
 {
+  constexpr int s1Component = (direction == Jacobian::T_DIRECTION) ?
+      Jacobian::S_DIRECTION : Jacobian::T_DIRECTION;
 
-  int s1Component; int s2Component;
-  switch (direction) {
-    case Jacobian::S_DIRECTION:
-      s1Component = static_cast<int>(Jacobian::T_DIRECTION);
-      s2Component = static_cast<int>(Jacobian::U_DIRECTION);
-      break;
-    case Jacobian::T_DIRECTION:
-      s1Component = static_cast<int>(Jacobian::S_DIRECTION);
-      s2Component = static_cast<int>(Jacobian::U_DIRECTION);
-      break;
-    case Jacobian::U_DIRECTION:
-      s1Component = static_cast<int>(Jacobian::T_DIRECTION);
-      s2Component = static_cast<int>(Jacobian::S_DIRECTION);
-      break;
-    default:
-      throw std::runtime_error("Not a valid direction for this element!");
-  }
+  constexpr int s2Component = (direction == Jacobian::U_DIRECTION) ?
+      Jacobian::S_DIRECTION : Jacobian::U_DIRECTION;
 
   // return the normal area vector given shape derivatives dnds OR dndt
   double dx_ds1 = 0.0; double dy_ds1 = 0.0; double dz_ds1 = 0.0;
   double dx_ds2 = 0.0; double dy_ds2 = 0.0; double dz_ds2 = 0.0;
 
-  for (int node = 0; node < geometricNodesPerElement_; ++node) {
+  for (int node = 0; node < nodesPerElement_; ++node) {
     const int vector_offset = nDim_ * node;
     const double xCoord = elemNodalCoords[vector_offset+0];
     const double yCoord = elemNodalCoords[vector_offset+1];
@@ -724,7 +720,7 @@ void HigherOrderHexSCS::grad_op(
       &gradop[grad_offset],
       &det_j[ip] );
 
-    if (det_j[ip] < small_value()) {
+    if (det_j[ip] < tiny_positive_value()) {
       *error = 1.0;
     }
 
@@ -760,7 +756,7 @@ void HigherOrderHexSCS::face_grad_op(
       &det_j[ip]
     );
 
-    if (det_j[ip] < small_value()) {
+    if (det_j[ip] < tiny_positive_value()) {
       *error = 1.0;
     }
 
@@ -813,7 +809,7 @@ HigherOrderHexSCS::gradient(
          + dy_ds1 * ( dz_ds2 * dx_ds3 - dx_ds2 * dz_ds3 )
          + dz_ds1 * ( dx_ds2 * dy_ds3 - dy_ds2 * dx_ds3 );
 
-  const double inv_det_j = (*det_j > 0.0) ? 1.0 / (*det_j) : 0.0;
+  const double inv_det_j = 1.0 / (*det_j);
 
   const double ds1_dx = inv_det_j*(dy_ds2 * dz_ds3 - dz_ds2 * dy_ds3);
   const double ds2_dx = inv_det_j*(dz_ds1 * dy_ds3 - dy_ds1 * dz_ds3);
@@ -885,7 +881,7 @@ HigherOrderHexSCS::gradient(
          + dy_ds1 * ( dz_ds2 * dx_ds3 - dx_ds2 * dz_ds3 )
          + dz_ds1 * ( dx_ds2 * dy_ds3 - dy_ds2 * dx_ds3 );
 
-  const double inv_det_j = (*det_j > 0.0) ? 1.0 / (*det_j) : 0.0;
+  const double inv_det_j = 1.0 / (*det_j);
 
   const double ds1_dx = inv_det_j*(dy_ds2 * dz_ds3 - dz_ds2 * dy_ds3);
   const double ds2_dx = inv_det_j*(dz_ds1 * dy_ds3 - dy_ds1 * dz_ds3);
@@ -928,6 +924,61 @@ void HigherOrderHexSCS::gij(
       deriv,
       coords, gupperij, glowerij);
 }
+//--------------------------------------------------------------------------
+double parametric_distance_hex(const double* x)
+{
+  std::array<double, 3> y;
+  for (int i=0; i<3; ++i) {
+    y[i] = std::fabs(x[i]);
+  }
+
+  double d = 0;
+  for (int i=0; i<3; ++i) {
+    if (d < y[i]) {
+      d = y[i];
+    }
+  }
+  return d;
+}
+//--------------------------------------------------------------------------
+double HigherOrderHexSCS::isInElement(
+    const double *elemNodalCoord,
+    const double *pointCoord,
+    double *isoParCoord)
+{
+  std::array<double, 3> initialGuess = {{ 0.0, 0.0, 0.0 }};
+  int maxIter = 50;
+  double tolerance = 1.0e-16;
+  double deltaLimit = 1.0e4;
+
+  bool converged = isoparameteric_coordinates_for_point_3d(
+      basis_,
+      elemNodalCoord,
+      pointCoord,
+      isoParCoord,
+      initialGuess,
+      maxIter,
+      tolerance,
+      deltaLimit
+  );
+  ThrowAssertMsg(parametric_distance_hex(isoParCoord) < 1.0 + 1.0e-6 || !converged,
+      "Inconsistency in parametric distance calculation");
+
+  return (converged) ? parametric_distance_hex(isoParCoord) : std::numeric_limits<double>::max();
+}
+//--------------------------------------------------------------------------
+void HigherOrderHexSCS::interpolatePoint(
+  const int &nComp,
+  const double *isoParCoord,
+  const double *field,
+  double *result)
+{
+  const auto& weights = basis_.point_interpolation_weights(isoParCoord);
+  for (int n = 0; n < nComp; ++n) {
+    result[n] = ddot(weights.data(), field + n * nodesPerElement_, nodesPerElement_);
+  }
+}
+
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
@@ -1162,7 +1213,7 @@ HigherOrderQuad2DSCV::determinant(
     volume[ip] = ipWeights_[ip] * det_j;
 
     //flag error
-    if (det_j < small_value()) {
+    if (det_j < tiny_positive_value()) {
       *error = 1.0;
     }
 
@@ -1224,6 +1275,52 @@ HigherOrderQuad2DSCS::HigherOrderQuad2DSCS(
 
   geometricShapeDerivs_ = shapeDerivs_;
   geometricNodesPerElement_ = nodesPerElement_;
+}
+
+double parametric_distance_quad(const double* x)
+{
+  double absXi  = std::abs(x[0]);
+  double absEta = std::abs(x[1]);
+  return (absXi > absEta) ? absXi : absEta;
+}
+
+//--------------------------------------------------------------------------
+double HigherOrderQuad2DSCS::isInElement(
+    const double *elemNodalCoord,
+    const double *pointCoord,
+    double *isoParCoord)
+{
+  std::array<double, 2> initialGuess = {{ 0.0, 0.0 }};
+  int maxIter = 50;
+  double tolerance = 1.0e-16;
+  double deltaLimit = 1.0e4;
+
+  bool converged = isoparameteric_coordinates_for_point_2d(
+      basis_,
+      elemNodalCoord,
+      pointCoord,
+      isoParCoord,
+      initialGuess,
+      maxIter,
+      tolerance,
+      deltaLimit
+  );
+  ThrowAssertMsg(parametric_distance_quad(isoParCoord) < 1.0 + 1.0e-6 || !converged,
+      "Inconsistency in parametric distance calculation");
+
+  return (converged) ? parametric_distance_quad(isoParCoord) : std::numeric_limits<double>::max();
+}
+//--------------------------------------------------------------------------
+void HigherOrderQuad2DSCS::interpolatePoint(
+  const int &nComp,
+  const double *isoParCoord,
+  const double *field,
+  double *result)
+{
+  const auto& weights = basis_.point_interpolation_weights(isoParCoord);
+  for (int n = 0; n < nComp; ++n) {
+    result[n] = ddot(weights.data(), field + n * nodesPerElement_, nodesPerElement_);
+  }
 }
 //--------------------------------------------------------------------------
 void
@@ -1481,24 +1578,31 @@ HigherOrderQuad2DSCS::determinant(
   *error = 0.0;
   ThrowRequireMsg(nelem == 1, "determinant is executed one element at a time for HO");
 
-  std::array<double, 2> areaVector;
-  int grad_offset = 0;
-  const int grad_inc = nDim_ * geometricNodesPerElement_;
+  constexpr int dim = 2;
+  int ipsPerDirection = numIntPoints_ / dim;
+  int deriv_increment = dim * nodesPerElement_;
 
-  int vector_offset = 0;
+  int index = 0;
+
+   //returns the normal vector x_u x x_s for constant t surfaces
+  for (int ip = 0; ip < ipsPerDirection; ++ip) {
+    ThrowAssert(ipInfo_[index].direction == Jacobian::T_DIRECTION);
+    area_vector<Jacobian::T_DIRECTION>(coords, &shapeDerivs_[deriv_increment * index], &areav[index*dim]);
+    ++index;
+  }
+
+  //returns the normal vector x_t x x_u for constant s curves
+  for (int ip = 0; ip < ipsPerDirection; ++ip) {
+    ThrowAssert(ipInfo_[index].direction == Jacobian::S_DIRECTION);
+    area_vector<Jacobian::S_DIRECTION>(coords, &shapeDerivs_[deriv_increment * index], &areav[index*dim]);
+    ++index;
+  }
+
+  // Multiply with the integration point weighting
   for (int ip = 0; ip < numIntPoints_; ++ip) {
-    //compute area vector for this ip
-    area_vector(ipInfo_[ip].direction,
-      coords,
-      &geometricShapeDerivs_[grad_offset],
-      areaVector );
-
-    // apply quadrature weight and orientation (combined as weight)
-    for (int j = 0; j < nDim_; ++j) {
-      areav[vector_offset+j]  = ipInfo_[ip].weight * areaVector[j];
-    }
-    grad_offset += grad_inc;
-    vector_offset += nDim_;
+    double weight = ipInfo_[ip].weight;
+    areav[ip * dim + 0] *= weight;
+    areav[ip * dim + 1] *= weight;
   }
 }
 //--------------------------------------------------------------------------
@@ -1531,7 +1635,7 @@ void HigherOrderQuad2DSCS::grad_op(
       &det_j[ip]
     );
 
-    if (det_j[ip] < small_value()) {
+    if (det_j[ip] < tiny_positive_value()) {
       *error = 1.0;
     }
     grad_offset += grad_inc;
@@ -1563,7 +1667,7 @@ HigherOrderQuad2DSCS::face_grad_op(
       &gradop[grad_offset],
       &det_j[ip] );
 
-    if (det_j[ip] < small_value()) {
+    if (det_j[ip] < tiny_positive_value()) {
       *error = 1.0;
     }
 
@@ -1599,7 +1703,7 @@ HigherOrderQuad2DSCS::gradient(
 
   *det_j = dx_ds1*dy_ds2 - dy_ds1*dx_ds2;
 
-  const double inv_det_j = (*det_j > 0.0) ? 1.0 / (*det_j) : 0.0;
+  const double inv_det_j = 1.0 / (*det_j);
 
   const double ds1_dx =  inv_det_j*dy_ds2;
   const double ds2_dx = -inv_det_j*dy_ds1;
@@ -1648,7 +1752,7 @@ HigherOrderQuad2DSCS::gradient(
 
   *det_j = dx_ds1*dy_ds2 - dy_ds1*dx_ds2;
 
-  const double inv_det_j = (*det_j > 0.0) ? 1.0 / (*det_j) : 0.0;
+  const double inv_det_j = 1.0 / (*det_j);
 
   const double ds1_dx =  inv_det_j*dy_ds2;
   const double ds2_dx = -inv_det_j*dy_ds1;
@@ -1690,27 +1794,17 @@ HigherOrderQuad2DSCS::opposingFace(
   return oppFace_[ordinal*ipsPerFace_+node];
 }
 //--------------------------------------------------------------------------
-void
+template <Jacobian::Direction direction> void
 HigherOrderQuad2DSCS::area_vector(
-  const Jacobian::Direction direction,
-  const double* POINTER_RESTRICT elemNodalCoords,
-  const double* POINTER_RESTRICT shapeDeriv,
-  std::array<double,2>& areaVector ) const
+  const double *POINTER_RESTRICT elemNodalCoords,
+  double *POINTER_RESTRICT shapeDeriv,
+  double *POINTER_RESTRICT normalVec ) const
 {
-  int s1Component;
-  switch (direction) {
-    case Jacobian::S_DIRECTION:
-      s1Component = static_cast<int>(Jacobian::T_DIRECTION);
-      break;
-    case Jacobian::T_DIRECTION:
-      s1Component = static_cast<int>(Jacobian::S_DIRECTION);
-      break;
-    default:
-      throw std::runtime_error("Not a valid direction for this element!");
-  }
+  constexpr int s1Component = (direction == Jacobian::S_DIRECTION) ?
+      Jacobian::T_DIRECTION : Jacobian::S_DIRECTION;
 
   double dxdr = 0.0;  double dydr = 0.0;
-  for (int node = 0; node < geometricNodesPerElement_; ++node) {
+  for (int node = 0; node < nodesPerElement_; ++node) {
     const int vector_offset = nDim_ * node;
     const double xCoord = elemNodalCoords[vector_offset+0];
     const double yCoord = elemNodalCoords[vector_offset+1];
@@ -1718,8 +1812,9 @@ HigherOrderQuad2DSCS::area_vector(
     dxdr += shapeDeriv[vector_offset+s1Component] * xCoord;
     dydr += shapeDeriv[vector_offset+s1Component] * yCoord;
   }
-  areaVector[0] =  dydr;
-  areaVector[1] = -dxdr;
+
+  normalVec[0] =  dydr;
+  normalVec[1] = -dxdr;
 }
 //--------------------------------------------------------------------------
 void HigherOrderQuad2DSCS::gij(

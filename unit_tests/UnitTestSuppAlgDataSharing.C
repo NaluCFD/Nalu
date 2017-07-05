@@ -127,12 +127,12 @@ public:
           sierra::nalu::ScratchViews prereqData(team, bulkData_, topo, dataNeededBySuppAlgs_);
 
           // See get_num_bytes_pre_req_data for padding
-          EXPECT_EQ(bytes_per_thread, prereqData.total_bytes() + 8 * sizeof(double));
+          EXPECT_EQ(static_cast<unsigned>(bytes_per_thread), prereqData.total_bytes() + 8 * sizeof(double));
 
           Kokkos::parallel_for(Kokkos::TeamThreadRange(team, bkt.size()), [&](const size_t& jj)
           {
              fill_pre_req_data(dataNeededBySuppAlgs_, bulkData_, topo,
-                               bkt[jj], nullptr, prereqData);
+                               bkt[jj], prereqData);
             
              for(SuppAlg* alg : suppAlgs_) {
                alg->elem_execute(topo, prereqData);

@@ -46,7 +46,7 @@ ABLForcingAlgorithm::ABLForcingAlgorithm(Realm& realm, const YAML::Node& node)
     USource_(0),
     TmeanCalc_(0),
     TSource_(0),
-    searchMethod_("stk_octree"),
+    searchMethod_("stk_kdtree"),
     searchTolerance_(1.0e-4),
     searchExpansionFactor_(1.5),
     fromTargetNames_(0),

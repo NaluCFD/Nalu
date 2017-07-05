@@ -20,7 +20,7 @@
 #include <LinearSystem.h>
 #include <ConstantAuxFunction.h>
 #include <Enums.h>
-#include <SupplementalAlgorithmBuilderLog.h>
+#include <KernelBuilderLog.h>
 
 // overset
 #include <overset/AssembleOversetSolverConstraintAlgorithm.h>
@@ -90,6 +90,14 @@ EquationSystem::~EquationSystem()
   std::vector<Algorithm *>::iterator iip;
   for( iip=propertyAlg_.begin(); iip!=propertyAlg_.end(); ++iip ) {
     delete *iip;
+  }
+
+  for (auto it = preIterAlgDriver_.begin(); it != preIterAlgDriver_.end(); ++it) {
+    delete *it;
+  }
+
+  for (auto it = postIterAlgDriver_.begin(); it != postIterAlgDriver_.end(); ++it) {
+    delete *it;
   }
 }
 
@@ -437,12 +445,12 @@ EquationSystem::create_peclet_function(
 void
 EquationSystem::report_invalid_supp_alg_names()
 {
-  bool noInvalidNamesFound = SuppAlgBuilderLog::self().print_invalid_supp_alg_names(
+  bool noInvalidNamesFound = KernelBuilderLog::self().print_invalid_kernel_names(
     eqnTypeName_, realm_.solutionOptions_->elemSrcTermsMap_
   );
 
   if (!noInvalidNamesFound) {
-    SuppAlgBuilderLog::self().print_valid_supp_alg_names(eqnTypeName_);
+    KernelBuilderLog::self().print_valid_kernel_names(eqnTypeName_);
 
     std::string msg =
       "Invalid supplemental algorithms name(s) for " + eqnTypeName_ + ". See log for details.";
@@ -454,7 +462,7 @@ EquationSystem::report_invalid_supp_alg_names()
 void
 EquationSystem::report_built_supp_alg_names()
 {
-  SuppAlgBuilderLog::self().print_built_supp_alg_names(eqnTypeName_);
+  KernelBuilderLog::self().print_built_kernel_names(eqnTypeName_);
 }
 //--------------------------------------------------------------------------
 bool
@@ -504,6 +512,21 @@ EquationSystem::nodal_src_is_requested()
   return (isrc != realm_.solutionOptions_->srcTermsMap_.end());
 }
 
+void
+EquationSystem::pre_iter_work()
+{
+  for (auto it: preIterAlgDriver_) {
+    it->execute();
+  }
+}
+
+void
+EquationSystem::post_iter_work()
+{
+  for (auto it: postIterAlgDriver_) {
+    it->execute();
+  }
+}
 
 } // namespace nalu
 } // namespace Sierra

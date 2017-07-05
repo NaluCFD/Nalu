@@ -73,6 +73,9 @@
 #include <user_functions/VariableDensityNonIsoTemperatureAuxFunction.h>
 #include <user_functions/VariableDensityNonIsoEnthalpySrcNodeSuppAlg.h>
 
+// overset
+#include <overset/UpdateOversetFringeAlgorithmDriver.h>
+
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
 
@@ -872,6 +875,13 @@ void
 EnthalpyEquationSystem::register_overset_bc()
 {
   create_constraint_algorithm(enthalpy_);
+
+  UpdateOversetFringeAlgorithmDriver* theAlg = new UpdateOversetFringeAlgorithmDriver(realm_);
+  // Perform fringe updates before all equation system solves
+  equationSystems_.preIterAlgDriver_.push_back(theAlg);
+
+  theAlg->fields_.push_back(
+    std::unique_ptr<OversetFieldData>(new OversetFieldData(enthalpy_,1,1)));
 }
 
 //--------------------------------------------------------------------------
@@ -1000,7 +1010,7 @@ EnthalpyEquationSystem::solve_and_update()
 //-------- post_iter_work --------------------------------------------------
 //--------------------------------------------------------------------------
 void
-EnthalpyEquationSystem::post_iter_work()
+EnthalpyEquationSystem::post_iter_work_dep()
 {
 
   // compute bc enthalpy based on converged species

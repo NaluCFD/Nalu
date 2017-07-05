@@ -42,6 +42,8 @@
 #include <SolutionOptions.h>
 #include <SolverAlgorithmDriver.h>
 
+#include <overset/UpdateOversetFringeAlgorithmDriver.h>
+
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
 
@@ -620,6 +622,13 @@ void
 MassFractionEquationSystem::register_overset_bc()
 {
   create_constraint_algorithm(currentMassFraction_);
+
+  UpdateOversetFringeAlgorithmDriver* theAlg = new UpdateOversetFringeAlgorithmDriver(realm_);
+  // Perform fringe updates before all equation system solves
+  equationSystems_.preIterAlgDriver_.push_back(theAlg);
+
+  theAlg->fields_.push_back(
+    std::unique_ptr<OversetFieldData>(new OversetFieldData(currentMassFraction_,1,1)));
 }
 
 //--------------------------------------------------------------------------

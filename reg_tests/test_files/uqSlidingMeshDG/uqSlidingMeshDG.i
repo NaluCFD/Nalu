@@ -23,6 +23,8 @@ linear_solvers:
     kspace: 50
     output_level: 0
     muelu_xml_file_name: ../../xml/milestone_aspect_ratio_smooth.xml
+    recompute_preconditioner: no 
+    reuse_preconditioner: no
 
 realms:
 

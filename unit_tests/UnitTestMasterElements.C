@@ -143,6 +143,8 @@ void check_scv_shifted_ips_are_nodal(
   const VectorFieldType& coordField,
   sierra::nalu::MasterElement& meSV)
 {
+  // check that the subcontrol volume ips are at the nodes for the shifted ips
+
   int dim = meSV.nDim_;
   std::vector<double> ws_coords(meSV.nodesPerElement_ * dim);
 
@@ -158,9 +160,67 @@ void check_scv_shifted_ips_are_nodal(
   for (unsigned j = 0; j < shiftedIps.size(); ++j) {
     EXPECT_NEAR(ws_coords[j], shiftedIps[j], tol);
   }
+}
+//-------------------------------------------------------------------------
+void check_exposed_face_shifted_ips_are_nodal(
+  const stk::mesh::Entity* node_rels,
+  const VectorFieldType& coordField,
+  sierra::nalu::MasterElement& meSS)
+{
+  // check that the subcontrol volume ips are at the nodes for the shifted ips
 
+  int dim = meSS.nDim_;
+  std::vector<std::vector<double>> coordList(meSS.nodesPerElement_);
+  for (int j = 0; j < meSS.nodesPerElement_; ++j) {
+    const double* coords = stk::mesh::field_data(coordField, node_rels[j]);
+    coordList.at(j).resize(dim);
+    for (int d = 0; d < dim; ++d) {
+      coordList.at(j).at(d) = coords[d];
+     }
+  }
 
+  const auto& shiftedIps = meSS.intgExpFaceShift_;
 
+  int index = 0;
+  std::vector<std::vector<double>> shiftedIpList(shiftedIps.size() / dim);
+  for (int j = 0; j < shiftedIps.size()/meSS.nDim_; ++j) {
+    shiftedIpList.at(j).resize(dim);
+    for (int d = 0; d < dim; ++d) {
+      shiftedIpList.at(j).at(d) = shiftedIps[index];
+      ++index;
+    }
+  }
+
+  auto is_same_vector = [] (const std::vector<double>& u,  const std::vector<double>& v, double tol) {
+    if (u.size() != v.size()) {
+      return false;
+    }
+
+    for (unsigned j = 0; j < u.size(); ++j) {
+      if (std::abs(u[j] - v[j]) > tol) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  std::vector<int> countSame(shiftedIpList.size(),0);
+  for (unsigned i = 0; i < shiftedIpList.size(); ++i) {
+    for (unsigned j = 0; j < coordList.size(); ++j) {
+      if (is_same_vector(coordList.at(j), shiftedIpList.at(i), tol)) {
+        ++countSame.at(i);
+      }
+    }
+  }
+
+  for (unsigned j = 0; j <countSame.size(); ++j) {
+    if (countSame.at(j) != 1 && dim == 3) {
+      std::cout << "iploc: " << shiftedIpList.at(j)[0] << ", "
+                             << shiftedIpList.at(j)[1] << ", "
+                             << shiftedIpList.at(j)[2] << std::endl;
+    }
+    EXPECT_EQ(countSame.at(j), 1);
+  }
 }
 //-------------------------------------------------------------------------
 void check_is_in_element(
@@ -168,6 +228,9 @@ void check_is_in_element(
   const VectorFieldType& coordField,
   sierra::nalu::MasterElement& me)
 {
+  // Check that the isoparametric coordinates are the same as the physical point
+  // for the reference element
+
   int dim = me.nDim_;
 
   std::mt19937 rng;
@@ -216,6 +279,9 @@ void check_is_not_in_element(
   const VectorFieldType& coordField,
   sierra::nalu::MasterElement& me)
 {
+  // check that we correctly report that a point outside of an element is
+  // outside of the element
+
   int dim = me.nDim_;
 
   // choose a point not in the element
@@ -241,6 +307,10 @@ void check_particle_interp(
   const VectorFieldType& coordField,
   sierra::nalu::MasterElement& me)
 {
+  // Check that, for a distorted element, we can find and interpolate values to
+  // a random located point inside of the element
+
+
   int dim = me.nDim_;
 
   std::mt19937 rng;
@@ -333,6 +403,11 @@ protected:
       check_scv_shifted_ips_are_nodal(bulk->begin_nodes(elem), coordinate_field(), *meSV);
     }
 
+    void exposed_face_shifted_ips_are_nodal(stk::topology topo) {
+      choose_topo(topo);
+      check_exposed_face_shifted_ips_are_nodal(bulk->begin_nodes(elem), coordinate_field(), *meSS);
+    }
+
     void is_in_element(stk::topology topo) {
       choose_topo(topo);
       check_is_in_element(bulk->begin_nodes(elem), coordinate_field(), *meSS);
@@ -364,11 +439,22 @@ protected:
     TEST_F(x, hex8##_##y)   { y(stk::topology::HEX_8); }     \
     TEST_F(x, hex27##_##y)  { y(stk::topology::HEX_27); }
 
-#define TEST_F_ALL_P1_TOPOS_NO_PYR(x, y) \
+#define TEST_F_ALL_TOPOS(x, y) \
+    TEST_F(x, tri##_##y)   { y(stk::topology::TRI_3_2D); }   \
+    TEST_F(x, quad4##_##y)  { y(stk::topology::QUAD_4_2D); } \
+    TEST_F(x, quad9##_##y)  { y(stk::topology::QUAD_9_2D); } \
+    TEST_F(x, tet##_##y)   { y(stk::topology::TET_4); }      \
+    TEST_F(x, pyr##_##y) { y(stk::topology::PYRAMID_5); }    \
+    TEST_F(x, wedge##_##y) { y(stk::topology::WEDGE_6); }    \
+    TEST_F(x, hex8##_##y)   { y(stk::topology::HEX_8); }     \
+    TEST_F(x, hex27##_##y)  { y(stk::topology::HEX_27); }
+
+#define TEST_F_ALL_P1_TOPOS(x, y) \
     TEST_F(x, tri##_##y)   { y(stk::topology::TRI_3_2D); }   \
     TEST_F(x, quad4##_##y)  { y(stk::topology::QUAD_4_2D); } \
     TEST_F(x, tet##_##y)   { y(stk::topology::TET_4); }      \
     TEST_F(x, wedge##_##y) { y(stk::topology::WEDGE_6); }    \
+    TEST_F(x, pyr##_##y) { y(stk::topology::PYRAMID_5); }    \
     TEST_F(x, hex8##_##y)   { y(stk::topology::HEX_8); }
 
 // Patch tests: pyramids fail
@@ -376,11 +462,14 @@ TEST_F_ALL_TOPOS_NO_PYR(MasterElement, scs_interpolation);
 TEST_F_ALL_TOPOS_NO_PYR(MasterElement, scs_derivative);
 TEST_F_ALL_TOPOS_NO_PYR(MasterElement, scv_interpolation);
 
-// Test needs to be modified substantially for HO.  Pyramid works.
-TEST_F_ALL_P1_TOPOS_NO_PYR(MasterElement, scv_shifted_ips_are_nodal);
-TEST_F(MasterElement, pyr_scv_shifted_ips_are_nodal) { scv_shifted_ips_are_nodal(stk::topology::PYRAMID_5); }
+// Pyramid fails since the reference element
+// since the constant Jacobian assumption is violated
+TEST_F_ALL_TOPOS_NO_PYR(MasterElement, is_in_element);
 
-// HO elems / pyramids are missing these functions
-TEST_F_ALL_P1_TOPOS_NO_PYR(MasterElement, is_not_in_element);
-TEST_F_ALL_P1_TOPOS_NO_PYR(MasterElement, is_in_element);
-TEST_F_ALL_P1_TOPOS_NO_PYR(MasterElement, particle_interpolation);
+// Pyramid works. Doesn't work for higher-order elements sicne they have more ips than nodes
+TEST_F_ALL_P1_TOPOS(MasterElement, scv_shifted_ips_are_nodal);
+TEST_F_ALL_P1_TOPOS(MasterElement, exposed_face_shifted_ips_are_nodal);
+
+// works fore everything
+TEST_F_ALL_TOPOS(MasterElement, is_not_in_element);
+TEST_F_ALL_TOPOS(MasterElement, particle_interpolation); // includes an isInElement call

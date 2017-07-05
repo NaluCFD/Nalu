@@ -6,7 +6,7 @@ symmetric Thurgood quadrature set. The discrete ordinates method is one
 in which discrete directions of the intensity are solved. The quadrature
 order, :math:`N`, defines the number of ordinate directions that are
 solved in a given iteration. In the case of non-scattering media, this
-results is a set of decoupled linear partial differentail equations. For
+results is a set of decoupled linear partial differential equations. For
 the symmetric Thurgood set, the number of ordinate directions is given
 by :math:`8N^2`. Values of N that are required for suitable accuracy
 starts at :math:`N=2` with more than adequate resolution at :math:`N=4`.
@@ -56,7 +56,7 @@ Note that the isotropic source term has not contributed to the VMS
 framework other than through the right hand source term.
 
 In general, gradients in the fine scale quantity are to be avoided.
-Therefore, the first term in the second line of Eq. [rteVMS1] is
+Therefore, the first term in the second line of Eq. :eq:`rteVMS1` is
 integrated by parts to yield the following form (note the boundary term,
 :math:`\int_\Gamma` that is shown below is frequently dropped)
 
@@ -80,7 +80,7 @@ equation,
       - {{\mu_a \sigma T^4} \over {\pi}} -\frac{\mu_s}{4\pi}G \right) = -\tau R(s)
 
 
-Substituting Eq. [fineScaleClosure] into Eq. [rteVMS2] yields,
+Substituting Eq. :eq:`fineScaleClosure` into Eq. :eq:`rteVMS2` yields,
 
 .. math::
    :label: rteVMS3
@@ -194,9 +194,9 @@ vertex-centered finite volume RTE stabilized equation,
 
 Given this equation, either an edge-based or element-based scheme can be
 used. For :math:`\alpha = 0` and :math:`\beta = 0`, it is noted that
-classic SUCV is obtained. The second line of Eq. [rteSUCVForm1]
+classic SUCV is obtained. The second line of Eq. :eq:`rteSUCVForm1`
 represents a boundary contribution. This is where the intensity boundary
-condition (Eq. [intBc]) is applied. As noted in the RTE equation
+condition (Eq. :eq:`intBc`) is applied. As noted in the RTE equation
 section, when :math:`s_j n_j` is greater than zero, the interpolated
 intensity based on the surface nodal values is used. However, when
 :math:`s_j n_j` is less than zero, the intensity boundary condition
@@ -264,3 +264,22 @@ In the above equation, the “advection operator”,
 :math:`I\left(s\right) s_i n_i {\rm d}S` is approximated as using the
 “upwind” intensity, e.g., if :math:`s_j n_j` is greater than zero, the
 left nodal value is used.
+
+
+Finite Element SUPG Form
+++++++++++++++++++++++++
+
+For the FEM, the test function is the standard weighting. Assuming a pure SUPG formulation, i.e.,
+:math:`\alpha = \beta = 0` in Equation :eq:`rteDivFormSub2`, thereby reducing the final form to the following:
+
+.. math::
+   :label: rteFemSUPG
+
+   \int \left( -I\left(s\right) s_i \frac{\partial w}{\partial x_i} + w[(\mu_a + \mu_s) I\left(s\right) 
+   - {{\mu_a \sigma T^4} \over {\pi}} -\frac{\mu_s}{4\pi}G ] \right) {\rm d}V  \nonumber \\
+   + \int_\Gamma w s_i I\left(s\right) n_i {\rm d}S \nonumber \\
+   +\int \tau s_j \frac{\partial w }{\partial x_j} R(s) {\rm d}V \nonumber \\
+
+The weak boundary condition is applied in a similar manner as with the CVFEM and EBVC form, however,
+using the appropriate FEM test test function definition. Finally, the form of :math:`\tau` follows the above
+CVFEM form.

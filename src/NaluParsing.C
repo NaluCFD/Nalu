@@ -17,6 +17,8 @@
 // yaml for parsing..
 #include <yaml-cpp/yaml.h>
 #include <string>
+#include <cctype>
+#include <algorithm>
 
 namespace sierra{
   namespace nalu{
@@ -384,6 +386,13 @@ namespace sierra{
       }
   }
     
+
+
+  bool case_insensitive_compare(std::string s1, std::string s2){
+    std::transform(s1.begin(), s1.end(), s1.begin(), ::tolower);
+    std::transform(s2.begin(), s2.end(), s2.begin(), ::tolower);
+    return (s1 == s2);
+  }
     
   } // namespace nalu
 } // namespace Sierra
@@ -953,6 +962,8 @@ namespace YAML {
       
       return true;
     }
+
+
   
 }
   

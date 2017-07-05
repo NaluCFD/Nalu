@@ -29,7 +29,6 @@ ConvectingTaylorVortexVelocityAuxFunction::ConvectingTaylorVortexVelocityAuxFunc
   // nothing to do
 }
 
-
 void
 ConvectingTaylorVortexVelocityAuxFunction::do_evaluate(
   const double *coords,

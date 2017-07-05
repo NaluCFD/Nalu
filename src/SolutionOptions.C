@@ -36,6 +36,7 @@ SolutionOptions::SolutionOptions()
     turbScDefault_(1.0),
     turbPrDefault_(1.0),
     nocDefault_(true),
+    shiftedGradOpDefault_(false),
     tanhFormDefault_("classic"),
     tanhTransDefault_(2.0),
     tanhWidthDefault_(4.0),
@@ -73,7 +74,6 @@ SolutionOptions::SolutionOptions()
     ncAlgCurrentNormal_(false),
     ncAlgPngPenalty_(true),
     cvfemShiftMdot_(false),
-    cvfemShiftPoisson_(false),
     cvfemReducedSensPoisson_(false),
     inputVariablesRestorationTime_(1.0e8),
     inputVariablesInterpolateInTime_(false),
@@ -127,24 +127,16 @@ SolutionOptions::load(const YAML::Node & y_node)
     // external mesh motion expected
     get_if_present(y_solution_options, "externally_provided_mesh_deformation", externalMeshDeformation_, externalMeshDeformation_);
 
-    // shifted CVFEM pressure poisson
+    // shift mdot for continuity (CVFEM)
     get_if_present(y_solution_options, "shift_cvfem_mdot", cvfemShiftMdot_, cvfemShiftMdot_);
-    get_if_present(y_solution_options, "shift_cvfem_poisson", cvfemShiftPoisson_, cvfemShiftPoisson_);
-    get_if_present(y_solution_options, "reduced_sens_cvfem_poisson", cvfemReducedSensPoisson_, cvfemReducedSensPoisson_);
-    if ( cvfemShiftMdot_ )
-      NaluEnv::self().naluOutputP0() << "Shifted CVFEM mass flow rate" << std::endl;
-    if ( cvfemShiftPoisson_ )
-      NaluEnv::self().naluOutputP0() << "Shifted CVFEM Poisson" << std::endl;
-    if ( cvfemReducedSensPoisson_)
-      NaluEnv::self().naluOutputP0() << "Reduced sensitivities CVFEM Poisson" << std::endl;
 
-    // sanity checks; if user asked for shifted Poisson, then user will have reduced sensitivities
-    if ( cvfemShiftPoisson_ ) {
-      if ( !cvfemReducedSensPoisson_) {
-        NaluEnv::self().naluOutputP0() << "Reduced sensitivities CVFEM Poisson will be set" << std::endl;
-        cvfemReducedSensPoisson_ = true;
-      }
+    // DEPRECATED shifted CVFEM pressure poisson;
+    if ( y_solution_options["shift_cvfem_poisson"] ) {
+      throw std::runtime_error("shift_cvfem_poisson line command is deprecated to the generalized solution options block command, shifted_gradient_operator");
     }
+
+    // Reduce sensitivities for CVFEM PPE: M delta_p = b - A p; M has quadrature at edge midpoints of the element
+    get_if_present(y_solution_options, "reduced_sens_cvfem_poisson", cvfemReducedSensPoisson_, cvfemReducedSensPoisson_);
 
     // check for consolidated solver alg (AssembleSolver)
     get_if_present(y_solution_options, "use_consolidated_solver_algorithm", useConsolidatedSolverAlg_, useConsolidatedSolverAlg_);
@@ -160,11 +152,25 @@ SolutionOptions::load(const YAML::Node & y_node)
     std::string defaultTurbModel = "laminar";
     get_if_present(y_solution_options,
         "turbulence_model", specifiedTurbModel, defaultTurbModel);
+
+    bool matchedTurbulenceModel = false;
     for ( int k=0; k < TurbulenceModel_END; ++k ) {
-      if ( specifiedTurbModel == TurbulenceModelNames[k] ) {
+      if (case_insensitive_compare(specifiedTurbModel, TurbulenceModelNames[k])) {
         turbulenceModel_ = TurbulenceModel(k);
+        matchedTurbulenceModel = true;
         break;
       }
+    }
+
+    if (!matchedTurbulenceModel) {
+      std::string msg = "Turbulence model `" + specifiedTurbModel +
+          "' not implemented.\n  Available turbulence models are ";
+
+     for ( int k=0; k < TurbulenceModel_END; ++k ) {
+       msg += "`" + TurbulenceModelNames[k] + "'";
+       if ( k != TurbulenceModel_END-1) { msg += ", "; }
+     }
+      throw std::runtime_error(msg);
     }
     if ( turbulenceModel_ != LAMINAR ) {
       isTurbulent_ = true;
@@ -237,6 +243,9 @@ SolutionOptions::load(const YAML::Node & y_node)
         }
         else if (expect_map( y_option, "noc_correction", optional)) {
           y_option["noc_correction"] >> nocMap_ ;
+        }
+        else if (expect_map( y_option, "shifted_gradient_operator", optional)) {
+          y_option["shifted_gradient_operator"] >> shiftedGradOpMap_ ;
         }
         else if (expect_map( y_option, "input_variables_from_file", optional)) {
           y_option["input_variables_from_file"] >> inputVarFromFileMap_ ;
@@ -380,12 +389,22 @@ SolutionOptions::load(const YAML::Node & y_node)
             }
           }
           
-          // look for centroid coordinates; optional
+          // look for centroid coordinates; optional, provide a default
           std::vector<double> cCoordsVec(3,0.0); 
           const YAML::Node coordsVecNode = y_option["centroid_coordinates"];
           if ( coordsVecNode ) {
             for ( size_t i = 0; i < coordsVecNode.size(); ++i )
               cCoordsVec[i] = coordsVecNode[i].as<double>();
+          }
+          
+          // check for calculation of centroid
+          bool computeCentroid = false;
+          get_if_present(y_option, "compute_centroid", computeCentroid, computeCentroid);
+          // user specified prevails
+          if ( coordsVecNode && computeCentroid ) {
+            NaluEnv::self().naluOutputP0() 
+              << "centroid_coordinates and compute_centroid both active, user-specified centroid will prevail" << std::endl;
+            computeCentroid = false;
           }
 
           // look for unit vector; provide default
@@ -400,7 +419,7 @@ SolutionOptions::load(const YAML::Node & y_node)
             unitVec[2] = 1.0;
           }
           
-          MeshMotionInfo *meshInfo = new MeshMotionInfo(meshMotionBlock, omega, cCoordsVec, unitVec);
+          MeshMotionInfo *meshInfo = new MeshMotionInfo(meshMotionBlock, omega, cCoordsVec, unitVec, computeCentroid);
           // set the map
           meshMotionInfoMap_[motionName] = meshInfo;
         }
@@ -533,6 +552,34 @@ SolutionOptions::load(const YAML::Node & y_node)
    NaluEnv::self().naluOutputP0() << "Turbulence Model is: "
        << TurbulenceModelNames[turbulenceModel_] << " " << isTurbulent_ <<std::endl;
 
+   // over view PPE specifications
+   NaluEnv::self().naluOutputP0() << std::endl;
+   NaluEnv::self().naluOutputP0() << "PPE review:   " << std::endl;
+   NaluEnv::self().naluOutputP0() << "===========================" << std::endl;
+
+   if ( cvfemShiftMdot_ )
+     NaluEnv::self().naluOutputP0() << "Shifted CVFEM mass flow rate" << std::endl;
+   if ( cvfemReducedSensPoisson_)
+     NaluEnv::self().naluOutputP0() << "Reduced sensitivities CVFEM Poisson" << std::endl;
+
+   // sanity checks; if user asked for shifted Poisson, then user will have reduced sensitivities
+   if ( get_shifted_grad_op("pressure") ) {
+     if ( !cvfemReducedSensPoisson_) {
+       NaluEnv::self().naluOutputP0() << "Reduced sensitivities CVFEM Poisson will be set since reduced grad_op is requested" << std::endl;
+       cvfemReducedSensPoisson_ = true;
+     }
+   }
+   
+   // overview gradient operator for CVFEM
+   if ( shiftedGradOpMap_.size() > 0 ) {
+     NaluEnv::self().naluOutputP0() << std::endl;
+     NaluEnv::self().naluOutputP0() << "CVFEM gradient operator review:   " << std::endl;
+     NaluEnv::self().naluOutputP0() << "===========================" << std::endl;
+     for ( const auto& shiftIt : shiftedGradOpMap_ ) {
+       NaluEnv::self().naluOutputP0() << " dof: " << shiftIt.first
+                                      << " shifted: " << (shiftIt.second ? "yes" : "no") << std::endl; 
+     }
+   }
 }
 
 //--------------------------------------------------------------------------
@@ -564,6 +611,75 @@ SolutionOptions::initialize_turbulence_constants()
   turbModelConstantMap_[TM_CbTwo] = 0.35;
   turbModelConstantMap_[TM_SDRWallFactor] = 1.0;
 }
- 
+
+
+double
+SolutionOptions::get_alpha_factor(const std::string& dofName) const
+{
+  double factor = alphaDefault_;
+  auto iter = alphaMap_.find(dofName);
+
+  if (iter != alphaMap_.end())
+    factor = iter->second;
+
+  return factor;
+}
+
+double
+SolutionOptions::get_alpha_upw_factor(const std::string& dofName) const
+{
+  double factor = alphaUpwDefault_;
+  auto iter = alphaUpwMap_.find(dofName);
+
+  if (iter != alphaUpwMap_.end())
+    factor = iter->second;
+
+  return factor;
+}
+
+double
+SolutionOptions::get_upw_factor(const std::string& dofName) const
+{
+  double factor = upwDefault_;
+  auto iter = upwMap_.find(dofName);
+
+  if (iter != upwMap_.end())
+    factor = iter->second;
+
+  return factor;
+}
+
+bool
+SolutionOptions::primitive_uses_limiter(const std::string& dofName) const
+{
+  bool usesIt = false;
+  auto iter = limiterMap_.find(dofName);
+  if (iter != limiterMap_.end())
+    usesIt = iter->second;
+
+  return usesIt;
+}
+
+bool
+SolutionOptions::get_shifted_grad_op(const std::string& dofName) const
+{
+  bool factor = shiftedGradOpDefault_;
+  auto iter = shiftedGradOpMap_.find(dofName);
+
+  if (iter != shiftedGradOpMap_.end())
+    factor = iter->second;
+
+  return factor;
+}
+
+std::vector<double>
+SolutionOptions::get_gravity_vector(const unsigned nDim) const
+{
+  if ( nDim != gravity_.size() )
+    throw std::runtime_error("SolutionOptions::get_gravity_vector():Error Expected size does not equaly nDim");
+  else
+    return gravity_;
+}
+
 } // namespace nalu
 } // namespace Sierra

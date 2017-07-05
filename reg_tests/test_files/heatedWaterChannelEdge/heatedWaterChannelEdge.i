@@ -183,7 +183,7 @@ realms:
 
       output_frequency: 5
 
-      search_method: stk_octree
+      search_method: stk_kdtree
       search_tolerance: 1.0e-3
       search_expansion_factor: 2.0
 

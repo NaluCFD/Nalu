@@ -452,6 +452,9 @@ void operator >> (const YAML::Node& node, std::map<std::string,std::string>& map
 void operator >> (const YAML::Node& node, std::map<std::string,std::vector<std::string> >& mapName);
 void operator >> (const YAML::Node& node, std::map<std::string,std::vector<double> >& mapName);
 
+bool case_insensitive_compare(std::string s1, std::string s2);
+
+
 } // namespace nalu
 } // namespace Sierra
 

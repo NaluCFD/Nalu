@@ -42,6 +42,39 @@ public:
 
   void load(const YAML::Node & node);
   void initialize_turbulence_constants();
+
+  inline bool has_mesh_motion() const { return meshMotion_; }
+
+  inline bool has_mesh_deformation() const
+  {
+    return externalMeshDeformation_ | meshDeformation_;
+  }
+
+  inline bool does_mesh_move() const
+  {
+    return has_mesh_motion() | has_mesh_deformation();
+  }
+
+  inline std::string get_coordinates_name() const
+  {
+    return does_mesh_move() ? "current_coordinates" : "coordinates";
+  }
+
+  inline double get_mdot_interp() const
+  { return mdotInterpRhoUTogether_ ? 1.0 : 0.0; }
+
+  double get_alpha_factor(const std::string&) const;
+
+  double get_alpha_upw_factor(const std::string&) const;
+
+  double get_upw_factor(const std::string&) const;
+
+  bool primitive_uses_limiter(const std::string&) const;
+
+  bool get_shifted_grad_op(const std::string&) const;
+
+  std::vector<double> get_gravity_vector(const unsigned nDim) const;
+
   double hybridDefault_;
   double alphaDefault_;
   double alphaUpwDefault_;
@@ -50,6 +83,7 @@ public:
   double turbScDefault_;
   double turbPrDefault_;
   bool nocDefault_;
+  bool shiftedGradOpDefault_;
   std::string tanhFormDefault_;
   double tanhTransDefault_;
   double tanhWidthDefault_;
@@ -88,7 +122,6 @@ public:
   bool ncAlgCurrentNormal_;
   bool ncAlgPngPenalty_;
   bool cvfemShiftMdot_;
-  bool cvfemShiftPoisson_;
   bool cvfemReducedSensPoisson_;
   double inputVariablesRestorationTime_;
   bool inputVariablesInterpolateInTime_;
@@ -133,7 +166,10 @@ public:
 
   // non-orthogonal correction
   std::map<std::string, bool> nocMap_;
-
+  
+  // shifting of Laplace operator for the element-based grad_op
+  std::map<std::string, bool> shiftedGradOpMap_;
+  
   // read any fields from input files
   std::map<std::string, std::string> inputVarFromFileMap_;
 

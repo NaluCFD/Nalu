@@ -69,6 +69,15 @@ struct AlgTraitsQuad4_2D {
   static constexpr stk::topology::topology_t topo_ = stk::topology::QUAD_4_2D;
 };
 
+struct AlgTraitsQuad9_2D {
+  static constexpr int nDim_ = 2;
+  static constexpr int nodesPerElement_ = 9;
+  static constexpr int numScsIp_ = 24;
+  static constexpr int numScvIp_ = 36;
+  static constexpr int numGp_ = 9; // for FEM (not supported)
+  static constexpr stk::topology::topology_t topo_ = stk::topology::QUAD_9_2D;
+};
+
 struct AlgTraitsTri3_2D {
   static constexpr int nDim_ = 2;
   static constexpr int nodesPerElement_ = 3;

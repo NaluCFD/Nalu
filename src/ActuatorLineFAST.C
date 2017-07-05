@@ -95,7 +95,7 @@ ActuatorLineFAST::ActuatorLineFAST(
   const YAML::Node &node)
   : Actuator(realm, node),
     realm_(realm),
-    searchMethod_(stk::search::BOOST_RTREE),
+    searchMethod_(stk::search::STK_KDTREE),
     actuatorLineGhosting_(NULL),
     needToGhostCount_(0)
 {
@@ -177,12 +177,10 @@ ActuatorLineFAST::load(
     // determine search method for this pair
     if ( searchMethodName == "boost_rtree" )
       searchMethod_ = stk::search::BOOST_RTREE;
-    else if ( searchMethodName == "stk_octree" )
-      searchMethod_ = stk::search::OCTREE;
     else if ( searchMethodName == "stk_kdtree" )
       searchMethod_ = stk::search::KDTREE;
     else
-      NaluEnv::self().naluOutputP0() << "ActuatorLineFAST::search method not declared; will use BOOST_RTREE" << std::endl;
+      NaluEnv::self().naluOutputP0() << "ActuatorLineFAST::search method not declared; will use STK_KDTREE" << std::endl;
 
     // extract the set of from target names; each spec is homogeneous in this respect
     const YAML::Node searchTargets = y_actuatorLine["search_target_part"];

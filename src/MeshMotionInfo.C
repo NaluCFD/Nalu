@@ -26,13 +26,16 @@ namespace nalu{
 //--------------------------------------------------------------------------
 MeshMotionInfo::MeshMotionInfo(
   std::vector<std::string> meshMotionBlock, 
-  double omega, 
+  const double omega, 
   std::vector<double> centroid,
-  std::vector<double> unitVec)
+  std::vector<double> unitVec,
+  const bool computeCentroid)
   : meshMotionBlock_(meshMotionBlock), 
     omega_(omega), 
     centroid_(centroid),
-    unitVec_(unitVec)
+    unitVec_(unitVec),
+    computeCentroid_(computeCentroid),
+    computeCentroidCompleted_(false)
 {
   // nothing to do
 }

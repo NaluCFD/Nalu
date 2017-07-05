@@ -8,6 +8,7 @@ Nalu Documentation
 
    Nalu Homepage <http://nalucfd.org>
    Nalu Github Homepage <https://github.com/nalucfd/nalu>
+   Nalu Test Results <http://my.cdash.org/index.php?project=Nalu>
    Building Nalu Using Spack <source/build_spack.rst>
    Building Nalu Manually <source/build_manually.rst>
    Using Nalu <source/using.rst>

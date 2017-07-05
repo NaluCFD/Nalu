@@ -123,7 +123,7 @@ dimensionless wall roughness parameter and is described by,
 
 
 In Nalu, :math:`\kappa` is set to the value of 0.42 while the value of
-:math:`E` is set to 9.8 for smooth walls White suggests values of :math:`\kappa=0.41` and :math:`E=7.768.`. The viscous sublayer is
+:math:`E` is set to 9.8 for smooth walls (White suggests values of :math:`\kappa=0.41` and :math:`E=7.768.`). The viscous sublayer is
 assumed to extend to a value of :math:`y^+` = 11.63.
 
 The wall shear stress, :math:`\tau_w`, can be expressed as,
@@ -250,6 +250,188 @@ Species
 If a value is specified for each quantity within the wall boundary
 condition block, a Dirichlet condition is applied. If no values are
 specified, a zero flux condition is applied.
+
+Atmospheric Boundary Layer Surface Conditions
++++++++++++++++++++++++++++++++++++++++++++++
+
+Monin-Obukhov Theory
+~~~~~~~~~~~~~~~~~~~~
+
+Consider atmospheric flow over a flat but non-smooth surface; the
+coordinate system convention is that flow is along the :math:`x`-axis, while
+the :math:`z`-axis is oriented normal to the surface.  The surface layer is
+the relatively thin layer near the surface where strong wind and
+temperature gradients exist.  Turbulence within this layer can be
+generated through mechanisms of both shear and thermal convection; the
+relative contributions of these two mechanisms is determined by the
+stability state of the atmosphere.  The stability state is
+characterized by the Monin-Obukhov length:
+
+.. math::
+
+   L = - \frac{u_\tau^3 \theta_{ref}}{\kappa g (\overline{w^\prime
+     \theta^\prime})_s};
+
+:math:`u_\tau` is the friction velocity, defined as the
+square root of the magnitude of the Reynolds shear stress at
+the surface, or
+
+.. math::
+
+   u_\tau = \left( \overline{w^\prime u^\prime}^2 + \overline{w^\prime
+   u^\prime}^2 \right)^{1/4} = \sqrt{\frac{\tau_s}{\rho_s}}
+
+:math:`\theta_{ref}` is a reference (virtual potential) temperature associated with the air
+within the surface layer; for example, the average temperature within
+the surface layer.  :math:`\kappa \approx 0.41` is the von Karman constant,
+and :math:`g` is the acceleration of gravity.  :math:`\overline{w^\prime \theta^\prime}_s`
+is the surface turbulent temperature flux.  Both the
+turbulent shear stress and turbulent temperature flux are approximately
+constant within the surface layer.
+
+Applying a gradient diffusion model for the turbulent temperature flux leads to:
+
+.. math::
+
+   \overline{w^\prime \theta^\prime}_s = -k_T \frac{\partial \theta}{\partial z}
+
+The sign of :math:`L` is then connected to the sign of the temperature
+gradient within the surface layer.  Three regimes are delineated:
+
+* :math:`\frac{1}{L} > 0, \quad \frac{\partial \theta}{\partial z} > 0`, stable stratification
+* :math:`\frac{1}{L} = 0, \quad \frac{\partial \theta}{\partial z} = 0`, neutral stratification
+* :math:`\frac{1}{L} < 0, \quad \frac{\partial \theta}{\partial z} < 0`, unstable stratification
+
+Monin-Obukhov theory postulates the following similarity laws for mean
+velocity parallel to the surface and temperature,
+
+.. math::
+   :label: dudz
+
+   \frac{\kappa z}{u_\tau}\frac{\partial \overline{u}_{||}}{\partial z} =
+   \phi_m\left(\frac{z}{L}\right),
+
+.. math::
+   :label: dTdz
+
+   \frac{\kappa z u_\tau}{\overline{w^\prime \theta^\prime}_s}
+   \frac{\partial \overline{\theta}}{\partial z} = \phi_h\left(\frac{z}{L}\right),
+
+where the forms of the non-dimensional functions :math:`\phi_m` and :math:`\phi_h` are determined
+from empirical observations. Analytical functions have been fit to the
+data; these are not given here, rather, we present the integrated form
+of (:eq:`dudz`) and (:eq:`dTdz`), since these are the forms required
+by the code implementation.
+
+For neutral stratification, :math:`\phi_m = 1` and we recover the
+logarithmic profile for a "fully rough" surface,
+
+.. math::
+   :label: vel_neutral
+
+   \overline{u}_{||}(z) = \frac{u_\tau}{\kappa}\ln\frac{z}{z_0},
+
+where :math:`z_0` is the characteristic roughness height.  Note that viscous
+scaling involving surface viscosity and density properties is not
+required with this form of the logarithmic profile, since the
+roughness height is large enough to eliminate the presence of a
+laminar sublayer and buffer layer.
+
+For stable stratification, the surface layer profiles take the form
+
+.. math::
+   :label: vel_stable
+
+   \overline{u}_{||}(z) = \frac{u_\tau}{\kappa}\left(\ln\frac{z}{z_0} +
+   \gamma_m\frac{z}{L}\right)
+
+.. math::
+   :label: temp_stable
+
+   \overline{\theta}(z) = \overline{\theta}(z_0) +
+   \frac{\theta_*}{\kappa} \left(\alpha_h\ln\frac{z}{z_0} +
+   \gamma_h\frac{z}{L}\right)
+
+:math:`\theta_*` is calculated from the temperature flux and friction velocity as
+:math:`\theta_* = -\frac{\overline{w^\prime \theta^\prime}_s}{u_\tau}`, and
+:math:`\gamma_m`, :math:`\alpha_h`, and :math:`\gamma_h` are constants specified below.
+
+For unstable stratification, the surface layer profiles take the form
+
+.. math::
+   :label: vel_unstable
+
+   \overline{u}_{||}(z) = \frac{u_\tau}{\kappa}\left(\ln\frac{z}{z_0} -
+   \psi_m\left(\frac{z}{L}\right)\right)
+
+.. math::
+   :label: temp_unstable
+
+   \overline{\theta}(z) = \overline{\theta}(z_0) +
+   \alpha_h\frac{\theta_*}{\kappa}\left(\ln\frac{z}{z_0} -
+   \psi_h\left(\frac{z}{L}\right)\right)
+
+where
+
+.. math::
+   :label: psi_m
+
+   \psi_m\left(\frac{z}{L}\right) = 2\ln\frac{1 + x}{2} + \ln\frac{1 + x^2}{2} - 2\tan^{-1}x +
+   \frac{\pi}{2}, \quad x = \left(1 - \beta_m\frac{z}{L}\right)^{1/4},
+
+.. math::
+   :label: psi_h
+
+   \psi_h\left(\frac{z}{L}\right) = \ln\frac{1 + y}{2}, \quad y = \left(1 -
+   \beta_h\frac{z}{L}\right)^{1/2}.
+
+
+The constants used in (:eq:`vel_stable`) -- (:eq:`psi_h`) are :cite:`Dyer:74`
+
+.. math::
+
+   \kappa = 0.41,~~\alpha_h =
+   1,~~\beta_m=16,~~\beta_h=16,~~\gamma_m=5.0,~~\gamma_h=5.0.
+
+
+ABL Wall Function
+~~~~~~~~~~~~~~~~~
+
+The equations from the preceeding section can be used to formulate a
+wall function boundary condition for simulation of atmospheric
+boundary layers.  The user-specified inputs to this boundary condition
+are: roughness length, :math:`z_0`, and surface heat flux, :math:`q_s =
+\rho C_p \overline{w^\prime \theta^\prime})_s`.  The surface layer profile
+model is evaluated for each surface boundary flux integration point;
+the wall-normal distance of the "first point off the wall" is taken
+to be one fourth of the length of the nearest edge intersecting the
+boundary face.  The boundary condition is specified weakly through the
+imposition of a surface shear stress and surface heat flux.
+
+The procedure for applying the boundary condition is as follows.
+
+1. Determine the stratification state of the boundary layer by
+calculating the sign of the Monin-Obukhov length scale.
+
+2. Solve the appropriate profile equation, either
+(:eq:`vel_neutral`), (:eq`vel_stable`), or (:eq:`vel_unstable`),
+for the friction velocity :math:`u_\tau`.  For the neutral case, :math:`u*` can be
+solved for directly.  For the stable and unstable cases, :math:`u*` must
+be solved for iteratively because :math:`L` appears in these equations and
+:math:`L` depends on :math:`u_\tau`.
+
+3. The surface shear stress is calculated as :math:`\tau_s = \rho_s u_\tau^2`.
+For calculating left-hand-side Jacobian entries, the form :math:`\tau_s =
+\lambda_s u_{||}` is useful. This form can be found by algebraic
+manipulation of the relevant velocity profile equation.
+
+4. The user specified surface heat flux is applied to the enthalpy
+equation.  Evaluation of surface temperature is not required for
+the boundary condition specification.  However, if surface
+temperature is required for evaluation of other quantities within
+the code, the appropriate surface layer temperature profile should
+be used, either (:eq:`temp_stable`) or (:eq:`temp_unstable`).
+
 
 Turbulent Kinetic Energy, :math:`k_{sgs}` LES model
 +++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -516,107 +698,6 @@ have been simulated in this code base. Tow forms of parallel searches
 exist and are supported (one through the Boost TPL and another through
 the STK Search module).
 
-Contact Boundary Condition
-++++++++++++++++++++++++++
-
-Parallel sliding mesh algorithm based on extension of
-Blades, :cite:`Blades:2004`, to the low Mach application
-space. This capability is available in 2D and 3D. It has been designed
-for use in the EBVC approach, although CVFEM can also be used. In this
-formulation, the exposed surface is extruded into the opposing block’s
-mesh. For two dimensional meshes, the edge face (from either a tri or
-quad mesh) is extruded as a quad mesh into the opposing block. For three
-dimensional meshes, the quad face is extruded as a hex element.
-
-Conceptually, the algorithm works as follows: First, the dual mesh is
-defined by identifying the ordinal of the exposed surface from its
-owning element. Mappings between each ordinal and the extruded element
-are made to determine how the extruded element is used to close the halo
-edge area vector, edge area vector already defined on the exposed side’s
-set of edges and the dual volume at the exposed side nodes.
-
-.. _quad-halo:
-
-.. figure:: images/quadel.pdf
-   :alt: Quadraleteral mapping
-   :width: 500px
-   :align: center
-
-   Quadraleteral mapping
-
-In Figure :numref:`quad-halo`, consider that the side that is comprised by node
-2 and node 3 represents the exposed surface in question. This exposed
-surface, as defined by the Exodus II standard, is ordinal number two.
-Conceptually, the extruded element is obtained by orientating ordinal
-one of this element to lie on top of the exposed ordinal in question.
-Data structures are defined that map the exposed set of nodes to the
-extruded nearest node and extruded opposing nodes. Moreover, the mapping
-of subcontrol area vectors within the extruded element are provided.
-
-In this simple quad example, it is noted that the mappings for all
-ordinals for the set of boundary element ordinals is the same.
-Specifically, the mapping between nearest node 2 and 3 for face ordinal
-2 for the matching face nodes of the extruded element are 2 and 1.
-Moreover, the mapping between nearest nodel 2 and 3 for face ordinal 2
-for the matching opposing face nodes of the extruded element are 3 and
-4. These node mappings, along with the extruded distance allows
-definition of the nodal coordinates of the extruded element. The halo
-edge area vector for face nodes 2 and 3 on ordinal 2 are subcontrol
-surface 2 and 4 while the edge on the exposed face maps to subcontrol
-surface 1 of the extruded element. Finally, the alignment of the
-subcontrol surface area vector and ordinal edge set is required. In the
-case of ordinal 2, as is the case for all ordinals, the natural edge
-definition (points from node 2 to node 3) is opposite of the subcontrol
-surface area vector definition (the dual area vector at the sub control
-surface always points from local node low to local node high, e.g, node
-1->2.
-
-.. _hex-halo:
-
-.. figure:: images/hex.pdf
-   :alt: Hexahedron mapping
-   :width: 500px
-   :align: center
-
-   Hexahedron mapping
-
-The same procedure is repeated for the extruded hex element,
-Figure :numref:`hex-halo`. In this case, each three dimensional quad face on the
-exposed contact surface is extruded into a hex element. For the hex
-case, the common face ordinal 1 is matched with each of the possible six
-exposed surfaces on the exposed face. Again, mappings are defined that
-allow for the assembly of dual nodal volume, halo edge area vector,
-augmentation of the exposed side edge sub-control surfaces and edge
-alignment wrt sub-control surface area vectors. For the hex case, the
-mappings are not the same for all exposed surfaces.
-
-Finally, the procedure to define the extrusion direction is based on a
-nodal surface normal direction. This quantity is defined by looping over
-all exposed surface faces and assembling the surface normal to the
-nodes.
-
-After the dual mesh is defined and associated area vector and dual
-volumes are assembled, the projected node for the pseudo edge is matched
-to an owning element in the opposing block. The search is performed
-using a parallel search that allows for the intersection of a sphere
-(the point that is projected) and the set of bounding boxes that is
-determined by all possible opposing block elements. Once the owning
-element for each projected point is determined, the appropriate flux
-contributions for each PDE is constructed. The halo point state is
-determined by linear interpolation within the owning element given the
-local isoparametric coordinates determined in the fine search. Here, the
-fine search is the process whereby the set of candidate bounding boxes
-for each extruded point are tested to see which is the best candidate.
-This process provides the final isoparametric coordinate set for each of
-the extruded exposed surface face nodes. Finally, matrix contributions
-are fully provided for the face nodes. This procedure finds that the row
-for the exposed node is augmented by the columns of the nodes on the
-owing opposing element.
-
-For cases in which rotation of one block defines a sliding mesh
-interface, the above procedure is replicated, e.g., projection, dual
-mesh definition, search and matrix graph initialization.
-
 Non-conformal Boundary Condition
 ++++++++++++++++++++++++++++++++
 
@@ -651,19 +732,66 @@ contributions,
 .. math::
    :label: numericalFluxA
 
-   \int \hat Q^A dS = \int [\frac{(q_j^A n_j^A + q_j^B n_j^B)}{2}
-                   + \lambda^A ( \phi^A - \phi^B) ]dS^A
-                           + \dot{m}^A \frac{(\phi^A + \phi^B)}{2},
+   \int \hat Q^A dS = \int [\frac{(q_j^A n_j^A - q_j^B n_j^B)}{2}
+       + \lambda^A ( \phi^A - \phi^B) ]dS^A
+       + \dot m^A \frac{(\phi^A + \phi^B)}{2} 
+       + \eta \frac{|\dot{m}^A|}{2} (\phi^A - \phi^B),
 
 
-where :math:`q_j^A` and :math:`q_j^B` are the diffusive and convective
-fluxes computed using the current and opposing elements. The penalty
-coefficient :math:`\lambda` contains both advective and diffusive
-contributions averaged over the two elements. Above, the convection term
-is Galerkin approach, however, upwinding has been implemented. Note that
-the lack of averaging the mass flow rate, :math:`\dot{m}^A` is somewhat
-arbitrary. The exact form of the mass flow rate is shown below and
-includes full pressure stabilization terms.
+where :math:`q_j^A` and :math:`q_j^B` are the diffusive fluxes computed using the current 
+and opposing elements and normals are outward facing. The penalty coefficient :math:`\lambda^A` contains the diffusive 
+contributions averaged over the two elements,
+
+.. math::
+   :label: lamdbaA2
+
+   \lambda^A = \frac{(\Gamma^A / L^A + \Gamma^B / L^B )}{2}.
+
+Above, :math:`\Gamma^k` is the diffusive flux coefficient evaluated at current and opposing element location, respectively, 
+and :math:`L^k` is an elemental length scale normal to the surface (again for current and opposing locations, :math:`A` and :math`B`). 
+When upwinding is activated, the value of :math:`\eta` is unity. 
+
+
+As written in Equation :eq:`numericalFluxA`, the default convection and diffusion term is a
+Galerkin approach, i.e., equally averaged between the current and opposing face. The standard 
+advection term is given by,
+
+.. math::
+   :label: advection
+
+    \int \rho \hat{u}_j \phi n_j dS.
+
+For surface A, the form is as follows:
+
+.. math::
+   :label: advection2
+
+   \int \rho \hat{u}_j^A \phi n_j^A dS^A = \dot m^A \frac{ \phi^A + \phi^B}{2},
+
+with the nonconformal mass flow rate given by,
+
+.. math::
+   :label: mdotA2
+
+    \dot {m}^A = [\frac{(\rho u_j^A + \gamma(\tau G_j^A p -\tau \frac{\partial p^A}{\partial x_j}))n_j^A
+     - (\rho u_j^B + \gamma(\tau G_j^B p -\tau \frac{\partial p^B}{\partial x_j}))n_j^B}{2}
+     + \lambda^A ( p^A - p^B)] dS^A.
+
+In the above set of expressions, the consistent definition of :math:`\hat{u}_j`, i.e., the convecting velocity including
+possible pressure stabilization terms, is retained.
+
+As with the interior advection scheme, the mass flow rate involves pressure stabilization terms. The value of 
+:math:`\gamma` defines whether or not the full pressure stabilization terms are included in the mass flow rate expression.
+Equation :eq:`mdotA` also forms the continuity nonconformal boundary contribution. 
+
+With the substitution of :math:`\eta` to be unity, the effective convective term is as follows:
+
+.. math::
+   :label: advectionAUPW
+
+    \int \rho \hat{u}_j \phi n_j^A dS^A = \frac{ (\dot m^A + |\dot m^A|) \phi^A +  (\dot m^A - |\dot m^A|)\phi^B}{2}.
+
+Note that this form reduces to a standard upwind operator.
 
 Since this algorithm is a dual pass approach, a numerical flux can be
 written for the integration point on block :math:`B`,
@@ -671,12 +799,42 @@ written for the integration point on block :math:`B`,
 .. math::
    :label: numericalFluxB
 
-   \int \hat Q^B dS = \int [\frac{(q_j^B n_j^B + q_j^A n_j^A)}{2} 
-                   + \lambda^B ( \phi^B - \phi^A) ]dS^B
-                   + \dot{m}^B \frac{(\phi^B + \phi^A)}{2}.
+    \int \hat Q^B dS = \int [\frac{(q_j^B n_j^B - q_j^A n_j^A)}{2}
+    + \lambda^B ( \phi^B - \phi^A) ]dS^A
+    + \dot m^B \frac{(\phi^B + \phi^A)}{2} 
+    + \eta \frac{|\dot{m}^B|}{2} (\phi^B - \phi^A).
 
 
-Note that in each case, normals are outward facing.
+As with Equation :eq:`numericalFluxB`, :math:`\dot{m}^B` (see Equation :eq:`mdotB`) 
+is of similar form to :math:`\dot{m}^A`,
+
+.. math::
+   :label: mdotB
+
+   \dot {m}^B = [\frac{(\rho u_j^B + \gamma(\tau G_j^B p -\tau \frac{\partial p^B}{\partial x_j}))n_j^B
+   - (\rho u_j^A + \gamma(\tau G_j^A p -\tau \frac{\partial p^A}{\partial x_j}))n_j^A}{2}
+   + \lambda^A ( p^B - p^A)] dS^B.
+
+For low-order meshes with curved surface, faceting will occur. In this case, the outward facing normals may 
+not be (sign)-unity factors of each other. In this case, it may be adventageous to define the opposing 
+outward normal as, :math:`n_j^B = -n_j^A`. 
+
+Domino, :cite:`Domino:2010` provided an overview of a FEM fluids implementation. In such a formulation, the
+interior penalty term appears, i.e.,
+
+.. math::
+
+   \int_{\Gamma_{AB}} \frac {\partial w^A}{\partial x_j} n_j \lambda (\phi^A-\phi^B) d\Gamma,
+
+and
+
+.. math::
+
+   \int_{\Gamma_{BA}} \frac {\partial w^B}{\partial x_j} n_j \lambda (\phi^B-\phi^A) d\Gamma.
+
+Although the sign of this term is often debated in the literature, the above set of expressions acts 
+to increase penalty term stencil to include the full element contribution. 
+As the CVFEM uses a piecewise-constant test function, this term is currently neglected.	
 
 Average fluxes are computed based on the current and opposing
 integration point locations. The appropriate DG terms are assembled as
@@ -699,40 +857,24 @@ either the Gauss Labatto or Gauss Legendre locations (input file
 specification). For each equation (momentum, continuity, enthalpy, etc.)
 the numerical flux is computed at each exposed non-conformal surface.
 
-The value of the penalty parameter, :math:`\lambda` contains advection
-and diffusion contributions. The current formulation defines this
-quantity as follows (here shown for current side :math:`A`):
+As noted, for most equations other than continuity and heat condition, the numerical flux includes advection and 
+diffusion contributions. The diffusive contribution is easily provided using elemental shape function derivatives 
+at the current and opposing surface. 
 
-.. math::
-   :label: lamdbaA
+.. _non-conformal:
 
-   \lambda^A = \frac{(\Gamma^A / L^A + \Gamma^B / L^B )}{2} + |\dot{m}^A|,
+.. figure:: images/contactSearchAndEval.pdf
+   :width: 500px
+   :align: center
+   
+   Description of the numerical flux calculation for the DG algorithm. The 
+   value of fluxes and penalty values on the current block (:math:`A`) and the opposing block (:math:`B`) are used 
+   for the calculation of numerical fluxes. :math:`\tilde \varphi` represents the projected value.
 
-
-where :math:`\Gamma^k` is the diffusive flux coefficient evaluated at
-current and opposing element location, respectively, and :math:`L^k` is
-an elemental length scale normal to the surface (again for current and
-opposing locations, :math:`A` and :math:`B`). Again, the form of the
-penalty term is somewhat arbitrary in that the advection mass flow rate
-could have been upwinded or blended.
-
-As noted, for most equations other than continuity and heat condition,
-the numerical flux includes advection and diffusion contributions. The
-diffusive contribution is easily provided using elemental shape function
-derivatives at the current and opposing surface.
-
-Above, special care is taken for the value of the mass flow rate at the
-non-conformal interface. Also, note that the above written form does not
-upwind the advective flux, although the code allows for an upwinded
-approach. In general, the advective term contains contributions from
-both elements identified at the interface, specifically,
-
-.. math::
-   :label: mdotA
-
-   \dot {m}^A = \int [\frac{(\rho u_j^A + \tau G_j^A p -\tau \frac{\partial p^A}{\partial x_j}) 
-                                  + (\rho u_j^B+ \tau G_j^B p -\tau \frac{\partial p^A}{\partial x_j})}{2}
-                          + \lambda^A ( p^A - p^B)] dS^A.
+Above, special care is taken for the value of the mass flow rate at the non-conformal interface. Also,
+note that the above written form does not upwind the advective flux, although the code allows for an upwinded 
+approach. In general, the advective term contains contributions from both elements identified at the interface, 
+specifically.
 
 The penalty coefficient for the mass flow rate at the non-conformal
 boundary points is again a function of the blended inverse length scale

@@ -146,6 +146,10 @@ class Realm {
   void commit();
 
   void process_mesh_motion();
+  void compute_centroid_on_parts(
+    std::vector<std::string> partNames,
+    std::vector<double> &centroid);
+
   void init_current_coordinates();
 
   std::string get_coordinates_name();
@@ -289,6 +293,8 @@ class Realm {
     const std::string dofname);
   bool get_noc_usage(
     const std::string dofname);
+  bool get_shifted_grad_op(
+    const std::string dofname);
   double get_divU();
 
   // tanh factor specifics
@@ -306,7 +312,6 @@ class Realm {
   // pressure poisson nuance
   double get_mdot_interp();
   bool get_cvfem_shifted_mdot();
-  bool get_cvfem_shifted_poisson();
   bool get_cvfem_reduced_sens_poisson();
   
   bool has_nc_gauss_labatto_quadrature();
@@ -564,6 +569,9 @@ class Realm {
   bool high_order_active() const { return doPromotion_; };
 
   std::string physics_part_name(std::string) const;
+
+  stk::mesh::PartVector allPeriodicInteractingParts_;
+  stk::mesh::PartVector allNonConformalInteractingParts_;
 };
 
 } // namespace nalu

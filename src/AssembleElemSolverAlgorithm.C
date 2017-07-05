@@ -15,7 +15,7 @@
 #include <FieldTypeDef.h>
 #include <LinearSystem.h>
 #include <Realm.h>
-#include <SupplementalAlgorithm.h>
+#include <Kernel.h>
 #include <TimeIntegrator.h>
 
 // stk_mesh/base/fem
@@ -72,12 +72,10 @@ AssembleElemSolverAlgorithm::execute()
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   stk::mesh::BulkData & bulk_data = realm_.bulk_data();
 
-  stk::mesh::FieldBase* coordField = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
-
   // set any data
-  const size_t supplementalAlgSize = supplementalAlg_.size();
-  for ( size_t i = 0; i < supplementalAlgSize; ++i )
-    supplementalAlg_[i]->setup();
+  const size_t activeKernelsSize = activeKernels_.size();
+  for ( size_t i = 0; i < activeKernelsSize; ++i )
+    activeKernels_[i]->setup(*realm_.timeIntegrator_);
 
   const int lhsSize = rhsSize_*rhsSize_;
   const int scratchIdsSize = rhsSize_;
@@ -111,13 +109,14 @@ AssembleElemSolverAlgorithm::execute()
     SharedMemView<double**> lhs = get_shmem_view_2D(team, rhsSize_, rhsSize_);
 
     const stk::mesh::Bucket::size_type length   = b.size();
+    team.team_barrier();
 
     Kokkos::parallel_for(Kokkos::TeamThreadRange(team, length), [&](const size_t& k)
     {
       // get element
       stk::mesh::Entity element = b[k];
       fill_pre_req_data(dataNeededBySuppAlgs_, bulk_data, topo_, element,
-                        coordField, prereqData);
+                        prereqData);
 
       // extract node relations and provide connected nodes
       stk::mesh::Entity const * node_rels = b.begin_nodes(k);
@@ -134,8 +133,8 @@ AssembleElemSolverAlgorithm::execute()
       }
 
       // call supplemental; gathers happen inside the elem_execute method
-      for ( size_t i = 0; i < supplementalAlgSize; ++i )
-        supplementalAlg_[i]->element_execute( lhs, rhs, element, prereqData );
+      for ( size_t i = 0; i < activeKernelsSize; ++i )
+        activeKernels_[i]->execute( lhs, rhs, prereqData );
       
       apply_coeff(num_nodes, node_rels, scratchIds, rhs, lhs, __FILE__);
     });

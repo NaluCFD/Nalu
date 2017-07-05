@@ -23,6 +23,8 @@ linear_solvers:
     kspace: 50
     output_level: 0
     muelu_xml_file_name: ../../xml/matches_ml_default.xml
+    recompute_preconditioner: no
+    reuse_preconditioner: yes
 
 realms:
 

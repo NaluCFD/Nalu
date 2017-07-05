@@ -123,7 +123,6 @@ realms:
       name: myOptions
       turbulence_model: wale
       shift_cvfem_mdot: yes
-      shift_cvfem_poisson: no
 
       options:
 
@@ -152,6 +151,11 @@ realms:
             pressure: no
             velocity: no
             mixture_fraction: yes
+
+        - shifted_gradient_operator:
+            velocity: no
+            pressure: no
+            mixture_fraction: no
 
     turbulence_averaging:
       time_filter_interval: 10.0

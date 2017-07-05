@@ -34,6 +34,15 @@ class EquationSystems;
 class LinearSystem;
 class PostProcessingData;
 
+/** Base class representation of a PDE.
+ *
+ *  EquationSystem defines the API supported by all concrete implementations of
+ *  PDEs for performing the following actions:
+ *
+ *    - Register computational fields
+ *    - Register computational algorithms for interior domain and boundary conditions
+ *    - Manage solve and update of the PDE for a given timestep
+ */
 class EquationSystem
 {
 public:
@@ -66,8 +75,75 @@ public:
   // defaults are provided for all methods below
 
   virtual void initialize() {}
+
+  /** Assemble the LHS and RHS and perform linear solve for prescribed number of
+   * iterations.
+   *
+   *  This method is invoked in EquationSystems::solve_and_update method as
+   *  shown below
+   *
+   *  ```
+   *  pre_iter_work();
+   *  // Iterate over all equation systems
+   *  for (auto eqsys: equationSystems_) {
+   *    eqsys->pre_iter_work();
+   *    eqsys->solve_and_update();             //<<<< Assemble and solve system
+   *    eqsys->post_iter_work();
+   *  }
+   *  post_iter_work();
+   *  ```
+   *
+   *  \sa EquationSystems::solve_and_update
+   */
   virtual void solve_and_update() {}
-  virtual void post_iter_work() {}
+
+  /** Perform setup tasks before entering the solve and update step.
+   *
+   *  This method is invoked in EquationSystems::solve_and_update method as
+   *  shown below
+   *
+   *  ```
+   *  pre_iter_work();
+   *  // Iterate over all equation systems
+   *  for (auto eqsys: equationSystems_) {
+   *    eqsys->pre_iter_work();                //<<<< Pre-iteration setup
+   *    eqsys->solve_and_update();
+   *    eqsys->post_iter_work();
+   *  }
+   *  post_iter_work();
+   *  ```
+   *
+   *  \sa EquationSystems::solve_and_update
+   */
+  virtual void pre_iter_work();
+
+  /** Perform setup tasks after he solve and update step.
+   *
+   *  This method is invoked in EquationSystems::solve_and_update method as
+   *  shown below
+   *
+   *  ```
+   *  pre_iter_work();
+   *  // Iterate over all equation systems
+   *  for (auto eqsys: equationSystems_) {
+   *    eqsys->pre_iter_work();
+   *    eqsys->solve_and_update();
+   *    eqsys->post_iter_work();                //<<<< Post-iteration actions
+   *  }
+   *  post_iter_work();
+   *  ```
+   *
+   *  \sa EquationSystems::solve_and_update
+   */
+  virtual void post_iter_work();
+
+  /** Deprecated post iteration work logic
+   *
+   *  \deprecated This method is there to support some tasks in
+   *  EnthalpyEquationSystem that should be eventually moved to
+   *  EquationSystems::post_iter_work.
+   */
+  virtual void post_iter_work_dep() {}
   virtual void assemble_and_solve(
     stk::mesh::FieldBase *deltaSolution);
   virtual void predict_state() {}
@@ -209,8 +285,11 @@ public:
   // vector of property algorithms
   std::vector<Algorithm *> propertyAlg_;
 
-  // vector of pre-iteration work algorithm drivers
-  /*std::vector<AlgorithmDriver *> preIterAlgDriver_;*/
+  /// List of tasks to be performed before each solve_and_update of this equation system
+  std::vector<AlgorithmDriver *> preIterAlgDriver_;
+
+  /// List of tasks to be performed after each solve_and_update of this equation system
+  std::vector<AlgorithmDriver*> postIterAlgDriver_;
 
   // owner equation system
   /*EquationSystem *ownerEqs_;*/

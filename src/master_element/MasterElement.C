@@ -8,9 +8,13 @@
 
 #include <master_element/MasterElement.h>
 
+#include <element_promotion/MasterElementUtils.h>
+
 #include <element_promotion/LagrangeBasis.h>
 #include <element_promotion/TensorProductQuadratureRule.h>
 #include <element_promotion/MasterElementHO.h>
+#include <element_promotion/QuadratureRule.h>
+#include <AlgTraits.h>
 
 #include <NaluEnv.h>
 #include <FORTRAN_Proto.h>
@@ -25,10 +29,6 @@
 #include <array>
 #include <map>
 #include <memory>
-#include "Teuchos_SerialDenseMatrix.hpp"
-#include "Teuchos_SerialDenseVector.hpp"
-#include "Teuchos_SerialDenseSolver.hpp"
-#include "Teuchos_RCP.hpp"
 
 namespace sierra{
 namespace nalu{
@@ -600,6 +600,26 @@ HexSCS::HexSCS()
       0, 3, 2, 1, // ordinal 4
       4, 5, 6, 7  // ordinal 5
   };
+
+  std::vector<std::vector<double>> nodeLocations =
+  {
+      {-0.5,-0.5,-0.5}, {+0.5,-0.5,-0.5}, {+0.5,+0.5,-0.5}, {-0.5,+0.5,-0.5},
+      {-0.5,-0.5,+0.5}, {+0.5,-0.5,+0.5}, {+0.5,+0.5,+0.5}, {-0.5,+0.5,+0.5}
+  };
+
+  intgExpFaceShift_.resize(72);
+  int index = 0;
+  stk::topology topo = stk::topology::HEX_8;
+  for (unsigned k = 0; k < topo.num_sides(); ++k) {
+    stk::topology side_topo = topo.side_topology(k);
+    const int* ordinals = side_node_ordinals(k);
+    for (unsigned n = 0; n < side_topo.num_nodes(); ++n) {
+      intgExpFaceShift_[3*index + 0] = nodeLocations[ordinals[n]][0];
+      intgExpFaceShift_[3*index + 1] = nodeLocations[ordinals[n]][1];
+      intgExpFaceShift_[3*index + 2] = nodeLocations[ordinals[n]][2];
+      ++index;
+    }
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -721,7 +741,6 @@ void HexSCS::face_grad_op(
   
   const int nface = 1;
   double dpsi[24];
-  double grad[24];
   
   for ( int n=0; n<nelem; n++ ) {
     
@@ -737,14 +756,50 @@ void HexSCS::face_grad_op(
           &nodesPerElement_,
           &nface,
           dpsi,
-          &coords[24*n], grad, &det_j[npf*n+k], error, &lerr );
+          &coords[24*n], &gradop[k*nelem*24+n*24], &det_j[npf*n+k], error, &lerr );
       
       if ( lerr )
         std::cout << "sorry, issue with face_grad_op.." << std::endl;
-       
-      for ( int j=0; j<24; j++) {
-        gradop[k*nelem*24+n*24+j] = grad[j];
-      }
+    }
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- shifted_face_grad_op --------------------------------------------
+//--------------------------------------------------------------------------
+void HexSCS::shifted_face_grad_op(
+  const int nelem,
+  const int face_ordinal,
+  const double *coords,
+  double *gradop,
+  double *det_j,
+  double *error)
+{
+  int lerr = 0;
+  int npf = 4;
+  int ndim = 3;
+
+  const int nface = 1;
+  double dpsi[24];
+
+  for ( int n=0; n<nelem; n++ ) {
+
+    for ( int k=0; k<npf; k++ ) {
+
+      const int row = 12*face_ordinal + k*ndim;
+      SIERRA_FORTRAN(hex_derivative)
+        ( &nface,
+          &intgExpFaceShift_[row], dpsi );
+
+      SIERRA_FORTRAN(hex_gradient_operator)
+        ( &nface,
+          &nodesPerElement_,
+          &nface,
+          dpsi,
+          &coords[24*n], &gradop[k*nelem*24+n*24], &det_j[npf*n+k], error, &lerr );
+
+      if ( lerr )
+        std::cout << "sorry, issue with face_grad_op.." << std::endl;
     }
   }
 }
@@ -1110,7 +1165,6 @@ HexSCS::general_face_grad_op(
   const int nface = 1;
 
   double dpsi[24];
-  double grad[24];
 
   SIERRA_FORTRAN(hex_derivative)
     ( &nface, &isoParCoord[0], dpsi );
@@ -1120,14 +1174,11 @@ HexSCS::general_face_grad_op(
       &nodesPerElement_,
       &nface,
       dpsi,
-      &coords[0], grad, &det_j[0], error, &lerr );
+      &coords[0], &gradop[0], &det_j[0], error, &lerr );
   
   if ( lerr )
     std::cout << "HexSCS::general_face_grad_op: issue.." << std::endl;
   
-  for ( int j=0; j<24; j++) {
-    gradop[j] = grad[j];
-  }
 }
 
 //--------------------------------------------------------------------------
@@ -1213,7 +1264,6 @@ double HexSCS::parametric_distance(const std::vector<double> &x)
 HexahedralP2Element::HexahedralP2Element()
   : MasterElement(),
     scsDist_(std::sqrt(3.0)/3.0),
-    useGLLGLL_(false),
     nodes1D_(3),
     numQuad_(2)
 {
@@ -1254,125 +1304,135 @@ HexahedralP2Element::set_quadrature_rule()
 {
   gaussAbscissaeShift_ = {-1.0,-1.0,0.0,0.0,+1.0,+1.0};
 
-  if (useGLLGLL_ && numQuad_ < 3) {
-    throw std::runtime_error("Need at least 3 points for gllgll quadrature");
-  }
-
-  switch (numQuad_) {
-    case 1:
-    {
-      gaussAbscissae_ = { 0.0 };
-      gaussWeight_ = { 1.0 };
-      break;
-    }
-    case 2:
-    {
-      gaussAbscissae_ = { -std::sqrt(3.0)/3.0, std::sqrt(3.0)/3.0 };
-      gaussWeight_ = { 0.5, 0.5 };
-      break;
-    }
-    case 3:
-    {
-      if (!useGLLGLL_) {
-        gaussAbscissae_ = { -std::sqrt(3.0/5.0), 0.0, std::sqrt(3.0/5.0) };
-        gaussWeight_ = { 5.0/18.0, 4.0/9.0,  5.0/18.0 };
-      }
-      else {
-        gaussAbscissae1D_ = {-1.0, 0.0, +1.0};
-        GLLGLL_quadrature_weights();
-        gaussAbscissae_ = {
-            gaussAbscissae1D_[0], gaussAbscissae1D_[1], gaussAbscissae1D_[2],
-            gaussAbscissae1D_[0], gaussAbscissae1D_[1], gaussAbscissae1D_[2],
-            gaussAbscissae1D_[0], gaussAbscissae1D_[1], gaussAbscissae1D_[2]
-        };
-      }
-      break;
-    }
-    case 4:
-    {
-      if (!useGLLGLL_) {
-        gaussAbscissae_ = {
-            -std::sqrt(3.0/7.0+2.0/7.0*std::sqrt(6.0/5.0)),
-            -std::sqrt(3.0/7.0-2.0/7.0*std::sqrt(6.0/5.0)),
-            +std::sqrt(3.0/7.0-2.0/7.0*std::sqrt(6.0/5.0)),
-            +std::sqrt(3.0/7.0+2.0/7.0*std::sqrt(6.0/5.0))
-        };
-
-        gaussWeight_ = {
-            (18.0-std::sqrt(30.0))/72.0,
-            (18.0+std::sqrt(30.0))/72.0,
-            (18.0+std::sqrt(30.0))/72.0,
-            (18.0-std::sqrt(30.0))/72.0
-        };
-      }
-      else {
-        gaussAbscissae1D_ = { -1.0, -std::sqrt(5.0)/5.0, std::sqrt(5.0)/5.0, +1.0};
-        GLLGLL_quadrature_weights();
-
-        gaussAbscissae_ = {
-            gaussAbscissae1D_[0], gaussAbscissae1D_[1], gaussAbscissae1D_[2], gaussAbscissae1D_[3],
-            gaussAbscissae1D_[0], gaussAbscissae1D_[1], gaussAbscissae1D_[2], gaussAbscissae1D_[3],
-            gaussAbscissae1D_[0], gaussAbscissae1D_[1], gaussAbscissae1D_[2], gaussAbscissae1D_[3]
-        };
-      }
-      break;
-    }
-    default:
-      throw std::runtime_error("Quadrature rule not implemented");
+  std::tie(gaussAbscissae_, gaussWeight_) = gauss_legendre_rule(numQuad_);
+  for (unsigned j = 0; j < gaussWeight_.size(); ++j) {
+    gaussWeight_[j] *= 0.5; // change from standard Gauss weights
   }
 }
 
 //--------------------------------------------------------------------------
-//-------- GLL_quadrature_weights ----------------------------------------
+//-------- parametric_distance ---------------------------------------------
+//--------------------------------------------------------------------------
+double HexahedralP2Element::parametric_distance(const std::array<double, 3>& x)
+{
+  std::array<double,3> y;
+  for (int i=0; i<3; ++i) {
+    y[i] = std::fabs(x[i]);
+  }
+
+  double d = 0;
+  for (int i=0; i<3; ++i) {
+    if (d < y[i]) {
+      d = y[i];
+    }
+  }
+  return d;
+}
+
+//--------------------------------------------------------------------------
+//-------- interpolatePoint ------------------------------------------------
 //--------------------------------------------------------------------------
 void
-HexahedralP2Element::GLLGLL_quadrature_weights()
+HexahedralP2Element::interpolatePoint(
+  const int &nComp,
+  const double *isoParCoord,
+  const double *field,
+  double *result )
 {
-  // for fixed abscissae, use a moment-matching equation to compute weights
+  constexpr int nNodes = 27;
+  std::array<double, nNodes> shapefct;
+  hex27_shape_fcn(1, isoParCoord, shapefct.data());
 
-  const int nrows = gaussAbscissae1D_.size();
-  const int nrhs = nodes1D_;
-
-  Teuchos::SerialDenseMatrix<int, double> weightLHS(nrows, nrows);
-  for (int j = 0; j < nrows; ++j) {
-    for (int i = 0; i < nrows; ++i) {
-      weightLHS(i, j) = std::pow(gaussAbscissae1D_[j], i);
-    }
-  }
-
-  // each node has a separate RHS
-  Teuchos::SerialDenseMatrix<int, double> weightRHS(nrows, nrhs);
-  for (int j = 0; j < nrhs; ++j) {
-    for (int i = 0; i < nrows; ++i) {
-      weightRHS(i, j) = (std::pow(scsEndLoc_[j + 1], i + 1)
-                       - std::pow(scsEndLoc_[j], i + 1)) / (i + 1.0);
-    }
-  }
-
-  Teuchos::SerialDenseSolver<int, double> solver;
-  Teuchos::SerialDenseMatrix<int, double> quadratureWeights(nrows, nrhs);
-  solver.setMatrix(Teuchos::rcp(&weightLHS, false));
-  solver.setVectors(
-    Teuchos::rcp(&quadratureWeights, false),
-    Teuchos::rcp(&weightRHS, false)
-  );
-  solver.solve();
-
-  gaussWeight_.resize(nrows * nrhs);
-  for (int j = 0; j < nrows; ++j) {
-    for (int i = 0; i < nrhs; ++i) {
-      gaussWeight_[i + j * nrhs] = quadratureWeights(i, j); //transpose
-    }
+  for (int i = 0; i < nComp; i++) {
+    result[i] = ddot(shapefct.data(), field + nNodes * i, nNodes);
   }
 }
 
+
+//--------------------------------------------------------------------------
+//-------- isInElement -----------------------------------------------------
+//--------------------------------------------------------------------------
+double HexahedralP2Element::isInElement(
+  const double *elemNodalCoord,
+  const double *pointCoord,
+  double *isoParCoord)
+{
+  // control the interation
+  double isInElemConverged = 1.0e-16; // NOTE: the square of the tolerance on the distance
+  int N_MAX_ITER = 100;
+
+  constexpr int dim = 3;
+  std::array<double, dim> guess = { { 0.0, 0.0, 0.0 } };
+  std::array<double, dim> delta;
+  int iter = 0;
+
+  do {
+    // interpolate coordinate at guess
+    constexpr int nNodes = 27;
+    std::array<double, nNodes> weights;
+    hex27_shape_fcn(1, guess.data(), weights.data());
+
+    // compute difference between coordinates interpolated to the guessed isoParametric coordinates
+    // and the actual point's coordinates
+    std::array<double, dim> error_vec;
+    error_vec[0] = pointCoord[0] - ddot(weights.data(), elemNodalCoord + 0 * nNodes, nNodes);
+    error_vec[1] = pointCoord[1] - ddot(weights.data(), elemNodalCoord + 1 * nNodes, nNodes);
+    error_vec[2] = pointCoord[2] - ddot(weights.data(), elemNodalCoord + 2 * nNodes, nNodes);
+
+    // update guess along gradient of mapping from physical-to-reference coordinates
+    // transpose of the jacobian of the forward mapping
+    constexpr int deriv_size = nNodes * dim;
+    std::array<double, deriv_size> deriv;
+    hex27_shape_deriv(1, guess.data(), deriv.data());
+
+    std::array<double, dim * dim> jact{};
+    for(int j = 0; j < nNodes; ++j) {
+      jact[0] += deriv[0 + j * dim] * elemNodalCoord[j + 0 * nNodes];
+      jact[1] += deriv[1 + j * dim] * elemNodalCoord[j + 0 * nNodes];
+      jact[2] += deriv[2 + j * dim] * elemNodalCoord[j + 0 * nNodes];
+
+      jact[3] += deriv[0 + j * dim] * elemNodalCoord[j + 1 * nNodes];
+      jact[4] += deriv[1 + j * dim] * elemNodalCoord[j + 1 * nNodes];
+      jact[5] += deriv[2 + j * dim] * elemNodalCoord[j + 1 * nNodes];
+
+      jact[6] += deriv[0 + j * dim] * elemNodalCoord[j + 2 * nNodes];
+      jact[7] += deriv[1 + j * dim] * elemNodalCoord[j + 2 * nNodes];
+      jact[8] += deriv[2 + j * dim] * elemNodalCoord[j + 2 * nNodes];
+    }
+
+    // apply its inverse on the error vector
+    action_of_inverse33(jact.data(), error_vec.data(), delta.data());
+
+    // update guess
+    guess[0] += delta[0];
+    guess[1] += delta[1];
+    guess[2] += delta[2];
+
+    //continue to iterate if update was larger than the set tolerance until max iterations are reached
+  } while(!within_tolerance(vector_norm_sq(delta.data(), 3), isInElemConverged) && (++iter < N_MAX_ITER));
+
+  // output if failed:
+  isoParCoord[0] = std::numeric_limits<double>::max();
+  isoParCoord[1] = std::numeric_limits<double>::max();
+  isoParCoord[2] = std::numeric_limits<double>::max();
+  double dist = std::numeric_limits<double>::max();
+
+  if (iter < N_MAX_ITER) {
+    // output if succeeded:
+    isoParCoord[0] = guess[0];
+    isoParCoord[1] = guess[1];
+    isoParCoord[2] = guess[2];
+    dist = parametric_distance(guess);
+  }
+  return dist;
+}
 //--------------------------------------------------------------------------
 //-------- tensor_product_node_map -----------------------------------------
 //--------------------------------------------------------------------------
 int
 HexahedralP2Element::tensor_product_node_map(int i, int j, int k) const
 {
-   return stkNodeMap_[i+j*nodes1D_+k*nodes1D_*nodes1D_];
+   return stkNodeMap_[i + nodes1D_ * (j + nodes1D_ * k)];
 }
 
 //--------------------------------------------------------------------------
@@ -1383,16 +1443,9 @@ HexahedralP2Element::gauss_point_location(
   int nodeOrdinal,
   int gaussPointOrdinal) const
 {
-  double location1D;
-  if (!useGLLGLL_) {
-    location1D = isoparametric_mapping( scsEndLoc_[nodeOrdinal+1],
-                                        scsEndLoc_[nodeOrdinal],
-                                        gaussAbscissae_[gaussPointOrdinal] );
-  }
-  else {
-    location1D = gaussAbscissae_[nodeOrdinal*numQuad_ + gaussPointOrdinal];
-  }
-   return location1D;
+  return isoparametric_mapping( scsEndLoc_[nodeOrdinal+1],
+    scsEndLoc_[nodeOrdinal],
+    gaussAbscissae_[gaussPointOrdinal] );
 }
 
 //--------------------------------------------------------------------------
@@ -1416,25 +1469,18 @@ HexahedralP2Element::tensor_product_weight(
   int s1Ip, int s2Ip, int s3Ip) const
 {
   // volume integration
-  double weight;
-  if (!useGLLGLL_) {
-    const double Ls1 = scsEndLoc_[s1Node+1]-scsEndLoc_[s1Node];
-    const double Ls2 = scsEndLoc_[s2Node+1]-scsEndLoc_[s2Node];
-    const double Ls3 = scsEndLoc_[s3Node+1]-scsEndLoc_[s3Node];
-    const double isoparametricArea = Ls1 * Ls2 * Ls3;
 
-    weight = isoparametricArea
-           * gaussWeight_[s1Ip]
-           * gaussWeight_[s2Ip]
-           * gaussWeight_[s3Ip];
-   }
-   else {
-     weight = gaussWeight_[s1Node*numQuad_+s1Ip]
-            * gaussWeight_[s2Node*numQuad_+s2Ip]
-            * gaussWeight_[s3Node*numQuad_+s3Ip];
+  const double Ls1 = scsEndLoc_[s1Node+1]-scsEndLoc_[s1Node];
+  const double Ls2 = scsEndLoc_[s2Node+1]-scsEndLoc_[s2Node];
+  const double Ls3 = scsEndLoc_[s3Node+1]-scsEndLoc_[s3Node];
+  const double isoparametricArea = Ls1 * Ls2 * Ls3;
 
-   }
-   return weight;
+  const double weight = isoparametricArea
+                      * gaussWeight_[s1Ip]
+                      * gaussWeight_[s2Ip]
+                      * gaussWeight_[s3Ip];
+
+  return weight;
 }
 
 //--------------------------------------------------------------------------
@@ -1446,20 +1492,11 @@ HexahedralP2Element::tensor_product_weight(
   int s1Ip, int s2Ip) const
 {
   // surface integration
-  double weight;
-  if (!useGLLGLL_) {
-    const double Ls1 = scsEndLoc_[s1Node+1]-scsEndLoc_[s1Node];
-    const double Ls2 = scsEndLoc_[s2Node+1]-scsEndLoc_[s2Node];
-    const double isoparametricArea = Ls1 * Ls2;
-
-    weight = isoparametricArea * gaussWeight_[s1Ip] * gaussWeight_[s2Ip];
-   }
-   else {
-     weight = gaussWeight_[s1Node*numQuad_+s1Ip]
-            * gaussWeight_[s2Node*numQuad_+s2Ip];
-
-   }
-   return weight;
+  const double Ls1 = scsEndLoc_[s1Node+1]-scsEndLoc_[s1Node];
+  const double Ls2 = scsEndLoc_[s2Node+1]-scsEndLoc_[s2Node];
+  const double isoparametricArea = Ls1 * Ls2;
+  const double weight = isoparametricArea * gaussWeight_[s1Ip] * gaussWeight_[s2Ip];
+  return weight;
 }
 
 //--------------------------------------------------------------------------
@@ -1844,6 +1881,7 @@ Hex27SCV::set_interior_info()
 {
   //1D integration rule per sub-control volume
   numIntPoints_ = (nodes1D_ * nodes1D_  * nodes1D_) * ( numQuad_ * numQuad_ * numQuad_); // 216
+  ThrowRequire(numIntPoints_ == Traits::numScvIp_);
 
   // define ip node mappings
   ipNodeMap_.resize(numIntPoints_);
@@ -1888,6 +1926,7 @@ Hex27SCV::set_interior_info()
       }
     }
   }
+
 }
 
 //--------------------------------------------------------------------------
@@ -1910,25 +1949,21 @@ void Hex27SCV::determinant(
   double *volume,
   double *error)
 {
-//  std::vector<double> jacobian(nDim_*nDim_);
-  for (int k = 0; k < nelem; ++k) {
-    const int scalar_elem_offset = numIntPoints_ * k;
-    const int coord_elem_offset = nDim_ * nodesPerElement_ * k;
-    for (int ip = 0; ip < numIntPoints_; ++ip) {
-      const int grad_offset = nDim_ * nodesPerElement_ * ip;
+  for (int ip = 0; ip < Traits::numScvIp_; ++ip) {
+    const int grad_offset = nDim_ * nodesPerElement_ * ip;
 
-      //weighted jacobian determinant
-      const double det_j = jacobian_determinant(&coords[coord_elem_offset],&shapeDerivs_[grad_offset]);
+    //weighted jacobian determinant
+    const double det_j = jacobian_determinant(coords, &shapeDerivs_[grad_offset]);
 
-      //apply weight and store to volume
-      volume[scalar_elem_offset + ip] = ipWeight_[ip] * det_j;
+    //apply weight and store to volume
+    volume[ip] = ipWeight_[ip] * det_j;
 
-      //flag error
-      if (det_j <= 0.0) {
-        *error = 1.0;
-      }
+    //flag error
+    if (volume[ip] < tiny_positive_value()) {
+      *error = 1.0;
     }
   }
+
 }
 
 //--------------------------------------------------------------------------
@@ -1942,7 +1977,7 @@ Hex27SCV::jacobian_determinant(
   double dx_ds1 = 0.0;  double dx_ds2 = 0.0; double dx_ds3 = 0.0;
   double dy_ds1 = 0.0;  double dy_ds2 = 0.0; double dy_ds3 = 0.0;
   double dz_ds1 = 0.0;  double dz_ds2 = 0.0; double dz_ds3 = 0.0;
-  for (int node = 0; node < nodesPerElement_; ++node) {
+  for (int node = 0; node <   Traits::nodesPerElement_; ++node) {
     const int vector_offset = nDim_ * node;
 
     const double xCoord = elemNodalCoords[vector_offset+0];
@@ -2007,6 +2042,8 @@ Hex27SCS::set_interior_info()
   const int numSurfaces = surfacesPerDirection * nDim_; // 6
 
   numIntPoints_ = numSurfaces*ipsPerSurface; // 216
+  ThrowRequire(numIntPoints_ == Traits::numScsIp_);
+
   const int numVectorPoints = numIntPoints_*nDim_; // 648
 
   // define L/R mappings
@@ -2446,69 +2483,69 @@ Hex27SCS::determinant(
   double *areav,
   double *error)
 {
-  //returns the normal vector x_t x x_u for constant s curves
-  //returns the normal vector x_u x x_s for constant t curves
-  //returns the normal vector x_s x x_t for constant u curves
-  std::array<double,3> areaVector;
+  ThrowRequireMsg(nelem == 1, "P2 elements are processed one-at-a-time");
 
-  for (int k = 0; k < nelem; ++k) {
-    const int coord_elem_offset = nDim_ * nodesPerElement_ * k;
-        const int vector_elem_offset = nDim_ * numIntPoints_ * k;
+  constexpr int dim = Traits::nDim_;
+  constexpr int ipsPerDirection = Traits::numScsIp_ / dim;
+  static_assert ( ipsPerDirection * dim == Traits::numScsIp_, "Number of ips incorrect");
 
-    for (int ip = 0; ip < numIntPoints_; ++ip) {
-      const int grad_offset = nDim_ * nodesPerElement_ * ip;
-      const int offset = nDim_ * ip + vector_elem_offset;
+  constexpr int deriv_increment = dim * Traits::nodesPerElement_;
 
-      //compute area vector for this ip
-      area_vector( ipInfo_[ip].direction,
-                   &coords[coord_elem_offset],
-                   &shapeDerivs_[grad_offset],
-                   areaVector.data() );
+  int index = 0;
 
-      // apply quadrature weight and orientation (combined as weight)
-      for (int j = 0; j < nDim_; ++j) {
-        areav[offset+j]  = ipInfo_[ip].weight * areaVector[j];
-      }
-    }
+  //returns the normal vector x_s x x_t for constant u surfaces
+  for (int ip = 0; ip < ipsPerDirection; ++ip) {
+    ThrowAssert(ipInfo_[index].direction == Jacobian::U_DIRECTION);
+    area_vector<Jacobian::U_DIRECTION>(coords, &shapeDerivs_[deriv_increment * index], &areav[index*dim]);
+    ++index;
   }
 
-  *error = 0;
+  //returns the normal vector x_u x x_s for constant t surfaces
+  for (int ip = 0; ip < ipsPerDirection; ++ip) {
+    ThrowAssert(ipInfo_[index].direction == Jacobian::T_DIRECTION);
+    area_vector<Jacobian::T_DIRECTION>(coords, &shapeDerivs_[deriv_increment * index], &areav[index*dim]);
+    ++index;
+  }
+
+  //returns the normal vector x_t x x_u for constant s curves
+  for (int ip = 0; ip < ipsPerDirection; ++ip) {
+    ThrowAssert(ipInfo_[index].direction == Jacobian::S_DIRECTION);
+    area_vector<Jacobian::S_DIRECTION>(coords, &shapeDerivs_[deriv_increment * index], &areav[index*dim]);
+    ++index;
+  }
+
+  // Multiply with the integration point weighting
+  for (int ip = 0; ip < Traits::numScsIp_; ++ip) {
+    double weight = ipInfo_[ip].weight;
+    areav[ip * dim + 0] *= weight;
+    areav[ip * dim + 1] *= weight;
+    areav[ip * dim + 2] *= weight;
+  }
+
+  *error = 0; // no error checking available
 }
 
 //--------------------------------------------------------------------------
-//-------- area_vector -----------------------------------------------------
+//-------- rea_vector -----------------------------------------------------
 //--------------------------------------------------------------------------
-void
+template <Jacobian::Direction direction> void
 Hex27SCS::area_vector(
-  const Jacobian::Direction direction,
-  const double *elemNodalCoords,
-  double *shapeDeriv,
-  double *areaVector) const
+  const double *POINTER_RESTRICT elemNodalCoords,
+  double *POINTER_RESTRICT shapeDeriv,
+  double *POINTER_RESTRICT areaVector) const
 {
 
-  int s1Component; int s2Component;
-  switch (direction) {
-    case Jacobian::S_DIRECTION:
-      s1Component = static_cast<int>(Jacobian::T_DIRECTION);
-      s2Component = static_cast<int>(Jacobian::U_DIRECTION);
-      break;
-    case Jacobian::T_DIRECTION:
-      s1Component = static_cast<int>(Jacobian::S_DIRECTION);
-      s2Component = static_cast<int>(Jacobian::U_DIRECTION);
-      break;
-    case Jacobian::U_DIRECTION:
-      s1Component = static_cast<int>(Jacobian::T_DIRECTION);
-      s2Component = static_cast<int>(Jacobian::S_DIRECTION);
-      break;
-    default:
-      throw std::runtime_error("Not a valid direction for this element!");
-  }
+  constexpr int s1Component = (direction == Jacobian::T_DIRECTION) ?
+      Jacobian::S_DIRECTION : Jacobian::T_DIRECTION;
+
+  constexpr int s2Component = (direction == Jacobian::U_DIRECTION) ?
+      Jacobian::S_DIRECTION : Jacobian::U_DIRECTION;
 
   // return the normal area vector given shape derivatives dnds OR dndt
   double dx_ds1 = 0.0; double dy_ds1 = 0.0; double dz_ds1 = 0.0;
   double dx_ds2 = 0.0; double dy_ds2 = 0.0; double dz_ds2 = 0.0;
 
-  for (int node = 0; node < nodesPerElement_; ++node) {
+  for (int node = 0; node < Traits::nodesPerElement_; ++node) {
     const int vector_offset = nDim_ * node;
     const double xCoord = elemNodalCoords[vector_offset+0];
     const double yCoord = elemNodalCoords[vector_offset+1];
@@ -2544,29 +2581,23 @@ void Hex27SCS::grad_op(
   double *det_j,
   double *error)
 {
+  ThrowRequireMsg(nelem == 1, "P2 elements are processed one-at-a-time");
+
   *error = 0.0;
 
-  for (int k = 0; k < nelem; ++k) {
-    const int coord_elem_offset = nDim_ * nodesPerElement_ * k;
-    const int scalar_elem_offset = numIntPoints_ * k;
-    const int grad_elem_offset = numIntPoints_ * nDim_ * nodesPerElement_ * k;
+  // shape derivatives are stored: just copy
+  constexpr int deriv_increment = Traits::nDim_ * Traits::nodesPerElement_;
+  constexpr int numShapeDerivs = deriv_increment * Traits::numScsIp_;
+  for (int j = 0; j < numShapeDerivs; ++j) {
+    deriv[j] = shapeDerivs_[j];
+  }
 
-    for (int ip = 0; ip < numIntPoints_; ++ip) {
-      const int grad_offset = nDim_ * nodesPerElement_ * ip;
-      const int offset = grad_offset + grad_elem_offset;
+  for (int ip = 0; ip < Traits::numScsIp_; ++ip) {
+    const int grad_offset = deriv_increment * ip;
+    gradient(coords, &shapeDerivs_[grad_offset], &gradop[grad_offset], &det_j[ip]);
 
-      for (int j = 0; j < nodesPerElement_ * nDim_; ++j) {
-        deriv[offset + j] = shapeDerivs_[grad_offset +j];
-      }
-
-      gradient( &coords[coord_elem_offset],
-                &shapeDerivs_[grad_offset],
-                &gradop[offset],
-                &det_j[scalar_elem_offset+ip] );
-
-      if (det_j[ip] <= 0.0) {
-        *error = 1.0;
-      }
+    if (det_j[ip] < tiny_positive_value()) {
+      *error = 1.0;
     }
   }
 }
@@ -2582,29 +2613,23 @@ void Hex27SCS::shifted_grad_op(
   double *det_j,
   double *error)
 {
+  ThrowRequireMsg(nelem == 1, "P2 elements are processed one-at-a-time");
+
   *error = 0.0;
 
-  for (int k = 0; k < nelem; ++k) {
-    const int coord_elem_offset = nDim_ * nodesPerElement_ * k;
-    const int scalar_elem_offset = numIntPoints_ * k;
-    const int grad_elem_offset = numIntPoints_ * nDim_ * nodesPerElement_ * k;
+  // shape derivatives are stored: just copy
+  constexpr int deriv_increment = Traits::nDim_ * Traits::nodesPerElement_;
+  constexpr int numShapeDerivs = deriv_increment * Traits::numScsIp_;
+  for (int j = 0; j < numShapeDerivs; ++j) {
+    deriv[j] = shapeDerivsShift_[j];
+  }
 
-    for (int ip = 0; ip < numIntPoints_; ++ip) {
-      const int grad_offset = nDim_ * nodesPerElement_ * ip;
-      const int offset = grad_offset + grad_elem_offset;
+  for (int ip = 0; ip < Traits::numScsIp_; ++ip) {
+    const int grad_offset = deriv_increment * ip;
+    gradient(coords, &shapeDerivsShift_[grad_offset], &gradop[grad_offset], &det_j[ip]);
 
-      for (int j = 0; j < nodesPerElement_ * nDim_; ++j) {
-        deriv[offset + j] = shapeDerivsShift_[grad_offset +j];
-      }
-
-      gradient( &coords[coord_elem_offset],
-                &shapeDerivsShift_[grad_offset],
-                &gradop[offset],
-                &det_j[scalar_elem_offset+ip] );
-
-      if (det_j[ip] <= 0.0) {
-        *error = 1.0;
-      }
+    if (det_j[ip] < tiny_positive_value()) {
+      *error = 1.0;
     }
   }
 }
@@ -2620,26 +2645,18 @@ void Hex27SCS::face_grad_op(
   double *det_j,
   double *error)
 {
+  ThrowRequireMsg(nelem == 1, "P2 elements are processed one-at-a-time");
+
   *error = 0.0;
-
   const int face_offset =  nDim_ * ipsPerFace_ * nodesPerElement_ * face_ordinal;
-  for (int k = 0; k < nelem; ++k) {
-    const int coord_elem_offset = nDim_ * nodesPerElement_ * k;
-    const int scalar_elem_offset = ipsPerFace_ * k;
-    const int grad_elem_offset = ipsPerFace_ * nDim_ * nodesPerElement_ * k;
+  const double* offsetFaceDerivs = &expFaceShapeDerivs_[face_offset];
 
-    for (int ip = 0; ip < ipsPerFace_; ++ip) {
-      const int grad_offset = nDim_ * nodesPerElement_ * ip;
-      const int offset = grad_offset + grad_elem_offset;
+  for (int ip = 0; ip < ipsPerFace_; ++ip) {
+    const int grad_offset = nDim_ * nodesPerElement_ * ip;
+    gradient(coords, &offsetFaceDerivs[grad_offset], &gradop[grad_offset], &det_j[ip]);
 
-      gradient( &coords[coord_elem_offset],
-                &expFaceShapeDerivs_[face_offset+grad_offset],
-                &gradop[offset],
-                &det_j[scalar_elem_offset+ip] );
-
-      if (det_j[ip] <= 0.0) {
-        *error = 1.0;
-      }
+    if (det_j[ip] < tiny_positive_value()) {
+      *error = 1.0;
     }
   }
 }
@@ -2659,7 +2676,7 @@ Hex27SCS::gradient(
   double dz_ds1 = 0.0;  double dz_ds2 = 0.0; double dz_ds3 = 0.0;
 
   //compute Jacobian
-  for (int node = 0; node < nodesPerElement_; ++node) {
+  for (int node = 0; node < Traits::nodesPerElement_; ++node) {
     const int vector_offset = nDim_ * node;
 
     const double xCoord = elemNodalCoords[vector_offset + 0];
@@ -2687,7 +2704,7 @@ Hex27SCS::gradient(
          + dy_ds1 * ( dz_ds2 * dx_ds3 - dx_ds2 * dz_ds3 )
          + dz_ds1 * ( dx_ds2 * dy_ds3 - dy_ds2 * dx_ds3 );
 
-  const double inv_det_j = (*det_j > 0.0) ? 1.0 / (*det_j) : 0.0;
+  const double inv_det_j = 1.0 / (*det_j);
 
   const double ds1_dx = inv_det_j*(dy_ds2 * dz_ds3 - dz_ds2 * dy_ds3);
   const double ds2_dx = inv_det_j*(dz_ds1 * dy_ds3 - dy_ds1 * dz_ds3);
@@ -2702,7 +2719,7 @@ Hex27SCS::gradient(
   const double ds3_dz = inv_det_j*(dx_ds1 * dy_ds2 - dy_ds1 * dx_ds2);
 
   // metrics
-  for (int node = 0; node < nodesPerElement_; ++node) {
+  for (int node = 0; node < Traits::nodesPerElement_; ++node) {
     const int vector_offset = nDim_ * node;
 
     const double dn_ds1 = shapeDeriv[vector_offset + 0];
@@ -2744,19 +2761,19 @@ Hex27SCS::general_face_grad_op(
   double *error)
 {
   const int ipsPerFace = 1;
-  double faceShapeFuncDerivs[81];
+  double faceShapeFuncDerivs[Traits::nodesPerElement_ * Traits::nDim_];
 
   hex27_shape_deriv(
     ipsPerFace,
     isoParCoord,
     faceShapeFuncDerivs);
 
-  gradient( &coords[0],
+  gradient( coords,
             faceShapeFuncDerivs,
-            &gradop[0],
-            &det_j[0] );
+            gradop,
+            det_j );
   
-  if (det_j[0] <= 0.0) {
+  if (det_j[0] < tiny_positive_value()) {
     *error = 1.0;
   }
 }
@@ -2816,7 +2833,7 @@ Hex27SCS::sidePcoords_to_elemPcoords(
     }
     break;
   default:
-    throw std::runtime_error("HexSCS::sideMap invalid ordinal");
+    throw std::runtime_error("Hex27SCS::sideMap invalid ordinal");
   }
 }
 
@@ -3019,13 +3036,31 @@ TetSCS::TetSCS()
   // face 3;
   ipNodeMap_[9] = 0; ipNodeMap_[10] = 2; ipNodeMap_[11] = 1;
 
-
   sideNodeOrdinals_ = {
       0, 1, 3, //ordinal 0
       1, 2, 3, //ordinal 1
       0, 3, 2, //ordinal 2
       0, 2, 1  //ordinal 3
   };
+
+  std::vector<std::vector<double>> nodeLocations =
+  {
+      {0,0,0}, {1,0,0}, {0,1,0}, {0,0,1}
+  };
+
+  intgExpFaceShift_.resize(3*3*4);
+  int index = 0;
+  stk::topology topo = stk::topology::TET_4;
+  for (unsigned k = 0; k < topo.num_sides(); ++k) {
+    stk::topology side_topo = topo.side_topology(k);
+    const int* ordinals = side_node_ordinals(k);
+    for (unsigned n = 0; n < side_topo.num_nodes(); ++n) {
+      intgExpFaceShift_[3*index + 0] = nodeLocations[ordinals[n]][0];
+      intgExpFaceShift_[3*index + 1] = nodeLocations[ordinals[n]][1];
+      intgExpFaceShift_[3*index + 2] = nodeLocations[ordinals[n]][2];
+      ++index;
+    }
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -3144,7 +3179,6 @@ void TetSCS::face_grad_op(
 
   const int nface = 1;
   double dpsi[12];
-  double grad[12];
 
   for ( int n=0; n<nelem; n++ ) {
 
@@ -3159,14 +3193,51 @@ void TetSCS::face_grad_op(
           &nodesPerElement_,
           &nface,
           dpsi,
-          &coords[12*n], grad, &det_j[npf*n+k], error, &lerr );
+          &coords[12*n], &gradop[k*nelem*12+n*12], &det_j[npf*n+k], error, &lerr );
 
       if ( lerr )
         std::cout << "sorry, issue with face_grad_op.." << std::endl;
 
-      for ( int j=0; j<12; j++) {
-        gradop[k*nelem*12+n*12+j] = grad[j];
-      }
+    }
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- shifted_face_grad_op --------------------------------------------
+//--------------------------------------------------------------------------
+void TetSCS::shifted_face_grad_op(
+  const int nelem,
+  const int /*face_ordinal*/,
+  const double *coords,
+  double *gradop,
+  double *det_j,
+  double *error)
+{
+  // no difference for regular face_grad_op
+
+  int lerr = 0;
+  int npf = 3;
+
+  const int nface = 1;
+  double dpsi[12];
+
+  for ( int n=0; n<nelem; n++ ) {
+
+    for ( int k=0; k<npf; k++ ) {
+
+      // derivatives are constant
+      SIERRA_FORTRAN(tet_derivative)
+        ( &nface, dpsi );
+
+      SIERRA_FORTRAN(tet_gradient_operator)
+        ( &nface,
+          &nodesPerElement_,
+          &nface,
+          dpsi,
+          &coords[12*n], &gradop[k*nelem*12+n*12], &det_j[npf*n+k], error, &lerr );
+
+      if ( lerr )
+        std::cout << "sorry, issue with face_grad_op.." << std::endl;
     }
   }
 }
@@ -3386,7 +3457,6 @@ TetSCS::general_face_grad_op(
 
   const int nface = 1;
   double dpsi[12];
-  double grad[12];
 
   // derivatives are constant
   SIERRA_FORTRAN(tet_derivative)
@@ -3397,14 +3467,11 @@ TetSCS::general_face_grad_op(
       &nodesPerElement_,
       &nface,
       dpsi,
-      &coords[0], grad, &det_j[0], error, &lerr );
+      &coords[0], &gradop[0], &det_j[0], error, &lerr );
   
   if ( lerr )
     throw std::runtime_error("TetSCS::general_face_grad_op issue");
  
-  for ( int j=0; j<12; j++) {
-    gradop[j] = grad[j];
-  }
 }
 
 //--------------------------------------------------------------------------
@@ -3603,19 +3670,32 @@ PyrSCS::PyrSCS()
   lrscv_[14] = 3; lrscv_[15] = 4;
   
   // define opposing node
+  // opposing node for node 4 is never uniquely defined: pick one
   oppNode_.resize(20);
   // face 0; nodes 0,1,4
-  oppNode_[0] = 3; oppNode_[1] = 2; oppNode_[2] = 4; oppNode_[3] = -1;
+  oppNode_[0] = 3; oppNode_[1] = 2; oppNode_[2] = 2; oppNode_[3] = -1;
   // face 1; nodes 1,2,4
-  oppNode_[4] = 0; oppNode_[5] = 3; oppNode_[6] = 4; oppNode_[7] = -1;
+  oppNode_[4] = 0; oppNode_[5] = 3; oppNode_[6] = 3; oppNode_[7] = -1;
   // face 2; nodes 2,3,4
-  oppNode_[8] = 1; oppNode_[9] = 4; oppNode_[10] = 2; oppNode_[11] = -1;
+  oppNode_[8] = 1; oppNode_[9] = 0; oppNode_[10] = 0; oppNode_[11] = -1;
   // face 3; nodes 0,4,3
-  oppNode_[12] = 1; oppNode_[13] = 5; oppNode_[14] = 6; oppNode_[15] = 2;
-  // face 4; nodes 1,3,2,1
+  oppNode_[12] = 1; oppNode_[13] = 1; oppNode_[14] = 2; oppNode_[15] = -1;
+  // face 4; nodes 0,3,2,1
   oppNode_[16] = 4; oppNode_[17] = 4; oppNode_[18] = 4; oppNode_[19] = 4;
 
   // define opposing face
+  // the 5th node maps to two opposing sub-faces, we pick one
+  oppFace_.resize(20);
+  // face 0
+  oppFace_[0] = 3;  oppFace_[1] = 1;  oppFace_[2] = 6;  oppFace_[3] = -1;
+  // face 1
+  oppFace_[4] = 0;  oppFace_[5] = 2;  oppFace_[6] = 7;  oppFace_[7] = -1;
+  // face 2
+  oppFace_[8] = 1;  oppFace_[9] = 3;  oppFace_[10] = 4; oppFace_[11] = -1;
+  // face 3
+  oppFace_[12] = 0; oppFace_[13] = 5; oppFace_[14] = 2; oppFace_[15] = -1;
+  // face 4
+  oppFace_[16] = 4; oppFace_[17] = 7; oppFace_[18] = 6; oppFace_[19] = 5;
 
   // standard integration location
   intgLoc_.resize(24);
@@ -3643,14 +3723,74 @@ PyrSCS::PyrSCS()
   intgLocShift_[18] =  0.50; intgLocShift_[19] =  0.50; intgLocShift_[20] =  0.50; // surf 7    3->5
   intgLocShift_[21] = -0.50; intgLocShift_[22] =  0.50; intgLocShift_[23] =  0.50; // surf 8    4->5
 
-  // exposed face; n/a
+  // exposed face
+  intgExpFace_.resize(48);
+  const double five24ths = 5.0/24.0;
+  const double nineteen24ths = 19.0/24.0;
+  const double three8ths = 3.0/8.0;
+  const double one3rd = 1.0/3.0;
+  const double two3rds = 2.0/3.0;
+  // face 0; nodes 0,1,4: scs 0, 1, 2
+  intgExpFace_[0]  = -three8ths;     intgExpFace_[1]  = -nineteen24ths; intgExpFace_[2]  = five24ths;
+  intgExpFace_[3]  =  three8ths;     intgExpFace_[4]  = -nineteen24ths; intgExpFace_[5]  = five24ths;
+  intgExpFace_[6]  =  0.0;           intgExpFace_[7]  = -one3rd;        intgExpFace_[8]  = two3rds;
+  // face 1; nodes 1,2,4; scs 0, 1, 2
+  intgExpFace_[9]  = nineteen24ths;  intgExpFace_[10] = -three8ths;     intgExpFace_[11] = five24ths;
+  intgExpFace_[12] = nineteen24ths;  intgExpFace_[13] =  three8ths;     intgExpFace_[14] = five24ths;
+  intgExpFace_[15] = one3rd;         intgExpFace_[16] =  0.0;           intgExpFace_[17] = two3rds;
+  // face 2; nodes 2,3,4; scs 0, 1, 2
+  intgExpFace_[18] =  three8ths;     intgExpFace_[19] = nineteen24ths;  intgExpFace_[20] = five24ths;
+  intgExpFace_[21] = -three8ths;     intgExpFace_[22] = nineteen24ths;  intgExpFace_[23] = five24ths;
+  intgExpFace_[24] =  0.00;          intgExpFace_[25] = one3rd;         intgExpFace_[26] = two3rds;
+  //face 3; nodes 0,4,3; scs 0, 1, 2
+  intgExpFace_[27] = -nineteen24ths; intgExpFace_[28] = -three8ths;     intgExpFace_[29] = five24ths;
+  intgExpFace_[30] = -one3rd;        intgExpFace_[31] = 0.0;            intgExpFace_[32] = two3rds;
+  intgExpFace_[33] = -nineteen24ths; intgExpFace_[34] =  three8ths;     intgExpFace_[35] = five24ths;
+  // face 4; nodes 0,3,2,1; scs 0, 1, 2
+  intgExpFace_[36] = -0.5;           intgExpFace_[37] = -0.5;           intgExpFace_[38] = 0.0;
+  intgExpFace_[39] = -0.5;           intgExpFace_[40] =  0.5;           intgExpFace_[41] = 0.0;
+  intgExpFace_[42] =  0.5;           intgExpFace_[43] =  0.5;           intgExpFace_[44] = 0.0;
+  intgExpFace_[45] =  0.5;           intgExpFace_[46] = -0.5;           intgExpFace_[47] = 0.0;
+
   sideNodeOrdinals_ = {
       0, 1, 4,    // ordinal 0
       1, 2, 4,    // ordinal 1
       2, 3, 4,    // ordinal 2
-      3, 0, 4,    // ordinal 3
+      0, 4, 3,    // ordinal 3
       0, 3, 2, 1  // ordinal 4
   };
+
+  ipNodeMap_.resize(16);
+  // Face 0
+  ipNodeMap_[0]  = 0; ipNodeMap_[1]  = 1; ipNodeMap_[2]  = 4;
+  // Face 1
+  ipNodeMap_[3]  = 1; ipNodeMap_[4]  = 2; ipNodeMap_[5]  = 4;
+  // Face 2
+  ipNodeMap_[6]  = 2; ipNodeMap_[7]  = 3; ipNodeMap_[8]  = 4;
+  // Face 3
+  ipNodeMap_[9]  = 0; ipNodeMap_[10] = 4; ipNodeMap_[11] = 3;
+  // Face 4 (quad face)
+  ipNodeMap_[12] = 0; ipNodeMap_[13] = 3; ipNodeMap_[14] = 2; ipNodeMap_[15] = 1;
+
+  std::vector<std::vector<double>> nodeLocations =
+  {
+      {-1.0, -1.0, +0.0}, {+1.0, -1.0, +0.0}, {+1.0, +1.0, +0.0}, {-1.0, +1.0, +0.0},
+      {0.0, 0.0, +1.0}
+  };
+
+  intgExpFaceShift_.resize(48);
+  int index = 0;
+  stk::topology topo = stk::topology::PYRAMID_5;
+  for (unsigned k = 0; k < topo.num_sides(); ++k) {
+    stk::topology side_topo = topo.side_topology(k);
+    const int* ordinals = side_node_ordinals(k);
+    for (unsigned n = 0; n < side_topo.num_nodes(); ++n) {
+      intgExpFaceShift_[3*index + 0] = nodeLocations[ordinals[n]][0];
+      intgExpFaceShift_[3*index + 1] = nodeLocations[ordinals[n]][1];
+      intgExpFaceShift_[3*index + 2] = nodeLocations[ordinals[n]][2];
+      ++index;
+    }
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -3741,6 +3881,230 @@ void PyrSCS::shifted_grad_op(
 }
 
 //--------------------------------------------------------------------------
+//-------- face_grad_op ----------------------------------------------------
+//--------------------------------------------------------------------------
+void PyrSCS::face_grad_op(
+  const int nelem,
+  const int face_ordinal,
+  const double *coords,
+  double *gradop,
+  double *det_j,
+  double *error)
+{
+  int lerr = 0;
+  const int ndim = 3;  
+  const int nface = 1;
+  double dpsi[15];
+
+  // ordinal four is a quad4
+  const int npf = (face_ordinal < 4 ) ? 3 : 4;
+
+  for ( int n=0; n<nelem; n++ ) {
+    
+    for ( int k=0; k<npf; k++ ) {
+
+      const int row = 9*face_ordinal + k*ndim;
+      pyr_derivative(nface, &intgExpFace_[row], dpsi);
+      
+      SIERRA_FORTRAN(pyr_gradient_operator)
+        ( &nface,
+          &nodesPerElement_,
+          &nface,
+          dpsi,
+          &coords[15*n], &gradop[k*nelem*15+n*15], &det_j[npf*n+k], error, &lerr );
+      
+      if ( lerr )
+        std::cout << "problem with PyrSCS::face_grad_op." << std::endl;
+    }
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- shifted_face_grad_op -------------------------------------------
+//--------------------------------------------------------------------------
+void PyrSCS::shifted_face_grad_op(
+  const int nelem,
+  const int face_ordinal,
+  const double *coords,
+  double *gradop,
+  double *det_j,
+  double *error)
+{
+  int lerr = 0;
+  const int ndim = 3;
+  const int nface = 1;
+  double dpsi[15];
+
+  // ordinal four is a quad4
+  const int npf = (face_ordinal < 4 ) ? 3 : 4;
+
+  // quad4 is the only face that can be safely shifted
+  const double *p_intgExp = (face_ordinal < 4 ) ? &intgExpFace_[0] : &intgExpFaceShift_[0];
+  for ( int n=0; n<nelem; n++ ) {
+
+    for ( int k=0; k<npf; k++ ) {
+
+      const int row = 9*face_ordinal + k*ndim;
+      pyr_derivative(nface, &p_intgExp[row], dpsi);
+
+      SIERRA_FORTRAN(pyr_gradient_operator)
+        ( &nface,
+          &nodesPerElement_,
+          &nface,
+          dpsi,
+          &coords[15*n], &gradop[k*nelem*15+n*15], &det_j[npf*n+k], error, &lerr );
+
+      if ( lerr )
+        std::cout << "problem with PyrSCS::shifted_face_grad_op." << std::endl;
+
+    }
+  }
+}
+
+double PyrSCS::parametric_distance(const std::array<double, 3>& x)
+{
+  const double X = x[0];
+  const double Y = x[1];
+  const double Z = x[2] - 1. / 3.;
+  const double dist0 = (3. / 2.) * (Z + std::max(std::fabs(X), std::fabs(Y)));
+  const double dist1 = -3 * Z;
+  const double dist = std::max(dist0, dist1);
+  return dist;
+}
+
+double dot5(const double* u, const double* v)
+{
+  return (u[0] * v[0] + u[1] * v[1] + u[2] * v[2] + u[3] * v[3] + u[4] * v[4]);
+}
+
+//--------------------------------------------------------------------------
+//-------- interpolatePoint ------------------------------------------------
+//--------------------------------------------------------------------------
+void
+PyrSCS::interpolatePoint(
+  const int &nComp,
+  const double *isoParCoord,
+  const double *field,
+  double *result )
+{
+  double shapefct[5];
+  pyr_shape_fcn(1, isoParCoord, shapefct);
+
+  for (int i = 0; i < nComp; i++) {
+    result[i] = dot5(shapefct, field + 5 * i);
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- isInElement -----------------------------------------------------
+//--------------------------------------------------------------------------
+double PyrSCS::isInElement(
+  const double *elemNodalCoord,
+  const double *pointCoord,
+  double *isoParCoord)
+{
+  // control the interation
+  double isInElemConverged = 1.0e-16; // NOTE: the square of the tolerance on the distance
+  int N_MAX_ITER = 100;
+
+  constexpr int dim = 3;
+  std::array<double, dim> guess = { { 0.0, 0.0, 1.0 / 3.0 } };
+  std::array<double, dim> delta;
+  int iter = 0;
+
+  do {
+    // interpolate coordinate at guess
+    constexpr int nNodes = 5;
+    std::array<double, nNodes> weights;
+    pyr_shape_fcn(1, guess.data(), weights.data());
+
+    // compute difference between coordinates interpolated to the guessed isoParametric coordinates
+    // and the actual point's coordinates
+    std::array<double, dim> error_vec;
+    error_vec[0] = pointCoord[0] - dot5(weights.data(), elemNodalCoord + 0 * nNodes);
+    error_vec[1] = pointCoord[1] - dot5(weights.data(), elemNodalCoord + 1 * nNodes);
+    error_vec[2] = pointCoord[2] - dot5(weights.data(), elemNodalCoord + 2 * nNodes);
+
+    // update guess along gradient of mapping from physical-to-reference coordinates
+    // transpose of the jacobian of the forward mapping
+    constexpr int deriv_size = nNodes * dim;
+    std::array<double, deriv_size> deriv;
+    pyr_derivative(1, guess.data(), deriv.data());
+
+    std::array<double, dim * dim> jact{};
+    for(int j = 0; j < nNodes; ++j) {
+      jact[0] += deriv[0 + j * dim] * elemNodalCoord[j + 0 * nNodes];
+      jact[1] += deriv[1 + j * dim] * elemNodalCoord[j + 0 * nNodes];
+      jact[2] += deriv[2 + j * dim] * elemNodalCoord[j + 0 * nNodes];
+
+      jact[3] += deriv[0 + j * dim] * elemNodalCoord[j + 1 * nNodes];
+      jact[4] += deriv[1 + j * dim] * elemNodalCoord[j + 1 * nNodes];
+      jact[5] += deriv[2 + j * dim] * elemNodalCoord[j + 1 * nNodes];
+
+      jact[6] += deriv[0 + j * dim] * elemNodalCoord[j + 2 * nNodes];
+      jact[7] += deriv[1 + j * dim] * elemNodalCoord[j + 2 * nNodes];
+      jact[8] += deriv[2 + j * dim] * elemNodalCoord[j + 2 * nNodes];
+    }
+
+    // apply its inverse on the error vector
+    action_of_inverse33(jact.data(), error_vec.data(), delta.data());
+
+    // update guess
+    guess[0] += delta[0];
+    guess[1] += delta[1];
+    guess[2] += delta[2];
+
+    //continue to iterate if update was larger than the set tolerance until max iterations are reached
+  } while(!within_tolerance(vector_norm_sq(delta.data(), 3), isInElemConverged) && (++iter < N_MAX_ITER));
+
+  // output if failed:
+  isoParCoord[0] = std::numeric_limits<double>::max();
+  isoParCoord[1] = std::numeric_limits<double>::max();
+  isoParCoord[2] = std::numeric_limits<double>::max();
+  double dist = std::numeric_limits<double>::max();
+
+  if (iter < N_MAX_ITER) {
+    // output if succeeded:
+    isoParCoord[0] = guess[0];
+    isoParCoord[1] = guess[1];
+    isoParCoord[2] = guess[2];
+    dist = parametric_distance(guess);
+  }
+  return dist;
+}
+
+//--------------------------------------------------------------------------
+//-------- general_face_grad_op --------------------------------------------
+//--------------------------------------------------------------------------
+void 
+PyrSCS::general_face_grad_op(
+  const int face_ordinal,
+  const double *isoParCoord,
+  const double *coords,
+  double *gradop,
+  double *det_j,
+  double *error)
+{
+  int lerr = 0;
+  const int nface = 1;
+
+  double dpsi[15];
+
+  pyr_derivative(nface, &isoParCoord[0], dpsi);
+      
+  SIERRA_FORTRAN(pyr_gradient_operator)
+    ( &nface,
+      &nodesPerElement_,
+      &nface,
+      dpsi,
+      &coords[0], &gradop[0], &det_j[0], error, &lerr );
+  
+  if ( lerr )
+    std::cout << "PyrSCS::general_face_grad_op: issue.." << std::endl;
+  
+}
+
+//--------------------------------------------------------------------------
 //-------- pyr_derivative --------------------------------------------------
 //--------------------------------------------------------------------------
 void PyrSCS::pyr_derivative(
@@ -3781,7 +4145,7 @@ void PyrSCS::pyr_derivative(
 }
 
 //--------------------------------------------------------------------------
-//-------- guij ------------------------------------------------------------
+//-------- gij -------------------------------------------------------------
 //--------------------------------------------------------------------------
 void PyrSCS::gij(
   const double *coords,
@@ -3861,6 +4225,57 @@ PyrSCS::opposingNodes(
 }
 
 //--------------------------------------------------------------------------
+//-------- opposingFace --------------------------------------------------
+//--------------------------------------------------------------------------
+int
+PyrSCS::opposingFace(
+  const int ordinal,
+  const int node)
+{
+  return oppNode_[ordinal*4+node];
+}
+
+//--------------------------------------------------------------------------
+//-------- ipNodeMap -------------------------------------------------------
+//--------------------------------------------------------------------------
+const int *
+PyrSCS::ipNodeMap(
+  int ordinal)
+{
+  // define ip->node mappings for each face (ordinal); 
+  return &ipNodeMap_[ordinal*3];
+}
+
+//--------------------------------------------------------------------------
+//-------- sidePcoords_to_elemPcoords --------------------------------------
+//--------------------------------------------------------------------------
+void 
+PyrSCS::sidePcoords_to_elemPcoords(
+  const int & side_ordinal,
+  const int & npoints,
+  const double *side_pcoords,
+  double *elem_pcoords)
+{
+  switch (side_ordinal) {
+  case 0:
+  case 1:
+  case 2:
+  case 3:
+    throw std::runtime_error("sidePcoords_to_elemPcoords: pyramid exposed boundary face must be a quad4");
+    break;
+  case 4:
+    for (int i=0; i<npoints; i++) {//face3: quad4
+      elem_pcoords[i*3+0] = side_pcoords[2*i+0];
+      elem_pcoords[i*3+1] = side_pcoords[2*i+1];
+      elem_pcoords[i*3+2] = 0.0;
+    }
+    break;
+  default:
+    throw std::runtime_error("PyrSCS::sidePcoords_to_elemPcoords invalid ordinal");
+  }
+}
+
+//--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 WedSCV::WedSCV()
@@ -3903,6 +4318,7 @@ WedSCV::~WedSCV()
 {
   // does nothing
 }
+
 //--------------------------------------------------------------------------
 //-------- ipNodeMap -------------------------------------------------------
 //--------------------------------------------------------------------------
@@ -4097,6 +4513,26 @@ WedSCS::WedSCS()
 
   // ordinal to vector offset map.  Really only convenient for the wedge.
   sideOffset_ = { 0, 4, 8, 12, 15};
+
+
+  std::vector<std::vector<double>> nodeLocations =
+  {
+      {0.0,0.0, -1.0}, {+1.0, 0.0, -1.0}, {0.0, +1.0, -1.0},
+      {0.0,0.0, +1.0}, {+1.0, 0.0, +1.0}, {0.0, +1.0, +1.0}
+  };
+  intgExpFaceShift_.resize(54); // no blanked entries
+  int index = 0;
+  stk::topology topo = stk::topology::WEDGE_6;
+  for (unsigned k = 0; k < topo.num_sides(); ++k) {
+    stk::topology side_topo = topo.side_topology(k);
+    const int* ordinals = side_node_ordinals(k);
+    for (unsigned n = 0; n < side_topo.num_nodes(); ++n) {
+      intgExpFaceShift_.at(3 * index + 0) = nodeLocations[ordinals[n]][0];
+      intgExpFaceShift_.at(3 * index + 1) = nodeLocations[ordinals[n]][1];
+      intgExpFaceShift_.at(3 * index + 2) = nodeLocations[ordinals[n]][2];
+      ++index;
+    }
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -4258,7 +4694,7 @@ WedSCS::face_grad_op(
   int lerr = 0;
   const int ndim = 3;
   const int nface = 1;
-  double dpsi[18], grad[18];
+  double dpsi[18];
 
   // nodes per face... ordinal 0, 1, 2 are quad faces, 3 and 4 are tri
   const int npf = (face_ordinal < 3 ) ? 4 : 3;
@@ -4275,14 +4711,52 @@ WedSCS::face_grad_op(
           &nodesPerElement_,
           &nface,
           dpsi,
-          &coords[18*n], grad, &det_j[npf*n+k], error, &lerr );
+          &coords[18*n], &gradop[k*nelem*18+n*18], &det_j[npf*n+k], error, &lerr );
       
       if ( lerr )
         std::cout << "problem with EwedSCS::face_grad" << std::endl;
       
-      for ( int j=0; j<18; j++) {
-        gradop[k*nelem*18+n*18+j] = grad[j];
-      }
+    }
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- shifted_face_grad_op --------------------------------------------
+//--------------------------------------------------------------------------
+void
+WedSCS::shifted_face_grad_op(
+  const int nelem,
+  const int face_ordinal,
+  const double *coords,
+  double *gradop,
+  double *det_j,
+  double *error)
+{
+  int lerr = 0;
+  const int ndim = 3;
+  const int nface = 1;
+  double dpsi[18];
+
+  // nodes per face... ordinal 0, 1, 2 are quad faces, 3 and 4 are tri
+  const int npf = (face_ordinal < 3 ) ? 4 : 3;
+
+  for ( int n = 0; n < nelem; ++n ) {
+
+    for ( int k=0; k<npf; ++k ) {
+      // no blank entries for shifted_face_grad_op . . . have to use offset
+      const int row = (sideOffset_[face_ordinal]+k)*ndim;
+      wedge_derivative(nface, &intgExpFaceShift_[row], dpsi);
+
+      SIERRA_FORTRAN(wed_gradient_operator) (
+          &nface,
+          &nodesPerElement_,
+          &nface,
+          dpsi,
+          &coords[18*n], &gradop[k*nelem*18+n*18], &det_j[npf*n+k], error, &lerr );
+
+      if ( lerr )
+        std::cout << "problem with EwedSCS::face_grad" << std::endl;
+
     }
   }
 }
@@ -4607,7 +5081,7 @@ WedSCS::general_face_grad_op(
 {
   int lerr = 0;
   const int nface = 1;
-  double dpsi[18], grad[18];
+  double dpsi[18];
       
   wedge_derivative(nface, &isoParCoord[0], dpsi);
       
@@ -4616,14 +5090,11 @@ WedSCS::general_face_grad_op(
       &nodesPerElement_,
       &nface,
       dpsi,
-      &coords[0], grad, &det_j[0], error, &lerr );
+      &coords[0], &gradop[0], &det_j[0], error, &lerr );
       
   if ( lerr )
     std::cout << "problem with EwedSCS::general_face_grad" << std::endl;
   
-  for ( int j=0; j<18; ++j) {
-    gradop[j] = grad[j];
-  }  
 }
 
 //--------------------------------------------------------------------------
@@ -4646,22 +5117,22 @@ WedSCS::sidePcoords_to_elemPcoords(
     break;
   case 1:
     for (int i=0; i<npoints; i++) {//face1:quad: (x,y) -> (0.5*(1-y),0.5*(1 + y),x)
-      elem_pcoords[i*3+0] = 0.5*(1.0-side_pcoords[2*i+1]);
-      elem_pcoords[i*3+1] = 0.5*(1.0+side_pcoords[2*i+1]);
-      elem_pcoords[i*3+2] = side_pcoords[2*i+0];
+      elem_pcoords[i*3+0] = 0.5*(1.0-side_pcoords[2*i+0]);
+      elem_pcoords[i*3+1] = 0.5*(1.0+side_pcoords[2*i+0]);
+      elem_pcoords[i*3+2] = side_pcoords[2*i+1];
     }
     break;
   case 2:
     for (int i=0; i<npoints; i++) {//face2:quad: (x,y) -> (0,0.5*(1 + x),y)
       elem_pcoords[i*3+0] = 0.0;
-      elem_pcoords[i*3+1] = 0.5*(1.0+side_pcoords[2*i+0]);
-      elem_pcoords[i*3+2] = side_pcoords[2*i+1];
+      elem_pcoords[i*3+1] = 0.5*(1.0+side_pcoords[2*i+1]);
+      elem_pcoords[i*3+2] = side_pcoords[2*i+0];
     }
     break;
   case 3:
     for (int i=0; i<npoints; i++) {//face3:tri: (x,y) -> (x,y,-1)
-      elem_pcoords[i*3+0] = side_pcoords[2*i+0];
-      elem_pcoords[i*3+1] = side_pcoords[2*i+1];
+      elem_pcoords[i*3+0] = side_pcoords[2*i+1];
+      elem_pcoords[i*3+1] = side_pcoords[2*i+0];
       elem_pcoords[i*3+2] = -1.0;
     }
     break;
@@ -4866,6 +5337,24 @@ Quad2DSCS::Quad2DSCS()
       2, 3,
       3, 0
   };
+
+  std::vector<std::vector<double>> nodeLocations =
+  {
+      {-0.5,-0.5}, {+0.5,-0.5},
+      {+0.5,+0.5}, {-0.5,+0.5}
+  };
+  intgExpFaceShift_.resize(16);
+  int index = 0;
+  stk::topology topo = stk::topology::QUADRILATERAL_4_2D;
+  for (unsigned k = 0; k < topo.num_sides(); ++k) {
+    stk::topology side_topo = topo.side_topology(k);
+    const int* ordinals = side_node_ordinals(k);
+    for (unsigned n = 0; n < side_topo.num_nodes(); ++n) {
+      intgExpFaceShift_[2*index + 0] = nodeLocations[ordinals[n]][0];
+      intgExpFaceShift_[2*index + 1] = nodeLocations[ordinals[n]][1];
+      ++index;
+    }
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -4986,7 +5475,6 @@ void Quad2DSCS::face_grad_op(
 
   const int nface = 1;
   double dpsi[8];
-  double grad[8];
 
   for ( int n=0; n<nelem; n++ ) {
     
@@ -5001,14 +5489,52 @@ void Quad2DSCS::face_grad_op(
           &nodesPerElement_,
           &nface,
           dpsi,
-          &coords[8*n], grad, &det_j[npf*n+k], error, &lerr );
+          &coords[8*n], &gradop[k*nelem*8+n*8], &det_j[npf*n+k], error, &lerr );
       
       if ( lerr )
         std::cout << "sorry, issue with face_grad_op.." << std::endl;
       
-      for ( int j=0; j<8; j++) {
-        gradop[k*nelem*8+n*8+j] = grad[j];
-      }
+    }
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- shifted_face_grad_op --------------------------------------------
+//--------------------------------------------------------------------------
+void Quad2DSCS::shifted_face_grad_op(
+  const int nelem,
+  const int face_ordinal,
+  const double *coords,
+  double *gradop,
+  double *det_j,
+  double *error)
+{
+  int lerr = 0;
+  int npf = 2;
+  int ndim = 2;
+
+  const int nface = 1;
+  double dpsi[8];
+  double grad[8];
+
+  for ( int n=0; n<nelem; n++ ) {
+
+    for ( int k=0; k<npf; k++ ) {
+
+      const int row = 4*face_ordinal + k*ndim;
+      SIERRA_FORTRAN(quad_derivative)
+        ( &nface, &intgExpFaceShift_[row], dpsi );
+
+      SIERRA_FORTRAN(quad_gradient_operator)
+        ( &nface,
+          &nodesPerElement_,
+          &nface,
+          dpsi,
+          &coords[8*n], &gradop[k*nelem*8+n*8], &det_j[npf*n+k], error, &lerr );
+
+      if ( lerr )
+        std::cout << "sorry, issue with face_grad_op.." << std::endl;
+
     }
   }
 }
@@ -5269,7 +5795,6 @@ Quad2DSCS::general_face_grad_op(
   const int nface = 1;
 
   double dpsi[8];
-  double grad[8];
 
   SIERRA_FORTRAN(quad_derivative)
     ( &nface, &isoParCoord[0], dpsi );
@@ -5279,14 +5804,11 @@ Quad2DSCS::general_face_grad_op(
       &nodesPerElement_,
       &nface,
       dpsi,
-      &coords[0], grad, &det_j[0], error, &lerr );
+      &coords[0], &gradop[0], &det_j[0], error, &lerr );
   
   if ( lerr )
     std::cout << "Quad2DSCS::general_face_grad_op: issue.." << std::endl;
   
-  for ( int j=0; j<8; j++) {
-    gradop[j] = grad[j];
-  }
 }
 
 //--------------------------------------------------------------------------
@@ -5335,12 +5857,9 @@ Quad2DSCS::sidePcoords_to_elemPcoords(
 QuadrilateralP2Element::QuadrilateralP2Element()
   : MasterElement(),
     scsDist_(std::sqrt(3.0)/3.0),
-    useGLLGLL_(false),
     nodes1D_(3),
     numQuad_(2)
 {
-  //TODO: Avoid redundant gradient computations when useGLLGLL_ is enabled
-
   nDim_ = 2;
   nodesPerElement_ = nodes1D_ * nodes1D_;
 
@@ -5370,116 +5889,9 @@ void
 QuadrilateralP2Element::set_quadrature_rule()
 {
   gaussAbscissaeShift_ = {-1.0,-1.0,0.0,0.0,+1.0,+1.0};
-
-  if (useGLLGLL_ && numQuad_ < 3) {
-    throw std::runtime_error("Need at least 3 points for gllgll quadrature");
-  }
-
-  switch (numQuad_) {
-    case 1:
-    {
-      gaussAbscissae_ = { 0.0 };
-      gaussWeight_ = { 1.0 };
-      break;
-    }
-    case 2:
-    {
-      gaussAbscissae_ = { -std::sqrt(3.0)/3.0, std::sqrt(3.0)/3.0 };
-      gaussWeight_ = { 0.5, 0.5 };
-      break;
-    }
-    case 3:
-    {
-      if (!useGLLGLL_) {
-        gaussAbscissae_ = { -std::sqrt(3.0/5.0), 0.0, std::sqrt(3.0/5.0) };
-        gaussWeight_ = { 5.0/18.0, 4.0/9.0,  5.0/18.0 };
-      }
-      else {
-        gaussAbscissae1D_ = {-1.0, 0.0, +1.0};
-        GLLGLL_quadrature_weights();
-        gaussAbscissae_ = {
-            gaussAbscissae1D_[0], gaussAbscissae1D_[1], gaussAbscissae1D_[2],
-            gaussAbscissae1D_[0], gaussAbscissae1D_[1], gaussAbscissae1D_[2],
-            gaussAbscissae1D_[0], gaussAbscissae1D_[1], gaussAbscissae1D_[2]
-        };
-      }
-      break;
-    }
-    case 4:
-    {
-      if (!useGLLGLL_) {
-        gaussAbscissae_ = {
-            -std::sqrt(3.0/7.0+2.0/7.0*std::sqrt(6.0/5.0)),
-            -std::sqrt(3.0/7.0-2.0/7.0*std::sqrt(6.0/5.0)),
-            +std::sqrt(3.0/7.0-2.0/7.0*std::sqrt(6.0/5.0)),
-            +std::sqrt(3.0/7.0+2.0/7.0*std::sqrt(6.0/5.0))
-        };
-
-        gaussWeight_ = {
-            (18.0-std::sqrt(30.0))/72.0,
-            (18.0+std::sqrt(30.0))/72.0,
-            (18.0+std::sqrt(30.0))/72.0,
-            (18.0-std::sqrt(30.0))/72.0
-        };
-      }
-      else {
-        gaussAbscissae1D_ = { -1.0, -std::sqrt(5.0)/5.0, std::sqrt(5.0)/5.0, +1.0};
-        GLLGLL_quadrature_weights();
-
-        gaussAbscissae_ = {
-            gaussAbscissae1D_[0], gaussAbscissae1D_[1], gaussAbscissae1D_[2], gaussAbscissae1D_[3],
-            gaussAbscissae1D_[0], gaussAbscissae1D_[1], gaussAbscissae1D_[2], gaussAbscissae1D_[3],
-            gaussAbscissae1D_[0], gaussAbscissae1D_[1], gaussAbscissae1D_[2], gaussAbscissae1D_[3]
-        };
-      }
-      break;
-    }
-    default:
-      throw std::runtime_error("Quadrature rule not implemented");
-  }
-}
-
-//--------------------------------------------------------------------------
-//-------- GLLGLL_quadrature_weights ---------------------------------------
-//--------------------------------------------------------------------------
-void
-QuadrilateralP2Element::GLLGLL_quadrature_weights()
-{
-  // for fixed abscissae, use a moment-matching equation to compute weights
-  // given a heaviside weight function
-  const int nrows = gaussAbscissae1D_.size();
-  const int nrhs = nodes1D_;
-
-  Teuchos::SerialDenseMatrix<int, double> weightLHS(nrows, nrows);
-  for (int j = 0; j < nrows; ++j) {
-    for (int i = 0; i < nrows; ++i) {
-      weightLHS(i, j) = std::pow(gaussAbscissae1D_[j], i);
-    }
-  }
-
-  // each node has a separate RHS
-  Teuchos::SerialDenseMatrix<int, double> weightRHS(nrows, nrhs);
-  for (int j = 0; j < nrhs; ++j) {
-    for (int i = 0; i < nrows; ++i) {
-      weightRHS(i, j) = (std::pow(scsEndLoc_[j + 1], i + 1)
-                       - std::pow(scsEndLoc_[j], i + 1)) / (i + 1.0);
-    }
-  }
-
-  Teuchos::SerialDenseSolver<int, double> solver;
-  Teuchos::SerialDenseMatrix<int, double> quadratureWeights(nrows, nrhs);
-  solver.setMatrix(Teuchos::rcp(&weightLHS, false));
-  solver.setVectors(
-    Teuchos::rcp(&quadratureWeights, false),
-    Teuchos::rcp(&weightRHS, false)
-  );
-  solver.solve();
-
-  gaussWeight_.resize(nrows * nrhs);
-  for (int j = 0; j < nrows; ++j) {
-    for (int i = 0; i < nrhs; ++i) {
-      gaussWeight_[i + j * nrhs] = quadratureWeights(i, j); //transpose
-    }
+  std::tie(gaussAbscissae_, gaussWeight_) = gauss_legendre_rule(numQuad_);
+  for (unsigned j = 0; j < gaussWeight_.size(); ++j) {
+    gaussWeight_[j] *= 0.5;
   }
 }
 
@@ -5500,16 +5912,9 @@ QuadrilateralP2Element::gauss_point_location(
   int nodeOrdinal,
   int gaussPointOrdinal) const
 {
-  double location1D;
-  if (!useGLLGLL_) {
-    location1D = isoparametric_mapping( scsEndLoc_[nodeOrdinal+1],
-                                        scsEndLoc_[nodeOrdinal],
-                                        gaussAbscissae_[gaussPointOrdinal] );
-  }
-  else {
-    location1D = gaussAbscissae_[nodeOrdinal*numQuad_ + gaussPointOrdinal];
-  }
-   return location1D;
+   return isoparametric_mapping( scsEndLoc_[nodeOrdinal+1],
+     scsEndLoc_[nodeOrdinal],
+     gaussAbscissae_[gaussPointOrdinal] );
 }
 //--------------------------------------------------------------------------
 //-------- shifted_gauss_point_location ------------------------------------
@@ -5530,19 +5935,13 @@ QuadrilateralP2Element::tensor_product_weight(
   int s1Ip, int s2Ip) const
 {
   //surface integration
-  double weight;
-  if (!useGLLGLL_) {
-    const double Ls1 = scsEndLoc_[s1Node+1]-scsEndLoc_[s1Node];
-    const double Ls2 = scsEndLoc_[s2Node+1]-scsEndLoc_[s2Node];
-    const double isoparametricArea = Ls1 * Ls2;
+  const double Ls1 = scsEndLoc_[s1Node+1]-scsEndLoc_[s1Node];
+  const double Ls2 = scsEndLoc_[s2Node+1]-scsEndLoc_[s2Node];
+  const double isoparametricArea = Ls1 * Ls2;
 
-    weight = isoparametricArea * gaussWeight_[s1Ip] * gaussWeight_[s2Ip];
-   }
-   else {
-     // weights are node-specific and take into account the isoparametric area
-     weight = gaussWeight_[s1Node+nodes1D_*s1Ip] * gaussWeight_[s2Node+nodes1D_*s2Ip];
-   }
-   return weight;
+  const double weight = isoparametricArea * gaussWeight_[s1Ip] * gaussWeight_[s2Ip];
+
+  return weight;
 }
 
 //--------------------------------------------------------------------------
@@ -5552,16 +5951,10 @@ double
 QuadrilateralP2Element::tensor_product_weight(int s1Node, int s1Ip) const
 {
   //line integration
-  double weight;
-  if (!useGLLGLL_) {
-    const double isoparametricLength = scsEndLoc_[s1Node+1]-scsEndLoc_[s1Node];
-    weight = isoparametricLength * gaussWeight_[s1Ip];
-   }
-   else {
-     // weights are node-specific and take into account the isoparametric area
-     weight = gaussWeight_[s1Node+nodes1D_*s1Ip];
-   }
-   return weight;
+  const double isoparametricLength = scsEndLoc_[s1Node+1]-scsEndLoc_[s1Node];
+  const double weight = isoparametricLength * gaussWeight_[s1Ip];
+
+  return weight;
 }
 
 
@@ -5733,6 +6126,139 @@ QuadrilateralP2Element::quad9_shape_deriv(
     deriv[offset+1] = 2.0 * s2 * t - 2.0 * t;
   }
 }
+//--------------------------------------------------------------------------
+//-------- parametric_distance ---------------------------------------------
+//--------------------------------------------------------------------------
+double QuadrilateralP2Element::parametric_distance(const std::array<double, 2>& x)
+{
+  double absXi  = std::abs(x[0]);
+  double absEta = std::abs(x[1]);
+  return (absXi > absEta) ? absXi : absEta;
+}
+
+//--------------------------------------------------------------------------
+//-------- interpolatePoint ------------------------------------------------
+//--------------------------------------------------------------------------
+void
+QuadrilateralP2Element::interpolatePoint(
+  const int &nComp,
+  const double *isoParCoord,
+  const double *field,
+  double *result )
+{
+  constexpr int nNodes = 9;
+  std::array<double, nNodes> shapefct;
+  quad9_shape_fcn(1, isoParCoord, shapefct.data());
+
+  for (int i = 0; i < nComp; i++) {
+    result[i] = ddot(shapefct.data(), field + nNodes * i, nNodes);
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- isInElement -----------------------------------------------------
+//--------------------------------------------------------------------------
+double QuadrilateralP2Element::isInElement(
+  const double *elemNodalCoord,
+  const double *pointCoord,
+  double *isoParCoord)
+{
+  // control the interation
+  double isInElemConverged = 1.0e-16; // NOTE: the square of the tolerance on the distance
+  int N_MAX_ITER = 100;
+
+  constexpr int dim = 2;
+  std::array<double, dim> guess = { { 0.0, 0.0 } };
+  std::array<double, dim> delta;
+  int iter = 0;
+
+  do {
+    // interpolate coordinate at guess
+    constexpr int nNodes = 9;
+    std::array<double, nNodes> weights;
+    quad9_shape_fcn(1, guess.data(), weights.data());
+
+    // compute difference between coordinates interpolated to the guessed isoParametric coordinates
+    // and the actual point's coordinates
+    std::array<double, dim> error_vec;
+    error_vec[0] = pointCoord[0] - ddot(weights.data(), elemNodalCoord + 0 * nNodes, nNodes);
+    error_vec[1] = pointCoord[1] - ddot(weights.data(), elemNodalCoord + 1 * nNodes, nNodes);
+
+    // update guess along gradient of mapping from physical-to-reference coordinates
+    // transpose of the jacobian of the forward mapping
+    constexpr int deriv_size = nNodes * dim;
+    std::array<double, deriv_size> deriv;
+    quad9_shape_deriv(1, guess.data(), deriv.data());
+
+    std::array<double, dim * dim> jact{};
+    for(int j = 0; j < nNodes; ++j) {
+      jact[0] += deriv[0 + j * dim] * elemNodalCoord[j + 0 * nNodes];
+      jact[1] += deriv[1 + j * dim] * elemNodalCoord[j + 0 * nNodes];
+      jact[2] += deriv[0 + j * dim] * elemNodalCoord[j + 1 * nNodes];
+      jact[3] += deriv[1 + j * dim] * elemNodalCoord[j + 1 * nNodes];
+    }
+
+    // apply its inverse on the error vector
+    action_of_inverse22(jact.data(), error_vec.data(), delta.data());
+
+    // update guess
+    guess[0] += delta[0];
+    guess[1] += delta[1];
+
+    //continue to iterate if update was larger than the set tolerance until max iterations are reached
+  } while(!within_tolerance(vector_norm_sq(delta.data(), 2), isInElemConverged) && (++iter < N_MAX_ITER));
+
+  // output if failed:
+  isoParCoord[0] = std::numeric_limits<double>::max();
+  isoParCoord[1] = std::numeric_limits<double>::max();
+  double dist = std::numeric_limits<double>::max();
+
+  if (iter < N_MAX_ITER) {
+    // output if succeeded:
+    isoParCoord[0] = guess[0];
+    isoParCoord[1] = guess[1];
+    dist = parametric_distance(guess);
+  }
+  return dist;
+}
+
+void
+QuadrilateralP2Element::sidePcoords_to_elemPcoords(
+  const int & side_ordinal,
+  const int & npoints,
+  const double *side_pcoords,
+  double *elem_pcoords)
+{
+  switch (side_ordinal) {
+  case 0:
+    for (int i=0; i<npoints; i++) {
+      elem_pcoords[i*2+0] = side_pcoords[i];
+      elem_pcoords[i*2+1] = -1;
+    }
+    break;
+  case 1:
+    for (int i=0; i<npoints; i++) {
+      elem_pcoords[i*2+0] = 1;
+      elem_pcoords[i*2+1] = side_pcoords[i];
+    }
+    break;
+  case 2:
+    for (int i=0; i<npoints; i++) {
+      elem_pcoords[i*2+0] = -side_pcoords[i];
+      elem_pcoords[i*2+1] = 1;
+    }
+    break;
+  case 3:
+    for (int i=0; i<npoints; i++) {
+      elem_pcoords[i*2+0] = -1;
+      elem_pcoords[i*2+1] = -side_pcoords[i];
+    }
+    break;
+  default:
+    throw std::runtime_error("QuadrilateralP2Element::sideMap invalid ordinal");
+  }
+}
+
 
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
@@ -5819,24 +6345,21 @@ void Quad92DSCV::determinant(
   double *volume,
   double *error)
 {
-  for (int k = 0; k < nelem; ++k) {
-    const int scalar_elem_offset = numIntPoints_ * k;
-    const int coord_elem_offset = nDim_ * nodesPerElement_ * k;
-    for (int ip = 0; ip < numIntPoints_; ++ip) {
+    for (int ip = 0; ip < Traits::numScvIp_; ++ip) {
       const int grad_offset = nDim_ * nodesPerElement_ * ip;
 
       //weighted jacobian determinant
-      const double det_j = jacobian_determinant(&coords[coord_elem_offset], &shapeDerivs_[grad_offset]);
+      const double det_j = jacobian_determinant(coords, &shapeDerivs_[grad_offset]);
 
       //apply weight and store to volume
-      volume[scalar_elem_offset + ip] = ipWeight_[ip] * det_j;
+      volume[ip] = ipWeight_[ip] * det_j;
 
       //flag error
-      if (det_j <= 0.0) {
+      if (det_j < tiny_positive_value()) {
         *error = 1.0;
       }
     }
-  }
+
 }
 
 //--------------------------------------------------------------------------
@@ -5844,13 +6367,13 @@ void Quad92DSCV::determinant(
 //--------------------------------------------------------------------------
 double
 Quad92DSCV::jacobian_determinant(
-  const double *elemNodalCoords,
-  const double *shapeDerivs) const
+  const double *POINTER_RESTRICT elemNodalCoords,
+  const double *POINTER_RESTRICT shapeDerivs) const
 {
   double dx_ds1 = 0.0;  double dx_ds2 = 0.0;
   double dy_ds1 = 0.0;  double dy_ds2 = 0.0;
 
-  for (int node = 0; node < nodesPerElement_; ++node) {
+  for (int node = 0; node < Traits::nodesPerElement_; ++node) {
     const int vector_offset = node * nDim_;
 
     const double xCoord = elemNodalCoords[vector_offset + 0];
@@ -6157,30 +6680,38 @@ Quad92DSCS::determinant(
   //returns the normal vector (dyds,-dxds) for constant t curves
   //returns the normal vector (dydt,-dxdt) for constant s curves
 
-  std::array<double,2> areaVector;
+  ThrowRequireMsg(nelem == 1, "P2 elements are processed one-at-a-time");
 
-  for (int k = 0; k < nelem; ++k) {
-    const int coord_elem_offset = nDim_ * nodesPerElement_ * k;
-    const int vector_elem_offset = nDim_*numIntPoints_*k;
+  constexpr int dim = Traits::nDim_;
+  constexpr int ipsPerDirection = Traits::numScsIp_ / dim;
+  static_assert ( ipsPerDirection * dim == Traits::numScsIp_, "Number of ips incorrect");
 
-    for (int ip = 0; ip < numIntPoints_; ++ip) {
-      const int grad_offset = nDim_ * nodesPerElement_ * ip;
-      const int offset = nDim_ * ip + vector_elem_offset;
+  constexpr int deriv_increment = dim * Traits::nodesPerElement_;
 
-      //compute area vector for this ip
-      area_vector( ipInfo_[ip].direction,
-                   &coords[coord_elem_offset],
-                   &shapeDerivs_[grad_offset],
-                   areaVector.data() );
+  int index = 0;
 
-      // apply quadrature weight and orientation (combined as weight)
-      for (int j = 0; j < nDim_; ++j) {
-        areav[offset+j]  = ipInfo_[ip].weight * areaVector[j];
-      }
-    }
+   //returns the normal vector x_u x x_s for constant t surfaces
+  for (int ip = 0; ip < ipsPerDirection; ++ip) {
+    ThrowAssert(ipInfo_[index].direction == Jacobian::T_DIRECTION);
+    area_vector<Jacobian::T_DIRECTION>(coords, &shapeDerivs_[deriv_increment * index], &areav[index*dim]);
+    ++index;
   }
 
-  *error = 0;
+  //returns the normal vector x_t x x_u for constant s curves
+  for (int ip = 0; ip < ipsPerDirection; ++ip) {
+    ThrowAssert(ipInfo_[index].direction == Jacobian::S_DIRECTION);
+    area_vector<Jacobian::S_DIRECTION>(coords, &shapeDerivs_[deriv_increment * index], &areav[index*dim]);
+    ++index;
+  }
+
+  // Multiply with the integration point weighting
+  for (int ip = 0; ip < Traits::numScsIp_; ++ip) {
+    double weight = ipInfo_[ip].weight;
+    areav[ip * dim + 0] *= weight;
+    areav[ip * dim + 1] *= weight;
+  }
+
+  *error = 0; // no error checking available
 }
 
 //--------------------------------------------------------------------------
@@ -6196,7 +6727,7 @@ void Quad92DSCS::grad_op(
 {
   int lerr = 0;
 
-  int numShapeDerivs = numIntPoints_*nodesPerElement_*nDim_;
+  constexpr int numShapeDerivs = Traits::numScsIp_*Traits::nodesPerElement_*Traits::nDim_;
   for (int j = 0; j < numShapeDerivs; ++j) {
     deriv[j] = shapeDerivs_[j];
   }
@@ -6226,7 +6757,7 @@ void Quad92DSCS::shifted_grad_op(
 {
   int lerr = 0;
 
-  int numShapeDerivs = numIntPoints_*nodesPerElement_*nDim_;
+  constexpr int numShapeDerivs = Traits::numScsIp_*Traits::nodesPerElement_*Traits::nDim_;
   for (int j = 0; j < numShapeDerivs; ++j) {
     deriv[j] = shapeDerivsShift_[j];
   }
@@ -6253,34 +6784,34 @@ void Quad92DSCS::face_grad_op(
   double *det_j,
   double *error)
 {
+  ThrowRequireMsg(nelem == 1, "P2 elements are processed one-at-a-time");
+
   int lerr = 0;
 
   const int nface = 1;
   const int face_offset =  nDim_ * ipsPerFace_ * nodesPerElement_ * face_ordinal;
-  for (int k = 0; k < nelem; ++k) {
-    const int coord_elem_offset = nDim_ * nodesPerElement_ * k;
-    const int scalar_elem_offset = ipsPerFace_ * k;
+  double* offsetFaceDerivs = &expFaceShapeDerivs_[face_offset];
 
-    for (int ip = 0; ip < ipsPerFace_; ++ip) {
-      const int grad_offset = nDim_ * nodesPerElement_ * ip;
+  for (int ip = 0; ip < ipsPerFace_; ++ip) {
+    const int grad_offset = nDim_ * nodesPerElement_ * ip;
 
-      SIERRA_FORTRAN(quad_gradient_operator)
-      ( &nface,
-          &nodesPerElement_,
-          &nface,
-          &expFaceShapeDerivs_[face_offset+grad_offset],
-          &coords[coord_elem_offset],
-          &gradop[grad_offset],
-          &det_j[scalar_elem_offset+ip],
-          error,
-          &lerr
-      );
+    SIERRA_FORTRAN(quad_gradient_operator)
+    ( & nface,
+        &nodesPerElement_,
+        &nface,
+        &offsetFaceDerivs[grad_offset],
+        coords,
+        &gradop[grad_offset],
+        &det_j[ip],
+        error,
+        &lerr
+    );
 
-      if (det_j[ip] <= 0.0) {
-        *error = 1.0;
-      }
+    if (det_j[ip] < tiny_positive_value() || lerr != 0) {
+      *error = 1.0;
     }
   }
+
 }
 
 //--------------------------------------------------------------------------
@@ -6334,27 +6865,17 @@ Quad92DSCS::opposingFace(
 //--------------------------------------------------------------------------
 //-------- area_vector -----------------------------------------------------
 //--------------------------------------------------------------------------
-void
+template <Jacobian::Direction direction> void
 Quad92DSCS::area_vector(
-  const Jacobian::Direction direction,
-  const double *elemNodalCoords,
-  double *shapeDeriv,
-  double *normalVec ) const
+  const double *POINTER_RESTRICT elemNodalCoords,
+  double *POINTER_RESTRICT shapeDeriv,
+  double *POINTER_RESTRICT normalVec ) const
 {
-  int s1Component;
-  switch (direction) {
-    case Jacobian::S_DIRECTION:
-      s1Component = static_cast<int>(Jacobian::T_DIRECTION);
-      break;
-    case Jacobian::T_DIRECTION:
-      s1Component = static_cast<int>(Jacobian::S_DIRECTION);
-      break;
-    default:
-      throw std::runtime_error("Not a valid direction for this element!");
-  }
+  constexpr int s1Component = (direction == Jacobian::S_DIRECTION) ?
+      Jacobian::T_DIRECTION : Jacobian::S_DIRECTION;
 
   double dxdr = 0.0;  double dydr = 0.0;
-  for (int node = 0; node < nodesPerElement_; ++node) {
+  for (int node = 0; node < Traits::nodesPerElement_; ++node) {
     const int vector_offset = nDim_ * node;
     const double xCoord = elemNodalCoords[vector_offset+0];
     const double yCoord = elemNodalCoords[vector_offset+1];
@@ -6542,6 +7063,23 @@ Tri2DSCS::Tri2DSCS()
       1, 2,  // ordinal 1
       2, 0   // ordinal 2
   };
+
+  std::vector<std::vector<double>> nodeLocations =
+  {
+      {0.0,0.0}, {1.0,0}, {0.0,1.0}
+  };
+  intgExpFaceShift_.resize(12);
+  int index = 0;
+  stk::topology topo = stk::topology::TRIANGLE_3_2D;
+  for (unsigned k = 0; k < topo.num_sides(); ++k) {
+    stk::topology side_topo = topo.side_topology(k);
+    const int* ordinals = side_node_ordinals(k);
+    for (unsigned n = 0; n < side_topo.num_nodes(); ++n) {
+      intgExpFaceShift_[2*index + 0] = nodeLocations[ordinals[n]][0];
+      intgExpFaceShift_[2*index + 1] = nodeLocations[ordinals[n]][1];
+      ++index;
+    }
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -6683,6 +7221,47 @@ void Tri2DSCS::face_grad_op(
       for ( int j=0; j<6; j++) {
         gradop[k*nelem*6+n*6+j] = grad[j];
       }
+    }
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- shifted_face_grad_op --------------------------------------------
+//--------------------------------------------------------------------------
+void Tri2DSCS::shifted_face_grad_op(
+  const int nelem,
+  const int /*face_ordinal*/,
+  const double *coords,
+  double *gradop,
+  double *det_j,
+  double *error)
+{
+  // same as regular face_grad_op
+
+  int lerr = 0;
+  int npf = 2;
+
+  const int nface = 1;
+  double dpsi[6];
+
+  for ( int n=0; n<nelem; n++ ) {
+
+    for ( int k=0; k<npf; k++ ) {
+
+      // derivatives are constant
+      SIERRA_FORTRAN(tri_derivative)
+        ( &nface, dpsi );
+
+      SIERRA_FORTRAN(tri_gradient_operator)
+        ( &nface,
+          &nodesPerElement_,
+          &nface,
+          dpsi,
+          &coords[12*n], &gradop[k*nelem*6+n*6], &det_j[npf*n+k], error, &lerr );
+
+      if ( lerr )
+        std::cout << "sorry, issue with face_grad_op.." << std::endl;
+
     }
   }
 }
@@ -6907,7 +7486,6 @@ Tri2DSCS::general_face_grad_op(
   
   const int nface = 1;
   double dpsi[6];
-  double grad[6];
   
   // derivatives are constant
   SIERRA_FORTRAN(tri_derivative)
@@ -6918,14 +7496,11 @@ Tri2DSCS::general_face_grad_op(
       &nodesPerElement_,
       &nface,
       dpsi,
-      &coords[0], grad, &det_j[0], error, &lerr );
+      &coords[0], &gradop[0], &det_j[0], error, &lerr );
       
   if ( lerr )
     std::cout << "sorry, issue with face_grad_op.." << std::endl;
   
-  for ( int j=0; j<6; j++) {
-    gradop[j] = grad[j];
-  }
 }
 
 
@@ -7995,15 +8570,16 @@ double Quad93DSCS::parametric_distance(const std::vector<double> &x)
 //--------------------------------------------------------------------------
 void
 Quad93DSCS::area_vector(
-  const double *elemNodalCoords,
-  const double *shapeDeriv,
-  double *areaVector) const
+  const double *POINTER_RESTRICT elemNodalCoords,
+  const double *POINTER_RESTRICT shapeDeriv,
+  double *POINTER_RESTRICT areaVector) const
 {
    // return the normal area vector given shape derivatives dnds OR dndt
    double dx_ds1 = 0.0; double dy_ds1 = 0.0; double dz_ds1 = 0.0;
    double dx_ds2 = 0.0; double dy_ds2 = 0.0; double dz_ds2 = 0.0;
 
-   for (int node = 0; node < nodesPerElement_; ++node) {
+   constexpr int nNodes2D = 9;
+   for (int node = 0; node < nNodes2D; ++node) {
      const int vector_offset = nDim_ * node;
      const int surface_vector_offset = surfaceDimension_ * node;
 
@@ -8625,13 +9201,33 @@ Edge32DSCS::shifted_shape_fcn(double *shpfc)
 }
 
 //--------------------------------------------------------------------------
+//-------- interpolate_point -----------------------------------------------
+//--------------------------------------------------------------------------
+void
+Edge32DSCS::interpolatePoint(
+  const int &nComp,
+  const double *isoParCoord,
+  const double *field,
+  double *result)
+{
+  constexpr int nNodes = 3;
+
+  double s = isoParCoord[0];
+  std::array<double, nNodes> shapefct = {{-0.5*s*(1-s), +0.5*s*(1+s), (1-s)*(1+s)}};
+
+  for ( int i =0; i< nComp; ++i ) {
+    result[i] = shapefct[0] * field[3*i+0] + shapefct[1] * field[3*i+1] + shapefct[2] * field[3*i+2];
+  }
+}
+
+//--------------------------------------------------------------------------
 //-------- area_vector -----------------------------------------------------
 //--------------------------------------------------------------------------
 void
 Edge32DSCS::area_vector(
-  const double *coords,
+  const double *POINTER_RESTRICT coords,
   const double s,
-  double *areaVector) const
+  double *POINTER_RESTRICT areaVector) const
 {
   // returns the normal area vector (dyds,-dxds) evaluated at s
 

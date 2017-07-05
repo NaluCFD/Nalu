@@ -43,11 +43,11 @@ AssembleScalarElemDiffSolverAlgorithm::AssembleScalarElemDiffSolverAlgorithm(
   EquationSystem *eqSystem,
   ScalarFieldType *scalarQ,
   VectorFieldType *dqdx,
-  ScalarFieldType *diffFluxCoeff,
-  bool useCollocation)
+  ScalarFieldType *diffFluxCoeff)
   : SolverAlgorithm(realm, part, eqSystem),
     scalarQ_(scalarQ),
-    diffFluxCoeff_(diffFluxCoeff)
+    diffFluxCoeff_(diffFluxCoeff),
+    shiftedGradOp_(realm.get_shifted_grad_op(scalarQ_->name()))
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -206,7 +206,10 @@ AssembleScalarElemDiffSolverAlgorithm::execute()
       meSCS->determinant(1, &p_coordinates[0], &p_scs_areav[0], &scs_error);
 
       // compute dndx
-      meSCS->grad_op(1, &ws_coordinates[0], &ws_dndx[0], &ws_deriv[0], &ws_det_j[0], &scs_error);
+      if ( shiftedGradOp_ )
+        meSCS->shifted_grad_op(1, &ws_coordinates[0], &ws_dndx[0], &ws_deriv[0], &ws_det_j[0], &scs_error);
+      else
+        meSCS->grad_op(1, &ws_coordinates[0], &ws_dndx[0], &ws_deriv[0], &ws_det_j[0], &scs_error);
 
       for ( int ip = 0; ip < numScsIp; ++ip ) {
 

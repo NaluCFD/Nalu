@@ -4,36 +4,43 @@
 
 # Standard regression test
 function(add_test_r testname np)
-    add_test(${testname} sh -c "mpiexec -np ${np} ${CMAKE_BINARY_DIR}/naluX -i ${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/${testname}.i -o ${testname}.log && ${CMAKE_CURRENT_SOURCE_DIR}/pass_fail.sh ${testname} ${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/${testname}.norm.gold ${TOLERANCE}")
-    set_tests_properties(${testname} PROPERTIES TIMEOUT 1000 PROCESSORS ${np} WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test_files/${testname}")
+    add_test(${testname} sh -c "mpiexec -np ${np} ${CMAKE_BINARY_DIR}/${nalu_ex_name} -i ${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/${testname}.i -o ${testname}.log && ${CMAKE_CURRENT_SOURCE_DIR}/pass_fail.sh ${testname} ${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/${testname}.norm.gold ${TOLERANCE}")
+    set_tests_properties(${testname} PROPERTIES TIMEOUT 1000 PROCESSORS ${np} WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test_files/${testname}" LABELS "regression")
     file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/test_files/${testname})
 endfunction(add_test_r)
 
+# Standard performance test
+function(add_test_p testname np)
+    add_test(${testname} sh -c "mpiexec -np ${np} ${CMAKE_BINARY_DIR}/${nalu_ex_name} -i ${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/${testname}.i -o ${testname}.log && ${CMAKE_CURRENT_SOURCE_DIR}/pass_fail.sh ${testname} ${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/${testname}.norm.gold ${TOLERANCE}")
+    set_tests_properties(${testname} PROPERTIES TIMEOUT 1000 PROCESSORS ${np} WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test_files/${testname}" LABELS "performance")
+    file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/test_files/${testname})
+endfunction(add_test_p)
+
 # Regression test with single restart
 function(add_test_r_rst testname np)
-    add_test(${testname} sh -c "mpiexec -np ${np} ${CMAKE_BINARY_DIR}/naluX -i ${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/${testname}.i -o ${testname}.log && ${CMAKE_CURRENT_SOURCE_DIR}/pass_fail.sh ${testname} ${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/${testname}.norm.gold ${TOLERANCE} && mpiexec -np ${np} ${CMAKE_BINARY_DIR}/naluX -i ${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/${testname}_rst.i -o ${testname}_rst.log && ${CMAKE_CURRENT_SOURCE_DIR}/pass_fail.sh ${testname}_rst ${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/${testname}_rst.norm.gold ${TOLERANCE}")
-    set_tests_properties(${testname} PROPERTIES TIMEOUT 1000 PROCESSORS ${np} WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test_files/${testname}")
+    add_test(${testname} sh -c "mpiexec -np ${np} ${CMAKE_BINARY_DIR}/${nalu_ex_name} -i ${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/${testname}.i -o ${testname}.log && ${CMAKE_CURRENT_SOURCE_DIR}/pass_fail.sh ${testname} ${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/${testname}.norm.gold ${TOLERANCE} && mpiexec -np ${np} ${CMAKE_BINARY_DIR}/${nalu_ex_name} -i ${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/${testname}_rst.i -o ${testname}_rst.log && ${CMAKE_CURRENT_SOURCE_DIR}/pass_fail.sh ${testname}_rst ${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/${testname}_rst.norm.gold ${TOLERANCE}")
+    set_tests_properties(${testname} PROPERTIES TIMEOUT 1000 PROCESSORS ${np} WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test_files/${testname}" LABELS "regression")
     file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/test_files/${testname})
 endfunction(add_test_r_rst)
 
 # Regression test with two restarts
 function(add_test_r_rst2 testname np)
-    add_test(${testname} sh -c "mpiexec -np ${np} ${CMAKE_BINARY_DIR}/naluX -i ${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/${testname}_R0.i -o ${testname}_R0.log && mpiexec -np ${np} ${CMAKE_BINARY_DIR}/naluX -i ${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/${testname}_R1.i -o ${testname}_R1.log && mpiexec -np ${np} ${CMAKE_BINARY_DIR}/naluX -i ${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/${testname}_R2.i -o ${testname}_R2.log && python ${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/norms.py")
-    set_tests_properties(${testname} PROPERTIES TIMEOUT 1000 PROCESSORS ${np} WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test_files/${testname}")
+    add_test(${testname} sh -c "mpiexec -np ${np} ${CMAKE_BINARY_DIR}/${nalu_ex_name} -i ${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/${testname}_R0.i -o ${testname}_R0.log && mpiexec -np ${np} ${CMAKE_BINARY_DIR}/${nalu_ex_name} -i ${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/${testname}_R1.i -o ${testname}_R1.log && mpiexec -np ${np} ${CMAKE_BINARY_DIR}/${nalu_ex_name} -i ${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/${testname}_R2.i -o ${testname}_R2.log && python ${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/norms.py")
+    set_tests_properties(${testname} PROPERTIES TIMEOUT 1000 PROCESSORS ${np} WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test_files/${testname}" LABELS "regression")
     file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/test_files/${testname})
 endfunction(add_test_r_rst2)
 
 # Regression test that runs with different numbers of processes
 function(add_test_r_np testname np)
-    add_test(${testname}Np${np} sh -c "mpiexec -np ${np} ${CMAKE_BINARY_DIR}/naluX -i ${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/${testname}.i -o ${testname}Np${np}.log && ${CMAKE_CURRENT_SOURCE_DIR}/pass_fail.sh ${testname}Np${np} ${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/${testname}Np${np}.norm.gold ${TOLERANCE}")
-    set_tests_properties(${testname}Np${np} PROPERTIES TIMEOUT 1000 PROCESSORS ${np} WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test_files/${testname}")
+    add_test(${testname}Np${np} sh -c "mpiexec -np ${np} ${CMAKE_BINARY_DIR}/${nalu_ex_name} -i ${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/${testname}.i -o ${testname}Np${np}.log && ${CMAKE_CURRENT_SOURCE_DIR}/pass_fail.sh ${testname}Np${np} ${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/${testname}Np${np}.norm.gold ${TOLERANCE}")
+    set_tests_properties(${testname}Np${np} PROPERTIES TIMEOUT 1000 PROCESSORS ${np} WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test_files/${testname}" LABELS "regression")
     file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/test_files/${testname})
 endfunction(add_test_r_np)
 
 # Standard unit test
 function(add_test_u testname np)
-    add_test(${testname} sh -c "mpiexec -np ${np} ${CMAKE_BINARY_DIR}/unittestX")
-    set_tests_properties(${testname} PROPERTIES TIMEOUT 1000 PROCESSORS ${np} WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test_files/${testname}")
+    add_test(${testname} sh -c "mpiexec -np ${np} ${CMAKE_BINARY_DIR}/${utest_ex_name}")
+    set_tests_properties(${testname} PROPERTIES TIMEOUT 1000 PROCESSORS ${np} WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test_files/${testname}" LABELS "unit")
     file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/test_files/${testname})
 endfunction(add_test_u)
 
@@ -73,6 +80,7 @@ add_test_r(elemHybridFluids 8)
 add_test_r(elemHybridFluidsShift 8)
 add_test_r(elemPipeCHT 4)
 add_test_r(femHC 2)
+add_test_r(femHCGL 2)
 add_test_r(fluidsPmrChtPeriodic 8)
 add_test_r(heatedBackStep 4)
 add_test_r_rst(heatedWaterChannelEdge 4)
@@ -86,6 +94,7 @@ add_test_r(kovasznay_P7 1)
 add_test_r(milestoneRun 4)
 add_test_r(mixedTetPipe 8)
 add_test_r(movingCylinder 4)
+add_test_r(nonConformalWithPeriodic 2)
 add_test_r(nonIsoEdgeOpenJet 4)
 add_test_r(nonIsoElemOpenJet 4)
 add_test_r(nonIsoNonUniformEdgeOpenJet 4)
@@ -102,6 +111,7 @@ add_test_r_np(periodic3dEdge 8)
 add_test_r(quad9HC 2)
 add_test_r(steadyTaylorVortex 4)
 add_test_r_rst2(steadyTaylorVortex_P4 8)
+add_test_r_rst2(hoVortex_P2 8)
 add_test_r(variableDensNonIso 2)
 add_test_r(variableDensNonUniform 2)
 add_test_r(variableDensNonUniform_P5 8)
@@ -117,6 +127,6 @@ add_test_u(unitTest2 2)
 # Performance tests
 #=============================================================================
 
-add_test_r(oversetHybrid 8)
-add_test_r(uqSlidingMeshDG 8)
-add_test_r(waleElemXflowMixFrac3.5m 8)
+add_test_p(oversetHybrid 8)
+add_test_p(uqSlidingMeshDG 8)
+add_test_p(waleElemXflowMixFrac3.5m 8)

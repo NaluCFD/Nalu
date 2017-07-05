@@ -14,14 +14,23 @@
 namespace sierra{
 namespace nalu{
 
-#define INSTANTIATE_SUPPLEMENTAL_ALGORITHM(ClassName)             \
+#define INSTANTIATE_KERNEL_3D(ClassName)                          \
 template class ClassName<AlgTraitsHex8>;                          \
 template class ClassName<AlgTraitsHex27>;                         \
 template class ClassName<AlgTraitsTet4>;                          \
 template class ClassName<AlgTraitsPyr5>;                          \
 template class ClassName<AlgTraitsWed6>;                          \
+
+#define INSTANTIATE_KERNEL_2D(ClassName)                          \
 template class ClassName<AlgTraitsQuad4_2D>;                      \
+template class ClassName<AlgTraitsQuad9_2D>;                      \
 template class ClassName<AlgTraitsTri3_2D>;                       \
+
+
+#define INSTANTIATE_KERNEL(ClassName)           \
+  INSTANTIATE_KERNEL_3D(ClassName)              \
+  INSTANTIATE_KERNEL_2D(ClassName)              \
+
 
 } // namespace nalu
 } // namespace Sierra

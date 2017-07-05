@@ -49,6 +49,12 @@ public:
   std::vector<double> eval_deriv_weights(
     const std::vector<double>& intgLoc) const;
 
+  void interpolation_weights(const double* isoParCoord, double* weights) const;
+  void derivative_weights(const double* isoParCoord, double* weights) const;
+
+  const std::vector<double>& point_interpolation_weights(const double* isoParCoords);
+  const std::vector<double>& point_derivative_weights(const double* isoParCoords);
+
   double tensor_lagrange_derivative(
     unsigned dimension,
     const double* x,
@@ -58,9 +64,16 @@ public:
 
   double tensor_lagrange_interpolant(unsigned dimension, const double* x, const int* node_ordinals) const;
 
+  unsigned num_nodes() { return numNodes_; }
+
   std::vector<std::vector<int>> indicesMap_;
+
+  std::vector<double> interpWeightsAtPoint_;
+  std::vector<double> derivWeightsAtPoint_;
+
   const Lagrange1D basis1D_;
   unsigned numNodes1D_;
+  unsigned numNodes_;
   unsigned polyOrder_;
   const unsigned dim_;
 };
