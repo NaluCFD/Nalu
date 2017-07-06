@@ -119,7 +119,7 @@ ActuatorDisc::ActuatorDisc(
   const YAML::Node &node)
   : Actuator(realm, node),
     realm_(realm),
-    searchMethod_(stk::search::BOOST_RTREE),
+    searchMethod_(stk::search::KDTREE),
     actuatorDiscGhosting_(NULL),
     needToGhostCount_(0),
     localPointId_(0),
@@ -240,12 +240,10 @@ ActuatorDisc::load(
     // determine search method for this pair
     if ( searchMethodName == "boost_rtree" )
       searchMethod_ = stk::search::BOOST_RTREE;
-    else if ( searchMethodName == "stk_octree" )
-      searchMethod_ = stk::search::OCTREE;
     else if ( searchMethodName == "stk_kdtree" )
       searchMethod_ = stk::search::KDTREE;
     else
-      NaluEnv::self().naluOutputP0() << "ActuatorDisc::search method not declared; will use BOOST_RTREE" << std::endl;
+      NaluEnv::self().naluOutputP0() << "ActuatorDisc::search method not declared; will use stk_kdtree" << std::endl;
 
     // extract the set of from target names; each spec is homogeneous in this respect
     const YAML::Node searchTargets = y_actuatorDisc["search_target_part"];

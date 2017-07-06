@@ -119,7 +119,7 @@ ActuatorLinePointDrag::ActuatorLinePointDrag(
   const YAML::Node &node)
   : Actuator(realm, node),
     realm_(realm),
-    searchMethod_(stk::search::STK_KDTREE),
+    searchMethod_(stk::search::KDTREE),
     actuatorLineGhosting_(NULL),
     needToGhostCount_(0),
     localPointId_(0),
@@ -243,7 +243,7 @@ ActuatorLinePointDrag::load(
     else if ( searchMethodName == "stk_kdtree" )
       searchMethod_ = stk::search::KDTREE;
     else
-      NaluEnv::self().naluOutputP0() << "ActuatorLinePointDrag::search method not declared; will use STK_KDTREE" << std::endl;
+      NaluEnv::self().naluOutputP0() << "ActuatorLinePointDrag::search method not declared; will use stk_kdtree" << std::endl;
 
     // extract the set of from target names; each spec is homogeneous in this respect
     const YAML::Node searchTargets = y_actuatorLine["search_target_part"];

@@ -72,6 +72,11 @@ public:
   double get_gamma2() const;
   double get_gamma3() const;
   int get_time_step_count() const;
+  double get_time_step_from_file();
+  bool get_is_fixed_time_step();
+  bool get_is_terminate_based_on_time();
+  double get_total_sim_time();
+  int get_max_time_step_count();
   void compute_gamma();
  
 };
