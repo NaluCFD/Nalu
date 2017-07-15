@@ -39,6 +39,8 @@
 #include <AssembleNodalGradUNonConformalAlgorithm.h>
 #include <AssembleNodeSolverAlgorithm.h>
 #include <AuxFunctionAlgorithm.h>
+#include <ComputeMdotAlgorithmDriver.h>
+#include <ComputeMdotInflowAlgorithm.h>
 #include <ComputeMdotEdgeAlgorithm.h>
 #include <ComputeMdotElemAlgorithm.h>
 #include <ComputeMdotEdgeOpenAlgorithm.h>
@@ -674,7 +676,7 @@ LowMachEquationSystem::solve_and_update()
 
   // process CFL/Reynolds
   momentumEqSys_->cflReyAlgDriver_->execute();
-}
+ }
 
 //--------------------------------------------------------------------------
 //-------- post_adapt_work -------------------------------------------------
@@ -829,6 +831,17 @@ LowMachEquationSystem::post_converged_work()
   if (NULL != surfaceForceAndMomentAlgDriver_){
     surfaceForceAndMomentAlgDriver_->execute();
   }
+
+  // output mass closure
+  const double integratedAccumulation = realm_.solutionOptions_->mdotAlgAccumulation_;
+  const double integratedInflow = realm_.solutionOptions_->mdotAlgInflow_ ;
+  const double integratedOpen = realm_.solutionOptions_->mdotAlgOpen_;
+  const double totalMassClosure = integratedAccumulation + integratedInflow + integratedOpen;
+  NaluEnv::self().naluOutputP0() << "Mass Balance Review:  " << std::endl;  
+  NaluEnv::self().naluOutputP0() << "Density accumulation: " << integratedAccumulation << std::endl;
+  NaluEnv::self().naluOutputP0() << "Integrated inflow:    " << integratedInflow << std::endl;
+  NaluEnv::self().naluOutputP0() << "Integrated open:      " << integratedOpen << std::endl;
+  NaluEnv::self().naluOutputP0() << "Total mass closure:   " << totalMassClosure << std::endl;
 }
 
 //==========================================================================
@@ -2107,7 +2120,7 @@ ContinuityEquationSystem::ContinuityEquationSystem(
     coordinates_(NULL),
     pTmp_(NULL),
     assembleNodalGradAlgDriver_(new AssembleNodalGradAlgorithmDriver(realm_, "pressure", "dpdx")),
-    computeMdotAlgDriver_(new AlgorithmDriver(realm_)),
+    computeMdotAlgDriver_(new ComputeMdotAlgorithmDriver(realm_)),
     projectedNodalGradEqs_(NULL)
 {
 
@@ -2510,8 +2523,22 @@ ContinuityEquationSystem::register_inflow_bc(
     }
   }
 
-  // solver; lhs - shared by both elem/edge
+  // check to see if we are using shifted as inflow is shared
   const bool useShifted = !elementContinuityEqs_ ? true : realm_.get_cvfem_shifted_mdot();
+
+  // non-solver inflow mdot - shared by both elem/edge
+  std::map<AlgorithmType, Algorithm *>::iterator itmd =
+    computeMdotAlgDriver_->algMap_.find(algType);
+  if ( itmd == computeMdotAlgDriver_->algMap_.end() ) {
+    ComputeMdotInflowAlgorithm *theAlg
+      = new ComputeMdotInflowAlgorithm(realm_, part, useShifted);
+    computeMdotAlgDriver_->algMap_[algType] = theAlg;
+  }
+  else {
+    itmd->second->partVec_.push_back(part);
+  }
+  
+  // solver; lhs - shared by both elem/edge
   std::map<AlgorithmType, SolverAlgorithm *>::iterator its =
     solverAlgDriver_->solverAlgMap_.find(algType);
   if ( its == solverAlgDriver_->solverAlgMap_.end() ) {

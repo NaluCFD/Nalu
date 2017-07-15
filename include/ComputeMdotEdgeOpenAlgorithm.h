@@ -26,12 +26,14 @@ public:
 
   ComputeMdotEdgeOpenAlgorithm(
     Realm &realm,
-    stk::mesh::Part *part);
+    stk::mesh::Part *part,
+    const bool includePstab = true);
   ~ComputeMdotEdgeOpenAlgorithm();
 
   void execute();
 
   const bool meshMotion_;
+  const double pstabFac_;
 
   VectorFieldType *velocityRTM_;
   VectorFieldType *Gpdx_;

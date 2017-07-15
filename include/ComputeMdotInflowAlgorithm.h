@@ -6,8 +6,8 @@
 /*------------------------------------------------------------------------*/
 
 
-#ifndef ComputeMdotElemOpenAlgorithm_h
-#define ComputeMdotElemOpenAlgorithm_h
+#ifndef ComputeMdotInflowAlgorithm_h
+#define ComputeMdotInflowAlgorithm_h
 
 #include<Algorithm.h>
 #include<FieldTypeDef.h>
@@ -20,32 +20,23 @@ namespace nalu{
 
 class Realm;
 
-class ComputeMdotElemOpenAlgorithm : public Algorithm
+class ComputeMdotInflowAlgorithm : public Algorithm
 {
 public:
 
-  ComputeMdotElemOpenAlgorithm(
+  ComputeMdotInflowAlgorithm(
     Realm &realm,
     stk::mesh::Part *part,
-    const bool includePstab = true);
-  ~ComputeMdotElemOpenAlgorithm();
+    bool useShifted);
+  ~ComputeMdotInflowAlgorithm();
 
   void execute();
 
-  const bool meshMotion_;
-  const double pstabFac_;
+  const bool useShifted_;
 
-  VectorFieldType *velocityRTM_;
-  VectorFieldType *Gpdx_;
-  VectorFieldType *coordinates_;
-  ScalarFieldType *pressure_;
-  ScalarFieldType *density_;
+  VectorFieldType *velocityBC_;
+  ScalarFieldType *densityBC_;
   GenericFieldType *exposedAreaVec_;
-  GenericFieldType *openMassFlowRate_;
-  ScalarFieldType *pressureBc_;
-
-  const bool shiftMdot_;
-  const bool shiftPoisson_;
 };
 
 } // namespace nalu

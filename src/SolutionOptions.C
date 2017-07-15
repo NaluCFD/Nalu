@@ -84,7 +84,11 @@ SolutionOptions::SolutionOptions()
     eigenvaluePerturbDelta_(0.0),
     eigenvaluePerturbBiasTowards_(3),
     eigenvaluePerturbTurbKe_(0.0),
-    earthAngularVelocity_(7.2921159e-5)
+    earthAngularVelocity_(7.2921159e-5),
+    latitude_(0.0),
+    mdotAlgAccumulation_(0.0),
+    mdotAlgInflow_(0.0),
+    mdotAlgOpen_(0.0)
 {
   // nothing to do
 }

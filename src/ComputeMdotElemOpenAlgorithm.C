@@ -7,12 +7,13 @@
 
 
 // nalu
-#include <ComputeMdotElemOpenAlgorithm.h>
-#include <Algorithm.h>
+#include "ComputeMdotElemOpenAlgorithm.h"
+#include "Algorithm.h"
 
-#include <FieldTypeDef.h>
-#include <Realm.h>
-#include <master_element/MasterElement.h>
+#include "FieldTypeDef.h"
+#include "Realm.h"
+#include "SolutionOptions.h"
+#include "master_element/MasterElement.h"
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/BulkData.hpp>
@@ -35,9 +36,11 @@ namespace nalu{
 //--------------------------------------------------------------------------
 ComputeMdotElemOpenAlgorithm::ComputeMdotElemOpenAlgorithm(
   Realm &realm,
-  stk::mesh::Part *part)
+  stk::mesh::Part *part,
+  const bool includePstab)
   : Algorithm(realm, part),
     meshMotion_(realm_.does_mesh_move()),
+    pstabFac_(includePstab ? 1.0 : 0.0),
     velocityRTM_(NULL),
     Gpdx_(NULL),
     coordinates_(NULL),
@@ -61,6 +64,14 @@ ComputeMdotElemOpenAlgorithm::ComputeMdotElemOpenAlgorithm(
   exposedAreaVec_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");
   openMassFlowRate_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "open_mass_flow_rate");
   pressureBc_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure_bc");
+}
+
+//--------------------------------------------------------------------------
+//-------- destructor ------------------------------------------------------
+//--------------------------------------------------------------------------
+ComputeMdotElemOpenAlgorithm::~ComputeMdotElemOpenAlgorithm()
+{
+  // does nothing
 }
 
 //--------------------------------------------------------------------------
@@ -109,11 +120,14 @@ ComputeMdotElemOpenAlgorithm::execute()
   // time step
   const double dt = realm_.get_time_step();
   const double gamma1 = realm_.get_gamma1();
-  const double projTimeScale = dt/gamma1;
+  const double projTimeScale = dt/gamma1*pstabFac_;
 
   // deal with interpolation procedure
   const double interpTogether = realm_.get_mdot_interp();
   const double om_interpTogether = 1.0-interpTogether;
+
+  // set accumulation variables
+  double mdotOpen = 0.0;
 
   // deal with state
   ScalarFieldType &densityNp1 = density_->field_of_state(stk::mesh::StateNP1);
@@ -314,23 +328,18 @@ ComputeMdotElemOpenAlgorithm::execute()
           noc += kxj*p_GpdxBip[j];
         }
 
-        // assign
-        mdot[ip] = tmdot - projTimeScale*((pBip-pScs)*asq*inv_axdx + noc*includeNOC);
-
+        // final mdot
+        tmdot -= projTimeScale*((pBip-pScs)*asq*inv_axdx + noc*includeNOC);
+        // scatter to mdot and accumulate
+        mdot[ip] = tmdot;
+        mdotOpen += tmdot;
+        //mdot[ip] = tmdot - projTimeScale*((pBip-pScs)*asq*inv_axdx + noc*includeNOC);
       }
     }
   }
+  // scatter back to solution options; not thread safe
+  realm_.solutionOptions_->mdotAlgOpen_ += mdotOpen;
 }
-
-
-//--------------------------------------------------------------------------
-//-------- destructor ------------------------------------------------------
-//--------------------------------------------------------------------------
-ComputeMdotElemOpenAlgorithm::~ComputeMdotElemOpenAlgorithm()
-{
-  // does nothing
-}
-
 
 
 } // namespace nalu

@@ -193,9 +193,6 @@ struct TrigFieldFunction
   void minimum_distance_to_wall(const double* coords, double* qField) const
   {
     double x = coords[0];
-    double y = coords[1];
-    double z = coords[2];
-
     qField[0] = 10*x+10;
   }
 
