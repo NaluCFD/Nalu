@@ -136,12 +136,10 @@ public:
   double latitude_;
 
   // global mdot correction alg
-  bool activateOpenMdotCorrection_;
   double mdotAlgAccumulation_;
   double mdotAlgInflow_;
   double mdotAlgOpen_;
-  double mdotAlgOpenCorrection_;
-
+ 
   // turbulence model coeffs
   std::map<TurbulenceModelConstant, double> turbModelConstantMap_;
   
