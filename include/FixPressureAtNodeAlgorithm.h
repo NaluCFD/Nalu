@@ -41,11 +41,25 @@ struct FixPressureAtNodeInfo;
  *  solution_options:
  *    name: ablSimOptions
  *
- *    abl_fix_pressure:
+ *    fix_pressure_at_node:
+ *      node_lookup_type: spatial_location      # Use nearest node search
  *      value: 0.0                              # Reference pressure
  *      location: [10.0, 10.0, 10.0]            # Spatial location where pressure is referenced
  *      search_target_part: [Unspecified-2-HEX] # List of mesh parts to be searched
  *      search_method: stk_kdtree               # Search method to determine nearest node
+ *  ```
+ *
+ *  Alternately, the user can specify an STK node identifier instead of
+ *  performing a search for the nearest node.
+ *
+ *  ```
+ *  solution_options:
+ *    name: ablSimOptions
+ *
+ *    fix_pressure_at_node:
+ *      node_lookup_type: stk_node_id           # Use STK node identifier
+ *      node_identifier: 33662                  # STK Node ID
+ *      value: 0.0                              # Reference pressure
  *  ```
  *
  * \sa FixPressureAtNodeInfo
