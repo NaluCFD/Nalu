@@ -36,11 +36,9 @@ namespace nalu{
 //--------------------------------------------------------------------------
 ComputeMdotElemOpenAlgorithm::ComputeMdotElemOpenAlgorithm(
   Realm &realm,
-  stk::mesh::Part *part,
-  const bool includePstab)
+  stk::mesh::Part *part)
   : Algorithm(realm, part),
     meshMotion_(realm_.does_mesh_move()),
-    pstabFac_(includePstab ? 1.0 : 0.0),
     velocityRTM_(NULL),
     Gpdx_(NULL),
     coordinates_(NULL),
@@ -120,7 +118,7 @@ ComputeMdotElemOpenAlgorithm::execute()
   // time step
   const double dt = realm_.get_time_step();
   const double gamma1 = realm_.get_gamma1();
-  const double projTimeScale = dt/gamma1*pstabFac_;
+  const double projTimeScale = dt/gamma1;
 
   // deal with interpolation procedure
   const double interpTogether = realm_.get_mdot_interp();

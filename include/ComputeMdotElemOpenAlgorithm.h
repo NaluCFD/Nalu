@@ -26,14 +26,12 @@ public:
 
   ComputeMdotElemOpenAlgorithm(
     Realm &realm,
-    stk::mesh::Part *part,
-    const bool includePstab = true);
+    stk::mesh::Part *part);
   ~ComputeMdotElemOpenAlgorithm();
 
   void execute();
 
   const bool meshMotion_;
-  const double pstabFac_;
 
   VectorFieldType *velocityRTM_;
   VectorFieldType *Gpdx_;
