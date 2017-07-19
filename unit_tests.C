@@ -22,21 +22,26 @@ int main(int argc, char **argv)
 {
     MPI_Init(&argc, &argv);
 
-    Kokkos::initialize(argc, argv);
-
     //NaluEnv will call MPI_Finalize for us.
     sierra::nalu::NaluEnv::self();
+    Kokkos::initialize(argc, argv);
+    int returnVal = 0;
 
-    testing::InitGoogleTest(&argc, argv);
+    // Create a dummy nested scope to ensure destructors are called before
+    // Kokkos::finalize_all. The instances owning threaded Kokkos loops must be
+    // cleared out before Kokkos::finalize is called.
+    {
+      testing::InitGoogleTest(&argc, argv);
 
-    gl_argc = argc;
-    gl_argv = argv;
+      gl_argc = argc;
+      gl_argv = argv;
 
 // can't use stk_unit_test_utils until Trilinos/stk is updated, configuration is changed...
 //    int procId = stk::parallel_machine_rank(MPI_COMM_WORLD);
 //    stk::unit_test_util::create_parallel_output(procId);
 
-    int returnVal = RUN_ALL_TESTS();
+      returnVal = RUN_ALL_TESTS();
+    }
 
     Kokkos::finalize_all();
 
