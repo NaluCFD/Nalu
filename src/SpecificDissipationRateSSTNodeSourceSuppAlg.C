@@ -46,7 +46,7 @@ SpecificDissipationRateSSTNodeSourceSuppAlg::SpecificDissipationRateSSTNodeSourc
     dkdx_(NULL),
     dwdx_(NULL),
     dualNodalVolume_(NULL),
-    tkeProdLimitRatio_(10.0),
+    tkeProdLimitRatio_(realm.get_turb_model_constant(TM_tkeProdLimitRatio)),
     nDim_(realm_.meta_data().spatial_dimension())
 {
   // save off fields
