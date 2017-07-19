@@ -138,7 +138,7 @@ TEST_F(TestTurbulenceAlgorithm, specificdissipationratesstnodesourcesuppalg)
   const double lhs_norm = assembleSuppAlgs.get_lhs_norm();
   const double rhs_norm = assembleSuppAlgs.get_rhs_norm();
   const double lhs_gold_norm = 0.027222983025572127;
-  const double rhs_gold_norm = 0.075521678624743474;
+  const double rhs_gold_norm = 2.7483377905404858;
   EXPECT_NEAR(lhs_norm, lhs_gold_norm, tol);
   EXPECT_NEAR(rhs_norm, rhs_gold_norm, tol);
 }
