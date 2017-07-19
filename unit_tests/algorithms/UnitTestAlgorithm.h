@@ -66,10 +66,6 @@ public:
     return realm().bulk_data();
   }
 
-  double field_max(const ScalarFieldType & field, stk::mesh::Selector* selector = nullptr);
-
-  double field_min(const ScalarFieldType & field, stk::mesh::Selector* selector = nullptr);
-
   double field_norm(const ScalarFieldType & field, stk::mesh::Selector* selector = nullptr);
 
   //! Reference to test Nalu instance used to hold Simulation and Realm

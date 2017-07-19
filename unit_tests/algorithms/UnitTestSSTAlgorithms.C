@@ -29,10 +29,9 @@ TEST_F(TestTurbulenceAlgorithm, computesstmaxlengthscaleelemalgorithm)
 
   // Perform tests
   const double tol = 1e-14;
-  double maxVal = field_max(*maxLengthScale_);
-  double minVal = field_min(*maxLengthScale_);
-  EXPECT_NEAR(maxVal, 1.0, tol);
-  EXPECT_NEAR(minVal, 1.0, tol);
+  double norm = field_norm(*maxLengthScale_);
+  const double gold_norm = 1.0;
+  EXPECT_NEAR(norm, gold_norm, tol);
 }
 
 TEST_F(TestTurbulenceAlgorithm, testturbviscsstalgorithm)

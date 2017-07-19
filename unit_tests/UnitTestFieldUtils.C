@@ -9,39 +9,6 @@
 
 namespace unit_test_utils {
 
-double field_max(const ScalarFieldType& field, const stk::mesh::BulkData& bulk, stk::mesh::Selector selector)
-{
-  stk::ParallelMachine comm = bulk.parallel();
-  const auto& buckets = bulk.get_buckets(stk::topology::NODE_RANK, selector);
-
-  double maxVal = -std::numeric_limits<double>::max();
-  double g_maxVal = -std::numeric_limits<double>::max();
-  kokkos_thread_team_bucket_loop(buckets, [&](stk::mesh::Entity node) {
-      double nodeVal = *stk::mesh::field_data(field, node);
-      maxVal = std::max(maxVal, nodeVal);
-    });
-  stk::all_reduce_max(comm, &maxVal, &g_maxVal, 1);
-
-  return g_maxVal;
-}
-
-double field_min(const ScalarFieldType& field, const stk::mesh::BulkData& bulk, stk::mesh::Selector selector)
-{
-  stk::ParallelMachine comm = bulk.parallel();
-  const auto& buckets = bulk.get_buckets(stk::topology::NODE_RANK, selector);
-
-  double minVal = std::numeric_limits<double>::max();
-  double g_minVal = std::numeric_limits<double>::max();
-  kokkos_thread_team_bucket_loop(buckets, [&](stk::mesh::Entity node) {
-      double nodeVal = *stk::mesh::field_data(field, node);
-      minVal = std::min(minVal, nodeVal);
-    });
-  stk::all_reduce_min(comm, &minVal, &g_minVal, 1);
-
-  return g_minVal;
-}
-
-
 double field_norm(const ScalarFieldType& field, const stk::mesh::BulkData& bulk, stk::mesh::Selector selector)
 {
   stk::ParallelMachine comm = bulk.parallel();
@@ -53,9 +20,9 @@ double field_norm(const ScalarFieldType& field, const stk::mesh::BulkData& bulk,
   double g_norm = 0.0;
 
   kokkos_thread_team_bucket_loop(buckets, [&](stk::mesh::Entity node) {
-      double nodeVal = *stk::mesh::field_data(field, node);
-      norm += nodeVal*nodeVal;
-      N++;
+      double node_value = *stk::mesh::field_data(field, node);
+      Kokkos::atomic_add(&N, (size_t)1);
+      Kokkos::atomic_add(&norm, (node_value * node_value));
     });
   stk::all_reduce_sum(comm, &N, &g_N, 1);
   stk::all_reduce_sum(comm, &norm, &g_norm, 1);

@@ -24,26 +24,6 @@ TestAlgorithm::fill_mesh(const std::string mesh_spec)
 }
 
 double
-TestAlgorithm::field_max(const ScalarFieldType & field, stk::mesh::Selector* selector)
-{
-  auto& meta = this->meta();
-  auto& bulk = this->bulk();
-  auto sel = (selector == nullptr)? meta.locally_owned_part() : *selector;
-
-  return unit_test_utils::field_max(field, bulk, sel);
-}
-
-double
-TestAlgorithm::field_min(const ScalarFieldType & field, stk::mesh::Selector* selector)
-{
-  auto& meta = this->meta();
-  auto& bulk = this->bulk();
-  auto sel = (selector == nullptr)? meta.locally_owned_part() : *selector;
-
-  return unit_test_utils::field_min(field, bulk, sel);
-}
-
-double
 TestAlgorithm::field_norm(const ScalarFieldType & field, stk::mesh::Selector* selector)
 {
 
