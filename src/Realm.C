@@ -234,7 +234,8 @@ namespace nalu{
     doPromotion_(false),
     promotionOrder_(0u),
     quadType_("GaussLegendre"),
-    inputMeshIdx_(-1)
+    inputMeshIdx_(-1),
+    node_(node)
 {
   // deal with specialty options that live off of the realm; 
   // choose to do this now rather than waiting for the load stage

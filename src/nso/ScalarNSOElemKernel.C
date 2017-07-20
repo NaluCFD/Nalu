@@ -116,6 +116,9 @@ ScalarNSOElemKernel<AlgTraits>::execute(
   SharedMemView<double *>& rhs,
   ScratchViews& scratchViews)
 {
+  double w_dqdxScs    [AlgTraits::nDim_];
+  double w_rhoVrtmScs [AlgTraits::nDim_];
+
   SharedMemView<double**>& v_Gjq = scratchViews.get_scratch_view_2D(*Gjq_);
   SharedMemView<double**>& v_velocityRTM = scratchViews.get_scratch_view_2D(*velocityRTM_);
   SharedMemView<double*>& v_qNm1 = scratchViews.get_scratch_view_1D(*scalarQNm1_);
@@ -152,8 +155,8 @@ ScalarNSOElemKernel<AlgTraits>::execute(
 
     // zero out vector
     for ( int i = 0; i < AlgTraits::nDim_; ++i ) {
-      v_dqdxScs_(i) = 0.0;
-      v_rhoVrtmScs_(i) = 0.0;
+      w_dqdxScs[i] = 0.0;
+      w_rhoVrtmScs[i] = 0.0;
     }
 
     // determine scs values of interest
@@ -178,8 +181,8 @@ ScalarNSOElemKernel<AlgTraits>::execute(
       for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
         const double dnj = v_dndx(ip,ic,j);
         const double vrtmj = v_velocityRTM(ic,j);
-        v_dqdxScs_(j) += qIC*dnj;
-        v_rhoVrtmScs_(j) += r*rhoIC*vrtmj;
+        w_dqdxScs[j] += qIC*dnj;
+        w_rhoVrtmScs[j] += r*rhoIC*vrtmj;
         dFdxAdv += rhoIC*vrtmj*qIC*dnj;
         dFdxDiff += diffFluxCoeffIC*v_Gjq(ic,j)*dnj;
         dFdxCont += rhoIC*vrtmj*dnj;
@@ -192,7 +195,7 @@ ScalarNSOElemKernel<AlgTraits>::execute(
     // compute residual for NSO; linearized first
     double residualAlt = dFdxAdv - qNp1Scs*dFdxCont;
     for ( int j = 0; j < AlgTraits::nDim_; ++j )
-      residualAlt -= v_rhoVrtmScs_(j)*v_dqdxScs_(j);
+      residualAlt -= w_rhoVrtmScs[j]*w_dqdxScs[j];
 
     // compute residual for NSO; pde-based second
     const double time = (gamma1_*rhoNp1Scs*qNp1Scs + gamma2_*rhoNScs*qNScs + gamma3_*rhoNm1Scs*qNm1Scs)/dt_;
@@ -205,11 +208,11 @@ ScalarNSOElemKernel<AlgTraits>::execute(
     double gUpperMagGradQ = 0.0;
     double rhoVrtmiGLowerRhoVrtmj = 0.0;
     for ( int i = 0; i < AlgTraits::nDim_; ++i ) {
-      const double dqdxScsi = v_dqdxScs_(i);
-      const double rhoVrtmi = v_rhoVrtmScs_(i);
+      const double dqdxScsi = w_dqdxScs[i];
+      const double rhoVrtmi = w_rhoVrtmScs[i];
       for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
-        gUpperMagGradQ += dqdxScsi*v_gijUpper(ip,i,j)*v_dqdxScs_(j);
-        rhoVrtmiGLowerRhoVrtmj += rhoVrtmi*v_gijLower(ip,i,j)*v_rhoVrtmScs_(j);
+        gUpperMagGradQ += dqdxScsi*v_gijUpper(ip,i,j)*w_dqdxScs[j];
+        rhoVrtmiGLowerRhoVrtmj += rhoVrtmi*v_gijLower(ip,i,j)*w_rhoVrtmScs[j];
       }
     }
 

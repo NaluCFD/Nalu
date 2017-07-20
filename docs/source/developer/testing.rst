@@ -17,7 +17,7 @@ are using, the types of optimizations set, and the versions of the third-party l
 utilizes, along with the blas/lapack implementation in use. Therefore it may make sense when 
 you checkout Nalu to create your own reference data for the tests for the machine and 
 configuration you are using, which is described later in this document. Or you can use a lower tolerance 
-when running the tests. At the moment, single tolerance is chosen in which to use for all the tests. 
+when running the tests. At the moment, a single tolerance is chosen in which to use for all the tests. 
 The following instructions will describe how to run Nalu's tests.
 
 Since Nalu's tests require a large amount of data (meshes), this data is hosted in a separate repository 
@@ -45,7 +45,7 @@ you should be able to run the tests by building Nalu in the ``build`` directory,
 and running ``make test`` or ``ctest``. Looking at ``ctest -h`` will show you many ways 
 you can run tests and choose which tests to run.
 
-For example, there are advantages to using CTest, such as being able to run subsets of the tests, or tests 
+There are advantages to using CTest, such as being able to run subsets of the tests, or tests 
 matching a particular regular expression for example. To do so, in the ``build`` directory, you can run 
 ``ctest -R femHC`` to run the test matching the ``femHC`` regular expression. Other useful capabilities are 
 ``ctest --output-on-failure`` to see test outputs when they fail, ``ctest --rerun-failed`` to only run 
@@ -75,16 +75,14 @@ TPL versions are officially tested:
 
 ::
 
+  openmpi@1.10.3
   boost@1.60.0
   cmake@3.6.1
   parallel-netcdf@1.6.1
   yaml-cpp@0.5.3
   hdf5@1.8.16
   netcdf@4.3.3.1
-  pkg-config@0.29.2
   zlib@1.2.11
-  hwloc@1.11.6
-  m4@1.4.17
   superlu@4.3 
 
 

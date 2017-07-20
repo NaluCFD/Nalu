@@ -97,6 +97,17 @@ public:
     const unsigned beginPos,
     const unsigned endPos);
 
+  /** Reset LHS and RHS for the given set of nodes to 0
+   *
+   *  @param nodeList A list of STK node entities whose rows are zeroed out
+   *  @param beginPos Starting index (usually 0)
+   *  @param endPos Terminating index (1 for scalar quantities; nDim for vectors)
+   */
+  virtual void resetRows(
+    const std::vector<stk::mesh::Entity> nodeList,
+    const unsigned beginPos,
+    const unsigned endPos);
+
   // Solve
   int solve(stk::mesh::FieldBase * linearSolutionField);
   void loadComplete();

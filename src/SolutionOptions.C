@@ -10,6 +10,7 @@
 #include <Enums.h>
 #include <NaluEnv.h>
 #include <MeshMotionInfo.h>
+#include <FixPressureAtNodeInfo.h>
 
 // basic c++
 #include <stdexcept>
@@ -84,7 +85,11 @@ SolutionOptions::SolutionOptions()
     eigenvaluePerturbDelta_(0.0),
     eigenvaluePerturbBiasTowards_(3),
     eigenvaluePerturbTurbKe_(0.0),
-    earthAngularVelocity_(7.2921159e-5)
+    earthAngularVelocity_(7.2921159e-5),
+    latitude_(0.0),
+    mdotAlgAccumulation_(0.0),
+    mdotAlgInflow_(0.0),
+    mdotAlgOpen_(0.0)
 {
   // nothing to do
 }
@@ -423,6 +428,44 @@ SolutionOptions::load(const YAML::Node & y_node)
           // set the map
           meshMotionInfoMap_[motionName] = meshInfo;
         }
+      }
+    }
+
+    const YAML::Node fix_pressure = expect_map(y_solution_options, "fix_pressure_at_node", optional);
+    if (fix_pressure) {
+      needPressureReference_ = true;
+      fixPressureInfo_.reset(new FixPressureAtNodeInfo);
+
+      fixPressureInfo_->refPressure_ = fix_pressure["value"].as<double>();
+      if (fix_pressure["node_lookup_type"])
+      {
+        std::string lookupTypeName = fix_pressure["node_lookup_type"].as<std::string>();
+        if (lookupTypeName == "stk_node_id")
+          fixPressureInfo_->lookupType_ = FixPressureAtNodeInfo::STK_NODE_ID;
+        else if (lookupTypeName == "spatial_location")
+          fixPressureInfo_->lookupType_ = FixPressureAtNodeInfo::SPATIAL_LOCATION;
+        else
+          throw std::runtime_error("FixPressureAtNodeInfo: Invalid option specified for "
+                                   "'node_lookup_type' in input file.");
+      }
+
+      if (fixPressureInfo_->lookupType_ == FixPressureAtNodeInfo::SPATIAL_LOCATION) {
+        fixPressureInfo_->location_ = fix_pressure["location"].as<std::vector<double>>();
+        fixPressureInfo_->searchParts_ =
+          fix_pressure["search_target_part"].as<std::vector<std::string>>();
+        if (fix_pressure["search_method"]) {
+          std::string searchMethodName = fix_pressure["search_method"].as<std::string>();
+          if (searchMethodName == "boost_rtree")
+            fixPressureInfo_->searchMethod_ = stk::search::BOOST_RTREE;
+          else if (searchMethodName == "stk_kdtree")
+            fixPressureInfo_->searchMethod_ = stk::search::KDTREE;
+          else
+            NaluEnv::self().naluOutputP0() << "ABL Fix Pressure: Search will use stk_kdtree"
+                                           << std::endl;
+        }
+      }
+      else {
+        fixPressureInfo_->stkNodeId_ = fix_pressure["node_identifier"].as<unsigned int>();
       }
     }
 

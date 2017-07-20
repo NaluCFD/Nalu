@@ -28,7 +28,17 @@ enum AlgorithmType{
   NON_CONFORMAL = 10,
   ELEM_SOURCE = 11,
   OVERSET = 12,
-  WALL_ABL = 13
+  WALL_ABL = 13,
+
+  /** Set the reference pressure at a node.
+   *
+   *  Used only for continuity equation system. This needs to be the last
+   *  algorithm applied to the linear system because it resets the row and
+   *  overwrites contributions from other algorithms at this node.
+   *
+   * \sa FixPressureAtNodeAlgorithm
+   */
+  REF_PRESSURE = 14
 };
 
 enum BoundaryConditionType{

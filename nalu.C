@@ -25,6 +25,9 @@
 // yaml for parsing..
 #include <yaml-cpp/yaml.h>
 
+// Kokkos
+#include <Kokkos_Core.hpp>
+
 #include <iostream>
 #include <fstream>
 #include <iomanip>
@@ -63,6 +66,8 @@ int main( int argc, char ** argv )
 
   // NaluEnv singleton
   sierra::nalu::NaluEnv &naluEnv = sierra::nalu::NaluEnv::self();
+  Kokkos::initialize(argc, argv);
+  {
   
   stk::diag::setEnabledTimerMetricsMask(stk::diag::METRICS_CPU_TIME | stk::diag::METRICS_WALL_TIME);
 
@@ -228,6 +233,8 @@ int main( int argc, char ** argv )
                               stk::diag::METRICS_CPU_TIME | stk::diag::METRICS_WALL_TIME,
                               false, naluEnv.parallel_comm());
 
+  }
+  Kokkos::finalize_all();
   // all done  
   return 0;
 }

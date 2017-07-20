@@ -552,6 +552,9 @@ class Realm {
   // id for the input mesh
   size_t inputMeshIdx_;
 
+  // save off the node
+  const YAML::Node & node_;
+
   // tools
   std::unique_ptr<ElementDescription> desc_; // holds topo info
   std::unique_ptr<PromotedElementIO> promotionIO_; // mesh outputer
