@@ -89,7 +89,11 @@ SolutionOptions::SolutionOptions()
     latitude_(0.0),
     mdotAlgAccumulation_(0.0),
     mdotAlgInflow_(0.0),
-    mdotAlgOpen_(0.0)
+    mdotAlgOpen_(0.0),
+    activateOpenMdotCorrection_(false),
+    mdotAlgOpenCorrection_(0.0),
+    mdotAlgOpenIpCount_(0),
+    mdotAlgOpenPost_(0.0)
 {
   // nothing to do
 }
@@ -194,6 +198,10 @@ SolutionOptions::load(const YAML::Node & y_node)
     // allow for periodic sampling in time
     get_if_present(y_solution_options, "input_variables_from_file_periodic_time",
       inputVariablesPeriodicTime_, inputVariablesPeriodicTime_);
+
+    // check for global correction algorithm
+    get_if_present(y_solution_options, "activate_open_mdot_correction",
+      activateOpenMdotCorrection_, activateOpenMdotCorrection_);
 
     // first set of options; hybrid, source, etc.
     const YAML::Node y_options = expect_sequence(y_solution_options, "options", required);

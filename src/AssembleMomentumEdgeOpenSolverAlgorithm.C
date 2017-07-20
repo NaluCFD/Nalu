@@ -144,7 +144,6 @@ AssembleMomentumEdgeOpenSolverAlgorithm::execute()
 
     // size some things that are useful
     const int num_face_nodes = b.topology().num_nodes();
-    
 
     const stk::mesh::Bucket::size_type length = b.size();
 
