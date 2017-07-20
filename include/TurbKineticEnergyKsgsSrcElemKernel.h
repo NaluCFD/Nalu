@@ -22,7 +22,6 @@ namespace nalu {
 class SolutionOptions;
 class MasterElement;
 class ElemDataRequests;
-class ScratchViews;
 
 /** Add Ksgs source term for kernel-based algorithm approach
  */
@@ -41,9 +40,9 @@ public:
    *  the linear solve
    */
   virtual void execute(
-    SharedMemView<double**>&,
-    SharedMemView<double*>&,
-    ScratchViews&);
+    SharedMemView<DoubleType**>&,
+    SharedMemView<DoubleType*>&,
+    ScratchViews<DoubleType>&);
 
 private:
   TurbKineticEnergyKsgsSrcElemKernel() = delete;
