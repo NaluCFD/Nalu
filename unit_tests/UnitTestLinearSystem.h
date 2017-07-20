@@ -87,6 +87,11 @@ public:
   virtual void writeToFile(const char * filename, bool useOwned=true) {}
   virtual void writeSolutionToFile(const char * filename, bool useOwned=true) {}
 
+  virtual void resetRows(
+    std::vector<stk::mesh::Entity> nodeList,
+    const unsigned beginPos,
+    const unsigned endPos) {}
+
   Kokkos::View<double**> lhs_;
   Kokkos::View<double*> rhs_;
 
