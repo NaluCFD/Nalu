@@ -724,5 +724,22 @@ SolutionOptions::get_gravity_vector(const unsigned nDim) const
     return gravity_;
 }
 
+//--------------------------------------------------------------------------
+//-------- get_turb_model_constant() ------------------------------------------
+//--------------------------------------------------------------------------
+double
+SolutionOptions::get_turb_model_constant(
+   TurbulenceModelConstant turbModelEnum) const
+{
+  std::map<TurbulenceModelConstant, double>::const_iterator it
+    = turbModelConstantMap_.find(turbModelEnum);
+  if ( it != turbModelConstantMap_.end() ) {
+    return it->second;
+  }
+  else {
+    throw std::runtime_error("unknown (not found) turbulence model constant");
+  }
+}
+
 } // namespace nalu
 } // namespace Sierra

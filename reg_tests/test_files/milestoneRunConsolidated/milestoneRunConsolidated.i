@@ -148,12 +148,12 @@ realms:
             momentum: [lumped_momentum_time_derivative, advection_diffusion]
             continuity: [advection]
             mixture_fraction: [lumped_mixture_fraction_time_derivative, upw_advection_diffusion]
+            turbulent_ke: [lumped_turbulent_ke_time_derivative, upw_advection_diffusion, ksgs]
 
     output:
       output_data_base_name: milestoneRunConsolidated.e
       output_frequency: 10
       output_node_set: no
-      output_forced_wall_time: 0.01 
       output_variables:
        - velocity
        - pressure
@@ -165,8 +165,7 @@ realms:
     restart:
       restart_data_base_name: milestoneRunConsolidated_A.rst
       restart_frequency: 25
-      restart_forced_wall_time: 0.01
-
+    
 Time_Integrators:
   - StandardTimeIntegrator:
       name: ti_1
