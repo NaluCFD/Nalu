@@ -118,6 +118,8 @@ realms:
       name: myOptions
       turbulence_model: ksgs
 
+      use_consolidated_solver_algorithm: yes
+
       options:
         - hybrid_factor:
             velocity: 0.0 
@@ -142,8 +144,14 @@ realms:
             turbulent_ke: yes
             mixture_fraction: yes
                 
+        - element_source_terms:
+            momentum: [lumped_momentum_time_derivative, advection_diffusion]
+            continuity: [advection]
+            mixture_fraction: [lumped_mixture_fraction_time_derivative, upw_advection_diffusion]
+            turbulent_ke: [lumped_turbulent_ke_time_derivative, upw_advection_diffusion, ksgs]
+
     output:
-      output_data_base_name: milestoneRun.e
+      output_data_base_name: milestoneRunConsolidated.e
       output_frequency: 10
       output_node_set: no
       output_variables:
@@ -155,9 +163,9 @@ realms:
        - scalar_dissipation
 
     restart:
-      restart_data_base_name: milestoneRun_A.rst
+      restart_data_base_name: milestoneRunConsolidated_A.rst
       restart_frequency: 25
-
+    
 Time_Integrators:
   - StandardTimeIntegrator:
       name: ti_1

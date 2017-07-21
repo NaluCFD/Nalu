@@ -40,31 +40,35 @@ public:
     const auto& buckets = bulk_.get_buckets(stk::topology::NODE_RANK,
                                             selector);
 
-    double lhs_value = 0.0;
-    double rhs_value = 0.0;
+    lhs_norm_ = 0.0;
+    rhs_norm_ = 0.0;
+    N_ = 0;
 
     kokkos_thread_team_bucket_loop(buckets, [&](stk::mesh::Entity node) {
-      for (size_t i=0; i < activeSuppAlgs_.size(); ++i){
-	lhs_value = 0.0;
-	rhs_value = 0.0;
+	for (size_t i=0; i < activeSuppAlgs_.size(); ++i){
+	  double lhs_value = 0.0;
+	  double rhs_value = 0.0;
 
-        activeSuppAlgs_[i]->node_execute(&lhs_value, &rhs_value, node);
+	  activeSuppAlgs_[i]->node_execute(&lhs_value, &rhs_value, node);
 
-        lhs_.push_back(lhs_value);
-        rhs_.push_back(rhs_value);
-      }
+	  Kokkos::atomic_add(&lhs_norm_, (lhs_value * lhs_value));
+	  Kokkos::atomic_add(&rhs_norm_, (rhs_value * rhs_value));
+	}
+
+	Kokkos::atomic_add(&N_, (size_t)1);
       });
   }
 
-  inline double get_lhs_norm() {return unit_test_utils::vector_norm(lhs_, bulk_.parallel());}
-  inline double get_rhs_norm() {return unit_test_utils::vector_norm(rhs_, bulk_.parallel());}
+  inline double get_lhs_norm() {return unit_test_utils::global_norm(lhs_norm_, N_, bulk_.parallel());}
+  inline double get_rhs_norm() {return unit_test_utils::global_norm(rhs_norm_, N_, bulk_.parallel());}
 
   std::vector<sierra::nalu::SupplementalAlgorithm*> activeSuppAlgs_;
 
 private:
   const stk::mesh::BulkData& bulk_;
-  std::vector<double> lhs_;
-  std::vector<double> rhs_;
+  double lhs_norm_;
+  double rhs_norm_;
+  size_t N_;
 };
 
 }

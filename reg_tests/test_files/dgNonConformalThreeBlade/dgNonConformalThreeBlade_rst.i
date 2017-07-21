@@ -213,6 +213,7 @@ realms:
       output_data_base_name: dgNonConformalThreeBlade.e-s001
       output_frequency: 20
       output_node_set: no 
+      output_forced_wall_time: 0.01
       output_variables:
        - velocity
        - pressure
@@ -224,6 +225,7 @@ realms:
       restart_frequency: 25
       restart_start: 25
       restart_time: 0.0661995508335269 
+      restart_forced_wall_time: 0.01
 
 Time_Integrators:
   - StandardTimeIntegrator:

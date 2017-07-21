@@ -37,8 +37,8 @@ TurbKineticEnergyKsgsNodeSourceSuppAlg::TurbKineticEnergyKsgsNodeSourceSuppAlg(
     tvisc_(NULL),
     dudx_(NULL),
     dualNodalVolume_(NULL),
-    cEps_(realm.get_turb_model_constant(TM_cEps)),
-    tkeProdLimitRatio_(realm.get_turb_model_constant(TM_tkeProdLimitRatio)),
+    cEps_(realm_.get_turb_model_constant(TM_cEps)),
+    tkeProdLimitRatio_(realm_.get_turb_model_constant(TM_tkeProdLimitRatio)),
     nDim_(realm_.meta_data().spatial_dimension())
 {
   // save off fields

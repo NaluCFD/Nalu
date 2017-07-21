@@ -76,6 +76,9 @@ public:
   bool get_shifted_grad_op(const std::string&) const;
 
   std::vector<double> get_gravity_vector(const unsigned nDim) const;
+ 
+  double get_turb_model_constant(
+    TurbulenceModelConstant turbModelEnum) const;
 
   double hybridDefault_;
   double alphaDefault_;

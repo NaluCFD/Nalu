@@ -14,10 +14,6 @@
 
 namespace unit_test_utils {
 
-double field_max(const ScalarFieldType& field, const stk::mesh::BulkData& bulk, stk::mesh::Selector selector);
-
-double field_min(const ScalarFieldType& field, const stk::mesh::BulkData& bulk, stk::mesh::Selector selector);
-
 double field_norm(const ScalarFieldType& field, const stk::mesh::BulkData& bulk, stk::mesh::Selector selector);
 
 }

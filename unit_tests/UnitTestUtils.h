@@ -45,6 +45,8 @@ double quadratic(double a, const double* b, const double* H, const double* x);
 
 double vector_norm(const std::vector<double> & vec, const stk::ParallelMachine& comm = MPI_COMM_WORLD);
 
+double global_norm(const double & norm, const size_t & N, const stk::ParallelMachine& comm = MPI_COMM_WORLD);
+
 double initialize_quadratic_scalar_field(const stk::mesh::BulkData& bulk,
                                       const VectorFieldType& coordField,
                                       const ScalarFieldType& qField);
