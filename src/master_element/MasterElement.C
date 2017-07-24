@@ -7,6 +7,8 @@
 
 
 #include <master_element/MasterElement.h>
+#include <master_element/MasterElementFunctions.h>
+#include <master_element/Hex27NGP.h>
 
 #include <element_promotion/MasterElementUtils.h>
 
@@ -116,7 +118,7 @@ create_volume_master_element(stk::topology topo)
       return new HexSCV();
 
     case stk::topology::HEX_27:
-      return new Hex27SCV();
+      return new Hex27SCVNGP();
 
     case stk::topology::TET_4:
       return new TetSCV();
@@ -388,6 +390,41 @@ void HexSCV::determinant(
   SIERRA_FORTRAN(hex_scv_det)
     ( &nelem, &nodesPerElement_, &numIntPoints_, coords,
       volume, error, &lerr );
+
+}
+
+//--------------------------------------------------------------------------
+//-------- determinant -----------------------------------------------------
+//--------------------------------------------------------------------------
+void HexSCV::determinant(
+  SharedMemView<DoubleType**> coords,
+  SharedMemView<DoubleType*> volume)
+{
+  constexpr int subDivisionTable[8][8] = {
+      {  0,  8, 12, 11, 19, 20, 26, 25},
+      {  8,  1,  9, 12, 20, 18, 24, 26},
+      { 12,  9,  2, 10, 26, 24, 22, 23},
+      { 11, 12, 10,  3, 25, 26, 23, 21},
+      { 19, 20, 26, 25,  4, 13, 17, 16},
+      { 20, 18, 24, 26, 13,  5, 14, 17},
+      { 26, 24, 22, 23, 17, 14,  6, 15},
+      { 25, 26, 23, 21, 16, 17, 15,  7}
+  };
+
+  DoubleType coordv[27][3];
+  subdivide_hex_8(coords, coordv);
+
+  constexpr int numSCV = 8;
+  for (int ip = 0; ip < numSCV; ++ip) {
+    DoubleType scvHex[8][3];
+    for (int n = 0; n < 8; ++n) {
+      const int subIndex = subDivisionTable[ip][n];
+      for (int d = 0; d < 3; ++d) {
+        scvHex[n][d] = coordv[subIndex][d];
+      }
+    }
+    volume(ip) = hex_volume_grandy(scvHex);
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -847,17 +884,16 @@ void HexSCS::grad_op(
   int lerr = 0;
 
   hex8_derivative(numIntPoints_, &intgLoc_[0], deriv);
+  generic_grad_op_3d<AlgTraitsHex8>(deriv, coords, gradop);
   
-  hex8_gradient_operator(
-    nodesPerElement_, numIntPoints_, deriv, coords, gradop, det_j, error, lerr );
-
+  error = 0;
   if ( lerr )
     std::cout << "sorry, negative HexSCS volume.." << std::endl;
  }
 
 //--------------------------------------------------------------------------
 //-------- shifted_grad_op -------------------------------------------------
-//--------------------------------------------------------------------------
+//--------------------------------------c------------------------------------
 void HexSCS::shifted_grad_op(
   SharedMemView<DoubleType**>&coords,
   SharedMemView<DoubleType***>&gradop,
@@ -867,11 +903,10 @@ void HexSCS::shifted_grad_op(
 {
   int lerr = 0;
 
-  hex8_derivative(numIntPoints_, &intgLoc_[0], deriv);
+  hex8_derivative(numIntPoints_, &intgLocShift_[0], deriv);
+  generic_grad_op_3d<AlgTraitsHex8>(deriv, coords, gradop);
   
-  hex8_gradient_operator(
-    nodesPerElement_, numIntPoints_, deriv, coords, gradop, det_j, error, lerr );
-
+  error = 0;
   if ( lerr )
     std::cout << "sorry, negative HexSCS volume.." << std::endl;
  }
@@ -883,72 +918,35 @@ void HexSCS::determinant(
   SharedMemView<DoubleType**>&coords,
   SharedMemView<DoubleType**>&areav)
 {
-  static constexpr int ix2[12] = {0, 1, 2, 4, 5, 5, 5, 3, 3, 0, 1, 2};
-  static constexpr int ix4[12] = {4, 4, 4, 3, 0, 1, 2, 5, 0, 1, 2, 3};
-  DoubleType coord_mid_face[6][3];
-  DoubleType coord_mid_edge[12][3];
+  constexpr int hex_edge_facet_table[12][4] = {
+      { 20,  8, 12, 26 },
+      { 24,  9, 12, 26 },
+      { 10, 12, 26, 23 },
+      { 11, 25, 26, 12 },
+      { 13, 20, 26, 17 },
+      { 17, 14, 24, 26 },
+      { 17, 15, 23, 26 },
+      { 16, 17, 26, 25 },
+      { 19, 20, 26, 25 },
+      { 20, 18, 24, 26 },
+      { 22, 23, 26, 24 },
+      { 21, 25, 26, 23 }
+  };
 
-  DoubleType centroid[3] = {0.0,0.0,0.0};
-  for (int i = 0; i < 8; ++i) {
-    centroid[0] += coords(i, 0);
-    centroid[1] += coords(i, 1);
-    centroid[2] += coords(i, 2);
-  }
-  centroid[0] *= 0.125;
-  centroid[1] *= 0.125;
-  centroid[2] *= 0.125;
-  
-  for (int d = 0; d < 3; ++d) {
-    coord_mid_face[0][d] = 0.25 * (coords(0, d) + coords(1, d) +
-                                   coords(5, d) + coords(4, d));
-    coord_mid_face[1][d] = 0.25 * (coords(1, d) + coords(2, d) +
-                                   coords(6, d) + coords(5, d));
-    coord_mid_face[2][d] = 0.25 * (coords(2, d) + coords(3, d) +
-                                   coords(7, d) + coords(6, d));
-    coord_mid_face[3][d] = 0.25 * (coords(3, d) + coords(0, d) +
-                                   coords(4, d) + coords(7, d));
-    coord_mid_face[4][d] = 0.25 * (coords(3, d) + coords(2, d) +
-                                   coords(1, d) + coords(0, d));
-    coord_mid_face[5][d] = 0.25 * (coords(4, d) + coords(5, d) +
-                                   coords(6, d) + coords(7, d));
-  }
-  
-  for (int d = 0; d < 3; ++d) {
-    coord_mid_edge[0][d] = 0.5 * (coords(0, d) + coords(1, d));
-    coord_mid_edge[1][d] = 0.5 * (coords(1, d) + coords(2, d));
-    coord_mid_edge[2][d] = 0.5 * (coords(2, d) + coords(3, d));
-    coord_mid_edge[3][d] = 0.5 * (coords(3, d) + coords(0, d));
-    coord_mid_edge[4][d] = 0.5 * (coords(4, d) + coords(5, d));
-    coord_mid_edge[5][d] = 0.5 * (coords(5, d) + coords(6, d));
-    coord_mid_edge[6][d] = 0.5 * (coords(6, d) + coords(7, d));
-    coord_mid_edge[7][d] = 0.5 * (coords(7, d) + coords(4, d));
-    coord_mid_edge[8][d] = 0.5 * (coords(0, d) + coords(4, d));
-    coord_mid_edge[9][d] = 0.5 * (coords(1, d) + coords(5, d));
-    coord_mid_edge[10][d] = 0.5 * (coords(2, d) + coords(6, d));
-    coord_mid_edge[11][d] = 0.5 * (coords(3, d) + coords(7, d));
-  }
-  
-  for (int j = 0; j < 12; ++j) {
-    DoubleType x2 = coord_mid_face[ix2[j]][0];
-    DoubleType x3 = coord_mid_edge[j][0];
-    DoubleType x4 = coord_mid_face[ix4[j]][0];
-    DoubleType y2 = coord_mid_face[ix2[j]][1];
-    DoubleType y3 = coord_mid_edge[j][1];
-    DoubleType y4 = coord_mid_face[ix4[j]][1];
-    DoubleType z2 = coord_mid_face[ix2[j]][2];
-    DoubleType z3 = coord_mid_edge[j][2];
-    DoubleType z4 = coord_mid_face[ix4[j]][2];
-    
-    DoubleType dx13 = centroid[0] - x3;
-    DoubleType dx24 = x2 - x4;
-    DoubleType dy13 = centroid[1] - y3;
-    DoubleType dy24 = y2 - y4;
-    DoubleType dz13 = centroid[2] - z3;
-    DoubleType dz24 = z2 - z4;
-    
-    areav(j, 0) = 0.5 * (dz24 * dy13 - dz13 * dy24);
-    areav(j, 1) = 0.5 * (dx24 * dz13 - dx13 * dz24);
-    areav(j, 2) = 0.5 * (dy24 * dx13 - dy13 * dx24);
+  DoubleType coordv[27][3];
+  subdivide_hex_8(coords, coordv);
+
+  constexpr int npf = 4;
+  constexpr int nscs = 12;
+  for (int ics=0; ics < nscs; ++ics) {
+    DoubleType scscoords[4][3];
+    for (int inode = 0; inode < npf; ++inode){
+      const int itrianglenode = hex_edge_facet_table[ics][inode];
+      for (int d=0; d < 3; ++d) {
+        scscoords[inode][d] = coordv[itrianglenode][d];
+      }
+    }
+    quad_area_by_triangulation(ics, scscoords, areav);
   }
 }
 
@@ -956,8 +954,7 @@ void HexSCS::determinant(
 //-------- side_node_ordinals ----------------------------------------------
 //--------------------------------------------------------------------------
 const int *
-HexSCS::side_node_ordinals(
-  int ordinal)
+HexSCS::side_node_ordinals(int ordinal)
 {
   // define face_ordinal->node_ordinal mappings for each face (ordinal);
   return &sideNodeOrdinals_[ordinal*4];
@@ -1116,7 +1113,7 @@ void HexSCS::shifted_face_grad_op(
 }
 
 //--------------------------------------------------------------------------
-//-------- guij ------------------------------------------------------------
+//-------- gij -------------------------------------------------------------
 //--------------------------------------------------------------------------
 void HexSCS::gij(
   const double *coords,
@@ -1129,6 +1126,19 @@ void HexSCS::gij(
       &numIntPoints_,
       deriv,
       coords, gupperij, glowerij);
+}
+
+//--------------------------------------------------------------------------
+//-------- gij -------------------------------------------------------------
+//--------------------------------------------------------------------------
+void HexSCS::gij(
+    SharedMemView<DoubleType**> coords,
+    SharedMemView<DoubleType***> gupper,
+    SharedMemView<DoubleType***> glower,
+    SharedMemView<DoubleType***> deriv)
+{
+  hex8_derivative(numIntPoints_, &intgLoc_[0], deriv);
+  generic_gij_3d<AlgTraitsHex8>(deriv, coords, gupper, glower);
 }
 
 //--------------------------------------------------------------------------
@@ -1697,7 +1707,7 @@ double HexahedralP2Element::isInElement(
     hex27_shape_deriv(1, guess.data(), deriv.data());
 
     std::array<double, dim * dim> jact{};
-    for(int j = 0; j < nNodes; ++j) {
+    for (int j = 0; j < nNodes; ++j) {
       jact[0] += deriv[0 + j * dim] * elemNodalCoord[j + 0 * nNodes];
       jact[1] += deriv[1 + j * dim] * elemNodalCoord[j + 0 * nNodes];
       jact[2] += deriv[2 + j * dim] * elemNodalCoord[j + 0 * nNodes];

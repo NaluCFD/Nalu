@@ -311,15 +311,15 @@ void MasterElementViews<T>::fill_master_element_views(
          meSCV->determinant(1, &((*coordsView)(0,0)), &scv_volume(0), &error);
          break;
       case FEM_GRAD_OP:
-         ThrowRequireMsg(meFEM != nullptr, "ERROR, meFEM needs to be non-null if FEM_GRAD_OP is requested.");
-         ThrowRequireMsg(coordsView != nullptr, "ERROR, coords null but FEM_GRAD_OP requested.");
-         meFEM->grad_op(1, &((*coordsView)(0,0)), &dndx_fem(0,0,0), &deriv_fem(0,0,0), &det_j_fem(0), &error);
-         break;
-    case FEM_SHIFTED_GRAD_OP:
-      ThrowRequireMsg(meFEM != nullptr, "ERROR, meFEM needs to be non-null if FEM_SHIFTED_GRAD_OP is requested.");
-      ThrowRequireMsg(coordsView != nullptr, "ERROR, coords null but FEM_GRAD_OP requested.");
-      meFEM->shifted_grad_op(1, &((*coordsView)(0,0)), &dndx_fem(0,0,0), &deriv_fem(0,0,0), &det_j_fem(0), &error);
-      break;
+        ThrowRequireMsg(meFEM != nullptr, "ERROR, meFEM needs to be non-null if FEM_GRAD_OP is requested.");
+        ThrowRequireMsg(coordsView != nullptr, "ERROR, coords null but FEM_GRAD_OP requested.");
+        meFEM->grad_op(1, &((*coordsView)(0,0)), &dndx_fem(0,0,0), &deriv_fem(0,0,0), &det_j_fem(0), &error);
+        break;
+      case FEM_SHIFTED_GRAD_OP:
+        ThrowRequireMsg(meFEM != nullptr, "ERROR, meFEM needs to be non-null if FEM_SHIFTED_GRAD_OP is requested.");
+        ThrowRequireMsg(coordsView != nullptr, "ERROR, coords null but FEM_GRAD_OP requested.");
+        meFEM->shifted_grad_op(1, &((*coordsView)(0,0)), &dndx_fem(0,0,0), &deriv_fem(0,0,0), &det_j_fem(0), &error);
+        break;
 
       default: break;
     }
@@ -356,14 +356,12 @@ void MasterElementViews<T>::fill_master_element_views_new_me(
       case SCS_GIJ:
          ThrowRequireMsg(meSCS != nullptr, "ERROR, meSCS needs to be non-null if SCS_GIJ is requested.");
          ThrowRequireMsg(coordsView != nullptr, "ERROR, coords null but SCS_GIJ requested.");
-/*!*/ThrowRequireMsg(false,"gij not yet supported for new master-element API");
-         //meSCS->gij(*coordsView, gijUpper, gijLower, deriv);
+         meSCS->gij(*coordsView, gijUpper, gijLower, deriv);
          break;
       case SCV_VOLUME:
          ThrowRequireMsg(meSCV != nullptr, "ERROR, meSCV needs to be non-null if SCV_VOLUME is requested.");
          ThrowRequireMsg(coordsView != nullptr, "ERROR, coords null but SCV_VOLUME requested.");
-/*!*/ThrowRequireMsg(false,"determinant not yet supported in new master-element API");
-         //meSCV->determinant(*coordsView, scv_volume);
+         meSCV->determinant(*coordsView, scv_volume);
          break;
       case FEM_GRAD_OP:
          ThrowRequireMsg(meFEM != nullptr, "ERROR, meFEM needs to be non-null if FEM_GRAD_OP is requested.");

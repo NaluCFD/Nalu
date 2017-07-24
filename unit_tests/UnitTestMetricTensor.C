@@ -16,6 +16,7 @@
 #include <stk_mesh/base/CoordinateSystems.hpp>
 
 #include <master_element/MasterElement.h>
+#include <master_element/Hex27NGP.h>
 #include <NaluEnv.h>
 
 #include "UnitTestUtils.h"
@@ -237,4 +238,66 @@ TEST(MetricTensor, hex8)
 TEST(MetricTensor, hex27)
 {
   test_metric_for_topo_3D(stk::topology::HEX_27,1.0e-10);
+}
+
+
+TEST(MetricTensorNGP, hex27)
+{
+  stk::topology topo =  stk::topology::HEX_27;
+  int dim = topo.dimension();
+  ASSERT_EQ(dim,3);
+
+  stk::mesh::MetaData meta(dim);
+  stk::mesh::BulkData bulk(meta, MPI_COMM_WORLD);
+  stk::mesh::Entity elem = unit_test_utils::create_one_reference_element(bulk, topo);
+
+  sierra::nalu::Hex27SCSNGP mescs;
+
+  // apply some arbitrary linear map the reference element
+  std::mt19937 rng;
+  rng.seed(0); // fixed seed
+  std::uniform_real_distribution<double> coeff(-1.0, 1.0);
+
+  double Q[9] = {
+      1.0+std::abs(coeff(rng)), coeff(rng), coeff(rng),
+      coeff(rng), 1.0+std::abs(coeff(rng)), coeff(rng),
+      coeff(rng), coeff(rng), 1.0+std::abs(coeff(rng))
+  };
+
+  double Qt[9];
+  transpose33(Q,Qt);
+
+  double metric_exact[9];
+  mxm33(Q,Qt,metric_exact);
+
+  const auto& coordField = *static_cast<const VectorFieldType*>(meta.coordinate_field());
+
+  Kokkos::View<double**> v_coords("coords", mescs.nodesPerElement_, mescs.nDim_);
+  const auto* nodes = bulk.begin_nodes(elem);
+  for (unsigned j = 0; j < topo.num_nodes(); ++j) {
+    const double* coords = stk::mesh::field_data(coordField, nodes[j]);
+    matvec33(Q, coords, &v_coords(j,0));
+  }
+
+  Kokkos::View<double***> gUpper("gupper", mescs.numIntPoints_, dim, dim);
+  Kokkos::View<double***> gLower("glower", mescs.numIntPoints_, dim, dim);
+
+  mescs.gij(v_coords, gUpper, gLower);
+
+  for (int ip = 0; ip < mescs.numIntPoints_; ++ip) {
+    double identity[9] = {
+        1.0,0.0,0.0,
+        0.0,1.0,0.0,
+        0.0,0.0,1.0
+    };
+
+    double shouldBeIdentity[9];
+    mxm33(&gUpper(ip,0,0), &gLower(ip,0,0), shouldBeIdentity);
+    for (int d_outer = 0; d_outer < 3; ++d_outer) {
+      for (int d_inner = 0; d_inner < 3; ++d_inner) {
+        EXPECT_NEAR(gUpper(ip, d_outer, d_inner), metric_exact[3*d_outer+d_inner], tol);
+        EXPECT_NEAR(shouldBeIdentity[3*d_outer+d_inner], identity[3*d_outer+d_inner], tol);
+      }
+    }
+  }
 }
