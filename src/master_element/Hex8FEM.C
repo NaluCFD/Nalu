@@ -9,6 +9,8 @@
 #include <master_element/Hex8FEM.h>
 #include <master_element/MasterElement.h>
 
+#include <master_element/MasterElementFunctions.h>
+
 #include <FORTRAN_Proto.h>
 
 #include <cmath>
@@ -93,6 +95,23 @@ void Hex8FEM::grad_op(
       coords, gradop, det_j, error, &lerr ); 
 }
 
+
+//--------------------------------------------------------------------------
+//-------- grad_op ---------------------------------------------------------
+//--------------------------------------------------------------------------
+void Hex8FEM::grad_op(
+  SharedMemView<DoubleType**>&coords,
+  SharedMemView<DoubleType***>&gradop,
+  SharedMemView<DoubleType***>&deriv,
+  SharedMemView<DoubleType*>&det_j,
+  DoubleType &error)
+{
+  hex8_fem_derivative(numIntPoints_, &intgLoc_[0], deriv);
+  generic_grad_op_3d<AlgTraitsHex8>(deriv, coords, gradop, det_j);
+
+  error = 0.0; // error checking in generic_grad_op
+}
+
 //--------------------------------------------------------------------------
 //-------- shifted_grad_op -------------------------------------------------
 //--------------------------------------------------------------------------
@@ -114,6 +133,23 @@ void Hex8FEM::shifted_grad_op(
       &numIntPoints_,
       deriv,
       coords, gradop, det_j, error, &lerr ); 
+}
+
+
+//--------------------------------------------------------------------------
+//-------- shifted_grad_op -------------------------------------------------
+//--------------------------------------------------------------------------
+void Hex8FEM::shifted_grad_op(
+  SharedMemView<DoubleType**>&coords,
+  SharedMemView<DoubleType***>&gradop,
+  SharedMemView<DoubleType***>&deriv,
+  SharedMemView<DoubleType*>&det_j,
+  DoubleType &error)
+{
+  hex8_fem_derivative(numIntPoints_, &intgLocShift_[0], deriv);
+  generic_grad_op_3d<AlgTraitsHex8>(deriv, coords, gradop, det_j);
+
+  error = 0.0; // error checking in generic_grad_op
 }
 
 //--------------------------------------------------------------------------
@@ -192,6 +228,24 @@ Hex8FEM::shifted_shape_fcn(double *shpfc)
 }
 
 //--------------------------------------------------------------------------
+//-------- shape_fcn -------------------------------------------------------
+//--------------------------------------------------------------------------
+void
+Hex8FEM::shape_fcn(SharedMemView<DoubleType**> &shpfc)
+{
+  hex8_fem_shape_fcn(numIntPoints_,&intgLoc_[0],shpfc);
+}
+
+//--------------------------------------------------------------------------
+//-------- shifted_shape_fcn -----------------------------------------------
+//--------------------------------------------------------------------------
+void
+Hex8FEM::shifted_shape_fcn(SharedMemView<DoubleType**> &shpfc)
+{
+  hex8_fem_shape_fcn(numIntPoints_,&intgLocShift_[0],shpfc);
+}
+
+//--------------------------------------------------------------------------
 //-------- gij -------------------------------------------------------------
 //--------------------------------------------------------------------------
 void Hex8FEM::gij(
@@ -238,6 +292,32 @@ Hex8FEM::hex8_fem_shape_fcn(
 }
 
 //--------------------------------------------------------------------------
+//-------- hex8_fem_shape_fcn ----------------------------------------------
+//--------------------------------------------------------------------------
+void
+Hex8FEM::hex8_fem_shape_fcn(
+  const int  &numIp,
+  const double *isoParCoord,
+  SharedMemView<DoubleType**> shpfc)
+{
+  // -1:1 isoparametric range
+  for ( int ip = 0; ip < numIp; ++ip ) {
+    const int rowIpc = 3*ip;
+    const DoubleType s1 = isoParCoord[rowIpc+0];
+    const DoubleType s2 = isoParCoord[rowIpc+1];
+    const DoubleType s3 = isoParCoord[rowIpc+2];
+    shpfc(ip,0) = 0.125*(1.0-s1)*(1.0-s2)*(1.0-s3);
+    shpfc(ip,1) = 0.125*(1.0+s1)*(1.0-s2)*(1.0-s3);
+    shpfc(ip,2) = 0.125*(1.0+s1)*(1.0+s2)*(1.0-s3);
+    shpfc(ip,3) = 0.125*(1.0-s1)*(1.0+s2)*(1.0-s3);
+    shpfc(ip,4) = 0.125*(1.0-s1)*(1.0-s2)*(1.0+s3);
+    shpfc(ip,5) = 0.125*(1.0+s1)*(1.0-s2)*(1.0+s3);
+    shpfc(ip,6) = 0.125*(1.0+s1)*(1.0+s2)*(1.0+s3);
+    shpfc(ip,7) = 0.125*(1.0-s1)*(1.0+s2)*(1.0+s3);
+  }
+}
+
+//--------------------------------------------------------------------------
 //-------- hex8_fem_derivative ---------------------------------------------
 //--------------------------------------------------------------------------
 void
@@ -273,6 +353,46 @@ Hex8FEM::hex8_fem_derivative(
     deriv[i*nodesPerElement_*3 + 20] =  0.125*(1.0+par_coord[i*3])*(1.0+par_coord[i*3+1]);
     deriv[i*nodesPerElement_*3 + 23] =  0.125*(1.0-par_coord[i*3])*(1.0+par_coord[i*3+1]);
   }                            
+}
+
+void
+Hex8FEM::hex8_fem_derivative(
+  const int npt, const double* par_coord,
+  SharedMemView<DoubleType***> deriv)
+{
+  for (int ip = 0; ip < npt; ++ip) {
+    DoubleType x = par_coord[ip*3+0];
+    DoubleType y = par_coord[ip*3+1];
+    DoubleType z = par_coord[ip*3+2];
+
+    deriv(ip,0,0) = -0.125*(1.0-y)*(1.0-z);
+    deriv(ip,1,0) =  0.125*(1.0-y)*(1.0-z);
+    deriv(ip,2,0) =  0.125*(1.0+y)*(1.0-z);
+    deriv(ip,3,0) = -0.125*(1.0+y)*(1.0-z);
+    deriv(ip,4,0) = -0.125*(1.0-y)*(1.0+z);
+    deriv(ip,5,0) =  0.125*(1.0-y)*(1.0+z);
+    deriv(ip,6,0) =  0.125*(1.0+y)*(1.0+z);
+    deriv(ip,7,0) = -0.125*(1.0+y)*(1.0+z);
+
+    deriv(ip,0,1) = -0.125*(1.0-x)*(1.0-z);
+    deriv(ip,1,1) = -0.125*(1.0+x)*(1.0-z);
+    deriv(ip,2,1) =  0.125*(1.0+x)*(1.0-z);
+    deriv(ip,3,1) =  0.125*(1.0-x)*(1.0-z);
+    deriv(ip,4,1) = -0.125*(1.0-x)*(1.0+z);
+    deriv(ip,5,1) = -0.125*(1.0+x)*(1.0+z);
+    deriv(ip,6,1) =  0.125*(1.0+x)*(1.0+z);
+    deriv(ip,7,1) =  0.125*(1.0-x)*(1.0+z);
+
+    deriv(ip,0,2) = -0.125*(1.0-x)*(1.0-y);
+    deriv(ip,1,2) = -0.125*(1.0+x)*(1.0-y);
+    deriv(ip,2,2) = -0.125*(1.0+x)*(1.0+y);
+    deriv(ip,3,2) = -0.125*(1.0-x)*(1.0+y);
+    deriv(ip,4,2) =  0.125*(1.0-x)*(1.0-y);
+    deriv(ip,5,2) =  0.125*(1.0+x)*(1.0-y);
+    deriv(ip,6,2) =  0.125*(1.0+x)*(1.0+y);
+    deriv(ip,7,2) =  0.125*(1.0-x)*(1.0+y);
+  }
+
 }
 
 }

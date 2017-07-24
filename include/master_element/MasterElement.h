@@ -28,7 +28,7 @@
 #endif
 
 namespace stk {
-struct topology;
+  struct topology;
 }
 
 namespace sierra{
@@ -93,6 +93,20 @@ public:
     SharedMemView<DoubleType**>&coords,
     SharedMemView<DoubleType**>&areav) {
     throw std::runtime_error("determinant using SharedMemView is not implemented");}
+
+  virtual void gij(
+    SharedMemView<DoubleType**> coords,
+    SharedMemView<DoubleType***> gupper,
+    SharedMemView<DoubleType***> glower,
+    SharedMemView<DoubleType***> deriv) {
+    throw std::runtime_error("gij using SharedMemView is not implemented");
+  }
+
+  virtual void determinant(
+    SharedMemView<DoubleType**> coords,
+    SharedMemView<DoubleType*> volume) {
+    throw std::runtime_error("scv determinant using SharedMemView is not implemented");
+  }
 
   // non-NGP-ready methods second
   virtual void determinant(
@@ -263,6 +277,10 @@ public:
     double *volume,
     double * error );
 
+  void determinant(
+    SharedMemView<DoubleType**> coords,
+    SharedMemView<DoubleType*> volume);
+
   void grad_op(
     const int nelem,
     const double *coords,
@@ -333,6 +351,13 @@ public:
   void determinant(
     SharedMemView<DoubleType**>&coords,
     SharedMemView<DoubleType**>&areav);
+
+  void gij(
+    SharedMemView<DoubleType**> coords,
+    SharedMemView<DoubleType***> gupper,
+    SharedMemView<DoubleType***> glower,
+    SharedMemView<DoubleType***> deriv);
+
 
   // non NGP-ready methods second
   void determinant(
@@ -534,15 +559,14 @@ public:
     const double *coords,
     double *areav,
     double * error );
-
+protected:
+  std::vector<double> ipWeight_;
 private:
   void set_interior_info();
 
   double jacobian_determinant(
     const double *POINTER_RESTRICT elemNodalCoords,
     const double *POINTER_RESTRICT shapeDerivs ) const;
-
-  std::vector<double> ipWeight_;
 };
 
 // 3D Hex 27 subcontrol surface
@@ -613,6 +637,8 @@ public:
     const int ordinal, const int node);
 
   const int* side_node_ordinals(int sideOrdinal) final;
+protected:
+  std::vector<ContourData> ipInfo_;
 private:
   void set_interior_info();
   void set_boundary_info();
@@ -628,7 +654,7 @@ private:
     double *POINTER_RESTRICT grad,
     double *POINTER_RESTRICT det_j ) const;
 
-  std::vector<ContourData> ipInfo_;
+
   int ipsPerFace_;
 };
 

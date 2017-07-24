@@ -364,7 +364,7 @@ HeatCondEquationSystem::register_interior_algorithm(
 
     auto& solverAlgMap = solverAlgDriver_->solverAlgorithmMap_;
 
-    AssembleElemSolverAlgorithm* solverAlg =  nullptr;
+    AssembleElemSolverAlgorithmNewME* solverAlg =  nullptr;
     bool solverAlgWasBuilt =  false;
     std::tie(solverAlg, solverAlgWasBuilt) = build_or_add_part_to_solver_alg(*this, *part, solverAlgMap);
 

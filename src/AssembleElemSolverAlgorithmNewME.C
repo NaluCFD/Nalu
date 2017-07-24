@@ -47,10 +47,12 @@ AssembleElemSolverAlgorithmNewME::AssembleElemSolverAlgorithmNewME(
   Realm &realm,
   stk::mesh::Part *part,
   EquationSystem *eqSystem,
-  const stk::topology &theTopo)
+  const stk::topology &theTopo,
+  bool interleaveMEViews)
   : SolverAlgorithm(realm, part, eqSystem),
     topo_(theTopo),
-    rhsSize_(theTopo.num_nodes()*eqSystem->linsys_->numDof())
+    rhsSize_(theTopo.num_nodes()*eqSystem->linsys_->numDof()),
+    interleaveMEViews_(interleaveMEViews)
 {
 }
 
@@ -127,7 +129,6 @@ AssembleElemSolverAlgorithmNewME::execute()
       simdBucketLen += 1;
     }
 
-    const bool alsoProcessMEViews = false;
 
     Kokkos::parallel_for(Kokkos::TeamThreadRange(team, simdBucketLen), [&](const size_t& bktIndex)
     {
@@ -146,12 +147,14 @@ AssembleElemSolverAlgorithmNewME::execute()
         element = b[bktIndex*simdLen + simdElemIndex];
         elemNodes[simdElemIndex] = bulk_data.begin_nodes(element);
         fill_pre_req_data(dataNeededBySuppAlgs_, bulk_data, topo_, element,
-                          *prereqData[simdElemIndex], alsoProcessMEViews);
+                          *prereqData[simdElemIndex], interleaveMEViews_);
       }
 
-      copy_and_interleave(prereqData, simdElems, simdLen, simdPrereqData, alsoProcessMEViews);
+      copy_and_interleave(prereqData, simdElems, simdLen, simdPrereqData, interleaveMEViews_);
 
-      fill_master_element_views(dataNeededBySuppAlgs_, bulk_data, topo_, element, simdPrereqData);
+      if (!interleaveMEViews_) {
+        fill_master_element_views(dataNeededBySuppAlgs_, bulk_data, topo_, element, simdPrereqData);
+      }
 
       for ( int i = 0; i < rhsSize_; ++i ) {
         simdrhs(i) = 0.0;
