@@ -78,10 +78,12 @@ namespace nalu{
     const stk::topology topo = part.topology();
     const std::string algName = "AssembleElemSolverAlg_" + topo.name();
 
+    bool isNotHex = (topo != stk::topology::HEXAHEDRON_8);
+
     auto itc = solverAlgs.find(algName);
     bool createNewAlg = itc == solverAlgs.end();
     if (createNewAlg) {
-      auto* theSolverAlg = new AssembleElemSolverAlgorithm(eqSys.realm_, &part, &eqSys, topo);
+      auto* theSolverAlg = new AssembleElemSolverAlgorithm(eqSys.realm_, &part, &eqSys, topo, isNotHex);
       ThrowRequire(theSolverAlg != nullptr);
 
       NaluEnv::self().naluOutputP0() << "Created the following alg: " << algName << std::endl;
