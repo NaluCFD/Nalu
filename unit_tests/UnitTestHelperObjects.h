@@ -5,7 +5,6 @@
 #include "UnitTestLinearSystem.h"
 
 #include "AssembleElemSolverAlgorithm.h"
-#include "AssembleElemSolverAlgorithmNewME.h"
 #include "EquationSystem.h"
 
 #include <stk_mesh/base/BulkData.hpp>
@@ -64,7 +63,7 @@ struct HelperObjectsNewME {
     realm.metaData_ = &bulk.mesh_meta_data();
     realm.bulkData_ = &bulk;
     eqSystem.linsys_ = linsys;
-    assembleElemSolverAlg = new sierra::nalu::AssembleElemSolverAlgorithmNewME(realm, part, &eqSystem, topo);
+    assembleElemSolverAlg = new sierra::nalu::AssembleElemSolverAlgorithm(realm, part, &eqSystem, topo, false);
   }
 
   ~HelperObjectsNewME()
@@ -84,7 +83,7 @@ struct HelperObjectsNewME {
   unit_test_utils::TestLinearSystem* linsys;
   sierra::nalu::EquationSystems eqSystems;
   sierra::nalu::EquationSystem eqSystem;
-  sierra::nalu::AssembleElemSolverAlgorithmNewME* assembleElemSolverAlg;
+  sierra::nalu::AssembleElemSolverAlgorithm* assembleElemSolverAlg;
 };
 
 }
