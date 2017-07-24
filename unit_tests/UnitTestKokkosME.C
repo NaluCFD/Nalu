@@ -28,8 +28,8 @@ TEST(KokkosME_Hex8, test_hex8_views)
       auto& v_scs_areav = meViews.scs_areav;
 
       // Perform tests here...
-      EXPECT_EQ(v_coords.dimension(0), 8);
-      EXPECT_EQ(v_coords.dimension(1), 3);
-      EXPECT_EQ(v_scs_areav.dimension(0), 12);
+      EXPECT_EQ(v_coords.dimension(0), 8u);
+      EXPECT_EQ(v_coords.dimension(1), 3u);
+      EXPECT_EQ(v_scs_areav.dimension(0), 12u);
     });
 }

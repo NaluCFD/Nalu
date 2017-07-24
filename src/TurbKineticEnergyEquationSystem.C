@@ -384,7 +384,7 @@ TurbKineticEnergyEquationSystem::register_interior_algorithm(
     stk::topology partTopo = part->topology();
     auto& solverAlgMap = solverAlgDriver_->solverAlgorithmMap_;
     
-    AssembleElemSolverAlgorithm* solverAlg = nullptr;
+    AssembleElemSolverAlgorithmNewME* solverAlg = nullptr;
     bool solverAlgWasBuilt = false;
     
     std::tie(solverAlg, solverAlgWasBuilt) = build_or_add_part_to_solver_alg

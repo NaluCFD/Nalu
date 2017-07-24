@@ -29,12 +29,12 @@ class MasterElement;
 class AssembleElemSolverAlgorithmNewME : public SolverAlgorithm
 {
 public:
-
   AssembleElemSolverAlgorithmNewME(
     Realm &realm,
     stk::mesh::Part *part,
     EquationSystem *eqSystem,
-    const stk::topology &theTopo);
+    const stk::topology &theTopo,
+    bool interleaveMeViews = true);
   virtual ~AssembleElemSolverAlgorithmNewME() {}
   virtual void initialize_connectivity();
   virtual void execute();
@@ -46,6 +46,7 @@ public:
 
   ElemDataRequests dataNeededBySuppAlgs_;
   int rhsSize_;
+  const bool interleaveMEViews_;
 };
 
 } // namespace nalu

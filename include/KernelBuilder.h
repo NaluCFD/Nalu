@@ -9,6 +9,7 @@
 
 #include <Kernel.h>
 #include <AssembleElemSolverAlgorithm.h>
+#include <AssembleElemSolverAlgorithmNewME.h>
 #include <EquationSystem.h>
 #include <AlgTraits.h>
 #include <KernelBuilderLog.h>
@@ -69,7 +70,7 @@ namespace nalu{
     return isCreated;
   }
 
-  inline std::pair<AssembleElemSolverAlgorithm*, bool>
+  inline std::pair<AssembleElemSolverAlgorithmNewME*, bool>
   build_or_add_part_to_solver_alg(
     EquationSystem& eqSys,
     stk::mesh::Part& part,
@@ -78,10 +79,12 @@ namespace nalu{
     const stk::topology topo = part.topology();
     const std::string algName = "AssembleElemSolverAlg_" + topo.name();
 
+    bool isNotHex = (topo != stk::topology::HEXAHEDRON_8);
+
     auto itc = solverAlgs.find(algName);
     bool createNewAlg = itc == solverAlgs.end();
     if (createNewAlg) {
-      auto* theSolverAlg = new AssembleElemSolverAlgorithm(eqSys.realm_, &part, &eqSys, topo);
+      auto* theSolverAlg = new AssembleElemSolverAlgorithmNewME(eqSys.realm_, &part, &eqSys, topo, isNotHex);
       ThrowRequire(theSolverAlg != nullptr);
 
       NaluEnv::self().naluOutputP0() << "Created the following alg: " << algName << std::endl;
@@ -94,7 +97,7 @@ namespace nalu{
       }
     }
 
-    auto* theSolverAlg = dynamic_cast<AssembleElemSolverAlgorithm*>(solverAlgs.at(algName));
+    auto* theSolverAlg = dynamic_cast<AssembleElemSolverAlgorithmNewME*>(solverAlgs.at(algName));
     ThrowRequire(theSolverAlg != nullptr);
 
     return {theSolverAlg, createNewAlg};

@@ -64,7 +64,7 @@ struct HelperObjectsNewME {
     realm.metaData_ = &bulk.mesh_meta_data();
     realm.bulkData_ = &bulk;
     eqSystem.linsys_ = linsys;
-    assembleElemSolverAlg = new sierra::nalu::AssembleElemSolverAlgorithmNewME(realm, part, &eqSystem, topo);
+    assembleElemSolverAlg = new sierra::nalu::AssembleElemSolverAlgorithmNewME(realm, part, &eqSystem, topo, false);
   }
 
   ~HelperObjectsNewME()

@@ -1146,7 +1146,7 @@ MomentumEquationSystem::register_interior_algorithm(
     stk::topology partTopo = part->topology();
     auto& solverAlgMap = solverAlgDriver_->solverAlgorithmMap_;
 
-    AssembleElemSolverAlgorithm* solverAlg = nullptr;
+    AssembleElemSolverAlgorithmNewME* solverAlg = nullptr;
     bool solverAlgWasBuilt = false;
 
     std::tie(solverAlg, solverAlgWasBuilt) = build_or_add_part_to_solver_alg
@@ -2342,11 +2342,10 @@ ContinuityEquationSystem::register_interior_algorithm(
       stk::topology partTopo = part->topology();
       auto& solverAlgMap = solverAlgDriver_->solverAlgorithmMap_;
 
-      AssembleElemSolverAlgorithm* solverAlg = nullptr;
+      AssembleElemSolverAlgorithmNewME* solverAlg = nullptr;
       bool solverAlgWasBuilt = false;
 
-      std::tie(solverAlg, solverAlgWasBuilt) = build_or_add_part_to_solver_alg
-        (*this, *part, solverAlgMap);
+      std::tie(solverAlg, solverAlgWasBuilt) = build_or_add_part_to_solver_alg(*this, *part, solverAlgMap);
 
       ElemDataRequests& dataPreReqs = solverAlg->dataNeededBySuppAlgs_;
       auto& activeKernels = solverAlg->activeKernels_;
