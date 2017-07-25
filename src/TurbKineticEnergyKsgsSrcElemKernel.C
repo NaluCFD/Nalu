@@ -85,9 +85,6 @@ TurbKineticEnergyKsgsSrcElemKernel<AlgTraits>::execute(
   for (int ip=0; ip < AlgTraits::numScvIp_; ++ip) {
     const int nearestNode = ipNodeMap_[ip];
 
-    // filter
-    DoubleType filter = stk::math::pow(v_dualNodalVolume(nearestNode), 1.0/AlgTraits::nDim_);
-
     DoubleType Pk = 0.0;
     for ( int i = 0; i < AlgTraits::nDim_; ++i ) {
       for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
@@ -96,18 +93,20 @@ TurbKineticEnergyKsgsSrcElemKernel<AlgTraits>::execute(
     }
     Pk *= v_tvisc(nearestNode);
 
-    // save off multiply used values
+    // tke factor
     const DoubleType tke = v_tkeNp1(nearestNode);
-    const DoubleType rho = v_densityNp1(nearestNode);
+    const DoubleType tkeFac = (AlgTraits::nDim_ == 2) ?
+        cEps_*v_densityNp1(nearestNode)*stk::math::sqrt(tke/v_dualNodalVolume(nearestNode))
+      : cEps_*v_densityNp1(nearestNode)*stk::math::sqrt(tke)/stk::math::cbrt(v_dualNodalVolume(nearestNode));
 
     // dissipation and production; limited
-    DoubleType Dk = cEps_*rho*stk::math::pow(tke, 1.5)/filter;
+    DoubleType Dk = tkeFac * tke;
     Pk = stk::math::min(Pk, tkeProdLimitRatio_*Dk);
     
     // lhs assembly, all lumped
     const DoubleType scvol = v_scv_volume(ip);
     rhs(nearestNode) += (Pk - Dk)*scvol;
-    lhs(nearestNode,nearestNode) += 1.5*cEps_*rho*stk::math::sqrt(tke)/filter*scvol;
+    lhs(nearestNode,nearestNode) += 1.5*tkeFac*scvol;
   }
 }
 
