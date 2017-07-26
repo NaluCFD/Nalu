@@ -47,10 +47,12 @@ AssembleElemSolverAlgorithm::AssembleElemSolverAlgorithm(
   Realm &realm,
   stk::mesh::Part *part,
   EquationSystem *eqSystem,
-  const stk::topology &theTopo)
+  const stk::topology &theTopo,
+  bool interleaveMEViews)
   : SolverAlgorithm(realm, part, eqSystem),
     topo_(theTopo),
-    rhsSize_(theTopo.num_nodes()*eqSystem->linsys_->numDof())
+    rhsSize_(theTopo.num_nodes()*eqSystem->linsys_->numDof()),
+    interleaveMEViews_(interleaveMEViews)
 {
 }
 
@@ -80,9 +82,6 @@ AssembleElemSolverAlgorithm::execute()
   const int lhsSize = rhsSize_*rhsSize_;
   const int scratchIdsSize = rhsSize_;
 
-//  std::string filename("out."+std::to_string(bulk_data.parallel_rank()));
-//  std::ofstream of(filename, std::ios_base::app);
-
   // fixed size for this homogeneous algorithm
   const int bytes_per_team = 0;
   // Bytes per thread =
@@ -93,7 +92,6 @@ AssembleElemSolverAlgorithm::execute()
   constexpr int simdLen = stk::simd::ndoubles;
   bytes_per_thread *= 3*simdLen;//3 is wrong, still need to debug this!!! should be 2 but seems to have memory problems.
 
-//std::cerr<<"bytes_per_thread: "<<bytes_per_thread<<std::endl;
   // define some common selectors
   stk::mesh::Selector s_locally_owned_union = meta_data.locally_owned_part()
     &stk::mesh::selectUnion(partVec_);
@@ -124,13 +122,13 @@ AssembleElemSolverAlgorithm::execute()
 
     const stk::mesh::Entity* elemNodes[simdLen];
     unsigned num_nodes = b.topology().num_nodes();
-//of<<"P"<<bulk_data.parallel_rank()<<" bkt["<<team.league_rank()<<" of "<<elem_buckets.size()<<"] "<<&b<<", len "<<b.size()<<", topo "<<topo_<<std::endl;
     const stk::mesh::Bucket::size_type length   = b.size();
     stk::mesh::Bucket::size_type simdBucketLen = length/simdLen;
     const stk::mesh::Bucket::size_type remainder = length%simdLen;
     if (remainder > 0) {
       simdBucketLen += 1;
     }
+
 
     Kokkos::parallel_for(Kokkos::TeamThreadRange(team, simdBucketLen), [&](const size_t& bktIndex)
     {
@@ -143,20 +141,21 @@ AssembleElemSolverAlgorithm::execute()
          simdElems = 0;
       }
 
-//      if (simdElems < simdLen) {
-//        std::cerr<<"simdElems: "<<simdElems<<", bktIndex: "<<bktIndex<<", length: "<<length<<std::endl;
-//      }
-
       stk::mesh::Entity element;
       for(int simdElemIndex=0; simdElemIndex<simdElems; ++simdElemIndex) {
         // get element
         element = b[bktIndex*simdLen + simdElemIndex];
         elemNodes[simdElemIndex] = bulk_data.begin_nodes(element);
         fill_pre_req_data(dataNeededBySuppAlgs_, bulk_data, topo_, element,
-                          *prereqData[simdElemIndex]);
+                          *prereqData[simdElemIndex], interleaveMEViews_);
       }
 
-      copy_and_interleave(prereqData, simdElems, simdLen, simdPrereqData);
+      copy_and_interleave(prereqData, simdElems, simdLen, simdPrereqData, interleaveMEViews_);
+
+      if (!interleaveMEViews_) {
+        fill_master_element_views(dataNeededBySuppAlgs_, bulk_data, topo_, element, simdPrereqData);
+      }
+
       for ( int i = 0; i < rhsSize_; ++i ) {
         simdrhs(i) = 0.0;
       }
