@@ -82,6 +82,13 @@ TestTurbulenceAlgorithm::declare_fields()
   dwdx_ = (
      &meta.declare_field<VectorFieldType>(
        stk::topology::NODE_RANK, "dwdx"));
+  dhdx_ = (
+     &meta.declare_field<VectorFieldType>(
+       stk::topology::NODE_RANK, "dhdx"));
+  
+  specificHeat_ = (
+     &meta.declare_field<ScalarFieldType>(
+       stk::topology::NODE_RANK, "specific_heat"));
 
   stk::mesh::put_field(*density_, meta.universal_part(), 1);
   stk::mesh::put_field(*viscosity_, meta.universal_part(), 1);
@@ -96,6 +103,8 @@ TestTurbulenceAlgorithm::declare_fields()
   stk::mesh::put_field(*dualNodalVolume_, meta.universal_part(), 1);
   stk::mesh::put_field(*dkdx_, meta.universal_part(), spatialDim);
   stk::mesh::put_field(*dwdx_, meta.universal_part(), spatialDim);
+  stk::mesh::put_field(*dhdx_, meta.universal_part(), spatialDim);
+  stk::mesh::put_field(*specificHeat_, meta.universal_part(), 1);
 }
 
 void
@@ -118,4 +127,6 @@ TestTurbulenceAlgorithm::fill_mesh_and_init_fields(const std::string mesh_spec)
   stk::mesh::field_fill(0.2, *dualNodalVolume_);
   unit_test_kernel_utils::dkdx_test_function(bulk, *coordinates_, *dkdx_);
   unit_test_kernel_utils::dwdx_test_function(bulk, *coordinates_, *dwdx_);
+  unit_test_kernel_utils::dhdx_test_function(bulk, *coordinates_, *dhdx_);
+  stk::mesh::field_fill(1000.0, *specificHeat_);
 }

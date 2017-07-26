@@ -48,6 +48,8 @@
 #include <TurbKineticEnergySSTNodeSourceSuppAlg.h>
 #include <TurbKineticEnergySSTDESNodeSourceSuppAlg.h>
 #include <TurbKineticEnergyKsgsBuoyantElemSuppAlg.h>
+#include <TurbKineticEnergyRodiNodeSourceSuppAlg.h>
+
 #include <SolverAlgorithmDriver.h>
 
 
@@ -363,6 +365,9 @@ TurbKineticEnergyEquationSystem::register_interior_algorithm(
           SupplementalAlgorithm *suppAlg = NULL;
           if ( sourceName == "gcl" ) {
             suppAlg = new ScalarGclNodeSuppAlg(tke_,realm_);
+          }
+          if ( sourceName == "rodi" ) {
+            suppAlg = new TurbKineticEnergyRodiNodeSourceSuppAlg(realm_);
           }
           else {
             throw std::runtime_error("TurbKineticEnergyNodalSrcTerms::Error Source term is not supported: " + sourceName);

@@ -106,6 +106,8 @@ public:
   ScalarFieldType* dualNodalVolume_{nullptr};
   VectorFieldType* dkdx_{nullptr};
   VectorFieldType* dwdx_{nullptr};
+  VectorFieldType* dhdx_{nullptr};
+  ScalarFieldType* specificHeat_{nullptr};
 };
 
 #endif /* KOKKOS_HAVE_CUDA */

@@ -196,6 +196,13 @@ struct TrigFieldFunction
     qField[0] = 10*x+10;
   }
 
+  void dhdx(const double* /*coords*/, double* qField) const
+  {
+    qField[0] = 30.0;
+    qField[1] = 10.0;
+    qField[2] = -16.0;
+  }
+
 private:
   /// Factor for u-component of velocity
   static constexpr double unot{1.0};
@@ -269,6 +276,8 @@ void init_trigonometric_field(
     funcPtr = &TrigFieldFunction::sdr;
   else if (fieldName == "dwdx")
     funcPtr = &TrigFieldFunction::dwdx;
+  else if (fieldName == "dhdx")
+    funcPtr = &TrigFieldFunction::dhdx;
   else if (fieldName == "turbulent_viscosity")
     funcPtr = &TrigFieldFunction::turbulent_viscosity;
   else if (fieldName == "sst_f_one_blending")
@@ -473,6 +482,14 @@ void mixture_fraction_test_function(
       const double z = coords[2];
       *mixFrac = znot*cos(amf*pi*x)*cos(amf*pi*y)*cos(amf*pi*z);
     });
+}
+
+void dhdx_test_function(
+  const stk::mesh::BulkData& bulk,
+  const VectorFieldType& coordinates,
+  VectorFieldType& dhdx)
+{
+  init_trigonometric_field(bulk, coordinates, dhdx);
 }
 
 void calc_mass_flow_rate_scs(

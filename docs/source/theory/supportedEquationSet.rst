@@ -567,6 +567,10 @@ The subgrid turbulent eddy viscosity is then provided by
 where the values of :math:`C_{\epsilon}` and :math:`C_{\mu_{\epsilon}}`
 are 0.845 and 0.0856, respectively.
 
+For simulations in which a buoyancy source term is desired, the code supports the Rodi form,
+
+.. math:: P_b = \beta {{\mu^T} \over {Pr}} g_i {{\partial T} \over {\partial x_i}}.
+
 Shear Stress Transport (SST) RANS Model Suite
 +++++++++++++++++++++++++++++++++++++++++++++
 
