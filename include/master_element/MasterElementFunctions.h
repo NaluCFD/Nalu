@@ -54,58 +54,64 @@ namespace nalu {
     ThrowAssert(weights.extent(2) == referenceGradWeights.extent(2));
 
     for (unsigned ip = 0; ip < referenceGradWeights.extent(0); ++ip) {
-
       ftype jac[3][3] = {
           {0.0, 0.0, 0.0},
           {0.0, 0.0, 0.0},
           {0.0, 0.0, 0.0}
       };
 
-     for (int n = 0; n < AlgTraits::nodesPerElement_; ++n) {
-        for (int outer_dim = 0; outer_dim < 3; ++outer_dim) {
-          for (int inner_dim  = 0; inner_dim < 3; ++inner_dim) {
-            jac[outer_dim][inner_dim] += referenceGradWeights(ip, n, inner_dim) * coords(n, outer_dim);
-          }
-        }
+      ftype refGrad[AlgTraits::nodesPerElement_][3];
+      for (int n = 0; n < AlgTraits::nodesPerElement_; ++n) {
+        refGrad[n][0] = referenceGradWeights(ip, n, 0);
+        refGrad[n][1] = referenceGradWeights(ip, n, 1);
+        refGrad[n][2] = referenceGradWeights(ip, n, 2);
+
+        jac[0][0] += refGrad[n][0] * coords(n, 0);
+        jac[0][1] += refGrad[n][1] * coords(n, 0);
+        jac[0][2] += refGrad[n][2] * coords(n, 0);
+
+        jac[1][0] += refGrad[n][0] * coords(n, 1);
+        jac[1][1] += refGrad[n][1] * coords(n, 1);
+        jac[1][2] += refGrad[n][2] * coords(n, 1);
+
+        jac[2][0] += refGrad[n][0] * coords(n, 2);
+        jac[2][1] += refGrad[n][1] * coords(n, 2);
+        jac[2][2] += refGrad[n][2] * coords(n, 2);
       }
 
-     ftype adj_jac[3][3];
-     adj_jac[0][0] = jac[1][1] * jac[2][2] - jac[2][1] * jac[1][2];
-     adj_jac[0][1] = jac[0][2] * jac[2][1] - jac[2][2] * jac[0][1];
-     adj_jac[0][2] = jac[0][1] * jac[1][2] - jac[1][1] * jac[0][2];
+      ftype adj_jac[3][3];
+      adj_jac[0][0] = jac[1][1] * jac[2][2] - jac[2][1] * jac[1][2];
+      adj_jac[0][1] = jac[1][2] * jac[2][0] - jac[2][2] * jac[1][0];
+      adj_jac[0][2] = jac[1][0] * jac[2][1] - jac[2][0] * jac[1][1];
 
-     adj_jac[1][0] = jac[1][2] * jac[2][0] - jac[2][2] * jac[1][0];
-     adj_jac[1][1] = jac[0][0] * jac[2][2] - jac[2][0] * jac[0][2];
-     adj_jac[1][2] = jac[0][2] * jac[1][0] - jac[1][2] * jac[0][0];
+      adj_jac[1][0] = jac[0][2] * jac[2][1] - jac[2][2] * jac[0][1];
+      adj_jac[1][1] = jac[0][0] * jac[2][2] - jac[2][0] * jac[0][2];
+      adj_jac[1][2] = jac[0][1] * jac[2][0] - jac[2][1] * jac[0][0];
 
-     adj_jac[2][0] = jac[1][0] * jac[2][1] - jac[2][0] * jac[1][1];
-     adj_jac[2][1] = jac[0][1] * jac[2][0] - jac[2][1] * jac[0][0];
-     adj_jac[2][2] = jac[0][0] * jac[1][1] - jac[1][0] * jac[0][1];
+      adj_jac[2][0] = jac[0][1] * jac[1][2] - jac[1][1] * jac[0][2];
+      adj_jac[2][1] = jac[0][2] * jac[1][0] - jac[1][2] * jac[0][0];
+      adj_jac[2][2] = jac[0][0] * jac[1][1] - jac[1][0] * jac[0][1];
 
      ThrowAssertMsg(
        stk::simd::are_any(
-         jac[0][0] * adj_jac[0][0] + jac[1][0] * adj_jac[0][1] + jac[2][0] * adj_jac[0][2]
+         jac[0][0] * adj_jac[0][0] + jac[1][0] * adj_jac[1][0] + jac[2][0] * adj_jac[2][0]
          > tiny_positive_value()
        ),
        "Problem with Jacobian determinant"
      );
 
      const ftype inv_detj = ftype(1.0) /
-         (jac[0][0] * adj_jac[0][0] + jac[1][0] * adj_jac[0][1] + jac[2][0] * adj_jac[0][2]);
+         (jac[0][0] * adj_jac[0][0] + jac[1][0] * adj_jac[1][0] + jac[2][0] * adj_jac[2][0]);
 
      for (int n = 0; n < AlgTraits::nodesPerElement_; ++n) {
-       const ftype dnds[3] =
-           { referenceGradWeights(ip, n, 0), referenceGradWeights(ip, n, 1), referenceGradWeights(ip, n, 2) };
-
-
        weights(ip, n, 0) = inv_detj *
-           (adj_jac[0][0] * dnds[0] + adj_jac[1][0] * dnds[1] + adj_jac[2][0] * dnds[2]);
+           (adj_jac[0][0] * refGrad[n][0] + adj_jac[0][1] * refGrad[n][1] + adj_jac[0][2] * refGrad[n][2]);
 
        weights(ip, n, 1) = inv_detj *
-           (adj_jac[0][1] * dnds[0] + adj_jac[1][1] * dnds[1] + adj_jac[2][1] * dnds[2]);
+           (adj_jac[1][0] * refGrad[n][0] + adj_jac[1][1] * refGrad[n][1] + adj_jac[1][2] * refGrad[n][2]);
 
        weights(ip, n, 2) = inv_detj *
-           (adj_jac[0][2] * dnds[0] + adj_jac[1][2] * dnds[1] + adj_jac[2][2] * dnds[2]);
+           (adj_jac[2][0] * refGrad[n][0] + adj_jac[2][1] * refGrad[n][1] + adj_jac[2][2] * refGrad[n][2]);
      }
     }
   }
@@ -384,7 +390,7 @@ namespace nalu {
         for (int n = 0; n < nodesPerFace; ++n) {
           coordv[coordIndex][d] += coordv[face_nodes[k][n]][d];
         }
-        coordv[coordIndex][d] /= RealType(nodesPerFace);
+        coordv[coordIndex][d] *= 0.25;
       }
     }
 
