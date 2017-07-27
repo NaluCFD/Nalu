@@ -37,13 +37,16 @@ The integral form of the Favre-filtered momentum equations used for turbulent tr
 
 .. math::
    :label: favmom
+   :nowrap:
 
+   \begin{align}
    \int {{\partial \bar{\rho} \tilde{u}_i} \over {\partial t}} {\rm d}V
    + \int \bar{\rho} \tilde{u}_i \tilde{u}_j n_j {\rm d}S 
-   &=& 
+   &=
    \int \tilde{\sigma}_{ij} n_j {\rm d}S 
    -\int \tau^{sgs}_{ij} n_j {\rm d}S \nonumber \\ 
-   &+& \int \left(\bar{\rho} - \rho_{\circ} \right) g_i {\rm d}V,
+   &+ \int \left(\bar{\rho} - \rho_{\circ} \right) g_i {\rm d}V,
+   \end{align}
 
 where the subgrid scale turbulent stress :math:`\tau^{sgs}_{ij}` is defined as
 
@@ -62,9 +65,12 @@ The Cauchy stress is provided by,
 and the traceless rate-of-strain tensor defined as follows:
 
 .. math::
+   :nowrap:
 
-   \tilde S^*_{ij} &=& \tilde S_{ij} - \frac{1}{3} \delta_{ij} \tilde S_{kk} \nonumber \\
-   &=& \tilde S_{ij} - \frac{1}{3} \frac{\partial \tilde u_k }{\partial x_k}\delta_{ij}.
+   \begin{align}
+   \tilde S^*_{ij} &= \tilde S_{ij} - \frac{1}{3} \delta_{ij} \tilde S_{kk} \nonumber \\
+   &= \tilde S_{ij} - \frac{1}{3} \frac{\partial \tilde u_k }{\partial x_k}\delta_{ij}.
+   \end{align}
 
 In a low Mach flow, as described in the low Mach theory section, the
 above pressure, :math:`\bar P` is the purturbation about the
@@ -597,11 +603,14 @@ the Mentor 2003 model are then
    \int{\partial \bar{\rho} k \over \partial t}\text{d}V + \int \bar{\rho} k\tilde{u}_{j} n_{j} \text{d} S = \int {(\mu + \hat \sigma_k \mu_{t})} {\partial k \over \partial x_{j}} n_{j} + \int \left(P_{k}^{\omega} - \beta^* \bar{\rho} k \omega\right) \text{d} V,
 
 .. math::
+   :nowrap:
 
-   \int {\partial \bar{\rho} \omega \over \partial t}\text{d} V + \int \bar{\rho} \omega \tilde{u}_{j} n_{j} \text{d}S &=& 
+   \begin{align}
+   \int {\partial \bar{\rho} \omega \over \partial t}\text{d} V + \int \bar{\rho} \omega \tilde{u}_{j} n_{j} \text{d}S &=
    \int  {(\mu + \hat\sigma_{\omega} \mu_{t})} {\partial \omega \over \partial x_{j}} n_{j}
    + \int  {2(1-F) \frac{\bar{\rho}\sigma_{\omega2}} {\omega} {\partial k \over \partial x_j} {\partial \omega \over \partial x_j} } \text{d}V \nonumber \\ 
-   &+&  \int \left(\frac{\hat\gamma}{\nu_t} P_{k}^{\omega} - \hat \beta \bar{\rho} \omega^{2}\right) \text{d}V.
+   &+  \int \left(\frac{\hat\gamma}{\nu_t} P_{k}^{\omega} - \hat \beta \bar{\rho} \omega^{2}\right) \text{d}V.
+   \end{align}
 
 The model coefficients, :math:`\hat\sigma_k`, :math:`\hat\sigma_{\omega}`, :math:`\hat\gamma` and :math:`\hat\beta`
 must also be blended, which is represented by
