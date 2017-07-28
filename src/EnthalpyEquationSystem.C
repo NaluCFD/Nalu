@@ -335,6 +335,12 @@ EnthalpyEquationSystem::register_nodal_fields(
     // personally manage enthalpy
     bdf2CopyStateAlg_.push_back(theCopyAlg);
   }
+
+  if (realm_.solutionOptions_->has_set_boussinesq_time_scale()) {
+    ScalarFieldType& raTemperature =
+        meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "time_filtered_temperature");
+    stk::mesh::put_field(raTemperature, *part);
+  }
 }
 
 //--------------------------------------------------------------------------

@@ -39,6 +39,7 @@
 #include <AssembleNodalGradUNonConformalAlgorithm.h>
 #include <AssembleNodeSolverAlgorithm.h>
 #include <AuxFunctionAlgorithm.h>
+#include <ComputeExponentialMovingAverageAlgorithm.h>
 #include <ComputeMdotAlgorithmDriver.h>
 #include <ComputeMdotInflowAlgorithm.h>
 #include <ComputeMdotEdgeAlgorithm.h>
@@ -68,6 +69,7 @@
 #include <MomentumActuatorSrcNodeSuppAlg.h>
 #include <MomentumBuoyancySrcNodeSuppAlg.h>
 #include <MomentumBoussinesqSrcNodeSuppAlg.h>
+#include <MomentumBoussinesqRASrcNodeSuppAlg.h>
 #include <MomentumBodyForceSrcNodeSuppAlg.h>
 #include <MomentumABLForceSrcNodeSuppAlg.h>
 #include <MomentumCoriolisSrcNodeSuppAlg.h>
@@ -288,7 +290,6 @@ LowMachEquationSystem::register_nodal_fields(
                                stk::topology::NODE_RANK);
     copyStateAlg_.push_back(theCopyAlg);
   }
-
 }
 
 //--------------------------------------------------------------------------
@@ -622,6 +623,7 @@ LowMachEquationSystem::solve_and_update()
     timeA = NaluEnv::self().nalu_time();
     continuityEqSys_->compute_projected_nodal_gradient();
     continuityEqSys_->computeMdotAlgDriver_->execute();
+
     timeB = NaluEnv::self().nalu_time();
     continuityEqSys_->timerMisc_ += (timeB-timeA);
     isInit_ = false;
@@ -632,6 +634,10 @@ LowMachEquationSystem::solve_and_update()
 
   // compute effective viscosity
   momentumEqSys_->diffFluxCoeffAlgDriver_->execute();
+
+  if (realm_.solutionOptions_->has_set_boussinesq_time_scale()) {
+    momentumEqSys_->expMovingAvgAlgDriver_->execute();
+  }
 
   // start the iteration loop
   for ( int k = 0; k < maxIterations_; ++k ) {
@@ -892,6 +898,7 @@ MomentumEquationSystem::MomentumEquationSystem(
     tviscAlgDriver_(new AlgorithmDriver(realm_)),
     cflReyAlgDriver_(new AlgorithmDriver(realm_)),
     wallFunctionParamsAlgDriver_(NULL),
+    expMovingAvgAlgDriver_(NULL),
     projectedNodalGradEqs_(NULL),
     firstPNGResidual_(0.0)
 {
@@ -906,6 +913,10 @@ MomentumEquationSystem::MomentumEquationSystem(
 
   // push back EQ to manager
   realm_.push_equation_to_systems(this);
+
+  if (realm_.solutionOptions_->has_set_boussinesq_time_scale()) {
+    expMovingAvgAlgDriver_ = new AlgorithmDriver(realm_);
+  }
 
   // create projected nodal gradient equation system
   if ( managePNG_ ) {
@@ -922,9 +933,15 @@ MomentumEquationSystem::~MomentumEquationSystem()
   delete diffFluxCoeffAlgDriver_;
   delete tviscAlgDriver_;
   delete cflReyAlgDriver_;
+
   if ( NULL != wallFunctionParamsAlgDriver_)
     delete wallFunctionParamsAlgDriver_;
+
+  if (NULL != expMovingAvgAlgDriver_)
+    delete expMovingAvgAlgDriver_;
  }
+
+
 
 //--------------------------------------------------------------------------
 //-------- initial_work ----------------------------------------------------
@@ -1017,6 +1034,7 @@ MomentumEquationSystem::register_nodal_fields(
     stk::mesh::put_field(*actuatorSourceLHS, *part);
     stk::mesh::put_field(*g, *part);
   }
+
 }
 
 //--------------------------------------------------------------------------
@@ -1309,6 +1327,9 @@ MomentumEquationSystem::register_interior_algorithm(
           else if ( sourceName == "buoyancy_boussinesq") {
             suppAlg = new MomentumBoussinesqSrcNodeSuppAlg(realm_);
           }
+          else if ( sourceName == "buoyancy_boussinesq_ra") {
+            suppAlg = new MomentumBoussinesqRASrcNodeSuppAlg(realm_);
+          }
           else if ( sourceName == "body_force") {
             // extract params
             std::map<std::string, std::vector<double> >::iterator iparams
@@ -1373,6 +1394,21 @@ MomentumEquationSystem::register_interior_algorithm(
     }
     else {
       itev->second->partVec_.push_back(part);
+    }
+
+    if (realm_.solutionOptions_->has_set_boussinesq_time_scale()) {
+      double timeScale = realm_.solutionOptions_->raBoussinesqTimeScale_;
+      auto it = expMovingAvgAlgDriver_->algMap_.find(algType);
+
+      auto* temperatureField =
+          realm_.meta_data().get_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature");
+      if (it == expMovingAvgAlgDriver_->algMap_.end()) {
+        expMovingAvgAlgDriver_->algMap_[algType] =
+            new ComputeExponentialMovingAverageAlgorithm(realm_, part, temperatureField, timeScale);
+      }
+      else {
+        it->second->partVec_.push_back(part);
+      }
     }
 
     // deal with tvisc better? - possibly should be on EqSysManager?
