@@ -80,6 +80,8 @@ public:
   double get_turb_model_constant(
     TurbulenceModelConstant turbModelEnum) const;
 
+  bool has_set_boussinesq_time_scale();
+
   double hybridDefault_;
   double alphaDefault_;
   double alphaUpwDefault_;
@@ -139,6 +141,7 @@ public:
   double eigenvaluePerturbTurbKe_;
   double earthAngularVelocity_;
   double latitude_;
+  double raBoussinesqTimeScale_;
 
   // global mdot correction alg
   double mdotAlgAccumulation_;
