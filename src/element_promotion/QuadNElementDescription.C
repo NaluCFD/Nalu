@@ -122,9 +122,9 @@ QuadNElementDescription::get_edge_offsets(
   ordinal_type jr = nodes1D - 1;
 
   // output
-  ordinal_type ix;
-  ordinal_type iy;
-  ordinal_type stk_index;
+  ordinal_type ix = -1;
+  ordinal_type iy = -1;
+  ordinal_type stk_index = -1;
 
   // just hard-code
   switch (edge_ordinal) {

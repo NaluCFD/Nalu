@@ -329,7 +329,6 @@ TpetraLinearSystem::beginLinearSystemConstruction()
   // owned first:
   for(const stk::mesh::Bucket* bptr : buckets) {
     const stk::mesh::Bucket & b = *bptr;
-    const stk::mesh::Bucket::size_type length   = b.size();
     for ( stk::mesh::Entity entity : b ) {
       int status = getDofStatus(entity);
       if (!(status & DS_SkippedDOF) && (status & DS_OwnedDOF))
@@ -1465,7 +1464,7 @@ TpetraLinearSystem::checkForNaN(bool useOwned)
   Teuchos::ArrayView<const LocalOrdinal> indices;
   Teuchos::ArrayView<const double> values;
 
-  int n = matrix->getRowMap()->getNodeNumElements();
+  size_t n = matrix->getRowMap()->getNodeNumElements();
   for(size_t i=0; i<n; ++i) {
 
     matrix->getLocalRowView(i, indices, values);
@@ -1499,7 +1498,7 @@ TpetraLinearSystem::checkForZeroRow(bool useOwned, bool doThrow, bool doPrint)
   Teuchos::ArrayView<const double> values;
 
   size_t nrowG = matrix->getRangeMap()->getGlobalNumElements();
-  int n = matrix->getRowMap()->getNodeNumElements();
+  size_t n = matrix->getRowMap()->getNodeNumElements();
   GlobalOrdinal max_gid = 0, g_max_gid=0;
   //KOKKOS: Loop parallel reduce
   kokkos_parallel_for("Nalu::TpetraLinearSystem::checkForZeroRowA", n, [&] (const size_t& i) {

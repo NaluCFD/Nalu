@@ -98,10 +98,6 @@ ComputeWallModelSDRWallAlgorithm::execute()
     // extract master element
     MasterElement *meSCS = sierra::nalu::get_surface_master_element(theElemTopo);
 
-    // face master element
-    const int nodesPerFace = b.topology().num_nodes();
-
-
     const stk::mesh::Bucket::size_type length   = b.size();
 
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {

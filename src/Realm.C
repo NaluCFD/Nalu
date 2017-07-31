@@ -2501,6 +2501,8 @@ Realm::compute_centroid_on_parts(
 
   // set min/max
   const int nDim = metaData_->spatial_dimension();
+  ThrowRequire(nDim <= 3);
+
   const double largeNumber = 1.0e16;
   double minCoord[3] = {largeNumber, largeNumber, largeNumber};
   double maxCoord[3] = {-largeNumber, -largeNumber, -largeNumber};
