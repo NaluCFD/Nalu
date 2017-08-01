@@ -196,6 +196,7 @@ realms:
        - temperature
        - specific_heat
        - viscosity
+       - time_filtered_temperature
 
   - name: ioRealm
     mesh: ../../mesh/abl_io.g
