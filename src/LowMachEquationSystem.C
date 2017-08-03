@@ -39,7 +39,6 @@
 #include <AssembleNodalGradUNonConformalAlgorithm.h>
 #include <AssembleNodeSolverAlgorithm.h>
 #include <AuxFunctionAlgorithm.h>
-#include <ComputeExponentialMovingAverageAlgorithm.h>
 #include <ComputeMdotAlgorithmDriver.h>
 #include <ComputeMdotInflowAlgorithm.h>
 #include <ComputeMdotEdgeAlgorithm.h>
@@ -635,10 +634,6 @@ LowMachEquationSystem::solve_and_update()
   // compute effective viscosity
   momentumEqSys_->diffFluxCoeffAlgDriver_->execute();
 
-  if (realm_.solutionOptions_->has_set_boussinesq_time_scale()) {
-    momentumEqSys_->expMovingAvgAlgDriver_->execute();
-  }
-
   // start the iteration loop
   for ( int k = 0; k < maxIterations_; ++k ) {
 
@@ -898,7 +893,6 @@ MomentumEquationSystem::MomentumEquationSystem(
     tviscAlgDriver_(new AlgorithmDriver(realm_)),
     cflReyAlgDriver_(new AlgorithmDriver(realm_)),
     wallFunctionParamsAlgDriver_(NULL),
-    expMovingAvgAlgDriver_(NULL),
     projectedNodalGradEqs_(NULL),
     firstPNGResidual_(0.0)
 {
@@ -913,10 +907,6 @@ MomentumEquationSystem::MomentumEquationSystem(
 
   // push back EQ to manager
   realm_.push_equation_to_systems(this);
-
-  if (realm_.solutionOptions_->has_set_boussinesq_time_scale()) {
-    expMovingAvgAlgDriver_ = new AlgorithmDriver(realm_);
-  }
 
   // create projected nodal gradient equation system
   if ( managePNG_ ) {
@@ -936,10 +926,7 @@ MomentumEquationSystem::~MomentumEquationSystem()
 
   if ( NULL != wallFunctionParamsAlgDriver_)
     delete wallFunctionParamsAlgDriver_;
-
-  if (NULL != expMovingAvgAlgDriver_)
-    delete expMovingAvgAlgDriver_;
- }
+}
 
 
 
@@ -1394,21 +1381,6 @@ MomentumEquationSystem::register_interior_algorithm(
     }
     else {
       itev->second->partVec_.push_back(part);
-    }
-
-    if (realm_.solutionOptions_->has_set_boussinesq_time_scale()) {
-      double timeScale = realm_.solutionOptions_->raBoussinesqTimeScale_;
-      auto it = expMovingAvgAlgDriver_->algMap_.find(algType);
-
-      auto* temperatureField =
-          realm_.meta_data().get_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature");
-      if (it == expMovingAvgAlgDriver_->algMap_.end()) {
-        expMovingAvgAlgDriver_->algMap_[algType] =
-            new ComputeExponentialMovingAverageAlgorithm(realm_, part, temperatureField, timeScale);
-      }
-      else {
-        it->second->partVec_.push_back(part);
-      }
     }
 
     // deal with tvisc better? - possibly should be on EqSysManager?

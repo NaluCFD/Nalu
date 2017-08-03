@@ -12,6 +12,7 @@
 #include <SolutionOptions.h>
 #include <SupplementalAlgorithm.h>
 #include <TimeIntegrator.h>
+#include <MovingAveragePostProcessor.h>
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/Entity.hpp>
@@ -49,22 +50,27 @@ MomentumBoussinesqRASrcNodeSuppAlg::MomentumBoussinesqRASrcNodeSuppAlg(
   temperature_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature");
   ThrowRequire(temperature_ != nullptr);
 
-  raTemperature_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "time_filtered_temperature");
-  ThrowRequire(raTemperature_ != nullptr);
-
   dualNodalVolume_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
   ThrowRequire(dualNodalVolume_ != nullptr);
 
   rhoRef_ = realm_.solutionOptions_->referenceDensity_;
   beta_ = realm_.solutionOptions_->thermalExpansionCoeff_;
+
   nDim_ = meta_data.spatial_dimension();
-  gravity_.resize(nDim_);
   gravity_ = realm_.solutionOptions_->gravity_;
 }
 //--------------------------------------------------------------------------
 //-------- setup -----------------------------------------------------------
 //--------------------------------------------------------------------------
-void MomentumBoussinesqRASrcNodeSuppAlg::setup() {}
+void MomentumBoussinesqRASrcNodeSuppAlg::setup()
+{
+  // filtered temperature is registered after this alg is created
+  raTemperature_ = realm_.meta_data().get_field<ScalarFieldType>(
+    stk::topology::NODE_RANK,
+    MovingAveragePostProcessor::filtered_field_name("temperature")
+  );
+  ThrowRequire(raTemperature_ != nullptr);
+}
 
 //--------------------------------------------------------------------------
 //-------- node_execute ----------------------------------------------------
@@ -78,6 +84,7 @@ MomentumBoussinesqRASrcNodeSuppAlg::node_execute(
   const double temperature = *stk::mesh::field_data(*temperature_, node );
   const double raTemperature = *stk::mesh::field_data(*raTemperature_, node);
   const double dualVolume = *stk::mesh::field_data(*dualNodalVolume_, node );
+
   const double fac = -rhoRef_*beta_*(temperature - raTemperature)*dualVolume;
   for ( int i = 0; i < nDim_; ++i ) {
     rhs[i] += fac*gravity_[i];
