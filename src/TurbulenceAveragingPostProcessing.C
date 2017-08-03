@@ -11,6 +11,9 @@
 #include <FieldTypeDef.h>
 #include <NaluParsing.h>
 #include <Realm.h>
+#include <MovingAveragePostProcessor.h>
+#include <SolutionOptions.h>
+#include <nalu_make_unique.h>
 
 // stk_util
 #include <stk_util/parallel/ParallelReduce.hpp>
@@ -124,9 +127,18 @@ TurbulenceAveragingPostProcessing::load(
             std::string fieldName = y_var.as<std::string>() ;
             if ( fieldName != "density")
               avInfo->favreFieldNameVec_.push_back(fieldName);
-          } 
+          }
         }
         
+        const YAML::Node y_movavg = y_spec["moving_averaged_variables"];
+        if (y_movavg) {
+          for (size_t ioption = 0; ioption < y_favre.size(); ++ioption) {
+            const YAML::Node y_var = y_movavg[ioption];
+            std::string fieldName = y_var.as<std::string>() ;
+            avInfo->movingAvgFieldNameVec_.push_back(fieldName);
+          }
+        }
+
         // check for stress and tke post processing; Reynolds and Favre
         get_if_present(y_spec, "compute_reynolds_stress", avInfo->computeReynoldsStress_, avInfo->computeReynoldsStress_);
         get_if_present(y_spec, "compute_tke", avInfo->computeTke_, avInfo->computeTke_);
@@ -171,6 +183,27 @@ TurbulenceAveragingPostProcessing::setup()
 {
   stk::mesh::MetaData & metaData = realm_.meta_data();
 
+
+  // Special case for boussinesq_ra algorithm
+  // The algorithm requires that "time_filtered_temperature" be available
+  // on all blocks where temperature is defined.
+  if (realm_.solutionOptions_->has_set_boussinesq_time_scale()) {
+    const std::string temperatureName  = "temperature";
+    const std::string fTempName = MovingAveragePostProcessor::filtered_field_name(temperatureName);
+
+    auto* tempField = metaData.get_field(stk::topology::NODE_RANK, "temperature");
+    ThrowRequireMsg(tempField != nullptr, "Temperature field must be registered");
+
+    auto& field = metaData.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, fTempName);
+    stk::mesh::put_field(field, stk::mesh::selectField(*tempField));
+    realm_.augment_restart_variable_list(fTempName);
+
+    movingAvgPP_ = make_unique<MovingAveragePostProcessor>(
+      realm_.bulk_data(), *realm_.timeIntegrator_, realm_.solutionOptions_->raBoussinesqTimeScale_
+    );
+    movingAvgPP_->add_fields({temperatureName});
+  }
+
   // loop over all info and setup (register fields, set parts, etc.)
   for (size_t k = 0; k < averageInfoVec_.size(); ++k ) {
  
@@ -191,6 +224,39 @@ TurbulenceAveragingPostProcessing::setup()
         avInfo->partVec_.push_back(targetPart);
       }
       
+      if (!avInfo->movingAvgFieldNameVec_.empty()) {
+        // create movingAvgPP if it hasn't been created due to physics needs
+        if (movingAvgPP_ == nullptr) {
+          movingAvgPP_ = make_unique<MovingAveragePostProcessor>(
+            realm_.bulk_data(), *realm_.timeIntegrator_, timeFilterInterval_
+          );
+        }
+
+        std::vector<std::string>& nameVec = avInfo->movingAvgFieldNameVec_;
+        auto itTemperature = std::find(nameVec.begin(), nameVec.end(), "temperature");
+
+        // already handled temperature if boussinesq time scale was set
+        if (itTemperature != nameVec.end() && realm_.solutionOptions_->has_set_boussinesq_time_scale()) {
+          nameVec.erase(itTemperature);
+        }
+
+
+        for (auto& name : avInfo->movingAvgFieldNameVec_) {
+          register_field_from_primitive(
+            name,
+            MovingAveragePostProcessor::filtered_field_name(name),
+            metaData,
+            targetPart
+          );
+        }
+
+        movingAvgPP_->add_fields(avInfo->movingAvgFieldNameVec_);
+        for (auto& name : avInfo->movingAvgFieldNameVec_) {
+          movingAvgPP_->add_parts_for_field(name, {targetPart});
+        }
+      }
+
+
       // register special fields whose name prevails over the averaging info name
       if ( avInfo->computeTke_ ) {
         const std::string tkeName = "resolved_turbulent_ke";
@@ -388,7 +454,16 @@ TurbulenceAveragingPostProcessing::review(
     NaluEnv::self().naluOutputP0() << "Primitive/Favre name:    " << primitiveFB->name() << "/" <<  averageFB->name()
                                    << " size " << avInfo->favreFieldSizeVec_[iav] << std::endl;
   }
-  
+
+  if (movingAvgPP_ != nullptr) {
+    for (const auto& fieldPair : movingAvgPP_->get_field_map()) {
+      stk::mesh::FieldBase *primitiveFB = fieldPair.first;
+      stk::mesh::FieldBase *averageFB  = fieldPair.second;
+      NaluEnv::self().naluOutputP0() << "Primitive/Favre name:    " << primitiveFB->name() << "/" <<  averageFB->name()
+                                       << std::endl;
+    }
+  }
+
   if ( avInfo->computeTke_ ) {
     NaluEnv::self().naluOutputP0() << "TKE will be computed; add resolved_turbulent_ke to the Reynolds/Favre block for mean"<< std::endl;
   }
@@ -441,6 +516,10 @@ TurbulenceAveragingPostProcessing::execute()
 
   // deactivate hard reset
   forcedReset_ = false;
+
+  if (movingAvgPP_ != nullptr) {
+    movingAvgPP_->execute();
+  }
 
   // loop over all info and setup (register fields, set parts, etc.)
   for (size_t k = 0; k < averageInfoVec_.size(); ++k ) {

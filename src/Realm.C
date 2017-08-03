@@ -859,6 +859,12 @@ Realm::setup_post_processing_algorithms()
   }
 
   // check for turbulence averaging fields
+  if (NULL == turbulenceAveragingPostProcessing_ &&
+     solutionOptions_->has_set_boussinesq_time_scale() ) {
+
+     turbulenceAveragingPostProcessing_ =  new TurbulenceAveragingPostProcessing(*this, {});
+  }
+
   if ( NULL != turbulenceAveragingPostProcessing_ )
     turbulenceAveragingPostProcessing_->setup();
 
@@ -3562,6 +3568,11 @@ Realm::populate_derived_quantities()
 void
 Realm::initial_work()
 {
+  // include initial condition in averaging postprocessor
+  if (turbulenceAveragingPostProcessing_ != nullptr) {
+    turbulenceAveragingPostProcessing_->execute();
+  }
+
   if ( solutionOptions_->meshMotion_ )
     process_mesh_motion();
   equationSystems_.initial_work();
