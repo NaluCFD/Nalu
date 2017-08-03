@@ -27,9 +27,10 @@ class PostProcessor : public ::testing::Test
 {
 public:
   PostProcessor()
-      : timeIntegrator_(),
+    : timeIntegrator_(),
       meta_(2u),
-      bulk_(meta_, MPI_COMM_WORLD)
+      bulk_(meta_, MPI_COMM_WORLD),
+      numSteps(2000)
  {
     temperature_ = &meta_.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature");
 
@@ -46,16 +47,15 @@ public:
     bulk_.modification_end();
 
     const double final_time = 2.0 * std::acos(-1.0);
-    numSteps = 1000;
-    timeIntegrator_.timeStepN_ = final_time/(numSteps-1);
+    timeIntegrator_.timeStepN_ = final_time/(numSteps);
  }
 
+  sierra::nalu::TimeIntegrator timeIntegrator_;
   stk::mesh::MetaData meta_;
   stk::mesh::BulkData bulk_;
-  sierra::nalu::TimeIntegrator timeIntegrator_;
   int numSteps;
-  stk::mesh::Entity node;
 
+  stk::mesh::Entity node;
   ScalarFieldType* temperature_;
   ScalarFieldType* raTemperature_;
 };
@@ -64,7 +64,6 @@ public:
 
 TEST_F(PostProcessor, moving_average_constant)
 {
-    double dt = timeIntegrator_.get_time_step();
     std::vector<double> constant_realization(numSteps, 10.0);
 
     double timeScale = 0.1;
@@ -74,7 +73,7 @@ TEST_F(PostProcessor, moving_average_constant)
     for (int j = 0; j < numSteps; ++j) {
       double* temperatureVal = stk::mesh::field_data(*temperature_, node);
       *temperatureVal = constant_realization[j];
-      avgPP.execute();
+      EXPECT_NO_THROW(avgPP.execute());
       double* raTemperatureVal = stk::mesh::field_data(*raTemperature_, node);
       EXPECT_NEAR(*temperatureVal, *raTemperatureVal, 1.0e-10);
     }
@@ -113,7 +112,7 @@ TEST_F(PostProcessor, moving_average_ou)
     auto realization = ou_realization(1.0, dt, numSteps);
 
     double timeScale = 0.1;
-    sierra::nalu::MovingAveragePostProcessor avgPP(bulk_, timeIntegrator_, 0.1);
+    sierra::nalu::MovingAveragePostProcessor avgPP(bulk_, timeIntegrator_, timeScale);
     avgPP.add_fields({"temperature"});
 
     std::ofstream outputFile("PostProcessor.moving_average_ou.txt");

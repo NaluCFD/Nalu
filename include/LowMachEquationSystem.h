@@ -181,7 +181,6 @@ public:
   AlgorithmDriver *tviscAlgDriver_;
   AlgorithmDriver *cflReyAlgDriver_;
   AlgorithmDriver *wallFunctionParamsAlgDriver_;
-  AlgorithmDriver *expMovingAvgAlgDriver_;
 
   ProjectedNodalGradientEquationSystem *projectedNodalGradEqs_;
 
