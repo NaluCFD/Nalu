@@ -59,10 +59,10 @@ SteadyThermal3dContactSrcElemKernel<AlgTraits>::execute(
   SharedMemView<DoubleType *>& rhs,
   ScratchViews<DoubleType>& scratchViews)
 {
-  // FIXME: Workaround warning issued for 2-D topologies. This Kernel should
-  // only be used with 3-D topologies. However, using it in that sense causes
-  // build errors because of build_topo_kernel interface in KernelBuilder
-  DoubleType w_scvCoords[3];
+
+  // Forcing nDim = 3 instead of using AlgTraits::nDim_ here to avoid compiler
+  // warnings when this template is instantiated for 2-D topologies. 
+  DoubleType w_scvCoords[3] KOKKOS_ALIGN(64);
 
   SharedMemView<DoubleType**>& v_coordinates = scratchViews.get_scratch_view_2D(*coordinates_);
   SharedMemView<DoubleType*>& v_scv_volume = scratchViews.get_me_views(CURRENT_COORDINATES).scv_volume;
@@ -82,13 +82,11 @@ SteadyThermal3dContactSrcElemKernel<AlgTraits>::execute(
       for ( int j = 0; j < AlgTraits::nDim_; ++j )
         w_scvCoords[j] += r*v_coordinates(ic,j);
     }
-    const DoubleType x = w_scvCoords[0];
-    const DoubleType y = w_scvCoords[1];
-    const DoubleType z = w_scvCoords[2];
+
     rhs(nearestNode) += k_/4.0*(2.0*a_*pi_)*(2.0*a_*pi_)*(
-      stk::math::cos(2.0*a_*pi_*x)
-      + stk::math::cos(2.0*a_*pi_*y)
-      + stk::math::cos(2.0*a_*pi_*z))*v_scv_volume(ip);
+      stk::math::cos(2.0*a_*pi_* w_scvCoords[0])
+      + stk::math::cos(2.0*a_*pi_* w_scvCoords[1])
+      + stk::math::cos(2.0*a_*pi_* w_scvCoords[2]))*v_scv_volume(ip);
   }
 }
 
