@@ -7,11 +7,13 @@
 
 
 // nalu
-#include <ComputeMdotEdgeOpenAlgorithm.h>
+#include "ComputeMdotEdgeOpenAlgorithm.h"
+#include "Algorithm.h"
 
-#include <FieldTypeDef.h>
-#include <Realm.h>
-#include <master_element/MasterElement.h>
+#include "FieldTypeDef.h"
+#include "Realm.h"
+#include "SolutionOptions.h"
+#include "master_element/MasterElement.h"
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/BulkData.hpp>
@@ -62,12 +64,19 @@ ComputeMdotEdgeOpenAlgorithm::ComputeMdotEdgeOpenAlgorithm(
 }
 
 //--------------------------------------------------------------------------
+//-------- destructor ------------------------------------------------------
+//--------------------------------------------------------------------------
+ComputeMdotEdgeOpenAlgorithm::~ComputeMdotEdgeOpenAlgorithm()
+{
+  // does nothing
+}
+
+//--------------------------------------------------------------------------
 //-------- execute ---------------------------------------------------------
 //--------------------------------------------------------------------------
 void
 ComputeMdotEdgeOpenAlgorithm::execute()
 {
-
   stk::mesh::BulkData & bulk_data = realm_.bulk_data();
   stk::mesh::MetaData & meta_data = realm_.meta_data();
 
@@ -84,6 +93,9 @@ ComputeMdotEdgeOpenAlgorithm::execute()
   const double projTimeScale = dt/gamma1;
 
   // interpolation for mdot uses nearest node, therefore, n/a
+
+  // set accumulation variables
+  double mdotOpen = 0.0;
 
   // deal with state
   ScalarFieldType &densityNp1 = density_->field_of_state(stk::mesh::StateNP1);
@@ -110,7 +122,6 @@ ComputeMdotEdgeOpenAlgorithm::execute()
     // size some things that are useful
     const int num_face_nodes = b.topology().num_nodes();
     
-
     const stk::mesh::Bucket::size_type length   = b.size();
 
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
@@ -182,22 +193,15 @@ ComputeMdotEdgeOpenAlgorithm::execute()
           tmdot += (rhoBip*vrtm[j]+projTimeScale*Gjp)*axj
             - projTimeScale*kxj*Gjp*nocFac;
         }
-        // scatter to mdot
+        // scatter to mdot and accumulate
         mdot[ip] = tmdot;
+        mdotOpen += tmdot;
       }
     }
   }
+  // scatter back to solution options; not thread safe
+  realm_.solutionOptions_->mdotAlgOpen_ += mdotOpen;
 }
-
-
-//--------------------------------------------------------------------------
-//-------- destructor ------------------------------------------------------
-//--------------------------------------------------------------------------
-ComputeMdotEdgeOpenAlgorithm::~ComputeMdotEdgeOpenAlgorithm()
-{
-  // does nothing
-}
-
 
 
 } // namespace nalu

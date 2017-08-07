@@ -29,10 +29,9 @@ TEST_F(TestTurbulenceAlgorithm, computesstmaxlengthscaleelemalgorithm)
 
   // Perform tests
   const double tol = 1e-14;
-  double maxVal = field_max(*maxLengthScale_);
-  double minVal = field_min(*maxLengthScale_);
-  EXPECT_NEAR(maxVal, 1.0, tol);
-  EXPECT_NEAR(minVal, 1.0, tol);
+  double norm = field_norm(*maxLengthScale_);
+  const double gold_norm = 1.0;
+  EXPECT_NEAR(norm, gold_norm, tol);
 }
 
 TEST_F(TestTurbulenceAlgorithm, testturbviscsstalgorithm)
@@ -138,7 +137,7 @@ TEST_F(TestTurbulenceAlgorithm, specificdissipationratesstnodesourcesuppalg)
   const double lhs_norm = assembleSuppAlgs.get_lhs_norm();
   const double rhs_norm = assembleSuppAlgs.get_rhs_norm();
   const double lhs_gold_norm = 0.027222983025572127;
-  const double rhs_gold_norm = 0.075521678624743474;
+  const double rhs_gold_norm = 2.7483377905404858;
   EXPECT_NEAR(lhs_norm, lhs_gold_norm, tol);
   EXPECT_NEAR(rhs_norm, rhs_gold_norm, tol);
 }

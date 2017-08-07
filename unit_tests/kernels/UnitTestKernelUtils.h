@@ -115,6 +115,11 @@ void mixture_fraction_test_function(
   const double znot,
   const double amf);
 
+void dhdx_test_function(
+  const stk::mesh::BulkData& bulk,
+  const VectorFieldType& coordinates,
+  VectorFieldType& dhdx);
+
 void calc_mass_flow_rate_scs(
   const stk::mesh::BulkData&,
   const stk::topology&,

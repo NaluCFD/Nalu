@@ -1613,6 +1613,8 @@ c
       double precision p, e, c
       double precision half, one3rd
       double precision dx13, dx24, dy13, dy24, dz13, dz24
+      
+      integer, parameter :: nnodes = 3
 
       dimension cordel(3, npe, nelem)
       dimension area(3, nelem, nint)
@@ -1627,7 +1629,7 @@ c ... INITIALIZE FACE DEFINITION
 c
       do 100 k=1,nelem
 c
-        do 20 i = 1, npe
+        do 20 i = 1, nnodes
           do 10 idim = 1, 3
             p(idim, i) = cordel(idim, i, k)
  10       continue
@@ -1722,6 +1724,8 @@ c
       double precision p, c
       double precision half
       double precision dx13, dy13
+      
+      integer, parameter :: nnodes = 2
 
       dimension cordel(2, npe, nelem)
       dimension area(2, nelem, nint)
@@ -1736,7 +1740,7 @@ c ... INITIALIZE FACE DEFINITION
 c
       do k=1,nelem
 c
-        do i = 1, npe
+        do i = 1, nnodes
           do idim = 1, 2
             p(idim, i) = cordel(idim, i, k)
           end do

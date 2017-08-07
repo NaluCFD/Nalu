@@ -5515,7 +5515,6 @@ void Quad2DSCS::shifted_face_grad_op(
 
   const int nface = 1;
   double dpsi[8];
-  double grad[8];
 
   for ( int n=0; n<nelem; n++ ) {
 

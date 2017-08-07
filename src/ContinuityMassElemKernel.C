@@ -41,7 +41,6 @@ ContinuityMassElemKernel<AlgTraits>::ContinuityMassElemKernel(
     stk::topology::NODE_RANK, "density");
   densityN_ = &(density->field_of_state(stk::mesh::StateN));
   densityNp1_ = &(density->field_of_state(stk::mesh::StateNP1));
-
   if (density->number_of_states() == 2)
     densityNm1_ = densityN_;
   else

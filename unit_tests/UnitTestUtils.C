@@ -183,7 +183,7 @@ stk::mesh::Entity create_one_element(
    stk::mesh::EntityIdVector nodeIds(topo.num_nodes());
    std::iota(nodeIds.begin(), nodeIds.end(), 1);
 
-
+   
    bulk.modification_begin();
 
    for (auto id : nodeIds) {
@@ -469,9 +469,21 @@ double vector_norm(const std::vector<double> & vec, const stk::ParallelMachine& 
   double norm = 0.0;
   double g_norm = 0.0;
 
-  for (int i = 0; i < N; ++i) {
+  for (size_t i = 0; i < N; ++i) {
     norm += vec[i]*vec[i];
   }
+  stk::all_reduce_sum(comm, &N, &g_N, 1);
+  stk::all_reduce_sum(comm, &norm, &g_norm, 1);
+  g_norm = std::sqrt(g_norm/g_N);
+
+  return g_norm;
+}
+
+double global_norm(const double & norm, const size_t & N, const stk::ParallelMachine& comm)
+{
+  size_t g_N = 0;
+  double g_norm = 0.0;
+
   stk::all_reduce_sum(comm, &N, &g_N, 1);
   stk::all_reduce_sum(comm, &norm, &g_norm, 1);
   g_norm = std::sqrt(g_norm/g_N);

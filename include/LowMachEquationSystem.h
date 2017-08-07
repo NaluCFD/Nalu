@@ -26,6 +26,7 @@ class AssembleNodalGradAlgorithmDriver;
 class AssembleNodalGradUAlgorithmDriver;
 class MomentumEquationSystem;
 class ContinuityEquationSystem;
+class ComputeMdotAlgorithmDriver;
 class LinearSystem;
 class ProjectedNodalGradientEquationSystem;
 class SurfaceForceAndMomentAlgorithmDriver;
@@ -249,7 +250,7 @@ public:
   ScalarFieldType *pTmp_;
 
   AssembleNodalGradAlgorithmDriver *assembleNodalGradAlgDriver_;
-  AlgorithmDriver *computeMdotAlgDriver_;
+  ComputeMdotAlgorithmDriver *computeMdotAlgDriver_;
   ProjectedNodalGradientEquationSystem *projectedNodalGradEqs_;
 };
 

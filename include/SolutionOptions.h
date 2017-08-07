@@ -16,11 +16,13 @@
 #include <string>
 #include <map>
 #include <utility>
+#include <memory>
 
 namespace sierra{
 namespace nalu{
 
 class MeshMotionInfo;
+struct FixPressureAtNodeInfo;
 
 enum ErrorIndicatorType {
   EIT_NONE                = 0,
@@ -74,6 +76,9 @@ public:
   bool get_shifted_grad_op(const std::string&) const;
 
   std::vector<double> get_gravity_vector(const unsigned nDim) const;
+ 
+  double get_turb_model_constant(
+    TurbulenceModelConstant turbModelEnum) const;
 
   double hybridDefault_;
   double alphaDefault_;
@@ -135,6 +140,11 @@ public:
   double earthAngularVelocity_;
   double latitude_;
 
+  // global mdot correction alg
+  double mdotAlgAccumulation_;
+  double mdotAlgInflow_;
+  double mdotAlgOpen_;
+ 
   // turbulence model coeffs
   std::map<TurbulenceModelConstant, double> turbModelConstantMap_;
   
@@ -181,6 +191,11 @@ public:
   // Coriolis source term
   std::vector<double> eastVector_;
   std::vector<double> northVector_;
+
+  //! Flag indicating whether the user has requested pressure referencing
+  bool needPressureReference_{false};
+
+  std::unique_ptr<FixPressureAtNodeInfo> fixPressureInfo_;
 
   std::string name_;
 

@@ -329,7 +329,6 @@ TpetraLinearSystem::beginLinearSystemConstruction()
   // owned first:
   for(const stk::mesh::Bucket* bptr : buckets) {
     const stk::mesh::Bucket & b = *bptr;
-    const stk::mesh::Bucket::size_type length   = b.size();
     for ( stk::mesh::Entity entity : b ) {
       int status = getDofStatus(entity);
       if (!(status & DS_SkippedDOF) && (status & DS_OwnedDOF))
@@ -1319,6 +1318,51 @@ TpetraLinearSystem::prepareConstraints(
 }
 
 void
+TpetraLinearSystem::resetRows(
+  const std::vector<stk::mesh::Entity> nodeList,
+  const unsigned beginPos,
+  const unsigned endPos)
+{
+  Teuchos::ArrayView<const LocalOrdinal> indices;
+  Teuchos::ArrayView<const double> values;
+  std::vector<double> new_values;
+  constexpr double rhs_residual = 0.0;
+
+  for (auto node: nodeList) {
+    const auto naluId = *stk::mesh::field_data(*realm_.naluGlobalId_, node);
+    const LocalOrdinal localIdOffset = lookup_myLID(
+      myLIDs_, naluId, "resetRows") * numDof_;
+
+    for (unsigned d=beginPos; d < endPos; ++d) {
+      const LocalOrdinal localId = localIdOffset + d;
+      const bool useOwned = (localId < maxOwnedRowId_);
+      const LocalOrdinal actualLocalId =
+        useOwned ? localId : (localId - maxOwnedRowId_);
+      Teuchos::RCP<LinSys::Matrix> matrix =
+        useOwned ? ownedMatrix_ : globallyOwnedMatrix_;
+
+      if (localId > maxGloballyOwnedRowId_) {
+        throw std::runtime_error("logic error: localId > maxGloballyOwnedRowId");
+      }
+
+      // Adjust the LHS; zero out all entries (including diagonal)
+      matrix->getLocalRowView(actualLocalId, indices, values);
+      const size_t rowLength = values.size();
+      new_values.resize(rowLength);
+      for (size_t i=0; i < rowLength; i++) {
+        new_values[i] = 0.0;
+      }
+      matrix->replaceLocalValues(actualLocalId, indices, new_values);
+
+      // Replace RHS residual entry = 0.0
+      Teuchos::RCP<LinSys::Vector> rhs =
+        useOwned ? ownedRhs_ : globallyOwnedRhs_;
+      rhs->replaceLocalValue(actualLocalId, rhs_residual);
+    }
+  }
+}
+
+void
 TpetraLinearSystem::loadComplete()
 {
   // LHS
@@ -1420,7 +1464,7 @@ TpetraLinearSystem::checkForNaN(bool useOwned)
   Teuchos::ArrayView<const LocalOrdinal> indices;
   Teuchos::ArrayView<const double> values;
 
-  int n = matrix->getRowMap()->getNodeNumElements();
+  size_t n = matrix->getRowMap()->getNodeNumElements();
   for(size_t i=0; i<n; ++i) {
 
     matrix->getLocalRowView(i, indices, values);
@@ -1454,7 +1498,7 @@ TpetraLinearSystem::checkForZeroRow(bool useOwned, bool doThrow, bool doPrint)
   Teuchos::ArrayView<const double> values;
 
   size_t nrowG = matrix->getRangeMap()->getGlobalNumElements();
-  int n = matrix->getRowMap()->getNodeNumElements();
+  size_t n = matrix->getRowMap()->getNodeNumElements();
   GlobalOrdinal max_gid = 0, g_max_gid=0;
   //KOKKOS: Loop parallel reduce
   kokkos_parallel_for("Nalu::TpetraLinearSystem::checkForZeroRowA", n, [&] (const size_t& i) {

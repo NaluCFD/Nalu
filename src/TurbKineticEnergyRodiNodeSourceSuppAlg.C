@@ -6,17 +6,17 @@
 /*------------------------------------------------------------------------*/
 
 
-#include <TurbKineticEnergyKsgsNodeSourceSuppAlg.h>
-#include <FieldTypeDef.h>
-#include <Realm.h>
-#include <SupplementalAlgorithm.h>
-#include <TimeIntegrator.h>
-#include <stk_mesh/base/Field.hpp>
+#include "TurbKineticEnergyRodiNodeSourceSuppAlg.h"
+#include "FieldTypeDef.h"
+#include "Realm.h"
+#include "SolutionOptions.h"
+#include "SupplementalAlgorithm.h"
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/Entity.hpp>
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/BulkData.hpp>
+#include <stk_mesh/base/Field.hpp>
 
 namespace sierra{
 namespace nalu{
@@ -24,78 +24,61 @@ namespace nalu{
 //==========================================================================
 // Class Definition
 //==========================================================================
-// TurbKineticEnergyKsgsNodeSourceSuppAlg - Ksgs LES source term algorithm
+// TurbKineticEnergyRodiNodeSourceSuppAlg Pb = beta*mu^t/Pr^t gi/Cp dh/dxi
 //==========================================================================
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-TurbKineticEnergyKsgsNodeSourceSuppAlg::TurbKineticEnergyKsgsNodeSourceSuppAlg(
+TurbKineticEnergyRodiNodeSourceSuppAlg::TurbKineticEnergyRodiNodeSourceSuppAlg(
   Realm &realm)
   : SupplementalAlgorithm(realm),
-    tkeNp1_(NULL),
-    densityNp1_(NULL),
+    dhdx_(NULL),
+    specificHeat_(NULL),
     tvisc_(NULL),
-    dudx_(NULL),
     dualNodalVolume_(NULL),
-    cEps_(realm_.get_turb_model_constant(TM_cEps)),
-    tkeProdLimitRatio_(realm_.get_turb_model_constant(TM_tkeProdLimitRatio)),
+    beta_(realm.solutionOptions_->thermalExpansionCoeff_),
+    turbPr_(realm.get_turb_prandtl("enthalpy")),
     nDim_(realm_.meta_data().spatial_dimension())
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
-  ScalarFieldType *tke = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_ke");
-  tkeNp1_ = &(tke->field_of_state(stk::mesh::StateNP1));
-  ScalarFieldType *density = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
-  densityNp1_ = &(density->field_of_state(stk::mesh::StateNP1));
+  dhdx_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dhdx");
+  specificHeat_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "specific_heat");
   tvisc_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_viscosity");
-  dudx_ = meta_data.get_field<GenericFieldType>(stk::topology::NODE_RANK, "dudx");
   dualNodalVolume_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
+
+  // extract and size gravity
+  gravity_.resize(nDim_);
+  gravity_ = realm_.solutionOptions_->gravity_;
 }
 
 //--------------------------------------------------------------------------
 //-------- setup -----------------------------------------------------------
 //--------------------------------------------------------------------------
 void
-TurbKineticEnergyKsgsNodeSourceSuppAlg::setup()
+TurbKineticEnergyRodiNodeSourceSuppAlg::setup()
 {
-  // could extract user-based values for cEps_ and tkeProdLimitRatio_
+  // all set up in constructor
 }
 
 //--------------------------------------------------------------------------
 //-------- node_execute ----------------------------------------------------
 //--------------------------------------------------------------------------
 void
-TurbKineticEnergyKsgsNodeSourceSuppAlg::node_execute(
-  double *lhs,
+TurbKineticEnergyRodiNodeSourceSuppAlg::node_execute(
+  double */*lhs*/,
   double *rhs,
   stk::mesh::Entity node)
 {
-  const double tke        = *stk::mesh::field_data(*tkeNp1_, node );
-  const double rho        = *stk::mesh::field_data(*densityNp1_, node );
-  const double tvisc      = *stk::mesh::field_data(*tvisc_, node );
-  const double *dudx      =  stk::mesh::field_data(*dudx_, node );
-  const double dualVolume = *stk::mesh::field_data(*dualNodalVolume_, node );
-
-  // filter
-  double filter = std::pow(dualVolume, 1.0/nDim_);
-
-  int nDim = nDim_;
-  double Pk = 0.0;
-  for ( int i = 0; i < nDim; ++i ) {
-    const int offSet = nDim*i;
-    for ( int j = 0; j < nDim; ++j ) {
-      Pk += dudx[offSet+j]*(dudx[offSet+j] + dudx[nDim*j+i]);
-    }
-  }
-  Pk *= tvisc;
-
-  double Dk = cEps_*rho*std::pow(tke, 1.5)/filter;
-
-  if ( Pk > tkeProdLimitRatio_*Dk )
-    Pk = tkeProdLimitRatio_*Dk;
-
-  rhs[0] += (Pk - Dk)*dualVolume;
-  lhs[0] += 1.5*cEps_*rho*std::sqrt(tke)/filter*dualVolume;
+  // no lhs contribution; all rhs source term
+  const double *dhdx = stk::mesh::field_data(*dhdx_, node );
+  const double specificHeat = *stk::mesh::field_data(*specificHeat_, node );
+  const double tvisc = *stk::mesh::field_data(*tvisc_, node );
+  const double dualNodalVolume = *stk::mesh::field_data(*dualNodalVolume_, node );
+  double sum = 0.0;
+  for ( int i = 0; i < nDim_; ++i )
+    sum += gravity_[i]*dhdx[i];
+  rhs[0] += beta_*tvisc/turbPr_*sum/specificHeat*dualNodalVolume;
 }
 
 } // namespace nalu

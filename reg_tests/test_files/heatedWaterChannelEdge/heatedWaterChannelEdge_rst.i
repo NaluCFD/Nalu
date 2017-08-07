@@ -224,7 +224,7 @@ realms:
 
     output:
       output_data_base_name: heatedWaterChannelEdge.e-s001
-      output_frequency: 5
+      output_frequency: 10
       output_node_set: no
       output_variables:
        - velocity
@@ -249,7 +249,7 @@ realms:
 
     restart:
       restart_data_base_name: heatedWaterChannelEdge.rst-s001
-      output_frequency: 10
+      restart_frequency: 10
       restart_start: 5
       restart_time: 100
 
