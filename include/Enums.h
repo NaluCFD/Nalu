@@ -203,12 +203,10 @@ static const std::string TurbulenceModelConstantNames[] = {
 enum ActuatorType {
   ActLinePointDrag = 0,
   ActLineFAST = 1,
-  ActDisc = 2,
-  ActSector = 3,
   ActuatorType_END
 };
 
- static std::map<std::string, ActuatorType> ActuatorTypeMap = { {"ActLinePointDrag",ActuatorType::ActLinePointDrag}, {"ActLineFAST",ActuatorType::ActLineFAST}, {"ActDisc",ActuatorType::ActDisc}, {"ActSector",ActuatorType::ActSector}};
+ static std::map<std::string, ActuatorType> ActuatorTypeMap = { {"ActLinePointDrag",ActuatorType::ActLinePointDrag}, {"ActLineFAST",ActuatorType::ActLineFAST}};
 
 } // namespace nalu
 } // namespace Sierra

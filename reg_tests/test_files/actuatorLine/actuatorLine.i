@@ -8,7 +8,7 @@ linear_solvers:
   - name: solve_scalar
     type: tpetra
     method: gmres
-    preconditioner: sgs 
+    preconditioner: sgs
     tolerance: 1e-5
     max_iterations: 50
     kspace: 50
@@ -16,8 +16,8 @@ linear_solvers:
 
   - name: solve_cont
     type: tpetra
-    method: gmres 
-    preconditioner: muelu 
+    method: gmres
+    preconditioner: muelu
     tolerance: 1e-5
     max_iterations: 50
     kspace: 50
@@ -29,17 +29,17 @@ realms:
 
   - name: realm_1
     mesh: ../../mesh/theRectangle.g
-    use_edges: no 
+    use_edges: no
     automatic_decomposition_type: rcb
 
     equation_systems:
       name: theEqSys
-      max_iterations: 2 
-  
+      max_iterations: 2
+
       solver_system_specification:
         velocity: solve_scalar
         pressure: solve_cont
-   
+
       systems:
 
         - LowMachEOM:
@@ -113,30 +113,31 @@ realms:
 
         - projected_nodal_gradient:
             pressure: element
-            velocity: element 
+            velocity: element
 
         - source_terms:
-            momentum: actuator_line
+            momentum: actuator
 
-    actuator_line:
+    actuator:
+      type: ActLinePointDrag
       search_method: boost_rtree
       search_target_part: block_1
 
       specifications:
 
         - turbine_name: machine_one
-          radius: 0.5 
-          omega: 1.57 
-          gaussian_decay_radius: 1.0 
+          radius: 0.5
+          omega: 1.57
+          gaussian_decay_radius: 1.0
           gaussian_decay_target: 0.01
           tip_coordinates: [2.5, 2.0, 0.0]
           tail_coordinates: [2.5, -2.0, 0.0]
-          number_of_points: 11 
+          number_of_points: 11
 
         - turbine_name: machine_two
           radius: 0.5
           omega: -1.57
-          gaussian_decay_radius: 1.0 
+          gaussian_decay_radius: 1.0
           gaussian_decay_target: 0.01
           tip_coordinates: [-2.5, 0.0, 2.0]
           tail_coordinates: [-2.5, 0.0, -2.0]
@@ -144,8 +145,8 @@ realms:
 
     output:
       output_data_base_name: actuatorLine.e
-      output_frequency: 5 
-      output_node_set: no 
+      output_frequency: 5
+      output_node_set: no
       output_variables:
        - velocity
        - pressure
@@ -155,7 +156,7 @@ Time_Integrators:
   - StandardTimeIntegrator:
       name: ti_1
       start_time: 0
-      termination_step_count: 20 
+      termination_step_count: 20
       time_step: 0.01
       time_stepping_type: adaptive
       time_step_count: 0
