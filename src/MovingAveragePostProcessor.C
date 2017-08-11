@@ -64,11 +64,15 @@ ExponentialMovingAverager::init_state(bool init)
 MovingAveragePostProcessor::MovingAveragePostProcessor(
   stk::mesh::BulkData& bulk,
   TimeIntegrator& timeIntegrator,
-  double timeScale)
+  double timeScale,
+  bool isRestarted)
   :  bulk_(bulk),
      timeIntegrator_(timeIntegrator),
      averager_(ExponentialMovingAverager(timeScale))
-{ }
+{
+  // don't initialize if simulation is restarted
+  averager_.init_state(!isRestarted);
+}
 //--------------------------------------------------------------------------
 void MovingAveragePostProcessor::add_fields(std::vector<std::string> fieldNames)
 {
@@ -76,16 +80,12 @@ void MovingAveragePostProcessor::add_fields(std::vector<std::string> fieldNames)
     auto& meta = bulk_.mesh_meta_data();
     auto* field = meta.get_field(stk::topology::NODE_RANK, fieldName);
 
-    ThrowRequireMsg(field != nullptr, "Field argument invalid");
+    ThrowRequireMsg(field != nullptr, "Requested field `" + fieldName + "' not available for averaging");
     ThrowRequireMsg(field->type_is<double>(), "Only double precision-typed fields allowed");
 
-    stk::mesh::FieldBase* avgField = meta.get_field(stk::topology::NODE_RANK,
-      filtered_field_name(field->name())
-    );
+    stk::mesh::FieldBase* avgField = meta.get_field(stk::topology::NODE_RANK, filtered_field_name(field->name()));
 
-    ThrowRequireMsg(avgField != nullptr,
-      filtered_field_name(field->name()) + " field not registered"
-    );
+    ThrowRequireMsg(avgField != nullptr, filtered_field_name(field->name()) + " field not registered" );
     fieldMap_.insert({field, avgField});
   }
 }

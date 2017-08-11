@@ -220,7 +220,7 @@ TurbulenceAveragingPostProcessing::setup()
 
 
   // Special case for boussinesq_ra algorithm
-  // The algorithm requires that "time_filtered_temperature" be available
+  // The algorithm requires that "temperature_ma" be available
   // on all blocks where temperature is defined.
   if (realm_.solutionOptions_->has_set_boussinesq_time_scale()) {
     const std::string temperatureName  = "temperature";
@@ -234,7 +234,7 @@ TurbulenceAveragingPostProcessing::setup()
     realm_.augment_restart_variable_list(fTempName);
 
     movingAvgPP_ = make_unique<MovingAveragePostProcessor>(
-      realm_.bulk_data(), *realm_.timeIntegrator_, realm_.solutionOptions_->raBoussinesqTimeScale_
+      realm_.bulk_data(), *realm_.timeIntegrator_, realm_.solutionOptions_->raBoussinesqTimeScale_, realm_.restarted_simulation()
     );
     movingAvgPP_->add_fields({temperatureName});
   }
@@ -263,7 +263,7 @@ TurbulenceAveragingPostProcessing::setup()
         // create movingAvgPP if it hasn't been created due to physics needs
         if (movingAvgPP_ == nullptr) {
           movingAvgPP_ = make_unique<MovingAveragePostProcessor>(
-            realm_.bulk_data(), *realm_.timeIntegrator_, timeFilterInterval_
+            realm_.bulk_data(), *realm_.timeIntegrator_, timeFilterInterval_, realm_.restarted_simulation()
           );
         }
 
