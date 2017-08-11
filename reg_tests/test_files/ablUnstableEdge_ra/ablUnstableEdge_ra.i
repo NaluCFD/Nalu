@@ -202,9 +202,12 @@ realms:
 
           favre_averaged_variables:
             - velocity
+            - viscosity
 
           moving_averaged_variables:
             - velocity
+            - specific_heat
+            - pressure
 
           compute_tke: yes 
           compute_reynolds_stress: yes
@@ -224,6 +227,8 @@ realms:
        - velocity_ra_one
        - velocity_fa_one
        - velocity_ma
+       - pressure_ma
+       - specific_heat_ma
 
   - name: ioRealm
     mesh: ../../mesh/abl_io.g
