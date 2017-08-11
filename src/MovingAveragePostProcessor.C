@@ -32,14 +32,11 @@ namespace sierra{
 namespace nalu{
 
 //--------------------------------------------------------------------------
-ExponentialMovingAverager::ExponentialMovingAverager(double timeScale)
+ExponentialMovingAverager::ExponentialMovingAverager(double timeScale, bool isInit, double alpha)
 : timeScale_(timeScale),
-  isInit_(true),
-  alpha_(-1)
-{
-  ThrowRequireMsg(timeScale_ > 1.0e6 * std::numeric_limits<double>::min(),
-    "Time scale must be strictly positive");
-}
+  isInit_(isInit),
+  alpha_(alpha)
+{ }
 //--------------------------------------------------------------------------
 void
 ExponentialMovingAverager::compute_and_set_alpha(double delta_t)
@@ -64,32 +61,26 @@ ExponentialMovingAverager::init_state(bool init)
 MovingAveragePostProcessor::MovingAveragePostProcessor(
   stk::mesh::BulkData& bulk,
   TimeIntegrator& timeIntegrator,
-  double timeScale,
   bool isRestarted)
   :  bulk_(bulk),
      timeIntegrator_(timeIntegrator),
-     averager_(ExponentialMovingAverager(timeScale))
-{
-  // don't initialize if simulation is restarted
-  averager_.init_state(!isRestarted);
-}
+     isRestarted_(isRestarted)
+{}
 //--------------------------------------------------------------------------
 void MovingAveragePostProcessor::add_fields(std::vector<std::string> fieldNames)
 {
   for (const auto& fieldName : fieldNames) {
     auto& meta = bulk_.mesh_meta_data();
     auto* field = meta.get_field(stk::topology::NODE_RANK, fieldName);
-
     ThrowRequireMsg(field != nullptr, "Requested field `" + fieldName + "' not available for averaging");
     ThrowRequireMsg(field->type_is<double>(), "Only double precision-typed fields allowed");
 
     stk::mesh::FieldBase* avgField = meta.get_field(stk::topology::NODE_RANK, filtered_field_name(field->name()));
-
     ThrowRequireMsg(avgField != nullptr, filtered_field_name(field->name()) + " field not registered" );
     fieldMap_.insert({field, avgField});
   }
 }
-
+//--------------------------------------------------------------------------
 void append_unique_parts(const stk::mesh::PartVector& partsToAdd, stk::mesh::PartVector& partVec)
 {
   for (auto* part : partsToAdd) {
@@ -99,14 +90,26 @@ void append_unique_parts(const stk::mesh::PartVector& partsToAdd, stk::mesh::Par
     }
   }
 }
-
 //--------------------------------------------------------------------------
 void
 MovingAveragePostProcessor::add_parts_for_all_fields(stk::mesh::PartVector parts)
 {
   for (const auto& fieldPair : fieldMap_) {
-    auto& partVec = partVecs_[fieldPair.first->name()];
-    append_unique_parts(parts, partVec);
+    append_unique_parts(parts,  partVecs_[fieldPair.first->name()]);
+  }
+}
+//--------------------------------------------------------------------------
+void
+MovingAveragePostProcessor::set_time_scale(std::string fieldName, double timeScale)
+{
+  averagers_[fieldName] = ExponentialMovingAverager(timeScale, !isRestarted_);
+}
+//--------------------------------------------------------------------------
+void
+MovingAveragePostProcessor::set_time_scale(double timeScale)
+{
+  for (const auto& fieldPair : fieldMap_) {
+    averagers_[fieldPair.first->name()]= ExponentialMovingAverager(timeScale, !isRestarted_);
   }
 }
 //--------------------------------------------------------------------------
@@ -128,11 +131,14 @@ void
 MovingAveragePostProcessor::execute()
 {
   double dt = timeIntegrator_.get_time_step();
-  averager_.compute_and_set_alpha(dt);
+
 
   for (auto& fieldPair : fieldMap_) {
     const stk::mesh::FieldBase* field = fieldPair.first;
     const stk::mesh::FieldBase* avgField = fieldPair.second;
+    auto& averager = averagers_.at(field->name());
+
+    averager.compute_and_set_alpha(dt);
 
     // Average is performed on all point where the original field is defined,
     // unless a partvector is specified for the field, in which case that is used instead
@@ -151,12 +157,15 @@ MovingAveragePostProcessor::execute()
         ThrowAssert(fieldLength == avgField->max_size(stk::topology::NODE_RANK));
 
         for (unsigned d = 0; d < fieldLength; ++d) {
-          avgFieldVals[d] = averager_.compute_updated_average(avgFieldVals[d], fieldVals[d]);
+          avgFieldVals[d] = averager.compute_updated_average(avgFieldVals[d], fieldVals[d]);
         }
       }
     }
   }
-  averager_.init_state(false);
+
+  for (auto& averagerPair : averagers_) {
+    averagerPair.second.init_state(false);
+  }
 }
 
 } // namespace nalu

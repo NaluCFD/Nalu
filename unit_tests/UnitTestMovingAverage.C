@@ -67,8 +67,9 @@ TEST_F(PostProcessor, moving_average_constant)
     std::vector<double> constant_realization(numSteps, 10.0);
 
     double timeScale = 0.1;
-    sierra::nalu::MovingAveragePostProcessor avgPP(bulk_, timeIntegrator_, timeScale);
+    sierra::nalu::MovingAveragePostProcessor avgPP(bulk_, timeIntegrator_, false);
     avgPP.add_fields({"temperature"});
+    avgPP.set_time_scale(timeScale);
 
     for (int j = 0; j < numSteps; ++j) {
       double* temperatureVal = stk::mesh::field_data(*temperature_, node);

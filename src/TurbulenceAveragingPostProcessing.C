@@ -234,9 +234,12 @@ TurbulenceAveragingPostProcessing::setup()
     realm_.augment_restart_variable_list(fTempName);
 
     movingAvgPP_ = make_unique<MovingAveragePostProcessor>(
-      realm_.bulk_data(), *realm_.timeIntegrator_, realm_.solutionOptions_->raBoussinesqTimeScale_, realm_.restarted_simulation()
+      realm_.bulk_data(),
+      *realm_.timeIntegrator_,
+      realm_.restarted_simulation()
     );
     movingAvgPP_->add_fields({temperatureName});
+    movingAvgPP_->set_time_scale(temperatureName,  realm_.solutionOptions_->raBoussinesqTimeScale_);
   }
 
   // loop over all info and setup (register fields, set parts, etc.)
@@ -263,7 +266,9 @@ TurbulenceAveragingPostProcessing::setup()
         // create movingAvgPP if it hasn't been created due to physics needs
         if (movingAvgPP_ == nullptr) {
           movingAvgPP_ = make_unique<MovingAveragePostProcessor>(
-            realm_.bulk_data(), *realm_.timeIntegrator_, timeFilterInterval_, realm_.restarted_simulation()
+            realm_.bulk_data(),
+            *realm_.timeIntegrator_,
+            realm_.restarted_simulation()
           );
         }
 
@@ -288,6 +293,7 @@ TurbulenceAveragingPostProcessing::setup()
         movingAvgPP_->add_fields(avInfo->movingAvgFieldNameVec_);
         for (auto& name : avInfo->movingAvgFieldNameVec_) {
           movingAvgPP_->add_parts_for_field(name, {targetPart});
+          movingAvgPP_->set_time_scale(name, timeFilterInterval_);
         }
       }
 

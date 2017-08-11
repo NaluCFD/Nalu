@@ -8,8 +8,10 @@
 #ifndef MovingAveragePostProcessor_h
 #define MovingAveragePostProcessor_h
 
-#include <Algorithm.h>
 #include <FieldTypeDef.h>
+
+#include <map>
+#include <vector>
 
 namespace stk { namespace mesh { class BulkData; } }
 
@@ -21,7 +23,7 @@ class TimeIntegrator;
 class ExponentialMovingAverager
 {
 public:
-  ExponentialMovingAverager(double timeScale);
+  ExponentialMovingAverager(double timeScale = 0.0, bool isInit = false, double alpha = -1.);
 
   double compute_updated_average(double oldAvg, double newVal);
   void compute_and_set_alpha(double dt);
@@ -47,7 +49,6 @@ public:
   MovingAveragePostProcessor(
     stk::mesh::BulkData& bulk,
     TimeIntegrator& timeIntegrator,
-    double timeScale,
     bool init = true);
 
   void execute();
@@ -55,6 +56,9 @@ public:
   void add_fields(std::vector<std::string> fieldName);
   void add_parts_for_all_fields(stk::mesh::PartVector parts);
   void add_parts_for_field(std::string name, stk::mesh::PartVector parts);
+
+  void set_time_scale(std::string fieldName, double timeScale);
+  void set_time_scale(double timeScale);
 
   std::map<stk::mesh::FieldBase*, stk::mesh::FieldBase*>& get_field_map()
   {
@@ -64,9 +68,10 @@ public:
 private:
   stk::mesh::BulkData& bulk_;
   TimeIntegrator& timeIntegrator_;
+  bool isRestarted_;
 
   std::map<stk::mesh::FieldBase*, stk::mesh::FieldBase*> fieldMap_;
-  ExponentialMovingAverager averager_;
+  std::map<std::string, ExponentialMovingAverager> averagers_;
 
   std::map<std::string, stk::mesh::PartVector> partVecs_;
 
