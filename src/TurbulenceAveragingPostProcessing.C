@@ -143,7 +143,7 @@ TurbulenceAveragingPostProcessing::load(
         
         const YAML::Node y_movavg = y_spec["moving_averaged_variables"];
         if (y_movavg) {
-          for (size_t ioption = 0; ioption < y_favre.size(); ++ioption) {
+          for (size_t ioption = 0; ioption < y_movavg.size(); ++ioption) {
             const YAML::Node y_var = y_movavg[ioption];
             std::string fieldName = y_var.as<std::string>() ;
             avInfo->movingAvgFieldNameVec_.push_back(fieldName);
