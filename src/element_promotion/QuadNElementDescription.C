@@ -56,7 +56,6 @@ QuadNElementDescription::QuadNElementDescription(std::vector<double> in_nodeLocs
   set_volume_node_connectivities();
   set_tensor_product_node_mappings();
   set_boundary_node_mappings();
-  set_face_node_map();
   set_side_node_ordinals();
   set_isoparametric_coordinates();
   set_subelement_connectivites();
@@ -255,7 +254,7 @@ QuadNElementDescription::set_subelement_connectivites()
 }
 //--------------------------------------------------------------------------
 void
-QuadNElementDescription::set_face_node_map()
+QuadNElementDescription::set_side_node_ordinals()
 {
   // index of the "left"-most node along an edge
   int il = 0;
@@ -265,42 +264,48 @@ QuadNElementDescription::set_face_node_map()
   int ir = nodes1D - 1;
   int jr = nodes1D - 1;
 
+  // face node ordinals, reordered according to
+  // the face permutation
+  std::vector<std::vector<int>> reorderedFaceNodeMap;
+
   faceNodeMap.resize(numBoundaries);
+  reorderedFaceNodeMap.resize(numBoundaries);
   for (int face_ord = 0; face_ord < numBoundaries; ++face_ord) {
     faceNodeMap.at(face_ord).resize(nodesPerSide);
+    reorderedFaceNodeMap.at(face_ord).resize(nodesPerSide);
   }
 
   // bottom
   for (int m = 0; m < nodes1D; ++m) {
     faceNodeMap.at(0).at(m) = node_map(m, jl);
+    reorderedFaceNodeMap.at(0).at(m) = node_map(m, jl);
   }
 
   // right
   for (int m = 0; m < nodes1D; ++m) {
     faceNodeMap.at(1).at(m) = node_map(ir, m);
+    reorderedFaceNodeMap.at(1).at(m) = node_map(ir, m);
   }
 
   // top
   for (int m = 0; m < nodes1D; ++m) {
-    faceNodeMap.at(2).at(m) = node_map(nodes1D-m-1, jr);
+    faceNodeMap.at(2).at(m) = node_map(m, jr);
+    reorderedFaceNodeMap.at(2).at(m) = node_map(nodes1D-m-1, jr);
   }
 
   //left
   for (int m = 0; m < nodes1D; ++m) {
-    faceNodeMap.at(3).at(m) = node_map(il, nodes1D-m-1);
+    faceNodeMap.at(3).at(m) = node_map(il, m);
+    reorderedFaceNodeMap.at(3).at(m) = node_map(il, nodes1D-m-1);
   }
 
-}
-//--------------------------------------------------------------------------
-void
-QuadNElementDescription::set_side_node_ordinals()
-{
+
   sideOrdinalMap.resize(4);
   for (int face_ordinal = 0; face_ordinal < 4; ++face_ordinal) {
     sideOrdinalMap[face_ordinal].resize(nodesPerSide);
     for (int j = 0; j < nodesPerSide; ++j) {
       const auto& ords = inverseNodeMapBC[j];
-      sideOrdinalMap.at(face_ordinal).at(j) = faceNodeMap.at(face_ordinal).at(ords[0]);
+      sideOrdinalMap.at(face_ordinal).at(j) = reorderedFaceNodeMap.at(face_ordinal).at(ords[0]);
     }
   }
 }

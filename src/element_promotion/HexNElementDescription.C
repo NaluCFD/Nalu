@@ -154,7 +154,6 @@ HexNElementDescription::HexNElementDescription(std::vector<double> in_nodeLocs)
   set_volume_node_connectivities();
   set_tensor_product_node_mappings();
   set_boundary_node_mappings();
-  set_face_node_map();
   set_side_node_ordinals();
   set_isoparametric_coordinates();
   set_subelement_connectivites();
@@ -513,9 +512,7 @@ void HexNElementDescription::set_tensor_product_node_mappings()
       }
     }
 
-    faceNodeMap.resize(6);
     for (int faceOrdinal = 0; faceOrdinal < numFaces; ++faceOrdinal) {
-      faceNodeMap.at(faceOrdinal).resize(nodesPerSide);
       auto newNodeOrdinals = faceNodeConnectivities.at(faceOrdinal);
       for (int k = 0; k < newNodesPerEdge; ++k) {
         for (int j = 0; j < newNodesPerEdge; ++j) {
@@ -585,7 +582,7 @@ HexNElementDescription::set_subelement_connectivites()
 }
 //--------------------------------------------------------------------------
 void
-HexNElementDescription::set_face_node_map()
+HexNElementDescription::set_side_node_ordinals()
 {
   // index of the "left"-most node along an edge
   int il = 0;
@@ -597,16 +594,22 @@ HexNElementDescription::set_face_node_map()
   int jr = nodes1D - 1;
   int kr = nodes1D - 1;
 
+  // face node ordinals, reordered according to
+  // the face permutation
+  std::vector<std::vector<int>> reorderedFaceNodeMap;
 
   faceNodeMap.resize(numBoundaries);
+  reorderedFaceNodeMap.resize(numBoundaries);
   for (int j = 0; j < numBoundaries; ++j) {
     faceNodeMap.at(j).resize(nodesPerSide);
+    reorderedFaceNodeMap.at(j).resize(nodesPerSide);
   }
 
   //front
   for (int n = 0; n < nodes1D; ++n) {
     for (int m = 0; m < nodes1D; ++m) {
       faceNodeMap.at(0).at(m+nodes1D*n) = node_map(m,jl,n);
+      reorderedFaceNodeMap.at(0).at(m+nodes1D*n) = node_map(m,jl,n);
     }
   }
 
@@ -614,47 +617,48 @@ HexNElementDescription::set_face_node_map()
   for (int n = 0; n < nodes1D; ++n) {
     for (int m = 0; m < nodes1D; ++m) {
       faceNodeMap.at(1).at(m+nodes1D*n) = node_map(ir,m,n);
+      reorderedFaceNodeMap.at(1).at(m+nodes1D*n) = node_map(ir,m,n);
     }
   }
 
   //back
   for (int n = 0; n < nodes1D; ++n) {
     for (int m = 0; m < nodes1D; ++m) {
-      faceNodeMap.at(2).at(m+nodes1D*n) = node_map(nodes1D-m-1,jr,n);
+      faceNodeMap.at(2).at(m+nodes1D*n) = node_map(m,jr,n);
+      reorderedFaceNodeMap.at(2).at(m+nodes1D*n) = node_map(nodes1D-m-1,jr,n);
     }
   }
 
   //left
   for (int n = 0; n < nodes1D; ++n) {
     for (int m = 0; m < nodes1D; ++m) {
-      faceNodeMap.at(3).at(m+nodes1D*n) = node_map(il,n,m);
+      faceNodeMap.at(3).at(m+nodes1D*n) = node_map(il,m,n);
+      reorderedFaceNodeMap.at(3).at(m+nodes1D*n) = node_map(il,n,m);
     }
   }
 
   //bottom
   for (int n = 0; n < nodes1D; ++n) {
     for (int m = 0; m < nodes1D; ++m) {
-      faceNodeMap.at(4).at(m+nodes1D*n) = node_map(n,m,kl);
+      faceNodeMap.at(4).at(m+nodes1D*n) = node_map(m,n,kl);
+      reorderedFaceNodeMap.at(4).at(m+nodes1D*n) = node_map(n,m,kl);
     }
   }
 
   //top
   for (int n = 0; n < nodes1D; ++n) {
     for (int m = 0; m < nodes1D; ++m) {
-      faceNodeMap.at(5).at(m+nodes1D*n) = node_map(m,n,kr);
+      faceNodeMap.at(4).at(m+nodes1D*n) = node_map(m,n,kl);
+      reorderedFaceNodeMap.at(5).at(m+nodes1D*n) = node_map(m,n,kr);
     }
   }
-}
-//--------------------------------------------------------------------------
-void
-HexNElementDescription::set_side_node_ordinals()
-{
+
   sideOrdinalMap.resize(6);
   for (int face_ordinal = 0; face_ordinal < 6; ++face_ordinal) {
     sideOrdinalMap[face_ordinal].resize(nodesPerSide);
     for (int j = 0; j < nodes1D*nodes1D; ++j) {
       const auto& ords = inverseNodeMapBC[j];
-      sideOrdinalMap.at(face_ordinal).at(j) = faceNodeMap.at(face_ordinal).at(ords[0]+nodes1D*ords[1]);
+      sideOrdinalMap.at(face_ordinal).at(j) = reorderedFaceNodeMap.at(face_ordinal).at(ords[0]+nodes1D*ords[1]);
     }
   }
 }
