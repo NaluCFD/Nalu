@@ -47,7 +47,8 @@ public:
   MovingAveragePostProcessor(
     stk::mesh::BulkData& bulk,
     TimeIntegrator& timeIntegrator,
-    double timeScale);
+    double timeScale,
+    bool init = true);
 
   void execute();
 
