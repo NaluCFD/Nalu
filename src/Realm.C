@@ -233,7 +233,6 @@ namespace nalu{
     wallTimeStart_(stk::wall_time()),
     doPromotion_(false),
     promotionOrder_(0u),
-    quadType_("GaussLegendre"),
     inputMeshIdx_(-1),
     node_(node)
 {
@@ -603,7 +602,6 @@ Realm::load(const YAML::Node & node)
       NaluEnv::self().naluOutputP0() << "Activating the consistent-mass matrix P1 discretization..." << std::endl;
     }
   }
-  get_if_present(node, "quadrature_type", quadType_, quadType_ );
 
   // let everyone know about core algorithm
   if ( realmUsesEdges_ ) {
@@ -4386,7 +4384,6 @@ Realm::setup_element_promotion()
   // Create a description of the element and deal with the part naming styles
 
   // Struct containing information about the element (e.g. number of nodes, nodes per face, etc.)
-  // tools for numerically interpolating / taking derivatives of the reference element
   desc_ = ElementDescription::create(meta_data().spatial_dimension(), promotionOrder_);
 
   // Every mesh part is promoted for now
@@ -4427,8 +4424,8 @@ Realm::setup_element_promotion()
       superTargetNames_.push_back(superName);
 
       // Create elements for future use
-      sierra::nalu::get_surface_master_element(superPart->topology(), desc_.get(), quadType_);
-      sierra::nalu::get_volume_master_element(superPart->topology(), desc_.get(), quadType_);
+      sierra::nalu::get_surface_master_element(superPart->topology(), meta_data().spatial_dimension(), "GaussLegendre");
+      sierra::nalu::get_volume_master_element(superPart->topology(), meta_data().spatial_dimension(), "GaussLegendre");
     }
   }
 
@@ -4451,8 +4448,8 @@ Realm::setup_element_promotion()
           metaData_->declare_part_subset(*superSuperset, *superFacePart);
 
           // Create elements for future use
-          sierra::nalu::get_surface_master_element(sideTopo, desc_.get(), quadType_);
-          sierra::nalu::get_volume_master_element(sideTopo, desc_.get(), quadType_);
+          sierra::nalu::get_surface_master_element(sideTopo, meta_data().spatial_dimension(), "GaussLegendre");
+          sierra::nalu::get_volume_master_element(sideTopo, meta_data().spatial_dimension(), "GaussLegendre");
         }
       }
     }
@@ -4767,12 +4764,21 @@ Realm::get_tanh_blending(
 }
 
 //--------------------------------------------------------------------------
-//-------- balance_nodes() ---------------------------------------------
+//-------- balance_nodes() -------------------------------------------------
 //--------------------------------------------------------------------------
 void Realm::balance_nodes()
 {
   InterfaceBalancer balancer(meta_data(), bulk_data());
   balancer.balance_node_entities(balanceNodeOptions_.target, balanceNodeOptions_.numIters);
+}
+
+//--------------------------------------------------------------------------
+//-------- get_quad_type() -------------------------------------------------
+//--------------------------------------------------------------------------
+std::string Realm::get_quad_type() const
+{
+  ThrowRequire(solutionOptions_ != nullptr);
+  return solutionOptions_->quadType_;
 }
 
 } // namespace nalu

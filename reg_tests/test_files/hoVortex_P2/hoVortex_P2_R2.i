@@ -120,8 +120,10 @@ realms:
     solution_options:
       name: myOptions
       turbulence_model: laminar
-
+      use_consolidated_solver_algorithm: yes
+  
       options:
+
         - hybrid_factor:
             velocity: 0.0
 
@@ -130,7 +132,7 @@ realms:
             velocity: no
 
         - element_source_terms:
-            momentum: momentum_time_derivative
+            momentum: [momentum_time_derivative, advection_diffusion, SteadyTaylorVortex]
 
         - consistent_mass_matrix_png:
             pressure: yes

@@ -97,9 +97,11 @@ realms:
     solution_options:
       name: myOptions
 
+      use_consolidated_solver_algorithm: yes
+
       options:
         - element_source_terms:
-            temperature: steady_3d_thermal
+            temperature: [steady_3d_thermal, CVFEM_DIFF]
 
     output:
       output_data_base_name: cvfemHexHC_P3_R0.e
