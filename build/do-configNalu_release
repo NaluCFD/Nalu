@@ -15,6 +15,7 @@ cmake \
   -DYAML_DIR:PATH=$yaml_install_dir \
   -DENABLE_INSTALL:BOOL=OFF \
   -DCMAKE_BUILD_TYPE=RELEASE \
+  -DNALU_USES_OPENFAST:BOOL=ON \
   -DOpenFAST_DIR:PATH=openfast_install_dir \
   -DENABLE_TESTS:BOOL=ON \
 $EXTRA_ARGS \

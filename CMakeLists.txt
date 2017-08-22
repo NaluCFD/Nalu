@@ -11,7 +11,7 @@ cmake_minimum_required (VERSION 2.8.11)
 #  THESE PATHS MAY NEED TO BE CHANGED DEPENDING ON WHERE THEY ARE STORED!!!
 #
 option(NALU_USES_OPENFAST
-       "Use OPENFAST tpl to get actuator line positions and forces" ON)
+       "Use OPENFAST tpl to get actuator line positions and forces" OFF)
 
 SET(CMAKE_FIND_LIBRARY_PREFIXES lib)
 SET(CMAKE_FIND_LIBRARY_SUFFIXES a)

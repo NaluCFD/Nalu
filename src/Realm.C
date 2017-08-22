@@ -564,12 +564,14 @@ Realm::look_ahead_and_creation(const YAML::Node & node)
 	actuator_ =  new ActuatorLinePointDrag(*this, *foundActuator[0]);
 	break;
       }
-#ifdef NALU_USES_OPENFAST
       case ActuatorType::ActLineFAST : {
+#ifdef NALU_USES_OPENFAST
 	actuator_ =  new ActuatorLineFAST(*this, *foundActuator[0]);
+#else
+	throw std::runtime_error("look_ahead_and_create::error: Requested actuator type: " + ActuatorTypeName + ", but was not enabled at compile time");
+#endif
 	break;
       }
-#endif
       default : {
         throw std::runtime_error("look_ahead_and_create::error: unrecognized actuator type: " + ActuatorTypeName);
         break;
