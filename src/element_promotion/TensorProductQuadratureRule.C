@@ -1,4 +1,3 @@
-/*------------------------------------------------------------------------*/
 /*  Copyright 2014 Sandia Corporation.                                    */
 /*  This software is released under the license detailed                  */
 /*  in the file, LICENSE, which is located in the top-level Nalu          */
@@ -6,6 +5,8 @@
 /*------------------------------------------------------------------------*/
 #include <element_promotion/TensorProductQuadratureRule.h>
 #include <element_promotion/QuadratureRule.h>
+
+#include <stk_util/environment/ReportHandler.hpp>
 
 #include <cmath>
 #include <stdexcept>
@@ -34,6 +35,9 @@ TensorProductQuadratureRule::TensorProductQuadratureRule(std::string type, int p
     numQuad_ = 1; // only 1 quadrature point per scv
     std::tie(abscissae_, weights_) = SGL_quadrature_rule(numNodes, scsEndLoc_);
     useSGL_ = true;
+  }
+  else {
+    ThrowRequireMsg(false, "Invalid quadrature type");
   }
 }
 //--------------------------------------------------------------------------

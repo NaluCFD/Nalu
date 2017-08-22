@@ -9,6 +9,8 @@
 #ifndef MasterElement_h
 #define MasterElement_h
 
+#include <master_element/MasterElementFactory.h>
+
 #include <AlgTraits.h>
 
 // NGP-based includes
@@ -46,17 +48,7 @@ enum Direction
 struct ElementDescription;
 class MasterElement;
 
-MasterElement*
-get_surface_master_element(
-  const stk::topology& theTopo,
-  ElementDescription* desc = nullptr,
-  std::string quadType = "GaussLegendre");
 
-MasterElement*
-get_volume_master_element(
-  const stk::topology& theTopo,
-  ElementDescription* desc = nullptr,
-  std::string quadType = "GaussLegendre");
 
 class MasterElement
 {

@@ -87,6 +87,9 @@ private:
   std::vector<double> ipWeights_;
   std::vector<double> geoShapeDerivs_;
   int geoNodesPerElement_;
+//
+//  Kokkos::View<double**> interpWeights_;
+//  Kokkos::View<double***> derivWeights_;
 };
 
 // 3D Hex 27 subcontrol surface
