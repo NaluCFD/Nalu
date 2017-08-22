@@ -87,6 +87,38 @@ struct AlgTraitsTri3_2D {
   static constexpr stk::topology::topology_t topo_ = stk::topology::TRI_3_2D;
 };
 
+template <int p> constexpr int nGL() { return (p % 2 == 0) ? p / 2 + 1 : (p + 1) / 2; }
+
+template <int p>
+struct AlgTraitsQuadGL {
+  static constexpr int nDim_ = 3;
+  static constexpr int nodesPerElement_ = (p+1) * (p+1);
+  static constexpr int numScsIp_ = 2 * p * (p + 1) * nGL<p>();
+  static constexpr int numScvIp_ = nodesPerElement_ * nGL<p>() * nGL<p>();
+  static constexpr int numGp_ = nodesPerElement_; // for FEM (not supported)
+
+  static constexpr stk::topology::topology_t topo_ = static_cast<stk::topology::topology_t>(
+    nodesPerElement_ + stk::topology::SUPERELEMENT_START
+  );
+  static constexpr stk::topology::topology_t baseTopo_ = stk::topology::QUAD_4_2D;
+};
+
+template <int p>
+struct AlgTraitsHexGL {
+  static constexpr int nDim_ = 3;
+  static constexpr int nodesPerElement_ = (p+1)*(p+1)*(p+1);
+  static constexpr int numScsIp_ = 3 * p * (p+1) * (p+1) * nGL<p>() * nGL<p>();
+  static constexpr int numScvIp_ = nodesPerElement_ * nGL<p>() * nGL<p>() * nGL<p>();
+  static constexpr int numGp_ = nodesPerElement_; // for FEM (not supported)
+
+  static constexpr stk::topology::topology_t topo_ = static_cast<stk::topology::topology_t>(
+    nodesPerElement_ + stk::topology::SUPERELEMENT_START
+  );
+  static constexpr stk::topology::topology_t baseTopo_ = stk::topology::HEX_8;
+};
+
+
+
 } // namespace nalu
 } // namespace Sierra
 
