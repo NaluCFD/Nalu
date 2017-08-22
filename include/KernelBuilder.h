@@ -13,6 +13,8 @@
 #include <AlgTraits.h>
 #include <KernelBuilderLog.h>
 
+#include <element_promotion/ElementDescription.h>
+
 #include <stk_mesh/base/BulkData.hpp>
 #include <stk_mesh/base/Entity.hpp>
 #include <stk_topology/topology.hpp>
@@ -25,28 +27,65 @@ namespace nalu{
   class Realm;
 
   template <template <typename> class T, typename... Args>
-  Kernel* build_topo_kernel(stk::topology topo, Args&&... args)
+  Kernel* build_topo_kernel(int dimension, stk::topology topo, Args&&... args)
   {
-    switch(topo.value()) {
-      case stk::topology::HEX_8:
-        return new T<AlgTraitsHex8>(std::forward<Args>(args)...);
-      case stk::topology::HEX_27:
-        return new T<AlgTraitsHex27>(std::forward<Args>(args)...);
-      case stk::topology::TET_4:
-        return new T<AlgTraitsTet4>(std::forward<Args>(args)...);
-      case stk::topology::PYRAMID_5:
-        return new T<AlgTraitsPyr5>(std::forward<Args>(args)...);
-      case stk::topology::WEDGE_6:
-        return new T<AlgTraitsWed6>(std::forward<Args>(args)...);
-      case stk::topology::QUAD_4_2D:
-        return new T<AlgTraitsQuad4_2D>(std::forward<Args>(args)...);
-      case stk::topology::QUAD_9_2D:
-        return new T<AlgTraitsQuad9_2D>(std::forward<Args>(args)...);
-      case stk::topology::TRI_3_2D:
-        return new T<AlgTraitsTri3_2D>(std::forward<Args>(args)...);
-      default:
-        return nullptr;
+    if (!topo.is_super_topology()) {
+      switch(topo.value()) {
+        case stk::topology::HEX_8:
+          return new T<AlgTraitsHex8>(std::forward<Args>(args)...);
+        case stk::topology::HEX_27:
+          return new T<AlgTraitsHex27>(std::forward<Args>(args)...);
+        case stk::topology::TET_4:
+          return new T<AlgTraitsTet4>(std::forward<Args>(args)...);
+        case stk::topology::PYRAMID_5:
+          return new T<AlgTraitsPyr5>(std::forward<Args>(args)...);
+        case stk::topology::WEDGE_6:
+          return new T<AlgTraitsWed6>(std::forward<Args>(args)...);
+        case stk::topology::QUAD_4_2D:
+          return new T<AlgTraitsQuad4_2D>(std::forward<Args>(args)...);
+        case stk::topology::QUAD_9_2D:
+          return new T<AlgTraitsQuad9_2D>(std::forward<Args>(args)...);
+        case stk::topology::TRI_3_2D:
+          return new T<AlgTraitsTri3_2D>(std::forward<Args>(args)...);
+        default:
+          return nullptr;
+      }
     }
+    else {
+      int poly_order = poly_order_from_super_topology(dimension, topo);
+      ThrowRequireMsg(poly_order >= 2 && poly_order <= 5, "Only  2 <= p <= 5 allowed with consolidated algorithm");
+      if (dimension == 2) {
+        switch (poly_order)
+        {
+          case 2:
+            return new T<AlgTraitsQuadGL<2>>(std::forward<Args>(args)...);
+          case 3:
+            return new T<AlgTraitsQuadGL<3>>(std::forward<Args>(args)...);
+          case 4:
+            return new T<AlgTraitsQuadGL<4>>(std::forward<Args>(args)...);
+          case 5:
+            return new T<AlgTraitsQuadGL<5>>(std::forward<Args>(args)...);
+          default:
+            return nullptr;
+        }
+      }
+      else {
+        switch (poly_order)
+        {
+          case 2:
+            return new T<AlgTraitsHexGL<3>>(std::forward<Args>(args)...);
+          case 3:
+            return new T<AlgTraitsHexGL<3>>(std::forward<Args>(args)...);
+          case 4:
+            return new T<AlgTraitsHexGL<4>>(std::forward<Args>(args)...);
+          case 5:
+            return new T<AlgTraitsHexGL<5>>(std::forward<Args>(args)...);
+          default:
+            return nullptr;
+        }
+      }
+    }
+
   }
 
   template <template <typename> class T, typename... Args>
@@ -57,10 +96,14 @@ namespace nalu{
     std::string name,
     Args&&... args)
   {
+    // dimension, in addition to topology, is necessary to distinguish the HO elements,
+    // sin
+    const int dim = eqSys.realm_.spatialDimension_;
+
     bool isCreated = false;
     KernelBuilderLog::self().add_valid_name(eqSys.eqnTypeName_,  name);
     if (eqSys.supp_alg_is_requested(name)) {
-      Kernel* compKernel = build_topo_kernel<T>(topo, std::forward<Args>(args)...);
+      Kernel* compKernel = build_topo_kernel<T>(dim, topo, std::forward<Args>(args)...);
       ThrowRequire(compKernel != nullptr);
       KernelBuilderLog::self().add_built_name(eqSys.eqnTypeName_,  name);
       kernelVec.push_back(compKernel);

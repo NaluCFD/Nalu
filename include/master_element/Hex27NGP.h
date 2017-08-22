@@ -119,11 +119,7 @@ public:
 
   template <typename CoordViewType, typename OutputViewType>
   void grad_op(CoordViewType coords, OutputViewType weights)
-  {
-    // todo(rcknaus); this really should be specialized, but the generic grad op is
-    // fine for now and what we had previously
-    generic_grad_op_3d<AlgTraits>(referenceGradWeights_, coords, weights);
-  }
+  { generic_grad_op_3d<AlgTraits>(referenceGradWeights_, coords, weights); }
 
   template <typename CoordViewType, typename OutputViewType>
   void shifted_grad_op(CoordViewType coords, OutputViewType weights)
@@ -144,7 +140,6 @@ public:
   template <typename CoordViewType, typename OutputViewType>
   void shifted_gij(CoordViewType coords, OutputViewType gupper, OutputViewType glower)
   { generic_gij_3d<AlgTraits>(shiftedReferenceGradWeights_, coords, gupper, glower); }
-
 
 private:
   template <int direction, typename CoordViewType, typename OutputViewType>
