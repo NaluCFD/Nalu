@@ -140,6 +140,9 @@ endif(ENABLE_OPENFAST)
 if(ENABLE_TIOGA)
   add_test_r(oversetSphereTIOGA 8)
 endif(ENABLE_TIOGA)
+if(ENABLE_HYPRE)
+  add_test_r(dgncThreeBladeHypre 2)
+endif(ENABLE_HYPRE)
 
 #=============================================================================
 # Unit tests

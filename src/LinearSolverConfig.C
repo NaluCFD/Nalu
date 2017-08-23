@@ -19,38 +19,17 @@
 namespace sierra{
 namespace nalu{
 
+LinearSolverConfig::LinearSolverConfig()
+  : params_(Teuchos::rcp(new Teuchos::ParameterList)),
+    paramsPrecond_(Teuchos::rcp(new Teuchos::ParameterList))
+{}
+
 TpetraLinearSolverConfig::TpetraLinearSolverConfig() :
-  params_(Teuchos::rcp(new Teuchos::ParameterList)),
-  paramsPrecond_(Teuchos::rcp(new Teuchos::ParameterList)),
-  useMueLu_(false),
-  recomputePreconditioner_(true),
-  reusePreconditioner_(false),
-  writeMatrixFiles_(false),
-  summarizeMueluTimer_(false),
-  preconditionerType_("RELAXATION")
+  LinearSolverConfig()
 {}
 
 TpetraLinearSolverConfig::~TpetraLinearSolverConfig()
-{
-}
-
-std::string
-TpetraLinearSolverConfig::name() const
-{
-  return name_;
-}
-
-const Teuchos::RCP<Teuchos::ParameterList> &
-TpetraLinearSolverConfig::params() const
-{
-  return params_;
-}
-
-const Teuchos::RCP<Teuchos::ParameterList> &
-TpetraLinearSolverConfig::paramsPrecond() const
-{
-  return paramsPrecond_;
-}
+{}
 
 void
 TpetraLinearSolverConfig::load(const YAML::Node & node)
@@ -58,6 +37,7 @@ TpetraLinearSolverConfig::load(const YAML::Node & node)
   name_ = node["name"].as<std::string>() ;
   method_ = node["method"].as<std::string>() ;
   get_if_present(node, "preconditioner", precond_, std::string("default"));
+  solverType_ = "tpetra";
 
   double tol;
   int max_iterations, kspace, output_level;

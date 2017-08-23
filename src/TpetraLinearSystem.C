@@ -95,7 +95,8 @@ TpetraLinearSystem::TpetraLinearSystem(
 TpetraLinearSystem::~TpetraLinearSystem()
 {
   // dereference linear solver in safe manner
-  TpetraLinearSolver *linearSolver = reinterpret_cast<TpetraLinearSolver *>(linearSolver_);
+  //TpetraLinearSolver *linearSolver = reinterpret_cast<TpetraLinearSolver *>(linearSolver_);
+  auto linearSolver = linearSolver_;
   linearSolver->destroyLinearSolver();
 }
 
@@ -950,13 +951,16 @@ TpetraLinearSystem::finalizeLinearSystem()
   Teuchos::RCP<LinSys::MultiVector> coords 
     = Teuchos::RCP<LinSys::MultiVector>(new LinSys::MultiVector(sln_->getMap(), nDim));
 
-  TpetraLinearSolver *linearSolver = reinterpret_cast<TpetraLinearSolver *>(linearSolver_);
+  //TpetraLinearSolver *linearSolver = reinterpret_cast<TpetraLinearSolver *>(linearSolver_);
+  auto linearSolver = linearSolver_;
 
   VectorFieldType *coordinates = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   if (linearSolver->activeMueLu())
     copy_stk_to_tpetra(coordinates, coords);
 
   linearSolver->setupLinearSolver(sln_, ownedMatrix_, ownedRhs_, coords);
+  linearSolver->realm_ = &realm_;
+  linearSolver->numDof_ = numDof_;
 }
 
 void
@@ -1352,7 +1356,8 @@ TpetraLinearSystem::solve(
   stk::mesh::FieldBase * linearSolutionField)
 {
 
-  TpetraLinearSolver *linearSolver = reinterpret_cast<TpetraLinearSolver *>(linearSolver_);
+  //TpetraLinearSolver *linearSolver = reinterpret_cast<TpetraLinearSolver *>(linearSolver_);
+  auto linearSolver = linearSolver_;
 
   if ( realm_.debug() ) {
     checkForNaN(true);
