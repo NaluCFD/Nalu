@@ -8,6 +8,7 @@
 #include <element_promotion/PromoteElement.h>
 #include <element_promotion/PromotedPartHelper.h>
 #include <element_promotion/ElementDescription.h>
+#include <master_element/Hex8CVFEM.h>
 #include <master_element/MasterElement.h>
 #include <NaluEnv.h>
 #include <BucketLoop.h>
