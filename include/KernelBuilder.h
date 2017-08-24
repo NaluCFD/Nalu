@@ -19,12 +19,25 @@
 #include <stk_mesh/base/Entity.hpp>
 #include <stk_topology/topology.hpp>
 
+#include <BuildTemplates.h>
+
 #include <algorithm>
 #include <tuple>
 
 namespace sierra{
 namespace nalu{
   class Realm;
+
+
+  template <template <typename> class T, int order, typename... Args>
+  Kernel* build_ho_kernel(int dimension, Args&&... args)
+  {
+    // only two topologies supported, so we can flatten some of the decision making
+    if (dimension == 2) {
+      return new T<AlgTraitsQuadGL<order>>(std::forward<Args>(args)...);
+    }
+    return new T<AlgTraitsHexGL<order>>(std::forward<Args>(args)...);
+  }
 
   template <template <typename> class T, typename... Args>
   Kernel* build_topo_kernel(int dimension, stk::topology topo, Args&&... args)
@@ -53,39 +66,17 @@ namespace nalu{
     }
     else {
       int poly_order = poly_order_from_super_topology(dimension, topo);
-      ThrowRequireMsg(poly_order >= 2 && poly_order <= 5, "Only  2 <= p <= 5 allowed with consolidated algorithm");
-      if (dimension == 2) {
-        switch (poly_order)
-        {
-          case 2:
-            return new T<AlgTraitsQuadGL<2>>(std::forward<Args>(args)...);
-          case 3:
-            return new T<AlgTraitsQuadGL<3>>(std::forward<Args>(args)...);
-          case 4:
-            return new T<AlgTraitsQuadGL<4>>(std::forward<Args>(args)...);
-          case 5:
-            return new T<AlgTraitsQuadGL<5>>(std::forward<Args>(args)...);
-          default:
-            return nullptr;
-        }
-      }
-      else {
-        switch (poly_order)
-        {
-          case 2:
-            return new T<AlgTraitsHexGL<3>>(std::forward<Args>(args)...);
-          case 3:
-            return new T<AlgTraitsHexGL<3>>(std::forward<Args>(args)...);
-          case 4:
-            return new T<AlgTraitsHexGL<4>>(std::forward<Args>(args)...);
-          case 5:
-            return new T<AlgTraitsHexGL<5>>(std::forward<Args>(args)...);
-          default:
-            return nullptr;
-        }
+      switch (poly_order) {
+        case 2: return build_ho_kernel<T, 2>(dimension, std::forward<Args>(args)...);
+        case 3: return build_ho_kernel<T, 3>(dimension, std::forward<Args>(args)...);
+        case 4: return build_ho_kernel<T, 4>(dimension, std::forward<Args>(args)...);
+        case USER_POLY_ORDER: return build_ho_kernel<T, USER_POLY_ORDER>(dimension, std::forward<Args>(args)...);
+        default:
+          ThrowRequireMsg(false,
+            "Polynomial order" + std::to_string(poly_order) + "is not supported by default.  "
+            "Specify USER_POLY_ORDER and recompile to run.");
       }
     }
-
   }
 
   template <template <typename> class T, typename... Args>
@@ -97,7 +88,6 @@ namespace nalu{
     Args&&... args)
   {
     // dimension, in addition to topology, is necessary to distinguish the HO elements,
-    // sin
     const int dim = eqSys.realm_.spatialDimension_;
 
     bool isCreated = false;
@@ -121,12 +111,12 @@ namespace nalu{
     const stk::topology topo = part.topology();
     const std::string algName = "AssembleElemSolverAlg_" + topo.name();
 
-    bool isNotHex = (topo != stk::topology::HEXAHEDRON_8);
+    bool isNotNGP = !(topo == stk::topology::HEXAHEDRON_8 || topo == stk::topology::HEXAHEDRON_27);
 
     auto itc = solverAlgs.find(algName);
     bool createNewAlg = itc == solverAlgs.end();
     if (createNewAlg) {
-      auto* theSolverAlg = new AssembleElemSolverAlgorithm(eqSys.realm_, &part, &eqSys, topo, isNotHex);
+      auto* theSolverAlg = new AssembleElemSolverAlgorithm(eqSys.realm_, &part, &eqSys, topo, isNotNGP);
       ThrowRequire(theSolverAlg != nullptr);
 
       NaluEnv::self().naluOutputP0() << "Created the following alg: " << algName << std::endl;

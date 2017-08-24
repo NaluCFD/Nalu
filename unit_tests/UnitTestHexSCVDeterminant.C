@@ -11,8 +11,8 @@
 #include <stk_mesh/base/GetEntities.hpp>
 
 #include <master_element/MasterElement.h>
-#include <master_element/MasterElementFunctions.h>
-#include <element_promotion/MasterElementUtils.h>
+#include <master_element/Hex8GeometryFunctions.h>
+#include <master_element/MasterElementUtils.h>
 
 #include <random>
 
