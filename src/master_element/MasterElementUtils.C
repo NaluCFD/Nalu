@@ -4,8 +4,10 @@
 /*  in the file, LICENSE, which is located in the top-level Nalu          */
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
-#include <element_promotion/MasterElementUtils.h>
+#include <master_element/MasterElementUtils.h>
+
 #include <element_promotion/LagrangeBasis.h>
+#include <master_element/TensorOps.h>
 
 #include <NaluEnv.h>
 #include <FORTRAN_Proto.h>
@@ -18,54 +20,8 @@
 #include <memory>
 #include <stdexcept>
 
-
 namespace sierra{
 namespace nalu{
-
-
-
-  double ddot(const double* u, const double* v, int n)
-  {
-    double val = 0.0;
-    for (int i = 0; i < n; ++i) {
-      val += u[i] * v[i];
-    }
-    return val;
-  }
-
-  double determinant33(const double* mat)
-  {
-    enum { XX = 0, XY = 1, XZ = 2, YX = 3, YY = 4, YZ = 5, ZX = 6, ZY = 7, ZZ = 8 };
-    return (mat[XX] * (mat[YY] * mat[ZZ] - mat[YZ] * mat[ZY]) - mat[XY] * (mat[YX] * mat[ZZ] - mat[YZ] * mat[ZX]) +
-        mat[XZ] * (mat[YX] * mat[ZY] - mat[YY] * mat[ZX]));
-  }
-
-  void action_of_inverse33(
-    const double* POINTER_RESTRICT A,
-    const double* POINTER_RESTRICT x,
-    double*  POINTER_RESTRICT b)
-  {
-    ThrowAssert(determinant33(A) > tiny_positive_value());
-    enum { XX = 0, XY = 1, XZ = 2, YX = 3, YY = 4, YZ = 5, ZX = 6, ZY = 7, ZZ = 8 };
-    enum { X_RANK1 = 0, Y_RANK1 = 1, Z_RANK1 = 2 };
-
-    const double inv_detA = 1.0 / determinant33(A);
-    b[X_RANK1] = ((A[YY] * A[ZZ] - A[YZ] * A[ZY]) * x[X_RANK1] + (A[XZ] * A[ZY] - A[XY] * A[ZZ]) * x[Y_RANK1] +
-                  (A[XY] * A[YZ] - A[XZ] * A[YY]) * x[Z_RANK1]) *
-                 inv_detA;
-
-    b[Y_RANK1] = ((A[YZ] * A[ZX] - A[YX] * A[ZZ]) * x[X_RANK1] + (A[XX] * A[ZZ] - A[XZ] * A[ZX]) * x[Y_RANK1] +
-                  (A[XZ] * A[YX] - A[XX] * A[YZ]) * x[Z_RANK1]) *
-                 inv_detA;
-
-    b[Z_RANK1] = ((A[YX] * A[ZY] - A[YY] * A[ZX]) * x[X_RANK1] + (A[XY] * A[ZX] - A[XX] * A[ZY]) * x[Y_RANK1] +
-                  (A[XX] * A[YY] - A[XY] * A[YX]) * x[Z_RANK1]) *
-                 inv_detA;
-  }
-
-  double vecnorm_sq3(const double* x) {
-    return (x[0] * x[0] + x[1] * x[1] + x[2] * x[2]);
-  }
 
   bool isoparameteric_coordinates_for_point_3d(
     sierra::nalu::LagrangeBasis& basis,
@@ -112,7 +68,7 @@ namespace nalu{
       }
 
       // apply its inverse on the error vector
-      action_of_inverse33(jact.data(), error_vec.data(), delta.data());
+      solve33(jact.data(), error_vec.data(), delta.data());
 
       // update guess.  Break if update is running away & report failure
       if (vecnorm_sq3(delta.data()) > deltaLimit) {
@@ -131,30 +87,6 @@ namespace nalu{
     isoParCoord[2] = guess[2];
 
     return (iter < maxIter);
-  }
-
-  double determinant22(const double* mat)
-  {
-    enum { XX = 0, XY = 1, YX = 2, YY = 3 };
-    return (mat[XX] * mat[YY] - mat[XY] * mat[YX]);
-  }
-
-  void action_of_inverse22(
-    const double* POINTER_RESTRICT A,
-    const double* POINTER_RESTRICT x,
-    double*  POINTER_RESTRICT b)
-  {
-    ThrowAssert(determinant22(A) > tiny_positive_value());
-    enum { XX = 0, XY = 1, YX = 2, YY = 3 };
-    enum { X_RANK1 = 0, Y_RANK1 = 1};
-
-    const double inv_detA = 1.0 / determinant22(A);
-    b[X_RANK1] =  (A[YY] * x[X_RANK1] - A[XY] * x[Y_RANK1]) * inv_detA;
-    b[Y_RANK1] = -(A[YX] * x[X_RANK1] - A[XX] * x[Y_RANK1]) * inv_detA;
-  }
-
-  double vecnorm_sq2(const double* x) {
-    return (x[0] * x[0] + x[1] * x[1]);
   }
 
   bool isoparameteric_coordinates_for_point_2d(
@@ -194,7 +126,7 @@ namespace nalu{
       }
 
       // apply its inverse on the error vector
-      action_of_inverse22(jact.data(), error_vec.data(), delta.data());
+      solve22(jact.data(), error_vec.data(), delta.data());
 
       // update guess.  Break if update is running away & report failure
       if (vecnorm_sq2(delta.data()) > deltaLimit) {

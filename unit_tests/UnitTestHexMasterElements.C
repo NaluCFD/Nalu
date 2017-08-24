@@ -13,6 +13,9 @@
 
 #include <master_element/MasterElement.h>
 
+#include <master_element/Hex8CVFEM.h>
+#include <master_element/Hex27CVFEM.h>
+
 // NGP-based includes
 #include "SimdInterface.h"
 #include "KokkosInterface.h"

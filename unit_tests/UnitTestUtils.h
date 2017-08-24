@@ -13,7 +13,7 @@
 
 #include <Kokkos_Core.hpp>
 
-#include <master_element/MasterElement.h>
+#include <master_element/Hex8CVFEM.h>
 
 typedef stk::mesh::Field<double> ScalarFieldType;
 typedef stk::mesh::Field<double,stk::mesh::Cartesian> VectorFieldType;

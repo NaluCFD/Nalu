@@ -38,19 +38,17 @@ public:
     double *det_j,
     double * error );
 
-  void grad_op(
+  void grad_op_fem(
     SharedMemView<DoubleType**>&coords,
     SharedMemView<DoubleType***>&gradop,
     SharedMemView<DoubleType***>&deriv,
-    SharedMemView<DoubleType*>&det_j,
-    DoubleType &error) final;
+    SharedMemView<DoubleType*>&det_j) final;
 
-  void shifted_grad_op(
+  void shifted_grad_op_fem(
     SharedMemView<DoubleType**>&coords,
     SharedMemView<DoubleType***>&gradop,
     SharedMemView<DoubleType***>&deriv,
-    SharedMemView<DoubleType*>&det_j,
-    DoubleType &error) final;
+    SharedMemView<DoubleType*>&det_j) final;
 
   void shape_fcn(
     SharedMemView<DoubleType**> &shpfc) final;

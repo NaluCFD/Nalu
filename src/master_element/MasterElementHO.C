@@ -4,8 +4,10 @@
 /*  in the file, LICENSE, which is located in the top-level Nalu          */
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
-#include <element_promotion/MasterElementHO.h>
-#include <element_promotion/MasterElementUtils.h>
+#include <master_element/MasterElementHO.h>
+#include <master_element/MasterElementUtils.h>
+#include <master_element/TensorOps.h>
+
 #include <element_promotion/TensorProductQuadratureRule.h>
 #include <element_promotion/LagrangeBasis.h>
 
@@ -24,41 +26,6 @@
 
 namespace sierra{
 namespace nalu{
-
-//  template <typename RealType>
-//  Kokkos::View<RealType**> copy_interpolation_weights_to_view(int npe, std::vector<double>& interps)
-//  {
-//    const int nIp = interps.size() / npe;
-//
-//    Kokkos::View<RealType**> interpWeights{"interpolation_weights"};
-//
-//    int shape_index = 0;
-//    for (int ip = 0; ip < nIp; ++ip) {
-//      for (int n = 0; n < npe; ++n) {
-//        interpWeights(ip, n) = interps[shape_index];
-//        ++shape_index;
-//      }
-//    }
-//    return interpWeights;
-//  }
-//
-//  Kokkos::View<RealType***> copy_deriv_weights_to_view(int dimension, int npe, std::vector<double>& derivs)
-//  {
-//    const int nIp = derivs.size() / dimension / npe;
-//
-//    Kokkos::View<RealType***> referenceGradWeights("reference_gradient_weights", nIp, npe, dimension);
-//
-//    int deriv_index = 0;
-//    for (int ip = 0; ip < nIp; ++ip) {
-//      for (int n = 0; n < npe; ++n) {
-//        for (int d = 0; d < dimension; ++d) {
-//          referenceGradWeights(ip,n,d) = derivs[deriv_index];
-//          ++deriv_index;
-//        }
-//      }
-//    }
-//    return referenceGradWeights;
-//  }
 
 HigherOrderHexSCV::HigherOrderHexSCV(
   ElementDescription elem,

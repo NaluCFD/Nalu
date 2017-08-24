@@ -346,12 +346,12 @@ void MasterElementViews<T>::fill_master_element_views_new_me(
       case SCS_GRAD_OP:
          ThrowRequireMsg(meSCS != nullptr, "ERROR, meSCS needs to be non-null if SCS_GRAD_OP is requested.");
          ThrowRequireMsg(coordsView != nullptr, "ERROR, coords null but SCS_GRAD_OP requested.");
-         meSCS->grad_op(*coordsView, dndx, deriv, det_j, error);
+         meSCS->grad_op(*coordsView, dndx, deriv);
          break;
       case SCS_SHIFTED_GRAD_OP:
         ThrowRequireMsg(meSCS != nullptr, "ERROR, meSCS needs to be non-null if SCS_GRAD_OP is requested.");
         ThrowRequireMsg(coordsView != nullptr, "ERROR, coords null but SCS_GRAD_OP requested.");
-        meSCS->shifted_grad_op(*coordsView, dndx_shifted, deriv, det_j, error);
+        meSCS->shifted_grad_op(*coordsView, dndx_shifted, deriv);
         break;
       case SCS_GIJ:
          ThrowRequireMsg(meSCS != nullptr, "ERROR, meSCS needs to be non-null if SCS_GIJ is requested.");
@@ -366,12 +366,12 @@ void MasterElementViews<T>::fill_master_element_views_new_me(
       case FEM_GRAD_OP:
          ThrowRequireMsg(meFEM != nullptr, "ERROR, meFEM needs to be non-null if FEM_GRAD_OP is requested.");
          ThrowRequireMsg(coordsView != nullptr, "ERROR, coords null but FEM_GRAD_OP requested.");
-         meFEM->grad_op(*coordsView, dndx_fem, deriv_fem, det_j_fem, error);
+         meFEM->grad_op_fem(*coordsView, dndx_fem, deriv_fem, det_j_fem);
          break;
       case FEM_SHIFTED_GRAD_OP:
          ThrowRequireMsg(meFEM != nullptr, "ERROR, meFEM needs to be non-null if FEM_SHIFTED_GRAD_OP is requested.");
          ThrowRequireMsg(coordsView != nullptr, "ERROR, coords null but FEM_GRAD_OP requested.");
-         meFEM->shifted_grad_op(*coordsView, dndx_fem, deriv_fem, det_j_fem, error);
+         meFEM->shifted_grad_op_fem(*coordsView, dndx_fem, deriv_fem, det_j_fem);
          break;
 
       default: break;
