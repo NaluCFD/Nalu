@@ -11,34 +11,36 @@
 #include <stk_mesh/base/GetEntities.hpp>
 
 #include <master_element/MasterElement.h>
-#include <master_element/Hex27NGP.h>
+#include <master_element/Hex27CVFEM.h>
+#include <AlgTraits.h>
 
 #include <memory>
 #include <random>
 #include <chrono>
 
-#include "UnitTestUtils.h"
+#include <UnitTestUtils.h>
 
-using clock_type = std::chrono::high_resolution_clock;
+using clock_type = std::chrono::steady_clock;
 using VectorFieldType = stk::mesh::Field<double, stk::mesh::Cartesian>;
 //-------------------------------------------------------------------------
+
 namespace {
-template <typename RealType>
-double linear_scalar_value(int dim, RealType a, const RealType* b, const RealType* x)
+
+double linear_scalar_value(int dim, double a, const double* b, const double* x)
 {
   return (a + b[0] * x[0] + b[1] * x[1] + b[2] * x[2]);
 }
+
 }
 
-TEST(Hex27SCSNGP, grad_op)
+TEST(MasterElementFunctions, generic_grad_op_3d_hex_27)
 {
-
   stk::mesh::MetaData meta(3);
   stk::mesh::BulkData bulk(meta, MPI_COMM_WORLD);
 
   stk::mesh::Entity elem = unit_test_utils::create_one_reference_element(bulk, stk::topology::HEXAHEDRON_27);
   const auto* node_rels = bulk.begin_nodes(elem);
-  sierra::nalu::Hex27SCSNGP me;
+  sierra::nalu::Hex27SCS me;
   auto& coordField = *static_cast<const VectorFieldType*>(meta.coordinate_field());
   int dim = me.nDim_;
 
@@ -71,12 +73,16 @@ TEST(Hex27SCSNGP, grad_op)
 
   Kokkos::View<double***> meGrad("grad", me.numIntPoints_, me.nodesPerElement_, dim);
 
+  using AlgTraits = sierra::nalu::AlgTraitsHex27;
+  using GradViewType = Kokkos::View<double[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_][AlgTraits::nDim_]>;
+  GradViewType refGrad = me.copy_deriv_weights_to_view<GradViewType>();
+
   double duration = 0;
-  int nIt = 100000;
+  int nIt = 10000;
   for (int k = 0; k < nIt; ++k) {
     Kokkos::deep_copy(meGrad, 0.0);
     auto start_clock = clock_type::now();
-    me.grad_op(ws_coords, meGrad);
+    sierra::nalu::generic_grad_op_3d<AlgTraits>(refGrad, ws_coords, meGrad);
     auto end_clock = clock_type::now();
     duration += 1.0e-9*std::chrono::duration_cast<std::chrono::nanoseconds>(end_clock - start_clock).count();
   }
@@ -97,84 +103,15 @@ TEST(Hex27SCSNGP, grad_op)
   }
 }
 
-TEST(Hex27SCSNGP, area_vec)
+
+TEST(Hex27SCV, detj)
 {
   stk::mesh::MetaData meta(3);
   stk::mesh::BulkData bulk(meta, MPI_COMM_WORLD);
 
   stk::mesh::Entity elem = unit_test_utils::create_one_reference_element(bulk, stk::topology::HEXAHEDRON_27);
   const auto* node_rels = bulk.begin_nodes(elem);
-  sierra::nalu::Hex27SCSNGP me;
-  auto& coordField = *static_cast<const VectorFieldType*>(meta.coordinate_field());
-  int dim = me.nDim_;
-
-  std::mt19937 rng;
-  rng.seed(std::mt19937::default_seed);
-  std::uniform_real_distribution<double> coeff(-1.0, 1.0);
-  std::vector<double> coeffs(dim);
-
-  for (int j = 0; j < dim; ++j) {
-    coeffs[j] = coeff(rng);
-  }
-
-  std::vector<double> polyResult(me.numIntPoints_ * dim);
-  for (int j = 0; j < me.numIntPoints_; ++j) {
-    for (int d = 0; d < dim; ++d) {
-      polyResult[j*dim+d] = coeffs[d];
-    }
-  }
-
-  Kokkos::View<double**> ws_coords("coords", me.nodesPerElement_, dim);
-  for (int j = 0; j < me.nodesPerElement_; ++j) {
-    const double* coords = stk::mesh::field_data(coordField, node_rels[j]);
-    for (int d = 0; d < dim; ++d) {
-      ws_coords(j, d) = coords[d];
-    }
-  }
-
-  Kokkos::View<double**> meAreav("area_vec", me.numIntPoints_, dim);
-
-  double duration = 0;
-  int nIt = 100000;
-  for (int k = 0; k < nIt; ++k) {
-    Kokkos::deep_copy(meAreav, 0.0);
-    auto start_clock = clock_type::now();
-    me.area_vectors(ws_coords, meAreav);
-    auto end_clock = clock_type::now();
-    duration += 1.0e-9*std::chrono::duration_cast<std::chrono::nanoseconds>(end_clock - start_clock).count();
-  }
-  std::cout << "Time per iteration: " << (duration/nIt)*1000 << "(ms)" <<std::endl;
-
-  int typeCount[3] = {0};
-  double exactAreaType[3];
-
-  exactAreaType[0] = 0.25 * (1 - std::sqrt(1./3.)) * (1 - std::sqrt(1./3.));
-  exactAreaType[1] = 1.0 / 6.0 * (std::sqrt(3.) -1);
-  exactAreaType[2] = 1.0 / 3.0;
-
-  for (int ip = 0 ; ip < me.numIntPoints_; ++ip) {
-    auto mag = meAreav(ip, 0) * meAreav(ip, 0) + meAreav(ip, 1) * meAreav(ip, 1) + meAreav(ip, 2) * meAreav(ip, 2);
-    for (int i = 0; i < 3; ++i) {
-      const double Asq = exactAreaType[i] * exactAreaType[i];
-      if (std::abs(Asq - mag) < tol) {
-        ++typeCount[i];
-      }
-    }
-  }
-
-  EXPECT_EQ(typeCount[0], 96);
-  EXPECT_EQ(typeCount[1], 96);
-  EXPECT_EQ(typeCount[2], 24);
-}
-
-TEST(Hex27SCVNGP, det)
-{
-  stk::mesh::MetaData meta(3);
-  stk::mesh::BulkData bulk(meta, MPI_COMM_WORLD);
-
-  stk::mesh::Entity elem = unit_test_utils::create_one_reference_element(bulk, stk::topology::HEXAHEDRON_27);
-  const auto* node_rels = bulk.begin_nodes(elem);
-  sierra::nalu::Hex27SCVNGP me;
+  sierra::nalu::Hex27SCV me;
   auto& coordField = *static_cast<const VectorFieldType*>(meta.coordinate_field());
   int dim = me.nDim_;
 
@@ -204,18 +141,23 @@ TEST(Hex27SCVNGP, det)
 
   Kokkos::View<double*> meDetj("detj", me.numIntPoints_);
 
+  using AlgTraits = sierra::nalu::AlgTraitsHex27;
+  using GradViewType = Kokkos::View<double[AlgTraits::numScvIp_][AlgTraits::nodesPerElement_][AlgTraits::nDim_]>;
+  GradViewType refGrad = me.copy_deriv_weights_to_view<GradViewType>();
+
   double duration = 0;
-  int nIt = 100000;
+  int nIt = 10000;
   for (int k = 0; k < nIt; ++k) {
     Kokkos::deep_copy(meDetj, 0.0);
     auto start_clock = clock_type::now();
-    me.determinant(ws_coords, meDetj);
+    me.weighted_volumes(refGrad, ws_coords, meDetj);
     auto end_clock = clock_type::now();
     duration += 1.0e-9*std::chrono::duration_cast<std::chrono::nanoseconds>(end_clock - start_clock).count();
   }
   std::cout << "Time per iteration: " << (duration/nIt)*1000 << "(ms)" <<std::endl;
-
-  int typeCount[4] = {0};
+ 
+  constexpr int nTypes = 4;
+  int typeCount[nTypes] = {0,0,0,0};
   double exactVolumeType[4];
 
   double cornerType = 1 - std::sqrt(1.0/3.0);
@@ -227,7 +169,8 @@ TEST(Hex27SCVNGP, det)
   exactVolumeType[3] = 0.125 * centerType * centerType * centerType;
 
   for (int ip = 0 ; ip < me.numIntPoints_; ++ip) {
-    for (int i = 0; i < 4; ++i) {
+    EXPECT_GT(meDetj(ip), tol);
+    for (int i = 0; i < nTypes; ++i) {
       if (std::abs(exactVolumeType[i] - meDetj(ip)) < tol) {
         ++typeCount[i];
       }
@@ -238,4 +181,83 @@ TEST(Hex27SCVNGP, det)
   EXPECT_EQ(typeCount[1], 8*12);
   EXPECT_EQ(typeCount[2], 8*6);
   EXPECT_EQ(typeCount[3], 8*1);
+}
+
+
+TEST(Hex27SCS, area_vec)
+{
+  stk::mesh::MetaData meta(3);
+  stk::mesh::BulkData bulk(meta, MPI_COMM_WORLD);
+
+  stk::mesh::Entity elem = unit_test_utils::create_one_reference_element(bulk, stk::topology::HEXAHEDRON_27);
+  const auto* node_rels = bulk.begin_nodes(elem);
+  sierra::nalu::Hex27SCS me;
+  auto& coordField = *static_cast<const VectorFieldType*>(meta.coordinate_field());
+  int dim = me.nDim_;
+
+  std::mt19937 rng;
+  rng.seed(std::mt19937::default_seed);
+  std::uniform_real_distribution<double> coeff(-1.0, 1.0);
+  std::vector<double> coeffs(dim);
+
+  for (int j = 0; j < dim; ++j) {
+    coeffs[j] = coeff(rng);
+  }
+
+  std::vector<double> polyResult(me.numIntPoints_ * dim);
+  for (int j = 0; j < me.numIntPoints_; ++j) {
+    for (int d = 0; d < dim; ++d) {
+      polyResult[j*dim+d] = coeffs[d];
+    }
+  }
+
+  Kokkos::View<double**> ws_coords("coords", me.nodesPerElement_, dim);
+  for (int j = 0; j < me.nodesPerElement_; ++j) {
+    const double* coords = stk::mesh::field_data(coordField, node_rels[j]);
+    for (int d = 0; d < dim; ++d) {
+      ws_coords(j, d) = coords[d];
+    }
+  }
+
+  Kokkos::View<double**> meAreav("area_vec", me.numIntPoints_, dim);
+
+  using AlgTraits = sierra::nalu::AlgTraitsHex27;
+  using GradViewType = Kokkos::View<double[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_][AlgTraits::nDim_]>;
+  GradViewType refGrad = me.copy_deriv_weights_to_view<GradViewType>();
+
+  double duration = 0;
+  int nIt = 10000;
+  for (int k = 0; k < nIt; ++k) {
+    Kokkos::deep_copy(meAreav, 0.0);
+    auto start_clock = clock_type::now();
+    me.weighted_area_vectors(refGrad, ws_coords, meAreav);
+    auto end_clock = clock_type::now();
+    duration += 1.0e-9*std::chrono::duration_cast<std::chrono::nanoseconds>(end_clock - start_clock).count();
+  }
+  std::cout << "Time per iteration: " << (duration/nIt)*1000 << "(ms)" <<std::endl;
+
+  constexpr int nTypes = 3;
+  int typeCount[nTypes] = {0,0,0};
+  double exactAreaType[nTypes];
+
+  exactAreaType[0] = 0.25 * (1 - std::sqrt(1./3.)) * (1 - std::sqrt(1./3.));
+  exactAreaType[1] = 1.0 / 6.0 * (std::sqrt(3.) -1);
+  exactAreaType[2] = 1.0 / 3.0;
+
+
+  for (int ip = 0 ; ip < me.numIntPoints_; ++ip) {
+    double mag = meAreav(ip, 0) * meAreav(ip, 0) + meAreav(ip, 1) * meAreav(ip, 1) + meAreav(ip, 2) * meAreav(ip, 2);
+    EXPECT_GT(mag, tol);
+
+    for (int i = 0; i < nTypes; ++i) {
+      const double Asq = exactAreaType[i] * exactAreaType[i];
+      if (std::abs(Asq - mag) < tol) {
+        ++typeCount[i];
+      }
+    }
+  }
+
+  EXPECT_EQ(typeCount[0], 96);
+  EXPECT_EQ(typeCount[1], 96);
+  EXPECT_EQ(typeCount[2], 24);
 }

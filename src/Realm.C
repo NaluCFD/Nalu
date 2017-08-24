@@ -50,7 +50,7 @@
 #include <element_promotion/PromotedElementIO.h>
 #include <element_promotion/ElementDescription.h>
 #include <element_promotion/PromotedPartHelper.h>
-#include <element_promotion/MasterElementHO.h>
+#include <master_element/MasterElementHO.h>
 
 #include <nalu_make_unique.h>
 
