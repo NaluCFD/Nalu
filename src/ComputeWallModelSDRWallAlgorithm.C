@@ -109,8 +109,6 @@ ComputeWallModelSDRWallAlgorithm::execute()
       // gather nodal data off of face; n/a
       //======================================
       int num_face_nodes = bulk_data.num_nodes(face);
-      // sanity check on num nodes
-      ThrowAssert( num_face_nodes == nodesPerFace );
 
       // pointer to face data
       const double * areaVec = stk::mesh::field_data(*exposedAreaVec_, face);
