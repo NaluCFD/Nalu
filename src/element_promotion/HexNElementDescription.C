@@ -648,7 +648,7 @@ HexNElementDescription::set_side_node_ordinals()
   //top
   for (int n = 0; n < nodes1D; ++n) {
     for (int m = 0; m < nodes1D; ++m) {
-      faceNodeMap.at(4).at(m+nodes1D*n) = node_map(m,n,kl);
+      faceNodeMap.at(5).at(m+nodes1D*n) = node_map(m,n,kr);
       reorderedFaceNodeMap.at(5).at(m+nodes1D*n) = node_map(m,n,kr);
     }
   }
