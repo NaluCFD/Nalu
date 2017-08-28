@@ -42,6 +42,7 @@ public:
       const sierra::nalu::SharedMemView<const double*> & rhs,
       const sierra::nalu::SharedMemView<const double**> & lhs,
       const sierra::nalu::SharedMemView<int*> & localIds,
+      const sierra::nalu::SharedMemView<int*> & sortPermutation,
       const char * trace_tag
       )
   {

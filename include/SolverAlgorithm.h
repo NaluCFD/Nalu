@@ -49,6 +49,7 @@ protected:
     unsigned numMeshobjs,
     const stk::mesh::Entity* symMeshobjs,
     const SharedMemView<int*> & scratchIds,
+    const SharedMemView<int*> & sortPermutation,
     const SharedMemView<const double*> & rhs,
     const SharedMemView<const double**> & lhs,
     const char *trace_tag);

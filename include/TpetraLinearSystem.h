@@ -70,14 +70,6 @@ public:
   void zeroSystem();
 
   void sumInto(
-      unsigned numEntities,
-      const stk::mesh::Entity* entities,
-      const SharedMemView<const double*> & rhs,
-      const SharedMemView<const double**> & lhs,
-      const SharedMemView<int*> & localIds,
-      const char * trace_tag);
-
-  void sumInto(
     const std::vector<stk::mesh::Entity> & entities,
     std::vector<int> &scratchIds,
     std::vector<double> &scratchVals,
@@ -85,6 +77,15 @@ public:
     const std::vector<double> & lhs,
     const char *trace_tag=0
     );
+
+  void sumInto(
+      unsigned numEntities,
+      const stk::mesh::Entity* entities,
+      const SharedMemView<const double*> & rhs,
+      const SharedMemView<const double**> & lhs,
+      const SharedMemView<int*> & localIds,
+      const SharedMemView<int*> & sortPermutation,
+      const char * trace_tag);
 
   void applyDirichletBCs(
     stk::mesh::FieldBase * solutionField,
@@ -200,6 +201,8 @@ private:
   LocalOrdinal maxOwnedRowId_; // = num_owned_nodes * numDof_
   LocalOrdinal maxGloballyOwnedRowId_; // = (num_owned_nodes + num_globallyOwned_nodes) * numDof_
   EquationSystem* eqSys_;
+
+  std::vector<int> sortPermutation_;
 };
 
 template<typename T1, typename T2>
