@@ -114,7 +114,7 @@ public:
   
       //In this unit-test we know we're working on a hex8 mesh. In real algorithms,
       //a topology would be available.
-      dataNeededBySuppAlgs_.add_cvfem_surface_me(sierra::nalu::get_surface_master_element(stk::topology::HEX_8));
+      dataNeededBySuppAlgs_.add_cvfem_surface_me(sierra::nalu::MasterElementRepo::get_surface_master_element(stk::topology::HEX_8));
 
       const int bytes_per_team = 0;
       const int bytes_per_thread = get_num_bytes_pre_req_data(dataNeededBySuppAlgs_, meta.spatial_dimension());

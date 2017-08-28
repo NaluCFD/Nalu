@@ -37,7 +37,7 @@ ScalarNSOElemKernel<AlgTraits>::ScalarNSOElemKernel(
   : Kernel(),
     diffFluxCoeff_(diffFluxCoeff),
     Gjq_(Gjq),
-    lrscv_(sierra::nalu::get_surface_master_element(AlgTraits::topo_)->adjacentNodes()),
+    lrscv_(sierra::nalu::MasterElementRepo::get_surface_master_element(AlgTraits::topo_)->adjacentNodes()),
     fourthFac_(fourthFac),
     altResFac_(altResFac),
     om_altResFac_(1.0 - altResFac),
@@ -71,7 +71,7 @@ ScalarNSOElemKernel<AlgTraits>::ScalarNSOElemKernel(
   coordinates_ = metaData.get_field<VectorFieldType>(
     stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
 
-  MasterElement *meSCS = sierra::nalu::get_surface_master_element(AlgTraits::topo_);
+  MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(AlgTraits::topo_);
   get_scs_shape_fn_data<AlgTraits>([&](double* ptr){meSCS->shape_fcn(ptr);}, v_shape_function_);
 
   // add master elements

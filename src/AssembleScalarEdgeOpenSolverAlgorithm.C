@@ -104,7 +104,7 @@ AssembleScalarEdgeOpenSolverAlgorithm::execute()
     stk::topology theElemTopo = parentTopo[0];
 
     // volume master element
-    MasterElement *meSCS = sierra::nalu::get_surface_master_element(theElemTopo);
+    MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(theElemTopo);
     const int nodesPerElement = meSCS->nodesPerElement_;
 
 

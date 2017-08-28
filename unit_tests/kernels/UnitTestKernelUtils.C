@@ -508,7 +508,7 @@ void calc_mass_flow_rate_scs(
 
   const ScalarFieldType& densityNp1 = density.field_of_state(stk::mesh::StateNP1);
   const VectorFieldType& velocityNp1 = velocity.field_of_state(stk::mesh::StateNP1);
-  auto meSCS = sierra::nalu::get_surface_master_element(topo);
+  auto meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(topo);
 
   dataNeeded.add_cvfem_surface_me(meSCS);
   dataNeeded.add_coordinates_field(coordinates, ndim, sierra::nalu::CURRENT_COORDINATES);
@@ -590,7 +590,7 @@ void calc_projected_nodal_gradient_interior(
 
   sierra::nalu::ElemDataRequests dataNeeded;
 
-  auto meSCS = sierra::nalu::get_surface_master_element(topo);
+  auto meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(topo);
 
   dataNeeded.add_cvfem_surface_me(meSCS);
   dataNeeded.add_coordinates_field(coordinates, ndim, sierra::nalu::CURRENT_COORDINATES);
@@ -668,7 +668,7 @@ void calc_projected_nodal_gradient_interior(
 
   sierra::nalu::ElemDataRequests dataNeeded;
 
-  auto meSCS = sierra::nalu::get_surface_master_element(topo);
+  auto meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(topo);
 
   dataNeeded.add_cvfem_surface_me(meSCS);
   dataNeeded.add_coordinates_field(coordinates, ndim, sierra::nalu::CURRENT_COORDINATES);
@@ -749,7 +749,7 @@ void calc_projected_nodal_gradient_boundary(
 
   sierra::nalu::ElemDataRequests dataNeeded;
 
-  auto meBC = sierra::nalu::get_surface_master_element(topo);
+  auto meBC = sierra::nalu::MasterElementRepo::get_surface_master_element(topo);
 
   dataNeeded.add_cvfem_surface_me(meBC);
   dataNeeded.add_coordinates_field(coordinates, ndim, sierra::nalu::CURRENT_COORDINATES);
@@ -822,7 +822,7 @@ void calc_projected_nodal_gradient_boundary(
 
   sierra::nalu::ElemDataRequests dataNeeded;
 
-  auto meBC = sierra::nalu::get_surface_master_element(topo);
+  auto meBC = sierra::nalu::MasterElementRepo::get_surface_master_element(topo);
 
   dataNeeded.add_cvfem_surface_me(meBC);
   dataNeeded.add_coordinates_field(coordinates, ndim, sierra::nalu::CURRENT_COORDINATES);
@@ -894,7 +894,7 @@ void calc_dual_nodal_volume(
 
   sierra::nalu::ElemDataRequests dataNeeded;
 
-  auto meSCV = sierra::nalu::get_volume_master_element(topo);
+  auto meSCV = sierra::nalu::MasterElementRepo::get_volume_master_element(topo);
 
   dataNeeded.add_cvfem_volume_me(meSCV);
   dataNeeded.add_coordinates_field(coordinates, ndim, sierra::nalu::CURRENT_COORDINATES);

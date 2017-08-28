@@ -61,8 +61,8 @@ public:
   void init_me_data()
   {
     // Initialize both surface and volume elements
-    meSCS_ = sierra::nalu::get_surface_master_element(AlgTraits::topo_);
-    meSCV_ = sierra::nalu::get_volume_master_element(AlgTraits::topo_);
+    meSCS_ = sierra::nalu::MasterElementRepo::get_surface_master_element(AlgTraits::topo_);
+    meSCV_ = sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_);
 
     // Register them to ElemDataRequests
     dataNeeded_.add_cvfem_surface_me(meSCS_);

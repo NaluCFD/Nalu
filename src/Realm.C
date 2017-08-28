@@ -301,6 +301,8 @@ Realm::~Realm()
 
   // Delete abl forcing pointer
   if (NULL != ablForcingAlg_) delete ablForcingAlg_;
+
+  MasterElementRepo::clear();
 }
 
 void
@@ -2961,7 +2963,7 @@ Realm::register_wall_bc(
   const int nDim = metaData_->spatial_dimension();
 
   // register fields
-  MasterElement *meFC = get_surface_master_element(theTopo);
+  MasterElement *meFC = MasterElementRepo::get_surface_master_element(theTopo);
   const int numScsIp = meFC->numIntPoints_;
 
   GenericFieldType *exposedAreaVec_
@@ -3004,7 +3006,7 @@ Realm::register_inflow_bc(
   const int nDim = metaData_->spatial_dimension();
 
   // register fields
-  MasterElement *meFC = get_surface_master_element(theTopo);
+  MasterElement *meFC = MasterElementRepo::get_surface_master_element(theTopo);
   const int numScsIp = meFC->numIntPoints_;
 
   GenericFieldType *exposedAreaVec_
@@ -3046,7 +3048,7 @@ Realm::register_open_bc(
   const int nDim = metaData_->spatial_dimension();
 
   // register fields
-  MasterElement *meFC = get_surface_master_element(theTopo);
+  MasterElement *meFC = MasterElementRepo::get_surface_master_element(theTopo);
   const int numScsIp = meFC->numIntPoints_;
 
   GenericFieldType *exposedAreaVec_
@@ -3088,7 +3090,7 @@ Realm::register_symmetry_bc(
   const int nDim = metaData_->spatial_dimension();
 
   // register fields
-  MasterElement *meFC = get_surface_master_element(theTopo);
+  MasterElement *meFC = MasterElementRepo::get_surface_master_element(theTopo);
   const int numScsIp = meFC->numIntPoints_;
 
   GenericFieldType *exposedAreaVec_
@@ -3192,7 +3194,7 @@ Realm::register_non_conformal_bc(
   const int nDim = metaData_->spatial_dimension();
   
   // register fields
-  MasterElement *meFC = get_surface_master_element(theTopo);
+  MasterElement *meFC = MasterElementRepo::get_surface_master_element(theTopo);
   const int numScsIp = meFC->numIntPoints_;
   
   // exposed area vector
@@ -4426,8 +4428,8 @@ Realm::setup_element_promotion()
       superTargetNames_.push_back(superName);
 
       // Create elements for future use
-      sierra::nalu::get_surface_master_element(superPart->topology(), meta_data().spatial_dimension(), "GaussLegendre");
-      sierra::nalu::get_volume_master_element(superPart->topology(), meta_data().spatial_dimension(), "GaussLegendre");
+      sierra::nalu::MasterElementRepo::get_surface_master_element(superPart->topology(), meta_data().spatial_dimension(), "GaussLegendre");
+      sierra::nalu::MasterElementRepo::get_volume_master_element(superPart->topology(), meta_data().spatial_dimension(), "GaussLegendre");
     }
   }
 
@@ -4450,8 +4452,8 @@ Realm::setup_element_promotion()
           metaData_->declare_part_subset(*superSuperset, *superFacePart);
 
           // Create elements for future use
-          sierra::nalu::get_surface_master_element(sideTopo, meta_data().spatial_dimension(), "GaussLegendre");
-          sierra::nalu::get_volume_master_element(sideTopo, meta_data().spatial_dimension(), "GaussLegendre");
+          sierra::nalu::MasterElementRepo::get_surface_master_element(sideTopo, meta_data().spatial_dimension(), "GaussLegendre");
+          sierra::nalu::MasterElementRepo::get_volume_master_element(sideTopo, meta_data().spatial_dimension(), "GaussLegendre");
         }
       }
     }

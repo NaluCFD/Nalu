@@ -33,7 +33,7 @@ ScalarAdvDiffElemKernel<AlgTraits>::ScalarAdvDiffElemKernel(
   : Kernel(),
     scalarQ_(scalarQ),
     diffFluxCoeff_(diffFluxCoeff),
-    lrscv_(sierra::nalu::get_surface_master_element(AlgTraits::topo_)->adjacentNodes()),
+    lrscv_(sierra::nalu::MasterElementRepo::get_surface_master_element(AlgTraits::topo_)->adjacentNodes()),
     shiftedGradOp_(solnOpts.get_shifted_grad_op(scalarQ->name()))
 {
   // Save of required fields
@@ -43,7 +43,7 @@ ScalarAdvDiffElemKernel<AlgTraits>::ScalarAdvDiffElemKernel(
   massFlowRate_ = metaData.get_field<GenericFieldType>(
     stk::topology::ELEMENT_RANK, "mass_flow_rate_scs");
 
-  MasterElement *meSCS = sierra::nalu::get_surface_master_element(AlgTraits::topo_);
+  MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(AlgTraits::topo_);
 
   get_scs_shape_fn_data<AlgTraits>([&](double* ptr){meSCS->shape_fcn(ptr);}, v_shape_function_);
 

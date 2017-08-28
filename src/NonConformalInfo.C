@@ -194,8 +194,8 @@ NonConformalInfo::construct_dgInfo_state()
     stk::topology currentElemTopo = parentTopo[0];
 
     // volume and surface master element
-    MasterElement *meSCS = sierra::nalu::get_surface_master_element(currentElemTopo);
-    MasterElement *meFC = sierra::nalu::get_surface_master_element(b.topology());
+    MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(currentElemTopo);
+    MasterElement *meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(b.topology());
 
     // master element-specific values
     const int numScsBip = meFC->numIntPoints_;
@@ -410,7 +410,7 @@ NonConformalInfo::complete_search()
             
             // extract the topo from this face element...
             const stk::topology theFaceTopo = bulk_data.bucket(opposingFace).topology();
-            MasterElement *meFC = sierra::nalu::get_surface_master_element(theFaceTopo);
+            MasterElement *meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(theFaceTopo);
             
             // find distance between true current gauss point coords (the point) and the candidate bounding box
             const double nearestDistance = meFC->isInElement(&theElementCoords[0],
@@ -433,7 +433,7 @@ NonConformalInfo::complete_search()
               
               // extract the opposing element topo and associated master element
               const stk::topology theOpposingElementTopo = bulk_data.bucket(opposingElement).topology();
-              MasterElement *meSCS = sierra::nalu::get_surface_master_element(theOpposingElementTopo);
+              MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(theOpposingElementTopo);
               dgInfo->meSCSOpposing_ = meSCS;
               dgInfo->opposingElementTopo_ = theOpposingElementTopo;
               dgInfo->opposingIsoParCoords_ = opposingIsoParCoords;

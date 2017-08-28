@@ -487,7 +487,7 @@ public:
         &meta_.declare_field<GenericFieldType>(
           stk::topology::NODE_RANK, "dudx"))
   {
-    const auto& meSCS = sierra::nalu::get_surface_master_element(stk::topology::HEX_8);
+    const auto& meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(stk::topology::HEX_8);
     stk::mesh::put_field(*massFlowRate_, meta_.universal_part(), meSCS->numIntPoints_);
     stk::mesh::put_field(*viscosity_, meta_.universal_part(), 1);
     stk::mesh::put_field(*dudx_, meta_.universal_part(), spatialDim_ * spatialDim_);
@@ -579,7 +579,7 @@ public:
     viscPrimary_(1.967e-5),
     viscSecondary_(1.85e-5)
   {
-    const auto& meSCS = sierra::nalu::get_surface_master_element(stk::topology::HEX_8);
+    const auto& meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(stk::topology::HEX_8);
     stk::mesh::put_field(*mixFraction_, meta_.universal_part(), 1);
     stk::mesh::put_field(*velocity_, meta_.universal_part(), spatialDim_);
     stk::mesh::put_field(*density_, meta_.universal_part(), 1);

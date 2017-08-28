@@ -37,7 +37,7 @@ MomentumNSOElemKernel<AlgTraits>::MomentumNSOElemKernel(
   : Kernel(),
     viscosity_(viscosity),
     Gju_(Gju),
-    lrscv_(sierra::nalu::get_surface_master_element(AlgTraits::topo_)->adjacentNodes()),
+    lrscv_(sierra::nalu::MasterElementRepo::get_surface_master_element(AlgTraits::topo_)->adjacentNodes()),
     fourthFac_(fourthFac),
     altResFac_(altResFac),
     om_altResFac_(1.0 - altResFac),
@@ -75,7 +75,7 @@ MomentumNSOElemKernel<AlgTraits>::MomentumNSOElemKernel(
   coordinates_ = metaData.get_field<VectorFieldType>(
     stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
 
-  MasterElement *meSCS = sierra::nalu::get_surface_master_element(AlgTraits::topo_);
+  MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(AlgTraits::topo_);
   get_scs_shape_fn_data<AlgTraits>([&](double* ptr){meSCS->shape_fcn(ptr);}, v_shape_function_);
 
   dataPreReqs.add_cvfem_surface_me(meSCS);

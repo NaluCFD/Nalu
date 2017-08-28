@@ -203,47 +203,50 @@ namespace nalu{
     return nullptr;
   }
 
+  std::map<stk::topology, std::unique_ptr<MasterElement>> MasterElementRepo::surfaceMeMap_;
 
-  MasterElement*
-  get_surface_master_element(
+  MasterElement* MasterElementRepo::get_surface_master_element(
     const stk::topology& theTopo,
     int dimension,
     std::string quadType)
   {
-    static std::map<stk::topology, std::unique_ptr<MasterElement>> surfaceMeMap;
-
-    auto it = surfaceMeMap.find(theTopo);
-    if (it == surfaceMeMap.end()) {
+    auto it = surfaceMeMap_.find(theTopo);
+    if (it == surfaceMeMap_.end()) {
       if (!theTopo.is_super_topology()) {
-        surfaceMeMap[theTopo] = create_surface_master_element(theTopo);
+        surfaceMeMap_[theTopo] = create_surface_master_element(theTopo);
       } else {
-        surfaceMeMap[theTopo] = create_surface_master_element(theTopo, dimension, quadType);
+        surfaceMeMap_[theTopo] = create_surface_master_element(theTopo, dimension, quadType);
       }
     }
-    MasterElement* theElem = surfaceMeMap.at(theTopo).get();
+    MasterElement* theElem = surfaceMeMap_.at(theTopo).get();
     ThrowRequire(theElem != nullptr);
     return theElem;
   }
 
-  MasterElement*
-  get_volume_master_element(
+  std::map<stk::topology, std::unique_ptr<MasterElement>> MasterElementRepo::volumeMeMap_;
+
+  MasterElement* MasterElementRepo::get_volume_master_element(
     const stk::topology& theTopo,
     int dimension,
     std::string quadType)
   {
-    static std::map<stk::topology, std::unique_ptr<MasterElement>> volumeMeMap;
-
-    auto it = volumeMeMap.find(theTopo);
-    if (it == volumeMeMap.end()) {
+    auto it = volumeMeMap_.find(theTopo);
+    if (it == volumeMeMap_.end()) {
       if (!theTopo.is_super_topology()) {
-        volumeMeMap[theTopo] = create_volume_master_element(theTopo);
+        volumeMeMap_[theTopo] = create_volume_master_element(theTopo);
       } else {
-        volumeMeMap[theTopo] = create_volume_master_element(theTopo, dimension, quadType);
+        volumeMeMap_[theTopo] = create_volume_master_element(theTopo, dimension, quadType);
       }
     }
-    MasterElement* theElem = volumeMeMap.at(theTopo).get();
+    MasterElement* theElem = volumeMeMap_.at(theTopo).get();
     ThrowRequire(theElem != nullptr);
     return theElem;
+  }
+
+  void MasterElementRepo::clear()
+  {
+    surfaceMeMap_.clear();
+    volumeMeMap_.clear();
   }
 
 }

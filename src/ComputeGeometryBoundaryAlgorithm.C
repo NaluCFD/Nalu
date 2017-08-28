@@ -66,7 +66,7 @@ ComputeGeometryBoundaryAlgorithm::execute()
     stk::mesh::Bucket & b = **ib ;
 
     // extract master element
-    MasterElement *meFC = sierra::nalu::get_surface_master_element(b.topology());
+    MasterElement *meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(b.topology());
 
     // extract master element specifics
     const int nodesPerElement = meFC->nodesPerElement_;
