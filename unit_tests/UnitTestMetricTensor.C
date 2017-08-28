@@ -55,7 +55,7 @@ void test_metric_for_topo_2D(stk::topology topo, double tol) {
   stk::mesh::BulkData bulk(meta, MPI_COMM_WORLD);
   stk::mesh::Entity elem = unit_test_utils::create_one_reference_element(bulk, topo);
 
-  auto* mescs = sierra::nalu::get_surface_master_element(topo);
+  auto* mescs = sierra::nalu::MasterElementRepo::get_surface_master_element(topo);
 
   // apply some arbitrary linear map the reference element
   std::mt19937 rng;
@@ -101,7 +101,7 @@ void test_metric_for_topo_3D(stk::topology topo, double tol) {
   stk::mesh::BulkData bulk(meta, MPI_COMM_WORLD);
   stk::mesh::Entity elem = unit_test_utils::create_one_reference_element(bulk, topo);
 
-  auto* mescs = sierra::nalu::get_surface_master_element(topo);
+  auto* mescs = sierra::nalu::MasterElementRepo::get_surface_master_element(topo);
 
   // apply some arbitrary linear map the reference element
   std::mt19937 rng;

@@ -102,7 +102,7 @@ AssembleHeatCondIrradWallSolverAlgorithm::execute()
     stk::mesh::Bucket & b = **ib ;
 
     // extract master element specifics
-    MasterElement *meFC = sierra::nalu::get_surface_master_element(b.topology());
+    MasterElement *meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(b.topology());
     const int nodesPerFace = meFC->nodesPerElement_;
     const int numScsIp = meFC->numIntPoints_;
 

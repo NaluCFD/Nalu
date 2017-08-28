@@ -39,7 +39,7 @@ ScalarUpwAdvDiffElemKernel<AlgTraits>::ScalarUpwAdvDiffElemKernel(
     scalarQ_(scalarQ),
     Gjq_(Gjq),
     diffFluxCoeff_(diffFluxCoeff),
-    lrscv_(sierra::nalu::get_surface_master_element(AlgTraits::topo_)->adjacentNodes()),
+    lrscv_(sierra::nalu::MasterElementRepo::get_surface_master_element(AlgTraits::topo_)->adjacentNodes()),
     dofName_(scalarQ->name()),
     alpha_(solnOpts.get_alpha_factor(dofName_)),
     alphaUpw_(solnOpts.get_alpha_upw_factor(dofName_)),
@@ -66,7 +66,7 @@ ScalarUpwAdvDiffElemKernel<AlgTraits>::ScalarUpwAdvDiffElemKernel(
     velocityRTM_ = metaData.get_field<VectorFieldType>(
       stk::topology::NODE_RANK, "velocity");
 
-  MasterElement *meSCS = sierra::nalu::get_surface_master_element(AlgTraits::topo_);
+  MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(AlgTraits::topo_);
   get_scs_shape_fn_data<AlgTraits>([&](double* ptr){meSCS->shape_fcn(ptr);}, v_shape_function_);
 
   // add master elements

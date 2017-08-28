@@ -9,27 +9,38 @@
 #define MasterElementFactory_h
 
 #include <string>
+#include <map>
+#include <memory>
 
 namespace stk { struct topology; }
 
 namespace sierra{
 namespace nalu{
-
   class MasterElement;
 
-  MasterElement*
-  get_surface_master_element(
-    const stk::topology& theTopo,
-    int dimension = 0,
-    std::string quadType = "GaussLegendre");
+  struct MasterElementRepo
+  {
+  public:
+    static MasterElement*
+    get_surface_master_element(
+      const stk::topology& theTopo,
+      int dimension = 0,
+      std::string quadType = "GaussLegendre");
 
-  MasterElement*
-  get_volume_master_element(
-    const stk::topology& theTopo,
-    int dimension = 0,
-    std::string quadType = "GaussLegendre");
-    
+    static MasterElement*
+    get_volume_master_element(
+      const stk::topology& theTopo,
+      int dimension = 0,
+      std::string quadType = "GaussLegendre");
+
+    static void clear();
+  private:
+    MasterElementRepo() = default;
+    static std::map<stk::topology, std::unique_ptr<MasterElement>> surfaceMeMap_;
+    static std::map<stk::topology, std::unique_ptr<MasterElement>> volumeMeMap_;
+  };
+
 } // namespace nalu
-} // namespace Sierra
+} // namespace sierra
 
 #endif

@@ -32,7 +32,7 @@ TurbKineticEnergyKsgsSrcElemKernel<AlgTraits>::TurbKineticEnergyKsgsSrcElemKerne
   : Kernel(),
     cEps_(solnOpts.get_turb_model_constant(TM_cEps)),
     tkeProdLimitRatio_(solnOpts.get_turb_model_constant(TM_tkeProdLimitRatio)),
-    ipNodeMap_(sierra::nalu::get_volume_master_element(AlgTraits::topo_)->ipNodeMap())
+    ipNodeMap_(sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_)->ipNodeMap())
 {
   // save off fields
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
@@ -46,7 +46,7 @@ TurbKineticEnergyKsgsSrcElemKernel<AlgTraits>::TurbKineticEnergyKsgsSrcElemKerne
   Gju_ = metaData.get_field<GenericFieldType>(
     stk::topology::NODE_RANK, "dudx");
 
-  MasterElement *meSCV = sierra::nalu::get_volume_master_element(AlgTraits::topo_);
+  MasterElement *meSCV = sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_);
 
   // add master elements
   dataPreReqs.add_cvfem_volume_me(meSCV);

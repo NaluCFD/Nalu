@@ -152,11 +152,11 @@ AssembleScalarElemOpenSolverAlgorithm::execute()
     stk::topology theElemTopo = parentTopo[0];
 
     // volume master element
-    MasterElement *meSCS = sierra::nalu::get_surface_master_element(theElemTopo);
+    MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(theElemTopo);
     const int nodesPerElement = meSCS->nodesPerElement_;
 
     // face master element
-    MasterElement *meFC = sierra::nalu::get_surface_master_element(b.topology());
+    MasterElement *meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(b.topology());
     const int nodesPerFace = meFC->nodesPerElement_;
     const int numScsBip = meFC->numIntPoints_;
 

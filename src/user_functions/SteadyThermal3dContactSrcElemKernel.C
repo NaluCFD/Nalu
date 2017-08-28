@@ -32,7 +32,7 @@ SteadyThermal3dContactSrcElemKernel<AlgTraits>::SteadyThermal3dContactSrcElemKer
   SolutionOptions& solnOpts,
   ElemDataRequests& dataPreReqs)
   : Kernel(),
-    ipNodeMap_(sierra::nalu::get_volume_master_element(AlgTraits::topo_)->ipNodeMap()),
+    ipNodeMap_(sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_)->ipNodeMap()),
     a_(1.0),
     k_(1.0),
     pi_(std::acos(-1.0))
@@ -41,7 +41,7 @@ SteadyThermal3dContactSrcElemKernel<AlgTraits>::SteadyThermal3dContactSrcElemKer
   coordinates_ = metaData.get_field<VectorFieldType>(
     stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
 
-  MasterElement *meSCV = sierra::nalu::get_volume_master_element(AlgTraits::topo_);
+  MasterElement *meSCV = sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_);
   get_scv_shape_fn_data<AlgTraits>([&](double* ptr){meSCV->shape_fcn(ptr);}, v_shape_function_);
 
   // add master elements

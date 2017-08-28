@@ -34,7 +34,7 @@ MomentumNSOKeElemKernel<AlgTraits>::MomentumNSOKeElemKernel(
   ElemDataRequests& dataPreReqs)
   : Kernel(),
     Gju_(Gju),
-    lrscv_(sierra::nalu::get_surface_master_element(AlgTraits::topo_)->adjacentNodes()),
+    lrscv_(sierra::nalu::MasterElementRepo::get_surface_master_element(AlgTraits::topo_)->adjacentNodes()),
     fourthFac_(fourthFac),
     shiftedGradOp_(solnOpts.get_shifted_grad_op("velocity"))
 {
@@ -61,7 +61,7 @@ MomentumNSOKeElemKernel<AlgTraits>::MomentumNSOKeElemKernel(
 
   Gjp_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "dpdx");
 
-  MasterElement *meSCS = sierra::nalu::get_surface_master_element(AlgTraits::topo_);
+  MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(AlgTraits::topo_);
   get_scs_shape_fn_data<AlgTraits>([&](double* ptr){meSCS->shape_fcn(ptr);}, v_shape_function_);
 
   // add master elements

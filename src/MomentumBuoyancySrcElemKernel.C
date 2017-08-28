@@ -30,7 +30,7 @@ MomentumBuoyancySrcElemKernel<AlgTraits>::MomentumBuoyancySrcElemKernel(
   ElemDataRequests& dataPreReqs)
   : Kernel(),
     rhoRef_(solnOpts.referenceDensity_),
-    ipNodeMap_(sierra::nalu::get_volume_master_element(AlgTraits::topo_)->ipNodeMap())
+    ipNodeMap_(sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_)->ipNodeMap())
 {
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
   ScalarFieldType *density = metaData.get_field<ScalarFieldType>(
@@ -43,7 +43,7 @@ MomentumBuoyancySrcElemKernel<AlgTraits>::MomentumBuoyancySrcElemKernel(
   for (int i = 0; i < AlgTraits::nDim_; i++)
     gravity_(i) = solnOptsGravity[i];
 
-  MasterElement* meSCV = sierra::nalu::get_volume_master_element(AlgTraits::topo_);
+  MasterElement* meSCV = sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_);
 
   get_scv_shape_fn_data<AlgTraits>([&](double* ptr){meSCV->shape_fcn(ptr);}, v_shape_function_);
 

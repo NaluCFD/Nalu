@@ -33,7 +33,7 @@ ScalarMassElemKernel<AlgTraits>::ScalarMassElemKernel(
   const bool lumpedMass)
   : Kernel(),
     lumpedMass_(lumpedMass),
-    ipNodeMap_(sierra::nalu::get_volume_master_element(AlgTraits::topo_)->ipNodeMap())
+    ipNodeMap_(sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_)->ipNodeMap())
 {
   // save off fields
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
@@ -57,7 +57,7 @@ ScalarMassElemKernel<AlgTraits>::ScalarMassElemKernel(
   coordinates_ = metaData.get_field<VectorFieldType>(
     stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
 
-  MasterElement *meSCV = sierra::nalu::get_volume_master_element(AlgTraits::topo_);
+  MasterElement *meSCV = sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_);
 
   // compute shape function
   if ( lumpedMass_ )
