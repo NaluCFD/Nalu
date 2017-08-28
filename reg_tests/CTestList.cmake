@@ -4,10 +4,30 @@
 
 # Standard regression test
 function(add_test_r testname np)
-    add_test(${testname} sh -c "mpiexec -np ${np} ${CMAKE_BINARY_DIR}/${nalu_ex_name} -i ${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/${testname}.i -o ${testname}.log && ${CMAKE_CURRENT_SOURCE_DIR}/pass_fail.sh ${testname} ${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/${testname}.norm.gold ${TOLERANCE}")
+    set(TEST_INPUT_DECK_PATH ${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/${testname}.i)
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/${testname}.i.in)
+      set(CATALYST_FILE_INPUT_DECK_COMMAND "")
+      configure_file(${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/${testname}.i.in
+                     ${CMAKE_CURRENT_BINARY_DIR}/test_files/${testname}/${testname}.i @ONLY)
+      set(TEST_INPUT_DECK_PATH ${CMAKE_CURRENT_BINARY_DIR}/test_files/${testname}/${testname}.i)
+    endif()
+    add_test(${testname} sh -c "mpiexec -np ${np} ${CMAKE_BINARY_DIR}/${nalu_ex_name} -i ${TEST_INPUT_DECK_PATH} -o ${testname}.log && ${CMAKE_CURRENT_SOURCE_DIR}/pass_fail.sh ${testname} ${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/${testname}.norm.gold ${TOLERANCE}")
     set_tests_properties(${testname} PROPERTIES TIMEOUT 1000 PROCESSORS ${np} WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test_files/${testname}" LABELS "regression")
     file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/test_files/${testname})
 endfunction(add_test_r)
+
+# Catalyst regression test
+function(add_test_r_catalyst testname np numImages)
+    set(CATALYST_TEST_NAME ${testname}Catalyst)
+    file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/test_files/${CATALYST_TEST_NAME})
+    set(CATALYST_FILE_INPUT_DECK_COMMAND "catalyst_file_name: catalyst.txt")
+    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/${testname}.i.in
+                   ${CMAKE_CURRENT_BINARY_DIR}/test_files/${CATALYST_TEST_NAME}/${CATALYST_TEST_NAME}.i @ONLY)
+    add_test(${CATALYST_TEST_NAME} sh -c "mpiexec -np ${np} ${CMAKE_BINARY_DIR}/${nalu_ex_catalyst_name} -i ${CMAKE_CURRENT_BINARY_DIR}/test_files/${CATALYST_TEST_NAME}/${CATALYST_TEST_NAME}.i -o ${CATALYST_TEST_NAME}.log && ${CMAKE_CURRENT_SOURCE_DIR}/pass_fail_catalyst.sh ${CATALYST_TEST_NAME} ${numImages}")
+    set_tests_properties(${CATALYST_TEST_NAME} PROPERTIES TIMEOUT 1000 PROCESSORS ${np} WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test_files/${CATALYST_TEST_NAME}" LABELS "catalyst regression")
+    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/catalyst.txt
+         DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/test_files/${CATALYST_TEST_NAME})
+endfunction(add_test_r_catalyst)
 
 # Standard performance test
 function(add_test_p testname np)
@@ -113,6 +133,16 @@ add_test_r_rst2(hoVortex_P2 8)
 add_test_r(variableDensNonIso 2)
 add_test_r(variableDensNonUniform 2)
 add_test_r(variableDensNonUniform_P5 8)
+
+#=============================================================================
+# Catalyst regression tests
+#=============================================================================
+
+if(ENABLE_PARAVIEW_CATALYST)
+  add_test_r_catalyst(ablForcingEdge 4 11)
+  add_test_r_catalyst(mixedTetPipe 8 7)
+  add_test_r_catalyst(steadyTaylorVortex 4 6)
+endif()
 
 #=============================================================================
 # Unit tests

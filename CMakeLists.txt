@@ -122,12 +122,28 @@ add_executable(${utest_ex_name} unit_tests.C ${UNIT_TESTS_SOURCES})
 target_link_libraries(${utest_ex_name} nalu)
 target_include_directories(${utest_ex_name} PUBLIC "${CMAKE_SOURCE_DIR}/unit_tests")
 
+set(nalu_ex_catalyst_name "naluXCatalyst")
+option(ENABLE_PARAVIEW_CATALYST
+      "Enable ParaView Catalyst. Requires external installation of Trilinos Catalyst IOSS adapter."
+       OFF)
+if(ENABLE_PARAVIEW_CATALYST)
+   set(PARAVIEW_CATALYST_INSTALL_PATH
+       ""
+       CACHE
+       PATH
+       "Path to external installation of Trilinos Catalyst IOSS plugin.")
+   configure_file(cmake/naluXCatalyst.in ${nalu_ex_catalyst_name} @ONLY)
+endif()
+
 IF (INSTALL_NALU)
   install(TARGETS ${utest_ex_name} ${nalu_ex_name} nalu
           RUNTIME DESTINATION bin
           ARCHIVE DESTINATION lib
           LIBRARY DESTINATION lib)
   install(DIRECTORY include/ DESTINATION include)
+  if(ENABLE_PARAVIEW_CATALYST)
+    install(PROGRAMS ${CMAKE_BINARY_DIR}/naluXCatalyst DESTINATION bin)
+  endif()
   include(CMakePackageConfigHelpers)
 ENDIF ()
 
