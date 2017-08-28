@@ -1215,6 +1215,7 @@ TpetraLinearSystem::applyDirichletBCs(
   stk::mesh::BucketVector const& buckets =
     realm_.get_buckets( stk::topology::NODE_RANK, selector );
 
+  const bool internalMatrixIsSorted = true;
   int nbc=0;
   for(const stk::mesh::Bucket* bptr : buckets) {
     const stk::mesh::Bucket & b = *bptr;
@@ -1240,6 +1241,7 @@ TpetraLinearSystem::applyDirichletBCs(
         const bool useOwned = localId < maxOwnedRowId_;
         const LocalOrdinal actualLocalId = useOwned ? localId : localId - maxOwnedRowId_;
         Teuchos::RCP<LinSys::Matrix> matrix = useOwned ? ownedMatrix_ : globallyOwnedMatrix_;
+        const LinSys::Matrix::local_matrix_type& local_matrix = matrix->getLocalMatrix();
 
         if(localId > maxGloballyOwnedRowId_) {
           std::cerr << "localId > maxGloballyOwnedRowId_:: localId= " << localId << " maxGloballyOwnedRowId_= " << maxGloballyOwnedRowId_ << " useOwned = " << (localId < maxOwnedRowId_ ) << std::endl;
@@ -1256,7 +1258,7 @@ TpetraLinearSystem::applyDirichletBCs(
         for(size_t i=0; i < rowLength; ++i) {
             new_values[i] = (indices[i] == localId) ? diagonal_value : 0;
         }
-        matrix->replaceLocalValues(actualLocalId, indices, new_values);
+        local_matrix.replaceValues(actualLocalId, &indices[0], rowLength, new_values.data(), internalMatrixIsSorted);
 
         // Replace the RHS residual with (desired - actual)
         Teuchos::RCP<LinSys::Vector> rhs = useOwned ? ownedRhs_: globallyOwnedRhs_;
