@@ -7,12 +7,13 @@
 
 
 // nalu
-#include <AssembleContinuityInflowSolverAlgorithm.h>
-#include <EquationSystem.h>
-#include <FieldTypeDef.h>
-#include <LinearSystem.h>
-#include <Realm.h>
-#include <master_element/MasterElement.h>
+#include "AssembleContinuityInflowSolverAlgorithm.h"
+#include "EquationSystem.h"
+#include "FieldTypeDef.h"
+#include "LinearSystem.h"
+#include "Realm.h"
+#include "SolutionOptions.h"
+#include "master_element/MasterElement.h"
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/BulkData.hpp>
@@ -47,7 +48,8 @@ AssembleContinuityInflowSolverAlgorithm::AssembleContinuityInflowSolverAlgorithm
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   exposedAreaVec_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");
-  velocityBC_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "cont_velocity_bc");
+  velocityBC_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.solutionOptions_->activateOpenMdotCorrection_ 
+                                                     ? "velocity_bc" : "cont_velocity_bc");
   // variable density will need density as a function of user inflow conditions
   densityBC_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
 }

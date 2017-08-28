@@ -60,7 +60,7 @@ ComputeMdotEdgeOpenAlgorithm::ComputeMdotEdgeOpenAlgorithm(
   density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
   exposedAreaVec_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");
   openMassFlowRate_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "open_mass_flow_rate");
-  pressureBc_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure_bc");
+  pressureBc_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, realm_.solutionOptions_->activateOpenMdotCorrection_ ? "pressure" : "pressure_bc");
 }
 
 //--------------------------------------------------------------------------
@@ -87,15 +87,21 @@ ComputeMdotEdgeOpenAlgorithm::execute()
   const double nocFac
     = (realm_.get_noc_usage(dofName) == true) ? 1.0 : 0.0;
 
-  // time step
+  // extract global algorithm options, if active
+  const double pstabFac = realm_.solutionOptions_->activateOpenMdotCorrection_ 
+    ? 0.0
+    : 1.0;
+
+  // time step; scale projection time scale by pstabFac (no divide by here)
   const double dt = realm_.get_time_step();
   const double gamma1 = realm_.get_gamma1();
-  const double projTimeScale = dt/gamma1;
+  const double projTimeScale = dt/gamma1*pstabFac;
 
   // interpolation for mdot uses nearest node, therefore, n/a
 
   // set accumulation variables
   double mdotOpen = 0.0;
+  size_t mdotOpenIpCount = 0;
 
   // deal with state
   ScalarFieldType &densityNp1 = density_->field_of_state(stk::mesh::StateNP1);
@@ -123,6 +129,8 @@ ComputeMdotEdgeOpenAlgorithm::execute()
     const int num_face_nodes = b.topology().num_nodes();
     
     const stk::mesh::Bucket::size_type length   = b.size();
+
+    mdotOpenIpCount += length*num_face_nodes;
 
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
 
@@ -201,8 +209,8 @@ ComputeMdotEdgeOpenAlgorithm::execute()
   }
   // scatter back to solution options; not thread safe
   realm_.solutionOptions_->mdotAlgOpen_ += mdotOpen;
+  realm_.solutionOptions_->mdotAlgOpenIpCount_ += mdotOpenIpCount;
 }
-
 
 } // namespace nalu
 } // namespace Sierra

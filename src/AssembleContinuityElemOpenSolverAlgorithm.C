@@ -7,12 +7,13 @@
 
 
 // nalu
-#include <AssembleContinuityElemOpenSolverAlgorithm.h>
-#include <EquationSystem.h>
-#include <FieldTypeDef.h>
-#include <LinearSystem.h>
-#include <Realm.h>
-#include <master_element/MasterElement.h>
+#include "AssembleContinuityElemOpenSolverAlgorithm.h"
+#include "EquationSystem.h"
+#include "FieldTypeDef.h"
+#include "LinearSystem.h"
+#include "Realm.h"
+#include "SolutionOptions.h"
+#include "master_element/MasterElement.h"
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/BulkData.hpp>
@@ -61,7 +62,7 @@ AssembleContinuityElemOpenSolverAlgorithm::AssembleContinuityElemOpenSolverAlgor
   pressure_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure");
   density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
   exposedAreaVec_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");
-  pressureBc_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure_bc");
+  pressureBc_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, realm_.solutionOptions_->activateOpenMdotCorrection_ ? "pressure" : "pressure_bc");
 
   // Implementation details: code is designed to manage the following
   // When shiftPoisson_ is TRUE, reducedSensitivities_ is enforced to be TRUE
@@ -93,6 +94,14 @@ AssembleContinuityElemOpenSolverAlgorithm::execute()
   const std::string dofName = "pressure";
   const double includeNOC 
     = (realm_.get_noc_usage(dofName) == true) ? 1.0 : 0.0;
+
+  // extract global algorithm options, if active
+  const double mdotCorrection = realm_.solutionOptions_->activateOpenMdotCorrection_ 
+    ? realm_.solutionOptions_->mdotAlgOpenCorrection_
+    : 0.0;
+  const double pstabFac = realm_.solutionOptions_->activateOpenMdotCorrection_ 
+    ? 0.0
+    : 1.0;
 
   // space for LHS/RHS; nodesPerElem*nodesPerElem and nodesPerElem
   std::vector<double> lhs;
@@ -343,14 +352,14 @@ AssembleContinuityElemOpenSolverAlgorithm::execute()
         // form axdx, asq and mdot (without dp/dn or noc)
         double asq = 0.0;
         double axdx = 0.0;
-        double mdot = 0.0;
+        double mdot = -mdotCorrection;
         for ( int j = 0; j < nDim; ++j ) {
           const double dxj = p_coordBip[j] - p_coordScs[j];
           const double axj = areaVec[ip*nDim+j];
           asq += axj*axj;
           axdx += axj*dxj;
           mdot += (interpTogether*p_rho_uBip[j] + om_interpTogether*rhoBip*p_uBip[j] 
-                   + projTimeScale*p_GpdxBip[j])*axj;
+                   + projTimeScale*p_GpdxBip[j]*pstabFac)*axj;
         }
 	
         const double inv_axdx = 1.0/axdx;
@@ -369,11 +378,11 @@ AssembleContinuityElemOpenSolverAlgorithm::execute()
 
         for ( int ic = 0; ic < nodesPerElement; ++ic ) {
           const double r = p_shape_function_lhs[offSetSF_elem+ic];
-          p_lhs[rowR+ic] += r*asq*inv_axdx;
+          p_lhs[rowR+ic] += r*asq*inv_axdx*pstabFac;
         }
-
+        
         // final mdot
-        mdot += -projTimeScale*((pBip-pScs)*asq*inv_axdx + noc*includeNOC);
+        mdot += -projTimeScale*((pBip-pScs)*asq*inv_axdx*pstabFac + noc*includeNOC*pstabFac);
 
         // residual
         p_rhs[nearestNode] -= mdot/projTimeScale;

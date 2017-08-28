@@ -140,11 +140,17 @@ public:
   double earthAngularVelocity_;
   double latitude_;
 
-  // global mdot correction alg
+  // mdot post processing
   double mdotAlgAccumulation_;
   double mdotAlgInflow_;
   double mdotAlgOpen_;
  
+  // global mdot correction alg
+  bool activateOpenMdotCorrection_;
+  double mdotAlgOpenCorrection_;
+  size_t mdotAlgOpenIpCount_;
+  double mdotAlgOpenPost_;
+
   // turbulence model coeffs
   std::map<TurbulenceModelConstant, double> turbModelConstantMap_;
   
