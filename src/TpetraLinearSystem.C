@@ -1280,9 +1280,11 @@ TpetraLinearSystem::prepareConstraints(
   Teuchos::ArrayView<const double> values;
   std::vector<double> new_values;
 
+  const bool internalMatrixIsSorted = true;
+
   // iterate oversetInfoVec_
   std::vector<OversetInfo *>::iterator ii;
-  //KOKKOS: Loop noparallel RCP Vector Matrix replaceLocalValues
+  //KOKKOS: Loop noparallel RCP Vector Matrix replaceValues
   for( ii=realm_.oversetManager_->oversetInfoVec_.begin();
        ii!=realm_.oversetManager_->oversetInfoVec_.end(); ++ii ) {
 
@@ -1291,12 +1293,13 @@ TpetraLinearSystem::prepareConstraints(
     const stk::mesh::EntityId naluId = *stk::mesh::field_data(*realm_.naluGlobalId_, orphanNode);
     const LocalOrdinal localIdOffset = lookup_myLID(myLIDs_, naluId, "prepareConstraints") * numDof_;
 
-    //KOKKOS: Nested Loop noparallel RCP Vector Matrix replaceLocalValues
+    //KOKKOS: Nested Loop noparallel RCP Vector Matrix replaceValues
     for(unsigned d=beginPos; d < endPos; ++d) {
       const LocalOrdinal localId = localIdOffset + d;
       const bool useOwned = localId < maxOwnedRowId_;
       const LocalOrdinal actualLocalId = useOwned ? localId : localId - maxOwnedRowId_;
       Teuchos::RCP<LinSys::Matrix> matrix = useOwned ? ownedMatrix_ : globallyOwnedMatrix_;
+      const LinSys::Matrix::local_matrix_type& local_matrix = matrix->getLocalMatrix();
       
       if ( localId > maxGloballyOwnedRowId_) {
         throw std::runtime_error("logic error: localId > maxGloballyOwnedRowId_");
@@ -1309,7 +1312,7 @@ TpetraLinearSystem::prepareConstraints(
       for(size_t i=0; i < rowLength; ++i) {
         new_values[i] = 0.0;
       }
-      matrix->replaceLocalValues(actualLocalId, indices, new_values);
+      local_matrix.replaceValues(actualLocalId, &indices[0], rowLength, new_values.data(), internalMatrixIsSorted);
       
       // Replace the RHS residual with zero
       Teuchos::RCP<LinSys::Vector> rhs = useOwned ? ownedRhs_: globallyOwnedRhs_;
@@ -1329,6 +1332,7 @@ TpetraLinearSystem::resetRows(
   Teuchos::ArrayView<const double> values;
   std::vector<double> new_values;
   constexpr double rhs_residual = 0.0;
+  const bool internalMatrixIsSorted = true;
 
   for (auto node: nodeList) {
     const auto naluId = *stk::mesh::field_data(*realm_.naluGlobalId_, node);
@@ -1342,6 +1346,7 @@ TpetraLinearSystem::resetRows(
         useOwned ? localId : (localId - maxOwnedRowId_);
       Teuchos::RCP<LinSys::Matrix> matrix =
         useOwned ? ownedMatrix_ : globallyOwnedMatrix_;
+      const LinSys::Matrix::local_matrix_type& local_matrix = matrix->getLocalMatrix();
 
       if (localId > maxGloballyOwnedRowId_) {
         throw std::runtime_error("logic error: localId > maxGloballyOwnedRowId");
@@ -1354,7 +1359,7 @@ TpetraLinearSystem::resetRows(
       for (size_t i=0; i < rowLength; i++) {
         new_values[i] = 0.0;
       }
-      matrix->replaceLocalValues(actualLocalId, indices, new_values);
+      local_matrix.replaceValues(actualLocalId, &indices[0], rowLength, new_values.data(), internalMatrixIsSorted);
 
       // Replace RHS residual entry = 0.0
       Teuchos::RCP<LinSys::Vector> rhs =
