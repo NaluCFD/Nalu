@@ -878,6 +878,10 @@ MomentumEquationSystem::MomentumEquationSystem(
   LinearSolver *solver = realm_.root()->linearSolvers_->create_solver(solverName, EQ_MOMENTUM);
   linsys_ = LinearSystem::create(realm_, realm_.spatialDimension_, name_, solver);
 
+  // name_ may be overwritten by load of user system name, so set sysName_ to the standard name
+  sysName_ = name_;
+  reportMyResiduals_ = true;
+
   // determine nodal gradient form
   set_nodal_gradient("velocity");
   NaluEnv::self().naluOutputP0() << "Edge projected nodal gradient for velocity: " << edgeNodalGradient_ <<std::endl;
@@ -2138,6 +2142,10 @@ ContinuityEquationSystem::ContinuityEquationSystem(
   std::string solverName = realm_.equationSystems_.get_solver_block_name("pressure");
   LinearSolver *solver = realm_.root()->linearSolvers_->create_solver(solverName, EQ_CONTINUITY);
   linsys_ = LinearSystem::create(realm_, 1, name_, solver);
+
+  // name_ may be overwritten by load of user system name, so set sysName_ to the standard name
+  sysName_ = name_;
+  reportMyResiduals_ = true;
 
   // determine nodal gradient form
   set_nodal_gradient("pressure");

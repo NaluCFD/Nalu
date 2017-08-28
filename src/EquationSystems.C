@@ -720,6 +720,7 @@ EquationSystems::solve_and_update()
 
   for( ii=equationSystemVector_.begin(); ii!=equationSystemVector_.end(); ++ii )
   {
+    (*ii)->reset_nonlinear_iteration_count();
     (*ii)->pre_iter_work();
     (*ii)->solve_and_update();
     (*ii)->post_iter_work();

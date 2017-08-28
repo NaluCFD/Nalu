@@ -104,6 +104,10 @@ MeshDisplacementEquationSystem::MeshDisplacementEquationSystem(
   LinearSolver *solver = realm_.root()->linearSolvers_->create_solver(solverName, EQ_MESH_DISPLACEMENT);
   linsys_ = LinearSystem::create(realm_, realm_.spatialDimension_, name_, solver);
 
+  // name_ may be overwritten by load of user system name, so set sysName_ to the standard name
+  sysName_ = name_;
+  reportMyResiduals_ = true;
+
   // determine nodal gradient form; use the edgeNodalGradient_ data member since mesh_displacement EQ does not need this
   set_nodal_gradient("mesh_velocity");
   NaluEnv::self().naluOutputP0() << "Edge projected nodal gradient for mesh_velocity: " << edgeNodalGradient_ <<std::endl;

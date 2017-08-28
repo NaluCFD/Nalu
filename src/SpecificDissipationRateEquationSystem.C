@@ -106,6 +106,10 @@ SpecificDissipationRateEquationSystem::SpecificDissipationRateEquationSystem(
   LinearSolver *solver = realm_.root()->linearSolvers_->create_solver(solverName, EQ_SPEC_DISS_RATE);
   linsys_ = LinearSystem::create(realm_, 1, name_, solver);
 
+  // name_ may be overwritten by load of user system name, so set sysName_ to the standard name
+  sysName_ = name_;
+  reportMyResiduals_ = true;
+
   // determine nodal gradient form
   set_nodal_gradient("specific_dissipation_rate");
   NaluEnv::self().naluOutputP0() << "Edge projected nodal gradient for specific_dissipation_rate: " << edgeNodalGradient_ <<std::endl;

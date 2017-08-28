@@ -1444,20 +1444,6 @@ TpetraLinearSystem::solve(
   linearSolveIterations_ = iters;
   nonLinearResidual_ = realm_.l2Scaling_*norm2;
   linearResidual_ = finalResidNorm;
-    
-  if ( realm_.currentNonlinearIteration_ == 1 )
-    firstNonLinearResidual_ = nonLinearResidual_;
-  scaledNonLinearResidual_ = nonLinearResidual_/std::max(std::numeric_limits<double>::epsilon(), firstNonLinearResidual_);
-
-  if ( provideOutput_ ) {
-    const int nameOffset = name_.length()+8;
-    NaluEnv::self().naluOutputP0()
-      << std::setw(nameOffset) << std::right << name_
-      << std::setw(32-nameOffset)  << std::right << iters
-      << std::setw(18) << std::right << finalResidNorm
-      << std::setw(15) << std::right << nonLinearResidual_
-      << std::setw(14) << std::right << scaledNonLinearResidual_ << std::endl;
-  }
 
   return status;
 }
