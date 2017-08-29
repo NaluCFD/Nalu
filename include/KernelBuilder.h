@@ -75,6 +75,7 @@ namespace nalu{
           ThrowRequireMsg(false,
             "Polynomial order" + std::to_string(poly_order) + "is not supported by default.  "
             "Specify USER_POLY_ORDER and recompile to run.");
+          return nullptr;
       }
     }
   }
