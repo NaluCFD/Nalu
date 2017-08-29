@@ -168,7 +168,6 @@ namespace nalu {
     /**
      * Subdivide the coordinates of a hex8 element into 8 hexs along edge, face, and volume midpoints
      */
-    constexpr int dim = 3;
     constexpr int numBaseNodes = 8;
 
     for (int n = 0; n < numBaseNodes; ++n) {

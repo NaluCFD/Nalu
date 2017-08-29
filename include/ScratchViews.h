@@ -334,7 +334,6 @@ void MasterElementViews<T>::fill_master_element_views_new_me(
   MasterElement* meSCV,
   MasterElement* meFEM)
 {
-  DoubleType error = 0.0;
   for(ELEM_DATA_NEEDED data : dataEnums) {
     switch(data)
     {
