@@ -127,6 +127,10 @@ HeatCondEquationSystem::HeatCondEquationSystem(
   LinearSolver *solver = realm_.root()->linearSolvers_->create_solver(solverName, EQ_TEMPERATURE);
   linsys_ = LinearSystem::create(realm_, 1, "HeatCondEQS", solver);
 
+  // name_ will be overwritten by load of user system name, so set sysName_ to the standard name
+  sysName_ = name_;
+  reportMyResiduals_ = true;
+
   // determine nodal gradient form
   set_nodal_gradient("temperature");
   NaluEnv::self().naluOutputP0() << "Edge projected nodal gradient for temperature: " << edgeNodalGradient_ <<std::endl;

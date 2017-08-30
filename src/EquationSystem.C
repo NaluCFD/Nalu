@@ -58,8 +58,13 @@ EquationSystem::EquationSystem(
     nonLinearIterationCount_(0),
     reportLinearIterations_(false),
     edgeNodalGradient_(realm_.realmUsesEdges_),
+    eqSysNonLinearIterationCount_(0),
+    firstNonLinearResidual_(0.0),
+    scaledNonLinearResidual_(0.0),
     linsys_(NULL),
-    num_graph_entries_(0)
+    num_graph_entries_(0),
+    sysName_("no_name"),
+    reportMyResiduals_(false)
 {
   // nothing to do
 }
@@ -294,6 +299,32 @@ EquationSystem::assemble_and_solve(
   update_iteration_statistics(
     linsys_->linearSolveIterations());
   
+  // update equation system nonlinear iteration count
+  if (linsys_->linearSolveIterations() != 0)
+    eqSysNonLinearIterationCount_++;
+
+  // report residuals
+  if (reportMyResiduals_) {
+    double linearResidNorm = linsys_->linearResidual();
+    double nonLinearResidNorm = linsys_->nonLinearResidual();
+
+    if ( (realm_.currentNonlinearIteration_ == 1) && (eqSysNonLinearIterationCount_ == 1) )
+      firstNonLinearResidual_ = nonLinearResidNorm;
+    if ( firstNonLinearResidual_ < std::numeric_limits<double>::epsilon() ) {
+      scaledNonLinearResidual_ = 0.0;
+    } else {
+      scaledNonLinearResidual_ = nonLinearResidNorm/std::max(std::numeric_limits<double>::epsilon(), firstNonLinearResidual_);
+    }
+
+    const int nameOffset = sysName_.length()+8;
+    NaluEnv::self().naluOutputP0()
+      << std::setw(nameOffset) << std::right << sysName_
+      << std::setw(32-nameOffset)  << std::right << linsys_->linearSolveIterations()
+      << std::setw(18) << std::right << linearResidNorm
+      << std::setw(15) << std::right << nonLinearResidNorm
+      << std::setw(14) << std::right << scaledNonLinearResidual_ << std::endl;
+  }
+
   if ( error > 0 )
     NaluEnv::self().naluOutputP0() << "Error in " << name_ << "::solve_and_update()  " << std::endl;
 }
@@ -526,6 +557,12 @@ EquationSystem::post_iter_work()
   for (auto it: postIterAlgDriver_) {
     it->execute();
   }
+}
+
+void
+EquationSystem::reset_nonlinear_iteration_count()
+{
+  eqSysNonLinearIterationCount_ = 0;
 }
 
 } // namespace nalu

@@ -84,6 +84,10 @@ ProjectedNodalGradientEquationSystem::ProjectedNodalGradientEquationSystem(
   LinearSolver *solver = realm_.root()->linearSolvers_->create_solver(solverName, eqType_);
   linsys_ = LinearSystem::create(realm_, realm_.spatialDimension_, eqSysName_, solver);
 
+  // Set sysName_ to eqSysName_ for residual reporting
+  sysName_ = eqSysName_;
+  reportMyResiduals_ = true;
+
   // push back EQ to manager
   realm_.push_equation_to_systems(this);
 }
@@ -374,7 +378,7 @@ ProjectedNodalGradientEquationSystem::solve_and_update_external()
 void
 ProjectedNodalGradientEquationSystem::deactivate_output()
 {
-  linsys_->provideOutput_ = false;
+  reportMyResiduals_ = false;
 }
 
 } // namespace nalu

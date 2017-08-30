@@ -224,12 +224,15 @@ public:
   void report_built_supp_alg_names();
   bool supp_alg_is_requested(std::string name);
   bool supp_alg_is_requested(std::vector<std::string>);
-
+  
+  void reset_nonlinear_iteration_count();
   bool nodal_src_is_requested();
 
   EquationSystems &equationSystems_;
   Realm &realm_;
   std::string name_;
+  std::string sysName_;
+  bool reportMyResiduals_;
   const std::string eqnTypeName_;
   int maxIterations_;
   double convergenceTolerance_;
@@ -249,6 +252,9 @@ public:
   int nonLinearIterationCount_;
   bool reportLinearIterations_;
   bool edgeNodalGradient_;
+  int eqSysNonLinearIterationCount_;
+  double firstNonLinearResidual_;
+  double scaledNonLinearResidual_;
 
   void update_iteration_statistics(
     const int & iters);
