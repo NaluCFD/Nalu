@@ -40,14 +40,14 @@ TpetraLinearSolverConfig::name() const
   return name_;
 }
 
-const Teuchos::RCP<Teuchos::ParameterList> &
-TpetraLinearSolverConfig::params() const
+Teuchos::RCP<Teuchos::ParameterList> &
+TpetraLinearSolverConfig::params()
 {
   return params_;
 }
 
-const Teuchos::RCP<Teuchos::ParameterList> &
-TpetraLinearSolverConfig::paramsPrecond() const
+Teuchos::RCP<Teuchos::ParameterList> &
+TpetraLinearSolverConfig::paramsPrecond()
 {
   return paramsPrecond_;
 }
@@ -62,10 +62,13 @@ TpetraLinearSolverConfig::load(const YAML::Node & node)
   double tol;
   int max_iterations, kspace, output_level;
 
-  get_if_present(node, "tolerance", tol, 1.e-4);
+  get_if_present(node, "tolerance", tolerance_, 1.e-4);
+  get_if_present(node, "final_tolerance", finalTolerance_, tolerance_);
   get_if_present(node, "max_iterations", max_iterations, 50);
   get_if_present(node, "kspace", kspace, 50);
   get_if_present(node, "output_level", output_level, 0);
+
+  tol = tolerance_;
 
   //Teuchos::RCP<Teuchos::ParameterList> params = Teuchos::params();
   params_->set("Convergence Tolerance", tol);
