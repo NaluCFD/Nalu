@@ -42,6 +42,7 @@ EquationSystem::EquationSystem(
   : equationSystems_(eqSystems),
     realm_(eqSystems.realm_),
     name_(name),
+    userSuppliedName_(name),
     eqnTypeName_(eqnTypeName),
     maxIterations_(1),
     convergenceTolerance_(1.0),
@@ -57,6 +58,7 @@ EquationSystem::EquationSystem(
     minLinearIterations_(1.0e10),
     nonLinearIterationCount_(0),
     reportLinearIterations_(false),
+    firstTimeStepSolve_(true),
     edgeNodalGradient_(realm_.realmUsesEdges_),
     linsys_(NULL),
     num_graph_entries_(0)
@@ -135,6 +137,15 @@ EquationSystem::system_is_converged()
 }
 
 //--------------------------------------------------------------------------
+//-------- pre_timestep_work -----------------------------------------------
+//--------------------------------------------------------------------------
+void
+EquationSystem::pre_timestep_work()
+{
+  firstTimeStepSolve_ = true;
+}
+
+//--------------------------------------------------------------------------
 //-------- provide_scaled_norm ---------------------------------------------
 //--------------------------------------------------------------------------
 double
@@ -181,7 +192,7 @@ EquationSystem::dump_eq_time()
 
   int nprocs = NaluEnv::self().parallel_size();
 
-  NaluEnv::self().naluOutputP0() << "Timing for Eq: " << name_ << std::endl;
+  NaluEnv::self().naluOutputP0() << "Timing for Eq: " << userSuppliedName_ << std::endl;
 
   // get max, min, and sum over processes
   stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &l_timer[0], &g_sum[0], 6);
@@ -295,7 +306,7 @@ EquationSystem::assemble_and_solve(
     linsys_->linearSolveIterations());
   
   if ( error > 0 )
-    NaluEnv::self().naluOutputP0() << "Error in " << name_ << "::solve_and_update()  " << std::endl;
+    NaluEnv::self().naluOutputP0() << "Error in " << userSuppliedName_ << "::solve_and_update()  " << std::endl;
 }
 
 //--------------------------------------------------------------------------

@@ -116,7 +116,7 @@ RadiativeTransportEquationSystem::RadiativeTransportEquationSystem(
   // extract solver name and solver object
   std::string solverName = realm_.equationSystems_.get_solver_block_name("intensity");
   LinearSolver *solver = realm_.root()->linearSolvers_->create_solver(solverName, EQ_INTENSITY);
-  linsys_ = LinearSystem::create(realm_, 1, name_, solver);
+  linsys_ = LinearSystem::create(realm_, 1, this, solver);
   // turn off standard output
   linsys_->provideOutput_ = false;
 
@@ -814,7 +814,7 @@ RadiativeTransportEquationSystem::solve_and_update()
     zero_irradiation();
 
     NaluEnv::self().naluOutputP0() << "   "
-                    << name_ << " Iteration: " << i+1 << "/" << maxIterations_ << std::endl;
+                    << userSuppliedName_ << " Iteration: " << i+1 << "/" << maxIterations_ << std::endl;
 
     double nonLinearResidualSum = 0.0;
     double linearIterationsSum = 0.0;
@@ -870,7 +870,7 @@ RadiativeTransportEquationSystem::solve_and_update()
 
     // dump norm and averages
     NaluEnv::self().naluOutputP0()
-      << "EqSystem Name:       " << name_ << std::endl
+      << "EqSystem Name:       " << userSuppliedName_ << std::endl
       << "   aver iters      = " << linearIterationsSum/double(ordinateDirections_) << std::endl
       << "nonlinearResidNrm  = " << nonLinearResidualSum/double(ordinateDirections_) 
       << " scaled: " << nonLinearResidualSum_/firstNonLinearResidualSum_ << std::endl

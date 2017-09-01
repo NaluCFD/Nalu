@@ -51,7 +51,7 @@ public:
   TpetraLinearSystem(
     Realm &realm,
     const unsigned numDof,
-    const std::string & name,
+    EquationSystem *eqSys,
     LinearSolver * linearSolver);
   ~TpetraLinearSystem();
 
@@ -199,7 +199,6 @@ private:
   std::vector<LocalOrdinal> entityToLID_;
   LocalOrdinal maxOwnedRowId_; // = num_owned_nodes * numDof_
   LocalOrdinal maxGloballyOwnedRowId_; // = (num_owned_nodes + num_globallyOwned_nodes) * numDof_
-  EquationSystem* eqSys_;
 };
 
 template<typename T1, typename T2>
