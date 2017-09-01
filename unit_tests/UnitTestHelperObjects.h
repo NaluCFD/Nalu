@@ -18,9 +18,9 @@ struct HelperObjects {
     realmDefaultNode(unit_test_utils::get_realm_default_node()),
     naluObj(new unit_test_utils::NaluTest(yamlNode)),
     realm(naluObj->create_realm(realmDefaultNode, "multi_physics")),
-    linsys(new unit_test_utils::TestLinearSystem(realm, numDof)),
     eqSystems(realm),
     eqSystem(eqSystems),
+    linsys(new unit_test_utils::TestLinearSystem(realm, numDof, &eqSystem)),
     assembleElemSolverAlg(nullptr)
   {
     realm.metaData_ = &bulk.mesh_meta_data();
@@ -43,9 +43,9 @@ struct HelperObjects {
   YAML::Node realmDefaultNode;
   unit_test_utils::NaluTest* naluObj;
   sierra::nalu::Realm& realm;
-  unit_test_utils::TestLinearSystem* linsys;
   sierra::nalu::EquationSystems eqSystems;
   sierra::nalu::EquationSystem eqSystem;
+  unit_test_utils::TestLinearSystem* linsys;
   sierra::nalu::AssembleElemSolverAlgorithm* assembleElemSolverAlg;
 };
 
@@ -55,9 +55,9 @@ struct HelperObjectsNewME {
     realmDefaultNode(unit_test_utils::get_realm_default_node()),
     naluObj(new unit_test_utils::NaluTest(yamlNode)),
     realm(naluObj->create_realm(realmDefaultNode, "multi_physics")),
-    linsys(new unit_test_utils::TestLinearSystem(realm, numDof)),
     eqSystems(realm),
     eqSystem(eqSystems),
+    linsys(new unit_test_utils::TestLinearSystem(realm, numDof, &eqSystem)),
     assembleElemSolverAlg(nullptr)
   {
     realm.metaData_ = &bulk.mesh_meta_data();
@@ -80,9 +80,9 @@ struct HelperObjectsNewME {
   YAML::Node realmDefaultNode;
   unit_test_utils::NaluTest* naluObj;
   sierra::nalu::Realm& realm;
-  unit_test_utils::TestLinearSystem* linsys;
   sierra::nalu::EquationSystems eqSystems;
   sierra::nalu::EquationSystem eqSystem;
+  unit_test_utils::TestLinearSystem* linsys;
   sierra::nalu::AssembleElemSolverAlgorithm* assembleElemSolverAlg;
 };
 

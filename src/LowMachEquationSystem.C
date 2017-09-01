@@ -615,7 +615,7 @@ LowMachEquationSystem::solve_and_update()
   for ( int k = 0; k < maxIterations_; ++k ) {
 
     NaluEnv::self().naluOutputP0() << " " << k+1 << "/" << maxIterations_
-                    << std::setw(15) << std::right << name_ << std::endl;
+                    << std::setw(15) << std::right << userSuppliedName_ << std::endl;
 
     // momentum assemble, load_complete and solve
     momentumEqSys_->assemble_and_solve(momentumEqSys_->uTmp_);
@@ -876,7 +876,7 @@ MomentumEquationSystem::MomentumEquationSystem(
   // extract solver name and solver object
   std::string solverName = realm_.equationSystems_.get_solver_block_name("velocity");
   LinearSolver *solver = realm_.root()->linearSolvers_->create_solver(solverName, EQ_MOMENTUM);
-  linsys_ = LinearSystem::create(realm_, realm_.spatialDimension_, name_, solver);
+  linsys_ = LinearSystem::create(realm_, realm_.spatialDimension_, this, solver);
 
   // determine nodal gradient form
   set_nodal_gradient("velocity");
@@ -1971,7 +1971,7 @@ MomentumEquationSystem::reinitialize_linear_system()
   // create new solver
   std::string solverName = realm_.equationSystems_.get_solver_block_name("velocity");
   LinearSolver *solver = realm_.root()->linearSolvers_->create_solver(solverName, EQ_MOMENTUM);
-  linsys_ = LinearSystem::create(realm_, realm_.spatialDimension_, name_, solver);
+  linsys_ = LinearSystem::create(realm_, realm_.spatialDimension_, this, solver);
 
   // initialize new solver
   solverAlgDriver_->initialize_connectivity();
@@ -2137,7 +2137,7 @@ ContinuityEquationSystem::ContinuityEquationSystem(
   // extract solver name and solver object
   std::string solverName = realm_.equationSystems_.get_solver_block_name("pressure");
   LinearSolver *solver = realm_.root()->linearSolvers_->create_solver(solverName, EQ_CONTINUITY);
-  linsys_ = LinearSystem::create(realm_, 1, name_, solver);
+  linsys_ = LinearSystem::create(realm_, 1, this, solver);
 
   // determine nodal gradient form
   set_nodal_gradient("pressure");
@@ -2847,7 +2847,7 @@ ContinuityEquationSystem::reinitialize_linear_system()
   // create new solver
   std::string solverName = realm_.equationSystems_.get_solver_block_name("pressure");
   LinearSolver *solver = realm_.root()->linearSolvers_->create_solver(solverName, EQ_CONTINUITY);
-  linsys_ = LinearSystem::create(realm_, 1, name_, solver);
+  linsys_ = LinearSystem::create(realm_, 1, this, solver);
 
   // initialize
   solverAlgDriver_->initialize_connectivity();
