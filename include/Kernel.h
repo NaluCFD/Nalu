@@ -11,8 +11,11 @@
 #include "KokkosInterface.h"
 #include "SimdInterface.h"
 #include "ScratchViews.h"
+#include "AlgTraits.h"
 
 #include <stk_mesh/base/Entity.hpp>
+
+#include <array>
 
 namespace sierra {
 namespace nalu {
@@ -20,10 +23,13 @@ namespace nalu {
 class TimeIntegrator;
 class SolutionOptions;
 
-template<typename AlgTraits, typename LambdaFunction>
-void get_scv_shape_fn_data(LambdaFunction lambdaFunction,
-                       Kokkos::View<DoubleType[AlgTraits::numScvIp_][AlgTraits::nodesPerElement_]>& shape_fn_view)
+template<typename AlgTraits, typename LambdaFunction, typename ViewType>
+void get_scv_shape_fn_data(LambdaFunction lambdaFunction, ViewType& shape_fn_view)
 {
+  static_assert(ViewType::Rank == 2u, "2D View");
+  ThrowRequireMsg(shape_fn_view.extent_int(0) == AlgTraits::numScvIp_, "Inconsistent number of scv ips");
+  ThrowRequireMsg(shape_fn_view.extent_int(1) == AlgTraits::nodesPerElement_, "Inconsistent number of of nodes");
+
   double tmp_data[AlgTraits::numScvIp_*AlgTraits::nodesPerElement_];
   lambdaFunction(tmp_data);
 
@@ -33,10 +39,13 @@ void get_scv_shape_fn_data(LambdaFunction lambdaFunction,
   }
 }
 
-template<typename AlgTraits, typename LambdaFunction>
-void get_scs_shape_fn_data(LambdaFunction lambdaFunction,
-                       Kokkos::View<DoubleType[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]>& shape_fn_view)
+template<typename AlgTraits, typename LambdaFunction, typename ViewType>
+void get_scs_shape_fn_data(LambdaFunction lambdaFunction, ViewType& shape_fn_view)
 {
+  static_assert(ViewType::Rank == 2u, "2D View");
+  ThrowRequireMsg(shape_fn_view.extent_int(0) == AlgTraits::numScsIp_, "Inconsistent number of scs ips");
+  ThrowRequireMsg(shape_fn_view.extent_int(1) == AlgTraits::nodesPerElement_, "Inconsistent number of of nodes");
+
   double tmp_data[AlgTraits::numScsIp_*AlgTraits::nodesPerElement_];
   lambdaFunction(tmp_data);
 
