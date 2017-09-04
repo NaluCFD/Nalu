@@ -199,7 +199,7 @@ ActuatorLinePointDrag::compute_point_drag(
   double coef = 6.0*pi_*pointGasViscosity*pointRadius;
 
   // this is from the fluids perspective, not the psuedo particle
-  pointForceLHS = coef*fD;
+  pointForceLHS = 2.0*coef*fD;
   for ( int j = 0; j < nDim; ++j )
     pointForce[j] = coef*fD*(pointVelocity[j] - pointGasVelocity[j]);
 }
@@ -548,9 +548,7 @@ ActuatorLinePointDrag::execute()
   }
 
   // parallel assemble (contributions from ghosted and locally owned)
-  std::vector<const stk::mesh::FieldBase*> sumFieldVec;
-  sumFieldVec.push_back(actuator_source);
-  sumFieldVec.push_back(actuator_source_lhs);
+  const std::vector<const stk::mesh::FieldBase*> sumFieldVec(1, actuator_source);
   stk::mesh::parallel_sum_including_ghosts(bulkData, sumFieldVec);
 
 }
