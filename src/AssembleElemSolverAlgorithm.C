@@ -47,10 +47,12 @@ AssembleElemSolverAlgorithm::AssembleElemSolverAlgorithm(
   Realm &realm,
   stk::mesh::Part *part,
   EquationSystem *eqSystem,
-  const stk::topology &theTopo)
+  const stk::topology &theTopo,
+  bool interleaveMEViews)
   : SolverAlgorithm(realm, part, eqSystem),
     topo_(theTopo),
-    rhsSize_(theTopo.num_nodes()*eqSystem->linsys_->numDof())
+    rhsSize_(theTopo.num_nodes()*eqSystem->linsys_->numDof()),
+    interleaveMEViews_(interleaveMEViews)
 {
 }
 
@@ -84,9 +86,11 @@ AssembleElemSolverAlgorithm::execute()
   const int bytes_per_team = 0;
   // Bytes per thread =
   //    scratch views size + LHS + RHS + node IDs + padding for alignment
-  const int bytes_per_thread =
+  int bytes_per_thread =
     (rhsSize_ + lhsSize)*sizeof(double) + scratchIdsSize*sizeof(int) +
-    get_num_bytes_pre_req_data(dataNeededBySuppAlgs_, meta_data.spatial_dimension());
+    get_num_bytes_pre_req_data<double>(dataNeededBySuppAlgs_, meta_data.spatial_dimension());
+  constexpr int simdLen = stk::simd::ndoubles;
+  bytes_per_thread *= 3*simdLen;//3 is wrong, still need to debug this!!! should be 2 but seems to have memory problems.
 
   // define some common selectors
   stk::mesh::Selector s_locally_owned_union = meta_data.locally_owned_part()
@@ -100,44 +104,82 @@ AssembleElemSolverAlgorithm::execute()
   {
     stk::mesh::Bucket & b = *elem_buckets[team.league_rank()];
     
-    ThrowAssert(b.topology() == topo_);
+    ThrowAssertMsg(b.topology() == topo_,"topo_ = "<<topo_<<", b.topology() = "<<b.topology());
 
-    sierra::nalu::ScratchViews prereqData(team, bulk_data, topo_, dataNeededBySuppAlgs_);
+    std::vector<sierra::nalu::ScratchViews<double>*> prereqData(simdLen, nullptr);
 
+    for(int simdIndex=0; simdIndex<simdLen; ++simdIndex) {
+      prereqData[simdIndex] = new sierra::nalu::ScratchViews<double>(team, bulk_data, topo_, dataNeededBySuppAlgs_);
+    }
+
+    sierra::nalu::ScratchViews<DoubleType> simdPrereqData(team, bulk_data, topo_, dataNeededBySuppAlgs_);
+
+    SharedMemView<DoubleType*> simdrhs = get_shmem_view_1D<DoubleType>(team, rhsSize_);
+    SharedMemView<DoubleType**> simdlhs = get_shmem_view_2D<DoubleType>(team, rhsSize_, rhsSize_);
+    SharedMemView<double*> rhs = get_shmem_view_1D<double>(team, rhsSize_);
+    SharedMemView<double**> lhs = get_shmem_view_2D<double>(team, rhsSize_, rhsSize_);
     SharedMemView<int*> scratchIds = get_int_shmem_view_1D(team, scratchIdsSize);
-    SharedMemView<double*> rhs = get_shmem_view_1D(team, rhsSize_);
-    SharedMemView<double**> lhs = get_shmem_view_2D(team, rhsSize_, rhsSize_);
 
+    const stk::mesh::Entity* elemNodes[simdLen];
+    unsigned num_nodes = b.topology().num_nodes();
     const stk::mesh::Bucket::size_type length   = b.size();
-    team.team_barrier();
+    stk::mesh::Bucket::size_type simdBucketLen = length/simdLen;
+    const stk::mesh::Bucket::size_type remainder = length%simdLen;
+    if (remainder > 0) {
+      simdBucketLen += 1;
+    }
 
-    Kokkos::parallel_for(Kokkos::TeamThreadRange(team, length), [&](const size_t& k)
+
+    Kokkos::parallel_for(Kokkos::TeamThreadRange(team, simdBucketLen), [&](const size_t& bktIndex)
     {
-      // get element
-      stk::mesh::Entity element = b[k];
-      fill_pre_req_data(dataNeededBySuppAlgs_, bulk_data, topo_, element,
-                        prereqData);
+      int simdElems = simdLen;
+      if (length - bktIndex*simdLen < simdLen) {
+          simdElems = length - bktIndex*simdLen;
+      }
+      if (simdElems < 0 || simdElems > simdLen) {
+         std::cout<<"ERROR, simdElems="<<simdElems<<" shouldn't happen!!"<<std::endl;
+         simdElems = 0;
+      }
 
-      // extract node relations and provide connected nodes
-      stk::mesh::Entity const * node_rels = b.begin_nodes(k);
-      unsigned num_nodes = b.num_nodes(k);
+      stk::mesh::Entity element;
+      for(int simdElemIndex=0; simdElemIndex<simdElems; ++simdElemIndex) {
+        // get element
+        element = b[bktIndex*simdLen + simdElemIndex];
+        elemNodes[simdElemIndex] = bulk_data.begin_nodes(element);
+        fill_pre_req_data(dataNeededBySuppAlgs_, bulk_data, topo_, element,
+                          *prereqData[simdElemIndex], interleaveMEViews_);
+      }
+
+      copy_and_interleave(prereqData, simdElems, simdLen, simdPrereqData, interleaveMEViews_);
+
+      if (!interleaveMEViews_) {
+        fill_master_element_views(dataNeededBySuppAlgs_, bulk_data, topo_, element, simdPrereqData);
+      }
 
       for ( int i = 0; i < rhsSize_; ++i ) {
-        rhs(i) = 0.0;
+        simdrhs(i) = 0.0;
       }
 
       for ( int i = 0; i < rhsSize_; ++i ) {
         for ( int j = 0; j < rhsSize_; ++j ) {
-          lhs(i,j) = 0.0;
+          simdlhs(i,j) = 0.0;
         }
       }
 
       // call supplemental; gathers happen inside the elem_execute method
       for ( size_t i = 0; i < activeKernelsSize; ++i )
-        activeKernels_[i]->execute( lhs, rhs, prereqData );
-      
-      apply_coeff(num_nodes, node_rels, scratchIds, rhs, lhs, __FILE__);
+        activeKernels_[i]->execute( simdlhs, simdrhs, simdPrereqData );
+
+      for(int simdElemIndex=0; simdElemIndex<simdElems; ++simdElemIndex) {
+        extract_vector_lane(simdrhs, simdElemIndex, rhs);
+        extract_vector_lane(simdlhs, simdElemIndex, lhs);
+        apply_coeff(num_nodes, elemNodes[simdElemIndex], scratchIds, rhs, lhs, __FILE__);
+      }
     });
+
+    for(int simdIndex=0; simdIndex<simdLen; ++simdIndex) {
+       delete prereqData[simdIndex];
+    }
   });
 }
 

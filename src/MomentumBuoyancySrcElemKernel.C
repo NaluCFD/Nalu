@@ -30,7 +30,7 @@ MomentumBuoyancySrcElemKernel<AlgTraits>::MomentumBuoyancySrcElemKernel(
   ElemDataRequests& dataPreReqs)
   : Kernel(),
     rhoRef_(solnOpts.referenceDensity_),
-    ipNodeMap_(sierra::nalu::get_volume_master_element(AlgTraits::topo_)->ipNodeMap())
+    ipNodeMap_(sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_)->ipNodeMap())
 {
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
   ScalarFieldType *density = metaData.get_field<ScalarFieldType>(
@@ -39,13 +39,13 @@ MomentumBuoyancySrcElemKernel<AlgTraits>::MomentumBuoyancySrcElemKernel(
   coordinates_ = metaData.get_field<VectorFieldType>(
     stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
   
-  std::vector<double> solnOptsGravity = solnOpts.get_gravity_vector(AlgTraits::nDim_);
+  const std::vector<double>& solnOptsGravity = solnOpts.get_gravity_vector(AlgTraits::nDim_);
   for (int i = 0; i < AlgTraits::nDim_; i++)
     gravity_(i) = solnOptsGravity[i];
 
-  MasterElement* meSCV = sierra::nalu::get_volume_master_element(AlgTraits::topo_);
+  MasterElement* meSCV = sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_);
 
-  meSCV->shape_fcn(&v_shape_function_(0,0));
+  get_scv_shape_fn_data<AlgTraits>([&](double* ptr){meSCV->shape_fcn(ptr);}, v_shape_function_);
 
   // add master elements
   dataPreReqs.add_cvfem_volume_me(meSCV);
@@ -63,26 +63,26 @@ MomentumBuoyancySrcElemKernel<AlgTraits>::~MomentumBuoyancySrcElemKernel()
 template<typename AlgTraits>
 void
 MomentumBuoyancySrcElemKernel<AlgTraits>::execute(
-  SharedMemView<double**>& /* lhs */,
-  SharedMemView<double*>& rhs,
-  ScratchViews& scratchViews)
+  SharedMemView<DoubleType**>& /* lhs */,
+  SharedMemView<DoubleType*>& rhs,
+  ScratchViews<DoubleType>& scratchViews)
 {
-  SharedMemView<double*>& v_densityNp1 = scratchViews.get_scratch_view_1D(*densityNp1_);
-  SharedMemView<double*>& v_scv_volume = scratchViews.get_me_views(CURRENT_COORDINATES).scv_volume;
+  SharedMemView<DoubleType*>& v_densityNp1 = scratchViews.get_scratch_view_1D(*densityNp1_);
+  SharedMemView<DoubleType*>& v_scv_volume = scratchViews.get_me_views(CURRENT_COORDINATES).scv_volume;
 
   for (int ip=0; ip < AlgTraits::numScvIp_; ++ip) {
     const int nearestNode = ipNodeMap_[ip];
-    double rhoNp1 = 0.0;
+    DoubleType rhoNp1 = 0.0;
 
     for (int ic=0; ic < AlgTraits::nodesPerElement_; ++ic) {
-      const double r = v_shape_function_(ip, ic);
+      const DoubleType r = v_shape_function_(ip, ic);
       rhoNp1 += r * v_densityNp1(ic);
     }
 
     // Compute RHS
-    const double scV = v_scv_volume(ip);
+    const DoubleType scV = v_scv_volume(ip);
     const int nnNdim = nearestNode * AlgTraits::nDim_;
-    const double fac = (rhoNp1 - rhoRef_) * scV;
+    const DoubleType fac = (rhoNp1 - rhoRef_) * scV;
     for (int j=0; j < AlgTraits::nDim_; j++) {
       rhs(nnNdim + j) += fac * gravity_(j);
     }

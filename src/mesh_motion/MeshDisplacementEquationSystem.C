@@ -102,7 +102,7 @@ MeshDisplacementEquationSystem::MeshDisplacementEquationSystem(
   // extract solver name and solver object
   std::string solverName = realm_.equationSystems_.get_solver_block_name("mesh_displacement");
   LinearSolver *solver = realm_.root()->linearSolvers_->create_solver(solverName, EQ_MESH_DISPLACEMENT);
-  linsys_ = LinearSystem::create(realm_, realm_.spatialDimension_, name_, solver);
+  linsys_ = LinearSystem::create(realm_, realm_.spatialDimension_, this, solver);
 
   // determine nodal gradient form; use the edgeNodalGradient_ data member since mesh_displacement EQ does not need this
   set_nodal_gradient("mesh_velocity");
@@ -481,7 +481,7 @@ MeshDisplacementEquationSystem::reinitialize_linear_system()
   // create new solver
   std::string solverName = realm_.equationSystems_.get_solver_block_name("mesh_velocity");
   LinearSolver *solver = realm_.root()->linearSolvers_->create_solver(solverName, EQ_MESH_DISPLACEMENT);
-  linsys_ = LinearSystem::create(realm_, realm_.spatialDimension_, name_, solver);
+  linsys_ = LinearSystem::create(realm_, realm_.spatialDimension_, this, solver);
 
   // initialize new solver
   solverAlgDriver_->initialize_connectivity();
@@ -516,7 +516,7 @@ MeshDisplacementEquationSystem::solve_and_update()
   for ( int k = 0; k < maxIterations_; ++k ) {
 
     NaluEnv::self().naluOutputP0() << " " << k+1 << "/" << maxIterations_
-                    << std::setw(15) << std::right << name_ << std::endl;
+                    << std::setw(15) << std::right << userSuppliedName_ << std::endl;
 
     // tke assemble, load_complete and solve
     assemble_and_solve(dxTmp_);

@@ -145,6 +145,11 @@ void calc_projected_nodal_gradient(
   GenericFieldType& tensorField);
 
 void expect_all_near(
+  const Kokkos::View<double*>& calcValue,
+  const double* exactValue,
+  const double tol = 1.0e-15);
+
+void expect_all_near(
   const sierra::nalu::SharedMemView<double*>& calcValue,
   const double* exactValue,
   const double tol = 1.0e-15);
@@ -158,6 +163,23 @@ void expect_all_near(
   const sierra::nalu::SharedMemView<double**>& calcValue,
   const double* exactValue,
   const double tol = 1.0e-15);
+
+template<int N>
+void expect_all_near(
+  const Kokkos::View<double**>& calcValue,
+  const double (*exactValue)[N],
+  const double tol = 1.0e-15)
+{
+  const int dim1 = calcValue.dimension(0);
+  const int dim2 = calcValue.dimension(1);
+  EXPECT_EQ(dim2, N);
+
+  for (int i=0; i < dim1; ++i) {
+    for (int j=0; j < dim2; ++j) {
+      EXPECT_NEAR(calcValue(i,j), exactValue[i][j], tol);
+    }
+  }
+}
 
 template<int N>
 void expect_all_near(
@@ -230,14 +252,17 @@ public:
 
     // For LHS/RHS golds expect only one element in the mesh
     EXPECT_EQ(buckets.size(), 1u);
+    const int simdLen = 1;
+    const int simdIndex = 0;
 
     const int rhsSize = topo_.num_nodes() * numDof_;
     const int lhsSize = rhsSize * rhsSize;
     const int bytes_per_team = 0;
     const int num_bytes_for_kernels = sierra::nalu::get_num_bytes_pre_req_data(
         dataNeededByKernels_, meta.spatial_dimension()) ;
-    const int bytes_per_thread = (rhsSize + lhsSize) * sizeof(double) +
+    int bytes_per_thread = (rhsSize + lhsSize) * sizeof(double) +
       num_bytes_for_kernels;
+    bytes_per_thread *= (1 + stk::simd::ndoubles);
 
     auto team_exec = sierra::nalu::get_team_policy(
       buckets.size(), bytes_per_team, bytes_per_thread);
@@ -248,26 +273,46 @@ public:
         // For LHS/RHS golds expect only one element in the mesh
         EXPECT_EQ(length, 1u);
 
-        sierra::nalu::ScratchViews preReqData(
+        std::vector<sierra::nalu::ScratchViews<double>*> preReqData(simdLen, nullptr);
+
+        preReqData[simdIndex] = new sierra::nalu::ScratchViews<double>(team, bulk_, topo_, dataNeededByKernels_);
+
+        sierra::nalu::ScratchViews<DoubleType> simdPreReqData(
           team, bulk_, topo_, dataNeededByKernels_);
-        rhs_ = sierra::nalu::get_shmem_view_1D(team, rhsSize);
-        lhs_ = sierra::nalu::get_shmem_view_2D(team, rhsSize, rhsSize);
+
+        rhs_ = sierra::nalu::get_shmem_view_1D<double>(team, rhsSize);
+        lhs_ = sierra::nalu::get_shmem_view_2D<double>(team, rhsSize, rhsSize);
+
+        sierra::nalu::SharedMemView<DoubleType*> simdRhs = sierra::nalu::get_shmem_view_1D<DoubleType>(team, rhsSize);
+        sierra::nalu::SharedMemView<DoubleType**> simdLhs = sierra::nalu::get_shmem_view_2D<DoubleType>(team, rhsSize, rhsSize);
 
         Kokkos::parallel_for(
           Kokkos::TeamThreadRange(team, length), [&](const size_t& k) {
             stk::mesh::Entity element = b[k];
             sierra::nalu::fill_pre_req_data(
-              dataNeededByKernels_, bulk_, topo_, element, preReqData);
+              dataNeededByKernels_, bulk_, topo_, element, *preReqData[0]);
+
+            sierra::nalu::copy_and_interleave(preReqData, simdLen, simdLen, simdPreReqData);
 
             for (int i=0; i < rhsSize; i++) {
-              rhs_(i) = 0.0;
+              simdRhs(i) = 0.0;
               for (int j=0; j < rhsSize; j++) {
-                lhs_(i,j) = 0.0;
+                simdLhs(i,j) = 0.0;
               }
             }
 
             for (size_t i=0; i < activeKernels_.size(); ++i)
-              activeKernels_[i]->execute(lhs_, rhs_, preReqData);
+              activeKernels_[i]->execute(simdLhs, simdRhs, simdPreReqData);
+
+            for(int i=0; i<rhsSize; ++i) {
+              rhs_(i) = stk::simd::get_data(simdRhs(i),simdIndex);
+            }
+            for(int i=0; i<rhsSize; ++i) {
+              for(int j=0; j<rhsSize; ++j) {
+                lhs_(i,j) = stk::simd::get_data(simdLhs(i,j),simdIndex);
+              }
+            }
+
           });
 
       });
@@ -290,7 +335,7 @@ public:
       nalu_out() << "  { ";
       for (int j=0; j < rhsSize; j++) {
         nalu_out() << std::setprecision(16) << std::fixed
-                   << (std::fabs(lhs_(i,j)) < tol ? 0.0 : lhs_(i,j)) << ", ";
+                   << (std::fabs(stk::simd::get_data(lhs_(i,j),0)) < tol ? 0.0 : lhs_(i,j)) << ", ";
       }
       nalu_out() << " }," << std::endl;
     }
@@ -302,7 +347,7 @@ public:
                << std::endl << "  ";
     for (int i=0; i < rhsSize; i++) {
       nalu_out() << std::setprecision(16) << std::fixed
-                 << (std::fabs(rhs_(i)) < tol ? 0.0 : rhs_(i)) << ", ";
+                 << (std::fabs(stk::simd::get_data(rhs_(i),0)) < tol ? 0.0 : rhs_(i)) << ", ";
     }
     nalu_out() << "};" << std::endl << std::endl;
   }
@@ -442,7 +487,7 @@ public:
         &meta_.declare_field<GenericFieldType>(
           stk::topology::NODE_RANK, "dudx"))
   {
-    const auto& meSCS = sierra::nalu::get_surface_master_element(stk::topology::HEX_8);
+    const auto& meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(stk::topology::HEX_8);
     stk::mesh::put_field(*massFlowRate_, meta_.universal_part(), meSCS->numIntPoints_);
     stk::mesh::put_field(*viscosity_, meta_.universal_part(), 1);
     stk::mesh::put_field(*dudx_, meta_.universal_part(), spatialDim_ * spatialDim_);
@@ -534,7 +579,7 @@ public:
     viscPrimary_(1.967e-5),
     viscSecondary_(1.85e-5)
   {
-    const auto& meSCS = sierra::nalu::get_surface_master_element(stk::topology::HEX_8);
+    const auto& meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(stk::topology::HEX_8);
     stk::mesh::put_field(*mixFraction_, meta_.universal_part(), 1);
     stk::mesh::put_field(*velocity_, meta_.universal_part(), spatialDim_);
     stk::mesh::put_field(*density_, meta_.universal_part(), 1);

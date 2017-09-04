@@ -508,7 +508,7 @@ void calc_mass_flow_rate_scs(
 
   const ScalarFieldType& densityNp1 = density.field_of_state(stk::mesh::StateNP1);
   const VectorFieldType& velocityNp1 = velocity.field_of_state(stk::mesh::StateNP1);
-  auto meSCS = sierra::nalu::get_surface_master_element(topo);
+  auto meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(topo);
 
   dataNeeded.add_cvfem_surface_me(meSCS);
   dataNeeded.add_coordinates_field(coordinates, ndim, sierra::nalu::CURRENT_COORDINATES);
@@ -534,7 +534,7 @@ void calc_mass_flow_rate_scs(
 
       EXPECT_EQ(b.topology(), topo);
 
-      sierra::nalu::ScratchViews preReqData(
+      sierra::nalu::ScratchViews<double> preReqData(
         team, bulk, topo, dataNeeded);
 
       Kokkos::parallel_for(
@@ -590,7 +590,7 @@ void calc_projected_nodal_gradient_interior(
 
   sierra::nalu::ElemDataRequests dataNeeded;
 
-  auto meSCS = sierra::nalu::get_surface_master_element(topo);
+  auto meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(topo);
 
   dataNeeded.add_cvfem_surface_me(meSCS);
   dataNeeded.add_coordinates_field(coordinates, ndim, sierra::nalu::CURRENT_COORDINATES);
@@ -615,7 +615,7 @@ void calc_projected_nodal_gradient_interior(
 
     EXPECT_EQ(b.topology(), topo);
 
-    sierra::nalu::ScratchViews preReqData(
+    sierra::nalu::ScratchViews<double> preReqData(
       team, bulk, topo, dataNeeded);
 
     Kokkos::parallel_for(
@@ -668,7 +668,7 @@ void calc_projected_nodal_gradient_interior(
 
   sierra::nalu::ElemDataRequests dataNeeded;
 
-  auto meSCS = sierra::nalu::get_surface_master_element(topo);
+  auto meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(topo);
 
   dataNeeded.add_cvfem_surface_me(meSCS);
   dataNeeded.add_coordinates_field(coordinates, ndim, sierra::nalu::CURRENT_COORDINATES);
@@ -693,7 +693,7 @@ void calc_projected_nodal_gradient_interior(
 
     EXPECT_EQ(b.topology(), topo);
 
-    sierra::nalu::ScratchViews preReqData(
+    sierra::nalu::ScratchViews<double> preReqData(
       team, bulk, topo, dataNeeded);
 
     Kokkos::parallel_for(
@@ -749,7 +749,7 @@ void calc_projected_nodal_gradient_boundary(
 
   sierra::nalu::ElemDataRequests dataNeeded;
 
-  auto meBC = sierra::nalu::get_surface_master_element(topo);
+  auto meBC = sierra::nalu::MasterElementRepo::get_surface_master_element(topo);
 
   dataNeeded.add_cvfem_surface_me(meBC);
   dataNeeded.add_coordinates_field(coordinates, ndim, sierra::nalu::CURRENT_COORDINATES);
@@ -774,7 +774,7 @@ void calc_projected_nodal_gradient_boundary(
 
     EXPECT_EQ(b.topology(), topo);
 
-    sierra::nalu::ScratchViews preReqData(
+    sierra::nalu::ScratchViews<double> preReqData(
       team, bulk, topo, dataNeeded);
 
     Kokkos::parallel_for(
@@ -822,7 +822,7 @@ void calc_projected_nodal_gradient_boundary(
 
   sierra::nalu::ElemDataRequests dataNeeded;
 
-  auto meBC = sierra::nalu::get_surface_master_element(topo);
+  auto meBC = sierra::nalu::MasterElementRepo::get_surface_master_element(topo);
 
   dataNeeded.add_cvfem_surface_me(meBC);
   dataNeeded.add_coordinates_field(coordinates, ndim, sierra::nalu::CURRENT_COORDINATES);
@@ -847,7 +847,7 @@ void calc_projected_nodal_gradient_boundary(
 
     EXPECT_EQ(b.topology(), topo);
 
-    sierra::nalu::ScratchViews preReqData(
+    sierra::nalu::ScratchViews<double> preReqData(
       team, bulk, topo, dataNeeded);
 
     Kokkos::parallel_for(
@@ -894,7 +894,7 @@ void calc_dual_nodal_volume(
 
   sierra::nalu::ElemDataRequests dataNeeded;
 
-  auto meSCV = sierra::nalu::get_volume_master_element(topo);
+  auto meSCV = sierra::nalu::MasterElementRepo::get_volume_master_element(topo);
 
   dataNeeded.add_cvfem_volume_me(meSCV);
   dataNeeded.add_coordinates_field(coordinates, ndim, sierra::nalu::CURRENT_COORDINATES);
@@ -916,7 +916,7 @@ void calc_dual_nodal_volume(
 
     EXPECT_EQ(b.topology(), topo);
 
-    sierra::nalu::ScratchViews preReqData(
+    sierra::nalu::ScratchViews<double> preReqData(
       team, bulk, topo, dataNeeded);
 
     Kokkos::parallel_for(
@@ -984,6 +984,18 @@ void calc_projected_nodal_gradient(
   calc_projected_nodal_gradient_boundary(bulk, topo.side_topology(0), coordinates, dnv, vectorField, gradField);
   if (bulk.parallel_size() > 1) {
     stk::mesh::parallel_sum(bulk, {&gradField});
+  }
+}
+
+void expect_all_near(
+  const Kokkos::View<double*>& calcValue,
+  const double* exactValue,
+  const double tol)
+{
+  const int length = calcValue.dimension(0);
+
+  for (int i=0; i < length; ++i) {
+    EXPECT_NEAR(calcValue[i], exactValue[i], tol);
   }
 }
 

@@ -28,7 +28,6 @@ private:
   std::vector<ordinal_type> volume_node_ordinals();
   void set_volume_node_connectivities();
   void set_subelement_connectivites();
-  void set_face_node_map();
   void set_side_node_ordinals();
   std::pair<ordinal_type,ordinal_type> get_edge_offsets(ordinal_type i, ordinal_type j, ordinal_type edge_offset);
   void set_base_node_maps();

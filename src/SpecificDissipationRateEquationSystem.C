@@ -104,7 +104,7 @@ SpecificDissipationRateEquationSystem::SpecificDissipationRateEquationSystem(
   // extract solver name and solver object
   std::string solverName = realm_.equationSystems_.get_solver_block_name("specific_dissipation_rate");
   LinearSolver *solver = realm_.root()->linearSolvers_->create_solver(solverName, EQ_SPEC_DISS_RATE);
-  linsys_ = LinearSystem::create(realm_, 1, name_, solver);
+  linsys_ = LinearSystem::create(realm_, 1, this, solver);
 
   // determine nodal gradient form
   set_nodal_gradient("specific_dissipation_rate");
@@ -694,7 +694,7 @@ SpecificDissipationRateEquationSystem::reinitialize_linear_system()
   // create new solver
   std::string solverName = realm_.equationSystems_.get_solver_block_name("specific_dissipation_rate");
   LinearSolver *solver = realm_.root()->linearSolvers_->create_solver(solverName, EQ_SPEC_DISS_RATE);
-  linsys_ = LinearSystem::create(realm_, 1, name_, solver);
+  linsys_ = LinearSystem::create(realm_, 1, this, solver);
 
   // initialize
   solverAlgDriver_->initialize_connectivity();

@@ -11,10 +11,21 @@
 #include <stk_mesh/base/GetEntities.hpp>
 
 #include <master_element/MasterElement.h>
+#include <master_element/Hex8GeometryFunctions.h>
+#include <master_element/MasterElementUtils.h>
+
+#include <random>
 
 #include "UnitTestUtils.h"
 
 namespace {
+
+  double determinant33(const double* mat)
+  {
+    enum { XX = 0, XY = 1, XZ = 2, YX = 3, YY = 4, YZ = 5, ZX = 6, ZY = 7, ZZ = 8 };
+    return (mat[XX] * (mat[YY] * mat[ZZ] - mat[YZ] * mat[ZY]) - mat[XY] * (mat[YX] * mat[ZZ] - mat[YZ] * mat[ZX]) +
+        mat[XZ] * (mat[YX] * mat[ZY] - mat[YY] * mat[ZX]));
+  }
 
 void check_HexSCV_determinant(const stk::mesh::BulkData& bulk)
 {
@@ -74,3 +85,48 @@ TEST(HexSCV, determinant)
     check_HexSCV_determinant(bulk);
 }
 
+TEST(HexSCV, grandyvol)
+{
+  stk::ParallelMachine comm = MPI_COMM_WORLD;
+
+  unsigned spatialDimension = 3;
+  stk::mesh::MetaData meta(spatialDimension);
+  stk::mesh::BulkData bulk(meta, comm);
+
+  unit_test_utils::fill_mesh_1_elem_per_proc_hex8(bulk);
+  const auto& coordField = *static_cast<const VectorFieldType*>(meta.coordinate_field());
+
+  double v_coords[8][3];
+
+  std::mt19937 rng;
+  rng.seed(std::mt19937::default_seed);
+  std::uniform_real_distribution<double> coeff(-1.0, 1.0);
+
+  double Q[9] = {
+       2.0 + coeff(rng), coeff(rng), coeff(rng),
+       coeff(rng), 2.5 + coeff(rng), coeff(rng),
+       coeff(rng), coeff(rng), 3.0 + coeff(rng)
+  };
+  double detQ = determinant33(Q);
+
+  for (auto* ib : bulk.get_buckets(stk::topology::ELEM_RANK, meta.universal_part())) {
+    const auto& b = *ib;
+    for (size_t k = 0u; k < b.size(); ++k) {
+      const auto* node_rels = bulk.begin_nodes(b[k]);
+      for (int n = 0; n < 8; ++n) {
+        for (int j = 0; j < 3; ++j) {
+          v_coords[n][j] = 0.0;
+          for (int i = 0; i < 3; ++i) {
+            v_coords[n][j] += Q[3 * j + i] * stk::mesh::field_data(coordField, node_rels[n])[i];
+          }
+        }
+      }
+
+      double exactVol = detQ;
+      // start caliper
+      double volGrandy = sierra::nalu::hex_volume_grandy(v_coords);
+      // end caliper
+      EXPECT_NEAR(volGrandy, exactVol, tol);
+    }
+  }
+}

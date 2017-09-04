@@ -92,7 +92,7 @@ template <class FROM, class TO>  void LinInterp<FROM,TO>::filter_to_nearest (
       // extract master element from the bucket in which the element resides
       const stk::mesh::Bucket &theBucket = fromBulkData.bucket(theElem);
       const stk::topology &theElemTopo = theBucket.topology();
-      MasterElement *meSCS = sierra::nalu::get_surface_master_element(theElemTopo);
+      MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(theElemTopo);
 
       // load nodal coordinates from element
       stk::mesh::Entity const* elem_node_rels = fromBulkData.begin_nodes(theElem);
@@ -169,7 +169,7 @@ template <class FROM, class TO>  void LinInterp<FROM,TO>::apply
 
     const stk::mesh::Bucket &theBucket = fromBulkData.bucket(theElem);
     const stk::topology &theElemTopo = theBucket.topology();
-    MasterElement *meSCS = sierra::nalu::get_surface_master_element(theElemTopo);
+    MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(theElemTopo);
 
     stk::mesh::Entity const* elem_node_rels = fromBulkData.begin_nodes(theElem);
     const int num_nodes = fromBulkData.num_nodes(theElem);

@@ -8,6 +8,7 @@
 
 #include <LinearSystem.h>
 #include <TpetraLinearSystem.h>
+#include <EquationSystem.h>
 #include <Realm.h>
 #include <Simulation.h>
 #include <LinearSolver.h>
@@ -44,13 +45,14 @@ namespace nalu{
 LinearSystem::LinearSystem(
   Realm &realm,
   const unsigned numDof,
-  const std::string & name,
+  EquationSystem *eqSys,
   LinearSolver *linearSolver)
   : realm_(realm),
+    eqSys_(eqSys),
     inConstruction_(false),
     writeCounter_(0),
     numDof_(numDof),
-    name_(name),
+    eqSysName_(eqSys->name_),
     linearSolver_(linearSolver),
     linearSolveIterations_(0),
     nonLinearResidual_(0.0),
@@ -81,13 +83,13 @@ bool LinearSystem::debug()
 }
 
 // static method
-LinearSystem *LinearSystem::create(Realm& realm, const unsigned numDof, const std::string & name, LinearSolver *solver)
+LinearSystem *LinearSystem::create(Realm& realm, const unsigned numDof, EquationSystem *eqSys, LinearSolver *solver)
 {
   switch(solver->getType()) {
   case PT_TPETRA:
     return new TpetraLinearSystem(realm,
                                   numDof,
-                                  name,
+                                  eqSys,
                                   solver);
     break;
   case PT_END:

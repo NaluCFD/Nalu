@@ -33,7 +33,7 @@ ScalarMassElemKernel<AlgTraits>::ScalarMassElemKernel(
   const bool lumpedMass)
   : Kernel(),
     lumpedMass_(lumpedMass),
-    ipNodeMap_(sierra::nalu::get_volume_master_element(AlgTraits::topo_)->ipNodeMap())
+    ipNodeMap_(sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_)->ipNodeMap())
 {
   // save off fields
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
@@ -57,13 +57,13 @@ ScalarMassElemKernel<AlgTraits>::ScalarMassElemKernel(
   coordinates_ = metaData.get_field<VectorFieldType>(
     stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
 
-  MasterElement *meSCV = sierra::nalu::get_volume_master_element(AlgTraits::topo_);
+  MasterElement *meSCV = sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_);
 
   // compute shape function
   if ( lumpedMass_ )
-    meSCV->shifted_shape_fcn(&v_shape_function_(0,0));
+    get_scv_shape_fn_data<AlgTraits>([&](double* ptr){meSCV->shifted_shape_fcn(ptr);}, v_shape_function_);
   else
-    meSCV->shape_fcn(&v_shape_function_(0,0));
+    get_scv_shape_fn_data<AlgTraits>([&](double* ptr){meSCV->shape_fcn(ptr);}, v_shape_function_);
 
   // add master elements
   dataPreReqs.add_cvfem_volume_me(meSCV);
@@ -96,24 +96,24 @@ ScalarMassElemKernel<AlgTraits>::setup(const TimeIntegrator& timeIntegrator)
 template<typename AlgTraits>
 void
 ScalarMassElemKernel<AlgTraits>::execute(
-  SharedMemView<double **>& lhs,
-  SharedMemView<double *>&rhs,
-  ScratchViews& scratchViews)
+  SharedMemView<DoubleType **>& lhs,
+  SharedMemView<DoubleType *>&rhs,
+  ScratchViews<DoubleType>& scratchViews)
 {
-  SharedMemView<double*>& v_qNm1 = scratchViews.get_scratch_view_1D(
+  SharedMemView<DoubleType*>& v_qNm1 = scratchViews.get_scratch_view_1D(
     *scalarQNm1_);
-  SharedMemView<double*>& v_qN = scratchViews.get_scratch_view_1D(
+  SharedMemView<DoubleType*>& v_qN = scratchViews.get_scratch_view_1D(
     *scalarQN_);
-  SharedMemView<double*>& v_qNp1 = scratchViews.get_scratch_view_1D(
+  SharedMemView<DoubleType*>& v_qNp1 = scratchViews.get_scratch_view_1D(
     *scalarQNp1_);
-  SharedMemView<double*>& v_rhoNm1 = scratchViews.get_scratch_view_1D(
+  SharedMemView<DoubleType*>& v_rhoNm1 = scratchViews.get_scratch_view_1D(
     *densityNm1_);
-  SharedMemView<double*>& v_rhoN = scratchViews.get_scratch_view_1D(
+  SharedMemView<DoubleType*>& v_rhoN = scratchViews.get_scratch_view_1D(
     *densityN_);
-  SharedMemView<double*>& v_rhoNp1 = scratchViews.get_scratch_view_1D(
+  SharedMemView<DoubleType*>& v_rhoNp1 = scratchViews.get_scratch_view_1D(
     *densityNp1_);
 
-  SharedMemView<double*>& v_scv_volume = scratchViews.get_me_views(CURRENT_COORDINATES).scv_volume;
+  SharedMemView<DoubleType*>& v_scv_volume = scratchViews.get_me_views(CURRENT_COORDINATES).scv_volume;
 
   for ( int ip = 0; ip < AlgTraits::numScvIp_; ++ip ) {
 
@@ -121,16 +121,16 @@ ScalarMassElemKernel<AlgTraits>::execute(
     const int nearestNode = ipNodeMap_[ip];
 
     // zero out; scalar
-    double qNm1Scv = 0.0;
-    double qNScv = 0.0;
-    double qNp1Scv = 0.0;
-    double rhoNm1Scv = 0.0;
-    double rhoNScv = 0.0;
-    double rhoNp1Scv = 0.0;
+    DoubleType qNm1Scv = 0.0;
+    DoubleType qNScv = 0.0;
+    DoubleType qNp1Scv = 0.0;
+    DoubleType rhoNm1Scv = 0.0;
+    DoubleType rhoNScv = 0.0;
+    DoubleType rhoNp1Scv = 0.0;
 
     for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
       // save off shape function
-      const double r = v_shape_function_(ip,ic);
+      const DoubleType r = v_shape_function_(ip,ic);
 
       // scalar q
       qNm1Scv += r*v_qNm1(ic);
@@ -144,15 +144,15 @@ ScalarMassElemKernel<AlgTraits>::execute(
     }
 
     // assemble rhs
-    const double scV = v_scv_volume(ip);
+    const DoubleType scV = v_scv_volume(ip);
     rhs(nearestNode) +=
       -(gamma1_*rhoNp1Scv*qNp1Scv + gamma2_*rhoNScv*qNScv + gamma3_*rhoNm1Scv*qNm1Scv)*scV/dt_;
 
     // manage LHS
     for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
       // save off shape function
-      const double r = v_shape_function_(ip,ic);
-      const double lhsfac = r*gamma1_*rhoNp1Scv*scV/dt_;
+      const DoubleType r = v_shape_function_(ip,ic);
+      const DoubleType lhsfac = r*gamma1_*rhoNp1Scv*scV/dt_;
       lhs(nearestNode,ic) += lhsfac;
     }
   }

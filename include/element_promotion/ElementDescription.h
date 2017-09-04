@@ -15,18 +15,32 @@
 
 #include <stk_topology/topology.hpp>
 
+
+
 namespace sierra {
 namespace nalu {
+
+  int poly_order_from_super_topology(int dimension, stk::topology superTopo);
 
   using ordinal_type = int;
 
 struct ElementDescription
 {
+  /**
+   * We implement the high order method using the "super topology" concept in STK.
+   *
+   * However,"super topologies" in STK only hold information about the number of nodes.
+   * An "ElementDescription" provides the remaining topological information
+   * as well as the reference coordinates of the nodes.
+   */
+
   using AddedConnectivityOrdinalMap = std::map<ordinal_type, std::vector<ordinal_type>>;
   using AddedNodeLocationsMap  = std::map<ordinal_type, std::vector<double>> ;
   using SubElementConnectivity = std::vector<std::vector<ordinal_type>> ;
 public:
-  static std::unique_ptr<ElementDescription> create(int dimension,  int order);
+  static std::unique_ptr<ElementDescription> create(int dimension, int order);
+  static std::unique_ptr<ElementDescription> create(int dimension, stk::topology topo);
+
   virtual ~ElementDescription();
 
   ordinal_type node_map(ordinal_type i, ordinal_type j) const { return nodeMap.at(i+nodes1D*j); };

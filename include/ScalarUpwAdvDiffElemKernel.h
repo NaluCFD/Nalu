@@ -22,7 +22,6 @@ namespace nalu {
 class SolutionOptions;
 class MasterElement;
 class ElemDataRequests;
-class ScratchViews;
 class PecletFunction;
 class EquationSystem;
 
@@ -49,13 +48,13 @@ public:
    *  the linear solve
    */
   virtual void execute(
-    SharedMemView<double**>&,
-    SharedMemView<double*>&,
-    ScratchViews&);
+    SharedMemView<DoubleType**>&,
+    SharedMemView<DoubleType*>&,
+    ScratchViews<DoubleType>&);
 
-  virtual double van_leer(
-    const double &dqm,
-    const double &dqp);
+  virtual DoubleType van_leer(
+    const DoubleType &dqm,
+    const DoubleType &dqp);
 
 private:
   ScalarUpwAdvDiffElemKernel() = delete;
@@ -89,7 +88,7 @@ private:
   PecletFunction* pecletFunction_{nullptr};
 
   /// Shape functions
-  Kokkos::View<double[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_ { "view_shape_func" };
+  Kokkos::View<DoubleType[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_ { "view_shape_func" };
 
 };
 

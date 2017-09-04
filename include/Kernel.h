@@ -9,15 +9,51 @@
 #define KERNEL_H
 
 #include "KokkosInterface.h"
+#include "SimdInterface.h"
+#include "ScratchViews.h"
+#include "AlgTraits.h"
 
 #include <stk_mesh/base/Entity.hpp>
+
+#include <array>
 
 namespace sierra {
 namespace nalu {
 
 class TimeIntegrator;
 class SolutionOptions;
-class ScratchViews;
+
+template<typename AlgTraits, typename LambdaFunction, typename ViewType>
+void get_scv_shape_fn_data(LambdaFunction lambdaFunction, ViewType& shape_fn_view)
+{
+  static_assert(ViewType::Rank == 2u, "2D View");
+  ThrowRequireMsg(shape_fn_view.extent_int(0) == AlgTraits::numScvIp_, "Inconsistent number of scv ips");
+  ThrowRequireMsg(shape_fn_view.extent_int(1) == AlgTraits::nodesPerElement_, "Inconsistent number of of nodes");
+
+  double tmp_data[AlgTraits::numScvIp_*AlgTraits::nodesPerElement_];
+  lambdaFunction(tmp_data);
+
+  DoubleType* data = &shape_fn_view(0,0);
+  for(int i=0; i<AlgTraits::numScvIp_*AlgTraits::nodesPerElement_; ++i) {
+    data[i] = tmp_data[i];
+  }
+}
+
+template<typename AlgTraits, typename LambdaFunction, typename ViewType>
+void get_scs_shape_fn_data(LambdaFunction lambdaFunction, ViewType& shape_fn_view)
+{
+  static_assert(ViewType::Rank == 2u, "2D View");
+  ThrowRequireMsg(shape_fn_view.extent_int(0) == AlgTraits::numScsIp_, "Inconsistent number of scs ips");
+  ThrowRequireMsg(shape_fn_view.extent_int(1) == AlgTraits::nodesPerElement_, "Inconsistent number of of nodes");
+
+  double tmp_data[AlgTraits::numScsIp_*AlgTraits::nodesPerElement_];
+  lambdaFunction(tmp_data);
+
+  DoubleType* data = &shape_fn_view(0,0);
+  for(int i=0; i<AlgTraits::numScsIp_*AlgTraits::nodesPerElement_; ++i) {
+    data[i] = tmp_data[i];
+  }
+}
 
 /** Base class for computational kernels in Nalu
  *
@@ -39,9 +75,9 @@ public:
    *  the linear solve
    */
   virtual void execute(
-    SharedMemView<double**>&,
-    SharedMemView<double*>&,
-    ScratchViews&)
+    SharedMemView<DoubleType**>&,
+    SharedMemView<DoubleType*>&,
+    ScratchViews<DoubleType>&)
   {}
 };
 

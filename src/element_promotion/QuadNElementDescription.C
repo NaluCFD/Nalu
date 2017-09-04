@@ -56,7 +56,6 @@ QuadNElementDescription::QuadNElementDescription(std::vector<double> in_nodeLocs
   set_volume_node_connectivities();
   set_tensor_product_node_mappings();
   set_boundary_node_mappings();
-  set_face_node_map();
   set_side_node_ordinals();
   set_isoparametric_coordinates();
   set_subelement_connectivites();
@@ -255,7 +254,7 @@ QuadNElementDescription::set_subelement_connectivites()
 }
 //--------------------------------------------------------------------------
 void
-QuadNElementDescription::set_face_node_map()
+QuadNElementDescription::set_side_node_ordinals()
 {
   // index of the "left"-most node along an edge
   int il = 0;
@@ -265,9 +264,12 @@ QuadNElementDescription::set_face_node_map()
   int ir = nodes1D - 1;
   int jr = nodes1D - 1;
 
+  // face node ordinals, reordered according to
+  // the face permutation
+
   faceNodeMap.resize(numBoundaries);
   for (int face_ord = 0; face_ord < numBoundaries; ++face_ord) {
-    faceNodeMap.at(face_ord).resize(nodesPerSide);
+     faceNodeMap.at(face_ord).resize(nodesPerSide);
   }
 
   // bottom
@@ -290,11 +292,6 @@ QuadNElementDescription::set_face_node_map()
     faceNodeMap.at(3).at(m) = node_map(il, nodes1D-m-1);
   }
 
-}
-//--------------------------------------------------------------------------
-void
-QuadNElementDescription::set_side_node_ordinals()
-{
   sideOrdinalMap.resize(4);
   for (int face_ordinal = 0; face_ordinal < 4; ++face_ordinal) {
     sideOrdinalMap[face_ordinal].resize(nodesPerSide);

@@ -14,7 +14,7 @@
 #include <stk_unit_tests/stk_mesh_fixtures/QuadFixture.hpp>
 #include <stk_mesh/base/SkinMesh.hpp>
 
-#include <element_promotion/MasterElementHO.h>
+#include <master_element/MasterElementHO.h>
 #include <element_promotion/PromotedPartHelper.h>
 #include <element_promotion/PromoteElement.h>
 #include <element_promotion/PromotedElementIO.h>

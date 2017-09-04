@@ -38,6 +38,24 @@ public:
     double *det_j,
     double * error );
 
+  void grad_op_fem(
+    SharedMemView<DoubleType**>&coords,
+    SharedMemView<DoubleType***>&gradop,
+    SharedMemView<DoubleType***>&deriv,
+    SharedMemView<DoubleType*>&det_j) final;
+
+  void shifted_grad_op_fem(
+    SharedMemView<DoubleType**>&coords,
+    SharedMemView<DoubleType***>&gradop,
+    SharedMemView<DoubleType***>&deriv,
+    SharedMemView<DoubleType*>&det_j) final;
+
+  void shape_fcn(
+    SharedMemView<DoubleType**> &shpfc) final;
+
+  void shifted_shape_fcn(
+    SharedMemView<DoubleType**> &shpfc) final;
+
   void face_grad_op(
     const int nelem,
     const int face_ordinal,
@@ -70,9 +88,18 @@ private:
     const double *isoParCoord,
     double *shpfc);
 
+  void hex8_fem_shape_fcn(
+    const int  &numIp,
+    const double *isoParCoord,
+    SharedMemView<DoubleType**> shpfc);
+
   void hex8_fem_derivative(
     const int npt, const double* par_coord,
     double* deriv);
+
+  void hex8_fem_derivative(
+    const int npt, const double* par_coord,
+    SharedMemView<DoubleType***> deriv);
 };
     
 } // namespace nalu

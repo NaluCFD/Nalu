@@ -13,6 +13,13 @@
 
 #include <master_element/MasterElement.h>
 
+#include <master_element/Hex8CVFEM.h>
+#include <master_element/Hex27CVFEM.h>
+
+// NGP-based includes
+#include "SimdInterface.h"
+#include "KokkosInterface.h"
+
 #include "UnitTestUtils.h"
 
 namespace {
@@ -87,7 +94,8 @@ void check_interpolation(
   const stk::mesh::BulkData& bulk,
   const stk::topology& topo,
   sierra::nalu::MasterElement& me,
-  unsigned poly_order)
+  unsigned poly_order,
+  bool usingNGP = false)
 {
   // Check that we can interpolate a random 3D polynomial
   // to the integration points
@@ -130,13 +138,13 @@ void check_interpolation(
   std::vector<double> meResult(me.numIntPoints_, 0.0);
   std::vector<double> meShapeFunctions(me.numIntPoints_ * topo.num_nodes());
   me.shape_fcn(meShapeFunctions.data());
-
+  
   for (int j = 0; j < me.numIntPoints_; ++j) {
     for (unsigned i = 0; i < topo.num_nodes(); ++i) {
       meResult[j] += meShapeFunctions[j*topo.num_nodes()+i] * ws_field[i];
     }
   }
-
+  
   for (unsigned j = 0 ; j < meResult.size(); ++j) {
     EXPECT_NEAR(meResult[j], polyResult[j], 1.0e-12);
   }

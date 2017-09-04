@@ -96,7 +96,7 @@ ComputeWallModelSDRWallAlgorithm::execute()
     stk::topology theElemTopo = parentTopo[0];
 
     // extract master element
-    MasterElement *meSCS = sierra::nalu::get_surface_master_element(theElemTopo);
+    MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(theElemTopo);
 
     const stk::mesh::Bucket::size_type length   = b.size();
 
@@ -109,8 +109,6 @@ ComputeWallModelSDRWallAlgorithm::execute()
       // gather nodal data off of face; n/a
       //======================================
       int num_face_nodes = bulk_data.num_nodes(face);
-      // sanity check on num nodes
-      ThrowAssert( num_face_nodes == nodesPerFace );
 
       // pointer to face data
       const double * areaVec = stk::mesh::field_data(*exposedAreaVec_, face);

@@ -26,7 +26,7 @@ void element_discrete_laplacian_kernel_3d(
                        sierra::nalu::MasterElement& meSCS,
                        const ScalarFieldType* discreteLaplacianOfPressure,
                        const ScalarFieldType* nodalPressureField,
-                       sierra::nalu::ScratchViews& elemData)
+                       sierra::nalu::ScratchViews<double>& elemData)
 {
     const int nDim = 3;
     const int nodesPerElem = meSCS.nodesPerElement_;
@@ -66,7 +66,7 @@ public:
 
   virtual void elem_execute(stk::topology topo,
                     sierra::nalu::MasterElement& meSCS,
-                    sierra::nalu::ScratchViews& elemData) = 0;
+                    sierra::nalu::ScratchViews<double>& elemData) = 0;
 };
 
 class DiscreteLaplacianSuppAlg : public SuppAlg
@@ -91,7 +91,7 @@ public:
     dataNeeded.add_gathered_nodal_field(*nodalPressureField, 1);
 
     // add the master element
-    sierra::nalu::MasterElement* meSCS = sierra::nalu::get_surface_master_element(topo);
+    sierra::nalu::MasterElement* meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(topo);
     dataNeeded.add_cvfem_surface_me(meSCS);
   }
 
@@ -99,7 +99,7 @@ public:
 
   virtual void elem_execute(stk::topology /* topo */,
                     sierra::nalu::MasterElement& meSCS,
-                    sierra::nalu::ScratchViews& elemData)
+                    sierra::nalu::ScratchViews<double>& elemData)
   {
       element_discrete_laplacian_kernel_3d(meSCS,
             discreteLaplacianOfPressure_, nodalPressureField_, elemData);
@@ -136,7 +136,7 @@ public:
           stk::topology topo = bkt.topology();
           sierra::nalu::MasterElement* meSCS = dataNeededBySuppAlgs_.get_cvfem_surface_me();
 
-          sierra::nalu::ScratchViews prereqData(team, bulkData_, topo, dataNeededBySuppAlgs_);
+          sierra::nalu::ScratchViews<double> prereqData(team, bulkData_, topo, dataNeededBySuppAlgs_);
 
           Kokkos::parallel_for(Kokkos::TeamThreadRange(team, bkt.size()), [&](const size_t& jj)
           {

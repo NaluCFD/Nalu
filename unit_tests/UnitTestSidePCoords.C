@@ -40,7 +40,7 @@ namespace
 
     auto elem = unit_test_utils::create_one_reference_element(bulk, topo);
     const stk::mesh::Entity* elem_node_rels = bulk.begin_nodes(elem);
-    auto* meSCS = sierra::nalu::get_surface_master_element(topo);
+    auto* meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(topo);
 
     using VectorFieldType = stk::mesh::Field<double, stk::mesh::Cartesian>;
     const VectorFieldType& coordField = *static_cast<const VectorFieldType*>(meta.coordinate_field());
@@ -59,7 +59,7 @@ namespace
     for (const auto* ib : face_buckets) {
       const auto& b = *ib;
 
-      auto* meSide = sierra::nalu::get_surface_master_element(b.topology());
+      auto* meSide = sierra::nalu::MasterElementRepo::get_surface_master_element(b.topology());
       std::vector<double> sideInterpWeights(meSide->numIntPoints_ * meSide->nodesPerElement_, 0.0);
       meSide->shape_fcn(sideInterpWeights.data());
 

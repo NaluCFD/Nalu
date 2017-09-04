@@ -60,6 +60,27 @@ TEST(ElementDescriptionTestQuad, node_map_P4)
   }
 }
 
+TEST(ElementDescriptionTestQuad, face_node_map_P2)
+{
+  // same as native Quad9
+  const std::vector<std::vector<int>> faceNodeMap = {
+      {0, 4, 1}, //face 0, bottom face
+      {1, 5, 2}, //face 1, right face
+      {2, 6, 3}, //face 2, top face  -- reversed order
+      {3, 7, 0}  //face 3, left face -- reversed order
+  };
+
+  auto elem = sierra::nalu::ElementDescription::create(2,2);
+  EXPECT_EQ(4u, elem->faceNodeMap.size());
+  for (unsigned j = 0; j < 4; ++j) {
+    EXPECT_EQ(3u, elem->faceNodeMap[j].size());
+    for (unsigned i = 0; i < 3u; ++i) {
+      EXPECT_EQ(faceNodeMap[j][i], elem->faceNodeMap[j][i]);
+    }
+  }
+}
+
+
 TEST(ElementDescriptionTestQuad, side_ordinal_map_P2)
 {
   std::vector<std::vector<int>> sideNodeMap =
@@ -154,6 +175,31 @@ TEST(ElementDescriptionTestHex, node_map_P3)
   }
 }
 
+TEST(ElementDescriptionTestHex, face_node_map_P2)
+{
+  // minus 1 compared to native Hex27 for face nodes,
+  // since we moved the center node from ordinal 20 to 26
+  const std::vector<std::vector<int>> faceNodeMap =
+  {
+      {0,  8,  1, 12, 24, 13,  4, 16,  5}, // face 0(2): front face (cclockwise)
+      {1,  9,  2, 13, 23, 14,  5, 17,  6}, // face 1(5): right face (cclockwise)
+      {3, 10,  2, 15, 25, 14,  7, 18,  6}, // face 2(3): back face  (clockwise)
+      {0, 11,  3, 12, 22, 15,  4, 19,  7}, // face 3(4): left face  (clockwise)
+      {0,  8,  1, 11, 20, 9,   3, 10,  2}, // face 4(0): bottom face (clockwise)
+      {4, 16,  5, 19, 21,  17, 7, 18,  6}  // face 5(1): top face (cclockwise)
+  };
+
+  auto elem = sierra::nalu::ElementDescription::create(3, 2);
+
+  EXPECT_EQ(6u, elem->faceNodeMap.size());
+  for (unsigned j = 0; j < 6; ++j) {
+    EXPECT_EQ(9u, elem->faceNodeMap[j].size());
+    for (unsigned i = 0; i < 9u; ++i) {
+      EXPECT_EQ(faceNodeMap[j][i], elem->faceNodeMap[j][i]);
+    }
+  }
+}
+
 TEST(ElementDescriptionTestHex, side_ordinal_map_P2)
 {
   std::vector<std::vector<int>> sideNodeMap =
@@ -200,6 +246,10 @@ TEST(ElementDescriptionTestHex, side_ordinal_map_P3)
     }
   }
 }
+
+
+
+
 
 }
 //auto sideNodeOrdinals = elem->sideOrdinalMap;

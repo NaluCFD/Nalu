@@ -193,7 +193,7 @@ ComputeMdotAlgorithmDriver::compute_accumulation()
     const stk::mesh::Bucket::size_type length   = b.size();
 
     // extract master element
-    MasterElement *meSCV = sierra::nalu::get_volume_master_element(b.topology());
+    MasterElement *meSCV = sierra::nalu::MasterElementRepo::get_volume_master_element(b.topology());
 
     // extract master element specifics
     const int nodesPerElement = meSCV->nodesPerElement_;

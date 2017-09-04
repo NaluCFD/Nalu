@@ -854,7 +854,7 @@ ActuatorLinePointDrag::complete_search()
       // extract topo and master element for this topo
       const stk::mesh::Bucket &theBucket = bulkData.bucket(elem);
       const stk::topology &elemTopo = theBucket.topology();
-      MasterElement *meSCS = sierra::nalu::get_surface_master_element(elemTopo);
+      MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(elemTopo);
       const int nodesPerElement = meSCS->nodesPerElement_;
 
       // gather elemental coords
@@ -904,7 +904,7 @@ ActuatorLinePointDrag::resize_std_vector(
   const stk::mesh::BulkData & bulkData)
 {
   const stk::topology &elemTopo = bulkData.bucket(elem).topology();
-  MasterElement *meSCS = sierra::nalu::get_surface_master_element(elemTopo);
+  MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(elemTopo);
   const int nodesPerElement = meSCS->nodesPerElement_;
   theVector.resize(nodesPerElement*sizeOfField);
 }
@@ -962,7 +962,7 @@ ActuatorLinePointDrag::compute_volume(
 {
   // extract master element from the bucket in which the element resides
   const stk::topology &elemTopo = bulkData.bucket(elem).topology();
-  MasterElement *meSCV = sierra::nalu::get_volume_master_element(elemTopo);
+  MasterElement *meSCV = sierra::nalu::MasterElementRepo::get_volume_master_element(elemTopo);
   const int numScvIp = meSCV->numIntPoints_;
 
   // compute scv for this element
@@ -991,7 +991,7 @@ ActuatorLinePointDrag::interpolate_field(
 {
   // extract master element from the bucket in which the element resides
   const stk::topology &elemTopo = bulkData.bucket(elem).topology();
-  MasterElement *meSCS = sierra::nalu::get_surface_master_element(elemTopo);
+  MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(elemTopo);
   
   // interpolate velocity to this best point
   meSCS->interpolatePoint(
@@ -1055,7 +1055,7 @@ ActuatorLinePointDrag::assemble_source_to_nodes(
 {
   // extract master element from the bucket in which the element resides
   const stk::topology &elemTopo = bulkData.bucket(elem).topology();
-  MasterElement *meSCV = sierra::nalu::get_volume_master_element(elemTopo);
+  MasterElement *meSCV = sierra::nalu::MasterElementRepo::get_volume_master_element(elemTopo);
   const int numScvIp = meSCV->numIntPoints_;
 
   // extract elem_node_relations

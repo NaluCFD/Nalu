@@ -31,7 +31,7 @@ MomentumNSOSijElemKernel<AlgTraits>::MomentumNSOSijElemKernel(
   VectorFieldType*,
   ElemDataRequests& dataPreReqs)
   : Kernel(),
-    lrscv_(sierra::nalu::get_surface_master_element(AlgTraits::topo_)->adjacentNodes()),
+    lrscv_(sierra::nalu::MasterElementRepo::get_surface_master_element(AlgTraits::topo_)->adjacentNodes()),
     includeDivU_(solnOpts.includeDivU_),
     shiftedGradOp_(solnOpts.get_shifted_grad_op("velocity"))
 {
@@ -58,8 +58,8 @@ MomentumNSOSijElemKernel<AlgTraits>::MomentumNSOSijElemKernel(
 
   Gjp_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "dpdx");
 
-  MasterElement *meSCS = sierra::nalu::get_surface_master_element(AlgTraits::topo_);
-  meSCS->shape_fcn(&v_shape_function_(0,0));
+  MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(AlgTraits::topo_);
+  get_scs_shape_fn_data<AlgTraits>([&](double* ptr){meSCS->shape_fcn(ptr);}, v_shape_function_);
 
   // add master elements
   dataPreReqs.add_cvfem_surface_me(meSCS);
@@ -84,33 +84,33 @@ MomentumNSOSijElemKernel<AlgTraits>::MomentumNSOSijElemKernel(
 template<typename AlgTraits>
 void
 MomentumNSOSijElemKernel<AlgTraits>::execute(
-  SharedMemView<double**>& lhs,
-  SharedMemView<double *>& rhs,
-  ScratchViews& scratchViews)
+  SharedMemView<DoubleType**>& lhs,
+  SharedMemView<DoubleType *>& rhs,
+  ScratchViews<DoubleType>& scratchViews)
 {
-  double w_ke         [AlgTraits::nodesPerElement_];
-  double w_rhoVrtmScs [AlgTraits::nDim_];
-  double w_uNp1Scs    [AlgTraits::nDim_];
-  double w_dpdxScs    [AlgTraits::nDim_];
-  double w_GjpScs     [AlgTraits::nDim_];
-  double w_dkedxScs   [AlgTraits::nDim_];
+  DoubleType w_ke         [AlgTraits::nodesPerElement_];
+  DoubleType w_rhoVrtmScs [AlgTraits::nDim_];
+  DoubleType w_uNp1Scs    [AlgTraits::nDim_];
+  DoubleType w_dpdxScs    [AlgTraits::nDim_];
+  DoubleType w_GjpScs     [AlgTraits::nDim_];
+  DoubleType w_dkedxScs   [AlgTraits::nDim_];
 
-  SharedMemView<double**>& v_uNp1 = scratchViews.get_scratch_view_2D(*velocityNp1_);
-  SharedMemView<double**>& v_velocityRTM = scratchViews.get_scratch_view_2D(*velocityRTM_);
-  SharedMemView<double**>& v_Gjp = scratchViews.get_scratch_view_2D(*Gjp_);
-  SharedMemView<double*>& v_rhoNp1 = scratchViews.get_scratch_view_1D(*densityNp1_);
-  SharedMemView<double*>& v_pressure = scratchViews.get_scratch_view_1D(*pressure_);
+  SharedMemView<DoubleType**>& v_uNp1 = scratchViews.get_scratch_view_2D(*velocityNp1_);
+  SharedMemView<DoubleType**>& v_velocityRTM = scratchViews.get_scratch_view_2D(*velocityRTM_);
+  SharedMemView<DoubleType**>& v_Gjp = scratchViews.get_scratch_view_2D(*Gjp_);
+  SharedMemView<DoubleType*>& v_rhoNp1 = scratchViews.get_scratch_view_1D(*densityNp1_);
+  SharedMemView<DoubleType*>& v_pressure = scratchViews.get_scratch_view_1D(*pressure_);
 
-  SharedMemView<double**>& v_scs_areav = scratchViews.get_me_views(CURRENT_COORDINATES).scs_areav;
-  SharedMemView<double***>& v_dndx = shiftedGradOp_ 
-    ? scratchViews.get_me_views(CURRENT_COORDINATES).dndx_shifted 
+  SharedMemView<DoubleType**>& v_scs_areav = scratchViews.get_me_views(CURRENT_COORDINATES).scs_areav;
+  SharedMemView<DoubleType***>& v_dndx = shiftedGradOp_
+    ? scratchViews.get_me_views(CURRENT_COORDINATES).dndx_shifted
     : scratchViews.get_me_views(CURRENT_COORDINATES).dndx;
-  SharedMemView<double***>& v_gijUpper = scratchViews.get_me_views(CURRENT_COORDINATES).gijUpper;
-  SharedMemView<double***>& v_gijLower = scratchViews.get_me_views(CURRENT_COORDINATES).gijLower;
+  SharedMemView<DoubleType***>& v_gijUpper = scratchViews.get_me_views(CURRENT_COORDINATES).gijUpper;
+  SharedMemView<DoubleType***>& v_gijLower = scratchViews.get_me_views(CURRENT_COORDINATES).gijLower;
 
   // compute nodal ke
   for ( int n = 0; n < AlgTraits::nodesPerElement_; ++n ) {
-    double ke = 0.0;
+    DoubleType ke = 0.0;
     for ( int j = 0; j < AlgTraits::nDim_; ++j )
       ke += v_uNp1(n,j)*v_uNp1(n,j)/2.0;
     w_ke[n] = ke;
@@ -134,25 +134,25 @@ MomentumNSOSijElemKernel<AlgTraits>::execute(
       w_GjpScs[i] = 0.0;
       w_dkedxScs[i] = 0.0;
     }
-    double rhoScs = 0.0;
-    double divU = 0.0;
+    DoubleType rhoScs = 0.0;
+    DoubleType divU = 0.0;
 
     // determine scs values of interest
     for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
 
       // save off shape function
-      const double r = v_shape_function_(ip,ic);
+      const DoubleType r = v_shape_function_(ip,ic);
 
       // compute scs derivatives and flux derivative
-      const double pressureIC = v_pressure(ic);
-      const double rhoIC = v_rhoNp1(ic);
-      const double keIC = w_ke[ic];
+      const DoubleType pressureIC = v_pressure(ic);
+      const DoubleType rhoIC = v_rhoNp1(ic);
+      const DoubleType keIC = w_ke[ic];
       rhoScs += r*rhoIC;
       for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
-        const double dnj = v_dndx(ip,ic,j);
-        const double vrtmj = v_velocityRTM(ic,j);
-        const double uNp1 = v_uNp1(ic,j);
-        const double Gjp = v_Gjp(ic,j);
+        const DoubleType dnj = v_dndx(ip,ic,j);
+        const DoubleType vrtmj = v_velocityRTM(ic,j);
+        const DoubleType uNp1 = v_uNp1(ic,j);
+        const DoubleType Gjp = v_Gjp(ic,j);
 
         w_rhoVrtmScs[j] += r*rhoIC*vrtmj;
         w_uNp1Scs[j] += r*uNp1;
@@ -164,17 +164,17 @@ MomentumNSOSijElemKernel<AlgTraits>::execute(
     }
 
     // form ke residual (based on fine scale momentum residual used in Pstab)
-    double keResidual = 0.0;
+    DoubleType keResidual = 0.0;
     for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
       keResidual += w_uNp1Scs[j]*(w_dpdxScs[j] - w_GjpScs[j])/rhoScs/2.0;
     }
 
     // denominator for nu as well as terms for "upwind" nu
-    double gUpperMagGradQ = 0.0;
-    double rhoVrtmiGLowerRhoVrtmj = 0.0;
+    DoubleType gUpperMagGradQ = 0.0;
+    DoubleType rhoVrtmiGLowerRhoVrtmj = 0.0;
     for ( int i = 0; i < AlgTraits::nDim_; ++i ) {
-      const double dkedxScsi = w_dkedxScs[i];
-      const double rhoVrtmi = w_rhoVrtmScs[i];
+      const DoubleType dkedxScsi = w_dkedxScs[i];
+      const DoubleType rhoVrtmi = w_rhoVrtmScs[i];
       for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
         gUpperMagGradQ += dkedxScsi*v_gijUpper(ip,i,j)*w_dkedxScs[j];
         rhoVrtmiGLowerRhoVrtmj += rhoVrtmi*v_gijLower(ip,i,j)*w_rhoVrtmScs[j];
@@ -182,14 +182,14 @@ MomentumNSOSijElemKernel<AlgTraits>::execute(
     }
 
     // construct nu from ke residual
-    const double nuResidual = rhoScs*std::sqrt((keResidual*keResidual)/(gUpperMagGradQ+small_));
+    const DoubleType nuResidual = rhoScs*stk::math::sqrt((keResidual*keResidual)/(gUpperMagGradQ+small_));
 
     // construct nu from first-order-like approach; SNL-internal write-up (eq 209)
     // for now, only include advection as full set of terms is too diffuse
-    const double nuFirstOrder = std::sqrt(rhoVrtmiGLowerRhoVrtmj);
+    const DoubleType nuFirstOrder = stk::math::sqrt(rhoVrtmiGLowerRhoVrtmj);
 
     // limit based on first order; Cupw_ is a fudge factor similar to Guermond's approach
-    const double nu = std::min(Cupw_*nuFirstOrder, nuResidual);
+    const DoubleType nu = stk::math::min(Cupw_*nuFirstOrder, nuResidual);
 
     for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
 
@@ -198,25 +198,25 @@ MomentumNSOSijElemKernel<AlgTraits>::execute(
       for ( int i = 0; i < AlgTraits::nDim_; ++i ) {
 
         // divU stress term
-        const double divUstress = 2.0/3.0*nu*divU*v_scs_areav(ip,i)*v_gijUpper(ip,i,i)*includeDivU_;
+        const DoubleType divUstress = 2.0/3.0*nu*divU*v_scs_areav(ip,i)*v_gijUpper(ip,i,i)*includeDivU_;
 
         const int indexL = ilNdim + i;
         const int indexR = irNdim + i;
 
         // NSO diffusion-like term; -2*nu*S^*_ij*g^ij = -nu*g^ij*(dui/dxj + duj/dxi - 2/3*nu*rho*divU*del_ij)*Aj
-        double lhs_riC_i = 0.0;
+        DoubleType lhs_riC_i = 0.0;
         for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
 
-          const double axj = v_scs_areav(ip,j);
-          const double uj = v_uNp1(ic,j);
+          const DoubleType axj = v_scs_areav(ip,j);
+          const DoubleType uj = v_uNp1(ic,j);
 
           // -nu*g^ij*dui/dxj*A_j; fixed i over j loop; see below..
-          const double lhsfacDiff_i = -nu*v_gijUpper(ip,i,j)*v_dndx(ip,ic,j)*axj;
+          const DoubleType lhsfacDiff_i = -nu*v_gijUpper(ip,i,j)*v_dndx(ip,ic,j)*axj;
           // lhs; il then ir
           lhs_riC_i += lhsfacDiff_i;
 
           // -nu*g^ij*duj/dxi*A_j
-          const double lhsfacDiff_j = -nu*v_gijUpper(ip,i,j)*v_dndx(ip,ic,i)*axj;
+          const DoubleType lhsfacDiff_j = -nu*v_gijUpper(ip,i,j)*v_dndx(ip,ic,i)*axj;
           // lhs; il then ir
           lhs(indexL,icNdim+j) += lhsfacDiff_j;
           lhs(indexR,icNdim+j) -= lhsfacDiff_j;
@@ -228,7 +228,7 @@ MomentumNSOSijElemKernel<AlgTraits>::execute(
         // deal with accumulated lhs and flux for -nu*g^ij*dui/dxj*Aj
         lhs(indexL,icNdim+i) += lhs_riC_i;
         lhs(indexR,icNdim+i) -= lhs_riC_i;
-        const double ui = v_uNp1(ic,i);
+        const DoubleType ui = v_uNp1(ic,i);
         rhs(indexL) -= lhs_riC_i*ui + divUstress;
         rhs(indexR) += lhs_riC_i*ui + divUstress;
       }

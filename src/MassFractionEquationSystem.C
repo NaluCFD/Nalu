@@ -104,7 +104,7 @@ MassFractionEquationSystem::MassFractionEquationSystem(
   // extract solver name and solver object
   std::string solverName = realm_.equationSystems_.get_solver_block_name("mass_fraction");
   LinearSolver *solver = realm_.root()->linearSolvers_->create_solver(solverName, EQ_MASS_FRACTION);
-  linsys_ = LinearSystem::create(realm_, 1, name_, solver);
+  linsys_ = LinearSystem::create(realm_, 1, this, solver);
   // turn off standard output
   linsys_->provideOutput_ = false;
 
@@ -718,7 +718,7 @@ MassFractionEquationSystem::solve_and_update()
     
   for ( int i = 0; i < maxIterations_; ++i ) {
 
-    NaluEnv::self().naluOutputP0() << " " << i+1 << "/" << maxIterations_ << std::setw(15) << std::right << name_ << std::endl;
+    NaluEnv::self().naluOutputP0() << " " << i+1 << "/" << maxIterations_ << std::setw(15) << std::right << userSuppliedName_ << std::endl;
 
     double nonLinearResidualSum = 0.0;
     double linearResidualSum = 0.0;

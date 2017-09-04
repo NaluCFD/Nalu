@@ -179,7 +179,9 @@ pressure coefficient
 The resulting unscaled low Mach number equations are:
 
 .. math::
+   :nowrap:
 
+   \begin{align}
    {{\partial \rho} \over {\partial t}} + {{\partial \rho u_j} 
                                   \over {\partial x_j}} & = 0, \label{lmcon} \\
    {{\partial \rho u_i} \over {\partial t}} + {{\partial \rho u_j u_i}
@@ -190,6 +192,7 @@ The resulting unscaled low Mach number equations are:
        \over {\partial x_j}}  & =
        - {{\partial q_j} \over {\partial x_j}}
        + {{\partial P_{th}} \over {\partial t}}, \label{lmenrg}
+   \end{align}
 
 where the ideal gas law becomes
 

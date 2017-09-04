@@ -7,7 +7,7 @@
 #include <stk_mesh/base/Bucket.hpp>
 #include <stk_mesh/base/GetEntities.hpp>
 
-#include <master_element/MasterElement.h>
+#include <master_element/Hex27CVFEM.h>
 
 #include "UnitTestUtils.h"
 

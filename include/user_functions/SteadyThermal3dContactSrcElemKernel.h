@@ -22,7 +22,6 @@ namespace nalu {
 class SolutionOptions;
 class MasterElement;
 class ElemDataRequests;
-class ScratchViews;
 
 template<typename AlgTraits>
 class SteadyThermal3dContactSrcElemKernel: public Kernel
@@ -36,9 +35,9 @@ public:
   virtual ~SteadyThermal3dContactSrcElemKernel() {}
 
   virtual void execute(
-    SharedMemView<double**>&,
-    SharedMemView<double*>&,
-    ScratchViews&);
+    SharedMemView<DoubleType**>&,
+    SharedMemView<DoubleType*>&,
+    ScratchViews<DoubleType>&);
 
 private:
   SteadyThermal3dContactSrcElemKernel() = delete;
@@ -52,7 +51,7 @@ private:
   const double pi_;
 
   // fixed scratch space
-  Kokkos::View<double[AlgTraits::numScvIp_][AlgTraits::nodesPerElement_]> v_shape_function_{"v_shape_function"};
+  Kokkos::View<DoubleType[AlgTraits::numScvIp_][AlgTraits::nodesPerElement_]> v_shape_function_{"v_shape_function"};
 };
 
 }  // nalu

@@ -32,7 +32,7 @@ MomentumMassElemKernel<AlgTraits>::MomentumMassElemKernel(
   const bool lumpedMass)
   : Kernel(),
     lumpedMass_(lumpedMass),
-    ipNodeMap_(sierra::nalu::get_volume_master_element(AlgTraits::topo_)->ipNodeMap())
+    ipNodeMap_(sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_)->ipNodeMap())
 {
 
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
@@ -59,13 +59,12 @@ MomentumMassElemKernel<AlgTraits>::MomentumMassElemKernel(
   coordinates_ = metaData.get_field<VectorFieldType>(
     stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
 
-  MasterElement* meSCV = sierra::nalu::get_volume_master_element(AlgTraits::topo_);
-
+  MasterElement* meSCV = sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_);
   // compute shape function
   if ( lumpedMass_ )
-    meSCV->shifted_shape_fcn(&v_shape_function_(0,0));
+    get_scv_shape_fn_data<AlgTraits>([&](double* ptr){meSCV->shifted_shape_fcn(ptr);}, v_shape_function_);
   else
-    meSCV->shape_fcn(&v_shape_function_(0,0));
+    get_scv_shape_fn_data<AlgTraits>([&](double* ptr){meSCV->shape_fcn(ptr);}, v_shape_function_);
 
   // add master elements
   dataPreReqs.add_cvfem_volume_me(meSCV);
@@ -99,31 +98,31 @@ MomentumMassElemKernel<AlgTraits>::setup(const TimeIntegrator& timeIntegrator)
 template<typename AlgTraits>
 void
 MomentumMassElemKernel<AlgTraits>::execute(
-  SharedMemView<double**>& lhs,
-  SharedMemView<double *>& rhs,
-  ScratchViews& scratchViews)
+  SharedMemView<DoubleType**>& lhs,
+  SharedMemView<DoubleType *>& rhs,
+  ScratchViews<DoubleType>& scratchViews)
 {
-  double w_uNm1 [AlgTraits::nDim_];
-  double w_uN   [AlgTraits::nDim_];
-  double w_uNp1 [AlgTraits::nDim_];
-  double w_Gjp  [AlgTraits::nDim_];
+  DoubleType w_uNm1 [AlgTraits::nDim_];
+  DoubleType w_uN   [AlgTraits::nDim_];
+  DoubleType w_uNp1 [AlgTraits::nDim_];
+  DoubleType w_Gjp  [AlgTraits::nDim_];
 
-  SharedMemView<double*>& v_densityNm1 = scratchViews.get_scratch_view_1D(*densityNm1_);
-  SharedMemView<double*>& v_densityN = scratchViews.get_scratch_view_1D(*densityN_);
-  SharedMemView<double*>& v_densityNp1 = scratchViews.get_scratch_view_1D(*densityNp1_);
-  SharedMemView<double**>& v_velocityNm1 = scratchViews.get_scratch_view_2D(*velocityNm1_);
-  SharedMemView<double**>& v_velocityN = scratchViews.get_scratch_view_2D(*velocityN_);
-  SharedMemView<double**>& v_velocityNp1 = scratchViews.get_scratch_view_2D(*velocityNp1_);
-  SharedMemView<double**>& v_Gpdx = scratchViews.get_scratch_view_2D(*Gjp_);
+  SharedMemView<DoubleType*>& v_densityNm1 = scratchViews.get_scratch_view_1D(*densityNm1_);
+  SharedMemView<DoubleType*>& v_densityN = scratchViews.get_scratch_view_1D(*densityN_);
+  SharedMemView<DoubleType*>& v_densityNp1 = scratchViews.get_scratch_view_1D(*densityNp1_);
+  SharedMemView<DoubleType**>& v_velocityNm1 = scratchViews.get_scratch_view_2D(*velocityNm1_);
+  SharedMemView<DoubleType**>& v_velocityN = scratchViews.get_scratch_view_2D(*velocityN_);
+  SharedMemView<DoubleType**>& v_velocityNp1 = scratchViews.get_scratch_view_2D(*velocityNp1_);
+  SharedMemView<DoubleType**>& v_Gpdx = scratchViews.get_scratch_view_2D(*Gjp_);
 
-  SharedMemView<double*>& v_scv_volume = scratchViews.get_me_views(CURRENT_COORDINATES).scv_volume;
+  SharedMemView<DoubleType*>& v_scv_volume = scratchViews.get_me_views(CURRENT_COORDINATES).scv_volume;
 
   for (int ip=0; ip < AlgTraits::numScvIp_; ++ip) {
     const int nearestNode = ipNodeMap_[ip];
 
-    double rhoNm1 = 0.0;
-    double rhoN   = 0.0;
-    double rhoNp1 = 0.0;
+    DoubleType rhoNm1 = 0.0;
+    DoubleType rhoN   = 0.0;
+    DoubleType rhoNp1 = 0.0;
     for (int j=0; j < AlgTraits::nDim_; j++) {
       w_uNm1[j] = 0.0;
       w_uN[j] = 0.0;
@@ -132,7 +131,7 @@ MomentumMassElemKernel<AlgTraits>::execute(
     }
 
     for (int ic=0; ic < AlgTraits::nodesPerElement_; ++ic) {
-      const double r = v_shape_function_(ip, ic);
+      const DoubleType r = v_shape_function_(ip, ic);
 
       rhoNm1 += r * v_densityNm1(ic);
       rhoN   += r * v_densityN(ic);
@@ -145,7 +144,7 @@ MomentumMassElemKernel<AlgTraits>::execute(
       }
     }
 
-    const double scV = v_scv_volume(ip);
+    const DoubleType scV = v_scv_volume(ip);
     const int nnNdim = nearestNode * AlgTraits::nDim_;
     // Compute RHS
     for (int j=0; j < AlgTraits::nDim_; ++j) {
@@ -159,8 +158,8 @@ MomentumMassElemKernel<AlgTraits>::execute(
     // Compute LHS
     for (int ic=0; ic < AlgTraits::nodesPerElement_; ++ic) {
       const int icNdim = ic * AlgTraits::nDim_;
-      const double r = v_shape_function_(ip, ic);
-      const double lhsfac = r * gamma1_ * rhoNp1 * scV / dt_;
+      const DoubleType r = v_shape_function_(ip, ic);
+      const DoubleType lhsfac = r * gamma1_ * rhoNp1 * scV / dt_;
 
       for (int j=0; j<AlgTraits::nDim_; ++j) {
         const int indexNN = nnNdim + j;

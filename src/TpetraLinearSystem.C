@@ -16,7 +16,6 @@
 #include <Simulation.h>
 #include <LinearSolver.h>
 #include <master_element/MasterElement.h>
-#include <EquationSystems.h>
 #include <EquationSystem.h>
 #include <NaluEnv.h>
 
@@ -76,17 +75,6 @@ namespace nalu{
 ///======== T P E T R A ===============================================================================================================
 ///====================================================================================================================================
 
-EquationSystem* find_equation_system_by_name(Realm& realm, const std::string& name)
-{
-  EquationSystemVector& eqSysVec = realm.equationSystems_.equationSystemVector_;
-  for(EquationSystem* eqSys : eqSysVec) {
-    if (eqSys->name_ == name) {
-      return eqSys;
-    }
-  }
-  return nullptr;
-}
-
 //==========================================================================
 // Class Definition
 //==========================================================================
@@ -95,10 +83,9 @@ EquationSystem* find_equation_system_by_name(Realm& realm, const std::string& na
 TpetraLinearSystem::TpetraLinearSystem(
   Realm &realm,
   const unsigned numDof,
-  const std::string & name,
+  EquationSystem *eqSys,
   LinearSolver * linearSolver)
-  : LinearSystem(realm, numDof, name, linearSolver),
-    eqSys_(nullptr)
+  : LinearSystem(realm, numDof, eqSys, linearSolver)
 {
   Teuchos::ParameterList junk;
   node_ = Teuchos::rcp(new LinSys::Node(junk));
@@ -395,12 +382,9 @@ TpetraLinearSystem::beginLinearSystemConstruction()
 
   ownedPlusGloballyOwnedRowsMap_ = Teuchos::rcp(new LinSys::Map(Teuchos::OrdinalTraits<Tpetra::global_size_t>::invalid(), totalGids_, 1, tpetraComm, node_));
 
-  if (eqSys_ == nullptr) {
-    eqSys_ = find_equation_system_by_name(realm_, name_);
-  }
   // Now, we're ready to have Algs call the build*Graph() methods and build up the connection list (row,col).
   size_t numGraphEntriesGuess = 15*numOwnedNodes;
-  if (eqSys_ && eqSys_->num_graph_entries_ > 0) {
+  if (eqSys_->num_graph_entries_ > 0) {
     numGraphEntriesGuess = 1.1*eqSys_->num_graph_entries_;
   }
 
@@ -593,7 +577,7 @@ TpetraLinearSystem::buildReducedElemToNodeGraph(const stk::mesh::PartVector & pa
     const stk::mesh::Bucket & b = *buckets[ib];
 
     // extract master element
-    MasterElement *meSCS = sierra::nalu::get_surface_master_element(b.topology());
+    MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(b.topology());
     // extract master element specifics
     const int numScsIp = meSCS->numIntPoints_;
     const int *lrscv = meSCS->adjacentNodes();
@@ -851,7 +835,7 @@ TpetraLinearSystem::copy_kokkos_unordered_map_to_sorted_vector(const ConnectionS
   });
   size_t actualNumGraphEntries = connectionSetKK.size();
   //std::cerr<<"finalize, actual graph entries: "<<connectionSetKK_.size()<<std::endl;
-  if (eqSys_ && actualNumGraphEntries > eqSys_->num_graph_entries_) {
+  if (actualNumGraphEntries > eqSys_->num_graph_entries_) {
     eqSys_->num_graph_entries_ = actualNumGraphEntries;
   }
 
@@ -1215,6 +1199,7 @@ TpetraLinearSystem::applyDirichletBCs(
   stk::mesh::BucketVector const& buckets =
     realm_.get_buckets( stk::topology::NODE_RANK, selector );
 
+  const bool internalMatrixIsSorted = true;
   int nbc=0;
   for(const stk::mesh::Bucket* bptr : buckets) {
     const stk::mesh::Bucket & b = *bptr;
@@ -1240,6 +1225,7 @@ TpetraLinearSystem::applyDirichletBCs(
         const bool useOwned = localId < maxOwnedRowId_;
         const LocalOrdinal actualLocalId = useOwned ? localId : localId - maxOwnedRowId_;
         Teuchos::RCP<LinSys::Matrix> matrix = useOwned ? ownedMatrix_ : globallyOwnedMatrix_;
+        const LinSys::Matrix::local_matrix_type& local_matrix = matrix->getLocalMatrix();
 
         if(localId > maxGloballyOwnedRowId_) {
           std::cerr << "localId > maxGloballyOwnedRowId_:: localId= " << localId << " maxGloballyOwnedRowId_= " << maxGloballyOwnedRowId_ << " useOwned = " << (localId < maxOwnedRowId_ ) << std::endl;
@@ -1256,7 +1242,7 @@ TpetraLinearSystem::applyDirichletBCs(
         for(size_t i=0; i < rowLength; ++i) {
             new_values[i] = (indices[i] == localId) ? diagonal_value : 0;
         }
-        matrix->replaceLocalValues(actualLocalId, indices, new_values);
+        local_matrix.replaceValues(actualLocalId, &indices[0], rowLength, new_values.data(), internalMatrixIsSorted);
 
         // Replace the RHS residual with (desired - actual)
         Teuchos::RCP<LinSys::Vector> rhs = useOwned ? ownedRhs_: globallyOwnedRhs_;
@@ -1278,9 +1264,11 @@ TpetraLinearSystem::prepareConstraints(
   Teuchos::ArrayView<const double> values;
   std::vector<double> new_values;
 
+  const bool internalMatrixIsSorted = true;
+
   // iterate oversetInfoVec_
   std::vector<OversetInfo *>::iterator ii;
-  //KOKKOS: Loop noparallel RCP Vector Matrix replaceLocalValues
+  //KOKKOS: Loop noparallel RCP Vector Matrix replaceValues
   for( ii=realm_.oversetManager_->oversetInfoVec_.begin();
        ii!=realm_.oversetManager_->oversetInfoVec_.end(); ++ii ) {
 
@@ -1289,12 +1277,13 @@ TpetraLinearSystem::prepareConstraints(
     const stk::mesh::EntityId naluId = *stk::mesh::field_data(*realm_.naluGlobalId_, orphanNode);
     const LocalOrdinal localIdOffset = lookup_myLID(myLIDs_, naluId, "prepareConstraints") * numDof_;
 
-    //KOKKOS: Nested Loop noparallel RCP Vector Matrix replaceLocalValues
+    //KOKKOS: Nested Loop noparallel RCP Vector Matrix replaceValues
     for(unsigned d=beginPos; d < endPos; ++d) {
       const LocalOrdinal localId = localIdOffset + d;
       const bool useOwned = localId < maxOwnedRowId_;
       const LocalOrdinal actualLocalId = useOwned ? localId : localId - maxOwnedRowId_;
       Teuchos::RCP<LinSys::Matrix> matrix = useOwned ? ownedMatrix_ : globallyOwnedMatrix_;
+      const LinSys::Matrix::local_matrix_type& local_matrix = matrix->getLocalMatrix();
       
       if ( localId > maxGloballyOwnedRowId_) {
         throw std::runtime_error("logic error: localId > maxGloballyOwnedRowId_");
@@ -1307,7 +1296,7 @@ TpetraLinearSystem::prepareConstraints(
       for(size_t i=0; i < rowLength; ++i) {
         new_values[i] = 0.0;
       }
-      matrix->replaceLocalValues(actualLocalId, indices, new_values);
+      local_matrix.replaceValues(actualLocalId, &indices[0], rowLength, new_values.data(), internalMatrixIsSorted);
       
       // Replace the RHS residual with zero
       Teuchos::RCP<LinSys::Vector> rhs = useOwned ? ownedRhs_: globallyOwnedRhs_;
@@ -1327,6 +1316,7 @@ TpetraLinearSystem::resetRows(
   Teuchos::ArrayView<const double> values;
   std::vector<double> new_values;
   constexpr double rhs_residual = 0.0;
+  const bool internalMatrixIsSorted = true;
 
   for (auto node: nodeList) {
     const auto naluId = *stk::mesh::field_data(*realm_.naluGlobalId_, node);
@@ -1340,6 +1330,7 @@ TpetraLinearSystem::resetRows(
         useOwned ? localId : (localId - maxOwnedRowId_);
       Teuchos::RCP<LinSys::Matrix> matrix =
         useOwned ? ownedMatrix_ : globallyOwnedMatrix_;
+      const LinSys::Matrix::local_matrix_type& local_matrix = matrix->getLocalMatrix();
 
       if (localId > maxGloballyOwnedRowId_) {
         throw std::runtime_error("logic error: localId > maxGloballyOwnedRowId");
@@ -1352,7 +1343,7 @@ TpetraLinearSystem::resetRows(
       for (size_t i=0; i < rowLength; i++) {
         new_values[i] = 0.0;
       }
-      matrix->replaceLocalValues(actualLocalId, indices, new_values);
+      local_matrix.replaceValues(actualLocalId, &indices[0], rowLength, new_values.data(), internalMatrixIsSorted);
 
       // Replace RHS residual entry = 0.0
       Teuchos::RCP<LinSys::Vector> rhs =
@@ -1400,8 +1391,8 @@ TpetraLinearSystem::solve(
   }
    
   if (linearSolver->getConfig()->getWriteMatrixFiles()) {
-    writeToFile(this->name_.c_str());
-    writeToFile(this->name_.c_str(), false);
+    writeToFile(eqSysName_.c_str());
+    writeToFile(eqSysName_.c_str(), false);
   }
 
   double solve_time = -NaluEnv::self().nalu_time();
@@ -1411,7 +1402,7 @@ TpetraLinearSystem::solve(
   
   // memory diagnostic
   if ( realm_.get_activate_memory_diagnostic() ) {
-    NaluEnv::self().naluOutputP0() << "NaluMemory::TpetraLinearSystem::solve() PreSolve: " << name_ << std::endl;
+    NaluEnv::self().naluOutputP0() << "NaluMemory::TpetraLinearSystem::solve() PreSolve: " << eqSysName_ << std::endl;
     realm_.provide_memory_summary();
   }
 
@@ -1423,7 +1414,7 @@ TpetraLinearSystem::solve(
   solve_time += NaluEnv::self().nalu_time();
 
   if (linearSolver->getConfig()->getWriteMatrixFiles()) {
-    writeSolutionToFile(this->name_.c_str());
+    writeSolutionToFile(eqSysName_.c_str());
     ++writeCounter_;
   }
 
@@ -1437,20 +1428,22 @@ TpetraLinearSystem::solve(
   linearSolveIterations_ = iters;
   nonLinearResidual_ = realm_.l2Scaling_*norm2;
   linearResidual_ = finalResidNorm;
-    
-  if ( realm_.currentNonlinearIteration_ == 1 )
+   
+  if ( eqSys_->firstTimeStepSolve_ )
     firstNonLinearResidual_ = nonLinearResidual_;
   scaledNonLinearResidual_ = nonLinearResidual_/std::max(std::numeric_limits<double>::epsilon(), firstNonLinearResidual_);
 
   if ( provideOutput_ ) {
-    const int nameOffset = name_.length()+8;
+    const int nameOffset = eqSysName_.length()+8;
     NaluEnv::self().naluOutputP0()
-      << std::setw(nameOffset) << std::right << name_
+      << std::setw(nameOffset) << std::right << eqSysName_
       << std::setw(32-nameOffset)  << std::right << iters
       << std::setw(18) << std::right << finalResidNorm
       << std::setw(15) << std::right << nonLinearResidual_
       << std::setw(14) << std::right << scaledNonLinearResidual_ << std::endl;
   }
+
+  eqSys_->firstTimeStepSolve_ = false;
 
   return status;
 }
@@ -1594,7 +1587,7 @@ TpetraLinearSystem::writeToFile(const char * base_filename, bool useOwned)
       osRhs << base_filename << "-" << (useOwned ? "O-":"G-") << currentCount << ".rhs." << p_size; // A little hacky but whatever
 
       Tpetra::MatrixMarket::Writer<LinSys::Matrix>::writeSparseFile(osLhs.str().c_str(), matrix,
-                                                                    name_, std::string("Tpetra matrix for: ")+name_, true);
+                                                                    eqSysName_, std::string("Tpetra matrix for: ")+eqSysName_, true);
       typedef Tpetra::MatrixMarket::Writer<LinSys::Matrix> writer_type;
       if (useOwned) writer_type::writeDenseFile (osRhs.str().c_str(), rhs);
     }
@@ -1659,21 +1652,20 @@ TpetraLinearSystem::printInfo(bool useOwned)
   Teuchos::RCP<LinSys::Matrix> matrix = useOwned ? ownedMatrix_ : globallyOwnedMatrix_;
   Teuchos::RCP<LinSys::Vector> rhs = useOwned ? ownedRhs_ : globallyOwnedRhs_;
 
-  if (p_rank == 0)
-    {
-      std::cout << "\nMatrix for system: " << name_ << " :: N N NZ= " << matrix->getRangeMap()->getGlobalNumElements()
-                << " "
-                << matrix->getDomainMap()->getGlobalNumElements()
-                << " "
-                << matrix->getGlobalNumEntries()
-                << std::endl;
-      NaluEnv::self().naluOutputP0() << "\nMatrix for system: " << name_ << " :: N N NZ= " << matrix->getRangeMap()->getGlobalNumElements()
-                      << " "
-                      << matrix->getDomainMap()->getGlobalNumElements()
-                      << " "
-                      << matrix->getGlobalNumEntries()
-                      << std::endl;
-    }
+  if (p_rank == 0) {
+    std::cout << "\nMatrix for EqSystem: " << eqSysName_ << " :: N N NZ= " << matrix->getRangeMap()->getGlobalNumElements()
+              << " "
+              << matrix->getDomainMap()->getGlobalNumElements()
+              << " "
+              << matrix->getGlobalNumEntries()
+              << std::endl;
+    NaluEnv::self().naluOutputP0() << "\nMatrix for system: " << eqSysName_ << " :: N N NZ= " << matrix->getRangeMap()->getGlobalNumElements()
+                                   << " "
+                                   << matrix->getDomainMap()->getGlobalNumElements()
+                                   << " "
+                                   << matrix->getGlobalNumEntries()
+                                   << std::endl;
+  }
 }
 
 void

@@ -82,7 +82,7 @@ ProjectedNodalGradientEquationSystem::ProjectedNodalGradientEquationSystem(
   // extract solver name and solver object
   std::string solverName = realm_.equationSystems_.get_solver_block_name(dofName);
   LinearSolver *solver = realm_.root()->linearSolvers_->create_solver(solverName, eqType_);
-  linsys_ = LinearSystem::create(realm_, realm_.spatialDimension_, eqSysName_, solver);
+  linsys_ = LinearSystem::create(realm_, realm_.spatialDimension_, this, solver);
 
   // push back EQ to manager
   realm_.push_equation_to_systems(this);
@@ -326,7 +326,7 @@ ProjectedNodalGradientEquationSystem::reinitialize_linear_system()
   // create new solver; reset parameters
   std::string solverName = realm_.equationSystems_.get_solver_block_name(dofName_);
   LinearSolver *solver = realm_.root()->linearSolvers_->create_solver(solverName, eqType_);
-  linsys_ = LinearSystem::create(realm_, realm_.spatialDimension_, eqSysName_, solver);
+  linsys_ = LinearSystem::create(realm_, realm_.spatialDimension_, this, solver);
   linsys_->provideOutput_ = provideOutput;
 
   // initialize
