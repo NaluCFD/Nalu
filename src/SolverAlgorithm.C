@@ -59,11 +59,12 @@ SolverAlgorithm::apply_coeff(
   unsigned numMeshobjs,
   const stk::mesh::Entity* symMeshobjs,
   const SharedMemView<int*> & scratchIds,
+  const SharedMemView<int*> & sortPermutation,
   const SharedMemView<const double*> & rhs,
   const SharedMemView<const double**> & lhs,
   const char *trace_tag)
 {
-  eqSystem_->linsys_->sumInto(numMeshobjs, symMeshobjs, rhs, lhs, scratchIds, trace_tag);
+  eqSystem_->linsys_->sumInto(numMeshobjs, symMeshobjs, rhs, lhs, scratchIds, sortPermutation, trace_tag);
 }
 
 } // namespace nalu

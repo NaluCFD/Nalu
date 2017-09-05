@@ -71,8 +71,11 @@ public:
       const SharedMemView<const double*> & rhs,
       const SharedMemView<const double**> & lhs,
       const SharedMemView<int*> & localIds,
+      const SharedMemView<int*> & sortPermutation,
       const char * trace_tag
       )=0;
+
+
 
   virtual void sumInto(
     const std::vector<stk::mesh::Entity> & sym_meshobj,

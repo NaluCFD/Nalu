@@ -49,6 +49,7 @@
 #include <Tpetra_Map.hpp>
 #include <Tpetra_MultiVector.hpp>
 #include <Tpetra_Vector.hpp>
+#include <Tpetra_Details_shortSort.hpp>
 
 #include <Teuchos_VerboseObject.hpp>
 #include <Teuchos_FancyOStream.hpp>
@@ -1082,17 +1083,60 @@ TpetraLinearSystem::zeroSystem()
   sln_->putScalar(0);
 }
 
+namespace
+{
+  template <typename RowViewType>
+  void sum_into_row (
+    RowViewType row_view,
+    int numCols,
+    const int* localIds,
+    const int* sort_permutation,
+    const double* input_values)
+  {
+    constexpr bool forceAtomic = !std::is_same<sierra::nalu::DeviceSpace, Kokkos::Serial>::value;
+    const LocalOrdinal length = row_view.length;
+
+    LocalOrdinal offset = 0;
+    for (int j = 0; j < numCols; ++j) {
+      const LocalOrdinal perm_index = sort_permutation[j];
+      const LocalOrdinal cur_local_column_idx = localIds[j];
+
+      // since the columns are sorted, we pass through the column idxs once,
+      // updating the offset as we go
+      while (row_view.colidx(offset) != cur_local_column_idx && offset < length) {
+        ++offset;
+      }
+
+      if (offset < length) {
+        ThrowAssertMsg(std::isfinite(input_values[perm_index]), "Inf or NAN lhs");
+        if (forceAtomic) {
+          Kokkos::atomic_add(&(row_view.value(offset)), input_values[perm_index]);
+        }
+        else {
+          row_view.value(offset) += input_values[perm_index];
+        }
+      }
+    }
+  }
+}
+
 void
 TpetraLinearSystem::sumInto(
       unsigned numEntities,
       const stk::mesh::Entity* entities,
-      const SharedMemView<const double*> & rhs, 
-      const SharedMemView<const double**> & lhs, 
+      const SharedMemView<const double*> & rhs,
+      const SharedMemView<const double**> & lhs,
       const SharedMemView<int*> & localIds,
+      const SharedMemView<int*> & sortPermutation,
       const char * trace_tag)
 {
-  constexpr bool forceAtomic = !std::is_same<sierra::nalu::DeviceSpace,
-                                             Kokkos::Serial>::value;
+  constexpr bool forceAtomic = !std::is_same<sierra::nalu::DeviceSpace, Kokkos::Serial>::value;
+
+  ThrowAssertMsg(lhs.is_contiguous(), "LHS assumed contiguous");
+  ThrowAssertMsg(rhs.is_contiguous(), "RHS assumed contiguous");
+  ThrowAssertMsg(localIds.is_contiguous(), "localIds assumed contiguous");
+  ThrowAssertMsg(sortPermutation.is_contiguous(), "sortPermutation assumed contiguous");
+
   const int n_obj = numEntities;
   const int numRows = n_obj * numDof_;
 
@@ -1100,33 +1144,49 @@ TpetraLinearSystem::sumInto(
     const stk::mesh::Entity entity = entities[i];
     const LocalOrdinal localOffset = entityToLID_[entity.local_offset()] * numDof_;
     for(size_t d=0; d < numDof_; ++d) {
-      size_t lid = i*numDof_ + d; 
-      localIds[lid] = localOffset + d; 
-    }    
+      size_t lid = i*numDof_ + d;
+      localIds[lid] = localOffset + d;
+    }
   }
+
+  for (int i = 0; i < numRows; ++i) {
+    sortPermutation[i] = i;
+  }
+  Tpetra::Details::shellSortKeysAndValues(localIds.data(), sortPermutation.data(), numRows);
 
   const LinSys::Matrix::local_matrix_type& ownedLocalMatrix = ownedMatrix_->getLocalMatrix();
   const LinSys::Matrix::local_matrix_type& globallyOwnedLocalMatrix = globallyOwnedMatrix_->getLocalMatrix();
-  const bool internalIndicesAreSorted = true;
+  const auto& ownedLocalRhs = ownedRhs_->getLocalView<sierra::nalu::HostSpace>();
+  const auto& globallyOwnedLocalRhs = globallyOwnedRhs_->getLocalView<sierra::nalu::HostSpace>();
 
-  std::vector<double> lhs_row(numRows);
-
-  for(int r = 0; r < numRows; r++) {
+  for (int r = 0; r < numRows; r++) {
     const LocalOrdinal localId = localIds[r];
-
-    for(int c=0; c<numRows; ++c) {
-        lhs_row[c] = lhs(r,c);
-    }
+    const LocalOrdinal cur_perm_index = sortPermutation[r];
+    const double* const cur_lhs = &lhs(cur_perm_index, 0);
+    const double cur_rhs = rhs[cur_perm_index];
+    ThrowAssertMsg(std::isfinite(cur_rhs), "Inf or NAN rhs");
 
     if(localId < maxOwnedRowId_) {
-      ownedLocalMatrix.sumIntoValues(localId,localIds.data(),numRows,lhs_row.data(), internalIndicesAreSorted, forceAtomic);
-      ownedRhs_->sumIntoLocalValue(localId, rhs(r), forceAtomic);
-    }    
-    else if(localId < maxGloballyOwnedRowId_) {
+      sum_into_row(ownedLocalMatrix.row(localId), numRows, localIds.data(), sortPermutation.data(), cur_lhs);
+      if (forceAtomic) {
+        Kokkos::atomic_add(&ownedLocalRhs(localId,0), cur_rhs);
+      }
+      else {
+        ownedLocalRhs(localId,0) += cur_rhs;
+      }
+    }
+    else if (localId < maxGloballyOwnedRowId_) {
       const LocalOrdinal actualLocalId = localId - maxOwnedRowId_;
-      globallyOwnedLocalMatrix.sumIntoValues(actualLocalId,localIds.data(),numRows,lhs_row.data(), internalIndicesAreSorted, forceAtomic);
-      globallyOwnedRhs_->sumIntoLocalValue(actualLocalId, rhs(r), forceAtomic);
-    }    
+      sum_into_row(globallyOwnedLocalMatrix.row(actualLocalId), numRows,
+        localIds.data(), sortPermutation.data(), cur_lhs);
+
+      if (forceAtomic) {
+        Kokkos::atomic_add(&globallyOwnedLocalRhs(actualLocalId,0), cur_rhs);
+      }
+      else {
+        globallyOwnedLocalRhs(actualLocalId,0) += cur_rhs;
+      }
+    }
   }
 }
 
@@ -1141,12 +1201,13 @@ TpetraLinearSystem::sumInto(
   )
 {
   const size_t n_obj = entities.size();
-  const size_t numRows = n_obj * numDof_;
+  const int numRows = n_obj * numDof_;
 
   ThrowAssert(numRows == rhs.size());
   ThrowAssert(numRows*numRows == lhs.size());
 
   scratchIds.resize(numRows);
+  sortPermutation_.resize(numRows);
   for(size_t i = 0; i < n_obj; i++) {
     const stk::mesh::Entity entity = entities[i];
     const LocalOrdinal localOffset = entityToLID_[entity.local_offset()] * numDof_;
@@ -1156,24 +1217,33 @@ TpetraLinearSystem::sumInto(
     }
   }
 
+  for (int i = 0; i < numRows; ++i) {
+    sortPermutation_[i] = i;
+  }
+  Tpetra::Details::shellSortKeysAndValues(scratchIds.data(), sortPermutation_.data(), numRows);
+
   const LinSys::Matrix::local_matrix_type& ownedLocalMatrix = ownedMatrix_->getLocalMatrix();
   const LinSys::Matrix::local_matrix_type& globallyOwnedLocalMatrix = globallyOwnedMatrix_->getLocalMatrix();
-  const bool internalIndicesAreSorted = true;
+  const auto& ownedLocalRhs = ownedRhs_->getLocalView<sierra::nalu::HostSpace>();
+  const auto& globallyOwnedLocalRhs = globallyOwnedRhs_->getLocalView<sierra::nalu::HostSpace>();
 
-  for(size_t r = 0; r < numRows; r++) {
+  for (int r = 0; r < numRows; r++) {
     const LocalOrdinal localId = scratchIds[r];
-
-    const int* idsPtr = &scratchIds[0];
-    const double* lhsPtr = &lhs[r*numRows];
+    const LocalOrdinal cur_perm_index = sortPermutation_[r];
+    const double* const cur_lhs = &lhs[cur_perm_index*numRows];
+    const double cur_rhs = rhs[cur_perm_index];
+    ThrowAssertMsg(std::isfinite(cur_rhs), "Invalid rhs");
 
     if(localId < maxOwnedRowId_) {
-      ownedLocalMatrix.sumIntoValues(localId, idsPtr, numRows, lhsPtr, internalIndicesAreSorted);
-      ownedRhs_->sumIntoLocalValue(localId, rhs[r]);
+      sum_into_row(ownedLocalMatrix.row(localId), numRows, scratchIds.data(), sortPermutation_.data(), cur_lhs);
+      ownedLocalRhs(localId,0) += cur_rhs;
     }
-    else if(localId < maxGloballyOwnedRowId_) {
+    else if (localId < maxGloballyOwnedRowId_) {
       const LocalOrdinal actualLocalId = localId - maxOwnedRowId_;
-      globallyOwnedLocalMatrix.sumIntoValues(actualLocalId, idsPtr, numRows, lhsPtr, internalIndicesAreSorted);
-      globallyOwnedRhs_->sumIntoLocalValue(actualLocalId, rhs[r]);
+      sum_into_row(globallyOwnedLocalMatrix.row(actualLocalId), numRows,
+        scratchIds.data(), sortPermutation_.data(), cur_lhs);
+
+      globallyOwnedLocalRhs(actualLocalId,0) += cur_rhs;
     }
   }
 }
