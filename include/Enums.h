@@ -10,6 +10,7 @@
 #define Enums_h
 
 #include <string>
+#include <map>
 
 namespace sierra {
 namespace nalu {
@@ -208,6 +209,14 @@ static const std::string TurbulenceModelConstantNames[] = {
   "Cb2",
   "SDRWallFactor",
   "END"};
+
+enum ActuatorType {
+  ActLinePointDrag = 0,
+  ActLineFAST = 1,
+  ActuatorType_END
+};
+
+ static std::map<std::string, ActuatorType> ActuatorTypeMap = { {"ActLinePointDrag",ActuatorType::ActLinePointDrag}, {"ActLineFAST",ActuatorType::ActLineFAST}};
 
 } // namespace nalu
 } // namespace Sierra

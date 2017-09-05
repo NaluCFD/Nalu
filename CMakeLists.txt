@@ -1,4 +1,3 @@
-#
 #	This is the top level CMakeLists.txt file
 #	It should be located within master/nalu
 #	But not in the BUILD folder itself
@@ -11,6 +10,8 @@ cmake_minimum_required (VERSION 2.8.11)
 #
 #  THESE PATHS MAY NEED TO BE CHANGED DEPENDING ON WHERE THEY ARE STORED!!!
 #
+option(NALU_USES_OPENFAST
+       "Use OPENFAST tpl to get actuator line positions and forces" OFF)
 
 SET(CMAKE_FIND_LIBRARY_PREFIXES lib)
 SET(CMAKE_FIND_LIBRARY_SUFFIXES a)
@@ -20,6 +21,16 @@ MESSAGE("   Trilinos_DIR = ${Trilinos_DIR}")
 SET(CMAKE_PREFIX_PATH ${Trilinos_DIR} ${CMAKE_PREFIX_PATH})
 SET(CMAKE_PREFIX_PATH ${Trilinos_PATH} ${CMAKE_PREFIX_PATH})
 find_package(Trilinos REQUIRED)
+
+if (NALU_USES_OPENFAST)
+   SET(CMAKE_PREFIX_PATH ${OpenFAST_DIR} ${CMAKE_PREFIX_PATH})
+   find_package(OpenFAST REQUIRED)
+   MESSAGE("   OPENFAST Include dir =  ${OpenFAST_INCLUDE_DIRS}")
+   MESSAGE("   OPENFAST Libraries =  ${OpenFAST_LIBRARIES}")
+   include_directories(${OpenFAST_INCLUDE_DIRS})
+   add_definitions("-DNALU_USES_OPENFAST")
+
+endif (NALU_USES_OPENFAST)
 
 # This needs to be cleaned up
 find_library(YAML_LIBRARY NAMES libyaml-cpp.a PATHS ${YAML_DIR}/lib )
@@ -99,6 +110,9 @@ include_directories (${CMAKE_SOURCE_DIR}/include)
 add_library (nalu ${SOURCE} ${HEADER})
 target_link_libraries(nalu ${Trilinos_LIBRARIES})
 target_link_libraries(nalu ${YAML_LIBRARY})
+if (NALU_USES_OPENFAST)
+   target_link_libraries(nalu ${OpenFAST_LIBRARIES} ${OpenFAST_CPP_LIBRARIES})
+endif (NALU_USES_OPENFAST)
 
 file (GLOB UNIT_TESTS_SOURCES unit_tests/*.C unit_tests/*/*.C)
 

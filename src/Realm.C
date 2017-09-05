@@ -63,7 +63,12 @@
 #include <DataProbePostProcessing.h>
 
 // actuator line
-#include <ActuatorLine.h>
+#include <Actuator.h>
+#include <ActuatorLinePointDrag.h>
+#ifdef NALU_USES_OPENFAST
+#include <ActuatorLineFAST.h>
+#endif
+
 #include <ABLForcingAlgorithm.h>
 
 // props; algs, evaluators and data
@@ -187,7 +192,7 @@ namespace nalu{
     solutionNormPostProcessing_(NULL),
     turbulenceAveragingPostProcessing_(NULL),
     dataProbePostProcessing_(NULL),
-    actuatorLine_(NULL),
+    actuator_(NULL),
     ablForcingAlg_(NULL),
     nodeCount_(0),
     estimateMemoryOnly_(false),
@@ -284,6 +289,9 @@ Realm::~Realm()
   if ( NULL != turbulenceAveragingPostProcessing_ )
     delete turbulenceAveragingPostProcessing_;
 
+  if ( NULL != actuator_ )
+    delete actuator_;
+
   // delete non-conformal related things
   if ( NULL != nonConformalManager_ )
     delete nonConformalManager_;
@@ -295,9 +303,6 @@ Realm::~Realm()
   // delete HDF5 file ptr
   if ( NULL != HDF5ptr_ )
     delete HDF5ptr_;
-
-  // Delete actuator line
-  if (NULL != actuatorLine_) delete actuatorLine_;
 
   // Delete abl forcing pointer
   if (NULL != ablForcingAlg_) delete ablForcingAlg_;
@@ -546,13 +551,39 @@ Realm::look_ahead_and_creation(const YAML::Node & node)
     dataProbePostProcessing_ =  new DataProbePostProcessing(*this, *foundProbe[0]);
   }
 
-  // look for ActuatorLine
-  std::vector<const YAML::Node *> foundActuatorLine;
-  NaluParsingHelper::find_nodes_given_key("actuator_line", node, foundActuatorLine);
-  if ( foundActuatorLine.size() > 0 ) {
-    if ( foundActuatorLine.size() != 1 )
+  // look for Actuator
+  std::vector<const YAML::Node*> foundActuator;
+  NaluParsingHelper::find_nodes_given_key("actuator", node, foundActuator);
+  if ( foundActuator.size() > 0 ) {
+    if ( foundActuator.size() != 1 )
       throw std::runtime_error("look_ahead_and_create::error: Too many actuator line blocks");
-    actuatorLine_ =  new ActuatorLine(*this, *foundActuatorLine[0]);
+
+    if ( (*foundActuator[0])["actuator"]["type"] ) {
+      const std::string ActuatorTypeName = (*foundActuator[0])["actuator"]["type"].as<std::string>() ;
+      switch ( ActuatorTypeMap[ActuatorTypeName] ) {
+      case ActuatorType::ActLinePointDrag : {
+	actuator_ =  new ActuatorLinePointDrag(*this, *foundActuator[0]);
+	break;
+      }
+      case ActuatorType::ActLineFAST : {
+#ifdef NALU_USES_OPENFAST
+	actuator_ =  new ActuatorLineFAST(*this, *foundActuator[0]);
+#else
+	throw std::runtime_error("look_ahead_and_create::error: Requested actuator type: " + ActuatorTypeName + ", but was not enabled at compile time");
+#endif
+	break;
+      }
+      default : {
+        throw std::runtime_error("look_ahead_and_create::error: unrecognized actuator type: " + ActuatorTypeName);
+        break;
+      }
+      }
+    }
+    else {
+      throw std::runtime_error("look_ahead_and_create::error: No 'type' specified in actuator");
+    }
+
+    
   }
 
   // ABL Forcing parameters
@@ -867,8 +898,8 @@ Realm::setup_post_processing_algorithms()
     dataProbePostProcessing_->setup();
 
   // check for actuator line
-  if ( NULL != actuatorLine_ )
-    actuatorLine_->setup();
+  if ( NULL != actuator_ )
+    actuator_->setup();
 
   if ( NULL != ablForcingAlg_)
     ablForcingAlg_->setup();
@@ -1837,8 +1868,8 @@ Realm::advance_time_step()
   compute_vrtm();
 
   // check for actuator line; assemble the source terms for this time step
-  if ( NULL != actuatorLine_ ) {
-    actuatorLine_->execute();
+  if ( NULL != actuator_ ) {
+    actuator_->execute();
   }
 
   // Check for ABL forcing; estimate source terms for this time step
@@ -2354,9 +2385,9 @@ Realm::initialize_post_processing_algorithms()
   if ( NULL != dataProbePostProcessing_ )
     dataProbePostProcessing_->initialize();
 
-  // check for actuator line... probably a better place for this
-  if ( NULL != actuatorLine_ ) {
-    actuatorLine_->initialize();
+  // check for actuator... probably a better place for this
+  if ( NULL != actuator_ ) {
+    actuator_->initialize();
   }
 
   if ( NULL != ablForcingAlg_) {
@@ -4551,6 +4582,31 @@ double
 Realm::get_time_step()
 {
   return timeIntegrator_->get_time_step();
+}
+
+double 
+Realm::get_time_step_from_file() {
+  return timeIntegrator_->get_time_step_from_file();
+}
+
+bool 
+Realm::get_is_fixed_time_step() {
+  return timeIntegrator_->get_is_fixed_time_step();
+}
+
+bool 
+Realm::get_is_terminate_based_on_time() {
+  return timeIntegrator_->get_is_terminate_based_on_time();
+}
+
+double 
+Realm::get_total_sim_time() {
+  return timeIntegrator_->get_total_sim_time();
+}
+
+int
+Realm::get_max_time_step_count() {
+  return timeIntegrator_->get_max_time_step_count();
 }
 
 //--------------------------------------------------------------------------

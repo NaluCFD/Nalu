@@ -71,7 +71,7 @@ class Transfer;
 class SolutionNormPostProcessing;
 class TurbulenceAveragingPostProcessing;
 class DataProbePostProcessing;
-class ActuatorLine;
+class Actuator;
 class ABLForcingAlgorithm;
 
 class TensorProductQuadratureRule;
@@ -413,7 +413,7 @@ class Realm {
   SolutionNormPostProcessing *solutionNormPostProcessing_;
   TurbulenceAveragingPostProcessing *turbulenceAveragingPostProcessing_;
   DataProbePostProcessing *dataProbePostProcessing_;
-  ActuatorLine *actuatorLine_;
+  Actuator *actuator_;
   ABLForcingAlgorithm *ablForcingAlg_;
 
   std::vector<Algorithm *> propertyAlg_;
@@ -534,6 +534,11 @@ class Realm {
   double get_gamma2();
   double get_gamma3();
   int get_time_step_count() const;
+  double get_time_step_from_file();
+  bool get_is_fixed_time_step();
+  bool get_is_terminate_based_on_time();
+  double get_total_sim_time();
+  int get_max_time_step_count();
 
   // restart
   bool restarted_simulation();
