@@ -87,7 +87,7 @@ AssembleElemSolverAlgorithm::execute()
   // Bytes per thread =
   //    scratch views size + LHS + RHS + node IDs + padding for alignment
   int bytes_per_thread =
-    (rhsSize_ + lhsSize)*sizeof(double) + scratchIdsSize*sizeof(int) +
+    (rhsSize_ + lhsSize)*sizeof(double) + (2*scratchIdsSize)*sizeof(int) +
     get_num_bytes_pre_req_data<double>(dataNeededBySuppAlgs_, meta_data.spatial_dimension());
   constexpr int simdLen = stk::simd::ndoubles;
   bytes_per_thread *= 3*simdLen;//3 is wrong, still need to debug this!!! should be 2 but seems to have memory problems.
@@ -118,7 +118,9 @@ AssembleElemSolverAlgorithm::execute()
     SharedMemView<DoubleType**> simdlhs = get_shmem_view_2D<DoubleType>(team, rhsSize_, rhsSize_);
     SharedMemView<double*> rhs = get_shmem_view_1D<double>(team, rhsSize_);
     SharedMemView<double**> lhs = get_shmem_view_2D<double>(team, rhsSize_, rhsSize_);
+
     SharedMemView<int*> scratchIds = get_int_shmem_view_1D(team, scratchIdsSize);
+    SharedMemView<int*> sortPermutation = get_int_shmem_view_1D(team, scratchIdsSize);
 
     const stk::mesh::Entity* elemNodes[simdLen];
     unsigned num_nodes = b.topology().num_nodes();
@@ -173,7 +175,7 @@ AssembleElemSolverAlgorithm::execute()
       for(int simdElemIndex=0; simdElemIndex<simdElems; ++simdElemIndex) {
         extract_vector_lane(simdrhs, simdElemIndex, rhs);
         extract_vector_lane(simdlhs, simdElemIndex, lhs);
-        apply_coeff(num_nodes, elemNodes[simdElemIndex], scratchIds, rhs, lhs, __FILE__);
+        apply_coeff(num_nodes, elemNodes[simdElemIndex], scratchIds, sortPermutation, rhs, lhs, __FILE__);
       }
     });
 
