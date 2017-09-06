@@ -485,12 +485,16 @@ public:
           stk::topology::NODE_RANK, "viscosity")),
       dudx_(
         &meta_.declare_field<GenericFieldType>(
-          stk::topology::NODE_RANK, "dudx"))
+          stk::topology::NODE_RANK, "dudx")),
+     temperature_(
+        &meta_.declare_field<ScalarFieldType>(
+          stk::topology::NODE_RANK, "temperature"))
   {
     const auto& meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(stk::topology::HEX_8);
     stk::mesh::put_field(*massFlowRate_, meta_.universal_part(), meSCS->numIntPoints_);
     stk::mesh::put_field(*viscosity_, meta_.universal_part(), 1);
     stk::mesh::put_field(*dudx_, meta_.universal_part(), spatialDim_ * spatialDim_);
+    stk::mesh::put_field(*temperature_, meta_.universal_part(), 1);
   }
 
   virtual ~MomentumKernelHex8Mesh() {}
@@ -502,11 +506,13 @@ public:
       bulk_, stk::topology::HEX_8, *coordinates_, *density_, *velocity_, *massFlowRate_);
     unit_test_kernel_utils::dudx_test_function(bulk_, *coordinates_, *dudx_);
     stk::mesh::field_fill(0.1, *viscosity_);
+    stk::mesh::field_fill(300.0, *temperature_);
   }
 
   GenericFieldType* massFlowRate_{nullptr};
   ScalarFieldType* viscosity_{nullptr};
   GenericFieldType* dudx_{nullptr};
+  ScalarFieldType* temperature_{nullptr};
 };
 
 /** Text fixture for heat conduction equation kernels

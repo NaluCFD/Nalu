@@ -104,6 +104,8 @@
 #include <MomentumAdvDiffElemKernel.h>
 #include <MomentumBuoyancySrcElemKernel.h>
 #include <MomentumMassElemKernel.h>
+#include <MomentumCoriolisSrcElemKernel.h>
+#include <MomentumBuoyancyBoussinesqSrcElemKernel.h>
 
 // nso
 #include <nso/MomentumNSOElemKernel.h>
@@ -1178,6 +1180,10 @@ MomentumEquationSystem::register_interior_algorithm(
         (partTopo, *this, activeKernels, "buoyancy",
          realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs);
 
+      build_topo_kernel_if_requested<MomentumBuoyancyBoussinesqSrcElemKernel>
+        (partTopo, *this, activeKernels, "buoyancy_boussinesq",
+         realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs);
+
       build_topo_kernel_if_requested<MomentumNSOElemKernel>
         (partTopo, *this, activeKernels, "NSO_2ND",
          realm_.bulk_data(), *realm_.solutionOptions_, velocity_, dudx_,
@@ -1213,6 +1219,14 @@ MomentumEquationSystem::register_interior_algorithm(
       build_topo_kernel_if_requested<MomentumNSOKeElemKernel>
         (partTopo, *this, activeKernels, "NSO_4TH_KE",
          realm_.bulk_data(), *realm_.solutionOptions_, velocity_, dudx_, 1.0, dataPreReqs);
+
+      build_topo_kernel_if_requested<MomentumCoriolisSrcElemKernel>
+        (partTopo, *this, activeKernels, "EarthCoriolis",
+         realm_.bulk_data(), *realm_.solutionOptions_, velocity_, dataPreReqs, false);
+
+      build_topo_kernel_if_requested<MomentumCoriolisSrcElemKernel>
+        (partTopo, *this, activeKernels, "lumped_EarthCoriolis",
+         realm_.bulk_data(), *realm_.solutionOptions_, velocity_, dataPreReqs, true);
  
       report_invalid_supp_alg_names();
       report_built_supp_alg_names();
