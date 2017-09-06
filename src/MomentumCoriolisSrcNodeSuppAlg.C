@@ -36,7 +36,7 @@ MomentumCoriolisSrcNodeSuppAlg::MomentumCoriolisSrcNodeSuppAlg(
     densityNp1_(NULL),
     velocityNp1_(NULL),
     dualNodalVolume_(NULL),
-    cor_(realm)
+    cor_(*realm.solutionOptions_)
 {
   
   // save off fields

@@ -37,7 +37,7 @@ namespace nalu{
 
   template <typename ScalarType>
   KOKKOS_FORCEINLINE_FUNCTION ScalarType vecnorm_sq3(const ScalarType* x) {
-    return (x[0] * x[0] + x[1] * x[1] + x[2]*x[2]);
+    return (x[0] * x[0] + x[1] * x[1] + x[2] * x[2]);
   }
 
   template <typename ScalarType>
@@ -48,6 +48,14 @@ namespace nalu{
       val += u[i] * v[i];
     }
     return val;
+  }
+
+  template <typename ScalarType>
+  ScalarType cross3(const ScalarType* u, const ScalarType* v, ScalarType* cross)
+  {
+    cross[0] =   u[1]*v[2] - u[2]*v[1];
+    cross[1] = -(u[0]*v[2] - u[2]*v[0]);
+    cross[2] =   u[0]*v[1] - u[1]*v[0];
   }
 
   template <typename ScalarType>
