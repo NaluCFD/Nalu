@@ -109,17 +109,18 @@ MomentumCoriolisSrcElemKernel<AlgTraits>::execute(
     // constant Jacobian
     for (int ic=0; ic < AlgTraits::nodesPerElement_; ++ic) {
       const int icNdim = ic * AlgTraits::nDim_;
+      const DoubleType fac = v_shape_function_(ip, ic) * rho_dvol;
 
       lhs(nnDim + 0, icNdim + 0) += 0.0; // diagonal terms are zero
-      lhs(nnDim + 0, icNdim + 1) += rho_dvol * cor_.Jxy_;
-      lhs(nnDim + 0, icNdim + 2) += rho_dvol * cor_.Jxz_;
+      lhs(nnDim + 0, icNdim + 1) += fac * cor_.Jxy_;
+      lhs(nnDim + 0, icNdim + 2) += fac * cor_.Jxz_;
 
-      lhs(nnDim + 1, icNdim + 0) -= rho_dvol * cor_.Jxy_; // Jyx = - Jxy
+      lhs(nnDim + 1, icNdim + 0) -= fac * cor_.Jxy_; // Jyx = - Jxy
       lhs(nnDim + 1, icNdim + 1) += 0.0; // diagonal terms are zero
-      lhs(nnDim + 1, icNdim + 2) += rho_dvol * cor_.Jyz_;
+      lhs(nnDim + 1, icNdim + 2) += fac * cor_.Jyz_;
 
-      lhs(nnDim + 2, icNdim + 0) -= rho_dvol * cor_.Jxz_; // Jzx = - Jxz
-      lhs(nnDim + 2, icNdim + 1) -= rho_dvol * cor_.Jyz_; // Jzy = - Jyz
+      lhs(nnDim + 2, icNdim + 0) -= fac * cor_.Jxz_; // Jzx = - Jxz
+      lhs(nnDim + 2, icNdim + 1) -= fac * cor_.Jyz_; // Jzy = - Jyz
       lhs(nnDim + 2, icNdim + 2) += 0.0; // diagonal terms are zero
     }
   }
