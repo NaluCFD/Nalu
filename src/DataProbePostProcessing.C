@@ -586,17 +586,16 @@ DataProbePostProcessing::execute()
   if ( isOutput ) {
     // execute and provide results...
     transfers_->execute();
-    provide_average(currentTime, timeStepCount);
+    provide_output(currentTime);
   }
 }
 
 //--------------------------------------------------------------------------
-//-------- provide_average -------------------------------------------------
+//-------- provide_output --------------------------------------------------
 //--------------------------------------------------------------------------
 void
-DataProbePostProcessing::provide_average(
-  const double currentTime,
-  const int timeStepCount)
+DataProbePostProcessing::provide_output(
+  const double currentTime)
 { 
   stk::mesh::MetaData &metaData = realm_.meta_data();
   VectorFieldType *coordinates 
@@ -622,75 +621,55 @@ DataProbePostProcessing::provide_average(
         std::ofstream myfile;
         if ( processorId == NaluEnv::self().parallel_rank()) {    
           myfile.open(fileName.c_str(), std::ios_base::app);
-          myfile << timeStepCount << " " << currentTime << std::endl;
-          
-          // reference to the nodeVector
-          std::vector<stk::mesh::Entity> &nodeVec = probeInfo->nodeVector_[inp];
+
+          // provide banner for current time, coordinates, field 1, field 2, etc
+          myfile << "Time" << std::setw(w_);
+         
+          for ( int jj = 0; jj < nDim; ++jj )
+            myfile << "coordinates[" << jj << "]" << std::setw(w_);          
       
-          const int numPoints = probeInfo->numPoints_[inp];
-      
-          // loop over fields
           for ( size_t ifi = 0; ifi < probeSpec->fieldInfo_.size(); ++ifi ) {
             const std::string fieldName = probeSpec->fieldInfo_[ifi].first;
             const int fieldSize = probeSpec->fieldInfo_[ifi].second;
-            
-            // provide banner for each field
-            for ( int jj = 0; jj < nDim; ++jj )
-              myfile << "Coordinates[" << jj << "]" << std::setw(w_);          
-            
+
             for ( int jj = 0; jj < fieldSize; ++jj ) {
-              if ( jj != fieldSize-1)
-                myfile << fieldName << "[" << jj << "]" << std::setw(w_);
-              else
-                myfile << fieldName << "[" << jj << "]" << std::endl; 
-            }
+              myfile << fieldName << "[" << jj << "]" << std::setw(w_);
+            } 
+          }
+
+          // banner complete
+          myfile << std::endl;
+
+          // reference to the nodeVector
+          std::vector<stk::mesh::Entity> &nodeVec = probeInfo->nodeVector_[inp];
           
-            const stk::mesh::FieldBase *theField = metaData.get_field(stk::topology::NODE_RANK, fieldName);
-          
-            // construct mean
-            std::vector<double> meanValue(fieldSize, 0.0);
-            for ( size_t inv = 0; inv < nodeVec.size(); ++inv ) {
-              stk::mesh::Entity node = nodeVec[inv];
-              double * theF = (double*)stk::mesh::field_data(*theField, node );
-              double * theCoord = (double*)stk::mesh::field_data(*coordinates, node );
-              
-              // output the coordinates
-              for ( int jj = 0; jj < nDim; ++jj )
-                myfile << theCoord[jj] << std::setw(w_);
-              
-              for ( int ifs = 0; ifs < fieldSize; ++ifs ) {
-                meanValue[ifs] += theF[ifs];
-                if ( ifs != fieldSize-1)
-                  myfile << theF[ifs] << std::setw(w_);
-                else
-                  myfile << theF[ifs] << std::endl;
-              }
-            }
+          // output in a single row
+          for ( size_t inv = 0; inv < nodeVec.size(); ++inv ) {
+            stk::mesh::Entity node = nodeVec[inv];
+            double * theCoord = (double*)stk::mesh::field_data(*coordinates, node );
             
-            // finish mean normalization
-            for ( int ifs = 0; ifs < fieldSize; ++ifs ) {
-              meanValue[ifs] /= numPoints;
+            // always output time and coordinates
+            myfile << std::left << currentTime << std::setw(w_);
+            for ( int jj = 0; jj < nDim; ++jj ) {
+              myfile << theCoord[jj] << std::setw(w_);
             }
 
-            // construct the standard deviation
-            std::vector<double> standardDeviation(fieldSize, 0.0);
-            for ( size_t inv = 0; inv < nodeVec.size(); ++inv ) {
-              stk::mesh::Entity node = nodeVec[inv];
+            // now all of the other fields required
+            for ( size_t ifi = 0; ifi < probeSpec->fieldInfo_.size(); ++ifi ) {
+              const std::string fieldName = probeSpec->fieldInfo_[ifi].first;
+              const stk::mesh::FieldBase *theField = metaData.get_field(stk::topology::NODE_RANK, fieldName);
               double * theF = (double*)stk::mesh::field_data(*theField, node );
-
-              for ( int ifs = 0; ifs < fieldSize; ++ifs ) {
-                standardDeviation[ifs] += std::pow(meanValue[ifs] - theF[ifs], 2);
+               
+              const int fieldSize = probeSpec->fieldInfo_[ifi].second;
+              for ( int jj = 0; jj < fieldSize; ++jj ) {      
+                myfile << theF[jj] << std::setw(w_);
               }
             }
-
-            // output mean and standard deviation
-            for ( int ifs = 0; ifs < fieldSize; ++ifs ) {
-              myfile << "Mean and standard deviation value for "
-                     << fieldName << "[" << ifs << "] is: " 
-                     << meanValue[ifs] << " " << std::sqrt(standardDeviation[ifs]/numPoints) << std::endl;
-            }
+            // node output complete
             myfile << std::endl;
           }
+          // all nodal output is complete; adda space and close
+          myfile << std::endl;
           myfile.close();
         }
         else {
