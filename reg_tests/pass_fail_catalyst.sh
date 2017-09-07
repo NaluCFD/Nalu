@@ -25,10 +25,10 @@ main() {
   passStatus="$?"
   performanceTime=`grep "STKPERF: Total Time" ${testName}.log  | awk '{print $4}'`
   if [ ${passStatus} -eq 0 ]; then
-      echo -e "..${testName}........... PASSED":" " ${performanceTime} " s"
+      echo -e "..${testName} Catalyst........... PASSED":" " ${performanceTime} " s"
       exit 0
   else
-      echo -e -n "..${testName}........... FAILED":" " ${performanceTime} " s"
+      echo -e -n "..${testName} Catalyst........... FAILED":" " ${performanceTime} " s"
       echo -e ", expected " ${numImages} " images, and found " ${foundImageCount} " images"
       exit 1
   fi

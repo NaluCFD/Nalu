@@ -624,19 +624,14 @@ a new, non-tracked file:
 
 ::
 
-    cp do-configNaluCatalyst do-configNaluCatalystTracked
+    cp do-configNaluCatalyst do-configNaluCatalystNonTracked
+    ./do-configNaluCatalystNonTracked
+    make 
 
-The build will create the same executables as a regular Nalu build. In addition, a 
-bash shell script named ``naluXCatalyst`` will be created along with 3 Nalu regression
-tests that test ParaView Catalyst functionality. Use ``naluXCatalyst`` to run Nalu
-with Catalyst enabled. To run the Catalyst regression tests from the ``Nalu/build`` do:
-
-::
-
-   ctest -R Catalyst 
-
-It is also possible to run ``naluX`` with Catalyst enabled by first setting the environment
-variable:
+The build will create the same executables as a regular Nalu build, and will also create a  
+bash shell script named ``naluXCatalyst``.  Use ``naluXCatalyst`` to run Nalu
+with Catalyst enabled.  It is also possible to run ``naluX`` with Catalyst enabled by
+first setting the environment variable:
 
 ::
 
@@ -658,6 +653,9 @@ in the following Nalu regression test directories for examples of the Catalyst i
     output:
       output_data_base_name: mixedTetPipe.e
       catalyst_file_name: catalyst.txt
+
+When the above regression tests are run, Catalyst is run as part of the regression test. The regression
+test checks that the correct number of image output files have been created by the test.
 
 The Nalu Catalyst integration also supports running Catalyst Python script files exported from the ParaView GUI.
 The procedure for exporting Catalyst Python scripts from ParaView is documented in the 
