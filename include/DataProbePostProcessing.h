@@ -109,8 +109,8 @@ public:
   // populate nodal field and output norms (if appropriate)
   void execute();
 
-  // output the average value
-  void provide_average(const double currentTime, const int timeStepCount);
+  // output to a file
+  void provide_output(const double currentTime);
   
   // provide the inactive selector
   stk::mesh::Selector &get_inactive_selector();
