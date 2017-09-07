@@ -126,7 +126,7 @@ class Hex8MeshWithNSOFields : public Hex8Mesh
 protected:
     Hex8MeshWithNSOFields()
     : Hex8Mesh(),
-      massFlowRate(&meta.declare_field<VectorFieldType>(stk::topology::ELEM_RANK, "massFlowRate")),   
+      massFlowRate(&meta.declare_field<GenericFieldType>(stk::topology::ELEM_RANK, "mass_flow_rate_scs")),
       Gju(&meta.declare_field<GenericFieldType>(stk::topology::NODE_RANK, "Gju", 1/*num-states*/)), 
       velocity(&meta.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity", 3/*num-states*/)), 
       dpdx(&meta.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "dpdx", 3/*num-states*/)), 
@@ -145,7 +145,7 @@ protected:
       stk::mesh::put_field(*pressure, meta.universal_part(), 1, &one);
     }
 
-    VectorFieldType* massFlowRate;
+    GenericFieldType* massFlowRate;
     GenericFieldType* Gju;
     VectorFieldType* velocity;
     VectorFieldType* dpdx;

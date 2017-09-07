@@ -18,7 +18,7 @@ class TestLinearSystem : public sierra::nalu::LinearSystem
 public:
 
  TestLinearSystem( sierra::nalu::Realm &realm, const unsigned numDof, sierra::nalu::EquationSystem *eqSys)
-   : sierra::nalu::LinearSystem(realm, numDof, eqSys, nullptr)
+   : sierra::nalu::LinearSystem(realm, numDof, eqSys, nullptr), numSumIntoCalls_(0)
   {}
 
   virtual ~TestLinearSystem() {}
@@ -47,16 +47,19 @@ public:
       const char * trace_tag
       )
   {
-    rhs_ = Kokkos::View<double*>("rhs_",rhs.dimension(0));
-    for(size_t i=0; i<rhs.dimension(0); ++i) {
-      rhs_(i) = rhs(i);
-    }
-    lhs_ = Kokkos::View<double**>("lhs_",lhs.dimension(0), lhs.dimension(1));
-    for(size_t i=0; i<lhs.dimension(0); ++i) {
-      for(size_t j=0; j<lhs.dimension(1); ++j) {
-        lhs_(i,j) = lhs(i,j);
+    if (numSumIntoCalls_ == 0) {
+      rhs_ = Kokkos::View<double*>("rhs_",rhs.dimension(0));
+      for(size_t i=0; i<rhs.dimension(0); ++i) {
+        rhs_(i) = rhs(i);
+      }
+      lhs_ = Kokkos::View<double**>("lhs_",lhs.dimension(0), lhs.dimension(1));
+      for(size_t i=0; i<lhs.dimension(0); ++i) {
+        for(size_t j=0; j<lhs.dimension(1); ++j) {
+          lhs_(i,j) = lhs(i,j);
+        }
       }
     }
+    Kokkos::atomic_add(&numSumIntoCalls_, 1u);
   }
 
   virtual void sumInto(
@@ -94,6 +97,7 @@ public:
     const unsigned beginPos,
     const unsigned endPos) {}
 
+  unsigned numSumIntoCalls_;
   Kokkos::View<double**> lhs_;
   Kokkos::View<double*> rhs_;
 
