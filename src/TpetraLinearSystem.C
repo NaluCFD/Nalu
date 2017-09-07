@@ -1201,7 +1201,7 @@ TpetraLinearSystem::sumInto(
   )
 {
   const size_t n_obj = entities.size();
-  const int numRows = n_obj * numDof_;
+  const unsigned numRows = n_obj * numDof_;
 
   ThrowAssert(numRows == rhs.size());
   ThrowAssert(numRows*numRows == lhs.size());
@@ -1217,17 +1217,17 @@ TpetraLinearSystem::sumInto(
     }
   }
 
-  for (int i = 0; i < numRows; ++i) {
+  for (unsigned i = 0; i < numRows; ++i) {
     sortPermutation_[i] = i;
   }
-  Tpetra::Details::shellSortKeysAndValues(scratchIds.data(), sortPermutation_.data(), numRows);
+  Tpetra::Details::shellSortKeysAndValues(scratchIds.data(), sortPermutation_.data(), (int)numRows);
 
   const LinSys::Matrix::local_matrix_type& ownedLocalMatrix = ownedMatrix_->getLocalMatrix();
   const LinSys::Matrix::local_matrix_type& globallyOwnedLocalMatrix = globallyOwnedMatrix_->getLocalMatrix();
   const auto& ownedLocalRhs = ownedRhs_->getLocalView<sierra::nalu::HostSpace>();
   const auto& globallyOwnedLocalRhs = globallyOwnedRhs_->getLocalView<sierra::nalu::HostSpace>();
 
-  for (int r = 0; r < numRows; r++) {
+  for (unsigned r = 0; r < numRows; r++) {
     const LocalOrdinal localId = scratchIds[r];
     const LocalOrdinal cur_perm_index = sortPermutation_[r];
     const double* const cur_lhs = &lhs[cur_perm_index*numRows];
