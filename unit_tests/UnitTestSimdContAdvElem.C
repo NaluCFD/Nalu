@@ -49,9 +49,11 @@ TEST_F(Hex8MeshWithNSOFields, continuityAdvElem)
 
   stk::mesh::Selector all = meta.universal_part();
   const stk::mesh::BucketVector& elemBuckets = bulk.get_buckets(stk::topology::ELEM_RANK, all);
-  const int numElems = stk::mesh::count_selected_entities(all, elemBuckets);
+  const unsigned numElems = stk::mesh::count_selected_entities(all, elemBuckets);
 
   std::cerr<<"numElems: "<<numElems<<", elapsedTime Hex8MeshWithNSOFields.continuityAdvElem: "<<elapsedTimeSimd<<std::endl;
+
+  EXPECT_EQ(numElems, helperObjs.linsys->numSumIntoCalls_);
 }
 
 TEST_F(Hex8MeshWithNSOFields, continuityAdvElem_new_ME)
@@ -89,8 +91,10 @@ TEST_F(Hex8MeshWithNSOFields, continuityAdvElem_new_ME)
 
   stk::mesh::Selector all = meta.universal_part();
   const stk::mesh::BucketVector& elemBuckets = bulk.get_buckets(stk::topology::ELEM_RANK, all);
-  const int numElems = stk::mesh::count_selected_entities(all, elemBuckets);
+  const unsigned numElems = stk::mesh::count_selected_entities(all, elemBuckets);
 
   std::cerr<<"numElems: "<<numElems<<", elapsedTime Hex8MeshWithNSOFields.continuityAdvElem: "<<elapsedTimeSimd<<std::endl;
+
+  EXPECT_EQ(numElems, helperObjs.linsys->numSumIntoCalls_);
 }
 
