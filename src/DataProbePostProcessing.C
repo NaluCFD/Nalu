@@ -620,25 +620,31 @@ DataProbePostProcessing::provide_output(
         const std::string fileName = probeInfo->partName_[inp] + "_" + ss.str() + ".dat";
         std::ofstream myfile;
         if ( processorId == NaluEnv::self().parallel_rank()) {    
+          
+          // one banner per file 
+          const bool addBanner = std::ifstream(fileName.c_str()) ? false : true;
+
           myfile.open(fileName.c_str(), std::ios_base::app);
 
           // provide banner for current time, coordinates, field 1, field 2, etc
-          myfile << "Time" << std::setw(w_);
-         
-          for ( int jj = 0; jj < nDim; ++jj )
-            myfile << "coordinates[" << jj << "]" << std::setw(w_);          
-      
-          for ( size_t ifi = 0; ifi < probeSpec->fieldInfo_.size(); ++ifi ) {
-            const std::string fieldName = probeSpec->fieldInfo_[ifi].first;
-            const int fieldSize = probeSpec->fieldInfo_[ifi].second;
-
-            for ( int jj = 0; jj < fieldSize; ++jj ) {
-              myfile << fieldName << "[" << jj << "]" << std::setw(w_);
-            } 
+          if ( addBanner ) {
+            myfile << "Time" << std::setw(w_);
+            
+            for ( int jj = 0; jj < nDim; ++jj )
+              myfile << "coordinates[" << jj << "]" << std::setw(w_);          
+            
+            for ( size_t ifi = 0; ifi < probeSpec->fieldInfo_.size(); ++ifi ) {
+              const std::string fieldName = probeSpec->fieldInfo_[ifi].first;
+              const int fieldSize = probeSpec->fieldInfo_[ifi].second;
+              
+              for ( int jj = 0; jj < fieldSize; ++jj ) {
+                myfile << fieldName << "[" << jj << "]" << std::setw(w_);
+              } 
+            }
+            
+            // banner complete
+            myfile << std::endl;
           }
-
-          // banner complete
-          myfile << std::endl;
 
           // reference to the nodeVector
           std::vector<stk::mesh::Entity> &nodeVec = probeInfo->nodeVector_[inp];

@@ -129,6 +129,9 @@ public:
   double searchTolerance_;
   double searchExpansionFactor_;
 
+  // only provide banner once 
+  bool addBanner_;
+
   // vector of specifications
   std::vector<DataProbeSpecInfo *> dataProbeSpecInfo_;
 
