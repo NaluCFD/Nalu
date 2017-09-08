@@ -48,9 +48,9 @@ TEST_F(Hex8MeshWithNSOFields, twoMomentumKernels)
 
   helperObjs.realm.timeIntegrator_ = &timeIntegrator;
 
-  stk::mesh::Selector all = meta.universal_part();
-  const stk::mesh::BucketVector& elemBuckets = bulk.get_buckets(stk::topology::ELEM_RANK, all);
-  const unsigned numElems = stk::mesh::count_selected_entities(all, elemBuckets);
+  stk::mesh::Selector all_local = meta.universal_part() & meta.locally_owned_part();
+  const stk::mesh::BucketVector& elemBuckets = bulk.get_buckets(stk::topology::ELEM_RANK, all_local);
+  const unsigned numElems = stk::mesh::count_selected_entities(all_local, elemBuckets);
 
   double startTime = stk::wall_time();
 
