@@ -51,7 +51,7 @@ namespace nalu{
   }
 
   template <typename ScalarType>
-  ScalarType cross3(const ScalarType* u, const ScalarType* v, ScalarType* cross)
+  void cross3(const ScalarType* u, const ScalarType* v, ScalarType* cross)
   {
     cross[0] =   u[1]*v[2] - u[2]*v[1];
     cross[1] = -(u[0]*v[2] - u[2]*v[0]);
