@@ -655,7 +655,7 @@ DataProbePostProcessing::provide_output(
             double * theCoord = (double*)stk::mesh::field_data(*coordinates, node );
             
             // always output time and coordinates
-            myfile << std::left << currentTime << std::setw(w_);
+            myfile << std::left << std::setw(w_) << currentTime << std::setw(w_);
             for ( int jj = 0; jj < nDim; ++jj ) {
               myfile << theCoord[jj] << std::setw(w_);
             }
@@ -667,15 +667,14 @@ DataProbePostProcessing::provide_output(
               double * theF = (double*)stk::mesh::field_data(*theField, node );
                
               const int fieldSize = probeSpec->fieldInfo_[ifi].second;
-              for ( int jj = 0; jj < fieldSize; ++jj ) {      
+              for ( int jj = 0; jj < fieldSize; ++jj ) {
                 myfile << theF[jj] << std::setw(w_);
               }
             }
             // node output complete
             myfile << std::endl;
           }
-          // all nodal output is complete; adda space and close
-          myfile << std::endl;
+          // all nodal output is complete, close
           myfile.close();
         }
         else {
