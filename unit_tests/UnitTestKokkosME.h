@@ -12,6 +12,7 @@
 #include "UnitTestUtils.h"
 
 #include "ScratchViews.h"
+#include "CopyAndInterleave.h"
 #include "ElemDataRequests.h"
 #include "AlgTraits.h"
 #include "KokkosInterface.h"
@@ -136,7 +137,7 @@ public:
                                 *prereqData[simdIndex], alsoProcessMEViews);
             }
 
-            copy_and_interleave(prereqData, simdElems, simdLen, simdPrereqData,
+            copy_and_interleave(prereqData, simdElems, simdPrereqData,
                                 alsoProcessMEViews);
             fill_master_element_views(dataNeeded_, bulk_, AlgTraits::topo_,
                                       element, simdPrereqData);

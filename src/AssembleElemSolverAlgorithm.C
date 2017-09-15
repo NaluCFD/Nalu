@@ -31,6 +31,7 @@
 
 #include <KokkosInterface.h>
 #include <ScratchViews.h>
+#include <CopyAndInterleave.h>
 
 namespace sierra{
 namespace nalu{
@@ -152,7 +153,7 @@ AssembleElemSolverAlgorithm::execute()
                           *prereqData[simdElemIndex], interleaveMEViews_);
       }
 
-      copy_and_interleave(prereqData, simdElems, simdLen, simdPrereqData, interleaveMEViews_);
+      copy_and_interleave(prereqData, simdElems, simdPrereqData, interleaveMEViews_);
 
       if (!interleaveMEViews_) {
         fill_master_element_views(dataNeededBySuppAlgs_, bulk_data, topo_, element, simdPrereqData);

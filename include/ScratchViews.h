@@ -119,7 +119,7 @@ public:
 
   const stk::mesh::Entity* elemNodes;
 
-  inline const std::vector<ViewHolder*> get_field_views() const { return fieldViews; }
+  inline const std::vector<ViewHolder*>& get_field_views() const { return fieldViews; }
 
 private:
   void create_needed_field_views(const TeamHandleType& team,
@@ -495,7 +495,5 @@ int get_num_bytes_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDim)
 
 } // namespace nalu
 } // namespace Sierra
-
-#include <CopyAndInterleave.h>
 
 #endif
