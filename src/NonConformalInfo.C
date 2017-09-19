@@ -372,11 +372,11 @@ NonConformalInfo::complete_search()
         problemDgInfoVec.push_back(dgInfo);        
       }
       else {
-        for (std::vector<std::pair<theKey, theKey> >::const_iterator ii = p2.first; ii != p2.second; ++ii ) {
+        for (std::vector<std::pair<theKey, theKey> >::const_iterator jj = p2.first; jj != p2.second; ++jj ) {
           
-          const uint64_t theBox = ii->second.id();
+          const uint64_t theBox = jj->second.id();
           const unsigned theRank = NaluEnv::self().parallel_rank();
-          const unsigned pt_proc = ii->first.proc();
+          const unsigned pt_proc = jj->first.proc();
           
           // check if I own the point...
           if ( theRank == pt_proc ) {

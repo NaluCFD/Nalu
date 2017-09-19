@@ -490,7 +490,7 @@ ActuatorLinePointDrag::execute()
                             nodesPerElement);
 
     // compute volume
-    double elemVolume = compute_volume(nDim, bestElem, bulkData);
+    double bestElemVolume = compute_volume(nDim, bestElem, bulkData);
 
     // interpolate velocity
     interpolate_field(nDim, bestElem, bulkData, &(infoObject->isoParCoords_[0]), 
@@ -509,7 +509,7 @@ ActuatorLinePointDrag::execute()
                        ws_pointGasDensity, &ws_pointForce[0], ws_pointForceLHS);
         
     // assemble nodal quantity; radius should be zero, so we can apply fill point drag
-    assemble_source_to_nodes(nDim, bestElem, bulkData, elemVolume, &ws_pointForce[0], ws_pointForceLHS, 
+    assemble_source_to_nodes(nDim, bestElem, bulkData, bestElemVolume, &ws_pointForce[0], ws_pointForceLHS, 
                              *actuator_source, *actuator_source_lhs, 1.0);
 
     // get the vector of elements

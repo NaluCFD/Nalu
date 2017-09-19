@@ -471,13 +471,13 @@ TurbulenceAveragingPostProcessing::execute()
       double *density = (double*)stk::mesh::field_data(*densityFB, b);
       double *densityRA = (double*)stk::mesh::field_data(*densityRAFB, b);
       
-      for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+      for ( stk::mesh::Bucket::size_type n = 0 ; n < length ; ++n ) {
 
         // get node
-        stk::mesh::Entity node = b[k];
+        stk::mesh::Entity node = b[n];
       
         // save off old density for below Favre procedure
-        const double oldRhoRA  = densityRA[k];
+        const double oldRhoRA  = densityRA[n];
         
         // reynolds first since density is required in Favre
         for ( size_t iav = 0; iav < reynoldsFieldPairSize; ++iav ) {
@@ -494,8 +494,8 @@ TurbulenceAveragingPostProcessing::execute()
         }
 
         // save off density for below Favre procedure
-        const double rho = density[k];
-        const double rhoRA  = densityRA[k];
+        const double rho = density[n];
+        const double rhoRA  = densityRA[n];
 
         // Favre
         for ( size_t iav = 0; iav < favreFieldPairSize; ++iav ) {

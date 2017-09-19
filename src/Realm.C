@@ -998,8 +998,8 @@ Realm::enforce_bc_on_exposed_faces()
         const stk::mesh::Entity* face_node_rels = bulkData_->begin_nodes(face); 
         const unsigned numberOfNodes = bulkData_->num_nodes(face);
         NaluEnv::self().naluOutput() << " Number of nodes connected to this face is: " << numberOfNodes << std::endl;
-        for ( unsigned k = 0; k < numberOfNodes; ++k ) {
-          stk::mesh::Entity node = face_node_rels[k];
+        for ( unsigned n = 0; n < numberOfNodes; ++n ) {
+          stk::mesh::Entity node = face_node_rels[n];
           NaluEnv::self().naluOutput() << " attached node Id: " << bulkData_->identifier(node) << std::endl;
         }
       
@@ -1008,8 +1008,8 @@ Realm::enforce_bc_on_exposed_faces()
         const unsigned numberOfElems = bulkData_->num_elements(face);
         NaluEnv::self().naluOutput() << " Number of elements connected to this face is: " << numberOfElems << std::endl;
 
-        for ( unsigned k = 0; k < numberOfElems; ++k ) {
-          stk::mesh::Entity element = face_elem_rels[k];
+        for ( unsigned faceElem = 0; faceElem < numberOfElems; ++faceElem ) {
+          stk::mesh::Entity element = face_elem_rels[faceElem];
           NaluEnv::self().naluOutput() << " attached element Id: " << bulkData_->identifier(element) << std::endl;
         }
       }

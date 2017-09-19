@@ -308,9 +308,9 @@ DataProbePostProcessing::setup()
       DataProbeInfo *probeInfo = probeSpec->dataProbeInfo_[k];
           
       // loop over probes... register all fields within the ProbInfo on each part
-      for ( int j = 0; j < probeInfo->numProbes_; ++j ) {
+      for ( int p = 0; p < probeInfo->numProbes_; ++p ) {
         // extract the part
-        stk::mesh::Part *probePart = probeInfo->part_[j];
+        stk::mesh::Part *probePart = probeInfo->part_[p];
         // everyone needs coordinates to be registered
         VectorFieldType *coordinates 
           =  &(metaData.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates"));
@@ -376,10 +376,8 @@ DataProbePostProcessing::initialize()
           for ( stk::mesh::BucketVector::const_iterator ib = node_buckets.begin() ;
                 ib != node_buckets.end() ; ++ib ) {
             stk::mesh::Bucket & b = **ib ;
-            const stk::mesh::Bucket::size_type length   = b.size();
-            for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+            for ( stk::mesh::Entity node : b ) {
               checkNumPoints++;
-              stk::mesh::Entity node = b[k];
               nodeVec.push_back(node);
               nodesExist = true;
             }
@@ -444,15 +442,15 @@ DataProbePostProcessing::initialize()
         }
         
         const int numPoints = probeInfo->numPoints_[j];
-        for ( int j = 0; j < nDim; ++j )
-          dx[j] = (tipC[j] - tailC[j])/(double)(numPoints-1);
+        for ( int p = 0; p < nDim; ++p )
+          dx[p] = (tipC[p] - tailC[p])/(double)(numPoints-1);
         
         // now populate the coordinates; can use a simple loop rather than buckets
-        for ( size_t j = 0; j < nodeVec.size(); ++j ) {
-          stk::mesh::Entity node = nodeVec[j];
+        for ( size_t n = 0; n < nodeVec.size(); ++n ) {
+          stk::mesh::Entity node = nodeVec[n];
           double * coords = stk::mesh::field_data(*coordinates, node );
           for ( int i = 0; i < nDim; ++i )
-            coords[i] = tailC[i] + j*dx[i];
+            coords[i] = tailC[i] + n*dx[i];
         }
       }
     }
