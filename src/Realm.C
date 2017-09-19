@@ -2552,9 +2552,13 @@ Realm::compute_centroid_on_parts(
     const stk::mesh::Bucket::size_type length   = b.size();
     double * mCoord = stk::mesh::field_data(*modelCoords, b);
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
-      for ( int j = 0; j < nDim; ++j ) {
-        minCoord[j] = std::min(minCoord[j], mCoord[k*nDim+j]);
-        maxCoord[j] = std::max(maxCoord[j], mCoord[k*nDim+j]);
+      minCoord[0] = std::min(minCoord[0], mCoord[k*nDim+0]);
+      maxCoord[0] = std::max(maxCoord[0], mCoord[k*nDim+0]);
+      minCoord[1] = std::min(minCoord[1], mCoord[k*nDim+1]);
+      maxCoord[1] = std::max(maxCoord[1], mCoord[k*nDim+1]);
+      if (nDim == 3) {
+        minCoord[2] = std::min(minCoord[2], mCoord[k*nDim+2]);
+        maxCoord[2] = std::max(maxCoord[2], mCoord[k*nDim+2]);
       }
     }
   }
