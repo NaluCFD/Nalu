@@ -155,7 +155,7 @@ void copy_and_interleave(const std::vector<ScratchViews<double>*>& data,
                          bool copyMEViews = true)
 {
     const std::vector<ViewHolder*>& simdFieldViews = simdData.get_field_views();
-    const ViewHolder* fViews[stk::simd::ndoubles];
+    const ViewHolder* fViews[stk::simd::ndoubles] = {nullptr};
 
     for(size_t fieldViewsIndex=0; fieldViewsIndex<simdFieldViews.size(); ++fieldViewsIndex) {
       if (simdFieldViews[fieldViewsIndex] != nullptr) {
