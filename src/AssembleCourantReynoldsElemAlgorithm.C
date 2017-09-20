@@ -101,9 +101,8 @@ AssembleCourantReynoldsElemAlgorithm::execute()
 
   stk::mesh::BucketVector const& elem_buckets =
     realm_.get_buckets( stk::topology::ELEMENT_RANK, s_locally_owned_union );
-  for ( stk::mesh::BucketVector::const_iterator ib = elem_buckets.begin();
-        ib != elem_buckets.end() ; ++ib ) {
-    stk::mesh::Bucket & b = **ib ;
+  for ( const stk::mesh::Bucket* bucket_ptr : elem_buckets ) {
+    const stk::mesh::Bucket & b = *bucket_ptr ;
     const stk::mesh::Bucket::size_type length   = b.size();
 
     // extract master element

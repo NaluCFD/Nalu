@@ -25,7 +25,7 @@ TEST_F(ContinuityKernelHex8Mesh, density_time_derivative)
   // Initialize the kernel
   std::unique_ptr<sierra::nalu::Kernel> massKernel(
     new sierra::nalu::ContinuityMassElemKernel<sierra::nalu::AlgTraitsHex8>(
-      bulk_, solnOpts_, helperObjs.assembleElemSolverAlg->dataNeededBySuppAlgs_, false));
+      bulk_, solnOpts_, helperObjs.assembleElemSolverAlg->dataNeededByKernels_, false));
 
   // Add to kernels to be tested
   helperObjs.assembleElemSolverAlg->activeKernels_.push_back(massKernel.get());
@@ -67,7 +67,7 @@ TEST_F(ContinuityKernelHex8Mesh, density_time_derivative_lumped)
   // Initialize the kernel
   std::unique_ptr<sierra::nalu::Kernel> massKernel(
     new sierra::nalu::ContinuityMassElemKernel<sierra::nalu::AlgTraitsHex8>(
-      bulk_, solnOpts_, helperObjs.assembleElemSolverAlg->dataNeededBySuppAlgs_, true));
+      bulk_, solnOpts_, helperObjs.assembleElemSolverAlg->dataNeededByKernels_, true));
 
   // Add to kernels to be tested
   helperObjs.assembleElemSolverAlg->activeKernels_.push_back(massKernel.get());

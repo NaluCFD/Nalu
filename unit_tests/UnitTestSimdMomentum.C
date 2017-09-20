@@ -29,12 +29,12 @@ TEST_F(Hex8MeshWithNSOFields, twoMomentumKernels)
   std::unique_ptr<sierra::nalu::Kernel> advDiffKernel(
      new sierra::nalu::MomentumAdvDiffElemKernel<sierra::nalu::AlgTraitsHex8>(
         bulk, solnOpts, velocity, viscosity,
-        helperObjs.assembleElemSolverAlg->dataNeededBySuppAlgs_));
+        helperObjs.assembleElemSolverAlg->dataNeededByKernels_));
 
   std::unique_ptr<sierra::nalu::Kernel> nsoKernel(
      new sierra::nalu::MomentumNSOElemKernel<sierra::nalu::AlgTraitsHex8>(
         bulk, solnOpts, velocity, Gju, viscosity, 0.0, 0.0,
-        helperObjs.assembleElemSolverAlg->dataNeededBySuppAlgs_));
+        helperObjs.assembleElemSolverAlg->dataNeededByKernels_));
 
   helperObjs.assembleElemSolverAlg->activeKernels_.push_back(advDiffKernel.get());
   helperObjs.assembleElemSolverAlg->activeKernels_.push_back(nsoKernel.get());

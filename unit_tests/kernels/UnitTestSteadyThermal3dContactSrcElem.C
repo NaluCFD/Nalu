@@ -41,7 +41,7 @@ TEST_F(HeatCondKernelHex8Mesh, steady_3d_thermal)
   // Initialize the kernel
   std::unique_ptr<sierra::nalu::Kernel> kernel(
     new sierra::nalu::SteadyThermal3dContactSrcElemKernel<sierra::nalu::AlgTraitsHex8>(
-      bulk_, solnOpts_, helperObjs.assembleElemSolverAlg->dataNeededBySuppAlgs_));
+      bulk_, solnOpts_, helperObjs.assembleElemSolverAlg->dataNeededByKernels_));
 
   // Add to kernels to be tested
   helperObjs.assembleElemSolverAlg->activeKernels_.push_back(kernel.get());

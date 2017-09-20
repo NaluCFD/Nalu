@@ -37,7 +37,7 @@ TEST_F(Hex8MeshWithNSOFields, continuityAdvElem)
 
   std::unique_ptr<sierra::nalu::Kernel> advKernel(
     new sierra::nalu::ContinuityAdvElemKernel<sierra::nalu::AlgTraitsHex8>(
-      bulk, solnOpts, helperObjs.assembleElemSolverAlg->dataNeededBySuppAlgs_));
+      bulk, solnOpts, helperObjs.assembleElemSolverAlg->dataNeededByKernels_));
 
   helperObjs.assembleElemSolverAlg->activeKernels_.push_back(advKernel.get());
 
@@ -79,7 +79,7 @@ TEST_F(Hex8MeshWithNSOFields, continuityAdvElem_new_ME)
 
   std::unique_ptr<sierra::nalu::Kernel> advKernel(
     new sierra::nalu::ContinuityAdvElemKernel<sierra::nalu::AlgTraitsHex8>(
-      bulk, solnOpts, helperObjs.assembleElemSolverAlg->dataNeededBySuppAlgs_));
+      bulk, solnOpts, helperObjs.assembleElemSolverAlg->dataNeededByKernels_));
 
   helperObjs.assembleElemSolverAlg->activeKernels_.push_back(advKernel.get());
 

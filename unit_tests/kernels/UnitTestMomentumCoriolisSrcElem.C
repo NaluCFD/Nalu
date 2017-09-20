@@ -44,7 +44,7 @@ TEST_F(MomentumKernelHex8Mesh, coriolis)
   // Initialize the kernel
   std::unique_ptr<sierra::nalu::Kernel> kernel(
     new sierra::nalu::MomentumCoriolisSrcElemKernel<sierra::nalu::AlgTraitsHex8>(
-      bulk_, solnOpts_, velocity_, helperObjs.assembleElemSolverAlg->dataNeededBySuppAlgs_, false)
+      bulk_, solnOpts_, velocity_, helperObjs.assembleElemSolverAlg->dataNeededByKernels_, false)
   );
 
   // Add to kernels to be tested

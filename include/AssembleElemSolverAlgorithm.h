@@ -44,7 +44,7 @@ public:
   MasterElement *meSCS_;
   MasterElement *meSCV_;
 
-  ElemDataRequests dataNeededBySuppAlgs_;
+  ElemDataRequests dataNeededByKernels_;
   int rhsSize_;
   const bool interleaveMEViews_;
 };

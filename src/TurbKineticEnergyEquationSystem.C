@@ -395,7 +395,7 @@ TurbKineticEnergyEquationSystem::register_interior_algorithm(
     std::tie(solverAlg, solverAlgWasBuilt) = build_or_add_part_to_solver_alg
       (*this, *part, solverAlgMap);
     
-    ElemDataRequests& dataPreReqs = solverAlg->dataNeededBySuppAlgs_;
+    ElemDataRequests& dataPreReqs = solverAlg->dataNeededByKernels_;
     auto& activeKernels = solverAlg->activeKernels_;
 
     if (solverAlgWasBuilt) {

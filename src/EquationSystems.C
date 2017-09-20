@@ -620,9 +620,8 @@ EquationSystems::register_initial_condition_fcn(
   const UserFunctionInitialConditionData &fcnIC)
 {
   // call through to equation systems
-  EquationSystemVector::iterator ii;
-  for( ii=equationSystemVector_.begin(); ii!=equationSystemVector_.end(); ++ii )
-    (*ii)->register_initial_condition_fcn(part, fcnIC.functionNames_, fcnIC.functionParams_);
+  for( EquationSystem* eqSys : equationSystemVector_ )
+    eqSys->register_initial_condition_fcn(part, fcnIC.functionNames_, fcnIC.functionParams_);
 }
 
 //--------------------------------------------------------------------------
@@ -633,16 +632,15 @@ EquationSystems::initialize()
 {
   NaluEnv::self().naluOutputP0() << "EquationSystems::initialize(): Begin " << std::endl;
   double start_time = NaluEnv::self().nalu_time();
-  EquationSystemVector::iterator ii;
-  for( ii=equationSystemVector_.begin(); ii!=equationSystemVector_.end(); ++ii ) {
+  for( EquationSystem* eqSys : equationSystemVector_ ) {
     if ( realm_.get_activate_memory_diagnostic() ) {
-      NaluEnv::self().naluOutputP0() << "NaluMemory::EquationSystems::initialize(): " << (*ii)->name_ << std::endl;
+      NaluEnv::self().naluOutputP0() << "NaluMemory::EquationSystems::initialize(): " << eqSys->name_ << std::endl;
       realm_.provide_memory_summary();
     }
     double start_time_eq = NaluEnv::self().nalu_time();
-    (*ii)->initialize();
+    eqSys->initialize();
     double end_time_eq = NaluEnv::self().nalu_time();
-    (*ii)->timerInit_ += (end_time_eq - start_time_eq);
+    eqSys->timerInit_ += (end_time_eq - start_time_eq);
   }
   double end_time = NaluEnv::self().nalu_time();
   realm_.timerInitializeEqs_ += (end_time-start_time);
@@ -656,12 +654,11 @@ void
 EquationSystems::reinitialize_linear_system()
 {
   double start_time = NaluEnv::self().nalu_time();
-  EquationSystemVector::iterator ii;
-  for( ii=equationSystemVector_.begin(); ii!=equationSystemVector_.end(); ++ii ) {
+  for( EquationSystem* eqSys : equationSystemVector_ ) {
     double start_time_eq = NaluEnv::self().nalu_time();
-    (*ii)->reinitialize_linear_system();
+    eqSys->reinitialize_linear_system();
     double end_time_eq = NaluEnv::self().nalu_time();
-    (*ii)->timerInit_ += (end_time_eq - start_time_eq);
+    eqSys->timerInit_ += (end_time_eq - start_time_eq);
   }
   double end_time = NaluEnv::self().nalu_time();
   realm_.timerInitializeEqs_ += (end_time-start_time);
@@ -674,9 +671,8 @@ void
 EquationSystems::post_adapt_work()
 {
   double time = -NaluEnv::self().nalu_time();
-  EquationSystemVector::iterator ii;
-  for( ii=equationSystemVector_.begin(); ii!=equationSystemVector_.end(); ++ii )
-    (*ii)->post_adapt_work();
+  for( EquationSystem* eqSys : equationSystemVector_ )
+    eqSys->post_adapt_work();
   
   // everyone needs props to be done..
   realm_.evaluate_properties();

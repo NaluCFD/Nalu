@@ -89,7 +89,7 @@ AssembleElemSolverAlgorithm::execute()
   //    scratch views size + LHS + RHS + node IDs + padding for alignment
   int bytes_per_thread =
     (rhsSize_ + lhsSize)*sizeof(double) + (2*scratchIdsSize)*sizeof(int) +
-    get_num_bytes_pre_req_data<double>(dataNeededBySuppAlgs_, meta_data.spatial_dimension());
+    get_num_bytes_pre_req_data<double>(dataNeededByKernels_, meta_data.spatial_dimension());
   constexpr int simdLen = stk::simd::ndoubles;
   bytes_per_thread *= 3*simdLen;//3 is wrong, still need to debug this!!! should be 2 but seems to have memory problems.
 
@@ -110,10 +110,10 @@ AssembleElemSolverAlgorithm::execute()
     std::vector<sierra::nalu::ScratchViews<double>*> prereqData(simdLen, nullptr);
 
     for(int simdIndex=0; simdIndex<simdLen; ++simdIndex) {
-      prereqData[simdIndex] = new sierra::nalu::ScratchViews<double>(team, bulk_data, topo_, dataNeededBySuppAlgs_);
+      prereqData[simdIndex] = new sierra::nalu::ScratchViews<double>(team, bulk_data, topo_, dataNeededByKernels_);
     }
 
-    sierra::nalu::ScratchViews<DoubleType> simdPrereqData(team, bulk_data, topo_, dataNeededBySuppAlgs_);
+    sierra::nalu::ScratchViews<DoubleType> simdPrereqData(team, bulk_data, topo_, dataNeededByKernels_);
 
     SharedMemView<DoubleType*> simdrhs = get_shmem_view_1D<DoubleType>(team, rhsSize_);
     SharedMemView<DoubleType**> simdlhs = get_shmem_view_2D<DoubleType>(team, rhsSize_, rhsSize_);
@@ -149,14 +149,14 @@ AssembleElemSolverAlgorithm::execute()
         // get element
         element = b[bktIndex*simdLen + simdElemIndex];
         elemNodes[simdElemIndex] = bulk_data.begin_nodes(element);
-        fill_pre_req_data(dataNeededBySuppAlgs_, bulk_data, topo_, element,
+        fill_pre_req_data(dataNeededByKernels_, bulk_data, topo_, element,
                           *prereqData[simdElemIndex], interleaveMEViews_);
       }
 
       copy_and_interleave(prereqData, simdElems, simdPrereqData, interleaveMEViews_);
 
       if (!interleaveMEViews_) {
-        fill_master_element_views(dataNeededBySuppAlgs_, bulk_data, topo_, element, simdPrereqData);
+        fill_master_element_views(dataNeededByKernels_, bulk_data, topo_, element, simdPrereqData);
       }
 
       for ( int i = 0; i < rhsSize_; ++i ) {

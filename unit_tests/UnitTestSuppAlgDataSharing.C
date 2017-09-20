@@ -114,24 +114,24 @@ public:
   
       //In this unit-test we know we're working on a hex8 mesh. In real algorithms,
       //a topology would be available.
-      dataNeededBySuppAlgs_.add_cvfem_surface_me(sierra::nalu::MasterElementRepo::get_surface_master_element(stk::topology::HEX_8));
+      dataNeededByKernels_.add_cvfem_surface_me(sierra::nalu::MasterElementRepo::get_surface_master_element(stk::topology::HEX_8));
 
       const int bytes_per_team = 0;
-      const int bytes_per_thread = get_num_bytes_pre_req_data(dataNeededBySuppAlgs_, meta.spatial_dimension());
+      const int bytes_per_thread = get_num_bytes_pre_req_data(dataNeededByKernels_, meta.spatial_dimension());
       auto team_exec = sierra::nalu::get_team_policy(elemBuckets.size(), bytes_per_team, bytes_per_thread);
       Kokkos::parallel_for(team_exec, [&](const sierra::nalu::TeamHandleType& team)
       {
           const stk::mesh::Bucket& bkt = *elemBuckets[team.league_rank()];
           stk::topology topo = bkt.topology();
 
-          sierra::nalu::ScratchViews<double> prereqData(team, bulkData_, topo, dataNeededBySuppAlgs_);
+          sierra::nalu::ScratchViews<double> prereqData(team, bulkData_, topo, dataNeededByKernels_);
 
           // See get_num_bytes_pre_req_data for padding
           EXPECT_EQ(static_cast<unsigned>(bytes_per_thread), prereqData.total_bytes() + 8 * sizeof(double));
 
           Kokkos::parallel_for(Kokkos::TeamThreadRange(team, bkt.size()), [&](const size_t& jj)
           {
-             fill_pre_req_data(dataNeededBySuppAlgs_, bulkData_, topo,
+             fill_pre_req_data(dataNeededByKernels_, bulkData_, topo,
                                bkt[jj], prereqData);
             
              for(SuppAlg* alg : suppAlgs_) {
@@ -142,7 +142,7 @@ public:
   }
 
   std::vector<SuppAlg*> suppAlgs_;
-  sierra::nalu::ElemDataRequests dataNeededBySuppAlgs_;
+  sierra::nalu::ElemDataRequests dataNeededByKernels_;
 
 private:
   stk::mesh::BulkData& bulkData_;
@@ -174,9 +174,9 @@ TEST_F(Hex8Mesh, supp_alg_data_sharing)
     TestAlgorithm testAlgorithm(bulk, partVec);
 
     //TestSuppAlg constructor says which data it needs, by inserting
-    //things into the 'dataNeededBySuppAlgs_' container.
+    //things into the 'dataNeededByKernels_' container.
     
-    SuppAlg* suppAlg = new TestSuppAlg(testAlgorithm.dataNeededBySuppAlgs_,
+    SuppAlg* suppAlg = new TestSuppAlg(testAlgorithm.dataNeededByKernels_,
                                      &nodalScalarField, &nodalVectorField, &nodalTensorField,
                                      &elemScalarField, &elemVectorField, &elemTensorField);
 

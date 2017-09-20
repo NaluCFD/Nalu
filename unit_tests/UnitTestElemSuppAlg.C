@@ -128,19 +128,19 @@ public:
       const stk::mesh::BucketVector& elemBuckets = bulkData_.get_buckets(stk::topology::ELEM_RANK, meta.locally_owned_part());
   
       const int bytes_per_team = 0;
-      const int bytes_per_thread = get_num_bytes_pre_req_data(dataNeededBySuppAlgs_, meta.spatial_dimension());
+      const int bytes_per_thread = get_num_bytes_pre_req_data(dataNeededByKernels_, meta.spatial_dimension());
       auto team_exec = sierra::nalu::get_team_policy(elemBuckets.size(), bytes_per_team, bytes_per_thread);
       Kokkos::parallel_for(team_exec, [&](const sierra::nalu::TeamHandleType& team)
       {
           const stk::mesh::Bucket& bkt = *elemBuckets[team.league_rank()];
           stk::topology topo = bkt.topology();
-          sierra::nalu::MasterElement* meSCS = dataNeededBySuppAlgs_.get_cvfem_surface_me();
+          sierra::nalu::MasterElement* meSCS = dataNeededByKernels_.get_cvfem_surface_me();
 
-          sierra::nalu::ScratchViews<double> prereqData(team, bulkData_, topo, dataNeededBySuppAlgs_);
+          sierra::nalu::ScratchViews<double> prereqData(team, bulkData_, topo, dataNeededByKernels_);
 
           Kokkos::parallel_for(Kokkos::TeamThreadRange(team, bkt.size()), [&](const size_t& jj)
           {
-             fill_pre_req_data(dataNeededBySuppAlgs_, bulkData_, topo,
+             fill_pre_req_data(dataNeededByKernels_, bulkData_, topo,
                                bkt[jj], prereqData);
             
              for(SuppAlg* alg : suppAlgs_) {
@@ -151,7 +151,7 @@ public:
   }
 
   std::vector<SuppAlg*> suppAlgs_;
-  sierra::nalu::ElemDataRequests dataNeededBySuppAlgs_;
+  sierra::nalu::ElemDataRequests dataNeededByKernels_;
 
 private:
   stk::mesh::BulkData& bulkData_;
@@ -167,7 +167,7 @@ TEST_F(Hex8Mesh, elem_supp_alg_views)
     TestElemAlgorithmWithSuppAlgViews testAlgorithm(bulk, partVec, coordField);
 
     //DiscreteLapacianSuppAlg constructor says which data it needs, by inserting
-    //things into the 'dataNeededBySuppAlgs_' container.
+    //things into the 'dataNeededByKernels_' container.
     
     // find a topo, assume this is a homogeneous hex8 mesh
     for (size_t k = 0; k < partVec.size(); ++k )
@@ -176,7 +176,7 @@ TEST_F(Hex8Mesh, elem_supp_alg_views)
       }
 
     stk::topology partTopo = partVec[0]->topology();
-    SuppAlg* suppAlg = new DiscreteLaplacianSuppAlg(testAlgorithm.dataNeededBySuppAlgs_,
+    SuppAlg* suppAlg = new DiscreteLaplacianSuppAlg(testAlgorithm.dataNeededByKernels_,
                                                     coordField,
                                                     discreteLaplacianOfPressure, nodalPressureField, partTopo);
 

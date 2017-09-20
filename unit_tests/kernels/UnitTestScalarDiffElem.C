@@ -48,7 +48,7 @@ TEST_F(HeatCondKernelHex8Mesh, cvfem_diff)
   std::unique_ptr<sierra::nalu::Kernel> kernel(
     new sierra::nalu::ScalarDiffElemKernel<sierra::nalu::AlgTraitsHex8>(
       bulk_, solnOpts_, temperature_, thermalCond_,
-      helperObjs.assembleElemSolverAlg->dataNeededBySuppAlgs_));
+      helperObjs.assembleElemSolverAlg->dataNeededByKernels_));
 
   // Add to kernels to be tested
   helperObjs.assembleElemSolverAlg->activeKernels_.push_back(kernel.get());
