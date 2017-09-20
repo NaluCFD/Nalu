@@ -151,17 +151,12 @@ void expect_all_near(
   const double tol = 1.0e-15);
 
 void expect_all_near(
-  const sierra::nalu::SharedMemView<double*>& calcValue,
-  const double* exactValue,
-  const double tol = 1.0e-15);
-
-void expect_all_near(
-  const sierra::nalu::SharedMemView<double*>& calcValue,
+  const Kokkos::View<double*>& calcValue,
   const double exactValue,
   const double tol = 1.0e-15);
 
 void expect_all_near(
-  const sierra::nalu::SharedMemView<double**>& calcValue,
+  const Kokkos::View<double**>& calcValue,
   const double* exactValue,
   const double tol = 1.0e-15);
 
@@ -184,24 +179,7 @@ void expect_all_near(
 
 template<int N>
 void expect_all_near(
-  const sierra::nalu::SharedMemView<double**>& calcValue,
-  const double (*exactValue)[N],
-  const double tol = 1.0e-15)
-{
-  const int dim1 = calcValue.dimension(0);
-  const int dim2 = calcValue.dimension(1);
-  EXPECT_EQ(dim2, N);
-
-  for (int i=0; i < dim1; ++i) {
-    for (int j=0; j < dim2; ++j) {
-      EXPECT_NEAR(calcValue(i,j), exactValue[i][j], tol);
-    }
-  }
-}
-
-template<int N>
-void expect_all_near(
-  const sierra::nalu::SharedMemView<double**>& calcValue,
+  const Kokkos::View<double**>& calcValue,
   const double exactValue,
   const double tol = 1.0e-15)
 {
@@ -215,158 +193,6 @@ void expect_all_near(
     }
   }
 }
-
-/** Driver class that mimics Assemble*SolverAlgorithm
- *
- * It is the caller's responsibility to populate `activeKernels_` and call the
- * `setup` method on the activated Kernels before calling the `execute` method
- * of this class.
- *
- * The execute method will assert that it is being called with a one-element
- * mesh when it loops over the buckets.
- */
-class TestKernelDriver
-{
-public:
-  TestKernelDriver(
-    const stk::mesh::BulkData& bulk,
-    const stk::mesh::PartVector& partVec,
-    const VectorFieldType* coordinates,
-    const int numDof = 1,
-    const stk::topology topo = stk::topology::HEX_8)
-    : bulk_(bulk),
-      partVec_(partVec),
-      coordinates_(coordinates),
-      topo_(topo),
-      numDof_(numDof)
-  {}
-
-  void execute()
-  {
-    const stk::mesh::MetaData& meta = bulk_.mesh_meta_data();
-
-    stk::mesh::Selector s_locally_owned_union = (
-      meta.locally_owned_part() & stk::mesh::selectUnion(partVec_));
-
-    const auto& buckets = bulk_.get_buckets(stk::topology::ELEM_RANK,
-                                            s_locally_owned_union);
-
-    // For LHS/RHS golds expect only one element in the mesh
-    EXPECT_EQ(buckets.size(), 1u);
-    const int simdLen = 1;
-    const int simdIndex = 0;
-
-    const int rhsSize = topo_.num_nodes() * numDof_;
-    const int lhsSize = rhsSize * rhsSize;
-    const int bytes_per_team = 0;
-    const int num_bytes_for_kernels = sierra::nalu::get_num_bytes_pre_req_data(
-        dataNeededByKernels_, meta.spatial_dimension()) ;
-    int bytes_per_thread = (rhsSize + lhsSize) * sizeof(double) +
-      num_bytes_for_kernels;
-    bytes_per_thread *= (1 + stk::simd::ndoubles);
-
-    auto team_exec = sierra::nalu::get_team_policy(
-      buckets.size(), bytes_per_team, bytes_per_thread);
-
-    Kokkos::parallel_for(team_exec, [&](const sierra::nalu::TeamHandleType& team) {
-        auto& b = *buckets[team.league_rank()];
-        const auto length = b.size();
-        // For LHS/RHS golds expect only one element in the mesh
-        EXPECT_EQ(length, 1u);
-
-        std::vector<sierra::nalu::ScratchViews<double>*> preReqData(simdLen, nullptr);
-
-        preReqData[simdIndex] = new sierra::nalu::ScratchViews<double>(team, bulk_, topo_, dataNeededByKernels_);
-
-        sierra::nalu::ScratchViews<DoubleType> simdPreReqData(
-          team, bulk_, topo_, dataNeededByKernels_);
-
-        rhs_ = sierra::nalu::get_shmem_view_1D<double>(team, rhsSize);
-        lhs_ = sierra::nalu::get_shmem_view_2D<double>(team, rhsSize, rhsSize);
-
-        sierra::nalu::SharedMemView<DoubleType*> simdRhs = sierra::nalu::get_shmem_view_1D<DoubleType>(team, rhsSize);
-        sierra::nalu::SharedMemView<DoubleType**> simdLhs = sierra::nalu::get_shmem_view_2D<DoubleType>(team, rhsSize, rhsSize);
-
-        Kokkos::parallel_for(
-          Kokkos::TeamThreadRange(team, length), [&](const size_t& k) {
-            stk::mesh::Entity element = b[k];
-            sierra::nalu::fill_pre_req_data(
-              dataNeededByKernels_, bulk_, topo_, element, *preReqData[0]);
-
-            sierra::nalu::copy_and_interleave(preReqData, simdLen, simdPreReqData);
-
-            for (int i=0; i < rhsSize; i++) {
-              simdRhs(i) = 0.0;
-              for (int j=0; j < rhsSize; j++) {
-                simdLhs(i,j) = 0.0;
-              }
-            }
-
-            for (size_t i=0; i < activeKernels_.size(); ++i)
-              activeKernels_[i]->execute(simdLhs, simdRhs, simdPreReqData);
-
-            for(int i=0; i<rhsSize; ++i) {
-              rhs_(i) = stk::simd::get_data(simdRhs(i),simdIndex);
-            }
-            for(int i=0; i<rhsSize; ++i) {
-              for(int j=0; j<rhsSize; ++j) {
-                lhs_(i,j) = stk::simd::get_data(simdLhs(i,j),simdIndex);
-              }
-            }
-
-          });
-
-      });
-  }
-
-  /** Convenience function to dump LHS and RHS
-   *
-   * Used to generate the gold values as well as for debugging
-   */
-  void dump_lhs_and_rhs(double tol = 1.0e-15)
-  {
-    using unit_test_utils::nalu_out;
-    const int rhsSize = rhs_.dimension(0);
-
-    // Dump the LHS
-    nalu_out() << std::endl
-               << "static constexpr double lhs[" << rhsSize << "]["
-               << rhsSize << "] = {" << std::endl;
-    for (int i=0; i < rhsSize; i++) {
-      nalu_out() << "  { ";
-      for (int j=0; j < rhsSize; j++) {
-        nalu_out() << std::setprecision(16) << std::fixed
-                   << (std::fabs(stk::simd::get_data(lhs_(i,j),0)) < tol ? 0.0 : lhs_(i,j)) << ", ";
-      }
-      nalu_out() << " }," << std::endl;
-    }
-    nalu_out() << "};" << std::endl << std::endl;
-
-    // Dump the RHS
-    nalu_out() << std::endl
-               << "static constexpr double rhs[" << rhsSize << "] = {"
-               << std::endl << "  ";
-    for (int i=0; i < rhsSize; i++) {
-      nalu_out() << std::setprecision(16) << std::fixed
-                 << (std::fabs(stk::simd::get_data(rhs_(i),0)) < tol ? 0.0 : rhs_(i)) << ", ";
-    }
-    nalu_out() << "};" << std::endl << std::endl;
-  }
-
-  std::vector<sierra::nalu::Kernel*> activeKernels_;
-  sierra::nalu::ElemDataRequests dataNeededByKernels_;
-  sierra::nalu::SharedMemView<double*> rhs_;
-  sierra::nalu::SharedMemView<double**> lhs_;
-
-  const VectorFieldType* coordinates() const { return coordinates_; }
-
-private:
-  const stk::mesh::BulkData& bulk_;
-  const stk::mesh::PartVector& partVec_;
-  const VectorFieldType* coordinates_;
-  const stk::topology topo_{stk::topology::HEX_8};
-  const int numDof_;
-};
 
 }
 

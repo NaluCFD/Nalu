@@ -1000,19 +1000,7 @@ void expect_all_near(
 }
 
 void expect_all_near(
-  const sierra::nalu::SharedMemView<double*>& calcValue,
-  const double* exactValue,
-  const double tol)
-{
-  const int length = calcValue.dimension(0);
-
-  for (int i=0; i < length; ++i) {
-    EXPECT_NEAR(calcValue[i], exactValue[i], tol);
-  }
-}
-
-void expect_all_near(
-  const sierra::nalu::SharedMemView<double*>& calcValue,
+  const Kokkos::View<double*>& calcValue,
   const double exactValue,
   const double tol)
 {
@@ -1024,7 +1012,7 @@ void expect_all_near(
 }
 
 void expect_all_near(
-  const sierra::nalu::SharedMemView<double**>& calcValue,
+  const Kokkos::View<double**>& calcValue,
   const double* exactValue,
   const double tol)
 {
@@ -1037,3 +1025,4 @@ void expect_all_near(
 }
 
 } // unit_test_kernel_utils
+
