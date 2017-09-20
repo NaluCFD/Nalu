@@ -52,7 +52,7 @@ TEST_F(MomentumKernelHex8Mesh, buoyancy_boussinesq)
   // Exact solution
   std::vector<double> rhsExact(24,0.0);
   for (size_t i=2; i < 24; i += 3)
-    rhsExact[i] = 0.125 * solnOpts_.gravity_[2] * expFac * (300.0 - solnOpts_.referenceTemperature_);
+    rhsExact[i] = -0.125 * solnOpts_.gravity_[2] * expFac * (300.0 - solnOpts_.referenceTemperature_);
 
   unit_test_kernel_utils::expect_all_near(helperObjs.linsys->rhs_,rhsExact.data());
 }

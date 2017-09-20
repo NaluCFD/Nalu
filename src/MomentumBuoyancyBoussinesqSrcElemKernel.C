@@ -84,7 +84,7 @@ MomentumBuoyancyBoussinesqSrcElemKernel<AlgTraits>::execute(
     // Compute RHS
     const DoubleType scV = v_scv_volume(ip);
     const int nnNdim = nearestNode * AlgTraits::nDim_;
-    const DoubleType fac = rhoRef_ * beta_ * (temperatureIp - tRef_) * scV;
+    const DoubleType fac = -rhoRef_ * beta_ * (temperatureIp - tRef_) * scV;
     for (int j=0; j < AlgTraits::nDim_; ++j) {
       rhs(nnNdim + j) += fac * gravity_(j);
     }
