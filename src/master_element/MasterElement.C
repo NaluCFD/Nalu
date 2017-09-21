@@ -1508,22 +1508,52 @@ PyrSCS::sidePcoords_to_elemPcoords(
   const double *side_pcoords,
   double *elem_pcoords)
 {
-  switch (side_ordinal) {
-  case 0:
-  case 1:
-  case 2:
-  case 3:
-    throw std::runtime_error("sidePcoords_to_elemPcoords: pyramid exposed boundary face must be a quad4");
-    break;
-  case 4:
-    for (int i=0; i<npoints; i++) {//face3: quad4
-      elem_pcoords[i*3+0] = side_pcoords[2*i+0];
-      elem_pcoords[i*3+1] = side_pcoords[2*i+1];
-      elem_pcoords[i*3+2] = 0.0;
+  ThrowRequireMsg(side_ordinal >= 0 && side_ordinal <= 4,
+    "Invalid pyramid side ordinal " + std::to_string(side_ordinal));
+
+  for (int i = 0; i < npoints; i++) {
+    const double x = side_pcoords[2 * i + 0];
+    const double y = side_pcoords[2 * i + 1];
+    switch (side_ordinal)
+    {
+      case 0:
+      {
+        elem_pcoords[i * 3 + 0] = -1 + 2 * x + y;
+        elem_pcoords[i * 3 + 1] = -1 + y;
+        elem_pcoords[i * 3 + 2] = y;
+        break;
+      }
+      case 1:
+      {
+        elem_pcoords[i * 3 + 0] = 1 - y;
+        elem_pcoords[i * 3 + 1] = -1 + 2 * x + y;
+        elem_pcoords[i * 3 + 2] = y;
+        break;
+      }
+      case 2:
+      {
+        elem_pcoords[i * 3 + 0] = 1 - 2 * x - y;
+        elem_pcoords[i * 3 + 1] = 1 - y;
+        elem_pcoords[i * 3 + 2] = y;
+        break;
+      }
+      case 3:
+      {
+        elem_pcoords[i * 3 + 0] = -1 + x;
+        elem_pcoords[i * 3 + 1] = -1 + x + 2 * y;
+        elem_pcoords[i * 3 + 2] = x;
+        break;
+      }
+      case 4:
+      {
+        elem_pcoords[i * 3 + 0] = y;
+        elem_pcoords[i * 3 + 1] = x;
+        elem_pcoords[i * 3 + 2] = 0;
+        break;
+      }
+      default:
+        break;
     }
-    break;
-  default:
-    throw std::runtime_error("PyrSCS::sidePcoords_to_elemPcoords invalid ordinal");
   }
 }
 
