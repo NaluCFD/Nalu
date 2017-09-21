@@ -475,6 +475,74 @@ Just below the netcdf option within the Seacas do-config sections:
 
     -DTPL_ENABLE_Netcdf:STRING=ON \ 
 
+ParaView Catalyst
+~~~~~~~~~~~~~~~~~
+
+Optionally enable `ParaView Catalyst <https://www.paraview.org/in-situ/>`__
+for in-situ visualization with Nalu. These instructions can be skipped if 
+you do not require in-situ visualization with Nalu.
+
+Build ParaView SuperBuild v5.3.0
+********************************
+
+The `ParaView SuperBuild <https://gitlab.kitware.com/paraview/paraview-superbuild>`__ 
+builds ParaView along with all dependencies necessary to enable Catalyst with Nalu.
+Clone the ParaView SuperBuild within ``$nalu_build_dir/packages``:
+
+::
+
+    cd $nalu_build_dir/packages/
+    git clone --recursive https://gitlab.kitware.com/paraview/paraview-superbuild.git
+    cd paraview-superbuild
+    git fetch origin
+    git checkout v5.3.0
+    git submodule update
+
+Create a new build folder in ``$nalu_build_dir/``:
+
+::
+
+    cd $nalu_build_dir
+    mkdir paraview-superbuild-build
+    cd paraview-superbuild-build
+
+Copy ``do-configParaViewSuperBuild`` to ``paraview-superbuild-build``.
+Edit ``do-configParaViewSuperBuild`` to modify the defined paths as
+follows:
+
+::
+
+    mpi_base_dir=<same MPI base directory used to build Trilinos>
+    nalu_build_dir=<path to root nalu build dir>
+
+Make sure the MPI library names are correct.
+
+::
+
+    ./do-configParaViewSuperBuild
+    make -j 8
+   
+Build Nalu ParaView Catalyst Adapter
+************************************
+
+Create a new build folder in ``$nalu_build_dir/``:
+
+::
+
+    cd $nalu_build_dir
+    mkdir nalu-catalyst-adapter-build
+    cd nalu-catalyst-adapter-build
+
+Copy ``do-configNaluCatalystAdapter`` to ``nalu-catalyst-adapter-build``.
+Edit ``do-configNaluCatalystAdapter`` and modify ``nalu_build_dir`` at the
+top of the file to the root build directory path.
+
+::
+
+    ./do-configNaluCatalystAdapter
+    make
+    make install
+
 Nalu
 ~~~~
 
@@ -544,6 +612,62 @@ created.
 
 Other useful tools from, e.g., seacas, are under
 ``/usr/local/packages/install/trilinos/bin``
+
+Build Nalu with ParaView Catalyst Enabled
+*****************************************
+
+If you have built ParaView Catalyst and the Nalu ParaView Catalyst Adapter, you
+can build Nalu with Catalyst enabled.
+
+In ``Nalu/build``, find ``do-configNaluCatalyst``. Copy ``do-configNaluCatalyst`` to
+a new, non-tracked file:
+
+::
+
+    cp do-configNaluCatalyst do-configNaluCatalystNonTracked
+    ./do-configNaluCatalystNonTracked
+    make 
+
+The build will create the same executables as a regular Nalu build, and will also create a  
+bash shell script named ``naluXCatalyst``.  Use ``naluXCatalyst`` to run Nalu
+with Catalyst enabled.  It is also possible to run ``naluX`` with Catalyst enabled by
+first setting the environment variable:
+
+::
+
+   export CATALYST_ADAPTER_INSTALL_DIR=$nalu_build_dir/install
+
+Nalu will render images to Catalyst in-situ if it encounters the keyword ``catalyst_file_name``
+in the ``output`` section of the Nalu input deck. The ``catalyst_file_name`` command specifies the
+path to a text file containing ParaView Catalyst input deck commands. Consult the ``catalyst.txt`` files
+in the following Nalu regression test directories for examples of the Catalyst input deck command syntax:
+
+::
+
+    ablForcingEdge/
+    mixedTetPipe/
+    steadyTaylorVortex/
+
+::
+
+    output:
+      output_data_base_name: mixedTetPipe.e
+      catalyst_file_name: catalyst.txt
+
+When the above regression tests are run, Catalyst is run as part of the regression test. The regression
+test checks that the correct number of image output files have been created by the test.
+
+The Nalu Catalyst integration also supports running Catalyst Python script files exported from the ParaView GUI.
+The procedure for exporting Catalyst Python scripts from ParaView is documented in the 
+`Catalyst user guide <https://www.paraview.org/in-situ/>`__. To use an exported Catalyst script, insert 
+the ``paraview_script_name`` keyword in the ``output`` section of the Nalu input deck. The argument for
+the ``paraview_script_name`` command contains a file path to the exported script. 
+
+::
+
+    output:
+      output_data_base_name: mixedTetPipe.e
+      paraview_script_name: paraview_exported_catalyst_script.py
 
 
 Mac OS X
