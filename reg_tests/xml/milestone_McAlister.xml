@@ -1,0 +1,29 @@
+<ParameterList name="MueLu">
+  <Parameter        name="verbosity"                        type="string"   value="low"/>
+  <Parameter        name="coarse: max size"                 type="int"      value="2000"/>
+  <Parameter        name="max levels"                       type="int"      value="6"/>
+
+  <Parameter        name="transpose: use implicit"          type="bool"     value="true"/>
+
+  <Parameter        name="smoother: type"                   type="string"   value="schwarz"/>
+  <ParameterList    name="smoother: params">
+     <Parameter     name="schwarz: num iterations"          type="int"      value="1"/>
+     <Parameter     name="schwarz: overlap level"           type="int"      value="0"/>
+     <Parameter     name="inner preconditioner name"        type="string"   value="ILUT"/>
+     <ParameterList    name="inner preconditioner parameters">
+        <Parameter     name="fact: ilut level-of-fill"      type="int"      value="1"/>
+        <Parameter     name="fact: drop tolerance"          type="double"   value="10.0"/> 
+        <Parameter     name="trisolver: type"               type="string"   value="HTS"/>
+     </ParameterList>
+  </ParameterList>
+
+  <Parameter        name="aggregation: type"                type="string"   value="uncoupled"/>
+  <Parameter        name="aggregation: drop tol"            type="double"   value="0.005"/>
+  <Parameter        name="aggregation: drop scheme"         type="string"   value="distance laplacian"/>
+
+  <Parameter        name="repartition: enable"              type="bool"     value="true"/>
+  <Parameter        name="repartition: min rows per proc"   type="int"      value="300"/>
+  <Parameter        name="repartition: start level"         type="int"      value="1"/>
+  <Parameter        name="repartition: max imbalance"       type="double"   value="1.327"/>
+  <Parameter        name="repartition: partitioner"         type="string"   value="zoltan2"/>
+</ParameterList>
