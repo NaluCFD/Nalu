@@ -29,7 +29,7 @@ public:
   virtual ~SuppAlg(){}
 
   virtual void elem_execute(stk::topology topo,
-                    sierra::nalu::ScratchViews& elemData) = 0;
+                    sierra::nalu::ScratchViews<double>& elemData) = 0;
 };
 
 class TestSuppAlg : public SuppAlg
@@ -63,7 +63,7 @@ public:
   virtual ~TestSuppAlg() {}
 
   virtual void elem_execute(stk::topology topo,
-                    sierra::nalu::ScratchViews& elemData)
+                    sierra::nalu::ScratchViews<double>& elemData)
   {
     unsigned nodesPerElem = topo.num_nodes();
 
@@ -114,7 +114,7 @@ public:
   
       //In this unit-test we know we're working on a hex8 mesh. In real algorithms,
       //a topology would be available.
-      dataNeededBySuppAlgs_.add_cvfem_surface_me(sierra::nalu::get_surface_master_element(stk::topology::HEX_8));
+      dataNeededBySuppAlgs_.add_cvfem_surface_me(sierra::nalu::MasterElementRepo::get_surface_master_element(stk::topology::HEX_8));
 
       const int bytes_per_team = 0;
       const int bytes_per_thread = get_num_bytes_pre_req_data(dataNeededBySuppAlgs_, meta.spatial_dimension());
@@ -124,7 +124,7 @@ public:
           const stk::mesh::Bucket& bkt = *elemBuckets[team.league_rank()];
           stk::topology topo = bkt.topology();
 
-          sierra::nalu::ScratchViews prereqData(team, bulkData_, topo, dataNeededBySuppAlgs_);
+          sierra::nalu::ScratchViews<double> prereqData(team, bulkData_, topo, dataNeededBySuppAlgs_);
 
           // See get_num_bytes_pre_req_data for padding
           EXPECT_EQ(static_cast<unsigned>(bytes_per_thread), prereqData.total_bytes() + 8 * sizeof(double));

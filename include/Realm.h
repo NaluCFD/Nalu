@@ -71,7 +71,7 @@ class Transfer;
 class SolutionNormPostProcessing;
 class TurbulenceAveragingPostProcessing;
 class DataProbePostProcessing;
-class ActuatorLine;
+class Actuator;
 class ABLForcingAlgorithm;
 
 class TensorProductQuadratureRule;
@@ -413,7 +413,7 @@ class Realm {
   SolutionNormPostProcessing *solutionNormPostProcessing_;
   TurbulenceAveragingPostProcessing *turbulenceAveragingPostProcessing_;
   DataProbePostProcessing *dataProbePostProcessing_;
-  ActuatorLine *actuatorLine_;
+  Actuator *actuator_;
   ABLForcingAlgorithm *ablForcingAlg_;
 
   std::vector<Algorithm *> propertyAlg_;
@@ -534,6 +534,11 @@ class Realm {
   double get_gamma2();
   double get_gamma3();
   int get_time_step_count() const;
+  double get_time_step_from_file();
+  bool get_is_fixed_time_step();
+  bool get_is_terminate_based_on_time();
+  double get_total_sim_time();
+  int get_max_time_step_count();
 
   // restart
   bool restarted_simulation();
@@ -547,7 +552,6 @@ class Realm {
   // element promotion options
   bool doPromotion_; // conto
   unsigned promotionOrder_;
-  std::string quadType_;
   
   // id for the input mesh
   size_t inputMeshIdx_;
@@ -563,10 +567,11 @@ class Realm {
   void setup_element_promotion(); // create super parts
   void promote_mesh(); // create new super element / sides on parts
   void create_promoted_output_mesh(); // method to create output of linear subelements
-  bool using_SGL_quadrature() const { return quadType_ == "SGL"; };
+  bool using_SGL_quadrature() const { return get_quad_type() == "SGL"; };
   bool high_order_active() const { return doPromotion_; };
 
   std::string physics_part_name(std::string) const;
+  std::string get_quad_type() const;
 
   stk::mesh::PartVector allPeriodicInteractingParts_;
   stk::mesh::PartVector allNonConformalInteractingParts_;

@@ -6,48 +6,20 @@
 /*------------------------------------------------------------------------*/
 
 
-#ifndef ActuatorLine_h
-#define ActuatorLine_h
+#ifndef ActuatorLinePointDrag_h
+#define ActuatorLinePointDrag_h
 
-#include <NaluParsing.h>
-#include<FieldTypeDef.h>
-
-// stk_mesh/base/fem
-#include <stk_mesh/base/Entity.hpp>
-#include <stk_mesh/base/Ghosting.hpp>
-#include <stk_search/BoundingBox.hpp>
-#include <stk_search/IdentProc.hpp>
-#include <stk_search/SearchMethod.hpp>
-
-// stk forwards
-/*namespace stk {
-  namespace mesh {
-    struct Entity;
-  }
-  }*/
-
-// basic c++
-#include <string>
-#include <vector>
-#include <utility>
+#include "Actuator.h"
 
 namespace sierra{
 namespace nalu{
 
-// common type defs
-typedef stk::search::IdentProc<uint64_t,int> theKey;
-typedef stk::search::Point<double> Point;
-typedef stk::search::Sphere<double> Sphere;
-typedef stk::search::Box<double> Box;
-typedef std::pair<Sphere,theKey> boundingSphere;
-typedef std::pair<Box,theKey> boundingElementBox;
-
 class Realm;
 
-class ActuatorLineInfo {
+class ActuatorLinePointDragInfo {
 public:
-  ActuatorLineInfo();
-  ~ActuatorLineInfo();
+  ActuatorLinePointDragInfo();
+  ~ActuatorLinePointDragInfo();
 
   // for each type of probe, e.g., line of site, hold some stuff
   int processorId_;
@@ -62,11 +34,11 @@ public:
 };
 
 // class that holds all of the action... for each point, hold the current location and other useful info
-class ActuatorLinePointInfo {
+class ActuatorLinePointDragPointInfo {
  public:
-  ActuatorLinePointInfo(
+  ActuatorLinePointDragPointInfo(
     size_t localId, Point centroidCoords, double radius, double omega, double twoSigSq, double *velocity);
-  ~ActuatorLinePointInfo();
+  ~ActuatorLinePointDragPointInfo();
   size_t localId_;
   Point centroidCoords_;
   double radius_;
@@ -82,14 +54,14 @@ class ActuatorLinePointInfo {
   std::vector<stk::mesh::Entity> elementVec_;
 };
  
-class ActuatorLine
+ class ActuatorLinePointDrag: public Actuator
 {
 public:
   
-  ActuatorLine(
+  ActuatorLinePointDrag(
     Realm &realm,
     const YAML::Node &node);
-  ~ActuatorLine();
+  ~ActuatorLinePointDrag();
   
   // load all of the options
   void load(
@@ -201,8 +173,8 @@ public:
     const double &elemVolume,
     const double *drag,
     const double &dragLHS,
-    stk::mesh::FieldBase &actuator_line_source,
-    stk::mesh::FieldBase &actuator_line_source_lhs,
+    stk::mesh::FieldBase &actuator_source,
+    stk::mesh::FieldBase &actuator_source_lhs,
     const double &lhsFac); 
 
   // hold the realm
@@ -238,10 +210,10 @@ public:
   std::vector<std::string> searchTargetNames_;
  
   // vector of averaging information
-  std::vector<ActuatorLineInfo *> actuatorLineInfo_; 
+  std::vector<ActuatorLinePointDragInfo *> actuatorLineInfo_; 
 
   // map of point info objects
-  std::map<size_t, ActuatorLinePointInfo *> actuatorLinePointInfoMap_;
+  std::map<size_t, ActuatorLinePointDragPointInfo *> actuatorLinePointInfoMap_;
 
   // scratch space
   std::vector<double> ws_coordinates_;
@@ -249,7 +221,9 @@ public:
   std::vector<double> ws_velocity_;
   std::vector<double> ws_density_;
   std::vector<double> ws_viscosity_;
+
 };
+
 
 } // namespace nalu
 } // namespace Sierra

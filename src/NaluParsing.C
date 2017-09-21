@@ -26,7 +26,7 @@ namespace sierra{
     const YAML::Node 
     expect_type(const YAML::Node& node, const std::string& key, YAML::NodeType::value type, bool optional)
     {
-      static std::string types[] = {"Null", "Scalar", "Sequence", "Map"};
+      static std::string types[] = {"Undefined", "Null", "Scalar", "Sequence", "Map"};
       std::ostringstream err_msg;
 
       if (node[key]) {

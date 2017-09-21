@@ -7,6 +7,7 @@
 
 #include "kernels/UnitTestKernelUtils.h"
 #include "UnitTestUtils.h"
+#include "UnitTestHelperObjects.h"
 
 #include "ScalarAdvDiffElemKernel.h"
 
@@ -49,26 +50,26 @@ TEST_F(MixtureFractionKernelHex8Mesh, advection_diffusion)
   solnOpts_.meshDeformation_ = false;
   solnOpts_.externalMeshDeformation_ = false;
 
-  // Initialize the kernel driver
-  unit_test_kernel_utils::TestKernelDriver assembleKernels(
-    bulk_, partVec_, coordinates_, 1, stk::topology::HEX_8);
+  int numDof = 1;
+  unit_test_utils::HelperObjectsNewME helperObjs(bulk_, stk::topology::HEX_8, numDof, partVec_[0]);
 
   // Initialize the kernel
   std::unique_ptr<sierra::nalu::Kernel> advKernel(
     new sierra::nalu::ScalarAdvDiffElemKernel<sierra::nalu::AlgTraitsHex8>(
-     bulk_, solnOpts_, mixFraction_, viscosity_, assembleKernels.dataNeededByKernels_));
+     bulk_, solnOpts_, mixFraction_, viscosity_, helperObjs.assembleElemSolverAlg->dataNeededBySuppAlgs_));
 
   // Register the kernel for execution
-  assembleKernels.activeKernels_.push_back(advKernel.get());
+  helperObjs.assembleElemSolverAlg->activeKernels_.push_back(advKernel.get());
 
   // Populate LHS and RHS
-  assembleKernels.execute();
+  helperObjs.assembleElemSolverAlg->execute();
 
-  EXPECT_EQ(assembleKernels.lhs_.dimension(0), 8u);
-  EXPECT_EQ(assembleKernels.lhs_.dimension(1), 8u);
-  EXPECT_EQ(assembleKernels.rhs_.dimension(0), 8u);
+  EXPECT_EQ(helperObjs.linsys->lhs_.dimension(0), 8u);
+  EXPECT_EQ(helperObjs.linsys->lhs_.dimension(1), 8u);
+  EXPECT_EQ(helperObjs.linsys->rhs_.dimension(0), 8u);
 
   namespace gold_values = hex8_golds::advection_diffusion;
-  unit_test_kernel_utils::expect_all_near(assembleKernels.rhs_, gold_values::rhs);
-  unit_test_kernel_utils::expect_all_near<8>(assembleKernels.lhs_, gold_values::lhs);
+  unit_test_kernel_utils::expect_all_near(helperObjs.linsys->rhs_, gold_values::rhs);
+  unit_test_kernel_utils::expect_all_near<8>(helperObjs.linsys->lhs_, gold_values::lhs);
 }
+

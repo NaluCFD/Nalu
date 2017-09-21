@@ -50,7 +50,7 @@
 #include <element_promotion/PromotedElementIO.h>
 #include <element_promotion/ElementDescription.h>
 #include <element_promotion/PromotedPartHelper.h>
-#include <element_promotion/MasterElementHO.h>
+#include <master_element/MasterElementHO.h>
 
 #include <nalu_make_unique.h>
 
@@ -63,7 +63,12 @@
 #include <DataProbePostProcessing.h>
 
 // actuator line
-#include <ActuatorLine.h>
+#include <Actuator.h>
+#include <ActuatorLinePointDrag.h>
+#ifdef NALU_USES_OPENFAST
+#include <ActuatorLineFAST.h>
+#endif
+
 #include <ABLForcingAlgorithm.h>
 
 // props; algs, evaluators and data
@@ -187,7 +192,7 @@ namespace nalu{
     solutionNormPostProcessing_(NULL),
     turbulenceAveragingPostProcessing_(NULL),
     dataProbePostProcessing_(NULL),
-    actuatorLine_(NULL),
+    actuator_(NULL),
     ablForcingAlg_(NULL),
     nodeCount_(0),
     estimateMemoryOnly_(false),
@@ -233,7 +238,6 @@ namespace nalu{
     wallTimeStart_(stk::wall_time()),
     doPromotion_(false),
     promotionOrder_(0u),
-    quadType_("GaussLegendre"),
     inputMeshIdx_(-1),
     node_(node)
 {
@@ -285,6 +289,9 @@ Realm::~Realm()
   if ( NULL != turbulenceAveragingPostProcessing_ )
     delete turbulenceAveragingPostProcessing_;
 
+  if ( NULL != actuator_ )
+    delete actuator_;
+
   // delete non-conformal related things
   if ( NULL != nonConformalManager_ )
     delete nonConformalManager_;
@@ -297,11 +304,10 @@ Realm::~Realm()
   if ( NULL != HDF5ptr_ )
     delete HDF5ptr_;
 
-  // Delete actuator line
-  if (NULL != actuatorLine_) delete actuatorLine_;
-
   // Delete abl forcing pointer
   if (NULL != ablForcingAlg_) delete ablForcingAlg_;
+
+  MasterElementRepo::clear();
 }
 
 void
@@ -545,13 +551,39 @@ Realm::look_ahead_and_creation(const YAML::Node & node)
     dataProbePostProcessing_ =  new DataProbePostProcessing(*this, *foundProbe[0]);
   }
 
-  // look for ActuatorLine
-  std::vector<const YAML::Node *> foundActuatorLine;
-  NaluParsingHelper::find_nodes_given_key("actuator_line", node, foundActuatorLine);
-  if ( foundActuatorLine.size() > 0 ) {
-    if ( foundActuatorLine.size() != 1 )
+  // look for Actuator
+  std::vector<const YAML::Node*> foundActuator;
+  NaluParsingHelper::find_nodes_given_key("actuator", node, foundActuator);
+  if ( foundActuator.size() > 0 ) {
+    if ( foundActuator.size() != 1 )
       throw std::runtime_error("look_ahead_and_create::error: Too many actuator line blocks");
-    actuatorLine_ =  new ActuatorLine(*this, *foundActuatorLine[0]);
+
+    if ( (*foundActuator[0])["actuator"]["type"] ) {
+      const std::string ActuatorTypeName = (*foundActuator[0])["actuator"]["type"].as<std::string>() ;
+      switch ( ActuatorTypeMap[ActuatorTypeName] ) {
+      case ActuatorType::ActLinePointDrag : {
+	actuator_ =  new ActuatorLinePointDrag(*this, *foundActuator[0]);
+	break;
+      }
+      case ActuatorType::ActLineFAST : {
+#ifdef NALU_USES_OPENFAST
+	actuator_ =  new ActuatorLineFAST(*this, *foundActuator[0]);
+#else
+	throw std::runtime_error("look_ahead_and_create::error: Requested actuator type: " + ActuatorTypeName + ", but was not enabled at compile time");
+#endif
+	break;
+      }
+      default : {
+        throw std::runtime_error("look_ahead_and_create::error: unrecognized actuator type: " + ActuatorTypeName);
+        break;
+      }
+      }
+    }
+    else {
+      throw std::runtime_error("look_ahead_and_create::error: No 'type' specified in actuator");
+    }
+
+    
   }
 
   // ABL Forcing parameters
@@ -603,7 +635,6 @@ Realm::load(const YAML::Node & node)
       NaluEnv::self().naluOutputP0() << "Activating the consistent-mass matrix P1 discretization..." << std::endl;
     }
   }
-  get_if_present(node, "quadrature_type", quadType_, quadType_ );
 
   // let everyone know about core algorithm
   if ( realmUsesEdges_ ) {
@@ -867,8 +898,8 @@ Realm::setup_post_processing_algorithms()
     dataProbePostProcessing_->setup();
 
   // check for actuator line
-  if ( NULL != actuatorLine_ )
-    actuatorLine_->setup();
+  if ( NULL != actuator_ )
+    actuator_->setup();
 
   if ( NULL != ablForcingAlg_)
     ablForcingAlg_->setup();
@@ -967,8 +998,8 @@ Realm::enforce_bc_on_exposed_faces()
         const stk::mesh::Entity* face_node_rels = bulkData_->begin_nodes(face); 
         const unsigned numberOfNodes = bulkData_->num_nodes(face);
         NaluEnv::self().naluOutput() << " Number of nodes connected to this face is: " << numberOfNodes << std::endl;
-        for ( unsigned k = 0; k < numberOfNodes; ++k ) {
-          stk::mesh::Entity node = face_node_rels[k];
+        for ( unsigned n = 0; n < numberOfNodes; ++n ) {
+          stk::mesh::Entity node = face_node_rels[n];
           NaluEnv::self().naluOutput() << " attached node Id: " << bulkData_->identifier(node) << std::endl;
         }
       
@@ -977,8 +1008,8 @@ Realm::enforce_bc_on_exposed_faces()
         const unsigned numberOfElems = bulkData_->num_elements(face);
         NaluEnv::self().naluOutput() << " Number of elements connected to this face is: " << numberOfElems << std::endl;
 
-        for ( unsigned k = 0; k < numberOfElems; ++k ) {
-          stk::mesh::Entity element = face_elem_rels[k];
+        for ( unsigned faceElem = 0; faceElem < numberOfElems; ++faceElem ) {
+          stk::mesh::Entity element = face_elem_rels[faceElem];
           NaluEnv::self().naluOutput() << " attached element Id: " << bulkData_->identifier(element) << std::endl;
         }
       }
@@ -1837,8 +1868,8 @@ Realm::advance_time_step()
   compute_vrtm();
 
   // check for actuator line; assemble the source terms for this time step
-  if ( NULL != actuatorLine_ ) {
-    actuatorLine_->execute();
+  if ( NULL != actuator_ ) {
+    actuator_->execute();
   }
 
   // Check for ABL forcing; estimate source terms for this time step
@@ -2354,9 +2385,9 @@ Realm::initialize_post_processing_algorithms()
   if ( NULL != dataProbePostProcessing_ )
     dataProbePostProcessing_->initialize();
 
-  // check for actuator line... probably a better place for this
-  if ( NULL != actuatorLine_ ) {
-    actuatorLine_->initialize();
+  // check for actuator... probably a better place for this
+  if ( NULL != actuator_ ) {
+    actuator_->initialize();
   }
 
   if ( NULL != ablForcingAlg_) {
@@ -2521,9 +2552,13 @@ Realm::compute_centroid_on_parts(
     const stk::mesh::Bucket::size_type length   = b.size();
     double * mCoord = stk::mesh::field_data(*modelCoords, b);
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
-      for ( int j = 0; j < nDim; ++j ) {
-        minCoord[j] = std::min(minCoord[j], mCoord[k*nDim+j]);
-        maxCoord[j] = std::max(maxCoord[j], mCoord[k*nDim+j]);
+      minCoord[0] = std::min(minCoord[0], mCoord[k*nDim+0]);
+      maxCoord[0] = std::max(maxCoord[0], mCoord[k*nDim+0]);
+      minCoord[1] = std::min(minCoord[1], mCoord[k*nDim+1]);
+      maxCoord[1] = std::max(maxCoord[1], mCoord[k*nDim+1]);
+      if (nDim == 3) {
+        minCoord[2] = std::min(minCoord[2], mCoord[k*nDim+2]);
+        maxCoord[2] = std::max(maxCoord[2], mCoord[k*nDim+2]);
       }
     }
   }
@@ -2963,7 +2998,7 @@ Realm::register_wall_bc(
   const int nDim = metaData_->spatial_dimension();
 
   // register fields
-  MasterElement *meFC = get_surface_master_element(theTopo);
+  MasterElement *meFC = MasterElementRepo::get_surface_master_element(theTopo);
   const int numScsIp = meFC->numIntPoints_;
 
   GenericFieldType *exposedAreaVec_
@@ -3006,7 +3041,7 @@ Realm::register_inflow_bc(
   const int nDim = metaData_->spatial_dimension();
 
   // register fields
-  MasterElement *meFC = get_surface_master_element(theTopo);
+  MasterElement *meFC = MasterElementRepo::get_surface_master_element(theTopo);
   const int numScsIp = meFC->numIntPoints_;
 
   GenericFieldType *exposedAreaVec_
@@ -3048,7 +3083,7 @@ Realm::register_open_bc(
   const int nDim = metaData_->spatial_dimension();
 
   // register fields
-  MasterElement *meFC = get_surface_master_element(theTopo);
+  MasterElement *meFC = MasterElementRepo::get_surface_master_element(theTopo);
   const int numScsIp = meFC->numIntPoints_;
 
   GenericFieldType *exposedAreaVec_
@@ -3090,7 +3125,7 @@ Realm::register_symmetry_bc(
   const int nDim = metaData_->spatial_dimension();
 
   // register fields
-  MasterElement *meFC = get_surface_master_element(theTopo);
+  MasterElement *meFC = MasterElementRepo::get_surface_master_element(theTopo);
   const int numScsIp = meFC->numIntPoints_;
 
   GenericFieldType *exposedAreaVec_
@@ -3194,7 +3229,7 @@ Realm::register_non_conformal_bc(
   const int nDim = metaData_->spatial_dimension();
   
   // register fields
-  MasterElement *meFC = get_surface_master_element(theTopo);
+  MasterElement *meFC = MasterElementRepo::get_surface_master_element(theTopo);
   const int numScsIp = meFC->numIntPoints_;
   
   // exposed area vector
@@ -4388,7 +4423,6 @@ Realm::setup_element_promotion()
   // Create a description of the element and deal with the part naming styles
 
   // Struct containing information about the element (e.g. number of nodes, nodes per face, etc.)
-  // tools for numerically interpolating / taking derivatives of the reference element
   desc_ = ElementDescription::create(meta_data().spatial_dimension(), promotionOrder_);
 
   // Every mesh part is promoted for now
@@ -4429,8 +4463,8 @@ Realm::setup_element_promotion()
       superTargetNames_.push_back(superName);
 
       // Create elements for future use
-      sierra::nalu::get_surface_master_element(superPart->topology(), desc_.get(), quadType_);
-      sierra::nalu::get_volume_master_element(superPart->topology(), desc_.get(), quadType_);
+      sierra::nalu::MasterElementRepo::get_surface_master_element(superPart->topology(), meta_data().spatial_dimension(), "GaussLegendre");
+      sierra::nalu::MasterElementRepo::get_volume_master_element(superPart->topology(), meta_data().spatial_dimension(), "GaussLegendre");
     }
   }
 
@@ -4453,8 +4487,8 @@ Realm::setup_element_promotion()
           metaData_->declare_part_subset(*superSuperset, *superFacePart);
 
           // Create elements for future use
-          sierra::nalu::get_surface_master_element(sideTopo, desc_.get(), quadType_);
-          sierra::nalu::get_volume_master_element(sideTopo, desc_.get(), quadType_);
+          sierra::nalu::MasterElementRepo::get_surface_master_element(sideTopo, meta_data().spatial_dimension(), "GaussLegendre");
+          sierra::nalu::MasterElementRepo::get_volume_master_element(sideTopo, meta_data().spatial_dimension(), "GaussLegendre");
         }
       }
     }
@@ -4552,6 +4586,31 @@ double
 Realm::get_time_step()
 {
   return timeIntegrator_->get_time_step();
+}
+
+double 
+Realm::get_time_step_from_file() {
+  return timeIntegrator_->get_time_step_from_file();
+}
+
+bool 
+Realm::get_is_fixed_time_step() {
+  return timeIntegrator_->get_is_fixed_time_step();
+}
+
+bool 
+Realm::get_is_terminate_based_on_time() {
+  return timeIntegrator_->get_is_terminate_based_on_time();
+}
+
+double 
+Realm::get_total_sim_time() {
+  return timeIntegrator_->get_total_sim_time();
+}
+
+int
+Realm::get_max_time_step_count() {
+  return timeIntegrator_->get_max_time_step_count();
 }
 
 //--------------------------------------------------------------------------
@@ -4769,12 +4828,21 @@ Realm::get_tanh_blending(
 }
 
 //--------------------------------------------------------------------------
-//-------- balance_nodes() ---------------------------------------------
+//-------- balance_nodes() -------------------------------------------------
 //--------------------------------------------------------------------------
 void Realm::balance_nodes()
 {
   InterfaceBalancer balancer(meta_data(), bulk_data());
   balancer.balance_node_entities(balanceNodeOptions_.target, balanceNodeOptions_.numIters);
+}
+
+//--------------------------------------------------------------------------
+//-------- get_quad_type() -------------------------------------------------
+//--------------------------------------------------------------------------
+std::string Realm::get_quad_type() const
+{
+  ThrowRequire(solutionOptions_ != nullptr);
+  return solutionOptions_->quadType_;
 }
 
 } // namespace nalu

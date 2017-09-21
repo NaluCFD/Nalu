@@ -33,6 +33,7 @@ typedef std::vector< Part * > PartVector ;
 namespace sierra{
 namespace nalu{
 
+class EquationSystem;
 class Realm;
 class LinearSolver;
 
@@ -43,12 +44,12 @@ public:
   LinearSystem(
     Realm &realm,
     const unsigned numDof,
-    const std::string & name,
+    EquationSystem *eqSys,
     LinearSolver *linearSolver);
 
   virtual ~LinearSystem() {}
 
-  static LinearSystem *create(Realm& realm, const unsigned numDof, const std::string & name, LinearSolver *linearSolver);
+  static LinearSystem *create(Realm& realm, const unsigned numDof, EquationSystem *eqSys, LinearSolver *linearSolver);
 
   // Graph/Matrix Construction
   virtual void buildNodeGraph(const stk::mesh::PartVector & parts)=0; // for nodal assembly (e.g., lumped mass and source)
@@ -70,8 +71,11 @@ public:
       const SharedMemView<const double*> & rhs,
       const SharedMemView<const double**> & lhs,
       const SharedMemView<int*> & localIds,
+      const SharedMemView<int*> & sortPermutation,
       const char * trace_tag
       )=0;
+
+
 
   virtual void sumInto(
     const std::vector<stk::mesh::Entity> & sym_meshobj,
@@ -116,7 +120,7 @@ public:
   const double & nonLinearResidual() {return nonLinearResidual_; }
   const double & scaledNonLinearResidual() {return scaledNonLinearResidual_; }
   void setNonLinearResidual(const double nlr) { nonLinearResidual_ = nlr;}
-  const std::string name() { return name_; }
+  const std::string name() { return eqSysName_; }
   bool & recomputePreconditioner() {return recomputePreconditioner_;}
   bool & reusePreconditioner() {return reusePreconditioner_;}
   double get_timer_precond();
@@ -132,11 +136,12 @@ protected:
   bool debug();
 
   Realm &realm_;
+  EquationSystem *eqSys_;
   bool inConstruction_;
   int writeCounter_;
 
   const unsigned numDof_;
-  const std::string name_;
+  const std::string eqSysName_;
   LinearSolver * linearSolver_;
   int linearSolveIterations_;
   double nonLinearResidual_;

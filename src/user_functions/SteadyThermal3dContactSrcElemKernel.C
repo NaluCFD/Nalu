@@ -32,7 +32,7 @@ SteadyThermal3dContactSrcElemKernel<AlgTraits>::SteadyThermal3dContactSrcElemKer
   SolutionOptions& solnOpts,
   ElemDataRequests& dataPreReqs)
   : Kernel(),
-    ipNodeMap_(sierra::nalu::get_volume_master_element(AlgTraits::topo_)->ipNodeMap()),
+    ipNodeMap_(sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_)->ipNodeMap()),
     a_(1.0),
     k_(1.0),
     pi_(std::acos(-1.0))
@@ -41,8 +41,8 @@ SteadyThermal3dContactSrcElemKernel<AlgTraits>::SteadyThermal3dContactSrcElemKer
   coordinates_ = metaData.get_field<VectorFieldType>(
     stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
 
-  MasterElement *meSCV = sierra::nalu::get_volume_master_element(AlgTraits::topo_);
-  meSCV->shape_fcn(&v_shape_function_(0,0));
+  MasterElement *meSCV = sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_);
+  get_scv_shape_fn_data<AlgTraits>([&](double* ptr){meSCV->shape_fcn(ptr);}, v_shape_function_);
 
   // add master elements
   dataPreReqs.add_cvfem_volume_me(meSCV);
@@ -55,17 +55,17 @@ SteadyThermal3dContactSrcElemKernel<AlgTraits>::SteadyThermal3dContactSrcElemKer
 template<typename AlgTraits>
 void
 SteadyThermal3dContactSrcElemKernel<AlgTraits>::execute(
-  SharedMemView<double**>& /* lhs */,
-  SharedMemView<double *>& rhs,
-  ScratchViews& scratchViews)
+  SharedMemView<DoubleType**>& /* lhs */,
+  SharedMemView<DoubleType *>& rhs,
+  ScratchViews<DoubleType>& scratchViews)
 {
-  // FIXME: Workaround warning issued for 2-D topologies. This Kernel should
-  // only be used with 3-D topologies. However, using it in that sense causes
-  // build errors because of build_topo_kernel interface in KernelBuilder
-  double w_scvCoords[3];
 
-  SharedMemView<double**>& v_coordinates = scratchViews.get_scratch_view_2D(*coordinates_);
-  SharedMemView<double*>& v_scv_volume = scratchViews.get_me_views(CURRENT_COORDINATES).scv_volume;
+  // Forcing nDim = 3 instead of using AlgTraits::nDim_ here to avoid compiler
+  // warnings when this template is instantiated for 2-D topologies. 
+  DoubleType w_scvCoords[3] KOKKOS_ALIGN(64);
+
+  SharedMemView<DoubleType**>& v_coordinates = scratchViews.get_scratch_view_2D(*coordinates_);
+  SharedMemView<DoubleType*>& v_scv_volume = scratchViews.get_me_views(CURRENT_COORDINATES).scv_volume;
 
   // interpolate to ips and evaluate source
   for ( int ip = 0; ip < AlgTraits::numScvIp_; ++ip ) {
@@ -78,17 +78,15 @@ SteadyThermal3dContactSrcElemKernel<AlgTraits>::execute(
       w_scvCoords[j] = 0.0;
 
     for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
-      const double r = v_shape_function_(ip,ic);
+      const DoubleType r = v_shape_function_(ip,ic);
       for ( int j = 0; j < AlgTraits::nDim_; ++j )
         w_scvCoords[j] += r*v_coordinates(ic,j);
     }
-    const double x = w_scvCoords[0];
-    const double y = w_scvCoords[1];
-    const double z = w_scvCoords[2];
+
     rhs(nearestNode) += k_/4.0*(2.0*a_*pi_)*(2.0*a_*pi_)*(
-      cos(2.0*a_*pi_*x)
-      + cos(2.0*a_*pi_*y)
-      + cos(2.0*a_*pi_*z))*v_scv_volume(ip);
+      stk::math::cos(2.0*a_*pi_* w_scvCoords[0])
+      + stk::math::cos(2.0*a_*pi_* w_scvCoords[1])
+      + stk::math::cos(2.0*a_*pi_* w_scvCoords[2]))*v_scv_volume(ip);
   }
 }
 

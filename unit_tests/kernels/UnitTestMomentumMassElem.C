@@ -7,6 +7,7 @@
 
 #include "kernels/UnitTestKernelUtils.h"
 #include "UnitTestUtils.h"
+#include "UnitTestHelperObjects.h"
 
 #include "MomentumMassElemKernel.h"
 
@@ -149,17 +150,15 @@ TEST_F(MomentumKernelHex8Mesh, momentum_time_derivative)
   solnOpts_.meshDeformation_ = false;
   solnOpts_.externalMeshDeformation_ = false;
 
-  // Initialize the kernel driver
-  unit_test_kernel_utils::TestKernelDriver assembleKernels(
-    bulk_, partVec_, coordinates_, spatialDim_, stk::topology::HEX_8);
+  unit_test_utils::HelperObjectsNewME helperObjs(bulk_, stk::topology::HEX_8, 3, partVec_[0]);
 
   // Initialize the kernel
   std::unique_ptr<sierra::nalu::Kernel> massKernel(
     new sierra::nalu::MomentumMassElemKernel<sierra::nalu::AlgTraitsHex8>(
-      bulk_, solnOpts_, assembleKernels.dataNeededByKernels_, false));
+      bulk_, solnOpts_, helperObjs.assembleElemSolverAlg->dataNeededBySuppAlgs_, false));
 
   // Add to kernels to be tested
-  assembleKernels.activeKernels_.push_back(massKernel.get());
+  helperObjs.assembleElemSolverAlg->activeKernels_.push_back(massKernel.get());
 
   // Mass terms need time integration information
   sierra::nalu::TimeIntegrator timeIntegrator;
@@ -171,17 +170,18 @@ TEST_F(MomentumKernelHex8Mesh, momentum_time_derivative)
 
   // Call Kernel setup with the time integrator to setup Kernel values
   massKernel->setup(timeIntegrator);
+  helperObjs.realm.timeIntegrator_ = &timeIntegrator;
 
   // Populate LHS and RHS
-  assembleKernels.execute();
+  helperObjs.assembleElemSolverAlg->execute();
 
-  EXPECT_EQ(assembleKernels.lhs_.dimension(0), 24u);
-  EXPECT_EQ(assembleKernels.lhs_.dimension(1), 24u);
-  EXPECT_EQ(assembleKernels.rhs_.dimension(0), 24u);
+  EXPECT_EQ(helperObjs.linsys->lhs_.dimension(0), 24u);
+  EXPECT_EQ(helperObjs.linsys->lhs_.dimension(1), 24u);
+  EXPECT_EQ(helperObjs.linsys->rhs_.dimension(0), 24u);
 
   namespace gold_values = ::hex8_golds::momentum_time_derivative;
-  unit_test_kernel_utils::expect_all_near(assembleKernels.rhs_, gold_values::rhs);
-  unit_test_kernel_utils::expect_all_near<24>(assembleKernels.lhs_, gold_values::lhs);
+  unit_test_kernel_utils::expect_all_near(helperObjs.linsys->rhs_, gold_values::rhs);
+  unit_test_kernel_utils::expect_all_near<24>(helperObjs.linsys->lhs_, gold_values::lhs);
 }
 
 TEST_F(MomentumKernelHex8Mesh, momentum_time_derivative_lumped)
@@ -193,17 +193,15 @@ TEST_F(MomentumKernelHex8Mesh, momentum_time_derivative_lumped)
   solnOpts_.meshDeformation_ = false;
   solnOpts_.externalMeshDeformation_ = false;
 
-  // Initialize the kernel driver
-  unit_test_kernel_utils::TestKernelDriver assembleKernels(
-    bulk_, partVec_, coordinates_, spatialDim_, stk::topology::HEX_8);
+  unit_test_utils::HelperObjectsNewME helperObjs(bulk_, stk::topology::HEX_8, 3, partVec_[0]);
 
   // Initialize the kernel
   std::unique_ptr<sierra::nalu::Kernel> massKernel(
     new sierra::nalu::MomentumMassElemKernel<sierra::nalu::AlgTraitsHex8>(
-      bulk_, solnOpts_, assembleKernels.dataNeededByKernels_, true));
+      bulk_, solnOpts_, helperObjs.assembleElemSolverAlg->dataNeededBySuppAlgs_, true));
 
   // Add to kernels to be tested
-  assembleKernels.activeKernels_.push_back(massKernel.get());
+  helperObjs.assembleElemSolverAlg->activeKernels_.push_back(massKernel.get());
 
   // Mass terms need time integration information
   sierra::nalu::TimeIntegrator timeIntegrator;
@@ -215,9 +213,10 @@ TEST_F(MomentumKernelHex8Mesh, momentum_time_derivative_lumped)
 
   // Call Kernel setup with the time integrator to setup Kernel values
   massKernel->setup(timeIntegrator);
+  helperObjs.realm.timeIntegrator_ = &timeIntegrator;
 
   // Populate LHS and RHS
-  assembleKernels.execute();
+  helperObjs.assembleElemSolverAlg->execute();
 
   namespace gold_values = ::hex8_golds::momentum_time_derivative_lumped;
   // Exact LHS expected
@@ -225,9 +224,10 @@ TEST_F(MomentumKernelHex8Mesh, momentum_time_derivative_lumped)
   for (int i=0; i<24; i++)
     lhsExact[i*24+i] = 1.25;
 
-  EXPECT_EQ(assembleKernels.lhs_.dimension(0), 24u);
-  EXPECT_EQ(assembleKernels.lhs_.dimension(1), 24u);
-  EXPECT_EQ(assembleKernels.rhs_.dimension(0), 24u);
-  unit_test_kernel_utils::expect_all_near(assembleKernels.rhs_, gold_values::rhs);
-  unit_test_kernel_utils::expect_all_near(assembleKernels.lhs_, lhsExact.data());
+  EXPECT_EQ(helperObjs.linsys->lhs_.dimension(0), 24u);
+  EXPECT_EQ(helperObjs.linsys->lhs_.dimension(1), 24u);
+  EXPECT_EQ(helperObjs.linsys->rhs_.dimension(0), 24u);
+  unit_test_kernel_utils::expect_all_near(helperObjs.linsys->rhs_, gold_values::rhs);
+  unit_test_kernel_utils::expect_all_near(helperObjs.linsys->lhs_, lhsExact.data());
 }
+

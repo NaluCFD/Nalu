@@ -13,9 +13,13 @@
 #include <AlgTraits.h>
 #include <KernelBuilderLog.h>
 
+#include <element_promotion/ElementDescription.h>
+
 #include <stk_mesh/base/BulkData.hpp>
 #include <stk_mesh/base/Entity.hpp>
 #include <stk_topology/topology.hpp>
+
+#include <BuildTemplates.h>
 
 #include <algorithm>
 #include <tuple>
@@ -24,28 +28,55 @@ namespace sierra{
 namespace nalu{
   class Realm;
 
-  template <template <typename> class T, typename... Args>
-  Kernel* build_topo_kernel(stk::topology topo, Args&&... args)
+
+  template <template <typename> class T, int order, typename... Args>
+  Kernel* build_ho_kernel(int dimension, Args&&... args)
   {
-    switch(topo.value()) {
-      case stk::topology::HEX_8:
-        return new T<AlgTraitsHex8>(std::forward<Args>(args)...);
-      case stk::topology::HEX_27:
-        return new T<AlgTraitsHex27>(std::forward<Args>(args)...);
-      case stk::topology::TET_4:
-        return new T<AlgTraitsTet4>(std::forward<Args>(args)...);
-      case stk::topology::PYRAMID_5:
-        return new T<AlgTraitsPyr5>(std::forward<Args>(args)...);
-      case stk::topology::WEDGE_6:
-        return new T<AlgTraitsWed6>(std::forward<Args>(args)...);
-      case stk::topology::QUAD_4_2D:
-        return new T<AlgTraitsQuad4_2D>(std::forward<Args>(args)...);
-      case stk::topology::QUAD_9_2D:
-        return new T<AlgTraitsQuad9_2D>(std::forward<Args>(args)...);
-      case stk::topology::TRI_3_2D:
-        return new T<AlgTraitsTri3_2D>(std::forward<Args>(args)...);
-      default:
-        return nullptr;
+    // only two topologies supported, so we can flatten some of the decision making
+    if (dimension == 2) {
+      return new T<AlgTraitsQuadGL<order>>(std::forward<Args>(args)...);
+    }
+    return new T<AlgTraitsHexGL<order>>(std::forward<Args>(args)...);
+  }
+
+  template <template <typename> class T, typename... Args>
+  Kernel* build_topo_kernel(int dimension, stk::topology topo, Args&&... args)
+  {
+    if (!topo.is_super_topology()) {
+      switch(topo.value()) {
+        case stk::topology::HEX_8:
+          return new T<AlgTraitsHex8>(std::forward<Args>(args)...);
+        case stk::topology::HEX_27:
+          return new T<AlgTraitsHex27>(std::forward<Args>(args)...);
+        case stk::topology::TET_4:
+          return new T<AlgTraitsTet4>(std::forward<Args>(args)...);
+        case stk::topology::PYRAMID_5:
+          return new T<AlgTraitsPyr5>(std::forward<Args>(args)...);
+        case stk::topology::WEDGE_6:
+          return new T<AlgTraitsWed6>(std::forward<Args>(args)...);
+        case stk::topology::QUAD_4_2D:
+          return new T<AlgTraitsQuad4_2D>(std::forward<Args>(args)...);
+        case stk::topology::QUAD_9_2D:
+          return new T<AlgTraitsQuad9_2D>(std::forward<Args>(args)...);
+        case stk::topology::TRI_3_2D:
+          return new T<AlgTraitsTri3_2D>(std::forward<Args>(args)...);
+        default:
+          return nullptr;
+      }
+    }
+    else {
+      int poly_order = poly_order_from_super_topology(dimension, topo);
+      switch (poly_order) {
+        case 2: return build_ho_kernel<T, 2>(dimension, std::forward<Args>(args)...);
+        case 3: return build_ho_kernel<T, 3>(dimension, std::forward<Args>(args)...);
+        case 4: return build_ho_kernel<T, 4>(dimension, std::forward<Args>(args)...);
+        case USER_POLY_ORDER: return build_ho_kernel<T, USER_POLY_ORDER>(dimension, std::forward<Args>(args)...);
+        default:
+          ThrowRequireMsg(false,
+            "Polynomial order" + std::to_string(poly_order) + "is not supported by default.  "
+            "Specify USER_POLY_ORDER and recompile to run.");
+          return nullptr;
+      }
     }
   }
 
@@ -57,10 +88,13 @@ namespace nalu{
     std::string name,
     Args&&... args)
   {
+    // dimension, in addition to topology, is necessary to distinguish the HO elements,
+    const int dim = eqSys.realm_.spatialDimension_;
+
     bool isCreated = false;
     KernelBuilderLog::self().add_valid_name(eqSys.eqnTypeName_,  name);
     if (eqSys.supp_alg_is_requested(name)) {
-      Kernel* compKernel = build_topo_kernel<T>(topo, std::forward<Args>(args)...);
+      Kernel* compKernel = build_topo_kernel<T>(dim, topo, std::forward<Args>(args)...);
       ThrowRequire(compKernel != nullptr);
       KernelBuilderLog::self().add_built_name(eqSys.eqnTypeName_,  name);
       kernelVec.push_back(compKernel);
@@ -78,10 +112,12 @@ namespace nalu{
     const stk::topology topo = part.topology();
     const std::string algName = "AssembleElemSolverAlg_" + topo.name();
 
+    bool isNotNGP = !(topo == stk::topology::HEXAHEDRON_8 || topo == stk::topology::HEXAHEDRON_27);
+
     auto itc = solverAlgs.find(algName);
     bool createNewAlg = itc == solverAlgs.end();
     if (createNewAlg) {
-      auto* theSolverAlg = new AssembleElemSolverAlgorithm(eqSys.realm_, &part, &eqSys, topo);
+      auto* theSolverAlg = new AssembleElemSolverAlgorithm(eqSys.realm_, &part, &eqSys, topo, isNotNGP);
       ThrowRequire(theSolverAlg != nullptr);
 
       NaluEnv::self().naluOutputP0() << "Created the following alg: " << algName << std::endl;

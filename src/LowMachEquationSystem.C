@@ -65,7 +65,7 @@
 #include <LinearSolvers.h>
 #include <LinearSystem.h>
 #include <master_element/MasterElement.h>
-#include <MomentumActuatorLineSrcNodeSuppAlg.h>
+#include <MomentumActuatorSrcNodeSuppAlg.h>
 #include <MomentumBuoyancySrcNodeSuppAlg.h>
 #include <MomentumBoussinesqSrcNodeSuppAlg.h>
 #include <MomentumBodyForceSrcNodeSuppAlg.h>
@@ -104,6 +104,8 @@
 #include <MomentumAdvDiffElemKernel.h>
 #include <MomentumBuoyancySrcElemKernel.h>
 #include <MomentumMassElemKernel.h>
+#include <MomentumCoriolisSrcElemKernel.h>
+#include <MomentumBuoyancyBoussinesqSrcElemKernel.h>
 
 // nso
 #include <nso/MomentumNSOElemKernel.h>
@@ -294,7 +296,7 @@ LowMachEquationSystem::register_element_fields(
   // register mdot for element-based scheme...
   if ( elementContinuityEqs_ ) {
     // extract master element and get scs points
-    MasterElement *meSCS = sierra::nalu::get_surface_master_element(theTopo);
+    MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(theTopo);
     const int numScsIp = meSCS->numIntPoints_;
     GenericFieldType *massFlowRate = &(meta_data.declare_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "mass_flow_rate_scs"));
     stk::mesh::put_field(*massFlowRate, *part, numScsIp );
@@ -434,7 +436,7 @@ LowMachEquationSystem::register_open_bc(
   bcDataAlg_.push_back(auxAlgPbc);
 
   // mdot at open bc; register field
-  MasterElement *meFC = sierra::nalu::get_surface_master_element(theTopo);
+  MasterElement *meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(theTopo);
   const int numScsBip = meFC->numIntPoints_;
   GenericFieldType *mdotBip 
     = &(metaData.declare_field<GenericFieldType>(static_cast<stk::topology::rank_t>(metaData.side_rank()), 
@@ -615,7 +617,7 @@ LowMachEquationSystem::solve_and_update()
   for ( int k = 0; k < maxIterations_; ++k ) {
 
     NaluEnv::self().naluOutputP0() << " " << k+1 << "/" << maxIterations_
-                    << std::setw(15) << std::right << name_ << std::endl;
+                    << std::setw(15) << std::right << userSuppliedName_ << std::endl;
 
     // momentum assemble, load_complete and solve
     momentumEqSys_->assemble_and_solve(momentumEqSys_->uTmp_);
@@ -876,7 +878,7 @@ MomentumEquationSystem::MomentumEquationSystem(
   // extract solver name and solver object
   std::string solverName = realm_.equationSystems_.get_solver_block_name("velocity");
   LinearSolver *solver = realm_.root()->linearSolvers_->create_solver(solverName, EQ_MOMENTUM);
-  linsys_ = LinearSystem::create(realm_, realm_.spatialDimension_, name_, solver);
+  linsys_ = LinearSystem::create(realm_, realm_.spatialDimension_, this, solver);
 
   // determine nodal gradient form
   set_nodal_gradient("velocity");
@@ -984,13 +986,16 @@ MomentumEquationSystem::register_nodal_fields(
   }
 
   // speciality source
-  if ( NULL != realm_.actuatorLine_ ) {
-    VectorFieldType *actuatorLineSource 
-      =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "actuator_line_source"));
-    ScalarFieldType *actuatorLineSourceLHS
-      =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "actuator_line_source_lhs"));
-    stk::mesh::put_field(*actuatorLineSource, *part);
-    stk::mesh::put_field(*actuatorLineSourceLHS, *part);
+  if ( NULL != realm_.actuator_ ) {
+    VectorFieldType *actuatorSource 
+      =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "actuator_source"));
+    ScalarFieldType *actuatorSourceLHS
+      =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "actuator_source_lhs"));
+    ScalarFieldType *g
+      =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "g"));
+    stk::mesh::put_field(*actuatorSource, *part);
+    stk::mesh::put_field(*actuatorSourceLHS, *part);
+    stk::mesh::put_field(*g, *part);
   }
 }
 
@@ -1175,6 +1180,10 @@ MomentumEquationSystem::register_interior_algorithm(
         (partTopo, *this, activeKernels, "buoyancy",
          realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs);
 
+      build_topo_kernel_if_requested<MomentumBuoyancyBoussinesqSrcElemKernel>
+        (partTopo, *this, activeKernels, "buoyancy_boussinesq",
+         realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs);
+
       build_topo_kernel_if_requested<MomentumNSOElemKernel>
         (partTopo, *this, activeKernels, "NSO_2ND",
          realm_.bulk_data(), *realm_.solutionOptions_, velocity_, dudx_,
@@ -1210,6 +1219,14 @@ MomentumEquationSystem::register_interior_algorithm(
       build_topo_kernel_if_requested<MomentumNSOKeElemKernel>
         (partTopo, *this, activeKernels, "NSO_4TH_KE",
          realm_.bulk_data(), *realm_.solutionOptions_, velocity_, dudx_, 1.0, dataPreReqs);
+
+      build_topo_kernel_if_requested<MomentumCoriolisSrcElemKernel>
+        (partTopo, *this, activeKernels, "EarthCoriolis",
+         realm_.bulk_data(), *realm_.solutionOptions_, velocity_, dataPreReqs, false);
+
+      build_topo_kernel_if_requested<MomentumCoriolisSrcElemKernel>
+        (partTopo, *this, activeKernels, "lumped_EarthCoriolis",
+         realm_.bulk_data(), *realm_.solutionOptions_, velocity_, dataPreReqs, true);
  
       report_invalid_supp_alg_names();
       report_built_supp_alg_names();
@@ -1289,9 +1306,9 @@ MomentumEquationSystem::register_interior_algorithm(
           else if (sourceName == "VariableDensityNonIso" ) {
             suppAlg = new VariableDensityNonIsoMomentumSrcNodeSuppAlg(realm_);
           }
-          else if ( sourceName == "actuator_line") {
-            suppAlg = new MomentumActuatorLineSrcNodeSuppAlg(realm_);
-          }
+	  else if ( sourceName == "actuator") {
+	    suppAlg = new MomentumActuatorSrcNodeSuppAlg(realm_);
+	  }
           else if ( sourceName == "EarthCoriolis") {
             suppAlg = new MomentumCoriolisSrcNodeSuppAlg(realm_);
           }
@@ -1671,7 +1688,7 @@ MomentumEquationSystem::register_wall_bc(
     stk::mesh::put_field(*assembledWallNormalDistance, *part);
 
     // integration point; size it based on number of boundary integration points
-    MasterElement *meFC = sierra::nalu::get_surface_master_element(theTopo);
+    MasterElement *meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(theTopo);
     const int numScsBip = meFC->numIntPoints_;
 
     stk::topology::rank_t sideRank = static_cast<stk::topology::rank_t>(meta_data.side_rank());
@@ -1870,7 +1887,7 @@ MomentumEquationSystem::register_non_conformal_bc(
   stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   // mdot at nc bc; register field; require topo and num ips
-  MasterElement *meFC = sierra::nalu::get_surface_master_element(theTopo);
+  MasterElement *meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(theTopo);
   const int numScsBip = meFC->numIntPoints_;
 
   stk::topology::rank_t sideRank = static_cast<stk::topology::rank_t>(meta_data.side_rank());
@@ -1971,7 +1988,7 @@ MomentumEquationSystem::reinitialize_linear_system()
   // create new solver
   std::string solverName = realm_.equationSystems_.get_solver_block_name("velocity");
   LinearSolver *solver = realm_.root()->linearSolvers_->create_solver(solverName, EQ_MOMENTUM);
-  linsys_ = LinearSystem::create(realm_, realm_.spatialDimension_, name_, solver);
+  linsys_ = LinearSystem::create(realm_, realm_.spatialDimension_, this, solver);
 
   // initialize new solver
   solverAlgDriver_->initialize_connectivity();
@@ -2137,7 +2154,7 @@ ContinuityEquationSystem::ContinuityEquationSystem(
   // extract solver name and solver object
   std::string solverName = realm_.equationSystems_.get_solver_block_name("pressure");
   LinearSolver *solver = realm_.root()->linearSolvers_->create_solver(solverName, EQ_CONTINUITY);
-  linsys_ = LinearSystem::create(realm_, 1, name_, solver);
+  linsys_ = LinearSystem::create(realm_, 1, this, solver);
 
   // determine nodal gradient form
   set_nodal_gradient("pressure");
@@ -2345,8 +2362,7 @@ ContinuityEquationSystem::register_interior_algorithm(
       AssembleElemSolverAlgorithm* solverAlg = nullptr;
       bool solverAlgWasBuilt = false;
 
-      std::tie(solverAlg, solverAlgWasBuilt) = build_or_add_part_to_solver_alg
-        (*this, *part, solverAlgMap);
+      std::tie(solverAlg, solverAlgWasBuilt) = build_or_add_part_to_solver_alg(*this, *part, solverAlgMap);
 
       ElemDataRequests& dataPreReqs = solverAlg->dataNeededBySuppAlgs_;
       auto& activeKernels = solverAlg->activeKernels_;
@@ -2716,7 +2732,7 @@ ContinuityEquationSystem::register_non_conformal_bc(
   stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   // mdot at nc bc; register field; require topo and num ips
-  MasterElement *meFC = sierra::nalu::get_surface_master_element(theTopo);
+  MasterElement *meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(theTopo);
   const int numScsBip = meFC->numIntPoints_;
   
   stk::topology::rank_t sideRank = static_cast<stk::topology::rank_t>(meta_data.side_rank());
@@ -2848,7 +2864,7 @@ ContinuityEquationSystem::reinitialize_linear_system()
   // create new solver
   std::string solverName = realm_.equationSystems_.get_solver_block_name("pressure");
   LinearSolver *solver = realm_.root()->linearSolvers_->create_solver(solverName, EQ_CONTINUITY);
-  linsys_ = LinearSystem::create(realm_, 1, name_, solver);
+  linsys_ = LinearSystem::create(realm_, 1, this, solver);
 
   // initialize
   solverAlgDriver_->initialize_connectivity();

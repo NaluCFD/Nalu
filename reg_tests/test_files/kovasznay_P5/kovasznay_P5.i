@@ -31,7 +31,7 @@ realms:
   - name: realm_1
     mesh: ../../mesh/quad4_8el.g
     use_edges: no
-    polynomial_order: 7
+    polynomial_order: 5
     automatic_decomposition_type: rib     
 
     equation_systems:

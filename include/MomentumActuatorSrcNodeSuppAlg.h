@@ -6,8 +6,8 @@
 /*------------------------------------------------------------------------*/
 
 
-#ifndef MomentumActuatorLineSrcNodeSuppAlg_h
-#define MomentumActuatorLineSrcNodeSuppAlg_h
+#ifndef MomentumActuatorSrcNodeSuppAlg_h
+#define MomentumActuatorSrcNodeSuppAlg_h
 
 #include <SupplementalAlgorithm.h>
 #include <FieldTypeDef.h>
@@ -19,14 +19,14 @@ namespace nalu{
 
 class Realm;
 
-class MomentumActuatorLineSrcNodeSuppAlg : public SupplementalAlgorithm
+class MomentumActuatorSrcNodeSuppAlg : public SupplementalAlgorithm
 {
 public:
 
-  MomentumActuatorLineSrcNodeSuppAlg(
+  MomentumActuatorSrcNodeSuppAlg(
     Realm &realm);
 
-  virtual ~MomentumActuatorLineSrcNodeSuppAlg() {}
+  virtual ~MomentumActuatorSrcNodeSuppAlg() {}
 
   virtual void setup();
 
@@ -35,8 +35,8 @@ public:
     double *rhs,
     stk::mesh::Entity node);
   
-  VectorFieldType *actuatorLineSrc_;
-  ScalarFieldType *actuatorLineSrcLHS_;
+  VectorFieldType *actuatorSrc_;
+  ScalarFieldType *actuatorSrcLHS_;
   ScalarFieldType *dualNodalVolume_;
   int nDim_;
 };

@@ -7,6 +7,7 @@
 
 #include "kernels/UnitTestKernelUtils.h"
 #include "UnitTestUtils.h"
+#include "UnitTestHelperObjects.h"
 
 #include "MomentumAdvDiffElemKernel.h"
 
@@ -280,27 +281,26 @@ TEST_F(MomentumKernelHex8Mesh, advection_diffusion)
   solnOpts_.externalMeshDeformation_ = false;
   solnOpts_.includeDivU_ = 0.0;
 
-  // Initialize the kernel driver
-  unit_test_kernel_utils::TestKernelDriver assembleKernels(
-    bulk_, partVec_, coordinates_, spatialDim_, stk::topology::HEX_8);
+  unit_test_utils::HelperObjectsNewME helperObjs(bulk_, stk::topology::HEX_8, 3, partVec_[0]);
 
   // Initialize the kernel
   std::unique_ptr<sierra::nalu::Kernel> kernel(
     new sierra::nalu::MomentumAdvDiffElemKernel<sierra::nalu::AlgTraitsHex8>(
       bulk_, solnOpts_, velocity_, viscosity_,
-      assembleKernels.dataNeededByKernels_));
+      helperObjs.assembleElemSolverAlg->dataNeededBySuppAlgs_));
 
   // Add to kernels to be tested
-  assembleKernels.activeKernels_.push_back(kernel.get());
+  helperObjs.assembleElemSolverAlg->activeKernels_.push_back(kernel.get());
 
   // Populate LHS and RHS
-  assembleKernels.execute();
+  helperObjs.assembleElemSolverAlg->execute();
 
-  EXPECT_EQ(assembleKernels.lhs_.dimension(0), 24u);
-  EXPECT_EQ(assembleKernels.lhs_.dimension(1), 24u);
-  EXPECT_EQ(assembleKernels.rhs_.dimension(0), 24u);
+  EXPECT_EQ(helperObjs.linsys->lhs_.dimension(0), 24u);
+  EXPECT_EQ(helperObjs.linsys->lhs_.dimension(1), 24u);
+  EXPECT_EQ(helperObjs.linsys->rhs_.dimension(0), 24u);
 
   namespace gold_values = ::hex8_golds::advection_diffusion;
-  unit_test_kernel_utils::expect_all_near(assembleKernels.rhs_, gold_values::rhs);
-  unit_test_kernel_utils::expect_all_near(assembleKernels.lhs_, gold_values::lhs);
+  unit_test_kernel_utils::expect_all_near(helperObjs.linsys->rhs_, gold_values::rhs);
+  unit_test_kernel_utils::expect_all_near(helperObjs.linsys->lhs_, gold_values::lhs);
 }
+

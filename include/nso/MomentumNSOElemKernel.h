@@ -22,7 +22,6 @@ namespace nalu {
 class SolutionOptions;
 class MasterElement;
 class ElemDataRequests;
-class ScratchViews;
 
 /** NSO for momentum equation
  *
@@ -46,9 +45,9 @@ public:
   virtual void setup(const TimeIntegrator&);
 
   virtual void execute(
-    SharedMemView<double**>&,
-    SharedMemView<double*>&,
-    ScratchViews&);
+    SharedMemView<DoubleType**>&,
+    SharedMemView<DoubleType*>&,
+    ScratchViews<DoubleType>&);
 
 private:
   MomentumNSOElemKernel() = delete;
@@ -81,8 +80,8 @@ private:
   const double small_{1.0e-16};
 
   // fixed scratch space
-  Kokkos::View<double[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_{"v_shape_function"};
-  Kokkos::View<double[AlgTraits::nDim_][AlgTraits::nDim_]> v_kd_{"v_kd"};
+  Kokkos::View<DoubleType[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_{"v_shape_function"};
+  Kokkos::View<DoubleType[AlgTraits::nDim_][AlgTraits::nDim_]> v_kd_{"v_kd"};
 };
 
 }  // nalu

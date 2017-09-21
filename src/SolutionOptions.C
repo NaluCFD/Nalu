@@ -89,7 +89,8 @@ SolutionOptions::SolutionOptions()
     latitude_(0.0),
     mdotAlgAccumulation_(0.0),
     mdotAlgInflow_(0.0),
-    mdotAlgOpen_(0.0)
+    mdotAlgOpen_(0.0),
+    quadType_("GaussLegendre")
 {
   // nothing to do
 }
@@ -152,6 +153,9 @@ SolutionOptions::load(const YAML::Node & y_node)
     get_if_present(y_solution_options, "eigenvalue_perturbation_bias_towards", eigenvaluePerturbBiasTowards_);
     get_if_present(y_solution_options, "eigenvalue_perturbation_turbulent_ke", eigenvaluePerturbTurbKe_);
     
+    // quadrature type for high order
+    get_if_present(y_solution_options, "high_order_quadrature_type", quadType_);
+
     // extract turbulence model; would be nice if we could parse an enum..
     std::string specifiedTurbModel;
     std::string defaultTurbModel = "laminar";

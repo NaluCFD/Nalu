@@ -34,7 +34,7 @@ ScalarDiffElemKernel<AlgTraits>::ScalarDiffElemKernel(
   : Kernel(),
     scalarQ_(scalarQ),
     diffFluxCoeff_(diffFluxCoeff),
-    lrscv_(sierra::nalu::get_surface_master_element(AlgTraits::topo_)->adjacentNodes()),
+    lrscv_(sierra::nalu::MasterElementRepo::get_surface_master_element(AlgTraits::topo_)->adjacentNodes()),
     shiftedGradOp_(solnOpts.get_shifted_grad_op(scalarQ_->name()))
 {
   // Save of required fields
@@ -42,8 +42,8 @@ ScalarDiffElemKernel<AlgTraits>::ScalarDiffElemKernel(
   coordinates_ = metaData.get_field<VectorFieldType>(
     stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
 
-  MasterElement *meSCS = sierra::nalu::get_surface_master_element(AlgTraits::topo_);
-  meSCS->shape_fcn(&v_shape_function_(0,0));
+  MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(AlgTraits::topo_);
+  get_scs_shape_fn_data<AlgTraits>([&](double* ptr){meSCS->shape_fcn(ptr);}, v_shape_function_);
 
   dataPreReqs.add_cvfem_surface_me(meSCS);
 
@@ -65,15 +65,15 @@ ScalarDiffElemKernel<AlgTraits>::~ScalarDiffElemKernel()
 template<typename AlgTraits>
 void
 ScalarDiffElemKernel<AlgTraits>::execute(
-  SharedMemView<double**>& lhs,
-  SharedMemView<double*>& rhs,
-  ScratchViews& scratchViews)
+  SharedMemView<DoubleType**>& lhs,
+  SharedMemView<DoubleType*>& rhs,
+  ScratchViews<DoubleType>& scratchViews)
 {
-  SharedMemView<double*>& v_scalarQ = scratchViews.get_scratch_view_1D(*scalarQ_);
-  SharedMemView<double*>& v_diffFluxCoeff = scratchViews.get_scratch_view_1D(*diffFluxCoeff_);
+  SharedMemView<DoubleType*>& v_scalarQ = scratchViews.get_scratch_view_1D(*scalarQ_);
+  SharedMemView<DoubleType*>& v_diffFluxCoeff = scratchViews.get_scratch_view_1D(*diffFluxCoeff_);
 
-  SharedMemView<double**>& v_scs_areav = scratchViews.get_me_views(CURRENT_COORDINATES).scs_areav;
-  SharedMemView<double***>& v_dndx = shiftedGradOp_ 
+  SharedMemView<DoubleType**>& v_scs_areav = scratchViews.get_me_views(CURRENT_COORDINATES).scs_areav;
+  SharedMemView<DoubleType***>& v_dndx = shiftedGradOp_
     ? scratchViews.get_me_views(CURRENT_COORDINATES).dndx_shifted 
     : scratchViews.get_me_views(CURRENT_COORDINATES).dndx;
 
@@ -85,16 +85,16 @@ ScalarDiffElemKernel<AlgTraits>::execute(
     const int ir = lrscv_[2*ip+1];
 
     // compute ip property
-    double diffFluxCoeffIp = 0.0;
+    DoubleType diffFluxCoeffIp = 0.0;
     for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
-      const double r = v_shape_function_(ip,ic);
+      const DoubleType r = v_shape_function_(ip,ic);
       diffFluxCoeffIp += r*v_diffFluxCoeff(ic);
     }
 
     // assemble to rhs and lhs
-    double qDiff = 0.0;
+    DoubleType qDiff = 0.0;
     for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
-      double lhsfacDiff = 0.0;
+      DoubleType lhsfacDiff = 0.0;
       for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
         lhsfacDiff += -diffFluxCoeffIp*v_dndx(ip,ic,j)*v_scs_areav(ip,j);
       }

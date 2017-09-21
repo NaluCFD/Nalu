@@ -47,9 +47,9 @@ ScalarDiffFemKernel<AlgTraits>::ScalarDiffFemKernel(
 
   // master element, shape function is shifted consistently
   if ( shiftedGradOp_ )
-    meFEM_->shifted_shape_fcn(&v_shape_function_(0,0));
+    get_scs_shape_fn_data<AlgTraits>([&](double* ptr){meFEM_->shifted_shape_fcn(ptr);}, v_shape_function_);
   else
-    meFEM_->shape_fcn(&v_shape_function_(0,0));
+    get_scs_shape_fn_data<AlgTraits>([&](double* ptr){meFEM_->shape_fcn(ptr);}, v_shape_function_);
 
   dataPreReqs.add_fem_volume_me(meFEM_);
 
@@ -72,39 +72,39 @@ ScalarDiffFemKernel<AlgTraits>::~ScalarDiffFemKernel()
 template<typename AlgTraits>
 void
 ScalarDiffFemKernel<AlgTraits>::execute(
-  SharedMemView<double**>& lhs,
-  SharedMemView<double*>& rhs,
-  ScratchViews& scratchViews)
+  SharedMemView<DoubleType**>& lhs,
+  SharedMemView<DoubleType*>& rhs,
+  ScratchViews<DoubleType>& scratchViews)
 {
-  SharedMemView<double*>& v_scalarQ = scratchViews.get_scratch_view_1D(*scalarQ_);
-  SharedMemView<double*>& v_diffFluxCoeff = scratchViews.get_scratch_view_1D(*diffFluxCoeff_);
-
-  SharedMemView<double***>& v_dndx = scratchViews.get_me_views(CURRENT_COORDINATES).dndx_fem;
-  SharedMemView<double*>& v_det_j = scratchViews.get_me_views(CURRENT_COORDINATES).det_j_fem;
+  SharedMemView<DoubleType*>& v_scalarQ = scratchViews.get_scratch_view_1D(*scalarQ_);
+  SharedMemView<DoubleType*>& v_diffFluxCoeff = scratchViews.get_scratch_view_1D(*diffFluxCoeff_);
+  
+  SharedMemView<DoubleType***>& v_dndx = scratchViews.get_me_views(CURRENT_COORDINATES).dndx_fem;
+  SharedMemView<DoubleType*>& v_det_j = scratchViews.get_me_views(CURRENT_COORDINATES).det_j_fem;
 
   for ( int ip = 0; ip < AlgTraits::numGp_; ++ip ) {
 
     // compute ip property
-    double diffFluxCoeffIp = 0.0;
+    DoubleType diffFluxCoeffIp = 0.0;
     for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
-      const double r = v_shape_function_(ip,ic);
+      const DoubleType r = v_shape_function_(ip,ic);
       diffFluxCoeffIp += r*v_diffFluxCoeff(ic);
     }
 
     // start the assembly
-    const double ipFactor = v_det_j(ip)*ipWeight_[ip];
+    const DoubleType ipFactor = v_det_j(ip)*ipWeight_[ip];
 
     // row ir
     for ( int ir = 0; ir < AlgTraits::nodesPerElement_; ++ir) {
 
       // column ic
-      double rhsSum = 0.0;
+      DoubleType rhsSum = 0.0;
       for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
 
-        double lhsSum = 0.0;
-        double scalarQ = v_scalarQ(ic);
+        DoubleType lhsSum = 0.0;
+        DoubleType scalarQ = v_scalarQ(ic);
         for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
-          const double fac = v_dndx(ip,ir,j)*diffFluxCoeffIp*v_dndx(ip,ic,j);
+          const DoubleType fac = v_dndx(ip,ir,j)*diffFluxCoeffIp*v_dndx(ip,ic,j);
           lhsSum += fac;
           rhsSum += fac*scalarQ;
         }

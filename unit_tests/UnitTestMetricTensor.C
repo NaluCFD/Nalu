@@ -16,70 +16,16 @@
 #include <stk_mesh/base/CoordinateSystems.hpp>
 
 #include <master_element/MasterElement.h>
+#include <master_element/MasterElementFunctions.h>
+#include <master_element/Hex27CVFEM.h>
+#include <master_element/TensorOps.h>
+
 #include <NaluEnv.h>
+#include <AlgTraits.h>
 
 #include "UnitTestUtils.h"
 
 namespace {
-
-void matvec22(const double* A, const double* x, double* b)
-{
-  b[0] = A[0] * x[0] + A[1] * x[1];
-  b[1] = A[2] * x[0] + A[3] * x[1];
-}
-
-void mxm22(const double* A, const double* B, double* C)
-{
-  C[0] = A[0] * B[0] + A[1] * B[2];
-  C[1] = A[0] * B[1] + A[1] * B[3];
-  C[2] = A[2] * B[0] + A[3] * B[2];
-  C[3] = A[2] * B[1] + A[3] * B[3];
-}
-
-void mxm33(const double* A, const double* B, double* C)
-{
-  enum { XX = 0, XY = 1, XZ = 2, YX = 3, YY = 4, YZ = 5, ZX = 6, ZY = 7, ZZ = 8 };
-  C[XX] = A[XX] * B[XX] + A[XY] * B[YX] + A[XZ] * B[ZX];
-  C[XY] = A[XX] * B[XY] + A[XY] * B[YY] + A[XZ] * B[ZY];
-  C[XZ] = A[XX] * B[XZ] + A[XY] * B[YZ] + A[XZ] * B[ZZ];
-  C[YX] = A[YX] * B[XX] + A[YY] * B[YX] + A[YZ] * B[ZX];
-  C[YY] = A[YX] * B[XY] + A[YY] * B[YY] + A[YZ] * B[ZY];
-  C[YZ] = A[YX] * B[XZ] + A[YY] * B[YZ] + A[YZ] * B[ZZ];
-  C[ZX] = A[ZX] * B[XX] + A[ZY] * B[YX] + A[ZZ] * B[ZX];
-  C[ZY] = A[ZX] * B[XY] + A[ZY] * B[YY] + A[ZZ] * B[ZY];
-  C[ZZ] = A[ZX] * B[XZ] + A[ZY] * B[YZ] + A[ZZ] * B[ZZ];
-}
-
-
-void matvec33(const double* A, const double* x, double* b)
-{
-  b[0] = A[0] * x[0] + A[1] * x[1] + A[2] * x[2];
-  b[1] = A[3] * x[0] + A[4] * x[1] + A[5] * x[2];
-  b[2] = A[6] * x[0] + A[7] * x[1] + A[8] * x[2];
-}
-
-void transpose22(const double* A, double* At)
-{
-  At[0] = A[0];
-  At[1] = A[2];
-  At[2] = A[1];
-  At[3] = A[3];
-}
-
-void transpose33(const double* A, double* At)
-{
-  enum { XX = 0, XY = 1, XZ = 2, YX = 3, YY = 4, YZ = 5, ZX = 6, ZY = 7, ZZ = 8 };
-  At[XX] = A[XX];
-  At[YY] = A[YY];
-  At[ZZ] = A[ZZ];
-
-  At[XY] = A[YX];
-  At[XZ] = A[ZX];
-  At[YX] = A[XY];
-  At[YZ] = A[ZY];
-  At[ZX] = A[XZ];
-  At[ZY] = A[YZ];
-}
 
 std::pair<std::vector<double>, std::vector<double>>
 calculate_metric_tensor(sierra::nalu::MasterElement& me, const std::vector<double>& ws_coords)
@@ -109,7 +55,7 @@ void test_metric_for_topo_2D(stk::topology topo, double tol) {
   stk::mesh::BulkData bulk(meta, MPI_COMM_WORLD);
   stk::mesh::Entity elem = unit_test_utils::create_one_reference_element(bulk, topo);
 
-  auto* mescs = sierra::nalu::get_surface_master_element(topo);
+  auto* mescs = sierra::nalu::MasterElementRepo::get_surface_master_element(topo);
 
   // apply some arbitrary linear map the reference element
   std::mt19937 rng;
@@ -119,10 +65,10 @@ void test_metric_for_topo_2D(stk::topology topo, double tol) {
   double Q[4] = { 1.0+std::abs(coeff(rng)), coeff(rng), coeff(rng), 1.0+std::abs(coeff(rng)) };
 
   double Qt[4];
-  transpose22(Q, Qt);
+  sierra::nalu::transpose22(Q, Qt);
 
   double metric_exact[4];
-  mxm22(Q,Qt,metric_exact);
+  sierra::nalu::mxm22(Q,Qt,metric_exact);
 
 
   const auto& coordField = *static_cast<const VectorFieldType*>(meta.coordinate_field());
@@ -130,7 +76,7 @@ void test_metric_for_topo_2D(stk::topology topo, double tol) {
   const auto* nodes = bulk.begin_nodes(elem);
   for (unsigned j = 0; j < topo.num_nodes(); ++j) {
     const double* coords = stk::mesh::field_data(coordField, nodes[j]);
-    matvec22(Q, coords, &ws_coords[j*dim]);
+    sierra::nalu::matvec22(Q, coords, &ws_coords[j*dim]);
   }
 
   std::vector<double> contravariant_metric; std::vector<double> covariant_metric;
@@ -139,7 +85,7 @@ void test_metric_for_topo_2D(stk::topology topo, double tol) {
   for (int ip = 0; ip < mescs->numIntPoints_; ++ip) {
     double identity[4] = {1.0,0.0,0.0,1.0};
     double shouldBeIdentity[4];
-    mxm22(&contravariant_metric[4*ip], &covariant_metric[4*ip], shouldBeIdentity);
+    sierra::nalu::mxm22(&contravariant_metric[4*ip], &covariant_metric[4*ip], shouldBeIdentity);
     for (unsigned k = 0; k < 4; ++k) {
       EXPECT_NEAR(contravariant_metric[4*ip+k], metric_exact[k], tol);
       EXPECT_NEAR(shouldBeIdentity[k], identity[k], tol);
@@ -155,7 +101,7 @@ void test_metric_for_topo_3D(stk::topology topo, double tol) {
   stk::mesh::BulkData bulk(meta, MPI_COMM_WORLD);
   stk::mesh::Entity elem = unit_test_utils::create_one_reference_element(bulk, topo);
 
-  auto* mescs = sierra::nalu::get_surface_master_element(topo);
+  auto* mescs = sierra::nalu::MasterElementRepo::get_surface_master_element(topo);
 
   // apply some arbitrary linear map the reference element
   std::mt19937 rng;
@@ -169,10 +115,10 @@ void test_metric_for_topo_3D(stk::topology topo, double tol) {
   };
 
   double Qt[9];
-  transpose33(Q,Qt);
+  sierra::nalu::transpose33(Q,Qt);
 
   double metric_exact[9];
-  mxm33(Q,Qt,metric_exact);
+  sierra::nalu::mxm33(Q,Qt,metric_exact);
 
 
   const auto& coordField = *static_cast<const VectorFieldType*>(meta.coordinate_field());
@@ -181,7 +127,7 @@ void test_metric_for_topo_3D(stk::topology topo, double tol) {
   const auto* nodes = bulk.begin_nodes(elem);
   for (unsigned j = 0; j < topo.num_nodes(); ++j) {
     const double* coords = stk::mesh::field_data(coordField, nodes[j]);
-    matvec33(Q, coords, &ws_coords[j*dim]);
+    sierra::nalu::matvec33(Q, coords, &ws_coords[j*dim]);
   }
 
   std::vector<double> contravariant_metric; std::vector<double> covariant_metric;
@@ -195,7 +141,7 @@ void test_metric_for_topo_3D(stk::topology topo, double tol) {
     };
 
     double shouldBeIdentity[9];
-    mxm33(&contravariant_metric[9*ip], &covariant_metric[9*ip], shouldBeIdentity);
+    sierra::nalu::mxm33(&contravariant_metric[9*ip], &covariant_metric[9*ip], shouldBeIdentity);
     for (unsigned k = 0; k < 9; ++k) {
       EXPECT_NEAR(contravariant_metric[9*ip+k], metric_exact[k], tol);
       EXPECT_NEAR(shouldBeIdentity[k], identity[k], tol);
@@ -237,4 +183,70 @@ TEST(MetricTensor, hex8)
 TEST(MetricTensor, hex27)
 {
   test_metric_for_topo_3D(stk::topology::HEX_27,1.0e-10);
+}
+
+
+TEST(MetricTensorNGP, hex27)
+{
+  stk::topology topo =  stk::topology::HEX_27;
+  int dim = topo.dimension();
+  ASSERT_EQ(dim,3);
+
+  stk::mesh::MetaData meta(dim);
+  stk::mesh::BulkData bulk(meta, MPI_COMM_WORLD);
+  stk::mesh::Entity elem = unit_test_utils::create_one_reference_element(bulk, topo);
+
+  sierra::nalu::Hex27SCS mescs;
+
+  // apply some arbitrary linear map the reference element
+  std::mt19937 rng;
+  rng.seed(0); // fixed seed
+  std::uniform_real_distribution<double> coeff(-1.0, 1.0);
+
+  double Q[9] = {
+      1.0+std::abs(coeff(rng)), coeff(rng), coeff(rng),
+      coeff(rng), 1.0+std::abs(coeff(rng)), coeff(rng),
+      coeff(rng), coeff(rng), 1.0+std::abs(coeff(rng))
+  };
+
+  double Qt[9];
+  sierra::nalu::transpose33(Q,Qt);
+
+  double metric_exact[9];
+  sierra::nalu::mxm33(Q,Qt,metric_exact);
+
+  const auto& coordField = *static_cast<const VectorFieldType*>(meta.coordinate_field());
+
+  Kokkos::View<double**> v_coords("coords", 27, 3);
+  const auto* nodes = bulk.begin_nodes(elem);
+  for (unsigned j = 0; j < topo.num_nodes(); ++j) {
+    const double* coords = stk::mesh::field_data(coordField, nodes[j]);
+    sierra::nalu::matvec33(Q, coords, &v_coords(j,0));
+  }
+
+  Kokkos::View<double***> gUpper("gupper", 216, dim, dim);
+  Kokkos::View<double***> gLower("glower", 216, dim, dim);
+
+  using AlgTraits = sierra::nalu::AlgTraitsHex27;
+  using GradViewType = Kokkos::View<double[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_][AlgTraits::nDim_]>;
+  GradViewType refGrad = mescs.copy_deriv_weights_to_view<GradViewType>();
+
+  sierra::nalu::generic_gij_3d<sierra::nalu::AlgTraitsHex27>(refGrad, v_coords, gUpper, gLower);
+
+  for (int ip = 0; ip < mescs.numIntPoints_; ++ip) {
+    double identity[9] = {
+        1.0,0.0,0.0,
+        0.0,1.0,0.0,
+        0.0,0.0,1.0
+    };
+
+    double shouldBeIdentity[9];
+    sierra::nalu::mxm33(&gUpper(ip,0,0), &gLower(ip,0,0), shouldBeIdentity);
+    for (int d_outer = 0; d_outer < 3; ++d_outer) {
+      for (int d_inner = 0; d_inner < 3; ++d_inner) {
+        EXPECT_NEAR(gUpper(ip, d_outer, d_inner), metric_exact[3*d_outer+d_inner], tol);
+        EXPECT_NEAR(shouldBeIdentity[3*d_outer+d_inner], identity[3*d_outer+d_inner], tol);
+      }
+    }
+  }
 }

@@ -14,16 +14,13 @@
 namespace sierra{
 namespace nalu{
 
-class Realm;
+class SolutionOptions;
 
 class CoriolisSrc {
 public:
 
-  CoriolisSrc(Realm &realm);
-
+  CoriolisSrc(const SolutionOptions& solnOpts);
   virtual ~CoriolisSrc() {}
-
-  void cross_product(std::vector<double> u, std::vector<double> v, std::vector<double> cross);
 
   int nDim_;
   double earthAngularVelocity_;

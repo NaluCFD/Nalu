@@ -32,7 +32,7 @@ TurbKineticEnergyKsgsSrcElemKernel<AlgTraits>::TurbKineticEnergyKsgsSrcElemKerne
   : Kernel(),
     cEps_(solnOpts.get_turb_model_constant(TM_cEps)),
     tkeProdLimitRatio_(solnOpts.get_turb_model_constant(TM_tkeProdLimitRatio)),
-    ipNodeMap_(sierra::nalu::get_volume_master_element(AlgTraits::topo_)->ipNodeMap())
+    ipNodeMap_(sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_)->ipNodeMap())
 {
   // save off fields
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
@@ -46,7 +46,7 @@ TurbKineticEnergyKsgsSrcElemKernel<AlgTraits>::TurbKineticEnergyKsgsSrcElemKerne
   Gju_ = metaData.get_field<GenericFieldType>(
     stk::topology::NODE_RANK, "dudx");
 
-  MasterElement *meSCV = sierra::nalu::get_volume_master_element(AlgTraits::topo_);
+  MasterElement *meSCV = sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_);
 
   // add master elements
   dataPreReqs.add_cvfem_volume_me(meSCV);
@@ -67,28 +67,25 @@ TurbKineticEnergyKsgsSrcElemKernel<AlgTraits>::~TurbKineticEnergyKsgsSrcElemKern
 template<typename AlgTraits>
 void
 TurbKineticEnergyKsgsSrcElemKernel<AlgTraits>::execute(
-  SharedMemView<double **>&lhs,
-  SharedMemView<double *>&rhs,
-  ScratchViews& scratchViews)
+  SharedMemView<DoubleType **>&lhs,
+  SharedMemView<DoubleType *>&rhs,
+  ScratchViews<DoubleType>& scratchViews)
 {
-  SharedMemView<double*>& v_tkeNp1 = scratchViews.get_scratch_view_1D(
+  SharedMemView<DoubleType*>& v_tkeNp1 = scratchViews.get_scratch_view_1D(
     *tkeNp1_);
-  SharedMemView<double*>& v_densityNp1 = scratchViews.get_scratch_view_1D(
+  SharedMemView<DoubleType*>& v_densityNp1 = scratchViews.get_scratch_view_1D(
     *densityNp1_);
-  SharedMemView<double*>& v_tvisc = scratchViews.get_scratch_view_1D(
+  SharedMemView<DoubleType*>& v_tvisc = scratchViews.get_scratch_view_1D(
     *tvisc_);
-  SharedMemView<double*>& v_dualNodalVolume = scratchViews.get_scratch_view_1D(
+  SharedMemView<DoubleType*>& v_dualNodalVolume = scratchViews.get_scratch_view_1D(
     *dualNodalVolume_);
-  SharedMemView<double***>& v_Gju = scratchViews.get_scratch_view_3D(*Gju_);
-  SharedMemView<double*>& v_scv_volume = scratchViews.get_me_views(CURRENT_COORDINATES).scv_volume;
+  SharedMemView<DoubleType***>& v_Gju = scratchViews.get_scratch_view_3D(*Gju_);
+  SharedMemView<DoubleType*>& v_scv_volume = scratchViews.get_me_views(CURRENT_COORDINATES).scv_volume;
 
   for (int ip=0; ip < AlgTraits::numScvIp_; ++ip) {
     const int nearestNode = ipNodeMap_[ip];
 
-    // filter
-    double filter = std::pow(v_dualNodalVolume(nearestNode), 1.0/AlgTraits::nDim_);
-
-    double Pk = 0.0;
+    DoubleType Pk = 0.0;
     for ( int i = 0; i < AlgTraits::nDim_; ++i ) {
       for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
         Pk += v_Gju(nearestNode,i,j)*(v_Gju(nearestNode,i,j) + v_Gju(nearestNode,j,i));
@@ -96,19 +93,20 @@ TurbKineticEnergyKsgsSrcElemKernel<AlgTraits>::execute(
     }
     Pk *= v_tvisc(nearestNode);
 
-    // save off multiply used values
-    const double tke = v_tkeNp1(nearestNode);
-    const double rho = v_densityNp1(nearestNode);
+    // tke factor
+    const DoubleType tke = v_tkeNp1(nearestNode);
+    const DoubleType tkeFac = (AlgTraits::nDim_ == 2) ?
+        cEps_*v_densityNp1(nearestNode)*stk::math::sqrt(tke/v_dualNodalVolume(nearestNode))
+      : cEps_*v_densityNp1(nearestNode)*stk::math::sqrt(tke)/stk::math::cbrt(v_dualNodalVolume(nearestNode));
 
-    // dissipation and production
-    double Dk = cEps_*rho*std::pow(tke, 1.5)/filter;
-    if ( Pk > tkeProdLimitRatio_*Dk )
-      Pk = tkeProdLimitRatio_*Dk;
+    // dissipation and production; limited
+    DoubleType Dk = tkeFac * tke;
+    Pk = stk::math::min(Pk, tkeProdLimitRatio_*Dk);
     
     // lhs assembly, all lumped
-    const double scvol = v_scv_volume(ip);
+    const DoubleType scvol = v_scv_volume(ip);
     rhs(nearestNode) += (Pk - Dk)*scvol;
-    lhs(nearestNode,nearestNode) += 1.5*cEps_*rho*std::sqrt(tke)/filter*scvol;
+    lhs(nearestNode,nearestNode) += 1.5*tkeFac*scvol;
   }
 }
 

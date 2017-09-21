@@ -4,8 +4,10 @@
 /*  in the file, LICENSE, which is located in the top-level Nalu          */
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
-#include <element_promotion/MasterElementHO.h>
-#include <element_promotion/MasterElementUtils.h>
+#include <master_element/MasterElementHO.h>
+#include <master_element/MasterElementUtils.h>
+#include <master_element/TensorOps.h>
+
 #include <element_promotion/TensorProductQuadratureRule.h>
 #include <element_promotion/LagrangeBasis.h>
 
@@ -48,6 +50,9 @@ HigherOrderHexSCV::HigherOrderHexSCV(
   // potentially use different basis for geometric computations
   geoShapeDerivs_ = shapeDerivs_;
   geoNodesPerElement_ = nodesPerElement_;
+
+//  interpWeights_ = copy_interpolation_weights_to_view(nodesPerElement_, shapeFunctionVals_);
+//  derivWeights_ = copy_deriv_weights_to_view(nDim_, nodesPerElement_, shapeDerivs_);
 }
 //--------------------------------------------------------------------------
 void

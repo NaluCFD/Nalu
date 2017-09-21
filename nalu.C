@@ -15,7 +15,6 @@
 #include <NaluEnv.h>
 
 // util
-#include <stk_util/environment/CPUTime.hpp>
 #include <stk_util/environment/perf_util.hpp>
 #include <stk_util/parallel/ParallelReduce.hpp>
 
@@ -74,7 +73,7 @@ int main( int argc, char ** argv )
   sierra::nalu::Simulation::rootTimer().start();
 
   // start initial time
-  double start_time = stk::cpu_time();
+  double start_time = naluEnv.nalu_time();
 
   // command line options.
   std::string inputFileName, logFileName;
@@ -165,7 +164,7 @@ int main( int argc, char ** argv )
   sim.run();
 
   // stop timer
-  const double stop_time = stk::cpu_time();
+  const double stop_time = naluEnv.nalu_time();
   const double total_time = stop_time - start_time;
   const char* timer_name = "Total Time";
 

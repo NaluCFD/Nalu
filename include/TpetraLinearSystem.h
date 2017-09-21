@@ -51,7 +51,7 @@ public:
   TpetraLinearSystem(
     Realm &realm,
     const unsigned numDof,
-    const std::string & name,
+    EquationSystem *eqSys,
     LinearSolver * linearSolver);
   ~TpetraLinearSystem();
 
@@ -75,6 +75,7 @@ public:
       const SharedMemView<const double*> & rhs,
       const SharedMemView<const double**> & lhs,
       const SharedMemView<int*> & localIds,
+      const SharedMemView<int*> & sortPermutation,
       const char * trace_tag);
 
   void sumInto(
@@ -199,7 +200,8 @@ private:
   std::vector<LocalOrdinal> entityToLID_;
   LocalOrdinal maxOwnedRowId_; // = num_owned_nodes * numDof_
   LocalOrdinal maxGloballyOwnedRowId_; // = (num_owned_nodes + num_globallyOwned_nodes) * numDof_
-  EquationSystem* eqSys_;
+
+  std::vector<int> sortPermutation_;
 };
 
 template<typename T1, typename T2>

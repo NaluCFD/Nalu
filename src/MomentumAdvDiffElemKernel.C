@@ -32,7 +32,7 @@ MomentumAdvDiffElemKernel<AlgTraits>::MomentumAdvDiffElemKernel(
   ElemDataRequests& dataPreReqs)
   : Kernel(),
     viscosity_(viscosity),
-    lrscv_(sierra::nalu::get_surface_master_element(AlgTraits::topo_)->adjacentNodes()),
+    lrscv_(sierra::nalu::MasterElementRepo::get_surface_master_element(AlgTraits::topo_)->adjacentNodes()),
     includeDivU_(solnOpts.includeDivU_),
     shiftedGradOp_(solnOpts.get_shifted_grad_op(velocity->name()))
 {
@@ -43,8 +43,8 @@ MomentumAdvDiffElemKernel<AlgTraits>::MomentumAdvDiffElemKernel(
   massFlowRate_ = metaData.get_field<GenericFieldType>(
     stk::topology::ELEMENT_RANK, "mass_flow_rate_scs");
 
-  MasterElement *meSCS = sierra::nalu::get_surface_master_element(AlgTraits::topo_);
-  meSCS->shape_fcn(&v_shape_function_(0,0));
+  MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(AlgTraits::topo_);
+  get_scs_shape_fn_data<AlgTraits>([&](double* ptr){meSCS->shape_fcn(ptr);}, v_shape_function_);
 
   // add master elements
   dataPreReqs.add_cvfem_surface_me(meSCS);
@@ -68,18 +68,18 @@ MomentumAdvDiffElemKernel<AlgTraits>::~MomentumAdvDiffElemKernel()
 template<class AlgTraits>
 void
 MomentumAdvDiffElemKernel<AlgTraits>::execute(
-  SharedMemView<double **>& lhs,
-  SharedMemView<double *>& rhs,
-  ScratchViews& scratchViews)
+  SharedMemView<DoubleType **>& lhs,
+  SharedMemView<DoubleType *>& rhs,
+  ScratchViews<DoubleType>& scratchViews)
 {
-  double w_uIp[AlgTraits::nDim_];
+  DoubleType w_uIp[AlgTraits::nDim_];
 
-  SharedMemView<double**>& v_uNp1 = scratchViews.get_scratch_view_2D(*velocityNp1_);
-  SharedMemView<double*>& v_viscosity = scratchViews.get_scratch_view_1D(*viscosity_);
-  SharedMemView<double*>& v_mdot = scratchViews.get_scratch_view_1D(*massFlowRate_);
+  SharedMemView<DoubleType**>& v_uNp1 = scratchViews.get_scratch_view_2D(*velocityNp1_);
+  SharedMemView<DoubleType*>& v_viscosity = scratchViews.get_scratch_view_1D(*viscosity_);
+  SharedMemView<DoubleType*>& v_mdot = scratchViews.get_scratch_view_1D(*massFlowRate_);
 
-  SharedMemView<double**>& v_scs_areav = scratchViews.get_me_views(CURRENT_COORDINATES).scs_areav;
-  SharedMemView<double***>& v_dndx = shiftedGradOp_ 
+  SharedMemView<DoubleType**>& v_scs_areav = scratchViews.get_me_views(CURRENT_COORDINATES).scs_areav;
+  SharedMemView<DoubleType***>& v_dndx = shiftedGradOp_
     ? scratchViews.get_me_views(CURRENT_COORDINATES).dndx_shifted 
     : scratchViews.get_me_views(CURRENT_COORDINATES).dndx;
 
@@ -94,19 +94,19 @@ MomentumAdvDiffElemKernel<AlgTraits>::execute(
     const int irNdim = ir*AlgTraits::nDim_;
 
     // save off mdot
-    const double tmdot = v_mdot(ip);
+    const DoubleType tmdot = v_mdot(ip);
 
     // compute scs point values; sneak in divU
-    double muIp = 0.0;
-    double divU = 0.0;
+    DoubleType muIp = 0.0;
+    DoubleType divU = 0.0;
     for ( int i = 0; i < AlgTraits::nDim_; ++i )
       w_uIp[i] = 0.0;
 
     for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
-      const double r = v_shape_function_(ip,ic);
+      const DoubleType r = v_shape_function_(ip,ic);
       muIp += r*v_viscosity(ic);
       for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
-        const double uj = v_uNp1(ic,j);
+        const DoubleType uj = v_uNp1(ic,j);
         w_uIp[j] += r*uj;
         divU += uj*v_dndx(ip,ic,j);
       }
@@ -116,13 +116,13 @@ MomentumAdvDiffElemKernel<AlgTraits>::execute(
     for ( int i = 0; i < AlgTraits::nDim_; ++i ) {
 
       // 2nd order central
-      const double uiIp = w_uIp[i];
+      const DoubleType uiIp = w_uIp[i];
 
       // total advection; (pressure contribution in time term)
-      const double aflux = tmdot*uiIp;
+      const DoubleType aflux = tmdot*uiIp;
 
       // divU stress term
-      const double divUstress = 2.0/3.0*muIp*divU*v_scs_areav(ip,i)*includeDivU_;
+      const DoubleType divUstress = 2.0/3.0*muIp*divU*v_scs_areav(ip,i)*includeDivU_;
 
       const int indexL = ilNdim + i;
       const int indexR = irNdim + i;
@@ -137,10 +137,10 @@ MomentumAdvDiffElemKernel<AlgTraits>::execute(
       const int icNdim = ic*AlgTraits::nDim_;
 
       // shape function
-      const double r = v_shape_function_(ip,ic);
+      const DoubleType r = v_shape_function_(ip,ic);
 
       // advection and diffusion
-      const double lhsfacAdv = r*tmdot;
+      const DoubleType lhsfacAdv = r*tmdot;
 
       for ( int i = 0; i < AlgTraits::nDim_; ++i ) {
 
@@ -153,19 +153,19 @@ MomentumAdvDiffElemKernel<AlgTraits>::execute(
         lhs(indexR,icNdim+i) -= lhsfacAdv;
 
         // viscous stress
-        double lhs_riC_i = 0.0;
+        DoubleType lhs_riC_i = 0.0;
         for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
 
-          const double axj = v_scs_areav(ip,j);
-          const double uj = v_uNp1(ic,j);
+          const DoubleType axj = v_scs_areav(ip,j);
+          const DoubleType uj = v_uNp1(ic,j);
 
           // -mu*dui/dxj*A_j; fixed i over j loop; see below..
-          const double lhsfacDiff_i = -muIp*v_dndx(ip,ic,j)*axj;
+          const DoubleType lhsfacDiff_i = -muIp*v_dndx(ip,ic,j)*axj;
           // lhs; il then ir
           lhs_riC_i += lhsfacDiff_i;
 
           // -mu*duj/dxi*A_j
-          const double lhsfacDiff_j = -muIp*v_dndx(ip,ic,i)*axj;
+          const DoubleType lhsfacDiff_j = -muIp*v_dndx(ip,ic,i)*axj;
           // lhs; il then ir
           lhs(indexL,icNdim+j) += lhsfacDiff_j;
           lhs(indexR,icNdim+j) -= lhsfacDiff_j;
@@ -177,7 +177,7 @@ MomentumAdvDiffElemKernel<AlgTraits>::execute(
         // deal with accumulated lhs and flux for -mu*dui/dxj*Aj
         lhs(indexL,icNdim+i) += lhs_riC_i;
         lhs(indexR,icNdim+i) -= lhs_riC_i;
-        const double ui = v_uNp1(ic,i);
+        const DoubleType ui = v_uNp1(ic,i);
         rhs(indexL) -= lhs_riC_i*ui;
         rhs(indexR) += lhs_riC_i*ui;
       }

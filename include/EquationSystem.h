@@ -150,7 +150,7 @@ public:
   virtual void register_interior_algorithm(
     stk::mesh::Part *part) {}
   virtual void provide_output() {}
-  virtual void pre_timestep_work() {}
+  virtual void pre_timestep_work();
   virtual void reinitialize_linear_system() {}
   virtual void post_adapt_work() {}
   virtual void dump_eq_time();
@@ -212,7 +212,7 @@ public:
 
   virtual void load(const YAML::Node & node)
   {
-    get_required(node, "name", name_);
+    get_required(node, "name", userSuppliedName_);
     get_required(node, "max_iterations", maxIterations_);
     get_required(node, "convergence_tolerance", convergenceTolerance_);
   }
@@ -230,6 +230,7 @@ public:
   EquationSystems &equationSystems_;
   Realm &realm_;
   std::string name_;
+  std::string userSuppliedName_;
   const std::string eqnTypeName_;
   int maxIterations_;
   double convergenceTolerance_;
@@ -248,6 +249,7 @@ public:
   double minLinearIterations_;
   int nonLinearIterationCount_;
   bool reportLinearIterations_;
+  bool firstTimeStepSolve_;
   bool edgeNodalGradient_;
 
   void update_iteration_statistics(

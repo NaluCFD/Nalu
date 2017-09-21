@@ -199,6 +199,8 @@ public:
 
   std::string name_;
 
+  std::string quadType_;
+
 };
 
 } // namespace nalu

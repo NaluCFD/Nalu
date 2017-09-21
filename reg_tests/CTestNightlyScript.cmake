@@ -65,6 +65,7 @@ ctest_build(BUILD "${CTEST_BINARY_DIRECTORY}" RETURN_VALUE res)
 
 if(${RELEASE_OR_DEBUG} STREQUAL "RELEASE")
   message(" -- Test - ${CTEST_BUILD_NAME} --")
+  unset(ENV{TMPDIR})
   ctest_test(BUILD "${CTEST_BINARY_DIRECTORY}"
              PARALLEL_LEVEL ${CTEST_PARALLEL_LEVEL}
              RETURN_VALUE res)

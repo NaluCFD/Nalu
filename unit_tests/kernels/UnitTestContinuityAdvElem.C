@@ -7,6 +7,7 @@
 
 #include "kernels/UnitTestKernelUtils.h"
 #include "UnitTestUtils.h"
+#include "UnitTestHelperObjects.h"
 
 #include "ContinuityAdvElemKernel.h"
 
@@ -71,29 +72,33 @@ TEST_F(ContinuityKernelHex8Mesh, advection_default)
   solnOpts_.cvfemReducedSensPoisson_ = false;
   solnOpts_.mdotInterpRhoUTogether_ = true;
 
-  // Initialize the kernel driver
-  unit_test_kernel_utils::TestKernelDriver assembleKernels(
-    bulk_, partVec_, coordinates_, 1, stk::topology::HEX_8);
+  unit_test_utils::HelperObjectsNewME helperObjs(bulk_, stk::topology::HEX_8, 1, partVec_[0]);
+
+  sierra::nalu::TimeIntegrator timeIntegrator;
+  timeIntegrator.gamma1_ = 1.0;
+  timeIntegrator.timeStepN_ = 1.0;
+  timeIntegrator.timeStepNm1_ = 1.0;
+  helperObjs.realm.timeIntegrator_ = &timeIntegrator;
 
   // Initialize the kernel
   std::unique_ptr<sierra::nalu::Kernel> advKernel(
     new sierra::nalu::ContinuityAdvElemKernel<sierra::nalu::AlgTraitsHex8>(
-      bulk_, solnOpts_, assembleKernels.dataNeededByKernels_));
+      bulk_, solnOpts_, helperObjs.assembleElemSolverAlg->dataNeededBySuppAlgs_));
 
   // Register the kernel for execution
-  assembleKernels.activeKernels_.push_back(advKernel.get());
+  helperObjs.assembleElemSolverAlg->activeKernels_.push_back(advKernel.get());
 
   // Populate LHS and RHS
-  assembleKernels.execute();
+  helperObjs.assembleElemSolverAlg->execute();
 
-  EXPECT_EQ(assembleKernels.lhs_.dimension(0), 8u);
-  EXPECT_EQ(assembleKernels.lhs_.dimension(1), 8u);
-  EXPECT_EQ(assembleKernels.rhs_.dimension(0), 8u);
+  EXPECT_EQ(helperObjs.linsys->lhs_.dimension(0), 8u);
+  EXPECT_EQ(helperObjs.linsys->lhs_.dimension(1), 8u);
+  EXPECT_EQ(helperObjs.linsys->rhs_.dimension(0), 8u);
 
   namespace gold_values = hex8_golds::advection_default;
 
-  unit_test_kernel_utils::expect_all_near(assembleKernels.rhs_, gold_values::rhs);
-  unit_test_kernel_utils::expect_all_near<8>(assembleKernels.lhs_, gold_values::lhs);
+  unit_test_kernel_utils::expect_all_near(helperObjs.linsys->rhs_, gold_values::rhs);
+  unit_test_kernel_utils::expect_all_near<8>(helperObjs.linsys->lhs_, gold_values::lhs);
 }
 
 /// Continuity advection kernel
@@ -113,29 +118,33 @@ TEST_F(ContinuityKernelHex8Mesh, advection_reduced_sens_cvfem_poisson)
   solnOpts_.cvfemReducedSensPoisson_ = true;
   solnOpts_.mdotInterpRhoUTogether_ = true;
 
-  // Initialize the kernel driver
-  unit_test_kernel_utils::TestKernelDriver assembleKernels(
-    bulk_, partVec_, coordinates_, 1, stk::topology::HEX_8);
+  unit_test_utils::HelperObjectsNewME helperObjs(bulk_, stk::topology::HEX_8, 1, partVec_[0]);
+
+  sierra::nalu::TimeIntegrator timeIntegrator;
+  timeIntegrator.gamma1_ = 1.0;
+  timeIntegrator.timeStepN_ = 1.0;
+  timeIntegrator.timeStepNm1_ = 1.0;
+  helperObjs.realm.timeIntegrator_ = &timeIntegrator;
 
   // Initialize the kernel
   std::unique_ptr<sierra::nalu::Kernel> advKernel(
     new sierra::nalu::ContinuityAdvElemKernel<sierra::nalu::AlgTraitsHex8>(
-      bulk_, solnOpts_, assembleKernels.dataNeededByKernels_));
+      bulk_, solnOpts_, helperObjs.assembleElemSolverAlg->dataNeededBySuppAlgs_));
 
   // Register the kernel for execution
-  assembleKernels.activeKernels_.push_back(advKernel.get());
+  helperObjs.assembleElemSolverAlg->activeKernels_.push_back(advKernel.get());
 
   // Populate LHS and RHS
-  assembleKernels.execute();
+  helperObjs.assembleElemSolverAlg->execute();
 
-  EXPECT_EQ(assembleKernels.lhs_.dimension(0), 8u);
-  EXPECT_EQ(assembleKernels.lhs_.dimension(1), 8u);
-  EXPECT_EQ(assembleKernels.rhs_.dimension(0), 8u);
+  EXPECT_EQ(helperObjs.linsys->lhs_.dimension(0), 8u);
+  EXPECT_EQ(helperObjs.linsys->lhs_.dimension(1), 8u);
+  EXPECT_EQ(helperObjs.linsys->rhs_.dimension(0), 8u);
 
   namespace gold_values = hex8_golds::advection_reduced_sensitivities;
 
-  unit_test_kernel_utils::expect_all_near(assembleKernels.rhs_, gold_values::rhs);
-  unit_test_kernel_utils::expect_all_near<8>(assembleKernels.lhs_, gold_values::lhs);
+  unit_test_kernel_utils::expect_all_near(helperObjs.linsys->rhs_, gold_values::rhs);
+  unit_test_kernel_utils::expect_all_near<8>(helperObjs.linsys->lhs_, gold_values::lhs);
 }
 
 /// Continuity advection kernel
@@ -155,27 +164,32 @@ TEST_F(ContinuityKernelHex8Mesh, advection_reduced_shift_cvfem_poisson)
   solnOpts_.cvfemReducedSensPoisson_ = true;
   solnOpts_.mdotInterpRhoUTogether_ = true;
 
-  // Initialize the kernel driver
-  unit_test_kernel_utils::TestKernelDriver assembleKernels(
-    bulk_, partVec_, coordinates_, 1, stk::topology::HEX_8);
+  unit_test_utils::HelperObjectsNewME helperObjs(bulk_, stk::topology::HEX_8, 1, partVec_[0]);
+
+  sierra::nalu::TimeIntegrator timeIntegrator;
+  timeIntegrator.gamma1_ = 1.0;
+  timeIntegrator.timeStepN_ = 1.0;
+  timeIntegrator.timeStepNm1_ = 1.0;
+  helperObjs.realm.timeIntegrator_ = &timeIntegrator;
 
   // Initialize the kernel
   std::unique_ptr<sierra::nalu::Kernel> advKernel(
     new sierra::nalu::ContinuityAdvElemKernel<sierra::nalu::AlgTraitsHex8>(
-      bulk_, solnOpts_, assembleKernels.dataNeededByKernels_));
+      bulk_, solnOpts_, helperObjs.assembleElemSolverAlg->dataNeededBySuppAlgs_));
 
   // Register the kernel for execution
-  assembleKernels.activeKernels_.push_back(advKernel.get());
+  helperObjs.assembleElemSolverAlg->activeKernels_.push_back(advKernel.get());
 
   // Populate LHS and RHS
-  assembleKernels.execute();
+  helperObjs.assembleElemSolverAlg->execute();
 
-  EXPECT_EQ(assembleKernels.lhs_.dimension(0), 8u);
-  EXPECT_EQ(assembleKernels.lhs_.dimension(1), 8u);
-  EXPECT_EQ(assembleKernels.rhs_.dimension(0), 8u);
+  EXPECT_EQ(helperObjs.linsys->lhs_.dimension(0), 8u);
+  EXPECT_EQ(helperObjs.linsys->lhs_.dimension(1), 8u);
+  EXPECT_EQ(helperObjs.linsys->rhs_.dimension(0), 8u);
 
   namespace gold_values = hex8_golds::advection_reduced_sensitivities;
 
-  unit_test_kernel_utils::expect_all_near(assembleKernels.rhs_, gold_values::rhs);
-  unit_test_kernel_utils::expect_all_near<8>(assembleKernels.lhs_, gold_values::lhs);
+  unit_test_kernel_utils::expect_all_near(helperObjs.linsys->rhs_, gold_values::rhs);
+  unit_test_kernel_utils::expect_all_near<8>(helperObjs.linsys->lhs_, gold_values::lhs);
 }
+

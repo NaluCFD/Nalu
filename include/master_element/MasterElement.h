@@ -9,7 +9,13 @@
 #ifndef MasterElement_h
 #define MasterElement_h
 
+#include <master_element/MasterElementFactory.h>
+
 #include <AlgTraits.h>
+
+// NGP-based includes
+#include "SimdInterface.h"
+#include "KokkosInterface.h"
 
 #include <vector>
 #include <cstdlib>
@@ -24,7 +30,7 @@
 #endif
 
 namespace stk {
-struct topology;
+  struct topology;
 }
 
 namespace sierra{
@@ -42,17 +48,7 @@ enum Direction
 struct ElementDescription;
 class MasterElement;
 
-MasterElement*
-get_surface_master_element(
-  const stk::topology& theTopo,
-  ElementDescription* desc = nullptr,
-  std::string quadType = "GaussLegendre");
 
-MasterElement*
-get_volume_master_element(
-  const stk::topology& theTopo,
-  ElementDescription* desc = nullptr,
-  std::string quadType = "GaussLegendre");
 
 class MasterElement
 {
@@ -60,6 +56,61 @@ public:
   MasterElement();
   virtual ~MasterElement();
 
+  // NGP-ready methods first
+  virtual void shape_fcn(
+    SharedMemView<DoubleType**> &shpfc) {
+    throw std::runtime_error("shape_fcn using SharedMemView is not implemented");}
+
+  virtual void shifted_shape_fcn(
+    SharedMemView<DoubleType**> &shpfc) {
+    throw std::runtime_error("shifted_shape_fcn using SharedMemView is not implemented");}
+
+  virtual void grad_op(
+    SharedMemView<DoubleType**>&coords,
+    SharedMemView<DoubleType***>&gradop,
+    SharedMemView<DoubleType***>&deriv) {
+    throw std::runtime_error("grad_op using SharedMemView is not implemented");}
+
+  virtual void shifted_grad_op(
+    SharedMemView<DoubleType**>&coords,
+    SharedMemView<DoubleType***>&gradop,
+    SharedMemView<DoubleType***>&deriv) {
+    throw std::runtime_error("shifted_grad_op using SharedMemView is not implemented");}
+
+  virtual void grad_op_fem(
+    SharedMemView<DoubleType**>&coords,
+    SharedMemView<DoubleType***>&gradop,
+    SharedMemView<DoubleType***>&deriv,
+    SharedMemView<DoubleType*>&det_j) {
+    throw std::runtime_error("grad_op using SharedMemView is not implemented");}
+
+  virtual void shifted_grad_op_fem(
+    SharedMemView<DoubleType**>&coords,
+    SharedMemView<DoubleType***>&gradop,
+    SharedMemView<DoubleType***>&deriv,
+    SharedMemView<DoubleType*>&det_j) {
+    throw std::runtime_error("shifted_grad_op using SharedMemView is not implemented");}
+
+  virtual void determinant(
+    SharedMemView<DoubleType**>&coords,
+    SharedMemView<DoubleType**>&areav) {
+    throw std::runtime_error("determinant using SharedMemView is not implemented");}
+
+  virtual void gij(
+    SharedMemView<DoubleType**> coords,
+    SharedMemView<DoubleType***> gupper,
+    SharedMemView<DoubleType***> glower,
+    SharedMemView<DoubleType***> deriv) {
+    throw std::runtime_error("gij using SharedMemView is not implemented");
+  }
+
+  virtual void determinant(
+    SharedMemView<DoubleType**> coords,
+    SharedMemView<DoubleType*> volume) {
+    throw std::runtime_error("scv determinant using SharedMemView is not implemented");
+  }
+
+  // non-NGP-ready methods second
   virtual void determinant(
     const int nelem,
     const double *coords,
@@ -106,7 +157,6 @@ public:
     double *det_j,
     double * error ) {
     throw std::runtime_error("face_grad_op not implemented; avoid this element type at open bcs, walls and symms");}
-  
 
   virtual void shifted_face_grad_op(
      const int nelem,
@@ -211,345 +261,6 @@ public:
 
   // FEM
   std::vector<double>weights_;
-};
-
-// Hex 8 subcontrol volume
-class HexSCV : public MasterElement
-{
-public:
-
-  HexSCV();
-  virtual ~HexSCV();
-
-  const int * ipNodeMap(int ordinal = 0);
-
-  void determinant(
-    const int nelem,
-    const double *coords,
-    double *volume,
-    double * error );
-
-  void grad_op(
-    const int nelem,
-    const double *coords,
-    double *gradop,
-    double *deriv,
-    double *det_j,
-    double * error );
-
-  void shape_fcn(
-    double *shpfc);
-
-  void shifted_shape_fcn(
-    double *shpfc);
-
-};
-
-// Hex 8 subcontrol surface
-class HexSCS : public MasterElement
-{
-public:
-
-  HexSCS();
-  virtual ~HexSCS();
-
-  const int * ipNodeMap(int ordinal = 0);
-
-  void determinant(
-    const int nelem,
-    const double *coords,
-    double *areav,
-    double * error );
-
-  void grad_op(
-    const int nelem,
-    const double *coords,
-    double *gradop,
-    double *deriv,
-    double *det_j,
-    double * error );
-
-  void shifted_grad_op(
-    const int nelem,
-    const double *coords,
-    double *gradop,
-    double *deriv,
-    double *det_j,
-    double * error );
-
-  void face_grad_op(
-    const int nelem,
-    const int face_ordinal,
-    const double *coords,
-    double *gradop,
-    double *det_j,
-    double * error );
-
-  void shifted_face_grad_op(
-    const int nelem,
-    const int face_ordinal,
-    const double *coords,
-    double *gradop,
-    double *det_j,
-    double * error );
-
-  void gij(
-    const double *coords,
-    double *gupperij,
-    double *glowerij,
-    double *deriv);
-
-  const int * adjacentNodes();
-
-  void shape_fcn(
-    double *shpfc);
-
-  void shifted_shape_fcn(
-    double *shpfc);
-
-  int opposingNodes(
-    const int ordinal, const int node);
-
-  int opposingFace(
-    const int ordinal, const int node);
-
-  double isInElement(
-    const double *elemNodalCoord,
-    const double *pointCoord,
-    double *isoParCoord);
-
-  void interpolatePoint(
-    const int &nComp,
-    const double *isoParCoord,
-    const double *field,
-    double *result);
-
-  void general_shape_fcn(
-    const int numIp,
-    const double *isoParCoord,
-    double *shpfc);
-
-  void general_face_grad_op(
-    const int face_ordinal,
-    const double *isoParCoord,
-    const double *coords,
-    double *gradop,
-    double *det_j,
-    double * error );
-
-  void sidePcoords_to_elemPcoords(
-    const int & side_ordinal,
-    const int & npoints,
-    const double *side_pcoords,
-    double *elem_pcoords);
-  
-  const int* side_node_ordinals(int sideOrdinal) final;
-
-  double parametric_distance(const std::vector<double> &x);
-};
-
-class HexahedralP2Element : public MasterElement
-{
-public:
-  using Traits = AlgTraitsHex27;
-
-  HexahedralP2Element();
-  virtual ~HexahedralP2Element() {}
-
-  void shape_fcn(double *shpfc);
-  void shifted_shape_fcn(double *shpfc);
-
-protected:
-  struct ContourData {
-    Jacobian::Direction direction;
-    double weight;
-  };
-
-  int tensor_product_node_map(int i, int j, int k) const;
-
-  double gauss_point_location(
-    int nodeOrdinal,
-    int gaussPointOrdinal) const;
-
-  double shifted_gauss_point_location(
-    int nodeOrdinal,
-    int gaussPointOrdinal) const;
-
-  double tensor_product_weight(
-    int s1Node, int s2Node, int s3Node,
-    int s1Ip, int s2Ip, int s3Ip) const;
-
-  double tensor_product_weight(
-    int s1Node, int s2Node,
-    int s1Ip, int s2Ip) const;
-
-  virtual void eval_shape_functions_at_ips();
-  virtual void eval_shape_functions_at_shifted_ips();
-
-  virtual void eval_shape_derivs_at_ips();
-  virtual void eval_shape_derivs_at_shifted_ips();
-
-  void eval_shape_derivs_at_face_ips();
-
-  void set_quadrature_rule();
-  void GLLGLL_quadrature_weights();
-
-  void hex27_shape_deriv(
-    int npts,
-    const double *par_coord,
-    double* shape_fcn
-  ) const;
-
-  double parametric_distance(const std::array<double, 3>& x);
-
-  virtual void interpolatePoint(
-    const int &nComp,
-    const double *isoParCoord,
-    const double *field,
-    double *result);
-
-  virtual double isInElement(
-    const double *elemNodalCoord,
-    const double *pointCoord,
-    double *isoParCoord);
-
-  const double scsDist_;
-  const int nodes1D_;
-  const int numQuad_;
-
-  // quadrature info
-  std::vector<double> gaussAbscissae1D_;
-  std::vector<double> gaussAbscissae_;
-  std::vector<double> gaussAbscissaeShift_;
-  std::vector<double> gaussWeight_;
-  std::vector<double> scsEndLoc_;
-
-  std::vector<int> stkNodeMap_;
-
-  std::vector<double> shapeFunctions_;
-  std::vector<double> shapeFunctionsShift_;
-  std::vector<double> shapeDerivs_;
-  std::vector<double> shapeDerivsShift_;
-  std::vector<double> expFaceShapeDerivs_;
-
-private:
-  void hex27_shape_fcn(
-    int npts,
-    const double *par_coord,
-    double* shape_fcn
-  ) const;
-};
-
-// 3D Quad 27 subcontrol volume
-class Hex27SCV : public HexahedralP2Element
-{
-public:
-  Hex27SCV();
-  virtual ~Hex27SCV() {}
-
-  const int * ipNodeMap(int ordinal = 0);
-
-  void determinant(
-    const int nelem,
-    const double *coords,
-    double *areav,
-    double * error );
-
-private:
-  void set_interior_info();
-
-  double jacobian_determinant(
-    const double *POINTER_RESTRICT elemNodalCoords,
-    const double *POINTER_RESTRICT shapeDerivs ) const;
-
-  std::vector<double> ipWeight_;
-};
-
-// 3D Hex 27 subcontrol surface
-class Hex27SCS : public HexahedralP2Element
-{
-public:
-  Hex27SCS();
-  virtual ~Hex27SCS() {}
-
-  void determinant(
-    const int nelem,
-    const double *coords,
-    double *areav,
-    double * error );
-
-  void grad_op(
-    const int nelem,
-    const double *coords,
-    double *gradop,
-    double *deriv,
-    double *det_j,
-    double * error );
-
-  void shifted_grad_op(
-    const int nelem,
-    const double *coords,
-    double *gradop,
-    double *deriv,
-    double *det_j,
-    double * error );
-
-  void face_grad_op(
-    const int nelem,
-    const int face_ordinal,
-    const double *coords,
-    double *gradop,
-    double *det_j,
-    double * error );
-
-  void gij(
-    const double *coords,
-    double *gupperij,
-    double *glowerij,
-    double *deriv);
-
-  void general_face_grad_op(
-    const int face_ordinal,
-    const double *isoParCoord,
-    const double *coords,
-    double *gradop,
-    double *det_j,
-    double * error );
-
-  void sidePcoords_to_elemPcoords(
-    const int & side_ordinal,
-    const int & npoints,
-    const double *side_pcoords,
-    double *elem_pcoords);
-
-  const int * adjacentNodes();
-
-  const int * ipNodeMap(int ordinal = 0);
-
-  int opposingNodes(
-    const int ordinal, const int node);
-
-  int opposingFace(
-    const int ordinal, const int node);
-
-  const int* side_node_ordinals(int sideOrdinal) final;
-private:
-  void set_interior_info();
-  void set_boundary_info();
-
-  template <Jacobian::Direction dir>
-  void area_vector(const double *POINTER_RESTRICT elemNodalCoords,
-    double *POINTER_RESTRICT shapeDeriv,
-    double *POINTER_RESTRICT areaVector ) const;
-
-  void gradient(
-    const double *POINTER_RESTRICT elemNodalCoords,
-    const double *POINTER_RESTRICT shapeDeriv,
-    double *POINTER_RESTRICT grad,
-    double *POINTER_RESTRICT det_j ) const;
-
-  std::vector<ContourData> ipInfo_;
-  int ipsPerFace_;
 };
 
 // Tet 4 subcontrol volume
@@ -1468,78 +1179,6 @@ public:
   double parametric_distance(const std::vector<double> &x);
 
   const double elemThickness_;
-};
-
-// 3D Quad 9
-class Quad93DSCS : public HexahedralP2Element
-{
-public:
-  Quad93DSCS();
-  virtual ~Quad93DSCS() {}
-
-  const int * ipNodeMap(int ordinal = 0);
-
-  void determinant(
-    const int nelem,
-    const double *coords,
-    double *areav,
-    double * error );
-
-  double isInElement(
-    const double *elemNodalCoord,
-    const double *pointCoord,
-    double *isoParCoord);
-
-  void interpolatePoint(
-    const int &nComp,
-    const double *isoParCoord,
-    const double *field,
-    double *result);
-
-  void general_shape_fcn(
-    const int numIp,
-    const double *isoParCoord,
-    double *shpfc);
-
-  void general_normal(
-    const double *isoParCoord,
-    const double *coords,
-    double *normal);
-
-private:
-  void set_interior_info();
-  void eval_shape_functions_at_ips() final;
-  void eval_shape_derivs_at_ips() final;
-
-  void eval_shape_functions_at_shifted_ips() final;
-  void eval_shape_derivs_at_shifted_ips() final;
-
-  void area_vector(
-    const double *POINTER_RESTRICT coords,
-    const double *POINTER_RESTRICT shapeDerivs,
-    double *POINTER_RESTRICT areaVector) const;
-
-  void quad9_shape_fcn(
-    int npts,
-    const double *par_coord,
-    double* shape_fcn
-  ) const;
-
-  void quad9_shape_deriv(
-    int npts,
-    const double *par_coord,
-    double* shape_fcn
-  ) const;
-
-  void non_unit_face_normal(
-    const double *isoParCoord,
-    const double *elemNodalCoord,
-    double *normalVector);
-
-  double parametric_distance(const std::vector<double> &x);
-
-  std::vector<double> ipWeight_;
-  const int surfaceDimension_;
 };
 
 // 3D Tri 3

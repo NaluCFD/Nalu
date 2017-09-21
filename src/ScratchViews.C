@@ -85,249 +85,7 @@ void gather_elem_node_field(const stk::mesh::FieldBase& field,
   }
 }
 
-int
-MasterElementViews::create_master_element_views(
-  const TeamHandleType& team,
-  const std::set<ELEM_DATA_NEEDED>& dataEnums,
-  int nDim, int nodesPerElem,
-  int numScsIp, int numScvIp, int numFemIp)
-{
-  int numScalars = 0;
-  bool needDeriv = false; bool needDerivFem = false;
-  bool needDetj = false; bool needDetjFem = false;
-  bool femGradOp = false; bool femShiftedGradOp = false;
-  for(ELEM_DATA_NEEDED data : dataEnums) {
-    switch(data)
-    {
-      case SCS_AREAV:
-         ThrowRequireMsg(numScsIp > 0, "ERROR, meSCS must be non-null if SCS_AREAV is requested.");
-         scs_areav = get_shmem_view_2D(team, numScsIp, nDim);
-         numScalars += numScsIp * nDim;
-         break;
-
-      case SCS_GRAD_OP:
-         ThrowRequireMsg(numScsIp > 0, "ERROR, meSCS must be non-null if SCS_GRAD_OP is requested.");
-         dndx = get_shmem_view_3D(team, numScsIp, nodesPerElem, nDim);
-         numScalars += nodesPerElem * numScsIp * nDim;
-         needDeriv = true;
-         needDetj = true;
-         break;
-
-      case SCS_SHIFTED_GRAD_OP:
-        ThrowRequireMsg(numScsIp > 0, "ERROR, meSCS must be non-null if SCS_SHIFTED_GRAD_OP is requested.");
-        dndx_shifted = get_shmem_view_3D(team, numScsIp, nodesPerElem, nDim);
-        numScalars += nodesPerElem * numScsIp * nDim;
-        needDeriv = true;
-        needDetj = true;
-        break;
-
-      case SCS_GIJ:
-         ThrowRequireMsg(numScsIp > 0, "ERROR, meSCS must be non-null if SCS_GIJ is requested.");
-         gijUpper = get_shmem_view_3D(team, numScsIp, nDim, nDim);
-         gijLower = get_shmem_view_3D(team, numScsIp, nDim, nDim);
-         numScalars += 2 * numScsIp * nDim * nDim;
-         needDeriv = true;
-         break;
-
-      case SCV_VOLUME:
-         ThrowRequireMsg(numScvIp > 0, "ERROR, meSCV must be non-null if SCV_VOLUME is requested.");
-         scv_volume = get_shmem_view_1D(team, numScvIp);
-         numScalars += numScvIp;
-         break;
-
-      case FEM_GRAD_OP:
-         ThrowRequireMsg(numFemIp > 0, "ERROR, meFEM must be non-null if FEM_GRAD_OP is requested.");
-         dndx_fem = get_shmem_view_3D(team, numFemIp, nodesPerElem, nDim);
-         numScalars += nodesPerElem * numFemIp * nDim;
-         needDerivFem = true;
-         needDetjFem = true;
-         femGradOp = true;
-         break;
-
-      case FEM_SHIFTED_GRAD_OP:
-         ThrowRequireMsg(numFemIp > 0, "ERROR, meFEM must be non-null if FEM_SHIFTED_GRAD_OP is requested.");
-         dndx_fem = get_shmem_view_3D(team, numFemIp, nodesPerElem, nDim);
-         numScalars += nodesPerElem * numFemIp * nDim;
-         needDerivFem = true;
-         needDetjFem = true;
-         femShiftedGradOp = true;
-         break;
-
-      default: break;
-    }
-  }
-
-  if (needDeriv) {
-    deriv = get_shmem_view_1D(team, numScsIp*nodesPerElem*nDim);
-    numScalars += numScsIp * nodesPerElem * nDim;
-  }
-
-  if (needDetj) {
-    det_j = get_shmem_view_1D(team, numScsIp);
-    numScalars += numScsIp;
-  }
-
-  if (needDerivFem) {
-    deriv_fem = get_shmem_view_1D(team, numFemIp*nodesPerElem*nDim);
-    numScalars += numFemIp * nodesPerElem * nDim;
-  }
-
-  if (needDetjFem) {
-    det_j_fem = get_shmem_view_1D(team, numFemIp);
-    numScalars += numFemIp;
-  }
-
-  // error check
-  if ( femGradOp && femShiftedGradOp )
-    ThrowRequireMsg(numFemIp > 0, "ERROR, femGradOp and femShiftedGradOp both requested.");
-
-  return numScalars;
-}
-
-void
-MasterElementViews::fill_master_element_views(
-  const std::set<ELEM_DATA_NEEDED>& dataEnums,
-  SharedMemView<double**>* coordsView,
-  MasterElement* meSCS,
-  MasterElement* meSCV,
-  MasterElement* meFEM)
-{
-  double error = 0.0;
-  for(ELEM_DATA_NEEDED data : dataEnums) {
-    switch(data)
-    {
-      case SCS_AREAV:
-         ThrowRequireMsg(meSCS != nullptr, "ERROR, meSCS needs to be non-null if SCS_AREAV is requested.");
-         ThrowRequireMsg(coordsView != nullptr, "ERROR, coords null but SCS_AREAV requested.");
-         meSCS->determinant(1, &((*coordsView)(0,0)), &scs_areav(0,0), &error);
-         break;
-      case SCS_GRAD_OP:
-         ThrowRequireMsg(meSCS != nullptr, "ERROR, meSCS needs to be non-null if SCS_GRAD_OP is requested.");
-         ThrowRequireMsg(coordsView != nullptr, "ERROR, coords null but SCS_GRAD_OP requested.");
-         meSCS->grad_op(1, &((*coordsView)(0,0)), &dndx(0,0,0), &deriv(0), &det_j(0), &error);
-         break;
-      case SCS_SHIFTED_GRAD_OP:
-        ThrowRequireMsg(meSCS != nullptr, "ERROR, meSCS needs to be non-null if SCS_GRAD_OP is requested.");
-        ThrowRequireMsg(coordsView != nullptr, "ERROR, coords null but SCS_GRAD_OP requested.");
-        meSCS->shifted_grad_op(1, &((*coordsView)(0,0)), &dndx_shifted(0,0,0), &deriv(0), &det_j(0), &error);
-        break;
-      case SCS_GIJ:
-         ThrowRequireMsg(meSCS != nullptr, "ERROR, meSCS needs to be non-null if SCS_GIJ is requested.");
-         ThrowRequireMsg(coordsView != nullptr, "ERROR, coords null but SCS_GIJ requested.");
-         meSCS->gij(&((*coordsView)(0,0)), &gijUpper(0,0,0), &gijLower(0,0,0), &deriv(0));
-         break;
-      case SCV_VOLUME:
-         ThrowRequireMsg(meSCV != nullptr, "ERROR, meSCV needs to be non-null if SCV_VOLUME is requested.");
-         ThrowRequireMsg(coordsView != nullptr, "ERROR, coords null but SCV_VOLUME requested.");
-         meSCV->determinant(1, &((*coordsView)(0,0)), &scv_volume(0), &error);
-         break;
-      case FEM_GRAD_OP:
-         ThrowRequireMsg(meFEM != nullptr, "ERROR, meFEM needs to be non-null if FEM_GRAD_OP is requested.");
-         ThrowRequireMsg(coordsView != nullptr, "ERROR, coords null but FEM_GRAD_OP requested.");
-         meFEM->grad_op(1, &((*coordsView)(0,0)), &dndx_fem(0,0,0), &deriv_fem(0), &det_j_fem(0), &error);
-         break;
-      case FEM_SHIFTED_GRAD_OP:
-         ThrowRequireMsg(meFEM != nullptr, "ERROR, meFEM needs to be non-null if FEM_SHIFTED_GRAD_OP is requested.");
-         ThrowRequireMsg(coordsView != nullptr, "ERROR, coords null but FEM_GRAD_OP requested.");
-         meFEM->shifted_grad_op(1, &((*coordsView)(0,0)), &dndx_fem(0,0,0), &deriv_fem(0), &det_j_fem(0), &error);
-         break;
-      default: break;
-    }
-  }
-}
-
-ScratchViews::ScratchViews(const TeamHandleType& team,
-             const stk::mesh::BulkData& bulkData,
-             stk::topology topo,
-             ElemDataRequests& dataNeeded)
-{
-  /* master elements are allowed to be null if they are not required */
-  MasterElement *meSCS = dataNeeded.get_cvfem_surface_me();
-  MasterElement *meSCV = dataNeeded.get_cvfem_volume_me();
-  MasterElement *meFEM = dataNeeded.get_fem_volume_me();
-
-  int nDim = bulkData.mesh_meta_data().spatial_dimension();
-  int nodesPerElem = topo.num_nodes();
-  int numScsIp = meSCS != nullptr ? meSCS->numIntPoints_ : 0;
-  int numScvIp = meSCV != nullptr ? meSCV->numIntPoints_ : 0;
-  int numFemIp = meFEM != nullptr ? meFEM->numIntPoints_ : 0;
-
-  create_needed_field_views(team, dataNeeded, bulkData, nodesPerElem);
-
-  create_needed_master_element_views(team, dataNeeded, nDim, nodesPerElem, numScsIp, numScvIp, numFemIp);
-}
-
-void ScratchViews::create_needed_field_views(const TeamHandleType& team,
-                               const ElemDataRequests& dataNeeded,
-                               const stk::mesh::BulkData& bulkData,
-                               int nodesPerElem)
-{
-  int numScalars = 0;
-  const stk::mesh::MetaData& meta = bulkData.mesh_meta_data();
-  unsigned numFields = meta.get_fields().size();
-  fieldViews.resize(numFields, nullptr);
-
-  const FieldSet& neededFields = dataNeeded.get_fields();
-  for(const FieldInfo& fieldInfo : neededFields) {
-    stk::mesh::EntityRank fieldEntityRank = fieldInfo.field->entity_rank();
-    ThrowAssertMsg(fieldEntityRank == stk::topology::NODE_RANK || fieldEntityRank == stk::topology::ELEM_RANK, "Currently only node and element fields are supported.");
-    unsigned scalarsDim1 = fieldInfo.scalarsDim1;
-    unsigned scalarsDim2 = fieldInfo.scalarsDim2;
-
-    if (fieldEntityRank==stk::topology::ELEM_RANK) {
-      if (scalarsDim2 == 0) {
-        fieldViews[fieldInfo.field->mesh_meta_data_ordinal()] = new ViewT<SharedMemView<double*>>(get_shmem_view_1D(team, scalarsDim1));
-        numScalars += scalarsDim1;
-      }
-      else {
-        fieldViews[fieldInfo.field->mesh_meta_data_ordinal()] = new ViewT<SharedMemView<double**>>(get_shmem_view_2D(team, scalarsDim1, scalarsDim2));
-        numScalars += scalarsDim1 * scalarsDim2;
-      }
-    }
-    else if (fieldEntityRank==stk::topology::NODE_RANK) {
-      if (scalarsDim2 == 0) {
-        if (scalarsDim1 == 1) {
-          fieldViews[fieldInfo.field->mesh_meta_data_ordinal()] = new ViewT<SharedMemView<double*>>(get_shmem_view_1D(team, nodesPerElem));
-          numScalars += nodesPerElem;
-        }
-        else {
-          fieldViews[fieldInfo.field->mesh_meta_data_ordinal()] = new ViewT<SharedMemView<double**>>(get_shmem_view_2D(team, nodesPerElem, scalarsDim1));
-          numScalars += nodesPerElem * scalarsDim1;
-        }
-      }
-      else {
-          fieldViews[fieldInfo.field->mesh_meta_data_ordinal()] = new ViewT<SharedMemView<double***>>(get_shmem_view_3D(team, nodesPerElem, scalarsDim1, scalarsDim2));
-          numScalars += nodesPerElem * scalarsDim1 * scalarsDim2;
-      }
-    }
-    else {
-      ThrowRequireMsg(false,"Only elem-rank and node-rank fields supported for scratch-views currently.");
-    }
-  }
-
-  // Track total bytes required for field allocations
-  num_bytes_required += numScalars * sizeof(double);
-}
-
-void ScratchViews::create_needed_master_element_views(const TeamHandleType& team,
-                                        const ElemDataRequests& dataNeeded,
-                                        int nDim, int nodesPerElem,
-                                        int numScsIp, int numScvIp, int numFemIp)
-{
-  int numScalars = 0;
-
-  for (auto it = dataNeeded.get_coordinates_map().begin();
-       it != dataNeeded.get_coordinates_map().end(); ++it) {
-    hasCoordField[it->first] = true;
-    numScalars += meViews[it->first].create_master_element_views(
-      team, dataNeeded.get_data_enums(it->first),
-      nDim, nodesPerElem, numScsIp, numScvIp, numFemIp);
-  }
-
-  num_bytes_required += numScalars * sizeof(double);
-}
-
-int get_num_bytes_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDim)
+int get_num_scalars_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDim)
 {
   /* master elements are allowed to be null if they are not required */
   MasterElement *meSCS = dataNeededBySuppAlgs.get_cvfem_surface_me();
@@ -342,7 +100,7 @@ int get_num_bytes_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDim)
   const int numScsIp = meSCS != nullptr ? meSCS->numIntPoints_ : 0;
   const int numScvIp = meSCV != nullptr ? meSCV->numIntPoints_ : 0;
   const int numFemIp = meFEM != nullptr ? meFEM->numIntPoints_ : 0;
-  int numBytes = 0;
+  int numScalars = 0;
   
   const FieldSet& neededFields = dataNeededBySuppAlgs.get_fields();
   for(const FieldInfo& fieldInfo : neededFields) {
@@ -357,7 +115,7 @@ int get_num_bytes_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDim)
     if (fieldInfo.scalarsDim2 > 1) {
       scalarsPerEntity *= fieldInfo.scalarsDim2;
     }
-    numBytes += entitiesPerElem*scalarsPerEntity*sizeof(double);
+    numScalars += entitiesPerElem*scalarsPerEntity;
   }
   
   for (auto it = dataNeededBySuppAlgs.get_coordinates_map().begin();
@@ -374,49 +132,49 @@ int get_num_bytes_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDim)
     for(ELEM_DATA_NEEDED data : dataEnums) {
       switch(data)
       {
-      case SCS_AREAV: numBytes += nDim * numScsIp * sizeof(double);
+      case SCS_AREAV: numScalars += nDim * numScsIp;
         break;
       case SCS_GRAD_OP:
       case SCS_SHIFTED_GRAD_OP:
         dndxLength = nodesPerElem*numScsIp*nDim;
         needDeriv = true;
         needDetj = true;
-        numBytes += dndxLength * sizeof(double);
+        numScalars += dndxLength;
         break;
-      case SCV_VOLUME: numBytes += numScvIp * sizeof(double);
+      case SCV_VOLUME: numScalars += numScvIp;
         break;
       case SCS_GIJ: 
         gUpperLength = nDim*nDim*numScsIp;
         gLowerLength = nDim*nDim*numScsIp;
         needDeriv = true;
-        numBytes += (gUpperLength + gLowerLength ) * sizeof(double);
+        numScalars += (gUpperLength + gLowerLength );
         break;
       case FEM_GRAD_OP:
       case FEM_SHIFTED_GRAD_OP:
         dndxLength = nodesPerElem*numFemIp*nDim;
         needDerivFem = true;
         needDetjFem = true;
-        numBytes += dndxLength * sizeof(double);
+        numScalars += dndxLength;
         break;
       default: break;
       }
     }
       
     if (needDeriv)
-      numBytes += nodesPerElem*numScsIp*nDim * sizeof(double);
+      numScalars += nodesPerElem*numScsIp*nDim;
 
     if (needDetj)
-      numBytes += numScsIp * sizeof(double);
+      numScalars += numScsIp;
 
     if (needDerivFem)
-      numBytes += nodesPerElem*numFemIp*nDim * sizeof(double);
+      numScalars += nodesPerElem*numFemIp*nDim;
 
     if (needDetjFem)
-      numBytes += numFemIp * sizeof(double);
+      numScalars += numFemIp;
   }
 
   // Add a 64 byte padding to the buffer size requested
-  return numBytes + 8 * sizeof(double);
+  return numScalars + 8;
 }
 
 void fill_pre_req_data(
@@ -424,7 +182,8 @@ void fill_pre_req_data(
   const stk::mesh::BulkData& bulkData,
   stk::topology topo,
   stk::mesh::Entity elem,
-  ScratchViews& prereqData)
+  ScratchViews<double>& prereqData,
+  bool fillMEViews)
 {
   int nodesPerElem = topo.num_nodes();
 
@@ -479,18 +238,44 @@ void fill_pre_req_data(
     }
   } 
 
-
-  for (auto it = dataNeeded.get_coordinates_map().begin();
-       it != dataNeeded.get_coordinates_map().end(); ++it) {
-    auto cType = it->first;
-    auto coordField = it->second;
-
-    const std::set<ELEM_DATA_NEEDED>& dataEnums = dataNeeded.get_data_enums(cType);
-    SharedMemView<double**>* coordsView = &prereqData.get_scratch_view_2D(*coordField);
-    MasterElementViews& meData = prereqData.get_me_views(cType);
-
-    meData.fill_master_element_views(dataEnums, coordsView, meSCS, meSCV, meFEM);
+  if (fillMEViews)
+  {
+    for (auto it = dataNeeded.get_coordinates_map().begin();
+         it != dataNeeded.get_coordinates_map().end(); ++it) {
+      auto cType = it->first;
+      auto coordField = it->second;
+  
+      const std::set<ELEM_DATA_NEEDED>& dataEnums = dataNeeded.get_data_enums(cType);
+      SharedMemView<double**>* coordsView = &prereqData.get_scratch_view_2D(*coordField);
+      auto& meData = prereqData.get_me_views(cType);
+  
+      meData.fill_master_element_views(dataEnums, coordsView, meSCS, meSCV, meFEM);
+    }
   }
+}
+
+void fill_master_element_views(
+  ElemDataRequests& dataNeeded,
+  const stk::mesh::BulkData& bulkData,
+  stk::topology topo,
+  stk::mesh::Entity elem,
+  ScratchViews<DoubleType>& prereqData)
+{
+    MasterElement *meSCS = dataNeeded.get_cvfem_surface_me();
+    MasterElement *meSCV = dataNeeded.get_cvfem_volume_me();
+    MasterElement *meFEM = dataNeeded.get_fem_volume_me();
+
+    for (auto it = dataNeeded.get_coordinates_map().begin();
+         it != dataNeeded.get_coordinates_map().end(); ++it) {
+      auto cType = it->first;
+      auto coordField = it->second;
+  
+      const std::set<ELEM_DATA_NEEDED>& dataEnums = dataNeeded.get_data_enums(cType);
+      SharedMemView<DoubleType**>* coordsView = &prereqData.get_scratch_view_2D(*coordField);
+      auto& meData = prereqData.get_me_views(cType);
+  
+      meData.fill_master_element_views_new_me(dataEnums, coordsView, meSCS, meSCV, meFEM);
+    }
 }
 
 }

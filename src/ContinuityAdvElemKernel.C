@@ -36,7 +36,7 @@ ContinuityAdvElemKernel<AlgTraits>::ContinuityAdvElemKernel(
     reducedSensitivities_(solnOpts.cvfemReducedSensPoisson_),
     interpTogether_(solnOpts.get_mdot_interp()),
     om_interpTogether_(1.0 - interpTogether_),
-    lrscv_(sierra::nalu::get_surface_master_element(AlgTraits::topo_)->adjacentNodes())
+    lrscv_(sierra::nalu::MasterElementRepo::get_surface_master_element(AlgTraits::topo_)->adjacentNodes())
 {
   // Save of required fields
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
@@ -52,11 +52,12 @@ ContinuityAdvElemKernel<AlgTraits>::ContinuityAdvElemKernel(
   coordinates_ = metaData.get_field<VectorFieldType>(
     stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
 
-  MasterElement *meSCS = sierra::nalu::get_surface_master_element(AlgTraits::topo_);
+  MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(AlgTraits::topo_);
+
   if ( shiftMdot_ )
-    meSCS->shifted_shape_fcn(&v_shape_function_(0,0));
+    get_scs_shape_fn_data<AlgTraits>([&](double* ptr){meSCS->shifted_shape_fcn(ptr);}, v_shape_function_);
   else
-    meSCS->shape_fcn(&v_shape_function_(0,0));
+    get_scs_shape_fn_data<AlgTraits>([&](double* ptr){meSCS->shape_fcn(ptr);}, v_shape_function_);
 
   dataPreReqs.add_cvfem_surface_me(meSCS);
 
@@ -91,34 +92,34 @@ ContinuityAdvElemKernel<AlgTraits>::setup(const TimeIntegrator& timeIntegrator)
 template<typename AlgTraits>
 void
 ContinuityAdvElemKernel<AlgTraits>::execute(
-  SharedMemView<double **>& lhs,
-  SharedMemView<double *>& rhs,
-  ScratchViews& scratchViews)
+  SharedMemView<DoubleType **>& lhs,
+  SharedMemView<DoubleType *>& rhs,
+  ScratchViews<DoubleType>& scratchViews)
 {
   // Work arrays (fixed size)
-  double w_uIp     [AlgTraits::nDim_];
-  double w_rho_uIp [AlgTraits::nDim_];
-  double w_Gpdx_Ip [AlgTraits::nDim_];
-  double w_dpdxIp  [AlgTraits::nDim_];
+  DoubleType w_uIp     [AlgTraits::nDim_];
+  DoubleType w_rho_uIp [AlgTraits::nDim_];
+  DoubleType w_Gpdx_Ip [AlgTraits::nDim_];
+  DoubleType w_dpdxIp  [AlgTraits::nDim_];
 
-  SharedMemView<double*>& v_densityNp1 = scratchViews.get_scratch_view_1D(*densityNp1_);
-  SharedMemView<double*>& v_pressure = scratchViews.get_scratch_view_1D(*pressure_);
+  SharedMemView<DoubleType*>& v_densityNp1 = scratchViews.get_scratch_view_1D(*densityNp1_);
+  SharedMemView<DoubleType*>& v_pressure = scratchViews.get_scratch_view_1D(*pressure_);
 
-  SharedMemView<double**>& v_velocity = scratchViews.get_scratch_view_2D(*velocityRTM_);
-  SharedMemView<double**>& v_Gpdx = scratchViews.get_scratch_view_2D(*Gpdx_);
+  SharedMemView<DoubleType**>& v_velocity = scratchViews.get_scratch_view_2D(*velocityRTM_);
+  SharedMemView<DoubleType**>& v_Gpdx = scratchViews.get_scratch_view_2D(*Gpdx_);
 
-  SharedMemView<double**>& v_scs_areav = scratchViews.get_me_views(CURRENT_COORDINATES).scs_areav;
+  SharedMemView<DoubleType**>& v_scs_areav = scratchViews.get_me_views(CURRENT_COORDINATES).scs_areav;
 
-  SharedMemView<double***>& v_dndx = shiftPoisson_ ?
+  SharedMemView<DoubleType***>& v_dndx = shiftPoisson_ ?
     scratchViews.get_me_views(CURRENT_COORDINATES).dndx_shifted : scratchViews.get_me_views(CURRENT_COORDINATES).dndx;
-  SharedMemView<double***>& v_dndx_lhs = (shiftPoisson_ || reducedSensitivities_)?
+  SharedMemView<DoubleType***>& v_dndx_lhs = (shiftPoisson_ || reducedSensitivities_)?
     scratchViews.get_me_views(CURRENT_COORDINATES).dndx_shifted : scratchViews.get_me_views(CURRENT_COORDINATES).dndx;
 
   for (int ip = 0; ip < AlgTraits::numScsIp_; ++ip) {
     const int il = lrscv_[2*ip];
     const int ir = lrscv_[2*ip+1];
 
-    double rhoIp = 0.0;
+    DoubleType rhoIp = 0.0;
     for (int j = 0; j < AlgTraits::nDim_; ++j) {
       w_uIp[j] = 0.0;
       w_rho_uIp[j] = 0.0;
@@ -127,13 +128,13 @@ ContinuityAdvElemKernel<AlgTraits>::execute(
     }
 
     for (int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic) {
-      const double r = v_shape_function_(ip, ic);
-      const double nodalPressure = v_pressure(ic);
-      const double nodalRho = v_densityNp1(ic);
+      const DoubleType r = v_shape_function_(ip, ic);
+      const DoubleType nodalPressure = v_pressure(ic);
+      const DoubleType nodalRho = v_densityNp1(ic);
 
       rhoIp += r * nodalRho;
 
-      double lhsfac = 0.0;
+      DoubleType lhsfac = 0.0;
       for (int j = 0; j < AlgTraits::nDim_; ++j) {
         w_Gpdx_Ip[j] += r * v_Gpdx(ic, j);
         w_uIp[j]     += r * v_velocity(ic, j);
@@ -147,7 +148,7 @@ ContinuityAdvElemKernel<AlgTraits>::execute(
     }
 
     // assemble mdot
-    double mdot = 0.0;
+    DoubleType mdot = 0.0;
     for (int j = 0; j < AlgTraits::nDim_; ++j) {
       mdot += (interpTogether_ * w_rho_uIp[j] + om_interpTogether_ * rhoIp * w_uIp[j] -
                projTimeScale_ * ( w_dpdxIp[j] - w_Gpdx_Ip[j])) * v_scs_areav(ip,j);

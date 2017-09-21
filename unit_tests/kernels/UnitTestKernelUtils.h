@@ -15,6 +15,7 @@
 #include "Kernel.h"
 #include "ElemDataRequests.h"
 #include "ScratchViews.h"
+#include "CopyAndInterleave.h"
 #include "AlgTraits.h"
 #include "KokkosInterface.h"
 #include "TimeIntegrator.h"
@@ -145,23 +146,23 @@ void calc_projected_nodal_gradient(
   GenericFieldType& tensorField);
 
 void expect_all_near(
-  const sierra::nalu::SharedMemView<double*>& calcValue,
+  const Kokkos::View<double*>& calcValue,
   const double* exactValue,
   const double tol = 1.0e-15);
 
 void expect_all_near(
-  const sierra::nalu::SharedMemView<double*>& calcValue,
+  const Kokkos::View<double*>& calcValue,
   const double exactValue,
   const double tol = 1.0e-15);
 
 void expect_all_near(
-  const sierra::nalu::SharedMemView<double**>& calcValue,
+  const Kokkos::View<double**>& calcValue,
   const double* exactValue,
   const double tol = 1.0e-15);
 
 template<int N>
 void expect_all_near(
-  const sierra::nalu::SharedMemView<double**>& calcValue,
+  const Kokkos::View<double**>& calcValue,
   const double (*exactValue)[N],
   const double tol = 1.0e-15)
 {
@@ -178,7 +179,7 @@ void expect_all_near(
 
 template<int N>
 void expect_all_near(
-  const sierra::nalu::SharedMemView<double**>& calcValue,
+  const Kokkos::View<double**>& calcValue,
   const double exactValue,
   const double tol = 1.0e-15)
 {
@@ -192,135 +193,6 @@ void expect_all_near(
     }
   }
 }
-
-/** Driver class that mimics Assemble*SolverAlgorithm
- *
- * It is the caller's responsibility to populate `activeKernels_` and call the
- * `setup` method on the activated Kernels before calling the `execute` method
- * of this class.
- *
- * The execute method will assert that it is being called with a one-element
- * mesh when it loops over the buckets.
- */
-class TestKernelDriver
-{
-public:
-  TestKernelDriver(
-    const stk::mesh::BulkData& bulk,
-    const stk::mesh::PartVector& partVec,
-    const VectorFieldType* coordinates,
-    const int numDof = 1,
-    const stk::topology topo = stk::topology::HEX_8)
-    : bulk_(bulk),
-      partVec_(partVec),
-      coordinates_(coordinates),
-      topo_(topo),
-      numDof_(numDof)
-  {}
-
-  void execute()
-  {
-    const stk::mesh::MetaData& meta = bulk_.mesh_meta_data();
-
-    stk::mesh::Selector s_locally_owned_union = (
-      meta.locally_owned_part() & stk::mesh::selectUnion(partVec_));
-
-    const auto& buckets = bulk_.get_buckets(stk::topology::ELEM_RANK,
-                                            s_locally_owned_union);
-
-    // For LHS/RHS golds expect only one element in the mesh
-    EXPECT_EQ(buckets.size(), 1u);
-
-    const int rhsSize = topo_.num_nodes() * numDof_;
-    const int lhsSize = rhsSize * rhsSize;
-    const int bytes_per_team = 0;
-    const int num_bytes_for_kernels = sierra::nalu::get_num_bytes_pre_req_data(
-        dataNeededByKernels_, meta.spatial_dimension()) ;
-    const int bytes_per_thread = (rhsSize + lhsSize) * sizeof(double) +
-      num_bytes_for_kernels;
-
-    auto team_exec = sierra::nalu::get_team_policy(
-      buckets.size(), bytes_per_team, bytes_per_thread);
-
-    Kokkos::parallel_for(team_exec, [&](const sierra::nalu::TeamHandleType& team) {
-        auto& b = *buckets[team.league_rank()];
-        const auto length = b.size();
-        // For LHS/RHS golds expect only one element in the mesh
-        EXPECT_EQ(length, 1u);
-
-        sierra::nalu::ScratchViews preReqData(
-          team, bulk_, topo_, dataNeededByKernels_);
-        rhs_ = sierra::nalu::get_shmem_view_1D(team, rhsSize);
-        lhs_ = sierra::nalu::get_shmem_view_2D(team, rhsSize, rhsSize);
-
-        Kokkos::parallel_for(
-          Kokkos::TeamThreadRange(team, length), [&](const size_t& k) {
-            stk::mesh::Entity element = b[k];
-            sierra::nalu::fill_pre_req_data(
-              dataNeededByKernels_, bulk_, topo_, element, preReqData);
-
-            for (int i=0; i < rhsSize; i++) {
-              rhs_(i) = 0.0;
-              for (int j=0; j < rhsSize; j++) {
-                lhs_(i,j) = 0.0;
-              }
-            }
-
-            for (size_t i=0; i < activeKernels_.size(); ++i)
-              activeKernels_[i]->execute(lhs_, rhs_, preReqData);
-          });
-
-      });
-  }
-
-  /** Convenience function to dump LHS and RHS
-   *
-   * Used to generate the gold values as well as for debugging
-   */
-  void dump_lhs_and_rhs(double tol = 1.0e-15)
-  {
-    using unit_test_utils::nalu_out;
-    const int rhsSize = rhs_.dimension(0);
-
-    // Dump the LHS
-    nalu_out() << std::endl
-               << "static constexpr double lhs[" << rhsSize << "]["
-               << rhsSize << "] = {" << std::endl;
-    for (int i=0; i < rhsSize; i++) {
-      nalu_out() << "  { ";
-      for (int j=0; j < rhsSize; j++) {
-        nalu_out() << std::setprecision(16) << std::fixed
-                   << (std::fabs(lhs_(i,j)) < tol ? 0.0 : lhs_(i,j)) << ", ";
-      }
-      nalu_out() << " }," << std::endl;
-    }
-    nalu_out() << "};" << std::endl << std::endl;
-
-    // Dump the RHS
-    nalu_out() << std::endl
-               << "static constexpr double rhs[" << rhsSize << "] = {"
-               << std::endl << "  ";
-    for (int i=0; i < rhsSize; i++) {
-      nalu_out() << std::setprecision(16) << std::fixed
-                 << (std::fabs(rhs_(i)) < tol ? 0.0 : rhs_(i)) << ", ";
-    }
-    nalu_out() << "};" << std::endl << std::endl;
-  }
-
-  std::vector<sierra::nalu::Kernel*> activeKernels_;
-  sierra::nalu::ElemDataRequests dataNeededByKernels_;
-  sierra::nalu::SharedMemView<double*> rhs_;
-  sierra::nalu::SharedMemView<double**> lhs_;
-
-  const VectorFieldType* coordinates() const { return coordinates_; }
-
-private:
-  const stk::mesh::BulkData& bulk_;
-  const stk::mesh::PartVector& partVec_;
-  const VectorFieldType* coordinates_;
-  const stk::topology topo_{stk::topology::HEX_8};
-  const int numDof_;
-};
 
 }
 
@@ -440,12 +312,16 @@ public:
           stk::topology::NODE_RANK, "viscosity")),
       dudx_(
         &meta_.declare_field<GenericFieldType>(
-          stk::topology::NODE_RANK, "dudx"))
+          stk::topology::NODE_RANK, "dudx")),
+     temperature_(
+        &meta_.declare_field<ScalarFieldType>(
+          stk::topology::NODE_RANK, "temperature"))
   {
-    const auto& meSCS = sierra::nalu::get_surface_master_element(stk::topology::HEX_8);
+    const auto& meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(stk::topology::HEX_8);
     stk::mesh::put_field(*massFlowRate_, meta_.universal_part(), meSCS->numIntPoints_);
     stk::mesh::put_field(*viscosity_, meta_.universal_part(), 1);
     stk::mesh::put_field(*dudx_, meta_.universal_part(), spatialDim_ * spatialDim_);
+    stk::mesh::put_field(*temperature_, meta_.universal_part(), 1);
   }
 
   virtual ~MomentumKernelHex8Mesh() {}
@@ -457,11 +333,13 @@ public:
       bulk_, stk::topology::HEX_8, *coordinates_, *density_, *velocity_, *massFlowRate_);
     unit_test_kernel_utils::dudx_test_function(bulk_, *coordinates_, *dudx_);
     stk::mesh::field_fill(0.1, *viscosity_);
+    stk::mesh::field_fill(300.0, *temperature_);
   }
 
   GenericFieldType* massFlowRate_{nullptr};
   ScalarFieldType* viscosity_{nullptr};
   GenericFieldType* dudx_{nullptr};
+  ScalarFieldType* temperature_{nullptr};
 };
 
 /** Text fixture for heat conduction equation kernels
@@ -534,7 +412,7 @@ public:
     viscPrimary_(1.967e-5),
     viscSecondary_(1.85e-5)
   {
-    const auto& meSCS = sierra::nalu::get_surface_master_element(stk::topology::HEX_8);
+    const auto& meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(stk::topology::HEX_8);
     stk::mesh::put_field(*mixFraction_, meta_.universal_part(), 1);
     stk::mesh::put_field(*velocity_, meta_.universal_part(), spatialDim_);
     stk::mesh::put_field(*density_, meta_.universal_part(), 1);
