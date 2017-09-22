@@ -19,7 +19,7 @@ will not build CMake with GCC anymore, so these instructions won't work
 in that case, but we have built Nalu using Spack on MacOS Sierra by
 using Homebrew to install ``cmake`` and ``pkg-config`` and defining these 
 as external packages in Spack (see 
-`packages.yaml.mac_sierra <https://github.com/NaluCFD/NaluSpack/blob/master/spack_config/packages.yaml.mac_sierra>`__).
+`packages.yaml.mac_sierra <https://github.com/NaluCFD/NaluSpack/blob/master/spack_config/machines/mac_sierra/packages.yaml>`__).
 
 Step 2
 ~~~~~~
@@ -44,13 +44,13 @@ Step 4
 Copy the ``packages.yaml.mac`` file from the 
 `NaluSpack <https://github.com/NaluCFD/NaluSpack>`__ repo to
 a ``packages.yaml`` file in your installation of Spack or run the 
-`copy_config.sh <https://github.com/NaluCFD/NaluSpack/blob/master/spack_config/copy_config.sh>`__
+`setup_spack.sh <https://github.com/NaluCFD/NaluSpack/blob/master/spack_config/setup_spack.sh>`__
 script from the repo:
 
 ::
 
     cd ${HOME} && git clone https://github.com/NaluCFD/NaluSpack.git
-    cp ${HOME}/NaluSpack/spack_config/packages.yaml.mac ${SPACK_ROOT}/etc/spack/packages.yaml
+    cp ${HOME}/NaluSpack/spack_config/machines/mac/packages.yaml ${SPACK_ROOT}/etc/spack/packages.yaml
 
 Step 5
 ~~~~~~
@@ -85,7 +85,7 @@ versions of dependencies you could issue the Spack install command:
 
 ::
 
-    spack install nalu %gcc@6.3.0 ^openmpi@1.10.3 ^boost@1.60.0 ^hdf5@1.8.16 ^parallel-netcdf@1.6.1 ^netcdf@4.3.3.1
+    spack install nalu %gcc@6.3.0 ^openmpi@1.10.4 ^boost@1.60.0 ^hdf5@1.8.16 ^parallel-netcdf@1.6.1 ^netcdf@4.3.3.1
 
 
 NREL's Peregrine Machine
@@ -124,7 +124,7 @@ Step 3
 
 Configure your environment in the recommended way. You should purge all 
 modules and only load GCC 5.2.0 in your login script. In the example 
-`.bash_profile <https://github.com/NaluCFD/NaluSpack/blob/master/spack_config/dot_bash_profile_peregrine.sh>`__
+`.bash_profile <https://github.com/NaluCFD/NaluSpack/blob/master/spack_config/machines/peregrine/dot_bash_profile_peregrine.sh>`__
 in the repo we also load Python. If you have problems building with Spack on 
 Peregrine, it is most likely your environment has deviated from this 
 recommended one. Even when building with the Intel compiler in Spack, 
@@ -139,7 +139,7 @@ this is the recommended environment.
    } &> /dev/null
 
 Also add Spack shell support to your ``.bash_profile`` as shown in the example 
-`.bash_profile <https://github.com/NaluCFD/NaluSpack/blob/master/spack_config/dot_bash_profile_peregrine.sh>`__
+`.bash_profile <https://github.com/NaluCFD/NaluSpack/blob/master/spack_config/machines/peregrine/dot_bash_profile_peregrine.sh>`__
 in the repo or the following lines:
 
 ::
@@ -150,12 +150,12 @@ in the repo or the following lines:
 Step 4
 ~~~~~~
 
-Configure Spack for Peregrine. This is done by copying the ``compilers.yaml.peregrine``, 
-``config.yaml.peregrine``, ``packages.yaml.peregrine`` 
-files from the NaluSpack repo into your local ``${SPACK_ROOT}`` directory without 
-the ``.peregrine`` suffix. These provide local configurations we need for Peregrine that override Spack's 
+Configure Spack for Peregrine. This is done by copying the ``compilers.yaml``, 
+``config.yaml``, ``packages.yaml`` 
+files from the NaluSpack repo into your local ``${SPACK_ROOT}`` directory. 
+These provide local configurations we need for Peregrine that override Spack's 
 default configuration. You can do this using the
-`copy_config.sh <https://github.com/NaluCFD/NaluSpack/blob/master/spack_config/copy_config.sh>`__
+`setup_spack.sh <https://github.com/NaluCFD/NaluSpack/blob/master/spack_config/setup_spack.sh>`__
 script provided or by doing it manually as such:
 
 ::
@@ -192,9 +192,9 @@ or with the example batch script
    spack install binutils %gcc
    . ${SPACK_ROOT}/share/spack/setup-env.sh
    spack load binutils
-   spack install nalu %gcc ^openmpi@1.10.3
+   spack install nalu %gcc ^openmpi@1.10.4
 
-That's it! Hopefully the ``spack install nalu %gcc ^openmpi@1.10.3`` 
+That's it! Hopefully the ``spack install nalu %gcc ^openmpi@1.10.4`` 
 command installs the entire set of dependencies and you get a working build 
 of Nalu on Peregrine...after about 2 hours of waiting for it to build.
 
@@ -240,7 +240,7 @@ Step 3
 
 Configure your environment in the recommended way. You should purge all 
 modules and load nothing in your login script. See the example 
-`.bash_profile <https://github.com/NaluCFD/NaluSpack/blob/master/spack_config/dot_bash_profile_merlin.sh>`__
+`.bash_profile <https://github.com/NaluCFD/NaluSpack/blob/master/spack_config/machines/merlin/dot_bash_profile_merlin.sh>`__
 . If you have problems building with Spack on 
 Merlin, it is most likely your environment has deviated from this 
 recommended one. Even when building with the Intel compiler in Spack, 
@@ -251,7 +251,7 @@ this is the recommended environment.
    module purge
 
 Also add Spack shell support to your ``.bash_profile`` as shown in the example 
-`.bash_profile <https://github.com/NaluCFD/NaluSpack/blob/master/spack_config/dot_bash_profile_merlin.sh>`__
+`.bash_profile <https://github.com/NaluCFD/NaluSpack/blob/master/spack_config/machines/merlin/dot_bash_profile_merlin.sh>`__
 in the repo or the following lines:
 
 ::
@@ -262,12 +262,12 @@ in the repo or the following lines:
 Step 4
 ~~~~~~
 
-Configure Spack for Merlin. This is done by copying the ``compilers.yaml.merlin``, 
-``config.yaml.merlin``, ``packages.yaml.merlin``files from the NaluSpack repo into your local
+Configure Spack for Merlin. This is done by copying the ``compilers.yaml``, 
+``config.yaml``, ``packages.yaml`` files from the NaluSpack repo into your local
 ``${SPACK_ROOT}`` directory. These provide local configurations we need for Merlin that override Spack's 
 default configuration and the custom package files to install Nalu and the custom 
 Trilinos build for Nalu. You can do this using the
-`copy_config.sh <https://github.com/NaluCFD/NaluSpack/blob/master/spack_config/copy_config.sh>`__
+`spack_setup.sh <https://github.com/NaluCFD/NaluSpack/blob/master/spack_config/spack_setup.sh>`__
 script provided or by doing it manually as such:
 
 ::
@@ -301,7 +301,7 @@ or with the example batch script
 
 ::
 
-   spack install nalu %gcc ^openmpi@1.10.3
+   spack install nalu %gcc ^openmpi@1.10.4
 
 That's it! Hopefully that command installs the entire set of dependencies 
 and you get a working build of Nalu on Merlin.
@@ -345,8 +345,7 @@ the dependencies by using ``spack location -i <package>``. For example in the
          ..
    make
 
-There is also a script available for this `here <https://github.com/NaluCFD/NaluSpack/blob/master/spack_config/do-configNalu-Spack.sh>`__. This should allow you to have 
-a build of Nalu in which you are able to continuosly modify the source code and rebuild.
+There are also scripts available for this `here <https://github.com/NaluCFD/NaluSpack/blob/master/spack_config>`__. This should allow you to have a build of Nalu in which you are able to continuosly modify the source code and rebuild.
 
 
 Development Build of Trilinos 
@@ -354,4 +353,4 @@ Development Build of Trilinos
 
 If you want to go even further into having a development build of Trilinos while
 using TPLs Spack has built for you, checkout Trilinos somewhere and see the example configure 
-script for Trilinos `here <https://github.com/NaluCFD/NaluSpack/blob/master/spack_config/do-configTrilinos-Spack.sh>`__.
+script for Trilinos `here <https://github.com/NaluCFD/NaluSpack/blob/master/spack_config>`__.

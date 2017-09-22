@@ -1,5 +1,5 @@
-Using Nalu
-==========
+Running Nalu
+============
 
 This document describes how to run Nalu.
 

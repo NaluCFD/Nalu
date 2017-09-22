@@ -33,8 +33,6 @@ To configure Nalu with testing enabled, in Nalu's existing ``build`` directory, 
 
    cmake -DTrilinos_DIR:PATH=`spack location -i nalu-trilinos` \
          -DYAML_DIR:PATH=`spack location -i yaml-cpp` \
-         -DENABLE_INSTALL:BOOL=ON \
-         -DCMAKE_BUILD_TYPE=RELEASE \
          -DENABLE_TESTS:BOOL=ON \
          ..
 
@@ -70,12 +68,12 @@ in Nalu's ``reg_tests`` directory. This tolerance can also be passed into Nalu a
 run the tests once, and copy the ``*.norm`` files in the ``build/reg_tests/test_files`` directory 
 to the corresponding test location in ``reg_tests/test_files`` while overwriting the current 'gold' norms.
 
-In regards to 'official' gold norms, Linux with GCC 4.8.5, netlib-blas/lapack, and the following 
+In regards to 'official' gold norms, Linux with GCC 4.9.2, netlib-blas/lapack, and the following 
 TPL versions are officially tested:
 
 ::
 
-  openmpi@1.10.3
+  openmpi@1.10.4
   boost@1.60.0
   cmake@3.6.1
   parallel-netcdf@1.6.1
