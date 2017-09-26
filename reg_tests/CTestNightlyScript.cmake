@@ -24,8 +24,8 @@ set(CTEST_START_WITH_EMPTY_BINARY_DIRECTORY TRUE)
 find_program(CTEST_GIT_COMMAND NAMES git)
 find_program(MAKE NAMES make)
 
-if(${RELEASE_OR_DEBUG} STREQUAL "")
-  set(RELEASE_OR_DEBUG "RELEASE")
+if(${BUILD_TYPE} STREQUAL "")
+  set(BUILD_TYPE "Release")
 endif()
 
 # Add parallelism capability to testing
@@ -40,7 +40,7 @@ set(CTEST_UPDATE_COMMAND "${CTEST_GIT_COMMAND}")
 set(CTEST_GIT_INIT_SUBMODULES "ON")
 
 # Configure Command
-set(CTEST_CONFIGURE_COMMAND "cmake -DTrilinos_DIR:PATH=${TRILINOS_DIR} -DYAML_DIR:PATH=${YAML_DIR} -DCMAKE_BUILD_TYPE=${RELEASE_OR_DEBUG} -DENABLE_TESTS=ON ${CTEST_SOURCE_DIRECTORY}")
+set(CTEST_CONFIGURE_COMMAND "cmake -DTrilinos_DIR:PATH=${TRILINOS_DIR} -DYAML_DIR:PATH=${YAML_DIR} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DENABLE_TESTS=ON ${CTEST_SOURCE_DIRECTORY}")
 
 # Build Command
 set(CTEST_BUILD_COMMAND "${MAKE} ${CTEST_BUILD_FLAGS}")
@@ -63,13 +63,18 @@ ctest_configure(BUILD "${CTEST_BINARY_DIRECTORY}" RETURN_VALUE res)
 message(" -- Build - ${CTEST_BUILD_NAME} --")
 ctest_build(BUILD "${CTEST_BINARY_DIRECTORY}" RETURN_VALUE res)
 
-if(${RELEASE_OR_DEBUG} STREQUAL "RELEASE")
-  message(" -- Test - ${CTEST_BUILD_NAME} --")
+# Need to have TMPDIR set to disk for building so it doesn't run out of spack
+# but unset when running on these machines to stop OpenMPI from complaining
+string(COMPARE EQUAL "${HOST_NAME}" "peregrine.hpc.nrel.gov" is_equal_one)
+string(COMPARE EQUAL "${HOST_NAME}" "merlin.hpc.nrel.gov" is_equal_two)
+if(is_equal_one or is_equal_two)
+  message("Clearing TMPDIR variable...")
   unset(ENV{TMPDIR})
-  ctest_test(BUILD "${CTEST_BINARY_DIRECTORY}"
-             PARALLEL_LEVEL ${CTEST_PARALLEL_LEVEL}
-             RETURN_VALUE res)
 endif()
+message(" -- Test - ${CTEST_BUILD_NAME} --")
+ctest_test(BUILD "${CTEST_BINARY_DIRECTORY}"
+           PARALLEL_LEVEL ${CTEST_PARALLEL_LEVEL}
+           RETURN_VALUE res)
 
 message(" -- Submit - ${CTEST_BUILD_NAME} --")
 ctest_submit(RETRY_COUNT 20
