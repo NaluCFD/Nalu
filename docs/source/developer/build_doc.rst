@@ -36,7 +36,7 @@ Run CMake Configure
 
 In the `Nalu repository <https://github.com/NaluCFD/Nalu>`__ checkout, 
 create your own or use the ``build`` directory that already exists in the repo.
-Change to your designated build directory and run CMake with ``-DBUILD_DOCUMENTATION``
+Change to your designated build directory and run CMake with ``-DENABLE_DOCUMENTATION``
 on. For example:
 
 ::
@@ -44,7 +44,7 @@ on. For example:
   cmake -DTrilinos_DIR:PATH=`spack location -i nalu-trilinos` \
         -DYAML_DIR:PATH=`spack location -i yaml-cpp` \
         -DCMAKE_BUILD_TYPE=RELEASE \
-        -DBUILD_DOCUMENTATION:BOOL=ON \
+        -DENABLE_DOCUMENTATION:BOOL=ON \
         ..
 
 If all of the main tools are found successfully, CMake should configure with the ability
