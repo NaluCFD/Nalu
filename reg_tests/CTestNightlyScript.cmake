@@ -55,30 +55,33 @@ message(" -- Start dashboard - ${CTEST_BUILD_NAME} --")
 ctest_start("Nightly" TRACK "Nightly")
 
 message(" -- Update - ${CTEST_BUILD_NAME} --")
-ctest_update(SOURCE "${CTEST_SOURCE_DIRECTORY}" RETURN_VALUE res)
-
-message(" -- Configure - ${CTEST_BUILD_NAME} --")
-ctest_configure(BUILD "${CTEST_BINARY_DIRECTORY}" RETURN_VALUE res)
-
-message(" -- Build - ${CTEST_BUILD_NAME} --")
-ctest_build(BUILD "${CTEST_BINARY_DIRECTORY}" RETURN_VALUE res)
-
-# Need to have TMPDIR set to disk for building so it doesn't run out of space
-# but unset when running on these machines to stop OpenMPI from complaining
-string(COMPARE EQUAL "${HOST_NAME}" "peregrine.hpc.nrel.gov" is_equal_peregrine)
-string(COMPARE EQUAL "${HOST_NAME}" "merlin.hpc.nrel.gov" is_equal_merlin)
-if(is_equal_peregrine OR is_equal_merlin)
-  message("Clearing TMPDIR variable...")
-  unset(ENV{TMPDIR})
+ctest_update(SOURCE "${CTEST_SOURCE_DIRECTORY}" RETURN_VALUE result)
+if(result EQUAL 0)
+  message(" -- Configure - ${CTEST_BUILD_NAME} --")
+  ctest_configure(BUILD "${CTEST_BINARY_DIRECTORY}" RETURN_VALUE result)
+  if(result EQUAL 0)
+    message(" -- Build - ${CTEST_BUILD_NAME} --")
+    ctest_build(BUILD "${CTEST_BINARY_DIRECTORY}" RETURN_VALUE result)
+    if(result EQUAL 0)
+      # Need to have TMPDIR set to disk for building so it doesn't run out of space
+      # but unset when running on these machines to stop OpenMPI from complaining
+      string(COMPARE EQUAL "${HOST_NAME}" "peregrine.hpc.nrel.gov" is_equal_peregrine)
+      string(COMPARE EQUAL "${HOST_NAME}" "merlin.hpc.nrel.gov" is_equal_merlin)
+      if(is_equal_peregrine OR is_equal_merlin)
+        message("Clearing TMPDIR variable...")
+        unset(ENV{TMPDIR})
+      endif()
+      message(" -- Test - ${CTEST_BUILD_NAME} --")
+      ctest_test(BUILD "${CTEST_BINARY_DIRECTORY}"
+                 PARALLEL_LEVEL ${CTEST_PARALLEL_LEVEL}
+                 RETURN_VALUE result)
+    endif()
+  endif()
 endif()
-message(" -- Test - ${CTEST_BUILD_NAME} --")
-ctest_test(BUILD "${CTEST_BINARY_DIRECTORY}"
-           PARALLEL_LEVEL ${CTEST_PARALLEL_LEVEL}
-           RETURN_VALUE res)
 
 message(" -- Submit - ${CTEST_BUILD_NAME} --")
 ctest_submit(RETRY_COUNT 20
              RETRY_DELAY 20
-             RETURN_VALUE res)
+             RETURN_VALUE result)
 
 message(" -- Finished - ${CTEST_BUILD_NAME} --")
