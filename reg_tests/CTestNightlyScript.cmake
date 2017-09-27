@@ -1,10 +1,10 @@
-if(NOT ${NIGHTLY_DIR} STREQUAL "")
+if(NOT "${NIGHTLY_DIR}" STREQUAL "")
   message("Nightly test directory is ${NIGHTLY_DIR}")
 else()
   message(FATAL_ERROR "You need to set the NIGHTLY_DIR variable. CMake will exit." )
 endif()
 
-if(NOT ${HOST_NAME} STREQUAL "")
+if(NOT "${HOST_NAME}" STREQUAL "")
   message("Hostname is ${HOST_NAME}")
 else()
   message(FATAL_ERROR "You need to set the HOST_NAME variable. CMake will exit." )
@@ -24,7 +24,7 @@ set(CTEST_START_WITH_EMPTY_BINARY_DIRECTORY TRUE)
 find_program(CTEST_GIT_COMMAND NAMES git)
 find_program(MAKE NAMES make)
 
-if(${BUILD_TYPE} STREQUAL "")
+if("${BUILD_TYPE}" STREQUAL "")
   set(BUILD_TYPE "Release")
 endif()
 
@@ -63,11 +63,11 @@ ctest_configure(BUILD "${CTEST_BINARY_DIRECTORY}" RETURN_VALUE res)
 message(" -- Build - ${CTEST_BUILD_NAME} --")
 ctest_build(BUILD "${CTEST_BINARY_DIRECTORY}" RETURN_VALUE res)
 
-# Need to have TMPDIR set to disk for building so it doesn't run out of spack
+# Need to have TMPDIR set to disk for building so it doesn't run out of space
 # but unset when running on these machines to stop OpenMPI from complaining
-string(COMPARE EQUAL "${HOST_NAME}" "peregrine.hpc.nrel.gov" is_equal_one)
-string(COMPARE EQUAL "${HOST_NAME}" "merlin.hpc.nrel.gov" is_equal_two)
-if(is_equal_one OR is_equal_two)
+string(COMPARE EQUAL "${HOST_NAME}" "peregrine.hpc.nrel.gov" is_equal_peregrine)
+string(COMPARE EQUAL "${HOST_NAME}" "merlin.hpc.nrel.gov" is_equal_merlin)
+if(is_equal_peregrine OR is_equal_merlin)
   message("Clearing TMPDIR variable...")
   unset(ENV{TMPDIR})
 endif()
