@@ -67,7 +67,7 @@ ctest_build(BUILD "${CTEST_BINARY_DIRECTORY}" RETURN_VALUE res)
 # but unset when running on these machines to stop OpenMPI from complaining
 string(COMPARE EQUAL "${HOST_NAME}" "peregrine.hpc.nrel.gov" is_equal_one)
 string(COMPARE EQUAL "${HOST_NAME}" "merlin.hpc.nrel.gov" is_equal_two)
-if(is_equal_one or is_equal_two)
+if(is_equal_one OR is_equal_two)
   message("Clearing TMPDIR variable...")
   unset(ENV{TMPDIR})
 endif()
