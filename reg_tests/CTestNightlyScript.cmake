@@ -56,12 +56,15 @@ ctest_start("Nightly" TRACK "Nightly")
 
 message(" -- Update - ${CTEST_BUILD_NAME} --")
 ctest_update(SOURCE "${CTEST_SOURCE_DIRECTORY}" RETURN_VALUE result)
+message(" -- Update exit code = ${result} --")
 if(result EQUAL 0)
   message(" -- Configure - ${CTEST_BUILD_NAME} --")
   ctest_configure(BUILD "${CTEST_BINARY_DIRECTORY}" RETURN_VALUE result)
+  message(" -- Configure exit code = ${result} --")
   if(result EQUAL 0)
     message(" -- Build - ${CTEST_BUILD_NAME} --")
     ctest_build(BUILD "${CTEST_BINARY_DIRECTORY}" RETURN_VALUE result)
+    message(" -- Build exit code = ${result} --")
     if(result EQUAL 0)
       # Need to have TMPDIR set to disk for building so it doesn't run out of space
       # but unset when running on these machines to stop OpenMPI from complaining
@@ -75,6 +78,7 @@ if(result EQUAL 0)
       ctest_test(BUILD "${CTEST_BINARY_DIRECTORY}"
                  PARALLEL_LEVEL ${CTEST_PARALLEL_LEVEL}
                  RETURN_VALUE result)
+      message(" -- Test exit code = ${result} --")
     endif()
   endif()
 endif()
@@ -83,5 +87,6 @@ message(" -- Submit - ${CTEST_BUILD_NAME} --")
 ctest_submit(RETRY_COUNT 20
              RETRY_DELAY 20
              RETURN_VALUE result)
+message(" -- Submit exit code = ${result} --")
 
 message(" -- Finished - ${CTEST_BUILD_NAME} --")
