@@ -67,7 +67,7 @@ void compare_old_scs_areav( const sierra::nalu::SharedMemView<DoubleType**>& v_c
 }
 
 template<typename AlgTraits>
-void test_ME_views()
+void test_ME_views(const std::vector<sierra::nalu::ELEM_DATA_NEEDED>& requests)
 {
   unit_test_utils::KokkosMEViews<AlgTraits> driver(true);
 
@@ -75,10 +75,9 @@ void test_ME_views()
   // driver.fill_mesh_and_init_data(/* doPerturb = */ false);
 
   // Register ME data requests
-  driver.dataNeeded_.add_master_element_call(
-    sierra::nalu::SCS_AREAV, sierra::nalu::CURRENT_COORDINATES);
-  driver.dataNeeded_.add_master_element_call(
-    sierra::nalu::SCV_VOLUME, sierra::nalu::CURRENT_COORDINATES);
+  for(sierra::nalu::ELEM_DATA_NEEDED request : requests) {
+    driver.dataNeeded_.add_master_element_call(request, sierra::nalu::CURRENT_COORDINATES);
+  }
 
   // Execute the loop and perform all tests
   driver.execute([&](sierra::nalu::ScratchViews<DoubleType>& scratchViews,
@@ -92,21 +91,40 @@ void test_ME_views()
       auto& v_scv_volume = meViews.scv_volume;
 
       if (meSCS != nullptr) {
-        compare_old_scs_areav(v_coords, v_scs_areav, meSCS);
+        for(sierra::nalu::ELEM_DATA_NEEDED request : requests) {
+          if (request == sierra::nalu::SCS_AREAV) {
+            compare_old_scs_areav(v_coords, v_scs_areav, meSCS);
+          }
+        }
       }
       if (meSCV != nullptr) {
-        compare_old_scv_volume(v_coords, v_scv_volume, meSCV);
+        for(sierra::nalu::ELEM_DATA_NEEDED request : requests) {
+          if (request == sierra::nalu::SCV_VOLUME) {
+            compare_old_scv_volume(v_coords, v_scv_volume, meSCV);
+          }
+        }
       }
     });
 }
 
 TEST(KokkosME, test_hex8_views)
 {
-  test_ME_views<sierra::nalu::AlgTraitsHex8>();
+  test_ME_views<sierra::nalu::AlgTraitsHex8>(
+    {sierra::nalu::SCS_AREAV,
+     sierra::nalu::SCS_GRAD_OP,
+     sierra::nalu::SCS_SHIFTED_GRAD_OP,
+     sierra::nalu::SCS_GIJ,
+     sierra::nalu::SCV_VOLUME,
+    }
+  );
 }
 
 TEST(KokkosME, test_tet4_views)
 {
-  test_ME_views<sierra::nalu::AlgTraitsTet4>();
+  test_ME_views<sierra::nalu::AlgTraitsTet4>(
+    {sierra::nalu::SCS_AREAV,
+     sierra::nalu::SCV_VOLUME
+    }
+  );
 }
 
