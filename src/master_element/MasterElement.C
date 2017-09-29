@@ -872,6 +872,16 @@ void TetSCS::grad_op(
 //-------- shifted_grad_op -------------------------------------------------
 //--------------------------------------------------------------------------
 void TetSCS::shifted_grad_op(
+    SharedMemView<DoubleType**>&coords,
+    SharedMemView<DoubleType***>&gradop,
+    SharedMemView<DoubleType***>&deriv)
+{
+  tet_deriv(deriv);
+
+  tet_grad_op(deriv, coords, gradop);
+}
+
+void TetSCS::shifted_grad_op(
   const int nelem,
   const double *coords,
   double *gradop,

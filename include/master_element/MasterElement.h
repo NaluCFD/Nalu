@@ -329,6 +329,11 @@ public:
     double * error );
 
   void shifted_grad_op(
+    SharedMemView<DoubleType**>&coords,
+    SharedMemView<DoubleType***>&gradop,
+    SharedMemView<DoubleType***>&deriv);
+
+  void shifted_grad_op(
     const int nelem,
     const double *coords,
     double *gradop,
