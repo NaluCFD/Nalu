@@ -27,6 +27,19 @@ void check_that_values_match(const sierra::nalu::SharedMemView<DoubleType**>& va
   }
 }
 
+void check_that_values_match(const sierra::nalu::SharedMemView<DoubleType***>& values,
+                             const std::vector<double>& oldValues)
+{
+  int counter = 0;
+  for(size_t i=0; i<values.dimension(0); ++i) {
+    for(size_t j=0; j<values.dimension(1); ++j) {
+      for(size_t k=0; k<values.dimension(2); ++k) {
+        EXPECT_NEAR(stk::simd::get_data(values(i,j,k),0), oldValues[counter++], tol)<<"i:"<<i<<", j:"<<j<<", k:"<<k;
+      }
+    }
+  }
+}
+
 void copy_DoubleType0_to_double(const sierra::nalu::SharedMemView<DoubleType**>& view,
                                 std::vector<double>& vec)
 {
@@ -66,6 +79,24 @@ void compare_old_scs_areav( const sierra::nalu::SharedMemView<DoubleType**>& v_c
   check_that_values_match(scs_areav, areav);
 }
 
+void compare_old_scs_grad_op( const sierra::nalu::SharedMemView<DoubleType**>& v_coords,
+                            const sierra::nalu::SharedMemView<DoubleType***>& scs_dndx,
+                            const sierra::nalu::SharedMemView<DoubleType***>& scs_deriv,
+                            sierra::nalu::MasterElement* meSCS)
+{
+  int len = scs_dndx.dimension(0)*scs_dndx.dimension(1)*scs_dndx.dimension(2);
+  std::vector<double> coords;
+  copy_DoubleType0_to_double(v_coords, coords);
+  std::vector<double> grad_op(len, 0.0);
+  std::vector<double> deriv(len, 0.0);
+  std::vector<double> det_j(len, 0.0);
+  double error = 0;
+  meSCS->grad_op(1, coords.data(), grad_op.data(), deriv.data(), det_j.data(), &error);
+  EXPECT_NEAR(error, 0.0, tol);
+  check_that_values_match(scs_dndx, grad_op);
+  check_that_values_match(scs_deriv, deriv);
+}
+
 template<typename AlgTraits>
 void test_ME_views(const std::vector<sierra::nalu::ELEM_DATA_NEEDED>& requests)
 {
@@ -87,20 +118,21 @@ void test_ME_views(const std::vector<sierra::nalu::ELEM_DATA_NEEDED>& requests)
       sierra::nalu::SharedMemView<DoubleType**>& v_coords = scratchViews.get_scratch_view_2D(
         *driver.coordinates_);
       auto& meViews = scratchViews.get_me_views(sierra::nalu::CURRENT_COORDINATES);
-      auto& v_scs_areav = meViews.scs_areav;
-      auto& v_scv_volume = meViews.scv_volume;
 
       if (meSCS != nullptr) {
         for(sierra::nalu::ELEM_DATA_NEEDED request : requests) {
           if (request == sierra::nalu::SCS_AREAV) {
-            compare_old_scs_areav(v_coords, v_scs_areav, meSCS);
+            compare_old_scs_areav(v_coords, meViews.scs_areav, meSCS);
+          }
+          if (request == sierra::nalu::SCS_GRAD_OP) {
+            compare_old_scs_grad_op(v_coords, meViews.dndx, meViews.deriv, meSCS);
           }
         }
       }
       if (meSCV != nullptr) {
         for(sierra::nalu::ELEM_DATA_NEEDED request : requests) {
           if (request == sierra::nalu::SCV_VOLUME) {
-            compare_old_scv_volume(v_coords, v_scv_volume, meSCV);
+            compare_old_scv_volume(v_coords, meViews.scv_volume, meSCV);
           }
         }
       }
@@ -123,6 +155,7 @@ TEST(KokkosME, test_tet4_views)
 {
   test_ME_views<sierra::nalu::AlgTraitsTet4>(
     {sierra::nalu::SCS_AREAV,
+     sierra::nalu::SCS_GRAD_OP,
      sierra::nalu::SCV_VOLUME
     }
   );

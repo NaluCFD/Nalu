@@ -718,9 +718,132 @@ void TetSCS::determinant(
   *error = 0;
 }
 
+void tet_deriv(SharedMemView<DoubleType***>& deriv)
+{
+  for(size_t j=0; j<deriv.dimension(0); ++j) {
+    deriv(j,0,0) = -1.0;
+    deriv(j,0,1) = -1.0;
+    deriv(j,0,2) = -1.0;
+              
+    deriv(j,1,0) = 1.0;
+    deriv(j,1,1) = 0.0;
+    deriv(j,1,2) = 0.0;
+              
+    deriv(j,2,0) = 0.0;
+    deriv(j,2,1) = 1.0;
+    deriv(j,2,2) = 0.0;
+              
+    deriv(j,3,0) = 0.0;
+    deriv(j,3,1) = 0.0;
+    deriv(j,3,2) = 1.0;
+  }
+}
+
+void tet_grad_op(SharedMemView<DoubleType***>& deriv,
+                 SharedMemView<DoubleType**>& coordel,
+                 SharedMemView<DoubleType***>& gradop)
+{
+  size_t nint = deriv.dimension(0);
+  size_t npe = deriv.dimension(1);
+
+  DoubleType dx_ds1, dx_ds2, dx_ds3;
+  DoubleType dy_ds1, dy_ds2, dy_ds3;
+  DoubleType dz_ds1, dz_ds2, dz_ds3;
+  DoubleType ds1_dx, ds1_dy, ds1_dz;
+  DoubleType ds2_dx, ds2_dy, ds2_dz;
+  DoubleType ds3_dx, ds3_dy, ds3_dz;
+
+  double realmin = 2.2250738585072014e-308;
+
+  for(size_t ki=0; ki<nint; ++ki) {
+    dx_ds1 = 0.0;
+    dx_ds2 = 0.0;
+    dx_ds3 = 0.0;
+    dy_ds1 = 0.0;
+    dy_ds2 = 0.0;
+    dy_ds3 = 0.0;
+    dz_ds1 = 0.0;
+    dz_ds2 = 0.0;
+    dz_ds3 = 0.0;
+//
+// calculate the jacobian at the integration station -
+//
+    for(size_t kn=0; kn<npe; ++kn) {
+      dx_ds1 = dx_ds1+deriv(ki,kn,0)*coordel(kn,0);
+      dx_ds2 = dx_ds2+deriv(ki,kn,1)*coordel(kn,0);
+      dx_ds3 = dx_ds3+deriv(ki,kn,2)*coordel(kn,0);
+
+      dy_ds1 = dy_ds1+deriv(ki,kn,0)*coordel(kn,1);
+      dy_ds2 = dy_ds2+deriv(ki,kn,1)*coordel(kn,1);
+      dy_ds3 = dy_ds3+deriv(ki,kn,2)*coordel(kn,1);
+
+      dz_ds1 = dz_ds1+deriv(ki,kn,0)*coordel(kn,2);
+      dz_ds2 = dz_ds2+deriv(ki,kn,1)*coordel(kn,2);
+      dz_ds3 = dz_ds3+deriv(ki,kn,2)*coordel(kn,2);
+    }
+
+//
+// calculate the determinate of the jacobian at the integration station
+//
+    DoubleType det_j = dx_ds1*( dy_ds2*dz_ds3 - dz_ds2*dy_ds3 )
+                     + dy_ds1*( dz_ds2*dx_ds3 - dx_ds2*dz_ds3 )
+                     + dz_ds1*( dx_ds2*dy_ds3 - dy_ds2*dx_ds3 );
+
+//
+// protect against a negative or small value for the determinate of the
+// jacobian. The value of real_min represents
+// the smallest Real value (based upon the precision set for this
+// compilation) which the machine can represent -
+//
+    DoubleType test = stk::math::if_then_else(det_j > 1.e+6*realmin, det_j, 1.0);
+    DoubleType denom = 1.0/test;
+//
+// compute the gradient operators at the integration station -
+//
+    ds1_dx = denom*(dy_ds2*dz_ds3 - dz_ds2*dy_ds3);
+    ds2_dx = denom*(dz_ds1*dy_ds3 - dy_ds1*dz_ds3);
+    ds3_dx = denom*(dy_ds1*dz_ds2 - dz_ds1*dy_ds2);
+
+    ds1_dy = denom*(dz_ds2*dx_ds3 - dx_ds2*dz_ds3);
+    ds2_dy = denom*(dx_ds1*dz_ds3 - dz_ds1*dx_ds3);
+    ds3_dy = denom*(dz_ds1*dx_ds2 - dx_ds1*dz_ds2);
+
+    ds1_dz = denom*(dx_ds2*dy_ds3 - dy_ds2*dx_ds3);
+    ds2_dz = denom*(dy_ds1*dx_ds3 - dx_ds1*dy_ds3);
+    ds3_dz = denom*(dx_ds1*dy_ds2 - dy_ds1*dx_ds2);
+
+    for(size_t kn=0; kn<npe; ++kn) {
+      gradop(ki,kn,0) =
+          deriv(ki,kn,0)*ds1_dx
+        + deriv(ki,kn,1)*ds2_dx
+        + deriv(ki,kn,2)*ds3_dx;
+
+      gradop(ki,kn,1) =
+          deriv(ki,kn,0)*ds1_dy
+        + deriv(ki,kn,1)*ds2_dy
+        + deriv(ki,kn,2)*ds3_dy;
+
+      gradop(ki,kn,2) =
+          deriv(ki,kn,0)*ds1_dz
+        + deriv(ki,kn,1)*ds2_dz
+        + deriv(ki,kn,2)*ds3_dz;
+    }
+  }
+}
+
 //--------------------------------------------------------------------------
 //-------- grad_op ---------------------------------------------------------
 //--------------------------------------------------------------------------
+void TetSCS::grad_op(
+    SharedMemView<DoubleType**>&coords,
+    SharedMemView<DoubleType***>&gradop,
+    SharedMemView<DoubleType***>&deriv)
+{
+  tet_deriv(deriv);
+
+  tet_grad_op(deriv, coords, gradop);
+}
+
 void TetSCS::grad_op(
   const int nelem,
   const double *coords,
