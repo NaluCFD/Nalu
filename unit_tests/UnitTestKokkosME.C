@@ -8,9 +8,68 @@
 #include "gtest/gtest.h"
 #include "UnitTestKokkosME.h"
 
-TEST(KokkosME_Hex8, test_hex8_views)
+void check_that_values_match(const sierra::nalu::SharedMemView<DoubleType*>& values,
+                             const std::vector<double>& oldValues)
 {
-  unit_test_utils::KokkosMEViews<sierra::nalu::AlgTraitsHex8> driver(true);
+  for(size_t i=0; i<values.dimension(0); ++i) {
+      EXPECT_NEAR(stk::simd::get_data(values(i),0), oldValues[i], tol)<<"i:"<<i;
+  }
+}
+
+void check_that_values_match(const sierra::nalu::SharedMemView<DoubleType**>& values,
+                             const std::vector<double>& oldValues)
+{
+  int counter = 0;
+  for(size_t i=0; i<values.dimension(0); ++i) {
+    for(size_t j=0; j<values.dimension(1); ++j) {
+      EXPECT_NEAR(stk::simd::get_data(values(i,j),0), oldValues[counter++], tol)<<"i:"<<i<<", j:"<<j;
+    }
+  }
+}
+
+void copy_DoubleType0_to_double(const sierra::nalu::SharedMemView<DoubleType**>& view,
+                                std::vector<double>& vec)
+{
+  const DoubleType* viewValues = view.data();
+  int len = view.size();
+  vec.resize(len);
+  for(int i=0; i<len; ++i) {
+    vec[i] = stk::simd::get_data(viewValues[i], 0);
+  }
+}
+
+void compare_old_scv_volume( const sierra::nalu::SharedMemView<DoubleType**>& v_coords,
+                            const sierra::nalu::SharedMemView<DoubleType*>& scv_volume,
+                            sierra::nalu::MasterElement* meSCV)
+{
+  int len = scv_volume.dimension(0);
+  std::vector<double> coords;
+  copy_DoubleType0_to_double(v_coords, coords);
+  std::vector<double> volume(len, 0.0);
+  double error = 0;
+  meSCV->determinant(1, coords.data(), volume.data(), &error);
+  EXPECT_NEAR(error, 0.0, tol);
+  check_that_values_match(scv_volume, volume);
+}
+
+void compare_old_scs_areav( const sierra::nalu::SharedMemView<DoubleType**>& v_coords,
+                            const sierra::nalu::SharedMemView<DoubleType**>& scs_areav,
+                            sierra::nalu::MasterElement* meSCS)
+{
+  int len = scs_areav.dimension(0)*scs_areav.dimension(1);
+  std::vector<double> coords;
+  copy_DoubleType0_to_double(v_coords, coords);
+  std::vector<double> areav(len, 0.0);
+  double error = 0;
+  meSCS->determinant(1, coords.data(), areav.data(), &error);
+  EXPECT_NEAR(error, 0.0, tol);
+  check_that_values_match(scs_areav, areav);
+}
+
+template<typename AlgTraits>
+void test_ME_views()
+{
+  unit_test_utils::KokkosMEViews<AlgTraits> driver(true);
 
   // Passing `true` to constructor has already initialized everything
   // driver.fill_mesh_and_init_data(/* doPerturb = */ false);
@@ -18,18 +77,36 @@ TEST(KokkosME_Hex8, test_hex8_views)
   // Register ME data requests
   driver.dataNeeded_.add_master_element_call(
     sierra::nalu::SCS_AREAV, sierra::nalu::CURRENT_COORDINATES);
+  driver.dataNeeded_.add_master_element_call(
+    sierra::nalu::SCV_VOLUME, sierra::nalu::CURRENT_COORDINATES);
 
   // Execute the loop and perform all tests
-  driver.execute([&](sierra::nalu::ScratchViews<DoubleType>& scratchViews) {
+  driver.execute([&](sierra::nalu::ScratchViews<DoubleType>& scratchViews,
+                     sierra::nalu::MasterElement* meSCS,
+                     sierra::nalu::MasterElement* meSCV) {
       // Extract data from scratchViews
       sierra::nalu::SharedMemView<DoubleType**>& v_coords = scratchViews.get_scratch_view_2D(
         *driver.coordinates_);
       auto& meViews = scratchViews.get_me_views(sierra::nalu::CURRENT_COORDINATES);
       auto& v_scs_areav = meViews.scs_areav;
+      auto& v_scv_volume = meViews.scv_volume;
 
-      // Perform tests here...
-      EXPECT_EQ(v_coords.dimension(0), 8u);
-      EXPECT_EQ(v_coords.dimension(1), 3u);
-      EXPECT_EQ(v_scs_areav.dimension(0), 12u);
+      if (meSCS != nullptr) {
+        compare_old_scs_areav(v_coords, v_scs_areav, meSCS);
+      }
+      if (meSCV != nullptr) {
+        compare_old_scv_volume(v_coords, v_scv_volume, meSCV);
+      }
     });
 }
+
+TEST(KokkosME, test_hex8_views)
+{
+  test_ME_views<sierra::nalu::AlgTraitsHex8>();
+}
+
+TEST(KokkosME, test_tet4_views)
+{
+  test_ME_views<sierra::nalu::AlgTraitsTet4>();
+}
+

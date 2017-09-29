@@ -134,7 +134,7 @@ public:
     double *deriv,
     double *det_j,
     double * error ) {
-    throw std::runtime_error("grad_op not implemented");}
+    throw std::runtime_error("shifted_grad_op not implemented");}
 
   virtual void gij(
     const double *coords,
@@ -274,6 +274,10 @@ public:
   const int * ipNodeMap(int ordinal = 0);
 
   void determinant(
+    SharedMemView<DoubleType**> coords,
+    SharedMemView<DoubleType*> volume);
+
+  void determinant(
     const int nelem,
     const double *coords,
     double *areav,
@@ -300,6 +304,10 @@ public:
   virtual ~TetSCS();
 
   const int * ipNodeMap(int ordinal = 0);
+
+  virtual void determinant(
+    SharedMemView<DoubleType**>&coords,
+    SharedMemView<DoubleType**>&areav);
 
   void determinant(
     const int nelem,
