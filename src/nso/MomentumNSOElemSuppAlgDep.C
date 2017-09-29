@@ -293,7 +293,6 @@ MomentumNSOElemSuppAlgDep::elem_execute(
       }
     
       // determine scs values of interest
-      const int offSet = ip*nodesPerElement;
       for ( int ic = 0; ic < nodesPerElement; ++ic ) {
         
         const int icNdim = ic*nDim_;

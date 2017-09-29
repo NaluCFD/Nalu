@@ -511,10 +511,10 @@ AssembleMomentumNonConformalSolverAlgorithm::execute()
             for ( int j = 0; j < nDim; ++j ) {
               const double nxj = p_cNx[j];
               const double dndxj = p_c_dndx[offSetDnDx+j];
-              for ( int i = 0; i < nDim; ++i ) {
-                const double dndxi = p_c_dndx[offSetDnDx+i];
+              for ( int kk = 0; kk < nDim; ++kk ) {
+                const double dndxi = p_c_dndx[offSetDnDx+kk];
                 // -mu*dui/dxj*Aj (divU neglected)
-                p_lhs[rowR+icNdim+i] += -currentDiffFluxCoeffBip*dndxj*nxj*c_amag/2.0; 
+                p_lhs[rowR+icNdim+kk] += -currentDiffFluxCoeffBip*dndxj*nxj*c_amag/2.0; 
                 // -mu*duj/dxi*Aj
                 p_lhs[rowR+icNdim+j] += -currentDiffFluxCoeffBip*dndxi*nxj*c_amag/2.0;
               }
@@ -536,10 +536,10 @@ AssembleMomentumNonConformalSolverAlgorithm::execute()
             for ( int j = 0; j < nDim; ++j ) {
               const double nxj = p_oNx[j];
               const double dndxj = p_o_dndx[offSetDnDx+j];
-              for ( int i = 0; i < nDim; ++i ) {
-                const double dndxi = p_o_dndx[offSetDnDx+i];
+              for ( int kk = 0; kk < nDim; ++kk ) {
+                const double dndxi = p_o_dndx[offSetDnDx+kk];
                 // -mu*dui/dxj*Aj (divU neglected)
-                p_lhs[rowR+icNdim+i] -= -currentDiffFluxCoeffBip*dndxj*nxj*c_amag/2.0;                
+                p_lhs[rowR+icNdim+kk] -= -currentDiffFluxCoeffBip*dndxj*nxj*c_amag/2.0;                
                 // -mu*duj/dxi*Aj
                 p_lhs[rowR+icNdim+j] -= -currentDiffFluxCoeffBip*dndxi*nxj*c_amag/2.0;
               }
