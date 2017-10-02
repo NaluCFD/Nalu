@@ -59,7 +59,19 @@
 
 // nso
 #include <nso/ScalarNSOKeElemSuppAlg.h>
+#include <nso/ScalarNSOElemKernel.h>
 #include <nso/ScalarNSOElemSuppAlgDep.h>
+
+// template for kernels
+#include <AlgTraits.h>
+#include <KernelBuilder.h>
+#include <KernelBuilderLog.h>
+
+// consolidated
+#include <AssembleElemSolverAlgorithm.h>
+#include <ScalarMassElemKernel.h>
+#include <ScalarAdvDiffElemKernel.h>
+#include <ScalarUpwAdvDiffElemKernel.h>
 
 // props
 #include <property_evaluator/EnthalpyPropertyEvaluator.h>
@@ -354,70 +366,125 @@ EnthalpyEquationSystem::register_interior_algorithm(
   }
 
   // solver; interior contribution (advection + diffusion)
-  std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi
+  if ( !realm_.solutionOptions_->useConsolidatedSolverAlg_ ) {
+    std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi
     = solverAlgDriver_->solverAlgMap_.find(algType);
-  if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
-    SolverAlgorithm *theAlg = NULL;
-    if ( realm_.realmUsesEdges_ ) {
-      if ( !realm_.solutionOptions_->eigenvaluePerturb_ )
-        theAlg = new AssembleScalarEdgeSolverAlgorithm(realm_, part, this, enthalpy_, dhdx_, evisc_);
-      else
-        theAlg = new AssembleScalarEigenEdgeSolverAlgorithm(realm_, part, this, enthalpy_, dhdx_, thermalCond_, specHeat_,
-                                                            tvisc_, realm_.get_turb_prandtl(enthalpy_->name()));
+    if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
+      SolverAlgorithm *theAlg = NULL;
+      if ( realm_.realmUsesEdges_ ) {
+        if ( !realm_.solutionOptions_->eigenvaluePerturb_ )
+          theAlg = new AssembleScalarEdgeSolverAlgorithm(realm_, part, this, enthalpy_, dhdx_, evisc_);
+        else
+          theAlg = new AssembleScalarEigenEdgeSolverAlgorithm(realm_, part, this, enthalpy_, dhdx_, thermalCond_, specHeat_,
+            tvisc_, realm_.get_turb_prandtl(enthalpy_->name()));
+      }
+      else {
+        theAlg = new AssembleScalarElemSolverAlgorithm(realm_, part, this, enthalpy_, dhdx_, evisc_);
+      }
+      solverAlgDriver_->solverAlgMap_[algType] = theAlg;
+
+      // look for fully integrated source terms
+      std::map<std::string, std::vector<std::string> >::iterator isrc
+      = realm_.solutionOptions_->elemSrcTermsMap_.find("enthalpy");
+      if ( isrc != realm_.solutionOptions_->elemSrcTermsMap_.end() ) {
+
+        if ( realm_.realmUsesEdges_ )
+          throw std::runtime_error("EnthalpyElemSrcTerms::Error can not use element source terms for an edge-based scheme");
+
+        std::vector<std::string> mapNameVec = isrc->second;
+        for (size_t k = 0; k < mapNameVec.size(); ++k ) {
+          std::string sourceName = mapNameVec[k];
+          SupplementalAlgorithm *suppAlg = NULL;
+          if (sourceName == "NSO_2ND" ) {
+            suppAlg = new ScalarNSOElemSuppAlgDep(realm_, enthalpy_, dhdx_, evisc_, 0.0, 0.0);
+          }
+          else if (sourceName == "NSO_2ND_ALT" ) {
+            suppAlg = new ScalarNSOElemSuppAlgDep(realm_, enthalpy_, dhdx_, evisc_, 0.0, 1.0);
+          }
+          else if (sourceName == "NSO_4TH" ) {
+            suppAlg = new ScalarNSOElemSuppAlgDep(realm_, enthalpy_, dhdx_, evisc_, 1.0, 0.0);
+          }
+          else if (sourceName == "NSO_4TH_ALT" ) {
+            suppAlg = new ScalarNSOElemSuppAlgDep(realm_, enthalpy_, dhdx_, evisc_, 1.0, 1.0);
+          }
+          else if (sourceName == "NSO_2ND_KE" ) {
+            const double turbPr = realm_.get_turb_prandtl(enthalpy_->name());
+            suppAlg = new ScalarNSOKeElemSuppAlg(realm_, enthalpy_, dhdx_, turbPr, 0.0);
+          }
+          else if (sourceName == "NSO_4TH_KE" ) {
+            const double turbPr = realm_.get_turb_prandtl(enthalpy_->name());
+            suppAlg = new ScalarNSOKeElemSuppAlg(realm_, enthalpy_, dhdx_, turbPr, 1.0);
+          }
+          else if (sourceName == "enthalpy_time_derivative" ) {
+            suppAlg = new ScalarMassElemSuppAlgDep(realm_, enthalpy_, false);
+          }
+          else if (sourceName == "lumped_enthalpy_time_derivative" ) {
+            suppAlg = new ScalarMassElemSuppAlgDep(realm_, enthalpy_, true);
+          }
+          else {
+            throw std::runtime_error("EnthalpyElemSrcTerms::Error Source term is not supported: " + sourceName);
+          }
+          NaluEnv::self().naluOutputP0() << "EnthalpyElemSrcTerms::added() " << sourceName << std::endl;
+          theAlg->supplementalAlg_.push_back(suppAlg);
+        }
+      }
     }
     else {
-      theAlg = new AssembleScalarElemSolverAlgorithm(realm_, part, this, enthalpy_, dhdx_, evisc_);
-    }
-    solverAlgDriver_->solverAlgMap_[algType] = theAlg;
-
-    // look for fully integrated source terms
-    std::map<std::string, std::vector<std::string> >::iterator isrc 
-      = realm_.solutionOptions_->elemSrcTermsMap_.find("enthalpy");
-    if ( isrc != realm_.solutionOptions_->elemSrcTermsMap_.end() ) {
-
-      if ( realm_.realmUsesEdges_ )
-        throw std::runtime_error("EnthalpyElemSrcTerms::Error can not use element source terms for an edge-based scheme");
-      
-      std::vector<std::string> mapNameVec = isrc->second;
-      for (size_t k = 0; k < mapNameVec.size(); ++k ) {
-        std::string sourceName = mapNameVec[k];
-        SupplementalAlgorithm *suppAlg = NULL;
-        if (sourceName == "NSO_2ND" ) {
-          suppAlg = new ScalarNSOElemSuppAlgDep(realm_, enthalpy_, dhdx_, evisc_, 0.0, 0.0);
-        }
-        else if (sourceName == "NSO_2ND_ALT" ) {
-          suppAlg = new ScalarNSOElemSuppAlgDep(realm_, enthalpy_, dhdx_, evisc_, 0.0, 1.0);
-        }
-        else if (sourceName == "NSO_4TH" ) {
-          suppAlg = new ScalarNSOElemSuppAlgDep(realm_, enthalpy_, dhdx_, evisc_, 1.0, 0.0);
-        }
-        else if (sourceName == "NSO_4TH_ALT" ) {
-          suppAlg = new ScalarNSOElemSuppAlgDep(realm_, enthalpy_, dhdx_, evisc_, 1.0, 1.0);
-        }
-        else if (sourceName == "NSO_2ND_KE" ) {
-          const double turbPr = realm_.get_turb_prandtl(enthalpy_->name());
-          suppAlg = new ScalarNSOKeElemSuppAlg(realm_, enthalpy_, dhdx_, turbPr, 0.0);
-        }
-        else if (sourceName == "NSO_4TH_KE" ) {
-          const double turbPr = realm_.get_turb_prandtl(enthalpy_->name());
-          suppAlg = new ScalarNSOKeElemSuppAlg(realm_, enthalpy_, dhdx_, turbPr, 1.0);
-        }
-        else if (sourceName == "enthalpy_time_derivative" ) {
-          suppAlg = new ScalarMassElemSuppAlgDep(realm_, enthalpy_, false);
-        }
-        else if (sourceName == "lumped_enthalpy_time_derivative" ) {
-          suppAlg = new ScalarMassElemSuppAlgDep(realm_, enthalpy_, true);
-        }
-        else {
-          throw std::runtime_error("EnthalpyElemSrcTerms::Error Source term is not supported: " + sourceName);
-        }     
-        NaluEnv::self().naluOutputP0() << "EnthalpyElemSrcTerms::added() " << sourceName << std::endl;
-        theAlg->supplementalAlg_.push_back(suppAlg); 
-      }
+      itsi->second->partVec_.push_back(part);
     }
   }
   else {
-    itsi->second->partVec_.push_back(part);
+    // Homogeneous kernel implementation
+    if ( realm_.realmUsesEdges_ )
+      throw std::runtime_error("Enthalpy::Error can not use element source terms for an edge-based scheme");
+
+    stk::topology partTopo = part->topology();
+    auto& solverAlgMap = solverAlgDriver_->solverAlgorithmMap_;
+
+    AssembleElemSolverAlgorithm* solverAlg = nullptr;
+    bool solverAlgWasBuilt = false;
+
+    std::tie(solverAlg, solverAlgWasBuilt) = build_or_add_part_to_solver_alg(*this, *part, solverAlgMap);
+
+    ElemDataRequests& dataPreReqs = solverAlg->dataNeededByKernels_;
+    auto& activeKernels = solverAlg->activeKernels_;
+
+    if (solverAlgWasBuilt) {
+      build_topo_kernel_if_requested<ScalarMassElemKernel>
+      (partTopo, *this, activeKernels, "enthalpy_time_derivative",
+        realm_.bulk_data(), *realm_.solutionOptions_, enthalpy_, dataPreReqs, false);
+
+      build_topo_kernel_if_requested<ScalarMassElemKernel>
+      (partTopo, *this, activeKernels, "lumped_enthalpy_time_derivative",
+        realm_.bulk_data(), *realm_.solutionOptions_, enthalpy_, dataPreReqs, true);
+
+      build_topo_kernel_if_requested<ScalarAdvDiffElemKernel>
+      (partTopo, *this, activeKernels, "advection_diffusion",
+        realm_.bulk_data(), *realm_.solutionOptions_, enthalpy_, evisc_, dataPreReqs);
+
+      build_topo_kernel_if_requested<ScalarUpwAdvDiffElemKernel>
+      (partTopo, *this, activeKernels, "upw_advection_diffusion",
+        realm_.bulk_data(), *realm_.solutionOptions_, this, enthalpy_, dhdx_, evisc_, dataPreReqs);
+
+      build_topo_kernel_if_requested<ScalarNSOElemKernel>
+      (partTopo, *this, activeKernels, "NSO_2ND",
+        realm_.bulk_data(), *realm_.solutionOptions_, enthalpy_, dhdx_, evisc_, 0.0, 0.0, dataPreReqs);
+
+      build_topo_kernel_if_requested<ScalarNSOElemKernel>
+      (partTopo, *this, activeKernels, "NSO_2ND_ALT",
+        realm_.bulk_data(), *realm_.solutionOptions_, enthalpy_, dhdx_, evisc_, 0.0, 1.0, dataPreReqs);
+
+      build_topo_kernel_if_requested<ScalarNSOElemKernel>
+      (partTopo, *this, activeKernels, "NSO_4TH",
+        realm_.bulk_data(), *realm_.solutionOptions_, enthalpy_, dhdx_, evisc_, 1.0, 0.0, dataPreReqs);
+
+      build_topo_kernel_if_requested<ScalarNSOElemKernel>
+      (partTopo, *this, activeKernels, "NSO_4TH_ALT",
+        realm_.bulk_data(), *realm_.solutionOptions_, enthalpy_, dhdx_, evisc_, 1.0, 1.0, dataPreReqs);
+
+      report_invalid_supp_alg_names();
+      report_built_supp_alg_names();
+    }
   }
 
   // time term; nodally lumped
