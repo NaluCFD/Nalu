@@ -1603,10 +1603,10 @@ void Hex27SCS::gij(
 }
 //--------------------------------------------------------------------------
 void Hex27SCS::gij(
-  SharedMemView<DoubleType**> coords,
-  SharedMemView<DoubleType***> gupper,
-  SharedMemView<DoubleType***> glower,
-  SharedMemView<DoubleType***> deriv)
+  SharedMemView<DoubleType**>& coords,
+  SharedMemView<DoubleType***>& gupper,
+  SharedMemView<DoubleType***>& glower,
+  SharedMemView<DoubleType***>& deriv)
 {
   generic_gij_3d<AlgTraits>(referenceGradWeights_, coords, gupper, glower);
 

@@ -112,7 +112,9 @@ namespace nalu{
     const stk::topology topo = part.topology();
     const std::string algName = "AssembleElemSolverAlg_" + topo.name();
 
-    bool isNotNGP = !(topo == stk::topology::HEXAHEDRON_8 || topo == stk::topology::HEXAHEDRON_27);
+    bool isNotNGP = !(topo == stk::topology::HEXAHEDRON_8 ||
+                      topo == stk::topology::HEXAHEDRON_27 ||
+                      topo == stk::topology::TETRAHEDRON_4);
 
     auto itc = solverAlgs.find(algName);
     bool createNewAlg = itc == solverAlgs.end();
