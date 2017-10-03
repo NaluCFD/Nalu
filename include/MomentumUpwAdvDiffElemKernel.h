@@ -5,8 +5,8 @@
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
-#ifndef SCALARUPWADVDIFFELEMKERNEL_H
-#define SCALARUPWADVDIFFELEMKERNEL_H
+#ifndef MOMENTUMUPWADVDIFFELEMKERNEL_H
+#define MOMENTUMUPWADVDIFFELEMKERNEL_H
 
 #include "Kernel.h"
 #include "FieldTypeDef.h"
@@ -19,28 +19,28 @@
 namespace sierra {
 namespace nalu {
 
-class SolutionOptions;
-class MasterElement;
 class ElemDataRequests;
-class PecletFunction;
 class EquationSystem;
+class MasterElement;
+class PecletFunction;
+class SolutionOptions;
 
-/** CVFEM scalar upwind advection/diffusion kernel
+/** Advection (with upwind) diffusion term for momentum equation (velocity DOF)
  */
 template<typename AlgTraits>
-class ScalarUpwAdvDiffElemKernel: public Kernel
+class MomentumUpwAdvDiffElemKernel: public Kernel
 {
 public:
-  ScalarUpwAdvDiffElemKernel(
+  MomentumUpwAdvDiffElemKernel(
     const stk::mesh::BulkData&,
     const SolutionOptions&,
     EquationSystem*,
-    ScalarFieldType*,
     VectorFieldType*,
     ScalarFieldType*,
+    GenericFieldType*,
     ElemDataRequests&);
 
-  virtual ~ScalarUpwAdvDiffElemKernel();
+  virtual ~MomentumUpwAdvDiffElemKernel();
 
   virtual void setup(const TimeIntegrator&);
 
@@ -57,19 +57,18 @@ public:
     const DoubleType &dqp);
 
 private:
-  ScalarUpwAdvDiffElemKernel() = delete;
+  MomentumUpwAdvDiffElemKernel() = delete;
 
-  const SolutionOptions& solnOpts_;
-
-  ScalarFieldType *scalarQ_{nullptr};
-  VectorFieldType *Gjq_{nullptr};
-  ScalarFieldType *diffFluxCoeff_{nullptr};
-  VectorFieldType *velocityRTM_{nullptr};
-  ScalarFieldType *density_{nullptr};
+  const SolutionOptions &solnOpts_;
+  
+  VectorFieldType *velocityNp1_{nullptr};
   VectorFieldType *coordinates_{nullptr};
+  ScalarFieldType *density_{nullptr};
+  ScalarFieldType *viscosity_{nullptr};
+  GenericFieldType *Gju_{nullptr};
   GenericFieldType *massFlowRate_{nullptr};
+  VectorFieldType *velocityRTM_{nullptr};
 
-  /// Left right node indicators
   const int* lrscv_;
 
   /// Name of the primitive variable (for upwind options lookup in solution options)
@@ -81,17 +80,18 @@ private:
   bool useLimiter_;
   double om_alpha_;
   double om_alphaUpw_;
+  const double includeDivU_;
   const bool shiftedGradOp_;
   const double small_{1.0e-16};
-
+  
   /// Peclet function
   PecletFunction* pecletFunction_{nullptr};
 
-  /// Shape functions
-  Kokkos::View<DoubleType[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_ { "view_shape_func" };
+  // fixed scratch space
+  Kokkos::View<DoubleType[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_{"v_shape_function"};
 };
 
 }  // nalu
 }  // sierra
 
-#endif /* SCALARUPWADVDIFFELEMKERNEL_H */
+#endif /* MOMENTUMUPWADVDIFFELEMKERNEL_H */
