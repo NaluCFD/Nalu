@@ -9,6 +9,7 @@
 #include <master_element/MasterElement.h>
 #include <master_element/MasterElementFunctions.h>
 #include <master_element/Tet4CVFEM.h>
+#include <master_element/Hex8GeometryFunctions.h>
 
 #include <AlgTraits.h>
 
@@ -77,109 +78,6 @@ TetSCV::ipNodeMap(
 {
   // define scv->node mappings
   return &ipNodeMap_[0];
-}
-
-void polyhedralVolumeByFaces(int ncoords, DoubleType volcoords[14][3], int ntriangles,
-                             const int triangleFaceTable[24][3], DoubleType& volume)
-{
-  DoubleType xface[3];
-
-  // initialize volume
-  volume = 0.0;
-
-  //loop over each triangular facet
-  for(int itriangle=0; itriangle<ntriangles; ++itriangle) {
-    int ip = triangleFaceTable[itriangle][0];
-    int iq = triangleFaceTable[itriangle][1];
-    int ir = triangleFaceTable[itriangle][2];
-    // set spatial coordinate of integration point
-    for(int k=0; k<3; ++k) {
-      xface[k] = volcoords[ip][k] + volcoords[iq][k] + volcoords[ir][k];
-    }
-    // calculate contribution of triangular face to volume
-    volume +=
-        xface[0]*( ( volcoords[iq][1]-volcoords[ip][1] )*
-                   ( volcoords[ir][2]-volcoords[ip][2] )
-                 - ( volcoords[ir][1]-volcoords[ip][1] )*
-                   ( volcoords[iq][2]-volcoords[ip][2] ) )
-      - xface[1]*( ( volcoords[iq][0]-volcoords[ip][0] )*
-                   ( volcoords[ir][2]-volcoords[ip][2] )
-                 - ( volcoords[ir][0]-volcoords[ip][0] )*
-                   ( volcoords[iq][2]-volcoords[ip][2] ) )
-      + xface[2]*( ( volcoords[iq][0]-volcoords[ip][0] )*
-                   ( volcoords[ir][1]-volcoords[ip][1] )
-                 - ( volcoords[ir][0]-volcoords[ip][0] )*
-                   ( volcoords[iq][1]-volcoords[ip][1] ) );
-  }
-  volume /= 18.0;
-}
-
-void hexVolumeByTriangleFacets(const DoubleType volcoords[8][3], DoubleType& volume)
-{
-  const int triangularFacetTable[24][3] = {
-    {0, 8, 1},
-    {8, 2, 1},
-    {3, 2, 8},
-    {3, 8, 0},
-    {6, 9, 5},
-    {7, 9, 6},
-    {4, 9, 7},
-    {4, 5, 9},
-    {10, 0, 1},
-    {5, 10, 1},
-    {4, 10, 5},
-    {4, 0, 10}, 
-    {7, 6, 11}, 
-    {6, 2, 11}, 
-    {2, 3, 11}, 
-    {3, 7, 11}, 
-    {6, 12, 2},
-    {5, 12, 6},
-    {5, 1, 12}, 
-    {1, 2, 12}, 
-    {0, 4, 13}, 
-    {4, 7, 13}, 
-    {7, 3, 13}, 
-    {3, 0, 13}
-  };
-
-  DoubleType coords[14][3];
-  const double one4th = 0.25;
-  const int dim[3] = {0, 1, 2};
-
-  // the first coordinates are equivalent to vertices
-  for(int j=0; j<8; ++j) {
-    for(int k : dim) {
-      coords[j][k] = volcoords[j][k];
-    }
-  }
-  // now we add the face midpoints
-  for(int k : dim) {
-    coords[8][k] = one4th*( volcoords[0][k] + volcoords[1][k] + volcoords[2][k] + volcoords[3][k] );
-  }
-  for(int k : dim) {
-    coords[9][k] = one4th*( volcoords[4][k] + volcoords[5][k] + volcoords[6][k] + volcoords[7][k] );
-  }
-  for(int k : dim) {
-    coords[10][k] = one4th*( volcoords[0][k] + volcoords[1][k] + volcoords[5][k] + volcoords[4][k] );
-  }
-  for(int k : dim) {
-    coords[11][k] = one4th*( volcoords[3][k] + volcoords[2][k] + volcoords[6][k] + volcoords[7][k] );
-  }
-  for(int k : dim) {
-    coords[12][k] = one4th*( volcoords[1][k] + volcoords[2][k] + volcoords[6][k] + volcoords[5][k] );
-  }
-  for(int k : dim) {
-    coords[13][k] = one4th*( volcoords[0][k] + volcoords[3][k] + volcoords[7][k] + volcoords[4][k] );
-  }
-
-  // number of vertices for the equivalent tetrahedron
-  int ncoords = 14;
-  // number of triangular facets
-  int ntriangles = 24;
-
-  // calculate the volume using the triangular facets
-  polyhedralVolumeByFaces(ncoords, coords, ntriangles, triangularFacetTable, volume);
 }
 
 //--------------------------------------------------------------------------
@@ -281,9 +179,7 @@ void TetSCV::determinant(
       }
     }
     // compute volume using an equivalent polyhedron
-    DoubleType voltmp = 0.0;
-    hexVolumeByTriangleFacets(ehexcoords,voltmp);
-    volume(icv) = voltmp;
+    volume(icv) = hex_volume_grandy(ehexcoords);
     // check for negative volume
     //ThrowAssertMsg( volume(icv) < 0.0, "ERROR in TetSCV::determinant, negative volume.");
   }
@@ -492,52 +388,6 @@ TetSCS::side_node_ordinals(
   return &sideNodeOrdinals_[ordinal*3];
 }
 
-void quadAreaByTriFacets(DoubleType areacoords[4][3], DoubleType* area)
-{
-  int triFacetTable[4][3] = {
-    {4, 0, 1},
-    {4, 1, 2},
-    {4, 2, 3},
-    {4, 3, 0}
-  };
-  const double one4th = 1.0/4.0;
-  const double half = 1.0/2.0;
-  const int dim[] = {0, 1, 2};
-  DoubleType xmid[3];
-  DoubleType r1[3];
-  DoubleType r2[3];
-
-  for(int k : dim) {
-    xmid[k] = one4th*(areacoords[0][k] + areacoords[1][k] + areacoords[2][k] + areacoords[3][k]);
-  }
-
-  const int ntriangles = 4;
-  for(int k : dim) {
-    area[k] = 0.0;
-    r2[k] = areacoords[0][k] - xmid[k];
-  }
-
-  for(int itriangle=0; itriangle<ntriangles; ++itriangle) {
-    int iq = triFacetTable[itriangle][2];
-    //construct vectors with common beginning point
-//    r1 = r2;
-    for(int k : dim) {
-      r1[k] = r2[k];
-      r2[k] = areacoords[iq][k] - xmid[k];
-    }
-    //cross product is twice the area vector
-    //triFacetTable should be constructed such
-    //that these vectors have the same convention (right hand rule)
-    area[0] += r1[1]*r2[2] - r2[1]*r1[2];
-    area[1] += r1[2]*r2[0] - r2[2]*r1[0];
-    area[2] += r1[0]*r2[1] - r2[0]*r1[1];
-  }
-
-  for(int k : dim) {
-    area[k] = half*area[k];
-  }
-}
-
 //--------------------------------------------------------------------------
 //-------- determinant -----------------------------------------------------
 //--------------------------------------------------------------------------
@@ -641,7 +491,7 @@ void TetSCS::determinant(
         scscoords[inode][k] = coords[itrianglenode][k];
       }
     }
-    quadAreaByTriFacets(scscoords, &areav(ics,0));
+    quad_area_by_triangulation(ics, scscoords, areav);
   }
 }
 
