@@ -573,6 +573,9 @@ class Realm {
   std::string physics_part_name(std::string) const;
   std::string get_quad_type() const;
 
+  // check for mesh changing
+  bool mesh_changed() const;
+
   stk::mesh::PartVector allPeriodicInteractingParts_;
   stk::mesh::PartVector allNonConformalInteractingParts_;
 };

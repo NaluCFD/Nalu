@@ -55,7 +55,9 @@ class DgInfo {
     const int nDim);
   
   ~DgInfo();
-  
+
+  void dump_info();
+
   int parallelRank_;
   uint64_t globalFaceId_;
   uint64_t localGaussPointId_;
@@ -70,6 +72,7 @@ class DgInfo {
   
   int nDim_;
 
+  const double bestXRef_;
   double bestX_;
   int opposingFaceIsGhosted_;
 
@@ -99,6 +102,10 @@ class DgInfo {
 
   // iso-parametric coordinates for gauss point on opposing face (-1:1)
   std::vector<double> opposingIsoParCoords_;  
+
+  // possible reuse
+  std::vector<uint64_t> allOpposingFaceIds_;
+  std::vector<uint64_t> allOpposingFaceIdsOld_;
 };
   
 } // end sierra namespace

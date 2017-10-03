@@ -265,7 +265,18 @@ NonConformalManager::initialize()
   for ( size_t k = 0; k < nonConformalInfoVec_.size(); ++k )
     nonConformalInfoVec_[k]->complete_search();
 
-  // provide diagnosis
+  // check for reuse
+  bool canReuse = true;
+  for ( size_t k = 0; k < nonConformalInfoVec_.size(); ++k )
+    canReuse &=nonConformalInfoVec_[k]->canReuse_;
+  
+  // reset all reusage flags if all are not true
+  if ( !canReuse ) {
+    for ( size_t k = 0; k < nonConformalInfoVec_.size(); ++k )
+      nonConformalInfoVec_[k]->canReuse_ = false;
+  }
+  
+  // Provide diagnosis
   if ( ncAlgDetailedOutput_ ) {
     for ( size_t k = 0; k < nonConformalInfoVec_.size(); ++k )
       nonConformalInfoVec_[k]->provide_diagnosis();
