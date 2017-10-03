@@ -115,10 +115,33 @@ void compare_old_scs_shifted_grad_op( const sierra::nalu::SharedMemView<DoubleTy
   check_that_values_match(scs_deriv, deriv);
 }
 
+void compare_old_scs_gij(const sierra::nalu::SharedMemView<DoubleType**>& v_coords,
+                         const sierra::nalu::SharedMemView<DoubleType***>& v_gijUpper,
+                         const sierra::nalu::SharedMemView<DoubleType***>& v_gijLower,
+                         const sierra::nalu::SharedMemView<DoubleType***>& v_deriv,
+                         sierra::nalu::MasterElement* meSCS)
+{
+  int len = v_gijUpper.dimension(0)*v_gijUpper.dimension(1)*v_gijUpper.dimension(2);
+  std::vector<double> coords;
+  copy_DoubleType0_to_double(v_coords, coords);
+  std::vector<double> gijUpper(len, 0.0);
+  std::vector<double> gijLower(len, 0.0);
+  int gradOpLen = meSCS->nodesPerElement_ * meSCS->numIntPoints_ * meSCS->nDim_;
+  std::vector<double> grad_op(gradOpLen, 0.0);
+  std::vector<double> deriv(gradOpLen, 0.0);
+  std::vector<double> det_j(len, 0.0);
+  double error = 0;
+  meSCS->grad_op(1, coords.data(), grad_op.data(), deriv.data(), det_j.data(), &error);
+  meSCS->gij(coords.data(), gijUpper.data(), gijLower.data(), deriv.data());
+  check_that_values_match(v_gijUpper, gijUpper);
+  check_that_values_match(v_gijLower, gijLower);
+//  check_that_values_match(v_deriv, deriv);
+}
+
 template<typename AlgTraits>
 void test_ME_views(const std::vector<sierra::nalu::ELEM_DATA_NEEDED>& requests)
 {
-  unit_test_utils::KokkosMEViews<AlgTraits> driver(true);
+  unit_test_utils::KokkosMEViews<AlgTraits> driver(true, true);
 
   // Passing `true` to constructor has already initialized everything
   // driver.fill_mesh_and_init_data(/* doPerturb = */ false);
@@ -147,6 +170,9 @@ void test_ME_views(const std::vector<sierra::nalu::ELEM_DATA_NEEDED>& requests)
           }
           if (request == sierra::nalu::SCS_SHIFTED_GRAD_OP) {
             compare_old_scs_shifted_grad_op(v_coords, meViews.dndx_shifted, meViews.deriv, meSCS);
+          }
+          if (request == sierra::nalu::SCS_GIJ) {
+            compare_old_scs_gij(v_coords, meViews.gijUpper, meViews.gijLower, meViews.deriv, meSCS);
           }
         }
       }
@@ -178,6 +204,7 @@ TEST(KokkosME, test_tet4_views)
     {sierra::nalu::SCS_AREAV,
      sierra::nalu::SCS_GRAD_OP,
      sierra::nalu::SCS_SHIFTED_GRAD_OP,
+     sierra::nalu::SCS_GIJ,
      sierra::nalu::SCV_VOLUME
     }
   );

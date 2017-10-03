@@ -97,10 +97,10 @@ public:
     throw std::runtime_error("determinant using SharedMemView is not implemented");}
 
   virtual void gij(
-    SharedMemView<DoubleType**> coords,
-    SharedMemView<DoubleType***> gupper,
-    SharedMemView<DoubleType***> glower,
-    SharedMemView<DoubleType***> deriv) {
+    SharedMemView<DoubleType**>& coords,
+    SharedMemView<DoubleType***>& gupper,
+    SharedMemView<DoubleType***>& glower,
+    SharedMemView<DoubleType***>& deriv) {
     throw std::runtime_error("gij using SharedMemView is not implemented");
   }
 
@@ -356,6 +356,12 @@ public:
     double *gradop,
     double *det_j,
     double * error );
+
+  void gij(
+    SharedMemView<DoubleType**>& coords,
+    SharedMemView<DoubleType***>& gupper,
+    SharedMemView<DoubleType***>& glower,
+    SharedMemView<DoubleType***>& deriv);
 
   void gij(
     const double *coords,

@@ -984,9 +984,91 @@ void TetSCS::shifted_face_grad_op(
   }
 }
 
+void threeD_gij(int npe, int nint,
+                const SharedMemView<DoubleType***>& deriv,
+                const SharedMemView<DoubleType**>& cordel,
+                SharedMemView<DoubleType***>& gupperij,
+                SharedMemView<DoubleType***>& glowerij)
+{
+  DoubleType dx_ds[3][3], ds_dx[3][3];
+  DoubleType det_j = 0.0, denom = 0.0;
+  const double realmin = 2.2250738585072014e-308;
+
+  for(int ki=0; ki<nint; ++ki) {
+    dx_ds[0][0] = 0.0;
+    dx_ds[0][1] = 0.0;
+    dx_ds[0][2] = 0.0;
+    dx_ds[1][0] = 0.0;
+    dx_ds[1][1] = 0.0;
+    dx_ds[1][2] = 0.0;
+    dx_ds[2][0] = 0.0;
+    dx_ds[2][1] = 0.0;
+    dx_ds[2][2] = 0.0;
+// 
+// calculate the jacobian at the integration station -
+    for(int kn=0; kn<npe; ++kn) {
+       dx_ds[0][0] += deriv(ki,kn,0)*cordel(kn,0);
+       dx_ds[1][0] += deriv(ki,kn,1)*cordel(kn,0);
+       dx_ds[2][0] += deriv(ki,kn,2)*cordel(kn,0);
+//                
+       dx_ds[0][1] += deriv(ki,kn,0)*cordel(kn,1);
+       dx_ds[1][1] += deriv(ki,kn,1)*cordel(kn,1);
+       dx_ds[2][1] += deriv(ki,kn,2)*cordel(kn,1);
+//                
+       dx_ds[0][2] += deriv(ki,kn,0)*cordel(kn,2);
+       dx_ds[1][2] += deriv(ki,kn,1)*cordel(kn,2);
+       dx_ds[2][2] += deriv(ki,kn,2)*cordel(kn,2);
+    }
+
+// calculate the determinate of the Jacobian at the integration station -
+    det_j= dx_ds[0][0]*(dx_ds[1][1]*dx_ds[2][2]-dx_ds[1][2]*dx_ds[2][1])
+         + dx_ds[0][1]*(dx_ds[1][2]*dx_ds[2][0]-dx_ds[1][0]*dx_ds[2][2])
+         + dx_ds[0][2]*(dx_ds[1][0]*dx_ds[2][1]-dx_ds[1][1]*dx_ds[2][0]);
+
+// clip
+    denom = stk::math::if_then_else( det_j <= 1.e+6*realmin, 1.0, 1.0/det_j );
+
+//std::cout<<"cpp: det_j "<<det_j<<" denom "<<denom<<std::endl;
+
+// calculate the inverse Jacobian
+    ds_dx[0][0]= denom*(dx_ds[1][1]*dx_ds[2][2]-dx_ds[1][2]*dx_ds[2][1]);
+    ds_dx[1][0]= denom*(dx_ds[1][2]*dx_ds[2][0]-dx_ds[1][0]*dx_ds[2][2]);
+    ds_dx[2][0]= denom*(dx_ds[1][0]*dx_ds[2][1]-dx_ds[1][1]*dx_ds[2][0]);
+//                                                                     
+    ds_dx[0][1]= denom*(dx_ds[0][2]*dx_ds[2][1]-dx_ds[0][1]*dx_ds[2][2]);
+    ds_dx[1][1]= denom*(dx_ds[0][0]*dx_ds[2][2]-dx_ds[0][2]*dx_ds[2][0]);
+    ds_dx[2][1]= denom*(dx_ds[0][1]*dx_ds[2][0]-dx_ds[0][0]*dx_ds[2][1]);
+//                                                                     
+    ds_dx[0][2]= denom*(dx_ds[0][1]*dx_ds[1][2]-dx_ds[0][2]*dx_ds[1][1]);
+    ds_dx[1][2]= denom*(dx_ds[0][2]*dx_ds[1][0]-dx_ds[0][0]*dx_ds[1][2]);
+    ds_dx[2][2]= denom*(dx_ds[0][0]*dx_ds[1][1]-dx_ds[0][1]*dx_ds[1][0]);
+//
+    for(int i=0; i<3; ++i) { 
+       for(int j=0; j<3; ++j) {
+          gupperij(ki,j,i) = 
+              dx_ds[0][i]*dx_ds[0][j]+dx_ds[1][i]*dx_ds[1][j]
+              +dx_ds[2][i]*dx_ds[2][j];
+//std::cout<<"gupperij("<<j<<","<<i<<"): "<<gupperij(ki,j,i)<<std::endl;
+         glowerij(ki,j,i) = 
+              ds_dx[i][0]*ds_dx[j][0]+ds_dx[i][1]*ds_dx[j][1]
+              +ds_dx[i][2]*ds_dx[j][2];
+       }
+    }
+  }
+}
+
 //--------------------------------------------------------------------------
 //-------- guij ------------------------------------------------------------
 //--------------------------------------------------------------------------
+void TetSCS::gij(
+    SharedMemView<DoubleType**>& coords,
+    SharedMemView<DoubleType***>& gupper,
+    SharedMemView<DoubleType***>& glower,
+    SharedMemView<DoubleType***>& deriv)
+{
+  threeD_gij(nodesPerElement_, numIntPoints_, deriv, coords, gupper, glower);
+}
+
 void TetSCS::gij(
   const double *coords,
   double *gupperij,

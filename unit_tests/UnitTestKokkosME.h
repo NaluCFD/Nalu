@@ -24,13 +24,13 @@ template<typename AlgTraits>
 class KokkosMEViews
 {
 public:
-  KokkosMEViews(bool doInit=true)
+  KokkosMEViews(bool doInit=true, bool doPerturb=false)
     : comm_(MPI_COMM_WORLD),
       meta_(AlgTraits::nDim_),
       bulk_(meta_, comm_)
   {
     if (doInit)
-      fill_mesh_and_init_data();
+      fill_mesh_and_init_data(doPerturb);
   }
 
   virtual ~KokkosMEViews() {}

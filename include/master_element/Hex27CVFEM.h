@@ -266,10 +266,10 @@ public:
   void determinant(SharedMemView<DoubleType**>&coords,  SharedMemView<DoubleType**>&areav);
 
   void gij(
-    SharedMemView<DoubleType**> coords,
-    SharedMemView<DoubleType***> gupper,
-    SharedMemView<DoubleType***> glower,
-    SharedMemView<DoubleType***> deriv);
+    SharedMemView<DoubleType**>& coords,
+    SharedMemView<DoubleType***>& gupper,
+    SharedMemView<DoubleType***>& glower,
+    SharedMemView<DoubleType***>& deriv);
 
   void determinant(
     const int nelem,
