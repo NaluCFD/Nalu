@@ -169,7 +169,7 @@ ScalarUpwAdvDiffElemKernel<AlgTraits>::execute(
       udotx += uj*dxj;
     }
     const DoubleType tmp = stk::math::abs(udotx)/(diffIp+small_);
-    //ugh, should we do this tedious loop over ndoubles, or convert PecletFunction to DoubleType?
+    //FIXME: modify pecletFunction to be double type
     DoubleType pecfac = 0.0;
     for(int simdIndex=0; simdIndex<stk::simd::ndoubles; ++simdIndex) {
       stk::simd::set_data(pecfac, simdIndex, pecletFunction_->execute(stk::simd::get_data(tmp, simdIndex)));
