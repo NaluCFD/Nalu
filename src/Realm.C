@@ -4845,5 +4845,15 @@ std::string Realm::get_quad_type() const
   return solutionOptions_->quadType_;
 }
 
+//--------------------------------------------------------------------------
+//-------- mesh_changed() --------------------------------------------------
+//--------------------------------------------------------------------------
+bool
+ Realm::mesh_changed() const
+{
+  // for now, adaptivity only; load-balance in the future?
+  return solutionOptions_->activateAdaptivity_;
+}
+
 } // namespace nalu
 } // namespace Sierra

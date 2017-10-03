@@ -87,7 +87,8 @@ NonConformalInfo::NonConformalInfo(
     searchMethod_(stk::search::BOOST_RTREE),
     clipIsoParametricCoords_(clipIsoParametricCoords),
     searchTolerance_(searchTolerance),
-    meshMotion_(realm_.has_mesh_motion())
+    meshMotion_(realm_.has_mesh_motion()),
+    canReuse_(false)
 {
   // determine search method for this pair
   if ( searchMethodName == "boost_rtree" )
@@ -104,14 +105,14 @@ NonConformalInfo::NonConformalInfo(
 //--------------------------------------------------------------------------
 NonConformalInfo::~NonConformalInfo()
 {
-  delete_info_vec();
+  delete_dgInfo();
 }
 
 //--------------------------------------------------------------------------
-//-------- delete_info_vec -------------------------------------------------
+//-------- delete_dgInfo ---------------------------------------------------
 //--------------------------------------------------------------------------
 void
-NonConformalInfo::delete_info_vec()
+NonConformalInfo::delete_dgInfo()
 {
   std::vector<std::vector<DgInfo*> >::iterator ii;
   for( ii=dgInfoVec_.begin(); ii!=dgInfoVec_.end(); ++ii ) {
@@ -119,6 +120,7 @@ NonConformalInfo::delete_info_vec()
     for ( size_t k = 0; k < faceDgInfoVec.size(); ++k )
       delete faceDgInfoVec[k];
   }
+  dgInfoVec_.clear();
 }
 
 //--------------------------------------------------------------------------
@@ -133,23 +135,118 @@ NonConformalInfo::initialize()
   boundingFaceElementBoxVec_.clear();
   searchKeyPair_.clear();
 
-  // delete info vec before clear
-  delete_info_vec();
-  dgInfoVec_.clear();
+  // delete info only if adaptivity is active
+  if ( realm_.mesh_changed() ) {
+    delete_dgInfo();
+  }
   
-  construct_dgInfo_state();
+  // construct if the size is zero; reset always
+  if ( dgInfoVec_.size() == 0 )
+    construct_dgInfo();
+  reset_dgInfo();
+  
+  // construct the points and boxes required for the search
+  construct_bounding_points();
+  construct_bounding_boxes();
 
-  find_possible_face_elements();
-
+  // ghosting
   determine_elems_to_ghost();
-
 }
 
 //--------------------------------------------------------------------------
-//-------- construct_dgInfo_state --------------------------------------------
+//-------- construct_dgInfo ------------------------------------------------
 //--------------------------------------------------------------------------
 void
-NonConformalInfo::construct_dgInfo_state()
+NonConformalInfo::construct_dgInfo()
+{
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
+
+  const int nDim = meta_data.spatial_dimension();
+
+  // define vector of parent topos; should always be UNITY in size
+  std::vector<stk::topology> parentTopo;
+  
+  stk::mesh::Selector s_locally_owned_union = meta_data.locally_owned_part()
+    &stk::mesh::selectUnion(currentPartVec_);
+  
+  stk::mesh::BucketVector const& face_buckets =
+    realm_.get_buckets( meta_data.side_rank(), s_locally_owned_union );
+  
+  // need to keep track of some sort of local id for each gauss point...
+  uint64_t localGaussPointId = 0;
+  for ( stk::mesh::BucketVector::const_iterator ib = face_buckets.begin();
+        ib != face_buckets.end() ; ++ib ) {
+    
+    stk::mesh::Bucket & b = **ib;
+    
+    const stk::mesh::Bucket::size_type length   = b.size();
+    
+    // extract connected element topology
+    b.parent_topology(stk::topology::ELEMENT_RANK, parentTopo);
+    ThrowAssert ( parentTopo.size() == 1 );
+    stk::topology currentElemTopo = parentTopo[0];
+
+    // volume and surface master element
+    MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(currentElemTopo);
+    MasterElement *meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(b.topology());
+    
+    // master element-specific values
+    const int numScsBip = meFC->numIntPoints_;
+
+    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+
+      // get face, global and local id
+      stk::mesh::Entity face = b[k];
+      uint64_t globalFaceId = bulk_data.identifier(face);
+      
+      // extract the connected element to this exposed face; should be single in size!
+      const stk::mesh::Entity* face_elem_rels = bulk_data.begin_elements(face);
+      ThrowAssert( bulk_data.num_elements(face) == 1 );
+
+      // get element; its face ordinal number
+      stk::mesh::Entity element = face_elem_rels[0];
+      const stk::mesh::ConnectivityOrdinal* face_elem_ords = bulk_data.begin_element_ordinals(face);
+      const int currentFaceOrdinal = face_elem_ords[0];
+      
+      std::vector<DgInfo *> faceDgInfoVec(numScsBip);
+      for ( int ip = 0; ip < numScsBip; ++ip ) { 
+        DgInfo *dgInfo = new DgInfo(NaluEnv::self().parallel_rank(), globalFaceId, localGaussPointId++, ip, 
+                                    face, element, currentFaceOrdinal, meFC, meSCS, currentElemTopo, nDim); 
+        faceDgInfoVec[ip] = dgInfo;
+      }
+      
+      // push them all back
+      dgInfoVec_.push_back(faceDgInfoVec);
+    }
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- reset_dgInfo ----------------------------------------------------
+//--------------------------------------------------------------------------
+void
+NonConformalInfo::reset_dgInfo()
+{
+  std::vector<std::vector<DgInfo*> >::iterator ii;
+  for( ii=dgInfoVec_.begin(); ii!=dgInfoVec_.end(); ++ii ) {
+    std::vector<DgInfo *> &theVec = (*ii);    
+    for ( size_t k = 0; k < theVec.size(); ++k ) {
+      DgInfo *dgInfo = theVec[k];
+      dgInfo->bestX_ = dgInfo->bestXRef_;
+      if ( !canReuse_ ) {
+        dgInfo->allOpposingFaceIdsOld_.clear();
+        dgInfo->allOpposingFaceIdsOld_ = dgInfo->allOpposingFaceIds_;
+      }
+    }
+  }
+}
+  
+//--------------------------------------------------------------------------
+//-------- construct_bounding_points ---------------------------------------
+//--------------------------------------------------------------------------
+void
+NonConformalInfo::construct_bounding_points()
 {
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   stk::mesh::BulkData & bulk_data = realm_.bulk_data();
@@ -159,140 +256,102 @@ NonConformalInfo::construct_dgInfo_state()
   // dial in Gauss-labato points
   const bool useShifted = realm_.has_nc_gauss_labatto_quadrature();
 
-  // hold the point location for gauss points
-  Point currentGaussPointCoords;
+  // hold the point location for integration points
+  Point currentIpCoords;
 
   // nodal fields to gather
   std::vector<double> ws_face_coordinates;
   // master element
   std::vector<double> ws_face_shape_function;
 
-  // define vector of parent topos; should always be UNITY in size
-  std::vector<stk::topology> parentTopo;
-
   // fields
   VectorFieldType *coordinates = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  
+  std::vector<std::vector<DgInfo*> >::iterator ii;
+  for( ii=dgInfoVec_.begin(); ii!=dgInfoVec_.end(); ++ii ) {
+    std::vector<DgInfo *> &theVec = (*ii);
 
-  stk::mesh::Selector s_locally_owned_union = meta_data.locally_owned_part()
-    &stk::mesh::selectUnion(currentPartVec_);
-
-  stk::mesh::BucketVector const& face_buckets =
-    realm_.get_buckets( meta_data.side_rank(), s_locally_owned_union );
-
-  // need to keep track of some sort of local id for each gauss point...
-  uint64_t localGaussPointId = 0;
-  for ( stk::mesh::BucketVector::const_iterator ib = face_buckets.begin();
-        ib != face_buckets.end() ; ++ib ) {
-
-    stk::mesh::Bucket & b = **ib;
-
-    const stk::mesh::Bucket::size_type length   = b.size();
-
-    // extract connected element topology
-    b.parent_topology(stk::topology::ELEMENT_RANK, parentTopo);
-    ThrowAssert ( parentTopo.size() == 1 );
-    stk::topology currentElemTopo = parentTopo[0];
-
-    // volume and surface master element
-    MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(currentElemTopo);
-    MasterElement *meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(b.topology());
-
+    //=======================================================
+    // all ips on this face use a common face master element 
+    //            gather common operations once 
+    //=======================================================
+    const DgInfo *firstDgInfo = theVec[0];
+    MasterElement *meFC = firstDgInfo->meFCCurrent_;
+    
     // master element-specific values
     const int numScsBip = meFC->numIntPoints_;
     const int nodesPerFace = meFC->nodesPerElement_;
-
+   
     // algorithm related; face
     ws_face_coordinates.resize(nodesPerFace*nDim);  
     ws_face_shape_function.resize(numScsBip*nodesPerFace);
-
+    
     // pointers
     double *p_face_coordinates = &ws_face_coordinates[0];
     double *p_face_shape_function = &ws_face_shape_function[0];
-
+    
     // populate shape function
     if ( useShifted )
       meFC->shifted_shape_fcn(&p_face_shape_function[0]);
     else
       meFC->shape_fcn(&p_face_shape_function[0]);
-
-    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
-
-      // get face, global and local id
-      stk::mesh::Entity face = b[k];
-      uint64_t globalFaceId = bulk_data.identifier(face);
-
-      //======================================
-      // gather nodal data off of face
-      //======================================
-      stk::mesh::Entity const * face_node_rels = bulk_data.begin_nodes(face);
-      const int num_face_nodes = bulk_data.num_nodes(face);
-      
-      // sanity check on num nodes
-      ThrowAssert( num_face_nodes == nodesPerFace );
-      for ( int ni = 0; ni < num_face_nodes; ++ni ) {
-        stk::mesh::Entity node = face_node_rels[ni];
-        double * coords = stk::mesh::field_data(*coordinates, node);
-        for ( int j =0; j < nDim; ++j ) {
-          p_face_coordinates[ni*nDim+j] = coords[j];
-        }
+  
+    // gather nodal data off of face
+    stk::mesh::Entity const * face_node_rels = bulk_data.begin_nodes(firstDgInfo->currentFace_);
+    const int num_face_nodes = bulk_data.num_nodes(firstDgInfo->currentFace_);
+    
+    // sanity check on num nodes
+    ThrowAssert( num_face_nodes == nodesPerFace );
+    for ( int ni = 0; ni < num_face_nodes; ++ni ) {
+      stk::mesh::Entity node = face_node_rels[ni];
+      double * coords = stk::mesh::field_data(*coordinates, node);
+      for ( int j =0; j < nDim; ++j ) {
+        p_face_coordinates[ni*nDim+j] = coords[j];
       }
-
-      // extract the connected element to this exposed face; should be single in size!
-      const stk::mesh::Entity* face_elem_rels = bulk_data.begin_elements(face);
-      ThrowAssert( bulk_data.num_elements(face) == 1 );
-
-      // get element; its face ordinal number
-      stk::mesh::Entity element = face_elem_rels[0];
-      const stk::mesh::ConnectivityOrdinal* face_elem_ords = bulk_data.begin_element_ordinals(face);
-      const int currentFaceOrdinal = face_elem_ords[0];
-
-      std::vector<DgInfo *> faceDgInfoVec(numScsBip);
-      for ( int ip = 0; ip < numScsBip; ++ip ) {
-        
-        for ( int j = 0; j < nDim; ++j )
-          currentGaussPointCoords[j] = 0.0;
-        
-        // interpolate to gauss point
-        for ( int ic = 0; ic < nodesPerFace; ++ic ) {
-          const double r = p_face_shape_function[ip*nodesPerFace+ic];
-          for ( int j = 0; j < nDim; ++j ) {
-            currentGaussPointCoords[j] += r*p_face_coordinates[ic*nDim+j];
-          }
-        }
-     
-        // create data structure to hold this information; add currentIpNumber for later fast look-up
-        DgInfo *dgInfo = new DgInfo(NaluEnv::self().parallel_rank(), globalFaceId, localGaussPointId, ip, 
-                                    face, element, currentFaceOrdinal, meFC, meSCS, currentElemTopo, nDim);
-
-        // extract isoparametric coords on current face from meFC
-        const double *intgLoc = useShifted ? &meFC->intgLocShift_[0] : &meFC->intgLoc_[0];
-
-        // copy these coordinates
-        for ( int j = 0; j < nDim; ++j ) {
-          dgInfo->currentGaussPointCoords_[j] = currentGaussPointCoords[j];
-        }
-
-        // save face iso-parametric coordinates; extract conversion factor from CVFEM to isInElement
-        const double conversionFac = meFC->scaleToStandardIsoFac_;
-        for ( int j = 0; j < nDim-1; ++j ) {
-          dgInfo->currentIsoParCoords_[j] = conversionFac*intgLoc[ip*(nDim-1)+j]; 
-        }
-
-        // push back to local
-        faceDgInfoVec[ip] = dgInfo;
-
-        // setup ident for this point; use local gauss point id
-        stk::search::IdentProc<uint64_t,int> theIdent(localGaussPointId++, NaluEnv::self().parallel_rank());
-
-        // create the bounding point and push back
-        boundingPoint thePt(currentGaussPointCoords, theIdent);
-        boundingPointVec_.push_back(thePt);
-      }
-      
-      // push them all back
-      dgInfoVec_.push_back(faceDgInfoVec);
-      
     }
+    
+    // now loop over all ips on this face
+    for ( size_t k = 0; k < theVec.size(); ++k ) {
+      
+      DgInfo *dgInfo = theVec[k];
+
+      // local and current ip
+      const uint64_t localIp  = dgInfo->localGaussPointId_; 
+      const int currentFaceIp = dgInfo->currentGaussPointId_;
+
+      // compute coordinates
+      for ( int j = 0; j < nDim; ++j )
+        currentIpCoords[j] = 0.0;
+        
+      // interpolate to gauss point
+      for ( int ic = 0; ic < nodesPerFace; ++ic ) {
+        const double r = p_face_shape_function[currentFaceIp*nodesPerFace+ic];
+        for ( int j = 0; j < nDim; ++j ) {
+          currentIpCoords[j] += r*p_face_coordinates[ic*nDim+j];
+        }
+      }
+
+      // extract isoparametric coords on current face from meFC
+      const double *intgLoc = useShifted ? &meFC->intgLocShift_[0] : &meFC->intgLoc_[0];
+      
+      // copy these coordinates
+      for ( int j = 0; j < nDim; ++j ) {
+        dgInfo->currentGaussPointCoords_[j] = currentIpCoords[j];
+      }
+      
+      // save face iso-parametric coordinates; extract conversion factor from CVFEM to isInElement
+      const double conversionFac = meFC->scaleToStandardIsoFac_;
+      for ( int j = 0; j < nDim-1; ++j ) {
+        dgInfo->currentIsoParCoords_[j] = conversionFac*intgLoc[currentFaceIp*(nDim-1)+j]; 
+      }
+      
+      // setup ident for this point; use local integration point id
+      stk::search::IdentProc<uint64_t,int> theIdent(localIp, NaluEnv::self().parallel_rank());
+      
+      // create the bounding point and push back
+      boundingPoint thePt(currentIpCoords, theIdent);
+      boundingPointVec_.push_back(thePt);
+    } 
   }
 }
 
@@ -411,29 +470,36 @@ NonConformalInfo::complete_search()
             // extract the topo from this face element...
             const stk::topology theFaceTopo = bulk_data.bucket(opposingFace).topology();
             MasterElement *meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(theFaceTopo);
+
+            // extract the connected element to the opposing face
+            const stk::mesh::Entity* face_elem_rels = bulk_data.begin_elements(opposingFace);
+            ThrowAssert( bulk_data.num_elements(opposingFace) == 1 );
+            stk::mesh::Entity opposingElement = face_elem_rels[0];
+            
+            // extract the opposing element topo and associated master element
+            const stk::topology theOpposingElementTopo = bulk_data.bucket(opposingElement).topology();
+            MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(theOpposingElementTopo);
+            
+            // possible reuse            
+            dgInfo->allOpposingFaceIds_.push_back(theBox);
             
             // find distance between true current gauss point coords (the point) and the candidate bounding box
             const double nearestDistance = meFC->isInElement(&theElementCoords[0],
                                                              &(currentGaussPointCoords[0]),
                                                              &(opposingIsoParCoords[0]));
+            
+            // check is this is the best candidate
             if ( nearestDistance < dgInfo->bestX_ ) {
               // save the opposing face element and master element
               dgInfo->opposingFace_ = opposingFace;
               dgInfo->meFCOpposing_ = meFC;
-              
-              // extract the connected element to the opposing face
-              const stk::mesh::Entity* face_elem_rels = bulk_data.begin_elements(opposingFace);
-              ThrowAssert( bulk_data.num_elements(opposingFace) == 1 );
-              stk::mesh::Entity opposingElement = face_elem_rels[0];
-              dgInfo->opposingElement_ = opposingElement;
-
+             
               // save off ordinal for opposing face
               const stk::mesh::ConnectivityOrdinal* face_elem_ords = bulk_data.begin_element_ordinals(opposingFace);
               dgInfo->opposingFaceOrdinal_ = face_elem_ords[0];
-              
-              // extract the opposing element topo and associated master element
-              const stk::topology theOpposingElementTopo = bulk_data.bucket(opposingElement).topology();
-              MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(theOpposingElementTopo);
+
+              // save off all required opposing information
+              dgInfo->opposingElement_ = opposingElement;
               dgInfo->meSCSOpposing_ = meSCS;
               dgInfo->opposingElementTopo_ = theOpposingElementTopo;
               dgInfo->opposingIsoParCoords_ = opposingIsoParCoords;
@@ -451,25 +517,58 @@ NonConformalInfo::complete_search()
   
   // check for problems... will want to be more pro-active in the near future, e.g., expand and search...
   if ( problemDgInfoVec.size() > 0 ) {
-    NaluEnv::self().naluOutputP0() << "NonConformalInfo::complete_search issue with " << name_ << " Size of issue is " << problemDgInfoVec.size() << std::endl; 
+    NaluEnv::self().naluOutputP0() << "NonConformalInfo::complete_search issue with " << name_ 
+                                   << " Size of issue is " << problemDgInfoVec.size() << std::endl; 
     NaluEnv::self().naluOutputP0() << "Problem ips are as follows: " << std::endl; 
     for ( size_t k = 0; k < problemDgInfoVec.size(); ++k ) {
-      const uint64_t localGaussPointId  = problemDgInfoVec[k]->localGaussPointId_; 
-      NaluEnv::self().naluOutputP0() << "local gauss point id with gass point coords " << localGaussPointId << " ";
-      for ( int i = 0; i < nDim; ++i ) 
-        NaluEnv::self().naluOutputP0() << " " << problemDgInfoVec[k]->currentGaussPointCoords_[i];
-      NaluEnv::self().naluOutputP0() << std::endl;
+      problemDgInfoVec[k]->dump_info(); 
     }
     NaluEnv::self().naluOutputP0() << std::endl;
     throw std::runtime_error("Try to adjust the search tolerance and re-submit...");
   }
-}
 
+  // check for reuse (debug now)
+  size_t numberOfFacesMissing = 0;
+  for( size_t iv = 0; iv < dgInfoVec_.size(); ++iv ) {
+    std::vector<DgInfo *> &theVec = dgInfoVec_[iv];
+    for ( size_t k = 0; k < theVec.size(); ++k ) {
+      
+      // extract the info object; new and old
+      DgInfo *dgInfo = theVec[k];
+      
+      // extract the bestX opposing face id
+      const size_t bestOpposingId = bulk_data.identifier(dgInfo->opposingFace_);
+      
+      // is the required active stencil opposing id within the vector of face 
+      // ids returned in the search? (no need to sort given the size)
+      auto itF = std::find(dgInfo->allOpposingFaceIdsOld_.begin(), 
+                           dgInfo->allOpposingFaceIdsOld_.end(), bestOpposingId);
+      
+      // increment missing faces if NOT found
+      if (itF == dgInfo->allOpposingFaceIdsOld_.end()) {
+        numberOfFacesMissing++;
+      }
+    }
+  }
+  
+  // global sum
+  size_t g_numberOfFacesMissing;
+  stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &numberOfFacesMissing, &g_numberOfFacesMissing, 1);
+  if ( g_numberOfFacesMissing > 0 ) {
+    NaluEnv::self().naluOutputP0() << "Ghosted search entries ARE NOT sufficient for re-use " << std::endl;
+    canReuse_ = false;
+  }
+  else {
+    NaluEnv::self().naluOutputP0() << "Ghosted search entries ARE sufficient for re-use " << std::endl;
+    canReuse_ = false; // Set the false until ready for primetime
+  }
+}
+  
 //--------------------------------------------------------------------------
-//-------- find_possible_face_elements -------------------------------------
+//-------- construct_bounding_boxes ----------------------------------------
 //--------------------------------------------------------------------------
 void
-NonConformalInfo::find_possible_face_elements()
+NonConformalInfo::construct_bounding_boxes()
 {
 
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -549,7 +648,6 @@ NonConformalInfo::find_possible_face_elements()
 void
 NonConformalInfo::provide_diagnosis()
 {
-
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   stk::mesh::BulkData & bulk_data = realm_.bulk_data();
   const int nDim = meta_data.spatial_dimension();

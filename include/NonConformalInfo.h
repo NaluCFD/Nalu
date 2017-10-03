@@ -74,13 +74,18 @@ class NonConformalInfo {
 
   ~NonConformalInfo();
 
-  // general method to delete "new" entries within info vec
-  void delete_info_vec();
+  /* delete dgInfoVec_ */
+  void delete_dgInfo();
 
+  /* perform initialization such as dgInfoVec creation and search point/boxes */
   void initialize();
-  void construct_dgInfo_state();
-  void find_possible_face_elements();
-  void set_best_x();
+  
+  /* perform the 'new' */
+  void construct_dgInfo();
+
+  void reset_dgInfo();
+  void construct_bounding_points();
+  void construct_bounding_boxes();
   void determine_elems_to_ghost();
   void complete_search();
   void provide_diagnosis();
@@ -106,6 +111,9 @@ class NonConformalInfo {
 
   /* does the realm have mesh motion */
   const bool meshMotion_;
+
+  /* can we possibly reuse */
+  bool canReuse_;
 
   /* bounding box data types for stk_search */
   std::vector<boundingPoint>      boundingPointVec_;
