@@ -31,8 +31,8 @@ public:
     double * error );
 
   void determinant(
-    SharedMemView<DoubleType**> coords,
-    SharedMemView<DoubleType*> volume);
+    SharedMemView<DoubleType**>& coords,
+    SharedMemView<DoubleType*>& volume);
 
   void grad_op(
     const int nelem,

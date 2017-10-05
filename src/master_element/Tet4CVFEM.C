@@ -84,8 +84,8 @@ TetSCV::ipNodeMap(
 //-------- determinant -----------------------------------------------------
 //--------------------------------------------------------------------------
 void TetSCV::determinant(
-    SharedMemView<DoubleType**> coordel,
-    SharedMemView<DoubleType*> volume)
+    SharedMemView<DoubleType**>& coordel,
+    SharedMemView<DoubleType*>& volume)
 {
   const int tetSubcontrolNodeTable[4][8] = {
     {0, 4, 7, 6, 11, 13, 14, 12},
@@ -1005,12 +1005,7 @@ TetSCS::isInElement(
   par_coor[1] = eta;
   par_coor[2] = zeta;
 
-  std::vector<double> x(3);
-  x[0]=par_coor[0];
-  x[1]=par_coor[1];
-  x[2]=par_coor[2];
-
-  const double dist = parametric_distance(x);
+  const double dist = parametric_distance(par_coor);
 
   return dist;
 }
@@ -1137,7 +1132,7 @@ TetSCS::sidePcoords_to_elemPcoords(
 //-------- parametric_distance ---------------------------------------------
 //--------------------------------------------------------------------------
 double
-TetSCS::parametric_distance(const std::vector<double> &x)
+TetSCS::parametric_distance(const double* x)
 {
   const double X=x[0] - 1./4.;
   const double Y=x[1] - 1./4.;

@@ -752,7 +752,7 @@ void Hex27SCV::determinant(
   }
 }
 //--------------------------------------------------------------------------
-void Hex27SCV::determinant(SharedMemView<DoubleType**> coords, SharedMemView<DoubleType*> volume)
+void Hex27SCV::determinant(SharedMemView<DoubleType**>& coords, SharedMemView<DoubleType*>& volume)
 {
   weighted_volumes(referenceGradWeights_, coords, volume);
 }
