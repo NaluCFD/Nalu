@@ -11,6 +11,9 @@
 #include <array>
 #include <limits>
 
+#include <SimdInterface.h>
+#include <KokkosInterface.h>
+
 #ifdef __INTEL_COMPILER
 #define POINTER_RESTRICT restrict
 #else
@@ -43,6 +46,15 @@ namespace nalu{
     double deltaLimit = 1.0e4
   );
 
+void general_grad_op(SharedMemView<DoubleType***>& deriv,
+                 SharedMemView<DoubleType**>& coordel,
+                 SharedMemView<DoubleType***>& gradop);
+
+void threeD_gij(int npe, int nint,
+                const SharedMemView<DoubleType***>& deriv,
+                const SharedMemView<DoubleType**>& cordel,
+                SharedMemView<DoubleType***>& gupperij,
+                SharedMemView<DoubleType***>& glowerij);
 }
 }
 
