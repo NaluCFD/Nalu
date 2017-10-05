@@ -14,16 +14,6 @@
 namespace sierra{
 namespace nalu{
 
-void tet_grad_op(SharedMemView<DoubleType***>& deriv,
-                 SharedMemView<DoubleType**>& coordel,
-                 SharedMemView<DoubleType***>& gradop);
-
-void threeD_gij(int npe, int nint,
-                const SharedMemView<DoubleType***>& deriv,
-                const SharedMemView<DoubleType**>& cordel,
-                SharedMemView<DoubleType***>& gupperij,
-                SharedMemView<DoubleType***>& glowerij);
-
 // Tet 4 subcontrol volume
 class TetSCV : public MasterElement
 {

@@ -7,7 +7,7 @@
 
 
 #include <master_element/MasterElement.h>
-#include <master_element/Tet4CVFEM.h>
+#include <master_element/MasterElementUtils.h>
 #include <master_element/Pyr5CVFEM.h>
 #include <master_element/Hex8GeometryFunctions.h>
 #include <master_element/MasterElementFunctions.h>
@@ -729,7 +729,7 @@ void PyrSCS::grad_op(
     SharedMemView<DoubleType***>& deriv)
 {
   pyr_deriv(numIntPoints_, &intgLoc_[0], deriv);
-  tet_grad_op(deriv, coords, gradop);
+  general_grad_op(deriv, coords, gradop);
 }
 
 void PyrSCS::grad_op(
@@ -764,7 +764,7 @@ void PyrSCS::shifted_grad_op(
     SharedMemView<DoubleType***>& deriv)
 {
   pyr_deriv(numIntPoints_, &intgLocShift_[0], deriv);
-  tet_grad_op(deriv, coords, gradop);
+  general_grad_op(deriv, coords, gradop);
 }
 
 void PyrSCS::shifted_grad_op(
