@@ -29,7 +29,7 @@ namespace sierra {
 namespace nalu {
 
   template <typename AlgTraits, typename GradViewType, typename CoordViewType, typename OutputViewType>
-  void generic_grad_op_3d(GradViewType referenceGradWeights, CoordViewType coords, OutputViewType weights)
+  void generic_grad_op_3d(const GradViewType& referenceGradWeights, const CoordViewType& coords, OutputViewType& weights)
   {
     using ftype = typename CoordViewType::value_type;
     static_assert(std::is_same<ftype, typename GradViewType::value_type>::value,  "Incompatiable value type for views");
@@ -110,10 +110,10 @@ namespace nalu {
 
   template <typename AlgTraits, typename GradViewType, typename CoordViewType, typename OutputViewType>
   void generic_gij_3d(
-    GradViewType referenceGradWeights,
-    CoordViewType coords,
-    OutputViewType gup,
-    OutputViewType glo)
+    const GradViewType& referenceGradWeights,
+    const CoordViewType& coords,
+    OutputViewType& gup,
+    OutputViewType& glo)
   {
     using ftype = typename CoordViewType::value_type;
     static_assert(std::is_same<ftype, typename GradViewType::value_type>::value,
