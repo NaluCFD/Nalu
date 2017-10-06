@@ -114,7 +114,8 @@ namespace nalu{
 
     bool isNotNGP = !(topo == stk::topology::HEXAHEDRON_8 ||
                       topo == stk::topology::HEXAHEDRON_27 ||
-                      topo == stk::topology::TETRAHEDRON_4);
+                      topo == stk::topology::TETRAHEDRON_4 ||
+                      topo == stk::topology::QUADRILATERAL_4_2D);
 
     auto itc = solverAlgs.find(algName);
     bool createNewAlg = itc == solverAlgs.end();
