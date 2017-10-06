@@ -540,7 +540,7 @@ void TetSCS::grad_op(
 {
   tet_deriv(deriv);
 
-  general_grad_op(deriv, coords, gradop);
+  generic_grad_op_3d<AlgTraitsTet4>(deriv, coords, gradop);
 }
 
 void TetSCS::grad_op(
@@ -577,7 +577,7 @@ void TetSCS::shifted_grad_op(
 {
   tet_deriv(deriv);
 
-  general_grad_op(deriv, coords, gradop);
+  generic_grad_op_3d<AlgTraitsTet4>(deriv, coords, gradop);
 }
 
 void TetSCS::shifted_grad_op(
@@ -692,7 +692,7 @@ void TetSCS::gij(
     SharedMemView<DoubleType***>& glower,
     SharedMemView<DoubleType***>& deriv)
 {
-  threeD_gij(nodesPerElement_, numIntPoints_, deriv, coords, gupper, glower);
+  generic_gij_3d<AlgTraitsTet4>(deriv, coords, gupper, glower);
 }
 
 void TetSCS::gij(

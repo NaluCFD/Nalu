@@ -729,7 +729,7 @@ void PyrSCS::grad_op(
     SharedMemView<DoubleType***>& deriv)
 {
   pyr_deriv(numIntPoints_, &intgLoc_[0], deriv);
-  general_grad_op(deriv, coords, gradop);
+  generic_grad_op_3d<AlgTraitsPyr5>(deriv, coords, gradop);
 }
 
 void PyrSCS::grad_op(
@@ -764,7 +764,7 @@ void PyrSCS::shifted_grad_op(
     SharedMemView<DoubleType***>& deriv)
 {
   pyr_deriv(numIntPoints_, &intgLocShift_[0], deriv);
-  general_grad_op(deriv, coords, gradop);
+  generic_grad_op_3d<AlgTraitsPyr5>(deriv, coords, gradop);
 }
 
 void PyrSCS::shifted_grad_op(
@@ -1063,7 +1063,7 @@ void PyrSCS::gij(
     SharedMemView<DoubleType***>& glower,
     SharedMemView<DoubleType***>& deriv)
 {
-  threeD_gij(nodesPerElement_, numIntPoints_, deriv, coords, gupper, glower);
+  generic_gij_3d<AlgTraitsPyr5>(deriv, coords, gupper, glower);
 }
 
 void PyrSCS::gij(
