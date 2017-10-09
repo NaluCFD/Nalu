@@ -97,8 +97,8 @@ void HexSCV::determinant(
 //-------- determinant -----------------------------------------------------
 //--------------------------------------------------------------------------
 void HexSCV::determinant(
-  SharedMemView<DoubleType**> coords,
-  SharedMemView<DoubleType*> volume)
+  SharedMemView<DoubleType**>& coords,
+  SharedMemView<DoubleType*>& volume)
 {
   constexpr int subDivisionTable[8][8] = {
       {  0,  8, 12, 11, 19, 20, 26, 25},

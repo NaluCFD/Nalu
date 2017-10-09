@@ -199,7 +199,7 @@ public:
 
   void shape_fcn(SharedMemView<DoubleType**> &shpfc) final;
   void shifted_shape_fcn(SharedMemView<DoubleType**> &shpfc) final;
-  void determinant(SharedMemView<DoubleType**> coords, SharedMemView<DoubleType*> volume) final;
+  void determinant(SharedMemView<DoubleType**>& coords, SharedMemView<DoubleType*>& volume) final;
 
   void determinant(
     const int nelem,

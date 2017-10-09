@@ -11,6 +11,9 @@
 #include <array>
 #include <limits>
 
+#include <SimdInterface.h>
+#include <KokkosInterface.h>
+
 #ifdef __INTEL_COMPILER
 #define POINTER_RESTRICT restrict
 #else

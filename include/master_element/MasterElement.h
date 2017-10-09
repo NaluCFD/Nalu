@@ -105,8 +105,8 @@ public:
   }
 
   virtual void determinant(
-    SharedMemView<DoubleType**> coords,
-    SharedMemView<DoubleType*> volume) {
+    SharedMemView<DoubleType**>& coords,
+    SharedMemView<DoubleType*>& volume) {
     throw std::runtime_error("scv determinant using SharedMemView is not implemented");
   }
 
@@ -261,142 +261,6 @@ public:
 
   // FEM
   std::vector<double>weights_;
-};
-
-// Pyramid 5 subcontrol volume
-class PyrSCV : public MasterElement
-{
-public:
-
-  PyrSCV();
-  virtual ~PyrSCV();
-
-  const int * ipNodeMap(int ordinal = 0);
-
-  void determinant(
-    const int nelem,
-    const double *coords,
-    double *areav,
-    double * error );
-
-  void shape_fcn(
-    double *shpfc);
-
-  void shifted_shape_fcn(
-    double *shpfc);
-  
-  void pyr_shape_fcn(
-    const int &npts,
-    const double *par_coord, 
-    double* shape_fcn);
-};
-
-// Pyramid 5 subcontrol surface
-class PyrSCS : public MasterElement
-{
-public:
-
-  PyrSCS();
-  virtual ~PyrSCS();
-
-  const int * ipNodeMap(int ordinal = 0);
-
-  void determinant(
-    const int nelem,
-    const double *coords,
-    double *areav,
-    double * error );
-
-  void grad_op(
-    const int nelem,
-    const double *coords,
-    double *gradop,
-    double *deriv,
-    double *det_j,
-    double * error );
-
-  void shifted_grad_op(
-    const int nelem,
-    const double *coords,
-    double *gradop,
-    double *deriv,
-    double *det_j,
-    double * error );
-
-  void pyr_derivative(
-    const int npts,
-    const double *intLoc,
-    double *deriv);
-
-  void gij(
-    const double *coords,
-    double *gupperij,
-    double *glowerij,
-    double *deriv);
-
-  const int * adjacentNodes();
-
-  void shape_fcn(
-    double *shpfc);
-
-  void shifted_shape_fcn(
-    double *shpfc);
-  
-  void pyr_shape_fcn(
-    const int &npts,
-    const double *par_coord, 
-    double* shape_fcn);
-
-  void sidePcoords_to_elemPcoords(
-    const int & side_ordinal,
-    const int & npoints,
-    const double *side_pcoords,
-    double *elem_pcoords);
-
-  int opposingNodes(
-    const int ordinal, const int node);
-
-  int opposingFace(
-    const int ordinal, const int node);
-
-  void face_grad_op(
-    const int nelem,
-    const int face_ordinal,
-    const double *coords,
-    double *gradop,
-    double *det_j,
-    double *error);
-
-  void shifted_face_grad_op(
-    const int nelem,
-    const int face_ordinal,
-    const double *coords,
-    double *gradop,
-    double *det_j,
-    double * error );
-
-  void general_face_grad_op(
-    const int face_ordinal,
-    const double *isoParCoord,
-    const double *coords,
-    double *gradop,
-    double *det_j,
-    double *error);
-
-  const int* side_node_ordinals(int sideOrdinal) final;
-
-  double parametric_distance(const std::array<double,3>& x);
-
-  double isInElement(
-    const double *elemNodalCoord,
-    const double *pointCoord,
-    double *isoParCoord);
-
-  void interpolatePoint(
-    const int &nComp,
-    const double *isoParCoord,
-    const double *field,
-    double *result);
 };
 
 // 2D Quad 4 subcontrol volume
