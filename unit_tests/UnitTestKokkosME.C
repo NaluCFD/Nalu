@@ -210,6 +210,21 @@ TEST(KokkosME, test_tet4_views)
   );
 }
 
+TEST(KokkosME, test_wed6_views)
+{
+  test_ME_views<sierra::nalu::AlgTraitsWed6>(
+    {sierra::nalu::SCV_VOLUME, sierra::nalu::SCS_AREAV,
+     sierra::nalu::SCS_GRAD_OP,
+     sierra::nalu::SCS_GIJ});
+}
+
+TEST(KokkosME, test_wed6_shifted_grad_op)
+{
+  test_ME_views<sierra::nalu::AlgTraitsWed6>(
+    {sierra::nalu::SCS_SHIFTED_GRAD_OP}
+  );
+}
+
 TEST(KokkosME, test_pyr5_views)
 {
   test_ME_views<sierra::nalu::AlgTraitsPyr5>(
