@@ -23,8 +23,8 @@ public:
   const int * ipNodeMap(int ordinal = 0);
 
   void determinant(
-    SharedMemView<DoubleType**> coords,
-    SharedMemView<DoubleType*> volume);
+    SharedMemView<DoubleType**>& coords,
+    SharedMemView<DoubleType*>& volume);
 
   void determinant(
     const int nelem,

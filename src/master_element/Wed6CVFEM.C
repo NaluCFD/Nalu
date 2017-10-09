@@ -69,8 +69,8 @@ WedSCV::ipNodeMap(
 }
 
 void WedSCV::determinant(
-  SharedMemView<DoubleType**> coordel,
-  SharedMemView<DoubleType*> volume)
+  SharedMemView<DoubleType**>& coordel,
+  SharedMemView<DoubleType*>& volume)
 {
   const int wedSubControlNodeTable[6][8] = {
     { 0, 15, 16, 6, 8, 19, 20, 9    },
