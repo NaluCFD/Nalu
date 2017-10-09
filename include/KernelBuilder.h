@@ -114,6 +114,7 @@ namespace nalu{
 
     bool isNotNGP = !(topo == stk::topology::HEXAHEDRON_8 ||
                       topo == stk::topology::HEXAHEDRON_27 ||
+                      topo == stk::topology::WEDGE_6 ||
                       topo == stk::topology::TETRAHEDRON_4);
 
     auto itc = solverAlgs.find(algName);
