@@ -105,8 +105,8 @@ public:
   }
 
   virtual void determinant(
-    SharedMemView<DoubleType**> coords,
-    SharedMemView<DoubleType*> volume) {
+    SharedMemView<DoubleType**>& coords,
+    SharedMemView<DoubleType*>& volume) {
     throw std::runtime_error("scv determinant using SharedMemView is not implemented");
   }
 

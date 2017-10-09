@@ -6,27 +6,53 @@
 /*------------------------------------------------------------------------*/
 
 
-#ifndef Tet4CVFEM_h
-#define Tet4CVFEM_h
+#ifndef Pyr5CVFEM_h
+#define Pyr5CVFEM_h
 
-#include<master_element/MasterElement.h>
+#include <master_element/MasterElement.h>
+
+#include <AlgTraits.h>
+
+// NGP-based includes
+#include "SimdInterface.h"
+#include "KokkosInterface.h"
+
+#include <vector>
+#include <cstdlib>
+#include <stdexcept>
+#include <string>
+#include <array>
+
+#ifdef __INTEL_COMPILER
+#define POINTER_RESTRICT restrict
+#else
+#define POINTER_RESTRICT __restrict__
+#endif
+
+namespace stk {
+  struct topology;
+}
 
 namespace sierra{
 namespace nalu{
 
-// Tet 4 subcontrol volume
-class TetSCV : public MasterElement
+struct ElementDescription;
+class MasterElement;
+
+
+// Pyramid 5 subcontrol volume
+class PyrSCV : public MasterElement
 {
 public:
 
-  TetSCV();
-  virtual ~TetSCV();
+  PyrSCV();
+  virtual ~PyrSCV();
 
   const int * ipNodeMap(int ordinal = 0);
 
   void determinant(
     SharedMemView<DoubleType**>& coords,
-    SharedMemView<DoubleType*>& volume);
+    SharedMemView<DoubleType*>& vol);
 
   void determinant(
     const int nelem,
@@ -40,25 +66,25 @@ public:
   void shifted_shape_fcn(
     double *shpfc);
   
-  void tet_shape_fcn(
+  void pyr_shape_fcn(
     const int &npts,
     const double *par_coord, 
     double* shape_fcn);
 };
 
-// Tet 4 subcontrol surface
-class TetSCS : public MasterElement
+// Pyramid 5 subcontrol surface
+class PyrSCS : public MasterElement
 {
 public:
 
-  TetSCS();
-  virtual ~TetSCS();
+  PyrSCS();
+  virtual ~PyrSCS();
 
   const int * ipNodeMap(int ordinal = 0);
 
-  virtual void determinant(
-    SharedMemView<DoubleType**>&coords,
-    SharedMemView<DoubleType**>&areav);
+  void determinant(
+    SharedMemView<DoubleType**>& coords,
+    SharedMemView<DoubleType**>& areav);
 
   void determinant(
     const int nelem,
@@ -67,9 +93,9 @@ public:
     double * error );
 
   void grad_op(
-    SharedMemView<DoubleType**>&coords,
-    SharedMemView<DoubleType***>&gradop,
-    SharedMemView<DoubleType***>&deriv);
+    SharedMemView<DoubleType**>& coords,
+    SharedMemView<DoubleType***>& gradop,
+    SharedMemView<DoubleType***>& deriv);
 
   void grad_op(
     const int nelem,
@@ -80,9 +106,9 @@ public:
     double * error );
 
   void shifted_grad_op(
-    SharedMemView<DoubleType**>&coords,
-    SharedMemView<DoubleType***>&gradop,
-    SharedMemView<DoubleType***>&deriv);
+    SharedMemView<DoubleType**>& coords,
+    SharedMemView<DoubleType***>& gradop,
+    SharedMemView<DoubleType***>& deriv);
 
   void shifted_grad_op(
     const int nelem,
@@ -92,23 +118,12 @@ public:
     double *det_j,
     double * error );
 
-  void face_grad_op(
-    const int nelem,
-    const int face_ordinal,
-    const double *coords,
-    double *gradop,
-    double *det_j,
-    double * error );
+  void pyr_derivative(
+    const int npts,
+    const double *intLoc,
+    double *deriv);
 
-  void shifted_face_grad_op(
-    const int nelem,
-    const int face_ordinal,
-    const double *coords,
-    double *gradop,
-    double *det_j,
-    double * error );
-
-  void gij(
+  void gij( 
     SharedMemView<DoubleType**>& coords,
     SharedMemView<DoubleType***>& gupper,
     SharedMemView<DoubleType***>& glower,
@@ -127,17 +142,51 @@ public:
 
   void shifted_shape_fcn(
     double *shpfc);
-
-  void tet_shape_fcn(
+  
+  void pyr_shape_fcn(
     const int &npts,
-    const double *par_coord,
+    const double *par_coord, 
     double* shape_fcn);
+
+  void sidePcoords_to_elemPcoords(
+    const int & side_ordinal,
+    const int & npoints,
+    const double *side_pcoords,
+    double *elem_pcoords);
 
   int opposingNodes(
     const int ordinal, const int node);
 
   int opposingFace(
     const int ordinal, const int node);
+
+  void face_grad_op(
+    const int nelem,
+    const int face_ordinal,
+    const double *coords,
+    double *gradop,
+    double *det_j,
+    double *error);
+
+  void shifted_face_grad_op(
+    const int nelem,
+    const int face_ordinal,
+    const double *coords,
+    double *gradop,
+    double *det_j,
+    double * error );
+
+  void general_face_grad_op(
+    const int face_ordinal,
+    const double *isoParCoord,
+    const double *coords,
+    double *gradop,
+    double *det_j,
+    double *error);
+
+  const int* side_node_ordinals(int sideOrdinal) final;
+
+  double parametric_distance(const std::array<double,3>& x);
 
   double isInElement(
     const double *elemNodalCoord,
@@ -149,29 +198,6 @@ public:
     const double *isoParCoord,
     const double *field,
     double *result);
-
-  void general_shape_fcn(
-    const int numIp,
-    const double *isoParCoord,
-    double *shpfc);
-
-  void general_face_grad_op(
-    const int face_ordinal,
-    const double *isoParCoord,
-    const double *coords,
-    double *gradop,
-    double *det_j,
-    double * error );
-
-  void sidePcoords_to_elemPcoords(
-    const int & side_ordinal,
-    const int & npoints,
-    const double *side_pcoords,
-    double *elem_pcoords);
-
-  double parametric_distance(const double* x);
-
-  const int* side_node_ordinals(int sideOrdinal) final;
 };
 
 } // namespace nalu

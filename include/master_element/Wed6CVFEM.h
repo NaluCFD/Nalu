@@ -1,26 +1,24 @@
 /*------------------------------------------------------------------------*/
-/*  Copyright 2014 Sandia Corporation.                                    */
+/*  Copyright 2014 National Renewable Energy Laboratory.                  */
 /*  This software is released under the license detailed                  */
 /*  in the file, LICENSE, which is located in the top-level Nalu          */
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
+#ifndef WED6CVFEM_H
+#define WED6CVFEM_H
 
-#ifndef Tet4CVFEM_h
-#define Tet4CVFEM_h
+#include "master_element/MasterElement.h"
 
-#include<master_element/MasterElement.h>
+namespace sierra {
+namespace nalu {
 
-namespace sierra{
-namespace nalu{
-
-// Tet 4 subcontrol volume
-class TetSCV : public MasterElement
+// Wedge 6 subcontrol volume
+class WedSCV : public MasterElement
 {
 public:
-
-  TetSCV();
-  virtual ~TetSCV();
+  WedSCV();
+  virtual ~WedSCV();
 
   const int * ipNodeMap(int ordinal = 0);
 
@@ -39,26 +37,25 @@ public:
 
   void shifted_shape_fcn(
     double *shpfc);
-  
-  void tet_shape_fcn(
+
+  void wedge_shape_fcn(
     const int &npts,
-    const double *par_coord, 
+    const double *par_coord,
     double* shape_fcn);
 };
 
-// Tet 4 subcontrol surface
-class TetSCS : public MasterElement
+// Wedge 6 subcontrol surface
+class WedSCS : public MasterElement
 {
 public:
-
-  TetSCS();
-  virtual ~TetSCS();
+  WedSCS();
+  virtual ~WedSCS();
 
   const int * ipNodeMap(int ordinal = 0);
 
-  virtual void determinant(
-    SharedMemView<DoubleType**>&coords,
-    SharedMemView<DoubleType**>&areav);
+  void determinant(
+    SharedMemView<DoubleType**>& coords,
+    SharedMemView<DoubleType**>& areav);
 
   void determinant(
     const int nelem,
@@ -67,9 +64,9 @@ public:
     double * error );
 
   void grad_op(
-    SharedMemView<DoubleType**>&coords,
-    SharedMemView<DoubleType***>&gradop,
-    SharedMemView<DoubleType***>&deriv);
+    SharedMemView<DoubleType**>& coords,
+    SharedMemView<DoubleType***>& gradop,
+    SharedMemView<DoubleType***>& deriv);
 
   void grad_op(
     const int nelem,
@@ -80,9 +77,9 @@ public:
     double * error );
 
   void shifted_grad_op(
-    SharedMemView<DoubleType**>&coords,
-    SharedMemView<DoubleType***>&gradop,
-    SharedMemView<DoubleType***>&deriv);
+    SharedMemView<DoubleType**>& coords,
+    SharedMemView<DoubleType***>& gradop,
+    SharedMemView<DoubleType***>& deriv);
 
   void shifted_grad_op(
     const int nelem,
@@ -91,6 +88,11 @@ public:
     double *deriv,
     double *det_j,
     double * error );
+
+  void wedge_derivative(
+    const int npts,
+    const double *intLoc,
+    double *deriv);
 
   void face_grad_op(
     const int nelem,
@@ -122,22 +124,17 @@ public:
 
   const int * adjacentNodes();
 
-  void shape_fcn(
-    double *shpfc);
-
-  void shifted_shape_fcn(
-    double *shpfc);
-
-  void tet_shape_fcn(
-    const int &npts,
-    const double *par_coord,
-    double* shape_fcn);
-
   int opposingNodes(
     const int ordinal, const int node);
 
   int opposingFace(
     const int ordinal, const int node);
+
+  void shape_fcn(
+    double *shpfc);
+
+  void shifted_shape_fcn(
+    double *shpfc);
 
   double isInElement(
     const double *elemNodalCoord,
@@ -150,10 +147,10 @@ public:
     const double *field,
     double *result);
 
-  void general_shape_fcn(
-    const int numIp,
-    const double *isoParCoord,
-    double *shpfc);
+  void wedge_shape_fcn(
+    const int &npts,
+    const double *par_coord,
+    double* shape_fcn);
 
   void general_face_grad_op(
     const int face_ordinal,
@@ -169,12 +166,17 @@ public:
     const double *side_pcoords,
     double *elem_pcoords);
 
-  double parametric_distance(const double* x);
+  // helper functions to isInElement
+  double parametric_distance( const double X, const double Y);
+  double parametric_distance( const std::vector<double> &x);
 
   const int* side_node_ordinals(int sideOrdinal) final;
+
 };
 
-} // namespace nalu
-} // namespace Sierra
 
-#endif
+}  // nalu
+}  // sierra
+
+
+#endif /* WED6CVFEM_H */
