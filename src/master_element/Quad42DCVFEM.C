@@ -88,8 +88,8 @@ Quad42DSCV::ipNodeMap(
 //-------- determinant -----------------------------------------------------
 //--------------------------------------------------------------------------
 void Quad42DSCV::determinant(
-  SharedMemView<DoubleType**> coords,
-  SharedMemView<DoubleType*> vol) {
+  SharedMemView<DoubleType**> &coords,
+  SharedMemView<DoubleType*> &vol) {
 
   const int npe  = nodesPerElement_;
   const int nint = numIntPoints_;

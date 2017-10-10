@@ -42,25 +42,25 @@ public:
   const int * ipNodeMap(int ordinal = 0);
 
   void determinant(
-    SharedMemView<DoubleType**> coords,
-    SharedMemView<DoubleType*> vol);
+    SharedMemView<DoubleType**> &coords,
+    SharedMemView<DoubleType*> &vol) override ;
 
   void determinant(
     const int nelem,
     const double *coords,
     double *areav,
-    double * error );
+    double * error ) override ;
 
   void shape_fcn(
-    double *shpfc);
+    double *shpfc) override ;
 
   void shifted_shape_fcn(
-    double *shpfc);
+    double *shpfc) override ;
   
   void quad_shape_fcn(
     const int &npts,
     const double *par_coord, 
-    double* shape_fcn);
+    double* shape_fcn) ;
 };
 
 // 2D Quad 4 subcontrol surface
@@ -74,18 +74,18 @@ public:
 
   void determinant(
     SharedMemView<DoubleType**>& coords,
-    SharedMemView<DoubleType**>& areav);
+    SharedMemView<DoubleType**>& areav) override ;
 
   void determinant(
     const int nelem,
     const double *coords,
     double *areav,
-    double * error );
+    double * error ) override ;
 
   void grad_op(
     SharedMemView<DoubleType**>& coords,
     SharedMemView<DoubleType***>& gradop,
-    SharedMemView<DoubleType***>& deriv);
+    SharedMemView<DoubleType***>& deriv) override ;
 
   void grad_op(
     const int nelem,
@@ -93,12 +93,12 @@ public:
     double *gradop,
     double *deriv,
     double *det_j,
-    double * error );
+    double * error ) override ;
 
   void shifted_grad_op(
     SharedMemView<DoubleType**>& coords,
     SharedMemView<DoubleType***>& gradop,
-    SharedMemView<DoubleType***>& deriv);
+    SharedMemView<DoubleType***>& deriv) override ;
 
   void shifted_grad_op(
     const int nelem,
@@ -106,7 +106,7 @@ public:
     double *gradop,
     double *deriv,
     double *det_j,
-    double * error );
+    double * error ) override ;
 
   void face_grad_op(
     const int nelem,
@@ -114,7 +114,7 @@ public:
     const double *coords,
     double *gradop,
     double *det_j,
-    double * error );
+    double * error ) override ;
 
   void shifted_face_grad_op(
     const int nelem,
@@ -122,54 +122,54 @@ public:
     const double *coords,
     double *gradop,
     double *det_j,
-    double * error );
+    double * error ) override ;
 
   void gij( 
     SharedMemView<DoubleType**>& coords,
     SharedMemView<DoubleType***>& gupper,
     SharedMemView<DoubleType***>& glower,
-    SharedMemView<DoubleType***>& deriv);
+    SharedMemView<DoubleType***>& deriv) override ;
 
   void gij(
      const double *coords,
      double *gupperij,
      double *gij,
-     double *deriv);
+     double *deriv) override ;
 
-  const int * adjacentNodes();
+  const int * adjacentNodes() override;
 
   int opposingNodes(
-    const int ordinal, const int node);
+    const int ordinal, const int node) override;
 
   int opposingFace(
-    const int ordinal, const int node);
+    const int ordinal, const int node) override;
 
   void shape_fcn(
-    double *shpfc);
+    double *shpfc) override;
 
   void shifted_shape_fcn(
-    double *shpfc);
+    double *shpfc) override;
   
   void quad_shape_fcn(
     const int &npts,
     const double *par_coord, 
-    double* shape_fcn);
+    double* shape_fcn) ;
 
   double isInElement(
     const double *elemNodalCoord,
     const double *pointCoord,
-    double *isoParCoord);
+    double *isoParCoord) override;
   
   void interpolatePoint(
     const int &nComp,
     const double *isoParCoord,
     const double *field,
-    double *result);
+    double *result) override;
   
   void general_shape_fcn(
     const int numIp,
     const double *isoParCoord,
-    double *shpfc);
+    double *shpfc) override;
 
   void general_face_grad_op(
     const int face_ordinal,
@@ -177,13 +177,13 @@ public:
     const double *coords,
     double *gradop,
     double *det_j,
-    double * error );
+    double * error ) override;
 
   void sidePcoords_to_elemPcoords(
     const int & side_ordinal,
     const int & npoints,
     const double *side_pcoords,
-    double *elem_pcoords);
+    double *elem_pcoords) override;
 
   const int* side_node_ordinals(int sideOrdinal) final;
 };
