@@ -213,7 +213,7 @@ void TiogaSTKIface::populate_inactive_part()
   // Gather all the "hole" elements that are not solved for, or cannot have a
   // valid solution because the nodes lie within a solid body and add it to the
   // inactive part. The rows in the linear system matrix for these nodes will be
-  // ignored during the linear system reinitialization.
+  // removed during the linear system reinitialization.
   bulk_.modification_begin();
   {
     for (auto& tb: blocks_) {
@@ -323,7 +323,7 @@ void TiogaSTKIface::update_fringe_info()
 
     const stk::topology elemTopo = bulk_.bucket(elem).topology();
     const stk::mesh::Entity* enodes = bulk_.begin_nodes(elem);
-    sierra::nalu::MasterElement* meSCS = sierra::nalu::get_surface_master_element(elemTopo);
+    sierra::nalu::MasterElement* meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(elemTopo);
     int num_nodes = bulk_.num_nodes(elem);
     elemCoords.resize(nDim*num_nodes);
 
@@ -517,7 +517,7 @@ TiogaSTKIface::populate_overset_info()
 
     const stk::topology elemTopo = bulk_.bucket(elem).topology();
     const stk::mesh::Entity* enodes = bulk_.begin_nodes(elem);
-    sierra::nalu::MasterElement* meSCS = sierra::nalu::get_surface_master_element(elemTopo);
+    sierra::nalu::MasterElement* meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(elemTopo);
     int num_nodes = bulk_.num_nodes(elem);
     elemCoords.resize(nDim*num_nodes);
 

@@ -82,7 +82,9 @@ private:
    */
   void update_ghosting();
 
-  /** Populate the {fringe node, donor element} pair data structure
+  /** \deprecated{Populate the {fringe node, donor element} pair data structure}
+   *
+   *  \sa get_receptor_info, populate_overset_info
    */
   void update_fringe_info();
 
@@ -95,10 +97,16 @@ private:
   void reset_data_structures();
 
   /** Gather receptor-donor pair information
+   *
+   *  Extract the set of fringe nodes on participating meshes and prepare for
+   *  reconciliation for shared nodes.
    */
   void get_receptor_info();
 
   /** Populate the overset info data structure
+   *
+   *  Reconcile shared/owned fringe status and populate the overset fringe
+   *  vector for later use by algorithms.
    */
   void populate_overset_info();
 

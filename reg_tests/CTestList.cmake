@@ -137,6 +137,9 @@ add_test_r(variableDensNonUniform_P5 8)
 if(ENABLE_OPENFAST)
    add_test_r(nrel5MWactuatorLine 4)
 endif(ENABLE_OPENFAST)
+if(ENABLE_TIOGA)
+  add_test_r(oversetSphereTIOGA 8)
+endif(ENABLE_TIOGA)
 
 #=============================================================================
 # Unit tests
