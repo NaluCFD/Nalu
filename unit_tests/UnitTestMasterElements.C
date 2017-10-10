@@ -11,6 +11,7 @@
 #include <stk_mesh/base/GetEntities.hpp>
 
 #include <master_element/MasterElement.h>
+#include <master_element/Quad42DCVFEM.h>
 
 #include <memory>
 #include <random>
@@ -255,7 +256,7 @@ void check_is_in_element(
   // and derivatives
 
   bool isHexSCS = dynamic_cast<sierra::nalu::HexSCS*>(&me) != nullptr;
-  bool isQuadSCS = dynamic_cast<sierra::nalu::Quad2DSCS*>(&me) != nullptr;
+  bool isQuadSCS = dynamic_cast<sierra::nalu::Quad42DSCS*>(&me) != nullptr;
   double fac = (isHexSCS || isQuadSCS) ? 2.0 : 1.0;
 
   for (int j = 0; j < me.nodesPerElement_; ++j) {

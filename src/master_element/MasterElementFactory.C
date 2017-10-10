@@ -11,6 +11,7 @@
 #include <master_element/Hex8CVFEM.h>
 #include <master_element/Hex27CVFEM.h>
 #include <master_element/Tet4CVFEM.h>
+#include <master_element/Quad42DCVFEM.h>
 #include <master_element/Wed6CVFEM.h>
 #include <master_element/Pyr5CVFEM.h>
 #include <master_element/MasterElementHO.h>
@@ -63,7 +64,7 @@ namespace nalu{
         return make_unique<Tri3DSCS>();
 
       case stk::topology::QUAD_4_2D:
-        return make_unique<Quad2DSCS>();
+        return make_unique<Quad42DSCS>();
 
       case stk::topology::QUAD_9_2D:
         return make_unique<Quad92DSCS>();
@@ -87,7 +88,7 @@ namespace nalu{
 
       default:
         NaluEnv::self().naluOutputP0() << "sorry, we only support hex8, tet4, pyr5, wed6,"
-                                          " quad2d, quad3d, tri2d, tri3d and edge2d surface elements" << std::endl;
+                                          " quad42d, quad3d, tri2d, tri3d and edge2d surface elements" << std::endl;
         NaluEnv::self().naluOutputP0() << "your type is " << topo.value() << std::endl;
         break;
 
@@ -121,7 +122,7 @@ namespace nalu{
         return  make_unique<WedSCV>();
 
       case stk::topology::QUAD_4_2D:
-        return make_unique<Quad2DSCV>();
+        return make_unique<Quad42DSCV>();
 
       case stk::topology::QUAD_9_2D:
         return make_unique<Quad92DSCV>();
