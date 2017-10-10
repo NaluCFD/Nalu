@@ -216,7 +216,17 @@ TEST(KokkosME, test_quad42D_views)
     {
      sierra::nalu::SCS_AREAV,
      sierra::nalu::SCS_GRAD_OP,
+     sierra::nalu::SCS_GIJ,
      sierra::nalu::SCV_VOLUME
+    }
+  );
+}
+
+TEST(KokkosME, test_quad42D_shifted_grad_op)
+{
+  test_ME_views<sierra::nalu::AlgTraitsQuad4_2D>(
+    {
+     sierra::nalu::SCS_SHIFTED_GRAD_OP 
     }
   );
 }
