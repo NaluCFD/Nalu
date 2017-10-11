@@ -82,7 +82,7 @@ ScalarUpwAdvDiffElemKernel<AlgTraits>::ScalarUpwAdvDiffElemKernel(
   dataPreReqs.add_element_field(*massFlowRate_, AlgTraits::numScsIp_);
   dataPreReqs.add_master_element_call(SCS_AREAV, CURRENT_COORDINATES);
   if ( shiftedGradOp_ )
-    dataPreReqs.add_master_element_call(SCS_GRAD_OP, CURRENT_COORDINATES);
+    dataPreReqs.add_master_element_call(SCS_SHIFTED_GRAD_OP, CURRENT_COORDINATES);
   else
     dataPreReqs.add_master_element_call(SCS_GRAD_OP, CURRENT_COORDINATES);
 }

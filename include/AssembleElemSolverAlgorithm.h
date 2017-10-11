@@ -39,10 +39,8 @@ public:
   virtual void initialize_connectivity();
   virtual void execute();
 
-  // topo and master element for this instance
+  // topo for this instance
   stk::topology topo_;
-  MasterElement *meSCS_;
-  MasterElement *meSCV_;
 
   ElemDataRequests dataNeededByKernels_;
   int rhsSize_;

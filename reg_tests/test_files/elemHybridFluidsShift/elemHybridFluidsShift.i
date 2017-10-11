@@ -112,6 +112,8 @@ realms:
       turbulence_model: smagorinsky  
       shift_cvfem_mdot: yes
 
+      use_consolidated_solver_algorithm: yes
+
       options:
         - hybrid_factor:
             velocity: 0.0 
@@ -131,6 +133,11 @@ realms:
             velocity: yes 
             pressure: yes
             mixture_fraction: yes 
+
+        - element_source_terms:
+            momentum: [lumped_momentum_time_derivative, upw_advection_diffusion]
+            continuity: [advection]
+            mixture_fraction: [lumped_mixture_fraction_time_derivative, upw_advection_diffusion]
           
     output:
       output_data_base_name: output.e
