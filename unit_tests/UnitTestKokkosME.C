@@ -191,7 +191,7 @@ TEST(KokkosME, test_hex8_views)
   test_ME_views<sierra::nalu::AlgTraitsHex8>(
     {sierra::nalu::SCS_AREAV,
      sierra::nalu::SCS_GRAD_OP,
-     sierra::nalu::SCS_SHIFTED_GRAD_OP,
+//   sierra::nalu::SCS_SHIFTED_GRAD_OP,
      sierra::nalu::SCS_GIJ,
      sierra::nalu::SCV_VOLUME,
     }
