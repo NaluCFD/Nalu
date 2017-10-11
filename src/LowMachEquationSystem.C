@@ -102,6 +102,7 @@
 #include <ContinuityAdvElemKernel.h>
 #include <ContinuityMassElemKernel.h>
 #include <MomentumAdvDiffElemKernel.h>
+#include <MomentumActuatorSrcElemKernel.h>
 #include <MomentumBuoyancyBoussinesqSrcElemKernel.h>
 #include <MomentumBuoyancySrcElemKernel.h>
 #include <MomentumCoriolisSrcElemKernel.h>
@@ -1182,6 +1183,10 @@ MomentumEquationSystem::register_interior_algorithm(
          realm_.bulk_data(), *realm_.solutionOptions_, this, velocity_,
          realm_.is_turbulent()? evisc_ : visc_, dudx_,
          dataPreReqs);
+
+      build_topo_kernel_if_requested<MomentumActuatorSrcElemKernel>
+          (partTopo, *this, activeKernels, "actuator",
+           realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs);
 
       build_topo_kernel_if_requested<MomentumBuoyancySrcElemKernel>
         (partTopo, *this, activeKernels, "buoyancy",
