@@ -65,11 +65,6 @@ public:
     meSCS_ = sierra::nalu::MasterElementRepo::get_surface_master_element(AlgTraits::topo_);
     meSCV_ = sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_);
 
-    std::cout<<"meSCS::nodesPerElement_:"<<meSCS_->nodesPerElement_
-             <<", meSCS::numIntPoints_:"<<meSCS_->numIntPoints_<<std::endl;
-    std::cout<<"meSCV::nodesPerElement_:"<<meSCV_->nodesPerElement_
-             <<", meSCV::numIntPoints_:"<<meSCV_->numIntPoints_<<std::endl;
-
     // Register them to ElemDataRequests
     dataNeeded_.add_cvfem_surface_me(meSCS_);
     dataNeeded_.add_cvfem_volume_me(meSCV_);

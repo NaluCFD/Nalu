@@ -11,6 +11,7 @@
 #include <master_element/Hex8CVFEM.h>
 #include <master_element/Hex27CVFEM.h>
 #include <master_element/Tet4CVFEM.h>
+#include <master_element/Tri32DCVFEM.h>
 #include <master_element/Quad42DCVFEM.h>
 #include <master_element/Wed6CVFEM.h>
 #include <master_element/Pyr5CVFEM.h>
@@ -70,7 +71,7 @@ namespace nalu{
         return make_unique<Quad92DSCS>();
 
       case stk::topology::TRI_3_2D:
-        return make_unique<Tri2DSCS>();
+        return make_unique<Tri32DSCS>();
 
       case stk::topology::LINE_2:
         return make_unique<Edge2DSCS>();
@@ -128,7 +129,7 @@ namespace nalu{
         return make_unique<Quad92DSCV>();
 
       case stk::topology::TRI_3_2D:
-        return make_unique<Tri2DSCV>();
+        return make_unique<Tri32DSCV>();
 
       default:
         NaluEnv::self().naluOutputP0() << "sorry, we only support hex8, tet4, wed6, "
