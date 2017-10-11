@@ -6,8 +6,8 @@
 /*------------------------------------------------------------------------*/
 
 
-#ifndef Quad42DCVFEM_h   
-#define Quad42DCVFEM_h   
+#ifndef Tri32DCVFEM_h   
+#define Tri32DCVFEM_h   
 
 #include <master_element/MasterElement.h>
 
@@ -23,21 +23,15 @@
 #include <string>
 #include <array>
 
-#ifdef __INTEL_COMPILER
-#define POINTER_RESTRICT restrict
-#else
-#define POINTER_RESTRICT __restrict__
-#endif
-
 namespace sierra{
 namespace nalu{
 
-// 2D Quad 4 subcontrol volume
-class Quad42DSCV : public MasterElement
+// 2D Tri 3 subcontrol volume
+class Tri32DSCV : public MasterElement
 {
 public:
-  Quad42DSCV();
-  virtual ~Quad42DSCV();
+  Tri32DSCV();
+  virtual ~Tri32DSCV();
 
   const int * ipNodeMap(int ordinal = 0) override;
 
@@ -49,26 +43,27 @@ public:
     const int nelem,
     const double *coords,
     double *areav,
-    double * error ) override ;
+    double * error ) override;
 
   void shape_fcn(
-    double *shpfc) override ;
+    double *shpfc) override;
 
-  void shifted_shape_fcn(
-    double *shpfc) override ;
-  
-  void quad_shape_fcn(
+  void shifted_shape_fcn (
+    double *shpfc) override;
+
+  void tri_shape_fcn(
     const int &npts,
-    const double *par_coord, 
-    double* shape_fcn) ;
+    const double *par_coord,
+    double* shape_fcn);
+
 };
 
-// 2D Quad 4 subcontrol surface
-class Quad42DSCS : public MasterElement
+// 2D Tri 3 subcontrol surface
+class Tri32DSCS : public MasterElement
 {
 public:
-  Quad42DSCS();
-  virtual ~Quad42DSCS();
+  Tri32DSCS();
+  virtual ~Tri32DSCS();
 
   const int * ipNodeMap(int ordinal = 0) override;
 
@@ -80,7 +75,7 @@ public:
     const int nelem,
     const double *coords,
     double *areav,
-    double * error ) override ;
+    double * error ) override;
 
   void grad_op(
     SharedMemView<DoubleType**>& coords,
@@ -93,7 +88,7 @@ public:
     double *gradop,
     double *deriv,
     double *det_j,
-    double * error ) override ;
+    double * error ) override;
 
   void shifted_grad_op(
     SharedMemView<DoubleType**>& coords,
@@ -106,7 +101,7 @@ public:
     double *gradop,
     double *deriv,
     double *det_j,
-    double * error ) override ;
+    double * error ) override;
 
   void face_grad_op(
     const int nelem,
@@ -114,7 +109,7 @@ public:
     const double *coords,
     double *gradop,
     double *det_j,
-    double * error ) override ;
+    double * error ) override;
 
   void shifted_face_grad_op(
     const int nelem,
@@ -122,27 +117,21 @@ public:
     const double *coords,
     double *gradop,
     double *det_j,
-    double * error ) override ;
+    double * error ) override;
 
-  void gij( 
+  void gij(
     SharedMemView<DoubleType**>& coords,
     SharedMemView<DoubleType***>& gupper,
     SharedMemView<DoubleType***>& glower,
     SharedMemView<DoubleType***>& deriv) override ;
 
   void gij(
-     const double *coords,
-     double *gupperij,
-     double *gij,
-     double *deriv) override ;
+    const double *coords,
+    double *gupperij,
+    double *glowerij,
+    double *deriv) override;
 
   const int * adjacentNodes() override;
-
-  int opposingNodes(
-    const int ordinal, const int node) override;
-
-  int opposingFace(
-    const int ordinal, const int node) override;
 
   void shape_fcn(
     double *shpfc) override;
@@ -150,10 +139,16 @@ public:
   void shifted_shape_fcn(
     double *shpfc) override;
   
-  void quad_shape_fcn(
+  void tri_shape_fcn(
     const int &npts,
     const double *par_coord, 
-    double* shape_fcn) ;
+    double* shape_fcn);
+
+  int opposingNodes(
+    const int ordinal, const int node) override;
+  
+  int opposingFace(
+    const int ordinal, const int node) override;
 
   double isInElement(
     const double *elemNodalCoord,
@@ -165,12 +160,10 @@ public:
     const double *isoParCoord,
     const double *field,
     double *result) override;
-  
-  void general_shape_fcn(
-    const int numIp,
-    const double *isoParCoord,
-    double *shpfc) override;
 
+  double tri_parametric_distance(
+    const std::vector<double> &x);
+  
   void general_face_grad_op(
     const int face_ordinal,
     const double *isoParCoord,
@@ -186,6 +179,8 @@ public:
     double *elem_pcoords) override;
 
   const int* side_node_ordinals(int sideOrdinal) final;
+
+
 };
 
 } // namespace nalu
