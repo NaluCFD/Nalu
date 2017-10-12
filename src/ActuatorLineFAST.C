@@ -602,11 +602,10 @@ ActuatorLineFAST::execute()
     for(int j=0; j < nDim; j++) forceSum[j] = 0.0;
 
     // iterate them and apply source term; gather coords
-    for ( size_t k = 0; k < nodeVec.size(); ++k ) {
+    std::set<stk::mesh::Entity>::iterator iNode;
+    for (iNode = nodeVec.begin(); iNode != nodeVec.end(); ++iNode ) {
 
-      stk::mesh::Entity node = nodeVec[k];
-
-      nodesPerElement = bulkData.num_nodes(elem);
+      stk::mesh::Entity node = *iNode;
 
       const double * node_coords = (double*)stk::mesh::field_data(*coordinates, node );
 
@@ -614,16 +613,14 @@ ActuatorLineFAST::execute()
       const double distance = compute_distance(nDim, node_coords, &(infoObject->centroidCoords_[0]));
 
       double gA = 0.0;
-
+      double * sourceTerm ; 
       switch (infoObject->nodeType_) {
       case fast::HUB:
         // project the force to this node with projection function
         gA = isotropic_Gaussian_projection(nDim, distance, infoObject->epsilon_);
         compute_node_force_given_weight(nDim, gA, &ws_pointForce[0], &ws_nodeForce[0]);
-        double * sourceTerm = (double*)stk::mesh::field_data(actuator_source, node );
-        for ( int j=0; j < nDim; ++j ) {
-            sourceTerm[j] = ws_nodeForce[j];
-        }
+        sourceTerm = (double*)stk::mesh::field_data(*actuator_source, node );
+        for ( int j=0; j < nDim; ++j ) sourceTerm[j] = ws_nodeForce[j];
 //        gSum += gA*elemVolume;
         break;
 
@@ -631,10 +628,8 @@ ActuatorLineFAST::execute()
           // project the force to this node with projection function
           gA = isotropic_Gaussian_projection(nDim, distance, infoObject->epsilon_);
           compute_node_force_given_weight(nDim, gA, &ws_pointForce[0], &ws_nodeForce[0]);
-          double * sourceTerm = (double*)stk::mesh::field_data(actuator_source, node );
-          for ( int j=0; j < nDim; ++j ) {
-              sourceTerm[j] = ws_nodeForce[j];
-          }
+          sourceTerm = (double*)stk::mesh::field_data(*actuator_source, node );
+          for ( int j=0; j < nDim; ++j ) sourceTerm[j] = ws_nodeForce[j];
 //        gSum += gA*elemVolume;
         break;
 
@@ -642,10 +637,8 @@ ActuatorLineFAST::execute()
           // project the force to this node with projection function
           gA = isotropic_Gaussian_projection(nDim, distance, infoObject->epsilon_);
           compute_node_force_given_weight(nDim, gA, &ws_pointForce[0], &ws_nodeForce[0]);
-          double * sourceTerm = (double*)stk::mesh::field_data(actuator_source, node );
-          for ( int j=0; j < nDim; ++j ) {
-              sourceTerm[j] = ws_nodeForce[j];
-          }
+	  sourceTerm = (double*)stk::mesh::field_data(*actuator_source, node );
+          for ( int j=0; j < nDim; ++j ) sourceTerm[j] = ws_nodeForce[j];
 //        gSum += gA*elemVolume;
         break;
 
