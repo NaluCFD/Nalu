@@ -80,7 +80,7 @@ MomentumActuatorSrcElemKernel<AlgTraits>::execute(
     const DoubleType scV = v_scv_volume(ip);
     const int nnNdim = nearestNode * AlgTraits::nDim_;
     for (int j=0; j < AlgTraits::nDim_; ++j) {
-      rhs(nnNdim + j) += actuatorSourceIp[j];
+      rhs(nnNdim + j) += actuatorSourceIp[j] * scV;
     }
 
     // No LHS contributions
