@@ -452,6 +452,40 @@ public:
   const double viscSecondary_;
 };
 
+/** Text fixture for actuator source kernels
+ *
+ *  This test fixture performs the following actions:
+ *    - Create a HEX8 mesh with one element
+ *    - Declare all of the set of fields required (actuator_source)
+ *    - Initialize the field with steady 3-D solution; 
+ */
+class ActuatorSourceKernelHex8Mesh : public TestKernelHex8Mesh
+{
+public:
+  ActuatorSourceKernelHex8Mesh()
+    : TestKernelHex8Mesh(),
+    actuator_source_(&meta_.declare_field<VectorFieldType>(stk::topology::NODE_RANK, 
+                                                    "actuator_source"))
+  {
+    stk::mesh::put_field(*actuator_source_, meta_.universal_part(), spatialDim_);
+  }
+    
+  virtual ~ActuatorSourceKernelHex8Mesh() {}
+
+  virtual void fill_mesh_and_init_fields(bool doPerturb = false)
+  {
+    fill_mesh(doPerturb);
+
+    std::vector<double> act_source(spatialDim_,0.0);
+    for(size_t j=0;j<spatialDim_;j++) act_source[j] = j+1;
+        
+    stk::mesh::field_fill_component(act_source.data(), *actuator_source_);
+  }
+
+  VectorFieldType* actuator_source_{nullptr};
+
+};
+
 #endif /* KOKKOS_HAVE_CUDA */
 
 #endif /* UNITTESTKERNELUTILS_H */
