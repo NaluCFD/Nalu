@@ -393,6 +393,7 @@ The constants used in (:eq:`vel_stable`) -- (:eq:`psi_h`) are :cite:`Dyer:74`
    \kappa = 0.41,~~\alpha_h =
    1,~~\beta_m=16,~~\beta_h=16,~~\gamma_m=5.0,~~\gamma_h=5.0.
 
+.. _theory_abl_wall_function:
 
 ABL Wall Function
 ~~~~~~~~~~~~~~~~~

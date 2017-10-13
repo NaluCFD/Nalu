@@ -215,3 +215,7 @@ texinfo_documents = [
      'Miscellaneous'),
 ]
 
+def setup(app):
+    app.add_object_type("inpfile", "inpfile",
+                        objname="Nalu Input File Parameter",
+                        indextemplate="pair: %s; Nalu Input File Parameter")
