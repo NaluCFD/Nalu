@@ -593,64 +593,64 @@ ActuatorLineFAST::execute()
     FAST.getHubShftDir(hubShftVec, iTurbGlob);
 
     // get the vector of elements
-    std::vector<stk::mesh::Entity> elementVec = infoObject->elementVec_;
     std::set<stk::mesh::Entity> nodeVec = infoObject->nodeVec_;
 
-    // Set up the necessary variables to check that forces/projection function are integrating up correctly.
-    double gSum = 0.0;
-    std::vector<double> forceSum(nDim);
-    for(int j=0; j < nDim; j++) forceSum[j] = 0.0;
+    spread_actuator_force_to_node_vec(nDim, nodeVec, ws_pointForce, &(infoObject->centroidCoords_[0]), *coordinates, *actuator_source, infoObject->epsilon_);
+//     // Set up the necessary variables to check that forces/projection function are integrating up correctly.
+//     double gSum = 0.0;
+//     std::vector<double> forceSum(nDim);
+//     for(int j=0; j < nDim; j++) forceSum[j] = 0.0;
 
-    // iterate them and apply source term; gather coords
-    std::set<stk::mesh::Entity>::iterator iNode;
-    for (iNode = nodeVec.begin(); iNode != nodeVec.end(); ++iNode ) {
+//     // iterate them and apply source term; gather coords
+//     std::set<stk::mesh::Entity>::iterator iNode;
+//     for (iNode = nodeVec.begin(); iNode != nodeVec.end(); ++iNode ) {
 
-      stk::mesh::Entity node = *iNode;
+//       stk::mesh::Entity node = *iNode;
 
-      const double * node_coords = (double*)stk::mesh::field_data(*coordinates, node );
+//       const double * node_coords = (double*)stk::mesh::field_data(*coordinates, node );
 
-      // compute distance
-      const double distance = compute_distance(nDim, node_coords, &(infoObject->centroidCoords_[0]));
+//       // compute distance
+//       const double distance = compute_distance(nDim, node_coords, &(infoObject->centroidCoords_[0]));
 
-      double gA = 0.0;
-      double * sourceTerm ; 
-      switch (infoObject->nodeType_) {
-      case fast::HUB:
-        // project the force to this node with projection function
-        gA = isotropic_Gaussian_projection(nDim, distance, infoObject->epsilon_);
-        compute_node_force_given_weight(nDim, gA, &ws_pointForce[0], &ws_nodeForce[0]);
-        sourceTerm = (double*)stk::mesh::field_data(*actuator_source, node );
-        for ( int j=0; j < nDim; ++j ) sourceTerm[j] = ws_nodeForce[j];
-//        gSum += gA*elemVolume;
-        break;
+//       double gA = 0.0;
+//       double * sourceTerm ; 
+//       switch (infoObject->nodeType_) {
+//       case fast::HUB:
+//         // project the force to this node with projection function
+//         gA = isotropic_Gaussian_projection(nDim, distance, infoObject->epsilon_);
+//         compute_node_force_given_weight(nDim, gA, &ws_pointForce[0], &ws_nodeForce[0]);
+//         sourceTerm = (double*)stk::mesh::field_data(*actuator_source, node );
+//         for ( int j=0; j < nDim; ++j ) sourceTerm[j] = ws_nodeForce[j];
+// //        gSum += gA*elemVolume;
+//         break;
 
-      case fast::BLADE:
-          // project the force to this node with projection function
-          gA = isotropic_Gaussian_projection(nDim, distance, infoObject->epsilon_);
-          compute_node_force_given_weight(nDim, gA, &ws_pointForce[0], &ws_nodeForce[0]);
-          sourceTerm = (double*)stk::mesh::field_data(*actuator_source, node );
-          for ( int j=0; j < nDim; ++j ) sourceTerm[j] = ws_nodeForce[j];
-//        gSum += gA*elemVolume;
-        break;
+//       case fast::BLADE:
+//           // project the force to this node with projection function
+//           gA = isotropic_Gaussian_projection(nDim, distance, infoObject->epsilon_);
+//           compute_node_force_given_weight(nDim, gA, &ws_pointForce[0], &ws_nodeForce[0]);
+//           sourceTerm = (double*)stk::mesh::field_data(*actuator_source, node );
+//           for ( int j=0; j < nDim; ++j ) sourceTerm[j] = ws_nodeForce[j];
+// //        gSum += gA*elemVolume;
+//         break;
 
-      case fast::TOWER:
-          // project the force to this node with projection function
-          gA = isotropic_Gaussian_projection(nDim, distance, infoObject->epsilon_);
-          compute_node_force_given_weight(nDim, gA, &ws_pointForce[0], &ws_nodeForce[0]);
-	  sourceTerm = (double*)stk::mesh::field_data(*actuator_source, node );
-          for ( int j=0; j < nDim; ++j ) sourceTerm[j] = ws_nodeForce[j];
-//        gSum += gA*elemVolume;
-        break;
+//       case fast::TOWER:
+//           // project the force to this node with projection function
+//           gA = isotropic_Gaussian_projection(nDim, distance, infoObject->epsilon_);
+//           compute_node_force_given_weight(nDim, gA, &ws_pointForce[0], &ws_nodeForce[0]);
+// 	  sourceTerm = (double*)stk::mesh::field_data(*actuator_source, node );
+//           for ( int j=0; j < nDim; ++j ) sourceTerm[j] = ws_nodeForce[j];
+// //        gSum += gA*elemVolume;
+//         break;
 
-      case fast::ActuatorNodeType_END:
-  	break;
+//       case fast::ActuatorNodeType_END:
+//   	break;
 
-      }
+//       }
 
-    }
+//     }
 
     np=np+1;
-  }
+}
 
   if ( FAST.isDebug() ) {
     for(int iTurb=0; iTurb < nTurbinesGlob; iTurb++) {
@@ -1035,7 +1035,6 @@ ActuatorLineFAST::complete_search()
         actuatorLinePointInfo->isoParCoords_ = isoParCoords;
         actuatorLinePointInfo->bestElem_ = elem;
       }
-        actuatorLinePointInfo->elementVec_.push_back(elem);
         // extract elem_node_relations
         stk::mesh::Entity const* elem_node_rels = bulkData.begin_nodes(elem);
         const unsigned num_nodes = bulkData.num_nodes(elem);
@@ -1282,50 +1281,37 @@ ActuatorLineFAST::assemble_source_to_nodes(
 
 // Version of assemble_source_to_nodes without the thrust and torque calculation
 void
-ActuatorLineFAST::assemble_source_to_nodes(
+ActuatorLineFAST::spread_actuator_force_to_node_vec(
   const int &nDim,
-  stk::mesh::Entity elem,
-  const stk::mesh::BulkData & bulkData,
-  const double &elemVolume,
-  const std::vector<double> & elemForce,
-  const double &gLocal,
-  stk::mesh::FieldBase & elemCoords,
+  std::set<stk::mesh::Entity>& nodeVec,
+  const std::vector<double>& actuator_force,
+  const double * actuator_node_coordinates,
+  const stk::mesh::FieldBase & coordinates,
   stk::mesh::FieldBase & actuator_source,
-  stk::mesh::FieldBase & g,
-  stk::mesh::FieldBase & dualNodalVolume,
-  const std::vector<double> & hubPt,
-  const std::vector<double> & hubShftDir
+  const Coordinates & epsilon
 )
 {
-  // extract master element from the bucket in which the element resides
-  const stk::topology &elemTopo = bulkData.bucket(elem).topology();
-  MasterElement *meSCV = sierra::nalu::MasterElementRepo::get_volume_master_element(elemTopo);
-  const int numScvIp = meSCV->numIntPoints_;
+    // Set up the necessary variables to check that forces/projection function are integrating up correctly.
+    std::vector<double> ws_nodeForce(nDim);
 
-  // extract elem_node_relations
-  stk::mesh::Entity const* elem_node_rels = bulkData.begin_nodes(elem);
+    // iterate them and apply source term; gather coords
+    std::set<stk::mesh::Entity>::iterator iNode;
+    for (iNode = nodeVec.begin(); iNode != nodeVec.end(); ++iNode ) {
 
-  // assemble to nodes
-  const int *ipNodeMap = meSCV->ipNodeMap();
-  for ( int ip = 0; ip < numScvIp; ++ip ) {
+      stk::mesh::Entity node = *iNode;
+      const double * node_coords = (double*)stk::mesh::field_data(coordinates, node );
+      // compute distance
+      const double distance = compute_distance(nDim, node_coords, actuator_node_coordinates);
+      // project the force to this node with projection function
+      double gA = isotropic_Gaussian_projection(nDim, distance, epsilon);
+      compute_node_force_given_weight(nDim, gA, &actuator_force[0], &ws_nodeForce[0]);
+      double * sourceTerm = (double*)stk::mesh::field_data(actuator_source, node );
+      for ( int j=0; j < nDim; ++j ) sourceTerm[j] = ws_nodeForce[j];
 
-    // nearest node to ip
-    const int nearestNode = ipNodeMap[ip];
-
-    // extract node and pointer to source term
-    stk::mesh::Entity node = elem_node_rels[nearestNode];
-    double * sourceTerm = (double*)stk::mesh::field_data(actuator_source, node );
-    double * gGlobal = (double*)stk::mesh::field_data(g, node);
-
-    // nodal weight based on volume weight
-    const double nodalWeight = ws_scv_volume_[ip]/elemVolume;
-    *gGlobal += gLocal;
-    for ( int j=0; j < nDim; ++j ) {
-      sourceTerm[j] += nodalWeight * elemForce[j];
     }
 
-  }
 }
+
 
 
 } // namespace nalu

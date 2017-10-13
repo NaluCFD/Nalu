@@ -62,8 +62,7 @@ class ActuatorLineFASTPointInfo {
   fast::ActuatorNodeType nodeType_; ///< HUB, BLADE or TOWER - Defined by an enum.
 
   std::vector<double> isoParCoords_; ///< The isoparametric coordinates of the bestElem_.
-  std::vector<stk::mesh::Entity> elementVec_; ///< A list of elements that lie within the searchRadius_ around the actuator point.
-  std::set<stk::mesh::Entity> nodeVec_; ///< A list of nodes in elementVec_
+  std::set<stk::mesh::Entity> nodeVec_; ///< A list of nodes that are part of elements that lie within the searchRadius_ around the actuator point.
 };
 
 /** The ActuatorLineFAST class couples Nalu with the third party library OpenFAST for actuator line simulations of wind turbines
@@ -248,36 +247,15 @@ class ActuatorLineFAST: public Actuator {
     const double &dis,
     const Coordinates &epsilon);
 
-  // finally, perform the assembly
-  void assemble_source_to_nodes(
+  // Spread the actuator force to a node vector
+  void spread_actuator_force_to_node_vec(
     const int &nDim,
-    stk::mesh::Entity elem,
-    const stk::mesh::BulkData & bulkData,
-    const double &elemVolume,
-    const std::vector<double> & elemForce,
-    const double &gLocal,
-    stk::mesh::FieldBase & elemCoords,
-    stk::mesh::FieldBase &actuator_source,
-    stk::mesh::FieldBase &g,
-    stk::mesh::FieldBase &dualNodalVolume,
-    const std::vector<double> & hubPt,
-    const std::vector<double> & hubShftDir,
-    std::vector<double> & thr,
-    std::vector<double> & tor);
-
-  void assemble_source_to_nodes(
-    const int &nDim,
-    stk::mesh::Entity elem,
-    const stk::mesh::BulkData & bulkData,
-    const double &elemVolume,
-    const std::vector<double> & elemForce,
-    const double &gLocal,
-    stk::mesh::FieldBase & elemCoords,
-    stk::mesh::FieldBase &actuator_source,
-    stk::mesh::FieldBase &g,
-    stk::mesh::FieldBase &dualNodalVolume,
-    const std::vector<double> & hubPt,
-    const std::vector<double> & hubShftDir);
+    std::set<stk::mesh::Entity>& nodeVec,
+    const std::vector<double>& actuator_force,
+    const double * actuator_node_coordinates,
+    const stk::mesh::FieldBase & coordinates,
+    stk::mesh::FieldBase & actuator_source,
+    const Coordinates & epsilon);
 
   Realm &realm_; ///< hold the realm
 
