@@ -216,8 +216,14 @@ NonConformalManager::compute_precise_ghosting_lists(
 void
 NonConformalManager::initialize()
 {
-
+ 
   const double timeA = NaluEnv::self().nalu_time();
+
+  // memory diagnostic
+  if ( realm_.get_activate_memory_diagnostic() ) {
+    NaluEnv::self().naluOutputP0() << "NaluMemory::NonConformalManager::initialize() Begin: " << std::endl;
+    realm_.provide_memory_summary();
+  }
 
   elemsToGhost_.clear();
 
@@ -296,6 +302,12 @@ NonConformalManager::initialize()
                                      << g_problemNodes <<  " ...ABORTING..." << std::endl;
       throw std::runtime_error("NonConformalManager::Error() Please remesh taking care to avoid coincident nodes");
     }
+  }
+
+  // memory diagnostic
+  if ( realm_.get_activate_memory_diagnostic() ) {
+    NaluEnv::self().naluOutputP0() << "NaluMemory::NonConformalManager::initialize() End: " << std::endl;
+    realm_.provide_memory_summary();
   }
   
   // end time
