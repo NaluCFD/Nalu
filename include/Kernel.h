@@ -55,6 +55,22 @@ void get_scs_shape_fn_data(LambdaFunction lambdaFunction, ViewType& shape_fn_vie
   }
 }
 
+template<typename AlgTraits, typename LambdaFunction, typename ViewType>
+void get_fem_shape_fn_data(LambdaFunction lambdaFunction, ViewType& shape_fn_view)
+{
+  static_assert(ViewType::Rank == 2u, "2D View");
+  ThrowRequireMsg(shape_fn_view.extent_int(0) == AlgTraits::numGp_, "Inconsistent number of Gauss points");
+  ThrowRequireMsg(shape_fn_view.extent_int(1) == AlgTraits::nodesPerElement_, "Inconsistent number of of nodes");
+
+  double tmp_data[AlgTraits::numGp_*AlgTraits::nodesPerElement_];
+  lambdaFunction(tmp_data);
+
+  DoubleType* data = &shape_fn_view(0,0);
+  for(int i=0; i<AlgTraits::numGp_*AlgTraits::nodesPerElement_; ++i) {
+    data[i] = tmp_data[i];
+  }
+}
+
 /** Base class for computational kernels in Nalu
  *
  * A kernel represents an atomic unit of computation applied over a given set of
