@@ -32,7 +32,8 @@ public:
   MomentumActuatorSrcElemKernel(
     const stk::mesh::BulkData&,
     const SolutionOptions&,
-    ElemDataRequests&);
+    ElemDataRequests&,
+    bool lumped);
 
   virtual ~MomentumActuatorSrcElemKernel();
 
@@ -48,6 +49,7 @@ private:
   MomentumActuatorSrcElemKernel() = delete;
 
   VectorFieldType *actuator_source_{nullptr};
+  VectorFieldType *actuator_source_lhs_{nullptr};
   VectorFieldType *coordinates_{nullptr};
 
   const int* ipNodeMap_;

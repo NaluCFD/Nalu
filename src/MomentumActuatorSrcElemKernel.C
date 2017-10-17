@@ -27,7 +27,8 @@ template<typename AlgTraits>
 MomentumActuatorSrcElemKernel<AlgTraits>::MomentumActuatorSrcElemKernel(
   const stk::mesh::BulkData& bulkData,
   const SolutionOptions& solnOpts,
-  ElemDataRequests& dataPreReqs)
+  ElemDataRequests& dataPreReqs,
+  bool lumped)
   : Kernel(),
     ipNodeMap_(sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_)->ipNodeMap())
 {
@@ -37,7 +38,13 @@ MomentumActuatorSrcElemKernel<AlgTraits>::MomentumActuatorSrcElemKernel(
   coordinates_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
 
   MasterElement* meSCV = sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_);
-  get_scv_shape_fn_data<AlgTraits>([&](double* ptr){meSCV->shape_fcn(ptr);}, v_shape_function_);
+
+  if ( lumped ) {
+    get_scv_shape_fn_data<AlgTraits>([&](double* ptr){meSCV->shifted_shape_fcn(ptr);}, v_shape_function_);
+  }
+  else {
+    get_scv_shape_fn_data<AlgTraits>([&](double* ptr){meSCV->shape_fcn(ptr);}, v_shape_function_);
+  }
 
   // add master elements
   dataPreReqs.add_cvfem_volume_me(meSCV);
@@ -45,6 +52,7 @@ MomentumActuatorSrcElemKernel<AlgTraits>::MomentumActuatorSrcElemKernel(
   // fields and data
   dataPreReqs.add_coordinates_field(*coordinates_, AlgTraits::nDim_, CURRENT_COORDINATES);
   dataPreReqs.add_gathered_nodal_field(*actuator_source_, AlgTraits::nDim_);
+  dataPreReqs.add_gathered_nodal_field(*actuator_source_lhs_, AlgTraits::nDim_);
   dataPreReqs.add_master_element_call(SCV_VOLUME, CURRENT_COORDINATES);
 }
 
@@ -55,32 +63,39 @@ MomentumActuatorSrcElemKernel<AlgTraits>::~MomentumActuatorSrcElemKernel()
 template<typename AlgTraits>
 void
 MomentumActuatorSrcElemKernel<AlgTraits>::execute(
-  SharedMemView<DoubleType**>& /* lhs */,
+  SharedMemView<DoubleType**>& lhs,
   SharedMemView<DoubleType*>& rhs,
   ScratchViews<DoubleType>& scratchViews)
 {
   SharedMemView<DoubleType**>& v_actuator_source = scratchViews.get_scratch_view_2D(*actuator_source_);
+  SharedMemView<DoubleType**>& v_actuator_source_lhs = scratchViews.get_scratch_view_2D(*actuator_source_lhs_);
   SharedMemView<DoubleType*>& v_scv_volume = scratchViews.get_me_views(CURRENT_COORDINATES).scv_volume;
 
   for (int ip=0; ip < AlgTraits::numScvIp_; ++ip) {
     const int nearestNode = ipNodeMap_[ip];
     DoubleType actuatorSourceIp[AlgTraits::nDim_];
-    for ( int i = 0; i < AlgTraits::nDim_; ++i ) 
-        actuatorSourceIp[i] = 0.0;
+    DoubleType actuatorSourceLHSIp[AlgTraits::nDim_];
+    for ( int i = 0; i < AlgTraits::nDim_; ++i ) {
+      actuatorSourceIp[i] = 0.0;
+      actuatorSourceLHSIp[i] = 0.0;
+    }
 
     for (int ic=0; ic < AlgTraits::nodesPerElement_; ++ic) {
       const DoubleType r = v_shape_function_(ip, ic);
       for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
           const DoubleType uj = v_actuator_source(ic,j);
           actuatorSourceIp[j] += r * uj;
+          const DoubleType ujLHS = v_actuator_source_lhs(ic,j);
+          actuatorSourceLHSIp[j] += r * ujLHS;
       }
     }
 
-    // Compute RHS
+    // Compute LHS and RHS contributions
     const DoubleType scV = v_scv_volume(ip);
     const int nnNdim = nearestNode * AlgTraits::nDim_;
     for (int j=0; j < AlgTraits::nDim_; ++j) {
       rhs(nnNdim + j) += actuatorSourceIp[j] * scV;
+      lhs(nnNdim + j, nnNdim + j) += actuatorSourceLHSIp[j] * scV;
     }
 
     // No LHS contributions
