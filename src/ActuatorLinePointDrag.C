@@ -183,7 +183,7 @@ ActuatorLinePointDrag::compute_point_drag(
   const double &pointGasViscosity,
   const double &pointGasDensity,
   double *pointForce,
-  double &pointForceLHS)
+  double *pointForceLHS)
 {
   // compute magnitude of velocity difference between point and gas
   double vRelMag = 0.0;
@@ -198,9 +198,11 @@ ActuatorLinePointDrag::compute_point_drag(
   double coef = 6.0*pi_*pointGasViscosity*pointRadius;
 
   // this is from the fluids perspective, not the psuedo particle
-  pointForceLHS = coef*fD;
-  for ( int j = 0; j < nDim; ++j )
+
+  for ( int j = 0; j < nDim; ++j ) {
     pointForce[j] = coef*fD*(pointVelocity[j] - pointGasVelocity[j]);
+    pointForceLHS[j] = coef*fD;
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -411,8 +413,8 @@ ActuatorLinePointDrag::execute()
   VectorFieldType *velocity = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
   VectorFieldType *actuator_source
     = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "actuator_source");
-  ScalarFieldType *actuator_source_lhs
-    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "actuator_source_lhs");
+  VectorFieldType *actuator_source_lhs
+    = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "actuator_source_lhs");
   ScalarFieldType *density
     = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
   // deal with proper viscosity
@@ -427,7 +429,7 @@ ActuatorLinePointDrag::execute()
   std::vector<double> ws_elemDrag(nDim);
   double ws_pointGasDensity;
   double ws_pointGasViscosity;
-  double ws_pointForceLHS;
+  std::vector<double> ws_pointForceLHS(nDim);
 
   // zero out source term; do this manually since there are custom ghosted entities
   stk::mesh::Selector s_nodes = stk::mesh::selectField(*actuator_source);
@@ -440,10 +442,10 @@ ActuatorLinePointDrag::execute()
     double * actSrc = stk::mesh::field_data(*actuator_source, b);
     double * actSrcLhs = stk::mesh::field_data(*actuator_source_lhs, b);
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
-      actSrcLhs[k] = 0.0;
       const int offSet = k*nDim;
       for ( int j = 0; j < nDim; ++j ) {
         actSrc[offSet+j] = 0.0;
+        actSrcLhs[offSet+j] = 0.0;
       }
     }
   }
@@ -507,10 +509,10 @@ ActuatorLinePointDrag::execute()
 
     // point drag calculation
     compute_point_drag(nDim, infoObject->radius_, &infoObject->velocity_[0], &ws_pointGasVelocity[0], ws_pointGasViscosity,
-                       ws_pointGasDensity, &ws_pointForce[0], ws_pointForceLHS);
+                       ws_pointGasDensity, &ws_pointForce[0], &ws_pointForceLHS[0]);
 
     // assemble nodal lhs quantity for best elem
-    assemble_lhs_to_best_elem_nodes(nDim, bestElem, bulkData, bestElemVolume, ws_pointForceLHS,
+    assemble_lhs_to_best_elem_nodes(nDim, bestElem, bulkData, bestElemVolume, &ws_pointForceLHS[0],
                               *actuator_source_lhs);
 
     // get the vector of elements
@@ -995,7 +997,7 @@ ActuatorLinePointDrag::assemble_lhs_to_best_elem_nodes(
   stk::mesh::Entity elem,
   const stk::mesh::BulkData & bulkData,
   const double &elemVolume,
-  const double &dragLHS,
+  const double *dragLHS,
   stk::mesh::FieldBase &actuator_source_lhs)
 {
   // extract master element from the bucket in which the element resides
@@ -1019,7 +1021,8 @@ ActuatorLinePointDrag::assemble_lhs_to_best_elem_nodes(
 
     // nodal weight based on volume weight
     const double nodalWeight = ws_scv_volume_[ip]/elemVolume;
-    *sourceTermLHS += nodalWeight*dragLHS;
+    for(int j = 0; j < nDim; j++)
+        sourceTermLHS[j] += nodalWeight*dragLHS[j];
   }
 }
 
@@ -1050,8 +1053,6 @@ ActuatorLinePointDrag::spread_actuator_force_to_node_vec(
       for ( int j=0; j < nDim; ++j ) sourceTerm[j] = ws_nodeForce[j];
 
     }
-
-
 }
 
 } // namespace nalu

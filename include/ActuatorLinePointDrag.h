@@ -143,7 +143,7 @@ public:
     const double &pointGasViscosity,
     const double &pointGasDensity,
     double *pointDrag,
-    double &pointDragLHS);
+    double *pointDragLHS);
 
   // centroid of the element
   void compute_elem_centroid(
@@ -171,7 +171,7 @@ public:
     stk::mesh::Entity elem,
     const stk::mesh::BulkData & bulkData,
     const double &elemVolume,
-    const double &dragLHS,
+    const double *dragLHS,
     stk::mesh::FieldBase &actuator_source_lhs);
 
   // Spread the actuator force to a node vector
