@@ -462,6 +462,8 @@ void tri_gradient_operator(
   const int nint = deriv.dimension(0);
   const int npe  = deriv.dimension(1);
  
+  std::vector<DoubleType> det_j(nint); 
+
   DoubleType dx_ds1, dx_ds2;
   DoubleType dy_ds1, dy_ds2;
 
