@@ -1186,7 +1186,11 @@ MomentumEquationSystem::register_interior_algorithm(
 
       build_topo_kernel_if_requested<MomentumActuatorSrcElemKernel>
           (partTopo, *this, activeKernels, "actuator",
-           realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs);
+           realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs, false);
+
+      build_topo_kernel_if_requested<MomentumActuatorSrcElemKernel>
+        (partTopo, *this, activeKernels, "lumped_actuator",
+         realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs, true);
 
       build_topo_kernel_if_requested<MomentumBuoyancySrcElemKernel>
         (partTopo, *this, activeKernels, "buoyancy",
