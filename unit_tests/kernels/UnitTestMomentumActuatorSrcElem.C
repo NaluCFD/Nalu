@@ -27,7 +27,8 @@ TEST_F(ActuatorSourceKernelHex8Mesh, actuator_source)
   // Initialize the kernel
   std::unique_ptr<sierra::nalu::Kernel> kernel(
     new sierra::nalu::MomentumActuatorSrcElemKernel<sierra::nalu::AlgTraitsHex8>(
-      bulk_, solnOpts_, helperObjs.assembleElemSolverAlg->dataNeededByKernels_));
+        bulk_, solnOpts_, helperObjs.assembleElemSolverAlg->dataNeededByKernels_,
+        false));
 
   // Add to kernels to be tested
   helperObjs.assembleElemSolverAlg->activeKernels_.push_back(kernel.get());
@@ -39,6 +40,13 @@ TEST_F(ActuatorSourceKernelHex8Mesh, actuator_source)
   EXPECT_EQ(helperObjs.linsys->rhs_.dimension(0), 24u);
 
   // Exact solution
+  std::vector<double> lhsExact(24,0.0);
+  for (size_t i=0; i < 8; i += 1) {
+    for (size_t j=0; j < 3; j+= 1) {
+      lhsExact[i*3+j] = 0.125 * 0.1 * (j+1) ;
+    }
+  }
+
   std::vector<double> rhsExact(24,0.0);
   for (size_t i=0; i < 8; i += 1) {
     for (size_t j=0; j < 3; j+= 1) {
@@ -46,6 +54,7 @@ TEST_F(ActuatorSourceKernelHex8Mesh, actuator_source)
     }
   }
 
+  unit_test_kernel_utils::expect_all_near(helperObjs.linsys->lhs_,lhsExact.data());
   unit_test_kernel_utils::expect_all_near(helperObjs.linsys->rhs_,rhsExact.data());
-}
 
+}

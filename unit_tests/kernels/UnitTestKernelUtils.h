@@ -390,17 +390,17 @@ class MixtureFractionKernelHex8Mesh : public TestKernelHex8Mesh
 public:
   MixtureFractionKernelHex8Mesh()
     : TestKernelHex8Mesh(),
-    mixFraction_(&meta_.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, 
+    mixFraction_(&meta_.declare_field<ScalarFieldType>(stk::topology::NODE_RANK,
                                                        "mixture_fraction")),
-    velocity_(&meta_.declare_field<VectorFieldType>(stk::topology::NODE_RANK, 
+    velocity_(&meta_.declare_field<VectorFieldType>(stk::topology::NODE_RANK,
                                                     "velocity")),
-    density_(&meta_.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, 
+    density_(&meta_.declare_field<ScalarFieldType>(stk::topology::NODE_RANK,
                                                    "density")),
-    viscosity_(&meta_.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, 
+    viscosity_(&meta_.declare_field<ScalarFieldType>(stk::topology::NODE_RANK,
                                                      "viscosity")),
-    effectiveViscosity_(&meta_.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, 
+    effectiveViscosity_(&meta_.declare_field<ScalarFieldType>(stk::topology::NODE_RANK,
                                                               "effective_viscosity")),
-    massFlowRate_(&meta_.declare_field<GenericFieldType>(stk::topology::ELEM_RANK, 
+    massFlowRate_(&meta_.declare_field<GenericFieldType>(stk::topology::ELEM_RANK,
                                                          "mass_flow_rate_scs")),
 
     znot_(1.0),
@@ -457,19 +457,22 @@ public:
  *  This test fixture performs the following actions:
  *    - Create a HEX8 mesh with one element
  *    - Declare all of the set of fields required (actuator_source)
- *    - Initialize the field with steady 3-D solution; 
+ *    - Initialize the field with steady 3-D solution;
  */
 class ActuatorSourceKernelHex8Mesh : public TestKernelHex8Mesh
 {
 public:
   ActuatorSourceKernelHex8Mesh()
     : TestKernelHex8Mesh(),
-    actuator_source_(&meta_.declare_field<VectorFieldType>(stk::topology::NODE_RANK, 
-                                                    "actuator_source"))
+    actuator_source_(&meta_.declare_field<VectorFieldType>(stk::topology::NODE_RANK,
+                                                          "actuator_source")),
+    actuator_source_lhs_(&meta_.declare_field<VectorFieldType>(stk::topology::NODE_RANK,
+                                                           "actuator_source_lhs"))
   {
-    stk::mesh::put_field(*actuator_source_, meta_.universal_part(), spatialDim_);
+      stk::mesh::put_field(*actuator_source_, meta_.universal_part(), spatialDim_);
+      stk::mesh::put_field(*actuator_source_lhs_, meta_.universal_part(), spatialDim_);
   }
-    
+
   virtual ~ActuatorSourceKernelHex8Mesh() {}
 
   virtual void fill_mesh_and_init_fields(bool doPerturb = false)
@@ -478,11 +481,15 @@ public:
 
     std::vector<double> act_source(spatialDim_,0.0);
     for(size_t j=0;j<spatialDim_;j++) act_source[j] = j+1;
-        
     stk::mesh::field_fill_component(act_source.data(), *actuator_source_);
+
+    std::vector<double> act_source_lhs(spatialDim_,0.0);
+    for(size_t j=0;j<spatialDim_;j++) act_source_lhs[j] = 0.1*(j+1);
+    stk::mesh::field_fill_component(act_source_lhs.data(), *actuator_source_lhs_);
   }
 
   VectorFieldType* actuator_source_{nullptr};
+  VectorFieldType* actuator_source_lhs_{nullptr};
 
 };
 
