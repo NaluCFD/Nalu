@@ -35,6 +35,8 @@ MomentumActuatorSrcElemKernel<AlgTraits>::MomentumActuatorSrcElemKernel(
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
   actuator_source_
       = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "actuator_source");
+  actuator_source_lhs_
+      = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "actuator_source_lhs");
   coordinates_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
 
   MasterElement* meSCV = sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_);
@@ -72,12 +74,12 @@ MomentumActuatorSrcElemKernel<AlgTraits>::execute(
   SharedMemView<DoubleType*>& v_scv_volume = scratchViews.get_me_views(CURRENT_COORDINATES).scv_volume;
 
   for (int ip=0; ip < AlgTraits::numScvIp_; ++ip) {
+
     const int nearestNode = ipNodeMap_[ip];
+
     DoubleType actuatorSourceIp[AlgTraits::nDim_];
-    DoubleType actuatorSourceLHSIp[AlgTraits::nDim_];
     for ( int i = 0; i < AlgTraits::nDim_; ++i ) {
       actuatorSourceIp[i] = 0.0;
-      actuatorSourceLHSIp[i] = 0.0;
     }
 
     for (int ic=0; ic < AlgTraits::nodesPerElement_; ++ic) {
@@ -85,20 +87,19 @@ MomentumActuatorSrcElemKernel<AlgTraits>::execute(
       for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
           const DoubleType uj = v_actuator_source(ic,j);
           actuatorSourceIp[j] += r * uj;
-          const DoubleType ujLHS = v_actuator_source_lhs(ic,j);
-          actuatorSourceLHSIp[j] += r * ujLHS;
       }
     }
 
     // Compute LHS and RHS contributions
+    // LHS contribution is always lumped
     const DoubleType scV = v_scv_volume(ip);
     const int nnNdim = nearestNode * AlgTraits::nDim_;
     for (int j=0; j < AlgTraits::nDim_; ++j) {
       rhs(nnNdim + j) += actuatorSourceIp[j] * scV;
-      lhs(nnNdim + j, nnNdim + j) += actuatorSourceLHSIp[j] * scV;
+      lhs(nnNdim + j, nnNdim + j) += v_actuator_source_lhs(nearestNode, j) * scV;
     }
 
-    // No LHS contributions
+
   }
 }
 
