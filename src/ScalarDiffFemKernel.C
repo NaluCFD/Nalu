@@ -47,9 +47,9 @@ ScalarDiffFemKernel<AlgTraits>::ScalarDiffFemKernel(
 
   // master element, shape function is shifted consistently
   if ( shiftedGradOp_ )
-    get_scs_shape_fn_data<AlgTraits>([&](double* ptr){meFEM_->shifted_shape_fcn(ptr);}, v_shape_function_);
+    get_fem_shape_fn_data<AlgTraits>([&](double* ptr){meFEM_->shifted_shape_fcn(ptr);}, v_shape_function_);
   else
-    get_scs_shape_fn_data<AlgTraits>([&](double* ptr){meFEM_->shape_fcn(ptr);}, v_shape_function_);
+    get_fem_shape_fn_data<AlgTraits>([&](double* ptr){meFEM_->shape_fcn(ptr);}, v_shape_function_);
 
   dataPreReqs.add_fem_volume_me(meFEM_);
 
