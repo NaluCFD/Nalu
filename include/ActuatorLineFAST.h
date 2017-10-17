@@ -255,8 +255,23 @@ class ActuatorLineFAST: public Actuator {
     const double * actuator_node_coordinates,
     const stk::mesh::FieldBase & coordinates,
     stk::mesh::FieldBase & actuator_source,
-    const Coordinates & epsilon);
+    const stk::mesh::FieldBase & dual_nodal_volume,
+    const Coordinates & epsilon,
+    const std::vector<double> & hubPt,
+    const std::vector<double> & hubShftDir,
+    std::vector<double> & thr,
+    std::vector<double> & tor);
 
+  void add_thrust_torque_contrib(
+    const int &nDim,
+    const double * nodeCoords,
+    const double dVol,
+    const std::vector<double> & nodeForce,
+    const std::vector<double> & hubPt,
+    const std::vector<double> & hubShftDir,
+    std::vector<double> & thr,
+    std::vector<double> & tor);
+  
   Realm &realm_; ///< hold the realm
 
   stk::search::SearchMethod searchMethod_; ///< type of stk search
