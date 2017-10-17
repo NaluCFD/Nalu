@@ -462,8 +462,6 @@ void tri_gradient_operator(
   const int nint = deriv.dimension(0);
   const int npe  = deriv.dimension(1);
  
-  std::vector<DoubleType> det_j(nint); 
-
   DoubleType dx_ds1, dx_ds2;
   DoubleType dy_ds1, dy_ds2;
 
@@ -484,13 +482,13 @@ void tri_gradient_operator(
     }
      
 //calculate the determinate of the jacobian at the integration station -
-    det_j[ki] = dx_ds1*dy_ds2 - dy_ds1*dx_ds2;
+    const DoubleType det_j = dx_ds1*dy_ds2 - dy_ds1*dx_ds2;
      
 // protect against a negative or small value for the determinate of the 
 // jacobian. The value of real_min (set in precision.par) represents 
 // the smallest Real value (based upon the precision set for this 
 // compilation) which the machine can represent - 
-    const DoubleType denom = stk::math::if_then_else(det_j[ki] < 1.e6*realmin, 1.0, 1.0/det_j[ki]);
+    const DoubleType denom = stk::math::if_then_else(det_j < 1.e6*realmin, 1.0, 1.0/det_j);
      
 // compute the gradient operators at the integration station -
     const DoubleType ds1_dx =  denom*dy_ds2;
