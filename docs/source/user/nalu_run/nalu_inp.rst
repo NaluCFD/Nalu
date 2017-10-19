@@ -928,3 +928,271 @@ Time-step Control Options
 .. inpfile:: dtctrl.time_step_change_factor
 
    Maximum allowable increase in ``dt`` over a given timestep.
+
+Turbulence averaging
+````````````````````
+
+.. inpfile:: turbulence_averaging
+
+   ``turbulence_averaging`` subsection defines the turbulence
+   post-processing quantities and averaging procedures. A sample
+   section is shown below
+
+   .. code-block:: yaml
+
+      turbulence_averaging:
+        time_filter_interval: 100000.0
+
+        specifications:
+
+          - name: turbulence_postprocessing
+	    target_name: interior
+            reynolds_averaged_variables:
+              - velocity
+
+            favre_averaged_variables:
+              - velocity
+              - resolved_turbulent_ke
+
+            compute_tke: yes
+            compute_reynolds_stress: yes
+            compute_q_criterion: yes
+            compute_vorticity: yes
+            compute_lambda_ci: yes
+
+.. note::
+
+   The variable in the :inpfile:`turbulence_averaging` subsection are
+   prefixed with ``turbulence_averaging.name`` but only the variable
+   name after the period should appear in the input file.
+
+.. inpfile:: turbulence_averaging.time_filter_interval
+
+   Number indicating the time filter size over which calculate the
+   running average. The current implementation of the running average
+   in Nalu uses a "sawtooth" average. The running average is set to
+   zero each time the time filter width is reached and a new average
+   is calculated for the next time interval.
+
+.. inpfile:: turbulence_averaging.specifications
+
+   A list of turbulence postprocessing properties with the following parameters
+
+.. inpfile:: turbulence_averaging.specifications.name
+
+   The name used for lookup and logging.
+
+.. inpfile:: turbulence_averaging.specifications.target_name
+
+   A list of element blocks (parts) where the turbulence averaging is applied.
+
+.. inpfile:: turbulence_averaging.specifications.reynolds_average_variables
+
+   A list of field names to be averaged.
+
+.. inpfile:: turbulence_averaging.specifications.favre_average_variables
+
+   A list of field names to be Favre averaged.
+
+.. inpfile:: turbulence_averaging.specifications.compute_tke
+
+   A boolean flag indicating whether the turbulent kinetic energy is
+   computed. The default value is ``no``.
+
+.. inpfile:: turbulence_averaging.specifications.compute_reynolds_stress
+
+   A boolean flag indicating whether the reynolds stress is
+   computed. The default value is ``no``.
+
+.. inpfile:: turbulence_averaging.specifications.compute_favre_stress
+
+   A boolean flag indicating whether the Favre stress is computed. The
+   default value is ``no``.
+
+.. inpfile:: turbulence_averaging.specifications.compute_favre_tke
+
+   A boolean flag indicating whether the Favre stress is computed. The
+   default value is ``no``.
+
+.. inpfile:: turbulence_averaging.specifications.compute_q_criterion
+
+   A boolean flag indicating whether the q-criterion is computed. The
+   default value is ``no``.
+
+.. inpfile:: turbulence_averaging.specifications.compute_vorticity
+
+   A boolean flag indicating whether the vorticity is computed. The
+   default value is ``no``.
+
+.. inpfile:: turbulence_averaging.specifications.compute_lambda_ci
+
+   A boolean flag indicating whether the Lambda2 vorticity criterion
+   is computed. The default value is ``no``.
+
+Data probes
+```````````
+
+.. inpfile:: data_probes
+
+   ``data_probes`` subsection defines the data probes. A sample
+   section is shown below
+
+   .. code-block:: yaml
+
+        data_probes:
+
+          output_frequency: 100
+
+	  search_method: stk_octree
+	  search_tolerance: 1.0e-3
+	  search_expansion_factor: 2.0
+
+	  specifications:
+            - name: probe_bottomwall
+	      from_target_part: bottomwall
+
+	      line_of_site_specifications:
+	        - name: probe_bottomwall
+	          number_of_points: 100
+		  tip_coordinates: [-6.39, 0.0, 0.0]
+		  tail_coordinates: [4.0, 0.0, 0.0]
+
+	      output_variables:
+	        - field_name: tau_wall
+		  field_size: 1
+		- field_name: pressure
+
+	  specifications:
+            - name: probe_profile
+	      from_target_part: interior
+
+	      line_of_site_specifications:
+	        - name: probe_profile
+	          number_of_points: 100
+		  tip_coordinates: [0, 0.0, 0.0]
+		  tail_coordinates: [0.0, 0.0, 1.0]
+
+	      output_variables:
+	        - field_name: velocity
+		  field_size: 3
+		- field_name: reynolds_stress
+		  field_size: 6
+
+.. note::
+
+   The variable in the :inpfile:`data_probes` subsection are prefixed
+   with ``data_probes.name`` but only the variable name after the
+   period should appear in the input file.
+
+.. inpfile:: data_probes.output_frequency
+
+   Integer specifying the frequency of output.
+
+.. inpfile:: data_probes.search_method
+
+   String specifying the search method for finding nodes to transfer
+   field quantities to the data probe lineout.
+
+.. inpfile:: data_probes.search_tolerance
+
+   Number specifying the search tolerance for locating nodes.
+
+.. inpfile:: data_probes.search_expansion_factor
+
+   Number specifying the factor to use when expanding the node search.
+
+.. inpfile:: data_probes.specifications
+
+   A list of data probe properties with the following parameters
+
+.. inpfile:: data_probes.specifications.name
+
+   The name used for lookup and logging.
+
+.. inpfile:: data_probes.specifications.from_target_part
+
+   A list of element blocks (parts) where to do the data probing.
+
+.. inpfile:: data_probes.specifications.line_of_site_specifications
+
+   A list specifications defining the lineout
+
+   ================= =============================================================
+   Parameter         Description
+   ================= =============================================================
+   name              File name (without extension) for the data probe
+   number_of_points  Number of points along the lineout
+   tip_coordinates   List containing the coordinates for the start of the lineout
+   tail_coordinates  List containing the coordinates for the end of the lineout
+   ================= =============================================================
+
+
+.. inpfile:: data_probes.specifications.output_variables
+
+   A list of field names (and field size) to be probed.
+
+
+Post-processing
+```````````````
+
+.. inpfile:: post_processing
+
+   ``post_processing`` subsection defines the different
+   post-processign options. A sample section is shown below
+
+   .. code-block:: yaml
+
+        post_processing:
+
+	- type: surface
+	  physics: surface_force_and_moment
+	  output_file_name: results/wallHump.dat
+	  frequency: 100
+	  parameters: [0,0]
+	  target_name: bottomwall
+
+.. note::
+
+   The variable in the :inpfile:`post_processing` subsection are prefixed with
+   ``post_processing.name`` but only the variable name after the period should
+   appear in the input file.
+
+.. inpfile:: post_processing.type
+
+   Type of post-processing. Possible values are:
+
+   ======== ======================================
+   Value    Description
+   ======== ======================================
+   surface  Post-processing of surface quantities
+   ======== ======================================
+
+.. inpfile:: post_processing.physics
+
+   Physics to be post-processing. Possible values are:
+
+   ======================================= ================================================================
+   Value                                   Description
+   ======================================= ================================================================
+   surface_force_and_moment                Calculate surface forces and moments
+   surface_force_and_moment_wall_function  Calculate surface forces and moments when using a wall function
+   ======================================= ================================================================
+
+.. inpfile:: post_processing.output_file_name
+
+   String specifying the output file name.
+
+.. inpfile:: post_processing.frequency
+
+   Integer specifying the frequency of output.
+
+.. inpfile:: post_processing.parameters
+
+   Parameters for the physics function. For the
+   ``surface_force_and_moment`` type functions, this is a
+   list specifying the centroid coordinates used in the moment
+   calculation.
+
+.. inpfile:: post_processing.target_name
+
+   A list of element blocks (parts) where to do the post-processing
