@@ -79,6 +79,10 @@ class LagrangeBasis;
 class PromotedElementIO;
 struct ElementDescription;
 
+/** Representation of a computational domain and physics equations solved on
+ * this domain.
+ *
+ */
 class Realm {
  public:
 
