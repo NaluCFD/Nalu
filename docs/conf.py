@@ -216,7 +216,9 @@ texinfo_documents = [
 # Breathe options
 breathe_projects = {
     'nalu' : os.path.join(sourcedir if readTheDocs else builddir,
-                          'doxygen', 'xml')
+                          'doxygen', 'xml'),
+    'example_cpp' : os.path.join(sourcedir,
+                                 'source', 'developer', 'dox_example', 'xml')
 }
 
 # Assign nalu to be the default project

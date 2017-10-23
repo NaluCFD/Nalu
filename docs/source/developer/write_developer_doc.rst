@@ -1,16 +1,29 @@
 Writing Developer Documentation
 ===============================
 
-Developer documentation should be written using Doxygen annotations 
-directly in the source code.  This allows the documentation to 
-live with the code essentially as comments that Doxygen is able to extract
-automatically into a more human readable form. The manual for Doxygen exists 
-`here <http://www.stack.nl/~dimitri/doxygen/manual/index.html>`__.
+Developer documentation should be written using Doxygen annotations directly in
+the source code. This allows the documentation to live with the code essentially
+as comments that Doxygen is able to extract automatically into a more human
+readable form. Doxygen requires special syntax markers to indicate comments that
+should be processed as inline documentation vs. generic comments in the source
+code. The `Doxygen manual
+<http://www.stack.nl/~dimitri/doxygen/manual/index.html>`_ provides detailed
+information on the various markers available to tailor the formatting of
+auto-generated documentation. It is recommended that users document the classes
+and methods in the header file. A sample header file with specially formatted
+comments is shown below. You can :download:`download <dox_example/example.h>` a
+copy of the file.
 
-Doxygen has a huge amount of functionality and can get quite verbose 
-in the source code if you are not careful. You can also refer to 
-the :nalu:`example.h` to see some examples of 
-how you can write Doxygen annotations in the code. Also note the link 
-to :nalu:`example.h` is a functionality provided by Doxylink in which 
-you can refer to the code directly from this Sphinx-generated 
-documentation.
+
+.. literalinclude:: dox_example/example.h
+   :language: c++
+   :caption: Sample C++ header file showing inline documentation using specially formatted comments.
+
+Once processed by Doxygen and embedded in Sphinx, the resulting documentation of
+the class looks as shown below:
+
+.. doxygenclass:: ExampleClass
+   :project: example_cpp
+   :members:
+   :private-members:
+   :protected-members:
