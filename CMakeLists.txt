@@ -1,17 +1,14 @@
-#	This is the top level CMakeLists.txt file
-#	It should be located within master/nalu
-#	But not in the BUILD folder itself
-#
-###########################################################################################################
 
 cmake_minimum_required (VERSION 2.8.11)
 
-###########################################################################################################
-#
-#  THESE PATHS MAY NEED TO BE CHANGED DEPENDING ON WHERE THEY ARE STORED!!!
-#
+option(ENABLE_TESTS "Enable regression testing." OFF)
+option(ENABLE_DOCUMENTATION "Build documentation." OFF)
+option(ENABLE_SPHINX_API_DOCS "Link Doxygen API docs to Sphinx" OFF)
 option(ENABLE_OPENFAST
        "Use OPENFAST tpl to get actuator line positions and forces" OFF)
+option(ENABLE_PARAVIEW_CATALYST
+      "Enable ParaView Catalyst. Requires external installation of Trilinos Catalyst IOSS adapter."
+       OFF)
 
 SET(CMAKE_FIND_LIBRARY_PREFIXES lib)
 SET(CMAKE_FIND_LIBRARY_SUFFIXES a)
@@ -29,7 +26,6 @@ if (ENABLE_OPENFAST)
    MESSAGE("   OPENFAST Libraries =  ${OpenFAST_LIBRARIES}")
    include_directories(${OpenFAST_INCLUDE_DIRS})
    add_definitions("-DNALU_USES_OPENFAST")
-
 endif (ENABLE_OPENFAST)
 
 # This needs to be cleaned up
@@ -39,10 +35,10 @@ include_directories(${YAML_INCLUDES}/..)
 
 #include(FindPackageHandleStandardArgs)
 
+##########################  TRILINOS  ######################################
+
 include_directories(${Trilinos_INCLUDE_DIRS})
 include_directories(${Trilinos_TPL_INCLUDE_DIRS})
-
-#######################################     TRILINOS	 ##################################################
 
 MESSAGE("\nFound Trilinos!  Here are the details: ")
 # Uncomment lines to view more details about Trilinos
@@ -86,7 +82,7 @@ ELSE(Trilinos_BUILD_SHARED_LIBS)
   SET(Nalu_LIBRARY_TYPE STATIC)
 ENDIF(Trilinos_BUILD_SHARED_LIBS)
 
-#######################################     NALU     ##########################
+##########################  NALU  ######################################
 
 PROJECT(Nalu)
 
@@ -137,9 +133,6 @@ target_link_libraries(${utest_ex_name} nalu)
 target_include_directories(${utest_ex_name} PUBLIC "${CMAKE_SOURCE_DIR}/unit_tests")
 
 set(nalu_ex_catalyst_name "naluXCatalyst")
-option(ENABLE_PARAVIEW_CATALYST
-      "Enable ParaView Catalyst. Requires external installation of Trilinos Catalyst IOSS adapter."
-       OFF)
 if(ENABLE_PARAVIEW_CATALYST)
    set(PARAVIEW_CATALYST_INSTALL_PATH
        ""
@@ -161,13 +154,10 @@ IF (INSTALL_NALU)
   include(CMakePackageConfigHelpers)
 ENDIF ()
 
-option(ENABLE_DOCUMENTATION "Build documentation." OFF)
-option(ENABLE_SPHINX_API_DOCS "Link Doxygen API docs to Sphinx" OFF)
 if(ENABLE_DOCUMENTATION)
    add_subdirectory(docs)
 endif()
 
-option(ENABLE_TESTS "Enable regression testing." OFF)
 if(ENABLE_TESTS)
    ENABLE_TESTING()
    INCLUDE(CTest)
