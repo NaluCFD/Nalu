@@ -162,6 +162,7 @@ IF (INSTALL_NALU)
 ENDIF ()
 
 option(ENABLE_DOCUMENTATION "Build documentation." OFF)
+option(ENABLE_SPHINX_API_DOCS "Link Doxygen API docs to Sphinx" OFF)
 if(ENABLE_DOCUMENTATION)
    add_subdirectory(docs)
 endif()

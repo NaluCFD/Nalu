@@ -1,6 +1,13 @@
 Source Code Documentation
 =========================
 
-  * `Main Page <../../html/index.html>`_
-  * `Class Index <../../html/classes.html>`_
-  * `File List <../../html/files.html>`_
+The source documentation is extracted from the C++ files using Doxygen.
+
+.. toctree::
+   :maxdepth: 4
+
+   apidocs/realms
+   apidocs/eqsystems
+   apidocs/masterelem
+   apidocs/userfunc
+   apidocs/postprocess
