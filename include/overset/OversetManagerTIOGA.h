@@ -38,11 +38,6 @@ public:
 
   virtual void initialize();
 
-  virtual void overset_orphan_node_field_update(
-    stk::mesh::FieldBase*,
-    const int,
-    const int);
-
   /// Instance holding all the data from input files
   const OversetUserData& oversetUserData_;
 

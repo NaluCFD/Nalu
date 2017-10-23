@@ -135,7 +135,7 @@ multiple mesh blocks per MPI rank to support Nalu's mesh decomposition
 strategies.
 
 TIOGA uses a different nomenclature for overset mesh assembly. A brief
-description is provided here to familiarize users with the differnces in
+description is provided here to familiarize users with the differences in
 nomenclature used in the previous section. When determining overset
 connectivity, TIOGA ends up assigning ``IBLANK`` values to the nodes in a mesh.
 The ``IBLANK`` field is an integer field that determines the status of the node

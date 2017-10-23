@@ -84,12 +84,6 @@ public:
   // main method called for initialization
   virtual void initialize();
   
-  // allow for manager to populate orhan nodal values
-  virtual void overset_orphan_node_field_update(
-     stk::mesh::FieldBase *theField,
-     const int sizeRow,
-     const int sizeCol);
-
   // initialize ghosting data structures
   void initialize_ghosting();
 
