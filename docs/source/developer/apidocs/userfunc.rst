@@ -50,7 +50,7 @@ Kovasznay 2-D Flow
 .. doxygenclass:: sierra::nalu::KovasznayPressureAuxFunction
    :members:
 
-.. doxygenclass:: sierra::nalu::KovasznayPressureGradAuxFunction
+.. doxygenclass:: sierra::nalu::KovasznayPressureGradientAuxFunction
    :members:
 
 Steady Thermal MMS (2-D and 3-D)
