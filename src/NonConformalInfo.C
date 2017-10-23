@@ -232,11 +232,13 @@ NonConformalInfo::reset_dgInfo()
     std::vector<DgInfo *> &theVec = (*ii);    
     for ( size_t k = 0; k < theVec.size(); ++k ) {
       DgInfo *dgInfo = theVec[k];
-      dgInfo->bestX_ = dgInfo->bestXRef_;
       if ( !canReuse_ ) {
         dgInfo->allOpposingFaceIdsOld_.clear();
         dgInfo->allOpposingFaceIdsOld_ = dgInfo->allOpposingFaceIds_;
       }
+      // always reset bestX and opposing faceIDs for the upcoming search
+      dgInfo->bestX_ = dgInfo->bestXRef_;
+      dgInfo->allOpposingFaceIds_.clear();
     }
   }
 }
