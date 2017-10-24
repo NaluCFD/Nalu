@@ -575,6 +575,7 @@ class Realm {
   bool high_order_active() const { return doPromotion_; };
 
   std::string physics_part_name(std::string) const;
+  std::vector<std::string> physics_part_names(std::vector<std::string>) const;
   std::string get_quad_type() const;
 
   // check for mesh changing

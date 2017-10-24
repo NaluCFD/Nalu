@@ -871,7 +871,10 @@ Realm::setup_post_processing_algorithms()
     NaluEnv::self().naluOutputP0() << "the post processing physics name: " << thePhysics << std::endl;
 
     // target
-    std::vector<std::string> targetNames = theData.targetNames_;
+    // map target names to physics parts
+    theData.targetNames_ = physics_part_names(theData.targetNames_);
+
+    const std::vector<std::string>& targetNames = theData.targetNames_;
     for ( size_t in = 0; in < targetNames.size(); ++in)
       NaluEnv::self().naluOutputP0() << "Target name(s): " << targetNames[in] << std::endl;
 
@@ -4568,6 +4571,17 @@ Realm::physics_part_name(std::string name) const
     return super_element_part_name(name);
   }
   return name;
+}
+
+std::vector<std::string>
+Realm::physics_part_names(std::vector<std::string> names) const
+{
+  if (doPromotion_) {
+    std::transform(names.begin(), names.end(), names.begin(), [&](const std::string& name) {
+      return super_element_part_name(name);
+    });
+  }
+  return names;
 }
 
 //--------------------------------------------------------------------------
