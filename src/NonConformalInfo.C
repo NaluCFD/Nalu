@@ -669,6 +669,11 @@ NonConformalInfo::provide_diagnosis()
     std::vector<DgInfo *> &theVec = (*ii);
     for ( size_t k = 0; k < theVec.size(); ++k ) {
       DgInfo *dgInfo = theVec[k];
+
+      // first, dump info
+      dgInfo->dump_info();
+
+      // now proceed to detailed face/element current/opposing checks
       const uint64_t localGaussPointId  = dgInfo->localGaussPointId_; 
       const uint64_t currentGaussPointId  = dgInfo->currentGaussPointId_; 
 
