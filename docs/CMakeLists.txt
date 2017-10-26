@@ -42,7 +42,7 @@ if(SPHINX_FOUND)
         -c ${CMAKE_CURRENT_SOURCE_DIR} ${SPHINX_OPTS})
     endif()
   else()
-    set(SPHINX_OPTS " ")
+    set(SPHINX_OPTS "")
     add_custom_target(sphinx
       COMMAND ${SPHINX_EXECUTABLE} -M html
       "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}"
