@@ -37,7 +37,6 @@ The integral form of the Favre-filtered momentum equations used for turbulent tr
 
 .. math::
    :label: favmom
-   :nowrap:
 
    \begin{align}
    \int {{\partial \bar{\rho} \tilde{u}_i} \over {\partial t}} {\rm d}V
@@ -65,7 +64,6 @@ The Cauchy stress is provided by,
 and the traceless rate-of-strain tensor defined as follows:
 
 .. math::
-   :nowrap:
 
    \begin{align}
    \tilde S^*_{ij} &= \tilde S_{ij} - \frac{1}{3} \delta_{ij} \tilde S_{kk} \nonumber \\
@@ -603,7 +601,6 @@ the Mentor 2003 model are then
    \int{\partial \bar{\rho} k \over \partial t}\text{d}V + \int \bar{\rho} k\tilde{u}_{j} n_{j} \text{d} S = \int {(\mu + \hat \sigma_k \mu_{t})} {\partial k \over \partial x_{j}} n_{j} + \int \left(P_{k}^{\omega} - \beta^* \bar{\rho} k \omega\right) \text{d} V,
 
 .. math::
-   :nowrap:
 
    \begin{align}
    \int {\partial \bar{\rho} \omega \over \partial t}\text{d} V + \int \bar{\rho} \omega \tilde{u}_{j} n_{j} \text{d}S &=
