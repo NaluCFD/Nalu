@@ -42,6 +42,9 @@ public:
     double *det_j,
     double * error );
 
+  using MasterElement::shape_fcn;
+  using MasterElement::shifted_shape_fcn;
+
   void shape_fcn(
     double *shpfc);
 
