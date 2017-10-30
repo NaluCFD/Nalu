@@ -9,6 +9,7 @@
 #define INCLUDE_KOKKOSINTERFACE_H_
 
 #include <stk_mesh/base/Entity.hpp>
+#include <Kokkos_Macros.hpp>
 #include <Kokkos_Core.hpp>
 
 namespace sierra {
