@@ -91,7 +91,7 @@ AssembleElemSolverAlgorithm::execute()
     (rhsSize_ + lhsSize)*sizeof(double) + (2*scratchIdsSize)*sizeof(int) +
     get_num_bytes_pre_req_data<double>(dataNeededByKernels_, meta_data.spatial_dimension());
   constexpr int simdLen = stk::simd::ndoubles;
-  bytes_per_thread *= 3*simdLen;//3 is wrong, still need to debug this!!! should be 2 but seems to have memory problems.
+  bytes_per_thread *= 2*simdLen;
 
   // define some common selectors
   stk::mesh::Selector s_locally_owned_union = meta_data.locally_owned_part()
