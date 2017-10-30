@@ -281,12 +281,12 @@ AssembleMomentumElemSymmetrySolverAlgorithm::execute()
               const double nxinxi = nxi*nxi;
 
               // -mu*dui/dxj*Aj*ni*ni; sneak in divU (explicit)
-              double lhsfac = - viscBip*dndxj*axj*nxinxi;
+              double lhsfac = -viscBip*dndxj*axj*nxinxi;
               p_lhs[rowR+ic*nDim+i] += lhsfac;
               p_rhs[indexR] -= lhsfac*uxi + divUstress*nxinxi;
 
               // -mu*duj/dxi*Aj*ni*ni
-              lhsfac = - viscBip*dndxi*axj*nxinxi;
+              lhsfac = -viscBip*dndxi*axj*nxinxi;
               p_lhs[rowR+ic*nDim+j] += lhsfac;
               p_rhs[indexR] -= lhsfac*uxj;
 

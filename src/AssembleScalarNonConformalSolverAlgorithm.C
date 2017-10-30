@@ -134,8 +134,6 @@ AssembleScalarNonConformalSolverAlgorithm::execute()
   std::vector <double > ws_c_general_shape_function;
   std::vector <double > ws_o_general_shape_function;
 
-
-
   // deal with state
   ScalarFieldType &scalarQNp1 = scalarQ_->field_of_state(stk::mesh::StateNP1);
 
