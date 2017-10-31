@@ -17,7 +17,7 @@ to determine the mesh file as well as the run setup for execution. A sample
 Nalu input file contains the following top-level sections that describe the
 simulation to be executed.
 
-.. inpfile:: realms
+**Realms**
 
   Realms describe the computational domain (via mesh input files) and the set of
   physics equations (Low-Mach Navier-Stokes, Heat Conduction, etc.) that are
@@ -42,9 +42,10 @@ simulation to be executed.
 
   Inclusion of an input/output realm will require the user to provide the
   additional :inpfile:`transfers` section in the Nalu input file that defines
-  the solution fields that are transferred between the realms.
+  the solution fields that are transferred between the realms. See
+  :ref:`nalu_inp_realm` for detailed documentation on all Realm options.
 
-.. inpfile:: linear_solvers
+**Linear Solvers**
 
   This section configures the solvers and preconditioners used to solve the
   resulting linear system of equations within Nalu. The linear system
@@ -52,26 +53,28 @@ simulation to be executed.
   multiple systems across different realms. See :ref:`nalu_inp_linear_solvers`
   for more details.
 
-.. inpfile:: Time_Integrators
+**Time Integrators**
 
   This section configures the time integration scheme used (first/second order
   in time), the duration of simulation, fixed or adaptive timestepping based on
   Courant number constraints, etc. Each time integration section in this list
   can accept one or more :inpfile:`realms` that are integrated in time using
-  that specific time integration scheme.
+  that specific time integration scheme. See :ref:`nalu_inp_time_integrators`
+  for complete documentation of all time integration options available in Nalu.
 
-.. inpfile:: Simulations
-
-  Simulations provides the top-level architecture that orchestrates the
-  time-stepping across all the realms and the required equation sets.
-
-.. inpfile:: transfers
+**Transfers**
 
   An optional section that defines one or more solution transfer definitions
   between the participating :inpfile:`realms` during the simulation. Each
   transfer definition provides a mapping of the to and from realm, part, and the
   solution field that must be transferred at every timestep during the
-  simulation.
+  simulation. See :ref:`nalu_inp_transfers` section for complete documentation of
+  all transfer options available in Nalu.
+
+**Simulations**
+
+  Simulations provides the top-level architecture that orchestrates the
+  time-stepping across all the realms and the required equation sets.
 
 .. _nalu_inp_linear_solvers:
 
@@ -220,7 +223,7 @@ Time Integration Options
    :inpfile:`time_step_control` for more information on max Courant number based
    adaptive time stepping.
 
-.. inpfile:: realms
+.. inpfile:: time_int.realms
 
    A list of :inpfile:`realms` names. The names entered here must match
    :inpfile:`name` used in the :inpfile:`realms` section. Names listed here not
@@ -1196,3 +1199,20 @@ Post-processing
 .. inpfile:: post_processing.target_name
 
    A list of element blocks (parts) where to do the post-processing
+
+.. _nalu_inp_transfers:
+
+Transfers
+---------
+
+.. inpfile:: transfers
+
+   Transfers section describes the search and mapping operations to be performed
+   between participating :inpfile:`realms` within a simulation.
+
+Simulations
+-----------
+
+.. inpfile:: simulations
+
+   This is the top-level section that orchestrates the entire execution of Nalu.
