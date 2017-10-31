@@ -145,7 +145,7 @@ namespace
           meSide->interpolatePoint(dim, sideIsoPoint.data(), faceCoords.data(), faceInterpCoords.data());
 
           // check if isInElement can reproduce the original parametric coords
-          std::vector<double> isoFacePoint(dim-1 , 0.0);
+          std::vector<double> isoFacePoint(dim , 0.0);
           meSide->isInElement(faceCoords.data(), faceInterpCoords.data(), isoFacePoint.data());
 
 
