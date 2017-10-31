@@ -14,6 +14,12 @@
 
 #define NALU_ALIGN(size) __attribute__((aligned(64)))
 
+#ifdef __INTEL_COMPILER
+#define POINTER_RESTRICT restrict
+#else
+#define POINTER_RESTRICT __restrict__
+#endif
+
 namespace sierra {
 namespace nalu {
 

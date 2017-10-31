@@ -13,15 +13,8 @@
 
 #include <stk_util/environment/ReportHandler.hpp>
 
-#include <Kokkos_Core.hpp>
+#include <KokkosInterface.h>
 #include <SimdInterface.h>
-
-
-#ifdef __INTEL_COMPILER
-#define POINTER_RESTRICT restrict
-#else
-#define POINTER_RESTRICT __restrict__
-#endif
 
 namespace sierra{
 namespace nalu{
