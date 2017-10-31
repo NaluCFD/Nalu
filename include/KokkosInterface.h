@@ -12,7 +12,7 @@
 #include <Kokkos_Macros.hpp>
 #include <Kokkos_Core.hpp>
 
-#define NALU_ALIGN(size) __attribute__((aligned(64)))
+#define NALU_ALIGN(size) __attribute__((aligned(size)))
 
 #ifdef __INTEL_COMPILER
 #define POINTER_RESTRICT restrict
