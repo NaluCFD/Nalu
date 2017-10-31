@@ -9,8 +9,7 @@ equations for low speed flow problems as the accoustics are of little
 consequence to the overall simulation accuracy. The technique avoids the
 need to resolve fast-moving acoustic signals. Derivations of the low
 Mach number equations can be found in found in Rehm and
-Baum, :cite:`Rehm:1978`, or
-Paolucci, :cite:`Paolucci:1982`.
+Baum, :cite:`Rehm:1978`, or Paolucci, :cite:`Paolucci:1982`.
 
 The equations are derived from the compressible equations using a
 perturbation expansion in terms of the lower limit of the Mach number
@@ -33,15 +32,13 @@ repeated indices):
 
 .. math::
 
-   {{\partial \rho} \over {\partial t}} + {{\partial \rho u_j} 
-                                  \over {\partial x_j}} & =  0 , \\
-   {{\partial \rho u_i} \over {\partial t}} + {{\partial \rho u_j u_i}
-       \over {\partial x_j}} + {{\partial P} \over {\partial x_i}} & = 
-       {{\partial \tau_{ij}} \over {\partial x_j}} + \rho g_i , \\
-   {{\partial \rho E} \over {\partial t}} + {{\partial \rho u_j H}
-       \over {\partial x_j}}  & = 
-       - {{\partial q_j} \over {\partial x_j}}
-       + {{\partial u_i \tau_{ij}} \over {\partial x_j}} + \rho u_i g_i .
+   \frac{\partial \rho} {\partial t} + \frac{\partial \rho u_j}{\partial x_j} & = 0 , \\
+   \frac{\partial \rho u_i}{\partial t} + \frac{\partial \rho u_j u_i}{\partial x_j}
+   + \frac{\partial P}{\partial x_i} & = 
+   \frac{\partial \tau_{ij}}{\partial x_j} + \rho g_i , \\
+   \frac{\partial \rho E}{\partial t} + \frac{\partial \rho u_j H}{\partial x_j} & = 
+   - \frac{\partial q_j}{\partial x_j}
+   + \frac{\partial u_i \tau_{ij}} {\partial x_j} + \rho u_i g_i .
 
 
 The primitive variables are the velocity components, :math:`u_i`, the
@@ -55,14 +52,14 @@ definitions:
 
 .. math::
 
-   P & = \rho {R \over W} T , \\
+   P & = \rho \frac{R}{W} T , \\
    E & = H - P/\rho , \\
-   H & = h + {1 \over 2} u_k u_k , \\
-   \tau_{ij} & = \mu \left( {{\partial u_i} \over {\partial x_j}}
-                     +        {{\partial u_j} \over {\partial x_i}} \right)
-               - {2 \over 3} \mu {{\partial u_k} \over {\partial x_k}} 
-                  \delta_{ij} , \\
-   q_i & = - k {{\partial T} \over {\partial x_i}} .
+   H & = h + \frac{1}{2} u_k u_k , \\
+   \tau_{ij} & = \mu \left( \frac{\partial u_i}{\partial x_j}
+               + \frac{\partial u_j}{\partial x_i} \right)
+               - \frac{2}{3} \mu \frac{\partial u_k}{\partial x_k}
+                 \delta_{ij} , \\
+   q_i & = - k \frac{\partial T}{\partial x_i}
 
 The mean molecular weight of the gas is :math:`W`, the molecular
 viscosity is :math:`\mu`, and the thermal conductivity is :math:`k`. A
@@ -80,45 +77,37 @@ overbars. The dimensionless equations are:
 
 .. math::
    
-   {{\partial \bar{\rho}} \over {\partial \bar{t}}} 
-       + {{\partial \bar{\rho} \bar{u}_j} 
-          \over {\partial \bar{x}_j}} & = 0 , \\
-   {{\partial \bar{\rho} \bar{u}_i} \over {\partial \bar{t}}} 
-     + {{\partial \bar{\rho} \bar{u}_j \bar{u}_i}
-       \over {\partial \bar{x}_j}} + {1 \over {\gamma {\rm Ma}^2}}
-         {{\partial \bar{P}} \over {\partial \bar{x}_i}} & =
-       {1 \over {\rm Re}}{{\partial \bar{\tau}_{ij}} 
-               \over {\partial \bar{x}_j}} 
-        +  {1 \over {\rm Fr}_i} \bar{\rho} , \\
-   {{\partial \bar{\rho} \bar{h}} \over {\partial \bar{t}}} 
-      + {{\partial \bar{\rho} \bar{u}_j \bar{h}}
-       \over {\partial \bar{x}_j}}  
-     & =
-       - {1 \over {\rm Pr}} {1 \over {\rm Re}} 
-                       {{\partial \bar{q}_j} \over {\partial \bar{x}_j}}
-    + {{\gamma - 1} \over \gamma} {{\partial \bar{P}} \over  {\partial \bar{t}}} \\
-      & + {{\gamma - 1} \over \gamma} {{{\rm Ma}^2} \over {\rm Re}}
-     {{\partial \bar{u}_i \bar{\tau}_{ij}} \over {\partial \bar{x}_j}}  
-    +  \bar{\rho} \bar{u}_i {{\gamma - 1} \over \gamma} 
-               {{{\rm Ma}^2} \over {\rm Fr}_i} \nonumber \\
-     & - {{\gamma - 1} \over 2} {\rm Ma}^2
-    \left( {{\partial \bar{\rho} \bar{u}_k \bar{u}_k} \over {\partial \bar{t}}} 
-       +   {{\partial \bar{\rho} \bar{u}_j \bar{u}_k \bar{u}_k} 
-           \over {\partial \bar{x}_j}} \right) . \nonumber
+     \frac{\partial \bar{\rho}}{\partial \bar{t}}
+   + \frac{\partial \bar{\rho} \bar{u}_j}{\partial \bar{x}_j} & = 0 , \\
+     \frac{\partial \bar{\rho} \bar{u}_i}{\partial \bar{t}}
+   + \frac{\partial \bar{\rho} \bar{u}_j \bar{u}_i}{\partial \bar{x}_j}
+   + \frac{1}{{\gamma {\rm Ma}^2}}
+     \frac{\partial \bar{P}}{\partial \bar{x}_i} & =
+     \frac{1}{\rm Re}\frac{\partial \bar{\tau}_{ij}}{\partial \bar{x}_j}
+   + \frac{1}{{\rm Fr}_i} \bar{\rho} , \\
+     \frac{\partial \bar{\rho} \bar{h}}{\partial \bar{t}}
+   + \frac{\partial \bar{\rho} \bar{u}_j \bar{h}} {\partial \bar{x}_j}
+   & = - \frac{1}{{\rm Pr}} \frac{1}{{\rm Re}} 
+     \frac{\partial \bar{q}_j} {\partial \bar{x}_j}
+   + \frac{\gamma - 1}{\gamma} \frac{\partial \bar{P}}{\partial \bar{t}} \\
+   & + \frac{\gamma - 1}{\gamma} \frac{{\rm Ma}^2}{\rm Re}
+     \frac{\partial \bar{u}_i \bar{\tau}_{ij}}{\partial \bar{x}_j}
+   + \bar{\rho} \bar{u}_i \frac{\gamma - 1}{\gamma} \frac{{\rm Ma}^2}{{\rm Fr}_i} \\
+   & - \frac{\gamma - 1} {2} {\rm Ma}^2
+   \left( \frac{\partial \bar{\rho} \bar{u}_k \bar{u}_k}{\partial \bar{t}}
+   + \frac{\partial \bar{\rho} \bar{u}_j \bar{u}_k \bar{u}_k}{\partial \bar{x}_j} \right) . 
 
 The groupings of characteristic scaling terms are:
 
 .. math::
    
-
-   
-   {\rm Re} & = {{\rho_\infty U_\infty L} \over {\mu_\infty}},
+   {\rm Re} & = \frac{\rho_\infty U_\infty L}{\mu_\infty},
        \quad \quad \phantom{xxx} {\rm Reynolds number}, \\
-   {\rm Pr} & =  {{C_{p,\infty} \mu_\infty} \over {k_\infty}},
+   {\rm Pr} & =  \frac{C_{p,\infty} \mu_\infty} {k_\infty},
        \quad \quad \phantom{xxx} {\rm Prandtl number}, \\
-   {\rm Fr}_i & = {{u_\infty^2} \over {g_i L}},
+   {\rm Fr}_i & = \frac{u_\infty^2} {g_i L},
        \quad \quad \phantom{xxxxxxi} {\rm Froude number}, \quad g_i \ne 0, \\
-   {\rm Ma} & = \sqrt{{u^2_\infty} \over {\gamma R T_\infty /W}},
+   {\rm Ma} & = \sqrt{\frac{u^2_\infty}{\gamma R T_\infty /W}},
        \quad \quad {\rm Mach number},
 
 where :math:`\gamma` is the ratio of specific heats.
@@ -150,12 +139,12 @@ can be included in the zeroeth-order momentum equation.
 
 .. math::
 
-   {1 \over {\gamma {\rm Ma}^2}}
-      {{\partial \bar{P}} \over {\partial x_i}}  =
-      {{\partial} \over {\partial x_i}} \left( {1 \over {\gamma {\rm Ma}^2}} \bar{P}_0
-          + {\epsilon \over {\gamma {\rm Ma}^2}} \bar{P}_1 + \ldots \right) =
-      {{\partial} \over {\partial x_i}} \left( \bar{P}_1 + \epsilon \bar{P}_2 + \ldots 
-      \phantom{1 \over {\gamma {\rm Ma}^2}} \right)
+   \frac{1}{\gamma {\rm Ma}^2}
+   \frac{\partial \bar{P}}{\partial x_i}  =
+   \frac{\partial}{\partial x_i} \left( \frac{1}{\gamma {\rm Ma}^2} \bar{P}_0
+       + \frac{\epsilon} {\gamma {\rm Ma}^2} \bar{P}_1 + \ldots \right) =
+   \frac{\partial}{\partial x_i} \left( \bar{P}_1 + \epsilon \bar{P}_2 + \ldots 
+   \phantom{\frac{1}{\gamma {\rm Ma}^2}} \right)
 
 The form of the energy equation remains the same, less the kinetic
 energy, viscous work and gravity work terms. The :math:`P_0` term
@@ -174,29 +163,22 @@ continuity. The unsplit dimensional pressure is
 where the dynamic pressure, :math:`p=P-P_{th}`, is related to a
 pressure coefficient
 
-.. math:: \bar{P}_1 = {{P - P_{th}} \over {\rho_\infty u^2_\infty}} P_{th}.
+.. math:: \bar{P}_1 = \frac{P - P_{th}}{\rho_\infty u^2_\infty} P_{th}.
 
 The resulting unscaled low Mach number equations are:
 
 .. math::
-   :nowrap:
 
-   \begin{align}
-   {{\partial \rho} \over {\partial t}} + {{\partial \rho u_j} 
-                                  \over {\partial x_j}} & = 0, \label{lmcon} \\
-   {{\partial \rho u_i} \over {\partial t}} + {{\partial \rho u_j u_i}
-       \over {\partial x_j}} + {{\partial P} \over {\partial x_i}} & =
-       {{\partial \tau_{ij}} \over {\partial x_j}} 
-        +  \left( \rho - \rho_{\circ} \right) g_i, \label{lmmom} \\
-   {{\partial \rho h} \over {\partial t}} + {{\partial \rho u_j h}
-       \over {\partial x_j}}  & =
-       - {{\partial q_j} \over {\partial x_j}}
-       + {{\partial P_{th}} \over {\partial t}}, \label{lmenrg}
-   \end{align}
+   \frac{\partial \rho} {\partial t} + \frac{\partial \rho u_j}{\partial x_j} & = 0, \\
+   \frac{\partial \rho u_i}{\partial t} + \frac{\partial \rho u_j u_i}{\partial x_j}
+   + \frac{\partial P}{\partial x_i} & = \frac{\partial \tau_{ij}}{\partial x_j}
+   + \left( \rho - \rho_{\circ} \right) g_i, \\
+   \frac{\partial \rho h}{\partial t} + \frac{\partial \rho u_j h}{\partial x_j} & =
+   - \frac{\partial q_j}{\partial x_j} + \frac{\partial P_{th}}{\partial t},
 
 where the ideal gas law becomes
 
-.. math:: P_{th}  =  \rho {R \over W} T.
+.. math:: P_{th}  =  \rho \frac{R}{W} T.
 
 The hydrostatic pressure gradient has been subtracted from the momentum
 equation, assuming an ambient density of :math:`\rho_{\circ}`. The

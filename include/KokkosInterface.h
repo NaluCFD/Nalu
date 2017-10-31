@@ -9,7 +9,10 @@
 #define INCLUDE_KOKKOSINTERFACE_H_
 
 #include <stk_mesh/base/Entity.hpp>
+#include <Kokkos_Macros.hpp>
 #include <Kokkos_Core.hpp>
+
+#define NALU_ALIGN(size) __attribute__((aligned(64)))
 
 namespace sierra {
 namespace nalu {

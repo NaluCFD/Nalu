@@ -192,10 +192,10 @@ class EquationSystems
   EquationSystemVector equationSystemVector_;
   std::map<std::string, std::string> solverSpecMap_;
 
-  /// A list of tasks to be performed before all EquationSystem solve_and_update
+  /// A list of tasks to be performed before all EquationSystem::solve_and_update
   std::vector<AlgorithmDriver*> preIterAlgDriver_;
 
-  /// A list of tasks to be performed after all EquationSystem solve_and_update
+  /// A list of tasks to be performed after all EquationSystem::solve_and_update
   std::vector<AlgorithmDriver*> postIterAlgDriver_;
 };
 

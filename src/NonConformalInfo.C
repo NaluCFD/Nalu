@@ -96,8 +96,7 @@ NonConformalInfo::NonConformalInfo(
   else if ( searchMethodName == "stk_kdtree" )
     searchMethod_ = stk::search::KDTREE;
   else
-    NaluEnv::self().naluOutputP0() << "NonConformalInfo::search method not declared; will use stk_kdtree" << std::endl;
-
+    NaluEnv::self().naluOutputP0() << "NonConformalInfo::search method not declared; will use boost_rtree" << std::endl;
 }
 
 //--------------------------------------------------------------------------
@@ -233,11 +232,13 @@ NonConformalInfo::reset_dgInfo()
     std::vector<DgInfo *> &theVec = (*ii);    
     for ( size_t k = 0; k < theVec.size(); ++k ) {
       DgInfo *dgInfo = theVec[k];
-      dgInfo->bestX_ = dgInfo->bestXRef_;
       if ( !canReuse_ ) {
         dgInfo->allOpposingFaceIdsOld_.clear();
         dgInfo->allOpposingFaceIdsOld_ = dgInfo->allOpposingFaceIds_;
       }
+      // always reset bestX and opposing faceIDs for the upcoming search
+      dgInfo->bestX_ = dgInfo->bestXRef_;
+      dgInfo->allOpposingFaceIds_.clear();
     }
   }
 }
@@ -668,6 +669,11 @@ NonConformalInfo::provide_diagnosis()
     std::vector<DgInfo *> &theVec = (*ii);
     for ( size_t k = 0; k < theVec.size(); ++k ) {
       DgInfo *dgInfo = theVec[k];
+
+      // first, dump info
+      dgInfo->dump_info();
+
+      // now proceed to detailed face/element current/opposing checks
       const uint64_t localGaussPointId  = dgInfo->localGaussPointId_; 
       const uint64_t currentGaussPointId  = dgInfo->currentGaussPointId_; 
 

@@ -14,7 +14,8 @@ The formal finite element kernel for a NSO approach is as follows,
 .. math::
    :label: nsoFEMForm
 
-   \sum_e \int_\Omega \nu(\mathbf{R}) \frac{\partial w}{\partial x_i} g^{ij} \frac{\partial \phi} {\partial x_j} d\Omega,
+   \sum_e \int_\Omega \nu(\mathbf{R}) \frac{\partial w}{\partial x_i} g^{ij}
+   \frac{\partial \phi} {\partial x_j} d\Omega,
    
 
 where :math:`\nu(\mathbf{R})` is the artifical viscosity which is a
@@ -44,7 +45,8 @@ where :math:`\xi = (\xi_1, \xi_2, \xi_3)^T`. The form of
 .. math::
    :label: nuOne
 
-   \nu = \sqrt{ \frac{\mathbf{R_k} \mathbf{R_k}} {\frac {\partial \phi}{\partial x_i} g^{ij} \frac{\partial \phi}{\partial x_j}} }.
+   \nu = \sqrt{ \frac{\mathbf{R_k} \mathbf{R_k}}
+   {\frac {\partial \phi}{\partial x_i} g^{ij} \frac{\partial \phi}{\partial x_j}} }.
    
 
 The classic paper by Shakib ( :cite:`Shakib:1991`)
@@ -57,7 +59,9 @@ fine scale residual computed at the gauss point,
 .. math::
    :label: nsoResidual1
 
-   \mathbf{\hat R} = \frac{\partial \rho \phi}{\partial t} + \frac{\partial}{\partial x_j} (\rho u_j \phi - \mu^{eff} \frac{\partial \phi}{\partial x_j}) -S
+   \mathbf{\hat R} = \frac{\partial \rho \phi}{\partial t}
+   + \frac{\partial}{\partial x_j} (\rho u_j \phi - \mu^{eff}
+   \frac{\partial \phi}{\partial x_j}) -S
     
 
 Note that the above equation requires a second derivative whose source
@@ -71,7 +75,8 @@ continuity equation to obtain the final general form of the source term,
 .. math::
    :label: nsoResidual2
 
-   \mathbf{R} = \mathbf{\hat R} - \phi (\frac{\partial \rho}{\partial t} + \frac{\partial \rho u_j }{\partial x_j}).
+   \mathbf{R} = \mathbf{\hat R} - \phi (\frac{\partial \rho}{\partial t}
+   + \frac{\partial \rho u_j }{\partial x_j}).
     
 
 An alternative to the fine-scale PDE is a form that is found by
@@ -81,7 +86,9 @@ residual,
 .. math::
    :label: nsoResidualAlt
 
-   \mathbf{R} = \frac{\partial \rho u_j \phi }{\partial x_j} - (\phi \frac{\partial \rho u_j }{\partial x_j} + \rho u_j \frac{\partial \phi}{\partial x_j}).
+   \mathbf{R} = \frac{\partial \rho u_j \phi }{\partial x_j}
+   - (\phi \frac{\partial \rho u_j }{\partial x_j} + \rho u_j
+   \frac{\partial \phi}{\partial x_j}).
     
 
 The above resembles a commutation error in the nonlinear advection
@@ -122,7 +129,8 @@ interpolated to the Gauss-point, is also supported,
 .. math::
    :label: nsoFVForm4th
 
-   -\sum_e \int_\Gamma \nu(\mathbf{R}) g^{ij} (\frac{\partial \phi} {\partial x_j} - G_j \phi ) n_i dS.
+   -\sum_e \int_\Gamma \nu(\mathbf{R}) g^{ij}
+   (\frac{\partial \phi} {\partial x_j} - G_j \phi ) n_i dS.
    
 
 NSO Based on Kinetic Energy Residual
@@ -148,7 +156,8 @@ while the denominator for :math:`\nu` now includes the gradient in ke,
 .. math::
    :label: nuKe
 
-   \nu = \sqrt{ \frac{\mathbf{R}_{ke} \mathbf{R}_{ke}} {\frac {\partial ke}{\partial x_i} g^{ij} \frac{\partial ke}{\partial x_j}} }.
+   \nu = \sqrt{ \frac{\mathbf{R}_{ke} \mathbf{R}_{ke}}
+   {\frac {\partial ke}{\partial x_i} g^{ij} \frac{\partial ke}{\partial x_j}} }.
    
 
 The kinetic energy is simply given by,
@@ -202,8 +211,9 @@ is given by,
 .. math::
    :label: nsoTurbForm
 
-   \tau^{sgs}_{ij} = - 2 \rho \nu g^{ij} (S_{ij} - \frac{1}{3}\frac{\partial u_k} {\partial x_k} \delta_{ij}) 
-                = - 2 \rho \nu g^{ij} S^*_{ij}.
+   \tau^{sgs}_{ij} = - 2 \rho \nu g^{ij} (S_{ij} -
+   \frac{1}{3}\frac{\partial u_k} {\partial x_k} \delta_{ij}) 
+   = - 2 \rho \nu g^{ij} S^*_{ij}.
 
 
 Interestingly, the units of :math:`\nu` are of an inverse time scale while the product :math:`2 \rho \nu g^{ij}` can be viewed

@@ -191,7 +191,7 @@ TEST(KokkosME, test_hex8_views)
   test_ME_views<sierra::nalu::AlgTraitsHex8>(
     {sierra::nalu::SCS_AREAV,
      sierra::nalu::SCS_GRAD_OP,
-//     sierra::nalu::SCS_SHIFTED_GRAD_OP,
+//   sierra::nalu::SCS_SHIFTED_GRAD_OP,
      sierra::nalu::SCS_GIJ,
      sierra::nalu::SCV_VOLUME,
     }
@@ -210,13 +210,44 @@ TEST(KokkosME, test_tet4_views)
   );
 }
 
+TEST(KokkosME, test_tri32D_views)
+{
+  test_ME_views<sierra::nalu::AlgTraitsTri3_2D>(
+    {
+     sierra::nalu::SCS_AREAV,
+     sierra::nalu::SCS_GRAD_OP,
+     sierra::nalu::SCS_GIJ,
+     sierra::nalu::SCV_VOLUME
+    }
+  );
+}
+
+TEST(KokkosME, test_tri32D_shifted_grad_op)
+{
+  test_ME_views<sierra::nalu::AlgTraitsTri3_2D>(
+    {
+     sierra::nalu::SCS_SHIFTED_GRAD_OP 
+    }
+  );
+}
+
 TEST(KokkosME, test_quad42D_views)
 {
   test_ME_views<sierra::nalu::AlgTraitsQuad4_2D>(
     {
      sierra::nalu::SCS_AREAV,
      sierra::nalu::SCS_GRAD_OP,
+     sierra::nalu::SCS_GIJ,
      sierra::nalu::SCV_VOLUME
+    }
+  );
+}
+
+TEST(KokkosME, test_quad42D_shifted_grad_op)
+{
+  test_ME_views<sierra::nalu::AlgTraitsQuad4_2D>(
+    {
+     sierra::nalu::SCS_SHIFTED_GRAD_OP 
     }
   );
 }
@@ -247,30 +278,11 @@ TEST(KokkosME, test_pyr5_views)
   );
 }
 
-TEST(KokkosME, test_quad42D_views_shifted_grad_op)
-{
-  test_ME_views<sierra::nalu::AlgTraitsQuad4_2D>(
-    {
-     sierra::nalu::SCS_SHIFTED_GRAD_OP,
-    }
-  );
-}
-
 TEST(KokkosME, test_pyr5_views_shifted_grad_op)
 {
   test_ME_views<sierra::nalu::AlgTraitsPyr5>(
     {
      sierra::nalu::SCS_SHIFTED_GRAD_OP,
-    }
-  );
-}
-
-TEST(KokkosME, test_quad42D_views_gij)
-{
-  test_ME_views<sierra::nalu::AlgTraitsQuad4_2D>(
-    {
-     sierra::nalu::SCS_GRAD_OP,
-     sierra::nalu::SCS_GIJ,
     }
   );
 }
