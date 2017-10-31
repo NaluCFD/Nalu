@@ -107,7 +107,8 @@ AssembleMomentumElemSymmetrySolverAlgorithm::execute()
 
   // define some common selectors
   stk::mesh::Selector s_locally_owned_union = meta_data.locally_owned_part()
-    &stk::mesh::selectUnion(partVec_);
+    &stk::mesh::selectUnion(partVec_)
+    &!(realm_.get_inactive_selector());
 
   stk::mesh::BucketVector const& face_buckets =
     realm_.get_buckets( meta_data.side_rank(), s_locally_owned_union );

@@ -20,6 +20,7 @@
 #include <MaterialPropertys.h>
 #include <EquationSystems.h>
 #include <Teuchos_RCP.hpp>
+#include <overset/OversetManager.h>
 
 #include <stk_util/util/ParameterList.hpp>
 
@@ -49,7 +50,7 @@ class Algorithm;
 class AlgorithmDriver;
 class AuxFunctionAlgorithm;
 class ComputeGeometryAlgorithmDriver;
-class OversetManager;
+// class OversetManager;
 class NonConformalManager;
 class ErrorIndicatorAlgorithmDriver;
 #if defined (NALU_USES_PERCEPT)

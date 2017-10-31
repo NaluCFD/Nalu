@@ -9,6 +9,7 @@ option(ENABLE_OPENFAST
 option(ENABLE_PARAVIEW_CATALYST
       "Enable ParaView Catalyst. Requires external installation of Trilinos Catalyst IOSS adapter."
        OFF)
+option(ENABLE_TIOGA "Use TIOGA TPL to perform overset connectivity" OFF)
 
 SET(CMAKE_FIND_LIBRARY_PREFIXES lib)
 SET(CMAKE_FIND_LIBRARY_SUFFIXES a)
@@ -32,6 +33,13 @@ endif (ENABLE_OPENFAST)
 find_library(YAML_LIBRARY NAMES libyaml-cpp.a PATHS ${YAML_DIR}/lib )
 find_path(YAML_INCLUDES yaml.h PATHS ${YAML_DIR}/include/yaml-cpp )
 include_directories(${YAML_INCLUDES}/..)
+
+if (ENABLE_TIOGA)
+  set(CMAKE_PREFIX_PATH ${TIOGA_DIR} ${CMAKE_PREFIX_PATH})
+  find_package(TIOGA REQUIRED)
+  include_directories(${TIOGA_INCLUDE_DIRS})
+  add_definitions(-DNALU_USES_TIOGA)
+endif()
 
 #include(FindPackageHandleStandardArgs)
 
@@ -110,10 +118,14 @@ if (ENABLE_OPENFAST)
    target_link_libraries(nalu ${OpenFAST_LIBRARIES} ${OpenFAST_CPP_LIBRARIES})
 endif (ENABLE_OPENFAST)
 
+if (ENABLE_TIOGA)
+  target_link_libraries(nalu ${TIOGA_LIBRARIES})
+endif()
+
 file (GLOB UNIT_TESTS_SOURCES unit_tests/*.C unit_tests/*/*.C)
 
 set(nalu_ex_name "naluX")
-message("CMAKE_BUILD_TYPE = ${CMAKE_BUILD_TYPE}")
+message("-- CMAKE_BUILD_TYPE = ${CMAKE_BUILD_TYPE}")
 if (CMAKE_BUILD_TYPE STREQUAL "DEBUG")
    set (nalu_ex_name "naluXd")
    add_definitions("-Wall")

@@ -56,6 +56,11 @@
 
 // overset
 #include <overset/OversetManager.h>
+#include <overset/OversetManagerSTK.h>
+
+#ifdef NALU_USES_TIOGA
+#include <overset/OversetManagerTIOGA.h>
+#endif
 
 // post processing
 #include <SolutionNormPostProcessing.h>
@@ -956,6 +961,9 @@ Realm::setup_bc()
         throw std::runtime_error("unknown bc");
     }
   }
+
+  if (hasOverset_)
+    oversetManager_->setup();
 }
 
 //--------------------------------------------------------------------------
@@ -3267,7 +3275,31 @@ Realm::setup_overset_bc(
   
   // create manager while providing overset data
   if ( NULL == oversetManager_ ) {
-    oversetManager_ = new OversetManager(*this,oversetBCData.userData_);
+    switch (oversetBCData.oversetConnectivityType_) {
+    case OversetBoundaryConditionData::NALU_STK:
+      NaluEnv::self().naluOutputP0()
+        << "Realm::setup_overset_bc:: Selecting STK-based overset connectivity algorithm"
+        << std::endl;
+      oversetManager_ = new OversetManagerSTK(*this, oversetBCData.userData_);
+      break;
+
+    case OversetBoundaryConditionData::TPL_TIOGA:
+#ifdef NALU_USES_TIOGA
+      oversetManager_ = new OversetManagerTIOGA(*this, oversetBCData.userData_);
+      NaluEnv::self().naluOutputP0()
+        << "Realm::setup_overset_bc:: Selecting TIOGA TPL for overset connectivity"
+        << std::endl;
+#else
+      // should not get here... we should have thrown error in input file processing stage
+      throw std::runtime_error("TIOGA TPL support not enabled during compilation phase");
+#endif
+      break;
+
+    case OversetBoundaryConditionData::OVERSET_NONE:
+    default:
+      throw std::runtime_error("Invalid setting for overset connectivity");
+      break;
+    }
   }   
 }
 
@@ -4779,12 +4811,11 @@ Realm::get_inactive_selector()
 {
   // accumulate inactive parts relative to the universal part
   
-  // provide inactive Overset part that excludes background surface   
-  stk::mesh::Selector inactiveOverSetSelector = (hasOverset_) 
-    ? (stk::mesh::Selector(*oversetManager_->inActivePart_) 
-       &!(stk::mesh::selectUnion(oversetManager_->orphanPointSurfaceVecBackground_)))
+  // provide inactive Overset part that excludes background surface
+  stk::mesh::Selector inactiveOverSetSelector =
+    (hasOverset_) ? oversetManager_->get_inactive_selector()
     : stk::mesh::Selector();
- 
+
   // provide inactive dataProbe parts
   stk::mesh::Selector inactiveDataProbeSelector = (NULL != dataProbePostProcessing_) 
     ? (dataProbePostProcessing_->get_inactive_selector())

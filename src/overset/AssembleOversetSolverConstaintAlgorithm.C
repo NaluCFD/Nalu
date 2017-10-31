@@ -179,6 +179,7 @@ AssembleOversetSolverConstraintAlgorithm::execute()
       const int rowOi = i * npePlusOne * sizeOfDof;
       const double residual = qNp1Nodal[i] - qNp1Orphan[i];
       p_rhs[i] = -residual;
+      //p_rhs[i] = 0.0;
 
       // row is zero by design (first connected node is the orphan node); assign it fully
       p_lhs[rowOi+i] += 1.0;
