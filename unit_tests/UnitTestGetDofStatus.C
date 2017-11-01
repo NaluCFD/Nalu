@@ -7,7 +7,9 @@
 
 #include <TpetraLinearSystem.h>
 
-TEST_F(Hex8MeshWithNSOFields, getDofStatus_basic)
+class DofStatusHex8Mesh : public Hex8Mesh {};
+
+TEST_F(DofStatusHex8Mesh, getDofStatus_basic)
 {
   fill_mesh_and_initialize_test_fields("generated:1x1x2");
 
@@ -21,7 +23,7 @@ TEST_F(Hex8MeshWithNSOFields, getDofStatus_basic)
   }
 }
 
-TEST_F(Hex8MeshWithNSOFields, getDofStatus_shared)
+TEST_F(DofStatusHex8Mesh, getDofStatus_shared)
 {
   fill_mesh_and_initialize_test_fields("generated:10x10x10");
 
