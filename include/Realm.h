@@ -158,10 +158,10 @@ class Realm {
   void init_current_coordinates();
 
   std::string get_coordinates_name();
-  bool has_mesh_motion();
-  bool has_mesh_deformation();
-  bool does_mesh_move();
-  bool has_non_matching_boundary_face_alg();
+  bool has_mesh_motion() const;
+  bool has_mesh_deformation() const;
+  bool does_mesh_move() const;
+  bool has_non_matching_boundary_face_alg() const;
 
   // overset boundary condition requires elemental field registration
   bool query_for_overset();
@@ -349,7 +349,9 @@ class Realm {
   // get aura, bulk and meta data
   bool get_activate_aura();
   stk::mesh::BulkData & bulk_data();
+  const stk::mesh::BulkData & bulk_data() const;
   stk::mesh::MetaData & meta_data();
+  const stk::mesh::MetaData & meta_data() const;
 
   // inactive part
   stk::mesh::Selector get_inactive_selector();
