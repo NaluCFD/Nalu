@@ -2420,7 +2420,7 @@ Realm::get_coordinates_name()
 //-------- has_mesh_motion -------------------------------------------------
 //--------------------------------------------------------------------------
 bool
-Realm::has_mesh_motion()
+Realm::has_mesh_motion() const
 {
   return solutionOptions_->meshMotion_;
 }
@@ -2429,7 +2429,7 @@ Realm::has_mesh_motion()
 //-------- has_mesh_deformation --------------------------------------------
 //--------------------------------------------------------------------------
 bool
-Realm::has_mesh_deformation()
+Realm::has_mesh_deformation() const
 {
   return solutionOptions_->externalMeshDeformation_ | solutionOptions_->meshDeformation_;
 }
@@ -2438,7 +2438,7 @@ Realm::has_mesh_deformation()
 //-------- does_mesh_move --------------------------------------------------
 //--------------------------------------------------------------------------
 bool
-Realm::does_mesh_move()
+Realm::does_mesh_move() const
 {
   return has_mesh_motion() | has_mesh_deformation();
 }
@@ -2447,7 +2447,7 @@ Realm::does_mesh_move()
 //-------- has_non_matching_boundary_face_alg ------------------------------
 //--------------------------------------------------------------------------
 bool
-Realm::has_non_matching_boundary_face_alg()
+Realm::has_non_matching_boundary_face_alg() const
 {
   return hasNonConformal_ | hasOverset_; 
 }
@@ -4785,11 +4785,23 @@ Realm::bulk_data()
   return *bulkData_;
 }
 
+const stk::mesh::BulkData &
+Realm::bulk_data() const
+{
+  return *bulkData_;
+}
+
 //--------------------------------------------------------------------------
 //-------- meta_data() -----------------------------------------------------
 //--------------------------------------------------------------------------
 stk::mesh::MetaData &
 Realm::meta_data()
+{
+  return *metaData_;
+}
+
+const stk::mesh::MetaData &
+Realm::meta_data() const
 {
   return *metaData_;
 }

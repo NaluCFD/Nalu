@@ -134,112 +134,7 @@ struct CompareEntityById
 //   is both owned and ghosted: OwnedDOF | GhostedDOF
 int TpetraLinearSystem::getDofStatus(stk::mesh::Entity node)
 {
-  stk::mesh::BulkData & bulkData = realm_.bulk_data();
-
-  const stk::mesh::Bucket & b = bulkData.bucket(node);
-  const bool entityIsOwned = b.owned();
-  const bool entityIsShared = b.shared();
-  const bool entityIsGhosted = !entityIsOwned && !entityIsShared;
-
-  bool has_non_matching_boundary_face_alg = realm_.has_non_matching_boundary_face_alg();
-  bool hasPeriodic = realm_.hasPeriodic_;
-
-  if (realm_.hasPeriodic_ && realm_.has_non_matching_boundary_face_alg()) {
-    has_non_matching_boundary_face_alg = false;
-    hasPeriodic = false;
-
-    stk::mesh::Selector perSel = stk::mesh::selectUnion(realm_.allPeriodicInteractingParts_);
-    stk::mesh::Selector nonConfSel = stk::mesh::selectUnion(realm_.allNonConformalInteractingParts_);
-    //std::cout << "nonConfSel= " << nonConfSel << std::endl;
-
-    for (auto part : b.supersets()) {
-      if (perSel(*part)) {
-        hasPeriodic = true;
-      }
-      if (nonConfSel(*part)) {
-        has_non_matching_boundary_face_alg = true;
-      }
-    }
-  }
-
-  //std::cerr << "has_non_matching_boundary_face_alg= " << has_non_matching_boundary_face_alg << " hasPeriodic= " << hasPeriodic << std::endl;
-
-  if (has_non_matching_boundary_face_alg && hasPeriodic) {
-    std::ostringstream ostr;
-    ostr << "node id= " << realm_.bulkData_->identifier(node);
-    throw std::logic_error("not ready for primetime to combine periodic and non-matching algorithm on same node: "+ostr.str());
-  }
-
-  // simple case
-  if (!hasPeriodic && !has_non_matching_boundary_face_alg) {
-    if (entityIsGhosted)
-      return DS_GhostedDOF;
-    if (entityIsOwned)
-      return DS_OwnedDOF;
-    if (entityIsShared && !entityIsOwned)
-      return DS_GloballyOwnedDOF;
-  }
-
-  if (has_non_matching_boundary_face_alg) {
-    if (entityIsOwned)
-      return DS_OwnedDOF;
-    //if (entityIsShared && !entityIsOwned) {
-    if (!entityIsOwned && (entityIsGhosted || entityIsShared)){
-      return DS_GloballyOwnedDOF;
-    }
-    // maybe return DS_GhostedDOF if entityIsGhosted
-  }
-
-  if (hasPeriodic) {
-    const stk::mesh::EntityId stkId = bulkData.identifier(node);
-    const stk::mesh::EntityId naluId = *stk::mesh::field_data(*realm_.naluGlobalId_, node);
-
-    // bool for type of ownership for this node
-    const bool nodeOwned = bulkData.bucket(node).owned();
-    const bool nodeShared = bulkData.bucket(node).shared();
-    const bool nodeGhosted = !nodeOwned && !nodeShared;
-
-    // really simple here.. ghosted nodes never part of the matrix
-    if ( nodeGhosted ) {
-      return DS_GhostedDOF;
-    }
-
-    // bool to see if this is possibly a periodic node
-    const bool isSlaveNode = (stkId != naluId);
-
-    if (!isSlaveNode) {
-      if (nodeOwned)
-        return DS_OwnedDOF;
-      else if( nodeShared )
-        return DS_GloballyOwnedDOF;
-      else
-        return DS_GhostedDOF;
-    }
-    else {
-      // I am a slave node.... get the master entity
-      stk::mesh::Entity masterEntity = bulkData.get_entity(stk::topology::NODE_RANK, naluId);
-      if ( bulkData.is_valid(masterEntity)) {
-        const bool masterEntityOwned = bulkData.bucket(masterEntity).owned();
-        const bool masterEntityShared = bulkData.bucket(masterEntity).shared();
-        if (masterEntityOwned)
-          return DS_SkippedDOF | DS_OwnedDOF;
-        if (masterEntityShared)
-          return DS_SkippedDOF | DS_GloballyOwnedDOF;
-        else
-          return DS_GloballyOwnedDOF;
-      }
-      else {
-        return DS_GloballyOwnedDOF;
-      }
-    }
-  }
-
-  // still got here? problem...
-  if (1)
-    throw std::logic_error("bad status2");
-
-  return DS_SkippedDOF;
-
+    return getDofStatus_impl(node, realm_);
 }
 
 void
@@ -1851,6 +1746,115 @@ TpetraLinearSystem::copy_tpetra_to_stk(
       }
     }
   }
+}
+
+int getDofStatus_impl(stk::mesh::Entity node, const Realm& realm)
+{
+  const stk::mesh::BulkData & bulkData = realm.bulk_data();
+
+  const stk::mesh::Bucket & b = bulkData.bucket(node);
+  const bool entityIsOwned = b.owned();
+  const bool entityIsShared = b.shared();
+  const bool entityIsGhosted = !entityIsOwned && !entityIsShared;
+
+  bool has_non_matching_boundary_face_alg = realm.has_non_matching_boundary_face_alg();
+  bool hasPeriodic = realm.hasPeriodic_;
+
+  if (realm.hasPeriodic_ && realm.has_non_matching_boundary_face_alg()) {
+    has_non_matching_boundary_face_alg = false;
+    hasPeriodic = false;
+
+    stk::mesh::Selector perSel = stk::mesh::selectUnion(realm.allPeriodicInteractingParts_);
+    stk::mesh::Selector nonConfSel = stk::mesh::selectUnion(realm.allNonConformalInteractingParts_);
+    //std::cout << "nonConfSel= " << nonConfSel << std::endl;
+
+    for (auto part : b.supersets()) {
+      if (perSel(*part)) {
+        hasPeriodic = true;
+      }
+      if (nonConfSel(*part)) {
+        has_non_matching_boundary_face_alg = true;
+      }
+    }
+  }
+
+  //std::cerr << "has_non_matching_boundary_face_alg= " << has_non_matching_boundary_face_alg << " hasPeriodic= " << hasPeriodic << std::endl;
+
+  if (has_non_matching_boundary_face_alg && hasPeriodic) {
+    std::ostringstream ostr;
+    ostr << "node id= " << realm.bulkData_->identifier(node);
+    throw std::logic_error("not ready for primetime to combine periodic and non-matching algorithm on same node: "+ostr.str());
+  }
+
+  // simple case
+  if (!hasPeriodic && !has_non_matching_boundary_face_alg) {
+    if (entityIsGhosted)
+      return DS_GhostedDOF;
+    if (entityIsOwned)
+      return DS_OwnedDOF;
+    if (entityIsShared && !entityIsOwned)
+      return DS_GloballyOwnedDOF;
+  }
+
+  if (has_non_matching_boundary_face_alg) {
+    if (entityIsOwned)
+      return DS_OwnedDOF;
+    //if (entityIsShared && !entityIsOwned) {
+    if (!entityIsOwned && (entityIsGhosted || entityIsShared)){
+      return DS_GloballyOwnedDOF;
+    }
+    // maybe return DS_GhostedDOF if entityIsGhosted
+  }
+
+  if (hasPeriodic) {
+    const stk::mesh::EntityId stkId = bulkData.identifier(node);
+    const stk::mesh::EntityId naluId = *stk::mesh::field_data(*realm.naluGlobalId_, node);
+
+    // bool for type of ownership for this node
+    const bool nodeOwned = bulkData.bucket(node).owned();
+    const bool nodeShared = bulkData.bucket(node).shared();
+    const bool nodeGhosted = !nodeOwned && !nodeShared;
+
+    // really simple here.. ghosted nodes never part of the matrix
+    if ( nodeGhosted ) {
+      return DS_GhostedDOF;
+    }
+
+    // bool to see if this is possibly a periodic node
+    const bool isSlaveNode = (stkId != naluId);
+
+    if (!isSlaveNode) {
+      if (nodeOwned)
+        return DS_OwnedDOF;
+      else if( nodeShared )
+        return DS_GloballyOwnedDOF;
+      else
+        return DS_GhostedDOF;
+    }
+    else {
+      // I am a slave node.... get the master entity
+      stk::mesh::Entity masterEntity = bulkData.get_entity(stk::topology::NODE_RANK, naluId);
+      if ( bulkData.is_valid(masterEntity)) {
+        const bool masterEntityOwned = bulkData.bucket(masterEntity).owned();
+        const bool masterEntityShared = bulkData.bucket(masterEntity).shared();
+        if (masterEntityOwned)
+          return DS_SkippedDOF | DS_OwnedDOF;
+        if (masterEntityShared)
+          return DS_SkippedDOF | DS_GloballyOwnedDOF;
+        else
+          return DS_GloballyOwnedDOF;
+      }
+      else {
+        return DS_GloballyOwnedDOF;
+      }
+    }
+  }
+
+  // still got here? problem...
+  if (1)
+    throw std::logic_error("bad status2");
+
+  return DS_SkippedDOF;
 }
 
 } // namespace nalu
