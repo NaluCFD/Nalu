@@ -12,11 +12,11 @@ results follows.
 
 Specifically, five algorithms were considered and are as follows:
 
-1. a monolithic scheme in which advection and diffusion are implicit using full analytical sensitivities, 
-2. monolithic momentum solve with implicit advection/diffusion in the context of a fourth order stabilized incremental pressure projection scheme, 
-3. monolithic momentum solve with explicit advection; implicit diffusion in the context of a fourth order stabilized incremental pressure projection scheme, 
-4. segregated momentum solve with implicit advection/diffusion in the context of a fourth order stabilized incremental pressure porjectin scheme, and 
-5. explicit momementum advection/diffusion predictor/corrector scheme in the context of a second order stabilized pressure-free approximate projection scheme.
+1. A monolithic scheme in which advection and diffusion are implicit using full analytical sensitivities, 
+2. Monolithic momentum solve with implicit advection/diffusion in the context of a fourth order stabilized incremental pressure projection scheme, 
+3. Monolithic momentum solve with explicit advection; implicit diffusion in the context of a fourth order stabilized incremental pressure projection scheme, 
+4. Segregated momentum solve with implicit advection/diffusion in the context of a fourth order stabilized incremental pressure porjectin scheme, and 
+5. Explicit momementum advection/diffusion predictor/corrector scheme in the context of a second order stabilized pressure-free approximate projection scheme.
 
 
 Each of the above algorithms has been run in the context of a transient
@@ -100,7 +100,10 @@ given by,
 .. math::
    :label: contErrorDefined
 
-   \epsilon({\bf L_i},\tau_i,{\bf D},{\bf G}) = (({\bf L_1}-{\bf D}\tau_3{\bf G}) \\ -({\bf L_2}-{\bf D}\tau_2{\bf G}))(p^{n+1}-p^{n}) \\ + ({\bf L_2}-{\bf D}\tau_2{\bf G})p^{n+1}
+   \epsilon({\bf L_i},\tau_i,{\bf D},{\bf G}) =
+    (({\bf L_1}-{\bf D}\tau_3{\bf G}) \\
+   -({\bf L_2}-{\bf D}\tau_2{\bf G}))(p^{n+1}-p^{n}) \\
+   + ({\bf L_2}-{\bf D}\tau_2{\bf G})p^{n+1}
 
 
 For the sake of this write-up, let :math:`{\bf L_1} = {\bf L_2}` and

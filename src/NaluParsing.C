@@ -125,11 +125,51 @@ namespace sierra{
     void operator >> (const YAML::Node& node, OversetBoundaryConditionData& oversetBC) {
       oversetBC.bcName_ = node["overset_boundary_condition"].as<std::string>() ;
       oversetBC.theBcType_ = OVERSET_BC;
+      oversetBC.oversetConnectivityType_ = OversetBoundaryConditionData::NALU_STK;
+
+      // Determine the API to be used; we have already set the default
+      if (node["overset_connectivity_type"]) {
+        std::string ogaName = node["overset_connectivity_type"].as<std::string>();
+
+        if (ogaName == "nalu_stk") {
+          oversetBC.oversetConnectivityType_ = OversetBoundaryConditionData::NALU_STK;
+        } else if (ogaName == "tioga") {
+#ifdef NALU_USES_TIOGA
+          oversetBC.oversetConnectivityType_ = OversetBoundaryConditionData::TPL_TIOGA;
+#else
+          throw std::runtime_error(
+            "TIOGA overset connectivity requested in input file. "
+            "However, the optional TPL was not included during compile time.");
+#endif
+        } else {
+          throw std::runtime_error(
+            "Nalu supports two overset connectivity packages: 'nalu_stk' and 'tioga'. "
+            "Value in input file: " + ogaName);
+        }
+      }
+
       const YAML::Node& oversetUserData = node["overset_user_data"];
-      oversetBC.userData_ = oversetUserData.as<OversetUserData>() ;      
+
+      switch (oversetBC.oversetConnectivityType_) {
+      case OversetBoundaryConditionData::NALU_STK:
+        oversetBC.userData_ = oversetUserData.as<OversetUserData>();
+        break;
+
+      case OversetBoundaryConditionData::TPL_TIOGA:
+#ifdef NALU_USES_TIOGA
+        oversetBC.userData_.oversetBlocks_ = oversetUserData;
+#else
+        throw std::runtime_error("TIOGA TPL support not enabled during compilation phase.");
+#endif
+        break;
+
+      case OversetBoundaryConditionData::OVERSET_NONE:
+      default:
+        throw std::runtime_error("Invalid overset connectivity setting in input file.");
+        break;
+      }
     }
-                
-    
+
     void operator >> (const YAML::Node& node, SymmetryBoundaryConditionData& symmetryBC) {
       symmetryBC.bcName_ = node["symmetry_boundary_condition"].as<std::string>() ;
       symmetryBC.targetName_ = node["target_name"].as<std::string>() ;
@@ -816,70 +856,74 @@ namespace YAML {
       return true;
     }    
     
-    bool convert<sierra::nalu::OversetUserData>::decode(const Node& node, sierra::nalu::OversetUserData& oversetData) {
-      //nothing is optional
-      if ( node["percent_overlap"]) {
-	oversetData.percentOverlap_ = node["percent_overlap"].as<double>() ;
+    bool
+    convert<sierra::nalu::OversetUserData>::decode(
+      const Node& node, sierra::nalu::OversetUserData& oversetData)
+    {
+      // nothing is optional
+      if (node["percent_overlap"]) {
+        oversetData.percentOverlap_ = node["percent_overlap"].as<double>();
+      } else {
+        throw std::runtime_error("One MUST specify overset overlap percentage");
       }
-      else {
-	throw std::runtime_error("One MUST specify overset overlap percentage");
+
+      if (node["background_block"]) {
+        oversetData.backgroundBlock_ =
+          node["background_block"].as<std::string>();
+      } else {
+        throw std::runtime_error("One MUST specify background block");
       }
-      
-      if ( node["background_block"]) {
-	oversetData.backgroundBlock_ = node["background_block"].as<std::string>() ;
+
+      if (node["overset_block"]) {
+        const Node oversetBlock = node["overset_block"];
+        if (oversetBlock.Type() == NodeType::Scalar) {
+          oversetData.oversetBlockVec_.resize(1);
+          oversetData.oversetBlockVec_[0] = oversetBlock.as<std::string>();
+        } else {
+          oversetData.oversetBlockVec_.resize(oversetBlock.size());
+          oversetData.oversetBlockVec_ =
+            oversetBlock.as<std::vector<std::string>>();
+        }
+      } else {
+        throw std::runtime_error("One MUST specify overset block(s)");
       }
-      else {
-	throw std::runtime_error("One MUST specify background block");
+
+      if (node["background_cut_block"]) {
+        oversetData.backgroundCutBlock_ =
+          node["background_cut_block"].as<std::string>();
+      } else {
+        throw std::runtime_error("One MUST specify background cut block");
       }
-      
-      if ( node["overset_block"]) {
-	const Node oversetBlock = node["overset_block"] ;
-	if (oversetBlock.Type() == NodeType::Scalar) {
-	  oversetData.oversetBlockVec_.resize(1);
-	  oversetData.oversetBlockVec_[0] = oversetBlock.as<std::string>() ;
-	}
-	else {
-	  oversetData.oversetBlockVec_.resize(oversetBlock.size());
-	  oversetData.oversetBlockVec_ = oversetBlock.as<std::vector<std::string> >() ;
-	}
+
+      if (node["background_cut_surface"]) {
+        oversetData.backgroundSurface_ =
+          node["background_cut_surface"].as<std::string>();
+      } else {
+        throw std::runtime_error("One MUST specify background cut surface");
       }
-      else {
-	throw std::runtime_error("One MUST specify overset block(s)");
+
+      if (node["overset_surface"]) {
+        oversetData.oversetSurface_ = node["overset_surface"].as<std::string>();
+      } else {
+        throw std::runtime_error("One MUST specify overset surface");
       }
-      
-      if ( node["background_cut_block"]) {
-	oversetData.backgroundCutBlock_ = node["background_cut_block"].as<std::string>() ;
+
+      if (node["clip_isoparametric_coordinates"]) {
+        oversetData.clipIsoParametricCoords_ =
+          node["clip_isoparametric_coordinates"].as<bool>();
       }
-      else {
-	throw std::runtime_error("One MUST specify background cut block");
+
+      if (node["detailed_output"]) {
+        oversetData.detailedOutput_ = node["detailed_output"].as<bool>();
       }
-      
-      if ( node["background_cut_surface"]) {
-	oversetData.backgroundSurface_ = node["background_cut_surface"].as<std::string>() ;
-      }
-      else {
-	throw std::runtime_error("One MUST specify background cut surface");
-      }
-      
-      if ( node["overset_surface"]) {
-	oversetData.oversetSurface_ = node["overset_surface"].as<std::string>() ;
-      }
-      else {
-	throw std::runtime_error("One MUST specify overset surface");
-      }
-      
-      if ( node["clip_isoparametric_coordinates"]) {
-	oversetData.clipIsoParametricCoords_ = node["clip_isoparametric_coordinates"].as<bool>() ;
-      }
-      
-      if ( node["detailed_output"]) {
-	oversetData.detailedOutput_ = node["detailed_output"].as<bool>() ;
-      }
-      
+
       return true;
     }
-    
-    bool convert<sierra::nalu::SymmetryUserData>::decode(const Node& node, sierra::nalu::SymmetryUserData& symmetryData) {
+
+    bool
+    convert<sierra::nalu::SymmetryUserData>::decode(
+      const Node& node, sierra::nalu::SymmetryUserData& symmetryData)
+    {
       // nothing as of yet
       return true;
     }

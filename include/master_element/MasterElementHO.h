@@ -18,13 +18,6 @@
 #include <vector>
 #include <array>
 
-
-#ifdef __INTEL_COMPILER
-#define POINTER_RESTRICT restrict
-#else
-#define POINTER_RESTRICT __restrict__
-#endif
-
 namespace sierra{
 namespace nalu{
 

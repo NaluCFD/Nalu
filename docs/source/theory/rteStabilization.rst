@@ -36,8 +36,9 @@ a VMS framework is given by,
 .. math::
    :label: rteVMS
 
-   \int w \left( s_i {{\partial} \over {\partial x_i}} \left(I\left(s\right) + I'\left(s\right)\right)
-      + (\mu_a + \mu_s) \left(I\left(s\right) + I'\left(s\right)\right) - {{\mu_a \sigma T^4} \over {\pi}} -\frac{\mu_s}{4\pi}G \right) {\rm d}V = 0.
+   \int w \left( s_i \frac{\partial}{\partial x_i} \left(I\left(s\right) + I'\left(s\right)\right)
+   + (\mu_a + \mu_s) \left(I\left(s\right) + I'\left(s\right)\right) - \frac{\mu_a \sigma T^4}{\pi}
+   - \frac{\mu_s}{4\pi}G \right) {\rm d}V = 0.
 
 
 Grouping resolved and fine scale terms results in an equation takes the
@@ -47,9 +48,9 @@ structure statement,
 .. math::
    :label: rteVMS1
    
-   \int w \left( s_i {{\partial} \over {\partial x_i}} I\left(s\right)
-   + (\mu_a + \mu_s)I - {{\mu_a \sigma T^4} \over {\pi}} -\frac{\mu_s}{4\pi}G \right) {\rm d}V  \nonumber \\ 
-   + \int w \left( s_i {{\partial} \over {\partial x_i}} I'\left(s\right)
+   \int w \left( s_i \frac{\partial}{\partial x_i} I\left(s\right)
+   + (\mu_a + \mu_s)I - \frac{\mu_a \sigma T^4}{\pi} -\frac{\mu_s}{4\pi}G \right) {\rm d}V  \\ 
+   + \int w \left( s_i \frac{\partial}{\partial x_i} I'\left(s\right)
    + (\mu_a + \mu_s) I' \right) {\rm d}V  = 0.
 
 Note that the isotropic source term has not contributed to the VMS
@@ -63,9 +64,9 @@ integrated by parts to yield the following form (note the boundary term,
 .. math::
    :label: rteVMS2
    
-   \int w \left( s_i {{\partial} \over {\partial x_i}} I\left(s\right)
-   + (\mu_a +\mu_s)I - {{\mu_a \sigma T^4} \over {\pi}} -\frac{\mu_s}{4\pi}G \right) {\rm d}V  \nonumber \\ 
-   - \int I' s_i {{\partial w} \over {\partial x_i}} {\rm d}V 
+   \int w \left( s_i \frac{\partial}{\partial x_i} I\left(s\right)
+   + (\mu_a +\mu_s)I - \frac{\mu_a \sigma T^4}{\pi} -\frac{\mu_s}{4\pi}G \right) {\rm d}V  \\ 
+   - \int I' s_i \frac{\partial w}{\partial x_i} {\rm d}V 
    + \int_{\Gamma} w s_i I' n_i {\rm d}S + \int w (\mu_a + \mu_s)I' {\rm d}V  = 0.
 
 
@@ -76,8 +77,8 @@ equation,
 .. math::
    :label: fineScaleClosure
 
-   I' = -\tau\left(s_i {{\partial} \over {\partial x_i}} I\left(s\right) + (\mu_a + \mu_s)I\left(s\right) 
-      - {{\mu_a \sigma T^4} \over {\pi}} -\frac{\mu_s}{4\pi}G \right) = -\tau R(s)
+   I' = -\tau\left(s_i \frac{\partial}{\partial x_i} I\left(s\right) + (\mu_a + \mu_s)I\left(s\right) 
+      - \frac{\mu_a \sigma T^4}{\pi} -\frac{\mu_s}{4\pi}G \right) = -\tau R(s)
 
 
 Substituting Eq. :eq:`fineScaleClosure` into Eq. :eq:`rteVMS2` yields,
@@ -85,9 +86,9 @@ Substituting Eq. :eq:`fineScaleClosure` into Eq. :eq:`rteVMS2` yields,
 .. math::
    :label: rteVMS3
    
-   \int w \left( s_i {{\partial} \over {\partial x_i}} I\left(s\right)
-   + (\mu_a +\mu_s)I - {{\mu_a \sigma T^4} \over {\pi}} -\frac{\mu_s}{4\pi}G \right) {\rm d}V  \nonumber \\ 
-   + \int \tau s_i {{\partial w} \over {\partial x_i}} R(s) {\rm d}V 
+   \int w \left( s_i \frac{\partial}{\partial x_i} I\left(s\right)
+   + (\mu_a +\mu_s)I - \frac{\mu_a \sigma T^4}{\pi} -\frac{\mu_s}{4\pi}G \right) {\rm d}V  \\ 
+   + \int \tau s_i \frac{\partial w}{\partial x_i} R(s) {\rm d}V 
    - \int_\Gamma \tau w R(s) s_i n_i {\rm d}S - \int \tau w (\mu_a + \mu_s)R(s) {\rm d}V  = 0.
 
 
@@ -99,8 +100,8 @@ equation is provided by defining a modified test function,
 .. math::
    :label: rteVMSCompact
    
-   \int \tilde w \left( s_i {{\partial} \over {\partial x_i}} I\left(s\right)
-   + (\mu_a + \mu_s)I - {{\mu_a \sigma T^4} \over {\pi}} -\frac{\mu_s}{4\pi}G \right) {\rm d}V \nonumber \\
+   \int \tilde w \left( s_i \frac{\partial}{\partial x_i} I\left(s\right)
+   + (\mu_a + \mu_s)I - \frac{\mu_a \sigma T^4}{\pi} -\frac{\mu_s}{4\pi}G \right) {\rm d}V \\
    - \beta \int_\Gamma \tau w R(s) s_i n_i {\rm d}S = 0.
 
 
@@ -123,8 +124,8 @@ The full residual-based equation is placed in divergence form,
 .. math::
    :label: rteDivForm
    
-   \int \tilde w \left( {{\partial} \over {\partial x_i}} s_i I\left(s\right)
-   + (\mu_a + \mu_s) I\left(s\right) - {{\mu_a \sigma T^4} \over {\pi}} -\frac{\mu_s}{4\pi}G \right) {\rm d}V \nonumber \\
+   \int \tilde w \left( \frac{\partial}{\partial x_i} s_i I\left(s\right)
+   + (\mu_a + \mu_s) I\left(s\right) - \frac{\mu_a \sigma T^4}{\pi} -\frac{\mu_s}{4\pi}G \right) {\rm d}V \\
    - \beta \int_\Gamma \tau w R(s) s_i n_i {\rm d}S = 0.
 
 
@@ -133,10 +134,10 @@ and split into its Galerkin and stabilized contributions,
 .. math::
    :label: rteDivFormSub1
  
-   \int w \left( {{\partial} \over {\partial x_i}} s_i I\left(s\right)
-   + (\mu_a + \mu_s )I\left(s\right) - {{\mu_a \sigma T^4} \over {\pi}} -\frac{\mu_s}{4\pi}G \right) {\rm d}V \nonumber \\
-   +\int \tau s_j \frac{\partial w }{\partial x_j} R(s) {\rm d}V \nonumber \\
-   +\alpha\int \tau w (\mu_a + \mu_s)R(s) {\rm d}V \nonumber \\
+   \int w \left( \frac{\partial}{\partial x_i} s_i I\left(s\right)
+   + (\mu_a + \mu_s )I\left(s\right) - \frac{\mu_a \sigma T^4}{\pi} -\frac{\mu_s}{4\pi}G \right) {\rm d}V \\
+   +\int \tau s_j \frac{\partial w }{\partial x_j} R(s) {\rm d}V \\
+   +\alpha\int \tau w (\mu_a + \mu_s)R(s) {\rm d}V \\
    - \beta \int_\Gamma \tau w R(s) s_i n_i {\rm d}S = 0.
 
 
@@ -144,7 +145,8 @@ Note that the first term in the above equation is integrated by parts,
 
 .. math::
 
-   \int w {{\partial} \over {\partial x_i}} s_i I\left(s\right) {\rm d}V = -\int I\left(s\right) s_i \frac{\partial w}{\partial x_i} {\rm d}V 
+   \int w \frac{\partial}{\partial x_i} s_i I\left(s\right)
+   {\rm d}V = -\int I\left(s\right) s_i \frac{\partial w}{\partial x_i} {\rm d}V 
    + \int_{\Gamma} w s_i I\left(s\right) n_i {\rm d}S.
 
 Again, the usage of :math:`\Gamma` provides emphasis that the
@@ -154,11 +156,12 @@ VMS-based stabilized RTE equation is as follows,
 .. math::
    :label: rteDivFormSub2
 
-   & \int \left( -I\left(s\right) s_i \frac{\partial w}{\partial x_i} + (\mu_a + \mu_s) I\left(s\right) 
-   - {{\mu_a \sigma T^4} \over {\pi}} -\frac{\mu_s}{4\pi}G \right) {\rm d}V  \nonumber \\
-   &+ \int_\Gamma w s_i I\left(s\right) n_i {\rm d}S \nonumber \\
-   &+\int \tau s_j \frac{\partial w }{\partial x_j} R(s) {\rm d}V \nonumber \\
-   &+\alpha\int \tau w (\mu_a + \mu_s)R(s) {\rm d}V \nonumber \\
+   & \int \left( -I\left(s\right) s_i \frac{\partial w}{\partial x_i}
+   + (\mu_a + \mu_s) I\left(s\right) 
+   - \frac{\mu_a \sigma T^4}{\pi} -\frac{\mu_s}{4\pi}G \right) {\rm d}V  \\
+   &+ \int_\Gamma w s_i I\left(s\right) n_i {\rm d}S  \\
+   &+\int \tau s_j \frac{\partial w }{\partial x_j} R(s) {\rm d}V \\
+   &+\alpha\int \tau w (\mu_a + \mu_s)R(s) {\rm d}V  \\
    &- \beta \int_\Gamma \tau w R(s) s_i n_i {\rm d}S = 0.
  
 
@@ -187,9 +190,10 @@ vertex-centered finite volume RTE stabilized equation,
    :label: rteSUCVForm1
   
    \int I\left(s\right) s_i n_i {\rm d}S + \int \left( (\mu_a + \mu_s ) I\left(s\right) 
-   - {{\mu_a \sigma T^4} \over {\pi}} -\frac{\mu_s}{4\pi}G \right) {\rm d}V  \nonumber \\
-   + \int_\Gamma s_i I\left(s\right) n_i {\rm d}S \nonumber \\
-   - \int \tau R(s) s_i n_i {\rm d}S +\alpha \int \tau (\mu_a +\mu_s) R(s) {\rm d}V -\beta \int_\Gamma \tau R(s) s_i n_i {\rm d}S= 0.
+   - \frac{\mu_a \sigma T^4}{\pi} -\frac{\mu_s}{4\pi}G \right) {\rm d}V  \\
+   + \int_\Gamma s_i I\left(s\right) n_i {\rm d}S \\
+   - \int \tau R(s) s_i n_i {\rm d}S +\alpha \int \tau (\mu_a +\mu_s) R(s)
+   {\rm d}V -\beta \int_\Gamma \tau R(s) s_i n_i {\rm d}S= 0.
 
 
 Given this equation, either an edge-based or element-based scheme can be
@@ -256,7 +260,7 @@ equation solved is,
    :label: rteSUCVForm2
 
    \int I\left(s\right) s_i n_i {\rm d}S + \int \left( (\mu_a + \mu_s ) I\left(s\right) 
-   - {{\mu_a \sigma T^4} \over {\pi}} -\frac{\mu_s}{4\pi}G \right) {\rm d}V  \nonumber \\
+   - \frac{\mu_a \sigma T^4}{\pi} -\frac{\mu_s}{4\pi}G \right) {\rm d}V  \\
    + \int_\Gamma s_i I\left(s\right) n_i {\rm d}S  = 0.
    
 
@@ -276,9 +280,9 @@ For the FEM, the test function is the standard weighting. Assuming a pure SUPG f
    :label: rteFemSUPG
 
    \int \left( -I\left(s\right) s_i \frac{\partial w}{\partial x_i} + w[(\mu_a + \mu_s) I\left(s\right) 
-   - {{\mu_a \sigma T^4} \over {\pi}} -\frac{\mu_s}{4\pi}G ] \right) {\rm d}V  \nonumber \\
-   + \int_\Gamma w s_i I\left(s\right) n_i {\rm d}S \nonumber \\
-   +\int \tau s_j \frac{\partial w }{\partial x_j} R(s) {\rm d}V \nonumber \\
+   - \frac{\mu_a \sigma T^4}{\pi} -\frac{\mu_s}{4\pi}G ] \right) {\rm d}V  \\
+   + \int_\Gamma w s_i I\left(s\right) n_i {\rm d}S \\
+   +\int \tau s_j \frac{\partial w }{\partial x_j} R(s) {\rm d}V \\
 
 The weak boundary condition is applied in a similar manner as with the CVFEM and EBVC form, however,
 using the appropriate FEM test test function definition. Finally, the form of :math:`\tau` follows the above

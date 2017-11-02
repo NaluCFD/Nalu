@@ -140,8 +140,6 @@ AssembleMomentumNonConformalSolverAlgorithm::execute()
   std::vector <double > ws_c_general_shape_function;
   std::vector <double > ws_o_general_shape_function;
 
-
-
   // deal with state
   VectorFieldType &velocityNp1 = velocity_->field_of_state(stk::mesh::StateNP1);
 
@@ -508,19 +506,17 @@ AssembleMomentumNonConformalSolverAlgorithm::execute()
           for ( int ic = 0; ic < currentNodesPerElement; ++ic ) {
             const int offSetDnDx = ic*nDim; // single intg. point
             const int icNdim = ic*nDim;
+            const double dndxi = p_c_dndx[offSetDnDx+i];
             for ( int j = 0; j < nDim; ++j ) {
               const double nxj = p_cNx[j];
               const double dndxj = p_c_dndx[offSetDnDx+j];
-              for ( int kk = 0; kk < nDim; ++kk ) {
-                const double dndxi = p_c_dndx[offSetDnDx+kk];
-                // -mu*dui/dxj*Aj (divU neglected)
-                p_lhs[rowR+icNdim+kk] += -currentDiffFluxCoeffBip*dndxj*nxj*c_amag/2.0; 
-                // -mu*duj/dxi*Aj
-                p_lhs[rowR+icNdim+j] += -currentDiffFluxCoeffBip*dndxi*nxj*c_amag/2.0;
-              }
+              // -mu*dui/dxj*nj*dS (divU neglected)
+              p_lhs[rowR+icNdim+i] += -currentDiffFluxCoeffBip*dndxj*nxj*c_amag/2.0;
+              // -mu*duj/dxi*nj*dS
+              p_lhs[rowR+icNdim+j] += -currentDiffFluxCoeffBip*dndxi*nxj*c_amag/2.0;
             }
           }
-
+          
           // sensitivities; opposing face (penalty and advection); use general shape function for this single ip
           const double lhsFacO = penaltyIp*c_amag + (eta_*abs_tmdot - tmdot)/2.0;
           for ( int ic = 0; ic < opposingNodesPerFace; ++ic ) {
@@ -533,16 +529,14 @@ AssembleMomentumNonConformalSolverAlgorithm::execute()
           for ( int ic = 0; ic < opposingNodesPerElement; ++ic ) {
             const int offSetDnDx = ic*nDim; // single intg. point
             const int icNdim = (ic + currentNodesPerElement)*nDim;
+            const double dndxi = p_o_dndx[offSetDnDx+i];
             for ( int j = 0; j < nDim; ++j ) {
               const double nxj = p_oNx[j];
               const double dndxj = p_o_dndx[offSetDnDx+j];
-              for ( int kk = 0; kk < nDim; ++kk ) {
-                const double dndxi = p_o_dndx[offSetDnDx+kk];
-                // -mu*dui/dxj*Aj (divU neglected)
-                p_lhs[rowR+icNdim+kk] -= -currentDiffFluxCoeffBip*dndxj*nxj*c_amag/2.0;                
-                // -mu*duj/dxi*Aj
-                p_lhs[rowR+icNdim+j] -= -currentDiffFluxCoeffBip*dndxi*nxj*c_amag/2.0;
-              }
+              // -mu*dui/dxj*nj*dS (divU neglected)
+              p_lhs[rowR+icNdim+i] -= -opposingDiffFluxCoeffBip*dndxj*nxj*c_amag/2.0;                
+              // -mu*duj/dxi*nj*dS
+              p_lhs[rowR+icNdim+j] -= -opposingDiffFluxCoeffBip*dndxi*nxj*c_amag/2.0;
             }
           }
         }

@@ -32,15 +32,13 @@ public:
      *
      * @param a This is a description of parameter a.
      * @param b This is a description of parameter b.
+     *
+     * The distance between \f$(x_1,y_1)\f$ and \f$(x_2,y_2)\f$ is
+     * \f$\sqrt{(x_2-x_1)^2+(y_2-y_1)^2}\f$.
      */
     ExampleClass(int a, float b);
 
     /** ExampleClass destructor description.
-     *
-     * @param a This is a description of parameter a.
-     * @param b This is a description of parameter b.
-     * The distance between \f$(x_1,y_1)\f$ and \f$(x_2,y_2)\f$ is 
-     * \f$\sqrt{(x_2-x_1)^2+(y_2-y_1)^2}\f$.
      */
     ~ExampleClass();
 
@@ -92,6 +90,12 @@ public:
       * [Here is a link.](http://www.google.com/)
       */
     void* AnotherMethod(bool level);
+
+protected:
+    /** The protected methods can be documented and extracted too.
+     *
+     */
+    void SomeProtectedMethod();
 
 private:
 

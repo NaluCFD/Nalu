@@ -56,8 +56,8 @@ fully-developed turbulent flow near a no-slip wall, can be written as,
 .. math::
    :label: law-wall
 
-   u^+ = {u_{\|} \over u_{\tau}} 
-       = { 1 \over \kappa } \ln \left(Ey^+\right) ,
+   u^+ = \frac{u_{\|}}{u_{\tau}} 
+       = \frac{1}{\kappa} \ln \left(Ey^+\right) ,
 
 
 where :math:`u^+` is defined by the the near-wall parallel velocity,
@@ -83,8 +83,8 @@ wall, :math:`y^+`, is defined as the following:
 .. math::
    :label: yplus
 
-   y^+ = {{ \rho Y_p} \over {\mu }}\left(\tau_w \over \rho \right)^{1/2} 
-               = {{ \rho Y_p u_{\tau}} \over {\mu }}.
+   y^+ = \frac{ \rho Y_p}{\mu }\left(\frac{\tau_w}{\rho} \right)^{1/2} 
+       = \frac{ \rho Y_p u_{\tau}} {\mu }.
 
 The classical law of the wall is as follows:
 
@@ -123,7 +123,8 @@ dimensionless wall roughness parameter and is described by,
 
 
 In Nalu, :math:`\kappa` is set to the value of 0.42 while the value of
-:math:`E` is set to 9.8 for smooth walls (White suggests values of :math:`\kappa=0.41` and :math:`E=7.768.`). The viscous sublayer is
+:math:`E` is set to 9.8 for smooth walls (White suggests values of
+:math:`\kappa=0.41` and :math:`E=7.768.`). The viscous sublayer is
 assumed to extend to a value of :math:`y^+` = 11.63.
 
 The wall shear stress, :math:`\tau_w`, can be expressed as,
@@ -131,9 +132,9 @@ The wall shear stress, :math:`\tau_w`, can be expressed as,
 .. math::
    :label: wall-shear-trb
 
-   \tau_w = \rho u_\tau^2 = \rho u_\tau {{u_\|} \over {u^+}}
-                  = { {\rho \kappa u_{\tau}}  \over {\ln \left(Ey^+\right) } }u_\|
-                  = \lambda_w u_\| ,
+   \tau_w = \rho u_\tau^2 = \rho u_\tau {\frac{u_\|} {u^+}}
+          = \frac{\rho \kappa u_{\tau}}{\ln \left(Ey^+\right) } u_\|
+          = \lambda_w u_\| ,
 
 
 where :math:`\lambda_w` is simply the grouping of the factors from the
@@ -143,7 +144,7 @@ shear stress is given by,
 .. math::
    :label: wall-shear-lam
 
-   \tau_w =  \mu {u_\| \over Y_p} .
+   \tau_w =  \mu \frac{u_\|}{Y_p} .
 
 
 The force imparted by the wall, for the :math:`i_{th}` component of
@@ -376,7 +377,8 @@ where
 .. math::
    :label: psi_m
 
-   \psi_m\left(\frac{z}{L}\right) = 2\ln\frac{1 + x}{2} + \ln\frac{1 + x^2}{2} - 2\tan^{-1}x +
+   \psi_m\left(\frac{z}{L}\right) = 2\ln\frac{1 + x}{2}
+   + \ln\frac{1 + x^2}{2} - 2\tan^{-1}x +
    \frac{\pi}{2}, \quad x = \left(1 - \beta_m\frac{z}{L}\right)^{1/4},
 
 .. math::
@@ -393,6 +395,7 @@ The constants used in (:eq:`vel_stable`) -- (:eq:`psi_h`) are :cite:`Dyer:74`
    \kappa = 0.41,~~\alpha_h =
    1,~~\beta_m=16,~~\beta_h=16,~~\gamma_m=5.0,~~\gamma_h=5.0.
 
+.. _theory_abl_wall_function:
 
 ABL Wall Function
 ~~~~~~~~~~~~~~~~~
@@ -497,7 +500,8 @@ Differentiating (:eq:`moeng_bc`) with respect to :math:`u_{j}^{(l)}` gives
    \frac{\partial \tau_{s_i}^{(ip)}}{\partial u_{j}^{(l)}} =
    \frac{\left<\tau_s^{(ip)}\right>_i}{\left<u_{||}^{(ip)}\right>}
    \frac{\partial u_{||}^{(ip)}}{\partial u_{j}^{(l)}} +
-   \frac{\left<\tau_s^{(ip)}\right>_i}{\left<{u_{||}}_i^{(ip)}\right>}\frac{\partial {u_{||}}_i^{(ip)}}{\partial u_{j}^{(l)}}
+   \frac{\left<\tau_s^{(ip)}\right>_i}{\left<{u_{||}}_i^{(ip)}\right>}
+   \frac{\partial {u_{||}}_i^{(ip)}}{\partial u_{j}^{(l)}}
 
 The first term involves a partial derivative of the tangential
 velocity magnitude, while the second term involves the partial
@@ -558,7 +562,7 @@ of the wall formulation and can be expressed as,
 .. math::
    :label: wall-pk-1
 
-   {P_k}_w = \tau_w {{\partial u_{\|}} \over {\partial y}}.
+   {P_k}_w = \tau_w \frac{\partial u_{\|}}{\partial y}.
 
 
 The parallel velocity, :math:`u_{\|}`, can be related to the wall shear
@@ -567,7 +571,7 @@ stress by,
 .. math::
    :label: tauwall-uplus
 
-   \tau_w {u^+ \over y^+ } = \mu {u_{\|} \over Y_p }.
+   \tau_w \frac{u^+}{y^+} = \mu \frac{u_{\|}}{Y_p}.
 
 
 Taking the derivative of both sides of Equation :eq:`tauwall-uplus`, and
@@ -576,7 +580,7 @@ substituting this relationship into Equation :eq:`wall-pk-1` yields,
 .. math::
    :label: wall-pk-2
 
-   {P_k}_w = {\tau_w^2 \over \mu} {{\partial u^+} \over {\partial y^+}}.
+   {P_k}_w = \frac{\tau_w^2} {\mu} \frac{\partial u^+}{\partial y^+}.
 
 
 Applying the derivative of the law of the wall formulation,
@@ -586,10 +590,10 @@ Equation :eq:`law-wall`, provides the functional form of
 .. math::
    :label: dlaw-wall
 
-   {\partial u^+ \over \partial y^+}
-         = {\partial \over \partial y^+}
-          \left[{ 1 \over \kappa } \ln \left(Ey^+\right) \right]
-         = {1 \over \kappa y^+}.
+   \frac{\partial u^+}{\partial y^+}
+         = \frac{\partial} {\partial y^+}
+          \left[\frac{1}{\kappa} \ln \left(Ey^+\right) \right]
+         = \frac{1}{\kappa y^+}.
 
 
 Substituting Equation :eq:`law-wall` within Equation :eq:`wall-pk-2` yields
@@ -598,7 +602,7 @@ a commonly used form of the near wall production term,
 .. math::
    :label: wall-pk-3
 
-   {P_k}_w = {{\tau_w}^2 \over \rho\kappa u_{\tau} Y_p}.
+   {P_k}_w = \frac{{\tau_w}^2}{\rho\kappa u_{\tau} Y_p}.
 
 
 Assuming local equilibrium, :math:`P_k = \rho\epsilon`, and using
@@ -618,7 +622,7 @@ given by,
 .. math::
    :label: wall-tke
 
-   k = {{u_\tau^2} \over {C_\mu^{1/2}}}.
+   k = \frac{u_\tau^2}{C_\mu^{1/2}}.
 
 
 This expression for turbulent kinetic energy is evaluated at the
@@ -637,7 +641,7 @@ grid spacing. The boundary condition is given by,
 
 .. math::
 
-   \omega = {6 \nu \over \beta_1 y^{2}},
+   \omega = \frac{6 \nu} {\beta_1 y^{2}},
 
 which is valid for :math:`y^{+} < 3`.
 
@@ -651,13 +655,13 @@ a slight modification in constant syntax,
 .. math::
    :label: wallModelTke
 
-   k = {u_{\tau}^{2} \over \sqrt{\beta^*}}.
+   k = \frac{u_{\tau}^{2}}{\sqrt{\beta^*}}.
 
 
 In the case of :math:`\omega`, an analytic expression is known in the
 log layer:
 
-.. math:: \omega = {u_{\tau} \over \sqrt{\beta^*} \kappa y},
+.. math:: \omega = \frac{u_{\tau}} {\sqrt{\beta^*} \kappa y},
 
 which is independent of :math:`k`. Because all these expressions
 require :math:`y` to be in the log layer, they should absolutely not be
@@ -690,7 +694,7 @@ surface as,
 .. math::
    :label: intBc
 
-   I\left(s\right) = {1 \over \pi} \left[ \tau \sigma T_\infty^4 
+   I\left(s\right) = \frac{1}{\pi} \left[ \tau \sigma T_\infty^4 
                      + \epsilon \sigma T_w^4
                      + \left(1 - \epsilon - \tau \right) K \right].
 
@@ -883,9 +887,10 @@ with the nonconformal mass flow rate given by,
 .. math::
    :label: mdotA2
 
-    \dot {m}^A = [\frac{(\rho u_j^A + \gamma(\tau G_j^A p -\tau \frac{\partial p^A}{\partial x_j}))n_j^A
-     - (\rho u_j^B + \gamma(\tau G_j^B p -\tau \frac{\partial p^B}{\partial x_j}))n_j^B}{2}
-     + \lambda^A ( p^A - p^B)] dS^A.
+    \dot {m}^A = [\frac{(\rho u_j^A + \gamma(\tau G_j^A p
+    -\tau \frac{\partial p^A}{\partial x_j}))n_j^A
+    - (\rho u_j^B + \gamma(\tau G_j^B p -\tau \frac{\partial p^B}{\partial x_j}))n_j^B}{2}
+    + \lambda^A ( p^A - p^B)] dS^A.
 
 In the above set of expressions, the consistent definition of :math:`\hat{u}_j`, i.e., the convecting velocity including
 possible pressure stabilization terms, is retained.
@@ -899,7 +904,8 @@ With the substitution of :math:`\eta` to be unity, the effective convective term
 .. math::
    :label: advectionAUPW
 
-    \int \rho \hat{u}_j \phi n_j^A dS^A = \frac{ (\dot m^A + |\dot m^A|) \phi^A +  (\dot m^A - |\dot m^A|)\phi^B}{2}.
+    \int \rho \hat{u}_j \phi n_j^A dS^A =
+    \frac{ (\dot m^A + |\dot m^A|) \phi^A +  (\dot m^A - |\dot m^A|)\phi^B}{2}.
 
 Note that this form reduces to a standard upwind operator.
 

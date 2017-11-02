@@ -151,8 +151,6 @@ ComputeMdotNonConformalAlgorithm::execute()
   std::vector<double> ws_c_det_j;
   std::vector<double> ws_o_det_j;
 
-
-
   // deal with state
   ScalarFieldType &pressureNp1 = pressure_->field_of_state(stk::mesh::StateNP1);
 

@@ -255,7 +255,11 @@ prescribed area vector) is as follows,
 
 .. math::
 
-     -\int \Gamma \frac{\partial \phi}{\partial x_j} A_j = - \Gamma_{ip} \left[ \left(\frac{\partial N^{ip}_0} {\partial x} \phi_0 + \frac{\partial N^{ip}_1} {\partial x} \phi_1 \right) A_x + \left(\frac{\partial N^{ip}_0} {\partial y} \phi_0 + \frac{\partial N^{ip}_1} {\partial y} \phi_1 \right) A_y \right]
+     -\int \Gamma \frac{\partial \phi}{\partial x_j} A_j =
+     - \Gamma_{ip} \left[ \left(\frac{\partial N^{ip}_0}
+     {\partial x} \phi_0 + \frac{\partial N^{ip}_1} {\partial x}
+     \phi_1 \right) A_x + \left(\frac{\partial N^{ip}_0} {\partial y}
+     \phi_0 + \frac{\partial N^{ip}_1} {\partial y} \phi_1 \right) A_y \right]
 
 Standard Gauss point locations at the subcontrol surfaces can be shifted
 to the edge-midpoints for a more stable (monotonic) diffusion operator
@@ -275,7 +279,8 @@ over-relaxed approach is used. The form of any gradient for direction
 .. math::
    :label: generalGrad
 
-   \frac{\partial \phi}{\partial x_j}_{ip} = \bar{G_j\phi} + \left[ \left(\phi_R - \phi_L \right) 
+   \frac{\partial \phi}{\partial x_j}_{ip} = \bar{G_j\phi}
+   + \left[ \left(\phi_R - \phi_L \right) 
    - \bar{G_l\phi}dx_l \right] \frac{A_j}{A_k dx_k}.
 
 In the above expression, we are iterating edges with a Left node
@@ -286,9 +291,11 @@ diffusion term is written as,
 
 .. math::
 
-     -\int \Gamma \frac{\partial \phi}{\partial x_j} A_j &= - \Gamma_{ip} \left[ \left(\bar{G_x \phi}A_x + \bar{G_y \phi}A_y \right)
-       + \left( \phi_R -  \phi_L \right) \frac{A_x A_x + A_y A_y}{A_x dx_x + A_y dx_y} \right. \nonumber \\ 
-     &- \left. \left( \bar{G_x \phi}dx_x + \bar{G_y \phi}dx_y \right) \frac{A_x A_x + A_y A_y} {A_x dx_x + A_y dx_y} \right].
+     -\int \Gamma \frac{\partial \phi}{\partial x_j} A_j &=
+     - \Gamma_{ip} \left[ \left(\bar{G_x \phi}A_x + \bar{G_y \phi}A_y \right)
+     + \left( \phi_R - \phi_L \right) \frac{A_x A_x + A_y A_y}{A_x dx_x + A_y dx_y} \right. \\ 
+     &- \left. \left( \bar{G_x \phi}dx_x + \bar{G_y \phi}dx_y \right)
+     \frac{A_x A_x + A_y A_y} {A_x dx_x + A_y dx_y} \right].
 
 
 Momentum Stress
@@ -298,7 +305,10 @@ The viscous stress tensor, :math:`\tau_{ij}` is formed based on the
 standard gradients defined above for either the edge or element-based
 discretization. The viscous force for component :math:`i` is given by,
 
-.. math:: -\int \tau_{ij} A_j = -\int \mu_{ip}\left( \frac{\partial u_i}{\partial x_j} + \frac{\partial u_j}{\partial x_i} \right) A_j.
+.. math::
+
+   -\int \tau_{ij} A_j = -\int \mu_{ip}\left( \frac{\partial u_i}{\partial x_j}
+   + \frac{\partial u_j}{\partial x_i} \right) A_j.
 
 For example, the x and y-component of viscous force is
 given by,
@@ -322,10 +332,22 @@ using the 2D example with variable area vector) can be written as,
 
 .. math::
 
-     F_x &= - \Gamma_{ip} \left[ \left(\frac{\partial N^{ip}_0} {\partial x} {u_x}_0 + \frac{\partial N^{ip}_1} {\partial x} {u_x}_1 \right) A_x + \left(\frac{\partial N^{ip}_0} {\partial y} {u_x}_0 + \frac{\partial N^{ip}_1} {\partial y} {u_x}_1 \right) A_y \right. \nonumber \\ 
-     &+ \left. \left(\frac{\partial N^{ip}_0} {\partial x} {u_x}_0 + \frac{\partial N^{ip}_1} {\partial x} {u_x}_1 \right) A_x + \left(\frac{\partial N^{ip}_0} {\partial y} {u_y}_0 + \frac{\partial N^{ip}_1} {\partial x} {u_y}_1 \right) A_y \right], \\ 
-     F_y &= - \Gamma_{ip} \left[ \left(\frac{\partial N^{ip}_0} {\partial x} {u_y}_0 + \frac{\partial N^{ip}_1} {\partial x} {u_y}_1 \right) A_x + \left(\frac{\partial N^{ip}_0} {\partial y} {u_y}_0 + \frac{\partial N^{ip}_1} {\partial y} {u_y}_1 \right) A_y \right. \nonumber \\ 
-     &+ \left. \left(\frac{\partial N^{ip}_0} {\partial y} {u_x}_0 + \frac{\partial N^{ip}_1} {\partial y} {u_x}_1 \right) A_x + \left(\frac{\partial N^{ip}_0} {\partial y} {u_y}_0 + \frac{\partial N^{ip}_1} {\partial x} {u_y}_1 \right) A_y \right].
+     F_x &= - \Gamma_{ip} \left[ \left(\frac{\partial N^{ip}_0}
+     {\partial x} {u_x}_0 + \frac{\partial N^{ip}_1} {\partial x} {u_x}_1 \right) A_x
+     + \left(\frac{\partial N^{ip}_0} {\partial y} {u_x}_0 + \frac{\partial N^{ip}_1}
+     {\partial y} {u_x}_1 \right) A_y \right. \\ 
+     &+ \left. \left(\frac{\partial N^{ip}_0} {\partial x} {u_x}_0
+     + \frac{\partial N^{ip}_1} {\partial x} {u_x}_1 \right) A_x
+     + \left(\frac{\partial N^{ip}_0} {\partial y} {u_y}_0 + \frac{\partial N^{ip}_1}
+     {\partial x} {u_y}_1 \right) A_y \right], \\ 
+     F_y &= - \Gamma_{ip} \left[ \left(\frac{\partial N^{ip}_0} {\partial x}
+     {u_y}_0 + \frac{\partial N^{ip}_1} {\partial x} {u_y}_1 \right) A_x
+     + \left(\frac{\partial N^{ip}_0} {\partial y} {u_y}_0 + \frac{\partial N^{ip}_1}
+     {\partial y} {u_y}_1 \right) A_y \right. \\ 
+     &+ \left. \left(\frac{\partial N^{ip}_0} {\partial y} {u_x}_0
+     + \frac{\partial N^{ip}_1} {\partial y} {u_x}_1 \right) A_x
+     + \left(\frac{\partial N^{ip}_0} {\partial y} {u_y}_0 + \frac{\partial N^{ip}_1}
+     {\partial x} {u_y}_1 \right) A_y \right].
 
 For the edge-based diffusion operator, the value of :math:`\phi` is
 substituted for the component of velocity, :math:`u_i` in the
@@ -333,7 +355,8 @@ Eq. :eq:`generalGrad`.
 
 .. math::
 
-   \frac{\partial u_i}{\partial x_j}_{ip} = \bar{G_j u_i} + \left[ \left({u_i}_R - {u_i}_L \right) 
+   \frac{\partial u_i}{\partial x_j}_{ip} = \bar{G_j u_i}
+   + \left[ \left({u_i}_R - {u_i}_L \right) 
    - \bar{G_l u_i}dx_l \right] \frac{A_j}{A_k dx_k}.
 
 Common approaches in the cell-centered community are to use
@@ -348,22 +371,24 @@ the viscous stress contribution:
 .. math::
 
      F_x &= - \mu_{ip} \left[ \left(\bar{G_x u_x}A_x + \bar{G_y u_x}A_y \right)
-       + \left( {u_x}_R -  {u_x}_L \right) \frac{A_x A_x + A_y A_y}{A_x dx + A_y dy} \right. \nonumber \\ 
-     &- \left. \left( \bar{G_x u_x}dx + \bar{G_y u_x}dy \right) \frac{A_x A_x + A_y A_y} {A_x dx + A_y dy} \right] \nonumber  \\ 
-     &- \mu_{ip} \left[ \bar{G_x u_x}A_x + \bar{G_x u_y}A_y + \left({u_x}_R - {u_x}_L\right) \frac{A_x A_x} {A_x dx + A_y dy} \right. \nonumber \\
-       &+ \left. \left({u_y}_R - {u_y}_L\right) \frac{A_x A_y} {A_x dx + A_y dy} \right. \nonumber \\ 
-       &- \left. \left( \bar{G_x u_x}dx +  \bar{G_y u_x}dy \right) \frac{A_x A_x} {A_x dx + A_y dy} \right. \nonumber \\ 
-       &- \left. \left( \bar{G_x u_y}dx +  \bar{G_y u_y}dy \right) \frac{A_x A_y} {A_x dx + A_y dy} \right],
+     + \left( {u_x}_R - {u_x}_L \right) \frac{A_x A_x + A_y A_y}{A_x dx + A_y dy} \right.  \\ 
+     &- \left. \left( \bar{G_x u_x}dx + \bar{G_y u_x}dy \right) \frac{A_x A_x + A_y A_y} {A_x dx + A_y dy} \right]  \\ 
+     &- \mu_{ip} \left[ \bar{G_x u_x}A_x + \bar{G_x u_y}A_y
+     + \left({u_x}_R - {u_x}_L\right) \frac{A_x A_x} {A_x dx + A_y dy} \right. \\
+     &+ \left. \left({u_y}_R - {u_y}_L\right) \frac{A_x A_y} {A_x dx + A_y dy} \right. \\ 
+     &- \left. \left( \bar{G_x u_x}dx + \bar{G_y u_x}dy \right) \frac{A_x A_x} {A_x dx + A_y dy} \right. \\ 
+     &- \left. \left( \bar{G_x u_y}dx + \bar{G_y u_y}dy \right) \frac{A_x A_y} {A_x dx + A_y dy} \right],
 
 .. math::
 
      F_y &= - \mu_{ip} \left[ \left(\bar{G_x u_y}A_x + \bar{G_y u_y}A_y \right)
-       + \left( {u_y}_R -  {u_y}_L \right) \frac{A_x A_x + A_y A_y}{A_x dx + A_y dy} \right. \nonumber \\ 
-     &- \left. \left( \bar{G_x u_y}dx + \bar{G_y u_y}dy \right) \frac{A_x A_x + A_y A_y} {A_x dx + A_y dy} \right] \nonumber \\
-     &- \mu_{ip} \left[ \bar{G_y u_x}A_x + \bar{G_y u_y}A_y + \left({u_y}_R - {u_y}_L\right) \frac{A_y A_y} {A_x dx + A_y dy} \right. \nonumber \\
-       &+ \left. \left({u_x}_R - {u_x}_L\right) \frac{A_y A_x} {A_x dx + A_y dy} \right. \nonumber \\ 
-       &- \left. \left( \bar{G_x u_y]}dx +  \bar{G_y u_y}dy \right) \frac{A_y A_y} {A_x dx + A_y dy} \right. \nonumber \\ 
-       &- \left. \left( \bar{G_x u_x}dx +  \bar{G_y u_x}dy \right) \frac{A_y A_x} {A_x dx + A_y dy} \right],
+     + \left( {u_y}_R - {u_y}_L \right) \frac{A_x A_x + A_y A_y}{A_x dx + A_y dy} \right. \\ 
+     &- \left. \left( \bar{G_x u_y}dx + \bar{G_y u_y}dy \right) \frac{A_x A_x + A_y A_y} {A_x dx + A_y dy} \right]  \\
+     &- \mu_{ip} \left[ \bar{G_y u_x}A_x + \bar{G_y u_y}A_y
+     + \left({u_y}_R - {u_y}_L\right) \frac{A_y A_y} {A_x dx + A_y dy} \right. \\
+     &+ \left. \left({u_x}_R - {u_x}_L\right) \frac{A_y A_x} {A_x dx + A_y dy} \right.  \\ 
+     &- \left. \left( \bar{G_x u_y]}dx + \bar{G_y u_y}dy \right) \frac{A_y A_y} {A_x dx + A_y dy} \right. \\ 
+     &- \left. \left( \bar{G_x u_x}dx + \bar{G_y u_x}dy \right) \frac{A_y A_x} {A_x dx + A_y dy} \right],
 
 where above, the first :math:`[]` and second :math:`[]` represent the
 :math:`\frac{\partial u_i}{\partial x_j}A_j` and

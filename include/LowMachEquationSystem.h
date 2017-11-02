@@ -31,6 +31,13 @@ class LinearSystem;
 class ProjectedNodalGradientEquationSystem;
 class SurfaceForceAndMomentAlgorithmDriver;
 
+/** Low-Mach formulation of the Navier-Stokes Equations
+ *
+ *  This class is a thin-wrapper around sierra::nalu::ContinuityEquationSystem
+ *  and sierra::nalu::MomentumEquationSystem that orchestrates the interactions
+ *  between the velocity and the pressure Possion solves in the
+ *  LowMachEquationSystem::solve_and_update method.
+ */
 class LowMachEquationSystem : public EquationSystem {
 
 public:
@@ -94,6 +101,9 @@ public:
      
 };
 
+/** Representation of the Momentum conservation equations in 2-D and 3-D
+ *
+ */
 class MomentumEquationSystem : public EquationSystem {
 
 public:

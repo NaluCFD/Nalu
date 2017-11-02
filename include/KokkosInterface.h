@@ -9,7 +9,18 @@
 #define INCLUDE_KOKKOSINTERFACE_H_
 
 #include <stk_mesh/base/Entity.hpp>
+#include <Kokkos_Macros.hpp>
 #include <Kokkos_Core.hpp>
+
+#define NALU_ALIGN(size) __attribute__((aligned(size)))
+
+#if defined(__INTEL_COMPILER)
+#define POINTER_RESTRICT restrict
+#elif defined(__GNUC__)
+#define POINTER_RESTRICT __restrict__
+#else
+#define POINTER_RESTRICT
+#endif
 
 namespace sierra {
 namespace nalu {

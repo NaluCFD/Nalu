@@ -257,22 +257,46 @@ struct OpenUserData : public UserData {
 };
 
 struct OversetUserData : public UserData {
-  // at present, simulation can have one background mesh with multiple, non-interacting overset blocks
+  // at present, simulation can have one background mesh with multiple,
+  // non-interacting overset blocks
+
+  /// Percentage overlap between background and interior mesh
   double percentOverlap_;
   bool clipIsoParametricCoords_;
   bool detailedOutput_;
+  /// Part name for the background  mesh
   std::string backgroundBlock_;
+
+  /// Part name for the interior fringe surface created on the background mesh
+  /// by hole cutting algorithm
   std::string backgroundSurface_;
+
+  /// Part name for the inactive elements on the background mesh as a result of
+  /// hole cutting.
   std::string backgroundCutBlock_;
+
+  /// Exterior boundary of the internal meshe(s) that are mandatory receptors
   std::string oversetSurface_;
+
+  /// List of part names for the interior meshes
   std::vector<std::string> oversetBlockVec_;
- OversetUserData()
-   : UserData(),
-    percentOverlap_(10.0), clipIsoParametricCoords_(false), detailedOutput_(false), backgroundBlock_("na"),
-    backgroundSurface_("na"), backgroundCutBlock_("na"), oversetSurface_("na")
-    {} 
+
+#ifdef NALU_USES_TIOGA
+  YAML::Node oversetBlocks_;
+#endif
+
+  OversetUserData()
+    : UserData(),
+      percentOverlap_(10.0),
+      clipIsoParametricCoords_(false),
+      detailedOutput_(false),
+      backgroundBlock_("na"),
+      backgroundSurface_("na"),
+      backgroundCutBlock_("na"),
+      oversetSurface_("na")
+  {}
 };
- 
+
 struct SymmetryUserData : public UserData {
   SymmetryUserData()
     : UserData()
@@ -318,8 +342,15 @@ struct OpenBoundaryConditionData : public BoundaryCondition {
 };
 
 struct OversetBoundaryConditionData : public BoundaryCondition {
+  enum OversetAPI {
+    NALU_STK      = 0, ///< Native Nalu holecutting using STK search
+    TPL_TIOGA     = 1, ///< Overset connectivity using TIOGA
+    OVERSET_NONE  = 2  ///< Guard for error messages
+  };
+
   OversetBoundaryConditionData(BoundaryConditions& bcs) : BoundaryCondition(bcs){};
   OversetUserData userData_;
+  OversetAPI oversetConnectivityType_;
 };
 
 struct SymmetryBoundaryConditionData : public BoundaryCondition {

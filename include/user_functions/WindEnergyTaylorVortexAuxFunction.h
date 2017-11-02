@@ -44,8 +44,6 @@ private:
   double uInf_;
   double density_;
   double visc_;
-  double Lx_;
-
 };
 
 } // namespace nalu

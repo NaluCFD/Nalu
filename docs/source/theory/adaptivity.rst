@@ -17,8 +17,8 @@ the hanging nodes that occur along the parent-child element boundary.
 .. _hadapt-convol:
 
 .. figure:: images/hadapt.pdf
-   :align: center
    :width: 500px
+   :align: center
 
    Control volume definition on an h-adapted mesh with hanging nodes.
    (Four-patch of parent elements with refinement in bottom-right
@@ -38,8 +38,8 @@ different transition possibilities.
 .. _aftosmis-convol:
 
 .. figure:: images/hadapt2.pdf
-   :align: center
    :width: 500px
+   :align: center
 
    Control volume definition on an h-adapted mesh with transition
    control volumes about the hanging nodes. (Four-patch of parent
@@ -62,8 +62,8 @@ Figure :numref:`kallin-convol`.
 .. _kallin-convol:
 
 .. figure:: images/hadapt3.pdf
-   :align: center
    :width: 500px
+   :align: center
 
    Control volume definition on a heterogeneous h-adapted mesh with no
    hanging nodes. (Four-patch of parent elements with refinement in

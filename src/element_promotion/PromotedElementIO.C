@@ -181,7 +181,7 @@ PromotedElementIO::put_data_on_node_block(
     stk::mesh::Entity node = bulkData_.get_entity(stk::topology::NODE_RANK, ids[k]);
     const T* field_data = static_cast<T*>(stk::mesh::field_data(field, node));
     for (int j = 0; j < fieldLength; ++j) {
-      flatArray[index] = field_data[j];
+      flatArray[index] = (field_data != nullptr) ? field_data[j] : 0.0;
       ++index;
     }
   }

@@ -78,8 +78,8 @@ the two adjacent left (L) and right (R) nodes,
 
 .. math::
 
-   {\rm Pe} = {{{1 \over 2} \left( u_{R,i} + u_{L,i} \right) 
-                         \left( x_{R,i} - x_{L,i} \right) } \over \nu }.
+   {\rm Pe} = \frac{\frac{1}{2} \left( u_{R,i} + u_{L,i} \right) 
+              \left( x_{R,i} - x_{L,i} \right) } {\nu }.
 
 A dot-product is implied by repeated indices.
 
@@ -87,8 +87,8 @@ A dot-product is implied by repeated indices.
 
 .. figure:: images/pecletFactor.pdf
    :alt: Cell-Peclet number blending function
-   :align: center
    :width: 500px
+   :align: center
 
    Cell-Peclet number blending function outlining classic (varying the
    hybrid factor :math:`\gamma` from 1.0, 0.1 and 0.01; again
@@ -103,7 +103,7 @@ based on the value of :math:`\alpha_{upw}` blending
 .. math::
    :label: phi-upwind-full
 
-   \phi_{upw} = \alpha_{upw}\tilde \phi^L_{upw} + \left(1-\alpha_{upw}\right)\phi_{cds}; \dot m > 0, \nonumber \\
+   \phi_{upw} = \alpha_{upw}\tilde \phi^L_{upw} + \left(1-\alpha_{upw}\right)\phi_{cds}; \dot m > 0, \\
                 \alpha_{upw}\tilde\phi^R_{upw} + \left(1-\alpha_{upw}\right)\phi_{cds}; \dot m < 0.
 
 
@@ -113,7 +113,7 @@ right (:math:`\phi^R`) state,
 .. math::
    :label: adv-upw-lr
 
-   \tilde \phi^L_{upw} &= \phi^L + d^L_j \frac{\partial \phi^L }{\partial x_j}, \nonumber \\
+   \tilde \phi^L_{upw} &= \phi^L + d^L_j \frac{\partial \phi^L }{\partial x_j}, \\
    \tilde \phi^R_{upw} &= \phi^R - d^R_j \frac{\partial \phi^R }{\partial x_j}.
 
 
@@ -123,7 +123,7 @@ points and the integration point (for both edge or element-based),
 .. math::
    :label: distance-vec
 
-   d^L_j &= x^{ip}_j - x^L_j, \nonumber \\
+   d^L_j &= x^{ip}_j - x^L_j, \\
    d^R_j &= x^R_j - x^{ip}_j. 
 
 In the case of all transported quantities, a Van Leer
@@ -158,7 +158,7 @@ where,
 .. math::
    :label: adv-new4th
    
-   \hat\phi^L_{upw} &= \alpha \tilde \phi^L_{upw} + \left(1-\alpha\right) \phi_{cds}, \nonumber \\
+   \hat\phi^L_{upw} &= \alpha \tilde \phi^L_{upw} + \left(1-\alpha\right) \phi_{cds}, \\
    \hat\phi^R_{upw} &= \alpha \tilde \phi^R_{upw} + \left(1-\alpha\right) \phi_{cds}.
 
 

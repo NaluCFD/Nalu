@@ -121,7 +121,8 @@ bounded. In this model, the turbulent viscosity is given by,
 .. math::
    :label: mut-wale
 
-   \mu_t = \rho \left(C_w \Delta \right)^2 \frac{\left( S^d_{ij}S^d_{ij}\right)^{3/2}}{\left( S_{ij}S_{ij}\right)^{5/2} + \left( S^d_{ij}S^d_{ij}\right)^{5/4}},
+   \mu_t = \rho \left(C_w \Delta \right)^2 \frac{\left( S^d_{ij}S^d_{ij}\right)^{3/2}}
+   {\left( S_{ij}S_{ij}\right)^{5/2} + \left( S^d_{ij}S^d_{ij}\right)^{5/4}},
 
 
 with the constant :math:`C_w` of 0.325 and a standard filter,

@@ -20,6 +20,7 @@
 #include <MaterialPropertys.h>
 #include <EquationSystems.h>
 #include <Teuchos_RCP.hpp>
+#include <overset/OversetManager.h>
 
 #include <stk_util/util/ParameterList.hpp>
 
@@ -49,7 +50,7 @@ class Algorithm;
 class AlgorithmDriver;
 class AuxFunctionAlgorithm;
 class ComputeGeometryAlgorithmDriver;
-class OversetManager;
+// class OversetManager;
 class NonConformalManager;
 class ErrorIndicatorAlgorithmDriver;
 #if defined (NALU_USES_PERCEPT)
@@ -79,6 +80,10 @@ class LagrangeBasis;
 class PromotedElementIO;
 struct ElementDescription;
 
+/** Representation of a computational domain and physics equations solved on
+ * this domain.
+ *
+ */
 class Realm {
  public:
 
@@ -153,10 +158,10 @@ class Realm {
   void init_current_coordinates();
 
   std::string get_coordinates_name();
-  bool has_mesh_motion();
-  bool has_mesh_deformation();
-  bool does_mesh_move();
-  bool has_non_matching_boundary_face_alg();
+  bool has_mesh_motion() const;
+  bool has_mesh_deformation() const;
+  bool does_mesh_move() const;
+  bool has_non_matching_boundary_face_alg() const;
 
   // overset boundary condition requires elemental field registration
   bool query_for_overset();
@@ -344,7 +349,9 @@ class Realm {
   // get aura, bulk and meta data
   bool get_activate_aura();
   stk::mesh::BulkData & bulk_data();
+  const stk::mesh::BulkData & bulk_data() const;
   stk::mesh::MetaData & meta_data();
+  const stk::mesh::MetaData & meta_data() const;
 
   // inactive part
   stk::mesh::Selector get_inactive_selector();
@@ -571,6 +578,7 @@ class Realm {
   bool high_order_active() const { return doPromotion_; };
 
   std::string physics_part_name(std::string) const;
+  std::vector<std::string> physics_part_names(std::vector<std::string>) const;
   std::string get_quad_type() const;
 
   // check for mesh changing

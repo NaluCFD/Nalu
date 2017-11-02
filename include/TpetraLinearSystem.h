@@ -42,6 +42,14 @@ typedef std::pair<stk::mesh::Entity, stk::mesh::Entity> Connection;
 typedef Kokkos::UnorderedMap<Connection,void> ConnectionSetKK;
 typedef std::vector< Connection > ConnectionVec;
 
+  enum DOFStatus {
+    DS_NotSet           = 0,
+    DS_SkippedDOF       = 1 << 1,
+    DS_OwnedDOF         = 1 << 2,
+    DS_GloballyOwnedDOF = 1 << 3,
+    DS_GhostedDOF       = 1 << 4
+  };
+
 class TpetraLinearSystem : public LinearSystem
 {
 public:
@@ -120,14 +128,6 @@ public:
     return myLIDs[entityId];
   }
 
-
-  enum DOFStatus {
-    DS_NotSet           = 0,
-    DS_SkippedDOF       = 1 << 1,
-    DS_OwnedDOF         = 1 << 2,
-    DS_GloballyOwnedDOF = 1 << 3,
-    DS_GhostedDOF       = 1 << 4
-  };
 
   int getDofStatus(stk::mesh::Entity node);
 
@@ -222,6 +222,8 @@ void copy_kokkos_unordered_map(const Kokkos::UnorderedMap<T1,T2>& src,
   }
   ThrowRequire(fail_count == 0);
 }
+
+int getDofStatus_impl(stk::mesh::Entity node, const Realm& realm);
 
 } // namespace nalu
 } // namespace Sierra
