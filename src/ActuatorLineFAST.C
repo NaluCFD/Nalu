@@ -976,7 +976,7 @@ ActuatorLineFAST::complete_search()
 
       // gather elemental coords
       std::vector<double> elementCoords(nDim*nodesPerElement);
-      gather_field(nDim, &elementCoords[0], *coordinates, bulkData.begin_nodes(elem),
+      gather_field_for_interp(nDim, &elementCoords[0], *coordinates, bulkData.begin_nodes(elem),
                    nodesPerElement);
 
 
@@ -1192,7 +1192,7 @@ ActuatorLineFAST::spread_actuator_force_to_node_vec(
       double gA = isotropic_Gaussian_projection(nDim, distance, epsilon);
       compute_node_force_given_weight(nDim, gA, &actuator_force[0], &ws_nodeForce[0]);
       double * sourceTerm = (double*)stk::mesh::field_data(actuator_source, node );
-      for ( int j=0; j < nDim; ++j ) sourceTerm[j] = ws_nodeForce[j];
+      for ( int j=0; j < nDim; ++j ) sourceTerm[j] += ws_nodeForce[j];
 
       add_thrust_torque_contrib(nDim, node_coords, *dVol, ws_nodeForce, hubPt, hubShftDir, thr, tor);
 
