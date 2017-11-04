@@ -964,18 +964,26 @@ TpetraLinearSystem::zeroSystem()
 {
   ThrowRequire(!ownedMatrix_.is_null());
   ThrowRequire(!globallyOwnedMatrix_.is_null());
-  ThrowRequire(!globallyOwnedRhs_.is_null());
-  ThrowRequire(!ownedRhs_.is_null());
 
   globallyOwnedMatrix_->resumeFill();
   ownedMatrix_->resumeFill();
 
   globallyOwnedMatrix_->setAllToScalar(0);
   ownedMatrix_->setAllToScalar(0);
-  globallyOwnedRhs_->putScalar(0);
-  ownedRhs_->putScalar(0);
+
+  zeroRhs();
 
   sln_->putScalar(0);
+}
+
+void
+TpetraLinearSystem::zeroRhs()
+{
+  ThrowRequire(!globallyOwnedRhs_.is_null());
+  ThrowRequire(!ownedRhs_.is_null());
+
+  globallyOwnedRhs_->putScalar(0);
+  ownedRhs_->putScalar(0);
 }
 
 namespace
@@ -1023,7 +1031,8 @@ TpetraLinearSystem::sumInto(
       const SharedMemView<const double**> & lhs,
       const SharedMemView<int*> & localIds,
       const SharedMemView<int*> & sortPermutation,
-      const char * trace_tag)
+      const char * trace_tag,
+      bool ignoreLhs)
 {
   constexpr bool forceAtomic = !std::is_same<sierra::nalu::DeviceSpace, Kokkos::Serial>::value;
 
@@ -1062,7 +1071,9 @@ TpetraLinearSystem::sumInto(
     ThrowAssertMsg(std::isfinite(cur_rhs), "Inf or NAN rhs");
 
     if(localId < maxOwnedRowId_) {
-      sum_into_row(ownedLocalMatrix.row(localId), numRows, localIds.data(), sortPermutation.data(), cur_lhs);
+      if (!ignoreLhs) {
+        sum_into_row(ownedLocalMatrix.row(localId), numRows, localIds.data(), sortPermutation.data(), cur_lhs);
+      }
       if (forceAtomic) {
         Kokkos::atomic_add(&ownedLocalRhs(localId,0), cur_rhs);
       }
@@ -1072,8 +1083,10 @@ TpetraLinearSystem::sumInto(
     }
     else if (localId < maxGloballyOwnedRowId_) {
       const LocalOrdinal actualLocalId = localId - maxOwnedRowId_;
-      sum_into_row(globallyOwnedLocalMatrix.row(actualLocalId), numRows,
-        localIds.data(), sortPermutation.data(), cur_lhs);
+      if (!ignoreLhs) {
+        sum_into_row(globallyOwnedLocalMatrix.row(actualLocalId), numRows,
+          localIds.data(), sortPermutation.data(), cur_lhs);
+      }
 
       if (forceAtomic) {
         Kokkos::atomic_add(&globallyOwnedLocalRhs(actualLocalId,0), cur_rhs);
@@ -1092,8 +1105,8 @@ TpetraLinearSystem::sumInto(
   std::vector<double> &scratchVals,
   const std::vector<double> & rhs,
   const std::vector<double> & lhs,
-  const char *trace_tag
-  )
+  const char *trace_tag,
+  bool ignoreLhs)
 {
   const size_t n_obj = entities.size();
   const unsigned numRows = n_obj * numDof_;
@@ -1130,13 +1143,17 @@ TpetraLinearSystem::sumInto(
     ThrowAssertMsg(std::isfinite(cur_rhs), "Invalid rhs");
 
     if(localId < maxOwnedRowId_) {
-      sum_into_row(ownedLocalMatrix.row(localId), numRows, scratchIds.data(), sortPermutation_.data(), cur_lhs);
+      if (!ignoreLhs) {
+        sum_into_row(ownedLocalMatrix.row(localId), numRows, scratchIds.data(), sortPermutation_.data(), cur_lhs);
+      }
       ownedLocalRhs(localId,0) += cur_rhs;
     }
     else if (localId < maxGloballyOwnedRowId_) {
       const LocalOrdinal actualLocalId = localId - maxOwnedRowId_;
-      sum_into_row(globallyOwnedLocalMatrix.row(actualLocalId), numRows,
-        scratchIds.data(), sortPermutation_.data(), cur_lhs);
+      if (!ignoreLhs) {
+        sum_into_row(globallyOwnedLocalMatrix.row(actualLocalId), numRows,
+          scratchIds.data(), sortPermutation_.data(), cur_lhs);
+      }
 
       globallyOwnedLocalRhs(actualLocalId,0) += cur_rhs;
     }

@@ -270,11 +270,21 @@ EquationSystem::assemble_and_solve(
 {
   int error = 0;
   
+  bool reuseLHS = false ; // realm_.tell_me_to_reuse();
+
   // zero the system
   double timeA = NaluEnv::self().nalu_time();
-  linsys_->zeroSystem();
+  if (reuseLHS) {
+    linsys_->zeroRhs();
+  }
+  else {
+    linsys_->zeroSystem();
+  }
+
   double timeB = NaluEnv::self().nalu_time();
   timerAssemble_ += (timeB-timeA);
+
+  solverAlgDriver_->set_only_assemble_rhs(reuseLHS);
 
   // apply all flux and dirichlet algs
   timeA = NaluEnv::self().nalu_time();

@@ -76,6 +76,7 @@ public:
 
   // Matrix Assembly
   void zeroSystem();
+  void zeroRhs();
 
   void sumInto(
       unsigned numEntities,
@@ -84,16 +85,17 @@ public:
       const SharedMemView<const double**> & lhs,
       const SharedMemView<int*> & localIds,
       const SharedMemView<int*> & sortPermutation,
-      const char * trace_tag);
+      const char * trace_tag,
+      bool ignoreLhs = false);
 
   void sumInto(
-    const std::vector<stk::mesh::Entity> & entities,
-    std::vector<int> &scratchIds,
-    std::vector<double> &scratchVals,
-    const std::vector<double> & rhs,
-    const std::vector<double> & lhs,
-    const char *trace_tag=0
-    );
+      const std::vector<stk::mesh::Entity> & entities,
+      std::vector<int> &scratchIds,
+      std::vector<double> &scratchVals,
+      const std::vector<double> & rhs,
+      const std::vector<double> & lhs,
+      const char *trace_tag=0,
+      bool ignoreLhs = false);
 
   void applyDirichletBCs(
     stk::mesh::FieldBase * solutionField,

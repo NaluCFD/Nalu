@@ -35,7 +35,8 @@ SolverAlgorithm::SolverAlgorithm(
   stk::mesh::Part *part,
   EquationSystem *eqSystem)
   : Algorithm(realm, part),
-    eqSystem_(eqSystem)
+    eqSystem_(eqSystem),
+    onlyAssembleRhs_(false)
 {
   // does nothing
 }
@@ -49,9 +50,10 @@ SolverAlgorithm::apply_coeff(
   std::vector<int> &scratchIds,
   std::vector<double> &scratchVals,
   const std::vector<double> & rhs,
-  const std::vector<double> & lhs, const char *trace_tag)
+  const std::vector<double> & lhs, const char *trace_tag,
+  bool ignoreLhs)
 {
-  eqSystem_->linsys_->sumInto(sym_meshobj, scratchIds, scratchVals, rhs, lhs, trace_tag);
+  eqSystem_->linsys_->sumInto(sym_meshobj, scratchIds, scratchVals, rhs, lhs, trace_tag, ignoreLhs);
 }
 
 void
@@ -62,9 +64,10 @@ SolverAlgorithm::apply_coeff(
   const SharedMemView<int*> & sortPermutation,
   const SharedMemView<const double*> & rhs,
   const SharedMemView<const double**> & lhs,
-  const char *trace_tag)
+  const char *trace_tag,
+  bool ignoreLhs)
 {
-  eqSystem_->linsys_->sumInto(numMeshobjs, symMeshobjs, rhs, lhs, scratchIds, sortPermutation, trace_tag);
+  eqSystem_->linsys_->sumInto(numMeshobjs, symMeshobjs, rhs, lhs, scratchIds, sortPermutation, trace_tag, ignoreLhs);
 }
 
 } // namespace nalu

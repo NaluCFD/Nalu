@@ -132,6 +132,22 @@ SolverAlgorithmDriver::execute()
   
 }
 
+template<typename T>
+void set_alg_only_assemble_rhs(std::map<T,SolverAlgorithm*>& algMap, bool flag)
+{
+  for(auto alg_iter : algMap) {
+    alg_iter.second->set_only_assemble_rhs(flag);
+  }
+}
+
+void
+SolverAlgorithmDriver::set_only_assemble_rhs(bool flag)
+{
+  set_alg_only_assemble_rhs(solverAlgorithmMap_, flag);
+  set_alg_only_assemble_rhs(solverAlgMap_, flag);
+  set_alg_only_assemble_rhs(solverConstraintAlgMap_, flag);
+  set_alg_only_assemble_rhs(solverDirichAlgMap_, flag);
+}
 
 } // namespace nalu
 } // namespace Sierra

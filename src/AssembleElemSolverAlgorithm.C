@@ -176,7 +176,7 @@ AssembleElemSolverAlgorithm::execute()
       for(int simdElemIndex=0; simdElemIndex<simdElems; ++simdElemIndex) {
         extract_vector_lane(simdrhs, simdElemIndex, rhs);
         extract_vector_lane(simdlhs, simdElemIndex, lhs);
-        apply_coeff(num_nodes, elemNodes[simdElemIndex], scratchIds, sortPermutation, rhs, lhs, __FILE__);
+        apply_coeff(num_nodes, elemNodes[simdElemIndex], scratchIds, sortPermutation, rhs, lhs, __FILE__, onlyAssembleRhs_);
       }
     });
 

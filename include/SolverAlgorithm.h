@@ -34,6 +34,9 @@ public:
   virtual void execute() = 0;
   virtual void initialize_connectivity() = 0;
 
+  void set_only_assemble_rhs(bool flag) { onlyAssembleRhs_ = flag; }
+  bool get_only_assemble_rhs() const { return onlyAssembleRhs_; }
+
 protected:
 
   // Need to find out whether this ever gets called inside a modification cycle.
@@ -43,7 +46,8 @@ protected:
     std::vector<double> &scratchVals,
     const std::vector<double> &rhs,
     const std::vector<double> &lhs,
-    const char *trace_tag=0);
+    const char *trace_tag=0,
+    bool ignoreLhs = false);
   
   void apply_coeff(
     unsigned numMeshobjs,
@@ -52,9 +56,11 @@ protected:
     const SharedMemView<int*> & sortPermutation,
     const SharedMemView<const double*> & rhs,
     const SharedMemView<const double**> & lhs,
-    const char *trace_tag);
+    const char *trace_tag,
+    bool ignoreLhs = false);
 
   EquationSystem *eqSystem_;
+  bool onlyAssembleRhs_;
 };
 
 } // namespace nalu

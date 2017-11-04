@@ -64,6 +64,7 @@ public:
 
   // Matrix Assembly
   virtual void zeroSystem()=0;
+  virtual void zeroRhs()=0;
 
   virtual void sumInto(
       unsigned numEntities,
@@ -72,7 +73,8 @@ public:
       const SharedMemView<const double**> & lhs,
       const SharedMemView<int*> & localIds,
       const SharedMemView<int*> & sortPermutation,
-      const char * trace_tag
+      const char * trace_tag,
+      bool ignoreLhs = false
       )=0;
 
 
@@ -83,7 +85,8 @@ public:
     std::vector<double> &scratchVals,
     const std::vector<double> & rhs,
     const std::vector<double> & lhs,
-    const char *trace_tag=0
+    const char *trace_tag=0,
+    bool ignoreLhs = false
     )=0;
 
   virtual void applyDirichletBCs(
