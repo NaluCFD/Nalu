@@ -42,8 +42,7 @@ private:
 
   const stk::mesh::MetaData & metaData_;
   stk::mesh::BulkData & bulkData_;
-  const double tolerance_;
-
+//  const double tolerance_;
 };
 }
 }
