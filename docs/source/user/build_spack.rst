@@ -28,7 +28,7 @@ Checkout the official Spack repo from github (we will checkout into ``${HOME}``)
 
 ::
 
-    cd ${HOME} && git clone https://github.com/LLNL/spack.git
+    cd ${HOME} && git clone https://github.com/spack/spack.git
 
 Step 3
 ~~~~~~
@@ -111,7 +111,7 @@ Step 2
 
 Checkout the official Spack repo from github:
 
-``cd ${HOME} && git clone https://github.com/LLNL/spack.git``
+``cd ${HOME} && git clone https://github.com/spack/spack.git``
 
 Step 3
 ~~~~~~
@@ -217,7 +217,7 @@ Step 2
 
 Checkout the official Spack repo from github:
 
-``cd ${HOME} && git clone https://github.com/LLNL/spack.git``
+``cd ${HOME} && git clone https://github.com/spack/spack.git``
 
 Step 3
 ~~~~~~
