@@ -253,6 +253,9 @@ public:
   Hex27SCS();
   virtual ~Hex27SCS() {}
 
+  using MasterElement::shape_fcn;
+  using MasterElement::shifted_shape_fcn;
+
   void shape_fcn(SharedMemView<DoubleType**> &shpfc);
   void shifted_shape_fcn(SharedMemView<DoubleType**> &shpfc);
 
