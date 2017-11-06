@@ -54,12 +54,12 @@ namespace {
 
 
 
-class PromoteElementQuadTestV2 : public ::testing::Test
+class PromoteElementQuadTest : public ::testing::Test
   {
   protected:
-    PromoteElementQuadTestV2() {};
+    PromoteElementQuadTest() {};
 
-      void SetUp(int nx, int ny, int in_polyOrder)
+      void init(int nx, int ny, int in_polyOrder)
       {
         comm = MPI_COMM_WORLD;
         auto aura = stk::mesh::BulkData::NO_AUTO_AURA;
@@ -365,7 +365,7 @@ class PromoteElementQuadTestV2 : public ::testing::Test
       VectorFieldType* coordField;
   };
 
-TEST_F(PromoteElementQuadTestV2, node_count)
+TEST_F(PromoteElementQuadTest, node_count)
 {
     int polyOrder = 15;
 
@@ -375,7 +375,7 @@ TEST_F(PromoteElementQuadTestV2, node_count)
       return;
     }
 
-    SetUp(nprocx, nprocx, polyOrder);
+    init(nprocx, nprocx, polyOrder);
     size_t originalNodeCount = ::count_nodes(*bulk, meta->universal_part());
 
     sierra::nalu::promotion::promote_elements(*bulk, *elemDesc, *coordField, baseParts, edgePart);
@@ -390,14 +390,14 @@ TEST_F(PromoteElementQuadTestV2, node_count)
 }
 
 
-TEST_F(PromoteElementQuadTestV2, node_sharing)
+TEST_F(PromoteElementQuadTest, node_sharing)
 {
     if (stk::parallel_machine_size(MPI_COMM_WORLD) != 2) {
       return;
     }
 
     int polyOrder = 2;
-    SetUp(2,1, polyOrder);
+    init(2,1, polyOrder);
 
     sierra::nalu::promotion::promote_elements(*bulk, *elemDesc, *coordField, baseParts, edgePart);
     ThrowRequire(!bulk->in_modifiable_state());
@@ -413,7 +413,7 @@ TEST_F(PromoteElementQuadTestV2, node_sharing)
 }
 
 
-TEST_F(PromoteElementQuadTestV2, coordinate_check)
+TEST_F(PromoteElementQuadTest, coordinate_check)
 {
    if(stk::parallel_machine_size(MPI_COMM_WORLD) > 1) {
      return;
@@ -421,7 +421,7 @@ TEST_F(PromoteElementQuadTestV2, coordinate_check)
 
     double tol = 1.0e-10;
     int polyOrder = 3;
-    SetUp(1,1, polyOrder);
+    init(1,1, polyOrder);
     sierra::nalu::promotion::promote_elements(*bulk, *elemDesc, *coordField, baseParts, edgePart);
 
     /*  Mesh ordering for the P=3 quad
@@ -480,7 +480,7 @@ TEST_F(PromoteElementQuadTestV2, coordinate_check)
 
 // check that P=1 case (useful for debugging) works
 
-TEST_F(PromoteElementQuadTestV2, p1_promotion)
+TEST_F(PromoteElementQuadTest, p1_promotion)
 {
    // Check that setting P = 1 doesn't crash
     int polyOrder = 1;
@@ -490,7 +490,7 @@ TEST_F(PromoteElementQuadTestV2, p1_promotion)
       return;
     }
 
-    SetUp(nprocx, nprocx, polyOrder);
+    init(nprocx, nprocx, polyOrder);
     size_t originalNodeCount = ::count_nodes(*bulk, meta->universal_part());
 
     sierra::nalu::promotion::promote_elements(*bulk, *elemDesc, *coordField, baseParts, edgePart);
@@ -499,7 +499,7 @@ TEST_F(PromoteElementQuadTestV2, p1_promotion)
     EXPECT_EQ(promotedNodeCount, originalNodeCount);
 }
 
-TEST_F(PromoteElementQuadTestV2, png)
+TEST_F(PromoteElementQuadTest, png)
 {
     if (stk::parallel_machine_size(MPI_COMM_WORLD) > 12) {
       return;
@@ -508,7 +508,7 @@ TEST_F(PromoteElementQuadTestV2, png)
     double tol = 1.0e-8;
     int polyOrder = 7;
 
-    SetUp(4, 3, polyOrder);
+    init(4, 3, polyOrder);
 
     sierra::nalu::promotion::promote_elements(*bulk,*elemDesc, *coordField, baseParts, edgePart);
 
