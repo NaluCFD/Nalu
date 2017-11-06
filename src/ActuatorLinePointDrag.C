@@ -834,7 +834,7 @@ ActuatorLinePointDrag::complete_search()
 
       // gather elemental coords
       std::vector<double> elementCoords(nDim*nodesPerElement);
-      gather_field(nDim, &elementCoords[0], *coordinates, bulkData.begin_nodes(elem),
+      gather_field_for_interp(nDim, &elementCoords[0], *coordinates, bulkData.begin_nodes(elem),
                    nodesPerElement);
 
 
