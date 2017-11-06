@@ -23,12 +23,6 @@
 #include <string>
 #include <array>
 
-#ifdef __INTEL_COMPILER
-#define POINTER_RESTRICT restrict
-#else
-#define POINTER_RESTRICT __restrict__
-#endif
-
 namespace sierra{
 namespace nalu{
 
@@ -39,7 +33,7 @@ public:
   Quad42DSCV();
   virtual ~Quad42DSCV();
 
-  const int * ipNodeMap(int ordinal = 0);
+  const int * ipNodeMap(int ordinal = 0) override;
 
   void determinant(
     SharedMemView<DoubleType**> &coords,
@@ -70,7 +64,7 @@ public:
   Quad42DSCS();
   virtual ~Quad42DSCS();
 
-  const int * ipNodeMap(int ordinal = 0);
+  const int * ipNodeMap(int ordinal = 0) override;
 
   void determinant(
     SharedMemView<DoubleType**>& coords,

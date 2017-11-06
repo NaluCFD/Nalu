@@ -1,10 +1,14 @@
+# -*- mode: yaml -*-
+#
+# Example Nalu input file for a heat conduction problem
+#
+
 Simulations:
   - name: sim1
     time_integrator: ti_1
     optimizer: opt1
 
 linear_solvers:
-
   - name: solve_scalar
     type: tpetra
     method: gmres 
@@ -73,7 +77,6 @@ realms:
       use_consolidated_solver_algorithm: yes
 
       options:
- 
       - element_source_terms:
           temperature: FEM_DIFF
 

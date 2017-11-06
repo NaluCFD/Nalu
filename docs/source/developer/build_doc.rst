@@ -23,10 +23,10 @@ this would look something like:
   brew install python
   brew install doxygen
   brew install graphviz
-  pip install sphinx
-  pip install sphinxcontrib-doxylink
-  pip install sphinxcontrib-bibtex
-  pip install sphinx_rtd_theme
+  pip2 install sphinx
+  pip2 install sphinxcontrib-bibtex
+  pip2 install breathe
+  pip2 install sphinx_rtd_theme
 
 On Linux, CMake, Python, Doxygen, and GraphViz could be installed
 using your package manager, e.g. ``sudo apt-get install cmake``.
@@ -41,8 +41,8 @@ on. For example:
 
 ::
 
-  cmake -DTrilinos_DIR:PATH=`spack location -i nalu-trilinos` \
-        -DYAML_DIR:PATH=`spack location -i yaml-cpp` \
+  cmake -DTrilinos_DIR:PATH=$(spack location -i nalu-trilinos) \
+        -DYAML_DIR:PATH=$(spack location -i yaml-cpp) \
         -DCMAKE_BUILD_TYPE=RELEASE \
         -DENABLE_DOCUMENTATION:BOOL=ON \
         ..

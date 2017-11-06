@@ -29,8 +29,7 @@ WindEnergyTaylorVortexAuxFunction::WindEnergyTaylorVortexAuxFunction(
   beta_(15.0),
   uInf_(10.0),
   density_(1.0e-3),
-  visc_(1.0e-4),
-  Lx_(5.)
+  visc_(1.0e-4)
 {
  //  check size and populate
   if ( !(params.size() > 4 && params.size() < 8) && !params.empty() )

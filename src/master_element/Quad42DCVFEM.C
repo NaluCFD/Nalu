@@ -108,22 +108,26 @@ void Quad42DSCV::determinant(
   DoubleType shape_fcn[4];
 
 //   store sub-volume centroids
-  const DoubleType xi[2][4]  ={{cvm,cvp,cvp,cvm},
-                               {cvm,cvm,cvp,cvp}};
-  const DoubleType xigp[2][4]={{gpm,gpp,gpp,gpm},
-                               {gpm,gpm,gpp,gpp}};
+  const double xi[2][4]  ={{cvm,cvp,cvp,cvm},
+                           {cvm,cvm,cvp,cvp}};
+  const double xigp[2][4]={{gpm,gpp,gpp,gpm},
+                           {gpm,gpm,gpp,gpp}};
+  DoubleType dx_ds1 = zero;
+  DoubleType dx_ds2 = zero;
+  DoubleType dy_ds1 = zero;
+  DoubleType dy_ds2 = zero;
 // 2d cartesian, no cross-section area
   for (int ki=0; ki<nint; ++ki) {
     vol(ki) = zero;
 
     for (int kq=0; kq<nint; ++kq) {
-      DoubleType dx_ds1 = zero;
-      DoubleType dx_ds2 = zero;
-      DoubleType dy_ds1 = zero;
-      DoubleType dy_ds2 = zero;
+      dx_ds1 = zero;
+      dx_ds2 = zero;
+      dy_ds1 = zero;
+      dy_ds2 = zero;
 
-      DoubleType ximod  = xi[0][ki] + xigp[0][kq];
-      DoubleType etamod = xi[1][ki] + xigp[1][kq];
+      const double ximod  = xi[0][ki] + xigp[0][kq];
+      const double etamod = xi[1][ki] + xigp[1][kq];
 
       deriv[0][0] = -(half - etamod);
       deriv[0][1] =  (half - etamod);

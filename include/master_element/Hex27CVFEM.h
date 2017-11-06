@@ -197,6 +197,9 @@ public:
 
   const int * ipNodeMap(int ordinal = 0);
 
+  using MasterElement::shape_fcn;
+  using MasterElement::shifted_shape_fcn;
+
   void shape_fcn(SharedMemView<DoubleType**> &shpfc) final;
   void shifted_shape_fcn(SharedMemView<DoubleType**> &shpfc) final;
   void determinant(SharedMemView<DoubleType**>& coords, SharedMemView<DoubleType*>& volume) final;

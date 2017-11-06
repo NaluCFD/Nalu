@@ -14,12 +14,6 @@
 #include <SimdInterface.h>
 #include <KokkosInterface.h>
 
-#ifdef __INTEL_COMPILER
-#define POINTER_RESTRICT restrict
-#else
-#define POINTER_RESTRICT __restrict__
-#endif
-
 namespace sierra{
 namespace nalu{
   class LagrangeBasis;

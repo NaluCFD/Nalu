@@ -24,13 +24,12 @@ Favre-filtered momentum equation
 .. math::
    :label: fav-mom-bodyforce
 
-     \int {{\partial \bar{\rho} \tilde{u}_i} \over {\partial t}} {\rm d}V
-     +  \int \bar{\rho} \tilde{u}_i \tilde{u}_j n_j {\rm d}S 
-     +  \int \bar{P} n_i {\rm d}S  =
-     \int \bar{\tau}_{ij} n_j {\rm d}S 
-     &+ \int \tau_{u_i u_j} n_j {\rm d}S  
-     + \int \left(\bar{\rho} - \rho_{\circ} \right) g_i {\rm d}V \nonumber \\
-     &+ \int f_i {\rm d}V,
+     \int \frac{\partial \bar{\rho} \tilde{u}_i} {\partial t} {\rm d}V
+     + \int \bar{\rho} \tilde{u}_i \tilde{u}_j n_j {\rm d}S 
+     + \int \bar{P} n_i {\rm d}S = \int \bar{\tau}_{ij} n_j {\rm d}S 
+     + \int \tau_{u_i u_j} n_j {\rm d}S  
+     + \int \left(\bar{\rho} - \rho_{\circ} \right) g_i {\rm d}V \\
+     + \int f_i {\rm d}V,
 
 The body-force term :math:`f_i` is volumetric and is a force per unit
 volume. The actuator forces, :math:`F'_i`, are not volumetric. They
@@ -38,7 +37,7 @@ exist along lines or on surfaces and are force per unit length or area.
 Therefore, a projection function, :math:`g`, is used to project the
 actuator forces into the fluid volume as volumetric forces. A simple and
 commonly used projection function is a uniform Gaussian as proposed by
-Sørensen and Shen :cite:`Sorensen:2002`,
+S{\o}rensen and Shen :cite:`Sorensen:2002`,
 
 .. math:: g(\vec{r}) = \frac{1}{\pi^{3/2} \epsilon^3} e^{-\left( \left| \vec{r} \right|/\epsilon \right)^2},
 

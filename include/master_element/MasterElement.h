@@ -23,12 +23,6 @@
 #include <string>
 #include <array>
 
-#ifdef __INTEL_COMPILER
-#define POINTER_RESTRICT restrict
-#else
-#define POINTER_RESTRICT __restrict__
-#endif
-
 namespace stk {
   struct topology;
 }
@@ -477,111 +471,6 @@ public:
     const int &npts,
     const double *par_coord,
     double* shape_fcn);
-
-};
-
-// 2D Tri 3 subcontrol surface
-class Tri2DSCS : public MasterElement
-{
-public:
-  Tri2DSCS();
-  virtual ~Tri2DSCS();
-
-  const int * ipNodeMap(int ordinal = 0);
-
-  void determinant(
-    const int nelem,
-    const double *coords,
-    double *areav,
-    double * error );
-
-  void grad_op(
-    const int nelem,
-    const double *coords,
-    double *gradop,
-    double *deriv,
-    double *det_j,
-    double * error );
-
-  void shifted_grad_op(
-    const int nelem,
-    const double *coords,
-    double *gradop,
-    double *deriv,
-    double *det_j,
-    double * error );
-
-  void face_grad_op(
-    const int nelem,
-    const int face_ordinal,
-    const double *coords,
-    double *gradop,
-    double *det_j,
-    double * error );
-
-  void shifted_face_grad_op(
-    const int nelem,
-    const int face_ordinal,
-    const double *coords,
-    double *gradop,
-    double *det_j,
-    double * error );
-
-  void gij(
-    const double *coords,
-    double *gupperij,
-    double *glowerij,
-    double *deriv);
-
-  const int * adjacentNodes();
-
-  void shape_fcn(
-    double *shpfc);
-
-  void shifted_shape_fcn(
-    double *shpfc);
-  
-  void tri_shape_fcn(
-    const int &npts,
-    const double *par_coord, 
-    double* shape_fcn);
-
-  int opposingNodes(
-    const int ordinal, const int node);
-  
-  int opposingFace(
-    const int ordinal, const int node);
-
-  double isInElement(
-    const double *elemNodalCoord,
-    const double *pointCoord,
-    double *isoParCoord);
-  
-  void interpolatePoint(
-    const int &nComp,
-    const double *isoParCoord,
-    const double *field,
-    double *result);
-
-  double tri_parametric_distance(
-    const std::vector<double> &x);
-  
-  void general_face_grad_op(
-    const int face_ordinal,
-    const double *isoParCoord,
-    const double *coords,
-    double *gradop,
-    double *det_j,
-    double * error );
-
-  void sidePcoords_to_elemPcoords(
-    const int & side_ordinal,
-    const int & npoints,
-    const double *side_pcoords,
-    double *elem_pcoords);
-
-  const int* side_node_ordinals(int sideOrdinal) final;
-
 
 };
 

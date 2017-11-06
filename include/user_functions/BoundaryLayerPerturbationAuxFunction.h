@@ -15,6 +15,12 @@
 namespace sierra{
 namespace nalu{
 
+/** Add sinusoidal perturbations to the velocity field.
+ *
+ *  This function is used as an initial condition, primarily in Atmospheric
+ *  Boundary Layer (ABL) flows, to trigger transition to turbulent flow during
+ *  ABL precursor simulations.
+ */
 class BoundaryLayerPerturbationAuxFunction : public AuxFunction
 {
 public:
@@ -37,10 +43,13 @@ public:
     const unsigned endPos) const;
   
 private:
+  /// Amplitude of perturbations
   double amplitude_;
   double kx_;
   double ky_;
   double thickness_;
+
+  /// Mean velocity field during initialization
   double uInf_;
 
 };

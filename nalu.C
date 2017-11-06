@@ -232,6 +232,7 @@ int main( int argc, char ** argv )
                               stk::diag::METRICS_CPU_TIME | stk::diag::METRICS_WALL_TIME,
                               false, naluEnv.parallel_comm());
 
+  stk::diag::deleteRootTimer(sierra::nalu::Simulation::rootTimer());
   }
   Kokkos::finalize_all();
   // all done  

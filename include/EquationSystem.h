@@ -287,10 +287,10 @@ public:
   // vector of property algorithms
   std::vector<Algorithm *> propertyAlg_;
 
-  /// List of tasks to be performed before each solve_and_update of this equation system
+  /// List of tasks to be performed before each EquationSystem::solve_and_update
   std::vector<AlgorithmDriver *> preIterAlgDriver_;
 
-  /// List of tasks to be performed after each solve_and_update of this equation system
+  /// List of tasks to be performed after each EquationSystem::solve_and_update
   std::vector<AlgorithmDriver*> postIterAlgDriver_;
 
   // owner equation system

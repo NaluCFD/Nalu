@@ -634,7 +634,7 @@ LowMachEquationSystem::solve_and_update()
       realm_.get_activate_aura());
     timeB = NaluEnv::self().nalu_time();
     momentumEqSys_->timerAssemble_ += (timeB-timeA);
-    
+
     // compute velocity relative to mesh with new velocity
     realm_.compute_vrtm();
 
@@ -651,7 +651,7 @@ LowMachEquationSystem::solve_and_update()
       realm_.get_activate_aura());
     timeB = NaluEnv::self().nalu_time();
     continuityEqSys_->timerAssemble_ += (timeB-timeA);
-    
+
     // compute mdot
     timeA = NaluEnv::self().nalu_time();
     continuityEqSys_->computeMdotAlgDriver_->execute();

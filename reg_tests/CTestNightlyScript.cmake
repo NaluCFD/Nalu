@@ -31,7 +31,7 @@ endif()
 # Add parallelism capability to testing
 include(ProcessorCount)
 ProcessorCount(NP)
-message(STATUS "Number of processors detected: ${NP}")
+message(STATUS "\nNumber of processors detected: ${NP}")
 set(CTEST_BUILD_FLAGS "-j${NP}")
 set(CTEST_PARALLEL_LEVEL ${NP})
 
@@ -40,7 +40,7 @@ set(CTEST_UPDATE_COMMAND "${CTEST_GIT_COMMAND}")
 set(CTEST_GIT_INIT_SUBMODULES "ON")
 
 # Configure Command
-set(CTEST_CONFIGURE_COMMAND "cmake -DTrilinos_DIR:PATH=${TRILINOS_DIR} -DYAML_DIR:PATH=${YAML_DIR} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DENABLE_TESTS=ON ${CTEST_SOURCE_DIRECTORY}")
+set(CTEST_CONFIGURE_COMMAND "cmake -DTrilinos_DIR:PATH=${TRILINOS_DIR} -DYAML_DIR:PATH=${YAML_DIR} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DENABLE_TESTS=ON ${TPL_TEST_ARGS} ${CTEST_SOURCE_DIRECTORY}")
 
 # Build Command
 set(CTEST_BUILD_COMMAND "${MAKE} ${CTEST_BUILD_FLAGS}")
@@ -51,18 +51,18 @@ set(CTEST_BUILD_COMMAND "${MAKE} ${CTEST_BUILD_FLAGS}")
 
 #ctest_empty_binary_directory(${CTEST_BINARY_DIRECTORY})
  
-message(" -- Start dashboard - ${CTEST_BUILD_NAME} --")
+message("\n -- Start dashboard - ${CTEST_BUILD_NAME} --")
 ctest_start("Nightly" TRACK "Nightly")
 
-message(" -- Update - ${CTEST_BUILD_NAME} --")
+message("\n -- Update - ${CTEST_BUILD_NAME} --")
 ctest_update(SOURCE "${CTEST_SOURCE_DIRECTORY}" RETURN_VALUE result)
 message(" -- Update exit code = ${result} --")
 if(result GREATER -1)
-  message(" -- Configure - ${CTEST_BUILD_NAME} --")
+  message("\n -- Configure - ${CTEST_BUILD_NAME} --")
   ctest_configure(BUILD "${CTEST_BINARY_DIRECTORY}" RETURN_VALUE result)
   message(" -- Configure exit code = ${result} --")
   if(result EQUAL 0)
-    message(" -- Build - ${CTEST_BUILD_NAME} --")
+    message("\n -- Build - ${CTEST_BUILD_NAME} --")
     ctest_build(BUILD "${CTEST_BINARY_DIRECTORY}" RETURN_VALUE result)
     message(" -- Build exit code = ${result} --")
     if(result EQUAL 0)
@@ -74,7 +74,7 @@ if(result GREATER -1)
         message("Clearing TMPDIR variable...")
         unset(ENV{TMPDIR})
       endif()
-      message(" -- Test - ${CTEST_BUILD_NAME} --")
+      message("\n -- Test - ${CTEST_BUILD_NAME} --")
       ctest_test(BUILD "${CTEST_BINARY_DIRECTORY}"
                  PARALLEL_LEVEL ${CTEST_PARALLEL_LEVEL}
                  RETURN_VALUE result)
@@ -83,10 +83,11 @@ if(result GREATER -1)
   endif()
 endif()
 
-message(" -- Submit - ${CTEST_BUILD_NAME} --")
+message("\n -- Submit - ${CTEST_BUILD_NAME} --")
+set(CTEST_NOTES_FILES ${NIGHTLY_DIR}/jobs/nalu-test-log.txt)
 ctest_submit(RETRY_COUNT 20
              RETRY_DELAY 20
              RETURN_VALUE result)
 message(" -- Submit exit code = ${result} --")
 
-message(" -- Finished - ${CTEST_BUILD_NAME} --")
+message("\n -- Finished - ${CTEST_BUILD_NAME} --")

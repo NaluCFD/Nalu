@@ -162,10 +162,8 @@ int TpetraLinearSolver::residual_norm(int whichNorm, Teuchos::RCP<LinSys::Vector
   }
   matrix_->apply(*sln, resid);
 
-  LinSys::OneDVector rhs = rhs_->get1dViewNonConst ();
-  LinSys::OneDVector res = resid.get1dViewNonConst ();
-  for (int i=0; i<rhs.size(); ++i)
-    res[i] -= rhs[i];
+  resid.update(-1.0, *rhs_, 1.0); 
+
   if ( whichNorm == 0 )
     norm = resid.normInf();
   else if ( whichNorm == 1 )

@@ -1,0 +1,215 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.13">
+  <compounddef id="class_example_class" kind="class" language="C++" prot="public">
+    <compoundname>ExampleClass</compoundname>
+    <includes refid="example_8h" local="no">example.h</includes>
+      <sectiondef kind="private-attrib">
+      <memberdef kind="variable" id="class_example_class_1a44bb2397660bd109e5a1b7cc6e53ef69" prot="private" static="no" mutable="no">
+        <type>const char *</type>
+        <definition>const char* ExampleClass::fQuestion</definition>
+        <argsstring></argsstring>
+        <name>fQuestion</name>
+        <briefdescription>
+<para>The question. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="example.h" line="102" column="1" bodyfile="example.h" bodystart="102" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="class_example_class_1aba62f2f57b6e974a33f968cb458adab1" prot="private" static="no" mutable="no">
+        <type>int</type>
+        <definition>int ExampleClass::fAnswer</definition>
+        <argsstring></argsstring>
+        <name>fAnswer</name>
+        <briefdescription>
+<para>The answer. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="example.h" line="103" column="1" bodyfile="example.h" bodystart="103" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="class_example_class_1a0d498752f8c3b08addc9461e22e865d9" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>ExampleClass::ExampleClass</definition>
+        <argsstring>()</argsstring>
+        <name>ExampleClass</name>
+        <briefdescription>
+<para>Create an <ref refid="class_example_class" kindref="compound">ExampleClass</ref>. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="example.h" line="29" column="1"/>
+      </memberdef>
+      <memberdef kind="function" id="class_example_class_1af47c57c9c396eea3efce4a75b33ae3b7" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>ExampleClass::ExampleClass</definition>
+        <argsstring>(int a, float b)</argsstring>
+        <name>ExampleClass</name>
+        <param>
+          <type>int</type>
+          <declname>a</declname>
+        </param>
+        <param>
+          <type>float</type>
+          <declname>b</declname>
+        </param>
+        <briefdescription>
+<para>Create an <ref refid="class_example_class" kindref="compound">ExampleClass</ref> with lot&apos;s of intial values. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>a</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>This is a description of parameter a. </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>b</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>This is a description of parameter b.</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+The distance between <formula id="0">$(x_1,y_1)$</formula> and <formula id="1">$(x_2,y_2)$</formula> is <formula id="2">$\sqrt{(x_2-x_1)^2+(y_2-y_1)^2}$</formula>. </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="example.h" line="39" column="1"/>
+      </memberdef>
+      <memberdef kind="function" id="class_example_class_1a75f24ff9018f553333b7a3ebfdc97bce" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>ExampleClass::~ExampleClass</definition>
+        <argsstring>()</argsstring>
+        <name>~ExampleClass</name>
+        <briefdescription>
+<para><ref refid="class_example_class" kindref="compound">ExampleClass</ref> destructor description. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="example.h" line="43" column="1"/>
+      </memberdef>
+      <memberdef kind="function" id="class_example_class_1affeeba4b6ab1cb7e3ee2d38c940234e2" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void ExampleClass::DoSomething</definition>
+        <argsstring>()</argsstring>
+        <name>DoSomething</name>
+        <briefdescription>
+<para>This method does something. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="example.h" line="46" column="1"/>
+      </memberdef>
+      <memberdef kind="function" id="class_example_class_1ac65502b1d4a88b27bd7c3c7472cd79e8" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void ExampleClass::DoNothing</definition>
+        <argsstring>()</argsstring>
+        <name>DoNothing</name>
+        <briefdescription>
+<para>This is a method that does so much that I must write an epic novel just to describe how much it truly does. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="example.h" line="54" column="1"/>
+      </memberdef>
+      <memberdef kind="function" id="class_example_class_1ac8e89c8b909fdbe54def02098d50341f" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void *</type>
+        <definition>void* ExampleClass::VeryUsefulMethod</definition>
+        <argsstring>(bool level)</argsstring>
+        <name>VeryUsefulMethod</name>
+        <param>
+          <type>bool</type>
+          <declname>level</declname>
+        </param>
+        <briefdescription>
+<para>Brief description of a useful method. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>level</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>An integer setting how useful to be. </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Description of the output.</para></simplesect>
+This method does unbelievably useful things. And returns exceptionally useful results. Use it everyday with good health. <formula id="3">\[ |I_2|=\left| \int_{0}^T \psi(t) \left\{ u(a,t)- \int_{\gamma(t)}^a \frac{d\theta}{k(\theta,t)} \int_{a}^\theta c(\xi)u_t(\xi,t)\,d\xi \right\} dt \right| \]</formula> </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="example.h" line="74" column="1"/>
+      </memberdef>
+      <memberdef kind="function" id="class_example_class_1af942551fe298d2e084214f8a478667bf" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void *</type>
+        <definition>void* ExampleClass::AnotherMethod</definition>
+        <argsstring>(bool level)</argsstring>
+        <name>AnotherMethod</name>
+        <param>
+          <type>bool</type>
+          <declname>level</declname>
+        </param>
+        <briefdescription>
+<para>Brief description of a useful method. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>level</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>An integer setting how useful to be. </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Description of the output.</para></simplesect>
+<itemizedlist>
+<listitem><para>Item 1</para><para>More text for this item.</para></listitem><listitem><para>Item 2<itemizedlist>
+<listitem><para>nested list item.</para></listitem><listitem><para>another nested item.</para></listitem></itemizedlist>
+</para></listitem><listitem><para>Item 3</para></listitem></itemizedlist>
+</para><para><heading level="1">Markdown Example</heading>
+</para><para><ulink url="http://www.google.com/">Here is a link.</ulink> </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="example.h" line="92" column="1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="protected-func">
+      <memberdef kind="function" id="class_example_class_1a4bd1a6192e7fe2a957c5e2fed3a67888" prot="protected" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void ExampleClass::SomeProtectedMethod</definition>
+        <argsstring>()</argsstring>
+        <name>SomeProtectedMethod</name>
+        <briefdescription>
+<para>The protected methods can be documented and extracted too. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="example.h" line="98" column="1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Here is a brief description of the example class. </para>    </briefdescription>
+    <detaileddescription>
+<para>This is a more in-depth description of the class. This class is meant as an example. It is not useful by itself, rather its usefulness is only a function of how much it helps the reader. It is in a sense defined by the person who reads it and otherwise does not exist in any real form.</para><para><simplesect kind="note"><para>This is a note. </para></simplesect>
+</para>    </detaileddescription>
+    <location file="example.h" line="24" column="1" bodyfile="example.h" bodystart="23" bodyend="105"/>
+    <listofallmembers>
+      <member refid="class_example_class_1af942551fe298d2e084214f8a478667bf" prot="public" virt="non-virtual"><scope>ExampleClass</scope><name>AnotherMethod</name></member>
+      <member refid="class_example_class_1ac65502b1d4a88b27bd7c3c7472cd79e8" prot="public" virt="non-virtual"><scope>ExampleClass</scope><name>DoNothing</name></member>
+      <member refid="class_example_class_1affeeba4b6ab1cb7e3ee2d38c940234e2" prot="public" virt="non-virtual"><scope>ExampleClass</scope><name>DoSomething</name></member>
+      <member refid="class_example_class_1a0d498752f8c3b08addc9461e22e865d9" prot="public" virt="non-virtual"><scope>ExampleClass</scope><name>ExampleClass</name></member>
+      <member refid="class_example_class_1af47c57c9c396eea3efce4a75b33ae3b7" prot="public" virt="non-virtual"><scope>ExampleClass</scope><name>ExampleClass</name></member>
+      <member refid="class_example_class_1aba62f2f57b6e974a33f968cb458adab1" prot="private" virt="non-virtual"><scope>ExampleClass</scope><name>fAnswer</name></member>
+      <member refid="class_example_class_1a44bb2397660bd109e5a1b7cc6e53ef69" prot="private" virt="non-virtual"><scope>ExampleClass</scope><name>fQuestion</name></member>
+      <member refid="class_example_class_1a4bd1a6192e7fe2a957c5e2fed3a67888" prot="protected" virt="non-virtual"><scope>ExampleClass</scope><name>SomeProtectedMethod</name></member>
+      <member refid="class_example_class_1ac8e89c8b909fdbe54def02098d50341f" prot="public" virt="non-virtual"><scope>ExampleClass</scope><name>VeryUsefulMethod</name></member>
+      <member refid="class_example_class_1a75f24ff9018f553333b7a3ebfdc97bce" prot="public" virt="non-virtual"><scope>ExampleClass</scope><name>~ExampleClass</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>
