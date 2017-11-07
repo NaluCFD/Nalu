@@ -102,8 +102,8 @@ private:
 class TestAlgorithm
 {
 public:
-  TestAlgorithm(stk::mesh::BulkData& bulk, const stk::mesh::PartVector& partVec)
-  : suppAlgs_(), bulkData_(bulk), partVec_(partVec)
+  TestAlgorithm(stk::mesh::BulkData& bulk)
+  : suppAlgs_(), bulkData_(bulk)
   {}
 
   void execute()
@@ -146,7 +146,6 @@ public:
 
 private:
   stk::mesh::BulkData& bulkData_;
-  const stk::mesh::PartVector& partVec_;
 };
 
 
@@ -171,7 +170,7 @@ TEST_F(Hex8Mesh, supp_alg_data_sharing)
 
     fill_mesh("generated:10x10x10");
 
-    TestAlgorithm testAlgorithm(bulk, partVec);
+    TestAlgorithm testAlgorithm(bulk);
 
     //TestSuppAlg constructor says which data it needs, by inserting
     //things into the 'dataNeededByKernels_' container.
