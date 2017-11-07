@@ -20,9 +20,9 @@ namespace nalu{
 
 KovasznayPressureAuxFunction::KovasznayPressureAuxFunction()
 :   AuxFunction(0,1),
-    Re_(40.0),
+    Re_(40.0) /*,
     kx_(2*std::acos(-1.)),
-    ky_(2*std::acos(-1.))
+    ky_(2*std::acos(-1.)) */
 {
 }
 
@@ -53,9 +53,9 @@ KovasznayPressureGradientAuxFunction::KovasznayPressureGradientAuxFunction(
   const unsigned beginPos,
   const unsigned endPos)
 :   AuxFunction(beginPos, endPos),
-    Re_(40.0),
+    Re_(40.0) /*,
     kx_(2*std::acos(-1.)),
-    ky_(2*std::acos(-1.))
+    ky_(2*std::acos(-1.)) */
 {
 }
 

@@ -43,10 +43,10 @@ void find_max_nodes_and_ips(const stk::mesh::BucketVector& buckets,
 class TestElemAlgorithmWithVectors
 {
 public:
-  TestElemAlgorithmWithVectors(stk::mesh::BulkData& bulk, const stk::mesh::PartVector& partVec,
+  TestElemAlgorithmWithVectors(stk::mesh::BulkData& bulk,
                     const VectorFieldType* coord, ScalarFieldType* discreteLaplacian,
                     ScalarFieldType* nodalPressure)
-  : bulkData_(bulk), partVec_(partVec),
+  : bulkData_(bulk),
     discreteLaplacianOfPressure(discreteLaplacian),
     nodalPressureField(nodalPressure), coordField(coord)
   {}
@@ -142,7 +142,6 @@ public:
 
 private:
   stk::mesh::BulkData& bulkData_;
-  const stk::mesh::PartVector& partVec_;
   ScalarFieldType* discreteLaplacianOfPressure;
   ScalarFieldType* nodalPressureField;
   const VectorFieldType* coordField;
@@ -211,10 +210,10 @@ void element_discrete_laplacian_kernel_3d(stk::mesh::BulkData& bulkData, stk::me
 class TestElemAlgorithmWithTemplate
 {
 public:
-  TestElemAlgorithmWithTemplate(stk::mesh::BulkData& bulk, const stk::mesh::PartVector& partVec,
+  TestElemAlgorithmWithTemplate(stk::mesh::BulkData& bulk,
                     const VectorFieldType* coord, ScalarFieldType* discreteLaplacian,
                     ScalarFieldType* nodalPressure)
-  : bulkData_(bulk), partVec_(partVec),
+  : bulkData_(bulk),
     discreteLaplacianOfPressure(discreteLaplacian),
     nodalPressureField(nodalPressure), coordField(coord)
   {}
@@ -261,7 +260,6 @@ public:
 
 private:
   stk::mesh::BulkData& bulkData_;
-  const stk::mesh::PartVector& partVec_;
   ScalarFieldType* discreteLaplacianOfPressure;
   ScalarFieldType* nodalPressureField;
   const VectorFieldType* coordField;
@@ -273,10 +271,10 @@ private:
 class TestElemAlgorithmWithViews
 {
 public:
-  TestElemAlgorithmWithViews(stk::mesh::BulkData& bulk, const stk::mesh::PartVector& partVec,
+  TestElemAlgorithmWithViews(stk::mesh::BulkData& bulk,
                     const VectorFieldType* coord, ScalarFieldType* discreteLaplacian,
                     ScalarFieldType* nodalPressure)
-  : bulkData_(bulk), partVec_(partVec),
+  : bulkData_(bulk),
     discreteLaplacianOfPressure(discreteLaplacian),
     nodalPressureField(nodalPressure), coordField(coord)
   {}
@@ -360,7 +358,6 @@ public:
 
 private:
   stk::mesh::BulkData& bulkData_;
-  const stk::mesh::PartVector& partVec_;
   ScalarFieldType* discreteLaplacianOfPressure;
   ScalarFieldType* nodalPressureField;
   const VectorFieldType* coordField;
@@ -372,7 +369,7 @@ TEST_F(Hex8Mesh, indexing_vectors)
 {
     fill_mesh_and_initialize_test_fields();
 
-    TestElemAlgorithmWithVectors testAlgorithm(bulk, partVec, coordField,
+    TestElemAlgorithmWithVectors testAlgorithm(bulk, coordField,
                           discreteLaplacianOfPressure, nodalPressureField);
 
     testAlgorithm.execute();
@@ -384,7 +381,7 @@ TEST_F(Hex8Mesh, indexing_template_raw_arrays)
 {
     fill_mesh_and_initialize_test_fields();
 
-    TestElemAlgorithmWithTemplate testAlgorithm(bulk, partVec, coordField,
+    TestElemAlgorithmWithTemplate testAlgorithm(bulk, coordField,
                           discreteLaplacianOfPressure, nodalPressureField);
 
     testAlgorithm.execute();
@@ -396,7 +393,7 @@ TEST_F(Hex8Mesh, indexing_views)
 {
     fill_mesh_and_initialize_test_fields();
 
-    TestElemAlgorithmWithViews testAlgorithm(bulk, partVec, coordField,
+    TestElemAlgorithmWithViews testAlgorithm(bulk, coordField,
                           discreteLaplacianOfPressure, nodalPressureField);
 
     testAlgorithm.execute();

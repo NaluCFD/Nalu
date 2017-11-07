@@ -21,8 +21,8 @@ SinProfileChannelFlowVelocityAuxFunction::SinProfileChannelFlowVelocityAuxFuncti
   const unsigned beginPos,
   const unsigned endPos) :
   AuxFunction(beginPos, endPos),
-    u_m(10.0),		// bulk velocity
-    pi_(acos(-1.0))
+    u_m(10.0) /*,		// bulk velocity
+    pi_(acos(-1.0)) */
 {
   // does nothing
 }
