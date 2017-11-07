@@ -1166,7 +1166,8 @@ TpetraLinearSystem::applyDirichletBCs(
   stk::mesh::FieldBase * bcValuesField,
   const stk::mesh::PartVector & parts,
   const unsigned beginPos,
-  const unsigned endPos)
+  const unsigned endPos,
+  bool onlyAdjustRhs)
 {
   stk::mesh::MetaData & metaData = realm_.meta_data();
 
@@ -1214,18 +1215,20 @@ TpetraLinearSystem::applyDirichletBCs(
           throw std::runtime_error("logic error: localId > maxGloballyOwnedRowId_");
         }
 
-        // Adjust the LHS
-
-        const double diagonal_value = useOwned ? 1.0 : 0.0;
-
-        matrix->getLocalRowView(actualLocalId, indices, values);
-        const size_t rowLength = values.size();
-        if (rowLength > 0) {
-          new_values.resize(rowLength);
-          for(size_t i=0; i < rowLength; ++i) {
-              new_values[i] = (indices[i] == localId) ? diagonal_value : 0;
+        if (!onlyAdjustRhs) {
+          // Adjust the LHS
+  
+          const double diagonal_value = useOwned ? 1.0 : 0.0;
+  
+          matrix->getLocalRowView(actualLocalId, indices, values);
+          const size_t rowLength = values.size();
+          if (rowLength > 0) {
+            new_values.resize(rowLength);
+            for(size_t i=0; i < rowLength; ++i) {
+                new_values[i] = (indices[i] == localId) ? diagonal_value : 0;
+            }
+            local_matrix.replaceValues(actualLocalId, &indices[0], rowLength, new_values.data(), internalMatrixIsSorted);
           }
-          local_matrix.replaceValues(actualLocalId, &indices[0], rowLength, new_values.data(), internalMatrixIsSorted);
         }
 
         // Replace the RHS residual with (desired - actual)
@@ -1242,7 +1245,8 @@ TpetraLinearSystem::applyDirichletBCs(
 void
 TpetraLinearSystem::prepareConstraints(
   const unsigned beginPos,
-  const unsigned endPos)
+  const unsigned endPos,
+  bool onlyAdjustRhs)
 {
   Teuchos::ArrayView<const LocalOrdinal> indices;
   Teuchos::ArrayView<const double> values;
@@ -1273,15 +1277,17 @@ TpetraLinearSystem::prepareConstraints(
         throw std::runtime_error("logic error: localId > maxGloballyOwnedRowId_");
       }
       
-      // Adjust the LHS; full row is perfectly zero
-      matrix->getLocalRowView(actualLocalId, indices, values);
-      const size_t rowLength = values.size();
-      if (rowLength > 0) {
-        new_values.resize(rowLength);
-        for(size_t i=0; i < rowLength; ++i) {
-          new_values[i] = 0.0;
+      if (!onlyAdjustRhs) {
+        // Adjust the LHS; full row is perfectly zero
+        matrix->getLocalRowView(actualLocalId, indices, values);
+        const size_t rowLength = values.size();
+        if (rowLength > 0) {
+          new_values.resize(rowLength);
+          for(size_t i=0; i < rowLength; ++i) {
+            new_values[i] = 0.0;
+          }
+          local_matrix.replaceValues(actualLocalId, &indices[0], rowLength, new_values.data(), internalMatrixIsSorted);
         }
-        local_matrix.replaceValues(actualLocalId, &indices[0], rowLength, new_values.data(), internalMatrixIsSorted);
       }
       
       // Replace the RHS residual with zero

@@ -238,7 +238,7 @@ AssembleContinuityEdgeOpenSolverAlgorithm::execute()
         p_lhs[rowR+opposingNode] += 0.5*lhsfac;
       }
 
-      apply_coeff(connected_nodes, scratchIds, scratchVals, rhs, lhs, __FILE__);
+      apply_coeff(connected_nodes, scratchIds, scratchVals, rhs, lhs, __FILE__, onlyAssembleRhs_);
 
     }
   }

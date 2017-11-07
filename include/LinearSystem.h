@@ -94,11 +94,13 @@ public:
     stk::mesh::FieldBase * bcValuesField,
     const stk::mesh::PartVector & parts,
     const unsigned beginPos,
-    const unsigned endPos)=0;
+    const unsigned endPos,
+    bool onlyAdjustRhs = false)=0;
 
   virtual void prepareConstraints(
     const unsigned beginPos,
-    const unsigned endPos)=0;
+    const unsigned endPos,
+    bool onlyAdjustRhs = false)=0;
 
   /** Reset LHS and RHS for the given set of nodes to 0
    *

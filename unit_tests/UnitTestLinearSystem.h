@@ -88,12 +88,14 @@ public:
     stk::mesh::FieldBase * bcValuesField,
     const stk::mesh::PartVector & parts,
     const unsigned beginPos,
-    const unsigned endPos)
+    const unsigned endPos,
+    bool onlyAdjustRhs = false)
   {}
 
   virtual void prepareConstraints(
     const unsigned beginPos,
-    const unsigned endPos)
+    const unsigned endPos,
+    bool onlyAdjustRhs = false)
   {}
 
   // Solve
