@@ -203,7 +203,10 @@ TpetraLinearSolver::solve(
     preconditioner_->compute();
   }
   time += NaluEnv::self().nalu_time();
-  timerPrecond_ += time;
+
+  // Update preconditioner timer for this timestep; actual summing over
+  // timesteps is handled in EquationSystem::assemble_and_solve
+  timerPrecond_ = time;
 
   problem_->setProblem();
   solver_->solve();
