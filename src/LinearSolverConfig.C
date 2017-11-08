@@ -72,9 +72,8 @@ TpetraLinearSolverConfig::load(const YAML::Node & node)
   params_->set("Maximum Iterations", max_iterations);
   if (output_level > 0)
   {
-    params_->set("Verbosity", Belos::Debug + Belos::Warnings + Belos::IterationDetails
-      + Belos::OrthoDetails + Belos::FinalSummary
-      + Belos::TimingDetails + Belos::StatusTestDetails);
+    params_->set("Verbosity", Belos::Errors + Belos::Warnings + Belos::StatusTestDetails);
+    params_->set("Output Style",Belos::Brief); 
   }
 
   params_->set("Output Frequency", output_level);
