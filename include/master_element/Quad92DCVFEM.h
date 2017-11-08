@@ -6,10 +6,11 @@
 /*------------------------------------------------------------------------*/
 
 
-#ifndef Quad42DCVFEM_h   
-#define Quad42DCVFEM_h   
+#ifndef Quad92DCVFEM_h  
+#define Quad92DCVFEM_h  
 
 #include <master_element/MasterElement.h>
+#include <master_element/MasterElementFactory.h>
 
 #include <AlgTraits.h>
 
@@ -26,15 +27,14 @@
 namespace sierra{
 namespace nalu{
 
-// 2D Quad 4 subcontrol volume
-class Quad42DSCV : public MasterElement
+// 3D Quad 27 subcontrol volume
+class Quad92DSCV : public QuadrilateralP2Element
 {
 public:
-  using Traits = AlgTraitsQuad4_2D;
-  Quad42DSCV();
-  virtual ~Quad42DSCV();
+  Quad92DSCV();
+  virtual ~Quad92DSCV() {}
 
-  const int * ipNodeMap(int ordinal = 0) override;
+  const int * ipNodeMap(int ordinal = 0) override ;
 
   void determinant(
     SharedMemView<DoubleType**> &coords,
@@ -46,27 +46,26 @@ public:
     double *areav,
     double * error ) override ;
 
-  void shape_fcn(
-    double *shpfc) override ;
+private:
+  void set_interior_info();
 
-  void shifted_shape_fcn(
-    double *shpfc) override ;
-  
-  void quad_shape_fcn(
-    const int &npts,
-    const double *par_coord, 
-    double* shape_fcn) ;
+  DoubleType jacobian_determinant(
+    const SharedMemView<DoubleType**> &coords,
+    const double *POINTER_RESTRICT shapeDerivs ) const;
+
+  double jacobian_determinant(
+    const double *POINTER_RESTRICT elemNodalCoords,
+    const double *POINTER_RESTRICT shapeDerivs ) const;
+
+  std::vector<double> ipWeight_;
 };
 
-// 2D Quad 4 subcontrol surface
-class Quad42DSCS : public MasterElement
+// 3D Hex 27 subcontrol surface
+class Quad92DSCS : public QuadrilateralP2Element
 {
 public:
-  using Traits = AlgTraitsQuad4_2D;
-  Quad42DSCS();
-  virtual ~Quad42DSCS();
-
-  const int * ipNodeMap(int ordinal = 0) override;
+  Quad92DSCS();
+  virtual ~Quad92DSCS() {}
 
   void determinant(
     SharedMemView<DoubleType**>& coords,
@@ -112,76 +111,48 @@ public:
     double *det_j,
     double * error ) override ;
 
-  void shifted_face_grad_op(
-    const int nelem,
-    const int face_ordinal,
-    const double *coords,
-    double *gradop,
-    double *det_j,
-    double * error ) override ;
-
-  void gij( 
+  void gij(
     SharedMemView<DoubleType** >& coords,
     SharedMemView<DoubleType***>& gupper,
     SharedMemView<DoubleType***>& glower,
     SharedMemView<DoubleType***>& deriv) override ;
 
   void gij(
-     const double *coords,
-     double *gupperij,
-     double *gij,
-     double *deriv) override ;
+    const double *coords,
+    double *gupperij,
+    double *glowerij,
+    double *deriv) override ;
 
-  const int * adjacentNodes() override;
+  const int * adjacentNodes() override ;
+
+  const int * ipNodeMap(int ordinal = 0) override ;
 
   int opposingNodes(
-    const int ordinal, const int node) override;
+    const int ordinal, const int node) override ;
 
   int opposingFace(
-    const int ordinal, const int node) override;
-
-  void shape_fcn(
-    double *shpfc) override;
-
-  void shifted_shape_fcn(
-    double *shpfc) override;
-  
-  void quad_shape_fcn(
-    const int &npts,
-    const double *par_coord, 
-    double* shape_fcn) ;
-
-  double isInElement(
-    const double *elemNodalCoord,
-    const double *pointCoord,
-    double *isoParCoord) override;
-  
-  void interpolatePoint(
-    const int &nComp,
-    const double *isoParCoord,
-    const double *field,
-    double *result) override;
-  
-  void general_shape_fcn(
-    const int numIp,
-    const double *isoParCoord,
-    double *shpfc) override;
-
-  void general_face_grad_op(
-    const int face_ordinal,
-    const double *isoParCoord,
-    const double *coords,
-    double *gradop,
-    double *det_j,
-    double * error ) override;
-
-  void sidePcoords_to_elemPcoords(
-    const int & side_ordinal,
-    const int & npoints,
-    const double *side_pcoords,
-    double *elem_pcoords) override;
+    const int ordinal, const int node) override ;
 
   const int* side_node_ordinals(int sideOrdinal) final;
+
+
+private:
+  void set_interior_info();
+  void set_boundary_info();
+
+  template <Jacobian::Direction direction> void
+  area_vector(
+    const SharedMemView<DoubleType**>& elemNodalCoords,
+    double *POINTER_RESTRICT shapeDeriv,
+    DoubleType *POINTER_RESTRICT areaVector ) const;
+  template <Jacobian::Direction direction> void
+  area_vector(
+    const double *POINTER_RESTRICT elemNodalCoords,
+    double *POINTER_RESTRICT shapeDeriv,
+    double *POINTER_RESTRICT areaVector ) const;
+
+  std::vector<ContourData> ipInfo_;
+  int ipsPerFace_;
 };
 
 } // namespace nalu

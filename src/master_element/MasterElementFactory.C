@@ -13,6 +13,7 @@
 #include <master_element/Tet4CVFEM.h>
 #include <master_element/Tri32DCVFEM.h>
 #include <master_element/Quad42DCVFEM.h>
+#include <master_element/Quad92DCVFEM.h>
 #include <master_element/Wed6CVFEM.h>
 #include <master_element/Pyr5CVFEM.h>
 #include <master_element/MasterElementHO.h>
