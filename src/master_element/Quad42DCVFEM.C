@@ -448,12 +448,12 @@ void quad_derivative(const std::vector<double> &par_coord,
     deriv(j,3,1) =   half - s1;
   }
 }
+
+template<int nint, int npe>
 void quad_gradient_operator(const SharedMemView<DoubleType***>& deriv,
                             const SharedMemView<DoubleType**>&  coords,
                             SharedMemView<DoubleType***>& gradop) {
 
-  const size_t nint = deriv.dimension(0);
-  const size_t npe  = deriv.dimension(1);
   const DoubleType realmin = 2.2250738585072014e-308;
 
   for (size_t ki=0; ki<nint; ++ki) {
@@ -501,7 +501,7 @@ void Quad42DSCS::grad_op(
   SharedMemView<DoubleType***>& deriv) {
 
   quad_derivative(intgLoc_, deriv);
-  quad_gradient_operator(deriv, coords, gradop);
+  quad_gradient_operator<Traits::numScsIp_, Traits::nodesPerElement_>(deriv, coords, gradop);
 }
 
 void Quad42DSCS::grad_op(
@@ -536,7 +536,7 @@ void Quad42DSCS::shifted_grad_op(
   SharedMemView<DoubleType***>& gradop,
   SharedMemView<DoubleType***>& deriv) {
   quad_derivative(intgLocShift_, deriv);
-  quad_gradient_operator(deriv, coords, gradop);
+  quad_gradient_operator<Traits::numScsIp_, Traits::nodesPerElement_>(deriv, coords, gradop);
 }
 
 void Quad42DSCS::shifted_grad_op(
