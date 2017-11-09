@@ -581,7 +581,7 @@ void quad_gradient_operator(SharedMemView<DoubleType** >& coords,
   DoubleType dx_ds1, dx_ds2;
   DoubleType dy_ds1, dy_ds2;
 
-  const DoubleType realmin = 2.2250738585072014d-308;
+  const DoubleType realmin = 2.2250738585072014e-308;
 
   for (int ki=0; ki<nint; ++ki) {
     dx_ds1 = 0.0;
