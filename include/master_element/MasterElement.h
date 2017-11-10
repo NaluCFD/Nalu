@@ -215,6 +215,14 @@ public:
     double * error ) {
     throw std::runtime_error("general_face_grad_op not implemented");}
 
+  virtual void general_grad_op(
+    const double *isoParCoord,
+    const double *coords,
+    double *gradop,
+    double *det_j,
+    double * error ) {
+    throw std::runtime_error("general_grad_op not implemented");}
+
   virtual void general_normal(
     const double *isoParCoord,
     const double *coords,

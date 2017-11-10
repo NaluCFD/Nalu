@@ -92,7 +92,7 @@ AssembleNodalGradUNonConformalAlgorithm::execute()
 
   // nodal fields to gather
   std::vector<double> ws_c_vectorQ;
-  std::vector<double> ws_o_vectorQ;
+  std::vector<double> ws_o_elem_vectorQ;
 
   // parallel communicate ghosted entities
   if ( NULL != realm_.nonConformalManager_->nonConformalGhosting_ )
@@ -118,11 +118,11 @@ AssembleNodalGradUNonConformalAlgorithm::execute()
       
         // extract current/opposing face/element
         stk::mesh::Entity currentFace = dgInfo->currentFace_;
-        stk::mesh::Entity opposingFace = dgInfo->opposingFace_;
+        stk::mesh::Entity opposingElement = dgInfo->opposingElement_;
      
         // master element
         MasterElement * meFCCurrent = dgInfo->meFCCurrent_; 
-        MasterElement * meFCOpposing = dgInfo->meFCOpposing_;
+        MasterElement * meSCSOpposing = dgInfo->meSCSOpposing_;
       
         // local ip, ordinals, etc
         const int currentGaussPointId = dgInfo->currentGaussPointId_;
@@ -134,14 +134,14 @@ AssembleNodalGradUNonConformalAlgorithm::execute()
 
         // extract some master element info
         const int currentNodesPerFace = meFCCurrent->nodesPerElement_;
-        const int opposingNodesPerFace = meFCOpposing->nodesPerElement_;
+        const int opposingNodesPerElement = meSCSOpposing->nodesPerElement_;
         
-        // algorithm related; face
+        // algorithm related; face for current, element for opposing
         ws_c_vectorQ.resize(currentNodesPerFace*nDim);
-        ws_o_vectorQ.resize(opposingNodesPerFace*nDim);
+        ws_o_elem_vectorQ.resize(opposingNodesPerElement*nDim);
         
         double *p_c_vectorQ = &ws_c_vectorQ[0];
-        double *p_o_vectorQ = &ws_o_vectorQ[0];
+        double *p_o_elem_vectorQ = &ws_o_elem_vectorQ[0];
         
         // gather current face data
         stk::mesh::Entity const* current_face_node_rels = bulk_data.begin_nodes(currentFace);
@@ -156,16 +156,16 @@ AssembleNodalGradUNonConformalAlgorithm::execute()
           }
         }
         
-        // gather opposing face data
-        stk::mesh::Entity const* opposing_face_node_rels = bulk_data.begin_nodes(opposingFace);
-        const int opposing_num_face_nodes = bulk_data.num_nodes(opposingFace);
-        for ( int ni = 0; ni < opposing_num_face_nodes; ++ni ) {
-          stk::mesh::Entity node = opposing_face_node_rels[ni];
+        // gather opposing element data
+        stk::mesh::Entity const* opposing_elem_node_rels = bulk_data.begin_nodes(opposingElement);
+        const int opposing_num_elem_nodes = bulk_data.num_nodes(opposingElement);
+        for ( int ni = 0; ni < opposing_num_elem_nodes; ++ni ) {
+          stk::mesh::Entity node = opposing_elem_node_rels[ni];
           // gather...
           const double *qNp1 = stk::mesh::field_data(*vectorQ_, node );
           for ( int i = 0; i < nDim; ++i ) {
-            const int offSet = i*opposing_num_face_nodes + ni;
-            p_o_vectorQ[offSet] = qNp1[i];
+            const int offSet = i*opposing_num_elem_nodes + ni;
+            p_o_elem_vectorQ[offSet] = qNp1[i];
           }
         }
 
@@ -175,10 +175,10 @@ AssembleNodalGradUNonConformalAlgorithm::execute()
           &ws_c_vectorQ[0],
           &currentVectorQBip[0]);
 
-        meFCOpposing->interpolatePoint(
+        meSCSOpposing->interpolatePoint(
           sizeOfVectorField,
           &(dgInfo->opposingIsoParCoords_[0]),
-          &ws_o_vectorQ[0],
+          &ws_o_elem_vectorQ[0],
           &opposingVectorQBip[0]);
 
         // extract pointers to nearest node fields

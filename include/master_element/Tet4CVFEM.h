@@ -163,6 +163,13 @@ public:
     double *det_j,
     double * error );
 
+  void general_grad_op(
+    const double *isoParCoord,
+    const double *coords,
+    double *gradop,
+    double *det_j,
+    double * error );
+
   void sidePcoords_to_elemPcoords(
     const int & side_ordinal,
     const int & npoints,

@@ -920,6 +920,35 @@ TetSCS::general_face_grad_op(
 }
 
 //--------------------------------------------------------------------------
+//-------- general_grad_op --------------------------------------------
+//--------------------------------------------------------------------------
+void TetSCS::general_grad_op(
+  const double *isoParCoord,
+  const double *coords,
+  double *gradop,
+  double *det_j,
+  double *error)
+{
+  int lerr = 0;
+
+  const int nface = 1;
+  double dpsi[12];
+
+  SIERRA_FORTRAN(tet_derivative)
+    ( &nface, dpsi );
+  
+  SIERRA_FORTRAN(tet_gradient_operator)
+    ( &nface,
+      &nodesPerElement_,
+      &nface,
+      dpsi,
+      &coords[0], &gradop[0], &det_j[0], error, &lerr );
+
+  if ( lerr )
+    std::cout << "sorry, negative TetSCS volume in general_grad_op.." << std::endl;  
+}
+
+//--------------------------------------------------------------------------
 //-------- sidePcoords_to_elemPcoords --------------------------------------
 //--------------------------------------------------------------------------
 void 

@@ -74,7 +74,7 @@ class DgInfo {
 
   const double bestXRef_;
   double bestX_;
-  int opposingFaceIsGhosted_;
+  int opposingElementIsGhosted_;
 
   // search provides opposing face
   stk::mesh::Entity opposingFace_;
@@ -104,8 +104,8 @@ class DgInfo {
   std::vector<double> opposingIsoParCoords_;  
 
   // possible reuse
-  std::vector<uint64_t> allOpposingFaceIds_;
-  std::vector<uint64_t> allOpposingFaceIdsOld_;
+  std::vector<uint64_t> allOpposingElementIds_;
+  std::vector<uint64_t> allOpposingElementIdsOld_;
 };
   
 } // end sierra namespace

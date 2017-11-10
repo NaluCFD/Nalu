@@ -117,7 +117,7 @@ class NonConformalInfo {
 
   /* bounding box data types for stk_search */
   std::vector<boundingPoint>      boundingPointVec_;
-  std::vector<boundingElementBox> boundingFaceElementBoxVec_;
+  std::vector<boundingElementBox> boundingElementBoxVec_;
 
   /* vector of DgInfo */
   std::vector<std::vector<DgInfo *> > dgInfoVec_;
