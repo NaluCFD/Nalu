@@ -123,7 +123,7 @@ public:
 
   // Solve
   int solve(stk::mesh::FieldBase * linearSolutionField);
-  void loadComplete();
+  void loadComplete(bool onlyAssembleRhs = false);
   void writeToFile(const char * filename, bool useOwned=true);
   void printInfo(bool useOwned=true);
   void writeSolutionToFile(const char * filename, bool useOwned=true);

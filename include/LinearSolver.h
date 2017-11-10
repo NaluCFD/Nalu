@@ -64,13 +64,19 @@ class LinearSolver
   Simulation *root();
   LinearSolvers *parent();
   LinearSolvers *linearSolvers_;
+
+  bool recomputePreconditioner() const {return recomputePreconditioner_;}
+  bool reusePreconditioner() const {return reusePreconditioner_;}
+
+  void setRecomputePreconditioner(bool flag) {recomputePreconditioner_ = flag;}
+  void setReusePreconditioner(bool flag) {reusePreconditioner_ = flag;}
+
   protected:
   bool recomputePreconditioner_;
   bool reusePreconditioner_;
   double timerPrecond_;
+
   public:
-  bool & recomputePreconditioner() {return recomputePreconditioner_;}
-  bool & reusePreconditioner() {return reusePreconditioner_;}
   void zero_timer_precond() { timerPrecond_ = 0.0;}
   double get_timer_precond() { return timerPrecond_;}
 };

@@ -217,6 +217,8 @@ public:
     get_required(node, "convergence_tolerance", convergenceTolerance_);
   }
 
+  virtual int get_matrix_assembly_frequency() const { return 1; }
+
   Simulation *root();
   EquationSystems *parent();
 

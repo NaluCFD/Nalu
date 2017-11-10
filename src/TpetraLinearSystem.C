@@ -1289,7 +1289,7 @@ TpetraLinearSystem::prepareConstraints(
           local_matrix.replaceValues(actualLocalId, &indices[0], rowLength, new_values.data(), internalMatrixIsSorted);
         }
       }
-      
+ 
       // Replace the RHS residual with zero
       Teuchos::RCP<LinSys::Vector> rhs = useOwned ? ownedRhs_: globallyOwnedRhs_;
       const double bc_residual = 0.0;
@@ -1348,23 +1348,25 @@ TpetraLinearSystem::resetRows(
 }
 
 void
-TpetraLinearSystem::loadComplete()
+TpetraLinearSystem::loadComplete(bool onlyAssembleRhs)
 {
   // LHS
   Teuchos::RCP<Teuchos::ParameterList> params = Teuchos::parameterList ();
   params->set("No Nonlocal Changes", true);
   bool do_params=false;
 
-  if (do_params)
-    globallyOwnedMatrix_->fillComplete(params);
-  else
-    globallyOwnedMatrix_->fillComplete();
-
-  ownedMatrix_->doExport(*globallyOwnedMatrix_, *exporter_, Tpetra::ADD);
-  if (do_params)
-    ownedMatrix_->fillComplete(params);
-  else
-    ownedMatrix_->fillComplete();
+  if (!onlyAssembleRhs) {
+    if (do_params)
+      globallyOwnedMatrix_->fillComplete(params);
+    else
+      globallyOwnedMatrix_->fillComplete();
+  
+    ownedMatrix_->doExport(*globallyOwnedMatrix_, *exporter_, Tpetra::ADD);
+    if (do_params)
+      ownedMatrix_->fillComplete(params);
+    else
+      ownedMatrix_->fillComplete();
+  }
 
   // RHS
   ownedRhs_->doExport(*globallyOwnedRhs_, *exporter_, Tpetra::ADD);

@@ -100,7 +100,7 @@ public:
 
   // Solve
   virtual int solve(stk::mesh::FieldBase * linearSolutionField) { return -1; }
-  virtual void loadComplete() {}
+  virtual void loadComplete(bool onlyAssembleRhs = false) {}
 
   virtual void writeToFile(const char * filename, bool useOwned=true) {}
   virtual void writeSolutionToFile(const char * filename, bool useOwned=true) {}

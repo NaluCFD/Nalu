@@ -115,7 +115,7 @@ public:
 
   // Solve
   virtual int solve(stk::mesh::FieldBase * linearSolutionField)=0;
-  virtual void loadComplete()=0;
+  virtual void loadComplete(bool onlyAssembleRhs = false)=0;
 
   virtual void writeToFile(const char * filename, bool useOwned=true)=0;
   virtual void writeSolutionToFile(const char * filename, bool useOwned=true)=0;
@@ -126,8 +126,12 @@ public:
   const double & scaledNonLinearResidual() {return scaledNonLinearResidual_; }
   void setNonLinearResidual(const double nlr) { nonLinearResidual_ = nlr;}
   const std::string name() { return eqSysName_; }
-  bool & recomputePreconditioner() {return recomputePreconditioner_;}
-  bool & reusePreconditioner() {return reusePreconditioner_;}
+  bool recomputePreconditioner() const {return recomputePreconditioner_;}
+  bool reusePreconditioner() const {return reusePreconditioner_;}
+
+  void setRecomputePreconditioner(bool flag);
+  void setReusePreconditioner(bool flag);
+
   double get_timer_precond();
   void zero_timer_precond();
 

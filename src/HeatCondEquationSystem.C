@@ -120,12 +120,14 @@ HeatCondEquationSystem::HeatCondEquationSystem(
     edgeAreaVec_(NULL),
     assembleNodalGradAlgDriver_(new AssembleNodalGradAlgorithmDriver(realm_, "temperature", "dtdx")),
     isInit_(true),
-    projectedNodalGradEqs_(NULL)
+    projectedNodalGradEqs_(NULL),
+    matrixAssemblyFrequency_(1)
 {
   // extract solver name and solver object
   std::string solverName = realm_.equationSystems_.get_solver_block_name("temperature");
   LinearSolver *solver = realm_.root()->linearSolvers_->create_solver(solverName, EQ_TEMPERATURE);
   linsys_ = LinearSystem::create(realm_, 1, this, solver);
+  matrixAssemblyFrequency_ = realm_.equationSystems_.get_solver_matrix_assembly_frequency("temperature");
 
   // determine nodal gradient form
   set_nodal_gradient("temperature");

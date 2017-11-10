@@ -66,6 +66,9 @@ class EquationSystems
   std::string get_solver_block_name(
     const std::string eqName);
 
+  int get_solver_matrix_assembly_frequency(
+    const std::string eqName);
+
   void breadboard();
 
   Simulation *root();
@@ -191,6 +194,7 @@ class EquationSystems
 
   EquationSystemVector equationSystemVector_;
   std::map<std::string, std::string> solverSpecMap_;
+  std::map<std::string, int> matrixAssemblyFrequencyMap_;
 
   /// A list of tasks to be performed before all EquationSystem::solve_and_update
   std::vector<AlgorithmDriver*> preIterAlgDriver_;

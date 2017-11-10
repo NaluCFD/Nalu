@@ -85,6 +85,19 @@ void EquationSystems::load(const YAML::Node & y_node)
     const YAML::Node y_solver
       = expect_map(y_equation_system, "solver_system_specification");
     solverSpecMap_ = y_solver.as<std::map<std::string, std::string> >();
+
+    bool optional = true;
+    const YAML::Node y_matrixFrequency
+      = expect_map(y_equation_system, "matrix_assembly_frequency", optional);
+    if (y_matrixFrequency) {
+      matrixAssemblyFrequencyMap_ = y_matrixFrequency.as<std::map<std::string,int> >();
+    }
+    else {
+      //default matrix-assembly-frequency to 1 for each linear-solve
+      for(auto specMap_iter : solverSpecMap_) {
+        matrixAssemblyFrequencyMap_.insert(std::make_pair(specMap_iter.first, 1));
+      }
+    }
     
     const YAML::Node y_systems = expect_sequence(y_equation_system, "systems");
     {
@@ -205,6 +218,17 @@ EquationSystems::get_solver_block_name(
     throw std::runtime_error("issue with solver name mapping; none supplied");
   }  
   return solverName;
+}
+
+int
+EquationSystems::get_solver_matrix_assembly_frequency(const std::string eqName)
+{
+  std::map<std::string,int>::const_iterator iter =
+    matrixAssemblyFrequencyMap_.find(eqName);
+  if (iter != matrixAssemblyFrequencyMap_.end()) {
+    return (*iter).second;
+  }
+  return 1;
 }
 
 void EquationSystems::breadboard() 
