@@ -486,7 +486,7 @@ void tri_gradient_operator(
 // jacobian. The value of real_min (set in precision.par) represents 
 // the smallest Real value (based upon the precision set for this 
 // compilation) which the machine can represent - 
-    const DoubleType denom = stk::math::if_then_else(det_j < 1.e6*realmin, 1.0, 1.0/det_j);
+    const DoubleType denom = stk::math::if_then_else(det_j < 1.e6*MEconstants::realmin, 1.0, 1.0/det_j);
      
 // compute the gradient operators at the integration station -
     const DoubleType ds1_dx =  denom*dy_ds2;
@@ -687,7 +687,7 @@ void Tri32DSCS::gij(
     const DoubleType det_j = dx_ds[0][0]*dx_ds[1][1] - dx_ds[1][0]*dx_ds[0][1];
 
 // clip
-    const DoubleType denom = stk::math::if_then_else(det_j < 1.e6*realmin, 1.0, 1.0/det_j);
+    const DoubleType denom = stk::math::if_then_else(det_j < 1.e6*MEconstants::realmin, 1.0, 1.0/det_j);
 
 // compute the inverse jacobian
     ds_dx[0][0] =  dx_ds[1][1]*denom;
