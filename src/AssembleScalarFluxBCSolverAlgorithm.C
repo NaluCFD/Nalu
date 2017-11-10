@@ -46,7 +46,6 @@ AssembleScalarFluxBCSolverAlgorithm::AssembleScalarFluxBCSolverAlgorithm(
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
-  coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   exposedAreaVec_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");
 }
 
@@ -80,7 +79,6 @@ AssembleScalarFluxBCSolverAlgorithm::execute()
   std::vector<stk::mesh::Entity> connected_nodes;
 
   // nodal fields to gather
-  std::vector<double> ws_face_coordinates;
   std::vector<double> ws_bcScalarQ;
 
   // master element
@@ -114,14 +112,12 @@ AssembleScalarFluxBCSolverAlgorithm::execute()
     connected_nodes.resize(nodesPerFace);
 
     // algorithm related; element
-    ws_face_coordinates.resize(nodesPerFace*nDim);
     ws_bcScalarQ.resize(nodesPerFace);
     ws_face_shape_function.resize(numScsBip*nodesPerFace);
 
     // pointers
     double *p_lhs = &lhs[0];
     double *p_rhs = &rhs[0];
-    double *p_face_coordinates = &ws_face_coordinates[0];
     double *p_bcScalarQ = &ws_bcScalarQ[0];
     double *p_face_shape_function = &ws_face_shape_function[0];
 
@@ -161,13 +157,6 @@ AssembleScalarFluxBCSolverAlgorithm::execute()
 
         // gather scalar
         p_bcScalarQ[ni] = *stk::mesh::field_data(*bcScalarQ_, node);
-
-        // gather vectors
-        double * coords = stk::mesh::field_data(*coordinates_, node);
-        const int offSet = ni*nDim;
-        for ( int i=0; i < nDim; ++i ) {
-          p_face_coordinates[offSet+i] = coords[i];
-        }
       }
 
       // pointer to face data
