@@ -454,8 +454,6 @@ void quad_gradient_operator(const SharedMemView<DoubleType***>& deriv,
                             const SharedMemView<DoubleType**>&  coords,
                             SharedMemView<DoubleType***>& gradop) {
 
-  const DoubleType realmin = 2.2250738585072014e-308;
-
   for (size_t ki=0; ki<nint; ++ki) {
     DoubleType dx_ds1 = 0.0;
     DoubleType dx_ds2 = 0.0;
@@ -654,7 +652,6 @@ void Quad42DSCS::gij(
      
   const int npe  = nodesPerElement_;
   const int nint = numIntPoints_;
-  const double realmin = 2.2250738585072014e-308;
 
   DoubleType dx_ds[2][2], ds_dx[2][2];
 

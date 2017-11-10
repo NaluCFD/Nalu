@@ -18,6 +18,8 @@ namespace sierra{
 namespace nalu{
   class LagrangeBasis;
 
+  static const double realmin = std::numeric_limits<double>::min();
+
   bool isoparameteric_coordinates_for_point_2d(
     LagrangeBasis& basis,
     const double* POINTER_RESTRICT elemNodalCoords,
