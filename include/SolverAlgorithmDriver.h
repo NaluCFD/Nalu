@@ -33,6 +33,8 @@ public:
   virtual void execute();
   virtual void post_work();
   
+  void set_only_assemble_rhs(bool flag);
+
   // different types of algorithms... interior/flux; constraints and dirichlet
   std::map<std::string, SolverAlgorithm *> solverAlgorithmMap_;
   std::map<AlgorithmType, SolverAlgorithm *> solverAlgMap_;

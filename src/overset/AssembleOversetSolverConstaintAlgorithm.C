@@ -192,7 +192,7 @@ AssembleOversetSolverConstraintAlgorithm::execute()
     }
 
     // apply to linear system
-    apply_coeff(connected_nodes, scratchIds, scratchVals, rhs, lhs, __FILE__);
+    apply_coeff(connected_nodes, scratchIds, scratchVals, rhs, lhs, __FILE__, onlyAssembleRhs_);
   }
 }
 
@@ -204,7 +204,7 @@ AssembleOversetSolverConstraintAlgorithm::prepare_constraints()
 {
   const int sysStart = 0;
   const int sysEnd = eqSystem_->linsys_->numDof();
-  eqSystem_->linsys_->prepareConstraints(sysStart,sysEnd);
+  eqSystem_->linsys_->prepareConstraints(sysStart,sysEnd, onlyAssembleRhs_);
 }
 
 } // namespace nalu

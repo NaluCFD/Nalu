@@ -39,7 +39,8 @@ DirichletBC::execute()
     bcValues_,
     partVec_,
     beginPos_,
-    endPos_);
+    endPos_,
+    onlyAssembleRhs_);
 }
 
 } // namespace nalu

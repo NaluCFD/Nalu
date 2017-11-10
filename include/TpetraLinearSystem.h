@@ -76,6 +76,7 @@ public:
 
   // Matrix Assembly
   void zeroSystem();
+  void zeroRhs();
 
   void sumInto(
       unsigned numEntities,
@@ -84,27 +85,30 @@ public:
       const SharedMemView<const double**> & lhs,
       const SharedMemView<int*> & localIds,
       const SharedMemView<int*> & sortPermutation,
-      const char * trace_tag);
+      const char * trace_tag,
+      bool ignoreLhs = false);
 
   void sumInto(
-    const std::vector<stk::mesh::Entity> & entities,
-    std::vector<int> &scratchIds,
-    std::vector<double> &scratchVals,
-    const std::vector<double> & rhs,
-    const std::vector<double> & lhs,
-    const char *trace_tag=0
-    );
+      const std::vector<stk::mesh::Entity> & entities,
+      std::vector<int> &scratchIds,
+      std::vector<double> &scratchVals,
+      const std::vector<double> & rhs,
+      const std::vector<double> & lhs,
+      const char *trace_tag=0,
+      bool ignoreLhs = false);
 
   void applyDirichletBCs(
     stk::mesh::FieldBase * solutionField,
     stk::mesh::FieldBase * bcValuesField,
     const stk::mesh::PartVector & parts,
     const unsigned beginPos,
-    const unsigned endPos);
+    const unsigned endPos,
+    bool onlyAdjustRhs = false);
 
   void prepareConstraints(
     const unsigned beginPos,
-    const unsigned endPos);
+    const unsigned endPos,
+    bool onlyAdjustRhs = false);
 
   /** Reset LHS and RHS for the given set of nodes to 0
    *
@@ -119,7 +123,7 @@ public:
 
   // Solve
   int solve(stk::mesh::FieldBase * linearSolutionField);
-  void loadComplete();
+  void loadComplete(bool onlyAssembleRhs = false);
   void writeToFile(const char * filename, bool useOwned=true);
   void printInfo(bool useOwned=true);
   void writeSolutionToFile(const char * filename, bool useOwned=true);

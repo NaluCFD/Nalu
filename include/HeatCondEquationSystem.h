@@ -81,6 +81,10 @@ public:
     EquationSystem::load(node);
   }
 
+  virtual int get_matrix_assembly_frequency() const
+  {
+    return matrixAssemblyFrequency_;
+  }
 
   // allow equation system to manage a projected nodal gradient
   const bool managePNG_;
@@ -103,6 +107,7 @@ public:
   AssembleNodalGradAlgorithmDriver *assembleNodalGradAlgDriver_;
   bool isInit_;
   ProjectedNodalGradientEquationSystem *projectedNodalGradEqs_;
+  int matrixAssemblyFrequency_;
 };
 
 } // namespace nalu

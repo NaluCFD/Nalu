@@ -75,7 +75,7 @@ FixPressureAtNodeAlgorithm::execute()
     lhs[0] = 1.0; // Set diagonal entry to 1.0
     rhs[0] = info_.refPressure_ - pressureN;
 
-    apply_coeff(refNodeList_, scratchIds, scratchVals, rhs, lhs, __FILE__);
+    apply_coeff(refNodeList_, scratchIds, scratchVals, rhs, lhs, __FILE__, onlyAssembleRhs_);
   }
 }
 

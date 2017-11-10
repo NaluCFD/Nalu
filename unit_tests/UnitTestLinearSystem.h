@@ -18,7 +18,8 @@ class TestLinearSystem : public sierra::nalu::LinearSystem
 public:
 
  TestLinearSystem( sierra::nalu::Realm &realm, const unsigned numDof, sierra::nalu::EquationSystem *eqSys)
-   : sierra::nalu::LinearSystem(realm, numDof, eqSys, nullptr), numSumIntoCalls_(0)
+   : sierra::nalu::LinearSystem(realm, numDof, eqSys, nullptr), numSumIntoCalls_(0),
+     ignoredLhs_(false)
   {}
 
   virtual ~TestLinearSystem() {}
@@ -36,6 +37,7 @@ public:
 
   // Matrix Assembly
   virtual void zeroSystem() {}
+  virtual void zeroRhs() {}
 
   virtual void sumInto(
       unsigned numEntities,
@@ -44,8 +46,8 @@ public:
       const sierra::nalu::SharedMemView<const double**> & lhs,
       const sierra::nalu::SharedMemView<int*> & localIds,
       const sierra::nalu::SharedMemView<int*> & sortPermutation,
-      const char * trace_tag
-      )
+      const char * trace_tag,
+      bool ignoreLhs = false)
   {
     if (numSumIntoCalls_ == 0) {
       rhs_ = Kokkos::View<double*>("rhs_",rhs.dimension(0));
@@ -53,11 +55,16 @@ public:
         rhs_(i) = rhs(i);
       }
       lhs_ = Kokkos::View<double**>("lhs_",lhs.dimension(0), lhs.dimension(1));
-      for(size_t i=0; i<lhs.dimension(0); ++i) {
-        for(size_t j=0; j<lhs.dimension(1); ++j) {
-          lhs_(i,j) = lhs(i,j);
+      if (!ignoreLhs) {
+        for(size_t i=0; i<lhs.dimension(0); ++i) {
+          for(size_t j=0; j<lhs.dimension(1); ++j) {
+            lhs_(i,j) = lhs(i,j);
+          }
         }
       }
+    }
+    if (ignoreLhs) {
+      ignoredLhs_ = true;
     }
     Kokkos::atomic_add(&numSumIntoCalls_, 1u);
   }
@@ -68,26 +75,32 @@ public:
     std::vector<double> &scratchVals,
     const std::vector<double> & rhs,
     const std::vector<double> & lhs,
-    const char *trace_tag=0
-    )
-  {}
+    const char *trace_tag=0,
+    bool ignoreLhs = false)
+  {
+    if (ignoreLhs) {
+      ignoredLhs_ = true;
+    }
+  }
 
   virtual void applyDirichletBCs(
     stk::mesh::FieldBase * solutionField,
     stk::mesh::FieldBase * bcValuesField,
     const stk::mesh::PartVector & parts,
     const unsigned beginPos,
-    const unsigned endPos)
+    const unsigned endPos,
+    bool onlyAdjustRhs = false)
   {}
 
   virtual void prepareConstraints(
     const unsigned beginPos,
-    const unsigned endPos)
+    const unsigned endPos,
+    bool onlyAdjustRhs = false)
   {}
 
   // Solve
   virtual int solve(stk::mesh::FieldBase * linearSolutionField) { return -1; }
-  virtual void loadComplete() {}
+  virtual void loadComplete(bool onlyAssembleRhs = false) {}
 
   virtual void writeToFile(const char * filename, bool useOwned=true) {}
   virtual void writeSolutionToFile(const char * filename, bool useOwned=true) {}
@@ -98,6 +111,7 @@ public:
     const unsigned endPos) {}
 
   unsigned numSumIntoCalls_;
+  bool ignoredLhs_;
   Kokkos::View<double**> lhs_;
   Kokkos::View<double*> rhs_;
 

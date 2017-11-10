@@ -64,6 +64,7 @@ public:
 
   // Matrix Assembly
   virtual void zeroSystem()=0;
+  virtual void zeroRhs()=0;
 
   virtual void sumInto(
       unsigned numEntities,
@@ -72,7 +73,8 @@ public:
       const SharedMemView<const double**> & lhs,
       const SharedMemView<int*> & localIds,
       const SharedMemView<int*> & sortPermutation,
-      const char * trace_tag
+      const char * trace_tag,
+      bool ignoreLhs = false
       )=0;
 
 
@@ -83,7 +85,8 @@ public:
     std::vector<double> &scratchVals,
     const std::vector<double> & rhs,
     const std::vector<double> & lhs,
-    const char *trace_tag=0
+    const char *trace_tag=0,
+    bool ignoreLhs = false
     )=0;
 
   virtual void applyDirichletBCs(
@@ -91,11 +94,13 @@ public:
     stk::mesh::FieldBase * bcValuesField,
     const stk::mesh::PartVector & parts,
     const unsigned beginPos,
-    const unsigned endPos)=0;
+    const unsigned endPos,
+    bool onlyAdjustRhs = false)=0;
 
   virtual void prepareConstraints(
     const unsigned beginPos,
-    const unsigned endPos)=0;
+    const unsigned endPos,
+    bool onlyAdjustRhs = false)=0;
 
   /** Reset LHS and RHS for the given set of nodes to 0
    *
@@ -110,7 +115,7 @@ public:
 
   // Solve
   virtual int solve(stk::mesh::FieldBase * linearSolutionField)=0;
-  virtual void loadComplete()=0;
+  virtual void loadComplete(bool onlyAssembleRhs = false)=0;
 
   virtual void writeToFile(const char * filename, bool useOwned=true)=0;
   virtual void writeSolutionToFile(const char * filename, bool useOwned=true)=0;
@@ -121,8 +126,12 @@ public:
   const double & scaledNonLinearResidual() {return scaledNonLinearResidual_; }
   void setNonLinearResidual(const double nlr) { nonLinearResidual_ = nlr;}
   const std::string name() { return eqSysName_; }
-  bool & recomputePreconditioner() {return recomputePreconditioner_;}
-  bool & reusePreconditioner() {return reusePreconditioner_;}
+  bool recomputePreconditioner() const {return recomputePreconditioner_;}
+  bool reusePreconditioner() const {return reusePreconditioner_;}
+
+  void setRecomputePreconditioner(bool flag);
+  void setReusePreconditioner(bool flag);
+
   double get_timer_precond();
   void zero_timer_precond();
 

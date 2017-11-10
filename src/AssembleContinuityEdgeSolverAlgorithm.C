@@ -202,7 +202,7 @@ AssembleContinuityEdgeSolverAlgorithm::execute()
       p_lhs[3] = -lhsfac;
       p_rhs[1] = tmdot/projTimeScale;
 
-      apply_coeff(connected_nodes, scratchIds, scratchVals, rhs, lhs, __FILE__);
+      apply_coeff(connected_nodes, scratchIds, scratchVals, rhs, lhs, __FILE__, onlyAssembleRhs_);
 
     }
   }

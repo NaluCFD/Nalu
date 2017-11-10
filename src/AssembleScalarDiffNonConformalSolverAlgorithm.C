@@ -474,7 +474,7 @@ AssembleScalarDiffNonConformalSolverAlgorithm::execute()
           p_lhs[rowR+ic+currentNodesPerElement] -= opposingDiffFluxCoeffBip*lhscd*c_amag/2.0;
         }
         
-        apply_coeff(connected_nodes, scratchIds, scratchVals, rhs, lhs, __FILE__);
+        apply_coeff(connected_nodes, scratchIds, scratchVals, rhs, lhs, __FILE__, onlyAssembleRhs_);
       }
     }
   }

@@ -66,6 +66,18 @@ LinearSystem::LinearSystem(
   // nothing to do
 }
 
+void LinearSystem::setRecomputePreconditioner(bool flag)
+{
+  recomputePreconditioner_ = flag;
+  linearSolver_->setRecomputePreconditioner(flag);
+}
+
+void LinearSystem::setReusePreconditioner(bool flag)
+{
+  reusePreconditioner_ = flag;
+  linearSolver_->setReusePreconditioner(flag);
+}
+
 void LinearSystem::zero_timer_precond()
 {
   linearSolver_->zero_timer_precond();  

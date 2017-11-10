@@ -12,6 +12,7 @@
 #include <InitialConditions.h>
 #include <PecletFunction.h>
 #include <Realm.h>
+#include <TimeIntegrator.h>
 #include <Simulation.h>
 #include <SolutionOptions.h>
 #include <FieldTypeDef.h>
@@ -257,6 +258,13 @@ EquationSystem::initial_work()
     (*ii)->execute();
 }
 
+bool should_assemble_matrix(int timeStepCount, int assemblyFrequency)
+{
+  bool shouldAssemble = (assemblyFrequency==1) || (timeStepCount==1) ||
+                        (timeStepCount % assemblyFrequency == 0);
+ return shouldAssemble;
+}
+
 //--------------------------------------------------------------------------
 //-------- assemble_and_solve ----------------------------------------------
 //--------------------------------------------------------------------------
@@ -266,11 +274,22 @@ EquationSystem::assemble_and_solve(
 {
   int error = 0;
   
+  bool reuseLHS = !should_assemble_matrix(realm_.timeIntegrator_->timeStepCount_,
+                                          get_matrix_assembly_frequency());
+
   // zero the system
   double timeA = NaluEnv::self().nalu_time();
-  linsys_->zeroSystem();
+  if (reuseLHS) {
+    linsys_->zeroRhs();
+  }
+  else {
+    linsys_->zeroSystem();
+  }
+
   double timeB = NaluEnv::self().nalu_time();
   timerAssemble_ += (timeB-timeA);
+
+  solverAlgDriver_->set_only_assemble_rhs(reuseLHS);
 
   // apply all flux and dirichlet algs
   timeA = NaluEnv::self().nalu_time();
@@ -280,9 +299,13 @@ EquationSystem::assemble_and_solve(
 
   // load complete
   timeA = NaluEnv::self().nalu_time();
-  linsys_->loadComplete();
+  linsys_->loadComplete(reuseLHS);
   timeB = NaluEnv::self().nalu_time();
   timerLoadComplete_ += (timeB-timeA);
+
+  bool shouldComputePreconditioner = !reuseLHS;
+  linsys_->setRecomputePreconditioner(shouldComputePreconditioner);
+  linsys_->setReusePreconditioner(!shouldComputePreconditioner);
 
   // solve the system; extract delta
   timeA = NaluEnv::self().nalu_time();
