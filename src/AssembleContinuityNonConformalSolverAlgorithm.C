@@ -71,7 +71,6 @@ AssembleContinuityNonConformalSolverAlgorithm::AssembleContinuityNonConformalSol
   ghostFieldVec_.push_back(coordinates_);
   ghostFieldVec_.push_back(velocityRTM_);
   ghostFieldVec_.push_back(density_);
-  ghostFieldVec_.push_back(exposedAreaVec_);
 
   if ( useCurrentNormal_ )
     NaluEnv::self().naluOutputP0() << "AssembleContinuityNonConformalSolverAlgorithm::Options: use_current_normal is active" << std::endl;

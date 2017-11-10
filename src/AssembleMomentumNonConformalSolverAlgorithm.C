@@ -63,7 +63,6 @@ AssembleMomentumNonConformalSolverAlgorithm::AssembleMomentumNonConformalSolverA
   ghostFieldVec_.push_back(&(velocity_->field_of_state(stk::mesh::StateNP1)));
   ghostFieldVec_.push_back(diffFluxCoeff_);
   ghostFieldVec_.push_back(coordinates_);
-  ghostFieldVec_.push_back(exposedAreaVec_);
  
   // provide output to user
   if ( useCurrentNormal_ ) 
