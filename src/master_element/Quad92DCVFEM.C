@@ -581,8 +581,6 @@ void quad_gradient_operator(SharedMemView<DoubleType** >& coords,
   DoubleType dx_ds1, dx_ds2;
   DoubleType dy_ds1, dy_ds2;
 
-  const DoubleType realmin = 2.2250738585072014e-308;
-
   for (int ki=0; ki<nint; ++ki) {
     dx_ds1 = 0.0;
     dx_ds2 = 0.0;
@@ -604,7 +602,7 @@ void quad_gradient_operator(SharedMemView<DoubleType** >& coords,
 // jacobian. The value of real_min (set in precision.par) represents 
 // the smallest Real value (based upon the precision set for this 
 // compilation) which the machine can represent - 
-    const DoubleType test = stk::math::if_then_else(det_j > 1.e+6*realmin, det_j, 1.0);
+    const DoubleType test = stk::math::if_then_else(det_j > 1.e+6*MEconstants::realmin, det_j, 1.0);
     const DoubleType denom = 1.0/test;
 
 // compute the gradient operators at the integration station -
@@ -756,7 +754,6 @@ void Quad92DSCS::gij(
 
   constexpr int npe  = Traits::nodesPerElement_;
   constexpr int nint = Traits::numScsIp_;
-  const double realmin = 2.2250738585072014e-308;
 
   DoubleType dx_ds[2][2], ds_dx[2][2];
 
@@ -777,7 +774,7 @@ void Quad92DSCS::gij(
     const DoubleType det_j = dx_ds[0][0]*dx_ds[1][1] - dx_ds[1][0]*dx_ds[0][1];
 
 // clip
-    const DoubleType test = stk::math::if_then_else(det_j > 1.e+6*realmin, det_j, 1.0);
+    const DoubleType test = stk::math::if_then_else(det_j > 1.e+6*MEconstants::realmin, det_j, 1.0);
     const DoubleType denom = 1.0/test;
 
 // compute the inverse jacobian

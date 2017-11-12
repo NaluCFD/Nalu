@@ -465,8 +465,6 @@ void tri_gradient_operator(
   DoubleType dx_ds1, dx_ds2;
   DoubleType dy_ds1, dy_ds2;
 
-  const double realmin = 2.2250738585072014e-308;
-     
   for (int ki=0; ki<nint; ++ki) {    
     dx_ds1 = 0.0;
     dx_ds2 = 0.0;
@@ -488,7 +486,7 @@ void tri_gradient_operator(
 // jacobian. The value of real_min (set in precision.par) represents 
 // the smallest Real value (based upon the precision set for this 
 // compilation) which the machine can represent - 
-    const DoubleType denom = stk::math::if_then_else(det_j < 1.e6*realmin, 1.0, 1.0/det_j);
+    const DoubleType denom = stk::math::if_then_else(det_j < 1.e6*MEconstants::realmin, 1.0, 1.0/det_j);
      
 // compute the gradient operators at the integration station -
     const DoubleType ds1_dx =  denom*dy_ds2;
@@ -667,7 +665,6 @@ void Tri32DSCS::gij(
  
   const int npe  = nodesPerElement_;
   const int nint = numIntPoints_;
-  const double realmin = 2.2250738585072014e-308;
 
   DoubleType  dx_ds[2][2], ds_dx[2][2];
 
@@ -690,7 +687,7 @@ void Tri32DSCS::gij(
     const DoubleType det_j = dx_ds[0][0]*dx_ds[1][1] - dx_ds[1][0]*dx_ds[0][1];
 
 // clip
-    const DoubleType denom = stk::math::if_then_else(det_j < 1.e6*realmin, 1.0, 1.0/det_j);
+    const DoubleType denom = stk::math::if_then_else(det_j < 1.e6*MEconstants::realmin, 1.0, 1.0/det_j);
 
 // compute the inverse jacobian
     ds_dx[0][0] =  dx_ds[1][1]*denom;
