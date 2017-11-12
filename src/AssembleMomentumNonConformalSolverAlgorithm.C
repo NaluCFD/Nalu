@@ -284,7 +284,7 @@ AssembleMomentumNonConformalSolverAlgorithm::execute()
           for ( int i = 0; i < nDim; ++i ) {
             p_o_elem_velocity[niNdim+i] = uNp1[i];
             p_o_elem_coordinates[niNdim+i] = coords[i];
-            const int offSet = i*current_num_face_nodes + ni; 
+            const int offSet = i*current_num_elem_nodes + ni; 
             p_o_elem_velocity_face_interp[offSet] = uNp1[i];
           }
         }

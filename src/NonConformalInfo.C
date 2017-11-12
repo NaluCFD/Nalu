@@ -778,7 +778,9 @@ NonConformalInfo::provide_diagnosis()
         NaluEnv::self().naluOutput() << "      " << i << " " << currentIsoParCoords[i] << " " << opposingIsoParCoords[i] << std::endl;
       NaluEnv::self().naluOutput() << std::endl;
       NaluEnv::self().naluOutput() << " in the end, the Error Distance Norm is: " << distanceNorm << std::endl;
-      NaluEnv::self().naluOutput() << "-------------------------------------------------------------------" << std::endl;
+      if ( distanceNorm > 1.0e-12 ) 
+        NaluEnv::self().naluOutput() << " Trouble with distance norm !!!! " << distanceNorm << std::endl;
+      NaluEnv::self().naluOutput() << "-------------------------------------------------------------------" << std::endl;        
     }
   }
 }
