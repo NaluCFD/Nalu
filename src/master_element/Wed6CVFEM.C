@@ -343,10 +343,9 @@ WedSCS::WedSCS()
   // face 2;
   ipNodeMap_[8] = 0;  ipNodeMap_[9] = 3;  ipNodeMap_[10] = 5; ipNodeMap_[11] = 2;
   // face 3;
-  ipNodeMap_[12] = 0; ipNodeMap_[13] = 1; ipNodeMap_[14] = 1; ipNodeMap_[15] = 0; //empty
+  ipNodeMap_[12] = 0; ipNodeMap_[13] = 2; ipNodeMap_[14] = 1; ipNodeMap_[15] = 0; //empty
   // face 4;
   ipNodeMap_[16] = 3; ipNodeMap_[17] = 4; ipNodeMap_[18] = 5; ipNodeMap_[19] = 0; // empty
-
 
   sideNodeOrdinals_ = {
       0, 1, 4, 3, // ordinal 0
