@@ -1144,7 +1144,13 @@ namespace YAML
   bool convert<sierra::nalu::SymmetryUserData>::decode(const Node& node,
     sierra::nalu::SymmetryUserData& symmetryData)
   {
-    // nothing as of yet
+    // This allows the user to set a fixed temperature gradient that is
+    // achieved through application of a compatible heat flux. 
+    if (node["temperature_gradient"])
+    {
+      symmetryData.temperatureGradient_ = node["temperature_gradient"].as<sierra::nalu::NormalHeatFlux>();
+      symmetryData.temperatureGradientSpec_ = true;
+    }
     return true;
   }
 

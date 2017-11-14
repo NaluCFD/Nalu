@@ -298,9 +298,14 @@ struct OversetUserData : public UserData {
 };
 
 struct SymmetryUserData : public UserData {
+  NormalHeatFlux temperatureGradient_;
+
+  bool temperatureGradientSpec_;
+
   SymmetryUserData()
-    : UserData()
-  {/* nothing yet*/}
+    : UserData(),
+      temperatureGradientSpec_(false)
+  {}
 };
 
 struct PeriodicUserData : public UserData {

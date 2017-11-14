@@ -853,7 +853,7 @@ void
 EnthalpyEquationSystem::register_symmetry_bc(
   stk::mesh::Part *part,
   const stk::topology &/*theTopo*/,
-  const SymmetryBoundaryConditionData &/*wallBCData*/)
+  const SymmetryBoundaryConditionData &symmetryBCData)
 {
 
   // algorithm type
@@ -862,6 +862,13 @@ EnthalpyEquationSystem::register_symmetry_bc(
   // np1
   ScalarFieldType &enthalpyNp1 = enthalpy_->field_of_state(stk::mesh::StateNP1);
   VectorFieldType &dhdxNone = dhdx_->field_of_state(stk::mesh::StateNone);
+
+  // extract user data
+  SymmetryUserData userData = symmetryBCData.userData_;
+
+  // If specifying the temperature gradient.
+  if ( userData.heatFluxSpec_ ) {  
+  }
 
   // non-solver; dhdx; allow for element-based shifted
   if ( !managePNG_ ) {
