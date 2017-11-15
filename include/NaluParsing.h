@@ -155,6 +155,13 @@ struct NormalHeatFlux {
   {}
 };
 
+struct NormalTemperatureGradient {
+  double tempGradN_;
+  NormalTemperatureGradient()
+    : tempGradN_(0.0)
+  {}
+};
+
 struct RoughnessHeight {
   double z0_;
   RoughnessHeight()
@@ -298,13 +305,13 @@ struct OversetUserData : public UserData {
 };
 
 struct SymmetryUserData : public UserData {
-  NormalHeatFlux temperatureGradient_;
+  NormalTemperatureGradient normalTemperatureGradient_;
 
-  bool temperatureGradientSpec_;
+  bool normalTemperatureGradientSpec_;
 
   SymmetryUserData()
     : UserData(),
-      temperatureGradientSpec_(false)
+      normalTemperatureGradientSpec_(false)
   {}
 };
 
@@ -566,6 +573,10 @@ template<> struct convert<sierra::nalu::RoughnessHeight> {
 
 template<> struct convert<sierra::nalu::NormalHeatFlux> {
   static bool decode(const Node& node, sierra::nalu::NormalHeatFlux& rhs) ;
+};
+
+template<> struct convert<sierra::nalu::NormalTemperatureGradient> {
+  static bool decode(const Node& node, sierra::nalu::NormalTemperatureGradient& rhs) ;
 };
 
 template<> struct convert<sierra::nalu::MasterSlave> {
