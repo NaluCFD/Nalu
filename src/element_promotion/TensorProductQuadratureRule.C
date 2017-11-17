@@ -10,6 +10,7 @@
 
 #include <cmath>
 #include <stdexcept>
+#include <tuple>
 
 namespace sierra{
 namespace nalu{
