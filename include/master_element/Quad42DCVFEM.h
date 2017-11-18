@@ -40,6 +40,11 @@ public:
     SharedMemView<DoubleType**> &coords,
     SharedMemView<DoubleType*> &vol) override ;
 
+  void grad_op(
+    SharedMemView<DoubleType** >& coords,
+    SharedMemView<DoubleType***>& gradop,
+    SharedMemView<DoubleType***>& deriv) override ;
+
   void determinant(
     const int nelem,
     const double *coords,
