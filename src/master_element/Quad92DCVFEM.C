@@ -34,6 +34,52 @@
 namespace sierra{
 namespace nalu{
 
+//-------- quad_gradient_operator ---------------------------------------------------------
+template <int nint, int npe>
+void quad_gradient_operator(SharedMemView<DoubleType** >& coords,
+                            SharedMemView<DoubleType***>& gradop,
+                            SharedMemView<DoubleType***>& deriv) {
+      
+  DoubleType dx_ds1, dx_ds2;
+  DoubleType dy_ds1, dy_ds2;
+
+  for (int ki=0; ki<nint; ++ki) {
+    dx_ds1 = 0.0;
+    dx_ds2 = 0.0;
+    dy_ds1 = 0.0;
+    dy_ds2 = 0.0;
+ 
+// calculate the jacobian at the integration station -
+    for (int kn=0; kn<npe; ++kn) {
+      dx_ds1 += deriv(ki,kn,0)*coords(kn,0);
+      dx_ds2 += deriv(ki,kn,1)*coords(kn,0);
+      dy_ds1 += deriv(ki,kn,0)*coords(kn,1);
+      dy_ds2 += deriv(ki,kn,1)*coords(kn,1);
+    }
+
+// calculate the determinate of the jacobian at the integration station -
+    const DoubleType det_j = dx_ds1*dy_ds2 - dy_ds1*dx_ds2;
+
+// protect against a negative or small value for the determinate of the 
+// jacobian. The value of real_min (set in precision.par) represents 
+// the smallest Real value (based upon the precision set for this 
+// compilation) which the machine can represent - 
+    const DoubleType test = stk::math::if_then_else(det_j > 1.e+6*MEconstants::realmin, det_j, 1.0);
+    const DoubleType denom = 1.0/test;
+
+// compute the gradient operators at the integration station -
+    const DoubleType ds1_dx =  denom*dy_ds2;
+    const DoubleType ds2_dx = -denom*dy_ds1;
+    const DoubleType ds1_dy = -denom*dx_ds2;
+    const DoubleType ds2_dy =  denom*dx_ds1;
+
+    for (int kn=0; kn<npe; ++kn) {
+      gradop(ki,kn,0) = deriv(ki,kn,0)*ds1_dx + deriv(ki,kn,1)*ds2_dx;
+      gradop(ki,kn,1) = deriv(ki,kn,0)*ds1_dy + deriv(ki,kn,1)*ds2_dy;
+    }
+  }
+}
+
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
@@ -156,6 +202,20 @@ void Quad92DSCV::determinant(
       volume[ip] = ipWeight_[ip] * det_j;
     }
 } 
+
+void Quad92DSCV::grad_op(
+    SharedMemView<DoubleType**>& coords,
+    SharedMemView<DoubleType***>& gradop,
+    SharedMemView<DoubleType***>& deriv) {
+  for (int ki=0,j=0; ki<Traits::numScsIp_; ++ki) {
+    for (int kn=0; kn<Traits::nodesPerElement_; ++kn) {
+      for (int n=0; n<Traits::nDim_; ++n,++j) {
+        deriv(ki,kn,n) = shapeDerivs_[j];
+      }
+    }
+  }
+  quad_gradient_operator<Traits::numScsIp_,Traits::nodesPerElement_>(coords, gradop, deriv);
+}
 
 void Quad92DSCV::determinant(
   const int nelem,
@@ -568,54 +628,6 @@ Quad92DSCS::determinant(
   }
 
   *error = 0; // no error checking available
-}
-
-//--------------------------------------------------------------------------
-//-------- grad_op ---------------------------------------------------------
-//--------------------------------------------------------------------------
-template <int nint, int npe>
-void quad_gradient_operator(SharedMemView<DoubleType** >& coords,
-                            SharedMemView<DoubleType***>& gradop,
-                            SharedMemView<DoubleType***>& deriv) {
-      
-  DoubleType dx_ds1, dx_ds2;
-  DoubleType dy_ds1, dy_ds2;
-
-  for (int ki=0; ki<nint; ++ki) {
-    dx_ds1 = 0.0;
-    dx_ds2 = 0.0;
-    dy_ds1 = 0.0;
-    dy_ds2 = 0.0;
- 
-// calculate the jacobian at the integration station -
-    for (int kn=0; kn<npe; ++kn) {
-      dx_ds1 += deriv(ki,kn,0)*coords(kn,0);
-      dx_ds2 += deriv(ki,kn,1)*coords(kn,0);
-      dy_ds1 += deriv(ki,kn,0)*coords(kn,1);
-      dy_ds2 += deriv(ki,kn,1)*coords(kn,1);
-    }
-
-// calculate the determinate of the jacobian at the integration station -
-    const DoubleType det_j = dx_ds1*dy_ds2 - dy_ds1*dx_ds2;
-
-// protect against a negative or small value for the determinate of the 
-// jacobian. The value of real_min (set in precision.par) represents 
-// the smallest Real value (based upon the precision set for this 
-// compilation) which the machine can represent - 
-    const DoubleType test = stk::math::if_then_else(det_j > 1.e+6*MEconstants::realmin, det_j, 1.0);
-    const DoubleType denom = 1.0/test;
-
-// compute the gradient operators at the integration station -
-    const DoubleType ds1_dx =  denom*dy_ds2;
-    const DoubleType ds2_dx = -denom*dy_ds1;
-    const DoubleType ds1_dy = -denom*dx_ds2;
-    const DoubleType ds2_dy =  denom*dx_ds1;
-
-    for (int kn=0; kn<npe; ++kn) {
-      gradop(ki,kn,0) = deriv(ki,kn,0)*ds1_dx + deriv(ki,kn,1)*ds2_dx;
-      gradop(ki,kn,1) = deriv(ki,kn,0)*ds1_dy + deriv(ki,kn,1)*ds2_dy;
-    }
-  }
 }
 
 void Quad92DSCS::grad_op(

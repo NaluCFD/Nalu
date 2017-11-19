@@ -31,6 +31,28 @@
 namespace sierra{
 namespace nalu{
 
+//-------- tet_deriv -------------------------------------------------------
+void tet_deriv(SharedMemView<DoubleType***>& deriv)
+{
+  for(size_t j=0; j<deriv.dimension(0); ++j) {
+    deriv(j,0,0) = -1.0;
+    deriv(j,0,1) = -1.0;
+    deriv(j,0,2) = -1.0;
+              
+    deriv(j,1,0) = 1.0;
+    deriv(j,1,1) = 0.0;
+    deriv(j,1,2) = 0.0;
+              
+    deriv(j,2,0) = 0.0;
+    deriv(j,2,1) = 1.0;
+    deriv(j,2,2) = 0.0;
+              
+    deriv(j,3,0) = 0.0;
+    deriv(j,3,1) = 0.0;
+    deriv(j,3,2) = 1.0;
+  }
+}
+
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
@@ -184,6 +206,18 @@ void TetSCV::determinant(
     // check for negative volume
     //ThrowAssertMsg( volume(icv) < 0.0, "ERROR in TetSCV::determinant, negative volume.");
   }
+}
+
+//--------------------------------------------------------------------------
+//-------- grad_op ---------------------------------------------------------
+//--------------------------------------------------------------------------
+void TetSCV::grad_op(
+    SharedMemView<DoubleType**>&coords,
+    SharedMemView<DoubleType***>&gradop,
+    SharedMemView<DoubleType***>&deriv)
+{
+  tet_deriv(deriv);
+  generic_grad_op_3d<AlgTraitsTet4>(deriv, coords, gradop);
 }
 
 void TetSCV::determinant(
@@ -507,27 +541,6 @@ void TetSCS::determinant(
 
   // all is always well; no error checking
   *error = 0;
-}
-
-void tet_deriv(SharedMemView<DoubleType***>& deriv)
-{
-  for(size_t j=0; j<deriv.dimension(0); ++j) {
-    deriv(j,0,0) = -1.0;
-    deriv(j,0,1) = -1.0;
-    deriv(j,0,2) = -1.0;
-              
-    deriv(j,1,0) = 1.0;
-    deriv(j,1,1) = 0.0;
-    deriv(j,1,2) = 0.0;
-              
-    deriv(j,2,0) = 0.0;
-    deriv(j,2,1) = 1.0;
-    deriv(j,2,2) = 0.0;
-              
-    deriv(j,3,0) = 0.0;
-    deriv(j,3,1) = 0.0;
-    deriv(j,3,2) = 1.0;
-  }
 }
 
 //--------------------------------------------------------------------------

@@ -34,6 +34,67 @@
 namespace sierra{
 namespace nalu{
 
+//-------- tri_derivative -----------------------------------------------------
+void tri_derivative (SharedMemView<DoubleType***>& deriv) {
+  const int npts = deriv.dimension(0); 
+  for (int j=0; j<npts; ++j) {
+    deriv(j,0,0) = -1.0;
+    deriv(j,1,0) =  1.0;
+    deriv(j,2,0) =  0.0;
+    deriv(j,0,1) = -1.0;
+    deriv(j,1,1) =  0.0;
+    deriv(j,2,1) =  1.0;
+  }
+}
+
+//-------- tri_gradient_operator -----------------------------------------------------
+void tri_gradient_operator(
+  SharedMemView<DoubleType**>& coords,
+  SharedMemView<DoubleType***>& gradop,
+  SharedMemView<DoubleType***>& deriv) {
+      
+  const int nint = deriv.dimension(0);
+  const int npe  = deriv.dimension(1);
+ 
+  DoubleType dx_ds1, dx_ds2;
+  DoubleType dy_ds1, dy_ds2;
+
+  for (int ki=0; ki<nint; ++ki) {    
+    dx_ds1 = 0.0;
+    dx_ds2 = 0.0;
+    dy_ds1 = 0.0;
+    dy_ds2 = 0.0;
+     
+// calculate the jacobian at the integration station -
+    for (int kn=0; kn<npe; ++kn) {
+      dx_ds1 += deriv(ki,kn,0)*coords(kn,0);
+      dx_ds2 += deriv(ki,kn,1)*coords(kn,0);
+      dy_ds1 += deriv(ki,kn,0)*coords(kn,1);
+      dy_ds2 += deriv(ki,kn,1)*coords(kn,1);
+    }
+     
+//calculate the determinate of the jacobian at the integration station -
+    const DoubleType det_j = dx_ds1*dy_ds2 - dy_ds1*dx_ds2;
+     
+// protect against a negative or small value for the determinate of the 
+// jacobian. The value of real_min (set in precision.par) represents 
+// the smallest Real value (based upon the precision set for this 
+// compilation) which the machine can represent - 
+    const DoubleType denom = stk::math::if_then_else(det_j < 1.e6*MEconstants::realmin, 1.0, 1.0/det_j);
+     
+// compute the gradient operators at the integration station -
+    const DoubleType ds1_dx =  denom*dy_ds2;
+    const DoubleType ds2_dx = -denom*dy_ds1;
+    const DoubleType ds1_dy = -denom*dx_ds2;
+    const DoubleType ds2_dy =  denom*dx_ds1;
+     
+    for (int kn=0; kn<npe; ++kn) {
+      gradop(ki,kn,0) = deriv(ki,kn,0)*ds1_dx + deriv(ki,kn,1)*ds2_dx;
+      gradop(ki,kn,1) = deriv(ki,kn,0)*ds1_dy + deriv(ki,kn,1)*ds2_dy;
+    }
+  }
+}
+
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
@@ -227,6 +288,17 @@ void Tri32DSCV::determinant(
       vol[ki] += det_j*one4th;
     }
   }
+}
+
+//--------------------------------------------------------------------------
+//-------- grad_op ---------------------------------------------------------
+//--------------------------------------------------------------------------
+void Tri32DSCV::grad_op(
+  SharedMemView<DoubleType**>& coords,
+  SharedMemView<DoubleType***>& gradop,
+  SharedMemView<DoubleType***>& deriv) {
+  tri_derivative(deriv);
+  tri_gradient_operator(coords, gradop, deriv);
 }
 
 void Tri32DSCV::determinant(
@@ -443,63 +515,6 @@ void Tri32DSCS::determinant(
   *error = 0;
 }
 
-void tri_derivative (SharedMemView<DoubleType***>& deriv) {
-  const int npts = deriv.dimension(0); 
-  for (int j=0; j<npts; ++j) {
-    deriv(j,0,0) = -1.0;
-    deriv(j,1,0) =  1.0;
-    deriv(j,2,0) =  0.0;
-    deriv(j,0,1) = -1.0;
-    deriv(j,1,1) =  0.0;
-    deriv(j,2,1) =  1.0;
-  }
-}
-void tri_gradient_operator(
-  SharedMemView<DoubleType**>& coords,
-  SharedMemView<DoubleType***>& gradop,
-  SharedMemView<DoubleType***>& deriv) {
-      
-  const int nint = deriv.dimension(0);
-  const int npe  = deriv.dimension(1);
- 
-  DoubleType dx_ds1, dx_ds2;
-  DoubleType dy_ds1, dy_ds2;
-
-  for (int ki=0; ki<nint; ++ki) {    
-    dx_ds1 = 0.0;
-    dx_ds2 = 0.0;
-    dy_ds1 = 0.0;
-    dy_ds2 = 0.0;
-     
-// calculate the jacobian at the integration station -
-    for (int kn=0; kn<npe; ++kn) {
-      dx_ds1 += deriv(ki,kn,0)*coords(kn,0);
-      dx_ds2 += deriv(ki,kn,1)*coords(kn,0);
-      dy_ds1 += deriv(ki,kn,0)*coords(kn,1);
-      dy_ds2 += deriv(ki,kn,1)*coords(kn,1);
-    }
-     
-//calculate the determinate of the jacobian at the integration station -
-    const DoubleType det_j = dx_ds1*dy_ds2 - dy_ds1*dx_ds2;
-     
-// protect against a negative or small value for the determinate of the 
-// jacobian. The value of real_min (set in precision.par) represents 
-// the smallest Real value (based upon the precision set for this 
-// compilation) which the machine can represent - 
-    const DoubleType denom = stk::math::if_then_else(det_j < 1.e6*MEconstants::realmin, 1.0, 1.0/det_j);
-     
-// compute the gradient operators at the integration station -
-    const DoubleType ds1_dx =  denom*dy_ds2;
-    const DoubleType ds2_dx = -denom*dy_ds1;
-    const DoubleType ds1_dy = -denom*dx_ds2;
-    const DoubleType ds2_dy =  denom*dx_ds1;
-     
-    for (int kn=0; kn<npe; ++kn) {
-      gradop(ki,kn,0) = deriv(ki,kn,0)*ds1_dx + deriv(ki,kn,1)*ds2_dx;
-      gradop(ki,kn,1) = deriv(ki,kn,0)*ds1_dy + deriv(ki,kn,1)*ds2_dy;
-    }
-  }
-}
 //--------------------------------------------------------------------------
 //-------- grad_op ---------------------------------------------------------
 //--------------------------------------------------------------------------
