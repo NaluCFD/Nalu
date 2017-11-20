@@ -33,9 +33,25 @@ namespace nalu{
 class Realm;
 class AveragingInfo;
 
+/** Post-processing to collect various types of statistics on flow fields
+ *
+ *  This class implements Reynolds and Favre averaging as well as other useful
+ *  quantities relevant to analyzing turbulent flows.
+ *
+ *  Currently supported:
+ *    - Reynolds and Favre averaging of flow variables
+ *    - TKE and stress computation
+ *    - Vorticity, Q-criterion, lambda-ci calculation
+ */
 class TurbulenceAveragingPostProcessing
 {
 public:
+  /** Type of time filter averaging applied
+   */
+  enum AveragingType {
+    NALU_CLASSIC = 0,           //!< Classic Nalu implementation (saw-tooth reset)
+    MOVING_EXPONENTIAL,         //!< Moving exponential window averaging
+  };
   
   TurbulenceAveragingPostProcessing(
     Realm &realm,
@@ -111,7 +127,10 @@ public:
 
   double currentTimeFilter_; /* provided by restart */
   double timeFilterInterval_; /* user supplied */
+
   bool forcedReset_; /* allows forhard reset */
+
+  AveragingType averagingType_{NALU_CLASSIC};
 
   // vector of averaging information
   std::vector<AveragingInfo *> averageInfoVec_;

@@ -75,6 +75,17 @@ TurbulenceAveragingPostProcessing::load(
   if (y_average) {    
     get_if_present(y_average, "forced_reset", forcedReset_, forcedReset_);
     get_if_present(y_average, "time_filter_interval", timeFilterInterval_, timeFilterInterval_);
+    if (y_average["averaging_type"]) {
+      std::string avgType = y_average["averaging_type"].as<std::string>();
+      if (avgType == "nalu_classic")
+        averagingType_ = NALU_CLASSIC;
+      else if (avgType == "moving_exponential")
+        averagingType_ = MOVING_EXPONENTIAL;
+      else
+        throw std::runtime_error(
+          "TurbulenceAveragingPostProcessing: "
+          "Invalid averaging type specified for turbulence post processing.");
+    }
 
     // extract the sequence of types
     const YAML::Node y_specs = expect_sequence(y_average, "specifications", false);
@@ -429,15 +440,27 @@ TurbulenceAveragingPostProcessing::execute()
 {
   stk::mesh::MetaData &metaData = realm_.meta_data();
 
-  // increment time filter; RESTART for this field...
   const double dt = realm_.get_time_step();
-  const double oldTimeFilter = currentTimeFilter_;
+  double oldTimeFilter = currentTimeFilter_;
+  double zeroCurrent = 1.0;
 
-  // check to reset filter
-  const bool resetFilter = ( oldTimeFilter + dt  > timeFilterInterval_ ) || forcedReset_;
-  const double zeroCurrent = resetFilter ? 0.0 : 1.0;
-  currentTimeFilter_ =  resetFilter ? dt : oldTimeFilter + dt;
-  NaluEnv::self().naluOutputP0() << "Filter Size " << currentTimeFilter_ << std::endl;
+  if (averagingType_ == NALU_CLASSIC) {
+    const bool resetFilter = ( oldTimeFilter + dt  > timeFilterInterval_ ) || forcedReset_;
+    zeroCurrent = resetFilter ? 0.0 : 1.0;
+    currentTimeFilter_ =  resetFilter ? dt : oldTimeFilter + dt;
+    NaluEnv::self().naluOutputP0() << "Filter Size " << currentTimeFilter_ << std::endl;
+  }
+  else if (averagingType_ == MOVING_EXPONENTIAL) {
+    const double timeFilter = oldTimeFilter + dt;
+
+    if (timeFilter > timeFilterInterval_) {
+      currentTimeFilter_ = timeFilterInterval_;
+      oldTimeFilter = timeFilterInterval_ - dt;
+    } else {
+      currentTimeFilter_ = timeFilter;
+    }
+    zeroCurrent = forcedReset_ ? 0.0 : 1.0;
+  }
 
   // deactivate hard reset
   forcedReset_ = false;
