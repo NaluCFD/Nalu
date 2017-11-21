@@ -201,8 +201,8 @@ AssembleScalarNormalGradientBCSolverAlgorithm::execute()
           areaNorm += areaVec[offset+idir]*areaVec[offset+idir];
         areaNorm = std::sqrt(areaNorm);
 
-        double qn = eviscBip*specHeatBip*gradBip;
-        NaluEnv::self().naluOutputP0() << "Computed q_normal on face node = " << qn << "; specificHeat = " << specHeatBip << "; eviscBip = " << eviscBip << "; gradT = " << gradBip << std::endl;
+        double qn = -eviscBip*specHeatBip*gradBip;
+      //NaluEnv::self().naluOutputP0() << "Computed q_normal on face node = " << qn << "; specificHeat = " << specHeatBip << "; eviscBip = " << eviscBip << "; gradT = " << gradBip << std::endl;
 
         p_rhs[localFaceNode] += qn*areaNorm;
       }
