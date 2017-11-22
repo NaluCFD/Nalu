@@ -35,6 +35,71 @@
 namespace sierra{
 namespace nalu{
 
+//-------- quad_derivative -----------------------------------------------------
+void quad_derivative(const std::vector<double> &par_coord, 
+                     SharedMemView<DoubleType***>& deriv) {
+  const double half = 0.5;
+  const size_t npts = deriv.dimension(0);
+
+  for(size_t j=0; j<npts; ++j) {
+    const DoubleType s1 = par_coord[2*j+0];
+    const DoubleType s2 = par_coord[2*j+1];
+// shape function derivative in the s1 direction -
+    deriv(j,0,0) = - half + s2;
+    deriv(j,1,0) =   half - s2;
+    deriv(j,2,0) =   half + s2;
+    deriv(j,3,0) = - half - s2;
+
+// shape function derivative in the s2 direction -
+    deriv(j,0,1) = - half + s1;
+    deriv(j,1,1) = - half - s1;
+    deriv(j,2,1) =   half + s1;
+    deriv(j,3,1) =   half - s1;
+  }
+}
+
+//-------- quad_gradient_operator -----------------------------------------------------
+template<int nint, int npe>
+void quad_gradient_operator(const SharedMemView<DoubleType***>& deriv,
+                            const SharedMemView<DoubleType**>&  coords,
+                            SharedMemView<DoubleType***>& gradop) {
+
+  for (size_t ki=0; ki<nint; ++ki) {
+    DoubleType dx_ds1 = 0.0;
+    DoubleType dx_ds2 = 0.0;
+    DoubleType dy_ds1 = 0.0;
+    DoubleType dy_ds2 = 0.0;
+ 
+// calculate the jacobian at the integration station -
+    for (size_t kn=0; kn<npe; ++kn) {
+      dx_ds1 += deriv(ki,kn,0)*coords(kn,0);
+      dx_ds2 += deriv(ki,kn,1)*coords(kn,0);
+      dy_ds1 += deriv(ki,kn,0)*coords(kn,1);
+      dy_ds2 += deriv(ki,kn,1)*coords(kn,1);
+    }
+// calculate the determinate of the jacobian at the integration station -
+    const DoubleType det_j = dx_ds1*dy_ds2 - dy_ds1*dx_ds2;
+
+// protect against a negative or small value for the determinate of the 
+// jacobian. The value of real_min (set in precision.par) represents 
+// the smallest Real value (based upon the precision set for this 
+// compilation) which the machine can represent - 
+    const DoubleType test = stk::math::if_then_else(det_j > 1.e+6*MEconstants::realmin, det_j, 1.0);
+    const DoubleType denom = 1.0/test;
+
+// compute the gradient operators at the integration station -
+
+    const DoubleType ds1_dx =  denom*dy_ds2;
+    const DoubleType ds2_dx = -denom*dy_ds1;
+    const DoubleType ds1_dy = -denom*dx_ds2;
+    const DoubleType ds2_dy =  denom*dx_ds1;
+
+    for (size_t kn=0; kn<npe; ++kn) {
+      gradop(ki,kn,0) = deriv(ki,kn,0)*ds1_dx + deriv(ki,kn,1)*ds2_dx;
+      gradop(ki,kn,1) = deriv(ki,kn,0)*ds1_dy + deriv(ki,kn,1)*ds2_dy;
+    }
+  }
+}
 
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
@@ -157,6 +222,18 @@ void Quad42DSCV::determinant(
       vol(ki) +=  det_j*one16th;
     } 
   } 
+}
+
+//--------------------------------------------------------------------------
+//-------- grad_op ---------------------------------------------------------
+//--------------------------------------------------------------------------
+void Quad42DSCV::grad_op(
+  SharedMemView<DoubleType**>& coords,
+  SharedMemView<DoubleType***>& gradop,
+  SharedMemView<DoubleType***>& deriv) {
+
+  quad_derivative(intgLoc_, deriv);
+  quad_gradient_operator<Traits::numScsIp_, Traits::nodesPerElement_>(deriv, coords, gradop);
 }
 
 void Quad42DSCV::determinant(
@@ -427,69 +504,6 @@ void Quad42DSCS::determinant(
   *error = 0;
 }
 
-void quad_derivative(const std::vector<double> &par_coord, 
-                     SharedMemView<DoubleType***>& deriv) {
-  const double half = 0.5;
-  const size_t npts = deriv.dimension(0);
-
-  for(size_t j=0; j<npts; ++j) {
-    const DoubleType s1 = par_coord[2*j+0];
-    const DoubleType s2 = par_coord[2*j+1];
-// shape function derivative in the s1 direction -
-    deriv(j,0,0) = - half + s2;
-    deriv(j,1,0) =   half - s2;
-    deriv(j,2,0) =   half + s2;
-    deriv(j,3,0) = - half - s2;
-
-// shape function derivative in the s2 direction -
-    deriv(j,0,1) = - half + s1;
-    deriv(j,1,1) = - half - s1;
-    deriv(j,2,1) =   half + s1;
-    deriv(j,3,1) =   half - s1;
-  }
-}
-
-template<int nint, int npe>
-void quad_gradient_operator(const SharedMemView<DoubleType***>& deriv,
-                            const SharedMemView<DoubleType**>&  coords,
-                            SharedMemView<DoubleType***>& gradop) {
-
-  for (size_t ki=0; ki<nint; ++ki) {
-    DoubleType dx_ds1 = 0.0;
-    DoubleType dx_ds2 = 0.0;
-    DoubleType dy_ds1 = 0.0;
-    DoubleType dy_ds2 = 0.0;
- 
-// calculate the jacobian at the integration station -
-    for (size_t kn=0; kn<npe; ++kn) {
-      dx_ds1 += deriv(ki,kn,0)*coords(kn,0);
-      dx_ds2 += deriv(ki,kn,1)*coords(kn,0);
-      dy_ds1 += deriv(ki,kn,0)*coords(kn,1);
-      dy_ds2 += deriv(ki,kn,1)*coords(kn,1);
-    }
-// calculate the determinate of the jacobian at the integration station -
-    const DoubleType det_j = dx_ds1*dy_ds2 - dy_ds1*dx_ds2;
-
-// protect against a negative or small value for the determinate of the 
-// jacobian. The value of real_min (set in precision.par) represents 
-// the smallest Real value (based upon the precision set for this 
-// compilation) which the machine can represent - 
-    const DoubleType test = stk::math::if_then_else(det_j > 1.e+6*MEconstants::realmin, det_j, 1.0);
-    const DoubleType denom = 1.0/test;
-
-// compute the gradient operators at the integration station -
-
-    const DoubleType ds1_dx =  denom*dy_ds2;
-    const DoubleType ds2_dx = -denom*dy_ds1;
-    const DoubleType ds1_dy = -denom*dx_ds2;
-    const DoubleType ds2_dy =  denom*dx_ds1;
-
-    for (size_t kn=0; kn<npe; ++kn) {
-      gradop(ki,kn,0) = deriv(ki,kn,0)*ds1_dx + deriv(ki,kn,1)*ds2_dx;
-      gradop(ki,kn,1) = deriv(ki,kn,0)*ds1_dy + deriv(ki,kn,1)*ds2_dy;
-    }
-  }
-}
 //--------------------------------------------------------------------------
 //-------- grad_op ---------------------------------------------------------
 //--------------------------------------------------------------------------

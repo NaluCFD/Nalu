@@ -157,6 +157,7 @@ public:
   sierra::nalu::MasterElement* meSCV_{nullptr};
   sierra::nalu::MasterElement* meSCS_{nullptr};
 
+
   Kokkos::View<DoubleType[AlgTraits::numScvIp_][AlgTraits::nodesPerElement_]> scv_shape_fcn_ {"scv_shape_function"};
   Kokkos::View<DoubleType[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> scs_shape_fcn_ {"scs_shape_function"};
 };

@@ -126,13 +126,14 @@ int get_num_scalars_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDi
     int dndxLength = 0, gUpperLength = 0, gLowerLength = 0;
 
     // Updated logic for data sharing of deriv and det_j
-    bool needDeriv = false; bool needDerivFem = false;
-    bool needDetj = false; bool needDetjFem = false;
+    bool needDeriv = false; bool needDerivScv = false; bool needDerivFem = false;
+    bool needDetj = false; bool needDetjScv = false; bool needDetjFem = false;
 
     for(ELEM_DATA_NEEDED data : dataEnums) {
       switch(data)
       {
-      case SCS_AREAV: numScalars += nDim * numScsIp;
+      case SCS_AREAV: 
+        numScalars += nDim * numScsIp;
         break;
       case SCS_GRAD_OP:
       case SCS_SHIFTED_GRAD_OP:
@@ -141,7 +142,14 @@ int get_num_scalars_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDi
         needDetj = true;
         numScalars += dndxLength;
         break;
-      case SCV_VOLUME: numScalars += numScvIp;
+      case SCV_VOLUME: 
+        numScalars += numScvIp;
+        break;
+      case SCV_GRAD_OP:
+        dndxLength = nodesPerElem*numScvIp*nDim;
+        needDerivScv = true;
+        needDetjScv = true;
+        numScalars += dndxLength;
         break;
       case SCS_GIJ: 
         gUpperLength = nDim*nDim*numScsIp;
@@ -162,13 +170,19 @@ int get_num_scalars_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDi
       
     if (needDeriv)
       numScalars += nodesPerElem*numScsIp*nDim;
-
-    if (needDetj)
-      numScalars += numScsIp;
-
+    
+    if (needDerivScv)
+      numScalars += nodesPerElem*numScvIp*nDim;
+    
     if (needDerivFem)
       numScalars += nodesPerElem*numFemIp*nDim;
-
+    
+    if (needDetj)
+      numScalars += numScsIp;
+    
+    if (needDetjScv)
+      numScalars += numScvIp;
+    
     if (needDetjFem)
       numScalars += numFemIp;
   }
