@@ -341,8 +341,8 @@ ActuatorLineFAST::allocateTurbinesToProcs()
   int iTurb=0;
   std::vector<std::pair<boundingSphere::second_type, boundingElementBox::second_type> >::const_iterator ii;
   for( ii=searchKeyPair_.begin(); ii!=searchKeyPair_.end(); ++ii ) {
-    unsigned theRank = NaluEnv::self().parallel_rank();
-    const unsigned pt_proc = ii->first.proc();
+    //unsigned theRank = NaluEnv::self().parallel_rank();
+    //const unsigned pt_proc = ii->first.proc();
     const unsigned box_proc = ii->second.proc();
 
     FAST.setTurbineProcNo(iTurb, box_proc);
