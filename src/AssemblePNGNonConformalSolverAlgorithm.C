@@ -61,7 +61,6 @@ AssemblePNGNonConformalSolverAlgorithm::AssemblePNGNonConformalSolverAlgorithm(
   ghostFieldVec_.push_back(scalarQ_);
   ghostFieldVec_.push_back(Gjq_);
   ghostFieldVec_.push_back(coordinates_);
-  ghostFieldVec_.push_back(exposedAreaVec_);
 }
 
 //--------------------------------------------------------------------------

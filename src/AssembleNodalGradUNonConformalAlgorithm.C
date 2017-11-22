@@ -56,7 +56,6 @@ AssembleNodalGradUNonConformalAlgorithm::AssembleNodalGradUNonConformalAlgorithm
   // what do we need ghosted for this alg to work?
   ghostFieldVec_.push_back(vectorQ_);
   ghostFieldVec_.push_back(dualNodalVolume_);
-  ghostFieldVec_.push_back(exposedAreaVec_);
   ghostFieldVec_.push_back(dqdx_);
 }
 
