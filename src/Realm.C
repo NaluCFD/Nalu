@@ -66,6 +66,7 @@
 #include <SolutionNormPostProcessing.h>
 #include <TurbulenceAveragingPostProcessing.h>
 #include <DataProbePostProcessing.h>
+#include <wind_energy/BdyLayerStatistics.h>
 
 // actuator line
 #include <Actuator.h>
@@ -311,6 +312,8 @@ Realm::~Realm()
 
   // Delete abl forcing pointer
   if (NULL != ablForcingAlg_) delete ablForcingAlg_;
+
+  if (nullptr != bdyLayerStats_) delete bdyLayerStats_;
 
   MasterElementRepo::clear();
 }
@@ -595,6 +598,12 @@ Realm::look_ahead_and_creation(const YAML::Node & node)
   if (node["abl_forcing"]) {
     const YAML::Node ablNode = node["abl_forcing"];
     ablForcingAlg_ = new ABLForcingAlgorithm(*this, ablNode);
+  }
+
+  // Boundary Layer Statistics post-processing
+  if (node["boundary_layer_statistics"]) {
+    const YAML::Node blStatNode = node["boundary_layer_statistics"];
+    bdyLayerStats_ = new BdyLayerStatistics(*this, blStatNode);
   }
 }
   
@@ -915,6 +924,10 @@ Realm::setup_post_processing_algorithms()
   // check for norm nodal fields
   if ( NULL != solutionNormPostProcessing_ )
     solutionNormPostProcessing_->setup();
+
+  // Boundary layer statistics (MUST BE after turbulence averaging)
+  if (nullptr != bdyLayerStats_)
+    bdyLayerStats_->setup();
 }
 
 //--------------------------------------------------------------------------
@@ -4447,6 +4460,9 @@ Realm::post_converged_work()
 
   if ( NULL != dataProbePostProcessing_ )
     dataProbePostProcessing_->execute();
+
+  if (nullptr != bdyLayerStats_)
+    bdyLayerStats_->execute();
 }
 
 //--------------------------------------------------------------------------

@@ -54,6 +54,14 @@ TurbulenceAveragingPostProcessing::TurbulenceAveragingPostProcessing(
   load(node);
 }
 
+TurbulenceAveragingPostProcessing::TurbulenceAveragingPostProcessing(
+  Realm& realm)
+  : realm_(realm),
+    currentTimeFilter_(0.0),
+    timeFilterInterval_(1.0e8),
+    forcedReset_(false)
+{}
+
 //--------------------------------------------------------------------------
 //-------- destructor ------------------------------------------------------
 //--------------------------------------------------------------------------
