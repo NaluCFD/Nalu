@@ -556,6 +556,8 @@ class Realm {
     const TurbulenceModelConstant turbModelEnum);
   bool process_adaptivity();
 
+  void process_skipped_parts();
+
   // element promotion options
   bool doPromotion_; // conto
   unsigned promotionOrder_;
@@ -565,6 +567,10 @@ class Realm {
 
   // save off the node
   const YAML::Node & node_;
+
+  //! User-specified inactive parts in the mesh
+  std::vector<std::string> skippedPartNames_;
+  stk::mesh::PartVector skippedParts_;
 
   // tools
   std::unique_ptr<ElementDescription> desc_; // holds topo info

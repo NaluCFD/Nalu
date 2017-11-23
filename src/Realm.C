@@ -437,6 +437,9 @@ Realm::initialize()
   // set global variables that have not yet been set
   initialize_global_variables();
 
+  // Process user-specified parts that must be skipped
+  process_skipped_parts();
+
   // Populate_mesh fills in the entities (nodes/elements/etc) and
   // connectivities, but no field-data. Field-data is not allocated yet.
   NaluEnv::self().naluOutputP0() << "Realm::ioBroker_->populate_mesh() Begin" << std::endl;
@@ -746,6 +749,15 @@ Realm::load(const YAML::Node & node)
   // set number of nodes, check job run size
   check_job(true);
 
+  // Process user specified inactive parts
+  if (node["skip_parts_from_file"]) {
+    skippedPartNames_ = node["skip_parts_from_file"].as<std::vector<std::string>>();
+    NaluEnv::self().naluOutputP0() << "Skipping user-specified inactive parts: "
+                                   << std::endl;
+    for (auto pname: skippedPartNames_)
+      NaluEnv::self().naluOutputP0() << "    - " << pname << std::endl;
+  }
+
 }
 
 Simulation *Realm::root() { return parent()->root(); }
@@ -754,6 +766,15 @@ Realms *Realm::parent() { return &realms_; }
 Realms *Realm::parent() const { return &realms_; }
 
 
+void
+Realm::process_skipped_parts()
+{
+  for (auto pname: skippedPartNames_) {
+    stk::mesh::Part* part = metaData_->get_part(pname);
+    if (nullptr != part)
+      skippedParts_.push_back(part);
+  }
+}
 //--------------------------------------------------------------------------
 //-------- setup_adaptivity ------------------------------------------------
 //--------------------------------------------------------------------------
@@ -4837,8 +4858,11 @@ Realm::get_inactive_selector()
     ( NULL != ablForcingAlg_)
     ? (ablForcingAlg_->inactive_selector())
     : stk::mesh::Selector());
-  
-  return inactiveOverSetSelector | inactiveDataProbeSelector | inactiveABLForcing;
+
+  return (inactiveOverSetSelector
+          | inactiveDataProbeSelector
+          | inactiveABLForcing
+          | stk::mesh::selectUnion(skippedParts_));
 }
 
 //--------------------------------------------------------------------------
