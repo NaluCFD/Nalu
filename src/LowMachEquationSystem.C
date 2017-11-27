@@ -157,6 +157,8 @@
 
 #include <overset/UpdateOversetFringeAlgorithmDriver.h>
 
+#include <user_functions/OneTwoTenVelocityAuxFunction.h>
+
 // deprecated
 #include <ContinuityMassElemSuppAlgDep.h>
 #include <MomentumMassElemSuppAlgDep.h>
@@ -560,6 +562,9 @@ LowMachEquationSystem::register_initial_condition_fcn(
     }
     else if ( fcnName == "VariableDensityNonIso" ) {      
       theAuxFunc = new VariableDensityVelocityAuxFunction(0,nDim);
+    }
+    else if ( fcnName == "OneTwoTenVelocity" ) {      
+      theAuxFunc = new OneTwoTenVelocityAuxFunction(0,nDim);
     }
     else if ( fcnName == "convecting_taylor_vortex" ) {
       theAuxFunc = new ConvectingTaylorVortexVelocityAuxFunction(0,nDim); 
