@@ -623,7 +623,7 @@ TurbulenceAveragingPostProcessing::execute()
             // get size
             const int fieldSize = avInfo->resolvedFieldSizeVec_[iav];
             for ( int j = 0; j < fieldSize; ++j ) {
-                const double averageField = (average[j]*oldTimeFilter*zeroCurrent + primitive[j]*dt)/currentTimeFilter_;
+                const double averageField = (average[j]*oldTimeFilter*zeroCurrent + rho*primitive[j]*dt)/currentTimeFilter_;
                 average[j] = averageField;
             }
         }
@@ -884,6 +884,7 @@ void TurbulenceAveragingPostProcessing::compute_temperature_resolved_stress(
   const std::string tempVarName = "temperature_variance";
 
   auto* velocity = meta.get_field(stk::topology::NODE_RANK, "velocity");
+  auto* density = meta.get_field(stk::topology::NODE_RANK, "density");
   auto* temperature = meta.get_field(stk::topology::NODE_RANK, "temperature");
   // Averaged temperature stress
   auto* tempStressA = meta.get_field(stk::topology::NODE_RANK, tempStressName);
@@ -893,18 +894,20 @@ void TurbulenceAveragingPostProcessing::compute_temperature_resolved_stress(
   const auto& bkts = realm_.get_buckets(stk::topology::NODE_RANK, s_all_nodes);
   for (auto b: bkts) {
     const auto length = b->size();
+    const double* rhoNp1 = (double*) stk::mesh::field_data(*density, *b);
     const double* uNp1 = (double*) stk::mesh::field_data(*velocity, *b);
     const double *tempNp1 = (double*)stk::mesh::field_data(*temperature, *b);
     double *tempStress = (double*)stk::mesh::field_data(*tempStressA, *b);
     double *tempVar = (double*)stk::mesh::field_data(*tempVarA, *b);
 
     for (size_t k=0; k < length; ++k ) {
+      const double rho = rhoNp1[k];
       for ( int i = 0; i < nDim; ++i ) {
         const double ui = uNp1[k*nDim+i];
-        const double newTempStress = (tempStress[k*tempStressSize+i]*oldTimeFilter*zeroCurrent + ui * tempNp1[k]*dt)/currentTimeFilter_ ;
+        const double newTempStress = (tempStress[k*tempStressSize+i]*oldTimeFilter*zeroCurrent + rho * ui * tempNp1[k]*dt)/currentTimeFilter_ ;
         tempStress[k*tempStressSize+i] = newTempStress;
 
-        tempVar[k] = (tempVar[k]*oldTimeFilter*zeroCurrent + tempNp1[k] * tempNp1[k]*dt)/currentTimeFilter_ ;
+        tempVar[k] = (tempVar[k]*oldTimeFilter*zeroCurrent + rho * tempNp1[k] * tempNp1[k]*dt)/currentTimeFilter_ ;
       }
     }
   }
@@ -930,6 +933,7 @@ TurbulenceAveragingPostProcessing::compute_resolved_stress(
   const std::string stressName = "resolved_stress";
 
   // extract fields
+  stk::mesh::FieldBase *density = metaData.get_field(stk::topology::NODE_RANK, "density");
   stk::mesh::FieldBase *velocity = metaData.get_field(stk::topology::NODE_RANK, "velocity");
   stk::mesh::FieldBase *stressA = metaData.get_field(stk::topology::NODE_RANK, stressName);
 
@@ -942,9 +946,12 @@ TurbulenceAveragingPostProcessing::compute_resolved_stress(
 
     // fields
     const double *uNp1 = (double*)stk::mesh::field_data(*velocity, b);
+    const double *rhoNp1 = (double*)stk::mesh::field_data(*density, b);
     double *stress = (double*)stk::mesh::field_data(*stressA, b);
 
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+
+      const double rho = rhoNp1[k];
 
       // stress is symmetric, so only save off 6 or 3 components
       int componentCount = 0;
@@ -956,7 +963,7 @@ TurbulenceAveragingPostProcessing::compute_resolved_stress(
           const double uj = uNp1[k*nDim+j];
           const double newStress
             = (stress[k*stressSize+component]*oldTimeFilter*zeroCurrent
-               + ui*uj*dt)/currentTimeFilter_ ;
+               + rho*ui*uj*dt)/currentTimeFilter_ ;
           stress[k*stressSize+component] = newStress;
           componentCount++;
         }
