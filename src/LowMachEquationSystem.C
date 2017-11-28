@@ -102,6 +102,7 @@
 #include <ContinuityAdvElemKernel.h>
 #include <ContinuityMassElemKernel.h>
 #include <MomentumAdvDiffElemKernel.h>
+#include <MomentumActuatorSrcElemKernel.h>
 #include <MomentumBuoyancyBoussinesqSrcElemKernel.h>
 #include <MomentumBuoyancySrcElemKernel.h>
 #include <MomentumCoriolisSrcElemKernel.h>
@@ -995,8 +996,8 @@ MomentumEquationSystem::register_nodal_fields(
   if ( NULL != realm_.actuator_ ) {
     VectorFieldType *actuatorSource 
       =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "actuator_source"));
-    ScalarFieldType *actuatorSourceLHS
-      =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "actuator_source_lhs"));
+    VectorFieldType *actuatorSourceLHS
+      =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "actuator_source_lhs"));
     ScalarFieldType *g
       =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "g"));
     stk::mesh::put_field(*actuatorSource, *part);
@@ -1187,6 +1188,14 @@ MomentumEquationSystem::register_interior_algorithm(
          realm_.bulk_data(), *realm_.solutionOptions_, this, velocity_,
          realm_.is_turbulent()? evisc_ : visc_, dudx_,
          dataPreReqs);
+
+      build_topo_kernel_if_requested<MomentumActuatorSrcElemKernel>
+          (partTopo, *this, activeKernels, "actuator",
+           realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs, false);
+
+      build_topo_kernel_if_requested<MomentumActuatorSrcElemKernel>
+        (partTopo, *this, activeKernels, "lumped_actuator",
+         realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs, true);
 
       build_topo_kernel_if_requested<MomentumBuoyancySrcElemKernel>
         (partTopo, *this, activeKernels, "buoyancy",

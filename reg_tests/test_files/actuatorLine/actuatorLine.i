@@ -101,6 +101,7 @@ realms:
 
     solution_options:
       name: myOptions
+      use_consolidated_solver_algorithm: yes
 
       options:
 
@@ -115,8 +116,9 @@ realms:
             pressure: element
             velocity: element
 
-        - source_terms:
-            momentum: actuator
+        - element_source_terms:
+            momentum: [lumped_momentum_time_derivative, upw_advection_diffusion, lumped_actuator]
+            continuity: [advection]
 
     actuator:
       type: ActLinePointDrag
