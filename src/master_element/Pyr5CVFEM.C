@@ -36,6 +36,42 @@
 namespace sierra{
 namespace nalu{
 
+//-------- pyr_deriv -------------------------------------------------------
+void pyr_deriv(const int npts,
+  const double *intgLoc,
+  SharedMemView<DoubleType***>& deriv)
+{
+  // d3d(c,s,j) = deriv[c + 3*(s + 5*j)] = deriv[c+3s+15j]
+
+  for ( int j = 0; j < npts; ++j) {
+    const int k = j*3;
+
+    const double r = intgLoc[k+0];
+    const double s = intgLoc[k+1];
+    const double t = intgLoc[k+2];
+
+    deriv(j,0,0) =-0.25*(1.0-s)*(1.0-t);  // d(N_1)/ d(r) = deriv[0]
+    deriv(j,0,1) =-0.25*(1.0-r)*(1.0-t);  // d(N_1)/ d(s) = deriv[1]
+    deriv(j,0,2) =-0.25*(1.0-r)*(1.0-s);  // d(N_1)/ d(t) = deriv[2]
+              
+    deriv(j,1,0) = 0.25*(1.0-s)*(1.0-t);  // d(N_2)/ d(r) = deriv[0+3]
+    deriv(j,1,1) =-0.25*(1.0+r)*(1.0-t);  // d(N_2)/ d(s) = deriv[1+3]
+    deriv(j,1,2) =-0.25*(1.0+r)*(1.0-s);  // d(N_2)/ d(t) = deriv[2+3]
+              
+    deriv(j,2,0) = 0.25*(1.0+s)*(1.0-t);  // d(N_3)/ d(r) = deriv[0+6]
+    deriv(j,2,1) = 0.25*(1.0+r)*(1.0-t);  // d(N_3)/ d(s) = deriv[1+6]
+    deriv(j,2,2) =-0.25*(1.0+r)*(1.0+s);  // d(N_3)/ d(t) = deriv[2+6]
+              
+    deriv(j,3,0) =-0.25*(1.0+s)*(1.0-t);  // d(N_4)/ d(r) = deriv[0+9]
+    deriv(j,3,1) = 0.25*(1.0-r)*(1.0-t);  // d(N_4)/ d(s) = deriv[1+9]
+    deriv(j,3,2) =-0.25*(1.0-r)*(1.0+s);  // d(N_4)/ d(t) = deriv[2+9]
+              
+    deriv(j,4,0) = 0.0;                   // d(N_5)/ d(r) = deriv[0+12]
+    deriv(j,4,1) = 0.0;                   // d(N_5)/ d(s) = deriv[1+12]
+    deriv(j,4,2) = 1.0;                   // d(N_5)/ d(t) = deriv[2+12]
+  }
+}
+
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
@@ -321,6 +357,18 @@ void PyrSCV::determinant(
   }
   // compute volume using an equivalent polyhedron
   vol(icv) = octohedron_volume_by_triangle_facets(epyrcoords);
+}
+
+//--------------------------------------------------------------------------
+//-------- grad_op ---------------------------------------------------------
+//--------------------------------------------------------------------------
+void PyrSCV::grad_op(
+    SharedMemView<DoubleType**>& coords,
+    SharedMemView<DoubleType***>& gradop,
+    SharedMemView<DoubleType***>& deriv)
+{
+  pyr_deriv(numIntPoints_, &intgLoc_[0], deriv);
+  generic_grad_op_3d<AlgTraitsPyr5>(deriv, coords, gradop);
 }
 
 void PyrSCV::determinant(
@@ -686,40 +734,6 @@ void PyrSCS::determinant(
   *error = 0;
 }
 
-void pyr_deriv(const int npts,
-  const double *intgLoc,
-  SharedMemView<DoubleType***>& deriv)
-{
-  // d3d(c,s,j) = deriv[c + 3*(s + 5*j)] = deriv[c+3s+15j]
-
-  for ( int j = 0; j < npts; ++j) {
-    const int k = j*3;
-
-    const double r = intgLoc[k+0];
-    const double s = intgLoc[k+1];
-    const double t = intgLoc[k+2];
-
-    deriv(j,0,0) =-0.25*(1.0-s)*(1.0-t);  // d(N_1)/ d(r) = deriv[0]
-    deriv(j,0,1) =-0.25*(1.0-r)*(1.0-t);  // d(N_1)/ d(s) = deriv[1]
-    deriv(j,0,2) =-0.25*(1.0-r)*(1.0-s);  // d(N_1)/ d(t) = deriv[2]
-              
-    deriv(j,1,0) = 0.25*(1.0-s)*(1.0-t);  // d(N_2)/ d(r) = deriv[0+3]
-    deriv(j,1,1) =-0.25*(1.0+r)*(1.0-t);  // d(N_2)/ d(s) = deriv[1+3]
-    deriv(j,1,2) =-0.25*(1.0+r)*(1.0-s);  // d(N_2)/ d(t) = deriv[2+3]
-              
-    deriv(j,2,0) = 0.25*(1.0+s)*(1.0-t);  // d(N_3)/ d(r) = deriv[0+6]
-    deriv(j,2,1) = 0.25*(1.0+r)*(1.0-t);  // d(N_3)/ d(s) = deriv[1+6]
-    deriv(j,2,2) =-0.25*(1.0+r)*(1.0+s);  // d(N_3)/ d(t) = deriv[2+6]
-              
-    deriv(j,3,0) =-0.25*(1.0+s)*(1.0-t);  // d(N_4)/ d(r) = deriv[0+9]
-    deriv(j,3,1) = 0.25*(1.0-r)*(1.0-t);  // d(N_4)/ d(s) = deriv[1+9]
-    deriv(j,3,2) =-0.25*(1.0-r)*(1.0+s);  // d(N_4)/ d(t) = deriv[2+9]
-              
-    deriv(j,4,0) = 0.0;                   // d(N_5)/ d(r) = deriv[0+12]
-    deriv(j,4,1) = 0.0;                   // d(N_5)/ d(s) = deriv[1+12]
-    deriv(j,4,2) = 1.0;                   // d(N_5)/ d(t) = deriv[2+12]
-  }
-}
 //--------------------------------------------------------------------------
 //-------- grad_op ---------------------------------------------------------
 //--------------------------------------------------------------------------

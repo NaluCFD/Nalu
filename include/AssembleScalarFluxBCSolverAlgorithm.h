@@ -42,13 +42,10 @@ private:
   const bool useShifted_;
 
   ScalarFieldType *bcScalarQ_;
-  VectorFieldType *coordinates_;
   GenericFieldType *exposedAreaVec_;
-
 };
 
 }
-
 }
 
 

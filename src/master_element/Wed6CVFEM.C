@@ -13,6 +13,46 @@
 namespace sierra {
 namespace nalu {
 
+//-------- wed_deriv -------------------------------------------------------
+void wed_deriv(
+  const int npts,
+  const double* intgLoc,
+  SharedMemView<DoubleType***>& deriv)
+{
+  for (int  j = 0; j < npts; ++j) {
+    int k  = j*3;
+
+    const DoubleType r  = intgLoc[k];
+    const DoubleType s  = intgLoc[k+1];
+    const DoubleType t  = 1.0 - r - s;
+    const DoubleType xi = intgLoc[k + 2];
+
+    deriv(j,0,0) = -0.5 * (1.0 - xi);  // d(N_1)/ d(r)  = deriv[0]
+    deriv(j,0,1) = -0.5 * (1.0 - xi);  // d(N_1)/ d(s)  = deriv[1]
+    deriv(j,0,2) = -0.5 * t;           // d(N_1)/ d(xi) = deriv[2]
+
+    deriv(j,1,0) =  0.5 * (1.0 - xi);  // d(N_2)/ d(r)  = deriv[0 + 3]
+    deriv(j,1,1) =  0.0;               // d(N_2)/ d(s)  = deriv[1 + 3]
+    deriv(j,1,2) = -0.5 * r;           // d(N_2)/ d(xi) = deriv[2 + 3]
+
+    deriv(j,2,0) =  0.0;               // d(N_3)/ d(r)  = deriv[0 + 6]
+    deriv(j,2,1) =  0.5 * (1.0 - xi);  // d(N_3)/ d(s)  = deriv[1 + 6]
+    deriv(j,2,2) = -0.5 * s;           // d(N_3)/ d(xi) = deriv[2 + 6]
+
+    deriv(j,3,0) = -0.5 * (1.0 + xi);  // d(N_4)/ d(r)  = deriv[0 + 9]
+    deriv(j,3,1) = -0.5 * (1.0 + xi);  // d(N_4)/ d(s)  = deriv[1 + 9]
+    deriv(j,3,2) =  0.5 * t;           // d(N_4)/ d(xi) = deriv[2 + 9]
+
+    deriv(j,4,0) =  0.5 * (1.0 + xi);  // d(N_5)/ d(r)  = deriv[0 + 12]
+    deriv(j,4,1) =  0.0;               // d(N_5)/ d(s)  = deriv[1 + 12]
+    deriv(j,4,2) =  0.5 * r;           // d(N_5)/ d(xi) = deriv[2 + 12]
+
+    deriv(j,5,0) =  0.0;               // d(N_6)/ d(r)  = deriv[0 + 15]
+    deriv(j,5,1) =  0.5 * (1.0 + xi);  // d(N_6)/ d(s)  = deriv[1 + 15]
+    deriv(j,5,2) =  0.5 * s;           // d(N_6)/ d(xi) = deriv[2 + 15]
+  }
+}
+
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
@@ -173,6 +213,18 @@ void WedSCV::determinant(
     // compute volume using an equivalent polyhedron
     volume(icv) = hex_volume_grandy(ehexcoords);
   }
+}
+
+//--------------------------------------------------------------------------
+//-------- grad_op ---------------------------------------------------------
+//--------------------------------------------------------------------------
+void WedSCV::grad_op(
+  SharedMemView<DoubleType**>& coords,
+  SharedMemView<DoubleType***>& gradop,
+  SharedMemView<DoubleType***>& deriv)
+{
+  wed_deriv(numIntPoints_, &intgLoc_[0], deriv);
+  generic_grad_op_3d<AlgTraitsWed6>(deriv, coords, gradop);
 }
 
 //--------------------------------------------------------------------------
@@ -343,10 +395,9 @@ WedSCS::WedSCS()
   // face 2;
   ipNodeMap_[8] = 0;  ipNodeMap_[9] = 3;  ipNodeMap_[10] = 5; ipNodeMap_[11] = 2;
   // face 3;
-  ipNodeMap_[12] = 0; ipNodeMap_[13] = 1; ipNodeMap_[14] = 1; ipNodeMap_[15] = 0; //empty
+  ipNodeMap_[12] = 0; ipNodeMap_[13] = 2; ipNodeMap_[14] = 1; ipNodeMap_[15] = 0; //empty
   // face 4;
   ipNodeMap_[16] = 3; ipNodeMap_[17] = 4; ipNodeMap_[18] = 5; ipNodeMap_[19] = 0; // empty
-
 
   sideNodeOrdinals_ = {
       0, 1, 4, 3, // ordinal 0
@@ -533,46 +584,6 @@ void WedSCS::determinant(
   // all is always well; no error checking
   *error = 0;
 }
-
-void wed_deriv(
-  const int npts,
-  const double* intgLoc,
-  SharedMemView<DoubleType***>& deriv)
-{
-  for (int  j = 0; j < npts; ++j) {
-    int k  = j*3;
-
-    const DoubleType r  = intgLoc[k];
-    const DoubleType s  = intgLoc[k+1];
-    const DoubleType t  = 1.0 - r - s;
-    const DoubleType xi = intgLoc[k + 2];
-
-    deriv(j,0,0) = -0.5 * (1.0 - xi);  // d(N_1)/ d(r)  = deriv[0]
-    deriv(j,0,1) = -0.5 * (1.0 - xi);  // d(N_1)/ d(s)  = deriv[1]
-    deriv(j,0,2) = -0.5 * t;           // d(N_1)/ d(xi) = deriv[2]
-
-    deriv(j,1,0) =  0.5 * (1.0 - xi);  // d(N_2)/ d(r)  = deriv[0 + 3]
-    deriv(j,1,1) =  0.0;               // d(N_2)/ d(s)  = deriv[1 + 3]
-    deriv(j,1,2) = -0.5 * r;           // d(N_2)/ d(xi) = deriv[2 + 3]
-
-    deriv(j,2,0) =  0.0;               // d(N_3)/ d(r)  = deriv[0 + 6]
-    deriv(j,2,1) =  0.5 * (1.0 - xi);  // d(N_3)/ d(s)  = deriv[1 + 6]
-    deriv(j,2,2) = -0.5 * s;           // d(N_3)/ d(xi) = deriv[2 + 6]
-
-    deriv(j,3,0) = -0.5 * (1.0 + xi);  // d(N_4)/ d(r)  = deriv[0 + 9]
-    deriv(j,3,1) = -0.5 * (1.0 + xi);  // d(N_4)/ d(s)  = deriv[1 + 9]
-    deriv(j,3,2) =  0.5 * t;           // d(N_4)/ d(xi) = deriv[2 + 9]
-
-    deriv(j,4,0) =  0.5 * (1.0 + xi);  // d(N_5)/ d(r)  = deriv[0 + 12]
-    deriv(j,4,1) =  0.0;               // d(N_5)/ d(s)  = deriv[1 + 12]
-    deriv(j,4,2) =  0.5 * r;           // d(N_5)/ d(xi) = deriv[2 + 12]
-
-    deriv(j,5,0) =  0.0;               // d(N_6)/ d(r)  = deriv[0 + 15]
-    deriv(j,5,1) =  0.5 * (1.0 + xi);  // d(N_6)/ d(s)  = deriv[1 + 15]
-    deriv(j,5,2) =  0.5 * s;           // d(N_6)/ d(xi) = deriv[2 + 15]
-  }
-}
-
 
 void WedSCS::grad_op(
   SharedMemView<DoubleType**>& coords,

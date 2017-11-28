@@ -756,6 +756,25 @@ void Hex27SCV::determinant(SharedMemView<DoubleType**>& coords, SharedMemView<Do
 {
   weighted_volumes(referenceGradWeights_, coords, volume);
 }
+
+//--------------------------------------------------------------------------
+void Hex27SCV::grad_op(
+  SharedMemView<DoubleType**>&coords,
+  SharedMemView<DoubleType***>&gradop,
+  SharedMemView<DoubleType***>&deriv)
+{
+  generic_grad_op_3d<AlgTraits>(referenceGradWeights_, coords, gradop);
+
+  // copy derivs as well.  These aren't used, but are part of the interface
+  for (int ip = 0; ip < AlgTraits::numScsIp_; ++ip) {
+    for (int n = 0; n < AlgTraits::nodesPerElement_; ++n) {
+      for (int d = 0; d < AlgTraits::nDim_; ++d) {
+        deriv(ip,n,d) = referenceGradWeights_(ip,n,d);
+      }
+    }
+  }
+}
+
 //--------------------------------------------------------------------------
 //-------- jacobian_determinant---------------------------------------------
 //--------------------------------------------------------------------------

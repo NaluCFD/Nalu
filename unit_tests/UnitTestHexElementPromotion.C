@@ -67,15 +67,15 @@ namespace {
 }//namespace
 
 
-class PromoteElementHexTestV2 : public ::testing::Test
+class PromoteElementHexTest : public ::testing::Test
 {
 protected:
-  PromoteElementHexTestV2()
+  PromoteElementHexTest()
 : comm(MPI_COMM_WORLD),
   nDim(3)
 {};
 
-  void SetUp(int nx, int ny, int nz,  int in_polyOrder)
+  void init(int nx, int ny, int nz,  int in_polyOrder)
   {
     auto aura = stk::mesh::BulkData::NO_AUTO_AURA;
     fixture = sierra::nalu::make_unique<stk::mesh::fixtures::HexFixture>(comm, nx, ny, nz, aura);
@@ -408,7 +408,7 @@ protected:
 
 };
 
-TEST_F(PromoteElementHexTestV2, node_count)
+TEST_F(PromoteElementHexTest, node_count)
 {
   int polyOrder = 7;
 
@@ -418,7 +418,7 @@ TEST_F(PromoteElementHexTestV2, node_count)
     return;
   }
 
-  SetUp(nprocx, nprocx, nprocx, polyOrder);
+  init(nprocx, nprocx, nprocx, polyOrder);
   size_t originalNodeCount = ::count_nodes(*bulk, meta->universal_part());
 
   stk::mesh::PartVector supElemParts;
@@ -438,7 +438,7 @@ TEST_F(PromoteElementHexTestV2, node_count)
 }
 
 
-TEST_F(PromoteElementHexTestV2, png)
+TEST_F(PromoteElementHexTest, png)
 {
     if (stk::parallel_machine_size(MPI_COMM_WORLD) > 48) {
       return;
@@ -447,7 +447,7 @@ TEST_F(PromoteElementHexTestV2, png)
     double tol = 1.0e-8;
     int polyOrder = 4;
 
-    SetUp(3, 2, 8, polyOrder);
+    init(3, 2, 8, polyOrder);
 
     promote_mesh();
 
@@ -479,14 +479,14 @@ TEST_F(PromoteElementHexTestV2, png)
     }
 }
 
-TEST_F(PromoteElementHexTestV2, node_sharing)
+TEST_F(PromoteElementHexTest, node_sharing)
 {
   if (stk::parallel_machine_size(MPI_COMM_WORLD) != 2) {
     return;
   }
 
   int polyOrder = 2;
-  SetUp(2 ,1, 1, polyOrder);
+  init(2 ,1, 1, polyOrder);
 
   promote_mesh();
   ThrowRequire(!bulk->in_modifiable_state());
