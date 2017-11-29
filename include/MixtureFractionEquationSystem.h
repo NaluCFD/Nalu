@@ -101,6 +101,7 @@ public:
   ScalarFieldType *tvisc_;
   ScalarFieldType *evisc_;
   ScalarFieldType *scalarVar_;
+  ScalarFieldType *scaledScalarVar_;
   ScalarFieldType *scalarDiss_;
   
   AssembleNodalGradAlgorithmDriver *assembleNodalGradAlgDriver_;
