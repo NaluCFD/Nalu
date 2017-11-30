@@ -204,6 +204,11 @@ public:
   void shifted_shape_fcn(SharedMemView<DoubleType**> &shpfc) final;
   void determinant(SharedMemView<DoubleType**>& coords, SharedMemView<DoubleType*>& volume) final;
 
+  void grad_op(
+    SharedMemView<DoubleType**>&coords,
+    SharedMemView<DoubleType***>&gradop,
+    SharedMemView<DoubleType***>&deriv);
+
   void determinant(
     const int nelem,
     const double *coords,
@@ -215,7 +220,6 @@ public:
 
   const GradWeightType& shape_function_derivatives()
   { return referenceGradWeights_; }
-
 
   template <typename GradViewType, typename CoordViewType, typename OutputViewType>
   void weighted_volumes(GradViewType referenceGradWeights, CoordViewType coords, OutputViewType volume)
@@ -252,6 +256,9 @@ class Hex27SCS : public HexahedralP2Element
 public:
   Hex27SCS();
   virtual ~Hex27SCS() {}
+
+  using MasterElement::shape_fcn;
+  using MasterElement::shifted_shape_fcn;
 
   void shape_fcn(SharedMemView<DoubleType**> &shpfc);
   void shifted_shape_fcn(SharedMemView<DoubleType**> &shpfc);

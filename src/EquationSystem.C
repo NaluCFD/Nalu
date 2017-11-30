@@ -178,12 +178,8 @@ EquationSystem::provide_norm_increment()
 void
 EquationSystem::dump_eq_time()
 {
-  // extract preconditioning time which lives on the linear solver
-  if ( NULL != linsys_ ) {
-    timerPrecond_ = linsys_->get_timer_precond();
-    // subtract out preconditioning time from solve time
-    timerSolve_ -= timerPrecond_;
-  }
+  // subtract out preconditioning time from solve time
+  timerSolve_ -= timerPrecond_;
 
   double l_timer[6] = {timerAssemble_, timerLoadComplete_, timerSolve_, timerMisc_, timerInit_, timerPrecond_};
   double g_min[6] = {};
@@ -293,6 +289,7 @@ EquationSystem::assemble_and_solve(
   error = linsys_->solve(deltaSolution);
   timeB = NaluEnv::self().nalu_time();
   timerSolve_ += (timeB-timeA);
+  timerPrecond_ += linsys_->get_timer_precond();
 
   if ( realm_.hasPeriodic_) {
     timeA = NaluEnv::self().nalu_time();

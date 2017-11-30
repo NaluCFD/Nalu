@@ -62,13 +62,6 @@ MomentumUpwAdvDiffElemKernel<AlgTraits>::MomentumUpwAdvDiffElemKernel(
   massFlowRate_ = metaData.get_field<GenericFieldType>(
     stk::topology::ELEMENT_RANK, "mass_flow_rate_scs");
   
-  if (solnOpts.does_mesh_move())
-    velocityRTM_ 
-      = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity_rtm");
-  else
-    velocityRTM_ 
-      = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
-
   MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(AlgTraits::topo_);
   get_scs_shape_fn_data<AlgTraits>([&](double* ptr){meSCS->shape_fcn(ptr);}, v_shape_function_);
 
@@ -78,7 +71,8 @@ MomentumUpwAdvDiffElemKernel<AlgTraits>::MomentumUpwAdvDiffElemKernel(
   // fields and data; mdot not gathered as element data
   dataPreReqs.add_gathered_nodal_field(*Gju_, AlgTraits::nDim_, AlgTraits::nDim_);
   dataPreReqs.add_coordinates_field(*coordinates_, AlgTraits::nDim_, CURRENT_COORDINATES);
-  dataPreReqs.add_gathered_nodal_field(*velocity, AlgTraits::nDim_);
+  dataPreReqs.add_gathered_nodal_field(*velocityRTM_, AlgTraits::nDim_);
+  dataPreReqs.add_gathered_nodal_field(*velocityNp1_, AlgTraits::nDim_);
   dataPreReqs.add_gathered_nodal_field(*density_, 1);
   dataPreReqs.add_gathered_nodal_field(*viscosity_, 1);
   dataPreReqs.add_element_field(*massFlowRate_, AlgTraits::numScsIp_);

@@ -40,7 +40,8 @@ public:
 
   ScalarFieldType *pressure_;
   VectorFieldType *Gjp_;
-  VectorFieldType *velocityRTM_;
+  VectorFieldType *velocity_;
+  VectorFieldType *meshVelocity_;
   VectorFieldType *coordinates_;
   ScalarFieldType *density_;
   GenericFieldType *exposedAreaVec_;
@@ -50,6 +51,7 @@ public:
   // options that prevail over all algorithms created
   const bool useCurrentNormal_;
   const double includePstab_;
+  double meshMotionFac_;
 
   std::vector< const stk::mesh::FieldBase *> ghostFieldVec_;
 };

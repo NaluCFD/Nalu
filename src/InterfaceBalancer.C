@@ -24,7 +24,7 @@ namespace nalu {
 
 InterfaceBalancer::InterfaceBalancer(const stk::mesh::MetaData& meta,
                                      stk::mesh::BulkData& bulk) :
-                            metaData_(meta), bulkData_(bulk), tolerance_(0.01) {}
+                            metaData_(meta), bulkData_(bulk) /*, tolerance_(0.01) */ {}
 
 void
 InterfaceBalancer::balance_node_entities(const double targetLoadBalance,

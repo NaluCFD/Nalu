@@ -8,7 +8,7 @@ linear_solvers:
   - name: solve_scalar
     type: tpetra
     method: gmres
-    preconditioner: sgs 
+    preconditioner: sgs
     tolerance: 1e-5
     max_iterations: 50
     kspace: 50
@@ -16,8 +16,8 @@ linear_solvers:
 
   - name: solve_cont
     type: tpetra
-    method: gmres 
-    preconditioner: muelu 
+    method: gmres
+    preconditioner: muelu
     tolerance: 1e-5
     max_iterations: 50
     kspace: 50
@@ -29,30 +29,23 @@ realms:
 
   - name: realm_1
     mesh: ../../mesh/nrel5MWactuatorLine.g
-    use_edges: no 
+    use_edges: no
     automatic_decomposition_type: rcb
 
     equation_systems:
       name: theEqSys
-      max_iterations: 2 
-  
+      max_iterations: 2
+
       solver_system_specification:
         velocity: solve_scalar
         pressure: solve_cont
-        turbulent_ke: solve_scalar
-   
+
       systems:
 
         - LowMachEOM:
             name: myLowMach
             max_iterations: 1
             convergence_tolerance: 1e-5
-
-        - TurbKineticEnergy:
-            name: myTke
-            max_iterations: 1
-            convergence_tolerance: 1.e-5
-
 
     initial_conditions:
 
@@ -61,7 +54,6 @@ realms:
         value:
           pressure: 0.0
           velocity: [8.0,0.0,0.0]
-          turbulent_ke: 1.0e-6
 
     material_properties:
       target_name: Unspecified-2-HEX
@@ -80,14 +72,12 @@ realms:
       target_name: inflow
       inflow_user_data:
         velocity: [8.0,0.0,0.0]
-        turbulent_ke: 1.0e-6
 
     - open_boundary_condition: bc_2
       target_name: outflow
       open_user_data:
         pressure: 0.0
         velocity: [8.0,0.0,0.0]
-        turbulent_ke: 1.0e-6
 
     - symmetry_boundary_condition: bc_3
       target_name: left
@@ -107,7 +97,7 @@ realms:
 
     solution_options:
       name: myOptions
-      turbulence_model: ksgs
+      use_consolidated_solver_algorithm: yes
 
       options:
 
@@ -120,11 +110,11 @@ realms:
 
         - projected_nodal_gradient:
             pressure: element
-            velocity: element 
-            turbulent_ke: element
+            velocity: element
 
-        - source_terms:
-            momentum: actuator
+        - element_source_terms:
+            momentum: [lumped_momentum_time_derivative, upw_advection_diffusion, lumped_actuator]
+            continuity: [advection]
 
     actuator:
       type: ActLineFAST
@@ -153,20 +143,19 @@ realms:
 
     output:
       output_data_base_name: actuatorLine.e
-      output_frequency: 10
+      output_frequency: 1
       output_node_set: no
       output_variables:
        - velocity
        - pressure
        - actuator_source
-       - turbulent_ke
 
     restart:
       restart_data_base_name: actuatorLine.rst
       restart_frequency: 10
       restart_start: 10
       compression_level: 9
-      compression_shuffle: yes  
+      compression_shuffle: yes
 
 Time_Integrators:
   - StandardTimeIntegrator:

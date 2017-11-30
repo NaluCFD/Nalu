@@ -5,8 +5,8 @@
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
-#ifndef SinProfileChannelFlowVelocityAuxFunction_h
-#define SinProfileChannelFlowVelocityAuxFunction_h
+#ifndef OneTwoTenVelocityAuxFunction_h
+#define OneTwoTenVelocityAuxFunction_h
 
 #include <AuxFunction.h>
 
@@ -15,15 +15,15 @@
 namespace sierra{
 namespace nalu{
 
-class SinProfileChannelFlowVelocityAuxFunction : public AuxFunction
+class OneTwoTenVelocityAuxFunction : public AuxFunction
 {
 public:
 
-  SinProfileChannelFlowVelocityAuxFunction(
+  OneTwoTenVelocityAuxFunction(
     const unsigned beginPos,
     const unsigned endPos);
 
-  virtual ~SinProfileChannelFlowVelocityAuxFunction() {}
+  virtual ~OneTwoTenVelocityAuxFunction() {}
   
   virtual void do_evaluate(
     const double * coords,
@@ -36,7 +36,12 @@ public:
     const unsigned endPos) const;
   
 private:
-  const double u_m;
+  const double dpdz_;
+  const double mu_;
+  const double a_;
+  const double b_;
+  const int maxN_;
+  const double pi_;
 };
 
 } // namespace nalu

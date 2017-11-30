@@ -35,9 +35,6 @@ public:
   
 private:
   double Re_;
-  double kx_;
-  double ky_;
-
 };
 
 class KovasznayPressureGradientAuxFunction : public AuxFunction
@@ -62,9 +59,6 @@ public:
 
 private:
   double Re_;
-  double kx_;
-  double ky_;
-
 };
 
 } // namespace nalu

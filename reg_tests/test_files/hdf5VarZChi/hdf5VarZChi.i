@@ -22,11 +22,12 @@ linear_solvers:
     max_iterations: 50
     kspace: 50
     output_level: 0
+    muelu_xml_file_name: ../../xml/matches_ml_default.xml
 
 realms:
 
   - name: realm_1
-    mesh: 2cm_ped_35K_mks.g
+    mesh: ../../mesh/2cm_ped_35K_mks.g
     use_edges: yes
 
     time_step_control:
@@ -62,13 +63,13 @@ realms:
 
       target_name: block_1
 
-      table_file_name: SLFM_CGauss_C2H4_ZMean_ZScaledVarianceMean_logChiMean.h5
+      table_file_name: pure_ethylene.h5
 
       specifications:
  
         - name: density
           type: hdf5table
-          independent_variable_set: [mixture_fraction, scalar_variance, scalar_dissipation]
+          independent_variable_set: [mixture_fraction, scaled_scalar_variance, scalar_dissipation]
           table_name_for_property: density
           table_name_for_independent_variable_set: [ZMean, ZScaledVarianceMean, ChiMean]
           aux_variables: temperature
@@ -76,7 +77,7 @@ realms:
 
         - name: viscosity
           type: hdf5table
-          independent_variable_set: [mixture_fraction, scalar_variance, scalar_dissipation]
+          independent_variable_set: [mixture_fraction, scaled_scalar_variance, scalar_dissipation]
           table_name_for_property: mu
           table_name_for_independent_variable_set: [ZMean, ZScaledVarianceMean, ChiMean]
 
