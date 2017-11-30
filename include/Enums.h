@@ -183,7 +183,8 @@ enum TurbulenceModelConstant {
   TM_Cw = 18,
   TM_CbTwo = 19,
   TM_SDRWallFactor = 20,
-  TM_END = 21
+  TM_zCV = 21,
+  TM_END = 22
 };
 
 static const std::string TurbulenceModelConstantNames[] = {
@@ -208,6 +209,7 @@ static const std::string TurbulenceModelConstantNames[] = {
   "Cw",
   "Cb2",
   "SDRWallFactor",
+  "Z_CV",
   "END"};
 
 enum ActuatorType {

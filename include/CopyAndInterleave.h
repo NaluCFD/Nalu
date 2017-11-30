@@ -20,39 +20,35 @@ namespace nalu{
 template<typename DTYPE>
 void interleave_3D(SharedMemView<DTYPE***>& dview, const SharedMemView<double***>& sview, int simdIndex)
 {
-    int dim0 = dview.dimension(0);
-    int dim1 = dview.dimension(1);
-    int dim2 = dview.dimension(2);
-
-    for(int i=0; i<dim0; ++i) {
-        for(int j=0; j<dim1; ++j) {
-            for(int k=0; k<dim2; ++k) {
-                stk::simd::set_data(dview(i,j,k), simdIndex, sview(i,j,k));
-            }
-        }
-    }
+  int sz = dview.size();
+  DTYPE* data = dview.data();
+  double* src = sview.data();
+  for(int i=0; i<sz; ++i) {
+    stk::simd::set_data(data[i], simdIndex, src[i]);
+  }
 }
 
 template<typename DTYPE>
 void interleave_2D(SharedMemView<DTYPE**>& dview, const SharedMemView<double**>& sview, int simdIndex)
 {
-    int dim0 = dview.dimension(0);
-    int dim1 = dview.dimension(1);
-    for(int i=0; i<dim0; ++i) {
-        for(int j=0; j<dim1; ++j) {
-            stk::simd::set_data(dview(i,j), simdIndex, sview(i,j));
-        }
-    }
+  int sz = dview.size();
+  DTYPE* data = dview.data();
+  double* src = sview.data();
+  for(int i=0; i<sz; ++i) {
+    stk::simd::set_data(data[i], simdIndex, src[i]);
+  }
 }
 
 template<typename DTYPE>
 void interleave_1D(SharedMemView<DTYPE*>& dview, const SharedMemView<double*>& sview, int simdIndex)
 {
-    int dim = dview.dimension(0);
+  int dim = dview.dimension(0);
 
-    for(int i=0; i<dim; ++i) {
-        stk::simd::set_data(dview(i), simdIndex, sview(i));
-    }
+  DTYPE* data = dview.data();
+  double* src = sview.data();
+  for(int i=0; i<dim; ++i) {
+    stk::simd::set_data(data[i], simdIndex, src[i]);
+  }
 }
 
 template<typename DTYPE>
@@ -157,7 +153,8 @@ void copy_and_interleave(const std::vector<ScratchViews<double>*>& data,
     const std::vector<ViewHolder*>& simdFieldViews = simdData.get_field_views();
     const ViewHolder* fViews[stk::simd::ndoubles] = {nullptr};
 
-    for(size_t fieldViewsIndex=0; fieldViewsIndex<simdFieldViews.size(); ++fieldViewsIndex) {
+    const size_t numFieldViews = simdFieldViews.size();
+    for(size_t fieldViewsIndex=0; fieldViewsIndex<numFieldViews; ++fieldViewsIndex) {
       if (simdFieldViews[fieldViewsIndex] != nullptr) {
         for(int simdIndex=0; simdIndex<simdElems; ++simdIndex) {
           fViews[simdIndex] = data[simdIndex]->get_field_views()[fieldViewsIndex];

@@ -73,6 +73,7 @@
 #include <ScalarMassElemKernel.h>
 #include <ScalarAdvDiffElemKernel.h>
 #include <ScalarUpwAdvDiffElemKernel.h>
+#include <nso/ScalarNSOKeElemKernel.h>
 
 // props
 #include <property_evaluator/EnthalpyPropertyEvaluator.h>
@@ -482,6 +483,14 @@ EnthalpyEquationSystem::register_interior_algorithm(
       build_topo_kernel_if_requested<ScalarNSOElemKernel>
       (partTopo, *this, activeKernels, "NSO_4TH_ALT",
         realm_.bulk_data(), *realm_.solutionOptions_, enthalpy_, dhdx_, evisc_, 1.0, 1.0, dataPreReqs);
+
+      build_topo_kernel_if_requested<ScalarNSOKeElemKernel>
+      (partTopo, *this, activeKernels, "NSO_2ND_KE",
+        realm_.bulk_data(), *realm_.solutionOptions_, enthalpy_, dhdx_, realm_.get_turb_schmidt(enthalpy_->name()), 0.0, dataPreReqs);
+
+      build_topo_kernel_if_requested<ScalarNSOKeElemKernel>
+      (partTopo, *this, activeKernels, "NSO_4TH_KE",
+        realm_.bulk_data(), *realm_.solutionOptions_, enthalpy_, dhdx_, realm_.get_turb_schmidt(enthalpy_->name()), 1.0, dataPreReqs);
 
       report_invalid_supp_alg_names();
       report_built_supp_alg_names();

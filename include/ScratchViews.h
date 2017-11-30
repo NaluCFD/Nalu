@@ -68,10 +68,13 @@ public:
   SharedMemView<T**> scs_areav;
   SharedMemView<T***> dndx;
   SharedMemView<T***> dndx_shifted;
+  SharedMemView<T***> dndx_scv;
   SharedMemView<T***> dndx_fem;
   SharedMemView<T***> deriv;
+  SharedMemView<T***> deriv_scv;
   SharedMemView<T***> deriv_fem;
   SharedMemView<T*> det_j;
+  SharedMemView<T*> det_j_scv;
   SharedMemView<T*> det_j_fem;
   SharedMemView<T*> scv_volume;
   SharedMemView<T***> gijUpper;
@@ -178,8 +181,8 @@ int MasterElementViews<T>::create_master_element_views(
   int numScsIp, int numScvIp, int numFemIp)
 {
   int numScalars = 0;
-  bool needDeriv = false; bool needDerivFem = false;
-  bool needDetj = false; bool needDetjFem = false;
+  bool needDeriv = false; bool needDerivScv = false; bool needDerivFem = false;
+  bool needDetj = false; bool needDetjScv = false; bool needDetjFem = false;
   bool femGradOp = false; bool femShiftedGradOp = false;
   for(ELEM_DATA_NEEDED data : dataEnums) {
     switch(data)
@@ -220,6 +223,14 @@ int MasterElementViews<T>::create_master_element_views(
          numScalars += numScvIp;
          break;
 
+      case SCV_GRAD_OP:
+         ThrowRequireMsg(numScvIp > 0, "ERROR, meSCV must be non-null if SCV_GRAD_OP is requested.");
+         dndx_scv = get_shmem_view_3D<T>(team, numScvIp, nodesPerElem, nDim);
+         numScalars += nodesPerElem * numScvIp * nDim;
+         needDerivScv = true;
+         needDetjScv = true;
+         break;
+
       case FEM_GRAD_OP:
          ThrowRequireMsg(numFemIp > 0, "ERROR, meFEM must be non-null if FEM_GRAD_OP is requested.");
          dndx_fem = get_shmem_view_3D<T>(team, numFemIp, nodesPerElem, nDim);
@@ -247,14 +258,24 @@ int MasterElementViews<T>::create_master_element_views(
     numScalars += numScsIp * nodesPerElem * nDim;
   }
 
-  if (needDetj) {
-    det_j = get_shmem_view_1D<T>(team, numScsIp);
-    numScalars += numScsIp;
+  if (needDerivScv) {
+    deriv_scv = get_shmem_view_3D<T>(team, numScvIp,nodesPerElem,nDim);
+    numScalars += numScvIp * nodesPerElem * nDim;
   }
 
   if (needDerivFem) {
     deriv_fem = get_shmem_view_3D<T>(team, numFemIp,nodesPerElem,nDim);
     numScalars += numFemIp * nodesPerElem * nDim;
+  }
+
+  if (needDetj) {
+    det_j = get_shmem_view_1D<T>(team, numScsIp);
+    numScalars += numScsIp;
+  }
+
+  if (needDetjScv) {
+    det_j_scv = get_shmem_view_1D<T>(team, numScvIp);
+    numScalars += numScvIp;
   }
 
   if (needDetjFem) {
@@ -310,6 +331,11 @@ void MasterElementViews<T>::fill_master_element_views(
          ThrowRequireMsg(coordsView != nullptr, "ERROR, coords null but SCV_VOLUME requested.");
          meSCV->determinant(1, &((*coordsView)(0,0)), &scv_volume(0), &error);
          break;
+      case SCV_GRAD_OP:
+         ThrowRequireMsg(meSCV != nullptr, "ERROR, meSCV needs to be non-null if SCV_GRAD_OP is requested.");
+         ThrowRequireMsg(coordsView != nullptr, "ERROR, coords null but SCV_GRAD_OP requested.");
+         meSCV->grad_op(1, &((*coordsView)(0,0)), &dndx_scv(0,0,0), &deriv_scv(0,0,0), &det_j_scv(0), &error);
+         break;
       case FEM_GRAD_OP:
         ThrowRequireMsg(meFEM != nullptr, "ERROR, meFEM needs to be non-null if FEM_GRAD_OP is requested.");
         ThrowRequireMsg(coordsView != nullptr, "ERROR, coords null but FEM_GRAD_OP requested.");
@@ -362,6 +388,11 @@ void MasterElementViews<T>::fill_master_element_views_new_me(
          ThrowRequireMsg(coordsView != nullptr, "ERROR, coords null but SCV_VOLUME requested.");
          meSCV->determinant(*coordsView, scv_volume);
          break;
+      case SCV_GRAD_OP:
+        ThrowRequireMsg(meSCV != nullptr, "ERROR, meSCV needs to be non-null if SCV_GRAD_OP is requested.");
+        ThrowRequireMsg(coordsView != nullptr, "ERROR, coords null but SCS_GRAD_OP requested.");
+        meSCV->grad_op(*coordsView, dndx_scv, deriv_scv);
+        break;
       case FEM_GRAD_OP:
          ThrowRequireMsg(meFEM != nullptr, "ERROR, meFEM needs to be non-null if FEM_GRAD_OP is requested.");
          ThrowRequireMsg(coordsView != nullptr, "ERROR, coords null but FEM_GRAD_OP requested.");
