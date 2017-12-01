@@ -105,8 +105,7 @@ class TpetraLinearSolver : public LinearSolver
     int solve(
       Teuchos::RCP<LinSys::Vector> sln,
       int & iterationCount,
-      double & scaledResidual,
-      bool isFinalOuterIter);
+      double & scaledResidual);
 
     virtual PetraType getType() { return PT_TPETRA; }
     TpetraLinearSolverConfig *getConfig() { return config_; }
