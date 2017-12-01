@@ -44,7 +44,7 @@ The integral form of the Favre-filtered momentum equations used for turbulent tr
    \int \widetilde{\sigma}_{ij} n_j \, {\rm d}S
    -\int \tau^{sgs}_{ij} n_j \, {\rm d}S \\
    + \int \left(\bar{\rho} - \rho_{\circ} \right) g_i \, {\rm d}V
-   + \int {\rm f}_i \, {\rm d}V,
+   + \int \mathrm{f}_i \, {\rm d}V,
 
 where the subgrid scale turbulent stress :math:`\tau^{sgs}_{ij}` is defined as
 
@@ -54,7 +54,8 @@ where the subgrid scale turbulent stress :math:`\tau^{sgs}_{ij}` is defined as
    \tau^{sgs}_{ij} \equiv \bar{\rho} ( \widetilde{u_i u_j} -
      \widetilde{u}_i \widetilde{u}_j ).
 
-The term :math:`{\rm f}_i` is a body force used to represent wind turbine
+The term :math:`\mathrm{f}_i` is a body force used to represent
+additional momentum sources such as wind turbine
 blades, Coriolis effect, driving forces, etc.
 The Cauchy stress is provided by,
 
@@ -133,7 +134,7 @@ force term can be added to the right-hand-side of the momentum equation (:eq:`fa
 .. math::
    :label: cor-term
 
-   \int -2\bar{\rho}\epsilon_{ijk}\Omega_ju_k ~{\rm d}V.
+   \mathrm{f}_i = -2\bar{\rho}\epsilon_{ijk}\Omega_ju_k .
 
 Here, :math:`\Omega` is the Earth's angular velocity vector,
 and :math:`\epsilon_{ijk}` is the Levi-Civita symbol denoting the cross product
@@ -170,27 +171,81 @@ coordinate system.
 ABL Forcing Source Terms
 ++++++++++++++++++++++++
 
-In LES simulations of wind plant atmospheric flows, it is often necessary to
-drive the flow a predetermined vertical velocity and/or temperature profile. In
-Nalu, this is achieved by adding appropriate source terms :math:`\mathbf{S}_u` to the
-momentum equations (:eq:`favmom`). The present implementation can vary the
-source terms as a function of time and space using either a user-defined table
-of previously computed source terms (e.g., from a *precursor* simulation or
-another model such as WRF), or compute the source term as a function of the
-transient flow solution using the following equation:
+In LES of wind plant atmospheric flows, it is often necessary to
+drive the flow to a predetermined vertical velocity and/or temperature profile.
+In Nalu, this is achieved by adding appropriate
+source terms :math:`\mathrm{f}_i` to the
+momentum equation :eq:`favmom`.
+
+The main objective of this implementation is to force the volume averaged velocity at
+a certain location to a specified value (:math:`<\mathrm{u}_i>=\mathrm{U}_i`).
+The brackets used here, :math:`<>`, mean volume averaging over a certain region.
+In order to achieve this, a source term must be applied to the momentum equation.
+This source term can be better understood as a proportional controller within the
+momentum equation.
+
+The velocity and density fields can be decomposed into a volume averaged component
+and fluctuations about that volume average as
+:math:`\mathrm{u}_i = \left< \mathrm{u}_i \right> + \mathrm{u}_i'` and
+:math:`\bar{\rho} = \left< \bar{\rho} \right> + \bar{\rho}'`.
+A decomposition of the plane averaged momentum at a given instance in time is then
+
+.. math::
+       \left< \bar{\rho}  \mathrm{u}_i  \right>  =
+        \left< \bar{\rho} \right> \left< \mathrm{u}_i \right>
+        + \left< \bar{\rho}'  \mathrm{u}'_i  \right>.
+
+We now wish to apply a momentum source based on a desired spatial averaged velocity
+:math:`\mathrm{U}_i`.
+This can be expressed as:
+
+.. math::
+       \left< \bar{\rho}  \mathrm{u}_i^*  \right>  =
+        \left< \bar{\rho} \right> \left< \mathrm{u}^*_i \right>
+        + \left< \bar{\rho}'  {\mathrm{u}^*_i}'  \right>,
+
+where :math:`\mathrm{u}_i^*` is an unknown reference velocity field whose volume
+average is the desired  velocity :math:`\left< \mathrm{u}_i^* \right> = \mathrm{U}_i`.
+Since the correlation :math:`\left< \bar{\rho}'  \mathrm{u^*}'_i  \right>`
+is unknown, we assume that
+
+.. math::
+    \left< \bar{\rho}'  \mathrm{u^*}'_i  \right>
+    =
+    \left< \bar{\rho}'  \mathrm{u}'_i  \right>
+
+such that the momentum source can now be defined as:
 
 .. math::
    :label: abl-mom-source
 
-   \mathbf{S}_u^n = \alpha_u \bar{\rho} \left( \frac{\mathbf{U}^n_\mathrm{ref}
-    - \left<\mathbf{u}^n\right>}{\Delta t^n}\right)
+   {\mathrm{f}_i} = \alpha_u
+        \left(  \, \frac{\left< \bar{\rho} \right> \mathrm{U_i}
+        - \left< \bar{\rho} \right> \left< \mathrm{u}_i \right>}
+        {\Delta t}\right)
 
-where :math:`\left<\mathbf{u}^n\right>` is the horizontally averaged velocity at a
-given height and instance in time :math:`t=t_n`, :math:`\mathbf{U}^n_\mathrm{ref}` are the desired
-velocities at the corresponding heights and time. The implementation allows the
+where :math:`\left< \right>` denotes volume averaging at a
+certain time :math:`t`,
+:math:`\mathrm{U}_i` is the desired spatial averaged
+velocity,
+and :math:`\Delta t` is the time-scale between when the source term is computed
+(time :math:`t`) and when it is applied (time :math:`t + \Delta t`).
+This is typically chosen to be the simulation time-step.
+In the case of an ABL simulation with flat terrain, the voulme averaging is done
+over an infinitesimal small plane over the :math:`x` and :math:`y` directions,
+such that the body force is only a
+function of height :math:`z` and time :math:`t`.
+The implementation allows the
 user to prescribe relaxation factors :math:`\alpha_u` for the source terms that are
 applied. Nalu uses a default value of 1.0 for the relaxation factors if no
 values are defined in the input file during initialization.
+
+The present implementation can vary the
+source terms as a function of time and space using either a user-defined table
+of previously computed source terms (e.g., from a *precursor* simulation or
+another model such as WRF), or compute the source term as a function of the
+transient flow solution.
+
 
 Filtered Mixture Fraction
 +++++++++++++++++++++++++
