@@ -1896,8 +1896,6 @@ Realm::advance_time_step()
       << "/" << numNonLinearIterations
       << std::setw(29) << std::right << "Equation System Iteration" << std::endl;
 
-    isFinalOuterIter_ = ((i+1) == numNonLinearIterations);
-
     const bool isConverged = equationSystems_.solve_and_update();
 
     // evaluate properties based on latest np1 solution

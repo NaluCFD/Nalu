@@ -181,8 +181,7 @@ int
 TpetraLinearSolver::solve(
   Teuchos::RCP<LinSys::Vector> sln,
   int & iters,
-  double & finalResidNrm,
-  bool isFinalOuterIter)
+  double & finalResidNrm)
 {
   ThrowRequire(!sln.is_null());
 
@@ -208,15 +207,6 @@ TpetraLinearSolver::solve(
   // Update preconditioner timer for this timestep; actual summing over
   // timesteps is handled in EquationSystem::assemble_and_solve
   timerPrecond_ = time;
-
-  auto params = config_->params();
-  if (isFinalOuterIter) {
-    params->set("Convergence Tolerance", config_->finalTolerance());
-  } else {
-    params->set("Convergence Tolerance", config_->tolerance());
-  }
-
-  solver_->setParameters(params);
 
   problem_->setProblem();
   solver_->solve();
