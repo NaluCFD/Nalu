@@ -1380,7 +1380,8 @@ TpetraLinearSystem::solve(
   const int status = linearSolver->solve(
       sln_,
       iters,
-      finalResidNorm);
+      finalResidNorm,
+      realm_.isFinalOuterIter_);
 
   solve_time += NaluEnv::self().nalu_time();
 
