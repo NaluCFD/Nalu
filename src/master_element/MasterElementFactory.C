@@ -87,6 +87,10 @@ namespace nalu{
       case stk::topology::SHELL_TRI_3:
         NaluEnv::self().naluOutputP0() << "SHELL_TRI_3 only supported for io surface transfer applications" << std::endl;
         return make_unique<Tri3DSCS>();
+        
+      case stk::topology::BEAM_2:
+        NaluEnv::self().naluOutputP0() << "BEAM_2 is only supported for io surface transfer applications" << std::endl;
+        return make_unique<Edge2DSCS>();
 
       default:
         NaluEnv::self().naluOutputP0() << "sorry, we only support hex8, tet4, pyr5, wed6,"
