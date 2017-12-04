@@ -506,7 +506,7 @@ the precursor simulation boundary data to the appropriate time required by the s
 simulation. Specifically, the IO module linearly interpolates between the closest data interval in the
 precursor data set. A recycling offset factor is included within the IO interface that allows
 for the cycling of data over the full time scale of interest within the subsequent simulation. For 
-typical statistically stationary turbulent flows, this is be useful to ensure proper statistics
+typical statistically stationary turbulent flows, this is useful to ensure proper statistics
 are captured in subsequent runs.
 
 After the transient data set from the precursor simulation is interpolated to the proper time, 
@@ -514,18 +514,18 @@ the data is spatially interpolated and transferred to the subsequent simulation 
 STK Transfer module. Efficient coarse parallel searches (point/bounding box) provide the list of 
 candidate owning elements on which the fine-scale search operates to determine the best search 
 candidate. The order of spatial interpolation depends on the activated numerical discretization. 
-Therefore, by combining the two STK modules, the end use case to support suck data transfers of
+Therefore, by combining the two STK modules, the end use case to support data transfers of
 boundary data is supported.
 
 As noted, there are many other use cases in addition to the overviewed turbulent jet simulation
-that requires such temporal/spatial interpolation capabilities. For example, in typical wind 
+that require such temporal/spatial interpolation capabilities. For example, in typical wind 
 farm simulation applications, a proper atmospheric boundary layer (ABL) configuration is required
 to capture a given energy state of the boundary layer. In this case, a periodic precusor ABL is run 
 with the intent of providing the inlet condition to the subsequent wind farm domain. As with the 
 previous description, the infrustructure requirements remain the same.
 
 Finally, the general creation of an "input_output" region can be useful in validation cases
-where data is provided at a subset of the overall simulation domain. Such is the case in PIV and
+where data are provided at a subset of the overall simulation domain. Such is the case in PIV and
 PLIF experimental data sets. Although the temporal interpolation is not required, the transfer
 of this data at high time step frequency is useful for post-processing.
 
@@ -576,8 +576,8 @@ is consistent with the nodal exact value.
 With the precursor data base containing the full transient data, a refinement
 study can be accomplished to determine numerical errors. Although the full machinery
 for temporal and spatial interpolation is active, the data requirement at the coarse simulations
-are represented as the subsets of the full data - both is space and time. As such, no numerical
-polution of second-order accuracy is expected. The subsequent simulations are run with an
+are represented as the subsets of the full data - both in space and time. As such, no numerical
+degradation of second-order accuracy is expected. The subsequent simulations are run with an
 "external_data" transfer objective and a Realm of type, "external_data_provider".
 
 In Figure :numref:`ctv-l2`, a plot of :math:`L_2` norms of the x-component of velocity are shown 
@@ -599,7 +599,7 @@ Application Verification Test; ABL Precursor/Subsequent
 
 The second, and final application test is an ABL-based simulation that first runs a precursor periodic
 solution in order to capture an appropriate ABL specification. The boundary data saved from the precursor
-simualtion is then used as an inflow boundary condition for the subsequent ABL simulation. As the precurosr 
+simulation are then used as an inflow boundary condition for the subsequent ABL simulation. As the precurosr 
 is run for a smaller time frame than the subsequent simulation, the usage of data cycling is active. This 
 full integration test is captured within the regression test suite. The simulation is described as a non-isothermal 
 turbulent flow.
