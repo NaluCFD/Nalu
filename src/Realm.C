@@ -2988,6 +2988,9 @@ Realm::register_interior_algorithm(
   else {
     it->second->partVec_.push_back(part);
   }
+
+  // Track parts that are registered to interior algorithms
+  interiorPartVec_.push_back(part);
 }
 
 //--------------------------------------------------------------------------
@@ -4828,17 +4831,24 @@ Realm::get_inactive_selector()
     (hasOverset_) ? oversetManager_->get_inactive_selector()
     : stk::mesh::Selector();
 
-  // provide inactive dataProbe parts
-  stk::mesh::Selector inactiveDataProbeSelector = (NULL != dataProbePostProcessing_) 
-    ? (dataProbePostProcessing_->get_inactive_selector())
-    : stk::mesh::Selector();
+  // // provide inactive dataProbe parts
+  // stk::mesh::Selector inactiveDataProbeSelector = (NULL != dataProbePostProcessing_)
+  //   ? (dataProbePostProcessing_->get_inactive_selector())
+  //   : stk::mesh::Selector();
 
-  stk::mesh::Selector inactiveABLForcing = (
-    ( NULL != ablForcingAlg_)
-    ? (ablForcingAlg_->inactive_selector())
-    : stk::mesh::Selector());
+  // stk::mesh::Selector inactiveABLForcing = (
+  //   ( NULL != ablForcingAlg_)
+  //   ? (ablForcingAlg_->inactive_selector())
+  //   : stk::mesh::Selector());
   
-  return inactiveOverSetSelector | inactiveDataProbeSelector | inactiveABLForcing;
+  // return inactiveOverSetSelector | inactiveDataProbeSelector | inactiveABLForcing;
+
+  stk::mesh::Selector otherInactiveSelector = (
+    metaData_->universal_part()
+    & !(stk::mesh::selectUnion(interiorPartVec_))
+    & !(stk::mesh::selectUnion(bcPartVec_)));
+
+  return inactiveOverSetSelector | otherInactiveSelector;
 }
 
 //--------------------------------------------------------------------------

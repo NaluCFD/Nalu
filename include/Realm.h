@@ -508,6 +508,9 @@ class Realm {
   // beginning wall time
   double wallTimeStart_;
 
+  // mesh parts for all interior domains
+  stk::mesh::PartVector interiorPartVec_;
+
   // mesh parts for all boundary conditions
   stk::mesh::PartVector bcPartVec_;
 
