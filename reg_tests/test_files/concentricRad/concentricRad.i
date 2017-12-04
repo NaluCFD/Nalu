@@ -169,13 +169,16 @@ realms:
             max_iterations: 1 
             convergence_tolerance: 1.e-16
             quadrature_order: 4 
-            activate_scattering: no
+            activate_scattering: yes
 
     solution_options:
       name: myOptions
       options:
         - user_constants:
             stefan_boltzmann: 5.6704e-8
+
+        - element_source_terms:
+            intensity: [advection_sucv, absorption_black_body, isotropic_scattering]
 
     output:
       output_data_base_name: pmrNew.e

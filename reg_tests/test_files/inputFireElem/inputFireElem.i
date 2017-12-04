@@ -101,7 +101,7 @@ realms:
             activate_scattering: no
             external_coupling: yes
             activate_upwind: no
-            deactivate_sucv: yes
+            deactivate_sucv: no
 
     solution_options:
       name: myOptions
@@ -109,7 +109,7 @@ realms:
       options:
 
         - element_source_terms:
-            intensity: SUPG       
+            intensity: [advection_sucv, absorption_black_body]
 
         - input_variables_from_file:
             temperature: tnd
@@ -117,7 +117,7 @@ realms:
             radiation_source: empnd
 
     output:
-      output_data_base_name: inputFireElemSupg.e
+      output_data_base_name: inputFireElemSucv.e
       output_frequency: 1
       output_node_set: no
       output_variables:

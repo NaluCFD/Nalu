@@ -60,6 +60,7 @@ MomentumMassElemKernel<AlgTraits>::MomentumMassElemKernel(
     stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
 
   MasterElement* meSCV = sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_);
+
   // compute shape function
   if ( lumpedMass_ )
     get_scv_shape_fn_data<AlgTraits>([&](double* ptr){meSCV->shifted_shape_fcn(ptr);}, v_shape_function_);

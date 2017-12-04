@@ -8,13 +8,9 @@
 
 #include <pmr/RadiativeTransportEquationSystem.h>
 #include <pmr/RadTransBlackBodyNodeSuppAlg.h>
-#include <pmr/RadTransFemElemSuppAlg.h>
-#include <pmr/RadTransSupgElemSuppAlg.h>
 #include <pmr/RadTransIsoScatteringNodeSuppAlg.h>
-#include <AssembleElemSolverAlgorithmDep.h>
 #include <pmr/AssembleRadTransEdgeSolverAlgorithm.h>
 #include <pmr/AssembleRadTransEdgeUpwindSolverAlgorithm.h>
-#include <pmr/AssembleRadTransElemSolverAlgorithm.h>
 #include <pmr/AssembleRadTransWallSolverAlgorithm.h>
 #include <AssembleNodeSolverAlgorithm.h>
 #include <AuxFunctionAlgorithm.h>
@@ -35,6 +31,17 @@
 #include <Simulation.h>
 #include <SolutionOptions.h>
 #include <SolverAlgorithmDriver.h>
+
+// template for kernels
+#include "AlgTraits.h"
+#include "KernelBuilder.h"
+#include "KernelBuilderLog.h"
+
+// consolidated
+#include "AssembleElemSolverAlgorithm.h"
+#include "pmr/RadTransAdvectionSUCVElemKernel.h"
+#include "pmr/RadTransAbsorptionBlackBodyElemKernel.h"
+#include "pmr/RadTransIsotropicScatteringElemKernel.h"
 
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
@@ -79,7 +86,7 @@ RadiativeTransportEquationSystem::RadiativeTransportEquationSystem(
   const bool activateUpwind,
   const bool deactivateSucv,
   const bool externalCoupling)
-  : EquationSystem(eqSystems, "RadiativeTransportEQS"),
+  : EquationSystem(eqSystems, "RadiativeTransportEQS", "intensity"),
     quadratureOrder_(quadratureOrder),
     activateScattering_(activateScattering),
     activateUpwind_(activateUpwind),
@@ -483,87 +490,84 @@ RadiativeTransportEquationSystem::register_interior_algorithm(
   // push back part vector
   interiorPartVec_.push_back(part);
 
-  // solver; interior contribution; many supported
-  std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi
-    = solverAlgDriver_->solverAlgMap_.find(algType);
-  if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
-    SolverAlgorithm *theSolverAlg = NULL;
-    if ( realm_.realmUsesEdges_ ) {
+  // solver; interior contribution
+  if ( realm_.realmUsesEdges_ ) {
+    // edge-based SUCV or upwind
+    std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi
+      = solverAlgDriver_->solverAlgMap_.find(algType);
+    if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
+      SolverAlgorithm *theSolverAlg = NULL;
       if ( activateUpwind_ ) // only supported for edge (constructor enforces this)
         theSolverAlg = new AssembleRadTransEdgeUpwindSolverAlgorithm(realm_, part, this);
       else
         theSolverAlg = new AssembleRadTransEdgeSolverAlgorithm(realm_, part, this);
+      solverAlgDriver_->solverAlgMap_[algType] = theSolverAlg; 
     }
     else {
-      if ( !realm_.solutionOptions_->useConsolidatedSolverAlg_ ) {
-        theSolverAlg = new AssembleRadTransElemSolverAlgorithm(realm_, part, this);
-      }
-      else {
-        // create the generic solver algorithm
-        theSolverAlg = new AssembleElemSolverAlgorithmDep(realm_, part, this);
+      itsi->second->partVec_.push_back(part);
+    }
+
+    // add in nodal-based source terms
+    const AlgorithmType algMass = SRC;
+    std::map<AlgorithmType, SolverAlgorithm *>::iterator itsrc =
+      solverAlgDriver_->solverAlgMap_.find(algMass);
+    if ( itsrc == solverAlgDriver_->solverAlgMap_.end() ) {
+      // create the solver alg
+      AssembleNodeSolverAlgorithm *theAlg
+        = new AssembleNodeSolverAlgorithm(realm_, part, this);
+      solverAlgDriver_->solverAlgMap_[algMass] = theAlg;
+      
+      // (mu+sc)*Ib
+      RadTransBlackBodyNodeSuppAlg *bbSrc
+        = new RadTransBlackBodyNodeSuppAlg(realm_, this);
+      theAlg->supplementalAlg_.push_back(bbSrc);
+      
+      // isotropic scattering
+      if ( activateScattering_ ) {
+        RadTransIsoScatteringNodeSuppAlg *isSrc
+          = new RadTransIsoScatteringNodeSuppAlg(realm_, this);
+        theAlg->supplementalAlg_.push_back(isSrc);
       }
     }
-    solverAlgDriver_->solverAlgMap_[algType] = theSolverAlg;
+    else {
+      itsrc->second->partVec_.push_back(part);
+    }
+  }
+  else {
+    // element-based uses consolidated approach fully
+    stk::topology partTopo = part->topology();
+    auto& solverAlgMap = solverAlgDriver_->solverAlgorithmMap_;
+
+    AssembleElemSolverAlgorithm* solverAlg = nullptr;
+    bool solverAlgWasBuilt = false;
     
-    // look for fully integrated source terms, only one
-    std::map<std::string, std::vector<std::string> >::iterator itfisrc 
-      = realm_.solutionOptions_->elemSrcTermsMap_.find("intensity");
-    if ( itfisrc != realm_.solutionOptions_->elemSrcTermsMap_.end() ) {
+    std::tie(solverAlg, solverAlgWasBuilt) = build_or_add_part_to_solver_alg(*this, *part, solverAlgMap);
 
-      if ( realm_.realmUsesEdges_ )
-        throw std::runtime_error("IntensityElemSrcTerms::Error can not use element source terms for an edge-based scheme");
+    ElemDataRequests& dataPreReqs = solverAlg->dataNeededByKernels_;
+    auto& activeKernels = solverAlg->activeKernels_;
+    
+    if (solverAlgWasBuilt) {
 
-      std::vector<std::string> mapNameVec = itfisrc->second;
-      for (size_t k = 0; k < mapNameVec.size(); ++k ) {
-        std::string sourceName = mapNameVec[k];
-        SupplementalAlgorithm *suppAlg = NULL;
-        if (sourceName == "SUPG" ) {
-          suppAlg = new RadTransSupgElemSuppAlg(realm_, this);
-        }
-        else if (sourceName == "FEM_SUPG" ) {
-          suppAlg = new RadTransFemElemSuppAlg(realm_, this);
-        }
-        else {
-          throw std::runtime_error("IntensityElemSrcTerms::Error Source term is not supported: " + sourceName);
-        }
-        theSolverAlg->supplementalAlg_.push_back(suppAlg);
-      }
+      // allow option to remove SUCV, likely, not useful
+      build_topo_kernel_if_requested<RadTransAdvectionSUCVElemKernel>
+        (partTopo, *this, activeKernels, "advection_sucv",
+         realm_.bulk_data(), this, deactivateSucv_ ? 0.0 : 1.0, *realm_.solutionOptions_, dataPreReqs);
+
+      // lumped mass set to true
+      build_topo_kernel_if_requested<RadTransAbsorptionBlackBodyElemKernel>
+        (partTopo, *this, activeKernels, "absorption_black_body",
+         realm_.bulk_data(), true, dataPreReqs);
+
+      // lumped mass set to true
+      build_topo_kernel_if_requested<RadTransIsotropicScatteringElemKernel>
+        (partTopo, *this, activeKernels, "isotropic_scattering",
+         realm_.bulk_data(), true, dataPreReqs);
+      
+      report_invalid_supp_alg_names();
+      report_built_supp_alg_names();
     }
-  }
-  else {
-    itsi->second->partVec_.push_back(part);
-  }
-
-  // nodal source terms; not for consolidated
-  if ( realm_.solutionOptions_->useConsolidatedSolverAlg_ )
-    return;
-
-  const AlgorithmType algMass = SRC;
-  std::map<AlgorithmType, SolverAlgorithm *>::iterator itsrc =
-    solverAlgDriver_->solverAlgMap_.find(algMass);
-  if ( itsrc == solverAlgDriver_->solverAlgMap_.end() ) {
-    // create the solver alg
-    AssembleNodeSolverAlgorithm *theAlg
-      = new AssembleNodeSolverAlgorithm(realm_, part, this);
-    solverAlgDriver_->solverAlgMap_[algMass] = theAlg;
-
-    // (mu+sc)*Ib
-    RadTransBlackBodyNodeSuppAlg *bbSrc
-      = new RadTransBlackBodyNodeSuppAlg(realm_, this);
-    theAlg->supplementalAlg_.push_back(bbSrc);
-
-    // isotropic scattering
-    if ( activateScattering_ ) {
-      RadTransIsoScatteringNodeSuppAlg *isSrc
-        = new RadTransIsoScatteringNodeSuppAlg(realm_, this);
-      theAlg->supplementalAlg_.push_back(isSrc);
-    }
-  }
-  else {
-    itsrc->second->partVec_.push_back(part);
   }
 }
-
 //--------------------------------------------------------------------------
 //-------- register_wall_bc ------------------------------------------------
 //--------------------------------------------------------------------------
