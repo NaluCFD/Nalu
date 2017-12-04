@@ -7,7 +7,7 @@
 
 
 // nalu
-#include <AssembleScalarNormalGradientBCSolverAlgorithm.h>
+#include <AssembleTemperatureNormalGradientBCSolverAlgorithm.h>
 #include <EquationSystem.h>
 #include <FieldTypeDef.h>
 #include <LinearSystem.h>
@@ -29,7 +29,7 @@ namespace nalu{
 //==========================================================================
 // Class Definition
 //==========================================================================
-// AssembleScalarNormalGradientBCSolverAlgorithm - 
+// AssembleTemperatureNormalGradientBCSolverAlgorithm - 
 //   This boundary conditions applies a scalar normal flux bc, 
 //   Int bcScalarQ*area, such that a specified normal temperature gradient
 //   is achieved.
@@ -37,7 +37,7 @@ namespace nalu{
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-AssembleScalarNormalGradientBCSolverAlgorithm::AssembleScalarNormalGradientBCSolverAlgorithm(
+AssembleTemperatureNormalGradientBCSolverAlgorithm::AssembleTemperatureNormalGradientBCSolverAlgorithm(
   Realm &realm,
   stk::mesh::Part *part,
   EquationSystem *eqSystem,
@@ -60,7 +60,7 @@ AssembleScalarNormalGradientBCSolverAlgorithm::AssembleScalarNormalGradientBCSol
 //-------- initialize_connectivity -----------------------------------------
 //--------------------------------------------------------------------------
 void
-AssembleScalarNormalGradientBCSolverAlgorithm::initialize_connectivity()
+AssembleTemperatureNormalGradientBCSolverAlgorithm::initialize_connectivity()
 {
   eqSystem_->linsys_->buildFaceToNodeGraph(partVec_);
 }
@@ -69,7 +69,7 @@ AssembleScalarNormalGradientBCSolverAlgorithm::initialize_connectivity()
 //-------- execute ---------------------------------------------------------
 //--------------------------------------------------------------------------
 void
-AssembleScalarNormalGradientBCSolverAlgorithm::execute()
+AssembleTemperatureNormalGradientBCSolverAlgorithm::execute()
 {
 
   stk::mesh::BulkData & bulk_data = realm_.bulk_data();

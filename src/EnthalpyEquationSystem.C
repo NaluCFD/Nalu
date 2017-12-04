@@ -16,7 +16,7 @@
 #include <AssembleScalarElemSolverAlgorithm.h>
 #include <AssembleScalarElemOpenSolverAlgorithm.h>
 #include <AssembleScalarNonConformalSolverAlgorithm.h>
-#include <AssembleScalarNormalGradientBCSolverAlgorithm.h>
+#include <AssembleTemperatureNormalGradientBCSolverAlgorithm.h>
 #include <AssembleNodalGradAlgorithmDriver.h>
 #include <AssembleNodalGradEdgeAlgorithm.h>
 #include <AssembleNodalGradElemAlgorithm.h>
@@ -904,8 +904,8 @@ EnthalpyEquationSystem::register_symmetry_bc(
     std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi =
       solverAlgDriver_->solverAlgMap_.find(algType);
     if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
-      AssembleScalarNormalGradientBCSolverAlgorithm *theAlg
-        = new AssembleScalarNormalGradientBCSolverAlgorithm(realm_, part, this,
+      AssembleTemperatureNormalGradientBCSolverAlgorithm *theAlg
+        = new AssembleTemperatureNormalGradientBCSolverAlgorithm(realm_, part, this,
                                                   theBcField, evisc_, specHeat_, realm_.realmUsesEdges_);
       solverAlgDriver_->solverAlgMap_[algType] = theAlg;
     }

@@ -5,8 +5,8 @@
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
-#ifndef AssembleScalarNormalGradientBCSolverAlgorithm_h
-#define AssembleScalarNormalGradientBCSolverAlgorithm_h
+#ifndef AssembleTemperatureNormalGradientBCSolverAlgorithm_h
+#define AssembleTemperatureNormalGradientBCSolverAlgorithm_h
 
 #include<SolverAlgorithm.h>
 #include<FieldTypeDef.h>
@@ -23,11 +23,11 @@ namespace nalu{
 class LinearSystem;
 class Realm;
 
-class AssembleScalarNormalGradientBCSolverAlgorithm : public SolverAlgorithm
+class AssembleTemperatureNormalGradientBCSolverAlgorithm : public SolverAlgorithm
 {
 public:
 
-  AssembleScalarNormalGradientBCSolverAlgorithm(
+  AssembleTemperatureNormalGradientBCSolverAlgorithm(
     Realm &realm,
     stk::mesh::Part *part,
     EquationSystem *eqSystem,
@@ -35,7 +35,7 @@ public:
     ScalarFieldType *evisc,
     ScalarFieldType *specHeat,
     bool useShifted);
-  virtual ~AssembleScalarNormalGradientBCSolverAlgorithm() {}
+  virtual ~AssembleTemperatureNormalGradientBCSolverAlgorithm() {}
   virtual void initialize_connectivity();
   virtual void execute();
 
