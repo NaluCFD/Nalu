@@ -4827,21 +4827,11 @@ Realm::get_inactive_selector()
   // accumulate inactive parts relative to the universal part
   
   // provide inactive Overset part that excludes background surface
-  stk::mesh::Selector inactiveOverSetSelector =
-    (hasOverset_) ? oversetManager_->get_inactive_selector()
-    : stk::mesh::Selector();
-
-  // // provide inactive dataProbe parts
-  // stk::mesh::Selector inactiveDataProbeSelector = (NULL != dataProbePostProcessing_)
-  //   ? (dataProbePostProcessing_->get_inactive_selector())
-  //   : stk::mesh::Selector();
-
-  // stk::mesh::Selector inactiveABLForcing = (
-  //   ( NULL != ablForcingAlg_)
-  //   ? (ablForcingAlg_->inactive_selector())
-  //   : stk::mesh::Selector());
-  
-  // return inactiveOverSetSelector | inactiveDataProbeSelector | inactiveABLForcing;
+  //
+  // Treat this selector differently because certain entities from interior
+  // blocks could have been inactivated by the overset algorithm. 
+  stk::mesh::Selector inactiveOverSetSelector = (hasOverset_) ?
+      oversetManager_->get_inactive_selector() : stk::mesh::Selector();
 
   stk::mesh::Selector otherInactiveSelector = (
     metaData_->universal_part()
