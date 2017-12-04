@@ -201,8 +201,10 @@ AssembleScalarNormalGradientBCSolverAlgorithm::execute()
           areaNorm += areaVec[offset+idir]*areaVec[offset+idir];
         areaNorm = std::sqrt(areaNorm);
 
+        // compute boundary normal heat flux as effective diffusivity * specific heat * temperature gradient
+        // Here the normal direction for the gradient is assumed pointing into the domain, hence the 
+        // negative sign.
         double qn = -eviscBip*specHeatBip*gradBip;
-      //NaluEnv::self().naluOutputP0() << "Computed q_normal on face node = " << qn << "; specificHeat = " << specHeatBip << "; eviscBip = " << eviscBip << "; gradT = " << gradBip << std::endl;
 
         p_rhs[localFaceNode] += qn*areaNorm;
       }
