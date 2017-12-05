@@ -437,12 +437,6 @@ AssembleContinuityNonConformalSolverAlgorithm::execute()
           &(dgInfo->currentIsoParCoords_[0]),
           &ws_c_velocity[0],
           &currentVelocityBip[0]);
-
-        meFCCurrent->interpolatePoint(
-          sizeOfVectorField,
-          &(dgInfo->currentIsoParCoords_[0]),
-          &ws_c_velocity[0],
-          &currentVelocityBip[0]);
         
         meSCSOpposing->interpolatePoint(
           sizeOfVectorField,
