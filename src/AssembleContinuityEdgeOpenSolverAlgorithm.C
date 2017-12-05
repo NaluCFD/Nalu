@@ -7,12 +7,13 @@
 
 
 // nalu
-#include <AssembleContinuityEdgeOpenSolverAlgorithm.h>
-#include <EquationSystem.h>
-#include <FieldTypeDef.h>
-#include <LinearSystem.h>
-#include <Realm.h>
-#include <master_element/MasterElement.h>
+#include "AssembleContinuityEdgeOpenSolverAlgorithm.h"
+#include "EquationSystem.h"
+#include "FieldTypeDef.h"
+#include "LinearSystem.h"
+#include "Realm.h"
+#include "SolutionOptions.h"
+#include "master_element/MasterElement.h"
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/BulkData.hpp>
@@ -58,7 +59,7 @@ AssembleContinuityEdgeOpenSolverAlgorithm::AssembleContinuityEdgeOpenSolverAlgor
   pressure_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure");
   density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
   exposedAreaVec_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");
-  pressureBc_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure_bc");
+  pressureBc_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, realm_.solutionOptions_->activateOpenMdotCorrection_ ? "pressure" : "pressure_bc");
 }
 
 //--------------------------------------------------------------------------
@@ -76,7 +77,6 @@ AssembleContinuityEdgeOpenSolverAlgorithm::initialize_connectivity()
 void
 AssembleContinuityEdgeOpenSolverAlgorithm::execute()
 {
-
   stk::mesh::BulkData & bulk_data = realm_.bulk_data();
   stk::mesh::MetaData & meta_data = realm_.meta_data();
 
@@ -87,6 +87,14 @@ AssembleContinuityEdgeOpenSolverAlgorithm::execute()
   const double nocFac
     = (realm_.get_noc_usage(dofName) == true) ? 1.0 : 0.0;
 
+  // extract global algorithm options, if active
+  const double mdotCorrection = realm_.solutionOptions_->activateOpenMdotCorrection_ 
+    ? realm_.solutionOptions_->mdotAlgOpenCorrection_
+    : 0.0;
+  const double pstabFac = realm_.solutionOptions_->activateOpenMdotCorrection_ 
+    ? 0.0
+    : 1.0;
+    
   // lhs/rhs space
   std::vector<double> lhs;
   std::vector<double> rhs;
@@ -218,22 +226,22 @@ AssembleContinuityEdgeOpenSolverAlgorithm::execute()
         const double rhoBip = densityR;
 
         //  mdot
-        double tmdot = -projTimeScale*(bcPressure-pressureIp)*asq*inv_axdx;
+        double tmdot = -projTimeScale*(bcPressure-pressureIp)*asq*inv_axdx*pstabFac - mdotCorrection;
         for ( int j = 0; j < nDim; ++j ) {
           const double axj = areaVec[faceOffSet+j];
           const double coordIp = 0.5*(coordR[j] + coordL[j]);
           const double dxj = coordR[j]  - coordIp;
           const double kxj = axj - asq*inv_axdx*dxj;
           const double Gjp = GpdxR[j];
-          tmdot += (rhoBip*vrtmR[j]+projTimeScale*Gjp)*axj
-            - projTimeScale*kxj*Gjp*nocFac;
+          tmdot += (rhoBip*vrtmR[j]+projTimeScale*Gjp*pstabFac)*axj
+            - projTimeScale*kxj*Gjp*nocFac*pstabFac;
         }
 
         // rhs
         p_rhs[nearestNode] -= tmdot/projTimeScale;
 
         // lhs right; IR, IL; IR, IR
-        double lhsfac = asq*inv_axdx;
+        double lhsfac = asq*inv_axdx*pstabFac;
         p_lhs[rowR+nearestNode] += 0.5*lhsfac;
         p_lhs[rowR+opposingNode] += 0.5*lhsfac;
       }

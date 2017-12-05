@@ -727,6 +727,28 @@ important for stability for CVFEM tet-based meshes where a natural
 non-orthogonality exists between the boundary and interior integration
 point.
 
+In rare use cases, the usage of the standard open boundary mass flow 
+rate expression, which includes pressure contributions, is not appropriate
+due to complex temperature/buoyancy specifications, e.g., what is commonly
+seen in Bousinesq Atmospheric Boundary Layer (ABL), simulations. In these cases, 
+a global correction algorithm is supported. Specifically, pressure terms are dropped 
+at the open boundary mass flow rate expression
+in favor or a pre-processing algorithm that uniformly distributes the 
+continuity mass flow rate (and possible density accumulation) "error" over
+the entire set of open boundary conditions. This "global corerction" scheme
+may perform well with single open boundary condition specification, e.g., 
+multiple inflows with a single open locaiton, however, it to be avoided if the flow
+leaving the domain is complex in that a simulation includes multiple open boundary
+conditions. A complex situaiton might be an open jet with entrianment from the side 
+(open boundary that allows for inflow) and a top open that allows for outflow. However,
+a routine case might be a backward facing step with a single inflow, side periodic, top
+wall and open boundary. Not that the ability for the continuity solve to be 
+well conditioned may require an interior Dirichelt on pressure as the open pressure
+specification for the "global correct" algorithm is lacking. In most cases,
+a Dirichlet condition is not actually required as the NULL-space of the continuity
+system may not be found in the solve.
+
+
 Momentum
 ~~~~~~~~
 
