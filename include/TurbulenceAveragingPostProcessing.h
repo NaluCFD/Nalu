@@ -10,6 +10,7 @@
 #define TurbulenceAveragingPostProcessing_h
 
 #include <NaluParsing.h>
+#include <MovingAveragePostProcessor.h>
 
 #include <string>
 #include <vector>
@@ -112,6 +113,9 @@ public:
   double currentTimeFilter_; /* provided by restart */
   double timeFilterInterval_; /* user supplied */
   bool forcedReset_; /* allows forhard reset */
+
+
+  std::unique_ptr<MovingAveragePostProcessor> movingAvgPP_;
 
   // vector of averaging information
   std::vector<AveragingInfo *> averageInfoVec_;
