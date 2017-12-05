@@ -168,85 +168,6 @@ coordinate system, then calculating the Coriolis acceleration vector
 using user-supplied North and East unit vectors given in the model
 coordinate system.
 
-ABL Forcing Source Terms
-++++++++++++++++++++++++
-
-In LES of wind plant atmospheric flows, it is often necessary to
-drive the flow to a predetermined vertical velocity and/or temperature profile.
-In Nalu, this is achieved by adding appropriate
-source terms :math:`\mathrm{f}_i` to the
-momentum equation :eq:`favmom`.
-
-The main objective of this implementation is to force the volume averaged velocity at
-a certain location to a specified value (:math:`<\mathrm{u}_i>=\mathrm{U}_i`).
-The brackets used here, :math:`<>`, mean volume averaging over a certain region.
-In order to achieve this, a source term must be applied to the momentum equation.
-This source term can be better understood as a proportional controller within the
-momentum equation.
-
-The velocity and density fields can be decomposed into a volume averaged component
-and fluctuations about that volume average as
-:math:`\mathrm{u}_i = \left< \mathrm{u}_i \right> + \mathrm{u}_i'` and
-:math:`\bar{\rho} = \left< \bar{\rho} \right> + \bar{\rho}'`.
-A decomposition of the plane averaged momentum at a given instance in time is then
-
-.. math::
-       \left< \bar{\rho}  \mathrm{u}_i  \right>  =
-        \left< \bar{\rho} \right> \left< \mathrm{u}_i \right>
-        + \left< \bar{\rho}'  \mathrm{u}'_i  \right>.
-
-We now wish to apply a momentum source based on a desired spatial averaged velocity
-:math:`\mathrm{U}_i`.
-This can be expressed as:
-
-.. math::
-       \left< \bar{\rho}  \mathrm{u}_i^*  \right>  =
-        \left< \bar{\rho} \right> \left< \mathrm{u}^*_i \right>
-        + \left< \bar{\rho}'  {\mathrm{u}^*_i}'  \right>,
-
-where :math:`\mathrm{u}_i^*` is an unknown reference velocity field whose volume
-average is the desired  velocity :math:`\left< \mathrm{u}_i^* \right> = \mathrm{U}_i`.
-Since the correlation :math:`\left< \bar{\rho}'  \mathrm{u^*}'_i  \right>`
-is unknown, we assume that
-
-.. math::
-    \left< \bar{\rho}'  \mathrm{u^*}'_i  \right>
-    =
-    \left< \bar{\rho}'  \mathrm{u}'_i  \right>
-
-such that the momentum source can now be defined as:
-
-.. math::
-   :label: abl-mom-source
-
-   {\mathrm{f}_i} = \alpha_u
-        \left(  \, \frac{\left< \bar{\rho} \right> \mathrm{U_i}
-        - \left< \bar{\rho} \right> \left< \mathrm{u}_i \right>}
-        {\Delta t}\right)
-
-where :math:`\left< \right>` denotes volume averaging at a
-certain time :math:`t`,
-:math:`\mathrm{U}_i` is the desired spatial averaged
-velocity,
-and :math:`\Delta t` is the time-scale between when the source term is computed
-(time :math:`t`) and when it is applied (time :math:`t + \Delta t`).
-This is typically chosen to be the simulation time-step.
-In the case of an ABL simulation with flat terrain, the voulme averaging is done
-over an infinitesimal small plane over the :math:`x` and :math:`y` directions,
-such that the body force is only a
-function of height :math:`z` and time :math:`t`.
-The implementation allows the
-user to prescribe relaxation factors :math:`\alpha_u` for the source terms that are
-applied. Nalu uses a default value of 1.0 for the relaxation factors if no
-values are defined in the input file during initialization.
-
-The present implementation can vary the
-source terms as a function of time and space using either a user-defined table
-of previously computed source terms (e.g., from a *precursor* simulation or
-another model such as WRF), or compute the source term as a function of the
-transient flow solution.
-
-
 Filtered Mixture Fraction
 +++++++++++++++++++++++++
 
@@ -336,14 +257,15 @@ used for turbulent transport is
      - \int \frac{\partial \bar{q}_i^r}{\partial x_i} {\rm d}V \\
      &+ \int \left( \frac{\partial \bar{P}}{\partial t}
      + \widetilde{u}_j \frac{\partial \bar{P}}{\partial x_j} \right){\rm d}V
-     + \int \overline{\tau_{ij} \frac{\partial u_i}{\partial x_j }} {\rm d}V.
-
+     + \int \overline{\tau_{ij} \frac{\partial u_i}{\partial x_j }} {\rm d}V
+     + \int S_\theta {\rm d}V.
 
 The above equation is derived by starting with the total internal
 energy equation, subtracting the mechanical energy equation and
 enforcing the variable density continuity equation. Note that the above
 equation includes possible source terms due to thermal radiatitive
-transport, viscous dissipation, and pressure work.
+transport, viscous dissipation, pressure work,
+and external driving sources (:math:`S_\theta`).
 
 The simple Fickian diffusion velocity approximation,
 Equation :eq:`diffvel1`, is assumed, so that the mean diffusive heat flux
@@ -479,6 +401,104 @@ following temperature form:
 .. math::
 
    q_j = -\kappa \frac{\partial T}{\partial x_j}.
+
+ABL Forcing Source Terms
+++++++++++++++++++++++++
+
+In LES of wind plant atmospheric flows, it is often necessary to
+drive the flow to a predetermined vertical velocity and/or temperature profile.
+In Nalu, this is achieved by adding appropriate
+source terms :math:`\mathrm{f}_i` to the
+momentum equation :eq:`favmom` and
+:math:`S_\theta` to the enthalpy equation :eq:`fav-enth`.
+
+First, the momentum source term is discussed.
+The main objective of this implementation is to force the volume averaged velocity at
+a certain location to a specified value (:math:`<\mathrm{u}_i>=\mathrm{U}_i`).
+The brackets used here, :math:`<>`, mean volume averaging over a certain region.
+In order to achieve this, a source term must be applied to the momentum equation.
+This source term can be better understood as a proportional controller within the
+momentum equation.
+
+The velocity and density fields can be decomposed into a volume averaged component
+and fluctuations about that volume average as
+:math:`\mathrm{u}_i = \left< \mathrm{u}_i \right> + \mathrm{u}_i'` and
+:math:`\bar{\rho} = \left< \bar{\rho} \right> + \bar{\rho}'`.
+A decomposition of the plane averaged momentum at a given instance in time is then
+
+.. math::
+       \left< \bar{\rho}  \mathrm{u}_i  \right>  =
+        \left< \bar{\rho} \right> \left< \mathrm{u}_i \right>
+        + \left< \bar{\rho}'  \mathrm{u}'_i  \right>.
+
+We now wish to apply a momentum source based on a desired spatial averaged velocity
+:math:`\mathrm{U}_i`.
+This can be expressed as:
+
+.. math::
+       \left< \bar{\rho}  \mathrm{u}_i^*  \right>  =
+        \left< \bar{\rho} \right> \left< \mathrm{u}^*_i \right>
+        + \left< \bar{\rho}'  {\mathrm{u}^*_i}'  \right>,
+
+where :math:`\mathrm{u}_i^*` is an unknown reference velocity field whose volume
+average is the desired  velocity :math:`\left< \mathrm{u}_i^* \right> = \mathrm{U}_i`.
+Since the correlation :math:`\left< \bar{\rho}'  \mathrm{u^*}'_i  \right>`
+is unknown, we assume that
+
+.. math::
+    \left< \bar{\rho}'  \mathrm{u^*}'_i  \right>
+    =
+    \left< \bar{\rho}'  \mathrm{u}'_i  \right>
+
+such that the momentum source can now be defined as:
+
+.. math::
+   :label: abl-mom-source
+
+   {\mathrm{f}_i} = \alpha_u
+        \left(  \, \frac{\left< \bar{\rho} \right> \mathrm{U_i}
+        - \left< \bar{\rho} \right> \left< \mathrm{u}_i \right>}
+        {\Delta t}\right)
+
+where :math:`\left< \right>` denotes volume averaging at a
+certain time :math:`t`,
+:math:`\mathrm{U}_i` is the desired spatial averaged
+velocity,
+and :math:`\Delta t` is the time-scale between when the source term is computed
+(time :math:`t`) and when it is applied (time :math:`t + \Delta t`).
+This is typically chosen to be the simulation time-step.
+In the case of an ABL simulation with flat terrain, the voulme averaging is done
+over an infinitesimal small plane over the :math:`x` and :math:`y` directions,
+such that the body force is only a
+function of height :math:`z` and time :math:`t`.
+The implementation allows the
+user to prescribe relaxation factors :math:`\alpha_u` for the source terms that are
+applied. Nalu uses a default value of 1.0 for the relaxation factors if no
+values are defined in the input file during initialization.
+
+The enthalpy source term works similarly to the momentum source term.
+A temperature difference is computed at every time-step and a forcing term
+is added to the enthalpy equation:
+
+.. math::
+
+  S_\theta = \alpha_\theta C_p
+      \left(
+         \frac{\theta_{\rm ref} - \left< \theta \right>}{\Delta t}
+      \right)
+
+where :math:`\theta_{\rm ref}` is the desired spatial averaged temperature,
+:math:`\left< \theta \right>` is the spatial averaged temperature,
+:math:`C_p` is the heat capcity,
+:math:`\alpha_\theta` is the relaxation factor,
+and
+:math:`\Delta t` is the time-scale.
+
+The present implementation can vary the
+source terms as a function of time and space using either a user-defined table
+of previously computed source terms (e.g., from a *precursor* simulation or
+another model such as WRF), or compute the source term as a function of the
+transient flow solution.
 
 Conservation of Species
 +++++++++++++++++++++++

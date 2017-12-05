@@ -272,7 +272,7 @@ Realm subsection                  Purpose
 :inpfile:`solution_norm`          Compare the solution error to a reference solution
 :inpfile:`data_probes`            Extract data using probes
 :inpfile:`actuator`               Model turbine blades/tower using actuator lines
-:inpfile:`abl_forcing`            Pressure source term to drive ABL flows to a desired velocity profile
+:inpfile:`abl_forcing`            Momentum source term to drive ABL flows to a desired velocity profile
 ================================ ===========================================================================
 
 
@@ -1201,6 +1201,8 @@ Post-processing
    A list of element blocks (parts) where to do the post-processing
 
 .. _nalu_inp_transfers:
+
+.. include:: ./abl_forcing.rst
 
 Transfers
 ---------
