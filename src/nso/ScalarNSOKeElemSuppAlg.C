@@ -271,7 +271,7 @@ ScalarNSOKeElemSuppAlg::elem_execute(
       // save of some variables
       const double qIC = ws_qNp1_[ic];
       
-      // NSO diffusion-like term; -nu*gUpper*(dQ/dxj - Gjq)*ai (residual below)
+      // NSO diffusion-like term; -nu*gUpper*(dq/dxj - Gjq)*ai (residual below)
       double lhsfac = 0.0;
       const int offSetDnDx = nDim_*nodesPerElement*ip + ic*nDim_;
       for ( int i = 0; i < nDim_; ++i ) {

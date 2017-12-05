@@ -7,9 +7,10 @@
 
 #include "gtest/gtest.h"
 #include "UnitTestKokkosME.h"
+#include "UnitTestKokkosMEGold.h"
 
 void check_that_values_match(const sierra::nalu::SharedMemView<DoubleType*>& values,
-                             const std::vector<double>& oldValues)
+                             const double* oldValues)
 {
   for(size_t i=0; i<values.dimension(0); ++i) {
       EXPECT_NEAR(stk::simd::get_data(values(i),0), oldValues[i], tol)<<"i:"<<i;
@@ -17,7 +18,7 @@ void check_that_values_match(const sierra::nalu::SharedMemView<DoubleType*>& val
 }
 
 void check_that_values_match(const sierra::nalu::SharedMemView<DoubleType**>& values,
-                             const std::vector<double>& oldValues)
+                             const double* oldValues)
 {
   int counter = 0;
   for(size_t i=0; i<values.dimension(0); ++i) {
@@ -28,7 +29,7 @@ void check_that_values_match(const sierra::nalu::SharedMemView<DoubleType**>& va
 }
 
 void check_that_values_match(const sierra::nalu::SharedMemView<DoubleType***>& values,
-                             const std::vector<double>& oldValues)
+                             const double* oldValues)
 {
   int counter = 0;
   for(size_t i=0; i<values.dimension(0); ++i) {
@@ -62,7 +63,7 @@ void compare_old_scv_volume( const sierra::nalu::SharedMemView<DoubleType**>& v_
   double error = 0;
   meSCV->determinant(1, coords.data(), volume.data(), &error);
   EXPECT_NEAR(error, 0.0, tol);
-  check_that_values_match(scv_volume, volume);
+  check_that_values_match(scv_volume, &volume[0]);
 }
 
 void compare_old_scs_areav( const sierra::nalu::SharedMemView<DoubleType**>& v_coords,
@@ -76,7 +77,7 @@ void compare_old_scs_areav( const sierra::nalu::SharedMemView<DoubleType**>& v_c
   double error = 0;
   meSCS->determinant(1, coords.data(), areav.data(), &error);
   EXPECT_NEAR(error, 0.0, tol);
-  check_that_values_match(scs_areav, areav);
+  check_that_values_match(scs_areav, &areav[0]);
 }
 
 void compare_old_scs_grad_op( const sierra::nalu::SharedMemView<DoubleType**>& v_coords,
@@ -93,8 +94,8 @@ void compare_old_scs_grad_op( const sierra::nalu::SharedMemView<DoubleType**>& v
   double error = 0;
   meSCS->grad_op(1, coords.data(), grad_op.data(), deriv.data(), det_j.data(), &error);
   EXPECT_NEAR(error, 0.0, tol);
-  check_that_values_match(scs_dndx, grad_op);
-  check_that_values_match(scs_deriv, deriv);
+  check_that_values_match(scs_dndx, &grad_op[0]);
+  check_that_values_match(scs_deriv, &deriv[0]);
 }
 
 void compare_old_scs_shifted_grad_op( const sierra::nalu::SharedMemView<DoubleType**>& v_coords,
@@ -111,8 +112,7 @@ void compare_old_scs_shifted_grad_op( const sierra::nalu::SharedMemView<DoubleTy
   double error = 0;
   meSCS->shifted_grad_op(1, coords.data(), grad_op.data(), deriv.data(), det_j.data(), &error);
   EXPECT_NEAR(error, 0.0, tol);
-//  check_that_values_match(scs_dndx, grad_op);
-  check_that_values_match(scs_deriv, deriv);
+  check_that_values_match(scs_deriv, &deriv[0]);
 }
 
 void compare_old_scs_gij(const sierra::nalu::SharedMemView<DoubleType**>& v_coords,
@@ -133,9 +133,8 @@ void compare_old_scs_gij(const sierra::nalu::SharedMemView<DoubleType**>& v_coor
   double error = 0;
   meSCS->grad_op(1, coords.data(), grad_op.data(), deriv.data(), det_j.data(), &error);
   meSCS->gij(coords.data(), gijUpper.data(), gijLower.data(), deriv.data());
-  check_that_values_match(v_gijUpper, gijUpper);
-  check_that_values_match(v_gijLower, gijLower);
-//  check_that_values_match(v_deriv, deriv);
+  check_that_values_match(v_gijUpper, &gijUpper[0]);
+  check_that_values_match(v_gijLower, &gijLower[0]);
 }
 
 template<typename AlgTraits>
@@ -181,6 +180,14 @@ void test_ME_views(const std::vector<sierra::nalu::ELEM_DATA_NEEDED>& requests)
           if (request == sierra::nalu::SCV_VOLUME) {
             compare_old_scv_volume(v_coords, meViews.scv_volume, meSCV);
           }
+          if ( request == sierra::nalu::SCV_GRAD_OP ) {
+            if ( AlgTraits::topo_ == stk::topology::HEX_8 ) {
+              check_that_values_match(meViews.dndx_scv, &kokkos_me_gold::hex8_scv_grad_op[0]);
+            }
+            else if ( AlgTraits::topo_ == stk::topology::TET_4 ) {
+              check_that_values_match(meViews.dndx_scv, &kokkos_me_gold::tet4_scv_grad_op[0]);
+            }
+          }
         }
       }
     });
@@ -194,6 +201,7 @@ TEST(KokkosME, test_hex8_views)
 //   sierra::nalu::SCS_SHIFTED_GRAD_OP,
      sierra::nalu::SCS_GIJ,
      sierra::nalu::SCV_VOLUME,
+     sierra::nalu::SCV_GRAD_OP
     }
   );
 }
@@ -205,7 +213,8 @@ TEST(KokkosME, test_tet4_views)
      sierra::nalu::SCS_GRAD_OP,
      sierra::nalu::SCS_SHIFTED_GRAD_OP,
      sierra::nalu::SCS_GIJ,
-     sierra::nalu::SCV_VOLUME
+     sierra::nalu::SCV_VOLUME, 
+     sierra::nalu::SCV_GRAD_OP
     }
   );
 }

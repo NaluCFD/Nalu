@@ -29,6 +29,8 @@
 #include <user_functions/WindEnergyTaylorVortexAuxFunction.h>
 #include <user_functions/WindEnergyTaylorVortexPressureAuxFunction.h>
 
+#include <user_functions/OneTwoTenVelocityAuxFunction.h>
+
 // stk_util
 #include <stk_util/parallel/ParallelReduce.hpp>
 
@@ -257,6 +259,9 @@ SolutionNormPostProcessing::analytical_function_factory(
   }
   else if ( functionName == "convecting_taylor_vortex_dpdx" ) {
     theAuxFunc = new ConvectingTaylorVortexPressureGradAuxFunction(0,realm_.meta_data().spatial_dimension());
+  }
+  else if ( functionName == "OneTwoTenVelocity" ) {
+    theAuxFunc = new OneTwoTenVelocityAuxFunction(0,realm_.meta_data().spatial_dimension());
   }
   else if ( functionName == "wind_energy_taylor_vortex" ) {
     theAuxFunc = new WindEnergyTaylorVortexAuxFunction(0,realm_.meta_data().spatial_dimension(), std::vector<double>());

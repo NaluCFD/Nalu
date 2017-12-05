@@ -13,11 +13,14 @@ if(RES_LEN EQUAL 0)
 endif()
 
 # Set TOLERANCE for testing
+message("-- CMAKE_SYSTEM_NAME     = ${CMAKE_SYSTEM_NAME}")
+message("-- CMAKE_CXX_COMPILER_ID = ${CMAKE_CXX_COMPILER_ID}")
 if(NOT ${TEST_TOLERANCE} STREQUAL "")
   set(TOLERANCE ${TEST_TOLERANCE}) # User defined
 else(NOT ${TEST_TOLERANCE} STREQUAL "")
   if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang"
+        OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang")
       set(TOLERANCE 0.005)
     elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
       set(TOLERANCE 0.005)
@@ -38,7 +41,7 @@ else(NOT ${TEST_TOLERANCE} STREQUAL "")
     endif()
   endif()
 endif()
-message("-- Using test tolerance of ${TOLERANCE} --")
+message("-- Using test tolerance of ${TOLERANCE}")
 
 # Create symlinks to mesh and xml directories
 execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink

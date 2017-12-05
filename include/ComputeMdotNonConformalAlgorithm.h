@@ -45,8 +45,13 @@ public:
   const bool meshMotion_;
   const bool useCurrentNormal_;
   const double includePstab_;
+<<<<<<< HEAD
   double meshFac_;
 
+=======
+  double meshMotionFac_;
+  
+>>>>>>> d59829be83c8103360e592b5da259e5bea533ccb
   std::vector< const stk::mesh::FieldBase *> ghostFieldVec_;
 };
 

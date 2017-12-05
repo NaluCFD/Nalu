@@ -10,6 +10,7 @@
 #include <element_promotion/LagrangeBasis.h>
 #include <element_promotion/QuadratureRule.h>
 #include <element_promotion/TensorProductQuadratureRule.h>
+#include <element_promotion/ElementDescription.h>
 #include <NaluEnv.h>
 #include <nalu_make_unique.h>
 
@@ -22,7 +23,8 @@
 #include <tuple>
 #include <utility>
 #include <array>
-#include <element_promotion/ElementDescription.h>
+#include <numeric>
+
 
 namespace sierra {
 namespace nalu {

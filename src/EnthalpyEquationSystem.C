@@ -16,6 +16,7 @@
 #include <AssembleScalarElemSolverAlgorithm.h>
 #include <AssembleScalarElemOpenSolverAlgorithm.h>
 #include <AssembleScalarNonConformalSolverAlgorithm.h>
+#include <AssembleTemperatureNormalGradientBCSolverAlgorithm.h>
 #include <AssembleNodalGradAlgorithmDriver.h>
 #include <AssembleNodalGradEdgeAlgorithm.h>
 #include <AssembleNodalGradElemAlgorithm.h>
@@ -72,6 +73,7 @@
 #include <ScalarMassElemKernel.h>
 #include <ScalarAdvDiffElemKernel.h>
 #include <ScalarUpwAdvDiffElemKernel.h>
+#include <nso/ScalarNSOKeElemKernel.h>
 
 // props
 #include <property_evaluator/EnthalpyPropertyEvaluator.h>
@@ -482,6 +484,14 @@ EnthalpyEquationSystem::register_interior_algorithm(
       (partTopo, *this, activeKernels, "NSO_4TH_ALT",
         realm_.bulk_data(), *realm_.solutionOptions_, enthalpy_, dhdx_, evisc_, 1.0, 1.0, dataPreReqs);
 
+      build_topo_kernel_if_requested<ScalarNSOKeElemKernel>
+      (partTopo, *this, activeKernels, "NSO_2ND_KE",
+        realm_.bulk_data(), *realm_.solutionOptions_, enthalpy_, dhdx_, realm_.get_turb_schmidt(enthalpy_->name()), 0.0, dataPreReqs);
+
+      build_topo_kernel_if_requested<ScalarNSOKeElemKernel>
+      (partTopo, *this, activeKernels, "NSO_4TH_KE",
+        realm_.bulk_data(), *realm_.solutionOptions_, enthalpy_, dhdx_, realm_.get_turb_schmidt(enthalpy_->name()), 1.0, dataPreReqs);
+
       report_invalid_supp_alg_names();
       report_built_supp_alg_names();
     }
@@ -853,7 +863,7 @@ void
 EnthalpyEquationSystem::register_symmetry_bc(
   stk::mesh::Part *part,
   const stk::topology &/*theTopo*/,
-  const SymmetryBoundaryConditionData &/*wallBCData*/)
+  const SymmetryBoundaryConditionData &symmetryBCData)
 {
 
   // algorithm type
@@ -862,6 +872,47 @@ EnthalpyEquationSystem::register_symmetry_bc(
   // np1
   ScalarFieldType &enthalpyNp1 = enthalpy_->field_of_state(stk::mesh::StateNP1);
   VectorFieldType &dhdxNone = dhdx_->field_of_state(stk::mesh::StateNone);
+
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
+
+  // extract user data
+  SymmetryUserData userData = symmetryBCData.userData_;
+  std::string temperatureName = "temperature";
+  
+
+  // If specifying the normal temperature gradient.
+  if ( userData.normalTemperatureGradientSpec_ ) {  
+    ScalarFieldType *theBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature_gradient_bc"));
+    stk::mesh::put_field(*theBcField, *part);
+
+    // Get the specified normal temperature gradient
+    NormalTemperatureGradient tempGrad = userData.normalTemperatureGradient_;
+    std::vector<double> userSpec(1);
+    userSpec[0] = tempGrad.tempGradN_;
+
+    // Use the constant auxiliary function
+    ConstantAuxFunction *theAuxFunc = new ConstantAuxFunction(0, 1, userSpec);
+
+    // bc data alg to populate the bc field with constant data.
+    AuxFunctionAlgorithm *auxAlg
+      = new AuxFunctionAlgorithm(realm_, part,
+                                 theBcField, theAuxFunc,
+                                 stk::topology::NODE_RANK);
+    bcDataAlg_.push_back(auxAlg);
+
+    // solver; lhs
+    std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi =
+      solverAlgDriver_->solverAlgMap_.find(algType);
+    if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
+      AssembleTemperatureNormalGradientBCSolverAlgorithm *theAlg
+        = new AssembleTemperatureNormalGradientBCSolverAlgorithm(realm_, part, this,
+                                                  theBcField, evisc_, specHeat_, realm_.realmUsesEdges_);
+      solverAlgDriver_->solverAlgMap_[algType] = theAlg;
+    }
+    else {
+      itsi->second->partVec_.push_back(part);
+    }
+  }
 
   // non-solver; dhdx; allow for element-based shifted
   if ( !managePNG_ ) {

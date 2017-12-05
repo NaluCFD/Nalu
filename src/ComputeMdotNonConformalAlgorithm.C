@@ -52,6 +52,7 @@ ComputeMdotNonConformalAlgorithm::ComputeMdotNonConformalAlgorithm(
     meshMotion_(realm_.does_mesh_move()) ,
     useCurrentNormal_(realm_.get_nc_alg_current_normal()),
     includePstab_(realm_.get_nc_alg_include_pstab() ? 1.0 : 0.0),
+<<<<<<< HEAD
     meshFac_(0.0)
 {
   // save off fields
@@ -64,6 +65,21 @@ ComputeMdotNonConformalAlgorithm::ComputeMdotNonConformalAlgorithm(
   else {   
     meshVelocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
     meshFac_ = 0.0;
+=======
+    meshMotionFac_(0.0)
+{
+  // save off fields
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
+
+  velocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
+  if ( meshMotion_ ) {
+    meshMotionFac_ = 1.0;
+    meshVelocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_velocity");
+  }
+  else {
+    meshMotionFac_ = 0.0;
+    meshVelocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
+>>>>>>> d59829be83c8103360e592b5da259e5bea533ccb
   }
 
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
@@ -115,10 +131,18 @@ ComputeMdotNonConformalAlgorithm::execute()
   std::vector<double> oNx(nDim);
   std::vector<double> currentVelocityBip(nDim);
   std::vector<double> opposingVelocityBip(nDim);
+<<<<<<< HEAD
   std::vector<double> currentMeshVelocityBip(nDim);
   std::vector<double> currentRhoVelocityBip(nDim);
   std::vector<double> opposingRhoVelocityBip(nDim);
   std::vector<double> currentRhoMeshVelocityBip(nDim);
+=======
+  std::vector<double> currentRhoVelocityBip(nDim);
+  std::vector<double> opposingRhoVelocityBip(nDim);
+  std::vector<double> currentMeshVelocityBip(nDim);
+  std::vector<double> currentRhoMeshVelocityBip(nDim);
+
+>>>>>>> d59829be83c8103360e592b5da259e5bea533ccb
   // pressure stabilization
   std::vector<double> currentGjpBip(nDim);
   std::vector<double> opposingGjpBip(nDim);
@@ -139,9 +163,19 @@ ComputeMdotNonConformalAlgorithm::execute()
   // nodal fields to gather; face
   std::vector<double> ws_c_pressure;
   std::vector<double> ws_c_Gjp;
+<<<<<<< HEAD
   std::vector<double> ws_c_velocity;
   std::vector<double> ws_c_mesh_velocity;
   std::vector<double> ws_c_density;
+=======
+  std::vector<double> ws_o_Gjp;
+  std::vector<double> ws_c_velocity;
+  std::vector<double> ws_o_velocity;
+  std::vector<double> ws_c_meshVelocity; // only require current
+  std::vector<double> ws_c_density;
+  std::vector<double> ws_o_density;
+  std::vector<double> ws_o_coordinates; // only require opposing
+>>>>>>> d59829be83c8103360e592b5da259e5bea533ccb
 
   // element
   std::vector<double> ws_o_elem_Gjp;
@@ -211,8 +245,15 @@ ComputeMdotNonConformalAlgorithm::execute()
         // algorithm related; face
         ws_c_pressure.resize(currentNodesPerFace);
         ws_c_Gjp.resize(currentNodesPerFace*nDim);
+<<<<<<< HEAD
         ws_c_velocity.resize(currentNodesPerFace*nDim);
         ws_c_mesh_velocity.resize(currentNodesPerFace*nDim);
+=======
+        ws_o_Gjp.resize(opposingNodesPerFace*nDim);
+        ws_c_velocity.resize(currentNodesPerFace*nDim);
+        ws_o_velocity.resize(opposingNodesPerFace*nDim);
+        ws_c_meshVelocity.resize(currentNodesPerFace*nDim);
+>>>>>>> d59829be83c8103360e592b5da259e5bea533ccb
         ws_c_density.resize(currentNodesPerFace);
 
         // algorithm related; element; dndx will be at a single gauss point
@@ -232,8 +273,15 @@ ComputeMdotNonConformalAlgorithm::execute()
         // pointers; face
         double *p_c_pressure = &ws_c_pressure[0];
         double *p_c_Gjp = &ws_c_Gjp[0];
+<<<<<<< HEAD
         double *p_c_velocity = &ws_c_velocity[0];
         double *p_c_mesh_velocity = &ws_c_mesh_velocity[0];
+=======
+        double *p_o_Gjp = &ws_o_Gjp[0];
+        double *p_c_velocity = &ws_c_velocity[0];
+        double *p_o_velocity= &ws_o_velocity[0];
+        double *p_c_meshVelocity = &ws_c_meshVelocity[0];
+>>>>>>> d59829be83c8103360e592b5da259e5bea533ccb
         double *p_c_density = &ws_c_density[0];
 
         // element
@@ -267,11 +315,41 @@ ComputeMdotNonConformalAlgorithm::execute()
           for ( int i = 0; i < nDim; ++i ) {
             const int offSet = i*current_num_face_nodes + ni;        
             p_c_velocity[offSet] = velocity[i];
+<<<<<<< HEAD
             p_c_mesh_velocity[offSet] = meshVelocity[i];
+=======
+            p_c_meshVelocity[offSet] = meshVelocity[i];
+>>>>>>> d59829be83c8103360e592b5da259e5bea533ccb
             p_c_Gjp[offSet] = Gjp[i];
           }
         }
         
+<<<<<<< HEAD
+=======
+        // populate opposing face_node_ordinals
+        const int *o_face_node_ordinals = meSCSOpposing->side_node_ordinals(opposingFaceOrdinal);
+
+        // gather opposing face data
+        stk::mesh::Entity const* opposing_face_node_rels = bulk_data.begin_nodes(opposingFace);
+        const int opposing_num_face_nodes = bulk_data.num_nodes(opposingFace);
+        for ( int ni = 0; ni < opposing_num_face_nodes; ++ni ) {
+          stk::mesh::Entity node = opposing_face_node_rels[ni];
+          // gather; scalar
+          p_o_pressure[ni] = *stk::mesh::field_data(*pressure_, node);
+          p_o_density[ni] = *stk::mesh::field_data(*density_, node);
+          // gather; vector
+          const double *velocity = stk::mesh::field_data(*velocity_, node );
+          const double *Gjp = stk::mesh::field_data(*Gjp_, node );
+          const double *coords = stk::mesh::field_data(*coordinates_, node);
+          for ( int i = 0; i < nDim; ++i ) {
+            const int offSet = i*opposing_num_face_nodes + ni;        
+            p_o_velocity[offSet] = velocity[i];
+            p_o_Gjp[offSet] = Gjp[i];
+            p_o_coordinates[ni*nDim+i] = coords[i];
+          }
+        }
+
+>>>>>>> d59829be83c8103360e592b5da259e5bea533ccb
         // gather current element data
         stk::mesh::Entity const* current_elem_node_rels = bulk_data.begin_nodes(currentElement);
         const int current_num_elem_nodes = bulk_data.num_nodes(currentElement);
@@ -399,6 +477,7 @@ ComputeMdotNonConformalAlgorithm::execute()
           &(dgInfo->currentIsoParCoords_[0]),
           &ws_c_velocity[0],
           &currentVelocityBip[0]);
+<<<<<<< HEAD
         
         meSCSOpposing->interpolatePoint(
           sizeOfVectorField,
@@ -411,6 +490,20 @@ ComputeMdotNonConformalAlgorithm::execute()
           sizeOfVectorField,
           &(dgInfo->currentIsoParCoords_[0]),
           &ws_c_mesh_velocity[0],
+=======
+
+        meFCOpposing->interpolatePoint(
+          sizeOfVectorField,
+          &(dgInfo->opposingIsoParCoords_[0]),
+          &ws_o_velocity[0],
+          &opposingVelocityBip[0]);
+        
+        // mesh velocity; only required at current
+        meFCCurrent->interpolatePoint(
+          sizeOfVectorField,
+          &(dgInfo->currentIsoParCoords_[0]),
+          &ws_c_meshVelocity[0],
+>>>>>>> d59829be83c8103360e592b5da259e5bea533ccb
           &currentMeshVelocityBip[0]);
 
         // projected nodal gradient
@@ -441,12 +534,17 @@ ComputeMdotNonConformalAlgorithm::execute()
           &ws_o_elem_density[0],
           &opposingDensityBip);
 
+<<<<<<< HEAD
         // product of density and velocity; current
+=======
+        // product of density and velocity; current (take over previous nodal value for velocity)
+>>>>>>> d59829be83c8103360e592b5da259e5bea533ccb
         for ( int ni = 0; ni < current_num_face_nodes; ++ni ) {
           const double density = p_c_density[ni];
           for ( int i = 0; i < nDim; ++i ) {
             const int offSet = i*current_num_face_nodes + ni;        
             p_c_velocity[offSet] *= density;
+<<<<<<< HEAD
             p_c_mesh_velocity[offSet] *= density;
           }
         }
@@ -456,6 +554,18 @@ ComputeMdotNonConformalAlgorithm::execute()
           for ( int i = 0; i < nDim; ++i ) {
             const int offSet = i*opposing_num_elem_nodes + ni;        
             p_o_elem_velocity[offSet] *= density;
+=======
+            p_c_meshVelocity[offSet] *= density;
+          }
+        }
+
+        // opposite
+        for ( int ni = 0; ni < opposing_num_face_nodes; ++ni ) {
+          const double density = p_o_density[ni];
+          for ( int i = 0; i < nDim; ++i ) {
+            const int offSet = i*opposing_num_face_nodes + ni;        
+            p_o_velocity[offSet] *= density;
+>>>>>>> d59829be83c8103360e592b5da259e5bea533ccb
           }
         }
 
@@ -469,6 +579,7 @@ ComputeMdotNonConformalAlgorithm::execute()
         meSCSOpposing->interpolatePoint(
           sizeOfVectorField,
           &(dgInfo->opposingIsoParCoords_[0]),
+<<<<<<< HEAD
           &ws_o_elem_velocity[0],
           &opposingRhoVelocityBip[0]);
 
@@ -477,6 +588,16 @@ ComputeMdotNonConformalAlgorithm::execute()
           sizeOfVectorField,
           &(dgInfo->currentIsoParCoords_[0]),
           &ws_c_mesh_velocity[0],
+=======
+          &ws_o_velocity[0],
+          &opposingRhoVelocityBip[0]);
+
+        // interpolate mesh velocity with density scaling; only current
+        meFCCurrent->interpolatePoint(
+          sizeOfVectorField,
+          &(dgInfo->currentIsoParCoords_[0]),
+          &ws_c_meshVelocity[0],
+>>>>>>> d59829be83c8103360e592b5da259e5bea533ccb
           &currentRhoMeshVelocityBip[0]);
 
         // form mdot                 
@@ -489,8 +610,12 @@ ComputeMdotNonConformalAlgorithm::execute()
           const double cRhoVelocity = interpTogether*currentRhoVelocityBip[j] + om_interpTogether*currentDensityBip*currentVelocityBip[j];
           const double oRhoVelocity = interpTogether*opposingRhoVelocityBip[j] + om_interpTogether*opposingDensityBip*opposingVelocityBip[j];
           const double cRhoMeshVelocity = interpTogether*currentRhoMeshVelocityBip[j] + om_interpTogether*currentDensityBip*currentMeshVelocityBip[j];
+<<<<<<< HEAD
           ncFlux += 0.5*(cRhoVelocity*p_cNx[j] - oRhoVelocity*p_oNx[j]);
           ncMeshFlux += cRhoMeshVelocity*p_cNx[j];
+=======
+          ncFlux += 0.5*(cRhoVelocity*p_cNx[j] - oRhoVelocity*p_oNx[j]) - meshMotionFac_*cRhoMeshVelocity*p_cNx[j];
+>>>>>>> d59829be83c8103360e592b5da259e5bea533ccb
           const double cPstab = currentDpdxBip[j] - currentGjpBip[j];
           const double oPstab = opposingDpdxBip[j] - opposingGjpBip[j];
           ncPstabFlux += 0.5*(cPstab*p_cNx[j] - oPstab*p_oNx[j]);

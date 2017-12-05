@@ -37,12 +37,18 @@ class TpetraLinearSolverConfig {
     std::string get_method() {return method_;}
     std::string preconditioner_type(){ return preconditionerType_;}
 
+  inline double tolerance() const { return tolerance_; }
+  inline double finalTolerance() const { return finalTolerance_; }
+
   private:
     std::string name_;
     std::string method_;
     std::string precond_;
     Teuchos::RCP<Teuchos::ParameterList> params_;
     Teuchos::RCP<Teuchos::ParameterList> paramsPrecond_;
+
+  double tolerance_;
+  double finalTolerance_;
 
     std::string muelu_xml_file_;
     bool useMueLu_;

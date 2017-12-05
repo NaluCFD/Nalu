@@ -54,6 +54,7 @@
 #include <ScalarMassElemKernel.h>
 #include <ScalarAdvDiffElemKernel.h>
 #include <ScalarUpwAdvDiffElemKernel.h>
+#include <nso/ScalarNSOKeElemKernel.h>
 
 // deprecated
 #include <ScalarMassElemSuppAlgDep.h>
@@ -206,6 +207,9 @@ MixtureFractionEquationSystem::register_nodal_fields(
 
   scalarVar_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "scalar_variance"));
   stk::mesh::put_field(*scalarVar_, *part);
+
+  scaledScalarVar_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "scaled_scalar_variance"));
+  stk::mesh::put_field(*scaledScalarVar_, *part);
 
   scalarDiss_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "scalar_dissipation"));
   stk::mesh::put_field(*scalarDiss_, *part);
@@ -427,6 +431,14 @@ MixtureFractionEquationSystem::register_interior_algorithm(
       build_topo_kernel_if_requested<ScalarNSOElemKernel>
         (partTopo, *this, activeKernels, "NSO_4TH_ALT",
          realm_.bulk_data(), *realm_.solutionOptions_, mixFrac_, dzdx_, evisc_, 1.0, 1.0, dataPreReqs);
+
+      build_topo_kernel_if_requested<ScalarNSOKeElemKernel>
+         (partTopo, *this, activeKernels, "NSO_2ND_KE",
+          realm_.bulk_data(), *realm_.solutionOptions_, mixFrac_, dzdx_, realm_.get_turb_schmidt(mixFrac_->name()), 0.0, dataPreReqs);
+
+       build_topo_kernel_if_requested<ScalarNSOKeElemKernel>
+         (partTopo, *this, activeKernels, "NSO_4TH_KE",
+          realm_.bulk_data(), *realm_.solutionOptions_, mixFrac_, dzdx_, realm_.get_turb_schmidt(mixFrac_->name()), 1.0, dataPreReqs);
 
       report_invalid_supp_alg_names();
       report_built_supp_alg_names();
@@ -1006,8 +1018,8 @@ MixtureFractionEquationSystem::update_and_clip()
 void
 MixtureFractionEquationSystem::compute_scalar_var_diss()
 {
+  const double Cv = realm_.solutionOptions_->turbModelConstantMap_.at(TM_zCV);
 
-  const double Cv = 0.5;
   stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const int nDim = meta_data.spatial_dimension();
@@ -1027,7 +1039,9 @@ MixtureFractionEquationSystem::compute_scalar_var_diss()
     stk::mesh::Bucket & b = **ib ;
     const stk::mesh::Bucket::size_type length   = b.size();
 
+    double *mixFrac = stk::mesh::field_data(*mixFrac_, b);
     double *scalarVar = stk::mesh::field_data(*scalarVar_, b);
+    double *scaledScalarVar = stk::mesh::field_data(*scaledScalarVar_, b);
     double *scalarDiss = stk::mesh::field_data(*scalarDiss_, b);
     const double *dzdx = stk::mesh::field_data(*dzdx_, b);
     const double *rho = stk::mesh::field_data(*density, b);
@@ -1041,6 +1055,14 @@ MixtureFractionEquationSystem::compute_scalar_var_diss()
         sum += dzdx[k*nDim+j]*dzdx[k*nDim+j];
       }
       scalarVar[k] = Cv*filter*filter*sum;
+
+      // clip and scale the variance
+      // zero scaled scalar variance estimate near free streams
+      constexpr double maxVarThreshold = 1.0e-6;
+      const double maxScalarVar = std::max(mixFrac[k] * (1 - mixFrac[k]), 0.0);
+      const double clippedVar = std::min(std::max(0.0, scalarVar[k]), maxScalarVar);
+      scaledScalarVar[k] = (maxScalarVar > maxVarThreshold ) ? clippedVar / maxScalarVar : 0.0;
+
       scalarDiss[k] = 2.0*evisc[k]/rho[k]*sum;
     }
   }

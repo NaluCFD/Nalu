@@ -9,7 +9,6 @@
 #include <HeatCondEquationSystem.h>
 
 #include <AssembleElemSolverAlgorithm.h>
-#include <AssembleElemSolverAlgorithmDep.h>
 #include <AssembleHeatCondWallSolverAlgorithm.h>
 #include <AssembleHeatCondIrradWallSolverAlgorithm.h>
 #include <AssembleScalarEdgeDiffSolverAlgorithm.h>

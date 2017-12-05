@@ -48,6 +48,11 @@ public:
     SharedMemView<DoubleType**>& coords,
     SharedMemView<DoubleType*>& vol);
 
+  void grad_op(
+    SharedMemView<DoubleType**>& coords,
+    SharedMemView<DoubleType***>& gradop,
+    SharedMemView<DoubleType***>& deriv);
+
   void determinant(
     const int nelem,
     const double *coords,

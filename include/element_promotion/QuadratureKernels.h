@@ -9,6 +9,8 @@
 
 #include <Teuchos_BLAS.hpp>
 
+#include <vector>
+
 namespace sierra {
 namespace nalu {
 
