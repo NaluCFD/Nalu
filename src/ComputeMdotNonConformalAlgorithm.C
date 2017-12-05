@@ -43,21 +43,29 @@ ComputeMdotNonConformalAlgorithm::ComputeMdotNonConformalAlgorithm(
   : Algorithm(realm, part),
     pressure_(pressure),
     Gjp_(Gjp),
-    velocityRTM_(NULL),
+    velocity_(NULL),
+    meshVelocity_(NULL),
     coordinates_(NULL),
     density_(NULL),
     exposedAreaVec_(NULL),
     ncMassFlowRate_(NULL),
     meshMotion_(realm_.does_mesh_move()) ,
     useCurrentNormal_(realm_.get_nc_alg_current_normal()),
-    includePstab_(realm_.get_nc_alg_include_pstab() ? 1.0 : 0.0)
+    includePstab_(realm_.get_nc_alg_include_pstab() ? 1.0 : 0.0),
+    meshFac_(0.0)
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
-  if ( meshMotion_ )
-    velocityRTM_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity_rtm");
-  else
-    velocityRTM_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
+  velocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
+  if ( meshMotion_ ) {
+    meshVelocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_velocity");
+    meshFac_ = 1.0;
+  }
+  else {   
+    meshVelocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
+    meshFac_ = 0.0;
+  }
+
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
   exposedAreaVec_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");
@@ -67,7 +75,7 @@ ComputeMdotNonConformalAlgorithm::ComputeMdotNonConformalAlgorithm(
   ghostFieldVec_.push_back(pressure_);
   ghostFieldVec_.push_back(Gjp_);
   ghostFieldVec_.push_back(coordinates_);
-  ghostFieldVec_.push_back(velocityRTM_);
+  ghostFieldVec_.push_back(velocity_);
   ghostFieldVec_.push_back(density_);
 }
 
@@ -105,10 +113,12 @@ ComputeMdotNonConformalAlgorithm::execute()
   std::vector<double> opposingIsoParCoords(nDim);
   std::vector<double> cNx(nDim);
   std::vector<double> oNx(nDim);
-  std::vector<double> currentVrtmBip(nDim);
-  std::vector<double> opposingVrtmBip(nDim);
-  std::vector<double> currentRhoVrtmBip(nDim);
-  std::vector<double> opposingRhoVrtmBip(nDim);
+  std::vector<double> currentVelocityBip(nDim);
+  std::vector<double> opposingVelocityBip(nDim);
+  std::vector<double> currentMeshVelocityBip(nDim);
+  std::vector<double> currentRhoVelocityBip(nDim);
+  std::vector<double> opposingRhoVelocityBip(nDim);
+  std::vector<double> currentRhoMeshVelocityBip(nDim);
   // pressure stabilization
   std::vector<double> currentGjpBip(nDim);
   std::vector<double> opposingGjpBip(nDim);
@@ -129,12 +139,13 @@ ComputeMdotNonConformalAlgorithm::execute()
   // nodal fields to gather; face
   std::vector<double> ws_c_pressure;
   std::vector<double> ws_c_Gjp;
-  std::vector<double> ws_c_vrtm;
+  std::vector<double> ws_c_velocity;
+  std::vector<double> ws_c_mesh_velocity;
   std::vector<double> ws_c_density;
 
   // element
   std::vector<double> ws_o_elem_Gjp;
-  std::vector<double> ws_o_elem_vrtm;
+  std::vector<double> ws_o_elem_velocity;
   std::vector<double> ws_o_elem_density;
 
   std::vector<double> ws_c_elem_pressure;
@@ -200,11 +211,12 @@ ComputeMdotNonConformalAlgorithm::execute()
         // algorithm related; face
         ws_c_pressure.resize(currentNodesPerFace);
         ws_c_Gjp.resize(currentNodesPerFace*nDim);
-        ws_c_vrtm.resize(currentNodesPerFace*nDim);
+        ws_c_velocity.resize(currentNodesPerFace*nDim);
+        ws_c_mesh_velocity.resize(currentNodesPerFace*nDim);
         ws_c_density.resize(currentNodesPerFace);
 
         // algorithm related; element; dndx will be at a single gauss point
-        ws_o_elem_vrtm.resize(opposingNodesPerElement*nDim);
+        ws_o_elem_velocity.resize(opposingNodesPerElement*nDim);
         ws_o_elem_Gjp.resize(opposingNodesPerElement*nDim);
         ws_o_elem_density.resize(opposingNodesPerElement);
         ws_c_elem_pressure.resize(currentNodesPerElement);
@@ -220,12 +232,13 @@ ComputeMdotNonConformalAlgorithm::execute()
         // pointers; face
         double *p_c_pressure = &ws_c_pressure[0];
         double *p_c_Gjp = &ws_c_Gjp[0];
-        double *p_c_vrtm = &ws_c_vrtm[0];
+        double *p_c_velocity = &ws_c_velocity[0];
+        double *p_c_mesh_velocity = &ws_c_mesh_velocity[0];
         double *p_c_density = &ws_c_density[0];
 
         // element
         double *p_o_elem_Gjp = &ws_o_elem_Gjp[0];
-        double *p_o_elem_vrtm = &ws_o_elem_vrtm[0];
+        double *p_o_elem_velocity = &ws_o_elem_velocity[0];
         double *p_o_elem_density = &ws_o_elem_density[0];
         double *p_c_elem_pressure = &ws_c_elem_pressure[0];
         double *p_o_elem_pressure = &ws_o_elem_pressure[0];
@@ -248,11 +261,13 @@ ComputeMdotNonConformalAlgorithm::execute()
           p_c_pressure[ni] = *stk::mesh::field_data(*pressure_, node);
           p_c_density[ni] = *stk::mesh::field_data(*density_, node);
           // gather; vector
-          const double *vrtm = stk::mesh::field_data(*velocityRTM_, node );
+          const double *velocity = stk::mesh::field_data(*velocity_, node );
+          const double *meshVelocity = stk::mesh::field_data(*meshVelocity_, node );
           const double *Gjp = stk::mesh::field_data(*Gjp_, node );
           for ( int i = 0; i < nDim; ++i ) {
             const int offSet = i*current_num_face_nodes + ni;        
-            p_c_vrtm[offSet] = vrtm[i];
+            p_c_velocity[offSet] = velocity[i];
+            p_c_mesh_velocity[offSet] = meshVelocity[i];
             p_c_Gjp[offSet] = Gjp[i];
           }
         }
@@ -282,14 +297,14 @@ ComputeMdotNonConformalAlgorithm::execute()
           p_o_elem_density[ni] = *stk::mesh::field_data(*density_,node);
           // gather; vector
           const double *coords = stk::mesh::field_data(*coordinates_, node);
-          const double *vrtm = stk::mesh::field_data(*velocityRTM_, node );
+          const double *velocity = stk::mesh::field_data(*velocity_, node );
           const double *Gjp = stk::mesh::field_data(*Gjp_, node );
           const int niNdim = ni*nDim;
           for ( int i = 0; i < nDim; ++i ) {
             p_o_elem_coordinates[niNdim+i] = coords[i];
             const int offSet = i*opposing_num_elem_nodes + ni;        
             p_o_elem_Gjp[offSet] = Gjp[i];
-            p_o_elem_vrtm[offSet] = vrtm[i];
+            p_o_elem_velocity[offSet] = velocity[i];
           }
         }
         
@@ -378,18 +393,25 @@ ComputeMdotNonConformalAlgorithm::execute()
           &ws_o_elem_pressure[0],
           &opposingPressureBip);
 
-        // velocityRTM
+        // velocity
         meFCCurrent->interpolatePoint(
           sizeOfVectorField,
           &(dgInfo->currentIsoParCoords_[0]),
-          &ws_c_vrtm[0],
-          &currentVrtmBip[0]);
+          &ws_c_velocity[0],
+          &currentVelocityBip[0]);
         
         meSCSOpposing->interpolatePoint(
           sizeOfVectorField,
           &(dgInfo->opposingIsoParCoords_[0]),
-          &ws_o_elem_vrtm[0],
-          &opposingVrtmBip[0]);
+          &ws_o_elem_velocity[0],
+          &opposingVelocityBip[0]);
+
+        // mesh velocity
+        meFCCurrent->interpolatePoint(
+          sizeOfVectorField,
+          &(dgInfo->currentIsoParCoords_[0]),
+          &ws_c_mesh_velocity[0],
+          &currentMeshVelocityBip[0]);
 
         // projected nodal gradient
         meFCCurrent->interpolatePoint(
@@ -419,12 +441,13 @@ ComputeMdotNonConformalAlgorithm::execute()
           &ws_o_elem_density[0],
           &opposingDensityBip);
 
-        // product of density and vrtm; current
+        // product of density and velocity; current
         for ( int ni = 0; ni < current_num_face_nodes; ++ni ) {
           const double density = p_c_density[ni];
           for ( int i = 0; i < nDim; ++i ) {
             const int offSet = i*current_num_face_nodes + ni;        
-            p_c_vrtm[offSet] *= density;
+            p_c_velocity[offSet] *= density;
+            p_c_mesh_velocity[offSet] *= density;
           }
         }
 
@@ -432,39 +455,49 @@ ComputeMdotNonConformalAlgorithm::execute()
           const double density = p_o_elem_density[ni];
           for ( int i = 0; i < nDim; ++i ) {
             const int offSet = i*opposing_num_elem_nodes + ni;        
-            p_o_elem_vrtm[offSet] *= density;
+            p_o_elem_velocity[offSet] *= density;
           }
         }
 
-        // interpolate vrtm with density scaling
+        // interpolate velocity with density scaling
         meFCCurrent->interpolatePoint(
           sizeOfVectorField,
           &(dgInfo->currentIsoParCoords_[0]),
-          &ws_c_vrtm[0],
-          &currentRhoVrtmBip[0]);
+          &ws_c_velocity[0],
+          &currentRhoVelocityBip[0]);
         
         meSCSOpposing->interpolatePoint(
           sizeOfVectorField,
           &(dgInfo->opposingIsoParCoords_[0]),
-          &ws_o_elem_vrtm[0],
-          &opposingRhoVrtmBip[0]);
+          &ws_o_elem_velocity[0],
+          &opposingRhoVelocityBip[0]);
+
+        // interpolate mesh velocity with density scaling
+        meFCCurrent->interpolatePoint(
+          sizeOfVectorField,
+          &(dgInfo->currentIsoParCoords_[0]),
+          &ws_c_mesh_velocity[0],
+          &currentRhoMeshVelocityBip[0]);
 
         // form mdot                 
         const double penaltyIp = projTimeScale*0.5*(currentInverseLength + opposingInverseLength);
 
         double ncFlux = 0.0;
+        double ncMeshFlux = 0.0;
         double ncPstabFlux = 0.0;
         for ( int j = 0; j < nDim; ++j ) {
-          const double cRhoVrtm = interpTogether*currentRhoVrtmBip[j] + om_interpTogether*currentDensityBip*currentVrtmBip[j];
-          const double oRhoVrtm = interpTogether*opposingRhoVrtmBip[j] + om_interpTogether*opposingDensityBip*opposingVrtmBip[j];
-          ncFlux += 0.5*(cRhoVrtm*p_cNx[j] - oRhoVrtm*p_oNx[j]);
+          const double cRhoVelocity = interpTogether*currentRhoVelocityBip[j] + om_interpTogether*currentDensityBip*currentVelocityBip[j];
+          const double oRhoVelocity = interpTogether*opposingRhoVelocityBip[j] + om_interpTogether*opposingDensityBip*opposingVelocityBip[j];
+          const double cRhoMeshVelocity = interpTogether*currentRhoMeshVelocityBip[j] + om_interpTogether*currentDensityBip*currentMeshVelocityBip[j];
+          ncFlux += 0.5*(cRhoVelocity*p_cNx[j] - oRhoVelocity*p_oNx[j]);
+          ncMeshFlux += cRhoMeshVelocity*p_cNx[j];
           const double cPstab = currentDpdxBip[j] - currentGjpBip[j];
           const double oPstab = opposingDpdxBip[j] - opposingGjpBip[j];
           ncPstabFlux += 0.5*(cPstab*p_cNx[j] - oPstab*p_oNx[j]);
         }
 
         // scatter it
-        ncMassFlowRate[currentGaussPointId] = (ncFlux - includePstab_*projTimeScale*ncPstabFlux 
+        ncMassFlowRate[currentGaussPointId] = (ncFlux - ncMeshFlux*meshFac_ -includePstab_*projTimeScale*ncPstabFlux 
                                                + penaltyIp*(currentPressureBip - opposingPressureBip))*c_amag;
       }
     }
