@@ -198,9 +198,6 @@ ScalarNSOKeElemKernel<AlgTraits>::execute(
       // save off shape function
       const DoubleType r = v_shape_function_(ip,ic);
 
-      // find the row
-      const int icNdim = ic*AlgTraits::nDim_;
-
       // save of some variables
       const DoubleType qIC = v_scalarQ(ic);
 

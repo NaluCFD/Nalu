@@ -586,6 +586,8 @@ class Realm {
 
   stk::mesh::PartVector allPeriodicInteractingParts_;
   stk::mesh::PartVector allNonConformalInteractingParts_;
+
+  bool isFinalOuterIter_{false};
 };
 
 } // namespace nalu

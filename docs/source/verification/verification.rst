@@ -460,3 +460,178 @@ patch test was run. The temperature solution was simply,
 unity. Table :numref:`linear-patch` demonstrates the successful patch test
 results for a P1 CVFEM implementation.
 
+Precursor-based Simulations
+------------------------------------------------------
+In the field of turbulent flow modeling and simulation, often times simulations
+may require sophisticated boundary conditions that can only be obtained 
+from previously run high-fidelity simulations. For example, consider a
+typical turbulent jet simulation in which the experimental inlet condition
+was preceeded by a turbulent pipe entrance region. Furthermore, in
+most cases the ability to adequately predict the developing jet flow regime may be
+highly sensitive to proper inlet conditions. Figure :numref:`inlet-pipe` and
+Figure :numref:`inlet-pipe-jet` outline a process in which a high fidelity 
+large-eddy simulation of a periodic pipe was used to determine a representative
+inlet condition for a turbulent round jet. Specifically, a precursor pipe flow
+simulation is run with velocity provided to an output file. This output file serves
+as the inlet velocity profile for the subsequent simulation.
+
+.. _inlet-pipe:
+
+.. figure:: figures/openJetInlet.pdf
+   :width: 500px
+   :align: center
+
+   Precursor periodic pipe flow large-eddy simulation that will
+   serve as the inlet boundary condition for a subsequent turbulent jet simulation.
+
+.. _inlet-pipe-jet:
+
+.. figure:: figures/openJetFlowStill.pdf
+   :width: 500px
+   :align: center
+
+   Subsequent turbulent jet simulation using the precursor data obtained by
+   a periodic pipe flow.
+
+In the above use case, as with most general simulation studies, the mesh resolution 
+for the precursor simulation may be different from the subsequent simulation. Moreover, 
+the time scale for the precursor simulation may be much shorter than the subsequent
+simulation. Finally, the data required for the subsequent simulation will likely be at
+different time steps unless an overly restrictive rule is enforced, i.e., a fixed timestep
+for each simulation. 
+
+In order to support such use cases, extensive usage of the the Sierra Toolkit infrastructure 
+is expected, most notably within the IO and Transfer modules. The IO module can be used to interpolate 
+the precursor simulation boundary data to the appropriate time required by the subsequent 
+simulation. Specifically, the IO module linearly interpolates between the closest data interval in the
+precursor data set. A recycling offset factor is included within the IO interface that allows
+for the cycling of data over the full time scale of interest within the subsequent simulation. For 
+typical statistically stationary turbulent flows, this is useful to ensure proper statistics
+are captured in subsequent runs.
+
+After the transient data set from the precursor simulation is interpolated to the proper time, 
+the data is spatially interpolated and transferred to the subsequent simulation mesh using the 
+STK Transfer module. Efficient coarse parallel searches (point/bounding box) provide the list of 
+candidate owning elements on which the fine-scale search operates to determine the best search 
+candidate. The order of spatial interpolation depends on the activated numerical discretization. 
+Therefore, by combining the two STK modules, the end use case to support data transfers of
+boundary data is supported.
+
+As noted, there are many other use cases in addition to the overviewed turbulent jet simulation
+that require such temporal/spatial interpolation capabilities. For example, in typical wind 
+farm simulation applications, a proper atmospheric boundary layer (ABL) configuration is required
+to capture a given energy state of the boundary layer. In this case, a periodic precusor ABL is run 
+with the intent of providing the inlet condition to the subsequent wind farm domain. As with the 
+previous description, the infrustructure requirements remain the same.
+
+Finally, the general creation of an "input_output" region can be useful in validation cases
+where data are provided at a subset of the overall simulation domain. Such is the case in PIV and
+PLIF experimental data sets. Although the temporal interpolation is not required, the transfer
+of this data at high time step frequency is useful for post-processing.
+
+In this verification section, a unit test approach will be referenced that is captured within the
+STK module test suite. This foundational test coverage provides confidence in the underlying IO and 
+parallel search/interpolation processes. In addition to briefly describing the infrastructure testing,
+application tests are provided as further evidence of correctness. The application test first is based 
+on the convecting Taylor vortex verification case while the second is the ABL precursor application space
+demonstration.
+
+Infrastructure Unit Test
+++++++++++++++++++++++++
+As noted above, the Nalu application code leverages the STK unit tests within the IO and transfer
+modules. Interested parties may peruse the STK product under a cloned Trilinos cloned project,
+i.e., Trilinos/packages/stk/stk_doc_test. Under the STK product, a variety of search, transfer and 
+input/output tests exist. For example, interpolation in time using the IO infrastructure is captured 
+in addition to a variety of search and transfer use cases.
+
+Application Verification Test; Convecting Taylor Vortex
++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Although the foundational infrastructure tests are useful, the application must adequately interface
+the IO and Transfer modules to support the end use case. In this section, two tests
+will be demonstrated that illustrate the precursor/subsequent simulation use case.
+
+The first test considered will be the convecting Talor vortex. In this configuration,
+a very fine mesh simulation is run with boundary conditions specified in the input file
+to be of type, "convecting_taylor_vortex". This specifies the analytical function
+for the x-component of velocity as provided in Equation :eq:`advConvTV_u`. The simulation
+is run while providing output to a Realm of type "input_output" using a transfer objective,
+"input_output". The transient data is then used 
+for a series of mesh refinement studies. The viscosity is set at 0.001 while the domain is
+1x1. In this study, the edge-based scheme is activated, however, the precursor interpolation
+methodology is not sensitive to the underlying numerical method.
+
+In Figure :numref:`ctv-precursor`, a plot between the analytical x-component of velocity
+and a nodal query of the outputted velocity component is provided. Although not immediately
+apparent, the values are exactly the same. This finding confirms that the data set output
+is consistent with the nodal exact value.
+
+.. _ctv-precursor:
+
+.. figure:: figures/U_x_precursor.pdf
+   :width: 500px
+   :align: center
+
+   Temporal plot of the exact x-velocity component and precursor output.
+
+With the precursor data base containing the full transient data, a refinement
+study can be accomplished to determine numerical errors. Although the full machinery
+for temporal and spatial interpolation is active, the data requirement at the coarse simulations
+are represented as the subsets of the full data - both in space and time. As such, no numerical
+degradation of second-order accuracy is expected. The subsequent simulations are run with an
+"external_data" transfer objective and a Realm of type, "external_data_provider".
+
+In Figure :numref:`ctv-l2`, a plot of :math:`L_2` norms of the x-component of velocity are shown 
+for the subsequent set of simulations that use the precursor data. Results of this study verify
+both the second-order temporal accuracy of the underlying numerical scheme and the process
+of using both space and time interpolation.
+
+.. _ctv-l2:
+
+.. figure:: figures/U_x_CTV_subsequent_L2.pdf
+   :width: 500px
+   :align: center
+
+   Temporal accuracy plot of the x-velocity component norms using the precursor data.
+
+
+Application Verification Test; ABL Precursor/Subsequent
++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+The second, and final application test is an ABL-based simulation that first runs a precursor periodic
+solution in order to capture an appropriate ABL specification. The boundary data saved from the precursor
+simulation are then used as an inflow boundary condition for the subsequent ABL simulation. As the precurosr 
+is run for a smaller time frame than the subsequent simulation, the usage of data cycling is active. This 
+full integration test is captured within the regression test suite. The simulation is described as a non-isothermal 
+turbulent flow.
+
+In Figure :numref:`abl-susequent-cycle`, the transient recycling of the ABL thermal inflow boundary
+condition is captured at an arbitrary nodal location very near the wall boundary condition. The subsequent 
+simulation reads the precursor data set for time zero seconds until 3000 seconds at which time it recylces 
+the inlet condition back to the initial precursor simulation time, i.e., zero seconds. An interesting note in this 
+study is the fact that the precursor periodic simulation, which was run at the same Courant number, was using time 
+steps approximately three times greater than the subsequent inflow/open configuration.  
+
+.. _abl-susequent-cycle:
+
+.. figure:: figures/abl_sub_cycle_T.pdf
+   :width: 500px
+   :align: center
+
+   Transient recycling of the temperature inflow boundary condition for the subsequent ABL simulation. After
+   3000 seconds, the inflow boundary condition is recycled from the begining of the precursor simulation.
+
+In Figure :numref:`abl-susequent-check-one-two`, (left) the subsequent simulation inflow temperature field and 
+full profile over the full domain is captured at approximately 4620 seconds. On the right of the figure, the 
+temperature boundary condition data that originated from the precursor simulation, which was read into the subsequent 
+"external_field_provider" Realm, is shown (again at approximately 4620 seconds).
+
+.. _abl-susequent-check-one:
+
+.. figure:: figures/abl_sub_check_one_two.png
+   :width: 500px
+   :align: center
+
+   Subsequent simulation showing the full temperature domain (left) and on the precursor inflow temperature boundary 
+   condition field obtained from the perspective of the subsequent "external_field_provider" Realm (right).
+
+

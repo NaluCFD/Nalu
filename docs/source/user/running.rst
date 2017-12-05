@@ -19,6 +19,7 @@ additional files:
    nalu_run/nalu_mesh
    nalu_run/nalux
    nalu_run/nalu_inp
+   nalu_run/McAlisterLessonsLearned
 
 
 Examples

@@ -5,9 +5,8 @@
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
-
-#ifndef AssembleRadTransElemSolverAlgorithm_h
-#define AssembleRadTransElemSolverAlgorithm_h
+#ifndef AssembleTemperatureNormalGradientBCSolverAlgorithm_h
+#define AssembleTemperatureNormalGradientBCSolverAlgorithm_h
 
 #include<SolverAlgorithm.h>
 #include<FieldTypeDef.h>
@@ -21,35 +20,37 @@ class Part;
 namespace sierra{
 namespace nalu{
 
-class RadiativeTransportEquationSystem;
+class LinearSystem;
 class Realm;
 
-class AssembleRadTransElemSolverAlgorithm : public SolverAlgorithm
+class AssembleTemperatureNormalGradientBCSolverAlgorithm : public SolverAlgorithm
 {
 public:
 
-  AssembleRadTransElemSolverAlgorithm(
+  AssembleTemperatureNormalGradientBCSolverAlgorithm(
     Realm &realm,
     stk::mesh::Part *part,
-    RadiativeTransportEquationSystem *radEqSystem);
-  virtual ~AssembleRadTransElemSolverAlgorithm() {}
+    EquationSystem *eqSystem,
+    ScalarFieldType *bcScalarGrad,
+    ScalarFieldType *evisc,
+    ScalarFieldType *specHeat,
+    bool useShifted);
+  virtual ~AssembleTemperatureNormalGradientBCSolverAlgorithm() {}
   virtual void initialize_connectivity();
   virtual void execute();
 
-  const RadiativeTransportEquationSystem *radEqSystem_;
+private:
 
-  ScalarFieldType *intensity_;
-  VectorFieldType *coordinates_;
-  ScalarFieldType *absorption_;
-  ScalarFieldType *scattering_;
-  ScalarFieldType *scalarFlux_;
-  ScalarFieldType *radiationSource_;
-  ScalarFieldType *dualNodalVolume_;
-  
-  const double sucvFac_;
+  const bool useShifted_;
+
+  ScalarFieldType *bcScalarGrad_;
+  ScalarFieldType *evisc_;
+  ScalarFieldType *specHeat_;
+  GenericFieldType *exposedAreaVec_;
 };
 
-} // namespace nalu
-} // namespace Sierra
+}
+}
 
-#endif
+
+#endif /* ASSEMBLESCALARELEMDIFFBCSOLVERALGORITHM_H_ */
