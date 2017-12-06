@@ -124,14 +124,14 @@ public:
       const double &dt,
       stk::mesh::Selector s_all_nodes);
 
-  void compute_temperature_resolved_stress(
+  void compute_temperature_resolved_flux(
     const std::string &averageBlockName,
     const double &oldTimeFilter,
     const double &zeroCurrent,
     const double &dt,
     stk::mesh::Selector s_all_nodes);
 
-  void compute_temperature_sfs_stress(
+  void compute_temperature_sfs_flux(
     const std::string &averageBlockName,
     const double &oldTimeFilter,
     const double &zeroCurrent,
