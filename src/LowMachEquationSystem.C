@@ -442,7 +442,7 @@ LowMachEquationSystem::register_open_bc(
   }
   else {
     if ( userData.pSpec_ ) 
-      throw std::runtime_error("LowMachEqs::regsiter_open_bc error: Pressure specified at an open bc while global correction algorithm has been activated");    
+      NaluEnv::self().naluOutputP0() << "LowMachEqs::register_open_bc Error: Pressure specified at an open bc while global correction algorithm has been activated" << std::endl;    
   }
 
   // mdot at open bc; register field

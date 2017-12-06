@@ -735,16 +735,16 @@ a global correction algorithm is supported. Specifically, pressure terms are dro
 at the open boundary mass flow rate expression
 in favor or a pre-processing algorithm that uniformly distributes the 
 continuity mass flow rate (and possible density accumulation) "error" over
-the entire set of open boundary conditions. This "global corerction" scheme
+the entire set of open boundary conditions. The global correction scheme
 may perform well with single open boundary condition specification, e.g., 
-multiple inflows with a single open locaiton, however, it to be avoided if the flow
+multiple inflows with a single open location, however, it is to be avoided if the flow
 leaving the domain is complex in that a simulation includes multiple open boundary
-conditions. A complex situaiton might be an open jet with entrianment from the side 
+conditions. A complex situation might be an open jet with entrainment from the side 
 (open boundary that allows for inflow) and a top open that allows for outflow. However,
 a routine case might be a backward facing step with a single inflow, side periodic, top
 wall and open boundary. Not that the ability for the continuity solve to be 
-well conditioned may require an interior Dirichelt on pressure as the open pressure
-specification for the "global correct" algorithm is lacking. In most cases,
+well conditioned may require an interior Dirichlet on pressure as the open pressure
+specification for the global correction algorithm is lacking. In most cases,
 a Dirichlet condition is not actually required as the NULL-space of the continuity
 system may not be found in the solve.
 
