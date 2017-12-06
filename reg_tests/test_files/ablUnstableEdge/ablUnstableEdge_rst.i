@@ -22,6 +22,7 @@ linear_solvers:
     max_iterations: 50
     kspace: 50
     output_level: 0
+    muelu_xml_file_name: ../../xml/milestone.xml
 
 transfers:
 
@@ -35,7 +36,6 @@ transfers:
     transfer_variables:
       - [velocity_bc, velocity_bc]
       - [velocity_bc, velocity]
-      - [cont_velocity_bc, cont_velocity_bc]
       - [temperature_bc, temperature_bc]
       - [temperature_bc, temperature]
 
@@ -121,7 +121,6 @@ realms:
       target_name: Back
       open_user_data:
         velocity: [0.0,0,0]
-        pressure: 0.0
         temperature: 300.0
 
     - periodic_boundary_condition: bc_left_right
@@ -129,12 +128,9 @@ realms:
       periodic_user_data:
         search_tolerance: 0.0001 
 
-    - open_boundary_condition: bc_open
+    - symmetry_boundary_condition: bc_top
       target_name: Top
-      open_user_data:
-        velocity: [10.0,0,0]
-        pressure: 0.0
-        temperature: 300.0
+      symmetry_user_data:
 
     - wall_boundary_condition: bc_lower
       target_name: Ground
@@ -150,6 +146,7 @@ realms:
       name: myOptions
       turbulence_model: wale
       interp_rhou_together_for_mdot: yes
+      activate_open_mdot_correction: yes
 
       options:
 

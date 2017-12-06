@@ -61,7 +61,7 @@ ComputeMdotElemOpenAlgorithm::ComputeMdotElemOpenAlgorithm(
   density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
   exposedAreaVec_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");
   openMassFlowRate_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "open_mass_flow_rate");
-  pressureBc_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure_bc");
+  pressureBc_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, realm_.solutionOptions_->activateOpenMdotCorrection_ ? "pressure" : "pressure_bc");
 }
 
 //--------------------------------------------------------------------------
@@ -89,6 +89,11 @@ ComputeMdotElemOpenAlgorithm::execute()
   const double includeNOC 
     = (realm_.get_noc_usage(dofName) == true) ? 1.0 : 0.0;
 
+  // extract global algorithm options, if active
+  const double pstabFac = realm_.solutionOptions_->activateOpenMdotCorrection_ 
+    ? 0.0
+    : 1.0;
+
   // ip values; both boundary and opposing surface
   std::vector<double> uBip(nDim);
   std::vector<double> rho_uBip(nDim);
@@ -115,10 +120,10 @@ ComputeMdotElemOpenAlgorithm::execute()
   std::vector<double> ws_shape_function;
   std::vector<double> ws_face_shape_function;
 
-  // time step
+  // time step; scale projection time scale by pstabFac (no divide by here)
   const double dt = realm_.get_time_step();
   const double gamma1 = realm_.get_gamma1();
-  const double projTimeScale = dt/gamma1;
+  const double projTimeScale = dt/gamma1*pstabFac;
 
   // deal with interpolation procedure
   const double interpTogether = realm_.get_mdot_interp();
@@ -126,6 +131,7 @@ ComputeMdotElemOpenAlgorithm::execute()
 
   // set accumulation variables
   double mdotOpen = 0.0;
+  size_t mdotOpenIpCount = 0;
 
   // deal with state
   ScalarFieldType &densityNp1 = density_->field_of_state(stk::mesh::StateNP1);
@@ -157,7 +163,6 @@ ComputeMdotElemOpenAlgorithm::execute()
     MasterElement *meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(b.topology());
     const int nodesPerFace = b.topology().num_nodes();
     const int numScsBip = meFC->numIntPoints_;
-
 
     // algorithm related; element
     ws_coordinates.resize(nodesPerElement*nDim);
@@ -192,6 +197,8 @@ ComputeMdotElemOpenAlgorithm::execute()
       meFC->shape_fcn(&p_face_shape_function[0]);
     
     const stk::mesh::Bucket::size_type length   = b.size();
+
+    mdotOpenIpCount += length*numScsBip;
 
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
 
@@ -331,14 +338,13 @@ ComputeMdotElemOpenAlgorithm::execute()
         // scatter to mdot and accumulate
         mdot[ip] = tmdot;
         mdotOpen += tmdot;
-        //mdot[ip] = tmdot - projTimeScale*((pBip-pScs)*asq*inv_axdx + noc*includeNOC);
       }
     }
   }
   // scatter back to solution options; not thread safe
   realm_.solutionOptions_->mdotAlgOpen_ += mdotOpen;
+  realm_.solutionOptions_->mdotAlgOpenIpCount_ += mdotOpenIpCount;
 }
-
 
 } // namespace nalu
 } // namespace Sierra

@@ -155,7 +155,7 @@ AssembleMomentumEdgeWallFunctionSolverAlgorithm::execute()
       const double *wallNormalDistanceBip = stk::mesh::field_data(*wallNormalDistanceBip_, face);
       const double *wallFrictionVelocityBip = stk::mesh::field_data(*wallFrictionVelocityBip_, face);
 
-      // loop over face nodes
+      // loop over boundary ips
       for ( int ip = 0; ip < numScsBip; ++ip ) {
 
         const int offSetAveraVec = ip*nDim;
