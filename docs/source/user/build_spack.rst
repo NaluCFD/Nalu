@@ -181,6 +181,10 @@ or edit the script to use the correct allocation and ``qsub install_nalu_gcc_per
 That's it! Hopefully the ``install_nalu_gcc_peregrine.sh`` 
 script installs the entire set of dependencies and you get a working build 
 of Nalu on Peregrine...after about 2 hours of waiting for it to build.
+Note that Peregrine may have problems fetching/downloading packages due to
+SSL errors which are due to the way the machine is configured. Using the
+command ``spack fetch -D <name>`` on your own laptop and then copying the
+package archives to Peregrine is a possible workaround.
 
 To build with the Intel compiler, note the necessary commands in 
 `install_nalu_intel_peregrine.sh <https://github.com/NaluCFD/NaluSpack/blob/master/install_scripts/install_nalu_intel_peregrine.sh>`__ 
@@ -322,8 +326,7 @@ the dependencies by using ``spack location -i <package>``. For example in the
          ..
    make
 
-There are also scripts available for this according to machine `here <https://github.com/NaluCFD/NaluSpack/blob/master/spack_config>`__. This should allow you to have a build of Nalu in which you are able to continuosly modify the source code and rebuild.
-
+There are also scripts available for this according to machine `here <https://github.com/NaluCFD/NaluSpack/blob/master/spack_config>`__. These scripts may also provide the capability to access and use pre-built dependencies from a shared directory if they are available on the machine. This should allow you to have a build of Nalu in which you are able to continuosly modify the source code and rebuild.
 
 Development Build of Trilinos 
 -----------------------------
