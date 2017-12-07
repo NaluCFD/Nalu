@@ -14,6 +14,7 @@
 #include <Kokkos_Core.hpp>
 
 #include <master_element/Hex8CVFEM.h>
+#include <master_element/MasterElement.h>
 
 typedef stk::mesh::Field<double> ScalarFieldType;
 typedef stk::mesh::Field<double,stk::mesh::Cartesian> VectorFieldType;
@@ -153,6 +154,112 @@ protected:
     ScalarFieldType* viscosity;
     ScalarFieldType* pressure;
 };
+
+class Hex8ElementWithBCFields : public ::testing::Test
+ {
+ protected:
+    Hex8ElementWithBCFields()
+    : meta(3),
+      bulk(meta, MPI_COMM_WORLD),
+      velocity(meta.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity")),
+      bcVelocity(meta.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "wall_velocity_bc")),
+      density(meta.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "density")),
+      bcHeatFlux(meta.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "heat_flux_bc")),
+      specificHeat(meta.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "specific_heat")),
+      exposedAreaVec(meta.declare_field<GenericFieldType>(meta.side_rank(), "exposed_area_vector")),
+      wallFrictionVelocityBip(meta.declare_field<GenericFieldType>(meta.side_rank(), "wall_friction_velocity_bip")),
+      wallNormalDistanceBip(meta.declare_field<GenericFieldType>(meta.side_rank(), "wall_normal_distance_bip"))
+   {
+    stk::mesh::put_field(velocity, meta.universal_part(), 3);
+    stk::mesh::put_field(bcVelocity, meta.universal_part(), 3);
+    stk::mesh::put_field(density, meta.universal_part(), 1);
+    stk::mesh::put_field(bcHeatFlux, meta.universal_part(), 1);
+    stk::mesh::put_field(specificHeat, meta.universal_part(), 1);
+
+    const sierra::nalu::MasterElement* meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(stk::topology::QUAD_4);
+    stk::mesh::put_field(exposedAreaVec, meta.universal_part(), 3*meFC->numIntPoints_);
+    stk::mesh::put_field(wallFrictionVelocityBip, meta.universal_part(), meFC->numIntPoints_);
+    stk::mesh::put_field(wallNormalDistanceBip, meta.universal_part(), meFC->numIntPoints_);
+
+    unit_test_utils::create_one_reference_element(bulk, stk::topology::HEXAHEDRON_8);
+   }
+
+  ~Hex8ElementWithBCFields() {}
+
+  stk::mesh::MetaData meta;
+  stk::mesh::BulkData bulk;
+  VectorFieldType& velocity;
+  VectorFieldType& bcVelocity;
+  ScalarFieldType& density;
+  ScalarFieldType& bcHeatFlux;
+  ScalarFieldType& specificHeat;
+  GenericFieldType& exposedAreaVec;
+  GenericFieldType& wallFrictionVelocityBip;
+  GenericFieldType& wallNormalDistanceBip;
+ };
+
+class ABLWallFunctionHex8ElementWithBCFields : public Hex8ElementWithBCFields
+{
+ public:
+  ABLWallFunctionHex8ElementWithBCFields()
+    : Hex8ElementWithBCFields(),
+    rhoSpec_(1.0),
+    utauSpec_(0.1),
+    upSpec_(1.0),
+    ypSpec_(0.25)
+ {}
+
+ void SetUp(const double &rho, const double &utau, const double up, const double yp)
+ {
+   rhoSpec_ = rho;
+   utauSpec_ = utau;
+   upSpec_ = up;
+   ypSpec_ = yp;
+
+  // Assign some values to the nodal fields
+  for (const auto* ib : bulk.get_buckets(stk::topology::NODE_RANK, meta.universal_part())) {
+    const auto& b = *ib;
+    const size_t length = b.size();
+    for (size_t k = 0; k < length; ++k) {
+      stk::mesh::Entity node = b[k];
+      *stk::mesh::field_data(density, node) = rhoSpec_;
+      double *vel = stk::mesh::field_data(velocity, node);
+      vel[0] = upSpec_; vel[1] = 0.0; vel[2] = 0.0;
+      double *bcVel = stk::mesh::field_data(bcVelocity, node);
+      bcVel[0] = 0.0; bcVel[1] = 0.0; bcVel[3] = 0.0;
+      *stk::mesh::field_data(bcHeatFlux, node) = 0.0;
+      *stk::mesh::field_data(specificHeat, node) = 1000.0;
+    }
+  }
+
+  // Assign some values to the boundary integration point fields
+  const sierra::nalu::MasterElement* meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(stk::topology::QUAD_4);
+  const int numScsBip = meFC->numIntPoints_;
+  stk::mesh::BucketVector const& face_buckets =
+    bulk.get_buckets( meta.side_rank(), meta.universal_part() );
+  for ( stk::mesh::BucketVector::const_iterator ib = face_buckets.begin();
+        ib != face_buckets.end() ; ++ ib ) {
+    stk::mesh::Bucket & b = **ib;
+    const size_t length = b.size();
+    for (size_t k=0; k < length; ++k) {
+      stk::mesh::Entity face = b[k];
+      double *utauIp = stk::mesh::field_data(wallFrictionVelocityBip, face);
+      double *ypIp = stk::mesh::field_data(wallNormalDistanceBip, face);
+      for ( int ip = 0; ip < numScsBip; ++ip ) {
+        utauIp[ip] = utauSpec_;
+        ypIp[ip] = ypSpec_;
+      }
+    }
+  }
+ }
+
+ private:
+  double rhoSpec_;
+  double utauSpec_;
+  double upSpec_;
+  double ypSpec_;
+
+};  
 
 #endif
 
