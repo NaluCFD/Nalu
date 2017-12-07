@@ -630,16 +630,6 @@ ABLForcingAlgorithm::calc_mean_velocity()
       // Mean density devide by number of total nodes
       rhoMeanCalc_[ih] = sumRhoGlobal[ih] / totalNodes[ih];
 
-      //////////////////////////
-      // Tony - check the mean density computation (it is zero)
-      //////////////////////////
-      //~ std::cout << "++++++++++++++++++++++++++++++++++++++++++\n";
-      //~ std::cout << "Average density="<<rhoMeanCalc_[ih]<<"\n";
-      //~ std::cout << "Average U="<<UmeanCalc_[ih][0]<<"\n";
-      //~ std::cout << "Average U="<<UmeanCalc_[ih][1]<<"\n";
-      //~ std::cout << "Average U="<<UmeanCalc_[ih][2]<<"\n";
-      //~ std::cout << "++++++++++++++++++++++++++++++++++++++++++\n";
-
   }
 }
 
