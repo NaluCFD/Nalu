@@ -92,7 +92,7 @@ ABL Forcing
 .. note::
 
    There are now two options in the following inputs.
-   The can be ```momentum`` and/or ``temperature``.
+   The can be ``momentum`` and/or ``temperature``.
 
 .. inpfile:: abl_forcing.momentum.computed
 
@@ -136,6 +136,15 @@ ABL Forcing
   A set of lists containing the time in the first element,
   followed by the desired velocity at each plane in the
   :math:`z` direction.
+
+.. note::
+
+  The temperature has the same inputs as the momentum source
+  (``abl_forcing.temperature.type``,
+  ``abl_forcing.temperature.relaxation_factor``,
+  ``abl_forcing.temperature.heights``, and
+  ``abl_forcing.temperature.target_part_format``)
+  which take the same options.
 
 .. inpfile:: abl_forcing.temperature.temperature
 

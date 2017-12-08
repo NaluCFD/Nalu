@@ -205,7 +205,7 @@ private:
   //! Planar average velocity calculated on the surface [num_UHeights, 3]
   Array2D<double> UmeanCalc_;
 
-  //! Planar average density calculated on the surface [num_THeights]
+  //! Planar average density calculated on the surface [num_UHeights]
   std::vector<double> rhoMeanCalc_;
 
   //! U source as a function of height [3,num_UHeights]
