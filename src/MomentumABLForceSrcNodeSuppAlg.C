@@ -20,13 +20,8 @@ MomentumABLForceSrcNodeSuppAlg::MomentumABLForceSrcNodeSuppAlg(
       stk::topology::NODE_RANK, "coordinates")),
     dualNodalVolume_(realm.meta_data().get_field<ScalarFieldType>(
       stk::topology::NODE_RANK, "dual_nodal_volume")),
-    //~ density_(NULL),
     nDim_(realm_.meta_data().spatial_dimension())
-{
-  //~ ScalarFieldType* density = realm.meta_data().get_field<ScalarFieldType>(
-    //~ stk::topology::NODE_RANK, "density");
-  //~ density_ = &(density->field_of_state(stk::mesh::StateNP1));
-}
+  {}
 
 void
 MomentumABLForceSrcNodeSuppAlg::node_execute(
