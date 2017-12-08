@@ -944,7 +944,10 @@ Turbulence averaging
    .. code-block:: yaml
 
       turbulence_averaging:
+        forced_reset: no
         time_filter_interval: 100000.0
+
+        averaging_type: nalu_classic/moving_exponential
 
         specifications:
 
@@ -959,6 +962,10 @@ Turbulence averaging
 
             compute_tke: yes
             compute_reynolds_stress: yes
+            compute_resolved_stress: yes
+            compute_temperature_resolved_flux: yes
+            compute_sfs_stress: yes
+            compute_temperature_sfs_flux: yes
             compute_q_criterion: yes
             compute_vorticity: yes
             compute_lambda_ci: yes
@@ -969,13 +976,32 @@ Turbulence averaging
    prefixed with ``turbulence_averaging.name`` but only the variable
    name after the period should appear in the input file.
 
+.. inpfile:: turbulence_averaging.forced_reset
+
+   A boolean flag indicating whether the averaging of all quantities in the
+   turbulence averaging section is reset. If this flag is true, the
+   running average is set to zero.
+
+.. inpfile:: turbulence_averaging.averaging_type
+
+   This parameter sets the choice of the running average type. Possible
+   values are:
+
+   ``nalu_classic``
+     "Sawtooth" average. The running average is set to zero each time the time
+     filter width is reached and a new average is calculated for the next time
+     interval.
+
+   ``moving_exponential``
+     "Moving window" average where the window size is set to to the time
+     filter width. The contribution of any quantity before the moving window
+     towards the average value reduces exponentially with every time step.
+   
 .. inpfile:: turbulence_averaging.time_filter_interval
 
-   Number indicating the time filter size over which calculate the
-   running average. The current implementation of the running average
-   in Nalu uses a "sawtooth" average. The running average is set to
-   zero each time the time filter width is reached and a new average
-   is calculated for the next time interval.
+   Number indicating the time filter size over which to calculate the
+   running average. This quantity is used in different ways for each filter
+   discussed above.
 
 .. inpfile:: turbulence_averaging.specifications
 
@@ -1007,6 +1033,36 @@ Turbulence averaging
    A boolean flag indicating whether the reynolds stress is
    computed. The default value is ``no``.
 
+.. inpfile:: turbulence_averaging.specifications.compute_resolved_stress
+
+   A boolean flag indicating whether the resolved stress is
+   computed. The default value is ``no``. When this option is turned on, the
+   Favre averages of the resolved quantities are computed as well.
+   
+.. inpfile:: turbulence_averaging.specifications.compute_temperature_resolved_flux
+
+   A boolean flag indicating whether the resolved temperature flux is
+   computed. The default value is ``no``. When this option is turned on, the
+   Favre averages of the resolved temperature is computed as well.
+
+.. inpfile:: turbulence_averaging.specifications.compute_sfs_stress
+
+   A boolean flag indicating whether the sub-filter scale stress is
+   computed. The default value is ``no``. The sub-filter scale stress model is
+   assumed to be of an eddy viscosity type and the turbulent viscosity computed
+   by the turbulence model is used. The sub-filter scale kinetic energy is used
+   to determine the isotropic component of the sub-filter stress. As described
+   in the section :ref:`supp_eqn_set_mom_cons`, the Yoshisawa model is used to
+   compute the sub-filter kinetic energy when it is not transported. 
+   
+.. inpfile:: turbulence_averaging.specifications.compute_temperature_sfs_flux
+
+   A boolean flag indicating whether the sub-filter scale flux of temperature is
+   computed. The default value is ``no``. The sub-filter scale stress model is
+   assumed to be of an eddy diffusivity type and the turbulent diffusivity computed
+   by the turbulence model is used along with a constant turbulent Prandtl number
+   obtained from the Realm.
+   
 .. inpfile:: turbulence_averaging.specifications.compute_favre_stress
 
    A boolean flag indicating whether the Favre stress is computed. The

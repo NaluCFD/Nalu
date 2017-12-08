@@ -30,6 +30,8 @@ derivative to include the :math:`\frac{\partial \rho}{\partial p}`
 sensitivity, an equation that admits acoustic pressure waves is
 realized.
 
+.. _supp_eqn_set_mom_cons:
+
 Conservation of Momentum
 ++++++++++++++++++++++++
 
