@@ -97,6 +97,8 @@ private:
   bool useMueLu_{false};
 };
 
+/** User configuration parmeters for Hypre solvers and preconditioners
+ */
 class HypreLinearSolverConfig : public LinearSolverConfig
 {
 public:
@@ -104,16 +106,30 @@ public:
 
   virtual ~HypreLinearSolverConfig() {};
 
+  //! Process and validate the user inputs and register calls to appropriate
+  //! Hypre functions to configure the solver and preconditioner.
   virtual void load(const YAML::Node&);
 
 protected:
+  //! List of HYPRE API calls and corresponding arugments to configure solver
+  //! and preconditioner after they are created.
   std::vector<Teuchos::RCP<Ifpack2::FunctionParameter>> funcParams_;
+
+  //! Convergence tolerance for the linear system solver
   double tolerance_{1.0e-4};
+
+  //! Maximum iterations to attempt if convergence is not met
   int maxIterations_{50};
+
+  //! Verbosity of the HYPRE solver
   int outputLevel_{1};
+
+  //! Krylov vector space used for GMRES solvers
   int kspace_{1};
 
   /* BoomerAMG options */
+
+  //! BoomerAMG Strong Threshold
   double bamgStrongThreshold_{0.57};
   int bamgCoarsenType_{6};
   int bamgCycleType_{1};

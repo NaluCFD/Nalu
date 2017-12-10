@@ -15,6 +15,8 @@
 #include "PeriodicManager.h"
 #include "NonConformalManager.h"
 #include "overset/OversetManager.h"
+#include "overset/OversetInfo.h"
+
 
 #include "stk_mesh/base/BulkData.hpp"
 #include "stk_mesh/base/MetaData.hpp"
@@ -70,10 +72,10 @@ HypreLinearSystem::beginLinearSystemConstruction()
   if (rank == 0) {
     iLower_ = realm_.hypreILower_;
   } else {
-    iLower_ = (realm_.hypreILower_ - 1) * numDof_ + 1;
+    iLower_ = realm_.hypreILower_ * numDof_ ;
   }
 
-  iUpper_ = realm_.hypreIUpper_ * numDof_;
+  iUpper_ = realm_.hypreIUpper_  * numDof_ - 1;
   // For now set column indices the same as row indices
   jLower_ = iLower_;
   jUpper_ = iUpper_;
@@ -81,12 +83,15 @@ HypreLinearSystem::beginLinearSystemConstruction()
   // The total number of rows handled by this MPI rank for Hypre
   numRows_ = (iUpper_ - iLower_ + 1);
   // Total number of global rows in the system
-  maxRowID_ = realm_.hypreNumNodes_ * numDof_;
+  maxRowID_ = realm_.hypreNumNodes_ * numDof_ - 1;
 
-  if (realm_.get_time_step_count() == 1)
-    std::cerr << rank << "\t"
+#if 0
+  if (numDof_ > 0)
+    std::cerr << rank << "\t" << numDof_ << "\t"
+              << realm_.hypreILower_ << "\t" << realm_.hypreIUpper_ << "\t"
                 << iLower_ << "\t" << iUpper_ << "\t"
                 << numRows_ << "\t" << maxRowID_ << std::endl;
+#endif
   // Allocate memory for the arrays used to track row types and row filled status.
   rowFilled_.resize(numRows_);
   rowStatus_.resize(numRows_);
@@ -302,15 +307,21 @@ HypreLinearSystem::loadComplete()
   HYPRE_IJVectorGetObject(sln_, (void**)&(solver->parSln_));
 
   solver->comm_ = realm_.bulk_data().parallel();
-  matrixFilled_ = true;
 }
 
 void
 HypreLinearSystem::zeroSystem()
 {
+  MPI_Comm comm = realm_.bulk_data().parallel();
   HypreDirectSolver* solver = reinterpret_cast<HypreDirectSolver*>(linearSolver_);
 
+  if (systemInitialized_)
+    HYPRE_IJMatrixDestroy(mat_);
+  HYPRE_IJMatrixCreate(comm, iLower_, iUpper_, jLower_, jUpper_, &mat_);
+  HYPRE_IJMatrixSetObjectType(mat_, HYPRE_PARCSR);
   HYPRE_IJMatrixInitialize(mat_);
+  HYPRE_IJMatrixGetObject(mat_, (void**)&(solver->parMat_));
+
   HYPRE_IJVectorInitialize(rhs_);
   HYPRE_IJVectorInitialize(sln_);
 
@@ -358,13 +369,11 @@ HypreLinearSystem::sumInto(
       auto it = skippedRows_.find(lid);
       if (checkSkippedRows_ && (it != skippedRows_.end())) continue;
 
-      if (!matrixFilled_) {
-        const double* cur_lhs = &lhs(ir, 0);
-
-        HYPRE_IJMatrixAddToValues(mat_, 1, &numRows, &lid,
-                                  &localIds[0], cur_lhs);
-      }
+      const double* cur_lhs = &lhs(ir, 0);
+      HYPRE_IJMatrixAddToValues(mat_, 1, &numRows, &lid,
+                                &localIds[0], cur_lhs);
       HYPRE_IJVectorAddToValues(rhs_, 1, &lid, &rhs[ir]);
+
       if ((lid >= iLower_) && (lid <= iUpper_))
         rowFilled_[lid - iLower_] = RS_FILLED;
   }
@@ -399,13 +408,11 @@ HypreLinearSystem::sumInto(
     auto it = skippedRows_.find(lid);
     if (checkSkippedRows_ && (it != skippedRows_.end())) continue;
 
-    if (!matrixFilled_) {
-      for (int c=0; c < numRows; c++)
-        scratchVals[c] = lhs[ir * numRows + c];
+    for (int c=0; c < numRows; c++)
+      scratchVals[c] = lhs[ir * numRows + c];
 
-      HYPRE_IJMatrixAddToValues(mat_, 1, &numRows, &lid,
-                                &scratchIds[0], &scratchVals[0]);
-    }
+    HYPRE_IJMatrixAddToValues(mat_, 1, &numRows, &lid,
+                              &scratchIds[0], &scratchVals[0]);
     HYPRE_IJVectorAddToValues(rhs_, 1, &lid, &rhs[ir]);
     if ((lid >= iLower_) && (lid <= iUpper_))
         rowFilled_[lid - iLower_] = RS_FILLED;
@@ -544,7 +551,6 @@ HypreLinearSystem::copy_hypre_to_stk(
     stk::topology::NODE_RANK, sel);
 
   double lclnorm2 = 0.0;
-  double lclcounter = 0;
   for (auto b: bkts) {
     double* field = (double*) stk::mesh::field_data(*stkField, *b);
     for (size_t in=0; in < b->size(); in++) {
@@ -558,16 +564,13 @@ HypreLinearSystem::copy_hypre_to_stk(
 
         lclnorm2 += field[sid] * field[sid];
       }
-      lclcounter++;
     }
   }
 
   double gblnorm2 = 0.0;
-  double gblcounter = 0;
   stk::all_reduce_sum(bulk.parallel(), &lclnorm2, &gblnorm2, 1);
-  stk::all_reduce_sum(bulk.parallel(), &lclcounter, &gblcounter, 1);
 
-  return (std::sqrt(gblnorm2 / gblcounter));
+  return std::sqrt(gblnorm2);
 }
 
 }  // nalu

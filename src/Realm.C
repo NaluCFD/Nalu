@@ -1814,6 +1814,8 @@ Realm::pre_timestep_work()
     if ( hasOverset_ )
       initialize_overset();
 
+    set_hypre_global_id();
+
     // now re-initialize linear system
     equationSystems_.reinitialize_linear_system();
 
@@ -3681,13 +3683,17 @@ Realm::set_hypre_global_id()
   /* Create a mapping of Nalu Global ID (nodes) to Hypre Global ID.
    *
    * Background: Hypre requires a contiguous mapping of row IDs for its IJMatrix
-   * and IJVector data structure, i.e., the startID (iproc + 1) = endID(iproc) +
-   * 1. Therefore, this method first determines the total number of rows in each
+   * and IJVector data structure, i.e., the startID(iproc+1) = endID(iproc) + 1.
+   * Therefore, this method first determines the total number of rows in each
    * paritition and then determines the starting and ending IDs for the Hypre
    * matrix and finally assigns the hypre ID for all the nodes on this partition
    * in the hypreGlobalId_ field.
    */
-  const stk::mesh::Selector s_local = metaData_->locally_owned_part();
+
+  // Fill with an invalid value for future error checking
+  stk::mesh::field_fill(-1, *hypreGlobalId_);
+
+  const stk::mesh::Selector s_local = metaData_->locally_owned_part() & !get_inactive_selector();
   const auto& bkts = bulkData_->get_buckets(
     stk::topology::NODE_RANK, s_local);
 
@@ -3711,8 +3717,8 @@ Realm::set_hypre_global_id()
   // These are set up for NDOF=1, the actual lower/upper extents will be
   // finalized in HypreLinearSystem class based on the equation being solved.
   hypreILower_ = hypreOffsets[iproc];
-  hypreIUpper_ = hypreOffsets[iproc+1] - 1;
-  hypreNumNodes_ = hypreOffsets[nprocs] - 1;
+  hypreIUpper_ = hypreOffsets[iproc+1];
+  hypreNumNodes_ = hypreOffsets[nprocs];
 
   // 2. Sort the local STK IDs so that we retain a 1-1 mapping as much as possible
   size_t ii=0;

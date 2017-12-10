@@ -21,10 +21,20 @@
 namespace sierra {
 namespace nalu {
 
-/** Hypre Direct Solver
+/** Nalu interface to Hypre Solvers and Preconditioners
  *
- *  This solver bypassess the Trilinos/Tpetra interface and manages the STK to
- *  Hypre interface directly.
+ *  This class is responsible creation, initialization, execution, and clean up
+ *  of Hypre solver and preconditioner data structures during the simulation. It
+ *  provides an abstraction layer so that the user can choose different Hypre
+ *  solvers via input parameters. This class interacts with rest of Nalu solely
+ *  via sierra::nalu::HypreLinearSystem. The configuration of Hypre solver is
+ *  controlled via user input parameters processed in
+ *  sierra::nalu::HypreLinearSolverConfig
+ *
+ *  Users are referred to the [Hypre Reference
+ *  Manual](https://computation.llnl.gov/projects/hypre-scalable-linear-solvers-multigrid-methods/software)
+ *  for detailed documentation on the Hypre functions and data structures used
+ *  in this class.
  */
 class HypreDirectSolver: public LinearSolver
 {
@@ -36,32 +46,8 @@ public:
 
   virtual ~HypreDirectSolver();
 
-  /** Unused pure virtual method required to be overridden
-   *
-   *  Since we don't use Tpetra data structures, this method is unused
-   */
-  virtual void setupLinearSolver(
-    Teuchos::RCP<LinSys::Vector>,
-    Teuchos::RCP<LinSys::Matrix>,
-    Teuchos::RCP<LinSys::Vector>,
-    Teuchos::RCP<LinSys::MultiVector>) override
-  {}
-
+  //! Clean up Hypre data structures during simulation
   virtual void destroyLinearSolver() override;
-
-  /** Unused pure virtual method required to be overriden
-   *
-   *  Since we don't use Tpetra data structures, this method throws an error
-   */
-  virtual  int solve(
-    Teuchos::RCP<LinSys::Vector>,
-    int & ,
-    double &,
-    bool) override
-  {
-    throw std::runtime_error("Bad call to HypreDirectSolver::solve");
-    return 0;
-  }
 
   /** Solves the linear system and updates the solution vector.
    *
@@ -70,6 +56,7 @@ public:
    */
   int solve(int&, double&);
 
+  //! Return the type of solver instance
   virtual PetraType getType() override { return PT_HYPRE; }
 
   //! Instance of the Hypre parallel matrix
@@ -127,9 +114,19 @@ private:
   int (*solverFinalResidualNormPtr_)(HYPRE_Solver, double*);
 
 
+  //! Flag indicating whether a preconditioner is used. Certain solvers like
+  //! BoomerAMG do not require a preconditioner.
   bool usePrecond_{false};
+
+  //! Flag indicating whether the Hypre solver has been setup. This is used to
+  //! determine whether the Destroy functions are called to clean up
   bool isSolverSetup_{false};
+
+  //! Flag indicating whether the Hypre preconditioner has been setup. This is
+  //! used to determine whether the Destroy functions are called to clean up
   bool isPrecondSetup_{false};
+
+  //! Flag indicating whether this class instance has been initialized fully
   bool isInitialized_{false};
 };
 

@@ -94,11 +94,6 @@ LinearSystem *LinearSystem::create(Realm& realm, const unsigned numDof, Equation
     return new TpetraLinearSystem(realm, numDof, eqSys, solver);
     break;
 
-  case PT_TPETRA_HYPRE:
-    realm.hypreIsActive_ = true;
-    return new TpetraLinearSystem(realm, numDof, eqSys, solver);
-    break;
-
 #ifdef NALU_USES_HYPRE
   case PT_HYPRE:
     realm.hypreIsActive_ = true;

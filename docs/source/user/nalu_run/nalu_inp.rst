@@ -101,28 +101,29 @@ entries:
 
    The type of solver library used.
 
-   ================== ==============================================================================
+   ================== ==========================================================
    Type               Description
-   ================== ==============================================================================
+   ================== ==========================================================
    ``tpetra``         Tpetra data structures and Belos solvers/preconditioners
-   ``tpetra_hypre``   Tpetra data structures with Belos/Hypre solver/preconditioner combination
    ``hypre``          Hypre data structures and Hypre solver/preconditioners
-   ================== ==============================================================================
+   ================== ==========================================================
 
 .. inpfile:: linear_solvers.method
 
    The solver used for solving the linear system.
 
    When :inpfile:`linear_solvers.type` is ``tpetra`` the valid options are:
-   ``gmres``, ``biCgStab``, ``cg``. For ``tpetra_hypre`` and ``hypre`` the valid
+   ``gmres``, ``biCgStab``, ``cg``. For ``hypre`` the valid
    options are ``hypre_boomerAMG`` and ``hypre_gmres``.
+
+**Options Common to both Solver Libraries**
 
 .. inpfile:: linear_solvers.preconditioner
 
    The type of preconditioner used.
 
    When :inpfile:`linear_solvers.type` is ``tpetra`` the valid options are
-   ``sgs``, ``mt_sgs``, ``muelu``. For ``tpetra_hypre`` and ``hypre`` the valid
+   ``sgs``, ``mt_sgs``, ``muelu``. For ``hypre`` the valid
    options are ``boomerAMG`` or ``none``.
 
 .. inpfile:: linear_solvers.tolerance

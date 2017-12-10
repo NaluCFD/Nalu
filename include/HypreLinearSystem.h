@@ -9,8 +9,6 @@
 #define HYPRELINEARSYSTEM_H
 
 #include "LinearSystem.h"
-#include "overset/OversetManager.h"
-#include "overset/OversetInfo.h"
 
 #include "stk_mesh/base/BulkData.hpp"
 
@@ -26,10 +24,24 @@ namespace sierra {
 namespace nalu {
 
 /** Nalu interface to populate a Hypre Linear System
+ *
+ *  This class provides an interface to the HYPRE IJMatrix and IJVector data
+ *  structures. It is responsible for creating, resetting, and destroying the
+ *  Hypre data structures and provides the HypreLinearSystem::sumInto interface
+ *  used by Nalu Kernels and SupplementalAlgorithms to populate entries into the
+ *  linear system. The HypreLinearSystem::solve method interfaces with
+ *  sierra::nalu::HypreDirectSolver that is responsible for the actual solution
+ *  of the system using the required solver and preconditioner combination.
  */
 class HypreLinearSystem : public LinearSystem
 {
 public:
+  /**
+   * @param[in] realm The realm instance that holds the EquationSystem being solved
+   * @param[in] numDof The degrees of freedom for the equation system created (Default: 1)
+   * @param[in] eqSys The equation system instance
+   * @param[in] linearSolver Handle to the HypreDirectSolver instance
+   */
   HypreLinearSystem(
     Realm& realm,
     const unsigned numDof,
@@ -63,9 +75,33 @@ public:
    */
   virtual void buildDirichletNodeGraph(const std::vector<stk::mesh::Entity>&);
 
-  // Matrix Assembly
+  /** Reset the matrix and rhs data structures for the next iteration/timestep
+   *
+   */
   virtual void zeroSystem();
 
+  /** Update coefficients of a particular row(s) in the linear system
+   *
+   *  The core method of this class, it updates the matrix and RHS based on the
+   *  inputs from the various algorithms. Note that, unlike TpetraLinearSystem,
+   *  this method skips over the fringe points of Overset mesh and the Dirichlet
+   *  nodes rather than resetting them afterward.
+   *
+   *  This overloaded method deals with Kernels designed with Kokkos::View arrays.
+   *
+   *  @param[in] numEntities The total number of nodes where data is to be updated
+   *  @param[in] entities A list of STK node entities
+   *
+   *  @param[in] rhs Array containing RHS entries to be summed into
+   *      [numEntities * numDof]
+   *
+   *  @param[in] lhs Array containing LHS entries to be summed into.
+   *      [numEntities * numDof, numEntities * numDof]
+   *
+   *  @param[in] localIds Work array for storing local row IDs
+   *  @param[in] sortPermutation Work array for sorting row IDs
+   *  @param[in] trace_tag Debugging message
+   */
   virtual void sumInto(
       unsigned numEntities,
       const stk::mesh::Entity* entities,
@@ -76,6 +112,27 @@ public:
       const char * trace_tag
   );
 
+  /** Update coefficients of a particular row(s) in the linear system
+   *
+   *  The core method of this class, it updates the matrix and RHS based on the
+   *  inputs from the various algorithms. Note that, unlike TpetraLinearSystem,
+   *  this method skips over the fringe points of Overset mesh and the Dirichlet
+   *  nodes rather than resetting them afterward.
+   *
+   *  This overloaded method deals with classic SupplementalAlgorithms
+   *
+   *  @param[in] sym_meshobj A list of STK node entities
+   *  @param[in] scratchIds Work array for row IDs
+   *  @param[in] scratchVals Work array for row entries
+   *
+   *  @param[in] rhs Array containing RHS entries to be summed into
+   *      [numEntities * numDof]
+   *
+   *  @param[in] lhs Array containing LHS entries to be summed into.
+   *      [numEntities * numDof * numEntities * numDof]
+   *
+   *  @param[in] trace_tag Debugging message
+   */
   virtual void sumInto(
     const std::vector<stk::mesh::Entity> & sym_meshobj,
     std::vector<int> &scratchIds,
@@ -85,6 +142,8 @@ public:
     const char *trace_tag
   );
 
+  /** Populate the LHS and RHS for the Dirichlet rows in linear system
+   */
   virtual void applyDirichletBCs(
     stk::mesh::FieldBase * solutionField,
     stk::mesh::FieldBase * bcValuesField,
@@ -120,18 +179,44 @@ public:
     checkSkippedRows_ = false;
   }
 
-  // Solve
+  /** Solve the system Ax = b
+   *
+   *  The solution vector is returned in linearSolutionField
+   *
+   *  @param[out] linearSolutionField STK field where the solution is populated
+   */
   virtual int solve(stk::mesh::FieldBase * linearSolutionField);
+
+  /** Finalize construction of the linear system matrix and rhs vector
+   *
+   *  This method calls the appropriate Hypre functions to assemble the matrix
+   *  and rhs in a parallel run, as well as registers the matrix and rhs with
+   *  the solver preconditioner.
+   */
   virtual void loadComplete();
 
   virtual void writeToFile(const char * filename, bool useOwned=true) {}
   virtual void writeSolutionToFile(const char * filename, bool useOwned=true) {}
 
 protected:
+  /** Prepare the instance for system construction
+   *
+   *  During initialization, this creates the hypre data structures via API
+   *  calls. It also synchronizes hypreGlobalId across shared and ghosted data
+   *  so that hypre row ID lookups succeed during initialization and assembly.
+   */
   virtual void beginLinearSystemConstruction();
 
+  /** Return the Hypre ID corresponding to the given STK node entity
+   *
+   *  @param[in] entity The STK node entity object
+   *
+   *  @return The HYPRE row ID
+   */
   int get_entity_hypre_id(const stk::mesh::Entity&);
 
+  //! Helper method to transfer the solution from a HYPRE_IJVector instance to
+  //! the STK field data instance.
   double copy_hypre_to_stk(stk::mesh::FieldBase*);
 
 private:
@@ -197,9 +282,6 @@ private:
 
   //! Flag indicating whether the linear system has been initialized
   bool systemInitialized_{false};
-
-  //! Flag indicating whether the matrix has been assembled
-  bool matrixFilled_{false};
 
   bool checkSkippedRows_{true};
 };

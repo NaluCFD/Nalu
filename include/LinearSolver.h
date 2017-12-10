@@ -47,14 +47,12 @@ namespace nalu{
   enum PetraType {
     PT_TPETRA,       //!< Nalu Tpetra interface
     PT_HYPRE,        //!< Direct HYPRE interface
-    PT_TPETRA_HYPRE, //!< Tpetra to Hypre interface via xSDK
     PT_END
   };
 
 
 class LinearSolvers;
 class Simulation;
-class Realm;
 
 /** An abstract representation of a linear solver in Nalu
  *
@@ -84,28 +82,6 @@ class LinearSolver
   //! Type of solver instance as defined in sierra::nalu::PetraType
     virtual PetraType getType() = 0;
 
-  /** Solve the linear system Ax = b
-   *
-   *  @param[out] sln The solution vector
-   *  @param[out] iters The number of linear solver iterations to convergence
-   *  @param[out] finalResidNrm The final residual norm
-   *  @param[in]  isFinalOuterIter Is this the final outer iteration
-   */
-    virtual int solve(Teuchos::RCP<LinSys::Vector>, int&, double&, bool) = 0;
-
-  /** Create the linear solver instances for Trilinos Belos solvers
-   *
-   * @param[in] sln The solution vector instance
-   * @param[in] matrix The Tpetra matrix instance
-   * @param[in] rhs The Tpetra vector instance for RHS
-   * @param[in] coords The grid coordinates as a Tpetra data structure
-   */
-    virtual void setupLinearSolver(
-      Teuchos::RCP<LinSys::Vector>,
-      Teuchos::RCP<LinSys::Matrix>,
-      Teuchos::RCP<LinSys::Vector>,
-      Teuchos::RCP<LinSys::MultiVector>) = 0;
-
   /** Utility method to cleanup solvers during simulation
    */
     virtual void destroyLinearSolver() = 0;
@@ -113,10 +89,6 @@ class LinearSolver
     Simulation* root();
     LinearSolvers* parent();
     LinearSolvers* linearSolvers_;
-    Realm* realm_{nullptr};
-
-  //! The number of degrees of freedom in the equation system. Default: 1
-    int numDof_{1};
 
   protected:
   LinearSolverConfig* config_;
@@ -164,11 +136,11 @@ class TpetraLinearSolver : public LinearSolver
       Teuchos::RCP<LinSys::Matrix> matrix,
       Teuchos::RCP<LinSys::Vector> rhs);
 
-    virtual void setupLinearSolver(
+    void setupLinearSolver(
       Teuchos::RCP<LinSys::Vector> sln,
       Teuchos::RCP<LinSys::Matrix> matrix,
       Teuchos::RCP<LinSys::Vector> rhs,
-      Teuchos::RCP<LinSys::MultiVector> coords) override;
+      Teuchos::RCP<LinSys::MultiVector> coords);
 
     virtual void destroyLinearSolver() override;
 
@@ -186,15 +158,15 @@ class TpetraLinearSolver : public LinearSolver
   /** Solve the linear system Ax = b
    *
    *  @param[out] sln The solution vector
-   *  @param[out] iters The number of linear solver iterations to convergence
-   *  @param[out] finalResidNrm The final residual norm
+   *  @param[out] iterationCount The number of linear solver iterations to convergence
+   *  @param[out] scaledResidual The final residual norm
    *  @param[in]  isFinalOuterIter Is this the final outer iteration
    */
-    virtual int solve(
+    int solve(
       Teuchos::RCP<LinSys::Vector> sln,
       int & iterationCount,
       double & scaledResidual,
-      bool isFinalOuterIter) override;
+      bool isFinalOuterIter);
 
     virtual PetraType getType() override { return PT_TPETRA; }
 

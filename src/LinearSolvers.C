@@ -14,7 +14,6 @@
 #include <Simulation.h>
 
 #ifdef NALU_USES_HYPRE
-#include "HypreLinearSolver.h"
 #include "HypreDirectSolver.h"
 #endif
 
@@ -56,8 +55,7 @@ LinearSolvers::load(const YAML::Node & node)
         linearSolverConfig->load(linear_solver_node);
         solverTpetraConfig_[linearSolverConfig->name()] = linearSolverConfig; 
       }
-      else if ((solver_type == "tpetra_hypre") ||
-               (solver_type == "hypre")) {
+      else if (solver_type == "hypre") {
 #ifdef NALU_USES_HYPRE
         HypreLinearSolverConfig *linSolverCfg = new HypreLinearSolverConfig();
         linSolverCfg->load(linear_solver_node);
@@ -105,10 +103,7 @@ LinearSolvers::create_solver(
     if (hIter != solverHypreConfig_.end()) {
       HypreLinearSolverConfig *cfg = hIter->second;
       foundT = true;
-      if (cfg->solver_type() == "tpetra_hypre")
-        theSolver = new HypreLinearSolver(solverName, cfg, this);
-      else
-        theSolver = new HypreDirectSolver(solverName, cfg, this);
+      theSolver = new HypreDirectSolver(solverName, cfg, this);
     }
   }
 #endif

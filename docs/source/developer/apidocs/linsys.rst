@@ -23,9 +23,6 @@ Linear Solvers Interface
 .. doxygenclass:: sierra::nalu::TpetraLinearSolver
    :members:
 
-.. doxygenclass:: sierra::nalu::HypreLinearSolver
-   :members:
-
 .. doxygenclass:: sierra::nalu::HypreDirectSolver
    :members:
 
