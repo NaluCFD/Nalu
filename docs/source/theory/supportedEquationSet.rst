@@ -468,7 +468,7 @@ and :math:`\Delta t` is the time-scale between when the source term is computed
 (time :math:`t`) and when it is applied (time :math:`t + \Delta t`).
 This is typically chosen to be the simulation time-step.
 In the case of an ABL simulation with flat terrain, the voulme averaging is done
-over an infinitesimal small plane over the :math:`x` and :math:`y` directions,
+over an infinitesimally thin slice in the :math:`x` and :math:`y` directions,
 such that the body force is only a
 function of height :math:`z` and time :math:`t`.
 The implementation allows the
