@@ -152,9 +152,11 @@ ABLForcingAlgorithm::load_momentum_info(const YAML::Node& node)
   create_interp_arrays(nHeights, vztmp, velZTimes_, velZ_);
 
   const int ndim = realm_.spatialDimension_;
-  if (momSrcType_ == COMPUTED)
+  if (momSrcType_ == COMPUTED) {
     UmeanCalc_.resize(nHeights);
     rhoMeanCalc_.resize(nHeights);
+  }
+
   for (size_t i = 0; i < nHeights; i++) {
     if (momSrcType_ == COMPUTED)
       UmeanCalc_[i].resize(ndim);
@@ -389,9 +391,11 @@ ABLForcingAlgorithm::create_transfers()
 {
   transfers_ = new Transfers(*realm_.root());
 
-  if (momentumForcingOn())
+  if (momentumForcingOn()) {
     populate_transfer_data("velocity", velPartNames_);
     populate_transfer_data("density", velPartNames_);
+  }
+
   if (temperatureForcingOn())
     populate_transfer_data("temperature", tempPartNames_);
 
