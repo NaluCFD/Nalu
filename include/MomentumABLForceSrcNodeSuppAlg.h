@@ -41,9 +41,6 @@ private:
   //! Pointer to the dual volume of the mesh
   ScalarFieldType* dualNodalVolume_;
 
-  //! Pointer to the density (state NP1) of the mesh
-  ScalarFieldType* density_;
-
   //! Spatial dimension of the computational mesh
   const int nDim_;
 };

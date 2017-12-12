@@ -20,13 +20,8 @@ MomentumABLForceSrcNodeSuppAlg::MomentumABLForceSrcNodeSuppAlg(
       stk::topology::NODE_RANK, "coordinates")),
     dualNodalVolume_(realm.meta_data().get_field<ScalarFieldType>(
       stk::topology::NODE_RANK, "dual_nodal_volume")),
-    density_(NULL),
     nDim_(realm_.meta_data().spatial_dimension())
-{
-  ScalarFieldType* density = realm.meta_data().get_field<ScalarFieldType>(
-    stk::topology::NODE_RANK, "density");
-  density_ = &(density->field_of_state(stk::mesh::StateNP1));
-}
+  {}
 
 void
 MomentumABLForceSrcNodeSuppAlg::node_execute(
@@ -34,13 +29,15 @@ MomentumABLForceSrcNodeSuppAlg::node_execute(
 {
   const double dualVol = *stk::mesh::field_data(*dualNodalVolume_, node);
   const double* pt = stk::mesh::field_data(*coords_, node);
-  const double rhoNP1 = *stk::mesh::field_data(*density_, node);
+  //~ const double rhoNP1 = *stk::mesh::field_data(*density_, node);
   std::vector<double> momSrc(nDim_);
 
+  // Evaluate the momentum source
   ablSrc_->eval_momentum_source(pt[nDim_ - 1], momSrc);
 
+  // Add the momentum source into the RHS
   for (int i = 0; i < nDim_; i++) {
-    rhs[i] += dualVol * rhoNP1 * momSrc[i];
+    rhs[i] += dualVol * momSrc[i];
   }
 }
 
