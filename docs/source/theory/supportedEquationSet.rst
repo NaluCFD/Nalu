@@ -93,7 +93,7 @@ k represents the modeled turbulent kinetic energy as is formally defined as,
 
    \bar \rho k = \frac{1}{2} \bar\rho ( \widetilde{u_k u_k} - \tilde u_k \tilde u_k).
 
-Model closures can use, Yoshikawa's approach when k is not transported:
+Model closures can use, Yoshizawa's approach when k is not transported:
 
 .. math::
 

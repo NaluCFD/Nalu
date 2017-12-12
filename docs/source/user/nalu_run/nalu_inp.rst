@@ -1035,33 +1035,37 @@ Turbulence averaging
 
 .. inpfile:: turbulence_averaging.specifications.compute_resolved_stress
 
-   A boolean flag indicating whether the resolved stress is
-   computed. The default value is ``no``. When this option is turned on, the
-   Favre averages of the resolved quantities are computed as well.
+   A boolean flag indicating whether the average resolved stress is 
+   computed as :math:`< \bar\rho \widetilde{u_i} \widetilde{u_j} >`.
+   The default value is ``no``. When this option is turned on, the Favre
+   average of the resolved velocity, :math:`< \bar{\rho} \widetilde{u_j} >`, is
+   computed as well.
    
 .. inpfile:: turbulence_averaging.specifications.compute_temperature_resolved_flux
 
-   A boolean flag indicating whether the resolved temperature flux is
-   computed. The default value is ``no``. When this option is turned on, the
-   Favre averages of the resolved temperature is computed as well.
+   A boolean flag indicating whether the average resolved temperature flux is
+   computed as :math:`< \bar\rho \widetilde{u_i} \widetilde{\theta} >`. The
+   default value is ``no``. When this option is turned on, the Favre average
+   of the resolved temperature, :math:`< \bar{\rho} \widetilde{\theta} >`, is
+   computed as well.
 
 .. inpfile:: turbulence_averaging.specifications.compute_sfs_stress
 
-   A boolean flag indicating whether the sub-filter scale stress is
+   A boolean flag indicating whether the average sub-filter scale stress is
    computed. The default value is ``no``. The sub-filter scale stress model is
    assumed to be of an eddy viscosity type and the turbulent viscosity computed
    by the turbulence model is used. The sub-filter scale kinetic energy is used
    to determine the isotropic component of the sub-filter stress. As described
-   in the section :ref:`supp_eqn_set_mom_cons`, the Yoshisawa model is used to
+   in the section :ref:`supp_eqn_set_mom_cons`, the Yoshizawa model is used to
    compute the sub-filter kinetic energy when it is not transported. 
    
 .. inpfile:: turbulence_averaging.specifications.compute_temperature_sfs_flux
 
-   A boolean flag indicating whether the sub-filter scale flux of temperature is
-   computed. The default value is ``no``. The sub-filter scale stress model is
-   assumed to be of an eddy diffusivity type and the turbulent diffusivity computed
-   by the turbulence model is used along with a constant turbulent Prandtl number
-   obtained from the Realm.
+   A boolean flag indicating whether the average sub-filter scale flux of
+   temperature is computed. The default value is ``no``. The sub-filter scale
+   stress model is assumed to be of an eddy diffusivity type and the turbulent
+   diffusivity computed by the turbulence model is used along with a constant
+   turbulent Prandtl number obtained from the Realm.
    
 .. inpfile:: turbulence_averaging.specifications.compute_favre_stress
 
