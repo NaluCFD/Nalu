@@ -87,6 +87,9 @@
 #include <user_functions/VariableDensityNonIsoTemperatureAuxFunction.h>
 #include <user_functions/VariableDensityNonIsoEnthalpySrcNodeSuppAlg.h>
 
+#include <user_functions/BoussinesqNonIsoTemperatureAuxFunction.h>
+#include <user_functions/BoussinesqNonIsoEnthalpySrcNodeSuppAlg.h>
+
 // overset
 #include <overset/UpdateOversetFringeAlgorithmDriver.h>
 
@@ -552,6 +555,9 @@ EnthalpyEquationSystem::register_interior_algorithm(
         }
         else if (sourceName == "VariableDensityNonIso" ) {
           suppAlg = new VariableDensityNonIsoEnthalpySrcNodeSuppAlg(realm_);
+        }
+        else if (sourceName == "BoussinesqNonIso" ) {
+          suppAlg = new BoussinesqNonIsoEnthalpySrcNodeSuppAlg(realm_);
         }
         else if (sourceName == "abl_forcing") {
           ThrowAssertMsg(
@@ -1060,6 +1066,9 @@ EnthalpyEquationSystem::register_initial_condition_fcn(
     if ( fcnName == "VariableDensityNonIso" ) {
       theAuxFunc = new VariableDensityNonIsoTemperatureAuxFunction();      
     }
+    else if ( fcnName == "BoussinesqNonIso" ) {
+      theAuxFunc = new BoussinesqNonIsoTemperatureAuxFunction();
+    }
     else {
       throw std::runtime_error("EnthalpyEquationSystem::register_initial_condition_fcn: limited user functions supported");
     }
@@ -1378,6 +1387,9 @@ EnthalpyEquationSystem::temperature_bc_setup(
     }
     else if ( fcnName == "VariableDensityNonIso" ) {
       theAuxFunc = new VariableDensityNonIsoTemperatureAuxFunction();
+    }
+    else if ( fcnName == "BoussinesqNonIso" ) {
+      theAuxFunc = new BoussinesqNonIsoTemperatureAuxFunction();
     }
     else {
       throw std::runtime_error("EnthalpyEquationSystem::temperature_bc_setup; limited user functions supported");
