@@ -43,6 +43,7 @@ ABLForcingAlgorithm::ABLForcingAlgorithm(Realm& realm, const YAML::Node& node)
     velZ_(0),
     temp_(0),
     UmeanCalc_(0),
+    rhoMeanCalc_(0),
     USource_(0),
     rhoMeanCalc_(0),
     TmeanCalc_(0),
