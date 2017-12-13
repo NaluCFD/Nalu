@@ -197,15 +197,18 @@ void check_volume_integration(
   auto QR = unit_test_utils::random_linear_transformation(dim, 1.0, rng);
   for (int j = 0; j < meSV.nodesPerElement_; ++j) {
     const double* coords = stk::mesh::field_data(coordField, node_rels[j]);
+
+    if (dim == 3) {
+      sierra::nalu::matvec33(QR.data(), coords, &ws_coords_mapped[j*dim]);
+    }
+    else {
+      sierra::nalu::matvec22(QR.data(), coords, &ws_coords_mapped[j*dim]);
+    }
+
     for (int k = 0; k < dim; ++k) {
-      if (dim == 3) {
-        sierra::nalu::matvec33(QR.data(), coords, &ws_coords_mapped[j*dim]);
-      }
-      else {
-        sierra::nalu::matvec22(QR.data(), coords, &ws_coords_mapped[j*dim]);
-      }
       ws_coords[j*dim+k] = coords[k];
     }
+
   }
   const double detQR = (dim == 3) ? sierra::nalu::determinant33(QR.data()) : sierra::nalu::determinant22(QR.data());
   ASSERT_TRUE(detQR > 1.0e-15);
