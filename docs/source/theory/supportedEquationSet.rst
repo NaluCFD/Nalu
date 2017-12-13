@@ -30,6 +30,8 @@ derivative to include the :math:`\frac{\partial \rho}{\partial p}`
 sensitivity, an equation that admits acoustic pressure waves is
 realized.
 
+.. _supp_eqn_set_mom_cons:
+
 Conservation of Momentum
 ++++++++++++++++++++++++
 
@@ -95,7 +97,7 @@ k represents the modeled turbulent kinetic energy as is formally defined as,
 
    \bar \rho k = \frac{1}{2} \bar\rho ( \widetilde{u_k u_k} - \widetilde u_k \widetilde u_k).
 
-Model closures can use, Yoshikawa's approach when k is not transported:
+Model closures can use, Yoshizawa's approach when k is not transported:
 
 .. math::
 

@@ -75,6 +75,17 @@ TurbulenceAveragingPostProcessing::load(
   if (y_average) {    
     get_if_present(y_average, "forced_reset", forcedReset_, forcedReset_);
     get_if_present(y_average, "time_filter_interval", timeFilterInterval_, timeFilterInterval_);
+    if (y_average["averaging_type"]) {
+      std::string avgType = y_average["averaging_type"].as<std::string>();
+      if (avgType == "nalu_classic")
+        averagingType_ = NALU_CLASSIC;
+      else if (avgType == "moving_exponential")
+        averagingType_ = MOVING_EXPONENTIAL;
+      else
+        throw std::runtime_error(
+          "TurbulenceAveragingPostProcessing: "
+          "Invalid averaging type specified for turbulence post processing.");
+    }
 
     // extract the sequence of types
     const YAML::Node y_specs = expect_sequence(y_average, "specifications", false);
@@ -131,10 +142,18 @@ TurbulenceAveragingPostProcessing::load(
         get_if_present(y_spec, "compute_reynolds_stress", avInfo->computeReynoldsStress_, avInfo->computeReynoldsStress_);
         get_if_present(y_spec, "compute_tke", avInfo->computeTke_, avInfo->computeTke_);
         get_if_present(y_spec, "compute_favre_stress", avInfo->computeFavreStress_, avInfo->computeFavreStress_);
+        get_if_present(y_spec, "compute_resolved_stress", avInfo->computeResolvedStress_, avInfo->computeResolvedStress_);
+        get_if_present(y_spec, "compute_sfs_stress", avInfo->computeSFSStress_, avInfo->computeSFSStress_);
         get_if_present(y_spec, "compute_favre_tke", avInfo->computeFavreTke_, avInfo->computeFavreTke_);
         get_if_present(y_spec, "compute_vorticity", avInfo->computeVorticity_, avInfo->computeVorticity_);
         get_if_present(y_spec, "compute_q_criterion", avInfo->computeQcriterion_, avInfo->computeQcriterion_);
         get_if_present(y_spec, "compute_lambda_ci", avInfo->computeLambdaCI_, avInfo->computeLambdaCI_);
+
+        get_if_present(y_spec, "compute_temperature_sfs_flux",
+                       avInfo->computeTemperatureSFS_, avInfo->computeTemperatureSFS_);
+        get_if_present(y_spec, "compute_temperature_resolved_flux",
+                       avInfo->computeTemperatureResolved_,
+                       avInfo->computeTemperatureResolved_);
 
         // we will need Reynolds/Favre-averaged velocity if we need to compute TKE
         if ( avInfo->computeTke_ || avInfo->computeReynoldsStress_ ) {
@@ -150,6 +169,22 @@ TurbulenceAveragingPostProcessing::load(
           if ( std::find(avInfo->favreFieldNameVec_.begin(), avInfo->favreFieldNameVec_.end(), velocityName) == avInfo->favreFieldNameVec_.end() ) {
             // not found; add it
             avInfo->favreFieldNameVec_.push_back(velocityName);
+          }
+        }
+
+        if ( avInfo->computeResolvedStress_ || avInfo->computeTemperatureResolved_ ) {
+            const std::string velocityName = "velocity";
+            if ( std::find(avInfo->resolvedFieldNameVec_.begin(), avInfo->resolvedFieldNameVec_.end(), velocityName) == avInfo->resolvedFieldNameVec_.end() ) {
+                // not found; add it
+                avInfo->resolvedFieldNameVec_.push_back(velocityName);
+            }
+        }
+
+        if (avInfo->computeTemperatureResolved_) {
+          const std::string temperatureName = "temperature";
+          if ( std::find(avInfo->resolvedFieldNameVec_.begin(), avInfo->resolvedFieldNameVec_.end(), temperatureName) == avInfo->resolvedFieldNameVec_.end() ) {
+            // not found; add it
+            avInfo->resolvedFieldNameVec_.push_back(temperatureName);
           }
         }
 
@@ -224,6 +259,7 @@ TurbulenceAveragingPostProcessing::setup()
       }
 
       const int stressSize = realm_.spatialDimension_ == 3 ? 6 : 3;
+      const int tempFluxSize = realm_.spatialDimension_;
       if ( avInfo->computeReynoldsStress_ ) {
         const std::string stressName = "reynolds_stress";
         register_field(stressName, stressSize, metaData, targetPart);
@@ -234,6 +270,30 @@ TurbulenceAveragingPostProcessing::setup()
         register_field(stressName, stressSize, metaData, targetPart);
       }
 
+      if ( avInfo->computeResolvedStress_  || avInfo->computeTemperatureResolved_ ) {
+          const std::string stressName = "resolved_stress";
+          register_field(stressName, stressSize, metaData, targetPart);
+      }
+
+      if ( avInfo->computeTemperatureResolved_ ) {
+        const std::string tempFluxName = "temperature_resolved_flux";
+        register_field(tempFluxName, tempFluxSize, metaData, targetPart);
+        const std::string tempVarName = "temperature_variance";
+        register_field(tempVarName, 1, metaData, targetPart);
+      }
+
+      if ( avInfo->computeSFSStress_  || avInfo->computeTemperatureSFS_ ) {
+          if (realm_.spatialDimension_ < 3)
+              throw std::runtime_error("TurbulenceAveragingPostProcessing:setup() Cannot compute SFS stress in less than 3 dimensions: ");
+          const std::string stressName = "sfs_stress";
+          register_field(stressName, stressSize, metaData, targetPart);
+      }
+
+      if ( avInfo->computeTemperatureSFS_ ) {
+        const std::string tempFluxName = "temperature_sfs_flux";
+        register_field(tempFluxName, tempFluxSize, metaData, targetPart);
+      }
+      
       // deal with density; always need Reynolds averaged quantity
       const std::string densityReynoldsName = "density_ra_" + averageBlockName;
       ScalarFieldType *densityReynolds =  &(metaData.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, densityReynoldsName));
@@ -251,7 +311,15 @@ TurbulenceAveragingPostProcessing::setup()
         const std::string primitiveName = avInfo->favreFieldNameVec_[i];
         const std::string averagedName = primitiveName + "_fa_" + averageBlockName;
         register_field_from_primitive(primitiveName, averagedName, metaData, targetPart);
-      }      
+      }
+
+      // Resolved
+      for ( size_t i = 0; i < avInfo->resolvedFieldNameVec_.size(); ++i ) {
+          const std::string primitiveName = avInfo->resolvedFieldNameVec_[i];
+          const std::string averagedName = primitiveName + "_resa_" + averageBlockName;
+          register_field_from_primitive(primitiveName, averagedName, metaData, targetPart);
+      }
+      
     }
 
     // now deal with pairs; extract density
@@ -277,6 +345,13 @@ TurbulenceAveragingPostProcessing::setup()
       construct_pair(primitiveName, averagedName, avInfo->favreFieldVecPair_, avInfo->favreFieldSizeVec_, metaData);
     }
 
+    // Resolved
+    for ( size_t i = 0; i < avInfo->resolvedFieldNameVec_.size(); ++i ) {
+        const std::string primitiveName = avInfo->resolvedFieldNameVec_[i];
+        const std::string averagedName = primitiveName + "_resa_" + averageBlockName;
+        construct_pair(primitiveName, averagedName, avInfo->resolvedFieldVecPair_, avInfo->resolvedFieldSizeVec_, metaData);
+    }
+    
     // output what we have done here...
     review(avInfo);
   }
@@ -388,6 +463,13 @@ TurbulenceAveragingPostProcessing::review(
     NaluEnv::self().naluOutputP0() << "Primitive/Favre name:    " << primitiveFB->name() << "/" <<  averageFB->name()
                                    << " size " << avInfo->favreFieldSizeVec_[iav] << std::endl;
   }
+
+  for ( size_t iav = 0; iav < avInfo->resolvedFieldVecPair_.size(); ++iav ) {
+      stk::mesh::FieldBase *primitiveFB = avInfo->resolvedFieldVecPair_[iav].first;
+      stk::mesh::FieldBase *averageFB = avInfo->resolvedFieldVecPair_[iav].second;
+      NaluEnv::self().naluOutputP0() << "Primitive/Resolved name: " << primitiveFB->name() << "/" <<  averageFB->name()
+                                     << " size " << avInfo->resolvedFieldSizeVec_[iav] << std::endl;
+  }
   
   if ( avInfo->computeTke_ ) {
     NaluEnv::self().naluOutputP0() << "TKE will be computed; add resolved_turbulent_ke to the Reynolds/Favre block for mean"<< std::endl;
@@ -403,6 +485,14 @@ TurbulenceAveragingPostProcessing::review(
 
   if ( avInfo->computeFavreStress_ ) {
     NaluEnv::self().naluOutputP0() << "Favre Stress will be computed; add favre_stress to output"<< std::endl;
+  }
+
+  if ( avInfo->computeResolvedStress_ ) {
+      NaluEnv::self().naluOutputP0() << "Resolved Stress will be computed; add resolved_stress to output"<< std::endl;
+  }
+
+  if ( avInfo->computeSFSStress_ ) {
+      NaluEnv::self().naluOutputP0() << "Sub-filter scale Stress will be computed; add sfs_stress to output"<< std::endl;
   }
 
   if ( avInfo->computeVorticity_ ) {
@@ -429,15 +519,27 @@ TurbulenceAveragingPostProcessing::execute()
 {
   stk::mesh::MetaData &metaData = realm_.meta_data();
 
-  // increment time filter; RESTART for this field...
   const double dt = realm_.get_time_step();
-  const double oldTimeFilter = currentTimeFilter_;
+  double oldTimeFilter = currentTimeFilter_;
+  double zeroCurrent = 1.0;
 
-  // check to reset filter
-  const bool resetFilter = ( oldTimeFilter + dt  > timeFilterInterval_ ) || forcedReset_;
-  const double zeroCurrent = resetFilter ? 0.0 : 1.0;
-  currentTimeFilter_ =  resetFilter ? dt : oldTimeFilter + dt;
-  NaluEnv::self().naluOutputP0() << "Filter Size " << currentTimeFilter_ << std::endl;
+  if (averagingType_ == NALU_CLASSIC) {
+    const bool resetFilter = ( oldTimeFilter + dt  > timeFilterInterval_ ) || forcedReset_;
+    zeroCurrent = resetFilter ? 0.0 : 1.0;
+    currentTimeFilter_ =  resetFilter ? dt : oldTimeFilter + dt;
+    NaluEnv::self().naluOutputP0() << "Filter Size " << currentTimeFilter_ << std::endl;
+  }
+  else if (averagingType_ == MOVING_EXPONENTIAL) {
+    const double timeFilter = oldTimeFilter + dt;
+
+    if (timeFilter > timeFilterInterval_) {
+      currentTimeFilter_ = timeFilterInterval_;
+      oldTimeFilter = timeFilterInterval_ - dt;
+    } else {
+      currentTimeFilter_ = timeFilter;
+    }
+    zeroCurrent = forcedReset_ ? 0.0 : 1.0;
+  }
 
   // deactivate hard reset
   forcedReset_ = false;
@@ -451,6 +553,7 @@ TurbulenceAveragingPostProcessing::execute()
     // size
     size_t reynoldsFieldPairSize = avInfo->reynoldsFieldVecPair_.size();
     size_t favreFieldPairSize = avInfo->favreFieldVecPair_.size();
+    size_t resolvedFieldPairSize = avInfo->resolvedFieldVecPair_.size();
 
     // define some common selectors
     stk::mesh::Selector s_all_nodes
@@ -510,6 +613,21 @@ TurbulenceAveragingPostProcessing::execute()
             average[j] = averageField;
           }
         }
+
+        // resolved next 
+        for ( size_t iav = 0; iav < resolvedFieldPairSize; ++iav ) {
+            stk::mesh::FieldBase *primitiveFB = avInfo->resolvedFieldVecPair_[iav].first;
+            stk::mesh::FieldBase *averageFB = avInfo->resolvedFieldVecPair_[iav].second;
+            const double * primitive = (double*)stk::mesh::field_data(*primitiveFB, node);
+            double * average = (double*)stk::mesh::field_data(*averageFB, node);
+            // get size
+            const int fieldSize = avInfo->resolvedFieldSizeVec_[iav];
+            for ( int j = 0; j < fieldSize; ++j ) {
+                const double averageField = (average[j]*oldTimeFilter*zeroCurrent + rho*primitive[j]*dt)/currentTimeFilter_;
+                average[j] = averageField;
+            }
+        }
+        
       }
     }
   
@@ -544,6 +662,22 @@ TurbulenceAveragingPostProcessing::execute()
       if ( avInfo->computeReynoldsStress_ ) {
         compute_reynolds_stress(avInfo->name_, oldTimeFilter, zeroCurrent, dt, s_all_nodes);
       }
+
+      if ( avInfo->computeResolvedStress_ ) {
+        compute_resolved_stress(avInfo->name_, oldTimeFilter, zeroCurrent, dt, s_all_nodes);
+      }
+
+      if ( avInfo->computeSFSStress_ ) {
+        compute_sfs_stress(avInfo->name_, oldTimeFilter, zeroCurrent, dt, s_all_nodes);
+      }
+
+      if ( avInfo->computeTemperatureResolved_ )
+        compute_temperature_resolved_flux(
+          avInfo->name_, oldTimeFilter, zeroCurrent, dt, s_all_nodes);
+
+      if ( avInfo->computeTemperatureSFS_ )
+        compute_temperature_sfs_flux(
+          avInfo->name_, oldTimeFilter, zeroCurrent, dt, s_all_nodes);
     }
   }
 }
@@ -735,6 +869,234 @@ TurbulenceAveragingPostProcessing::compute_favre_stress(
   }
 }
 
+void TurbulenceAveragingPostProcessing::compute_temperature_resolved_flux(
+  const std::string&,
+  const double& oldTimeFilter,
+  const double& zeroCurrent,
+  const double& dt,
+  stk::mesh::Selector s_all_nodes)
+{
+  auto& meta = realm_.meta_data();
+  const int nDim = realm_.spatialDimension_;
+  const int tempFluxSize = realm_.spatialDimension_;
+
+  const std::string tempFluxName = "temperature_resolved_flux";
+  const std::string tempVarName = "temperature_variance";
+
+  auto* velocity = meta.get_field(stk::topology::NODE_RANK, "velocity");
+  auto* density = meta.get_field(stk::topology::NODE_RANK, "density");
+  auto* temperature = meta.get_field(stk::topology::NODE_RANK, "temperature");
+  // Averaged temperature stress
+  auto* tempFluxA = meta.get_field(stk::topology::NODE_RANK, tempFluxName);
+  // Averaged temperature variance
+  auto* tempVarA = meta.get_field(stk::topology::NODE_RANK, tempVarName);
+
+  const auto& bkts = realm_.get_buckets(stk::topology::NODE_RANK, s_all_nodes);
+  for (auto b: bkts) {
+    const auto length = b->size();
+    const double* rhoNp1 = (double*) stk::mesh::field_data(*density, *b);
+    const double* uNp1 = (double*) stk::mesh::field_data(*velocity, *b);
+    const double *tempNp1 = (double*)stk::mesh::field_data(*temperature, *b);
+    double *tempFlux = (double*)stk::mesh::field_data(*tempFluxA, *b);
+    double *tempVar = (double*)stk::mesh::field_data(*tempVarA, *b);
+
+    for (size_t k=0; k < length; ++k ) {
+      const double rho = rhoNp1[k];
+      for ( int i = 0; i < nDim; ++i ) {
+        const double ui = uNp1[k*nDim+i];
+        const double newTempFlux = (tempFlux[k*tempFluxSize+i]*oldTimeFilter*zeroCurrent + rho * ui * tempNp1[k]*dt)/currentTimeFilter_ ;
+        tempFlux[k*tempFluxSize+i] = newTempFlux;
+
+        tempVar[k] = (tempVar[k]*oldTimeFilter*zeroCurrent + rho * tempNp1[k] * tempNp1[k]*dt)/currentTimeFilter_ ;
+      }
+    }
+  }
+}
+
+
+//--------------------------------------------------------------------------
+//-------- compute_resolved_stress -----------------------------------------
+//--------------------------------------------------------------------------
+void
+TurbulenceAveragingPostProcessing::compute_resolved_stress(
+  const std::string &,
+  const double &oldTimeFilter,
+  const double &zeroCurrent,
+  const double &dt,
+  stk::mesh::Selector s_all_nodes)
+{
+  stk::mesh::MetaData & metaData = realm_.meta_data();
+
+  const int nDim = realm_.spatialDimension_;
+  const int stressSize = realm_.spatialDimension_ == 3 ? 6 : 3;
+
+  const std::string stressName = "resolved_stress";
+
+  // extract fields
+  stk::mesh::FieldBase *density = metaData.get_field(stk::topology::NODE_RANK, "density");
+  stk::mesh::FieldBase *velocity = metaData.get_field(stk::topology::NODE_RANK, "velocity");
+  stk::mesh::FieldBase *stressA = metaData.get_field(stk::topology::NODE_RANK, stressName);
+
+  stk::mesh::BucketVector const& node_buckets_stress =
+    realm_.get_buckets( stk::topology::NODE_RANK, s_all_nodes );
+  for ( stk::mesh::BucketVector::const_iterator ib = node_buckets_stress.begin();
+        ib != node_buckets_stress.end() ; ++ib ) {
+    stk::mesh::Bucket & b = **ib ;
+    const stk::mesh::Bucket::size_type length   = b.size();
+
+    // fields
+    const double *uNp1 = (double*)stk::mesh::field_data(*velocity, b);
+    const double *rhoNp1 = (double*)stk::mesh::field_data(*density, b);
+    double *stress = (double*)stk::mesh::field_data(*stressA, b);
+
+    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+
+      const double rho = rhoNp1[k];
+
+      // stress is symmetric, so only save off 6 or 3 components
+      int componentCount = 0;
+      for ( int i = 0; i < nDim; ++i ) {
+        const double ui = uNp1[k*nDim+i];
+
+        for ( int j = i; j < nDim; ++j ) {
+          const int component = componentCount;
+          const double uj = uNp1[k*nDim+j];
+          const double newStress
+            = (stress[k*stressSize+component]*oldTimeFilter*zeroCurrent
+               + rho*ui*uj*dt)/currentTimeFilter_ ;
+          stress[k*stressSize+component] = newStress;
+          componentCount++;
+        }
+      }
+    }
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- compute_vortictiy -----------------------------------------------
+//--------------------------------------------------------------------------
+void
+TurbulenceAveragingPostProcessing::compute_sfs_stress(
+  const std::string &averageBlockName,
+  const double &oldTimeFilter,
+  const double &zeroCurrent,
+  const double &dt,
+  stk::mesh::Selector s_all_nodes)
+{
+  stk::mesh::MetaData & metaData = realm_.meta_data();
+
+  const int nDim = realm_.spatialDimension_;
+  const double invNdim = 1.0/nDim;
+
+  const std::string SFSStressFieldName = "sfs_stress";
+
+  bool computeSFSTKE = false;
+  // extract fields
+  stk::mesh::FieldBase *TurbViscosity_ = metaData.get_field(stk::topology::NODE_RANK, "turbulent_viscosity");
+  stk::mesh::FieldBase *TurbKe_ = metaData.get_field(stk::topology::NODE_RANK, "turbulent_ke");
+  stk::mesh::FieldBase *Density_ = metaData.get_field(stk::topology::NODE_RANK, "density");
+  if(TurbKe_ == NULL) computeSFSTKE = true ;
+  stk::mesh::FieldBase *DualNodalVolume_ = metaData.get_field(stk::topology::NODE_RANK, "dual_nodal_volume");
+  stk::mesh::FieldBase *DuDx_ = metaData.get_field(stk::topology::NODE_RANK, "dudx");
+  stk::mesh::FieldBase *SFSStress = metaData.get_field(stk::topology::NODE_RANK, SFSStressFieldName);
+
+  stk::mesh::BucketVector const& node_buckets_sfsstress =
+    realm_.get_buckets( stk::topology::NODE_RANK, s_all_nodes );
+  for ( stk::mesh::BucketVector::const_iterator ib = node_buckets_sfsstress.begin();
+        ib != node_buckets_sfsstress.end() ; ++ib ) {
+    stk::mesh::Bucket & b = **ib ;
+    const stk::mesh::Bucket::size_type length   = b.size();
+
+    // fields
+    const double * turbNu_ = (double*)stk::mesh::field_data(*TurbViscosity_, b);
+    double * turbKe_;
+    if (!computeSFSTKE)
+        turbKe_ = (double*)stk::mesh::field_data(*TurbKe_, b);
+    const double * density_ = (double*)stk::mesh::field_data(*Density_, b);
+    const double * dualNodalVolume_ = (double*)stk::mesh::field_data(*DualNodalVolume_, b);
+    const double * dudx_ = (double*)stk::mesh::field_data(*DuDx_, b);
+    double *sfsstress_ = (double*)stk::mesh::field_data(*SFSStress,b);
+    const int offSet = 6;
+
+    // Store the xx, xy, xz, yy, yz, zz components of sfs_stress
+    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+      double divU = 0.0;
+      for ( int j = 0; j < nDim; ++j)
+          divU += dudx_[k*offSet+(nDim*j+j)] ;
+      double sfstke = 0.0;
+      if(computeSFSTKE) {
+          // Use method of Yoshisawa (1986) - Statistical theory for compressible turbulent shear flows, with the application to subgrid modeling, 29, 2152.
+          double Ci = realm_.get_turb_model_constant(TM_ci);
+          double sijMagSq = 0.0;
+          for ( int i = 0; i < nDim; ++i ) {
+              for ( int j = 0; j < nDim; ++j ) {
+                  const double rateOfStrain = 0.5*(dudx_[k*offSet+nDim*i+j] + dudx_[k*offSet+nDim*j+i]);
+                  sijMagSq += rateOfStrain*rateOfStrain;
+              }
+          }
+          sfstke = Ci * std::pow(dualNodalVolume_[k], 2.0*invNdim) * (2.0*sijMagSq);
+      } else {
+          sfstke = turbKe_[k];
+      }
+      size_t componentCount = 0;
+      for ( int i = 0; i < nDim; ++i ) {
+          for ( int j = i; j < nDim; ++j ) {
+              const double divUTerm = ( i == j ) ? 2.0/3.0*divU : 0.0;
+              const double sfsTKEterm = ( i == j ) ? 2.0/3.0*density_[k]*sfstke : 0.0;
+              const double newStress = (sfsstress_[k*offSet + componentCount]*oldTimeFilter*zeroCurrent - dt*(turbNu_[k]*(dudx_[k*offSet+(nDim*i+j)] + dudx_[k*offSet+(nDim*j+i)] - divUTerm) - sfsTKEterm))/currentTimeFilter_ ;
+              sfsstress_[k*offSet + componentCount] = newStress;
+              componentCount++;
+          }
+      }
+    }
+  }
+}
+
+
+void
+TurbulenceAveragingPostProcessing::compute_temperature_sfs_flux(
+  const std::string &,
+  const double &oldTimeFilter,
+  const double &zeroCurrent,
+  const double &dt,
+  stk::mesh::Selector s_all_nodes)
+{
+  stk::mesh::MetaData & metaData = realm_.meta_data();
+
+  const int nDim = realm_.spatialDimension_;
+  const double turbPr_ = realm_.get_turb_prandtl("enthalpy"); //TODO: Fix getting enthalpy name
+
+  const std::string tempSFSFluxFieldName = "temperature_sfs_flux";
+
+  // extract fields
+  stk::mesh::FieldBase *TurbViscosity_ = metaData.get_field(stk::topology::NODE_RANK, "turbulent_viscosity");
+
+  stk::mesh::FieldBase *DhDx_ = metaData.get_field(stk::topology::NODE_RANK, "dhdx");
+  stk::mesh::FieldBase *SpecificHeat_ = metaData.get_field(stk::topology::NODE_RANK, "specific_heat");
+  stk::mesh::FieldBase *tempSFSFlux = metaData.get_field(stk::topology::NODE_RANK, tempSFSFluxFieldName);
+
+  stk::mesh::BucketVector const& node_buckets_sfsstress =
+    realm_.get_buckets( stk::topology::NODE_RANK, s_all_nodes );
+  for ( stk::mesh::BucketVector::const_iterator ib = node_buckets_sfsstress.begin();
+        ib != node_buckets_sfsstress.end() ; ++ib ) {
+    stk::mesh::Bucket & b = **ib ;
+    const stk::mesh::Bucket::size_type length   = b.size();
+
+    // fields
+    const double * turbNu_ = (double*)stk::mesh::field_data(*TurbViscosity_, b);
+
+    const double * dhdx_ = (double*)stk::mesh::field_data(*DhDx_, b);
+    const double * specificheat_ = (double*)stk::mesh::field_data(*SpecificHeat_, b);
+    double *tempsfsflux_ = (double*)stk::mesh::field_data(*tempSFSFlux,b);
+
+    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+      for ( int i = 0; i < nDim; ++i ) {
+          const double newTempFlux = (tempsfsflux_[k*nDim+i]*oldTimeFilter*zeroCurrent - dt*turbNu_[k]/(turbPr_*specificheat_[k]) * dhdx_[k*nDim+i])/currentTimeFilter_;
+          tempsfsflux_[k*nDim+i] = newTempFlux;
+      }
+    }
+  }
+}
 //--------------------------------------------------------------------------
 //-------- compute_vortictiy -----------------------------------------------
 //--------------------------------------------------------------------------
