@@ -28,7 +28,7 @@ namespace nalu{
 class AveragingInfo
 {
 public:
-  
+
   AveragingInfo();
   ~AveragingInfo();
 
@@ -40,9 +40,15 @@ public:
   bool computeTke_;
   bool computeFavreStress_;
   bool computeFavreTke_;
+  bool computeResolvedStress_{false};
+  bool computeSFSStress_{false};
   bool computeVorticity_;
   bool computeQcriterion_;
   bool computeLambdaCI_;
+
+  // Temperature stresses
+  bool computeTemperatureSFS_{false};
+  bool computeTemperatureResolved_{false};
 
   // vector of part names, e.g., block_1, surface_2
   std::vector<std::string> targetNames_;
@@ -53,14 +59,17 @@ public:
   // vector of favre/reynolds fields
   std::vector<std::string> favreFieldNameVec_;
   std::vector<std::string> reynoldsFieldNameVec_;
+  std::vector<std::string> resolvedFieldNameVec_;
 
   // vector of pairs of fields
   std::vector<std::pair<stk::mesh::FieldBase *, stk::mesh::FieldBase *> > favreFieldVecPair_;
   std::vector<std::pair<stk::mesh::FieldBase *, stk::mesh::FieldBase *> > reynoldsFieldVecPair_;
-  
+  std::vector<std::pair<stk::mesh::FieldBase *, stk::mesh::FieldBase *> > resolvedFieldVecPair_;
+
   // sizes for each
   std::vector<unsigned> favreFieldSizeVec_;
   std::vector<unsigned> reynoldsFieldSizeVec_;
+  std::vector<unsigned> resolvedFieldSizeVec_;
 };
 
 } // namespace nalu

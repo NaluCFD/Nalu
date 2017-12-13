@@ -44,6 +44,7 @@ ABLForcingAlgorithm::ABLForcingAlgorithm(Realm& realm, const YAML::Node& node)
     temp_(0),
     UmeanCalc_(0),
     USource_(0),
+    rhoMeanCalc_(0),
     TmeanCalc_(0),
     TSource_(0),
     searchMethod_("stk_kdtree"),
@@ -151,8 +152,11 @@ ABLForcingAlgorithm::load_momentum_info(const YAML::Node& node)
   create_interp_arrays(nHeights, vztmp, velZTimes_, velZ_);
 
   const int ndim = realm_.spatialDimension_;
-  if (momSrcType_ == COMPUTED)
+  if (momSrcType_ == COMPUTED) {
     UmeanCalc_.resize(nHeights);
+    rhoMeanCalc_.resize(nHeights);
+  }
+
   for (size_t i = 0; i < nHeights; i++) {
     if (momSrcType_ == COMPUTED)
       UmeanCalc_[i].resize(ndim);
@@ -302,10 +306,19 @@ ABLForcingAlgorithm::register_fields()
   }
 
   for (auto key : velPartNames_) {
+
+    // Part key
     stk::mesh::Part* part = meta.get_part(key);
+
+    // Velocity
     VectorFieldType& vel = meta.declare_field<VectorFieldType>(
       stk::topology::NODE_RANK, "velocity", nStates);
     stk::mesh::put_field(vel, *part, nDim);
+
+    // Density
+    ScalarFieldType& rho = meta.declare_field<ScalarFieldType>(
+      stk::topology::NODE_RANK, "density", nStates);
+    stk::mesh::put_field(rho, *part);
   }
 
   for (auto key : tempPartNames_) {
@@ -378,8 +391,11 @@ ABLForcingAlgorithm::create_transfers()
 {
   transfers_ = new Transfers(*realm_.root());
 
-  if (momentumForcingOn())
+  if (momentumForcingOn()) {
     populate_transfer_data("velocity", velPartNames_);
+    populate_transfer_data("density", velPartNames_);
+  }
+
   if (temperatureForcingOn())
     populate_transfer_data("temperature", tempPartNames_);
 
@@ -436,13 +452,24 @@ ABLForcingAlgorithm::compute_momentum_sources()
     calc_mean_velocity();
     for (size_t ih = 0; ih < velHeights_.size(); ih++) {
       double xval, yval;
+      
+      // Interpolate the velocities from the table to the current time
       utils::linear_interp(velXTimes_, velX_[ih], currTime, xval);
       utils::linear_interp(velYTimes_, velY_[ih], currTime, yval);
-      USource_[0][ih] = (alphaMomentum_ / dt) * (xval - UmeanCalc_[ih][0]);
-      USource_[1][ih] = (alphaMomentum_ / dt) * (yval - UmeanCalc_[ih][1]);
+      
+      // Compute the momentum source
+      // Momentum source in the x direction
+      USource_[0][ih] = rhoMeanCalc_[ih] * (alphaMomentum_ / dt) * 
+                          (xval - UmeanCalc_[ih][0]);
+      // Momentum source in the y direction
+      USource_[1][ih] = rhoMeanCalc_[ih] * (alphaMomentum_ / dt) * 
+                          (yval - UmeanCalc_[ih][1]);
+
       // No momentum source in z-direction
       USource_[2][ih] = 0.0;
+
     }
+    
   } else {
     for (size_t ih = 0; ih < velHeights_.size(); ih++) {
       utils::linear_interp(velXTimes_, velX_[ih], currTime, USource_[0][ih]);
@@ -533,15 +560,22 @@ ABLForcingAlgorithm::calc_mean_velocity()
 
   VectorFieldType* velocity =
     meta.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
+  ScalarFieldType* density =
+    meta.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
 
   const size_t numPlanes = velHeights_.size();
-  // Sum(velocity) and number of nodes on this processor over all planes
+  // Sum (velocity and density) and number of nodes on this processor 
+  // over all planes
   std::vector<double> sumVel(numPlanes * nDim, 0.0);
+  std::vector<double> sumRho(numPlanes, 0.0);
   std::vector<unsigned> numNodes(numPlanes, 0);
+
   // Global sum and nodes for computing global average
   std::vector<double> sumVelGlobal(numPlanes * nDim, 0.0);
+  std::vector<double> sumRhoGlobal(numPlanes, 0.0);
   std::vector<unsigned> totalNodes(numPlanes, 0);
 
+  // Loop for all planes
   for (size_t ih = 0; ih < numPlanes; ih++) {
     const int ioff = ih * nDim;
     stk::mesh::Part* part = meta.get_part(velPartNames_[ih]);
@@ -549,24 +583,40 @@ ABLForcingAlgorithm::calc_mean_velocity()
     const stk::mesh::BucketVector& node_buckets =
       bulk.get_buckets(stk::topology::NODE_RANK, s_local_part);
 
-    // Calculate sum(velocity) for all nodes on this processor
+    // Calculate sum (velocity and density) for all nodes on this processor
     for (size_t ib = 0; ib < node_buckets.size(); ib++) {
       stk::mesh::Bucket& bukt = *node_buckets[ib];
       double* velField = stk::mesh::field_data(*velocity, bukt);
+      double* rhoField = stk::mesh::field_data(*density, bukt);
 
       for (size_t in = 0; in < bukt.size(); in++) {
+
+        // Compute the offset dimension to access vleocity components
         const int offset = in * nDim;
+
+        // Velocity sum
         for (int i = 0; i < nDim; i++)
           sumVel[ioff + i] += velField[offset + i];
+
+        // Compute the density sum
+        sumRho[ih] += rhoField[in];
+
       }
       numNodes[ih] += bukt.size();
     }
   }
 
   // Assemble global sum and node count
+  // Velocity
   stk::all_reduce_sum(
     NaluEnv::self().parallel_comm(), sumVel.data(), sumVelGlobal.data(),
     numPlanes * nDim);
+
+  // Density
+  stk::all_reduce_sum(
+    NaluEnv::self().parallel_comm(), sumRho.data(), sumRhoGlobal.data(),
+    numPlanes);
+
   // Revisit this for area or volume weighted averaging.
   stk::all_reduce_sum(
     NaluEnv::self().parallel_comm(), numNodes.data(), totalNodes.data(),
@@ -575,9 +625,15 @@ ABLForcingAlgorithm::calc_mean_velocity()
   // Compute spatial averages
   for (size_t ih = 0; ih < numPlanes; ih++) {
     const size_t ioff = ih * nDim;
+    
+    // Mean Velocity divide by number of total nodes
     for (int i = 0; i < nDim; i++) {
       UmeanCalc_[ih][i] = sumVelGlobal[ioff + i] / totalNodes[ih];
     }
+    
+      // Mean density devide by number of total nodes
+      rhoMeanCalc_[ih] = sumRhoGlobal[ih] / totalNodes[ih];
+
   }
 }
 
