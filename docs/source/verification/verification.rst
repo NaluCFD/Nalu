@@ -635,3 +635,102 @@ temperature boundary condition data that originated from the precursor simulatio
    condition field obtained from the perspective of the subsequent "external_field_provider" Realm (right).
 
 
+Boussinesq Verification
+--------------------------------------
+
+Unit tests
++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Unit-level verification was performed for the Boussinesq body force term :eq:`boussbuoy` with a 
+nodal source appropriate to the edge-based scheme (MomentumBoussinesqSrcNodeSuppAlg.single_value) as well as a 
+separate unit test for the element-based "consolidated" Boussinesq source term 
+(MomentumKernelHex8Mesh.buoyancy_boussinesq).  Proper volume integration with different element topologies is 
+also tested (the "volume integration" tests in the MasterElement and HOMasterElement test cases).
+
+
+Stratified MMS
++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+A convergence study using the method of manufactured solutions (MMS) was also performed to assess the integration 
+of the source term into the governing equations. An initial condition of a Taylor-Green vortex for velocity, a zero-
+gradient pressure field, and a linear enthalpy profile in the z-direction are imposed.
+
+.. math::
+   :label: threed-boussinesq
+
+   u &= -\frac{1}{2} cos(2 \pi x) sin(2 \pi y ) sin(2 \pi z)  \\
+   v &=  sin(2 \pi x) cos(2 \pi y ) sin(2 \pi z)  \\
+   w &= -\frac{1}{2} sin(2 \pi x) sin(2 \pi y ) cos(2 \pi z)  \\
+   p &= 0  \\
+   h &= z.
+
+The simulation is run on a three-dimensional domain ranging from -1/2:+1/2 with reference density,
+reference temperature and the thermal expansion coefficient to equal to 1, 300,  and 1, respectively.  
+:math:`\beta` is much larger than typical (:math:`1 / T_{\rm ref}`)  so that the buoyancy term is a 
+significant term in the MMS in this configuration.
+
+The Boussinesq buoyancy model uses a gravity vector of magnitude of ten in the z-direction 
+opposing the enthalpy gradient, :math:`g_i = (0, 0, -10)^T`. The temperature for this test ranges
+between 250K and 350K.  The test case was run with a regular hexahedral mesh, using the edge-based 
+vertex centered finite volume scheme.  Each case was run with a fixed maximum Courant number of 0.8 
+relative to the specified solution.
+
+
+.. table:: Error in x-component of velocity
+   :widths: grid
+
+   +---------------+---------------------+---------------+---------------+-------+
+   | h             | :math:`L_{\infty}`  | L1            | L2            | Order |
+   +===============+=====================+===============+===============+=======+
+   | 1/32          | 8.91e-3             | 1.12e-3       | 1.77e-3       | NA    |
+   +---------------+---------------------+---------------+---------------+-------+
+   | 1/64          | 2.03e-3             | 3.04e-4       | 4.27e-4       | 2.05  |
+   +---------------+---------------------+---------------+---------------+-------+
+   | 1/128         | 4.65e-4             | 7.64e-5       | 1.05e-4       | 2.03  |
+   +---------------+---------------------+---------------+---------------+-------+
+
+
+.. table:: Error in y-component of velocity
+   :widths: grid
+
+   +---------------+---------------------+---------------+---------------+-------+
+   | h             | :math:`L_{\infty}`  | L1            | L2            | Order |
+   +===============+=====================+===============+===============+=======+
+   | 1/32          | 1.78e-2             | 2.31e-3       | 3.47e-3       | NA    |
+   +---------------+---------------------+---------------+---------------+-------+
+   | 1/64          | 4.18e-3             | 5.92e-4       | 8.23e-4       | 2.06  |
+   +---------------+---------------------+---------------+---------------+-------+
+   | 1/128         | 9.70e-4             | 1.50e-4       | 2.02e-4       | 2.03  |
+   +---------------+---------------------+---------------+---------------+-------+
+
+
+.. table:: Error in z-component of velocity
+   :widths: grid
+
+   +---------------+---------------------+---------------+---------------+-------+
+   | h             | :math:`L_{\infty}`  | L1            | L2            | Order |
+   +===============+=====================+===============+===============+=======+
+   | 1/32          | 8.68e-2             | 1.17e-3       | 1.73e-3       | NA    |
+   +---------------+---------------------+---------------+---------------+-------+
+   | 1/64          | 2.00e-3             | 2.99e-4       | 4.22e-4       | 2.04  |
+   +---------------+---------------------+---------------+---------------+-------+
+   | 1/128         | 4.64e-4             | 7.63e-5       | 1.05e-4       | 2.00  |
+   +---------------+---------------------+---------------+---------------+-------+
+
+
+.. table:: Error in temperature
+   :widths: grid
+
+   +---------------+---------------------+---------------+---------------+-------+
+   | h             | :math:`L_{\infty}`  | L1            | L2            | Order |
+   +===============+=====================+===============+===============+=======+
+   | 1/32          | 1.09e-2             | 1.46e-3       | 2.10e-3       | NA    |
+   +---------------+---------------------+---------------+---------------+-------+
+   | 1/64          | 2.06e-3             | 3.13e-4       | 4.19e-4       | 2.32  |
+   +---------------+---------------------+---------------+---------------+-------+
+   | 1/128         | 4.18e-4             | 7.54e-5       | 1.00e-4       | 2.06  |
+   +---------------+---------------------+---------------+---------------+-------+
+
+
+This test is added to Nalu's nightly test suite, testing that the convergence rate between 
+the 1/32 and 1/64 element sizes is second order.

@@ -170,6 +170,39 @@ coordinate system, then calculating the Coriolis acceleration vector
 using user-supplied North and East unit vectors given in the model
 coordinate system.
 
+
+Boussinesq Buoyancy Model
+++++++++++++++++++++
+
+In atmospheric and other flows, the density differences in the domain can be small
+enough as to not significantly affect inertia, but nonetheless the buoyancy term,
+
+.. math::
+   :label: buoyancy
+
+   \int \left(\bar{\rho} - \rho_{\circ} \right) g_i ~{\rm d}V,
+
+may still be important.  The Boussinesq model ignores the effect of density on inertia
+while retaining the buoyancy term in Equation :eq:`favmom`.  For the purpose of evaluating 
+the buoyant force, the density is approximated as
+
+.. math::
+   :label: boussdensity
+
+   \frac{\rho}{\rho_{\circ}} \approx 1 - \beta (T-T_{\circ}),
+
+This leads to a buoyancy body force term that depends on temperature (:math:`T`), 
+a reference density (:math:`\rho_{\circ}`), a reference temperature (:math:`T_{\circ}`),
+and a thermal expansion coefficient (:math:`\beta`) as
+
+.. math::
+   :label: boussbuoy
+
+   \int -\rho_{\circ} \beta (T-T_{\circ}) g_i ~{\rm d}V.
+
+The flow is otherwise kept as constant density.
+
+
 Filtered Mixture Fraction
 +++++++++++++++++++++++++
 

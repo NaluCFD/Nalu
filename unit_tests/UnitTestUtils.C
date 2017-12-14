@@ -13,6 +13,7 @@
 #include <stk_mesh/base/SkinBoundary.hpp>
 #include <stk_topology/topology.hpp>
 
+#include <master_element/TensorOps.h>
 #include <element_promotion/PromotedPartHelper.h>
 #include <element_promotion/ElementDescription.h>
 #include <element_promotion/PromoteElement.h>
@@ -170,7 +171,9 @@ stk::mesh::Entity create_one_element(
 
    auto& meta = bulk.mesh_meta_data();
    stk::mesh::Part& block_1 = meta.declare_part_with_topology("block_1", topo);
+   stk::io::put_io_part_attribute(block_1);
    stk::mesh::PartVector allSurfaces = { &meta.declare_part("all_surfaces", meta.side_rank()) };
+   stk::io::put_io_part_attribute(*allSurfaces.front());
 
    // set a coordinate field
    using vector_field_type = stk::mesh::Field<double, stk::mesh::Cartesian3d>;
@@ -565,6 +568,89 @@ double initialize_quadratic_scalar_field(
 
   return (traceOfHessian);
 }
+
+std::array<double,9> random_rotation_matrix(int dim, std::mt19937& rng)
+{
+  // always 3D, but set rotation around Z so only the relevant 2x2 subset matters
+  std::uniform_real_distribution<double> angle(0, 2*M_PI);
+  std::uniform_real_distribution<double> axis(0, 1);
+
+  const double theta = angle(rng);
+  const double cosTheta = std::cos(theta);
+  const double sinTheta = std::sin(theta);
+  std::array<double,3> n = {{(dim==3) ? axis(rng) : 0, (dim==3) ? axis(rng) : 0, (dim==3) ? axis(rng) : 1}};
+
+  if( dim == 3 ) {
+    double nMag = 0.0;
+    for (int j = 0; j < 3; ++j) {
+      nMag += n[j]*n[j];
+    }
+    nMag = 1.0/std::sqrt(nMag);
+    for (int j = 0; j < dim; ++j) {
+      n[j] *= nMag;
+    }
+  }
+
+  std::array<double, 9> nX = {{
+      0,    -n[2],+n[1],
+      +n[2],    0,-n[0],
+      -n[1], +n[0],   0
+  }};
+
+  std::array<double, 9> rot = {{
+      cosTheta, 0, 0,
+      0, cosTheta, 0,
+      0, 0, cosTheta
+  }};
+  for (int i = 0; i < 3; ++i) {
+    for (int j = 0; j < 3; ++j) {
+      rot[j*3+i] += (1-cosTheta)*n[i]*n[j] + sinTheta*nX[j*3+i];
+    }
+  }
+  return rot;
+}
+
+std::array<double,9> random_linear_transformation(int dim, double scale, std::mt19937& rng)
+{
+  std::uniform_real_distribution<double> entry(-scale, scale);
+
+  if (dim == 3) {
+    std::array<double,9> Q = {{
+        3*scale, 0, 0,
+        0, 3*scale, 0,
+        0, 0, 3*scale
+    }};
+
+    for (auto& coeff : Q) {
+      coeff += entry(rng);
+    }
+
+    std::array<double, 9> rot = random_rotation_matrix(dim, rng);
+
+    std::array<double, 9> QR = {{}};
+    sierra::nalu::mxm33(Q.data(), rot.data(), QR.data());
+
+    return QR;
+  }
+  else {
+    std::array<double,4> Q = {{
+        2*scale, 0,
+        0, 2*scale,
+    }};
+
+    for (auto& coeff : Q) {
+      coeff += entry(rng);
+    }
+
+    std::array<double, 9> rot = random_rotation_matrix(dim, rng);
+
+    std::array<double, 9> QR = {{}};
+    sierra::nalu::mxm22(Q.data(), rot.data(), QR.data());
+
+    return QR;
+  }
+}
+
 
 }//namespace unit_test_utils
 

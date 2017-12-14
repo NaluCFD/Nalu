@@ -23,51 +23,9 @@
 
 #include "UnitTestUtils.h"
 
-
-
 namespace
 {
   using VectorFieldType = stk::mesh::Field<double, stk::mesh::Cartesian>;
-
-  std::array<std::array<double,3>,3> random_rotation_matrix(int dim, std::mt19937& rng)
-  {
-    // always 3D, but set rotation around Z so only the relevant 2x2 subset matters
-    std::uniform_real_distribution<double> angle(0, 2*M_PI);
-    std::uniform_real_distribution<double> axis(0, 1);
-
-    const double theta = angle(rng);
-    const double cosTheta = cos(theta);
-    const double sinTheta = sin(theta);
-    std::array<double,3> n = {{(dim==3) ? axis(rng) : 0, (dim==3) ? axis(rng) : 0, (dim==3) ? axis(rng) : 1}};
-    std::array<std::array<double,3>,3> rot = {{ {{cosTheta,0,0}},{{0,cosTheta,0}},{{0,0,cosTheta}} }};
-    std::array<std::array<double,3>,3> nX = {{ {{0,0,0}},{{0,0,0}},{{0,0,0}} }};
-
-    if( dim == 3 ) {
-      double nMag = 0.0;
-      for (int j = 0; j < 3; ++j) {
-        nMag += n[j]*n[j];
-      }
-      nMag = 1.0/std::sqrt(nMag);
-      for (int j = 0; j < dim; ++j) {
-        n[j] *= nMag;
-      }
-    }
-
-    nX[0][1] = -n[2];
-    nX[0][2] =  n[1];
-    nX[1][0] =  n[2];
-    nX[1][2] = -n[0];
-    nX[2][0] = -n[1];
-    nX[2][1] =  n[0];
-
-    for (int j = 0; j < 3; ++j) {
-      for (int i = 0; i < 3; ++i) {
-        rot[i][j] += (1-cosTheta)*n[i]*n[j] + sinTheta*nX[i][j];
-      }
-    }
-
-    return rot;
-  }
 
   void randomly_perturb_element_coords(
     std::mt19937& rng,
@@ -76,7 +34,7 @@ namespace
     const VectorFieldType& coordField)
   {
     int dim = coordField.max_size(stk::topology::NODE_RANK);
-    auto rot = random_rotation_matrix(dim, rng);
+    auto rot = unit_test_utils::random_rotation_matrix(dim, rng);
 
     std::uniform_real_distribution<double> random_perturb(0.125, 0.25);
 
@@ -85,7 +43,7 @@ namespace
       const double* coords =  stk::mesh::field_data(coordField, node_rels[n]);
       for (int i = 0; i < dim; ++i) {
         for (int j = 0; j < dim; ++j) {
-          coords_rt[n*dim + i] += rot[i][j]*coords[j];
+          coords_rt[n*dim + i] += rot[i*dim+j]*coords[j];
         }
       }
     }
