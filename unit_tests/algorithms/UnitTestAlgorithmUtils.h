@@ -13,6 +13,7 @@
 
 #include "Algorithm.h"
 #include "SupplementalAlgorithm.h"
+#include "UnitTestKokkosUtils.h"
 
 namespace unit_test_algorithm_utils {
 

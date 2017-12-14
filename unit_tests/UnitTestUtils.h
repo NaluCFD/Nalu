@@ -3,6 +3,7 @@
 
 #include <string>
 #include <ostream>
+#include <random>
 
 #include <SimdInterface.h>
 #include <stk_mesh/base/BulkData.hpp>
@@ -51,6 +52,9 @@ double global_norm(const double & norm, const size_t & N, const stk::ParallelMac
 double initialize_quadratic_scalar_field(const stk::mesh::BulkData& bulk,
                                       const VectorFieldType& coordField,
                                       const ScalarFieldType& qField);
+
+std::array<double,9> random_rotation_matrix(int dim, std::mt19937& rng);
+std::array<double,9> random_linear_transformation(int dim, double scale,std::mt19937& rng);
 
 }
 

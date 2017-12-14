@@ -145,9 +145,12 @@
 
 #include <user_functions/VariableDensityNonIsoContinuitySrcNodeSuppAlg.h>
 #include <user_functions/VariableDensityNonIsoMomentumSrcNodeSuppAlg.h>
+#include <user_functions/BoussinesqNonIsoMomentumSrcNodeSuppAlg.h>
 
 #include <user_functions/TaylorGreenPressureAuxFunction.h>
 #include <user_functions/TaylorGreenVelocityAuxFunction.h>
+
+#include <user_functions/BoussinesqNonIsoVelocityAuxFunction.h>
 
 #include <user_functions/SinProfileChannelFlowVelocityAuxFunction.h>
 
@@ -190,6 +193,7 @@
 
 // basic c++
 #include <vector>
+
 
 namespace sierra{
 namespace nalu{
@@ -576,8 +580,11 @@ LowMachEquationSystem::register_initial_condition_fcn(
     else if ( fcnName == "convecting_taylor_vortex" ) {
       theAuxFunc = new ConvectingTaylorVortexVelocityAuxFunction(0,nDim); 
     }
-    else if ( fcnName == "TaylorGreen" ) {
+    else if ( fcnName == "TaylorGreen"  ) {
       theAuxFunc = new TaylorGreenVelocityAuxFunction(0,nDim); 
+    }
+    else if ( fcnName == "BoussinesqNonIso" ) {
+      theAuxFunc = new BoussinesqNonIsoVelocityAuxFunction(0,nDim);
     }
     else if ( fcnName == "SinProfileChannelFlow" ) {
       theAuxFunc = new SinProfileChannelFlowVelocityAuxFunction(0,nDim);
@@ -1333,9 +1340,12 @@ MomentumEquationSystem::register_interior_algorithm(
           else if (sourceName == "VariableDensityNonIso" ) {
             suppAlg = new VariableDensityNonIsoMomentumSrcNodeSuppAlg(realm_);
           }
-	  else if ( sourceName == "actuator") {
-	    suppAlg = new MomentumActuatorSrcNodeSuppAlg(realm_);
-	  }
+          else if (sourceName == "BoussinesqNonIso" ) {
+            suppAlg = new BoussinesqNonIsoMomentumSrcNodeSuppAlg(realm_);
+          }
+          else if ( sourceName == "actuator") {
+            suppAlg = new MomentumActuatorSrcNodeSuppAlg(realm_);
+          }
           else if ( sourceName == "EarthCoriolis") {
             suppAlg = new MomentumCoriolisSrcNodeSuppAlg(realm_);
           }
@@ -1458,6 +1468,12 @@ MomentumEquationSystem::register_inflow_bc(
     }
     else if ( fcnName == "VariableDensityNonIso" ) {
       theAuxFunc = new VariableDensityVelocityAuxFunction(0,nDim);
+    }
+    else if (fcnName == "TaylorGreen" ) {
+      theAuxFunc = new TaylorGreenVelocityAuxFunction(0,nDim);
+    }
+    else if ( fcnName == "BoussinesqNonIso") {
+      theAuxFunc = new BoussinesqNonIsoVelocityAuxFunction(0, nDim);
     }
     else if ( fcnName == "kovasznay") {
       theAuxFunc = new KovasznayVelocityAuxFunction(0,nDim);
@@ -2529,6 +2545,12 @@ ContinuityEquationSystem::register_inflow_bc(
       else if ( fcnName == "kovasznay") {
         theAuxFunc = new KovasznayVelocityAuxFunction(0,nDim);
       }
+      else if ( fcnName == "TaylorGreen") {
+        theAuxFunc = new TaylorGreenVelocityAuxFunction(0, nDim);
+      }
+      else if ( fcnName == "BoussinesqNonIso") {
+        theAuxFunc = new BoussinesqNonIsoVelocityAuxFunction(0, nDim);
+      }
       else {
         throw std::runtime_error("ContEquationSystem::register_inflow_bc: limited functions supported");
       }
@@ -2536,6 +2558,7 @@ ContinuityEquationSystem::register_inflow_bc(
     else {
       throw std::runtime_error("ContEquationSystem::register_inflow_bc: only constant and user function supported");
     }
+
     
     // bc data alg
     AuxFunctionAlgorithm *auxAlg
@@ -2939,7 +2962,7 @@ ContinuityEquationSystem::register_initial_condition_fcn(
       // create the function
       theAuxFunc = new VariableDensityPressureAuxFunction();      
     }
-    else if ( fcnName == "TaylorGreen" ) {
+    else if ( fcnName == "TaylorGreen") {
       // create the function
       theAuxFunc = new TaylorGreenPressureAuxFunction();      
     }

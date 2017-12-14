@@ -22,10 +22,11 @@
 #include <user_functions/ConvectingTaylorVortexPressureAuxFunction.h>
 #include <user_functions/VariableDensityVelocityAuxFunction.h>
 #include <user_functions/VariableDensityNonIsoTemperatureAuxFunction.h>
+#include <user_functions/BoussinesqNonIsoVelocityAuxFunction.h>
+#include <user_functions/BoussinesqNonIsoTemperatureAuxFunction.h>
 #include <user_functions/VariableDensityMixFracAuxFunction.h>
 #include <user_functions/KovasznayVelocityAuxFunction.h>
 #include <user_functions/KovasznayPressureAuxFunction.h>
-
 #include <user_functions/WindEnergyTaylorVortexAuxFunction.h>
 #include <user_functions/WindEnergyTaylorVortexPressureAuxFunction.h>
 
@@ -248,6 +249,12 @@ SolutionNormPostProcessing::analytical_function_factory(
   else if ( functionName == "VariableDensityNonIsoTemperature" ) {
     theAuxFunc = new VariableDensityNonIsoTemperatureAuxFunction();
   }
+  else if ( functionName == "BoussinesqNonIsoVelocity" ) {
+    theAuxFunc = new BoussinesqNonIsoVelocityAuxFunction(0,realm_.meta_data().spatial_dimension());
+  }
+  else if ( functionName == "BoussinesqNonIsoTemperature" ) {
+    theAuxFunc = new BoussinesqNonIsoTemperatureAuxFunction();
+  }
   else if ( functionName == "kovasznay" ) {
     theAuxFunc = new KovasznayVelocityAuxFunction(0,realm_.meta_data().spatial_dimension());
   }
@@ -276,7 +283,7 @@ SolutionNormPostProcessing::analytical_function_factory(
       "VariableDensityVelocity, VariableDensityNonIsoVelocity, SteadyTaylorVortexGradPressure, "
       "SteadyTaylorVortexGradPressure, VariableDensityNonIsoTemperature, kovasznay, "
       "kovasznay_dpdx, convecting_taylor_vortex, convecting_taylor_vortex_dpdx, "
-      "wind_energy_taylor_vortex, wind_energy_taylor_vortex_dpdx "
+      "wind_energy_taylor_vortex, wind_energy_taylor_vortex_dpdx, BoussinesqNonIso "
       "user functions supported");
   }
 
