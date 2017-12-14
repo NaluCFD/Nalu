@@ -70,7 +70,23 @@ public:
     const std::vector<double> & lhs,
     const char *trace_tag=0
     )
-  {}
+  {
+    if (numSumIntoCalls_ == 0) {
+      rhs_ = Kokkos::View<double*>("rhs_",rhs.size());
+      for (size_t i=0; i<rhs.size(); ++i) {
+        rhs_(i) = rhs[i];
+      }
+      const size_t numRows = rhs.size();
+      ThrowAssert(numRows*numRows == lhs.size());
+      lhs_ = Kokkos::View<double**>("lhs_",numRows, numRows);
+      for (size_t i=0; i<numRows; ++i) {
+        for (size_t j=0; j<numRows; ++j) {
+          lhs_(i,j) = lhs[numRows*i+j];
+        }
+      }
+    }
+    numSumIntoCalls_++;
+  }
 
   virtual void applyDirichletBCs(
     stk::mesh::FieldBase * solutionField,
