@@ -552,7 +552,7 @@ Wall Boundary Condition
    This subsection contains specifications as to whether wall models are used,
    or how to treat the velocity at the wall when there is mesh motion.
 
-The following code snippet shows an example of using an ABL wall function at the
+The following input file snippet shows an example of using an ABL wall function at the
 terrain during ABL simulations. See :ref:`theory_abl_wall_function` for more
 details on the actual implementation.
 
@@ -568,6 +568,13 @@ details on the actual implementation.
        roughness_height: 0.2
        gravity_vector_component: 3
        reference_temperature: 300.0
+
+The entry :inpfile:`gravity_vector_component` is an integer that
+specifies the component of the gravity vector, defined in
+:inpfile:`solution_options.gravity`, that should be used in the
+definition of the Monin-Obukhov length scale calculation.  The
+entry :inpfile:`reference_temperature` is the reference temperature
+used in calculation of the Monin-Obukhov length scale. 
 
 When there is mesh motion involved the wall boundary must specify a user
 function to determine relative velocity at the surface.
