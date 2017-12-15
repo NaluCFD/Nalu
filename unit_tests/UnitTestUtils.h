@@ -213,6 +213,8 @@ class ABLWallFunctionHex8ElementWithBCFields : public Hex8ElementWithBCFields
     ypSpec_(0.25)
  {}
 
+ using ::testing::Test::SetUp;
+
  void SetUp(const double &rho, const double &utau, const double up, const double yp)
  {
    rhoSpec_ = rho;
