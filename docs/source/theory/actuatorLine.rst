@@ -1,3 +1,5 @@
+.. _theory_actuator_wind_turbine_models:
+
 ============================================
  Actuator Wind Turbine Aerodynamics Modeling
 ============================================

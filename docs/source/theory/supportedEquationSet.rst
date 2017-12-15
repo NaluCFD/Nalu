@@ -127,8 +127,10 @@ where LES closure models for the subgrid turbulent eddy viscosity
 the constant coefficient :math:`k_{sgs}` model (see the turbulence
 section).
 
+.. _earth_coriolis_force:
+
 Earth Coriolis Force
-++++++++++++++++++++
+~~~~~~~~~~~~~~~~~~~~
 
 For simulation of large-scale atmospheric flows, the following Coriolis
 force term can be added to the right-hand-side of the momentum equation (:eq:`favmom`):
@@ -170,9 +172,10 @@ coordinate system, then calculating the Coriolis acceleration vector
 using user-supplied North and East unit vectors given in the model
 coordinate system.
 
+.. _boussinesq_buoyancy_model:
 
 Boussinesq Buoyancy Model
-++++++++++++++++++++
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In atmospheric and other flows, the density differences in the domain can be small
 enough as to not significantly affect inertia, but nonetheless the buoyancy term,
@@ -436,6 +439,8 @@ following temperature form:
 .. math::
 
    q_j = -\kappa \frac{\partial T}{\partial x_j}.
+
+.. _abl_forcing_term:
 
 ABL Forcing Source Terms
 ++++++++++++++++++++++++
