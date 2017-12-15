@@ -280,7 +280,7 @@ the surface, or
 .. math::
 
    u_\tau = \left( \overline{w^\prime u^\prime}^2 + \overline{w^\prime
-   u^\prime}^2 \right)^{1/4} = \sqrt{\frac{\tau_s}{\rho_s}}
+   v^\prime}^2 \right)^{1/4} = \sqrt{\frac{\tau_s}{\rho_s}}
 
 :math:`\theta_{ref}` is a reference (virtual potential) temperature associated with the air
 within the surface layer; for example, the average temperature within
@@ -404,7 +404,7 @@ The equations from the preceeding section can be used to formulate a
 wall function boundary condition for simulation of atmospheric
 boundary layers.  The user-specified inputs to this boundary condition
 are: roughness length, :math:`z_0`, and surface heat flux, :math:`q_s =
-\rho C_p \overline{w^\prime \theta^\prime})_s`.  The surface layer profile
+\rho C_p (\overline{w^\prime \theta^\prime})_s`.  The surface layer profile
 model is evaluated for each surface boundary flux integration point;
 the wall-normal distance of the "first point off the wall" is taken
 to be one fourth of the length of the nearest edge intersecting the
@@ -422,130 +422,6 @@ The procedure for applying the boundary condition is as follows:
    :label: tau_s_useful
 
    \tau_{s_i} = \lambda_s u_{||_i} = \frac{\kappa\rho u_\tau}{\log(z/z_0) - \psi^\prime (z/L)},
-
-Moeng Wall Function
-+++++++++++++++++++
-
-The Monin-Obukhov expressions only truly hold in a mean sense, and are not
-necessarily valid when used to specify an instantaneous value for the
-surface shear stress in a large eddy simulation. Moeng :cite:`Moeng:84`
-developed a local surface stress condition that utilizes
-horizontally-averaged quantities, for which the M-O relationships are
-assumed to hold.  This boundary condition is derived by first assuming
-that the local tangential shear stress vector can be written using a
-drag law:
-
-.. math::
-   :label: draglaw
-
-   \mathbf{\tau}_s  = C_D u_{{||}_p} \mathbf{u}_{{||}_p}
-
-Here, :math:`C_D` is the drag coefficient, :math:`\mathbf{u}_{{||}_p}` is the
-surface-tangential velocity vector evaluated at the near-surface
-discretization point, and :math:`u_{{||}_p}` denotes the magnitude of this
-velocity vector.
-
-An expression for :math:`\tau_s` is derived in the Appendix of Moeng :cite:`Moeng:84`, by
-writing the velocity as the sum of a horizontally averaged mean
-component and a fluctuation about this mean:
-
-.. math::
-
-   \mathbf{u}_{{||}_p} = \left< \mathbf{u}_{{||}_p} \right> +
-   \mathbf{u}_{{||}_p}^{\prime\prime}
-
-There are two main assumptions in the derivation.  The first is that
-the instantaneous version of the drag law(:eq:`draglaw`) is
-identical to the horizontally-averaged version.  The second assumption
-is [#f1]_
-
-.. math::
-
-   u_{{||}_p}^{\prime\prime} \mathbf{u}_{{||}_p}^{\prime\prime} \approx
-   \left< u_{{||}_p}^{\prime\prime} \mathbf{u}_{{||}_p}^{\prime\prime}
-   \right>
-
-After algebraic manipulations, the resulting vector expression is
-
-.. math::
-   :label: moeng_bc
-
-   \mathbf{\tau}_s = \left< \mathbf{\tau}_s \right> \left( \frac{u_{{||}_p}
-   \left< \mathbf{u}_{{||}_p} \right> +  \left< u_{{||}_p} \right>
-   \left[ \mathbf{u}_{{||}_p} - \left< \mathbf{u}_{{||}_p} \right>
-   \right]}{\left<  u_{{||}_p} \right> \left< \mathbf{u}_{{||}_p}
-   \right>}\right)
-
-The procedure to calculate the surface stress at a boundary
-integration point is as follows.
-
-1. Calculate the horizontally-averaged quantities :math:`\left<u_{{||}_p}\right>$ and $\left<\mathbf{u}_{{||}_p}\right>`.
-2. Use the M-O velocity profile relationships :cite:`Dyer:74` to calculate an average friction velocity :math:`u_\tau`.
-3. Use the relationship (:eq:`tau_s_useful`) to calculate the components of :math:`\left< \mathbf{\tau}_s \right>`.
-4. Calculate the local surface shear stress using(:eq:`moeng_bc`).
-
-Jacobian entries are required to populate the left-hand side matrix
-for the terms resulting from (:eq:`moeng_bc`).  For convenience, we
-write the vector quantities as tensors with subscripts denoting the
-vector component indices.  We need an expression for the sensitivity
-of the shear stress, applied at the boundary face integration point,
-to the velocity components at the :math:`l^{th}` grid node, or
-:math:`\frac{\partial \tau_{s_i}^{(ip)}}{\partial u_j^(l)}`.
-
-Differentiating (:eq:`moeng_bc`) with respect to :math:`u_{j}^{(l)}` gives
-
-.. math::
-   :label: sens1
-
-   \frac{\partial \tau_{s_i}^{(ip)}}{\partial u_{j}^{(l)}} =
-   \frac{\left<\tau_s^{(ip)}\right>_i}{\left<u_{||}^{(ip)}\right>}
-   \frac{\partial u_{||}^{(ip)}}{\partial u_{j}^{(l)}} +
-   \frac{\left<\tau_s^{(ip)}\right>_i}{\left<{u_{||}}_i^{(ip)}\right>}
-   \frac{\partial {u_{||}}_i^{(ip)}}{\partial u_{j}^{(l)}}
-
-The first term involves a partial derivative of the tangential
-velocity magnitude, while the second term involves the partial
-derivative of the tangential velocity component.  Applying the chain
-rule to the first term gives
-
-.. math::
-   :label: sens2
-
-   \frac{\partial u_{||}^{(ip)}}{\partial u_{j}^{(l)}} = \frac{1}{u_{||}^{(ip)}}
-   {u_{||}}_k^{(ip)} \frac{\partial {u_{||}}_k^{(ip)}}{\partial u_{j}^{(l)}},
-
-where summation is implied over the repeated index :math:`k`.  The second
-partial derivative in (:eq:`sens1`) is seen to appear also in
-(:eq:`sens2`).  It remains to write an expression for this
-derivative, which is done by first writing the tangential velocity
-vector at the boundary face integration point in terms of the
-Cartesian velocity components:
-
-
-.. math::
-   :label: utan
-
-   {u_{||}}_i^{(ip)} = (1 - n_i n_j)\delta_{ij} u_i^{(ip)} - n_i n_j (1 -
-   \delta_{ij}) u_j^{(ip)}
-
-with summation over the :math:`j` index.  The integration point velocity
-components are calculated from the face nodes using
-
-.. math::
-   :label: ipvel
-
-   u_i^{(ip)} = \sum_{l=1}^{N_n} \phi^{(l)}(x_{ip})u_i^{(l)}
-
-Substituting (:eq:`ipvel`) into (:eq:`utan`), followed by (:eq:`utan`)
-into (:eq:`sens2`) gives
-
-.. math::
-
-   \frac{\partial u_{||}^{(ip)}}{\partial u_{j}^{(l)}} = \frac{1}{u_{||}^{(ip)}}
-   {u_{||}}_k^{(ip)} \sum_{j=1}^3 \sum_{l=1}^{N_n} (1 - n_i n_j)
-   \delta_{ij} \phi^{(l)}(x_{ip}) - n_i n_j (1 -
-   \delta_{ij})\phi^{(l)}(x_{ip})
-
 
 Turbulent Kinetic Energy, :math:`k_{sgs}` LES model
 +++++++++++++++++++++++++++++++++++++++++++++++++++
