@@ -39,9 +39,6 @@ BoussinesqNonIsoTemperatureAuxFunction::do_evaluate(
   const unsigned /*endPos*/) const
 {
   for(unsigned p=0; p < numPoints; ++p) {
-
-    const double x = coords[0];
-    const double y = coords[1];
     const double z = coords[2];
 
     const double h = z;
