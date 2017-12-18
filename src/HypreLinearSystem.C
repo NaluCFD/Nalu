@@ -31,8 +31,10 @@
 #include "_hypre_IJ_mv.h"
 #include "HYPRE_parcsr_mv.h"
 #include "HYPRE.h"
+#include "HYPRE_config.h"
 
 #include <cmath>
+#include <cstdint>
 
 namespace sierra {
 namespace nalu {
@@ -44,15 +46,25 @@ HypreLinearSystem::HypreLinearSystem(
   LinearSolver* linearSolver)
   : LinearSystem(realm, numDof, eqSys, linearSolver),
     rowFilled_(0),
-    rowStatus_(0)
+    rowStatus_(0),
+    idBuffer_(0)
 {
+#ifndef HYPRE_BIGINT
+  // Make sure that HYPRE is compiled with 64-bit integer support when running
+  // O(~1B) linear systems.
+  uint64_t totalRows = (static_cast<uint64_t>(realm_.hypreNumNodes_) *
+                        static_cast<uint64_t>(numDof_));
+  uint64_t maxHypreSize = static_cast<uint64_t>(std::numeric_limits<HypreIntType>::max());
+
+  if (totalRows > maxHypreSize)
+    throw std::runtime_error(
+      "The linear system size is greater than what HYPRE is compiled for. "
+      "Please recompile with bigint support and link to Nalu");
+#endif
 }
 
 HypreLinearSystem::~HypreLinearSystem()
 {
-  // if (linearSolver_ != nullptr)
-  //   linearSolver_->destroyLinearSolver();
-
   if (systemInitialized_) {
     HYPRE_IJMatrixDestroy(mat_);
     HYPRE_IJVectorDestroy(rhs_);
@@ -98,7 +110,7 @@ HypreLinearSystem::beginLinearSystemConstruction()
   skippedRows_.clear();
   // All nodes start out as NORMAL; "build*NodeGraph" methods might alter the
   // row status to modify behavior of sumInto method.
-  for (int i=0; i < numRows_; i++)
+  for (HypreIntType i=0; i < numRows_; i++)
     rowStatus_[i] = RT_NORMAL;
 
   auto& bulk = realm_.bulk_data();
@@ -180,16 +192,16 @@ HypreLinearSystem::buildOversetNodeGraph(
 {
   beginLinearSystemConstruction();
 
+  // Turn on the flag that indicates this linear system has rows that must be
+  // skipped during normal sumInto process
+  hasSkippedRows_ = true;
+
   // Mark all the fringe nodes as skipped so that sumInto doesn't add into these
   // rows during assembly process
   for(auto* oinfo: realm_.oversetManager_->oversetInfoVec_) {
     auto node = oinfo->orphanNode_;
-    int hid = *stk::mesh::field_data(*realm_.hypreGlobalId_, node);
-    for (size_t d=0; d < numDof_; d++) {
-      int lid = hid * numDof_ + d;
-      // rowStatus_[lid] = RT_OVERSET;
-      skippedRows_.insert(lid);
-    }
+    HypreIntType hid = *stk::mesh::field_data(*realm_.hypreGlobalId_, node);
+    skippedRows_.insert(hid * numDof_);
   }
 }
 
@@ -199,6 +211,10 @@ HypreLinearSystem::buildDirichletNodeGraph(
 {
   beginLinearSystemConstruction();
 
+  // Turn on the flag that indicates this linear system has rows that must be
+  // skipped during normal sumInto process
+  hasSkippedRows_ = true;
+
   // Grab nodes regardless of whether they are owned or shared
   const stk::mesh::Selector sel = stk::mesh::selectUnion(parts);
   const auto& bkts = realm_.get_buckets(
@@ -207,12 +223,8 @@ HypreLinearSystem::buildDirichletNodeGraph(
   for (auto b: bkts) {
     for (size_t in=0; in < b->size(); in++) {
       auto node = (*b)[in];
-      int hid = *stk::mesh::field_data(*realm_.hypreGlobalId_, node);
-      for (size_t d=0; d < numDof_; d++) {
-        int lid = hid * numDof_ + d;
-        // rowStatus_[lid] = RT_DIRICHLET;
-        skippedRows_.insert(lid);
-      }
+      HypreIntType hid = *stk::mesh::field_data(*realm_.hypreGlobalId_, node);
+      skippedRows_.insert(hid * numDof_);
     }
   }
 }
@@ -223,13 +235,13 @@ HypreLinearSystem::buildDirichletNodeGraph(
 {
   beginLinearSystemConstruction();
 
+  // Turn on the flag that indicates this linear system has rows that must be
+  // skipped during normal sumInto process
+  hasSkippedRows_ = true;
+
   for (const auto& node: nodeList) {
-    int hid = get_entity_hypre_id(node);
-    for (size_t d=0; d < numDof_; d++) {
-      int lid = hid * numDof_ + d;
-      // rowStatus_[lid] = RT_DIRICHLET;
-      skippedRows_.insert(lid);
-    }
+    HypreIntType hid = get_entity_hypre_id(node);
+    skippedRows_.insert(hid * numDof_);
   }
 }
 
@@ -240,7 +252,7 @@ HypreLinearSystem::finalizeLinearSystem()
   inConstruction_ = false;
 
   // Prepare for matrix assembly and set all entry flags to "unfilled"
-  for (int i=0; i < numRows_; i++)
+  for (HypreIntType i=0; i < numRows_; i++)
     rowFilled_[i] = RS_UNFILLED;
 
   MPI_Comm comm = realm_.bulk_data().parallel();
@@ -263,6 +275,12 @@ HypreLinearSystem::finalizeLinearSystem()
   HYPRE_IJVectorInitialize(sln_);
   HYPRE_IJVectorGetObject(sln_, (void**)&(solver->parSln_));
 
+  // Set flag to indicate whether rows must be skipped during normal sumInto
+  // process. For this to be activated, the linear system must have Dirichlet or
+  // overset rows and they must be present on this processor
+  if (hasSkippedRows_ && !skippedRows_.empty())
+    checkSkippedRows_ = true;
+
   // At this stage the LHS and RHS data structures are ready for
   // sumInto/assembly.
   systemInitialized_ = true;
@@ -281,13 +299,13 @@ HypreLinearSystem::loadComplete()
   // TODO: Alternate design to eliminate dummy rows. This will require
   // load-balancing on HYPRE end.
 
-  int hnrows = 1;
-  int hncols = 1;
+  HypreIntType hnrows = 1;
+  HypreIntType hncols = 1;
   double getval;
   double setval = 1.0;
-  for (int i=0; i < numRows_; i++) {
+  for (HypreIntType i=0; i < numRows_; i++) {
     if (rowFilled_[i] == RS_FILLED) continue;
-    int lid = iLower_ + i;
+    HypreIntType lid = iLower_ + i;
     HYPRE_IJMatrixGetValues(mat_, hnrows, &hncols, &lid, &lid, &getval);
     if (std::fabs(getval) < 1.0e-12)
       HYPRE_IJMatrixSetValues(mat_, hnrows, &hncols, &lid, &lid, &setval);
@@ -329,12 +347,14 @@ HypreLinearSystem::zeroSystem()
   HYPRE_ParVectorSetConstantValues(solver->parSln_, 0.0);
 
   // Prepare for matrix assembly and set all entry flags to "unfilled"
-  for (int i=0; i < numRows_; i++)
+  for (HypreIntType i=0; i < numRows_; i++)
     rowFilled_[i] = RS_UNFILLED;
 
-  // Reset overset flag so that sumInto only processes non-overset fringe rows
-  // until we are ready to process overset constraint rows
-  checkSkippedRows_ = true;
+  // Set flag to indicate whether rows must be skipped during normal sumInto
+  // process. For this to be activated, the linear system must have Dirichlet or
+  // overset rows and they must be present on this processor
+  if (hasSkippedRows_ && !skippedRows_.empty())
+    checkSkippedRows_ = true;
 }
 
 void
@@ -343,39 +363,47 @@ HypreLinearSystem::sumInto(
   const stk::mesh::Entity* entities,
   const SharedMemView<const double*>& rhs,
   const SharedMemView<const double**>& lhs,
-  const SharedMemView<int*>& localIds,
-  const SharedMemView<int*>& sortPermutations,
+  const SharedMemView<int*>&,
+  const SharedMemView<int*>&,
   const char* trace_tag)
 {
   const size_t n_obj = numEntities;
-  int numRows = n_obj * numDof_;
+  HypreIntType numRows = n_obj * numDof_;
 
   ThrowAssertMsg(lhs.is_contiguous(), "LHS assumed contiguous");
   ThrowAssertMsg(rhs.is_contiguous(), "RHS assumed contiguous");
-  ThrowAssertMsg(localIds.is_contiguous(), "localIds assumed contiguous");
-  ThrowAssertMsg(sortPermutation.is_contiguous(), "sortPermutation assumed contiguous");
+  if (idBuffer_.size() < numRows) idBuffer_.resize(numRows);
 
   for (size_t in=0; in < n_obj; in++) {
-    int hid = get_entity_hypre_id(entities[in]);
-    int localOffset = hid * numDof_;
+    HypreIntType hid = get_entity_hypre_id(entities[in]);
+    HypreIntType localOffset = hid * numDof_;
     for (size_t d=0; d < numDof_; d++) {
       size_t lid = in * numDof_ + d;
-      localIds[lid] = localOffset + d;
+      idBuffer_[lid] = localOffset + d;
     }
   }
 
-  for (int ir=0; ir < numRows; ir++) {
-      int lid = localIds[ir];
-      auto it = skippedRows_.find(lid);
-      if (checkSkippedRows_ && (it != skippedRows_.end())) continue;
+  for (size_t in=0; in < n_obj; in++) {
+    int ix = in * numDof_;
+    HypreIntType hid = idBuffer_[ix];
+
+    if (checkSkippedRows_) {
+      auto it = skippedRows_.find(hid);
+      if (it != skippedRows_.end()) continue;
+    }
+
+    for (size_t d=0; d < numDof_; d++) {
+      int ir = ix + d;
+      HypreIntType lid = idBuffer_[ir];
 
       const double* cur_lhs = &lhs(ir, 0);
       HYPRE_IJMatrixAddToValues(mat_, 1, &numRows, &lid,
-                                &localIds[0], cur_lhs);
+                                &idBuffer_[0], cur_lhs);
       HYPRE_IJVectorAddToValues(rhs_, 1, &lid, &rhs[ir]);
 
       if ((lid >= iLower_) && (lid <= iUpper_))
         rowFilled_[lid - iLower_] = RS_FILLED;
+    }
   }
 }
 
@@ -389,33 +417,44 @@ HypreLinearSystem::sumInto(
   const char* trace_tag)
 {
   const size_t n_obj = entities.size();
-  int numRows = n_obj * numDof_;
+  HypreIntType numRows = n_obj * numDof_;
 
   ThrowAssert(numRows == rhs.size());
   ThrowAssert(numRows*numRows == lhs.size());
 
+  if (idBuffer_.size() < numRows) idBuffer_.resize(numRows);
+
   for (size_t in=0; in < n_obj; in++) {
-    int hid = get_entity_hypre_id(entities[in]);
-    int localOffset = hid * numDof_;
+    HypreIntType hid = get_entity_hypre_id(entities[in]);
+    HypreIntType localOffset = hid * numDof_;
     for (size_t d=0; d < numDof_; d++) {
       size_t lid = in * numDof_ + d;
-      scratchIds[lid] = localOffset + d;
+      idBuffer_[lid] = localOffset + d;
     }
   }
 
-  for (int ir=0; ir < numRows; ir++) {
-    int lid = scratchIds[ir];
-    auto it = skippedRows_.find(lid);
-    if (checkSkippedRows_ && (it != skippedRows_.end())) continue;
+  for (size_t in=0; in < n_obj; in++) {
+    int ix = in * numDof_;
+    HypreIntType hid = idBuffer_[ix];
 
-    for (int c=0; c < numRows; c++)
-      scratchVals[c] = lhs[ir * numRows + c];
+    if (checkSkippedRows_) {
+      auto it = skippedRows_.find(hid);
+      if (it != skippedRows_.end()) continue;
+    }
 
-    HYPRE_IJMatrixAddToValues(mat_, 1, &numRows, &lid,
-                              &scratchIds[0], &scratchVals[0]);
-    HYPRE_IJVectorAddToValues(rhs_, 1, &lid, &rhs[ir]);
-    if ((lid >= iLower_) && (lid <= iUpper_))
+    for (size_t d=0; d < numDof_; d++) {
+      int ir = ix + d;
+      HypreIntType lid = idBuffer_[ir];
+
+      for (int c=0; c < numRows; c++)
+        scratchVals[c] = lhs[ir * numRows + c];
+
+      HYPRE_IJMatrixAddToValues(mat_, 1, &numRows, &lid,
+                                &idBuffer_[0], &scratchVals[0]);
+      HYPRE_IJVectorAddToValues(rhs_, 1, &lid, &rhs[ir]);
+      if ((lid >= iLower_) && (lid <= iUpper_))
         rowFilled_[lid - iLower_] = RS_FILLED;
+    }
   }
 }
 
@@ -438,7 +477,7 @@ HypreLinearSystem::applyDirichletBCs(
   const auto& bkts = realm_.get_buckets(
     stk::topology::NODE_RANK, sel);
 
-  int ncols = 1;
+  HypreIntType ncols = 1;
   double diag_value = 1.0;
   for (auto b: bkts) {
     const double* solution = (double*)stk::mesh::field_data(
@@ -448,10 +487,10 @@ HypreLinearSystem::applyDirichletBCs(
 
     for (size_t in=0; in < b->size(); in++) {
       auto node = (*b)[in];
-      int hid = *stk::mesh::field_data(*realm_.hypreGlobalId_, node);
+      HypreIntType hid = *stk::mesh::field_data(*realm_.hypreGlobalId_, node);
 
       for (size_t d=0; d<numDof_; d++) {
-        int lid = hid * numDof_ + d;
+        HypreIntType lid = hid * numDof_ + d;
         double bcval = bcValues[in*numDof_ + d] - solution[in*numDof_ + d];
 
         HYPRE_IJMatrixSetValues(mat_, 1, &ncols, &lid, &lid, &diag_value);
@@ -462,21 +501,25 @@ HypreLinearSystem::applyDirichletBCs(
   }
 }
 
-int
+HypreIntType
 HypreLinearSystem::get_entity_hypre_id(const stk::mesh::Entity& node)
 {
   auto& bulk = realm_.bulk_data();
   const auto naluId = *stk::mesh::field_data(*realm_.naluGlobalId_, node);
   const auto mnode = bulk.get_entity(stk::topology::NODE_RANK, naluId);
+#ifndef NDEBUG
   if (!bulk.is_valid(node))
     throw std::runtime_error("BAD STK NODE");
-  int hid = *stk::mesh::field_data(*realm_.hypreGlobalId_, mnode);
+#endif
+  HypreIntType hid = *stk::mesh::field_data(*realm_.hypreGlobalId_, mnode);
 
-  if ((hid < 0) || (hid > maxRowID_)) {
+#ifndef NDEBUG
+  if ((hid < 0) || (((hid+1) * numDof_i - 1) > maxRowID_)) {
     std::cerr << bulk.parallel_rank() << "\t"
               << hid << "\t" << iLower_ << "\t" << iUpper_ << std::endl;
     throw std::runtime_error("BAD STK to hypre conversion");
   }
+#endif
 
   return hid;
 }
@@ -488,8 +531,8 @@ HypreLinearSystem::solve(stk::mesh::FieldBase* linearSolutionField)
     linearSolver_);
 
   if (solver->getConfig()->getWriteMatrixFiles()) {
-    const std::string matFile = eqSysName_ + ".IJM.mat.";
-    const std::string rhsFile = eqSysName_ + ".IJV.rhs.";
+    const std::string matFile = eqSysName_ + ".IJM.mat";
+    const std::string rhsFile = eqSysName_ + ".IJV.rhs";
     HYPRE_IJMatrixPrint(mat_, matFile.c_str());
     HYPRE_IJVectorPrint(rhs_, rhsFile.c_str());
   }
@@ -503,7 +546,7 @@ HypreLinearSystem::solve(stk::mesh::FieldBase* linearSolutionField)
   status = solver->solve(iters, finalResidNorm);
 
   if (solver->getConfig()->getWriteMatrixFiles()) {
-    const std::string slnFile = eqSysName_ + ".IJV.sln.";
+    const std::string slnFile = eqSysName_ + ".IJV.sln";
     HYPRE_IJVectorPrint(sln_, slnFile.c_str());
   }
 
@@ -555,10 +598,10 @@ HypreLinearSystem::copy_hypre_to_stk(
     double* field = (double*) stk::mesh::field_data(*stkField, *b);
     for (size_t in=0; in < b->size(); in++) {
       auto node = (*b)[in];
-      int hid = get_entity_hypre_id(node);
+      HypreIntType hid = get_entity_hypre_id(node);
 
       for (size_t d=0; d < numDof_; d++) {
-        int lid = hid * numDof_ + d;
+        HypreIntType lid = hid * numDof_ + d;
         int sid = in * numDof_ + d;
         HYPRE_IJVectorGetValues(sln_, 1, &lid, &field[sid]);
 
