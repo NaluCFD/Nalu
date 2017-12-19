@@ -1,37 +1,50 @@
 
-Wind Farm and Atmospheric Boundary Layer (ABL) Modeling
-=======================================================
+Wind Energy Modeling
+====================
 
 Wind energy analysis is the primary application area for the Nalu development
-team and, therefore, Nalu includes all necessary models that would necessary to
-simulate a wind farm on complex terrain under realistic atmospheric boundary
-layer conditions. This section describes the theoretical basis of Nalu from a
-wind energy perspective.
+team. This section describes the theoretical basis of Nalu from a wind energy
+perspective, using nomenclature familiar to wind energy experts and mapping it
+to Nalu concepts and nomenclature described in previous sections. Hopefully,
+this will provide an easier transition for users familiar with WRF and SOWFA to
+Nalu.
 
 In order to evaluate the energy output and the structural loading on wind
 turbines, the code must model: 1. the incoming turbulent wind field across the
-entire wind farm, 2. the evolution of turbine wakes in turbulent inflow
-conditions and their interaction with the downstream turbines, and 3. the
-effects of complex terrain on the evolution of the incoming wind field as well
-as the turbine wakes. Furthermore, the effects of Coriolis forces and the
-buoyancy forces resulting from surface heating must be accounted for to get an
-accurate estimate of the flow conditions throughout the wind farm.
+entire wind farm, and 2. the evolution of turbine wakes in turbulent inflow
+conditions and their interaction with the downstream turbines. First, the
+governing equations with all the terms necessary to model a wind farm are
+presented with links to implementation and verification details elsewhere in the
+theory and/or verification manuals. This is followed by a brief discussion of
+the boundary conditions used to model atmospheric boundary layer (ABL) flows
+with or without wind turbines (currently modeled as actuator sources within the
+flow domain).
 
-Wind farm simulations can be broken down into two categories: *precursor*
-simulations, and simulations with prescribed turbulent inflow velocity and
-temperature profiles. *Precursor* simulations are used to trigger turbulence
-generation and generate inflow velocity profiles that are used as inlet
-conditions subsequent wind farm simulations. An alternative approach to
-*precursor* simulations is to use inflow conditions from a mesoscale simulation
-model, e.g., WRF.
+Currently Nalu supports two types of wind simulations:
+
+Precursor simulations
+
+  Precursor simulations are used in wind applications to generate time histories
+  of turbulent ABL inflow profiles that are used as inlet conditions in
+  subsequent wind farm simulations. The primary purpose of these simulations are
+  to trigger turbulence generation and obtain velocity and temperature profiles
+  that have *converged* to a stastitic equilibrium.
+
+Wind farm simulation with turbines as actuator sources
+
+  In this case, the wind turbine blades and tower are modeled as actuator source
+  terms by coupling to the OpenFAST libraries. Velocity fields are sampled at
+  the blade and tower control points within the Nalu domain and the blade
+  positions and blade/tower loading is provided by OpenFAST to be used as source
+  terms within the momentum equation.
 
 Governing Equations
 -------------------
 
 We begin with a review of the momentum and enthalpy conservation equations
-within the context of wind farm modeling. Equation :eq:`ablmom` shows the
-Favre-filtered momentum conservation equation (Eq. :eq:`favmom`) reproduced here with
-all the terms required to model a wind farm.
+within the context of wind farm modeling :cite:`Churchfield:2012`. Equation
+:eq:`ablmom` shows the Favre-filtered momentum conservation equation (Eq.
+:eq:`favmom`) reproduced here with all the terms required to model a wind farm.
 
 .. math::
    :label: ablmom
@@ -100,6 +113,13 @@ equations, and appropriate initial conditions and boundary conditions for
 potential temperature must be provided. The resulting solution can then be
 interpreted as the variation of potential temperature field in the computational
 domain.
+
+Turbulence Modeling
+-------------------
+
+LES turbulence closure is provided by the :ref:`theory_ksgs_les_model` or the
+standard :ref:`Smagorinsky <theory_standard_smagorinsky_les>` model for wind
+farm applications.
 
 Initial & Boundary Conditions
 -----------------------------

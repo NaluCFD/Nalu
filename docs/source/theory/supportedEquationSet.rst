@@ -634,6 +634,8 @@ production rate for the time step
 
    \dot{\omega}_k \approx \frac{\rho^{\ast} Y^{\ast}_k - \rho Y_k}{\Delta t} \ .
 
+.. _theory_ksgs_les_model:
+
 Subgrid-Scale Kinetic Energy One-Equation LES Model
 +++++++++++++++++++++++++++++++++++++++++++++++++++
 

@@ -84,6 +84,8 @@ variables do not apply, so that
 :math:`\overline{\phi''} \ne 0`. The Favre-filtered approach is used for
 all LES models in Nalu.
 
+.. _theory_standard_smagorinsky_les:
+
 Standard Smagorinsky LES Model
 ++++++++++++++++++++++++++++++
 
@@ -162,7 +164,7 @@ and
 One Equation :math:`k^{sgs}`
 ++++++++++++++++++++++++++++
 
-See :math:`k^{sgs}` pde section.
+See :math:`k^{sgs}` :ref:`PDE <theory_ksgs_les_model>` section.
 
 SST RANS Model
 ++++++++++++++
@@ -173,8 +175,8 @@ referred to the SST equation set description).
 Wall Models
 +++++++++++
 
-Flows are either expected to be fully resolved or, alternatively,
-under-resolved where wall functions are used. A classic law of the wall
-has been implemented in Nalu. Wall models to handle adverse pressure
-gradients are planned. For more information of the form of wall models,
-please refer to the boundary condition section of this manual.
+Flows are either expected to be fully resolved or, alternatively, under-resolved
+where wall functions are used. A classic law of the wall has been implemented in
+Nalu. Wall models to handle adverse pressure gradients are planned. For more
+information of the form of wall models, please refer to the :ref:`boundary
+condition <theory_boundary_conditions>` section of this manual.

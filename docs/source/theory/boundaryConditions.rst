@@ -1,3 +1,5 @@
+.. _theory_boundary_conditions:
+
 Supported Boundary Conditions
 -----------------------------
 
