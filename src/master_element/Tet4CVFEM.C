@@ -316,14 +316,14 @@ TetSCS::TetSCS()
 
   // standard integration location
   intgLoc_.resize(18);
-  const double seventeen48ths = 17.0/48.0;
-  const double seven48ths = 7.0/48.0;
-  intgLoc_[0]  =  seventeen48ths; intgLoc_[1]  = seven48ths;     intgLoc_[2]  = seven48ths; // surf 1    1->2
-  intgLoc_[3]  =  seventeen48ths; intgLoc_[4]  = seventeen48ths; intgLoc_[5]  = seven48ths; // surf 2    2->3
-  intgLoc_[6]  =  seven48ths;     intgLoc_[7]  = seventeen48ths; intgLoc_[8]  = seven48ths; // surf 3    1->3
-  intgLoc_[9]  =  seven48ths ;    intgLoc_[10] = seven48ths;     intgLoc_[11] = seventeen48ths; // surf 4    1->4
-  intgLoc_[12] =  seventeen48ths; intgLoc_[13] = seven48ths;     intgLoc_[14] = seventeen48ths; // surf 5    2->4
-  intgLoc_[15] =  seven48ths;     intgLoc_[16] = seventeen48ths; intgLoc_[17] = seventeen48ths; // surf 6    3->4
+  const double thirteen36ths = 13.0/36.0;
+  const double five36ths = 5.0/36.0;
+  intgLoc_[0]  =  thirteen36ths; intgLoc_[1]  = five36ths;     intgLoc_[2]  = five36ths; // surf 1    1->2
+  intgLoc_[3]  =  thirteen36ths; intgLoc_[4]  = thirteen36ths; intgLoc_[5]  = five36ths; // surf 2    2->3
+  intgLoc_[6]  =  five36ths;     intgLoc_[7]  = thirteen36ths; intgLoc_[8]  = five36ths; // surf 3    1->3
+  intgLoc_[9]  =  five36ths ;    intgLoc_[10] = five36ths;     intgLoc_[11] = thirteen36ths; // surf 4    1->4
+  intgLoc_[12] =  thirteen36ths; intgLoc_[13] = five36ths;     intgLoc_[14] = thirteen36ths; // surf 5    2->4
+  intgLoc_[15] =  five36ths;     intgLoc_[16] = thirteen36ths; intgLoc_[17] = thirteen36ths; // surf 6    3->4
 
   // shifted
   intgLocShift_.resize(36);
@@ -336,24 +336,24 @@ TetSCS::TetSCS()
 
   // exposed face
   intgExpFace_.resize(36);
-  const double five24ths = 5.0/24.0;
-  const double seven12ths = 7.0/12.0;
+  const double seven36ths = 7.0/36.0;
+  const double eleven18ths = 11.0/18.0;
   // face 0; nodes 0,1,3: scs 0, 1, 2
-  intgExpFace_[0]  = five24ths;  intgExpFace_[1]  =  0.00; intgExpFace_[2]  = five24ths;
-  intgExpFace_[3]  = seven12ths; intgExpFace_[4]  =  0.00; intgExpFace_[5]  = five24ths;
-  intgExpFace_[6]  = five24ths;  intgExpFace_[7]  =  0.00; intgExpFace_[8]  = seven12ths;
+  intgExpFace_[0]  = seven36ths;  intgExpFace_[1]  =  0.00; intgExpFace_[2]  = seven36ths;
+  intgExpFace_[3]  = eleven18ths; intgExpFace_[4]  =  0.00; intgExpFace_[5]  = seven36ths;
+  intgExpFace_[6]  = seven36ths;  intgExpFace_[7]  =  0.00; intgExpFace_[8]  = eleven18ths;
   // face 1; nodes 1,2,3; scs 0, 1, 2
-  intgExpFace_[9]  = seven12ths; intgExpFace_[10] = five24ths;  intgExpFace_[11] = five24ths;
-  intgExpFace_[12] = five24ths;  intgExpFace_[13] = seven12ths; intgExpFace_[14] = five24ths;
-  intgExpFace_[15] = five24ths;  intgExpFace_[16] = five24ths;  intgExpFace_[17] = seven12ths;
+  intgExpFace_[9]  = eleven18ths; intgExpFace_[10] = seven36ths;  intgExpFace_[11] = seven36ths;
+  intgExpFace_[12] = seven36ths;  intgExpFace_[13] = eleven18ths; intgExpFace_[14] = seven36ths;
+  intgExpFace_[15] = seven36ths;  intgExpFace_[16] = seven36ths;  intgExpFace_[17] = eleven18ths;
   // face 2; nodes 0,3,2; scs 0, 1, 2
-  intgExpFace_[18] =  0.00;      intgExpFace_[19] = five24ths;  intgExpFace_[20] = five24ths;
-  intgExpFace_[21] =  0.00;      intgExpFace_[22] = five24ths;  intgExpFace_[23] = seven12ths;
-  intgExpFace_[24] =  0.00;      intgExpFace_[25] = seven12ths; intgExpFace_[26] = five24ths;
+  intgExpFace_[18] =  0.00;      intgExpFace_[19] = seven36ths;  intgExpFace_[20] = seven36ths;
+  intgExpFace_[21] =  0.00;      intgExpFace_[22] = seven36ths;  intgExpFace_[23] = eleven18ths;
+  intgExpFace_[24] =  0.00;      intgExpFace_[25] = eleven18ths; intgExpFace_[26] = seven36ths;
   //face 3; nodes 0, 2, 1; scs 0, 1, 2
-  intgExpFace_[27] = five24ths;  intgExpFace_[28] = five24ths;  intgExpFace_[29] =  0.00;
-  intgExpFace_[30] = seven12ths; intgExpFace_[31] = five24ths;  intgExpFace_[32] =  0.00;
-  intgExpFace_[33] = five24ths;  intgExpFace_[34] = seven12ths; intgExpFace_[35] =  0.00;
+  intgExpFace_[27] = seven36ths;  intgExpFace_[28] = seven36ths;  intgExpFace_[29] =  0.00;
+  intgExpFace_[30] = eleven18ths; intgExpFace_[31] = seven36ths;  intgExpFace_[32] =  0.00;
+  intgExpFace_[33] = seven36ths;  intgExpFace_[34] = eleven18ths; intgExpFace_[35] =  0.00;
 
   // boundary integration point ip node mapping (ip on an ordinal to local node number)
   ipNodeMap_.resize(12); // 3 ips * 4 faces

@@ -734,3 +734,39 @@ relative to the specified solution.
 
 This test is added to Nalu's nightly test suite, testing that the convergence rate between 
 the 1/32 and 1/64 element sizes is second order.
+
+3D 1x2x10 Duct: Specified Pressure Drop
+---------------------------------------
+In this section, a specified pressure drop in a simple 1x2x10 configuration is run with
+a variety of homogeneous blocks of the following topology: hexahedral, tetrahedral, wedge,
+and Thexahedral. This analytical solution is given by an infinite series and is coded
+as the "1x2x10" user function. The simulation is run with an outer wall boundary condition
+with two open boundary conditions. The specified pressure drop is 0.016 over the 10 cm 
+duct. The density and viscosity are 1.0e-3 and 1.0e-4, respectively. The siumulation
+study is run a fixed Courant numbers with a mesh spacing ranging from 0.2 to 0.025.
+Figure :numref:`specified-dp-flow-hex-tet` provides the standard velocity profile for the 
+structured hexahedral and unstructured tetrahedral element type.
+
+.. _specified-dp-flow-hex-tet:
+
+.. figure:: figures/hex8_tet4_one_two_ten_R0_R1.png
+   :width: 500px
+   :align: center
+
+   Streamwise velocity profile for specified pressure drop flow; tetrahedral and hexahedral topology.
+
+The simulation study employed a variety of elemental topologies of uniform mesh spacing
+as noted above. Figure :numref:`specified-dp-l2` outlines the convergence in the :math:`L_2`
+norm using the low-order elemental CVFEM implementation using the recently changed tetrahedral
+and wedge element quadrature rules. Second-order accuracy is noted. Interestingly, the 
+hexahedral and wedge topology provided nearly the same accuracy. Also, the tetrahedral
+accuracy was approximately four tiomes greater. Finally, the Thexahedral topology
+proved to be second-order, however, provided very poor accuracy results. 
+
+.. _specified-dp-l2:
+
+.. figure:: figures/Uz_L2_dp.pdf
+   :width: 500px
+   :align: center
+
+   :math:`L_2` error for the CVFEM scheme on a variety of element types.
