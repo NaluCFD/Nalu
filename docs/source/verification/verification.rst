@@ -735,7 +735,7 @@ relative to the specified solution.
 This test is added to Nalu's nightly test suite, testing that the convergence rate between 
 the 1/32 and 1/64 element sizes is second order.
 
-3D Hyrbid 1x2x10 Duct: Specified Pressure Drop
+3D Hybrid 1x2x10 Duct: Specified Pressure Drop
 ----------------------------------------------
 In this section, a specified pressure drop in a simple 1x2x10 configuration is run with
 a variety of homogeneous blocks of the following topology: hexahedral, tetrahedral, wedge,
