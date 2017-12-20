@@ -20,6 +20,8 @@ namespace nalu{
 
 class TimeIntegrator;
 
+
+
 class ExponentialMovingAverager
 {
 public:
@@ -54,9 +56,6 @@ public:
   void execute();
 
   void add_fields(std::vector<std::string> fieldName);
-  void add_parts_for_all_fields(stk::mesh::PartVector parts);
-  void add_parts_for_field(std::string name, stk::mesh::PartVector parts);
-
   void set_time_scale(std::string fieldName, double timeScale);
   void set_time_scale(double timeScale);
 
@@ -69,12 +68,8 @@ private:
   stk::mesh::BulkData& bulk_;
   TimeIntegrator& timeIntegrator_;
   bool isRestarted_;
-
   std::map<stk::mesh::FieldBase*, stk::mesh::FieldBase*> fieldMap_;
   std::map<std::string, ExponentialMovingAverager> averagers_;
-
-  std::map<std::string, stk::mesh::PartVector> partVecs_;
-
 };
 
 } // namespace nalu

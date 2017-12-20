@@ -113,8 +113,9 @@ TEST_F(PostProcessor, moving_average_ou)
     auto realization = ou_realization(1.0, dt, numSteps);
 
     double timeScale = 0.1;
-    sierra::nalu::MovingAveragePostProcessor avgPP(bulk_, timeIntegrator_, timeScale);
+    sierra::nalu::MovingAveragePostProcessor avgPP(bulk_, timeIntegrator_, false);
     avgPP.add_fields({"temperature"});
+    avgPP.set_time_scale(timeScale);
 
     std::ofstream outputFile("PostProcessor.moving_average_ou.txt");
     outputFile << "t, temperature, temperature_avg" << std::endl;

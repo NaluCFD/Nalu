@@ -50,7 +50,7 @@ ExponentialMovingAverager::compute_updated_average(double oldAvg, double newVal)
 {
   return (alpha_ * newVal  + (1 -  alpha_) * oldAvg);
 }
-//--------------------------------------------------------------------------
+//---------------------------------------------------------------------
 void
 ExponentialMovingAverager::init_state(bool init)
 {
@@ -81,24 +81,6 @@ void MovingAveragePostProcessor::add_fields(std::vector<std::string> fieldNames)
   }
 }
 //--------------------------------------------------------------------------
-void append_unique_parts(const stk::mesh::PartVector& partsToAdd, stk::mesh::PartVector& partVec)
-{
-  for (auto* part : partsToAdd) {
-    ThrowRequire(part != nullptr);
-    if (std::find(partVec.begin(), partVec.end(), part) == partVec.end()) {
-      partVec.push_back(part);
-    }
-  }
-}
-//--------------------------------------------------------------------------
-void
-MovingAveragePostProcessor::add_parts_for_all_fields(stk::mesh::PartVector parts)
-{
-  for (const auto& fieldPair : fieldMap_) {
-    append_unique_parts(parts,  partVecs_[fieldPair.first->name()]);
-  }
-}
-//--------------------------------------------------------------------------
 void
 MovingAveragePostProcessor::set_time_scale(std::string fieldName, double timeScale)
 {
@@ -113,58 +95,30 @@ MovingAveragePostProcessor::set_time_scale(double timeScale)
   }
 }
 //--------------------------------------------------------------------------
-void
-MovingAveragePostProcessor::add_parts_for_field(std::string name, stk::mesh::PartVector parts)
+void MovingAveragePostProcessor::execute()
 {
-  bool fieldIsInList = false;
   for (auto& fieldPair : fieldMap_) {
-    if (fieldPair.first->name() == name) {
-      fieldIsInList = true;
-      auto& partVec = partVecs_[name];
-      append_unique_parts(parts, partVec);
-    }
-  }
-  ThrowRequireMsg(fieldIsInList, "Field `" +  name + "' not in list");
-}
-//--------------------------------------------------------------------------
-void
-MovingAveragePostProcessor::execute()
-{
-  double dt = timeIntegrator_.get_time_step();
+    const auto& field = *fieldPair.first;
+    auto& avgField = *fieldPair.second;
+    auto& averager = averagers_.at(field.name());
+    averager.compute_and_set_alpha(timeIntegrator_.get_time_step());
 
-
-  for (auto& fieldPair : fieldMap_) {
-    const stk::mesh::FieldBase* field = fieldPair.first;
-    const stk::mesh::FieldBase* avgField = fieldPair.second;
-    auto& averager = averagers_.at(field->name());
-
-    averager.compute_and_set_alpha(dt);
-
-    // Average is performed on all point where the original field is defined,
-    // unless a partvector is specified for the field, in which case that is used instead
-    const auto& partVecForField = partVecs_[field->name()];
-    stk::mesh::Selector selector = (partVecForField.empty()) ?
-        stk::mesh::selectField(*field) : stk::mesh::selectUnion(partVecForField);
-
-    const auto& node_buckets = bulk_.get_buckets(stk::topology::NODE_RANK, stk::mesh::selectField(*field));
+    // average wherever the field is defined
+    const auto& node_buckets = bulk_.get_buckets(stk::topology::NODE_RANK, stk::mesh::selectField(field));
     for (const auto* ib : node_buckets) {
       const auto& b = *ib;
+      const double* fieldVals = static_cast<const double*>(stk::mesh::field_data(field, b));
+      double* avgFieldVals = static_cast<double*>(stk::mesh::field_data(avgField, b));
+      const unsigned fieldSize = stk::mesh::field_scalars_per_entity(field, b);
+      ThrowAssert(fieldSize == stk::mesh::field_scalars_per_entity(avgField, b));
       for (size_t k = 0u; k < b.size(); ++k) {
-        const double* fieldVals = static_cast<double*>(stk::mesh::field_data(*field, b[k]));
-        double* avgFieldVals = static_cast<double*>(stk::mesh::field_data(*avgField, b[k]));
-
-        const unsigned fieldLength = field->max_size(stk::topology::NODE_RANK);
-        ThrowAssert(fieldLength == avgField->max_size(stk::topology::NODE_RANK));
-
-        for (unsigned d = 0; d < fieldLength; ++d) {
-          avgFieldVals[d] = averager.compute_updated_average(avgFieldVals[d], fieldVals[d]);
+        const size_t offset = k * fieldSize;
+        for (unsigned d = 0; d < fieldSize; ++d) {
+          avgFieldVals[d + offset] = averager.compute_updated_average(avgFieldVals[d + offset], fieldVals[d + offset]);
         }
       }
     }
-  }
-
-  for (auto& averagerPair : averagers_) {
-    averagerPair.second.init_state(false);
+    averager.init_state(false);
   }
 }
 

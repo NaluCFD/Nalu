@@ -186,32 +186,6 @@ realms:
             momentum: [0.000135, 0.0, 0.0]
 
 
-# not necessary to use the boussinesq_ra model
-# if you request a moving average of temperature and have
-# specified boussinesq_time_scale, then 
-# the value of timescale specified by boussinesq_time_scale
-# will override the time_filter_interval for temperature
-
-    turbulence_averaging:
-      time_filter_interval: 5.0
-      specifications:
-        - name: one
-          target_name: Unspecified-2-HEX
-          reynolds_averaged_variables:
-            - velocity
-
-          favre_averaged_variables:
-            - velocity
-            - viscosity
-
-          moving_averaged_variables:
-            - velocity
-            - specific_heat
-            - pressure
-
-          compute_tke: yes 
-          compute_reynolds_stress: yes
-
     output:
       output_data_base_name: abl_1km_cube_ra.e
       output_frequency: 5
@@ -223,12 +197,7 @@ realms:
        - temperature
        - specific_heat
        - viscosity
-       - temperature_ma
-       - velocity_ra_one
-       - velocity_fa_one
-       - velocity_ma
-       - pressure_ma
-       - specific_heat_ma
+       - temperature_ma #always populated with moving average Boussinesq model
 
   - name: ioRealm
     mesh: ../../mesh/abl_io.g
