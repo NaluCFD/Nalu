@@ -78,7 +78,7 @@ NonConformalInfo::NonConformalInfo(
    const std::string &searchMethodName,
    const bool clipIsoParametricCoords,
    const double searchTolerance,
-   const double dynamicSearchTolAlg,
+   const bool   dynamicSearchTolAlg,
    const std::string debugName)
   : realm_(realm ),
     name_(debugName),
@@ -431,6 +431,7 @@ NonConformalInfo::complete_search()
     std::vector<DgInfo *> &theVec = (*ii);
     for ( size_t k = 0; k < theVec.size(); ++k ) {
       
+      double nearestDistance = std::numeric_limits<double>::max();
       DgInfo *dgInfo = theVec[k];
       const uint64_t localGaussPointId  = dgInfo->localGaussPointId_; 
 
@@ -446,7 +447,7 @@ NonConformalInfo::complete_search()
           const uint64_t theBox = jj->second.id();
           const unsigned theRank = NaluEnv::self().parallel_rank();
           const unsigned pt_proc = jj->first.proc();
-          
+
           // check if I own the point...
           if ( theRank == pt_proc ) {
             
@@ -494,12 +495,12 @@ NonConformalInfo::complete_search()
             dgInfo->allOpposingFaceIds_.push_back(bulk_data.identifier(opposingFace));
             
             // find distance between true current gauss point coords (the point) and the candidate bounding box
-            const double nearestDistance = meFC->isInElement(&theElementCoords[0],
+            const double nearDistance = meFC->isInElement(&theElementCoords[0],
                                                              &(currentGaussPointCoords[0]),
                                                              &(opposingIsoParCoords[0]));
             
             // check is this is the best candidate
-            if ( nearestDistance < dgInfo->bestX_ ) {
+            if ( nearDistance < dgInfo->bestX_ ) {
               // save the opposing face element and master element
               dgInfo->opposingFace_ = opposingFace;
               dgInfo->meFCOpposing_ = meFC;
@@ -516,7 +517,7 @@ NonConformalInfo::complete_search()
                   theDistanceTwo += dxj*dxj;
                 }
                 theDistanceTwo = std::sqrt(theDistanceTwo);
-                dgInfo->nearestDistance_ = std::max(std::abs(theDistance), theDistanceTwo);
+                nearestDistance = std::min(nearestDistance,std::max(std::abs(theDistance), theDistanceTwo));
               }
               
               // save off ordinal for opposing face
@@ -528,12 +529,23 @@ NonConformalInfo::complete_search()
               dgInfo->meSCSOpposing_ = meSCS;
               dgInfo->opposingElementTopo_ = theOpposingElementTopo;
               dgInfo->opposingIsoParCoords_ = opposingIsoParCoords;
-              dgInfo->bestX_ = nearestDistance;
+              dgInfo->bestX_ = nearDistance;
               dgInfo->opposingFaceIsGhosted_ = opposingFaceIsGhosted;
             }
           }
           else {
             // not this proc's issue
+          }
+        }
+        if (dynamicSearchTolAlg_) {
+          // If the nearest distance between the surfaces at this point is smaller then the current 
+          // distance can be reduced a bit.  Otherwise make sure the current distance is increased as needed.
+          if (nearestDistance < dgInfo->nearestDistance_) {
+            const double scale_factor = 0.8;
+            dgInfo->nearestDistance_ = scale_factor*dgInfo->nearestDistance_ + (1-scale_factor)*nearestDistance;
+          }
+          else {
+            dgInfo->nearestDistance_ = nearestDistance;
           }
         }
       }

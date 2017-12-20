@@ -71,7 +71,7 @@ class NonConformalInfo {
     const std::string &searchMethodName,
     const bool clipIsoParametricCoords,
     const double searchTolerance,
-    const double dynamicSearchTolAlg,
+    const bool   dynamicSearchTolAlg,
     const std::string debugName);
 
   ~NonConformalInfo();
