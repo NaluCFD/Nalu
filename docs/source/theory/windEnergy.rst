@@ -15,14 +15,15 @@ entire wind farm, and 2. the evolution of turbine wakes in turbulent inflow
 conditions and their interaction with the downstream turbines. First, the
 governing equations with all the terms necessary to model a wind farm are
 presented with links to implementation and verification details elsewhere in the
-theory and/or verification manuals. This is followed by a brief discussion of
-the boundary conditions used to model atmospheric boundary layer (ABL) flows
+theory and/or verification manuals. A brief description of Nalu's numerical
+discretization schemes is presented next. This is followed by a brief discussion
+of the boundary conditions used to model atmospheric boundary layer (ABL) flows
 with or without wind turbines (currently modeled as actuator sources within the
 flow domain).
 
 Currently Nalu supports two types of wind simulations:
 
-Precursor simulations
+**Precursor simulations**
 
   Precursor simulations are used in wind applications to generate time histories
   of turbulent ABL inflow profiles that are used as inlet conditions in
@@ -30,13 +31,14 @@ Precursor simulations
   to trigger turbulence generation and obtain velocity and temperature profiles
   that have *converged* to a stastitic equilibrium.
 
-Wind farm simulation with turbines as actuator sources
+**Wind farm simulation with turbines as actuator sources**
 
   In this case, the wind turbine blades and tower are modeled as actuator source
-  terms by coupling to the OpenFAST libraries. Velocity fields are sampled at
-  the blade and tower control points within the Nalu domain and the blade
-  positions and blade/tower loading is provided by OpenFAST to be used as source
-  terms within the momentum equation.
+  terms by coupling to the `OpenFAST
+  <http://openfast.readthedocs.io/en/master/>`_ libraries. Velocity fields are
+  sampled at the blade and tower control points within the Nalu domain and the
+  blade positions and blade/tower loading is provided by OpenFAST to be used as
+  source terms within the momentum equation.
 
 Governing Equations
 -------------------
@@ -78,7 +80,8 @@ Term :math:`\mathbf{VIII}` is an optional term representing body forces when
 modeling turbine with actuator disk or line representations -- see :numref:`theory_actuator_wind_turbine_models`.
 
 In wind energy applications, the energy conservation equation is often written
-in terms of the Favre-filtered potential temperature equation, as shown below
+in terms of the Favre-filtered potential temperature, :math:`\theta`, equation,
+as shown below
 
 .. math::
    :label: abl_pottemp
@@ -86,7 +89,7 @@ in terms of the Favre-filtered potential temperature equation, as shown below
    \frac{\partial}{\partial t} \left(\bar{\rho}\, \widetilde{\theta}\right) +
    \frac{\partial}{\partial t} \left(\bar{\rho}\, \widetilde{u}_j \widetilde{\theta} \right) = - \frac{\partial}{\partial x_j} \hat{q}_j
 
-where, :math:`q_j` represents the temperature transport due to molecular and SFS
+where, :math:`\hat{q}_j` represents the temperature transport due to molecular and SFS
 turbulence effects. Due to the high Reynolds number associated with ABL flows,
 the molecular effects are neglected everywhere except near the terrain.
 Potential temperature is related to absolute temperature by the following
@@ -108,11 +111,20 @@ i.e.,
 Furthermore, ignoring the pressure and viscous work terms in Eq. :eq:`fav-enth`
 and assuming constant density (incompressible flow), it can be shown that
 solving the enthalpy equation is equivalent to solving the potential temperature
-equation. Care must be taken to scale the SFS flux terms appropriately in the
-equations, and appropriate initial conditions and boundary conditions for
-potential temperature must be provided. The resulting solution can then be
-interpreted as the variation of potential temperature field in the computational
-domain.
+equation. The enthalpy equation solved in wind energy problems is shown below
+
+.. math::
+   :label: abl_enth
+
+   \frac{\partial}{\partial t} \left(\bar{\rho}\, \widetilde{T}\right) +
+   \frac{\partial}{\partial t} \left(\bar{\rho}\, \widetilde{u}_j \widetilde{T} \right) = - \frac{\partial}{\partial x_j} q_j
+
+It is noted here that the terms :math:`\hat{q}_j` (Eq. :eq:`abl_pottemp`) and
+:math:`q_j` (Eq. :eq:`abl_enth`) are not equivalent and must be scaled
+appropriately. User can still provide the appropriate initial and boundary
+conditions in terms of potential temperature field. Under these assumptions and
+conditions, the resulting solution can then be interpreted as the variation of
+potential temperature field in the computational domain.
 
 Turbulence Modeling
 -------------------
@@ -120,6 +132,41 @@ Turbulence Modeling
 LES turbulence closure is provided by the :ref:`theory_ksgs_les_model` or the
 standard :ref:`Smagorinsky <theory_standard_smagorinsky_les>` model for wind
 farm applications.
+
+Numerical Discretization & Stabilization
+----------------------------------------
+
+Nalu provides two dicretization approaches
+
+**Control Volume Finite Element Method (CVFEM)**
+
+  Nalu uses a *dual mesh* approach (see :numref:`theory_cvfem_dual_mesh`) where
+  the *control volumes* are constructed around the nodes of the finite elements
+  within the mesh -- see :numref:`windenergy_cvfem_fig`. The equations are
+  solved at the *integration* points on the *sub-control surfaces* and/or the
+  *sub-control volumes*.
+
+**Edge-Based Vertex Centered Scheme**
+
+  The edge-based scheme is similar to the finite-volume approach used in SOWFA
+  with the nodes at the *cell center* of the dual mesh.
+
+.. _windenergy_cvfem_fig:
+
+.. figure:: images/we_cvfem_p1.png
+   :align: center
+   :width: 250px
+
+   Schematic of HEX-8 mesh showing the finite elements, nodes, and the
+   associated control volume dual mesh.
+
+The numerical discretization approach is covered in great detail in
+:numref:`theory_discretization_approach`, the advection and pressure
+stabilization approaches are documented in
+:numref:`theory_advection_stabilization` and
+:numref:`theory_pressure_stabilization` respectively. Users are strongly urged
+to read those sections to gain a thorough understanding of the discretization
+scheme and the its impact on the simulations.
 
 Initial & Boundary Conditions
 -----------------------------
