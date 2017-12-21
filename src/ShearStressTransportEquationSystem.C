@@ -497,7 +497,7 @@ ShearStressTransportEquationSystem::compute_f_one_blending()
   const double CDkwClip = 1.0e-10; // 2003 SST
 
   // required fields with state; min_distance is fine
-  ScalarFieldType &sdrNp1 = sdr_->field_of_state(stk::mesh::StateN);
+  ScalarFieldType &sdrNp1 = sdr_->field_of_state(stk::mesh::StateNP1);
   ScalarFieldType &tkeNp1 = tke_->field_of_state(stk::mesh::StateNP1);
 
   // fields not saved off
