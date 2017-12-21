@@ -734,3 +734,84 @@ relative to the specified solution.
 
 This test is added to Nalu's nightly test suite, testing that the convergence rate between 
 the 1/32 and 1/64 element sizes is second order.
+
+3D Hybrid 1x2x10 Duct: Specified Pressure Drop
+----------------------------------------------
+In this section, a specified pressure drop in a simple 1x2x10 configuration is run with
+a variety of homogeneous blocks of the following topology: hexahedral, tetrahedral, wedge,
+and thexahedral. This analytical solution is given by an infinite series and is coded
+as the "1x2x10" user function. The simulation is run with an outer wall boundary condition
+with two open boundary conditions. The specified pressure drop is 0.016 over the 10 cm 
+duct. The density and viscosity are 1.0e-3 and 1.0e-4, respectively. The siumulation
+study is run a fixed Courant numbers with a mesh spacing ranging from 0.2 to 0.025.
+Figure :numref:`specified-dp-flow-hex-tet` provides the standard velocity profile for the 
+structured hexahedral and unstructured tetrahedral element type.
+
+.. _specified-dp-flow-hex-tet:
+
+.. figure:: figures/hex8_tet4_one_two_ten_R0_R1.png
+   :width: 500px
+   :align: center
+
+   Streamwise velocity profile for specified pressure drop flow; tetrahedral and hexahedral topology.
+
+The simulation study employed a variety of elemental topologies of uniform mesh spacing
+as noted above. Figure :numref:`specified-dp-l2` outlines the convergence in the :math:`L_2`
+norm using the low-order elemental CVFEM implementation using the recently changed tetrahedral
+and wedge element quadrature rules. Second-order accuracy is noted. Interestingly, the 
+hexahedral and wedge topology provided nearly the same accuracy. Also, the tetrahedral
+accuracy was approximately four tiomes greater. Finally, the Thexahedral topology
+proved to be second-order, however, provided very poor accuracy results. 
+
+.. _specified-dp-l2:
+
+.. figure:: figures/Uz_L2_dp.pdf
+   :width: 500px
+   :align: center
+
+   :math:`L_2` error for the CVFEM scheme on a variety of element types.
+
+3D Hybrid 1x1x1 Cube: Laplace
+-----------------------------
+The standard Laplace operator is evalued on the full set of low-order hybrid topologies 
+(not inlcuding the pyramid). In this example, the temperature field is again,
+
+.. math::
+   :label: threed-L
+   
+   T = \frac{\lambda}{4} (cos(2 a \pi x) + cos(2 a \pi y) + cos(2 a \pi z)).
+
+Figure :numref:`laplace-hybrid` represents the MMS field for temperature
+on a variety of mesh topologies. The thexahedral mesh is obtained from the
+standard uniform spacing tetrahedral mesh (not shown). The tetrahedral
+mesh shown is a tet-based conversion of the standard structured hexahedral
+mesh. This approach ensures that the number of nodes between the hexahedral
+and tetrahedral mesh are the same.
+
+.. _laplace-hybrid:
+
+.. figure:: figures/hybrid_laplace.png
+   :width: 500px
+   :align: center
+
+   Temperature shadings for hexahedral, thexahedral, wedge, and tetrahedral topologies (clockwise from the upper left).
+
+Figure :numref:`laplace-hybrid-l2` provides the :math:`L_2` norms, all of which are showing second-order accuracy.
+In Figure :numref:`laplace-hybrid-lo`, the :math:`L_o` error is shown. As indicated from the convergence plot,
+slight degradation in order-of-accuracy is noted for the thexahedral topology.
+
+.. _laplace-hybrid-l2:
+
+.. figure:: figures/hybrid_T_L2.pdf
+   :width: 500px
+   :align: center
+
+   :math:`L_2` norms for the full set of hybrid Laplace MMS study.
+
+.. _laplace-hybrid-lo:
+
+.. figure:: figures/hybrid_T_Loo.pdf
+   :width: 500px
+   :align: center
+
+   :math:`L_o` norms for the full set of hybrid Laplace MMS study.

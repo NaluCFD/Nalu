@@ -482,7 +482,7 @@ NonConformalInfo::complete_search()
             MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(theOpposingElementTopo);
             
             // possible reuse            
-            dgInfo->allOpposingFaceIds_.push_back(theBox);
+            dgInfo->allOpposingFaceIds_.push_back(bulk_data.identifier(opposingFace));
             
             // find distance between true current gauss point coords (the point) and the candidate bounding box
             const double nearestDistance = meFC->isInElement(&theElementCoords[0],
@@ -561,7 +561,7 @@ NonConformalInfo::complete_search()
   }
   else {
     NaluEnv::self().naluOutputP0() << "Ghosted search entries ARE sufficient for re-use " << std::endl;
-    canReuse_ = false; // Set the false until ready for primetime
+    canReuse_ = true;
   }
 }
   
