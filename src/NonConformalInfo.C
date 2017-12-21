@@ -78,6 +78,7 @@ NonConformalInfo::NonConformalInfo(
    const std::string &searchMethodName,
    const bool clipIsoParametricCoords,
    const double searchTolerance,
+   const double dynamicSearchTolAlg,
    const std::string debugName)
   : realm_(realm ),
     name_(debugName),
@@ -87,6 +88,7 @@ NonConformalInfo::NonConformalInfo(
     searchMethod_(stk::search::BOOST_RTREE),
     clipIsoParametricCoords_(clipIsoParametricCoords),
     searchTolerance_(searchTolerance),
+    dynamicSearchTolAlg_(dynamicSearchTolAlg),
     meshMotion_(realm_.has_mesh_motion()),
     canReuse_(false)
 {
@@ -130,7 +132,7 @@ NonConformalInfo::initialize()
 {
 
   // clear some of the search info
-  boundingPointVec_.clear();
+  boundingSphereVec_.clear();
   boundingFaceElementBoxVec_.clear();
   searchKeyPair_.clear();
 
@@ -211,7 +213,7 @@ NonConformalInfo::construct_dgInfo()
       std::vector<DgInfo *> faceDgInfoVec(numScsBip);
       for ( int ip = 0; ip < numScsBip; ++ip ) { 
         DgInfo *dgInfo = new DgInfo(NaluEnv::self().parallel_rank(), globalFaceId, localGaussPointId++, ip, 
-                                    face, element, currentFaceOrdinal, meFC, meSCS, currentElemTopo, nDim); 
+                                    face, element, currentFaceOrdinal, meFC, meSCS, currentElemTopo, nDim, searchTolerance_); 
         faceDgInfoVec[ip] = dgInfo;
       }
       
@@ -316,6 +318,9 @@ NonConformalInfo::construct_bounding_points()
       
       DgInfo *dgInfo = theVec[k];
 
+      // extract point radius; set to small if dynamic alg is not activated
+      const double pointRadius = dynamicSearchTolAlg_ ? dgInfo->nearestDistance_*dgInfo->nearestDistanceSafety_ : 1.0e-16;
+      
       // local and current ip
       const uint64_t localIp  = dgInfo->localGaussPointId_; 
       const int currentFaceIp = dgInfo->currentGaussPointId_;
@@ -349,9 +354,9 @@ NonConformalInfo::construct_bounding_points()
       // setup ident for this point; use local integration point id
       stk::search::IdentProc<uint64_t,int> theIdent(localIp, NaluEnv::self().parallel_rank());
       
-      // create the bounding point and push back
-      boundingPoint thePt(currentIpCoords, theIdent);
-      boundingPointVec_.push_back(thePt);
+      // create the bounding sphere and push back
+      boundingSphere theSphere(Sphere(currentIpCoords, pointRadius), theIdent);
+      boundingSphereVec_.push_back(theSphere);
     } 
   }
 }
@@ -366,7 +371,7 @@ NonConformalInfo::determine_elems_to_ghost()
   stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   // perform the coarse search
-  stk::search::coarse_search(boundingPointVec_, boundingFaceElementBoxVec_, searchMethod_, NaluEnv::self().parallel_comm(), searchKeyPair_);
+  stk::search::coarse_search(boundingSphereVec_, boundingFaceElementBoxVec_, searchMethod_, NaluEnv::self().parallel_comm(), searchKeyPair_);
 
   // sort based on local gauss point
   std::sort (searchKeyPair_.begin(), searchKeyPair_.end(), sortIntLowHigh());
@@ -408,6 +413,10 @@ NonConformalInfo::complete_search()
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   stk::mesh::BulkData & bulk_data = realm_.bulk_data();
   const int nDim = meta_data.spatial_dimension();
+
+  // dynamic algorithm requires normal distance between point and ip
+  double bestElemIpCoords[3];
+  double bestElemIpNormal[3];
 
   // fields
   VectorFieldType *coordinates = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
@@ -495,6 +504,21 @@ NonConformalInfo::complete_search()
               dgInfo->opposingFace_ = opposingFace;
               dgInfo->meFCOpposing_ = meFC;
              
+              if ( dynamicSearchTolAlg_ ) {
+                // find the projected normal distance between point and centroid; all we need is an approximation
+                meFC->general_normal(&opposingIsoParCoords[0], &theElementCoords[0], &bestElemIpNormal[0]);
+                meFC->interpolatePoint(nDim, &opposingIsoParCoords[0], &theElementCoords[0], &bestElemIpCoords[0]);
+                double theDistance = 0.0;
+                double theDistanceTwo = 0.0;
+                for ( int j = 0; j < nDim; ++j ) {
+                  double dxj = currentGaussPointCoords[j] - bestElemIpCoords[j];
+                  theDistance += bestElemIpNormal[j]*dxj;
+                  theDistanceTwo += dxj*dxj;
+                }
+                theDistanceTwo = std::sqrt(theDistanceTwo);
+                dgInfo->nearestDistance_ = std::max(std::abs(theDistance), theDistanceTwo);
+              }
+              
               // save off ordinal for opposing face
               const stk::mesh::ConnectivityOrdinal* face_elem_ords = bulk_data.begin_element_ordinals(opposingFace);
               dgInfo->opposingFaceOrdinal_ = face_elem_ords[0];
@@ -577,6 +601,9 @@ NonConformalInfo::construct_bounding_boxes()
 
   const int nDim = meta_data.spatial_dimension();
 
+  // specify dynamic tolerance algorithm factor
+  const double dynamicFac = dynamicSearchTolAlg_ ? 0.0 : 1.0;
+
   // fields
   VectorFieldType *coordinates = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
 
@@ -631,7 +658,7 @@ NonConformalInfo::construct_bounding_boxes()
       for ( int i = 0; i < nDim; ++i ) {
         const double theMin = minCorner[i];
         const double theMax = maxCorner[i];
-        const double increment = expandBoxPercentage_*(theMax - theMin) + searchTolerance_;
+        const double increment = expandBoxPercentage_*(theMax - theMin) + searchTolerance_*dynamicFac;
         minCorner[i] -= increment;
         maxCorner[i] += increment;
       }

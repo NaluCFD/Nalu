@@ -1195,7 +1195,7 @@ namespace YAML
     if (node["search_method"])
     {
       nonConformalData.searchMethodName_ =
-          node["search_method"].as<std::string>();
+        node["search_method"].as<std::string>();
     }
     if (node["expand_box_percentage"])
     {
@@ -1210,6 +1210,11 @@ namespace YAML
     if (node["search_tolerance"])
     {
       nonConformalData.searchTolerance_ = node["search_tolerance"].as<double>();
+    }
+    if (node["activate_dynamic_search_algorithm"])
+    {
+      nonConformalData.dynamicSearchTolAlg_ =
+        node["activate_dynamic_search_algorithm"].as<bool>();
     }
 
     return true;
