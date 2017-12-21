@@ -815,3 +815,9 @@ slight degradation in order-of-accuracy is noted for the thexahedral topology.
    :align: center
 
    :math:`L_o` norms for the full set of hybrid Laplace MMS study.
+
+
+Specified Normal Temperature Gradient Boundary Condition Verification
+---------------------------------------------------------------------
+
+The motivation for adding the ability to specify the boundary-normal temperature gradient is atmospheric boundary layer simulation in which the upper boundary often contains a stably stratified layer with a temperature gradient.  
