@@ -23,11 +23,9 @@ The SIERRA Low Mach Module: Nalu (henceforth referred to as Nalu), developed at 
    timeDiscretization.rst
    multiPhysics.rst
    windEnergy.rst
-   actuatorLine.rst
    topologicalSupport.rst
    adaptivity.rst
    codeAbstractions.rst
-   zrefs.rst
 
 
 

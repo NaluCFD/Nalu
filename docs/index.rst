@@ -10,3 +10,4 @@ Nalu Documentation
    Developer Manual <source/developer/index.rst>
    Theory Manual <source/theory/index.rst>
    Verification Manual <source/verification/index.rst>
+   zrefs.rst

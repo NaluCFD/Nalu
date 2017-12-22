@@ -9,5 +9,7 @@ The source documentation is extracted from the C++ files using Doxygen.
    apidocs/realms
    apidocs/eqsystems
    apidocs/masterelem
+   apidocs/actuatorsources   
    apidocs/userfunc
    apidocs/postprocess
+
