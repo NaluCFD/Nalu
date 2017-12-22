@@ -275,6 +275,8 @@ void ActuatorLineFAST::readTurbineData(int iTurb, fast::fastInputs & fi, YAML::N
     }
     get_required(turbNode, "num_force_pts_blade", fi.globTurbineData[iTurb].numForcePtsBlade);
     get_required(turbNode, "num_force_pts_tower", fi.globTurbineData[iTurb].numForcePtsTwr);
+    get_required(turbNode, "nacelle_cd", fi.globTurbineData[iTurb].nacelle_cd);
+    get_required(turbNode, "nacelle_area", fi.globTurbineData[iTurb].nacelle_area);
 
 }
 
@@ -879,9 +881,33 @@ ActuatorLineFAST::create_actuator_line_point_info_map() {
 	  boundingSphereVec_.push_back(theSphere);
 
 	  // create the point info and push back to map
+          Coordinates epsilon;
+          switch (FAST.getForceNodeType(iTurb, np)) {
+          case fast::HUB: {
+              // Calculate epsilon for hub node based on cd and area here
+              double nac_area = FAST.get_nacelleArea(iTurb);
+              double nac_cd = FAST.get_nacelleCd(iTurb);
+              for (int j=0; j<nDim; j++) {
+                  double tmpEps = 0.0; //Some model that uses cd and area. Same for all dimensions
+                  epsilon.x_ = tmpEps;
+                  epsilon.y_ = tmpEps;
+                  epsilon.z_ = tmpEps;
+              }              
+              break;
+          }
+          case fast::BLADE:
+              epsilon = actuatorLineInfo->epsilon_;
+              break;
+          case fast::TOWER:
+              epsilon = actuatorLineInfo->epsilon_;
+              break;
+          case fast::ActuatorNodeType_END:
+              break;
+          }
+          
 	  ActuatorLineFASTPointInfo *actuatorLinePointInfo
 	    = new ActuatorLineFASTPointInfo(iTurb, centroidCoords,
-					    searchRadius, actuatorLineInfo->epsilon_,
+					    searchRadius, epsilon,
 					    FAST.getForceNodeType(iTurb, np));
 	  actuatorLinePointInfoMap_[np] = actuatorLinePointInfo;
 
