@@ -593,6 +593,7 @@ of using both space and time interpolation.
 
    Temporal accuracy plot of the x-velocity component norms using the precursor data.
 
+.. _verification_abl_prescribed_inflow:
 
 Application Verification Test; ABL Precursor/Subsequent
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -625,7 +626,7 @@ full profile over the full domain is captured at approximately 4620 seconds. On 
 temperature boundary condition data that originated from the precursor simulation, which was read into the subsequent 
 "external_field_provider" Realm, is shown (again at approximately 4620 seconds).
 
-.. _abl-susequent-check-one:
+.. _abl-susequent-check-one-two:
 
 .. figure:: figures/abl_sub_check_one_two.png
    :width: 500px
@@ -636,10 +637,10 @@ temperature boundary condition data that originated from the precursor simulatio
 
 
 Boussinesq Verification
---------------------------------------
+-----------------------
 
 Unit tests
-+++++++++++++++++++++++++++++++++++++++++++++++++++++++
+++++++++++
 
 Unit-level verification was performed for the Boussinesq body force term :eq:`boussbuoy` with a 
 nodal source appropriate to the edge-based scheme (MomentumBoussinesqSrcNodeSuppAlg.single_value) as well as a 

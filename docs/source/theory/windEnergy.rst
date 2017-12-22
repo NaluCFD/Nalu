@@ -35,7 +35,7 @@ Currently Nalu supports two types of wind simulations:
 
   In this case, the wind turbine blades and tower are modeled as actuator source
   terms by coupling to the `OpenFAST
-  <http://openfast.readthedocs.io/en/master/>`_ libraries. Velocity fields are
+  <https://openfast.readthedocs.io/en/master/>`_ libraries. Velocity fields are
   sampled at the blade and tower control points within the Nalu domain and the
   blade positions and blade/tower loading is provided by OpenFAST to be used as
   source terms within the momentum equation.
@@ -77,7 +77,8 @@ Term :math:`\mathbf{VII}` represents the source term used to drive the flow to a
 horizontal mean velocity at desired height(s) -- see :numref:`abl_forcing_term`; and
 
 Term :math:`\mathbf{VIII}` is an optional term representing body forces when
-modeling turbine with actuator disk or line representations -- see :numref:`theory_actuator_wind_turbine_models`.
+modeling turbine with actuator disk or line representations -- see
+:numref:`act_wind_turbine_aerodynamics`.
 
 In wind energy applications, the energy conservation equation is often written
 in terms of the Favre-filtered potential temperature, :math:`\theta`, equation,
@@ -166,17 +167,15 @@ stabilization approaches are documented in
 :numref:`theory_advection_stabilization` and
 :numref:`theory_pressure_stabilization` respectively. Users are strongly urged
 to read those sections to gain a thorough understanding of the discretization
-scheme and the its impact on the simulations.
+scheme and its impact on the simulations.
 
 Time stepping scheme
 --------------------
 
 The time stepping method in Nalu is described in the Fuego theory manual
-:cite:`FuegoTheoryManual:2016` for the backward Euler time discretization. We
-present a version of this time stepping scheme adapated to the BDF2 time
-discretization of the momentum equation described in
-:numref:`theory_time_discretization`. The Favre-averaged momentum equation is
-written in integral form as
+:cite:`FuegoTheoryManual:2016` for the backward Euler time discretization. The
+implementation details of the BDF2 time stepping scheme used in Nalu is
+described here.
 
 .. math::
    :label: fav-mom-nalu
@@ -189,22 +188,27 @@ where
 .. math::
    :label: fav-mom-nalu-f
            
-   {\bf F}_i (\rho^{n+1} u_i^{n+1}) &= \int \rho^{n+1} u_i^{n+1} u_j^{n+1} n_j {\rm d}S  + \int \bar{\tau}_{ij}^{n+1} n_j {\rm d}S + \int \tau_{u_i u_j}^{n+1} n_j {\rm d}S \\
-   &= \int \rho^{n+1} u_i^{n+1} \dot{m}^{n+1}  + \int \bar{\tau}_{ij}^{n+1} n_j {\rm d}S + \int \tau_{u_i u_j}^{n+1} n_j {\rm d}S \\
+   {\bf F}_i (\rho^{n+1} u_i^{n+1}) &= \int \rho^{n+1} u_i^{n+1} u_j^{n+1} n_j {\rm d}S  + \int \tau_{ij}^{n+1} n_j {\rm d}S \\
+   &= \int u_i^{n+1} \dot{m}^{n+1}  + \int \tau_{ij}^{n+1} n_j {\rm d}S \\
    
    
-The following conventions are used:
+and :math:`\gamma_i` are factors for BDF2 time discretization scheme (see
+:numref:`theory_time_discretization`). The following conventions are used:
 
 .. math::
 
    \phi^* &= \textrm{ Predicted value of } \phi \textrm{ at } n+1 \textrm{ time step before linear solve} \\
    \widehat{\phi} = \phi^{**} &= \textrm{ Predicted value of } \phi \textrm{ at } n+1 \textrm{ time step after linear solve}
 
-Nalu uses a predictor for the density :math:`\rho^{n+1} = \rho^*` and the mass flow rate through the sub-control surfaces :math:`\dot{m}^{n+1} = \dot{m}^*`. Nalu then corrects for these quantities through outer iterations and hence retains :math:`\rho` and :math:`\dot{m}` constant through each outer iteration. Hence Nalu uses
+Nalu uses a predictor for the density :math:`\rho^{n+1} = \rho^*` and the mass
+flow rate through the sub-control surfaces :math:`\dot{m}^{n+1} = \dot{m}^*`.
+Nalu then corrects for these quantities through outer iterations and hence
+retains :math:`\rho` and :math:`\dot{m}` constant through each outer iteration.
+Hence Nalu uses
 
 .. math::
    
-   {\bf F}_i (\rho^{n+1} u_i^{n+1}) \approx {\bf F}_i (\rho^{*} u_i^{n+1}) = \int \rho^{*} u_i^{n+1} \dot{m}^{*}  + \int \bar{\tau}_{ij}^{n+1} n_j {\rm d}S + \int \tau_{u_i u_j}^{n+1} n_j {\rm d}S
+   {\bf F}_i (\rho^{n+1} u_i^{n+1}) \approx {\bf F}_i (\rho^{*} u_i^{n+1}) = \int u_i^{n+1} \dot{m}^{*}  + \int \tau_{ij}^{n+1} n_j {\rm d}S
 
 and solves the following linearized momentum equation.
 
@@ -212,7 +216,9 @@ and solves the following linearized momentum equation.
    
    \int \left . \frac{\partial \rho u_i}{\partial t} \right |^{n+1} {\rm d}V \approx {\bf F}_i (\rho^{*} u_i^{n+1}) - \int \bar{P}^{n+1} n_i {\rm d}S - \int \left(\rho^{*} - \rho_{\circ} \right) g_i {\rm d}V
 
-Nalu uses a predictor-corrector method to calculate :math:`u_i^{n+1}` and :math:`P^{n+1}`. First, a momentum predictor step is used to estimate :math:`u_i^{**}` by solving
+Nalu uses a predictor-corrector method to calculate :math:`u_i^{n+1}` and
+:math:`P^{n+1}`. First, a momentum predictor step is used to estimate
+:math:`u_i^{**}` by solving
 
 .. math::
    
@@ -220,7 +226,11 @@ Nalu uses a predictor-corrector method to calculate :math:`u_i^{n+1}` and :math:
    &= {\bf F}_i (\rho^{*} u_i^{**}) - \int P^{*} n_i {\rm d}S - \int \left(\rho^{*} - \rho_{\circ} \right) g_i {\rm d}V + - \int (P^{**} - P^{*}) n_i {\rm d}S, \\
    &= {\bf F}_i (\rho^{*} u_i^{**}) - \int P^{*} n_i {\rm d}S - \int \left(\rho^{*} - \rho_{\circ} \right) g_i {\rm d}V + \epsilon,
 
-where :math:`\epsilon` is an error that reduces with increasing number of outer iterations. :math:`u_i^{**}` will not satisfy the continuity equation. A correction step is performed later to make :math:`u_i^{n+1}` satisfy the continuity equation. :math:`{\bf F} (\rho^{*} u_i^{**})` is linear in :math:`u_i` and hence
+where :math:`\epsilon` is an error that reduces with increasing number of outer
+iterations. :math:`u_i^{**}` will not satisfy the continuity equation. A
+correction step is performed later to make :math:`u_i^{n+1}` satisfy the
+continuity equation. :math:`{\bf F} (\rho^{*} u_i^{**})` is linear in
+:math:`u_i` and hence
 
 .. math::
    :label: linearize-f-phi-star
@@ -228,7 +238,8 @@ where :math:`\epsilon` is an error that reduces with increasing number of outer 
    {\bf F}_i (\rho^{*} u_i^{**}) = \frac{\partial F_i}{\partial u_j} u_j^{**}
 
 
-Applying Eq. :eq:`linearize-f-phi-star` to Eq. :eq:`fav-mom-nalu`, we get the linearized momentum equation solved in Nalu.
+Applying Eq. :eq:`linearize-f-phi-star` to Eq. :eq:`fav-mom-nalu`, we get the
+linearized momentum equation solved in Nalu.
    
 .. math::   
    :label: fav-mom-nalu-linearize-f
@@ -260,7 +271,8 @@ equation to be satisfied along with the splitting and stabilization errors is
 
 where :math:`b` contains any source terms when the velocity field is not
 divergence free and the other terms are the errors due to pressure stabilization
-as shown by Domino :cite:`Domino:2006`. The final pressure Poisson equation solved to enforce continuity at each outer iteration is
+as shown by Domino :cite:`Domino:2006`. The final pressure Poisson equation
+solved to enforce continuity at each outer iteration is
    
 .. math::
    :label: eq-pressure
@@ -338,51 +350,37 @@ ensure that the Pressure Poisson solver is well conditioned.
 
 .. _act_wind_turbine_aerodynamics:
 
-Actuator Wind Turbine Aerodynamics Modeling
--------------------------------------------
+Wind Turbine Modeling
+---------------------
 
-Theory
-~~~~~~
+Wind turbine rotor and tower aerodynamic effects are modeled using actuator
+source representations. Compared to resolving the geometry of the turbine,
+actuator modeling alleviates the need for a complex body-fitted meshes, can
+relax time step restrictions, and eliminates the need for turbulence modeling at
+the turbine surfaces. This comes at the expense of a loss of fine-scale detail,
+for example, the boundary layers of the wind turbine surfaces are not resolved.
+However, actuator methods well represent wind turbine wakes in the mid to far
+downstream regions where wake interactions are important.
 
-Wind turbine rotor, tower, and nacelle aerodynamic effects can be
-modeled using actuator representations. Compared to resolving the
-geometry of the turbine, actuator modeling alleviates the need for a
-complex body-fitted meshes, can relax time step restrictions, and
-eliminates the need for turbulence modeling at the turbine surfaces.
-This comes at the expense of a loss of fine-scale detail, for example,
-the boundary layers of the wind turbine surfaces are not resolved.
-However, actuator methods well represent wind turbine wakes in the mid
-to far downstream regions where wake interactions are important.
-
-Actuator methods usually fall within the classes of disks, lines,
-surface, or some blend between the disk and line (i.e., the swept
-actuator line). Most commonly, the force over the actuator is computed,
-and then applied as a body-force source term, :math:`f_i`, to the
-Favre-filtered momentum equation 
-
-.. math::
-   :label: fav-mom-bodyforce
-
-     \int \frac{\partial \bar{\rho} \tilde{u}_i} {\partial t} {\rm d}V
-     + \int \bar{\rho} \tilde{u}_i \tilde{u}_j n_j {\rm d}S 
-     + \int \bar{P} n_i {\rm d}S = \int \bar{\tau}_{ij} n_j {\rm d}S 
-     + \int \tau_{u_i u_j} n_j {\rm d}S  
-     + \int \left(\bar{\rho} - \rho_{\circ} \right) g_i {\rm d}V \\
-     + \int f_i {\rm d}V,
+Actuator methods usually fall within the classes of disks, lines, surface, or
+some blend between the disk and line (i.e., the swept actuator line). Most
+commonly, the force over the actuator is computed, and then applied as a
+body-force source term, :math:`f_i` (Term :math:`\mathbf{VIII}`), to the
+Favre-filtered momentum equation (Eq. :eq:`ablmom`).
 
 The body-force term :math:`f_i` is volumetric and is a force per unit
-volume. The actuator forces, :math:`F'_i`, are not volumetric. They
-exist along lines or on surfaces and are force per unit length or area.
-Therefore, a projection function, :math:`g`, is used to project the
-actuator forces into the fluid volume as volumetric forces. A simple and
-commonly used projection function is a uniform Gaussian as proposed by
-S{\o}rensen and Shen :cite:`Sorensen:2002`,
+volume. The actuator forces, :math:`F'_i`, are not volumetric. They exist along
+lines or on surfaces and are force per unit length or area. Therefore, a
+projection function, :math:`g`, is used to project the actuator forces into the
+fluid volume as volumetric forces. A simple and commonly used projection
+function is a uniform Gaussian as proposed by Sorensen and Shen
+:cite:`Sorensen:2002`,
 
 .. math:: g(\vec{r}) = \frac{1}{\pi^{3/2} \epsilon^3} e^{-\left( \left| \vec{r} \right|/\epsilon \right)^2},
 
 where :math:`\vec{r}` is the position vector between the fluid point of
 interest to a particular point on the actuator, and :math:`\epsilon` is
-the width of the Gaussian, which determines how diluted the body force
+the width of the Gaussian, that determines how diluted the body force
 become. As an example, for an actuator line extending from :math:`l=0`
 to :math:`L`, the body force at point :math:`(x,y,z)` due to the line is
 given by
@@ -403,8 +401,8 @@ the actuator into a set of elements. For example, with the actuator line,
 the line is broken into discrete line segments, and the force at the center
 of each element, :math:`F_i^k`, is computed. Here, :math:`k` is the actuator
 element index. These actuator points are independent of the fluid mesh.
-This set of point forces is then projected onto the fluid mesh using any
-desired projection function, :math:`g(\vec{r})`, as described above.
+The point forces are then projected onto the fluid mesh using the Gaussian
+projection function, :math:`g(\vec{r})`, as described above.
 This is convenient because the integral given in Equation
 :eq:`force-integral` can become the summation
 
@@ -418,21 +416,29 @@ This summation well approximates the integral given in Equation
 :eq:`force-integral` so long as the ratio of actuator element size to
 projection function width :math:`\epsilon` does not exceed a certain threshold.
 
-Design
-~~~~~~
+Presently, Nalu uses an actuator line representation to model the effects of
+turbine on the flow field; however, the class hierarchy is designed with the
+potential to add other actuator source terms such as actuator disk, swept
+actuator line and actuator surface capability in the future. The
+:class:`ActuatorLineFAST <sierra::nalu::ActuatorLineFAST>` class couples Nalu
+with NREL's OpenFAST for actuator line simulations of wind turbines. OpenFAST is
+a aero-hydro-servo-elastic tool to model wind turbine developed by the National
+Renewable Energy Laboratory (NREL). The :class:`ActuatorLineFAST
+<sierra::nalu::ActuatorLineFAST>` class allows Nalu to interface as an inflow
+module to OpenFAST by supplying the velocity field information.
 
-The initial actuator capability implemented in Nalu is focused on the actuator line algorithm. However, the class hierarchy is designed with the potential to add other actuator source terms such as actuator disk, swept actuator line and actuator surface capability in the future. The ``ActuatorLineFAST`` class couples Nalu with the third party library OpenFAST for actuator line simulations of wind turbines. OpenFAST (https://nwtc.nrel.gov/FAST), available from https://github.com/OpenFAST/openfast, is a aero-hydro-servo-elastic tool to model wind turbine developed by the National Renewable Energy Laboratory (NREL). The ``ActuatorLineFAST`` class will help Nalu effectively act as an inflow module to OpenFAST by supplying the velocity field information.
+Nalu -- OpenFAST Coupling Algorithm
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-We have tested  actuator line implementation to be reasonably scalable. Actuators require searches and parallel communication of blade element velocities and forces, so our implementation should be scalable. Scalability is affected by the number of actuator turbines, the actuator element  density, and the resolution of the mesh surrounding the actuators (i.e., the number of mesh elements that will receive body force). Further testing on scalability is underway with the demonstration of this capability to simulate the OWEZ wind farm.
+The actuator line implementation allows for flexible blades that are not
+necessarily straight (prebend and sweep). The current implementation requires a
+fixed time step when coupled to OpenFAST, but allows the time step in Nalu to be
+an integral multiple of the OpenFAST time step. At present, a simple time lagged
+FSI model is used to interface Nalu with the turbine model in OpenFAST:
 
-The actuator line implementation allows for flexible blades that are not necessarily straight (prebend and sweep). The current implementation requires a fixed time step when coupled to OpenFAST, but allows the time step in Nalu to be an integral multiple of the OpenFAST time step. Initially, a simple time lagged FSI model is used to interface Nalu with the turbine model in OpenFAST:
-
-  + The velocity at time step at time step 'n' is sampled at the actuator points and sent 
-    to OpenFAST,
-  + OpenFAST advances the turbines upto the next Nalu time step 'n+1',
+  + The velocity at time step at time step :math:`n` is sampled at the actuator
+    points and sent to OpenFAST,
+  + OpenFAST advances the turbines upto the next Nalu time step :math:`n+1`,
   + The body forces at the actuator points are converted to the source terms of the momentum 
-    equation to advance Nalu to the next time step 'n+1'.
+    equation to advance Nalu to the next time step :math:`n+1`.
     
-We are currently working on advanced FSI algorithms along with verification using an MMS approach.
- 
-The actuator implementation is flexible enough to incorporate a variety of future wind turbine technology capabilities. For example, it is possible that the nacelle may actively tilt for wake steering. The actuator capability is also able to handle a variety of turbines types within one simulation. The current capability allows the modeling of not only the rotor with actuators, but also the tower. However, an aerodynamic model still needs to be implemented for the nacelle.
