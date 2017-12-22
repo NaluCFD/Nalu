@@ -116,6 +116,7 @@
 #include <stk_mesh/base/Comm.hpp>
 #include <stk_mesh/base/CreateEdges.hpp>
 #include <stk_mesh/base/SkinBoundary.hpp>
+#include <stk_mesh/base/FieldBLAS.hpp>
 
 // stk_io
 #include <stk_io/StkMeshIoBroker.hpp>
@@ -514,6 +515,10 @@ Realm::initialize()
 
   compute_l2_scaling();
 
+  // Now that the inactive selectors have been processed; we are ready to setup
+  // HYPRE IDs
+  set_hypre_global_id();
+
   equationSystems_.initialize();
 
   // check job run size after mesh creation, linear system initialization
@@ -799,12 +804,17 @@ Realm::setup_adaptivity()
 void
 Realm::setup_nodal_fields()
 {
+  hypreGlobalId_ = &(metaData_->declare_field<ScalarIntFieldType>(
+                       stk::topology::NODE_RANK, "hypre_global_id"));
   // register global id and rank fields on all parts
   const stk::mesh::PartVector parts = metaData_->get_parts();
   for ( size_t ipart = 0; ipart < parts.size(); ++ipart ) {
     naluGlobalId_ = &(metaData_->declare_field<GlobalIdFieldType>(stk::topology::NODE_RANK, "nalu_global_id"));
     stk::mesh::put_field(*naluGlobalId_, *parts[ipart]);
+    stk::mesh::put_field(*hypreGlobalId_, *parts[ipart]);
+
   }
+
 
   // loop over all material props targets and register nodal fields
   std::vector<std::string> targetNames = get_physics_target_names();
@@ -1809,6 +1819,8 @@ Realm::pre_timestep_work()
     // and overset algorithm
     if ( hasOverset_ )
       initialize_overset();
+
+    set_hypre_global_id();
 
     // now re-initialize linear system
     equationSystems_.reinitialize_linear_system();
@@ -3673,7 +3685,73 @@ Realm::set_global_id()
     for ( stk::mesh::Bucket::size_type k = 0; k < length; ++k ) {
       naluGlobalIds[k] = bulkData_->identifier(b[k]);
     }
-  }  
+  }
+}
+
+void
+Realm::set_hypre_global_id()
+{
+  /* Create a mapping of Nalu Global ID (nodes) to Hypre Global ID.
+   *
+   * Background: Hypre requires a contiguous mapping of row IDs for its IJMatrix
+   * and IJVector data structure, i.e., the startID(iproc+1) = endID(iproc) + 1.
+   * Therefore, this method first determines the total number of rows in each
+   * paritition and then determines the starting and ending IDs for the Hypre
+   * matrix and finally assigns the hypre ID for all the nodes on this partition
+   * in the hypreGlobalId_ field.
+   */
+
+  // Fill with an invalid value for future error checking
+  stk::mesh::field_fill(-1, *hypreGlobalId_);
+
+  const stk::mesh::Selector s_local = metaData_->locally_owned_part() & !get_inactive_selector();
+  const auto& bkts = bulkData_->get_buckets(
+    stk::topology::NODE_RANK, s_local);
+
+  size_t num_nodes = 0;
+  int nprocs = bulkData_->parallel_size();
+  int iproc = bulkData_->parallel_rank();
+  std::vector<int> nodesPerProc(nprocs);
+  std::vector<int> hypreOffsets(nprocs+1);
+
+  // 1. Determine the number of nodes per partition and determine appropriate
+  // offsets on each MPI rank.
+  for (auto b: bkts) num_nodes += b->size();
+
+  MPI_Allgather(&num_nodes, 1, MPI_INT, nodesPerProc.data(), 1, MPI_INT,
+                bulkData_->parallel());
+
+  hypreOffsets[0] = 0;
+  for (int i=1; i <= nprocs; i++)
+    hypreOffsets[i] = hypreOffsets[i-1] + nodesPerProc[i-1];
+
+  // These are set up for NDOF=1, the actual lower/upper extents will be
+  // finalized in HypreLinearSystem class based on the equation being solved.
+  hypreILower_ = hypreOffsets[iproc];
+  hypreIUpper_ = hypreOffsets[iproc+1];
+  hypreNumNodes_ = hypreOffsets[nprocs];
+
+  // 2. Sort the local STK IDs so that we retain a 1-1 mapping as much as possible
+  size_t ii=0;
+  std::vector<stk::mesh::EntityId> localIDs(num_nodes);
+  for (auto b: bkts) {
+    for (size_t in=0; in < b->size(); in++) {
+      auto node = (*b)[in];
+      auto nid = bulkData_->identifier(node);
+      localIDs[ii++] = nid;
+    }
+  }
+  std::sort(localIDs.begin(), localIDs.end());
+
+  // 3. Store Hypre global IDs for all the nodes so that this can be used to lookup
+  // and populate Hypre data structures.
+  size_t nidx = hypreILower_;
+  for (auto nid: localIDs) {
+    auto node = bulkData_->get_entity(
+      stk::topology::NODE_RANK, nid);
+    int* hids = stk::mesh::field_data(*hypreGlobalId_, node);
+    *hids = nidx++;
+  }
 }
 
 //--------------------------------------------------------------------------

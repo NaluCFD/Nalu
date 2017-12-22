@@ -31,6 +31,12 @@ DirichletBC::DirichletBC(
 {}
 
 void
+DirichletBC::initialize_connectivity()
+{
+  eqSystem_->linsys_->buildDirichletNodeGraph(partVec_);
+}
+
+void
 DirichletBC::execute()
 {
 
