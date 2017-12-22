@@ -168,6 +168,119 @@ stabilization approaches are documented in
 to read those sections to gain a thorough understanding of the discretization
 scheme and the its impact on the simulations.
 
+Time stepping scheme
+--------------------
+
+The time stepping method in Nalu is described in the Fuego theory manual
+:cite:`FuegoTheoryManual:2016` for the backward Euler time discretization. We
+present a version of this time stepping scheme adapated to the BDF2 time
+discretization of the momentum equation described in
+:numref:`theory_time_discretization`. The Favre-averaged momentum equation is
+written in integral form as
+
+.. math::
+   :label: fav-mom-nalu
+           
+   \int \left . \frac{\partial \rho u_i}{\partial t} \right |^{n+1} {\rm d}V &=  \frac{ (\gamma_1 \rho^{n+1} {u_i}^{n+1} + \gamma_2 \rho^n {u_i}^{n} + \gamma_3 \rho^n {u_i}^{n-1})}{\Delta t} \Delta V \\
+   &= {\bf F}_i (\rho^{n+1} u_i^{n+1})  - \int \bar{P}^{n+1} n_i {\rm d}S - \int \left(\rho^{n+1} - \rho_{\circ} \right) g_i {\rm d}V
+
+where
+
+.. math::
+   :label: fav-mom-nalu-f
+           
+   {\bf F}_i (\rho^{n+1} u_i^{n+1}) &= \int \rho^{n+1} u_i^{n+1} u_j^{n+1} n_j {\rm d}S  + \int \bar{\tau}_{ij}^{n+1} n_j {\rm d}S + \int \tau_{u_i u_j}^{n+1} n_j {\rm d}S \\
+   &= \int \rho^{n+1} u_i^{n+1} \dot{m}^{n+1}  + \int \bar{\tau}_{ij}^{n+1} n_j {\rm d}S + \int \tau_{u_i u_j}^{n+1} n_j {\rm d}S \\
+   
+   
+The following conventions are used:
+
+.. math::
+
+   \phi^* &= \textrm{ Predicted value of } \phi \textrm{ at } n+1 \textrm{ time step before linear solve} \\
+   \widehat{\phi} = \phi^{**} &= \textrm{ Predicted value of } \phi \textrm{ at } n+1 \textrm{ time step after linear solve}
+
+Nalu uses a predictor for the density :math:`\rho^{n+1} = \rho^*` and the mass flow rate through the sub-control surfaces :math:`\dot{m}^{n+1} = \dot{m}^*`. Nalu then corrects for these quantities through outer iterations and hence retains :math:`\rho` and :math:`\dot{m}` constant through each outer iteration. Hence Nalu uses
+
+.. math::
+   
+   {\bf F}_i (\rho^{n+1} u_i^{n+1}) \approx {\bf F}_i (\rho^{*} u_i^{n+1}) = \int \rho^{*} u_i^{n+1} \dot{m}^{*}  + \int \bar{\tau}_{ij}^{n+1} n_j {\rm d}S + \int \tau_{u_i u_j}^{n+1} n_j {\rm d}S
+
+and solves the following linearized momentum equation.
+
+.. math::
+   
+   \int \left . \frac{\partial \rho u_i}{\partial t} \right |^{n+1} {\rm d}V \approx {\bf F}_i (\rho^{*} u_i^{n+1}) - \int \bar{P}^{n+1} n_i {\rm d}S - \int \left(\rho^{*} - \rho_{\circ} \right) g_i {\rm d}V
+
+Nalu uses a predictor-corrector method to calculate :math:`u_i^{n+1}` and :math:`P^{n+1}`. First, a momentum predictor step is used to estimate :math:`u_i^{**}` by solving
+
+.. math::
+   
+   &\frac{ (\gamma_1 \rho^{*} {u_i}^{**} + \gamma_2 \rho^n {u_i}^{n} + \gamma_3 \rho^n {u_i}^{n-1})}{\Delta t} \Delta V \\
+   &= {\bf F}_i (\rho^{*} u_i^{**}) - \int P^{*} n_i {\rm d}S - \int \left(\rho^{*} - \rho_{\circ} \right) g_i {\rm d}V + - \int (P^{**} - P^{*}) n_i {\rm d}S, \\
+   &= {\bf F}_i (\rho^{*} u_i^{**}) - \int P^{*} n_i {\rm d}S - \int \left(\rho^{*} - \rho_{\circ} \right) g_i {\rm d}V + \epsilon,
+
+where :math:`\epsilon` is an error that reduces with increasing number of outer iterations. :math:`u_i^{**}` will not satisfy the continuity equation. A correction step is performed later to make :math:`u_i^{n+1}` satisfy the continuity equation. :math:`{\bf F} (\rho^{*} u_i^{**})` is linear in :math:`u_i` and hence
+
+.. math::
+   :label: linearize-f-phi-star
+           
+   {\bf F}_i (\rho^{*} u_i^{**}) = \frac{\partial F_i}{\partial u_j} u_j^{**}
+
+
+Applying Eq. :eq:`linearize-f-phi-star` to Eq. :eq:`fav-mom-nalu`, we get the linearized momentum equation solved in Nalu.
+   
+.. math::   
+   :label: fav-mom-nalu-linearize-f
+      
+   \frac{ (\gamma_1 \rho^{*} {u_i}^{**} + \gamma_2 \rho^n {u_i}^{n} + \gamma_3 \rho^{n-1} {u_i}^{n-1})}{\Delta t} \Delta V &=  \frac{\partial F_i}{\partial u_j} u_j^{**} - \int P^{*} n_i {\rm d}S - \int \left(\rho^{*} - \rho_{\circ} \right) g_i {\rm d}V  \\
+   \frac{ (\gamma_1 \rho^{*} {u_i}^{**} - \gamma_1 \rho^{*} {u_i}^{*}) }{\Delta t} \Delta V - \frac{\partial F_i}{\partial u_j} \left ( u_j^{**} - u_j^{*} \right ) & = \frac{\partial F_i}{\partial u_j} u_j^{*} - \int P^{*} n_i {\rm d}S - \int \left(\rho^{*} - \rho_{\circ} \right) g_i {\rm d}V  \\
+   & \quad \quad  - \frac{ (\gamma_1 \rho^{*} {u_i}^{*} + \gamma_2 \rho^{n} {u_i}^{n} + \gamma_3 \rho^{n-1} {u_i}^{n-1})}{\Delta t} \Delta V \\
+   \left ( \frac{ \gamma_1 \rho^{*}}{\Delta t} \Delta V \delta_{ij} - \left . \frac{\partial F_i}{\partial u_j} \right |^{u_i^{*}} \right ) \left ( u_j^{**} - u_j^{*} \right ) &= \left (\frac{ \gamma_1 \rho^{*}}{\Delta t} \Delta V \delta_{ij} - \frac{\partial F_i}{\partial u_j} \right ) {u_j}^{*}  \\
+   & \quad - \int P^{*} n_i {\rm d}S - \int \left(\rho^{*} - \rho_{\circ} \right) g_i {\rm d}V \\
+   & \quad - \frac{ (\gamma_2 \rho^{n} {u_i}^{n} + \gamma_3 \rho^{n-1} {u_i}^{n-1})}{\Delta t} \Delta V  \\
+   {\bf A}_{ij} \; \delta u_j & = {\bf A}_{ij} \; u_j^{*} - \int P^{*} n_i {\rm d}S - \int \left(\rho^{*} - \rho_{\circ} \right) g_i {\rm d}V \\
+   & \quad - \frac{ (\gamma_2 \rho^{n} {u_i}^{n} + \gamma_3 \rho^{n-1} {u_i}^{n-1})}{\Delta t} \Delta V
+
+
+The correction to make :math:`u^{**}` satisfy the continuity equation is
+
+.. math::
+
+   u_i^{n+1} = u_i^{**} - \frac{\tau_3}{\rho} {\bf G} \Delta P^{n+1}
+
+
+As described in :numref:`theory_errors_splitting_stabilization`, the continuity
+equation to be satisfied along with the splitting and stabilization errors is
+
+.. math::
+   :label: eq-continuity
+           
+   {\bf D } \rho u^{n+1} = b + \left ({\bf L_1} - {\bf D} \tau_3 {\bf G} \right ) \Delta P^{n+1} + \left ({\bf L_2} - {\bf D} \tau_2 {\bf G} \right ) P^{n}
+
+where :math:`b` contains any source terms when the velocity field is not
+divergence free and the other terms are the errors due to pressure stabilization
+as shown by Domino :cite:`Domino:2006`. The final pressure Poisson equation solved to enforce continuity at each outer iteration is
+   
+.. math::
+   :label: eq-pressure
+
+   u^{n+1} &= u^{**} - \frac{\tau_3}{\rho} {\bf G} \Delta P^{n+1} \\
+   b + \left ({\bf L_1} - {\bf D} \tau_3 {\bf G} \right ) \Delta P^{n+1} &+ \left ({\bf L_2} - {\bf D} \tau_2 {\bf G} \right ) P^{n} \\
+   &= {\bf D}(\rho u^{n+1}) = {\bf D} ( \rho \widehat{u}) - {\bf D }( \tau_3 {\bf G} \Delta P^{n+1} ) \\
+   b + {\bf L_1} \Delta P^{n+1} &= {\bf D} (\rho \widehat{u}) - \left ({\bf L_2} - {\bf D} \tau_2 {\bf G} \right ) P^{n} \\
+   -{\bf L_1} \Delta P^{n+1} &= {\bf D} \rho \widehat{u} + {\bf D} \tau_2 {\bf G} P^{n} - {\bf L_2} P^{n} \\
+   -{\bf L_1} \Delta P^{n+1} &= - {\bf D} \rho \widehat{u} - {\bf D} \tau_2 {\bf G} P^{n} + {\bf L_2} P^{n} + b
+  
+Thus, the final set of predictor-corrector equations solved at each outer iteration is
+
+.. math::
+
+   {\bf A}_{ij} \; \delta u_j & = {\bf A}_{ij} \; u_j^{*} - \int P^{*} n_i {\rm d}S - \int \left(\rho^{*} - \rho_{\circ} \right) g_i {\rm d}V \\
+   & \quad - \frac{ (\gamma_2 \rho^{n} {u_i}^{n} + \gamma_3 \rho^{n-1} {u_i}^{n-1})}{\Delta t} \Delta V \\
+   -{\bf L_1} \Delta P^{n+1} &= - {\bf D} \rho \widehat{u} - {\bf D} \tau_2 {\bf G} P^{n} + {\bf L_2} P^{n} + b \\
+   u_i^{n+1} &= u_i^{**} - \frac{\tau_3}{\rho} {\bf G} \Delta P^{n+1}
+
 Initial & Boundary Conditions
 -----------------------------
 
