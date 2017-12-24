@@ -416,7 +416,6 @@ NonConformalInfo::complete_search()
 
   // dynamic algorithm requires normal distance between point and ip
   double bestElemIpCoords[3];
-  double bestElemIpNormal[3];
 
   // fields
   VectorFieldType *coordinates = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
@@ -430,11 +429,14 @@ NonConformalInfo::complete_search()
   for( ii=dgInfoVec_.begin(); ii!=dgInfoVec_.end(); ++ii ) {
     std::vector<DgInfo *> &theVec = (*ii);
     for ( size_t k = 0; k < theVec.size(); ++k ) {
-      
-      double nearestDistance = std::numeric_limits<double>::max();
+        
       DgInfo *dgInfo = theVec[k];
       const uint64_t localGaussPointId  = dgInfo->localGaussPointId_; 
 
+      // set initial nearestDistance and save off nearest distance under dgInfo
+      double nearestDistance = std::numeric_limits<double>::max();
+      const double nearestDistanceSaved = dgInfo->nearestDistance_;
+        
       std::pair <std::vector<std::pair<theKey, theKey> >::const_iterator, std::vector<std::pair<theKey, theKey> >::const_iterator > 
         p2 = std::equal_range(searchKeyPair_.begin(), searchKeyPair_.end(), localGaussPointId, compareGaussPoint());
 
@@ -450,7 +452,7 @@ NonConformalInfo::complete_search()
 
           // check if I own the point...
           if ( theRank == pt_proc ) {
-            
+
             // yes, I own the point... However, what about the face element? Who owns that?
 
             // proceed as required; all elements should have already been ghosted via the coarse search
@@ -507,17 +509,24 @@ NonConformalInfo::complete_search()
              
               if ( dynamicSearchTolAlg_ ) {
                 // find the projected normal distance between point and centroid; all we need is an approximation
-                meFC->general_normal(&opposingIsoParCoords[0], &theElementCoords[0], &bestElemIpNormal[0]);
                 meFC->interpolatePoint(nDim, &opposingIsoParCoords[0], &theElementCoords[0], &bestElemIpCoords[0]);
                 double theDistance = 0.0;
-                double theDistanceTwo = 0.0;
                 for ( int j = 0; j < nDim; ++j ) {
                   double dxj = currentGaussPointCoords[j] - bestElemIpCoords[j];
-                  theDistance += bestElemIpNormal[j]*dxj;
-                  theDistanceTwo += dxj*dxj;
+                  theDistance += dxj*dxj;
                 }
-                theDistanceTwo = std::sqrt(theDistanceTwo);
-                nearestDistance = std::min(nearestDistance,std::max(std::abs(theDistance), theDistanceTwo));
+                theDistance = std::sqrt(theDistance);
+                nearestDistance = std::min(nearestDistance,theDistance);
+                  
+                // If the nearest distance between the surfaces at this point is smaller then the current
+                // distance can be reduced a bit.  Otherwise make sure the current distance is increased as needed.
+                if (nearestDistance < dgInfo->nearestDistance_) {
+                  const double relax = 0.8;
+                  dgInfo->nearestDistance_ = relax*nearestDistanceSaved + (1.0-relax)*nearestDistance;
+                }
+                else {
+                  dgInfo->nearestDistance_ = nearestDistance;
+                }
               }
               
               // save off ordinal for opposing face
@@ -537,17 +546,6 @@ NonConformalInfo::complete_search()
             // not this proc's issue
           }
         }
-        if (dynamicSearchTolAlg_) {
-          // If the nearest distance between the surfaces at this point is smaller then the current 
-          // distance can be reduced a bit.  Otherwise make sure the current distance is increased as needed.
-          if (nearestDistance < dgInfo->nearestDistance_) {
-            const double scale_factor = 0.8;
-            dgInfo->nearestDistance_ = scale_factor*dgInfo->nearestDistance_ + (1-scale_factor)*nearestDistance;
-          }
-          else {
-            dgInfo->nearestDistance_ = nearestDistance;
-          }
-        }
       }
     }
   }
@@ -564,7 +562,12 @@ NonConformalInfo::complete_search()
     throw std::runtime_error("Try to adjust the search tolerance and re-submit...");
   }
 
-  // check for reuse (debug now)
+  // check for reuse and also provide diagnostics on sizes for opposing surface set
+  size_t totalOpposingFaceSize = 0;
+  size_t totalDgInfoSize = 0;
+  size_t maxOpposingSize = 0;
+  size_t minOpposingSize = 1e6;
+    
   size_t numberOfFacesMissing = 0;
   for( size_t iv = 0; iv < dgInfoVec_.size(); ++iv ) {
     std::vector<DgInfo *> &theVec = dgInfoVec_[iv];
@@ -573,6 +576,13 @@ NonConformalInfo::complete_search()
       // extract the info object; new and old
       DgInfo *dgInfo = theVec[k];
       
+      // counts
+      size_t opposingCount = dgInfo->allOpposingFaceIds_.size();
+      totalDgInfoSize++;
+      totalOpposingFaceSize += opposingCount;
+      maxOpposingSize = std::max(maxOpposingSize, opposingCount);
+      minOpposingSize = std::min(minOpposingSize, opposingCount);
+        
       // extract the bestX opposing face id
       const size_t bestOpposingId = bulk_data.identifier(dgInfo->opposingFace_);
       
@@ -589,16 +599,27 @@ NonConformalInfo::complete_search()
   }
   
   // global sum
+  NaluEnv::self().naluOutputP0() << "DgInfo size overview for name: " << name_ << std::endl;
   size_t g_numberOfFacesMissing;
   stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &numberOfFacesMissing, &g_numberOfFacesMissing, 1);
   if ( g_numberOfFacesMissing > 0 ) {
-    NaluEnv::self().naluOutputP0() << "Ghosted search entries ARE NOT sufficient for re-use " << std::endl;
+    NaluEnv::self().naluOutputP0() << "  Ghosted search entries ARE NOT sufficient for re-use " << std::endl;
     canReuse_ = false;
   }
   else {
-    NaluEnv::self().naluOutputP0() << "Ghosted search entries ARE sufficient for re-use " << std::endl;
+    NaluEnv::self().naluOutputP0() << "  Ghosted search entries ARE sufficient for re-use " << std::endl;
     canReuse_ = true;
   }
+    
+ // finally, provide mean opposing face count
+ size_t g_total[2] = {};
+ size_t g_minOpposingSize; size_t g_maxOpposingSize;
+ size_t l_total[2] = {totalDgInfoSize, totalOpposingFaceSize};
+ stk::all_reduce_sum(NaluEnv::self().parallel_comm(), l_total, g_total, 2);
+ stk::all_reduce_min(NaluEnv::self().parallel_comm(), &minOpposingSize, &g_minOpposingSize, 1);
+ stk::all_reduce_max(NaluEnv::self().parallel_comm(), &maxOpposingSize, &g_maxOpposingSize, 1);
+ NaluEnv::self().naluOutputP0() << "  Min/Max/Average opposing face size: " << g_minOpposingSize << "/"
+                                << g_maxOpposingSize << "/" << g_total[1]/g_total[0] << std::endl;
 }
   
 //--------------------------------------------------------------------------
