@@ -52,7 +52,7 @@ DgInfo::DgInfo(
     bestXRef_(1.0e16),
     bestX_(bestXRef_),
     nearestDistance_(searchTolerance),
-    nearestDistanceSafety_(10.0),
+    nearestDistanceSafety_(2.0),
     opposingFaceIsGhosted_(0)
 {
   // resize internal vectors
@@ -87,8 +87,8 @@ DgInfo::dump_info()
   NaluEnv::self().naluOutput() << "currentElementTopo_ " << currentElementTopo_ << std::endl;
   NaluEnv::self().naluOutput() << "nDim_ " << nDim_ << std::endl;
   NaluEnv::self().naluOutput() << "bestXRef_ " << bestXRef_ << std::endl;
-  NaluEnv::self().naluOutput() << "bestX_" << bestX_ << std::endl;
-  NaluEnv::self().naluOutput() << "nearestDistance_" << nearestDistance_ << std::endl;
+  NaluEnv::self().naluOutput() << "bestX_ " << bestX_ << std::endl;
+  NaluEnv::self().naluOutput() << "nearestDistance_ " << nearestDistance_ << std::endl;
   NaluEnv::self().naluOutput() << "opposingFaceIsGhosted_ " << opposingFaceIsGhosted_ << std::endl;
   NaluEnv::self().naluOutput() << "opposingFace_ " << opposingFace_ << std::endl;
   NaluEnv::self().naluOutput() << "opposingElement_ " << std::endl;
