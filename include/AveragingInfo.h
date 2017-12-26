@@ -60,6 +60,8 @@ public:
   std::vector<std::string> favreFieldNameVec_;
   std::vector<std::string> reynoldsFieldNameVec_;
   std::vector<std::string> resolvedFieldNameVec_;
+  std::vector<std::string> movingAvgFieldNameVec_;
+
 
   // vector of pairs of fields
   std::vector<std::pair<stk::mesh::FieldBase *, stk::mesh::FieldBase *> > favreFieldVecPair_;

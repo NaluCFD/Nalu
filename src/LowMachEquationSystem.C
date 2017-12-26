@@ -68,6 +68,7 @@
 #include <MomentumActuatorSrcNodeSuppAlg.h>
 #include <MomentumBuoyancySrcNodeSuppAlg.h>
 #include <MomentumBoussinesqSrcNodeSuppAlg.h>
+#include <MomentumBoussinesqRASrcNodeSuppAlg.h>
 #include <MomentumBodyForceSrcNodeSuppAlg.h>
 #include <MomentumABLForceSrcNodeSuppAlg.h>
 #include <MomentumCoriolisSrcNodeSuppAlg.h>
@@ -288,7 +289,6 @@ LowMachEquationSystem::register_nodal_fields(
                                stk::topology::NODE_RANK);
     copyStateAlg_.push_back(theCopyAlg);
   }
-
 }
 
 //--------------------------------------------------------------------------
@@ -622,6 +622,7 @@ LowMachEquationSystem::solve_and_update()
     timeA = NaluEnv::self().nalu_time();
     continuityEqSys_->compute_projected_nodal_gradient();
     continuityEqSys_->computeMdotAlgDriver_->execute();
+
     timeB = NaluEnv::self().nalu_time();
     continuityEqSys_->timerMisc_ += (timeB-timeA);
     isInit_ = false;
@@ -922,9 +923,12 @@ MomentumEquationSystem::~MomentumEquationSystem()
   delete diffFluxCoeffAlgDriver_;
   delete tviscAlgDriver_;
   delete cflReyAlgDriver_;
+
   if ( NULL != wallFunctionParamsAlgDriver_)
     delete wallFunctionParamsAlgDriver_;
- }
+}
+
+
 
 //--------------------------------------------------------------------------
 //-------- initial_work ----------------------------------------------------
@@ -1017,6 +1021,7 @@ MomentumEquationSystem::register_nodal_fields(
     stk::mesh::put_field(*actuatorSourceLHS, *part);
     stk::mesh::put_field(*g, *part);
   }
+
 }
 
 //--------------------------------------------------------------------------
@@ -1308,6 +1313,9 @@ MomentumEquationSystem::register_interior_algorithm(
           }
           else if ( sourceName == "buoyancy_boussinesq") {
             suppAlg = new MomentumBoussinesqSrcNodeSuppAlg(realm_);
+          }
+          else if ( sourceName == "buoyancy_boussinesq_ra") {
+            suppAlg = new MomentumBoussinesqRASrcNodeSuppAlg(realm_);
           }
           else if ( sourceName == "body_force") {
             // extract params

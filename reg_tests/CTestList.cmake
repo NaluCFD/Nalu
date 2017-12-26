@@ -76,6 +76,7 @@ endfunction(add_test_r_cat)
 add_test_r_cat(ablForcingEdge 8 11)
 add_test_r(ablStableElem 4)
 add_test_r_rst(ablUnstableEdge 4)
+add_test_r(ablUnstableEdge_ra 4)
 add_test_r(actuatorLine 8)
 add_test_r(concentricRad 4)
 add_test_r(cvfemHC 8)
@@ -144,6 +145,9 @@ endif(ENABLE_OPENFAST)
 if(ENABLE_TIOGA)
   add_test_r(oversetSphereTIOGA 8)
 endif(ENABLE_TIOGA)
+if(ENABLE_HYPRE)
+  add_test_r(dgncThreeBladeHypre 2)
+endif(ENABLE_HYPRE)
 
 #=============================================================================
 # Convergence tests

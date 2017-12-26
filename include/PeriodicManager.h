@@ -78,7 +78,7 @@ class PeriodicManager {
 
   double get_search_time();
 
- private:
+// private:
 
   void augment_periodic_selector_pairs();
 

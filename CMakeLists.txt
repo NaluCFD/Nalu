@@ -10,6 +10,7 @@ option(ENABLE_PARAVIEW_CATALYST
       "Enable ParaView Catalyst. Requires external installation of Trilinos Catalyst IOSS adapter."
        OFF)
 option(ENABLE_TIOGA "Use TIOGA TPL to perform overset connectivity" OFF)
+option(ENABLE_HYPRE "Use HYPRE Solver library" OFF)
 
 SET(CMAKE_FIND_LIBRARY_PREFIXES lib)
 SET(CMAKE_FIND_LIBRARY_SUFFIXES a)
@@ -19,6 +20,12 @@ MESSAGE("   Trilinos_DIR = ${Trilinos_DIR}")
 SET(CMAKE_PREFIX_PATH ${Trilinos_DIR} ${CMAKE_PREFIX_PATH})
 SET(CMAKE_PREFIX_PATH ${Trilinos_PATH} ${CMAKE_PREFIX_PATH})
 find_package(Trilinos REQUIRED)
+
+if (ENABLE_HYPRE)
+  find_package(HYPRE REQUIRED)
+  include_directories(${HYPRE_INCLUDE_DIRS})
+  add_definitions("-DNALU_USES_HYPRE")
+endif (ENABLE_HYPRE)
 
 if (ENABLE_OPENFAST)
    SET(CMAKE_PREFIX_PATH ${OpenFAST_DIR} ${CMAKE_PREFIX_PATH})
@@ -120,6 +127,10 @@ endif (ENABLE_OPENFAST)
 
 if (ENABLE_TIOGA)
   target_link_libraries(nalu ${TIOGA_LIBRARIES})
+endif()
+
+if (ENABLE_HYPRE)
+  target_link_libraries(nalu ${HYPRE_LIBRARIES})
 endif()
 
 file (GLOB UNIT_TESTS_SOURCES unit_tests/*.C unit_tests/*/*.C)

@@ -13,6 +13,10 @@
 #include <NaluParsing.h>
 #include <Simulation.h>
 
+#ifdef NALU_USES_HYPRE
+#include "HypreDirectSolver.h"
+#endif
+
 #include <yaml-cpp/yaml.h>
 
 namespace sierra{
@@ -25,6 +29,12 @@ LinearSolvers::~LinearSolvers()
     delete pos->second;
   for(SolverTpetraConfigMap::const_iterator pos=solverTpetraConfig_.begin(); pos!=solverTpetraConfig_.end(); ++pos)
     delete pos->second;
+
+#ifdef NALU_USES_HYPRE
+  for (auto item: solverHypreConfig_) {
+    delete (item.second);
+  }
+#endif
 }
 
 Simulation *LinearSolvers::root() { return &sim_; }
@@ -44,6 +54,15 @@ LinearSolvers::load(const YAML::Node & node)
         TpetraLinearSolverConfig * linearSolverConfig = new TpetraLinearSolverConfig();
         linearSolverConfig->load(linear_solver_node);
         solverTpetraConfig_[linearSolverConfig->name()] = linearSolverConfig; 
+      }
+      else if (solver_type == "hypre") {
+#ifdef NALU_USES_HYPRE
+        HypreLinearSolverConfig *linSolverCfg = new HypreLinearSolverConfig();
+        linSolverCfg->load(linear_solver_node);
+        solverHypreConfig_[linSolverCfg->name()] = linSolverCfg;
+#else
+        throw std::runtime_error("HYPRE support must be enabled during compile time.");
+#endif
       }
       else if (solver_type == "epetra") {
         throw std::runtime_error("epetra solver_type has been deprecated");
@@ -78,7 +97,17 @@ LinearSolvers::create_solver(
                                        linearSolverConfig->params(),
                                        linearSolverConfig->paramsPrecond(), this);
   }
-  
+#ifdef NALU_USES_HYPRE
+  else {
+    auto hIter = solverHypreConfig_.find(solverBlockName);
+    if (hIter != solverHypreConfig_.end()) {
+      HypreLinearSolverConfig *cfg = hIter->second;
+      foundT = true;
+      theSolver = new HypreDirectSolver(solverName, cfg, this);
+    }
+  }
+#endif
+
   // error check; none found
   if ( !foundT ) {
     throw std::runtime_error("solver name block not found; error in solver creation; check: " + solverName);

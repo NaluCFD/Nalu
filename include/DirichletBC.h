@@ -38,7 +38,7 @@ public:
   virtual ~DirichletBC() {}
 
   virtual void execute();
-  virtual void initialize_connectivity() {}
+  virtual void initialize_connectivity();
 
 private:
   stk::mesh::FieldBase * field_;
