@@ -558,6 +558,7 @@ PeriodicManager::manage_ghosting_object()
   unsigned theRank = NaluEnv::self().parallel_rank();
 
   std::vector<stk::mesh::EntityProc> sendNodes;
+  std::vector<stk::mesh::EntityProc> sendElems;
   for (size_t i=0, size=searchKeyVector_.size(); i<size; ++i) {
 
     unsigned domainProc = searchKeyVector_[i].first.proc();
@@ -566,10 +567,26 @@ PeriodicManager::manage_ghosting_object()
     if ((theRank != domainProc) && (theRank == rangeProc)) {
       stk::mesh::Entity rangeNode = bulk_data.get_entity(searchKeyVector_[i].second.id());
       sendNodes.push_back(stk::mesh::EntityProc(rangeNode, domainProc));
+
+      if (realm_.hypreIsActive_) {
+        auto* elems = bulk_data.begin_elements(rangeNode);
+        int nelems = bulk_data.num_elements(rangeNode);
+        for (int i=0; i<nelems; i++)
+          if (bulk_data.bucket(elems[i]).owned())
+            sendElems.push_back(stk::mesh::EntityProc(elems[i], domainProc));
+      }
     }
     else if ((theRank == domainProc) && (theRank != rangeProc)) {
       stk::mesh::Entity domainNode = bulk_data.get_entity(searchKeyVector_[i].first.id());
       sendNodes.push_back(stk::mesh::EntityProc(domainNode, rangeProc));
+
+      if (realm_.hypreIsActive_) {
+        auto* elems = bulk_data.begin_elements(domainNode);
+        int nelems = bulk_data.num_elements(domainNode);
+        for (int i=0; i<nelems; i++)
+          if (bulk_data.bucket(elems[i]).owned())
+            sendElems.push_back(stk::mesh::EntityProc(elems[i], rangeProc));
+      }
     }
   }
 
@@ -584,6 +601,8 @@ PeriodicManager::manage_ghosting_object()
     else
       bulk_data.destroy_ghosting(*periodicGhosting_);
     bulk_data.change_ghosting(*periodicGhosting_, sendNodes);
+    if (realm_.hypreIsActive_)
+      bulk_data.change_ghosting(*periodicGhosting_, sendElems);
     bulk_data.modification_end();
   }
 

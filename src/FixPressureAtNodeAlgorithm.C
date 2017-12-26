@@ -47,7 +47,7 @@ FixPressureAtNodeAlgorithm::~FixPressureAtNodeAlgorithm()
 void
 FixPressureAtNodeAlgorithm::initialize_connectivity()
 {
-  // Element to node graph must've been already populated by interior algorithm
+  eqSystem_->linsys_->buildDirichletNodeGraph(refNodeList_);
 }
 
 void

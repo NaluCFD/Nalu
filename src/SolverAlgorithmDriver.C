@@ -77,6 +77,11 @@ SolverAlgorithmDriver::initialize_connectivity()
   for ( it = solverConstraintAlgMap_.begin(); it != solverConstraintAlgMap_.end(); ++it ) {
     it->second->initialize_connectivity();
   }
+
+  for ( it = solverDirichAlgMap_.begin(); it != solverDirichAlgMap_.end(); ++it ) {
+    it->second->initialize_connectivity();
+  }
+
 }
 
 //--------------------------------------------------------------------------
