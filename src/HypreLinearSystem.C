@@ -48,20 +48,7 @@ HypreLinearSystem::HypreLinearSystem(
     rowFilled_(0),
     rowStatus_(0),
     idBuffer_(0)
-{
-#ifndef HYPRE_BIGINT
-  // Make sure that HYPRE is compiled with 64-bit integer support when running
-  // O(~1B) linear systems.
-  uint64_t totalRows = (static_cast<uint64_t>(realm_.hypreNumNodes_) *
-                        static_cast<uint64_t>(numDof_));
-  uint64_t maxHypreSize = static_cast<uint64_t>(std::numeric_limits<HypreIntType>::max());
-
-  if (totalRows > maxHypreSize)
-    throw std::runtime_error(
-      "The linear system size is greater than what HYPRE is compiled for. "
-      "Please recompile with bigint support and link to Nalu");
-#endif
-}
+{}
 
 HypreLinearSystem::~HypreLinearSystem()
 {
@@ -78,6 +65,19 @@ HypreLinearSystem::beginLinearSystemConstruction()
 {
   if (inConstruction_) return;
   inConstruction_ = true;
+
+#ifndef HYPRE_BIGINT
+  // Make sure that HYPRE is compiled with 64-bit integer support when running
+  // O(~1B) linear systems.
+  uint64_t totalRows = (static_cast<uint64_t>(realm_.hypreNumNodes_) *
+                        static_cast<uint64_t>(numDof_));
+  uint64_t maxHypreSize = static_cast<uint64_t>(std::numeric_limits<HypreIntType>::max());
+
+  if (totalRows > maxHypreSize)
+    throw std::runtime_error(
+      "The linear system size is greater than what HYPRE is compiled for. "
+      "Please recompile with bigint support and link to Nalu");
+#endif
 
   const int rank = realm_.bulk_data().parallel_rank();
 
