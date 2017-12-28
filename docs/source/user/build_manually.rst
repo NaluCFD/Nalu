@@ -297,11 +297,20 @@ HYPRE library and link to it when building Nalu.
    cd hypre/src
 
    # 2. Configure HYPRE package and pass installation directory
-   ./configure --prefix=$nalu_install_dir --without-superlu --without-openmp
+   ./configure --prefix=$nalu_install_dir --without-superlu --without-openmp --enable-bigint
 
    # 3. Compile and install
    make && make install
 
+.. note::
+
+   #. Make sure that ``--enable-bigint`` option is turned on if you intend to
+      run linear systems with :math:`> 2` billion rows. Otherwise, ``nalu``
+      executable will throw an error at runtime for large problems.
+
+   #. Users must pass ``-DENABLE_HYPRE`` option to CMake during Nalu
+      configuration phase. Optionally, the variable `-DHYPRE_DIR`` can be used
+      to pass the path of HYPRE install location to CMake.
 
 Build
 *****
