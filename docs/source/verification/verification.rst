@@ -817,7 +817,94 @@ slight degradation in order-of-accuracy is noted for the thexahedral topology.
    :math:`L_o` norms for the full set of hybrid Laplace MMS study.
 
 
-Specified Normal Temperature Gradient Boundary Condition Verification
----------------------------------------------------------------------
+Specified Normal Temperature Gradient Boundary Condition
+--------------------------------------------------------
 
-The motivation for adding the ability to specify the boundary-normal temperature gradient is atmospheric boundary layer simulation in which the upper boundary often contains a stably stratified layer with a temperature gradient.  
+The motivation for adding the ability to specify the boundary-normal temperature 
+gradient is atmospheric boundary layer simulation in which the upper portion of
+the domain often contains a stably stratified layer with a temperature gradient
+that extends all the way to the upper boundary.  The desire is for the simulation
+to maintain that gradient throughout the simulation duration.  
+
+Our test case is a laminar infinite channel with slip walls.  In this case, the 
+flow velocity is zero so the problem is simply a heat conduction through fluid.
+The density is fixed as constant, and there are no source terms including
+buoyancy.
+
+This problem has an the analytical solution for the temperature profile across 
+the channel:
+
+.. math::
+   :label: T-slip-channel
+
+   T(t,z) = T(t_0,z_0) + \frac{-g_H-g_0}{H} \kappa_{eff} (t-t_0) + g_0 (z-z_0) + \frac{-g_H-g_0}{2H} (z-z_0)^2,
+
+where :math:`t_0` is the initial time; :math:`z_0` is the height of the lower 
+channel wall; :math:`H` is the channel height; :math:`g_0` and :math:`g_H` are
+the wall-normal gradients of temperature at the lower and upper walls, respectively;
+:math:`\kappa_{eff}` is the effective thermal diffusivity;
+and :math:`z` is the distance in the cross-channel direction.  The sign of the 
+temperature gradients assumes that boundary normal points inward from the boundary.
+For this solution to hold, the initial solution must be that of :eq:`T-slip-channel` 
+with :math:`t=t_0`.
+
+For all test cases, we use a domain that is 10 m x 10 m in the periodic (infinite) directions,
+and 100 m in the cross-channel (z) direction.  We specify a constant density of 
+1 kg/m :math:`^3`, zero velocity, no buoyancy source term, a viscosity of 1 Pa-s,
+and a laminar Prandtl number of 1.  No turbulence model is used. The value of
+:math:`T(t_0,z_0)` is 300 K.
+
+
+Simple Linear Temperature Profile: Equal and Opposite Specified Temperature Gradients
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+A simple verification test that is representative of a stable atmospheric capping
+inversion is to compute the simple thermal channel with equal and opposite specified
+temperature gradients on each wall.  By setting :math:`g_H = - g_0` in Equation 
+:eq:`T-slip-channel`, we are left with
+
+.. math::
+   :label: T-slip-channel-linear
+
+   T(z) = T(z_0) + g_0 (z-z_0).
+
+In other words, if we set the initial temperature profile to that of :eq:`T-slip-channel-linear`,
+with :math:`g_H = -g_0`, the profile should remain fixed for all time.  In this case,
+we set :math:`g_0 = 0.01` K/m and :math:`g_H = -0.01` K/m.
+
+We use a mesh that 2 elements wide in the periodic directions and 20 elements across
+the channel.  We simulate a long time period of 25,000 s. Figure :numref:`T_gradBC_linear`
+shows that the computed and analytical solutions agree. 
+
+.. _T_gradBC_linear:
+
+.. figure:: figures/T_linear_gradBC.png
+   :width: 500px
+   :align: center
+
+   The analytical (black solid) and computed (red dashed) temperature profile from 
+   the case with :math:`g_H = -g_0` at :math:`t =` 25,000 s.
+
+
+Parabolic Temperature Profile: Equal Specified Temperature Gradients
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Next, we verify the specified normal temperature gradient boundary condition 
+option by computing the simple thermal channel with equal specified temperature
+gradients, which yields the full time-dependent solution of Equation :eq:`T-slip-channel`.
+Here, we set :math:`g_0 = g_H = 0.01` K/m.
+
+We use meshes that are 2 elements wide in the periodic directions and 20, 40,
+and 80 elements across the channel.  We simulate a long time period of 25,000 s.
+Figure :numref:`T_gradBC_parabolic` shows that the computed and analytical
+solutions agree.  There is no apparent overall solution degradation on the
+coarser meshes.
+
+.. _T_gradBC_parabolic:
+
+.. figure:: figures/T_parabolic_gradBC.png
+   :width: 500px
+   :align: center
+
+   The analytical (black solid) and computed (colored) temperature profile from 
+   the case with :math:`g_H = g_0` at :math:`t =` 25,000 s.

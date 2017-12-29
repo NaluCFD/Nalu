@@ -680,6 +680,19 @@ Continuity, Mixture Fraction, Enthalpy, Species, :math:`k_{sgs}`, k and :math:`\
 
 Zero diffusion is applied at the symmetry bc.
 
+Momentum
+~~~~~~~~
+
+A symmetry boundary is one that is described by removal of the
+tangential stress. Therefore, only the normal component of the stress is
+applied:
+
+.. math:: F^n_x = (F_x n_x + F_y n_y ) n_x,
+
+which can be written in general component form as,
+
+.. math:: F^n_i = F_j n_j n_i.
+
 Specified Boundary-Normal Temperature Gradient Option
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -720,18 +733,6 @@ the effective thermal diffusivity (the molecular and turbulent parts),
 :math:`c_p` is the specific heat, and :math:`\partial T / \partial n` is 
 the boundary-normal temperature gradient.
 
-Momentum
-~~~~~~~~
-
-A symmetry boundary is one that is described by removal of the
-tangential stress. Therefore, only the normal component of the stress is
-applied:
-
-.. math:: F^n_x = (F_x n_x + F_y n_y ) n_x,
-
-which can be written in general component form as,
-
-.. math:: F^n_i = F_j n_j n_i.
 
 Periodic Boundary Condition
 +++++++++++++++++++++++++++
