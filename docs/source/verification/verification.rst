@@ -825,7 +825,7 @@ this is not known *a priori*.  Two solutions to this problem are: 1) to use the 
 option, or 2) to use the standard open boundary condition in which the buoyancy term uses a local time-averaged
 reference value, rather than a single reference value.
 
-We test these open boundary condition options on a simplified stratfied flow through a channel with slip walls.  The
+We test these open boundary condition options on a simplified stratified flow through a channel with slip walls.  The
 flow entering the domain is non-turbulent and uniformly 8 m/s.  The temperature linearly varies from 300 K to 310 K from 
 the bottom to top of the channel with compatible, opposite-sign heat flux on the two walls to maintain this profile.
 The Boussinesq buoyancy option is used, and the density is set constant to 1.17804 kg/m :math:`^3`. This density is 
@@ -878,19 +878,15 @@ we also see that configuration 1 significantly distorts the temperature from the
 
 
 We also verify that the global mass-flow-rate correction of configuration 2 is correcting the outflow mass flow rate 
-properly.  The output from Nalu showing the correction is as follows:
+properly.  The output from Nalu showing the correction is correct and is shown as follows:
 
 
 .. code-block:: c++
  
    Mass Balance Review:
    Density accumulation: 0
-   Integrated inflow:    -188486
-   Integrated open:      188486
-   Total mass closure:   -9.82374e-06
-   A mass correction of: -1.22797e-08 occurred on: 800 boundary integration points:
-   Post-corrected integrated open: 188486
-
-The product of the point-wise mass correction of -1.22797e-06 over all 800 boundary integration points is -9.82374e-06,
-which agrees with the reported pre-correction mass-flow-rate error.
-
+   Integrated inflow:    -188486.0356751138
+   Integrated open:      188486.035672821
+   Total mass closure:   -2.29277e-06
+   A mass correction of: -2.86596e-09 occurred on: 800 boundary integration points:
+   Post-corrected integrated open: 188486.0356751139
