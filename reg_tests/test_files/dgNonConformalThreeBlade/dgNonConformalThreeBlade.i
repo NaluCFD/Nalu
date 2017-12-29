@@ -134,6 +134,7 @@ realms:
       non_conformal_user_data:
         expand_box_percentage: 5.0 
         search_tolerance: 0.01 
+        activate_dynamic_search_algorithm: yes
 
     - non_conformal_boundary_condition: bc_out_in
       current_target_name: [surface_88, surface_99, surface_1000]
@@ -141,6 +142,7 @@ realms:
       non_conformal_user_data:
         expand_box_percentage: 5.0 
         search_tolerance: 0.01 
+        activate_dynamic_search_algorithm: yes
 
     solution_options:
       name: myOptions

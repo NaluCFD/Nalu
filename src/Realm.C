@@ -3242,6 +3242,7 @@ Realm::setup_non_conformal_bc(
                            userData.searchMethodName_,
                            userData.clipIsoParametricCoords_,
                            userData.searchTolerance_,
+                           userData.dynamicSearchTolAlg_,
                            nonConformalBCData.targetName_);
   
   nonConformalManager_->nonConformalInfoVec_.push_back(nonConformalInfo);

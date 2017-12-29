@@ -40,8 +40,9 @@ class DgInfo;
 
 typedef stk::search::IdentProc<uint64_t,int>  theKey;
 typedef stk::search::Point<double> Point;
+typedef stk::search::Sphere<double> Sphere;
 typedef stk::search::Box<double> Box;
-typedef std::pair<Point,theKey> boundingPoint;
+typedef std::pair<Sphere,theKey> boundingSphere;
 typedef std::pair<Box,theKey> boundingElementBox;
 
 //=============================================================================
@@ -70,6 +71,7 @@ class NonConformalInfo {
     const std::string &searchMethodName,
     const bool clipIsoParametricCoords,
     const double searchTolerance,
+    const bool   dynamicSearchTolAlg,
     const std::string debugName);
 
   ~NonConformalInfo();
@@ -109,6 +111,9 @@ class NonConformalInfo {
   /* allow for some finite search tolereance for bounding box */
   const double searchTolerance_;
 
+  /* allow for dynamic search tolerance algorithm where search tolerance is used as point radius from isInElem */
+  const bool dynamicSearchTolAlg_;
+
   /* does the realm have mesh motion */
   const bool meshMotion_;
 
@@ -116,7 +121,7 @@ class NonConformalInfo {
   bool canReuse_;
 
   /* bounding box data types for stk_search */
-  std::vector<boundingPoint>      boundingPointVec_;
+  std::vector<boundingSphere>     boundingSphereVec_;
   std::vector<boundingElementBox> boundingFaceElementBoxVec_;
 
   /* vector of DgInfo */
