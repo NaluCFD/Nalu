@@ -817,6 +817,82 @@ slight degradation in order-of-accuracy is noted for the thexahedral topology.
    :math:`L_o` norms for the full set of hybrid Laplace MMS study.
 
 
+Open Boundary Condition With Outflow Thermal Stratification
+----------------------------------------------------------------
+In situations with significant thermal stratification at the outflow of the domain, the standard open boundary
+condition alone is not adequate because it requires the specification of motion pressure at the boundary, and
+this is not known *a priori*.  Two solutions to this problem are: 1) to use the global mass flow rate correction
+option, or 2) to use the standard open boundary condition in which the buoyancy term uses a local time-averaged
+reference value, rather than a single reference value.
+
+We test these open boundary condition options on a simplified stratified flow through a channel with slip walls.  The
+flow entering the domain is non-turbulent and uniformly 8 m/s.  The temperature linearly varies from 300 K to 310 K from 
+the bottom to top of the channel with compatible, opposite-sign heat flux on the two walls to maintain this profile.
+The Boussinesq buoyancy option is used, and the density is set constant to 1.17804 kg/m :math:`^3`. This density is 
+compatible with the reference pressure of 101325 Pa and a reference temperature of 300 K.  The viscosity is set to 
+1.0e-5 Pa-s.  *The flow should keep its inflow velocity and temperature profiles throughout the length of the domain*.
+
+The domain is 3000 m long, 1000 m tall, and 20 m wide with 300 x 100 x 2 elements.  The upper and lower boundaries 
+are symmetry with the specified normal gradient of temperature option used such that the gradient matches the initial
+temperature profile with its gradient of 0.01 K/m. Flow enters from the left and exits on the right.  The remaining 
+boundaries are periodic. 
+
+We test the problem on three configurations: 1) using the standard open boundary condition, 
+2) using the global-mass-flow-rate-correction option, and 3) using the standard open boundary condition with a local
+moving-time-averaged reference temperature in the Boussinesq buoyancy term.
+
+Figure :numref:`stratified_outflow_ux1` shows the across-channel profile of outflow streamwise velocity.  It is clear
+that in configuration 1, the velocity is significantly distorted from the correct solution.  Configurations 2 and 3 
+remedy the problem.  However, if we reduce the range of the x-axis, as shown in Figure :numref:`stratified_outflow_ux2`, 
+we see that configuration 3, the use of the standard open boundary condition with a local moving-time-averaged
+Boussinesq reference temperature, provides a superior solution in this case.  In Figure, :numref:`stratified_outflow_T1`,
+we also see that configuration 1 significantly distorts the temperature from the correct solution.
+
+.. _stratified_outflow_ux1:
+
+.. figure:: figures/Ux_123.png
+   :width: 500px
+   :align: center
+
+   Outflow velocity profiles for the thermally stratified slip-channel flow.
+
+
+.. _stratified_outflow_ux2:
+
+.. figure:: figures/Ux_23.png
+   :width: 500px
+   :align: center
+
+   Outflow velocity profiles for the thermally stratified slip-channel flow considering only the case with the
+   global mass-flow-rate correction and the standard open boundary with the local moving-time-averaged Boussinesq
+   reference value.
+
+
+.. _stratified_outflow_T1:
+
+.. figure:: figures/T_123.png
+   :width: 500px
+   :align: center
+
+   Outflow temperature profiles for the thermally stratified slip-channel flow.
+
+
+We also verify that the global mass-flow-rate correction of configuration 2 is correcting the outflow mass flow rate 
+properly.  The output from Nalu showing the correction is correct and is shown as follows:
+
+
+.. code-block:: c++
+ 
+   Mass Balance Review:
+   Density accumulation: 0
+   Integrated inflow:    -188486.0356751138
+   Integrated open:      188486.035672821
+   Total mass closure:   -2.29277e-06
+   A mass correction of: -2.86596e-09 occurred on: 800 boundary integration points:
+   Post-corrected integrated open: 188486.0356751139
+
+
+
 Specified Normal Temperature Gradient Boundary Condition
 --------------------------------------------------------
 
