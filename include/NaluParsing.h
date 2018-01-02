@@ -332,9 +332,10 @@ struct NonConformalUserData : public UserData {
   double expandBoxPercentage_;
   bool clipIsoParametricCoords_;
   double searchTolerance_;
+  bool dynamicSearchTolAlg_;
   NonConformalUserData()
     : UserData(),
-    searchMethodName_("na"), expandBoxPercentage_(0.0), clipIsoParametricCoords_(false), searchTolerance_(1.0e-16)
+    searchMethodName_("na"), expandBoxPercentage_(0.0), clipIsoParametricCoords_(false), searchTolerance_(1.0e-16), dynamicSearchTolAlg_(false)
   {}
 };
 

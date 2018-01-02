@@ -9,6 +9,7 @@
 #define HYPRELINEARSYSTEM_H
 
 #include "LinearSystem.h"
+#include "XSDKHypreInterface.h"
 
 #include "stk_mesh/base/BulkData.hpp"
 
@@ -213,7 +214,7 @@ protected:
    *
    *  @return The HYPRE row ID
    */
-  int get_entity_hypre_id(const stk::mesh::Entity&);
+  HypreIntType get_entity_hypre_id(const stk::mesh::Entity&);
 
   //! Helper method to transfer the solution from a HYPRE_IJVector instance to
   //! the STK field data instance.
@@ -265,25 +266,32 @@ private:
   std::vector<RowStatus> rowStatus_;
 
   //! Track which rows are skipped
-  std::unordered_set<int> skippedRows_;
+  std::unordered_set<HypreIntType> skippedRows_;
+
+  //! Buffer for handling Global Row IDs for use in sumInto methods
+  std::vector<HypreIntType> idBuffer_;
 
   //! The lowest row owned by this MPI rank
-  int iLower_;
+  HypreIntType iLower_;
   //! The highest row owned by this MPI rank
-  int iUpper_;
+  HypreIntType iUpper_;
   //! The lowest column owned by this MPI rank; currently jLower_ == iLower_
-  int jLower_;
+  HypreIntType jLower_;
   //! The highest column owned by this MPI rank; currently jUpper_ == iUpper_
-  int jUpper_;
+  HypreIntType jUpper_;
   //! Total number of rows owned by this particular MPI rank
-  int numRows_;
+  HypreIntType numRows_;
   //! Maximum Row ID in the Hypre linear system
-  int maxRowID_;
+  HypreIntType maxRowID_;
 
   //! Flag indicating whether the linear system has been initialized
   bool systemInitialized_{false};
 
-  bool checkSkippedRows_{true};
+  //! Flag indicating that sumInto should check to see if rows must be skipped
+  bool checkSkippedRows_{false};
+
+  //! Flag indicating that dirichlet and/or overset rows are present for this system
+  bool hasSkippedRows_{false};
 };
 
 }  // nalu

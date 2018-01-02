@@ -604,7 +604,7 @@ class Realm {
    *  must be adjusted accordingly to account for multiple degrees of freedom on
    *  a particular node. This is performed in sierra::nalu::HypreLinearSystem.
    */
-  int hypreILower_;
+  stk::mesh::EntityId hypreILower_;
 
   /** The ending index (global) of the HYPRE linear system in this MPI rank
    *
@@ -612,13 +612,13 @@ class Realm {
    *  must be adjusted accordingly to account for multiple degrees of freedom on
    *  a particular node. This is performed in sierra::nalu::HypreLinearSystem.
    */
-  int hypreIUpper_;
+  stk::mesh::EntityId hypreIUpper_;
 
   /** The total number of HYPRE nodes in the linear system
    *
    *  Note that this is not an MPI rank local quantity
    */
-  int hypreNumNodes_;
+  stk::mesh::EntityId hypreNumNodes_;
 
   /** Global Row IDs for the HYPRE linear system
    *
@@ -627,7 +627,7 @@ class Realm {
    *  IDs be ordered across MPI ranks; i.e., startIdx (MPI_rank + 1) =
    *  endIdx(MPI_rank) + 1.
    */
-  ScalarIntFieldType* hypreGlobalId_;
+  HypreIDFieldType* hypreGlobalId_{nullptr};
 
   /** Flag indicating whether Hypre solver is being used for any of the equation
    * systems.
