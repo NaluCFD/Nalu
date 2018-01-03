@@ -940,8 +940,14 @@ TpetraLinearSystem::finalizeLinearSystem()
   ownedMatrix_ = Teuchos::rcp(new LinSys::Matrix(ownedGraph_));
   globallyOwnedMatrix_ = Teuchos::rcp(new LinSys::Matrix(globallyOwnedGraph_));
 
+  ownedLocalMatrix_ = ownedMatrix_->getLocalMatrix();
+  globallyOwnedLocalMatrix_ = globallyOwnedMatrix_->getLocalMatrix();
+
   ownedRhs_ = Teuchos::rcp(new LinSys::Vector(ownedRowsMap_));
   globallyOwnedRhs_ = Teuchos::rcp(new LinSys::Vector(globallyOwnedRowsMap_));
+
+  ownedLocalRhs_ = ownedRhs_->getLocalView<sierra::nalu::HostSpace>();
+  globallyOwnedLocalRhs_ = globallyOwnedRhs_->getLocalView<sierra::nalu::HostSpace>();
 
   sln_ = Teuchos::rcp(new LinSys::Vector(ownedRowsMap_));
 
@@ -1049,11 +1055,6 @@ TpetraLinearSystem::sumInto(
   }
   Tpetra::Details::shellSortKeysAndValues(localIds.data(), sortPermutation.data(), numRows);
 
-  const LinSys::Matrix::local_matrix_type& ownedLocalMatrix = ownedMatrix_->getLocalMatrix();
-  const LinSys::Matrix::local_matrix_type& globallyOwnedLocalMatrix = globallyOwnedMatrix_->getLocalMatrix();
-  const auto& ownedLocalRhs = ownedRhs_->getLocalView<sierra::nalu::HostSpace>();
-  const auto& globallyOwnedLocalRhs = globallyOwnedRhs_->getLocalView<sierra::nalu::HostSpace>();
-
   for (int r = 0; r < numRows; r++) {
     const LocalOrdinal localId = localIds[r];
     const LocalOrdinal cur_perm_index = sortPermutation[r];
@@ -1062,24 +1063,24 @@ TpetraLinearSystem::sumInto(
     ThrowAssertMsg(std::isfinite(cur_rhs), "Inf or NAN rhs");
 
     if(localId < maxOwnedRowId_) {
-      sum_into_row(ownedLocalMatrix.row(localId), numRows, localIds.data(), sortPermutation.data(), cur_lhs);
+      sum_into_row(ownedLocalMatrix_.row(localId), numRows, localIds.data(), sortPermutation.data(), cur_lhs);
       if (forceAtomic) {
-        Kokkos::atomic_add(&ownedLocalRhs(localId,0), cur_rhs);
+        Kokkos::atomic_add(&ownedLocalRhs_(localId,0), cur_rhs);
       }
       else {
-        ownedLocalRhs(localId,0) += cur_rhs;
+        ownedLocalRhs_(localId,0) += cur_rhs;
       }
     }
     else if (localId < maxGloballyOwnedRowId_) {
       const LocalOrdinal actualLocalId = localId - maxOwnedRowId_;
-      sum_into_row(globallyOwnedLocalMatrix.row(actualLocalId), numRows,
+      sum_into_row(globallyOwnedLocalMatrix_.row(actualLocalId), numRows,
         localIds.data(), sortPermutation.data(), cur_lhs);
 
       if (forceAtomic) {
-        Kokkos::atomic_add(&globallyOwnedLocalRhs(actualLocalId,0), cur_rhs);
+        Kokkos::atomic_add(&globallyOwnedLocalRhs_(actualLocalId,0), cur_rhs);
       }
       else {
-        globallyOwnedLocalRhs(actualLocalId,0) += cur_rhs;
+        globallyOwnedLocalRhs_(actualLocalId,0) += cur_rhs;
       }
     }
   }
@@ -1117,11 +1118,6 @@ TpetraLinearSystem::sumInto(
   }
   Tpetra::Details::shellSortKeysAndValues(scratchIds.data(), sortPermutation_.data(), (int)numRows);
 
-  const LinSys::Matrix::local_matrix_type& ownedLocalMatrix = ownedMatrix_->getLocalMatrix();
-  const LinSys::Matrix::local_matrix_type& globallyOwnedLocalMatrix = globallyOwnedMatrix_->getLocalMatrix();
-  const auto& ownedLocalRhs = ownedRhs_->getLocalView<sierra::nalu::HostSpace>();
-  const auto& globallyOwnedLocalRhs = globallyOwnedRhs_->getLocalView<sierra::nalu::HostSpace>();
-
   for (unsigned r = 0; r < numRows; r++) {
     const LocalOrdinal localId = scratchIds[r];
     const LocalOrdinal cur_perm_index = sortPermutation_[r];
@@ -1130,15 +1126,15 @@ TpetraLinearSystem::sumInto(
     ThrowAssertMsg(std::isfinite(cur_rhs), "Invalid rhs");
 
     if(localId < maxOwnedRowId_) {
-      sum_into_row(ownedLocalMatrix.row(localId), numRows, scratchIds.data(), sortPermutation_.data(), cur_lhs);
-      ownedLocalRhs(localId,0) += cur_rhs;
+      sum_into_row(ownedLocalMatrix_.row(localId), numRows, scratchIds.data(), sortPermutation_.data(), cur_lhs);
+      ownedLocalRhs_(localId,0) += cur_rhs;
     }
     else if (localId < maxGloballyOwnedRowId_) {
       const LocalOrdinal actualLocalId = localId - maxOwnedRowId_;
-      sum_into_row(globallyOwnedLocalMatrix.row(actualLocalId), numRows,
+      sum_into_row(globallyOwnedLocalMatrix_.row(actualLocalId), numRows,
         scratchIds.data(), sortPermutation_.data(), cur_lhs);
 
-      globallyOwnedLocalRhs(actualLocalId,0) += cur_rhs;
+      globallyOwnedLocalRhs_(actualLocalId,0) += cur_rhs;
     }
   }
 }
@@ -1190,7 +1186,7 @@ TpetraLinearSystem::applyDirichletBCs(
         const bool useOwned = localId < maxOwnedRowId_;
         const LocalOrdinal actualLocalId = useOwned ? localId : localId - maxOwnedRowId_;
         Teuchos::RCP<LinSys::Matrix> matrix = useOwned ? ownedMatrix_ : globallyOwnedMatrix_;
-        const LinSys::Matrix::local_matrix_type& local_matrix = matrix->getLocalMatrix();
+        const LinSys::Matrix::local_matrix_type& local_matrix = useOwned ? ownedLocalMatrix_ : globallyOwnedLocalMatrix_;
 
         if(localId > maxGloballyOwnedRowId_) {
           std::cerr << "localId > maxGloballyOwnedRowId_:: localId= " << localId << " maxGloballyOwnedRowId_= " << maxGloballyOwnedRowId_ << " useOwned = " << (localId < maxOwnedRowId_ ) << std::endl;
