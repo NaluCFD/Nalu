@@ -24,6 +24,7 @@
 #include <iostream>
 #include <cmath>
 #include <algorithm>
+#include <numeric>
 
 #include "tioga.h"
 
