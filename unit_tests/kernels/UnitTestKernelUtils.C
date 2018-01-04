@@ -116,6 +116,18 @@ struct TrigFieldFunction
       std::cos(a * pi * z));
   }
 
+  void alpha(const double* coords, double* qField) const
+  {
+    double x = coords[0];
+    double y = coords[1];
+    double z = coords[2];
+
+    qField[0] = alphanot + alphanot * (
+      std::cos(a * pi * x) *
+      std::sin(a * pi * y) *
+      std::cos(a * pi * z));
+  }
+
   void dkdx(const double* coords, double* qField) const
   {
     const double x = coords[0];
@@ -178,6 +190,24 @@ struct TrigFieldFunction
       std::cos(a * pi * z));
   }
 
+  void tensor_turbulent_viscosity(const double* coords, double* qField) const
+  {
+    // mu_1j
+    qField[0] = 0.1;
+    qField[1] = 0.0;
+    qField[2] = 0.0;
+
+    // mu_1j
+    qField[3] = 0.0;
+    qField[4] = 0.1;
+    qField[5] = 0.0;
+
+    // mu_2j
+    qField[6] = 0.0;
+    qField[7] = 0.0;
+    qField[8] = 0.1;
+  }
+
   void sst_f_one_blending(const double* coords, double* qField) const
   {
     double x = coords[0];
@@ -228,6 +258,9 @@ private:
   /// Factor for tke field
   static constexpr double tkenot{1.0};
 
+  /// Factor for adaptivity parameter field
+  static constexpr double alphanot{1.0};
+
   /// Factor for sdr field
   static constexpr double sdrnot{1.0};
 
@@ -270,6 +303,8 @@ void init_trigonometric_field(
     funcPtr = &TrigFieldFunction::density;
   else if (fieldName == "turbulent_ke")
     funcPtr = &TrigFieldFunction::tke;
+  else if (fieldName == "adaptivity_parameter")
+    funcPtr = &TrigFieldFunction::alpha;
   else if (fieldName == "dkdx")
     funcPtr = &TrigFieldFunction::dkdx;
   else if (fieldName == "specific_dissipation_rate")
@@ -280,6 +315,8 @@ void init_trigonometric_field(
     funcPtr = &TrigFieldFunction::dhdx;
   else if (fieldName == "turbulent_viscosity")
     funcPtr = &TrigFieldFunction::turbulent_viscosity;
+  else if (fieldName == "tensor_turbulent_viscosity")
+    funcPtr = &TrigFieldFunction::tensor_turbulent_viscosity;
   else if (fieldName == "sst_f_one_blending")
     funcPtr = &TrigFieldFunction::sst_f_one_blending;
   else if (fieldName == "minimum_distance_to_wall")
@@ -384,6 +421,14 @@ void tke_test_function(
   init_trigonometric_field(bulk, coordinates, tke);
 }
 
+void alpha_test_function(
+  const stk::mesh::BulkData& bulk,
+  const VectorFieldType& coordinates,
+  ScalarFieldType& alpha)
+{
+  init_trigonometric_field(bulk, coordinates, alpha);
+}
+
 void dkdx_test_function(
   const stk::mesh::BulkData& bulk,
   const VectorFieldType& coordinates,
@@ -416,6 +461,13 @@ void turbulent_viscosity_test_function(
   init_trigonometric_field(bulk, coordinates, turbulent_viscosity);
 }
 
+void tensor_turbulent_viscosity_test_function(
+  const stk::mesh::BulkData& bulk,
+  const VectorFieldType& coordinates,
+  GenericFieldType& mutij)
+{
+  init_trigonometric_field(bulk, coordinates, mutij);
+}
 void sst_f_one_blending_test_function(
   const stk::mesh::BulkData& bulk,
   const VectorFieldType& coordinates,
