@@ -73,7 +73,7 @@ endfunction(add_test_r_cat)
 # Regression tests
 #=============================================================================
 
-add_test_r_cat(ablForcingEdge 8 11)
+add_test_r_cat(ablNeutralEdge 8 11)
 add_test_r(ablStableElem 4)
 add_test_r_rst(ablUnstableEdge 4)
 add_test_r(ablUnstableEdge_ra 4)
