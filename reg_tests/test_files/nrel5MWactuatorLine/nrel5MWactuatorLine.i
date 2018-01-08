@@ -137,7 +137,7 @@ realms:
         turbine_base_pos: [ 0.0, 0.0, 0.0 ]
         turbine_hub_pos: [ 0.0, 0.0, 90.0 ]
         restart_filename: "blah"
-        fast_input_filename: "../../mesh/nrel5mw.fst"
+        fast_input_filename: "nrel5mw.fst"
         turb_id:  1
         turbine_name: machine_one
 

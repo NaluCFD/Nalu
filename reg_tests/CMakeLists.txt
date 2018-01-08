@@ -53,3 +53,8 @@ execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
 
 # Add tests in list
 include(${CMAKE_CURRENT_SOURCE_DIR}/CTestList.cmake)
+
+if(ENABLE_OPENFAST)
+  add_subdirectory (test_files/nrel5MWactuatorLine)
+endif()
+
