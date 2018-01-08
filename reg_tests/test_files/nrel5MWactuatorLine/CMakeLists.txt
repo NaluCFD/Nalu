@@ -1,0 +1,8 @@
+
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/5MW_Baseline DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/nrel5mw.fst DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
+
+set(NREL5MW_DISCON_LIB "libDISCON${CMAKE_SHARED_LIBRARY_SUFFIX}")
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/5MW_Baseline/NRELOffshrBsline5MW_Onshore_ServoDyn.dat.in ${CMAKE_CURRENT_BINARY_DIR}/5MW_Baseline/NRELOffshrBsline5MW_Onshore_ServoDyn.dat @ONLY)
+
+add_subdirectory(5MW_Baseline/ServoData)
