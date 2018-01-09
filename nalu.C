@@ -32,6 +32,11 @@
 #include <iomanip>
 #include <stdexcept>
 
+// For Teuchos timer summary
+#include <Teuchos_Ptr.hpp>
+#include <Teuchos_DefaultMpiComm.hpp>
+#include <Teuchos_TimeMonitor.hpp>
+
 static std::string human_bytes_double(double bytes)
 {
   const double K = 1024;
@@ -179,6 +184,20 @@ int main( int argc, char ** argv )
   naluEnv.naluOutputP0() << "Timing for Simulation: nprocs= " << nprocs << std::endl;
   naluEnv.naluOutputP0() << "           main() --  " << " \tavg: " << g_sum/double(nprocs)
 			 << " \tmin: " << g_min << " \tmax: " << g_max << std::endl;
+
+  // Summarize any active Teuchos timers.
+  // TODO There should be an input deck option to allow toggling of summarizeLinearSolverTimers, and the default valueshould be "off"
+  bool summarizeLinearSolverTimers = true;
+  if (summarizeLinearSolverTimers) {
+    const bool alwaysWriteLocal    = false;
+    const bool writeGlobalStats    = true;
+    const bool displayUnusedTimers = false;
+    const std::string filter;
+    const bool ignoreZeroTimers    = true;
+
+    Teuchos::MpiComm<int> mpiComm(naluEnv.parallel_comm());
+    Teuchos::TimeMonitor::summarize(Teuchos::Ptr<Teuchos::MpiComm<int>>(&mpiComm), naluEnv.naluOutputP0(), alwaysWriteLocal, writeGlobalStats, displayUnusedTimers, Teuchos::Union, filter, ignoreZeroTimers);
+  }
 
   // output memory usage
   {
