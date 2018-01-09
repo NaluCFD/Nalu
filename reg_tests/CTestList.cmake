@@ -72,7 +72,6 @@ endfunction(add_test_r_cat)
 #=============================================================================
 # Regression tests
 #=============================================================================
-
 add_test_r_cat(ablNeutralEdge 8 11)
 add_test_r(ablStableElem 4)
 add_test_r_rst(ablUnstableEdge 4)
@@ -141,6 +140,7 @@ add_test_r(variableDensNonUniform 2)
 add_test_r(variableDensNonUniform_P5 8)
 if(ENABLE_OPENFAST)
    add_test_r(nrel5MWactuatorLine 4)
+   add_subdirectory(test_files/nrel5MWactuatorLine)
 endif(ENABLE_OPENFAST)
 if(ENABLE_TIOGA)
   add_test_r(oversetSphereTIOGA 8)
@@ -153,22 +153,19 @@ endif(ENABLE_HYPRE)
 # Convergence tests
 #=============================================================================
 add_test_v2(BoussinesqNonIso 8)
-add_test_v3(steadyTaylorVortex_P4 8)
-add_test_v3(hoVortex_P2 8)
 add_test_v3(cvfemHexHC_P3 8)
-
+add_test_v3(hoVortex_P2 8)
+add_test_v3(steadyTaylorVortex_P4 8)
 
 #=============================================================================
 # Unit tests
 #=============================================================================
-
 add_test_u(unitTest1 1)
 add_test_u(unitTest2 2)
 
 #=============================================================================
 # Performance tests
 #=============================================================================
-
 add_test_p(oversetHybrid 8)
 add_test_p(uqSlidingMeshDG 8)
 add_test_p(waleElemXflowMixFrac3.5m 8)
