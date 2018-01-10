@@ -42,10 +42,6 @@ message("Setting and checking of compilers:")
 set(CMAKE_CXX_COMPILER ${Trilinos_CXX_COMPILER} )
 set(CMAKE_C_COMPILER ${Trilinos_C_COMPILER} )
 set(CMAKE_Fortran_COMPILER ${Trilinos_Fortran_COMPILER} )
-# Enable Fortran if it is enabled in Trilinos
-if(CMAKE_Fortran_COMPILER)
-  enable_language(Fortran)
-endif()
 
 # Build Nalu as shared libraries if that is how Trilinos was built
 if(Trilinos_BUILD_SHARED_LIBS)
@@ -58,7 +54,7 @@ endif(Trilinos_BUILD_SHARED_LIBS)
 
 # Set Nalu's compilers, CMAKE_FIND_LIBRARY_PREFIXES
 # and CMAKE_FIND_LIBRARY_SUFFIXES, etc, after inheriting settings from Trilinos
-project(Nalu)
+project(Nalu CXX Fortran)
 
 ############################ YAML ######################################
 set(CMAKE_PREFIX_PATH ${YAML_DIR} ${CMAKE_PREFIX_PATH})
