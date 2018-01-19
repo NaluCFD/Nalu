@@ -587,13 +587,12 @@ void calc_mass_flow_rate_scs(
       EXPECT_EQ(b.topology(), topo);
 
       sierra::nalu::ScratchViews<double> preReqData(
-        team, bulk, topo, dataNeeded);
+        team, bulk, topo.num_nodes(), dataNeeded);
 
       Kokkos::parallel_for(
         Kokkos::TeamThreadRange(team, length), [&](const size_t& k) {
           stk::mesh::Entity element = b[k];
-          sierra::nalu::fill_pre_req_data(
-            dataNeeded, bulk, topo, element, preReqData);
+          sierra::nalu::fill_pre_req_data(dataNeeded, bulk, element, preReqData);
 
           std::vector<double> rhoU(ndim);
           std::vector<double> v_shape_function(
@@ -668,13 +667,12 @@ void calc_projected_nodal_gradient_interior(
     EXPECT_EQ(b.topology(), topo);
 
     sierra::nalu::ScratchViews<double> preReqData(
-      team, bulk, topo, dataNeeded);
+      team, bulk, topo.num_nodes(), dataNeeded);
 
     Kokkos::parallel_for(
       Kokkos::TeamThreadRange(team, length), [&](const size_t& k) {
       stk::mesh::Entity element = b[k];
-      sierra::nalu::fill_pre_req_data(
-        dataNeeded, bulk, topo, element, preReqData);
+      sierra::nalu::fill_pre_req_data(dataNeeded, bulk, element, preReqData);
 
       meSCS->shape_fcn(v_shape_function.data());
       auto v_dnv = preReqData.get_scratch_view_1D(dnv);
@@ -746,13 +744,12 @@ void calc_projected_nodal_gradient_interior(
     EXPECT_EQ(b.topology(), topo);
 
     sierra::nalu::ScratchViews<double> preReqData(
-      team, bulk, topo, dataNeeded);
+      team, bulk, topo.num_nodes(), dataNeeded);
 
     Kokkos::parallel_for(
       Kokkos::TeamThreadRange(team, length), [&](const size_t& k) {
       stk::mesh::Entity element = b[k];
-      sierra::nalu::fill_pre_req_data(
-        dataNeeded, bulk, topo, element, preReqData);
+      sierra::nalu::fill_pre_req_data(dataNeeded, bulk, element, preReqData);
 
       meSCS->shape_fcn(v_shape_function.data());
       auto v_dnv = preReqData.get_scratch_view_1D(dnv);
@@ -826,13 +823,12 @@ void calc_projected_nodal_gradient_boundary(
 
     EXPECT_EQ(b.topology(), topo);
 
-    sierra::nalu::ScratchViews<double> preReqData(
-      team, bulk, topo, dataNeeded);
+    sierra::nalu::ScratchViews<double> preReqData(team, bulk, topo.num_nodes(), dataNeeded);
 
     Kokkos::parallel_for(
       Kokkos::TeamThreadRange(team, length), [&](const size_t& k) {
       stk::mesh::Entity face = b[k];
-      sierra::nalu::fill_pre_req_data(dataNeeded, bulk, topo, face, preReqData);
+      sierra::nalu::fill_pre_req_data(dataNeeded, bulk, face, preReqData);
 
       meBC->shape_fcn(v_shape_function.data());
       auto v_dnv = preReqData.get_scratch_view_1D(dnv);
@@ -900,12 +896,12 @@ void calc_projected_nodal_gradient_boundary(
     EXPECT_EQ(b.topology(), topo);
 
     sierra::nalu::ScratchViews<double> preReqData(
-      team, bulk, topo, dataNeeded);
+      team, bulk, topo.num_nodes(), dataNeeded);
 
     Kokkos::parallel_for(
       Kokkos::TeamThreadRange(team, length), [&](const size_t& k) {
       stk::mesh::Entity face = b[k];
-      sierra::nalu::fill_pre_req_data(dataNeeded, bulk, topo, face, preReqData);
+      sierra::nalu::fill_pre_req_data(dataNeeded, bulk, face, preReqData);
 
       meBC->shape_fcn(v_shape_function.data());
       auto v_dnv = preReqData.get_scratch_view_1D(dnv);
@@ -969,12 +965,12 @@ void calc_dual_nodal_volume(
     EXPECT_EQ(b.topology(), topo);
 
     sierra::nalu::ScratchViews<double> preReqData(
-      team, bulk, topo, dataNeeded);
+      team, bulk, topo.num_nodes(), dataNeeded);
 
     Kokkos::parallel_for(
       Kokkos::TeamThreadRange(team, length), [&](const size_t& k) {
       stk::mesh::Entity element = b[k];
-      sierra::nalu::fill_pre_req_data(dataNeeded, bulk, topo, element, preReqData);
+      sierra::nalu::fill_pre_req_data(dataNeeded, bulk, element, preReqData);
 
       auto v_scv_vol = preReqData.get_me_views(sierra::nalu::CURRENT_COORDINATES).scv_volume;
       const stk::mesh::Entity* node_rels = preReqData.elemNodes;

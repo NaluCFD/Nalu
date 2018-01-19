@@ -89,7 +89,7 @@ public:
 
   ScratchViews(const TeamHandleType& team,
                const stk::mesh::BulkData& bulkData,
-               stk::topology topo,
+               int nodesPerEntity,
                ElemDataRequests& dataNeeded);
 
   virtual ~ScratchViews() {
@@ -412,7 +412,7 @@ void MasterElementViews<T>::fill_master_element_views_new_me(
 template<typename T>
 ScratchViews<T>::ScratchViews(const TeamHandleType& team,
              const stk::mesh::BulkData& bulkData,
-             stk::topology topo,
+             int nodesPerEntity,
              ElemDataRequests& dataNeeded)
 {
   /* master elements are allowed to be null if they are not required */
@@ -421,14 +421,13 @@ ScratchViews<T>::ScratchViews(const TeamHandleType& team,
   MasterElement *meFEM = dataNeeded.get_fem_volume_me();
 
   int nDim = bulkData.mesh_meta_data().spatial_dimension();
-  int nodesPerElem = topo.num_nodes();
   int numScsIp = meSCS != nullptr ? meSCS->numIntPoints_ : 0;
   int numScvIp = meSCV != nullptr ? meSCV->numIntPoints_ : 0;
   int numFemIp = meFEM != nullptr ? meFEM->numIntPoints_ : 0;
 
-  create_needed_field_views(team, dataNeeded, bulkData, nodesPerElem);
+  create_needed_field_views(team, dataNeeded, bulkData, nodesPerEntity);
 
-  create_needed_master_element_views(team, dataNeeded, nDim, nodesPerElem, numScsIp, numScvIp, numFemIp);
+  create_needed_master_element_views(team, dataNeeded, nDim, nodesPerEntity, numScsIp, numScvIp, numFemIp);
 }
 
 template<typename T>
@@ -507,15 +506,12 @@ int get_num_scalars_pre_req_data( ElemDataRequests& dataNeededBySuppAlgs, int nD
 
 void fill_pre_req_data(ElemDataRequests& dataNeeded,
                        const stk::mesh::BulkData& bulkData,
-                       stk::topology topo,
                        stk::mesh::Entity elem,
                        ScratchViews<double>& prereqData,
                        bool fillMEViews = true);
 
 void fill_master_element_views(ElemDataRequests& dataNeeded,
                                const stk::mesh::BulkData& bulkData,
-                               stk::topology topo,
-                               stk::mesh::Entity elem,
                                ScratchViews<DoubleType>& prereqData);
 
 template<typename T = double>

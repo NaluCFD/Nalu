@@ -194,12 +194,11 @@ int get_num_scalars_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDi
 void fill_pre_req_data(
   ElemDataRequests& dataNeeded,
   const stk::mesh::BulkData& bulkData,
-  stk::topology topo,
   stk::mesh::Entity elem,
   ScratchViews<double>& prereqData,
   bool fillMEViews)
 {
-  int nodesPerElem = topo.num_nodes();
+  int nodesPerElem = bulkData.num_nodes(elem);
 
   MasterElement *meSCS = dataNeeded.get_cvfem_surface_me();
   MasterElement *meSCV = dataNeeded.get_cvfem_volume_me();
@@ -271,8 +270,6 @@ void fill_pre_req_data(
 void fill_master_element_views(
   ElemDataRequests& dataNeeded,
   const stk::mesh::BulkData& bulkData,
-  stk::topology topo,
-  stk::mesh::Entity elem,
   ScratchViews<DoubleType>& prereqData)
 {
     MasterElement *meSCS = dataNeeded.get_cvfem_surface_me();
