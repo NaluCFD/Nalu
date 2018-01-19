@@ -142,6 +142,10 @@ public:
 
             func(simdPrereqData, meSCS_, meSCV_);
           });
+
+          for(int simdIndex=0; simdIndex<simdLen; ++simdIndex) {
+              delete prereqData[simdIndex];
+          }
       });
   }
 
