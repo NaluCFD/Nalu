@@ -136,7 +136,7 @@ public:
               fill_pre_req_data(dataNeeded_, bulk_, element, *prereqData[simdIndex], alsoProcessMEViews);
             }
 
-            copy_and_interleave(prereqData, simdElems, simdPrereqData,
+            copy_and_interleave(prereqData.data(), simdElems, simdPrereqData,
                                 alsoProcessMEViews);
             fill_master_element_views(dataNeeded_, bulk_, simdPrereqData);
 

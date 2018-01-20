@@ -111,6 +111,37 @@ size_t get_simd_bucket_length(size_t bktLength)
     return simdBucketLen;
 }
 
+struct SharedMemData {
+    SharedMemData(const sierra::nalu::TeamHandleType& team,
+         const stk::mesh::BulkData& bulk,
+         const ElemDataRequests& dataNeededByKernels,
+         unsigned nodesPerEntity,
+         unsigned rhsSize)
+     : simdPrereqData(team, bulk, nodesPerEntity, dataNeededByKernels)
+    {
+        for(int simdIndex=0; simdIndex<simdLen; ++simdIndex) {
+          prereqData[simdIndex] = new ScratchViews<double>(team, bulk, nodesPerEntity, dataNeededByKernels);
+        }
+        simdrhs = get_shmem_view_1D<DoubleType>(team, rhsSize);
+        simdlhs = get_shmem_view_2D<DoubleType>(team, rhsSize, rhsSize);
+        rhs = get_shmem_view_1D<double>(team, rhsSize);
+        lhs = get_shmem_view_2D<double>(team, rhsSize, rhsSize);
+
+        scratchIds = get_int_shmem_view_1D(team, rhsSize);
+        sortPermutation = get_int_shmem_view_1D(team, rhsSize);
+    }
+
+    ScratchViews<double>* prereqData[simdLen];
+    ScratchViews<DoubleType> simdPrereqData;
+    SharedMemView<DoubleType*> simdrhs;
+    SharedMemView<DoubleType**> simdlhs;
+    SharedMemView<double*> rhs;
+    SharedMemView<double**> lhs;
+
+    SharedMemView<int*> scratchIds;
+    SharedMemView<int*> sortPermutation;
+};
+
 //--------------------------------------------------------------------------
 //-------- execute ---------------------------------------------------------
 //--------------------------------------------------------------------------
@@ -145,24 +176,11 @@ AssembleElemSolverAlgorithm::execute()
   {
     stk::mesh::Bucket & b = *elem_buckets[team.league_rank()];
     
-    ThrowAssertMsg(b.topology().num_nodes() == (unsigned)nodesPerEntity_,"AssembleElemSolverAlgorithm expected nodesPerEntity_ = "
+    ThrowAssertMsg(b.topology().num_nodes() == (unsigned)nodesPerEntity_,
+                   "AssembleElemSolverAlgorithm expected nodesPerEntity_ = "
                    <<nodesPerEntity_<<", but b.topology().num_nodes() = "<<b.topology().num_nodes());
 
-    std::vector<sierra::nalu::ScratchViews<double>*> prereqData(simdLen, nullptr);
-
-    for(int simdIndex=0; simdIndex<simdLen; ++simdIndex) {
-      prereqData[simdIndex] = new sierra::nalu::ScratchViews<double>(team, bulk_data, nodesPerEntity_, dataNeededByKernels_);
-    }
-
-    sierra::nalu::ScratchViews<DoubleType> simdPrereqData(team, bulk_data, nodesPerEntity_, dataNeededByKernels_);
-
-    SharedMemView<DoubleType*> simdrhs = get_shmem_view_1D<DoubleType>(team, rhsSize_);
-    SharedMemView<DoubleType**> simdlhs = get_shmem_view_2D<DoubleType>(team, rhsSize_, rhsSize_);
-    SharedMemView<double*> rhs = get_shmem_view_1D<double>(team, rhsSize_);
-    SharedMemView<double**> lhs = get_shmem_view_2D<double>(team, rhsSize_, rhsSize_);
-
-    SharedMemView<int*> scratchIds = get_int_shmem_view_1D(team, scratchIdsSize);
-    SharedMemView<int*> sortPermutation = get_int_shmem_view_1D(team, scratchIdsSize);
+    SharedMemData smdata(team, bulk_data, dataNeededByKernels_, nodesPerEntity_, rhsSize_);
 
     const stk::mesh::Entity* entityNodes[simdLen];
     const size_t bucketLen   = b.size();
@@ -176,31 +194,32 @@ AssembleElemSolverAlgorithm::execute()
         stk::mesh::Entity element = b[bktIndex*simdLen + simdElemIndex];
         entityNodes[simdElemIndex] = bulk_data.begin_nodes(element);
         fill_pre_req_data(dataNeededByKernels_, bulk_data, element,
-                          *prereqData[simdElemIndex], interleaveMEViews_);
+                          *smdata.prereqData[simdElemIndex], interleaveMEViews_);
       }
 
-      copy_and_interleave(prereqData, numSimdElems, simdPrereqData, interleaveMEViews_);
+      copy_and_interleave(smdata.prereqData, numSimdElems, smdata.simdPrereqData, interleaveMEViews_);
 
       if (!interleaveMEViews_) {
-        fill_master_element_views(dataNeededByKernels_, bulk_data, simdPrereqData);
+        fill_master_element_views(dataNeededByKernels_, bulk_data, smdata.simdPrereqData);
       }
 
-      set_zero(simdrhs.data(), simdrhs.size());
-      set_zero(simdlhs.data(), simdlhs.size());
+      set_zero(smdata.simdrhs.data(), smdata.simdrhs.size());
+      set_zero(smdata.simdlhs.data(), smdata.simdlhs.size());
 
       // call supplemental; gathers happen inside the elem_execute method
       for ( size_t i = 0; i < activeKernelsSize; ++i )
-        activeKernels_[i]->execute( simdlhs, simdrhs, simdPrereqData );
+        activeKernels_[i]->execute( smdata.simdlhs, smdata.simdrhs, smdata.simdPrereqData );
 
       for(int simdElemIndex=0; simdElemIndex<numSimdElems; ++simdElemIndex) {
-        extract_vector_lane(simdrhs, simdElemIndex, rhs);
-        extract_vector_lane(simdlhs, simdElemIndex, lhs);
-        apply_coeff(nodesPerEntity_, entityNodes[simdElemIndex], scratchIds, sortPermutation, rhs, lhs, __FILE__);
+        extract_vector_lane(smdata.simdrhs, simdElemIndex, smdata.rhs);
+        extract_vector_lane(smdata.simdlhs, simdElemIndex, smdata.lhs);
+        apply_coeff(nodesPerEntity_, entityNodes[simdElemIndex],
+                    smdata.scratchIds, smdata.sortPermutation, smdata.rhs, smdata.lhs, __FILE__);
       }
     });
 
     for(int simdIndex=0; simdIndex<simdLen; ++simdIndex) {
-       delete prereqData[simdIndex];
+       delete smdata.prereqData[simdIndex];
     }
   });
 }

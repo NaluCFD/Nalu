@@ -90,7 +90,7 @@ public:
   ScratchViews(const TeamHandleType& team,
                const stk::mesh::BulkData& bulkData,
                int nodesPerEntity,
-               ElemDataRequests& dataNeeded);
+               const ElemDataRequests& dataNeeded);
 
   virtual ~ScratchViews() {
     for(ViewHolder* vh : fieldViews) {
@@ -413,7 +413,7 @@ template<typename T>
 ScratchViews<T>::ScratchViews(const TeamHandleType& team,
              const stk::mesh::BulkData& bulkData,
              int nodesPerEntity,
-             ElemDataRequests& dataNeeded)
+             const ElemDataRequests& dataNeeded)
 {
   /* master elements are allowed to be null if they are not required */
   MasterElement *meSCS = dataNeeded.get_cvfem_surface_me();
