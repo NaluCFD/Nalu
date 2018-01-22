@@ -137,9 +137,9 @@ public:
   { return coordsFields_; }
 
   const FieldSet& get_fields() const { return fields; }  
-  MasterElement *get_cvfem_volume_me() {return meSCV_;}
-  MasterElement *get_cvfem_surface_me() {return meSCS_;}
-  MasterElement *get_fem_volume_me() {return meFEM_;}
+  MasterElement *get_cvfem_volume_me() const {return meSCV_;}
+  MasterElement *get_cvfem_surface_me() const {return meSCS_;}
+  MasterElement *get_fem_volume_me() const {return meFEM_;}
 
 private:
   std::array<std::set<ELEM_DATA_NEEDED>, MAX_COORDS_TYPES> dataEnums;

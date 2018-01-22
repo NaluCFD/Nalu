@@ -26,7 +26,7 @@ struct HelperObjects {
     realm.metaData_ = &bulk.mesh_meta_data();
     realm.bulkData_ = &bulk;
     eqSystem.linsys_ = linsys;
-    assembleElemSolverAlg = new sierra::nalu::AssembleElemSolverAlgorithm(realm, part, &eqSystem, topo);
+    assembleElemSolverAlg = new sierra::nalu::AssembleElemSolverAlgorithm(realm, part, &eqSystem, topo.rank(), topo.num_nodes());
   }
 
   ~HelperObjects()
@@ -63,7 +63,7 @@ struct HelperObjectsNewME {
     realm.metaData_ = &bulk.mesh_meta_data();
     realm.bulkData_ = &bulk;
     eqSystem.linsys_ = linsys;
-    assembleElemSolverAlg = new sierra::nalu::AssembleElemSolverAlgorithm(realm, part, &eqSystem, topo, false);
+    assembleElemSolverAlg = new sierra::nalu::AssembleElemSolverAlgorithm(realm, part, &eqSystem, stk::topology::ELEMENT_RANK, topo.num_nodes(), false);
   }
 
   ~HelperObjectsNewME()

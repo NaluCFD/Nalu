@@ -33,16 +33,16 @@ public:
     Realm &realm,
     stk::mesh::Part *part,
     EquationSystem *eqSystem,
-    const stk::topology &theTopo,
+    stk::mesh::EntityRank entityRank,
+    unsigned nodesPerEntity,
     bool interleaveMeViews = true);
   virtual ~AssembleElemSolverAlgorithm() {}
   virtual void initialize_connectivity();
   virtual void execute();
 
-  // topo for this instance
-  stk::topology topo_;
-
   ElemDataRequests dataNeededByKernels_;
+  stk::mesh::EntityRank entityRank_;
+  unsigned nodesPerEntity_;
   int rhsSize_;
   const bool interleaveMEViews_;
 };

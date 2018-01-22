@@ -150,7 +150,7 @@ namespace nalu{
     auto itc = solverAlgs.find(algName);
     bool createNewAlg = itc == solverAlgs.end();
     if (createNewAlg) {
-      auto* theSolverAlg = new AssembleElemSolverAlgorithm(eqSys.realm_, &part, &eqSys, topo, isNotNGP);
+      auto* theSolverAlg = new AssembleElemSolverAlgorithm(eqSys.realm_, &part, &eqSys, stk::topology::ELEMENT_RANK, topo.num_nodes(), isNotNGP);
       ThrowRequire(theSolverAlg != nullptr);
 
       NaluEnv::self().naluOutputP0() << "Created the following alg: " << algName << std::endl;

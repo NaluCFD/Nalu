@@ -109,14 +109,13 @@ public:
         auto& b = *buckets[team.league_rank()];
         const auto length = b.size();
 
-        std::vector<sierra::nalu::ScratchViews<double>*> prereqData(simdLen, nullptr);
+        std::vector<std::unique_ptr<sierra::nalu::ScratchViews<double> > > prereqData(simdLen);
 
         for (int simdIndex=0; simdIndex < simdLen; ++simdIndex) {
-          prereqData[simdIndex] = new sierra::nalu::ScratchViews<double>(
-            team, bulk_, AlgTraits::topo_, dataNeeded_);
+          prereqData[simdIndex] = std::unique_ptr<sierra::nalu::ScratchViews<double> >(new sierra::nalu::ScratchViews<double>(team, bulk_, AlgTraits::nodesPerElement_, dataNeeded_));
         }
         sierra::nalu::ScratchViews<DoubleType> simdPrereqData(
-          team, bulk_, AlgTraits::topo_, dataNeeded_);
+          team, bulk_, AlgTraits::nodesPerElement_, dataNeeded_);
 
         const stk::mesh::Entity* elemNodes[simdLen];
         stk::mesh::Bucket::size_type simdBucketLen = length / simdLen;
@@ -133,14 +132,12 @@ public:
             for (int simdIndex=0; simdIndex < simdElems; ++simdIndex) {
               element = b[bktIndex*simdLen + simdIndex];
               elemNodes[simdIndex] = bulk_.begin_nodes(element);
-              fill_pre_req_data(dataNeeded_, bulk_, AlgTraits::topo_, element,
-                                *prereqData[simdIndex], alsoProcessMEViews);
+              fill_pre_req_data(dataNeeded_, bulk_, element, *prereqData[simdIndex], alsoProcessMEViews);
             }
 
-            copy_and_interleave(prereqData, simdElems, simdPrereqData,
+            copy_and_interleave(prereqData.data(), simdElems, simdPrereqData,
                                 alsoProcessMEViews);
-            fill_master_element_views(dataNeeded_, bulk_, AlgTraits::topo_,
-                                      element, simdPrereqData);
+            fill_master_element_views(dataNeeded_, bulk_, simdPrereqData);
 
             func(simdPrereqData, meSCS_, meSCV_);
           });
