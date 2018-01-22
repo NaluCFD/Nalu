@@ -120,7 +120,7 @@ struct SharedMemData {
      : simdPrereqData(team, bulk, nodesPerEntity, dataNeededByKernels)
     {
         for(int simdIndex=0; simdIndex<simdLen; ++simdIndex) {
-          prereqData[simdIndex] = new ScratchViews<double>(team, bulk, nodesPerEntity, dataNeededByKernels);
+          prereqData[simdIndex] = std::unique_ptr<ScratchViews<double> >(new ScratchViews<double>(team, bulk, nodesPerEntity, dataNeededByKernels));
         }
         simdrhs = get_shmem_view_1D<DoubleType>(team, rhsSize);
         simdlhs = get_shmem_view_2D<DoubleType>(team, rhsSize, rhsSize);
@@ -131,7 +131,7 @@ struct SharedMemData {
         sortPermutation = get_int_shmem_view_1D(team, rhsSize);
     }
 
-    ScratchViews<double>* prereqData[simdLen];
+    std::unique_ptr<ScratchViews<double>> prereqData[simdLen];
     ScratchViews<DoubleType> simdPrereqData;
     SharedMemView<DoubleType*> simdrhs;
     SharedMemView<DoubleType**> simdlhs;
@@ -217,10 +217,6 @@ AssembleElemSolverAlgorithm::execute()
                     smdata.scratchIds, smdata.sortPermutation, smdata.rhs, smdata.lhs, __FILE__);
       }
     });
-
-    for(int simdIndex=0; simdIndex<simdLen; ++simdIndex) {
-       delete smdata.prereqData[simdIndex];
-    }
   });
 }
 

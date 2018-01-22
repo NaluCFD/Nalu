@@ -109,11 +109,10 @@ public:
         auto& b = *buckets[team.league_rank()];
         const auto length = b.size();
 
-        std::vector<sierra::nalu::ScratchViews<double>*> prereqData(simdLen, nullptr);
+        std::vector<std::unique_ptr<sierra::nalu::ScratchViews<double> > > prereqData(simdLen);
 
         for (int simdIndex=0; simdIndex < simdLen; ++simdIndex) {
-          prereqData[simdIndex] = new sierra::nalu::ScratchViews<double>(
-            team, bulk_, AlgTraits::nodesPerElement_, dataNeeded_);
+          prereqData[simdIndex] = std::unique_ptr<sierra::nalu::ScratchViews<double> >(new sierra::nalu::ScratchViews<double>(team, bulk_, AlgTraits::nodesPerElement_, dataNeeded_));
         }
         sierra::nalu::ScratchViews<DoubleType> simdPrereqData(
           team, bulk_, AlgTraits::nodesPerElement_, dataNeeded_);
@@ -142,10 +141,6 @@ public:
 
             func(simdPrereqData, meSCS_, meSCV_);
           });
-
-          for(int simdIndex=0; simdIndex<simdLen; ++simdIndex) {
-              delete prereqData[simdIndex];
-          }
       });
   }
 
