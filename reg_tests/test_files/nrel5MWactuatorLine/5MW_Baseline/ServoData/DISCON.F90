@@ -1,7 +1,7 @@
 !=======================================================================
 !SUBROUTINE DISCON ( avrSWAP, from_SC, to_SC, aviFAIL, accINFILE, avcOUTNAME, avcMSG ) BIND (C, NAME='DISCON')
 SUBROUTINE DISCON ( avrSWAP, aviFAIL, accINFILE, avcOUTNAME, avcMSG ) BIND (C, NAME='DISCON')
-!DEC$ ATTRIBUTES DLLEXPORT :: DISCON
+!DEC ATTRIBUTES DLLEXPORT :: DISCON
 
    ! This Bladed-style DLL controller is used to implement a variable-speed
    ! generator-torque controller and PI collective blade pitch controller for
