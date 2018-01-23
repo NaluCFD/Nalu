@@ -81,7 +81,6 @@ protected:
       double one = 1.0;
       double zero = 0.0;
       stk::mesh::put_field(*nodalPressureField, meta.universal_part(), 1, &one);
-      stk::mesh::put_field(*discreteLaplacianOfPressure, meta.universal_part(), 1, 0.0);
       stk::mesh::put_field(*discreteLaplacianOfPressure, meta.universal_part(), 1, &zero);
       stk::mesh::put_field(*scalarQ, meta.universal_part(), 1, &zero);
       stk::mesh::put_field(*diffFluxCoeff, meta.universal_part(), 1, &zero);
