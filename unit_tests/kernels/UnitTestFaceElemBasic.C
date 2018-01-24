@@ -41,7 +41,7 @@ public:
                  sierra::nalu::ScratchViews<DoubleType>& faceViews,
                  sierra::nalu::ScratchViews<DoubleType>& elemViews,
                  int numSimdFaces,
-                 const stk::mesh::ConnectivityOrdinal* elemFaceOrdinals)
+                 const int* elemFaceOrdinals)
     {
         sierra::nalu::SharedMemView<DoubleType*>& faceNodeIds = faceViews.get_scratch_view_1D(*idField_);
         sierra::nalu::SharedMemView<DoubleType*>& elemNodeIds = elemViews.get_scratch_view_1D(*idField_);
@@ -148,7 +148,7 @@ public:
           sierra::nalu::ScratchViews<DoubleType> simdFaceViews(team, bulk, nodesPerEntity_, faceDataNeeded_);
           sierra::nalu::ScratchViews<DoubleType> simdElemViews(team, bulk, nodesPerElem, elemDataNeeded_);
 
-          stk::mesh::ConnectivityOrdinal elemFaceOrdinals[simdLen] = {stk::mesh::INVALID_CONNECTIVITY_ORDINAL};
+          int elemFaceOrdinals[simdLen] = {-1};
           const size_t bucketLen   = b.size();
           const size_t simdBucketLen = get_simd_bucket_length(bucketLen);
 
@@ -170,7 +170,7 @@ public:
             copy_and_interleave(faceViews, numSimdFaces, simdFaceViews, false);
             copy_and_interleave(elemViews, numSimdFaces, simdElemViews, false);
 
-            fill_master_element_views(faceDataNeeded_, bulk, simdFaceViews);
+            fill_master_element_views(faceDataNeeded_, bulk, simdFaceViews, elemFaceOrdinals);
             fill_master_element_views(elemDataNeeded_, bulk, simdElemViews);
 
             func(/*other args here?*/ simdFaceViews, simdElemViews, numSimdFaces, elemFaceOrdinals);
@@ -218,7 +218,7 @@ TEST_F(Hex8Mesh, faceElemBasic)
           [&](sierra::nalu::ScratchViews<DoubleType>& faceViews,
               sierra::nalu::ScratchViews<DoubleType>& elemViews,
               int numSimdFaces,
-              const stk::mesh::ConnectivityOrdinal* elemFaceOrdinals)
+              const int* elemFaceOrdinals)
       {
           faceElemKernel.execute(faceViews, elemViews, numSimdFaces, elemFaceOrdinals);
       });
