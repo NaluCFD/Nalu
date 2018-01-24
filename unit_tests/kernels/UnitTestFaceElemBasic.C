@@ -76,14 +76,13 @@ calculate_shared_mem_bytes_per_thread(int lhsSize, int rhsSize, int scratchIdsSi
                                       sierra::nalu::ElemDataRequests& faceDataNeeded,
                                       sierra::nalu::ElemDataRequests& elemDataNeeded)
 {
-    int bytes_per_thread = (rhsSize + lhsSize)*sizeof(double) + (2*scratchIdsSize)*sizeof(int) +
-                           sierra::nalu::get_num_bytes_pre_req_data<double>(faceDataNeeded, nDim)
-                           +
-                           (rhsSize + lhsSize)*sizeof(double) + (2*scratchIdsSize)*sizeof(int) +
-                           sierra::nalu::get_num_bytes_pre_req_data<double>(elemDataNeeded, nDim);
+    int bytes_per_thread = (rhsSize + lhsSize)*sizeof(double) + (2*scratchIdsSize)*sizeof(int)
+                         + sierra::nalu::get_num_bytes_pre_req_data<double>(faceDataNeeded, nDim)
+                         + sierra::nalu::get_num_bytes_pre_req_data<double>(elemDataNeeded, nDim);
     bytes_per_thread *= 2*simdLen;
     return bytes_per_thread;
 }
+
 size_t get_simd_bucket_length(size_t bktLength)
 {
     size_t simdBucketLen = bktLength/simdLen;
