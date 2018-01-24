@@ -8,7 +8,6 @@
 #ifndef UNITTESTKERNELUTILS_H
 #define UNITTESTKERNELUTILS_H
 
-#include <gtest/gtest.h>
 #include "UnitTestUtils.h"
 
 #include "SolutionOptions.h"
@@ -22,6 +21,7 @@
 
 #include <gtest/gtest.h>
 
+#include <mpi.h>
 #include <vector>
 #include <memory>
 #include <iostream>

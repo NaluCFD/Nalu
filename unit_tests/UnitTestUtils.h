@@ -17,6 +17,9 @@
 #include <master_element/Hex8CVFEM.h>
 #include <master_element/MasterElement.h>
 
+#include <gtest/gtest.h>
+
+typedef stk::mesh::Field<double> IdFieldType;
 typedef stk::mesh::Field<double> ScalarFieldType;
 typedef stk::mesh::Field<double,stk::mesh::Cartesian> VectorFieldType;
 typedef stk::mesh::Field<double,stk::mesh::Cartesian,stk::mesh::Cartesian> TensorFieldType;
@@ -73,6 +76,7 @@ protected:
       discreteLaplacianOfPressure(&meta.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "discreteLaplacian")),
       scalarQ(&meta.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "scalarQ")),
       diffFluxCoeff(&meta.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "diffFluxCoeff")),
+      idField(&meta.declare_field<IdFieldType>(stk::topology::NODE_RANK, "idField")),
       partVec(),
       coordField(nullptr),
       exactLaplacian(0.0)
@@ -84,6 +88,7 @@ protected:
       stk::mesh::put_field(*discreteLaplacianOfPressure, meta.universal_part(), 1, &zero);
       stk::mesh::put_field(*scalarQ, meta.universal_part(), 1, &zero);
       stk::mesh::put_field(*diffFluxCoeff, meta.universal_part(), 1, &zero);
+      stk::mesh::put_field(*idField, meta.universal_part(), 1);
     }
 
     ~Hex8Mesh() {}
@@ -94,7 +99,7 @@ protected:
     }
 
     void fill_mesh_and_initialize_test_fields(const std::string& meshSpec = "generated:20x20x20")
-    {   
+    {
         fill_mesh(meshSpec);
 
         partVec = {meta.get_part("block_1")};
@@ -120,6 +125,7 @@ protected:
     ScalarFieldType* discreteLaplacianOfPressure;
     ScalarFieldType* scalarQ;
     ScalarFieldType* diffFluxCoeff;
+    IdFieldType* idField;
     stk::mesh::PartVector partVec;
     const VectorFieldType* coordField;
     double exactLaplacian; 
