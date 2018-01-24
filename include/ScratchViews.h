@@ -58,7 +58,7 @@ public:
     MasterElement* meSCS,
     MasterElement* meSCV,
     MasterElement* meFEM,
-    int faceOrdinal = -1);
+    const int* faceOrdinals = nullptr);
 
   void fill_master_element_views_new_me(
     const std::set<ELEM_DATA_NEEDED>& dataEnums,
@@ -67,7 +67,7 @@ public:
     MasterElement* meSCS,
     MasterElement* meSCV,
     MasterElement* meFEM,
-    int faceOrdinal = -1);
+    const int* faceOrdinals = nullptr);
 
   SharedMemView<T**> fc_areav;
   SharedMemView<T**> scs_areav;
@@ -328,7 +328,7 @@ void MasterElementViews<T>::fill_master_element_views(
   MasterElement* meSCS,
   MasterElement* meSCV,
   MasterElement* meFEM,
-  int faceOrdinal)
+  const int* faceOrdinals)
 {
   // Guard against calling MasterElement methods on SIMD data structures
   static_assert(std::is_same<T, double>::value,
@@ -351,7 +351,8 @@ void MasterElementViews<T>::fill_master_element_views(
       case SCS_FACE_GRAD_OP:
         ThrowRequireMsg(meSCS != nullptr, "ERROR, meSCS needs to be non-null if SCS_FACE_GRAD_OP is requested.");
         ThrowRequireMsg(coordsView != nullptr, "ERROR, coords null but SCS_GRAD_OP requested.");
-        meSCS->face_grad_op(1, faceOrdinal, &((*coordsView)(0,0)), &dndx_fc_scs(0,0,0), &deriv_fc_scs(0,0,0), &det_j_fc_scs(0));
+        //faceOrdinals is an array of length stk::simd::ndoubles. For non-kokkos master-elem, just pick off first one:
+        meSCS->face_grad_op(1, faceOrdinals[0], &((*coordsView)(0,0)), &dndx_fc_scs(0,0,0), &deriv_fc_scs(0,0,0), &det_j_fc_scs(0));
         break;
       case SCS_GRAD_OP:
         ThrowRequireMsg(meSCS != nullptr, "ERROR, meSCS needs to be non-null if SCS_GRAD_OP is requested.");
@@ -403,7 +404,7 @@ void MasterElementViews<T>::fill_master_element_views_new_me(
   MasterElement* meSCS,
   MasterElement* meSCV,
   MasterElement* meFEM,
-  int faceOrdinal)
+  const int* faceOrdinals)
 {
   for(ELEM_DATA_NEEDED data : dataEnums) {
     switch(data)
@@ -571,7 +572,7 @@ void fill_pre_req_data(ElemDataRequests& dataNeeded,
 void fill_master_element_views(ElemDataRequests& dataNeeded,
                                const stk::mesh::BulkData& bulkData,
                                ScratchViews<DoubleType>& prereqData,
-                               int faceOrdinal = -1);
+                               const int* faceOrdinals = nullptr);
 
 template<typename T = double>
 int get_num_bytes_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDim)
