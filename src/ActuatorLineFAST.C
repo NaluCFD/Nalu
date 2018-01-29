@@ -876,19 +876,30 @@ ActuatorLineFAST::create_actuator_line_point_info_map() {
 	  for ( int j = 0; j < nDim; ++j )
 	    centroidCoords[j] = currentCoords[j];
 
-	  // create the bounding point sphere and push back
-	  boundingSphere theSphere( Sphere(centroidCoords, searchRadius), theIdent);
-	  boundingSphereVec_.push_back(theSphere);
+          // create the bounding point sphere and push back
+          boundingSphere theSphere( Sphere(centroidCoords, searchRadius), theIdent);
+          boundingSphereVec_.push_back(theSphere);
 
-	  // create the point info and push back to map
+          // create the point info and push back to map
           Coordinates epsilon;
           switch (FAST.getForceNodeType(iTurb, np)) {
           case fast::HUB: {
               // Calculate epsilon for hub node based on cd and area here
               double nac_area = FAST.get_nacelleArea(iTurb);
               double nac_cd = FAST.get_nacelleCd(iTurb);
+
+              // Print the variables read 
+              std::cout<<std::fixed<<"Area nacelle "<< nac_area <<std::endl;
+              std::cout<<std::fixed<<"Cd nacelle "<< nac_cd <<std::endl;
+
+              // The constant pi
+              const double pi = acos(-1.0);
+
               for (int j=0; j<nDim; j++) {
-                  double tmpEps = 0.0; //Some model that uses cd and area. Same for all dimensions
+                  // This model is used to set the momentum thickness
+                  // of the wake (Martinez-Tossas PhD Thesis 2017)
+                  double tmpEps = std::sqrt(2.0 / pi * nac_cd * nac_area); 
+                  std::cout<<"Epsilon nacelle "<< tmpEps<<std::endl;
                   epsilon.x_ = tmpEps;
                   epsilon.y_ = tmpEps;
                   epsilon.z_ = tmpEps;
