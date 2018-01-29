@@ -571,9 +571,9 @@ PeriodicManager::manage_ghosting_object()
       if (realm_.hypreIsActive_) {
         auto* elems = bulk_data.begin_elements(rangeNode);
         int nelems = bulk_data.num_elements(rangeNode);
-        for (int i=0; i<nelems; i++)
-          if (bulk_data.bucket(elems[i]).owned())
-            sendElems.push_back(stk::mesh::EntityProc(elems[i], domainProc));
+        for (int ie=0; ie<nelems; ie++)
+          if (bulk_data.bucket(elems[ie]).owned())
+            sendElems.push_back(stk::mesh::EntityProc(elems[ie], domainProc));
       }
     }
     else if ((theRank == domainProc) && (theRank != rangeProc)) {
@@ -583,9 +583,9 @@ PeriodicManager::manage_ghosting_object()
       if (realm_.hypreIsActive_) {
         auto* elems = bulk_data.begin_elements(domainNode);
         int nelems = bulk_data.num_elements(domainNode);
-        for (int i=0; i<nelems; i++)
-          if (bulk_data.bucket(elems[i]).owned())
-            sendElems.push_back(stk::mesh::EntityProc(elems[i], rangeProc));
+        for (int ie=0; ie<nelems; ie++)
+          if (bulk_data.bucket(elems[ie]).owned())
+            sendElems.push_back(stk::mesh::EntityProc(elems[ie], rangeProc));
       }
     }
   }
