@@ -68,8 +68,6 @@ AssembleElemSolverAlgorithm::initialize_connectivity()
   eqSystem_->linsys_->buildElemToNodeGraph(partVec_);
 }
 
-static constexpr int simdLen = stk::simd::ndoubles;
-
 int
 calculate_shared_mem_bytes_per_thread(int lhsSize, int rhsSize, int scratchIdsSize, int nDim,
                                       ElemDataRequests& dataNeededByKernels)
@@ -111,44 +109,12 @@ size_t get_simd_bucket_length(size_t bktLength)
     return simdBucketLen;
 }
 
-struct SharedMemData {
-    SharedMemData(const sierra::nalu::TeamHandleType& team,
-         const stk::mesh::BulkData& bulk,
-         const ElemDataRequests& dataNeededByKernels,
-         unsigned nodesPerEntity,
-         unsigned rhsSize)
-     : simdPrereqData(team, bulk, nodesPerEntity, dataNeededByKernels)
-    {
-        for(int simdIndex=0; simdIndex<simdLen; ++simdIndex) {
-          prereqData[simdIndex] = std::unique_ptr<ScratchViews<double> >(new ScratchViews<double>(team, bulk, nodesPerEntity, dataNeededByKernels));
-        }
-        simdrhs = get_shmem_view_1D<DoubleType>(team, rhsSize);
-        simdlhs = get_shmem_view_2D<DoubleType>(team, rhsSize, rhsSize);
-        rhs = get_shmem_view_1D<double>(team, rhsSize);
-        lhs = get_shmem_view_2D<double>(team, rhsSize, rhsSize);
-
-        scratchIds = get_int_shmem_view_1D(team, rhsSize);
-        sortPermutation = get_int_shmem_view_1D(team, rhsSize);
-    }
-
-    std::unique_ptr<ScratchViews<double>> prereqData[simdLen];
-    ScratchViews<DoubleType> simdPrereqData;
-    SharedMemView<DoubleType*> simdrhs;
-    SharedMemView<DoubleType**> simdlhs;
-    SharedMemView<double*> rhs;
-    SharedMemView<double**> lhs;
-
-    SharedMemView<int*> scratchIds;
-    SharedMemView<int*> sortPermutation;
-};
-
 //--------------------------------------------------------------------------
 //-------- execute ---------------------------------------------------------
 //--------------------------------------------------------------------------
 void
 AssembleElemSolverAlgorithm::execute()
 {
-  stk::mesh::MetaData & meta_data = realm_.meta_data();
   stk::mesh::BulkData & bulk_data = realm_.bulk_data();
 
   // set any data
@@ -156,53 +122,8 @@ AssembleElemSolverAlgorithm::execute()
   for ( size_t i = 0; i < activeKernelsSize; ++i )
     activeKernels_[i]->setup(*realm_.timeIntegrator_);
 
-  const int lhsSize = rhsSize_*rhsSize_;
-  const int scratchIdsSize = rhsSize_;
-
-  // fixed size for this homogeneous algorithm
-  const int bytes_per_team = 0;
-  const int bytes_per_thread = calculate_shared_mem_bytes_per_thread(lhsSize, rhsSize_, scratchIdsSize,
-                                                                   meta_data.spatial_dimension(), dataNeededByKernels_);
-
-  // define some common selectors
-  stk::mesh::Selector s_locally_owned_union =
-          meta_data.locally_owned_part() & stk::mesh::selectUnion(partVec_);
-
-  stk::mesh::BucketVector const& elem_buckets =
-          realm_.get_buckets(entityRank_, s_locally_owned_union );
-
-  auto team_exec = sierra::nalu::get_team_policy(elem_buckets.size(), bytes_per_team, bytes_per_thread);
-  Kokkos::parallel_for(team_exec, [&](const sierra::nalu::TeamHandleType& team)
+  run_algorithm(bulk_data, [&](SharedMemData& smdata, unsigned nodesPerEntity, const stk::mesh::Entity* entityNodes[])
   {
-    stk::mesh::Bucket & b = *elem_buckets[team.league_rank()];
-    
-    ThrowAssertMsg(b.topology().num_nodes() == (unsigned)nodesPerEntity_,
-                   "AssembleElemSolverAlgorithm expected nodesPerEntity_ = "
-                   <<nodesPerEntity_<<", but b.topology().num_nodes() = "<<b.topology().num_nodes());
-
-    SharedMemData smdata(team, bulk_data, dataNeededByKernels_, nodesPerEntity_, rhsSize_);
-
-    const stk::mesh::Entity* entityNodes[simdLen];
-    const size_t bucketLen   = b.size();
-    const size_t simdBucketLen = get_simd_bucket_length(bucketLen);
-
-    Kokkos::parallel_for(Kokkos::TeamThreadRange(team, simdBucketLen), [&](const size_t& bktIndex)
-    {
-      int numSimdElems = get_next_num_elems_simd(bktIndex, bucketLen);
-
-      for(int simdElemIndex=0; simdElemIndex<numSimdElems; ++simdElemIndex) {
-        stk::mesh::Entity element = b[bktIndex*simdLen + simdElemIndex];
-        entityNodes[simdElemIndex] = bulk_data.begin_nodes(element);
-        fill_pre_req_data(dataNeededByKernels_, bulk_data, element,
-                          *smdata.prereqData[simdElemIndex], interleaveMEViews_);
-      }
-
-      copy_and_interleave(smdata.prereqData, numSimdElems, smdata.simdPrereqData, interleaveMEViews_);
-
-      if (!interleaveMEViews_) {
-        fill_master_element_views(dataNeededByKernels_, bulk_data, smdata.simdPrereqData);
-      }
-
       set_zero(smdata.simdrhs.data(), smdata.simdrhs.size());
       set_zero(smdata.simdlhs.data(), smdata.simdlhs.size());
 
@@ -210,13 +131,12 @@ AssembleElemSolverAlgorithm::execute()
       for ( size_t i = 0; i < activeKernelsSize; ++i )
         activeKernels_[i]->execute( smdata.simdlhs, smdata.simdrhs, smdata.simdPrereqData );
 
-      for(int simdElemIndex=0; simdElemIndex<numSimdElems; ++simdElemIndex) {
+      for(int simdElemIndex=0; simdElemIndex<smdata.numSimdElems; ++simdElemIndex) {
         extract_vector_lane(smdata.simdrhs, simdElemIndex, smdata.rhs);
         extract_vector_lane(smdata.simdlhs, simdElemIndex, smdata.lhs);
-        apply_coeff(nodesPerEntity_, entityNodes[simdElemIndex],
+        apply_coeff(nodesPerEntity, entityNodes[simdElemIndex],
                     smdata.scratchIds, smdata.sortPermutation, smdata.rhs, smdata.lhs, __FILE__);
       }
-    });
   });
 }
 

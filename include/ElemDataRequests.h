@@ -153,6 +153,17 @@ public:
   MasterElement *get_cvfem_surface_me() const {return meSCS_;}
   MasterElement *get_fem_volume_me() const {return meFEM_;}
 
+  ElemDataRequests& operator=(const ElemDataRequests& src)
+  {
+    dataEnums = src.dataEnums;
+    coordsFields_ = src.coordsFields_;
+    fields = src.fields;
+    meSCS_ = src.meSCS_;
+    meSCV_ = src.meSCV_;
+    meFEM_ = src.meFEM_;
+    return *this;
+  }
+
 private:
   std::array<std::set<ELEM_DATA_NEEDED>, MAX_COORDS_TYPES> dataEnums;
   std::map<COORDS_TYPES, const stk::mesh::FieldBase*> coordsFields_;
