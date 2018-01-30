@@ -162,8 +162,7 @@ public:
               sierra::nalu::fill_pre_req_data(faceDataNeeded_, bulk, face, *faceViews[simdFaceIndex], false);
 
               const stk::mesh::Entity* elems = bulk.begin_elements(face);
-              unsigned numElems = bulk.num_elements(face);
-              ThrowAssertMsg(numElems==1, "Expecting just 1 element attaced to face!");
+              ThrowAssertMsg(bulk.num_elements(face)==1, "Expecting just 1 element attaced to face!");
               sierra::nalu::fill_pre_req_data(elemDataNeeded_, bulk, elems[0], *elemViews[simdFaceIndex], false);
             }
 
