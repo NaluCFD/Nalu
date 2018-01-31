@@ -282,7 +282,7 @@ TEST_F(HybridTurbKernelHex8Mesh, MomentumHybridTurbElemKernel)
   solnOpts_.externalMeshDeformation_ = false;
   solnOpts_.initialize_turbulence_constants();
 
-  unit_test_utils::HelperObjectsNewME helperObjs(
+  unit_test_utils::HelperObjects helperObjs(
     bulk_, stk::topology::HEX_8, 3, partVec_[0]);
 
   // Initialize the kernel

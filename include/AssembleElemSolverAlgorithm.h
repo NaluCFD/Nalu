@@ -11,12 +11,10 @@
 
 #include<SolverAlgorithm.h>
 #include<ElemDataRequests.h>
-#include<FieldTypeDef.h>
 
 namespace stk {
 namespace mesh {
 class Part;
-class Topology;
 }
 }
 
@@ -24,7 +22,6 @@ namespace sierra{
 namespace nalu{
 
 class Realm;
-class MasterElement;
 
 class AssembleElemSolverAlgorithm : public SolverAlgorithm
 {
@@ -51,4 +48,3 @@ public:
 } // namespace Sierra
 
 #endif
-
