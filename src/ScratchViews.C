@@ -88,15 +88,18 @@ void gather_elem_node_field(const stk::mesh::FieldBase& field,
 int get_num_scalars_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDim)
 {
   /* master elements are allowed to be null if they are not required */
+  MasterElement *meFC  = dataNeededBySuppAlgs.get_cvfem_face_me();
   MasterElement *meSCS = dataNeededBySuppAlgs.get_cvfem_surface_me();
   MasterElement *meSCV = dataNeededBySuppAlgs.get_cvfem_volume_me();
   MasterElement *meFEM = dataNeededBySuppAlgs.get_fem_volume_me();
   
   const int nodesPerElem = meSCS != nullptr ? meSCS->nodesPerElement_ 
     : meSCV != nullptr ? meSCV->nodesPerElement_ 
-    : meFEM != nullptr ? meFEM->nodesPerElement_ 
+    : meFEM != nullptr ? meFEM->nodesPerElement_
+    : meFC  != nullptr ? meFC->nodesPerElement_
     : 0;
 
+  const int numFaceIp = meFC != nullptr ? meFC->numIntPoints_ : 0;
   const int numScsIp = meSCS != nullptr ? meSCS->numIntPoints_ : 0;
   const int numScvIp = meSCV != nullptr ? meSCV->numIntPoints_ : 0;
   const int numFemIp = meFEM != nullptr ? meFEM->numIntPoints_ : 0;
@@ -117,66 +120,81 @@ int get_num_scalars_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDi
     }
     numScalars += entitiesPerElem*scalarsPerEntity;
   }
-  
+
   for (auto it = dataNeededBySuppAlgs.get_coordinates_map().begin();
        it != dataNeededBySuppAlgs.get_coordinates_map().end(); ++it)
   {
     const std::set<ELEM_DATA_NEEDED>& dataEnums =
       dataNeededBySuppAlgs.get_data_enums(it->first);
-    int dndxLength = 0, gUpperLength = 0, gLowerLength = 0;
+    int dndxLength = 0, dndxLengthFC = 0, gUpperLength = 0, gLowerLength = 0;
 
     // Updated logic for data sharing of deriv and det_j
-    bool needDeriv = false; bool needDerivScv = false; bool needDerivFem = false;
-    bool needDetj = false; bool needDetjScv = false; bool needDetjFem = false;
+    bool needDeriv = false; bool needDerivScv = false; bool needDerivFem = false; bool needDerivFC = false;
+    bool needDetj = false; bool needDetjScv = false; bool needDetjFem = false; bool needDetjFC = false;
 
     for(ELEM_DATA_NEEDED data : dataEnums) {
       switch(data)
       {
-      case SCS_AREAV: 
-        numScalars += nDim * numScsIp;
-        break;
-      case SCS_GRAD_OP:
-      case SCS_SHIFTED_GRAD_OP:
-        dndxLength = nodesPerElem*numScsIp*nDim;
-        needDeriv = true;
-        needDetj = true;
-        numScalars += dndxLength;
-        break;
-      case SCV_VOLUME: 
-        numScalars += numScvIp;
-        break;
-      case SCV_GRAD_OP:
-        dndxLength = nodesPerElem*numScvIp*nDim;
-        needDerivScv = true;
-        needDetjScv = true;
-        numScalars += dndxLength;
-        break;
-      case SCS_GIJ: 
-        gUpperLength = nDim*nDim*numScsIp;
-        gLowerLength = nDim*nDim*numScsIp;
-        needDeriv = true;
-        numScalars += (gUpperLength + gLowerLength );
-        break;
-      case FEM_GRAD_OP:
-      case FEM_SHIFTED_GRAD_OP:
-        dndxLength = nodesPerElem*numFemIp*nDim;
-        needDerivFem = true;
-        needDetjFem = true;
-        numScalars += dndxLength;
-        break;
-      default: break;
+        case FC_AREAV:
+          numScalars += nDim * numFaceIp;
+          break;
+        case SCS_AREAV:
+          numScalars += nDim * numScsIp;
+          break;
+        case SCS_FACE_GRAD_OP:
+          dndxLengthFC = nodesPerElem*numFaceIp*nDim;
+          needDerivFC = true;
+          needDetjFC = true;
+          numScalars += dndxLengthFC;
+          break;
+        case SCS_GRAD_OP:
+        case SCS_SHIFTED_GRAD_OP:
+          dndxLength = nodesPerElem*numScsIp*nDim;
+          needDeriv = true;
+          needDetj = true;
+          numScalars += dndxLength;
+          break;
+        case SCV_VOLUME:
+          numScalars += numScvIp;
+          break;
+        case SCV_GRAD_OP:
+          dndxLength = nodesPerElem*numScvIp*nDim;
+          needDerivScv = true;
+          needDetjScv = true;
+          numScalars += dndxLength;
+          break;
+        case SCS_GIJ:
+          gUpperLength = nDim*nDim*numScsIp;
+          gLowerLength = nDim*nDim*numScsIp;
+          needDeriv = true;
+          numScalars += (gUpperLength + gLowerLength );
+          break;
+        case FEM_GRAD_OP:
+        case FEM_SHIFTED_GRAD_OP:
+          dndxLength = nodesPerElem*numFemIp*nDim;
+          needDerivFem = true;
+          needDetjFem = true;
+          numScalars += dndxLength;
+          break;
+        default: break;
       }
     }
-      
+
+    if (needDerivFC)
+      numScalars += nodesPerElem*numFaceIp*nDim;
+
     if (needDeriv)
       numScalars += nodesPerElem*numScsIp*nDim;
-    
+
     if (needDerivScv)
       numScalars += nodesPerElem*numScvIp*nDim;
     
     if (needDerivFem)
       numScalars += nodesPerElem*numFemIp*nDim;
     
+    if (needDetjFC)
+      numScalars += numFaceIp;
+
     if (needDetj)
       numScalars += numScsIp;
     
@@ -194,13 +212,13 @@ int get_num_scalars_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDi
 void fill_pre_req_data(
   ElemDataRequests& dataNeeded,
   const stk::mesh::BulkData& bulkData,
-  stk::topology topo,
   stk::mesh::Entity elem,
   ScratchViews<double>& prereqData,
   bool fillMEViews)
 {
-  int nodesPerElem = topo.num_nodes();
+  int nodesPerElem = bulkData.num_nodes(elem);
 
+  MasterElement *meFC  = dataNeeded.get_cvfem_face_me();
   MasterElement *meSCS = dataNeeded.get_cvfem_surface_me();
   MasterElement *meSCV = dataNeeded.get_cvfem_volume_me();
   MasterElement *meFEM = dataNeeded.get_fem_volume_me();
@@ -263,7 +281,7 @@ void fill_pre_req_data(
       SharedMemView<double**>* coordsView = &prereqData.get_scratch_view_2D(*coordField);
       auto& meData = prereqData.get_me_views(cType);
   
-      meData.fill_master_element_views(dataEnums, coordsView, meSCS, meSCV, meFEM);
+      meData.fill_master_element_views(dataEnums, coordsView, meFC, meSCS, meSCV, meFEM);
     }
   }
 }
@@ -271,10 +289,10 @@ void fill_pre_req_data(
 void fill_master_element_views(
   ElemDataRequests& dataNeeded,
   const stk::mesh::BulkData& bulkData,
-  stk::topology topo,
-  stk::mesh::Entity elem,
-  ScratchViews<DoubleType>& prereqData)
+  ScratchViews<DoubleType>& prereqData,
+  const int* faceOrdinals)
 {
+    MasterElement *meFC  = dataNeeded.get_cvfem_face_me();
     MasterElement *meSCS = dataNeeded.get_cvfem_surface_me();
     MasterElement *meSCV = dataNeeded.get_cvfem_volume_me();
     MasterElement *meFEM = dataNeeded.get_fem_volume_me();
@@ -288,7 +306,7 @@ void fill_master_element_views(
       SharedMemView<DoubleType**>* coordsView = &prereqData.get_scratch_view_2D(*coordField);
       auto& meData = prereqData.get_me_views(cType);
   
-      meData.fill_master_element_views_new_me(dataEnums, coordsView, meSCS, meSCV, meFEM);
+      meData.fill_master_element_views_new_me(dataEnums, coordsView, meFC, meSCS, meSCV, meFEM, faceOrdinals);
     }
 }
 

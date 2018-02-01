@@ -23,12 +23,19 @@ function(add_test_r_rst testname np)
     file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/test_files/${testname})
 endfunction(add_test_r_rst)
 
-# Regression test with two restarts
-function(add_test_r_rst2 testname np)
+# Verification test with three resolutions
+function(add_test_v3 testname np)
     add_test(${testname} sh -c "mpiexec -np ${np} ${CMAKE_BINARY_DIR}/${nalu_ex_name} -i ${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/${testname}_R0.i -o ${testname}_R0.log && mpiexec -np ${np} ${CMAKE_BINARY_DIR}/${nalu_ex_name} -i ${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/${testname}_R1.i -o ${testname}_R1.log && mpiexec -np ${np} ${CMAKE_BINARY_DIR}/${nalu_ex_name} -i ${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/${testname}_R2.i -o ${testname}_R2.log && python ${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/norms.py")
-    set_tests_properties(${testname} PROPERTIES TIMEOUT 1500 PROCESSORS ${np} WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test_files/${testname}" LABELS "regression")
+    set_tests_properties(${testname} PROPERTIES TIMEOUT 1500 PROCESSORS ${np} WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test_files/${testname}" LABELS "verification")
     file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/test_files/${testname})
-endfunction(add_test_r_rst2)
+endfunction(add_test_v3)
+
+# Verification test with two resolutions
+function(add_test_v2 testname np)
+    add_test(${testname} sh -c "mpiexec -np ${np} ${CMAKE_BINARY_DIR}/${nalu_ex_name} -i ${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/${testname}_R0.i -o ${testname}_R0.log && mpiexec -np ${np} ${CMAKE_BINARY_DIR}/${nalu_ex_name} -i ${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/${testname}_R1.i -o ${testname}_R1.log && python ${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/norms.py")
+    set_tests_properties(${testname} PROPERTIES TIMEOUT 1500 PROCESSORS ${np} WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test_files/${testname}" LABELS "verification")
+    file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/test_files/${testname})
+endfunction(add_test_v2)
 
 # Regression test that runs with different numbers of processes
 function(add_test_r_np testname np)
@@ -65,14 +72,13 @@ endfunction(add_test_r_cat)
 #=============================================================================
 # Regression tests
 #=============================================================================
-
-add_test_r_cat(ablForcingEdge 8 11)
+add_test_r_cat(ablNeutralEdge 8 11)
 add_test_r(ablStableElem 4)
 add_test_r_rst(ablUnstableEdge 4)
+add_test_r(ablUnstableEdge_ra 4)
 add_test_r(actuatorLine 8)
 add_test_r(concentricRad 4)
 add_test_r(cvfemHC 8)
-add_test_r_rst2(cvfemHexHC_P3 8)
 add_test_r(dgMMS 6)
 add_test_r(dgNonConformal 4)
 add_test_r(dgNonConformal3dFluids 4)
@@ -104,7 +110,6 @@ add_test_r(heatedWaterChannelElem 4)
 add_test_r_rst(heliumPlume 8)
 add_test_r(hoHelium 8)
 add_test_r(hoVortex 2)
-add_test_r_rst2(hoVortex_P2 8)
 add_test_r(inputFireEdgeUpwind 4)
 add_test_r(inputFireElem 4)
 add_test_r(kovasznay_P5 1)
@@ -130,28 +135,37 @@ add_test_r_np(periodic3dEdge 4)
 add_test_r_np(periodic3dEdge 8)
 add_test_r(quad9HC 2)
 add_test_r_cat(steadyTaylorVortex 4 6)
-add_test_r_rst2(steadyTaylorVortex_P4 8)
 add_test_r(variableDensNonIso 2)
 add_test_r(variableDensNonUniform 2)
 add_test_r(variableDensNonUniform_P5 8)
 if(ENABLE_OPENFAST)
    add_test_r(nrel5MWactuatorLine 4)
+   add_subdirectory(test_files/nrel5MWactuatorLine)
 endif(ENABLE_OPENFAST)
 if(ENABLE_TIOGA)
   add_test_r(oversetSphereTIOGA 8)
 endif(ENABLE_TIOGA)
+if(ENABLE_HYPRE)
+  add_test_r(dgncThreeBladeHypre 2)
+endif(ENABLE_HYPRE)
+
+#=============================================================================
+# Convergence tests
+#=============================================================================
+add_test_v2(BoussinesqNonIso 8)
+add_test_v3(cvfemHexHC_P3 8)
+add_test_v3(hoVortex_P2 8)
+add_test_v3(steadyTaylorVortex_P4 8)
 
 #=============================================================================
 # Unit tests
 #=============================================================================
-
 add_test_u(unitTest1 1)
 add_test_u(unitTest2 2)
 
 #=============================================================================
 # Performance tests
 #=============================================================================
-
 add_test_p(oversetHybrid 8)
 add_test_p(uqSlidingMeshDG 8)
 add_test_p(waleElemXflowMixFrac3.5m 8)

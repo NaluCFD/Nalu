@@ -13,7 +13,7 @@ if(RES_LEN EQUAL 0)
 endif()
 
 # Set TOLERANCE for testing
-message("-- CMAKE_SYSTEM_NAME     = ${CMAKE_SYSTEM_NAME}")
+message("-- CMAKE_SYSTEM_NAME = ${CMAKE_SYSTEM_NAME}")
 message("-- CMAKE_CXX_COMPILER_ID = ${CMAKE_CXX_COMPILER_ID}")
 if(NOT ${TEST_TOLERANCE} STREQUAL "")
   set(TOLERANCE ${TEST_TOLERANCE}) # User defined

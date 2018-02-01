@@ -99,16 +99,32 @@ entries:
 
 .. inpfile:: linear_solvers.type
 
-   The type of solver library used. Currently only one option (``tpetra``) is supported.
+   The type of solver library used.
+
+   ================== ==========================================================
+   Type               Description
+   ================== ==========================================================
+   ``tpetra``         Tpetra data structures and Belos solvers/preconditioners
+   ``hypre``          Hypre data structures and Hypre solver/preconditioners
+   ================== ==========================================================
 
 .. inpfile:: linear_solvers.method
 
-   The solver used for solving the linear system. Valid options are: ``gmres``,
-   ``biCgStab``, ``cg``.
+   The solver used for solving the linear system.
+
+   When :inpfile:`linear_solvers.type` is ``tpetra`` the valid options are:
+   ``gmres``, ``biCgStab``, ``cg``. For ``hypre`` the valid
+   options are ``hypre_boomerAMG`` and ``hypre_gmres``.
+
+**Options Common to both Solver Libraries**
 
 .. inpfile:: linear_solvers.preconditioner
 
-   The type of preconditioner used. Valid options are ``sgs``, ``mt_sgs``, ``muelu``.
+   The type of preconditioner used.
+
+   When :inpfile:`linear_solvers.type` is ``tpetra`` the valid options are
+   ``sgs``, ``mt_sgs``, ``muelu``. For ``hypre`` the valid
+   options are ``boomerAMG`` or ``none``.
 
 .. inpfile:: linear_solvers.tolerance
 
@@ -126,17 +142,19 @@ entries:
 
    Verbosity of output from the linear solver during execution.
 
-.. inpfile:: linear_solvers.muelu_xml_file_name
-
-   Only used when the :inpfile:`linear_solvers.preconditioner` is set to
-   ``muelu`` and specifies the path to the XML filename that contains various
-   configuration parameters for Trilinos MueLu package.
-
 .. inpfile:: linear_solvers.write_matrix_files
 
    A boolean flag indicating whether the matrix, the right hand side, and the
    solution vector are written to files during execution. The matrix files are
    written in MatrixMarket format. The default value is ``no``.
+
+**Additional parameters for Belos Solver/Preconditioners**
+
+.. inpfile:: linear_solvers.muelu_xml_file_name
+
+   Only used when the :inpfile:`linear_solvers.preconditioner` is set to
+   ``muelu`` and specifies the path to the XML filename that contains various
+   configuration parameters for Trilinos MueLu package.
 
 .. inpfile:: linear_solvers.recompute_preconditioner
 
@@ -151,6 +169,48 @@ entries:
 
    Boolean flag indicating whether MueLu timer summary is printed. Default value
    is ``no``.
+
+**Additional parameters for Hypre Solver/Preconditioners**
+
+The user is referred to `Hypre Reference Manual
+<https://computation.llnl.gov/projects/hypre-scalable-linear-solvers-multigrid-methods/software>`_
+for full details on the usage of the parameters described briefly below.
+
+The parameters that start with ``bamg_`` prefix refer to options related to
+Hypre's BoomerAMG preconditioner.
+
+.. inpfile:: linear_solvers.bamg_output_level
+
+   The level of verbosity of BoomerAMG preconditioner. See
+   ``HYPRE_BoomerAMGSetPrintLevel``. Default: 0.
+
+.. inpfile:: linear_solvers.bamg_coarsen_type
+
+   See ``HYPRE_BoomerAMGSetCoarsenType``. Default: 6
+
+.. inpfile:: linear_solvers.bamg_cycle_type
+
+   See ``HYPRE_BoomerAMGSetCycleType``. Default: 1
+
+.. inpfile:: linear_solvers.bamg_relax_type
+
+   See ``HYPRE_BoomerAMGSetRelaxType``. Default: 6
+
+.. inpfile:: linear_solvers.bamg_relax_order
+
+   See ``HYPRE_BoomerAMGSetRelaxOrder``. Default: 1
+
+.. inpfile:: linear_solvers.bamg_num_sweeps
+
+   See ``HYPRE_BoomerAMGSetNumSweeps``. Default: 2
+
+.. inpfile:: linear_solvers.bamg_max_levels
+
+   See ``HYPRE_BoomerAMGSetMaxLevels``. Default: 20
+
+.. inpfile:: linear_solvers.bamg_strong_threshold
+
+   See ``HYPRE_BoomerAMGSetStrongThreshold``. Default: 0.25
 
 .. _nalu_inp_time_integrators:
 
@@ -552,7 +612,7 @@ Wall Boundary Condition
    This subsection contains specifications as to whether wall models are used,
    or how to treat the velocity at the wall when there is mesh motion.
 
-The following code snippet shows an example of using an ABL wall function at the
+The following input file snippet shows an example of using an ABL wall function at the
 terrain during ABL simulations. See :ref:`theory_abl_wall_function` for more
 details on the actual implementation.
 
@@ -568,6 +628,13 @@ details on the actual implementation.
        roughness_height: 0.2
        gravity_vector_component: 3
        reference_temperature: 300.0
+
+The entry :inpfile:`gravity_vector_component` is an integer that
+specifies the component of the gravity vector, defined in
+:inpfile:`solution_options.gravity`, that should be used in the
+definition of the Monin-Obukhov length scale calculation.  The
+entry :inpfile:`reference_temperature` is the reference temperature
+used in calculation of the Monin-Obukhov length scale. 
 
 When there is mesh motion involved the wall boundary must specify a user
 function to determine relative velocity at the surface.

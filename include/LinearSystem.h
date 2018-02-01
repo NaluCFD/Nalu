@@ -62,6 +62,18 @@ public:
   virtual void buildOversetNodeGraph(const stk::mesh::PartVector & parts)=0; // overset->elem_node assembly
   virtual void finalizeLinearSystem()=0;
 
+  /** Process nodes that belong to Dirichlet-type BC
+   *
+   */
+  virtual void buildDirichletNodeGraph(const stk::mesh::PartVector&) {}
+
+  /** Process nodes as belonging to a Dirichlet-type row
+   *
+   *  See the documentation/implementation of
+   *  sierra::nalu::FixPressureAtNodeAlgorithm for an example of this use case.
+   */
+  virtual void buildDirichletNodeGraph(const std::vector<stk::mesh::Entity>&) {}
+
   // Matrix Assembly
   virtual void zeroSystem()=0;
 

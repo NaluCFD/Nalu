@@ -281,6 +281,37 @@ Prepare:
     cd $nalu_build_dir/packages/Trilinos
     mkdir build
 
+
+HYPRE
+~~~~~
+
+Nalu can use HYPRE solvers and preconditioners, especially for Pressure Poisson
+solves. However, this dependency is optional and is not enabled by default.
+Users wishing to use HYPRE solver and preconditioner combination must compile
+HYPRE library and link to it when building Nalu.
+
+.. code-block:: bash
+
+   # 1. Clone hypre sources
+   https://github.com/LLNL/hypre.git
+   cd hypre/src
+
+   # 2. Configure HYPRE package and pass installation directory
+   ./configure --prefix=$nalu_install_dir --without-superlu --without-openmp --enable-bigint
+
+   # 3. Compile and install
+   make && make install
+
+.. note::
+
+   #. Make sure that ``--enable-bigint`` option is turned on if you intend to
+      run linear systems with :math:`> 2` billion rows. Otherwise, ``nalu``
+      executable will throw an error at runtime for large problems.
+
+   #. Users must pass ``-DENABLE_HYPRE`` option to CMake during Nalu
+      configuration phase. Optionally, the variable `-DHYPRE_DIR`` can be used
+      to pass the path of HYPRE install location to CMake.
+
 Build
 *****
 

@@ -347,18 +347,18 @@ ComputeMdotAlgorithmDriver::provide_output()
   const double integratedInflow = solnOpts_.mdotAlgInflow_ ;
   const double integratedOpen = solnOpts_.mdotAlgOpen_;
   const double totalMassClosure = integratedAccumulation + integratedInflow + integratedOpen;
-  NaluEnv::self().naluOutputP0() << "Mass Balance Review:  " << std::endl;  
+  NaluEnv::self().naluOutputP0() << "Mass Balance Review:  " << std::endl;
   NaluEnv::self().naluOutputP0() << "Density accumulation: " << integratedAccumulation << std::endl;
-  NaluEnv::self().naluOutputP0() << "Integrated inflow:    " << integratedInflow << std::endl;
-  NaluEnv::self().naluOutputP0() << "Integrated open:      " << integratedOpen << std::endl;
-  NaluEnv::self().naluOutputP0() << "Total mass closure:   " << totalMassClosure << std::endl;
+  NaluEnv::self().naluOutputP0() << "Integrated inflow:    " << std::setprecision (16) << integratedInflow << std::endl;
+  NaluEnv::self().naluOutputP0() << "Integrated open:      " << std::setprecision (16) << integratedOpen << std::endl;
+  NaluEnv::self().naluOutputP0() << "Total mass closure:   " << std::setprecision (6) << totalMassClosure << std::endl;
   if ( solnOpts_.activateOpenMdotCorrection_ ) {
     const size_t ipCount = solnOpts_.mdotAlgOpenIpCount_;
     const double ipCorrection = solnOpts_.mdotAlgOpenCorrection_;
-    NaluEnv::self().naluOutputP0() << "A mass correction of: " << ipCorrection 
+    NaluEnv::self().naluOutputP0() << "A mass correction of: " << ipCorrection
                                    << " occurred on: " << ipCount
                                    << " boundary integration points: "  << std::endl;
-    NaluEnv::self().naluOutputP0() << "Post-corrected integrated open: " << solnOpts_.mdotAlgOpenPost_ << std::endl;
+    NaluEnv::self().naluOutputP0() << "Post-corrected integrated open: " << std::setprecision (16) << solnOpts_.mdotAlgOpenPost_ << std::endl;
   }
 }
 

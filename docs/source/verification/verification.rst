@@ -635,3 +635,352 @@ temperature boundary condition data that originated from the precursor simulatio
    condition field obtained from the perspective of the subsequent "external_field_provider" Realm (right).
 
 
+Boussinesq Verification
+--------------------------------------
+
+Unit tests
++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Unit-level verification was performed for the Boussinesq body force term :eq:`boussbuoy` with a 
+nodal source appropriate to the edge-based scheme (MomentumBoussinesqSrcNodeSuppAlg.single_value) as well as a 
+separate unit test for the element-based "consolidated" Boussinesq source term 
+(MomentumKernelHex8Mesh.buoyancy_boussinesq).  Proper volume integration with different element topologies is 
+also tested (the "volume integration" tests in the MasterElement and HOMasterElement test cases).
+
+
+Stratified MMS
++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+A convergence study using the method of manufactured solutions (MMS) was also performed to assess the integration 
+of the source term into the governing equations. An initial condition of a Taylor-Green vortex for velocity, a zero-
+gradient pressure field, and a linear enthalpy profile in the z-direction are imposed.
+
+.. math::
+   :label: threed-boussinesq
+
+   u &= -\frac{1}{2} cos(2 \pi x) sin(2 \pi y ) sin(2 \pi z)  \\
+   v &=  sin(2 \pi x) cos(2 \pi y ) sin(2 \pi z)  \\
+   w &= -\frac{1}{2} sin(2 \pi x) sin(2 \pi y ) cos(2 \pi z)  \\
+   p &= 0  \\
+   h &= z.
+
+The simulation is run on a three-dimensional domain ranging from -1/2:+1/2 with reference density,
+reference temperature and the thermal expansion coefficient to equal to 1, 300,  and 1, respectively.  
+:math:`\beta` is much larger than typical (:math:`1 / T_{\rm ref}`)  so that the buoyancy term is a 
+significant term in the MMS in this configuration.
+
+The Boussinesq buoyancy model uses a gravity vector of magnitude of ten in the z-direction 
+opposing the enthalpy gradient, :math:`g_i = (0, 0, -10)^T`. The temperature for this test ranges
+between 250K and 350K.  The test case was run with a regular hexahedral mesh, using the edge-based 
+vertex centered finite volume scheme.  Each case was run with a fixed maximum Courant number of 0.8 
+relative to the specified solution.
+
+
+.. table:: Error in x-component of velocity
+   :widths: grid
+
+   +---------------+---------------------+---------------+---------------+-------+
+   | h             | :math:`L_{\infty}`  | L1            | L2            | Order |
+   +===============+=====================+===============+===============+=======+
+   | 1/32          | 8.91e-3             | 1.12e-3       | 1.77e-3       | NA    |
+   +---------------+---------------------+---------------+---------------+-------+
+   | 1/64          | 2.03e-3             | 3.04e-4       | 4.27e-4       | 2.05  |
+   +---------------+---------------------+---------------+---------------+-------+
+   | 1/128         | 4.65e-4             | 7.64e-5       | 1.05e-4       | 2.03  |
+   +---------------+---------------------+---------------+---------------+-------+
+
+
+.. table:: Error in y-component of velocity
+   :widths: grid
+
+   +---------------+---------------------+---------------+---------------+-------+
+   | h             | :math:`L_{\infty}`  | L1            | L2            | Order |
+   +===============+=====================+===============+===============+=======+
+   | 1/32          | 1.78e-2             | 2.31e-3       | 3.47e-3       | NA    |
+   +---------------+---------------------+---------------+---------------+-------+
+   | 1/64          | 4.18e-3             | 5.92e-4       | 8.23e-4       | 2.06  |
+   +---------------+---------------------+---------------+---------------+-------+
+   | 1/128         | 9.70e-4             | 1.50e-4       | 2.02e-4       | 2.03  |
+   +---------------+---------------------+---------------+---------------+-------+
+
+
+.. table:: Error in z-component of velocity
+   :widths: grid
+
+   +---------------+---------------------+---------------+---------------+-------+
+   | h             | :math:`L_{\infty}`  | L1            | L2            | Order |
+   +===============+=====================+===============+===============+=======+
+   | 1/32          | 8.68e-2             | 1.17e-3       | 1.73e-3       | NA    |
+   +---------------+---------------------+---------------+---------------+-------+
+   | 1/64          | 2.00e-3             | 2.99e-4       | 4.22e-4       | 2.04  |
+   +---------------+---------------------+---------------+---------------+-------+
+   | 1/128         | 4.64e-4             | 7.63e-5       | 1.05e-4       | 2.00  |
+   +---------------+---------------------+---------------+---------------+-------+
+
+
+.. table:: Error in temperature
+   :widths: grid
+
+   +---------------+---------------------+---------------+---------------+-------+
+   | h             | :math:`L_{\infty}`  | L1            | L2            | Order |
+   +===============+=====================+===============+===============+=======+
+   | 1/32          | 1.09e-2             | 1.46e-3       | 2.10e-3       | NA    |
+   +---------------+---------------------+---------------+---------------+-------+
+   | 1/64          | 2.06e-3             | 3.13e-4       | 4.19e-4       | 2.32  |
+   +---------------+---------------------+---------------+---------------+-------+
+   | 1/128         | 4.18e-4             | 7.54e-5       | 1.00e-4       | 2.06  |
+   +---------------+---------------------+---------------+---------------+-------+
+
+
+This test is added to Nalu's nightly test suite, testing that the convergence rate between 
+the 1/32 and 1/64 element sizes is second order.
+
+3D Hybrid 1x2x10 Duct: Specified Pressure Drop
+----------------------------------------------
+In this section, a specified pressure drop in a simple 1x2x10 configuration is run with
+a variety of homogeneous blocks of the following topology: hexahedral, tetrahedral, wedge,
+and thexahedral. This analytical solution is given by an infinite series and is coded
+as the "1x2x10" user function. The simulation is run with an outer wall boundary condition
+with two open boundary conditions. The specified pressure drop is 0.016 over the 10 cm 
+duct. The density and viscosity are 1.0e-3 and 1.0e-4, respectively. The siumulation
+study is run a fixed Courant numbers with a mesh spacing ranging from 0.2 to 0.025.
+Figure :numref:`specified-dp-flow-hex-tet` provides the standard velocity profile for the 
+structured hexahedral and unstructured tetrahedral element type.
+
+.. _specified-dp-flow-hex-tet:
+
+.. figure:: figures/hex8_tet4_one_two_ten_R0_R1.png
+   :width: 500px
+   :align: center
+
+   Streamwise velocity profile for specified pressure drop flow; tetrahedral and hexahedral topology.
+
+The simulation study employed a variety of elemental topologies of uniform mesh spacing
+as noted above. Figure :numref:`specified-dp-l2` outlines the convergence in the :math:`L_2`
+norm using the low-order elemental CVFEM implementation using the recently changed tetrahedral
+and wedge element quadrature rules. Second-order accuracy is noted. Interestingly, the 
+hexahedral and wedge topology provided nearly the same accuracy. Also, the tetrahedral
+accuracy was approximately four tiomes greater. Finally, the Thexahedral topology
+proved to be second-order, however, provided very poor accuracy results. 
+
+.. _specified-dp-l2:
+
+.. figure:: figures/Uz_L2_dp.pdf
+   :width: 500px
+   :align: center
+
+   :math:`L_2` error for the CVFEM scheme on a variety of element types.
+
+3D Hybrid 1x1x1 Cube: Laplace
+-----------------------------
+The standard Laplace operator is evalued on the full set of low-order hybrid topologies 
+(not inlcuding the pyramid). In this example, the temperature field is again,
+
+.. math::
+   :label: threed-L
+   
+   T = \frac{\lambda}{4} (cos(2 a \pi x) + cos(2 a \pi y) + cos(2 a \pi z)).
+
+Figure :numref:`laplace-hybrid` represents the MMS field for temperature
+on a variety of mesh topologies. The thexahedral mesh is obtained from the
+standard uniform spacing tetrahedral mesh (not shown). The tetrahedral
+mesh shown is a tet-based conversion of the standard structured hexahedral
+mesh. This approach ensures that the number of nodes between the hexahedral
+and tetrahedral mesh are the same.
+
+.. _laplace-hybrid:
+
+.. figure:: figures/hybrid_laplace.png
+   :width: 500px
+   :align: center
+
+   Temperature shadings for hexahedral, thexahedral, wedge, and tetrahedral topologies (clockwise from the upper left).
+
+Figure :numref:`laplace-hybrid-l2` provides the :math:`L_2` norms, all of which are showing second-order accuracy.
+In Figure :numref:`laplace-hybrid-lo`, the :math:`L_o` error is shown. As indicated from the convergence plot,
+slight degradation in order-of-accuracy is noted for the thexahedral topology.
+
+.. _laplace-hybrid-l2:
+
+.. figure:: figures/hybrid_T_L2.pdf
+   :width: 500px
+   :align: center
+
+   :math:`L_2` norms for the full set of hybrid Laplace MMS study.
+
+.. _laplace-hybrid-lo:
+
+.. figure:: figures/hybrid_T_Loo.pdf
+   :width: 500px
+   :align: center
+
+   :math:`L_o` norms for the full set of hybrid Laplace MMS study.
+
+
+Open Boundary Condition With Outflow Thermal Stratification
+----------------------------------------------------------------
+In situations with significant thermal stratification at the outflow of the domain, the standard open boundary
+condition alone is not adequate because it requires the specification of motion pressure at the boundary, and
+this is not known *a priori*.  Two solutions to this problem are: 1) to use the global mass flow rate correction
+option, or 2) to use the standard open boundary condition in which the buoyancy term uses a local time-averaged
+reference value, rather than a single reference value.
+
+We test these open boundary condition options on a simplified stratified flow through a channel with slip walls.  The
+flow entering the domain is non-turbulent and uniformly 8 m/s.  The temperature linearly varies from 300 K to 310 K from 
+the bottom to top of the channel with compatible, opposite-sign heat flux on the two walls to maintain this profile.
+The Boussinesq buoyancy option is used, and the density is set constant to 1.17804 kg/m :math:`^3`. This density is 
+compatible with the reference pressure of 101325 Pa and a reference temperature of 300 K.  The viscosity is set to 
+1.0e-5 Pa-s.  *The flow should keep its inflow velocity and temperature profiles throughout the length of the domain*.
+
+The domain is 3000 m long, 1000 m tall, and 20 m wide with 300 x 100 x 2 elements.  The upper and lower boundaries 
+are symmetry with the specified normal gradient of temperature option used such that the gradient matches the initial
+temperature profile with its gradient of 0.01 K/m. Flow enters from the left and exits on the right.  The remaining 
+boundaries are periodic. 
+
+We test the problem on three configurations: 1) using the standard open boundary condition, 
+2) using the global-mass-flow-rate-correction option, and 3) using the standard open boundary condition with a local
+moving-time-averaged reference temperature in the Boussinesq buoyancy term.
+
+Figure :numref:`stratified_outflow_ux1` shows the across-channel profile of outflow streamwise velocity.  It is clear
+that in configuration 1, the velocity is significantly distorted from the correct solution.  Configurations 2 and 3 
+remedy the problem.  However, if we reduce the range of the x-axis, as shown in Figure :numref:`stratified_outflow_ux2`, 
+we see that configuration 3, the use of the standard open boundary condition with a local moving-time-averaged
+Boussinesq reference temperature, provides a superior solution in this case.  In Figure, :numref:`stratified_outflow_T1`,
+we also see that configuration 1 significantly distorts the temperature from the correct solution.
+
+.. _stratified_outflow_ux1:
+
+.. figure:: figures/Ux_123.png
+   :width: 500px
+   :align: center
+
+   Outflow velocity profiles for the thermally stratified slip-channel flow.
+
+
+.. _stratified_outflow_ux2:
+
+.. figure:: figures/Ux_23.png
+   :width: 500px
+   :align: center
+
+   Outflow velocity profiles for the thermally stratified slip-channel flow considering only the case with the
+   global mass-flow-rate correction and the standard open boundary with the local moving-time-averaged Boussinesq
+   reference value.
+
+
+.. _stratified_outflow_T1:
+
+.. figure:: figures/T_123.png
+   :width: 500px
+   :align: center
+
+   Outflow temperature profiles for the thermally stratified slip-channel flow.
+
+
+We also verify that the global mass-flow-rate correction of configuration 2 is correcting the outflow mass flow rate 
+properly.  The output from Nalu showing the correction is correct and is shown as follows:
+
+
+.. code-block:: c++
+ 
+   Mass Balance Review:
+   Density accumulation: 0
+   Integrated inflow:    -188486.0356751138
+   Integrated open:      188486.035672821
+   Total mass closure:   -2.29277e-06
+   A mass correction of: -2.86596e-09 occurred on: 800 boundary integration points:
+   Post-corrected integrated open: 188486.0356751139
+
+
+
+Specified Normal Temperature Gradient Boundary Condition
+--------------------------------------------------------
+
+The motivation for adding the ability to specify the boundary-normal temperature 
+gradient is atmospheric boundary layer simulation in which the upper portion of
+the domain often contains a stably stratified layer with a temperature gradient
+that extends all the way to the upper boundary.  The desire is for the simulation
+to maintain that gradient throughout the simulation duration.  
+
+Our test case is a laminar infinite channel with slip walls.  In this case, the 
+flow velocity is zero so the problem is simply a heat conduction through fluid.
+The density is fixed as constant, and there are no source terms including
+buoyancy.
+
+This problem has an the analytical solution for the temperature profile across 
+the channel:
+
+.. math::
+   :label: T-slip-channel
+
+   T(t,z) = T(t_0,z_0) + \frac{-g_H-g_0}{H} \kappa_{eff} (t-t_0) + g_0 (z-z_0) + \frac{-g_H-g_0}{2H} (z-z_0)^2,
+
+where :math:`t_0` is the initial time; :math:`z_0` is the height of the lower 
+channel wall; :math:`H` is the channel height; :math:`g_0` and :math:`g_H` are
+the wall-normal gradients of temperature at the lower and upper walls, respectively;
+:math:`\kappa_{eff}` is the effective thermal diffusivity;
+and :math:`z` is the distance in the cross-channel direction.  The sign of the 
+temperature gradients assumes that boundary normal points inward from the boundary.
+For this solution to hold, the initial solution must be that of :eq:`T-slip-channel` 
+with :math:`t=t_0`.
+
+For all test cases, we use a domain that is 10 m x 10 m in the periodic (infinite) directions,
+and 100 m in the cross-channel (z) direction.  We specify a constant density of 
+1 kg/m :math:`^3`, zero velocity, no buoyancy source term, a viscosity of 1 Pa-s,
+and a laminar Prandtl number of 1.  No turbulence model is used. The value of
+:math:`T(t_0,z_0)` is 300 K.
+
+
+Simple Linear Temperature Profile: Equal and Opposite Specified Temperature Gradients
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+A simple verification test that is representative of a stable atmospheric capping
+inversion is to compute the simple thermal channel with equal and opposite specified
+temperature gradients on each wall.  By setting :math:`g_H = - g_0` in Equation 
+:eq:`T-slip-channel`, we are left with
+
+.. math::
+   :label: T-slip-channel-linear
+
+   T(z) = T(z_0) + g_0 (z-z_0).
+
+In other words, if we set the initial temperature profile to that of :eq:`T-slip-channel-linear`,
+with :math:`g_H = -g_0`, the profile should remain fixed for all time.  In this case,
+we set :math:`g_0 = 0.01` K/m and :math:`g_H = -0.01` K/m.
+
+We use a mesh that 2 elements wide in the periodic directions and 20 elements across
+the channel.  We simulate a long time period of 25,000 s. Figure :numref:`T_gradBC_linear`
+shows that the computed and analytical solutions agree. 
+
+.. _T_gradBC_linear:
+
+.. figure:: figures/T_linear_gradBC.png
+   :width: 500px
+   :align: center
+
+   The analytical (black solid) and computed (red dashed) temperature profile from 
+   the case with :math:`g_H = -g_0` at :math:`t =` 25,000 s.
+
+
+Parabolic Temperature Profile: Equal Specified Temperature Gradients
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Next, we verify the specified normal temperature gradient boundary condition 
+option by computing the simple thermal channel with equal specified temperature
+gradients, which yields the full time-dependent solution of Equation :eq:`T-slip-channel`.
+Here, we set :math:`g_0 = g_H = 0.01` K/m.
+
+We use meshes that are 2 elements wide in the periodic directions and 20, 40,
+and 80 elements across the channel.  We simulate a long time period of 25,000 s.
+Figure :numref:`T_gradBC_parabolic` shows that the computed and analytical
+solutions agree.  There is no apparent overall solution degradation on the
+coarser meshes.
+
+.. _T_gradBC_parabolic:
+
+.. figure:: figures/T_parabolic_gradBC.png
+   :width: 500px
+   :align: center
+
+   The analytical (black solid) and computed (colored) temperature profile from 
+   the case with :math:`g_H = g_0` at :math:`t =` 25,000 s.

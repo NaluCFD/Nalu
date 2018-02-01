@@ -36,7 +36,8 @@ DgInfo::DgInfo(
   MasterElement *meFCCurrent,
   MasterElement *meSCSCurrent,
   stk::topology currentElementTopo,
-  const int nDim)
+  const int nDim,
+  const double searchTolerance)
   : parallelRank_(parallelRank),
     globalFaceId_(globalFaceId),
     localGaussPointId_(localGaussPointId),
@@ -50,6 +51,8 @@ DgInfo::DgInfo(
     nDim_(nDim),
     bestXRef_(1.0e16),
     bestX_(bestXRef_),
+    nearestDistance_(searchTolerance),
+    nearestDistanceSafety_(2.0),
     opposingFaceIsGhosted_(0)
 {
   // resize internal vectors
@@ -84,7 +87,8 @@ DgInfo::dump_info()
   NaluEnv::self().naluOutput() << "currentElementTopo_ " << currentElementTopo_ << std::endl;
   NaluEnv::self().naluOutput() << "nDim_ " << nDim_ << std::endl;
   NaluEnv::self().naluOutput() << "bestXRef_ " << bestXRef_ << std::endl;
-  NaluEnv::self().naluOutput() << "bestX_" << bestX_ << std::endl;
+  NaluEnv::self().naluOutput() << "bestX_ " << bestX_ << std::endl;
+  NaluEnv::self().naluOutput() << "nearestDistance_ " << nearestDistance_ << std::endl;
   NaluEnv::self().naluOutput() << "opposingFaceIsGhosted_ " << opposingFaceIsGhosted_ << std::endl;
   NaluEnv::self().naluOutput() << "opposingFace_ " << opposingFace_ << std::endl;
   NaluEnv::self().naluOutput() << "opposingElement_ " << std::endl;
@@ -101,6 +105,12 @@ DgInfo::dump_info()
   NaluEnv::self().naluOutput() << "opposingIsoParCoords_ " << std::endl;
   for ( size_t k = 0; k < opposingIsoParCoords_.size(); ++k )
     NaluEnv::self().naluOutput() << opposingIsoParCoords_[k] << std::endl;
+  NaluEnv::self().naluOutput() << "allOpposingFaceIds_ " << std::endl;
+  for ( size_t k = 0; k < allOpposingFaceIds_.size(); ++k )
+    NaluEnv::self().naluOutput() << allOpposingFaceIds_[k] << std::endl;
+  NaluEnv::self().naluOutput() << "allOpposingFaceIdsOld_ " << std::endl;
+  for ( size_t k = 0; k < allOpposingFaceIdsOld_.size(); ++k )
+    NaluEnv::self().naluOutput() << allOpposingFaceIdsOld_[k] << std::endl;
   NaluEnv::self().naluOutput() << "------------------------------------------------- " << std::endl;
   NaluEnv::self().naluOutput() << std::endl;
 }

@@ -510,10 +510,12 @@ Tri2DSCV::Tri2DSCV()
   ipNodeMap_.resize(3);
   ipNodeMap_[0] = 0; ipNodeMap_[1] = 1; ipNodeMap_[2] = 2;
 
+  const double seven36ths = 7.0/36.0;
+  const double eleven18ths = 11.0/18.0;
   intgLoc_ = {
-      5.0/24.0, 5.0/24.0,
-      7.0/12.0, 5.0/24.0,
-      5.0/24.0, 7.0/12.0
+    seven36ths, seven36ths,
+    eleven18ths, seven36ths,
+    seven36ths, eleven18ths
   };
 
   intgLocShift_ = {
@@ -1034,11 +1036,11 @@ Tri3DSCS::Tri3DSCS()
 
   // standard integration location
   intgLoc_.resize(6);
-  const double five24th = 5.0/24.0;
-  const double seven12th = 7.0/12.0;
-  intgLoc_[0]  = five24th;  intgLoc_[1] = five24th;  // surf 1
-  intgLoc_[2]  = seven12th; intgLoc_[3] = five24th;  // surf 2
-  intgLoc_[4]  = five24th;  intgLoc_[5] = seven12th; // surf 3
+  const double seven36ths = 7.0/36.0;
+  const double eleven18ths = 11.0/18.0;
+  intgLoc_[0]  = seven36ths;  intgLoc_[1] = seven36ths;  // surf 1
+  intgLoc_[2]  = eleven18ths; intgLoc_[3] = seven36ths;  // surf 2
+  intgLoc_[4]  = seven36ths;  intgLoc_[5] = eleven18ths; // surf 3
 
   // shifted
   intgLocShift_.resize(6);

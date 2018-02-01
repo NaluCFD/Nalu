@@ -45,7 +45,6 @@ ABLForcingAlgorithm::ABLForcingAlgorithm(Realm& realm, const YAML::Node& node)
     UmeanCalc_(0),
     rhoMeanCalc_(0),
     USource_(0),
-    rhoMeanCalc_(0),
     TmeanCalc_(0),
     TSource_(0),
     searchMethod_("stk_kdtree"),

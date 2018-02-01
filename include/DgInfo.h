@@ -52,7 +52,8 @@ class DgInfo {
     MasterElement *meFCCurrent,
     MasterElement *meSCSurrent,
     stk::topology currentElementTopo,
-    const int nDim);
+    const int nDim,
+    double searchTolerance);
   
   ~DgInfo();
 
@@ -74,6 +75,9 @@ class DgInfo {
 
   const double bestXRef_;
   double bestX_;
+  double nearestDistance_;
+  const double nearestDistanceSafety_;
+
   int opposingFaceIsGhosted_;
 
   // search provides opposing face

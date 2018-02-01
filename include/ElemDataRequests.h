@@ -22,7 +22,9 @@ namespace nalu{
 class MasterElement;
 
 enum ELEM_DATA_NEEDED {
-  SCS_AREAV = 0,
+  FC_AREAV = 0,
+  SCS_AREAV,
+  SCS_FACE_GRAD_OP,
   SCS_GRAD_OP,
   SCS_SHIFTED_GRAD_OP,
   SCS_GIJ,
@@ -70,7 +72,7 @@ public:
   ElemDataRequests()
     : dataEnums(),
       coordsFields_(),
-    fields(), meSCS_(NULL), meSCV_(NULL), meFEM_(NULL)
+    fields(), meFC_(nullptr), meSCS_(nullptr), meSCV_(nullptr), meFEM_(nullptr)
   {
   }
 
@@ -92,14 +94,23 @@ public:
 
   void add_gathered_nodal_field(const stk::mesh::FieldBase& field, unsigned tensorDim1, unsigned tensorDim2);
 
+  void add_face_field(const stk::mesh::FieldBase& field, unsigned scalarsPerFace);
+  void add_ip_field(const stk::mesh::FieldBase& field, unsigned scalarsPerElement);
   void add_element_field(const stk::mesh::FieldBase& field, unsigned scalarsPerElement);
 
+  void add_face_field(const stk::mesh::FieldBase& field, unsigned tensorDim1, unsigned tensorDim2);
+  void add_ip_field(const stk::mesh::FieldBase& field, unsigned tensorDim1, unsigned tensorDim2);
   void add_element_field(const stk::mesh::FieldBase& field, unsigned tensorDim1, unsigned tensorDim2);
 
   void add_coordinates_field(
     const stk::mesh::FieldBase& field,
     unsigned scalarsPerNode,
     COORDS_TYPES cType);
+
+  void add_cvfem_face_me(MasterElement *meFC)
+  {
+    meFC_ = meFC;
+  }
 
   void add_cvfem_volume_me(MasterElement *meSCV)
   {
@@ -137,14 +148,16 @@ public:
   { return coordsFields_; }
 
   const FieldSet& get_fields() const { return fields; }  
-  MasterElement *get_cvfem_volume_me() {return meSCV_;}
-  MasterElement *get_cvfem_surface_me() {return meSCS_;}
-  MasterElement *get_fem_volume_me() {return meFEM_;}
+  MasterElement *get_cvfem_face_me() const {return meFC_;}
+  MasterElement *get_cvfem_volume_me() const {return meSCV_;}
+  MasterElement *get_cvfem_surface_me() const {return meSCS_;}
+  MasterElement *get_fem_volume_me() const {return meFEM_;}
 
 private:
   std::array<std::set<ELEM_DATA_NEEDED>, MAX_COORDS_TYPES> dataEnums;
   std::map<COORDS_TYPES, const stk::mesh::FieldBase*> coordsFields_;
   FieldSet fields;
+  MasterElement *meFC_;
   MasterElement *meSCS_;
   MasterElement *meSCV_;
   MasterElement *meFEM_;

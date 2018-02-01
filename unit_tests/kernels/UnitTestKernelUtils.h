@@ -8,7 +8,6 @@
 #ifndef UNITTESTKERNELUTILS_H
 #define UNITTESTKERNELUTILS_H
 
-#include <gtest/gtest.h>
 #include "UnitTestUtils.h"
 
 #include "SolutionOptions.h"
@@ -22,6 +21,7 @@
 
 #include <gtest/gtest.h>
 
+#include <mpi.h>
 #include <vector>
 #include <memory>
 #include <iostream>
@@ -65,6 +65,11 @@ void tke_test_function(
   const VectorFieldType& coordinates,
   ScalarFieldType& tke);
 
+void alpha_test_function(
+  const stk::mesh::BulkData& bulk,
+  const VectorFieldType& coordinates,
+  ScalarFieldType& alpha);
+
 void dkdx_test_function(
   const stk::mesh::BulkData& bulk,
   const VectorFieldType& coordinates,
@@ -84,6 +89,11 @@ void turbulent_viscosity_test_function(
   const stk::mesh::BulkData& bulk,
   const VectorFieldType& coordinates,
   ScalarFieldType& turbulent_viscosity);
+
+void tensor_turbulent_viscosity_test_function(
+  const stk::mesh::BulkData& bulk,
+  const VectorFieldType& coordinates,
+  GenericFieldType& mutij);
 
 void sst_f_one_blending_test_function(
   const stk::mesh::BulkData& bulk,
@@ -340,6 +350,44 @@ public:
   ScalarFieldType* viscosity_{nullptr};
   GenericFieldType* dudx_{nullptr};
   ScalarFieldType* temperature_{nullptr};
+};
+
+/** Test Fixture for the hybrid turbulence Kernels
+ *
+ */
+class HybridTurbKernelHex8Mesh : public LowMachKernelHex8Mesh
+{
+public:
+  HybridTurbKernelHex8Mesh()
+    : LowMachKernelHex8Mesh(),
+      tke_(&meta_.declare_field<ScalarFieldType>(
+        stk::topology::NODE_RANK, "turbulent_ke")),
+      alpha_(&meta_.declare_field<ScalarFieldType>(
+        stk::topology::NODE_RANK, "adaptivity_parameter")),
+      mutij_(&meta_.declare_field<GenericFieldType>(
+        stk::topology::NODE_RANK, "tensor_turbulent_viscosity"))
+  {
+    stk::mesh::put_field(*tke_, meta_.universal_part(), 1);
+    stk::mesh::put_field(*alpha_, meta_.universal_part(), 1);
+    stk::mesh::put_field(
+      *mutij_, meta_.universal_part(), spatialDim_ * spatialDim_);
+  }
+
+  virtual ~HybridTurbKernelHex8Mesh() {}
+
+  virtual void fill_mesh_and_init_fields(bool doPerturb = false)
+  {
+    LowMachKernelHex8Mesh::fill_mesh_and_init_fields(doPerturb);
+    stk::mesh::field_fill(0.0, *tke_);
+    stk::mesh::field_fill(1.0, *alpha_);
+    unit_test_kernel_utils::tensor_turbulent_viscosity_test_function(bulk_, *coordinates_, *mutij_);
+    /* unit_test_kernel_utils::tke_test_function(bulk_, *coordinates_, *tke_); */
+    /* unit_test_kernel_utils::alpha_test_function(bulk_, *coordinates_, *alpha_); */
+  }
+
+  ScalarFieldType* tke_{nullptr};
+  ScalarFieldType* alpha_{nullptr};
+  GenericFieldType* mutij_{nullptr};
 };
 
 /** Text fixture for heat conduction equation kernels
