@@ -369,10 +369,11 @@ HypreLinearSystem::sumInto(
 {
   const size_t n_obj = numEntities;
   HypreIntType numRows = n_obj * numDof_;
+  const HypreIntType bufSize = idBuffer_.size();
 
   ThrowAssertMsg(lhs.is_contiguous(), "LHS assumed contiguous");
   ThrowAssertMsg(rhs.is_contiguous(), "RHS assumed contiguous");
-  if (idBuffer_.size() < numRows) idBuffer_.resize(numRows);
+  if (bufSize < numRows) idBuffer_.resize(numRows);
 
   for (size_t in=0; in < n_obj; in++) {
     HypreIntType hid = get_entity_hypre_id(entities[in]);
@@ -418,11 +419,12 @@ HypreLinearSystem::sumInto(
 {
   const size_t n_obj = entities.size();
   HypreIntType numRows = n_obj * numDof_;
+  const HypreIntType bufSize = idBuffer_.size();
 
-  ThrowAssert(numRows == rhs.size());
-  ThrowAssert(numRows*numRows == lhs.size());
+  ThrowAssert(numRows == static_cast<HypreIntType>(rhs.size()));
+  ThrowAssert(numRows*numRows == static_cast<HypreIntType>(lhs.size()));
 
-  if (idBuffer_.size() < numRows) idBuffer_.resize(numRows);
+  if (bufSize < numRows) idBuffer_.resize(numRows);
 
   for (size_t in=0; in < n_obj; in++) {
     HypreIntType hid = get_entity_hypre_id(entities[in]);
