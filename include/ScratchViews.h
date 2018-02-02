@@ -17,6 +17,7 @@
 #include <ElemDataRequests.h>
 #include <master_element/MasterElement.h>
 #include <KokkosInterface.h>
+#include <SimdInterface.h>
 
 #include <set>
 #include <type_traits>
@@ -113,7 +114,7 @@ public:
 
   ScratchViews(const TeamHandleType& team,
                const stk::mesh::BulkData& bulkData,
-               ScratchMeInfo &meInfo,
+               const ScratchMeInfo &meInfo,
                const ElemDataRequests& dataNeeded);
 
   virtual ~ScratchViews() {
@@ -511,7 +512,7 @@ ScratchViews<T>::ScratchViews(const TeamHandleType& team,
 template<typename T>
 ScratchViews<T>::ScratchViews(const TeamHandleType& team,
              const stk::mesh::BulkData& bulkData,
-             ScratchMeInfo &meInfo,
+             const ScratchMeInfo &meInfo,
              const ElemDataRequests& dataNeeded)
 {
   int nDim = bulkData.mesh_meta_data().spatial_dimension();
@@ -617,6 +618,36 @@ int get_num_bytes_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDim,
   return sizeof(T) * get_num_scalars_pre_req_data(dataNeededBySuppAlgs, nDim, meInfo);
 }
 
+inline
+int calculate_shared_mem_bytes_per_thread(int lhsSize, int rhsSize, int scratchIdsSize, int nDim,
+                                      ElemDataRequests& dataNeededByKernels)
+{
+    int bytes_per_thread = (rhsSize + lhsSize)*sizeof(double) + (2*scratchIdsSize)*sizeof(int) +
+                           get_num_bytes_pre_req_data<double>(dataNeededByKernels, nDim);
+    bytes_per_thread *= 2*simdLen;
+    return bytes_per_thread;
+}
+
+inline
+int calculate_shared_mem_bytes_per_thread(int lhsSize, int rhsSize, int scratchIdsSize, int nDim,
+                                      sierra::nalu::ElemDataRequests& faceDataNeeded,
+                                      sierra::nalu::ElemDataRequests& elemDataNeeded,
+                                      const sierra::nalu::ScratchMeInfo &meInfo)
+{
+    int bytes_per_thread = (rhsSize + lhsSize)*sizeof(double) + (2*scratchIdsSize)*sizeof(int)
+                         + sierra::nalu::get_num_bytes_pre_req_data<double>(faceDataNeeded, nDim)
+                         + sierra::nalu::get_num_bytes_pre_req_data<double>(elemDataNeeded, nDim, meInfo);
+    bytes_per_thread *= 2*simdLen;
+    return bytes_per_thread;
+}
+
+template<typename T>
+void set_zero(T* values, unsigned length)
+{
+    for(unsigned i=0; i<length; ++i) {
+        values[i] = 0;
+    }
+}
 
 } // namespace nalu
 } // namespace Sierra
