@@ -49,15 +49,12 @@ TEST_F(Hex8Mesh, faceBasic)
   verify_faces_exist(bulk);
 
   stk::topology faceTopo = stk::topology::QUAD_4;
-  stk::topology elemTopo = stk::topology::HEX_8;
   sierra::nalu::MasterElement* meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(faceTopo);
-  sierra::nalu::MasterElement* meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(elemTopo);
 
   stk::mesh::Part* surface1 = meta.get_part("surface_1");
   int numDof = 1;
   unit_test_utils::HelperObjectsNewME helperObjs(bulk, faceTopo, numDof, surface1);
   helperObjs.assembleElemSolverAlg->dataNeededByKernels_.add_cvfem_face_me(meFC);
-  helperObjs.assembleElemSolverAlg->dataNeededByKernels_.add_cvfem_surface_me(meSCS);
 
   TestFaceKernel faceKernel(faceTopo, scalarQ, helperObjs.assembleElemSolverAlg->dataNeededByKernels_);
   helperObjs.assembleElemSolverAlg->activeKernels_.push_back(&faceKernel);

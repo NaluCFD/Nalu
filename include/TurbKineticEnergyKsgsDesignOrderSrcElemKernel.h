@@ -54,8 +54,8 @@ private:
   ScalarFieldType *tvisc_{nullptr};
   ScalarFieldType *dualNodalVolume_{nullptr};
   
-  double cEps_{0.0};
-  double tkeProdLimitRatio_{0.0};
+  const double cEps_;
+  const double tkeProdLimitRatio_;
   
   /// Integration point to node mapping
   const int* ipNodeMap_;
