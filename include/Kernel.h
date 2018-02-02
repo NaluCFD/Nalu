@@ -12,6 +12,7 @@
 #include "SimdInterface.h"
 #include "ScratchViews.h"
 #include "AlgTraits.h"
+#include "BcAlgTraits.h"
 
 #include <stk_mesh/base/Entity.hpp>
 
@@ -67,6 +68,22 @@ void get_fem_shape_fn_data(LambdaFunction lambdaFunction, ViewType& shape_fn_vie
 
   DoubleType* data = &shape_fn_view(0,0);
   for(int i=0; i<AlgTraits::numGp_*AlgTraits::nodesPerElement_; ++i) {
+    data[i] = tmp_data[i];
+  }
+}
+
+template<typename BcAlgTraits, typename LambdaFunction, typename ViewType>
+void get_face_shape_fn_data(LambdaFunction lambdaFunction, ViewType& shape_fn_view)
+{
+  static_assert(ViewType::Rank == 2u, "2D View");
+  ThrowRequireMsg(shape_fn_view.extent_int(0) == BcAlgTraits::numFaceIp_, "Inconsistent number of face ips");
+  ThrowRequireMsg(shape_fn_view.extent_int(1) == BcAlgTraits::nodesPerFace_, "Inconsistent number of of nodes");
+
+  double tmp_data[BcAlgTraits::numFaceIp_*BcAlgTraits::nodesPerFace_];
+  lambdaFunction(tmp_data);
+
+  DoubleType* data = &shape_fn_view(0,0);
+  for(int i=0; i<BcAlgTraits::numFaceIp_*BcAlgTraits::nodesPerFace_; ++i) {
     data[i] = tmp_data[i];
   }
 }
