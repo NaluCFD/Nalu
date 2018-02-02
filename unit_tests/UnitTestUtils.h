@@ -1,6 +1,7 @@
 #ifndef _UnitTestUtils_h_
 #define _UnitTestUtils_h_
 
+#include <array>
 #include <string>
 #include <ostream>
 #include <random>
@@ -173,20 +174,27 @@ class Hex8ElementWithBCFields : public ::testing::Test
       velocity(meta.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity")),
       bcVelocity(meta.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "wall_velocity_bc")),
       density(meta.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "density")),
+      viscosity(meta.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity")),
       bcHeatFlux(meta.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "heat_flux_bc")),
       specificHeat(meta.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "specific_heat")),
       exposedAreaVec(meta.declare_field<GenericFieldType>(meta.side_rank(), "exposed_area_vector")),
       wallFrictionVelocityBip(meta.declare_field<GenericFieldType>(meta.side_rank(), "wall_friction_velocity_bip")),
       wallNormalDistanceBip(meta.declare_field<GenericFieldType>(meta.side_rank(), "wall_normal_distance_bip"))
    {
-    stk::mesh::put_field(velocity, meta.universal_part(), 3);
+    const double one = 1.0;
+    const double oneVec[12] = {1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0};
+    stk::mesh::put_field(velocity, meta.universal_part(), 3, &one);
     stk::mesh::put_field(bcVelocity, meta.universal_part(), 3);
     stk::mesh::put_field(density, meta.universal_part(), 1);
+    stk::mesh::put_field(viscosity, meta.universal_part(), 1, &one);
     stk::mesh::put_field(bcHeatFlux, meta.universal_part(), 1);
     stk::mesh::put_field(specificHeat, meta.universal_part(), 1);
 
     const sierra::nalu::MasterElement* meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(stk::topology::QUAD_4);
-    stk::mesh::put_field(exposedAreaVec, meta.universal_part(), 3*meFC->numIntPoints_);
+    stk::mesh::put_field(exposedAreaVec, meta.universal_part(), 3*meFC->numIntPoints_, oneVec);
     stk::mesh::put_field(wallFrictionVelocityBip, meta.universal_part(), meFC->numIntPoints_);
     stk::mesh::put_field(wallNormalDistanceBip, meta.universal_part(), meFC->numIntPoints_);
 
@@ -200,6 +208,7 @@ class Hex8ElementWithBCFields : public ::testing::Test
   VectorFieldType& velocity;
   VectorFieldType& bcVelocity;
   ScalarFieldType& density;
+  ScalarFieldType& viscosity;
   ScalarFieldType& bcHeatFlux;
   ScalarFieldType& specificHeat;
   GenericFieldType& exposedAreaVec;

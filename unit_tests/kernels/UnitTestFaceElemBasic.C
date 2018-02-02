@@ -2,9 +2,14 @@
 #include "UnitTestHelperObjects.h"
 #include <stk_util/parallel/Parallel.hpp>
 
+
+#include "BcAlgTraits.h"
 #include "ElemDataRequests.h"
 #include "ScratchViews.h"
+#include "SolutionOptions.h"
 #include "CopyAndInterleave.h"
+
+#include "MomentumSymmetryElemKernel.h"
 
 #include <gtest/gtest.h>
 
@@ -63,7 +68,6 @@ public:
     }
 
     unsigned numTimesExecuted_;
-private:
     stk::topology faceTopo_;
     stk::topology elemTopo_;
     IdFieldType* idField_;
@@ -74,11 +78,12 @@ constexpr int simdLen = stk::simd::ndoubles;
 int
 calculate_shared_mem_bytes_per_thread(int lhsSize, int rhsSize, int scratchIdsSize, int nDim,
                                       sierra::nalu::ElemDataRequests& faceDataNeeded,
-                                      sierra::nalu::ElemDataRequests& elemDataNeeded)
+                                      sierra::nalu::ElemDataRequests& elemDataNeeded,
+                                      const sierra::nalu::ScratchMeInfo &meInfo)
 {
     int bytes_per_thread = (rhsSize + lhsSize)*sizeof(double) + (2*scratchIdsSize)*sizeof(int)
                          + sierra::nalu::get_num_bytes_pre_req_data<double>(faceDataNeeded, nDim)
-                         + sierra::nalu::get_num_bytes_pre_req_data<double>(elemDataNeeded, nDim);
+                         + sierra::nalu::get_num_bytes_pre_req_data<double>(elemDataNeeded, nDim, meInfo);
     bytes_per_thread *= 2*simdLen;
     return bytes_per_thread;
 }
@@ -107,8 +112,8 @@ int get_next_num_elems_simd(int bktIndex, int bktLength)
 
 class TestFaceElemAlgorithm {
 public:
-    TestFaceElemAlgorithm(stk::mesh::Part* part, stk::mesh::EntityRank rank, unsigned nodesPerEntity)
-    : kernels_(), part_(part), entityRank_(rank), nodesPerEntity_(nodesPerEntity)
+    TestFaceElemAlgorithm(stk::mesh::Part* part, stk::mesh::EntityRank rank, unsigned nodesPerEntity, unsigned numDof=1)
+    : kernels_(), part_(part), entityRank_(rank), nodesPerEntity_(nodesPerEntity), numDof_(numDof)
     {
     }
 
@@ -116,10 +121,23 @@ public:
     void run_face_elem_algorithm(stk::mesh::BulkData& bulk, LambdaFunction func)
     {
         int nDim = bulk.mesh_meta_data().spatial_dimension();
-        int lhsSize = 0, rhsSize = 0, scratchIdsSize = 0;
+
+        // hard code for quad4/hex8 element pairs
+        sierra::nalu::ScratchMeInfo meElemInfo;
+        meElemInfo.nodalGatherSize_ = 8;
+        meElemInfo.nodesPerFace_ = 4;
+        meElemInfo.nodesPerElement_ = 8;
+        meElemInfo.numFaceIp_ = 4;
+        meElemInfo.numScsIp_ = 12;
+        meElemInfo.numScvIp_ = 8;
+
+        int rhsSize = meElemInfo.nodalGatherSize_*numDof_, lhsSize = rhsSize*rhsSize, scratchIdsSize = rhsSize;
+
         const int bytes_per_team = 0;
         const int bytes_per_thread = calculate_shared_mem_bytes_per_thread(lhsSize, rhsSize, scratchIdsSize,
-                                                                         nDim, faceDataNeeded_, elemDataNeeded_);
+                                                                         nDim, faceDataNeeded_, elemDataNeeded_, meElemInfo);
+
+        const bool interleaveMeViews = false;
 
         stk::mesh::Selector s_locally_owned_union = bulk.mesh_meta_data().locally_owned_part() & *part_;
 
@@ -133,7 +151,6 @@ public:
           ThrowAssertMsg(b.topology().num_nodes() == (unsigned)nodesPerEntity_,
                          "TestFaceElemAlgorithm expected nodesPerEntity_ = "
                          <<nodesPerEntity_<<", but b.topology().num_nodes() = "<<b.topology().num_nodes());
-          unsigned nodesPerElem = 8; //hard-coded! needs to be obtained or passed in
 
           std::unique_ptr<sierra::nalu::ScratchViews<double>> faceViews[simdLen];
           std::unique_ptr<sierra::nalu::ScratchViews<double>> elemViews[simdLen];
@@ -142,11 +159,16 @@ public:
               faceViews[i] = std::unique_ptr<sierra::nalu::ScratchViews<double>>(
                       new sierra::nalu::ScratchViews<double>(team, bulk, nodesPerEntity_, faceDataNeeded_));
               elemViews[i] = std::unique_ptr<sierra::nalu::ScratchViews<double>>(
-                      new sierra::nalu::ScratchViews<double>(team, bulk, nodesPerElem, elemDataNeeded_));
+                      new sierra::nalu::ScratchViews<double>(team, bulk, meElemInfo, elemDataNeeded_));
           }
 
           sierra::nalu::ScratchViews<DoubleType> simdFaceViews(team, bulk, nodesPerEntity_, faceDataNeeded_);
-          sierra::nalu::ScratchViews<DoubleType> simdElemViews(team, bulk, nodesPerElem, elemDataNeeded_);
+          sierra::nalu::ScratchViews<DoubleType> simdElemViews(team, bulk, meElemInfo, elemDataNeeded_);
+
+          sierra::nalu::SharedMemView<DoubleType*> simdrhs = sierra::nalu::get_shmem_view_1D<DoubleType>(team, rhsSize);
+          sierra::nalu::SharedMemView<DoubleType**> simdlhs = sierra::nalu::get_shmem_view_2D<DoubleType>(team, rhsSize, rhsSize);
+          sierra::nalu::SharedMemView<double*> rhs = sierra::nalu::get_shmem_view_1D<double>(team, rhsSize);
+          sierra::nalu::SharedMemView<double**> lhs = sierra::nalu::get_shmem_view_2D<double>(team, rhsSize, rhsSize);
 
           int elemFaceOrdinals[simdLen] = {-1};
           const size_t bucketLen   = b.size();
@@ -159,20 +181,19 @@ public:
             for(int simdFaceIndex=0; simdFaceIndex<numSimdFaces; ++simdFaceIndex) {
               stk::mesh::Entity face = b[bktIndex*simdLen + simdFaceIndex];
               elemFaceOrdinals[simdFaceIndex] = bulk.begin_element_ordinals(face)[0];
-              sierra::nalu::fill_pre_req_data(faceDataNeeded_, bulk, face, *faceViews[simdFaceIndex], false);
+              sierra::nalu::fill_pre_req_data(faceDataNeeded_, bulk, face, *faceViews[simdFaceIndex], interleaveMeViews);
 
               const stk::mesh::Entity* elems = bulk.begin_elements(face);
               ThrowAssertMsg(bulk.num_elements(face)==1, "Expecting just 1 element attaced to face!");
-              sierra::nalu::fill_pre_req_data(elemDataNeeded_, bulk, elems[0], *elemViews[simdFaceIndex], false);
+              sierra::nalu::fill_pre_req_data(elemDataNeeded_, bulk, elems[0], *elemViews[simdFaceIndex], interleaveMeViews);
             }
 
-            copy_and_interleave(faceViews, numSimdFaces, simdFaceViews, false);
-            copy_and_interleave(elemViews, numSimdFaces, simdElemViews, false);
-
+            copy_and_interleave(faceViews, numSimdFaces, simdFaceViews, interleaveMeViews);
+            copy_and_interleave(elemViews, numSimdFaces, simdElemViews, interleaveMeViews);
             fill_master_element_views(faceDataNeeded_, bulk, simdFaceViews, elemFaceOrdinals);
             fill_master_element_views(elemDataNeeded_, bulk, simdElemViews);
 
-            func(/*other args here?*/ simdFaceViews, simdElemViews, numSimdFaces, elemFaceOrdinals);
+            func(/*other args here?*/ simdlhs, simdrhs, simdFaceViews, simdElemViews, numSimdFaces, elemFaceOrdinals);
           });
         });
     }
@@ -185,6 +206,7 @@ private:
     stk::mesh::Part* part_;
     stk::mesh::EntityRank entityRank_;
     unsigned nodesPerEntity_;
+    unsigned numDof_;
 };
 
 } //anonymous namespace
@@ -214,7 +236,9 @@ TEST_F(Hex8Mesh, faceElemBasic)
                                     faceElemAlg.faceDataNeeded_, faceElemAlg.elemDataNeeded_);
 
   faceElemAlg.run_face_elem_algorithm(bulk,
-          [&](sierra::nalu::ScratchViews<DoubleType>& faceViews,
+          [&](sierra::nalu::SharedMemView<DoubleType**> &lhs,
+              sierra::nalu::SharedMemView<DoubleType *> &rhs,
+              sierra::nalu::ScratchViews<DoubleType>& faceViews,
               sierra::nalu::ScratchViews<DoubleType>& elemViews,
               int numSimdFaces,
               const int* elemFaceOrdinals)
@@ -224,4 +248,33 @@ TEST_F(Hex8Mesh, faceElemBasic)
 
   unsigned expectedNumFaces = 6;
   EXPECT_EQ(expectedNumFaces, faceElemKernel.numTimesExecuted_);
+}
+
+TEST_F(Hex8ElementWithBCFields, faceElemMomentumSymmetry)
+{
+  if (stk::parallel_machine_size(MPI_COMM_WORLD) > 1) {
+    return;
+  }
+  verify_faces_exist(bulk);
+
+  sierra::nalu::SolutionOptions solnOptions;
+
+  stk::topology faceTopo = stk::topology::QUAD_4;
+  stk::mesh::Part* surface1 = meta.get_part("all_surfaces");
+  TestFaceElemAlgorithm faceElemAlg(surface1, stk::topology::FACE_RANK, faceTopo.num_nodes(), sierra::nalu::BcAlgTraitsHex8Quad4::nDim_);
+
+  sierra::nalu::MomentumSymmetryElemKernel<sierra::nalu::BcAlgTraitsHex8Quad4>  momentumSymmetryElemKernel(meta, solnOptions, &velocity, &viscosity,
+                                    faceElemAlg.faceDataNeeded_, faceElemAlg.elemDataNeeded_);
+
+  faceElemAlg.run_face_elem_algorithm(bulk,
+          [&](
+              sierra::nalu::SharedMemView<DoubleType**> &lhs,
+              sierra::nalu::SharedMemView<DoubleType *> &rhs,
+              sierra::nalu::ScratchViews<DoubleType>& faceViews,
+              sierra::nalu::ScratchViews<DoubleType>& elemViews,
+              int numSimdFaces,
+              const int* elemFaceOrdinals)
+      {
+      momentumSymmetryElemKernel.execute(lhs, rhs, faceViews, elemViews);
+      });
 }
