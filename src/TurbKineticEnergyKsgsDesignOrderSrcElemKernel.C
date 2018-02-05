@@ -48,7 +48,7 @@ TurbKineticEnergyKsgsDesignOrderSrcElemKernel<AlgTraits>::TurbKineticEnergyKsgsD
   tvisc_ = metaData.get_field<ScalarFieldType>(
     stk::topology::NODE_RANK, "turbulent_viscosity");
   dualNodalVolume_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
-  
+
   MasterElement *meSCV = sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_);
   get_scv_shape_fn_data<AlgTraits>([&](double* ptr){meSCV->shape_fcn(ptr);}, v_shape_function_);
 
@@ -75,6 +75,8 @@ TurbKineticEnergyKsgsDesignOrderSrcElemKernel<AlgTraits>::execute(
   SharedMemView<DoubleType *>&rhs,
   ScratchViews<DoubleType>& scratchViews)
 {
+  DoubleType w_dudx [AlgTraits::nDim_][AlgTraits::nDim_];
+ 
   SharedMemView<DoubleType**>& v_velocityNp1 = scratchViews.get_scratch_view_2D(*velocityNp1_);
   SharedMemView<DoubleType*>& v_tkeNp1 = scratchViews.get_scratch_view_1D(
     *tkeNp1_);
@@ -86,7 +88,7 @@ TurbKineticEnergyKsgsDesignOrderSrcElemKernel<AlgTraits>::execute(
     *dualNodalVolume_);
   SharedMemView<DoubleType*>& v_scv_volume = scratchViews.get_me_views(CURRENT_COORDINATES).scv_volume;
   SharedMemView<DoubleType***>& v_dndx = scratchViews.get_me_views(CURRENT_COORDINATES).dndx_scv;
-    
+
   for (int ip=0; ip < AlgTraits::numScvIp_; ++ip) {
     
     const int nearestNode = ipNodeMap_[ip];
@@ -99,23 +101,31 @@ TurbKineticEnergyKsgsDesignOrderSrcElemKernel<AlgTraits>::execute(
     DoubleType rhoIp = 0.0;
     DoubleType tviscIp = 0.0;
     DoubleType dualNodalVolIp = 0.0;
-    DoubleType Pk = 0.0; 
+
+    for ( int i = 0; i < AlgTraits::nDim_; ++i )
+      for ( int j = 0; j < AlgTraits::nDim_; ++j )
+        w_dudx[i][j] = 0.0;
+
     for (int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic) {
       
-      const DoubleType r = v_shape_function_(ip, ic);
-      
+      const DoubleType r = v_shape_function_(ip, ic);      
       tkeIp += r*v_tkeNp1(ic);
       rhoIp += r*v_densityNp1(ic);
       tviscIp += r*v_tvisc(ic);
       dualNodalVolIp += r*v_dualNodalVolume(ic);
-      
-      for (int i = 0; i < AlgTraits::nDim_; ++i) {
-        const DoubleType dni = v_dndx(ip,ic,i);
+
+      for ( int i = 0; i < AlgTraits::nDim_; ++i ) {
         const DoubleType ui = v_velocityNp1(ic,i);
-        for (int j = 0; j < AlgTraits::nDim_; ++j) {
-          const DoubleType dnj = v_dndx(ip,ic,j);
-          Pk += ui*dnj*(ui*dnj + v_velocityNp1(ic,j)*dni);
+        for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
+          w_dudx[i][j] += v_dndx(ip,ic,j)*ui;
         }
+      }
+    }  
+   
+    DoubleType Pk = 0.0;
+    for ( int i = 0; i < AlgTraits::nDim_; ++i ) {
+      for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
+        Pk += w_dudx[i][j]*(w_dudx[i][j] + w_dudx[j][i]);
       }
     }
     Pk *= tviscIp;
@@ -130,7 +140,7 @@ TurbKineticEnergyKsgsDesignOrderSrcElemKernel<AlgTraits>::execute(
     Pk = stk::math::min(Pk, tkeProdLimitRatio_*Dk);
     
     // assemble RHS and LHS
-    rhs(nearestNode) += (Pk - Dk)*scV;
+    rhs(nearestNode) += (Pk - Dk)*scV;   
     for (int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic) {
       lhs(nearestNode, ic) += 1.5*v_shape_function_(ip,ic)*tkeFac*scV;
     }

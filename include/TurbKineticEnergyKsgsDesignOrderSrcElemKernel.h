@@ -53,7 +53,7 @@ private:
   ScalarFieldType *densityNp1_{nullptr};
   ScalarFieldType *tvisc_{nullptr};
   ScalarFieldType *dualNodalVolume_{nullptr};
-  
+
   const double cEps_;
   const double tkeProdLimitRatio_;
   
