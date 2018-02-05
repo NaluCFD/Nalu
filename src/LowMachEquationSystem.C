@@ -1527,7 +1527,7 @@ MomentumEquationSystem::register_inflow_bc(
       = assembleNodalGradAlgDriver_->algMap_.find(algType);
     if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
       Algorithm *theAlg
-        = new AssembleNodalGradUBoundaryAlgorithm(realm_, part, &velocityNp1, &dudxNone, edgeNodalGradient_);
+        = new AssembleNodalGradUBoundaryAlgorithm(realm_, part, theBcField, &dudxNone, edgeNodalGradient_);
       assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
     }
     else {
@@ -1634,8 +1634,15 @@ MomentumEquationSystem::register_wall_bc(
   const WallBoundaryConditionData &wallBCData)
 {
 
+  // find out if this is a wall function approach
+  WallUserData userData = wallBCData.userData_;
+  const bool wallFunctionApproach = userData.wallFunctionApproach_;
+  const bool ablWallFunctionApproach = userData.ablWallFunctionApproach_;
+  const bool anyWallFunctionActivated = wallFunctionApproach || ablWallFunctionApproach;
+
   // push mesh part
-  notProjectedPart_.push_back(part);
+  if ( !anyWallFunctionActivated )
+    notProjectedPart_.push_back(part);
 
   // algorithm type
   const AlgorithmType algType = WALL;
@@ -1647,12 +1654,7 @@ MomentumEquationSystem::register_wall_bc(
   stk::mesh::MetaData &meta_data = realm_.meta_data();
   const unsigned nDim = meta_data.spatial_dimension();
 
-  // find out if this is a wall function approach
-  WallUserData userData = wallBCData.userData_;
-  const bool wallFunctionApproach = userData.wallFunctionApproach_;
-  const bool ablWallFunctionApproach = userData.ablWallFunctionApproach_;
-
-  const std::string bcFieldName = wallFunctionApproach ? "wall_velocity_bc" : "velocity_bc";
+  const std::string bcFieldName = anyWallFunctionActivated ? "wall_velocity_bc" : "velocity_bc";
 
   // register boundary data; velocity_bc
   VectorFieldType *theBcField = &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, bcFieldName));
@@ -1709,21 +1711,26 @@ MomentumEquationSystem::register_wall_bc(
     bcDataAlg_.push_back(auxAlg);
   }
   
-  // copy velocity_bc to velocity np1... (consider not doing this when a wall function is in use)
+  // copy velocity_bc to velocity np1
   CopyFieldAlgorithm *theCopyAlg
     = new CopyFieldAlgorithm(realm_, part,
 			     theBcField, &velocityNp1,
 			     0, nDim,
 			     stk::topology::NODE_RANK);
-  bcDataMapAlg_.push_back(theCopyAlg);
 
+  // wall function activity will only set dof velocity np1 wall value as an IC
+  if ( anyWallFunctionActivated )
+    realm_.initCondAlg_.push_back(theCopyAlg);
+  else
+    bcDataMapAlg_.push_back(theCopyAlg);
+    
   // non-solver; contribution to Gjui; allow for element-based shifted
   if ( !managePNG_ ) {
     std::map<AlgorithmType, Algorithm *>::iterator it
       = assembleNodalGradAlgDriver_->algMap_.find(algType);
     if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
       Algorithm *theAlg
-        = new AssembleNodalGradUBoundaryAlgorithm(realm_, part, &velocityNp1, &dudxNone, edgeNodalGradient_);
+        = new AssembleNodalGradUBoundaryAlgorithm(realm_, part, theBcField, &dudxNone, edgeNodalGradient_);
       assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
     }
     else {

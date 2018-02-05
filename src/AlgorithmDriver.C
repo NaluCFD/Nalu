@@ -8,6 +8,7 @@
 
 #include <AlgorithmDriver.h>
 
+#include <NaluEnv.h>
 #include <Algorithm.h>
 #include <Enums.h>
 
@@ -39,7 +40,10 @@ AlgorithmDriver::~AlgorithmDriver()
   std::map<AlgorithmType, Algorithm * >::iterator ii;
   for( ii=algMap_.begin(); ii!=algMap_.end(); ++ii ) {
     Algorithm *theAlg = ii->second;
-    delete theAlg;
+    if ( theAlg == NULL )
+      NaluEnv::self().naluOutputP0() << "algorithm is null, " << std::endl;
+    else
+      delete theAlg;
   }
 }
 
