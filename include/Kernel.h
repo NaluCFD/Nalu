@@ -108,9 +108,19 @@ public:
    *  the linear solve
    */
   virtual void execute(
-    SharedMemView<DoubleType**>&,
-    SharedMemView<DoubleType*>&,
-    ScratchViews<DoubleType>&)
+    SharedMemView<DoubleType**> &lhs,
+    SharedMemView<DoubleType*> &rhs,
+    ScratchViews<DoubleType> &scratchViews)
+  {}
+
+  /** Special execute for face-element kernels
+   *
+   */
+  virtual void execute(
+    SharedMemView<DoubleType**> &lhs,
+    SharedMemView<DoubleType*> &rhs,
+    ScratchViews<DoubleType> &faceScratchViews,
+    ScratchViews<DoubleType> &elemScratchViews)
   {}
 };
 
