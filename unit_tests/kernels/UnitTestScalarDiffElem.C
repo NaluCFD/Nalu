@@ -9,7 +9,7 @@
 #include "UnitTestUtils.h"
 #include "UnitTestHelperObjects.h"
 
-#include "ScalarDiffElemKernel.h"
+#include "kernel/ScalarDiffElemKernel.h"
 
 namespace {
 namespace hex8_golds {

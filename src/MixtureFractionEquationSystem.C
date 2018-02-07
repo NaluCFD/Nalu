@@ -44,17 +44,16 @@
 #include <TimeIntegrator.h>
 #include <SolverAlgorithmDriver.h>
 
-// template for supp algs
+// template for kernels
 #include <AlgTraits.h>
-#include <KernelBuilder.h>
-#include <KernelBuilderLog.h>
+#include <kernel/KernelBuilder.h>
+#include <kernel/KernelBuilderLog.h>
 
-// consolidated
+// kernels
 #include <AssembleElemSolverAlgorithm.h>
-#include <ScalarMassElemKernel.h>
-#include <ScalarAdvDiffElemKernel.h>
-#include <ScalarUpwAdvDiffElemKernel.h>
-#include <nso/ScalarNSOKeElemKernel.h>
+#include <kernel/ScalarMassElemKernel.h>
+#include <kernel/ScalarAdvDiffElemKernel.h>
+#include <kernel/ScalarUpwAdvDiffElemKernel.h>
 
 // deprecated
 #include <ScalarMassElemSuppAlgDep.h>
@@ -62,6 +61,7 @@
 
 // nso
 #include <nso/ScalarNSOElemKernel.h>
+#include <nso/ScalarNSOKeElemKernel.h>
 #include <nso/ScalarNSOKeElemSuppAlg.h>
 
 // user function

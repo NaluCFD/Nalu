@@ -10,7 +10,7 @@
 
 #include <SolutionOptions.h>
 #include <TimeIntegrator.h>
-#include <ContinuityAdvElemKernel.h>
+#include <kernel/ContinuityAdvElemKernel.h>
 #include <ElemDataRequests.h>
 #include <ScratchViews.h>
 

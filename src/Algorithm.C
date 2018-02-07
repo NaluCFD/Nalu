@@ -8,7 +8,7 @@
 
 #include <Algorithm.h>
 #include <SupplementalAlgorithm.h>
-#include <Kernel.h>
+#include <kernel/Kernel.h>
 
 namespace sierra{
 namespace nalu{

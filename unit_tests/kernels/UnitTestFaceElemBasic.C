@@ -10,7 +10,7 @@
 #include "CopyAndInterleave.h"
 
 #include "AssembleFaceElemSolverAlgorithm.h"
-#include "MomentumSymmetryElemKernel.h"
+#include "kernel/MomentumSymmetryElemKernel.h"
 
 #include <gtest/gtest.h>
 

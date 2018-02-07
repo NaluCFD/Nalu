@@ -99,16 +99,21 @@
 #include <FixPressureAtNodeAlgorithm.h>
 #include <FixPressureAtNodeInfo.h>
 
-// consolidated approach
-#include <ContinuityAdvElemKernel.h>
-#include <ContinuityMassElemKernel.h>
-#include <MomentumAdvDiffElemKernel.h>
-#include <MomentumActuatorSrcElemKernel.h>
-#include <MomentumBuoyancyBoussinesqSrcElemKernel.h>
-#include <MomentumBuoyancySrcElemKernel.h>
-#include <MomentumCoriolisSrcElemKernel.h>
-#include <MomentumMassElemKernel.h>
-#include <MomentumUpwAdvDiffElemKernel.h>
+// template for kernels
+#include <AlgTraits.h>
+#include <kernel/KernelBuilder.h>
+#include <kernel/KernelBuilderLog.h>
+
+// kernels
+#include <kernel/ContinuityAdvElemKernel.h>
+#include <kernel/ContinuityMassElemKernel.h>
+#include <kernel/MomentumAdvDiffElemKernel.h>
+#include <kernel/MomentumActuatorSrcElemKernel.h>
+#include <kernel/MomentumBuoyancyBoussinesqSrcElemKernel.h>
+#include <kernel/MomentumBuoyancySrcElemKernel.h>
+#include <kernel/MomentumCoriolisSrcElemKernel.h>
+#include <kernel/MomentumMassElemKernel.h>
+#include <kernel/MomentumUpwAdvDiffElemKernel.h>
 
 // nso
 #include <nso/MomentumNSOElemKernel.h>
@@ -117,13 +122,7 @@
 #include <nso/MomentumNSOGradElemSuppAlg.h>
 
 // hybrid turbulence
-#include <MomentumHybridTurbElemKernel.h>
-
-// template for supp algs
-#include <AlgTraits.h>
-#include <KernelBuilder.h>
-#include <KernelBuilderLog.h>
-
+#include <kernel/MomentumHybridTurbElemKernel.h>
 
 // user function
 #include <user_functions/ConvectingTaylorVortexVelocityAuxFunction.h>

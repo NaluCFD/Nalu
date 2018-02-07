@@ -9,7 +9,7 @@
 #include "UnitTestUtils.h"
 #include "UnitTestHelperObjects.h"
 
-#include "MomentumHybridTurbElemKernel.h"
+#include "kernel/MomentumHybridTurbElemKernel.h"
 
 namespace {
 namespace hex8_golds {

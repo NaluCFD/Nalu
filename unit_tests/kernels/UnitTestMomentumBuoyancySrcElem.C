@@ -9,7 +9,7 @@
 #include "UnitTestUtils.h"
 #include "UnitTestHelperObjects.h"
 
-#include "MomentumBuoyancySrcElemKernel.h"
+#include "kernel/MomentumBuoyancySrcElemKernel.h"
 
 #include <random>
 

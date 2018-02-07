@@ -10,7 +10,7 @@
 #include "UnitTestHelperObjects.h"
 
 #include "CoriolisSrc.h"
-#include "MomentumCoriolisSrcElemKernel.h"
+#include "kernel/MomentumCoriolisSrcElemKernel.h"
 #include "BucketLoop.h"
 
 #include <random>

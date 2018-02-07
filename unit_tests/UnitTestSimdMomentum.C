@@ -9,7 +9,7 @@
 
 #include <SolutionOptions.h>
 #include <TimeIntegrator.h>
-#include <MomentumAdvDiffElemKernel.h>
+#include <kernel/MomentumAdvDiffElemKernel.h>
 #include <nso/MomentumNSOElemKernel.h>
 #include <ElemDataRequests.h>
 

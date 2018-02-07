@@ -58,22 +58,24 @@
 #include <SolutionOptions.h>
 #include <ABLForcingAlgorithm.h>
 
-// nso
-#include <nso/ScalarNSOKeElemSuppAlg.h>
-#include <nso/ScalarNSOElemKernel.h>
-#include <nso/ScalarNSOElemSuppAlgDep.h>
-
 // template for kernels
 #include <AlgTraits.h>
-#include <KernelBuilder.h>
-#include <KernelBuilderLog.h>
+#include <kernel/KernelBuilder.h>
+#include <kernel/KernelBuilderLog.h>
 
-// consolidated
+// kernels
 #include <AssembleElemSolverAlgorithm.h>
-#include <ScalarMassElemKernel.h>
-#include <ScalarAdvDiffElemKernel.h>
-#include <ScalarUpwAdvDiffElemKernel.h>
+#include <kernel/ScalarMassElemKernel.h>
+#include <kernel/ScalarAdvDiffElemKernel.h>
+#include <kernel/ScalarUpwAdvDiffElemKernel.h>
+
+// nso
+#include <nso/ScalarNSOElemKernel.h>
 #include <nso/ScalarNSOKeElemKernel.h>
+
+// nso to be deprecated
+#include <nso/ScalarNSOElemSuppAlgDep.h>
+#include <nso/ScalarNSOKeElemSuppAlg.h>
 
 // props
 #include <property_evaluator/EnthalpyPropertyEvaluator.h>
