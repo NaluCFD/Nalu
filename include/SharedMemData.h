@@ -40,6 +40,8 @@ struct SharedMemData {
         sortPermutation = get_int_shmem_view_1D(team, rhsSize);
     }
 
+    const stk::mesh::Entity* elemNodes[simdLen];
+    int numSimdElems;
     std::unique_ptr<ScratchViews<double>> prereqData[simdLen];
     ScratchViews<DoubleType> simdPrereqData;
     SharedMemView<DoubleType*> simdrhs;
