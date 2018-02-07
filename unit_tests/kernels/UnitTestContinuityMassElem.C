@@ -9,7 +9,7 @@
 #include "UnitTestUtils.h"
 #include "UnitTestHelperObjects.h"
 
-#include "ContinuityMassElemKernel.h"
+#include "kernel/ContinuityMassElemKernel.h"
 
 TEST_F(ContinuityKernelHex8Mesh, density_time_derivative)
 {

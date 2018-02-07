@@ -52,19 +52,18 @@
 
 #include <SolverAlgorithmDriver.h>
 
-
-// template for supp algs
+// template for kernels
 #include <AlgTraits.h>
-#include <KernelBuilder.h>
-#include <KernelBuilderLog.h>
+#include <kernel/KernelBuilder.h>
+#include <kernel/KernelBuilderLog.h>
 
-// consolidated
+// kernels
 #include <AssembleElemSolverAlgorithm.h>
-#include <ScalarMassElemKernel.h>
-#include <ScalarAdvDiffElemKernel.h>
-#include <ScalarUpwAdvDiffElemKernel.h>
-#include <TurbKineticEnergyKsgsSrcElemKernel.h>
-#include <TurbKineticEnergyKsgsDesignOrderSrcElemKernel.h>
+#include <kernel/ScalarMassElemKernel.h>
+#include <kernel/ScalarAdvDiffElemKernel.h>
+#include <kernel/ScalarUpwAdvDiffElemKernel.h>
+#include <kernel/TurbKineticEnergyKsgsSrcElemKernel.h>
+#include <kernel/TurbKineticEnergyKsgsDesignOrderSrcElemKernel.h>
 
 // nso
 #include <nso/ScalarNSOElemKernel.h>

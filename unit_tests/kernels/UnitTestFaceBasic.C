@@ -5,7 +5,7 @@
 #include "ElemDataRequests.h"
 #include "ScratchViews.h"
 #include "CopyAndInterleave.h"
-#include "Kernel.h"
+#include "kernel/Kernel.h"
 
 #include <gtest/gtest.h>
 

@@ -9,7 +9,7 @@
 #include "UnitTestUtils.h"
 #include "UnitTestHelperObjects.h"
 
-#include "ContinuityAdvElemKernel.h"
+#include "kernel/ContinuityAdvElemKernel.h"
 
 namespace {
 namespace hex8_golds {

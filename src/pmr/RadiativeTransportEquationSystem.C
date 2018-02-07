@@ -34,8 +34,8 @@
 
 // template for kernels
 #include "AlgTraits.h"
-#include "KernelBuilder.h"
-#include "KernelBuilderLog.h"
+#include "kernel/KernelBuilder.h"
+#include "kernel/KernelBuilderLog.h"
 
 // consolidated
 #include "AssembleElemSolverAlgorithm.h"

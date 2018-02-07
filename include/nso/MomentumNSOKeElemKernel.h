@@ -8,7 +8,7 @@
 #ifndef MOMENTUMNSOKEELEMKERNEL_H
 #define MOMENTUMNSOKEELEMKERNEL_H
 
-#include "Kernel.h"
+#include "kernel/Kernel.h"
 #include "FieldTypeDef.h"
 
 #include <stk_mesh/base/BulkData.hpp>

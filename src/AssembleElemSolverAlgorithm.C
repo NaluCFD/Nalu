@@ -15,8 +15,9 @@
 #include <FieldTypeDef.h>
 #include <LinearSystem.h>
 #include <Realm.h>
-#include <Kernel.h>
 #include <TimeIntegrator.h>
+
+#include <kernel/Kernel.h>
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/BulkData.hpp>

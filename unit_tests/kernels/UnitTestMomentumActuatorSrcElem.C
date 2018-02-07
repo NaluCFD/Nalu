@@ -9,7 +9,7 @@
 #include "UnitTestUtils.h"
 #include "UnitTestHelperObjects.h"
 
-#include "MomentumActuatorSrcElemKernel.h"
+#include "kernel/MomentumActuatorSrcElemKernel.h"
 
 TEST_F(ActuatorSourceKernelHex8Mesh, actuator_source)
 {

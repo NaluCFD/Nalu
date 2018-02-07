@@ -9,7 +9,7 @@
 #include "UnitTestUtils.h"
 #include "UnitTestHelperObjects.h"
 
-#include "MomentumAdvDiffElemKernel.h"
+#include "kernel/MomentumAdvDiffElemKernel.h"
 
 namespace {
 namespace hex8_golds {
