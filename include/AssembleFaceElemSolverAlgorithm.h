@@ -14,6 +14,7 @@
 #include <ScratchViews.h>
 #include <SimdInterface.h>
 #include <SharedMemData.h>
+#include <CopyAndInterleave.h>
 
 namespace stk {
 namespace mesh {
