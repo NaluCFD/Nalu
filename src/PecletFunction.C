@@ -7,6 +7,7 @@
 
 
 #include <PecletFunction.h>
+#include "SimdInterface.h"
 
 // basic c++
 #include <algorithm>
@@ -23,7 +24,8 @@ namespace nalu{
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-PecletFunction::PecletFunction()
+template<typename T>
+PecletFunction<T>::PecletFunction()
 {
   // nothing to do
 }
@@ -31,7 +33,8 @@ PecletFunction::PecletFunction()
 //--------------------------------------------------------------------------
 //-------- destructor ------------------------------------------------------
 //--------------------------------------------------------------------------
-PecletFunction::~PecletFunction()
+template<typename T>
+PecletFunction<T>::~PecletFunction()
 {
   // nothing to do
 }
@@ -39,12 +42,13 @@ PecletFunction::~PecletFunction()
 //==========================================================================
 // Class Definition
 //==========================================================================
-// ClassicPecletFunction - classic 
+// ClassicPecletFunction - classic
 //==========================================================================
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-ClassicPecletFunction::ClassicPecletFunction( const double A, const double hf)
+template<typename T>
+ClassicPecletFunction<T>::ClassicPecletFunction( const T A, const T hf)
   : A_(A),
     hf_(hf)
 {
@@ -54,7 +58,8 @@ ClassicPecletFunction::ClassicPecletFunction( const double A, const double hf)
 //--------------------------------------------------------------------------
 //-------- destructor ------------------------------------------------------
 //--------------------------------------------------------------------------
-ClassicPecletFunction::~ClassicPecletFunction()
+template<typename T>
+ClassicPecletFunction<T>::~ClassicPecletFunction()
 {
   // nothing to do
 }
@@ -62,22 +67,23 @@ ClassicPecletFunction::~ClassicPecletFunction()
 //--------------------------------------------------------------------------
 //-------- execute ---------------------------------------------------------
 //--------------------------------------------------------------------------
-double 
-ClassicPecletFunction::execute(const double pecletNumber)
+template<typename T>
+T ClassicPecletFunction<T>::execute(const T pecletNumber)
 {
-  const double modPeclet = hf_*pecletNumber;
+  const T modPeclet = hf_*pecletNumber;
   return modPeclet*modPeclet/(5.0 + modPeclet*modPeclet);
 }
 
 //==========================================================================
 // Class Definition
 //==========================================================================
-// TanhFunction - classic 
+// TanhFunction - classic
 //==========================================================================
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-TanhFunction::TanhFunction(double c1, double c2)
+template<typename T>
+TanhFunction<T>::TanhFunction(T c1, T c2)
   : c1_(c1),
     c2_(c2)
 {
@@ -87,7 +93,8 @@ TanhFunction::TanhFunction(double c1, double c2)
 //--------------------------------------------------------------------------
 //-------- destructor ------------------------------------------------------
 //--------------------------------------------------------------------------
-TanhFunction::~TanhFunction()
+template<typename T>
+TanhFunction<T>::~TanhFunction()
 {
   // nothing to do
 }
@@ -95,11 +102,16 @@ TanhFunction::~TanhFunction()
 //--------------------------------------------------------------------------
 //-------- execute ---------------------------------------------------------
 //--------------------------------------------------------------------------
-double 
-TanhFunction::execute(const double indVar)
+template<typename T>
+T TanhFunction<T>::execute(const T indVar)
 {
-  return 0.50*(1.0+std::tanh((indVar-c1_)/c2_));
+  return 0.50*(1.0+stk::math::tanh((indVar-c1_)/c2_));
 }
+
+template class ClassicPecletFunction<double>;
+template class TanhFunction<double>;
+template class ClassicPecletFunction<DoubleType>;
+template class TanhFunction<DoubleType>;
 
 } // namespace nalu
 } // namespace Sierra

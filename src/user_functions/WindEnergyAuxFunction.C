@@ -37,7 +37,7 @@ WindEnergyAuxFunction::WindEnergyAuxFunction(
   if ( realm.get_tanh_functional_form(omegaName) == "tanh") {
     const double c1 = realm.get_tanh_trans(omegaName);
     const double c2 = realm.get_tanh_width(omegaName);
-    tanhFunction_ = new TanhFunction(c1, c2);
+    tanhFunction_ = new TanhFunction<double>(c1, c2);
   }
 
   // extract mesh info 

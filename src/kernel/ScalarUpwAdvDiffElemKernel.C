@@ -48,7 +48,7 @@ ScalarUpwAdvDiffElemKernel<AlgTraits>::ScalarUpwAdvDiffElemKernel(
     om_alpha_(1.0 - alpha_),
     om_alphaUpw_(1.0 - alphaUpw_),
     shiftedGradOp_(solnOpts.get_shifted_grad_op(scalarQ->name())),
-    pecletFunction_(eqSystem->create_peclet_function(dofName_))
+    pecletFunction_(eqSystem->create_peclet_function<DoubleType>(dofName_))
 {
   // Save of required fields
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
@@ -169,12 +169,7 @@ ScalarUpwAdvDiffElemKernel<AlgTraits>::execute(
       udotx += uj*dxj;
     }
     const DoubleType tmp = stk::math::abs(udotx)/(diffIp+small_);
-    //FIXME: modify pecletFunction to be double type
-    DoubleType pecfac = 0.0;
-    for(int simdIndex=0; simdIndex<stk::simd::ndoubles; ++simdIndex) {
-      stk::simd::set_data(pecfac, simdIndex, pecletFunction_->execute(stk::simd::get_data(tmp, simdIndex)));
-    }
-
+    const DoubleType pecfac = pecletFunction_->execute(tmp);
     const DoubleType om_pecfac = 1.0-pecfac;
 
     // left and right extrapolation

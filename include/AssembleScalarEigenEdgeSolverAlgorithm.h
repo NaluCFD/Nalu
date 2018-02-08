@@ -22,7 +22,7 @@ namespace sierra{
 namespace nalu{
 
 class Realm;
-class PecletFunction;
+template <typename T> class PecletFunction;
 
 class AssembleScalarEigenEdgeSolverAlgorithm : public SolverAlgorithm
 {
@@ -76,7 +76,7 @@ public:
   GenericFieldType *dudx_;
 
   // peclect function specifics
-  PecletFunction * pecletFunction_;
+  PecletFunction<double>* pecletFunction_;
 
   // constants and perturbation from user
   const double cGGDH_;

@@ -4977,7 +4977,7 @@ Realm::get_tanh_blending(
   if ( get_tanh_functional_form(dofName) == "tanh" ) {
     const double c1 = get_tanh_trans(dofName);
     const double c2 = get_tanh_width(dofName);
-    TanhFunction tanhFunction(c1,c2);
+    TanhFunction<double> tanhFunction(c1,c2);
     const double currentTime = get_current_time();
     omegaBlend = tanhFunction.execute(currentTime);
   }
