@@ -150,14 +150,15 @@ void test_ME_views(const std::vector<sierra::nalu::ELEM_DATA_NEEDED>& requests)
     driver.dataNeeded_.add_master_element_call(request, sierra::nalu::CURRENT_COORDINATES);
   }
 
+  sierra::nalu::MasterElement* meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(AlgTraits::topo_);
+  sierra::nalu::MasterElement* meSCV = sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_);
+
   // Execute the loop and perform all tests
-  driver.execute([&](sierra::nalu::ScratchViews<DoubleType>& scratchViews,
-                     sierra::nalu::MasterElement* meSCS,
-                     sierra::nalu::MasterElement* meSCV) {
+  driver.execute([&](sierra::nalu::SharedMemData& smdata) {
       // Extract data from scratchViews
-      sierra::nalu::SharedMemView<DoubleType**>& v_coords = scratchViews.get_scratch_view_2D(
+      sierra::nalu::SharedMemView<DoubleType**>& v_coords = smdata.simdPrereqData.get_scratch_view_2D(
         *driver.coordinates_);
-      auto& meViews = scratchViews.get_me_views(sierra::nalu::CURRENT_COORDINATES);
+      auto& meViews = smdata.simdPrereqData.get_me_views(sierra::nalu::CURRENT_COORDINATES);
 
       if (meSCS != nullptr) {
         for(sierra::nalu::ELEM_DATA_NEEDED request : requests) {

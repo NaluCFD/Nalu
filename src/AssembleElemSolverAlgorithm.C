@@ -32,8 +32,6 @@
 
 #include <KokkosInterface.h>
 #include <ScratchViews.h>
-#include <SharedMemData.h>
-#include <SimdInterface.h>
 #include <CopyAndInterleave.h>
 
 namespace sierra{
@@ -77,7 +75,6 @@ AssembleElemSolverAlgorithm::initialize_connectivity()
 void
 AssembleElemSolverAlgorithm::execute()
 {
-  stk::mesh::MetaData & meta_data = realm_.meta_data();
   stk::mesh::BulkData & bulk_data = realm_.bulk_data();
 
   // set any data
@@ -85,53 +82,8 @@ AssembleElemSolverAlgorithm::execute()
   for ( size_t i = 0; i < activeKernelsSize; ++i )
     activeKernels_[i]->setup(*realm_.timeIntegrator_);
 
-  const int lhsSize = rhsSize_*rhsSize_;
-  const int scratchIdsSize = rhsSize_;
-
-  // fixed size for this homogeneous algorithm
-  const int bytes_per_team = 0;
-  const int bytes_per_thread = calculate_shared_mem_bytes_per_thread(lhsSize, rhsSize_, scratchIdsSize,
-                                                                   meta_data.spatial_dimension(), dataNeededByKernels_);
-
-  // define some common selectors
-  stk::mesh::Selector s_locally_owned_union =
-          meta_data.locally_owned_part() & stk::mesh::selectUnion(partVec_);
-
-  stk::mesh::BucketVector const& elem_buckets =
-          realm_.get_buckets(entityRank_, s_locally_owned_union );
-
-  auto team_exec = sierra::nalu::get_team_policy(elem_buckets.size(), bytes_per_team, bytes_per_thread);
-  Kokkos::parallel_for(team_exec, [&](const sierra::nalu::TeamHandleType& team)
+  run_algorithm(bulk_data, [&](SharedMemData& smdata)
   {
-    stk::mesh::Bucket & b = *elem_buckets[team.league_rank()];
-    
-    ThrowAssertMsg(b.topology().num_nodes() == (unsigned)nodesPerEntity_,
-                   "AssembleElemSolverAlgorithm expected nodesPerEntity_ = "
-                   <<nodesPerEntity_<<", but b.topology().num_nodes() = "<<b.topology().num_nodes());
-
-    SharedMemData smdata(team, bulk_data, dataNeededByKernels_, nodesPerEntity_, rhsSize_);
-
-    const stk::mesh::Entity* entityNodes[simdLen];
-    const size_t bucketLen   = b.size();
-    const size_t simdBucketLen = get_num_simd_groups(bucketLen);
-
-    Kokkos::parallel_for(Kokkos::TeamThreadRange(team, simdBucketLen), [&](const size_t& bktIndex)
-    {
-      int numSimdElems = get_length_of_next_simd_group(bktIndex, bucketLen);
-
-      for(int simdElemIndex=0; simdElemIndex<numSimdElems; ++simdElemIndex) {
-        stk::mesh::Entity element = b[bktIndex*simdLen + simdElemIndex];
-        entityNodes[simdElemIndex] = bulk_data.begin_nodes(element);
-        fill_pre_req_data(dataNeededByKernels_, bulk_data, element,
-                          *smdata.prereqData[simdElemIndex], interleaveMEViews_);
-      }
-
-      copy_and_interleave(smdata.prereqData, numSimdElems, smdata.simdPrereqData, interleaveMEViews_);
-
-      if (!interleaveMEViews_) {
-        fill_master_element_views(dataNeededByKernels_, bulk_data, smdata.simdPrereqData);
-      }
-
       set_zero(smdata.simdrhs.data(), smdata.simdrhs.size());
       set_zero(smdata.simdlhs.data(), smdata.simdlhs.size());
 
@@ -139,13 +91,12 @@ AssembleElemSolverAlgorithm::execute()
       for ( size_t i = 0; i < activeKernelsSize; ++i )
         activeKernels_[i]->execute( smdata.simdlhs, smdata.simdrhs, smdata.simdPrereqData );
 
-      for(int simdElemIndex=0; simdElemIndex<numSimdElems; ++simdElemIndex) {
+      for(int simdElemIndex=0; simdElemIndex<smdata.numSimdElems; ++simdElemIndex) {
         extract_vector_lane(smdata.simdrhs, simdElemIndex, smdata.rhs);
         extract_vector_lane(smdata.simdlhs, simdElemIndex, smdata.lhs);
-        apply_coeff(nodesPerEntity_, entityNodes[simdElemIndex],
+        apply_coeff(nodesPerEntity_, smdata.elemNodes[simdElemIndex],
                     smdata.scratchIds, smdata.sortPermutation, smdata.rhs, smdata.lhs, __FILE__);
       }
-    });
   });
 }
 
