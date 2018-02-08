@@ -309,13 +309,13 @@ EquationSystem::create_peclet_function(
 {
   PecletFunction<T> *pecletFunction = NULL;
   if ( "classic" == realm_.get_tanh_functional_form(dofName) ) {
-    const double hybridFactor = realm_.get_hybrid_factor(dofName);
-    const double A = 5.0;
+    const T hybridFactor = realm_.get_hybrid_factor(dofName);
+    const T A = 5.0;
     pecletFunction = new ClassicPecletFunction<T>(A, hybridFactor);
   }
   else {
-    const double c1 = realm_.get_tanh_trans(dofName);
-    const double c2 = realm_.get_tanh_width(dofName);
+    const T c1 = realm_.get_tanh_trans(dofName);
+    const T c2 = realm_.get_tanh_width(dofName);
     pecletFunction = new TanhFunction<T>(c1, c2);
   }
   return pecletFunction;
