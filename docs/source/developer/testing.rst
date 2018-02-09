@@ -77,7 +77,7 @@ TPL versions are officially tested:
   boost@1.60.0
   cmake@3.6.1
   parallel-netcdf@1.6.1
-  yaml-cpp@0.5.3
+  yaml-cpp@master
   hdf5@1.8.16
   netcdf@4.3.3.1
   zlib@1.2.11
