@@ -62,7 +62,7 @@ find_package(YAML-CPP REQUIRED)
 if(YAML-CPP_FOUND)
   message("-- Found YAML-CPP = ${YAML_DIR}")
 endif()
-include_directories(${YAML_CPP_INCLUDE_DIR})
+include_directories(SYSTEM ${YAML_CPP_INCLUDE_DIR})
 
 ############################ HYPRE #####################################
 if(ENABLE_HYPRE)
@@ -72,7 +72,7 @@ if(ENABLE_HYPRE)
   if(HYPRE_FOUND)
     message("-- Found HYPRE = ${HYPRE_DIR}")
   endif()
-  include_directories(${HYPRE_INCLUDE_DIRS})
+  include_directories(SYSTEM ${HYPRE_INCLUDE_DIRS})
   add_definitions("-DNALU_USES_HYPRE")
 endif(ENABLE_HYPRE)
 
