@@ -117,7 +117,7 @@ int get_num_scalars_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDi
   for(const FieldInfo& fieldInfo : neededFields) {
     stk::mesh::EntityRank fieldEntityRank = fieldInfo.field->entity_rank();
     unsigned scalarsPerEntity = fieldInfo.scalarsDim1;
-    unsigned entitiesPerElem = !fieldEntityRank==stk::topology::NODE_RANK ? 1 : nodesPerEntity;
+    unsigned entitiesPerElem = fieldEntityRank==stk::topology::NODE_RANK ? nodesPerEntity : 1;
 
     // Catch errors if user requests nodal field but has not registered any
     // MasterElement we need to get nodesPerEntity
@@ -230,7 +230,7 @@ int get_num_scalars_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDi
   for(const FieldInfo& fieldInfo : neededFields) {
     stk::mesh::EntityRank fieldEntityRank = fieldInfo.field->entity_rank();
     unsigned scalarsPerEntity = fieldInfo.scalarsDim1;
-    unsigned entitiesPerElem = !fieldEntityRank==stk::topology::NODE_RANK ? 1 : nodesPerEntity;
+    unsigned entitiesPerElem = fieldEntityRank==stk::topology::NODE_RANK ? nodesPerEntity : 1;
 
     // Catch errors if user requests nodal field but has not registered any
     // MasterElement we need to get nodesPerEntity
