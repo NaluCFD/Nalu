@@ -56,6 +56,8 @@ TurbKineticEnergyKsgsDesignOrderSrcElemKernel<AlgTraits>::TurbKineticEnergyKsgsD
   dataPreReqs.add_cvfem_volume_me(meSCV);
 
   // required fields
+  dataPreReqs.add_coordinates_field(*coordinates_, AlgTraits::nDim_, CURRENT_COORDINATES);
+  dataPreReqs.add_gathered_nodal_field(*velocityNp1_, AlgTraits::nDim_);
   dataPreReqs.add_gathered_nodal_field(*tkeNp1_, 1);
   dataPreReqs.add_gathered_nodal_field(*densityNp1_, 1);
   dataPreReqs.add_gathered_nodal_field(*tvisc_, 1);
