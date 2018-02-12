@@ -66,11 +66,9 @@ if(result GREATER -1)
     ctest_build(BUILD "${CTEST_BINARY_DIRECTORY}" RETURN_VALUE result)
     message(" -- Build exit code = ${result} --")
     if(result EQUAL 0)
-      # Need to have TMPDIR set to disk for building so it doesn't run out of space
-      # but unset when running on these machines to stop OpenMPI from complaining
-      string(COMPARE EQUAL "${HOST_NAME}" "peregrine.hpc.nrel.gov" is_equal_peregrine)
-      string(COMPARE EQUAL "${HOST_NAME}" "merlin.hpc.nrel.gov" is_equal_merlin)
-      if(is_equal_peregrine OR is_equal_merlin)
+      # Need to have TMPDIR set to disk on certain NREL machines for building so builds
+      # do not run out of space but unset when running to stop OpenMPI from complaining
+      if(UNSET_TMPDIR_VAR)
         message("Clearing TMPDIR variable...")
         unset(ENV{TMPDIR})
       endif()
@@ -85,7 +83,9 @@ endif()
 
 message("\n -- Submit - ${CTEST_BUILD_NAME} --")
 set(CTEST_NOTES_FILES "${NIGHTLY_DIR}/jobs/nalu-test-log.txt")
-set(CTEST_NOTES_FILES ${CTEST_NOTES_FILES} "${NIGHTLY_DIR}/jobs/nalu-static-analysis.txt")
+if(HAVE_STATIC_ANALYSIS_OUTPUT)
+  set(CTEST_NOTES_FILES ${CTEST_NOTES_FILES} "${NIGHTLY_DIR}/jobs/nalu-static-analysis.txt")
+endif()
 ctest_submit(RETRY_COUNT 20
              RETRY_DELAY 20
              RETURN_VALUE result)
