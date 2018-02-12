@@ -22,7 +22,7 @@ namespace nalu {
 class SolutionOptions;
 class MasterElement;
 class ElemDataRequests;
-class PecletFunction;
+template <typename T> class PecletFunction;
 class EquationSystem;
 
 /** CVFEM scalar upwind advection/diffusion kernel
@@ -85,7 +85,7 @@ private:
   const double small_{1.0e-16};
 
   /// Peclet function
-  PecletFunction* pecletFunction_{nullptr};
+  PecletFunction<DoubleType>* pecletFunction_{nullptr};
 
   /// Shape functions
   Kokkos::View<DoubleType[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_ { "view_shape_func" };

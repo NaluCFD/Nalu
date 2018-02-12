@@ -66,7 +66,7 @@ AssembleScalarElemOpenSolverAlgorithm::AssembleScalarElemOpenSolverAlgorithm(
   openMassFlowRate_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "open_mass_flow_rate");
 
   // create the peclet blending function
-  pecletFunction_ = eqSystem->create_peclet_function(scalarQ_->name());
+  pecletFunction_ = eqSystem->create_peclet_function<double>(scalarQ_->name());
 }
 
 //--------------------------------------------------------------------------

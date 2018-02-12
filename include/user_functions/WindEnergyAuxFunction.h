@@ -17,7 +17,7 @@ namespace sierra{
 namespace nalu{
 
 class Realm;
-class TanhFunction;
+template<typename T> class TanhFunction;
 
 class WindEnergyAuxFunction : public AuxFunction
 {
@@ -46,7 +46,7 @@ public:
 
 private:
   double omegaBlend_;
-  TanhFunction *tanhFunction_;
+  TanhFunction<double> *tanhFunction_;
   std::vector<double> omegaMM_;
   std::vector<double> centroidMM_;
 };

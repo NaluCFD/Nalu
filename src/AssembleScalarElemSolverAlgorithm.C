@@ -65,7 +65,7 @@ AssembleScalarElemSolverAlgorithm::AssembleScalarElemSolverAlgorithm(
   massFlowRate_ = meta_data.get_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "mass_flow_rate_scs");
 
   // create the peclet blending function
-  pecletFunction_ = eqSystem->create_peclet_function(scalarQ_->name());
+  pecletFunction_ = eqSystem->create_peclet_function<double>(scalarQ_->name());
   
   /* Notes:
 

@@ -22,7 +22,7 @@ namespace nalu {
 class ElemDataRequests;
 class EquationSystem;
 class MasterElement;
-class PecletFunction;
+template <typename T> class PecletFunction;
 class SolutionOptions;
 
 /** Advection (with upwind) diffusion term for momentum equation (velocity DOF)
@@ -85,7 +85,7 @@ private:
   const double small_{1.0e-16};
   
   /// Peclet function
-  PecletFunction* pecletFunction_{nullptr};
+  PecletFunction<DoubleType>* pecletFunction_{nullptr};
 
   // fixed scratch space
   Kokkos::View<DoubleType[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_{"v_shape_function"};

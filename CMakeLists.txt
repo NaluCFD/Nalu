@@ -101,12 +101,28 @@ if(ENABLE_TIOGA)
 endif()
 
 ########################### NALU #####################################
-if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-  set(EXTRA_FLAGS "")
+
+# Add any extra flags based on compiler and/or OS
+message("-- CMAKE_SYSTEM_NAME = ${CMAKE_SYSTEM_NAME}")
+message("-- CMAKE_CXX_COMPILER_ID = ${CMAKE_CXX_COMPILER_ID}")
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang")
+  set(EXTRA_CXX_FLAGS "")
+  set(EXTRA_Fortran_FLAGS "")
+  # When mixing clang with gfortran on OSX, the compiler is unable to
+  # produce a fast/compact stack unwind, so we can just use the default
+  # unwind method and avoid several warnings about it when OpenFAST is enabled.
+  if(ENABLE_OPENFAST)
+    set(EXTRA_EXE_LINKER_FLAGS "-Wl,-no_compact_unwind")
+  endif()
+elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+  set(EXTRA_CXX_FLAGS "")
+  set(EXTRA_Fortran_FLAGS "")
 elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-  set(EXTRA_FLAGS "")
+  set(EXTRA_CXX_FLAGS "")
+  set(EXTRA_Fortran_FLAGS "")
 elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
-  set(EXTRA_FLAGS "-restrict")
+  set(EXTRA_CXX_FLAGS "-restrict")
+  set(EXTRA_Fortran_FLAGS "")
 endif()
 
 if(ENABLE_WARNINGS)
@@ -118,10 +134,13 @@ if(ENABLE_EXTRA_WARNINGS)
   set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -Wextra -pedantic")
 endif()
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${Trilinos_CXX_COMPILER_FLAGS} ${EXTRA_FLAGS}")
-set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} ${Trilinos_Fortran_COMPILER_FLAGS}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${Trilinos_CXX_COMPILER_FLAGS} ${EXTRA_CXX_FLAGS}")
+set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} ${Trilinos_Fortran_COMPILER_FLAGS} ${EXTRA_Fortran_FLAGS}")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${EXTRA_EXE_LINKER_FLAGS}")
+
 message("-- CMAKE_CXX_FLAGS = ${CMAKE_CXX_FLAGS}")
 message("-- CMAKE_Fortran_FLAGS = ${CMAKE_Fortran_FLAGS}")
+message("-- CMAKE_EXE_LINKER_FLAGS = ${CMAKE_EXE_LINKER_FLAGS}")
 
 if(ENABLE_HYPRE)
   include(CheckSymbolExists)
@@ -143,7 +162,7 @@ target_link_libraries(nalu ${Trilinos_LIBRARIES})
 target_link_libraries(nalu ${YAML_CPP_LIBRARIES})
 
 if(ENABLE_OPENFAST)
-   target_link_libraries(nalu ${OpenFAST_LIBRARIES} ${OpenFAST_CPP_LIBRARIES})
+  target_link_libraries(nalu ${OpenFAST_LIBRARIES} ${OpenFAST_CPP_LIBRARIES})
 endif (ENABLE_OPENFAST)
 
 if(ENABLE_TIOGA)

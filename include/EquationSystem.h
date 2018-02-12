@@ -10,6 +10,8 @@
 #define EquationSystem_h
 
 #include<NaluParsing.h>
+#include "Realm.h"
+#include "PecletFunction.h"
 
 namespace stk{
 struct topology;
@@ -26,8 +28,6 @@ namespace nalu{
 class Algorithm;
 class AlgorithmDriver;
 class AuxFunctionAlgorithm;
-class PecletFunction;
-class Realm;
 class SolverAlgorithmDriver;
 class InitialCondition;
 class EquationSystems;
@@ -208,7 +208,8 @@ public:
   virtual void evaluate_properties();
 
   // provide helper function for Peclet function
-  PecletFunction * create_peclet_function( const std::string dofName);
+  template<typename T>
+  PecletFunction<T>* create_peclet_function( const std::string dofName);
 
   virtual void load(const YAML::Node & node)
   {
@@ -297,6 +298,28 @@ public:
   /*EquationSystem *ownerEqs_;*/
 
 };
+
+//--------------------------------------------------------------------------
+//-------- create_peclet_function ------------------------------------------
+//--------------------------------------------------------------------------
+template<typename T>
+PecletFunction<T>*
+EquationSystem::create_peclet_function(
+  const std::string dofName)
+{
+  PecletFunction<T> *pecletFunction = NULL;
+  if ( "classic" == realm_.get_tanh_functional_form(dofName) ) {
+    const T hybridFactor = realm_.get_hybrid_factor(dofName);
+    const T A = 5.0;
+    pecletFunction = new ClassicPecletFunction<T>(A, hybridFactor);
+  }
+  else {
+    const T c1 = realm_.get_tanh_trans(dofName);
+    const T c2 = realm_.get_tanh_width(dofName);
+    pecletFunction = new TanhFunction<T>(c1, c2);
+  }
+  return pecletFunction;
+}
 
 } // namespace nalu
 } // namespace Sierra

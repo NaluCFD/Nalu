@@ -64,7 +64,7 @@ AssembleScalarEdgeSolverAlgorithm::AssembleScalarEdgeSolverAlgorithm(
   edgeAreaVec_ = meta_data.get_field<VectorFieldType>(stk::topology::EDGE_RANK, "edge_area_vector");
 
   // create the peclet blending function
-  pecletFunction_ = eqSystem->create_peclet_function(scalarQ_->name());
+  pecletFunction_ = eqSystem->create_peclet_function<double>(scalarQ_->name());
 }
 
 //--------------------------------------------------------------------------
