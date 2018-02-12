@@ -13,6 +13,8 @@ option(ENABLE_PARAVIEW_CATALYST
        OFF)
 option(ENABLE_TIOGA "Use TIOGA TPL to perform overset connectivity" OFF)
 option(ENABLE_HYPRE "Use HYPRE Solver library" OFF)
+option(ENABLE_WARNINGS "Add -Wall to show compiler warnings" ON)
+option(ENABLE_EXTRA_WARNINGS "Add -Wextra to show even more compiler warnings" OFF)
 
 ########################## TRILINOS ####################################
 message("   Trilinos_DIR = ${Trilinos_DIR}")
@@ -123,9 +125,19 @@ elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
   set(EXTRA_Fortran_FLAGS "")
 endif()
 
+if(ENABLE_WARNINGS)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
+  set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -Wall")
+endif()
+if(ENABLE_EXTRA_WARNINGS)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wextra -pedantic")
+  set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -Wextra -pedantic")
+endif()
+
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${Trilinos_CXX_COMPILER_FLAGS} ${EXTRA_CXX_FLAGS}")
 set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} ${Trilinos_Fortran_COMPILER_FLAGS} ${EXTRA_Fortran_FLAGS}")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${EXTRA_EXE_LINKER_FLAGS}")
+
 message("-- CMAKE_CXX_FLAGS = ${CMAKE_CXX_FLAGS}")
 message("-- CMAKE_Fortran_FLAGS = ${CMAKE_Fortran_FLAGS}")
 message("-- CMAKE_EXE_LINKER_FLAGS = ${CMAKE_EXE_LINKER_FLAGS}")
@@ -167,7 +179,6 @@ set(nalu_ex_name "naluX")
 message("-- CMAKE_BUILD_TYPE = ${CMAKE_BUILD_TYPE}")
 if(CMAKE_BUILD_TYPE STREQUAL "DEBUG")
    set(nalu_ex_name "naluXd")
-   add_definitions("-Wall")
    message("Debug Build")
 endif()
 
