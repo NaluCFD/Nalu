@@ -22,7 +22,7 @@ namespace sierra{
 namespace nalu{
 
 class Realm;
-class PecletFunction;
+template <typename T> class PecletFunction;
 
 class AssembleScalarElemSolverAlgorithm : public SolverAlgorithm
 {
@@ -55,7 +55,7 @@ public:
   GenericFieldType *massFlowRate_;
 
   // peclet function specifics
-  PecletFunction * pecletFunction_;
+  PecletFunction<double>* pecletFunction_;
 };
 
 } // namespace nalu

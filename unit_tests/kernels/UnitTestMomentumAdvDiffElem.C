@@ -9,7 +9,7 @@
 #include "UnitTestUtils.h"
 #include "UnitTestHelperObjects.h"
 
-#include "MomentumAdvDiffElemKernel.h"
+#include "kernel/MomentumAdvDiffElemKernel.h"
 
 namespace {
 namespace hex8_golds {
@@ -281,7 +281,7 @@ TEST_F(MomentumKernelHex8Mesh, advection_diffusion)
   solnOpts_.externalMeshDeformation_ = false;
   solnOpts_.includeDivU_ = 0.0;
 
-  unit_test_utils::HelperObjectsNewME helperObjs(bulk_, stk::topology::HEX_8, 3, partVec_[0]);
+  unit_test_utils::HelperObjects helperObjs(bulk_, stk::topology::HEX_8, 3, partVec_[0]);
 
   // Initialize the kernel
   std::unique_ptr<sierra::nalu::Kernel> kernel(

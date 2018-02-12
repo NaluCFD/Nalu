@@ -700,6 +700,47 @@ which can be written in general component form as,
 
 .. math:: F^n_i = F_j n_j n_i.
 
+Specified Boundary-Normal Temperature Gradient Option
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The standard symmetry boundary condition applies zero diffusion at the 
+boundary for scalar quantities, which effectively results in those scalars 
+having a zero boundary-normal gradient.  There are situations, especially 
+for atmospheric flows in which the user may desire a finite boundary-normal 
+gradient of temperature.  For example, the atmospheric boundary layer is 
+often simulated with a stably stratified capping inversion in which the
+temperature linearly increases with height all the way to the upper 
+domain boundary.  We apply symmetry conditions to this upper boundary for
+momentum, but we specify the boundary-normal temperature gradient on this
+boundary to match the capping inversion's gradient. 
+
+This is an option in the symmetry boundary condition specification, which 
+appears in the input file as:
+
+.. code-block:: yaml
+
+    - symmetry_boundary_condition: bc_upper
+      target_name: upper
+      symmetry_user_data:
+        normal_temperature_gradient: -0.003
+
+In this example, the temperature gradient normal to the symmetry boundary 
+is set to -0.003 K/m, where the boundary-normal direction is pointed into 
+the domain.
+
+Nalu does not solve a transport equation for temperature directly, but 
+rather it solves one for enthalpy. Therfore, the boundary-normal temperature 
+gradient condition is applied internally in the code through application of 
+a compatible heat flux,
+
+.. math:: q_n = -\kappa_{eff} c_p \frac{\partial T}{\partial n}
+
+where :math:`q_n` is the heat flux at the boundary, :math:`\kappa_{eff}` is 
+the effective thermal diffusivity (the molecular and turbulent parts), 
+:math:`c_p` is the specific heat, and :math:`\partial T / \partial n` is 
+the boundary-normal temperature gradient.
+
+
 Periodic Boundary Condition
 +++++++++++++++++++++++++++
 

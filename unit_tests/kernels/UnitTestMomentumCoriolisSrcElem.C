@@ -10,7 +10,7 @@
 #include "UnitTestHelperObjects.h"
 
 #include "CoriolisSrc.h"
-#include "MomentumCoriolisSrcElemKernel.h"
+#include "kernel/MomentumCoriolisSrcElemKernel.h"
 #include "BucketLoop.h"
 
 #include <random>
@@ -39,7 +39,7 @@ TEST_F(MomentumKernelHex8Mesh, coriolis)
   EXPECT_NEAR(cor.upVector_[1], 0.0, tol);
   EXPECT_NEAR(cor.upVector_[2], 1.0, tol);
 
-  unit_test_utils::HelperObjectsNewME helperObjs(bulk_, stk::topology::HEX_8, 3, partVec_[0]);
+  unit_test_utils::HelperObjects helperObjs(bulk_, stk::topology::HEX_8, 3, partVec_[0]);
 
   // Initialize the kernel
   std::unique_ptr<sierra::nalu::Kernel> kernel(

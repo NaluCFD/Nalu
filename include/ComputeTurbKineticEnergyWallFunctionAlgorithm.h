@@ -39,7 +39,7 @@ public:
   const double cMu_;
 
   ScalarFieldType *turbKineticEnergy_;
-  ScalarFieldType *bcTurbKineticEnergy_;;
+  ScalarFieldType *bcTurbKineticEnergy_;
   ScalarFieldType *bcAssembledTurbKineticEnergy_;
   ScalarFieldType *assembledWallArea_;
   GenericFieldType *wallFrictionVelocityBip_;

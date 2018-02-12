@@ -54,13 +54,12 @@ TpetraLinearSolver::TpetraLinearSolver(
   const Teuchos::RCP<Teuchos::ParameterList> params,
   const Teuchos::RCP<Teuchos::ParameterList> paramsPrecond,
   LinearSolvers *linearSolvers)
-  : LinearSolver(solverName,linearSolvers, config->recomputePreconditioner(), config->reusePreconditioner()),
-    config_(config),
+  : LinearSolver(solverName,linearSolvers, config),
     params_(params),
     paramsPrecond_(paramsPrecond),
-    activateMueLu_(config->use_MueLu()),
     preconditionerType_(config->preconditioner_type())
 {
+  activateMueLu_ = config->use_MueLu();
 }
 
 TpetraLinearSolver::~TpetraLinearSolver()
@@ -123,6 +122,8 @@ void TpetraLinearSolver::destroyLinearSolver()
 
 void TpetraLinearSolver::setMueLu()
 {
+  TpetraLinearSolverConfig* config = reinterpret_cast<TpetraLinearSolverConfig*>(config_);
+
   if (solver_ != Teuchos::null && !recomputePreconditioner_ && !reusePreconditioner_) return;
 
   {
@@ -131,13 +132,13 @@ void TpetraLinearSolver::setMueLu()
 
     if (recomputePreconditioner_ || mueluPreconditioner_ == Teuchos::null)
     {
-      std::string xmlFileName = config_->muelu_xml_file();
+      std::string xmlFileName = config->muelu_xml_file();
       mueluPreconditioner_ = MueLu::CreateTpetraPreconditioner<SC,LO,GO,NO>(Teuchos::RCP<Tpetra::Operator<SC,LO,GO,NO> >(matrix_), xmlFileName, coords_);
     }
     else if (reusePreconditioner_) {
       MueLu::ReuseTpetraPreconditioner(matrix_, *mueluPreconditioner_);
     }
-    if (config_->getSummarizeMueluTimer())
+    if (config->getSummarizeMueluTimer())
       Teuchos::TimeMonitor::summarize(std::cout, false, true, false, Teuchos::Union);
   }
 
@@ -145,7 +146,7 @@ void TpetraLinearSolver::setMueLu()
 
   // create the solver, e.g., gmres, cg, tfqmr, bicgstab
   LinSys::SolverFactory sFactory;
-  solver_ = sFactory.create(config_->get_method(), params_);
+  solver_ = sFactory.create(config->get_method(), params_);
   solver_->setProblem(problem_);
 }
 

@@ -87,6 +87,7 @@ SolutionOptions::SolutionOptions()
     eigenvaluePerturbTurbKe_(0.0),
     earthAngularVelocity_(7.2921159e-5),
     latitude_(0.0),
+    raBoussinesqTimeScale_(-1.0),
     mdotAlgAccumulation_(0.0),
     mdotAlgInflow_(0.0),
     mdotAlgOpen_(0.0),
@@ -250,7 +251,7 @@ SolutionOptions::load(const YAML::Node & y_node)
           ySrc >> elemSrcTermsMap_ ;
         }
         else if (expect_map( y_option, "source_term_parameters", optional)) {
-	  y_option["source_term_parameters"] >> srcTermParamMap_ ;
+          y_option["source_term_parameters"] >> srcTermParamMap_ ;
         }
         else if (expect_map( y_option, "element_source_term_parameters", optional)) {
           y_option["element_source_term_parameters"] >> elemSrcTermParamMap_ ;
@@ -301,8 +302,10 @@ SolutionOptions::load(const YAML::Node & y_node)
           get_if_present(y_user_constants, "reference_temperature",  referenceTemperature_, referenceTemperature_);
           get_if_present(y_user_constants, "thermal_expansion_coefficient",  thermalExpansionCoeff_, thermalExpansionCoeff_);
           get_if_present(y_user_constants, "stefan_boltzmann",  stefanBoltzmann_, stefanBoltzmann_);
-	  get_if_present(y_user_constants, "earth_angular_velocity", earthAngularVelocity_, earthAngularVelocity_);
-	  get_if_present(y_user_constants, "latitude", latitude_, latitude_);
+          get_if_present(y_user_constants, "earth_angular_velocity", earthAngularVelocity_, earthAngularVelocity_);
+          get_if_present(y_user_constants, "latitude", latitude_, latitude_);
+          get_if_present(y_user_constants, "boussinesq_time_scale", raBoussinesqTimeScale_, raBoussinesqTimeScale_);
+
           if (expect_sequence( y_user_constants, "gravity", optional) ) {
             const int gravSize = y_user_constants["gravity"].size();
             gravity_.resize(gravSize);
@@ -753,6 +756,11 @@ SolutionOptions::get_turb_model_constant(
   else {
     throw std::runtime_error("unknown (not found) turbulence model constant");
   }
+}
+
+bool SolutionOptions::has_set_boussinesq_time_scale()
+{
+  return (raBoussinesqTimeScale_ > std::numeric_limits<double>::min());
 }
 
 } // namespace nalu

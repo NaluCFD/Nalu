@@ -81,6 +81,7 @@ cmake \
 -DTrilinos_ENABLE_SEACASIoss:BOOL=ON \
 -DTPL_ENABLE_Netcdf:BOOL=ON \
 -DNetCDF_ROOT:PATH=${netcdf_install_dir} \
+-DTPL_ENABLE_HDF5:BOOL=ON \
 -DHDF5_ROOT:PATH=${hdf_install_dir} \
 -DHDF5_NO_SYSTEM_PATHS=ON \
 -DPNetCDF_ROOT:PATH=${pnetcdf_install_dir} \

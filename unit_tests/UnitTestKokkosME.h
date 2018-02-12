@@ -18,6 +18,8 @@
 #include "KokkosInterface.h"
 #include "SimdInterface.h"
 
+#include "UnitTestHelperObjects.h"
+
 namespace unit_test_utils {
 
 template<typename AlgTraits>
@@ -88,63 +90,13 @@ public:
   template<typename LambdaFunction>
   void execute(LambdaFunction func)
   {
-    constexpr int simdLen = stk::simd::ndoubles;
-    // Do not copy and interleave ME views
-    const bool alsoProcessMEViews = false;
+    int numDof = 1;
+    ThrowAssertMsg(partVec_.size()==1, "KokkosMEViews unit-test assumes partVec_.size==1");
 
-    stk::mesh::Selector sel = (
-      meta_.locally_owned_part() & stk::mesh::selectUnion(partVec_));
+    HelperObjects helperObjs(bulk_, AlgTraits::topo_, numDof, partVec_[0]);
+    helperObjs.assembleElemSolverAlg->dataNeededByKernels_ = dataNeeded_;
 
-    const int bytes_per_team = 0;
-    int bytes_per_thread = sierra::nalu::get_num_bytes_pre_req_data<double>(
-      dataNeeded_, AlgTraits::nDim_);
-    bytes_per_thread *= 3 * stk::simd::ndoubles;
-
-    const auto& buckets = bulk_.get_buckets(stk::topology::ELEM_RANK, sel);
-
-    auto team_exec = sierra::nalu::get_team_policy(
-      buckets.size(), bytes_per_team, bytes_per_thread);
-
-    Kokkos::parallel_for(team_exec, [&](const sierra::nalu::TeamHandleType& team) {
-        auto& b = *buckets[team.league_rank()];
-        const auto length = b.size();
-
-        std::vector<sierra::nalu::ScratchViews<double>*> prereqData(simdLen, nullptr);
-
-        for (int simdIndex=0; simdIndex < simdLen; ++simdIndex) {
-          prereqData[simdIndex] = new sierra::nalu::ScratchViews<double>(
-            team, bulk_, AlgTraits::topo_, dataNeeded_);
-        }
-        sierra::nalu::ScratchViews<DoubleType> simdPrereqData(
-          team, bulk_, AlgTraits::topo_, dataNeeded_);
-
-        const stk::mesh::Entity* elemNodes[simdLen];
-        stk::mesh::Bucket::size_type simdBucketLen = length / simdLen;
-        const stk::mesh::Bucket::size_type remainder = length % simdLen;
-        if (remainder > 0) simdBucketLen++;
-
-        Kokkos::parallel_for(Kokkos::TeamThreadRange(team, simdBucketLen), [&](const size_t& bktIndex){
-            int simdElems = simdLen;
-            if (length - bktIndex*simdLen < simdLen) {
-              simdElems = length - bktIndex*simdLen;
-            }
-
-            stk::mesh::Entity element;
-            for (int simdIndex=0; simdIndex < simdElems; ++simdIndex) {
-              element = b[bktIndex*simdLen + simdIndex];
-              elemNodes[simdIndex] = bulk_.begin_nodes(element);
-              fill_pre_req_data(dataNeeded_, bulk_, AlgTraits::topo_, element,
-                                *prereqData[simdIndex], alsoProcessMEViews);
-            }
-
-            copy_and_interleave(prereqData, simdElems, simdPrereqData,
-                                alsoProcessMEViews);
-            fill_master_element_views(dataNeeded_, bulk_, AlgTraits::topo_,
-                                      element, simdPrereqData);
-
-            func(simdPrereqData, meSCS_, meSCV_);
-          });
-      });
+    helperObjs.assembleElemSolverAlg->run_algorithm(bulk_, func);
   }
 
   stk::ParallelMachine comm_;

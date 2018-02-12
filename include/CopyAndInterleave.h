@@ -145,7 +145,7 @@ void interleave_me_views(MasterElementViews<DoubleType>& dest,
 }
 
 inline
-void copy_and_interleave(const std::vector<ScratchViews<double>*>& data,
+void copy_and_interleave(std::unique_ptr<ScratchViews<double>>* data,
                          int simdElems,
                          ScratchViews<DoubleType>& simdData,
                          bool copyMEViews = true)
