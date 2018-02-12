@@ -84,7 +84,7 @@ private:
   const bool shiftedGradOp_;
   const double small_{1.0e-16};
   
-  /// Peclet function
+  // Peclet function
   PecletFunction<DoubleType>* pecletFunction_{nullptr};
 
   // fixed scratch space

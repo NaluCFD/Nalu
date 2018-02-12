@@ -62,7 +62,7 @@ MomentumSymmetryElemKernel<BcAlgTraits>::MomentumSymmetryElemKernel(
     elemDataPreReqs.add_master_element_call(SCS_FACE_GRAD_OP, CURRENT_COORDINATES);
 
   // never shift properties
-  get_face_shape_fn_data<BcAlgTraits>([&](double* ptr){meFC->shape_fcn(ptr);}, v_face_shape_function_);
+  get_face_shape_fn_data<BcAlgTraits>([&](double* ptr){meFC->shape_fcn(ptr);}, vf_shape_function_);
 }
 
 template<typename BcAlgTraits>
@@ -81,8 +81,8 @@ MomentumSymmetryElemKernel<BcAlgTraits>::execute(
   DoubleType w_nx[BcAlgTraits::nDim_];
 
   // face
-  SharedMemView<DoubleType*>& v_viscosity = faceScratchViews.get_scratch_view_1D(*viscosity_);
-  SharedMemView<DoubleType**>& v_exposedAreaVec = faceScratchViews.get_scratch_view_2D(*exposedAreaVec_);
+  SharedMemView<DoubleType*>& vf_viscosity = faceScratchViews.get_scratch_view_1D(*viscosity_);
+  SharedMemView<DoubleType**>& vf_exposedAreaVec = faceScratchViews.get_scratch_view_2D(*exposedAreaVec_);
  
   // element
   SharedMemView<DoubleType**>& v_uNp1 = elemScratchViews.get_scratch_view_2D(*velocityNp1_);
@@ -97,18 +97,18 @@ MomentumSymmetryElemKernel<BcAlgTraits>::execute(
     // form unit normal
     DoubleType asq = 0.0;
     for ( int j = 0; j < BcAlgTraits::nDim_; ++j ) {
-      const DoubleType axj = v_exposedAreaVec(ip,j);
+      const DoubleType axj = vf_exposedAreaVec(ip,j);
       asq += axj*axj;
     }
     const DoubleType amag = stk::math::sqrt(asq);
     for ( int i = 0; i < BcAlgTraits::nDim_; ++i ) {
-      w_nx[i] = v_exposedAreaVec(ip,i)/amag;
+      w_nx[i] = vf_exposedAreaVec(ip,i)/amag;
     }
     
     DoubleType viscBip = 0.0;
     for ( int ic = 0; ic < BcAlgTraits::nodesPerFace_; ++ic ) {
-      const DoubleType r = v_face_shape_function_(ip,ic);
-      viscBip += r*v_viscosity(ic);
+      const DoubleType r = vf_shape_function_(ip,ic);
+      viscBip += r*vf_viscosity(ic);
     }
     
     for ( int ic = 0; ic < BcAlgTraits::nodesPerElement_; ++ic ) {
@@ -117,7 +117,7 @@ MomentumSymmetryElemKernel<BcAlgTraits>::execute(
 
       for ( int j = 0; j < BcAlgTraits::nDim_; ++j ) {
         
-        const DoubleType axj = v_exposedAreaVec(ip,j);
+        const DoubleType axj = vf_exposedAreaVec(ip,j);
         const DoubleType dndxj = v_dndx(ip,ic,j);
         const DoubleType uxj = v_uNp1(ic,j);
         
