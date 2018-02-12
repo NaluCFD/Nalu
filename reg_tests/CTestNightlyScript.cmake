@@ -84,7 +84,8 @@ if(result GREATER -1)
 endif()
 
 message("\n -- Submit - ${CTEST_BUILD_NAME} --")
-set(CTEST_NOTES_FILES ${NIGHTLY_DIR}/jobs/nalu-test-log.txt)
+set(CTEST_NOTES_FILES "${NIGHTLY_DIR}/jobs/nalu-test-log.txt")
+set(CTEST_NOTES_FILES ${CTEST_NOTES_FILES} "${NIGHTLY_DIR}/jobs/nalu-static-analysis.txt")
 ctest_submit(RETRY_COUNT 20
              RETRY_DELAY 20
              RETURN_VALUE result)
