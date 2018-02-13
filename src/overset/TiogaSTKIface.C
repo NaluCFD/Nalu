@@ -446,7 +446,7 @@ TiogaSTKIface::get_receptor_info()
   std::vector<unsigned long> allEntities(nTotalEntities);
 
   offsets[0] = 0;
-  for (int i=0; i <= nproc; ++i) {
+  for (int i=1; i <= nproc; ++i) {
     offsets[i] = offsets[i-1] + nbPerProc[i-1];
   }
 
