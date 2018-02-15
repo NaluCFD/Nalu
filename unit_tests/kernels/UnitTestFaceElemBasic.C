@@ -10,6 +10,7 @@
 #include "CopyAndInterleave.h"
 
 #include "AssembleFaceElemSolverAlgorithm.h"
+#include "kernel/MomentumOpenAdvDiffElemKernel.h"
 #include "kernel/MomentumSymmetryElemKernel.h"
 
 #include <gtest/gtest.h>
@@ -137,6 +138,32 @@ TEST_F(Hex8ElementWithBCFields, faceElemMomentumSymmetry)
                                     faceElemAlg.faceDataNeeded_, faceElemAlg.elemDataNeeded_);
 
   faceElemAlg.activeKernels_.push_back(momentumSymmetryElemKernel);
+
+  faceElemAlg.execute();
+}
+
+TEST_F(Hex8ElementWithBCFields, faceElemMomentumOpen)
+{
+  if (stk::parallel_machine_size(MPI_COMM_WORLD) > 1) {
+    return;
+  }
+  verify_faces_exist(bulk);
+
+  sierra::nalu::SolutionOptions solnOptions;
+
+  stk::topology faceTopo = stk::topology::QUAD_4;
+  stk::topology elemTopo = stk::topology::HEX_8;
+  stk::mesh::Part* surface1 = meta.get_part("all_surfaces");
+  unit_test_utils::HelperObjects helperObjs(bulk, elemTopo, sierra::nalu::BcAlgTraitsHex8Quad4::nDim_, surface1);
+
+  sierra::nalu::AssembleFaceElemSolverAlgorithm faceElemAlg(helperObjs.realm, surface1, &helperObjs.eqSystem,
+                                                          faceTopo.num_nodes(), elemTopo.num_nodes());
+
+  auto  momentumOpenAdvDiffElemKernel =
+    new sierra::nalu::MomentumOpenAdvDiffElemKernel<sierra::nalu::BcAlgTraitsHex8Quad4>(meta, solnOptions, &helperObjs.eqSystem, &velocity, &Gjui, &viscosity,
+                                                                                        faceElemAlg.faceDataNeeded_, faceElemAlg.elemDataNeeded_);
+
+  faceElemAlg.activeKernels_.push_back(momentumOpenAdvDiffElemKernel);
 
   faceElemAlg.execute();
 }

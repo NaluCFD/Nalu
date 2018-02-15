@@ -179,24 +179,32 @@ class Hex8ElementWithBCFields : public ::testing::Test
       specificHeat(meta.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "specific_heat")),
       exposedAreaVec(meta.declare_field<GenericFieldType>(meta.side_rank(), "exposed_area_vector")),
       wallFrictionVelocityBip(meta.declare_field<GenericFieldType>(meta.side_rank(), "wall_friction_velocity_bip")),
-      wallNormalDistanceBip(meta.declare_field<GenericFieldType>(meta.side_rank(), "wall_normal_distance_bip"))
+      wallNormalDistanceBip(meta.declare_field<GenericFieldType>(meta.side_rank(), "wall_normal_distance_bip")),
+      bcVelocityOpen(meta.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "open_velocity_bc")),
+      openMdot(meta.declare_field<GenericFieldType>(meta.side_rank(), "open_mass_flow_rate")),
+      Gjui(meta.declare_field<GenericFieldType>(stk::topology::NODE_RANK, "dudx"))     
    {
     const double one = 1.0;
-    const double oneVec[12] = {1.0, 1.0, 1.0,
-        1.0, 1.0, 1.0,
-        1.0, 1.0, 1.0,
-        1.0, 1.0, 1.0};
-    stk::mesh::put_field(velocity, meta.universal_part(), 3, &one);
-    stk::mesh::put_field(bcVelocity, meta.universal_part(), 3);
+    const double oneVecThree[3] = {one, one, one};
+    const double oneVecFour[4] = {one, one, -one, -one};
+    const double oneVecNine[9] = {one, one, one, one, one, one, one, one, one};
+    const double oneVecTwelve[12] = {one, one, one, one, one, one, one, one, one, one, one, one};
+
+    stk::mesh::put_field(velocity, meta.universal_part(), 3, oneVecThree);
+    stk::mesh::put_field(bcVelocity, meta.universal_part(), 3, oneVecThree);
     stk::mesh::put_field(density, meta.universal_part(), 1);
     stk::mesh::put_field(viscosity, meta.universal_part(), 1, &one);
     stk::mesh::put_field(bcHeatFlux, meta.universal_part(), 1);
-    stk::mesh::put_field(specificHeat, meta.universal_part(), 1);
-
+    stk::mesh::put_field(specificHeat, meta.universal_part(), 1);    
+    
     const sierra::nalu::MasterElement* meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(stk::topology::QUAD_4);
-    stk::mesh::put_field(exposedAreaVec, meta.universal_part(), 3*meFC->numIntPoints_, oneVec);
+    stk::mesh::put_field(exposedAreaVec, meta.universal_part(), 3*meFC->numIntPoints_, oneVecTwelve);
     stk::mesh::put_field(wallFrictionVelocityBip, meta.universal_part(), meFC->numIntPoints_);
     stk::mesh::put_field(wallNormalDistanceBip, meta.universal_part(), meFC->numIntPoints_);
+
+    stk::mesh::put_field(bcVelocityOpen, meta.universal_part(), 3, oneVecThree);
+    stk::mesh::put_field(openMdot, meta.universal_part(), 4, oneVecFour);
+    stk::mesh::put_field(Gjui, meta.universal_part(), 3*3, oneVecNine);
 
     unit_test_utils::create_one_reference_element(bulk, stk::topology::HEXAHEDRON_8);
    }
@@ -214,6 +222,9 @@ class Hex8ElementWithBCFields : public ::testing::Test
   GenericFieldType& exposedAreaVec;
   GenericFieldType& wallFrictionVelocityBip;
   GenericFieldType& wallNormalDistanceBip;
+  VectorFieldType& bcVelocityOpen;
+  GenericFieldType& openMdot;
+  GenericFieldType& Gjui;
  };
 
 class ABLWallFunctionHex8ElementWithBCFields : public Hex8ElementWithBCFields
