@@ -17,12 +17,23 @@
 #include <ElemDataRequests.h>
 #include <master_element/MasterElement.h>
 #include <KokkosInterface.h>
+#include <SimdInterface.h>
 
 #include <set>
 #include <type_traits>
 
 namespace sierra{
 namespace nalu{
+
+struct ScratchMeInfo {
+  int nodalGatherSize_;
+  int nodesPerFace_;
+  int nodesPerElement_;
+  int numFaceIp_;
+  int numScsIp_;
+  int numScvIp_;
+  int numFemIp_;
+};
 
 struct ViewHolder {
   virtual ~ViewHolder() {}
@@ -72,6 +83,7 @@ public:
   SharedMemView<T**> fc_areav;
   SharedMemView<T**> scs_areav;
   SharedMemView<T***> dndx_fc_scs;
+  SharedMemView<T***> dndx_shifted_fc_scs;
   SharedMemView<T***> dndx;
   SharedMemView<T***> dndx_shifted;
   SharedMemView<T***> dndx_scv;
@@ -98,6 +110,11 @@ public:
   ScratchViews(const TeamHandleType& team,
                const stk::mesh::BulkData& bulkData,
                int nodesPerEntity,
+               const ElemDataRequests& dataNeeded);
+
+  ScratchViews(const TeamHandleType& team,
+               const stk::mesh::BulkData& bulkData,
+               const ScratchMeInfo &meInfo,
                const ElemDataRequests& dataNeeded);
 
   virtual ~ScratchViews() {
@@ -339,9 +356,7 @@ void MasterElementViews<T>::fill_master_element_views(
     switch(data)
     {
       case FC_AREAV:
-        ThrowRequireMsg(meFC != nullptr, "ERROR, meFC needs to be non-null if FC_AREAV is requested.");
-        ThrowRequireMsg(coordsView != nullptr, "ERROR, coords null but FC_AREAV requested.");
-        meFC->determinant(1, &((*coordsView)(0,0)), &fc_areav(0,0), &error);
+        ThrowRequireMsg(false, "ERROR, non-interleaving FC_AREAV is not supported.");
         break;
       case SCS_AREAV:
         ThrowRequireMsg(meSCS != nullptr, "ERROR, meSCS needs to be non-null if SCS_AREAV is requested.");
@@ -349,10 +364,10 @@ void MasterElementViews<T>::fill_master_element_views(
         meSCS->determinant(1, &((*coordsView)(0, 0)), &scs_areav(0, 0), &error);
         break;
       case SCS_FACE_GRAD_OP:
-        ThrowRequireMsg(meSCS != nullptr, "ERROR, meSCS needs to be non-null if SCS_FACE_GRAD_OP is requested.");
-        ThrowRequireMsg(coordsView != nullptr, "ERROR, coords null but SCS_GRAD_OP requested.");
-        //faceOrdinals is an array of length stk::simd::ndoubles. For non-kokkos master-elem, just pick off first one:
-        meSCS->face_grad_op(1, faceOrdinals[0], &((*coordsView)(0,0)), &dndx_fc_scs(0,0,0), &deriv_fc_scs(0,0,0), &det_j_fc_scs(0));
+        ThrowRequireMsg(false, "ERROR, non-interleaving SHIFTED_FACE_GRAD_OP is not supported.");
+        break;
+      case SCS_SHIFTED_FACE_GRAD_OP:
+        ThrowRequireMsg(false, "ERROR, non-interleaving SCS_SHIFTED_FACE_GRAD_OP is not supported.");
         break;
       case SCS_GRAD_OP:
         ThrowRequireMsg(meSCS != nullptr, "ERROR, meSCS needs to be non-null if SCS_GRAD_OP is requested.");
@@ -418,7 +433,12 @@ void MasterElementViews<T>::fill_master_element_views_new_me(
          meSCS->determinant(*coordsView, scs_areav);
          break;
       case SCS_FACE_GRAD_OP:
-        ThrowRequireMsg(false, "SCS_FACE_GRAD_OP not implemented yet.");
+         ThrowRequireMsg(meSCS != nullptr, "ERROR, meSCS needs to be non-null if SCS_FACE_GRAD_OP is requested.");
+         ThrowRequireMsg(coordsView != nullptr, "ERROR, coords null but SCS_FACE_GRAD_OP requested.");
+       break;
+      case SCS_SHIFTED_FACE_GRAD_OP:
+         ThrowRequireMsg(meSCS != nullptr, "ERROR, meSCS needs to be non-null if SCS_SHIFTED_FACE_GRAD_OP is requested.");
+         ThrowRequireMsg(coordsView != nullptr, "ERROR, coords null but SCS_SHIFTED_FACE_GRAD_OP requested.");
        break;
       case SCS_GRAD_OP:
          ThrowRequireMsg(meSCS != nullptr, "ERROR, meSCS needs to be non-null if SCS_GRAD_OP is requested.");
@@ -464,7 +484,7 @@ void MasterElementViews<T>::fill_master_element_views_new_me(
 template<typename T>
 ScratchViews<T>::ScratchViews(const TeamHandleType& team,
              const stk::mesh::BulkData& bulkData,
-             int nodesPerEntity,
+             int nodalGatherSize,
              const ElemDataRequests& dataNeeded)
 {
   /* master elements are allowed to be null if they are not required */
@@ -484,16 +504,27 @@ ScratchViews<T>::ScratchViews(const TeamHandleType& team,
   int numScvIp = meSCV != nullptr ? meSCV->numIntPoints_ : 0;
   int numFemIp = meFEM != nullptr ? meFEM->numIntPoints_ : 0;
 
-  create_needed_field_views(team, dataNeeded, bulkData, nodesPerEntity);
+  create_needed_field_views(team, dataNeeded, bulkData, nodalGatherSize);
 
   create_needed_master_element_views(team, dataNeeded, nDim, nodesPerFace, nodesPerElem, numFaceIp, numScsIp, numScvIp, numFemIp);
+}
+
+template<typename T>
+ScratchViews<T>::ScratchViews(const TeamHandleType& team,
+             const stk::mesh::BulkData& bulkData,
+             const ScratchMeInfo &meInfo,
+             const ElemDataRequests& dataNeeded)
+{
+  int nDim = bulkData.mesh_meta_data().spatial_dimension();
+  create_needed_field_views(team, dataNeeded, bulkData, meInfo.nodalGatherSize_);
+  create_needed_master_element_views(team, dataNeeded, nDim, meInfo.nodesPerFace_, meInfo.nodesPerElement_, meInfo.numFaceIp_, meInfo.numScsIp_, meInfo.numScvIp_, meInfo.numFemIp_);
 }
 
 template<typename T>
 void ScratchViews<T>::create_needed_field_views(const TeamHandleType& team,
                                const ElemDataRequests& dataNeeded,
                                const stk::mesh::BulkData& bulkData,
-                               int nodesPerElem)
+                               int nodesPerEntity)
 {
   int numScalars = 0;
   const stk::mesh::MetaData& meta = bulkData.mesh_meta_data();
@@ -503,11 +534,12 @@ void ScratchViews<T>::create_needed_field_views(const TeamHandleType& team,
   const FieldSet& neededFields = dataNeeded.get_fields();
   for(const FieldInfo& fieldInfo : neededFields) {
     stk::mesh::EntityRank fieldEntityRank = fieldInfo.field->entity_rank();
-    ThrowAssertMsg(fieldEntityRank == stk::topology::NODE_RANK || fieldEntityRank == stk::topology::ELEM_RANK, "Currently only node and element fields are supported.");
     unsigned scalarsDim1 = fieldInfo.scalarsDim1;
     unsigned scalarsDim2 = fieldInfo.scalarsDim2;
 
-    if (fieldEntityRank==stk::topology::ELEM_RANK) {
+    if (fieldEntityRank==stk::topology::EDGE_RANK ||
+        fieldEntityRank==stk::topology::FACE_RANK ||
+        fieldEntityRank==stk::topology::ELEM_RANK) {
       if (scalarsDim2 == 0) {
         fieldViews[fieldInfo.field->mesh_meta_data_ordinal()] = new ViewT<SharedMemView<T*>>(get_shmem_view_1D<T>(team, scalarsDim1), 1);
         numScalars += scalarsDim1;
@@ -520,21 +552,21 @@ void ScratchViews<T>::create_needed_field_views(const TeamHandleType& team,
     else if (fieldEntityRank==stk::topology::NODE_RANK) {
       if (scalarsDim2 == 0) {
         if (scalarsDim1 == 1) {
-          fieldViews[fieldInfo.field->mesh_meta_data_ordinal()] = new ViewT<SharedMemView<T*>>(get_shmem_view_1D<T>(team, nodesPerElem),1);
-          numScalars += nodesPerElem;
+          fieldViews[fieldInfo.field->mesh_meta_data_ordinal()] = new ViewT<SharedMemView<T*>>(get_shmem_view_1D<T>(team, nodesPerEntity),1);
+          numScalars += nodesPerEntity;
         }
         else {
-          fieldViews[fieldInfo.field->mesh_meta_data_ordinal()] = new ViewT<SharedMemView<T**>>(get_shmem_view_2D<T>(team, nodesPerElem, scalarsDim1),2);
-          numScalars += nodesPerElem * scalarsDim1;
+          fieldViews[fieldInfo.field->mesh_meta_data_ordinal()] = new ViewT<SharedMemView<T**>>(get_shmem_view_2D<T>(team, nodesPerEntity, scalarsDim1),2);
+          numScalars += nodesPerEntity*scalarsDim1;
         }
       }
       else {
-          fieldViews[fieldInfo.field->mesh_meta_data_ordinal()] = new ViewT<SharedMemView<T***>>(get_shmem_view_3D<T>(team, nodesPerElem, scalarsDim1, scalarsDim2),3);
-          numScalars += nodesPerElem * scalarsDim1 * scalarsDim2;
+          fieldViews[fieldInfo.field->mesh_meta_data_ordinal()] = new ViewT<SharedMemView<T***>>(get_shmem_view_3D<T>(team, nodesPerEntity, scalarsDim1, scalarsDim2),3);
+          numScalars += nodesPerEntity*scalarsDim1*scalarsDim2;
       }
     }
     else {
-      ThrowRequireMsg(false,"Only elem-rank and node-rank fields supported for scratch-views currently.");
+      ThrowRequireMsg(false,"Unknown stk-rank" << fieldEntityRank);
     }
   }
 
@@ -561,7 +593,8 @@ void ScratchViews<T>::create_needed_master_element_views(const TeamHandleType& t
   num_bytes_required += numScalars * sizeof(T);
 }
 
-int get_num_scalars_pre_req_data( ElemDataRequests& dataNeededBySuppAlgs, int nDim);
+int get_num_scalars_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDim);
+int get_num_scalars_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDim, const ScratchMeInfo &meInfo);
 
 void fill_pre_req_data(ElemDataRequests& dataNeeded,
                        const stk::mesh::BulkData& bulkData,
@@ -578,6 +611,42 @@ template<typename T = double>
 int get_num_bytes_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDim)
 {
   return sizeof(T) * get_num_scalars_pre_req_data(dataNeededBySuppAlgs, nDim);
+}
+template<typename T = double>
+int get_num_bytes_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDim, const ScratchMeInfo &meInfo)
+{
+  return sizeof(T) * get_num_scalars_pre_req_data(dataNeededBySuppAlgs, nDim, meInfo);
+}
+
+inline
+int calculate_shared_mem_bytes_per_thread(int lhsSize, int rhsSize, int scratchIdsSize, int nDim,
+                                      ElemDataRequests& dataNeededByKernels)
+{
+    int bytes_per_thread = (rhsSize + lhsSize)*sizeof(double) + (2*scratchIdsSize)*sizeof(int) +
+                           get_num_bytes_pre_req_data<double>(dataNeededByKernels, nDim);
+    bytes_per_thread *= 2*simdLen;
+    return bytes_per_thread;
+}
+
+inline
+int calculate_shared_mem_bytes_per_thread(int lhsSize, int rhsSize, int scratchIdsSize, int nDim,
+                                      sierra::nalu::ElemDataRequests& faceDataNeeded,
+                                      sierra::nalu::ElemDataRequests& elemDataNeeded,
+                                      const sierra::nalu::ScratchMeInfo &meInfo)
+{
+    int bytes_per_thread = (rhsSize + lhsSize)*sizeof(double) + (2*scratchIdsSize)*sizeof(int)
+                         + sierra::nalu::get_num_bytes_pre_req_data<double>(faceDataNeeded, nDim)
+                         + sierra::nalu::get_num_bytes_pre_req_data<double>(elemDataNeeded, nDim, meInfo);
+    bytes_per_thread *= 2*simdLen;
+    return bytes_per_thread;
+}
+
+template<typename T>
+void set_zero(T* values, unsigned length)
+{
+    for(unsigned i=0; i<length; ++i) {
+        values[i] = 0;
+    }
 }
 
 } // namespace nalu

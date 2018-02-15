@@ -93,7 +93,15 @@ int get_num_scalars_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDi
   MasterElement *meSCV = dataNeededBySuppAlgs.get_cvfem_volume_me();
   MasterElement *meFEM = dataNeededBySuppAlgs.get_fem_volume_me();
   
-  const int nodesPerElem = meSCS != nullptr ? meSCS->nodesPerElement_ 
+  const bool faceDataNeeded = meFC != nullptr
+    && meSCS == nullptr && meSCV == nullptr && meFEM == nullptr;
+  const bool elemDataNeeded = meFC == nullptr
+    && (meSCS != nullptr || meSCV != nullptr || meFEM != nullptr);
+
+  ThrowRequireMsg(faceDataNeeded != elemDataNeeded,
+    "An algorithm has been registered with conflicting face/element data requests");
+
+  const int nodesPerEntity = meSCS != nullptr ? meSCS->nodesPerElement_
     : meSCV != nullptr ? meSCV->nodesPerElement_ 
     : meFEM != nullptr ? meFEM->nodesPerElement_
     : meFC  != nullptr ? meFC->nodesPerElement_
@@ -108,12 +116,11 @@ int get_num_scalars_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDi
   const FieldSet& neededFields = dataNeededBySuppAlgs.get_fields();
   for(const FieldInfo& fieldInfo : neededFields) {
     stk::mesh::EntityRank fieldEntityRank = fieldInfo.field->entity_rank();
-    ThrowAssertMsg(fieldEntityRank == stk::topology::NODE_RANK || fieldEntityRank == stk::topology::ELEM_RANK, "Currently only node and element fields are supported.");
     unsigned scalarsPerEntity = fieldInfo.scalarsDim1;
-    unsigned entitiesPerElem = fieldEntityRank==stk::topology::ELEM_RANK ? 1 : nodesPerElem;
+    unsigned entitiesPerElem = fieldEntityRank==stk::topology::NODE_RANK ? nodesPerEntity : 1;
 
     // Catch errors if user requests nodal field but has not registered any
-    // MasterElement we need to get nodesPerElem
+    // MasterElement we need to get nodesPerEntity
     ThrowRequire(entitiesPerElem > 0);
     if (fieldInfo.scalarsDim2 > 1) {
       scalarsPerEntity *= fieldInfo.scalarsDim2;
@@ -142,14 +149,15 @@ int get_num_scalars_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDi
           numScalars += nDim * numScsIp;
           break;
         case SCS_FACE_GRAD_OP:
-          dndxLengthFC = nodesPerElem*numFaceIp*nDim;
+        case SCS_SHIFTED_FACE_GRAD_OP:
+          dndxLengthFC = nodesPerEntity*numFaceIp*nDim;
           needDerivFC = true;
           needDetjFC = true;
           numScalars += dndxLengthFC;
           break;
         case SCS_GRAD_OP:
         case SCS_SHIFTED_GRAD_OP:
-          dndxLength = nodesPerElem*numScsIp*nDim;
+          dndxLength = nodesPerEntity*numScsIp*nDim;
           needDeriv = true;
           needDetj = true;
           numScalars += dndxLength;
@@ -158,7 +166,7 @@ int get_num_scalars_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDi
           numScalars += numScvIp;
           break;
         case SCV_GRAD_OP:
-          dndxLength = nodesPerElem*numScvIp*nDim;
+          dndxLength = nodesPerEntity*numScvIp*nDim;
           needDerivScv = true;
           needDetjScv = true;
           numScalars += dndxLength;
@@ -171,7 +179,7 @@ int get_num_scalars_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDi
           break;
         case FEM_GRAD_OP:
         case FEM_SHIFTED_GRAD_OP:
-          dndxLength = nodesPerElem*numFemIp*nDim;
+          dndxLength = nodesPerEntity*numFemIp*nDim;
           needDerivFem = true;
           needDetjFem = true;
           numScalars += dndxLength;
@@ -181,16 +189,16 @@ int get_num_scalars_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDi
     }
 
     if (needDerivFC)
-      numScalars += nodesPerElem*numFaceIp*nDim;
+      numScalars += nodesPerEntity*numFaceIp*nDim;
 
     if (needDeriv)
-      numScalars += nodesPerElem*numScsIp*nDim;
+      numScalars += nodesPerEntity*numScsIp*nDim;
 
     if (needDerivScv)
-      numScalars += nodesPerElem*numScvIp*nDim;
+      numScalars += nodesPerEntity*numScvIp*nDim;
     
     if (needDerivFem)
-      numScalars += nodesPerElem*numFemIp*nDim;
+      numScalars += nodesPerEntity*numFemIp*nDim;
     
     if (needDetjFC)
       numScalars += numFaceIp;
@@ -208,6 +216,120 @@ int get_num_scalars_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDi
   // Add a 64 byte padding to the buffer size requested
   return numScalars + 8;
 }
+
+int get_num_scalars_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDim, const ScratchMeInfo &meInfo)
+{
+  const int nodesPerEntity = meInfo.nodalGatherSize_;
+  const int numFaceIp = meInfo.numFaceIp_;
+  const int numScsIp = meInfo.numScsIp_;
+  const int numScvIp = meInfo.numScvIp_;
+  const int numFemIp = meInfo.numFemIp_;
+  int numScalars = 0;
+
+  const FieldSet& neededFields = dataNeededBySuppAlgs.get_fields();
+  for(const FieldInfo& fieldInfo : neededFields) {
+    stk::mesh::EntityRank fieldEntityRank = fieldInfo.field->entity_rank();
+    unsigned scalarsPerEntity = fieldInfo.scalarsDim1;
+    unsigned entitiesPerElem = fieldEntityRank==stk::topology::NODE_RANK ? nodesPerEntity : 1;
+
+    // Catch errors if user requests nodal field but has not registered any
+    // MasterElement we need to get nodesPerEntity
+    ThrowRequire(entitiesPerElem > 0);
+    if (fieldInfo.scalarsDim2 > 1) {
+      scalarsPerEntity *= fieldInfo.scalarsDim2;
+    }
+    numScalars += entitiesPerElem*scalarsPerEntity;
+  }
+
+  for (auto it = dataNeededBySuppAlgs.get_coordinates_map().begin();
+       it != dataNeededBySuppAlgs.get_coordinates_map().end(); ++it)
+  {
+    const std::set<ELEM_DATA_NEEDED>& dataEnums =
+      dataNeededBySuppAlgs.get_data_enums(it->first);
+    int dndxLength = 0, dndxLengthFC = 0, gUpperLength = 0, gLowerLength = 0;
+
+    // Updated logic for data sharing of deriv and det_j
+    bool needDeriv = false; bool needDerivScv = false; bool needDerivFem = false; bool needDerivFC = false;
+    bool needDetj = false; bool needDetjScv = false; bool needDetjFem = false; bool needDetjFC = false;
+
+    for(ELEM_DATA_NEEDED data : dataEnums) {
+      switch(data)
+      {
+        case FC_AREAV:
+          numScalars += nDim * numFaceIp;
+          break;
+        case SCS_AREAV:
+          numScalars += nDim * numScsIp;
+          break;
+        case SCS_FACE_GRAD_OP:
+        case SCS_SHIFTED_FACE_GRAD_OP:
+          dndxLengthFC = nodesPerEntity*numFaceIp*nDim;
+          needDerivFC = true;
+          needDetjFC = true;
+          numScalars += dndxLengthFC;
+          break;
+        case SCS_GRAD_OP:
+        case SCS_SHIFTED_GRAD_OP:
+          dndxLength = nodesPerEntity*numScsIp*nDim;
+          needDeriv = true;
+          needDetj = true;
+          numScalars += dndxLength;
+          break;
+        case SCV_VOLUME:
+          numScalars += numScvIp;
+          break;
+        case SCV_GRAD_OP:
+          dndxLength = nodesPerEntity*numScvIp*nDim;
+          needDerivScv = true;
+          needDetjScv = true;
+          numScalars += dndxLength;
+          break;
+        case SCS_GIJ:
+          gUpperLength = nDim*nDim*numScsIp;
+          gLowerLength = nDim*nDim*numScsIp;
+          needDeriv = true;
+          numScalars += (gUpperLength + gLowerLength );
+          break;
+        case FEM_GRAD_OP:
+        case FEM_SHIFTED_GRAD_OP:
+          dndxLength = nodesPerEntity*numFemIp*nDim;
+          needDerivFem = true;
+          needDetjFem = true;
+          numScalars += dndxLength;
+          break;
+        default: break;
+      }
+    }
+
+    if (needDerivFC)
+      numScalars += nodesPerEntity*numFaceIp*nDim;
+
+    if (needDeriv)
+      numScalars += nodesPerEntity*numScsIp*nDim;
+
+    if (needDerivScv)
+      numScalars += nodesPerEntity*numScvIp*nDim;
+
+    if (needDerivFem)
+      numScalars += nodesPerEntity*numFemIp*nDim;
+
+    if (needDetjFC)
+      numScalars += numFaceIp;
+
+    if (needDetj)
+      numScalars += numScsIp;
+
+    if (needDetjScv)
+      numScalars += numScvIp;
+
+    if (needDetjFem)
+      numScalars += numFemIp;
+  }
+
+  // Add a 64 byte padding to the buffer size requested
+  return numScalars + 8;
+}
+
 
 void fill_pre_req_data(
   ElemDataRequests& dataNeeded,
@@ -230,7 +352,7 @@ void fill_pre_req_data(
     unsigned scalarsDim1 = fieldInfo.scalarsDim1;
     bool isTensorField = fieldInfo.scalarsDim2 > 1;
 
-    if (fieldEntityRank==stk::topology::ELEM_RANK) {
+    if (fieldEntityRank==stk::topology::EDGE_RANK || fieldEntityRank==stk::topology::FACE_RANK || fieldEntityRank==stk::topology::ELEM_RANK) {
       if (isTensorField) {
         SharedMemView<double**>& shmemView = prereqData.get_scratch_view_2D(*fieldInfo.field);
         gather_elem_tensor_field(*fieldInfo.field, elem, scalarsDim1, fieldInfo.scalarsDim2, shmemView);
@@ -266,7 +388,7 @@ void fill_pre_req_data(
       }
     }
     else {
-      ThrowRequireMsg(false, "Only node and element fields supported currently.");
+      ThrowRequireMsg(false,"Unknown stk-rank" << fieldEntityRank);
     }
   } 
 

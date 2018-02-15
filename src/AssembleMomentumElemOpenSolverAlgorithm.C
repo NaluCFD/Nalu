@@ -71,7 +71,7 @@ AssembleMomentumElemOpenSolverAlgorithm::AssembleMomentumElemOpenSolverAlgorithm
   velocityBc_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "open_velocity_bc");
 
   // create the peclet blending function
-  pecletFunction_ = eqSystem->create_peclet_function(velocity_->name());
+  pecletFunction_ = eqSystem->create_peclet_function<double>(velocity_->name());
 }
 
 //--------------------------------------------------------------------------

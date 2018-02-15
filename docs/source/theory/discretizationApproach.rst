@@ -1,3 +1,5 @@
+.. _theory_discretization_approach:
+
 Discretization Approach
 -----------------------
 
@@ -12,7 +14,7 @@ for the CVFEM technique.
 
 For generalized unstructured meshes that have poor quality, CVFEM has
 been shown to excell in accuracy and robustness. This is mostly due to
-the inhearant accuracy limitation for the non-orthogonal correction
+the inherent accuracy limitation for the non-orthogonal correction
 terms that appear in the diffusion term and pressure stabilization for
 the EBVC scheme. For generalized unstructured meshes of decent quality,
 either scheme is ideal. Finally, for highly structured meshes with
@@ -24,6 +26,8 @@ can be up to four times faster. However, due to the lagged coupling
 between the projected nodal gradient equation and the dofs, on meshes
 with high non-orthogonality, nonlinear residual convergence can be
 delayed.
+
+.. _theory_cvfem_dual_mesh:
 
 CVFEM Dual Mesh
 +++++++++++++++

@@ -11,7 +11,7 @@
 #include "UnitTestUtils.h"
 
 #include "SolutionOptions.h"
-#include "Kernel.h"
+#include "kernel/Kernel.h"
 #include "ElemDataRequests.h"
 #include "ScratchViews.h"
 #include "CopyAndInterleave.h"

@@ -1,3 +1,5 @@
+.. _theory_time_discretization:
+
 Time discretization
 -------------------
 

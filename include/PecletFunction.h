@@ -12,34 +12,37 @@
 namespace sierra{
 namespace nalu{
 
+template<typename T>
 class PecletFunction
 {
 public:
 
   PecletFunction();
   virtual ~PecletFunction();
-  virtual double execute(const double pecletNumber) = 0;
+  virtual T execute(const T pecletNumber) = 0;
   /*virtual void update_values(Realm *realm) = 0;*/
 };
 
-class ClassicPecletFunction : public PecletFunction
+template<typename T>
+class ClassicPecletFunction : public PecletFunction<T>
 {
 public:
-  ClassicPecletFunction(double A, double hf);
+  ClassicPecletFunction(T A, T hf);
   virtual ~ClassicPecletFunction();
-  double execute(const double pecletNumber);
-  double A_;
-  double hf_;
+  T execute(const T pecletNumber);
+  T A_;
+  T hf_;
 };
 
-class TanhFunction : public PecletFunction
+template<typename T>
+class TanhFunction : public PecletFunction<T>
 {
 public:
-  TanhFunction( double c1, double c2 );
+  TanhFunction( T c1, T c2 );
   virtual ~TanhFunction();
-  double execute(const double indVar);
-  double c1_; // peclet number at which transition occurs
-  double c2_; // width of the transtion
+  T execute(const T indVar);
+  T c1_; // peclet number at which transition occurs
+  T c2_; // width of the transtion
 };
 
 } // namespace nalu

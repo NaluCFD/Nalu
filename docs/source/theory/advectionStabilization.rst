@@ -1,3 +1,5 @@
+.. _theory_advection_stabilization:
+
 Advection Stabilization
 -----------------------
 

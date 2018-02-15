@@ -48,14 +48,14 @@
 #include <TimeIntegrator.h>
 #include <SolverAlgorithmDriver.h>
 
-// template for supp algs
+// template for kernels
 #include <AlgTraits.h>
-#include <KernelBuilder.h>
-#include <KernelBuilderLog.h>
+#include <kernel/KernelBuilder.h>
+#include <kernel/KernelBuilderLog.h>
 
-// supp algs
-#include <ScalarDiffElemKernel.h>
-#include <ScalarDiffFemKernel.h>
+// kernels
+#include <kernel/ScalarDiffElemKernel.h>
+#include <kernel/ScalarDiffFemKernel.h>
 
 // user functions
 #include <user_functions/SteadyThermalContactAuxFunction.h>
