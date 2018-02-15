@@ -1,3 +1,5 @@
+.. _theory_boundary_conditions:
+
 Supported Boundary Conditions
 -----------------------------
 
@@ -251,6 +253,8 @@ Species
 If a value is specified for each quantity within the wall boundary
 condition block, a Dirichlet condition is applied. If no values are
 specified, a zero flux condition is applied.
+
+.. _abl_surface_conditions:
 
 Atmospheric Boundary Layer Surface Conditions
 +++++++++++++++++++++++++++++++++++++++++++++
@@ -575,6 +579,8 @@ surface as,
                      + \left(1 - \epsilon - \tau \right) K \right].
 
 
+.. _theory_open_bc:
+
 Open Boundary Condition
 +++++++++++++++++++++++
 
@@ -603,26 +609,25 @@ important for stability for CVFEM tet-based meshes where a natural
 non-orthogonality exists between the boundary and interior integration
 point.
 
-In rare use cases, the usage of the standard open boundary mass flow 
-rate expression, which includes pressure contributions, is not appropriate
-due to complex temperature/buoyancy specifications, e.g., what is commonly
-seen in Bousinesq Atmospheric Boundary Layer (ABL), simulations. In these cases, 
-a global correction algorithm is supported. Specifically, pressure terms are dropped 
-at the open boundary mass flow rate expression
-in favor or a pre-processing algorithm that uniformly distributes the 
-continuity mass flow rate (and possible density accumulation) "error" over
-the entire set of open boundary conditions. The global correction scheme
-may perform well with single open boundary condition specification, e.g., 
-multiple inflows with a single open location, however, it is to be avoided if the flow
-leaving the domain is complex in that a simulation includes multiple open boundary
-conditions. A complex situation might be an open jet with entrainment from the side 
-(open boundary that allows for inflow) and a top open that allows for outflow. However,
-a routine case might be a backward facing step with a single inflow, side periodic, top
-wall and open boundary. Not that the ability for the continuity solve to be 
-well conditioned may require an interior Dirichlet on pressure as the open pressure
-specification for the global correction algorithm is lacking. In most cases,
-a Dirichlet condition is not actually required as the NULL-space of the continuity
-system may not be found in the solve.
+For wind energy applications, the usage of the standard open boundary mass flow
+rate expression, which includes pressure contributions, is not appropriate due
+to complex temperature/buoyancy specifications. In these cases, a global
+correction algorithm is supported. Specifically, pressure terms are dropped at
+the open boundary mass flow rate expression in favor or a pre-processing
+algorithm that uniformly distributes the continuity mass flow rate (and possible
+density accumulation) "error" over the entire set of open boundary conditions.
+The global correction scheme may perform well with single open boundary
+condition specification, e.g., multiple inflows with a single open location,
+however, it is to be avoided if the flow leaving the domain is complex in that a
+simulation includes multiple open boundary conditions. A complex situation might
+be an open jet with entrainment from the side (open boundary that allows for
+inflow) and a top open that allows for outflow. However, a routine case might be
+a backward facing step with a single inflow, side periodic, top wall and open
+boundary. Not that the ability for the continuity solve to be well conditioned
+may require an interior Dirichlet on pressure as the open pressure specification
+for the global correction algorithm is lacking. In most cases, a Dirichlet
+condition is not actually required as the NULL-space of the continuity system
+may not be found in the solve.
 
 
 Momentum
@@ -671,6 +676,8 @@ entering the domain, the far-field user supplied value is used. Far
 field values are used for property evaluations. When flow is leaving the
 domain, the flow is advected out consistent with the choice of interior
 advection operator.
+
+.. _theory_symmetry_bc:
 
 Symmetry Boundary Condition
 +++++++++++++++++++++++++++

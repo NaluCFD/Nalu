@@ -5,10 +5,8 @@
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
-#ifdef NALU_USES_OPENFAST
-
 /** @file ActuatorLineFAST.h
- *  @brief A class to couple Nalu with FAST for actuator line simulations of wind turbines
+ *  @brief A class to couple Nalu with OpenFAST for actuator line simulations of wind turbines
  *
  */
 
@@ -77,12 +75,12 @@ class ActuatorLineFASTPointInfo {
  * point using a Gaussian function.
 
  * 1) During the load phase - the turbine data from the yaml file is read and stored in an
- *    object of the fast::fastInputs class
+ *    object of the ``fast::fastInputs`` class
 
  * 2) During the initialize phase - The processor containing the hub of each turbine is found
  *    through a search and assigned to be the one controlling OpenFAST for that turbine. All
- *    processors controlling > 0 turbines initialize FAST, populate the map of ActuatorLinePointInfo
- *    and initialize element searches for all the actuator points associated with the turbines.
+ *    processors controlling > 0 turbines initialize OpenFAST, populate the map of ``ActuatorLinePointInfo``
+ *    and initialize element searches for all the actuator points associated with the turbines. For every actuator point, the elements within a specified search radius are found and stored in the corresponding object of the ``ActuatorLinePointInfo`` class.
  *
  * 3) Elements are ghosted to the owning point rank. We tried the opposite approach of
  *    ghosting the actuator points to the processor owning the elements. The second approach
@@ -98,42 +96,12 @@ class ActuatorLineFASTPointInfo {
  * 5) During the execute phase called every time step, we sample the velocity at each actuator
  *    point and pass it to OpenFAST. All the OpenFAST turbine models are advanced upto Nalu's
  *    next time step to get the body forces at the actuator points. We then iterate over the
- *    ActuatorLinePointInfoMap to assemble source terms.
- *
- *    actuator:
- *     type: ActLineFAST
- *     search_method: boost_rtree
- *     search_target_part: Unspecified-2-HEX
- *
- *     n_turbines_glob: 2
- *     dry_run:  False
- *     debug:    False
- *     tMax:    5.0
- *     n_every_checkpoint: 100
- *
- *     Turbine0:
- *       procNo: 0
- *       num_force_pts_blade: 50
- *       num_force_pts_tower: 20
- *       epsilon: [ 5.0, 5.0, 5.0 ]
- *       turbine_base_pos: [ 0.0, 0.0, -90.0 ]
- *       turbine_hub_pos: [ 0.0, 0.0, 0.0 ]
- *       restart_filename: "blah"
- *       FAST_input_filename: "Test01.fst"
- *       turb_id:  1
- *       turbine_name: machine_zero
- *
- *     Turbine1:
- *       procNo: 0
- *       num_force_pts_blade: 50
- *       num_force_pts_tower: 20
- *       epsilon: [ 5.0, 5.0, 5.0 ]
- *       turbine_base_pos: [ 250.0, 0.0, -90.0 ]
- *       turbine_hub_pos: [ 250.0, 0.0, 0.0 ]
- *       restart_filename: "blah"
- *       FAST_input_filename: "Test02.fst"
- *       turb_id:  2
- *       turbine_name: machine_one
+ *    ``ActuatorLinePointInfoMap`` to assemble source terms. For each node \f$n\f$within the 
+ *    search radius of an actuator point \f$k\f$, the ``spread_actuator_force_to_node_vec`` 
+ *    function calculates the effective lumped body force by multiplying the actuator force 
+ *    with the Gaussian projection at the node as \f$F_i^n = g(\vec{r}_i^n) \, F_i^k\f$.
+ *  
+ *  
 */
 
 class ActuatorLineFAST: public Actuator {
@@ -314,7 +282,5 @@ class ActuatorLineFAST: public Actuator {
 
 } // namespace nalu
 } // namespace Sierra
-
-#endif
 
 #endif

@@ -1,3 +1,5 @@
+.. _theory_pressure_stabilization:
+
 Pressure Stabilization
 ----------------------
 

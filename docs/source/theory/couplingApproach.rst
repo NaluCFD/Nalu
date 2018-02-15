@@ -46,6 +46,8 @@ projection scheme with monolithic momentum coupling. Evaluation of a
 predictor/corrector approach for reating flow is anticipated in the late
 FY15 time frame.
 
+.. _theory_errors_splitting_stabilization:
+
 Errors due to Splitting and Stabilization
 +++++++++++++++++++++++++++++++++++++++++
 
