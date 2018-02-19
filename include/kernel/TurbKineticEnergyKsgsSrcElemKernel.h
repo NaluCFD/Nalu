@@ -47,6 +47,7 @@ public:
 private:
   TurbKineticEnergyKsgsSrcElemKernel() = delete;
 
+  VectorFieldType *coordinates_{nullptr};
   ScalarFieldType *tkeNp1_{nullptr};
   ScalarFieldType *densityNp1_{nullptr};
   ScalarFieldType *tvisc_{nullptr};
