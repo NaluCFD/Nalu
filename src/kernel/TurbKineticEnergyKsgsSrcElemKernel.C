@@ -36,6 +36,8 @@ TurbKineticEnergyKsgsSrcElemKernel<AlgTraits>::TurbKineticEnergyKsgsSrcElemKerne
 {
   // save off fields
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
+  coordinates_ = metaData.get_field<VectorFieldType>(
+    stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
   tkeNp1_ = metaData.get_field<ScalarFieldType>(
     stk::topology::NODE_RANK, "turbulent_ke");
   densityNp1_ = metaData.get_field<ScalarFieldType>(
@@ -52,6 +54,7 @@ TurbKineticEnergyKsgsSrcElemKernel<AlgTraits>::TurbKineticEnergyKsgsSrcElemKerne
   dataPreReqs.add_cvfem_volume_me(meSCV);
 
   // required fields
+  dataPreReqs.add_coordinates_field(*coordinates_, AlgTraits::nDim_, CURRENT_COORDINATES);
   dataPreReqs.add_gathered_nodal_field(*tkeNp1_, 1);
   dataPreReqs.add_gathered_nodal_field(*densityNp1_, 1);
   dataPreReqs.add_gathered_nodal_field(*tvisc_, 1);
