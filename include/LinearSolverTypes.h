@@ -12,6 +12,8 @@
 #include <KokkosInterface.h>
 #include <Tpetra_CrsGraph.hpp>
 #include <Tpetra_CrsMatrix.hpp>
+#include <Tpetra_Vector.hpp>
+#include <Tpetra_MultiVector.hpp>
 
 // Forward declare templates
 namespace Teuchos {
@@ -33,12 +35,6 @@ class Map;
 
 template <typename LocalOrdinal, typename GlobalOrdinal, typename Node >
 class Export;
-
-template <typename Scalar, typename LocalOrdinal, typename GlobalOrdinal, typename Node, bool classic>
-class MultiVector;
-
-template <typename Scalar, typename LocalOrdinal, typename GlobalOrdinal, typename Node, bool classic>
-class Vector;
 
 template <typename Scalar, typename LocalOrdinal, typename GlobalOrdinal, typename Node>
 class Operator;
