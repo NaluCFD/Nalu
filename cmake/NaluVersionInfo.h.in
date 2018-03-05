@@ -23,7 +23,7 @@ const std::string RepoIsDirty = "@NALU_REPO_DIRTY@";
 
 #else
 
-const std::string NaluVersionTag = "UNKNOWN";
+const std::string NaluVersionTag = "v1.2.0";
 const std::string TrilinosVersionTag = "@TRILINOS_VERSION_TAG@";
 const std::string NaluGitCommitSHA = "UNKNOWN";
 const std::string RepoIsDirty = "UNKNOWN";
