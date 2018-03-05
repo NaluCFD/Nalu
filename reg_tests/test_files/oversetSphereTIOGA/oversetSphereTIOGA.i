@@ -33,6 +33,7 @@ realms:
     mesh: ../../mesh/oversetSphereTioga.g
     use_edges: no
     automatic_decomposition_type: rcb
+    check_for_missing_bcs: yes
 
     time_step_control:
       target_courant: 2.0

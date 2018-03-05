@@ -996,8 +996,6 @@ Realm::enforce_bc_on_exposed_faces()
 
   NaluEnv::self().naluOutputP0() << "Realm::skin_mesh(): Begin" << std::endl;
 
-  NaluEnv::self().naluOutputP0() << "Realm::skin_mesh(): Begin" << std::endl;
-
   // first, skin mesh and, therefore, populate
   stk::mesh::Selector activePart = metaData_->locally_owned_part() | metaData_->globally_shared_part();
   stk::mesh::PartVector partVec;
