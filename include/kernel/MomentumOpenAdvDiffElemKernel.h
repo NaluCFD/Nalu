@@ -91,8 +91,10 @@ private:
   PecletFunction<DoubleType> *pecletFunction_{nullptr};
 
   /// Shape functions
-  Kokkos::View<DoubleType[BcAlgTraits::numFaceIp_][BcAlgTraits::nodesPerFace_]> vf_shape_function_ {"view_face_shape_func"};
-  Kokkos::View<DoubleType[BcAlgTraits::numScsIp_][BcAlgTraits::nodesPerElement_]> v_shape_function_ {"view_shape_func"};
+  Kokkos::View<DoubleType[BcAlgTraits::numFaceIp_][BcAlgTraits::nodesPerFace_]> vf_shape_function_ {"vf_shape_func"};
+  Kokkos::View<DoubleType[BcAlgTraits::numScsIp_][BcAlgTraits::nodesPerElement_]> v_shape_function_ {"v_shape_func"};
+  Kokkos::View<DoubleType[BcAlgTraits::numFaceIp_][BcAlgTraits::nodesPerFace_]> vf_adv_shape_function_ {"vf_adv_shape_function"};
+  Kokkos::View<DoubleType[BcAlgTraits::numScsIp_][BcAlgTraits::nodesPerElement_]> v_adv_shape_function_ {"v_adv_shape_func"};
 };
 
 }  // nalu

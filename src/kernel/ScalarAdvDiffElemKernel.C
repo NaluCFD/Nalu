@@ -46,6 +46,9 @@ ScalarAdvDiffElemKernel<AlgTraits>::ScalarAdvDiffElemKernel(
   MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(AlgTraits::topo_);
 
   get_scs_shape_fn_data<AlgTraits>([&](double* ptr){meSCS->shape_fcn(ptr);}, v_shape_function_);
+  const bool skewSymmetric = solnOpts.get_skew_symmetric(scalarQ->name());
+  get_scs_shape_fn_data<AlgTraits>([&](double* ptr){skewSymmetric ? meSCS->shifted_shape_fcn(ptr) : meSCS->shape_fcn(ptr);}, 
+                                   v_adv_shape_function_);
 
   dataPreReqs.add_cvfem_surface_me(meSCS);
 
@@ -104,8 +107,7 @@ ScalarAdvDiffElemKernel<AlgTraits>::execute(
     for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
 
       // advection
-      const DoubleType r = v_shape_function_(ip,ic);
-      const DoubleType lhsfacAdv = r*tmdot;
+      const DoubleType lhsfacAdv = v_adv_shape_function_(ip,ic)*tmdot;
       qAdv += lhsfacAdv*v_scalarQ(ic);
 
       // diffusion

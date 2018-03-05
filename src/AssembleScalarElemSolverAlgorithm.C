@@ -118,6 +118,7 @@ AssembleScalarElemSolverAlgorithm::execute()
   const double hoUpwind = realm_.get_upw_factor(dofName);
   const bool useLimiter = realm_.primitive_uses_limiter(dofName);
   const bool useShiftedGradOp = realm_.get_shifted_grad_op(dofName);
+  const bool skewSymmetric = realm_.get_skew_symmetric(dofName);
 
   // one minus flavor..
   const double om_alpha = 1.0-alpha;
@@ -149,6 +150,7 @@ AssembleScalarElemSolverAlgorithm::execute()
   std::vector<double> ws_deriv;
   std::vector<double> ws_det_j;
   std::vector<double> ws_shape_function;
+  std::vector<double> ws_adv_shape_function;
 
   // ip values
   std::vector<double>coordIp(nDim);
@@ -202,6 +204,8 @@ AssembleScalarElemSolverAlgorithm::execute()
     ws_deriv.resize(nDim*numScsIp*nodesPerElement);
     ws_det_j.resize(numScsIp);
     ws_shape_function.resize(numScsIp*nodesPerElement);
+    if ( skewSymmetric )
+      ws_adv_shape_function.resize(numScsIp*nodesPerElement);
 
     // pointer to lhs/rhs
     double *p_lhs = &lhs[0];
@@ -215,9 +219,12 @@ AssembleScalarElemSolverAlgorithm::execute()
     double *p_scs_areav = &ws_scs_areav[0];
     double *p_dndx = &ws_dndx[0];
     double *p_shape_function = &ws_shape_function[0];
+    double *p_adv_shape_function = skewSymmetric ? &ws_adv_shape_function[0] : &ws_shape_function[0];
 
     // extract shape function
     meSCS->shape_fcn(&p_shape_function[0]);
+    if ( skewSymmetric )
+      meSCS->shifted_shape_fcn(&p_adv_shape_function[0]);
 
     // resize possible supplemental element alg
     for ( size_t i = 0; i < supplementalAlgSize; ++i )
@@ -300,18 +307,17 @@ AssembleScalarElemSolverAlgorithm::execute()
         }
 
         // save off ip values; offset to Shape Function
-        double rhoIp = 0.0;
         double muIp = 0.0;
         double qIp = 0.0;
         const int offSetSF = ip*nodesPerElement;
         for ( int ic = 0; ic < nodesPerElement; ++ic ) {
           const double r = p_shape_function[offSetSF+ic];
-          rhoIp += r*p_density[ic];
+          const double rAdv = p_adv_shape_function[offSetSF+ic];
           muIp += r*p_diffFluxCoeff[ic];
-          qIp += r*p_scalarQNp1[ic];
+          qIp += rAdv*p_scalarQNp1[ic];
           // compute scs point values
           for ( int i = 0; i < nDim; ++i ) {
-            p_coordIp[i] += r*p_coordinates[ic*nDim+i];
+            p_coordIp[i] += rAdv*p_coordinates[ic*nDim+i];
           }
         }
 
@@ -389,11 +395,8 @@ AssembleScalarElemSolverAlgorithm::execute()
         double qDiff = 0.0;
         for ( int ic = 0; ic < nodesPerElement; ++ic ) {
 
-          // shape function
-          const double r = p_shape_function[offSetSF+ic];
-
           // upwind (il/ir) handled above; collect terms on alpha and alphaUpw
-          const double lhsfacAdv = r*tmdot*(pecfac*om_alphaUpw + om_pecfac*om_alpha);
+          const double lhsfacAdv = p_adv_shape_function[offSetSF+ic]*tmdot*(pecfac*om_alphaUpw + om_pecfac*om_alpha);
 
           // advection operator lhs; rhs handled above
           // lhs; il then ir

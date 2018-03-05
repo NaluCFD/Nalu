@@ -123,6 +123,7 @@ AssembleMomentumElemSolverAlgorithm::execute()
   const double hoUpwind = realm_.get_upw_factor(dofName);
   const bool useLimiter = realm_.primitive_uses_limiter(dofName);
   const bool useShiftedGradOp = realm_.get_shifted_grad_op(dofName);
+  const bool skewSymmetric = realm_.get_skew_symmetric(dofName);
 
   // one minus flavor..
   const double om_alpha = 1.0-alpha;
@@ -154,6 +155,7 @@ AssembleMomentumElemSolverAlgorithm::execute()
   std::vector<double> ws_deriv;
   std::vector<double> ws_det_j;
   std::vector<double> ws_shape_function;
+  std::vector<double> ws_adv_shape_function;
 
   // ip values
   std::vector<double>uIp(nDim);
@@ -227,6 +229,8 @@ AssembleMomentumElemSolverAlgorithm::execute()
     ws_deriv.resize(nDim*numScsIp*nodesPerElement);
     ws_det_j.resize(numScsIp);
     ws_shape_function.resize(numScsIp*nodesPerElement);
+    if ( skewSymmetric )
+      ws_adv_shape_function.resize(numScsIp*nodesPerElement);
 
     // pointer to lhs/rhs
     double *p_lhs = &lhs[0];
@@ -240,10 +244,13 @@ AssembleMomentumElemSolverAlgorithm::execute()
     double *p_scs_areav = &ws_scs_areav[0];
     double *p_dndx = &ws_dndx[0];
     double *p_shape_function = &ws_shape_function[0];
-
+    double *p_adv_shape_function = skewSymmetric ? &ws_adv_shape_function[0] : &ws_shape_function[0];
+    
     // extract shape function
     meSCS->shape_fcn(&p_shape_function[0]);
-
+    if ( skewSymmetric )
+      meSCS->shifted_shape_fcn(&p_adv_shape_function[0]);
+   
     // resize possible supplemental element alg
     for ( size_t i = 0; i < supplementalAlgSize; ++i )
       supplementalAlg_[i]->elem_resize(meSCS, meSCV);
@@ -344,12 +351,13 @@ AssembleMomentumElemSolverAlgorithm::execute()
         double divU = 0.0;
         for ( int ic = 0; ic < nodesPerElement; ++ic ) {
           const double r = p_shape_function[offSetSF+ic];
+          const double rAdv = p_adv_shape_function[offSetSF+ic];
           muIp += r*p_viscosity[ic];
           const int offSetDnDx = nDim*nodesPerElement*ip + ic*nDim;
           for ( int j = 0; j < nDim; ++j ) {
-            p_coordIp[j] += r*p_coordinates[ic*nDim+j];
+            p_coordIp[j] += rAdv*p_coordinates[ic*nDim+j];
             const double uj = p_velocityNp1[ic*nDim+j];
-            p_uIp[j] += r*uj;
+            p_uIp[j] += rAdv*uj;
             divU += uj*p_dndx[offSetDnDx+j];
           }
         }
@@ -453,13 +461,10 @@ AssembleMomentumElemSolverAlgorithm::execute()
 
           const int icNdim = ic*nDim;
 
-          // shape function
-          const double r = p_shape_function[offSetSF+ic];
-
           // advection and diffison
 
           // upwind (il/ir) handled above; collect terms on alpha and alphaUpw
-          const double lhsfacAdv = r*tmdot*(pecfac*om_alphaUpw + om_pecfac*om_alpha);
+          const double lhsfacAdv = p_adv_shape_function[offSetSF+ic]*tmdot*(pecfac*om_alphaUpw + om_pecfac*om_alpha);
 
           for ( int i = 0; i < nDim; ++i ) {
 

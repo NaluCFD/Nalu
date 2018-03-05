@@ -209,6 +209,10 @@ realms:
             upwind_advection: yes
             current_normal: yes
 
+        - skew_symmetric_advection:
+            velocity: yes
+            mixture_fraction: yes
+
     output:
       output_data_base_name: dgNonConformalThreeBlade.e-s001
       output_frequency: 20

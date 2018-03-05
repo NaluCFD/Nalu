@@ -306,6 +306,8 @@ class Realm {
     const std::string dofname);
   bool get_shifted_grad_op(
     const std::string dofname);
+  bool get_skew_symmetric(
+    const std::string dofname);
   double get_divU();
 
   // tanh factor specifics
