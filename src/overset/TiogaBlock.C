@@ -66,7 +66,7 @@ void TiogaBlock::load(const YAML::Node& node)
   }
 }
 
-void TiogaBlock::setup()
+void TiogaBlock::setup(stk::mesh::PartVector& bcPartVec)
 {
   names_to_parts(blkNames_, blkParts_);
 
@@ -86,6 +86,12 @@ void TiogaBlock::setup()
     stk::mesh::put_field(ibf, *p);
     stk::mesh::put_field(ibcell, *p);
   }
+
+  // Push overset BC parts to the realm_.bcPartVec_ so that they are ignored
+  // when checking for missing BCs
+  if (ovsetNames_.size() > 0)
+    for (auto bcPart: ovsetParts_)
+      bcPartVec.push_back(bcPart);
 }
 
 void TiogaBlock::initialize()

@@ -48,7 +48,7 @@ public:
 
   /** Setup block structure information (steps before mesh creation)
    */
-  void setup();
+  void setup(stk::mesh::PartVector&);
 
   /** Initialize mesh data structure (steps after mesh creation)
    */

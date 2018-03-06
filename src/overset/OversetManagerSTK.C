@@ -66,6 +66,18 @@ OversetManagerSTK::OversetManagerSTK(
 OversetManagerSTK::~OversetManagerSTK()
 {}
 
+void
+OversetManagerSTK::setup()
+{
+  // Add all overset BC parts to the BC vector so that check missing BCs can
+  // ignore these parts
+  std::string targetName(oversetUserData_.oversetSurface_);
+  stk::mesh::Part* part = metaData_->get_part(targetName);
+  if (nullptr == part)
+    throw std::runtime_error("OversetManagerSTK:: Invalid overset surface provided");
+  realm_.bcPartVec_.push_back(part);
+}
+
 //--------------------------------------------------------------------------
 //-------- initialize ------------------------------------------------------
 //--------------------------------------------------------------------------

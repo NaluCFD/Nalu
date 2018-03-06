@@ -47,7 +47,7 @@ OversetManagerTIOGA::~OversetManagerTIOGA()
 void
 OversetManagerTIOGA::setup()
 {
-  tiogaIface_.setup();
+  tiogaIface_.setup(realm_.bcPartVec_);
 }
 
 void
