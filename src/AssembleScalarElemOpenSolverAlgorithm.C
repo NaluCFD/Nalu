@@ -104,6 +104,7 @@ AssembleScalarElemOpenSolverAlgorithm::execute()
   const std::string dofName = scalarQ_->name();
   const double alphaUpw = realm_.get_alpha_upw_factor(dofName);
   const double hoUpwind = realm_.get_upw_factor(dofName);
+  const bool skewSymmetric = realm_.get_skew_symmetric(dofName);
 
   // one minus flavor..
   const double om_alphaUpw = 1.0-alphaUpw;
@@ -128,6 +129,7 @@ AssembleScalarElemOpenSolverAlgorithm::execute()
 
   // master element
   std::vector<double> ws_face_shape_function;
+  std::vector<double> ws_adv_face_shape_function;
 
   // deal with state
   ScalarFieldType &scalarQNp1 = scalarQ_->field_of_state(stk::mesh::StateNP1);
@@ -175,6 +177,8 @@ AssembleScalarElemOpenSolverAlgorithm::execute()
     ws_scalarQNp1.resize(nodesPerFace);
     ws_bcScalarQ.resize(nodesPerFace);
     ws_face_shape_function.resize(numScsBip*nodesPerFace);
+    if ( skewSymmetric )
+      ws_adv_face_shape_function.resize(numScsBip*nodesPerFace);
 
     // pointers
     double *p_lhs = &lhs[0];
@@ -183,9 +187,12 @@ AssembleScalarElemOpenSolverAlgorithm::execute()
     double *p_scalarQNp1 = &ws_scalarQNp1[0];
     double *p_bcScalarQ = &ws_bcScalarQ[0];
     double *p_face_shape_function = &ws_face_shape_function[0];
+    double *p_adv_face_shape_function =  skewSymmetric ? &ws_adv_face_shape_function[0] : &ws_face_shape_function[0];;
 
     // shape functions
     meFC->shape_fcn(&p_face_shape_function[0]);
+    if ( skewSymmetric )
+      meFC->shifted_shape_fcn(&p_adv_face_shape_function[0]);
 
     const stk::mesh::Bucket::size_type length   = b.size();
 
@@ -269,12 +276,12 @@ AssembleScalarElemOpenSolverAlgorithm::execute()
         double qIp = 0.0;
         double qIpEntrain = 0.0;
         for ( int ic = 0; ic < nodesPerFace; ++ic ) {
-          const double r = p_face_shape_function[offSetSF_face+ic];
-          qIp += r*p_scalarQNp1[ic];
-          qIpEntrain += r*p_bcScalarQ[ic];
+          const double rAdv = p_adv_face_shape_function[offSetSF_face+ic];
+          qIp += rAdv*p_scalarQNp1[ic];
+          qIpEntrain += rAdv*p_bcScalarQ[ic];
           const int offSetFN = ic*nDim;
           for ( int j = 0; j < nDim; ++j ) {
-            p_coordBip[j] += r*p_face_coordinates[offSetFN+j];
+            p_coordBip[j] += rAdv*p_face_coordinates[offSetFN+j];
           }
         }
 
@@ -331,9 +338,8 @@ AssembleScalarElemOpenSolverAlgorithm::execute()
           // central part
           const double fac = tmdot*(pecfac*om_alphaUpw+om_pecfac);
           for ( int ic = 0; ic < nodesPerFace; ++ic ) {
-            const double r = p_face_shape_function[offSetSF_face+ic];
             const int nn = face_node_ordinals[ic];
-            p_lhs[rowR+nn] += r*fac;
+            p_lhs[rowR+nn] += p_adv_face_shape_function[offSetSF_face+ic]*fac;
           }
         }
         else {
