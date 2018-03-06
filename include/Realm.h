@@ -517,7 +517,14 @@ class Realm {
   // mesh parts for all interior domains
   stk::mesh::PartVector interiorPartVec_;
 
-  // mesh parts for all boundary conditions
+  /** Vector holding side sets that have been registered with the boundary
+   * conditions in the input file.
+   *
+   * The member is intended to for use in Realm::enforce_bc_on_exposed_faces to
+   * check for "exposed surfaces" that might have not been assigned BCs in the
+   * input file.
+   *
+   */
   stk::mesh::PartVector bcPartVec_;
 
   // empty part vector should it be required
