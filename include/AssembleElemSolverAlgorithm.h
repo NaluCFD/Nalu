@@ -59,11 +59,13 @@ public:
    const int bytes_per_team = 0;
    const int bytes_per_thread = calculate_shared_mem_bytes_per_thread(lhsSize, rhsSize_, scratchIdsSize,
                                                                     meta_data.spatial_dimension(), dataNeededByKernels_);
-   stk::mesh::Selector s_locally_owned_union =
-           meta_data.locally_owned_part() & stk::mesh::selectUnion(partVec_);
+   stk::mesh::Selector elemSelector =
+           meta_data.locally_owned_part()
+         & stk::mesh::selectUnion(partVec_)
+         & !realm_.get_inactive_selector();
  
    stk::mesh::BucketVector const& elem_buckets =
-           realm_.get_buckets(entityRank_, s_locally_owned_union );
+           realm_.get_buckets(entityRank_, elemSelector );
  
    auto team_exec = sierra::nalu::get_team_policy(elem_buckets.size(), bytes_per_team, bytes_per_thread);
    Kokkos::parallel_for(team_exec, [&](const sierra::nalu::TeamHandleType& team)

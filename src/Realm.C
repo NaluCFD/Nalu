@@ -4938,13 +4938,18 @@ Realm::get_inactive_selector()
   //
   // Treat this selector differently because certain entities from interior
   // blocks could have been inactivated by the overset algorithm. 
+  stk::mesh::Selector nothing;
   stk::mesh::Selector inactiveOverSetSelector = (hasOverset_) ?
-      oversetManager_->get_inactive_selector() : stk::mesh::Selector();
+      oversetManager_->get_inactive_selector() : nothing;
 
   stk::mesh::Selector otherInactiveSelector = (
     metaData_->universal_part()
     & !(stk::mesh::selectUnion(interiorPartVec_))
     & !(stk::mesh::selectUnion(bcPartVec_)));
+
+  if (interiorPartVec_.empty() && bcPartVec_.empty()) {
+    otherInactiveSelector = nothing;
+  }
 
   return inactiveOverSetSelector | otherInactiveSelector;
 }
