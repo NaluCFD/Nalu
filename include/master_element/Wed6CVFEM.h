@@ -157,6 +157,12 @@ public:
     const double *par_coord,
     double* shape_fcn);
 
+  void
+  general_shape_fcn(const int numIp, const double* isoParCoord, double* shpfc)
+  {
+    wedge_shape_fcn(numIp, isoParCoord, shpfc);
+  }
+
   void general_face_grad_op(
     const int face_ordinal,
     const double *isoParCoord,
