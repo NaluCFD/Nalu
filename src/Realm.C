@@ -26,6 +26,7 @@
 #include <ComputeGeometryInteriorAlgorithm.h>
 #include <ConstantAuxFunction.h>
 #include <Enums.h>
+#include <EntityExposedFaceSorter.h>
 #include <EquationSystem.h>
 #include <EquationSystems.h>
 #include <ErrorIndicatorAlgorithmDriver.h>
@@ -216,6 +217,7 @@ namespace nalu{
     timerTransferExecute_(0.0),
     timerSkinMesh_(0.0),
     timerPromoteMesh_(0.0),
+    timerSortExposedFace_(0.0),
     nonConformalManager_(NULL),
     oversetManager_(NULL),
     hasNonConformal_(false),
@@ -489,6 +491,13 @@ Realm::initialize()
   create_output_mesh();
   create_restart_mesh();
 
+  // sort exposed faces only when using consolidated bc NGP approach
+  if ( solutionOptions_->useConsolidatedBcSolverAlg_ ) {
+    const double timeSort = NaluEnv::self().nalu_time();
+    bulkData_->sort_entities(EntityExposedFaceSorter());
+    timerSortExposedFace_ += (NaluEnv::self().nalu_time() - timeSort);
+  }
+  
   // variables that may come from the initial mesh
   input_variables_from_mesh();
 
@@ -4028,6 +4037,18 @@ Realm::dump_simulation_time()
     NaluEnv::self().naluOutputP0() << "Timing for promote_mesh :    " << std::endl;
     NaluEnv::self().naluOutputP0() << "        promote_mesh --  " << " \tavg: " << g_totalPromote/double(nprocs)
                                          << " \tmin: " << g_minPromote << " \tmax: " << g_maxPromote << std::endl;
+  }
+
+  // consolidated sort
+  if (solutionOptions_->useConsolidatedSolverAlg_ ) {
+    double g_totalSort= 0.0, g_minSort= 0.0, g_maxSort= 0.0;
+    stk::all_reduce_min(NaluEnv::self().parallel_comm(), &timerSortExposedFace_, &g_minSort, 1);
+    stk::all_reduce_max(NaluEnv::self().parallel_comm(), &timerSortExposedFace_, &g_maxSort, 1);
+    stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &timerSortExposedFace_, &g_totalSort, 1);
+    
+    NaluEnv::self().naluOutputP0() << "Timing for sort_mesh: " << std::endl;
+    NaluEnv::self().naluOutputP0() << "       sort_mesh  -- " << " \tavg: " << g_totalSort/double(nprocs)
+                                   << " \tmin: " << g_minSort<< " \tmax: " << g_maxSort<< std::endl;
   }
 
   NaluEnv::self().naluOutputP0() << std::endl;
