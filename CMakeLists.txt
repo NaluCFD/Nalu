@@ -60,11 +60,24 @@ project(Nalu CXX Fortran)
 
 ############################ YAML ######################################
 set(CMAKE_PREFIX_PATH ${YAML_DIR} ${CMAKE_PREFIX_PATH})
-find_package(YAML-CPP REQUIRED)
+find_package(YAML-CPP QUIET)
+if(YAML-CPP_FOUND)
+  # YAML master branch is used
+  include_directories(SYSTEM ${YAML_CPP_INCLUDE_DIR})
+else()
+  # YAML 0.5.3 is used
+  find_library(YAML_CPP_LIBRARIES NAMES yaml-cpp PATHS ${YAML_DIR}/lib)
+  find_path(YAML_CPP_INCLUDE_DIR yaml.h PATHS ${YAML_DIR}/include/yaml-cpp)
+  if((DEFINED YAML_CPP_LIBRARIES) AND (DEFINED YAML_CPP_INCLUDE_DIR))
+    include_directories(SYSTEM ${YAML_CPP_INCLUDE_DIR}/..)
+    set(YAML-CPP_FOUND TRUE)
+  endif()
+endif()
 if(YAML-CPP_FOUND)
   message("-- Found YAML-CPP = ${YAML_DIR}")
+else()
+  message(FATAL_ERROR "YAML-CPP NOT FOUND")
 endif()
-include_directories(SYSTEM ${YAML_CPP_INCLUDE_DIR})
 
 ############################ HYPRE #####################################
 if(ENABLE_HYPRE)
