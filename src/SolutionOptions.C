@@ -82,6 +82,7 @@ SolutionOptions::SolutionOptions()
     inputVariablesPeriodicTime_(0.0),
     consistentMMPngDefault_(false),
     useConsolidatedSolverAlg_(false),
+    useConsolidatedBcSolverAlg_(false),
     eigenvaluePerturb_(false),
     eigenvaluePerturbDelta_(0.0),
     eigenvaluePerturbBiasTowards_(3),

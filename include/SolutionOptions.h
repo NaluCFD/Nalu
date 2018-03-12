@@ -138,6 +138,7 @@ public:
   double inputVariablesPeriodicTime_;
   bool consistentMMPngDefault_;
   bool useConsolidatedSolverAlg_;
+  bool useConsolidatedBcSolverAlg_;
   bool eigenvaluePerturb_;
   double eigenvaluePerturbDelta_;
   int eigenvaluePerturbBiasTowards_;
