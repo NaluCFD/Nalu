@@ -1929,6 +1929,9 @@ MomentumEquationSystem::register_symmetry_bc(
     itsi->second->partVec_.push_back(part);
   }
 
+  // set consolidated flag for code coverage
+  if ( realm_.solutionOptions_->useConsolidatedSolverAlg_ )
+    realm_.solutionOptions_->useConsolidatedBcSolverAlg_ = true;
 }
 
 //--------------------------------------------------------------------------

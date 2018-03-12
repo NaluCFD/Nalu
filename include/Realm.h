@@ -451,6 +451,7 @@ class Realm {
   double timerTransferExecute_;
   double timerSkinMesh_;
   double timerPromoteMesh_;
+  double timerSortExposedFace_;
 
   NonConformalManager *nonConformalManager_;
   OversetManager *oversetManager_;
