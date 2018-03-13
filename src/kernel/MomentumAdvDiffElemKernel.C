@@ -44,7 +44,11 @@ MomentumAdvDiffElemKernel<AlgTraits>::MomentumAdvDiffElemKernel(
     stk::topology::ELEMENT_RANK, "mass_flow_rate_scs");
 
   MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(AlgTraits::topo_);
+
   get_scs_shape_fn_data<AlgTraits>([&](double* ptr){meSCS->shape_fcn(ptr);}, v_shape_function_);
+  const bool skewSymmetric = solnOpts.get_skew_symmetric(velocity->name());
+  get_scs_shape_fn_data<AlgTraits>([&](double* ptr){skewSymmetric ? meSCS->shifted_shape_fcn(ptr) : meSCS->shape_fcn(ptr);}, 
+                                   v_adv_shape_function_);
 
   // add master elements
   dataPreReqs.add_cvfem_surface_me(meSCS);
@@ -104,10 +108,11 @@ MomentumAdvDiffElemKernel<AlgTraits>::execute(
 
     for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
       const DoubleType r = v_shape_function_(ip,ic);
+      const DoubleType rAdv = v_adv_shape_function_(ip,ic);
       muIp += r*v_viscosity(ic);
       for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
         const DoubleType uj = v_uNp1(ic,j);
-        w_uIp[j] += r*uj;
+        w_uIp[j] += rAdv*uj;
         divU += uj*v_dndx(ip,ic,j);
       }
     }
@@ -136,11 +141,8 @@ MomentumAdvDiffElemKernel<AlgTraits>::execute(
 
       const int icNdim = ic*AlgTraits::nDim_;
 
-      // shape function
-      const DoubleType r = v_shape_function_(ip,ic);
-
       // advection and diffusion
-      const DoubleType lhsfacAdv = r*tmdot;
+      const DoubleType lhsfacAdv = v_adv_shape_function_(ip,ic)*tmdot;
 
       for ( int i = 0; i < AlgTraits::nDim_; ++i ) {
 

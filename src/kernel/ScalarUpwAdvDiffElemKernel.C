@@ -67,7 +67,11 @@ ScalarUpwAdvDiffElemKernel<AlgTraits>::ScalarUpwAdvDiffElemKernel(
       stk::topology::NODE_RANK, "velocity");
 
   MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(AlgTraits::topo_);
+  
   get_scs_shape_fn_data<AlgTraits>([&](double* ptr){meSCS->shape_fcn(ptr);}, v_shape_function_);
+  const bool skewSymmetric = solnOpts.get_skew_symmetric(scalarQ->name());
+  get_scs_shape_fn_data<AlgTraits>([&](double* ptr){skewSymmetric ? meSCS->shifted_shape_fcn(ptr) : meSCS->shape_fcn(ptr);}, 
+                                   v_adv_shape_function_);
 
   // add master elements
   dataPreReqs.add_cvfem_surface_me(meSCS);
@@ -147,15 +151,14 @@ ScalarUpwAdvDiffElemKernel<AlgTraits>::execute(
 
     // compute ip property and
     DoubleType qIp = 0.0;
-    DoubleType rhoIp = 0.0;
     DoubleType diffFluxCoeffIp = 0.0;
     for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
       const DoubleType r = v_shape_function_(ip,ic);
-      qIp += r*v_scalarQ(ic);
-      rhoIp += r*v_density(ic);
+      const DoubleType rAdv = v_adv_shape_function_(ip,ic);
+      qIp += rAdv*v_scalarQ(ic);
       diffFluxCoeffIp += r*v_diffFluxCoeff(ic);
       for ( int i = 0; i < AlgTraits::nDim_; ++i ) {
-        w_coordIp[i] += r*v_coordinates(ic,i);
+        w_coordIp[i] += rAdv*v_coordinates(ic,i);
       }
     }
 
@@ -230,11 +233,8 @@ ScalarUpwAdvDiffElemKernel<AlgTraits>::execute(
     DoubleType qDiff = 0.0;
     for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
 
-      // shape function
-      const DoubleType r = v_shape_function_(ip,ic);
-
       // upwind (il/ir) handled above; collect terms on alpha and alphaUpw
-      const DoubleType lhsfacAdv = r*tmdot*(pecfac*om_alphaUpw_ + om_pecfac*om_alpha_);
+      const DoubleType lhsfacAdv = v_adv_shape_function_(ip,ic)*tmdot*(pecfac*om_alphaUpw_ + om_pecfac*om_alpha_);
 
       // advection operator lhs; rhs handled above
       lhs(il,ic) += lhsfacAdv;

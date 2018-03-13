@@ -62,10 +62,10 @@ TiogaSTKIface::load(const YAML::Node& node)
       << "TIOGA: Using coordinates field: " << coords_name << std::endl;
 }
 
-void TiogaSTKIface::setup()
+void TiogaSTKIface::setup(stk::mesh::PartVector& bcPartVec)
 {
   for (auto& tb: blocks_) {
-    tb->setup();
+    tb->setup(bcPartVec);
   }
 
   // Initialize the inactive part

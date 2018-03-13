@@ -90,6 +90,12 @@ MomentumOpenAdvDiffElemKernel<BcAlgTraits>::MomentumOpenAdvDiffElemKernel(
   // never shift properties
   get_face_shape_fn_data<BcAlgTraits>([&](double* ptr){meFC->shape_fcn(ptr);}, vf_shape_function_);
   get_scs_shape_fn_data<BcAlgTraits>([&](double* ptr){meSCS_->shape_fcn(ptr);}, v_shape_function_);
+
+  const bool skewSymmetric = solnOpts.get_skew_symmetric(velocity->name());
+  get_face_shape_fn_data<BcAlgTraits>([&](double* ptr){skewSymmetric ? meFC->shifted_shape_fcn(ptr) : meFC->shape_fcn(ptr);}, 
+                                      vf_adv_shape_function_);
+  get_scs_shape_fn_data<BcAlgTraits>([&](double* ptr){skewSymmetric ? meSCS_->shifted_shape_fcn(ptr) : meSCS_->shape_fcn(ptr);}, 
+                                     v_adv_shape_function_);
 }
 
 template<typename BcAlgTraits>
@@ -160,17 +166,18 @@ MomentumOpenAdvDiffElemKernel<BcAlgTraits>::execute(
     DoubleType viscBip = 0.0;
     for ( int ic = 0; ic < BcAlgTraits::nodesPerFace_; ++ic ) {
       const DoubleType r = vf_shape_function_(ip,ic);
+      const DoubleType rAdv = vf_adv_shape_function_(ip,ic);
       viscBip += r*vf_viscosity(ic);
       for ( int j = 0; j < BcAlgTraits::nDim_; ++j ) {
-        w_uspecBip[j] += r*vf_bcVelocity(ic,j);
-        w_uBip[j] += r*vf_velocityNp1(ic,j);
-        w_coordBip[j] += r*vf_coordinates(ic,j);
+        w_uspecBip[j] += rAdv*vf_bcVelocity(ic,j);
+        w_uBip[j] += rAdv*vf_velocityNp1(ic,j);
+        w_coordBip[j] += rAdv*vf_coordinates(ic,j);
       }
     }
     
     // data at interior opposing face
     for ( int ic = 0; ic < BcAlgTraits::nodesPerElement_; ++ic ) {
-      const DoubleType r = v_shape_function_(opposingScsIp,ic);
+      const DoubleType r = v_adv_shape_function_(opposingScsIp,ic);
       for ( int j = 0; j < BcAlgTraits::nDim_; ++j ) {
         w_uScs[j] += r*v_velocityNp1(ic,j);
       }
@@ -232,9 +239,8 @@ MomentumOpenAdvDiffElemKernel<BcAlgTraits>::execute(
       // central part
       const DoubleType fac = tmdot*(pecfac*om_alphaUpw_+om_pecfac)*mdotLeaving;
       for ( int ic = 0; ic < BcAlgTraits::nodesPerFace_; ++ic ) {
-        const DoubleType r = vf_shape_function_(ip,ic);
         const int nn = face_node_ordinals[ic];
-        lhs(indexR,nn*BcAlgTraits::nDim_+i) += r*fac;
+        lhs(indexR,nn*BcAlgTraits::nDim_+i) += vf_adv_shape_function_(ip,ic)*fac;
       }
 
       //===================
@@ -272,16 +278,14 @@ MomentumOpenAdvDiffElemKernel<BcAlgTraits>::execute(
         // central part; exposed face
         DoubleType fac = tmdot*(pecfac*om_alphaUpw_+om_pecfac*nfEntrain_)*nxinxj*om_mdotLeaving;
         for ( int ic = 0; ic < BcAlgTraits::nodesPerFace_; ++ic ) {
-          const DoubleType r = vf_shape_function_(ip,ic);
           const int nn = face_node_ordinals[ic];
-          lhs(indexR,nn*BcAlgTraits::nDim_+j) += r*fac;
+          lhs(indexR,nn*BcAlgTraits::nDim_+j) += vf_adv_shape_function_(ip,ic)*fac;
         }
 
         // central part; scs face
         fac = tmdot*om_pecfac*om_nfEntrain_*nxinxj*om_mdotLeaving;
         for ( int ic = 0; ic < BcAlgTraits::nodesPerElement_; ++ic ) {
-          const DoubleType r = v_shape_function_(opposingScsIp,ic);
-          lhs(indexR,ic*BcAlgTraits::nDim_+j) += r*fac;
+          lhs(indexR,ic*BcAlgTraits::nDim_+j) += v_shape_function_(opposingScsIp,ic)*fac;
         }
       }
     }

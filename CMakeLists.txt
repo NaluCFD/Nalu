@@ -60,11 +60,24 @@ project(Nalu CXX Fortran)
 
 ############################ YAML ######################################
 set(CMAKE_PREFIX_PATH ${YAML_DIR} ${CMAKE_PREFIX_PATH})
-find_package(YAML-CPP REQUIRED)
+find_package(YAML-CPP QUIET)
+if(YAML-CPP_FOUND)
+  # YAML master branch is used
+  include_directories(SYSTEM ${YAML_CPP_INCLUDE_DIR})
+else()
+  # YAML 0.5.3 is used
+  find_library(YAML_CPP_LIBRARIES NAMES yaml-cpp PATHS ${YAML_DIR}/lib)
+  find_path(YAML_CPP_INCLUDE_DIR yaml.h PATHS ${YAML_DIR}/include/yaml-cpp)
+  if((DEFINED YAML_CPP_LIBRARIES) AND (DEFINED YAML_CPP_INCLUDE_DIR))
+    include_directories(SYSTEM ${YAML_CPP_INCLUDE_DIR}/..)
+    set(YAML-CPP_FOUND TRUE)
+  endif()
+endif()
 if(YAML-CPP_FOUND)
   message("-- Found YAML-CPP = ${YAML_DIR}")
+else()
+  message(FATAL_ERROR "YAML-CPP NOT FOUND")
 endif()
-include_directories(SYSTEM ${YAML_CPP_INCLUDE_DIR})
 
 ############################ HYPRE #####################################
 if(ENABLE_HYPRE)
@@ -145,10 +158,43 @@ if(ENABLE_HYPRE)
   endif()
 endif()
 
+################################# TAG VERSIONS #####################################
+include(GetGitRevisionDescription)
+get_git_head_revision(NALU_GITREFSPEC NALU_GIT_COMMIT_SHA)
+if (NALU_GIT_COMMIT_SHA)
+  git_describe(NALU_VERSION_TAG "--tags")
+  git_local_changes(NALU_REPO_DIRTY)
+  option(NALU_HAVE_GIT_INFO "Git version tagging for Nalu" ON)
+  if (${NALU_VERSION_TAG} MATCHES ".*-NOTFOUND")
+    set(NALU_VERSION_TAG "v1.2.0")
+  endif()
+endif()
+
+find_file(TRILINOS_HAVE_GIT_INFO
+  "TrilinosRepoVersion.txt"
+  PATHS "${Trilinos_DIR}/../../../"
+  DOC "Check if Trilinos Git version info exists"
+  NO_DEFAULT_PATH)
+if (NOT ${TRILINOS_HAVE_GIT_INFO} MATCHES ".*-NOTFOUND")
+  file(STRINGS "${Trilinos_DIR}/../../../TrilinosRepoVersion.txt"
+    TRILINOS_REPO_VERSION_TXT LIMIT_INPUT 1024)
+  list(GET TRILINOS_REPO_VERSION_TXT 1 TRILINOS_REPO_COMMIT_STR)
+  string(REGEX MATCH "^[a-z0-9]+" TRILINOS_GIT_COMMIT_SHA ${TRILINOS_REPO_COMMIT_STR})
+  set(TRILINOS_VERSION_TAG "${Trilinos_VERSION}-g${TRILINOS_GIT_COMMIT_SHA}")
+else()
+  set(TRILINOS_VERSION_TAG "${Trilinos_VERSION}")
+endif()
+string(TIMESTAMP NALU_VERSION_TIMESTAMP "%Y-%m-%d %H:%M:%S (UTC)" UTC)
+configure_file("${CMAKE_SOURCE_DIR}/cmake/NaluVersionInfo.h.in"
+  "${CMAKE_BINARY_DIR}/include/NaluVersionInfo.h" @ONLY)
+#### END TAG VERSIONS
+
 file(GLOB SOURCE src/*.C src/*/*.C src/*/*.F)
-file(GLOB HEADER include/*.h include/*/*.h)
+file(GLOB HEADER include/*.h include/*/*.h
+  ${CMAKE_CURRENT_BINARY_DIR}/include/*.h)
 
 include_directories(${CMAKE_SOURCE_DIR}/include)
+include_directories(${CMAKE_BINARY_DIR}/include)
 add_library(nalu ${SOURCE} ${HEADER})
 target_link_libraries(nalu ${Trilinos_LIBRARIES})
 target_link_libraries(nalu ${YAML_CPP_LIBRARIES})

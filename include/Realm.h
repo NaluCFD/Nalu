@@ -306,6 +306,8 @@ class Realm {
     const std::string dofname);
   bool get_shifted_grad_op(
     const std::string dofname);
+  bool get_skew_symmetric(
+    const std::string dofname);
   double get_divU();
 
   // tanh factor specifics
@@ -449,6 +451,7 @@ class Realm {
   double timerTransferExecute_;
   double timerSkinMesh_;
   double timerPromoteMesh_;
+  double timerSortExposedFace_;
 
   NonConformalManager *nonConformalManager_;
   OversetManager *oversetManager_;
@@ -517,7 +520,14 @@ class Realm {
   // mesh parts for all interior domains
   stk::mesh::PartVector interiorPartVec_;
 
-  // mesh parts for all boundary conditions
+  /** Vector holding side sets that have been registered with the boundary
+   * conditions in the input file.
+   *
+   * The member is intended to for use in Realm::enforce_bc_on_exposed_faces to
+   * check for "exposed surfaces" that might have not been assigned BCs in the
+   * input file.
+   *
+   */
   stk::mesh::PartVector bcPartVec_;
 
   // empty part vector should it be required

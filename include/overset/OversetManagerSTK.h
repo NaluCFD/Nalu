@@ -81,6 +81,8 @@ public:
 
   virtual ~OversetManagerSTK();
 
+  virtual void setup();
+
   // main method called for initialization
   virtual void initialize();
   
