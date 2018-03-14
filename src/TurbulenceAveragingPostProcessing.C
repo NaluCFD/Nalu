@@ -16,6 +16,7 @@
 #include <nalu_make_unique.h>
 
 // stk_util
+#include <stk_util/parallel/Parallel.hpp>
 #include <stk_util/parallel/ParallelReduce.hpp>
 
 // stk_mesh/base/fem
@@ -160,6 +161,7 @@ TurbulenceAveragingPostProcessing::load(
         get_if_present(y_spec, "compute_vorticity", avInfo->computeVorticity_, avInfo->computeVorticity_);
         get_if_present(y_spec, "compute_q_criterion", avInfo->computeQcriterion_, avInfo->computeQcriterion_);
         get_if_present(y_spec, "compute_lambda_ci", avInfo->computeLambdaCI_, avInfo->computeLambdaCI_);
+        get_if_present(y_spec, "compute_mean_resolved_ke", avInfo->computeMeanResolvedKe_, avInfo->computeMeanResolvedKe_);
 
         get_if_present(y_spec, "compute_temperature_sfs_flux",
                        avInfo->computeTemperatureSFS_, avInfo->computeTemperatureSFS_);
@@ -556,6 +558,9 @@ TurbulenceAveragingPostProcessing::review(
     NaluEnv::self().naluOutputP0() << "Lambda CI will be computed; add lambda_ci to output"<< std::endl;
   }
 
+  if ( avInfo->computeMeanResolvedKe_ ) {
+    NaluEnv::self().naluOutputP0() << "Mean resolved kinetic energy will be computed"<< std::endl;
+  }
 
   NaluEnv::self().naluOutputP0() << "===========================" << std::endl;
 }
@@ -703,6 +708,14 @@ TurbulenceAveragingPostProcessing::execute()
 
     if ( avInfo->computeLambdaCI_) {
       compute_lambda_ci(avInfo->name_, s_all_nodes);
+    }
+    
+    if ( avInfo->computeMeanResolvedKe_ ) {
+      // need locally owned and active nodes
+      stk::mesh::Selector s_locally_owned_nodes
+        = metaData.locally_owned_part() & stk::mesh::selectUnion(avInfo->partVec_);
+      //& !(realm_.get_inactive_selector());
+      compute_mean_resolved_ke(avInfo->name_, s_locally_owned_nodes);
     }
     
     // avoid computing stresses when when oldTimeFilter is not zero
@@ -1372,6 +1385,56 @@ TurbulenceAveragingPostProcessing::compute_lambda_ci(
       }
     }
   }
+}
+
+//--------------------------------------------------------------------------
+//-------- compute_mean_resolved_ke ----------------------------------------
+//--------------------------------------------------------------------------
+void
+TurbulenceAveragingPostProcessing::compute_mean_resolved_ke(
+  const std::string &averageBlockName,
+  stk::mesh::Selector s_all_nodes)
+{
+  stk::mesh::MetaData & metaData = realm_.meta_data();
+  const int nDim = realm_.spatialDimension_;
+
+  // extract fields
+  stk::mesh::FieldBase *velocity = metaData.get_field(stk::topology::NODE_RANK, "velocity");
+  stk::mesh::FieldBase *dualNodalVolume = metaData.get_field(stk::topology::NODE_RANK, "dual_nodal_volume");
+
+  // initialize sum
+  double l_sum[2] = {};
+
+  stk::mesh::BucketVector const& node_buckets_vort =
+    realm_.get_buckets( stk::topology::NODE_RANK, s_all_nodes );
+  for ( stk::mesh::BucketVector::const_iterator ib = node_buckets_vort.begin();
+        ib != node_buckets_vort.end() ; ++ib ) {
+    stk::mesh::Bucket & b = **ib ;
+    const stk::mesh::Bucket::size_type length   = b.size();
+
+    // fields
+    double *uNp1 = (double*)stk::mesh::field_data(*velocity,b);
+    double *dualV = (double*)stk::mesh::field_data(*dualNodalVolume,b);
+
+    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+      l_sum[0] += dualV[k];
+      double ke = 0.0;
+      for ( int i = 0; i < nDim; ++i){
+    	const int offSet = nDim*k;
+        ke += uNp1[offSet+i]*uNp1[offSet+i];
+      }
+      l_sum[1] += ke*dualV[k]*0.5;
+    }
+  }
+
+  double g_sum[2] = {};
+  stk::ParallelMachine comm = NaluEnv::self().parallel_comm();
+  stk::all_reduce_sum(comm, l_sum, g_sum, 2);
+  
+  NaluEnv::self().naluOutputP0() << "Integrated ke and volume at time: " 
+                                 << g_sum[1]/g_sum[0] << " " 
+                                 << g_sum[0] <<  " " 
+                                 << realm_.get_current_time() << std::endl;
 }
 
 

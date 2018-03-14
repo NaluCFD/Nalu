@@ -168,6 +168,7 @@ realms:
 
           compute_tke: yes 
           compute_reynolds_stress: yes
+          compute_mean_resolved_ke: yes
 
     output:
       serialized_io_group_size: 2
