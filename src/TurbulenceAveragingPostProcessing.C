@@ -713,8 +713,8 @@ TurbulenceAveragingPostProcessing::execute()
     if ( avInfo->computeMeanResolvedKe_ ) {
       // need locally owned and active nodes
       stk::mesh::Selector s_locally_owned_nodes
-        = metaData.locally_owned_part() & stk::mesh::selectUnion(avInfo->partVec_);
-      //& !(realm_.get_inactive_selector());
+        = metaData.locally_owned_part() & stk::mesh::selectUnion(avInfo->partVec_)
+        & !(realm_.get_inactive_selector());
       compute_mean_resolved_ke(avInfo->name_, s_locally_owned_nodes);
     }
     
