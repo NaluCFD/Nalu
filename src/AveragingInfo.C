@@ -30,7 +30,8 @@ AveragingInfo::AveragingInfo()
   computeFavreTke_(false),
   computeVorticity_(false),
   computeQcriterion_(false),
-  computeLambdaCI_(false)
+  computeLambdaCI_(false),
+  computeMeanResolvedKe_(false)
 {
   // does nothing
 }
