@@ -151,6 +151,10 @@ public:
 	const std::string &averageBlockName,
 	stk::mesh::Selector s_all_nodes);
 
+  void compute_mean_resolved_ke(
+	const std::string &averageBlockName,
+	stk::mesh::Selector s_all_nodes);
+
   // hold the realm
   Realm &realm_;
 
