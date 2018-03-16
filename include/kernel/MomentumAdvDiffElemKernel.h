@@ -8,7 +8,7 @@
 #ifndef MOMENTUMADVDIFFELEMKERNEL_H
 #define MOMENTUMADVDIFFELEMKERNEL_H
 
-#include "Kernel.h"
+#include "kernel/Kernel.h"
 #include "FieldTypeDef.h"
 
 #include <stk_mesh/base/BulkData.hpp>

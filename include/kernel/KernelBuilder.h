@@ -16,6 +16,7 @@
 #include <element_promotion/ElementDescription.h>
 
 #include <stk_mesh/base/BulkData.hpp>
+#include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/Entity.hpp>
 #include <stk_topology/topology.hpp>
 
@@ -88,6 +89,31 @@ namespace nalu{
   }
 
   template <template <typename> class T, typename... Args>
+  Kernel* build_face_topo_kernel(int dimension, stk::topology topo, Args&&... args)
+  {
+    if (!topo.is_super_topology()) {
+      switch(topo.value()) {
+        case stk::topology::QUAD_4:
+          return new T<BcAlgTraitsQuad4>(std::forward<Args>(args)...);
+        case stk::topology::QUAD_9:
+          return new T<BcAlgTraitsQuad9>(std::forward<Args>(args)...);
+        case stk::topology::TRI_3:
+          return new T<BcAlgTraitsTri3>(std::forward<Args>(args)...);
+        case stk::topology::LINE_2:
+          return new T<BcAlgTraitsLine2>(std::forward<Args>(args)...);
+        case stk::topology::LINE_3:
+          return new T<BcAlgTraitsLine3>(std::forward<Args>(args)...);
+        default:
+          return nullptr;
+      }
+    }
+    else {
+      int poly_order = poly_order_from_super_topology(dimension, topo);
+      throw std::runtime_error("PMR exposed surface bc does not support promoted element type: " + poly_order);
+    }
+  }
+  
+  template <template <typename> class T, typename... Args>
   bool build_topo_kernel_if_requested(
     stk::topology topo,
     EquationSystem& eqSys,
@@ -130,6 +156,25 @@ namespace nalu{
     return isCreated;
   }
 
+  template <template <typename> class T, typename... Args>
+  bool build_face_topo_kernel_automatic(
+    stk::topology topo,
+    EquationSystem& eqSys,
+    std::vector<Kernel*>& kernelVec,
+    std::string name,
+    Args&&... args)
+  {
+    // dimension, in addition to topology, is necessary to distinguish the HO elements,
+    const int dim = eqSys.realm_.spatialDimension_;
+
+    KernelBuilderLog::self().add_valid_name(eqSys.eqnTypeName_, name);
+    Kernel* compKernel = build_face_topo_kernel<T>(dim, topo, std::forward<Args>(args)...);
+    ThrowRequire(compKernel != nullptr);
+    KernelBuilderLog::self().add_built_name(eqSys.eqnTypeName_, name);
+    kernelVec.push_back(compKernel);  
+    return true;
+  }
+
   inline std::pair<AssembleElemSolverAlgorithm*, bool>
   build_or_add_part_to_solver_alg(
     EquationSystem& eqSys,
@@ -151,6 +196,44 @@ namespace nalu{
     bool createNewAlg = itc == solverAlgs.end();
     if (createNewAlg) {
       auto* theSolverAlg = new AssembleElemSolverAlgorithm(eqSys.realm_, &part, &eqSys, stk::topology::ELEMENT_RANK, topo.num_nodes(), isNotNGP);
+      ThrowRequire(theSolverAlg != nullptr);
+
+      NaluEnv::self().naluOutputP0() << "Created the following alg: " << algName << std::endl;
+      solverAlgs.insert({algName, theSolverAlg});
+    }
+    else {
+      auto& partVec = itc->second->partVec_;
+      if (std::find(partVec.begin(), partVec.end(), &part) == partVec.end()) {
+        partVec.push_back(&part);
+      }
+    }
+
+    auto* theSolverAlg = dynamic_cast<AssembleElemSolverAlgorithm*>(solverAlgs.at(algName));
+    ThrowRequire(theSolverAlg != nullptr);
+
+    return {theSolverAlg, createNewAlg};
+  }
+
+  inline std::pair<AssembleElemSolverAlgorithm*, bool>
+  build_or_add_part_to_face_bc_solver_alg(
+    EquationSystem& eqSys,
+    stk::mesh::Part& part,
+    std::map<std::string, SolverAlgorithm*>& solverAlgs)
+  {
+    const stk::topology topo = part.topology();
+    const std::string algName = "AssembleElemSolverAlg_" + topo.name();
+
+    bool isNotNGP = !(topo == stk::topology::QUAD_4 ||
+                      topo == stk::topology::QUAD_9 ||
+                      topo == stk::topology::TRI_3 ||
+                      topo == stk::topology::LINE_2 ||
+                      topo == stk::topology::LINE_3 );
+
+    auto itc = solverAlgs.find(algName);
+    bool createNewAlg = itc == solverAlgs.end();
+    if (createNewAlg) {
+      auto* theSolverAlg = new AssembleElemSolverAlgorithm(eqSys.realm_, &part, &eqSys, 
+                                                           eqSys.realm_.meta_data().side_rank(), topo.num_nodes(), isNotNGP);
       ThrowRequire(theSolverAlg != nullptr);
 
       NaluEnv::self().naluOutputP0() << "Created the following alg: " << algName << std::endl;
