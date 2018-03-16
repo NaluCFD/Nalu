@@ -10,6 +10,7 @@
 #define BuildTemplates_h
 
 #include <AlgTraits.h>
+#include <BcAlgTraits.h>
 
 #ifndef USER_POLY_ORDER
 #define USER_POLY_ORDER 5
@@ -49,6 +50,12 @@ template class ClassName<AlgTraitsQuadGL<USER_POLY_ORDER>>;      \
   INSTANTIATE_KERNEL_3D_HO(ClassName)           \
   INSTANTIATE_KERNEL_2D_HO(ClassName)           \
 
+#define INSTANTIATE_FACE_BC_KERNEL(ClassName)  \
+template class ClassName<BcAlgTraitsQuad4>;    \
+template class ClassName<BcAlgTraitsQuad9>;    \
+template class ClassName<BcAlgTraitsTri3>;     \
+template class ClassName<BcAlgTraitsLine2>;    \
+template class ClassName<BcAlgTraitsLine3>;    \
 
 } // namespace nalu
 } // namespace Sierra
