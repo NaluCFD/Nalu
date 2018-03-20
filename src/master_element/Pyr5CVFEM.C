@@ -767,7 +767,7 @@ void PyrSCS::grad_op(
       coords, gradop, det_j, error, &lerr );
 
   if ( lerr )
-    std::cout << "sorry, negative PyrSCS volume.." << std::endl;
+    NaluEnv::self().naluOutput() << "sorry, negative PyrSCS volume.." << std::endl;
 }
 
 //--------------------------------------------------------------------------
@@ -802,7 +802,7 @@ void PyrSCS::shifted_grad_op(
       coords, gradop, det_j, error, &lerr );
 
   if ( lerr )
-    std::cout << "sorry, negative PyrSCS volume.." << std::endl;
+    NaluEnv::self().naluOutput() << "sorry, negative PyrSCS volume.." << std::endl;
 }
 
 //--------------------------------------------------------------------------
@@ -839,12 +839,8 @@ void PyrSCS::face_grad_op(
           &coords[15*n], &gradop[k*nelem*15+n*15], &det_j[npf*n+k], error, &lerr );
       
       if ( lerr )
-        std::cout << "problem with PyrSCS::face_grad_op." << std::endl;
+        NaluEnv::self().naluOutput() << "problem with PyrSCS::face_grad_op." << std::endl;
     }
-  }
-
-  for (int j = 0; j < 15; ++j) {
-    std::cout << gradop[j] << std::endl;
   }
 }
 
@@ -938,7 +934,7 @@ void PyrSCS::shifted_face_grad_op(
           &coords[15*n], &gradop[k*nelem*15+n*15], &det_j[npf*n+k], error, &lerr );
 
       if ( lerr )
-        std::cout << "problem with PyrSCS::shifted_face_grad_op." << std::endl;
+        NaluEnv::self().naluOutput() << "problem with PyrSCS::shifted_face_grad_op." << std::endl;
 
     }
   }
@@ -1083,7 +1079,7 @@ PyrSCS::general_face_grad_op(
       &coords[0], &gradop[0], &det_j[0], error, &lerr );
   
   if ( lerr )
-    std::cout << "PyrSCS::general_face_grad_op: issue.." << std::endl;
+    NaluEnv::self().naluOutput() << "PyrSCS::general_face_grad_op: issue.." << std::endl;
   
 }
 

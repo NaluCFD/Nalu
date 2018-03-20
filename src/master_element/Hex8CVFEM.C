@@ -12,6 +12,7 @@
 #include <master_element/Hex8GeometryFunctions.h>
 
 #include <FORTRAN_Proto.h>
+#include <NaluEnv.h>
 
 #include <cmath>
 #include <iostream>
@@ -213,7 +214,7 @@ void HexSCV::grad_op(
       coords, gradop, det_j, error, &lerr );
 
   if ( lerr )
-    std::cout << "sorry, negative HexSCV volume.." << std::endl;
+    NaluEnv::self().naluOutput() << "sorry, negative HexSCV volume.." << std::endl;
 }
 
 //--------------------------------------------------------------------------
@@ -609,7 +610,7 @@ void HexSCS::grad_op(
       coords, gradop, det_j, error, &lerr );
 
   if ( lerr )
-    std::cout << "sorry, negative HexSCS volume.." << std::endl;
+    NaluEnv::self().naluOutput() << "sorry, negative HexSCS volume.." << std::endl;
  }
 
 //--------------------------------------------------------------------------
@@ -637,7 +638,7 @@ void HexSCS::shifted_grad_op(
       coords, gradop, det_j, error, &lerr );
 
   if ( lerr )
-    std::cout << "sorry, negative HexSCS volume.." << std::endl;
+    NaluEnv::self().naluOutput() << "sorry, negative HexSCS volume.." << std::endl;
 }
 
 //--------------------------------------------------------------------------
@@ -675,7 +676,7 @@ void HexSCS::face_grad_op(
           &coords[24*n], &gradop[k*nelem*24+n*24], &det_j[npf*n+k], error, &lerr );
 
       if ( lerr )
-        std::cout << "sorry, issue with face_grad_op.." << std::endl;
+        NaluEnv::self().naluOutput() << "sorry, issue with face_grad_op.." << std::endl;
     }
   }
 }
@@ -731,7 +732,7 @@ void HexSCS::shifted_face_grad_op(
           &coords[24*n], &gradop[k*nelem*24+n*24], &det_j[npf*n+k], error, &lerr );
 
       if ( lerr )
-        std::cout << "sorry, issue with face_grad_op.." << std::endl;
+        NaluEnv::self().naluOutput() << "sorry, issue with face_grad_op.." << std::endl;
     }
   }
 }
@@ -1121,7 +1122,7 @@ HexSCS::general_face_grad_op(
       &coords[0], &gradop[0], &det_j[0], error, &lerr );
 
   if ( lerr )
-    std::cout << "HexSCS::general_face_grad_op: issue.." << std::endl;
+    NaluEnv::self().naluOutput() << "HexSCS::general_face_grad_op: issue.." << std::endl;
 
 }
 

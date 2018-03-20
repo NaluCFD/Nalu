@@ -9,6 +9,7 @@
 #include "master_element/MasterElementFunctions.h"
 #include "master_element/Hex8GeometryFunctions.h"
 #include "FORTRAN_Proto.h"
+#include "NaluEnv.h"
 
 namespace sierra {
 namespace nalu {
@@ -632,7 +633,7 @@ void WedSCS::grad_op(
       coords, gradop, det_j, error, &lerr );
 
   if ( lerr )
-    std::cout << "sorry, negative WedSCS volume.." << std::endl;
+    NaluEnv::self().naluOutput() << "sorry, negative WedSCS volume.." << std::endl;
 }
 
 //--------------------------------------------------------------------------
@@ -658,7 +659,7 @@ void WedSCS::shifted_grad_op(
       coords, gradop, det_j, error, &lerr );
 
   if ( lerr )
-    std::cout << "sorry, negative WedSCS volume.." << std::endl;
+    NaluEnv::self().naluOutput() << "sorry, negative WedSCS volume.." << std::endl;
 }
 
 //--------------------------------------------------------------------------
@@ -742,7 +743,7 @@ WedSCS::face_grad_op(
           &coords[18*n], &gradop[k*nelem*18+n*18], &det_j[npf*n+k], error, &lerr );
 
       if ( lerr )
-        std::cout << "problem with EwedSCS::face_grad" << std::endl;
+        NaluEnv::self().naluOutput() << "problem with EwedSCS::face_grad" << std::endl;
 
     }
   }
@@ -837,7 +838,7 @@ WedSCS::shifted_face_grad_op(
           &coords[18*n], &gradop[k*nelem*18+n*18], &det_j[npf*n+k], error, &lerr );
 
       if ( lerr )
-        std::cout << "problem with EwedSCS::face_grad" << std::endl;
+        NaluEnv::self().naluOutput() << "problem with EwedSCS::face_grad" << std::endl;
 
     }
   }
@@ -1185,7 +1186,7 @@ WedSCS::general_face_grad_op(
       &coords[0], &gradop[0], &det_j[0], error, &lerr );
 
   if ( lerr )
-    std::cout << "problem with EwedSCS::general_face_grad" << std::endl;
+    NaluEnv::self().naluOutput() << "problem with EwedSCS::general_face_grad" << std::endl;
 
 }
 

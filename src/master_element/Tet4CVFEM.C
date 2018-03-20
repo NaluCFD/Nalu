@@ -578,7 +578,7 @@ void TetSCS::grad_op(
       coords, gradop, det_j, error, &lerr );
 
   if ( lerr )
-    std::cout << "sorry, negative TetSCS volume.." << std::endl;  
+    NaluEnv::self().naluOutput() << "sorry, negative TetSCS volume.." << std::endl;
 }
 
 //--------------------------------------------------------------------------
@@ -615,7 +615,7 @@ void TetSCS::shifted_grad_op(
       coords, gradop, det_j, error, &lerr );
 
   if ( lerr )
-    std::cout << "sorry, negative TetSCS volume.." << std::endl;
+    NaluEnv::self().naluOutput() << "sorry, negative TetSCS volume.." << std::endl;
 }
 
 //--------------------------------------------------------------------------
@@ -651,7 +651,7 @@ void TetSCS::face_grad_op(
           &coords[12*n], &gradop[k*nelem*12+n*12], &det_j[npf*n+k], error, &lerr );
 
       if ( lerr )
-        std::cout << "sorry, issue with face_grad_op.." << std::endl;
+        NaluEnv::self().naluOutput() << "sorry, issue with face_grad_op.." << std::endl;
 
     }
   }
@@ -709,7 +709,7 @@ void TetSCS::shifted_face_grad_op(
           &coords[12*n], &gradop[k*nelem*12+n*12], &det_j[npf*n+k], error, &lerr );
 
       if ( lerr )
-        std::cout << "sorry, issue with face_grad_op.." << std::endl;
+        NaluEnv::self().naluOutput() << "sorry, issue with face_grad_op.." << std::endl;
     }
   }
 }
