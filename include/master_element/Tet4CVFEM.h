@@ -105,6 +105,11 @@ public:
     double *det_j,
     double * error );
 
+  void face_grad_op(
+    int face_ordinal,
+    SharedMemView<DoubleType**>& coords,
+    SharedMemView<DoubleType***>& gradop) final;
+
   void shifted_face_grad_op(
     const int nelem,
     const int face_ordinal,

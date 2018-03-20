@@ -37,9 +37,10 @@ namespace sierra{
 namespace nalu{
 
 //-------- pyr_deriv -------------------------------------------------------
+template <typename DerivType>
 void pyr_deriv(const int npts,
   const double *intgLoc,
-  SharedMemView<DoubleType***>& deriv)
+  DerivType& deriv)
 {
   // d3d(c,s,j) = deriv[c + 3*(s + 5*j)] = deriv[c+3s+15j]
 
@@ -840,6 +841,64 @@ void PyrSCS::face_grad_op(
       if ( lerr )
         std::cout << "problem with PyrSCS::face_grad_op." << std::endl;
     }
+  }
+
+  for (int j = 0; j < 15; ++j) {
+    std::cout << gradop[j] << std::endl;
+  }
+}
+
+void PyrSCS::face_grad_op_quad(int face_ordinal, SharedMemView<DoubleType**>& coords, QuadFaceGradType& gradop)
+{
+  using tri_traits = AlgTraitsTri3Pyr5;
+  using quad_traits = AlgTraitsQuad4Pyr5;
+
+  constexpr int derivSize = quad_traits::numFaceIp_ *  quad_traits::nodesPerElement_ * quad_traits::nDim_;
+
+  DoubleType psi[derivSize];
+  QuadFaceGradType deriv(psi);
+
+  const int offset = (face_ordinal != 4) ? 0 : tri_traits::nDim_ * tri_traits::numFaceIp_ * face_ordinal;
+  pyr_deriv(quad_traits::numFaceIp_, &intgExpFace_[offset], deriv);
+  generic_grad_op_3d<AlgTraitsPyr5>(deriv, coords, gradop);
+}
+
+void PyrSCS::face_grad_op_tri(int face_ordinal, SharedMemView<DoubleType**>& coords, TriFaceGradType& gradop)
+{
+  using tri_traits = AlgTraitsTri3Pyr5;
+
+  constexpr int derivSize = tri_traits::numFaceIp_ *  tri_traits::nodesPerElement_ * tri_traits::nDim_;
+  DoubleType psi[derivSize];
+  TriFaceGradType deriv(psi);
+
+  const int offset = (face_ordinal != 4) ? tri_traits::nDim_ * tri_traits::numFaceIp_ * face_ordinal : 0;
+  pyr_deriv(tri_traits::numFaceIp_, &intgExpFace_[offset], deriv);
+  generic_grad_op_3d<AlgTraitsPyr5>(deriv, coords, gradop);
+}
+
+void PyrSCS::face_grad_op(
+  int face_ordinal,
+  SharedMemView<DoubleType**>& coords,
+  SharedMemView<DoubleType***>& gradop)
+{
+  using tri_traits = AlgTraitsTri3Pyr5;
+  using quad_traits = AlgTraitsQuad4Pyr5;
+
+  constexpr int quad_derivSize = quad_traits::numFaceIp_ *  quad_traits::nodesPerElement_ * quad_traits::nDim_;
+  DoubleType quad_grad_temp[quad_derivSize];
+  QuadFaceGradType quad_gradop(quad_grad_temp);
+  face_grad_op_quad(face_ordinal, coords, quad_gradop);
+
+  constexpr int tri_derivSize = tri_traits::numFaceIp_ *  tri_traits::nodesPerElement_ * tri_traits::nDim_;
+  DoubleType tri_grad_temp[tri_derivSize];
+  TriFaceGradType tri_gradop(tri_grad_temp);
+  face_grad_op_tri(face_ordinal, coords, tri_gradop);
+
+  const int length = (face_ordinal == 4) ? quad_derivSize : tri_derivSize;
+  DoubleType triMask = (face_ordinal == 4) ? 0: 1;
+  DoubleType* gradop_ptr = gradop.ptr_on_device();
+  for (int k = 0; k < length; ++k) {
+    gradop_ptr[k] = (1 - triMask) * quad_grad_temp[k] + triMask * tri_grad_temp[k];
   }
 }
 

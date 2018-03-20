@@ -846,6 +846,7 @@ Hex27SCS::Hex27SCS()
   shiftedReferenceGradWeights_ = copy_deriv_weights_to_view<GradWeightType>(shapeDerivsShift_);
 
   eval_shape_derivs_at_face_ips();
+  expReferenceGradWeights_ = copy_deriv_weights_to_view<ExpGradWeightType>(expFaceShapeDerivs_);
 }
 
 //--------------------------------------------------------------------------
@@ -1533,6 +1534,19 @@ void Hex27SCS::face_grad_op(
     }
   }
 }
+
+void Hex27SCS::face_grad_op(
+  int face_ordinal,
+  SharedMemView<DoubleType**>& coords,
+  SharedMemView<DoubleType***>& gradop)
+{
+  using traits = AlgTraitsQuad9Hex27;
+  const int offset = traits::numFaceIp_ * face_ordinal;
+  auto range = std::make_pair(offset, offset + traits::numFaceIp_);
+  auto face_weights = Kokkos::subview(expReferenceGradWeights_, range, Kokkos::ALL(), Kokkos::ALL());
+  generic_grad_op_3d<AlgTraitsHex27>(face_weights, coords, gradop);
+}
+
 
 //--------------------------------------------------------------------------
 //-------- gradient --------------------------------------------------------

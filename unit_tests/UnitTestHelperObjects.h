@@ -5,6 +5,7 @@
 #include "UnitTestLinearSystem.h"
 
 #include "AssembleElemSolverAlgorithm.h"
+#include "AssembleFaceElemSolverAlgorithm.h"
 #include "EquationSystem.h"
 
 #include <stk_mesh/base/BulkData.hpp>
@@ -47,6 +48,20 @@ struct HelperObjects {
   sierra::nalu::EquationSystem eqSystem;
   unit_test_utils::TestLinearSystem* linsys;
   sierra::nalu::AssembleElemSolverAlgorithm* assembleElemSolverAlg;
+};
+
+
+struct FaceElemHelperObjects : HelperObjects {
+  FaceElemHelperObjects(stk::mesh::BulkData& bulk, stk::topology faceTopo, stk::topology elemTopo, int numDof, stk::mesh::Part* part)
+  : HelperObjects(bulk, elemTopo, numDof, part)
+  {
+    assembleFaceElemSolverAlg = new sierra::nalu::AssembleFaceElemSolverAlgorithm(realm, part, &eqSystem, faceTopo.num_nodes(), elemTopo.num_nodes(), false);
+  }
+
+  ~FaceElemHelperObjects() {    delete assembleFaceElemSolverAlg;
+  }
+
+  sierra::nalu::AssembleFaceElemSolverAlgorithm* assembleFaceElemSolverAlg;
 };
 
 }

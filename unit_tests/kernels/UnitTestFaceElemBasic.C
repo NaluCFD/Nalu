@@ -128,13 +128,13 @@ TEST_F(Hex8ElementWithBCFields, faceElemMomentumSymmetry)
   stk::topology faceTopo = stk::topology::QUAD_4;
   stk::topology elemTopo = stk::topology::HEX_8;
   stk::mesh::Part* surface1 = meta.get_part("all_surfaces");
-  unit_test_utils::HelperObjects helperObjs(bulk, elemTopo, sierra::nalu::BcAlgTraitsHex8Quad4::nDim_, surface1);
+  unit_test_utils::HelperObjects helperObjs(bulk, elemTopo, sierra::nalu::AlgTraitsQuad4Hex8::nDim_, surface1);
 
   sierra::nalu::AssembleFaceElemSolverAlgorithm faceElemAlg(helperObjs.realm, surface1, &helperObjs.eqSystem,
                                                           faceTopo.num_nodes(), elemTopo.num_nodes());
 
   auto  momentumSymmetryElemKernel =
-      new sierra::nalu::MomentumSymmetryElemKernel<sierra::nalu::BcAlgTraitsHex8Quad4>(meta, solnOptions, &velocity, &viscosity,
+      new sierra::nalu::MomentumSymmetryElemKernel<sierra::nalu::AlgTraitsQuad4Hex8>(meta, solnOptions, &velocity, &viscosity,
                                     faceElemAlg.faceDataNeeded_, faceElemAlg.elemDataNeeded_);
 
   faceElemAlg.activeKernels_.push_back(momentumSymmetryElemKernel);
@@ -154,13 +154,13 @@ TEST_F(Hex8ElementWithBCFields, faceElemMomentumOpen)
   stk::topology faceTopo = stk::topology::QUAD_4;
   stk::topology elemTopo = stk::topology::HEX_8;
   stk::mesh::Part* surface1 = meta.get_part("all_surfaces");
-  unit_test_utils::HelperObjects helperObjs(bulk, elemTopo, sierra::nalu::BcAlgTraitsHex8Quad4::nDim_, surface1);
+  unit_test_utils::HelperObjects helperObjs(bulk, elemTopo, sierra::nalu::AlgTraitsQuad4Hex8::nDim_, surface1);
 
   sierra::nalu::AssembleFaceElemSolverAlgorithm faceElemAlg(helperObjs.realm, surface1, &helperObjs.eqSystem,
                                                           faceTopo.num_nodes(), elemTopo.num_nodes());
 
   auto  momentumOpenAdvDiffElemKernel =
-    new sierra::nalu::MomentumOpenAdvDiffElemKernel<sierra::nalu::BcAlgTraitsHex8Quad4>(meta, solnOptions, &helperObjs.eqSystem, &velocity, &Gjui, &viscosity,
+    new sierra::nalu::MomentumOpenAdvDiffElemKernel<sierra::nalu::AlgTraitsQuad4Hex8>(meta, solnOptions, &helperObjs.eqSystem, &velocity, &Gjui, &viscosity,
                                                                                         faceElemAlg.faceDataNeeded_, faceElemAlg.elemDataNeeded_);
 
   faceElemAlg.activeKernels_.push_back(momentumOpenAdvDiffElemKernel);

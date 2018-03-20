@@ -11,6 +11,7 @@
 #include "master_element/MasterElement.h"
 #include "PecletFunction.h"
 #include "SolutionOptions.h"
+#include "BuildTemplates.h"
 
 // template and scratch space
 #include "ScratchViews.h"
@@ -348,8 +349,7 @@ MomentumOpenAdvDiffElemKernel<BcAlgTraits>::execute(
   }
 }
 
-template class MomentumOpenAdvDiffElemKernel <BcAlgTraitsHex8Quad4>;
-
+INSTANTIATE_KERNEL_FACE_ELEMENT(MomentumOpenAdvDiffElemKernel);
 
 }  // nalu
 }  // sierra

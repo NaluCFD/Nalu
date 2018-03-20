@@ -11,6 +11,7 @@
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/Selector.hpp>
 #include <stk_mesh/base/SkinBoundary.hpp>
+#include <stk_mesh/base/GetEntities.hpp>
 #include <stk_topology/topology.hpp>
 
 #include <master_element/TensorOps.h>
@@ -175,6 +176,11 @@ stk::mesh::Entity create_one_element(
    stk::mesh::PartVector allSurfaces = { &meta.declare_part("all_surfaces", meta.side_rank()) };
    stk::io::put_io_part_attribute(*allSurfaces.front());
 
+   stk::mesh::PartVector individualSurfaces(topo.num_sides());
+   for (unsigned k = 0u; k < topo.num_sides(); ++k) {
+     individualSurfaces[k] = &meta.declare_part_with_topology("surface_" + std::to_string(k), topo.side_topology(k));
+   }
+
    // set a coordinate field
    using vector_field_type = stk::mesh::Field<double, stk::mesh::Cartesian3d>;
    auto& coordField = meta.declare_field<vector_field_type>(stk::topology::NODE_RANK, "coordinates");
@@ -195,6 +201,18 @@ stk::mesh::Entity create_one_element(
    auto elem = stk::mesh::declare_element(bulk, block_1, bulk.parallel_rank()+1, nodeIds);
    stk::mesh::create_all_sides(bulk, block_1, allSurfaces, false);
 
+   bulk.modification_end();
+
+   auto surfaceSelector = stk::mesh::selectUnion(allSurfaces);
+   stk::mesh::EntityVector all_faces;
+   stk::mesh::get_selected_entities(surfaceSelector, bulk.get_buckets(meta.side_rank(), surfaceSelector), all_faces);
+   ThrowRequire(all_faces.size() == topo.num_sides());
+
+   bulk.modification_begin();
+   for (unsigned k = 0u; k < all_faces.size(); ++k) {
+     const int ordinal = bulk.begin_element_ordinals(all_faces[k])[0];
+     bulk.change_entity_parts(all_faces[k], {individualSurfaces[ordinal]}, stk::mesh::PartVector{});
+   }
    bulk.modification_end();
 
    const auto* nodes = bulk.begin_nodes(elem);

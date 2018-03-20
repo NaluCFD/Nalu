@@ -167,7 +167,7 @@ MomentumSymmetryElemKernel<BcAlgTraits>::execute(
   }
 }
 
-template class MomentumSymmetryElemKernel <BcAlgTraitsHex8Quad4>;
+INSTANTIATE_KERNEL_FACE_ELEMENT(MomentumSymmetryElemKernel);
 
 }  // nalu
 }  // sierra
