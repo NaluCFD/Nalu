@@ -51,6 +51,14 @@ public:
     double *volume,
     double * error ) final;
 
+  void grad_op(
+    const int nelem,
+    const double *coords,
+    double *gradop,
+    double *deriv,
+    double *det_j,
+    double * error) final;
+
   std::vector<double> shape_functions() {
     return shapeFunctionVals_;
   }
@@ -78,11 +86,6 @@ private:
   std::vector<double> shapeFunctionVals_;
   std::vector<double> shapeDerivs_;
   std::vector<double> ipWeights_;
-  std::vector<double> geoShapeDerivs_;
-  int geoNodesPerElement_;
-//
-//  Kokkos::View<double**> interpWeights_;
-//  Kokkos::View<double***> derivWeights_;
 };
 
 // 3D Hex 27 subcontrol surface
@@ -167,19 +170,6 @@ private:
     double *POINTER_RESTRICT shapeDeriv,
     double *POINTER_RESTRICT areaVector) const;
 
-  void gradient(
-    const double* POINTER_RESTRICT elemNodalCoords,
-    const double* POINTER_RESTRICT shapeDeriv,
-    double* POINTER_RESTRICT grad,
-    double* POINTER_RESTRICT det_j ) const;
-
-  void gradient(
-    const double* POINTER_RESTRICT elemNodalCoords,
-    const double* POINTER_RESTRICT geometricShapeDeriv,
-    const double*  POINTER_RESTRICT shapeDeriv,
-    double* POINTER_RESTRICT grad,
-    double* POINTER_RESTRICT det_j ) const;
-
   const ElementDescription elem_;
   LagrangeBasis basis_;
   const TensorProductQuadratureRule quadrature_;
@@ -187,8 +177,6 @@ private:
   std::vector<double> shapeFunctionVals_;
   std::vector<double> shapeDerivs_;
   std::vector<double> expFaceShapeDerivs_;
-  std::vector<double> geometricShapeDerivs_;
-  int geometricNodesPerElement_;
   std::vector<ContourData> ipInfo_;
   int ipsPerFace_;
 };
@@ -265,6 +253,14 @@ public:
     double *volume,
     double * error ) final;
 
+  void grad_op(
+    const int nelem,
+    const double *coords,
+    double *gradop,
+    double *deriv,
+    double *det_j,
+    double * error) final;
+
   std::vector<double> shape_functions() {
     return shapeFunctionVals_;
   }
@@ -291,8 +287,6 @@ private:
   std::vector<double> shapeFunctionVals_;
   std::vector<double> shapeDerivs_;
   std::vector<double> ipWeights_;
-  std::vector<double> geometricShapeDerivs_;
-  int geometricNodesPerElement_;
 };
 class HigherOrderQuad2DSCS final: public MasterElement
 {
@@ -374,27 +368,12 @@ private:
     double *POINTER_RESTRICT shapeDeriv,
     double *POINTER_RESTRICT normalVec ) const;
 
-  void gradient(
-    const double* POINTER_RESTRICT elemNodalCoords,
-    const double* POINTER_RESTRICT shapeDeriv,
-    double* POINTER_RESTRICT grad,
-    double* POINTER_RESTRICT det_j) const;
-
-  void gradient(
-    const double* POINTER_RESTRICT elemNodalCoords,
-    const double* POINTER_RESTRICT geometricShapeDeriv,
-    const double* POINTER_RESTRICT shapeDeriv,
-    double* POINTER_RESTRICT grad,
-    double* POINTER_RESTRICT det_j ) const;
-
   const ElementDescription elem_;
   LagrangeBasis basis_;
   const TensorProductQuadratureRule quadrature_;
 
   std::vector<double> shapeFunctionVals_;
   std::vector<double> shapeDerivs_;
-  std::vector<double> geometricShapeDerivs_;
-  int geometricNodesPerElement_;
   std::vector<ContourData> ipInfo_;
   int ipsPerFace_;
   std::vector<double> expFaceShapeDerivs_;
