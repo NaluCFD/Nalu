@@ -9,7 +9,7 @@
 #include "UnitTestUtils.h"
 #include "UnitTestHelperObjects.h"
 
-#include "ContinuityMassElemKernel.h"
+#include "kernel/ContinuityMassElemKernel.h"
 
 TEST_F(ContinuityKernelHex8Mesh, density_time_derivative)
 {
@@ -20,7 +20,7 @@ TEST_F(ContinuityKernelHex8Mesh, density_time_derivative)
   solnOpts_.meshDeformation_ = false;
   solnOpts_.externalMeshDeformation_ = false;
 
-  unit_test_utils::HelperObjectsNewME helperObjs(bulk_, stk::topology::HEX_8, 1, partVec_[0]);
+  unit_test_utils::HelperObjects helperObjs(bulk_, stk::topology::HEX_8, 1, partVec_[0]);
 
   // Initialize the kernel
   std::unique_ptr<sierra::nalu::Kernel> massKernel(
@@ -62,7 +62,7 @@ TEST_F(ContinuityKernelHex8Mesh, density_time_derivative_lumped)
   solnOpts_.meshDeformation_ = false;
   solnOpts_.externalMeshDeformation_ = false;
 
-  unit_test_utils::HelperObjectsNewME helperObjs(bulk_, stk::topology::HEX_8, 1, partVec_[0]);
+  unit_test_utils::HelperObjects helperObjs(bulk_, stk::topology::HEX_8, 1, partVec_[0]);
 
   // Initialize the kernel
   std::unique_ptr<sierra::nalu::Kernel> massKernel(

@@ -24,6 +24,7 @@
 #include <iostream>
 #include <cmath>
 #include <algorithm>
+#include <numeric>
 
 #include "tioga.h"
 
@@ -61,10 +62,10 @@ TiogaSTKIface::load(const YAML::Node& node)
       << "TIOGA: Using coordinates field: " << coords_name << std::endl;
 }
 
-void TiogaSTKIface::setup()
+void TiogaSTKIface::setup(stk::mesh::PartVector& bcPartVec)
 {
   for (auto& tb: blocks_) {
-    tb->setup();
+    tb->setup(bcPartVec);
   }
 
   // Initialize the inactive part
@@ -445,7 +446,7 @@ TiogaSTKIface::get_receptor_info()
   std::vector<unsigned long> allEntities(nTotalEntities);
 
   offsets[0] = 0;
-  for (int i=0; i <= nproc; ++i) {
+  for (int i=1; i <= nproc; ++i) {
     offsets[i] = offsets[i-1] + nbPerProc[i-1];
   }
 

@@ -16,7 +16,7 @@ namespace sierra{
 namespace nalu{
 
 class Realm;
-class PecletFunction;
+template <typename T> class PecletFunction;
 
 class AssembleMomentumEdgeSolverAlgorithm : public SolverAlgorithm
 {
@@ -48,7 +48,7 @@ public:
   ScalarFieldType *massFlowRate_;
 
   // peclet function specifics
-  PecletFunction * pecletFunction_;
+  PecletFunction<double>* pecletFunction_;
 };
 
 } // namespace nalu

@@ -13,6 +13,7 @@
 #include <NaluParsing.h>
 #include <Simulation.h>
 #include <NaluEnv.h>
+#include <NaluVersionInfo.h>
 
 // util
 #include <stk_util/environment/perf_util.hpp>
@@ -57,6 +58,7 @@ static std::string human_bytes_double(double bytes)
 
 int main( int argc, char ** argv )
 {
+  namespace version = sierra::nalu::version;
 
   // start up MPI
   if ( MPI_SUCCESS != MPI_Init( &argc , &argv ) ) {
@@ -79,11 +81,14 @@ int main( int argc, char ** argv )
   std::string inputFileName, logFileName;
   bool debug = false;
   int serializedIOGroupSize = 0;
+  const std::string naluVersion = (version::RepoIsDirty == "DIRTY")
+    ? (version::NaluVersionTag + "-dirty")
+    : version::NaluVersionTag;
 
   boost::program_options::options_description desc("Nalu Supported Options");
   desc.add_options()
     ("help,h","Help message")
-    ("version,v", "Code Version 1.0")
+    ("version,v", naluVersion.c_str())
     ("input-deck,i", boost::program_options::value<std::string>(&inputFileName)->default_value("nalu.i"),
         "Analysis input file")
     ("log-file,o", boost::program_options::value<std::string>(&logFileName),
@@ -108,7 +113,7 @@ int main( int argc, char ** argv )
 
   if (vm.count("version")) {
     if (!naluEnv.parallel_rank())
-      std::cerr << "Version: Nalu1.0" << std::endl;
+      std::cerr << "Version: " << naluVersion << std::endl;
     return 0;
   }
 

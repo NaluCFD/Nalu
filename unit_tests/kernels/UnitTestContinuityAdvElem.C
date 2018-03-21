@@ -9,7 +9,7 @@
 #include "UnitTestUtils.h"
 #include "UnitTestHelperObjects.h"
 
-#include "ContinuityAdvElemKernel.h"
+#include "kernel/ContinuityAdvElemKernel.h"
 
 namespace {
 namespace hex8_golds {
@@ -72,7 +72,7 @@ TEST_F(ContinuityKernelHex8Mesh, advection_default)
   solnOpts_.cvfemReducedSensPoisson_ = false;
   solnOpts_.mdotInterpRhoUTogether_ = true;
 
-  unit_test_utils::HelperObjectsNewME helperObjs(bulk_, stk::topology::HEX_8, 1, partVec_[0]);
+  unit_test_utils::HelperObjects helperObjs(bulk_, stk::topology::HEX_8, 1, partVec_[0]);
 
   sierra::nalu::TimeIntegrator timeIntegrator;
   timeIntegrator.gamma1_ = 1.0;
@@ -118,7 +118,7 @@ TEST_F(ContinuityKernelHex8Mesh, advection_reduced_sens_cvfem_poisson)
   solnOpts_.cvfemReducedSensPoisson_ = true;
   solnOpts_.mdotInterpRhoUTogether_ = true;
 
-  unit_test_utils::HelperObjectsNewME helperObjs(bulk_, stk::topology::HEX_8, 1, partVec_[0]);
+  unit_test_utils::HelperObjects helperObjs(bulk_, stk::topology::HEX_8, 1, partVec_[0]);
 
   sierra::nalu::TimeIntegrator timeIntegrator;
   timeIntegrator.gamma1_ = 1.0;
@@ -164,7 +164,7 @@ TEST_F(ContinuityKernelHex8Mesh, advection_reduced_shift_cvfem_poisson)
   solnOpts_.cvfemReducedSensPoisson_ = true;
   solnOpts_.mdotInterpRhoUTogether_ = true;
 
-  unit_test_utils::HelperObjectsNewME helperObjs(bulk_, stk::topology::HEX_8, 1, partVec_[0]);
+  unit_test_utils::HelperObjects helperObjs(bulk_, stk::topology::HEX_8, 1, partVec_[0]);
 
   sierra::nalu::TimeIntegrator timeIntegrator;
   timeIntegrator.gamma1_ = 1.0;

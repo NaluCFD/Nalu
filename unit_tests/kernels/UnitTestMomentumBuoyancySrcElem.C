@@ -9,7 +9,7 @@
 #include "UnitTestUtils.h"
 #include "UnitTestHelperObjects.h"
 
-#include "MomentumBuoyancySrcElemKernel.h"
+#include "kernel/MomentumBuoyancySrcElemKernel.h"
 
 #include <random>
 
@@ -29,7 +29,7 @@ TEST_F(MomentumKernelHex8Mesh, buoyancy)
   solnOpts_.gravity_[2] = -9.81;
   solnOpts_.referenceDensity_ = ref_densities(rng);
 
-  unit_test_utils::HelperObjectsNewME helperObjs(bulk_, stk::topology::HEX_8, 3, partVec_[0]);
+  unit_test_utils::HelperObjects helperObjs(bulk_, stk::topology::HEX_8, 3, partVec_[0]);
 
   // Initialize the kernel
   std::unique_ptr<sierra::nalu::Kernel> kernel(

@@ -9,7 +9,7 @@
 #include "UnitTestUtils.h"
 #include "UnitTestHelperObjects.h"
 
-#include "MomentumActuatorSrcElemKernel.h"
+#include "kernel/MomentumActuatorSrcElemKernel.h"
 
 TEST_F(ActuatorSourceKernelHex8Mesh, actuator_source)
 {
@@ -20,7 +20,7 @@ TEST_F(ActuatorSourceKernelHex8Mesh, actuator_source)
   solnOpts_.meshDeformation_ = false;
   solnOpts_.externalMeshDeformation_ = false;
 
-  unit_test_utils::HelperObjectsNewME helperObjs(bulk_, stk::topology::HEX_8, 3, partVec_[0]);
+  unit_test_utils::HelperObjects helperObjs(bulk_, stk::topology::HEX_8, 3, partVec_[0]);
 
   // Initialize the kernel
   std::unique_ptr<sierra::nalu::Kernel> kernel(

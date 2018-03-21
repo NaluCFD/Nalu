@@ -9,7 +9,7 @@
 
 #include <SolutionOptions.h>
 #include <TimeIntegrator.h>
-#include <MomentumAdvDiffElemKernel.h>
+#include <kernel/MomentumAdvDiffElemKernel.h>
 #include <nso/MomentumNSOElemKernel.h>
 #include <ElemDataRequests.h>
 
@@ -24,7 +24,7 @@ TEST_F(Hex8MeshWithNSOFields, twoMomentumKernels)
   solnOpts.includeDivU_ = 0.0;
 
   const unsigned numDof = 3;
-  unit_test_utils::HelperObjectsNewME helperObjs(bulk, stk::topology::HEX_8, numDof, meta.get_part("block_1"));
+  unit_test_utils::HelperObjects helperObjs(bulk, stk::topology::HEX_8, numDof, meta.get_part("block_1"));
 
   std::unique_ptr<sierra::nalu::Kernel> advDiffKernel(
      new sierra::nalu::MomentumAdvDiffElemKernel<sierra::nalu::AlgTraitsHex8>(

@@ -134,12 +134,11 @@ public:
           stk::topology topo = bkt.topology();
           sierra::nalu::MasterElement* meSCS = dataNeededByKernels_.get_cvfem_surface_me();
 
-          sierra::nalu::ScratchViews<double> prereqData(team, bulkData_, topo, dataNeededByKernels_);
+          sierra::nalu::ScratchViews<double> prereqData(team, bulkData_, topo.num_nodes(), dataNeededByKernels_);
 
           Kokkos::parallel_for(Kokkos::TeamThreadRange(team, bkt.size()), [&](const size_t& jj)
           {
-             fill_pre_req_data(dataNeededByKernels_, bulkData_, topo,
-                               bkt[jj], prereqData);
+             fill_pre_req_data(dataNeededByKernels_, bulkData_, bkt[jj], prereqData);
             
              for(SuppAlg* alg : suppAlgs_) {
                alg->elem_execute(topo, *meSCS, prereqData);

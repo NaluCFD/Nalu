@@ -38,6 +38,7 @@ SolutionOptions::SolutionOptions()
     turbPrDefault_(1.0),
     nocDefault_(true),
     shiftedGradOpDefault_(false),
+    skewSymmetricDefault_(false),
     tanhFormDefault_("classic"),
     tanhTransDefault_(2.0),
     tanhWidthDefault_(4.0),
@@ -81,6 +82,7 @@ SolutionOptions::SolutionOptions()
     inputVariablesPeriodicTime_(0.0),
     consistentMMPngDefault_(false),
     useConsolidatedSolverAlg_(false),
+    useConsolidatedBcSolverAlg_(false),
     eigenvaluePerturb_(false),
     eigenvaluePerturbDelta_(0.0),
     eigenvaluePerturbBiasTowards_(3),
@@ -264,6 +266,9 @@ SolutionOptions::load(const YAML::Node & y_node)
         }
         else if (expect_map( y_option, "shifted_gradient_operator", optional)) {
           y_option["shifted_gradient_operator"] >> shiftedGradOpMap_ ;
+        }
+        else if (expect_map( y_option, "skew_symmetric_advection", optional)) {
+          y_option["skew_symmetric_advection"] >> skewSymmetricMap_;
         }
         else if (expect_map( y_option, "input_variables_from_file", optional)) {
           y_option["input_variables_from_file"] >> inputVarFromFileMap_ ;
@@ -727,6 +732,18 @@ SolutionOptions::get_shifted_grad_op(const std::string& dofName) const
   auto iter = shiftedGradOpMap_.find(dofName);
 
   if (iter != shiftedGradOpMap_.end())
+    factor = iter->second;
+
+  return factor;
+}
+
+bool
+SolutionOptions::get_skew_symmetric(const std::string& dofName) const
+{
+  bool factor = skewSymmetricDefault_;
+  auto iter = skewSymmetricMap_.find(dofName);
+
+  if (iter != skewSymmetricMap_.end())
     factor = iter->second;
 
   return factor;

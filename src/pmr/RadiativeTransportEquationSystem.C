@@ -34,14 +34,15 @@
 
 // template for kernels
 #include "AlgTraits.h"
-#include "KernelBuilder.h"
-#include "KernelBuilderLog.h"
+#include "kernel/KernelBuilder.h"
+#include "kernel/KernelBuilderLog.h"
 
-// consolidated
+// implemented kernels
 #include "AssembleElemSolverAlgorithm.h"
 #include "pmr/RadTransAdvectionSUCVElemKernel.h"
 #include "pmr/RadTransAbsorptionBlackBodyElemKernel.h"
 #include "pmr/RadTransIsotropicScatteringElemKernel.h"
+#include "pmr/RadTransWallElemKernel.h"
 
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
@@ -562,9 +563,8 @@ RadiativeTransportEquationSystem::register_interior_algorithm(
       build_topo_kernel_if_requested<RadTransIsotropicScatteringElemKernel>
         (partTopo, *this, activeKernels, "isotropic_scattering",
          realm_.bulk_data(), true, dataPreReqs);
-      
+
       report_invalid_supp_alg_names();
-      report_built_supp_alg_names();
     }
   }
 }
@@ -574,7 +574,7 @@ RadiativeTransportEquationSystem::register_interior_algorithm(
 void
 RadiativeTransportEquationSystem::register_wall_bc(
   stk::mesh::Part *part,
-  const stk::topology &/*theTopo*/,
+  const stk::topology &partTopo,
   const WallBoundaryConditionData &wallBCData)
 {
 
@@ -674,18 +674,40 @@ RadiativeTransportEquationSystem::register_wall_bc(
       bcDataMapAlg_.push_back(theCopyAlg);
     */
 
-    // solver; lhs: weak flux implementation
-    std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi
-      = solverAlgDriver_->solverAlgMap_.find(algType);
-    if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
-      AssembleRadTransWallSolverAlgorithm *theAlg
-        = new AssembleRadTransWallSolverAlgorithm(realm_, part, this, realm_.realmUsesEdges_);
-      solverAlgDriver_->solverAlgMap_[algType] = theAlg;
+    // solver; lhs: weak bc flux implementation
+    if ( realm_.realmUsesEdges_ ) {
+      std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi
+        = solverAlgDriver_->solverAlgMap_.find(algType);
+      if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
+        AssembleRadTransWallSolverAlgorithm *theAlg
+          = new AssembleRadTransWallSolverAlgorithm(realm_, part, this, realm_.realmUsesEdges_);
+        solverAlgDriver_->solverAlgMap_[algType] = theAlg;
+      }
+      else {
+        itsi->second->partVec_.push_back(part);
+      }
     }
     else {
-      itsi->second->partVec_.push_back(part);
-    }
 
+      // element-based uses consolidated approach fully
+      auto& solverAlgMap = solverAlgDriver_->solverAlgorithmMap_;
+
+      AssembleElemSolverAlgorithm* solverAlg = nullptr;
+      bool solverAlgWasBuilt = false;
+      
+      std::tie(solverAlg, solverAlgWasBuilt) = build_or_add_part_to_face_bc_solver_alg(*this, *part, solverAlgMap);
+      
+      ElemDataRequests& dataPreReqs = solverAlg->dataNeededByKernels_;
+      auto& activeKernels = solverAlg->activeKernels_;
+      
+      if (solverAlgWasBuilt) {
+        build_face_topo_kernel_automatic<RadTransWallElemKernel>
+          (partTopo, *this, activeKernels, "rad_trans_wall_bc",
+           realm_.bulk_data(), this, false, dataPreReqs);
+
+        report_built_supp_alg_names();
+      } 
+    }
   }
   else {
     throw std::runtime_error("Hmmm... Does it make sense to not specify a temperature?");

@@ -67,7 +67,7 @@ AssembleMomentumEdgeSolverAlgorithm::AssembleMomentumEdgeSolverAlgorithm(
   massFlowRate_ = meta_data.get_field<ScalarFieldType>(stk::topology::EDGE_RANK, "mass_flow_rate");
 
   // create the peclet blending function
-  pecletFunction_ = eqSystem->create_peclet_function(velocity_->name());
+  pecletFunction_ = eqSystem->create_peclet_function<double>(velocity_->name());
 }
 
 //--------------------------------------------------------------------------

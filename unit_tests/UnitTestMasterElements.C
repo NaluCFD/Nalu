@@ -428,6 +428,77 @@ void check_particle_interp(
   EXPECT_NEAR(meInterp, exactVal, tol);
 }
 
+/** Check implementation of general_shape_fcn for a given MasterElement
+ *
+ */
+void
+check_general_shape_fcn(
+  const stk::mesh::Entity* node_rels,
+  const VectorFieldType& coordField,
+  sierra::nalu::MasterElement& me)
+{
+  const int dim = me.nDim_;
+
+  std::random_device rd{};
+  std::mt19937 rng{rd()};
+
+  // 1. Generate a random point within the element
+  const double boxmin = 0.125;
+  const double boxmax = 0.25;
+  std::uniform_real_distribution<double> coeff(boxmin, boxmax);
+  std::vector<double> nodal_coords(dim);
+  for (int d = 0; d < dim; d++)
+    nodal_coords[d] = coeff(rng);
+
+  // 2. Extract iso-parametric coordinates for this random point w.r.t element
+
+  // see check_is_in_element for an explanation of the factor
+  bool isHexSCS = dynamic_cast<sierra::nalu::HexSCS*>(&me) != nullptr;
+  bool isQuadSCS = dynamic_cast<sierra::nalu::Quad42DSCS*>(&me) != nullptr;
+  double fac = (isHexSCS || isQuadSCS) ? 2.0 : 1.0;
+  std::vector<double> elem_coords(me.nodesPerElement_ * dim);
+
+  for (int j = 0; j < me.nodesPerElement_; j++) {
+    const double* coords = stk::mesh::field_data(coordField, node_rels[j]);
+    for (int d = 0; d < dim; d++)
+      elem_coords[d * me.nodesPerElement_ + j] = fac * coords[d];
+  }
+
+  std::vector<double> isopar_coords(dim);
+  auto dist = me.isInElement(
+    elem_coords.data(), nodal_coords.data(), isopar_coords.data());
+
+  // Catch any issues with random coordinates before general_shape_fcn check
+  EXPECT_LT(dist, 1.0 + tol);
+
+  //
+  // 3. Finally, check general shape fcn
+  //
+
+  auto linField = make_random_linear_field(dim, rng);
+  double polyResult = linField(nodal_coords.data());
+
+  // The linear field at the nodes of the reference element
+  std::vector<double> elem_field(me.nodesPerElement_);
+  std::vector<double> ws_coord(dim);
+  for (int j = 0; j < me.nodesPerElement_; j++) {
+    const double* coords = stk::mesh::field_data(coordField, node_rels[j]);
+    for (int d = 0; d < dim; d++) {
+      ws_coord[d] = fac * coords[d];
+    }
+    elem_field[j] = linField(ws_coord.data());
+  }
+
+  std::vector<double> gen_shape_fcn(me.nodesPerElement_);
+  me.general_shape_fcn(1, isopar_coords.data(), gen_shape_fcn.data());
+
+  double meResult = 0.0;
+  for (int j = 0; j < me.nodesPerElement_; j++) {
+    meResult += gen_shape_fcn[j] * elem_field[j];
+  }
+
+  EXPECT_NEAR(meResult, polyResult, tol);
+}
 }
 
 class MasterElement : public ::testing::Test
@@ -489,6 +560,11 @@ protected:
       check_particle_interp(bulk->begin_nodes(elem), coordinate_field(), *meSS);
     }
 
+    void general_shape_fcn(stk::topology topo) {
+      choose_topo(topo);
+      check_general_shape_fcn(bulk->begin_nodes(elem), coordinate_field(), *meSS);
+    }
+
     const VectorFieldType& coordinate_field() const {
       return *static_cast<const VectorFieldType*>(meta->coordinate_field());
     }
@@ -545,3 +621,5 @@ TEST_F_ALL_P1_TOPOS(MasterElement, exposed_face_shifted_ips_are_nodal);
 // works fore everything
 TEST_F_ALL_TOPOS(MasterElement, is_not_in_element);
 TEST_F_ALL_TOPOS(MasterElement, particle_interpolation); // includes an isInElement call
+
+TEST_F_ALL_P1_TOPOS(MasterElement, general_shape_fcn);

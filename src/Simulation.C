@@ -17,6 +17,7 @@
 #include <TimeIntegrator.h>
 #include <LinearSolvers.h>
 #include <UnitTests.h>
+#include <NaluVersionInfo.h>
 
 #include <Ioss_SerializeIO.h>
 
@@ -163,6 +164,20 @@ void Simulation::run()
 
 void Simulation::high_level_banner() {
 
+  std::vector<std::string> additionalTPLs;
+#ifdef NALU_USES_OPENFAST
+  additionalTPLs.push_back("OpenFAST");
+#endif
+#ifdef NALU_USES_HYPRE
+  additionalTPLs.push_back("Hypre");
+#endif
+#ifdef NALU_USES_TIOGA
+  additionalTPLs.push_back("TIOGA");
+#endif
+#ifdef NALU_USES_PERCEPT
+  additionalTPLs.push_back("Percept");
+#endif
+
   NaluEnv::self().naluOutputP0() << std::endl;
   NaluEnv::self().naluOutputP0() << "=================================================================" << std::endl;
   NaluEnv::self().naluOutputP0() << "                            Nalu:                                " << std::endl;
@@ -170,7 +185,21 @@ void Simulation::high_level_banner() {
   NaluEnv::self().naluOutputP0() << "            coupling to PMR and object response (CHT)            " << std::endl;
   NaluEnv::self().naluOutputP0() << "=================================================================" << std::endl;
   NaluEnv::self().naluOutputP0() << std::endl;
+  NaluEnv::self().naluOutputP0()
+    << "   Nalu Version: " << version::NaluVersionTag << std::endl
+    << "   Nalu GIT Commit SHA: " << version::NaluGitCommitSHA 
+    << ((version::RepoIsDirty == "DIRTY") ? ("-" + version::RepoIsDirty) : "") << std::endl
+    << "   Trilinos Version: " << version::TrilinosVersionTag << std::endl << std::endl;
   NaluEnv::self().naluOutputP0() << "   TPLs: Boost, HDF5, netCDF, STK, Trilinos, YAML_cpp and zlib   " << std::endl;
+
+  if (additionalTPLs.size() > 0) {
+    NaluEnv::self().naluOutputP0() << "   Optional TPLs enabled: ";
+    int numTPLs = additionalTPLs.size();
+    for (int i=0; i < (numTPLs - 1); i++)
+      NaluEnv::self().naluOutputP0() << additionalTPLs[i] << ", ";
+    NaluEnv::self().naluOutputP0() << additionalTPLs[numTPLs -1] << std::endl;
+  }
+
   NaluEnv::self().naluOutputP0() << std::endl;
   NaluEnv::self().naluOutputP0() << "              Copyright 2014 Sandia Corporation.                 " << std::endl;
   NaluEnv::self().naluOutputP0() << "      This software is released under the license detailed       " << std::endl;

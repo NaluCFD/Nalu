@@ -52,18 +52,18 @@
 
 #include <SolverAlgorithmDriver.h>
 
-
-// template for supp algs
+// template for kernels
 #include <AlgTraits.h>
-#include <KernelBuilder.h>
-#include <KernelBuilderLog.h>
+#include <kernel/KernelBuilder.h>
+#include <kernel/KernelBuilderLog.h>
 
-// consolidated
+// kernels
 #include <AssembleElemSolverAlgorithm.h>
-#include <ScalarMassElemKernel.h>
-#include <ScalarAdvDiffElemKernel.h>
-#include <ScalarUpwAdvDiffElemKernel.h>
-#include <TurbKineticEnergyKsgsSrcElemKernel.h>
+#include <kernel/ScalarMassElemKernel.h>
+#include <kernel/ScalarAdvDiffElemKernel.h>
+#include <kernel/ScalarUpwAdvDiffElemKernel.h>
+#include <kernel/TurbKineticEnergyKsgsSrcElemKernel.h>
+#include <kernel/TurbKineticEnergyKsgsDesignOrderSrcElemKernel.h>
 
 // nso
 #include <nso/ScalarNSOElemKernel.h>
@@ -418,7 +418,11 @@ TurbKineticEnergyEquationSystem::register_interior_algorithm(
       build_topo_kernel_if_requested<TurbKineticEnergyKsgsSrcElemKernel>
         (partTopo, *this, activeKernels, "ksgs",
          realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs);
-
+      
+      build_topo_kernel_if_requested<TurbKineticEnergyKsgsDesignOrderSrcElemKernel>
+        (partTopo, *this, activeKernels, "design_order_ksgs",
+         realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs);
+      
       build_topo_kernel_if_requested<ScalarNSOElemKernel>
         (partTopo, *this, activeKernels, "NSO_2ND",
          realm_.bulk_data(), *realm_.solutionOptions_, tke_, dkdx_, evisc_, 0.0, 0.0, dataPreReqs);

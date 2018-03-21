@@ -85,7 +85,7 @@ AssembleScalarEigenEdgeSolverAlgorithm::AssembleScalarEigenEdgeSolverAlgorithm(
   dudx_ = meta_data.get_field<GenericFieldType>(stk::topology::NODE_RANK, "dudx");
 
   // create the peclet blending function
-  pecletFunction_ = eqSystem->create_peclet_function(scalarQ_->name());
+  pecletFunction_ = eqSystem->create_peclet_function<double>(scalarQ_->name());
 
   // initialize xic
   const int biasTowards = realm_.solutionOptions_->eigenvaluePerturbBiasTowards_;

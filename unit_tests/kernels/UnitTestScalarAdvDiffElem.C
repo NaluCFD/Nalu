@@ -9,7 +9,7 @@
 #include "UnitTestUtils.h"
 #include "UnitTestHelperObjects.h"
 
-#include "ScalarAdvDiffElemKernel.h"
+#include "kernel/ScalarAdvDiffElemKernel.h"
 
 namespace {
 namespace hex8_golds {
@@ -51,7 +51,7 @@ TEST_F(MixtureFractionKernelHex8Mesh, advection_diffusion)
   solnOpts_.externalMeshDeformation_ = false;
 
   int numDof = 1;
-  unit_test_utils::HelperObjectsNewME helperObjs(bulk_, stk::topology::HEX_8, numDof, partVec_[0]);
+  unit_test_utils::HelperObjects helperObjs(bulk_, stk::topology::HEX_8, numDof, partVec_[0]);
 
   // Initialize the kernel
   std::unique_ptr<sierra::nalu::Kernel> advKernel(

@@ -84,6 +84,8 @@ variables do not apply, so that
 :math:`\overline{\phi''} \ne 0`. The Favre-filtered approach is used for
 all LES models in Nalu.
 
+.. _theory_standard_smagorinsky_les:
+
 Standard Smagorinsky LES Model
 ++++++++++++++++++++++++++++++
 
@@ -162,7 +164,7 @@ and
 One Equation :math:`k^{sgs}`
 ++++++++++++++++++++++++++++
 
-See :math:`k^{sgs}` pde section.
+See :math:`k^{sgs}` :ref:`PDE <theory_ksgs_les_model>` section.
 
 SST RANS Model
 ++++++++++++++
@@ -170,11 +172,38 @@ SST RANS Model
 As noted, Nalu does support a SST RANS-based model (the reader is
 referred to the SST equation set description).
 
+UT-A Hybrid Turbulence Model
+++++++++++++++++++++++++++++
+
+Work is in progress for implementing the UT-A hybrid turbulence model
+as initially described by S. Haering, "Anisotropic hybrid turbulence
+modeling with specific application to the simulation of pulse-actuated
+dynamic stall control" (Ph.D. thesis, University of Texas-Austin,
+2015).
+
+In this modeling approach, the eddy viscosity is defined as a tensor,
+:math:`\mu_{ij}^{t}`, to account for anisotropy present in the
+underlying turbulence or introduced by the mesh. The SGS source term
+for Equation :eq:`favmom` becomes
+
+.. math::
+
+   \int \alpha \tau^{sgs}_{ij} n_j \, {\rm d}S
+
+where :math:`\alpha` is an adaptivity parameter used to adjust the
+resolved and modeled fields in response to the ability of the mesh to
+support the resolved turbulence. The SGS stress is then defined as
+
+.. math::
+
+   \tau^{sgs}_{ij} = \mu_{ik}^t \frac{\partial \widetilde{u}_j }{\partial x_k} + \mu_{jk}^t \frac{\partial \widetilde{u}_i }{\partial x_k} - \frac{2}{3} \rho k \delta_{ij}.
+
+
 Wall Models
 +++++++++++
 
-Flows are either expected to be fully resolved or, alternatively,
-under-resolved where wall functions are used. A classic law of the wall
-has been implemented in Nalu. Wall models to handle adverse pressure
-gradients are planned. For more information of the form of wall models,
-please refer to the boundary condition section of this manual.
+Flows are either expected to be fully resolved or, alternatively, under-resolved
+where wall functions are used. A classic law of the wall has been implemented in
+Nalu. Wall models to handle adverse pressure gradients are planned. For more
+information of the form of wall models, please refer to the :ref:`boundary
+condition <theory_boundary_conditions>` section of this manual.

@@ -20,6 +20,7 @@ realms:
     mesh: ../../mesh/oversetMeshAligned.g
     use_edges: no
     automatic_decomposition_type: rcb
+    check_for_missing_bcs: yes
 
     equation_systems:
       name: theEqSys

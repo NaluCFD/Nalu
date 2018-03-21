@@ -26,47 +26,10 @@ struct HelperObjects {
     realm.metaData_ = &bulk.mesh_meta_data();
     realm.bulkData_ = &bulk;
     eqSystem.linsys_ = linsys;
-    assembleElemSolverAlg = new sierra::nalu::AssembleElemSolverAlgorithm(realm, part, &eqSystem, topo);
+    assembleElemSolverAlg = new sierra::nalu::AssembleElemSolverAlgorithm(realm, part, &eqSystem, topo.rank(), topo.num_nodes(), false);
   }
 
   ~HelperObjects()
-  {
-    assembleElemSolverAlg->activeKernels_.clear();
-    delete assembleElemSolverAlg;
-    realm.metaData_ = nullptr;
-    realm.bulkData_ = nullptr;
-
-    delete naluObj;
-  }
-
-  YAML::Node yamlNode;
-  YAML::Node realmDefaultNode;
-  unit_test_utils::NaluTest* naluObj;
-  sierra::nalu::Realm& realm;
-  sierra::nalu::EquationSystems eqSystems;
-  sierra::nalu::EquationSystem eqSystem;
-  unit_test_utils::TestLinearSystem* linsys;
-  sierra::nalu::AssembleElemSolverAlgorithm* assembleElemSolverAlg;
-};
-
-struct HelperObjectsNewME {
-  HelperObjectsNewME(stk::mesh::BulkData& bulk, stk::topology topo, int numDof, stk::mesh::Part* part)
-  : yamlNode(unit_test_utils::get_default_inputs()),
-    realmDefaultNode(unit_test_utils::get_realm_default_node()),
-    naluObj(new unit_test_utils::NaluTest(yamlNode)),
-    realm(naluObj->create_realm(realmDefaultNode, "multi_physics")),
-    eqSystems(realm),
-    eqSystem(eqSystems),
-    linsys(new unit_test_utils::TestLinearSystem(realm, numDof, &eqSystem)),
-    assembleElemSolverAlg(nullptr)
-  {
-    realm.metaData_ = &bulk.mesh_meta_data();
-    realm.bulkData_ = &bulk;
-    eqSystem.linsys_ = linsys;
-    assembleElemSolverAlg = new sierra::nalu::AssembleElemSolverAlgorithm(realm, part, &eqSystem, topo, false);
-  }
-
-  ~HelperObjectsNewME()
   {
     assembleElemSolverAlg->activeKernels_.clear();
     delete assembleElemSolverAlg;

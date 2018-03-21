@@ -149,6 +149,12 @@ public:
     const double *par_coord, 
     double* shape_fcn);
 
+  void
+  general_shape_fcn(const int numIp, const double* isoParCoord, double* shpfc) override
+  {
+    tri_shape_fcn(numIp, isoParCoord, shpfc);
+  }
+
   int opposingNodes(
     const int ordinal, const int node) override;
   

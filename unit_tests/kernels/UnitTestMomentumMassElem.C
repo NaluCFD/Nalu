@@ -9,7 +9,7 @@
 #include "UnitTestUtils.h"
 #include "UnitTestHelperObjects.h"
 
-#include "MomentumMassElemKernel.h"
+#include "kernel/MomentumMassElemKernel.h"
 
 namespace {
 namespace hex8_golds {
@@ -150,7 +150,7 @@ TEST_F(MomentumKernelHex8Mesh, momentum_time_derivative)
   solnOpts_.meshDeformation_ = false;
   solnOpts_.externalMeshDeformation_ = false;
 
-  unit_test_utils::HelperObjectsNewME helperObjs(bulk_, stk::topology::HEX_8, 3, partVec_[0]);
+  unit_test_utils::HelperObjects helperObjs(bulk_, stk::topology::HEX_8, 3, partVec_[0]);
 
   // Initialize the kernel
   std::unique_ptr<sierra::nalu::Kernel> massKernel(
@@ -193,7 +193,7 @@ TEST_F(MomentumKernelHex8Mesh, momentum_time_derivative_lumped)
   solnOpts_.meshDeformation_ = false;
   solnOpts_.externalMeshDeformation_ = false;
 
-  unit_test_utils::HelperObjectsNewME helperObjs(bulk_, stk::topology::HEX_8, 3, partVec_[0]);
+  unit_test_utils::HelperObjects helperObjs(bulk_, stk::topology::HEX_8, 3, partVec_[0]);
 
   // Initialize the kernel
   std::unique_ptr<sierra::nalu::Kernel> massKernel(
