@@ -12,6 +12,10 @@
 #include <FieldTypeDef.h>
 #include <Realm.h>
 
+#include <kernel/UtilityKernelManager.h>
+#include <kernel/NodalUtilityKernelManager.h>
+#include <kernel/SmagorinskyViscosityUtilityKernel.h>
+
 // stk_mesh/base/fem
 #include <stk_mesh/base/BulkData.hpp>
 #include <stk_mesh/base/GetBuckets.hpp>
@@ -41,14 +45,17 @@ TurbViscSmagorinskyAlgorithm::TurbViscSmagorinskyAlgorithm(
     dualNodalVolume_(NULL),
     cmuCs_(realm.get_turb_model_constant(TM_cmuCs))
 {
+  kernelManager_ = UtilityKernelManager::create(
+    stk::topology::NODE,
+    realm_.bulk_data(),
+    *realm_.solutionOptions_,
+    *realm_.timeIntegrator_,
+    in,
+    out
+  );
 
-  stk::mesh::MetaData & meta_data = realm_.meta_data();
-
-  dudx_ = meta_data.get_field<GenericFieldType>(stk::topology::NODE_RANK, "dudx");
-  density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
-  tvisc_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_viscosity");
-  dualNodalVolume_ =meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
-
+  kernelManager_->build_utility_kernel<SmagorinskyViscosity>("smag_visc",
+    realm_.bulk_data(), *realm_.solutionOptions_, in, out);
 }
 
 //--------------------------------------------------------------------------
@@ -57,48 +64,11 @@ TurbViscSmagorinskyAlgorithm::TurbViscSmagorinskyAlgorithm(
 void
 TurbViscSmagorinskyAlgorithm::execute()
 {
-
   stk::mesh::MetaData & meta_data = realm_.meta_data();
+  stk::mesh::Selector s_all_nodes = (meta_data.locally_owned_part() | meta_data.globally_shared_part())
+      & stk::mesh::selectField(*tvisc_);
 
-  const int nDim = meta_data.spatial_dimension();
-
-  const double cmuCs = cmuCs_;
-  const double invNdim = 1.0/meta_data.spatial_dimension();
-
-  // define some common selectors
-  stk::mesh::Selector s_all_nodes
-    = (meta_data.locally_owned_part() | meta_data.globally_shared_part())
-    &stk::mesh::selectField(*tvisc_);
-
-  stk::mesh::BucketVector const& node_buckets =
-    realm_.get_buckets( stk::topology::NODE_RANK, s_all_nodes );
-  for ( stk::mesh::BucketVector::const_iterator ib = node_buckets.begin();
-        ib != node_buckets.end() ; ++ib ) {
-    stk::mesh::Bucket & b = **ib ;
-    const stk::mesh::Bucket::size_type length   = b.size();
-
-    const double *density = stk::mesh::field_data(*density_, b);
-    const double *dualNodalVolume = stk::mesh::field_data(*dualNodalVolume_, b);
-    double *tvisc = stk::mesh::field_data(*tvisc_, b);
-
-    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
-
-      const double *dudx = stk::mesh::field_data(*dudx_, b[k] );
-
-      double sijMag = 0.0;
-      for ( int i = 0; i < nDim; ++i ) {
-        const int offSet = nDim*i;
-        for ( int j = 0; j < nDim; ++j ) {
-          const double rateOfStrain = 0.5*(dudx[offSet+j] + dudx[nDim*j+i]);
-          sijMag += rateOfStrain*rateOfStrain;
-        }
-      }
-      sijMag = std::sqrt(2.0*sijMag);
-
-      const double filter = std::pow(dualNodalVolume[k], invNdim);
-      tvisc[k] = cmuCs*cmuCs*density[k]*filter*filter*sijMag;
-    }
-  }
+  kernelManager_->execute_kernels(meta_data.universal_part());
 }
 
 } // namespace nalu
