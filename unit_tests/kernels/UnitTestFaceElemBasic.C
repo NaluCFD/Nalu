@@ -2,8 +2,6 @@
 #include "UnitTestHelperObjects.h"
 #include <stk_util/parallel/Parallel.hpp>
 
-
-#include "BcAlgTraits.h"
 #include "ElemDataRequests.h"
 #include "ScratchViews.h"
 #include "SolutionOptions.h"

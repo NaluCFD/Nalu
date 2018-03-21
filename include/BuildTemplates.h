@@ -10,7 +10,6 @@
 #define BuildTemplates_h
 
 #include <AlgTraits.h>
-#include <BcAlgTraits.h>
 
 #define INSTANTIATE_KERNEL_3D(ClassName)                          \
 template class ClassName<AlgTraitsHex8>;                          \

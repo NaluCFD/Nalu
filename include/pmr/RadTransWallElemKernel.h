@@ -9,7 +9,6 @@
 #ifndef RadTransWallElemKernel_H
 #define RadTransWallElemKernel_H
 
-#include "BcAlgTraits.h"
 #include "FieldTypeDef.h"
 #include "kernel/Kernel.h"
 

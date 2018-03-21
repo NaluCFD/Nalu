@@ -6,7 +6,6 @@
 /*------------------------------------------------------------------------*/
 
 #include "kernel/MomentumSymmetryElemKernel.h"
-#include "BcAlgTraits.h"
 #include "master_element/MasterElement.h"
 #include "SolutionOptions.h"
 

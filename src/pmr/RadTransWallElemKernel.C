@@ -7,7 +7,6 @@
 
 #include "pmr/RadTransWallElemKernel.h"
 #include "pmr/RadiativeTransportEquationSystem.h"
-#include "BcAlgTraits.h"
 #include "master_element/MasterElement.h"
 
 // template and scratch space

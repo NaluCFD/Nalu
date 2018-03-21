@@ -120,10 +120,9 @@ struct AlgTraitsHexGL {
 struct AlgTraitsEdge_3D
 {
   static constexpr int nDim_ = 3;
-  static constexpr int nodesPerElement_ = 3;
-  static constexpr int numScsIp_ = 2;
-  static constexpr int numScvIp_ = 0;
-  static constexpr int numGp_ = 2; // for FEM
+  static constexpr int nodesPerElement_ = 2;
+  static constexpr int numScsIp_ = 1;
+  static constexpr int numScvIp_ = 2;
   static constexpr stk::topology::topology_t topo_ = stk::topology::LINE_2;
 };
 
@@ -136,9 +135,6 @@ struct AlgTraitsQuad4
   static constexpr int nodesPerFace_ = nodesPerElement_;
   static constexpr int numScsIp_ = 4;
   static constexpr int numFaceIp_ = numScsIp_;
-
-  static constexpr int numScvIp_ = 0;
-  static constexpr int numGp_ = 4; // for FEM
   static constexpr stk::topology::topology_t topo_ = stk::topology::QUAD_4;
 };
 
@@ -149,8 +145,6 @@ struct AlgTraitsQuad9
   static constexpr int nodesPerFace_ = nodesPerElement_;
   static constexpr int numScsIp_ = 36;
   static constexpr int numFaceIp_ = numScsIp_;
-  static constexpr int numScvIp_ = 0;
-  static constexpr int numGp_ = 0; // for FEM
   static constexpr stk::topology::topology_t topo_ = stk::topology::QUAD_9;
 };
 
@@ -161,8 +155,6 @@ struct AlgTraitsTri3
   static constexpr int nodesPerFace_ = nodesPerElement_;
   static constexpr int numScsIp_ = 3;
   static constexpr int numFaceIp_ = numScsIp_;
-  static constexpr int numScvIp_ = 0;
-  static constexpr int numGp_ = 3; // for FEM
   static constexpr stk::topology::topology_t topo_ = stk::topology::TRI_3;
 };
 
@@ -173,8 +165,6 @@ struct AlgTraitsEdge_2D
   static constexpr int nodesPerFace_ = nodesPerElement_;
   static constexpr int numScsIp_ = 2;
   static constexpr int numFaceIp_ = numScsIp_;
-  static constexpr int numScvIp_ = 0;
-  static constexpr int numGp_ = 2; // for FEM
   static constexpr stk::topology::topology_t topo_ = stk::topology::LINE_2;
 };
 
@@ -186,8 +176,6 @@ struct AlgTraitsEdge3_2D
   static constexpr int nodesPerFace_ = nodesPerElement_;
   static constexpr int numScsIp_ = 6;
   static constexpr int numFaceIp_ = numScsIp_;
-  static constexpr int numScvIp_ = 0;
-  static constexpr int numGp_ = 3; // for FEM
   static constexpr stk::topology::topology_t topo_ = stk::topology::LINE_3;
 };
 
@@ -199,9 +187,6 @@ struct AlgTraitsQuadGL
   static constexpr int nodesPerFace_ = nodesPerElement_;
   static constexpr int numScsIp_ = nGL<p>()*nGL<p>()*nodesPerElement_;
   static constexpr int numFaceIp_ = numScsIp_;
-  static constexpr int numScvIp_ = 0;
-  static constexpr int numGp_ = 0; // for FEM
-
   static constexpr stk::topology::topology_t topo_ = static_cast<stk::topology::topology_t>(
     nodesPerElement_ + stk::topology::SUPERFACE_START
   );
@@ -216,9 +201,6 @@ struct AlgTraitsEdgeGL
   static constexpr int nodesPerFace_ = nodesPerElement_;
   static constexpr int numScsIp_ = nGL<p>()*nodesPerElement_;
   static constexpr int numFaceIp_ = numScsIp_;
-  static constexpr int numScvIp_ = 0;
-  static constexpr int numGp_ = 0; // for FEM
-
   static constexpr stk::topology::topology_t topo_ = static_cast<stk::topology::topology_t>(
     nodesPerElement_ + stk::topology::SUPEREDGE_START
   );

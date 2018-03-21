@@ -6,7 +6,6 @@
 /*------------------------------------------------------------------------*/
 
 #include "kernel/MomentumOpenAdvDiffElemKernel.h"
-#include "BcAlgTraits.h"
 #include "EquationSystem.h"
 #include "master_element/MasterElement.h"
 #include "PecletFunction.h"
