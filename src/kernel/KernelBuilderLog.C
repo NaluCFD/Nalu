@@ -98,7 +98,7 @@ KernelBuilderLog::print_built_kernel_names(std::string kernelTypeName)
   msgList = msgList.substr(0, msgList.size()-2);
 
   NaluEnv::self().naluOutputP0()
-      << "Built Supplemental Algortihms for "
+      << "Built Kernels for "
       << kernelTypeName
       << " are "
       << msgList

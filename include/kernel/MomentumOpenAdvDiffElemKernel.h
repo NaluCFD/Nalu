@@ -8,7 +8,6 @@
 #ifndef MomentumOpenAdvDiffElemKernel_h
 #define MomentumOpenAdvDiffElemKernel_h
 
-#include "kernel/MomentumOpenAdvDiffElemKernel.h"
 #include "BcAlgTraits.h"
 #include "master_element/MasterElement.h"
 

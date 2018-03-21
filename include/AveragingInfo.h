@@ -45,11 +45,12 @@ public:
   bool computeVorticity_;
   bool computeQcriterion_;
   bool computeLambdaCI_;
+  bool computeMeanResolvedKe_;
 
   // Temperature stresses
   bool computeTemperatureSFS_{false};
   bool computeTemperatureResolved_{false};
-
+  
   // vector of part names, e.g., block_1, surface_2
   std::vector<std::string> targetNames_;
 

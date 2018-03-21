@@ -1066,14 +1066,13 @@ HexSCS::general_shape_fcn(
     const double s2 = isoParCoord[rowIpc+1];
     const double s3 = isoParCoord[rowIpc+2];
     shpfc[rowSfc  ] = 0.125*(1.0-s1)*(1.0-s2)*(1.0-s3);
-    shpfc[rowSfc+1] = 0.125*(1.0-s1)*(1.0+s2)*(1.0-s3);
+    shpfc[rowSfc+1] = 0.125*(1.0+s1)*(1.0-s2)*(1.0-s3);
     shpfc[rowSfc+2] = 0.125*(1.0+s1)*(1.0+s2)*(1.0-s3);
-    shpfc[rowSfc+3] = 0.125*(1.0+s1)*(1.0-s2)*(1.0-s3);
+    shpfc[rowSfc+3] = 0.125*(1.0-s1)*(1.0+s2)*(1.0-s3);
     shpfc[rowSfc+4] = 0.125*(1.0-s1)*(1.0-s2)*(1.0+s3);
-    shpfc[rowSfc+5] = 0.125*(1.0-s1)*(1.0+s2)*(1.0+s3);
+    shpfc[rowSfc+5] = 0.125*(1.0+s1)*(1.0-s2)*(1.0+s3);
     shpfc[rowSfc+6] = 0.125*(1.0+s1)*(1.0+s2)*(1.0+s3);
-    shpfc[rowSfc+7] = 0.125*(1.0+s1)*(1.0-s2)*(1.0+s3);
-
+    shpfc[rowSfc+7] = 0.125*(1.0-s1)*(1.0+s2)*(1.0+s3);
   }
 }
 

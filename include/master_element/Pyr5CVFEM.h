@@ -147,6 +147,12 @@ public:
     const double *par_coord, 
     double* shape_fcn);
 
+  void
+  general_shape_fcn(const int numIp, const double* isoParCoord, double* shpfc)
+  {
+    pyr_shape_fcn(numIp, isoParCoord, shpfc);
+  }
+
   void sidePcoords_to_elemPcoords(
     const int & side_ordinal,
     const int & npoints,
