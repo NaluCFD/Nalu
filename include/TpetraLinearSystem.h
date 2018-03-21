@@ -29,12 +29,17 @@
 
 #include <Kokkos_UnorderedMap.hpp>
 
+namespace nalu_stk {
+class CommNeighbors;
+}
+
 namespace sierra {
 namespace nalu {
 
 class Realm;
 class EquationSystem;
 class LinearSolver;
+class LocalGraphArrays;
 
 typedef boost::unordered_map<stk::mesh::EntityId, size_t>  MyLIDMapType;
 
@@ -75,6 +80,7 @@ public:
   void buildFaceElemToNodeGraph(const stk::mesh::PartVector & parts); // elem:face->node assembly
   void buildNonConformalNodeGraph(const stk::mesh::PartVector & parts); // nonConformal->node assembly
   void buildOversetNodeGraph(const stk::mesh::PartVector & parts); // overset->elem_node assembly
+  void storeOwnersForShared();
   void finalizeLinearSystem();
 
   // Matrix Assembly
@@ -134,6 +140,9 @@ public:
 
   int getDofStatus(stk::mesh::Entity node);
 
+  Teuchos::RCP<LinSys::Graph>  getOwnedGraph() { return ownedGraph_; }
+  Teuchos::RCP<LinSys::Matrix> getOwnedMatrix() { return ownedMatrix_; }
+
 private:
   void beginLinearSystemConstruction();
 
@@ -144,15 +153,21 @@ private:
   void copy_kokkos_unordered_map_to_sorted_vector(const ConnectionSetKK& connectionSetKK,
                                                   ConnectionVec& connectionVec);
 
+  void compute_send_lengths(const ConnectionVec& connectionVec,
+                            const std::vector<int>& neighborProcs,
+                            nalu_stk::CommNeighbors& commNeighbors);
+
   void compute_graph_row_lengths(const ConnectionVec& connectionVec,
                                  LinSys::RowLengths& globallyOwnedRowLengths,
-                                 LinSys::RowLengths& locallyOwnedRowLengths);
+                                 LinSys::RowLengths& locallyOwnedRowLengths,
+                                 nalu_stk::CommNeighbors& commNeighbors);
 
   void insert_graph_connections(const ConnectionVec& connectionVec,
-                                LinSys::Graph& ownedGraph,
-                                int ownedOrSharedMask);
+                                LocalGraphArrays& locallyOwnedGraph,
+                                LocalGraphArrays& globallySharedGraph);
 
-  void fill_entity_to_LID_mapping();
+  void fill_entity_to_row_LID_mapping();
+  void fill_entity_to_col_LID_mapping();
 
   void copy_tpetra_to_stk(
     const Teuchos::RCP<LinSys::Vector> tpetraVector,
@@ -170,17 +185,16 @@ private:
 
   ConnectionSetKK connectionSetKK_ ;
   std::vector<GlobalOrdinal> totalGids_;
+  std::set<std::pair<int,GlobalOrdinal> > ownersAndGids_;
 
   Teuchos::RCP<LinSys::Node>   node_;
 
   // all rows, otherwise known as col map
   Teuchos::RCP<LinSys::Map>    totalColsMap_;
+  Teuchos::RCP<LinSys::Map>    optColsMap_;
 
   // Map of rows my proc owns (locally owned)
   Teuchos::RCP<LinSys::Map>    ownedRowsMap_;
-
-  // Map of all rows my proc references
-  Teuchos::RCP<LinSys::Map>    ownedPlusGloballyOwnedRowsMap_;
 
   // Only nodes that share with other procs that I don't own = Global = !locally owned
   Teuchos::RCP<LinSys::Map>    globallyOwnedRowsMap_;
@@ -201,9 +215,9 @@ private:
   Teuchos::RCP<LinSys::Vector> sln_;
   Teuchos::RCP<LinSys::Vector> globalSln_;
   Teuchos::RCP<LinSys::Export> exporter_;
-  Teuchos::RCP<LinSys::Import> importer_;
 
   MyLIDMapType myLIDs_;
+  std::vector<LocalOrdinal> entityToColLID_;
   std::vector<LocalOrdinal> entityToLID_;
   LocalOrdinal maxOwnedRowId_; // = num_owned_nodes * numDof_
   LocalOrdinal maxGloballyOwnedRowId_; // = (num_owned_nodes + num_globallyOwned_nodes) * numDof_

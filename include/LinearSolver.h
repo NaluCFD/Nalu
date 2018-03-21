@@ -39,6 +39,7 @@ typedef Teuchos::ScalarTraits<Scalar> STS;
 #include <MueLu_TpetraOperator.hpp>
 
 #include <MueLu_UseShortNames.hpp>    // => typedef MueLu::FooClass<Scalar, LocalOrdinal, ...> Foo
+#include <limits>
 
 namespace sierra{
 namespace nalu{
@@ -53,6 +54,79 @@ namespace nalu{
 
 class LinearSolvers;
 class Simulation;
+
+/** LocalGraphArrays is a helper class for building the arrays describing
+ * the local csr graph, rowPointers and colIndices. These arrays are passed
+ * to the TpetraCrsGraph::setAllIndices method. This helper class is used
+ * within nalu's TpetraLinearSystem class.
+ * See unit-tests in UnitTestLocalGraphArrays.C.
+ */
+class LocalGraphArrays {
+public:
+  static const LocalOrdinal INVALID = std::numeric_limits<LocalOrdinal>::max();
+
+  LocalGraphArrays(const Kokkos::View<size_t*,sierra::nalu::DeviceSpace>& rowLengths)
+  : rowPointers(Teuchos::arcp<size_t>(rowLengths.size()+1)),
+    colIndices()
+  {
+    size_t nnz = compute_row_pointers(rowPointers, rowLengths);
+    colIndices = Teuchos::arcp<LocalOrdinal>(nnz);
+    for(int i=0, iend=colIndices.size(); i<iend; ++i) { colIndices[i] = INVALID; }
+  }
+
+  size_t get_row_length(size_t localRow) const { return rowPointers[localRow+1]-rowPointers[localRow]; }
+
+  void insertIndices(size_t localRow, size_t numInds, const LocalOrdinal* inds, int numDof)
+  {
+    LocalOrdinal* row = &colIndices[rowPointers[localRow]];
+    size_t rowLen = rowPointers[localRow+1] - rowPointers[localRow];
+    LocalOrdinal* rowEnd = find_first_invalid(row, rowLen);
+    for(size_t i=0; i<numInds; ++i) {
+      LocalOrdinal* insertPoint = std::lower_bound(row, rowEnd, inds[i]);
+      if (insertPoint <= rowEnd && *insertPoint != inds[i]) {
+        insert(inds[i], numDof, insertPoint, rowEnd+numDof);
+        rowEnd += numDof;
+      }
+    }
+  }
+
+  static size_t compute_row_pointers(Teuchos::ArrayRCP<size_t>& rowPtrs,
+                                   const Kokkos::View<size_t*,sierra::nalu::DeviceSpace>& rowLengths)
+  {
+    size_t nnz = 0;
+    for(unsigned i=0; i<rowLengths.size(); ++i) {
+      rowPtrs[i] = nnz;
+      nnz += rowLengths(i);
+    }
+    rowPtrs[rowLengths.size()] = nnz;
+    return nnz;
+  }
+
+  Teuchos::ArrayRCP<size_t> rowPointers;
+  Teuchos::ArrayRCP<LocalOrdinal> colIndices;
+
+private:
+
+  void insert(LocalOrdinal ind, int numDof, LocalOrdinal* insertPoint, LocalOrdinal* rowEnd)
+  {
+    for(LocalOrdinal* ptr = rowEnd-1; ptr!= insertPoint; --ptr) {
+        *ptr = *(ptr-numDof);
+    }
+    for(int i=0; i<numDof; ++i) {
+      *insertPoint++ = ind+i;
+    }
+  }
+
+  LocalOrdinal* find_first_invalid(LocalOrdinal* rowBegin, size_t rowLen)
+  {
+    for(size_t i=0; i<rowLen; ++i) {
+      if (rowBegin[i] == INVALID) {
+        return rowBegin+i;
+      } 
+    }
+    return rowBegin+rowLen;
+  }
+};
 
 /** An abstract representation of a linear solver in Nalu
  *

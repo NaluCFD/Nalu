@@ -25,10 +25,10 @@ YAML::Node get_realm_default_node();
 class NaluTest
 {
 public:
-  NaluTest(YAML::Node&);
+  NaluTest(const YAML::Node& doc = get_default_inputs());
 
   sierra::nalu::Realm& create_realm(
-    const YAML::Node&,
+    const YAML::Node& realm_node = get_realm_default_node(),
     const std::string realm_type="multi_physics");
 
   YAML::Node doc_;
@@ -39,7 +39,6 @@ public:
   stk::mesh::PartVector partVec_;
 
 private:
-  NaluTest() = delete;
   NaluTest(const NaluTest&) = delete;
 };
 
