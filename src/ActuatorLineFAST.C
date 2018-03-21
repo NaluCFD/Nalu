@@ -277,6 +277,7 @@ void ActuatorLineFAST::readTurbineData(int iTurb, fast::fastInputs & fi, YAML::N
     get_required(turbNode, "num_force_pts_tower", fi.globTurbineData[iTurb].numForcePtsTwr);
     get_required(turbNode, "nacelle_cd", fi.globTurbineData[iTurb].nacelle_cd);
     get_required(turbNode, "nacelle_area", fi.globTurbineData[iTurb].nacelle_area);
+    get_required(turbNode, "air_density", fi.globTurbineData[iTurb].air_density);
 
 }
 
