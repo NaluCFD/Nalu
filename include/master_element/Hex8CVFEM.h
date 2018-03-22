@@ -18,6 +18,7 @@ namespace nalu{
 class HexSCV : public MasterElement
 {
 public:
+  using AlgTraits = AlgTraitsHex8;
 
   HexSCV();
   virtual ~HexSCV();
@@ -62,6 +63,9 @@ public:
 class HexSCS : public MasterElement
 {
 public:
+  using AlgTraits = AlgTraitsHex8;
+  using AlgTraitsFace = AlgTraitsQuad4;
+
 
   HexSCS();
   virtual ~HexSCS();
@@ -94,6 +98,11 @@ public:
     SharedMemView<DoubleType**>&coords,
     SharedMemView<DoubleType***>&gradop,
     SharedMemView<DoubleType***>&deriv);
+
+  void face_grad_op(
+    int face_ordinal,
+    SharedMemView<DoubleType**>& coords,
+    SharedMemView<DoubleType***>& gradop) final;
 
   void shifted_grad_op(
     SharedMemView<DoubleType**>&coords,

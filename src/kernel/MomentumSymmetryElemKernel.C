@@ -6,7 +6,6 @@
 /*------------------------------------------------------------------------*/
 
 #include "kernel/MomentumSymmetryElemKernel.h"
-#include "BcAlgTraits.h"
 #include "master_element/MasterElement.h"
 #include "SolutionOptions.h"
 
@@ -167,7 +166,7 @@ MomentumSymmetryElemKernel<BcAlgTraits>::execute(
   }
 }
 
-template class MomentumSymmetryElemKernel <BcAlgTraitsHex8Quad4>;
+INSTANTIATE_KERNEL_FACE_ELEMENT(MomentumSymmetryElemKernel);
 
 }  // nalu
 }  // sierra

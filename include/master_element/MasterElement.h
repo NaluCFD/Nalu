@@ -71,6 +71,12 @@ public:
     SharedMemView<DoubleType***>&deriv) {
     throw std::runtime_error("shifted_grad_op using SharedMemView is not implemented");}
 
+  virtual void face_grad_op(
+    int face_ordinal,
+    SharedMemView<DoubleType**>& coords,
+    SharedMemView<DoubleType***>& gradop) {
+    throw std::runtime_error("grad_op using SharedMemView is not implemented");}
+
   virtual void grad_op_fem(
     SharedMemView<DoubleType**>&coords,
     SharedMemView<DoubleType***>&gradop,
@@ -143,6 +149,7 @@ public:
     double * error ) {
     throw std::runtime_error("nodal_grad_op not implemented");}
 
+
   virtual void face_grad_op(
     const int nelem,
     const int face_ordinal,
@@ -151,6 +158,7 @@ public:
     double *det_j,
     double * error ) {
     throw std::runtime_error("face_grad_op not implemented; avoid this element type at open bcs, walls and symms");}
+
 
   virtual void shifted_face_grad_op(
      const int nelem,

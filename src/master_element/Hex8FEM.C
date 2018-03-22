@@ -12,6 +12,7 @@
 #include <master_element/TensorOps.h>
 
 #include <FORTRAN_Proto.h>
+#include <NaluEnv.h>
 
 #include <cmath>
 #include <iostream>
@@ -263,7 +264,7 @@ void Hex8FEM::face_grad_op(
           &coords[24*n], grad, &det_j[npf*n+k], error, &lerr );
       
       if ( lerr )
-        std::cout << "sorry, issue with face_grad_op.." << std::endl;
+        NaluEnv::self().naluOutput() << "sorry, issue with face_grad_op.." << std::endl;
       
       for ( int j=0; j<24; j++) {
         gradop[k*nelem*24+n*24+j] = grad[j];
