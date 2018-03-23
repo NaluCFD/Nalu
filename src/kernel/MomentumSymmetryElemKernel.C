@@ -33,8 +33,7 @@ MomentumSymmetryElemKernel<BcAlgTraits>::MomentumSymmetryElemKernel(
     viscosity_(viscosity),
     includeDivU_(solnOpts.includeDivU_),
     shiftedGradOp_(solnOpts.get_shifted_grad_op(velocity->name())),
-    ipNodeMap_(sierra::nalu::MasterElementRepo::get_surface_master_element(BcAlgTraits::elemTopo_)->ipNodeMap())
-
+    meSCS_(sierra::nalu::MasterElementRepo::get_surface_master_element(BcAlgTraits::elemTopo_))
 {
   velocityNp1_ = &(velocity->field_of_state(stk::mesh::StateNP1));
   coordinates_ = metaData.get_field<VectorFieldType>(
@@ -43,11 +42,10 @@ MomentumSymmetryElemKernel<BcAlgTraits>::MomentumSymmetryElemKernel(
 
   // extract master elements
   MasterElement* meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(BcAlgTraits::faceTopo_);
-  MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(BcAlgTraits::elemTopo_);
   
   // add master elements
   faceDataPreReqs.add_cvfem_face_me(meFC);
-  elemDataPreReqs.add_cvfem_surface_me(meSCS);
+  elemDataPreReqs.add_cvfem_surface_me(meSCS_);
 
   // fields and data; face and then element
   faceDataPreReqs.add_gathered_nodal_field(*viscosity_, 1);
@@ -79,6 +77,9 @@ MomentumSymmetryElemKernel<BcAlgTraits>::execute(
 {
   DoubleType w_nx[BcAlgTraits::nDim_];
 
+  // FIXME #2 hard-code a face_node_ordinal and ordinal
+  const int face_ordinal = 1;
+
   // face
   SharedMemView<DoubleType*>& vf_viscosity = faceScratchViews.get_scratch_view_1D(*viscosity_);
   SharedMemView<DoubleType**>& vf_exposedAreaVec = faceScratchViews.get_scratch_view_2D(*exposedAreaVec_);
@@ -91,7 +92,7 @@ MomentumSymmetryElemKernel<BcAlgTraits>::execute(
 
   for (int ip=0; ip < BcAlgTraits::numFaceIp_; ++ip) {
     
-    const int nearestNode = ipNodeMap_[ip];
+    const int nearestNode = meSCS_->ipNodeMap(face_ordinal)[ip]; // "Right"
     
     // form unit normal
     DoubleType asq = 0.0;
