@@ -5,8 +5,8 @@
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
-#ifndef MomentumOpenAdvDiffElemKernel_h
-#define MomentumOpenAdvDiffElemKernel_h
+#ifndef ScalarOpenAdvElemKernel_h
+#define ScalarOpenAdvElemKernel_h
 
 #include "master_element/MasterElement.h"
 
@@ -30,23 +30,24 @@ class MasterElement;
 template <typename T> class PecletFunction;
 class SolutionOptions;
 
-/** Open adv/diff kernel for momentum equation (velocity DOF)
+/** Symmetry kernel for scalar equation
  */
 template<typename BcAlgTraits>
-class MomentumOpenAdvDiffElemKernel: public Kernel
+class ScalarOpenAdvElemKernel: public Kernel
 {
 public:
-  MomentumOpenAdvDiffElemKernel(
+  ScalarOpenAdvElemKernel(
     const stk::mesh::MetaData &metaData,
     const SolutionOptions &solnOpts,
-    EquationSystem* eqSystem,
-    VectorFieldType *velocity,
-    GenericFieldType *Gjui,
-    ScalarFieldType *viscosity,
+    EquationSystem* eqSystem,  
+    ScalarFieldType *scalarQ,
+    ScalarFieldType *bcScalarQ,
+    VectorFieldType *Gjq,
+    ScalarFieldType *diffFluxCoeff,
     ElemDataRequests &faceDataPreReqs,
     ElemDataRequests &elemDataPreReqs);
 
-  virtual ~MomentumOpenAdvDiffElemKernel();
+  virtual ~ScalarOpenAdvElemKernel();
 
   /** Execute the kernel within a Kokkos loop and populate the LHS and RHS for
    *  the linear solve
@@ -58,26 +59,21 @@ public:
     ScratchViews<DoubleType> &elemScratchViews);
 
 private:
-  MomentumOpenAdvDiffElemKernel() = delete;
+  ScalarOpenAdvElemKernel() = delete;
 
-  ScalarFieldType *viscosity_{nullptr};
-  GenericFieldType *Gjui_{nullptr};
-  VectorFieldType *velocityNp1_{nullptr};
+  ScalarFieldType *scalarQ_{nullptr};
+  ScalarFieldType *bcScalarQ_{nullptr};
+  VectorFieldType *Gjq_{nullptr};
+  ScalarFieldType *diffFluxCoeff_{nullptr};
   VectorFieldType *velocityRTM_{nullptr};
   VectorFieldType *coordinates_{nullptr};
   ScalarFieldType *density_{nullptr};
-  GenericFieldType *exposedAreaVec_{nullptr};
   GenericFieldType *openMassFlowRate_{nullptr};
-  VectorFieldType *velocityBc_{nullptr};
   
   // numerical parameters
   const double alphaUpw_;
   const double om_alphaUpw_;
   const double hoUpwind_;
-  const double nfEntrain_;
-  const double om_nfEntrain_;
-  const double includeDivU_;
-  const bool shiftedGradOp_;
   const double small_{1.0e-16};
 
   // Integration point to node mapping and master element for interior
@@ -88,13 +84,10 @@ private:
   PecletFunction<DoubleType> *pecletFunction_{nullptr};
 
   /// Shape functions
-  Kokkos::View<DoubleType[BcAlgTraits::numFaceIp_][BcAlgTraits::nodesPerFace_]> vf_shape_function_ {"vf_shape_func"};
-  Kokkos::View<DoubleType[BcAlgTraits::numScsIp_][BcAlgTraits::nodesPerElement_]> v_shape_function_ {"v_shape_func"};
   Kokkos::View<DoubleType[BcAlgTraits::numFaceIp_][BcAlgTraits::nodesPerFace_]> vf_adv_shape_function_ {"vf_adv_shape_function"};
-  Kokkos::View<DoubleType[BcAlgTraits::numScsIp_][BcAlgTraits::nodesPerElement_]> v_adv_shape_function_ {"v_adv_shape_func"};
 };
 
 }  // nalu
 }  // sierra
 
-#endif /* MomentumOpenAdvDiffElemKernel_h */
+#endif /* ScalarOpenAdvElemKernel_h */
