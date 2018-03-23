@@ -107,6 +107,11 @@ public:
     double *det_j,
     double * error );
 
+  void face_grad_op(
+    int face_ordinal,
+    SharedMemView<DoubleType**>& coords,
+    SharedMemView<DoubleType***>& gradop) final;
+
   void shifted_face_grad_op(
     const int nelem,
     const int face_ordinal,
@@ -182,6 +187,13 @@ public:
   double parametric_distance( const std::vector<double> &x);
 
   const int* side_node_ordinals(int sideOrdinal) final;
+
+private:
+  using QuadFaceGradType = SharedMemView<DoubleType[AlgTraitsQuad4Wed6::numFaceIp_][AlgTraitsQuad4Wed6::nodesPerElement_][AlgTraitsQuad4Wed6::nDim_]>;
+  using TriFaceGradType = SharedMemView<DoubleType[AlgTraitsTri3Wed6::numFaceIp_][AlgTraitsTri3Wed6::nodesPerElement_][AlgTraitsTri3Wed6::nDim_]>;
+
+  void face_grad_op_tri(int face_ordinal, SharedMemView<DoubleType**>& coords, TriFaceGradType& gradop);
+  void face_grad_op_quad(int face_ordinal, SharedMemView<DoubleType**>& coords, QuadFaceGradType& gradop);
 
 };
 

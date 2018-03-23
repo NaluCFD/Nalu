@@ -100,8 +100,8 @@ public:
 
           copy_and_interleave(smdata.faceViews, smdata.numSimdFaces, smdata.simdFaceViews, interleaveMeViews);
           copy_and_interleave(smdata.elemViews, smdata.numSimdFaces, smdata.simdElemViews, interleaveMeViews);
-          fill_master_element_views(faceDataNeeded_, bulk, smdata.simdFaceViews, smdata.elemFaceOrdinals);
-          fill_master_element_views(elemDataNeeded_, bulk, smdata.simdElemViews);
+          fill_master_element_views(faceDataNeeded_, bulk, smdata.simdFaceViews, smdata.elemFaceOrdinals[0]);
+          fill_master_element_views(elemDataNeeded_, bulk, smdata.simdElemViews, smdata.elemFaceOrdinals[0]);
 
           lamdbaFunc(smdata);
         });

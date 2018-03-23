@@ -7,7 +7,6 @@
 
 #include "pmr/RadTransWallElemKernel.h"
 #include "pmr/RadiativeTransportEquationSystem.h"
-#include "BcAlgTraits.h"
 #include "master_element/MasterElement.h"
 
 // template and scratch space
@@ -31,7 +30,7 @@ RadTransWallElemKernel<BcAlgTraits>::RadTransWallElemKernel(
   ElemDataRequests &dataPreReqs)
   : Kernel(),
     radEqSystem_(radEqSystem),
-    ipNodeMap_(sierra::nalu::MasterElementRepo::get_surface_master_element(BcAlgTraits::faceTopo_)->ipNodeMap())
+    ipNodeMap_(sierra::nalu::MasterElementRepo::get_surface_master_element(BcAlgTraits::topo_)->ipNodeMap())
  {
   // save off fields
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
@@ -39,7 +38,7 @@ RadTransWallElemKernel<BcAlgTraits>::RadTransWallElemKernel(
   intensity_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "intensity");
   exposedAreaVec_ = metaData.get_field<GenericFieldType>(metaData.side_rank(), "exposed_area_vector");
 
-  MasterElement *meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(BcAlgTraits::faceTopo_);
+  MasterElement *meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(BcAlgTraits::topo_);
  
   // compute and save shape function
   get_face_shape_fn_data<BcAlgTraits>([&](double* ptr){meFC->shape_fcn(ptr);}, vf_shape_function_);
@@ -118,7 +117,7 @@ RadTransWallElemKernel<BcAlgTraits>::execute(
   } 
 }
 
-INSTANTIATE_FACE_BC_KERNEL(RadTransWallElemKernel);
+INSTANTIATE_KERNEL_FACE(RadTransWallElemKernel);
 
 }  // nalu
 }  // sierra

@@ -537,7 +537,7 @@ void Quad42DSCS::grad_op(
       coords, gradop, det_j, error, &lerr );
   
   if ( lerr )
-    std::cout << "sorry, negative Quad42DSCS volume.." << std::endl;  
+    NaluEnv::self().naluOutput() << "sorry, negative Quad42DSCS volume.." << std::endl;
 }
 
 //--------------------------------------------------------------------------
@@ -572,7 +572,7 @@ void Quad42DSCS::shifted_grad_op(
       coords, gradop, det_j, error, &lerr );
 
   if ( lerr )
-    std::cout << "sorry, negative Quad42DSCS volume.." << std::endl;
+    NaluEnv::self().naluOutput() << "sorry, negative Quad42DSCS volume.." << std::endl;
 }
 
 //--------------------------------------------------------------------------
@@ -609,7 +609,7 @@ void Quad42DSCS::face_grad_op(
           &coords[8*n], &gradop[k*nelem*8+n*8], &det_j[npf*n+k], error, &lerr );
       
       if ( lerr )
-        std::cout << "sorry, issue with face_grad_op.." << std::endl;
+        NaluEnv::self().naluOutput() << "sorry, issue with face_grad_op.." << std::endl;
       
     }
   }
@@ -649,7 +649,7 @@ void Quad42DSCS::shifted_face_grad_op(
           &coords[8*n], &gradop[k*nelem*8+n*8], &det_j[npf*n+k], error, &lerr );
 
       if ( lerr )
-        std::cout << "sorry, issue with face_grad_op.." << std::endl;
+        NaluEnv::self().naluOutput() << "sorry, issue with face_grad_op.." << std::endl;
 
     }
   }
@@ -969,7 +969,7 @@ Quad42DSCS::general_face_grad_op(
       &coords[0], &gradop[0], &det_j[0], error, &lerr );
   
   if ( lerr )
-    std::cout << "Quad42DSCS::general_face_grad_op: issue.." << std::endl;
+    NaluEnv::self().naluOutput() << "Quad42DSCS::general_face_grad_op: issue.." << std::endl;
   
 }
 

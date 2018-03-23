@@ -35,7 +35,7 @@ namespace nalu{
   {
     // only two topologies supported, so we can flatten some of the decision making
     if (dimension == 2) {
-      return new T<AlgTraitsQuadGL<order>>(std::forward<Args>(args)...);
+      return new T<AlgTraitsQuadGL_2D<order>>(std::forward<Args>(args)...);
     }
     return new T<AlgTraitsHexGL<order>>(std::forward<Args>(args)...);
   }
@@ -94,15 +94,15 @@ namespace nalu{
     if (!topo.is_super_topology()) {
       switch(topo.value()) {
         case stk::topology::QUAD_4:
-          return new T<BcAlgTraitsQuad4>(std::forward<Args>(args)...);
+          return new T<AlgTraitsQuad4>(std::forward<Args>(args)...);
         case stk::topology::QUAD_9:
-          return new T<BcAlgTraitsQuad9>(std::forward<Args>(args)...);
+          return new T<AlgTraitsQuad9>(std::forward<Args>(args)...);
         case stk::topology::TRI_3:
-          return new T<BcAlgTraitsTri3>(std::forward<Args>(args)...);
+          return new T<AlgTraitsTri3>(std::forward<Args>(args)...);
         case stk::topology::LINE_2:
-          return new T<BcAlgTraitsLine2>(std::forward<Args>(args)...);
+          return new T<AlgTraitsEdge_2D>(std::forward<Args>(args)...);
         case stk::topology::LINE_3:
-          return new T<BcAlgTraitsLine3>(std::forward<Args>(args)...);
+          return new T<AlgTraitsEdge3_2D>(std::forward<Args>(args)...);
         default:
           return nullptr;
       }

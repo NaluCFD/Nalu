@@ -547,7 +547,7 @@ void Tri32DSCS::grad_op(
       coords, gradop, det_j, error, &lerr );
   
   if ( lerr )
-    std::cout << "sorry, negative Tri32DSCS volume.." << std::endl;
+    NaluEnv::self().naluOutput() << "sorry, negative Tri32DSCS volume.." << std::endl;
 }
 
 //--------------------------------------------------------------------------
@@ -582,7 +582,7 @@ void Tri32DSCS::shifted_grad_op(
       coords, gradop, det_j, error, &lerr );
 
   if ( lerr )
-    std::cout << "sorry, negative Tri32DSCS volume.." << std::endl;
+    NaluEnv::self().naluOutput() << "sorry, negative Tri32DSCS volume.." << std::endl;
 }
 
 //--------------------------------------------------------------------------
@@ -619,7 +619,7 @@ void Tri32DSCS::face_grad_op(
           &coords[12*n], grad, &det_j[npf*n+k], error, &lerr );
       
       if ( lerr )
-        std::cout << "sorry, issue with face_grad_op.." << std::endl;
+        NaluEnv::self().naluOutput() << "sorry, issue with face_grad_op.." << std::endl;
       
       for ( int j=0; j<6; j++) {
         gradop[k*nelem*6+n*6+j] = grad[j];
@@ -663,7 +663,7 @@ void Tri32DSCS::shifted_face_grad_op(
           &coords[12*n], &gradop[k*nelem*6+n*6], &det_j[npf*n+k], error, &lerr );
 
       if ( lerr )
-        std::cout << "sorry, issue with face_grad_op.." << std::endl;
+        NaluEnv::self().naluOutput() << "sorry, issue with face_grad_op.." << std::endl;
 
     }
   }
@@ -949,7 +949,7 @@ Tri32DSCS::general_face_grad_op(
       &coords[0], &gradop[0], &det_j[0], error, &lerr );
       
   if ( lerr )
-    std::cout << "sorry, issue with face_grad_op.." << std::endl;
+    NaluEnv::self().naluOutput() << "sorry, issue with face_grad_op.." << std::endl;
   
 }
 

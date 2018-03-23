@@ -115,6 +115,9 @@
 #include <kernel/MomentumMassElemKernel.h>
 #include <kernel/MomentumUpwAdvDiffElemKernel.h>
 
+// bc kernels
+#include <kernel/MomentumWallFunctionElemKernel.h>
+
 // nso
 #include <nso/MomentumNSOElemKernel.h>
 #include <nso/MomentumNSOKeElemKernel.h>
@@ -1629,7 +1632,7 @@ MomentumEquationSystem::register_open_bc(
 void
 MomentumEquationSystem::register_wall_bc(
   stk::mesh::Part *part,
-  const stk::topology &theTopo,
+  const stk::topology &partTopo,
   const WallBoundaryConditionData &wallBCData)
 {
 
@@ -1748,7 +1751,7 @@ MomentumEquationSystem::register_wall_bc(
     stk::mesh::put_field(*assembledWallNormalDistance, *part);
 
     // integration point; size it based on number of boundary integration points
-    MasterElement *meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(theTopo);
+    MasterElement *meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(partTopo);
     const int numScsBip = meFC->numIntPoints_;
 
     stk::topology::rank_t sideRank = static_cast<stk::topology::rank_t>(meta_data.side_rank());
@@ -1844,20 +1847,42 @@ MomentumEquationSystem::register_wall_bc(
       }
 
       // create lhs/rhs algorithm; generalized for edge (nearest node usage) and element
-      std::map<AlgorithmType, SolverAlgorithm *>::iterator it_wf =
-        solverAlgDriver_->solverAlgMap_.find(wfAlgType);
-      if ( it_wf == solverAlgDriver_->solverAlgMap_.end() ) {
-        SolverAlgorithm *theAlg = NULL;
-        if ( realm_.realmUsesEdges_ ) {
-          theAlg = new AssembleMomentumEdgeWallFunctionSolverAlgorithm(realm_, part, this);
+      if ( realm_.solutionOptions_->useConsolidatedSolverAlg_ ) {        
+        // element-based uses consolidated approach fully
+        auto& solverAlgMap = solverAlgDriver_->solverAlgorithmMap_;
+        
+        AssembleElemSolverAlgorithm* solverAlg = nullptr;
+        bool solverAlgWasBuilt = false;
+        
+        std::tie(solverAlg, solverAlgWasBuilt) = build_or_add_part_to_face_bc_solver_alg(*this, *part, solverAlgMap);
+        
+        ElemDataRequests& dataPreReqs = solverAlg->dataNeededByKernels_;
+        auto& activeKernels = solverAlg->activeKernels_;
+        
+        if (solverAlgWasBuilt) {
+          build_face_topo_kernel_automatic<MomentumWallFunctionElemKernel>
+            (partTopo, *this, activeKernels, "momentum_wall_function",
+             realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs);
+          report_built_supp_alg_names();   
         }
-        else {
-          theAlg = new AssembleMomentumElemWallFunctionSolverAlgorithm(realm_, part, this, realm_.realmUsesEdges_);
-        }
-        solverAlgDriver_->solverAlgMap_[wfAlgType] = theAlg;
       }
       else {
-        it_wf->second->partVec_.push_back(part);
+        // deprecated element-based and supported edge-based approach
+        std::map<AlgorithmType, SolverAlgorithm *>::iterator it_wf =
+          solverAlgDriver_->solverAlgMap_.find(wfAlgType);
+        if ( it_wf == solverAlgDriver_->solverAlgMap_.end() ) {
+          SolverAlgorithm *theAlg = NULL;
+          if ( realm_.realmUsesEdges_ ) {
+            theAlg = new AssembleMomentumEdgeWallFunctionSolverAlgorithm(realm_, part, this);
+          }
+          else {
+            theAlg = new AssembleMomentumElemWallFunctionSolverAlgorithm(realm_, part, this, realm_.realmUsesEdges_);
+          }
+          solverAlgDriver_->solverAlgMap_[wfAlgType] = theAlg;
+        }
+        else {
+          it_wf->second->partVec_.push_back(part);
+        }
       }
     }
   }
@@ -1888,7 +1913,7 @@ MomentumEquationSystem::register_wall_bc(
 void
 MomentumEquationSystem::register_symmetry_bc(
   stk::mesh::Part *part,
-  const stk::topology &theTopo,
+  const stk::topology &/*partTopo*/,
   const SymmetryBoundaryConditionData &/*symmetryBCData*/)
 {
 
@@ -2371,7 +2396,7 @@ ContinuityEquationSystem::register_interior_algorithm(
     }
 
     // solver
-    if (! realm_.solutionOptions_->useConsolidatedSolverAlg_) {
+    if (!realm_.solutionOptions_->useConsolidatedSolverAlg_) {
       std::map<AlgorithmType, SolverAlgorithm *>::iterator its
         = solverAlgDriver_->solverAlgMap_.find(algType);
       if ( its == solverAlgDriver_->solverAlgMap_.end() ) {
