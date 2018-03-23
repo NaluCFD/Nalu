@@ -275,9 +275,12 @@ void ActuatorLineFAST::readTurbineData(int iTurb, fast::fastInputs & fi, YAML::N
     }
     get_required(turbNode, "num_force_pts_blade", fi.globTurbineData[iTurb].numForcePtsBlade);
     get_required(turbNode, "num_force_pts_tower", fi.globTurbineData[iTurb].numForcePtsTwr);
-    get_required(turbNode, "nacelle_cd", fi.globTurbineData[iTurb].nacelle_cd);
-    get_required(turbNode, "nacelle_area", fi.globTurbineData[iTurb].nacelle_area);
-    get_required(turbNode, "air_density", fi.globTurbineData[iTurb].air_density);
+    fi.globTurbineData[iTurb].nacelle_cd = 0.0;
+    fi.globTurbineData[iTurb].nacelle_area = 0.0;
+    fi.globTurbineData[iTurb].air_density = 0.0;
+    get_if_present(turbNode, "nacelle_cd", fi.globTurbineData[iTurb].nacelle_cd);
+    get_if_present(turbNode, "nacelle_area", fi.globTurbineData[iTurb].nacelle_area);
+    get_if_present(turbNode, "air_density", fi.globTurbineData[iTurb].air_density);
 
 }
 
@@ -886,20 +889,16 @@ ActuatorLineFAST::create_actuator_line_point_info_map() {
           switch (FAST.getForceNodeType(iTurb, np)) {
           case fast::HUB: {
               // Calculate epsilon for hub node based on cd and area here
-              double nac_area = FAST.get_nacelleArea(iTurb);
-              double nac_cd = FAST.get_nacelleCd(iTurb);
-
-              // Print the variables read 
-              std::cout<<std::fixed<<"Area nacelle "<< nac_area <<std::endl;
-              std::cout<<std::fixed<<"Cd nacelle "<< nac_cd <<std::endl;
+              float nac_area = FAST.get_nacelleArea(iTurb);
+              float nac_cd = FAST.get_nacelleCd(iTurb);
 
               // The constant pi
-              const double pi = acos(-1.0);
+              const float pi = acos(-1.0);
 
               for (int j=0; j<nDim; j++) {
                   // This model is used to set the momentum thickness
                   // of the wake (Martinez-Tossas PhD Thesis 2017)
-                  double tmpEps = std::sqrt(2.0 / pi * nac_cd * nac_area); 
+                  float tmpEps = std::sqrt(2.0 / pi * nac_cd * nac_area); 
                   std::cout<<"Epsilon nacelle "<< tmpEps<<std::endl;
                   epsilon.x_ = tmpEps;
                   epsilon.y_ = tmpEps;
