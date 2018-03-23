@@ -137,7 +137,7 @@ ScalarOpenAdvElemKernel<BcAlgTraits>::execute(
       }
     }
     
-    // Peclet factor; along the edge is fine  
+    // udotx; extrapolation
     DoubleType udotx = 0.0;
     DoubleType dqR = 0.0;
     for ( int i = 0; i < BcAlgTraits::nDim_; ++i ) {

@@ -185,7 +185,7 @@ class Hex8ElementWithBCFields : public ::testing::Test
       Gjui(meta.declare_field<GenericFieldType>(stk::topology::NODE_RANK, "dudx")),
       scalarQ(meta.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "scalar_q")),
       bcScalarQ(meta.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "bc_scalar_q")),
-      Gjq(meta.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "Gjq"))
+      Gjq(meta.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "Gjq"))
    {
     const double one = 1.0;
     const double oneVecThree[3] = {one, one, one};
@@ -234,7 +234,7 @@ class Hex8ElementWithBCFields : public ::testing::Test
   GenericFieldType& Gjui;
   ScalarFieldType& scalarQ;
   ScalarFieldType& bcScalarQ;
-  ScalarFieldType& Gjq;
+  VectorFieldType& Gjq;
  };
 
 class ABLWallFunctionHex8ElementWithBCFields : public Hex8ElementWithBCFields
