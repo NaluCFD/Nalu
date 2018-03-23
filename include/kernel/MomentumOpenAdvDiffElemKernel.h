@@ -30,7 +30,7 @@ class MasterElement;
 template <typename T> class PecletFunction;
 class SolutionOptions;
 
-/** Symmetry kernel for momentum equation (velocity DOF)
+/** Open adv/diff kernel for momentum equation (velocity DOF)
  */
 template<typename BcAlgTraits>
 class MomentumOpenAdvDiffElemKernel: public Kernel
