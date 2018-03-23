@@ -892,17 +892,20 @@ ActuatorLineFAST::create_actuator_line_point_info_map() {
               float nac_area = FAST.get_nacelleArea(iTurb);
               float nac_cd = FAST.get_nacelleCd(iTurb);
 
-              // The constant pi
-              const float pi = acos(-1.0);
+              if (nac_cd>0){
 
-              for (int j=0; j<nDim; j++) {
-                  // This model is used to set the momentum thickness
-                  // of the wake (Martinez-Tossas PhD Thesis 2017)
-                  float tmpEps = std::sqrt(2.0 / pi * nac_cd * nac_area); 
-                  std::cout<<"Epsilon nacelle "<< tmpEps<<std::endl;
-                  epsilon.x_ = tmpEps;
-                  epsilon.y_ = tmpEps;
-                  epsilon.z_ = tmpEps;
+                  // The constant pi
+                  const float pi = acos(-1.0);
+
+                  for (int j=0; j<nDim; j++) {
+                      // This model is used to set the momentum thickness
+                      // of the wake (Martinez-Tossas PhD Thesis 2017)
+                      float tmpEps = std::sqrt(2.0 / pi * nac_cd * nac_area); 
+                      std::cout<<"Epsilon nacelle "<< tmpEps<<std::endl;
+                      epsilon.x_ = tmpEps;
+                      epsilon.y_ = tmpEps;
+                      epsilon.z_ = tmpEps;
+                  }
               }              
               break;
           }
