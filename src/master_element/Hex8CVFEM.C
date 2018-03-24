@@ -690,7 +690,7 @@ void HexSCS::face_grad_op(
 
   constexpr int derivSize = traits::numFaceIp_ * traits::nodesPerElement_ * traits::nDim_;
   DoubleType psi[derivSize];
-  SharedMemView<DoubleType[traits::numFaceIp_][traits::nodesPerElement_][traits::nDim_]> deriv(psi);
+  SharedMemView<DoubleType***> deriv(psi, traits::numFaceIp_, traits::nodesPerElement_, traits::nDim_);
 
   const int offset = traits::numFaceIp_ * traits::nDim_ * face_ordinal;
   hex8_derivative(traits::numFaceIp_, &intgExpFace_[offset], deriv);

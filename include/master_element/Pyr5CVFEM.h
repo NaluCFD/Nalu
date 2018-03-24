@@ -213,8 +213,8 @@ public:
     double *result);
 
 private:
-  using QuadFaceGradType = SharedMemView<DoubleType[AlgTraitsQuad4Pyr5::numFaceIp_][AlgTraitsQuad4Pyr5::nodesPerElement_][AlgTraitsQuad4Pyr5::nDim_]>;
-  using TriFaceGradType = SharedMemView<DoubleType[AlgTraitsTri3Pyr5::numFaceIp_][AlgTraitsTri3Pyr5::nodesPerElement_][AlgTraitsTri3Pyr5::nDim_]>;
+  using QuadFaceGradType = SharedMemView<DoubleType***>;
+  using TriFaceGradType = SharedMemView<DoubleType***>;
 
   void face_grad_op_quad(int face_ordinal, SharedMemView<DoubleType**>& coords, QuadFaceGradType& gradop);
   void face_grad_op_tri(int face_ordinal, SharedMemView<DoubleType**>& coords, TriFaceGradType& gradop);

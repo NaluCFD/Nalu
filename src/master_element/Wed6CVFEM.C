@@ -787,12 +787,12 @@ void WedSCS::face_grad_op(
 
   constexpr int quad_derivSize = quad_traits::numFaceIp_ *  quad_traits::nodesPerElement_ * quad_traits::nDim_;
   DoubleType quad_grad_temp[quad_derivSize];
-  QuadFaceGradType quad_gradop(quad_grad_temp);
+  QuadFaceGradType quad_gradop(quad_grad_temp,quad_traits::numFaceIp_,quad_traits::nodesPerElement_,quad_traits::nDim_);
   face_grad_op_quad(face_ordinal, coords, quad_gradop);
 
   constexpr int tri_derivSize = tri_traits::numFaceIp_ *  tri_traits::nodesPerElement_ * tri_traits::nDim_;
   DoubleType tri_grad_temp[tri_derivSize];
-  TriFaceGradType tri_gradop(tri_grad_temp);
+  TriFaceGradType tri_gradop(tri_grad_temp,tri_traits::numFaceIp_,tri_traits::nodesPerElement_,tri_traits::nDim_);
   face_grad_op_tri(face_ordinal, coords, tri_gradop);
 
   const int length = (face_ordinal < 3) ? quad_derivSize : tri_derivSize;
