@@ -892,12 +892,14 @@ ActuatorLineFAST::create_actuator_line_point_info_map() {
               float nac_area = FAST.get_nacelleArea(iTurb);
               float nac_cd = FAST.get_nacelleCd(iTurb);
 
-              if (nac_cd>0){
+              // The constant pi
+              const float pi = acos(-1.0);
 
-                  // The constant pi
-                  const float pi = acos(-1.0);
+              for (int j=0; j<nDim; j++) {
 
-                  for (int j=0; j<nDim; j++) {
+
+                  // Compute epsilon only if drag coefficient is greater than zero
+                  if (nac_cd>0){
                       // This model is used to set the momentum thickness
                       // of the wake (Martinez-Tossas PhD Thesis 2017)
                       float tmpEps = std::sqrt(2.0 / pi * nac_cd * nac_area); 
@@ -906,7 +908,16 @@ ActuatorLineFAST::create_actuator_line_point_info_map() {
                       epsilon.y_ = tmpEps;
                       epsilon.z_ = tmpEps;
                   }
-              }              
+                  
+                  // If no nacelle force just specify the standard value
+                  // (it will not be used)
+                  else{
+                      epsilon = actuatorLineInfo->epsilon_;
+                      //~ epsilon.y_ = actuatorLineInfo->epsilon_;
+                      //~ epsilon.z_ = actuatorLineInfo->epsilon_;
+                      }
+
+              }
               break;
           }
           case fast::BLADE:
