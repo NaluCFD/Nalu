@@ -43,7 +43,6 @@ MomentumOpenAdvDiffElemKernel<BcAlgTraits>::MomentumOpenAdvDiffElemKernel(
     om_nfEntrain_(1.0-nfEntrain_),
     includeDivU_(solnOpts.includeDivU_),
     shiftedGradOp_(solnOpts.get_shifted_grad_op(velocity->name())),
-    ipNodeMap_(sierra::nalu::MasterElementRepo::get_surface_master_element(BcAlgTraits::elemTopo_)->ipNodeMap()),
     faceIpNodeMap_(sierra::nalu::MasterElementRepo::get_surface_master_element(BcAlgTraits::faceTopo_)->ipNodeMap()),
     meSCS_(sierra::nalu::MasterElementRepo::get_surface_master_element(BcAlgTraits::elemTopo_)),
     pecletFunction_(eqSystem->create_peclet_function<DoubleType>(velocity->name()))
@@ -146,7 +145,7 @@ MomentumOpenAdvDiffElemKernel<BcAlgTraits>::execute(
   for (int ip=0; ip < BcAlgTraits::numFaceIp_; ++ip) {
     
     const int opposingNode = meSCS_->opposingNodes(face_ordinal,ip); // "Left"
-    const int nearestNode = ipNodeMap_[ip]; // "Right"
+    const int nearestNode = meSCS_->ipNodeMap(face_ordinal)[ip]; // "Right"
     const int opposingScsIp = meSCS_->opposingFace(face_ordinal,ip);
     const int localFaceNode = faceIpNodeMap_[ip];
     

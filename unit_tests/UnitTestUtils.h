@@ -182,14 +182,17 @@ class Hex8ElementWithBCFields : public ::testing::Test
       wallNormalDistanceBip(meta.declare_field<GenericFieldType>(meta.side_rank(), "wall_normal_distance_bip")),
       bcVelocityOpen(meta.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "open_velocity_bc")),
       openMdot(meta.declare_field<GenericFieldType>(meta.side_rank(), "open_mass_flow_rate")),
-      Gjui(meta.declare_field<GenericFieldType>(stk::topology::NODE_RANK, "dudx"))     
+      Gjui(meta.declare_field<GenericFieldType>(stk::topology::NODE_RANK, "dudx")),
+      scalarQ(meta.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "scalar_q")),
+      bcScalarQ(meta.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "bc_scalar_q")),
+      Gjq(meta.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "Gjq"))
    {
     const double one = 1.0;
     const double oneVecThree[3] = {one, one, one};
     const double oneVecFour[4] = {one, one, -one, -one};
     const double oneVecNine[9] = {one, one, one, one, one, one, one, one, one};
     const double oneVecTwelve[12] = {one, one, one, one, one, one, one, one, one, one, one, one};
-
+    
     stk::mesh::put_field(velocity, meta.universal_part(), 3, oneVecThree);
     stk::mesh::put_field(bcVelocity, meta.universal_part(), 3, oneVecThree);
     stk::mesh::put_field(density, meta.universal_part(), 1);
@@ -201,11 +204,15 @@ class Hex8ElementWithBCFields : public ::testing::Test
     stk::mesh::put_field(exposedAreaVec, meta.universal_part(), 3*meFC->numIntPoints_, oneVecTwelve);
     stk::mesh::put_field(wallFrictionVelocityBip, meta.universal_part(), meFC->numIntPoints_);
     stk::mesh::put_field(wallNormalDistanceBip, meta.universal_part(), meFC->numIntPoints_);
-
+    
     stk::mesh::put_field(bcVelocityOpen, meta.universal_part(), 3, oneVecThree);
     stk::mesh::put_field(openMdot, meta.universal_part(), 4, oneVecFour);
     stk::mesh::put_field(Gjui, meta.universal_part(), 3*3, oneVecNine);
-
+    
+    stk::mesh::put_field(scalarQ, meta.universal_part(), 1, &one);    
+    stk::mesh::put_field(bcScalarQ, meta.universal_part(), 1, &one);    
+    stk::mesh::put_field(Gjq, meta.universal_part(), 3, oneVecThree);    
+    
     unit_test_utils::create_one_reference_element(bulk, stk::topology::HEXAHEDRON_8);
    }
 
@@ -225,6 +232,9 @@ class Hex8ElementWithBCFields : public ::testing::Test
   VectorFieldType& bcVelocityOpen;
   GenericFieldType& openMdot;
   GenericFieldType& Gjui;
+  ScalarFieldType& scalarQ;
+  ScalarFieldType& bcScalarQ;
+  VectorFieldType& Gjq;
  };
 
 class ABLWallFunctionHex8ElementWithBCFields : public Hex8ElementWithBCFields

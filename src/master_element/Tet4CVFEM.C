@@ -668,7 +668,7 @@ void TetSCS::face_grad_op(
   constexpr int derivSize = traits::numFaceIp_ *  traits::nodesPerElement_ * traits::nDim_;
 
   DoubleType wderiv[derivSize];
-  SharedMemView<DoubleType[traits::numFaceIp_][traits::nodesPerElement_][traits::nDim_]> deriv(wderiv);
+  SharedMemView<DoubleType***> deriv(wderiv,traits::numFaceIp_, traits::nodesPerElement_,  traits::nDim_);
   tet_deriv(deriv);
 
   generic_grad_op_3d<AlgTraitsTet4>(deriv, coords, gradop);
