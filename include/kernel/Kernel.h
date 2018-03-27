@@ -12,7 +12,6 @@
 #include "SimdInterface.h"
 #include "ScratchViews.h"
 #include "AlgTraits.h"
-#include "BcAlgTraits.h"
 
 #include <stk_mesh/base/Entity.hpp>
 

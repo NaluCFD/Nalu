@@ -38,6 +38,8 @@ class MasterElement;
 class PyrSCV : public MasterElement
 {
 public:
+  using AlgTraits = AlgTraitsPyr5;
+
 
   PyrSCV();
   virtual ~PyrSCV();
@@ -75,6 +77,7 @@ public:
 class PyrSCS : public MasterElement
 {
 public:
+  using AlgTraits = AlgTraitsPyr5;
 
   PyrSCS();
   virtual ~PyrSCS();
@@ -173,6 +176,11 @@ public:
     double *det_j,
     double *error);
 
+  void face_grad_op(
+    int face_ordinal,
+    SharedMemView<DoubleType**>& coords,
+    SharedMemView<DoubleType***>& gradop) final;
+
   void shifted_face_grad_op(
     const int nelem,
     const int face_ordinal,
@@ -203,6 +211,13 @@ public:
     const double *isoParCoord,
     const double *field,
     double *result);
+
+private:
+  using QuadFaceGradType = SharedMemView<DoubleType[AlgTraitsQuad4Pyr5::numFaceIp_][AlgTraitsQuad4Pyr5::nodesPerElement_][AlgTraitsQuad4Pyr5::nDim_]>;
+  using TriFaceGradType = SharedMemView<DoubleType[AlgTraitsTri3Pyr5::numFaceIp_][AlgTraitsTri3Pyr5::nodesPerElement_][AlgTraitsTri3Pyr5::nDim_]>;
+
+  void face_grad_op_quad(int face_ordinal, SharedMemView<DoubleType**>& coords, QuadFaceGradType& gradop);
+  void face_grad_op_tri(int face_ordinal, SharedMemView<DoubleType**>& coords, TriFaceGradType& gradop);
 };
 
 } // namespace nalu

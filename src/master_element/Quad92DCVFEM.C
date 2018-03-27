@@ -667,7 +667,7 @@ void Quad92DSCS::grad_op(
       coords, gradop, det_j, error, &lerr );
 
   if ( lerr )
-    std::cout << "sorry, negative area.." << std::endl;
+    NaluEnv::self().naluOutput() << "sorry, negative area.." << std::endl;
 
 }
 
@@ -711,7 +711,7 @@ void Quad92DSCS::shifted_grad_op(
       coords, gradop, det_j, error, &lerr );
 
   if ( lerr )
-    std::cout << "sorry, negative area.." << std::endl;
+    NaluEnv::self().naluOutput() << "sorry, negative area.." << std::endl;
 }
 
 //--------------------------------------------------------------------------

@@ -412,7 +412,7 @@ void fill_master_element_views(
   ElemDataRequests& dataNeeded,
   const stk::mesh::BulkData& bulkData,
   ScratchViews<DoubleType>& prereqData,
-  const int* faceOrdinals)
+  int faceOrdinal)
 {
     MasterElement *meFC  = dataNeeded.get_cvfem_face_me();
     MasterElement *meSCS = dataNeeded.get_cvfem_surface_me();
@@ -428,7 +428,7 @@ void fill_master_element_views(
       SharedMemView<DoubleType**>* coordsView = &prereqData.get_scratch_view_2D(*coordField);
       auto& meData = prereqData.get_me_views(cType);
   
-      meData.fill_master_element_views_new_me(dataEnums, coordsView, meFC, meSCS, meSCV, meFEM, faceOrdinals);
+      meData.fill_master_element_views_new_me(dataEnums, coordsView, meFC, meSCS, meSCV, meFEM, faceOrdinal);
     }
 }
 

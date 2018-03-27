@@ -1,46 +1,40 @@
 /*------------------------------------------------------------------------*/
-/*  Copyright 2014 Sandia Corp.                                           */
+/*  Copyright 2014 Sandia Corporation.                                    */
 /*  This software is released under the license detailed                  */
 /*  in the file, LICENSE, which is located in the top-level Nalu          */
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
+#ifndef MomentumWallFunctionElemKernel_h
+#define MomentumWallFunctionElemKernel_h
 
-#ifndef RadTransWallElemKernel_h
-#define RadTransWallElemKernel_h
-
-#include "FieldTypeDef.h"
 #include "kernel/Kernel.h"
+#include "FieldTypeDef.h"
 
 #include <stk_mesh/base/BulkData.hpp>
+#include <stk_mesh/base/Entity.hpp>
 
 #include <Kokkos_Core.hpp>
 
 namespace sierra {
 namespace nalu {
 
-class ElemDataRequests;
+class SolutionOptions;
 class MasterElement;
-class RadiativeTransportEquationSystem;
-class TimeIntegrator;
+class ElemDataRequests;
 
-/** Add Int I sj*njds 
+/** Wall function approach momentum equation (velocity DOF)
  */
 template<typename BcAlgTraits>
-class RadTransWallElemKernel: public Kernel
+class MomentumWallFunctionElemKernel: public Kernel
 {
 public:
-  RadTransWallElemKernel(
-      const stk::mesh::BulkData&,
-      RadiativeTransportEquationSystem *radEqSystem,
-      const bool &,
-      ElemDataRequests&);
+  MomentumWallFunctionElemKernel(
+    const stk::mesh::BulkData&,
+    const SolutionOptions&,
+    ElemDataRequests&);
 
-  virtual ~RadTransWallElemKernel();
-
-  /** Perform pre-timestep work for the computational kernel
-   */
-  virtual void setup(const TimeIntegrator&);
+  virtual ~MomentumWallFunctionElemKernel();
 
   /** Execute the kernel within a Kokkos loop and populate the LHS and RHS for
    *  the linear solve
@@ -51,23 +45,29 @@ public:
     ScratchViews<DoubleType>&);
 
 private:
-  RadTransWallElemKernel() = delete;
-
-  ScalarFieldType *intensity_{nullptr};
-  ScalarFieldType *bcIntensity_{nullptr};
-  GenericFieldType *exposedAreaVec_{nullptr};
-
-  const RadiativeTransportEquationSystem *radEqSystem_;
+  MomentumWallFunctionElemKernel() = delete;
   
+  VectorFieldType *velocityNp1_{nullptr};
+  VectorFieldType *bcVelocity_{nullptr};
+  ScalarFieldType *density_{nullptr};
+  ScalarFieldType *viscosity_{nullptr};
+  GenericFieldType *exposedAreaVec_{nullptr};
+  GenericFieldType *wallFrictionVelocityBip_{nullptr};
+  GenericFieldType *wallNormalDistanceBip_{nullptr};
+
+  // turbulence model constants (constant over time and bc surfaces)
+  const double elog_;
+  const double kappa_;
+  const double yplusCrit_;
+
   // Integration point to node mapping 
   const int *ipNodeMap_{nullptr};
-
-  // scratch space
+  
+  // fixed scratch space
   Kokkos::View<DoubleType[BcAlgTraits::numFaceIp_][BcAlgTraits::nodesPerFace_]> vf_shape_function_{"vf_shape_function"};
-  Kokkos::View<DoubleType[BcAlgTraits::nDim_]> v_Sk_{"v_Sk"};
 };
 
 }  // nalu
 }  // sierra
 
-#endif /* RadTransWallElemKernel_h */
+#endif /* MomentumWallFunctionElemKernel_h */

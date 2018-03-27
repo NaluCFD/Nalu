@@ -106,6 +106,7 @@ public:
   const VectorFieldType* coordinates_{nullptr};
 
   sierra::nalu::ElemDataRequests dataNeeded_;
+  sierra::nalu::MasterElement* meFC_{nullptr};
   sierra::nalu::MasterElement* meSCV_{nullptr};
   sierra::nalu::MasterElement* meSCS_{nullptr};
 

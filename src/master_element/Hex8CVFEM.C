@@ -12,6 +12,7 @@
 #include <master_element/Hex8GeometryFunctions.h>
 
 #include <FORTRAN_Proto.h>
+#include <NaluEnv.h>
 
 #include <cmath>
 #include <iostream>
@@ -20,10 +21,11 @@ namespace sierra{
 namespace nalu{
 
 //-------- hex8_derivative -------------------------------------------------
+template <typename DerivType>
 void hex8_derivative(
   const int npts,
   const double *intgLoc,
-  SharedMemView<DoubleType***> &deriv)
+  DerivType &deriv)
 {
   const DoubleType half = 0.50;
   const DoubleType one4th = 0.25;
@@ -212,7 +214,7 @@ void HexSCV::grad_op(
       coords, gradop, det_j, error, &lerr );
 
   if ( lerr )
-    std::cout << "sorry, negative HexSCV volume.." << std::endl;
+    NaluEnv::self().naluOutput() << "sorry, negative HexSCV volume.." << std::endl;
 }
 
 //--------------------------------------------------------------------------
@@ -608,7 +610,7 @@ void HexSCS::grad_op(
       coords, gradop, det_j, error, &lerr );
 
   if ( lerr )
-    std::cout << "sorry, negative HexSCS volume.." << std::endl;
+    NaluEnv::self().naluOutput() << "sorry, negative HexSCS volume.." << std::endl;
  }
 
 //--------------------------------------------------------------------------
@@ -636,7 +638,7 @@ void HexSCS::shifted_grad_op(
       coords, gradop, det_j, error, &lerr );
 
   if ( lerr )
-    std::cout << "sorry, negative HexSCS volume.." << std::endl;
+    NaluEnv::self().naluOutput() << "sorry, negative HexSCS volume.." << std::endl;
 }
 
 //--------------------------------------------------------------------------
@@ -674,9 +676,25 @@ void HexSCS::face_grad_op(
           &coords[24*n], &gradop[k*nelem*24+n*24], &det_j[npf*n+k], error, &lerr );
 
       if ( lerr )
-        std::cout << "sorry, issue with face_grad_op.." << std::endl;
+        NaluEnv::self().naluOutput() << "sorry, issue with face_grad_op.." << std::endl;
     }
   }
+}
+
+void HexSCS::face_grad_op(
+  int face_ordinal,
+  SharedMemView<DoubleType**>& coords,
+  SharedMemView<DoubleType***>& gradop)
+{
+  using traits = AlgTraitsQuad4Hex8;
+
+  constexpr int derivSize = traits::numFaceIp_ * traits::nodesPerElement_ * traits::nDim_;
+  DoubleType psi[derivSize];
+  SharedMemView<DoubleType[traits::numFaceIp_][traits::nodesPerElement_][traits::nDim_]> deriv(psi);
+
+  const int offset = traits::numFaceIp_ * traits::nDim_ * face_ordinal;
+  hex8_derivative(traits::numFaceIp_, &intgExpFace_[offset], deriv);
+  generic_grad_op_3d<AlgTraitsHex8>(deriv, coords, gradop);
 }
 
 //--------------------------------------------------------------------------
@@ -714,7 +732,7 @@ void HexSCS::shifted_face_grad_op(
           &coords[24*n], &gradop[k*nelem*24+n*24], &det_j[npf*n+k], error, &lerr );
 
       if ( lerr )
-        std::cout << "sorry, issue with face_grad_op.." << std::endl;
+        NaluEnv::self().naluOutput() << "sorry, issue with face_grad_op.." << std::endl;
     }
   }
 }
@@ -1104,7 +1122,7 @@ HexSCS::general_face_grad_op(
       &coords[0], &gradop[0], &det_j[0], error, &lerr );
 
   if ( lerr )
-    std::cout << "HexSCS::general_face_grad_op: issue.." << std::endl;
+    NaluEnv::self().naluOutput() << "HexSCS::general_face_grad_op: issue.." << std::endl;
 
 }
 

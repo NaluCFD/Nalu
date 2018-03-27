@@ -32,7 +32,8 @@ namespace sierra{
 namespace nalu{
 
 //-------- tet_deriv -------------------------------------------------------
-void tet_deriv(SharedMemView<DoubleType***>& deriv)
+template <typename DerivType>
+void tet_deriv(DerivType& deriv)
 {
   for(size_t j=0; j<deriv.dimension(0); ++j) {
     deriv(j,0,0) = -1.0;
@@ -577,7 +578,7 @@ void TetSCS::grad_op(
       coords, gradop, det_j, error, &lerr );
 
   if ( lerr )
-    std::cout << "sorry, negative TetSCS volume.." << std::endl;  
+    NaluEnv::self().naluOutput() << "sorry, negative TetSCS volume.." << std::endl;
 }
 
 //--------------------------------------------------------------------------
@@ -614,7 +615,7 @@ void TetSCS::shifted_grad_op(
       coords, gradop, det_j, error, &lerr );
 
   if ( lerr )
-    std::cout << "sorry, negative TetSCS volume.." << std::endl;
+    NaluEnv::self().naluOutput() << "sorry, negative TetSCS volume.." << std::endl;
 }
 
 //--------------------------------------------------------------------------
@@ -650,10 +651,27 @@ void TetSCS::face_grad_op(
           &coords[12*n], &gradop[k*nelem*12+n*12], &det_j[npf*n+k], error, &lerr );
 
       if ( lerr )
-        std::cout << "sorry, issue with face_grad_op.." << std::endl;
+        NaluEnv::self().naluOutput() << "sorry, issue with face_grad_op.." << std::endl;
 
     }
   }
+}
+
+void TetSCS::face_grad_op(
+  int /*face_ordinal*/,
+  SharedMemView<DoubleType**>& coords,
+  SharedMemView<DoubleType***>& gradop)
+{
+  using traits = AlgTraitsTri3Tet4;
+
+  // one ip at a time
+  constexpr int derivSize = traits::numFaceIp_ *  traits::nodesPerElement_ * traits::nDim_;
+
+  DoubleType wderiv[derivSize];
+  SharedMemView<DoubleType[traits::numFaceIp_][traits::nodesPerElement_][traits::nDim_]> deriv(wderiv);
+  tet_deriv(deriv);
+
+  generic_grad_op_3d<AlgTraitsTet4>(deriv, coords, gradop);
 }
 
 //--------------------------------------------------------------------------
@@ -691,7 +709,7 @@ void TetSCS::shifted_face_grad_op(
           &coords[12*n], &gradop[k*nelem*12+n*12], &det_j[npf*n+k], error, &lerr );
 
       if ( lerr )
-        std::cout << "sorry, issue with face_grad_op.." << std::endl;
+        NaluEnv::self().naluOutput() << "sorry, issue with face_grad_op.." << std::endl;
     }
   }
 }
