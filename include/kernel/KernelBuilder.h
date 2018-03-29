@@ -109,7 +109,7 @@ namespace nalu{
     }
     else {
       int poly_order = poly_order_from_super_topology(dimension, topo);
-      throw std::runtime_error("PMR exposed surface bc does not support promoted element type: " + poly_order);
+      throw std::runtime_error("PMR exposed surface bc does not support promoted element type: " + std::to_string(poly_order));
     }
   }
   
