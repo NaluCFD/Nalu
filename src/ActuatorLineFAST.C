@@ -903,7 +903,6 @@ ActuatorLineFAST::create_actuator_line_point_info_map() {
                       // This model is used to set the momentum thickness
                       // of the wake (Martinez-Tossas PhD Thesis 2017)
                       float tmpEps = std::sqrt(2.0 / pi * nac_cd * nac_area); 
-                      std::cout<<"Epsilon nacelle "<< tmpEps<<std::endl;
                       epsilon.x_ = tmpEps;
                       epsilon.y_ = tmpEps;
                       epsilon.z_ = tmpEps;
@@ -926,7 +925,7 @@ ActuatorLineFAST::create_actuator_line_point_info_map() {
           case fast::TOWER:
               epsilon = actuatorLineInfo->epsilon_;
               break;
-          case fast::ActuatorNodeType_END:
+          default: throw std::runtime_error("Actuator line model node type not valid"); 
               break;
           }
           
