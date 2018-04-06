@@ -830,25 +830,28 @@ RadiativeTransportEquationSystem::solve_and_update()
     compute_bc_intensity();
     isInit_ = false;
   }
-
+  
   compute_radiation_source();
-
+  
+  // extract equation system status before first iteration or first ordinate solve
+  bool firstTimeStepSolve = firstTimeStepSolve_;
+  
   for ( int i = 0; i < maxIterations_; ++i ) {
-
+    
     // zero out qj, G; irradiation
     zero_out_fields();
     zero_irradiation();
-
+    
     NaluEnv::self().naluOutputP0() << "   "
-                    << userSuppliedName_ << " Iteration: " << i+1 << "/" << maxIterations_ << std::endl;
-
+                                   << userSuppliedName_ << " Iteration: " << i+1 << "/" << maxIterations_ << std::endl;
+    
     double nonLinearResidualSum = 0.0;
     double linearIterationsSum = 0.0;
     for ( int k = 0; k < ordinateDirections_; ++k ) {
-
+      
       // unload Sk and weight for this ordinate direction k
       set_current_ordinate_info(k);
-
+      
       // intensity RTE assemble, load_complete and solve
       assemble_and_solve(iTmp_);
       
@@ -862,57 +865,55 @@ RadiativeTransportEquationSystem::solve_and_update()
         realm_.get_activate_aura());
       double timeB = NaluEnv::self().nalu_time();
       timerAssemble_ += (timeB-timeA);
-   
+      
       // assemble qj, G; operates on intensity_
       assemble_fields();
-
+      
       assemble_irradiation();
-
+      
       // copy intensity_ back to intensity_k
       copy_ordinate_intensity(*intensity_, *currentIntensity_);
-
+      
       // increment solve counts and norms
       linearIterationsSum += linsys_->linearSolveIterations();
       nonLinearResidualSum += linsys_->nonLinearResidual();
-
+      
     }
-
+    
     // save total nonlinear residual
     nonLinearResidualSum_ = nonLinearResidualSum/double(ordinateDirections_);
-
-    // sa
-    if ( realm_.currentNonlinearIteration_ == 1 )
-      firstNonLinearResidualSum_ = nonLinearResidualSum_;
-
+    
+    // save the very first nonlinear residual
+    if ( firstTimeStepSolve  ) {
+      firstNonLinearResidualSum_ = std::max(std::numeric_limits<double>::epsilon(), nonLinearResidualSum_);
+      firstTimeStepSolve = false;
+    }
+    
     // normalize_irradiation
     normalize_irradiation();
-
+    
     // compute boundary intensity
     compute_bc_intensity();
-
+    
     // compute divRadFLux and norm
     compute_div_norm();
     copy_ordinate_intensity(*scalarFlux_, *scalarFluxOld_);
-
+    
     // dump norm and averages
     NaluEnv::self().naluOutputP0()
       << "EqSystem Name:       " << userSuppliedName_ << std::endl
       << "   aver iters      = " << linearIterationsSum/double(ordinateDirections_) << std::endl
-      << "nonlinearResidNrm  = " << nonLinearResidualSum/double(ordinateDirections_) 
+      << "nonlinearResidNrm  = " << nonLinearResidualSum_
       << " scaled: " << nonLinearResidualSum_/firstNonLinearResidualSum_ << std::endl
       << "Scalar flux norm   = " << systemL2Norm_ << std::endl;
     NaluEnv::self().naluOutputP0() << std::endl;
-
-    // check for convergence; min between nonlinear and "for show" system norm
-    const double bestConverged
-      = std::min(nonLinearResidualSum/double(ordinateDirections_), systemL2Norm_);
-    if ( bestConverged < convergenceTolerance_ ) {
-      NaluEnv::self().naluOutputP0() << "Intensity Equation System Converged" << std::endl;
+    
+    // check for convergence
+    if ( system_is_converged() ) {
+      NaluEnv::self().naluOutputP0() << "Local Iteration Intensity Equation System Converged" << std::endl;
       break;
     }
-
   }
-
 }
 
 //--------------------------------------------------------------------------
@@ -923,7 +924,9 @@ RadiativeTransportEquationSystem::system_is_converged()
 {
   bool isConverged = true;
   if ( NULL != linsys_ ) {
-    isConverged = (nonLinearResidualSum_/firstNonLinearResidualSum_ <  convergenceTolerance_ );
+    const double bestConverged
+      = std::min(nonLinearResidualSum_/firstNonLinearResidualSum_, systemL2Norm_);
+    isConverged = (bestConverged <  convergenceTolerance_ );
   }
   return isConverged;
 }
