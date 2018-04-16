@@ -130,6 +130,11 @@ class NonConformalInfo {
   /* save off product of search */
   std::vector<std::pair<theKey, theKey> > searchKeyPair_;
 
+  private :
+  void delete_range_points_found(std::vector<boundingSphere>                 &boundingSphereVec,
+                                 const std::vector<std::pair<theKey,theKey>> &searchKeyPair) const;
+  void repeat_search_if_needed  (const std::vector<boundingSphere>           &boundingSphereVec,
+                                 std::vector<std::pair<theKey,theKey>>       &searchKeyPair) const;
 };
 
 } // end sierra namespace

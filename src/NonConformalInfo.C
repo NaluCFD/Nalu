@@ -361,6 +361,72 @@ NonConformalInfo::construct_bounding_points()
   }
 }
 
+void
+NonConformalInfo::delete_range_points_found(std::vector<boundingSphere>                  &SphereVec,
+                                            const std::vector<std::pair<theKey, theKey>> &searchKeyPair) const {
+
+  struct compare {
+    bool operator()(const boundingSphere &a, const theKey  &b) const {return a.second < b;}   
+    bool operator()(const theKey  &a, const boundingSphere &b) const {return a < b.second;}   
+    bool operator()(const boundingSphere &a, const boundingSphere &b) const {return a.second.id() < b.second.id();}   
+  }; 
+  if (!std::is_sorted(SphereVec.begin(), SphereVec.end(), compare()))
+     std::sort (SphereVec.begin(), SphereVec.end(), compare());
+
+  std::vector<theKey> keys_found;
+  keys_found.reserve(searchKeyPair.size());
+  for (const auto &ii : searchKeyPair) {
+    keys_found.push_back(ii.first);
+  }
+  {
+    std::sort(keys_found.begin(), keys_found.end());
+    const auto it = std::unique(keys_found.begin(), keys_found.end());
+    keys_found.resize(it-keys_found.begin());
+  }
+  std::vector<boundingSphere> difference(SphereVec.size());
+  {
+    const auto it =
+      std::set_difference(
+        SphereVec.begin(),  SphereVec.end(),
+        keys_found.begin(), keys_found.end(),
+        difference.begin(), compare());
+    difference.resize(it-difference.begin());
+  }
+  swap(difference, SphereVec);
+}
+
+void
+NonConformalInfo::repeat_search_if_needed(const std::vector<boundingSphere>      &boundingSphereVec,
+                                          std::vector<std::pair<theKey, theKey>> &searchKeyPair) const {
+  unsigned num_iterations = 0;
+
+  std::vector<boundingSphere> SphereVec(boundingSphereVec);
+  delete_range_points_found(SphereVec,searchKeyPair);
+
+  int any_not_empty, not_empty = !SphereVec.empty();
+  stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &not_empty, &any_not_empty, 1);
+
+  while (any_not_empty) {
+    for (auto &ii : SphereVec) ii.first.set_radius(2*ii.first.radius());
+    std::vector<std::pair<theKey, theKey>> KeyPair;
+    stk::search::coarse_search(SphereVec, boundingFaceElementBoxVec_, searchMethod_, NaluEnv::self().parallel_comm(), KeyPair);
+
+    searchKeyPair.reserve(searchKeyPair.size() + KeyPair.size()); 
+    searchKeyPair.insert(searchKeyPair.end(), KeyPair.begin(), KeyPair.end());
+
+    delete_range_points_found(SphereVec,searchKeyPair);
+    not_empty = !SphereVec.empty();
+    stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &not_empty, &any_not_empty, 1);
+    ++num_iterations;
+
+    if (10<num_iterations) {
+      NaluEnv::self().naluOutputP0() << "NonConformalInfo::repeat_search_if_needed issue with " << name_ << std::endl; 
+      NaluEnv::self().naluOutputP0() << "Increased search tolerance 10 times and still failed to find match." << std::endl; 
+      throw std::runtime_error("Could be an internal logic error. Try turning off dynamic search tolerance algorithm...");
+    }
+  } 
+}
+
 //--------------------------------------------------------------------------
 //-------- determine_elems_to_ghost ----------------------------------------
 //--------------------------------------------------------------------------
@@ -372,6 +438,8 @@ NonConformalInfo::determine_elems_to_ghost()
 
   // perform the coarse search
   stk::search::coarse_search(boundingSphereVec_, boundingFaceElementBoxVec_, searchMethod_, NaluEnv::self().parallel_comm(), searchKeyPair_);
+    
+  if (dynamicSearchTolAlg_) repeat_search_if_needed(boundingSphereVec_, searchKeyPair_);
 
   // sort based on local gauss point
   std::sort (searchKeyPair_.begin(), searchKeyPair_.end(), sortIntLowHigh());
