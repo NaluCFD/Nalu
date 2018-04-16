@@ -26,7 +26,7 @@ public:
 
   void pre_work();
   void post_work();
-  
+  void check_jacobians();
 };
   
 
