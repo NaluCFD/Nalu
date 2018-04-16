@@ -773,7 +773,7 @@ void communicate_remote_columns(const stk::mesh::BulkData& bulk,
                                 nalu_stk::CommNeighbors& commNeighbors,
                                 unsigned numDof,
                                 const Teuchos::RCP<LinSys::Map>& ownedRowsMap,
-                                Kokkos::View<size_t*,DeviceSpace>& deviceLocallyOwnedRowLengths,
+                                Kokkos::View<size_t*,HostSpace>& deviceLocallyOwnedRowLengths,
                                 std::set<std::pair<int,GlobalOrdinal> >& communicatedColIndices)
 {   
     commNeighbors.communicate();
@@ -909,8 +909,8 @@ TpetraLinearSystem::compute_graph_row_lengths(const ConnectionVec& connectionVec
                                               LinSys::RowLengths& locallyOwnedRowLengths,
                                               nalu_stk::CommNeighbors& commNeighbors)
 {
-  Kokkos::View<size_t*,DeviceSpace> deviceGloballyOwnedRowLengths = globallyOwnedRowLengths.view<DeviceSpace>();
-  Kokkos::View<size_t*,DeviceSpace> deviceLocallyOwnedRowLengths = locallyOwnedRowLengths.view<DeviceSpace>();
+  Kokkos::View<size_t*,HostSpace> deviceGloballyOwnedRowLengths = globallyOwnedRowLengths.view<HostSpace>();
+  Kokkos::View<size_t*,HostSpace> deviceLocallyOwnedRowLengths = locallyOwnedRowLengths.view<HostSpace>();
 
   const stk::mesh::BulkData& bulk = realm_.bulk_data();
 
@@ -926,14 +926,15 @@ TpetraLinearSystem::compute_graph_row_lengths(const ConnectionVec& connectionVec
     colOwners[0] = bulk.parallel_owner_rank(get_entity_master(bulk, connectionVec[i].second, colEntityIds[0]));
     size_t rowEnd = i+1;
     while(rowEnd < numConnections && connectionVec[rowEnd].first == entity_a) {
-        if (rowEnd-i >= maxColEntities) {
+        const unsigned idx = rowEnd-i;
+        if (idx >= maxColEntities) {
             colEntityIds.resize(2*maxColEntities);
             colOwners.resize(2*maxColEntities);
             maxColEntities *= 2;
         }
         stk::mesh::Entity colEntity = connectionVec[rowEnd].second;
-        colEntityIds[rowEnd-i] = *stk::mesh::field_data(*realm_.naluGlobalId_, colEntity);
-        colOwners[rowEnd-i] = bulk.parallel_owner_rank(get_entity_master(bulk, colEntity, colEntityIds[rowEnd-i]));
+        colEntityIds[idx] = *stk::mesh::field_data(*realm_.naluGlobalId_, colEntity);
+        colOwners[idx] = bulk.parallel_owner_rank(get_entity_master(bulk, colEntity, colEntityIds[idx]));
         ++rowEnd;
     }
     unsigned numColEntities = rowEnd - i;
@@ -961,7 +962,7 @@ TpetraLinearSystem::compute_graph_row_lengths(const ConnectionVec& connectionVec
             continue;
         }
         const stk::mesh::EntityId entityId_b = colEntityIds[ii-i];
-        const int entity_b_status = (entityId_a != entityId_b) ? getDofStatus(entity_b) : entity_a_status;
+        const int entity_b_status = getDofStatus(entity_b);
         const bool entity_b_owned = entity_b_status & DS_OwnedDOF;
         LocalOrdinal lid_b = entityToLID_[entity_b.local_offset()];
         add_to_length(deviceLocallyOwnedRowLengths, deviceGloballyOwnedRowLengths, numDof_, lid_b, maxOwnedRowId_, entity_b_owned, 1);
@@ -1005,9 +1006,7 @@ TpetraLinearSystem::insert_graph_connections(const ConnectionVec& connectionVec,
   for(size_t i=0; i<numConnections; ) {
     const stk::mesh::Entity entity_a = connectionVec[i].first;
     int dofStatus_a = getDofStatus(entity_a);
-    {
-      localDofs_a[0] = entityToColLID_[entity_a.local_offset()];
-    }
+    localDofs_a[0] = entityToColLID_[entity_a.local_offset()];
 
     while(i+numColEntities<numConnections && connectionVec[i+numColEntities].first == entity_a) {
         if (numColEntities >= max) {
@@ -1223,7 +1222,7 @@ void verify_same_except_sort_order(const std::vector<GlobalOrdinal>& vec1, const
 }
 
 void verify_row_lengths(const LinSys::Graph& graph,
-                        const Kokkos::View<size_t*,DeviceSpace>& rowLengths, int localProc)
+                        const Kokkos::View<size_t*,HostSpace>& rowLengths, int localProc)
 {
   ThrowRequireMsg(graph.getNodeNumRows() == rowLengths.size(),
                   "Error, graph.getNodeNumRows="<<graph.getNodeNumRows()<<" must equal "
@@ -1271,15 +1270,17 @@ void dump_graph(const std::string& name, int counter, int proc, LinSys::Graph& g
     }
 }
 
-void remove_invalid_indices(LocalGraphArrays& csg, Kokkos::View<size_t*,DeviceSpace>& rowLengths)
+void remove_invalid_indices(LocalGraphArrays& csg, Kokkos::View<size_t*,HostSpace>& rowLengths)
 {
-  size_t nnz = csg.rowPointers[rowLengths.size()];
+  size_t nnz = csg.rowPointers(rowLengths.size());
+  const LocalOrdinal* cols = csg.colIndices.data();
+  const size_t* rowPtrs = csg.rowPointers.data();
   size_t newNnz = 0;
   for(int i=0, ie=csg.rowPointers.size()-1; i<ie; ++i) {
-    LocalOrdinal* row = &csg.colIndices[csg.rowPointers[i]];
+    const LocalOrdinal* row = cols+rowPtrs[i];
     int rowLen = csg.rowPointers[i+1]-csg.rowPointers[i];
     for(int j=rowLen-1; j>=0; --j) {
-      if (row[j] != LocalGraphArrays::INVALID) {
+      if (row[j] != INVALID) {
         rowLengths(i) = j+1;
         break;
       }
@@ -1288,12 +1289,14 @@ void remove_invalid_indices(LocalGraphArrays& csg, Kokkos::View<size_t*,DeviceSp
   }
 
   if (newNnz < nnz) {
-    Teuchos::ArrayRCP<LocalOrdinal> newColIndices = Teuchos::arcp<LocalOrdinal>(newNnz);
+    Kokkos::View<LocalOrdinal*> newColIndices(Kokkos::ViewAllocateWithoutInitializing("colInds"),newNnz);
+    LocalOrdinal* newCols = newColIndices.data();
+    const size_t* rowLens = rowLengths.data();
     int index = 0;
     for(int i=0, ie=csg.rowPointers.size()-1; i<ie; ++i) {
-      int rowBeg = csg.rowPointers[i];
-      for(int j=rowBeg, jend=rowBeg+rowLengths(i); j<jend; ++j) {
-        newColIndices[index++] = csg.colIndices[j];
+      const LocalOrdinal* row = cols+rowPtrs[i];
+      for(size_t j=0; j<rowLens[i]; ++j) {
+        newCols[index++] = row[j];
       }
     }
     csg.colIndices = newColIndices;
@@ -1320,8 +1323,8 @@ TpetraLinearSystem::finalizeLinearSystem()
   size_t numLocallyOwned = ownedRowsMap_->getMyGlobalIndices().dimension(0);
   LinSys::RowLengths globallyOwnedRowLengths("rowLengths", numGloballyOwned);
   LinSys::RowLengths locallyOwnedRowLengths("rowLengths", numLocallyOwned);
-  Kokkos::View<size_t*,DeviceSpace> ownedRowLengths = locallyOwnedRowLengths.view<DeviceSpace>();
-  Kokkos::View<size_t*,DeviceSpace> globalRowLengths = globallyOwnedRowLengths.view<DeviceSpace>();
+  Kokkos::View<size_t*,HostSpace> ownedRowLengths = locallyOwnedRowLengths.view<HostSpace>();
+  Kokkos::View<size_t*,HostSpace> globalRowLengths = globallyOwnedRowLengths.view<HostSpace>();
 
   std::vector<int> neighborProcs;
   fill_neighbor_procs(neighborProcs, bulkData, realm_);

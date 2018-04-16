@@ -122,7 +122,6 @@ private:
   std::vector<unsigned char> m_recv_data;
   std::vector<int> m_send_procs;
   std::vector<int> m_recv_procs;
-  std::vector<int> m_neighbor_procs;
 };
 
 }

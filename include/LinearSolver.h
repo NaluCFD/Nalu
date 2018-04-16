@@ -55,6 +55,8 @@ namespace nalu{
 class LinearSolvers;
 class Simulation;
 
+const LocalOrdinal INVALID = std::numeric_limits<LocalOrdinal>::max();
+
 /** LocalGraphArrays is a helper class for building the arrays describing
  * the local csr graph, rowPointers and colIndices. These arrays are passed
  * to the TpetraCrsGraph::setAllIndices method. This helper class is used
@@ -63,24 +65,23 @@ class Simulation;
  */
 class LocalGraphArrays {
 public:
-  static const LocalOrdinal INVALID = std::numeric_limits<LocalOrdinal>::max();
 
-  LocalGraphArrays(const Kokkos::View<size_t*,sierra::nalu::DeviceSpace>& rowLengths)
-  : rowPointers(Teuchos::arcp<size_t>(rowLengths.size()+1)),
+  LocalGraphArrays(const Kokkos::View<size_t*,sierra::nalu::HostSpace>& rowLengths)
+  : rowPointers(Kokkos::View<size_t*>(Kokkos::ViewAllocateWithoutInitializing("rowPtrs"),rowLengths.size()+1)),
     colIndices()
   {
     size_t nnz = compute_row_pointers(rowPointers, rowLengths);
-    colIndices = Teuchos::arcp<LocalOrdinal>(nnz);
-    for(int i=0, iend=colIndices.size(); i<iend; ++i) { colIndices[i] = INVALID; }
+    colIndices = Kokkos::View<LocalOrdinal*>(Kokkos::ViewAllocateWithoutInitializing("colIndices"), nnz);
+    Kokkos::deep_copy(colIndices, INVALID);
   }
 
   size_t get_row_length(size_t localRow) const { return rowPointers[localRow+1]-rowPointers[localRow]; }
 
   void insertIndices(size_t localRow, size_t numInds, const LocalOrdinal* inds, int numDof)
   {
-    LocalOrdinal* row = &colIndices[rowPointers[localRow]];
-    size_t rowLen = rowPointers[localRow+1] - rowPointers[localRow];
-    LocalOrdinal* rowEnd = find_first_invalid(row, rowLen);
+    LocalOrdinal* row = &colIndices(rowPointers(localRow));
+    size_t rowLen = get_row_length(localRow);
+    LocalOrdinal* rowEnd = std::find(row, row+rowLen, INVALID);
     for(size_t i=0; i<numInds; ++i) {
       LocalOrdinal* insertPoint = std::lower_bound(row, rowEnd, inds[i]);
       if (insertPoint <= rowEnd && *insertPoint != inds[i]) {
@@ -90,20 +91,22 @@ public:
     }
   }
 
-  static size_t compute_row_pointers(Teuchos::ArrayRCP<size_t>& rowPtrs,
-                                   const Kokkos::View<size_t*,sierra::nalu::DeviceSpace>& rowLengths)
+  static size_t compute_row_pointers(Kokkos::View<size_t*>& rowPtrs,
+                                   const Kokkos::View<size_t*,sierra::nalu::HostSpace>& rowLengths)
   {
     size_t nnz = 0;
-    for(unsigned i=0; i<rowLengths.size(); ++i) {
-      rowPtrs[i] = nnz;
-      nnz += rowLengths(i);
+    size_t* rowPtrData = rowPtrs.data();
+    const size_t* rowLens = rowLengths.data();
+    for(unsigned i=0, iend=rowLengths.size(); i<iend; ++i) {
+      rowPtrData[i] = nnz;
+      nnz += rowLens[i];
     }
-    rowPtrs[rowLengths.size()] = nnz;
+    rowPtrData[rowLengths.size()] = nnz;
     return nnz;
   }
 
-  Teuchos::ArrayRCP<size_t> rowPointers;
-  Teuchos::ArrayRCP<LocalOrdinal> colIndices;
+  Kokkos::View<size_t*> rowPointers;
+  Kokkos::View<LocalOrdinal*> colIndices;
 
 private:
 
@@ -115,16 +118,6 @@ private:
     for(int i=0; i<numDof; ++i) {
       *insertPoint++ = ind+i;
     }
-  }
-
-  LocalOrdinal* find_first_invalid(LocalOrdinal* rowBegin, size_t rowLen)
-  {
-    for(size_t i=0; i<rowLen; ++i) {
-      if (rowBegin[i] == INVALID) {
-        return rowBegin+i;
-      } 
-    }
-    return rowBegin+rowLen;
   }
 };
 

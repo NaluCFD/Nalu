@@ -40,6 +40,7 @@
 #include <stdexcept>
 #include <sstream>
 #include <iostream>
+#include <cstring>
 #include <vector>
 #include <algorithm>
 
@@ -84,7 +85,17 @@ CommNeighbors::CommNeighbors( stk::ParallelMachine comm, const std::vector<int>&
 {
   m_send.resize(m_size);
   m_recv.resize(m_size);
-  std::sort(m_neighbor_procs.begin(), m_neighbor_procs.end());
+  stk::util::sort_and_unique(m_send_procs);
+  stk::util::sort_and_unique(m_recv_procs);
+  MPI_Info info;
+  MPI_Info_create(&info);
+  int reorder = 0;
+  const int* weights = (int*)MPI_UNWEIGHTED;
+  MPI_Dist_graph_create_adjacent(comm,
+              m_recv_procs.size(), m_recv_procs.data(), weights,
+              m_send_procs.size(), m_send_procs.data(), weights,
+              info, reorder, &m_comm);
+  MPI_Info_free(&info);
 }
 
 CommNeighbors::CommNeighbors( stk::ParallelMachine comm, const std::vector<int>& send_procs, const std::vector<int>& recv_procs)
@@ -102,52 +113,91 @@ CommNeighbors::CommNeighbors( stk::ParallelMachine comm, const std::vector<int>&
   m_recv.resize(m_size);
   stk::util::sort_and_unique(m_send_procs);
   stk::util::sort_and_unique(m_recv_procs);
+  MPI_Info info;
+  MPI_Info_create(&info);
+  int reorder = 0;
+  const int* weights = (int*)MPI_UNWEIGHTED;
+  MPI_Dist_graph_create_adjacent(comm,
+              m_recv_procs.size(), m_recv_procs.data(), weights,
+              m_send_procs.size(), m_send_procs.data(), weights,
+              info, reorder, &m_comm);
+  MPI_Info_free(&info);
+}
+
+void setup_buffers(const std::vector<int>& procs,
+                   const std::vector<CommBufferV>& data,
+                   std::vector<int>& counts,
+                   std::vector<int>& displs,
+                   std::vector<unsigned char>& buf)
+{
+  counts.resize(procs.size());
+  displs.resize(procs.size());
+
+  int totalBytes = 0;
+  for(size_t i=0; i<procs.size(); ++i) {
+    int p = procs[i];
+    counts[i] = data[p].size_in_bytes();
+    displs[i] = totalBytes;
+    totalBytes += counts[i];
+  }
+
+  buf.resize(totalBytes, 0);
+  buf.clear();
+
+  for(size_t i=0; i<procs.size(); ++i) {
+    int p = procs[i];
+    const unsigned char* rawbuf = data[p].raw_buffer();
+    size_t len = counts[i];
+    buf.insert(buf.end(), rawbuf, rawbuf+len);
+  }
+}
+
+void store_recvd_data(const std::vector<unsigned char>& recvBuf,
+                      const std::vector<int>& recvCounts,
+                      const std::vector<int>& recvDispls,
+                      const std::vector<int>& recvProcs,
+                      std::vector<CommBufferV>& m_recv)
+{
+  for(size_t i=0; i<recvProcs.size(); ++i) {
+    int p = recvProcs[i];
+    const unsigned char* buf = recvBuf.data() + recvDispls[i];
+    int len = recvCounts[i];
+    m_recv[p].resize(len);
+    std::memcpy(m_recv[p].raw_buffer(), buf, len);
+  }
 }
 
 void CommNeighbors::communicate()
 {
-  const int mpitag = 10101, mpitag2 = 10102;
-  int maxRecvProcs = m_recv_procs.size();
-  int maxSendProcs = m_send_procs.size();
-  int max = std::max(maxSendProcs, maxRecvProcs);
-  std::vector<int> recv_sizes(maxRecvProcs, 0);
-  std::vector<MPI_Request> requests(max, MPI_REQUEST_NULL);
-  std::vector<MPI_Request> requests2(max, MPI_REQUEST_NULL);
-  std::vector<MPI_Request> requests3(max, MPI_REQUEST_NULL);
-  std::vector<MPI_Status> statuses(max);
-  for(int i=0; i<maxRecvProcs; ++i) {
-      int p = m_recv_procs[i];
-      MPI_Irecv(&recv_sizes[i], 1, MPI_INT, p, mpitag, m_comm, &requests[i]);
+  if (m_size == 1) {
+    int len = m_send[0].size_in_bytes();
+    const unsigned char* buf = m_send[0].raw_buffer();
+    m_recv[0].resize(len);
+    std::memcpy(m_recv[0].raw_buffer(), buf, len);
+    return;
   }
 
-  int numSends = 0;
-  for(int p : m_send_procs) {
-      int send_size = m_send[p].size_in_bytes();
-      MPI_Ssend(&send_size, 1, MPI_INT, p, mpitag, m_comm);
-      if (send_size > 0) {
-          MPI_Issend(m_send[p].raw_buffer(), m_send[p].size_in_bytes(), MPI_BYTE, p, mpitag2, m_comm, &requests2[numSends++]);
-      }
-  }
+  std::vector<int> sendCounts, recvCounts(m_recv_procs.size(), 0);
+  std::vector<int> sendDispls, recvDispls(m_recv_procs.size(), 0);
+  std::vector<unsigned char> sendBuf, recvBuf;
 
-  MPI_Status status;
-  int numRecvProcs = 0;
-  for(int i=0; i<maxRecvProcs; ++i) {
-      int idx = 0;
-      MPI_Waitany(maxRecvProcs, &requests[0], &idx, &status);
-      int p = status.MPI_SOURCE;
-      if (recv_sizes[idx] > 0) {
-          m_recv[p].resize(recv_sizes[idx]);
-          MPI_Irecv(m_recv[p].raw_buffer(), m_recv[p].size_in_bytes(), MPI_BYTE, p, mpitag2, m_comm, &requests3[numRecvProcs]);
-          numRecvProcs++;
-      }   
-  }
+  setup_buffers(m_send_procs, m_send, sendCounts, sendDispls, sendBuf);
 
-  if (numRecvProcs > 0) {
-      MPI_Waitall(numRecvProcs, requests3.data(), statuses.data());
+  MPI_Neighbor_alltoall(sendCounts.data(), 1, MPI_INT,
+                        recvCounts.data(), 1, MPI_INT, m_comm);
+
+  int totalRecv = 0;
+  for(size_t i=0; i<recvCounts.size(); ++i) {
+    recvDispls[i] = totalRecv;
+    totalRecv += recvCounts[i];
   }
-  if (numSends > 0) {
-      MPI_Waitall(numSends, requests2.data(), statuses.data());
-  }
+  recvBuf.resize(totalRecv);
+
+  MPI_Neighbor_alltoallv(
+      sendBuf.data(), sendCounts.data(), sendDispls.data(), MPI_BYTE,
+      recvBuf.data(), recvCounts.data(), recvDispls.data(), MPI_BYTE, m_comm);
+
+  store_recvd_data(recvBuf, recvCounts, recvDispls, m_recv_procs, m_recv);
 }
 
 #endif

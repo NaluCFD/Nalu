@@ -67,6 +67,7 @@ public:
     }
 
     unsigned char* raw_buffer() { return data_buffer.data(); }
+    const unsigned char* raw_buffer() const { return data_buffer.data(); }
 
     template<typename T>
     void pack(const T& item) {

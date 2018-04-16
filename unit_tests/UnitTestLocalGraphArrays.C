@@ -1,38 +1,30 @@
 #include <gtest/gtest.h>
 
-#include <Teuchos_ArrayRCP.hpp>
 #include <KokkosInterface.h>
 #include <LinearSolver.h>
 
 #include <limits>
 #include <vector>
 
-TEST(ArrayRCP, basic)
-{
-  unsigned N = 10;
-  Teuchos::ArrayRCP<size_t> a = Teuchos::arcp<size_t>(N);
-  EXPECT_EQ(N, a.size());
-}
-
 TEST(LocalGraphArrays, compute_row_pointers)
 {
   unsigned N = 5;
   size_t nnz = 0;
-  Kokkos::View<size_t*,sierra::nalu::DeviceSpace> rowLengths("rowLengths", N);
+  Kokkos::View<size_t*,sierra::nalu::HostSpace> rowLengths("rowLengths", N);
   for(unsigned i=0; i<N; ++i) {
     rowLengths(i) = i+2;
     nnz += rowLengths(i);
   }
 
-  Teuchos::ArrayRCP<size_t> rowPointers = Teuchos::arcp<size_t>(N+1);
+  Kokkos::View<size_t*> rowPointers("rowPtrs", N+1);
   sierra::nalu::LocalGraphArrays::compute_row_pointers(rowPointers, rowLengths);
-  EXPECT_EQ(nnz, rowPointers[N]);
+  EXPECT_EQ(nnz, rowPointers(N));
 }
 
 Teuchos::RCP<sierra::nalu::LocalGraphArrays> create_graph(const std::vector<size_t>& rowLens)
 {
   unsigned N = rowLens.size();
-  Kokkos::View<size_t*,sierra::nalu::DeviceSpace> rowLengths("rowLengths", N);
+  Kokkos::View<size_t*,sierra::nalu::HostSpace> rowLengths("rowLengths", N);
   for(unsigned i=0; i<N; ++i) {
     rowLengths(i) = rowLens[i];
   }
@@ -65,7 +57,7 @@ TEST(LocalGraphArrays, insertIndicesNumDof1)
   cols = {7, 8, 6, 5};
   csg->insertIndices(2, cols.size(), cols.data(), numDof);
 
-  for(int i=0; i<csg->colIndices.size(); ++i) {
+  for(size_t i=0; i<csg->colIndices.size(); ++i) {
     EXPECT_EQ((int)i, csg->colIndices[i]);
   }
 
@@ -75,7 +67,7 @@ TEST(LocalGraphArrays, insertIndicesNumDof1)
   dupCols = {2, 3, 4};
   csg->insertIndices(1, dupCols.size(), dupCols.data(), numDof);
 
-  for(int i=0; i<csg->colIndices.size(); ++i) {
+  for(size_t i=0; i<csg->colIndices.size(); ++i) {
     EXPECT_EQ((int)i, csg->colIndices[i]);
   }
 }
@@ -96,7 +88,7 @@ TEST(LocalGraphArrays, insertIndicesNumDof3)
   csg->insertIndices(2, cols.size(), cols.data(), numDof);
 
   EXPECT_EQ(27, csg->colIndices.size());
-  for(int i=0; i<csg->colIndices.size(); ++i) {
+  for(size_t i=0; i<csg->colIndices.size(); ++i) {
     EXPECT_EQ((int)i, csg->colIndices[i]);
   }
 
@@ -107,7 +99,7 @@ TEST(LocalGraphArrays, insertIndicesNumDof3)
   csg->insertIndices(1, dupCols.size(), dupCols.data(), numDof);
 
   EXPECT_EQ(27, csg->colIndices.size());
-  for(int i=0; i<csg->colIndices.size(); ++i) {
+  for(size_t i=0; i<csg->colIndices.size(); ++i) {
     EXPECT_EQ((int)i, csg->colIndices[i]);
   }
 }
