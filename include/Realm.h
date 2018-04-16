@@ -477,8 +477,12 @@ class Realm {
   // part for new edges
   stk::mesh::Part *edgesPart_;
 
+  // cheack that all exposed surfaces have a bc applied
   bool checkForMissingBcs_;
 
+  // check if there are negative Jacobians
+  bool checkJacobians_;
+  
   // types of physics
   bool isothermalFlow_;
   bool uniformFlow_;

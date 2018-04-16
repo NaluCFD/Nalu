@@ -51,6 +51,8 @@ realms:
   - name: mmRealm
     mesh: ../../mesh/waterChannel_cgs.g
     use_edges: no 
+    check_jacobians: yes
+
     equation_systems:
       name: theEqSys
       max_iterations: 1 

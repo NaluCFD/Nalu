@@ -11,6 +11,7 @@
 #include <Algorithm.h>
 #include <AlgorithmDriver.h>
 #include <FieldTypeDef.h>
+#include <master_element/MasterElement.h>
 #include <Realm.h>
 
 // stk_mesh/base/fem
@@ -135,7 +136,106 @@ ComputeGeometryAlgorithmDriver::post_work()
     realm_.periodic_field_update(dualNodalVolume, fieldSize);
   }
 
+  if ( realm_.checkJacobians_ ) {
+    check_jacobians();
+  }
 }
 
+//--------------------------------------------------------------------------
+//-------- check_jacobians -------------------------------------------------
+//--------------------------------------------------------------------------
+void
+ComputeGeometryAlgorithmDriver::check_jacobians()
+{
+  bool badElemFound = false;
+
+  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
+  const int nDim = meta_data.spatial_dimension();
+
+  // fields and future ws 
+  VectorFieldType *coordinates 
+    = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+
+  std::vector<double> ws_coordinates;
+  std::vector<double> ws_scv_volume;
+  
+  // extract target parts
+  std::vector<std::string> targetNames = realm_.get_physics_target_names();
+  
+  for (size_t itarget=0; itarget < targetNames.size(); ++itarget) {
+  
+    std::vector<stk::mesh::EntityId> localBadElemVec;
+    
+    stk::mesh::Part *targetPart = meta_data.get_part(targetNames[itarget]);
+
+    // define some common selectors
+    stk::mesh::Selector s_locally_owned = meta_data.locally_owned_part() & stk::mesh::Selector(*targetPart);
+
+    stk::mesh::BucketVector const& elem_buckets =
+      realm_.get_buckets( stk::topology::ELEM_RANK, s_locally_owned );
+    for ( stk::mesh::BucketVector::const_iterator ib = elem_buckets.begin();
+          ib != elem_buckets.end() ; ++ib ) {
+      stk::mesh::Bucket & b = **ib ;
+      const stk::mesh::Bucket::size_type length   = b.size();
+      
+      MasterElement *meSCV = sierra::nalu::MasterElementRepo::get_volume_master_element(b.topology());
+
+      // extract master element specifics
+      const int nodesPerElement = meSCV->nodesPerElement_;
+      const int numScvIp = meSCV->numIntPoints_;
+
+      // resize
+      ws_coordinates.resize(nodesPerElement*nDim);
+      ws_scv_volume.resize(numScvIp);
+
+      double *p_coordinates = &ws_coordinates[0];
+      double *p_scv_volume = &ws_scv_volume[0];
+      
+      for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+
+        stk::mesh::Entity const *  node_rels = b.begin_nodes(k);
+        int num_nodes = b.num_nodes(k);
+        
+        for ( int ni = 0; ni < num_nodes; ++ni ) {
+          stk::mesh::Entity node = node_rels[ni];
+          const double * coords = stk::mesh::field_data(*coordinates, node );
+          const int niNdim = ni*nDim;
+          for ( int j=0; j < nDim; ++j ) {
+            p_coordinates[niNdim+j] = coords[j];
+          }
+        }
+        
+        double scv_error = 0.0;
+        meSCV->determinant(1, &p_coordinates[0], &p_scv_volume[0], &scv_error);
+        
+        bool localBadElem = false;
+        for ( int ip = 0; ip < numScvIp; ++ip ) {
+          if ( p_scv_volume[ip] < 0.0 )
+            localBadElem = true;
+        }
+        
+        if ( localBadElem == true ) {
+          localBadElemVec.push_back(bulk_data.identifier(b[k]));
+          badElemFound = true;
+        }
+      }
+      
+    }
+    
+    // report
+    if ( localBadElemVec.size() > 0 ) {
+      NaluEnv::self().naluOutput() << "ComputeGeometryAlgorithmDriver::check_jacobians() ERROR on block " 
+                                   << targetPart->name() << std::endl;
+      for ( size_t n = 0; n < localBadElemVec.size(); ++n ) 
+        NaluEnv::self().naluOutput() << " Negative Jacobian found in Element global Id: " << localBadElemVec[n] << std::endl;
+    } 
+  }
+
+  // no need to proceed
+  if ( badElemFound )
+    throw std::runtime_error("ComputeGeometryAlgorithmDriver::check_jacobians() Error");
+}
+  
 } // namespace nalu
 } // namespace Sierra

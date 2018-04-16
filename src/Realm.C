@@ -233,6 +233,7 @@ namespace nalu{
     exposedBoundaryPart_(0),
     edgesPart_(0),
     checkForMissingBcs_(false),
+    checkJacobians_(false),
     isothermalFlow_(true),
     uniformFlow_(true),
     provideEntityCount_(false),
@@ -637,6 +638,9 @@ Realm::load(const YAML::Node & node)
 
   // exposed bc check
   get_if_present(node, "check_for_missing_bcs", checkForMissingBcs_, checkForMissingBcs_);
+
+  // check for bad Jacobians in the mesh
+  get_if_present(node, "check_jacobians", checkJacobians_, checkJacobians_);
 
   // entity count
   get_if_present(node, "provide_entity_count", provideEntityCount_, provideEntityCount_);
