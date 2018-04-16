@@ -16,7 +16,7 @@ TEST(LocalGraphArrays, compute_row_pointers)
     nnz += rowLengths(i);
   }
 
-  Kokkos::View<size_t*> rowPointers("rowPtrs", N+1);
+  Kokkos::View<size_t*,sierra::nalu::HostSpace> rowPointers("rowPtrs", N+1);
   sierra::nalu::LocalGraphArrays::compute_row_pointers(rowPointers, rowLengths);
   EXPECT_EQ(nnz, rowPointers(N));
 }

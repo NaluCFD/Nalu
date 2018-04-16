@@ -1289,7 +1289,7 @@ void remove_invalid_indices(LocalGraphArrays& csg, Kokkos::View<size_t*,HostSpac
   }
 
   if (newNnz < nnz) {
-    Kokkos::View<LocalOrdinal*> newColIndices(Kokkos::ViewAllocateWithoutInitializing("colInds"),newNnz);
+    Kokkos::View<LocalOrdinal*,HostSpace> newColIndices(Kokkos::ViewAllocateWithoutInitializing("colInds"),newNnz);
     LocalOrdinal* newCols = newColIndices.data();
     const size_t* rowLens = rowLengths.data();
     int index = 0;
