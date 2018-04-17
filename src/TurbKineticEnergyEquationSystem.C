@@ -64,6 +64,8 @@
 #include <kernel/ScalarUpwAdvDiffElemKernel.h>
 #include <kernel/TurbKineticEnergyKsgsSrcElemKernel.h>
 #include <kernel/TurbKineticEnergyKsgsDesignOrderSrcElemKernel.h>
+#include <kernel/TurbKineticEnergySSTSrcElemKernel.h>
+#include <kernel/TurbKineticEnergySSTDESSrcElemKernel.h>
 
 // nso
 #include <nso/ScalarNSOElemKernel.h>
@@ -418,11 +420,27 @@ TurbKineticEnergyEquationSystem::register_interior_algorithm(
       build_topo_kernel_if_requested<TurbKineticEnergyKsgsSrcElemKernel>
         (partTopo, *this, activeKernels, "ksgs",
          realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs);
-      
+
       build_topo_kernel_if_requested<TurbKineticEnergyKsgsDesignOrderSrcElemKernel>
         (partTopo, *this, activeKernels, "design_order_ksgs",
          realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs);
-      
+
+      build_topo_kernel_if_requested<TurbKineticEnergySSTSrcElemKernel>
+        (partTopo, *this, activeKernels, "sst",
+         realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs, false);
+
+      build_topo_kernel_if_requested<TurbKineticEnergySSTSrcElemKernel>
+        (partTopo, *this, activeKernels, "lumped_sst",
+         realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs, true);
+
+      build_topo_kernel_if_requested<TurbKineticEnergySSTDESSrcElemKernel>
+        (partTopo, *this, activeKernels, "sst_des",
+         realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs, false);
+
+      build_topo_kernel_if_requested<TurbKineticEnergySSTDESSrcElemKernel>
+        (partTopo, *this, activeKernels, "lumped_sst_des",
+         realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs, true);
+
       build_topo_kernel_if_requested<ScalarNSOElemKernel>
         (partTopo, *this, activeKernels, "NSO_2ND",
          realm_.bulk_data(), *realm_.solutionOptions_, tke_, dkdx_, evisc_, 0.0, 0.0, dataPreReqs);
