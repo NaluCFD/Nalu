@@ -72,6 +72,23 @@ CommNeighbors::~CommNeighbors()
   m_rank = 0 ;
 }
 
+stk::ParallelMachine CommNeighbors::setup_neighbor_comm(stk::ParallelMachine fullComm,
+                                                        const std::vector<int>& sendProcs,
+                                                        const std::vector<int>& recvProcs)
+{
+  MPI_Info info;
+  MPI_Info_create(&info);
+  int reorder = 0;
+  const int* weights = (int*)MPI_UNWEIGHTED;
+  stk::ParallelMachine neighborComm;
+  MPI_Dist_graph_create_adjacent(fullComm,
+              recvProcs.size(), recvProcs.data(), weights,
+              sendProcs.size(), sendProcs.data(), weights,
+              info, reorder, &neighborComm);
+  MPI_Info_free(&info);
+  return neighborComm;
+}
+
 CommNeighbors::CommNeighbors( stk::ParallelMachine comm, const std::vector<int>& neighbor_procs)
   : m_comm( comm ),
     m_size( stk::parallel_machine_size( comm ) ),
@@ -87,15 +104,8 @@ CommNeighbors::CommNeighbors( stk::ParallelMachine comm, const std::vector<int>&
   m_recv.resize(m_size);
   stk::util::sort_and_unique(m_send_procs);
   stk::util::sort_and_unique(m_recv_procs);
-  MPI_Info info;
-  MPI_Info_create(&info);
-  int reorder = 0;
-  const int* weights = (int*)MPI_UNWEIGHTED;
-  MPI_Dist_graph_create_adjacent(comm,
-              m_recv_procs.size(), m_recv_procs.data(), weights,
-              m_send_procs.size(), m_send_procs.data(), weights,
-              info, reorder, &m_comm);
-  MPI_Info_free(&info);
+
+  m_comm = setup_neighbor_comm(comm, m_send_procs, m_recv_procs);
 }
 
 CommNeighbors::CommNeighbors( stk::ParallelMachine comm, const std::vector<int>& send_procs, const std::vector<int>& recv_procs)
@@ -113,15 +123,8 @@ CommNeighbors::CommNeighbors( stk::ParallelMachine comm, const std::vector<int>&
   m_recv.resize(m_size);
   stk::util::sort_and_unique(m_send_procs);
   stk::util::sort_and_unique(m_recv_procs);
-  MPI_Info info;
-  MPI_Info_create(&info);
-  int reorder = 0;
-  const int* weights = (int*)MPI_UNWEIGHTED;
-  MPI_Dist_graph_create_adjacent(comm,
-              m_recv_procs.size(), m_recv_procs.data(), weights,
-              m_send_procs.size(), m_send_procs.data(), weights,
-              info, reorder, &m_comm);
-  MPI_Info_free(&info);
+
+  m_comm = setup_neighbor_comm(comm, m_send_procs, m_recv_procs);
 }
 
 void setup_buffers(const std::vector<int>& procs,
@@ -167,6 +170,34 @@ void store_recvd_data(const std::vector<unsigned char>& recvBuf,
   }
 }
 
+void CommNeighbors::perform_neighbor_communication(MPI_Comm neighborComm,
+                                                   const std::vector<unsigned char>& sendBuf,
+                                                   const std::vector<int>& sendCounts,
+                                                   const std::vector<int>& sendDispls,
+                                                         std::vector<unsigned char>& recvBuf,
+                                                         std::vector<int>& recvCounts,
+                                                         std::vector<int>& recvDispls)
+{
+  ThrowAssertMsg(sendCounts.size()==m_send_procs.size(), "Error, sendCounts should be same size as m_send_procs.");
+  ThrowAssertMsg(sendDispls.size()==m_send_procs.size(), "Error, sendDispls should be same size as m_send_procs.");
+  ThrowAssertMsg(recvCounts.size()==m_recv_procs.size(), "Error, recvCounts should be same size as m_recv_procs.");
+  ThrowAssertMsg(recvDispls.size()==m_recv_procs.size(), "Error, recvDispls should be same size as m_recv_procs.");
+
+  MPI_Neighbor_alltoall(sendCounts.data(), 1, MPI_INT,
+                        recvCounts.data(), 1, MPI_INT, neighborComm);
+
+  int totalRecv = 0;
+  for(size_t i=0; i<recvCounts.size(); ++i) {
+    recvDispls[i] = totalRecv;
+    totalRecv += recvCounts[i];
+  }
+  recvBuf.resize(totalRecv);
+
+  MPI_Neighbor_alltoallv(
+      sendBuf.data(), sendCounts.data(), sendDispls.data(), MPI_BYTE,
+      recvBuf.data(), recvCounts.data(), recvDispls.data(), MPI_BYTE, neighborComm);
+}
+
 void CommNeighbors::communicate()
 {
   if (m_size == 1) {
@@ -183,19 +214,8 @@ void CommNeighbors::communicate()
 
   setup_buffers(m_send_procs, m_send, sendCounts, sendDispls, sendBuf);
 
-  MPI_Neighbor_alltoall(sendCounts.data(), 1, MPI_INT,
-                        recvCounts.data(), 1, MPI_INT, m_comm);
-
-  int totalRecv = 0;
-  for(size_t i=0; i<recvCounts.size(); ++i) {
-    recvDispls[i] = totalRecv;
-    totalRecv += recvCounts[i];
-  }
-  recvBuf.resize(totalRecv);
-
-  MPI_Neighbor_alltoallv(
-      sendBuf.data(), sendCounts.data(), sendDispls.data(), MPI_BYTE,
-      recvBuf.data(), recvCounts.data(), recvDispls.data(), MPI_BYTE, m_comm);
+  perform_neighbor_communication(m_comm, sendBuf, sendCounts, sendDispls,
+                                         recvBuf, recvCounts, recvDispls);
 
   store_recvd_data(recvBuf, recvCounts, recvDispls, m_recv_procs, m_recv);
 }

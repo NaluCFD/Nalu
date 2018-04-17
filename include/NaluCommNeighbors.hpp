@@ -98,8 +98,19 @@ public:
 
   ~CommNeighbors();
 
-private:
+protected:
 
+  virtual stk::ParallelMachine setup_neighbor_comm(stk::ParallelMachine fullComm,
+                                                  const std::vector<int>& sendProcs,
+                                                  const std::vector<int>& recvProcs);
+
+  virtual void perform_neighbor_communication(MPI_Comm neighborComm,
+                                              const std::vector<unsigned char>& sendBuf,
+                                              const std::vector<int>& sendCounts,
+                                              const std::vector<int>& sendDispls,
+                                                    std::vector<unsigned char>& recvBuf,
+                                                    std::vector<int>& recvCounts,
+                                                    std::vector<int>& recvDispls);
   //----------------------------------------
   /** default Constructor not allowed
    */
