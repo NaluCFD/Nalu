@@ -157,6 +157,7 @@ public:
   double mdotAlgOpenCorrection_;
   size_t mdotAlgOpenIpCount_;
   double mdotAlgOpenPost_;
+  bool explicitlyZeroOpenPressureGradient_;
 
   // turbulence model coeffs
   std::map<TurbulenceModelConstant, double> turbModelConstantMap_;
