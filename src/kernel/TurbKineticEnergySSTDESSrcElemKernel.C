@@ -30,6 +30,7 @@ TurbKineticEnergySSTDESSrcElemKernel<AlgTraits>::
     const bool lumpedMass)
   : Kernel(),
     lumpedMass_(lumpedMass),
+    shiftedGradOp_(solnOpts.get_shifted_grad_op("velocity")),
     betaStar_(solnOpts.get_turb_model_constant(TM_betaStar)),
     tkeProdLimitRatio_(solnOpts.get_turb_model_constant(TM_tkeProdLimitRatio)),
     cDESke_(solnOpts.get_turb_model_constant(TM_cDESke)),
@@ -86,7 +87,11 @@ TurbKineticEnergySSTDESSrcElemKernel<AlgTraits>::
   dataPreReqs.add_gathered_nodal_field(*maxLengthScale_, 1);
   dataPreReqs.add_gathered_nodal_field(*fOneBlend_, 1);
   dataPreReqs.add_master_element_call(SCV_VOLUME, CURRENT_COORDINATES);
-  dataPreReqs.add_master_element_call(SCV_GRAD_OP, CURRENT_COORDINATES);
+  if (shiftedGradOp_)
+    dataPreReqs.add_master_element_call(
+      SCV_SHIFTED_GRAD_OP, CURRENT_COORDINATES);
+  else
+    dataPreReqs.add_master_element_call(SCV_GRAD_OP, CURRENT_COORDINATES);
 }
 
 template <typename AlgTraits>
@@ -119,7 +124,9 @@ TurbKineticEnergySSTDESSrcElemKernel<AlgTraits>::execute(
   SharedMemView<DoubleType*>& v_fOneBlend =
     scratchViews.get_scratch_view_1D(*fOneBlend_);
   SharedMemView<DoubleType***>& v_dndx =
-    scratchViews.get_me_views(CURRENT_COORDINATES).dndx_scv;
+    shiftedGradOp_
+      ? scratchViews.get_me_views(CURRENT_COORDINATES).dndx_scv_shifted
+      : scratchViews.get_me_views(CURRENT_COORDINATES).dndx_scv;
   SharedMemView<DoubleType*>& v_scv_volume =
     scratchViews.get_me_views(CURRENT_COORDINATES).scv_volume;
 
