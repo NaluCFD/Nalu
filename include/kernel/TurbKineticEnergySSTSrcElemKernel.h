@@ -53,6 +53,7 @@ private:
   VectorFieldType* coordinates_{nullptr};
 
   const bool lumpedMass_;
+  const bool shiftedGradOp_;
   const double betaStar_;
   double tkeProdLimitRatio_{0.0};
 

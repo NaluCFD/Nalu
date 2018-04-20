@@ -54,6 +54,7 @@ private:
   VectorFieldType* coordinates_{nullptr};
 
   const bool lumpedMass_;
+  const bool shiftedGradOp_;
   const double betaStar_;
   const double sigmaWTwo_;
   const double betaOne_;
