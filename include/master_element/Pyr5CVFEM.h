@@ -55,6 +55,11 @@ public:
     SharedMemView<DoubleType***>& gradop,
     SharedMemView<DoubleType***>& deriv);
 
+  void shifted_grad_op(
+    SharedMemView<DoubleType**>& coords,
+    SharedMemView<DoubleType***>& gradop,
+    SharedMemView<DoubleType***>& deriv);
+
   void determinant(
     const int nelem,
     const double *coords,

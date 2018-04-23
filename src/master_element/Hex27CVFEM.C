@@ -776,6 +776,24 @@ void Hex27SCV::grad_op(
 }
 
 //--------------------------------------------------------------------------
+void Hex27SCV::shifted_grad_op(
+  SharedMemView<DoubleType**>&coords,
+  SharedMemView<DoubleType***>&gradop,
+  SharedMemView<DoubleType***>&deriv)
+{
+  generic_grad_op_3d<AlgTraits>(shiftedReferenceGradWeights_, coords, gradop);
+
+  // copy derivs as well.  These aren't used, but are part of the interface
+  for (int ip = 0; ip < AlgTraits::numScsIp_; ++ip) {
+    for (int n = 0; n < AlgTraits::nodesPerElement_; ++n) {
+      for (int d = 0; d < AlgTraits::nDim_; ++d) {
+        deriv(ip,n,d) = shiftedReferenceGradWeights_(ip,n,d);
+      }
+    }
+  }
+}
+
+//--------------------------------------------------------------------------
 //-------- jacobian_determinant---------------------------------------------
 //--------------------------------------------------------------------------
 double
