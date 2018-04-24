@@ -25,9 +25,7 @@
 
 #include <vector>
 #include <string>
-#include <boost/unordered_map.hpp>
-
-#include <Kokkos_UnorderedMap.hpp>
+#include <unordered_map>
 
 namespace nalu_stk {
 class CommNeighbors;
@@ -41,11 +39,9 @@ class EquationSystem;
 class LinearSolver;
 class LocalGraphArrays;
 
-typedef boost::unordered_map<stk::mesh::EntityId, size_t>  MyLIDMapType;
+typedef std::unordered_map<stk::mesh::EntityId, size_t>  MyLIDMapType;
 
 typedef std::pair<stk::mesh::Entity, stk::mesh::Entity> Connection;
-typedef Kokkos::UnorderedMap<Connection,void> ConnectionSetKK;
-typedef std::vector< Connection > ConnectionVec;
 
 typedef typename LinSys::Vector::dual_view_type dual_view_type;
 typedef typename dual_view_type::t_host host_view_type;
@@ -144,25 +140,26 @@ public:
   Teuchos::RCP<LinSys::Matrix> getOwnedMatrix() { return ownedMatrix_; }
 
 private:
+  void buildConnectedNodeGraph(stk::mesh::EntityRank rank,
+                               const stk::mesh::PartVector& parts);
+
   void beginLinearSystemConstruction();
 
-  void checkError(
-    const int err_code,
-    const char * msg) {}
+  void checkError( const int err_code, const char * msg) {}
 
-  void copy_kokkos_unordered_map_to_sorted_vector(const ConnectionSetKK& connectionSetKK,
-                                                  ConnectionVec& connectionVec);
-
-  void compute_send_lengths(const ConnectionVec& connectionVec,
+  void compute_send_lengths(const std::vector<stk::mesh::Entity>& rowEntities,
+         const std::vector<std::vector<stk::mesh::Entity> >& connections,
                             const std::vector<int>& neighborProcs,
                             nalu_stk::CommNeighbors& commNeighbors);
 
-  void compute_graph_row_lengths(const ConnectionVec& connectionVec,
+  void compute_graph_row_lengths(const std::vector<stk::mesh::Entity>& rowEntities,
+         const std::vector<std::vector<stk::mesh::Entity> >& connections,
                                  LinSys::RowLengths& globallyOwnedRowLengths,
                                  LinSys::RowLengths& locallyOwnedRowLengths,
                                  nalu_stk::CommNeighbors& commNeighbors);
 
-  void insert_graph_connections(const ConnectionVec& connectionVec,
+  void insert_graph_connections(const std::vector<stk::mesh::Entity>& rowEntities,
+         const std::vector<std::vector<stk::mesh::Entity> >& connections,
                                 LocalGraphArrays& locallyOwnedGraph,
                                 LocalGraphArrays& globallySharedGraph);
 
@@ -178,12 +175,14 @@ private:
   void copy_stk_to_tpetra(stk::mesh::FieldBase * stkField,
     const Teuchos::RCP<LinSys::MultiVector> tpetraVector);
 
-  int addConnections(const stk::mesh::Entity* entities,const size_t&);
+  int insert_connection(stk::mesh::Entity a, stk::mesh::Entity b);
+  void addConnections(const stk::mesh::Entity* entities,const size_t&);
   void expand_unordered_map(unsigned newCapacityNeeded);
   void checkForNaN(bool useOwned);
   bool checkForZeroRow(bool useOwned, bool doThrow, bool doPrint=false);
 
-  ConnectionSetKK connectionSetKK_ ;
+  std::vector<stk::mesh::Entity> ownedAndSharedNodes_;
+  std::vector<std::vector<stk::mesh::Entity> > connections_;
   std::vector<GlobalOrdinal> totalGids_;
   std::set<std::pair<int,GlobalOrdinal> > ownersAndGids_;
 
