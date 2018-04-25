@@ -53,6 +53,7 @@
 #include <Tpetra_MultiVector.hpp>
 #include <Tpetra_Vector.hpp>
 #include <Tpetra_Details_shortSort.hpp>
+#include <Tpetra_Details_makeOptimizedColMap.hpp>
 
 #include <Teuchos_VerboseObject.hpp>
 #include <Teuchos_FancyOStream.hpp>
@@ -864,16 +865,13 @@ TpetraLinearSystem::compute_graph_row_lengths(const std::vector<stk::mesh::Entit
 }
 
 void
-insertIntoGraph(LocalGraphArrays& crsGraph, LocalOrdinal rowLid, LocalOrdinal maxOwnedRowId,
+insert_single_dof_row_into_graph(LocalGraphArrays& crsGraph, LocalOrdinal rowLid, LocalOrdinal maxOwnedRowId,
                 unsigned numDof, unsigned numCols, const std::vector<LocalOrdinal>& colLids)
 {
     if (rowLid >= maxOwnedRowId) {
       rowLid -= maxOwnedRowId;
     }
-    //KOKKOS: small Loop noparallel insertLocalIndices
-    for (unsigned d=0; d < numDof; ++d) {
-      crsGraph.insertIndices(rowLid++, numCols, colLids.data(), numDof);
-    }
+    crsGraph.insertIndices(rowLid++, numCols, colLids.data(), numDof);
 }
 
 void
@@ -906,13 +904,13 @@ TpetraLinearSystem::insert_graph_connections(const std::vector<stk::mesh::Entity
 
     {
       LocalGraphArrays& crsGraph = (dofStatus_a & DS_OwnedDOF) ? locallyOwnedGraph : globallySharedGraph;
-      insertIntoGraph(crsGraph, entityToLID_[entity_a.local_offset()], maxOwnedRowId_, numDof_, numColEntities, localDofs_b);
+      insert_single_dof_row_into_graph(crsGraph, entityToLID_[entity_a.local_offset()], maxOwnedRowId_, numDof_, numColEntities, localDofs_b);
     }
 
     for(unsigned j=0; j<numColEntities; ++j) {
       if (entities_b[j] != entity_a) {
         LocalGraphArrays& crsGraph = (dofStatus[j] & DS_OwnedDOF) ? locallyOwnedGraph : globallySharedGraph;
-        insertIntoGraph(crsGraph, entityToLID_[entities_b[j].local_offset()], maxOwnedRowId_, numDof_, 1, localDofs_a);
+        insert_single_dof_row_into_graph(crsGraph, entityToLID_[entities_b[j].local_offset()], maxOwnedRowId_, numDof_, 1, localDofs_a);
       }
     }
   }
@@ -943,9 +941,7 @@ void insert_communicated_col_indices(const std::vector<int>& neighborProcs,
                 rbuf.unpack(owner);
                 colLids[i] = colMap.getLocalElement(colGid);
             }
-            for(unsigned d=0; d<numDof; ++d) {
-                ownedGraph.insertIndices(rowLid++,numCols,colLids.data(), numDof);
-            }
+            ownedGraph.insertIndices(rowLid++,numCols,colLids.data(), numDof);
         }
     }
 }
@@ -1178,7 +1174,7 @@ void remove_invalid_indices(LocalGraphArrays& csg, Kokkos::View<size_t*,HostSpac
   size_t newNnz = 0;
   for(int i=0, ie=csg.rowPointers.size()-1; i<ie; ++i) {
     const LocalOrdinal* row = cols+rowPtrs[i];
-    int rowLen = csg.rowPointers[i+1]-csg.rowPointers[i];
+    int rowLen = csg.get_row_length(i);
     for(int j=rowLen-1; j>=0; --j) {
       if (row[j] != INVALID) {
         rowLengths(i) = j+1;
@@ -1201,6 +1197,27 @@ void remove_invalid_indices(LocalGraphArrays& csg, Kokkos::View<size_t*,HostSpac
     }
     csg.colIndices = newColIndices;
     LocalGraphArrays::compute_row_pointers(csg.rowPointers, rowLengths);
+  }
+}
+
+void fill_in_extra_dof_rows_per_node(LocalGraphArrays& csg, int numDof)
+{
+  if (numDof == 1) {
+    return;
+  }
+
+  const size_t* rowPtrs = csg.rowPointers.data();
+  LocalOrdinal* cols = csg.colIndices.data();
+  for(int i=0, ie=csg.rowPointers.size()-1; i<ie;) {
+    const LocalOrdinal* row = cols+rowPtrs[i];
+    int rowLen = csg.get_row_length(i);
+    for(int d=1; d<numDof; ++d) {
+      LocalOrdinal* row_d = cols + rowPtrs[i] + rowLen*d;
+      for(int j=0; j<rowLen; ++j) {
+        row_d[j] = row[j];
+      }
+    }
+    i += numDof;
   }
 }
 
@@ -1253,12 +1270,19 @@ TpetraLinearSystem::finalizeLinearSystem()
 
   const Teuchos::RCP<LinSys::Comm> tpetraComm = Teuchos::rcp(new LinSys::Comm(bulkData.parallel()));
   totalColsMap_ = Teuchos::rcp(new LinSys::Map(Teuchos::OrdinalTraits<Tpetra::global_size_t>::invalid(), optColGids, 1, tpetraComm, node_));
+  //Teuchos::RCP<LinSys::Map> tmpColMap = Teuchos::rcp(new LinSys::Map(Teuchos::OrdinalTraits<Tpetra::global_size_t>::invalid(), optColGids, 1, tpetraComm, node_));
+  //std::ostringstream os;
+  //bool lclErr = false;
+  //totalColsMap_ = Teuchos::rcp(new LinSys::Map(Tpetra::Details::makeOptimizedColMap(os, lclErr, *ownedRowsMap_, *tmpColMap)));
 
   fill_entity_to_col_LID_mapping();
 
   insert_graph_connections(ownedAndSharedNodes_, connections_, ownedGraph, globallyOwnedGraph);
 
   insert_communicated_col_indices(neighborProcs, commNeighbors, numDof_, ownedGraph, *ownedRowsMap_, *totalColsMap_);
+
+  fill_in_extra_dof_rows_per_node(ownedGraph, numDof_);
+  fill_in_extra_dof_rows_per_node(globallyOwnedGraph, numDof_);
 
   remove_invalid_indices(ownedGraph, ownedRowLengths);
 
@@ -1382,7 +1406,7 @@ TpetraLinearSystem::sumInto(
 
   for(int i = 0; i < n_obj; i++) {
     const stk::mesh::Entity entity = entities[i];
-    const LocalOrdinal localOffset = entityToLID_[entity.local_offset()];
+    const LocalOrdinal localOffset = entityToColLID_[entity.local_offset()];
     for(size_t d=0; d < numDof_; ++d) {
       size_t lid = i*numDof_ + d;
       localIds[lid] = localOffset + d;
@@ -1394,8 +1418,10 @@ TpetraLinearSystem::sumInto(
   }
   Tpetra::Details::shellSortKeysAndValues(localIds.data(), sortPermutation.data(), numRows);
 
-  for (int r = 0; r < numRows; r++) {
-    const LocalOrdinal rowLid = localIds[r];
+  for (int r = 0; r < numRows; ++r) {
+    int i = sortPermutation[r]/numDof_;
+    LocalOrdinal rowLid = entityToLID_[entities[i].local_offset()];
+    rowLid += sortPermutation[r]%numDof_;
     const LocalOrdinal cur_perm_index = sortPermutation[r];
     const double* const cur_lhs = &lhs(cur_perm_index, 0);
     const double cur_rhs = rhs[cur_perm_index];
@@ -1445,7 +1471,7 @@ TpetraLinearSystem::sumInto(
   sortPermutation_.resize(numRows);
   for(size_t i = 0; i < n_obj; i++) {
     const stk::mesh::Entity entity = entities[i];
-    const LocalOrdinal localOffset = entityToLID_[entity.local_offset()];
+    const LocalOrdinal localOffset = entityToColLID_[entity.local_offset()];
     for(size_t d=0; d < numDof_; ++d) {
       size_t lid = i*numDof_ + d;
       scratchIds[lid] = localOffset + d;
@@ -1458,7 +1484,9 @@ TpetraLinearSystem::sumInto(
   Tpetra::Details::shellSortKeysAndValues(scratchIds.data(), sortPermutation_.data(), (int)numRows);
 
   for (unsigned r = 0; r < numRows; r++) {
-    const LocalOrdinal rowLid = scratchIds[r];
+    int i = sortPermutation_[r]/numDof_;
+    LocalOrdinal rowLid = entityToLID_[entities[i].local_offset()];
+    rowLid += sortPermutation_[r]%numDof_;
     const LocalOrdinal cur_perm_index = sortPermutation_[r];
     const double* const cur_lhs = &lhs[cur_perm_index*numRows];
     const double cur_rhs = rhs[cur_perm_index];

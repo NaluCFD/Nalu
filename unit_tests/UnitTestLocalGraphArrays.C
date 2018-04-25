@@ -34,9 +34,9 @@ Teuchos::RCP<sierra::nalu::LocalGraphArrays> create_graph(const std::vector<size
 TEST(LocalGraphArrays, construct)
 {
   Teuchos::RCP<sierra::nalu::LocalGraphArrays> csg = create_graph({2, 3, 4});
-  EXPECT_EQ(2, csg->get_row_length(0));
-  EXPECT_EQ(3, csg->get_row_length(1));
-  EXPECT_EQ(4, csg->get_row_length(2));
+  EXPECT_EQ(2u, csg->get_row_length(0));
+  EXPECT_EQ(3u, csg->get_row_length(1));
+  EXPECT_EQ(4u, csg->get_row_length(2));
 
   size_t nnz = 2 + 3 + 4;
   EXPECT_EQ(nnz, csg->colIndices.size());

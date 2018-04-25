@@ -68,6 +68,7 @@ public:
 
   LocalGraphArrays(const Kokkos::View<size_t*,HostSpace>& rowLengths)
   : rowPointers(Kokkos::View<size_t*>(Kokkos::ViewAllocateWithoutInitializing("rowPtrs"),rowLengths.size()+1)),
+    rowPointersData(rowPointers.data()),
     colIndices()
   {
     size_t nnz = compute_row_pointers(rowPointers, rowLengths);
@@ -75,11 +76,11 @@ public:
     Kokkos::deep_copy(colIndices, INVALID);
   }
 
-  size_t get_row_length(size_t localRow) const { return rowPointers[localRow+1]-rowPointers[localRow]; }
+  size_t get_row_length(size_t localRow) const { return rowPointersData[localRow+1]-rowPointersData[localRow]; }
 
   void insertIndices(size_t localRow, size_t numInds, const LocalOrdinal* inds, int numDof)
   {
-    LocalOrdinal* row = &colIndices(rowPointers(localRow));
+    LocalOrdinal* row = &colIndices(rowPointersData[localRow]);
     size_t rowLen = get_row_length(localRow);
     LocalOrdinal* rowEnd = std::find(row, row+rowLen, INVALID);
     for(size_t i=0; i<numInds; ++i) {
@@ -106,6 +107,7 @@ public:
   }
 
   Kokkos::View<size_t*,HostSpace> rowPointers;
+  const size_t* rowPointersData;
   Kokkos::View<LocalOrdinal*,HostSpace> colIndices;
 
 private:
