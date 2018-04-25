@@ -189,6 +189,14 @@ void test_ME_views(const std::vector<sierra::nalu::ELEM_DATA_NEEDED>& requests)
               check_that_values_match(meViews.dndx_scv, &kokkos_me_gold::tet4_scv_grad_op[0]);
             }
           }
+          if ( request == sierra::nalu::SCV_SHIFTED_GRAD_OP ) {
+            if ( AlgTraits::topo_ == stk::topology::HEX_8 ) {
+              check_that_values_match(meViews.dndx_scv_shifted, &kokkos_me_gold::hex8_scv_shifted_grad_op[0]);
+            }
+            else if ( AlgTraits::topo_ == stk::topology::TET_4 ) {
+              check_that_values_match(meViews.dndx_scv_shifted, &kokkos_me_gold::tet4_scv_grad_op[0]);
+            }
+          }
         }
       }
     });
@@ -202,7 +210,8 @@ TEST(KokkosME, test_hex8_views)
 //   sierra::nalu::SCS_SHIFTED_GRAD_OP,
      sierra::nalu::SCS_GIJ,
      sierra::nalu::SCV_VOLUME,
-     sierra::nalu::SCV_GRAD_OP
+     sierra::nalu::SCV_GRAD_OP,
+     sierra::nalu::SCV_SHIFTED_GRAD_OP
     }
   );
 }
@@ -215,7 +224,8 @@ TEST(KokkosME, test_tet4_views)
      sierra::nalu::SCS_SHIFTED_GRAD_OP,
      sierra::nalu::SCS_GIJ,
      sierra::nalu::SCV_VOLUME, 
-     sierra::nalu::SCV_GRAD_OP
+     sierra::nalu::SCV_GRAD_OP,
+     sierra::nalu::SCV_SHIFTED_GRAD_OP
     }
   );
 }
