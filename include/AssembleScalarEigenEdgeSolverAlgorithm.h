@@ -11,6 +11,7 @@
 
 #include<SolverAlgorithm.h>
 #include<FieldTypeDef.h>
+#include<EigenDecomposition.h>
 
 namespace stk {
 namespace mesh {
@@ -23,6 +24,7 @@ namespace nalu{
 
 class Realm;
 template <typename T> class PecletFunction;
+class EigenDecomposition;
 
 class AssembleScalarEigenEdgeSolverAlgorithm : public SolverAlgorithm
 {
@@ -44,10 +46,7 @@ public:
   virtual void execute();
 
   // eignenvalue helpers
-  void diagonalize( const double (&A)[3][3], double (&Q)[3][3], double (&D)[3][3]);  
   void perturb(double (&D)[3][3]);
-  void form_perturbed_stress( const double (&D)[3][3], const double (&Q)[3][3], double (&A)[3][3]);
-  void matrix_matrix_multiply( const double (&A)[3][3], const double (&B)[3][3], double (&C)[3][3]);
   void sort(const double (&D)[3][3]);
 
   double van_leer(
@@ -77,6 +76,7 @@ public:
 
   // peclect function specifics
   PecletFunction<double>* pecletFunction_;
+  EigenDecomposition eigSolver_;
 
   // constants and perturbation from user
   const double cGGDH_;
