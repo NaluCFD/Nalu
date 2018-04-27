@@ -372,6 +372,18 @@ void PyrSCV::grad_op(
   generic_grad_op_3d<AlgTraitsPyr5>(deriv, coords, gradop);
 }
 
+//--------------------------------------------------------------------------
+//-------- shifted_grad_op ---------------------------------------------------------
+//--------------------------------------------------------------------------
+void PyrSCV::shifted_grad_op(
+    SharedMemView<DoubleType**>& coords,
+    SharedMemView<DoubleType***>& gradop,
+    SharedMemView<DoubleType***>& deriv)
+{
+  pyr_deriv(numIntPoints_, &intgLocShift_[0], deriv);
+  generic_grad_op_3d<AlgTraitsPyr5>(deriv, coords, gradop);
+}
+
 void PyrSCV::determinant(
   const int nelem,
   const double *coords,

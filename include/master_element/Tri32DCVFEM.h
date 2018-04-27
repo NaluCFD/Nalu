@@ -44,6 +44,11 @@ public:
     SharedMemView<DoubleType***>& gradop,
     SharedMemView<DoubleType***>& deriv) override ;
 
+  void shifted_grad_op(
+    SharedMemView<DoubleType**>&coords,
+    SharedMemView<DoubleType***>&gradop,
+    SharedMemView<DoubleType***>&deriv) override ;
+
   void determinant(
     const int nelem,
     const double *coords,

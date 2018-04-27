@@ -301,6 +301,17 @@ void Tri32DSCV::grad_op(
   tri_gradient_operator(coords, gradop, deriv);
 }
 
+//--------------------------------------------------------------------------
+//-------- shifted_grad_op -------------------------------------------------
+//--------------------------------------------------------------------------
+void Tri32DSCV::shifted_grad_op(
+  SharedMemView<DoubleType**>& coords,
+  SharedMemView<DoubleType***>& gradop,
+  SharedMemView<DoubleType***>& deriv) {
+  tri_derivative(deriv);
+  tri_gradient_operator(coords, gradop, deriv);
+}
+
 void Tri32DSCV::determinant(
   const int nelem,
   const double *coords,

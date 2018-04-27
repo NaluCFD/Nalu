@@ -231,6 +231,18 @@ void WedSCV::grad_op(
 }
 
 //--------------------------------------------------------------------------
+//-------- shifted_grad_op -------------------------------------------------
+//--------------------------------------------------------------------------
+void WedSCV::shifted_grad_op(
+  SharedMemView<DoubleType**>& coords,
+  SharedMemView<DoubleType***>& gradop,
+  SharedMemView<DoubleType***>& deriv)
+{
+  wed_deriv(numIntPoints_, &intgLocShift_[0], deriv);
+  generic_grad_op_3d<AlgTraitsWed6>(deriv, coords, gradop);
+}
+
+//--------------------------------------------------------------------------
 //-------- determinant -----------------------------------------------------
 //--------------------------------------------------------------------------
 void WedSCV::determinant(
