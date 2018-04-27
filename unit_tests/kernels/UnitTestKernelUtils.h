@@ -352,6 +352,54 @@ public:
   ScalarFieldType* temperature_{nullptr};
 };
 
+/** Test Fixture for the SST Kernels
+ *
+ */
+class SSTKernelHex8Mesh : public LowMachKernelHex8Mesh
+{
+public:
+  SSTKernelHex8Mesh()
+    : LowMachKernelHex8Mesh(),
+      tke_(&meta_.declare_field<ScalarFieldType>(
+        stk::topology::NODE_RANK, "turbulent_ke")),
+      sdr_(&meta_.declare_field<ScalarFieldType>(
+        stk::topology::NODE_RANK, "specific_dissipation_rate")),
+      tvisc_(&meta_.declare_field<ScalarFieldType>(
+        stk::topology::NODE_RANK, "turbulent_viscosity")),
+      maxLengthScale_(&meta_.declare_field<ScalarFieldType>(
+        stk::topology::NODE_RANK, "sst_max_length_scale")),
+      fOneBlend_(&meta_.declare_field<ScalarFieldType>(
+        stk::topology::NODE_RANK, "sst_f_one_blending"))
+  {
+    stk::mesh::put_field(*tke_, meta_.universal_part(), 1);
+    stk::mesh::put_field(*sdr_, meta_.universal_part(), 1);
+    stk::mesh::put_field(*tvisc_, meta_.universal_part(), 1);
+    stk::mesh::put_field(*maxLengthScale_, meta_.universal_part(), 1);
+    stk::mesh::put_field(*fOneBlend_, meta_.universal_part(), 1);
+  }
+
+  virtual ~SSTKernelHex8Mesh() {}
+
+  virtual void fill_mesh_and_init_fields(bool doPerturb = false)
+  {
+    LowMachKernelHex8Mesh::fill_mesh_and_init_fields(doPerturb);
+    stk::mesh::field_fill(0.3, *tvisc_);
+    stk::mesh::field_fill(0.5, *maxLengthScale_);
+    unit_test_kernel_utils::density_test_function(
+      bulk_, *coordinates_, *density_);
+    unit_test_kernel_utils::tke_test_function(bulk_, *coordinates_, *tke_);
+    unit_test_kernel_utils::sdr_test_function(bulk_, *coordinates_, *sdr_);
+    unit_test_kernel_utils::sst_f_one_blending_test_function(
+      bulk_, *coordinates_, *fOneBlend_);
+  }
+
+  ScalarFieldType* tke_{nullptr};
+  ScalarFieldType* sdr_{nullptr};
+  ScalarFieldType* tvisc_{nullptr};
+  ScalarFieldType* maxLengthScale_{nullptr};
+  ScalarFieldType* fOneBlend_{nullptr};
+};
+
 /** Test Fixture for the hybrid turbulence Kernels
  *
  */
