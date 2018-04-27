@@ -76,7 +76,7 @@ public:
         stk::mesh::Bucket & b = *buckets[team.league_rank()];
 
         ThrowAssertMsg(b.topology().num_nodes() == (unsigned)nodesPerFace_,
-                       "TestFaceElemAlgorithm expected nodesPerEntity_ = "
+                       "AssembleFaceElemSolverAlgorithm expected nodesPerEntity_ = "
                        <<nodesPerFace_<<", but b.topology().num_nodes() = "<<b.topology().num_nodes());
 
         SharedMemData_FaceElem smdata(team, bulk, faceDataNeeded_, elemDataNeeded_, meElemInfo, rhsSize);
@@ -100,6 +100,7 @@ public:
                 break;
               }
 
+              smdata.connectedNodes[simdFaceIndex] = bulk.begin_nodes(face);
               smdata.elemFaceOrdinals[simdFaceIndex] = thisElemFaceOrdinal;
               elemFaceOrdinal = thisElemFaceOrdinal;
               sierra::nalu::fill_pre_req_data(faceDataNeeded_, bulk, face, *smdata.faceViews[simdFaceIndex], interleaveMeViews);
