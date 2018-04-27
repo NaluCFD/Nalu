@@ -50,7 +50,7 @@ typedef typename dual_view_type::t_host host_view_type;
     DS_NotSet           = 0,
     DS_SkippedDOF       = 1 << 1,
     DS_OwnedDOF         = 1 << 2,
-    DS_GloballyOwnedDOF = 1 << 3,
+    DS_SharedNotOwnedDOF = 1 << 3,
     DS_GhostedDOF       = 1 << 4
   };
 
@@ -154,14 +154,14 @@ private:
 
   void compute_graph_row_lengths(const std::vector<stk::mesh::Entity>& rowEntities,
          const std::vector<std::vector<stk::mesh::Entity> >& connections,
-                                 LinSys::RowLengths& globallyOwnedRowLengths,
+                                 LinSys::RowLengths& sharedNotOwnedRowLengths,
                                  LinSys::RowLengths& locallyOwnedRowLengths,
                                  nalu_stk::CommNeighbors& commNeighbors);
 
   void insert_graph_connections(const std::vector<stk::mesh::Entity>& rowEntities,
          const std::vector<std::vector<stk::mesh::Entity> >& connections,
                                 LocalGraphArrays& locallyOwnedGraph,
-                                LocalGraphArrays& globallySharedGraph);
+                                LocalGraphArrays& sharedNotOwnedGraph);
 
   void fill_entity_to_row_LID_mapping();
   void fill_entity_to_col_LID_mapping();
@@ -195,21 +195,21 @@ private:
   // Map of rows my proc owns (locally owned)
   Teuchos::RCP<LinSys::Map>    ownedRowsMap_;
 
-  // Only nodes that share with other procs that I don't own = Global = !locally owned
-  Teuchos::RCP<LinSys::Map>    globallyOwnedRowsMap_;
+  // Only nodes that share with other procs that I don't own
+  Teuchos::RCP<LinSys::Map>    sharedNotOwnedRowsMap_;
 
   Teuchos::RCP<LinSys::Graph>  ownedGraph_;
-  Teuchos::RCP<LinSys::Graph>  globallyOwnedGraph_;
+  Teuchos::RCP<LinSys::Graph>  sharedNotOwnedGraph_;
 
   Teuchos::RCP<LinSys::Matrix> ownedMatrix_;
   Teuchos::RCP<LinSys::Vector> ownedRhs_;
   LinSys::Matrix::local_matrix_type ownedLocalMatrix_;
-  LinSys::Matrix::local_matrix_type globallyOwnedLocalMatrix_;
+  LinSys::Matrix::local_matrix_type sharedNotOwnedLocalMatrix_;
   host_view_type ownedLocalRhs_;
-  host_view_type globallyOwnedLocalRhs_;
+  host_view_type sharedNotOwnedLocalRhs_;
 
-  Teuchos::RCP<LinSys::Matrix> globallyOwnedMatrix_;
-  Teuchos::RCP<LinSys::Vector> globallyOwnedRhs_;
+  Teuchos::RCP<LinSys::Matrix> sharedNotOwnedMatrix_;
+  Teuchos::RCP<LinSys::Vector> sharedNotOwnedRhs_;
 
   Teuchos::RCP<LinSys::Vector> sln_;
   Teuchos::RCP<LinSys::Vector> globalSln_;
@@ -219,7 +219,7 @@ private:
   std::vector<LocalOrdinal> entityToColLID_;
   std::vector<LocalOrdinal> entityToLID_;
   LocalOrdinal maxOwnedRowId_; // = num_owned_nodes * numDof_
-  LocalOrdinal maxGloballyOwnedRowId_; // = (num_owned_nodes + num_globallyOwned_nodes) * numDof_
+  LocalOrdinal maxSharedNotOwnedRowId_; // = (num_owned_nodes + num_sharedNotOwned_nodes) * numDof_
 
   std::vector<int> sortPermutation_;
 };
