@@ -27,6 +27,129 @@
 namespace sierra{
 namespace nalu{
 
+  //--------------------------------------------------------------------------
+  void gradient_2d(
+    int nodesPerElement,
+    const double* POINTER_RESTRICT elemNodalCoords,
+    const double* POINTER_RESTRICT shapeDeriv,
+    double* POINTER_RESTRICT grad,
+    double* POINTER_RESTRICT det_j)
+  {
+    constexpr int dim = 2;
+
+    double dx_ds1 = 0.0;  double dx_ds2 = 0.0;
+    double dy_ds1 = 0.0;  double dy_ds2 = 0.0;
+
+    //compute Jacobian
+    for (int node = 0; node < nodesPerElement; ++node) {
+      const int vector_offset = dim * node;
+
+      const double xCoord = elemNodalCoords[vector_offset + 0];
+      const double yCoord = elemNodalCoords[vector_offset + 1];
+      const double dn_ds1 = shapeDeriv[vector_offset + 0];
+      const double dn_ds2 = shapeDeriv[vector_offset + 1];
+
+      dx_ds1 += dn_ds1 * xCoord;
+      dx_ds2 += dn_ds2 * xCoord;
+
+      dy_ds1 += dn_ds1 * yCoord;
+      dy_ds2 += dn_ds2 * yCoord;
+    }
+
+    *det_j = dx_ds1*dy_ds2 - dy_ds1*dx_ds2;
+
+    const double inv_det_j = 1.0 / (*det_j);
+
+    const double ds1_dx =  inv_det_j*dy_ds2;
+    const double ds2_dx = -inv_det_j*dy_ds1;
+
+    const double ds1_dy = -inv_det_j*dx_ds2;
+    const double ds2_dy =  inv_det_j*dx_ds1;
+
+    for (int node = 0; node < nodesPerElement; ++node) {
+      const int vector_offset = dim * node;
+
+      const double dn_ds1 = shapeDeriv[vector_offset + 0];
+      const double dn_ds2 = shapeDeriv[vector_offset + 1];
+
+      grad[vector_offset + 0] = dn_ds1 * ds1_dx + dn_ds2 * ds2_dx;
+      grad[vector_offset + 1] = dn_ds1 * ds1_dy + dn_ds2 * ds2_dy;
+    }
+  }
+
+  void gradient_3d(
+    int nodesPerElement,
+    const double* POINTER_RESTRICT elemNodalCoords,
+    const double* POINTER_RESTRICT shapeDeriv,
+    double* POINTER_RESTRICT grad,
+    double* POINTER_RESTRICT det_j)
+  {
+    constexpr int dim = 3;
+
+    double dx_ds1 = 0.0;  double dx_ds2 = 0.0; double dx_ds3 = 0.0;
+    double dy_ds1 = 0.0;  double dy_ds2 = 0.0; double dy_ds3 = 0.0;
+    double dz_ds1 = 0.0;  double dz_ds2 = 0.0; double dz_ds3 = 0.0;
+
+    //compute Jacobian
+    int vector_offset = 0;
+    for (int node = 0; node < nodesPerElement; ++node) {
+      const double xCoord = elemNodalCoords[vector_offset + 0];
+      const double yCoord = elemNodalCoords[vector_offset + 1];
+      const double zCoord = elemNodalCoords[vector_offset + 2];
+
+      const double dn_ds1 = shapeDeriv[vector_offset + 0];
+      const double dn_ds2 = shapeDeriv[vector_offset + 1];
+      const double dn_ds3 = shapeDeriv[vector_offset + 2];
+
+      dx_ds1 += dn_ds1 * xCoord;
+      dx_ds2 += dn_ds2 * xCoord;
+      dx_ds3 += dn_ds3 * xCoord;
+
+      dy_ds1 += dn_ds1 * yCoord;
+      dy_ds2 += dn_ds2 * yCoord;
+      dy_ds3 += dn_ds3 * yCoord;
+
+      dz_ds1 += dn_ds1 * zCoord;
+      dz_ds2 += dn_ds2 * zCoord;
+      dz_ds3 += dn_ds3 * zCoord;
+
+      vector_offset += dim;
+    }
+
+    *det_j = dx_ds1 * ( dy_ds2 * dz_ds3 - dz_ds2 * dy_ds3 )
+           + dy_ds1 * ( dz_ds2 * dx_ds3 - dx_ds2 * dz_ds3 )
+           + dz_ds1 * ( dx_ds2 * dy_ds3 - dy_ds2 * dx_ds3 );
+
+    const double inv_det_j = 1.0 / (*det_j);
+
+    const double ds1_dx = inv_det_j*(dy_ds2 * dz_ds3 - dz_ds2 * dy_ds3);
+    const double ds2_dx = inv_det_j*(dz_ds1 * dy_ds3 - dy_ds1 * dz_ds3);
+    const double ds3_dx = inv_det_j*(dy_ds1 * dz_ds2 - dz_ds1 * dy_ds2);
+
+    const double ds1_dy = inv_det_j*(dz_ds2 * dx_ds3 - dx_ds2 * dz_ds3);
+    const double ds2_dy = inv_det_j*(dx_ds1 * dz_ds3 - dz_ds1 * dx_ds3);
+    const double ds3_dy = inv_det_j*(dz_ds1 * dx_ds2 - dx_ds1 * dz_ds2);
+
+    const double ds1_dz = inv_det_j*(dx_ds2 * dy_ds3 - dy_ds2 * dx_ds3);
+    const double ds2_dz = inv_det_j*(dy_ds1 * dx_ds3 - dx_ds1 * dy_ds3);
+    const double ds3_dz = inv_det_j*(dx_ds1 * dy_ds2 - dy_ds1 * dx_ds2);
+
+    // metrics
+    vector_offset = 0;
+    for (int node = 0; node < nodesPerElement; ++node) {
+      const double dn_ds1 = shapeDeriv[vector_offset + 0];
+      const double dn_ds2 = shapeDeriv[vector_offset + 1];
+      const double dn_ds3 = shapeDeriv[vector_offset + 2];
+
+      grad[vector_offset + 0] = dn_ds1 * ds1_dx + dn_ds2 * ds2_dx + dn_ds3 * ds3_dx;
+      grad[vector_offset + 1] = dn_ds1 * ds1_dy + dn_ds2 * ds2_dy + dn_ds3 * ds3_dy;
+      grad[vector_offset + 2] = dn_ds1 * ds1_dz + dn_ds2 * ds2_dz + dn_ds3 * ds3_dz;
+
+      vector_offset += dim;
+    }
+  }
+
+
 HigherOrderHexSCV::HigherOrderHexSCV(
   ElementDescription elem,
   LagrangeBasis basis,
@@ -34,11 +157,10 @@ HigherOrderHexSCV::HigherOrderHexSCV(
   : MasterElement(),
     elem_(std::move(elem)),
     basis_(std::move(basis)),
-    quadrature_(std::move(quadrature)),
-    geoNodesPerElement_(8)
+    quadrature_(std::move(quadrature))
 {
-  nDim_ = elem.dimension;
-  nodesPerElement_ = elem.nodesPerElement;
+  nDim_ = elem_.dimension;
+  nodesPerElement_ = elem_.nodesPerElement;
 
   // set up integration rule and relevant maps for scvs
   set_interior_info();
@@ -46,13 +168,6 @@ HigherOrderHexSCV::HigherOrderHexSCV(
   // compute and save shape functions and derivatives at ips
   shapeFunctionVals_ = basis.eval_basis_weights(intgLoc_);
   shapeDerivs_ = basis.eval_deriv_weights(intgLoc_);
-
-  // potentially use different basis for geometric computations
-  geoShapeDerivs_ = shapeDerivs_;
-  geoNodesPerElement_ = nodesPerElement_;
-
-//  interpWeights_ = copy_interpolation_weights_to_view(nodesPerElement_, shapeFunctionVals_);
-//  derivWeights_ = copy_deriv_weights_to_view(nDim_, nodesPerElement_, shapeDerivs_);
 }
 //--------------------------------------------------------------------------
 void
@@ -118,11 +233,11 @@ void HigherOrderHexSCV::determinant(
   *error = 0.0;
   ThrowRequireMsg(nelem == 1, "determinant is executed one element at a time for HO");
 
-  int geo_grad_offset = 0;
-  int geo_grad_inc = nDim_ * geoNodesPerElement_;
+  int grad_offset = 0;
+  const int grad_inc = nDim_ * nodesPerElement_;
 
-  for (int ip = 0; ip < numIntPoints_; ++ip, geo_grad_offset += geo_grad_inc) {
-    const double det_j = jacobian_determinant( coords,  &geoShapeDerivs_[geo_grad_offset]);
+  for (int ip = 0; ip < numIntPoints_; ++ip, grad_offset += grad_inc) {
+    const double det_j = jacobian_determinant( coords,  &shapeDerivs_[grad_offset]);
     volume[ip] = ipWeights_[ip] * det_j;
 
     if (det_j < tiny_positive_value()) {
@@ -139,7 +254,7 @@ HigherOrderHexSCV::jacobian_determinant(
   double dx_ds1 = 0.0;  double dx_ds2 = 0.0; double dx_ds3 = 0.0;
   double dy_ds1 = 0.0;  double dy_ds2 = 0.0; double dy_ds3 = 0.0;
   double dz_ds1 = 0.0;  double dz_ds2 = 0.0; double dz_ds3 = 0.0;
-  for (int node = 0; node < geoNodesPerElement_; ++node) {
+  for (int node = 0; node < nodesPerElement_; ++node) {
     const int vector_offset = nDim_ * node;
 
     const double xCoord = elemNodalCoords[vector_offset+0];
@@ -170,6 +285,42 @@ HigherOrderHexSCV::jacobian_determinant(
   return det_j;
 }
 //--------------------------------------------------------------------------
+void HigherOrderHexSCV::grad_op(
+  const int nelem,
+  const double *coords,
+  double *gradop,
+  double *deriv,
+  double *det_j,
+  double *error)
+{
+  *error = 0.0;
+  ThrowRequireMsg(nelem == 1, "Grad_op is executed one element at a time for HO");
+
+  int grad_offset = 0;
+  int grad_inc = nDim_ * nodesPerElement_;
+
+  for (int ip = 0; ip < numIntPoints_; ++ip) {
+    for (int j = 0; j < grad_inc; ++j) {
+      deriv[grad_offset + j] = shapeDerivs_[grad_offset +j];
+    }
+
+    gradient_3d(
+      nodesPerElement_,
+      coords,
+      &shapeDerivs_[grad_offset],
+      &gradop[grad_offset],
+      &det_j[ip]
+    );
+
+    if (det_j[ip] < tiny_positive_value()) {
+      *error = 1.0;
+    }
+
+    grad_offset += grad_inc;
+  }
+}
+
+//--------------------------------------------------------------------------
 HigherOrderHexSCS::HigherOrderHexSCS(
   ElementDescription elem,
   LagrangeBasis basis,
@@ -177,8 +328,7 @@ HigherOrderHexSCS::HigherOrderHexSCS(
 : MasterElement(),
   elem_(std::move(elem)),
   basis_(std::move(basis)),
-  quadrature_(std::move(quadrature)),
-  geometricNodesPerElement_(8)
+  quadrature_(std::move(quadrature))
 {
   nDim_ = elem_.dimension;
   nodesPerElement_ = elem_.nodesPerElement;
@@ -192,10 +342,6 @@ HigherOrderHexSCS::HigherOrderHexSCS(
   shapeFunctionVals_ = basis_.eval_basis_weights(intgLoc_);
   shapeDerivs_ = basis_.eval_deriv_weights(intgLoc_);
   expFaceShapeDerivs_ = basis_.eval_deriv_weights(intgExpFace_);
-
-  geometricShapeDerivs_ = shapeDerivs_;
-  geometricNodesPerElement_ = nodesPerElement_;
-
 }
 //--------------------------------------------------------------------------
 void
@@ -710,27 +856,24 @@ void HigherOrderHexSCS::grad_op(
   int grad_offset = 0;
   int grad_inc = nDim_ * nodesPerElement_;
 
-  int geometric_grad_offset = 0;
-  int geometric_grad_inc = nDim_ * geometricNodesPerElement_;
-
   for (int ip = 0; ip < numIntPoints_; ++ip) {
     for (int j = 0; j < grad_inc; ++j) {
       deriv[grad_offset + j] = shapeDerivs_[grad_offset +j];
     }
 
-    gradient(
+    gradient_3d(
+      nodesPerElement_,
       coords,
-      &geometricShapeDerivs_[geometric_grad_offset],
       &shapeDerivs_[grad_offset],
       &gradop[grad_offset],
-      &det_j[ip] );
+      &det_j[ip]
+    );
 
     if (det_j[ip] < tiny_positive_value()) {
       *error = 1.0;
     }
 
     grad_offset += grad_inc;
-    geometric_grad_offset += geometric_grad_inc;
   }
 }
 
@@ -755,7 +898,9 @@ void HigherOrderHexSCS::face_grad_op(
   const double* const faceShapeDerivs = &expFaceShapeDerivs_[face_offset];
 
   for (int ip = 0; ip < ipsPerFace_; ++ip) {
-    gradient(coords,
+    gradient_3d(
+      nodesPerElement_,
+      coords,
       &faceShapeDerivs[grad_offset],
       &gradop[grad_offset],
       &det_j[ip]
@@ -769,151 +914,6 @@ void HigherOrderHexSCS::face_grad_op(
   }
 }
 
-//--------------------------------------------------------------------------
-//-------- gradient --------------------------------------------------------
-//--------------------------------------------------------------------------
-void
-HigherOrderHexSCS::gradient(
-  const double* POINTER_RESTRICT elemNodalCoords,
-  const double* POINTER_RESTRICT geometricShapeDeriv,
-  const double* POINTER_RESTRICT shapeDeriv,
-  double* POINTER_RESTRICT grad,
-  double* POINTER_RESTRICT det_j) const
-{
-  double dx_ds1 = 0.0;  double dx_ds2 = 0.0; double dx_ds3 = 0.0;
-  double dy_ds1 = 0.0;  double dy_ds2 = 0.0; double dy_ds3 = 0.0;
-  double dz_ds1 = 0.0;  double dz_ds2 = 0.0; double dz_ds3 = 0.0;
-
-  //compute Jacobian
-  int vector_offset = 0;
-  for (int node = 0; node < geometricNodesPerElement_; ++node) {
-    const double xCoord = elemNodalCoords[vector_offset + 0];
-    const double yCoord = elemNodalCoords[vector_offset + 1];
-    const double zCoord = elemNodalCoords[vector_offset + 2];
-
-    const double dn_ds1 = geometricShapeDeriv[vector_offset + 0];
-    const double dn_ds2 = geometricShapeDeriv[vector_offset + 1];
-    const double dn_ds3 = geometricShapeDeriv[vector_offset + 2];
-
-    dx_ds1 += dn_ds1 * xCoord;
-    dx_ds2 += dn_ds2 * xCoord;
-    dx_ds3 += dn_ds3 * xCoord;
-
-    dy_ds1 += dn_ds1 * yCoord;
-    dy_ds2 += dn_ds2 * yCoord;
-    dy_ds3 += dn_ds3 * yCoord;
-
-    dz_ds1 += dn_ds1 * zCoord;
-    dz_ds2 += dn_ds2 * zCoord;
-    dz_ds3 += dn_ds3 * zCoord;
-
-    vector_offset += nDim_;
-  }
-
-  *det_j = dx_ds1 * ( dy_ds2 * dz_ds3 - dz_ds2 * dy_ds3 )
-         + dy_ds1 * ( dz_ds2 * dx_ds3 - dx_ds2 * dz_ds3 )
-         + dz_ds1 * ( dx_ds2 * dy_ds3 - dy_ds2 * dx_ds3 );
-
-  const double inv_det_j = 1.0 / (*det_j);
-
-  const double ds1_dx = inv_det_j*(dy_ds2 * dz_ds3 - dz_ds2 * dy_ds3);
-  const double ds2_dx = inv_det_j*(dz_ds1 * dy_ds3 - dy_ds1 * dz_ds3);
-  const double ds3_dx = inv_det_j*(dy_ds1 * dz_ds2 - dz_ds1 * dy_ds2);
-
-  const double ds1_dy = inv_det_j*(dz_ds2 * dx_ds3 - dx_ds2 * dz_ds3);
-  const double ds2_dy = inv_det_j*(dx_ds1 * dz_ds3 - dz_ds1 * dx_ds3);
-  const double ds3_dy = inv_det_j*(dz_ds1 * dx_ds2 - dx_ds1 * dz_ds2);
-
-  const double ds1_dz = inv_det_j*(dx_ds2 * dy_ds3 - dy_ds2 * dx_ds3);
-  const double ds2_dz = inv_det_j*(dy_ds1 * dx_ds3 - dx_ds1 * dy_ds3);
-  const double ds3_dz = inv_det_j*(dx_ds1 * dy_ds2 - dy_ds1 * dx_ds2);
-
-  // metrics
-  vector_offset = 0;
-  for (int node = 0; node < nodesPerElement_; ++node) {
-    const double dn_ds1 = shapeDeriv[vector_offset + 0];
-    const double dn_ds2 = shapeDeriv[vector_offset + 1];
-    const double dn_ds3 = shapeDeriv[vector_offset + 2];
-
-    grad[vector_offset + 0] = dn_ds1 * ds1_dx + dn_ds2 * ds2_dx + dn_ds3 * ds3_dx;
-    grad[vector_offset + 1] = dn_ds1 * ds1_dy + dn_ds2 * ds2_dy + dn_ds3 * ds3_dy;
-    grad[vector_offset + 2] = dn_ds1 * ds1_dz + dn_ds2 * ds2_dz + dn_ds3 * ds3_dz;
-
-    vector_offset += nDim_;
-  }
-}
-//--------------------------------------------------------------------------
-//-------- gradient --------------------------------------------------------
-//--------------------------------------------------------------------------
-void
-HigherOrderHexSCS::gradient(
-  const double* POINTER_RESTRICT elemNodalCoords,
-  const double* POINTER_RESTRICT shapeDeriv,
-  double* POINTER_RESTRICT grad,
-  double* POINTER_RESTRICT det_j) const
-{
-  double dx_ds1 = 0.0;  double dx_ds2 = 0.0; double dx_ds3 = 0.0;
-  double dy_ds1 = 0.0;  double dy_ds2 = 0.0; double dy_ds3 = 0.0;
-  double dz_ds1 = 0.0;  double dz_ds2 = 0.0; double dz_ds3 = 0.0;
-
-  //compute Jacobian
-  int vector_offset = 0;
-  for (int node = 0; node < nodesPerElement_; ++node) {
-    const double xCoord = elemNodalCoords[vector_offset + 0];
-    const double yCoord = elemNodalCoords[vector_offset + 1];
-    const double zCoord = elemNodalCoords[vector_offset + 2];
-
-    const double dn_ds1 = shapeDeriv[vector_offset + 0];
-    const double dn_ds2 = shapeDeriv[vector_offset + 1];
-    const double dn_ds3 = shapeDeriv[vector_offset + 2];
-
-    dx_ds1 += dn_ds1 * xCoord;
-    dx_ds2 += dn_ds2 * xCoord;
-    dx_ds3 += dn_ds3 * xCoord;
-
-    dy_ds1 += dn_ds1 * yCoord;
-    dy_ds2 += dn_ds2 * yCoord;
-    dy_ds3 += dn_ds3 * yCoord;
-
-    dz_ds1 += dn_ds1 * zCoord;
-    dz_ds2 += dn_ds2 * zCoord;
-    dz_ds3 += dn_ds3 * zCoord;
-
-    vector_offset += nDim_;
-  }
-
-  *det_j = dx_ds1 * ( dy_ds2 * dz_ds3 - dz_ds2 * dy_ds3 )
-         + dy_ds1 * ( dz_ds2 * dx_ds3 - dx_ds2 * dz_ds3 )
-         + dz_ds1 * ( dx_ds2 * dy_ds3 - dy_ds2 * dx_ds3 );
-
-  const double inv_det_j = 1.0 / (*det_j);
-
-  const double ds1_dx = inv_det_j*(dy_ds2 * dz_ds3 - dz_ds2 * dy_ds3);
-  const double ds2_dx = inv_det_j*(dz_ds1 * dy_ds3 - dy_ds1 * dz_ds3);
-  const double ds3_dx = inv_det_j*(dy_ds1 * dz_ds2 - dz_ds1 * dy_ds2);
-
-  const double ds1_dy = inv_det_j*(dz_ds2 * dx_ds3 - dx_ds2 * dz_ds3);
-  const double ds2_dy = inv_det_j*(dx_ds1 * dz_ds3 - dz_ds1 * dx_ds3);
-  const double ds3_dy = inv_det_j*(dz_ds1 * dx_ds2 - dx_ds1 * dz_ds2);
-
-  const double ds1_dz = inv_det_j*(dx_ds2 * dy_ds3 - dy_ds2 * dx_ds3);
-  const double ds2_dz = inv_det_j*(dy_ds1 * dx_ds3 - dx_ds1 * dy_ds3);
-  const double ds3_dz = inv_det_j*(dx_ds1 * dy_ds2 - dy_ds1 * dx_ds2);
-
-  // metrics
-  vector_offset = 0;
-  for (int node = 0; node < nodesPerElement_; ++node) {
-    const double dn_ds1 = shapeDeriv[vector_offset + 0];
-    const double dn_ds2 = shapeDeriv[vector_offset + 1];
-    const double dn_ds3 = shapeDeriv[vector_offset + 2];
-
-    grad[vector_offset + 0] = dn_ds1 * ds1_dx + dn_ds2 * ds2_dx + dn_ds3 * ds3_dx;
-    grad[vector_offset + 1] = dn_ds1 * ds1_dy + dn_ds2 * ds2_dy + dn_ds3 * ds3_dy;
-    grad[vector_offset + 2] = dn_ds1 * ds1_dz + dn_ds2 * ds2_dz + dn_ds3 * ds3_dz;
-
-    vector_offset += nDim_;
-  }
-}
 //--------------------------------------------------------------------------
 //-------- gij -------------------------------------------------------------
 //--------------------------------------------------------------------------
@@ -1135,8 +1135,7 @@ HigherOrderQuad2DSCV::HigherOrderQuad2DSCV(
 : MasterElement(),
   elem_(std::move(elem)),
   basis_(std::move(basis)),
-  quadrature_(std::move(quadrature)),
-  geometricNodesPerElement_(4)
+  quadrature_(std::move(quadrature))
 {
   nDim_ = elem_.dimension;
   nodesPerElement_ = elem_.nodesPerElement;
@@ -1147,9 +1146,6 @@ HigherOrderQuad2DSCV::HigherOrderQuad2DSCV(
   // compute and save shape functions and derivatives at ips
   shapeFunctionVals_ = basis.eval_basis_weights(intgLoc_);
   shapeDerivs_ = basis.eval_deriv_weights(intgLoc_);
-
-  geometricShapeDerivs_ = shapeDerivs_;
-  geometricNodesPerElement_ = nodesPerElement_;
 
 }
 //--------------------------------------------------------------------------
@@ -1210,11 +1206,11 @@ HigherOrderQuad2DSCV::determinant(
   *error = 0.0;
   ThrowRequireMsg(nelem == 1, "determinant is executed one element at a time for HO");
 
-  int geometric_grad_offset = 0;
-  int geometric_grad_inc = nDim_ * geometricNodesPerElement_;
+  int grad_offset = 0;
+  int grad_inc = nDim_ * nodesPerElement_;
 
   for (int ip = 0; ip < numIntPoints_; ++ip) {
-    const double det_j = jacobian_determinant(coords, &geometricShapeDerivs_[geometric_grad_offset] );
+    const double det_j = jacobian_determinant(coords, &shapeDerivs_[grad_offset] );
     volume[ip] = ipWeights_[ip] * det_j;
 
     //flag error
@@ -1222,7 +1218,7 @@ HigherOrderQuad2DSCV::determinant(
       *error = 1.0;
     }
 
-    geometric_grad_offset += geometric_grad_inc;
+    grad_offset += grad_inc;
   }
 }
 //--------------------------------------------------------------------------
@@ -1234,7 +1230,7 @@ HigherOrderQuad2DSCV::jacobian_determinant(
   double dx_ds1 = 0.0;  double dx_ds2 = 0.0;
   double dy_ds1 = 0.0;  double dy_ds2 = 0.0;
 
-  for (int node = 0; node < geometricNodesPerElement_; ++node) {
+  for (int node = 0; node < nodesPerElement_; ++node) {
     const int vector_offset = node * nDim_;
 
     const double xCoord = elemNodalCoords[vector_offset + 0];
@@ -1254,6 +1250,40 @@ HigherOrderQuad2DSCV::jacobian_determinant(
   return det_j;
 }
 //--------------------------------------------------------------------------
+void HigherOrderQuad2DSCV::grad_op(
+  const int nelem,
+  const double *coords,
+  double *gradop,
+  double *deriv,
+  double *det_j,
+  double *error)
+{
+  *error = 0.0;
+  ThrowRequireMsg(nelem == 1, "Grad_op is executed one element at a time for HO");
+
+  int grad_offset = 0;
+  int grad_inc = nDim_ * nodesPerElement_;
+
+  for (int ip = 0; ip < numIntPoints_; ++ip) {
+    for (int j = 0; j < grad_inc; ++j) {
+      deriv[grad_offset + j] = shapeDerivs_[grad_offset +j];
+    }
+
+    gradient_2d(
+      nodesPerElement_,
+      &coords[0],
+      &shapeDerivs_[grad_offset],
+      &gradop[grad_offset],
+      &det_j[ip]
+    );
+
+    if (det_j[ip] < tiny_positive_value()) {
+      *error = 1.0;
+    }
+    grad_offset += grad_inc;
+  }
+}
+//--------------------------------------------------------------------------
 HigherOrderQuad2DSCS::HigherOrderQuad2DSCS(
   ElementDescription elem,
   LagrangeBasis basis,
@@ -1261,8 +1291,7 @@ HigherOrderQuad2DSCS::HigherOrderQuad2DSCS(
 : MasterElement(),
   elem_(std::move(elem)),
   basis_(std::move(basis)),
-  quadrature_(std::move(quadrature)),
-  geometricNodesPerElement_(4)
+  quadrature_(std::move(quadrature))
 {
   nDim_ = elem_.dimension;
   nodesPerElement_ = elem_.nodesPerElement;
@@ -1277,9 +1306,6 @@ HigherOrderQuad2DSCS::HigherOrderQuad2DSCS(
   shapeFunctionVals_ = basis.eval_basis_weights(intgLoc_);
   shapeDerivs_ = basis.eval_deriv_weights(intgLoc_);
   expFaceShapeDerivs_ = basis.eval_deriv_weights(intgExpFace_);
-
-  geometricShapeDerivs_ = shapeDerivs_;
-  geometricNodesPerElement_ = nodesPerElement_;
 }
 
 double parametric_distance_quad(const double* x)
@@ -1625,16 +1651,14 @@ void HigherOrderQuad2DSCS::grad_op(
   int grad_offset = 0;
   int grad_inc = nDim_ * nodesPerElement_;
 
-  int geometric_grad_offset = 0;
-  int geometric_grad_inc = nDim_ * geometricNodesPerElement_;
   for (int ip = 0; ip < numIntPoints_; ++ip) {
     for (int j = 0; j < grad_inc; ++j) {
       deriv[grad_offset + j] = shapeDerivs_[grad_offset +j];
     }
 
-    gradient(
+    gradient_2d(
+      nodesPerElement_,
       &coords[0],
-      &geometricShapeDerivs_[geometric_grad_offset],
       &shapeDerivs_[grad_offset],
       &gradop[grad_offset],
       &det_j[ip]
@@ -1643,8 +1667,8 @@ void HigherOrderQuad2DSCS::grad_op(
     if (det_j[ip] < tiny_positive_value()) {
       *error = 1.0;
     }
+
     grad_offset += grad_inc;
-    geometric_grad_offset += geometric_grad_inc;
   }
 }
 //--------------------------------------------------------------------------
@@ -1667,10 +1691,13 @@ HigherOrderQuad2DSCS::face_grad_op(
   const double* const faceShapeDerivs = &expFaceShapeDerivs_[face_offset];
 
   for (int ip = 0; ip < ipsPerFace_; ++ip) {
-    gradient(coords,
+    gradient_2d(
+      nodesPerElement_,
+      coords,
       &faceShapeDerivs[grad_offset],
       &gradop[grad_offset],
-      &det_j[ip] );
+      &det_j[ip]
+   );
 
     if (det_j[ip] < tiny_positive_value()) {
       *error = 1.0;
@@ -1679,102 +1706,7 @@ HigherOrderQuad2DSCS::face_grad_op(
     grad_offset += grad_inc;
   }
 }
-//--------------------------------------------------------------------------
-void
-HigherOrderQuad2DSCS::gradient(
-  const double* POINTER_RESTRICT elemNodalCoords,
-  const double* POINTER_RESTRICT shapeDeriv,
-  double* POINTER_RESTRICT grad,
-  double* POINTER_RESTRICT det_j) const
-{
-  double dx_ds1 = 0.0;  double dx_ds2 = 0.0;
-  double dy_ds1 = 0.0;  double dy_ds2 = 0.0;
 
-  //compute Jacobian
-  for (int node = 0; node < nodesPerElement_; ++node) {
-    const int vector_offset = nDim_ * node;
-
-    const double xCoord = elemNodalCoords[vector_offset + 0];
-    const double yCoord = elemNodalCoords[vector_offset + 1];
-    const double dn_ds1 = shapeDeriv[vector_offset + 0];
-    const double dn_ds2 = shapeDeriv[vector_offset + 1];
-
-    dx_ds1 += dn_ds1 * xCoord;
-    dx_ds2 += dn_ds2 * xCoord;
-
-    dy_ds1 += dn_ds1 * yCoord;
-    dy_ds2 += dn_ds2 * yCoord;
-  }
-
-  *det_j = dx_ds1*dy_ds2 - dy_ds1*dx_ds2;
-
-  const double inv_det_j = 1.0 / (*det_j);
-
-  const double ds1_dx =  inv_det_j*dy_ds2;
-  const double ds2_dx = -inv_det_j*dy_ds1;
-
-  const double ds1_dy = -inv_det_j*dx_ds2;
-  const double ds2_dy =  inv_det_j*dx_ds1;
-
-  for (int node = 0; node < nodesPerElement_; ++node) {
-    const int vector_offset = nDim_ * node;
-
-    const double dn_ds1 = shapeDeriv[vector_offset + 0];
-    const double dn_ds2 = shapeDeriv[vector_offset + 1];
-
-    grad[vector_offset + 0] = dn_ds1 * ds1_dx + dn_ds2 * ds2_dx;
-    grad[vector_offset + 1] = dn_ds1 * ds1_dy + dn_ds2 * ds2_dy;
-  }
-}
-//--------------------------------------------------------------------------
-void
-HigherOrderQuad2DSCS::gradient(
-  const double* POINTER_RESTRICT elemNodalCoords,
-  const double* POINTER_RESTRICT geometricShapeDeriv,
-  const double* POINTER_RESTRICT shapeDeriv,
-  double* POINTER_RESTRICT grad,
-  double* POINTER_RESTRICT det_j) const
-{
-  double dx_ds1 = 0.0;  double dx_ds2 = 0.0;
-  double dy_ds1 = 0.0;  double dy_ds2 = 0.0;
-
-  //compute Jacobian
-  int vector_offset = 0;
-  for (int node = 0; node < geometricNodesPerElement_; ++node) {
-    const double xCoord = elemNodalCoords[vector_offset + 0];
-    const double yCoord = elemNodalCoords[vector_offset + 1];
-    const double dn_ds1 = geometricShapeDeriv[vector_offset + 0];
-    const double dn_ds2 = geometricShapeDeriv[vector_offset + 1];
-
-    dx_ds1 += dn_ds1 * xCoord;
-    dx_ds2 += dn_ds2 * xCoord;
-
-    dy_ds1 += dn_ds1 * yCoord;
-    dy_ds2 += dn_ds2 * yCoord;
-
-    vector_offset += nDim_;
-  }
-
-  *det_j = dx_ds1*dy_ds2 - dy_ds1*dx_ds2;
-
-  const double inv_det_j = 1.0 / (*det_j);
-
-  const double ds1_dx =  inv_det_j*dy_ds2;
-  const double ds2_dx = -inv_det_j*dy_ds1;
-
-  const double ds1_dy = -inv_det_j*dx_ds2;
-  const double ds2_dy =  inv_det_j*dx_ds1;
-
-  vector_offset = 0;
-  for (int node = 0; node < nodesPerElement_; ++node) {
-    const double dn_ds1 = shapeDeriv[vector_offset + 0];
-    const double dn_ds2 = shapeDeriv[vector_offset + 1];
-
-    grad[vector_offset + 0] = dn_ds1 * ds1_dx + dn_ds2 * ds2_dx;
-    grad[vector_offset + 1] = dn_ds1 * ds1_dy + dn_ds2 * ds2_dy;
-    vector_offset += nDim_;
-  }
-}
 //--------------------------------------------------------------------------
 const int *
 HigherOrderQuad2DSCS::adjacentNodes()

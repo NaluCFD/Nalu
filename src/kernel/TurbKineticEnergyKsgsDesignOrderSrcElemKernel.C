@@ -130,8 +130,12 @@ TurbKineticEnergyKsgsDesignOrderSrcElemKernel<AlgTraits>::execute(
         Pk += w_dudx[i][j]*(w_dudx[i][j] + w_dudx[j][i]);
       }
     }
-    Pk *= tviscIp;
-    
+    Pk *= stk::math::max(tviscIp,0);
+    tkeIp = stk::math::max(tkeIp,0);
+    dualNodalVolIp = stk::math::max(dualNodalVolIp,0);
+    rhoIp = stk::math::max(rhoIp,0);
+
+
     // tke factor
     const DoubleType tkeFac = (AlgTraits::nDim_ == 2) 
       ? cEps_*rhoIp*stk::math::sqrt(tkeIp/dualNodalVolIp)

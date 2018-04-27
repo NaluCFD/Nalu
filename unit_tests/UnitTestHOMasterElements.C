@@ -50,6 +50,45 @@ double poly_int(std::vector<double> coeffs,
   }
   return (upper-lower);
 }
+
+
+//-------------------------------------------------------------------------
+double linear_scalar_value(int dim, double a, const double* b, const double* x)
+{
+  if (dim == 2u) {
+    return (a + b[0] * x[0] + b[1] * x[1]);
+  }
+  return (a + b[0] * x[0] + b[1] * x[1] + b[2] * x[2]);
+}
+//-------------------------------------------------------------------------
+struct LinearField
+{
+  LinearField(int in_dim, double in_a, const double* in_b) : dim(in_dim), a(in_a) {
+    b[0] = in_b[0];
+    b[1] = in_b[1];
+    if (dim == 3) b[2] = in_b[2];
+  }
+
+  double operator()(const double* x) { return linear_scalar_value(dim, a, b, x); }
+
+  const int dim;
+  const double a;
+  double b[3];
+};
+
+LinearField make_random_linear_field(int dim, std::mt19937& rng)
+{
+
+  std::uniform_real_distribution<double> coeff(-1.0, 1.0);
+  std::vector<double> coeffs(dim);
+
+  double a = coeff(rng);
+  for (int j = 0; j < dim; ++j) {
+    coeffs[j] = coeff(rng);
+  }
+  return LinearField(dim, a, coeffs.data());
+}
+
 //--------------------------------------------------------------------------
 void
 check_interpolation_quad(int polyOrder, int numIps, double tol)
@@ -612,14 +651,6 @@ check_volume_quadrature_hex_SGL(int polyOrder, double tol)
   }
 }
 
-double linear_scalar_value(int dim, double a, const double* b, const double* x)
-{
-  if (dim == 2u) {
-    return (a + b[0] * x[0] + b[1] * x[1]);
-  }
-  return (a + b[0] * x[0] + b[1] * x[1] + b[2] * x[2]);
-}
-
 void check_is_in_element_hex(int poly_order, double tol)
 {
   auto desc = sierra::nalu::ElementDescription::create(3,  poly_order);
@@ -886,6 +917,67 @@ void check_point_interpolation_quad(int poly_order, double tol)
   EXPECT_NEAR(meInterp, exactVal, tol);
 }
 
+void check_scv_grad_op_hex(int poly_order, double tol)
+{
+  auto desc = sierra::nalu::ElementDescription::create(3,  poly_order);
+  auto basis = sierra::nalu::LagrangeBasis(desc->inverseNodeMap, desc->nodeLocs1D);
+  auto quad = sierra::nalu::TensorProductQuadratureRule("GaussLegendre", desc->polyOrder);
+  auto masterElement = sierra::nalu::HigherOrderHexSCS(*desc, basis, quad);
+  constexpr int dim = 3;
+
+  std::vector<double> ws_field(desc->nodesPerElement);
+  std::vector<double> ws_coords(desc->nodesPerElement * dim);
+
+  std::mt19937 rng;
+  rng.seed(0);
+  auto linField = make_random_linear_field(dim, rng);
+
+  const double delta = 0.25;
+  std::uniform_real_distribution<double> coord_perturb(-delta/2, delta/2);
+
+
+  for (int i = 0; i < desc->nodes1D; ++i) {
+    for (int j = 0; j < desc->nodes1D; ++j) {
+      for (int k = 0; k < desc->nodes1D; ++k) {
+        int index = desc->node_map(i,j,k);
+
+        std::array<double, 3> perturbed_coords = {{
+            desc->nodeLocs1D[i] + coord_perturb(rng),
+            desc->nodeLocs1D[j] + coord_perturb(rng),
+            desc->nodeLocs1D[k] + coord_perturb(rng)
+        }};
+
+        ws_coords[index * dim + 0] = perturbed_coords[i];
+        ws_coords[index * dim + 1] = perturbed_coords[j];
+        ws_coords[index * dim + 2] = perturbed_coords[k];
+        ws_field[index] = linField(&ws_coords[index*dim]);
+      }
+    }
+  }
+
+  const int derivSize = masterElement.numIntPoints_* desc->nodesPerElement * dim;
+  std::vector<double> ws_gradop(derivSize);
+  std::vector<double> ws_deriv(derivSize);
+  std::vector<double> ws_detj(masterElement.numIntPoints_);
+  double error = 0;
+  masterElement.grad_op(1,ws_coords.data(), ws_gradop.data(), ws_deriv.data(), ws_detj.data(), &error);
+
+  Kokkos::View<double***> dndx_scv(ws_gradop.data(), masterElement.numIntPoints_, masterElement.nodesPerElement_, dim);
+
+  for (int ip = 0; ip < masterElement.numIntPoints_; ++ip) {
+    double dqdxIp[3] = {0,0,0};
+    for (int n = 0; n < masterElement.nodesPerElement_; ++n) {
+      for (int d = 0; d < dim; ++d) {
+        dqdxIp[d] += dndx_scv(ip, n, d) * ws_field[n];
+      }
+    }
+
+    for (int d = 0; d < dim; ++d) {
+      EXPECT_NEAR(dqdxIp[d], linField.b[d], tol);
+    }
+  }
+}
+
 
 }//namespace
 
@@ -920,3 +1012,4 @@ TEST_POLY_SINGLE(check_is_not_in_element_quad, 1.0e-10);
 TEST_POLY_SINGLE(check_is_not_in_element_hex, 1.0e-10);
 TEST_POLY_SINGLE(check_point_interpolation_quad, 1.0e-8);
 TEST_POLY_SINGLE(check_point_interpolation_hex, 1.0e-8);
+TEST_POLY_SINGLE(check_scv_grad_op_hex, 1.0e-8);
