@@ -113,6 +113,7 @@
 #include <kernel/MomentumBuoyancySrcElemKernel.h>
 #include <kernel/MomentumCoriolisSrcElemKernel.h>
 #include <kernel/MomentumMassElemKernel.h>
+#include <kernel/MomentumSymmetryElemKernel.h>
 #include <kernel/MomentumUpwAdvDiffElemKernel.h>
 
 // bc kernels
@@ -179,6 +180,7 @@
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
 #include <stk_util/parallel/ParallelReduce.hpp>
+#include <stk_util/util/SortAndUnique.hpp>
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/BulkData.hpp>
@@ -191,11 +193,10 @@
 #include <stk_mesh/base/SkinMesh.hpp>
 #include <stk_mesh/base/Comm.hpp>
 
-// stk_io
-#include <stk_io/IossBridge.hpp>
-
 // stk_topo
 #include <stk_topology/topology.hpp>
+
+#include <utils/StkHelpers.h>
 
 // basic c++
 #include <vector>
@@ -1913,10 +1914,9 @@ MomentumEquationSystem::register_wall_bc(
 void
 MomentumEquationSystem::register_symmetry_bc(
   stk::mesh::Part *part,
-  const stk::topology &/*partTopo*/,
+  const stk::topology &partTopo,
   const SymmetryBoundaryConditionData &/*symmetryBCData*/)
 {
-
   // algorithm type
   const AlgorithmType algType = SYMMETRY;
 
@@ -1937,26 +1937,67 @@ MomentumEquationSystem::register_symmetry_bc(
     }
   }
 
-  // solver algs; lhs
-  std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi
-    = solverAlgDriver_->solverAlgMap_.find(algType);
-  if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
-    SolverAlgorithm *theAlg = NULL;
-    if ( realm_.realmUsesEdges_ ) {
-      theAlg = new AssembleMomentumEdgeSymmetrySolverAlgorithm(realm_, part, this);
+  if (!realm_.solutionOptions_->useConsolidatedBcSolverAlg_) {
+    // solver algs; lhs
+    std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi
+      = solverAlgDriver_->solverAlgMap_.find(algType);
+    if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
+      SolverAlgorithm *theAlg = NULL;
+      if ( realm_.realmUsesEdges_ ) {
+        theAlg = new AssembleMomentumEdgeSymmetrySolverAlgorithm(realm_, part, this);
+      }
+      else {
+        theAlg = new AssembleMomentumElemSymmetrySolverAlgorithm(realm_, part, this);
+      }
+      solverAlgDriver_->solverAlgMap_[algType] = theAlg;
     }
     else {
-      theAlg = new AssembleMomentumElemSymmetrySolverAlgorithm(realm_, part, this);
+      itsi->second->partVec_.push_back(part);
     }
-    solverAlgDriver_->solverAlgMap_[algType] = theAlg;
   }
   else {
-    itsi->second->partVec_.push_back(part);
-  }
+    auto& solverAlgMap = solverAlgDriver_->solverAlgorithmMap_;
 
-  // set consolidated flag for code coverage
-  if ( realm_.solutionOptions_->useConsolidatedSolverAlg_ )
-    realm_.solutionOptions_->useConsolidatedBcSolverAlg_ = true;
+    stk::topology elemTopo = get_elem_topo(realm_, *part);
+
+    AssembleFaceElemSolverAlgorithm* faceElemSolverAlg = nullptr;
+    bool algWasBuilt = false;
+
+    std::tie(faceElemSolverAlg, algWasBuilt) = build_or_add_part_to_face_elem_solver_alg(algType, *this, *part, elemTopo, solverAlgMap);
+
+    auto& activeKernels = faceElemSolverAlg->activeKernels_;
+
+    if(algWasBuilt) {
+
+      const stk::mesh::MetaData& metaData = realm_.meta_data();
+      const std::string viscName = realm_.is_turbulent()
+                                 ? "effective_viscosity_u" : "viscosity";
+
+      build_face_elem_topo_kernel_if_requested<MomentumSymmetryElemKernel>
+        (partTopo, elemTopo, *this, activeKernels, "lumped_momentum_time_derivative",
+         metaData, *realm_.solutionOptions_,
+         metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity"),
+         metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, viscName),
+         faceElemSolverAlg->faceDataNeeded_, faceElemSolverAlg->elemDataNeeded_
+        );
+
+      build_face_elem_topo_kernel_if_requested<MomentumSymmetryElemKernel>
+        (partTopo, elemTopo, *this, activeKernels, "advection_diffusion",
+         metaData, *realm_.solutionOptions_,
+         metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity"),
+         metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, viscName),
+         faceElemSolverAlg->faceDataNeeded_, faceElemSolverAlg->elemDataNeeded_
+        );
+
+      build_face_elem_topo_kernel_if_requested<MomentumSymmetryElemKernel>
+        (partTopo, elemTopo, *this, activeKernels, "NSO_2ND_KE",
+         metaData, *realm_.solutionOptions_,
+         metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity"),
+         metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, viscName),
+         faceElemSolverAlg->faceDataNeeded_, faceElemSolverAlg->elemDataNeeded_
+        );
+    }
+  }
 }
 
 //--------------------------------------------------------------------------

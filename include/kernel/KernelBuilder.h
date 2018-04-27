@@ -9,6 +9,7 @@
 
 #include <kernel/Kernel.h>
 #include <AssembleElemSolverAlgorithm.h>
+#include <AssembleFaceElemSolverAlgorithm.h>
 #include <EquationSystem.h>
 #include <AlgTraits.h>
 #include <kernel/KernelBuilderLog.h>
@@ -89,6 +90,32 @@ namespace nalu{
   }
 
   template <template <typename> class T, typename... Args>
+  Kernel* build_face_elem_topo_kernel(int dimension,
+                                      stk::topology faceTopo, stk::topology elemTopo,
+                                      Args&&... args)
+  {
+    switch(faceTopo.value()) {
+      case stk::topology::QUAD_4:
+        return new T<AlgTraitsQuad4Hex8>(std::forward<Args>(args)...);
+      case stk::topology::QUAD_9:
+        return new T<AlgTraitsQuad9Hex27>(std::forward<Args>(args)...);
+      case stk::topology::TRI_3:
+        return new T<AlgTraitsTri3Tet4>(std::forward<Args>(args)...);
+      case stk::topology::LINE_2:
+        if (elemTopo == stk::topology::TRI_3) {
+          return new T<AlgTraitsEdge2DTri32D>(std::forward<Args>(args)...);
+        }
+        else {
+          return new T<AlgTraitsEdge2DQuad42D>(std::forward<Args>(args)...);
+        }
+      case stk::topology::LINE_3:
+        return new T<AlgTraitsEdge32DQuad92D>(std::forward<Args>(args)...);
+      default:
+        return nullptr;
+    }
+  }
+
+  template <template <typename> class T, typename... Args>
   Kernel* build_face_topo_kernel(int dimension, stk::topology topo, Args&&... args)
   {
     if (!topo.is_super_topology()) {
@@ -128,6 +155,31 @@ namespace nalu{
     KernelBuilderLog::self().add_valid_name(eqSys.eqnTypeName_,  name);
     if (eqSys.supp_alg_is_requested(name)) {
       Kernel* compKernel = build_topo_kernel<T>(dim, topo, std::forward<Args>(args)...);
+      ThrowRequire(compKernel != nullptr);
+      KernelBuilderLog::self().add_built_name(eqSys.eqnTypeName_,  name);
+      kernelVec.push_back(compKernel);
+      isCreated = true;
+    }
+    return isCreated;
+  }
+
+  template <template <typename> class T, typename... Args>
+  bool build_face_elem_topo_kernel_if_requested(
+    stk::topology faceTopo,
+    stk::topology elemTopo,
+    EquationSystem& eqSys,
+    std::vector<Kernel*>& kernelVec,
+    std::string name,
+    Args&&... args)
+  {
+    // dimension, in addition to topology, is necessary to distinguish the HO elements,
+    const int dim = eqSys.realm_.spatialDimension_;
+
+    bool isCreated = false;
+    KernelBuilderLog::self().add_valid_name(eqSys.eqnTypeName_,  name);
+    if (eqSys.supp_alg_is_requested(name)) {
+      Kernel* compKernel = build_face_elem_topo_kernel<T>(dim, faceTopo, elemTopo,
+                                                          std::forward<Args>(args)...);
       ThrowRequire(compKernel != nullptr);
       KernelBuilderLog::self().add_built_name(eqSys.eqnTypeName_,  name);
       kernelVec.push_back(compKernel);
@@ -209,6 +261,48 @@ namespace nalu{
     }
 
     auto* theSolverAlg = dynamic_cast<AssembleElemSolverAlgorithm*>(solverAlgs.at(algName));
+    ThrowRequire(theSolverAlg != nullptr);
+
+    return {theSolverAlg, createNewAlg};
+  }
+
+  inline std::pair<AssembleFaceElemSolverAlgorithm*, bool>
+  build_or_add_part_to_face_elem_solver_alg(
+    AlgorithmType algType,
+    EquationSystem& eqSys,
+    stk::mesh::Part& part,
+    stk::topology elemTopo,
+    std::map<std::string, SolverAlgorithm*>& solverAlgs)
+  {
+    const stk::topology topo = part.topology();
+    const std::string algName = "AssembleFaceElemSolverAlg_" + topo.name() + "_"+elemTopo.name();
+
+    bool isNotNGP = !(elemTopo == stk::topology::HEXAHEDRON_8 ||
+                      elemTopo == stk::topology::HEXAHEDRON_27 ||
+                      elemTopo == stk::topology::QUADRILATERAL_4_2D ||
+                      elemTopo == stk::topology::TRIANGLE_3_2D ||
+                      elemTopo == stk::topology::WEDGE_6 ||
+                      elemTopo == stk::topology::TETRAHEDRON_4 ||
+                      elemTopo == stk::topology::PYRAMID_5);
+
+    auto itc = solverAlgs.find(algName);
+    bool createNewAlg = itc == solverAlgs.end();
+    if (createNewAlg) {
+      auto* theSolverAlg = new AssembleFaceElemSolverAlgorithm(eqSys.realm_, &part, &eqSys,
+                                            topo.num_nodes(), elemTopo.num_nodes(), isNotNGP);
+      ThrowRequire(theSolverAlg != nullptr);
+
+      NaluEnv::self().naluOutputP0() << "Created the following alg: " << algName << std::endl;
+      solverAlgs.insert({algName, theSolverAlg});
+    }
+    else {
+      auto& partVec = itc->second->partVec_;
+      if (std::find(partVec.begin(), partVec.end(), &part) == partVec.end()) {
+        partVec.push_back(&part);
+      }
+    }
+
+    auto* theSolverAlg = dynamic_cast<AssembleFaceElemSolverAlgorithm*>(solverAlgs.at(algName));
     ThrowRequire(theSolverAlg != nullptr);
 
     return {theSolverAlg, createNewAlg};
