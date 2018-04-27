@@ -221,6 +221,18 @@ void TetSCV::grad_op(
   generic_grad_op_3d<AlgTraitsTet4>(deriv, coords, gradop);
 }
 
+//--------------------------------------------------------------------------
+//-------- shifted_grad_op -------------------------------------------------
+//--------------------------------------------------------------------------
+void TetSCV::shifted_grad_op(
+    SharedMemView<DoubleType**>&coords,
+    SharedMemView<DoubleType***>&gradop,
+    SharedMemView<DoubleType***>&deriv)
+{
+  tet_deriv(deriv);
+  generic_grad_op_3d<AlgTraitsTet4>(deriv, coords, gradop);
+}
+
 void TetSCV::determinant(
   const int nelem,
   const double *coords,

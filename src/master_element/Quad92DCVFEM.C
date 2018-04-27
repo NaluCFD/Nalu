@@ -217,6 +217,20 @@ void Quad92DSCV::grad_op(
   quad_gradient_operator<Traits::numScsIp_,Traits::nodesPerElement_>(coords, gradop, deriv);
 }
 
+void Quad92DSCV::shifted_grad_op(
+    SharedMemView<DoubleType**>& coords,
+    SharedMemView<DoubleType***>& gradop,
+    SharedMemView<DoubleType***>& deriv) {
+  for (int ki=0,j=0; ki<Traits::numScsIp_; ++ki) {
+    for (int kn=0; kn<Traits::nodesPerElement_; ++kn) {
+      for (int n=0; n<Traits::nDim_; ++n,++j) {
+        deriv(ki,kn,n) = shapeDerivsShift_[j];
+      }
+    }
+  }
+  quad_gradient_operator<Traits::numScsIp_,Traits::nodesPerElement_>(coords, gradop, deriv);
+}
+
 void Quad92DSCV::determinant(
   const int nelem,
   const double *coords,

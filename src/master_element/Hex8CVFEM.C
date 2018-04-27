@@ -218,6 +218,18 @@ void HexSCV::grad_op(
 }
 
 //--------------------------------------------------------------------------
+//-------- shifted_grad_op -------------------------------------------------
+//--------------------------------------------------------------------------
+void HexSCV::shifted_grad_op(
+  SharedMemView<DoubleType**>&coords,
+  SharedMemView<DoubleType***>&gradop,
+  SharedMemView<DoubleType***>&deriv)
+{
+  hex8_derivative(numIntPoints_, &intgLocShift_[0], deriv);
+  generic_grad_op_3d<AlgTraitsHex8>(deriv, coords, gradop);
+}
+
+//--------------------------------------------------------------------------
 //-------- shape_fcn -------------------------------------------------------
 //--------------------------------------------------------------------------
 void
