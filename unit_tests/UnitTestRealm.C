@@ -67,6 +67,19 @@ const std::string realmDefaultSettings =
   "- name: unitTestRealm                                                  \n"
   "  use_edges: no                                                        \n"
   "                                                                       \n"
+  "  equation_systems:                                                    \n"
+  "    name: theEqSys                                                     \n"
+  "    max_iterations: 2                                                  \n"
+  "                                                                       \n"
+  "    solver_system_specification:                                       \n"
+  "      temperature: solve_scalar                                        \n"
+  "                                                                       \n"
+  "    systems:                                                           \n"
+  "      - HeatConduction:                                                \n"
+  "          name: myHC                                                   \n"
+  "          max_iterations: 1                                            \n"
+  "          convergence_tolerance: 1e-5                                  \n"
+  "                                                                       \n"
   "  time_step_control:                                                   \n"
   "    target_courant: 2.0                                                \n"
   "    time_step_change_factor: 1.2                                       \n"
@@ -75,7 +88,7 @@ const std::string realmDefaultSettings =
   "    name: unitTestRealmOptions                                         \n"
   "    turbulence_model: laminar                                          \n"
   "    interp_rhou_together_for_mdot: yes                                 \n"
-  "    use_consolidated_solver_algorithm: no                              \n"
+  "    use_consolidated_solver_algorithm: yes                              \n"
   "    reduced_sens_cvfem_poisson: no                                     \n"
   "                                                                       \n"
   "    options:                                                           \n"
@@ -103,11 +116,10 @@ YAML::Node get_realm_default_node() {
   return node[0];
 }
 
-NaluTest::NaluTest(YAML::Node& doc)
-  : doc_(doc),
-    comm_(MPI_COMM_WORLD),
+NaluTest::NaluTest(const YAML::Node& doc)
+  : comm_(MPI_COMM_WORLD),
     spatialDim_(3),
-    sim_(doc_)
+    sim_(doc)
 {
   // NaluEnv log file
   std::string logFileName = "unittestX_naluwrapper.log";
@@ -123,16 +135,18 @@ NaluTest::NaluTest(YAML::Node& doc)
   sim_.realms_ = new sierra::nalu::Realms(sim_);
   sim_.timeIntegrator_ = new sierra::nalu::TimeIntegrator(&sim_);
 
-  sim_.linearSolvers_->load(doc_);
-  sim_.timeIntegrator_->load(doc_);
+  sim_.linearSolvers_->load(doc);
+  sim_.timeIntegrator_->load(doc);
 }
 
 sierra::nalu::Realm&
 NaluTest::create_realm(const YAML::Node& realm_node, const std::string realm_type)
 {
   sierra::nalu::Realm* realm = nullptr;
-  if (realm_type == "multi_physics")
+  if (realm_type == "multi_physics") {
     realm = new sierra::nalu::Realm(*sim_.realms_, realm_node);
+    realm->equationSystems_.load(realm_node);
+  }
   else
     realm = new sierra::nalu::InputOutputRealm(*sim_.realms_, realm_node);
 
@@ -147,30 +161,57 @@ NaluTest::create_realm(const YAML::Node& realm_node, const std::string realm_typ
   return *realm;
 }
 
+void verify_field_values(double expectedValue, ScalarFieldType* maxLengthScaleField,
+                         const stk::mesh::BulkData& mesh)
+{
+  const stk::mesh::BucketVector& nodeBuckets = mesh.buckets(stk::topology::NODE_RANK);
+  EXPECT_FALSE(nodeBuckets.empty());
+  for(const stk::mesh::Bucket* bucketPtr : nodeBuckets) {
+    if (!bucketPtr->owned()) {
+      continue;
+    }
+    for(stk::mesh::Entity node : *bucketPtr) {
+      double* fieldValues = static_cast<double*>(stk::mesh::field_data(*maxLengthScaleField, node));
+      EXPECT_NEAR(expectedValue, fieldValues[0], 1.e-8) << "at node "<<mesh.entity_key(node);
+    }
+  }
+}
+
 TEST(NaluMock, test_nalu_mock)
 {
-  // 1. Create dummy simulation object
+  // 1. Create dummy YAML inputs (mimics an input file)
   YAML::Node doc = get_default_inputs();
   unit_test_utils::NaluTest naluObj(doc);
 
   // 2. Create a Realm input node used to fill data
   const YAML::Node realm_node = get_realm_default_node();
-  // Modify the default node for the test
+  // Modify the default node, if necessary, for the test
 
-  // 3. Create the Realm node
+  // 3. Create the Realm
   sierra::nalu::Realm& realm = naluObj.create_realm(realm_node);
 
-  // 4. Create mesh and get the default part for registration with Algorithm
-  unit_test_utils::fill_hex8_mesh("generated:10x10x10", *realm.bulkData_);
-  stk::mesh::Part* meshPart = realm.metaData_->get_part("block_1");
+  // 4. Create necessary fields...
+  ScalarFieldType& maxLengthScaleField =
+      realm.meta_data().declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "sst_max_length_scale");
+  double zero = 0.0;
+  stk::mesh::put_field(maxLengthScaleField, realm.meta_data().universal_part(), &zero);
 
-  // 5. Create necessary fields...
+  // 5. Create mesh and get the default part for registration with Algorithm
+  unit_test_utils::fill_hex8_mesh("generated:10x10x10", realm.bulk_data());
+  stk::mesh::Part* meshPart = realm.meta_data().get_part("block_1");
 
   // 6. Initialize the Algorithm to be tested...
   sierra::nalu::ComputeSSTMaxLengthScaleElemAlgorithm sstAlg(realm, meshPart);
 
   // 7. Perform tests
+  EXPECT_TRUE(sstAlg.coordinates_ != nullptr);
+  EXPECT_TRUE(sstAlg.maxLengthScale_ != nullptr);
 
+  sstAlg.execute();
+
+  //for our generated-mesh case, we expect the maxLengthScale_ field to be all ones...
+  double expectedValue = 1.0;
+  verify_field_values(expectedValue, &maxLengthScaleField, realm.bulk_data());
 }
 
 }  // unit_test_utils

@@ -11,6 +11,7 @@
 #include <master_element/MasterElement.h>
 #include <NaluEnv.h>
 #include <Realm.h>
+#include <utils/StkHelpers.h>
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/BulkData.hpp>
@@ -334,6 +335,8 @@ NonConformalManager::manage_ghosting(std::vector<stk::mesh::EntityKey>& recvGhos
   bulk_data.change_ghosting( *nonConformalGhosting_, elemsToGhost_, recvGhostsToRemove);
   
   bulk_data.modification_end();
+
+  populate_ghost_comm_procs(bulk_data, *nonConformalGhosting_, ghostCommProcs_);
 }
 
 } // namespace nalu
