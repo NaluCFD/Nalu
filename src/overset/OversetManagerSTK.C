@@ -9,6 +9,7 @@
 #include <NaluParsing.h>
 #include <Realm.h>
 #include <master_element/MasterElement.h>
+#include <utils/StkHelpers.h>
 
 // overset
 #include <overset/OversetInfo.h>
@@ -837,6 +838,8 @@ OversetManagerSTK::manage_ghosting()
     bulkData_->modification_begin();
     bulkData_->change_ghosting( *oversetGhosting_, elemsToGhost_);
     bulkData_->modification_end();
+
+    populate_ghost_comm_procs(*bulkData_, *oversetGhosting_, ghostCommProcs_);
   }
   else {
     NaluEnv::self().naluOutputP0() << "Overset alg will NOT ghost entities: " << std::endl;

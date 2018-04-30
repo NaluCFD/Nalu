@@ -39,6 +39,7 @@ typedef Teuchos::ScalarTraits<Scalar> STS;
 #include <MueLu_TpetraOperator.hpp>
 
 #include <MueLu_UseShortNames.hpp>    // => typedef MueLu::FooClass<Scalar, LocalOrdinal, ...> Foo
+#include <limits>
 
 namespace sierra{
 namespace nalu{
@@ -53,6 +54,74 @@ namespace nalu{
 
 class LinearSolvers;
 class Simulation;
+
+const LocalOrdinal INVALID = std::numeric_limits<LocalOrdinal>::max();
+
+/** LocalGraphArrays is a helper class for building the arrays describing
+ * the local csr graph, rowPointers and colIndices. These arrays are passed
+ * to the TpetraCrsGraph::setAllIndices method. This helper class is used
+ * within nalu's TpetraLinearSystem class.
+ * See unit-tests in UnitTestLocalGraphArrays.C.
+ */
+class LocalGraphArrays {
+public:
+
+  LocalGraphArrays(const Kokkos::View<size_t*,HostSpace>& rowLengths)
+  : rowPointers(Kokkos::View<size_t*>(Kokkos::ViewAllocateWithoutInitializing("rowPtrs"),rowLengths.size()+1)),
+    rowPointersData(rowPointers.data()),
+    colIndices()
+  {
+    size_t nnz = compute_row_pointers(rowPointers, rowLengths);
+    colIndices = Kokkos::View<LocalOrdinal*,HostSpace>(Kokkos::ViewAllocateWithoutInitializing("colIndices"), nnz);
+    Kokkos::deep_copy(colIndices, INVALID);
+  }
+
+  size_t get_row_length(size_t localRow) const { return rowPointersData[localRow+1]-rowPointersData[localRow]; }
+
+  void insertIndices(size_t localRow, size_t numInds, const LocalOrdinal* inds, int numDof)
+  {
+    LocalOrdinal* row = &colIndices(rowPointersData[localRow]);
+    size_t rowLen = get_row_length(localRow);
+    LocalOrdinal* rowEnd = std::find(row, row+rowLen, INVALID);
+    for(size_t i=0; i<numInds; ++i) {
+      LocalOrdinal* insertPoint = std::lower_bound(row, rowEnd, inds[i]);
+      if (insertPoint <= rowEnd && *insertPoint != inds[i]) {
+        insert(inds[i], numDof, insertPoint, rowEnd+numDof);
+        rowEnd += numDof;
+      }
+    }
+  }
+
+  static size_t compute_row_pointers(Kokkos::View<size_t*,HostSpace>& rowPtrs,
+                                   const Kokkos::View<size_t*,HostSpace>& rowLengths)
+  {
+    size_t nnz = 0;
+    size_t* rowPtrData = rowPtrs.data();
+    const size_t* rowLens = rowLengths.data();
+    for(unsigned i=0, iend=rowLengths.size(); i<iend; ++i) {
+      rowPtrData[i] = nnz;
+      nnz += rowLens[i];
+    }
+    rowPtrData[rowLengths.size()] = nnz;
+    return nnz;
+  }
+
+  Kokkos::View<size_t*,HostSpace> rowPointers;
+  const size_t* rowPointersData;
+  Kokkos::View<LocalOrdinal*,HostSpace> colIndices;
+
+private:
+
+  void insert(LocalOrdinal ind, int numDof, LocalOrdinal* insertPoint, LocalOrdinal* rowEnd)
+  {
+    for(LocalOrdinal* ptr = rowEnd-1; ptr!= insertPoint; --ptr) {
+        *ptr = *(ptr-numDof);
+    }
+    for(int i=0; i<numDof; ++i) {
+      *insertPoint++ = ind+i;
+    }
+  }
+};
 
 /** An abstract representation of a linear solver in Nalu
  *

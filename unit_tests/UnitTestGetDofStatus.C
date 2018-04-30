@@ -40,7 +40,7 @@ TEST_F(DofStatusHex8Mesh, getDofStatus_shared)
                         sierra::nalu::getDofStatus_impl(node, helperObjs.realm));
           }
           else {
-              EXPECT_EQ(sierra::nalu::DS_GloballyOwnedDOF,
+              EXPECT_EQ(sierra::nalu::DS_SharedNotOwnedDOF,
                         sierra::nalu::getDofStatus_impl(node, helperObjs.realm));
           }
       }
