@@ -179,6 +179,9 @@ static constexpr double rhs[8] = {
 TEST_F(SSTKernelHex8Mesh, turbkineticenergysstsrcelem)
 {
 
+  if (stk::parallel_machine_size(MPI_COMM_WORLD) > 1)
+    return;
+
   fill_mesh_and_init_fields();
 
   // Setup solution options
@@ -216,6 +219,9 @@ TEST_F(SSTKernelHex8Mesh, turbkineticenergysstsrcelem)
 TEST_F(SSTKernelHex8Mesh, turbkineticenergysstdessrcelem)
 {
 
+  if (stk::parallel_machine_size(MPI_COMM_WORLD) > 1)
+    return;
+
   fill_mesh_and_init_fields();
 
   // Setup solution options
@@ -252,6 +258,9 @@ TEST_F(SSTKernelHex8Mesh, turbkineticenergysstdessrcelem)
 
 TEST_F(SSTKernelHex8Mesh, specificdissipationratesstsrcelem)
 {
+
+  if (stk::parallel_machine_size(MPI_COMM_WORLD) > 1)
+    return;
 
   fill_mesh_and_init_fields();
 
