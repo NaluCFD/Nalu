@@ -136,9 +136,9 @@ namespace nalu {
       ThrowAssert(weights.extent(i) == referenceGradWeights.extent(i));
 
     for (unsigned ip = 0; ip < referenceGradWeights.extent(0); ++ip) {
-      ftype jact[dim][dim] = {{}};
+      NALU_ALIGN(64) ftype jact[dim][dim] = {{}};
 
-      ftype refGrad[AlgTraits::nodesPerElement_][dim];
+      NALU_ALIGN(64) ftype refGrad[AlgTraits::nodesPerElement_][dim];
       for (int n = 0; n < AlgTraits::nodesPerElement_; ++n) {
         for (int i=0; i<dim; ++i) {
           refGrad[n][i] = referenceGradWeights(ip, n, i);
@@ -150,17 +150,17 @@ namespace nalu {
         }
       }
 
-      ftype adjJac[dim][dim];
+      NALU_ALIGN(64) ftype adjJac[dim][dim];
       cofactorMatrix(adjJac, jact);
 
-      ftype det = 0;
+      NALU_ALIGN(64) ftype det = 0;
       for (int i=0; i<dim; ++i) det += jact[i][0] * adjJac[i][0];
       ThrowAssertMsg(
         stk::simd::are_any(det > tiny_positive_value()),
         "Problem with Jacobian determinant"
       );
 
-      const ftype inv_detj = ftype(1.0) / det;
+      NALU_ALIGN(64) const ftype inv_detj = ftype(1.0) / det;
 
       for (int n = 0; n < AlgTraits::nodesPerElement_; ++n) {
         for (int i=0; i<dim; ++i) {
