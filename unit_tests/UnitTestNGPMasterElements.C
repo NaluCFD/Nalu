@@ -12,6 +12,7 @@
 
 #include <master_element/MasterElement.h>
 #include <master_element/Hex27CVFEM.h>
+#include <master_element/Tri32DCVFEM.h>
 #include <AlgTraits.h>
 
 #include <memory>
@@ -83,6 +84,84 @@ TEST(MasterElementFunctions, generic_grad_op_3d_hex_27)
     Kokkos::deep_copy(meGrad, 0.0);
     auto start_clock = clock_type::now();
     sierra::nalu::generic_grad_op_3d<AlgTraits>(refGrad, ws_coords, meGrad);
+    auto end_clock = clock_type::now();
+    duration += 1.0e-9*std::chrono::duration_cast<std::chrono::nanoseconds>(end_clock - start_clock).count();
+  }
+  std::cout << "Time per iteration: " << (duration/nIt)*1000 << "(ms)" <<std::endl;
+
+  std::vector<double> meResult(me.numIntPoints_ * dim, 0.0);
+  for (int ip = 0; ip < me.numIntPoints_; ++ip) {
+    for (int n = 0; n < me.nodesPerElement_; ++n) {
+      for (int d = 0; d < dim; ++d) {
+        meResult[ip*dim+d] += meGrad(ip,n,d) * ws_field[n];
+      }
+    }
+ }
+
+  // derivative should be exact to floating point error
+  for (unsigned j = 0 ; j < meResult.size(); ++j) {
+   EXPECT_NEAR(meResult[j], polyResult[j], tol);
+  }
+}
+
+TEST(MasterElementFunctions, generic_grad_op_2d_tri_6)
+{
+  stk::mesh::MetaData meta(2);
+  stk::mesh::BulkData bulk(meta, MPI_COMM_WORLD);
+
+  stk::mesh::Entity elem = unit_test_utils::create_one_reference_element(bulk, stk::topology::TRIANGLE_3_2D);
+  const auto* node_rels = bulk.begin_nodes(elem);
+  sierra::nalu::Tri32DSCS me;
+  auto& coordField = *static_cast<const VectorFieldType*>(meta.coordinate_field());
+  int dim = me.nDim_;
+
+  std::mt19937 rng;
+  rng.seed(std::mt19937::default_seed);
+  std::uniform_real_distribution<double> coeff(-1.0, 1.0);
+  std::vector<double> coeffs(dim);
+
+  double a = coeff(rng);
+  for (int j = 0; j < dim; ++j) {
+    coeffs[j] = coeff(rng);
+  }
+
+  std::vector<double> polyResult(me.numIntPoints_ * dim);
+  for (int j = 0; j < me.numIntPoints_; ++j) {
+    for (int d = 0; d < dim; ++d) {
+      polyResult[j*dim+d] = coeffs[d];
+    }
+  }
+
+  std::vector<double> ws_field(me.nodesPerElement_);
+  Kokkos::View<double**> ws_coords("coords", me.nodesPerElement_, dim);
+  for (int j = 0; j < me.nodesPerElement_; ++j) {
+    const double* coords = stk::mesh::field_data(coordField, node_rels[j]);
+    for (int d = 0; d < dim; ++d) {
+      ws_coords(j, d) = coords[d];
+    }
+    ws_field[j] = linear_scalar_value(dim, a, coeffs.data(), coords);
+  }
+
+  Kokkos::View<double***> meGrad("grad", me.numIntPoints_, me.nodesPerElement_, dim);
+
+  using AlgTraits = sierra::nalu::AlgTraitsTri3_2D;
+
+  Kokkos::View<double***> refGrad("reference_gradient_weights", me.numIntPoints_, me.nodesPerElement_, dim);
+  for (int j=0; j<me.numIntPoints_; ++j) {
+    refGrad(j,0,0) = -1.0;
+    refGrad(j,1,0) =  1.0;
+    refGrad(j,2,0) =  0.0;
+    refGrad(j,0,1) = -1.0;
+    refGrad(j,1,1) =  0.0;
+    refGrad(j,2,1) =  1.0;
+  }
+
+  double duration = 0;
+  int nIt = 10000;
+  for (int k = 0; k < nIt; ++k) {
+    Kokkos::deep_copy(meGrad, 0.0);
+    auto start_clock = clock_type::now();
+    sierra::nalu::generic_grad_op_2d<AlgTraits>(refGrad, ws_coords, meGrad);
     auto end_clock = clock_type::now();
     duration += 1.0e-9*std::chrono::duration_cast<std::chrono::nanoseconds>(end_clock - start_clock).count();
   }
