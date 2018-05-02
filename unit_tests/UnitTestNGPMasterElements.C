@@ -83,7 +83,7 @@ TEST(MasterElementFunctions, generic_grad_op_3d_hex_27)
   for (int k = 0; k < nIt; ++k) {
     Kokkos::deep_copy(meGrad, 0.0);
     auto start_clock = clock_type::now();
-    sierra::nalu::generic_grad_op_3d<AlgTraits>(refGrad, ws_coords, meGrad);
+    sierra::nalu::generic_grad_op<AlgTraits>(refGrad, ws_coords, meGrad);
     auto end_clock = clock_type::now();
     duration += 1.0e-9*std::chrono::duration_cast<std::chrono::nanoseconds>(end_clock - start_clock).count();
   }
@@ -161,7 +161,7 @@ TEST(MasterElementFunctions, generic_grad_op_2d_tri_6)
   for (int k = 0; k < nIt; ++k) {
     Kokkos::deep_copy(meGrad, 0.0);
     auto start_clock = clock_type::now();
-    sierra::nalu::generic_grad_op_2d<AlgTraits>(refGrad, ws_coords, meGrad);
+    sierra::nalu::generic_grad_op<AlgTraits>(refGrad, ws_coords, meGrad);
     auto end_clock = clock_type::now();
     duration += 1.0e-9*std::chrono::duration_cast<std::chrono::nanoseconds>(end_clock - start_clock).count();
   }

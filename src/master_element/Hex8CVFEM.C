@@ -186,7 +186,7 @@ void HexSCV::grad_op(
   SharedMemView<DoubleType***>&deriv)
 {
   hex8_derivative(numIntPoints_, &intgLoc_[0], deriv);
-  generic_grad_op_3d<AlgTraitsHex8>(deriv, coords, gradop);
+  generic_grad_op<AlgTraitsHex8>(deriv, coords, gradop);
 }
 
 //--------------------------------------------------------------------------
@@ -226,7 +226,7 @@ void HexSCV::shifted_grad_op(
   SharedMemView<DoubleType***>&deriv)
 {
   hex8_derivative(numIntPoints_, &intgLocShift_[0], deriv);
-  generic_grad_op_3d<AlgTraitsHex8>(deriv, coords, gradop);
+  generic_grad_op<AlgTraitsHex8>(deriv, coords, gradop);
 }
 
 //--------------------------------------------------------------------------
@@ -517,7 +517,7 @@ void HexSCS::grad_op(
   SharedMemView<DoubleType***>&deriv)
 {
   hex8_derivative(numIntPoints_, &intgLoc_[0], deriv);
-  generic_grad_op_3d<AlgTraitsHex8>(deriv, coords, gradop);
+  generic_grad_op<AlgTraitsHex8>(deriv, coords, gradop);
  }
 
 //--------------------------------------------------------------------------
@@ -529,7 +529,7 @@ void HexSCS::shifted_grad_op(
   SharedMemView<DoubleType***>&deriv)
 {
   hex8_derivative(numIntPoints_, &intgLocShift_[0], deriv);
-  generic_grad_op_3d<AlgTraitsHex8>(deriv, coords, gradop);
+  generic_grad_op<AlgTraitsHex8>(deriv, coords, gradop);
 }
 
 //--------------------------------------------------------------------------
@@ -706,7 +706,7 @@ void HexSCS::face_grad_op(
 
   const int offset = traits::numFaceIp_ * traits::nDim_ * face_ordinal;
   hex8_derivative(traits::numFaceIp_, &intgExpFace_[offset], deriv);
-  generic_grad_op_3d<AlgTraitsHex8>(deriv, coords, gradop);
+  generic_grad_op<AlgTraitsHex8>(deriv, coords, gradop);
 }
 
 //--------------------------------------------------------------------------

@@ -28,87 +28,18 @@
 namespace sierra {
 namespace nalu {
 
-  template <typename AlgTraits, typename GradViewType, typename CoordViewType, typename OutputViewType>
-  void generic_grad_op_3d(const GradViewType& referenceGradWeights, const CoordViewType& coords, OutputViewType& weights)
-  {
-    using ftype = typename CoordViewType::value_type;
-    static_assert(std::is_same<ftype, typename GradViewType::value_type>::value,  "Incompatiable value type for views");
-    static_assert(std::is_same<ftype, typename OutputViewType::value_type>::value,  "Incompatiable value type for views");
-    static_assert(GradViewType::Rank == 3, "grad view assumed to be 3D");
-    static_assert(CoordViewType::Rank == 2, "Coordinate view assumed to be 2D");
-    static_assert(OutputViewType::Rank == 3, "Weight view assumed to be 3D");
-    static_assert(AlgTraits::nDim_ == 3, "3D method");
-
-    ThrowAssert(AlgTraits::nodesPerElement_ == referenceGradWeights.extent(1));
-    ThrowAssert(AlgTraits::nDim_ == referenceGradWeights.extent(2));
-    ThrowAssert(weights.extent(0) == referenceGradWeights.extent(0));
-    ThrowAssert(weights.extent(1) == referenceGradWeights.extent(1));
-    ThrowAssert(weights.extent(2) == referenceGradWeights.extent(2));
-
-    for (unsigned ip = 0; ip < referenceGradWeights.extent(0); ++ip) {
-      ftype jact[3][3] = {
-          {0.0, 0.0, 0.0},
-          {0.0, 0.0, 0.0},
-          {0.0, 0.0, 0.0}
-      };
-
-      ftype refGrad[AlgTraits::nodesPerElement_][3];
-      for (int n = 0; n < AlgTraits::nodesPerElement_; ++n) {
-        refGrad[n][0] = referenceGradWeights(ip, n, 0);
-        refGrad[n][1] = referenceGradWeights(ip, n, 1);
-        refGrad[n][2] = referenceGradWeights(ip, n, 2);
-
-        jact[0][0] += refGrad[n][0] * coords(n, 0);
-        jact[0][1] += refGrad[n][1] * coords(n, 0);
-        jact[0][2] += refGrad[n][2] * coords(n, 0);
-
-        jact[1][0] += refGrad[n][0] * coords(n, 1);
-        jact[1][1] += refGrad[n][1] * coords(n, 1);
-        jact[1][2] += refGrad[n][2] * coords(n, 1);
-
-        jact[2][0] += refGrad[n][0] * coords(n, 2);
-        jact[2][1] += refGrad[n][1] * coords(n, 2);
-        jact[2][2] += refGrad[n][2] * coords(n, 2);
-      }
-
-      ftype adjJac[3][3];
-      adjJac[0][0] = jact[1][1] * jact[2][2] - jact[2][1] * jact[1][2];
-      adjJac[0][1] = jact[1][2] * jact[2][0] - jact[2][2] * jact[1][0];
-      adjJac[0][2] = jact[1][0] * jact[2][1] - jact[2][0] * jact[1][1];
-
-      adjJac[1][0] = jact[0][2] * jact[2][1] - jact[2][2] * jact[0][1];
-      adjJac[1][1] = jact[0][0] * jact[2][2] - jact[2][0] * jact[0][2];
-      adjJac[1][2] = jact[0][1] * jact[2][0] - jact[2][1] * jact[0][0];
-
-      adjJac[2][0] = jact[0][1] * jact[1][2] - jact[1][1] * jact[0][2];
-      adjJac[2][1] = jact[0][2] * jact[1][0] - jact[1][2] * jact[0][0];
-      adjJac[2][2] = jact[0][0] * jact[1][1] - jact[1][0] * jact[0][1];
-
-      ThrowAssertMsg(
-        stk::simd::are_any(
-          jact[0][0] * adjJac[0][0] + jact[1][0] * adjJac[1][0] + jact[2][0] * adjJac[2][0]
-          > tiny_positive_value()
-        ),
-        "Problem with Jacobian determinant"
-      );
-
-      const ftype inv_detj = ftype(1.0) /
-          (jact[0][0] * adjJac[0][0] + jact[1][0] * adjJac[1][0] + jact[2][0] * adjJac[2][0]);
-
-      for (int n = 0; n < AlgTraits::nodesPerElement_; ++n) {
-        weights(ip, n, 0) = inv_detj *
-            (adjJac[0][0] * refGrad[n][0] + adjJac[0][1] * refGrad[n][1] + adjJac[0][2] * refGrad[n][2]);
-
-        weights(ip, n, 1) = inv_detj *
-            (adjJac[1][0] * refGrad[n][0] + adjJac[1][1] * refGrad[n][1] + adjJac[1][2] * refGrad[n][2]);
-
-        weights(ip, n, 2) = inv_detj *
-            (adjJac[2][0] * refGrad[n][0] + adjJac[2][1] * refGrad[n][1] + adjJac[2][2] * refGrad[n][2]);
-      }
-    }
-  }
-
   template<typename ftype> inline void cofactorMatrix(ftype adjJac[][3], const ftype jact[][3]) {
+    adjJac[0][0] = jact[1][1] * jact[2][2] - jact[2][1] * jact[1][2];
+    adjJac[0][1] = jact[1][2] * jact[2][0] - jact[2][2] * jact[1][0];
+    adjJac[0][2] = jact[1][0] * jact[2][1] - jact[2][0] * jact[1][1];
+
+    adjJac[1][0] = jact[0][2] * jact[2][1] - jact[2][2] * jact[0][1];
+    adjJac[1][1] = jact[0][0] * jact[2][2] - jact[2][0] * jact[0][2];
+    adjJac[1][2] = jact[0][1] * jact[2][0] - jact[2][1] * jact[0][0];
+
+    adjJac[2][0] = jact[0][1] * jact[1][2] - jact[1][1] * jact[0][2];
+    adjJac[2][1] = jact[0][2] * jact[1][0] - jact[1][2] * jact[0][0];
+    adjJac[2][2] = jact[0][0] * jact[1][1] - jact[1][0] * jact[0][1];
   }
   template<typename ftype> inline void cofactorMatrix(ftype adjJac[][2], const ftype jact[][2]) {
     adjJac[0][0] =  jact[1][1];
@@ -118,7 +49,7 @@ namespace nalu {
   }
 
   template <typename AlgTraits, typename GradViewType, typename CoordViewType, typename OutputViewType>
-  void generic_grad_op_2d(const GradViewType& referenceGradWeights, const CoordViewType& coords, OutputViewType& weights)
+  void generic_grad_op(const GradViewType& referenceGradWeights, const CoordViewType& coords, OutputViewType& weights)
   {
     constexpr int dim = AlgTraits::nDim_;
 
@@ -126,7 +57,7 @@ namespace nalu {
     static_assert(std::is_same<ftype, typename GradViewType::value_type>::value,  "Incompatiable value type for views");
     static_assert(std::is_same<ftype, typename OutputViewType::value_type>::value,  "Incompatiable value type for views");
     static_assert(GradViewType::Rank   ==   3, "grad view assumed to be 3D");
-    static_assert(CoordViewType::Rank  == dim, "Coordinate view assumed to be spatial dimension");
+    static_assert(CoordViewType::Rank  ==   2, "Coordinate view assumed to be 2D");
     static_assert(OutputViewType::Rank ==   3, "Weight view assumed to be 3D");
     static_assert(AlgTraits::nDim_     == dim, "2D method");
 
@@ -136,7 +67,10 @@ namespace nalu {
       ThrowAssert(weights.extent(i) == referenceGradWeights.extent(i));
 
     for (unsigned ip = 0; ip < referenceGradWeights.extent(0); ++ip) {
-      NALU_ALIGN(64) ftype jact[dim][dim] = {{}};
+      NALU_ALIGN(64) ftype jact[dim][dim];
+      for (int i=0; i<dim; ++i) 
+        for (int j=0; j<dim; ++j) 
+          jact[i][j] = ftype(0.0);
 
       NALU_ALIGN(64) ftype refGrad[AlgTraits::nodesPerElement_][dim];
       for (int n = 0; n < AlgTraits::nodesPerElement_; ++n) {
@@ -153,7 +87,7 @@ namespace nalu {
       NALU_ALIGN(64) ftype adjJac[dim][dim];
       cofactorMatrix(adjJac, jact);
 
-      NALU_ALIGN(64) ftype det = 0;
+      NALU_ALIGN(64) ftype det = ftype(0.0);
       for (int i=0; i<dim; ++i) det += jact[i][0] * adjJac[i][0];
       ThrowAssertMsg(
         stk::simd::are_any(det > tiny_positive_value()),
@@ -173,7 +107,6 @@ namespace nalu {
       }
     }
   }
-
 
   template <typename AlgTraits, typename GradViewType, typename CoordViewType, typename OutputViewType>
   void generic_gij_3d(

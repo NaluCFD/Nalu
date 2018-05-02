@@ -369,7 +369,7 @@ void PyrSCV::grad_op(
     SharedMemView<DoubleType***>& deriv)
 {
   pyr_deriv(numIntPoints_, &intgLoc_[0], deriv);
-  generic_grad_op_3d<AlgTraitsPyr5>(deriv, coords, gradop);
+  generic_grad_op<AlgTraitsPyr5>(deriv, coords, gradop);
 }
 
 //--------------------------------------------------------------------------
@@ -381,7 +381,7 @@ void PyrSCV::shifted_grad_op(
     SharedMemView<DoubleType***>& deriv)
 {
   pyr_deriv(numIntPoints_, &intgLocShift_[0], deriv);
-  generic_grad_op_3d<AlgTraitsPyr5>(deriv, coords, gradop);
+  generic_grad_op<AlgTraitsPyr5>(deriv, coords, gradop);
 }
 
 void PyrSCV::determinant(
@@ -756,7 +756,7 @@ void PyrSCS::grad_op(
     SharedMemView<DoubleType***>& deriv)
 {
   pyr_deriv(numIntPoints_, &intgLoc_[0], deriv);
-  generic_grad_op_3d<AlgTraitsPyr5>(deriv, coords, gradop);
+  generic_grad_op<AlgTraitsPyr5>(deriv, coords, gradop);
 }
 
 void PyrSCS::grad_op(
@@ -791,7 +791,7 @@ void PyrSCS::shifted_grad_op(
     SharedMemView<DoubleType***>& deriv)
 {
   pyr_deriv(numIntPoints_, &intgLocShift_[0], deriv);
-  generic_grad_op_3d<AlgTraitsPyr5>(deriv, coords, gradop);
+  generic_grad_op<AlgTraitsPyr5>(deriv, coords, gradop);
 }
 
 void PyrSCS::shifted_grad_op(
@@ -868,7 +868,7 @@ void PyrSCS::face_grad_op_quad(int face_ordinal, SharedMemView<DoubleType**>& co
 
   const int offset = (face_ordinal != 4) ? 0 : tri_traits::nDim_ * tri_traits::numFaceIp_ * face_ordinal;
   pyr_deriv(quad_traits::numFaceIp_, &intgExpFace_[offset], deriv);
-  generic_grad_op_3d<AlgTraitsPyr5>(deriv, coords, gradop);
+  generic_grad_op<AlgTraitsPyr5>(deriv, coords, gradop);
 }
 
 void PyrSCS::face_grad_op_tri(int face_ordinal, SharedMemView<DoubleType**>& coords, TriFaceGradType& gradop)
@@ -881,7 +881,7 @@ void PyrSCS::face_grad_op_tri(int face_ordinal, SharedMemView<DoubleType**>& coo
 
   const int offset = (face_ordinal != 4) ? tri_traits::nDim_ * tri_traits::numFaceIp_ * face_ordinal : 0;
   pyr_deriv(tri_traits::numFaceIp_, &intgExpFace_[offset], deriv);
-  generic_grad_op_3d<AlgTraitsPyr5>(deriv, coords, gradop);
+  generic_grad_op<AlgTraitsPyr5>(deriv, coords, gradop);
 }
 
 void PyrSCS::face_grad_op(

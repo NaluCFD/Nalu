@@ -610,7 +610,7 @@ void Tri32DSCS::face_grad_op(
   DoubleType psi[derivSize];
   SharedMemView<DoubleType***> deriv(psi, traits::numFaceIp_, traits::nodesPerElement_, traits::nDim_);
   tri_derivative(deriv);
-  generic_grad_op_2d<AlgTraitsEdge2DTri32D>(deriv, coords, gradop);
+  generic_grad_op<AlgTraitsEdge2DTri32D>(deriv, coords, gradop);
 }
 
 
