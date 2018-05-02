@@ -64,7 +64,7 @@ public:
 
   virtual void register_open_bc(
     stk::mesh::Part *part,
-    const stk::topology &theTopo,
+    const stk::topology &partTopo,
     const OpenBoundaryConditionData &openBCData);
 
   virtual void register_surface_pp_algorithm(
@@ -139,12 +139,12 @@ public:
 
   virtual void register_wall_bc(
     stk::mesh::Part *part,
-    const stk::topology &theTopo,
+    const stk::topology &partTopo,
     const WallBoundaryConditionData &wallBCData);
     
   virtual void register_symmetry_bc(
     stk::mesh::Part *part,
-    const stk::topology &theTopo,
+    const stk::topology &partTopo,
     const SymmetryBoundaryConditionData &symmetryBCData);
 
   virtual void register_non_conformal_bc(
@@ -219,7 +219,7 @@ public:
 
   virtual void register_open_bc(
     stk::mesh::Part *part,
-    const stk::topology &theTopo,
+    const stk::topology &partTopo,
     const OpenBoundaryConditionData &openBCData);
 
   virtual void register_wall_bc(

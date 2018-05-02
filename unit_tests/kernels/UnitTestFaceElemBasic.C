@@ -46,7 +46,7 @@ public:
     void execute( sierra::nalu::ScratchViews<DoubleType>& faceViews,
                  sierra::nalu::ScratchViews<DoubleType>& elemViews,
                  int numSimdFaces,
-                 const int* elemFaceOrdinals)
+                 const int elemFaceOrdinal)
     {
         sierra::nalu::SharedMemView<DoubleType*>& faceNodeIds = faceViews.get_scratch_view_1D(*idField_);
         sierra::nalu::SharedMemView<DoubleType*>& elemNodeIds = elemViews.get_scratch_view_1D(*idField_);
@@ -56,7 +56,7 @@ public:
         std::vector<int> faceNodeOrdinals(faceTopo_.num_nodes());
 
         for(int simdIndex=0; simdIndex<numSimdFaces; ++simdIndex) {
-           elemTopo_.face_node_ordinals(elemFaceOrdinals[simdIndex], faceNodeOrdinals.begin());
+           elemTopo_.face_node_ordinals(elemFaceOrdinal, faceNodeOrdinals.begin());
            for(unsigned i=0; i<faceTopo_.num_nodes(); ++i) {
                DoubleType faceNodeId = faceNodeIds(i);
                DoubleType elemNodeId = elemNodeIds(faceNodeOrdinals[i]);
@@ -65,17 +65,6 @@ public:
         }
 
         ++numTimesExecuted_;
-    }
-
-    void execute(int numSimdFaces, const int* elemFaceOrdinals)
-    {
-      int elemFaceOrdinal = -1;
-      for(int i=0; i<numSimdFaces; ++i) {
-        EXPECT_TRUE(elemFaceOrdinal==-1 || elemFaceOrdinal==elemFaceOrdinals[i])<<"elemFaceOrdinals "<<elemFaceOrdinal<<" and "<<elemFaceOrdinals[i]<<" in same simd group! Not allowed.";
-        elemFaceOrdinal = elemFaceOrdinals[i];
-      }
-
-      ++numTimesExecuted_;
     }
 
     unsigned numTimesExecuted_;
@@ -118,7 +107,7 @@ TEST_F(Hex8Mesh, faceElemBasic)
   faceElemAlg.run_face_elem_algorithm(bulk,
           [&](sierra::nalu::SharedMemData_FaceElem &smdata)
       {
-          faceElemKernel.execute(smdata.simdFaceViews, smdata.simdElemViews, smdata.numSimdFaces, smdata.elemFaceOrdinals);
+        faceElemKernel.execute(smdata.simdFaceViews, smdata.simdElemViews, smdata.numSimdFaces, smdata.elemFaceOrdinal);
       });
 
   unsigned expectedNumFaces = 6;
@@ -154,47 +143,6 @@ void move_face_from_surface2_to_surface3(stk::mesh::BulkData& bulk)
   const stk::mesh::ConnectivityOrdinal* firstFaceElemOrds = bulk.begin_element_ordinals(firstFace);
   const stk::mesh::ConnectivityOrdinal* secondFaceElemOrds = bulk.begin_element_ordinals(secondFace);
   EXPECT_NE(firstFaceElemOrds[0], secondFaceElemOrds[0]);
-}
-
-TEST_F(Hex8Mesh, faceElem_ordinals)
-{
-  if (stk::parallel_machine_size(MPI_COMM_WORLD) > 1) {
-    return;
-  }
-  fill_mesh("generated:1x1x2|sideset:xXyYzZ");
-  verify_faces_exist(bulk);
-  fill_with_node_ids(bulk, idField);
-
-  move_face_from_surface2_to_surface3(bulk);
-
-  stk::topology faceTopo = stk::topology::QUAD_4;
-  stk::topology elemTopo = stk::topology::HEX_8;
-  sierra::nalu::MasterElement* meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(faceTopo);
-  sierra::nalu::MasterElement* meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(elemTopo);
-  sierra::nalu::MasterElement* meSCV = sierra::nalu::MasterElementRepo::get_volume_master_element(elemTopo);
-
-  stk::mesh::Part* surface1 = meta.get_part("surface_1");
-  unsigned numDof = 3;
-
-  unit_test_utils::HelperObjects helperObjs(bulk, elemTopo, numDof, surface1);
-
-  sierra::nalu::AssembleFaceElemSolverAlgorithm faceElemAlg(helperObjs.realm, surface1, &helperObjs.eqSystem,
-                                                          faceTopo.num_nodes(), elemTopo.num_nodes());
-  faceElemAlg.faceDataNeeded_.add_cvfem_face_me(meFC);
-  faceElemAlg.elemDataNeeded_.add_cvfem_surface_me(meSCS);
-  faceElemAlg.elemDataNeeded_.add_cvfem_volume_me(meSCV);
-
-  TestFaceElemKernel faceElemKernel(faceTopo, elemTopo, idField,
-                                    faceElemAlg.faceDataNeeded_, faceElemAlg.elemDataNeeded_);
-
-  faceElemAlg.run_face_elem_algorithm(bulk,
-          [&](sierra::nalu::SharedMemData_FaceElem &smdata)
-      {
-          faceElemKernel.execute(smdata.numSimdFaces, smdata.elemFaceOrdinals);
-      });
-
-  unsigned expectedNumCalls = 8;
-  EXPECT_EQ(expectedNumCalls, faceElemKernel.numTimesExecuted_);
 }
 
 TEST_F(Hex8ElementWithBCFields, faceElemMomentumSymmetry)

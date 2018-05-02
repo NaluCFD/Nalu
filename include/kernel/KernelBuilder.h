@@ -96,11 +96,35 @@ namespace nalu{
   {
     switch(faceTopo.value()) {
       case stk::topology::QUAD_4:
-        return new T<AlgTraitsQuad4Hex8>(std::forward<Args>(args)...);
+        if ( elemTopo == stk::topology::HEX_8 ) {
+          return new T<AlgTraitsQuad4Hex8>(std::forward<Args>(args)...);
+        }
+        else if ( elemTopo == stk::topology::PYRAMID_5 ) {
+          return new T<AlgTraitsQuad4Pyr5>(std::forward<Args>(args)...);
+        }
+        else if ( elemTopo == stk::topology::WEDGE_6 ) {
+          return new T<AlgTraitsQuad4Wed6>(std::forward<Args>(args)...);
+        }
+        else {
+          ThrowRequireMsg(false,
+                          "Quad4 exposed face is not attached to either a hex8, pyr5, or wedge6.");
+        }
       case stk::topology::QUAD_9:
         return new T<AlgTraitsQuad9Hex27>(std::forward<Args>(args)...);
       case stk::topology::TRI_3:
-        return new T<AlgTraitsTri3Tet4>(std::forward<Args>(args)...);
+        if ( elemTopo == stk::topology::TET_4 ) {
+          return new T<AlgTraitsTri3Tet4>(std::forward<Args>(args)...);
+        }
+        else if ( elemTopo == stk::topology::PYRAMID_5 ) {
+          return new T<AlgTraitsTri3Pyr5>(std::forward<Args>(args)...);
+        }
+        else if ( elemTopo == stk::topology::WEDGE_6 ) {
+          return new T<AlgTraitsTri3Wed6>(std::forward<Args>(args)...);
+        }
+        else {   
+          ThrowRequireMsg(false,
+                          "Tri3 exposed face is not attached to either a tet4, pyr5, or wedge6.");
+        }
       case stk::topology::LINE_2:
         if (elemTopo == stk::topology::TRI_3) {
           return new T<AlgTraitsEdge2DTri32D>(std::forward<Args>(args)...);
@@ -164,7 +188,7 @@ namespace nalu{
   }
 
   template <template <typename> class T, typename... Args>
-  bool build_face_elem_topo_kernel_if_requested(
+  bool build_face_elem_topo_kernel_automatic(
     stk::topology faceTopo,
     stk::topology elemTopo,
     EquationSystem& eqSys,
@@ -175,17 +199,13 @@ namespace nalu{
     // dimension, in addition to topology, is necessary to distinguish the HO elements,
     const int dim = eqSys.realm_.spatialDimension_;
 
-    bool isCreated = false;
     KernelBuilderLog::self().add_valid_name(eqSys.eqnTypeName_,  name);
-    if (eqSys.supp_alg_is_requested(name)) {
-      Kernel* compKernel = build_face_elem_topo_kernel<T>(dim, faceTopo, elemTopo,
-                                                          std::forward<Args>(args)...);
-      ThrowRequire(compKernel != nullptr);
-      KernelBuilderLog::self().add_built_name(eqSys.eqnTypeName_,  name);
-      kernelVec.push_back(compKernel);
-      isCreated = true;
-    }
-    return isCreated;
+    Kernel* compKernel = build_face_elem_topo_kernel<T>(dim, faceTopo, elemTopo,
+                                                        std::forward<Args>(args)...);
+    ThrowRequire(compKernel != nullptr);
+    KernelBuilderLog::self().add_built_name(eqSys.eqnTypeName_,  name);
+    kernelVec.push_back(compKernel);
+    return true;
   }
 
   template <template <typename> class T, typename... Args>

@@ -73,12 +73,10 @@ MomentumSymmetryElemKernel<BcAlgTraits>::execute(
   SharedMemView<DoubleType**> &lhs,
   SharedMemView<DoubleType *> &rhs,
   ScratchViews<DoubleType> &faceScratchViews,
-  ScratchViews<DoubleType> &elemScratchViews)
+  ScratchViews<DoubleType> &elemScratchViews,
+  int elemFaceOrdinal)
 {
   DoubleType w_nx[BcAlgTraits::nDim_];
-
-  // FIXME #2 hard-code a face_node_ordinal and ordinal
-  const int face_ordinal = 1;
 
   // face
   SharedMemView<DoubleType*>& vf_viscosity = faceScratchViews.get_scratch_view_1D(*viscosity_);
@@ -92,7 +90,7 @@ MomentumSymmetryElemKernel<BcAlgTraits>::execute(
 
   for (int ip=0; ip < BcAlgTraits::numFaceIp_; ++ip) {
     
-    const int nearestNode = meSCS_->ipNodeMap(face_ordinal)[ip]; // "Right"
+    const int nearestNode = meSCS_->ipNodeMap(elemFaceOrdinal)[ip]; // "Right"
     
     // form unit normal
     DoubleType asq = 0.0;
