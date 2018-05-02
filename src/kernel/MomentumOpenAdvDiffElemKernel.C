@@ -110,7 +110,8 @@ MomentumOpenAdvDiffElemKernel<BcAlgTraits>::execute(
   SharedMemView<DoubleType**> &lhs,
   SharedMemView<DoubleType *> &rhs,
   ScratchViews<DoubleType> &faceScratchViews,
-  ScratchViews<DoubleType> &elemScratchViews)
+  ScratchViews<DoubleType> &elemScratchViews,
+  int elemFaceOrdinal)
 {
   DoubleType w_uBip[BcAlgTraits::nDim_];
   DoubleType w_uScs[BcAlgTraits::nDim_];
@@ -119,10 +120,8 @@ MomentumOpenAdvDiffElemKernel<BcAlgTraits>::execute(
   DoubleType w_coordBip[BcAlgTraits::nDim_];
   DoubleType w_nx[BcAlgTraits::nDim_];
 
-  // FIXME #1 and #2 hard-code a face_node_ordinal and ordinal
-  const int face_node_ordinals[BcAlgTraits::nodesPerFace_] = {};
-  const int face_ordinal = 1;
-
+  const int *face_node_ordinals = meSCS_->side_node_ordinals(elemFaceOrdinal);
+ 
   // face
   SharedMemView<DoubleType*>& vf_viscosity = faceScratchViews.get_scratch_view_1D(*viscosity_);
   SharedMemView<DoubleType**>& vf_velocityNp1 = faceScratchViews.get_scratch_view_2D(*velocityNp1_);
@@ -144,9 +143,9 @@ MomentumOpenAdvDiffElemKernel<BcAlgTraits>::execute(
 
   for (int ip=0; ip < BcAlgTraits::numFaceIp_; ++ip) {
     
-    const int opposingNode = meSCS_->opposingNodes(face_ordinal,ip); // "Left"
-    const int nearestNode = meSCS_->ipNodeMap(face_ordinal)[ip]; // "Right"
-    const int opposingScsIp = meSCS_->opposingFace(face_ordinal,ip);
+    const int opposingNode = meSCS_->opposingNodes(elemFaceOrdinal,ip); // "Left"
+    const int nearestNode = meSCS_->ipNodeMap(elemFaceOrdinal)[ip]; // "Right"
+    const int opposingScsIp = meSCS_->opposingFace(elemFaceOrdinal,ip);
     const int localFaceNode = faceIpNodeMap_[ip];
     
     // zero out vector quantities
