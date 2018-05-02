@@ -49,7 +49,6 @@ stk::topology get_elem_topo(const Realm& realm, const stk::mesh::Part& surfacePa
                   <<surfacePart.name()<<"', "<<elemTopo<<" and "<<blockParts[i]->topology());
     }
   }
-  //std::cerr<<"for surfacePart "<<surfacePart.name()<<", got topo "<<blockParts[0]->topology()<<std::endl;
 
   ThrowRequireMsg(elemTopo != stk::topology::INVALID_TOPOLOGY,
                   "Error, didn't find valid topology block for surface "<<surfacePart.name());
