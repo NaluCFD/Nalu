@@ -81,6 +81,20 @@ void test_MEBC_views(int faceOrdinal, const std::vector<sierra::nalu::ELEM_DATA_
   });
 }
 
+TEST(KokkosMEBC, test_quad42D_views)
+{
+  for (int k = 0; k < 3; ++k) {
+    test_MEBC_views<sierra::nalu::AlgTraitsEdge2DQuad42D>(k, {sierra::nalu::SCS_FACE_GRAD_OP});
+  }
+}
+
+TEST(KokkosMEBC, test_quad92D_views)
+{
+  for (int k = 0; k < 3; ++k) {
+    test_MEBC_views<sierra::nalu::AlgTraitsEdge32DQuad92D>(k, {sierra::nalu::SCS_FACE_GRAD_OP});
+  }
+}
+
 TEST(KokkosMEBC, test_tri32D_views)
 {
   for (int k = 0; k < 3; ++k) {
