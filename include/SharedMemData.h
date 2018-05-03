@@ -78,7 +78,7 @@ struct SharedMemData_FaceElem {
 
     const stk::mesh::Entity* connectedNodes[simdLen];
     int numSimdFaces;
-    int elemFaceOrdinals[simdLen];
+    int elemFaceOrdinal;
     std::unique_ptr<ScratchViews<double>> faceViews[simdLen];
     std::unique_ptr<ScratchViews<double>> elemViews[simdLen];
     ScratchViews<DoubleType> simdFaceViews;

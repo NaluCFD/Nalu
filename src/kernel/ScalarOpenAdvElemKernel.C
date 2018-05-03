@@ -93,14 +93,13 @@ ScalarOpenAdvElemKernel<BcAlgTraits>::execute(
   SharedMemView<DoubleType**> &lhs,
   SharedMemView<DoubleType *> &rhs,
   ScratchViews<DoubleType> &faceScratchViews,
-  ScratchViews<DoubleType> &elemScratchViews)
+  ScratchViews<DoubleType> &elemScratchViews,
+  int elemFaceOrdinal)
 {
   DoubleType w_coordBip[BcAlgTraits::nDim_];
 
-  // FIXME #1 and #2 hard-code a face_node_ordinal and ordinal
-  const int face_node_ordinals[BcAlgTraits::nodesPerFace_] = {};
-  const int face_ordinal = 1;
-
+  const int *face_node_ordinals = meSCS_->side_node_ordinals(elemFaceOrdinal);
+ 
   // face
   SharedMemView<DoubleType*>& vf_scalarQ = faceScratchViews.get_scratch_view_1D(*scalarQ_);
   SharedMemView<DoubleType*>& vf_bcScalarQ = faceScratchViews.get_scratch_view_1D(*bcScalarQ_);
@@ -116,8 +115,8 @@ ScalarOpenAdvElemKernel<BcAlgTraits>::execute(
 
   for (int ip=0; ip < BcAlgTraits::numFaceIp_; ++ip) {
     
-    const int opposingNode = meSCS_->opposingNodes(face_ordinal,ip); // "Left"
-    const int nearestNode = meSCS_->ipNodeMap(face_ordinal)[ip]; // "Right"
+    const int opposingNode = meSCS_->opposingNodes(elemFaceOrdinal,ip); // "Left"
+    const int nearestNode = meSCS_->ipNodeMap(elemFaceOrdinal)[ip]; // "Right"
     const int localFaceNode = faceIpNodeMap_[ip];
     
     // zero out vector quantities

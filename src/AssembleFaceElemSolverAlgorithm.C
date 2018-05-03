@@ -92,7 +92,7 @@ AssembleFaceElemSolverAlgorithm::execute()
         set_zero(smdata.simdlhs.data(), smdata.simdlhs.size());
 
         for (auto kernel : activeKernels_)
-          kernel->execute( smdata.simdlhs, smdata.simdrhs, smdata.simdFaceViews, smdata.simdElemViews );
+          kernel->execute( smdata.simdlhs, smdata.simdrhs, smdata.simdFaceViews, smdata.simdElemViews, smdata.elemFaceOrdinal );
 
         for(int simdIndex=0; simdIndex<smdata.numSimdFaces; ++simdIndex) {
           extract_vector_lane(smdata.simdrhs, simdIndex, smdata.rhs);

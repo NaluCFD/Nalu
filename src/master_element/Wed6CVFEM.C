@@ -227,7 +227,7 @@ void WedSCV::grad_op(
   SharedMemView<DoubleType***>& deriv)
 {
   wed_deriv(numIntPoints_, &intgLoc_[0], deriv);
-  generic_grad_op_3d<AlgTraitsWed6>(deriv, coords, gradop);
+  generic_grad_op<AlgTraitsWed6>(deriv, coords, gradop);
 }
 
 //--------------------------------------------------------------------------
@@ -239,7 +239,7 @@ void WedSCV::shifted_grad_op(
   SharedMemView<DoubleType***>& deriv)
 {
   wed_deriv(numIntPoints_, &intgLocShift_[0], deriv);
-  generic_grad_op_3d<AlgTraitsWed6>(deriv, coords, gradop);
+  generic_grad_op<AlgTraitsWed6>(deriv, coords, gradop);
 }
 
 //--------------------------------------------------------------------------
@@ -608,7 +608,7 @@ void WedSCS::grad_op(
 {
   wed_deriv(numIntPoints_, &intgLoc_[0], deriv);
 
-  generic_grad_op_3d<AlgTraitsWed6>(deriv, coords, gradop);
+  generic_grad_op<AlgTraitsWed6>(deriv, coords, gradop);
 }
 
 void WedSCS::shifted_grad_op(
@@ -618,7 +618,7 @@ void WedSCS::shifted_grad_op(
 {
   wed_deriv(numIntPoints_, &intgLocShift_[0], deriv);
 
-  generic_grad_op_3d<AlgTraitsWed6>(deriv, coords, gradop);
+  generic_grad_op<AlgTraitsWed6>(deriv, coords, gradop);
   //wed_grad_op(deriv, coords, gradop);
 }
 
@@ -773,7 +773,7 @@ void WedSCS::face_grad_op_tri(int face_ordinal, SharedMemView<DoubleType**>& coo
 
   const int offset = (face_ordinal < 3) ? 0 : quad_traits::numFaceIp_ * face_ordinal;
   wed_deriv(tri_traits::numFaceIp_, &intgExpFace_[tri_traits::nDim_ * offset], deriv);
-  generic_grad_op_3d<AlgTraitsWed6>(deriv, coords, gradop);
+  generic_grad_op<AlgTraitsWed6>(deriv, coords, gradop);
 }
 
 void WedSCS::face_grad_op_quad(int face_ordinal, SharedMemView<DoubleType**>& coords, QuadFaceGradType& gradop)
@@ -786,7 +786,7 @@ void WedSCS::face_grad_op_quad(int face_ordinal, SharedMemView<DoubleType**>& co
 
   const int offset = (face_ordinal < 3) ? quad_traits::numFaceIp_ * face_ordinal : 0;
   wed_deriv(quad_traits::numFaceIp_, &intgExpFace_[quad_traits::nDim_ * offset], deriv);
-  generic_grad_op_3d<AlgTraitsWed6>(deriv, coords, gradop);
+  generic_grad_op<AlgTraitsWed6>(deriv, coords, gradop);
 }
 
 void WedSCS::face_grad_op(

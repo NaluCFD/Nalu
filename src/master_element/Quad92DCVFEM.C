@@ -732,6 +732,25 @@ void Quad92DSCS::shifted_grad_op(
 //-------- face_grad_op ----------------------------------------------------
 //--------------------------------------------------------------------------
 void Quad92DSCS::face_grad_op(
+  int face_ordinal,
+  SharedMemView<DoubleType**>& coords,
+  SharedMemView<DoubleType***>& gradop)
+{
+  using traits = AlgTraitsEdge32DQuad92D;
+
+  constexpr int derivSize = traits::numFaceIp_ * traits::nodesPerElement_ * traits::nDim_;
+  DoubleType psi[derivSize];
+  SharedMemView<DoubleType***> deriv(psi, traits::numFaceIp_, traits::nodesPerElement_, traits::nDim_);
+  constexpr int offset = traits::nDim_*traits::numFaceIp_*traits::nodesPerElement_;
+  const double* exp_face = &expFaceShapeDerivs_[offset*face_ordinal];
+  for (int i=0,n=0; i<traits::numFaceIp_; ++i)
+    for (int j=0; j<traits::nodesPerElement_; ++j)
+      for (int k=0; k<traits::nDim_; ++k,++n)
+          deriv(i,j,k) = exp_face[n];
+  generic_grad_op<traits>(deriv, coords, gradop);
+}
+
+void Quad92DSCS::face_grad_op(
   const int nelem,
   const int face_ordinal,
   const double *coords,

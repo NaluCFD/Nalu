@@ -76,7 +76,7 @@ public:
         stk::mesh::Bucket & b = *buckets[team.league_rank()];
 
         ThrowAssertMsg(b.topology().num_nodes() == (unsigned)nodesPerFace_,
-                       "TestFaceElemAlgorithm expected nodesPerEntity_ = "
+                       "AssembleFaceElemSolverAlgorithm expected nodesPerEntity_ = "
                        <<nodesPerFace_<<", but b.topology().num_nodes() = "<<b.topology().num_nodes());
 
         SharedMemData_FaceElem smdata(team, bulk, faceDataNeeded_, elemDataNeeded_, meElemInfo, rhsSize);
@@ -100,7 +100,8 @@ public:
                 break;
               }
 
-              smdata.elemFaceOrdinals[simdFaceIndex] = thisElemFaceOrdinal;
+              smdata.connectedNodes[simdFaceIndex] = bulk.begin_nodes(face);
+              smdata.elemFaceOrdinal = thisElemFaceOrdinal;
               elemFaceOrdinal = thisElemFaceOrdinal;
               sierra::nalu::fill_pre_req_data(faceDataNeeded_, bulk, face, *smdata.faceViews[simdFaceIndex], interleaveMeViews);
   
@@ -113,8 +114,8 @@ public:
   
             copy_and_interleave(smdata.faceViews, smdata.numSimdFaces, smdata.simdFaceViews, interleaveMeViews);
             copy_and_interleave(smdata.elemViews, smdata.numSimdFaces, smdata.simdElemViews, interleaveMeViews);
-            fill_master_element_views(faceDataNeeded_, bulk, smdata.simdFaceViews, smdata.elemFaceOrdinals[0]);
-            fill_master_element_views(elemDataNeeded_, bulk, smdata.simdElemViews, smdata.elemFaceOrdinals[0]);
+            fill_master_element_views(faceDataNeeded_, bulk, smdata.simdFaceViews, smdata.elemFaceOrdinal);
+            fill_master_element_views(elemDataNeeded_, bulk, smdata.simdElemViews, smdata.elemFaceOrdinal);
   
             lamdbaFunc(smdata);
           } while(numFacesProcessed < simdGroupLen);
