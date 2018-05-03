@@ -600,6 +600,21 @@ void Tri32DSCS::shifted_grad_op(
 //-------- face_grad_op ----------------------------------------------------
 //--------------------------------------------------------------------------
 void Tri32DSCS::face_grad_op(
+  int /*face_ordinal*/,
+  SharedMemView<DoubleType**>& coords,
+  SharedMemView<DoubleType***>& gradop)
+{
+  using traits = AlgTraitsEdge2DTri32D;
+
+  constexpr int derivSize = traits::numFaceIp_ * traits::nodesPerElement_ * traits::nDim_;
+  DoubleType psi[derivSize];
+  SharedMemView<DoubleType***> deriv(psi, traits::numFaceIp_, traits::nodesPerElement_, traits::nDim_);
+  tri_derivative(deriv);
+  generic_grad_op<AlgTraitsEdge2DTri32D>(deriv, coords, gradop);
+}
+
+
+void Tri32DSCS::face_grad_op(
   const int nelem,
   const int /*face_ordinal*/,
   const double *coords,
