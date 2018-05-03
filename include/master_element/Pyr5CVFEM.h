@@ -194,6 +194,11 @@ public:
     double *det_j,
     double * error );
 
+  void shifted_face_grad_op(
+    int face_ordinal,
+    SharedMemView<DoubleType**>& coords,
+    SharedMemView<DoubleType***>& gradop) final;
+
   void general_face_grad_op(
     const int face_ordinal,
     const double *isoParCoord,
@@ -221,7 +226,11 @@ private:
   using QuadFaceGradType = SharedMemView<DoubleType***>;
   using TriFaceGradType = SharedMemView<DoubleType***>;
 
+  template<bool shifted> 
+  void face_grad_op(int face_ordinal, SharedMemView<DoubleType**>& coords, QuadFaceGradType& gradop);
+  template<bool shifted> 
   void face_grad_op_quad(int face_ordinal, SharedMemView<DoubleType**>& coords, QuadFaceGradType& gradop);
+  template<bool shifted> 
   void face_grad_op_tri(int face_ordinal, SharedMemView<DoubleType**>& coords, TriFaceGradType& gradop);
 };
 

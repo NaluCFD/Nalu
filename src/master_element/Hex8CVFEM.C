@@ -656,6 +656,33 @@ void HexSCS::shifted_grad_op(
 //--------------------------------------------------------------------------
 //-------- face_grad_op ----------------------------------------------------
 //--------------------------------------------------------------------------
+template <bool shifted>
+void HexSCS::face_grad_op(
+  int face_ordinal,
+  SharedMemView<DoubleType**>& coords,
+  SharedMemView<DoubleType***>& gradop)
+{
+  using traits = AlgTraitsQuad4Hex8;
+  const std::vector<double> &exp_face = shifted ? intgExpFaceShift_ : intgExpFace_;
+
+  constexpr int derivSize = traits::numFaceIp_ * traits::nodesPerElement_ * traits::nDim_;
+  DoubleType psi[derivSize];
+  SharedMemView<DoubleType***> deriv(psi, traits::numFaceIp_, traits::nodesPerElement_, traits::nDim_);
+
+  const int offset = traits::numFaceIp_ * traits::nDim_ * face_ordinal;
+  hex8_derivative(traits::numFaceIp_, &exp_face[offset], deriv);
+  generic_grad_op<AlgTraitsHex8>(deriv, coords, gradop);
+}
+
+void HexSCS::face_grad_op(
+  int face_ordinal,
+  SharedMemView<DoubleType**>& coords,
+  SharedMemView<DoubleType***>& gradop)
+{
+  constexpr bool shifted = false;
+  face_grad_op<shifted>(face_ordinal, coords, gradop);
+}
+
 void HexSCS::face_grad_op(
   const int nelem,
   const int face_ordinal,
@@ -693,25 +720,18 @@ void HexSCS::face_grad_op(
   }
 }
 
-void HexSCS::face_grad_op(
+//--------------------------------------------------------------------------
+//-------- shifted_face_grad_op --------------------------------------------
+//--------------------------------------------------------------------------
+void HexSCS::shifted_face_grad_op(
   int face_ordinal,
   SharedMemView<DoubleType**>& coords,
   SharedMemView<DoubleType***>& gradop)
 {
-  using traits = AlgTraitsQuad4Hex8;
-
-  constexpr int derivSize = traits::numFaceIp_ * traits::nodesPerElement_ * traits::nDim_;
-  DoubleType psi[derivSize];
-  SharedMemView<DoubleType***> deriv(psi, traits::numFaceIp_, traits::nodesPerElement_, traits::nDim_);
-
-  const int offset = traits::numFaceIp_ * traits::nDim_ * face_ordinal;
-  hex8_derivative(traits::numFaceIp_, &intgExpFace_[offset], deriv);
-  generic_grad_op<AlgTraitsHex8>(deriv, coords, gradop);
+  constexpr bool shifted = true;
+  face_grad_op<shifted>(face_ordinal, coords, gradop);
 }
 
-//--------------------------------------------------------------------------
-//-------- shifted_face_grad_op --------------------------------------------
-//--------------------------------------------------------------------------
 void HexSCS::shifted_face_grad_op(
   const int nelem,
   const int face_ordinal,
