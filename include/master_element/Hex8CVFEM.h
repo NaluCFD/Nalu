@@ -225,9 +225,9 @@ public:
 
 private :
 
-  template<bool shifted>
   void face_grad_op(
-    int face_ordinal,
+    const int face_ordinal,
+    const bool shifted,
     SharedMemView<DoubleType**>& coords,
     SharedMemView<DoubleType***>& gradop);
 };

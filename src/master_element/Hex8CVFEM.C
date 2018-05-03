@@ -656,9 +656,9 @@ void HexSCS::shifted_grad_op(
 //--------------------------------------------------------------------------
 //-------- face_grad_op ----------------------------------------------------
 //--------------------------------------------------------------------------
-template <bool shifted>
 void HexSCS::face_grad_op(
-  int face_ordinal,
+  const int face_ordinal,
+  const bool shifted,
   SharedMemView<DoubleType**>& coords,
   SharedMemView<DoubleType***>& gradop)
 {
@@ -680,7 +680,7 @@ void HexSCS::face_grad_op(
   SharedMemView<DoubleType***>& gradop)
 {
   constexpr bool shifted = false;
-  face_grad_op<shifted>(face_ordinal, coords, gradop);
+  face_grad_op(face_ordinal, shifted, coords, gradop);
 }
 
 void HexSCS::face_grad_op(
@@ -729,7 +729,7 @@ void HexSCS::shifted_face_grad_op(
   SharedMemView<DoubleType***>& gradop)
 {
   constexpr bool shifted = true;
-  face_grad_op<shifted>(face_ordinal, coords, gradop);
+  face_grad_op(face_ordinal, shifted, coords, gradop);
 }
 
 void HexSCS::shifted_face_grad_op(

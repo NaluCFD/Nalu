@@ -590,9 +590,9 @@ void Quad42DSCS::shifted_grad_op(
 //--------------------------------------------------------------------------
 //-------- face_grad_op ----------------------------------------------------
 //--------------------------------------------------------------------------
-template<bool shifted>
 void Quad42DSCS::face_grad_op(
-  int face_ordinal,
+  const int face_ordinal,
+  const bool shifted,
   SharedMemView<DoubleType**>& coords,
   SharedMemView<DoubleType***>& gradop)
 {
@@ -614,7 +614,7 @@ void Quad42DSCS::face_grad_op(
   SharedMemView<DoubleType***>& gradop)
 {
   constexpr bool shifted = false;
-  face_grad_op<shifted>(face_ordinal, coords, gradop);
+  face_grad_op(face_ordinal, shifted, coords, gradop);
 }
 
 void Quad42DSCS::face_grad_op(
@@ -663,7 +663,7 @@ void Quad42DSCS::shifted_face_grad_op(
   SharedMemView<DoubleType***>& gradop)
 {
   constexpr bool shifted = true;
-  face_grad_op<shifted>(face_ordinal, coords, gradop);
+  face_grad_op(face_ordinal, shifted, coords, gradop);
 }
 
 void Quad42DSCS::shifted_face_grad_op(

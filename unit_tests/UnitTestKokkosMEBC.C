@@ -35,9 +35,9 @@ namespace {
   }
 }
 
-template<bool shifted>
 void compare_old_face_grad_op(
-  int faceOrdinal,
+  const int faceOrdinal,
+  const bool shifted,
   const sierra::nalu::SharedMemView<DoubleType**>& v_coords,
   const sierra::nalu::SharedMemView<DoubleType***>& scs_fc_dndx,
   sierra::nalu::MasterElement* meSCS)
@@ -77,10 +77,10 @@ void test_MEBC_views(int faceOrdinal, const std::vector<sierra::nalu::ELEM_DATA_
 
     for(sierra::nalu::ELEM_DATA_NEEDED request : elem_requests) {
       if (request == sierra::nalu::SCS_FACE_GRAD_OP) {
-        compare_old_face_grad_op<false>(faceOrdinal, v_coords, meViews.dndx_fc_scs, driver.meSCS_);
+        compare_old_face_grad_op(faceOrdinal, false, v_coords, meViews.dndx_fc_scs, driver.meSCS_);
       }
       if (request == sierra::nalu::SCS_SHIFTED_FACE_GRAD_OP) {
-        compare_old_face_grad_op<true>(faceOrdinal, v_coords, meViews.dndx_shifted_fc_scs, driver.meSCS_);
+        compare_old_face_grad_op(faceOrdinal, true, v_coords, meViews.dndx_shifted_fc_scs, driver.meSCS_);
       }
     }
   });

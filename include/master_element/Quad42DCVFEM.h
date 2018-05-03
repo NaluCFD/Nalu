@@ -203,11 +203,11 @@ public:
 
   const int* side_node_ordinals(int sideOrdinal) final;
 private :
-  template <bool shifted>
   void face_grad_op(
-    int face_ordinal,
+    const int face_ordinal,
+    const bool shifted,
     SharedMemView<DoubleType**>& coords,
-    SharedMemView<DoubleType***>& gradop) final;
+    SharedMemView<DoubleType***>& gradop);
 
 };
 
