@@ -56,10 +56,9 @@ namespace nalu {
     using ftype = typename CoordViewType::value_type;
     static_assert(std::is_same<ftype, typename GradViewType::value_type>::value,  "Incompatiable value type for views");
     static_assert(std::is_same<ftype, typename OutputViewType::value_type>::value,  "Incompatiable value type for views");
-    static_assert(GradViewType::Rank   ==   3, "grad view assumed to be 3D");
-    static_assert(CoordViewType::Rank  ==   2, "Coordinate view assumed to be 2D");
-    static_assert(OutputViewType::Rank ==   3, "Weight view assumed to be 3D");
-    static_assert(AlgTraits::nDim_     == dim, "2D method");
+    static_assert(GradViewType::Rank   ==   3, "grad view assumed to be rank 3");
+    static_assert(CoordViewType::Rank  ==   2, "Coordinate view assumed to be rank 2");
+    static_assert(OutputViewType::Rank ==   3, "Weight view assumed to be rank 3");
 
     ThrowAssert(AlgTraits::nodesPerElement_ == referenceGradWeights.extent(1));
     ThrowAssert(AlgTraits::nDim_            == referenceGradWeights.extent(2));
