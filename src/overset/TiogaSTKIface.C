@@ -12,6 +12,7 @@
 
 #include "overset/OversetManagerTIOGA.h"
 #include "overset/OversetInfo.h"
+#include <utils/StkHelpers.h>
 
 #include "NaluEnv.h"
 #include "Realm.h"
@@ -195,6 +196,8 @@ void TiogaSTKIface::update_ghosting()
     bulk_.change_ghosting(
       *(oversetManager_.oversetGhosting_), elemsToGhost_);
     bulk_.modification_end();
+
+    sierra::nalu::populate_ghost_comm_procs(bulk_, *oversetManager_.oversetGhosting_, oversetManager_.ghostCommProcs_);
 
 #if 1
     sierra::nalu::NaluEnv::self().naluOutputP0()

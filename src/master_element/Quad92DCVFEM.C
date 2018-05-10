@@ -217,6 +217,20 @@ void Quad92DSCV::grad_op(
   quad_gradient_operator<Traits::numScsIp_,Traits::nodesPerElement_>(coords, gradop, deriv);
 }
 
+void Quad92DSCV::shifted_grad_op(
+    SharedMemView<DoubleType**>& coords,
+    SharedMemView<DoubleType***>& gradop,
+    SharedMemView<DoubleType***>& deriv) {
+  for (int ki=0,j=0; ki<Traits::numScsIp_; ++ki) {
+    for (int kn=0; kn<Traits::nodesPerElement_; ++kn) {
+      for (int n=0; n<Traits::nDim_; ++n,++j) {
+        deriv(ki,kn,n) = shapeDerivsShift_[j];
+      }
+    }
+  }
+  quad_gradient_operator<Traits::numScsIp_,Traits::nodesPerElement_>(coords, gradop, deriv);
+}
+
 void Quad92DSCV::determinant(
   const int nelem,
   const double *coords,
@@ -717,6 +731,25 @@ void Quad92DSCS::shifted_grad_op(
 //--------------------------------------------------------------------------
 //-------- face_grad_op ----------------------------------------------------
 //--------------------------------------------------------------------------
+void Quad92DSCS::face_grad_op(
+  int face_ordinal,
+  SharedMemView<DoubleType**>& coords,
+  SharedMemView<DoubleType***>& gradop)
+{
+  using traits = AlgTraitsEdge32DQuad92D;
+
+  constexpr int derivSize = traits::numFaceIp_ * traits::nodesPerElement_ * traits::nDim_;
+  DoubleType psi[derivSize];
+  SharedMemView<DoubleType***> deriv(psi, traits::numFaceIp_, traits::nodesPerElement_, traits::nDim_);
+  constexpr int offset = traits::nDim_*traits::numFaceIp_*traits::nodesPerElement_;
+  const double* exp_face = &expFaceShapeDerivs_[offset*face_ordinal];
+  for (int i=0,n=0; i<traits::numFaceIp_; ++i)
+    for (int j=0; j<traits::nodesPerElement_; ++j)
+      for (int k=0; k<traits::nDim_; ++k,++n)
+          deriv(i,j,k) = exp_face[n];
+  generic_grad_op<traits>(deriv, coords, gradop);
+}
+
 void Quad92DSCS::face_grad_op(
   const int nelem,
   const int face_ordinal,

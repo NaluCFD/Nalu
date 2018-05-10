@@ -763,13 +763,31 @@ void Hex27SCV::grad_op(
   SharedMemView<DoubleType***>&gradop,
   SharedMemView<DoubleType***>&deriv)
 {
-  generic_grad_op_3d<AlgTraits>(referenceGradWeights_, coords, gradop);
+  generic_grad_op<AlgTraits>(referenceGradWeights_, coords, gradop);
 
   // copy derivs as well.  These aren't used, but are part of the interface
   for (int ip = 0; ip < AlgTraits::numScsIp_; ++ip) {
     for (int n = 0; n < AlgTraits::nodesPerElement_; ++n) {
       for (int d = 0; d < AlgTraits::nDim_; ++d) {
         deriv(ip,n,d) = referenceGradWeights_(ip,n,d);
+      }
+    }
+  }
+}
+
+//--------------------------------------------------------------------------
+void Hex27SCV::shifted_grad_op(
+  SharedMemView<DoubleType**>&coords,
+  SharedMemView<DoubleType***>&gradop,
+  SharedMemView<DoubleType***>&deriv)
+{
+  generic_grad_op<AlgTraits>(shiftedReferenceGradWeights_, coords, gradop);
+
+  // copy derivs as well.  These aren't used, but are part of the interface
+  for (int ip = 0; ip < AlgTraits::numScsIp_; ++ip) {
+    for (int n = 0; n < AlgTraits::nodesPerElement_; ++n) {
+      for (int d = 0; d < AlgTraits::nDim_; ++d) {
+        deriv(ip,n,d) = shiftedReferenceGradWeights_(ip,n,d);
       }
     }
   }
@@ -1448,7 +1466,7 @@ void Hex27SCS::grad_op(
   SharedMemView<DoubleType***>&gradop,
   SharedMemView<DoubleType***>&deriv)
 {
-  generic_grad_op_3d<AlgTraits>(referenceGradWeights_, coords, gradop);
+  generic_grad_op<AlgTraits>(referenceGradWeights_, coords, gradop);
 
   // copy derivs as well.  These aren't used, but are part of the interface
   for (int ip = 0; ip < AlgTraits::numScsIp_; ++ip) {
@@ -1497,7 +1515,7 @@ void Hex27SCS::shifted_grad_op(
   SharedMemView<DoubleType***>&gradop,
   SharedMemView<DoubleType***>&deriv)
 {
-  generic_grad_op_3d<AlgTraits>(shiftedReferenceGradWeights_, coords, gradop);
+  generic_grad_op<AlgTraits>(shiftedReferenceGradWeights_, coords, gradop);
 
   // copy derivs as well.  These aren't used, but are part of the interface
   for (int ip = 0; ip < AlgTraits::numScsIp_; ++ip) {
@@ -1544,7 +1562,7 @@ void Hex27SCS::face_grad_op(
   const int offset = traits::numFaceIp_ * face_ordinal;
   auto range = std::make_pair(offset, offset + traits::numFaceIp_);
   auto face_weights = Kokkos::subview(expReferenceGradWeights_, range, Kokkos::ALL(), Kokkos::ALL());
-  generic_grad_op_3d<AlgTraitsHex27>(face_weights, coords, gradop);
+  generic_grad_op<AlgTraitsHex27>(face_weights, coords, gradop);
 }
 
 

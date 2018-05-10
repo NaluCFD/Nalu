@@ -68,6 +68,9 @@ class NonConformalManager {
                                              stk::mesh::EntityProcVec& elemsToGhost,
                                              stk::mesh::EntityProcVec& curSendGhosts,
                                              std::vector<stk::mesh::EntityKey>& recvGhostsToRemove);
+
+  std::vector<int> ghostCommProcs_;
+
   private:
 
   void manage_ghosting(std::vector<stk::mesh::EntityKey>& recvGhostsToRemove);

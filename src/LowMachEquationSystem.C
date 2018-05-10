@@ -45,6 +45,7 @@
 #include <ComputeMdotElemAlgorithm.h>
 #include <ComputeMdotEdgeOpenAlgorithm.h>
 #include <ComputeMdotElemOpenAlgorithm.h>
+#include <ComputeMdotElemOpenPenaltyAlgorithm.h>
 #include <ComputeMdotNonConformalAlgorithm.h>
 #include <ComputeWallFrictionVelocityAlgorithm.h>
 #include <ComputeABLWallFrictionVelocityAlgorithm.h>
@@ -116,6 +117,8 @@
 #include <kernel/MomentumUpwAdvDiffElemKernel.h>
 
 // bc kernels
+#include <kernel/ContinuityOpenElemKernel.h>
+#include <kernel/MomentumSymmetryElemKernel.h>
 #include <kernel/MomentumWallFunctionElemKernel.h>
 
 // nso
@@ -179,6 +182,7 @@
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
 #include <stk_util/parallel/ParallelReduce.hpp>
+#include <stk_util/util/SortAndUnique.hpp>
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/BulkData.hpp>
@@ -191,11 +195,10 @@
 #include <stk_mesh/base/SkinMesh.hpp>
 #include <stk_mesh/base/Comm.hpp>
 
-// stk_io
-#include <stk_io/IossBridge.hpp>
-
 // stk_topo
 #include <stk_topology/topology.hpp>
+
+#include <utils/StkHelpers.h>
 
 // basic c++
 #include <vector>
@@ -1904,7 +1907,6 @@ MomentumEquationSystem::register_wall_bc(
     // need p^n+1/2; requires "old" pressure... need a utility to save it and compute it...
     NaluEnv::self().naluOutputP0() << "Warning: Second-order FSI requires p^n+1/2; BC is using p^n+1" << std::endl;
   }
-
 }
 
 //--------------------------------------------------------------------------
@@ -1913,10 +1915,9 @@ MomentumEquationSystem::register_wall_bc(
 void
 MomentumEquationSystem::register_symmetry_bc(
   stk::mesh::Part *part,
-  const stk::topology &/*partTopo*/,
+  const stk::topology &partTopo,
   const SymmetryBoundaryConditionData &/*symmetryBCData*/)
 {
-
   // algorithm type
   const AlgorithmType algType = SYMMETRY;
 
@@ -1937,26 +1938,53 @@ MomentumEquationSystem::register_symmetry_bc(
     }
   }
 
-  // solver algs; lhs
-  std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi
-    = solverAlgDriver_->solverAlgMap_.find(algType);
-  if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
-    SolverAlgorithm *theAlg = NULL;
-    if ( realm_.realmUsesEdges_ ) {
-      theAlg = new AssembleMomentumEdgeSymmetrySolverAlgorithm(realm_, part, this);
+  if (!realm_.solutionOptions_->useConsolidatedBcSolverAlg_) {
+    // solver algs; lhs
+    std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi
+      = solverAlgDriver_->solverAlgMap_.find(algType);
+    if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
+      SolverAlgorithm *theAlg = NULL;
+      if ( realm_.realmUsesEdges_ ) {
+        theAlg = new AssembleMomentumEdgeSymmetrySolverAlgorithm(realm_, part, this);
+      }
+      else {
+        theAlg = new AssembleMomentumElemSymmetrySolverAlgorithm(realm_, part, this);
+      }
+      solverAlgDriver_->solverAlgMap_[algType] = theAlg;
     }
     else {
-      theAlg = new AssembleMomentumElemSymmetrySolverAlgorithm(realm_, part, this);
+      itsi->second->partVec_.push_back(part);
     }
-    solverAlgDriver_->solverAlgMap_[algType] = theAlg;
   }
   else {
-    itsi->second->partVec_.push_back(part);
-  }
+    auto& solverAlgMap = solverAlgDriver_->solverAlgorithmMap_;
 
-  // set consolidated flag for code coverage
-  if ( realm_.solutionOptions_->useConsolidatedSolverAlg_ )
-    realm_.solutionOptions_->useConsolidatedBcSolverAlg_ = true;
+    stk::topology elemTopo = get_elem_topo(realm_, *part);
+
+    AssembleFaceElemSolverAlgorithm* faceElemSolverAlg = nullptr;
+    bool solverAlgWasBuilt = false;
+
+    std::tie(faceElemSolverAlg, solverAlgWasBuilt) 
+      = build_or_add_part_to_face_elem_solver_alg(algType, *this, *part, elemTopo, solverAlgMap);
+
+    auto& activeKernels = faceElemSolverAlg->activeKernels_;
+
+    if (solverAlgWasBuilt) {
+
+      const stk::mesh::MetaData& metaData = realm_.meta_data();
+      const std::string viscName = realm_.is_turbulent()
+        ? "effective_viscosity_u" : "viscosity";
+      
+      build_face_elem_topo_kernel_automatic<MomentumSymmetryElemKernel>
+        (partTopo, elemTopo, *this, activeKernels, "momentum_symmetry",
+         metaData, *realm_.solutionOptions_,
+         metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity"),
+         metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, viscName),
+         faceElemSolverAlg->faceDataNeeded_, faceElemSolverAlg->elemDataNeeded_
+         );
+      
+    }
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -2672,7 +2700,7 @@ ContinuityEquationSystem::register_inflow_bc(
 void
 ContinuityEquationSystem::register_open_bc(
   stk::mesh::Part *part,
-  const stk::topology &theTopo,
+  const stk::topology &partTopo,
   const OpenBoundaryConditionData &openBCData)
 {
 
@@ -2730,29 +2758,68 @@ ContinuityEquationSystem::register_open_bc(
     }
   }
   else {
+    
+    const bool tryConsolidated = false;
+    if ( tryConsolidated /*realm_.solutionOptions_->useConsolidatedBcSolverAlg_*/) {
+      
+      // non-solver elem alg; compute open mdot (transition to penalty approach)
+      std::map<AlgorithmType, Algorithm *>::iterator itm =
+        computeMdotAlgDriver_->algMap_.find(algType);
+      if ( itm == computeMdotAlgDriver_->algMap_.end() ) {
+        ComputeMdotElemOpenPenaltyAlgorithm *theAlg
+          = new ComputeMdotElemOpenPenaltyAlgorithm(realm_, part);
+        computeMdotAlgDriver_->algMap_[algType] = theAlg;
+      }
+      else {
+        itm->second->partVec_.push_back(part);
+      }
+      
+      // solver for continuity open
+      auto& solverAlgMap = solverAlgDriver_->solverAlgorithmMap_;
+      
+      stk::topology elemTopo = get_elem_topo(realm_, *part);
+      
+      AssembleFaceElemSolverAlgorithm* faceElemSolverAlg = nullptr;
+      bool solverAlgWasBuilt = false;
 
-    // non-solver elem alg; compute open mdot
-    std::map<AlgorithmType, Algorithm *>::iterator itm =
-      computeMdotAlgDriver_->algMap_.find(algType);
-    if ( itm == computeMdotAlgDriver_->algMap_.end() ) {
-      ComputeMdotElemOpenAlgorithm *theAlg
-      = new ComputeMdotElemOpenAlgorithm(realm_, part);
-      computeMdotAlgDriver_->algMap_[algType] = theAlg;
+      std::tie(faceElemSolverAlg, solverAlgWasBuilt) 
+        = build_or_add_part_to_face_elem_solver_alg(algType, *this, *part, elemTopo, solverAlgMap);
+      
+      auto& activeKernels = faceElemSolverAlg->activeKernels_;
+      
+      if (solverAlgWasBuilt) {
+        
+        build_face_elem_topo_kernel_automatic<ContinuityOpenElemKernel>
+          (partTopo, elemTopo, *this, activeKernels, "continuity_open",
+           realm_.meta_data(), *realm_.solutionOptions_,
+           faceElemSolverAlg->faceDataNeeded_, faceElemSolverAlg->elemDataNeeded_);
+        
+      }
     }
     else {
-      itm->second->partVec_.push_back(part);
-    }
-
-    // solver; lhs
-    std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi =
-      solverAlgDriver_->solverAlgMap_.find(algType);
-    if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
-      AssembleContinuityElemOpenSolverAlgorithm *theAlg
-      = new AssembleContinuityElemOpenSolverAlgorithm(realm_, part, this);
-      solverAlgDriver_->solverAlgMap_[algType] = theAlg;
-    }
-    else {
-      itsi->second->partVec_.push_back(part);
+      // non-solver elem alg; compute open mdot
+      std::map<AlgorithmType, Algorithm *>::iterator itm =
+        computeMdotAlgDriver_->algMap_.find(algType);
+      if ( itm == computeMdotAlgDriver_->algMap_.end() ) {
+        ComputeMdotElemOpenAlgorithm *theAlg
+          = new ComputeMdotElemOpenAlgorithm(realm_, part);
+        computeMdotAlgDriver_->algMap_[algType] = theAlg;
+      }
+      else {
+        itm->second->partVec_.push_back(part);
+      }
+      
+      // solver; lhs
+      std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi =
+        solverAlgDriver_->solverAlgMap_.find(algType);
+      if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
+        AssembleContinuityElemOpenSolverAlgorithm *theAlg
+          = new AssembleContinuityElemOpenSolverAlgorithm(realm_, part, this);
+        solverAlgDriver_->solverAlgMap_[algType] = theAlg;
+      }
+      else {
+        itsi->second->partVec_.push_back(part);
+      }     
     }
   }
 }

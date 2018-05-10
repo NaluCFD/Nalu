@@ -43,11 +43,10 @@ public:
         elemDataNeeded.add_gathered_nodal_field(*idField, 1);
     }
 
-    void execute(/*perhaps bundle args into something like SharedMemData... */
-                 sierra::nalu::ScratchViews<DoubleType>& faceViews,
+    void execute( sierra::nalu::ScratchViews<DoubleType>& faceViews,
                  sierra::nalu::ScratchViews<DoubleType>& elemViews,
                  int numSimdFaces,
-                 const int* elemFaceOrdinals)
+                 const int elemFaceOrdinal)
     {
         sierra::nalu::SharedMemView<DoubleType*>& faceNodeIds = faceViews.get_scratch_view_1D(*idField_);
         sierra::nalu::SharedMemView<DoubleType*>& elemNodeIds = elemViews.get_scratch_view_1D(*idField_);
@@ -57,7 +56,7 @@ public:
         std::vector<int> faceNodeOrdinals(faceTopo_.num_nodes());
 
         for(int simdIndex=0; simdIndex<numSimdFaces; ++simdIndex) {
-           elemTopo_.face_node_ordinals(elemFaceOrdinals[simdIndex], faceNodeOrdinals.begin());
+           elemTopo_.face_node_ordinals(elemFaceOrdinal, faceNodeOrdinals.begin());
            for(unsigned i=0; i<faceTopo_.num_nodes(); ++i) {
                DoubleType faceNodeId = faceNodeIds(i);
                DoubleType elemNodeId = elemNodeIds(faceNodeOrdinals[i]);
@@ -108,11 +107,42 @@ TEST_F(Hex8Mesh, faceElemBasic)
   faceElemAlg.run_face_elem_algorithm(bulk,
           [&](sierra::nalu::SharedMemData_FaceElem &smdata)
       {
-          faceElemKernel.execute(smdata.simdFaceViews, smdata.simdElemViews, smdata.numSimdFaces, smdata.elemFaceOrdinals);
+        faceElemKernel.execute(smdata.simdFaceViews, smdata.simdElemViews, smdata.numSimdFaces, smdata.elemFaceOrdinal);
       });
 
   unsigned expectedNumFaces = 6;
   EXPECT_EQ(expectedNumFaces, faceElemKernel.numTimesExecuted_);
+}
+
+void move_face_from_surface2_to_surface3(stk::mesh::BulkData& bulk)
+{
+  stk::mesh::Part& surface2 = *bulk.mesh_meta_data().get_part("surface_2");
+  stk::mesh::Part& surface3 = *bulk.mesh_meta_data().get_part("surface_3");
+  stk::mesh::Part& surface3_q4 = *bulk.mesh_meta_data().get_part("surface_3_quad4");
+  const stk::mesh::BucketVector& s2buckets = bulk.get_buckets(stk::topology::FACE_RANK, surface2);
+  EXPECT_EQ(1u, s2buckets.size());
+  EXPECT_EQ(2u, s2buckets[0]->size());
+  stk::mesh::Entity s2face = (*s2buckets[0])[0];
+
+  bulk.modification_begin();
+  bulk.change_entity_parts(s2face, stk::mesh::ConstPartVector{&surface3, &surface3_q4}, stk::mesh::ConstPartVector{&surface2});
+  bulk.modification_end();
+
+  const stk::mesh::BucketVector& s3buckets = bulk.get_buckets(stk::topology::FACE_RANK, surface3);
+  EXPECT_EQ(1u, s3buckets.size());
+  EXPECT_EQ(3u, s3buckets[0]->size());
+
+  const stk::mesh::Bucket& faceBucket = *s3buckets[0];
+  stk::mesh::Entity firstFace = faceBucket[0];
+  stk::mesh::Entity secondFace = faceBucket[1];
+  //Each face should have just 1 attached element:
+  EXPECT_EQ(1u, bulk.num_elements(firstFace));
+  EXPECT_EQ(1u, bulk.num_elements(secondFace));
+
+  //now make sure the first two faces in the bucket have different face-elem ordinals:
+  const stk::mesh::ConnectivityOrdinal* firstFaceElemOrds = bulk.begin_element_ordinals(firstFace);
+  const stk::mesh::ConnectivityOrdinal* secondFaceElemOrds = bulk.begin_element_ordinals(secondFace);
+  EXPECT_NE(firstFaceElemOrds[0], secondFaceElemOrds[0]);
 }
 
 TEST_F(Hex8ElementWithBCFields, faceElemMomentumSymmetry)

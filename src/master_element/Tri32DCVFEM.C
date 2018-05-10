@@ -301,6 +301,17 @@ void Tri32DSCV::grad_op(
   tri_gradient_operator(coords, gradop, deriv);
 }
 
+//--------------------------------------------------------------------------
+//-------- shifted_grad_op -------------------------------------------------
+//--------------------------------------------------------------------------
+void Tri32DSCV::shifted_grad_op(
+  SharedMemView<DoubleType**>& coords,
+  SharedMemView<DoubleType***>& gradop,
+  SharedMemView<DoubleType***>& deriv) {
+  tri_derivative(deriv);
+  tri_gradient_operator(coords, gradop, deriv);
+}
+
 void Tri32DSCV::determinant(
   const int nelem,
   const double *coords,
@@ -589,6 +600,21 @@ void Tri32DSCS::shifted_grad_op(
 //-------- face_grad_op ----------------------------------------------------
 //--------------------------------------------------------------------------
 void Tri32DSCS::face_grad_op(
+  int /*face_ordinal*/,
+  SharedMemView<DoubleType**>& coords,
+  SharedMemView<DoubleType***>& gradop)
+{
+  using traits = AlgTraitsEdge2DTri32D;
+
+  constexpr int derivSize = traits::numFaceIp_ * traits::nodesPerElement_ * traits::nDim_;
+  DoubleType psi[derivSize];
+  SharedMemView<DoubleType***> deriv(psi, traits::numFaceIp_, traits::nodesPerElement_, traits::nDim_);
+  tri_derivative(deriv);
+  generic_grad_op<AlgTraitsEdge2DTri32D>(deriv, coords, gradop);
+}
+
+
+void Tri32DSCS::face_grad_op(
   const int nelem,
   const int /*face_ordinal*/,
   const double *coords,
@@ -631,6 +657,15 @@ void Tri32DSCS::face_grad_op(
 //--------------------------------------------------------------------------
 //-------- shifted_face_grad_op --------------------------------------------
 //--------------------------------------------------------------------------
+void Tri32DSCS::shifted_face_grad_op(
+  int face_ordinal,
+  SharedMemView<DoubleType**>& coords,
+  SharedMemView<DoubleType***>& gradop)
+{
+  // same as regular face_grad_op
+  face_grad_op(face_ordinal, coords, gradop);
+}
+
 void Tri32DSCS::shifted_face_grad_op(
   const int nelem,
   const int /*face_ordinal*/,

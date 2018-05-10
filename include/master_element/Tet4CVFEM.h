@@ -33,6 +33,11 @@ public:
     SharedMemView<DoubleType***>&gradop,
     SharedMemView<DoubleType***>&deriv);
 
+  void shifted_grad_op(
+    SharedMemView<DoubleType**>&coords,
+    SharedMemView<DoubleType***>&gradop,
+    SharedMemView<DoubleType***>&deriv);
+
   void determinant(
     const int nelem,
     const double *coords,
@@ -117,6 +122,11 @@ public:
     double *gradop,
     double *det_j,
     double * error );
+
+  void shifted_face_grad_op(
+    int face_ordinal,
+    SharedMemView<DoubleType**>& coords,
+    SharedMemView<DoubleType***>& gradop) final;
 
   void gij(
     SharedMemView<DoubleType**>& coords,

@@ -56,7 +56,8 @@ public:
     SharedMemView<DoubleType**> &lhs,
     SharedMemView<DoubleType*> &rhs,
     ScratchViews<DoubleType> &faceScratchViews,
-    ScratchViews<DoubleType> &elemScratchViews);
+    ScratchViews<DoubleType> &elemScratchViews,
+    int elemFaceOrdinal);
 
 private:
   ScalarOpenAdvElemKernel() = delete;

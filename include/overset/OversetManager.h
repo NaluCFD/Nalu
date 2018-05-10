@@ -84,6 +84,8 @@ public:
 
   std::vector<OversetInfo*> oversetInfoVec_;
 
+  std::vector<int> ghostCommProcs_;
+
 private:
   OversetManager() = delete;
   OversetManager(const OversetManager&) = delete;

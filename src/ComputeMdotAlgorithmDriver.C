@@ -67,6 +67,10 @@ ComputeMdotAlgorithmDriver::ComputeMdotAlgorithmDriver(
               hasMass_ = true;
               lumpedMass_ = false;
             }
+            else if (srcName == "lumped_density_time_derivative" ) {
+              hasMass_ = true;
+              lumpedMass_ = true;
+            }
           }
         }
       }

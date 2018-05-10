@@ -218,7 +218,19 @@ void TetSCV::grad_op(
     SharedMemView<DoubleType***>&deriv)
 {
   tet_deriv(deriv);
-  generic_grad_op_3d<AlgTraitsTet4>(deriv, coords, gradop);
+  generic_grad_op<AlgTraitsTet4>(deriv, coords, gradop);
+}
+
+//--------------------------------------------------------------------------
+//-------- shifted_grad_op -------------------------------------------------
+//--------------------------------------------------------------------------
+void TetSCV::shifted_grad_op(
+    SharedMemView<DoubleType**>&coords,
+    SharedMemView<DoubleType***>&gradop,
+    SharedMemView<DoubleType***>&deriv)
+{
+  tet_deriv(deriv);
+  generic_grad_op<AlgTraitsTet4>(deriv, coords, gradop);
 }
 
 void TetSCV::determinant(
@@ -554,7 +566,7 @@ void TetSCS::grad_op(
 {
   tet_deriv(deriv);
 
-  generic_grad_op_3d<AlgTraitsTet4>(deriv, coords, gradop);
+  generic_grad_op<AlgTraitsTet4>(deriv, coords, gradop);
 }
 
 void TetSCS::grad_op(
@@ -591,7 +603,7 @@ void TetSCS::shifted_grad_op(
 {
   tet_deriv(deriv);
 
-  generic_grad_op_3d<AlgTraitsTet4>(deriv, coords, gradop);
+  generic_grad_op<AlgTraitsTet4>(deriv, coords, gradop);
 }
 
 void TetSCS::shifted_grad_op(
@@ -671,12 +683,21 @@ void TetSCS::face_grad_op(
   SharedMemView<DoubleType***> deriv(wderiv,traits::numFaceIp_, traits::nodesPerElement_,  traits::nDim_);
   tet_deriv(deriv);
 
-  generic_grad_op_3d<AlgTraitsTet4>(deriv, coords, gradop);
+  generic_grad_op<AlgTraitsTet4>(deriv, coords, gradop);
 }
 
 //--------------------------------------------------------------------------
 //-------- shifted_face_grad_op --------------------------------------------
 //--------------------------------------------------------------------------
+void TetSCS::shifted_face_grad_op(
+  int face_ordinal,
+  SharedMemView<DoubleType**>& coords,
+  SharedMemView<DoubleType***>& gradop)
+{
+  // no difference for regular face_grad_op
+  face_grad_op(face_ordinal, coords, gradop);
+}
+
 void TetSCS::shifted_face_grad_op(
   const int nelem,
   const int /*face_ordinal*/,
@@ -709,7 +730,7 @@ void TetSCS::shifted_face_grad_op(
           &coords[12*n], &gradop[k*nelem*12+n*12], &det_j[npf*n+k], error, &lerr );
 
       if ( lerr )
-        NaluEnv::self().naluOutput() << "sorry, issue with face_grad_op.." << std::endl;
+        NaluEnv::self().naluOutput() << "sorry, issue with shifted_face_grad_op.." << std::endl;
     }
   }
 }
