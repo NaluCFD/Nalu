@@ -100,12 +100,12 @@ public:
                 break;
               }
 
-              smdata.connectedNodes[simdFaceIndex] = bulk.begin_nodes(face);
+              const stk::mesh::Entity* elems = bulk.begin_elements(face);
+  
+              smdata.connectedNodes[simdFaceIndex] = bulk.begin_nodes(elems[0]);
               smdata.elemFaceOrdinal = thisElemFaceOrdinal;
               elemFaceOrdinal = thisElemFaceOrdinal;
               sierra::nalu::fill_pre_req_data(faceDataNeeded_, bulk, face, *smdata.faceViews[simdFaceIndex], interleaveMeViews);
-  
-              const stk::mesh::Entity* elems = bulk.begin_elements(face);
               sierra::nalu::fill_pre_req_data(elemDataNeeded_, bulk, elems[0], *smdata.elemViews[simdFaceIndex], interleaveMeViews);
               ++simdFaceIndex;
             }
