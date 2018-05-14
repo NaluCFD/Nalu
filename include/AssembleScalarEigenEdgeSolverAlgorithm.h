@@ -24,7 +24,6 @@ namespace nalu{
 
 class Realm;
 template <typename T> class PecletFunction;
-class EigenDecomposition;
 
 class AssembleScalarEigenEdgeSolverAlgorithm : public SolverAlgorithm
 {
@@ -76,7 +75,6 @@ public:
 
   // peclect function specifics
   PecletFunction<double>* pecletFunction_;
-  EigenDecomposition eigSolver_;
 
   // constants and perturbation from user
   const double cGGDH_;

@@ -15,7 +15,6 @@
 #include <PecletFunction.h>
 #include <Realm.h>
 #include <SolutionOptions.h>
-#include <EigenDecomposition.h>
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/BulkData.hpp>
@@ -65,7 +64,6 @@ AssembleScalarEigenEdgeSolverAlgorithm::AssembleScalarEigenEdgeSolverAlgorithm(
     velocity_(NULL),
     dudx_(NULL),
     pecletFunction_(NULL),
-    eigSolver_(),
     cGGDH_(3.0/2.0*realm_.get_turb_model_constant(TM_cMu)/turbSigma),
     deltaB_(realm_.solutionOptions_->eigenvaluePerturbDelta_),
     perturbTurbKe_(realm_.solutionOptions_->eigenvaluePerturbTurbKe_)
@@ -88,9 +86,6 @@ AssembleScalarEigenEdgeSolverAlgorithm::AssembleScalarEigenEdgeSolverAlgorithm(
 
   // create the peclet blending function
   pecletFunction_ = eqSystem->create_peclet_function<double>(scalarQ_->name());
-
-  // instantiate the Eigenvalue solver
-  EigenDecomposition eigSolver_; 
 
   // initialize xic
   const int biasTowards = realm_.solutionOptions_->eigenvaluePerturbBiasTowards_;
@@ -351,7 +346,7 @@ AssembleScalarEigenEdgeSolverAlgorithm::execute()
       }
      
       // perform the decomposition
-      eigSolver_.sym_diagonalize(b_, Q_, D_);
+      EigenDecomposition::sym_diagonalize(b_, Q_, D_);
 
       // sort D
       sort(D_);
@@ -360,7 +355,7 @@ AssembleScalarEigenEdgeSolverAlgorithm::execute()
       perturb(D_);
 
       // form new stress
-      eigSolver_.reconstruct_matrix_from_decomposition(D_, Q_, b_);
+      EigenDecomposition::reconstruct_matrix_from_decomposition(D_, Q_, b_);
 
       // remove normalization; add in tke (possibly perturbed)
       const double turbKeIpPert = std::max(turbKeIp*(1.0 + perturbTurbKe_), 1.0e-16);
