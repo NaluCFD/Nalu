@@ -2759,9 +2759,7 @@ ContinuityEquationSystem::register_open_bc(
   }
   else {
     
-    const bool tryConsolidated = false;
-    if ( tryConsolidated /*realm_.solutionOptions_->useConsolidatedBcSolverAlg_*/) {
-      
+    if ( realm_.solutionOptions_->useConsolidatedBcSolverAlg_ ) {      
       // non-solver elem alg; compute open mdot (transition to penalty approach)
       std::map<AlgorithmType, Algorithm *>::iterator itm =
         computeMdotAlgDriver_->algMap_.find(algType);
