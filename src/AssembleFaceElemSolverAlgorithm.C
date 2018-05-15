@@ -55,7 +55,6 @@ AssembleFaceElemSolverAlgorithm::AssembleFaceElemSolverAlgorithm(
   unsigned nodesPerElem,
   bool interleaveMEViews)
   : SolverAlgorithm(realm, part, eqSystem),
-    part_(part),
     numDof_(eqSystem->linsys_->numDof()),
     nodesPerFace_(nodesPerFace),
     nodesPerElem_(nodesPerElem),
