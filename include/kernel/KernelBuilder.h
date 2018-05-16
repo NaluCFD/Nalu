@@ -126,7 +126,7 @@ namespace nalu{
                           "Tri3 exposed face is not attached to either a tet4, pyr5, or wedge6.");
         }
       case stk::topology::LINE_2:
-        if (elemTopo == stk::topology::TRI_3) {
+        if (elemTopo == stk::topology::TRI_3_2D) {
           return new T<AlgTraitsEdge2DTri32D>(std::forward<Args>(args)...);
         }
         else {
