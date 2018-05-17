@@ -334,11 +334,13 @@ namespace nalu{
   build_or_add_part_to_face_bc_solver_alg(
     EquationSystem& eqSys,
     stk::mesh::Part& part,
-    std::map<std::string, SolverAlgorithm*>& solverAlgs)
+    std::map<std::string, SolverAlgorithm*>& solverAlgs,
+    const std::string bcName)
   {
     const stk::topology topo = part.topology();
-    const std::string algName = eqSys.name_ + "_AssembleElemSolverAlg_" + topo.name();
-    
+    const std::string algName 
+      = eqSys.name_ + "_" + bcName + "_AssembleElemSolverAlg_" + topo.name();
+
     bool isNotNGP = !(topo == stk::topology::QUAD_4 ||
                       topo == stk::topology::QUAD_9 ||
                       topo == stk::topology::TRI_3 ||
