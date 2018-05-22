@@ -63,8 +63,8 @@ private:
   const int *ipNodeMap_{nullptr};
 
   // scratch space
-  Kokkos::View<DoubleType[BcAlgTraits::numFaceIp_][BcAlgTraits::nodesPerFace_]> vf_shape_function_{"vf_shape_function"};
-  Kokkos::View<DoubleType[BcAlgTraits::nDim_]> v_Sk_{"v_Sk"};
+  AlignedViewType<DoubleType[BcAlgTraits::numFaceIp_][BcAlgTraits::nodesPerFace_]> vf_shape_function_{"vf_shape_function"};
+  AlignedViewType<DoubleType[BcAlgTraits::nDim_]> v_Sk_{"v_Sk"};
 };
 
 }  // nalu
