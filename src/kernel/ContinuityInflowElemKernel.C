@@ -74,7 +74,7 @@ ContinuityInflowElemKernel<BcAlgTraits>::setup(const TimeIntegrator &timeIntegra
 template<typename BcAlgTraits>
 void
 ContinuityInflowElemKernel<BcAlgTraits>::execute(
-  SharedMemView<DoubleType **>&lhs,
+  SharedMemView<DoubleType **>&/*lhs*/,
   SharedMemView<DoubleType *>&rhs,
   ScratchViews<DoubleType>& scratchViews)
 {
