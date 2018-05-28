@@ -138,8 +138,6 @@ void TpetraLinearSolver::setMueLu()
     else if (reusePreconditioner_) {
       MueLu::ReuseTpetraPreconditioner(matrix_, *mueluPreconditioner_);
     }
-    if (config->getSummarizeMueluTimer())
-      Teuchos::TimeMonitor::summarize(std::cout, false, true, false, Teuchos::Union);
   }
 
   problem_->setRightPrec(mueluPreconditioner_);
