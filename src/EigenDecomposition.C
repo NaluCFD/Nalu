@@ -29,8 +29,8 @@ EigenDecomposition::sym_diagonalize(
   const double det = A[0][0]*A[1][1] - A[0][1]*A[1][0];
 
   // calculate eigenvalues
-  D[0][0] = trace/2.0 + std::sqrt(trace*trace/4.0 - det);
-  D[1][1] = trace/2.0 - std::sqrt(trace*trace/4.0 - det);
+  D[0][0] = (A[1][0] == 0.0) ? A[0][0] : trace/2.0 + std::sqrt(trace*trace/4.0 - det);
+  D[1][1] = (A[1][0] == 0.0) ? A[1][1] : trace/2.0 - std::sqrt(trace*trace/4.0 - det);
   D[0][1] = 0.0;
   D[1][0] = 0.0;
 
@@ -267,8 +267,8 @@ EigenDecomposition::sym_diagonalize(
   const DoubleType det = A[0][0]*A[1][1] - A[0][1]*A[1][0];
 
   // calculate eigenvalues
-  D[0][0] = trace/2.0 + stk::math::sqrt(trace*trace/4.0 - det);
-  D[1][1] = trace/2.0 - stk::math::sqrt(trace*trace/4.0 - det);
+  D[0][0] = stk::math::if_then_else(A[1][0] == 0.0, A[0][0], trace/2.0 + stk::math::sqrt(trace*trace/4.0 - det));
+  D[1][1] = stk::math::if_then_else(A[1][0] == 0.0, A[1][1], trace/2.0 - stk::math::sqrt(trace*trace/4.0 - det));
   D[0][1] = 0.0;
   D[1][0] = 0.0;
 
