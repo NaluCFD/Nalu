@@ -78,7 +78,7 @@ TEST(TestEigen, testeigendecomp3d)
   sierra::nalu::EigenDecomposition::sym_diagonalize(A3d_fixed, Q_, D_);
 
   // Perform tests -- lambda evaluated in Mathematica
-  const double tol = 1e-15;
+  const double tol = 5.e-14;
   const double lambda_gold[3] = {
       0.056736539229635605, 0.46782517604126655, -0.45581171527090225};
 
@@ -94,7 +94,7 @@ TEST(TestEigen, testeigendecomp2d)
   sierra::nalu::EigenDecomposition::sym_diagonalize(A2d_fixed, Q_, D_);
 
   // Perform tests -- lambda evaluated in Mathematica
-  const double tol = 1e-15;
+  const double tol = 5.e-14;
   const double lambda_gold[2] = {
       0.06282714486296648, 0.0027978551370335227};
 
@@ -113,7 +113,7 @@ TEST(TestEigen, testeigendecompandreconstruct3d)
   sierra::nalu::EigenDecomposition::reconstruct_matrix_from_decomposition(D_, Q_, b_);
 
   // Perform tests
-  const double tol = 1e-15;
+  const double tol = 5.e-14;
 
   // Reconstructed matrix should be within tol of original
   for (unsigned j = 0 ; j < 3; ++j) {
@@ -133,7 +133,7 @@ TEST(TestEigen, testeigendecompandreconstruct2d)
   sierra::nalu::EigenDecomposition::reconstruct_matrix_from_decomposition(D_, Q_, b_);
 
   // Perform tests
-  const double tol = 1e-15;
+  const double tol = 5.e-14;
   
   // Reconstructed matrix should be within tol of original
   for (unsigned j = 0 ; j < 2; ++j) {
@@ -168,7 +168,7 @@ TEST(TestEigen, testeigendecomp3d_simd)
   sierra::nalu::EigenDecomposition::sym_diagonalize(A3d_fixed_simd, Q_, D_);
 
   // Perform tests -- lambda evaluated in Mathematica
-  const double tol = 1e-15;
+  const double tol = 5.e-14;
   const double lambda_gold[3] = {
       0.056736539229635605, 0.46782517604126655, -0.45581171527090225};
 
@@ -194,7 +194,7 @@ TEST(TestEigen, testeigendecomp2d_simd)
   sierra::nalu::EigenDecomposition::sym_diagonalize(A2d_fixed_simd, Q_, D_);
 
   // Perform tests -- lambda evaluated in Mathematica
-  const double tol = 1e-15;
+  const double tol = 5.e-14;
   const double lambda_gold[2] = {
       0.06282714486296648, 0.0027978551370335227};
 
@@ -239,7 +239,7 @@ TEST(TestEigen, testeigendecompandreconstruct3d_simd)
   sierra::nalu::EigenDecomposition::reconstruct_matrix_from_decomposition(D_, Q_, b_);
 
   // Perform tests
-  const double tol = 1e-15;
+  const double tol = 5.e-14;
 
   // Reconstructed matrix should be within tol of original
   for (unsigned j = 0; j < 3; ++j) {
@@ -275,7 +275,7 @@ TEST(TestEigen, testeigendecompandreconstruct2d_simd)
   sierra::nalu::EigenDecomposition::reconstruct_matrix_from_decomposition(D_, Q_, b_);
 
   // Perform tests
-  const double tol = 1e-15;
+  const double tol = 5.e-14;
 
   // Reconstructed matrix should be within tol of original
   for (unsigned j = 0 ; j < 2; ++j) {
@@ -286,5 +286,4 @@ TEST(TestEigen, testeigendecompandreconstruct2d_simd)
     }
   }
 }
-
 
