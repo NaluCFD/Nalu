@@ -15,7 +15,6 @@
 
 #include <Tpetra_DefaultPlatform.hpp>
 #include <Kokkos_DefaultNode.hpp>
-#include <Kokkos_UnorderedMap.hpp>
 #include <Tpetra_Vector.hpp>
 #include <Tpetra_DefaultPlatform.hpp>
 #include <Tpetra_CrsMatrix.hpp>
@@ -186,6 +185,7 @@ private:
   std::vector<std::vector<stk::mesh::Entity> > connections_;
   std::vector<GlobalOrdinal> totalGids_;
   std::set<std::pair<int,GlobalOrdinal> > ownersAndGids_;
+  std::vector<int> sharedPids_;
 
   Teuchos::RCP<LinSys::Node>   node_;
 
