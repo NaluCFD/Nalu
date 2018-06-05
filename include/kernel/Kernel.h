@@ -11,6 +11,7 @@
 #include "KokkosInterface.h"
 #include "SimdInterface.h"
 #include "ScratchViews.h"
+#include "NodalScratchData.h"
 #include "AlgTraits.h"
 
 #include <stk_mesh/base/Entity.hpp>
@@ -123,6 +124,29 @@ public:
     int elemFaceOrdinal)
   {}
 };
+
+/** Base class for utility kernels in Nalu
+ *
+ * A utility
+ */
+class NodalUtilityKernel
+{
+public:
+  virtual ~NodalUtilityKernel() = default;
+
+  /** extra fields */
+  virtual void register_utility_fields(const stk::mesh::Part& part) {};
+
+  /** Work previous to iterating the mesh data */
+  virtual void pre_execute(const TimeIntegrator&, stk::ParallelMachine parallel) {}
+
+  /** Work performed during mesh iteration */
+  virtual void execute(const NodalScratchData<DoubleType>&, NodalScratchData<DoubleType>&) const = 0;
+
+  /** Work after iterating the mesh data */
+  virtual void post_execute(const TimeIntegrator&, stk::ParallelMachine parallel) {};
+};
+
 
 }  // nalu
 }  // sierra

@@ -102,8 +102,8 @@ namespace nalu{
 
   template <typename ScalarType>
   KOKKOS_FORCEINLINE_FUNCTION void invert_matrix33(
-    const ScalarType* POINTER_RESTRICT A,
-    ScalarType* POINTER_RESTRICT Ainv)
+    const ScalarType* KOKKOS_RESTRICT A,
+    ScalarType* KOKKOS_RESTRICT Ainv)
   {
     enum { XX = 0, XY = 1, XZ = 2, YX = 3, YY = 4, YZ = 5, ZX = 6, ZY = 7, ZZ = 8 };
     ScalarType inv_detj = 1.0 / determinant33(A);
@@ -121,9 +121,9 @@ namespace nalu{
 
   template <typename ScalarType>
   KOKKOS_FORCEINLINE_FUNCTION void solve22(
-    const ScalarType* POINTER_RESTRICT A,
-    const ScalarType* POINTER_RESTRICT b,
-    ScalarType*  POINTER_RESTRICT x)
+    const ScalarType* KOKKOS_RESTRICT A,
+    const ScalarType* KOKKOS_RESTRICT b,
+    ScalarType*  KOKKOS_RESTRICT x)
   {
     ThrowAssert(stk::simd::are_any(determinant22(A) > tiny_positive_value()));
     enum { XX = 0, XY = 1, YX = 2, YY = 3 };
@@ -133,13 +133,14 @@ namespace nalu{
     x[X_RANK1] =  (A[YY] * b[X_RANK1] - A[XY] * b[Y_RANK1]) * inv_detA;
     x[Y_RANK1] = -(A[YX] * b[X_RANK1] - A[XX] * b[Y_RANK1]) * inv_detA;
   }
+  KOKKOS_RESTRICT
 
   // computes b = A^-1 x;
   template <typename ScalarType>
   KOKKOS_FORCEINLINE_FUNCTION void solve33(
-    const ScalarType* POINTER_RESTRICT A,
-    const ScalarType* POINTER_RESTRICT b,
-    ScalarType*  POINTER_RESTRICT x)
+    const ScalarType* KOKKOS_RESTRICT A,
+    const ScalarType* KOKKOS_RESTRICT b,
+    ScalarType* KOKKOS_RESTRICT x)
   {
     ThrowAssert(stk::simd::are_any(determinant33(A) > tiny_positive_value()));
 
@@ -224,6 +225,48 @@ namespace nalu{
     At[ZX] = A[XZ];
     At[ZY] = A[YZ];
   }
+
+  template <typename ScalarType>
+  KOKKOS_FORCEINLINE_FUNCTION void symmetric_part33(const ScalarType* Afull, ScalarType* Asymm)
+  {
+    enum { XXF = 0, XYF = 1, XZF = 2, YXF = 3, YYF= 4, YZF = 5, ZXF = 6, ZYF = 7, ZZF = 8 };
+    enum { XXS = 0, XYS = 1, XZS = 2, YYS = 3, YZS = 4, ZZS = 5 };
+
+    Asymm[XXS] = Afull[XXS];
+    Asymm[XYS] = 0.5*(Afull[XYF] + Afull[YXF]);
+    Asymm[XZS] = 0.5*(Afull[XZF] + Afull[ZXF]);
+    Asymm[YYS] = Afull[YYF];
+    Asymm[YZS] = 0.5*(Afull[YZF] + Afull[ZYF]);
+    Asymm[ZZS] = Afull[ZZS];
+  }
+
+  template <typename ScalarType> KOKKOS_FORCEINLINE_FUNCTION ScalarType pow2(ScalarType x) { return x*x;};
+
+  template <typename ScalarType>
+  KOKKOS_FORCEINLINE_FUNCTION ScalarType mag_symm_part33(const ScalarType* A) {
+    enum { XX = 0, XY = 1, XZ = 2, YX = 3, YY = 4, YZ = 5, ZX = 6, ZY = 7, ZZ = 8 };
+    return stk::math::sqrt(2*(pow2(A[XX]) + pow2(A[YY]) + pow2(A[ZZ])) +
+      (pow2(A[XY]+A[YX]) + pow2(A[XZ] + A[ZX]) + pow2(A[YZ] + A[ZY])));
+  }
+
+  template <typename ScalarType>
+  KOKKOS_FORCEINLINE_FUNCTION ScalarType mag_symm_part22(const ScalarType* A) {
+    enum { XX = 0, XY = 1, YX = 2, YY = 3};
+    return stk::math::sqrt(2*(pow2(A[XX]) + pow2(A[YY])) + pow2(A[XY]+A[YX]));
+  }
+
+
+  template <typename ViewType>
+    KOKKOS_FORCEINLINE_FUNCTION typename ViewType::value_type mag_symm_part(int dim, const ViewType& A)
+  {
+    ThrowAssert(dim == 2 || dim == 3);
+    typename ViewType::value_type value = stk::math::if_then_else(dim == 3,
+      mag_symm_part33(A.ptr_on_device()),
+      mag_symm_part22(A.ptr_on_device())
+    );
+    return value;
+  }
+
 
 }
 }

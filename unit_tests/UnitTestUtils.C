@@ -125,11 +125,11 @@ void fill_and_promote_hex_mesh(const std::string& meshSpec, stk::mesh::BulkData&
     sierra::nalu::promotion::promote_elements(bulk, *elemDesc, *coords, baseParts, edgePart, facePart);
 }
 
-void dump_mesh(stk::mesh::BulkData& bulk, std::vector<stk::mesh::FieldBase*> fields)
+void dump_mesh(stk::mesh::BulkData& bulk, std::vector<stk::mesh::FieldBase*> fields, std::string name)
 {
   stk::io::StkMeshIoBroker io(bulk.parallel());
   io.set_bulk_data(bulk);
-  auto fileId = io.create_output_mesh("out.e", stk::io::WRITE_RESULTS);
+  auto fileId = io.create_output_mesh(name, stk::io::WRITE_RESULTS);
 
   for (auto* field : fields) {
     io.add_field(fileId, *field);

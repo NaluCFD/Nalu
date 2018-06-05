@@ -11,7 +11,8 @@
 
 #include<Algorithm.h>
 
-#include<FieldTypeDef.h>
+#include <FieldTypeDef.h>
+#include <kernel/UtilityKernelManager.h>
 
 namespace sierra{
 namespace nalu{
@@ -35,6 +36,10 @@ public:
 
   const double cmuCs_;
   
+  std::unique_ptr<UtilityKernelManager> kernelManager_;
+
+  ElemDataRequests in{};
+  ElemDataRequests out{};
 };
 
 } // namespace nalu

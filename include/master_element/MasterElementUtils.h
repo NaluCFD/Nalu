@@ -25,9 +25,9 @@ namespace MEconstants {
 
   bool isoparameteric_coordinates_for_point_2d(
     LagrangeBasis& basis,
-    const double* POINTER_RESTRICT elemNodalCoords,
-    const double* POINTER_RESTRICT pointCoord,
-    double* POINTER_RESTRICT isoParCoord,
+    const double* KOKKOS_RESTRICT elemNodalCoords,
+    const double* KOKKOS_RESTRICT pointCoord,
+    double* KOKKOS_RESTRICT isoParCoord,
     std::array<double,2> initialGuess,
     int maxIter,
     double tolerance,
@@ -36,9 +36,9 @@ namespace MEconstants {
 
   bool isoparameteric_coordinates_for_point_3d(
     LagrangeBasis& basis,
-    const double* POINTER_RESTRICT elemNodalCoords,
-    const double* POINTER_RESTRICT pointCoord,
-    double* POINTER_RESTRICT isoParCoord,
+    const double* KOKKOS_RESTRICT elemNodalCoords,
+    const double* KOKKOS_RESTRICT pointCoord,
+    double* KOKKOS_RESTRICT isoParCoord,
     std::array<double,3> initialGuess,
     int maxIter,
     double tolerance,
