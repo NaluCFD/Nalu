@@ -34,33 +34,33 @@ public:
   Quad42DSCV();
   virtual ~Quad42DSCV();
 
-  const int * ipNodeMap(int ordinal = 0) override;
+  const int * ipNodeMap(int ordinal = 0);
 
   void determinant(
     SharedMemView<DoubleType**> &coords,
-    SharedMemView<DoubleType*> &vol) override ;
+    SharedMemView<DoubleType*> &vol);
 
   void grad_op(
     SharedMemView<DoubleType** >& coords,
     SharedMemView<DoubleType***>& gradop,
-    SharedMemView<DoubleType***>& deriv) override ;
+    SharedMemView<DoubleType***>& deriv);
 
   void shifted_grad_op(
     SharedMemView<DoubleType** >& coords,
     SharedMemView<DoubleType***>& gradop,
-    SharedMemView<DoubleType***>& deriv) override ;
+    SharedMemView<DoubleType***>& deriv);
 
   void determinant(
     const int nelem,
     const double *coords,
     double *areav,
-    double * error ) override ;
+    double * error );
 
   void shape_fcn(
-    double *shpfc) override ;
+    double *shpfc);
 
   void shifted_shape_fcn(
-    double *shpfc) override ;
+    double *shpfc);
   
   void quad_shape_fcn(
     const int &npts,
@@ -76,22 +76,22 @@ public:
   Quad42DSCS();
   virtual ~Quad42DSCS();
 
-  const int * ipNodeMap(int ordinal = 0) override;
+  const int * ipNodeMap(int ordinal = 0);
 
   void determinant(
     SharedMemView<DoubleType**>& coords,
-    SharedMemView<DoubleType**>& areav) override ;
+    SharedMemView<DoubleType**>& areav);
 
   void determinant(
     const int nelem,
     const double *coords,
     double *areav,
-    double * error ) override ;
+    double * error );
 
   void grad_op(
     SharedMemView<DoubleType** >& coords,
     SharedMemView<DoubleType***>& gradop,
-    SharedMemView<DoubleType***>& deriv) override ;
+    SharedMemView<DoubleType***>& deriv);
 
   void grad_op(
     const int nelem,
@@ -99,12 +99,12 @@ public:
     double *gradop,
     double *deriv,
     double *det_j,
-    double * error ) override ;
+    double * error );
 
   void shifted_grad_op(
     SharedMemView<DoubleType** >& coords,
     SharedMemView<DoubleType***>& gradop,
-    SharedMemView<DoubleType***>& deriv) override ;
+    SharedMemView<DoubleType***>& deriv);
 
   void shifted_grad_op(
     const int nelem,
@@ -112,7 +112,7 @@ public:
     double *gradop,
     double *deriv,
     double *det_j,
-    double * error ) override ;
+    double * error );
 
   void face_grad_op(
     int face_ordinal,
@@ -125,7 +125,7 @@ public:
     const double *coords,
     double *gradop,
     double *det_j,
-    double * error ) override ;
+    double * error );
 
   void shifted_face_grad_op(
     int face_ordinal,
@@ -138,35 +138,35 @@ public:
     const double *coords,
     double *gradop,
     double *det_j,
-    double * error ) override ;
+    double * error );
 
   void gij( 
     SharedMemView<DoubleType** >& coords,
     SharedMemView<DoubleType***>& gupper,
     SharedMemView<DoubleType***>& glower,
-    SharedMemView<DoubleType***>& deriv) override ;
+    SharedMemView<DoubleType***>& deriv);
 
   void gij(
      const double *coords,
      double *gupperij,
      double *gij,
-     double *deriv) override ;
+     double *deriv);
 
-  const int * adjacentNodes() override;
+  const int * adjacentNodes();
 
-  const int * scsIpEdgeOrd() override;
+  const int * scsIpEdgeOrd();
 
   int opposingNodes(
-    const int ordinal, const int node) override;
+    const int ordinal, const int node);
 
   int opposingFace(
-    const int ordinal, const int node) override;
+    const int ordinal, const int node);
 
   void shape_fcn(
-    double *shpfc) override;
+    double *shpfc);
 
   void shifted_shape_fcn(
-    double *shpfc) override;
+    double *shpfc);
   
   void quad_shape_fcn(
     const int &npts,
@@ -176,18 +176,18 @@ public:
   double isInElement(
     const double *elemNodalCoord,
     const double *pointCoord,
-    double *isoParCoord) override;
+    double *isoParCoord);
   
   void interpolatePoint(
     const int &nComp,
     const double *isoParCoord,
     const double *field,
-    double *result) override;
+    double *result);
   
   void general_shape_fcn(
     const int numIp,
     const double *isoParCoord,
-    double *shpfc) override;
+    double *shpfc);
 
   void general_face_grad_op(
     const int face_ordinal,
@@ -195,13 +195,13 @@ public:
     const double *coords,
     double *gradop,
     double *det_j,
-    double * error ) override;
+    double * error );
 
   void sidePcoords_to_elemPcoords(
     const int & side_ordinal,
     const int & npoints,
     const double *side_pcoords,
-    double *elem_pcoords) override;
+    double *elem_pcoords);
 
   const int* side_node_ordinals(int sideOrdinal) final;
 private :
