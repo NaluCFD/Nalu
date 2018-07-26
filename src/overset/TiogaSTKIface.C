@@ -44,7 +44,10 @@ TiogaSTKIface::TiogaSTKIface(
 }
 
 TiogaSTKIface::~TiogaSTKIface()
-{}
+{
+  if ( nullptr != tg_ )
+    delete tg_;     
+}
 
 void
 TiogaSTKIface::load(const YAML::Node& node)
