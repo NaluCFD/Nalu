@@ -76,9 +76,9 @@ MomentumWallFunctionElemKernel<BcAlgTraits>::execute(
   SharedMemView<DoubleType *>& rhs,
   ScratchViews<DoubleType>& scratchViews)
 {
-  DoubleType w_uNp1Bip[BcAlgTraits::nDim_];
-  DoubleType w_uBcBip[BcAlgTraits::nDim_];
-  DoubleType w_unitNormal[BcAlgTraits::nDim_];
+  NALU_ALIGNED DoubleType w_uNp1Bip[BcAlgTraits::nDim_];
+  NALU_ALIGNED DoubleType w_uBcBip[BcAlgTraits::nDim_];
+  NALU_ALIGNED DoubleType w_unitNormal[BcAlgTraits::nDim_];
 
   SharedMemView<DoubleType**>& v_uNp1 = scratchViews.get_scratch_view_2D(*velocityNp1_);
   SharedMemView<DoubleType**>& v_bcVelocity = scratchViews.get_scratch_view_2D(*bcVelocity_);

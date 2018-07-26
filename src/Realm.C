@@ -317,6 +317,9 @@ Realm::~Realm()
   if (NULL != ablForcingAlg_) delete ablForcingAlg_;
 
   MasterElementRepo::clear();
+
+  if (nullptr != oversetManager_ )
+    delete oversetManager_;
 }
 
 void
