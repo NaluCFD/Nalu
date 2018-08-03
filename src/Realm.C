@@ -320,6 +320,10 @@ Realm::~Realm()
 
   if (nullptr != oversetManager_ )
     delete oversetManager_;
+
+  if ( nullptr != dataProbePostProcessing_ )
+    delete dataProbePostProcessing_;
+
 }
 
 void
