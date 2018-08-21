@@ -11,10 +11,10 @@
 #include <array>
 #include <limits>
 
-#include <stk_util/environment/ReportHandler.hpp>
-
 #include <KokkosInterface.h>
 #include <SimdInterface.h>
+
+#include <stk_util/util/ReportHandler.hpp>
 
 namespace sierra{
 namespace nalu{
