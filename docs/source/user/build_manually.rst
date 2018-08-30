@@ -76,7 +76,7 @@ Edit ``make.inc`` as shown below (diffs shown from baseline).
 ::
 
     PLAT = _x86_64
-    SuperLUroot   = /your_path/install/SuperLU_4.3 i.e., $nalu_build_dir/install/SuperLU_4.3
+    SuperLUroot   = /your_path_to_install/SuperLU_4.3 i.e., $nalu_install_dir/SuperLU_4.3
     BLASLIB       = -L/usr/lib64 -lblas
     CC            = mpicc
     FORTRAN       = mpif77
@@ -87,12 +87,12 @@ Next, make some new directories:
 
 ::
 
-    mkdir $nalu_build_dir/install/SuperLU_4.3
-    mkdir $nalu_build_dir/install/SuperLU_4.3/lib
-    mkdir $nalu_build_dir/install/SuperLU_4.3/include
+    mkdir $nalu_install_dir/SuperLU_4.3
+    mkdir $nalu_install_dir/SuperLU_4.3/lib
+    mkdir $nalu_install_dir/SuperLU_4.3/include
     cd $nalu_build_dir/packages/SuperLU_4.3
     make
-    cp SRC/*.h $nalu_build_dir/install/SuperLU_4.3/include
+    cp SRC/*.h $nalu_install_dir/SuperLU_4.3/include
 
 Libxml2 v2.9.2
 ~~~~~~~~~~~~~~
@@ -112,7 +112,7 @@ Build:
 ::
 
     cd $nalu_build_dir/packages/libxml2-2.9.2
-    CC=mpicc CXX=mpicxx ./configure -without-python --prefix=$nalu_build_dir/install
+    CC=mpicc CXX=mpicxx ./configure -without-python --prefix=$nalu_install_dir/libxml2
     make
     make install
 
@@ -134,7 +134,7 @@ Build:
 ::
 
     cd $nalu_build_dir/packages/boost_1_60_0
-    ./bootstrap.sh --prefix=$nalu_build_dir/install --with-libraries=signals,regex,filesystem,system,mpi,serialization,thread,program_options,exception
+    ./bootstrap.sh --prefix=$nalu_install_dir/boost_1_60_0 --with-libraries=signals,regex,filesystem,system,mpi,serialization,thread,program_options,exception
 
 Next, edit ``project-config.jam`` and add a 'using mpi', e.g,
 
@@ -164,7 +164,7 @@ Build:
     cd $nalu_build_dir/packages/yaml-cpp
     mkdir build
     cd build
-    cmake -DCMAKE_CXX_COMPILER=mpicxx -DCMAKE_CXX_FLAGS=-std=c++11 -DCMAKE_CC_COMPILER=mpicc -DCMAKE_INSTALL_PREFIX=$nalu_build_dir/install ..
+    cmake -DCMAKE_CXX_COMPILER=mpicxx -DCMAKE_CXX_FLAGS=-std=c++11 -DCMAKE_CC_COMPILER=mpicc -DCMAKE_INSTALL_PREFIX=$nalu_install_dir/yaml ..
     make
     make install
 
@@ -187,7 +187,7 @@ Build:
 ::
 
     cd $nalu_build_dir/packages/zlib-1.2.8
-    CC=gcc CXX=g++ CFLAGS=-O3 CXXFLAGS=-O3 ./configure --prefix=$nalu_build_dir/install/
+    CC=gcc CXX=g++ CFLAGS=-O3 CXXFLAGS=-O3 ./configure --prefix=$nalu_install_dir/zlib/
     make
     make install
 
@@ -209,7 +209,7 @@ Build:
 ::
 
     cd $nalu_build_dir/packages/hdf5-1.8.16
-    ./configure CC=mpicc FC=mpif90 CXX=mpicxx CXXFLAGS="-fPIC -O3" CFLAGS="-fPIC -O3" FCFLAGS="-fPIC -O3" --enable-parallel --with-zlib=$nalu_build_dir/install --prefix=$nalu_build_dir/install
+    ./configure CC=mpicc FC=mpif90 CXX=mpicxx CXXFLAGS="-fPIC -O3" CFLAGS="-fPIC -O3" FCFLAGS="-fPIC -O3" --enable-parallel --with-zlib=$nalu_install_dir/zlib --prefix=$nalu_install_dir/hdf5
     make
     make install
     make check
@@ -237,7 +237,7 @@ Build:
 ::
 
     cd parallel-netcdf-1.6.1
-    ./configure --prefix=$nalu_install_dir CC=mpicc FC=mpif90 CXX=mpicxx CFLAGS="-I$nalu_install_dir/include -O3" LDFLAGS=-L$nalu_install_dir/lib --disable-fortran
+    ./configure --prefix=$nalu_install_dir/pnetcdf CC=mpicc FC=mpif90 CXX=mpicxx CFLAGS="-I$nalu_install_dir/pnetcdf/include -O3" LDFLAGS=-L$nalu_install_dir/pnetcdf/lib --disable-fortran
     make
     make install
 
@@ -261,7 +261,7 @@ Build:
 ::
 
     cd netcdf-c-4.3.3.1
-    ./configure --prefix=$nalu_install_dir CC=mpicc FC=mpif90 CXX=mpicxx CFLAGS="-I$nalu_install_dir/include -O3" LDFLAGS=-L$nalu_install_dir/lib --enable-pnetcdf --enable-parallel-tests --enable-netcdf-4 --disable-shared --disable-fsync --disable-cdmremote --disable-dap --disable-doxygen --disable-v2
+    ./configure --prefix=$nalu_install_dir/netcdf CC=mpicc FC=mpif90 CXX=mpicxx CFLAGS="-I$nalu_install_dir/hdf5/include -I$nalu_install_dir/pnetcdf/include -O3" LDFLAGS="-L$nalu_install_dir/hdf5/lib -L$nalu_install_dir/pnetcdf/lib" --enable-pnetcdf --enable-parallel-tests --enable-netcdf-4 --disable-shared --disable-fsync --disable-cdmremote --disable-dap --disable-doxygen --disable-v2
     make -j 4 
     make check
     make install
