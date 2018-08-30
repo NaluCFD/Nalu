@@ -41,7 +41,7 @@ Build:
 ::
 
     cd $nalu_build_dir/packages/cmake-3.6.1
-    ./configure --prefix=$nalu_build_dir/install
+    ./configure --prefix=$nalu_install_dir/cmake
     make
     make install
 
