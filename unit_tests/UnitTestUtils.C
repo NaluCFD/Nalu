@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include <NaluEnv.h>
+#include "NaluEnv.h"
 
 #include <stk_io/StkMeshIoBroker.hpp>
 #include <stk_mesh/base/BulkData.hpp>
@@ -14,12 +14,15 @@
 #include <stk_mesh/base/GetEntities.hpp>
 #include <stk_topology/topology.hpp>
 
-#include <master_element/TensorOps.h>
-#include <element_promotion/PromotedPartHelper.h>
-#include <element_promotion/ElementDescription.h>
-#include <element_promotion/PromoteElement.h>
-#include <element_promotion/PromotedElementIO.h>
-#include <nalu_make_unique.h>
+#include "master_element/TensorOps.h"
+#include "element_promotion/PromotedPartHelper.h"
+#include "element_promotion/ElementDescription.h"
+#include "element_promotion/PromoteElement.h"
+#include "element_promotion/PromotedElementIO.h"
+#include "nalu_make_unique.h"
+
+// mesh layer
+#include "mesh/Mesh.h"
 
 #include "UnitTestUtils.h"
 #include "UnitTestKokkosUtils.h"
@@ -184,8 +187,8 @@ stk::mesh::Entity create_one_element(
    // set a coordinate field
    using vector_field_type = stk::mesh::Field<double, stk::mesh::Cartesian3d>;
    auto& coordField = meta.declare_field<vector_field_type>(stk::topology::NODE_RANK, "coordinates");
-   stk::mesh::put_field(coordField, block_1);
-   stk::mesh::put_field(coordField, stk::mesh::selectUnion(allSurfaces));
+   sierra::nalu::mesh::put_field(coordField, block_1);
+   sierra::nalu::mesh::put_field(coordField, stk::mesh::selectUnion(allSurfaces));
    meta.set_coordinate_field(&coordField);
    meta.commit();
 

@@ -6,31 +6,34 @@
 /*------------------------------------------------------------------------*/
 
 
-#include <SolutionNormPostProcessing.h>
-#include <AuxFunctionAlgorithm.h>
-#include <FieldTypeDef.h>
-#include <NaluParsing.h>
-#include <Realm.h>
+#include "SolutionNormPostProcessing.h"
+#include "AuxFunctionAlgorithm.h"
+#include "FieldTypeDef.h"
+#include "NaluParsing.h"
+#include "Realm.h"
+
+// mesh layer
+#include "mesh/Mesh.h"
 
 // the factory of aux functions
-#include <user_functions/SteadyThermal3dContactAuxFunction.h>
-#include <user_functions/SteadyThermal3dContactDtDxAuxFunction.h>
-#include <user_functions/SteadyThermalContactAuxFunction.h>
-#include <user_functions/SteadyTaylorVortexVelocityAuxFunction.h>
-#include <user_functions/SteadyTaylorVortexGradPressureAuxFunction.h>
-#include <user_functions/ConvectingTaylorVortexVelocityAuxFunction.h>
-#include <user_functions/ConvectingTaylorVortexPressureAuxFunction.h>
-#include <user_functions/VariableDensityVelocityAuxFunction.h>
-#include <user_functions/VariableDensityNonIsoTemperatureAuxFunction.h>
-#include <user_functions/BoussinesqNonIsoVelocityAuxFunction.h>
-#include <user_functions/BoussinesqNonIsoTemperatureAuxFunction.h>
-#include <user_functions/VariableDensityMixFracAuxFunction.h>
-#include <user_functions/KovasznayVelocityAuxFunction.h>
-#include <user_functions/KovasznayPressureAuxFunction.h>
-#include <user_functions/WindEnergyTaylorVortexAuxFunction.h>
-#include <user_functions/WindEnergyTaylorVortexPressureAuxFunction.h>
+#include "user_functions/SteadyThermal3dContactAuxFunction.h"
+#include "user_functions/SteadyThermal3dContactDtDxAuxFunction.h"
+#include "user_functions/SteadyThermalContactAuxFunction.h"
+#include "user_functions/SteadyTaylorVortexVelocityAuxFunction.h"
+#include "user_functions/SteadyTaylorVortexGradPressureAuxFunction.h"
+#include "user_functions/ConvectingTaylorVortexVelocityAuxFunction.h"
+#include "user_functions/ConvectingTaylorVortexPressureAuxFunction.h"
+#include "user_functions/VariableDensityVelocityAuxFunction.h"
+#include "user_functions/VariableDensityNonIsoTemperatureAuxFunction.h"
+#include "user_functions/BoussinesqNonIsoVelocityAuxFunction.h"
+#include "user_functions/BoussinesqNonIsoTemperatureAuxFunction.h"
+#include "user_functions/VariableDensityMixFracAuxFunction.h"
+#include "user_functions/KovasznayVelocityAuxFunction.h"
+#include "user_functions/KovasznayPressureAuxFunction.h"
+#include "user_functions/WindEnergyTaylorVortexAuxFunction.h"
+#include "user_functions/WindEnergyTaylorVortexPressureAuxFunction.h"
 
-#include <user_functions/OneTwoTenVelocityAuxFunction.h>
+#include "user_functions/OneTwoTenVelocityAuxFunction.h"
 
 // stk_util
 #include <stk_util/parallel/ParallelReduce.hpp>
@@ -191,7 +194,7 @@ SolutionNormPostProcessing::setup()
     // register the field, "dofName + _exact"
     const std::string dofNameExact = dofName + "_exact";
     
-    stk::mesh::FieldBase *exactDofField
+    stk::mesh::Field<double, stk::mesh::SimpleArrayTag> *exactDofField
       = &(metaData.declare_field<stk::mesh::Field<double, stk::mesh::SimpleArrayTag> >(stk::topology::NODE_RANK, dofNameExact));
         
     // push back to vector of pairs; unique list 
@@ -203,7 +206,7 @@ SolutionNormPostProcessing::setup()
       stk::mesh::Part *targetPart = partVec_[j];
 
       // put the field on the part
-      stk::mesh::put_field(*exactDofField, *targetPart, dofSize);
+      nalu::mesh::put_field(*exactDofField, *targetPart, dofSize);
     
       // create the algorithm to populate the analytical field
       analytical_function_factory(functionName, exactDofField, targetPart);

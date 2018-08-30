@@ -12,6 +12,9 @@
 
 #include "Realm.h"
 
+// mesh layer
+#include "mesh/Mesh.h"
+
 void
 TestAlgorithm::fill_mesh(const std::string mesh_spec)
 {
@@ -90,21 +93,21 @@ TestTurbulenceAlgorithm::declare_fields()
      &meta.declare_field<ScalarFieldType>(
        stk::topology::NODE_RANK, "specific_heat"));
 
-  stk::mesh::put_field(*density_, meta.universal_part(), 1);
-  stk::mesh::put_field(*viscosity_, meta.universal_part(), 1);
-  stk::mesh::put_field(*tke_, meta.universal_part(), 1);
-  stk::mesh::put_field(*sdr_, meta.universal_part(), 1);
-  stk::mesh::put_field(*minDistance_, meta.universal_part(), 1);
-  stk::mesh::put_field(*dudx_, meta.universal_part(), spatialDim*spatialDim);
-  stk::mesh::put_field(*tvisc_, meta.universal_part(), 1);
-  stk::mesh::put_field(*maxLengthScale_, meta.universal_part(), 1);
-  stk::mesh::put_field(*fOneBlend_, meta.universal_part(), 1);
-  stk::mesh::put_field(*evisc_, meta.universal_part(), 1);
-  stk::mesh::put_field(*dualNodalVolume_, meta.universal_part(), 1);
-  stk::mesh::put_field(*dkdx_, meta.universal_part(), spatialDim);
-  stk::mesh::put_field(*dwdx_, meta.universal_part(), spatialDim);
-  stk::mesh::put_field(*dhdx_, meta.universal_part(), spatialDim);
-  stk::mesh::put_field(*specificHeat_, meta.universal_part(), 1);
+  sierra::nalu::mesh::put_field(*density_, meta.universal_part(), 1);
+  sierra::nalu::mesh::put_field(*viscosity_, meta.universal_part(), 1);
+  sierra::nalu::mesh::put_field(*tke_, meta.universal_part(), 1);
+  sierra::nalu::mesh::put_field(*sdr_, meta.universal_part(), 1);
+  sierra::nalu::mesh::put_field(*minDistance_, meta.universal_part(), 1);
+  sierra::nalu::mesh::put_field(*dudx_, meta.universal_part(), spatialDim*spatialDim);
+  sierra::nalu::mesh::put_field(*tvisc_, meta.universal_part(), 1);
+  sierra::nalu::mesh::put_field(*maxLengthScale_, meta.universal_part(), 1);
+  sierra::nalu::mesh::put_field(*fOneBlend_, meta.universal_part(), 1);
+  sierra::nalu::mesh::put_field(*evisc_, meta.universal_part(), 1);
+  sierra::nalu::mesh::put_field(*dualNodalVolume_, meta.universal_part(), 1);
+  sierra::nalu::mesh::put_field(*dkdx_, meta.universal_part(), spatialDim);
+  sierra::nalu::mesh::put_field(*dwdx_, meta.universal_part(), spatialDim);
+  sierra::nalu::mesh::put_field(*dhdx_, meta.universal_part(), spatialDim);
+  sierra::nalu::mesh::put_field(*specificHeat_, meta.universal_part(), 1);
 }
 
 void

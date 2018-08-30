@@ -10,6 +10,9 @@
 #include "overset/TiogaBlock.h"
 #include "NaluEnv.h"
 
+// mesh layer
+#include "mesh/Mesh.h"
+
 #include <stk_util/parallel/ParallelReduce.hpp>
 
 #include "tioga.h"
@@ -83,8 +86,8 @@ void TiogaBlock::setup(stk::mesh::PartVector& bcPartVec)
     stk::topology::ELEM_RANK, "iblank_cell");
 
   for (auto p: blkParts_) {
-    stk::mesh::put_field(ibf, *p);
-    stk::mesh::put_field(ibcell, *p);
+    nalu::mesh::put_field(ibf, *p);
+    nalu::mesh::put_field(ibcell, *p);
   }
 
   // Push overset BC parts to the realm_.bcPartVec_ so that they are ignored

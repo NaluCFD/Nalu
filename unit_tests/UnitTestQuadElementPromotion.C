@@ -14,14 +14,17 @@
 #include <stk_unit_tests/stk_mesh_fixtures/QuadFixture.hpp>
 #include <stk_mesh/base/SkinMesh.hpp>
 
-#include <master_element/MasterElementHO.h>
-#include <element_promotion/PromotedPartHelper.h>
-#include <element_promotion/PromoteElement.h>
-#include <element_promotion/PromotedElementIO.h>
+#include "master_element/MasterElementHO.h"
+#include "element_promotion/PromotedPartHelper.h"
+#include "element_promotion/PromoteElement.h"
+#include "element_promotion/PromotedElementIO.h"
 
-#include <nalu_make_unique.h>
-#include <NaluEnv.h>
-#include <BucketLoop.h>
+#include "nalu_make_unique.h"
+#include "NaluEnv.h"
+#include "BucketLoop.h"
+
+// mesh layer
+#include "mesh/Mesh.h"
 
 #include <random>
 
@@ -88,13 +91,13 @@ class PromoteElementQuadTest : public ::testing::Test
         setup_promotion();
 
         double zeroDouble = 0.0;
-        stk::mesh::put_field(*dnvField, meta->universal_part(), 1, &zeroDouble);
-        stk::mesh::put_field(*coordField, meta->universal_part(), nDim, &zeroDouble);
-        stk::mesh::put_field(*qField, meta->universal_part(), 1, &zeroDouble);
-        stk::mesh::put_field(*dqdxField, meta->universal_part(), nDim, &zeroDouble);
+        sierra::nalu::mesh::put_field_with_ic_value(*dnvField, meta->universal_part(), 1, &zeroDouble);
+        sierra::nalu::mesh::put_field_with_ic_value(*coordField, meta->universal_part(), nDim, &zeroDouble);
+        sierra::nalu::mesh::put_field_with_ic_value(*qField, meta->universal_part(), 1, &zeroDouble);
+        sierra::nalu::mesh::put_field_with_ic_value(*dqdxField, meta->universal_part(), nDim, &zeroDouble);
 
         int zeroInt = 0;
-        stk::mesh::put_field(*intField, meta->universal_part(), 1, &zeroInt);
+        sierra::nalu::mesh::put_field_with_ic_value(*intField, meta->universal_part(), 1, &zeroInt);
 
         meta->commit();
         fixture->generate_mesh();

@@ -6,27 +6,30 @@
 /*------------------------------------------------------------------------*/
 
 
-#include <ProjectedNodalGradientEquationSystem.h>
+#include "ProjectedNodalGradientEquationSystem.h"
 
-#include <AssemblePNGElemSolverAlgorithm.h>
-#include <AssemblePNGBoundarySolverAlgorithm.h>
-#include <AssemblePNGNonConformalSolverAlgorithm.h>
-#include <EquationSystem.h>
-#include <EquationSystems.h>
-#include <Enums.h>
-#include <FieldFunctions.h>
-#include <LinearSolvers.h>
-#include <LinearSolver.h>
-#include <LinearSystem.h>
-#include <NaluEnv.h>
-#include <Realm.h>
-#include <Realms.h>
-#include <Simulation.h>
-#include <SolutionOptions.h>
-#include <SolverAlgorithmDriver.h>
+#include "AssemblePNGElemSolverAlgorithm.h"
+#include "AssemblePNGBoundarySolverAlgorithm.h"
+#include "AssemblePNGNonConformalSolverAlgorithm.h"
+#include "EquationSystem.h"
+#include "EquationSystems.h"
+#include "Enums.h"
+#include "FieldFunctions.h"
+#include "LinearSolvers.h"
+#include "LinearSolver.h"
+#include "LinearSystem.h"
+#include "NaluEnv.h"
+#include "Realm.h"
+#include "Realms.h"
+#include "Simulation.h"
+#include "SolutionOptions.h"
+#include "SolverAlgorithmDriver.h"
+
+// mesh layer
+#include "mesh/Mesh.h"
 
 // user functions
-#include <user_functions/SteadyThermalContactAuxFunction.h>
+#include "user_functions/SteadyThermalContactAuxFunction.h"
 
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
@@ -133,11 +136,11 @@ ProjectedNodalGradientEquationSystem::register_nodal_fields(
   const int nDim = meta_data.spatial_dimension();
 
   dqdx_ =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, dofName_));
-  stk::mesh::put_field(*dqdx_, *part, nDim);
+  nalu::mesh::put_field(*dqdx_, *part, nDim);
 
   // delta solution for linear solver
   qTmp_ =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, deltaName_));
-  stk::mesh::put_field(*qTmp_, *part, nDim);
+  nalu::mesh::put_field(*qTmp_, *part, nDim);
 }
 
 //--------------------------------------------------------------------------

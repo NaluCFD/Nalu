@@ -6,65 +6,68 @@
 /*------------------------------------------------------------------------*/
 
 
-#include <SpecificDissipationRateEquationSystem.h>
-#include <AlgorithmDriver.h>
-#include <AssembleScalarEdgeOpenSolverAlgorithm.h>
-#include <AssembleScalarEdgeSolverAlgorithm.h>
-#include <AssembleScalarElemSolverAlgorithm.h>
-#include <AssembleScalarElemOpenSolverAlgorithm.h>
-#include <AssembleScalarNonConformalSolverAlgorithm.h>
-#include <AssembleNodeSolverAlgorithm.h>
-#include <AssembleNodalGradAlgorithmDriver.h>
-#include <AssembleNodalGradEdgeAlgorithm.h>
-#include <AssembleNodalGradElemAlgorithm.h>
-#include <AssembleNodalGradBoundaryAlgorithm.h>
-#include <AssembleNodalGradNonConformalAlgorithm.h>
-#include <AuxFunctionAlgorithm.h>
-#include <ComputeLowReynoldsSDRWallAlgorithm.h>
-#include <ComputeWallModelSDRWallAlgorithm.h>
-#include <ConstantAuxFunction.h>
-#include <CopyFieldAlgorithm.h>
-#include <DirichletBC.h>
-#include <EffectiveSSTDiffFluxCoeffAlgorithm.h>
-#include <EquationSystem.h>
-#include <EquationSystems.h>
-#include <Enums.h>
-#include <FieldFunctions.h>
-#include <LinearSolvers.h>
-#include <LinearSolver.h>
-#include <LinearSystem.h>
-#include <NaluEnv.h>
-#include <NaluParsing.h>
-#include <Realm.h>
-#include <Realms.h>
-#include <ScalarGclNodeSuppAlg.h>
-#include <ScalarMassBackwardEulerNodeSuppAlg.h>
-#include <ScalarMassBDF2NodeSuppAlg.h>
-#include <ScalarMassElemSuppAlgDep.h>
-#include <Simulation.h>
-#include <SolutionOptions.h>
-#include <TimeIntegrator.h>
-#include <SpecificDissipationRateSSTNodeSourceSuppAlg.h>
-#include <SolverAlgorithmDriver.h>
+#include "SpecificDissipationRateEquationSystem.h"
+#include "AlgorithmDriver.h"
+#include "AssembleScalarEdgeOpenSolverAlgorithm.h"
+#include "AssembleScalarEdgeSolverAlgorithm.h"
+#include "AssembleScalarElemSolverAlgorithm.h"
+#include "AssembleScalarElemOpenSolverAlgorithm.h"
+#include "AssembleScalarNonConformalSolverAlgorithm.h"
+#include "AssembleNodeSolverAlgorithm.h"
+#include "AssembleNodalGradAlgorithmDriver.h"
+#include "AssembleNodalGradEdgeAlgorithm.h"
+#include "AssembleNodalGradElemAlgorithm.h"
+#include "AssembleNodalGradBoundaryAlgorithm.h"
+#include "AssembleNodalGradNonConformalAlgorithm.h"
+#include "AuxFunctionAlgorithm.h"
+#include "ComputeLowReynoldsSDRWallAlgorithm.h"
+#include "ComputeWallModelSDRWallAlgorithm.h"
+#include "ConstantAuxFunction.h"
+#include "CopyFieldAlgorithm.h"
+#include "DirichletBC.h"
+#include "EffectiveSSTDiffFluxCoeffAlgorithm.h"
+#include "EquationSystem.h"
+#include "EquationSystems.h"
+#include "Enums.h"
+#include "FieldFunctions.h"
+#include "LinearSolvers.h"
+#include "LinearSolver.h"
+#include "LinearSystem.h"
+#include "NaluEnv.h"
+#include "NaluParsing.h"
+#include "Realm.h"
+#include "Realms.h"
+#include "ScalarGclNodeSuppAlg.h"
+#include "ScalarMassBackwardEulerNodeSuppAlg.h"
+#include "ScalarMassBDF2NodeSuppAlg.h"
+#include "ScalarMassElemSuppAlgDep.h"
+#include "Simulation.h"
+#include "SolutionOptions.h"
+#include "TimeIntegrator.h"
+#include "SpecificDissipationRateSSTNodeSourceSuppAlg.h"
+#include "SolverAlgorithmDriver.h"
+
+// mesh layer
+#include "mesh/Mesh.h"
 
 // template for supp algs
-#include <AlgTraits.h>
-#include <kernel/KernelBuilder.h>
-#include <kernel/KernelBuilderLog.h>
+#include "AlgTraits.h"
+#include "kernel/KernelBuilder.h"
+#include "kernel/KernelBuilderLog.h"
 
 // consolidated
-#include <AssembleElemSolverAlgorithm.h>
-#include <kernel/ScalarMassElemKernel.h>
-#include <kernel/ScalarAdvDiffElemKernel.h>
-#include <kernel/ScalarUpwAdvDiffElemKernel.h>
-#include <kernel/SpecificDissipationRateSSTSrcElemKernel.h>
+#include "AssembleElemSolverAlgorithm.h"
+#include "kernel/ScalarMassElemKernel.h"
+#include "kernel/ScalarAdvDiffElemKernel.h"
+#include "kernel/ScalarUpwAdvDiffElemKernel.h"
+#include "kernel/SpecificDissipationRateSSTSrcElemKernel.h"
 
 // nso
-#include <nso/ScalarNSOElemKernel.h>
-#include <nso/ScalarNSOKeElemSuppAlg.h>
-#include <nso/ScalarNSOElemSuppAlgDep.h>
+#include "nso/ScalarNSOElemKernel.h"
+#include "nso/ScalarNSOKeElemSuppAlg.h"
+#include "nso/ScalarNSOElemSuppAlgDep.h"
 
-#include <overset/UpdateOversetFringeAlgorithmDriver.h>
+#include "overset/UpdateOversetFringeAlgorithmDriver.h"
 
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
@@ -158,24 +161,24 @@ SpecificDissipationRateEquationSystem::register_nodal_fields(
 
   // register dof; set it as a restart variable
   sdr_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "specific_dissipation_rate", numStates));
-  stk::mesh::put_field(*sdr_, *part);
+  nalu::mesh::put_field(*sdr_, *part);
   realm_.augment_restart_variable_list("specific_dissipation_rate");
 
   dwdx_ =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "dwdx"));
-  stk::mesh::put_field(*dwdx_, *part, nDim);
+  nalu::mesh::put_field(*dwdx_, *part, nDim);
 
   // delta solution for linear solver; share delta since this is a split system
   wTmp_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "wTmp"));
-  stk::mesh::put_field(*wTmp_, *part);
+  nalu::mesh::put_field(*wTmp_, *part);
 
   visc_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity"));
-  stk::mesh::put_field(*visc_, *part);
+  nalu::mesh::put_field(*visc_, *part);
 
   tvisc_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_viscosity"));
-  stk::mesh::put_field(*tvisc_, *part);
+  nalu::mesh::put_field(*tvisc_, *part);
 
   evisc_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "effective_viscosity_sdr"));
-  stk::mesh::put_field(*evisc_, *part);
+  nalu::mesh::put_field(*evisc_, *part);
 
   // make sure all states are properly populated (restart can handle this)
   if ( numStates > 2 && (!realm_.restarted_simulation() || realm_.support_inconsistent_restart()) ) {
@@ -438,7 +441,7 @@ SpecificDissipationRateEquationSystem::register_inflow_bc(
 
   // register boundary data; sdr_bc
   ScalarFieldType *theBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "sdr_bc"));
-  stk::mesh::put_field(*theBcField, *part);
+  nalu::mesh::put_field(*theBcField, *part);
 
   // extract the value for user specified tke and save off the AuxFunction
   InflowUserData userData = inflowBCData.userData_;
@@ -519,7 +522,7 @@ SpecificDissipationRateEquationSystem::register_open_bc(
 
   // register boundary data; sdr_bc
   ScalarFieldType *theBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "open_sdr_bc"));
-  stk::mesh::put_field(*theBcField, *part);
+  nalu::mesh::put_field(*theBcField, *part);
 
   // extract the value for user specified tke and save off the AuxFunction
   OpenUserData userData = openBCData.userData_;
@@ -589,14 +592,14 @@ SpecificDissipationRateEquationSystem::register_wall_bc(
 
   // register boundary data; sdr_bc
   sdrWallBc_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "sdr_bc"));
-  stk::mesh::put_field(*sdrWallBc_, *part);
+  nalu::mesh::put_field(*sdrWallBc_, *part);
 
   // need to register the assembles wall value for sdr; can not share with sdr_bc
   assembledWallSdr_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "wall_model_sdr_bc"));
-  stk::mesh::put_field(*assembledWallSdr_, *part);
+  nalu::mesh::put_field(*assembledWallSdr_, *part);
 
   assembledWallArea_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "assembled_wall_area_sdr"));
-  stk::mesh::put_field(*assembledWallArea_, *part);
+  nalu::mesh::put_field(*assembledWallArea_, *part);
 
   // are we using wall functions or is this a low Re model?
   WallUserData userData = wallBCData.userData_;

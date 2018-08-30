@@ -15,20 +15,23 @@
 #include <stk_unit_tests/stk_mesh_fixtures/HexFixture.hpp>
 #include <stk_mesh/base/SkinMesh.hpp>
 
-#include <master_element/MasterElementHO.h>
+#include "master_element/MasterElementHO.h"
 
-#include <element_promotion/PromotedPartHelper.h>
-#include <element_promotion/PromoteElement.h>
-#include <element_promotion/PromotedElementIO.h>
+#include "element_promotion/PromotedPartHelper.h"
+#include "element_promotion/PromoteElement.h"
+#include "element_promotion/PromotedElementIO.h"
 
-#include <nalu_make_unique.h>
-#include <NaluEnv.h>
-#include <BucketLoop.h>
+// mesh layer
+#include "mesh/Mesh.h"
+
+#include "nalu_make_unique.h"
+#include "NaluEnv.h"
+#include "BucketLoop.h"
 
 #include <memory>
 #include <random>
 
-#include <element_promotion/ElementDescription.h>
+#include "element_promotion/ElementDescription.h"
 #include "UnitTestUtils.h"
 
 namespace {
@@ -105,13 +108,15 @@ protected:
     setup_promotion();
 
     const double zeroDouble = 0.0;
-    stk::mesh::put_field(*dnvField, meta->universal_part(), 1, &zeroDouble);
-    stk::mesh::put_field(*qField, meta->universal_part(), 1, &zeroDouble);
-    stk::mesh::put_field(*dqdxField, meta->universal_part(), nDim, &zeroDouble);
-    stk::mesh::put_field(*coordField, meta->universal_part(), nDim, &zeroDouble);
+    const double zeroVecThree[3] = {0.0, 0.0, 0.0};
 
+    sierra::nalu::mesh::put_field_with_ic_value(*dnvField, meta->universal_part(), 1, &zeroDouble);
+    sierra::nalu::mesh::put_field_with_ic_value(*qField, meta->universal_part(), 1, &zeroDouble);
+    sierra::nalu::mesh::put_field_with_ic_value(*dqdxField, meta->universal_part(), nDim, zeroVecThree);
+    sierra::nalu::mesh::put_field_with_ic_value(*coordField, meta->universal_part(), nDim, zeroVecThree);
+    
     int zeroInt = 0;
-    stk::mesh::put_field(*intField, meta->universal_part(), 1, &zeroInt);
+    sierra::nalu::mesh::put_field_with_ic_value(*intField, meta->universal_part(), 1, &zeroInt);
     fixture->m_meta.commit();
     fixture->generate_mesh(stk::mesh::fixtures::FixedCartesianCoordinateMapping(nx, ny, nz, nx, ny, nz));
     stk::mesh::PartVector surfParts = {surfSubPart};

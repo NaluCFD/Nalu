@@ -11,8 +11,11 @@
 #include <stk_util/parallel/Parallel.hpp>
 #include <Kokkos_Core.hpp>
 
-#include <ElemDataRequests.h>
-#include <ScratchViews.h>
+#include "ElemDataRequests.h"
+#include "ScratchViews.h"
+
+// mesh layer
+#include "mesh/Mesh.h"
 
 #include "UnitTestKokkosUtils.h"
 #include "UnitTestUtils.h"
@@ -159,13 +162,13 @@ TEST_F(Hex8Mesh, supp_alg_data_sharing)
 
     const stk::mesh::Part& wholemesh = meta.universal_part();
 
-    stk::mesh::put_field(nodalScalarField, wholemesh);
-    stk::mesh::put_field(nodalVectorField, wholemesh, 4);
-    stk::mesh::put_field(nodalTensorField, wholemesh, 3, 3);
+    sierra::nalu::mesh::put_field(nodalScalarField, wholemesh);
+    sierra::nalu::mesh::put_field(nodalVectorField, wholemesh, 4);
+    sierra::nalu::mesh::put_field(nodalTensorField, wholemesh, 3, 3);
 
-    stk::mesh::put_field(elemScalarField, wholemesh);
-    stk::mesh::put_field(elemVectorField, wholemesh, 8);
-    stk::mesh::put_field(elemTensorField, wholemesh, 2, 2);
+    sierra::nalu::mesh::put_field(elemScalarField, wholemesh);
+    sierra::nalu::mesh::put_field(elemVectorField, wholemesh, 8);
+    sierra::nalu::mesh::put_field(elemTensorField, wholemesh, 2, 2);
 
     fill_mesh("generated:10x10x10");
 
@@ -194,11 +197,11 @@ TEST_F(Hex8Mesh, inconsistent_field_requests)
 
     const stk::mesh::Part& wholemesh = meta.universal_part();
 
-    stk::mesh::put_field(nodalScalarField, wholemesh);
-    stk::mesh::put_field(nodalTensorField, wholemesh, 3, 3);
+    sierra::nalu::mesh::put_field(nodalScalarField, wholemesh);
+    sierra::nalu::mesh::put_field(nodalTensorField, wholemesh, 3, 3);
 
-    stk::mesh::put_field(elemScalarField, wholemesh);
-    stk::mesh::put_field(elemTensorField, wholemesh, 2, 2);
+    sierra::nalu::mesh::put_field(elemScalarField, wholemesh);
+    sierra::nalu::mesh::put_field(elemTensorField, wholemesh, 2, 2);
 
     fill_mesh("generated:10x10x10");
 
