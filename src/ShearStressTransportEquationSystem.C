@@ -6,16 +6,19 @@
 /*------------------------------------------------------------------------*/
 
 
-#include <ShearStressTransportEquationSystem.h>
-#include <AlgorithmDriver.h>
-#include <ComputeSSTMaxLengthScaleElemAlgorithm.h>
-#include <FieldFunctions.h>
-#include <master_element/MasterElement.h>
-#include <NaluEnv.h>
-#include <SpecificDissipationRateEquationSystem.h>
-#include <SolutionOptions.h>
-#include <TurbKineticEnergyEquationSystem.h>
-#include <Realm.h>
+#include "ShearStressTransportEquationSystem.h"
+#include "AlgorithmDriver.h"
+#include "ComputeSSTMaxLengthScaleElemAlgorithm.h"
+#include "FieldFunctions.h"
+#include "master_element/MasterElement.h"
+#include "NaluEnv.h"
+#include "SpecificDissipationRateEquationSystem.h"
+#include "SolutionOptions.h"
+#include "TurbKineticEnergyEquationSystem.h"
+#include "Realm.h"
+
+// mesh layer
+#include "mesh/Mesh.h"
 
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
@@ -97,20 +100,20 @@ ShearStressTransportEquationSystem::register_nodal_fields(
 
   // re-register tke and sdr for convenience
   tke_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_ke", numStates));
-  stk::mesh::put_field(*tke_, *part);
+  nalu::mesh::put_field(*tke_, *part);
   sdr_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "specific_dissipation_rate", numStates));
-  stk::mesh::put_field(*sdr_, *part);
+  nalu::mesh::put_field(*sdr_, *part);
 
   // SST parameters that everyone needs
   minDistanceToWall_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "minimum_distance_to_wall"));
-  stk::mesh::put_field(*minDistanceToWall_, *part);
+  nalu::mesh::put_field(*minDistanceToWall_, *part);
   fOneBlending_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "sst_f_one_blending"));
-  stk::mesh::put_field(*fOneBlending_, *part);
+  nalu::mesh::put_field(*fOneBlending_, *part);
   
   // DES model
   if ( SST_DES == realm_.solutionOptions_->turbulenceModel_ ) {
     maxLengthScale_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "sst_max_length_scale"));
-    stk::mesh::put_field(*maxLengthScale_, *part);
+    nalu::mesh::put_field(*maxLengthScale_, *part);
   }
 
   // add to restart field

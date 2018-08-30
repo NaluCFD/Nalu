@@ -6,12 +6,14 @@
 /*------------------------------------------------------------------------*/
 
 
-#include <DataProbePostProcessing.h>
-#include <FieldTypeDef.h>
-#include <NaluParsing.h>
-#include <NaluEnv.h>
-#include <Realm.h>
-#include <Simulation.h>
+#include "DataProbePostProcessing.h"
+#include "FieldTypeDef.h"
+#include "NaluParsing.h"
+#include "NaluEnv.h"
+#include "Realm.h"
+#include "Simulation.h"
+
+#include "mesh/Mesh.h"
 
 // xfer
 #include <xfer/Transfer.h>
@@ -314,7 +316,7 @@ DataProbePostProcessing::setup()
         // everyone needs coordinates to be registered
         VectorFieldType *coordinates 
           =  &(metaData.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates"));
-        stk::mesh::put_field(*coordinates, *probePart, nDim);
+        nalu::mesh::put_field(*coordinates, *probePart, nDim);
         // now the general set of fields for this probe
         for ( size_t j = 0; j < probeSpec->fieldInfo_.size(); ++j ) 
           register_field(probeSpec->fieldInfo_[j].first, probeSpec->fieldInfo_[j].second, metaData, probePart);
@@ -471,9 +473,9 @@ DataProbePostProcessing::register_field(
   stk::mesh::MetaData &metaData,
   stk::mesh::Part *part)
 {
-  stk::mesh::FieldBase *toField 
+  stk::mesh::Field<double, stk::mesh::SimpleArrayTag> *toField 
     = &(metaData.declare_field< stk::mesh::Field<double, stk::mesh::SimpleArrayTag> >(stk::topology::NODE_RANK, fieldName));
-  stk::mesh::put_field(*toField, *part, fieldSize);
+  nalu::mesh::put_field(*toField, *part, fieldSize);
 }
 
 //--------------------------------------------------------------------------

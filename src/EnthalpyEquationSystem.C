@@ -6,97 +6,100 @@
 /*------------------------------------------------------------------------*/
 
 
-#include <EnthalpyEquationSystem.h>
-#include <ABLForcingAlgorithm.h>
-#include <AlgorithmDriver.h>
-#include <AssembleScalarFluxBCSolverAlgorithm.h>
-#include <AssembleScalarEdgeOpenSolverAlgorithm.h>
-#include <AssembleScalarEdgeSolverAlgorithm.h>
-#include <AssembleScalarEigenEdgeSolverAlgorithm.h>
-#include <AssembleScalarElemSolverAlgorithm.h>
-#include <AssembleScalarElemOpenSolverAlgorithm.h>
-#include <AssembleScalarNonConformalSolverAlgorithm.h>
-#include <AssembleTemperatureNormalGradientBCSolverAlgorithm.h>
-#include <AssembleNodalGradAlgorithmDriver.h>
-#include <AssembleNodalGradEdgeAlgorithm.h>
-#include <AssembleNodalGradElemAlgorithm.h>
-#include <AssembleNodalGradBoundaryAlgorithm.h>
-#include <AssembleNodalGradNonConformalAlgorithm.h>
-#include <AssembleNodeSolverAlgorithm.h>
-#include <AssembleWallHeatTransferAlgorithmDriver.h>
-#include <AuxFunctionAlgorithm.h>
-#include <ComputeHeatTransferEdgeWallAlgorithm.h>
-#include <ComputeHeatTransferElemWallAlgorithm.h>
-#include <ConstantAuxFunction.h>
-#include <CopyFieldAlgorithm.h>
-#include <DirichletBC.h>
-#include <EnthalpyEffectiveDiffFluxCoeffAlgorithm.h>
-#include <EnthalpyPmrSrcNodeSuppAlg.h>
-#include <EnthalpyLowSpeedCompressibleNodeSuppAlg.h>
-#include <EnthalpyPressureWorkNodeSuppAlg.h>
-#include <EnthalpyViscousWorkNodeSuppAlg.h>
-#include <EquationSystem.h>
-#include <EquationSystems.h>
-#include <Enums.h>
-#include <FieldFunctions.h>
-#include <LinearSolvers.h>
-#include <LinearSolver.h>
-#include <LinearSystem.h>
-#include <NaluEnv.h>
-#include <NaluParsing.h>
-#include <ProjectedNodalGradientEquationSystem.h>
-#include <Realm.h>
-#include <Realms.h>
-#include <ScalarGclNodeSuppAlg.h>
-#include <ScalarMassBackwardEulerNodeSuppAlg.h>
-#include <ScalarMassBDF2NodeSuppAlg.h>
-#include <ScalarMassElemSuppAlgDep.h>
-#include <EnthalpyABLSrcNodeSuppAlg.h>
-#include <Simulation.h>
-#include <TimeIntegrator.h>
-#include <SolverAlgorithmDriver.h>
-#include <SolutionOptions.h>
-#include <ABLForcingAlgorithm.h>
+#include "EnthalpyEquationSystem.h"
+#include "ABLForcingAlgorithm.h"
+#include "AlgorithmDriver.h"
+#include "AssembleScalarFluxBCSolverAlgorithm.h"
+#include "AssembleScalarEdgeOpenSolverAlgorithm.h"
+#include "AssembleScalarEdgeSolverAlgorithm.h"
+#include "AssembleScalarEigenEdgeSolverAlgorithm.h"
+#include "AssembleScalarElemSolverAlgorithm.h"
+#include "AssembleScalarElemOpenSolverAlgorithm.h"
+#include "AssembleScalarNonConformalSolverAlgorithm.h"
+#include "AssembleTemperatureNormalGradientBCSolverAlgorithm.h"
+#include "AssembleNodalGradAlgorithmDriver.h"
+#include "AssembleNodalGradEdgeAlgorithm.h"
+#include "AssembleNodalGradElemAlgorithm.h"
+#include "AssembleNodalGradBoundaryAlgorithm.h"
+#include "AssembleNodalGradNonConformalAlgorithm.h"
+#include "AssembleNodeSolverAlgorithm.h"
+#include "AssembleWallHeatTransferAlgorithmDriver.h"
+#include "AuxFunctionAlgorithm.h"
+#include "ComputeHeatTransferEdgeWallAlgorithm.h"
+#include "ComputeHeatTransferElemWallAlgorithm.h"
+#include "ConstantAuxFunction.h"
+#include "CopyFieldAlgorithm.h"
+#include "DirichletBC.h"
+#include "EnthalpyEffectiveDiffFluxCoeffAlgorithm.h"
+#include "EnthalpyPmrSrcNodeSuppAlg.h"
+#include "EnthalpyLowSpeedCompressibleNodeSuppAlg.h"
+#include "EnthalpyPressureWorkNodeSuppAlg.h"
+#include "EnthalpyViscousWorkNodeSuppAlg.h"
+#include "EquationSystem.h"
+#include "EquationSystems.h"
+#include "Enums.h"
+#include "FieldFunctions.h"
+#include "LinearSolvers.h"
+#include "LinearSolver.h"
+#include "LinearSystem.h"
+#include "NaluEnv.h"
+#include "NaluParsing.h"
+#include "ProjectedNodalGradientEquationSystem.h"
+#include "Realm.h"
+#include "Realms.h"
+#include "ScalarGclNodeSuppAlg.h"
+#include "ScalarMassBackwardEulerNodeSuppAlg.h"
+#include "ScalarMassBDF2NodeSuppAlg.h"
+#include "ScalarMassElemSuppAlgDep.h"
+#include "EnthalpyABLSrcNodeSuppAlg.h"
+#include "Simulation.h"
+#include "TimeIntegrator.h"
+#include "SolverAlgorithmDriver.h"
+#include "SolutionOptions.h"
+#include "ABLForcingAlgorithm.h"
+
+// mesh layer
+#include "mesh/Mesh.h"
 
 // template for kernels
-#include <AlgTraits.h>
-#include <kernel/KernelBuilder.h>
-#include <kernel/KernelBuilderLog.h>
+#include "AlgTraits.h"
+#include "kernel/KernelBuilder.h"
+#include "kernel/KernelBuilderLog.h"
 
 // kernels
-#include <AssembleElemSolverAlgorithm.h>
-#include <kernel/ScalarMassElemKernel.h>
-#include <kernel/ScalarAdvDiffElemKernel.h>
-#include <kernel/ScalarUpwAdvDiffElemKernel.h>
+#include "AssembleElemSolverAlgorithm.h"
+#include "kernel/ScalarMassElemKernel.h"
+#include "kernel/ScalarAdvDiffElemKernel.h"
+#include "kernel/ScalarUpwAdvDiffElemKernel.h"
 
 // bc kernels
-#include <kernel/ScalarOpenAdvElemKernel.h>
+#include "kernel/ScalarOpenAdvElemKernel.h"
 
 // nso
-#include <nso/ScalarNSOElemKernel.h>
-#include <nso/ScalarNSOKeElemKernel.h>
+#include "nso/ScalarNSOElemKernel.h"
+#include "nso/ScalarNSOKeElemKernel.h"
 
 // nso to be deprecated
-#include <nso/ScalarNSOElemSuppAlgDep.h>
-#include <nso/ScalarNSOKeElemSuppAlg.h>
+#include "nso/ScalarNSOElemSuppAlgDep.h"
+#include "nso/ScalarNSOKeElemSuppAlg.h"
 
 // props
-#include <property_evaluator/EnthalpyPropertyEvaluator.h>
-#include <MaterialPropertys.h>
-#include <property_evaluator/SpecificHeatPropertyEvaluator.h>
-#include <property_evaluator/TemperaturePropAlgorithm.h>
-#include <property_evaluator/ThermalConductivityFromPrandtlPropAlgorithm.h>
+#include "property_evaluator/EnthalpyPropertyEvaluator.h"
+#include "MaterialPropertys.h"
+#include "property_evaluator/SpecificHeatPropertyEvaluator.h"
+#include "property_evaluator/TemperaturePropAlgorithm.h"
+#include "property_evaluator/ThermalConductivityFromPrandtlPropAlgorithm.h"
 
 // user functions
-#include <user_functions/FlowPastCylinderTempAuxFunction.h>
-#include <user_functions/VariableDensityNonIsoTemperatureAuxFunction.h>
-#include <user_functions/VariableDensityNonIsoEnthalpySrcNodeSuppAlg.h>
+#include "user_functions/FlowPastCylinderTempAuxFunction.h"
+#include "user_functions/VariableDensityNonIsoTemperatureAuxFunction.h"
+#include "user_functions/VariableDensityNonIsoEnthalpySrcNodeSuppAlg.h"
 
-#include <user_functions/BoussinesqNonIsoTemperatureAuxFunction.h>
-#include <user_functions/BoussinesqNonIsoEnthalpySrcNodeSuppAlg.h>
+#include "user_functions/BoussinesqNonIsoTemperatureAuxFunction.h"
+#include "user_functions/BoussinesqNonIsoEnthalpySrcNodeSuppAlg.h"
 
 // overset
-#include <overset/UpdateOversetFringeAlgorithmDriver.h>
+#include "overset/UpdateOversetFringeAlgorithmDriver.h"
 
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
@@ -264,23 +267,23 @@ EnthalpyEquationSystem::register_nodal_fields(
 
   // register dof; set it as a restart variable
   enthalpy_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "enthalpy", numStates));
-  stk::mesh::put_field(*enthalpy_, *part);
+  nalu::mesh::put_field(*enthalpy_, *part);
   realm_.augment_restart_variable_list("enthalpy");
 
   // temperature required in restart
   temperature_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature"));
-  stk::mesh::put_field(*temperature_, *part);
+  nalu::mesh::put_field(*temperature_, *part);
   realm_.augment_restart_variable_list("temperature");
 
   dhdx_ =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "dhdx"));
-  stk::mesh::put_field(*dhdx_, *part, nDim);
+  nalu::mesh::put_field(*dhdx_, *part, nDim);
 
   // props
   specHeat_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "specific_heat"));
-  stk::mesh::put_field(*specHeat_, *part);
+  nalu::mesh::put_field(*specHeat_, *part);
   
   visc_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity"));
-  stk::mesh::put_field(*visc_, *part);
+  nalu::mesh::put_field(*visc_, *part);
 
   // push standard props to property list; enthalpy managed along with Cp
   realm_.augment_property_map(SPEC_HEAT_ID, specHeat_);
@@ -288,7 +291,7 @@ EnthalpyEquationSystem::register_nodal_fields(
 
   // special thermal conductivity
   thermalCond_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "thermal_conductivity"));
-  stk::mesh::put_field(*thermalCond_, *part);
+  nalu::mesh::put_field(*thermalCond_, *part);
 
   // check to see if Prandtl number was provided
   bool prProvided = false;
@@ -307,27 +310,27 @@ EnthalpyEquationSystem::register_nodal_fields(
 
   // delta solution for linear solver; share delta since this is a split system
   hTmp_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "pTmp"));
-  stk::mesh::put_field(*hTmp_, *part);
+  nalu::mesh::put_field(*hTmp_, *part);
   
   // turbulent viscosity and effective viscosity
   if ( realm_.is_turbulent() ) {
     tvisc_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_viscosity"));
-    stk::mesh::put_field(*tvisc_, *part);
+    nalu::mesh::put_field(*tvisc_, *part);
   }
 
   evisc_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "effective_viscosity_h"));
-  stk::mesh::put_field(*evisc_, *part);
+  nalu::mesh::put_field(*evisc_, *part);
 
   // register divergence of radiative heat flux; for now this is an explicit coupling
   if ( pmrCouplingActive_ ) {
     divQ_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "div_radiative_heat_flux"));
-    stk::mesh::put_field(*divQ_, *part);
+    nalu::mesh::put_field(*divQ_, *part);
   }
 
   // need to save off old pressure for pressure time derivative (avoid state for now)
   if ( lowSpeedCompressActive_ ) {
     pOld_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure_old"));
-    stk::mesh::put_field(*pOld_, *part);
+    nalu::mesh::put_field(*pOld_, *part);
   }
 
   // make sure all states are properly populated (restart can handle this)
@@ -632,9 +635,9 @@ EnthalpyEquationSystem::register_inflow_bc(
 
   // bc data work (copy, enthalpy evaluation, etc.)
   ScalarFieldType *temperatureBc = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature_bc"));
-  stk::mesh::put_field(*temperatureBc, *part);
+  nalu::mesh::put_field(*temperatureBc, *part);
   ScalarFieldType *enthalpyBc = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "enthalpy_bc"));
-  stk::mesh::put_field(*enthalpyBc, *part);
+  nalu::mesh::put_field(*enthalpyBc, *part);
   temperature_bc_setup(userData, part, temperatureBc, enthalpyBc);
 
   // non-solver; dhdx; allow for element-based shifted
@@ -694,9 +697,9 @@ EnthalpyEquationSystem::register_open_bc(
   const bool copyBcVal = false;
   const bool isInterface = false;
   ScalarFieldType *temperatureBc = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "open_temperature_bc"));
-  stk::mesh::put_field(*temperatureBc, *part);
+  nalu::mesh::put_field(*temperatureBc, *part);
   ScalarFieldType *enthalpyBc = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "open_enthalpy_bc"));
-  stk::mesh::put_field(*enthalpyBc, *part);
+  nalu::mesh::put_field(*enthalpyBc, *part);
   temperature_bc_setup(userData, part, temperatureBc, enthalpyBc, isInterface, copyBcVal);
 
   // non-solver; dhdx; allow for element-based shifted
@@ -794,9 +797,9 @@ EnthalpyEquationSystem::register_wall_bc(
 
     // bc data work (copy, enthalpy evaluation, etc.)
     ScalarFieldType *temperatureBc = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature_bc"));
-    stk::mesh::put_field(*temperatureBc, *part);
+    nalu::mesh::put_field(*temperatureBc, *part);
     ScalarFieldType *enthalpyBc = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "enthalpy_bc"));
-    stk::mesh::put_field(*enthalpyBc, *part);
+    nalu::mesh::put_field(*enthalpyBc, *part);
     temperature_bc_setup(userData, part, temperatureBc, enthalpyBc, isInterface);
 
     // Dirichlet bc
@@ -815,15 +818,15 @@ EnthalpyEquationSystem::register_wall_bc(
 
     // register the fields
     ScalarFieldType *assembledWallArea =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "assembled_wall_area_ht"));
-    stk::mesh::put_field(*assembledWallArea, *part);
+    nalu::mesh::put_field(*assembledWallArea, *part);
     ScalarFieldType *referenceTemperature =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "reference_temperature"));
-    stk::mesh::put_field(*referenceTemperature, *part);
+    nalu::mesh::put_field(*referenceTemperature, *part);
     ScalarFieldType *heatTransferCoeff =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "heat_transfer_coefficient"));
-    stk::mesh::put_field(*heatTransferCoeff, *part);
+    nalu::mesh::put_field(*heatTransferCoeff, *part);
     ScalarFieldType *normalHeatFlux = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "normal_heat_flux"));
-    stk::mesh::put_field(*normalHeatFlux, *part);
+    nalu::mesh::put_field(*normalHeatFlux, *part);
     ScalarFieldType *robinCouplingParameter = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "robin_coupling_parameter"));
-    stk::mesh::put_field(*robinCouplingParameter, *part);
+    nalu::mesh::put_field(*robinCouplingParameter, *part);
 
     // create the driver
     if ( NULL == assembleWallHeatTransferAlgDriver_ ) {
@@ -851,7 +854,7 @@ EnthalpyEquationSystem::register_wall_bc(
   else if ( userData.heatFluxSpec_ ) {
 
     ScalarFieldType *theBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "heat_flux_bc"));
-    stk::mesh::put_field(*theBcField, *part);
+    nalu::mesh::put_field(*theBcField, *part);
 
     NormalHeatFlux heatFlux = userData.q_;
     std::vector<double> userSpec(1);
@@ -923,7 +926,7 @@ EnthalpyEquationSystem::register_symmetry_bc(
   // If specifying the normal temperature gradient.
   if ( userData.normalTemperatureGradientSpec_ ) {  
     ScalarFieldType *theBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature_gradient_bc"));
-    stk::mesh::put_field(*theBcField, *part);
+    nalu::mesh::put_field(*theBcField, *part);
 
     // Get the specified normal temperature gradient
     NormalTemperatureGradient tempGrad = userData.normalTemperatureGradient_;

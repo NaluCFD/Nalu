@@ -6,73 +6,76 @@
 /*------------------------------------------------------------------------*/
 
 
-#include <HeatCondEquationSystem.h>
+#include "HeatCondEquationSystem.h"
 
-#include <AssembleElemSolverAlgorithm.h>
-#include <AssembleHeatCondWallSolverAlgorithm.h>
-#include <AssembleHeatCondIrradWallSolverAlgorithm.h>
-#include <AssembleScalarEdgeDiffSolverAlgorithm.h>
-#include <AssembleScalarElemDiffSolverAlgorithm.h>
-#include <AssembleScalarDiffNonConformalSolverAlgorithm.h>
-#include <AssembleScalarFluxBCSolverAlgorithm.h>
-#include <AssembleNodalGradAlgorithmDriver.h>
-#include <AssembleNodalGradEdgeAlgorithm.h>
-#include <AssembleNodalGradElemAlgorithm.h>
-#include <AssembleNodalGradBoundaryAlgorithm.h>
-#include <AssembleNodalGradNonConformalAlgorithm.h>
-#include <AssembleNodeSolverAlgorithm.h>
-#include <AuxFunctionAlgorithm.h>
-#include <ConstantAuxFunction.h>
-#include <CopyFieldAlgorithm.h>
-#include <DirichletBC.h>
-#include <EquationSystem.h>
-#include <EquationSystems.h>
-#include <Enums.h>
-#include <ErrorIndicatorAlgorithmDriver.h>
-#include <FieldFunctions.h>
-#include <LinearSolvers.h>
-#include <LinearSolver.h>
-#include <LinearSystem.h>
-#include <master_element/MasterElement.h>
-#include <NaluEnv.h>
-#include <Realm.h>
-#include <Realms.h>
-#include <HeatCondMassBackwardEulerNodeSuppAlg.h>
-#include <HeatCondMassBDF2NodeSuppAlg.h>
-#include <ProjectedNodalGradientEquationSystem.h>
-#include <PstabErrorIndicatorEdgeAlgorithm.h>
-#include <PstabErrorIndicatorElemAlgorithm.h>
-#include <SimpleErrorIndicatorScalarElemAlgorithm.h>
-#include <Simulation.h>
-#include <SolutionOptions.h>
-#include <TimeIntegrator.h>
-#include <SolverAlgorithmDriver.h>
+#include "AssembleElemSolverAlgorithm.h"
+#include "AssembleHeatCondWallSolverAlgorithm.h"
+#include "AssembleHeatCondIrradWallSolverAlgorithm.h"
+#include "AssembleScalarEdgeDiffSolverAlgorithm.h"
+#include "AssembleScalarElemDiffSolverAlgorithm.h"
+#include "AssembleScalarDiffNonConformalSolverAlgorithm.h"
+#include "AssembleScalarFluxBCSolverAlgorithm.h"
+#include "AssembleNodalGradAlgorithmDriver.h"
+#include "AssembleNodalGradEdgeAlgorithm.h"
+#include "AssembleNodalGradElemAlgorithm.h"
+#include "AssembleNodalGradBoundaryAlgorithm.h"
+#include "AssembleNodalGradNonConformalAlgorithm.h"
+#include "AssembleNodeSolverAlgorithm.h"
+#include "AuxFunctionAlgorithm.h"
+#include "ConstantAuxFunction.h"
+#include "CopyFieldAlgorithm.h"
+#include "DirichletBC.h"
+#include "EquationSystem.h"
+#include "EquationSystems.h"
+#include "Enums.h"
+#include "ErrorIndicatorAlgorithmDriver.h"
+#include "FieldFunctions.h"
+#include "LinearSolvers.h"
+#include "LinearSolver.h"
+#include "LinearSystem.h"
+#include "master_element/MasterElement.h"
+#include "NaluEnv.h"
+#include "Realm.h"
+#include "Realms.h"
+#include "HeatCondMassBackwardEulerNodeSuppAlg.h"
+#include "HeatCondMassBDF2NodeSuppAlg.h"
+#include "ProjectedNodalGradientEquationSystem.h"
+#include "PstabErrorIndicatorEdgeAlgorithm.h"
+#include "PstabErrorIndicatorElemAlgorithm.h"
+#include "SimpleErrorIndicatorScalarElemAlgorithm.h"
+#include "Simulation.h"
+#include "SolutionOptions.h"
+#include "TimeIntegrator.h"
+#include "SolverAlgorithmDriver.h"
+
+// mesh layer
+#include "mesh/Mesh.h"
 
 // template for kernels
-#include <AlgTraits.h>
-#include <kernel/KernelBuilder.h>
-#include <kernel/KernelBuilderLog.h>
+#include "AlgTraits.h"
+#include "kernel/KernelBuilder.h"
+#include "kernel/KernelBuilderLog.h"
 
 // kernels
-#include <kernel/ScalarDiffElemKernel.h>
-#include <kernel/ScalarDiffFemKernel.h>
+#include "kernel/ScalarDiffElemKernel.h"
+#include "kernel/ScalarDiffFemKernel.h"
 
 // bc kernels
-#include <kernel/ScalarFluxPenaltyElemKernel.h>
+#include "kernel/ScalarFluxPenaltyElemKernel.h"
 
 // user functions
-#include <user_functions/SteadyThermalContactAuxFunction.h>
-#include <user_functions/SteadyThermalContactSrcNodeSuppAlg.h>
-#include <user_functions/SteadyThermalContactSrcElemSuppAlg.h>
-#include <user_functions/SteadyThermal3dContactAuxFunction.h>
-#include <user_functions/SteadyThermalContact3DSrcNodeSuppAlg.h>
-#include <user_functions/SteadyThermal3dContactSrcElemSuppAlgDep.h>
-#include <user_functions/SteadyThermal3dContactSrcElemKernel.h>
+#include "user_functions/SteadyThermalContactAuxFunction.h"
+#include "user_functions/SteadyThermalContactSrcNodeSuppAlg.h"
+#include "user_functions/SteadyThermalContactSrcElemSuppAlg.h"
+#include "user_functions/SteadyThermal3dContactAuxFunction.h"
+#include "user_functions/SteadyThermalContact3DSrcNodeSuppAlg.h"
+#include "user_functions/SteadyThermal3dContactSrcElemSuppAlgDep.h"
+#include "user_functions/SteadyThermal3dContactSrcElemKernel.h"
 
-#include <overset/UpdateOversetFringeAlgorithmDriver.h>
+#include "overset/UpdateOversetFringeAlgorithmDriver.h"
 
 // Nalu utils
-#include <utils/StkHelpers.h>
+#include "utils/StkHelpers.h"
 
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
@@ -181,31 +184,31 @@ HeatCondEquationSystem::register_nodal_fields(
 
   // register dof; set it as a restart variable
   temperature_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature", numStates));
-  stk::mesh::put_field(*temperature_, *part);
+  nalu::mesh::put_field(*temperature_, *part);
   realm_.augment_restart_variable_list("temperature");
 
   dtdx_ =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "dtdx"));
-  stk::mesh::put_field(*dtdx_, *part, nDim);
+  nalu::mesh::put_field(*dtdx_, *part, nDim);
 
   // delta solution for linear solver
   tTmp_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "tTmp"));
-  stk::mesh::put_field(*tTmp_, *part);
+  nalu::mesh::put_field(*tTmp_, *part);
 
   dualNodalVolume_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume"));
-  stk::mesh::put_field(*dualNodalVolume_, *part);
+  nalu::mesh::put_field(*dualNodalVolume_, *part);
 
   coordinates_ =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates"));
-  stk::mesh::put_field(*coordinates_, *part, nDim);
+  nalu::mesh::put_field(*coordinates_, *part, nDim);
 
   // props
   density_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "density"));
-  stk::mesh::put_field(*density_, *part);
+  nalu::mesh::put_field(*density_, *part);
 
   specHeat_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "specific_heat"));
-  stk::mesh::put_field(*specHeat_, *part);
+  nalu::mesh::put_field(*specHeat_, *part);
 
   thermalCond_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "thermal_conductivity"));
-  stk::mesh::put_field(*thermalCond_, *part);
+  nalu::mesh::put_field(*thermalCond_, *part);
 
   // push to property list
   realm_.augment_property_map(DENSITY_ID, density_);
@@ -243,7 +246,7 @@ HeatCondEquationSystem::register_edge_fields(
   if ( realm_.realmUsesEdges_ ) {
     const int nDim = meta_data.spatial_dimension();
     edgeAreaVec_ = &(meta_data.declare_field<VectorFieldType>(stk::topology::EDGE_RANK, "edge_area_vector"));
-    stk::mesh::put_field(*edgeAreaVec_, *part, nDim);
+    nalu::mesh::put_field(*edgeAreaVec_, *part, nDim);
   }
 
 }
@@ -262,7 +265,7 @@ HeatCondEquationSystem::register_element_fields(
   if ( realm_.solutionOptions_->activateAdaptivity_) {
     const int numIp = 1;
     GenericFieldType *pstabEI= &(meta_data.declare_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "error_indicator"));
-    stk::mesh::put_field(*pstabEI, *part, numIp);
+    nalu::mesh::put_field(*pstabEI, *part, numIp);
   }
   
   // register the intersected elemental field
@@ -270,7 +273,7 @@ HeatCondEquationSystem::register_element_fields(
     const int sizeOfElemField = 1;
     GenericFieldType *intersectedElement
       = &(meta_data.declare_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "intersected_element"));
-    stk::mesh::put_field(*intersectedElement, *part, sizeOfElemField);
+    nalu::mesh::put_field(*intersectedElement, *part, sizeOfElemField);
   }
 }
 //--------------------------------------------------------------------------
@@ -518,7 +521,7 @@ HeatCondEquationSystem::register_wall_bc(
  
     // register boundary data; temperature_bc
     ScalarFieldType *theBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature_bc"));
-    stk::mesh::put_field(*theBcField, *part);
+    nalu::mesh::put_field(*theBcField, *part);
 
     AuxFunction *theAuxFunc = NULL;
     if ( CONSTANT_UD == theDataType ) {
@@ -601,7 +604,7 @@ HeatCondEquationSystem::register_wall_bc(
     const AlgorithmType algTypeHF = WALL_HF;
 
     ScalarFieldType *theBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "heat_flux_bc"));
-    stk::mesh::put_field(*theBcField, *part);
+    nalu::mesh::put_field(*theBcField, *part);
 
     NormalHeatFlux heatFlux = userData.q_;
     std::vector<double> userSpec(1);
@@ -641,9 +644,9 @@ HeatCondEquationSystem::register_wall_bc(
 
     // register boundary data;
     ScalarFieldType *irradField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "irradiation"));
-    stk::mesh::put_field(*irradField, *part);
+    nalu::mesh::put_field(*irradField, *part);
     ScalarFieldType *emissField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "emissivity"));
-    stk::mesh::put_field(*emissField, *part);
+    nalu::mesh::put_field(*emissField, *part);
 
     // aux algs; irradiation
     Irradiation irrad = userData.irradiation_;
@@ -719,9 +722,9 @@ HeatCondEquationSystem::register_wall_bc(
 
     // register boundary data
     ScalarFieldType *normalHeatFluxField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "normal_heat_flux"));
-    stk::mesh::put_field(*normalHeatFluxField, *part);
+    nalu::mesh::put_field(*normalHeatFluxField, *part);
     ScalarFieldType *tRefField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "reference_temperature"));
-    stk::mesh::put_field(*tRefField, *part);
+    nalu::mesh::put_field(*tRefField, *part);
 
     ScalarFieldType *alphaField = NULL;
     if (isConvectionCHT)
@@ -732,7 +735,7 @@ HeatCondEquationSystem::register_wall_bc(
     {
       alphaField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "robin_coupling_parameter"));
     }
-    stk::mesh::put_field(*alphaField, *part);
+    nalu::mesh::put_field(*alphaField, *part);
   
     // aux algs
     AuxFunctionAlgorithm *alphaAuxAlg;

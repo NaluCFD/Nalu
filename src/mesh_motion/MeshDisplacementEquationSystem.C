@@ -6,42 +6,45 @@
 /*------------------------------------------------------------------------*/
 
 
-#include <mesh_motion/MeshDisplacementEquationSystem.h>
+#include "mesh_motion/MeshDisplacementEquationSystem.h"
 
-#include <mesh_motion/AssembleMeshDisplacementElemSolverAlgorithm.h>
-#include <mesh_motion/AssemblePressureForceBCSolverAlgorithm.h>
-#include <mesh_motion/MeshDisplacementMassBackwardEulerNodeSuppAlg.h>
+#include "mesh_motion/AssembleMeshDisplacementElemSolverAlgorithm.h"
+#include "mesh_motion/AssemblePressureForceBCSolverAlgorithm.h"
+#include "mesh_motion/MeshDisplacementMassBackwardEulerNodeSuppAlg.h"
 
-#include <user_functions/LinearRampMeshDisplacementAuxFunction.h>
-#include <user_functions/SinMeshDisplacementAuxFunction.h>
+#include "user_functions/LinearRampMeshDisplacementAuxFunction.h"
+#include "user_functions/SinMeshDisplacementAuxFunction.h"
 
-#include <AlgorithmDriver.h>
-#include <AssembleNodalGradUAlgorithmDriver.h>
-#include <AssembleNodalGradUElemAlgorithm.h>
-#include <AssembleNodalGradUBoundaryAlgorithm.h>
-#include <AssembleNodeSolverAlgorithm.h>
-#include <AuxFunctionAlgorithm.h>
-#include <ConstantAuxFunction.h>
-#include <CopyFieldAlgorithm.h>
-#include <DirichletBC.h>
-#include <Enums.h>
-#include <EquationSystem.h>
-#include <EquationSystems.h>
-#include <FieldFunctions.h>
-#include <LinearSolver.h>
-#include <LinearSolvers.h>
-#include <LinearSystem.h>
-#include <master_element/MasterElement.h>
-#include <NaluEnv.h>
-#include <NaluParsing.h>
-#include <Realm.h>
-#include <Realms.h>
-#include <Simulation.h>
-#include <SolutionOptions.h>
-#include <SolverAlgorithmDriver.h>
-#include <TimeIntegrator.h>
+#include "AlgorithmDriver.h"
+#include "AssembleNodalGradUAlgorithmDriver.h"
+#include "AssembleNodalGradUElemAlgorithm.h"
+#include "AssembleNodalGradUBoundaryAlgorithm.h"
+#include "AssembleNodeSolverAlgorithm.h"
+#include "AuxFunctionAlgorithm.h"
+#include "ConstantAuxFunction.h"
+#include "CopyFieldAlgorithm.h"
+#include "DirichletBC.h"
+#include "Enums.h"
+#include "EquationSystem.h"
+#include "EquationSystems.h"
+#include "FieldFunctions.h"
+#include "LinearSolver.h"
+#include "LinearSolvers.h"
+#include "LinearSystem.h"
+#include "master_element/MasterElement.h"
+#include "NaluEnv.h"
+#include "NaluParsing.h"
+#include "Realm.h"
+#include "Realms.h"
+#include "Simulation.h"
+#include "SolutionOptions.h"
+#include "SolverAlgorithmDriver.h"
+#include "TimeIntegrator.h"
 
-#include <overset/UpdateOversetFringeAlgorithmDriver.h>
+// mesh layer
+#include "mesh/Mesh.h"
+
+#include "overset/UpdateOversetFringeAlgorithmDriver.h"
 
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
@@ -148,46 +151,46 @@ MeshDisplacementEquationSystem::register_nodal_fields(
 
   // register dof; set it as a restart variable
   meshDisplacement_ =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_displacement", numStates));
-  stk::mesh::put_field(*meshDisplacement_, *part, nDim);
+  nalu::mesh::put_field(*meshDisplacement_, *part, nDim);
   realm_.augment_restart_variable_list("mesh_displacement");
 
   // mesh velocity (used for fluids coupling)
   meshVelocity_ =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_velocity"));
-  stk::mesh::put_field(*meshVelocity_, *part, nDim);
+  nalu::mesh::put_field(*meshVelocity_, *part, nDim);
 
   // projected nodal gradient
   dvdx_ =  &(meta_data.declare_field<GenericFieldType>(stk::topology::NODE_RANK, "dvdx"));
-  stk::mesh::put_field(*dvdx_, *part, nDim*nDim);
+  nalu::mesh::put_field(*dvdx_, *part, nDim*nDim);
 
   divV_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "div_mesh_velocity"));
-   stk::mesh::put_field(*divV_, *part);
+   nalu::mesh::put_field(*divV_, *part);
 
    // delta solution for linear solver
   dxTmp_ =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "dxTmp"));
-  stk::mesh::put_field(*dxTmp_, *part, nDim);
+  nalu::mesh::put_field(*dxTmp_, *part, nDim);
 
   // geometry
   coordinates_ =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates"));
-  stk::mesh::put_field(*coordinates_, *part, nDim);
+  nalu::mesh::put_field(*coordinates_, *part, nDim);
 
   currentCoordinates_ =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "current_coordinates"));
-  stk::mesh::put_field(*currentCoordinates_, *part, nDim);
+  nalu::mesh::put_field(*currentCoordinates_, *part, nDim);
 
   dualNodalVolume_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume"));
-  stk::mesh::put_field(*dualNodalVolume_, *part);
+  nalu::mesh::put_field(*dualNodalVolume_, *part);
 
   // properties
   if ( activateMass_ ) {
     density_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "density"));
-    stk::mesh::put_field(*density_, *part);
+    nalu::mesh::put_field(*density_, *part);
     realm_.augment_property_map(DENSITY_ID, density_);
   }
 
   lameMu_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "lame_mu"));
-  stk::mesh::put_field(*lameMu_, *part);
+  nalu::mesh::put_field(*lameMu_, *part);
 
   lameLambda_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "lame_lambda"));
-  stk::mesh::put_field(*lameLambda_, *part);
+  nalu::mesh::put_field(*lameLambda_, *part);
 
   // push to property list
   realm_.augment_property_map(LAME_MU_ID, lameLambda_);
@@ -306,7 +309,7 @@ MeshDisplacementEquationSystem::register_wall_bc(
 
     // register boundary data; mesh_displacement_bc
     VectorFieldType *theBcField = &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_displacement_bc"));
-    stk::mesh::put_field(*theBcField, *part, nDim);
+    nalu::mesh::put_field(*theBcField, *part, nDim);
 
     AuxFunction *theAuxFunc = NULL;
 
@@ -376,7 +379,7 @@ MeshDisplacementEquationSystem::register_wall_bc(
   else if (bc_data_specified(userData, pressureName) ) {
     // register the bc pressure field
     ScalarFieldType *bcPressureField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure_bc"));
-    stk::mesh::put_field(*bcPressureField, *part, nDim);
+    nalu::mesh::put_field(*bcPressureField, *part, nDim);
 
     // extract the value for user specified pressure and save off the AuxFunction
     Pressure pSpec = userData.pressure_;

@@ -6,74 +6,77 @@
 /*------------------------------------------------------------------------*/
 
 
-#include <MixtureFractionEquationSystem.h>
-#include <AlgorithmDriver.h>
-#include <AssembleScalarEdgeOpenSolverAlgorithm.h>
-#include <AssembleScalarEdgeSolverAlgorithm.h>
-#include <AssembleScalarElemSolverAlgorithm.h>
-#include <AssembleScalarElemOpenSolverAlgorithm.h>
-#include <AssembleScalarNonConformalSolverAlgorithm.h>
-#include <AssembleNodalGradAlgorithmDriver.h>
-#include <AssembleNodalGradEdgeAlgorithm.h>
-#include <AssembleNodalGradElemAlgorithm.h>
-#include <AssembleNodalGradBoundaryAlgorithm.h>
-#include <AssembleNodalGradNonConformalAlgorithm.h>
-#include <AssembleNodeSolverAlgorithm.h>
-#include <AuxFunctionAlgorithm.h>
-#include <ConstantAuxFunction.h>
-#include <CopyFieldAlgorithm.h>
-#include <DirichletBC.h>
-#include <EffectiveDiffFluxCoeffAlgorithm.h>
-#include <EquationSystem.h>
-#include <EquationSystems.h>
-#include <Enums.h>
-#include <FieldFunctions.h>
-#include <LinearSolvers.h>
-#include <LinearSolver.h>
-#include <LinearSystem.h>
-#include <NaluEnv.h>
-#include <NaluParsing.h>
-#include <ProjectedNodalGradientEquationSystem.h>
-#include <Realm.h>
-#include <Realms.h>
-#include <ScalarGclNodeSuppAlg.h>
-#include <ScalarMassBackwardEulerNodeSuppAlg.h>
-#include <ScalarMassBDF2NodeSuppAlg.h>
-#include <Simulation.h>
-#include <SolutionOptions.h>
-#include <TimeIntegrator.h>
-#include <SolverAlgorithmDriver.h>
+#include "MixtureFractionEquationSystem.h"
+#include "AlgorithmDriver.h"
+#include "AssembleScalarEdgeOpenSolverAlgorithm.h"
+#include "AssembleScalarEdgeSolverAlgorithm.h"
+#include "AssembleScalarElemSolverAlgorithm.h"
+#include "AssembleScalarElemOpenSolverAlgorithm.h"
+#include "AssembleScalarNonConformalSolverAlgorithm.h"
+#include "AssembleNodalGradAlgorithmDriver.h"
+#include "AssembleNodalGradEdgeAlgorithm.h"
+#include "AssembleNodalGradElemAlgorithm.h"
+#include "AssembleNodalGradBoundaryAlgorithm.h"
+#include "AssembleNodalGradNonConformalAlgorithm.h"
+#include "AssembleNodeSolverAlgorithm.h"
+#include "AuxFunctionAlgorithm.h"
+#include "ConstantAuxFunction.h"
+#include "CopyFieldAlgorithm.h"
+#include "DirichletBC.h"
+#include "EffectiveDiffFluxCoeffAlgorithm.h"
+#include "EquationSystem.h"
+#include "EquationSystems.h"
+#include "Enums.h"
+#include "FieldFunctions.h"
+#include "LinearSolvers.h"
+#include "LinearSolver.h"
+#include "LinearSystem.h"
+#include "NaluEnv.h"
+#include "NaluParsing.h"
+#include "ProjectedNodalGradientEquationSystem.h"
+#include "Realm.h"
+#include "Realms.h"
+#include "ScalarGclNodeSuppAlg.h"
+#include "ScalarMassBackwardEulerNodeSuppAlg.h"
+#include "ScalarMassBDF2NodeSuppAlg.h"
+#include "Simulation.h"
+#include "SolutionOptions.h"
+#include "TimeIntegrator.h"
+#include "SolverAlgorithmDriver.h"
+
+// mesh layer
+#include "mesh/Mesh.h"
 
 // template for kernels
-#include <AlgTraits.h>
-#include <kernel/KernelBuilder.h>
-#include <kernel/KernelBuilderLog.h>
+#include "AlgTraits.h"
+#include "kernel/KernelBuilder.h"
+#include "kernel/KernelBuilderLog.h"
 
 // kernels
-#include <AssembleElemSolverAlgorithm.h>
-#include <kernel/ScalarMassElemKernel.h>
-#include <kernel/ScalarAdvDiffElemKernel.h>
-#include <kernel/ScalarUpwAdvDiffElemKernel.h>
+#include "AssembleElemSolverAlgorithm.h"
+#include "kernel/ScalarMassElemKernel.h"
+#include "kernel/ScalarAdvDiffElemKernel.h"
+#include "kernel/ScalarUpwAdvDiffElemKernel.h"
 
 // bc kernels
-#include <kernel/ScalarOpenAdvElemKernel.h>
+#include "kernel/ScalarOpenAdvElemKernel.h"
 
 // deprecated
-#include <ScalarMassElemSuppAlgDep.h>
-#include <nso/ScalarNSOElemSuppAlgDep.h>
+#include "ScalarMassElemSuppAlgDep.h"
+#include "nso/ScalarNSOElemSuppAlgDep.h"
 
 // nso
-#include <nso/ScalarNSOElemKernel.h>
-#include <nso/ScalarNSOKeElemKernel.h>
-#include <nso/ScalarNSOKeElemSuppAlg.h>
+#include "nso/ScalarNSOElemKernel.h"
+#include "nso/ScalarNSOKeElemKernel.h"
+#include "nso/ScalarNSOKeElemSuppAlg.h"
 
 // user function
-#include <user_functions/VariableDensityMixFracSrcElemSuppAlg.h>
-#include <user_functions/VariableDensityMixFracSrcNodeSuppAlg.h>
-#include <user_functions/VariableDensityMixFracAuxFunction.h>
-#include <user_functions/RayleighTaylorMixFracAuxFunction.h>
+#include "user_functions/VariableDensityMixFracSrcElemSuppAlg.h"
+#include "user_functions/VariableDensityMixFracSrcNodeSuppAlg.h"
+#include "user_functions/VariableDensityMixFracAuxFunction.h"
+#include "user_functions/RayleighTaylorMixFracAuxFunction.h"
 
-#include <overset/UpdateOversetFringeAlgorithmDriver.h>
+#include "overset/UpdateOversetFringeAlgorithmDriver.h"
 
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
@@ -186,39 +189,39 @@ MixtureFractionEquationSystem::register_nodal_fields(
 
   // register dof; set it as a restart variable
   mixFrac_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "mixture_fraction", numStates));
-  stk::mesh::put_field(*mixFrac_, *part);
+  nalu::mesh::put_field(*mixFrac_, *part);
   realm_.augment_restart_variable_list("mixture_fraction");
 
   // for a sanity check, keep around the un-filterd/clipped field
   mixFracUF_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "uf_mixture_fraction", numStates));
-  stk::mesh::put_field(*mixFracUF_, *part);
+  nalu::mesh::put_field(*mixFracUF_, *part);
  
   dzdx_ =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "dzdx"));
-  stk::mesh::put_field(*dzdx_, *part, nDim);
+  nalu::mesh::put_field(*dzdx_, *part, nDim);
 
   // delta solution for linear solver; share delta since this is a split system
   zTmp_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "pTmp"));
-  stk::mesh::put_field(*zTmp_, *part);
+  nalu::mesh::put_field(*zTmp_, *part);
 
   visc_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity"));
-  stk::mesh::put_field(*visc_, *part);
+  nalu::mesh::put_field(*visc_, *part);
 
   if ( realm_.is_turbulent() ) {
     tvisc_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_viscosity"));
-    stk::mesh::put_field(*tvisc_, *part);
+    nalu::mesh::put_field(*tvisc_, *part);
   }
 
   evisc_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "effective_viscosity_z"));
-  stk::mesh::put_field(*evisc_, *part);
+  nalu::mesh::put_field(*evisc_, *part);
 
   scalarVar_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "scalar_variance"));
-  stk::mesh::put_field(*scalarVar_, *part);
+  nalu::mesh::put_field(*scalarVar_, *part);
 
   scaledScalarVar_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "scaled_scalar_variance"));
-  stk::mesh::put_field(*scaledScalarVar_, *part);
+  nalu::mesh::put_field(*scaledScalarVar_, *part);
 
   scalarDiss_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "scalar_dissipation"));
-  stk::mesh::put_field(*scalarDiss_, *part);
+  nalu::mesh::put_field(*scalarDiss_, *part);
 
   // make sure all states are properly populated (restart can handle this)
   if ( numStates > 2 && (!realm_.restarted_simulation() || realm_.support_inconsistent_restart()) ) {
@@ -487,7 +490,7 @@ MixtureFractionEquationSystem::register_inflow_bc(
 
   // register boundary data; mixFrac_bc
   ScalarFieldType *theBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "mixFrac_bc"));
-  stk::mesh::put_field(*theBcField, *part);
+  nalu::mesh::put_field(*theBcField, *part);
 
   // extract the value for user specified mixFrac and save off the AuxFunction
   InflowUserData userData = inflowBCData.userData_;
@@ -588,7 +591,7 @@ MixtureFractionEquationSystem::register_open_bc(
 
   // register boundary data; mixFrac_bc
   ScalarFieldType *theBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "open_mixFrac_bc"));
-  stk::mesh::put_field(*theBcField, *part);
+  nalu::mesh::put_field(*theBcField, *part);
 
   // extract the value for user specified mixFrac and save off the AuxFunction
   OpenUserData userData = openBCData.userData_;
@@ -692,7 +695,7 @@ MixtureFractionEquationSystem::register_wall_bc(
 
     // register boundary data; mixFrac_bc
     ScalarFieldType *theBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "mixFrac_bc"));
-    stk::mesh::put_field(*theBcField, *part);
+    nalu::mesh::put_field(*theBcField, *part);
 
     // extract data
     std::vector<double> userSpec(1);

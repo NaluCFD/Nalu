@@ -6,12 +6,15 @@
 /*------------------------------------------------------------------------*/
 
 
-#include <InputOutputRealm.h>
-#include <Realm.h>
-#include <SolutionOptions.h>
+#include "InputOutputRealm.h"
+#include "Realm.h"
+#include "SolutionOptions.h"
+
+// mesh layer
+#include "mesh/Mesh.h"
 
 // transfer
-#include <xfer/Transfer.h>
+#include "xfer/Transfer.h"
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/BulkData.hpp>
@@ -94,12 +97,12 @@ InputOutputRealm::register_io_fields() {
       else { 
         if ( fieldName.find(velocityName) != std::string::npos ) { //FIXME: require FieldType?
           VectorFieldType *velocity = &(metaData_->declare_field<VectorFieldType>(stk::topology::NODE_RANK, fieldName));
-          stk::mesh::put_field(*velocity, *targetPart, fieldSize);
+          nalu::mesh::put_field(*velocity, *targetPart, fieldSize);
         }
         else {
-          stk::mesh::FieldBase *theField 
+          stk::mesh::Field<double, stk::mesh::SimpleArrayTag> *theField 
             = &(metaData_->declare_field< stk::mesh::Field<double, stk::mesh::SimpleArrayTag> >(stk::topology::NODE_RANK, fieldName));
-          stk::mesh::put_field(*theField,*targetPart,fieldSize);
+          nalu::mesh::put_field(*theField,*targetPart,fieldSize);
         }
       }
     }
