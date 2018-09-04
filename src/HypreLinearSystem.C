@@ -325,17 +325,31 @@ HypreLinearSystem::loadComplete()
   HYPRE_IJVectorGetObject(sln_, (void**)&(solver->parSln_));
 
   solver->comm_ = realm_.bulk_data().parallel();
+
+  // Set flag to indicate zeroSystem that the matrix must be reinitialized
+  // during the next invocation.
+  matrixAssembled_ = true;
 }
 
 void
 HypreLinearSystem::zeroSystem()
 {
-  MPI_Comm comm = realm_.bulk_data().parallel();
   HypreDirectSolver* solver = reinterpret_cast<HypreDirectSolver*>(linearSolver_);
 
-  HYPRE_IJMatrixInitialize(mat_);
-  HYPRE_IJVectorInitialize(rhs_);
-  HYPRE_IJVectorInitialize(sln_);
+  // It is unsafe to call IJMatrixInitialize multiple times without intervening
+  // call to IJMatrixAssemble. This occurs during the first outer iteration (of
+  // first timestep in static application and every timestep in moving mesh
+  // applications) when the data structures have been created but never used and
+  // zeroSystem is called for a reset. Include a check to ensure we only
+  // initialize if it was previously assembled.
+  if (matrixAssembled_) {
+    HYPRE_IJMatrixInitialize(mat_);
+    HYPRE_IJVectorInitialize(rhs_);
+    HYPRE_IJVectorInitialize(sln_);
+
+    // Set flag to false until next invocation of IJMatrixAssemble in loadComplete
+    matrixAssembled_ = false;
+  }
 
   HYPRE_IJMatrixSetConstantValues(mat_, 0.0);
   HYPRE_ParVectorSetConstantValues(solver->parRhs_, 0.0);
@@ -511,7 +525,7 @@ HypreLinearSystem::get_entity_hypre_id(const stk::mesh::Entity& node)
   HypreIntType hid = *stk::mesh::field_data(*realm_.hypreGlobalId_, mnode);
 
 #ifndef NDEBUG
-  if ((hid < 0) || (((hid+1) * numDof_i - 1) > maxRowID_)) {
+  if ((hid < 0) || (((hid+1) * numDof_ - 1) > maxRowID_)) {
     std::cerr << bulk.parallel_rank() << "\t"
               << hid << "\t" << iLower_ << "\t" << iUpper_ << std::endl;
     throw std::runtime_error("BAD STK to hypre conversion");
@@ -540,7 +554,7 @@ HypreLinearSystem::solve(stk::mesh::FieldBase* linearSolutionField)
   // Call solve
   int status = 0;
 
-  status = solver->solve(iters, finalResidNorm);
+  status = solver->solve(iters, finalResidNorm, realm_.isFinalOuterIter_);
 
   if (solver->getConfig()->getWriteMatrixFiles()) {
     const std::string slnFile = eqSysName_ + ".IJV.sln";
