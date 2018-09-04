@@ -86,8 +86,8 @@ void TiogaBlock::setup(stk::mesh::PartVector& bcPartVec)
     stk::topology::ELEM_RANK, "iblank_cell");
 
   for (auto p: blkParts_) {
-    nalu::mesh::put_field(ibf, *p);
-    nalu::mesh::put_field(ibcell, *p);
+    stk::mesh::put_field_on_mesh(ibf, *p);
+    stk::mesh::put_field_on_mesh(ibcell, *p);
   }
 
   // Push overset BC parts to the realm_.bcPartVec_ so that they are ignored

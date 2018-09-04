@@ -21,9 +21,6 @@
 #include "element_promotion/PromoteElement.h"
 #include "element_promotion/PromotedElementIO.h"
 
-// mesh layer
-#include "mesh/Mesh.h"
-
 #include "nalu_make_unique.h"
 #include "NaluEnv.h"
 #include "BucketLoop.h"
@@ -110,13 +107,13 @@ protected:
     const double zeroDouble = 0.0;
     const double zeroVecThree[3] = {0.0, 0.0, 0.0};
 
-    sierra::nalu::mesh::put_field_with_ic_value(*dnvField, meta->universal_part(), 1, &zeroDouble);
-    sierra::nalu::mesh::put_field_with_ic_value(*qField, meta->universal_part(), 1, &zeroDouble);
-    sierra::nalu::mesh::put_field_with_ic_value(*dqdxField, meta->universal_part(), nDim, zeroVecThree);
-    sierra::nalu::mesh::put_field_with_ic_value(*coordField, meta->universal_part(), nDim, zeroVecThree);
+    stk::mesh::put_field_on_mesh(*dnvField, meta->universal_part(), 1, &zeroDouble);
+    stk::mesh::put_field_on_mesh(*qField, meta->universal_part(), 1, &zeroDouble);
+    stk::mesh::put_field_on_mesh(*dqdxField, meta->universal_part(), nDim, zeroVecThree);
+    stk::mesh::put_field_on_mesh(*coordField, meta->universal_part(), nDim, zeroVecThree);
     
     int zeroInt = 0;
-    sierra::nalu::mesh::put_field_with_ic_value(*intField, meta->universal_part(), 1, &zeroInt);
+    stk::mesh::put_field_on_mesh(*intField, meta->universal_part(), 1, &zeroInt);
     fixture->m_meta.commit();
     fixture->generate_mesh(stk::mesh::fixtures::FixedCartesianCoordinateMapping(nx, ny, nz, nx, ny, nz));
     stk::mesh::PartVector surfParts = {surfSubPart};

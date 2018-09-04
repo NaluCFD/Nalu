@@ -4,9 +4,6 @@
 #include "TimeIntegrator.h"
 #include "MovingAveragePostProcessor.h"
 
-// mesh layer
-#include "mesh/Mesh.h"
-
 #include <stk_util/parallel/Parallel.hpp>
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/BulkData.hpp>
@@ -41,8 +38,8 @@ public:
         stk::topology::NODE_RANK,
         sierra::nalu::MovingAveragePostProcessor::filtered_field_name("temperature")
     );
-    sierra::nalu::mesh::put_field(*temperature_, meta_.universal_part());
-    sierra::nalu::mesh::put_field(*raTemperature_, meta_.universal_part());
+    stk::mesh::put_field_on_mesh(*temperature_, meta_.universal_part(), nullptr);
+    stk::mesh::put_field_on_mesh(*raTemperature_, meta_.universal_part(), nullptr);
     meta_.commit();
 
     bulk_.modification_begin();

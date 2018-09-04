@@ -23,9 +23,6 @@
 #include "NaluEnv.h"
 #include "BucketLoop.h"
 
-// mesh layer
-#include "mesh/Mesh.h"
-
 #include <random>
 
 #include "../include/element_promotion/ElementDescription.h"
@@ -91,13 +88,13 @@ class PromoteElementQuadTest : public ::testing::Test
         setup_promotion();
 
         double zeroDouble = 0.0;
-        sierra::nalu::mesh::put_field_with_ic_value(*dnvField, meta->universal_part(), 1, &zeroDouble);
-        sierra::nalu::mesh::put_field_with_ic_value(*coordField, meta->universal_part(), nDim, &zeroDouble);
-        sierra::nalu::mesh::put_field_with_ic_value(*qField, meta->universal_part(), 1, &zeroDouble);
-        sierra::nalu::mesh::put_field_with_ic_value(*dqdxField, meta->universal_part(), nDim, &zeroDouble);
+        stk::mesh::put_field_on_mesh(*dnvField, meta->universal_part(), 1, &zeroDouble);
+        stk::mesh::put_field_on_mesh(*coordField, meta->universal_part(), nDim, &zeroDouble);
+        stk::mesh::put_field_on_mesh(*qField, meta->universal_part(), 1, &zeroDouble);
+        stk::mesh::put_field_on_mesh(*dqdxField, meta->universal_part(), nDim, &zeroDouble);
 
         int zeroInt = 0;
-        sierra::nalu::mesh::put_field_with_ic_value(*intField, meta->universal_part(), 1, &zeroInt);
+        stk::mesh::put_field_on_mesh(*intField, meta->universal_part(), 1, &zeroInt);
 
         meta->commit();
         fixture->generate_mesh();

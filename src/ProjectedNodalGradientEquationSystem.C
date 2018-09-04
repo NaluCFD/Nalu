@@ -25,9 +25,6 @@
 #include "SolutionOptions.h"
 #include "SolverAlgorithmDriver.h"
 
-// mesh layer
-#include "mesh/Mesh.h"
-
 // user functions
 #include "user_functions/SteadyThermalContactAuxFunction.h"
 
@@ -136,11 +133,11 @@ ProjectedNodalGradientEquationSystem::register_nodal_fields(
   const int nDim = meta_data.spatial_dimension();
 
   dqdx_ =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, dofName_));
-  nalu::mesh::put_field(*dqdx_, *part, nDim);
+  stk::mesh::put_field_on_mesh(*dqdx_, *part, nDim, nullptr);
 
   // delta solution for linear solver
   qTmp_ =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, deltaName_));
-  nalu::mesh::put_field(*qTmp_, *part, nDim);
+  stk::mesh::put_field_on_mesh(*qTmp_, *part, nDim, nullptr);
 }
 
 //--------------------------------------------------------------------------

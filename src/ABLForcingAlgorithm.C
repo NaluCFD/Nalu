@@ -5,9 +5,6 @@
 #include "xfer/Transfers.h"
 #include "utils/LinearInterpolation.h"
 
-// mesh layer
-#include "mesh/Mesh.h"
-
 // stk_mesh/base/fem
 #include <stk_mesh/base/BulkData.hpp>
 #include <stk_mesh/base/Entity.hpp>
@@ -305,7 +302,7 @@ ABLForcingAlgorithm::register_fields()
     stk::mesh::Part* part = meta.get_part(key);
     VectorFieldType& coords = meta.declare_field<VectorFieldType>(
       stk::topology::NODE_RANK, "coordinates");
-    nalu::mesh::put_field(coords, *part, nDim);
+    stk::mesh::put_field_on_mesh(coords, *part, nDim, nullptr);
   }
 
   for (auto key : velPartNames_) {
@@ -316,19 +313,19 @@ ABLForcingAlgorithm::register_fields()
     // Velocity
     VectorFieldType& vel = meta.declare_field<VectorFieldType>(
       stk::topology::NODE_RANK, "velocity", nStates);
-    nalu::mesh::put_field(vel, *part, nDim);
+    stk::mesh::put_field_on_mesh(vel, *part, nDim, nullptr);
 
     // Density
     ScalarFieldType& rho = meta.declare_field<ScalarFieldType>(
       stk::topology::NODE_RANK, "density", nStates);
-    nalu::mesh::put_field(rho, *part);
+    stk::mesh::put_field_on_mesh(rho, *part, nullptr);
   }
 
   for (auto key : tempPartNames_) {
     stk::mesh::Part* part = meta.get_part(key);
     ScalarFieldType& temp = meta.declare_field<ScalarFieldType>(
       stk::topology::NODE_RANK, "temperature");
-    nalu::mesh::put_field(temp, *part);
+    stk::mesh::put_field_on_mesh(temp, *part, nullptr);
   }
 }
 

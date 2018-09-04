@@ -12,9 +12,6 @@
 #include "NaluParsing.h"
 #include "Realm.h"
 
-// mesh layer
-#include "mesh/Mesh.h"
-
 // the factory of aux functions
 #include "user_functions/SteadyThermal3dContactAuxFunction.h"
 #include "user_functions/SteadyThermal3dContactDtDxAuxFunction.h"
@@ -206,7 +203,7 @@ SolutionNormPostProcessing::setup()
       stk::mesh::Part *targetPart = partVec_[j];
 
       // put the field on the part
-      nalu::mesh::put_field(*exactDofField, *targetPart, dofSize);
+      stk::mesh::put_field_on_mesh(*exactDofField, *targetPart, dofSize, nullptr);
     
       // create the algorithm to populate the analytical field
       analytical_function_factory(functionName, exactDofField, targetPart);
