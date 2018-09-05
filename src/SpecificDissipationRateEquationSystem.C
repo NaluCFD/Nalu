@@ -841,10 +841,7 @@ SpecificDissipationRateEquationSystem::compute_wall_model_parameters()
   }
 
   // parallel assemble
-  std::vector<const stk::mesh::FieldBase*> fields;
-  fields.push_back(assembledWallSdr_);
-  fields.push_back(assembledWallArea_);
-  stk::mesh::parallel_sum(bulk_data, fields);
+  stk::mesh::parallel_sum(bulk_data, {assembledWallSdr_, assembledWallArea_});
 
   // periodic assemble
   if ( realm_.hasPeriodic_) {

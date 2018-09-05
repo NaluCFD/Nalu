@@ -171,8 +171,7 @@ ComputeTurbKineticEnergyWallFunctionAlgorithm::normalize_nodal_fields()
   ScalarFieldType &tkeNp1 = turbKineticEnergy_->field_of_state(stk::mesh::StateNP1);
 
   // parallel assemble
-  std::vector<const stk::mesh::FieldBase*> sum_fields(1, bcAssembledTurbKineticEnergy_);
-  stk::mesh::parallel_sum(bulk_data, sum_fields);
+  stk::mesh::parallel_sum(bulk_data, {bcAssembledTurbKineticEnergy_});
 
   // periodic assemble
   if ( realm_.hasPeriodic_) {

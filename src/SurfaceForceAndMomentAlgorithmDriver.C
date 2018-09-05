@@ -100,11 +100,7 @@ SurfaceForceAndMomentAlgorithmDriver::parallel_assemble_fields()
   ScalarFieldType *yplus = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "yplus");
 
   // parallel assemble
-  std::vector<const stk::mesh::FieldBase*> fields;
-  fields.push_back(pressureForce);
-  fields.push_back(tauWall);
-  fields.push_back(yplus);
-  stk::mesh::parallel_sum(bulk_data, fields);
+  stk::mesh::parallel_sum(bulk_data, {pressureForce, tauWall, yplus});
 
   // periodic assemble
   if ( realm_.hasPeriodic_) {
