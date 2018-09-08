@@ -41,9 +41,9 @@ TEST_F(MomentumKernelHex8Mesh, buoyancy)
 
   helperObjs.assembleElemSolverAlg->execute();
 
-  EXPECT_EQ(helperObjs.linsys->lhs_.dimension(0), 24u);
-  EXPECT_EQ(helperObjs.linsys->lhs_.dimension(1), 24u);
-  EXPECT_EQ(helperObjs.linsys->rhs_.dimension(0), 24u);
+  EXPECT_EQ(helperObjs.linsys->lhs_.extent(0), 24u);
+  EXPECT_EQ(helperObjs.linsys->lhs_.extent(1), 24u);
+  EXPECT_EQ(helperObjs.linsys->rhs_.extent(0), 24u);
 
   // Exact solution
   std::vector<double> rhsExact(24,0.0);

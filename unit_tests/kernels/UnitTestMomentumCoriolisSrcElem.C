@@ -52,9 +52,9 @@ TEST_F(MomentumKernelHex8Mesh, coriolis)
 
   helperObjs.assembleElemSolverAlg->execute();
 
-  EXPECT_EQ(helperObjs.linsys->lhs_.dimension(0), 24u);
-  EXPECT_EQ(helperObjs.linsys->lhs_.dimension(1), 24u);
-  EXPECT_EQ(helperObjs.linsys->rhs_.dimension(0), 24u);
+  EXPECT_EQ(helperObjs.linsys->lhs_.extent(0), 24u);
+  EXPECT_EQ(helperObjs.linsys->lhs_.extent(1), 24u);
+  EXPECT_EQ(helperObjs.linsys->rhs_.extent(0), 24u);
 
 
   // TEST: checks consistency with the Jacobian in CoriolisSrc

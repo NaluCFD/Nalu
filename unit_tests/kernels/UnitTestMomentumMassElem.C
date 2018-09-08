@@ -175,9 +175,9 @@ TEST_F(MomentumKernelHex8Mesh, momentum_time_derivative)
   // Populate LHS and RHS
   helperObjs.assembleElemSolverAlg->execute();
 
-  EXPECT_EQ(helperObjs.linsys->lhs_.dimension(0), 24u);
-  EXPECT_EQ(helperObjs.linsys->lhs_.dimension(1), 24u);
-  EXPECT_EQ(helperObjs.linsys->rhs_.dimension(0), 24u);
+  EXPECT_EQ(helperObjs.linsys->lhs_.extent(0), 24u);
+  EXPECT_EQ(helperObjs.linsys->lhs_.extent(1), 24u);
+  EXPECT_EQ(helperObjs.linsys->rhs_.extent(0), 24u);
 
   namespace gold_values = ::hex8_golds::momentum_time_derivative;
   unit_test_kernel_utils::expect_all_near(helperObjs.linsys->rhs_, gold_values::rhs);
@@ -224,9 +224,9 @@ TEST_F(MomentumKernelHex8Mesh, momentum_time_derivative_lumped)
   for (int i=0; i<24; i++)
     lhsExact[i*24+i] = 1.25;
 
-  EXPECT_EQ(helperObjs.linsys->lhs_.dimension(0), 24u);
-  EXPECT_EQ(helperObjs.linsys->lhs_.dimension(1), 24u);
-  EXPECT_EQ(helperObjs.linsys->rhs_.dimension(0), 24u);
+  EXPECT_EQ(helperObjs.linsys->lhs_.extent(0), 24u);
+  EXPECT_EQ(helperObjs.linsys->lhs_.extent(1), 24u);
+  EXPECT_EQ(helperObjs.linsys->rhs_.extent(0), 24u);
   unit_test_kernel_utils::expect_all_near(helperObjs.linsys->rhs_, gold_values::rhs);
   unit_test_kernel_utils::expect_all_near(helperObjs.linsys->lhs_, lhsExact.data());
 }
