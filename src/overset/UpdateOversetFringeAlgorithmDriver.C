@@ -15,8 +15,10 @@ namespace sierra {
 namespace nalu {
 
 UpdateOversetFringeAlgorithmDriver::UpdateOversetFringeAlgorithmDriver(
-  Realm& realm)
-  : AlgorithmDriver(realm)
+  Realm& realm,
+  const bool applyItPreIter)
+  : AlgorithmDriver(realm),
+    applyItPreIter_(applyItPreIter)
 {}
 
 UpdateOversetFringeAlgorithmDriver::~UpdateOversetFringeAlgorithmDriver()
@@ -25,9 +27,15 @@ UpdateOversetFringeAlgorithmDriver::~UpdateOversetFringeAlgorithmDriver()
 void
 UpdateOversetFringeAlgorithmDriver::pre_work()
 {
-  for (auto& f: fields_) {
-    realm_.oversetManager_->overset_orphan_node_field_update(
-      f->field_, f->sizeRow_, f->sizeCol_);
+  if ( applyItPreIter_ ) {
+    for (auto& f: fields_) {
+      realm_.oversetManager_->overset_orphan_node_field_update(f->field_, f->sizeRow_, f->sizeCol_);
+    }
+  }
+  else {
+    for (auto& f: fields_) {
+      realm_.oversetManager_->overset_orphan_node_field_update_post(f->field_, f->sizeRow_, f->sizeCol_);
+    }
   }
 }
 

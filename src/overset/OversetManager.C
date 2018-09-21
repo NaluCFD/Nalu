@@ -40,6 +40,10 @@ OversetManager::delete_info_vec()
   for (auto ii=oversetInfoVec_.begin();
        ii != oversetInfoVec_.end(); ++ii)
     delete (*ii);
+
+  for (auto ii=fringeInfoVec_.begin();
+       ii != fringeInfoVec_.end(); ++ii)
+    delete (*ii);
 }
 
 void
@@ -59,6 +63,35 @@ OversetManager::overset_orphan_node_field_update(
   const int sizeRow,
   const int sizeCol)
 {
+  // operates on known oversetInfoVec_
+  overset_orphan_node_field_update_gen(
+    theField,
+    sizeRow,
+    sizeCol,
+    oversetInfoVec_);
+}
+
+void
+OversetManager::overset_orphan_node_field_update_post(
+  stk::mesh::FieldBase *theField,
+  const int sizeRow,
+  const int sizeCol)
+{
+  // operates on known fringeInfoVec_
+  overset_orphan_node_field_update_gen(
+    theField,
+    sizeRow,
+    sizeCol,
+    fringeInfoVec_);
+}
+
+void
+OversetManager::overset_orphan_node_field_update_gen(
+  stk::mesh::FieldBase *theField,
+  const int sizeRow,
+  const int sizeCol,
+  std::vector<OversetInfo *> &infoVec)
+{
   const unsigned sizeOfField = sizeRow*sizeCol;
   std::vector <double > orphanNodalQ(sizeOfField);
 
@@ -70,8 +103,8 @@ OversetManager::overset_orphan_node_field_update(
 
   // iterate oversetInfoVec_
   std::vector<OversetInfo *>::iterator ii;
-  for( ii=oversetInfoVec_.begin();
-       ii!=oversetInfoVec_.end(); ++ii ) {
+  for( ii=infoVec.begin();
+       ii!=infoVec.end(); ++ii ) {
 
     // overset info object of interest
     OversetInfo * infoObject = (*ii);
@@ -125,6 +158,7 @@ OversetManager::overset_orphan_node_field_update(
     }
   }
 }
+
 
 }  // nalu
 }  // sierra

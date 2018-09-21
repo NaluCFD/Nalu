@@ -95,6 +95,7 @@ realms:
     - overset_boundary_condition: bc_left
       overset_user_data:
         percent_overlap: 10.0 
+        percent_overlap: 20.0 
         background_block: block_1
         overset_block: block_2
         overset_surface: surface_6
@@ -134,6 +135,7 @@ realms:
        - dual_nodal_volume
        - velocity
        - pressure
+       - fringe_node
        - dpdx
        - dudx
        - intersected_element

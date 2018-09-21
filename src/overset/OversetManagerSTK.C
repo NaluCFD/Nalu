@@ -96,14 +96,18 @@ OversetManagerSTK::initialize()
 
     // declare create the part for the surface of the intersected elements/nodes
     declare_background_surface_part();
+
+    // declare inner part; only required for mesh motion
+    if ( realm_.has_mesh_motion() )
+      declare_inner_part();
   }
 
   // remove current set of elements/faces in parts; only required in mesh motion is active
   if ( realm_.has_mesh_motion() )
     clear_parts();
 
-  // define overset bounding box for cutting
-  define_overset_bounding_box();
+  // define bounding box for cutting (defines inactive and inner bounding box)
+  define_inactive_bounding_box();
 
   // define overset bounding boxes
   define_overset_bounding_boxes();
@@ -111,11 +115,26 @@ OversetManagerSTK::initialize()
   // define background bounding boxes
   define_background_bounding_boxes();
 
-  // perform the coarse search to find the intersected elements
-  determine_intersected_elements();
+  // perform the coarse search to find the intersected inactive elements
+  determine_intersected_elements(
+    boundingElementInactiveBoxVec_, 
+    boundingElementBackgroundBoxesVec_, 
+    intersectedInactiveElementVec_);
 
   // create a part that holds the intersected elements that should be inactive
   populate_inactive_part();
+    
+
+  // perform the coarse search to find the inner intersected inactive elements
+  if ( realm_.has_mesh_motion() ) { 
+    determine_intersected_elements(
+      boundingElementInactiveBoxVecInner_, 
+      boundingElementBackgroundBoxesVec_, 
+      intersectedInactiveElementVecInner_);
+   
+    // create a part that holds the inner intersected elements that should be inactive
+    populate_inner_part();
+  }
 
   // skin the inActivePart_ and, therefore, populate the backgroundSurfacePart_
   skin_exposed_surface_on_inactive_part();
@@ -126,14 +145,30 @@ OversetManagerSTK::initialize()
   // define OversetInfo object for each node on the exposed parts
   create_overset_info_vec();
 
+  // create fringe info; intersection of inactive and inner block
+  if ( realm_.has_mesh_motion() )
+    create_fringe_info_vec();
+
   // search for nodes in elements
   orphan_node_search();
 
   // set elemental data on inactive part
   set_data_on_inactive_part();
 
+  // set nodal data on fringe nodes
+  if ( realm_.has_mesh_motion() )
+    set_data_on_fringe_part();
+
   // set flag for the next possible time we are through the initializtion method
   firstInitialization_ = false;
+
+  // provide output
+  uint64_t l_sum[2] = {oversetInfoVec_.size(),fringeInfoVec_.size()};
+  uint64_t g_sum[2] = {0,0};
+  stk::all_reduce_sum(NaluEnv::self().parallel_comm(), l_sum, g_sum, 2);
+ 
+  NaluEnv::self().naluOutputP0() << " OversetManagerSTK::initialize() oversetInfo/innerInfo size: " 
+                                 <<  g_sum[0] << "/" << g_sum[1] << std::endl;
 
   // end time
   const double timeB = NaluEnv::self().nalu_time();
@@ -172,6 +207,17 @@ OversetManagerSTK::declare_inactive_part()
   std::string partName = oversetUserData_.backgroundCutBlock_;
   inActivePart_ =  &metaData_->declare_part(partName, stk::topology::ELEMENT_RANK);
 }
+
+//--------------------------------------------------------------------------
+//-------- declare_inner_part -----------------------------------------------
+//--------------------------------------------------------------------------
+void
+OversetManagerSTK::declare_inner_part()
+{
+  // not sure where this needs to be in order for the block to show up in the output file?
+  std::string partName = oversetUserData_.backgroundInnerBlock_;
+  innerPart_ =  &metaData_->declare_part(partName, stk::topology::ELEMENT_RANK);
+}
   
 //--------------------------------------------------------------------------
 //-------- declare_background_surface_part ---------------------------------
@@ -185,10 +231,10 @@ OversetManagerSTK::declare_background_surface_part()
 }
   
 //--------------------------------------------------------------------------
-//-------- define_overset_bounding_box -------------------------------------
+//-------- define_inactive_bounding_box ------------------------------------
 //--------------------------------------------------------------------------
 void
-OversetManagerSTK::define_overset_bounding_box()
+OversetManagerSTK::define_inactive_bounding_box()
 {
   // extract coordinates
   VectorFieldType *coordinates
@@ -262,6 +308,8 @@ OversetManagerSTK::define_overset_bounding_box()
   // copy to the point; with reduction below, be very deliberate since these are cheap loops
   Point minOverset;
   Point maxOverset;
+  Point minOversetInner;
+  Point maxOversetInner;
   
   // determine translation distance to provide minimum origin at (0,0,0)
   std::vector<double> translateDistance(nDim_);
@@ -273,6 +321,8 @@ OversetManagerSTK::define_overset_bounding_box()
   for ( int i = 0; i < nDim_; ++i ) {
     g_minOversetCorner[i] += translateDistance[i];
     g_maxOversetCorner[i] += translateDistance[i];
+    minOversetInner[i] = g_minOversetCorner[i];
+    maxOversetInner[i] = g_maxOversetCorner[i];
   }
 
   // reduce the translated box
@@ -283,10 +333,20 @@ OversetManagerSTK::define_overset_bounding_box()
     g_maxOversetCorner[i] -= distance;
   }
 
+  // reduce the translated box for the inner
+  const double percentOverlapInner = oversetUserData_.percentOverlapInner_;
+  for ( int i = 0; i < nDim_; ++i ) {
+    const double distance = (maxOversetInner[i] - minOversetInner[i])*percentOverlapInner/100.0;
+    minOversetInner[i] += distance;
+    maxOversetInner[i] -= distance;
+  }
+
   // translate back to original
   for ( int i = 0; i < nDim_; ++i ) {
     g_minOversetCorner[i] -= translateDistance[i];
     g_maxOversetCorner[i] -= translateDistance[i];
+    minOversetInner[i] -= translateDistance[i];
+    maxOversetInner[i] -= translateDistance[i];
   }
 
   // inform the user and copy into points
@@ -298,13 +358,30 @@ OversetManagerSTK::define_overset_bounding_box()
   }
 
   // set up the processor info for this bounding box; attach it to local rank with unique id (zero)
-  const size_t overSetBoundingBoxIdent = 0;
-  const int parallelRankForBoundingBox = NaluEnv::self().parallel_rank();
-  stk::search::IdentProc<uint64_t,int> theIdent(overSetBoundingBoxIdent, parallelRankForBoundingBox);
+  const size_t inactiveBoundingBoxIdent = 0;
+  const int parallelRankForInactiveBoundingBox = NaluEnv::self().parallel_rank();
+  stk::search::IdentProc<uint64_t,int> theIdent(inactiveBoundingBoxIdent, parallelRankForInactiveBoundingBox);
 
   // bounding box for all of the overset mesh
-  boundingElementBox oversetBox(Box(minOverset,maxOverset), theIdent);
-  boundingElementOversetBoxVec_.push_back(oversetBox);
+  boundingElementBox inactiveBox(Box(minOverset,maxOverset), theIdent);
+  boundingElementInactiveBoxVec_.push_back(inactiveBox);
+
+  if ( realm_.has_mesh_motion() ) {
+    // inform the user about inner and copy into points
+    NaluEnv::self().naluOutputP0() << "Min/Max coords for overset inner bounding box" << std::endl;
+    for ( int i = 0; i < nDim_; ++i ) {
+      NaluEnv::self().naluOutputP0() << "component: " << i << " " << minOversetInner[i] << " " << maxOversetInner[i] << std::endl;
+    }
+    
+    // set up the processor info for this bounding box; attach it to local rank with unique id (zero)
+    const size_t innerBoundingBoxIdent = 0;
+    const int parallelRankForInnerBoundingBox = NaluEnv::self().parallel_rank();
+    stk::search::IdentProc<uint64_t,int> theIdentInner(innerBoundingBoxIdent, parallelRankForInnerBoundingBox);
+    
+    // bounding box for all of the overset mesh
+    boundingElementBox boxInner(Box(minOversetInner,maxOversetInner), theIdentInner);
+    boundingElementInactiveBoxVecInner_.push_back(boxInner);
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -437,9 +514,6 @@ OversetManagerSTK::define_background_bounding_boxes()
       // setup ident
       stk::search::IdentProc<uint64_t,int> theIdent(bulkData_->identifier(element), NaluEnv::self().parallel_rank());
 
-      // populate map for later intersection
-      searchIntersectedElementMap_[bulkData_->identifier(element)] = element;
-
       // create the bounding point box and push back
       boundingElementBox theBox(Box(minBackgroundCorner,maxBackgroundCorner), theIdent);
       boundingElementBackgroundBoxesVec_.push_back(theBox);
@@ -451,13 +525,16 @@ OversetManagerSTK::define_background_bounding_boxes()
 //-------- determine_intersected_elements ----------------------------------
 //--------------------------------------------------------------------------
 void
-OversetManagerSTK::determine_intersected_elements()
+OversetManagerSTK::determine_intersected_elements(
+  std::vector<boundingElementBox> &boundingBoxVec,  
+  std::vector<boundingElementBox> &boundingBoxesVec,  
+  std::vector<stk::mesh::Entity > &elementVec)
 {
   // use local searchKeyPair since we do not need to save this off
   std::vector<std::pair<theKey, theKey> > searchKeyPair;
   
   // proceed with coarse search
-  stk::search::coarse_search(boundingElementOversetBoxVec_, boundingElementBackgroundBoxesVec_, searchMethod_, NaluEnv::self().parallel_comm(), searchKeyPair);
+  stk::search::coarse_search(boundingBoxVec, boundingBoxesVec, searchMethod_, NaluEnv::self().parallel_comm(), searchKeyPair);
 
   // iterate search key; extract found elements and push to vector
   std::vector<std::pair<theKey, theKey> >::const_iterator ii;
@@ -470,12 +547,10 @@ OversetManagerSTK::determine_intersected_elements()
     // if this box in on-rank, extract the element; otherwise, do not worry about it
     if ( box_proc == theRank ) {
       // find the element
-      std::map<uint64_t, stk::mesh::Entity>::iterator iterEM;
-      iterEM=searchIntersectedElementMap_.find(theBox);
-      if ( iterEM == searchIntersectedElementMap_.end() )
-        throw std::runtime_error("No entry in searchElementMap found");
-      stk::mesh::Entity theElemMeshObj = iterEM->second;
-      intersectedElementVec_.push_back(theElemMeshObj);
+      stk::mesh::Entity element = bulkData_->get_entity(stk::topology::ELEMENT_RANK, theBox);
+      if ( !(bulkData_->is_valid(element)) )
+        throw std::runtime_error("OversetManagerSTK::determine_intersected_elements() no valid entry for element id ");
+      elementVec.push_back(element);
     }
   }
 }
@@ -487,12 +562,13 @@ void
 OversetManagerSTK::clear_parts()
 {  
   // clear some internal data structures
-  boundingElementOversetBoxVec_.clear();
+  boundingElementInactiveBoxVec_.clear();
+  boundingElementInactiveBoxVecInner_.clear();
   boundingElementOversetBoxesVec_.clear();
   boundingElementBackgroundBoxesVec_.clear();
   boundingPointVecBackground_.clear();
   boundingPointVecOverset_.clear();
-  searchIntersectedElementMap_.clear();
+  boundingPointVecInner_.clear();
   searchKeyPairBackground_.clear();
   searchKeyPairOverset_.clear();
   orphanPointSurfaceVecOverset_.clear();
@@ -501,52 +577,64 @@ OversetManagerSTK::clear_parts()
   // delete info vec before clear
   delete_info_vec();
   oversetInfoVec_.clear();
+  fringeInfoVec_.clear();
 
   oversetInfoMapOverset_.clear();
   oversetInfoMapBackground_.clear();
+  oversetInfoMapFringe_.clear();
 
   // remove elements from current parts; at this point, do not try to figure out the delta...
-  stk::mesh::PartVector noneSkin, noneInactive, inactivePartVector(1,inActivePart_), backgroundPartVector(1,backgroundSurfacePart_);
+  stk::mesh::PartVector noneSkin, noneInactive, noneInner, 
+    inactivePartVector(1,inActivePart_), backgroundPartVector(1,backgroundSurfacePart_), innerPartVecor(1,innerPart_);
   
   // load up elements within skinned mesh
   std::vector<stk::mesh::Entity > backgroundSurfaceVec;
-  stk::mesh::Selector s_background = stk::mesh::Selector(*backgroundSurfacePart_);
+  stk::mesh::Selector s_background = metaData_->locally_owned_part() 
+    & stk::mesh::Selector(*backgroundSurfacePart_);
   stk::mesh::BucketVector const& bucket_surface =
-    bulkData_->get_buckets( stk::topology::ELEM_RANK, s_background );
+    bulkData_->get_buckets( metaData_->side_rank(), s_background );
   for ( stk::mesh::BucketVector::const_iterator ib = bucket_surface.begin();
         ib != bucket_surface.end() ; ++ib ) {
     stk::mesh::Bucket & b = **ib;
     const stk::mesh::Bucket::size_type length   = b.size();
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
-      stk::mesh::Entity theElement = b[k];
-      backgroundSurfaceVec.push_back(theElement);
+      stk::mesh::Entity theSide = b[k];
+      backgroundSurfaceVec.push_back(theSide);
     }
   }
 
   stk::mesh::Selector s_inactive = stk::mesh::Selector(*inActivePart_);
-
+  stk::mesh::Selector s_inner = stk::mesh::Selector(*innerPart_);
+ 
   // clear the elements from the two parts in question
   bulkData_->modification_begin();
 
   // first intersected elements
-  for ( size_t k = 0; k < intersectedElementVec_.size(); ++k ) {
-    stk::mesh::Entity theElement = intersectedElementVec_[k];
+  for ( size_t k = 0; k < intersectedInactiveElementVec_.size(); ++k ) {
+    stk::mesh::Entity theElement = intersectedInactiveElementVec_[k];
     if (s_inactive(bulkData_->bucket(theElement)))
       bulkData_->change_entity_parts(theElement, noneInactive, inactivePartVector);
   }
   
-  // second background elements
+  // second background sides
   for ( size_t k = 0; k < backgroundSurfaceVec.size(); ++k ) {
-    stk::mesh::Entity theElement = backgroundSurfaceVec[k];
-    if (s_background(bulkData_->bucket(theElement)))
-      bulkData_->change_entity_parts(theElement, noneSkin, backgroundPartVector);
+    stk::mesh::Entity theSide = backgroundSurfaceVec[k];
+    if (s_background(bulkData_->bucket(theSide)))
+      bulkData_->change_entity_parts(theSide, noneSkin, backgroundPartVector);
+  }
+  
+  // third, inner elements (possible empty)
+  for ( size_t k = 0; k < intersectedInactiveElementVecInner_.size(); ++k ) {
+    stk::mesh::Entity theElement = intersectedInactiveElementVecInner_[k];
+    if (s_inner(bulkData_->bucket(theElement)))
+      bulkData_->change_entity_parts(theElement, noneInner, innerPartVecor);
   }
   
   bulkData_->modification_end();
 
   // clear
-  intersectedElementVec_.clear();
-
+  intersectedInactiveElementVec_.clear();
+  intersectedInactiveElementVecInner_.clear();
 }
 
 //--------------------------------------------------------------------------
@@ -560,8 +648,27 @@ OversetManagerSTK::populate_inactive_part()
   
   stk::mesh::PartVector thePartVector;
   thePartVector.push_back(inActivePart_);
-  for ( size_t k = 0; k < intersectedElementVec_.size(); ++k ) {
-    stk::mesh::Entity theElement = intersectedElementVec_[k];
+  for ( size_t k = 0; k < intersectedInactiveElementVec_.size(); ++k ) {
+    stk::mesh::Entity theElement = intersectedInactiveElementVec_[k];
+    bulkData_->change_entity_parts( theElement, thePartVector);
+  }
+  
+  bulkData_->modification_end();
+}
+
+//--------------------------------------------------------------------------
+//-------- populate_inner_part ---------------------------------------------
+//--------------------------------------------------------------------------
+void
+OversetManagerSTK::populate_inner_part()
+{
+  // push all elements intersected to a new part
+  bulkData_->modification_begin();
+  
+  stk::mesh::PartVector thePartVector;
+  thePartVector.push_back(innerPart_);
+  for ( size_t k = 0; k < intersectedInactiveElementVecInner_.size(); ++k ) {
+    stk::mesh::Entity theElement = intersectedInactiveElementVecInner_[k];
     bulkData_->change_entity_parts( theElement, thePartVector);
   }
   
@@ -569,7 +676,7 @@ OversetManagerSTK::populate_inactive_part()
 }
   
 //--------------------------------------------------------------------------
-//-------- skin_exposed_surface_on_inactive_part -------------------------
+//-------- skin_exposed_surface_on_inactive_part ---------------------------
 //--------------------------------------------------------------------------
 void
 OversetManagerSTK::skin_exposed_surface_on_inactive_part()
@@ -725,7 +832,69 @@ OversetManagerSTK::create_overset_info_vec()
 }
 
 //--------------------------------------------------------------------------
-//-------- orphan_node_search ---------------------------------------------
+//-------- create_fringe_info_vec ------------------------------------------
+//--------------------------------------------------------------------------
+void
+OversetManagerSTK::create_fringe_info_vec()
+{
+  // extract coordinates
+  VectorFieldType *coordinates
+    = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  
+  Point localNodalCoords;
+  
+  // intersect innerPart_ and inactivePart_ (do not include nodes on the skinned mesh surface)
+  stk::mesh::Selector s_locally_owned_overset = (metaData_->locally_owned_part() | metaData_->globally_shared_part())
+    & stk::mesh::Selector(*inActivePart_) 
+    & !stk::mesh::Selector(*innerPart_) 
+    & !stk::mesh::Selector(*backgroundSurfacePart_);
+
+  stk::mesh::BucketVector const& locally_owned_node_bucket_overset =
+      bulkData_->get_buckets( stk::topology::NODE_RANK, s_locally_owned_overset );
+
+  for ( stk::mesh::BucketVector::const_iterator ib = locally_owned_node_bucket_overset.begin();
+      ib != locally_owned_node_bucket_overset.end() ; ++ib ) {
+    stk::mesh::Bucket & b = **ib;
+
+    const stk::mesh::Bucket::size_type length   = b.size();
+
+    // point to data
+    const double * coords = stk::mesh::field_data(*coordinates, b);
+    
+    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+
+      // get node
+      stk::mesh::Entity node = b[k];
+
+      // create the info
+      OversetInfo *theInfo = new OversetInfo(node, nDim_);
+      
+      // fill map
+      stk::search::IdentProc<uint64_t,int> theIdent(bulkData_->identifier(node), NaluEnv::self().parallel_rank());
+      oversetInfoMapFringe_[bulkData_->identifier(node)] = theInfo;
+        
+      // push it back
+      fringeInfoVec_.push_back(theInfo);
+        
+      // pointers to real data
+      const size_t offSet = k*nDim_;
+      
+      // fill in nodal coordinates
+      for (int j = 0; j < nDim_; ++j ) {
+        const double xj = coords[offSet+j];
+        theInfo->nodalCoords_[j] = xj;
+        localNodalCoords[j] = xj;
+      }
+      
+      // create the bounding point box and push back
+      boundingPoint thePt(localNodalCoords, theIdent);
+      boundingPointVecInner_.push_back(thePt);
+    }
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- orphan_node_search ----------------------------------------------
 //--------------------------------------------------------------------------
 void
 OversetManagerSTK::orphan_node_search()
@@ -735,6 +904,8 @@ OversetManagerSTK::orphan_node_search()
     boundingPointVecOverset_, boundingElementBackgroundBoxesVec_, searchKeyPairOverset_);
   coarse_search(
     boundingPointVecBackground_, boundingElementOversetBoxesVec_, searchKeyPairBackground_);
+  if ( realm_.has_mesh_motion() )
+    coarse_search( boundingPointVecInner_, boundingElementOversetBoxesVec_, searchKeyPairInner_);
 
   // deal with ghosting so that fine search isInElement has all of the data that it needs
   manage_ghosting();
@@ -742,6 +913,8 @@ OversetManagerSTK::orphan_node_search()
   // fine search
   complete_search(searchKeyPairOverset_, oversetInfoMapOverset_);  
   complete_search(searchKeyPairBackground_, oversetInfoMapBackground_);
+  if ( realm_.has_mesh_motion() )
+    complete_search(searchKeyPairInner_, oversetInfoMapFringe_);
 }
 
 //--------------------------------------------------------------------------
@@ -777,6 +950,46 @@ OversetManagerSTK::set_data_on_inactive_part()
     double * interElem = stk::mesh::field_data(*intersectedElement, b);
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
       interElem[k] = 1.0;
+    }
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- set_data_on_fringe_part ----------------------------------------
+//--------------------------------------------------------------------------
+void
+OversetManagerSTK::set_data_on_fringe_part()
+{
+  // extract nodal field
+  ScalarFieldType *fringeNode
+    = metaData_->get_field<ScalarFieldType>(stk::topology::NODE_RANK, "fringe_node");
+
+  // first, initialize field to zero everywhere
+  stk::mesh::Selector s_everywhere = stk::mesh::selectField(*fringeNode);
+  stk::mesh::BucketVector const& node_buckets = bulkData_->get_buckets( stk::topology::NODE_RANK, s_everywhere);
+  for ( stk::mesh::BucketVector::const_iterator ib = node_buckets.begin() ;
+        ib != node_buckets.end() ; ++ib ) {
+    stk::mesh::Bucket & b = **ib ;
+    const stk::mesh::Bucket::size_type length   = b.size();
+    double * fNode = stk::mesh::field_data(*fringeNode, b);
+    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+      fNode[k] = 0.0;
+    }
+  }
+  
+  // now, set fringe field on intersection of two parts (do not include nodes on the skinned mesh surface)
+  stk::mesh::Selector s_fringe = stk::mesh::Selector(*inActivePart_) 
+    & !stk::mesh::Selector(*innerPart_)
+    & !stk::mesh::Selector(*backgroundSurfacePart_);
+
+  stk::mesh::BucketVector const& fringe_buckets = bulkData_->get_buckets( stk::topology::NODE_RANK, s_fringe );
+  for ( stk::mesh::BucketVector::const_iterator ib = fringe_buckets.begin() ;
+        ib != fringe_buckets.end() ; ++ib ) {
+    stk::mesh::Bucket & b = **ib ;
+    const stk::mesh::Bucket::size_type length   = b.size();
+    double * fNode = stk::mesh::field_data(*fringeNode, b);
+    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+      fNode[k] = 1.0;
     }
   }
 }
@@ -933,6 +1146,8 @@ OversetManagerSTK::complete_search(
       // not this proc's issue
     }
   }
+
+  // FIXME: Add a "canDelete infoVec for any point that does not find a home
 
   // check to see that all orphan coords have a home...
   if ( oversetAlgDetailedOutput_ ) {

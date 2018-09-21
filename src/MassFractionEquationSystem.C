@@ -628,7 +628,14 @@ MassFractionEquationSystem::register_overset_bc()
   equationSystems_.preIterAlgDriver_.push_back(theAlg);
 
   theAlg->fields_.push_back(
-    std::unique_ptr<OversetFieldData>(new OversetFieldData(currentMassFraction_,1,1)));
+    std::unique_ptr<OversetFieldData>(new OversetFieldData(massFraction_,1,numMassFraction_)));
+
+  if ( realm_.has_mesh_motion() ) {
+    UpdateOversetFringeAlgorithmDriver* theAlgPost = new UpdateOversetFringeAlgorithmDriver(realm_,false);
+    // Perform fringe updates after all equation system solves (ideally on the post_time_step)
+    equationSystems_.postIterAlgDriver_.push_back(theAlgPost);
+    theAlgPost->fields_.push_back(std::unique_ptr<OversetFieldData>(new OversetFieldData(massFraction_,1,numMassFraction_)));
+  }
 }
 
 //--------------------------------------------------------------------------

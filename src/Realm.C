@@ -839,7 +839,6 @@ Realm::setup_nodal_fields()
 #endif
   }
 
-
   // loop over all material props targets and register nodal fields
   std::vector<std::string> targetNames = get_physics_target_names();
   equationSystems_.register_nodal_fields(targetNames);

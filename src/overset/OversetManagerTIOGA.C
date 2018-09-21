@@ -63,7 +63,7 @@ OversetManagerTIOGA::initialize()
   oversetInfoVec_.clear();
 
   tiogaIface_.execute();
-
+  
   const double timeB = NaluEnv::self().nalu_time();
   realm_.timerNonconformal_ += (timeB - timeA);
 
