@@ -59,10 +59,24 @@ public:
    */
   virtual void initialize() = 0;
 
+  // updates known oversetInfoVec_
   virtual void overset_orphan_node_field_update(
     stk::mesh::FieldBase*,
     const int,
     const int);
+
+  // updates nodes that may not participate in the linear system
+  virtual void overset_orphan_node_field_update_post(
+    stk::mesh::FieldBase*,
+    const int,
+    const int);
+
+  // general update that expects provided vector
+  virtual void overset_orphan_node_field_update_gen(
+    stk::mesh::FieldBase*,
+    const int,
+    const int,
+    std::vector<OversetInfo *> &);
 
   /** Return an inactive selector that contains the hole elements
    */
@@ -82,7 +96,9 @@ public:
 
   stk::mesh::PartVector orphanPointSurfaceVecBackground_;
 
+  // two sets of info vecs (linsys and non-linsys, aka fringe for STK)
   std::vector<OversetInfo*> oversetInfoVec_;
+  std::vector<OversetInfo*> fringeInfoVec_;
 
   std::vector<int> ghostCommProcs_;
 

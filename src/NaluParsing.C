@@ -1078,13 +1078,18 @@ namespace YAML
   bool convert<sierra::nalu::OversetUserData>::decode(const Node& node,
     sierra::nalu::OversetUserData& oversetData)
   {
-    // nothing is optional
+    // most things are not optional
     if (node["percent_overlap"])
     {
       oversetData.percentOverlap_ = node["percent_overlap"].as<double>();
     } else
     {
       throw std::runtime_error("One MUST specify overset overlap percentage");
+    }
+
+    if (node["percent_overlap_inner"])
+    {
+      oversetData.percentOverlapInner_ = node["percent_overlap_inner"].as<double>();
     }
 
     if (node["background_block"])
@@ -1130,6 +1135,12 @@ namespace YAML
     {
       throw std::runtime_error("One MUST specify background cut surface");
     }
+
+    if (node["background_cut_block_inner"])
+    {
+      oversetData.backgroundInnerBlock_ = node["background_cut_block_inner"].as<
+          std::string>();
+    } 
 
     if (node["overset_surface"])
     {

@@ -269,6 +269,7 @@ struct OversetUserData : public UserData {
 
   /// Percentage overlap between background and interior mesh
   double percentOverlap_;
+  double percentOverlapInner_;
   bool clipIsoParametricCoords_;
   bool detailedOutput_;
   /// Part name for the background  mesh
@@ -281,6 +282,10 @@ struct OversetUserData : public UserData {
   /// Part name for the inactive elements on the background mesh as a result of
   /// hole cutting.
   std::string backgroundCutBlock_;
+
+  /// Part name for the inner inactive elements on the background mesh as a result of
+  /// hole cutting.
+  std::string backgroundInnerBlock_;
 
   /// Exterior boundary of the internal meshe(s) that are mandatory receptors
   std::string oversetSurface_;
@@ -295,11 +300,13 @@ struct OversetUserData : public UserData {
   OversetUserData()
     : UserData(),
       percentOverlap_(10.0),
+      percentOverlapInner_(20.0),
       clipIsoParametricCoords_(false),
       detailedOutput_(false),
       backgroundBlock_("na"),
       backgroundSurface_("na"),
       backgroundCutBlock_("na"),
+      backgroundInnerBlock_("na"),
       oversetSurface_("na")
   {}
 };

@@ -1,7 +1,7 @@
 /*------------------------------------------------------------------------*/
 /*  Copyright 2014 Sandia Corporation.                                    */
 /*  This software is released under the license detailed                  */
-/*  in the file, LICENSE, which is located in the top-level nalu      */
+/*  in the file, LICENSE, which is located in the top-level nalu          */
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
@@ -95,8 +95,11 @@ public:
   // set space for inactive part exposed surfaces
   void declare_background_surface_part();
   
-  // define the high level overset bounding box (single in size for cutting)
-  void define_overset_bounding_box();
+  // set space for inner part
+  void declare_inner_part();
+
+  // define the bounding boxes for inactive and inner (based on % reduction of the overset mesh)
+  void define_inactive_bounding_box();
 
   // define the high level overset bounding boxes
   void define_overset_bounding_boxes();
@@ -104,14 +107,20 @@ public:
   // define the background mesh set of bounding boxes
   void define_background_bounding_boxes();
 
-  // determine all of the intersected elements (coarse search on oversetBoxVec and backgroundBoxVec)
-  void determine_intersected_elements();
+  // determine all of the inactive intersected elements (coarse search on inactive bounding box and backgroundBoxesVec)
+  void determine_intersected_elements(
+    std::vector<boundingElementBox> &boundingBoxVec,  
+    std::vector<boundingElementBox> &boundingBoxesVec,  
+    std::vector<stk::mesh::Entity > &elementVec);
 
   // remove all elements from internally managed parts
   void clear_parts();
 
   // add elements to the inactive part
   void populate_inactive_part();
+
+  // add elements to the inner paer
+  void populate_inner_part();
 
   // skin the inactive part to obtain a surface part
   void skin_exposed_surface_on_inactive_part();
@@ -122,11 +131,17 @@ public:
   // create an OversetInfo object for each locally owned exposed node
   void create_overset_info_vec();
 
+  // create an OversetInfo object for each locally owned node that is part of inactive, however, not inner part
+  void create_fringe_info_vec();
+
   // orphan node within element search; product is a valid ghosting and oversetInfoVec completed
   void orphan_node_search();
   
   // set the element variable for intersected elements to unity
   void set_data_on_inactive_part();
+
+  // set the nodal variable for fringe
+  void set_data_on_fringe_part();
 
   // general coarse search method 
   void coarse_search( 
@@ -158,21 +173,22 @@ public:
   stk::mesh::EntityProcVec elemsToGhost_;
 
   // search data structures
-  std::vector<boundingElementBox> boundingElementOversetBoxVec_;
+  std::vector<boundingElementBox> boundingElementInactiveBoxVec_;
+  std::vector<boundingElementBox> boundingElementInactiveBoxVecInner_;
   std::vector<boundingElementBox> boundingElementOversetBoxesVec_;
   std::vector<boundingElementBox> boundingElementBackgroundBoxesVec_;
   std::vector<boundingPoint>      boundingPointVecBackground_;
   std::vector<boundingPoint>      boundingPointVecOverset_;
-
-  // map for background elements (used for intersection)
-  std::map<uint64_t, stk::mesh::Entity> searchIntersectedElementMap_;
+  std::vector<boundingPoint>      boundingPointVecInner_;
 
   /* save off product of search */
   std::vector<std::pair<theKey, theKey> > searchKeyPairBackground_;
   std::vector<std::pair<theKey, theKey> > searchKeyPairOverset_;
+  std::vector<std::pair<theKey, theKey> > searchKeyPairInner_;
   
   // vector of elements intersected... will want to push to a part
-  std::vector<stk::mesh::Entity > intersectedElementVec_;
+  std::vector<stk::mesh::Entity > intersectedInactiveElementVec_;
+  std::vector<stk::mesh::Entity > intersectedInactiveElementVecInner_;
 
   // hold a vector of parts that correspond to the exposed surface orphan points
   stk::mesh::PartVector orphanPointSurfaceVecOverset_;
@@ -180,7 +196,10 @@ public:
   // map of node global id to overset info
   std::map<uint64_t, OversetInfo *> oversetInfoMapOverset_;
   std::map<uint64_t, OversetInfo *> oversetInfoMapBackground_;
+  std::map<uint64_t, OversetInfo *> oversetInfoMapFringe_;
 
+  // part and info that holds elements within the inner
+  stk::mesh::Part* innerPart_{nullptr};  
 };
 
 } // namespace nalu

@@ -299,6 +299,13 @@ LowMachEquationSystem::register_nodal_fields(
                                stk::topology::NODE_RANK);
     copyStateAlg_.push_back(theCopyAlg);
   }
+
+  // register the fringe nodal field 
+  if ( realm_.query_for_overset() && realm_.has_mesh_motion() ) {
+    ScalarFieldType *fringeNode
+      = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "fringe_node"));
+    stk::mesh::put_field_on_mesh(*fringeNode, *part, nullptr);
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -2094,9 +2101,14 @@ MomentumEquationSystem::register_overset_bc()
   UpdateOversetFringeAlgorithmDriver* theAlg = new UpdateOversetFringeAlgorithmDriver(realm_);
   // Perform fringe updates before all equation system solves
   equationSystems_.preIterAlgDriver_.push_back(theAlg);
-
-  theAlg->fields_.push_back(
-    std::unique_ptr<OversetFieldData>(new OversetFieldData(velocity_,1,nDim)));
+  theAlg->fields_.push_back(std::unique_ptr<OversetFieldData>(new OversetFieldData(velocity_,1,nDim)));
+  
+  if ( realm_.has_mesh_motion() ) {
+    UpdateOversetFringeAlgorithmDriver* theAlgPost = new UpdateOversetFringeAlgorithmDriver(realm_,false);
+    // Perform fringe updates after all equation system solves (ideally on the post_time_step)
+    equationSystems_.postIterAlgDriver_.push_back(theAlgPost);
+    theAlgPost->fields_.push_back(std::unique_ptr<OversetFieldData>(new OversetFieldData(velocity_,1,nDim)));
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -3019,6 +3031,7 @@ ContinuityEquationSystem::register_overset_bc()
   // Perform fringe updates before all equation system solves
   equationSystems_.preIterAlgDriver_.push_back(theAlg);
 
+  // manage pressure; variable density requires a pre-timestep evaluation of independent variables
   theAlg->fields_.push_back(
     std::unique_ptr<OversetFieldData>(new OversetFieldData(pressure_,1,1)));
 }

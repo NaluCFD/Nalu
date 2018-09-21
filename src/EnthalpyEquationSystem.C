@@ -1040,6 +1040,13 @@ EnthalpyEquationSystem::register_overset_bc()
 
   theAlg->fields_.push_back(
     std::unique_ptr<OversetFieldData>(new OversetFieldData(enthalpy_,1,1)));
+
+  if ( realm_.has_mesh_motion() ) {
+    UpdateOversetFringeAlgorithmDriver* theAlgPost = new UpdateOversetFringeAlgorithmDriver(realm_,false);
+    // Perform fringe updates after all equation system solves (ideally on the post_time_step)
+    equationSystems_.postIterAlgDriver_.push_back(theAlgPost);
+    theAlgPost->fields_.push_back(std::unique_ptr<OversetFieldData>(new OversetFieldData(enthalpy_,1,1)));
+  }
 }
 
 //--------------------------------------------------------------------------

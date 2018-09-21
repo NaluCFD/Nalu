@@ -225,6 +225,13 @@ HeatCondEquationSystem::register_nodal_fields(
 
     copyStateAlg_.push_back(theCopyAlgA);
   }
+
+  // register the fringe nodal field 
+  if ( realm_.query_for_overset() && realm_.has_mesh_motion() ) {
+    ScalarFieldType *fringeNode
+      = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "fringe_node"));
+    stk::mesh::put_field_on_mesh(*fringeNode, *part, nullptr);
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -903,6 +910,13 @@ HeatCondEquationSystem::register_overset_bc()
 
   theAlg->fields_.push_back(
     std::unique_ptr<OversetFieldData>(new OversetFieldData(temperature_,1,1)));
+
+  if ( realm_.has_mesh_motion() ) {
+    UpdateOversetFringeAlgorithmDriver* theAlgPost = new UpdateOversetFringeAlgorithmDriver(realm_,false);
+    // Perform fringe updates after all equation system solves (ideally on the post_time_step)
+    equationSystems_.postIterAlgDriver_.push_back(theAlgPost);
+    theAlgPost->fields_.push_back(std::unique_ptr<OversetFieldData>(new OversetFieldData(temperature_,1,1)));
+  }
 }
 
 //--------------------------------------------------------------------------

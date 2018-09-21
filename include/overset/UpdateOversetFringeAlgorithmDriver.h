@@ -28,9 +28,9 @@ class Realm;
 struct OversetFieldData
 {
   OversetFieldData(stk::mesh::FieldBase* field, int sizeRow=1, int sizeCol=1)
-    : field_(field),
-      sizeRow_(sizeRow),
-      sizeCol_(sizeCol)
+  : field_(field),
+    sizeRow_(sizeRow),
+    sizeCol_(sizeCol)
   {}
 
   stk::mesh::FieldBase* field_;
@@ -41,12 +41,13 @@ struct OversetFieldData
 class UpdateOversetFringeAlgorithmDriver : public AlgorithmDriver
 {
 public:
-  UpdateOversetFringeAlgorithmDriver(Realm& realm);
+  UpdateOversetFringeAlgorithmDriver(Realm& realm, const bool applyItPreIter=true);
 
   virtual ~UpdateOversetFringeAlgorithmDriver();
 
   virtual void pre_work();
 
+  const bool applyItPreIter_;
   std::vector<std::unique_ptr<OversetFieldData>> fields_;
 };
 
