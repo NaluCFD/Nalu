@@ -165,9 +165,6 @@ void Simulation::run()
 void Simulation::high_level_banner() {
 
   std::vector<std::string> additionalTPLs;
-#ifdef NALU_USES_OPENFAST
-  additionalTPLs.push_back("OpenFAST");
-#endif
 #ifdef NALU_USES_HYPRE
   additionalTPLs.push_back("Hypre");
 #endif

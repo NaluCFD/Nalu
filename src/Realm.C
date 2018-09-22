@@ -71,9 +71,6 @@
 // actuator line
 #include "Actuator.h"
 #include "ActuatorLinePointDrag.h"
-#ifdef NALU_USES_OPENFAST
-#include "ActuatorLineFAST.h"
-#endif
 
 #include "ABLForcingAlgorithm.h"
 
@@ -590,14 +587,6 @@ Realm::look_ahead_and_creation(const YAML::Node & node)
       switch ( ActuatorTypeMap[ActuatorTypeName] ) {
       case ActuatorType::ActLinePointDrag : {
 	actuator_ =  new ActuatorLinePointDrag(*this, *foundActuator[0]);
-	break;
-      }
-      case ActuatorType::ActLineFAST : {
-#ifdef NALU_USES_OPENFAST
-	actuator_ =  new ActuatorLineFAST(*this, *foundActuator[0]);
-#else
-	throw std::runtime_error("look_ahead_and_create::error: Requested actuator type: " + ActuatorTypeName + ", but was not enabled at compile time");
-#endif
 	break;
       }
       default : {

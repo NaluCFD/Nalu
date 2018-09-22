@@ -6,8 +6,6 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 option(ENABLE_TESTS "Enable regression testing." OFF)
 option(ENABLE_DOCUMENTATION "Build documentation." OFF)
 option(ENABLE_SPHINX_API_DOCS "Link Doxygen API docs to Sphinx" OFF)
-option(ENABLE_OPENFAST
-       "Use OPENFAST tpl to get actuator line positions and forces" OFF)
 option(ENABLE_PARAVIEW_CATALYST
       "Enable ParaView Catalyst. Requires external installation of Trilinos Catalyst IOSS adapter."
        OFF)
@@ -90,17 +88,6 @@ if(ENABLE_HYPRE)
   include_directories(SYSTEM ${HYPRE_INCLUDE_DIRS})
   add_definitions("-DNALU_USES_HYPRE")
 endif(ENABLE_HYPRE)
-
-########################## OPENFAST ####################################
-if(ENABLE_OPENFAST)
-  set(CMAKE_PREFIX_PATH ${OpenFAST_DIR} ${CMAKE_PREFIX_PATH})
-  find_package(OpenFAST REQUIRED)
-  if(OpenFAST_FOUND)
-    message("-- Found OpenFAST = ${OpenFAST_DIR}")
-  endif()
-  include_directories(${OpenFAST_INCLUDE_DIRS})
-  add_definitions("-DNALU_USES_OPENFAST")
-endif(ENABLE_OPENFAST)
 
 ############################ TIOGA #####################################
 if(ENABLE_TIOGA)
@@ -198,10 +185,6 @@ include_directories(${CMAKE_BINARY_DIR}/include)
 add_library(nalu ${SOURCE} ${HEADER})
 target_link_libraries(nalu ${Trilinos_LIBRARIES})
 target_link_libraries(nalu ${YAML_CPP_LIBRARIES})
-
-if(ENABLE_OPENFAST)
-  target_link_libraries(nalu ${OpenFAST_LIBRARIES} ${OpenFAST_CPP_LIBRARIES})
-endif (ENABLE_OPENFAST)
 
 if(ENABLE_TIOGA)
   target_link_libraries(nalu ${TIOGA_LIBRARIES})
