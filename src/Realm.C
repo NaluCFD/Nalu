@@ -1500,13 +1500,14 @@ Realm::setup_property()
 								       *metaData_ );
           propertyAlg_.push_back(auxAlg);
 
-	  NaluEnv::self().naluOutputP0() << "With " << matData->tablePropName_ << " also read table for auxVarName " <<matData->auxVarName_  << std::endl;
-	  
-	  //TODO : need to make auxVarName_ and tableAuxVarName_ into vectors and loop over them to create a set of new auxVar's and algorithms
+	  // TODO : need to make auxVarName_ and tableAuxVarName_ into vectors and loop over them to create a set of new auxVar's and algorithms
 
           // auxVariable	  
           std::string auxVarName = matData->auxVarName_;
           if ( "na" != auxVarName ) {
+
+            NaluEnv::self().naluOutputP0() << matData->tablePropName_ << " will manage the aux_variable: " << matData->auxVarName_  << std::endl;
+	  
             // register and put the field; assume a scalar for now; species extraction will complicate the matter
             ScalarFieldType *auxVar =  &(metaData_->declare_field<ScalarFieldType>(stk::topology::NODE_RANK, auxVarName));
             stk::mesh::put_field_on_mesh(*auxVar, *targetPart, nullptr);
