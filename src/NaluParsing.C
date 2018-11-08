@@ -1071,6 +1071,12 @@ namespace YAML
           node["temperature"].as<sierra::nalu::Temperature>();
       openData.tempSpec_ = true;
     }
+    
+    if (node["use_total_pressure"])
+    {
+      openData.useTotalP_ =
+        node["use_total_pressure"].as<bool>();
+    }
 
     return true;
   }

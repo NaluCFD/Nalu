@@ -31,6 +31,7 @@
 #include "AssembleNodalGradEdgeAlgorithm.h"
 #include "AssembleNodalGradElemAlgorithm.h"
 #include "AssembleNodalGradBoundaryAlgorithm.h"
+#include "AssembleNodalGradPBoundaryAlgorithm.h"
 #include "AssembleNodalGradNonConformalAlgorithm.h"
 #include "AssembleNodalGradUAlgorithmDriver.h"
 #include "AssembleNodalGradUEdgeAlgorithm.h"
@@ -39,6 +40,7 @@
 #include "AssembleNodalGradUNonConformalAlgorithm.h"
 #include "AssembleNodeSolverAlgorithm.h"
 #include "AuxFunctionAlgorithm.h"
+#include "ComputeDynamicPressureAlgorithm.h"
 #include "ComputeMdotAlgorithmDriver.h"
 #include "ComputeMdotInflowAlgorithm.h"
 #include "ComputeMdotEdgeAlgorithm.h"
@@ -247,6 +249,10 @@ LowMachEquationSystem::~LowMachEquationSystem()
 {
   if ( NULL != surfaceForceAndMomentAlgDriver_ )
     delete surfaceForceAndMomentAlgDriver_;
+
+  std::vector<Algorithm *>::iterator iim;
+  for( iim=dynamicPressureAlg_.begin(); iim!=dynamicPressureAlg_.end(); ++iim )
+    delete *iim;
 }
 
 //--------------------------------------------------------------------------
@@ -473,6 +479,18 @@ LowMachEquationSystem::register_open_bc(
     = &(metaData.declare_field<GenericFieldType>(static_cast<stk::topology::rank_t>(metaData.side_rank()), 
                                                  "open_mass_flow_rate"));
   stk::mesh::put_field_on_mesh(*mdotBip, *part, numScsBip, nullptr);
+
+  // pbip; always register
+  GenericFieldType *pBip 
+    = &(metaData.declare_field<GenericFieldType>(static_cast<stk::topology::rank_t>(metaData.side_rank()), 
+                                                 "dynamic_pressure"));
+  stk::mesh::put_field_on_mesh(*pBip, *part, numScsBip, nullptr);
+  
+  // check for total bc to create an algorithm
+  if ( userData.useTotalP_ ) {
+    Algorithm * dynamicAlg = new ComputeDynamicPressureAlgorithm(realm_, part, realm_.realmUsesEdges_);
+    dynamicPressureAlg_.push_back(dynamicAlg);
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -637,6 +655,7 @@ LowMachEquationSystem::solve_and_update()
   double timeA, timeB;
   if ( isInit_ ) {
     timeA = NaluEnv::self().nalu_time();
+    compute_dynamic_pressure();
     continuityEqSys_->compute_projected_nodal_gradient();
     continuityEqSys_->computeMdotAlgDriver_->execute();
 
@@ -699,6 +718,7 @@ LowMachEquationSystem::solve_and_update()
     // compute mdot
     timeA = NaluEnv::self().nalu_time();
     continuityEqSys_->computeMdotAlgDriver_->execute();
+    compute_dynamic_pressure();
     timeB = NaluEnv::self().nalu_time();
     continuityEqSys_->timerMisc_ += (timeB-timeA);
 
@@ -726,7 +746,19 @@ LowMachEquationSystem::solve_and_update()
 
   // process CFL/Reynolds
   momentumEqSys_->cflReyAlgDriver_->execute();
- }
+}
+
+//--------------------------------------------------------------------------
+//-------- compute_dynamic_pressure ----------------------------------------
+//--------------------------------------------------------------------------
+void
+LowMachEquationSystem::compute_dynamic_pressure()
+{
+  std::vector<Algorithm *>::iterator ii;
+  for( ii=dynamicPressureAlg_.begin(); ii!=dynamicPressureAlg_.end(); ++ii ) {
+    (*ii)->execute();
+  }
+}
 
 //--------------------------------------------------------------------------
 //-------- post_adapt_work -------------------------------------------------
@@ -2784,8 +2816,8 @@ ContinuityEquationSystem::register_open_bc(
       = assembleNodalGradAlgDriver_->algMap_.find(algType);
     if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
       Algorithm *theAlg 
-        = new AssembleNodalGradBoundaryAlgorithm(realm_, part, pressureBC == NULL ? pressure_ : pressureBC, 
-                                                 &dpdxNone, edgeNodalGradient_);
+        = new AssembleNodalGradPBoundaryAlgorithm(realm_, part, pressureBC == NULL ? pressure_ : pressureBC, 
+                                                  &dpdxNone, edgeNodalGradient_);
       assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
     }
     else {

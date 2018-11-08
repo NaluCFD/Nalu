@@ -45,6 +45,7 @@ ComputeMdotElemOpenAlgorithm::ComputeMdotElemOpenAlgorithm(
     pressure_(NULL),
     density_(NULL),
     exposedAreaVec_(NULL),
+    dynamicPressure_(NULL),
     pressureBc_(NULL),
     shiftMdot_(realm_.get_cvfem_shifted_mdot()),
     shiftPoisson_(realm_.get_shifted_grad_op("pressure"))
@@ -60,6 +61,7 @@ ComputeMdotElemOpenAlgorithm::ComputeMdotElemOpenAlgorithm(
   pressure_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure");
   density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
   exposedAreaVec_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");
+  dynamicPressure_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "dynamic_pressure");
   openMassFlowRate_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "open_mass_flow_rate");
   pressureBc_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, realm_.solutionOptions_->activateOpenMdotCorrection_ ? "pressure" : "pressure_bc");
 }
@@ -231,6 +233,7 @@ ComputeMdotElemOpenAlgorithm::execute()
 
       // pointer to face data
       const double * areaVec = stk::mesh::field_data(*exposedAreaVec_, face);
+      const double * dynamicP = stk::mesh::field_data(*dynamicPressure_, b, k);
       double * mdot = stk::mesh::field_data(*openMassFlowRate_, face);
 
       // extract the connected element to this exposed face; should be single in size!
@@ -279,14 +282,14 @@ ComputeMdotElemOpenAlgorithm::execute()
         double rhoBip = 0.0;
 
         // interpolate to bip
-        double pBip = 0.0;
+        double pbcBip = -dynamicP[ip];
         const int offSetSF_face = ip*nodesPerFace;
         for ( int ic = 0; ic < nodesPerFace; ++ic ) {
           const int fn = face_node_ordinals[ic];
           const double r = p_face_shape_function[offSetSF_face+ic];
           const double rhoIC = p_density[ic];
           rhoBip += r*rhoIC;
-          pBip += r*p_bcPressure[ic];
+          pbcBip += r*p_bcPressure[ic];
           const int offSetFN = ic*nDim;
           const int offSetEN = fn*nDim;
           for ( int j = 0; j < nDim; ++j ) {
@@ -334,7 +337,7 @@ ComputeMdotElemOpenAlgorithm::execute()
         }
 
         // final mdot
-        tmdot -= projTimeScale*((pBip-pScs)*asq*inv_axdx + noc*includeNOC);
+        tmdot -= projTimeScale*((pbcBip-pScs)*asq*inv_axdx + noc*includeNOC);
         // scatter to mdot and accumulate
         mdot[ip] = tmdot;
         mdotOpen += tmdot;

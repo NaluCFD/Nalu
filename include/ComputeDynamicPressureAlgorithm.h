@@ -6,8 +6,8 @@
 /*------------------------------------------------------------------------*/
 
 
-#ifndef ComputeMdotElemOpenPenaltyAlgorithm_h
-#define ComputeMdotElemOpenPenaltyAlgorithm_h
+#ifndef ComputeDynamicPressureAlgorithm_h
+#define ComputeDynamicPressureAlgorithm_h
 
 #include<Algorithm.h>
 #include<FieldTypeDef.h>
@@ -20,32 +20,24 @@ namespace nalu{
 
 class Realm;
 
-class ComputeMdotElemOpenPenaltyAlgorithm : public Algorithm
+class ComputeDynamicPressureAlgorithm : public Algorithm
 {
 public:
 
-  ComputeMdotElemOpenPenaltyAlgorithm(
+  ComputeDynamicPressureAlgorithm(
     Realm &realm,
-    stk::mesh::Part *part);
-  ~ComputeMdotElemOpenPenaltyAlgorithm();
+    stk::mesh::Part *part,
+    const bool useShifted);
+  ~ComputeDynamicPressureAlgorithm();
 
   void execute();
 
-  VectorFieldType *velocityRTM_;
-  VectorFieldType *Gpdx_;
-  VectorFieldType *coordinates_;
-  ScalarFieldType *pressure_;
-  ScalarFieldType *density_;
-  GenericFieldType *exposedAreaVec_;
-  GenericFieldType *openMassFlowRate_;
-  GenericFieldType *dynamicPressure_;
-  ScalarFieldType *pressureBc_;
+  const bool useShifted_;
 
-  const double interpTogether_;
-  const double om_interpTogether_;
-  const bool shiftMdot_;
-  const bool shiftedGradOp_;
-  const double stabFac_;
+  ScalarFieldType *density_;
+  GenericFieldType *openMassFlowRate_;
+  GenericFieldType *exposedAreaVec_;
+  GenericFieldType *dynamicPressure_;
 };
 
 } // namespace nalu

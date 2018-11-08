@@ -46,7 +46,6 @@ SolutionOptions::SolutionOptions()
     referenceTemperature_(298.0),
     thermalExpansionCoeff_(1.0),
     stefanBoltzmann_(5.6704e-8),
-    nearestFaceEntrain_(0.0),
     includeDivU_(0.0),
     mdotInterpRhoUTogether_(true),
     isTurbulent_(false),
@@ -127,9 +126,6 @@ SolutionOptions::load(const YAML::Node & y_node)
   if(y_solution_options)
   {
     get_required(y_solution_options, "name", name_);
-    get_if_present(y_solution_options,
-                   "nearest_face_entrainment",
-                   nearestFaceEntrain_, nearestFaceEntrain_);
 
     // divU factor for stress
     get_if_present(y_solution_options, "divU_stress_scaling", includeDivU_, includeDivU_);

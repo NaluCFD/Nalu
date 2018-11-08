@@ -44,6 +44,7 @@ ComputeMdotElemOpenPenaltyAlgorithm::ComputeMdotElemOpenPenaltyAlgorithm(
     pressure_(NULL),
     density_(NULL),
     exposedAreaVec_(NULL),
+    dynamicPressure_(NULL),
     pressureBc_(NULL),
     interpTogether_(realm_.get_mdot_interp()),
     om_interpTogether_(1.0 - interpTogether_),
@@ -62,6 +63,7 @@ ComputeMdotElemOpenPenaltyAlgorithm::ComputeMdotElemOpenPenaltyAlgorithm(
   pressure_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure");
   density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
   exposedAreaVec_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");
+  dynamicPressure_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "dynamic_pressure");
   openMassFlowRate_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "open_mass_flow_rate");
   pressureBc_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, realm_.solutionOptions_->activateOpenMdotCorrection_ ? "pressure" : "pressure_bc");
 }
@@ -221,6 +223,7 @@ ComputeMdotElemOpenPenaltyAlgorithm::execute()
 
       // pointer to face data
       const double * areaVec = stk::mesh::field_data(*exposedAreaVec_, face);
+      const double * dynamicP = stk::mesh::field_data(*dynamicPressure_, b, k);
       double * mdot = stk::mesh::field_data(*openMassFlowRate_, face);
 
       // extract the connected element to this exposed face; should be single in size!
@@ -288,7 +291,7 @@ ComputeMdotElemOpenPenaltyAlgorithm::execute()
 
         // interpolate to bip
         double pBip = 0.0;
-        double pbcBip = 0.0;
+        double pbcBip = -dynamicP[ip];
         double rhoBip = 0.0;
         const int offSetSF_face = ip*nodesPerFace;
         for ( int ic = 0; ic < nodesPerFace; ++ic ) {

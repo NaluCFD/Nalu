@@ -45,6 +45,7 @@ ComputeMdotEdgeOpenAlgorithm::ComputeMdotEdgeOpenAlgorithm(
     pressure_(NULL),
     density_(NULL),
     exposedAreaVec_(NULL),
+    dynamicPressure_(NULL),
     openMassFlowRate_(NULL),
     pressureBc_(NULL)
 {
@@ -59,6 +60,7 @@ ComputeMdotEdgeOpenAlgorithm::ComputeMdotEdgeOpenAlgorithm(
   pressure_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure");
   density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
   exposedAreaVec_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");
+  dynamicPressure_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "dynamic_pressure");
   openMassFlowRate_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "open_mass_flow_rate");
   pressureBc_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, realm_.solutionOptions_->activateOpenMdotCorrection_ ? "pressure" : "pressure_bc");
 }
@@ -136,6 +138,7 @@ ComputeMdotEdgeOpenAlgorithm::execute()
 
       // pointer to face data
       const double * areaVec = stk::mesh::field_data(*exposedAreaVec_, b, k);
+      const double * dynamicP = stk::mesh::field_data(*dynamicPressure_, b, k);
       double * mdot = stk::mesh::field_data(*openMassFlowRate_, b, k);
 
       // extract the connected element to this exposed face; should be single in size!
@@ -171,7 +174,7 @@ ComputeMdotEdgeOpenAlgorithm::execute()
         const double * GpdxR =  stk::mesh::field_data(*Gpdx_, nodeR );
         const double * vrtm =  stk::mesh::field_data(*velocityRTM_, nodeR );
         const double densityR = *stk::mesh::field_data(densityNp1, nodeR );
-        const double bcPressure = *stk::mesh::field_data(*pressureBc_, nodeR );
+        const double bcPressure = *stk::mesh::field_data(*pressureBc_, nodeR ) - dynamicP[ip];
 
         // offset for bip area vector
         const int faceOffSet = ip*nDim;

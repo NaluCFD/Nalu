@@ -47,6 +47,7 @@ ContinuityOpenElemKernel<BcAlgTraits>::ContinuityOpenElemKernel(
                                                     ? "pressure" : "pressure_bc");
   density_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
   exposedAreaVec_ = metaData.get_field<GenericFieldType>(metaData.side_rank(), "exposed_area_vector");
+  dynamicPressure_ = metaData.get_field<GenericFieldType>(metaData.side_rank(), "dynamic_pressure");
   
   // extract master elements
   MasterElement* meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(BcAlgTraits::faceTopo_);
@@ -62,6 +63,7 @@ ContinuityOpenElemKernel<BcAlgTraits>::ContinuityOpenElemKernel(
   faceDataPreReqs.add_gathered_nodal_field(*velocityRTM_, BcAlgTraits::nDim_);
   faceDataPreReqs.add_gathered_nodal_field(*Gpdx_, BcAlgTraits::nDim_);  
   faceDataPreReqs.add_face_field(*exposedAreaVec_, BcAlgTraits::numFaceIp_, BcAlgTraits::nDim_);
+  faceDataPreReqs.add_face_field(*dynamicPressure_, BcAlgTraits::numFaceIp_);
   elemDataPreReqs.add_coordinates_field(*coordinates_, BcAlgTraits::nDim_, CURRENT_COORDINATES);
   elemDataPreReqs.add_gathered_nodal_field(*pressure_, 1);
 
@@ -113,6 +115,7 @@ ContinuityOpenElemKernel<BcAlgTraits>::execute(
   SharedMemView<DoubleType*>& vf_density = faceScratchViews.get_scratch_view_1D(*density_);
   SharedMemView<DoubleType**>& vf_vrtm = faceScratchViews.get_scratch_view_2D(*velocityRTM_);
   SharedMemView<DoubleType**>& vf_exposedAreaVec = faceScratchViews.get_scratch_view_2D(*exposedAreaVec_);
+  SharedMemView<DoubleType*>& vf_dynamicP = faceScratchViews.get_scratch_view_1D(*dynamicPressure_);
  
   // element
   SharedMemView<DoubleType*>& v_pressure = elemScratchViews.get_scratch_view_1D(*pressure_);
@@ -153,7 +156,7 @@ ContinuityOpenElemKernel<BcAlgTraits>::execute(
 
     // interpolate to bip
     DoubleType pBip = 0.0;
-    DoubleType pbcBip = 0.0;
+    DoubleType pbcBip = -vf_dynamicP(ip);
     DoubleType rhoBip = 0.0;
     for ( int ic = 0; ic < BcAlgTraits::nodesPerFace_; ++ic ) {
       const DoubleType r = vf_shape_function_(ip,ic);

@@ -46,6 +46,7 @@ AssembleContinuityEdgeOpenSolverAlgorithm::AssembleContinuityEdgeOpenSolverAlgor
     pressure_(NULL),
     density_(NULL),
     exposedAreaVec_(NULL),
+    dynamicPressure_(NULL),
     pressureBc_(NULL)
 {
   // save off fields
@@ -59,6 +60,7 @@ AssembleContinuityEdgeOpenSolverAlgorithm::AssembleContinuityEdgeOpenSolverAlgor
   pressure_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure");
   density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
   exposedAreaVec_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");
+  dynamicPressure_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "dynamic_pressure");
   pressureBc_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, realm_.solutionOptions_->activateOpenMdotCorrection_ ? "pressure" : "pressure_bc");
 }
 
@@ -161,6 +163,7 @@ AssembleContinuityEdgeOpenSolverAlgorithm::execute()
 
       // pointer to face data
       const double * areaVec = stk::mesh::field_data(*exposedAreaVec_, b, k);
+      const double * dynamicP = stk::mesh::field_data(*dynamicPressure_, b, k);
 
       // extract the connected element to this exposed face; should be single in size!
       stk::mesh::Entity const * face_elem_rels = b.begin_elements(k);
@@ -206,7 +209,7 @@ AssembleContinuityEdgeOpenSolverAlgorithm::execute()
         const double * GpdxR        =  stk::mesh::field_data(*Gpdx_, nodeR );
         const double * vrtmR        =  stk::mesh::field_data(*velocityRTM_, nodeR );
         const double densityR       = *stk::mesh::field_data(densityNp1, nodeR );
-        const double bcPressure     = *stk::mesh::field_data(*pressureBc_, nodeR );
+        const double bcPressure     = *stk::mesh::field_data(*pressureBc_, nodeR ) - dynamicP[ip];
 
         // offset for bip area vector
         const int faceOffSet = ip*nDim;

@@ -35,6 +35,7 @@ public:
   VectorFieldType *velocity_;
   GenericFieldType *dudx_;
   VectorFieldType *coordinates_;
+  ScalarFieldType *density_;
   ScalarFieldType *viscosity_;
   GenericFieldType *exposedAreaVec_;
   GenericFieldType *openMassFlowRate_;
