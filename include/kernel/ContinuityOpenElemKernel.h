@@ -64,12 +64,10 @@ private:
   GenericFieldType *dynamicPressure_{nullptr};
 
   double projTimeScale_{1.0};
-  const double mdotCorrection_{0.0};
   const double penaltyFac_{2.0};
   
   const bool shiftedGradOp_;
   const bool reducedSensitivities_;
-  const double pstabFac_;
   const double interpTogether_;
   const double om_interpTogether_;
   MasterElement *meSCS_{nullptr};

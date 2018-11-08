@@ -37,8 +37,7 @@ ContinuityInflowElemKernel<BcAlgTraits>::ContinuityInflowElemKernel(
  {
   // save off fields
   const stk::mesh::MetaData &metaData = bulkData.mesh_meta_data();
-  velocityBC_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, solnOpts.activateOpenMdotCorrection_ 
-                                                    ? "velocity_bc" : "cont_velocity_bc");
+  velocityBC_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "cont_velocity_bc");
   densityBC_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
   exposedAreaVec_ = metaData.get_field<GenericFieldType>(metaData.side_rank(), "exposed_area_vector");
   

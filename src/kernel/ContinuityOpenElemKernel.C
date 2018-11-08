@@ -31,7 +31,6 @@ ContinuityOpenElemKernel<BcAlgTraits>::ContinuityOpenElemKernel(
   : Kernel(),
     shiftedGradOp_(solnOpts.get_shifted_grad_op("pressure")),
     reducedSensitivities_(solnOpts.cvfemReducedSensPoisson_),
-    pstabFac_(solnOpts.activateOpenMdotCorrection_ ? 0.0 : 1.0),
     interpTogether_(solnOpts.get_mdot_interp()),
     om_interpTogether_(1.0 - interpTogether_),
     meSCS_(sierra::nalu::MasterElementRepo::get_surface_master_element(BcAlgTraits::elemTopo_))
@@ -43,8 +42,7 @@ ContinuityOpenElemKernel<BcAlgTraits>::ContinuityOpenElemKernel(
   Gpdx_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "dpdx");
   coordinates_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
   pressure_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure");
-  pressureBc_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, solnOpts.activateOpenMdotCorrection_ 
-                                                    ? "pressure" : "pressure_bc");
+  pressureBc_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure_bc");
   density_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
   exposedAreaVec_ = metaData.get_field<GenericFieldType>(metaData.side_rank(), "exposed_area_vector");
   dynamicPressure_ = metaData.get_field<GenericFieldType>(metaData.side_rank(), "dynamic_pressure");
@@ -180,18 +178,18 @@ ContinuityOpenElemKernel<BcAlgTraits>::execute(
     }
     
     // form mdot; rho*uj*Aj - projT*(dpdxj - Gjp)*Aj + penaltyFac*projTimeScale*invL*(pBip - pbcBip)*aMag
-    DoubleType mdot = -mdotCorrection_ + penaltyFac_*projTimeScale_*inverseLengthScale*(pBip - pbcBip)*aMag*pstabFac_;
+    DoubleType mdot = penaltyFac_*projTimeScale_*inverseLengthScale*(pBip - pbcBip)*aMag;
     for ( int j = 0; j < BcAlgTraits::nDim_; ++j ) {
       const DoubleType axj = vf_exposedAreaVec(ip,j);
       mdot += (interpTogether_*w_rho_uBip[j] + om_interpTogether_*rhoBip*w_uBip[j] 
-               - projTimeScale_*(w_dpdxBip[j] - w_GpdxBip[j])*pstabFac_)*axj;
+               - projTimeScale_*(w_dpdxBip[j] - w_GpdxBip[j]))*axj;
     }
     
     // face-based penalty; divide by projTimeScale
     for ( int ic = 0; ic < BcAlgTraits::nodesPerFace_; ++ic ) {
       const int faceNodeNumber = face_node_ordinals[ic];
       const DoubleType r = vf_shape_function_(ip,ic);
-      lhs(nearestNode,faceNodeNumber) += r*penaltyFac_*inverseLengthScale*aMag*pstabFac_;
+      lhs(nearestNode,faceNodeNumber) += r*penaltyFac_*inverseLengthScale*aMag;
     }
     
     // element-based gradient; divide by projTimeScale
@@ -199,7 +197,7 @@ ContinuityOpenElemKernel<BcAlgTraits>::execute(
       DoubleType lhsFac = 0.0;
       for ( int j = 0; j < BcAlgTraits::nDim_; ++j )
         lhsFac += -v_dndx_lhs(ip,ic,j)*vf_exposedAreaVec(ip,j);
-      lhs(nearestNode,ic) += lhsFac*pstabFac_;
+      lhs(nearestNode,ic) += lhsFac;
     }
     
     // residual

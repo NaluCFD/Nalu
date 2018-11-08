@@ -28,7 +28,6 @@ public:
   ~ComputeMdotAlgorithmDriver();
 
   double compute_accumulation();
-  void correct_open_mdot(const double finalCorrection);
   void provide_output();
 
   SolutionOptions &solnOpts_;

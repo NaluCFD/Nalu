@@ -45,7 +45,7 @@ public:
   const double om_interpTogether_;
   const bool shiftMdot_;
   const bool shiftedGradOp_;
-  const double stabFac_;
+  const double penaltyFac_;
 };
 
 } // namespace nalu
