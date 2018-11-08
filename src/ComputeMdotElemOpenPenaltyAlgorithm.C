@@ -50,7 +50,7 @@ ComputeMdotElemOpenPenaltyAlgorithm::ComputeMdotElemOpenPenaltyAlgorithm(
     om_interpTogether_(1.0 - interpTogether_),
     shiftMdot_(realm_.get_cvfem_shifted_mdot()),
     shiftedGradOp_(realm_.get_shifted_grad_op("pressure")),
-    stabFac_(2.0)
+    penaltyFac_(2.0)
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -65,7 +65,7 @@ ComputeMdotElemOpenPenaltyAlgorithm::ComputeMdotElemOpenPenaltyAlgorithm(
   exposedAreaVec_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");
   dynamicPressure_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "dynamic_pressure");
   openMassFlowRate_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "open_mass_flow_rate");
-  pressureBc_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, realm_.solutionOptions_->activateOpenMdotCorrection_ ? "pressure" : "pressure_bc");
+  pressureBc_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure_bc");
 }
 
 //--------------------------------------------------------------------------
@@ -88,11 +88,6 @@ ComputeMdotElemOpenPenaltyAlgorithm::execute()
 
   const int nDim = meta_data.spatial_dimension();
   
-  // extract global algorithm options, if active
-  const double pstabFac = realm_.solutionOptions_->activateOpenMdotCorrection_ 
-    ? 0.0
-    : 1.0;
-
   // ip values; both boundary and opposing surface
   std::vector<double> uBip(nDim);
   std::vector<double> rho_uBip(nDim);
@@ -119,14 +114,13 @@ ComputeMdotElemOpenPenaltyAlgorithm::execute()
   std::vector<double> ws_dndx; 
   std::vector<double> ws_det_j;
 
-  // time step; scale projection time scale by pstabFac (no divide by here)
+  // projection time scale based on time step
   const double dt = realm_.get_time_step();
   const double gamma1 = realm_.get_gamma1();
-  const double projTimeScale = dt/gamma1*pstabFac;
+  const double projTimeScale = dt/gamma1;
 
   // set accumulation variables
   double mdotOpen = 0.0;
-  size_t mdotOpenIpCount = 0;
 
   // deal with state
   ScalarFieldType &densityNp1 = density_->field_of_state(stk::mesh::StateNP1);
@@ -188,8 +182,6 @@ ComputeMdotElemOpenPenaltyAlgorithm::execute()
       meFC->shape_fcn(&p_face_shape_function[0]);
     
     const stk::mesh::Bucket::size_type length   = b.size();
-
-    mdotOpenIpCount += length*numScsBip;
 
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
 
@@ -317,12 +309,12 @@ ComputeMdotElemOpenPenaltyAlgorithm::execute()
           }
         }
      
-        // form mdot; rho*uj*Aj - projT*(dpdxj - Gjp)*Aj + stabFac*projTimeScale*invL*(pBip - pbcBip)*aMag
-        double tmdot = stabFac_*projTimeScale*inverseLengthScale*(pBip - pbcBip)*aMag*pstabFac;
+        // form mdot; rho*uj*Aj - projT*(dpdxj - Gjp)*Aj + penaltyFac_*projTimeScale*invL*(pBip - pbcBip)*aMag
+        double tmdot = penaltyFac_*projTimeScale*inverseLengthScale*(pBip - pbcBip)*aMag;
         for ( int j = 0; j < nDim; ++j ) {
           const double axj = areaVec[ip*nDim+j];
           tmdot += (interpTogether_*p_rho_uBip[j] + om_interpTogether_*rhoBip*p_uBip[j]
-                    - projTimeScale*(p_dpdxBip[j] - p_GpdxBip[j])*pstabFac)*axj;
+                    - projTimeScale*(p_dpdxBip[j] - p_GpdxBip[j]))*axj;
         }
         
         // scatter to mdot and accumulate
@@ -333,7 +325,6 @@ ComputeMdotElemOpenPenaltyAlgorithm::execute()
   }
   // scatter back to solution options; not thread safe
   realm_.solutionOptions_->mdotAlgOpen_ += mdotOpen;
-  realm_.solutionOptions_->mdotAlgOpenIpCount_ += mdotOpenIpCount;
 }
 
 } // namespace nalu

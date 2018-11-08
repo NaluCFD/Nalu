@@ -61,7 +61,7 @@ AssembleContinuityEdgeOpenSolverAlgorithm::AssembleContinuityEdgeOpenSolverAlgor
   density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
   exposedAreaVec_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");
   dynamicPressure_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "dynamic_pressure");
-  pressureBc_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, realm_.solutionOptions_->activateOpenMdotCorrection_ ? "pressure" : "pressure_bc");
+  pressureBc_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure_bc");
 }
 
 //--------------------------------------------------------------------------
@@ -88,14 +88,6 @@ AssembleContinuityEdgeOpenSolverAlgorithm::execute()
   const std::string dofName = "pressure";
   const double nocFac
     = (realm_.get_noc_usage(dofName) == true) ? 1.0 : 0.0;
-
-  // extract global algorithm options, if active
-  const double mdotCorrection = realm_.solutionOptions_->activateOpenMdotCorrection_ 
-    ? realm_.solutionOptions_->mdotAlgOpenCorrection_
-    : 0.0;
-  const double pstabFac = realm_.solutionOptions_->activateOpenMdotCorrection_ 
-    ? 0.0
-    : 1.0;
     
   // lhs/rhs space
   std::vector<double> lhs;
@@ -104,7 +96,7 @@ AssembleContinuityEdgeOpenSolverAlgorithm::execute()
   std::vector<double> scratchVals;
   std::vector<stk::mesh::Entity> connected_nodes;
 
-  // time step
+  // projection time scale based on time step
   const double dt = realm_.get_time_step();
   const double gamma1 = realm_.get_gamma1();
   const double projTimeScale = dt/gamma1;
@@ -229,22 +221,22 @@ AssembleContinuityEdgeOpenSolverAlgorithm::execute()
         const double rhoBip = densityR;
 
         //  mdot
-        double tmdot = -projTimeScale*(bcPressure-pressureIp)*asq*inv_axdx*pstabFac - mdotCorrection;
+        double tmdot = -projTimeScale*(bcPressure-pressureIp)*asq*inv_axdx;
         for ( int j = 0; j < nDim; ++j ) {
           const double axj = areaVec[faceOffSet+j];
           const double coordIp = 0.5*(coordR[j] + coordL[j]);
           const double dxj = coordR[j]  - coordIp;
           const double kxj = axj - asq*inv_axdx*dxj;
           const double Gjp = GpdxR[j];
-          tmdot += (rhoBip*vrtmR[j]+projTimeScale*Gjp*pstabFac)*axj
-            - projTimeScale*kxj*Gjp*nocFac*pstabFac;
+          tmdot += (rhoBip*vrtmR[j]+projTimeScale*Gjp)*axj
+            - projTimeScale*kxj*Gjp*nocFac;
         }
 
         // rhs
         p_rhs[nearestNode] -= tmdot/projTimeScale;
 
         // lhs right; IR, IL; IR, IR
-        double lhsfac = asq*inv_axdx*pstabFac;
+        double lhsfac = asq*inv_axdx;
         p_lhs[rowR+nearestNode] += 0.5*lhsfac;
         p_lhs[rowR+opposingNode] += 0.5*lhsfac;
       }
