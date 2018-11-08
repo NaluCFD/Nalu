@@ -43,6 +43,7 @@ public:
   ScalarFieldType *pressure_;
   ScalarFieldType *density_;
   GenericFieldType *exposedAreaVec_;
+  GenericFieldType *dynamicPressure_;
   ScalarFieldType *pressureBc_;
 };
 

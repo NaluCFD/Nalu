@@ -115,10 +115,6 @@ AssembleMomentumElemOpenSolverAlgorithm::execute()
   // one minus flavor..
   const double om_alphaUpw = 1.0-alphaUpw;
 
-  // nearest face entrainment
-  const double nfEntrain = realm_.solutionOptions_->nearestFaceEntrain_;
-  const double om_nfEntrain = 1.0-nfEntrain;
-
   // space for LHS/RHS; nodesPerElem*nDim*nodesPerElem*nDim and nodesPerElem*nDim
   std::vector<double> lhs;
   std::vector<double> rhs;
@@ -128,7 +124,6 @@ AssembleMomentumElemOpenSolverAlgorithm::execute()
 
   // ip values; both boundary and opposing surface
   std::vector<double> uBip(nDim);
-  std::vector<double> uScs(nDim);
   std::vector<double> uBipExtrap(nDim);
   std::vector<double> uspecBip(nDim);
   std::vector<double> coordBip(nDim);
@@ -136,7 +131,6 @@ AssembleMomentumElemOpenSolverAlgorithm::execute()
 
   // pointers to fixed values
   double *p_uBip = &uBip[0];
-  double *p_uScs = &uScs[0];
   double *p_uBipExtrap = &uBipExtrap[0];
   double *p_uspecBip = &uspecBip[0];
   double *p_coordBip = &coordBip[0];
@@ -146,13 +140,12 @@ AssembleMomentumElemOpenSolverAlgorithm::execute()
   std::vector<double> ws_velocityNp1;
   std::vector<double> ws_dudx;
   std::vector<double> ws_coordinates;
+  std::vector<double> ws_density;
   std::vector<double> ws_viscosity;
   std::vector<double> ws_bcVelocity;
   // master element
   std::vector<double> ws_face_shape_function;
-  std::vector<double> ws_shape_function;
   std::vector<double> ws_adv_face_shape_function;
-  std::vector<double> ws_adv_shape_function;
   std::vector<double> ws_dndx;
   std::vector<double> ws_det_j;
 
@@ -181,13 +174,11 @@ AssembleMomentumElemOpenSolverAlgorithm::execute()
     // volume master element
     MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(theElemTopo);
     const int nodesPerElement = meSCS->nodesPerElement_;
-    const int numScsIp = meSCS->numIntPoints_;
 
     // face master element
     MasterElement *meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(b.topology());
     const int nodesPerFace = meFC->nodesPerElement_;
     const int numScsBip = meFC->numIntPoints_;
-
 
     // resize some things; matrix related
     const int lhsSize = nodesPerElement*nDim*nodesPerElement*nDim;
@@ -202,13 +193,12 @@ AssembleMomentumElemOpenSolverAlgorithm::execute()
     ws_velocityNp1.resize(nodesPerElement*nDim);
     ws_dudx.resize(nodesPerFace*nDim*nDim);
     ws_coordinates.resize(nodesPerElement*nDim);
+    ws_density.resize(nodesPerFace);
     ws_viscosity.resize(nodesPerFace);
     ws_bcVelocity.resize(nodesPerFace*nDim);
     ws_face_shape_function.resize(numScsBip*nodesPerFace);
-    ws_shape_function.resize(numScsIp*nodesPerElement);
     if ( skewSymmetric ) {
       ws_adv_face_shape_function.resize(numScsBip*nodesPerFace);
-      ws_adv_shape_function.resize(numScsIp*nodesPerElement);
     }
 
     ws_dndx.resize(nDim*numScsBip*nodesPerElement);
@@ -220,20 +210,17 @@ AssembleMomentumElemOpenSolverAlgorithm::execute()
     double *p_velocityNp1 = &ws_velocityNp1[0];
     double *p_dudx = &ws_dudx[0];
     double *p_coordinates = &ws_coordinates[0];
+    double *p_density = &ws_density[0];
     double *p_viscosity = &ws_viscosity[0];
     double *p_bcVelocity = &ws_bcVelocity[0];
     double *p_face_shape_function = &ws_face_shape_function[0];
-    double *p_shape_function = &ws_shape_function[0];
     double *p_adv_face_shape_function =  skewSymmetric ? &ws_adv_face_shape_function[0] : &ws_face_shape_function[0];;
-    double *p_adv_shape_function = skewSymmetric ? &ws_adv_shape_function[0] : &ws_shape_function[0];
    
     double *p_dndx = &ws_dndx[0];
 
     // shape function
-    meSCS->shape_fcn(&p_shape_function[0]);
     meFC->shape_fcn(&p_face_shape_function[0]);
     if ( skewSymmetric ) {
-      meSCS->shifted_shape_fcn(&p_adv_shape_function[0]);
       meFC->shifted_shape_fcn(&p_adv_face_shape_function[0]);
     }
 
@@ -264,6 +251,7 @@ AssembleMomentumElemOpenSolverAlgorithm::execute()
         stk::mesh::Entity node = face_node_rels[ni];
 
         // gather scalars
+        p_density[ni] = *stk::mesh::field_data(densityNp1, node);
         p_viscosity[ni] = *stk::mesh::field_data(*viscosity_, node);
 
         // gather vectors
@@ -330,13 +318,11 @@ AssembleMomentumElemOpenSolverAlgorithm::execute()
 
         const int opposingNode = meSCS->opposingNodes(face_ordinal,ip);
         const int nearestNode = ipNodeMap[ip];
-        const int opposingScsIp = meSCS->opposingFace(face_ordinal,ip);
         const int localFaceNode = faceIpNodeMap[ip];
 
         // offset for bip area vector and types of shape function
         const int faceOffSet = ip*nDim;
         const int offSetSF_face = ip*nodesPerFace;
-        const int offSetSF_elem = opposingScsIp*nodesPerElement;
 
         // left and right nodes; right is on the face; left is the opposing node
         stk::mesh::Entity nodeL = elem_node_rels[opposingNode];
@@ -346,7 +332,6 @@ AssembleMomentumElemOpenSolverAlgorithm::execute()
         double asq = 0.0;
         for ( int j = 0; j < nDim; ++j ) {
           p_uBip[j] = 0.0;
-          p_uScs[j] = 0.0;
           p_uspecBip[j] = 0.0;
           p_coordBip[j] = 0.0;
           const double axj = areaVec[faceOffSet+j];
@@ -355,10 +340,12 @@ AssembleMomentumElemOpenSolverAlgorithm::execute()
         const double amag = std::sqrt(asq);
 
         // interpolate to bip
+        double rhoBip = 0.0;
         double viscBip = 0.0;
         for ( int ic = 0; ic < nodesPerFace; ++ic ) {
           const double r = p_face_shape_function[offSetSF_face+ic];
           const double rAdv = p_adv_face_shape_function[offSetSF_face+ic];
+          rhoBip += p_density[ic];
           viscBip += r*p_viscosity[ic];
           const int offSetFN = ic*nDim;
           const int nn = face_node_ordinals[ic];
@@ -367,15 +354,6 @@ AssembleMomentumElemOpenSolverAlgorithm::execute()
             p_uspecBip[j] += rAdv*p_bcVelocity[offSetFN+j];
             p_uBip[j] += rAdv*p_velocityNp1[offSetEN+j];
             p_coordBip[j] += rAdv*p_coordinates[offSetEN+j];
-          }
-        }
-
-        // data at interior opposing face
-        for ( int ic = 0; ic < nodesPerElement; ++ic ) {
-          const double rAdv = p_adv_shape_function[offSetSF_elem+ic];
-          const int offSet = ic*nDim;
-          for ( int j = 0; j < nDim; ++j ) {
-            p_uScs[j] += rAdv*p_velocityNp1[offSet+j];
           }
         }
 
@@ -446,52 +424,26 @@ AssembleMomentumElemOpenSolverAlgorithm::execute()
           }
         }
         else {
-          // extrainment
-          double ubipnx = 0.0;
-          double ubipExtrapnx = 0.0;
-          double uscsnx = 0.0;
+
+          // entrainment magnitude
+          const double uEntrain = tmdot/(rhoBip*amag);
+          
+          // user specified extrainment
           double uspecbipnx = 0.0;
           for ( int j = 0; j < nDim; ++j ) {
             const double nj = p_nx[j];
-            ubipnx += p_uBip[j]*nj;
-            ubipExtrapnx += p_uBipExtrap[j]*nj;
-            uscsnx += p_uScs[j]*nj;
             uspecbipnx += p_uspecBip[j]*nj;
           }
-
+          
           for ( int i = 0; i < nDim; ++i ) {
             const int indexR = nearestNode*nDim + i;
-            const int rowR = indexR*nodesPerElement*nDim;
             const double nxi = p_nx[i];
-
-            // total advection; with tangeant entrain
-            const double aflux = tmdot*(pecfac*ubipExtrapnx+om_pecfac*
-                                        (nfEntrain*ubipnx + om_nfEntrain*uscsnx))*nxi
+            
+            // total advection; with normal and tangeant entrainment
+            const double aflux = tmdot*uEntrain*nxi
               + tmdot*(p_uspecBip[i] - uspecbipnx*nxi);
-
+            
             p_rhs[indexR] -= aflux;
-
-            // upwind and central
-            for ( int j = 0; j < nDim; ++j ) {
-              const double nxinxj = nxi*p_nx[j];
-
-              // upwind
-              p_lhs[rowR+nearestNode*nDim+j] += tmdot*pecfac*alphaUpw*nxinxj;
-
-              // central part; exposed face
-              double fac = tmdot*(pecfac*om_alphaUpw+om_pecfac*nfEntrain)*nxinxj;
-              for ( int ic = 0; ic < nodesPerFace; ++ic ) {
-                const int nn = face_node_ordinals[ic];
-                p_lhs[rowR+nn*nDim+j] += p_adv_face_shape_function[offSetSF_face+ic]*fac;
-              }
-
-              // central part; scs face
-              fac = tmdot*om_pecfac*om_nfEntrain*nxinxj;
-              for ( int ic = 0; ic < nodesPerElement; ++ic ) {
-                p_lhs[rowR+ic*nDim+j] += p_adv_shape_function[offSetSF_elem+ic]*fac;
-              }
-
-            }
           }
         }
         

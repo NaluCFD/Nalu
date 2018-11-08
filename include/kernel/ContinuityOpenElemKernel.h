@@ -61,6 +61,7 @@ private:
   ScalarFieldType *pressureBc_{nullptr};
   ScalarFieldType *density_{nullptr};
   GenericFieldType *exposedAreaVec_{nullptr};
+  GenericFieldType *dynamicPressure_{nullptr};
 
   double projTimeScale_{1.0};
   const double mdotCorrection_{0.0};

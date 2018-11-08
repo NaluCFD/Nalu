@@ -95,6 +95,7 @@ realms:
         velocity: [0,0]
         pressure: 0.0
         temperature: 283.16
+        use_total_pressure: yes
 
     - wall_boundary_condition: bc_lower
       target_name: surface_3

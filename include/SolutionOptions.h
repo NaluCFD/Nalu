@@ -103,7 +103,6 @@ public:
   double referenceTemperature_;
   double thermalExpansionCoeff_;
   double stefanBoltzmann_;
-  double nearestFaceEntrain_;
   double includeDivU_;
   bool mdotInterpRhoUTogether_;
   bool isTurbulent_;
