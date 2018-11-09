@@ -40,6 +40,7 @@ MomentumOpenAdvDiffElemKernel<BcAlgTraits>::MomentumOpenAdvDiffElemKernel(
     om_alphaUpw_(1.0-alphaUpw_),
     hoUpwind_(solnOpts.get_upw_factor("velocity")),
     includeDivU_(solnOpts.includeDivU_),
+    meshVelocityCorrection_(solnOpts.does_mesh_move() ? 1.0 : 0.0),
     shiftedGradOp_(solnOpts.get_shifted_grad_op(velocity->name())),
     faceIpNodeMap_(sierra::nalu::MasterElementRepo::get_surface_master_element(BcAlgTraits::faceTopo_)->ipNodeMap()),
     meSCS_(sierra::nalu::MasterElementRepo::get_surface_master_element(BcAlgTraits::elemTopo_)),
@@ -47,10 +48,14 @@ MomentumOpenAdvDiffElemKernel<BcAlgTraits>::MomentumOpenAdvDiffElemKernel(
 {
   // save off fields
   velocityNp1_ = &(velocity->field_of_state(stk::mesh::StateNP1));
-  if ( solnOpts.does_mesh_move() )
+  if ( solnOpts.does_mesh_move() ) {
     velocityRTM_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity_rtm");
-  else
-    velocityRTM_ = velocity;
+    meshVelocity_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_velocity");
+  }
+  else {
+    velocityRTM_ = velocityNp1_;
+    meshVelocity_ = velocityNp1_;
+  }
   coordinates_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
   density_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
   exposedAreaVec_ = metaData.get_field<GenericFieldType>(metaData.side_rank(), "exposed_area_vector");
@@ -68,6 +73,7 @@ MomentumOpenAdvDiffElemKernel<BcAlgTraits>::MomentumOpenAdvDiffElemKernel(
   faceDataPreReqs.add_gathered_nodal_field(*density_, 1);
   faceDataPreReqs.add_gathered_nodal_field(*viscosity_, 1);
   faceDataPreReqs.add_gathered_nodal_field(*velocityNp1_, BcAlgTraits::nDim_);
+  faceDataPreReqs.add_gathered_nodal_field(*meshVelocity_, BcAlgTraits::nDim_);
   faceDataPreReqs.add_gathered_nodal_field(*velocityBc_, BcAlgTraits::nDim_);
   faceDataPreReqs.add_gathered_nodal_field(*Gjui_, BcAlgTraits::nDim_, BcAlgTraits::nDim_);
   faceDataPreReqs.add_coordinates_field(*coordinates_, BcAlgTraits::nDim_, CURRENT_COORDINATES);
@@ -113,6 +119,7 @@ MomentumOpenAdvDiffElemKernel<BcAlgTraits>::execute(
   int elemFaceOrdinal)
 {
   NALU_ALIGNED DoubleType w_uBip[BcAlgTraits::nDim_];
+  NALU_ALIGNED DoubleType w_rho_vBip[BcAlgTraits::nDim_];
   NALU_ALIGNED DoubleType w_uBipExtrap[BcAlgTraits::nDim_];
   NALU_ALIGNED DoubleType w_uspecBip[BcAlgTraits::nDim_];
   NALU_ALIGNED DoubleType w_coordBip[BcAlgTraits::nDim_];
@@ -124,6 +131,7 @@ MomentumOpenAdvDiffElemKernel<BcAlgTraits>::execute(
   SharedMemView<DoubleType*>& vf_density = faceScratchViews.get_scratch_view_1D(*density_);
   SharedMemView<DoubleType*>& vf_viscosity = faceScratchViews.get_scratch_view_1D(*viscosity_);
   SharedMemView<DoubleType**>& vf_velocityNp1 = faceScratchViews.get_scratch_view_2D(*velocityNp1_);
+  SharedMemView<DoubleType**>& vf_meshVelocity = faceScratchViews.get_scratch_view_2D(*meshVelocity_);
   SharedMemView<DoubleType**>& vf_bcVelocity = faceScratchViews.get_scratch_view_2D(*velocityBc_);
   SharedMemView<DoubleType***>& vf_Gjui = faceScratchViews.get_scratch_view_3D(*Gjui_);
   SharedMemView<DoubleType**>& vf_coordinates = faceScratchViews.get_scratch_view_2D(*coordinates_);
@@ -150,6 +158,7 @@ MomentumOpenAdvDiffElemKernel<BcAlgTraits>::execute(
     DoubleType asq = 0.0;
     for ( int j = 0; j < BcAlgTraits::nDim_; ++j ) {
       w_uBip[j] = 0.0;
+      w_rho_vBip[j] = 0.0;
       w_uspecBip[j] = 0.0;
       w_coordBip[j] = 0.0;
       const DoubleType axj = vf_exposedAreaVec(ip,j);
@@ -165,10 +174,12 @@ MomentumOpenAdvDiffElemKernel<BcAlgTraits>::execute(
       const DoubleType rAdv = vf_adv_shape_function_(ip,ic);
       rhoBip += r*vf_density(ic);
       viscBip += r*vf_viscosity(ic);
+      DoubleType rhoIc = vf_density(ic);
       for ( int j = 0; j < BcAlgTraits::nDim_; ++j ) {
         w_uspecBip[j] += rAdv*vf_bcVelocity(ic,j);
         w_uBip[j] += rAdv*vf_velocityNp1(ic,j);
         w_coordBip[j] += rAdv*vf_coordinates(ic,j);
+        w_rho_vBip[j] += r*rhoIc*vf_meshVelocity(ic,j);
       }
     }
         
@@ -203,8 +214,11 @@ MomentumOpenAdvDiffElemKernel<BcAlgTraits>::execute(
     const DoubleType mdotLeaving = stk::math::if_then_else(tmdot > 0, 1.0, 0.0);
     const DoubleType om_mdotLeaving = 1.0 - mdotLeaving;    
 
-    // entrainment magnitude
-    const DoubleType uEntrain = tmdot/(rhoBip*amag);
+    // entrainment magnitude (must correct for possible mesh motion at the open bc)
+    DoubleType mvc = 0.0;
+    for ( int j = 0; j < BcAlgTraits::nDim_; ++j )
+      mvc += w_rho_vBip[j]*vf_exposedAreaVec(ip,j);
+    const DoubleType uEntrain = tmdot/(rhoBip*amag) + mvc/(rhoBip*amag)*meshVelocityCorrection_;
 
     // user specified entrainment
     DoubleType uspecbipnx = 0.0;

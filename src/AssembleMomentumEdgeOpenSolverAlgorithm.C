@@ -41,7 +41,9 @@ AssembleMomentumEdgeOpenSolverAlgorithm::AssembleMomentumEdgeOpenSolverAlgorithm
   EquationSystem *eqSystem)
   : SolverAlgorithm(realm, part, eqSystem),
     includeDivU_(realm_.get_divU()),
+    meshVelocityCorrection_(realm.does_mesh_move() ? 1.0 : 0.0),
     velocity_(NULL),
+    meshVelocity_(NULL),
     dudx_(NULL),
     coordinates_(NULL),
     density_(NULL),
@@ -53,6 +55,13 @@ AssembleMomentumEdgeOpenSolverAlgorithm::AssembleMomentumEdgeOpenSolverAlgorithm
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   velocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
+  if ( realm.does_mesh_move() ) {
+    meshVelocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_velocity");
+  }
+  else {
+    meshVelocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
+  }
+ 
   dudx_ = meta_data.get_field<GenericFieldType>(stk::topology::NODE_RANK, "dudx");
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   // extract viscosity  name
@@ -193,6 +202,7 @@ AssembleMomentumEdgeOpenSolverAlgorithm::execute()
 
         const double * uNp1L = stk::mesh::field_data(velocityNp1, nodeL );
         const double * uNp1R = stk::mesh::field_data(velocityNp1, nodeR );
+        const double * meshVelocityR = stk::mesh::field_data(*meshVelocity_, nodeR );
 
         const double rhoBip = *stk::mesh::field_data(densityNp1, nodeR );
         const double viscBip = *stk::mesh::field_data(*viscosity_, nodeR );
@@ -344,8 +354,11 @@ AssembleMomentumEdgeOpenSolverAlgorithm::execute()
           }
         }
         else {
-          // entraining; constrain to be normal
-          const double uEntrain = tmdot/(rhoBip*amag);
+          // entrainment magnitude (must correct for possible mesh motion at the open bc)
+          double mvc = 0.0;
+          for ( int j = 0; j < nDim; ++j )
+            mvc += rhoBip*meshVelocityR[j]*areaVec[faceOffSet+j];
+          const double uEntrain = tmdot/(rhoBip*amag) + mvc/(rhoBip*amag)*meshVelocityCorrection_;
           
           for ( int i = 0; i < nDim; ++i ) {
 

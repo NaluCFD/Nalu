@@ -40,9 +40,10 @@ AssembleMomentumElemOpenSolverAlgorithm::AssembleMomentumElemOpenSolverAlgorithm
   stk::mesh::Part *part,
   EquationSystem *eqSystem)
   : SolverAlgorithm(realm, part, eqSystem),
-    includeDivU_(realm_.get_divU()),
-    meshMotion_(realm_.does_mesh_move()),
+    includeDivU_(realm.get_divU()),
+    meshVelocityCorrection_(realm_.does_mesh_move() ? 1.0 : 0.0),
     velocityRTM_(NULL),
+    meshVelocity_(NULL),
     velocity_(NULL),
     dudx_(NULL),
     coordinates_(NULL),
@@ -55,10 +56,14 @@ AssembleMomentumElemOpenSolverAlgorithm::AssembleMomentumElemOpenSolverAlgorithm
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
-  if ( meshMotion_ )
+  if ( realm.does_mesh_move() ) {
     velocityRTM_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity_rtm");
-  else
+    meshVelocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_velocity");
+  }
+  else {
     velocityRTM_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
+    meshVelocity_ = velocityRTM_;
+  }
   velocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
   dudx_ = meta_data.get_field<GenericFieldType>(stk::topology::NODE_RANK, "dudx");
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
@@ -124,6 +129,7 @@ AssembleMomentumElemOpenSolverAlgorithm::execute()
 
   // ip values; both boundary and opposing surface
   std::vector<double> uBip(nDim);
+  std::vector<double> rho_vBip(nDim);
   std::vector<double> uBipExtrap(nDim);
   std::vector<double> uspecBip(nDim);
   std::vector<double> coordBip(nDim);
@@ -131,6 +137,7 @@ AssembleMomentumElemOpenSolverAlgorithm::execute()
 
   // pointers to fixed values
   double *p_uBip = &uBip[0];
+  double *p_rho_vBip = &rho_vBip[0];
   double *p_uBipExtrap = &uBipExtrap[0];
   double *p_uspecBip = &uspecBip[0];
   double *p_coordBip = &coordBip[0];
@@ -138,6 +145,7 @@ AssembleMomentumElemOpenSolverAlgorithm::execute()
 
   // nodal fields to gather
   std::vector<double> ws_velocityNp1;
+  std::vector<double> ws_face_meshVelocity;
   std::vector<double> ws_dudx;
   std::vector<double> ws_coordinates;
   std::vector<double> ws_density;
@@ -189,8 +197,9 @@ AssembleMomentumElemOpenSolverAlgorithm::execute()
     scratchVals.resize(rhsSize);
     connected_nodes.resize(nodesPerElement);
 
-    // algorithm related; element
+    // algorithm related; element/face
     ws_velocityNp1.resize(nodesPerElement*nDim);
+    ws_face_meshVelocity.resize(nodesPerFace*nDim);
     ws_dudx.resize(nodesPerFace*nDim*nDim);
     ws_coordinates.resize(nodesPerElement*nDim);
     ws_density.resize(nodesPerFace);
@@ -208,6 +217,7 @@ AssembleMomentumElemOpenSolverAlgorithm::execute()
     double *p_lhs = &lhs[0];
     double *p_rhs = &rhs[0];
     double *p_velocityNp1 = &ws_velocityNp1[0];
+    double *p_face_meshVelocity = &ws_face_meshVelocity[0];
     double *p_dudx = &ws_dudx[0];
     double *p_coordinates = &ws_coordinates[0];
     double *p_density = &ws_density[0];
@@ -256,11 +266,13 @@ AssembleMomentumElemOpenSolverAlgorithm::execute()
 
         // gather vectors
         double * uspec = stk::mesh::field_data(*velocityBc_, node);
+        double * meshVelocity = stk::mesh::field_data(*meshVelocity_, node);
         double * Gjui = stk::mesh::field_data(*dudx_, node);
         const int niNdim = ni*nDim;
         const int row_p_dudx = niNdim*nDim;
         for ( int i=0; i < nDim; ++i ) {
           p_bcVelocity[niNdim+i] = uspec[i];
+          p_face_meshVelocity[niNdim+i] = meshVelocity[i];
           // gather tensor
           const int row_dudx = i*nDim;
           for ( int j = 0; j < nDim; ++j ) {
@@ -334,6 +346,7 @@ AssembleMomentumElemOpenSolverAlgorithm::execute()
           p_uBip[j] = 0.0;
           p_uspecBip[j] = 0.0;
           p_coordBip[j] = 0.0;
+          p_rho_vBip[j] = 0.0;
           const double axj = areaVec[faceOffSet+j];
           asq += axj*axj;
         }
@@ -347,6 +360,7 @@ AssembleMomentumElemOpenSolverAlgorithm::execute()
           const double rAdv = p_adv_face_shape_function[offSetSF_face+ic];
           rhoBip += p_density[ic];
           viscBip += r*p_viscosity[ic];
+          const double rhoIc = p_density[ic];
           const int offSetFN = ic*nDim;
           const int nn = face_node_ordinals[ic];
           const int offSetEN = nn*nDim;
@@ -354,6 +368,7 @@ AssembleMomentumElemOpenSolverAlgorithm::execute()
             p_uspecBip[j] += rAdv*p_bcVelocity[offSetFN+j];
             p_uBip[j] += rAdv*p_velocityNp1[offSetEN+j];
             p_coordBip[j] += rAdv*p_coordinates[offSetEN+j];
+            p_rho_vBip[j] += r*rhoIc*p_face_meshVelocity[offSetFN+j];
           }
         }
 
@@ -424,9 +439,11 @@ AssembleMomentumElemOpenSolverAlgorithm::execute()
           }
         }
         else {
-
-          // entrainment magnitude
-          const double uEntrain = tmdot/(rhoBip*amag);
+          // entrainment magnitude (must correct for possible mesh motion at the open bc)
+          double mvc = 0.0;
+          for ( int j = 0; j < nDim; ++j )
+            mvc += p_rho_vBip[j]*areaVec[faceOffSet+j];
+          const double uEntrain = tmdot/(rhoBip*amag) + mvc/(rhoBip*amag)*meshVelocityCorrection_;
           
           // user specified extrainment
           double uspecbipnx = 0.0;

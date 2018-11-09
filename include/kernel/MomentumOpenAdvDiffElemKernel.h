@@ -65,6 +65,7 @@ private:
   GenericFieldType *Gjui_{nullptr};
   VectorFieldType *velocityNp1_{nullptr};
   VectorFieldType *velocityRTM_{nullptr};
+  VectorFieldType *meshVelocity_{nullptr};
   VectorFieldType *coordinates_{nullptr};
   ScalarFieldType *density_{nullptr};
   GenericFieldType *exposedAreaVec_{nullptr};
@@ -76,6 +77,7 @@ private:
   const double om_alphaUpw_;
   const double hoUpwind_;
   const double includeDivU_;
+  const double meshVelocityCorrection_;
   const bool shiftedGradOp_;
   const double small_{1.0e-16};
 
