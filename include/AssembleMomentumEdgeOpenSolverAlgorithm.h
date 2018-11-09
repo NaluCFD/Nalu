@@ -30,9 +30,11 @@ public:
   virtual void execute();
 
   const double includeDivU_;
+  const double meshVelocityCorrection_;
 
   // extract fields
   VectorFieldType *velocity_;
+  VectorFieldType *meshVelocity_;
   GenericFieldType *dudx_;
   VectorFieldType *coordinates_;
   ScalarFieldType *density_;
