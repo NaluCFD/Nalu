@@ -65,8 +65,6 @@ private:
   const bool shiftMdot_;
   const bool shiftPoisson_;
   const bool reducedSensitivities_;
-  const double interpTogether_;
-  const double om_interpTogether_;
 
   // scratch space
   AlignedViewType<DoubleType[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_ { "view_shape_func" };

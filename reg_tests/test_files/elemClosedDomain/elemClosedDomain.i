@@ -117,8 +117,6 @@ realms:
     solution_options:
       name: myOptions
 
-      interp_rhou_together_for_mdot: no
-
       options:
         - hybrid_factor:
             velocity: 1.0

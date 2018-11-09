@@ -105,14 +105,12 @@ AssembleContinuityElemOpenSolverAlgorithm::execute()
   std::vector<stk::mesh::Entity> connected_nodes;
 
   // ip values; both boundary and opposing surface
-  std::vector<double> uBip(nDim);
   std::vector<double> rho_uBip(nDim);
   std::vector<double> GpdxBip(nDim);
   std::vector<double> coordBip(nDim);
   std::vector<double> coordScs(nDim);
 
   // pointers to fixed values
-  double *p_uBip = &uBip[0];
   double *p_rho_uBip = &rho_uBip[0];
   double *p_GpdxBip = &GpdxBip[0];
   double *p_coordBip = &coordBip[0];
@@ -134,10 +132,6 @@ AssembleContinuityElemOpenSolverAlgorithm::execute()
   const double dt = realm_.get_time_step();
   const double gamma1 = realm_.get_gamma1();
   const double projTimeScale = dt/gamma1;
-
-  // deal with interpolation procedure
-  const double interpTogether = realm_.get_mdot_interp();
-  const double om_interpTogether = 1.0-interpTogether;
 
   // deal with state
   ScalarFieldType &densityNp1 = density_->field_of_state(stk::mesh::StateNP1);
@@ -305,13 +299,11 @@ AssembleContinuityElemOpenSolverAlgorithm::execute()
 
         // zero out vector quantities
         for ( int j = 0; j < nDim; ++j ) {
-          p_uBip[j] = 0.0;
           p_rho_uBip[j] = 0.0;
           p_GpdxBip[j] = 0.0;
           p_coordBip[j] = 0.0;
           p_coordScs[j] = 0.0;
         }
-        double rhoBip = 0.0;
 
         // interpolate to bip
         double pbcBip = -dynamicP[ip];
@@ -320,12 +312,10 @@ AssembleContinuityElemOpenSolverAlgorithm::execute()
           const int fn = face_node_ordinals[ic];
           const double r = p_face_shape_function[offSetSF_face+ic];
           const double rhoIC = p_density[ic];
-          rhoBip += r*rhoIC;
           pbcBip += r*p_bcPressure[ic];
           const int offSetFN = ic*nDim;
           const int offSetEN = fn*nDim;
           for ( int j = 0; j < nDim; ++j ) {
-            p_uBip[j] += r*p_vrtm[offSetFN+j];
             p_rho_uBip[j] += r*rhoIC*p_vrtm[offSetFN+j];
             p_GpdxBip[j] += r*p_Gpdx[offSetFN+j];
             p_coordBip[j] += r*p_coordinates[offSetEN+j];
@@ -353,8 +343,7 @@ AssembleContinuityElemOpenSolverAlgorithm::execute()
           const double axj = areaVec[ip*nDim+j];
           asq += axj*axj;
           axdx += axj*dxj;
-          mdot += (interpTogether*p_rho_uBip[j] + om_interpTogether*rhoBip*p_uBip[j] 
-                   + projTimeScale*p_GpdxBip[j])*axj;
+          mdot += (p_rho_uBip[j] + projTimeScale*p_GpdxBip[j])*axj;
         }
 	
         const double inv_axdx = 1.0/axdx;

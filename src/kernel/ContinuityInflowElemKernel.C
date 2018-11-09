@@ -31,8 +31,6 @@ ContinuityInflowElemKernel<BcAlgTraits>::ContinuityInflowElemKernel(
   : Kernel(),
     useShifted_(useShifted),
     projTimeScale_(1.0),
-    interpTogether_(solnOpts.get_mdot_interp()),
-    om_interpTogether_(1.0 - interpTogether_),
     ipNodeMap_(sierra::nalu::MasterElementRepo::get_surface_master_element(BcAlgTraits::topo_)->ipNodeMap())
  {
   // save off fields
@@ -94,7 +92,6 @@ ContinuityInflowElemKernel<BcAlgTraits>::execute(
       w_uBip[j] = 0.0;
       w_rho_uBip[j] = 0.0;
     }
-    DoubleType rhoBip = 0.0;
     
     for ( int ic = 0; ic < BcAlgTraits::nodesPerFace_; ++ic ) {
       const DoubleType r = vf_shape_function_(ip,ic);
@@ -107,7 +104,7 @@ ContinuityInflowElemKernel<BcAlgTraits>::execute(
     
     DoubleType mDot = 0.0;
     for ( int j = 0; j < BcAlgTraits::nDim_; ++j ) {
-      mDot += (interpTogether_*w_rho_uBip[j] + om_interpTogether_*rhoBip*w_uBip[j])*vf_exposedAreaVec(ip,j);
+      mDot += w_rho_uBip[j]*vf_exposedAreaVec(ip,j);
     }
     
     rhs(nearestNode) -= mDot/projTimeScale_;

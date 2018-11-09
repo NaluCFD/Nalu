@@ -68,8 +68,6 @@ private:
   
   const bool shiftedGradOp_;
   const bool reducedSensitivities_;
-  const double interpTogether_;
-  const double om_interpTogether_;
   MasterElement *meSCS_{nullptr};
   
   /// Shape functions

@@ -46,8 +46,6 @@ ComputeMdotElemOpenPenaltyAlgorithm::ComputeMdotElemOpenPenaltyAlgorithm(
     exposedAreaVec_(NULL),
     dynamicPressure_(NULL),
     pressureBc_(NULL),
-    interpTogether_(realm_.get_mdot_interp()),
-    om_interpTogether_(1.0 - interpTogether_),
     shiftMdot_(realm_.get_cvfem_shifted_mdot()),
     shiftedGradOp_(realm_.get_shifted_grad_op("pressure")),
     penaltyFac_(2.0)
@@ -89,13 +87,11 @@ ComputeMdotElemOpenPenaltyAlgorithm::execute()
   const int nDim = meta_data.spatial_dimension();
   
   // ip values; both boundary and opposing surface
-  std::vector<double> uBip(nDim);
   std::vector<double> rho_uBip(nDim);
   std::vector<double> GpdxBip(nDim);
   std::vector<double> dpdxBip(nDim);
 
   // pointers to fixed values
-  double *p_uBip = &uBip[0];
   double *p_rho_uBip = &rho_uBip[0];
   double *p_GpdxBip = &GpdxBip[0];
   double *p_dpdxBip = &dpdxBip[0];
@@ -261,7 +257,6 @@ ComputeMdotElemOpenPenaltyAlgorithm::execute()
         // zero out vector quantities; form aMag
         double aMag = 0.0;
         for ( int j = 0; j < nDim; ++j ) {
-          p_uBip[j] = 0.0;
           p_rho_uBip[j] = 0.0;
           p_GpdxBip[j] = 0.0;
           p_dpdxBip[j] = 0.0;
@@ -284,17 +279,14 @@ ComputeMdotElemOpenPenaltyAlgorithm::execute()
         // interpolate to bip
         double pBip = 0.0;
         double pbcBip = -dynamicP[ip];
-        double rhoBip = 0.0;
         const int offSetSF_face = ip*nodesPerFace;
         for ( int ic = 0; ic < nodesPerFace; ++ic ) {
           const double r = p_face_shape_function[offSetSF_face+ic];
           const double rhoIC = p_density[ic];
-          rhoBip += r*rhoIC;
           pBip += r*p_face_pressure[ic];
           pbcBip += r*p_bcPressure[ic];
           const int icNdim = ic*nDim;
           for ( int j = 0; j < nDim; ++j ) {
-            p_uBip[j] += r*p_vrtm[icNdim+j];
             p_rho_uBip[j] += r*rhoIC*p_vrtm[icNdim+j];
             p_GpdxBip[j] += r*p_Gpdx[icNdim+j];
           }
@@ -313,8 +305,7 @@ ComputeMdotElemOpenPenaltyAlgorithm::execute()
         double tmdot = penaltyFac_*projTimeScale*inverseLengthScale*(pBip - pbcBip)*aMag;
         for ( int j = 0; j < nDim; ++j ) {
           const double axj = areaVec[ip*nDim+j];
-          tmdot += (interpTogether_*p_rho_uBip[j] + om_interpTogether_*rhoBip*p_uBip[j]
-                    - projTimeScale*(p_dpdxBip[j] - p_GpdxBip[j]))*axj;
+          tmdot += (p_rho_uBip[j] - projTimeScale*(p_dpdxBip[j] - p_GpdxBip[j]))*axj;
         }
         
         // scatter to mdot and accumulate

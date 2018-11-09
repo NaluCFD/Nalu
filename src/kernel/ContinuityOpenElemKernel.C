@@ -31,8 +31,6 @@ ContinuityOpenElemKernel<BcAlgTraits>::ContinuityOpenElemKernel(
   : Kernel(),
     shiftedGradOp_(solnOpts.get_shifted_grad_op("pressure")),
     reducedSensitivities_(solnOpts.cvfemReducedSensPoisson_),
-    interpTogether_(solnOpts.get_mdot_interp()),
-    om_interpTogether_(1.0 - interpTogether_),
     meSCS_(sierra::nalu::MasterElementRepo::get_surface_master_element(BcAlgTraits::elemTopo_))
 {
   if ( solnOpts.does_mesh_move())
@@ -99,7 +97,6 @@ ContinuityOpenElemKernel<BcAlgTraits>::execute(
   ScratchViews<DoubleType> &elemScratchViews,
   int elemFaceOrdinal)
 {
-  NALU_ALIGNED DoubleType w_uBip[BcAlgTraits::nDim_];
   NALU_ALIGNED DoubleType w_rho_uBip[BcAlgTraits::nDim_];
   NALU_ALIGNED DoubleType w_GpdxBip[BcAlgTraits::nDim_];
   NALU_ALIGNED DoubleType w_dpdxBip[BcAlgTraits::nDim_];
@@ -133,7 +130,6 @@ ContinuityOpenElemKernel<BcAlgTraits>::execute(
     // zero out vector quantities; form aMag
     DoubleType aMag = 0.0;
     for ( int j = 0; j < BcAlgTraits::nDim_; ++j ) {
-      w_uBip[j] = 0.0;
       w_rho_uBip[j] = 0.0;
       w_GpdxBip[j] = 0.0;
       w_dpdxBip[j] = 0.0;
@@ -155,15 +151,12 @@ ContinuityOpenElemKernel<BcAlgTraits>::execute(
     // interpolate to bip
     DoubleType pBip = 0.0;
     DoubleType pbcBip = -vf_dynamicP(ip);
-    DoubleType rhoBip = 0.0;
     for ( int ic = 0; ic < BcAlgTraits::nodesPerFace_; ++ic ) {
       const DoubleType r = vf_shape_function_(ip,ic);
       const DoubleType rhoIC = vf_density(ic);
-      rhoBip += r*rhoIC;
       pBip += r*vf_pressure(ic);
       pbcBip += r*vf_pressureBc(ic);
       for ( int j = 0; j < BcAlgTraits::nDim_; ++j ) {
-        w_uBip[j] += r*vf_vrtm(ic,j);
         w_rho_uBip[j] += r*rhoIC*vf_vrtm(ic,j);
         w_GpdxBip[j] += r*vf_Gpdx(ic,j);
       }
@@ -181,8 +174,7 @@ ContinuityOpenElemKernel<BcAlgTraits>::execute(
     DoubleType mdot = penaltyFac_*projTimeScale_*inverseLengthScale*(pBip - pbcBip)*aMag;
     for ( int j = 0; j < BcAlgTraits::nDim_; ++j ) {
       const DoubleType axj = vf_exposedAreaVec(ip,j);
-      mdot += (interpTogether_*w_rho_uBip[j] + om_interpTogether_*rhoBip*w_uBip[j] 
-               - projTimeScale_*(w_dpdxBip[j] - w_GpdxBip[j]))*axj;
+      mdot += (w_rho_uBip[j] - projTimeScale_*(w_dpdxBip[j] - w_GpdxBip[j]))*axj;
     }
     
     // face-based penalty; divide by projTimeScale

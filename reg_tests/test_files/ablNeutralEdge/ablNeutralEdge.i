@@ -157,7 +157,6 @@ realms:
     solution_options:
       name: myOptions
       turbulence_model: ksgs
-      interp_rhou_together_for_mdot: yes
 
       # Pressure is not fixed anywhere on the boundaries, so set it at
       # the node closest to the specified location.
