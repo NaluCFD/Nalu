@@ -41,8 +41,6 @@ public:
   GenericFieldType *dynamicPressure_;
   ScalarFieldType *pressureBc_;
 
-  const double interpTogether_;
-  const double om_interpTogether_;
   const bool shiftMdot_;
   const bool shiftedGradOp_;
   const double penaltyFac_;

@@ -127,7 +127,6 @@ realms:
       name: myOptions
       turbulence_model: laminar
       divU_stress_scaling: 1.0
-      interp_rhou_together_for_mdot: yes
       use_consolidated_solver_algorithm: no
 
       options:

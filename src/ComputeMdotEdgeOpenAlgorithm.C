@@ -94,8 +94,6 @@ ComputeMdotEdgeOpenAlgorithm::execute()
   const double gamma1 = realm_.get_gamma1();
   const double projTimeScale = dt/gamma1;
 
-  // interpolation for mdot uses nearest node, therefore, n/a
-
   // set accumulation variables
   double mdotOpen = 0.0;
 

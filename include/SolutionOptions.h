@@ -62,9 +62,6 @@ public:
     return does_mesh_move() ? "current_coordinates" : "coordinates";
   }
 
-  inline double get_mdot_interp() const
-  { return mdotInterpRhoUTogether_ ? 1.0 : 0.0; }
-
   double get_alpha_factor(const std::string&) const;
 
   double get_alpha_upw_factor(const std::string&) const;
@@ -104,7 +101,6 @@ public:
   double thermalExpansionCoeff_;
   double stefanBoltzmann_;
   double includeDivU_;
-  bool mdotInterpRhoUTogether_;
   bool isTurbulent_;
   TurbulenceModel turbulenceModel_;
   bool meshMotion_;

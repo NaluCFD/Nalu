@@ -25,7 +25,6 @@ TEST_F(Hex8MeshWithNSOFields, continuityAdvElem)
   solnOpts.cvfemShiftMdot_ = false;
   solnOpts.shiftedGradOpMap_["pressure"] = false;
   solnOpts.cvfemReducedSensPoisson_ = false;
-  solnOpts.mdotInterpRhoUTogether_ = true;
 
   unit_test_utils::HelperObjects helperObjs(bulk, stk::topology::HEX_8, 1, partVec[0]);
 

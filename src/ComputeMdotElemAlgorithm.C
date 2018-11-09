@@ -95,10 +95,6 @@ ComputeMdotElemAlgorithm::execute()
   const double gamma1 = realm_.get_gamma1();
   const double projTimeScale = dt/gamma1;
 
-  // deal with interpolation procedure
-  const double interpTogether = realm_.get_mdot_interp();
-  const double om_interpTogether = 1.0-interpTogether;
-
   // nodal fields to gather
   std::vector<double> ws_vrtm;
   std::vector<double> ws_Gpdx;
@@ -114,13 +110,11 @@ ComputeMdotElemAlgorithm::execute()
   std::vector<double> ws_shape_function;
 
   // integration point data that depends on size
-  std::vector<double> uIp(nDim);
   std::vector<double> rho_uIp(nDim);
   std::vector<double> GpdxIp(nDim);
   std::vector<double> dpdxIp(nDim);
 
   // pointers to everyone...
-  double *p_uIp = &uIp[0];
   double *p_rho_uIp = &rho_uIp[0];
   double *p_GpdxIp = &GpdxIp[0];
   double *p_dpdxIp = &dpdxIp[0];
@@ -223,12 +217,10 @@ ComputeMdotElemAlgorithm::execute()
 
         // setup for ip values
         for ( int j = 0; j < nDim; ++j ) {
-          p_uIp[j] = 0.0;
           p_rho_uIp[j] = 0.0;
           p_GpdxIp[j] = 0.0;
           p_dpdxIp[j] = 0.0;
         }
-        double rhoIp = 0.0;
 
         const int offSet = ip*nodesPerElement;
         for ( int ic = 0; ic < nodesPerElement; ++ic ) {
@@ -237,12 +229,9 @@ ComputeMdotElemAlgorithm::execute()
           const double nodalPressure = p_pressure[ic];
           const double nodalRho = p_density[ic];
 
-          rhoIp += r*nodalRho;
-
           const int offSetDnDx = nDim*nodesPerElement*ip + ic*nDim;
           for ( int j = 0; j < nDim; ++j ) {
             p_GpdxIp[j] += r*p_Gpdx[nDim*ic+j];
-            p_uIp[j] += r*p_vrtm[nDim*ic+j];
             p_rho_uIp[j] += r*nodalRho*p_vrtm[nDim*ic+j];
             p_dpdxIp[j] += p_dndx[offSetDnDx+j]*nodalPressure;
           }
@@ -251,8 +240,7 @@ ComputeMdotElemAlgorithm::execute()
         // assemble mdot
         double tmdot = 0.0;
         for ( int j = 0; j < nDim; ++j ) {
-          tmdot += (interpTogether*p_rho_uIp[j] + om_interpTogether*rhoIp*p_uIp[j] 
-                    - projTimeScale*(p_dpdxIp[j] - p_GpdxIp[j]))*p_scs_areav[ip*nDim+j];
+          tmdot += (p_rho_uIp[j] - projTimeScale*(p_dpdxIp[j] - p_GpdxIp[j]))*p_scs_areav[ip*nDim+j];
         }
 
         mdot[ip] = tmdot;
