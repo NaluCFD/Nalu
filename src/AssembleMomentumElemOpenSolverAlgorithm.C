@@ -358,7 +358,7 @@ AssembleMomentumElemOpenSolverAlgorithm::execute()
         for ( int ic = 0; ic < nodesPerFace; ++ic ) {
           const double r = p_face_shape_function[offSetSF_face+ic];
           const double rAdv = p_adv_face_shape_function[offSetSF_face+ic];
-          rhoBip += p_density[ic];
+          rhoBip += r*p_density[ic];
           viscBip += r*p_viscosity[ic];
           const double rhoIc = p_density[ic];
           const int offSetFN = ic*nDim;
