@@ -172,11 +172,9 @@ realms:
           compute_reynolds_stress: yes
 
     output:
-      output_data_base_name: waleElemXflowMixFrac3.5.e
+      output_data_base_name: waleElemXflowMixFrac3.5m.e
       output_frequency: 1 
       output_node_set: no 
-#      compression_level: 9
-#      compression_shuffle: yes
       output_variables:
        - velocity
        - velocity_ra_one

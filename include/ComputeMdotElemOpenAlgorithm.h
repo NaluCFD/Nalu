@@ -31,8 +31,6 @@ public:
 
   void execute();
 
-  const bool meshMotion_;
-
   VectorFieldType *velocityRTM_;
   VectorFieldType *Gpdx_;
   VectorFieldType *coordinates_;
@@ -44,7 +42,8 @@ public:
   ScalarFieldType *pressureBc_;
 
   const bool shiftMdot_;
-  const bool shiftPoisson_;
+  const bool shiftedGradOp_;
+  const double penaltyFac_;
 };
 
 } // namespace nalu
