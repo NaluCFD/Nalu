@@ -98,6 +98,7 @@ realms:
       name: myOptions
       turbulence_model: laminar
       use_consolidated_solver_algorithm: yes
+      use_consolidated_face_elem_bc_algorithm: yes
 
       options:
 

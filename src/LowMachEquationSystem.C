@@ -47,7 +47,6 @@
 #include "ComputeMdotElemAlgorithm.h"
 #include "ComputeMdotEdgeOpenAlgorithm.h"
 #include "ComputeMdotElemOpenAlgorithm.h"
-#include "ComputeMdotElemOpenPenaltyAlgorithm.h"
 #include "ComputeMdotNonConformalAlgorithm.h"
 #include "ComputeWallFrictionVelocityAlgorithm.h"
 #include "ComputeABLWallFrictionVelocityAlgorithm.h"
@@ -2835,19 +2834,20 @@ ContinuityEquationSystem::register_open_bc(
     }
   }
   else {
+
+    // shared non-solver elem alg; compute open mdot
+    std::map<AlgorithmType, Algorithm *>::iterator itm =
+      computeMdotAlgDriver_->algMap_.find(algType);
+    if ( itm == computeMdotAlgDriver_->algMap_.end() ) {
+      ComputeMdotElemOpenAlgorithm *theAlg
+        = new ComputeMdotElemOpenAlgorithm(realm_, part);
+      computeMdotAlgDriver_->algMap_[algType] = theAlg;
+    }
+    else {
+      itm->second->partVec_.push_back(part);
+    }
     
     if ( realm_.solutionOptions_->useConsolidatedBcSolverAlg_ ) {      
-      // non-solver elem alg; compute open mdot (transition to penalty approach)
-      std::map<AlgorithmType, Algorithm *>::iterator itm =
-        computeMdotAlgDriver_->algMap_.find(algType);
-      if ( itm == computeMdotAlgDriver_->algMap_.end() ) {
-        ComputeMdotElemOpenPenaltyAlgorithm *theAlg
-          = new ComputeMdotElemOpenPenaltyAlgorithm(realm_, part);
-        computeMdotAlgDriver_->algMap_[algType] = theAlg;
-      }
-      else {
-        itm->second->partVec_.push_back(part);
-      }
       
       // solver for continuity open
       auto& solverAlgMap = solverAlgDriver_->solverAlgorithmMap_;
@@ -2871,19 +2871,7 @@ ContinuityEquationSystem::register_open_bc(
         
       }
     }
-    else {
-      // non-solver elem alg; compute open mdot
-      std::map<AlgorithmType, Algorithm *>::iterator itm =
-        computeMdotAlgDriver_->algMap_.find(algType);
-      if ( itm == computeMdotAlgDriver_->algMap_.end() ) {
-        ComputeMdotElemOpenAlgorithm *theAlg
-          = new ComputeMdotElemOpenAlgorithm(realm_, part);
-        computeMdotAlgDriver_->algMap_[algType] = theAlg;
-      }
-      else {
-        itm->second->partVec_.push_back(part);
-      }
-      
+    else {      
       // solver; lhs
       std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi =
         solverAlgDriver_->solverAlgMap_.find(algType);
