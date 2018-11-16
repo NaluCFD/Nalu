@@ -474,11 +474,11 @@ LowMachEquationSystem::register_open_bc(
   stk::mesh::put_field_on_mesh(*mdotBip, *part, numScsBip, nullptr);
 
   // pbip; always register (initial value of zero)
-  const double zero = 0.0;
+  std::vector<double> zeroVec(numScsBip,0.0);
   GenericFieldType *pBip 
     = &(metaData.declare_field<GenericFieldType>(static_cast<stk::topology::rank_t>(metaData.side_rank()), 
                                                  "dynamic_pressure"));
-  stk::mesh::put_field_on_mesh(*pBip, *part, numScsBip, &zero);
+  stk::mesh::put_field_on_mesh(*pBip, *part, numScsBip, zeroVec.data());
   
   // check for total bc to create an algorithm
   if ( userData.useTotalP_ ) {
