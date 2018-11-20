@@ -2498,8 +2498,10 @@ Realm::query_for_overset()
       hasOverset_ = true;
       break;
     default:
-      hasOverset_ = false;
+      break;
     }
+    if ( hasOverset_ )
+      break;
   }
   return hasOverset_;
 }
