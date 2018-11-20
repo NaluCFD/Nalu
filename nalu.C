@@ -171,8 +171,7 @@ int main( int argc, char ** argv )
   // stop timer
   const double stop_time = naluEnv.nalu_time();
   const double total_time = stop_time - start_time;
-  const char* timer_name = "Total Time";
-
+  
   // parallel reduce overall times
   double g_sum, g_min, g_max;
   stk::all_reduce_min(naluEnv.parallel_comm(), &total_time, &g_min, 1);
@@ -229,9 +228,6 @@ int main( int argc, char ** argv )
   double time_without_output = elapsed_time-mesh_output_time;
 
   stk::parallel_print_time_without_output_and_hwm(naluEnv.parallel_comm(), time_without_output, naluEnv.naluOutputP0());
-
-  if (!naluEnv.parallel_rank())
-    stk::print_timers_and_memory(&timer_name, &total_time, 1 /*num timers*/);
 
   stk::diag::printTimersTable(naluEnv.naluOutputP0(), sierra::nalu::Simulation::rootTimer(),
                               stk::diag::METRICS_CPU_TIME | stk::diag::METRICS_WALL_TIME,

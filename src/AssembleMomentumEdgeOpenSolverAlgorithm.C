@@ -41,9 +41,12 @@ AssembleMomentumEdgeOpenSolverAlgorithm::AssembleMomentumEdgeOpenSolverAlgorithm
   EquationSystem *eqSystem)
   : SolverAlgorithm(realm, part, eqSystem),
     includeDivU_(realm_.get_divU()),
+    meshVelocityCorrection_(realm.does_mesh_move() ? 1.0 : 0.0),
     velocity_(NULL),
+    meshVelocity_(NULL),
     dudx_(NULL),
     coordinates_(NULL),
+    density_(NULL),
     viscosity_(NULL),
     exposedAreaVec_(NULL),
     openMassFlowRate_(NULL),
@@ -52,11 +55,19 @@ AssembleMomentumEdgeOpenSolverAlgorithm::AssembleMomentumEdgeOpenSolverAlgorithm
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   velocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
+  if ( realm.does_mesh_move() ) {
+    meshVelocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_velocity");
+  }
+  else {
+    meshVelocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
+  }
+ 
   dudx_ = meta_data.get_field<GenericFieldType>(stk::topology::NODE_RANK, "dudx");
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   // extract viscosity  name
   const std::string viscName = realm_.is_turbulent()
     ? "effective_viscosity_u" : "viscosity";
+  density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
   viscosity_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, viscName);
   exposedAreaVec_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");
   openMassFlowRate_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "open_mass_flow_rate");
@@ -84,10 +95,6 @@ AssembleMomentumEdgeOpenSolverAlgorithm::execute()
 
   const int nDim = meta_data.spatial_dimension();
 
-  // nearest face entrainment
-  const double nfEntrain = realm_.solutionOptions_->nearestFaceEntrain_;
-  const double om_nfEntrain = 1.0-nfEntrain;
-
   // space for dui/dxj; the modified gradient with NOC
   std::vector<double> duidxj(nDim*nDim);
 
@@ -108,6 +115,7 @@ AssembleMomentumEdgeOpenSolverAlgorithm::execute()
 
   // deal with state
   VectorFieldType &velocityNp1 = velocity_->field_of_state(stk::mesh::StateNP1);
+  ScalarFieldType &densityNp1 = density_->field_of_state(stk::mesh::StateNP1);
 
   // define vector of parent topos
   std::vector<stk::topology> parentTopo;
@@ -194,9 +202,10 @@ AssembleMomentumEdgeOpenSolverAlgorithm::execute()
 
         const double * uNp1L = stk::mesh::field_data(velocityNp1, nodeL );
         const double * uNp1R = stk::mesh::field_data(velocityNp1, nodeR );
+        const double * meshVelocityR = stk::mesh::field_data(*meshVelocity_, nodeR );
 
-        const double viscosityR = *stk::mesh::field_data(*viscosity_, nodeR );
-        const double viscBip = viscosityR;
+        const double rhoBip = *stk::mesh::field_data(densityNp1, nodeR );
+        const double viscBip = *stk::mesh::field_data(*viscosity_, nodeR );
 
         // a few only required (or even defined) on nodeR
         const double *bcVelocity =  stk::mesh::field_data(*velocityBc_, nodeR );
@@ -253,8 +262,6 @@ AssembleMomentumEdgeOpenSolverAlgorithm::execute()
           divU += p_duidxj[j*nDim+j];
 
         double fxnx = 0.0;
-        double uxnx = 0.0;
-        double uxnxip = 0.0;
         double uspecxnx = 0.0;
         for (int i = 0; i < nDim; ++i ) {
           const double axi = areaVec[faceOffSet+i];
@@ -268,8 +275,6 @@ AssembleMomentumEdgeOpenSolverAlgorithm::execute()
           }
 
           fxnx += nxi*fxi;
-          uxnx += nxi*uNp1R[i];
-          uxnxip += 0.5*nxi*(uNp1L[i]+uNp1R[i]);
           uspecxnx += nxi*bcVelocity[i];
 
           // save off normal and force for each component i
@@ -349,28 +354,22 @@ AssembleMomentumEdgeOpenSolverAlgorithm::execute()
           }
         }
         else {
-          // entraining; constrain to be normal
+          // entrainment magnitude (must correct for possible mesh motion at the open bc)
+          double mvc = 0.0;
+          for ( int j = 0; j < nDim; ++j )
+            mvc += rhoBip*meshVelocityR[j]*areaVec[faceOffSet+j];
+          const double uEntrain = tmdot/(rhoBip*amag) + mvc/(rhoBip*amag)*meshVelocityCorrection_;
+          
           for ( int i = 0; i < nDim; ++i ) {
 
             // setup for matrix contribution assembly
             const int indexR = nearestNode*nDim + i;
-            const int rowR = indexR*nodesPerElement*nDim;
-
+            
             // constrain to be normal
-            p_rhs[indexR] -= tmdot*(nfEntrain*uxnx + om_nfEntrain*uxnxip)*p_nx[i];
-
+            p_rhs[indexR] -= tmdot*uEntrain*p_nx[i];
+            
             // user spec entrainment (tangential)
             p_rhs[indexR] -= tmdot*(bcVelocity[i]-uspecxnx*p_nx[i]);
-
-            for ( int j = 0; j < nDim; ++j ) {
-
-              const int colL = opposingNode*nDim + j;
-              const int colR = nearestNode*nDim + j;
-
-              p_lhs[rowR+colR] +=  tmdot*(nfEntrain + om_nfEntrain*0.5)*p_nx[i]*p_nx[j];
-              p_lhs[rowR+colL] +=  tmdot*om_nfEntrain*0.5*p_nx[i]*p_nx[j];
-
-            }
 
           }
         }

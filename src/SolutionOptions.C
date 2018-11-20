@@ -46,9 +46,7 @@ SolutionOptions::SolutionOptions()
     referenceTemperature_(298.0),
     thermalExpansionCoeff_(1.0),
     stefanBoltzmann_(5.6704e-8),
-    nearestFaceEntrain_(0.0),
     includeDivU_(0.0),
-    mdotInterpRhoUTogether_(true),
     isTurbulent_(false),
     turbulenceModel_(LAMINAR),
     meshMotion_(false),
@@ -93,10 +91,6 @@ SolutionOptions::SolutionOptions()
     mdotAlgAccumulation_(0.0),
     mdotAlgInflow_(0.0),
     mdotAlgOpen_(0.0),
-    activateOpenMdotCorrection_(false),
-    mdotAlgOpenCorrection_(0.0),
-    mdotAlgOpenIpCount_(0),
-    mdotAlgOpenPost_(0.0),
     quadType_("GaussLegendre")
 {
   // nothing to do
@@ -127,15 +121,9 @@ SolutionOptions::load(const YAML::Node & y_node)
   if(y_solution_options)
   {
     get_required(y_solution_options, "name", name_);
-    get_if_present(y_solution_options,
-                   "nearest_face_entrainment",
-                   nearestFaceEntrain_, nearestFaceEntrain_);
 
     // divU factor for stress
     get_if_present(y_solution_options, "divU_stress_scaling", includeDivU_, includeDivU_);
-
-    // mdot interpolation procedure 
-    get_if_present(y_solution_options, "interp_rhou_together_for_mdot", mdotInterpRhoUTogether_, mdotInterpRhoUTogether_);
     
     // external mesh motion expected
     get_if_present(y_solution_options, "externally_provided_mesh_deformation", externalMeshDeformation_, externalMeshDeformation_);
@@ -208,10 +196,6 @@ SolutionOptions::load(const YAML::Node & y_node)
     // allow for periodic sampling in time
     get_if_present(y_solution_options, "input_variables_from_file_periodic_time",
       inputVariablesPeriodicTime_, inputVariablesPeriodicTime_);
-
-    // check for global correction algorithm
-    get_if_present(y_solution_options, "activate_open_mdot_correction",
-      activateOpenMdotCorrection_, activateOpenMdotCorrection_);
 
     // first set of options; hybrid, source, etc.
     const YAML::Node y_options = expect_sequence(y_solution_options, "options", required);

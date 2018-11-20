@@ -142,7 +142,10 @@ realms:
 
     solution_options:
       name: myOptions
+
       use_consolidated_solver_algorithm: yes
+      use_consolidated_face_elem_bc_algorithm: yes
+
       options:
         - hybrid_factor:
             velocity: 1.0
@@ -165,7 +168,7 @@ realms:
             enthalpy: yes 
 
     output:
-      output_data_base_name: nonIsoElemOpenJet.e
+      output_data_base_name: nonIsoElemOpenJetConsolidated.e
       output_frequency: 5
       output_node_set: no
       output_variables:

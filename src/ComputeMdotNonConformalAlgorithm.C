@@ -105,17 +105,11 @@ ComputeMdotNonConformalAlgorithm::execute()
   const double gamma1 = realm_.get_gamma1();
   const double projTimeScale = dt/gamma1;
 
-  // deal with interpolation procedure
-  const double interpTogether = realm_.get_mdot_interp();
-  const double om_interpTogether = 1.0-interpTogether;
-
   // ip values; both boundary and opposing surface
   std::vector<double> currentIsoParCoords(nDim);
   std::vector<double> opposingIsoParCoords(nDim);
   std::vector<double> cNx(nDim);
   std::vector<double> oNx(nDim);
-  std::vector<double> currentVelocityBip(nDim);
-  std::vector<double> opposingVelocityBip(nDim);
   std::vector<double> currentRhoVelocityBip(nDim);
   std::vector<double> opposingRhoVelocityBip(nDim);
   std::vector<double> currentMeshVelocityBip(nDim);
@@ -435,19 +429,6 @@ ComputeMdotNonConformalAlgorithm::execute()
           &(dgInfo->opposingIsoParCoords_[0]),
           &ws_o_pressure[0],
           &opposingPressureBip);
-
-        // velocity
-        meFCCurrent->interpolatePoint(
-          sizeOfVectorField,
-          &(dgInfo->currentIsoParCoords_[0]),
-          &ws_c_velocity[0],
-          &currentVelocityBip[0]);
-
-        meFCOpposing->interpolatePoint(
-          sizeOfVectorField,
-          &(dgInfo->opposingIsoParCoords_[0]),
-          &ws_o_velocity[0],
-          &opposingVelocityBip[0]);
         
         // mesh velocity; only required at current
         meFCCurrent->interpolatePoint(
@@ -468,21 +449,6 @@ ComputeMdotNonConformalAlgorithm::execute()
           &(dgInfo->opposingIsoParCoords_[0]),
           &ws_o_Gjp[0],
           &opposingGjpBip[0]);
-
-        // density
-        double currentDensityBip = 0.0;
-        meFCCurrent->interpolatePoint(
-          sizeOfScalarField,
-          &(dgInfo->currentIsoParCoords_[0]),
-          &ws_c_density[0],
-          &currentDensityBip);
-        
-        double opposingDensityBip = 0.0;
-        meFCOpposing->interpolatePoint(
-          sizeOfScalarField,
-          &(dgInfo->opposingIsoParCoords_[0]),
-          &ws_o_density[0],
-          &opposingDensityBip);
 
         // product of density and velocity; current (take over previous nodal value for velocity)
         for ( int ni = 0; ni < current_num_face_nodes; ++ni ) {
@@ -529,9 +495,9 @@ ComputeMdotNonConformalAlgorithm::execute()
         double ncFlux = 0.0;
         double ncPstabFlux = 0.0;
         for ( int j = 0; j < nDim; ++j ) {
-          const double cRhoVelocity = interpTogether*currentRhoVelocityBip[j] + om_interpTogether*currentDensityBip*currentVelocityBip[j];
-          const double oRhoVelocity = interpTogether*opposingRhoVelocityBip[j] + om_interpTogether*opposingDensityBip*opposingVelocityBip[j];
-          const double cRhoMeshVelocity = interpTogether*currentRhoMeshVelocityBip[j] + om_interpTogether*currentDensityBip*currentMeshVelocityBip[j];
+          const double cRhoVelocity = currentRhoVelocityBip[j];
+          const double oRhoVelocity = opposingRhoVelocityBip[j];
+          const double cRhoMeshVelocity = currentRhoMeshVelocityBip[j];
           ncFlux += 0.5*(cRhoVelocity*p_cNx[j] - oRhoVelocity*p_oNx[j]) - meshMotionFac_*cRhoMeshVelocity*p_cNx[j];
           const double cPstab = currentDpdxBip[j] - currentGjpBip[j];
           const double oPstab = opposingDpdxBip[j] - opposingGjpBip[j];

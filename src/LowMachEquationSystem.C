@@ -31,6 +31,7 @@
 #include "AssembleNodalGradEdgeAlgorithm.h"
 #include "AssembleNodalGradElemAlgorithm.h"
 #include "AssembleNodalGradBoundaryAlgorithm.h"
+#include "AssembleNodalGradPBoundaryAlgorithm.h"
 #include "AssembleNodalGradNonConformalAlgorithm.h"
 #include "AssembleNodalGradUAlgorithmDriver.h"
 #include "AssembleNodalGradUEdgeAlgorithm.h"
@@ -39,13 +40,13 @@
 #include "AssembleNodalGradUNonConformalAlgorithm.h"
 #include "AssembleNodeSolverAlgorithm.h"
 #include "AuxFunctionAlgorithm.h"
+#include "ComputeDynamicPressureAlgorithm.h"
 #include "ComputeMdotAlgorithmDriver.h"
 #include "ComputeMdotInflowAlgorithm.h"
 #include "ComputeMdotEdgeAlgorithm.h"
 #include "ComputeMdotElemAlgorithm.h"
 #include "ComputeMdotEdgeOpenAlgorithm.h"
 #include "ComputeMdotElemOpenAlgorithm.h"
-#include "ComputeMdotElemOpenPenaltyAlgorithm.h"
 #include "ComputeMdotNonConformalAlgorithm.h"
 #include "ComputeWallFrictionVelocityAlgorithm.h"
 #include "ComputeABLWallFrictionVelocityAlgorithm.h"
@@ -247,6 +248,10 @@ LowMachEquationSystem::~LowMachEquationSystem()
 {
   if ( NULL != surfaceForceAndMomentAlgDriver_ )
     delete surfaceForceAndMomentAlgDriver_;
+
+  std::vector<Algorithm *>::iterator iim;
+  for( iim=dynamicPressureAlg_.begin(); iim!=dynamicPressureAlg_.end(); ++iim )
+    delete *iim;
 }
 
 //--------------------------------------------------------------------------
@@ -442,29 +447,23 @@ LowMachEquationSystem::register_open_bc(
   bcDataAlg_.push_back(auxAlgUbc);
 
   // extract the value for user specified pressure and save off the AuxFunction
-  if ( !realm_.solutionOptions_->activateOpenMdotCorrection_ ) {
-    ScalarFieldType *pressureBC
-      = &(metaData.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure_bc"));
-    stk::mesh::put_field_on_mesh(*pressureBC, *part, nullptr);
-    
-    Pressure pSpec = userData.p_;
-    std::vector<double> userSpecPbc(1);
-    userSpecPbc[0] = pSpec.pressure_;
-    
-    // new it
-    ConstantAuxFunction *theAuxFuncPbc = new ConstantAuxFunction(0, 1, userSpecPbc);
-    
-    // bc data alg
-    AuxFunctionAlgorithm *auxAlgPbc
-      = new AuxFunctionAlgorithm(realm_, part,
-                                 pressureBC, theAuxFuncPbc,
-                                 stk::topology::NODE_RANK);
-    bcDataAlg_.push_back(auxAlgPbc);
-  }
-  else {
-    if ( userData.pSpec_ ) 
-      NaluEnv::self().naluOutputP0() << "LowMachEqs::register_open_bc Error: Pressure specified at an open bc while global correction algorithm has been activated" << std::endl;    
-  }
+  ScalarFieldType *pressureBC
+    = &(metaData.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure_bc"));
+  stk::mesh::put_field_on_mesh(*pressureBC, *part, nullptr);
+  
+  Pressure pSpec = userData.p_;
+  std::vector<double> userSpecPbc(1);
+  userSpecPbc[0] = pSpec.pressure_;
+  
+  // new it
+  ConstantAuxFunction *theAuxFuncPbc = new ConstantAuxFunction(0, 1, userSpecPbc);
+  
+  // bc data alg
+  AuxFunctionAlgorithm *auxAlgPbc
+    = new AuxFunctionAlgorithm(realm_, part,
+                               pressureBC, theAuxFuncPbc,
+                               stk::topology::NODE_RANK);
+  bcDataAlg_.push_back(auxAlgPbc);
 
   // mdot at open bc; register field
   MasterElement *meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(theTopo);
@@ -473,6 +472,19 @@ LowMachEquationSystem::register_open_bc(
     = &(metaData.declare_field<GenericFieldType>(static_cast<stk::topology::rank_t>(metaData.side_rank()), 
                                                  "open_mass_flow_rate"));
   stk::mesh::put_field_on_mesh(*mdotBip, *part, numScsBip, nullptr);
+
+  // pbip; always register (initial value of zero)
+  std::vector<double> zeroVec(numScsBip,0.0);
+  GenericFieldType *pBip 
+    = &(metaData.declare_field<GenericFieldType>(static_cast<stk::topology::rank_t>(metaData.side_rank()), 
+                                                 "dynamic_pressure"));
+  stk::mesh::put_field_on_mesh(*pBip, *part, numScsBip, zeroVec.data());
+  
+  // check for total bc to create an algorithm
+  if ( userData.useTotalP_ ) {
+    Algorithm * dynamicAlg = new ComputeDynamicPressureAlgorithm(realm_, part, realm_.realmUsesEdges_);
+    dynamicPressureAlg_.push_back(dynamicAlg);
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -637,6 +649,7 @@ LowMachEquationSystem::solve_and_update()
   double timeA, timeB;
   if ( isInit_ ) {
     timeA = NaluEnv::self().nalu_time();
+    compute_dynamic_pressure();
     continuityEqSys_->compute_projected_nodal_gradient();
     continuityEqSys_->computeMdotAlgDriver_->execute();
 
@@ -674,14 +687,6 @@ LowMachEquationSystem::solve_and_update()
     // compute velocity relative to mesh with new velocity
     realm_.compute_vrtm();
 
-    // activate global correction scheme
-    if ( realm_.solutionOptions_->activateOpenMdotCorrection_ ) {
-      timeA = NaluEnv::self().nalu_time();
-      continuityEqSys_->computeMdotAlgDriver_->execute();
-      timeB = NaluEnv::self().nalu_time();
-      continuityEqSys_->timerMisc_ += (timeB-timeA);
-    }
-
     // continuity assemble, load_complete and solve
     continuityEqSys_->assemble_and_solve(continuityEqSys_->pTmp_);
 
@@ -699,6 +704,7 @@ LowMachEquationSystem::solve_and_update()
     // compute mdot
     timeA = NaluEnv::self().nalu_time();
     continuityEqSys_->computeMdotAlgDriver_->execute();
+    compute_dynamic_pressure();
     timeB = NaluEnv::self().nalu_time();
     continuityEqSys_->timerMisc_ += (timeB-timeA);
 
@@ -726,7 +732,19 @@ LowMachEquationSystem::solve_and_update()
 
   // process CFL/Reynolds
   momentumEqSys_->cflReyAlgDriver_->execute();
- }
+}
+
+//--------------------------------------------------------------------------
+//-------- compute_dynamic_pressure ----------------------------------------
+//--------------------------------------------------------------------------
+void
+LowMachEquationSystem::compute_dynamic_pressure()
+{
+  std::vector<Algorithm *>::iterator ii;
+  for( ii=dynamicPressureAlg_.begin(); ii!=dynamicPressureAlg_.end(); ++ii ) {
+    (*ii)->execute();
+  }
+}
 
 //--------------------------------------------------------------------------
 //-------- post_adapt_work -------------------------------------------------
@@ -2616,79 +2634,77 @@ ContinuityEquationSystem::register_inflow_bc(
   const unsigned nDim = meta_data.spatial_dimension();
 
   // register boundary data; cont_velocity_bc
-  if ( !realm_.solutionOptions_->activateOpenMdotCorrection_ ) {
-    VectorFieldType *theBcField = &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "cont_velocity_bc"));
-    stk::mesh::put_field_on_mesh(*theBcField, *part, nDim, nullptr);
+  VectorFieldType *theBcField = &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "cont_velocity_bc"));
+  stk::mesh::put_field_on_mesh(*theBcField, *part, nDim, nullptr);
+  
+  // extract the value for user specified velocity and save off the AuxFunction
+  InflowUserData userData = inflowBCData.userData_;
+  std::string velocityName = "velocity";
+  UserDataType theDataType = get_bc_data_type(userData, velocityName);
+  
+  AuxFunction *theAuxFunc = NULL;
+  if ( CONSTANT_UD == theDataType ) {
+    Velocity ux = userData.u_;
+    std::vector<double> userSpec(nDim);
+    userSpec[0] = ux.ux_;
+    userSpec[1] = ux.uy_;
+    if ( nDim > 2)
+      userSpec[2] = ux.uz_;
     
-    // extract the value for user specified velocity and save off the AuxFunction
-    InflowUserData userData = inflowBCData.userData_;
-    std::string velocityName = "velocity";
-    UserDataType theDataType = get_bc_data_type(userData, velocityName);
-    
-    AuxFunction *theAuxFunc = NULL;
-    if ( CONSTANT_UD == theDataType ) {
-      Velocity ux = userData.u_;
-      std::vector<double> userSpec(nDim);
-      userSpec[0] = ux.ux_;
-      userSpec[1] = ux.uy_;
-      if ( nDim > 2)
-        userSpec[2] = ux.uz_;
-      
-      // new it
-      theAuxFunc = new ConstantAuxFunction(0, nDim, userSpec);    
+    // new it
+    theAuxFunc = new ConstantAuxFunction(0, nDim, userSpec);    
+  }
+  else if ( FUNCTION_UD == theDataType ) {
+    // extract the name/params
+    std::string fcnName = get_bc_function_name(userData, velocityName);
+    std::vector<double> theParams = get_bc_function_params(userData, velocityName);
+    if ( theParams.size() == 0 )
+      NaluEnv::self().naluOutputP0() << "function parameter size is zero" << std::endl;
+    // switch on the name found...
+    if ( fcnName == "convecting_taylor_vortex" ) {
+      theAuxFunc = new ConvectingTaylorVortexVelocityAuxFunction(0,nDim);
     }
-    else if ( FUNCTION_UD == theDataType ) {
-      // extract the name/params
-      std::string fcnName = get_bc_function_name(userData, velocityName);
-      std::vector<double> theParams = get_bc_function_params(userData, velocityName);
-      if ( theParams.size() == 0 )
-        NaluEnv::self().naluOutputP0() << "function parameter size is zero" << std::endl;
-      // switch on the name found...
-      if ( fcnName == "convecting_taylor_vortex" ) {
-        theAuxFunc = new ConvectingTaylorVortexVelocityAuxFunction(0,nDim);
-      }
-      else if ( fcnName == "SteadyTaylorVortex" ) {
-        theAuxFunc = new SteadyTaylorVortexVelocityAuxFunction(0,nDim);
-      }
-      else if ( fcnName == "VariableDensity" ) {
-        theAuxFunc = new VariableDensityVelocityAuxFunction(0,nDim);
-      }
-      else if ( fcnName == "VariableDensityNonIso" ) {
-        theAuxFunc = new VariableDensityVelocityAuxFunction(0,nDim);
-      }
-      else if ( fcnName == "kovasznay") {
-        theAuxFunc = new KovasznayVelocityAuxFunction(0,nDim);
-      }
-      else if ( fcnName == "TaylorGreen") {
-        theAuxFunc = new TaylorGreenVelocityAuxFunction(0, nDim);
-      }
-      else if ( fcnName == "BoussinesqNonIso") {
-        theAuxFunc = new BoussinesqNonIsoVelocityAuxFunction(0, nDim);
-      }
-      else {
-        throw std::runtime_error("ContEquationSystem::register_inflow_bc: limited functions supported");
-      }
+    else if ( fcnName == "SteadyTaylorVortex" ) {
+      theAuxFunc = new SteadyTaylorVortexVelocityAuxFunction(0,nDim);
+    }
+    else if ( fcnName == "VariableDensity" ) {
+      theAuxFunc = new VariableDensityVelocityAuxFunction(0,nDim);
+    }
+    else if ( fcnName == "VariableDensityNonIso" ) {
+      theAuxFunc = new VariableDensityVelocityAuxFunction(0,nDim);
+    }
+    else if ( fcnName == "kovasznay") {
+      theAuxFunc = new KovasznayVelocityAuxFunction(0,nDim);
+    }
+    else if ( fcnName == "TaylorGreen") {
+      theAuxFunc = new TaylorGreenVelocityAuxFunction(0, nDim);
+    }
+    else if ( fcnName == "BoussinesqNonIso") {
+      theAuxFunc = new BoussinesqNonIsoVelocityAuxFunction(0, nDim);
     }
     else {
-      throw std::runtime_error("ContEquationSystem::register_inflow_bc: only constant and user function supported");
+      throw std::runtime_error("ContEquationSystem::register_inflow_bc: limited functions supported");
     }
-
-    
-    // bc data alg
-    AuxFunctionAlgorithm *auxAlg
-      = new AuxFunctionAlgorithm(realm_, part,
-                                 theBcField, theAuxFunc,
-                                 stk::topology::NODE_RANK);
-    
-    // how to populate the field?
-    if ( userData.externalData_ ) {
-      // xfer will handle population; only need to populate the initial value
-      realm_.initCondAlg_.push_back(auxAlg);
-    }
-    else {
-      // put it on bcData
-      bcDataAlg_.push_back(auxAlg);
-    }
+  }
+  else {
+    throw std::runtime_error("ContEquationSystem::register_inflow_bc: only constant and user function supported");
+  }
+  
+  
+  // bc data alg
+  AuxFunctionAlgorithm *auxAlg
+    = new AuxFunctionAlgorithm(realm_, part,
+                               theBcField, theAuxFunc,
+                               stk::topology::NODE_RANK);
+  
+  // how to populate the field?
+  if ( userData.externalData_ ) {
+    // xfer will handle population; only need to populate the initial value
+    realm_.initCondAlg_.push_back(auxAlg);
+  }
+  else {
+    // put it on bcData
+    bcDataAlg_.push_back(auxAlg);
   }
 
   // non-solver; contribution to Gjp; allow for element-based shifted
@@ -2770,11 +2786,9 @@ ContinuityEquationSystem::register_open_bc(
 
   // register boundary data
   stk::mesh::MetaData &meta_data = realm_.meta_data();
-  ScalarFieldType *pressureBC = NULL;
-  if ( !realm_.solutionOptions_->activateOpenMdotCorrection_ ) {
-    pressureBC = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure_bc"));
+  ScalarFieldType *pressureBC 
+    = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure_bc"));
     stk::mesh::put_field_on_mesh(*pressureBC, *part, nullptr);
-  }
 
   VectorFieldType &dpdxNone = dpdx_->field_of_state(stk::mesh::StateNone);
 
@@ -2784,8 +2798,8 @@ ContinuityEquationSystem::register_open_bc(
       = assembleNodalGradAlgDriver_->algMap_.find(algType);
     if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
       Algorithm *theAlg 
-        = new AssembleNodalGradBoundaryAlgorithm(realm_, part, pressureBC == NULL ? pressure_ : pressureBC, 
-                                                 &dpdxNone, edgeNodalGradient_);
+        = new AssembleNodalGradPBoundaryAlgorithm(realm_, part, pressureBC == NULL ? pressure_ : pressureBC, 
+                                                  &dpdxNone, edgeNodalGradient_);
       assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
     }
     else {
@@ -2820,19 +2834,20 @@ ContinuityEquationSystem::register_open_bc(
     }
   }
   else {
+
+    // shared non-solver elem alg; compute open mdot
+    std::map<AlgorithmType, Algorithm *>::iterator itm =
+      computeMdotAlgDriver_->algMap_.find(algType);
+    if ( itm == computeMdotAlgDriver_->algMap_.end() ) {
+      ComputeMdotElemOpenAlgorithm *theAlg
+        = new ComputeMdotElemOpenAlgorithm(realm_, part);
+      computeMdotAlgDriver_->algMap_[algType] = theAlg;
+    }
+    else {
+      itm->second->partVec_.push_back(part);
+    }
     
     if ( realm_.solutionOptions_->useConsolidatedBcSolverAlg_ ) {      
-      // non-solver elem alg; compute open mdot (transition to penalty approach)
-      std::map<AlgorithmType, Algorithm *>::iterator itm =
-        computeMdotAlgDriver_->algMap_.find(algType);
-      if ( itm == computeMdotAlgDriver_->algMap_.end() ) {
-        ComputeMdotElemOpenPenaltyAlgorithm *theAlg
-          = new ComputeMdotElemOpenPenaltyAlgorithm(realm_, part);
-        computeMdotAlgDriver_->algMap_[algType] = theAlg;
-      }
-      else {
-        itm->second->partVec_.push_back(part);
-      }
       
       // solver for continuity open
       auto& solverAlgMap = solverAlgDriver_->solverAlgorithmMap_;
@@ -2856,19 +2871,7 @@ ContinuityEquationSystem::register_open_bc(
         
       }
     }
-    else {
-      // non-solver elem alg; compute open mdot
-      std::map<AlgorithmType, Algorithm *>::iterator itm =
-        computeMdotAlgDriver_->algMap_.find(algType);
-      if ( itm == computeMdotAlgDriver_->algMap_.end() ) {
-        ComputeMdotElemOpenAlgorithm *theAlg
-          = new ComputeMdotElemOpenAlgorithm(realm_, part);
-        computeMdotAlgDriver_->algMap_[algType] = theAlg;
-      }
-      else {
-        itm->second->partVec_.push_back(part);
-      }
-      
+    else {      
       // solver; lhs
       std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi =
         solverAlgDriver_->solverAlgMap_.find(algType);
@@ -3173,8 +3176,7 @@ ContinuityEquationSystem::manage_projected_nodal_gradient(
   // fill the map for expected boundary condition names...
   projectedNodalGradEqs_->set_data_map(INFLOW_BC, "pressure");
   projectedNodalGradEqs_->set_data_map(WALL_BC, "pressure");
-  projectedNodalGradEqs_->set_data_map(OPEN_BC, 
-   realm_.solutionOptions_->activateOpenMdotCorrection_ ? "pressure" : "pressure_bc");
+  projectedNodalGradEqs_->set_data_map(OPEN_BC, "pressure_bc");
   projectedNodalGradEqs_->set_data_map(SYMMETRY_BC, "pressure");
 }
 

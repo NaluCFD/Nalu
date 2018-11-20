@@ -65,6 +65,7 @@ private:
   GenericFieldType *Gjui_{nullptr};
   VectorFieldType *velocityNp1_{nullptr};
   VectorFieldType *velocityRTM_{nullptr};
+  VectorFieldType *meshVelocity_{nullptr};
   VectorFieldType *coordinates_{nullptr};
   ScalarFieldType *density_{nullptr};
   GenericFieldType *exposedAreaVec_{nullptr};
@@ -75,10 +76,8 @@ private:
   const double alphaUpw_;
   const double om_alphaUpw_;
   const double hoUpwind_;
-  const double nfEntrain_;
-  const double om_nfEntrain_;
   const double includeDivU_;
-  const double nocFac_;
+  const double meshVelocityCorrection_;
   const bool shiftedGradOp_;
   const double small_{1.0e-16};
 
@@ -91,9 +90,7 @@ private:
 
   /// Shape functions
   AlignedViewType<DoubleType[BcAlgTraits::numFaceIp_][BcAlgTraits::nodesPerFace_]> vf_shape_function_ {"vf_shape_func"};
-  AlignedViewType<DoubleType[BcAlgTraits::numScsIp_][BcAlgTraits::nodesPerElement_]> v_shape_function_ {"v_shape_func"};
   AlignedViewType<DoubleType[BcAlgTraits::numFaceIp_][BcAlgTraits::nodesPerFace_]> vf_adv_shape_function_ {"vf_adv_shape_function"};
-  AlignedViewType<DoubleType[BcAlgTraits::numScsIp_][BcAlgTraits::nodesPerElement_]> v_adv_shape_function_ {"v_adv_shape_func"};
 };
 
 }  // nalu

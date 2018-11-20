@@ -323,7 +323,6 @@ class Realm {
     const std::string dofname);
 
   // pressure poisson nuance
-  double get_mdot_interp();
   bool get_cvfem_shifted_mdot();
   bool get_cvfem_reduced_sens_poisson();
   

@@ -1027,7 +1027,7 @@ intensity leaving a diffuse surface in all directions is given by
 
    I\left(s\right) = \frac{1}{\pi} \left[ \tau \sigma T_\infty^4
                    + \epsilon \sigma T_w^4
-                   + \left(1 - \epsilon - \tau \right) K \right] ,
+                   + \left(1 - \epsilon - \tau \right) H \right] ,
 
 where :math:`\epsilon` is the total normal emissivity of the surface,
 :math:`\tau` is the transmissivity of the surface, :math:`T_w` is the

@@ -34,8 +34,6 @@ ContinuityAdvElemKernel<AlgTraits>::ContinuityAdvElemKernel(
     shiftMdot_(solnOpts.cvfemShiftMdot_),
     shiftPoisson_(solnOpts.get_shifted_grad_op("pressure")),
     reducedSensitivities_(solnOpts.cvfemReducedSensPoisson_),
-    interpTogether_(solnOpts.get_mdot_interp()),
-    om_interpTogether_(1.0 - interpTogether_),
     lrscv_(sierra::nalu::MasterElementRepo::get_surface_master_element(AlgTraits::topo_)->adjacentNodes())
 {
   // Save of required fields
@@ -96,7 +94,6 @@ ContinuityAdvElemKernel<AlgTraits>::execute(
   ScratchViews<DoubleType>& scratchViews)
 {
   // Work arrays (fixed size)
-  NALU_ALIGNED DoubleType w_uIp     [AlgTraits::nDim_];
   NALU_ALIGNED DoubleType w_rho_uIp [AlgTraits::nDim_];
   NALU_ALIGNED DoubleType w_Gpdx_Ip [AlgTraits::nDim_];
   NALU_ALIGNED DoubleType w_dpdxIp  [AlgTraits::nDim_];
@@ -120,7 +117,6 @@ ContinuityAdvElemKernel<AlgTraits>::execute(
 
     DoubleType rhoIp = 0.0;
     for (int j = 0; j < AlgTraits::nDim_; ++j) {
-      w_uIp[j] = 0.0;
       w_rho_uIp[j] = 0.0;
       w_Gpdx_Ip[j] = 0.0;
       w_dpdxIp[j] = 0.0;
@@ -136,7 +132,6 @@ ContinuityAdvElemKernel<AlgTraits>::execute(
       DoubleType lhsfac = 0.0;
       for (int j = 0; j < AlgTraits::nDim_; ++j) {
         w_Gpdx_Ip[j] += r * v_Gpdx(ic, j);
-        w_uIp[j]     += r * v_velocity(ic, j);
         w_rho_uIp[j] += r * nodalRho * v_velocity(ic, j);
         w_dpdxIp[j]  += v_dndx(ip, ic, j) * nodalPressure;
         lhsfac += -v_dndx_lhs(ip, ic, j) * v_scs_areav(ip, j);
@@ -149,8 +144,7 @@ ContinuityAdvElemKernel<AlgTraits>::execute(
     // assemble mdot
     DoubleType mdot = 0.0;
     for (int j = 0; j < AlgTraits::nDim_; ++j) {
-      mdot += (interpTogether_ * w_rho_uIp[j] + om_interpTogether_ * rhoIp * w_uIp[j] -
-               projTimeScale_ * ( w_dpdxIp[j] - w_Gpdx_Ip[j])) * v_scs_areav(ip,j);
+      mdot += (w_rho_uIp[j] - projTimeScale_*(w_dpdxIp[j] - w_Gpdx_Ip[j]))*v_scs_areav(ip,j);
     }
 
     // residuals

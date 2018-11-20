@@ -124,10 +124,6 @@ ComputeMdotAlgorithmDriver::pre_work()
   solnOpts_.mdotAlgAccumulation_ = 0.0;
   solnOpts_.mdotAlgInflow_ = 0.0;
   solnOpts_.mdotAlgOpen_ = 0.0;
-
-  // also global correction algorithm
-  solnOpts_.mdotAlgOpenCorrection_ = 0.0;
-  solnOpts_.mdotAlgOpenIpCount_= 0.0;
 }
 
 //--------------------------------------------------------------------------
@@ -139,7 +135,7 @@ ComputeMdotAlgorithmDriver::post_work()
   // compute drho/dt * scv * dt 
   double accumulation = hasMass_ ? compute_accumulation() : 0.0;
   
-  // parallel communicate; mdot and accumulation; mdot calculations in execuate provided these values
+  // parallel communicate; mdot and accumulation; mdot calculations in execute provided these values
   double l_sum[3] = {accumulation, solnOpts_.mdotAlgInflow_, solnOpts_.mdotAlgOpen_};
   double g_sum[3] = {};
   stk::ParallelMachine comm = NaluEnv::self().parallel_comm();
@@ -149,18 +145,6 @@ ComputeMdotAlgorithmDriver::post_work()
   solnOpts_.mdotAlgAccumulation_ = g_sum[0];
   solnOpts_.mdotAlgInflow_ = g_sum[1];
   solnOpts_.mdotAlgOpen_ = g_sum[2];
-
-  // deal with global correction algorithm
-  if ( solnOpts_.activateOpenMdotCorrection_ ) {
-    size_t l_ip = solnOpts_.mdotAlgOpenIpCount_;
-    size_t g_ip = 0;
-    stk::all_reduce_sum(comm, &l_ip, &g_ip, 1);
-    solnOpts_.mdotAlgOpenIpCount_ = g_ip;
-    const double finalCorrection = (g_sum[0] + g_sum[1] + g_sum[2])/g_ip;
-    solnOpts_.mdotAlgOpenCorrection_ = finalCorrection;
-    solnOpts_.mdotAlgOpenIpCount_ = g_ip;
-    correct_open_mdot(finalCorrection);
-  }
 }
 
 //--------------------------------------------------------------------------
@@ -292,55 +276,6 @@ ComputeMdotAlgorithmDriver::compute_accumulation()
 }
 
 //--------------------------------------------------------------------------
-//-------- correct_open_mdot -----------------------------------------------
-//--------------------------------------------------------------------------
-void
-ComputeMdotAlgorithmDriver::correct_open_mdot(const double finalCorrection)
-{
-  // extract field
-  stk::mesh::MetaData & metaData = realm_.meta_data();
-  GenericFieldType *openMassFlowRate = metaData.get_field<GenericFieldType>(metaData.side_rank(), "open_mass_flow_rate");
-  if ( NULL != openMassFlowRate ) {
-    
-    double mdotSum = 0.0;
-
-    // selector (everywhere density lives, locally owned and active) 
-    stk::mesh::Selector s_locally_owned = stk::mesh::selectField(*openMassFlowRate)    
-      & !(realm_.get_inactive_selector());
-    
-    stk::mesh::BucketVector const& face_buckets =
-      realm_.get_buckets( metaData.side_rank(), s_locally_owned );
-    for ( stk::mesh::BucketVector::const_iterator ib = face_buckets.begin();
-          ib != face_buckets.end() ; ++ib ) {
-      stk::mesh::Bucket & b = **ib ;
-      
-      // face master element
-      MasterElement *meFC = MasterElementRepo::get_surface_master_element(b.topology());
-      const int numScsBip = meFC->numIntPoints_;
-      
-      const stk::mesh::Bucket::size_type length   = b.size();
-      
-      for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
-        
-        double * mdot    = stk::mesh::field_data(*openMassFlowRate, b, k);
-
-        // loop over boundary ips and correct open mdot
-        for ( int ip = 0; ip < numScsBip; ++ip ) {
-          mdot[ip] -= finalCorrection;
-          mdotSum += mdot[ip];
-        }
-      }
-    }
-
-    // provide post corrected mdot
-    double g_mdotSum = 0.0;
-    stk::ParallelMachine comm = NaluEnv::self().parallel_comm();
-    stk::all_reduce_sum(comm, &mdotSum, &g_mdotSum, 1);
-    solnOpts_.mdotAlgOpenPost_ = g_mdotSum;
-  }
-}
-
-//--------------------------------------------------------------------------
 //-------- provide_output -----------------------------------------------
 //--------------------------------------------------------------------------
 void
@@ -356,14 +291,6 @@ ComputeMdotAlgorithmDriver::provide_output()
   NaluEnv::self().naluOutputP0() << "Integrated inflow:    " << std::setprecision (16) << integratedInflow << std::endl;
   NaluEnv::self().naluOutputP0() << "Integrated open:      " << std::setprecision (16) << integratedOpen << std::endl;
   NaluEnv::self().naluOutputP0() << "Total mass closure:   " << std::setprecision (6) << totalMassClosure << std::endl;
-  if ( solnOpts_.activateOpenMdotCorrection_ ) {
-    const size_t ipCount = solnOpts_.mdotAlgOpenIpCount_;
-    const double ipCorrection = solnOpts_.mdotAlgOpenCorrection_;
-    NaluEnv::self().naluOutputP0() << "A mass correction of: " << ipCorrection
-                                   << " occurred on: " << ipCount
-                                   << " boundary integration points: "  << std::endl;
-    NaluEnv::self().naluOutputP0() << "Post-corrected integrated open: " << std::setprecision (16) << solnOpts_.mdotAlgOpenPost_ << std::endl;
-  }
 }
 
 } // namespace nalu

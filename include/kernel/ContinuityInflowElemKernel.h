@@ -58,8 +58,6 @@ private:
 
   const bool useShifted_;
   double projTimeScale_;
-  const double interpTogether_;
-  const double om_interpTogether_;
 
   // Integration point to node mapping 
   const int *ipNodeMap_{nullptr};

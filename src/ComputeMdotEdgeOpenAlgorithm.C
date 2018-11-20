@@ -45,6 +45,7 @@ ComputeMdotEdgeOpenAlgorithm::ComputeMdotEdgeOpenAlgorithm(
     pressure_(NULL),
     density_(NULL),
     exposedAreaVec_(NULL),
+    dynamicPressure_(NULL),
     openMassFlowRate_(NULL),
     pressureBc_(NULL)
 {
@@ -59,8 +60,9 @@ ComputeMdotEdgeOpenAlgorithm::ComputeMdotEdgeOpenAlgorithm(
   pressure_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure");
   density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
   exposedAreaVec_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");
+  dynamicPressure_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "dynamic_pressure");
   openMassFlowRate_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "open_mass_flow_rate");
-  pressureBc_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, realm_.solutionOptions_->activateOpenMdotCorrection_ ? "pressure" : "pressure_bc");
+  pressureBc_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure_bc");
 }
 
 //--------------------------------------------------------------------------
@@ -86,22 +88,14 @@ ComputeMdotEdgeOpenAlgorithm::execute()
   const std::string dofName = "pressure";
   const double nocFac
     = (realm_.get_noc_usage(dofName) == true) ? 1.0 : 0.0;
-
-  // extract global algorithm options, if active
-  const double pstabFac = realm_.solutionOptions_->activateOpenMdotCorrection_ 
-    ? 0.0
-    : 1.0;
-
-  // time step; scale projection time scale by pstabFac (no divide by here)
+  
+  // projection time scale based on time step
   const double dt = realm_.get_time_step();
   const double gamma1 = realm_.get_gamma1();
-  const double projTimeScale = dt/gamma1*pstabFac;
-
-  // interpolation for mdot uses nearest node, therefore, n/a
+  const double projTimeScale = dt/gamma1;
 
   // set accumulation variables
   double mdotOpen = 0.0;
-  size_t mdotOpenIpCount = 0;
 
   // deal with state
   ScalarFieldType &densityNp1 = density_->field_of_state(stk::mesh::StateNP1);
@@ -130,12 +124,11 @@ ComputeMdotEdgeOpenAlgorithm::execute()
     
     const stk::mesh::Bucket::size_type length   = b.size();
 
-    mdotOpenIpCount += length*num_face_nodes;
-
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
 
       // pointer to face data
       const double * areaVec = stk::mesh::field_data(*exposedAreaVec_, b, k);
+      const double * dynamicP = stk::mesh::field_data(*dynamicPressure_, b, k);
       double * mdot = stk::mesh::field_data(*openMassFlowRate_, b, k);
 
       // extract the connected element to this exposed face; should be single in size!
@@ -171,7 +164,7 @@ ComputeMdotEdgeOpenAlgorithm::execute()
         const double * GpdxR =  stk::mesh::field_data(*Gpdx_, nodeR );
         const double * vrtm =  stk::mesh::field_data(*velocityRTM_, nodeR );
         const double densityR = *stk::mesh::field_data(densityNp1, nodeR );
-        const double bcPressure = *stk::mesh::field_data(*pressureBc_, nodeR );
+        const double bcPressure = *stk::mesh::field_data(*pressureBc_, nodeR ) - dynamicP[ip];
 
         // offset for bip area vector
         const int faceOffSet = ip*nDim;
@@ -209,7 +202,6 @@ ComputeMdotEdgeOpenAlgorithm::execute()
   }
   // scatter back to solution options; not thread safe
   realm_.solutionOptions_->mdotAlgOpen_ += mdotOpen;
-  realm_.solutionOptions_->mdotAlgOpenIpCount_ += mdotOpenIpCount;
 }
 
 } // namespace nalu

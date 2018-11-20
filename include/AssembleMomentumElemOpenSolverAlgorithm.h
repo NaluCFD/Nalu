@@ -37,9 +37,10 @@ public:
   virtual void execute();
 
   const double includeDivU_;
-  const bool meshMotion_;
+  const double meshVelocityCorrection_;
 
   VectorFieldType *velocityRTM_;
+  VectorFieldType *meshVelocity_;
   VectorFieldType *velocity_;
   GenericFieldType *dudx_;
   VectorFieldType *coordinates_;
