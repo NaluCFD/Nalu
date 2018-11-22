@@ -118,7 +118,7 @@ equation. The enthalpy equation solved in wind energy problems is shown below
    :label: abl_enth
 
    \frac{\partial}{\partial t} \left(\bar{\rho}\, \widetilde{T}\right) +
-   \frac{\partial}{\partial t} \left(\bar{\rho}\, \widetilde{u}_j \widetilde{T} \right) = - \frac{\partial}{\partial x_j} q_j
+   \frac{\partial}{\partial x_j} \left(\bar{\rho}\, \widetilde{u}_j \widetilde{T} \right) = - \frac{\partial}{\partial x_j} q_j
 
 It is noted here that the terms :math:`\hat{q}_j` (Eq. :eq:`abl_pottemp`) and
 :math:`q_j` (Eq. :eq:`abl_enth`) are not equivalent and must be scaled
