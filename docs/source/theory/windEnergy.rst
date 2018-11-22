@@ -88,7 +88,7 @@ as shown below
    :label: abl_pottemp
 
    \frac{\partial}{\partial t} \left(\bar{\rho}\, \widetilde{\theta}\right) +
-   \frac{\partial}{\partial t} \left(\bar{\rho}\, \widetilde{u}_j \widetilde{\theta} \right) = - \frac{\partial}{\partial x_j} \hat{q}_j
+   \frac{\partial}{\partial x_j} \left(\bar{\rho}\, \widetilde{u}_j \widetilde{\theta} \right) = - \frac{\partial}{\partial x_j} \hat{q}_j
 
 where, :math:`\hat{q}_j` represents the temperature transport due to molecular and SFS
 turbulence effects. Due to the high Reynolds number associated with ABL flows,
