@@ -267,7 +267,7 @@ class Realm {
   virtual void pre_timestep_work();
   virtual void output_banner();
   virtual void advance_time_step();
- 
+  virtual bool active_time_step();
   virtual void initial_work();
   
   void set_global_id();
@@ -548,7 +548,7 @@ class Realm {
   std::vector<Transfer *> ioTransferVec_;
   std::vector<Transfer *> externalDataTransferVec_;
   void augment_transfer_vector(Transfer *transfer, const std::string transferObjective, Realm *toRealm);
-  void process_multi_physics_transfer();
+  void process_multi_physics_transfer(bool forcedXfer = false);
   void process_initialization_transfer();
   void process_io_transfer();
   void process_external_data_transfer();

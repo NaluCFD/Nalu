@@ -1879,10 +1879,9 @@ void
 Realm::advance_time_step()
 {
   // leave if we do not need to solve
-  const int timeStepCount = get_time_step_count();
-  const bool advanceMe = (timeStepCount % solveFrequency_ ) == 0 ? true : false;
-  if ( !advanceMe )
+  if ( !active_time_step() )
     return;
+
   NaluEnv::self().naluOutputP0() << name_ << "::advance_time_step() " << std::endl;
 
   NaluEnv::self().naluOutputP0() << "NLI"
@@ -1941,6 +1940,17 @@ Realm::advance_time_step()
     }
   }
 
+}
+
+//--------------------------------------------------------------------------
+//-------- active_time_step ------------------------------------------------
+//--------------------------------------------------------------------------
+bool
+Realm::active_time_step()
+{
+  const int timeStepCount = get_time_step_count();
+  const bool activeTimeStep = (timeStepCount % solveFrequency_ ) == 0 ? true : false;
+  return activeTimeStep;
 }
 
 //--------------------------------------------------------------------------
@@ -4480,17 +4490,21 @@ Realm::augment_transfer_vector(Transfer *transfer, const std::string transferObj
 //-------- process_multi_physics_transfer ----------------------------------
 //--------------------------------------------------------------------------
 void
-Realm::process_multi_physics_transfer()
+Realm::process_multi_physics_transfer(
+  const bool forcedXfer)
 {
   if ( !hasMultiPhysicsTransfer_ )
     return;
-
-  double timeXfer = -NaluEnv::self().nalu_time();
-  std::vector<Transfer *>::iterator ii;
-  for( ii=multiPhysicsTransferVec_.begin(); ii!=multiPhysicsTransferVec_.end(); ++ii )
-    (*ii)->execute();
-  timeXfer += NaluEnv::self().nalu_time();
-  timerTransferExecute_ += timeXfer;
+  
+  // only process if an active time step, however, calling class can enforce
+  if ( active_time_step() || forcedXfer ) {
+    double timeXfer = -NaluEnv::self().nalu_time();
+    std::vector<Transfer *>::iterator ii;
+    for( ii=multiPhysicsTransferVec_.begin(); ii!=multiPhysicsTransferVec_.end(); ++ii )
+      (*ii)->execute();
+    timeXfer += NaluEnv::self().nalu_time();
+    timerTransferExecute_ += timeXfer;
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -5028,7 +5042,7 @@ std::string Realm::get_quad_type() const
 //-------- mesh_changed() --------------------------------------------------
 //--------------------------------------------------------------------------
 bool
- Realm::mesh_changed() const
+Realm::mesh_changed() const
 {
   // for now, adaptivity only; load-balance in the future?
   return solutionOptions_->activateAdaptivity_;

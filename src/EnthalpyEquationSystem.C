@@ -825,6 +825,12 @@ EnthalpyEquationSystem::register_wall_bc(
     ScalarFieldType *robinCouplingParameter = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "robin_coupling_parameter"));
     stk::mesh::put_field_on_mesh(*robinCouplingParameter, *part, nullptr);
 
+    // provide restart fields
+    realm_.augment_restart_variable_list(referenceTemperature->name());
+    realm_.augment_restart_variable_list(heatTransferCoeff->name());
+    realm_.augment_restart_variable_list(normalHeatFlux->name());
+    realm_.augment_restart_variable_list(robinCouplingParameter->name());
+    
     // create the driver
     if ( NULL == assembleWallHeatTransferAlgDriver_ ) {
       assembleWallHeatTransferAlgDriver_ = new AssembleWallHeatTransferAlgorithmDriver(realm_);
