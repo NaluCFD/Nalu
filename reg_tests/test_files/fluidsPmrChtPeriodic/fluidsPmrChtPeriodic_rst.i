@@ -77,7 +77,7 @@ transfers:
 realms:
 
   - name: pmrRealm
-    mesh: ../../mesh/pmrA_mks.g
+    mesh: pmr.rst
     use_edges: yes 
     solve_frequency: 10
     check_for_missing_bcs: yes
@@ -140,7 +140,7 @@ realms:
             stefan_boltzmann: 5.6704e-8
 
     output:
-      output_data_base_name: pmr.e
+      output_data_base_name: pmr.e-s002
       output_frequency: 5
       output_node_set: no
       output_variables:
@@ -154,12 +154,13 @@ realms:
        - assembled_boundary_area
 
     restart:
-      restart_data_base_name: pmr.rst
+      restart_data_base_name: pmr.rst-s002
       restart_frequency: 5
       restart_start: 5
+      restart_time: 1.208
 
   - name: fluidRealm
-    mesh: ../../mesh/pmrA_mks_R1n.g
+    mesh: fluids.rst
     use_edges: yes 
     check_for_missing_bcs: yes
 
@@ -273,7 +274,7 @@ realms:
             enthalpy: yes 
 
     output:
-      output_data_base_name: fluids.e
+      output_data_base_name: fluids.e-s002
       output_frequency: 5
       output_node_set: no
       output_variables:
@@ -286,12 +287,13 @@ realms:
        - reference_temperature
 
     restart:
-      restart_data_base_name: fluids.rst
+      restart_data_base_name: fluids.rst-s002
       restart_frequency: 5
       restart_start: 5
+      restart_time: 1.208
 
   - name: thermalRealm
-    mesh: ../../mesh/jacket_s2.g
+    mesh: thermal.rst
     use_edges: no
     check_for_missing_bcs: yes
 
@@ -364,7 +366,7 @@ realms:
             convergence_tolerance: 1.e-5
 
     output:
-      output_data_base_name: thermal.e
+      output_data_base_name: thermal.e-s002
       output_frequency: 5
       output_node_set: no 
       output_variables:
@@ -378,15 +380,16 @@ realms:
        - reference_temperature
 
     restart:
-      restart_data_base_name: thermal.rst
-      restart_frequency: 5
+      restart_data_base_name: thermal.rst-s002
+      restart_frequency: 5 
       restart_start: 5
-
+      restart_time: 1.208
+    
 Time_Integrators:
   - StandardTimeIntegrator:
       name: ti_1
       start_time: 0
-      termination_step_count: 21 
+      termination_step_count: 31
       time_step: 1.0e-1
       time_stepping_type: adaptive
       time_step_count: 0
