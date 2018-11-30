@@ -123,8 +123,6 @@ class Realm {
   void enforce_bc_on_exposed_faces();
   void setup_initial_conditions();
   void setup_property();
-  void extract_universal_constant( 
-    const std::string name, double &value, const bool useDefault);
   void augment_property_map(
     PropertyIdentifier propID,
     ScalarFieldType *theField);
@@ -331,9 +329,9 @@ class Realm {
   bool get_nc_alg_include_pstab();
   bool get_nc_alg_current_normal();
 
-  PropertyEvaluator *
-  get_material_prop_eval(
-    const PropertyIdentifier thePropID);
+  void get_material_prop_eval(
+    const PropertyIdentifier thePropID,
+    std::vector<PropertyEvaluator*> &propEvalVec);
 
   bool is_turbulent();
   void is_turbulent(
