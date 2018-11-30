@@ -40,7 +40,7 @@ class Transfers;
 
 class DataProbeInfo {
 public:
-  DataProbeInfo() { }
+  DataProbeInfo() {}
   ~DataProbeInfo() {}
 
   // for each type of probe, e.g., line of site, hold some stuff
