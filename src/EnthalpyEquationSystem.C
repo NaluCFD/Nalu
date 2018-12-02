@@ -200,6 +200,12 @@ EnthalpyEquationSystem::EnthalpyEquationSystem(
   if ( managePNG_ ) {
     manage_projected_nodal_gradient(eqSystems);
   }
+
+  // protect against multi-material
+  std::vector<PropertyEvaluator *> enthEvalVec;
+  realm_.get_material_prop_eval(ENTHALPY_ID, enthEvalVec);
+  if ( enthEvalVec.size() > 1 )
+    throw std::runtime_error("EnthalpyElemSrcTerms::Error: Only a single material gas phase is currently supported");
 }
 
 //--------------------------------------------------------------------------
@@ -600,13 +606,13 @@ EnthalpyEquationSystem::register_interior_algorithm(
   }
 
   // extract material prop evaluation for enthalpy and create alg to compute h
-  PropertyEvaluator *thePropEval
-    = realm_.get_material_prop_eval(ENTHALPY_ID);
-
+  std::vector<PropertyEvaluator *> enthEvalVec;
+  realm_.get_material_prop_eval(ENTHALPY_ID, enthEvalVec);
+ 
+  // create property algorithm; FIXME: uses first material block (enforces size of 1)
   TemperaturePropAlgorithm *auxAlg
-    = new TemperaturePropAlgorithm( realm_, part, &enthalpyNp1, thePropEval);
+    = new TemperaturePropAlgorithm( realm_, part, &enthalpyNp1, enthEvalVec[0]);
   enthalpyFromTemperatureAlg_.push_back(auxAlg);
-
 }
 
 //--------------------------------------------------------------------------
@@ -825,6 +831,12 @@ EnthalpyEquationSystem::register_wall_bc(
     ScalarFieldType *robinCouplingParameter = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "robin_coupling_parameter"));
     stk::mesh::put_field_on_mesh(*robinCouplingParameter, *part, nullptr);
 
+    // provide restart fields
+    realm_.augment_restart_variable_list(referenceTemperature->name());
+    realm_.augment_restart_variable_list(heatTransferCoeff->name());
+    realm_.augment_restart_variable_list(normalHeatFlux->name());
+    realm_.augment_restart_variable_list(robinCouplingParameter->name());
+    
     // create the driver
     if ( NULL == assembleWallHeatTransferAlgDriver_ ) {
       assembleWallHeatTransferAlgDriver_ = new AssembleWallHeatTransferAlgorithmDriver(realm_);
@@ -1227,27 +1239,15 @@ EnthalpyEquationSystem::extract_temperature()
   // quality metrics
   size_t troubleCount[3] = {};
 
-  // extract h evaluator
-  PropertyEvaluator *enthEval = NULL;
-  std::map<PropertyIdentifier, PropertyEvaluator*>::iterator ith =
-    realm_.materialPropertys_.propertyEvalMap_.find(ENTHALPY_ID);
-  if ( ith == realm_.materialPropertys_.propertyEvalMap_.end() ) {
-    throw std::runtime_error("Enthalpy prop evaluator not found:");
-  }
-  else {
-    enthEval = (*ith).second;
-  }
+  // extract h evaluator; FIXME: uses first material block (EQS enforces size of 1)
+  std::vector<PropertyEvaluator *> enthEvalVec;
+  realm_.get_material_prop_eval(ENTHALPY_ID, enthEvalVec);
+  PropertyEvaluator *enthEval = enthEvalVec[0];
 
-  // extract Cp evaluator
-  PropertyEvaluator *cpEval = NULL;
-  std::map<PropertyIdentifier, PropertyEvaluator*>::iterator itc =
-    realm_.materialPropertys_.propertyEvalMap_.find(SPEC_HEAT_ID);
-  if ( itc == realm_.materialPropertys_.propertyEvalMap_.end() ) {
-    throw std::runtime_error("Specific heat prop evaluator not found:");
-  }
-  else {
-    cpEval = (*itc).second;
-  }
+  // extract Cp evaluator; FIXME: uses first material block (EQS enforces size of 1)
+  std::vector<PropertyEvaluator *> cpEvalVec;
+  realm_.get_material_prop_eval(SPEC_HEAT_ID, cpEvalVec);
+  PropertyEvaluator *cpEval = cpEvalVec[0];
 
   stk::mesh::MetaData & meta_data = realm_.meta_data();
 
@@ -1469,11 +1469,12 @@ EnthalpyEquationSystem::temperature_bc_setup(
   }
 
   // extract material prop evaluation for enthalpy and create alg to compute h_bc
-  PropertyEvaluator *thePropEval
-    = realm_.get_material_prop_eval(ENTHALPY_ID);
-
+  std::vector<PropertyEvaluator *> enthEvalVec;
+  realm_.get_material_prop_eval(ENTHALPY_ID, enthEvalVec);
+ 
+  // create temp algorithm; FIXME: uses first material block (EQS enforces size of 1)
   TemperaturePropAlgorithm *enthAlg
-    = new TemperaturePropAlgorithm( realm_, part, enthalpyBc, thePropEval, temperatureBc->name());
+    = new TemperaturePropAlgorithm( realm_, part, enthalpyBc, enthEvalVec[0], temperatureBc->name());
 
   // copy enthalpy_bc to enthalpy np1...
   CopyFieldAlgorithm *theEnthCopyAlg = NULL;

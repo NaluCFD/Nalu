@@ -46,6 +46,7 @@ AssembleContinuityEdgeOpenSolverAlgorithm::AssembleContinuityEdgeOpenSolverAlgor
     pressure_(NULL),
     density_(NULL),
     exposedAreaVec_(NULL),
+    dynamicPressure_(NULL),
     pressureBc_(NULL)
 {
   // save off fields
@@ -59,7 +60,8 @@ AssembleContinuityEdgeOpenSolverAlgorithm::AssembleContinuityEdgeOpenSolverAlgor
   pressure_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure");
   density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
   exposedAreaVec_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");
-  pressureBc_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, realm_.solutionOptions_->activateOpenMdotCorrection_ ? "pressure" : "pressure_bc");
+  dynamicPressure_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "dynamic_pressure");
+  pressureBc_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure_bc");
 }
 
 //--------------------------------------------------------------------------
@@ -86,14 +88,6 @@ AssembleContinuityEdgeOpenSolverAlgorithm::execute()
   const std::string dofName = "pressure";
   const double nocFac
     = (realm_.get_noc_usage(dofName) == true) ? 1.0 : 0.0;
-
-  // extract global algorithm options, if active
-  const double mdotCorrection = realm_.solutionOptions_->activateOpenMdotCorrection_ 
-    ? realm_.solutionOptions_->mdotAlgOpenCorrection_
-    : 0.0;
-  const double pstabFac = realm_.solutionOptions_->activateOpenMdotCorrection_ 
-    ? 0.0
-    : 1.0;
     
   // lhs/rhs space
   std::vector<double> lhs;
@@ -102,12 +96,10 @@ AssembleContinuityEdgeOpenSolverAlgorithm::execute()
   std::vector<double> scratchVals;
   std::vector<stk::mesh::Entity> connected_nodes;
 
-  // time step
+  // projection time scale based on time step
   const double dt = realm_.get_time_step();
   const double gamma1 = realm_.get_gamma1();
   const double projTimeScale = dt/gamma1;
-
-  // interpolation for mdot uses nearest node, therefore, n/a
 
   // deal with state
   ScalarFieldType &densityNp1 = density_->field_of_state(stk::mesh::StateNP1);
@@ -161,6 +153,7 @@ AssembleContinuityEdgeOpenSolverAlgorithm::execute()
 
       // pointer to face data
       const double * areaVec = stk::mesh::field_data(*exposedAreaVec_, b, k);
+      const double * dynamicP = stk::mesh::field_data(*dynamicPressure_, b, k);
 
       // extract the connected element to this exposed face; should be single in size!
       stk::mesh::Entity const * face_elem_rels = b.begin_elements(k);
@@ -206,7 +199,7 @@ AssembleContinuityEdgeOpenSolverAlgorithm::execute()
         const double * GpdxR        =  stk::mesh::field_data(*Gpdx_, nodeR );
         const double * vrtmR        =  stk::mesh::field_data(*velocityRTM_, nodeR );
         const double densityR       = *stk::mesh::field_data(densityNp1, nodeR );
-        const double bcPressure     = *stk::mesh::field_data(*pressureBc_, nodeR );
+        const double bcPressure     = *stk::mesh::field_data(*pressureBc_, nodeR ) - dynamicP[ip];
 
         // offset for bip area vector
         const int faceOffSet = ip*nDim;
@@ -226,22 +219,22 @@ AssembleContinuityEdgeOpenSolverAlgorithm::execute()
         const double rhoBip = densityR;
 
         //  mdot
-        double tmdot = -projTimeScale*(bcPressure-pressureIp)*asq*inv_axdx*pstabFac - mdotCorrection;
+        double tmdot = -projTimeScale*(bcPressure-pressureIp)*asq*inv_axdx;
         for ( int j = 0; j < nDim; ++j ) {
           const double axj = areaVec[faceOffSet+j];
           const double coordIp = 0.5*(coordR[j] + coordL[j]);
           const double dxj = coordR[j]  - coordIp;
           const double kxj = axj - asq*inv_axdx*dxj;
           const double Gjp = GpdxR[j];
-          tmdot += (rhoBip*vrtmR[j]+projTimeScale*Gjp*pstabFac)*axj
-            - projTimeScale*kxj*Gjp*nocFac*pstabFac;
+          tmdot += (rhoBip*vrtmR[j]+projTimeScale*Gjp)*axj
+            - projTimeScale*kxj*Gjp*nocFac;
         }
 
         // rhs
         p_rhs[nearestNode] -= tmdot/projTimeScale;
 
         // lhs right; IR, IL; IR, IR
-        double lhsfac = asq*inv_axdx*pstabFac;
+        double lhsfac = asq*inv_axdx;
         p_lhs[rowR+nearestNode] += 0.5*lhsfac;
         p_lhs[rowR+opposingNode] += 0.5*lhsfac;
       }

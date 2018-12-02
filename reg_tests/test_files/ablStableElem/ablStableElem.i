@@ -125,7 +125,6 @@ realms:
     solution_options:
       name: myOptions
       turbulence_model: wale
-      interp_rhou_together_for_mdot: yes
 
       options:
 

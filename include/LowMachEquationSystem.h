@@ -78,6 +78,7 @@ public:
 
   virtual void pre_iter_work();
   virtual void solve_and_update();
+  void compute_dynamic_pressure();
   virtual void post_adapt_work();
 
   virtual void predict_state();
@@ -98,7 +99,9 @@ public:
   SurfaceForceAndMomentAlgorithmDriver *surfaceForceAndMomentAlgDriver_;
 
   bool isInit_;
-     
+
+  // vector of algorithms for dynamic pressure calculation
+  std::vector<Algorithm *> dynamicPressureAlg_;
 };
 
 /** Representation of the Momentum conservation equations in 2-D and 3-D

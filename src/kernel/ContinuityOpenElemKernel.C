@@ -31,9 +31,6 @@ ContinuityOpenElemKernel<BcAlgTraits>::ContinuityOpenElemKernel(
   : Kernel(),
     shiftedGradOp_(solnOpts.get_shifted_grad_op("pressure")),
     reducedSensitivities_(solnOpts.cvfemReducedSensPoisson_),
-    pstabFac_(solnOpts.activateOpenMdotCorrection_ ? 0.0 : 1.0),
-    interpTogether_(solnOpts.get_mdot_interp()),
-    om_interpTogether_(1.0 - interpTogether_),
     meSCS_(sierra::nalu::MasterElementRepo::get_surface_master_element(BcAlgTraits::elemTopo_))
 {
   if ( solnOpts.does_mesh_move())
@@ -43,10 +40,10 @@ ContinuityOpenElemKernel<BcAlgTraits>::ContinuityOpenElemKernel(
   Gpdx_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "dpdx");
   coordinates_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
   pressure_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure");
-  pressureBc_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, solnOpts.activateOpenMdotCorrection_ 
-                                                    ? "pressure" : "pressure_bc");
+  pressureBc_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure_bc");
   density_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
   exposedAreaVec_ = metaData.get_field<GenericFieldType>(metaData.side_rank(), "exposed_area_vector");
+  dynamicPressure_ = metaData.get_field<GenericFieldType>(metaData.side_rank(), "dynamic_pressure");
   
   // extract master elements
   MasterElement* meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(BcAlgTraits::faceTopo_);
@@ -62,6 +59,7 @@ ContinuityOpenElemKernel<BcAlgTraits>::ContinuityOpenElemKernel(
   faceDataPreReqs.add_gathered_nodal_field(*velocityRTM_, BcAlgTraits::nDim_);
   faceDataPreReqs.add_gathered_nodal_field(*Gpdx_, BcAlgTraits::nDim_);  
   faceDataPreReqs.add_face_field(*exposedAreaVec_, BcAlgTraits::numFaceIp_, BcAlgTraits::nDim_);
+  faceDataPreReqs.add_face_field(*dynamicPressure_, BcAlgTraits::numFaceIp_);
   elemDataPreReqs.add_coordinates_field(*coordinates_, BcAlgTraits::nDim_, CURRENT_COORDINATES);
   elemDataPreReqs.add_gathered_nodal_field(*pressure_, 1);
 
@@ -99,7 +97,6 @@ ContinuityOpenElemKernel<BcAlgTraits>::execute(
   ScratchViews<DoubleType> &elemScratchViews,
   int elemFaceOrdinal)
 {
-  NALU_ALIGNED DoubleType w_uBip[BcAlgTraits::nDim_];
   NALU_ALIGNED DoubleType w_rho_uBip[BcAlgTraits::nDim_];
   NALU_ALIGNED DoubleType w_GpdxBip[BcAlgTraits::nDim_];
   NALU_ALIGNED DoubleType w_dpdxBip[BcAlgTraits::nDim_];
@@ -113,6 +110,7 @@ ContinuityOpenElemKernel<BcAlgTraits>::execute(
   SharedMemView<DoubleType*>& vf_density = faceScratchViews.get_scratch_view_1D(*density_);
   SharedMemView<DoubleType**>& vf_vrtm = faceScratchViews.get_scratch_view_2D(*velocityRTM_);
   SharedMemView<DoubleType**>& vf_exposedAreaVec = faceScratchViews.get_scratch_view_2D(*exposedAreaVec_);
+  SharedMemView<DoubleType*>& vf_dynamicP = faceScratchViews.get_scratch_view_1D(*dynamicPressure_);
  
   // element
   SharedMemView<DoubleType*>& v_pressure = elemScratchViews.get_scratch_view_1D(*pressure_);
@@ -132,7 +130,6 @@ ContinuityOpenElemKernel<BcAlgTraits>::execute(
     // zero out vector quantities; form aMag
     DoubleType aMag = 0.0;
     for ( int j = 0; j < BcAlgTraits::nDim_; ++j ) {
-      w_uBip[j] = 0.0;
       w_rho_uBip[j] = 0.0;
       w_GpdxBip[j] = 0.0;
       w_dpdxBip[j] = 0.0;
@@ -153,16 +150,13 @@ ContinuityOpenElemKernel<BcAlgTraits>::execute(
 
     // interpolate to bip
     DoubleType pBip = 0.0;
-    DoubleType pbcBip = 0.0;
-    DoubleType rhoBip = 0.0;
+    DoubleType pbcBip = -vf_dynamicP(ip);
     for ( int ic = 0; ic < BcAlgTraits::nodesPerFace_; ++ic ) {
       const DoubleType r = vf_shape_function_(ip,ic);
       const DoubleType rhoIC = vf_density(ic);
-      rhoBip += r*rhoIC;
       pBip += r*vf_pressure(ic);
       pbcBip += r*vf_pressureBc(ic);
       for ( int j = 0; j < BcAlgTraits::nDim_; ++j ) {
-        w_uBip[j] += r*vf_vrtm(ic,j);
         w_rho_uBip[j] += r*rhoIC*vf_vrtm(ic,j);
         w_GpdxBip[j] += r*vf_Gpdx(ic,j);
       }
@@ -177,18 +171,17 @@ ContinuityOpenElemKernel<BcAlgTraits>::execute(
     }
     
     // form mdot; rho*uj*Aj - projT*(dpdxj - Gjp)*Aj + penaltyFac*projTimeScale*invL*(pBip - pbcBip)*aMag
-    DoubleType mdot = -mdotCorrection_ + penaltyFac_*projTimeScale_*inverseLengthScale*(pBip - pbcBip)*aMag*pstabFac_;
+    DoubleType mdot = penaltyFac_*projTimeScale_*inverseLengthScale*(pBip - pbcBip)*aMag;
     for ( int j = 0; j < BcAlgTraits::nDim_; ++j ) {
       const DoubleType axj = vf_exposedAreaVec(ip,j);
-      mdot += (interpTogether_*w_rho_uBip[j] + om_interpTogether_*rhoBip*w_uBip[j] 
-               - projTimeScale_*(w_dpdxBip[j] - w_GpdxBip[j])*pstabFac_)*axj;
+      mdot += (w_rho_uBip[j] - projTimeScale_*(w_dpdxBip[j] - w_GpdxBip[j]))*axj;
     }
     
     // face-based penalty; divide by projTimeScale
     for ( int ic = 0; ic < BcAlgTraits::nodesPerFace_; ++ic ) {
       const int faceNodeNumber = face_node_ordinals[ic];
       const DoubleType r = vf_shape_function_(ip,ic);
-      lhs(nearestNode,faceNodeNumber) += r*penaltyFac_*inverseLengthScale*aMag*pstabFac_;
+      lhs(nearestNode,faceNodeNumber) += r*penaltyFac_*inverseLengthScale*aMag;
     }
     
     // element-based gradient; divide by projTimeScale
@@ -196,7 +189,7 @@ ContinuityOpenElemKernel<BcAlgTraits>::execute(
       DoubleType lhsFac = 0.0;
       for ( int j = 0; j < BcAlgTraits::nDim_; ++j )
         lhsFac += -v_dndx_lhs(ip,ic,j)*vf_exposedAreaVec(ip,j);
-      lhs(nearestNode,ic) += lhsFac*pstabFac_;
+      lhs(nearestNode,ic) += lhsFac;
     }
     
     // residual

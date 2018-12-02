@@ -43,11 +43,13 @@ public:
   ScalarFieldType *pressure_;
   ScalarFieldType *density_;
   GenericFieldType *exposedAreaVec_;
+  GenericFieldType *dynamicPressure_;
   ScalarFieldType *pressureBc_;
 
   const bool shiftMdot_;
   const bool shiftPoisson_;
   const bool reducedSensitivities_;
+  const double penaltyFac_;
 };
 
 } // namespace nalu

@@ -6,44 +6,33 @@
 /*------------------------------------------------------------------------*/
 
 
-#ifndef ComputeMdotElemOpenAlgorithm_h
-#define ComputeMdotElemOpenAlgorithm_h
+#ifndef AssembleNodalGradPBoundaryAlgorithm_h
+#define AssembleNodalGradPBoundaryAlgorithm_h
 
 #include<Algorithm.h>
 #include<FieldTypeDef.h>
-
-// stk
-#include <stk_mesh/base/Part.hpp>
 
 namespace sierra{
 namespace nalu{
 
 class Realm;
 
-class ComputeMdotElemOpenAlgorithm : public Algorithm
+class AssembleNodalGradPBoundaryAlgorithm : public Algorithm
 {
 public:
-
-  ComputeMdotElemOpenAlgorithm(
+  AssembleNodalGradPBoundaryAlgorithm(
     Realm &realm,
-    stk::mesh::Part *part);
-  ~ComputeMdotElemOpenAlgorithm();
+    stk::mesh::Part *part,
+    ScalarFieldType *pressure,
+    VectorFieldType *dpdx,
+    const bool useShifted);
+  virtual ~AssembleNodalGradPBoundaryAlgorithm() {}
 
-  void execute();
+  virtual void execute();
 
-  VectorFieldType *velocityRTM_;
-  VectorFieldType *Gpdx_;
-  VectorFieldType *coordinates_;
   ScalarFieldType *pressure_;
-  ScalarFieldType *density_;
-  GenericFieldType *exposedAreaVec_;
-  GenericFieldType *openMassFlowRate_;
-  GenericFieldType *dynamicPressure_;
-  ScalarFieldType *pressureBc_;
-
-  const bool shiftMdot_;
-  const bool shiftedGradOp_;
-  const double penaltyFac_;
+  VectorFieldType *dpdx_;
+  const bool useShifted_;
 };
 
 } // namespace nalu

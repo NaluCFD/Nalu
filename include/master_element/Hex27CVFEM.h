@@ -106,9 +106,6 @@ public:
     return referenceGradWeights;
   }
 
-
-
-
 protected:
   struct ContourData {
     Jacobian::Direction direction;
@@ -140,6 +137,7 @@ protected:
   virtual void eval_shape_derivs_at_shifted_ips();
 
   void eval_shape_derivs_at_face_ips();
+  void eval_shape_derivs_at_shifted_face_ips();
 
   void set_quadrature_rule();
   void GLLGLL_quadrature_weights();
@@ -181,6 +179,8 @@ protected:
   std::vector<double> shapeDerivs_;
   std::vector<double> shapeDerivsShift_;
   std::vector<double> expFaceShapeDerivs_;
+  std::vector<double> expFaceShapeDerivsShift_;
+
 private:
   void hex27_shape_fcn(
     int npts,
@@ -296,6 +296,11 @@ public:
     SharedMemView<DoubleType**>& coords,
     SharedMemView<DoubleType***>& gradop) final;
 
+  void shifted_face_grad_op(
+    int face_ordinal,
+    SharedMemView<DoubleType**>& coords,
+    SharedMemView<DoubleType***>& gradop) final;
+
   void determinant(
     const int nelem,
     const double *coords,
@@ -319,6 +324,14 @@ public:
     double * error );
 
   void face_grad_op(
+    const int nelem,
+    const int face_ordinal,
+    const double *coords,
+    double *gradop,
+    double *det_j,
+    double * error );
+
+  void shifted_face_grad_op(
     const int nelem,
     const int face_ordinal,
     const double *coords,
@@ -461,6 +474,7 @@ private:
   GradWeightType shiftedReferenceGradWeights_;
 
   ExpGradWeightType expReferenceGradWeights_;
+  ExpGradWeightType expReferenceGradWeightsShift_;
 
   int ipsPerFace_;
 };

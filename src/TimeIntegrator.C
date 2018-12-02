@@ -220,9 +220,11 @@ TimeIntegrator::integrate_realm()
     (*ii)->initial_work();
   }
 
-  // provide for initial transfer
+  // provide for initial multi-physics transfer if restart
   for ( ii = realmVec_.begin(); ii!=realmVec_.end(); ++ii) {
-    (*ii)->process_multi_physics_transfer();
+    if ( (*ii)->restarted_simulation() ) {
+      (*ii)->process_multi_physics_transfer(true);
+    }
   }
 
   // provide output/restart for initial condition

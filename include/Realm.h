@@ -123,8 +123,6 @@ class Realm {
   void enforce_bc_on_exposed_faces();
   void setup_initial_conditions();
   void setup_property();
-  void extract_universal_constant( 
-    const std::string name, double &value, const bool useDefault);
   void augment_property_map(
     PropertyIdentifier propID,
     ScalarFieldType *theField);
@@ -267,7 +265,7 @@ class Realm {
   virtual void pre_timestep_work();
   virtual void output_banner();
   virtual void advance_time_step();
- 
+  virtual bool active_time_step();
   virtual void initial_work();
   
   void set_global_id();
@@ -323,7 +321,6 @@ class Realm {
     const std::string dofname);
 
   // pressure poisson nuance
-  double get_mdot_interp();
   bool get_cvfem_shifted_mdot();
   bool get_cvfem_reduced_sens_poisson();
   
@@ -332,9 +329,9 @@ class Realm {
   bool get_nc_alg_include_pstab();
   bool get_nc_alg_current_normal();
 
-  PropertyEvaluator *
-  get_material_prop_eval(
-    const PropertyIdentifier thePropID);
+  void get_material_prop_eval(
+    const PropertyIdentifier thePropID,
+    std::vector<PropertyEvaluator*> &propEvalVec);
 
   bool is_turbulent();
   void is_turbulent(
@@ -549,7 +546,7 @@ class Realm {
   std::vector<Transfer *> ioTransferVec_;
   std::vector<Transfer *> externalDataTransferVec_;
   void augment_transfer_vector(Transfer *transfer, const std::string transferObjective, Realm *toRealm);
-  void process_multi_physics_transfer();
+  void process_multi_physics_transfer(bool forcedXfer = false);
   void process_initialization_transfer();
   void process_io_transfer();
   void process_external_data_transfer();

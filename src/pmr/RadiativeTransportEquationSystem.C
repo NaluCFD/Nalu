@@ -419,7 +419,8 @@ RadiativeTransportEquationSystem::register_nodal_fields(
 
   divRadiativeHeatFlux_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "div_radiative_heat_flux"));
   stk::mesh::put_field_on_mesh(*divRadiativeHeatFlux_, *part, nullptr);
-
+  realm_.augment_restart_variable_list(divRadiativeHeatFlux_->name());
+    
   radiationSource_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "radiation_source"));
   stk::mesh::put_field_on_mesh(*radiationSource_, *part, nullptr);
 
@@ -607,7 +608,8 @@ RadiativeTransportEquationSystem::register_wall_bc(
 
     irradiation_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "irradiation"));
     stk::mesh::put_field_on_mesh(*irradiation_, *part, nullptr);
-
+    realm_.augment_restart_variable_list(irradiation_->name());
+    
     bcTemperature_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature_bc"));
     stk::mesh::put_field_on_mesh(*bcTemperature_, *part, nullptr);
 

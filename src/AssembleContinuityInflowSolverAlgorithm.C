@@ -48,8 +48,7 @@ AssembleContinuityInflowSolverAlgorithm::AssembleContinuityInflowSolverAlgorithm
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   exposedAreaVec_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");
-  velocityBC_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.solutionOptions_->activateOpenMdotCorrection_ 
-                                                     ? "velocity_bc" : "cont_velocity_bc");
+  velocityBC_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "cont_velocity_bc");
   // variable density will need density as a function of user inflow conditions
   densityBC_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
 }
@@ -79,10 +78,6 @@ AssembleContinuityInflowSolverAlgorithm::execute()
   const double gamma1 = realm_.get_gamma1();
   const double projTimeScale = dt/gamma1;
 
-  // deal with interpolation procedure
-  const double interpTogether = realm_.get_mdot_interp();
-  const double om_interpTogether = 1.0-interpTogether;
-
   // space for LHS/RHS; nodesPerElem*nodesPerElem and nodesPerElem
   std::vector<double> lhs;
   std::vector<double> rhs;
@@ -98,9 +93,7 @@ AssembleContinuityInflowSolverAlgorithm::execute()
   std::vector<double> ws_shape_function;
 
   // ip data
-  std::vector<double>uIp(nDim);
   std::vector<double>rho_uIp(nDim);
-  double *p_uIp = &uIp[0];
   double *p_rho_uIp = &rho_uIp[0];
 
   ScalarFieldType &densityNp1 = densityBC_->field_of_state(stk::mesh::StateNP1);
@@ -191,25 +184,21 @@ AssembleContinuityInflowSolverAlgorithm::execute()
 
         // interpolate to scs point; operate on saved off ws_field
         for (int j=0; j < nDim; ++j ) {
-          p_uIp[j] = 0.0;
           p_rho_uIp[j] = 0.0;
         }
 
-        double rhoIp = 0.0;
         const int offSet = ip*nodesPerFace;
         for ( int ic = 0; ic < nodesPerFace; ++ic ) {
           const double r = p_shape_function[offSet+ic];
           const double rhoIC = p_density[ic];
-          rhoIp += r*rhoIC;
           for ( int j = 0; j < nDim; ++j ) {
-            p_uIp[j] += r*p_velocity[ic*nDim+j];
             p_rho_uIp[j] += r*rhoIC*p_velocity[ic*nDim+j];
           }
         }
 
         double mdot = 0.0;
         for ( int j=0; j < nDim; ++j ) {
-          mdot += (interpTogether*p_rho_uIp[j] + om_interpTogether*rhoIp*p_uIp[j])*areaVec[ip*nDim+j];
+          mdot += p_rho_uIp[j]*areaVec[ip*nDim+j];
         }
         p_rhs[nn] += -mdot/projTimeScale;
       }

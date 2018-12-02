@@ -62,9 +62,6 @@ public:
     return does_mesh_move() ? "current_coordinates" : "coordinates";
   }
 
-  inline double get_mdot_interp() const
-  { return mdotInterpRhoUTogether_ ? 1.0 : 0.0; }
-
   double get_alpha_factor(const std::string&) const;
 
   double get_alpha_upw_factor(const std::string&) const;
@@ -103,9 +100,7 @@ public:
   double referenceTemperature_;
   double thermalExpansionCoeff_;
   double stefanBoltzmann_;
-  double nearestFaceEntrain_;
   double includeDivU_;
-  bool mdotInterpRhoUTogether_;
   bool isTurbulent_;
   TurbulenceModel turbulenceModel_;
   bool meshMotion_;
@@ -154,12 +149,6 @@ public:
   double mdotAlgInflow_;
   double mdotAlgOpen_;
  
-  // global mdot correction alg
-  bool activateOpenMdotCorrection_;
-  double mdotAlgOpenCorrection_;
-  size_t mdotAlgOpenIpCount_;
-  double mdotAlgOpenPost_;
-
   // turbulence model coeffs
   std::map<TurbulenceModelConstant, double> turbModelConstantMap_;
   

@@ -39,10 +39,7 @@ class InitialCondition {
   Simulation *root();
   InitialConditions *parent();
   
-  void breadboard()
-  {
-    // nothing
-  }
+  void breadboard() {}
   
   InitialConditions& initialConditions_;
   
@@ -51,7 +48,7 @@ class InitialCondition {
   UserDataType theIcType_;
 };
  
- typedef std::vector<InitialCondition *> InitialConditionVector;
+typedef std::vector<InitialCondition *> InitialConditionVector;
  
  class InitialConditions {
  public:

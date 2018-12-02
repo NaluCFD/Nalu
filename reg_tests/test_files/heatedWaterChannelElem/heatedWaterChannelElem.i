@@ -95,6 +95,7 @@ realms:
         velocity: [0,0]
         pressure: 0.0
         temperature: 283.16
+        use_total_pressure: yes
 
     - wall_boundary_condition: bc_lower
       target_name: surface_3
@@ -118,7 +119,6 @@ realms:
     solution_options:
       name: myOptions
       turbulence_model: wale
-      interp_rhou_together_for_mdot: yes
 
       use_consolidated_solver_algorithm: yes
       use_consolidated_face_elem_bc_algorithm: yes

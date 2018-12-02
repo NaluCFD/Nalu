@@ -145,8 +145,6 @@ realms:
     solution_options:
       name: myOptions
       turbulence_model: wale
-      interp_rhou_together_for_mdot: yes
-      activate_open_mdot_correction: yes
 
       options:
 
