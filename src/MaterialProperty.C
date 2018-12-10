@@ -254,20 +254,19 @@ MaterialProperty::load(const YAML::Node &y_prop)
           throw std::runtime_error("polynominal property did not provide a set of coefficients");
         }
       }
-      else if ( thePropType == "ideal_gas_t" ) {
-        matData->type_ = IDEAL_GAS_T_MAT;
+      else if ( thePropType == "ideal_gas_t" || thePropType == "ideal_gas_t_p" || thePropType == "ideal_gas_yk"  ) {
+        // warning about deprecation (backward compatibility)
+        NaluEnv::self().naluOutputP0() << "MaterialProperty::warning(): usage of: " << thePropType << " for: " << thePropName 
+                                       << " has been deprecated " << std::endl
+                                       << " The new ideal gas name is simply: ideal_gas" << std::endl;
         NaluEnv::self().naluOutputP0() << thePropName
-                                       << " is an ideal gas property (function of T, Pref and mwRef): " << std::endl;
+                                       << " will be set as an ideal gas property (function of tranported independent variables) " << std::endl;
+        matData->type_ = IDEAL_GAS_MAT;
       }
-      else if ( thePropType == "ideal_gas_t_p" ) {
-        matData->type_ = IDEAL_GAS_T_P_MAT;
+      else if ( thePropType == "ideal_gas" ) {
         NaluEnv::self().naluOutputP0() << thePropName
-                                       << " is an ideal gas property (function of T, mwRef and P): " << std::endl;
-      }
-      else if ( thePropType == "ideal_gas_yk" ) {
-        matData->type_ = IDEAL_GAS_YK_MAT;
-        NaluEnv::self().naluOutputP0() << thePropName
-                                       << " is an ideal gas property (function of mw, Tref, and Pref): " << std::endl;
+                                       << " is an ideal gas property (function of tranported independent variables) " << std::endl;      
+        matData->type_ = IDEAL_GAS_MAT;
       }
       else if ( thePropType == "geometric" ) {
         matData->type_ = GEOMETRIC_MAT;

@@ -129,12 +129,10 @@ enum  MaterialPropertyType {
   CONSTANT_MAT = 0,
   MIXFRAC_MAT = 1,
   POLYNOMIAL_MAT = 2,
-  IDEAL_GAS_T_MAT = 3,
+  IDEAL_GAS_MAT = 3,
   GEOMETRIC_MAT = 4,
-  IDEAL_GAS_T_P_MAT = 5,
-  HDF5_TABLE_MAT = 6,
-  IDEAL_GAS_YK_MAT = 7,
-  GENERIC = 8,
+  HDF5_TABLE_MAT = 5,
+  GENERIC = 6,
   MaterialPropertyType_END
 };
 

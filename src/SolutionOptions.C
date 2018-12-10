@@ -91,7 +91,8 @@ SolutionOptions::SolutionOptions()
     mdotAlgAccumulation_(0.0),
     mdotAlgInflow_(0.0),
     mdotAlgOpen_(0.0),
-    quadType_("GaussLegendre")
+    quadType_("GaussLegendre"),
+    accousticallyCompressible_(false)
 {
   // nothing to do
 }
@@ -153,6 +154,9 @@ SolutionOptions::load(const YAML::Node & y_node)
     
     // quadrature type for high order
     get_if_present(y_solution_options, "high_order_quadrature_type", quadType_);
+
+    // accoustically compressible algorith
+    get_if_present(y_solution_options, "use_accoustically_compressible_algorithm", accousticallyCompressible_);
 
     // extract turbulence model; would be nice if we could parse an enum..
     std::string specifiedTurbModel;

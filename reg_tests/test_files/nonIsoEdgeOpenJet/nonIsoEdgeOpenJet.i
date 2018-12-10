@@ -71,7 +71,7 @@ realms:
       specifications:
  
         - name: density
-          type: ideal_gas_t
+          type: ideal_gas
 
         - name: viscosity
           type: polynomial

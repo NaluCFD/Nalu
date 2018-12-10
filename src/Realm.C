@@ -566,7 +566,6 @@ Realm::look_ahead_and_creation(const YAML::Node & node)
     solutionNormPostProcessing_ =  new SolutionNormPostProcessing(*this, *foundNormPP[0]);
   }
 
-
   // look for DataProbe
   std::vector<const YAML::Node *> foundProbe;
   NaluParsingHelper::find_nodes_given_key("data_probes", node, foundProbe);
@@ -599,8 +598,6 @@ Realm::look_ahead_and_creation(const YAML::Node & node)
     else {
       throw std::runtime_error("look_ahead_and_create::error: No 'type' specified in actuator");
     }
-
-    
   }
 
   // ABL Forcing parameters
@@ -1283,14 +1280,14 @@ Realm::setup_property()
               PropertyEvaluator *viscPropEval = NULL;
               
               if ( isothermalFlow_ ) {
-
-                // all props will use Tref
+                // all props will use Tref; extract it
                 double tRef = 0.0;
                 matPropBlock->extract_universal_constant("reference_temperature", tRef, true);
 
                 if ( uniformFlow_ ) {
                   // props computed based on YkRef and Tref
-                  throw std::runtime_error("Realm::setup_property: Sorry, polynomial visc Ykref and Tref is not supported");
+                  viscPropEval = new SutherlandsYkrefTrefPropertyEvaluator(
+                    matPropBlock->referencePropertyDataMap_, matData->polynomialCoeffsMap_, tRef);
                 }
                 else {
                   // props computed based on Yk and Tref
@@ -1303,11 +1300,11 @@ Realm::setup_property()
                 propertyAlg_.push_back(auxAlg);
               }
               else {
-                // all props will use [transported] T
+                // all props will use transported T
                 if ( uniformFlow_ ) {
                   // props computed based on YkRef and T
-                  viscPropEval = new SutherlandsPropertyEvaluator(
-                    matPropBlock->referencePropertyDataMap_, matData->polynomialCoeffsMap_ );
+                  viscPropEval = new SutherlandsYkrefPropertyEvaluator(
+                    matPropBlock->referencePropertyDataMap_, matData->polynomialCoeffsMap_);
                 }
                 else {
                   // props computed based on Yk and T
@@ -1322,7 +1319,6 @@ Realm::setup_property()
 
               // create the property alg and push to evalmap
               matPropBlock->propertyEvalMap_[thePropId] = viscPropEval;
-
             }
             break;
 
@@ -1377,17 +1373,27 @@ Realm::setup_property()
         }
         break;
 
-        case IDEAL_GAS_T_MAT: case IDEAL_GAS_T_P_MAT:
+        case IDEAL_GAS_MAT:
         {
           if ( DENSITY_ID == thePropId ) {
         
-            // everyone will require R
+            // pRef, tRef and R (all optional with default values provided)
+            double pRef = 101325.0;
+            double tRef = 300.0;
             double universalR = 8314.4621;
+            matPropBlock->extract_universal_constant("reference_pressure", pRef, true);
+            matPropBlock->extract_universal_constant("reference_temperature", tRef, true);
             matPropBlock->extract_universal_constant("universal_gas_constant", universalR, true);
             
-            // create the property evaluator
+            // flag for what type of prop algorithm to create
+            bool createTempPropAlg = true;
+            
+            // placeholder for the property evaluator and alg
             PropertyEvaluator *rhoPropEval = NULL;
+            Algorithm *auxAlg = nullptr;
+            
             if ( uniformFlow_ ) {
+              
               // load mw and reference species
               std::vector<std::pair<double, double> > mwMassFracVec;
               std::map<std::string, ReferencePropertyData*>::const_iterator itrp;
@@ -1398,17 +1404,26 @@ Realm::setup_property()
                 thePair = std::make_pair(propData->mw_,propData->massFraction_);
                 mwMassFracVec.push_back(thePair);
               }
-              if ( IDEAL_GAS_T_MAT == matData->type_ ) {
-                double pRef = 101325.0;
-                matPropBlock->extract_universal_constant("reference_pressure", pRef, true);
-                rhoPropEval = new IdealGasTPropertyEvaluator(pRef, universalR, mwMassFracVec);
+               
+              if ( isothermalFlow_ ) {
+                // rho = f(pRef, tRef, and mwRef)
+                createTempPropAlg = false;
+                rhoPropEval = new IdealGasPrefTrefYkrefPropertyEvaluator(pRef, tRef, universalR, mwMassFracVec);
               }
               else {
-                rhoPropEval = new IdealGasTPPropertyEvaluator(universalR, mwMassFracVec, *metaData_);
+                if ( solutionOptions_->accousticallyCompressible_ ) {
+                  // rho = f(p,T,mwRef)
+                  rhoPropEval = new IdealGasPTYkrefPropertyEvaluator(universalR, mwMassFracVec, *metaData_);
+                }
+                else {
+                  // rho = f(pRef,T,mwRef)
+                  rhoPropEval = new IdealGasPrefTYkrefPropertyEvaluator(pRef, universalR, mwMassFracVec);
+                }
               }
             }
             else {
-              // load mw
+              
+              // nonuniform flow; load mw
               std::vector<double> mwVec;
               std::map<std::string, ReferencePropertyData*>::const_iterator itrp;
               for ( itrp = matPropBlock->referencePropertyDataMap_.begin();
@@ -1416,70 +1431,48 @@ Realm::setup_property()
                 ReferencePropertyData *propData = (*itrp).second;
                 mwVec.push_back(propData->mw_);
               }
-              if ( IDEAL_GAS_T_MAT == matData->type_ ) {
-                double pRef = 101325.0;
-                matPropBlock->extract_universal_constant("reference_pressure", pRef, true);
-                rhoPropEval = new IdealGasTYkPropertyEvaluator(pRef, universalR, mwVec, *metaData_);
+
+              if ( isothermalFlow_ ) {
+                if ( solutionOptions_->accousticallyCompressible_ ) {
+                  // rho = f(P,Tref,Yk)
+                  throw std::runtime_error("Realm::setup_property:Error rho = f(P,Tref,Yk) not supported:");
+                }
+                else {
+                  // rho = f(Pref,Tref,Yk)
+                  createTempPropAlg = false;
+                  rhoPropEval = new IdealGasPrefTrefYkPropertyEvaluator(pRef, tRef, universalR, mwVec, *metaData_);
+                }
               }
               else {
-                throw std::runtime_error("Realm::setup_property: ideal_gas_tp only supported for uniform flow:");
+                if ( solutionOptions_->accousticallyCompressible_ ) {
+                  // rho = f(P,T,Yk)
+                  throw std::runtime_error("Realm::setup_property:Error rho = f(P,T,Yk) not supported:");
+                }
+                else {
+                  // rho = f(pRef,T,Yk)
+                  rhoPropEval = new IdealGasPrefTYkPropertyEvaluator(pRef, universalR, mwVec, *metaData_); 
+                } 
               }
             }
-
+            
             // push back property evaluator to map
             matPropBlock->propertyEvalMap_[thePropId] = rhoPropEval;
-
-            // create the property algorithm
-            TemperaturePropAlgorithm *auxAlg
-              = new TemperaturePropAlgorithm( *this, targetPart, thePropField, rhoPropEval);
+            
+            // create the appropriate property algorithm and push back
+            if ( createTempPropAlg ) {
+              auxAlg = new TemperaturePropAlgorithm( *this, targetPart, thePropField, rhoPropEval);
+            }
+            else {
+              auxAlg = new GenericPropAlgorithm(*this, targetPart, thePropField, rhoPropEval);
+            }
             propertyAlg_.push_back(auxAlg);
           }
           else {
             throw std::runtime_error("Realm::setup_property: ideal_gas_t only supported for density:");
           }
-
         }
         break;
-
-        case IDEAL_GAS_YK_MAT:
-        {
-          if ( DENSITY_ID == thePropId ) {
         
-            // pRef, tRef and R
-            double pRef = 101325.0;
-            double tRef = 300.0;
-            double universalR = 8314.4621;
-            matPropBlock->extract_universal_constant("reference_pressure", pRef, true);
-            matPropBlock->extract_universal_constant("reference_temperature", tRef, true);
-            matPropBlock->extract_universal_constant("universal_gas_constant", universalR, true);
-
-            // load mw
-            std::vector<double> mwVec;
-            std::map<std::string, ReferencePropertyData*>::const_iterator itrp;
-            for ( itrp = matPropBlock->referencePropertyDataMap_.begin();
-                  itrp!= matPropBlock->referencePropertyDataMap_.end(); ++itrp) {
-              ReferencePropertyData *propData = (*itrp).second;
-              mwVec.push_back(propData->mw_);
-            }
-
-            // create the property evaluator
-            PropertyEvaluator *rhoPropEval = new IdealGasYkPropertyEvaluator(pRef, tRef, universalR, mwVec, *metaData_);
-
-            // push back property evaluator to map
-            matPropBlock->propertyEvalMap_[thePropId] = rhoPropEval;
-
-            // create the property algorithm
-            GenericPropAlgorithm *auxAlg
-              = new GenericPropAlgorithm( *this, targetPart, thePropField, rhoPropEval);
-            propertyAlg_.push_back(auxAlg);
-
-          }
-          else {
-            throw std::runtime_error("Realm::setup_property: ideal_gas_yk only supported for density:");
-          }
-        }
-        break;
-
         case GEOMETRIC_MAT:
         {
           // propery is a function of inverse dual volume
