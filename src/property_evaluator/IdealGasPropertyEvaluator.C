@@ -18,35 +18,37 @@
 namespace sierra{
 namespace nalu{
 
+
 //==========================================================================
 // Class Definition
 //==========================================================================
-// IdealGasTPropertyEvaluator - evaluates density as a function of T
+// IdealGasPrefTYkrefPropertyEvaluator - evaluates density as a function of 
+//                                       Pref, T, and Ykref
 //==========================================================================
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-IdealGasTPropertyEvaluator::IdealGasTPropertyEvaluator(
+IdealGasPrefTYkrefPropertyEvaluator::IdealGasPrefTYkrefPropertyEvaluator(
   double pRef,
   double universalR,
   std::vector<std::pair<double, double> > mwMassFracVec)
   : PropertyEvaluator(),
     pRef_(pRef),
     R_(universalR),
-    mw_(0.0)
+    mwRef_(0.0)
 {
   // compute mixture mw
   double sum = 0.0;
   for (std::size_t k = 0; k < mwMassFracVec.size(); ++k ){
     sum += mwMassFracVec[k].second/mwMassFracVec[k].first;
   }
-  mw_ = 1.0/sum;
+  mwRef_ = 1.0/sum;
 }
 
 //--------------------------------------------------------------------------
 //-------- destructor ------------------------------------------------------
 //--------------------------------------------------------------------------
-IdealGasTPropertyEvaluator::~IdealGasTPropertyEvaluator()
+IdealGasPrefTYkrefPropertyEvaluator::~IdealGasPrefTYkrefPropertyEvaluator()
 {
   // nothing
 }
@@ -55,23 +57,24 @@ IdealGasTPropertyEvaluator::~IdealGasTPropertyEvaluator()
 //-------- execute ---------------------------------------------------------
 //--------------------------------------------------------------------------
 double
-IdealGasTPropertyEvaluator::execute(
+IdealGasPrefTYkrefPropertyEvaluator::execute(
   double *indVarList,
   stk::mesh::Entity /*node*/)
 {
   const double T = indVarList[0];
-  return pRef_*mw_/R_/T;
+  return pRef_*mwRef_/R_/T;
 }
 
 //==========================================================================
 // Class Definition
 //==========================================================================
-// IdealGasTYkPropertyEvaluator - evaluates density as a function of T and Yk
+// IdealGasPrefTYkPropertyEvaluator - evaluates density as a function of 
+//                                    Pref, T and Yk
 //==========================================================================
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-IdealGasTYkPropertyEvaluator::IdealGasTYkPropertyEvaluator(
+IdealGasPrefTYkPropertyEvaluator::IdealGasPrefTYkPropertyEvaluator(
   double pRef,
   double universalR,
   std::vector<double> mwVec,
@@ -93,13 +96,12 @@ IdealGasTYkPropertyEvaluator::IdealGasTYkPropertyEvaluator(
 
   // save off mass fraction field
   massFraction_ = metaData.get_field<GenericFieldType>(stk::topology::NODE_RANK, "mass_fraction");
-
 }
  
 //--------------------------------------------------------------------------
 //-------- destructor ------------------------------------------------------
 //--------------------------------------------------------------------------
-IdealGasTYkPropertyEvaluator::~IdealGasTYkPropertyEvaluator()
+IdealGasPrefTYkPropertyEvaluator::~IdealGasPrefTYkPropertyEvaluator()
 {
   // nothing
 }
@@ -108,7 +110,7 @@ IdealGasTYkPropertyEvaluator::~IdealGasTYkPropertyEvaluator()
 //-------- execute ---------------------------------------------------------
 //--------------------------------------------------------------------------
 double
-IdealGasTYkPropertyEvaluator::execute(
+IdealGasPrefTYkPropertyEvaluator::execute(
     double *indVarList,
     stk::mesh::Entity node)
 {
@@ -122,7 +124,7 @@ IdealGasTYkPropertyEvaluator::execute(
 //-------- compute_mw ------------------------------------------------------
 //--------------------------------------------------------------------------
 double
-IdealGasTYkPropertyEvaluator::compute_mw(
+IdealGasPrefTYkPropertyEvaluator::compute_mw(
     const double *massFraction)
 {
 
@@ -137,18 +139,19 @@ IdealGasTYkPropertyEvaluator::compute_mw(
 //==========================================================================
 // Class Definition
 //==========================================================================
-// IdealGasTPPropertyEvaluator - evaluates density as a function of T and P
+// IdealGasPTYkrefPropertyEvaluator - evaluates density as a function of 
+//                                    P, T and Ykref
 //==========================================================================
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-IdealGasTPPropertyEvaluator::IdealGasTPPropertyEvaluator(
+IdealGasPTYkrefPropertyEvaluator::IdealGasPTYkrefPropertyEvaluator(
   double universalR,
   std::vector<std::pair<double, double> > mwMassFracVec,
   stk::mesh::MetaData &metaData)
   : PropertyEvaluator(),
     R_(universalR),
-    mw_(0.0),
+    mwRef_(0.0),
     pressure_(NULL)
 {
 
@@ -160,13 +163,13 @@ IdealGasTPPropertyEvaluator::IdealGasTPPropertyEvaluator(
   for (std::size_t k = 0; k < mwMassFracVec.size(); ++k ){
     sum += mwMassFracVec[k].second/mwMassFracVec[k].first;
   }
-  mw_ = 1.0/sum;
+  mwRef_ = 1.0/sum;
 }
 
 //--------------------------------------------------------------------------
 //-------- destructor ------------------------------------------------------
 //--------------------------------------------------------------------------
-IdealGasTPPropertyEvaluator::~IdealGasTPPropertyEvaluator()
+IdealGasPTYkrefPropertyEvaluator::~IdealGasPTYkrefPropertyEvaluator()
 {
   // nothing
 }
@@ -175,24 +178,25 @@ IdealGasTPPropertyEvaluator::~IdealGasTPPropertyEvaluator()
 //-------- execute ---------------------------------------------------------
 //--------------------------------------------------------------------------
 double
-IdealGasTPPropertyEvaluator::execute(
+IdealGasPTYkrefPropertyEvaluator::execute(
   double *indVarList,
   stk::mesh::Entity node)
 {
   const double T = indVarList[0];
   const double P = *stk::mesh::field_data(*pressure_, node);
-  return P*mw_/R_/T;
+  return P*mwRef_/R_/T;
 }
 
 //==========================================================================
 // Class Definition
 //==========================================================================
-// IdealGasYkPropertyEvaluator - evaluates density as a function of Yk
+// IdealGasPrefTrefYkPropertyEvaluator - evaluates density as a function of 
+//                                       Pref, Tref, and Yk
 //==========================================================================
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-IdealGasYkPropertyEvaluator::IdealGasYkPropertyEvaluator(
+IdealGasPrefTrefYkPropertyEvaluator::IdealGasPrefTrefYkPropertyEvaluator(
   double pRef,
   double tRef,
   double universalR,
@@ -222,7 +226,7 @@ IdealGasYkPropertyEvaluator::IdealGasYkPropertyEvaluator(
 //--------------------------------------------------------------------------
 //-------- destructor ------------------------------------------------------
 //--------------------------------------------------------------------------
-IdealGasYkPropertyEvaluator::~IdealGasYkPropertyEvaluator()
+IdealGasPrefTrefYkPropertyEvaluator::~IdealGasPrefTrefYkPropertyEvaluator()
 {
   // nothing
 }
@@ -231,7 +235,7 @@ IdealGasYkPropertyEvaluator::~IdealGasYkPropertyEvaluator()
 //-------- execute ---------------------------------------------------------
 //--------------------------------------------------------------------------
 double
-IdealGasYkPropertyEvaluator::execute(
+IdealGasPrefTrefYkPropertyEvaluator::execute(
     double */*indVarList*/,
     stk::mesh::Entity node)
 {
@@ -244,7 +248,7 @@ IdealGasYkPropertyEvaluator::execute(
 //-------- compute_mw ------------------------------------------------------
 //--------------------------------------------------------------------------
 double
-IdealGasYkPropertyEvaluator::compute_mw(
+IdealGasPrefTrefYkPropertyEvaluator::compute_mw(
     const double *massFraction)
 {
 
@@ -254,6 +258,53 @@ IdealGasYkPropertyEvaluator::compute_mw(
     sum += massFraction[k]/mwVec_[k];
   }
   return 1.0/sum;
+}
+
+//==========================================================================
+// Class Definition
+//==========================================================================
+// IdealGasPrefTrefYkrefPropertyEvaluator - evaluates density as a function 
+//                                          of Pref, Tref, and Ykref
+//==========================================================================
+//--------------------------------------------------------------------------
+//-------- constructor -----------------------------------------------------
+//--------------------------------------------------------------------------
+IdealGasPrefTrefYkrefPropertyEvaluator::IdealGasPrefTrefYkrefPropertyEvaluator(
+  double pRef,
+  double tRef,
+  double universalR,
+  std::vector<std::pair<double, double> > mwMassFracVec)
+  : PropertyEvaluator(),
+    pRef_(pRef),
+    tRef_(tRef),
+    R_(universalR),
+    mwRef_(0.0)
+{
+  // compute mixture mw
+  double sum = 0.0;
+  for (std::size_t k = 0; k < mwMassFracVec.size(); ++k ){
+    sum += mwMassFracVec[k].second/mwMassFracVec[k].first;
+  }
+  mwRef_ = 1.0/sum;
+}
+
+//--------------------------------------------------------------------------
+//-------- destructor ------------------------------------------------------
+//--------------------------------------------------------------------------
+IdealGasPrefTrefYkrefPropertyEvaluator::~IdealGasPrefTrefYkrefPropertyEvaluator()
+{
+  // nothing
+}
+
+//--------------------------------------------------------------------------
+//-------- execute ---------------------------------------------------------
+//--------------------------------------------------------------------------
+double
+IdealGasPrefTrefYkrefPropertyEvaluator::execute(
+  double */*indVarList*/,
+  stk::mesh::Entity /*node*/)
+{
+  return pRef_*mwRef_/R_/tRef_;
 }
 
 } // namespace nalu

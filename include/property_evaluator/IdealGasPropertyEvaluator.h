@@ -25,15 +25,15 @@ class MetaData;
 namespace sierra{
 namespace nalu{
 
-class IdealGasTPropertyEvaluator : public PropertyEvaluator
+class IdealGasPrefTYkrefPropertyEvaluator : public PropertyEvaluator
 {
 public:
 
-  IdealGasTPropertyEvaluator(
+  IdealGasPrefTYkrefPropertyEvaluator(
     double pRef,
     double universalR,
     std::vector<std::pair<double, double> > mwMassFracVec);
-  virtual ~IdealGasTPropertyEvaluator();
+  virtual ~IdealGasPrefTYkrefPropertyEvaluator();
   
   double execute(
     double *indVarList,
@@ -41,20 +41,19 @@ public:
   
   const double pRef_;
   const double R_;
-  double mw_;
-  
+  double mwRef_;
 };
 
-class IdealGasTYkPropertyEvaluator : public PropertyEvaluator
+class IdealGasPrefTYkPropertyEvaluator : public PropertyEvaluator
 {
 public:
 
-  IdealGasTYkPropertyEvaluator(
+  IdealGasPrefTYkPropertyEvaluator(
       double pRef,
       double universalR,
       std::vector<double>mwVec,
       stk::mesh::MetaData &metaData);
-  virtual ~IdealGasTYkPropertyEvaluator();
+  virtual ~IdealGasPrefTYkPropertyEvaluator();
   
   double execute(
       double *indVarList,
@@ -76,15 +75,15 @@ public:
   
 };
 
-class IdealGasTPPropertyEvaluator : public PropertyEvaluator
+class IdealGasPTYkrefPropertyEvaluator : public PropertyEvaluator
 {
 public:
 
-  IdealGasTPPropertyEvaluator(
+  IdealGasPTYkrefPropertyEvaluator(
       double universalR,
       std::vector<std::pair<double, double> > mwMassFracVec,
       stk::mesh::MetaData &metaData);
-  virtual ~IdealGasTPPropertyEvaluator();
+  virtual ~IdealGasPTYkrefPropertyEvaluator();
 
   double execute(
       double *indVarList,
@@ -94,24 +93,23 @@ public:
   const double R_;
 
   // molecular weight computed at construction time
-  double mw_;
+  double mwRef_;
 
   // field definition and extraction,
   ScalarFieldType *pressure_;
-
 };
 
-class IdealGasYkPropertyEvaluator : public PropertyEvaluator
+class IdealGasPrefTrefYkPropertyEvaluator : public PropertyEvaluator
 {
 public:
 
-  IdealGasYkPropertyEvaluator(
+  IdealGasPrefTrefYkPropertyEvaluator(
       double pRef,
       double tRef,
       double universalR,
       std::vector<double>mwVec,
       stk::mesh::MetaData &metaData);
-  virtual ~IdealGasYkPropertyEvaluator();
+  virtual ~IdealGasPrefTrefYkPropertyEvaluator();
   
   double execute(
       double *indVarList,
@@ -132,6 +130,31 @@ public:
   size_t mwVecSize_;
   std::vector<double> mwVec_;
   
+};
+
+class IdealGasPrefTrefYkrefPropertyEvaluator : public PropertyEvaluator
+{
+public:
+
+  IdealGasPrefTrefYkrefPropertyEvaluator(
+    double pRef,
+    double tRef,
+    double universalR,
+    std::vector<std::pair<double, double> > mwMassFracVec);
+  virtual ~IdealGasPrefTrefYkrefPropertyEvaluator();
+  
+  double execute(
+    double *indVarList,
+    stk::mesh::Entity node);
+  
+  double compute_mw(
+    const double *yk);
+  
+  // reference quantities
+  const double pRef_;
+  const double tRef_;
+  const double R_;  
+  double mwRef_;
 };
 
 } // namespace nalu

@@ -69,7 +69,7 @@ realms:
       specifications:
  
         - name: density
-          type: ideal_gas_t_p
+          type: ideal_gas
 
         - name: viscosity
           type: polynomial
@@ -116,6 +116,8 @@ realms:
 
     solution_options:
       name: myOptions
+
+      use_accoustically_compressible_algorithm: yes
 
       options:
         - hybrid_factor:

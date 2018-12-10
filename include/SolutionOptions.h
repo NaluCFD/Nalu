@@ -205,7 +205,9 @@ public:
   std::string name_;
 
   std::string quadType_;
-
+  
+  // allow for rho = f(P)
+  bool accousticallyCompressible_;
 };
 
 } // namespace nalu

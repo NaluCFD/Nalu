@@ -63,15 +63,39 @@ realms:
           velocity: [0,0,0]
           turbulent_ke: 1.0e-6
 
+
     material_properties:
+
       target_name: block_1
+
+      constant_specification:
+       universal_gas_constant: 8314.4621e3
+       reference_pressure: 101325.0
+       reference_temperature: 298.15
+
+      reference_quantities:
+        - species_name: N2
+          mw: 28.0
+          mass_fraction: 0.767
+
+        - species_name: O2
+          mw: 32.0
+          mass_fraction: 0.233
+
       specifications:
+
         - name: density
-          type: constant
-          value: 1.1814e-3
+          type: ideal_gas
+
         - name: viscosity
-          type: constant
-          value: 1.79e-4
+          type: polynomial
+
+          coefficient_declaration:
+          - species_name: O2 
+            coefficients: [1.7894e-4, 273.11, 110.56]
+
+          - species_name: N2 
+            coefficients: [1.7894e-4, 273.11, 110.56]
 
     boundary_conditions:
 
@@ -126,6 +150,8 @@ realms:
       output_node_set: no 
       output_variables:
        - velocity
+       - density
+       - viscosity
        - pressure
        - turbulent_ke
        - turbulent_viscosity
