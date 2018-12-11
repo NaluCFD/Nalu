@@ -627,12 +627,6 @@ current values of pressure at all nodes within the element that holds the expose
 boundary face. The scheme has been shown to be design-order (see upcoming Domino et al., 
 2019, Comp. & Fluids).
 
-Note that the ability for the continuity solve to be well conditioned
-may require an interior Dirichlet on pressure as the open pressure specification
-for the global correction algorithm is lacking. In most cases, a Dirichlet
-condition is not actually required as the NULL-space of the continuity system
-may not be found in the solve.
-
 
 Momentum
 ~~~~~~~~
