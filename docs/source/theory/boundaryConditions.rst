@@ -615,7 +615,7 @@ is used at open boundaries,
 
 .. math:: \dot m = \left(\bar{\rho} \hat{u}_i + \tau G_i \bar{P}
   -\tau \frac{\partial \bar{P}}{\partial x_i}\right) n_i\, dS 
-  + \gamma \frac{\tau}{L} \left( p_{bip} - p_{bc}\right), dS.
+  + \gamma \frac{\tau}{L} \left( p_{bip} - p_{bc}\right) dS.
   
 The above expression includes an extra penalty term that is based on the 
 difference between the degree-of-freedom pressure and specified pressure boundary 
@@ -624,7 +624,7 @@ is based on recent energy stable approaches deduced for Laplace systems; the val
 :math:`\gamma` is taken to be 2. In the above expression, the projected nodal gradient 
 uses the specified pressure value while the local pressure gradient is based on the
 current values of pressure at all nodes within the element that holds the exposed
-boundary face. The scheme has been shown to be design-order (see upcomind Domino et al., 
+boundary face. The scheme has been shown to be design-order (see upcoming Domino et al., 
 2019, Comp. & Fluids).
 
 Note that the ability for the continuity solve to be well conditioned
