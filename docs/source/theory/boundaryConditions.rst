@@ -613,7 +613,7 @@ in Tet4, Wedge6, and Pyramid5 elements.
 For CVFEM, the following expression, which is very similar to the interior expression,
 is used at open boundaries,
 
-\dot m = \left(\bar{\rho} \hat{u}_i + \tau G_i \bar{P}
+.. math:: \dot m = \left(\bar{\rho} \hat{u}_i + \tau G_i \bar{P}
   -\tau \frac{\partial \bar{P}}{\partial x_i}\right) n_i\, dS 
   + \gamma \frac{\tau}{L} \left( p_{bip} - p_{bc}\right), dS.
   
