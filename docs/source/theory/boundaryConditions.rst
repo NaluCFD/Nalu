@@ -595,35 +595,39 @@ Continuity
 ~~~~~~~~~~
 
 For continuity, the boundary mass flow rate must also be computed. This
-value is stored and used for the other equations that require advection.
-The same formula is used for the pressure-stabilized mass flow rate.
-However, the local pressure gradient for each boundary contribution is
-based on the difference between the interior integration point and the
-user-specified pressure which takes on the boundary value. The interior
-integration point is determined by linear interpolation. For CVFEM, full
-elemental averaging is used while in EBVC discretization, the midpoint
-value between the nearest node and opposing node to the boundary
-integration point is used. In both discretization approaches,
-non-orthogonal corrections are required. This procedure has been very
-important for stability for CVFEM tet-based meshes where a natural
-non-orthogonality exists between the boundary and interior integration
-point.
+value is stored at all integration points and used for the other equations 
+that require advection. Ideally, this expression will be a function of the
+specified open boundary pressure and the local and projected pressure
+gradient to allow for complete mass continuity.
 
-For wind energy applications, the usage of the standard open boundary mass flow
-rate expression, which includes pressure contributions, is not appropriate due
-to complex temperature/buoyancy specifications. In these cases, a global
-correction algorithm is supported. Specifically, pressure terms are dropped at
-the open boundary mass flow rate expression in favor or a pre-processing
-algorithm that uniformly distributes the continuity mass flow rate (and possible
-density accumulation) "error" over the entire set of open boundary conditions.
-The global correction scheme may perform well with single open boundary
-condition specification, e.g., multiple inflows with a single open location,
-however, it is to be avoided if the flow leaving the domain is complex in that a
-simulation includes multiple open boundary conditions. A complex situation might
-be an open jet with entrainment from the side (open boundary that allows for
-inflow) and a top open that allows for outflow. However, a routine case might be
-a backward facing step with a single inflow, side periodic, top wall and open
-boundary. Not that the ability for the continuity solve to be well conditioned
+For the edge-based scheme, the same formula is used for the pressure-stabilized 
+mass flow rate. However, the local pressure gradient for each boundary 
+contribution is based on the difference between the interior integration 
+point and the user-specified pressure that takes on the boundary value. The 
+interior integration point, which serves as the interior stencil pressure value,
+is determined by linear interpolation between the boundary and opposing interior node. 
+In this formulation, a correction for non-orthogonality between the edge- and 
+exposed area normals is included. Such non-orthogonality can be found naturally 
+in Tet4, Wedge6, and Pyramid5 elements.
+
+For CVFEM, the following expression, which is very similar to the interior expression,
+is used at open boundaries,
+
+\dot m = \left(\bar{\rho} \hat{u}_i + \tau G_i \bar{P}
+  -\tau \frac{\partial \bar{P}}{\partial x_i}\right) n_i\, dS 
+  + \gamma \frac{\tau}{L} \left( p_{bip} - p_{bc}\right), dS.
+  
+The above expression includes an extra penalty term that is based on the 
+difference between the degree-of-freedom pressure and specified pressure boundary 
+value that are both evaluated at the boundary integration point. This expression
+is based on recent energy stable approaches deduced for Laplace systems; the value of
+:math:`\gamma` is taken to be 2. In the above expression, the projected nodal gradient 
+uses the specified pressure value while the local pressure gradient is based on the
+current values of pressure at all nodes within the element that holds the exposed
+boundary face. The scheme has been shown to be design-order (see upcomind Domino et al., 
+2019, Comp. & Fluids).
+
+Note that the ability for the continuity solve to be well conditioned
 may require an interior Dirichlet on pressure as the open pressure specification
 for the global correction algorithm is lacking. In most cases, a Dirichlet
 condition is not actually required as the NULL-space of the continuity system
