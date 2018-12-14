@@ -33,6 +33,7 @@ class SutherlandsPropertyEvaluator : public PropertyEvaluator
 public:
 
   SutherlandsPropertyEvaluator(
+    const std::map<std::string, ReferencePropertyData*> &referencePropertyDataMap,
     const std::map<std::string, std::vector<double> > &polynomialCoeffsMap);
   virtual ~SutherlandsPropertyEvaluator();
   
@@ -40,15 +41,22 @@ public:
     double *indVarList,
     stk::mesh::Entity node) = 0;
   
-  // helper function for possible reference data
-  void set_reference_property_data(
+  // helper function for possible reference mass fraction
+  void set_reference_mass_fraction(
     const std::map<std::string, ReferencePropertyData*> &referencePropertyDataMap);
+
+  // helper function to compute mole fraction from mass fraction
+  void mole_fraction_from_mass_fraction(
+    const double *mw, const double *massFraction, double *moleFraction);
 
   double compute_viscosity(
     const double &T,
     const double *pt_poly);
 
+  size_t ykVecSize_;  
   std::vector<double> refMassFraction_;
+  std::vector<double> moleFraction_; // may be reference or work array
+  std::vector<double> refMW_;
   std::vector<std::vector<double> > polynomialCoeffs_;
 };
 
@@ -71,6 +79,7 @@ class SutherlandsYkPropertyEvaluator : public SutherlandsPropertyEvaluator
 public:
 
   SutherlandsYkPropertyEvaluator(
+    const std::map<std::string, ReferencePropertyData*> &referencePropertyDataMap,
     const std::map<std::string, std::vector<double> > &polynomialCoeffsMap,
     stk::mesh::MetaData &metaData);
 
@@ -82,7 +91,6 @@ public:
 
   // field definition and extraction
   GenericFieldType *massFraction_;
-  size_t ykVecSize_;  
 };
 
 class SutherlandsYkTrefPropertyEvaluator : public SutherlandsPropertyEvaluator
@@ -90,6 +98,7 @@ class SutherlandsYkTrefPropertyEvaluator : public SutherlandsPropertyEvaluator
 public:
 
   SutherlandsYkTrefPropertyEvaluator(
+    const std::map<std::string, ReferencePropertyData*> &referencePropertyDataMap,
     const std::map<std::string, std::vector<double> > &polynomialCoeffsMap,
     stk::mesh::MetaData &metaData,
     const double tRef);
@@ -103,7 +112,6 @@ public:
   // field definition and extraction
   const double tRef_;
   GenericFieldType *massFraction_;
-  size_t ykVecSize_;  
 };
 
 class SutherlandsYkrefTrefPropertyEvaluator : public SutherlandsPropertyEvaluator
