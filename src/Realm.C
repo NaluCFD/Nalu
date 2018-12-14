@@ -1292,7 +1292,7 @@ Realm::setup_property()
                 else {
                   // props computed based on Yk and Tref
                   viscPropEval = new SutherlandsYkTrefPropertyEvaluator(
-                    matData->polynomialCoeffsMap_, *metaData_, tRef);
+                    matPropBlock->referencePropertyDataMap_, matData->polynomialCoeffsMap_, *metaData_, tRef);
                 }
                 // create the GenericPropAlgorithm; push it back
                 GenericPropAlgorithm *auxAlg
@@ -1309,7 +1309,7 @@ Realm::setup_property()
                 else {
                   // props computed based on Yk and T
                   viscPropEval = new SutherlandsYkPropertyEvaluator(
-                    matData->polynomialCoeffsMap_, *metaData_);
+                    matPropBlock->referencePropertyDataMap_, matData->polynomialCoeffsMap_, *metaData_);
                 }
                 // create the TemperaturePropAlgorithm; push it back
                 TemperaturePropAlgorithm *auxAlg
