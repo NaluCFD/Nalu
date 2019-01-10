@@ -1,8 +1,5 @@
-Simulations:
-  - name: sim1
-    time_integrator: ti_1
-    optimizer: opt1
-    error_estimator: errest_1
+Simulation:
+  name: NaluSim_R1
 
 linear_solvers:
 

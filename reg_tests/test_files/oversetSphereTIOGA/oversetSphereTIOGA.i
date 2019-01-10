@@ -1,9 +1,7 @@
 # -*- mode: yaml -*-
 
-Simulations:
-  - name: sim1
-    time_integrator: ti_1
-    optimizer: opt1
+Simulation:
+  name: NaluSim
 
 linear_solvers:
 

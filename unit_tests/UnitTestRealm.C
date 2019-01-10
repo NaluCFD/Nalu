@@ -119,7 +119,7 @@ YAML::Node get_realm_default_node() {
 NaluTest::NaluTest(const YAML::Node& doc)
   : comm_(MPI_COMM_WORLD),
     spatialDim_(3),
-    sim_(doc)
+    sim_(doc,false)
 {
   // NaluEnv log file
   std::string logFileName = "unittestX_naluwrapper.log";

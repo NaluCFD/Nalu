@@ -1,7 +1,5 @@
-Simulations:
-  - name: sim1
-    time_integrator: ti_1
-    optimizer: opt1
+Simulation:
+  name: NaluSim_R2
 
 linear_solvers:
 
