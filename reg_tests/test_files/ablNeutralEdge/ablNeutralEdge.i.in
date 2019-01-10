@@ -1,8 +1,5 @@
-Simulations:
-  - name: sim1
-    time_integrator: ti_1
-    optimizer: opt1
-
+Simulation:
+  name: ablNeutralEdge
 
 # Specify the linear system solvers.
 linear_solvers:

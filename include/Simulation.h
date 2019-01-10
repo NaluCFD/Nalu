@@ -23,11 +23,10 @@ class LinearSolvers;
 class TimeIntegrator;
 class Realms;
 class Transfers;
-class UnitTests;
 
 class Simulation {
 public:
-  Simulation(const YAML::Node& root_node);
+  Simulation(const YAML::Node& root_node, const bool debug);
 
   ~Simulation();
 
@@ -46,15 +45,14 @@ public:
   static stk::diag::Timer &outputTimer();
 
   const YAML::Node& m_root_node;
+  const bool debug_;
+  std::string name_;
+
   TimeIntegrator *timeIntegrator_;
   Realms *realms_;
   Transfers * transfers_;
   LinearSolvers *linearSolvers_;
 
-  UnitTests *unitTests_;
-
-  static bool debug_;
-  bool runOnlyUnitTests_;
   int serializedIOGroupSize_;
 };
 

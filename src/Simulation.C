@@ -16,7 +16,6 @@
 #include <xfer/Transfers.h>
 #include <TimeIntegrator.h>
 #include <LinearSolvers.h>
-#include <UnitTests.h>
 #include <NaluVersionInfo.h>
 
 #include <Ioss_SerializeIO.h>
@@ -36,24 +35,34 @@ namespace nalu{
 //--------------------------------------------------------------------------
 //-------- destructor ------------------------------------------------------
 //--------------------------------------------------------------------------
-bool Simulation::debug_ = false;
-
-Simulation::Simulation(const YAML::Node& root_node) :
-    m_root_node(root_node),
-    timeIntegrator_(NULL),
-    realms_(NULL),
-    transfers_(NULL),
-    linearSolvers_(NULL),
-    unitTests_(NULL),
-    serializedIOGroupSize_(0)
-{}
+Simulation::Simulation(const YAML::Node& root_node, const bool debug) :
+  m_root_node(root_node),
+  debug_(debug),
+  name_("Nalu_Simulation"),
+  timeIntegrator_(NULL),
+  realms_(NULL),
+  transfers_(NULL),
+  linearSolvers_(NULL),
+  serializedIOGroupSize_(0)
+{
+  // Enforce simulation size = 1 (will deprecate usage of "Simulations" in 1.4)
+  const YAML::Node sims = m_root_node["Simulations"];
+  if (sims) {
+    NaluEnv::self().naluOutputP0() << "The usage of 'Simulations' will be deprecated in Nalu 1.4 " << std::endl;
+    NaluEnv::self().naluOutputP0() << " at present, only '-name: myName' is used" << std::endl;
+    
+    if ( sims.size() > 1 ) 
+      throw std::runtime_error("Only one simulation size is supported at present");
+    const YAML::Node sim_node = sims[0];
+    get_if_present(sim_node, "name", name_, name_);
+  }
+}
 
 Simulation::~Simulation() {
   delete realms_;
   delete transfers_;
   delete timeIntegrator_;
   delete linearSolvers_;
-  if (unitTests_) delete unitTests_;
 }
 
 // Timers
@@ -84,15 +93,13 @@ stk::diag::Timer& Simulation::outputTimer()
 
 void Simulation::load(const YAML::Node & node)
 {
+  // check for supported variables for 'Simulation'
+  const YAML::Node sim = m_root_node["Simulation"];
+  if (sim) {
+    get_if_present(sim, "name", name_, name_);
+  }
 
   high_level_banner();
-
-  if (node["UnitTests"])
-    {
-      NaluEnv::self().naluOutputP0() << "\n\n Running Unit Tests \n\n" << std::endl;
-      sierra::nalu::UnitTests unit_tests(*this);
-      unit_tests.load(node);
-    }
 
   // load the linear solver configs
   linearSolvers_ = new LinearSolvers(*this);
@@ -150,15 +157,10 @@ void Simulation::run()
 {
   NaluEnv::self().naluOutputP0() << std::endl;
   NaluEnv::self().naluOutputP0() << "*******************************************************" << std::endl;
-  NaluEnv::self().naluOutputP0() << "Simulation Shall Commence: number of processors = " << NaluEnv::self().parallel_size() << std::endl;
+  NaluEnv::self().naluOutputP0() << "Simulation '" << name_ << "' Shall Commence: number of processors = " 
+                                 << NaluEnv::self().parallel_size() << std::endl;
   NaluEnv::self().naluOutputP0() << "*******************************************************" << std::endl;
-
-  if (unitTests_)
-    {
-      unitTests_->run();
-      if (runOnlyUnitTests_)
-        return;
-    }
+  NaluEnv::self().naluOutputP0() << std::endl;
   timeIntegrator_->integrate_realm();
 }
 
@@ -204,7 +206,7 @@ void Simulation::high_level_banner() {
   NaluEnv::self().naluOutputP0() << "                     directory structure                         " << std::endl;
   NaluEnv::self().naluOutputP0() << "-----------------------------------------------------------------" << std::endl;
   NaluEnv::self().naluOutputP0() << std::endl;
-
 }
+
 } // namespace nalu
 } // namespace Sierra

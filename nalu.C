@@ -155,14 +155,13 @@ int main( int argc, char ** argv )
       sierra::nalu::NaluParsingHelper::emit(std::cout, doc);
   }
 
-  sierra::nalu::Simulation sim(doc);
+  sierra::nalu::Simulation sim(doc, debug);
   if (serializedIOGroupSize) {
     naluEnv.naluOutputP0() << "Info: found non-zero serialized_io_group_size on command-line= "
         << serializedIOGroupSize << " (takes precedence over input file value)."
         << std::endl;
     sim.setSerializedIOGroupSize(serializedIOGroupSize);
   }
-  sim.debug_ = debug;
   sim.load(doc);
   sim.breadboard();
   sim.initialize();
