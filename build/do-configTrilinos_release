@@ -1,7 +1,7 @@
 # The base directory where mpi is located.  
 # From here you should be able to find include/mpi.h bin/mpicxx, bin/mpiexec, etc.
-mpi_base_dir=/PathToMPI
-nalu_build_dir=/PathToScratchBuild
+mpi_base_dir=/your/path/to/mpi/openmpi/1.10.2-gcc-7.2.0-RHEL6
+nalu_install_dir=/home/nalu_user/gitHubWork/scratch_build/install/gcc7.2.0
 
 # Note: Don't forget to set your LD_LIBRARY_PATH to $mpi_base_dir/lib
 #       You may also need to add to LD_LIBRARY_PATH the lib directory for the compiler
@@ -11,20 +11,20 @@ nalu_build_dir=/PathToScratchBuild
 #boost_dir=/usr/local/Cellar/boost/1.56.0/include/boost/
 #superlu_inc_dir=/usr/local/Cellar/superlu/4.3/include/superlu
 #superlu_lib_dir=/usr/local/Cellar/superlu/4.3/lib
-boost_dir=$nalu_build_dir/install
-superlu_inc_dir=$nalu_build_dir/install/SuperLU_4.3/include
-superlu_lib_dir=$nalu_build_dir/install/SuperLU_4.3/lib
+boost_dir=$nalu_install_dir/boost/1.68.0
+superlu_inc_dir=$nalu_install_dir/SuperLU/4.3/include
+superlu_lib_dir=$nalu_install_dir/SuperLU/4.3/lib
 
 # Additional needed TPLS
-netcdf_install_dir=$nalu_build_dir/install
-hdf_install_dir=$nalu_build_dir/install
-pnetcdf_install_dir=$nalu_install_dir
-z_install_dir=$nalu_build_dir/install
+netcdf_install_dir=$nalu_install_dir/netcdf/4.6.1
+hdf_install_dir=$nalu_install_dir/hdf5/1.10.4
+pnetcdf_install_dir=$nalu_install_dir/pnetcdf/1.10.0
+z_install_dir=$nalu_install_dir/zlib/1.2.11
 
 # Where trilinos will be installed
-trilinos_install_dir=$nalu_build_dir/install/trilinos
+trilinos_install_dir=$nalu_install_dir/Trilinos_stable_release
 
-echo "nalu_build_dir = \"$nalu_build_dir\""
+echo "nalu_install_dir = \"$nalu_install_dir\""
 
 EXTRA_ARGS=$@
 
@@ -81,7 +81,6 @@ cmake \
 -DTrilinos_ENABLE_SEACASIoss:BOOL=ON \
 -DTPL_ENABLE_Netcdf:BOOL=ON \
 -DNetCDF_ROOT:PATH=${netcdf_install_dir} \
--DTPL_ENABLE_HDF5:BOOL=ON \
 -DHDF5_ROOT:PATH=${hdf_install_dir} \
 -DHDF5_NO_SYSTEM_PATHS=ON \
 -DPNetCDF_ROOT:PATH=${pnetcdf_install_dir} \
