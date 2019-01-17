@@ -68,21 +68,8 @@ in Nalu's ``reg_tests`` directory. This tolerance can also be passed into Nalu a
 run the tests once, and copy the ``*.norm`` files in the ``build/reg_tests/test_files`` directory 
 to the corresponding test location in ``reg_tests/test_files`` while overwriting the current 'gold' norms.
 
-In regards to 'official' gold norms, Linux with GCC 4.9.2, netlib-blas/lapack, and the following 
-TPL versions are officially tested:
-
-::
-
-  openmpi@1.10.4
-  boost@1.60.0
-  cmake@3.6.1
-  parallel-netcdf@1.6.1
-  yaml-cpp@master
-  hdf5@1.8.16
-  netcdf@4.3.3.1
-  zlib@1.2.11
-  superlu@4.3 
-
+In regards to 'official' gold norms, Linux gcc is currently used. For the current list of TPLs, refer to the current
+`list <https://nalu.readthedocs.io/en/latest/source/user/build_manually.html#linux-and-osx>`__.
 
 Adding Tests to Nalu
 --------------------
