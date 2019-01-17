@@ -33,10 +33,5 @@ can be found in the [Nalu Documentation](http://nalu.readthedocs.io/en/latest/).
 
 Nightly testing results can be seen by clicking the CDash logo above. More details on testing can be found [here](http://nalu.readthedocs.io/en/latest/source/developer/testing.html).
 
-### Help
-Projects that are using Nalu for sponsored activities should consult <nalucfd@googlegroups.com>.
-
-### For consulting
-
-Consulting for Nalu is available through the consulting email <naluconsulting@gmail.com>.
-
+### Help and Questions
+Projects that are using Nalu should use the formal github issue tracking for any questions or help. Issues are addressed by the Nalu user/developer community subject to availability.
