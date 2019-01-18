@@ -133,6 +133,9 @@
 // hybrid turbulence
 #include "kernel/MomentumHybridTurbElemKernel.h"
 
+// overset
+#include "overset/UpdateOversetFringeAlgorithmDriver.h"
+
 // user function
 #include "user_functions/ConvectingTaylorVortexVelocityAuxFunction.h"
 #include "user_functions/ConvectingTaylorVortexPressureAuxFunction.h"
@@ -171,9 +174,10 @@
 #include "user_functions/KovasznayVelocityAuxFunction.h"
 #include "user_functions/KovasznayPressureAuxFunction.h"
 
-#include "overset/UpdateOversetFringeAlgorithmDriver.h"
-
 #include "user_functions/OneTwoTenVelocityAuxFunction.h"
+
+#include "user_functions/PowerlawVelocityAuxFunction.h"
+
 
 // deprecated
 #include "ContinuityMassElemSuppAlgDep.h"
@@ -429,17 +433,40 @@ LowMachEquationSystem::register_open_bc(
 
   // extract the value for user specified velocity and save off the AuxFunction
   OpenUserData userData = openBCData.userData_;
-  Velocity ux = userData.u_;
-  std::vector<double> userSpecUbc(nDim);
-  userSpecUbc[0] = ux.ux_;
-  userSpecUbc[1] = ux.uy_;
-  if ( nDim > 2)
-    userSpecUbc[2] = ux.uz_;
 
-  // new it
-  ConstantAuxFunction *theAuxFuncUbc = new ConstantAuxFunction(0, nDim, userSpecUbc);
+  // extract the value for user specified velocity and save off the AuxFunction
+  AuxFunction *theAuxFuncUbc = NULL;
+  std::string velocityName = "velocity";
 
-  // bc data alg
+  UserDataType theDataType = get_bc_data_type(userData, velocityName);
+  if ( CONSTANT_UD == theDataType ) {
+    Velocity ux = userData.u_;
+    std::vector<double> userSpecUbc(nDim);
+    userSpecUbc[0] = ux.ux_;
+    userSpecUbc[1] = ux.uy_;
+    if ( nDim > 2)
+      userSpecUbc[2] = ux.uz_;
+    
+    // new it
+    theAuxFuncUbc = new ConstantAuxFunction(0, nDim, userSpecUbc);
+  }
+  else if ( FUNCTION_UD == theDataType ) {
+    // extract the name and possible params
+    std::string fcnName = get_bc_function_name(userData, velocityName);
+    std::vector<double> theParams = get_bc_function_params(userData, velocityName);
+    // switch on the name found...
+    if ( fcnName == "power_law" ) {
+      theAuxFuncUbc = new PowerlawVelocityAuxFunction(0,nDim,theParams);
+    }
+    else {
+      throw std::runtime_error("Only power_law supported");
+    }
+  }
+  else {
+    throw std::runtime_error("Invalid Open Data Specification; must provide const or fcn for velocity");
+  }
+
+  // create the bc data alg
   AuxFunctionAlgorithm *auxAlgUbc
     = new AuxFunctionAlgorithm(realm_, part,
                                velocityBC, theAuxFuncUbc,
@@ -562,34 +589,22 @@ LowMachEquationSystem::register_initial_condition_fcn(
     // create a few Aux things
     AuxFunction *theAuxFunc = NULL;
     AuxFunctionAlgorithm *auxAlg = NULL;
+    std::vector<double> fcnParams;
 
+    // extract the params
+    std::map<std::string, std::vector<double> >::const_iterator iterParams
+      = theParams.find(dofName);
+    if (iterParams != theParams.end()) {
+      fcnParams = (*iterParams).second;	
+    }
+
+    // query function name and create aux
     if ( fcnName == "wind_energy_taylor_vortex") {
-      
-      // extract the params
-      std::map<std::string, std::vector<double> >::const_iterator iterParams
-        = theParams.find(dofName);
-      if (iterParams != theParams.end()) {
-        std::vector<double> fcnParams = (*iterParams).second;	
-        // create the function
-        theAuxFunc = new WindEnergyTaylorVortexAuxFunction(0,nDim,fcnParams);
-      }
-      else {
-        throw std::runtime_error("Wind_energy_taylor_vortex missing parameters");
-      }
+      // create the function
+      theAuxFunc = new WindEnergyTaylorVortexAuxFunction(0,nDim,fcnParams);
     }
     else if ( fcnName == "boundary_layer_perturbation") {
-      
-      // extract the params
-      std::map<std::string, std::vector<double> >::const_iterator iterParams
-        = theParams.find(dofName);
-      if (iterParams != theParams.end()) {
-        std::vector<double> fcnParams = (*iterParams).second;	
-        // create the function
-        theAuxFunc = new BoundaryLayerPerturbationAuxFunction(0,nDim,fcnParams);
-      }
-      else {
-        throw std::runtime_error("Boundary_layer_perturbation missing parameters");
-      }
+      theAuxFunc = new BoundaryLayerPerturbationAuxFunction(0,nDim,fcnParams);
     }
     else if (fcnName == "kovasznay") {
       theAuxFunc = new KovasznayVelocityAuxFunction(0, nDim);
@@ -617,6 +632,9 @@ LowMachEquationSystem::register_initial_condition_fcn(
     }
     else if ( fcnName == "SinProfileChannelFlow" ) {
       theAuxFunc = new SinProfileChannelFlowVelocityAuxFunction(0,nDim);
+    }
+    else if ( fcnName == "power_law" ) {
+      theAuxFunc = new PowerlawVelocityAuxFunction(0,nDim,fcnParams);
     }
     else {
       throw std::runtime_error("InitialCondFunction::non-supported velocity IC"); 
@@ -1497,8 +1515,7 @@ MomentumEquationSystem::register_inflow_bc(
     // extract the name/params
     std::string fcnName = get_bc_function_name(userData, velocityName);
     std::vector<double> theParams = get_bc_function_params(userData, velocityName);
-    if ( theParams.size() == 0 )
-      NaluEnv::self().naluOutputP0() << "function parameter size is zero" << std::endl;
+
     // switch on the name found...
     if ( fcnName == "convecting_taylor_vortex" ) {
       theAuxFunc = new ConvectingTaylorVortexVelocityAuxFunction(0,nDim);
@@ -1520,6 +1537,9 @@ MomentumEquationSystem::register_inflow_bc(
     }
     else if ( fcnName == "kovasznay") {
       theAuxFunc = new KovasznayVelocityAuxFunction(0,nDim);
+    }
+    else if ( fcnName == "power_law" ) {
+      theAuxFunc = new PowerlawVelocityAuxFunction(0,nDim,theParams);
     }
     else {
       throw std::runtime_error("MomentumEquationSystem::register_inflow_bc: limited functions supported");
@@ -2658,8 +2678,7 @@ ContinuityEquationSystem::register_inflow_bc(
     // extract the name/params
     std::string fcnName = get_bc_function_name(userData, velocityName);
     std::vector<double> theParams = get_bc_function_params(userData, velocityName);
-    if ( theParams.size() == 0 )
-      NaluEnv::self().naluOutputP0() << "function parameter size is zero" << std::endl;
+
     // switch on the name found...
     if ( fcnName == "convecting_taylor_vortex" ) {
       theAuxFunc = new ConvectingTaylorVortexVelocityAuxFunction(0,nDim);
@@ -2682,6 +2701,9 @@ ContinuityEquationSystem::register_inflow_bc(
     else if ( fcnName == "BoussinesqNonIso") {
       theAuxFunc = new BoussinesqNonIsoVelocityAuxFunction(0, nDim);
     }
+    else if ( fcnName == "power_law" ) {
+      theAuxFunc = new PowerlawVelocityAuxFunction(0,nDim,theParams);
+    }
     else {
       throw std::runtime_error("ContEquationSystem::register_inflow_bc: limited functions supported");
     }
@@ -2689,7 +2711,6 @@ ContinuityEquationSystem::register_inflow_bc(
   else {
     throw std::runtime_error("ContEquationSystem::register_inflow_bc: only constant and user function supported");
   }
-  
   
   // bc data alg
   AuxFunctionAlgorithm *auxAlg
