@@ -781,6 +781,19 @@ SolutionOptions::get_noc_usage(
   return factor;
 }
 
+double
+SolutionOptions::get_turb_prandtl(
+  const std::string &dofName ) const
+{
+  double factor = turbPrDefault_;
+  std::map<std::string, double>::const_iterator iter
+    = turbPrMap_.find(dofName);
+  if (iter != turbPrMap_.end()) {
+    factor = (*iter).second;
+  }
+  return factor;
+}
+
 bool SolutionOptions::has_set_boussinesq_time_scale()
 {
   return (raBoussinesqTimeScale_ > std::numeric_limits<double>::min());

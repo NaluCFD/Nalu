@@ -63,6 +63,7 @@
 #include "kernel/ScalarUpwAdvDiffElemKernel.h"
 #include "kernel/TurbKineticEnergyKsgsSrcElemKernel.h"
 #include "kernel/TurbKineticEnergyKsgsDesignOrderSrcElemKernel.h"
+#include "kernel/TurbKineticEnergyRodiSrcElemKernel.h"
 #include "kernel/TurbKineticEnergySSTSrcElemKernel.h"
 #include "kernel/TurbKineticEnergySSTDESSrcElemKernel.h"
 
@@ -461,6 +462,10 @@ TurbKineticEnergyEquationSystem::register_interior_algorithm(
       build_topo_kernel_if_requested<ScalarNSOElemKernel>
         (partTopo, *this, activeKernels, "NSO_4TH_ALT",
          realm_.bulk_data(), *realm_.solutionOptions_, tke_, dkdx_, evisc_, 1.0, 1.0, dataPreReqs);
+
+      build_topo_kernel_if_requested<TurbKineticEnergyRodiSrcElemKernel>
+        (partTopo, *this, activeKernels, "rodi",
+         realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs);
 
       report_invalid_supp_alg_names();
       report_built_supp_alg_names();
