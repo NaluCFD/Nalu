@@ -79,6 +79,8 @@ public:
   double get_turb_model_constant(
     TurbulenceModelConstant turbModelEnum) const;
   
+  double get_turb_prandtl(const std::string &dofName) const;
+
   bool get_noc_usage(const std::string &dofName) const;
 
   bool has_set_boussinesq_time_scale();
