@@ -2853,7 +2853,7 @@ void
 Realm::compute_vrtm()
 {
   // compute velocity relative to mesh; must be tied to velocity update...
-  if ( solutionOptions_->meshMotion_ || solutionOptions_->externalMeshDeformation_ ) {
+  if ( hasFluids_ && (solutionOptions_->meshMotion_ || solutionOptions_->externalMeshDeformation_) ) {
     const int nDim = metaData_->spatial_dimension();
 
     VectorFieldType *velocity = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
