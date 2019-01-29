@@ -196,7 +196,6 @@ AssembleMeshDisplacementElemSolverAlgorithm::execute()
           p_displacementNp1[niNdim+i] = dxNp1[i];
           p_coordinates[niNdim+i] = coords[i];
           p_modelCoordinates[niNdim+i] = modelCoords[i];
-
         }
       }
 
