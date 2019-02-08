@@ -59,7 +59,7 @@ struct FixPressureAtNodeInfo
   stk::mesh::PartVector partVec_;
 
   //! Search method for determining the nearest node to the prescribed location
-  stk::search::SearchMethod searchMethod_{stk::search::KDTREE};
+  const stk::search::SearchMethod searchMethod_{stk::search::KDTREE};
 
   NodeLookupType lookupType_{SPATIAL_LOCATION};
 

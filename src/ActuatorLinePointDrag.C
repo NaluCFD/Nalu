@@ -245,13 +245,10 @@ ActuatorLinePointDrag::load(
     get_if_present(y_actuatorLine, "search_method", searchMethodName, searchMethodName);
 
     // determine search method for this pair
-    if ( searchMethodName == "boost_rtree" )
-      searchMethod_ = stk::search::BOOST_RTREE;
-    else if ( searchMethodName == "stk_kdtree" )
-      searchMethod_ = stk::search::KDTREE;
-    else
-      NaluEnv::self().naluOutputP0() << "ActuatorLinePointDrag::search method not declared; will use stk_kdtree" << std::endl;
-
+    if ( searchMethodName != "stk_kdtree" )
+      NaluEnv::self().naluOutputP0() << "ActuatorLinePointDrag::search_method only supports stk_kdtree" 
+                                     << std::endl;
+    
     // extract the set of from target names; each spec is homogeneous in this respect
     const YAML::Node searchTargets = y_actuatorLine["search_target_part"];
     if (searchTargets.Type() == YAML::NodeType::Scalar) {

@@ -103,7 +103,7 @@ class NonConformalInfo {
   /* expand search box */
   double expandBoxPercentage_;
 
-  stk::search::SearchMethod searchMethod_;
+  const stk::search::SearchMethod searchMethod_;
 
   /* clip isoparametric coordinates if they are out of bounds */
   const bool clipIsoParametricCoords_;

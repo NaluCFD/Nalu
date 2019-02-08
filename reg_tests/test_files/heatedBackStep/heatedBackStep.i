@@ -153,7 +153,6 @@ realms:
       target_name: [surface_6, surface_7]
       periodic_user_data:
         search_tolerance: 1.e-5
-        search_method: boost_rtree
 
     - wall_boundary_condition: bc_top
       target_name: surface_8
