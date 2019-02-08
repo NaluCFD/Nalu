@@ -120,7 +120,6 @@ realms:
 
     actuator:
       type: ActLinePointDrag
-      search_method: boost_rtree
       search_target_part: block_1
 
       specifications:

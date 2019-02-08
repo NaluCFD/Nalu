@@ -100,7 +100,6 @@ realms:
       target_name: [surface_1, surface_2]
       periodic_user_data:
         search_tolerance: 1.e-5
-        search_method: boost_rtree
 
     - wall_boundary_condition: bc_3
       target_name: surface_3
@@ -229,7 +228,6 @@ realms:
       target_name: [surface_1, surface_2]
       periodic_user_data:
         search_tolerance: 1.e-5
-        search_method: boost_rtree
 
     - wall_boundary_condition: bc_inner
       target_name: surface_3
@@ -318,7 +316,6 @@ realms:
       target_name: [surface_3, surface_4]
       periodic_user_data:
         search_tolerance: 1.e-2
-        search_method: boost_rtree
 
     solution_options:
       name: myOptionsHC

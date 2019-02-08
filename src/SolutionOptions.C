@@ -466,12 +466,8 @@ SolutionOptions::load(const YAML::Node & y_node)
           fix_pressure["search_target_part"].as<std::vector<std::string>>();
         if (fix_pressure["search_method"]) {
           std::string searchMethodName = fix_pressure["search_method"].as<std::string>();
-          if (searchMethodName == "boost_rtree")
-            fixPressureInfo_->searchMethod_ = stk::search::BOOST_RTREE;
-          else if (searchMethodName == "stk_kdtree")
-            fixPressureInfo_->searchMethod_ = stk::search::KDTREE;
-          else
-            NaluEnv::self().naluOutputP0() << "ABL Fix Pressure: Search will use stk_kdtree"
+          if (searchMethodName != "stk_kdtree")
+            NaluEnv::self().naluOutputP0() << "ABL::search_method only supports stk_kdtree"
                                            << std::endl;
         }
       }

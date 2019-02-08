@@ -188,7 +188,7 @@ public:
   Realm &realm_;
 
   // type of stk search
-  stk::search::SearchMethod searchMethod_;
+  const stk::search::SearchMethod searchMethod_;
 
   // custom ghosting
   stk::mesh::Ghosting *actuatorLineGhosting_;

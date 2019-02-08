@@ -162,7 +162,6 @@ realms:
         node_lookup_type: spatial_location
         location: [100.0, 2500.0, 1.0]
         search_target_part: [fluid_part]
-        search_method: stk_kdtree
 
       options:
 
@@ -248,7 +247,6 @@ realms:
     # 245 degrees (southwest) at 90 m above the surface in a planar 
     # averaged sense.  
     abl_forcing:
-      search_method: stk_kdtree
       search_tolerance: 0.0001
       search_expansion_factor: 1.5
 
