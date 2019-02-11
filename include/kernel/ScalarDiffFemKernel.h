@@ -57,11 +57,10 @@ private:
   VectorFieldType *coordinates_{nullptr};
 
   // master element
-  Hex8FEM * meFEM_;
-  double *ipWeight_;
   const bool shiftedGradOp_;
   
   /// Shape functions
+  AlignedViewType<DoubleType[AlgTraits::numGp_]> v_ip_weight_{ "v_ip_weight" };
   AlignedViewType<DoubleType[AlgTraits::numGp_][AlgTraits::nodesPerElement_]> v_shape_function_ { "v_shape_func" };
 };
 
