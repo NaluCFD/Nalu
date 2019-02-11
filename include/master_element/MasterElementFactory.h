@@ -33,11 +33,19 @@ namespace nalu{
       int dimension = 0,
       std::string quadType = "GaussLegendre");
 
+    static MasterElement*
+    get_fem_master_element(
+      const stk::topology& theTopo,
+      int dimension = 0,
+      std::string quadType = "GaussLegendre");
+
     static void clear();
   private:
     MasterElementRepo() = default;
+    // allow support of all three types of master elements in a given simulation
     static std::map<stk::topology, std::unique_ptr<MasterElement>> surfaceMeMap_;
     static std::map<stk::topology, std::unique_ptr<MasterElement>> volumeMeMap_;
+    static std::map<stk::topology, std::unique_ptr<MasterElement>> femMeMap_;
   };
 
 } // namespace nalu
