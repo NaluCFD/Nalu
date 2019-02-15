@@ -37,7 +37,7 @@ ScalarMassElemKernel<AlgTraits>::ScalarMassElemKernel(
 {
   // save off fields
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
-
+  
   scalarQN_ = &(scalarQ->field_of_state(stk::mesh::StateN));
   scalarQNp1_ = &(scalarQ->field_of_state(stk::mesh::StateNP1));
   if (scalarQ->number_of_states() == 2)

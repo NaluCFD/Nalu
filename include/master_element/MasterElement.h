@@ -102,6 +102,12 @@ public:
     SharedMemView<DoubleType**>&areav) {
     throw std::runtime_error("determinant using SharedMemView is not implemented");}
 
+  virtual void determinant_fem(
+    SharedMemView<DoubleType**>&coords,
+    SharedMemView<DoubleType***>&deriv,
+    SharedMemView<DoubleType*>&det_j) {
+    throw std::runtime_error("determinant_fem using SharedMemView is not implemented");}
+
   virtual void gij(
     SharedMemView<DoubleType**>& coords,
     SharedMemView<DoubleType***>& gupper,

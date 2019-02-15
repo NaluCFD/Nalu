@@ -73,7 +73,7 @@ realms:
       options:
  
       - element_source_terms:
-          temperature: FEM_DIFF
+          temperature: [FEM_MASS, FEM_DIFF]
 
       - shifted_gradient_operator:
           temperature: yes 

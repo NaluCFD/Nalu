@@ -38,6 +38,11 @@ public:
     double *det_j,
     double * error );
 
+  void determinant_fem(
+    SharedMemView<DoubleType**>&coords,
+    SharedMemView<DoubleType***>&deriv,
+    SharedMemView<DoubleType*>&det_j) final;
+
   void grad_op_fem(
     SharedMemView<DoubleType**>&coords,
     SharedMemView<DoubleType***>&gradop,
