@@ -237,7 +237,6 @@ int MasterElementViews<T>::create_master_element_views(
          scs_areav = get_shmem_view_2D<T>(team, numScsIp, nDim);
          numScalars += numScsIp * nDim;
          break;
-
       case SCS_GRAD_OP:
          ThrowRequireMsg(numScsIp > 0, "ERROR, meSCS must be non-null if SCS_GRAD_OP is requested.");
          dndx = get_shmem_view_3D<T>(team, numScsIp, nodesPerElem, nDim);
@@ -245,7 +244,6 @@ int MasterElementViews<T>::create_master_element_views(
          needDeriv = true;
          needDetj = true;
          break;
-
       case SCS_SHIFTED_GRAD_OP:
         ThrowRequireMsg(numScsIp > 0, "ERROR, meSCS must be non-null if SCS_SHIFTED_GRAD_OP is requested.");
         dndx_shifted = get_shmem_view_3D<T>(team, numScsIp, nodesPerElem, nDim);
@@ -253,7 +251,6 @@ int MasterElementViews<T>::create_master_element_views(
         needDeriv = true;
         needDetj = true;
         break;
-
       case SCS_GIJ:
          ThrowRequireMsg(numScsIp > 0, "ERROR, meSCS must be non-null if SCS_GIJ is requested.");
          gijUpper = get_shmem_view_3D<T>(team, numScsIp, nDim, nDim);
@@ -261,13 +258,11 @@ int MasterElementViews<T>::create_master_element_views(
          numScalars += 2 * numScsIp * nDim * nDim;
          needDeriv = true;
          break;
-
       case SCV_VOLUME:
          ThrowRequireMsg(numScvIp > 0, "ERROR, meSCV must be non-null if SCV_VOLUME is requested.");
          scv_volume = get_shmem_view_1D<T>(team, numScvIp);
          numScalars += numScvIp;
          break;
-
       case SCV_GRAD_OP:
          ThrowRequireMsg(numScvIp > 0, "ERROR, meSCV must be non-null if SCV_GRAD_OP is requested.");
          dndx_scv = get_shmem_view_3D<T>(team, numScvIp, nodesPerElem, nDim);
@@ -275,7 +270,6 @@ int MasterElementViews<T>::create_master_element_views(
          needDerivScv = true;
          needDetjScv = true;
          break;
-
       case SCV_SHIFTED_GRAD_OP:
          ThrowRequireMsg(numScvIp > 0, "ERROR, meSCV must be non-null if SCV_SHIFTED_GRAD_OP is requested.");
          dndx_scv_shifted = get_shmem_view_3D<T>(team, numScvIp, nodesPerElem, nDim);
@@ -283,7 +277,6 @@ int MasterElementViews<T>::create_master_element_views(
          needDerivScv = true;
          needDetjScv = true;
          break;
-
       case FEM_GRAD_OP:
          ThrowRequireMsg(numFemIp > 0, "ERROR, meFEM must be non-null if FEM_GRAD_OP is requested.");
          dndx_fem = get_shmem_view_3D<T>(team, numFemIp, nodesPerElem, nDim);
@@ -292,7 +285,6 @@ int MasterElementViews<T>::create_master_element_views(
          needDetjFem = true;
          femGradOp = true;
          break;
-
       case FEM_SHIFTED_GRAD_OP:
          ThrowRequireMsg(numFemIp > 0, "ERROR, meFEM must be non-null if FEM_SHIFTED_GRAD_OP is requested.");
          dndx_fem = get_shmem_view_3D<T>(team, numFemIp, nodesPerElem, nDim);
@@ -300,6 +292,11 @@ int MasterElementViews<T>::create_master_element_views(
          needDerivFem = true;
          needDetjFem = true;
          femShiftedGradOp = true;
+         break;
+      case FEM_DET_J:
+         ThrowRequireMsg(numFemIp > 0, "ERROR, meFEM must be non-null if FEM_DET_J is requested.");
+         needDerivFem = true;
+         needDetjFem = true;
          break;
 
       default: break;
@@ -420,7 +417,9 @@ void MasterElementViews<T>::fill_master_element_views(
         ThrowRequireMsg(coordsView != nullptr, "ERROR, coords null but FEM_GRAD_OP requested.");
         meFEM->shifted_grad_op(1, &((*coordsView)(0, 0)), &dndx_fem(0, 0, 0), &deriv_fem(0, 0, 0), &det_j_fem(0), &error);
         break;
-
+      case FEM_DET_J:
+        ThrowRequireMsg(false, "ERROR, Non-NGP FEM::det_j is not implemented.");
+        break;
       default:
         break;
     }
@@ -497,6 +496,11 @@ void MasterElementViews<T>::fill_master_element_views_new_me(
          ThrowRequireMsg(meFEM != nullptr, "ERROR, meFEM needs to be non-null if FEM_SHIFTED_GRAD_OP is requested.");
          ThrowRequireMsg(coordsView != nullptr, "ERROR, coords null but FEM_GRAD_OP requested.");
          meFEM->shifted_grad_op_fem(*coordsView, dndx_fem, deriv_fem, det_j_fem);
+         break;
+      case FEM_DET_J:
+         ThrowRequireMsg(meFEM != nullptr, "ERROR, meFEM needs to be non-null if FEM_DET_J is requested.");
+         ThrowRequireMsg(coordsView != nullptr, "ERROR, coords null but FEM_DET_J requested.");
+         meFEM->determinant_fem(*coordsView, deriv_fem, det_j_fem);
          break;
 
       default: break;
