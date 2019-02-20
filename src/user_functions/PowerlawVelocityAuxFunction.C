@@ -50,15 +50,15 @@ PowerlawVelocityAuxFunction::do_evaluate(
 {
   for(unsigned p=0; p < numPoints; ++p) {
 
-    // ux = f(y)    
+    // uz = f(y)    
     double cY = std::max(1.0e-16, coords[1]);
     
     // standard power law 
-    const double uX = uKnown_*std::pow(cY/yKnown_, alpha_);
+    const double uZ = uKnown_*std::pow(cY/yKnown_, alpha_);
 
-    fieldPtr[0] = uX;
+    fieldPtr[0] = 0.0;
     fieldPtr[1] = 0.0;
-    fieldPtr[2] = 0.0;
+    fieldPtr[2] = uZ;
     
     fieldPtr += fieldSize;
     coords += spatialDimension;
