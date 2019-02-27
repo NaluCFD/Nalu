@@ -5,7 +5,7 @@
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
-#include "kernel/HeatCondMassFemKernel.h"
+#include "kernel/ScalarMassFemKernel.h"
 #include "AlgTraits.h"
 #include "master_element/MasterElement.h"
 #include "TimeIntegrator.h"
@@ -25,28 +25,31 @@ namespace sierra {
 namespace nalu {
 
 template<typename AlgTraits>
-HeatCondMassFemKernel<AlgTraits>::HeatCondMassFemKernel(
+ScalarMassFemKernel<AlgTraits>::ScalarMassFemKernel(
   const stk::mesh::BulkData& bulkData,
   const SolutionOptions& solnOpts,
-  ScalarFieldType* temperature,
+  ScalarFieldType* scalarQ,
   ScalarFieldType* density,
-  ScalarFieldType* specHeat,
   ElemDataRequests& dataPreReqs)
-  : Kernel(),
-    density_(density),
-    specHeat_(specHeat)
+  : Kernel()
 {
   // Save of required fields
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
   coordinates_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
 
-  temperatureN_ = &(temperature->field_of_state(stk::mesh::StateN));
-  temperatureNp1_ = &(temperature->field_of_state(stk::mesh::StateNP1));
-  if (temperature->number_of_states() == 2)
-    temperatureNm1_ = temperatureN_;
-  else
-    temperatureNm1_ = &(temperature->field_of_state(stk::mesh::StateNM1));
-
+  scalarQNp1_ = &(scalarQ->field_of_state(stk::mesh::StateNP1));
+  scalarQN_ = &(scalarQ->field_of_state(stk::mesh::StateN));
+  densityNp1_ = &(density->field_of_state(stk::mesh::StateNP1));
+  densityN_ = &(density->field_of_state(stk::mesh::StateN));
+  if (scalarQ->number_of_states() == 2) {
+    scalarQNm1_ = scalarQN_;
+    densityNm1_ = densityN_;
+  }
+  else {
+    scalarQNm1_ = &(scalarQ->field_of_state(stk::mesh::StateNM1));
+    densityNm1_ = &(density->field_of_state(stk::mesh::StateNM1));
+  }
+  
   // extract master element
   MasterElement *meFEM = sierra::nalu::MasterElementRepo::get_fem_master_element(AlgTraits::topo_);
   
@@ -55,7 +58,7 @@ HeatCondMassFemKernel<AlgTraits>::HeatCondMassFemKernel(
     v_ip_weight_[k] = meFEM->weights_[k];
   
   // master element, shape function is shifted consistently
-  if ( solnOpts.get_shifted_grad_op(temperature->name()) )
+  if ( solnOpts.get_shifted_grad_op(scalarQ->name()) )
     get_fem_shape_fn_data<AlgTraits>([&](double* ptr){meFEM->shifted_shape_fcn(ptr);}, v_shape_function_);
   else
     get_fem_shape_fn_data<AlgTraits>([&](double* ptr){meFEM->shape_fcn(ptr);}, v_shape_function_);
@@ -65,24 +68,25 @@ HeatCondMassFemKernel<AlgTraits>::HeatCondMassFemKernel(
 
   // fields and data
   dataPreReqs.add_coordinates_field(*coordinates_, AlgTraits::nDim_, CURRENT_COORDINATES);
-  dataPreReqs.add_gathered_nodal_field(*temperatureNp1_, 1);
-  dataPreReqs.add_gathered_nodal_field(*temperatureN_, 1);
-  dataPreReqs.add_gathered_nodal_field(*temperatureNm1_, 1);
-  dataPreReqs.add_gathered_nodal_field(*density_, 1);
-  dataPreReqs.add_gathered_nodal_field(*specHeat_, 1);
+  dataPreReqs.add_gathered_nodal_field(*scalarQNp1_, 1);
+  dataPreReqs.add_gathered_nodal_field(*scalarQN_, 1);
+  dataPreReqs.add_gathered_nodal_field(*scalarQNm1_, 1);
+  dataPreReqs.add_gathered_nodal_field(*densityNp1_, 1);
+  dataPreReqs.add_gathered_nodal_field(*densityN_, 1);
+  dataPreReqs.add_gathered_nodal_field(*densityNm1_, 1);
   
   dataPreReqs.add_master_element_call(FEM_DET_J, CURRENT_COORDINATES);
 }
 
 template<typename AlgTraits>
-HeatCondMassFemKernel<AlgTraits>::~HeatCondMassFemKernel()
+ScalarMassFemKernel<AlgTraits>::~ScalarMassFemKernel()
 {
   // does nothing
 }
 
 template<typename AlgTraits>
 void
-HeatCondMassFemKernel<AlgTraits>::setup(const TimeIntegrator& timeIntegrator)
+ScalarMassFemKernel<AlgTraits>::setup(const TimeIntegrator& timeIntegrator)
 {
   dt_ = timeIntegrator.get_time_step();
   gamma1_ = timeIntegrator.get_gamma1();
@@ -92,32 +96,41 @@ HeatCondMassFemKernel<AlgTraits>::setup(const TimeIntegrator& timeIntegrator)
 
 template<typename AlgTraits>
 void
-HeatCondMassFemKernel<AlgTraits>::execute(
+ScalarMassFemKernel<AlgTraits>::execute(
   SharedMemView<DoubleType**>& lhs,
   SharedMemView<DoubleType*>& rhs,
   ScratchViews<DoubleType>& scratchViews)
 {
-  SharedMemView<DoubleType*>& v_temperatureNp1 = scratchViews.get_scratch_view_1D(*temperatureNp1_);
-  SharedMemView<DoubleType*>& v_temperatureN = scratchViews.get_scratch_view_1D(*temperatureN_);
-  SharedMemView<DoubleType*>& v_temperatureNm1 = scratchViews.get_scratch_view_1D(*temperatureNm1_);
-  SharedMemView<DoubleType*>& v_density = scratchViews.get_scratch_view_1D(*density_);
-  SharedMemView<DoubleType*>& v_specHeat = scratchViews.get_scratch_view_1D(*specHeat_);
+  SharedMemView<DoubleType*>& v_scalarQNp1 = scratchViews.get_scratch_view_1D(*scalarQNp1_);
+  SharedMemView<DoubleType*>& v_scalarQN = scratchViews.get_scratch_view_1D(*scalarQN_);
+  SharedMemView<DoubleType*>& v_scalarQNm1 = scratchViews.get_scratch_view_1D(*scalarQNm1_);
+  SharedMemView<DoubleType*>& v_densityNp1 = scratchViews.get_scratch_view_1D(*densityNp1_);
+  SharedMemView<DoubleType*>& v_densityN = scratchViews.get_scratch_view_1D(*densityN_);
+  SharedMemView<DoubleType*>& v_densityNm1 = scratchViews.get_scratch_view_1D(*densityNm1_);
   
   SharedMemView<DoubleType*>& v_det_j = scratchViews.get_me_views(CURRENT_COORDINATES).det_j_fem;
 
   for ( int ip = 0; ip < AlgTraits::numGp_; ++ip ) {
 
     // compute ip property
-    DoubleType densityIp = 0.0;
-    DoubleType specHeatIp = 0.0;
+    DoubleType qNp1Ip = 0.0;
+    DoubleType qNIp = 0.0;
+    DoubleType qNm1Ip = 0.0;
+    DoubleType rhoNp1Ip = 0.0;
+    DoubleType rhoNIp= 0.0;
+    DoubleType rhoNm1Ip = 0.0;
     for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
       const DoubleType r = v_shape_function_(ip,ic);
-      densityIp += r*v_density(ic);
-      specHeatIp += r*v_specHeat(ic);
+      qNp1Ip += r*v_scalarQNp1(ic);
+      qNIp += r*v_scalarQN(ic);
+      qNm1Ip += r*v_scalarQNm1(ic);
+      rhoNp1Ip += r*v_densityNp1(ic);
+      rhoNIp += r*v_densityN(ic);
+      rhoNm1Ip += r*v_densityNm1(ic);
     }
 
     // start the assembly (collect ip scalings)
-    const DoubleType ipFactor = densityIp*specHeatIp*v_det_j(ip)*v_ip_weight_(ip);
+    const DoubleType ipFactor = v_det_j(ip)*v_ip_weight_(ip);
 
     // row ir
     for ( int ir = 0; ir < AlgTraits::nodesPerElement_; ++ir) {
@@ -125,19 +138,15 @@ HeatCondMassFemKernel<AlgTraits>::execute(
       const DoubleType wIr = v_shape_function_(ip,ir);
       
       // column ic
-      DoubleType rhsSum = 0.0;
       for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
-        DoubleType tdot = (gamma1_*v_temperatureNp1(ic) + gamma2_*v_temperatureN(ic) + gamma3_*v_temperatureNm1(ic))/dt_;
-        const DoubleType fac = wIr*v_shape_function_(ip,ic);
-        rhsSum += fac*tdot; 
-        lhs(ir,ic) += gamma1_*ipFactor*fac/dt_;
+        lhs(ir,ic) += gamma1_*rhoNp1Ip*wIr*v_shape_function_(ip,ic)/dt_*ipFactor;
       }
-      rhs(ir) -= rhsSum*ipFactor;
+      rhs(ir) -= wIr*(gamma1_*qNp1Ip*rhoNp1Ip + gamma2_*qNIp*rhoNIp + gamma3_*qNm1Ip*rhoNm1Ip)/dt_*ipFactor;
     }
   }
 }
-
-INSTANTIATE_FEM_KERNEL(HeatCondMassFemKernel);
+  
+INSTANTIATE_FEM_KERNEL(ScalarMassFemKernel);
 
 }  // nalu
 }  // sierra

@@ -586,6 +586,9 @@ class Realm {
   // save off the node
   const YAML::Node & node_;
 
+  // flag for CVFEM usage
+  bool usesCVFEM_;
+
   // tools
   std::unique_ptr<ElementDescription> desc_; // holds topo info
   std::unique_ptr<PromotedElementIO> promotionIO_; // mesh outputer

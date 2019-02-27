@@ -246,7 +246,8 @@ namespace nalu{
     doPromotion_(false),
     promotionOrder_(0u),
     inputMeshIdx_(-1),
-    node_(node)
+    node_(node),
+    usesCVFEM_(true)
 {
   // deal with specialty options that live off of the realm; 
   // choose to do this now rather than waiting for the load stage
@@ -262,7 +263,8 @@ Realm::~Realm()
   delete metaData_;
   delete ioBroker_;
 
-  delete computeGeometryAlgDriver_;
+  if ( NULL != computeGeometryAlgDriver_ )
+    delete computeGeometryAlgDriver_;
 
   if ( NULL != errorIndicatorAlgDriver_)
     delete errorIndicatorAlgDriver_;
@@ -327,7 +329,8 @@ Realm::~Realm()
 void
 Realm::breadboard()
 {
-  computeGeometryAlgDriver_ = new ComputeGeometryAlgorithmDriver(*this);
+  if ( usesCVFEM_ )
+    computeGeometryAlgDriver_ = new ComputeGeometryAlgorithmDriver(*this);
   equationSystems_.breadboard();
 }
 
@@ -629,6 +632,11 @@ Realm::load(const YAML::Node & node)
 
   get_if_present(node, "estimate_memory_only", estimateMemoryOnly_, false);
   get_if_present(node, "available_memory_per_core_GB", availableMemoryPerCoreGB_, 0.0);
+
+  // check for FEM (not yet ready for mixed realms)
+  bool usesFEM = false;
+  get_if_present(node, "activate_fem", usesFEM, usesFEM);
+  usesCVFEM_ = !usesFEM;
 
   // exposed bc check
   get_if_present(node, "check_for_missing_bcs", checkForMissingBcs_, checkForMissingBcs_);
@@ -2806,6 +2814,9 @@ Realm::mesh_velocity_cross_product(double *o, double *c, double *u)
 void
 Realm::compute_geometry()
 {
+  if ( !usesCVFEM_ )
+    return;
+  
   // interior and boundary
   computeGeometryAlgDriver_->execute();
 
@@ -2996,9 +3007,15 @@ void
 Realm::register_interior_algorithm(
   stk::mesh::Part *part)
 {
+  // Track parts that are registered to interior algorithms
+  interiorPartVec_.push_back(part);
+
   //====================================================
   // Register interior algorithms
   //====================================================
+  if ( !usesCVFEM_ )
+    return;
+
   const AlgorithmType algType = INTERIOR;
   std::map<AlgorithmType, Algorithm *>::iterator it
     = computeGeometryAlgDriver_->algMap_.find(algType);
@@ -3011,8 +3028,6 @@ Realm::register_interior_algorithm(
     it->second->partVec_.push_back(part);
   }
 
-  // Track parts that are registered to interior algorithms
-  interiorPartVec_.push_back(part);
 }
 
 //--------------------------------------------------------------------------
@@ -3023,13 +3038,14 @@ Realm::register_wall_bc(
   stk::mesh::Part *part,
   const stk::topology &theTopo)
 {
-
-  //====================================================
-  // Register face (boundary condition) data
-  //====================================================
-
   // push back the part for book keeping and, later, skin mesh
   bcPartVec_.push_back(part);
+
+  //====================================================
+  // Register wall algorithms
+  //====================================================
+  if ( !usesCVFEM_ )
+    return;
 
   const int nDim = metaData_->spatial_dimension();
 
@@ -3041,9 +3057,6 @@ Realm::register_wall_bc(
     = &(metaData_->declare_field<GenericFieldType>(static_cast<stk::topology::rank_t>(metaData_->side_rank()), "exposed_area_vector"));
   stk::mesh::put_field_on_mesh(*exposedAreaVec_, *part, nDim*numScsIp, nullptr);
 
-  //====================================================
-  // Register wall algorithms
-  //====================================================
   const AlgorithmType algType = WALL;
   std::map<AlgorithmType, Algorithm *>::iterator it
     = computeGeometryAlgDriver_->algMap_.find(algType);
@@ -3066,13 +3079,14 @@ Realm::register_inflow_bc(
   stk::mesh::Part *part,
   const stk::topology &theTopo)
 {
-
-  //====================================================
-  // Register face (boundary condition) data
-  //====================================================
-
   // push back the part for book keeping and, later, skin mesh
   bcPartVec_.push_back(part);
+
+  //====================================================
+  // Register inflow algorithms
+  //====================================================
+  if ( !usesCVFEM_ )
+    return;
 
   const int nDim = metaData_->spatial_dimension();
 
@@ -3084,9 +3098,6 @@ Realm::register_inflow_bc(
     = &(metaData_->declare_field<GenericFieldType>(static_cast<stk::topology::rank_t>(metaData_->side_rank()), "exposed_area_vector"));
   stk::mesh::put_field_on_mesh(*exposedAreaVec_, *part, nDim*numScsIp, nullptr);
 
-  //====================================================
-  // Register wall algorithms
-  //====================================================
   const AlgorithmType algType = INFLOW;
   std::map<AlgorithmType, Algorithm *>::iterator it
     = computeGeometryAlgDriver_->algMap_.find(algType);
@@ -3108,13 +3119,14 @@ Realm::register_open_bc(
   stk::mesh::Part *part,
   const stk::topology &theTopo)
 {
-
-  //====================================================
-  // Register face (boundary condition) data
-  //====================================================
-
   // push back the part for book keeping and, later, skin mesh
   bcPartVec_.push_back(part);
+
+  //====================================================
+  // Register open algorithms
+  //====================================================
+  if ( !usesCVFEM_ )
+    return;
 
   const int nDim = metaData_->spatial_dimension();
 
@@ -3126,9 +3138,6 @@ Realm::register_open_bc(
     = &(metaData_->declare_field<GenericFieldType>(static_cast<stk::topology::rank_t>(metaData_->side_rank()), "exposed_area_vector"));
   stk::mesh::put_field_on_mesh(*exposedAreaVec_, *part, nDim*numScsIp, nullptr);
 
-  //====================================================
-  // Register wall algorithms
-  //====================================================
   const AlgorithmType algType = OPEN;
   std::map<AlgorithmType, Algorithm *>::iterator it
     = computeGeometryAlgDriver_->algMap_.find(algType);
@@ -3150,13 +3159,14 @@ Realm::register_symmetry_bc(
   stk::mesh::Part *part,
   const stk::topology &theTopo)
 {
-
-  //====================================================
-  // Register face (boundary condition) data
-  //====================================================
-
   // push back the part for book keeping and, later, skin mesh
   bcPartVec_.push_back(part);
+
+  //====================================================
+  // Register symmetry algorithms
+  //====================================================
+  if ( !usesCVFEM_ )
+    return;
 
   const int nDim = metaData_->spatial_dimension();
 
@@ -3168,9 +3178,6 @@ Realm::register_symmetry_bc(
     = &(metaData_->declare_field<GenericFieldType>(static_cast<stk::topology::rank_t>(metaData_->side_rank()), "exposed_area_vector"));
   stk::mesh::put_field_on_mesh(*exposedAreaVec_, *part, nDim*numScsIp, nullptr);
 
-  //====================================================
-  // Register symmetry algorithms
-  //====================================================
   const AlgorithmType algType = SYMMETRY;
   std::map<AlgorithmType, Algorithm *>::iterator it
     = computeGeometryAlgDriver_->algMap_.find(algType);
@@ -3257,9 +3264,14 @@ Realm::register_non_conformal_bc(
   stk::mesh::Part *part,
   const stk::topology &theTopo)
 {
-
   // push back the part for book keeping and, later, skin mesh
   bcPartVec_.push_back(part);
+
+  //====================================================
+  // Register non-conformal algorithms
+  //====================================================
+  if ( !usesCVFEM_ )
+    return;
 
   const AlgorithmType algType = NON_CONFORMAL;
 
@@ -3274,9 +3286,6 @@ Realm::register_non_conformal_bc(
     = &(metaData_->declare_field<GenericFieldType>(static_cast<stk::topology::rank_t>(metaData_->side_rank()), "exposed_area_vector"));
   stk::mesh::put_field_on_mesh(*exposedAreaVec_, *part, nDim*numScsIp, nullptr);
    
-  //====================================================
-  // Register non-conformal algorithms
-  //====================================================
   std::map<AlgorithmType, Algorithm *>::iterator it
     = computeGeometryAlgDriver_->algMap_.find(algType);
   if ( it == computeGeometryAlgDriver_->algMap_.end() ) {

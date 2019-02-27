@@ -5,8 +5,8 @@
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
-#ifndef HeatCondMassFemKernel_H
-#define HeatCondMassFemKernel_H
+#ifndef ScalarAdvFemKernel_h
+#define ScalarAdvFemKernel_h
 
 #include "kernel/Kernel.h"
 #include "FieldTypeDef.h"
@@ -22,27 +22,22 @@ namespace nalu {
 
 class ElemDataRequests;
 class SolutionOptions;
-class TimeIntegrator;
 
 /** CVFEM scalar advection/diffusion kernel
  */
 template<typename AlgTraits>
-class HeatCondMassFemKernel: public Kernel
+class ScalarAdvFemKernel: public Kernel
 {
 public:
-  HeatCondMassFemKernel(
+  ScalarAdvFemKernel(
     const stk::mesh::BulkData&,
     const SolutionOptions&,
     ScalarFieldType*,
     ScalarFieldType*,
-    ScalarFieldType*,
+    VectorFieldType*,
     ElemDataRequests&);
 
-  virtual ~HeatCondMassFemKernel();
-
-  /** Perform pre-timestep work for the computational kernel
-   */
-  virtual void setup(const TimeIntegrator&);
+  virtual ~ScalarAdvFemKernel();
 
   /** Execute the kernel within a Kokkos loop and populate the LHS and RHS for
    *  the linear solve
@@ -53,20 +48,16 @@ public:
     ScratchViews<DoubleType>&);
 
 private:
-  HeatCondMassFemKernel() = delete;
+  ScalarAdvFemKernel() = delete;
 
-  ScalarFieldType *temperatureNp1_{nullptr};
-  ScalarFieldType *temperatureN_{nullptr};
-  ScalarFieldType *temperatureNm1_{nullptr};
+  ScalarFieldType *scalarQ_{nullptr};
   ScalarFieldType *density_{nullptr};
-  ScalarFieldType *specHeat_{nullptr};
+  VectorFieldType *velocity_{nullptr};
   VectorFieldType *coordinates_{nullptr};
 
-  double dt_{0.0};
-  double gamma1_{0.0};
-  double gamma2_{0.0};
-  double gamma3_{0.0};
-
+  // master element
+  const bool shiftedGradOp_;
+  
   /// Shape functions
   AlignedViewType<DoubleType[AlgTraits::numGp_]> v_ip_weight_{ "v_ip_weight" };
   AlignedViewType<DoubleType[AlgTraits::numGp_][AlgTraits::nodesPerElement_]> v_shape_function_ { "v_shape_func" };
@@ -75,4 +66,4 @@ private:
 }  // nalu
 }  // sierra
 
-#endif /* HeatCondMassFemKernel_H */
+#endif /* ScalarAdvFemKernel_h */
