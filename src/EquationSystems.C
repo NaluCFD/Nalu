@@ -23,6 +23,7 @@
 #include <HeatCondEquationSystem.h>
 #include <LowMachEquationSystem.h>
 #include <MixtureFractionEquationSystem.h>
+#include <MixtureFractionFemEquationSystem.h>
 #include <ShearStressTransportEquationSystem.h>
 #include <MassFractionEquationSystem.h>
 #include <TurbKineticEnergyEquationSystem.h>
@@ -125,6 +126,15 @@ void EquationSystems::load(const YAML::Node & y_node)
           double deltaZClip = 0.0;
           get_if_present_no_default(y_eqsys, "clipping_delta", deltaZClip);
           eqSys = new MixtureFractionEquationSystem(*this, ouputClipDiag, deltaZClip);
+        }
+        else if( expect_map(y_system, "MixtureFractionFEM", true) ) {
+	  y_eqsys =  expect_map(y_system, "MixtureFractionFEM", true) ;
+          if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = mixFracFEM " << std::endl;
+          bool ouputClipDiag = false;
+          get_if_present_no_default(y_eqsys, "output_clipping_diagnostic", ouputClipDiag);
+          double deltaZClip = 0.0;
+          get_if_present_no_default(y_eqsys, "clipping_delta", deltaZClip);
+          eqSys = new MixtureFractionFemEquationSystem(*this, ouputClipDiag, deltaZClip);
         }
         else if( expect_map(y_system, "Enthalpy", true) ) {
 	  y_eqsys =  expect_map(y_system, "Enthalpy", true);

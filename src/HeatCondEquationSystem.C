@@ -296,7 +296,7 @@ HeatCondEquationSystem::register_interior_algorithm(
   VectorFieldType &dtdxNone = dtdx_->field_of_state(stk::mesh::StateNone);
 
   // non-solver; contribution to projected nodal gradient; allow for element-based shifted
-  if ( !managePNG_ ) {
+  if ( !managePNG_ && realm_.usesCVFEM_ ) {
     std::map<AlgorithmType, Algorithm *>::iterator it
       = assembleNodalGradAlgDriver_->algMap_.find(algType);
     if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
@@ -396,12 +396,12 @@ HeatCondEquationSystem::register_interior_algorithm(
         temperature_, thermalCond_, dataPreReqs
       );
 
-      build_fem_kernel_if_requested<HeatCondMassFemKernel>(
+      build_fem_topo_kernel_if_requested<HeatCondMassFemKernel>(
         partTopo, *this, activeKernels, "FEM_MASS",
         realm_.bulk_data(), *realm_.solutionOptions_, temperature_, density_, specHeat_, dataPreReqs
       );
 
-      build_fem_kernel_if_requested<ScalarDiffFemKernel>(
+      build_fem_topo_kernel_if_requested<ScalarDiffFemKernel>(
         partTopo, *this, activeKernels, "FEM_DIFF",
         realm_.bulk_data(), *realm_.solutionOptions_, temperature_, thermalCond_, dataPreReqs
       );
@@ -514,7 +514,7 @@ HeatCondEquationSystem::register_wall_bc(
   stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   // non-solver; dtdx; allow for element-based shifted; all bcs are of generic type "WALL"
-  if ( !managePNG_ ) {
+  if ( !managePNG_ && realm_.usesCVFEM_ ) {
     std::map<AlgorithmType, Algorithm *>::iterator it
       = assembleNodalGradAlgDriver_->algMap_.find(algType);
     if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
@@ -866,7 +866,7 @@ HeatCondEquationSystem::register_non_conformal_bc(
   VectorFieldType &dtdxNone = dtdx_->field_of_state(stk::mesh::StateNone);
 
   // non-solver; contribution to dtdx; DG algorithm decides on locations for integration points
-  if ( !managePNG_ ) {
+  if ( !managePNG_ && realm_.usesCVFEM_ ) {
     if ( edgeNodalGradient_ ) {    
       std::map<AlgorithmType, Algorithm *>::iterator it
         = assembleNodalGradAlgDriver_->algMap_.find(algType);
