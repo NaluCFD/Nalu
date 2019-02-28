@@ -49,7 +49,6 @@ public:
 private:
   ScalarDiffFemKernel() = delete;
 
-  const stk::mesh::BulkData* bulkData_;
   ScalarFieldType *scalarQ_{nullptr};
   ScalarFieldType *diffFluxCoeff_{nullptr};
   VectorFieldType *coordinates_{nullptr};

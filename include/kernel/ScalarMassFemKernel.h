@@ -5,8 +5,8 @@
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
-#ifndef HeatCondMassFemKernel_H
-#define HeatCondMassFemKernel_H
+#ifndef ScalarMassFemKernel_H
+#define ScalarMassFemKernel_H
 
 #include "kernel/Kernel.h"
 #include "FieldTypeDef.h"
@@ -27,18 +27,17 @@ class TimeIntegrator;
 /** CVFEM scalar advection/diffusion kernel
  */
 template<typename AlgTraits>
-class HeatCondMassFemKernel: public Kernel
+class ScalarMassFemKernel: public Kernel
 {
 public:
-  HeatCondMassFemKernel(
+  ScalarMassFemKernel(
     const stk::mesh::BulkData&,
     const SolutionOptions&,
     ScalarFieldType*,
     ScalarFieldType*,
-    ScalarFieldType*,
     ElemDataRequests&);
 
-  virtual ~HeatCondMassFemKernel();
+  virtual ~ScalarMassFemKernel();
 
   /** Perform pre-timestep work for the computational kernel
    */
@@ -53,13 +52,14 @@ public:
     ScratchViews<DoubleType>&);
 
 private:
-  HeatCondMassFemKernel() = delete;
+  ScalarMassFemKernel() = delete;
 
-  ScalarFieldType *temperatureNp1_{nullptr};
-  ScalarFieldType *temperatureN_{nullptr};
-  ScalarFieldType *temperatureNm1_{nullptr};
-  ScalarFieldType *density_{nullptr};
-  ScalarFieldType *specHeat_{nullptr};
+  ScalarFieldType *scalarQNp1_{nullptr};
+  ScalarFieldType *scalarQN_{nullptr};
+  ScalarFieldType *scalarQNm1_{nullptr};
+  ScalarFieldType *densityNp1_{nullptr};
+  ScalarFieldType *densityN_{nullptr};
+  ScalarFieldType *densityNm1_{nullptr};
   VectorFieldType *coordinates_{nullptr};
 
   double dt_{0.0};
@@ -75,4 +75,4 @@ private:
 }  // nalu
 }  // sierra
 
-#endif /* HeatCondMassFemKernel_H */
+#endif /* ScalarMassFemKernel_H */
