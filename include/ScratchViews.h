@@ -298,8 +298,9 @@ int MasterElementViews<T>::create_master_element_views(
          needDerivFem = true;
          needDetjFem = true;
          break;
-
-      default: break;
+      default: 
+        ThrowRequireMsg(false, "fill_master_element_views: enum not coded " << data);
+        break;
     }
   }
 
@@ -417,10 +418,8 @@ void MasterElementViews<T>::fill_master_element_views(
         ThrowRequireMsg(coordsView != nullptr, "ERROR, coords null but FEM_GRAD_OP requested.");
         meFEM->shifted_grad_op(1, &((*coordsView)(0, 0)), &dndx_fem(0, 0, 0), &deriv_fem(0, 0, 0), &det_j_fem(0), &error);
         break;
-      case FEM_DET_J:
-        ThrowRequireMsg(false, "ERROR, Non-NGP FEM::det_j is not implemented.");
-        break;
       default:
+        ThrowRequireMsg(false, "fill_master_element_views: enum not coded " << data);
         break;
     }
   }
@@ -502,8 +501,9 @@ void MasterElementViews<T>::fill_master_element_views_new_me(
          ThrowRequireMsg(coordsView != nullptr, "ERROR, coords null but FEM_DET_J requested.");
          meFEM->determinant_fem(*coordsView, deriv_fem, det_j_fem);
          break;
-
-      default: break;
+      default:
+        ThrowRequireMsg(false, "fill_master_element_views_new_me: enum not coded " << data);
+        break;
     }
   }
 }

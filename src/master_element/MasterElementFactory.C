@@ -8,8 +8,8 @@
 #include "master_element/MasterElementFactory.h"
 #include "master_element/MasterElement.h"
 
+// CVFEM-based
 #include "master_element/Hex8CVFEM.h"
-#include "master_element/Hex8FEM.h"
 #include "master_element/Hex27CVFEM.h"
 #include "master_element/Tet4CVFEM.h"
 #include "master_element/Pyr5CVFEM.h"
@@ -19,6 +19,10 @@
 #include "master_element/Quad92DCVFEM.h"
 #include "master_element/Tri32DCVFEM.h"
 #include "master_element/MasterElementHO.h"
+
+// FEM-based
+#include "master_element/Hex8FEM.h"
+#include "master_element/Tet10FEM.h"
 
 #include "NaluEnv.h"
 #include "nalu_make_unique.h"
@@ -198,6 +202,9 @@ namespace nalu{
 
       case stk::topology::HEX_8:
         return make_unique<Hex8FEM>();
+
+      case stk::topology::TET_10:
+        return make_unique<Tet10FEM>();
 
       default:
         NaluEnv::self().naluOutputP0() << "sorry, FEM only supports Hex8 elements" << std::endl;

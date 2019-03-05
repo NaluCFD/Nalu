@@ -42,6 +42,15 @@ struct AlgTraitsTet4 {
   static constexpr stk::topology::topology_t topo_ = stk::topology::TET_4;
 };
 
+struct AlgTraitsTet10 {
+  static constexpr int nDim_ = 3;
+  static constexpr int nodesPerElement_ = 10;
+  static constexpr int numScsIp_ = -1; // CVFEM not supported
+  static constexpr int numScvIp_ = -1; // CVFEM not supported
+  static constexpr int numGp_ = 16; 
+  static constexpr stk::topology::topology_t topo_ = stk::topology::TET_10;
+};
+
 struct AlgTraitsPyr5 {
   static constexpr int nDim_ = 3;
   static constexpr int nodesPerElement_ = 5;

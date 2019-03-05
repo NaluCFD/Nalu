@@ -256,6 +256,7 @@ void Hex8FEM::gij(
   double *glowerij,
   double *deriv)
 {
+  hex8_fem_derivative(numIntPoints_, &intgLoc_[0], deriv);
   SIERRA_FORTRAN(threed_gij)
     ( &nodesPerElement_,
       &numIntPoints_,

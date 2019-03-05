@@ -47,6 +47,11 @@ public:
   void register_interior_algorithm(
     stk::mesh::Part *part);
 
+  virtual void register_wall_bc(
+    stk::mesh::Part *part,
+    const stk::topology &theTopo,
+    const WallBoundaryConditionData &symmetryBCData);
+
   virtual void register_symmetry_bc(
     stk::mesh::Part *part,
     const stk::topology &theTopo,
