@@ -44,8 +44,15 @@ namespace nalu{
   template <template <typename> class T, typename... Args>
   Kernel* build_fem_topo_kernel(stk::topology topo, Args&&... args)
   {
-    ThrowRequireMsg(topo == stk::topology::HEXAHEDRON_8, "FEM kernels only implemented for Hex8 topology");
-    return new T<AlgTraitsHex8>(std::forward<Args>(args)...);
+    switch(topo.value()) {
+    case stk::topology::HEX_8:
+      return new T<AlgTraitsHex8>(std::forward<Args>(args)...);
+    case stk::topology::TET_10:
+      return new T<AlgTraitsTet10>(std::forward<Args>(args)...);
+    default:
+      ThrowRequireMsg(false, "Only Hex8 and Tet10 FEM elements currently supported");
+      return nullptr;
+    }
   }
 
   template <template <typename> class T, typename... Args>
@@ -262,6 +269,7 @@ namespace nalu{
                       topo == stk::topology::TRIANGLE_3_2D ||
                       topo == stk::topology::WEDGE_6 ||
                       topo == stk::topology::TETRAHEDRON_4 ||
+                      topo == stk::topology::TETRAHEDRON_10 ||
                       topo == stk::topology::PYRAMID_5);
 
     auto itc = solverAlgs.find(algName);

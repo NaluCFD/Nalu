@@ -60,7 +60,6 @@ realms:
       wall_user_data:
         temperature: 20.0
 
-
     - wall_boundary_condition: bc_right
       target_name: surface_2
       wall_user_data:

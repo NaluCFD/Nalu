@@ -20,6 +20,7 @@ template class ClassName<AlgTraitsWed6>;                          \
 
 #define INSTANTIATE_FEM_KERNEL_3D(ClassName)                      \
 template class ClassName<AlgTraitsHex8>;                          \
+template class ClassName<AlgTraitsTet10>;                         \
 
 #define INSTANTIATE_KERNEL_FACE_3D(ClassName)                     \
 template class ClassName<AlgTraitsTri3>;                          \
