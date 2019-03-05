@@ -30,7 +30,7 @@
 #include "SolverAlgorithmDriver.h"
 
 // algorithm drivers
-#include "AssembleCourantReynoldsElemAlgorithm.h"
+#include "AssembleCourantReynoldsFemAlgorithm.h"
 
 // template for kernels
 #include "AlgTraits.h"
@@ -305,12 +305,78 @@ MixtureFractionFemEquationSystem::register_interior_algorithm(
   std::map<AlgorithmType, Algorithm *>::iterator it
     = cflReyAlgDriver_->algMap_.find(algType);
   if ( it == cflReyAlgDriver_->algMap_.end() ) {
-    AssembleCourantReynoldsElemAlgorithm*theAlg
-      = new AssembleCourantReynoldsElemAlgorithm(realm_, part);
+    AssembleCourantReynoldsFemAlgorithm*theAlg
+      = new AssembleCourantReynoldsFemAlgorithm(realm_, part);
     cflReyAlgDriver_->algMap_[algType] = theAlg;
   }
   else {
     it->second->partVec_.push_back(part);
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- register_wall_bc ------------------------------------------------
+//--------------------------------------------------------------------------
+void
+MixtureFractionFemEquationSystem::register_wall_bc(
+  stk::mesh::Part *part,
+  const stk::topology &/*theTopo*/,
+  const WallBoundaryConditionData &wallBCData)
+{
+
+  // algorithm type
+  const AlgorithmType algType = WALL;
+
+  // np1
+  ScalarFieldType &mixFracNp1 = mixFrac_->field_of_state(stk::mesh::StateNP1);
+
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
+
+  // extract the value for user specified mixFrac and save off the AuxFunction
+  WallUserData userData = wallBCData.userData_;
+  std::string mixFracName = "mixture_fraction";
+  if ( bc_data_specified(userData, mixFracName) ) {
+
+    // FIXME: Generalize for constant vs function
+
+    // register boundary data; mixFrac_bc
+    ScalarFieldType *theBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "mixFrac_bc"));
+    stk::mesh::put_field_on_mesh(*theBcField, *part, nullptr);
+
+    // extract data
+    std::vector<double> userSpec(1);
+    MixtureFraction mixFrac = userData.mixFrac_;
+    userSpec[0] = mixFrac.mixFrac_;
+
+    // new it
+    ConstantAuxFunction *theAuxFunc = new ConstantAuxFunction(0, 1, userSpec);
+
+    // bc data alg
+    AuxFunctionAlgorithm *auxAlg
+      = new AuxFunctionAlgorithm(realm_, part,
+                                 theBcField, theAuxFunc,
+                                 stk::topology::NODE_RANK);
+    bcDataAlg_.push_back(auxAlg);
+
+    // copy mixFrac_bc to mixFrac np1...
+    CopyFieldAlgorithm *theCopyAlg
+      = new CopyFieldAlgorithm(realm_, part,
+                               theBcField, &mixFracNp1,
+                               0, 1,
+                               stk::topology::NODE_RANK);
+    bcDataMapAlg_.push_back(theCopyAlg);
+
+    // Dirichlet bc
+    std::map<AlgorithmType, SolverAlgorithm *>::iterator itd =
+      solverAlgDriver_->solverDirichAlgMap_.find(algType);
+    if ( itd == solverAlgDriver_->solverDirichAlgMap_.end() ) {
+      DirichletBC *theAlg
+        = new DirichletBC(realm_, this, part, &mixFracNp1, theBcField, 0, 1);
+      solverAlgDriver_->solverDirichAlgMap_[algType] = theAlg;
+    }
+    else {
+      itd->second->partVec_.push_back(part);
+    }
   }
 }
 

@@ -111,7 +111,6 @@ ScalarMassFemKernel<AlgTraits>::execute(
   SharedMemView<DoubleType*>& v_det_j = scratchViews.get_me_views(CURRENT_COORDINATES).det_j_fem;
 
   for ( int ip = 0; ip < AlgTraits::numGp_; ++ip ) {
-
     // compute ip property
     DoubleType qNp1Ip = 0.0;
     DoubleType qNIp = 0.0;

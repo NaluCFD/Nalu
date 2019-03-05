@@ -168,6 +168,7 @@ int get_num_scalars_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDi
           numScalars += numScvIp;
           break;
         case SCV_GRAD_OP:
+        case SCV_SHIFTED_GRAD_OP:
           dndxLength = nodesPerEntity*numScvIp*nDim;
           needDerivScv = true;
           needDetjScv = true;
@@ -186,7 +187,13 @@ int get_num_scalars_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDi
           needDetjFem = true;
           numScalars += dndxLength;
           break;
-        default: break;
+        case FEM_DET_J:
+          needDerivFem = true;
+          needDetjFem = true;
+          break;
+        default: 
+          ThrowRequireMsg(false, "get_num_scalars_pre_req_data: enum not coded " << data);
+          break;
       }
     }
 
@@ -281,6 +288,7 @@ int get_num_scalars_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDi
           numScalars += numScvIp;
           break;
         case SCV_GRAD_OP:
+        case SCV_SHIFTED_GRAD_OP:
           dndxLength = nodesPerEntity*numScvIp*nDim;
           needDerivScv = true;
           needDetjScv = true;
@@ -299,7 +307,13 @@ int get_num_scalars_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDi
           needDetjFem = true;
           numScalars += dndxLength;
           break;
-        default: break;
+        case FEM_DET_J:
+          needDerivFem = true;
+          needDetjFem = true;
+          break;
+        default: 
+          ThrowRequireMsg(false, "get_num_scalars_pre_req_data: enum not coded " << data);
+          break;
       }
     }
 
