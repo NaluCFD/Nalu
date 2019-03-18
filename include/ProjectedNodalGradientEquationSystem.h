@@ -40,7 +40,8 @@ public:
     const std::string deltaName, 
     const std::string independentDofName,
     const std::string eqSysName,
-    const bool managesSolve = false);
+    const bool managesSolve = false,
+    const bool isFEM = false);
   virtual ~ProjectedNodalGradientEquationSystem();
 
   void set_data_map( 
@@ -100,6 +101,7 @@ public:
 
   // who manages the solve? Often times, this is created by another EqSys
   const bool managesSolve_;
+  const bool isFEM_;
 
   // for exach equation, boundary data may be different
   std::map<BoundaryConditionType, std::string> dataMap_;
