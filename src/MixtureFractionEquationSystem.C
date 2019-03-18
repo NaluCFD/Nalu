@@ -1130,8 +1130,8 @@ MixtureFractionEquationSystem::manage_projected_nodal_gradient(
       = new ProjectedNodalGradientEquationSystem(eqSystems, EQ_PNG_Z, "dzdx", "qTmp", "mixture_fraction", "PNGradZEQS");
   }
   // fill the map for expected boundary condition names; can be more complex...
-  projectedNodalGradEqs_->set_data_map(INFLOW_BC, "mixture_fraction");
-  projectedNodalGradEqs_->set_data_map(WALL_BC, "mixture_fraction");
+  projectedNodalGradEqs_->set_data_map(INFLOW_BC, "mixFrac_bc");
+  projectedNodalGradEqs_->set_data_map(WALL_BC, "mixture_fraction"); // odd in that it can be strong or weak
   projectedNodalGradEqs_->set_data_map(OPEN_BC, "mixture_fraction");
   projectedNodalGradEqs_->set_data_map(SYMMETRY_BC, "mixture_fraction");
 }

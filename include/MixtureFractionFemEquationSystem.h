@@ -21,9 +21,10 @@ namespace sierra{
 namespace nalu{
 
 class AlgorithmDriver;
-class Realm;
-class LinearSystem;
 class EquationSystems;
+class LinearSystem;
+class ProjectedNodalGradientEquationSystem;
+class Realm;
 
 class MixtureFractionFemEquationSystem : public EquationSystem {
 
@@ -32,7 +33,8 @@ public:
   MixtureFractionFemEquationSystem(
     EquationSystems& equationSystems,
     const bool outputClippingDiag,
-    const double deltaZClip);
+    const double deltaZClip,
+    const bool computePng);
   virtual ~MixtureFractionFemEquationSystem();
 
   void populate_derived_quantities();
@@ -70,12 +72,19 @@ public:
   void solve_and_update();
   void update_and_clip();
 
+  void manage_projected_nodal_gradient(
+    EquationSystems& eqSystems);
+  void compute_projected_nodal_gradient();
+
   const bool outputClippingDiag_;
   const double deltaZClip_;
+  const bool computePNG_;
+  const bool managePNG_;
 
   ScalarFieldType *mixFrac_;
   ScalarFieldType *mixFracUF_;
   ScalarFieldType *zTmp_;
+  VectorFieldType *Gjz_;
   VectorFieldType *velocity_;
   ScalarFieldType *density_;
   ScalarFieldType *visc_;
@@ -83,6 +92,9 @@ public:
   ScalarFieldType *evisc_;
   AlgorithmDriver *diffFluxCoeffAlgDriver_; 
   AlgorithmDriver *cflReyAlgDriver_; 
+
+  ProjectedNodalGradientEquationSystem *projectedNodalGradEqs_;
+  
   bool isInit_;
 };
 
