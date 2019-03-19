@@ -12,7 +12,14 @@
 #include <map>
 #include <vector>
 
-#include "stk_mesh/base/Types.hpp"
+#include <stk_mesh/base/Entity.hpp>
+
+namespace stk {
+namespace mesh {
+ class BulkData;
+ class MetaData;
+}
+}
 
 namespace sierra {
 namespace nalu {
@@ -20,8 +27,9 @@ namespace nalu {
 class InterfaceBalancer {
 
 public:
-  InterfaceBalancer(const stk::mesh::MetaData& meta,
-                    stk::mesh::BulkData& bulk);
+  InterfaceBalancer(
+    const stk::mesh::MetaData& meta,
+    stk::mesh::BulkData& bulk);
 
  void balance_node_entities(const double targetLoadBalance,
                             const int maxIterations);
@@ -42,9 +50,8 @@ private:
 
   const stk::mesh::MetaData & metaData_;
   stk::mesh::BulkData & bulkData_;
-//  const double tolerance_;
 };
-}
-}
 
+}
+}
 #endif /* INTERFACEBALANCER_H_ */
