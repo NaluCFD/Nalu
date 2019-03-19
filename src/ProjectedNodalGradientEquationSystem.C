@@ -28,6 +28,15 @@
 // user functions
 #include "user_functions/SteadyThermalContactAuxFunction.h"
 
+// template for kernels
+#include "AlgTraits.h"
+#include "kernel/KernelBuilder.h"
+#include "kernel/KernelBuilderLog.h"
+
+// kernels
+#include "AssembleElemSolverAlgorithm.h"
+#include "kernel/ScalarPngFemKernel.h"
+
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
 
@@ -68,7 +77,8 @@ ProjectedNodalGradientEquationSystem::ProjectedNodalGradientEquationSystem(
  const std::string deltaName, 
  const std::string independentDofName,
  const std::string eqSysName,
- const bool managesSolve)
+ const bool managesSolve,
+ const bool isFEM)
   : EquationSystem(eqSystems, eqSysName),
     eqType_(eqType),
     dofName_(dofName),
@@ -76,6 +86,7 @@ ProjectedNodalGradientEquationSystem::ProjectedNodalGradientEquationSystem(
     independentDofName_(independentDofName),
     eqSysName_(eqSysName),
     managesSolve_(managesSolve),
+    isFEM_(isFEM),
     dqdx_(NULL),
     qTmp_(NULL)
 {
@@ -150,17 +161,43 @@ ProjectedNodalGradientEquationSystem::register_interior_algorithm(
   // types of algorithms
   const AlgorithmType algType = INTERIOR;
 
-  // solver
-  std::map<AlgorithmType, SolverAlgorithm *>::iterator its
-    = solverAlgDriver_->solverAlgMap_.find(algType);
-  if ( its == solverAlgDriver_->solverAlgMap_.end() ) {
-    AssemblePNGElemSolverAlgorithm *theAlg
-      = new AssemblePNGElemSolverAlgorithm(realm_, part, this, independentDofName_, dofName_);
-    solverAlgDriver_->solverAlgMap_[algType] = theAlg;
+  if (!isFEM_ ) {
+    // solver
+    std::map<AlgorithmType, SolverAlgorithm *>::iterator its
+      = solverAlgDriver_->solverAlgMap_.find(algType);
+    if ( its == solverAlgDriver_->solverAlgMap_.end() ) {
+      AssemblePNGElemSolverAlgorithm *theAlg
+        = new AssemblePNGElemSolverAlgorithm(realm_, part, this, independentDofName_, dofName_);
+      solverAlgDriver_->solverAlgMap_[algType] = theAlg;
+    }
+    else {
+      its->second->partVec_.push_back(part);
+    }
   }
   else {
-    its->second->partVec_.push_back(part);
+    // consolidated only
+    stk::topology partTopo = part->topology();
+    auto& solverAlgMap = solverAlgDriver_->solverAlgorithmMap_;
+    
+    AssembleElemSolverAlgorithm* solverAlg = nullptr;
+    bool solverAlgWasBuilt = false;
+    
+    std::tie(solverAlg, solverAlgWasBuilt) = build_or_add_part_to_solver_alg(*this, *part, solverAlgMap);
+    
+    ElemDataRequests& dataPreReqs = solverAlg->dataNeededByKernels_;
+    auto& activeKernels = solverAlg->activeKernels_;
+    
+    if (solverAlgWasBuilt) {
+      
+      build_fem_topo_kernel_if_requested<ScalarPngFemKernel>
+        (partTopo, *this, activeKernels, "scalar_fem_png",
+         realm_.bulk_data(), *realm_.solutionOptions_, independentDofName_, dofName_, dataPreReqs);
+      
+      report_invalid_supp_alg_names();
+      report_built_supp_alg_names();
+    } 
   }
+
 }
 
 //--------------------------------------------------------------------------
@@ -172,6 +209,9 @@ ProjectedNodalGradientEquationSystem::register_wall_bc(
   const stk::topology &/*theTopo*/,
   const WallBoundaryConditionData &/*wallBCData*/)
 {
+  // not supported yet for FEM
+  if ( isFEM_ ) 
+    return;
 
   const AlgorithmType algType = WALL;
 
@@ -199,6 +239,9 @@ ProjectedNodalGradientEquationSystem::register_inflow_bc(
   const stk::topology &/*theTopo*/,
   const InflowBoundaryConditionData &/*inflowBCData*/)
 {
+  // not supported yet for FEM
+  if ( isFEM_ ) 
+    return;
 
   const AlgorithmType algType = INFLOW;
 
@@ -226,6 +269,10 @@ ProjectedNodalGradientEquationSystem::register_open_bc(
   const stk::topology &/*theTopo*/,
   const OpenBoundaryConditionData &/*openBCData*/)
 {
+  // not supported yet for FEM
+  if ( isFEM_ ) 
+    return;
+
   const AlgorithmType algType = OPEN;
 
   // extract the field name for this bc type
@@ -252,6 +299,10 @@ ProjectedNodalGradientEquationSystem::register_symmetry_bc(
   const stk::topology &/*theTopo*/,
   const SymmetryBoundaryConditionData &/*symmetryBCData*/)
 {
+  // not supported yet for FEM
+  if ( isFEM_ ) 
+    return;
+  
   const AlgorithmType algType = SYMMETRY;
 
   // extract the field name for this bc type
@@ -277,6 +328,10 @@ ProjectedNodalGradientEquationSystem::register_non_conformal_bc(
   stk::mesh::Part *part,
   const stk::topology &/*theTopo*/)
 {
+  // not supported yet for FEM
+  if ( isFEM_ ) 
+    return;
+
   // FIX THIS
   const AlgorithmType algType = NON_CONFORMAL;
 

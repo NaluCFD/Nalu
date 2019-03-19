@@ -9,6 +9,7 @@
 #include "MixtureFractionFemEquationSystem.h"
 #include "AlgorithmDriver.h"
 #include "AuxFunctionAlgorithm.h"
+#include "AssembleNodalGradAlgorithmDriver.h"
 #include "ConstantAuxFunction.h"
 #include "CopyFieldAlgorithm.h"
 #include "DirichletBC.h"
@@ -22,6 +23,7 @@
 #include "LinearSystem.h"
 #include "NaluEnv.h"
 #include "NaluParsing.h"
+#include "ProjectedNodalGradientEquationSystem.h"
 #include "Realm.h"
 #include "Realms.h"
 #include "Simulation.h"
@@ -92,13 +94,17 @@ namespace nalu{
 MixtureFractionFemEquationSystem::MixtureFractionFemEquationSystem(
   EquationSystems& eqSystems,
   const bool outputClippingDiag,
-  const double deltaZClip)
+  const double deltaZClip,
+  const bool computePNG)
   : EquationSystem(eqSystems, "MixtureFractionFemEQS", "mixture_fraction"),
     outputClippingDiag_(outputClippingDiag),
     deltaZClip_(deltaZClip),
+    computePNG_(computePNG),
+    managePNG_(realm_.get_consistent_mass_matrix_png("mixture_fraction")),
     mixFrac_(NULL),
     mixFracUF_(NULL),
     zTmp_(NULL),
+    Gjz_(NULL),
     velocity_(NULL),
     density_(NULL),
     visc_(NULL),
@@ -106,6 +112,7 @@ MixtureFractionFemEquationSystem::MixtureFractionFemEquationSystem(
     evisc_(NULL),
     diffFluxCoeffAlgDriver_(new AlgorithmDriver(realm_)),
     cflReyAlgDriver_(new AlgorithmDriver(realm_)),
+    projectedNodalGradEqs_(NULL),
     isInit_(true)
 {
   // extract solver name and solver object
@@ -119,6 +126,16 @@ MixtureFractionFemEquationSystem::MixtureFractionFemEquationSystem(
   // advertise as fluids, non-uniform
   realm_.hasFluids_ = true;
   realm_.uniformFlow_ = false;
+
+  // create projected nodal gradient equation system
+  if ( computePNG_ ) {
+    if ( managePNG_ ) {
+      manage_projected_nodal_gradient(eqSystems);
+    }
+    else {
+      throw std::runtime_error("MixtureFractionFemEquationSystem must activate consistent mass matrix if compute_png is active");
+    }
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -190,6 +207,13 @@ MixtureFractionFemEquationSystem::register_nodal_fields(
   evisc_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "effective_viscosity_z"));
   stk::mesh::put_field_on_mesh(*evisc_, *part, nullptr);
 
+  // projected nodal gradients  
+  ScalarFieldType *dualNodalVolume = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume"));
+  stk::mesh::put_field_on_mesh(*dualNodalVolume, *part, nullptr);
+  
+  Gjz_ =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "dzdx"));
+  stk::mesh::put_field_on_mesh(*Gjz_, *part, nullptr);
+ 
   // make sure all states are properly populated (restart can handle this)
   if ( numStates > 2 && (!realm_.restarted_simulation() || realm_.support_inconsistent_restart()) ) {
     ScalarFieldType &mixFracN = mixFrac_->field_of_state(stk::mesh::StateN);
@@ -476,6 +500,7 @@ MixtureFractionFemEquationSystem::solve_and_update()
   // nothing to do
   if ( isInit_ ) {
     isInit_ = false;
+    compute_projected_nodal_gradient();
   }
 
   // compute effective viscosity
@@ -497,6 +522,9 @@ MixtureFractionFemEquationSystem::solve_and_update()
     double timeB = NaluEnv::self().nalu_time();
     timerAssemble_ += (timeB-timeA);
   }
+
+  // projected nodal gradient (assumed decoupled from iteration above)
+  compute_projected_nodal_gradient();
   
   cflReyAlgDriver_->execute();
 }
@@ -592,6 +620,34 @@ MixtureFractionFemEquationSystem::predict_state()
   VectorFieldType &uN = velocity_->field_of_state(stk::mesh::StateN);
   VectorFieldType &uNp1 = velocity_->field_of_state(stk::mesh::StateNP1);
   field_copy(realm_.meta_data(), realm_.bulk_data(), uN, uNp1, realm_.get_activate_aura());
+}
+
+//--------------------------------------------------------------------------
+//-------- manage_projected_nodal_gradient ---------------------------------
+//--------------------------------------------------------------------------
+void
+MixtureFractionFemEquationSystem::manage_projected_nodal_gradient(
+  EquationSystems& eqSystems)
+{
+  if ( NULL == projectedNodalGradEqs_ ) {
+    projectedNodalGradEqs_ 
+      = new ProjectedNodalGradientEquationSystem(eqSystems, EQ_PNG_Z, "dzdx", "qTmp", "mixture_fraction", "PNGradZEQS");
+  }
+  // fill the map for expected boundary condition names...
+  projectedNodalGradEqs_->set_data_map(INFLOW_BC, "mixture_fraction");
+  projectedNodalGradEqs_->set_data_map(WALL_BC, "mixture_fraction");
+  projectedNodalGradEqs_->set_data_map(OPEN_BC, "mixture_fraction");
+  projectedNodalGradEqs_->set_data_map(SYMMETRY_BC, "mixture_fraction");
+}
+
+//--------------------------------------------------------------------------
+//-------- compute_projected_nodal_gradient---------------------------------
+//--------------------------------------------------------------------------
+void
+MixtureFractionFemEquationSystem::compute_projected_nodal_gradient()
+{
+  if ( NULL != projectedNodalGradEqs_ )
+    projectedNodalGradEqs_->solve_and_update_external();
 }
 
 } // namespace nalu

@@ -25,6 +25,7 @@ realms:
 
       solver_system_specification:
         mixture_fraction: solve_scalar
+        dzdx: solve_scalar
 
       systems:
 
@@ -32,6 +33,7 @@ realms:
             name: myZ
             max_iterations: 1
             convergence_tolerance: 1.e-2
+            compute_png: yes
 
     initial_conditions:
 
@@ -72,13 +74,10 @@ realms:
       periodic_user_data:
         search_tolerance: 0.0001 
 
-    - symmetry_boundary_condition: bc_top
-      target_name: surface_5
-      symmetry_user_data:
-
-    - symmetry_boundary_condition: bc_bottom
-      target_name: surface_6
-      symmetry_user_data:
+    - periodic_boundary_condition: bc_top_bottom
+      target_name: [surface_5, surface_6]
+      periodic_user_data:
+        search_tolerance: 0.0001 
 
     solution_options:
       name: myOptions
@@ -88,9 +87,13 @@ realms:
 
         - element_source_terms:
             mixture_fraction: [scalar_fem_mass, scalar_fem_adv, scalar_fem_diff]
+            dzdx: scalar_fem_png
 
         - laminar_schmidt:
             mixture_fraction: 1.0
+
+        - consistent_mass_matrix_png:
+            mixture_fraction: yes
 
     output:
       output_data_base_name: femPassiveScalar.e
@@ -99,6 +102,7 @@ realms:
        - velocity
        - mixture_fraction
        - density
+       - dzdx
 
 Time_Integrators:
   - StandardTimeIntegrator:

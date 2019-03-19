@@ -134,7 +134,9 @@ void EquationSystems::load(const YAML::Node & y_node)
           get_if_present_no_default(y_eqsys, "output_clipping_diagnostic", ouputClipDiag);
           double deltaZClip = 0.0;
           get_if_present_no_default(y_eqsys, "clipping_delta", deltaZClip);
-          eqSys = new MixtureFractionFemEquationSystem(*this, ouputClipDiag, deltaZClip);
+          bool computePNG = false;
+          get_if_present_no_default(y_eqsys, "compute_png", computePNG);
+          eqSys = new MixtureFractionFemEquationSystem(*this, ouputClipDiag, deltaZClip, computePNG);
         }
         else if( expect_map(y_system, "Enthalpy", true) ) {
 	  y_eqsys =  expect_map(y_system, "Enthalpy", true);
