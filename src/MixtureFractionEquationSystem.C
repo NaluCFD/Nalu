@@ -114,7 +114,7 @@ MixtureFractionEquationSystem::MixtureFractionEquationSystem(
   EquationSystems& eqSystems,
   const bool outputClippingDiag,
   const double deltaZClip)
-  : EquationSystem(eqSystems, "MixtureFractionEQS","mixture_fraction"),
+  : EquationSystem(eqSystems, "MixtureFractionEQS", "mixture_fraction"),
     managePNG_(realm_.get_consistent_mass_matrix_png("mixture_fraction")),
     outputClippingDiag_(outputClippingDiag),
     deltaZClip_(deltaZClip),

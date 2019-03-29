@@ -296,15 +296,15 @@ MixtureFractionFemEquationSystem::register_interior_algorithm(
   if (solverAlgWasBuilt) {
 
     build_fem_topo_kernel_if_requested<ScalarMassFemKernel>
-      (partTopo, *this, activeKernels, "scalar_fem_mass",
+      (partTopo, *this, activeKernels, "mixture_fraction_time_derivative",
        realm_.bulk_data(), *realm_.solutionOptions_, mixFrac_, density_, dataPreReqs);
     
     build_fem_topo_kernel_if_requested<ScalarAdvFemKernel>
-      (partTopo, *this, activeKernels, "scalar_fem_adv",
+      (partTopo, *this, activeKernels, "advection",
        realm_.bulk_data(), *realm_.solutionOptions_, mixFrac_, density_, velocity_, dataPreReqs);
     
     build_fem_topo_kernel_if_requested<ScalarDiffFemKernel>
-      (partTopo, *this, activeKernels, "scalar_fem_diff",
+      (partTopo, *this, activeKernels, "diffusion",
        realm_.bulk_data(), *realm_.solutionOptions_, mixFrac_, evisc_, dataPreReqs);
     
     report_invalid_supp_alg_names();
@@ -631,7 +631,8 @@ MixtureFractionFemEquationSystem::manage_projected_nodal_gradient(
 {
   if ( NULL == projectedNodalGradEqs_ ) {
     projectedNodalGradEqs_ 
-      = new ProjectedNodalGradientEquationSystem(eqSystems, EQ_PNG_Z, "dzdx", "qTmp", "mixture_fraction", "PNGradZEQS");
+      = new ProjectedNodalGradientEquationSystem(eqSystems, EQ_PNG_Z, "dzdx", "qTmp", "mixture_fraction", "PNGradZEQS", 
+                                                 false, true);
   }
   // fill the map for expected boundary condition names...
   projectedNodalGradEqs_->set_data_map(INFLOW_BC, "mixture_fraction");
