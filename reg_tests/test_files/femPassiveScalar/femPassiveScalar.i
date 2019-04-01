@@ -86,8 +86,8 @@ realms:
       options:
 
         - element_source_terms:
-            mixture_fraction: [scalar_fem_mass, scalar_fem_adv, scalar_fem_diff]
-            dzdx: scalar_fem_png
+            mixture_fraction: [mixture_fraction_time_derivative, advection, diffusion]
+            dzdx: interior_png
 
         - laminar_schmidt:
             mixture_fraction: 1.0

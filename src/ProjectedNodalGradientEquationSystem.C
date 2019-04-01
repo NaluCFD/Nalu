@@ -79,7 +79,7 @@ ProjectedNodalGradientEquationSystem::ProjectedNodalGradientEquationSystem(
  const std::string eqSysName,
  const bool managesSolve,
  const bool isFEM)
-  : EquationSystem(eqSystems, eqSysName),
+  : EquationSystem(eqSystems, eqSysName, dofName),
     eqType_(eqType),
     dofName_(dofName),
     deltaName_(deltaName),
@@ -190,7 +190,7 @@ ProjectedNodalGradientEquationSystem::register_interior_algorithm(
     if (solverAlgWasBuilt) {
       
       build_fem_topo_kernel_if_requested<ScalarPngFemKernel>
-        (partTopo, *this, activeKernels, "scalar_fem_png",
+        (partTopo, *this, activeKernels, "interior_png",
          realm_.bulk_data(), *realm_.solutionOptions_, independentDofName_, dofName_, dataPreReqs);
       
       report_invalid_supp_alg_names();
