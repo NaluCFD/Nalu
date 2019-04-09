@@ -5,8 +5,8 @@
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
-#ifndef SCALARDIFFFEMKERNEL_H
-#define SCALARDIFFFEMKERNEL_H
+#ifndef MomentumDiffFemKernel_h
+#define MomentumDiffFemKernel_h
 
 #include "kernel/Kernel.h"
 #include "FieldTypeDef.h"
@@ -21,20 +21,20 @@ namespace nalu {
 class ElemDataRequests;
 class SolutionOptions;
 
-/** CVFEM scalar advection/diffusion kernel
+/** FEM diffusion kernel
  */
 template<typename AlgTraits>
-class ScalarDiffFemKernel: public Kernel
+class MomentumDiffFemKernel: public Kernel
 {
 public:
-  ScalarDiffFemKernel(
+  MomentumDiffFemKernel(
     const stk::mesh::BulkData&,
     const SolutionOptions&,
-    ScalarFieldType*,
+    VectorFieldType*,
     ScalarFieldType*,
     ElemDataRequests&);
 
-  virtual ~ScalarDiffFemKernel();
+  virtual ~MomentumDiffFemKernel();
 
   /** Execute the kernel within a Kokkos loop and populate the LHS and RHS for
    *  the linear solve
@@ -45,13 +45,14 @@ public:
     ScratchViews<DoubleType>&);
 
 private:
-  ScalarDiffFemKernel() = delete;
+  MomentumDiffFemKernel() = delete;
 
-  ScalarFieldType *scalarQ_{nullptr};
-  ScalarFieldType *diffFluxCoeff_{nullptr};
+  VectorFieldType *velocityNp1_{nullptr};
+  ScalarFieldType *viscosity_{nullptr};
   VectorFieldType *coordinates_{nullptr};
 
   // master element
+  const double includeDivU_;
   const bool shiftedGradOp_;
   
   /// Shape functions
@@ -62,4 +63,4 @@ private:
 }  // nalu
 }  // sierra
 
-#endif /* SCALARDIFFFEMKERNEL_H */
+#endif /* MomentumDiffFemKernel_h */

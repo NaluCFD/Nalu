@@ -286,9 +286,7 @@ namespace nalu{
   std::map<stk::topology, std::unique_ptr<MasterElement>> MasterElementRepo::femMeMap_;
   
   MasterElement* MasterElementRepo::get_fem_master_element(
-    const stk::topology& theTopo,
-    int dimension,
-    std::string quadType)
+    const stk::topology& theTopo)
   {
     // do not support arbitrary FEM promotion
     if ( theTopo.is_super_topology() )

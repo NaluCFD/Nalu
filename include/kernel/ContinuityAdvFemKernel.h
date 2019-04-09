@@ -1,14 +1,14 @@
 /*------------------------------------------------------------------------*/
-/*  Copyright 2014 Sandia Corporation.                                    */
+/*  Copyright 2014 National Renewable Energy Laboratory.                  */
 /*  This software is released under the license detailed                  */
 /*  in the file, LICENSE, which is located in the top-level Nalu          */
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
-#ifndef SCALARDIFFFEMKERNEL_H
-#define SCALARDIFFFEMKERNEL_H
+#ifndef CONTINUITYADVFEMKERNEL_H
+#define CONTINUITYADVFEMKERNEL_H
 
-#include "kernel/Kernel.h"
+#include "Kernel.h"
 #include "FieldTypeDef.h"
 
 #include <stk_mesh/base/BulkData.hpp>
@@ -20,21 +20,24 @@ namespace nalu {
 
 class ElemDataRequests;
 class SolutionOptions;
+class TimeIntegrator;
 
 /** CVFEM scalar advection/diffusion kernel
  */
 template<typename AlgTraits>
-class ScalarDiffFemKernel: public Kernel
+class ContinuityAdvFemKernel: public Kernel
 {
 public:
-  ScalarDiffFemKernel(
+  ContinuityAdvFemKernel(
     const stk::mesh::BulkData&,
     const SolutionOptions&,
-    ScalarFieldType*,
-    ScalarFieldType*,
     ElemDataRequests&);
 
-  virtual ~ScalarDiffFemKernel();
+  virtual ~ContinuityAdvFemKernel();
+
+  /** Perform pre-timestep work for the computational kernel
+   */
+  virtual void setup(const TimeIntegrator&);
 
   /** Execute the kernel within a Kokkos loop and populate the LHS and RHS for
    *  the linear solve
@@ -45,14 +48,20 @@ public:
     ScratchViews<DoubleType>&);
 
 private:
-  ScalarDiffFemKernel() = delete;
+  ContinuityAdvFemKernel() = delete;
 
-  ScalarFieldType *scalarQ_{nullptr};
-  ScalarFieldType *diffFluxCoeff_{nullptr};
+  VectorFieldType *velocityRTM_{nullptr};
+  VectorFieldType *Gjp_{nullptr};
+  ScalarFieldType *pressure_{nullptr};
+  ScalarFieldType *densityNp1_{nullptr};
   VectorFieldType *coordinates_{nullptr};
 
   // master element
+  const bool meshMotion_;
+  const bool shiftMdot_;
   const bool shiftedGradOp_;
+  const bool reducedSensitivities_;
+  double projTimeScale_;
   
   /// Shape functions
   AlignedViewType<DoubleType[AlgTraits::numGp_]> v_ip_weight_{ "v_ip_weight" };
@@ -62,4 +71,4 @@ private:
 }  // nalu
 }  // sierra
 
-#endif /* SCALARDIFFFEMKERNEL_H */
+#endif /* CONTINUITYADVFEMKERNEL_H */

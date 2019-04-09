@@ -5,7 +5,7 @@
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
-#include "kernel/ScalarMassFemKernel.h"
+#include "kernel/MomentumMassFemKernel.h"
 #include "AlgTraits.h"
 #include "master_element/MasterElement.h"
 #include "TimeIntegrator.h"
@@ -25,10 +25,10 @@ namespace sierra {
 namespace nalu {
 
 template<typename AlgTraits>
-ScalarMassFemKernel<AlgTraits>::ScalarMassFemKernel(
+MomentumMassFemKernel<AlgTraits>::MomentumMassFemKernel(
   const stk::mesh::BulkData& bulkData,
   const SolutionOptions& solnOpts,
-  ScalarFieldType* scalarQ,
+  VectorFieldType* velocity,
   ScalarFieldType* density,
   ElemDataRequests& dataPreReqs)
   : Kernel()
@@ -36,17 +36,18 @@ ScalarMassFemKernel<AlgTraits>::ScalarMassFemKernel(
   // Save of required fields
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
   coordinates_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
-
-  scalarQNp1_ = &(scalarQ->field_of_state(stk::mesh::StateNP1));
-  scalarQN_ = &(scalarQ->field_of_state(stk::mesh::StateN));
+  Gjp_ =  metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "dpdx");
+  
+  velocityNp1_ = &(velocity->field_of_state(stk::mesh::StateNP1));
+  velocityN_ = &(velocity->field_of_state(stk::mesh::StateN));
   densityNp1_ = &(density->field_of_state(stk::mesh::StateNP1));
   densityN_ = &(density->field_of_state(stk::mesh::StateN));
-  if (scalarQ->number_of_states() == 2) {
-    scalarQNm1_ = scalarQN_;
+  if (velocity->number_of_states() == 2) {
+    velocityNm1_ = velocityN_;
     densityNm1_ = densityN_;
   }
   else {
-    scalarQNm1_ = &(scalarQ->field_of_state(stk::mesh::StateNM1));
+    velocityNm1_ = &(velocity->field_of_state(stk::mesh::StateNM1));
     densityNm1_ = &(density->field_of_state(stk::mesh::StateNM1));
   }
   
@@ -58,7 +59,7 @@ ScalarMassFemKernel<AlgTraits>::ScalarMassFemKernel(
     v_ip_weight_[k] = meFEM->weights_[k];
   
   // master element, shape function is shifted consistently
-  if ( solnOpts.get_shifted_grad_op(scalarQ->name()) )
+  if ( solnOpts.get_shifted_grad_op(velocity->name()) )
     get_fem_shape_fn_data<AlgTraits>([&](double* ptr){meFEM->shifted_shape_fcn(ptr);}, v_shape_function_);
   else
     get_fem_shape_fn_data<AlgTraits>([&](double* ptr){meFEM->shape_fcn(ptr);}, v_shape_function_);
@@ -68,9 +69,10 @@ ScalarMassFemKernel<AlgTraits>::ScalarMassFemKernel(
 
   // fields and data
   dataPreReqs.add_coordinates_field(*coordinates_, AlgTraits::nDim_, CURRENT_COORDINATES);
-  dataPreReqs.add_gathered_nodal_field(*scalarQNp1_, 1);
-  dataPreReqs.add_gathered_nodal_field(*scalarQN_, 1);
-  dataPreReqs.add_gathered_nodal_field(*scalarQNm1_, 1);
+  dataPreReqs.add_gathered_nodal_field(*velocityNp1_, AlgTraits::nDim_);
+  dataPreReqs.add_gathered_nodal_field(*velocityN_, AlgTraits::nDim_);
+  dataPreReqs.add_gathered_nodal_field(*velocityNm1_, AlgTraits::nDim_);
+  dataPreReqs.add_gathered_nodal_field(*Gjp_, AlgTraits::nDim_);
   dataPreReqs.add_gathered_nodal_field(*densityNp1_, 1);
   dataPreReqs.add_gathered_nodal_field(*densityN_, 1);
   dataPreReqs.add_gathered_nodal_field(*densityNm1_, 1);
@@ -79,14 +81,14 @@ ScalarMassFemKernel<AlgTraits>::ScalarMassFemKernel(
 }
 
 template<typename AlgTraits>
-ScalarMassFemKernel<AlgTraits>::~ScalarMassFemKernel()
+MomentumMassFemKernel<AlgTraits>::~MomentumMassFemKernel()
 {
   // does nothing
 }
 
 template<typename AlgTraits>
 void
-ScalarMassFemKernel<AlgTraits>::setup(const TimeIntegrator& timeIntegrator)
+MomentumMassFemKernel<AlgTraits>::setup(const TimeIntegrator& timeIntegrator)
 {
   dt_ = timeIntegrator.get_time_step();
   gamma1_ = timeIntegrator.get_gamma1();
@@ -96,37 +98,33 @@ ScalarMassFemKernel<AlgTraits>::setup(const TimeIntegrator& timeIntegrator)
 
 template<typename AlgTraits>
 void
-ScalarMassFemKernel<AlgTraits>::execute(
+MomentumMassFemKernel<AlgTraits>::execute(
   SharedMemView<DoubleType**>& lhs,
   SharedMemView<DoubleType*>& rhs,
   ScratchViews<DoubleType>& scratchViews)
 {
-  SharedMemView<DoubleType*>& v_scalarQNp1 = scratchViews.get_scratch_view_1D(*scalarQNp1_);
-  SharedMemView<DoubleType*>& v_scalarQN = scratchViews.get_scratch_view_1D(*scalarQN_);
-  SharedMemView<DoubleType*>& v_scalarQNm1 = scratchViews.get_scratch_view_1D(*scalarQNm1_);
-  SharedMemView<DoubleType*>& v_densityNp1 = scratchViews.get_scratch_view_1D(*densityNp1_);
-  SharedMemView<DoubleType*>& v_densityN = scratchViews.get_scratch_view_1D(*densityN_);
-  SharedMemView<DoubleType*>& v_densityNm1 = scratchViews.get_scratch_view_1D(*densityNm1_);
+  SharedMemView<DoubleType**>& v_uNp1 = scratchViews.get_scratch_view_2D(*velocityNp1_);
+  SharedMemView<DoubleType**>& v_uN = scratchViews.get_scratch_view_2D(*velocityN_);
+  SharedMemView<DoubleType**>& v_uNm1 = scratchViews.get_scratch_view_2D(*velocityNm1_);
+  SharedMemView<DoubleType**>& v_Gp = scratchViews.get_scratch_view_2D(*Gjp_);
+  SharedMemView<DoubleType*>& v_rhoNp1 = scratchViews.get_scratch_view_1D(*densityNp1_);
+  SharedMemView<DoubleType*>& v_rhoN = scratchViews.get_scratch_view_1D(*densityN_);
+  SharedMemView<DoubleType*>& v_rhoNm1 = scratchViews.get_scratch_view_1D(*densityNm1_);
   
   SharedMemView<DoubleType*>& v_det_j = scratchViews.get_me_views(CURRENT_COORDINATES).det_j_fem;
 
   for ( int ip = 0; ip < AlgTraits::numGp_; ++ip ) {
- 
-   // compute ip property
-    DoubleType qNp1Ip = 0.0;
-    DoubleType qNIp = 0.0;
-    DoubleType qNm1Ip = 0.0;
+  
+    // zero out ip values
     DoubleType rhoNp1Ip = 0.0;
-    DoubleType rhoNIp= 0.0;
+    DoubleType rhoNIp = 0.0;
     DoubleType rhoNm1Ip = 0.0;
+    // evaluate ip values
     for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
       const DoubleType r = v_shape_function_(ip,ic);
-      qNp1Ip += r*v_scalarQNp1(ic);
-      qNIp += r*v_scalarQN(ic);
-      qNm1Ip += r*v_scalarQNm1(ic);
-      rhoNp1Ip += r*v_densityNp1(ic);
-      rhoNIp += r*v_densityN(ic);
-      rhoNm1Ip += r*v_densityNm1(ic);
+      rhoNp1Ip += r*v_rhoNp1(ic);
+      rhoNIp += r*v_rhoN(ic);
+      rhoNm1Ip += r*v_rhoNm1(ic);
     }
 
     // start the assembly (collect ip scalings)
@@ -135,18 +133,28 @@ ScalarMassFemKernel<AlgTraits>::execute(
     // row ir
     for ( int ir = 0; ir < AlgTraits::nodesPerElement_; ++ir) {
       
+      const int irNdim = ir*AlgTraits::nDim_;
       const DoubleType wIr = v_shape_function_(ip,ir);
       
       // column ic
       for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
-        lhs(ir,ic) += gamma1_*rhoNp1Ip*wIr*v_shape_function_(ip,ic)/dt_*ipFactor;
+        
+        const int icNdim = ic*AlgTraits::nDim_;
+        
+        // component i (avoid w_uN*Ip and w_GjpIp fields)
+        for ( int i = 0; i < AlgTraits::nDim_; ++i ) {
+          lhs(irNdim+i,icNdim+i) += wIr*gamma1_*rhoNp1Ip*v_shape_function_(ip,ic)/dt_*ipFactor;
+          rhs(irNdim+i) -= wIr*((gamma1_*rhoNp1Ip*v_uNp1(ic,i) 
+                                 + gamma2_*rhoNIp*v_uN(ic,i)
+                                 + gamma3_*rhoNm1Ip*v_uNm1(ic,i))/dt_ 
+                                + v_Gp(ic,i))*v_shape_function_(ip,ic)*ipFactor; 
+        }
       }
-      rhs(ir) -= wIr*(gamma1_*qNp1Ip*rhoNp1Ip + gamma2_*qNIp*rhoNIp + gamma3_*qNm1Ip*rhoNm1Ip)/dt_*ipFactor;
     }
   }
 }
   
-INSTANTIATE_FEM_KERNEL(ScalarMassFemKernel);
+INSTANTIATE_FEM_KERNEL(MomentumMassFemKernel);
 
 }  // nalu
 }  // sierra
