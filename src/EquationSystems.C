@@ -22,6 +22,7 @@
 #include <EnthalpyEquationSystem.h>
 #include <HeatCondEquationSystem.h>
 #include <LowMachEquationSystem.h>
+#include <LowMachFemEquationSystem.h>
 #include <MixtureFractionEquationSystem.h>
 #include <MixtureFractionFemEquationSystem.h>
 #include <ShearStressTransportEquationSystem.h>
@@ -100,6 +101,11 @@ void EquationSystems::load(const YAML::Node & y_node)
           bool elemCont = (realm_.realmUsesEdges_) ? false : true;
           get_if_present_no_default(y_eqsys, "element_continuity_eqs", elemCont);
           eqSys = new LowMachEquationSystem(*this, elemCont);
+        }
+        else if ( expect_map(y_system, "LowMachFemEOM", true) ) {
+	  y_eqsys =  expect_map(y_system, "LowMachFemEOM", true);
+          if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = LowMachFemEOM " << std::endl;
+          eqSys = new LowMachFemEquationSystem(*this);
         }
         else if( expect_map(y_system, "ShearStressTransport", true) ) {
 	  y_eqsys =  expect_map(y_system, "ShearStressTransport", true);

@@ -35,9 +35,7 @@ namespace nalu{
 
     static MasterElement*
     get_fem_master_element(
-      const stk::topology& theTopo,
-      int dimension = 0,
-      std::string quadType = "GaussLegendre");
+      const stk::topology& theTopo);
 
     static void clear();
   private:

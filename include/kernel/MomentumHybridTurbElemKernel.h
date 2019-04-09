@@ -59,8 +59,7 @@ private:
   const bool shiftedGradOp_;
 
   // fixed scratch space
-  AlignedViewType<DoubleType[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]>
-    v_shape_function_{"v_shape_function"};
+  AlignedViewType<DoubleType[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_{"v_shape_function"};
 };
 
 } // namespace nalu
