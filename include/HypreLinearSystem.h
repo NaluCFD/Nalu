@@ -196,8 +196,8 @@ public:
    */
   virtual void loadComplete();
 
-  virtual void writeToFile(const char * filename, bool useOwned=true) {}
-  virtual void writeSolutionToFile(const char * filename, bool useOwned=true) {}
+  virtual void writeToFile(const char * /* filename */, bool /* useOwned */ =true) {}
+  virtual void writeSolutionToFile(const char * /* filename */, bool /* useOwned */ =true) {}
 
 protected:
   /** Prepare the instance for system construction
@@ -207,6 +207,10 @@ protected:
    *  so that hypre row ID lookups succeed during initialization and assembly.
    */
   virtual void beginLinearSystemConstruction();
+
+  virtual void finalizeSolver();
+
+  virtual void loadCompleteSolver();
 
   /** Return the Hypre ID corresponding to the given STK node entity
    *
@@ -220,7 +224,6 @@ protected:
   //! the STK field data instance.
   double copy_hypre_to_stk(stk::mesh::FieldBase*);
 
-private:
   /** Flags indicating whether a particular row in the HYPRE matrix has been
    * filled or not.
    */
@@ -252,12 +255,6 @@ private:
 
   //! The HYPRE matrix data structure
   mutable HYPRE_IJMatrix mat_;
-
-  //! HYPRE right hand side data structure
-  mutable HYPRE_IJVector rhs_;
-
-  //! HYPRE solution vector
-  mutable HYPRE_IJVector sln_;
 
   //! Track rows that have been updated during the assembly process
   std::vector<RowFillStatus> rowFilled_;
@@ -295,6 +292,14 @@ private:
 
   //! Flag indicating that dirichlet and/or overset rows are present for this system
   bool hasSkippedRows_{false};
+
+private:
+  //! HYPRE right hand side data structure
+  mutable HYPRE_IJVector rhs_;
+
+  //! HYPRE solution vector
+  mutable HYPRE_IJVector sln_;
+
 };
 
 }  // nalu
