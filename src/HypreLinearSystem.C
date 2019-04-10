@@ -5,6 +5,8 @@
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
+#ifdef NALU_USES_HYPRE
+
 #include "HypreLinearSystem.h"
 #include "HypreDirectSolver.h"
 #include "Realm.h"
@@ -646,3 +648,5 @@ HypreLinearSystem::copy_hypre_to_stk(
 
 }  // nalu
 }  // sierra
+
+#endif
