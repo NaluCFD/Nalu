@@ -38,6 +38,11 @@ HypreIntType Hypre_ParCSRPCGCreate(MPI_Comm comm, HYPRE_Solver *solver)
 HypreIntType Hypre_ParCSRGMRESCreate(MPI_Comm comm, HYPRE_Solver *solver)
 { return HYPRE_ParCSRGMRESCreate(comm, solver);}
 
+#ifdef HYPRE_COGMRES
+HypreIntType Hypre_ParCSRCOGMRESCreate(MPI_Comm comm, HYPRE_Solver *solver)
+{ return HYPRE_ParCSRCOGMRESCreate(comm, solver);}
+#endif
+
 HypreIntType Hypre_ParCSRFlexGMRESCreate(MPI_Comm comm, HYPRE_Solver *solver)
 { return HYPRE_ParCSRFlexGMRESCreate(comm, solver);}
 
@@ -63,11 +68,13 @@ HypreDirectSolver::~HypreDirectSolver()
 int
 HypreDirectSolver::solve(
   int& numIterations,
-  double& finalResidualNorm)
+  double& finalResidualNorm,
+  bool isFinalOuterIter)
 {
   // Initialize the solver on first entry
   double time = -NaluEnv::self().nalu_time();
-  if (!isInitialized_) initSolver();
+  if (!isInitialized_ || config_->recomputePreconditioner())
+    initSolver();
   time += NaluEnv::self().nalu_time();
   timerPrecond_ = time;
 
@@ -78,6 +85,11 @@ HypreDirectSolver::solve(
   // return a non-zero value and that causes spurious error message output in
   // Nalu.
   int status = 0;
+
+  if (isFinalOuterIter)
+    solverSetTolPtr_(solver_, config_->finalTolerance());
+  else
+    solverSetTolPtr_(solver_, config_->tolerance());
 
   // Solve the system Ax = b
   solverSolvePtr_(solver_, parMat_, parRhs_, parSln_);
@@ -138,10 +150,16 @@ HypreDirectSolver::initSolver()
   if (usePrecond_)
     solverPrecondPtr_(solver_, precondSolvePtr_, precondSetupPtr_, precond_);
 
-  // We are always using HYPRE solver
-  solverSetupPtr_(solver_, parMat_, parRhs_, parSln_);
+  setupSolver();
 
   isInitialized_ = true;
+}
+
+void
+HypreDirectSolver::setupSolver()
+{
+  // We are always using HYPRE solver
+  solverSetupPtr_(solver_, parMat_, parRhs_, parSln_);
 }
 
 void
@@ -161,6 +179,7 @@ HypreDirectSolver::createSolver()
     solverSetupPtr_ = &HYPRE_BoomerAMGSetup;
     solverPrecondPtr_ = nullptr;
     solverSolvePtr_ = &HYPRE_BoomerAMGSolve;
+    solverSetTolPtr_ = &HYPRE_BoomerAMGSetTol;
     solverNumItersPtr_ = &HYPRE_BoomerAMGGetNumIterations;
     solverFinalResidualNormPtr_ = &HYPRE_BoomerAMGGetFinalRelativeResidualNorm;
     break;
@@ -171,9 +190,23 @@ HypreDirectSolver::createSolver()
     solverSetupPtr_ = &HYPRE_ParCSRGMRESSetup;
     solverPrecondPtr_ = &HYPRE_ParCSRGMRESSetPrecond;
     solverSolvePtr_ = &HYPRE_ParCSRGMRESSolve;
+    solverSetTolPtr_ = &HYPRE_ParCSRGMRESSetTol;
     solverNumItersPtr_ = &HYPRE_GMRESGetNumIterations;
     solverFinalResidualNormPtr_ = &HYPRE_GMRESGetFinalRelativeResidualNorm;
     break;
+
+#ifdef HYPRE_COGMRES
+  case Hypre::COGMRES:
+    solverCreatePtr_ = &Hypre_ParCSRCOGMRESCreate;
+    solverDestroyPtr_ = &HYPRE_ParCSRCOGMRESDestroy;
+    solverSetupPtr_ = &HYPRE_ParCSRCOGMRESSetup;
+    solverPrecondPtr_ = &HYPRE_ParCSRCOGMRESSetPrecond;
+    solverSolvePtr_ = &HYPRE_ParCSRCOGMRESSolve;
+    solverSetTolPtr_ = &HYPRE_ParCSRCOGMRESSetTol;
+    solverNumItersPtr_ = &HYPRE_COGMRESGetNumIterations;
+    solverFinalResidualNormPtr_ = &HYPRE_COGMRESGetFinalRelativeResidualNorm;
+    break;
+#endif
 
   case Hypre::FlexGMRES:
     solverCreatePtr_ = &Hypre_ParCSRFlexGMRESCreate;
@@ -181,6 +214,7 @@ HypreDirectSolver::createSolver()
     solverSetupPtr_ = &HYPRE_ParCSRFlexGMRESSetup;
     solverPrecondPtr_ = &HYPRE_ParCSRFlexGMRESSetPrecond;
     solverSolvePtr_ = &HYPRE_ParCSRFlexGMRESSolve;
+    solverSetTolPtr_ = &HYPRE_ParCSRFlexGMRESSetTol;
     solverNumItersPtr_ = &HYPRE_FlexGMRESGetNumIterations;
     solverFinalResidualNormPtr_ = &HYPRE_FlexGMRESGetFinalRelativeResidualNorm;
     break;
@@ -191,6 +225,7 @@ HypreDirectSolver::createSolver()
     solverSetupPtr_ = &HYPRE_ParCSRLGMRESSetup;
     solverPrecondPtr_ = &HYPRE_ParCSRLGMRESSetPrecond;
     solverSolvePtr_ = &HYPRE_ParCSRLGMRESSolve;
+    solverSetTolPtr_ = &HYPRE_ParCSRLGMRESSetTol;
     solverNumItersPtr_ = &HYPRE_LGMRESGetNumIterations;
     solverFinalResidualNormPtr_ = &HYPRE_LGMRESGetFinalRelativeResidualNorm;
     break;
@@ -201,6 +236,7 @@ HypreDirectSolver::createSolver()
     solverSetupPtr_ = &HYPRE_ParCSRBiCGSTABSetup;
     solverPrecondPtr_ = &HYPRE_ParCSRBiCGSTABSetPrecond;
     solverSolvePtr_ = &HYPRE_ParCSRBiCGSTABSolve;
+    solverSetTolPtr_ = &HYPRE_ParCSRBiCGSTABSetTol;
     solverNumItersPtr_ = &HYPRE_BiCGSTABGetNumIterations;
     solverFinalResidualNormPtr_ = &HYPRE_BiCGSTABGetFinalRelativeResidualNorm;
     break;
@@ -211,6 +247,7 @@ HypreDirectSolver::createSolver()
     solverSetupPtr_ = &HYPRE_AMSSetup;
     solverPrecondPtr_ = nullptr;
     solverSolvePtr_ = &HYPRE_AMSSolve;
+    solverSetTolPtr_ = &HYPRE_AMSSetTol;
     solverNumItersPtr_ = &HYPRE_AMSGetNumIterations;
     solverFinalResidualNormPtr_ = &HYPRE_AMSGetFinalRelativeResidualNorm;
     break;
@@ -221,6 +258,7 @@ HypreDirectSolver::createSolver()
     solverSetupPtr_ = &HYPRE_ParCSRPCGSetup;
     solverPrecondPtr_ = &HYPRE_ParCSRPCGSetPrecond;
     solverSolvePtr_ = &HYPRE_ParCSRPCGSolve;
+    solverSetTolPtr_ = &HYPRE_ParCSRPCGSetTol;
     solverNumItersPtr_ = &HYPRE_PCGGetNumIterations;
     solverFinalResidualNormPtr_ = &HYPRE_PCGGetFinalRelativeResidualNorm;
     break;
@@ -231,6 +269,7 @@ HypreDirectSolver::createSolver()
     solverSetupPtr_ = &HYPRE_ParCSRHybridSetup;
     solverPrecondPtr_ = &HYPRE_ParCSRHybridSetPrecond;
     solverSolvePtr_ = &HYPRE_ParCSRHybridSolve;
+    solverSetTolPtr_ = &HYPRE_ParCSRHybridSetTol;
     solverNumItersPtr_ = &HYPRE_ParCSRHybridGetNumIterations;
     solverFinalResidualNormPtr_ = &HYPRE_ParCSRHybridGetFinalRelativeResidualNorm;
     break;
@@ -253,7 +292,7 @@ HypreDirectSolver::createPrecond()
   namespace Hypre = Ifpack2::Hypre;
 
   if (isPrecondSetup_) {
-    precondDestroyPtr_(solver_);
+    precondDestroyPtr_(precond_);
     isPrecondSetup_ = false;
   }
 
