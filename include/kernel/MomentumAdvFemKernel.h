@@ -5,8 +5,8 @@
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
-#ifndef SCALARDIFFFEMKERNEL_H
-#define SCALARDIFFFEMKERNEL_H
+#ifndef MomentumAdvFemKernel_h
+#define MomentumAdvFemKernel_h
 
 #include "kernel/Kernel.h"
 #include "FieldTypeDef.h"
@@ -20,21 +20,21 @@ namespace nalu {
 
 class ElemDataRequests;
 class SolutionOptions;
+class TimeIntegrator;
 
-/** CVFEM scalar advection/diffusion kernel
+/** FEM advection kernel
  */
 template<typename AlgTraits>
-class ScalarDiffFemKernel: public Kernel
+class MomentumAdvFemKernel: public Kernel
 {
 public:
-  ScalarDiffFemKernel(
+  MomentumAdvFemKernel(
     const stk::mesh::BulkData&,
     const SolutionOptions&,
-    ScalarFieldType*,
-    ScalarFieldType*,
+    VectorFieldType*,
     ElemDataRequests&);
 
-  virtual ~ScalarDiffFemKernel();
+  virtual ~MomentumAdvFemKernel();
 
   /** Execute the kernel within a Kokkos loop and populate the LHS and RHS for
    *  the linear solve
@@ -44,16 +44,27 @@ public:
     SharedMemView<DoubleType*>&,
     ScratchViews<DoubleType>&);
 
-private:
-  ScalarDiffFemKernel() = delete;
-
-  ScalarFieldType *scalarQ_{nullptr};
-  ScalarFieldType *diffFluxCoeff_{nullptr};
-  VectorFieldType *coordinates_{nullptr};
-
-  // master element
-  const bool shiftedGradOp_;
+ private:
+  MomentumAdvFemKernel() = delete;
   
+  /** Perform pre-timestep work for the computational kernel
+   */
+  virtual void setup(const TimeIntegrator&);
+  
+  VectorFieldType *velocityNp1_{nullptr};
+  ScalarFieldType *density_{nullptr};
+  VectorFieldType *coordinates_{nullptr};
+  
+  VectorFieldType *vrtmL_{nullptr};
+  VectorFieldType *GjpL_{nullptr};  
+  ScalarFieldType *pressure_{nullptr};
+
+  const bool shiftedGradOp_;
+  const double includePstab_;
+  const double skewFac_;
+  const double om_skewFac_;
+  double projTimeScale_;
+
   /// Shape functions
   AlignedViewType<DoubleType[AlgTraits::numGp_]> v_ip_weight_{ "v_ip_weight" };
   AlignedViewType<DoubleType[AlgTraits::numGp_][AlgTraits::nodesPerElement_]> v_shape_function_ { "v_shape_func" };
@@ -62,4 +73,4 @@ private:
 }  // nalu
 }  // sierra
 
-#endif /* SCALARDIFFFEMKERNEL_H */
+#endif /* MomentumAdvFemKernel_h */
