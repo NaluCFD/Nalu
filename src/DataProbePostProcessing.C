@@ -441,9 +441,9 @@ DataProbePostProcessing::initialize()
           tailC[2] = probeInfo->tailCoordinates_[j].z_;
         }
         
-        const int numPoints = probeInfo->numPoints_[j];
+        const int numPointsD = std::max(1, probeInfo->numPoints_[j] - 1);
         for ( int p = 0; p < nDim; ++p )
-          dx[p] = (tipC[p] - tailC[p])/(double)(numPoints-1);
+          dx[p] = (tipC[p] - tailC[p])/(double)numPointsD;
         
         // now populate the coordinates; can use a simple loop rather than buckets
         for ( size_t n = 0; n < nodeVec.size(); ++n ) {
