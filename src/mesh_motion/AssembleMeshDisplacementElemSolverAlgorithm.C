@@ -77,6 +77,10 @@ AssembleMeshDisplacementElemSolverAlgorithm::execute()
 
   const int nDim = meta_data.spatial_dimension();
 
+  const double kd[3][3] = { 1.0, 0.0, 0.0,
+                            0.0, 1.0, 0.0,
+                            0.0, 0.0, 1.0 };
+  
   // space for LHS/RHS; nodesPerElem*nDim*nodesPerElem*nDim and nodesPerElem*nDim
   std::vector<double> lhs;
   std::vector<double> rhs;
@@ -225,37 +229,20 @@ AssembleMeshDisplacementElemSolverAlgorithm::execute()
         const int ilNdim = il*nDim;
         const int irNdim = ir*nDim;
 
-        // compute scs point values; offset to Shape Function; sneak in divU
+        // compute scs point values
         double muIp = 0.0;
         double lambdaIp = 0.0;
-        double divDx = 0.0;
         for ( int ic = 0; ic < nodesPerElement; ++ic ) {
           const double r = p_shape_function[offSetSF+ic];
           muIp += r*p_mu[ic];
           lambdaIp += r*p_lambda[ic];
-          const int offSetDnDx = nDim*nodesPerElement*ip + ic*nDim;
-          for ( int j = 0; j < nDim; ++j ) {
-            const double dxj = p_displacementNp1[ic*nDim+j];
-            divDx += dxj*p_dndx[offSetDnDx+j];
-          }
-        }
-
-        // assemble divDx term (explicit)
-        for ( int i = 0; i < nDim; ++i ) {
-          // divU stress term
-          const double divTerm = -lambdaIp*divDx*p_scs_areav[ipNdim+i];
-          const int indexL = ilNdim + i;
-          const int indexR = irNdim + i;
-          // right hand side; L and R
-          p_rhs[indexL] -= divTerm;
-          p_rhs[indexR] += divTerm;
         }
 
         // stress
         for ( int ic = 0; ic < nodesPerElement; ++ic ) {
-
+          
           const int icNdim = ic*nDim;
-
+          
           for ( int i = 0; i < nDim; ++i ) {
 
             const int indexL = ilNdim + i;
@@ -289,6 +276,16 @@ AssembleMeshDisplacementElemSolverAlgorithm::execute()
               // rhs; il then ir
               p_rhs[indexL] -= lhsfacDiff_j*dxj;
               p_rhs[indexR] += lhsfacDiff_j*dxj;
+
+              // divU term
+              for ( int l = 0; l < nDim; ++l ) {
+                const double lhsfacDiv = -lambdaIp*kd[i][j]*p_dndx[offSetDnDx+l]*axj;
+                p_lhs[rowL+icNdim+l] += lhsfacDiv;
+                p_lhs[rowR+icNdim+l] -= lhsfacDiv;
+                const double dxl = p_displacementNp1[icNdim+l];
+                p_rhs[indexL] -= lhsfacDiv*dxl;
+                p_rhs[indexR] += lhsfacDiv*dxl;
+              }
             }
 
             // deal with accumulated lhs and flux for -mu*dxi/dxj*Aj
