@@ -18,7 +18,6 @@
 #include "master_element/Quad42DCVFEM.h"
 #include "master_element/Quad92DCVFEM.h"
 #include "master_element/Tri32DCVFEM.h"
-#include "master_element/MasterElementHO.h"
 
 // FEM-based
 #include "master_element/Hex8FEM.h"
@@ -41,10 +40,6 @@ namespace nalu{
   std::unique_ptr<MasterElement>
   create_surface_master_element(stk::topology topo)
   {
-    if (topo.is_super_topology()) {
-      // super topologies uses different master element type
-      return nullptr;
-    }
 
     switch ( topo.value() ) {
 
@@ -112,10 +107,6 @@ namespace nalu{
   std::unique_ptr<MasterElement>
   create_volume_master_element(stk::topology topo)
   {
-    if (topo.is_super_topology()) {
-      // super topologies uses different master element type
-      return nullptr;
-    }
 
     switch ( topo.value() ) {
 
@@ -151,54 +142,11 @@ namespace nalu{
     }
     return nullptr;
   }
-  //--------------------------------------------------------------------------
-  std::unique_ptr<MasterElement>
-  create_surface_master_element(stk::topology topo, int dimension, std::string quadType)
-  {
-    if (!topo.is_super_topology()) {
-      // regular topologies uses different master element type
-      return nullptr;
-    }
 
-    ThrowRequire(dimension > 0 && dimension < 4);
-
-    auto desc = ElementDescription::create(dimension, topo);
-
-    auto basis = (topo.is_superelement()) ?
-        LagrangeBasis(desc->inverseNodeMap, desc->nodeLocs1D)
-      : LagrangeBasis(desc->inverseNodeMapBC, desc->nodeLocs1D);
-
-    auto quad = TensorProductQuadratureRule(quadType, desc->polyOrder);
-
-    if (topo.is_superedge()) {
-      ThrowRequire(desc->baseTopo == stk::topology::QUAD_4_2D);
-      return make_unique<HigherOrderEdge2DSCS>(*desc, basis, quad);
-    }
-
-    if (topo.is_superface()) {
-      ThrowRequire(desc->baseTopo == stk::topology::HEX_8);
-      return make_unique<HigherOrderQuad3DSCS>(*desc, basis, quad);
-    }
-
-    if (topo.is_superelement() && desc->baseTopo == stk::topology::QUAD_4_2D) {
-      return make_unique<HigherOrderQuad2DSCS>(*desc, basis, quad);
-    }
-
-    if (topo.is_superelement() && desc->baseTopo == stk::topology::HEX_8) {
-      return make_unique<HigherOrderHexSCS>(*desc, basis, quad);
-    }
-
-    return nullptr;
-  }
   //--------------------------------------------------------------------------
   std::unique_ptr<MasterElement>
   create_fem_master_element(stk::topology topo)
   {
-    if (topo.is_super_topology()) {
-      // super topologies uses different master element type
-      return nullptr;
-    }
-
     switch ( topo.value() ) {
 
       case stk::topology::HEX_8:
@@ -217,50 +165,15 @@ namespace nalu{
     }
     return nullptr;
   }
-  //--------------------------------------------------------------------------
-  std::unique_ptr<MasterElement>
-  create_volume_master_element(
-    stk::topology topo,
-    int dimension,
-    std::string quadType)
-  {
-    if (!topo.is_super_topology()) {
-      // regular topologies uses different master element type
-      return nullptr;
-    }
-
-    ThrowRequire(dimension > 0 && dimension < 4);
-
-    auto desc = ElementDescription::create(dimension, topo);
-    auto basis = LagrangeBasis(desc->inverseNodeMap, desc->nodeLocs1D);
-    auto quad = TensorProductQuadratureRule(quadType, desc->polyOrder);
-
-    switch (desc->baseTopo.value()) {
-      case stk::topology::QUADRILATERAL_4_2D:
-        return make_unique<HigherOrderQuad2DSCV>(*desc, basis, quad);
-      case stk::topology::HEXAHEDRON_8:
-        return make_unique<HigherOrderHexSCV>(*desc, basis, quad);
-      default:
-        NaluEnv::self().naluOutputP0() << "High order elements only support base quad4 and hex8 meshes" << std::endl;
-        break;
-    }
-    return nullptr;
-  }
-
+  
   std::map<stk::topology, std::unique_ptr<MasterElement>> MasterElementRepo::surfaceMeMap_;
 
   MasterElement* MasterElementRepo::get_surface_master_element(
-    const stk::topology& theTopo,
-    int dimension,
-    std::string quadType)
+    const stk::topology& theTopo)
   {
     auto it = surfaceMeMap_.find(theTopo);
     if (it == surfaceMeMap_.end()) {
-      if (!theTopo.is_super_topology()) {
-        surfaceMeMap_[theTopo] = create_surface_master_element(theTopo);
-      } else {
-        surfaceMeMap_[theTopo] = create_surface_master_element(theTopo, dimension, quadType);
-      }
+      surfaceMeMap_[theTopo] = create_surface_master_element(theTopo);
     }
     MasterElement* theElem = surfaceMeMap_.at(theTopo).get();
     ThrowRequire(theElem != nullptr);
@@ -270,17 +183,11 @@ namespace nalu{
   std::map<stk::topology, std::unique_ptr<MasterElement>> MasterElementRepo::volumeMeMap_;
 
   MasterElement* MasterElementRepo::get_volume_master_element(
-    const stk::topology& theTopo,
-    int dimension,
-    std::string quadType)
+    const stk::topology& theTopo)
   {
     auto it = volumeMeMap_.find(theTopo);
     if (it == volumeMeMap_.end()) {
-      if (!theTopo.is_super_topology()) {
-        volumeMeMap_[theTopo] = create_volume_master_element(theTopo);
-      } else {
-        volumeMeMap_[theTopo] = create_volume_master_element(theTopo, dimension, quadType);
-      }
+      volumeMeMap_[theTopo] = create_volume_master_element(theTopo);
     }
     MasterElement* theElem = volumeMeMap_.at(theTopo).get();
     ThrowRequire(theElem != nullptr);
@@ -293,8 +200,6 @@ namespace nalu{
     const stk::topology& theTopo)
   {
     // do not support arbitrary FEM promotion
-    if ( theTopo.is_super_topology() )
-      throw std::runtime_error("higher-order promotion is not valid for FEM-based approaches");  
     auto it = femMeMap_.find(theTopo);
     if (it == femMeMap_.end()) {
       femMeMap_[theTopo] = create_fem_master_element(theTopo);

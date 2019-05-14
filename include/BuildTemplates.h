@@ -53,44 +53,11 @@ template class ClassName<AlgTraitsEdge2DTri32D>;                  \
 template class ClassName<AlgTraitsEdge2DQuad42D>;                 \
 template class ClassName<AlgTraitsEdge32DQuad92D>;                \
 
-// HO templates: generates 4 instantiations per kernel type
-// 2,3,4 and one that can be set at compile time
-
-#ifndef USER_POLY_ORDER
-#define USER_POLY_ORDER 5
-#endif
-
-#define INSTANTIATE_POLY_TEMPLATE(ClassName,BaseTraitsName)       \
-template class ClassName<BaseTraitsName<2>>;                      \
-template class ClassName<BaseTraitsName<3>>;                      \
-template class ClassName<BaseTraitsName<4>>;                      \
-template class ClassName<BaseTraitsName<USER_POLY_ORDER>>;        \
-
-#define INSTANTIATE_KERNEL_3D_HO(ClassName)                       \
-INSTANTIATE_POLY_TEMPLATE(ClassName,AlgTraitsHexGL)               \
-
-#define INSTANTIATE_KERNEL_2D_HO(ClassName)                       \
-INSTANTIATE_POLY_TEMPLATE(ClassName,AlgTraitsQuadGL_2D)           \
-
-#define INSTANTIATE_KERNEL_FACE_2D_HO(ClassName)                  \
-INSTANTIATE_POLY_TEMPLATE(ClassName,AlgTraitsEdgeGL)              \
-
-#define INSTANTIATE_KERNEL_FACE_3D_HO(ClassName)                  \
-INSTANTIATE_POLY_TEMPLATE(ClassName,AlgTraitsQuadGL)              \
-
-#define INSTANTIATE_KERNEL_FACE_ELEMENT_3D_HO(ClassName)          \
-INSTANTIATE_POLY_TEMPLATE(ClassName,AlgTraitsQuadPHexPGL)         \
-
-#define INSTANTIATE_KERNEL_FACE_ELEMENT_2D_HO(ClassName)          \
-INSTANTIATE_POLY_TEMPLATE(ClassName,AlgTraitsEdgePQuadPGL)        \
-
 // Instantiate the actual kernels
 
 #define INSTANTIATE_KERNEL(ClassName)                             \
   INSTANTIATE_KERNEL_3D(ClassName)                                \
   INSTANTIATE_KERNEL_2D(ClassName)                                \
-  INSTANTIATE_KERNEL_3D_HO(ClassName)                             \
-  INSTANTIATE_KERNEL_2D_HO(ClassName)                             \
 
 #define INSTANTIATE_FEM_KERNEL(ClassName)                         \
   INSTANTIATE_FEM_KERNEL_3D(ClassName)                            \
@@ -98,8 +65,6 @@ INSTANTIATE_POLY_TEMPLATE(ClassName,AlgTraitsEdgePQuadPGL)        \
 #define INSTANTIATE_KERNEL_FACE(ClassName)                        \
   INSTANTIATE_KERNEL_FACE_3D(ClassName)                           \
   INSTANTIATE_KERNEL_FACE_2D(ClassName)                           \
-  INSTANTIATE_KERNEL_FACE_3D_HO(ClassName)                        \
-  INSTANTIATE_KERNEL_FACE_2D_HO(ClassName)                        \
 
 #define INSTANTIATE_FEM_KERNEL_FACE(ClassName)                    \
   INSTANTIATE_FEM_KERNEL_FACE_3D(ClassName)                       \
@@ -107,7 +72,5 @@ INSTANTIATE_POLY_TEMPLATE(ClassName,AlgTraitsEdgePQuadPGL)        \
 #define INSTANTIATE_KERNEL_FACE_ELEMENT(ClassName)                \
   INSTANTIATE_KERNEL_FACE_ELEMENT_3D(ClassName)                   \
   INSTANTIATE_KERNEL_FACE_ELEMENT_2D(ClassName)                   \
-  INSTANTIATE_KERNEL_FACE_ELEMENT_3D_HO(ClassName)                \
-  INSTANTIATE_KERNEL_FACE_ELEMENT_2D_HO(ClassName)                \
 
 #endif

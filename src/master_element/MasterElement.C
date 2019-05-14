@@ -9,12 +9,8 @@
 #include <master_element/MasterElement.h>
 #include <master_element/MasterElementFunctions.h>
 
-#include <master_element/MasterElementHO.h>
 #include <master_element/MasterElementUtils.h>
 
-#include <element_promotion/LagrangeBasis.h>
-#include <element_promotion/TensorProductQuadratureRule.h>
-#include <element_promotion/QuadratureRule.h>
 #include <AlgTraits.h>
 
 #include <NaluEnv.h>
@@ -126,10 +122,10 @@ void
 QuadrilateralP2Element::set_quadrature_rule()
 {
   gaussAbscissaeShift_ = {-1.0,-1.0,0.0,0.0,+1.0,+1.0};
-  std::tie(gaussAbscissae_, gaussWeight_) = gauss_legendre_rule(numQuad_);
-  for (unsigned j = 0; j < gaussWeight_.size(); ++j) {
-    gaussWeight_[j] *= 0.5;
-  }
+  gaussAbscissae_ = { -std::sqrt(3.0)/3.0, std::sqrt(3.0)/3.0 };
+  gaussWeight_ = { 0.5, 0.5 };
+  if ( numQuad_ != 2 )
+    throw std::runtime_error("Only 2x2 per scs face segnent is supported");
 }
 
 //--------------------------------------------------------------------------

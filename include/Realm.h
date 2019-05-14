@@ -75,11 +75,6 @@ class DataProbePostProcessing;
 class Actuator;
 class ABLForcingAlgorithm;
 
-class TensorProductQuadratureRule;
-class LagrangeBasis;
-class PromotedElementIO;
-struct ElementDescription;
-
 /** Representation of a computational domain and physics equations solved on
  * this domain.
  *
@@ -447,7 +442,6 @@ class Realm {
   double timerTransferSearch_;
   double timerTransferExecute_;
   double timerSkinMesh_;
-  double timerPromoteMesh_;
   double timerSortExposedFace_;
 
   NonConformalManager *nonConformalManager_;
@@ -534,9 +528,8 @@ class Realm {
   // empty part vector should it be required
   stk::mesh::PartVector emptyPartVector_;
 
-  // base and promote mesh parts
+  // base mesh parts
   stk::mesh::PartVector basePartVector_;
-  stk::mesh::PartVector superPartVector_;
 
   std::vector<AuxFunctionAlgorithm *> bcDataAlg_;
 
@@ -576,10 +569,6 @@ class Realm {
     const TurbulenceModelConstant turbModelEnum);
   bool process_adaptivity();
 
-  // element promotion options
-  bool doPromotion_; // conto
-  unsigned promotionOrder_;
-  
   // id for the input mesh
   size_t inputMeshIdx_;
 
@@ -588,17 +577,6 @@ class Realm {
 
   // flag for CVFEM usage
   bool usesCVFEM_;
-
-  // tools
-  std::unique_ptr<ElementDescription> desc_; // holds topo info
-  std::unique_ptr<PromotedElementIO> promotionIO_; // mesh outputer
-  std::vector<std::string> superTargetNames_;
-
-  void setup_element_promotion(); // create super parts
-  void promote_mesh(); // create new super element / sides on parts
-  void create_promoted_output_mesh(); // method to create output of linear subelements
-  bool using_SGL_quadrature() const { return get_quad_type() == "SGL"; };
-  bool high_order_active() const { return doPromotion_; };
 
   std::string physics_part_name(std::string) const;
   std::vector<std::string> physics_part_names(std::vector<std::string>) const;
