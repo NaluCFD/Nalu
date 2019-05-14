@@ -50,7 +50,7 @@ namespace nalu{
     case stk::topology::TET_10:
       return new T<AlgTraitsTet10>(std::forward<Args>(args)...);
     default:
-      ThrowRequireMsg(false, "Only Hex8 and Tet10 FEM elements currently supported");
+      ThrowRequireMsg(false, "Only Hex8 and Tet10/Tri6 FEM elements currently supported");
       return nullptr;
     }
   }
@@ -170,6 +170,18 @@ namespace nalu{
       throw std::runtime_error("PMR exposed surface bc does not support promoted element type: " + std::to_string(poly_order));
     }
   }
+
+  template <template <typename> class T, typename... Args>
+  Kernel* build_fem_face_topo_kernel(stk::topology topo, Args&&... args)
+  {
+    switch(topo.value()) {
+    case stk::topology::TRI_6:
+      return new T<AlgTraitsTri6>(std::forward<Args>(args)...);
+    default:
+      ThrowRequireMsg(false, "Only Tri6 FEM elements currently supported");
+      return nullptr;
+    }
+  }
   
   template <template <typename> class T, typename... Args>
   bool build_topo_kernel_if_requested(
@@ -248,6 +260,22 @@ namespace nalu{
 
     KernelBuilderLog::self().add_valid_name(eqSys.eqnTypeName_, name);
     Kernel* compKernel = build_face_topo_kernel<T>(dim, topo, std::forward<Args>(args)...);
+    ThrowRequire(compKernel != nullptr);
+    KernelBuilderLog::self().add_built_name(eqSys.eqnTypeName_, name);
+    kernelVec.push_back(compKernel);  
+    return true;
+  }
+
+  template <template <typename> class T, typename... Args>
+  bool build_fem_face_topo_kernel_automatic(
+    stk::topology topo,
+    EquationSystem& eqSys,
+    std::vector<Kernel*>& kernelVec,
+    std::string name,
+    Args&&... args)
+  {
+    KernelBuilderLog::self().add_valid_name(eqSys.eqnTypeName_, name);
+    Kernel* compKernel = build_fem_face_topo_kernel<T>(topo, std::forward<Args>(args)...);
     ThrowRequire(compKernel != nullptr);
     KernelBuilderLog::self().add_built_name(eqSys.eqnTypeName_, name);
     kernelVec.push_back(compKernel);  
@@ -352,6 +380,7 @@ namespace nalu{
     bool isNotNGP = !(topo == stk::topology::QUAD_4 ||
                       topo == stk::topology::QUAD_9 ||
                       topo == stk::topology::TRI_3 ||
+                      topo == stk::topology::TRI_6 ||
                       topo == stk::topology::LINE_2 ||
                       topo == stk::topology::LINE_3 );
 
