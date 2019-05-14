@@ -108,6 +108,12 @@ public:
     SharedMemView<DoubleType*>&det_j) {
     throw std::runtime_error("determinant_fem using SharedMemView is not implemented");}
 
+  virtual void normal_fem(
+    SharedMemView<DoubleType**>&coords,
+    SharedMemView<DoubleType***>&deriv,
+    SharedMemView<DoubleType**>&normal) {
+    throw std::runtime_error("normal_fem using SharedMemView is not implemented");}
+
   virtual void gij(
     SharedMemView<DoubleType**>& coords,
     SharedMemView<DoubleType***>& gupper,

@@ -271,6 +271,35 @@ namespace nalu {
     }
   }
 
+  template <typename AlgTraits, typename GradViewType, typename CoordViewType, typename OutputViewType>
+  void generic_determinant_2d(GradViewType referenceGradWeights, CoordViewType coords, OutputViewType detj)
+  {
+    using ftype = typename CoordViewType::value_type;
+    static_assert(std::is_same<ftype, typename GradViewType::value_type>::value,  "Incompatiable value type for views");
+    static_assert(std::is_same<ftype, typename OutputViewType::value_type>::value,  "Incompatiable value type for views");
+    static_assert(GradViewType::Rank == 2, "grad view assumed to be 2D");
+    static_assert(CoordViewType::Rank == 2, "Coordinate view assumed to be 2D");
+    static_assert(OutputViewType::Rank == 1, "Weight view assumed to be 1D");
+    static_assert(AlgTraits::nDim_ == 2, "2D method");
+
+    ThrowAssert(AlgTraits::nodesPerElement_ == referenceGradWeights.extent(1));
+    ThrowAssert(AlgTraits::nDim_ == referenceGradWeights.extent(2));
+
+    ThrowAssert(detj.extent(0) == referenceGradWeights.extent(0));
+
+    for (unsigned ip = 0; ip < referenceGradWeights.extent(0); ++ip) {
+      NALU_ALIGNED ftype jac[2][2] = { {0.0, 0.0}, {0.0, 0.0} };
+      for (int n = 0; n < AlgTraits::nodesPerElement_; ++n) {
+        jac[0][0] += referenceGradWeights(ip, n, 0) * coords(n, 0);
+        jac[0][1] += referenceGradWeights(ip, n, 1) * coords(n, 0);
+
+        jac[1][0] += referenceGradWeights(ip, n, 0) * coords(n, 1);
+        jac[1][1] += referenceGradWeights(ip, n, 1) * coords(n, 1);
+      }
+      detj(ip) = jac[0][0]*jac[1][1] - jac[0][1]*jac[1][0];
+    }
+  }
+
 } // namespace nalu
 } // namespace Sierra
 

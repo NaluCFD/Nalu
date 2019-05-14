@@ -27,6 +27,9 @@ template class ClassName<AlgTraitsTri3>;                          \
 template class ClassName<AlgTraitsQuad4>;                         \
 template class ClassName<AlgTraitsQuad9>;                         \
 
+#define INSTANTIATE_FEM_KERNEL_FACE_3D(ClassName)                 \
+template class ClassName<AlgTraitsTri6>;                          \
+
 #define INSTANTIATE_KERNEL_2D(ClassName)                          \
 template class ClassName<AlgTraitsQuad4_2D>;                      \
 template class ClassName<AlgTraitsQuad9_2D>;                      \
@@ -97,6 +100,9 @@ INSTANTIATE_POLY_TEMPLATE(ClassName,AlgTraitsEdgePQuadPGL)        \
   INSTANTIATE_KERNEL_FACE_2D(ClassName)                           \
   INSTANTIATE_KERNEL_FACE_3D_HO(ClassName)                        \
   INSTANTIATE_KERNEL_FACE_2D_HO(ClassName)                        \
+
+#define INSTANTIATE_FEM_KERNEL_FACE(ClassName)                    \
+  INSTANTIATE_FEM_KERNEL_FACE_3D(ClassName)                       \
 
 #define INSTANTIATE_KERNEL_FACE_ELEMENT(ClassName)                \
   INSTANTIATE_KERNEL_FACE_ELEMENT_3D(ClassName)                   \

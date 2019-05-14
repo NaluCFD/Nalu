@@ -37,6 +37,9 @@
 #include "AssembleElemSolverAlgorithm.h"
 #include "kernel/ScalarPngFemKernel.h"
 
+// bc kernels
+#include "kernel/ScalarPngBcFemKernel.h"
+
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
 
@@ -206,27 +209,45 @@ ProjectedNodalGradientEquationSystem::register_interior_algorithm(
 void
 ProjectedNodalGradientEquationSystem::register_wall_bc(
   stk::mesh::Part *part,
-  const stk::topology &/*theTopo*/,
+  const stk::topology &partTopo,
   const WallBoundaryConditionData &/*wallBCData*/)
 {
-  // not supported yet for FEM
-  if ( isFEM_ ) 
-    return;
-
   const AlgorithmType algType = WALL;
-
+  
   // extract the field name for this bc type
   std::string fieldName = get_name_given_bc(WALL_BC);
-  // create lhs/rhs algorithm;
-  std::map<AlgorithmType, SolverAlgorithm *>::iterator its =
-    solverAlgDriver_->solverAlgMap_.find(algType);
-  if ( its == solverAlgDriver_->solverAlgMap_.end() ) {
-    AssemblePNGBoundarySolverAlgorithm *theAlg
-      = new AssemblePNGBoundarySolverAlgorithm(realm_, part, this, fieldName);
-    solverAlgDriver_->solverAlgMap_[algType] = theAlg;
+
+  if ( isFEM_ ) {        
+    // element-based uses consolidated approach fully
+    auto& solverAlgMap = solverAlgDriver_->solverAlgorithmMap_;
+    
+    AssembleElemSolverAlgorithm* solverAlg = nullptr;
+    bool solverAlgWasBuilt = false;
+    
+    std::tie(solverAlg, solverAlgWasBuilt) = build_or_add_part_to_face_bc_solver_alg(*this, *part, solverAlgMap, "wall_png");
+        
+    ElemDataRequests& dataPreReqs = solverAlg->dataNeededByKernels_;
+    auto& activeKernels = solverAlg->activeKernels_;
+    
+    if (solverAlgWasBuilt) {
+      build_fem_face_topo_kernel_automatic<ScalarPngBcFemKernel>
+        (partTopo, *this, activeKernels, "png_wall",
+         realm_.bulk_data(), *realm_.solutionOptions_, fieldName, dataPreReqs);
+      report_built_supp_alg_names();   
+    }
   }
   else {
-    its->second->partVec_.push_back(part);
+    // create lhs/rhs [CVFEM] algorithm;
+    std::map<AlgorithmType, SolverAlgorithm *>::iterator its =
+      solverAlgDriver_->solverAlgMap_.find(algType);
+    if ( its == solverAlgDriver_->solverAlgMap_.end() ) {
+      AssemblePNGBoundarySolverAlgorithm *theAlg
+        = new AssemblePNGBoundarySolverAlgorithm(realm_, part, this, fieldName);
+      solverAlgDriver_->solverAlgMap_[algType] = theAlg;
+    }
+    else {
+      its->second->partVec_.push_back(part);
+    }
   }
 }
 

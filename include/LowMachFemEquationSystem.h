@@ -89,6 +89,11 @@ public:
   virtual void register_interior_algorithm(
     stk::mesh::Part *part);
 
+  virtual void register_wall_bc(
+    stk::mesh::Part *part,
+    const stk::topology &partTopo,
+    const WallBoundaryConditionData &wallBCData);
+
   virtual void register_overset_bc();
 
   virtual void initialize();

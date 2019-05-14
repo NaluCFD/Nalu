@@ -23,6 +23,7 @@
 // FEM-based
 #include "master_element/Hex8FEM.h"
 #include "master_element/Tet10FEM.h"
+#include "master_element/Tri6FEM.h"
 
 #include "NaluEnv.h"
 #include "nalu_make_unique.h"
@@ -205,6 +206,9 @@ namespace nalu{
 
       case stk::topology::TET_10:
         return make_unique<Tet10FEM>();
+
+      case stk::topology::TRI_6:
+        return make_unique<Tri6FEM>();
 
       default:
         NaluEnv::self().naluOutputP0() << "sorry, FEM only supports Hex8 elements" << std::endl;

@@ -167,6 +167,14 @@ struct AlgTraitsTri3
   static constexpr stk::topology::topology_t topo_ = stk::topology::TRI_3;
 };
 
+struct AlgTraitsTri6 {
+  static constexpr int nDim_ = 3;
+  static constexpr int nodesPerElement_ = 6;
+  static constexpr int nodesPerFace_ = 6;
+  static constexpr int numGp_ = 7;
+  static constexpr stk::topology::topology_t topo_ = stk::topology::TRI_6;
+};
+
 struct AlgTraitsEdge_2D
 {
   static constexpr int nDim_ = 2;

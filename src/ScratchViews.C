@@ -191,6 +191,10 @@ int get_num_scalars_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDi
           needDerivFem = true;
           needDetjFem = true;
           break;
+        case FEM_NORMAL:
+          needDerivFem = true;
+          numScalars += nDim * numFemIp;
+          break;
         default: 
           ThrowRequireMsg(false, "get_num_scalars_pre_req_data: enum not coded " << data);
           break;
@@ -310,6 +314,10 @@ int get_num_scalars_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDi
         case FEM_DET_J:
           needDerivFem = true;
           needDetjFem = true;
+          break;
+        case FEM_NORMAL:
+          needDerivFem = true;
+          numScalars += nDim * numFemIp;
           break;
         default: 
           ThrowRequireMsg(false, "get_num_scalars_pre_req_data: enum not coded " << data);

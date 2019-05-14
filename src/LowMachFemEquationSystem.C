@@ -9,7 +9,9 @@
 #include "LowMachFemEquationSystem.h"
 #include "AlgorithmDriver.h"
 #include "AuxFunctionAlgorithm.h"
+#include "ConstantAuxFunction.h"
 #include "CopyFieldAlgorithm.h"
+#include "DirichletBC.h"
 #include "Enums.h"
 #include "EquationSystem.h"
 #include "EquationSystems.h"
@@ -43,6 +45,9 @@
 #include "kernel/MomentumDiffFemKernel.h"
 #include "kernel/MomentumMassFemKernel.h"
 
+// source kernels
+#include "kernel/MomentumBodyForceFemKernel.h"
+
 // bc kernels - n/a
 
 // nso - n/a
@@ -56,6 +61,7 @@
 #include "user_functions/TaylorGreenPressureAuxFunction.h"
 #include "user_functions/TaylorGreenVelocityAuxFunction.h"
 #include "user_functions/WindEnergyTaylorVortexAuxFunction.h"
+#include "user_functions/OneTwoTenVelocityAuxFunction.h"
 
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
@@ -230,7 +236,7 @@ LowMachFemEquationSystem::solve_and_update()
   double timeA, timeB;
   if ( isInit_ ) {
     timeA = NaluEnv::self().nalu_time();
-    continuityEqSys_->compute_projected_nodal_gradient();
+    //continuityEqSys_->compute_projected_nodal_gradient();
     copy_lagged();
     timeB = NaluEnv::self().nalu_time();
     continuityEqSys_->timerMisc_ += (timeB-timeA);
@@ -262,7 +268,7 @@ LowMachFemEquationSystem::solve_and_update()
 
     // continuity assemble, load_complete and solve
     continuityEqSys_->assemble_and_solve(continuityEqSys_->pTmp_);
-
+    
     // update pressure
     timeA = NaluEnv::self().nalu_time();
     field_axpby(
@@ -276,7 +282,7 @@ LowMachFemEquationSystem::solve_and_update()
 
     // copy dpdx and velocity before we update for usage in rho*ujHat
     copy_lagged();
-
+    
     // project nodal velocity
     timeA = NaluEnv::self().nalu_time();
     project_nodal_velocity();
@@ -525,6 +531,10 @@ MomentumFemEquationSystem::register_interior_algorithm(
     build_fem_topo_kernel_if_requested<MomentumMassFemKernel>
       (partTopo, *this, activeKernels, "momentum_time_derivative",
        realm_.bulk_data(), *realm_.solutionOptions_, velocity_, density_, dataPreReqs);
+
+    build_fem_topo_kernel_if_requested<MomentumBodyForceFemKernel>
+      (partTopo, *this, activeKernels, "body_force",
+       realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs);
     
     report_invalid_supp_alg_names();
     report_built_supp_alg_names();
@@ -542,6 +552,106 @@ MomentumFemEquationSystem::register_interior_algorithm(
     it->second->partVec_.push_back(part);
   }
 
+}
+
+//--------------------------------------------------------------------------
+//-------- register_wall_bc ------------------------------------------------
+//--------------------------------------------------------------------------
+void
+MomentumFemEquationSystem::register_wall_bc(
+  stk::mesh::Part *part,
+  const stk::topology &partTopo,
+  const WallBoundaryConditionData &wallBCData)
+{
+
+  // find out if this is a wall function approach
+  WallUserData userData = wallBCData.userData_;
+  const bool wallFunctionApproach = userData.wallFunctionApproach_;
+  const bool ablWallFunctionApproach = userData.ablWallFunctionApproach_;
+  const bool anyWallFunctionActivated = wallFunctionApproach || ablWallFunctionApproach;
+
+  // push mesh part
+  if ( !anyWallFunctionActivated )
+    notProjectedPart_.push_back(part);
+  else 
+    throw std::runtime_error("MomentumFemEquationSystem::register_wall_bc does not support wall functions");
+
+  // np1 velocity
+  VectorFieldType &velocityNp1 = velocity_->field_of_state(stk::mesh::StateNP1);
+  
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
+  const unsigned nDim = meta_data.spatial_dimension();
+  
+  const std::string bcFieldName = anyWallFunctionActivated ? "wall_velocity_bc" : "velocity_bc";
+  
+  // register boundary data; velocity_bc
+  VectorFieldType *theBcField = &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, bcFieldName));
+  stk::mesh::put_field_on_mesh(*theBcField, *part, nDim, nullptr);
+  
+  // extract the value for user specified velocity and save off the AuxFunction
+  AuxFunction *theAuxFunc = NULL;
+  std::string velocityName = "velocity";
+
+  if ( bc_data_specified(userData, velocityName) ) {
+
+    UserDataType theDataType = get_bc_data_type(userData, velocityName);
+    if ( CONSTANT_UD == theDataType ) {
+      // constant data type specification
+      Velocity ux = userData.u_;
+      std::vector<double> userSpec(nDim);
+      userSpec[0] = ux.ux_;
+      userSpec[1] = ux.uy_;
+      if ( nDim > 2)
+        userSpec[2] = ux.uz_;
+      theAuxFunc = new ConstantAuxFunction(0, nDim, userSpec);
+    }
+    else if ( FUNCTION_UD == theDataType ) {
+      throw std::runtime_error("MomentumFemEquationSystem::register_wall_bc Zero user function wall support");
+    }
+  }
+  else {
+    throw std::runtime_error("Invalid Wall Data Specification; must provide const or fcn for velocity");
+  }
+
+  AuxFunctionAlgorithm *auxAlg
+    = new AuxFunctionAlgorithm(realm_, part,
+                               theBcField, theAuxFunc,
+                               stk::topology::NODE_RANK);
+  
+  // check to see if this is an FSI interface to determine how we handle velocity population
+  if ( userData.isFsiInterface_ ) {
+    // xfer will handle population; only need to populate the initial value
+    realm_.initCondAlg_.push_back(auxAlg);
+  }
+  else {
+    bcDataAlg_.push_back(auxAlg);
+  }
+  
+  // copy velocity_bc to velocity np1
+  CopyFieldAlgorithm *theCopyAlg
+    = new CopyFieldAlgorithm(realm_, part,
+			     theBcField, &velocityNp1,
+			     0, nDim,
+			     stk::topology::NODE_RANK);
+  
+  // wall function activity will only set dof velocity np1 wall value as an IC
+  if ( anyWallFunctionActivated )
+    realm_.initCondAlg_.push_back(theCopyAlg);
+  else
+    bcDataMapAlg_.push_back(theCopyAlg);
+  
+  const AlgorithmType algType = WALL;
+  
+  std::map<AlgorithmType, SolverAlgorithm *>::iterator itd =
+    solverAlgDriver_->solverDirichAlgMap_.find(algType);
+  if ( itd == solverAlgDriver_->solverDirichAlgMap_.end() ) {
+    DirichletBC *theAlg
+      = new DirichletBC(realm_, this, part, &velocityNp1, theBcField, 0, nDim);
+    solverAlgDriver_->solverDirichAlgMap_[algType] = theAlg;
+  }
+  else {
+    itd->second->partVec_.push_back(part);
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -659,6 +769,9 @@ MomentumFemEquationSystem::register_initial_condition_fcn(
     else if ( fcnName == "wind_energy_taylor_vortex") {
       // create the function
       theAuxFunc = new WindEnergyTaylorVortexAuxFunction(0,nDim,fcnParams);
+    }
+    else if ( fcnName == "OneTwoTenVelocity" ) {      
+      theAuxFunc = new OneTwoTenVelocityAuxFunction(0,nDim);
     }
     else {
       throw std::runtime_error("InitialCondFunction::non-supported velocity IC"); 

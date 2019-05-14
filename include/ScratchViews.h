@@ -100,6 +100,7 @@ public:
   SharedMemView<T*> scv_volume;
   SharedMemView<T***> gijUpper;
   SharedMemView<T***> gijLower;
+  SharedMemView<T**> normal_fem;
 };
 
 template<typename T>
@@ -297,6 +298,12 @@ int MasterElementViews<T>::create_master_element_views(
          ThrowRequireMsg(numFemIp > 0, "ERROR, meFEM must be non-null if FEM_DET_J is requested.");
          needDerivFem = true;
          needDetjFem = true;
+         break;
+      case FEM_NORMAL:
+         ThrowRequireMsg(numFemIp > 0, "ERROR, meFEM must be non-null if FEM_NORMAL is requested.");
+         normal_fem = get_shmem_view_2D<T>(team, numFemIp, nDim);
+         needDerivFem = true;
+         numScalars += numFemIp * nDim;
          break;
       default: 
         ThrowRequireMsg(false, "fill_master_element_views: enum not coded " << data);
@@ -500,6 +507,11 @@ void MasterElementViews<T>::fill_master_element_views_new_me(
          ThrowRequireMsg(meFEM != nullptr, "ERROR, meFEM needs to be non-null if FEM_DET_J is requested.");
          ThrowRequireMsg(coordsView != nullptr, "ERROR, coords null but FEM_DET_J requested.");
          meFEM->determinant_fem(*coordsView, deriv_fem, det_j_fem);
+         break;
+      case FEM_NORMAL:
+         ThrowRequireMsg(meFEM != nullptr, "ERROR, meFEM needs to be non-null if FEM_NORMAL is requested.");
+         ThrowRequireMsg(coordsView != nullptr, "ERROR, coords null but FEM_NORMAL requested.");
+         meFEM->normal_fem(*coordsView, deriv_fem, normal_fem);
          break;
       default:
         ThrowRequireMsg(false, "fill_master_element_views_new_me: enum not coded " << data);
