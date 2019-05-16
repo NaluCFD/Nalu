@@ -113,7 +113,6 @@ public:
     double *det_j,
     double * error );
 
-
   void face_grad_op(
     int face_ordinal,
     SharedMemView<DoubleType**>& coords,

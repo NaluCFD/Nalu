@@ -336,6 +336,11 @@ protected:
     const double *pointCoord,
     double *isoParCoord);
 
+  void general_shape_fcn(
+    const int numIp,
+    const double *isoParCoord,
+    double *shpfc);
+
   virtual void sidePcoords_to_elemPcoords(
     const int & side_ordinal,
     const int & npoints,

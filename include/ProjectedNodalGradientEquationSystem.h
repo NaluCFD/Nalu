@@ -76,10 +76,11 @@ public:
     const stk::topology &theTopo,
     const SymmetryBoundaryConditionData &symmetryBCData);
 
-  // not supported
   void register_non_conformal_bc(
     stk::mesh::Part *part,
     const stk::topology &theTopo);
+
+  void register_overset_bc();
 
   // internal solve and update from EquationSystems
   void solve_and_update();
