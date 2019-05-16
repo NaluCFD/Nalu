@@ -459,6 +459,18 @@ double QuadrilateralP2Element::isInElement(
   return dist;
 }
 
+//--------------------------------------------------------------------------
+//-------- general_shape_fcn -----------------------------------------------
+//--------------------------------------------------------------------------
+void
+QuadrilateralP2Element::general_shape_fcn(
+  const int numIp,
+  const double *isoParCoord,
+  double *shpfc)
+{
+  quad9_shape_fcn(numIp, isoParCoord, shpfc);
+}
+
 void
 QuadrilateralP2Element::sidePcoords_to_elemPcoords(
   const int & side_ordinal,
