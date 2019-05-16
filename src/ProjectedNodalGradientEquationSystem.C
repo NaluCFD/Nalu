@@ -10,6 +10,7 @@
 
 #include "AssemblePNGElemSolverAlgorithm.h"
 #include "AssemblePNGBoundarySolverAlgorithm.h"
+#include "AssemblePNGPressureBoundarySolverAlgorithm.h"
 #include "AssemblePNGNonConformalSolverAlgorithm.h"
 #include "EquationSystem.h"
 #include "EquationSystems.h"
@@ -27,6 +28,9 @@
 
 // user functions
 #include "user_functions/SteadyThermalContactAuxFunction.h"
+
+//overset
+#include "overset/UpdateOversetFringeAlgorithmDriver.h"
 
 // template for kernels
 #include "AlgTraits.h"
@@ -296,15 +300,21 @@ ProjectedNodalGradientEquationSystem::register_open_bc(
 
   const AlgorithmType algType = OPEN;
 
-  // extract the field name for this bc type
+  // extract the field name for this bc type; Gjp requires a special algorithm 
+  // that is consistent with non-PNG
   std::string fieldName = get_name_given_bc(OPEN_BC);
   // create lhs/rhs algorithm;
   std::map<AlgorithmType, SolverAlgorithm *>::iterator its =
     solverAlgDriver_->solverAlgMap_.find(algType);
   if ( its == solverAlgDriver_->solverAlgMap_.end() ) {
-    AssemblePNGBoundarySolverAlgorithm *theAlg
-      = new AssemblePNGBoundarySolverAlgorithm(realm_, part, this, fieldName);
-    solverAlgDriver_->solverAlgMap_[algType] = theAlg;
+    SolverAlgorithm *theSolverAlg = NULL;
+    if ( fieldName == "pressure_bc" ) {
+      theSolverAlg = new AssemblePNGPressureBoundarySolverAlgorithm(realm_, part, this, fieldName);
+    }
+    else {
+      theSolverAlg = new AssemblePNGBoundarySolverAlgorithm(realm_, part, this, fieldName);
+    }
+    solverAlgDriver_->solverAlgMap_[algType] = theSolverAlg;
   }
   else {
     its->second->partVec_.push_back(part);
@@ -353,7 +363,6 @@ ProjectedNodalGradientEquationSystem::register_non_conformal_bc(
   if ( isFEM_ ) 
     return;
 
-  // FIX THIS
   const AlgorithmType algType = NON_CONFORMAL;
 
   // create lhs/rhs algorithm;
@@ -366,6 +375,29 @@ ProjectedNodalGradientEquationSystem::register_non_conformal_bc(
   }
   else {
     its->second->partVec_.push_back(part);
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- register_overset_bc ---------------------------------------------
+//--------------------------------------------------------------------------
+void
+ProjectedNodalGradientEquationSystem::register_overset_bc()
+{
+  create_constraint_algorithm(dqdx_);
+
+  const int nDim = realm_.meta_data().spatial_dimension();
+  UpdateOversetFringeAlgorithmDriver* theAlg = new UpdateOversetFringeAlgorithmDriver(realm_);
+  // Perform fringe updates before all equation system solves
+  equationSystems_.preIterAlgDriver_.push_back(theAlg);
+  theAlg->fields_.push_back(
+    std::unique_ptr<OversetFieldData>(new OversetFieldData(dqdx_,1,nDim)));
+
+  if ( realm_.has_mesh_motion() ) {
+    UpdateOversetFringeAlgorithmDriver* theAlgPost = new UpdateOversetFringeAlgorithmDriver(realm_,false);
+    // Perform fringe updates after all equation system solves (ideally on the post_time_step)
+    equationSystems_.postIterAlgDriver_.push_back(theAlgPost);
+    theAlgPost->fields_.push_back(std::unique_ptr<OversetFieldData>(new OversetFieldData(dqdx_,1,nDim)));
   }
 }
 
