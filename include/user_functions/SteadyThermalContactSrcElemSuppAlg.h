@@ -16,7 +16,6 @@
 #include <stk_mesh/base/Entity.hpp>
 
 #include <memory>
-#include <element_promotion/QuadratureKernels.h>
 
 namespace sierra{
 namespace nalu{
@@ -55,7 +54,6 @@ public:
   const double pi_;
   const bool useShifted_;
   const int nDim_;
-  bool useSGL_;
 
   // scratch space
   std::vector<double> scvCoords_;
@@ -65,8 +63,6 @@ public:
   std::vector<double> ws_nodalSrc_;
   std::vector<double> ws_source_integrand_;
   std::vector<double> ws_source_integrated_;
-
-  std::unique_ptr<SGLQuadratureOps> quadOp_;
 };
 
 } // namespace nalu

@@ -114,7 +114,6 @@ add_test_r(hoHelium 8)
 add_test_r(hoVortex 2)
 add_test_r(inputFireEdgeUpwind 4)
 add_test_r(inputFireElem 4)
-add_test_r(kovasznay_P5 1)
 add_test_r(milestoneRun 4)
 add_test_r(milestoneRunConsolidated 4)
 add_test_r_cat(mixedTetPipe 8 7)
@@ -140,7 +139,6 @@ add_test_r(quad9HC 2)
 add_test_r_cat(steadyTaylorVortex 4 6)
 add_test_r(variableDensNonIso 2)
 add_test_r(variableDensNonUniform 2)
-add_test_r(variableDensNonUniform_P5 8)
 add_test_r(femPassiveScalar 4)
 add_test_r(femFluidsVortex 4)
 if(ENABLE_TIOGA)
@@ -154,9 +152,6 @@ endif(ENABLE_HYPRE)
 # Convergence tests
 #=============================================================================
 add_test_v2(BoussinesqNonIso 8)
-add_test_v3(cvfemHexHC_P3 8)
-add_test_v3(hoVortex_P2 8)
-add_test_v3(steadyTaylorVortex_P4 8)
 
 #=============================================================================
 # Unit tests

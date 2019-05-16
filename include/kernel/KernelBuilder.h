@@ -30,17 +30,6 @@ namespace sierra{
 namespace nalu{
   class Realm;
 
-
-  template <template <typename> class T, int order, typename... Args>
-  Kernel* build_ho_kernel(int dimension, Args&&... args)
-  {
-    // only two topologies supported, so we can flatten some of the decision making
-    if (dimension == 2) {
-      return new T<AlgTraitsQuadGL_2D<order>>(std::forward<Args>(args)...);
-    }
-    return new T<AlgTraitsHexGL<order>>(std::forward<Args>(args)...);
-  }
-
   template <template <typename> class T, typename... Args>
   Kernel* build_fem_topo_kernel(stk::topology topo, Args&&... args)
   {
@@ -58,41 +47,25 @@ namespace nalu{
   template <template <typename> class T, typename... Args>
   Kernel* build_topo_kernel(int dimension, stk::topology topo, Args&&... args)
   {
-    if (!topo.is_super_topology()) {
-      switch(topo.value()) {
-        case stk::topology::HEX_8:
-          return new T<AlgTraitsHex8>(std::forward<Args>(args)...);
-        case stk::topology::HEX_27:
-          return new T<AlgTraitsHex27>(std::forward<Args>(args)...);
-        case stk::topology::TET_4:
-          return new T<AlgTraitsTet4>(std::forward<Args>(args)...);
-        case stk::topology::PYRAMID_5:
-          return new T<AlgTraitsPyr5>(std::forward<Args>(args)...);
-        case stk::topology::WEDGE_6:
-          return new T<AlgTraitsWed6>(std::forward<Args>(args)...);
-        case stk::topology::QUAD_4_2D:
-          return new T<AlgTraitsQuad4_2D>(std::forward<Args>(args)...);
-        case stk::topology::QUAD_9_2D:
-          return new T<AlgTraitsQuad9_2D>(std::forward<Args>(args)...);
-        case stk::topology::TRI_3_2D:
-          return new T<AlgTraitsTri3_2D>(std::forward<Args>(args)...);
-        default:
-          return nullptr;
-      }
-    }
-    else {
-      int poly_order = poly_order_from_super_topology(dimension, topo);
-      switch (poly_order) {
-        case 2: return build_ho_kernel<T, 2>(dimension, std::forward<Args>(args)...);
-        case 3: return build_ho_kernel<T, 3>(dimension, std::forward<Args>(args)...);
-        case 4: return build_ho_kernel<T, 4>(dimension, std::forward<Args>(args)...);
-        case USER_POLY_ORDER: return build_ho_kernel<T, USER_POLY_ORDER>(dimension, std::forward<Args>(args)...);
-        default:
-          ThrowRequireMsg(false,
-            "Polynomial order" + std::to_string(poly_order) + "is not supported by default.  "
-            "Specify USER_POLY_ORDER and recompile to run.");
-          return nullptr;
-      }
+    switch(topo.value()) {
+    case stk::topology::HEX_8:
+      return new T<AlgTraitsHex8>(std::forward<Args>(args)...);
+    case stk::topology::HEX_27:
+      return new T<AlgTraitsHex27>(std::forward<Args>(args)...);
+    case stk::topology::TET_4:
+      return new T<AlgTraitsTet4>(std::forward<Args>(args)...);
+    case stk::topology::PYRAMID_5:
+      return new T<AlgTraitsPyr5>(std::forward<Args>(args)...);
+    case stk::topology::WEDGE_6:
+      return new T<AlgTraitsWed6>(std::forward<Args>(args)...);
+    case stk::topology::QUAD_4_2D:
+      return new T<AlgTraitsQuad4_2D>(std::forward<Args>(args)...);
+    case stk::topology::QUAD_9_2D:
+      return new T<AlgTraitsQuad9_2D>(std::forward<Args>(args)...);
+    case stk::topology::TRI_3_2D:
+      return new T<AlgTraitsTri3_2D>(std::forward<Args>(args)...);
+    default:
+      return nullptr;
     }
   }
 
@@ -149,25 +122,19 @@ namespace nalu{
   template <template <typename> class T, typename... Args>
   Kernel* build_face_topo_kernel(int dimension, stk::topology topo, Args&&... args)
   {
-    if (!topo.is_super_topology()) {
-      switch(topo.value()) {
-        case stk::topology::QUAD_4:
-          return new T<AlgTraitsQuad4>(std::forward<Args>(args)...);
-        case stk::topology::QUAD_9:
-          return new T<AlgTraitsQuad9>(std::forward<Args>(args)...);
-        case stk::topology::TRI_3:
-          return new T<AlgTraitsTri3>(std::forward<Args>(args)...);
-        case stk::topology::LINE_2:
-          return new T<AlgTraitsEdge_2D>(std::forward<Args>(args)...);
-        case stk::topology::LINE_3:
-          return new T<AlgTraitsEdge3_2D>(std::forward<Args>(args)...);
-        default:
-          return nullptr;
-      }
-    }
-    else {
-      int poly_order = poly_order_from_super_topology(dimension, topo);
-      throw std::runtime_error("PMR exposed surface bc does not support promoted element type: " + std::to_string(poly_order));
+    switch(topo.value()) {
+    case stk::topology::QUAD_4:
+      return new T<AlgTraitsQuad4>(std::forward<Args>(args)...);
+    case stk::topology::QUAD_9:
+      return new T<AlgTraitsQuad9>(std::forward<Args>(args)...);
+    case stk::topology::TRI_3:
+      return new T<AlgTraitsTri3>(std::forward<Args>(args)...);
+    case stk::topology::LINE_2:
+      return new T<AlgTraitsEdge_2D>(std::forward<Args>(args)...);
+    case stk::topology::LINE_3:
+      return new T<AlgTraitsEdge3_2D>(std::forward<Args>(args)...);
+    default:
+      return nullptr;
     }
   }
 

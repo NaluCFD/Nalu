@@ -96,6 +96,7 @@ struct AlgTraitsTri3_2D {
   static constexpr stk::topology::topology_t topo_ = stk::topology::TRI_3_2D;
 };
 
+/*
 template <int p> constexpr int nGL() { return (p % 2 == 0) ? p / 2 + 1 : (p + 1) / 2; }
 
 template <int p>
@@ -125,7 +126,7 @@ struct AlgTraitsHexGL {
   );
   static constexpr stk::topology::topology_t baseTopo_ = stk::topology::HEX_8;
 };
-
+*/
 struct AlgTraitsEdge_3D
 {
   static constexpr int nDim_ = 3;
@@ -195,7 +196,7 @@ struct AlgTraitsEdge3_2D
   static constexpr int numFaceIp_ = numScsIp_;
   static constexpr stk::topology::topology_t topo_ = stk::topology::LINE_3;
 };
-
+/*
 template <int p>
 struct AlgTraitsQuadGL
 {
@@ -223,7 +224,7 @@ struct AlgTraitsEdgeGL
   );
   static constexpr stk::topology::topology_t baseTopo_ = stk::topology::LINE_2;
 };
-
+*/
 //-------------------------------------------------------------------------------------------
 
 template <typename AlgTraitsFace, typename AlgTraitsElem>
@@ -260,10 +261,10 @@ using AlgTraitsQuad4Wed6 = AlgTraitsFaceElem<AlgTraitsQuad4, AlgTraitsWed6>;
 
 using AlgTraitsEdge32DQuad92D = AlgTraitsFaceElem<AlgTraitsEdge3_2D, AlgTraitsQuad9_2D>;
 using AlgTraitsQuad9Hex27 = AlgTraitsFaceElem<AlgTraitsQuad9, AlgTraitsHex27>;
-
+/*
 template <int p> using AlgTraitsEdgePQuadPGL = AlgTraitsFaceElem<AlgTraitsEdgeGL<p>, AlgTraitsQuadGL_2D<p>>;
 template <int p> using AlgTraitsQuadPHexPGL = AlgTraitsFaceElem<AlgTraitsQuadGL<p>, AlgTraitsHexGL<p>>;
-
+*/
 
 } // namespace nalu
 } // namespace Sierra
