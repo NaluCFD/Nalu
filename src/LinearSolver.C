@@ -91,6 +91,8 @@ void TpetraLinearSolver::setupLinearSolver(
 
   if(activateMueLu_) {
     coords_ = coords;
+    auto& userParamList = paramsPrecond_->sublist("user data");
+    userParamList.set("Coordinates", coords_);
   }
   else {
     Ifpack2::Factory factory;
@@ -132,8 +134,8 @@ void TpetraLinearSolver::setMueLu()
 
     if (recomputePreconditioner_ || mueluPreconditioner_ == Teuchos::null)
     {
-      std::string xmlFileName = config->muelu_xml_file();
-      mueluPreconditioner_ = MueLu::CreateTpetraPreconditioner<SC,LO,GO,NO>(Teuchos::RCP<Tpetra::Operator<SC,LO,GO,NO> >(matrix_), xmlFileName, coords_);
+      mueluPreconditioner_ 
+        = MueLu::CreateTpetraPreconditioner<SC,LO,GO,NO>(Teuchos::RCP<Tpetra::Operator<SC,LO,GO,NO> >(matrix_), *paramsPrecond_);
     }
     else if (reusePreconditioner_) {
       MueLu::ReuseTpetraPreconditioner(matrix_, *mueluPreconditioner_);
