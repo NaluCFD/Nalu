@@ -165,37 +165,8 @@ struct AlgTraitsEdge3_2D
   static constexpr int numFaceIp_ = numScsIp_;
   static constexpr stk::topology::topology_t topo_ = stk::topology::LINE_3;
 };
-/*
-template <int p>
-struct AlgTraitsQuadGL
-{
-  static constexpr int nDim_ = 3;
-  static constexpr int nodesPerElement_ = (p+1)*(p+1);
-  static constexpr int nodesPerFace_ = nodesPerElement_;
-  static constexpr int numScsIp_ = nGL<p>()*nGL<p>()*nodesPerElement_;
-  static constexpr int numFaceIp_ = numScsIp_;
-  static constexpr stk::topology::topology_t topo_ = static_cast<stk::topology::topology_t>(
-    nodesPerElement_ + stk::topology::SUPERFACE_START
-  );
-  static constexpr stk::topology::topology_t baseTopo_ = stk::topology::QUAD_4;
-};
 
-template <int p>
-struct AlgTraitsEdgeGL
-{
-  static constexpr int nDim_ = 3;
-  static constexpr int nodesPerElement_ = (p+1);
-  static constexpr int nodesPerFace_ = nodesPerElement_;
-  static constexpr int numScsIp_ = nGL<p>()*nodesPerElement_;
-  static constexpr int numFaceIp_ = numScsIp_;
-  static constexpr stk::topology::topology_t topo_ = static_cast<stk::topology::topology_t>(
-    nodesPerElement_ + stk::topology::SUPEREDGE_START
-  );
-  static constexpr stk::topology::topology_t baseTopo_ = stk::topology::LINE_2;
-};
-*/
 //-------------------------------------------------------------------------------------------
-
 template <typename AlgTraitsFace, typename AlgTraitsElem>
 struct AlgTraitsFaceElem
 {
@@ -230,10 +201,6 @@ using AlgTraitsQuad4Wed6 = AlgTraitsFaceElem<AlgTraitsQuad4, AlgTraitsWed6>;
 
 using AlgTraitsEdge32DQuad92D = AlgTraitsFaceElem<AlgTraitsEdge3_2D, AlgTraitsQuad9_2D>;
 using AlgTraitsQuad9Hex27 = AlgTraitsFaceElem<AlgTraitsQuad9, AlgTraitsHex27>;
-/*
-template <int p> using AlgTraitsEdgePQuadPGL = AlgTraitsFaceElem<AlgTraitsEdgeGL<p>, AlgTraitsQuadGL_2D<p>>;
-template <int p> using AlgTraitsQuadPHexPGL = AlgTraitsFaceElem<AlgTraitsQuadGL<p>, AlgTraitsHexGL<p>>;
-*/
 
 } // namespace nalu
 } // namespace Sierra
