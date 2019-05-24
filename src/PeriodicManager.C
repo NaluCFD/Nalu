@@ -87,7 +87,7 @@ PeriodicManager::add_periodic_pair(
   SelectorPair periodicSelectorPair(masterSelect, slaveSelect);
   periodicSelectorPairs_.push_back(periodicSelectorPair);
 
-  // determine search method for this pair; default is boost_rtree
+  // determine search method for this pair; default is stk_kdtree
   stk::search::SearchMethod searchMethod = stk::search::KDTREE;
   if ( searchMethodName != "stk_kdtree" )
     NaluEnv::self().naluOutputP0() << "PeriodicManager::search_method only supports stk_kdtree" 
