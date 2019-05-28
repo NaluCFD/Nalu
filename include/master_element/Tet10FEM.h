@@ -10,6 +10,7 @@
 #define Tet10FEM_h
 
 #include<master_element/MasterElement.h>
+#include<master_element/Tri6FEM.h>
 
 namespace sierra{
 namespace nalu{
@@ -21,10 +22,7 @@ public:
 
   Tet10FEM();
   virtual ~Tet10FEM();
-  
-  // define the quadrature rule
-  const bool fifteenPt_;
-  
+    
   // NGP-ready methods first
   void determinant_fem(
     SharedMemView<DoubleType**>&coords,
@@ -41,6 +39,12 @@ public:
     SharedMemView<DoubleType**>&coords,
     SharedMemView<DoubleType***>&gradop,
     SharedMemView<DoubleType***>&deriv,
+    SharedMemView<DoubleType*>&det_j) final;
+
+  void face_grad_op_fem(
+    int face_ordinal,
+    SharedMemView<DoubleType**>& coords,
+    SharedMemView<DoubleType***>& gradop,
     SharedMemView<DoubleType*>&det_j) final;
 
   void shape_fcn(
@@ -78,6 +82,12 @@ public:
     const double *field,
     double *result);
 
+  void sidePcoords_to_elemPcoords(
+    const int & side_ordinal,
+    const int & npoints,
+    const double *side_pcoords,
+    double *elem_pcoords);
+
   void tet10_fem_shape_fcn(
     const int  &numIp,
     const double *isoParCoord,
@@ -95,6 +105,9 @@ public:
 
   double parametric_distance(
     const double *x);
+
+ private:
+  Tri6FEM *tri6FEM_;
 };
     
 } // namespace nalu

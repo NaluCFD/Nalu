@@ -97,6 +97,13 @@ public:
     SharedMemView<DoubleType*>&det_j) {
     throw std::runtime_error("shifted_grad_op using SharedMemView is not implemented");}
 
+  virtual void face_grad_op_fem(
+    int face_ordinal,
+    SharedMemView<DoubleType**>& coords,
+    SharedMemView<DoubleType***>& gradop,
+    SharedMemView<DoubleType*>&det_j) {
+    throw std::runtime_error("face_grad_op_fem using SharedMemView is not implemented");}
+
   virtual void determinant(
     SharedMemView<DoubleType**>&coords,
     SharedMemView<DoubleType**>&areav) {
@@ -286,6 +293,7 @@ public:
 
   // FEM
   std::vector<double>weights_;
+  std::vector<double>sideWeights_;
 };
 
 class QuadrilateralP2Element : public MasterElement
