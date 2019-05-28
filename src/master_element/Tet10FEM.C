@@ -74,12 +74,12 @@ void tet10_deriv(
 //--------------------------------------------------------------------------
 Tet10FEM::Tet10FEM()
   : MasterElement(),
-    fifteenPt_(AlgTraitsTet10::numGp_ == 15 ? true : false)
+    tri6FEM_(new Tri6FEM())
 {
   nDim_ = 3;
   nodesPerElement_ = 10;
   
-  if ( fifteenPt_ ) {
+  if ( AlgTraitsTet10::numGp_ == 15 ) {
     // Moderate-degree tetrahedral quadrature formulas; Keast 1986 
     numIntPoints_ = 15;
     weights_.resize(15);
@@ -157,6 +157,20 @@ Tet10FEM::Tet10FEM()
 
     // shifted to nodes (Gauss Lobatto); n/a
   }
+
+  // exposed face; use helper functions
+  const int numTri6Ip = tri6FEM_->numIntPoints_;
+  const int numExposedFace = 4;
+  // size and copy in side weights
+  sideWeights_.resize(numTri6Ip);
+  const double * sw = &tri6FEM_->weights_[0];
+  for ( int i = 0; i < numTri6Ip; ++i )
+    sideWeights_[i] = sw[i];
+  
+  // deal with exposed ips
+  intgExpFace_.resize(nDim_*numTri6Ip*numExposedFace); // 3*7*4
+  for ( int i = 0; i < numExposedFace; ++i ) 
+    sidePcoords_to_elemPcoords(i,numTri6Ip, &tri6FEM_->intgLoc_[0], &intgExpFace_[0]);
 }
 
 //--------------------------------------------------------------------------
@@ -164,7 +178,7 @@ Tet10FEM::Tet10FEM()
 //--------------------------------------------------------------------------
 Tet10FEM::~Tet10FEM()
 {
-  // does nothing
+  delete tri6FEM_;
 }
 
 //--------------------------------------------------------------------------
@@ -202,6 +216,30 @@ void Tet10FEM::shifted_grad_op_fem(
   SharedMemView<DoubleType*>&det_j)
 {
   tet10_deriv(numIntPoints_, &intgLocShift_[0], deriv);
+  generic_grad_op_fem<AlgTraitsTet10>(deriv, coords, gradop, det_j);
+}
+
+//--------------------------------------------------------------------------
+//-------- face_grad_op_fem ------------------------------------------------
+//--------------------------------------------------------------------------
+void Tet10FEM::face_grad_op_fem(
+  int face_ordinal,
+  SharedMemView<DoubleType**>& coords,
+  SharedMemView<DoubleType***>& gradop,
+  SharedMemView<DoubleType*>&det_j)
+{
+  // reminder for possible shifting
+  const bool shifted = false;
+  using traits = AlgTraitsTri6Tet10;
+
+  const std::vector<double> &exp_face = shifted ? intgExpFaceShift_ : intgExpFace_;
+
+  constexpr int derivSize = traits::numFaceIp_ * traits::nodesPerElement_ * traits::nDim_;
+  DoubleType psi[derivSize];
+  SharedMemView<DoubleType***> deriv(psi, traits::numFaceIp_, traits::nodesPerElement_, traits::nDim_);
+
+  const int offset = traits::numFaceIp_ * traits::nDim_ * face_ordinal;
+  tet10_deriv(traits::numFaceIp_, &exp_face[offset], deriv);
   generic_grad_op_fem<AlgTraitsTet10>(deriv, coords, gradop, det_j);
 }
 
@@ -411,6 +449,50 @@ Tet10FEM::interpolatePoint(
       + 4.0*s3*(1.0-s1-s2-s3)*field[b+7] 
       + 4.0*s1*s3*field[b+8] 
       + 4.0*s3*s2*field[b+9];
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- sidePcoords_to_elemPcoords --------------------------------------
+//--------------------------------------------------------------------------
+void
+Tet10FEM::sidePcoords_to_elemPcoords(
+  const int & side_ordinal,
+  const int & npoints,
+  const double *side_pcoords,
+  double *elem_pcoords)
+{
+  switch(side_ordinal) {
+  case 0:
+    for(int i = 0; i < npoints; i++) {
+      elem_pcoords[i*3+0] = side_pcoords[2*i+0];
+      elem_pcoords[i*3+1] = 0.0;
+      elem_pcoords[i*3+2] = side_pcoords[2*i+1];
+    }
+    break;
+  case 1:
+    for(int i = 0; i < npoints; i++) {
+      elem_pcoords[i*3+0] = 1.0 - side_pcoords[2*i+0] - side_pcoords[2*i+1];
+      elem_pcoords[i*3+1] = side_pcoords[2*i+0];
+      elem_pcoords[i*3+2] = side_pcoords[2*i+1];
+    }
+    break;
+  case 2:
+    for(int i = 0; i < npoints; i++) {
+      elem_pcoords[i*3+0] = 0.0;
+      elem_pcoords[i*3+1] = side_pcoords[2*i+1];
+      elem_pcoords[i*3+2] = side_pcoords[2*i+0];
+    }
+    break;
+  case 3:
+    for(int i = 0; i < npoints; i++) {
+      elem_pcoords[i*3+0] = side_pcoords[2*i+1];
+      elem_pcoords[i*3+1] = side_pcoords[2*i+0];
+      elem_pcoords[i*3+2] = 0.0;
+    }
+    break;
+  default:
+    throw std::runtime_error("Tet10::sideMap invalid ordinal");
   }
 }
 

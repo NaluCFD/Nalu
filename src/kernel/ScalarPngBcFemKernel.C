@@ -39,14 +39,14 @@ ScalarPngBcFemKernel<BcAlgTraits>::ScalarPngBcFemKernel(
   MasterElement *meFEM = sierra::nalu::MasterElementRepo::get_fem_master_element(BcAlgTraits::topo_);
 
   // copy ip weights into our 1-d view
-  for ( int k = 0; k < BcAlgTraits::numGp_; ++k )
+  for ( int k = 0; k < BcAlgTraits::numFaceIp_; ++k )
     v_ip_weight_[k] = meFEM->weights_[k];
   
   // compute and save shape function
   if ( solnOpts.get_shifted_grad_op(fieldName) )
-    get_fem_shape_fn_data<BcAlgTraits>([&](double* ptr){meFEM->shifted_shape_fcn(ptr);}, vf_shape_function_);
+    get_face_shape_fn_data<BcAlgTraits>([&](double* ptr){meFEM->shifted_shape_fcn(ptr);}, vf_shape_function_);
   else
-    get_fem_shape_fn_data<BcAlgTraits>([&](double* ptr){meFEM->shape_fcn(ptr);}, vf_shape_function_);
+    get_face_shape_fn_data<BcAlgTraits>([&](double* ptr){meFEM->shape_fcn(ptr);}, vf_shape_function_);
   
   // add master elements
   dataPreReqs.add_fem_volume_me(meFEM);
@@ -73,7 +73,7 @@ ScalarPngBcFemKernel<BcAlgTraits>::execute(
   SharedMemView<DoubleType*>& v_det_j = scratchViews.get_me_views(CURRENT_COORDINATES).det_j_fem;
   SharedMemView<DoubleType**>& v_normal = scratchViews.get_me_views(CURRENT_COORDINATES).normal_fem;
   
-  for ( int ip = 0; ip < BcAlgTraits::numGp_; ++ip ) {
+  for ( int ip = 0; ip < BcAlgTraits::numFaceIp_; ++ip ) {
     
     // interpolate to bip
     DoubleType qBip = 0.0;

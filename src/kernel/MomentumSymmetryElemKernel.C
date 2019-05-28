@@ -85,8 +85,8 @@ MomentumSymmetryElemKernel<BcAlgTraits>::execute(
   // element
   SharedMemView<DoubleType**>& v_uNp1 = elemScratchViews.get_scratch_view_2D(*velocityNp1_);
   SharedMemView<DoubleType***>& v_dndx = shiftedGradOp_
-    ? elemScratchViews.get_me_views(CURRENT_COORDINATES).dndx_shifted_fc_scs
-    : elemScratchViews.get_me_views(CURRENT_COORDINATES).dndx_fc_scs;
+    ? elemScratchViews.get_me_views(CURRENT_COORDINATES).dndx_shifted_fc
+    : elemScratchViews.get_me_views(CURRENT_COORDINATES).dndx_fc;
 
   for (int ip=0; ip < BcAlgTraits::numFaceIp_; ++ip) {
     

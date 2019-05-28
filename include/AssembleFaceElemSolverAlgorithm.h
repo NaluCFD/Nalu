@@ -49,14 +49,18 @@ public:
       sierra::nalu::MasterElement* meFC = faceDataNeeded_.get_cvfem_face_me();
       sierra::nalu::MasterElement* meSCS = faceDataNeeded_.get_cvfem_surface_me();
       sierra::nalu::MasterElement* meSCV = faceDataNeeded_.get_cvfem_volume_me();
-
+      sierra::nalu::MasterElement* meFEM = faceDataNeeded_.get_fem_volume_me();
+      sierra::nalu::MasterElement* meFCFEM = faceDataNeeded_.get_fem_face_me();
+      
       sierra::nalu::ScratchMeInfo meElemInfo;
       meElemInfo.nodalGatherSize_ = nodesPerElem_;
       meElemInfo.nodesPerFace_ = nodesPerFace_;
       meElemInfo.nodesPerElement_ = nodesPerElem_;
-      meElemInfo.numFaceIp_ = meFC != nullptr ? meFC->numIntPoints_ : 0;
+      meElemInfo.numFaceIp_ = meFC != nullptr ? meFC->numIntPoints_  
+        : meFCFEM != nullptr ? meFCFEM->numIntPoints_: 0;
       meElemInfo.numScsIp_ = meSCS != nullptr ? meSCS->numIntPoints_ : 0;
       meElemInfo.numScvIp_ = meSCV != nullptr ? meSCV->numIntPoints_ : 0;
+      meElemInfo.numFemIp_ = meFEM != nullptr ? meFEM->numIntPoints_ : 0;
 
       int rhsSize = meElemInfo.nodalGatherSize_*numDof_, lhsSize = rhsSize*rhsSize, scratchIdsSize = rhsSize;
 

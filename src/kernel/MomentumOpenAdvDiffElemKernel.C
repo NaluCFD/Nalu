@@ -143,8 +143,8 @@ MomentumOpenAdvDiffElemKernel<BcAlgTraits>::execute(
   SharedMemView<DoubleType*>& v_viscosity = elemScratchViews.get_scratch_view_1D(*viscosity_);
   SharedMemView<DoubleType*>& v_density = elemScratchViews.get_scratch_view_1D(*density_);
   SharedMemView<DoubleType***>& v_dndx = shiftedGradOp_
-    ? elemScratchViews.get_me_views(CURRENT_COORDINATES).dndx_shifted_fc_scs
-    : elemScratchViews.get_me_views(CURRENT_COORDINATES).dndx_fc_scs;
+    ? elemScratchViews.get_me_views(CURRENT_COORDINATES).dndx_shifted_fc
+    : elemScratchViews.get_me_views(CURRENT_COORDINATES).dndx_fc;
 
   for (int ip=0; ip < BcAlgTraits::numFaceIp_; ++ip) {
     

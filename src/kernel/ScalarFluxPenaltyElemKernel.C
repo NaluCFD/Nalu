@@ -94,8 +94,8 @@ ScalarFluxPenaltyElemKernel<BcAlgTraits>::execute(
 
   // dndx for both rhs and lhs
   SharedMemView<DoubleType***>& v_dndx = shiftedGradOp_ 
-    ? elemScratchViews.get_me_views(CURRENT_COORDINATES).dndx_shifted_fc_scs
-    : elemScratchViews.get_me_views(CURRENT_COORDINATES).dndx_fc_scs;
+    ? elemScratchViews.get_me_views(CURRENT_COORDINATES).dndx_shifted_fc
+    : elemScratchViews.get_me_views(CURRENT_COORDINATES).dndx_fc;
 
   for (int ip=0; ip < BcAlgTraits::numFaceIp_; ++ip) {
     

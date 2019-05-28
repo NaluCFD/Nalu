@@ -51,8 +51,8 @@ private:
   ScalarFieldType *scalarQ_{nullptr};
   
   // fixed scratch space
-  AlignedViewType<DoubleType[BcAlgTraits::numGp_]> v_ip_weight_{ "v_ip_weight" };
-  AlignedViewType<DoubleType[BcAlgTraits::numGp_][BcAlgTraits::nodesPerFace_]> vf_shape_function_{"vf_shape_function"};
+  AlignedViewType<DoubleType[BcAlgTraits::numFaceIp_]> v_ip_weight_{ "v_ip_weight" };
+  AlignedViewType<DoubleType[BcAlgTraits::numFaceIp_][BcAlgTraits::nodesPerFace_]> vf_shape_function_{"vf_shape_function"};
 };
 
 }  // nalu

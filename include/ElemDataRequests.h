@@ -35,7 +35,10 @@ enum ELEM_DATA_NEEDED {
   FEM_GRAD_OP,
   FEM_SHIFTED_GRAD_OP,
   FEM_DET_J,
-  FEM_NORMAL
+  FEM_NORMAL,
+  FEM_FACE_NORMAL,
+  FEM_FACE_GRAD_OP,
+  FEM_FACE_DET_J,
 };
 
 enum COORDS_TYPES {
@@ -76,7 +79,7 @@ public:
   ElemDataRequests()
     : dataEnums(),
       coordsFields_(),
-    fields(), meFC_(nullptr), meSCS_(nullptr), meSCV_(nullptr), meFEM_(nullptr)
+    fields(), meFC_(nullptr), meSCS_(nullptr), meSCV_(nullptr), meFCFEM_(nullptr), meFEM_(nullptr)
   {
   }
 
@@ -126,6 +129,11 @@ public:
     meSCS_ = meSCS;
   }
 
+  void add_fem_face_me(MasterElement *meFCFEM)
+  {
+    meFCFEM_ = meFCFEM;
+  }
+
   void add_fem_volume_me(MasterElement *meFEM)
   {
     meFEM_ = meFEM;
@@ -156,6 +164,7 @@ public:
   MasterElement *get_cvfem_volume_me() const {return meSCV_;}
   MasterElement *get_cvfem_surface_me() const {return meSCS_;}
   MasterElement *get_fem_volume_me() const {return meFEM_;}
+  MasterElement *get_fem_face_me() const {return meFCFEM_;}
 
 private:
   std::array<std::set<ELEM_DATA_NEEDED>, MAX_COORDS_TYPES> dataEnums;
@@ -164,6 +173,7 @@ private:
   MasterElement *meFC_;
   MasterElement *meSCS_;
   MasterElement *meSCV_;
+  MasterElement *meFCFEM_;
   MasterElement *meFEM_;
 };
 
