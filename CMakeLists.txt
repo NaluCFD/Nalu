@@ -18,7 +18,7 @@ option(ENABLE_EXTRA_WARNINGS "Add -Wextra to show even more compiler warnings" O
 message("   Trilinos_DIR = ${Trilinos_DIR}")
 set(CMAKE_PREFIX_PATH ${Trilinos_DIR} ${CMAKE_PREFIX_PATH})
 set(CMAKE_PREFIX_PATH ${Trilinos_PATH} ${CMAKE_PREFIX_PATH})
-find_package(Trilinos REQUIRED)
+find_package(Trilinos NO_MODULE NO_CMAKE_ENVIRONMENT_PATH NO_SYSTEM_ENVIRONMENT_PATH REQUIRED)
 include_directories(SYSTEM ${Trilinos_INCLUDE_DIRS})
 include_directories(SYSTEM ${Trilinos_TPL_INCLUDE_DIRS})
 
