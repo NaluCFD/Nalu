@@ -135,7 +135,9 @@
 #include <stdint.h>
 
 // catalyst visualization output
+#ifdef NALU_USES_CATALYST
 #include <Iovs_DatabaseIO.h>
+#endif
 
 #define USE_NALU_PERFORMANCE_TESTING_CALLGRIND 0
 #if USE_NALU_PERFORMANCE_TESTING_CALLGRIND
@@ -694,15 +696,15 @@ Realm::load(const YAML::Node & node)
     root()->setSerializedIOGroupSize(outputInfo_->serializedIOGroupSize_);
   }
 
-
+#ifdef NALU_USES_CATALYST
   // Parse catalyst input file if requested
-  if(!outputInfo_->catalystFileName_.empty())
-  {
-  int error = Iovs::DatabaseIO::parseCatalystFile(outputInfo_->catalystFileName_,
-                                                  outputInfo_->catalystParseJson_);
-  if(error)
-    throw std::runtime_error("Catalyst file parse failed: " + outputInfo_->catalystFileName_);
+  if(!outputInfo_->catalystFileName_.empty()) {
+    int error = Iovs::DatabaseIO::parseCatalystFile(outputInfo_->catalystFileName_,
+                                                    outputInfo_->catalystParseJson_);
+    if(error)
+      throw std::runtime_error("Catalyst file parse failed: " + outputInfo_->catalystFileName_);
   }
+#endif
 
   // solution options - loaded before create_mesh since we need to know if
   // adaptivity is on to create the proper MetaData
@@ -2032,28 +2034,31 @@ Realm::create_output_mesh()
       if (fileid++ > 0) oname += "-s" + fileid_ss.str();
     }
 
-
+#ifdef NALU_USES_CATALYST    
     if(!outputInfo_->catalystFileName_.empty()||
        !outputInfo_->paraviewScriptName_.empty()) {
       outputInfo_->outputPropertyManager_->add(Ioss::Property("CATALYST_BLOCK_PARSE_JSON_STRING",
-                                               outputInfo_->catalystParseJson_));
+                                                              outputInfo_->catalystParseJson_));
       std::string input_deck_name = "%B";
       stk::util::filename_substitution(input_deck_name);
       outputInfo_->outputPropertyManager_->add(Ioss::Property("CATALYST_BLOCK_PARSE_INPUT_DECK_NAME", input_deck_name));
-
+      
       if(!outputInfo_->paraviewScriptName_.empty())
         outputInfo_->outputPropertyManager_->add(Ioss::Property("CATALYST_SCRIPT", outputInfo_->paraviewScriptName_.c_str()));
-
+      
       outputInfo_->outputPropertyManager_->add(Ioss::Property("CATALYST_CREATE_SIDE_SETS", 1));
       
       resultsFileIndex_ = ioBroker_->create_output_mesh( oname, stk::io::WRITE_RESULTS, *outputInfo_->outputPropertyManager_, "catalyst" );
-   }
-   else {
+    }
+    else {
       resultsFileIndex_ = ioBroker_->create_output_mesh( oname, stk::io::WRITE_RESULTS, *outputInfo_->outputPropertyManager_);
-   }
-
+    }
+#else
+    resultsFileIndex_ = ioBroker_->create_output_mesh( oname, stk::io::WRITE_RESULTS, *outputInfo_->outputPropertyManager_);
+#endif
+    
 #if defined (NALU_USES_PERCEPT)
-
+    
   if (solutionOptions_->useAdapter_ && outputInfo_->meshAdapted_) {
     stk::mesh::Selector selectRule =
       metaData_->locally_owned_part() |

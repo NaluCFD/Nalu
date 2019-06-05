@@ -40,6 +40,7 @@ cmake \
 -DTrilinos_ENABLE_EXPLICIT_INSTANTIATION:BOOL=ON \
 -DTpetra_INST_DOUBLE:BOOL=ON \
 -DTpetra_INST_INT_LONG:BOOL=ON \
+-DTpetra_INST_INT_LONG_LONG:BOOL=OFF \
 -DTpetra_INST_COMPLEX_DOUBLE=OFF \
 -DTrilinos_ENABLE_TESTS:BOOL=OFF \
 -DTrilinos_ENABLE_ALL_OPTIONAL_PACKAGES=OFF \
@@ -69,10 +70,11 @@ cmake \
 -DTrilinos_ENABLE_STKSearch:BOOL=ON \
 -DTrilinos_ENABLE_STKUtil:BOOL=ON \
 -DTrilinos_ENABLE_STKTopology:BOOL=ON \
--DTrilinos_ENABLE_STKUnit_tests:BOOL=ON \
--DTrilinos_ENABLE_STKUnit_test_utils:BOOL=ON \
+-DTrilinos_ENABLE_STKBalance:BOOL=OFF \
+-DTPL_ENABLE_BoostLib:BOOL=ON \
+-DTrilinos_ENABLE_STKUnit_tests:BOOL=OFF \
+-DTrilinos_ENABLE_STKUnit_test_utils:BOOL=OFF \
 -DTrilinos_ENABLE_Gtest:BOOL=ON \
--DTrilinos_ENABLE_STKClassic:BOOL=OFF \
 -DTrilinos_ENABLE_SEACASExodus:BOOL=ON \
 -DTrilinos_ENABLE_SEACASEpu:BOOL=ON \
 -DTrilinos_ENABLE_SEACASExodiff:BOOL=ON \
