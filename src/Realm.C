@@ -96,7 +96,6 @@
 #include <stk_util/parallel/Parallel.hpp>
 #include <stk_util/environment/WallTime.hpp>
 #include <stk_util/environment/perf_util.hpp>
-#include <stk_util/environment/FileUtils.hpp>
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/BulkData.hpp>
@@ -2039,10 +2038,9 @@ Realm::create_output_mesh()
        !outputInfo_->paraviewScriptName_.empty()) {
       outputInfo_->outputPropertyManager_->add(Ioss::Property("CATALYST_BLOCK_PARSE_JSON_STRING",
                                                               outputInfo_->catalystParseJson_));
-      std::string input_deck_name = "%B";
-      stk::util::filename_substitution(input_deck_name);
-      outputInfo_->outputPropertyManager_->add(Ioss::Property("CATALYST_BLOCK_PARSE_INPUT_DECK_NAME", input_deck_name));
-      
+      outputInfo_->outputPropertyManager_->add(Ioss::Property("CATALYST_BLOCK_PARSE_INPUT_DECK_NAME", 
+                                                              NaluEnv::self().get_base_name());
+                                               
       if(!outputInfo_->paraviewScriptName_.empty())
         outputInfo_->outputPropertyManager_->add(Ioss::Property("CATALYST_SCRIPT", outputInfo_->paraviewScriptName_.c_str()));
       

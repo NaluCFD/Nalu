@@ -78,7 +78,7 @@ int main( int argc, char ** argv )
   double start_time = naluEnv.nalu_time();
 
   // command line options.
-  std::string inputFileName, logFileName;
+  std::string inputFileName, logFileName, baseName;
   bool debug = false;
   int serializedIOGroupSize = 0;
   const std::string naluVersion = (version::RepoIsDirty == "DIRTY")
@@ -128,18 +128,23 @@ int main( int argc, char ** argv )
     return 0;
   }
 
-  // deal with logfile name; if none supplied, go with inputFileName.log
+  // deal with logfile name; if none supplied, go with inputFileName.log  
   if (!vm.count("log-file")) {
     int dotPos = inputFileName.rfind(".");
     if ( -1 == dotPos ) {  
       // lacking extension
       logFileName = inputFileName + ".log";
+      baseName = inputFileName;
     } 
     else {  
       // with extension; swap with .log
-      logFileName = inputFileName.substr(0, dotPos) + ".log";
+      baseName = inputFileName.substr(0, dotPos);
+      logFileName =  baseName + ".log";
     }
   }
+  
+  // set the baseName
+  naluEnv.set_base_name(baseName);
 
   bool pprint = false;
   if (vm.count("pprint")) {
