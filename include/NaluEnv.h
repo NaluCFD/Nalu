@@ -37,6 +37,7 @@ class NaluEnv
   std::ostream *naluLogStream_;
   std::ostream *naluParallelStream_;
   bool parallelLog_;
+  std::string baseName_;
   
   NaluEmptyStreamBuffer naluEmptyStreamBuffer_;
   std::filebuf naluStreamBuffer_;
@@ -51,6 +52,8 @@ class NaluEnv
   void set_log_file_stream(std::string naluLogName, bool pprint = false);
   void close_log_file_stream();
   double nalu_time();
+  void set_base_name(std::string baseName);
+  std::string get_base_name();
 };
 
 } // namespace nalu

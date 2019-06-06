@@ -168,6 +168,7 @@
 #include "user_functions/BoussinesqNonIsoVelocityAuxFunction.h"
 
 #include "user_functions/SinProfileChannelFlowVelocityAuxFunction.h"
+#include "user_functions/SinProfilePipeFlowVelocityAuxFunction.h"
 
 #include "user_functions/BoundaryLayerPerturbationAuxFunction.h"
 
@@ -632,6 +633,9 @@ LowMachEquationSystem::register_initial_condition_fcn(
     }
     else if ( fcnName == "SinProfileChannelFlow" ) {
       theAuxFunc = new SinProfileChannelFlowVelocityAuxFunction(0,nDim);
+    }
+    else if ( fcnName == "SinProfilePipeFlow" ) {
+      theAuxFunc = new SinProfilePipeFlowVelocityAuxFunction(0,nDim,fcnParams);
     }
     else if ( fcnName == "power_law" ) {
       theAuxFunc = new PowerlawVelocityAuxFunction(0,nDim,fcnParams);

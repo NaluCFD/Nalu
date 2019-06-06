@@ -6,17 +6,18 @@
 /*------------------------------------------------------------------------*/
 
 
-#include <AuxFunctionAlgorithm.h>
-#include <AuxFunction.h>
-#include <FieldTypeDef.h>
-#include <Realm.h>
-#include <Simulation.h>
+#include "AuxFunctionAlgorithm.h"
+#include "AuxFunction.h"
+#include "FieldTypeDef.h"
+#include "Realm.h"
+#include "Simulation.h"
 
 #include <stk_mesh/base/BulkData.hpp>
 #include <stk_mesh/base/Field.hpp>
 #include <stk_mesh/base/GetBuckets.hpp>
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/Selector.hpp>
+#include <stk_mesh/base/FieldParallel.hpp>
 
 namespace sierra{
 namespace nalu{
@@ -26,11 +27,13 @@ AuxFunctionAlgorithm::AuxFunctionAlgorithm(
   stk::mesh::Part * part,
   stk::mesh::FieldBase * field,
   AuxFunction * auxFunction,
-  stk::mesh::EntityRank entityRank)
+  stk::mesh::EntityRank entityRank,
+  const bool parallelCommunicate)
   : Algorithm(realm, part),
     field_(field),
     auxFunction_(auxFunction),
-    entityRank_(entityRank)
+    entityRank_(entityRank),
+    parallelCommunicate_(parallelCommunicate)
 {
   // does nothing
 }
@@ -74,6 +77,13 @@ AuxFunctionAlgorithm::execute()
     double * fieldData = (double*) stk::mesh::field_data( *field_, *b.begin() );
 
     auxFunction_->evaluate(coords, time, nDim, length, fieldData, fieldSize);
+  }
+
+  // sometimes, fields need to be parallel communicated - especially when randomness might be used
+  if ( parallelCommunicate_ ) {
+    std::vector< const stk::mesh::FieldBase *> fieldVec(1, field_);
+    stk::mesh::copy_owned_to_shared( realm_.bulk_data(), fieldVec);
+    stk::mesh::communicate_field_data(realm_.bulk_data().aura_ghosting(), fieldVec);
   }
 }
 

@@ -35,7 +35,8 @@ NaluEnv::NaluEnv()
     stdoutStream_(std::cout.rdbuf()),
     naluLogStream_(&std::cout), // std::cout redirects to log file
     naluParallelStream_(new std::ostream(&naluParallelStreamBuffer_)),
-    parallelLog_(false)
+    parallelLog_(false),
+    baseName_("nalu")
 {
   // initialize
   MPI_Comm_size(parallelCommunicator_, &pSize_);
@@ -163,6 +164,24 @@ double
 NaluEnv::nalu_time()
 {
   return stk::wall_time();
+}
+
+//--------------------------------------------------------------------------
+//-------- set_base_name ---------------------------------------------------
+//--------------------------------------------------------------------------
+void
+NaluEnv::set_base_name(std::string baseName)
+{
+  baseName_ = baseName;
+}
+
+//--------------------------------------------------------------------------
+//-------- get_base_name ---------------------------------------------------
+//--------------------------------------------------------------------------
+std::string
+NaluEnv::get_base_name()
+{
+  return baseName_;
 }
 
 } // namespace nalu

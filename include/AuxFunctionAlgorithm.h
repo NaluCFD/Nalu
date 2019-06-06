@@ -37,7 +37,8 @@ public:
     stk::mesh::Part * part,
     stk::mesh::FieldBase * field,
     AuxFunction * auxFunction,
-    stk::mesh::EntityRank entityRank);
+    stk::mesh::EntityRank entityRank,
+    const bool parallelCommunicate = false);
 
   virtual ~AuxFunctionAlgorithm();
   virtual void execute();
@@ -46,7 +47,8 @@ private:
   stk::mesh::FieldBase * field_;
   AuxFunction *auxFunction_;
   stk::mesh::EntityRank entityRank_;
-  
+  const bool parallelCommunicate_;
+
 private:
   // make this non-copyable
   AuxFunctionAlgorithm(const AuxFunctionAlgorithm & other);
