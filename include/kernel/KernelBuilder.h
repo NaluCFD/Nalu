@@ -120,6 +120,25 @@ namespace nalu{
   }
 
   template <template <typename> class T, typename... Args>
+  Kernel* build_fem_face_elem_topo_kernel(int dimension,
+                                          stk::topology faceTopo, stk::topology elemTopo,
+                                          Args&&... args)
+  {
+    switch(faceTopo.value()) {
+      case stk::topology::TRI_6:
+        if ( elemTopo == stk::topology::TET_10 ) {
+          return new T<AlgTraitsTri6Tet10>(std::forward<Args>(args)...);
+        }
+        else {   
+          ThrowRequireMsg(false,
+                          "Tri6 exposed face is not attached to either a tet10.");
+        }
+      default:
+        return nullptr;
+    }
+  }
+
+  template <template <typename> class T, typename... Args>
   Kernel* build_face_topo_kernel(int dimension, stk::topology topo, Args&&... args)
   {
     switch(topo.value()) {
@@ -188,6 +207,27 @@ namespace nalu{
     KernelBuilderLog::self().add_valid_name(eqSys.eqnTypeName_,  name);
     Kernel* compKernel = build_face_elem_topo_kernel<T>(dim, faceTopo, elemTopo,
                                                         std::forward<Args>(args)...);
+    ThrowRequire(compKernel != nullptr);
+    KernelBuilderLog::self().add_built_name(eqSys.eqnTypeName_,  name);
+    kernelVec.push_back(compKernel);
+    return true;
+  }
+
+  template <template <typename> class T, typename... Args>
+  bool build_fem_face_elem_topo_kernel_automatic(
+    stk::topology faceTopo,
+    stk::topology elemTopo,
+    EquationSystem& eqSys,
+    std::vector<Kernel*>& kernelVec,
+    std::string name,
+    Args&&... args)
+  {
+    // dimension, in addition to topology, is necessary to distinguish the HO elements,
+    const int dim = eqSys.realm_.spatialDimension_;
+
+    KernelBuilderLog::self().add_valid_name(eqSys.eqnTypeName_,  name);
+    Kernel* compKernel = build_fem_face_elem_topo_kernel<T>(dim, faceTopo, elemTopo,
+                                                            std::forward<Args>(args)...);
     ThrowRequire(compKernel != nullptr);
     KernelBuilderLog::self().add_built_name(eqSys.eqnTypeName_,  name);
     kernelVec.push_back(compKernel);
@@ -308,6 +348,7 @@ namespace nalu{
                       elemTopo == stk::topology::TRIANGLE_3_2D ||
                       elemTopo == stk::topology::WEDGE_6 ||
                       elemTopo == stk::topology::TETRAHEDRON_4 ||
+                      elemTopo == stk::topology::TETRAHEDRON_10 ||
                       elemTopo == stk::topology::PYRAMID_5);
 
     auto itc = solverAlgs.find(algName);
