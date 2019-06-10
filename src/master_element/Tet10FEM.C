@@ -170,7 +170,7 @@ Tet10FEM::Tet10FEM()
   // deal with exposed ips
   intgExpFace_.resize(nDim_*numTri6Ip*numExposedFace); // 3*7*4
   for ( int i = 0; i < numExposedFace; ++i ) 
-    sidePcoords_to_elemPcoords(i,numTri6Ip, &tri6FEM_->intgLoc_[0], &intgExpFace_[0]);
+    sidePcoords_to_elemPcoords(i,numTri6Ip, &tri6FEM_->intgLoc_[0], &intgExpFace_[i*nDim_*numTri6Ip]);
 }
 
 //--------------------------------------------------------------------------
