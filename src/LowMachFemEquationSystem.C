@@ -48,7 +48,9 @@
 // source kernels
 #include "kernel/MomentumBodyForceFemKernel.h"
 
-// bc kernels - n/a
+// bc kernels
+#include "kernel/ContinuityOpenFemKernel.h"
+#include "kernel/MomentumOpenAdvDiffFemKernel.h"
 
 // nso - n/a
 
@@ -555,6 +557,70 @@ MomentumFemEquationSystem::register_interior_algorithm(
 }
 
 //--------------------------------------------------------------------------
+//-------- register_open_bc ------------------------------------------------
+//--------------------------------------------------------------------------
+void
+MomentumFemEquationSystem::register_open_bc(
+  stk::mesh::Part *part,
+  const stk::topology &partTopo,
+  const OpenBoundaryConditionData &openBCData)
+{
+  // algorithm type
+  const AlgorithmType algType = OPEN;
+
+  // set face/element required sort
+  realm_.solutionOptions_->set_consolidated_bc_solver_alg();
+
+  // extract types of data
+  OpenUserData userData = openBCData.userData_;
+  stk::mesh::MetaData &metaData = realm_.meta_data();
+  const int nDim = metaData.spatial_dimension();
+  
+  // register boundary data; open_velocity_bc
+  VectorFieldType *theBcField 
+    = &(metaData.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "open_velocity_bc"));
+  stk::mesh::put_field_on_mesh(*theBcField, *part, nDim, nullptr);
+
+  // extract the value for user specified velocity and save off the AuxFunction
+  Velocity ux = userData.u_;
+  std::vector<double> userSpec(nDim);
+  userSpec[0] = ux.ux_;
+  userSpec[1] = ux.uy_;
+  if ( nDim > 2)
+    userSpec[2] = ux.uz_;
+
+  // new it
+  ConstantAuxFunction *theAuxFunc = new ConstantAuxFunction(0, nDim, userSpec);
+
+  // bc data alg
+  AuxFunctionAlgorithm *auxAlg
+    = new AuxFunctionAlgorithm(realm_, part,
+                               theBcField, theAuxFunc,
+                               stk::topology::NODE_RANK);
+  bcDataAlg_.push_back(auxAlg);
+
+  // solver for momentum open
+  auto& solverAlgMap = solverAlgDriver_->solverAlgorithmMap_;
+  
+  stk::topology elemTopo = get_elem_topo(realm_, *part);
+  
+  AssembleFaceElemSolverAlgorithm* faceElemSolverAlg = nullptr;
+  bool solverAlgWasBuilt = false;
+
+  std::tie(faceElemSolverAlg, solverAlgWasBuilt) 
+    = build_or_add_part_to_face_elem_solver_alg(algType, *this, *part, elemTopo, solverAlgMap, "open");
+  
+  auto& activeKernels = faceElemSolverAlg->activeKernels_;
+  
+  if (solverAlgWasBuilt) {
+    build_fem_face_elem_topo_kernel_automatic<MomentumOpenAdvDiffFemKernel>
+      (partTopo, elemTopo, *this, activeKernels, "momentum_open",
+       realm_.meta_data(), *realm_.solutionOptions_, velocity_, viscosity_,
+       faceElemSolverAlg->faceDataNeeded_, faceElemSolverAlg->elemDataNeeded_);
+  }
+}
+
+//--------------------------------------------------------------------------
 //-------- register_wall_bc ------------------------------------------------
 //--------------------------------------------------------------------------
 void
@@ -887,6 +953,83 @@ ContinuityFemEquationSystem::register_interior_algorithm(
     
     report_invalid_supp_alg_names();
     report_built_supp_alg_names();
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- register_open_bc ------------------------------------------------
+//--------------------------------------------------------------------------
+void
+ContinuityFemEquationSystem::register_open_bc(
+  stk::mesh::Part *part,
+  const stk::topology &partTopo,
+  const OpenBoundaryConditionData &openBCData)
+{
+  // algorithm type
+  const AlgorithmType algType = OPEN;
+  
+  // set face/element required sort
+  realm_.solutionOptions_->set_consolidated_bc_solver_alg();
+
+  // extract types of data
+  stk::mesh::MetaData &metaData = realm_.meta_data();
+  OpenUserData userData = openBCData.userData_;
+
+  // register boundary data
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
+  ScalarFieldType *pressureBC 
+    = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure_bc"));
+  stk::mesh::put_field_on_mesh(*pressureBC, *part, nullptr);
+
+  // algorithm to populate specified pressure
+  Pressure pSpec = userData.p_;
+  std::vector<double> userSpecPbc(1);
+  userSpecPbc[0] = pSpec.pressure_;
+  
+  // new it
+  ConstantAuxFunction *theAuxFuncPbc = new ConstantAuxFunction(0, 1, userSpecPbc);
+  
+  // bc data alg
+  AuxFunctionAlgorithm *auxAlgPbc
+    = new AuxFunctionAlgorithm(realm_, part,
+                               pressureBC, theAuxFuncPbc,
+                               stk::topology::NODE_RANK);
+  bcDataAlg_.push_back(auxAlgPbc);
+
+  // integration point data
+  MasterElement *meFC = sierra::nalu::MasterElementRepo::get_fem_master_element(partTopo);
+  const int numIntPoints = meFC->numIntPoints_;
+  
+  // pbip; always register (initial value of zero)
+  std::vector<double> zeroVec(numIntPoints,0.0);
+  GenericFieldType *pBip 
+    = &(metaData.declare_field<GenericFieldType>(static_cast<stk::topology::rank_t>(metaData.side_rank()), 
+                                                 "dynamic_pressure"));
+  stk::mesh::put_field_on_mesh(*pBip, *part, numIntPoints, zeroVec.data());
+  
+  // check for total bc to create an algorithm
+  if ( userData.useTotalP_ ) {
+    throw std::runtime_error("ContinuityFemEquationSystem::Error: use total pressure not supported");
+  }
+      
+  // solver for continuity open
+  auto& solverAlgMap = solverAlgDriver_->solverAlgorithmMap_;
+  
+  stk::topology elemTopo = get_elem_topo(realm_, *part);
+  
+  AssembleFaceElemSolverAlgorithm* faceElemSolverAlg = nullptr;
+  bool solverAlgWasBuilt = false;
+
+  std::tie(faceElemSolverAlg, solverAlgWasBuilt) 
+    = build_or_add_part_to_face_elem_solver_alg(algType, *this, *part, elemTopo, solverAlgMap, "open");
+  
+  auto& activeKernels = faceElemSolverAlg->activeKernels_;
+  
+  if (solverAlgWasBuilt) {
+    build_fem_face_elem_topo_kernel_automatic<ContinuityOpenFemKernel>
+      (partTopo, elemTopo, *this, activeKernels, "continuity_open",
+       realm_.meta_data(), *realm_.solutionOptions_,
+       faceElemSolverAlg->faceDataNeeded_, faceElemSolverAlg->elemDataNeeded_);
   }
 }
 

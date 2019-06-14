@@ -84,6 +84,8 @@ public:
   bool get_noc_usage(const std::string &dofName) const;
 
   bool has_set_boussinesq_time_scale();
+  
+  void set_consolidated_bc_solver_alg();
 
   double hybridDefault_;
   double alphaDefault_;

@@ -5,8 +5,8 @@
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
-#ifndef ContinuityOpenElemKernel_h
-#define ContinuityOpenElemKernel_h
+#ifndef MomentumOpenAdvDiffFemKernel_h
+#define MomentumOpenAdvDiffFemKernel_h
 
 #include "kernel/Kernel.h"
 #include "FieldTypeDef.h"
@@ -26,16 +26,18 @@ class MasterElement;
 /** specificed open bc (face/elem) kernel for continuity equation (pressure DOF)
  */
 template<typename BcAlgTraits>
-class ContinuityOpenElemKernel: public Kernel
+class MomentumOpenAdvDiffFemKernel: public Kernel
 {
 public:
-  ContinuityOpenElemKernel(
+  MomentumOpenAdvDiffFemKernel(
     const stk::mesh::MetaData &metaData,
     const SolutionOptions &solnOpts,
+    VectorFieldType *,
+    ScalarFieldType *,
     ElemDataRequests &faceDataPreReqs,
     ElemDataRequests &elemDataPreReqs);
 
-  virtual ~ContinuityOpenElemKernel();
+  virtual ~MomentumOpenAdvDiffFemKernel();
 
   /** Perform pre-timestep work for the computational kernel
    */
@@ -52,29 +54,33 @@ public:
     int elemFaceOrdinal);
 
 private:
-  ContinuityOpenElemKernel() = delete;
+  MomentumOpenAdvDiffFemKernel() = delete;
 
-  VectorFieldType *velocityRTM_{nullptr};
-  VectorFieldType *Gpdx_{nullptr};
-  VectorFieldType *coordinates_{nullptr};
+  VectorFieldType *velocityNp1_{nullptr};
+  VectorFieldType *vrtmL_{nullptr};
+  VectorFieldType *velocityBc_{nullptr};
+  VectorFieldType *GjpL_{nullptr};
   ScalarFieldType *pressure_{nullptr};
   ScalarFieldType *pressureBc_{nullptr};
   ScalarFieldType *density_{nullptr};
-  GenericFieldType *exposedAreaVec_{nullptr};
+  ScalarFieldType *viscosity_{nullptr};
   GenericFieldType *dynamicPressure_{nullptr};
+  VectorFieldType *coordinates_{nullptr};
 
-  double projTimeScale_{1.0};
-  const double penaltyFac_{2.0};
-  
+  const double includeDivU_;
+  const double meshVelocityCorrection_;
   const bool shiftedGradOp_;
-  const bool reducedSensitivities_;
-  MasterElement *meSCS_{nullptr};
-  
-  /// Shape functions
+  double projTimeScale_;
+  const double penaltyFac_;
+
+  MasterElement *meFEM_{nullptr};
+
+  // fixed scratch space
+  AlignedViewType<DoubleType[BcAlgTraits::numFaceIp_]> vf_ip_weight_{ "view_face_ip_weight" };
   AlignedViewType<DoubleType[BcAlgTraits::numFaceIp_][BcAlgTraits::nodesPerFace_]> vf_shape_function_ {"view_face_shape_func"};
 };
 
 }  // nalu
 }  // sierra
 
-#endif /* ContinuityOpenElemKernel_h */
+#endif /* MomentumOpenAdvDiffFemKernel_h */

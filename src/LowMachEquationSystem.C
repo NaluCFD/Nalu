@@ -1667,7 +1667,7 @@ MomentumEquationSystem::register_open_bc(
 
   if ( realm_.solutionOptions_->useConsolidatedBcSolverAlg_ ) {      
     
-    // solver for continuity open
+    // solver for momentum open
     auto& solverAlgMap = solverAlgDriver_->solverAlgorithmMap_;
     
     stk::topology elemTopo = get_elem_topo(realm_, *part);

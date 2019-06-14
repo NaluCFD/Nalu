@@ -10,9 +10,9 @@
 #include "master_element/MasterElement.h"
 #include "PecletFunction.h"
 #include "SolutionOptions.h"
-#include "BuildTemplates.h"
 
 // template and scratch space
+#include "BuildTemplates.h"
 #include "ScratchViews.h"
 
 // stk_mesh/base/fem

@@ -199,7 +199,6 @@ namespace nalu{
   MasterElement* MasterElementRepo::get_fem_master_element(
     const stk::topology& theTopo)
   {
-    // do not support arbitrary FEM promotion
     auto it = femMeMap_.find(theTopo);
     if (it == femMeMap_.end()) {
       femMeMap_[theTopo] = create_fem_master_element(theTopo);

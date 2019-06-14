@@ -795,5 +795,10 @@ bool SolutionOptions::has_set_boussinesq_time_scale()
   return (raBoussinesqTimeScale_ > std::numeric_limits<double>::min());
 }
 
+void SolutionOptions::set_consolidated_bc_solver_alg()
+{
+  useConsolidatedBcSolverAlg_ = true;
+}
+
 } // namespace nalu
 } // namespace Sierra

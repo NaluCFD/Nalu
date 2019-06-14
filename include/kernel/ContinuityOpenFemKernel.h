@@ -5,8 +5,8 @@
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
-#ifndef ContinuityOpenElemKernel_h
-#define ContinuityOpenElemKernel_h
+#ifndef ContinuityOpenFemKernel_h
+#define ContinuityOpenFemKernel_h
 
 #include "kernel/Kernel.h"
 #include "FieldTypeDef.h"
@@ -26,16 +26,16 @@ class MasterElement;
 /** specificed open bc (face/elem) kernel for continuity equation (pressure DOF)
  */
 template<typename BcAlgTraits>
-class ContinuityOpenElemKernel: public Kernel
+class ContinuityOpenFemKernel: public Kernel
 {
 public:
-  ContinuityOpenElemKernel(
+  ContinuityOpenFemKernel(
     const stk::mesh::MetaData &metaData,
     const SolutionOptions &solnOpts,
     ElemDataRequests &faceDataPreReqs,
     ElemDataRequests &elemDataPreReqs);
 
-  virtual ~ContinuityOpenElemKernel();
+  virtual ~ContinuityOpenFemKernel();
 
   /** Perform pre-timestep work for the computational kernel
    */
@@ -52,7 +52,7 @@ public:
     int elemFaceOrdinal);
 
 private:
-  ContinuityOpenElemKernel() = delete;
+  ContinuityOpenFemKernel() = delete;
 
   VectorFieldType *velocityRTM_{nullptr};
   VectorFieldType *Gpdx_{nullptr};
@@ -60,7 +60,6 @@ private:
   ScalarFieldType *pressure_{nullptr};
   ScalarFieldType *pressureBc_{nullptr};
   ScalarFieldType *density_{nullptr};
-  GenericFieldType *exposedAreaVec_{nullptr};
   GenericFieldType *dynamicPressure_{nullptr};
 
   double projTimeScale_{1.0};
@@ -68,13 +67,13 @@ private:
   
   const bool shiftedGradOp_;
   const bool reducedSensitivities_;
-  MasterElement *meSCS_{nullptr};
-  
-  /// Shape functions
+  MasterElement *meFEM_{nullptr};
+  // fixed scratch space
+  AlignedViewType<DoubleType[BcAlgTraits::numFaceIp_]> vf_ip_weight_{ "view_face_ip_weight" };
   AlignedViewType<DoubleType[BcAlgTraits::numFaceIp_][BcAlgTraits::nodesPerFace_]> vf_shape_function_ {"view_face_shape_func"};
 };
 
 }  // nalu
 }  // sierra
 
-#endif /* ContinuityOpenElemKernel_h */
+#endif /* ContinuityOpenFemKernel_h */

@@ -161,16 +161,17 @@ Tet10FEM::Tet10FEM()
   // exposed face; use helper functions
   const int numTri6Ip = tri6FEM_->numIntPoints_;
   const int numExposedFace = 4;
-  // size and copy in side weights
-  sideWeights_.resize(numTri6Ip);
-  const double * sw = &tri6FEM_->weights_[0];
-  for ( int i = 0; i < numTri6Ip; ++i )
-    sideWeights_[i] = sw[i];
   
   // deal with exposed ips
   intgExpFace_.resize(nDim_*numTri6Ip*numExposedFace); // 3*7*4
   for ( int i = 0; i < numExposedFace; ++i ) 
     sidePcoords_to_elemPcoords(i,numTri6Ip, &tri6FEM_->intgLoc_[0], &intgExpFace_[i*nDim_*numTri6Ip]);
+
+  // mapping from a side ordinal to the node ordinals on that side
+  sideNodeOrdinals_ = {0, 1, 3, 4, 8, 7,
+                       1, 2, 3, 5, 9, 8,
+                       0, 3, 2, 7, 9, 6,
+                       0, 2, 1, 6, 5, 4};
 }
 
 //--------------------------------------------------------------------------
@@ -241,6 +242,16 @@ void Tet10FEM::face_grad_op_fem(
   const int offset = traits::numFaceIp_ * traits::nDim_ * face_ordinal;
   tet10_deriv(traits::numFaceIp_, &exp_face[offset], deriv);
   generic_grad_op_fem<AlgTraitsTet10>(deriv, coords, gradop, det_j);
+}
+
+//--------------------------------------------------------------------------
+//-------- side_node_ordinals ----------------------------------------------
+//--------------------------------------------------------------------------
+const int *
+Tet10FEM::side_node_ordinals(int ordinal)
+{
+  // define face_ordinal->node_ordinal mappings for each face (ordinal);
+  return &sideNodeOrdinals_[ordinal*4];
 }
 
 //--------------------------------------------------------------------------

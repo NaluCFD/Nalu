@@ -293,7 +293,6 @@ public:
 
   // FEM
   std::vector<double>weights_;
-  std::vector<double>sideWeights_;
 };
 
 class QuadrilateralP2Element : public MasterElement

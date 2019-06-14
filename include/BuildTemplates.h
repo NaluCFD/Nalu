@@ -53,7 +53,6 @@ template class ClassName<AlgTraitsEdge2DTri32D>;                  \
 template class ClassName<AlgTraitsEdge2DQuad42D>;                 \
 template class ClassName<AlgTraitsEdge32DQuad92D>;                \
 
-
 #define INSTANTIATE_KERNEL_FEM_FACE_ELEMENT_3D(ClassName)         \
 template class ClassName<AlgTraitsTri6Tet10>;                     \
 

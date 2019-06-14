@@ -47,6 +47,8 @@ public:
     SharedMemView<DoubleType***>& gradop,
     SharedMemView<DoubleType*>&det_j) final;
 
+  const int* side_node_ordinals(int sideOrdinal) final;
+
   void shape_fcn(
     SharedMemView<DoubleType**> &shpfc) final;
 
