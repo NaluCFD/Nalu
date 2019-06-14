@@ -200,7 +200,7 @@ MomentumOpenAdvDiffFemKernel<BcAlgTraits>::execute(
     }
     
     // form mass flux:
-    // [rho*uj - projT*(dpdxj - Gjp)]*nj + penaltyFac*projTimeScale*invL*(pBip - pbcBip)
+    // [rho*uj - projT*(dpdxj - GjpL)]*nj + penaltyFac*projTimeScale*invL*(pBip - pbcBip)
     DoubleType massFlux = penaltyFac_*projTimeScale_*inverseLengthScale*(pBip - pbcBip);
     for ( int j = 0; j < BcAlgTraits::nDim_; ++j ) {
       massFlux += (w_rho_vrtmBip[j] - projTimeScale_*(w_dpdxBip[j] - w_GpdxBip[j]))*vf_normal(ip,j);
@@ -211,7 +211,7 @@ MomentumOpenAdvDiffFemKernel<BcAlgTraits>::execute(
     //================================
     
     // account for both cases, i.e., leaving or entering to avoid hard loop over SIMD length
-    const DoubleType mdotLeaving = stk::math::if_then_else(mdot > 0, 1.0, 0.0);
+    const DoubleType mdotLeaving = stk::math::if_then_else(massFlux > 0, 1.0, 0.0);
     const DoubleType om_mdotLeaving = 1.0 - mdotLeaving;    
 
     // entrainment magnitude (must correct for possible mesh motion at the open bc)
@@ -255,7 +255,7 @@ MomentumOpenAdvDiffFemKernel<BcAlgTraits>::execute(
 
         for ( int ic = 0; ic < BcAlgTraits::nodesPerFace_; ++ic ) {
           const int nn = face_node_ordinals[ic];
-          lhs(irNdim+i,nn*BcAlgTraits::nDim_+i) += wIr*vf_shape_function_(ip,ic)*facLeaving
+          lhs(irNdim+i,nn*BcAlgTraits::nDim_+i) += wIr*vf_shape_function_(ip,ic)*facLeaving;
         }
 
         //===================

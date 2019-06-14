@@ -59,6 +59,7 @@ private:
   VectorFieldType *velocityNp1_{nullptr};
   VectorFieldType *vrtmL_{nullptr};
   VectorFieldType *velocityBc_{nullptr};
+  VectorFieldType *meshVelocity_{nullptr};
   VectorFieldType *GjpL_{nullptr};
   ScalarFieldType *pressure_{nullptr};
   ScalarFieldType *pressureBc_{nullptr};
