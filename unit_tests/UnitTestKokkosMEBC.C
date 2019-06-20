@@ -77,10 +77,10 @@ void test_MEBC_views(int faceOrdinal, const std::vector<sierra::nalu::ELEM_DATA_
 
     for(sierra::nalu::ELEM_DATA_NEEDED request : elem_requests) {
       if (request == sierra::nalu::SCS_FACE_GRAD_OP) {
-        compare_old_face_grad_op(faceOrdinal, false, v_coords, meViews.dndx_fc, driver.meSCS_);
+        compare_old_face_grad_op(faceOrdinal, false, v_coords, meViews.dndx_fc_elem, driver.meSCS_);
       }
       if (request == sierra::nalu::SCS_SHIFTED_FACE_GRAD_OP) {
-        compare_old_face_grad_op(faceOrdinal, true, v_coords, meViews.dndx_shifted_fc, driver.meSCS_);
+        compare_old_face_grad_op(faceOrdinal, true, v_coords, meViews.dndx_shifted_fc_elem, driver.meSCS_);
       }
     }
   });

@@ -62,14 +62,15 @@ ContinuityOpenFemKernel<BcAlgTraits>::ContinuityOpenFemKernel(
   faceDataPreReqs.add_gathered_nodal_field(*velocityRTM_, BcAlgTraits::nDim_);
   faceDataPreReqs.add_gathered_nodal_field(*Gpdx_, BcAlgTraits::nDim_);  
   faceDataPreReqs.add_face_field(*dynamicPressure_, BcAlgTraits::numFaceIp_);
+  faceDataPreReqs.add_coordinates_field(*coordinates_, BcAlgTraits::nDim_, CURRENT_COORDINATES);
   
   elemDataPreReqs.add_gathered_nodal_field(*pressure_, 1);
   elemDataPreReqs.add_coordinates_field(*coordinates_, BcAlgTraits::nDim_, CURRENT_COORDINATES);
   
   // manage master element requirements
   elemDataPreReqs.add_master_element_call(FEM_FACE_GRAD_OP, CURRENT_COORDINATES);
-  elemDataPreReqs.add_master_element_call(FEM_FACE_NORMAL, CURRENT_COORDINATES);
-  elemDataPreReqs.add_master_element_call(FEM_FACE_DET_J, CURRENT_COORDINATES);
+  faceDataPreReqs.add_master_element_call(FEM_FACE_NORMAL, CURRENT_COORDINATES);
+  faceDataPreReqs.add_master_element_call(FEM_FACE_DET_J, CURRENT_COORDINATES);
  
   if ( solnOpts.cvfemShiftMdot_ )
     get_face_shape_fn_data<BcAlgTraits>([&](double* ptr){meFC->shifted_shape_fcn(ptr);}, vf_shape_function_);
@@ -117,7 +118,7 @@ ContinuityOpenFemKernel<BcAlgTraits>::execute(
   SharedMemView<DoubleType*>& v_pressure = elemScratchViews.get_scratch_view_1D(*pressure_);
  
   // master element calls
-  SharedMemView<DoubleType***>& v_dndx = elemScratchViews.get_me_views(CURRENT_COORDINATES).dndx_fc;
+  SharedMemView<DoubleType***>& v_dndx_fc_elem = elemScratchViews.get_me_views(CURRENT_COORDINATES).dndx_fc_elem;
   SharedMemView<DoubleType*>& vf_det_j = faceScratchViews.get_me_views(CURRENT_COORDINATES).det_j_fc;
   SharedMemView<DoubleType**>& vf_normal = faceScratchViews.get_me_views(CURRENT_COORDINATES).normal_fc_fem;
 
@@ -135,7 +136,7 @@ ContinuityOpenFemKernel<BcAlgTraits>::execute(
     for ( int ic = 0; ic < BcAlgTraits::nodesPerFace_; ++ic ) {
       const int faceNodeNumber = face_node_ordinals[ic];
       for ( int j = 0; j < BcAlgTraits::nDim_; ++j ) {
-        inverseLengthScale += v_dndx(ip,faceNodeNumber,j)*vf_normal(ip,j);
+        inverseLengthScale += v_dndx_fc_elem(ip,faceNodeNumber,j)*vf_normal(ip,j);
       }
     }        
 
@@ -157,7 +158,7 @@ ContinuityOpenFemKernel<BcAlgTraits>::execute(
     for ( int ic = 0; ic < BcAlgTraits::nodesPerElement_; ++ic ) {
       const DoubleType pIc = v_pressure(ic);
       for ( int j = 0; j < BcAlgTraits::nDim_; ++j ) {
-        w_dpdxBip[j] += v_dndx(ip,ic,j)*pIc;
+        w_dpdxBip[j] += v_dndx_fc_elem(ip,ic,j)*pIc;
       }
     }
   
@@ -172,25 +173,26 @@ ContinuityOpenFemKernel<BcAlgTraits>::execute(
     }
       
     // row ir
-    for ( int ir = 0; ir < BcAlgTraits::nodesPerElement_; ++ir) {
+    for ( int ir = 0; ir < BcAlgTraits::nodesPerFace_; ++ir) {
 
+      const int lIr = face_node_ordinals[ir];
       const DoubleType wIr = vf_shape_function_(ip,ir);
 
       // face-based penalty; divide by projTimeScale
       for ( int ic = 0; ic < BcAlgTraits::nodesPerFace_; ++ic ) {
-        lhs(ir,ic) += wIr*vf_shape_function_(ip,ic)*penaltyFac_*inverseLengthScale*ipFactor;
+        lhs(lIr,ic) += wIr*vf_shape_function_(ip,ic)*penaltyFac_*inverseLengthScale*ipFactor;
       }
       
       // element-based gradient; divide by projTimeScale
       for ( int ic = 0; ic < BcAlgTraits::nodesPerElement_; ++ic ) {
         DoubleType lhsFac = 0.0;
         for ( int j = 0; j < BcAlgTraits::nDim_; ++j )
-          lhsFac += -wIr*v_dndx(ip,ic,j)*vf_normal(ip,j);
-        lhs(ir,ic) += lhsFac*ipFactor;
+          lhsFac += -wIr*v_dndx_fc_elem(ip,ic,j)*vf_normal(ip,j);
+        lhs(lIr,ic) += lhsFac*ipFactor;
       }
     
       // residual
-      rhs(ir) -= wIr*mdot/projTimeScale_;
+      rhs(lIr) -= wIr*mdot/projTimeScale_;
     }
   }
 }

@@ -93,9 +93,9 @@ ScalarFluxPenaltyElemKernel<BcAlgTraits>::execute(
   SharedMemView<DoubleType*>& v_scalarQ = elemScratchViews.get_scratch_view_1D(*scalarQ_);
 
   // dndx for both rhs and lhs
-  SharedMemView<DoubleType***>& v_dndx = shiftedGradOp_ 
-    ? elemScratchViews.get_me_views(CURRENT_COORDINATES).dndx_shifted_fc
-    : elemScratchViews.get_me_views(CURRENT_COORDINATES).dndx_fc;
+  SharedMemView<DoubleType***>& v_dndx_fc_elem = shiftedGradOp_ 
+    ? elemScratchViews.get_me_views(CURRENT_COORDINATES).dndx_shifted_fc_elem
+    : elemScratchViews.get_me_views(CURRENT_COORDINATES).dndx_fc_elem;
 
   for (int ip=0; ip < BcAlgTraits::numFaceIp_; ++ip) {
     
@@ -115,7 +115,7 @@ ScalarFluxPenaltyElemKernel<BcAlgTraits>::execute(
     for ( int ic = 0; ic < BcAlgTraits::nodesPerFace_; ++ic ) {
       const int faceNodeNumber = face_node_ordinals[ic];
       for ( int j = 0; j < BcAlgTraits::nDim_; ++j ) {
-        inverseLengthScale += v_dndx(ip,faceNodeNumber,j)*vf_exposedAreaVec(ip,j);
+        inverseLengthScale += v_dndx_fc_elem(ip,faceNodeNumber,j)*vf_exposedAreaVec(ip,j);
       }
     }        
     inverseLengthScale /= aMag;
@@ -135,7 +135,7 @@ ScalarFluxPenaltyElemKernel<BcAlgTraits>::execute(
     for ( int ic = 0; ic < BcAlgTraits::nodesPerElement_; ++ic ) {
       const DoubleType qIc = v_scalarQ(ic);
       for ( int j = 0; j < BcAlgTraits::nDim_; ++j ) {
-        w_dqdxBip[j] += v_dndx(ip,ic,j)*qIc;
+        w_dqdxBip[j] += v_dndx_fc_elem(ip,ic,j)*qIc;
       }
     }
     
@@ -160,7 +160,7 @@ ScalarFluxPenaltyElemKernel<BcAlgTraits>::execute(
     for ( int ic = 0; ic < BcAlgTraits::nodesPerElement_; ++ic ) {
       DoubleType lhsFac = 0.0;
       for ( int j = 0; j < BcAlgTraits::nDim_; ++j )
-        lhsFac += -v_dndx(ip,ic,j)*vf_exposedAreaVec(ip,j);
+        lhsFac += -v_dndx_fc_elem(ip,ic,j)*vf_exposedAreaVec(ip,j);
       lhs(nearestNode,ic) += diffFluxCoeffBip*lhsFac;
     }    
   }
