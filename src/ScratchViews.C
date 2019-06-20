@@ -141,9 +141,9 @@ int get_num_scalars_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDi
     int dndxLength = 0, dndxLengthFC = 0, gUpperLength = 0, gLowerLength = 0;
 
     // Updated logic for data sharing of deriv and det_j
-    bool needDeriv = false; bool needDerivScv = false; bool needDerivFem = false; bool needDerivFC = false;
-    bool needDetj = false; bool needDetjScv = false; bool needDetjFem = false; bool needDetjFC = false;
-   
+    bool needDeriv = false; bool needDerivScv = false; bool needDerivFC = false;  bool needDerivFCElem = false;
+    bool needDetj = false; bool needDetjScv = false; bool needDetjFC = false;
+    bool needDerivFem = false;  bool needDetjFem = false; 
     for(ELEM_DATA_NEEDED data : dataEnums) {
       switch(data)
       {
@@ -156,7 +156,7 @@ int get_num_scalars_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDi
         case SCS_FACE_GRAD_OP:
         case SCS_SHIFTED_FACE_GRAD_OP:
           dndxLengthFC = nodesPerEntity*numFaceIp*nDim;
-          needDerivFC = true;
+          needDerivFCElem = true;
           needDetjFC = true;
           numScalars += dndxLengthFC;
           break;
@@ -200,7 +200,7 @@ int get_num_scalars_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDi
           numScalars += nDim * numFemIp;
           break;
         case FEM_FACE_GRAD_OP:
-          needDerivFC = true;
+          needDerivFCElem = true;
           needDetjFC = true;
           numScalars += nodesPerEntity*numFaceIp*nDim;
           break;
@@ -220,6 +220,9 @@ int get_num_scalars_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDi
     }
 
     if (needDerivFC)
+      numScalars += nodesPerEntity*numFaceIp*nDim;
+
+    if (needDerivFCElem)
       numScalars += nodesPerEntity*numFaceIp*nDim;
 
     if (needDeriv)
@@ -280,9 +283,9 @@ int get_num_scalars_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDi
     int dndxLength = 0, dndxLengthFC = 0, gUpperLength = 0, gLowerLength = 0;
 
     // Updated logic for data sharing of deriv and det_j
-    bool needDeriv = false; bool needDerivScv = false; bool needDerivFem = false; bool needDerivFC = false;
-    bool needDetj = false; bool needDetjScv = false; bool needDetjFem = false; bool needDetjFC = false;
-
+    bool needDeriv = false; bool needDerivScv = false; bool needDerivFC = false; bool needDerivFCElem = false;
+    bool needDetj = false; bool needDetjScv = false; bool needDetjFC = false;
+    bool needDerivFem = false; bool needDetjFem = false; 
     for(ELEM_DATA_NEEDED data : dataEnums) {
       switch(data)
       {
@@ -295,7 +298,7 @@ int get_num_scalars_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDi
         case SCS_FACE_GRAD_OP:
         case SCS_SHIFTED_FACE_GRAD_OP:
           dndxLengthFC = nodesPerEntity*numFaceIp*nDim;
-          needDerivFC = true;
+          needDerivFCElem = true;
           needDetjFC = true;
           numScalars += dndxLengthFC;
           break;
@@ -358,6 +361,9 @@ int get_num_scalars_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDi
     }
 
     if (needDerivFC)
+      numScalars += nodesPerEntity*numFaceIp*nDim;
+
+    if (needDerivFCElem)
       numScalars += nodesPerEntity*numFaceIp*nDim;
 
     if (needDeriv)

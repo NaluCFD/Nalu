@@ -51,6 +51,11 @@ public:
     stk::mesh::Part *part,
     const stk::topology &theTopo);
 
+  virtual void register_open_bc(
+    stk::mesh::Part *part,
+    const stk::topology &partTopo,
+    const OpenBoundaryConditionData &openBCData);
+
   virtual void pre_iter_work();
   virtual void solve_and_update();
 

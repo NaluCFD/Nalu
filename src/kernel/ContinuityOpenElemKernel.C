@@ -60,6 +60,8 @@ ContinuityOpenElemKernel<BcAlgTraits>::ContinuityOpenElemKernel(
   faceDataPreReqs.add_gathered_nodal_field(*Gpdx_, BcAlgTraits::nDim_);  
   faceDataPreReqs.add_face_field(*exposedAreaVec_, BcAlgTraits::numFaceIp_, BcAlgTraits::nDim_);
   faceDataPreReqs.add_face_field(*dynamicPressure_, BcAlgTraits::numFaceIp_);
+  faceDataPreReqs.add_coordinates_field(*coordinates_, BcAlgTraits::nDim_, CURRENT_COORDINATES);
+  
   elemDataPreReqs.add_coordinates_field(*coordinates_, BcAlgTraits::nDim_, CURRENT_COORDINATES);
   elemDataPreReqs.add_gathered_nodal_field(*pressure_, 1);
 
@@ -116,12 +118,12 @@ ContinuityOpenElemKernel<BcAlgTraits>::execute(
   SharedMemView<DoubleType*>& v_pressure = elemScratchViews.get_scratch_view_1D(*pressure_);
  
   // dndx for both rhs and lhs
-  SharedMemView<DoubleType***>& v_dndx = shiftedGradOp_ 
-    ? elemScratchViews.get_me_views(CURRENT_COORDINATES).dndx_shifted_fc
-    : elemScratchViews.get_me_views(CURRENT_COORDINATES).dndx_fc;
-  SharedMemView<DoubleType***>& v_dndx_lhs = (shiftedGradOp_ || reducedSensitivities_)
-    ? elemScratchViews.get_me_views(CURRENT_COORDINATES).dndx_shifted_fc
-    : elemScratchViews.get_me_views(CURRENT_COORDINATES).dndx_fc;
+  SharedMemView<DoubleType***>& v_dndx_fc_elem = shiftedGradOp_ 
+    ? elemScratchViews.get_me_views(CURRENT_COORDINATES).dndx_shifted_fc_elem
+    : elemScratchViews.get_me_views(CURRENT_COORDINATES).dndx_fc_elem;
+  SharedMemView<DoubleType***>& v_dndx_fc_elem_lhs = (shiftedGradOp_ || reducedSensitivities_)
+    ? elemScratchViews.get_me_views(CURRENT_COORDINATES).dndx_shifted_fc_elem
+    : elemScratchViews.get_me_views(CURRENT_COORDINATES).dndx_fc_elem;
 
   for (int ip=0; ip < BcAlgTraits::numFaceIp_; ++ip) {
     
@@ -143,7 +145,7 @@ ContinuityOpenElemKernel<BcAlgTraits>::execute(
     for ( int ic = 0; ic < BcAlgTraits::nodesPerFace_; ++ic ) {
       const int faceNodeNumber = face_node_ordinals[ic];
       for ( int j = 0; j < BcAlgTraits::nDim_; ++j ) {
-        inverseLengthScale += v_dndx(ip,faceNodeNumber,j)*vf_exposedAreaVec(ip,j);
+        inverseLengthScale += v_dndx_fc_elem(ip,faceNodeNumber,j)*vf_exposedAreaVec(ip,j);
       }
     }        
     inverseLengthScale /= aMag;
@@ -166,7 +168,7 @@ ContinuityOpenElemKernel<BcAlgTraits>::execute(
     for ( int ic = 0; ic < BcAlgTraits::nodesPerElement_; ++ic ) {
       const DoubleType pIc = v_pressure(ic);
       for ( int j = 0; j < BcAlgTraits::nDim_; ++j ) {
-        w_dpdxBip[j] += v_dndx(ip,ic,j)*pIc;
+        w_dpdxBip[j] += v_dndx_fc_elem(ip,ic,j)*pIc;
       }
     }
     
@@ -188,7 +190,7 @@ ContinuityOpenElemKernel<BcAlgTraits>::execute(
     for ( int ic = 0; ic < BcAlgTraits::nodesPerElement_; ++ic ) {
       DoubleType lhsFac = 0.0;
       for ( int j = 0; j < BcAlgTraits::nDim_; ++j )
-        lhsFac += -v_dndx_lhs(ip,ic,j)*vf_exposedAreaVec(ip,j);
+        lhsFac += -v_dndx_fc_elem_lhs(ip,ic,j)*vf_exposedAreaVec(ip,j);
       lhs(nearestNode,ic) += lhsFac;
     }
     

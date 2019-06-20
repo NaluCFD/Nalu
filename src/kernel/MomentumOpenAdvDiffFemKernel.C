@@ -79,15 +79,16 @@ MomentumOpenAdvDiffFemKernel<BcAlgTraits>::MomentumOpenAdvDiffFemKernel(
   faceDataPreReqs.add_gathered_nodal_field(*density_, 1);
   faceDataPreReqs.add_gathered_nodal_field(*viscosity_, 1);
   faceDataPreReqs.add_face_field(*dynamicPressure_, BcAlgTraits::numFaceIp_);
-  
+  faceDataPreReqs.add_coordinates_field(*coordinates_, BcAlgTraits::nDim_, CURRENT_COORDINATES);
+
   elemDataPreReqs.add_gathered_nodal_field(*pressure_, 1);
   elemDataPreReqs.add_coordinates_field(*coordinates_, BcAlgTraits::nDim_, CURRENT_COORDINATES);
   elemDataPreReqs.add_gathered_nodal_field(*velocityNp1_, BcAlgTraits::nDim_);
  
   // manage master element requirements
   elemDataPreReqs.add_master_element_call(FEM_FACE_GRAD_OP, CURRENT_COORDINATES);
-  elemDataPreReqs.add_master_element_call(FEM_FACE_NORMAL, CURRENT_COORDINATES);
-  elemDataPreReqs.add_master_element_call(FEM_FACE_DET_J, CURRENT_COORDINATES);
+  faceDataPreReqs.add_master_element_call(FEM_FACE_NORMAL, CURRENT_COORDINATES);
+  faceDataPreReqs.add_master_element_call(FEM_FACE_DET_J, CURRENT_COORDINATES);
 
   get_face_shape_fn_data<BcAlgTraits>([&](double* ptr){meFC->shape_fcn(ptr);}, vf_shape_function_);
 
@@ -143,7 +144,7 @@ MomentumOpenAdvDiffFemKernel<BcAlgTraits>::execute(
   //SharedMemView<DoubleType**>& v_velocityNp1 = elemScratchViews.get_scratch_view_2D(*velocityNp1_);
   
   // master element calls
-  SharedMemView<DoubleType***>& v_dndx = elemScratchViews.get_me_views(CURRENT_COORDINATES).dndx_fc;
+  SharedMemView<DoubleType***>& v_dndx_fc_elem = elemScratchViews.get_me_views(CURRENT_COORDINATES).dndx_fc_elem;
   SharedMemView<DoubleType*>& vf_det_j = faceScratchViews.get_me_views(CURRENT_COORDINATES).det_j_fc;
   SharedMemView<DoubleType**>& vf_normal = faceScratchViews.get_me_views(CURRENT_COORDINATES).normal_fc_fem;
 
@@ -166,7 +167,7 @@ MomentumOpenAdvDiffFemKernel<BcAlgTraits>::execute(
     for ( int ic = 0; ic < BcAlgTraits::nodesPerFace_; ++ic ) {
       const int faceNodeNumber = face_node_ordinals[ic];
       for ( int j = 0; j < BcAlgTraits::nDim_; ++j ) {
-        inverseLengthScale += v_dndx(ip,faceNodeNumber,j)*vf_normal(ip,j);
+        inverseLengthScale += v_dndx_fc_elem(ip,faceNodeNumber,j)*vf_normal(ip,j);
       }
     }
 
@@ -195,7 +196,7 @@ MomentumOpenAdvDiffFemKernel<BcAlgTraits>::execute(
     for ( int ic = 0; ic < BcAlgTraits::nodesPerElement_; ++ic ) {
       const DoubleType pIc = v_pressure(ic);
       for ( int j = 0; j < BcAlgTraits::nDim_; ++j ) {
-        w_dpdxBip[j] += v_dndx(ip,ic,j)*pIc;
+        w_dpdxBip[j] += v_dndx_fc_elem(ip,ic,j)*pIc;
       }
     }
     
@@ -242,10 +243,10 @@ MomentumOpenAdvDiffFemKernel<BcAlgTraits>::execute(
       const DoubleType facLeaving = massFlux*ipFactor*mdotLeaving;
 
       // row ir
-      for ( int ir = 0; ir < BcAlgTraits::nodesPerElement_; ++ir) {
+      for ( int ir = 0; ir < BcAlgTraits::nodesPerFace_; ++ir) {
 
         const DoubleType wIr = vf_shape_function_(ip,ir);      
-        const int irNdim = ir*BcAlgTraits::nDim_;
+        const int irNdim = face_node_ordinals[ir]*BcAlgTraits::nDim_;
 
         //===================
         // flow is leaving

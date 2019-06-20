@@ -142,9 +142,9 @@ MomentumOpenAdvDiffElemKernel<BcAlgTraits>::execute(
   SharedMemView<DoubleType**>& v_vrtm = elemScratchViews.get_scratch_view_2D(*velocityRTM_);
   SharedMemView<DoubleType*>& v_viscosity = elemScratchViews.get_scratch_view_1D(*viscosity_);
   SharedMemView<DoubleType*>& v_density = elemScratchViews.get_scratch_view_1D(*density_);
-  SharedMemView<DoubleType***>& v_dndx = shiftedGradOp_
-    ? elemScratchViews.get_me_views(CURRENT_COORDINATES).dndx_shifted_fc
-    : elemScratchViews.get_me_views(CURRENT_COORDINATES).dndx_fc;
+  SharedMemView<DoubleType***>& v_dndx_fc_elem = shiftedGradOp_
+    ? elemScratchViews.get_me_views(CURRENT_COORDINATES).dndx_shifted_fc_elem
+    : elemScratchViews.get_me_views(CURRENT_COORDINATES).dndx_fc_elem;
 
   for (int ip=0; ip < BcAlgTraits::numFaceIp_; ++ip) {
     
@@ -275,7 +275,7 @@ MomentumOpenAdvDiffElemKernel<BcAlgTraits>::execute(
       for ( int j = 0; j < BcAlgTraits::nDim_; ++j ) {
         
         const DoubleType axj = vf_exposedAreaVec(ip,j);
-        const DoubleType dndxj = v_dndx(ip,ic,j);
+        const DoubleType dndxj = v_dndx_fc_elem(ip,ic,j);
         const DoubleType uxj = v_velocityNp1(ic,j);
         
         const DoubleType divUstress = 2.0/3.0*viscBip*dndxj*uxj*axj*includeDivU_;
@@ -285,7 +285,7 @@ MomentumOpenAdvDiffElemKernel<BcAlgTraits>::execute(
           // matrix entries
           int indexR = nearestNode*BcAlgTraits::nDim_ + i;
           
-          const DoubleType dndxi = v_dndx(ip,ic,i);
+          const DoubleType dndxi = v_dndx_fc_elem(ip,ic,i);
           const DoubleType uxi = v_velocityNp1(ic,i);
           const DoubleType nxi = w_nx[i];
           const DoubleType om_nxinxi = 1.0-nxi*nxi;
@@ -306,7 +306,7 @@ MomentumOpenAdvDiffElemKernel<BcAlgTraits>::execute(
             if ( i != l ) {
               const DoubleType nxinxl = nxi*w_nx[l];
               const DoubleType uxl = v_velocityNp1(ic,l);
-              const DoubleType dndxl = v_dndx(ip,ic,l);
+              const DoubleType dndxl = v_dndx_fc_elem(ip,ic,l);
               
               // +ni*nl*mu*dul/dxj*Aj; sneak in divU (explicit)
               lhsfac = viscBip*dndxj*axj*nxinxl;

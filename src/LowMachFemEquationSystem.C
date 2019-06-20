@@ -219,6 +219,61 @@ LowMachFemEquationSystem::register_element_fields(
 }
 
 //--------------------------------------------------------------------------
+//-------- register_open_bc ------------------------------------------------
+//--------------------------------------------------------------------------
+void
+LowMachFemEquationSystem::register_open_bc(
+  stk::mesh::Part *part,
+  const stk::topology &partTopo,
+  const OpenBoundaryConditionData &openBCData)
+{  
+  // Motivation: register common fields between momentum and continuity
+
+  // set face/element required sort
+  realm_.solutionOptions_->set_consolidated_bc_solver_alg();
+
+  // extract types of data
+  stk::mesh::MetaData &metaData = realm_.meta_data();
+  OpenUserData userData = openBCData.userData_;
+
+  // register boundary data
+  ScalarFieldType *pressureBC 
+    = &(metaData.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure_bc"));
+  stk::mesh::put_field_on_mesh(*pressureBC, *part, nullptr);
+
+  // algorithm to populate specified pressure
+  Pressure pSpec = userData.p_;
+  std::vector<double> userSpecPbc(1);
+  userSpecPbc[0] = pSpec.pressure_;
+  
+  // new it
+  ConstantAuxFunction *theAuxFuncPbc = new ConstantAuxFunction(0, 1, userSpecPbc);
+  
+  // bc data alg
+  AuxFunctionAlgorithm *auxAlgPbc
+    = new AuxFunctionAlgorithm(realm_, part,
+                               pressureBC, theAuxFuncPbc,
+                               stk::topology::NODE_RANK);
+  bcDataAlg_.push_back(auxAlgPbc);
+
+  // integration point data
+  MasterElement *meFC = sierra::nalu::MasterElementRepo::get_fem_master_element(partTopo);
+  const int numIntPoints = meFC->numIntPoints_;
+  
+  // pbip; always register (initial value of zero)
+  std::vector<double> zeroVec(numIntPoints,0.0);
+  GenericFieldType *pBip 
+    = &(metaData.declare_field<GenericFieldType>(static_cast<stk::topology::rank_t>(metaData.side_rank()), 
+                                                 "dynamic_pressure"));
+  stk::mesh::put_field_on_mesh(*pBip, *part, numIntPoints, zeroVec.data());
+  
+  // check for total bc to create an algorithm
+  if ( userData.useTotalP_ ) {
+    throw std::runtime_error("LowMachFemEquationSystem::Error: use total pressure not supported");
+  }
+}
+
+//--------------------------------------------------------------------------
 //-------- pre_iter_work ---------------------------------------------------
 //--------------------------------------------------------------------------
 void
@@ -970,47 +1025,6 @@ ContinuityFemEquationSystem::register_open_bc(
   
   // set face/element required sort
   realm_.solutionOptions_->set_consolidated_bc_solver_alg();
-
-  // extract types of data
-  stk::mesh::MetaData &metaData = realm_.meta_data();
-  OpenUserData userData = openBCData.userData_;
-
-  // register boundary data
-  stk::mesh::MetaData &meta_data = realm_.meta_data();
-  ScalarFieldType *pressureBC 
-    = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure_bc"));
-  stk::mesh::put_field_on_mesh(*pressureBC, *part, nullptr);
-
-  // algorithm to populate specified pressure
-  Pressure pSpec = userData.p_;
-  std::vector<double> userSpecPbc(1);
-  userSpecPbc[0] = pSpec.pressure_;
-  
-  // new it
-  ConstantAuxFunction *theAuxFuncPbc = new ConstantAuxFunction(0, 1, userSpecPbc);
-  
-  // bc data alg
-  AuxFunctionAlgorithm *auxAlgPbc
-    = new AuxFunctionAlgorithm(realm_, part,
-                               pressureBC, theAuxFuncPbc,
-                               stk::topology::NODE_RANK);
-  bcDataAlg_.push_back(auxAlgPbc);
-
-  // integration point data
-  MasterElement *meFC = sierra::nalu::MasterElementRepo::get_fem_master_element(partTopo);
-  const int numIntPoints = meFC->numIntPoints_;
-  
-  // pbip; always register (initial value of zero)
-  std::vector<double> zeroVec(numIntPoints,0.0);
-  GenericFieldType *pBip 
-    = &(metaData.declare_field<GenericFieldType>(static_cast<stk::topology::rank_t>(metaData.side_rank()), 
-                                                 "dynamic_pressure"));
-  stk::mesh::put_field_on_mesh(*pBip, *part, numIntPoints, zeroVec.data());
-  
-  // check for total bc to create an algorithm
-  if ( userData.useTotalP_ ) {
-    throw std::runtime_error("ContinuityFemEquationSystem::Error: use total pressure not supported");
-  }
       
   // solver for continuity open
   auto& solverAlgMap = solverAlgDriver_->solverAlgorithmMap_;
