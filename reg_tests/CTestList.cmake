@@ -162,6 +162,8 @@ add_test_u(unitTest2 2)
 #=============================================================================
 # Performance tests
 #=============================================================================
-add_test_p(oversetHybrid 8)
-add_test_p(uqSlidingMeshDG 8)
-add_test_p(waleElemXflowMixFrac3.5m 8)
+if(ENABLE_PERFORMANCE_TESTS)
+  add_test_p(oversetHybrid 8)
+  add_test_p(uqSlidingMeshDG 8)
+  add_test_p(waleElemXflowMixFrac3.5m 8)
+endif(ENABLE_PERFORMANCE_TESTS)
