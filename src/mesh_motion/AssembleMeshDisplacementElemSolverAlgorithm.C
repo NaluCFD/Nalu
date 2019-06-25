@@ -77,9 +77,9 @@ AssembleMeshDisplacementElemSolverAlgorithm::execute()
 
   const int nDim = meta_data.spatial_dimension();
 
-  const double kd[3][3] = { 1.0, 0.0, 0.0,
-                            0.0, 1.0, 0.0,
-                            0.0, 0.0, 1.0 };
+  const double kd[3][3] = { {1.0, 0.0, 0.0},
+                            {0.0, 1.0, 0.0},
+                            {0.0, 0.0, 1.0} };
   
   // space for LHS/RHS; nodesPerElem*nDim*nodesPerElem*nDim and nodesPerElem*nDim
   std::vector<double> lhs;
