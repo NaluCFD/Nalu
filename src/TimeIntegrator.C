@@ -130,6 +130,8 @@ void TimeIntegrator::breadboard()
 {
   for (size_t irealm = 0; irealm < realmNamesVec_.size(); ++irealm) {
     Realm * realm = sim_->realms_->find_realm(realmNamesVec_[irealm]);
+    if ( NULL == realm )
+      throw std::runtime_error("TimeIntegrator::breadboard()::Error: Unknown realm: " + realmNamesVec_[irealm]);
     realm->timeIntegrator_ = this;
     realmVec_.push_back(realm);
   }
