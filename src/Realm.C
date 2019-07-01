@@ -67,8 +67,6 @@
 #include "Actuator.h"
 #include "ActuatorLinePointDrag.h"
 
-#include "ABLForcingAlgorithm.h"
-
 // props; algs, evaluators and data
 #include "property_evaluator/GenericPropAlgorithm.h"
 #include "property_evaluator/HDF5TablePropAlgorithm.h"
@@ -193,7 +191,6 @@ namespace nalu{
     turbulenceAveragingPostProcessing_(NULL),
     dataProbePostProcessing_(NULL),
     actuator_(NULL),
-    ablForcingAlg_(NULL),
     nodeCount_(0),
     estimateMemoryOnly_(false),
     availableMemoryPerCoreGB_(0),
@@ -304,9 +301,6 @@ Realm::~Realm()
   // delete HDF5 file ptr
   if ( NULL != HDF5ptr_ )
     delete HDF5ptr_;
-
-  // Delete abl forcing pointer
-  if (NULL != ablForcingAlg_) delete ablForcingAlg_;
 
   MasterElementRepo::clear();
 
@@ -585,12 +579,6 @@ Realm::look_ahead_and_creation(const YAML::Node & node)
     else {
       throw std::runtime_error("look_ahead_and_create::error: No 'type' specified in actuator");
     }
-  }
-
-  // ABL Forcing parameters
-  if (node["abl_forcing"]) {
-    const YAML::Node ablNode = node["abl_forcing"];
-    ablForcingAlg_ = new ABLForcingAlgorithm(*this, ablNode);
   }
 }
   
@@ -899,10 +887,8 @@ Realm::setup_post_processing_algorithms()
   }
 
   // check for turbulence averaging fields
-  if (NULL == turbulenceAveragingPostProcessing_ &&
-     solutionOptions_->has_set_boussinesq_time_scale() ) {
-
-     turbulenceAveragingPostProcessing_ =  new TurbulenceAveragingPostProcessing(*this, {});
+  if (NULL == turbulenceAveragingPostProcessing_ ) {
+    turbulenceAveragingPostProcessing_ =  new TurbulenceAveragingPostProcessing(*this, {});
   }
 
   if ( NULL != turbulenceAveragingPostProcessing_ )
@@ -915,9 +901,6 @@ Realm::setup_post_processing_algorithms()
   // check for actuator line
   if ( NULL != actuator_ )
     actuator_->setup();
-
-  if ( NULL != ablForcingAlg_)
-    ablForcingAlg_->setup();
 
   // check for norm nodal fields
   if ( NULL != solutionNormPostProcessing_ )
@@ -1871,11 +1854,6 @@ Realm::advance_time_step()
     actuator_->execute();
   }
 
-  // Check for ABL forcing; estimate source terms for this time step
-  if ( NULL != ablForcingAlg_) {
-    ablForcingAlg_->execute();
-  }
-
   const int numNonLinearIterations = equationSystems_.maxIterations_;
   for ( int i = 0; i < numNonLinearIterations; ++i ) {
     currentNonlinearIteration_ = i+1;
@@ -2402,10 +2380,6 @@ Realm::initialize_post_processing_algorithms()
   // check for actuator... probably a better place for this
   if ( NULL != actuator_ ) {
     actuator_->initialize();
-  }
-
-  if ( NULL != ablForcingAlg_) {
-    ablForcingAlg_->initialize();
   }
 }
 

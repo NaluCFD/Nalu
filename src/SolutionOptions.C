@@ -85,9 +85,6 @@ SolutionOptions::SolutionOptions()
     eigenvaluePerturbDelta_(0.0),
     eigenvaluePerturbBiasTowards_(3),
     eigenvaluePerturbTurbKe_(0.0),
-    earthAngularVelocity_(7.2921159e-5),
-    latitude_(0.0),
-    raBoussinesqTimeScale_(-1.0),
     mdotAlgAccumulation_(0.0),
     mdotAlgInflow_(0.0),
     mdotAlgOpen_(0.0),
@@ -298,10 +295,7 @@ SolutionOptions::load(const YAML::Node & y_node)
           get_if_present(y_user_constants, "reference_temperature",  referenceTemperature_, referenceTemperature_);
           get_if_present(y_user_constants, "thermal_expansion_coefficient",  thermalExpansionCoeff_, thermalExpansionCoeff_);
           get_if_present(y_user_constants, "stefan_boltzmann",  stefanBoltzmann_, stefanBoltzmann_);
-          get_if_present(y_user_constants, "earth_angular_velocity", earthAngularVelocity_, earthAngularVelocity_);
-          get_if_present(y_user_constants, "latitude", latitude_, latitude_);
-          get_if_present(y_user_constants, "boussinesq_time_scale", raBoussinesqTimeScale_, raBoussinesqTimeScale_);
-
+        
           if (expect_sequence( y_user_constants, "gravity", optional) ) {
             const int gravSize = y_user_constants["gravity"].size();
             gravity_.resize(gravSize);
@@ -467,7 +461,7 @@ SolutionOptions::load(const YAML::Node & y_node)
         if (fix_pressure["search_method"]) {
           std::string searchMethodName = fix_pressure["search_method"].as<std::string>();
           if (searchMethodName != "stk_kdtree")
-            NaluEnv::self().naluOutputP0() << "ABL::search_method only supports stk_kdtree"
+            NaluEnv::self().naluOutputP0() << "FixPressureAtNodeInfo::search_method only supports stk_kdtree"
                                            << std::endl;
         }
       }
@@ -788,11 +782,6 @@ SolutionOptions::get_turb_prandtl(
     factor = (*iter).second;
   }
   return factor;
-}
-
-bool SolutionOptions::has_set_boussinesq_time_scale()
-{
-  return (raBoussinesqTimeScale_ > std::numeric_limits<double>::min());
 }
 
 void SolutionOptions::set_consolidated_bc_solver_alg()

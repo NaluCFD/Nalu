@@ -83,8 +83,6 @@ public:
 
   bool get_noc_usage(const std::string &dofName) const;
 
-  bool has_set_boussinesq_time_scale();
-  
   void set_consolidated_bc_solver_alg();
 
   double hybridDefault_;
@@ -144,10 +142,7 @@ public:
   double eigenvaluePerturbDelta_;
   int eigenvaluePerturbBiasTowards_;
   double eigenvaluePerturbTurbKe_;
-  double earthAngularVelocity_;
-  double latitude_;
-  double raBoussinesqTimeScale_;
-
+ 
   // mdot post processing
   double mdotAlgAccumulation_;
   double mdotAlgInflow_;
