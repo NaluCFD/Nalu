@@ -30,7 +30,6 @@ enum AlgorithmType{
   NON_CONFORMAL = 11,
   ELEM_SOURCE = 12,
   OVERSET = 13,
-  WALL_ABL = 14,
 
   /** Set the reference pressure at a node.
    *
@@ -40,7 +39,7 @@ enum AlgorithmType{
    *
    * \sa FixPressureAtNodeAlgorithm
    */
-  REF_PRESSURE = 15
+  REF_PRESSURE = 14
 };
 
 enum BoundaryConditionType{

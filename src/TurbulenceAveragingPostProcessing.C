@@ -220,30 +220,6 @@ TurbulenceAveragingPostProcessing::setup()
 {
   stk::mesh::MetaData & metaData = realm_.meta_data();
 
-
-  // Special case for boussinesq_ra algorithm
-  // The algorithm requires that "temperature_ma" be available
-  // on all blocks where temperature is defined.
-  if (realm_.solutionOptions_->has_set_boussinesq_time_scale()) {
-    const std::string temperatureName  = "temperature";
-    const std::string fTempName = MovingAveragePostProcessor::filtered_field_name(temperatureName);
-
-    auto* tempField = metaData.get_field(stk::topology::NODE_RANK, "temperature");
-    ThrowRequireMsg(tempField != nullptr, "Temperature field must be registered");
-
-    auto& field = metaData.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, fTempName);
-    stk::mesh::put_field_on_mesh(field, stk::mesh::selectField(*tempField), nullptr);
-    realm_.augment_restart_variable_list(fTempName);
-
-    movingAvgPP_ = make_unique<MovingAveragePostProcessor>(
-      realm_.bulk_data(),
-      *realm_.timeIntegrator_,
-      realm_.restarted_simulation()
-    );
-    movingAvgPP_->add_fields({temperatureName});
-    movingAvgPP_->set_time_scale(realm_.solutionOptions_->raBoussinesqTimeScale_);
-  }
-
   // loop over all info and setup (register fields, set parts, etc.)
   for (size_t k = 0; k < averageInfoVec_.size(); ++k ) {
  
@@ -263,7 +239,6 @@ TurbulenceAveragingPostProcessing::setup()
         // push back
         avInfo->partVec_.push_back(targetPart);
       }
-
 
       // register special fields whose name prevails over the averaging info name
       if ( avInfo->computeTke_ ) {
@@ -358,9 +333,29 @@ TurbulenceAveragingPostProcessing::setup()
           const std::string averagedName = primitiveName + "_resa_" + averageBlockName;
           register_field_from_primitive(primitiveName, averagedName, metaData, targetPart);
       }
-      
-    }
 
+      // Moving average
+      for ( size_t i = 0; i < avInfo->movingAvgFieldNameVec_.size(); ++i ) {
+        const std::string primitiveName  = avInfo->movingAvgFieldNameVec_[i];
+        const std::string maName = MovingAveragePostProcessor::filtered_field_name(primitiveName);
+        
+        auto* primitiveField = metaData.get_field(stk::topology::NODE_RANK, primitiveName);
+        ThrowRequireMsg(primitiveField != nullptr, "field must be registered");
+        
+        auto& maField = metaData.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, maName);
+        stk::mesh::put_field_on_mesh(maField, stk::mesh::selectField(*primitiveField), nullptr);
+        realm_.augment_restart_variable_list(maName);
+        
+        movingAvgPP_ = make_unique<MovingAveragePostProcessor>(
+          realm_.bulk_data(),
+          *realm_.timeIntegrator_,
+          realm_.restarted_simulation());
+
+        movingAvgPP_->set_time_scale(timeFilterInterval_);
+        movingAvgPP_->add_fields({maName});
+      }
+    }
+    
     // now deal with pairs; extract density
     const std::string densityName = "density";
     const std::string densityReynoldsName = "density_ra_" + averageBlockName;

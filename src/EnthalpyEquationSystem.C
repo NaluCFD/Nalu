@@ -7,7 +7,6 @@
 
 
 #include "EnthalpyEquationSystem.h"
-#include "ABLForcingAlgorithm.h"
 #include "AlgorithmDriver.h"
 #include "AssembleScalarFluxBCSolverAlgorithm.h"
 #include "AssembleScalarEdgeOpenSolverAlgorithm.h"
@@ -51,12 +50,10 @@
 #include "ScalarMassBackwardEulerNodeSuppAlg.h"
 #include "ScalarMassBDF2NodeSuppAlg.h"
 #include "ScalarMassElemSuppAlgDep.h"
-#include "EnthalpyABLSrcNodeSuppAlg.h"
 #include "Simulation.h"
 #include "TimeIntegrator.h"
 #include "SolverAlgorithmDriver.h"
 #include "SolutionOptions.h"
-#include "ABLForcingAlgorithm.h"
 
 // template for kernels
 #include "AlgTraits.h"
@@ -572,13 +569,6 @@ EnthalpyEquationSystem::register_interior_algorithm(
         }
         else if (sourceName == "BoussinesqNonIso" ) {
           suppAlg = new BoussinesqNonIsoEnthalpySrcNodeSuppAlg(realm_);
-        }
-        else if (sourceName == "abl_forcing") {
-          ThrowAssertMsg(
-            ((NULL != realm_.ablForcingAlg_) &&
-             (realm_.ablForcingAlg_->temperatureForcingOn())),
-            "EnthalpyNodalSrcTerms::ERROR! ABL Forcing parameters must be initialized to use temperature source.");
-          suppAlg = new EnthalpyABLSrcNodeSuppAlg(realm_, realm_.ablForcingAlg_);
         }
         else {
           throw std::runtime_error("EnthalpyNodalSrcTerms::Error Source term is not supported: " + sourceName);
