@@ -51,7 +51,6 @@ public:
   bool hasOutputBlock_;
   bool hasRestartBlock_;
   bool activateRestart_;
-  bool meshAdapted_;
   double restartTime_;
   std::string restartDBName_;
   int restartFreq_;

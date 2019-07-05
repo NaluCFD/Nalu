@@ -31,7 +31,8 @@ AveragingInfo::AveragingInfo()
   computeVorticity_(false),
   computeQcriterion_(false),
   computeLambdaCI_(false),
-  computeMeanResolvedKe_(false)
+  computeMeanResolvedKe_(false),
+  computeMeanErrorIndictor_(false)
 {
   // does nothing
 }

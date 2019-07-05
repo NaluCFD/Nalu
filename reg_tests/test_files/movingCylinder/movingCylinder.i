@@ -217,6 +217,10 @@ realms:
         - projected_nodal_gradient:
             momentum: element
             continuity: element
+
+      error_indicator:
+        type: pstab
+        frequency: 10
     
     output:
       output_data_base_name: fluid.e
@@ -228,6 +232,7 @@ realms:
        - pressure
        - mesh_velocity
        - div_mesh_velocity
+       - error_indicator
 
 Time_Integrators:
   - StandardTimeIntegrator:

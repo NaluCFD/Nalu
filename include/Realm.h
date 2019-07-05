@@ -52,10 +52,6 @@ class AuxFunctionAlgorithm;
 class ComputeGeometryAlgorithmDriver;
 // class OversetManager;
 class NonConformalManager;
-class ErrorIndicatorAlgorithmDriver;
-#if defined (NALU_USES_PERCEPT)
-class Adapter;
-#endif
 class EquationSystems;
 class OutputInfo;
 class PostProcessingInfo;
@@ -104,8 +100,6 @@ class Realm {
   std::string convert_bytes(double bytes);
 
   void create_mesh();
-
-  void setup_adaptivity();
 
   void setup_nodal_fields();
   void setup_edge_fields();
@@ -339,11 +333,9 @@ class Realm {
   std::string name();
 
   // redirection of stk::mesh::get_buckets to allow global selector
-  //  to be applied, e.g., in adaptivity we need to avoid the parent
-  //  elements
-  stk::mesh::BucketVector const& get_buckets( stk::mesh::EntityRank rank,
-                                              const stk::mesh::Selector & selector ,
-                                              bool get_all = false) const;
+  stk::mesh::BucketVector const& get_buckets( 
+    stk::mesh::EntityRank rank,
+    const stk::mesh::Selector & selector) const;
 
   // get aura, bulk and meta data
   bool get_activate_aura();
@@ -390,10 +382,7 @@ class Realm {
 
   // algorithm drivers managed by region
   ComputeGeometryAlgorithmDriver *computeGeometryAlgDriver_;
-  ErrorIndicatorAlgorithmDriver *errorIndicatorAlgDriver_;
-# if defined (NALU_USES_PERCEPT)  
-  Adapter *adapter_;
-#endif
+  AlgorithmDriver *errorIndicatorAlgDriver_;
   unsigned numInitialElements_;
   // for element, side, edge, node rank (node not used)
   stk::mesh::Selector adapterSelector_[4];
@@ -565,7 +554,6 @@ class Realm {
   double get_stefan_boltzmann();
   double get_turb_model_constant(
     const TurbulenceModelConstant turbModelEnum);
-  bool process_adaptivity();
 
   // id for the input mesh
   size_t inputMeshIdx_;

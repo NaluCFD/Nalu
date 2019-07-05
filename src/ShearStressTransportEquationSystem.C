@@ -281,25 +281,6 @@ ShearStressTransportEquationSystem::initial_work()
 }
 
 //--------------------------------------------------------------------------
-//-------- post_adapt_work -------------------------------------------------
-//--------------------------------------------------------------------------
-void
-ShearStressTransportEquationSystem::post_adapt_work()
-{
-  if ( realm_.process_adaptivity() ) {
-    NaluEnv::self().naluOutputP0() << "--ShearStressTransportEquationSystem::post_adapt_work()" << std::endl;
-
-    if ( SST_DES == realm_.solutionOptions_->turbulenceModel_ )
-      sstMaxLengthScaleAlgDriver_->execute();
-
-    // wall values
-    tkeEqSys_->compute_wall_model_parameters();
-    sdrEqSys_->compute_wall_model_parameters();
-  }
-
-}
-
-//--------------------------------------------------------------------------
 //-------- update_and_clip() -----------------------------------------------
 //--------------------------------------------------------------------------
 void

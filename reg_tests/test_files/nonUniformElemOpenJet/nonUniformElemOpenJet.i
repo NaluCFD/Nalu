@@ -127,6 +127,10 @@ realms:
       shift_cvfem_mdot: no
       reduced_sens_cvfem_poisson: yes 
 
+      error_indicator:
+        type: pstab
+        frequency: 1
+    
       options:
         - hybrid_factor:
             velocity: 1.0
@@ -150,6 +154,14 @@ realms:
             velocity: no
             pressure: no
 
+
+    turbulence_averaging:
+      time_filter_interval: 100.0
+      specifications:
+        - name: one
+          target_name: block_1
+          compute_mean_error_indicator: yes
+
     output:
       output_data_base_name: nonUniformElemOpenJet.e
       output_frequency: 5
@@ -159,6 +171,8 @@ realms:
        - pressure
        - turbulent_viscosity
        - mass_fraction
+       - error_indicator
+       - mean_error_indicator
 
 Time_Integrators:
   - StandardTimeIntegrator:

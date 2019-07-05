@@ -46,6 +46,7 @@ public:
   bool computeQcriterion_;
   bool computeLambdaCI_;
   bool computeMeanResolvedKe_;
+  bool computeMeanErrorIndictor_;
 
   // Temperature stresses
   bool computeTemperatureSFS_{false};

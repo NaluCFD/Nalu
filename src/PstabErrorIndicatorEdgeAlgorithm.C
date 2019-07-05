@@ -70,7 +70,7 @@ PstabErrorIndicatorEdgeAlgorithm::execute()
   // time step
   const double dt = realm_.get_time_step();
   const double gamma1 = realm_.get_gamma1();
-  const double projTimeScale = dt/gamma1;
+  const double projTimeScale = (simpleGradApproachScale_ > 0.0) ? dt/gamma1 : 1.0;
 
   // area vector; gather into
   std::vector<double> areaVec(nDim);

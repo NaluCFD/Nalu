@@ -152,7 +152,6 @@ public:
   virtual void provide_output() {}
   virtual void pre_timestep_work();
   virtual void reinitialize_linear_system() {}
-  virtual void post_adapt_work() {}
   virtual void dump_eq_time();
   virtual double provide_scaled_norm();
   virtual double provide_norm();

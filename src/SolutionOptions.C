@@ -52,20 +52,9 @@ SolutionOptions::SolutionOptions()
     meshMotion_(false),
     meshDeformation_(false),
     externalMeshDeformation_(false),
-    activateUniformRefinement_(false),
-    uniformRefineSaveAfter_(false),
-    activateAdaptivity_(false),
+    errorIndicatorActive_(false),
     errorIndicatorType_(EIT_NONE),
-    adaptivityFrequency_(0),
-    useMarker_(false),
-    refineFraction_(0.0),
-    unrefineFraction_(0.0),
-    physicalErrIndCriterion_(0.0),
-    physicalErrIndUnrefCriterionMultipler_(1.0),
-    maxRefinementNumberOfElementsFraction_(0),
-    adapterExtraOutput_(false),
-    useAdapter_(false),
-    maxRefinementLevel_(0),
+    errorIndicatorFrequency_(100),
     ncAlgGaussLabatto_(true),
     ncAlgUpwindAdvection_(true),
     ncAlgIncludePstab_(true),
@@ -119,7 +108,7 @@ SolutionOptions::load(const YAML::Node & y_node)
   if(y_solution_options)
   {
     get_required(y_solution_options, "name", name_);
-
+    
     // divU factor for stress
     get_if_present(y_solution_options, "divU_stress_scaling", includeDivU_, includeDivU_);
     
@@ -303,22 +292,6 @@ SolutionOptions::load(const YAML::Node & y_node)
               gravity_[i] = y_user_constants["gravity"][i].as<double>() ;
             }
           }
-          if (expect_sequence( y_user_constants, "east_vector", optional) ) {
-            const int vecSize = y_user_constants["east_vector"].size();
-            eastVector_.resize(vecSize);
-            for (int i = 0; i < vecSize; ++i ) {
-	      eastVector_[i] = y_user_constants["east_vector"][i].as<double>() ;
-              //y_user_constants["east_vector"][i] >> eastVector_[i];
-            }
-          }
-          if (expect_sequence( y_user_constants, "north_vector", optional) ) {
-            const int vecSize = y_user_constants["north_vector"].size();
-            northVector_.resize(vecSize);
-            for (int i = 0; i < vecSize; ++i ) {
-	      northVector_[i] = y_user_constants["north_vector"][i].as<double>() ;
-              //y_user_constants["north_vector"][i] >> northVector_[i];
-            }
-          }
         }
         else if (expect_map( y_option, "non_conformal", optional)) {
           const YAML::Node y_nc = y_option["non_conformal"];
@@ -470,160 +443,69 @@ SolutionOptions::load(const YAML::Node & y_node)
       }
     }
 
-    // uniform refinement options
-    {
-      const YAML::Node y_uniform = expect_map(y_solution_options, "uniform_refinement", optional);
-      if (y_uniform) {
-
-        NaluEnv::self().naluOutputP0() << "Uniform refinement option found." << std::endl;
-
-        const YAML::Node y_refine_at = expect_sequence(y_uniform, "refine_at", required);
-        if (y_refine_at) {
-          activateUniformRefinement_ = true;
-          std::vector<int> mvec;
-          mvec = y_refine_at.as<std::vector<int> >() ;
-          for (unsigned i=0; i < mvec.size(); ++i) {
-            NaluEnv::self().naluOutputP0() << "Uniform Refinement: refine_at[" << i << "]= " << mvec[i] << std::endl;
-
-            if (i > 0 && mvec[i-1] > mvec[i])
-              throw std::runtime_error("refine_at option error: "+ NaluParsingHelper::info(y_refine_at));
-          }
-          refineAt_ = mvec;
-        }
-        else {
-          throw std::runtime_error("refine_at option missing: "+ NaluParsingHelper::info(y_uniform));
-        }
-        get_if_present(y_uniform, "save_mesh", uniformRefineSaveAfter_, uniformRefineSaveAfter_);
-        NaluEnv::self().naluOutputP0() << "Uniform Refinement: save_mesh= " << uniformRefineSaveAfter_ << std::endl;
-      }
-    }
-
-    // adaptivity options
-    const YAML::Node y_adaptivity = expect_map(y_solution_options, "adaptivity", optional);
-    if (y_adaptivity) {
-
-#if defined (NALU_USES_PERCEPT)
-      NaluEnv::self().naluOutputP0() << "Adaptivity Active. tested on Tri, Tet and quad meshes " << std::endl;
-#else
-      throw std::runtime_error("Adaptivity not supported in NaluV1.0:");
-#endif
+    // error indicator option
+    const YAML::Node y_error_indicator = expect_map(y_solution_options, "error_indicator", optional);
+    if (y_error_indicator) {
       
-      get_if_present(y_adaptivity, "frequency", adaptivityFrequency_, adaptivityFrequency_);
-      get_if_present(y_adaptivity, "activate", activateAdaptivity_, activateAdaptivity_);
+      errorIndicatorActive_ = true;
 
-      if (activateAdaptivity_ && adaptivityFrequency_<1) {
-	throw std::runtime_error("When adaptivity is active, the frequency must by greater than 0:" + NaluParsingHelper::info(y_adaptivity));
-      }
-
-      const YAML::Node y_error_indicator = expect_map(y_adaptivity, "error_indicator", required);
-      if (y_error_indicator)
-      {
-        std::string type = "";
-        get_if_present(y_error_indicator, "type", type, type);
-        if (type == "pstab")
-          errorIndicatorType_ = EIT_PSTAB;
-        else if (type == "limiter")
-          errorIndicatorType_ = EIT_LIMITER;
-
-        // error catching and user output
-        if ( errorIndicatorType_ == EIT_NONE ) {
-          NaluEnv::self().naluOutputP0() << "no or unknown error indicator was provided; will choose pstab.  Input value= " << type << std::endl;
-          errorIndicatorType_ = EIT_PSTAB;
-        }
-
-        // for debugging/testing use only
-        if (type == "simple.vorticity_dx")
-          errorIndicatorType_ = EIT_SIMPLE_VORTICITY_DX;
-        else if (type == "simple.vorticity")
-          errorIndicatorType_ = EIT_SIMPLE_VORTICITY;
-        else if (type == "simple.dudx2")
-          errorIndicatorType_ = EIT_SIMPLE_DUDX2;
-        if (errorIndicatorType_ & EIT_SIMPLE_BASE) {
-          NaluEnv::self().naluOutputP0() << "WARNING: Found debug/test error inidicator type. Input value= " << type << std::endl;
-        }
-      }
+      std::string type = "pstab";
+      get_if_present(y_error_indicator, "type", type, type);
+      if (type == "pstab")
+        errorIndicatorType_ = EIT_PSTAB;
+      else if (type == "limiter")
+        errorIndicatorType_ = EIT_LIMITER;
+      else if (type == "simple.vorticity_dx")
+        errorIndicatorType_ = EIT_SIMPLE_VORTICITY_DX;
+      else if (type == "simple.vorticity")
+        errorIndicatorType_ = EIT_SIMPLE_VORTICITY;
+      else if (type == "simple.dudx2")
+        errorIndicatorType_ = EIT_SIMPLE_DUDX2;
+    
+      get_if_present(y_error_indicator, "frequency", errorIndicatorFrequency_, errorIndicatorFrequency_);
 
       NaluEnv::self().naluOutputP0() << std::endl;
-      NaluEnv::self().naluOutputP0() << "Adaptivity Options Review: " << std::endl;
-      NaluEnv::self().naluOutputP0() << "===========================" << std::endl;
-      NaluEnv::self().naluOutputP0() << " pstab: " << (errorIndicatorType_ & EIT_PSTAB)
-                      << " limit: " << (errorIndicatorType_ & EIT_LIMITER)
-                      << " freq : " << adaptivityFrequency_ << std::endl;
-
-      const YAML::Node y_adapter = expect_map(y_adaptivity, "adapter", optional);
-      bool marker_optional = true;
-      if (y_adapter) {
-        get_if_present(y_adapter, "activate", useAdapter_, useAdapter_);
-        get_if_present(y_adapter, "max_refinement_level", maxRefinementLevel_, maxRefinementLevel_);
-        get_if_present(y_adapter, "extra_output", adapterExtraOutput_, adapterExtraOutput_);
-        marker_optional = false;
-      }
-
-      const YAML::Node y_marker = expect_map(y_adaptivity, "marker", marker_optional);
-      if (y_marker) {
-        bool defaultUseMarker = true;
-        get_if_present(y_marker, "activate", useMarker_, defaultUseMarker);
-        get_if_present(y_marker, "refine_fraction", refineFraction_, refineFraction_);
-        get_if_present(y_marker, "unrefine_fraction", unrefineFraction_, unrefineFraction_);
-        get_if_present(y_marker, "max_number_elements_fraction", maxRefinementNumberOfElementsFraction_, maxRefinementNumberOfElementsFraction_);
-        get_if_present(y_marker, "physical_error_criterion", physicalErrIndCriterion_, physicalErrIndCriterion_);
-        get_if_present(y_marker, "physical_error_criterion_unrefine_multiplier", physicalErrIndUnrefCriterionMultipler_, physicalErrIndUnrefCriterionMultipler_);
-      }
-
-
-#define OUTN(a) " " << #a << " = " << a
-
-      NaluEnv::self().naluOutputP0() << "Adapt: options: "
-                      << OUTN(activateAdaptivity_)
-                      << OUTN(errorIndicatorType_)
-                      << OUTN(adaptivityFrequency_) << "\n"
-                      << OUTN(useMarker_)
-                      << OUTN(refineFraction_)
-                      << OUTN(unrefineFraction_)
-                      << OUTN(physicalErrIndCriterion_)
-                      << OUTN(physicalErrIndUnrefCriterionMultipler_)
-                      << OUTN(maxRefinementNumberOfElementsFraction_) << "\n"
-                      << OUTN(useAdapter_)
-                      << OUTN(maxRefinementLevel_)
-                      << std::endl;
-
+      NaluEnv::self().naluOutputP0() << "Error Indicator Options Review: " << std::endl;
+      NaluEnv::self().naluOutputP0() << "================================" << std::endl;
+      NaluEnv::self().naluOutputP0() << " Type: " << type << std::endl;
+      NaluEnv::self().naluOutputP0() << " Frequency: " << errorIndicatorFrequency_ << std::endl;
     }
-  }
 
-   NaluEnv::self().naluOutputP0() << std::endl;
-   NaluEnv::self().naluOutputP0() << "Turbulence Model Review:   " << std::endl;
-   NaluEnv::self().naluOutputP0() << "===========================" << std::endl;
-   NaluEnv::self().naluOutputP0() << "Turbulence Model is: "
-       << TurbulenceModelNames[turbulenceModel_] << " " << isTurbulent_ <<std::endl;
-
-   // over view PPE specifications
-   NaluEnv::self().naluOutputP0() << std::endl;
-   NaluEnv::self().naluOutputP0() << "PPE review:   " << std::endl;
-   NaluEnv::self().naluOutputP0() << "===========================" << std::endl;
-
-   if ( cvfemShiftMdot_ )
-     NaluEnv::self().naluOutputP0() << "Shifted CVFEM mass flow rate" << std::endl;
-   if ( cvfemReducedSensPoisson_)
-     NaluEnv::self().naluOutputP0() << "Reduced sensitivities CVFEM Poisson" << std::endl;
-
-   // sanity checks; if user asked for shifted Poisson, then user will have reduced sensitivities
-   if ( get_shifted_grad_op("pressure") ) {
-     if ( !cvfemReducedSensPoisson_) {
-       NaluEnv::self().naluOutputP0() << "Reduced sensitivities CVFEM Poisson will be set since reduced grad_op is requested" << std::endl;
-       cvfemReducedSensPoisson_ = true;
-     }
-   }
-   
-   // overview gradient operator for CVFEM
-   if ( shiftedGradOpMap_.size() > 0 ) {
-     NaluEnv::self().naluOutputP0() << std::endl;
-     NaluEnv::self().naluOutputP0() << "CVFEM gradient operator review:   " << std::endl;
-     NaluEnv::self().naluOutputP0() << "===========================" << std::endl;
-     for ( const auto& shiftIt : shiftedGradOpMap_ ) {
-       NaluEnv::self().naluOutputP0() << " dof: " << shiftIt.first
-                                      << " shifted: " << (shiftIt.second ? "yes" : "no") << std::endl; 
-     }
-   }
+    NaluEnv::self().naluOutputP0() << std::endl;
+    NaluEnv::self().naluOutputP0() << "Turbulence Model Review:   " << std::endl;
+    NaluEnv::self().naluOutputP0() << "===========================" << std::endl;
+    NaluEnv::self().naluOutputP0() << "Turbulence Model is: "
+                                   << TurbulenceModelNames[turbulenceModel_] << " " << isTurbulent_ <<std::endl;
+    
+    // over view PPE specifications
+    NaluEnv::self().naluOutputP0() << std::endl;
+    NaluEnv::self().naluOutputP0() << "PPE review:   " << std::endl;
+    NaluEnv::self().naluOutputP0() << "===========================" << std::endl;
+    
+    if ( cvfemShiftMdot_ )
+      NaluEnv::self().naluOutputP0() << "Shifted CVFEM mass flow rate" << std::endl;
+    if ( cvfemReducedSensPoisson_)
+      NaluEnv::self().naluOutputP0() << "Reduced sensitivities CVFEM Poisson" << std::endl;
+    
+    // sanity checks; if user asked for shifted Poisson, then user will have reduced sensitivities
+    if ( get_shifted_grad_op("pressure") ) {
+      if ( !cvfemReducedSensPoisson_) {
+        NaluEnv::self().naluOutputP0() << "Reduced sensitivities CVFEM Poisson will be set since reduced grad_op is requested" << std::endl;
+        cvfemReducedSensPoisson_ = true;
+      }
+    }
+    
+    // overview gradient operator for CVFEM
+    if ( shiftedGradOpMap_.size() > 0 ) {
+      NaluEnv::self().naluOutputP0() << std::endl;
+      NaluEnv::self().naluOutputP0() << "CVFEM gradient operator review:   " << std::endl;
+      NaluEnv::self().naluOutputP0() << "===========================" << std::endl;
+      for ( const auto& shiftIt : shiftedGradOpMap_ ) {
+        NaluEnv::self().naluOutputP0() << " dof: " << shiftIt.first
+                                       << " shifted: " << (shiftIt.second ? "yes" : "no") << std::endl; 
+      }
+    }
+  } 
 }
 
 //--------------------------------------------------------------------------

@@ -28,7 +28,6 @@
 #include "EquationSystem.h"
 #include "EquationSystems.h"
 #include "Enums.h"
-#include "ErrorIndicatorAlgorithmDriver.h"
 #include "FieldFunctions.h"
 #include "LinearSolvers.h"
 #include "LinearSolver.h"
@@ -267,7 +266,7 @@ HeatCondEquationSystem::register_element_fields(
   stk::mesh::MetaData &meta_data = realm_.meta_data();
   
   // deal with heat conduction error indicator; elemental field of size unity
-  if ( realm_.solutionOptions_->activateAdaptivity_) {
+  if ( realm_.solutionOptions_->errorIndicatorActive_ ) {
     const int numIp = 1;
     GenericFieldType *pstabEI= &(meta_data.declare_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "error_indicator"));
     stk::mesh::put_field_on_mesh(*pstabEI, *part, numIp, nullptr);
@@ -468,7 +467,7 @@ HeatCondEquationSystem::register_interior_algorithm(
   }
 
   // deal with adaptivity
-  if ( realm_.solutionOptions_->activateAdaptivity_) {
+  if ( realm_.solutionOptions_->errorIndicatorActive_) {
 
     // non-solver alg
     std::map<AlgorithmType, Algorithm *>::iterator itEI
