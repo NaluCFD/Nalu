@@ -157,10 +157,18 @@ realms:
 
     turbulence_averaging:
       time_filter_interval: 100.0
+      averaging_type: moving_exponential
+
       specifications:
         - name: one
           target_name: block_1
           compute_mean_error_indicator: yes
+
+          moving_averaged_variables:
+            - pressure
+            - velocity
+            - mass_fraction
+            - turbulent_viscosity
 
     output:
       output_data_base_name: nonUniformElemOpenJet.e
@@ -173,6 +181,10 @@ realms:
        - mass_fraction
        - error_indicator
        - mean_error_indicator
+       - pressure_ma
+       - velocity_ma
+       - mass_fraction_ma
+       - turbulent_viscosity_ma
 
 Time_Integrators:
   - StandardTimeIntegrator:

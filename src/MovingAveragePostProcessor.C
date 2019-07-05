@@ -70,12 +70,14 @@ MovingAveragePostProcessor::MovingAveragePostProcessor(
 void MovingAveragePostProcessor::add_fields(std::vector<std::string> fieldNames)
 {
   for (const auto& fieldName : fieldNames) {
-    auto& meta = bulk_.mesh_meta_data();
+    auto& meta = bulk_.mesh_meta_data();   
     auto* field = meta.get_field(stk::topology::NODE_RANK, fieldName);
+ 
     ThrowRequireMsg(field != nullptr, "Requested field `" + fieldName + "' not available for averaging");
     ThrowRequireMsg(field->type_is<double>(), "Only double precision-typed fields allowed");
 
     stk::mesh::FieldBase* avgField = meta.get_field(stk::topology::NODE_RANK, filtered_field_name(field->name()));
+    
     ThrowRequireMsg(avgField != nullptr, filtered_field_name(field->name()) + " field not registered" );
     fieldMap_.insert({field, avgField});
   }
@@ -86,14 +88,7 @@ MovingAveragePostProcessor::set_time_scale(std::string fieldName, double timeSca
 {
   averagers_[fieldName] = ExponentialMovingAverager(timeScale, !isRestarted_);
 }
-//--------------------------------------------------------------------------
-void
-MovingAveragePostProcessor::set_time_scale(double timeScale)
-{
-  for (const auto& fieldPair : fieldMap_) {
-    averagers_[fieldPair.first->name()]= ExponentialMovingAverager(timeScale, !isRestarted_);
-  }
-}
+
 //--------------------------------------------------------------------------
 void MovingAveragePostProcessor::execute()
 {

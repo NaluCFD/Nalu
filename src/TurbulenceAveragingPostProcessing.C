@@ -52,7 +52,9 @@ TurbulenceAveragingPostProcessing::TurbulenceAveragingPostProcessing(
   : realm_(realm),
     currentTimeFilter_(0.0),
     timeFilterInterval_(1.0e8),
-    forcedReset_(false)
+    forcedReset_(false),
+    averagingType_(NALU_CLASSIC),
+    movingAvgPP_(NULL)
 {
   // load the data
   load(node);
@@ -65,6 +67,9 @@ TurbulenceAveragingPostProcessing::~TurbulenceAveragingPostProcessing()
 {
   for ( size_t k = 0; k < averageInfoVec_.size(); ++k )
     delete averageInfoVec_[k];
+
+  if ( NULL != movingAvgPP_ )
+    delete movingAvgPP_;
 }
 
 //--------------------------------------------------------------------------
@@ -331,32 +336,26 @@ TurbulenceAveragingPostProcessing::setup()
 
       // Resolved
       for ( size_t i = 0; i < avInfo->resolvedFieldNameVec_.size(); ++i ) {
-          const std::string primitiveName = avInfo->resolvedFieldNameVec_[i];
-          const std::string averagedName = primitiveName + "_resa_" + averageBlockName;
-          register_field_from_primitive(primitiveName, averagedName, metaData, targetPart);
+        const std::string primitiveName = avInfo->resolvedFieldNameVec_[i];
+        const std::string averagedName = primitiveName + "_resa_" + averageBlockName;
+        register_field_from_primitive(primitiveName, averagedName, metaData, targetPart);
       }
 
       // Moving average
       for ( size_t i = 0; i < avInfo->movingAvgFieldNameVec_.size(); ++i ) {
         const std::string primitiveName  = avInfo->movingAvgFieldNameVec_[i];
-        const std::string maName = MovingAveragePostProcessor::filtered_field_name(primitiveName);
+        const std::string averagedName = MovingAveragePostProcessor::filtered_field_name(primitiveName);
+        register_field_from_primitive(primitiveName, averagedName, metaData, targetPart);
         
-        auto* primitiveField = metaData.get_field(stk::topology::NODE_RANK, primitiveName);
-        ThrowRequireMsg(primitiveField != nullptr, "field must be registered");
-        
-        auto& maField = metaData.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, maName);
-        stk::mesh::put_field_on_mesh(maField, stk::mesh::selectField(*primitiveField), nullptr);
-        realm_.augment_restart_variable_list(maName);
-        
-        movingAvgPP_ = make_unique<MovingAveragePostProcessor>(
-          realm_.bulk_data(),
-          *realm_.timeIntegrator_,
-          realm_.restarted_simulation());
-
-        movingAvgPP_->set_time_scale(timeFilterInterval_);
-        movingAvgPP_->add_fields({maName});
+        if ( NULL == movingAvgPP_ ) {
+          movingAvgPP_ = new MovingAveragePostProcessor(realm_.bulk_data(),
+                                                        *realm_.timeIntegrator_,
+                                                        realm_.restarted_simulation()); 
+        }
+        movingAvgPP_->add_fields({primitiveName});
+        movingAvgPP_->set_time_scale(primitiveName, timeFilterInterval_);
       }
-    
+      
       // mean error indicator
       if ( avInfo->computeMeanErrorIndictor_ ) {
         const std::string meanEiName = "mean_error_indicator";
@@ -508,24 +507,21 @@ TurbulenceAveragingPostProcessing::review(
                                    << " size " << avInfo->favreFieldSizeVec_[iav] << std::endl;
   }
 
-
   for ( size_t iav = 0; iav < avInfo->resolvedFieldVecPair_.size(); ++iav ) {
       stk::mesh::FieldBase *primitiveFB = avInfo->resolvedFieldVecPair_[iav].first;
       stk::mesh::FieldBase *averageFB = avInfo->resolvedFieldVecPair_[iav].second;
       NaluEnv::self().naluOutputP0() << "Primitive/Resolved name: " << primitiveFB->name() << "/" <<  averageFB->name()
                                      << " size " << avInfo->resolvedFieldSizeVec_[iav] << std::endl;
   }
-  
 
   if (movingAvgPP_ != nullptr) {
     for (const auto& fieldPair : movingAvgPP_->get_field_map()) {
       stk::mesh::FieldBase *primitiveFB = fieldPair.first;
       stk::mesh::FieldBase *averageFB  = fieldPair.second;
-      NaluEnv::self().naluOutputP0() << "Primitive/Favre name:    " << primitiveFB->name() << "/" <<  averageFB->name()
-                                       << std::endl;
+      NaluEnv::self().naluOutputP0() << "Primitive/MovingAverage name:    " << primitiveFB->name() << "/" <<  averageFB->name()
+                                     << std::endl;
     }
   }
-
 
   if ( avInfo->computeTke_ ) {
     NaluEnv::self().naluOutputP0() << "TKE will be computed; add resolved_turbulent_ke to the Reynolds/Favre block for mean"<< std::endl;
@@ -683,16 +679,16 @@ TurbulenceAveragingPostProcessing::execute()
 
         // resolved next 
         for ( size_t iav = 0; iav < resolvedFieldPairSize; ++iav ) {
-            stk::mesh::FieldBase *primitiveFB = avInfo->resolvedFieldVecPair_[iav].first;
-            stk::mesh::FieldBase *averageFB = avInfo->resolvedFieldVecPair_[iav].second;
-            const double * primitive = (double*)stk::mesh::field_data(*primitiveFB, node);
-            double * average = (double*)stk::mesh::field_data(*averageFB, node);
-            // get size
-            const int fieldSize = avInfo->resolvedFieldSizeVec_[iav];
-            for ( int j = 0; j < fieldSize; ++j ) {
-                const double averageField = (average[j]*oldTimeFilter*zeroCurrent + rho*primitive[j]*dt)/currentTimeFilter_;
-                average[j] = averageField;
-            }
+          stk::mesh::FieldBase *primitiveFB = avInfo->resolvedFieldVecPair_[iav].first;
+          stk::mesh::FieldBase *averageFB = avInfo->resolvedFieldVecPair_[iav].second;
+          const double * primitive = (double*)stk::mesh::field_data(*primitiveFB, node);
+          double * average = (double*)stk::mesh::field_data(*averageFB, node);
+          // get size
+          const int fieldSize = avInfo->resolvedFieldSizeVec_[iav];
+          for ( int j = 0; j < fieldSize; ++j ) {
+            const double averageField = (average[j]*oldTimeFilter*zeroCurrent + rho*primitive[j]*dt)/currentTimeFilter_;
+            average[j] = averageField;
+          }
         }
         
       }

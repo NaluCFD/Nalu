@@ -169,9 +169,9 @@ public:
 
   bool forcedReset_; /* allows forhard reset */
 
-  AveragingType averagingType_{NALU_CLASSIC};
-  std::unique_ptr<MovingAveragePostProcessor> movingAvgPP_;
-
+  AveragingType averagingType_;
+  MovingAveragePostProcessor *movingAvgPP_;
+  
   // vector of averaging information
   std::vector<AveragingInfo *> averageInfoVec_;
 };

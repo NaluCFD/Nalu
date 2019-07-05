@@ -57,8 +57,7 @@ public:
 
   void add_fields(std::vector<std::string> fieldName);
   void set_time_scale(std::string fieldName, double timeScale);
-  void set_time_scale(double timeScale);
-
+ 
   std::map<stk::mesh::FieldBase*, stk::mesh::FieldBase*>& get_field_map()
   {
     return fieldMap_;
