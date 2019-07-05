@@ -79,7 +79,6 @@ public:
   virtual void pre_iter_work();
   virtual void solve_and_update();
   void compute_dynamic_pressure();
-  virtual void post_adapt_work();
 
   virtual void predict_state();
 

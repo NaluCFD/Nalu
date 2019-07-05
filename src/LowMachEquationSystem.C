@@ -57,7 +57,6 @@
 #include "Enums.h"
 #include "EquationSystem.h"
 #include "EquationSystems.h"
-#include "ErrorIndicatorAlgorithmDriver.h"
 #include "FieldFunctions.h"
 #include "LinearSolver.h"
 #include "LinearSolvers.h"
@@ -329,7 +328,7 @@ LowMachEquationSystem::register_element_fields(
   }
 
   // deal with fluids error indicator; elemental field of size unity
-  if ( realm_.solutionOptions_->activateAdaptivity_) {
+  if ( realm_.solutionOptions_->errorIndicatorActive_) {
     const int numIp = 1;
     GenericFieldType *pstabEI= &(meta_data.declare_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "error_indicator"));
     stk::mesh::put_field_on_mesh(*pstabEI, *part, numIp, nullptr);
@@ -378,7 +377,7 @@ LowMachEquationSystem::register_interior_algorithm(
 {
   // types of algorithms
   const AlgorithmType algType = INTERIOR;
-  if ( realm_.solutionOptions_->activateAdaptivity_) {
+  if ( realm_.solutionOptions_->errorIndicatorActive_) {
 
     // non-solver alg
     std::map<AlgorithmType, Algorithm *>::iterator it
@@ -757,56 +756,6 @@ LowMachEquationSystem::compute_dynamic_pressure()
   for( ii=dynamicPressureAlg_.begin(); ii!=dynamicPressureAlg_.end(); ++ii ) {
     (*ii)->execute();
   }
-}
-
-//--------------------------------------------------------------------------
-//-------- post_adapt_work -------------------------------------------------
-//--------------------------------------------------------------------------
-void
-LowMachEquationSystem::post_adapt_work()
-{
-
-  // at the very least, we need to populate ip values at edge/element
-  if ( realm_.process_adaptivity() ) {
-    
-    NaluEnv::self().naluOutputP0() << "--LowMachEquationSystem::post_adapt_work()" << std::endl;
-
-    // compute new nodal pressure gradient
-    continuityEqSys_->compute_projected_nodal_gradient();
-    
-    // continuity assemble, load_complete and solve
-    const bool solveCont = false;
-    if ( solveCont ) {
-
-      // compute new nodal pressure gradient
-      continuityEqSys_->compute_projected_nodal_gradient();
-      
-      continuityEqSys_->assemble_and_solve(continuityEqSys_->pTmp_);
-      
-      // update pressure
-      field_axpby(
-          realm_.meta_data(),
-          realm_.bulk_data(),
-          1.0, *continuityEqSys_->pTmp_,
-          1.0, *continuityEqSys_->pressure_,
-          realm_.get_activate_aura());
-    }
-    
-    // compute mdot
-    continuityEqSys_->computeMdotAlgDriver_->execute();
-    
-    // project nodal velocity/gradU
-    const bool processU = false;
-    if ( processU ) {
-      project_nodal_velocity();
-      momentumEqSys_->assembleNodalGradAlgDriver_->execute();
-    }
-    
-    // compute wall function parameters (bip values)
-    momentumEqSys_->compute_wall_function_params();
-    
-  }
-
 }
 
 //--------------------------------------------------------------------------

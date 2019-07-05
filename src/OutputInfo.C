@@ -40,7 +40,6 @@ OutputInfo::OutputInfo()
     hasOutputBlock_(false),
     hasRestartBlock_(false),
     activateRestart_(false),
-    meshAdapted_(false),
     restartTime_(0.0),
     restartDBName_("restart.rst"),
     restartFreq_(500),

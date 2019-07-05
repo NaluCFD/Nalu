@@ -173,9 +173,6 @@ void Simulation::high_level_banner() {
 #ifdef NALU_USES_TIOGA
   additionalTPLs.push_back("TIOGA");
 #endif
-#ifdef NALU_USES_PERCEPT
-  additionalTPLs.push_back("Percept");
-#endif
 
   NaluEnv::self().naluOutputP0() << std::endl;
   NaluEnv::self().naluOutputP0() << "=================================================================" << std::endl;

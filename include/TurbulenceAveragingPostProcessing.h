@@ -155,6 +155,12 @@ public:
 	const std::string &averageBlockName,
 	stk::mesh::Selector s_all_nodes);
 
+  void compute_mean_error_indicator(
+        stk::mesh::Selector s_all_nodes,
+        const double dt,
+        const double oldTimeFilter,
+        const double zeroCurrent);
+
   // hold the realm
   Realm &realm_;
 
