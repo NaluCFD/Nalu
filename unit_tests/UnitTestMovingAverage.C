@@ -68,8 +68,9 @@ TEST_F(PostProcessor, moving_average_constant)
 
     double timeScale = 0.1;
     sierra::nalu::MovingAveragePostProcessor avgPP(bulk_, timeIntegrator_, false);
-    avgPP.add_fields({"temperature"});
-    avgPP.set_time_scale(timeScale);
+    const std::string primitiveName = "temperature";
+    avgPP.add_fields({primitiveName});
+    avgPP.set_time_scale(primitiveName, timeScale);
 
     for (int j = 0; j < numSteps; ++j) {
       double* temperatureVal = stk::mesh::field_data(*temperature_, node);
@@ -114,8 +115,9 @@ TEST_F(PostProcessor, moving_average_ou)
 
     double timeScale = 0.1;
     sierra::nalu::MovingAveragePostProcessor avgPP(bulk_, timeIntegrator_, false);
-    avgPP.add_fields({"temperature"});
-    avgPP.set_time_scale(timeScale);
+    const std::string primitiveName = "temperature";
+    avgPP.add_fields({primitiveName});
+    avgPP.set_time_scale(primitiveName, timeScale);
 
     std::ofstream outputFile("PostProcessor.moving_average_ou.txt");
     outputFile << "t, temperature, temperature_avg" << std::endl;
