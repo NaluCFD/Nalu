@@ -530,14 +530,11 @@ Specified Boundary-Normal Temperature Gradient Option
 
 The standard symmetry boundary condition applies zero diffusion at the 
 boundary for scalar quantities, which effectively results in those scalars 
-having a zero boundary-normal gradient.  There are situations, especially 
-for atmospheric flows in which the user may desire a finite boundary-normal 
-gradient of temperature.  For example, the atmospheric boundary layer is 
-often simulated with a stably stratified capping inversion in which the
-temperature linearly increases with height all the way to the upper 
-domain boundary.  We apply symmetry conditions to this upper boundary for
+having a zero boundary-normal gradient.  There are situations in which the 
+user may desire a finite boundary-normal gradient of temperature.  Here,
+we apply symmetry conditions to this upper boundary for
 momentum, but we specify the boundary-normal temperature gradient on this
-boundary to match the capping inversion's gradient. 
+boundary to match the desired gradient. 
 
 This is an option in the symmetry boundary condition specification, which 
 appears in the input file as:
