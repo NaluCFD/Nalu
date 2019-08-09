@@ -86,6 +86,6 @@ TEST_F(TestTurbulenceAlgorithm, turbviscwalealgorithm)
   // Perform tests
   const double tol = 1e-14;
   double norm = field_norm(*tvisc_);
-  const double gold_norm = 0.0125168821438404;
+  const double gold_norm = 0.014718034905114299;
   EXPECT_NEAR(norm, gold_norm, tol);
 }
