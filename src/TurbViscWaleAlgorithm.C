@@ -68,7 +68,10 @@ TurbViscWaleAlgorithm::execute()
   const double fiveHalves = 5.0/2.0;
   const double fiveFourths = 5.0/4.0;
   const double small = 1.0e-8;
-
+  const double kd[3][3] = { {1.0, 0.0, 0.0}, 
+                            {0.0, 1.0, 0.0}, 
+                            {0.0, 0.0, 1.0} }; 
+  
   // define some common selectors
   stk::mesh::Selector s_all_nodes
     = (meta_data.locally_owned_part() | meta_data.globally_shared_part())
@@ -88,8 +91,16 @@ TurbViscWaleAlgorithm::execute()
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
 
       const double *dudx = stk::mesh::field_data(*dudx_, b[k] );
+      
+      double gkkSq = 0.0;
+      for ( int m = 0; m < nDim; ++m ) {
+        const int offSetM = nDim*m;
+        for ( int n = 0; n < nDim; ++n ) {
+          const int offSetN = nDim*n;
+          gkkSq += dudx[offSetM+n]*dudx[offSetN+m];
+        }
+      }
 
-      // ignore divU term for now..
       double SijSq = 0.0;
       double SijdSq = 0.0;
       for ( int i = 0; i < nDim; ++i ) {
@@ -104,7 +115,7 @@ TurbViscWaleAlgorithm::execute()
             gijSq += dudx[offSetI+l]*dudx[offSetL+j];
             gjiSq += dudx[offSetJ+l]*dudx[offSetL+i];
           }
-          const double Sijd = 0.5*(gijSq + gjiSq);
+          const double Sijd = 0.5*(gijSq + gjiSq) - kd[i][j]/3.0*gkkSq;
           SijSq += Sij*Sij;
           SijdSq += Sijd*Sijd;
         }
