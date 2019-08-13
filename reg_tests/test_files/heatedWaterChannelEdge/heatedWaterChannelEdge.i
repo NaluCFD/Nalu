@@ -7,7 +7,7 @@ linear_solvers:
     type: tpetra
     method: gmres
     preconditioner: sgs
-    tolerance: 1e-5
+    tolerance: 1e-6
     max_iterations: 50
     kspace: 50
     output_level: 0
@@ -16,7 +16,7 @@ linear_solvers:
     type: tpetra
     method: gmres
     preconditioner: muelu
-    tolerance: 1e-5
+    tolerance: 1e-6
     max_iterations: 50
     kspace: 50
     output_level: 0
@@ -30,7 +30,7 @@ realms:
 
     equation_systems:
       name: theEqSys
-      max_iterations: 4
+      max_iterations: 10
 
       solver_system_specification:
         velocity: solve_scalar
