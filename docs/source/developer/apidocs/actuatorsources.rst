@@ -1,6 +1,6 @@
 Actuator Sources
 ================
 
-The :class:`sierra::nalu::ActuatorLineFAST` class is a child class of the generic :class:`sierra::nalu::Actuator` class that couples Nalu with OpenFAST for actuator line simulations of wind turbines. 
+The :class:`sierra::nalu::Actuator` simply computes momentum sources for a line of defined actuator points. 
 
 .. doxygenclass:: sierra::nalu::Actuator
