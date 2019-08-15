@@ -45,6 +45,7 @@
 #include "SolutionOptions.h"
 #include "TimeIntegrator.h"
 #include "SpecificDissipationRateSSTNodeSourceSuppAlg.h"
+#include "SpecificDissipationRateSSTDESNodeSourceSuppAlg.h"
 #include "SolverAlgorithmDriver.h"
 
 // template for supp algs
@@ -312,11 +313,24 @@ SpecificDissipationRateEquationSystem::register_interior_algorithm(
       }
 
       // now create the src alg for sdr source
-      SpecificDissipationRateSSTNodeSourceSuppAlg *theSrc
-        = new SpecificDissipationRateSSTNodeSourceSuppAlg(realm_);
+      SupplementalAlgorithm *theSrc = NULL;
+      switch(realm_.solutionOptions_->turbulenceModel_) {
+      case SST:
+        {
+          theSrc = new SpecificDissipationRateSSTNodeSourceSuppAlg(realm_);
+        }
+        break;
+      case SST_DES:
+        {
+          theSrc = new SpecificDissipationRateSSTDESNodeSourceSuppAlg(realm_);
+        }
+        break;
+      default:
+        throw std::runtime_error("Unsupported turbulence model in TurbKe: only SST and SST_DES supported");
+      }
       theAlg->supplementalAlg_.push_back(theSrc);
 
-      // Add src term supp alg...; limited number supported
+      // Add nodal src term supp alg...; limited number supported
       std::map<std::string, std::vector<std::string> >::iterator isrc
         = realm_.solutionOptions_->srcTermsMap_.find("specific_dissipation_rate");
       if (isrc != realm_.solutionOptions_->srcTermsMap_.end()) {
