@@ -122,7 +122,7 @@ TurbViscWaleAlgorithm::execute()
       }
 
       const double filter = std::pow(dualNodalVolume[k], invNdim);
-      const double Ls = Cw_*filter; // min (Cw_*filter, kappa*ndtw)
+      const double Ls = Cw_*filter;
       const double numer = std::pow(SijdSq, threeHalves) + small*small;
       const double demom = std::pow(SijSq, fiveHalves)+std::pow(SijdSq, fiveFourths) + small;
       tvisc[k] = density[k]*Ls*Ls*numer/demom;
