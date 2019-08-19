@@ -459,6 +459,16 @@ ShearStressTransportEquationSystem::clip_min_distance_to_wall()
        }
      }
    }
+  
+   // parallel reduce
+   std::vector<const stk::mesh::FieldBase *> fieldVec;
+   fieldVec.push_back(minDistanceToWall_);
+   stk::mesh::parallel_max(bulk_data, fieldVec);
+   
+   // deal with periodicity
+   if ( realm_.hasPeriodic_) {
+     realm_.periodic_field_update(minDistanceToWall_, 1);
+   }
 }
 
 //--------------------------------------------------------------------------

@@ -142,7 +142,7 @@ ComputeSSTMaxLengthScaleElemAlgorithm::execute()
     }
   }  
 
-  // parallel reduce; worry about periodic?
+  // parallel reduce
   std::vector<const stk::mesh::FieldBase *> fieldVec;
   fieldVec.push_back(maxLengthScale_);
   stk::mesh::parallel_max(bulk_data, fieldVec);
