@@ -590,48 +590,48 @@ Tet10FEM::tet10_derivative(
 
     // node 1
     deriv[0+3*1+p] = 4.0*s1-1.0;
-    deriv[0+3*1+p] = 0.0;
-    deriv[0+3*1+p] = 0.0;
+    deriv[1+3*1+p] = 0.0;
+    deriv[2+3*1+p] = 0.0;
 
     // node 2
     deriv[0+3*2+p] = 0.0;
-    deriv[0+3*2+p] = 4.0*s2-1.0;
-    deriv[0+3*2+p] = 0.0;
+    deriv[1+3*2+p] = 4.0*s2-1.0;
+    deriv[2+3*2+p] = 0.0;
 
     // node 3
     deriv[0+3*3+p] = 0.0;
-    deriv[0+3*3+p] = 0.0;
-    deriv[0+3*3+p] = 4.0*s3-1.0;
+    deriv[1+3*3+p] = 0.0;
+    deriv[2+3*3+p] = 4.0*s3-1.0;
 
     // node 4
     deriv[0+3*4+p] = 4.0*(1.0-2.0*s1-s2-s3);
-    deriv[0+3*4+p] =-4.0*s1;
-    deriv[0+3*4+p] =-4.0*s1;
+    deriv[1+3*4+p] =-4.0*s1;
+    deriv[2+3*4+p] =-4.0*s1;
 
     // node 5
     deriv[0+3*5+p] = 4.0*s2;
-    deriv[0+3*5+p] = 4.0*s1;
-    deriv[0+3*5+p] = 0.0;
+    deriv[1+3*5+p] = 4.0*s1;
+    deriv[2+3*5+p] = 0.0;
 
     // node 6
     deriv[0+3*6+p] =-4.0*s2;
-    deriv[0+3*6+p] = 4.0*(1.0-s1-2.0*s2-s3);
-    deriv[0+3*6+p] =-4.0*s2;
+    deriv[1+3*6+p] = 4.0*(1.0-s1-2.0*s2-s3);
+    deriv[2+3*6+p] =-4.0*s2;
 
     // node 7
     deriv[0+3*7+p] =-4.0*s3;
-    deriv[0+3*7+p] =-4.0*s3;
-    deriv[0+3*7+p] = 4.0*(1.0-s1-s2-2.0*s3);
+    deriv[1+3*7+p] =-4.0*s3;
+    deriv[2+3*7+p] = 4.0*(1.0-s1-s2-2.0*s3);
 
     // node 8
     deriv[0+3*8+p] = 4.0*s3;
-    deriv[0+3*8+p] = 0.0;
-    deriv[0+3*8+p] = 4.0*s1;
+    deriv[1+3*8+p] = 0.0;
+    deriv[2+3*8+p] = 4.0*s1;
 
     // node 9
     deriv[0+3*9+p] = 0.0;
-    deriv[0+3*9+p] = 4.0*s3;
-    deriv[0+3*9+p] = 4.0*s2;
+    deriv[1+3*9+p] = 4.0*s3;
+    deriv[2+3*9+p] = 4.0*s2;
   }
 }
 
