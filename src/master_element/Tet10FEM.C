@@ -251,7 +251,7 @@ const int *
 Tet10FEM::side_node_ordinals(int ordinal)
 {
   // define face_ordinal->node_ordinal mappings for each face (ordinal);
-  return &sideNodeOrdinals_[ordinal*4];
+  return &sideNodeOrdinals_[ordinal*6];
 }
 
 //--------------------------------------------------------------------------
