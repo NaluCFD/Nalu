@@ -76,11 +76,17 @@ realms:
 
     boundary_conditions:
 
-    - periodic_boundary_condition: bc_left_right
-      target_name: [surface_1, surface_2]
-      periodic_user_data:
-        search_tolerance: 1.e-5
-        search_method: boost_rtree
+    - open_boundary_condition: bc_left
+      target_name: surface_1
+      open_user_data:
+        velocity: [0.0,0.0,0.0]
+        pressure: 0.016
+
+    - open_boundary_condition: bc_right
+      target_name: surface_2
+      open_user_data:
+        velocity: [0.0,0.0,0.0]
+        pressure: 0.0
 
     - wall_boundary_condition: bc_walls
       target_name: surface_3
@@ -100,12 +106,9 @@ realms:
             velocity: 0.0
 
         - element_source_terms:
-            momentum: [momentum_time_derivative, advection, diffusion, body_force]
+            momentum: [momentum_time_derivative, advection, diffusion]
             continuity: advection
             dpdx: interior_png
-
-        - element_source_term_parameters:
-            momentum: [0.0, 0.0, 0.0016]
 
         - consistent_mass_matrix_png:
             pressure: yes
@@ -120,7 +123,7 @@ realms:
        - [velocity, OneTwoTenVelocity]
 
     output:
-      output_data_base_name: output/tet10_fem_0p2_cons.e
+      output_data_base_name: 1x2x10Tet10.e
       output_frequency: 5
       output_node_set: no 
       output_variables:

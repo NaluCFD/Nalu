@@ -92,7 +92,6 @@ ScalarPngBcFemKernel<BcAlgTraits>::execute(
       
       // component j
       for ( int j = 0; j < BcAlgTraits::nDim_; ++j ) {
-        //std::cout << j << " " << v_normal(ip,j) << std::endl;
         rhs(ir*BcAlgTraits::nDim_+j) += wIr*qBip*ipFactor*v_normal(ip,j);
       }
     }
