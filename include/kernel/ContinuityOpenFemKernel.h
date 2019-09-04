@@ -63,7 +63,7 @@ private:
   GenericFieldType *dynamicPressure_{nullptr};
 
   double projTimeScale_{1.0};
-  const double penaltyFac_{2.0};
+  const double penaltyFac_{4.0};
   
   const bool shiftedGradOp_;
   const bool reducedSensitivities_;

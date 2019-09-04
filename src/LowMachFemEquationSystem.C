@@ -269,7 +269,7 @@ LowMachFemEquationSystem::register_open_bc(
   
   // check for total bc to create an algorithm
   if ( userData.useTotalP_ ) {
-    throw std::runtime_error("LowMachFemEquationSystem::Error: use total pressure not supported");
+    throw std::runtime_error("LowMachFemEquationSystem::Error: use total pressure not supported: need dypP and PNG");
   }
 }
 
@@ -293,7 +293,8 @@ LowMachFemEquationSystem::solve_and_update()
   double timeA, timeB;
   if ( isInit_ ) {
     timeA = NaluEnv::self().nalu_time();
-    //continuityEqSys_->compute_projected_nodal_gradient();
+    // TBD: compute_dynamic_pressure();
+    continuityEqSys_->compute_projected_nodal_gradient();
     copy_lagged();
     timeB = NaluEnv::self().nalu_time();
     continuityEqSys_->timerMisc_ += (timeB-timeA);
@@ -336,7 +337,7 @@ LowMachFemEquationSystem::solve_and_update()
       realm_.get_activate_aura());
     timeB = NaluEnv::self().nalu_time();
     continuityEqSys_->timerAssemble_ += (timeB-timeA);
-
+  
     // copy dpdx and velocity before we update for usage in rho*ujHat
     copy_lagged();
     

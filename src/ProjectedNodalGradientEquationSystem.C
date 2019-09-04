@@ -165,7 +165,7 @@ void
 ProjectedNodalGradientEquationSystem::register_interior_algorithm(
   stk::mesh::Part *part)
 {
-  // types of algorithms
+  // type of algorithms
   const AlgorithmType algType = INTERIOR;
 
   if (!isFEM_ ) {
@@ -221,7 +221,20 @@ ProjectedNodalGradientEquationSystem::register_wall_bc(
   // extract the field name for this bc type
   std::string fieldName = get_name_given_bc(WALL_BC);
 
-  if ( isFEM_ ) {        
+  if ( !isFEM_ ) {        
+    // create lhs/rhs [CVFEM] algorithm;
+    std::map<AlgorithmType, SolverAlgorithm *>::iterator its =
+      solverAlgDriver_->solverAlgMap_.find(algType);
+    if ( its == solverAlgDriver_->solverAlgMap_.end() ) {
+      AssemblePNGBoundarySolverAlgorithm *theAlg
+        = new AssemblePNGBoundarySolverAlgorithm(realm_, part, this, fieldName);
+      solverAlgDriver_->solverAlgMap_[algType] = theAlg;
+    }
+    else {
+      its->second->partVec_.push_back(part);
+    }
+  }
+  else {
     // element-based uses consolidated approach fully
     auto& solverAlgMap = solverAlgDriver_->solverAlgorithmMap_;
     
@@ -240,19 +253,6 @@ ProjectedNodalGradientEquationSystem::register_wall_bc(
       report_built_supp_alg_names();   
     }
   }
-  else {
-    // create lhs/rhs [CVFEM] algorithm;
-    std::map<AlgorithmType, SolverAlgorithm *>::iterator its =
-      solverAlgDriver_->solverAlgMap_.find(algType);
-    if ( its == solverAlgDriver_->solverAlgMap_.end() ) {
-      AssemblePNGBoundarySolverAlgorithm *theAlg
-        = new AssemblePNGBoundarySolverAlgorithm(realm_, part, this, fieldName);
-      solverAlgDriver_->solverAlgMap_[algType] = theAlg;
-    }
-    else {
-      its->second->partVec_.push_back(part);
-    }
-  }
 }
 
 //--------------------------------------------------------------------------
@@ -266,7 +266,7 @@ ProjectedNodalGradientEquationSystem::register_inflow_bc(
 {
   // not supported yet for FEM
   if ( isFEM_ ) 
-    return;
+    throw std::runtime_error("PNGEqSys::register_inflow_bc FEM-based algorithm is not supported");
 
   const AlgorithmType algType = INFLOW;
 
@@ -291,34 +291,54 @@ ProjectedNodalGradientEquationSystem::register_inflow_bc(
 void
 ProjectedNodalGradientEquationSystem::register_open_bc(
   stk::mesh::Part *part,
-  const stk::topology &/*theTopo*/,
+  const stk::topology &partTopo,
   const OpenBoundaryConditionData &/*openBCData*/)
 {
-  // not supported yet for FEM
-  if ( isFEM_ ) 
-    return;
-
+  // type of algorithm
   const AlgorithmType algType = OPEN;
 
-  // extract the field name for this bc type; Gjp requires a special algorithm 
-  // that is consistent with non-PNG
+  // extract the field name for this bc type
   std::string fieldName = get_name_given_bc(OPEN_BC);
-  // create lhs/rhs algorithm;
-  std::map<AlgorithmType, SolverAlgorithm *>::iterator its =
-    solverAlgDriver_->solverAlgMap_.find(algType);
-  if ( its == solverAlgDriver_->solverAlgMap_.end() ) {
-    SolverAlgorithm *theSolverAlg = NULL;
-    if ( fieldName == "pressure_bc" ) {
-      theSolverAlg = new AssemblePNGPressureBoundarySolverAlgorithm(realm_, part, this, fieldName);
+
+  if ( !isFEM_ ) {
+    // create lhs/rhs algorithm;
+    std::map<AlgorithmType, SolverAlgorithm *>::iterator its =
+      solverAlgDriver_->solverAlgMap_.find(algType);
+    if ( its == solverAlgDriver_->solverAlgMap_.end() ) {
+      SolverAlgorithm *theSolverAlg = NULL;
+      if ( fieldName == "pressure_bc" ) {
+        // Gjp requires a special algorithm
+        theSolverAlg = new AssemblePNGPressureBoundarySolverAlgorithm(realm_, part, this, fieldName);
+      }
+      else {
+        theSolverAlg = new AssemblePNGBoundarySolverAlgorithm(realm_, part, this, fieldName);
+      }
+      solverAlgDriver_->solverAlgMap_[algType] = theSolverAlg;
     }
     else {
-      theSolverAlg = new AssemblePNGBoundarySolverAlgorithm(realm_, part, this, fieldName);
+      its->second->partVec_.push_back(part);
     }
-    solverAlgDriver_->solverAlgMap_[algType] = theSolverAlg;
   }
   else {
-    its->second->partVec_.push_back(part);
+    // element-based uses consolidated approach fully
+    auto& solverAlgMap = solverAlgDriver_->solverAlgorithmMap_;
+    
+    AssembleElemSolverAlgorithm* solverAlg = nullptr;
+    bool solverAlgWasBuilt = false;
+    
+    std::tie(solverAlg, solverAlgWasBuilt) = build_or_add_part_to_face_bc_solver_alg(*this, *part, solverAlgMap, "open_png");
+    
+    ElemDataRequests& dataPreReqs = solverAlg->dataNeededByKernels_;
+    auto& activeKernels = solverAlg->activeKernels_;
+    
+    if (solverAlgWasBuilt) {
+      build_fem_face_topo_kernel_automatic<ScalarPngBcFemKernel>
+        (partTopo, *this, activeKernels, "png_open",
+         realm_.bulk_data(), *realm_.solutionOptions_, fieldName, dataPreReqs);
+      report_built_supp_alg_names();   
+    }  
   }
+
 }
 
 //--------------------------------------------------------------------------

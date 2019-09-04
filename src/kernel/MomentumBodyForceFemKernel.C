@@ -41,13 +41,20 @@ MomentumBodyForceFemKernel<AlgTraits>::MomentumBodyForceFemKernel(
   for ( int k = 0; k < AlgTraits::numGp_; ++k )
     v_ip_weight_[k] = meFEM->weights_[k];
   
-  // hack
-  double bf[3] = {0.0,0.0,0.0016};
-
-  // copy constant source into our 1-d view
-  for ( int k = 0; k < AlgTraits::nDim_; ++k )
-    v_body_force_[k] = bf[k];
-
+  // extract the body force
+  const std::map<std::string, std::vector<double> >::const_iterator iparams
+    = solnOpts.elemSrcTermParamMap_.find("momentum");
+  if ( iparams != solnOpts.elemSrcTermParamMap_.end() ) {
+    std::vector<double> bf = (*iparams).second;
+    // copy constant source into our 1-d view
+    for ( int k = 0; k < AlgTraits::nDim_; ++k ) {
+      v_body_force_[k] = bf[k];
+    }
+  }
+  else {
+    throw std::runtime_error("MomentumBodyForceFemKernel is missing body force specification");
+  }
+  
   // master element, shape function is shifted consistently
   if ( solnOpts.get_shifted_grad_op("velocity") )
     get_fem_shape_fn_data<AlgTraits>([&](double* ptr){meFEM->shifted_shape_fcn(ptr);}, v_shape_function_);
