@@ -796,6 +796,11 @@ and :math:`c_{DES}` represents a blended set of DES constants:
 scale, :math:`l_{DES}` is the maximum edge length scale touching a given
 node.
 
+Note that the production term appearing in both the turbulent kinetic
+energy and specific dissipation rate equation is limited to a 
+user-supplied scaling of the above dissipation term. Currently, all
+SST variants use a production to dissipation ratio limiting of ten.
+
 Solid Stress
 ++++++++++++
 

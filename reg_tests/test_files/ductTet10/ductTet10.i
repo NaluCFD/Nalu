@@ -44,6 +44,7 @@ realms:
         dpdx: solve_scalar
 
       systems:
+
         - LowMachFemEOM:
             name: myLowMach
             max_iterations: 1
@@ -51,15 +52,11 @@ realms:
 
     initial_conditions:
 
-      - user_function: ic_1
-        target_name: block_1
-        user_function_name:
-         velocity: OneTwoTenVelocity
-
       - constant: ic_1
         target_name: block_1
         value:
           pressure: 0.0
+          velocity: [0.0, 0.0, 0.0]
 
     material_properties:
       target_name: block_1
@@ -76,11 +73,10 @@ realms:
 
     boundary_conditions:
 
-    - open_boundary_condition: bc_left
+    - inflow_boundary_condition: bc_left
       target_name: surface_1
-      open_user_data:
-        velocity: [0.0,0.0,0.0]
-        pressure: 0.016
+      inflow_user_data:
+        velocity: [0.0,0.0,1.0]
 
     - open_boundary_condition: bc_right
       target_name: surface_2
@@ -113,30 +109,20 @@ realms:
         - consistent_mass_matrix_png:
             pressure: yes
 
-    solution_norm:
-      output_frequency: 100
-      file_name: 1x2x10Tet10.dat
-      spacing: 12
-      percision: 6
-      target_name: block_1
-      dof_user_function_pair:
-       - [velocity, OneTwoTenVelocity]
-
     output:
-      output_data_base_name: 1x2x10Tet10.e
+      output_data_base_name: ductTet10.e
       output_frequency: 5
       output_node_set: no 
       output_variables:
        - pressure
        - velocity
        - dpdx
-       - velocity_exact
 
 Time_Integrators:
   - StandardTimeIntegrator:
       name: ti_1
       start_time: 0
-      termination_step_count: 20
+      termination_step_count: 50
       time_step: 0.05
       time_stepping_type: fixed
       time_step_count: 0

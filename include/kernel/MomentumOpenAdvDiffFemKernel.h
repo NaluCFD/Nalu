@@ -66,7 +66,6 @@ private:
   ScalarFieldType *density_{nullptr};
   ScalarFieldType *viscosity_{nullptr};
   GenericFieldType *dynamicPressure_{nullptr};
-  VectorFieldType *coordinates_{nullptr};
 
   const double includeDivU_;
   const double meshVelocityCorrection_;

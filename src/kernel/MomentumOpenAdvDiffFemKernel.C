@@ -37,7 +37,7 @@ MomentumOpenAdvDiffFemKernel<BcAlgTraits>::MomentumOpenAdvDiffFemKernel(
     meshVelocityCorrection_(solnOpts.does_mesh_move() ? 1.0 : 0.0),
     shiftedGradOp_(solnOpts.get_shifted_grad_op(velocity->name())),
     projTimeScale_(1.0),
-    penaltyFac_(2.0),
+    penaltyFac_(4.0),
     meFEM_(sierra::nalu::MasterElementRepo::get_fem_master_element(BcAlgTraits::elemTopo_))
 {
   // save off fields
@@ -55,8 +55,11 @@ MomentumOpenAdvDiffFemKernel<BcAlgTraits>::MomentumOpenAdvDiffFemKernel(
   pressureBc_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure_bc");
   density_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
   dynamicPressure_ = metaData.get_field<GenericFieldType>(metaData.side_rank(), "dynamic_pressure");
-  coordinates_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
     
+  // extract field not required in execute()
+  VectorFieldType *coordinates = metaData.get_field<VectorFieldType>(
+    stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
+
   // extract master elements
   MasterElement* meFC = sierra::nalu::MasterElementRepo::get_fem_master_element(BcAlgTraits::faceTopo_);
   
@@ -79,10 +82,10 @@ MomentumOpenAdvDiffFemKernel<BcAlgTraits>::MomentumOpenAdvDiffFemKernel(
   faceDataPreReqs.add_gathered_nodal_field(*density_, 1);
   faceDataPreReqs.add_gathered_nodal_field(*viscosity_, 1);
   faceDataPreReqs.add_face_field(*dynamicPressure_, BcAlgTraits::numFaceIp_);
-  faceDataPreReqs.add_coordinates_field(*coordinates_, BcAlgTraits::nDim_, CURRENT_COORDINATES);
+  faceDataPreReqs.add_coordinates_field(*coordinates, BcAlgTraits::nDim_, CURRENT_COORDINATES);
 
   elemDataPreReqs.add_gathered_nodal_field(*pressure_, 1);
-  elemDataPreReqs.add_coordinates_field(*coordinates_, BcAlgTraits::nDim_, CURRENT_COORDINATES);
+  elemDataPreReqs.add_coordinates_field(*coordinates, BcAlgTraits::nDim_, CURRENT_COORDINATES);
   elemDataPreReqs.add_gathered_nodal_field(*velocityNp1_, BcAlgTraits::nDim_);
  
   // manage master element requirements
@@ -141,14 +144,14 @@ MomentumOpenAdvDiffFemKernel<BcAlgTraits>::execute(
    
   // element
   SharedMemView<DoubleType*>& v_pressure = elemScratchViews.get_scratch_view_1D(*pressure_);
-  //SharedMemView<DoubleType**>& v_velocityNp1 = elemScratchViews.get_scratch_view_2D(*velocityNp1_);
+  SharedMemView<DoubleType**>& v_velocityNp1 = elemScratchViews.get_scratch_view_2D(*velocityNp1_);
   
   // master element calls
   SharedMemView<DoubleType***>& v_dndx_fc_elem = elemScratchViews.get_me_views(CURRENT_COORDINATES).dndx_fc_elem;
   SharedMemView<DoubleType*>& vf_det_j = faceScratchViews.get_me_views(CURRENT_COORDINATES).det_j_fc;
   SharedMemView<DoubleType**>& vf_normal = faceScratchViews.get_me_views(CURRENT_COORDINATES).normal_fc_fem;
-
-  for (int ip =0; ip < BcAlgTraits::numFaceIp_; ++ip) {
+    
+  for (int ip = 0; ip < BcAlgTraits::numFaceIp_; ++ip) {
 
     const DoubleType ipFactor = vf_det_j(ip)*vf_ip_weight_(ip);
         
@@ -161,7 +164,7 @@ MomentumOpenAdvDiffFemKernel<BcAlgTraits>::execute(
       w_GpdxBip[j] = 0.0;
       w_dpdxBip[j] = 0.0;
     }
-    
+        
     // form L^-1
     DoubleType inverseLengthScale = 0.0;
     for ( int ic = 0; ic < BcAlgTraits::nodesPerFace_; ++ic ) {
@@ -170,7 +173,7 @@ MomentumOpenAdvDiffFemKernel<BcAlgTraits>::execute(
         inverseLengthScale += v_dndx_fc_elem(ip,faceNodeNumber,j)*vf_normal(ip,j);
       }
     }
-
+    
     // compute quantities at bip
     DoubleType rhoBip = 0.0;
     DoubleType viscBip = 0.0;
@@ -181,7 +184,7 @@ MomentumOpenAdvDiffFemKernel<BcAlgTraits>::execute(
       viscBip += r*vf_viscosity(ic);
       pBip += r*vf_pressure(ic);
       pbcBip += r*vf_pressureBc(ic);
-      DoubleType rhoIc = vf_density(ic);
+      const DoubleType rhoIc = vf_density(ic);
       rhoBip += r*rhoIc;
       for ( int j = 0; j < BcAlgTraits::nDim_; ++j ) {
         w_uspecBip[j] += r*vf_bcVelocity(ic,j);
@@ -212,7 +215,7 @@ MomentumOpenAdvDiffFemKernel<BcAlgTraits>::execute(
     //================================
     
     // account for both cases, i.e., leaving or entering to avoid hard loop over SIMD length
-    const DoubleType mdotLeaving = stk::math::if_then_else(massFlux > 0, 1.0, 0.0);
+    const DoubleType mdotLeaving = stk::math::if_then_else(massFlux > 0.0, 1.0, 0.0);
     const DoubleType om_mdotLeaving = 1.0 - mdotLeaving;    
 
     // entrainment magnitude (must correct for possible mesh motion at the open bc)
@@ -237,46 +240,106 @@ MomentumOpenAdvDiffFemKernel<BcAlgTraits>::execute(
       const DoubleType uiIp = w_uBip[i];
 
       // total advection; pressure contribution in time expression
-      const DoubleType afluxLeaving = massFlux*uiIp*ipFactor;
+      const DoubleType advLeaving = massFlux*uiIp*ipFactor;
 
-      // central 
+      // central factor leaving the domain
       const DoubleType facLeaving = massFlux*ipFactor*mdotLeaving;
 
       // row ir
       for ( int ir = 0; ir < BcAlgTraits::nodesPerFace_; ++ir) {
 
         const DoubleType wIr = vf_shape_function_(ip,ir);      
-        const int irNdim = face_node_ordinals[ir]*BcAlgTraits::nDim_;
-
+        const int indexR = face_node_ordinals[ir]*BcAlgTraits::nDim_ + i;
+        
         //===================
         // flow is leaving
         //===================
-
-        rhs(irNdim+i) -= wIr*afluxLeaving*mdotLeaving;
-
+        
+        rhs(indexR) -= wIr*advLeaving*mdotLeaving;
+        
         for ( int ic = 0; ic < BcAlgTraits::nodesPerFace_; ++ic ) {
           const int nn = face_node_ordinals[ic];
-          lhs(irNdim+i,nn*BcAlgTraits::nDim_+i) += wIr*vf_shape_function_(ip,ic)*facLeaving;
+          lhs(indexR,nn*BcAlgTraits::nDim_+i) += wIr*vf_shape_function_(ip,ic)*facLeaving;
         }
-
+        
         //===================
         // flow is extraining
         //===================
         
         const DoubleType nxi = vf_normal(ip,i);
-      
+        
         // total advection; with normal and tangeant entrainment
-        const DoubleType afluxEntraining = massFlux*uEntrain*nxi
-          + massFlux*(w_uspecBip[i] - uspecbipnx*nxi);
-      
-        rhs(ir*BcAlgTraits::nDim_+i) -= afluxEntraining*om_mdotLeaving*ipFactor;
+        const DoubleType advEntraining = (massFlux*uEntrain*nxi 
+                                          + massFlux*(w_uspecBip[i] - uspecbipnx*nxi))*ipFactor;
+        
+        rhs(indexR) -= wIr*advEntraining*om_mdotLeaving;
       }
     }
     
     //================================
-    // diffusion TBD
+    // diffusion second
     //================================
-  
+
+    // row ir
+    for ( int ir = 0; ir < BcAlgTraits::nodesPerFace_; ++ir) {
+      
+      const int lIr = face_node_ordinals[ir];
+      const DoubleType wIr = vf_shape_function_(ip,ir);      
+
+      // column ic
+      for ( int ic = 0; ic < BcAlgTraits::nodesPerElement_; ++ic ) {
+        
+        for ( int j = 0; j < BcAlgTraits::nDim_; ++j ) {
+          
+          const DoubleType nj = vf_normal(ip,j);
+          const DoubleType dndxj = v_dndx_fc_elem(ip,ic,j);
+          const DoubleType uxj = v_velocityNp1(ic,j);
+          
+          const DoubleType divUstress = wIr*2.0/3.0*viscBip*dndxj*uxj*nj*includeDivU_*ipFactor;
+          
+          for ( int i = 0; i < BcAlgTraits::nDim_; ++i ) {
+            
+            // matrix entries
+            const int indexR = lIr*BcAlgTraits::nDim_ + i;
+            
+            const DoubleType dndxi = v_dndx_fc_elem(ip,ic,i);
+            const DoubleType uxi = v_velocityNp1(ic,i);
+            const DoubleType nxi = vf_normal(ip,i);
+            const DoubleType om_nxinxi = 1.0-nxi*nxi;
+            
+            // -wIr*mu*dui/dxj*nj(1.0-nini)*ipFactor; sneak in divU (explicit)
+            DoubleType lhsfac = -wIr*viscBip*dndxj*nj*om_nxinxi*ipFactor;
+            lhs(indexR,ic*BcAlgTraits::nDim_+i) += lhsfac;
+            rhs(indexR) -= lhsfac*uxi + divUstress*om_nxinxi;
+            
+            // -wIr*mu*duj/dxi*nj(1.0-nini)*ipFactor
+            lhsfac = -wIr*viscBip*dndxi*nj*om_nxinxi*ipFactor;
+            lhs(indexR,ic*BcAlgTraits::nDim_+j) += lhsfac;
+            rhs(indexR) -= lhsfac*uxj;
+            
+            // now we need the -nx*ny*Fy - nx*nz*Fz part
+            for ( int l = 0; l < BcAlgTraits::nDim_; ++l ) {
+              
+              if ( i != l ) {
+                const DoubleType nxinxl = nxi*vf_normal(ip,l);
+                const DoubleType uxl = v_velocityNp1(ic,l);
+                const DoubleType dndxl = v_dndx_fc_elem(ip,ic,l);
+                
+                // +wIr*ni*nl*mu*dul/dxj*nj*ipFactor; sneak in divU (explicit)
+                lhsfac = wIr*viscBip*dndxj*nj*nxinxl*ipFactor;
+                lhs(indexR,ic*BcAlgTraits::nDim_+l) += lhsfac;
+                rhs(indexR) -= lhsfac*uxl + divUstress*nxinxl;
+                
+                // +wIr*ni*nl*mu*duj/dxl*nj*ipFactor
+                lhsfac = wIr*viscBip*dndxl*nj*nxinxl*ipFactor;
+                lhs(indexR,ic*BcAlgTraits::nDim_+j) += lhsfac;
+                rhs(indexR) -= lhsfac*uxj;
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }
 

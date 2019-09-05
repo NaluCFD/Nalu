@@ -70,4 +70,4 @@ private:
 }  // nalu
 }  // sierra
 
-#endif /* MOMENTUMSYMMETRYELEMKERNEL_H */
+#endif /* ScalarFluxPenaltyElemKernel_h */

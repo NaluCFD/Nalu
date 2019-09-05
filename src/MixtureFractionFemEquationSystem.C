@@ -48,6 +48,7 @@
 // kernels; src - n/a
 
 // bc kernels - n/a
+#include "kernel/ScalarFluxPenaltyFemKernel.h"
 
 // nso - n/a
 
@@ -344,7 +345,7 @@ MixtureFractionFemEquationSystem::register_interior_algorithm(
 void
 MixtureFractionFemEquationSystem::register_wall_bc(
   stk::mesh::Part *part,
-  const stk::topology &/*theTopo*/,
+  const stk::topology &partTopo,
   const WallBoundaryConditionData &wallBCData)
 {
 
@@ -390,16 +391,40 @@ MixtureFractionFemEquationSystem::register_wall_bc(
                                stk::topology::NODE_RANK);
     bcDataMapAlg_.push_back(theCopyAlg);
 
-    // Dirichlet bc
-    std::map<AlgorithmType, SolverAlgorithm *>::iterator itd =
-      solverAlgDriver_->solverDirichAlgMap_.find(algType);
-    if ( itd == solverAlgDriver_->solverDirichAlgMap_.end() ) {
-      DirichletBC *theAlg
-        = new DirichletBC(realm_, this, part, &mixFracNp1, theBcField, 0, 1);
-      solverAlgDriver_->solverDirichAlgMap_[algType] = theAlg;
+    // use weak penalty approach for wall bc if consolidated bc approach is activated
+    if ( realm_.solutionOptions_->useConsolidatedBcSolverAlg_ ) {
+
+      auto& solverAlgMap = solverAlgDriver_->solverAlgorithmMap_;
+      
+      stk::topology elemTopo = get_elem_topo(realm_, *part);
+      
+      AssembleFaceElemSolverAlgorithm* faceElemSolverAlg = nullptr;
+      bool solverAlgWasBuilt = false;
+      
+      std::tie(faceElemSolverAlg, solverAlgWasBuilt) 
+        = build_or_add_part_to_face_elem_solver_alg(algType, *this, *part, elemTopo, solverAlgMap, "wall");
+      
+      auto& activeKernels = faceElemSolverAlg->activeKernels_;
+      
+      if (solverAlgWasBuilt) {
+        build_fem_face_elem_topo_kernel_automatic<ScalarFluxPenaltyFemKernel>
+          (partTopo, elemTopo, *this, activeKernels, "mixture_fraction_wall",
+           realm_.meta_data(), *realm_.solutionOptions_, mixFrac_, theBcField, evisc_,
+           faceElemSolverAlg->faceDataNeeded_, faceElemSolverAlg->elemDataNeeded_);
+      }
     }
     else {
-      itd->second->partVec_.push_back(part);
+      // Dirichlet bc
+      std::map<AlgorithmType, SolverAlgorithm *>::iterator itd =
+        solverAlgDriver_->solverDirichAlgMap_.find(algType);
+      if ( itd == solverAlgDriver_->solverDirichAlgMap_.end() ) {
+        DirichletBC *theAlg
+          = new DirichletBC(realm_, this, part, &mixFracNp1, theBcField, 0, 1);
+        solverAlgDriver_->solverDirichAlgMap_[algType] = theAlg;
+      }
+      else {
+        itd->second->partVec_.push_back(part);
+      }
     }
   }
 }

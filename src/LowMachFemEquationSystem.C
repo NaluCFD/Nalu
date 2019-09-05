@@ -50,6 +50,7 @@
 
 // bc kernels
 #include "kernel/ContinuityOpenFemKernel.h"
+#include "kernel/ContinuityInflowFemKernel.h"
 #include "kernel/MomentumOpenAdvDiffFemKernel.h"
 
 // nso - n/a
@@ -269,7 +270,7 @@ LowMachFemEquationSystem::register_open_bc(
   
   // check for total bc to create an algorithm
   if ( userData.useTotalP_ ) {
-    throw std::runtime_error("LowMachFemEquationSystem::Error: use total pressure not supported");
+    throw std::runtime_error("LowMachFemEquationSystem::Error: use total pressure not supported: need dypP and PNG");
   }
 }
 
@@ -293,7 +294,8 @@ LowMachFemEquationSystem::solve_and_update()
   double timeA, timeB;
   if ( isInit_ ) {
     timeA = NaluEnv::self().nalu_time();
-    //continuityEqSys_->compute_projected_nodal_gradient();
+    // TBD: compute_dynamic_pressure();
+    continuityEqSys_->compute_projected_nodal_gradient();
     copy_lagged();
     timeB = NaluEnv::self().nalu_time();
     continuityEqSys_->timerMisc_ += (timeB-timeA);
@@ -336,7 +338,7 @@ LowMachFemEquationSystem::solve_and_update()
       realm_.get_activate_aura());
     timeB = NaluEnv::self().nalu_time();
     continuityEqSys_->timerAssemble_ += (timeB-timeA);
-
+  
     // copy dpdx and velocity before we update for usage in rho*ujHat
     copy_lagged();
     
@@ -608,7 +610,96 @@ MomentumFemEquationSystem::register_interior_algorithm(
   else {
     it->second->partVec_.push_back(part);
   }
+}
 
+//--------------------------------------------------------------------------
+//-------- register_inflow_bc ----------------------------------------------
+//--------------------------------------------------------------------------
+void
+MomentumFemEquationSystem::register_inflow_bc(
+  stk::mesh::Part *part,
+  const stk::topology &/*parTopo*/,
+  const InflowBoundaryConditionData &inflowBCData)
+{
+  // push mesh part
+  notProjectedPart_.push_back(part);
+
+  // set face/element required sort
+  realm_.solutionOptions_->set_consolidated_bc_solver_alg();
+  
+  // algorithm type
+  const AlgorithmType algType = INFLOW;
+
+  // velocity np1
+  VectorFieldType &velocityNp1 = velocity_->field_of_state(stk::mesh::StateNP1);
+  
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
+  const unsigned nDim = meta_data.spatial_dimension();
+
+  // register boundary data; velocity_bc
+  VectorFieldType *theBcField = &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity_bc"));
+  stk::mesh::put_field_on_mesh(*theBcField, *part, nDim, nullptr);
+  
+  // extract the value for user specified velocity and save off the AuxFunction
+  InflowUserData userData = inflowBCData.userData_;
+  std::string velocityName = "velocity";
+  UserDataType theDataType = get_bc_data_type(userData, velocityName);
+
+  AuxFunction *theAuxFunc = NULL;
+  if ( CONSTANT_UD == theDataType ) {
+    Velocity ux = userData.u_;
+    std::vector<double> userSpec(nDim);
+    userSpec[0] = ux.ux_;
+    userSpec[1] = ux.uy_;
+    if ( nDim > 2)
+      userSpec[2] = ux.uz_;
+    
+    // new it
+    theAuxFunc = new ConstantAuxFunction(0, nDim, userSpec);
+    
+  }
+  else if ( FUNCTION_UD == theDataType ) {
+    throw std::runtime_error("MomentumFemEquationSystem::register_inflow_bc: limited functions supported");
+  }
+  else {
+    throw std::runtime_error("MomentumFemEquationSystem::register_inflow_bc: only constant and user function supported");
+  }
+  
+  // bc data alg
+  AuxFunctionAlgorithm *auxAlg
+    = new AuxFunctionAlgorithm(realm_, part,
+			       theBcField, theAuxFunc,
+			       stk::topology::NODE_RANK);
+  
+  // how to populate the field?
+  if ( userData.externalData_ ) {
+    // xfer will handle population; only need to populate the initial value
+    realm_.initCondAlg_.push_back(auxAlg);
+  }
+  else {
+    // put it on bcData
+    bcDataAlg_.push_back(auxAlg);
+  }
+
+  // copy velocity_bc to velocity np1...
+  CopyFieldAlgorithm *theCopyAlg
+    = new CopyFieldAlgorithm(realm_, part,
+                             theBcField, &velocityNp1,
+                             0, nDim,
+                             stk::topology::NODE_RANK);
+  bcDataMapAlg_.push_back(theCopyAlg);
+  
+  // Dirichlet bc
+  std::map<AlgorithmType, SolverAlgorithm *>::iterator itd =
+    solverAlgDriver_->solverDirichAlgMap_.find(algType);
+  if ( itd == solverAlgDriver_->solverDirichAlgMap_.end() ) {
+    DirichletBC *theAlg
+      = new DirichletBC(realm_, this, part, &velocityNp1, theBcField, 0, nDim);
+    solverAlgDriver_->solverDirichAlgMap_[algType] = theAlg;
+  }
+  else {
+    itd->second->partVec_.push_back(part);
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -684,7 +775,11 @@ MomentumFemEquationSystem::register_wall_bc(
   const stk::topology &partTopo,
   const WallBoundaryConditionData &wallBCData)
 {
-
+  const AlgorithmType algType = WALL;
+  
+  // set face/element required sort
+  realm_.solutionOptions_->set_consolidated_bc_solver_alg();
+  
   // find out if this is a wall function approach
   WallUserData userData = wallBCData.userData_;
   const bool wallFunctionApproach = userData.wallFunctionApproach_;
@@ -760,9 +855,7 @@ MomentumFemEquationSystem::register_wall_bc(
     realm_.initCondAlg_.push_back(theCopyAlg);
   else
     bcDataMapAlg_.push_back(theCopyAlg);
-  
-  const AlgorithmType algType = WALL;
-  
+    
   std::map<AlgorithmType, SolverAlgorithm *>::iterator itd =
     solverAlgDriver_->solverDirichAlgMap_.find(algType);
   if ( itd == solverAlgDriver_->solverDirichAlgMap_.end() ) {
@@ -1008,6 +1101,83 @@ ContinuityFemEquationSystem::register_interior_algorithm(
     
     report_invalid_supp_alg_names();
     report_built_supp_alg_names();
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- register_inflow_bc ----------------------------------------------
+//--------------------------------------------------------------------------
+void
+ContinuityFemEquationSystem::register_inflow_bc(
+  stk::mesh::Part *part,
+  const stk::topology &partTopo,
+  const InflowBoundaryConditionData &inflowBCData)
+{
+  // set face/element required sort
+  realm_.solutionOptions_->set_consolidated_bc_solver_alg();
+  
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
+  const unsigned nDim = meta_data.spatial_dimension();
+
+  // register boundary data; cont_velocity_bc
+  VectorFieldType *theBcField = &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "cont_velocity_bc"));
+  stk::mesh::put_field_on_mesh(*theBcField, *part, nDim, nullptr);
+  
+  // extract the value for user specified velocity and save off the AuxFunction
+  InflowUserData userData = inflowBCData.userData_;
+  std::string velocityName = "velocity";
+  UserDataType theDataType = get_bc_data_type(userData, velocityName);
+  
+  AuxFunction *theAuxFunc = NULL;
+  if ( CONSTANT_UD == theDataType ) {
+    Velocity ux = userData.u_;
+    std::vector<double> userSpec(nDim);
+    userSpec[0] = ux.ux_;
+    userSpec[1] = ux.uy_;
+    if ( nDim > 2)
+      userSpec[2] = ux.uz_;
+    
+    // new it
+    theAuxFunc = new ConstantAuxFunction(0, nDim, userSpec);    
+  }
+  else if ( FUNCTION_UD == theDataType ) {
+    throw std::runtime_error("ContinuityFemEquationSystem::register_inflow_bc: limited functions supported");
+  }
+  else {
+    throw std::runtime_error("ContinuityFemEquationSystem::register_inflow_bc: only constant and user function supported");
+  }
+  
+  // bc data alg
+  AuxFunctionAlgorithm *auxAlg
+    = new AuxFunctionAlgorithm(realm_, part,
+                               theBcField, theAuxFunc,
+                               stk::topology::NODE_RANK);
+  
+  // how to populate the field?
+  if ( userData.externalData_ ) {
+    // xfer will handle population; only need to populate the initial value
+    realm_.initCondAlg_.push_back(auxAlg);
+  }
+  else {
+    // put it on bcData
+    bcDataAlg_.push_back(auxAlg);
+  }
+  
+  // element-based uses consolidated approach fully
+  auto& solverAlgMap = solverAlgDriver_->solverAlgorithmMap_;
+  
+  AssembleElemSolverAlgorithm* solverAlg = nullptr;
+  bool solverAlgWasBuilt = false;
+  
+  std::tie(solverAlg, solverAlgWasBuilt) = build_or_add_part_to_face_bc_solver_alg(*this, *part, solverAlgMap, "inflow");
+  
+  ElemDataRequests& dataPreReqs = solverAlg->dataNeededByKernels_;
+  auto& activeKernels = solverAlg->activeKernels_;
+  
+  if (solverAlgWasBuilt) {
+    build_fem_face_topo_kernel_automatic<ContinuityInflowFemKernel>
+      (partTopo, *this, activeKernels, "continuity_inflow",
+       realm_.bulk_data(), *realm_.solutionOptions_, realm_.solutionOptions_->cvfemShiftMdot_, dataPreReqs);
   }
 }
 

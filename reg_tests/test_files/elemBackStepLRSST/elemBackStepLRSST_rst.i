@@ -166,7 +166,7 @@ realms:
             specific_dissipation_rate: element 
 
     output:
-      output_data_base_name: elemBackStepLRSST_Input.e
+      output_data_base_name: elemBackStepLRSST_rst.e
       output_frequency: 1
       output_start: 0 
       output_node_set: no 

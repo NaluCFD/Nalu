@@ -23,6 +23,7 @@
 // stk_mesh/base/fem
 #include <stk_mesh/base/BulkData.hpp>
 #include <stk_mesh/base/Field.hpp>
+#include <stk_mesh/base/FieldParallel.hpp>
 #include <stk_mesh/base/MetaData.hpp>
 
 // stk_io
@@ -458,6 +459,16 @@ ShearStressTransportEquationSystem::clip_min_distance_to_wall()
          *minD = std::max(*minD, ypbip);
        }
      }
+   }
+  
+   // parallel reduce
+   std::vector<const stk::mesh::FieldBase *> fieldVec;
+   fieldVec.push_back(minDistanceToWall_);
+   stk::mesh::parallel_max(bulk_data, fieldVec);
+   
+   // deal with periodicity
+   if ( realm_.hasPeriodic_) {
+     realm_.periodic_field_update(minDistanceToWall_, 1);
    }
 }
 
