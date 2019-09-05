@@ -49,6 +49,16 @@ public:
   void register_interior_algorithm(
     stk::mesh::Part *part);
 
+  virtual void register_inflow_bc(
+    stk::mesh::Part *part,
+    const stk::topology &theTopo,
+    const InflowBoundaryConditionData &inflowBCData);
+
+  virtual void register_open_bc(
+    stk::mesh::Part *part,
+    const stk::topology &theTopo,
+    const OpenBoundaryConditionData &OpenBCData);
+
   virtual void register_wall_bc(
     stk::mesh::Part *part,
     const stk::topology &theTopo,

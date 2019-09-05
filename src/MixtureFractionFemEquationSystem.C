@@ -49,6 +49,7 @@
 
 // bc kernels - n/a
 #include "kernel/ScalarFluxPenaltyFemKernel.h"
+#include "kernel/ScalarOpenAdvFemKernel.h"
 
 // nso - n/a
 
@@ -336,6 +337,141 @@ MixtureFractionFemEquationSystem::register_interior_algorithm(
   }
   else {
     it->second->partVec_.push_back(part);
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- register_inflow_bc ----------------------------------------------
+//--------------------------------------------------------------------------
+void
+MixtureFractionFemEquationSystem::register_inflow_bc(
+  stk::mesh::Part *part,
+  const stk::topology &/*theTopo*/,
+  const InflowBoundaryConditionData &inflowBCData)
+{
+  // algorithm type
+  const AlgorithmType algType = INFLOW;
+
+  ScalarFieldType &mixFracNp1 = mixFrac_->field_of_state(stk::mesh::StateNP1);
+ 
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
+
+  // register boundary data; mixFrac_bc
+  ScalarFieldType *theBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "mixFrac_bc"));
+  stk::mesh::put_field_on_mesh(*theBcField, *part, nullptr);
+
+  // extract the value for user specified mixFrac and save off the AuxFunction
+  InflowUserData userData = inflowBCData.userData_;
+  std::string mixFracName = "mixture_fraction";
+  UserDataType theDataType = get_bc_data_type(userData, mixFracName);
+
+  AuxFunction *theAuxFunc = NULL;
+  if ( CONSTANT_UD == theDataType ) {
+    MixtureFraction mixFrac = userData.mixFrac_;
+    std::vector<double> userSpec(1);
+    userSpec[0] = mixFrac.mixFrac_;
+
+    // new it
+    theAuxFunc = new ConstantAuxFunction(0, 1, userSpec);
+  }
+  else if ( FUNCTION_UD == theDataType ) {
+    throw std::runtime_error("MixFracFemEquationSystem::register_inflow_bc: no inflow functions supported");
+  }
+  else {
+    throw std::runtime_error("MixFracFemEquationSystem::register_inflow_bc: only constant and user function supported");
+  }
+
+  // bc data alg
+  AuxFunctionAlgorithm *auxAlg
+    = new AuxFunctionAlgorithm(realm_, part,
+                               theBcField, theAuxFunc,
+                               stk::topology::NODE_RANK);
+
+  // how to populate the field?
+  if ( userData.externalData_ ) {
+    // xfer will handle population; only need to populate the initial value
+    realm_.initCondAlg_.push_back(auxAlg);
+  }
+  else {
+    // put it on bcData
+    bcDataAlg_.push_back(auxAlg);
+  }
+
+  // copy mixFrac_bc to mixture_fraction np1...
+  CopyFieldAlgorithm *theCopyAlg
+    = new CopyFieldAlgorithm(realm_, part,
+                             theBcField, &mixFracNp1,
+                             0, 1,
+                             stk::topology::NODE_RANK);
+  bcDataMapAlg_.push_back(theCopyAlg);
+
+  // Dirichlet bc
+  std::map<AlgorithmType, SolverAlgorithm *>::iterator itd =
+    solverAlgDriver_->solverDirichAlgMap_.find(algType);
+  if ( itd == solverAlgDriver_->solverDirichAlgMap_.end() ) {
+    DirichletBC *theAlg
+      = new DirichletBC(realm_, this, part, &mixFracNp1, theBcField, 0, 1);
+    solverAlgDriver_->solverDirichAlgMap_[algType] = theAlg;
+  }
+  else {
+    itd->second->partVec_.push_back(part);
+  }
+
+}
+
+//--------------------------------------------------------------------------
+//-------- register_open_bc ------------------------------------------------
+//--------------------------------------------------------------------------
+void
+MixtureFractionFemEquationSystem::register_open_bc(
+  stk::mesh::Part *part,
+  const stk::topology &partTopo,
+  const OpenBoundaryConditionData &openBCData)
+{
+  // algorithm type
+  const AlgorithmType algType = OPEN;
+ 
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
+
+  // register boundary data; mixFrac_bc
+  ScalarFieldType *theBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "open_mixFrac_bc"));
+  stk::mesh::put_field_on_mesh(*theBcField, *part, nullptr);
+
+  // extract the value for user specified mixFrac and save off the AuxFunction
+  OpenUserData userData = openBCData.userData_;
+  MixtureFraction mixFrac = userData.mixFrac_;
+  std::vector<double> userSpec(1);
+  userSpec[0] = mixFrac.mixFrac_;
+
+  // new it
+  ConstantAuxFunction *theAuxFunc = new ConstantAuxFunction(0, 1, userSpec);
+
+  // bc data alg
+  AuxFunctionAlgorithm *auxAlg
+    = new AuxFunctionAlgorithm(realm_, part,
+                               theBcField, theAuxFunc,
+                               stk::topology::NODE_RANK);
+  bcDataAlg_.push_back(auxAlg);
+
+  // solver for mixture fraction open
+  auto& solverAlgMap = solverAlgDriver_->solverAlgorithmMap_;
+    
+  stk::topology elemTopo = get_elem_topo(realm_, *part);
+  
+  AssembleFaceElemSolverAlgorithm* faceElemSolverAlg = nullptr;
+  bool solverAlgWasBuilt = false;
+  
+  std::tie(faceElemSolverAlg, solverAlgWasBuilt) 
+    = build_or_add_part_to_face_elem_solver_alg(algType, *this, *part, elemTopo, solverAlgMap, "open");
+    
+  auto& activeKernels = faceElemSolverAlg->activeKernels_;
+  
+  if (solverAlgWasBuilt) {
+
+    build_fem_face_elem_topo_kernel_automatic<ScalarOpenAdvFemKernel>
+      (partTopo, elemTopo, *this, activeKernels, "mixture_fraction_open",
+       realm_.meta_data(), *realm_.solutionOptions_, mixFrac_, theBcField, 
+       faceElemSolverAlg->faceDataNeeded_, faceElemSolverAlg->elemDataNeeded_); 
   }
 }
 
