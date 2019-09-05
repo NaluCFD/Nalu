@@ -5,7 +5,7 @@
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
-#include "kernel/ContinuityInflowElemKernel.h"
+#include "kernel/ContinuityInflowFemKernel.h"
 #include "master_element/MasterElement.h"
 #include "SolutionOptions.h"
 #include "TimeIntegrator.h"
@@ -23,45 +23,56 @@ namespace sierra {
 namespace nalu {
 
 template<typename BcAlgTraits>
-ContinuityInflowElemKernel<BcAlgTraits>::ContinuityInflowElemKernel(
+ContinuityInflowFemKernel<BcAlgTraits>::ContinuityInflowFemKernel(
   const stk::mesh::BulkData& bulkData,
   const SolutionOptions &solnOpts,
   const bool &useShifted,
   ElemDataRequests &dataPreReqs)
   : Kernel(),
     useShifted_(useShifted),
-    projTimeScale_(1.0),
-    ipNodeMap_(sierra::nalu::MasterElementRepo::get_surface_master_element(BcAlgTraits::topo_)->ipNodeMap())
- {
+    projTimeScale_(1.0)
+{
   // save off fields
   const stk::mesh::MetaData &metaData = bulkData.mesh_meta_data();
   velocityBC_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "cont_velocity_bc");
   densityBC_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
-  exposedAreaVec_ = metaData.get_field<GenericFieldType>(metaData.side_rank(), "exposed_area_vector");
   
-  MasterElement *meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(BcAlgTraits::topo_);
+  // extract field not required in execute()
+  VectorFieldType *coordinates = metaData.get_field<VectorFieldType>(
+    stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
   
+  // extract master element
+  MasterElement *meFC = sierra::nalu::MasterElementRepo::get_fem_master_element(BcAlgTraits::topo_);
+
+  // copy ip weights into our 1-d view
+  for ( int k = 0; k < BcAlgTraits::numFaceIp_; ++k )
+    v_ip_weight_[k] = meFC->weights_[k];
+
   // add master elements
-  dataPreReqs.add_cvfem_face_me(meFC);
-  
+  dataPreReqs.add_fem_volume_me(meFC);
+ 
   // required fields
   dataPreReqs.add_gathered_nodal_field(*velocityBC_, BcAlgTraits::nDim_);
   dataPreReqs.add_gathered_nodal_field(*densityBC_, 1);
-  dataPreReqs.add_face_field(*exposedAreaVec_, BcAlgTraits::numFaceIp_, BcAlgTraits::nDim_);
+  dataPreReqs.add_coordinates_field(*coordinates, BcAlgTraits::nDim_, CURRENT_COORDINATES);
   
+  // manage master element requirements
+  dataPreReqs.add_master_element_call(FEM_DET_J, CURRENT_COORDINATES);  
+  dataPreReqs.add_master_element_call(FEM_NORMAL, CURRENT_COORDINATES);  
+
   if ( useShifted )
-    get_face_shape_fn_data<BcAlgTraits>([&](double* ptr){meFC->shifted_shape_fcn(ptr);}, vf_shape_function_);
+    get_face_shape_fn_data<BcAlgTraits>([&](double* ptr){meFC->shifted_shape_fcn(ptr);}, v_shape_function_);
   else
-    get_face_shape_fn_data<BcAlgTraits>([&](double* ptr){meFC->shape_fcn(ptr);}, vf_shape_function_);
+    get_face_shape_fn_data<BcAlgTraits>([&](double* ptr){meFC->shape_fcn(ptr);}, v_shape_function_);
  }
   
 template<typename BcAlgTraits>
-ContinuityInflowElemKernel<BcAlgTraits>::~ContinuityInflowElemKernel()
+ContinuityInflowFemKernel<BcAlgTraits>::~ContinuityInflowFemKernel()
 {}
 
 template<typename BcAlgTraits>
 void
-ContinuityInflowElemKernel<BcAlgTraits>::setup(const TimeIntegrator &timeIntegrator)
+ContinuityInflowFemKernel<BcAlgTraits>::setup(const TimeIntegrator &timeIntegrator)
 {
   const double dt = timeIntegrator.get_time_step();
   const double gamma1 = timeIntegrator.get_gamma1();
@@ -70,45 +81,51 @@ ContinuityInflowElemKernel<BcAlgTraits>::setup(const TimeIntegrator &timeIntegra
 
 template<typename BcAlgTraits>
 void
-ContinuityInflowElemKernel<BcAlgTraits>::execute(
+ContinuityInflowFemKernel<BcAlgTraits>::execute(
   SharedMemView<DoubleType **>&/*lhs*/,
   SharedMemView<DoubleType *>&rhs,
   ScratchViews<DoubleType>& scratchViews)
 {
   NALU_ALIGNED DoubleType w_rho_uBip[BcAlgTraits::nDim_];
   
-  SharedMemView<DoubleType**>& vf_velocityBC = scratchViews.get_scratch_view_2D(*velocityBC_);
-  SharedMemView<DoubleType*>& vf_density = scratchViews.get_scratch_view_1D(*densityBC_);
-  SharedMemView<DoubleType**>& vf_exposedAreaVec = scratchViews.get_scratch_view_2D(*exposedAreaVec_);
-  
+  SharedMemView<DoubleType**>& v_velocityBC = scratchViews.get_scratch_view_2D(*velocityBC_);
+  SharedMemView<DoubleType*>& v_density = scratchViews.get_scratch_view_1D(*densityBC_);
+
+  SharedMemView<DoubleType*>& v_det_j = scratchViews.get_me_views(CURRENT_COORDINATES).det_j_fem;
+  SharedMemView<DoubleType**>& v_normal = scratchViews.get_me_views(CURRENT_COORDINATES).normal_fem;
+
   for (int ip = 0; ip < BcAlgTraits::numFaceIp_; ++ip) {
-    
-    // nearest node (to which we will assemble RHS)
-    const int nearestNode = ipNodeMap_[ip];
-    
+     
     // zero out vector quantities
     for ( int j = 0; j < BcAlgTraits::nDim_; ++j ) {
       w_rho_uBip[j] = 0.0;
     }
     
     for ( int ic = 0; ic < BcAlgTraits::nodesPerFace_; ++ic ) {
-      const DoubleType r = vf_shape_function_(ip,ic);
-      const DoubleType rhoIC = vf_density(ic);
+      const DoubleType r = v_shape_function_(ip,ic);
+      const DoubleType rhoIC = v_density(ic);
       for ( int j = 0; j < BcAlgTraits::nDim_; ++j ) {
-        w_rho_uBip[j] += r*rhoIC*vf_velocityBC(ic,j);
+        w_rho_uBip[j] += r*rhoIC*v_velocityBC(ic,j);
       }
     }
     
-    DoubleType mDot = 0.0;
+    DoubleType massFlux = 0.0;
     for ( int j = 0; j < BcAlgTraits::nDim_; ++j ) {
-      mDot += w_rho_uBip[j]*vf_exposedAreaVec(ip,j);
+      massFlux += w_rho_uBip[j]*v_normal(ip,j);
     }
     
-    rhs(nearestNode) -= mDot/projTimeScale_;
-  } 
+    // start the assembly (collect ip scalings)
+    const DoubleType ipFactor = v_det_j(ip)*v_ip_weight_(ip);
+ 
+    // row ir
+    for ( int ir = 0; ir < BcAlgTraits::nodesPerElement_; ++ir) {  
+      const DoubleType wIr = v_shape_function_(ip,ir);
+      rhs(ir) -= wIr*massFlux/projTimeScale_*ipFactor;
+    } 
+  }
 }
 
-INSTANTIATE_KERNEL_FACE(ContinuityInflowElemKernel);
+INSTANTIATE_FEM_KERNEL_FACE(ContinuityInflowFemKernel);
 
 }  // nalu
 }  // sierra
