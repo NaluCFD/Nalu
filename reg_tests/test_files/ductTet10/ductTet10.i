@@ -42,6 +42,7 @@ realms:
         pressure: solve_cont
         velocity: solve_scalar
         dpdx: solve_scalar
+        mixture_fraction: solve_scalar
 
       systems:
 
@@ -50,6 +51,11 @@ realms:
             max_iterations: 1
             convergence_tolerance: 1e-2
 
+        - MixtureFractionFEM:
+            name: myZ
+            max_iterations: 1
+            convergence_tolerance: 1.e-2
+
     initial_conditions:
 
       - constant: ic_1
@@ -57,6 +63,7 @@ realms:
         value:
           pressure: 0.0
           velocity: [0.0, 0.0, 0.0]
+          mixture_fraction: 0.0
 
     material_properties:
       target_name: block_1
@@ -77,17 +84,20 @@ realms:
       target_name: surface_1
       inflow_user_data:
         velocity: [0.0,0.0,1.0]
+        mixture_fraction: 1.0
 
     - open_boundary_condition: bc_right
       target_name: surface_2
       open_user_data:
         velocity: [0.0,0.0,0.0]
         pressure: 0.0
+        mixture_fraction: 0.0
 
     - wall_boundary_condition: bc_walls
       target_name: surface_3
       wall_user_data:
         velocity: [0.0,0.0,0.0]
+        mixture_fraction: 0.0
 
     solution_options:
       name: myOptions
@@ -98,25 +108,24 @@ realms:
 
       options:
 
-        - hybrid_factor:
-            velocity: 0.0
-
         - element_source_terms:
             momentum: [momentum_time_derivative, advection, diffusion]
             continuity: advection
             dpdx: interior_png
+            mixture_fraction: [mixture_fraction_time_derivative, advection, diffusion]
 
         - consistent_mass_matrix_png:
             pressure: yes
 
     output:
-      output_data_base_name: ductTet10.e
+      output_data_base_name: ductTet10_mixFrac.e
       output_frequency: 5
       output_node_set: no 
       output_variables:
        - pressure
        - velocity
        - dpdx
+       - mixture_fraction
 
 Time_Integrators:
   - StandardTimeIntegrator:
