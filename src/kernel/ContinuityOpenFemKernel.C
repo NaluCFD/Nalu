@@ -38,12 +38,15 @@ ContinuityOpenFemKernel<BcAlgTraits>::ContinuityOpenFemKernel(
   else
     velocityRTM_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
   Gpdx_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "dpdx");
-  coordinates_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
   pressure_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure");
   pressureBc_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure_bc");
   density_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
   dynamicPressure_ = metaData.get_field<GenericFieldType>(metaData.side_rank(), "dynamic_pressure");
   
+  // extract field not required in execute()
+  VectorFieldType *coordinates = metaData.get_field<VectorFieldType>(
+    stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
+
   // extract master elements
   MasterElement* meFC = sierra::nalu::MasterElementRepo::get_fem_master_element(BcAlgTraits::faceTopo_);
   
@@ -62,10 +65,10 @@ ContinuityOpenFemKernel<BcAlgTraits>::ContinuityOpenFemKernel(
   faceDataPreReqs.add_gathered_nodal_field(*pressureBc_, 1);
   faceDataPreReqs.add_gathered_nodal_field(*density_, 1);
   faceDataPreReqs.add_face_field(*dynamicPressure_, BcAlgTraits::numFaceIp_);
-  faceDataPreReqs.add_coordinates_field(*coordinates_, BcAlgTraits::nDim_, CURRENT_COORDINATES);
+  faceDataPreReqs.add_coordinates_field(*coordinates, BcAlgTraits::nDim_, CURRENT_COORDINATES);
   
   elemDataPreReqs.add_gathered_nodal_field(*pressure_, 1);
-  elemDataPreReqs.add_coordinates_field(*coordinates_, BcAlgTraits::nDim_, CURRENT_COORDINATES);
+  elemDataPreReqs.add_coordinates_field(*coordinates, BcAlgTraits::nDim_, CURRENT_COORDINATES);
   
   // manage master element requirements
   elemDataPreReqs.add_master_element_call(FEM_FACE_GRAD_OP, CURRENT_COORDINATES);

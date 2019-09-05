@@ -56,7 +56,6 @@ private:
 
   VectorFieldType *velocityRTM_{nullptr};
   VectorFieldType *Gpdx_{nullptr};
-  VectorFieldType *coordinates_{nullptr};
   ScalarFieldType *pressure_{nullptr};
   ScalarFieldType *pressureBc_{nullptr};
   ScalarFieldType *density_{nullptr};
