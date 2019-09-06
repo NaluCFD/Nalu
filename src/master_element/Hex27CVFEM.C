@@ -9,10 +9,7 @@
 
 #include <master_element/MasterElement.h>
 #include <master_element/MasterElementFunctions.h>
-#include <master_element/MasterElementUtils.h>
 #include <master_element/TensorOps.h>
-
-#include <element_promotion/QuadratureRule.h>
 
 #include <FORTRAN_Proto.h>
 

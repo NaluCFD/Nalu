@@ -9,7 +9,6 @@
 #define Hex27CVFEM_h
 
 #include <master_element/MasterElement.h>
-#include <master_element/MasterElementUtils.h>
 #include <master_element/MasterElementFunctions.h>
 
 #include <SimdInterface.h>

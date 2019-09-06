@@ -30,6 +30,10 @@ namespace stk {
 namespace sierra{
 namespace nalu{
 
+namespace MEconstants {
+  static const double realmin = std::numeric_limits<double>::min();
+}
+
 namespace Jacobian{
 enum Direction
 {
@@ -41,8 +45,6 @@ enum Direction
 
 struct ElementDescription;
 class MasterElement;
-
-
 
 class MasterElement
 {
