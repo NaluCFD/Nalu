@@ -14,8 +14,6 @@
 #include <AlgTraits.h>
 #include <kernel/KernelBuilderLog.h>
 
-#include <element_promotion/ElementDescription.h>
-
 #include <stk_mesh/base/BulkData.hpp>
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/Entity.hpp>

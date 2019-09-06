@@ -12,7 +12,6 @@
 
 #include <master_element/MasterElement.h>
 #include <master_element/Hex8GeometryFunctions.h>
-#include <master_element/MasterElementUtils.h>
 
 #include <random>
 

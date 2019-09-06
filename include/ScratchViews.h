@@ -330,6 +330,13 @@ int MasterElementViews<T>::create_master_element_views(
          needDerivFC = true;
          needDetjFC = true;
          break;
+      case FEM_GIJ:
+         ThrowRequireMsg(numFemIp > 0, "ERROR, meFEM must be non-null if FEM_GIJ is requested.");
+         gijUpper = get_shmem_view_3D<T>(team, numFemIp, nDim, nDim);
+         gijLower = get_shmem_view_3D<T>(team, numFemIp, nDim, nDim);
+         numScalars += 2 * numFemIp * nDim * nDim;
+         needDerivFem = true;
+         break;
       default: 
         ThrowRequireMsg(false, "fill_master_element_views: enum not coded " << data);
         break;
@@ -383,6 +390,9 @@ int MasterElementViews<T>::create_master_element_views(
   // error check
   if ( femGradOp && femShiftedGradOp )
     ThrowRequireMsg(numFemIp > 0, "ERROR, femGradOp and femShiftedGradOp both requested.");
+
+  if ( needDeriv && needDerivFem )
+    ThrowRequireMsg(numFemIp > 0, "ERROR, SCS and FEM-based operations are not supported.");
 
   return numScalars;
 }
@@ -558,6 +568,11 @@ void MasterElementViews<T>::fill_master_element_views_new_me(
          ThrowRequireMsg(meFCFEM != nullptr, "ERROR, meFCFEM needs to be non-null if FEM_FACE_DET_J is requested.");
          ThrowRequireMsg(coordsView != nullptr, "ERROR, coords null but FEM_FACE_DET_J requested.");
          meFCFEM->determinant_fem(*coordsView, deriv_fc, det_j_fc);
+         break;
+      case FEM_GIJ:
+         ThrowRequireMsg(meFEM != nullptr, "ERROR, meFEM needs to be non-null if FEM_GIJ is requested.");
+         ThrowRequireMsg(coordsView != nullptr, "ERROR, coords null but FEM_GIJ requested.");
+         meFEM->gij(*coordsView, gijUpper, gijLower, deriv_fem);
          break;
       default:
         ThrowRequireMsg(false, "fill_master_element_views_new_me: enum not coded " << data);

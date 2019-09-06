@@ -7,12 +7,9 @@
 
 
 #include <master_element/MasterElement.h>
-#include <master_element/MasterElementUtils.h>
 #include <master_element/Pyr5CVFEM.h>
 #include <master_element/Hex8GeometryFunctions.h>
 #include <master_element/MasterElementFunctions.h>
-
-#include <master_element/MasterElementUtils.h>
 
 #include <AlgTraits.h>
 
