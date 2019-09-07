@@ -129,7 +129,6 @@ public:
     SharedMemView<DoubleType***>& glower,
     SharedMemView<DoubleType***>& deriv);
 
-
   // non NGP-ready methods second
   void determinant(
     const int nelem,

@@ -181,7 +181,7 @@ int get_num_scalars_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDi
           gUpperLength = nDim*nDim*numScsIp;
           gLowerLength = nDim*nDim*numScsIp;
           needDeriv = true;
-          numScalars += (gUpperLength + gLowerLength );
+          numScalars += (gUpperLength + gLowerLength);
           break;
         case FEM_GRAD_OP:
         case FEM_SHIFTED_GRAD_OP:
@@ -212,6 +212,12 @@ int get_num_scalars_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDi
           needDerivFC = true;
           needDetjFC = true;
           numScalars += nDim * numFaceIp;
+          break;
+        case FEM_GIJ:
+          gUpperLength = nDim*nDim*numFemIp;
+          gLowerLength = nDim*nDim*numFemIp;
+          needDerivFem = true;
+          numScalars += (gUpperLength + gLowerLength);
           break;
         default: 
           ThrowRequireMsg(false, "get_num_scalars_pre_req_data: enum not coded " << data);
@@ -353,6 +359,12 @@ int get_num_scalars_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDi
           needDerivFC = true;
           needDetjFC = true;
           numScalars += nDim * numFaceIp;
+          break;
+        case FEM_GIJ:
+          gUpperLength = nDim*nDim*numFemIp;
+          gLowerLength = nDim*nDim*numFemIp;
+          needDerivFem = true;
+          numScalars += (gUpperLength + gLowerLength );
           break;
         default: 
           ThrowRequireMsg(false, "get_num_scalars_pre_req_data: enum not coded " << data);

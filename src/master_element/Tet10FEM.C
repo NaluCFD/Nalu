@@ -245,6 +245,19 @@ void Tet10FEM::face_grad_op_fem(
 }
 
 //--------------------------------------------------------------------------
+//-------- gij -------------------------------------------------------------
+//--------------------------------------------------------------------------
+void Tet10FEM::gij(
+  SharedMemView<DoubleType**>& coords,
+  SharedMemView<DoubleType***>& gupper,
+  SharedMemView<DoubleType***>& glower,
+  SharedMemView<DoubleType***>& deriv)
+{
+  tet10_deriv(numIntPoints_, &intgLoc_[0], deriv);
+  generic_gij_3d<AlgTraitsTet10>(deriv, coords, gupper, glower);
+}
+
+//--------------------------------------------------------------------------
 //-------- side_node_ordinals ----------------------------------------------
 //--------------------------------------------------------------------------
 const int *

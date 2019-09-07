@@ -10,8 +10,6 @@
 #include <master_element/MasterElementFunctions.h>
 #include <master_element/Quad42DCVFEM.h>
 
-#include <master_element/MasterElementUtils.h>
-
 #include <AlgTraits.h>
 
 #include <NaluEnv.h>

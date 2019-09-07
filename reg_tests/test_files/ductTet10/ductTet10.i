@@ -112,13 +112,13 @@ realms:
             momentum: [momentum_time_derivative, advection, diffusion]
             continuity: advection
             dpdx: interior_png
-            mixture_fraction: [mixture_fraction_time_derivative, advection, diffusion]
+            mixture_fraction: [mixture_fraction_time_derivative, advection, diffusion, nso]
 
         - consistent_mass_matrix_png:
             pressure: yes
 
     output:
-      output_data_base_name: ductTet10_mixFrac.e
+      output_data_base_name: ductTet10.e
       output_frequency: 5
       output_node_set: no 
       output_variables:

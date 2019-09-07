@@ -47,11 +47,12 @@
 
 // kernels; src - n/a
 
-// bc kernels - n/a
+// kernels; bc
 #include "kernel/ScalarFluxPenaltyFemKernel.h"
 #include "kernel/ScalarOpenAdvFemKernel.h"
 
-// nso - n/a
+// kernels; nso
+#include "nso/ScalarNSOFemKernel.h"
 
 // user function
 #include "user_functions/WorkshopMMSMixFracAuxFunction.h"
@@ -308,6 +309,10 @@ MixtureFractionFemEquationSystem::register_interior_algorithm(
     build_fem_topo_kernel_if_requested<ScalarDiffFemKernel>
       (partTopo, *this, activeKernels, "diffusion",
        realm_.bulk_data(), *realm_.solutionOptions_, mixFrac_, evisc_, dataPreReqs);
+    
+    build_fem_topo_kernel_if_requested<ScalarNSOFemKernel>
+      (partTopo, *this, activeKernels, "nso",
+       realm_.bulk_data(), *realm_.solutionOptions_, mixFrac_, dataPreReqs);
     
     report_invalid_supp_alg_names();
     report_built_supp_alg_names();
