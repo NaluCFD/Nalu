@@ -65,6 +65,7 @@
 #include "user_functions/TaylorGreenVelocityAuxFunction.h"
 #include "user_functions/WindEnergyTaylorVortexAuxFunction.h"
 #include "user_functions/OneTwoTenVelocityAuxFunction.h"
+#include "user_functions/PulseVelocityAuxFunction.h"
 
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
@@ -659,7 +660,17 @@ MomentumFemEquationSystem::register_inflow_bc(
     
   }
   else if ( FUNCTION_UD == theDataType ) {
-    throw std::runtime_error("MomentumFemEquationSystem::register_inflow_bc: limited functions supported");
+    // extract the name/params
+    std::string fcnName = get_bc_function_name(userData, velocityName);
+    std::vector<double> theParams = get_bc_function_params(userData, velocityName);
+
+    // switch on the name found...
+    if ( fcnName == "pulse" ) {
+      theAuxFunc = new PulseVelocityAuxFunction(0,nDim,theParams);
+    }
+    else {
+      throw std::runtime_error("MomentumFemEquationSystem::register_inflow_bc: limited functions supported");
+    }
   }
   else {
     throw std::runtime_error("MomentumFemEquationSystem::register_inflow_bc: only constant and user function supported");
@@ -1141,7 +1152,17 @@ ContinuityFemEquationSystem::register_inflow_bc(
     theAuxFunc = new ConstantAuxFunction(0, nDim, userSpec);    
   }
   else if ( FUNCTION_UD == theDataType ) {
-    throw std::runtime_error("ContinuityFemEquationSystem::register_inflow_bc: limited functions supported");
+    // extract the name/params
+    std::string fcnName = get_bc_function_name(userData, velocityName);
+    std::vector<double> theParams = get_bc_function_params(userData, velocityName);
+    
+    // switch on the name found...
+    if ( fcnName == "pulse" ) {
+      theAuxFunc = new PulseVelocityAuxFunction(0,nDim,theParams);
+    }
+    else {
+      throw std::runtime_error("ContinuityFemEquationSystem::register_inflow_bc: limited functions supported");
+    }
   }
   else {
     throw std::runtime_error("ContinuityFemEquationSystem::register_inflow_bc: only constant and user function supported");

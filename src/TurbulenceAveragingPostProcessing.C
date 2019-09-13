@@ -390,9 +390,9 @@ TurbulenceAveragingPostProcessing::setup()
 
     // Resolved
     for ( size_t i = 0; i < avInfo->resolvedFieldNameVec_.size(); ++i ) {
-        const std::string primitiveName = avInfo->resolvedFieldNameVec_[i];
-        const std::string averagedName = primitiveName + "_resa_" + averageBlockName;
-        construct_pair(primitiveName, averagedName, avInfo->resolvedFieldVecPair_, avInfo->resolvedFieldSizeVec_, metaData);
+      const std::string primitiveName = avInfo->resolvedFieldNameVec_[i];
+      const std::string averagedName = primitiveName + "_resa_" + averageBlockName;
+      construct_pair(primitiveName, averagedName, avInfo->resolvedFieldVecPair_, avInfo->resolvedFieldSizeVec_, metaData);
     }
     
     // output what we have done here...
@@ -565,6 +565,14 @@ TurbulenceAveragingPostProcessing::review(
 
   if ( avInfo->computeMeanErrorIndictor_ ) {
     NaluEnv::self().naluOutputP0() << "Mean error indictor will be computed"<< std::endl;
+  }
+
+  // error check
+  if ( avInfo->computeVorticity_ || avInfo->computeQcriterion_ || avInfo->computeLambdaCI_ ) {
+    stk::mesh::FieldBase *dudx = realm_.meta_data().get_field(stk::topology::NODE_RANK, "dudx");
+    if ( nullptr == dudx ) {
+      throw std::runtime_error("duidxj (projected nodal gradient) is not registered (required for nodal vorticity, Q, and lCi)");
+    }
   }
 
   NaluEnv::self().naluOutputP0() << "===========================" << std::endl;
@@ -1049,7 +1057,7 @@ TurbulenceAveragingPostProcessing::compute_resolved_stress(
 }
 
 //--------------------------------------------------------------------------
-//-------- compute_vortictiy -----------------------------------------------
+//-------- compute_sfs_stress ----------------------------------------------
 //--------------------------------------------------------------------------
 void
 TurbulenceAveragingPostProcessing::compute_sfs_stress(
@@ -1067,6 +1075,7 @@ TurbulenceAveragingPostProcessing::compute_sfs_stress(
   const std::string SFSStressFieldName = "sfs_stress";
 
   bool computeSFSTKE = false;
+
   // extract fields
   stk::mesh::FieldBase *TurbViscosity_ = metaData.get_field(stk::topology::NODE_RANK, "turbulent_viscosity");
   stk::mesh::FieldBase *TurbKe_ = metaData.get_field(stk::topology::NODE_RANK, "turbulent_ke");
@@ -1075,7 +1084,7 @@ TurbulenceAveragingPostProcessing::compute_sfs_stress(
   stk::mesh::FieldBase *DualNodalVolume_ = metaData.get_field(stk::topology::NODE_RANK, "dual_nodal_volume");
   stk::mesh::FieldBase *DuDx_ = metaData.get_field(stk::topology::NODE_RANK, "dudx");
   stk::mesh::FieldBase *SFSStress = metaData.get_field(stk::topology::NODE_RANK, SFSStressFieldName);
-
+    
   stk::mesh::BucketVector const& node_buckets_sfsstress =
     realm_.get_buckets( stk::topology::NODE_RANK, s_all_nodes );
   for ( stk::mesh::BucketVector::const_iterator ib = node_buckets_sfsstress.begin();

@@ -170,6 +170,8 @@
 #include "user_functions/PowerlawPipeVelocityAuxFunction.h"
 #include "user_functions/PowerlawVelocityAuxFunction.h"
 
+#include "user_functions/PulseVelocityAuxFunction.h"
+
 // deprecated
 #include "ContinuityMassElemSuppAlgDep.h"
 #include "MomentumMassElemSuppAlgDep.h"
@@ -1467,6 +1469,9 @@ MomentumEquationSystem::register_inflow_bc(
     else if ( fcnName == "power_law_pipe" ) {
       theAuxFunc = new PowerlawPipeVelocityAuxFunction(0,nDim,theParams);
     }
+    else if ( fcnName == "pulse" ) {
+      theAuxFunc = new PulseVelocityAuxFunction(0,nDim,theParams);
+    }
     else {
       throw std::runtime_error("MomentumEquationSystem::register_inflow_bc: limited functions supported");
     }
@@ -2565,6 +2570,9 @@ ContinuityEquationSystem::register_inflow_bc(
     }
     else if ( fcnName == "power_law_pipe" ) {
       theAuxFunc = new PowerlawPipeVelocityAuxFunction(0,nDim,theParams);
+    }
+    else if ( fcnName == "pulse" ) {
+      theAuxFunc = new PulseVelocityAuxFunction(0,nDim,theParams);
     }
     else {
       throw std::runtime_error("ContEquationSystem::register_inflow_bc: limited functions supported");
