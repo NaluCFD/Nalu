@@ -173,6 +173,7 @@ realms:
 
           compute_tke: yes 
           compute_reynolds_stress: yes
+          compute_dissipation_rate: yes
 
         - name: two
           target_name: surface_5
@@ -203,6 +204,7 @@ realms:
        - resolved_turbulent_ke_ra_one
        - resolved_turbulent_ke_fa_one
        - reynolds_stress
+       - dissipation_rate
 
     restart:
       restart_data_base_name: heatedWaterChannelElem.rst

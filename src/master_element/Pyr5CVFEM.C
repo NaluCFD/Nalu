@@ -115,6 +115,93 @@ void shifted_pyr_deriv(const int npts,
   }
 }
 
+//-------- pyr_deriv (non-ngp) -------------------------------------------------------
+void pyr_derivative(
+  const int npts,
+  const double *intgLoc,
+  double *deriv)
+{
+  // d3d(c,s,j) = deriv[c + 3*(s + 5*j)] = deriv[c+3s+15j]
+  const double eps = std::numeric_limits<double>::epsilon();
+  
+  for ( int j = 0; j < npts; ++j) {
+    const int k = j*3;
+    const int p = 15*j;
+    
+    const double r = intgLoc[k+0];
+    const double s = intgLoc[k+1];
+    const double t_tmp = intgLoc[k+2];
+    
+    const double one_minus_t = 1.0 - t_tmp;
+    const double t = (std::fabs(one_minus_t) > eps) ? t_tmp : 1.0 + std::copysign(eps, one_minus_t);
+    const double quarter_inv_tm1 = 0.25 / (1.0 - t);
+    const double t_term = 4.0 * r * s * quarter_inv_tm1 * quarter_inv_tm1;
+    
+    // node 0
+    deriv[0+3*0+p] = -(1.0 - s - t) * quarter_inv_tm1;
+    deriv[1+3*0+p] = -(1.0 - r - t) * quarter_inv_tm1;
+    deriv[2+3*0+p] = (+t_term - 0.25);
+    
+    // node 1
+    deriv[0+3*1+p] = +(1.0 - s - t) * quarter_inv_tm1;
+    deriv[1+3*1+p] = -(1.0 + r - t) * quarter_inv_tm1;
+    deriv[2+3*1+p] = (-t_term - 0.25);
+    
+    // node 2
+    deriv[0+3*2+p] = +(1.0 + s - t) * quarter_inv_tm1;
+    deriv[1+3*2+p] = +(1.0 + r - t) * quarter_inv_tm1;
+    deriv[2+3*2+p] = (+t_term - 0.25);
+    
+    // node 3
+    deriv[0+3*3+p] = -(1.0 + s - t) * quarter_inv_tm1;
+    deriv[1+3*3+p] = +(1.0 - r - t) * quarter_inv_tm1;
+    deriv[2+3*3+p] = (-t_term - 0.25);
+    
+    // node 4
+    deriv[0+3*4+p] = 0.0;
+    deriv[1+3*4+p] = 0.0;
+    deriv[2+3*4+p] = 1.0;
+  } 
+}
+
+//-------- shifted_pyr_derivative (non-ngp) ------------------------------------------
+void shifted_pyr_derivative(
+  const int npts,
+  const double *intgLoc,
+  double *deriv)
+{
+  // d3d(c,s,j) = deriv[c + 3*(s + 5*j)] = deriv[c+3s+15j]
+
+  for ( int j = 0; j < npts; ++j) {
+    const int k = j*3;
+    const int p = 15*j;
+
+    double r = intgLoc[k+0];
+    double s = intgLoc[k+1];
+    double t = intgLoc[k+2];
+
+    deriv[0+3*0+p] =-0.25*(1.0-s)*(1.0-t);  // d(N_1)/ d(r) = deriv[0]
+    deriv[1+3*0+p] =-0.25*(1.0-r)*(1.0-t);  // d(N_1)/ d(s) = deriv[1]
+    deriv[2+3*0+p] =-0.25*(1.0-r)*(1.0-s);  // d(N_1)/ d(t) = deriv[2]
+
+    deriv[0+3*1+p] = 0.25*(1.0-s)*(1.0-t);  // d(N_2)/ d(r) = deriv[0+3]
+    deriv[1+3*1+p] =-0.25*(1.0+r)*(1.0-t);  // d(N_2)/ d(s) = deriv[1+3]
+    deriv[2+3*1+p] =-0.25*(1.0+r)*(1.0-s);  // d(N_2)/ d(t) = deriv[2+3]
+
+    deriv[0+3*2+p] = 0.25*(1.0+s)*(1.0-t);  // d(N_3)/ d(r) = deriv[0+6]
+    deriv[1+3*2+p] = 0.25*(1.0+r)*(1.0-t);  // d(N_3)/ d(s) = deriv[1+6]
+    deriv[2+3*2+p] =-0.25*(1.0+r)*(1.0+s);  // d(N_3)/ d(t) = deriv[2+6]
+
+    deriv[0+3*3+p] =-0.25*(1.0+s)*(1.0-t);  // d(N_4)/ d(r) = deriv[0+9]
+    deriv[1+3*3+p] = 0.25*(1.0-r)*(1.0-t);  // d(N_4)/ d(s) = deriv[1+9]
+    deriv[2+3*3+p] =-0.25*(1.0-r)*(1.0+s);  // d(N_4)/ d(t) = deriv[2+9]
+
+    deriv[0+3*4+p] = 0.0;                   // d(N_5)/ d(r) = deriv[0+12]
+    deriv[1+3*4+p] = 0.0;                   // d(N_5)/ d(s) = deriv[1+12]
+    deriv[2+3*4+p] = 1.0;                   // d(N_5)/ d(t) = deriv[2+12]
+  }
+}
+
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
@@ -427,6 +514,32 @@ void PyrSCV::shifted_grad_op(
 {
   shifted_pyr_deriv(numIntPoints_, &intgLocShift_[0], deriv);
   generic_grad_op<AlgTraitsPyr5>(deriv, coords, gradop);
+}
+
+//--------------------------------------------------------------------------
+//-------- grad_op ---------------------------------------------------------
+//--------------------------------------------------------------------------
+void PyrSCV::grad_op(
+  const int nelem,
+  const double *coords,
+  double *gradop,
+  double *deriv,
+  double *det_j,
+  double *error)
+{
+  int lerr = 0;
+
+  pyr_derivative(numIntPoints_, &intgLoc_[0], deriv);
+  
+  SIERRA_FORTRAN(pyr_gradient_operator)
+    ( &nelem,
+      &nodesPerElement_,
+      &numIntPoints_,
+      deriv,
+      coords, gradop, det_j, error, &lerr );
+
+  if ( lerr )
+    NaluEnv::self().naluOutput() << "sorry, negative PyrSCV volume.." << std::endl;
 }
 
 void PyrSCV::determinant(
@@ -1181,97 +1294,6 @@ PyrSCS::general_face_grad_op(
   if ( lerr )
     NaluEnv::self().naluOutput() << "PyrSCS::general_face_grad_op: issue.." << std::endl;
   
-}
-
-//--------------------------------------------------------------------------
-//-------- pyr_derivative --------------------------------------------------
-//--------------------------------------------------------------------------
-void PyrSCS::pyr_derivative(
-  const int npts,
-  const double *intgLoc,
-  double *deriv)
-{
-  // d3d(c,s,j) = deriv[c + 3*(s + 5*j)] = deriv[c+3s+15j]
-  const double eps = std::numeric_limits<double>::epsilon();
-  
-  for ( int j = 0; j < npts; ++j) {
-    const int k = j*3;
-    const int p = 15*j;
-    
-    const double r = intgLoc[k+0];
-    const double s = intgLoc[k+1];
-    const double t_tmp = intgLoc[k+2];
-    
-    const double one_minus_t = 1.0 - t_tmp;
-    const double t = (std::fabs(one_minus_t) > eps) ? t_tmp : 1.0 + std::copysign(eps, one_minus_t);
-    const double quarter_inv_tm1 = 0.25 / (1.0 - t);
-    const double t_term = 4.0 * r * s * quarter_inv_tm1 * quarter_inv_tm1;
-    
-    // node 0
-    deriv[0+3*0+p] = -(1.0 - s - t) * quarter_inv_tm1;
-    deriv[1+3*0+p] = -(1.0 - r - t) * quarter_inv_tm1;
-    deriv[2+3*0+p] = (+t_term - 0.25);
-    
-    // node 1
-    deriv[0+3*1+p] = +(1.0 - s - t) * quarter_inv_tm1;
-    deriv[1+3*1+p] = -(1.0 + r - t) * quarter_inv_tm1;
-    deriv[2+3*1+p] = (-t_term - 0.25);
-    
-    // node 2
-    deriv[0+3*2+p] = +(1.0 + s - t) * quarter_inv_tm1;
-    deriv[1+3*2+p] = +(1.0 + r - t) * quarter_inv_tm1;
-    deriv[2+3*2+p] = (+t_term - 0.25);
-    
-    // node 3
-    deriv[0+3*3+p] = -(1.0 + s - t) * quarter_inv_tm1;
-    deriv[1+3*3+p] = +(1.0 - r - t) * quarter_inv_tm1;
-    deriv[2+3*3+p] = (-t_term - 0.25);
-    
-    // node 4
-    deriv[0+3*4+p] = 0.0;
-    deriv[1+3*4+p] = 0.0;
-    deriv[2+3*4+p] = 1.0;
-  } 
-}
-
-//--------------------------------------------------------------------------
-//-------- shifted_pyr_derivative ------------------------------------------
-//--------------------------------------------------------------------------
-void PyrSCS::shifted_pyr_derivative(
-  const int npts,
-  const double *intgLoc,
-  double *deriv)
-{
-  // d3d(c,s,j) = deriv[c + 3*(s + 5*j)] = deriv[c+3s+15j]
-
-  for ( int j = 0; j < npts; ++j) {
-    const int k = j*3;
-    const int p = 15*j;
-
-    double r = intgLoc[k+0];
-    double s = intgLoc[k+1];
-    double t = intgLoc[k+2];
-
-    deriv[0+3*0+p] =-0.25*(1.0-s)*(1.0-t);  // d(N_1)/ d(r) = deriv[0]
-    deriv[1+3*0+p] =-0.25*(1.0-r)*(1.0-t);  // d(N_1)/ d(s) = deriv[1]
-    deriv[2+3*0+p] =-0.25*(1.0-r)*(1.0-s);  // d(N_1)/ d(t) = deriv[2]
-
-    deriv[0+3*1+p] = 0.25*(1.0-s)*(1.0-t);  // d(N_2)/ d(r) = deriv[0+3]
-    deriv[1+3*1+p] =-0.25*(1.0+r)*(1.0-t);  // d(N_2)/ d(s) = deriv[1+3]
-    deriv[2+3*1+p] =-0.25*(1.0+r)*(1.0-s);  // d(N_2)/ d(t) = deriv[2+3]
-
-    deriv[0+3*2+p] = 0.25*(1.0+s)*(1.0-t);  // d(N_3)/ d(r) = deriv[0+6]
-    deriv[1+3*2+p] = 0.25*(1.0+r)*(1.0-t);  // d(N_3)/ d(s) = deriv[1+6]
-    deriv[2+3*2+p] =-0.25*(1.0+r)*(1.0+s);  // d(N_3)/ d(t) = deriv[2+6]
-
-    deriv[0+3*3+p] =-0.25*(1.0+s)*(1.0-t);  // d(N_4)/ d(r) = deriv[0+9]
-    deriv[1+3*3+p] = 0.25*(1.0-r)*(1.0-t);  // d(N_4)/ d(s) = deriv[1+9]
-    deriv[2+3*3+p] =-0.25*(1.0-r)*(1.0+s);  // d(N_4)/ d(t) = deriv[2+9]
-
-    deriv[0+3*4+p] = 0.0;                   // d(N_5)/ d(r) = deriv[0+12]
-    deriv[1+3*4+p] = 0.0;                   // d(N_5)/ d(s) = deriv[1+12]
-    deriv[2+3*4+p] = 1.0;                   // d(N_5)/ d(t) = deriv[2+12]
-  }
 }
 
 //--------------------------------------------------------------------------
