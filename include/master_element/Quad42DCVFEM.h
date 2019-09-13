@@ -56,6 +56,14 @@ public:
     double *areav,
     double * error );
 
+  void grad_op(
+    const int nelem,
+    const double *coords,
+    double *gradop,
+    double *deriv,
+    double *det_j,
+    double * error );
+
   void shape_fcn(
     double *shpfc);
 
