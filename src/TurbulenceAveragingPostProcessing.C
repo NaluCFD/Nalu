@@ -15,6 +15,8 @@
 #include "SolutionOptions.h"
 #include "nalu_make_unique.h"
 
+#include "master_element/MasterElement.h"
+
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
 #include <stk_util/parallel/ParallelReduce.hpp>
@@ -174,7 +176,11 @@ TurbulenceAveragingPostProcessing::load(
                        avInfo->computeTemperatureResolved_,
                        avInfo->computeTemperatureResolved_);
 
+        // eleemnt-based quantities
         get_if_present(y_spec, "compute_mean_error_indicator", avInfo->computeMeanErrorIndictor_, avInfo->computeMeanErrorIndictor_);
+        get_if_present(y_spec, "compute_dissipation_rate", avInfo->computeDissipationRate_, avInfo->computeDissipationRate_);
+
+        // sanity checks for the user's behalf
 
         // we will need Reynolds/Favre-averaged velocity if we need to compute TKE
         if ( avInfo->computeTke_ || avInfo->computeReynoldsStress_ ) {
@@ -355,13 +361,25 @@ TurbulenceAveragingPostProcessing::setup()
         movingAvgPP_->add_fields({primitiveName});
         movingAvgPP_->set_time_scale(primitiveName, timeFilterInterval_);
       }
+    
+      //======================================
+      // element-based fields, size of unity
+      //======================================
       
       // mean error indicator
       if ( avInfo->computeMeanErrorIndictor_ ) {
         const std::string meanEiName = "mean_error_indicator";
-        GenericFieldType *mEI= &(metaData.declare_field<GenericFieldType>(stk::topology::ELEMENT_RANK, meanEiName));
+        GenericFieldType *mEI = &(metaData.declare_field<GenericFieldType>(stk::topology::ELEMENT_RANK, meanEiName));
         stk::mesh::put_field_on_mesh(*mEI, *targetPart, 1, nullptr);
         realm_.augment_restart_variable_list(meanEiName); 
+      }
+      
+      // dissipation rate
+      if ( avInfo->computeDissipationRate_ ) {
+        const std::string dRateName = "dissipation_rate";
+        GenericFieldType *dRate = &(metaData.declare_field<GenericFieldType>(stk::topology::ELEMENT_RANK, dRateName));
+        stk::mesh::put_field_on_mesh(*dRate, *targetPart, 1, nullptr);
+        realm_.augment_restart_variable_list(dRateName); 
       }
     }
     
@@ -567,6 +585,10 @@ TurbulenceAveragingPostProcessing::review(
     NaluEnv::self().naluOutputP0() << "Mean error indictor will be computed"<< std::endl;
   }
 
+  if ( avInfo->computeDissipationRate_ ) {
+    NaluEnv::self().naluOutputP0() << "issipation rate (name: dissipation_rate) will be computed" << std::endl;
+  }
+
   // error check
   if ( avInfo->computeVorticity_ || avInfo->computeQcriterion_ || avInfo->computeLambdaCI_ ) {
     stk::mesh::FieldBase *dudx = realm_.meta_data().get_field(stk::topology::NODE_RANK, "dudx");
@@ -762,6 +784,10 @@ TurbulenceAveragingPostProcessing::execute()
       if ( avInfo->computeTemperatureSFS_ )
         compute_temperature_sfs_flux(
           avInfo->name_, oldTimeFilter, zeroCurrent, dt, s_all_nodes);
+    
+      if ( avInfo->computeDissipationRate_ )
+        compute_dissipation_rate(
+          avInfo, oldTimeFilter, zeroCurrent, dt, s_all_nodes);
     }
   }
 }
@@ -1486,6 +1512,194 @@ TurbulenceAveragingPostProcessing::compute_mean_error_indicator(
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
       const double averageField = (mei[k]*oldTimeFilter*zeroCurrent + ei[k]*dt)/currentTimeFilter_;  
       mei[k] = averageField;
+    }
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- compute_dissipation_rate ----------------------------------------
+//--------------------------------------------------------------------------
+void
+TurbulenceAveragingPostProcessing::compute_dissipation_rate(
+  const AveragingInfo *avInfo,
+  const double &oldTimeFilter,
+  const double &zeroCurrent,
+  const double &dt,
+  stk::mesh::Selector s_all_nodes)
+{
+  // compute general form for dissipation rate:  \bar{ 1.0/rhoMean*tauij*dui/dxj }
+
+  stk::mesh::MetaData & metaData = realm_.meta_data();
+  const int nDim = realm_.spatialDimension_;
+
+  // extract fields
+  VectorFieldType *coordinates 
+    = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  VectorFieldType *velocity 
+    = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
+  ScalarFieldType *viscosity 
+    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity");
+  GenericFieldType *dissipationRate 
+    = metaData.get_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "dissipation_rate");
+ 
+  // mean values require knowing the block name to extract the field
+  const std::string averageBlockName = avInfo->name_;
+  const std::string meanDensityName = "density_ra_" + averageBlockName;
+  ScalarFieldType *meanDensity 
+    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, meanDensityName);
+ 
+  // extract mean velocity name - assume Favre until proven otherwise
+  std::string meanVelocityName = "velocity_fa_" + averageBlockName;
+  double includeDivU = 1.0;
+  if ( std::find(avInfo->favreFieldNameVec_.begin(), avInfo->favreFieldNameVec_.end(), "velocity") == avInfo->favreFieldNameVec_.end() ) {
+    // Favre not found - rely on Reynolds form with divU term neglected
+    meanVelocityName = "velocity_ra_" + averageBlockName;
+    includeDivU = 0.0;
+  }
+  VectorFieldType *meanVelocity 
+    = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, meanVelocityName);
+
+  // need a grad-op (assume CVFEM)
+  std::vector<double> ws_dndx;
+  std::vector<double> ws_deriv;
+  std::vector<double> ws_det_j;
+  std::vector<double> ws_shape_function;
+  std::vector<double> ws_scv_volume;
+
+  // fields
+  std::vector<double> ws_coordinates;
+  std::vector<double> ws_velocity;
+  std::vector<double> ws_meanVelocity;
+  std::vector<double> ws_meanDensity;
+  std::vector<double> ws_viscosity;
+
+  // fixed size
+  std::vector<double> ws_dupdx(nDim*nDim);
+  const double kd[3][3] = {{1.0, 0.0, 0.0}, 
+                           {0.0, 1.0, 0.0}, 
+                           {0.0, 0.0, 1.0}};
+
+  stk::mesh::BucketVector const& elem_buckets =
+    realm_.get_buckets( stk::topology::ELEMENT_RANK, s_all_nodes );
+  for ( stk::mesh::BucketVector::const_iterator ib = elem_buckets.begin();
+        ib != elem_buckets.end() ; ++ib ) {
+    stk::mesh::Bucket & b = **ib ;
+    const stk::mesh::Bucket::size_type length   = b.size();
+
+    // extract master element
+    MasterElement *meSCV = sierra::nalu::MasterElementRepo::get_volume_master_element(b.topology());
+    const int nodesPerElement = meSCV->nodesPerElement_;
+    const int numIp = meSCV->numIntPoints_;
+
+    // resize element integration point quantities
+    ws_dndx.resize(nDim*numIp*nodesPerElement);
+    ws_deriv.resize(nDim*numIp*nodesPerElement);
+    ws_det_j.resize(numIp);
+    ws_scv_volume.resize(numIp);
+    ws_shape_function.resize(numIp*nodesPerElement);
+
+    // resize nodal-based quantities
+    ws_coordinates.resize(nDim*nodesPerElement);
+    ws_velocity.resize(nDim*nodesPerElement);
+    ws_meanVelocity.resize(nDim*nodesPerElement);
+    ws_meanDensity.resize(nodesPerElement);
+    ws_viscosity.resize(nodesPerElement);
+
+    // can compute shape function for all of this bucket's topology
+    meSCV->shape_fcn(&ws_shape_function[0]);
+    
+    // fields
+    double *dRate = (double*)stk::mesh::field_data(*dissipationRate,b);
+
+    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+
+      stk::mesh::Entity const * node_rels = b.begin_nodes(k);
+      int num_nodes = b.num_nodes(k);
+
+      // sanity check on num nodes
+      ThrowAssert( num_nodes == nodesPerElement );
+
+      for ( int ni = 0; ni < num_nodes; ++ni ) {
+        stk::mesh::Entity node = node_rels[ni];
+
+        // pointers to real data
+        const double *uNp1 =  stk::mesh::field_data(*velocity, node);
+        const double *uMean = stk::mesh::field_data(*meanVelocity, node);
+        const double *coords =  stk::mesh::field_data(*coordinates, node);
+        
+        const double rho = *stk::mesh::field_data(*meanDensity, node);
+        const double mu = *stk::mesh::field_data(*viscosity, node);
+
+        // gather scalars
+        ws_meanDensity[ni] = rho;
+        ws_viscosity[ni] = mu;
+
+        // gather vectors
+        const int niNdim = ni*nDim;
+        for ( int i=0; i < nDim; ++i ) {
+          ws_velocity[niNdim+i] = uNp1[i];
+          ws_meanVelocity[niNdim+i] = uMean[i];
+          ws_coordinates[niNdim+i] = coords[i];
+        }
+      }
+
+      // compute geometry and grad-op
+      double scv_error = 0.0;
+      meSCV->determinant(1, &ws_coordinates[0], &ws_scv_volume[0], &scv_error);
+      meSCV->grad_op(1, &ws_coordinates[0], &ws_dndx[0], &ws_deriv[0], &ws_det_j[0], &scv_error);
+
+      // loop over scv ip
+      double sumVolume = 0.0;
+      double sumDissipationRate = 0.0;
+
+      for ( int ip = 0; ip < numIp; ++ip ) {
+        
+        const int ipNpe = ip*nodesPerElement;
+
+        // compute integration point sij (a function of u')
+        for ( int i = 0; i < nDim*nDim; ++i )
+          ws_dupdx[i] = 0.0;
+        
+        double rhoIp = 0.0;
+        double muIp = 0.0;
+        for ( int ic = 0; ic < nodesPerElement; ++ic ) {
+          const double r = ws_shape_function[ipNpe+ic];
+          rhoIp += r*ws_meanDensity[ic];
+          muIp += r*ws_viscosity[ic];
+          const int offSetDnDx = nDim*nodesPerElement*ip + ic*nDim;
+          for ( int i = 0; i < nDim; ++i ) {
+            const double ui = ws_velocity[ic*nDim+i];
+            const double uiM = ws_meanVelocity[ic*nDim+i];
+            const double uip = uiM - ui;
+            for ( int j = 0; j < nDim; ++j ) {
+              ws_dupdx[i*nDim+j] += uip*ws_dndx[offSetDnDx+j];
+            }
+          }
+        }
+
+        double divU = 0.0;
+        for ( int i = 0; i < nDim; ++i )
+          divU += ws_dupdx[i*nDim+i];
+        
+        // local tauij*duidxj
+        double tauDu = 0.0;
+        for ( int i = 0; i < nDim; ++i ) {
+          const int offSetI = nDim*i;
+          for ( int j = 0; j < nDim; ++j ) {
+            const int offSetJ = nDim*j;
+            double sij = 0.5*(ws_dupdx[offSetI+j] + ws_dupdx[offSetJ+i]) - 1.0/3.0*divU*kd[i][j]*includeDivU;
+            const double tauij = 2.0*muIp*sij;
+            tauDu += tauij*ws_dupdx[offSetI+j];
+          }
+        }
+        
+        // element-averaged
+        sumVolume += ws_scv_volume[ip];
+        sumDissipationRate += ws_scv_volume[ip]*tauDu/rhoIp;          
+      }
+      
+      const double averageField = (dRate[k]*oldTimeFilter*zeroCurrent + sumDissipationRate/sumVolume*dt)/currentTimeFilter_;  
+      dRate[k] = averageField;
     }
   }
 }

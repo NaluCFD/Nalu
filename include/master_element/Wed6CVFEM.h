@@ -36,6 +36,14 @@ public:
     SharedMemView<DoubleType***>& gradop,
     SharedMemView<DoubleType***>& deriv);
 
+  void grad_op(
+    const int nelem,
+    const double *coords,
+    double *gradop,
+    double *deriv,
+    double *det_j,
+    double * error );
+
   void determinant(
     const int nelem,
     const double *coords,
@@ -98,11 +106,6 @@ public:
     double *deriv,
     double *det_j,
     double * error );
-
-  void wedge_derivative(
-    const int npts,
-    const double *intLoc,
-    double *deriv);
 
   void face_grad_op(
     const int nelem,

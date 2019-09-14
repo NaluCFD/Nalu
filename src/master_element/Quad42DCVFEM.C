@@ -256,6 +256,33 @@ void Quad42DSCV::shifted_grad_op(
 }
 
 //--------------------------------------------------------------------------
+//-------- grad_op ---------------------------------------------------------
+//--------------------------------------------------------------------------
+void Quad42DSCV::grad_op(
+  const int nelem,
+  const double *coords,
+  double *gradop,
+  double *deriv,
+  double *det_j,
+  double *error)
+{
+  int lerr = 0;
+
+  SIERRA_FORTRAN(quad_derivative)
+    ( &numIntPoints_, &intgLoc_[0], deriv );
+  
+  SIERRA_FORTRAN(quad_gradient_operator)
+    ( &nelem,
+      &nodesPerElement_,
+      &numIntPoints_,
+      deriv,
+      coords, gradop, det_j, error, &lerr );
+  
+  if ( lerr )
+    NaluEnv::self().naluOutput() << "sorry, negative Quad42DSCV volume.." << std::endl;
+}
+
+//--------------------------------------------------------------------------
 //-------- shape_fcn -------------------------------------------------------
 //--------------------------------------------------------------------------
 void
@@ -527,6 +554,9 @@ void Quad42DSCS::grad_op(
   quad_gradient_operator<Traits::numScsIp_, Traits::nodesPerElement_>(deriv, coords, gradop);
 }
 
+//--------------------------------------------------------------------------
+//-------- grad_op ---------------------------------------------------------
+//--------------------------------------------------------------------------
 void Quad42DSCS::grad_op(
   const int nelem,
   const double *coords,

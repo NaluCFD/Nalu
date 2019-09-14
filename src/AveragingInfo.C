@@ -28,11 +28,16 @@ AveragingInfo::AveragingInfo()
   computeTke_(false),
   computeFavreStress_(false),
   computeFavreTke_(false),
+  computeResolvedStress_(false),
+  computeSFSStress_(false),
   computeVorticity_(false),
   computeQcriterion_(false),
   computeLambdaCI_(false),
   computeMeanResolvedKe_(false),
-  computeMeanErrorIndictor_(false)
+  computeMeanErrorIndictor_(false),
+  computeDissipationRate_(false),
+  computeTemperatureSFS_(false),
+  computeTemperatureResolved_(false)
 {
   // does nothing
 }

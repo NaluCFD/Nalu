@@ -141,25 +141,32 @@ public:
 
   void compute_vorticity(
     const std::string &averageBlockName,
-	stk::mesh::Selector s_all_nodes);
+    stk::mesh::Selector s_all_nodes);
 
   void compute_q_criterion(
-	const std::string &averageBlockName,
-	stk::mesh::Selector s_all_nodes);
+    const std::string &averageBlockName,
+    stk::mesh::Selector s_all_nodes);
 
   void compute_lambda_ci(
-	const std::string &averageBlockName,
-	stk::mesh::Selector s_all_nodes);
+    const std::string &averageBlockName,
+    stk::mesh::Selector s_all_nodes);
 
   void compute_mean_resolved_ke(
-	const std::string &averageBlockName,
-	stk::mesh::Selector s_all_nodes);
+    const std::string &averageBlockName,
+    stk::mesh::Selector s_all_nodes);
 
   void compute_mean_error_indicator(
-        stk::mesh::Selector s_all_nodes,
-        const double dt,
-        const double oldTimeFilter,
-        const double zeroCurrent);
+    stk::mesh::Selector s_all_nodes,
+    const double dt,
+    const double oldTimeFilter,
+    const double zeroCurrent);
+  
+  void compute_dissipation_rate(
+    const AveragingInfo *avInfo,
+    const double &oldTimeFilter,
+    const double &zeroCurrent,
+    const double &dt,
+    stk::mesh::Selector s_all_nodes);
 
   // hold the realm
   Realm &realm_;

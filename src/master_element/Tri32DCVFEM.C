@@ -306,6 +306,33 @@ void Tri32DSCV::shifted_grad_op(
   tri_gradient_operator(coords, gradop, deriv);
 }
 
+//--------------------------------------------------------------------------
+//-------- grad_op ---------------------------------------------------------
+//--------------------------------------------------------------------------
+void Tri32DSCV::grad_op(
+  const int nelem,
+  const double *coords,
+  double *gradop,
+  double *deriv,
+  double *det_j,
+  double *error)
+{
+  int lerr = 0;
+
+  SIERRA_FORTRAN(tri_derivative)
+    ( &numIntPoints_, deriv );
+  
+  SIERRA_FORTRAN(tri_gradient_operator)
+    ( &nelem,
+      &nodesPerElement_,
+      &numIntPoints_,
+      deriv,
+      coords, gradop, det_j, error, &lerr );
+  
+  if ( lerr )
+    NaluEnv::self().naluOutput() << "sorry, negative Tri32DSCV volume.." << std::endl;
+}
+
 void Tri32DSCV::determinant(
   const int nelem,
   const double *coords,
