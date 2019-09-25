@@ -167,6 +167,13 @@ public:
     const double &zeroCurrent,
     const double &dt,
     stk::mesh::Selector s_all_nodes);
+  
+  void compute_production(
+    const AveragingInfo *avInfo,
+    const double &oldTimeFilter,
+    const double &zeroCurrent,
+    const double &dt,
+    stk::mesh::Selector s_all_nodes);
 
   // hold the realm
   Realm &realm_;

@@ -36,6 +36,7 @@ AveragingInfo::AveragingInfo()
   computeMeanResolvedKe_(false),
   computeMeanErrorIndictor_(false),
   computeDissipationRate_(false),
+  computeProduction_(false),
   computeTemperatureSFS_(false),
   computeTemperatureResolved_(false)
 {
