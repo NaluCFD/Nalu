@@ -1728,9 +1728,9 @@ TurbulenceAveragingPostProcessing::compute_dissipation_rate(
 void
 TurbulenceAveragingPostProcessing::compute_production(
   const AveragingInfo *avInfo,
-  const double &oldTimeFilter,
-  const double &zeroCurrent,
-  const double &dt,
+  const double &/*oldTimeFilter*/,
+  const double &/*zeroCurrent*/,
+  const double &/*dt*/,
   stk::mesh::Selector s_all_nodes)
 {
   // compute general form for production:  - \bar{rho} \bar{u'i u'j} d\bar{ui}/dxj. 
@@ -1923,8 +1923,8 @@ TurbulenceAveragingPostProcessing::compute_production(
         sumProduction += ws_scv_volume[ip]*Pk;          
       }
       
-      const double averageField = (prodKe[k]*oldTimeFilter*zeroCurrent + sumProduction/sumVolume*dt)/currentTimeFilter_;  
-      prodKe[k] = averageField;
+      // no need to average this as it is a function of averaged variables
+      prodKe[k] = sumProduction/sumVolume;
     }
   }
 }
