@@ -179,6 +179,7 @@ TurbulenceAveragingPostProcessing::load(
         // eleemnt-based quantities
         get_if_present(y_spec, "compute_mean_error_indicator", avInfo->computeMeanErrorIndictor_, avInfo->computeMeanErrorIndictor_);
         get_if_present(y_spec, "compute_dissipation_rate", avInfo->computeDissipationRate_, avInfo->computeDissipationRate_);
+        get_if_present(y_spec, "compute_production", avInfo->computeProduction_, avInfo->computeProduction_);
 
         // sanity checks for the user's behalf
 
@@ -380,6 +381,14 @@ TurbulenceAveragingPostProcessing::setup()
         GenericFieldType *dRate = &(metaData.declare_field<GenericFieldType>(stk::topology::ELEMENT_RANK, dRateName));
         stk::mesh::put_field_on_mesh(*dRate, *targetPart, 1, nullptr);
         realm_.augment_restart_variable_list(dRateName); 
+      }
+
+      // production
+      if ( avInfo->computeProduction_ ) {
+        const std::string pkName = "production";
+        GenericFieldType *pk = &(metaData.declare_field<GenericFieldType>(stk::topology::ELEMENT_RANK, pkName));
+        stk::mesh::put_field_on_mesh(*pk, *targetPart, 1, nullptr);
+        realm_.augment_restart_variable_list(pkName); 
       }
     }
     
@@ -586,7 +595,11 @@ TurbulenceAveragingPostProcessing::review(
   }
 
   if ( avInfo->computeDissipationRate_ ) {
-    NaluEnv::self().naluOutputP0() << "issipation rate (name: dissipation_rate) will be computed" << std::endl;
+    NaluEnv::self().naluOutputP0() << "dissipation rate (name: dissipation_rate) will be computed" << std::endl;
+  }
+
+  if ( avInfo->computeProduction_ ) {
+    NaluEnv::self().naluOutputP0() << "production (name: production) will be computed" << std::endl;
   }
 
   // error check
@@ -787,6 +800,10 @@ TurbulenceAveragingPostProcessing::execute()
     
       if ( avInfo->computeDissipationRate_ )
         compute_dissipation_rate(
+          avInfo, oldTimeFilter, zeroCurrent, dt, s_all_nodes);
+
+      if ( avInfo->computeProduction_ )
+        compute_production(
           avInfo, oldTimeFilter, zeroCurrent, dt, s_all_nodes);
     }
   }
@@ -1666,13 +1683,14 @@ TurbulenceAveragingPostProcessing::compute_dissipation_rate(
           const double r = ws_shape_function[ipNpe+ic];
           rhoIp += r*ws_meanDensity[ic];
           muIp += r*ws_viscosity[ic];
-          const int offSetDnDx = nDim*nodesPerElement*ip + ic*nDim;
+          const int offSetDnDx = nDim*ipNpe + ic*nDim;
           for ( int i = 0; i < nDim; ++i ) {
             const double ui = ws_velocity[ic*nDim+i];
             const double uiM = ws_meanVelocity[ic*nDim+i];
             const double uip = uiM - ui;
+            const int iNdim = i*nDim;
             for ( int j = 0; j < nDim; ++j ) {
-              ws_dupdx[i*nDim+j] += uip*ws_dndx[offSetDnDx+j];
+              ws_dupdx[iNdim+j] += uip*ws_dndx[offSetDnDx+j];
             }
           }
         }
@@ -1684,12 +1702,12 @@ TurbulenceAveragingPostProcessing::compute_dissipation_rate(
         // local tauij*duidxj
         double tauDu = 0.0;
         for ( int i = 0; i < nDim; ++i ) {
-          const int offSetI = nDim*i;
+          const int iNdim = i*nDim;
           for ( int j = 0; j < nDim; ++j ) {
-            const int offSetJ = nDim*j;
-            double sij = 0.5*(ws_dupdx[offSetI+j] + ws_dupdx[offSetJ+i]) - 1.0/3.0*divU*kd[i][j]*includeDivU;
+            const int jNdim = j*nDim;
+            double sij = 0.5*(ws_dupdx[iNdim+j] + ws_dupdx[jNdim+i]) - 1.0/3.0*divU*kd[i][j]*includeDivU;
             const double tauij = 2.0*muIp*sij;
-            tauDu += tauij*ws_dupdx[offSetI+j];
+            tauDu += tauij*ws_dupdx[iNdim+j];
           }
         }
         
@@ -1700,6 +1718,213 @@ TurbulenceAveragingPostProcessing::compute_dissipation_rate(
       
       const double averageField = (dRate[k]*oldTimeFilter*zeroCurrent + sumDissipationRate/sumVolume*dt)/currentTimeFilter_;  
       dRate[k] = averageField;
+    }
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- compute_production ----------------------------------------------
+//--------------------------------------------------------------------------
+void
+TurbulenceAveragingPostProcessing::compute_production(
+  const AveragingInfo *avInfo,
+  const double &/*oldTimeFilter*/,
+  const double &/*zeroCurrent*/,
+  const double &/*dt*/,
+  stk::mesh::Selector s_all_nodes)
+{
+  // compute general form for production:  - \bar{rho} \bar{u'i u'j} d\bar{ui}/dxj. 
+  // in this implementation, we nodally lump the stress and use scvIp density and grad(u)
+
+  stk::mesh::MetaData & metaData = realm_.meta_data();
+  const int nDim = realm_.spatialDimension_;
+
+  // extract fields
+  VectorFieldType *coordinates 
+    = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  GenericFieldType *production 
+    = metaData.get_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "production");
+ 
+  // mean values require knowing the block name to extract the field
+  const std::string averageBlockName = avInfo->name_;
+  const std::string meanDensityName = "density_ra_" + averageBlockName;
+  ScalarFieldType *meanDensity 
+    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, meanDensityName);
+ 
+  // extract mean velocity name - assume Favre until proven otherwise
+  std::string meanVelocityName = "velocity_fa_" + averageBlockName;
+  std::string stressName = "favre_stress";
+  if ( std::find(avInfo->favreFieldNameVec_.begin(), avInfo->favreFieldNameVec_.end(), "velocity") == avInfo->favreFieldNameVec_.end() ) {
+    // Favre not found - rely on standart Reynolds stress
+    meanVelocityName = "velocity_ra_" + averageBlockName;
+    stressName = "reynolds_stress";
+    if ( !avInfo->computeReynoldsStress_ )
+      throw std::runtime_error("TurbulenceAveragingPostProcessing:compute_production() compute_reynolds_stress is not active: ");
+  }
+  else {
+    if ( !avInfo->computeFavreStress_ )
+      throw std::runtime_error("TurbulenceAveragingPostProcessing:compute_production() compute_favre_stress is not active: ");
+  }
+
+  VectorFieldType *meanVelocity 
+    = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, meanVelocityName);
+  GenericFieldType *stress 
+    = metaData.get_field<GenericFieldType>(stk::topology::NODE_RANK, stressName);
+
+  // need a grad-op (assume CVFEM)
+  std::vector<double> ws_dndx;
+  std::vector<double> ws_deriv;
+  std::vector<double> ws_det_j;
+  std::vector<double> ws_shape_function;
+  std::vector<double> ws_scv_volume;
+
+  // fields
+  std::vector<double> ws_coordinates;
+  std::vector<double> ws_velocity;
+  std::vector<double> ws_meanVelocity;
+  std::vector<double> ws_meanDensity;
+  
+  // fixed size
+  std::vector<double> ws_dudx(nDim*nDim);
+  
+  // deal with stress and stress mapping
+  std::vector<double> ws_stress(nDim*nDim);
+  int stressMap[3][3] = {{0, 1, 2},
+                         {1, 3, 4},
+                         {2, 4, 5}};
+  if ( nDim == 2 ) {
+    stressMap[0][2] = 0;
+    stressMap[1][1] = 2;
+    stressMap[1][2] = 0;
+    stressMap[2][0] = 0;
+    stressMap[2][1] = 0;
+    stressMap[2][2] = 0;
+  }
+
+  stk::mesh::BucketVector const& elem_buckets =
+    realm_.get_buckets( stk::topology::ELEMENT_RANK, s_all_nodes );
+  for ( stk::mesh::BucketVector::const_iterator ib = elem_buckets.begin();
+        ib != elem_buckets.end() ; ++ib ) {
+    stk::mesh::Bucket & b = **ib ;
+    const stk::mesh::Bucket::size_type length   = b.size();
+
+    // extract master element
+    MasterElement *meSCV = sierra::nalu::MasterElementRepo::get_volume_master_element(b.topology());
+    const int nodesPerElement = meSCV->nodesPerElement_;
+    const int numIp = meSCV->numIntPoints_;
+    const int *ipNodeMap = meSCV->ipNodeMap();
+
+    // resize element integration point quantities
+    ws_dndx.resize(nDim*numIp*nodesPerElement);
+    ws_deriv.resize(nDim*numIp*nodesPerElement);
+    ws_det_j.resize(numIp);
+    ws_scv_volume.resize(numIp);
+    ws_shape_function.resize(numIp*nodesPerElement);
+
+    // resize nodal-based quantities
+    ws_coordinates.resize(nDim*nodesPerElement);
+    ws_velocity.resize(nDim*nodesPerElement);
+    ws_meanVelocity.resize(nDim*nodesPerElement);
+    ws_meanDensity.resize(nodesPerElement);
+
+    // can compute shape function for all of this bucket's topology
+    meSCV->shape_fcn(&ws_shape_function[0]);
+    
+    // fields
+    double *prodKe = (double*)stk::mesh::field_data(*production,b);
+
+    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+
+      stk::mesh::Entity const * node_rels = b.begin_nodes(k);
+      int num_nodes = b.num_nodes(k);
+
+      // sanity check on num nodes
+      ThrowAssert( num_nodes == nodesPerElement );
+
+      for ( int ni = 0; ni < num_nodes; ++ni ) {
+        stk::mesh::Entity node = node_rels[ni];
+
+        // pointers to real data
+        const double *uMean = stk::mesh::field_data(*meanVelocity, node);
+        const double *coords =  stk::mesh::field_data(*coordinates, node);
+        
+        const double rho = *stk::mesh::field_data(*meanDensity, node);
+       
+        // gather scalars
+        ws_meanDensity[ni] = rho;
+
+        // gather vectors
+        const int niNdim = ni*nDim;
+        for ( int i = 0; i < nDim; ++i ) {
+          ws_meanVelocity[niNdim+i] = uMean[i];
+          ws_coordinates[niNdim+i] = coords[i];
+        }
+      }
+      
+      // compute geometry and grad-op
+      double scv_error = 0.0;
+      meSCV->determinant(1, &ws_coordinates[0], &ws_scv_volume[0], &scv_error);
+      meSCV->grad_op(1, &ws_coordinates[0], &ws_dndx[0], &ws_deriv[0], &ws_det_j[0], &scv_error);
+
+      // loop over scv ip
+      double sumVolume = 0.0;
+      double sumProduction = 0.0;
+
+      for ( int ip = 0; ip < numIp; ++ip ) {
+
+        const int ipNpe = ip*nodesPerElement;        
+      
+        // nearest node to ip
+        const int ir = ipNodeMap[ip];
+        stk::mesh::Entity node = node_rels[ir];
+        
+        // extract stress
+        const double *Rij = stk::mesh::field_data(*stress, node);
+
+        // fill in local stress ip (recall, we will lump this term to avoid interpolation)
+        for ( int i = 0; i < nDim; ++i ) {
+          const int iNdim = i*nDim;
+          for ( int j = 0; j < nDim; ++j ) {
+            int sm = stressMap[i][j];
+            ws_stress[iNdim+j] = Rij[sm];
+          }
+        }
+
+        // zero out
+        for ( int i = 0; i < nDim*nDim; ++i )
+          ws_dudx[i] = 0.0;
+
+        double rhoIp = 0.0;        
+        for ( int ic = 0; ic < nodesPerElement; ++ic ) {
+          const double r = ws_shape_function[ipNpe+ic];
+          rhoIp += r*ws_meanDensity[ic];
+          const int offSetDnDx = nDim*ipNpe + ic*nDim;
+          for ( int i = 0; i < nDim; ++i ) {
+            const double ui = ws_meanVelocity[ic*nDim+i];
+            const int iNdim = i*nDim;
+            for ( int j = 0; j < nDim; ++j ) {
+              ws_dudx[iNdim+j] += ui*ws_dndx[offSetDnDx+j];
+            }
+          }
+        }
+        
+        // -rho*stress[i][j]*du[i]dx[j]
+        double Pk = 0.0;
+        for ( int i = 0; i < nDim; ++i ) {
+          const int iNdim = i*nDim;
+          for ( int j = 0; j < nDim; ++j ) {
+            Pk -= ws_stress[iNdim+j]*ws_dudx[iNdim+j];
+          }
+        }
+        Pk *= rhoIp;
+        
+        // element-averaged
+        sumVolume += ws_scv_volume[ip];
+        sumProduction += ws_scv_volume[ip]*Pk;          
+      }
+      
+      // no need to average this as it is a function of averaged variables
+      prodKe[k] = sumProduction/sumVolume;
     }
   }
 }

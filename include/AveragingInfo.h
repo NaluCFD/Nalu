@@ -48,6 +48,7 @@ public:
   bool computeMeanResolvedKe_;
   bool computeMeanErrorIndictor_;
   bool computeDissipationRate_;
+  bool computeProduction_;
 
   // Temperature stresses
   bool computeTemperatureSFS_;
