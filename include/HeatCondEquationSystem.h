@@ -90,9 +90,6 @@ public:
   ScalarFieldType *tTmp_;
   ScalarFieldType *dualNodalVolume_;
   VectorFieldType *coordinates_;
-  ScalarFieldType *exact_temperature_;
-  VectorFieldType *exact_dtdx_;
-  VectorFieldType *exact_laplacian_;
   
   ScalarFieldType *density_;
   ScalarFieldType *specHeat_;
@@ -103,6 +100,7 @@ public:
   AssembleNodalGradAlgorithmDriver *assembleNodalGradAlgDriver_;
   bool isInit_;
   ProjectedNodalGradientEquationSystem *projectedNodalGradEqs_;
+  bool pmrCouplingActive_;
 };
 
 } // namespace nalu

@@ -60,6 +60,9 @@
 // bc kernels
 #include "kernel/ScalarFluxPenaltyElemKernel.h"
 
+// nodal source terms
+#include "EnthalpyPmrSrcNodeSuppAlg.h"
+
 // user functions
 #include "user_functions/SteadyThermalContactAuxFunction.h"
 #include "user_functions/SteadyThermalContactSrcNodeSuppAlg.h"
@@ -116,16 +119,14 @@ HeatCondEquationSystem::HeatCondEquationSystem(
     tTmp_(NULL),
     dualNodalVolume_(NULL),
     coordinates_(NULL),
-    exact_temperature_(NULL),
-    exact_dtdx_(NULL),
-    exact_laplacian_(NULL),
     density_(NULL),
     specHeat_(NULL),
     thermalCond_(NULL),
     edgeAreaVec_(NULL),
     assembleNodalGradAlgDriver_(new AssembleNodalGradAlgorithmDriver(realm_, "temperature", "dtdx")),
     isInit_(true),
-    projectedNodalGradEqs_(NULL)
+    projectedNodalGradEqs_(NULL),
+    pmrCouplingActive_(false)
 {
   // extract solver name and solver object
   std::string solverName = realm_.equationSystems_.get_solver_block_name("temperature");
@@ -143,6 +144,21 @@ HeatCondEquationSystem::HeatCondEquationSystem(
   if ( managePNG_ ) {
     manage_png(eqSystems);
   }
+
+  // check for PMR coupling
+  std::map<std::string, std::vector<std::string> >::iterator isrc 
+    = realm_.solutionOptions_->srcTermsMap_.find("temperature");
+  if ( isrc != realm_.solutionOptions_->srcTermsMap_.end() ) {
+    std::vector<std::string> mapNameVec = isrc->second;
+    for (size_t k = 0; k < mapNameVec.size(); ++k ) {
+      std::string sourceName = mapNameVec[k];   
+      if ( sourceName == "participating_media_radiation" ) {
+        pmrCouplingActive_ = true;
+      }
+    }
+  }
+  
+  NaluEnv::self().naluOutputP0() << "pmrCouplingActive_ " << pmrCouplingActive_ << std::endl;
 }
 
 //--------------------------------------------------------------------------
@@ -211,6 +227,12 @@ HeatCondEquationSystem::register_nodal_fields(
   realm_.augment_property_map(DENSITY_ID, density_);
   realm_.augment_property_map(SPEC_HEAT_ID, specHeat_);
   realm_.augment_property_map(THERMAL_COND_ID, thermalCond_);
+
+  // register divergence of radiative heat flux; for now this is an explicit coupling
+  if ( pmrCouplingActive_ ) {
+    ScalarFieldType *divQ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "div_radiative_heat_flux"));
+    stk::mesh::put_field_on_mesh(*divQ, *part, nullptr);
+  }
 
   // make sure all states are properly populated (restart can handle this)
   if ( numStates > 2 && (!realm_.restarted_simulation() || realm_.support_inconsistent_restart()) ) {
@@ -446,8 +468,6 @@ HeatCondEquationSystem::register_interior_algorithm(
           if (sourceName == "steady_2d_thermal" ) {
             SteadyThermalContactSrcNodeSuppAlg *theSrc
               = new SteadyThermalContactSrcNodeSuppAlg(realm_);
-            NaluEnv::self().naluOutputP0() << "HeatCondNodalSrcTerms::added() " << sourceName << std::endl;
-            
             theAlg->supplementalAlg_.push_back(theSrc);
           }
           else if (sourceName == "steady_3d_thermal" ) {
@@ -455,9 +475,14 @@ HeatCondEquationSystem::register_interior_algorithm(
               = new SteadyThermalContact3DSrcNodeSuppAlg(realm_);
             theAlg->supplementalAlg_.push_back(theSrc);
           }
+          else if ( sourceName == "participating_media_radiation" ) {
+            EnthalpyPmrSrcNodeSuppAlg *theSrc = new EnthalpyPmrSrcNodeSuppAlg(realm_);
+            theAlg->supplementalAlg_.push_back(theSrc);
+          }
           else {
             throw std::runtime_error("HeatCondNodalSrcTerms::Error Source term is not supported: " + sourceName);
           }
+          NaluEnv::self().naluOutputP0() << "HeatCondNodalSrcTerms::added() " << sourceName << std::endl;
         }
       }
     }
@@ -566,8 +591,16 @@ HeatCondEquationSystem::register_wall_bc(
       = new AuxFunctionAlgorithm(realm_, part,
                                  theBcField, theAuxFunc,
                                  stk::topology::NODE_RANK);
-    bcDataAlg_.push_back(auxAlg);
-    
+
+    // if this is an interface (coupling between two thermal realms)
+    if ( userData.isInterface_ ) {
+      // xfer will handle population; only need to populate the initial value
+      realm_.initCondAlg_.push_back(auxAlg);
+    }
+    else {
+      bcDataAlg_.push_back(auxAlg);
+    }
+
     // copy temperature_bc to temperature np1...
     CopyFieldAlgorithm *theCopyAlg
       = new CopyFieldAlgorithm(realm_, part,
