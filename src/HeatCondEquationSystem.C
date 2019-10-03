@@ -47,6 +47,11 @@
 #include "TimeIntegrator.h"
 #include "SolverAlgorithmDriver.h"
 
+// post process h and Too
+#include "AssembleWallHeatTransferAlgorithmDriver.h"
+#include "ComputeHeatTransferEdgeWallAlgorithm.h"
+#include "ComputeHeatTransferElemWallAlgorithm.h"
+
 // template for kernels
 #include "AlgTraits.h"
 #include "kernel/KernelBuilder.h"
@@ -126,7 +131,8 @@ HeatCondEquationSystem::HeatCondEquationSystem(
     assembleNodalGradAlgDriver_(new AssembleNodalGradAlgorithmDriver(realm_, "temperature", "dtdx")),
     isInit_(true),
     projectedNodalGradEqs_(NULL),
-    pmrCouplingActive_(false)
+    pmrCouplingActive_(false),
+    assembleWallHeatTransferAlgDriver_(NULL)
 {
   // extract solver name and solver object
   std::string solverName = realm_.equationSystems_.get_solver_block_name("temperature");
@@ -167,6 +173,9 @@ HeatCondEquationSystem::HeatCondEquationSystem(
 HeatCondEquationSystem::~HeatCondEquationSystem()
 {
   delete assembleNodalGradAlgDriver_;
+  
+  if ( NULL != assembleWallHeatTransferAlgDriver_ )
+    delete assembleWallHeatTransferAlgDriver_;
 }
 
 //--------------------------------------------------------------------------
@@ -609,6 +618,49 @@ HeatCondEquationSystem::register_wall_bc(
                                stk::topology::NODE_RANK);
     bcDataMapAlg_.push_back(theCopyAlg);
 
+    // check for post processing
+    if ( userData.ppHeatFlux_ ) {
+      // register the fields
+      ScalarFieldType *assembledWallArea =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "assembled_wall_area_ht"));
+      stk::mesh::put_field_on_mesh(*assembledWallArea, *part, nullptr);
+      ScalarFieldType *referenceTemperature =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "reference_temperature"));
+      stk::mesh::put_field_on_mesh(*referenceTemperature, *part, nullptr);
+      ScalarFieldType *heatTransferCoeff =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "heat_transfer_coefficient"));
+      stk::mesh::put_field_on_mesh(*heatTransferCoeff, *part, nullptr);
+      ScalarFieldType *normalHeatFlux = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "normal_heat_flux"));
+      stk::mesh::put_field_on_mesh(*normalHeatFlux, *part, nullptr);
+      ScalarFieldType *robinCouplingParameter = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "robin_coupling_parameter"));
+      stk::mesh::put_field_on_mesh(*robinCouplingParameter, *part, nullptr);
+      
+      // provide restart fields
+      realm_.augment_restart_variable_list(referenceTemperature->name());
+      realm_.augment_restart_variable_list(heatTransferCoeff->name());
+      realm_.augment_restart_variable_list(normalHeatFlux->name());
+      realm_.augment_restart_variable_list(robinCouplingParameter->name());
+      
+      // create the driver
+      if ( NULL == assembleWallHeatTransferAlgDriver_ ) {
+        assembleWallHeatTransferAlgDriver_ = new AssembleWallHeatTransferAlgorithmDriver(realm_);
+      }
+      
+      // create the edge or element algorithm for h and Too
+      std::map<AlgorithmType, Algorithm *>::iterator it
+        = assembleWallHeatTransferAlgDriver_->algMap_.find(algType);
+      if ( it == assembleWallHeatTransferAlgDriver_->algMap_.end() ) {
+        Algorithm *theAlg = NULL;
+        if ( realm_.realmUsesEdges_ ) {
+          theAlg = new ComputeHeatTransferEdgeWallAlgorithm(realm_, part);
+        }
+        else {
+          theAlg = new ComputeHeatTransferElemWallAlgorithm(realm_, part);
+        }
+        assembleWallHeatTransferAlgDriver_->algMap_[algType] = theAlg;
+      }
+      else {
+        it->second->partVec_.push_back(part);
+      }
+    }
+
     // wall specified temperature solver algorithm
     if ( realm_.solutionOptions_->useConsolidatedBcSolverAlg_ ) {
       // solver for weak wall
@@ -1047,7 +1099,11 @@ HeatCondEquationSystem::solve_and_update()
     compute_projected_nodal_gradient();
     timeB = NaluEnv::self().nalu_time();
     timerMisc_ += (timeB-timeA);
-  }  
+  }
+
+  // post process h and Too
+  if ( NULL != assembleWallHeatTransferAlgDriver_ )
+    assembleWallHeatTransferAlgDriver_->execute();
 }
 
 //--------------------------------------------------------------------------
