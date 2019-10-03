@@ -825,10 +825,6 @@ Realm::setup_post_processing_algorithms()
   }
 
   // check for turbulence averaging fields
-  if (NULL == turbulenceAveragingPostProcessing_ ) {
-    turbulenceAveragingPostProcessing_ =  new TurbulenceAveragingPostProcessing(*this, {});
-  }
-
   if ( NULL != turbulenceAveragingPostProcessing_ )
     turbulenceAveragingPostProcessing_->setup();
 
