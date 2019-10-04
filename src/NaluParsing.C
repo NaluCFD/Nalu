@@ -681,18 +681,6 @@ namespace YAML
     return true;
   }
 
-  bool convert<sierra::nalu::RoughnessHeight>::decode(const Node& node,
-    sierra::nalu::RoughnessHeight& z0)
-  {
-    if (!node.IsScalar())
-    {
-      return false;
-    }
-
-    z0.z0_ = node.as<double>();
-
-    return true;
-  }
 
   bool convert<sierra::nalu::NormalHeatFlux>::decode(const Node& node,
     sierra::nalu::NormalHeatFlux& q)
@@ -830,22 +818,15 @@ namespace YAML
     {
       wallData.isInterface_ = node["interface"].as<bool>();
     }
-
+    if (node["post_process_heat_flux"])
+    {
+      wallData.ppHeatFlux_ = node["post_process_heat_flux"].as<bool>();
+    }
     if (node["reference_temperature"])
     {
       wallData.referenceTemperature_ = node["reference_temperature"].as<
           sierra::nalu::ReferenceTemperature>();
       wallData.refTempSpec_ = true;
-    }
-    if (node["gravity_vector_component"])
-    {
-      wallData.gravityComponent_ =
-          node["gravity_vector_component"].as<unsigned>();
-    }
-    if (node["roughness_height"])
-    {
-      wallData.z0_ =
-          node["roughness_height"].as<sierra::nalu::RoughnessHeight>();
     }
     if (node["heat_transfer_coefficient"])
     {

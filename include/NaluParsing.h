@@ -162,13 +162,6 @@ struct NormalTemperatureGradient {
   {}
 };
 
-struct RoughnessHeight {
-  double z0_;
-  RoughnessHeight()
-    :  z0_(0.1)
-  {}
-};
-
 struct MasterSlave {
   std::string master_;
   std::string slave_;
@@ -191,13 +184,11 @@ struct WallUserData : public UserData {
   HeatTransferCoefficient heatTransferCoefficient_;
   RobinCouplingParameter robinCouplingParameter_;
   Pressure pressure_;
-  unsigned gravityComponent_;
-  RoughnessHeight z0_;
-  
-  
+    
   bool isAdiabatic_;
   bool heatFluxSpec_;
   bool isInterface_;
+  bool ppHeatFlux_;
   bool refTempSpec_;
   bool htcSpec_;
   bool robinParameterSpec_;
@@ -211,10 +202,10 @@ struct WallUserData : public UserData {
 
   WallUserData()
     : UserData(),
-      gravityComponent_(3),
       isAdiabatic_(false),
       heatFluxSpec_(false),
       isInterface_(false),
+      ppHeatFlux_(false),
       refTempSpec_(false),
       htcSpec_(false),
       robinParameterSpec_(false),
@@ -575,10 +566,6 @@ template<> struct convert<sierra::nalu::RobinCouplingParameter> {
 
 template<> struct convert<sierra::nalu::UserData> {
   static bool decode(const Node& node, sierra::nalu::UserData& rhs) ;
-};
-
-template<> struct convert<sierra::nalu::RoughnessHeight> {
- static bool decode(const Node& node, sierra::nalu::RoughnessHeight& z0) ;
 };
 
 template<> struct convert<sierra::nalu::NormalHeatFlux> {
