@@ -6,8 +6,8 @@
 /*------------------------------------------------------------------------*/
 
 
-#ifndef EnthalpyPmrSrcNodeSuppAlg_h
-#define EnthalpyPmrSrcNodeSuppAlg_h
+#ifndef TemperaturePmrSrcNodeSuppAlg_h
+#define TemperaturePmrSrcNodeSuppAlg_h
 
 #include <SupplementalAlgorithm.h>
 #include <FieldTypeDef.h>
@@ -19,14 +19,14 @@ namespace nalu{
 
 class Realm;
 
-class EnthalpyPmrSrcNodeSuppAlg : public SupplementalAlgorithm
+class TemperaturePmrSrcNodeSuppAlg : public SupplementalAlgorithm
 {
 public:
 
-  EnthalpyPmrSrcNodeSuppAlg(
+  TemperaturePmrSrcNodeSuppAlg(
     Realm &realm);
 
-  virtual ~EnthalpyPmrSrcNodeSuppAlg() {}
+  virtual ~TemperaturePmrSrcNodeSuppAlg() {}
 
   virtual void setup() {}
 
@@ -37,7 +37,6 @@ public:
   
   ScalarFieldType *divRadFlux_;
   ScalarFieldType *divRadFluxLin_;
-  ScalarFieldType *specificHeat_;
   ScalarFieldType *dualNodalVolume_;
 };
 

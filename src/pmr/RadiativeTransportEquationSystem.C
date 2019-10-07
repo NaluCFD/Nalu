@@ -105,6 +105,7 @@ RadiativeTransportEquationSystem::RadiativeTransportEquationSystem(
     temperature_(NULL),
     radiativeHeatFlux_(NULL),
     divRadiativeHeatFlux_(NULL),
+    divRadiativeHeatFluxLin_(NULL),
     radiationSource_(NULL),
     scalarFlux_(NULL),
     scalarFluxOld_(NULL),
@@ -420,7 +421,11 @@ RadiativeTransportEquationSystem::register_nodal_fields(
   divRadiativeHeatFlux_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "div_radiative_heat_flux"));
   stk::mesh::put_field_on_mesh(*divRadiativeHeatFlux_, *part, nullptr);
   realm_.augment_restart_variable_list(divRadiativeHeatFlux_->name());
-    
+
+  divRadiativeHeatFluxLin_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "div_radiative_heat_flux_linearization"));
+  stk::mesh::put_field_on_mesh(*divRadiativeHeatFluxLin_, *part, nullptr);
+  realm_.augment_restart_variable_list(divRadiativeHeatFluxLin_->name());
+  
   radiationSource_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "radiation_source"));
   stk::mesh::put_field_on_mesh(*radiationSource_, *part, nullptr);
 
@@ -1442,6 +1447,7 @@ RadiativeTransportEquationSystem::compute_div_norm()
     stk::mesh::Bucket & b = **ib ;
     const size_t length   = b.size();
     double * divRadiativeHeatFlux = stk::mesh::field_data(*divRadiativeHeatFlux_, b);
+    double * divRadiativeHeatFluxLin = stk::mesh::field_data(*divRadiativeHeatFluxLin_, b);
     double * scalarFlux = stk::mesh::field_data(*scalarFlux_, b);
     double * scalarFluxOld = stk::mesh::field_data(*scalarFluxOld_, b);
     double * temperature = stk::mesh::field_data(*temperature_, b);
@@ -1453,6 +1459,7 @@ RadiativeTransportEquationSystem::compute_div_norm()
       const double G = scalarFlux[k];
 
       divRadiativeHeatFlux[k] = absorption[k]*(4.0*sb*T*T*T*T-G);
+      divRadiativeHeatFluxLin[k] = 16.0*sb*absorption[k]*T*T*T;
       l2Norm += (G-Gold)*(G-Gold);
     }
   }

@@ -121,6 +121,7 @@ public:
   ScalarFieldType *temperature_;
   VectorFieldType *radiativeHeatFlux_;
   ScalarFieldType *divRadiativeHeatFlux_;
+  ScalarFieldType *divRadiativeHeatFluxLin_;
   ScalarFieldType *radiationSource_;
   ScalarFieldType *scalarFlux_;
   ScalarFieldType *scalarFluxOld_;
