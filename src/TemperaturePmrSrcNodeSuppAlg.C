@@ -6,7 +6,7 @@
 /*------------------------------------------------------------------------*/
 
 
-#include <EnthalpyPmrSrcNodeSuppAlg.h>
+#include <TemperaturePmrSrcNodeSuppAlg.h>
 #include <SupplementalAlgorithm.h>
 #include <FieldTypeDef.h>
 #include <Realm.h>
@@ -24,23 +24,21 @@ namespace nalu{
 //==========================================================================
 // Class Definition
 //==========================================================================
-// EnthalpyPmrSrcNodeSuppAlg - d/dt(rho*h) = -divQr
+// TemperaturePmrSrcNodeSuppAlg -  rho*cp*d/dt(T) = -divQr
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-EnthalpyPmrSrcNodeSuppAlg::EnthalpyPmrSrcNodeSuppAlg(
+TemperaturePmrSrcNodeSuppAlg::TemperaturePmrSrcNodeSuppAlg(
   Realm &realm)
   : SupplementalAlgorithm(realm),
     divRadFlux_(NULL),
     divRadFluxLin_(NULL),
-    specificHeat_(NULL),
     dualNodalVolume_(NULL)
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   divRadFlux_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "div_radiative_heat_flux");
   divRadFluxLin_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "div_radiative_heat_flux_linearization");
-  specificHeat_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "specific_heat");
   dualNodalVolume_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
 }
 
@@ -48,7 +46,7 @@ EnthalpyPmrSrcNodeSuppAlg::EnthalpyPmrSrcNodeSuppAlg(
 //-------- node_execute ----------------------------------------------------
 //--------------------------------------------------------------------------
 void
-EnthalpyPmrSrcNodeSuppAlg::node_execute(
+TemperaturePmrSrcNodeSuppAlg::node_execute(
   double *lhs,
   double *rhs,
   stk::mesh::Entity node)
@@ -56,11 +54,10 @@ EnthalpyPmrSrcNodeSuppAlg::node_execute(
   // implicit based on linearization value (may or may not be zero) 
   const double divQ = *stk::mesh::field_data(*divRadFlux_, node );
   const double divQLin = *stk::mesh::field_data(*divRadFluxLin_, node );
-  const double specificHeat = *stk::mesh::field_data(*specificHeat_, node );
   const double dualVolume = *stk::mesh::field_data(*dualNodalVolume_, node );
 
   rhs[0] -= divQ*dualVolume;
-  lhs[0] += divQLin/specificHeat*dualVolume;
+  lhs[0] += divQLin*dualVolume;
 }
 
 } // namespace nalu
