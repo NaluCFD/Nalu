@@ -66,7 +66,7 @@
 #include "kernel/ScalarFluxPenaltyElemKernel.h"
 
 // nodal source terms
-#include "EnthalpyPmrSrcNodeSuppAlg.h"
+#include "TemperaturePmrSrcNodeSuppAlg.h"
 
 // user functions
 #include "user_functions/SteadyThermalContactAuxFunction.h"
@@ -237,10 +237,12 @@ HeatCondEquationSystem::register_nodal_fields(
   realm_.augment_property_map(SPEC_HEAT_ID, specHeat_);
   realm_.augment_property_map(THERMAL_COND_ID, thermalCond_);
 
-  // register divergence of radiative heat flux; for now this is an explicit coupling
+  // register divergence of radiative heat flux and linearization (controled by transfer)
   if ( pmrCouplingActive_ ) {
     ScalarFieldType *divQ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "div_radiative_heat_flux"));
     stk::mesh::put_field_on_mesh(*divQ, *part, nullptr);
+    ScalarFieldType *divQLin = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "div_radiative_heat_flux_linearization"));
+    stk::mesh::put_field_on_mesh(*divQLin, *part, nullptr);
   }
 
   // make sure all states are properly populated (restart can handle this)
@@ -485,7 +487,7 @@ HeatCondEquationSystem::register_interior_algorithm(
             theAlg->supplementalAlg_.push_back(theSrc);
           }
           else if ( sourceName == "participating_media_radiation" ) {
-            EnthalpyPmrSrcNodeSuppAlg *theSrc = new EnthalpyPmrSrcNodeSuppAlg(realm_);
+            TemperaturePmrSrcNodeSuppAlg *theSrc = new TemperaturePmrSrcNodeSuppAlg(realm_);
             theAlg->supplementalAlg_.push_back(theSrc);
           }
           else {

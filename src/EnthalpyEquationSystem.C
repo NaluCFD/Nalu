@@ -149,7 +149,6 @@ EnthalpyEquationSystem::EnthalpyEquationSystem(
     evisc_(NULL),
     thermalCond_(NULL),
     specHeat_(NULL),
-    divQ_(NULL),
     pOld_(NULL),
     assembleNodalGradAlgDriver_(new AssembleNodalGradAlgorithmDriver(realm_, "enthalpy", "dhdx")),
     diffFluxCoeffAlgDriver_(new AlgorithmDriver(realm_)),
@@ -321,10 +320,12 @@ EnthalpyEquationSystem::register_nodal_fields(
   evisc_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "effective_viscosity_h"));
   stk::mesh::put_field_on_mesh(*evisc_, *part, nullptr);
 
-  // register divergence of radiative heat flux; for now this is an explicit coupling
+  // register divergence of radiative heat flux and linearization (controled by transfer)
   if ( pmrCouplingActive_ ) {
-    divQ_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "div_radiative_heat_flux"));
-    stk::mesh::put_field_on_mesh(*divQ_, *part, nullptr);
+    ScalarFieldType *divQ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "div_radiative_heat_flux"));
+    stk::mesh::put_field_on_mesh(*divQ, *part, nullptr);
+    ScalarFieldType *divQLin = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "div_radiative_heat_flux_linearization"));
+    stk::mesh::put_field_on_mesh(*divQLin, *part, nullptr);
   }
 
   // need to save off old pressure for pressure time derivative (avoid state for now)

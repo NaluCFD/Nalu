@@ -115,7 +115,6 @@ public:
   ScalarFieldType *evisc_;
   ScalarFieldType *thermalCond_;
   ScalarFieldType *specHeat_;
-  ScalarFieldType *divQ_;
   ScalarFieldType *pOld_;
   
   AssembleNodalGradAlgorithmDriver *assembleNodalGradAlgDriver_;
