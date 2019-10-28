@@ -151,6 +151,9 @@ HeatCondEquationSystem::HeatCondEquationSystem(
     manage_png(eqSystems);
   }
 
+  // advertise as non isothermal
+  realm_.isothermal_ = false;
+
   // check for PMR coupling
   std::map<std::string, std::vector<std::string> >::iterator isrc 
     = realm_.solutionOptions_->srcTermsMap_.find("temperature");
