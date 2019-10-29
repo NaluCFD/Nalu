@@ -112,7 +112,7 @@ MassFractionEquationSystem::MassFractionEquationSystem(
   realm_.push_equation_to_systems(this);
 
   // advertise as non-uniform
-  realm_.uniformFlow_ = false;
+  realm_.uniform_ = false;
 
   // create projected nodal gradient equation system
   if ( managePNG_ )

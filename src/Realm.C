@@ -210,8 +210,8 @@ namespace nalu{
     edgesPart_(0),
     checkForMissingBcs_(false),
     checkJacobians_(false),
-    isothermalFlow_(true),
-    uniformFlow_(true),
+    isothermal_(true),
+    uniform_(true),
     provideEntityCount_(false),
     HDF5ptr_(NULL),
     autoDecompType_("None"),
@@ -1080,7 +1080,7 @@ Realm::setup_property()
 
             // check for species-based cp
             if ( matData->cpConstMap_.size() > 0.0 ) {
-              if ( uniformFlow_ ) {
+              if ( uniform_ ) {
                 throw std::runtime_error("uniform flow cp should simply use the single-valued constant");
               }
               else {
@@ -1177,12 +1177,12 @@ Realm::setup_property()
             {
               PropertyEvaluator *viscPropEval = NULL;
               
-              if ( isothermalFlow_ ) {
+              if ( isothermal_ ) {
                 // all props will use Tref; extract it
                 double tRef = 0.0;
                 matPropBlock->extract_universal_constant("reference_temperature", tRef, true);
 
-                if ( uniformFlow_ ) {
+                if ( uniform_ ) {
                   // props computed based on YkRef and Tref
                   viscPropEval = new SutherlandsYkrefTrefPropertyEvaluator(
                     matPropBlock->referencePropertyDataMap_, matData->polynomialCoeffsMap_, tRef);
@@ -1199,7 +1199,7 @@ Realm::setup_property()
               }
               else {
                 // all props will use transported T
-                if ( uniformFlow_ ) {
+                if ( uniform_ ) {
                   // props computed based on YkRef and T
                   viscPropEval = new SutherlandsYkrefPropertyEvaluator(
                     matPropBlock->referencePropertyDataMap_, matData->polynomialCoeffsMap_);
@@ -1235,7 +1235,7 @@ Realm::setup_property()
               // create the property alg and push to evalmap
               PropertyEvaluator *theCpPropEval = NULL;
               PropertyEvaluator *theEnthPropEval = NULL;
-              if ( uniformFlow_ ) {
+              if ( uniform_ ) {
                 // props computed based on reference values
                 theCpPropEval = new SpecificHeatPropertyEvaluator(
                     matPropBlock->referencePropertyDataMap_, matData->lowPolynomialCoeffsMap_,
@@ -1290,7 +1290,7 @@ Realm::setup_property()
             PropertyEvaluator *rhoPropEval = NULL;
             Algorithm *auxAlg = nullptr;
             
-            if ( uniformFlow_ ) {
+            if ( uniform_ ) {
               
               // load mw and reference species
               std::vector<std::pair<double, double> > mwMassFracVec;
@@ -1303,7 +1303,7 @@ Realm::setup_property()
                 mwMassFracVec.push_back(thePair);
               }
                
-              if ( isothermalFlow_ ) {
+              if ( isothermal_ ) {
                 // rho = f(pRef, tRef, and mwRef)
                 createTempPropAlg = false;
                 rhoPropEval = new IdealGasPrefTrefYkrefPropertyEvaluator(pRef, tRef, universalR, mwMassFracVec);
@@ -1330,7 +1330,7 @@ Realm::setup_property()
                 mwVec.push_back(propData->mw_);
               }
 
-              if ( isothermalFlow_ ) {
+              if ( isothermal_ ) {
                 if ( solutionOptions_->accousticallyCompressible_ ) {
                   // rho = f(P,Tref,Yk)
                   throw std::runtime_error("Realm::setup_property:Error rho = f(P,Tref,Yk) not supported:");

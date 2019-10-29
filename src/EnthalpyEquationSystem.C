@@ -174,7 +174,7 @@ EnthalpyEquationSystem::EnthalpyEquationSystem(
   realm_.needs_enthalpy(true);
 
   // advertise as non isothermal
-  realm_.isothermalFlow_ = false;
+  realm_.isothermal_ = false;
 
   // check for PMR coupling
   std::map<std::string, std::vector<std::string> >::iterator isrc 

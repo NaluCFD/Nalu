@@ -128,7 +128,7 @@ MixtureFractionFemEquationSystem::MixtureFractionFemEquationSystem(
 
   // advertise as fluids, non-uniform
   realm_.hasFluids_ = true;
-  realm_.uniformFlow_ = false;
+  realm_.uniform_ = false;
 
   // create projected nodal gradient equation system
   if ( computePNG_ ) {
