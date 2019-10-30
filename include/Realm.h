@@ -462,8 +462,8 @@ class Realm {
   bool checkJacobians_;
   
   // types of physics
-  bool isothermalFlow_;
-  bool uniformFlow_;
+  bool isothermal_;
+  bool uniform_;
 
   // some post processing of entity counts
   bool provideEntityCount_;
