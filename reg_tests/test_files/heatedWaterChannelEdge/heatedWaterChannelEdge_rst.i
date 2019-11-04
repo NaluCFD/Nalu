@@ -201,6 +201,13 @@ realms:
               tip_coordinates: [0.459, 6.78e-2]
               tail_coordinates: [0.371, 0.0252]
 
+          ring_specifications:
+            - name: probeRingOne
+              number_of_points: 32
+              unit_normal: [0.0, 0.0, 1.0]
+              origin_coordinates: [0.42, 0.014269, 0.0]
+              seed_coordinates: [0.4116, 0.014269, 0.0]
+
           output_variables:
             - field_name: velocity
               field_size: 2
