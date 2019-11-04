@@ -40,18 +40,28 @@ class Transfers;
 
 class DataProbeInfo {
 public:
-  DataProbeInfo() {}
+   DataProbeInfo() : numProbes_(0) {}
   ~DataProbeInfo() {}
-
+  
   // for each type of probe, e.g., line of site, hold some stuff
-  bool isLineOfSite_;
   int numProbes_;
+  // manage the types of probes
+  std::vector<int> isLineOfSite_;
+  std::vector<int> isRing_;
   std::vector<std::string> partName_;
   std::vector<int> processorId_;
   std::vector<int> numPoints_;
   std::vector<int> generateNewIds_;
+
+  // line of site type
   std::vector<Coordinates> tipCoordinates_;
   std::vector<Coordinates> tailCoordinates_;
+
+  // ring type (vector or vectors to allow for 3D and 2D rotations)
+  std::vector<std::array<double, 3> > unitNormal_;
+  std::vector<std::array<double, 3> > originCoordinates_;
+  std::vector<std::array<double, 3> > seedCoordinates_;
+  
   std::vector<std::vector<stk::mesh::Entity> > nodeVector_;
   std::vector<stk::mesh::Part *> part_;
 };
@@ -112,6 +122,12 @@ public:
   // output to a file
   void provide_output(const double currentTime);
   
+  // general rotation matrix about a unit normal centered at origin (0,0,0)
+  void compute_R(const double theta, const std::vector<double> &u, std::vector<double> &R);
+  
+  // provide a 3x3 * 3x1 multiply
+  void mat_vec(const std::vector<double> &coord, const std::vector<double> &R, std::vector<double> &newCoord); 
+
   // provide the inactive selector
   stk::mesh::Selector &get_inactive_selector();
 
