@@ -51,19 +51,43 @@ public:
   std::vector<std::string> partName_;
   std::vector<int> processorId_;
   std::vector<int> numPoints_;
+  std::vector<int> numLinePoints_;
+  std::vector<int> numTotalPoints_;
   std::vector<int> generateNewIds_;
 
-  // line of site type
+  // line of nodes
   std::vector<Coordinates> tipCoordinates_;
   std::vector<Coordinates> tailCoordinates_;
 
-  // ring type (vector or vectors to allow for 3D and 2D rotations)
+  // ring unit normal and origin (vector or vectors to allow for 3D and 2D rotations)
   std::vector<std::array<double, 3> > unitNormal_;
   std::vector<std::array<double, 3> > originCoordinates_;
   std::vector<std::array<double, 3> > seedCoordinates_;
   
   std::vector<std::vector<stk::mesh::Entity> > nodeVector_;
   std::vector<stk::mesh::Part *> part_;
+};
+
+class ProbeType {
+public:
+ ProbeType() : dataProbeInfo_(new DataProbeInfo()) {}
+  ~ProbeType() {delete dataProbeInfo_;} 
+  DataProbeInfo *dataProbeInfo_;
+
+  void setup();
+  void increment();
+};
+
+class LineOfSiteProbeType : public ProbeType {
+public:
+ LineOfSiteProbeType() {}
+ ~LineOfSiteProbeType() {}
+};
+
+class RingProbeType : public ProbeType {
+public:
+ RingProbeType() {}
+ ~RingProbeType() {}
 };
 
 class DataProbeSpecInfo {
@@ -80,6 +104,9 @@ public:
   // homegeneous collection of fields over each specification
   std::vector<std::pair<std::string, std::string> > fromToName_;
   std::vector<std::pair<std::string, int> > fieldInfo_;
+
+  // vector of probe types
+  std::vector<ProbeType *> probeTypeVec_;
 };
 
 class DataProbePostProcessing
