@@ -137,9 +137,6 @@ public:
   void review( 
     const DataProbeInfo *probeInfo);
 
-  // we want these nodes to be excluded from anything of importance
-  void create_inactive_selector();
-
   // create the transfer and hold the vector in the DataProbePostProcessing class
   void create_transfer();
 
@@ -154,9 +151,6 @@ public:
   
   // provide a 3x3 * 3x1 multiply
   void mat_vec(const std::vector<double> &coord, const std::vector<double> &R, std::vector<double> &newCoord); 
-
-  // provide the inactive selector
-  stk::mesh::Selector &get_inactive_selector();
 
   // hold the realm
   Realm &realm_;
@@ -174,11 +168,7 @@ public:
 
   // vector of specifications
   std::vector<DataProbeSpecInfo *> dataProbeSpecInfo_;
-
-  // hold all the parts; provide a selector
-  stk::mesh::PartVector allTheParts_;
-  stk::mesh::Selector inactiveSelector_;
-
+ 
   // hold the transfers
   Transfers *transfers_;
 };

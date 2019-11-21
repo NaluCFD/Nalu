@@ -626,8 +626,6 @@ DataProbePostProcessing::initialize()
     }
   }
 
-  create_inactive_selector();
-  
   create_transfer();
 }
   
@@ -644,30 +642,6 @@ DataProbePostProcessing::register_field(
   stk::mesh::Field<double, stk::mesh::SimpleArrayTag> *toField 
     = &(metaData.declare_field< stk::mesh::Field<double, stk::mesh::SimpleArrayTag> >(stk::topology::NODE_RANK, fieldName));
   stk::mesh::put_field_on_mesh(*toField, *part, fieldSize, nullptr);
-}
-
-//--------------------------------------------------------------------------
-//-------- create_inactive_selector ----------------------------------------
-//--------------------------------------------------------------------------
-void
-DataProbePostProcessing::create_inactive_selector()
-{
-  for ( size_t idps = 0; idps < dataProbeSpecInfo_.size(); ++idps ) {
-
-    DataProbeSpecInfo *probeSpec = dataProbeSpecInfo_[idps];
-
-    for ( size_t k = 0; k < probeSpec->dataProbeInfo_.size(); ++k ) {
-    
-      DataProbeInfo *probeInfo = probeSpec->dataProbeInfo_[k];
-          
-      // loop over probes... one part per probe
-      for ( int j = 0; j < probeInfo->numProbes_; ++j ) {
-        allTheParts_.push_back(probeInfo->part_[j]);
-      }
-    }
-  }
-
-  inactiveSelector_ = stk::mesh::selectUnion(allTheParts_);
 }
 
 //--------------------------------------------------------------------------
@@ -852,15 +826,6 @@ DataProbePostProcessing::provide_output(
       }
     }
   }
-}
-
-//--------------------------------------------------------------------------
-//-------- get_inactive_selector -------------------------------------------
-//--------------------------------------------------------------------------
-stk::mesh::Selector &
-DataProbePostProcessing::get_inactive_selector()
-{
-  return inactiveSelector_;
 }
 
 void 
