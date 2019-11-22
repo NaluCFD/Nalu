@@ -49,7 +49,7 @@ public:
   std::vector<int> isLineOfSite_;
   std::vector<int> isRing_;
   std::vector<std::string> partName_;
-  std::vector<int> processorId_;
+  std::vector<int> probeOnThisRank_;
   std::vector<int> numPoints_;
   std::vector<int> numLinePoints_;
   std::vector<int> numTotalPoints_;
