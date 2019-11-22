@@ -111,7 +111,7 @@ DataProbePostProcessing::load(
 {
   // check for any data probes
   const YAML::Node y_dataProbe = y_node["data_probes"];
-  if (y_dataProbe) {
+  if ( y_dataProbe ) {
     NaluEnv::self().naluOutputP0() << "DataProbePostProcessing::load" << std::endl;
 
     // extract the frequency of output
@@ -123,7 +123,7 @@ DataProbePostProcessing::load(
     get_if_present(y_dataProbe, "search_expansion_factor", searchExpansionFactor_, searchExpansionFactor_);
 
     const YAML::Node y_specs = expect_sequence(y_dataProbe, "specifications", false);
-    if (y_specs) {
+    if ( y_specs ) {
       
       // each specification can have multiple probes
       for (size_t ispec = 0; ispec < y_specs.size(); ++ispec) {
@@ -144,7 +144,7 @@ DataProbePostProcessing::load(
 
         // extract the set of from target names; each spec is homogeneous in this respect
         const YAML::Node & fromTargets = y_spec["from_target_part"];
-        if (fromTargets.Type() == YAML::NodeType::Scalar) {
+        if ( fromTargets.Type() == YAML::NodeType::Scalar ) {
           probeSpec->fromTargetNames_.resize(1);
           probeSpec->fromTargetNames_[0] = fromTargets.as<std::string>() ;
         }
@@ -177,7 +177,7 @@ DataProbePostProcessing::load(
         
         // resize is all; general
         probeInfo->partName_.resize(numProbes);
-        probeInfo->processorId_.resize(numProbes);
+        probeInfo->probeOnThisRank_.resize(numProbes,0);
         probeInfo->numPoints_.resize(numProbes);
         probeInfo->numLinePoints_.resize(numProbes);
         probeInfo->numTotalPoints_.resize(numProbes);
@@ -201,7 +201,7 @@ DataProbePostProcessing::load(
         int probeCounter = 0;
         
         // points along a line-of-site
-        if (y_loss) {
+        if ( y_loss ) {
           
           // loop over each line of site probe
           for (size_t ilos = 0; ilos < y_loss.size(); ++ilos, probeCounter++) {
@@ -210,9 +210,12 @@ DataProbePostProcessing::load(
             
             // l-o-s is active..
             probeInfo->isLineOfSite_[probeCounter] = 1;
-            
+
             // processor id; distribute los equally over the number of processors
-            probeInfo->processorId_[probeCounter] = divProcProbe > 0 ? probeCounter % divProcProbe : 0;
+            int candidateId = divProcProbe > 0 ? probeCounter % divProcProbe : 0;
+            
+            if ( candidateId == NaluEnv::self().parallel_rank() )
+              probeInfo->probeOnThisRank_[probeCounter] = 1;
             
             // name; which is the part name of choice
             const YAML::Node nameNode = y_los["name"];
@@ -259,7 +262,10 @@ DataProbePostProcessing::load(
             probeInfo->isRing_[probeCounter] = 1;
 
             // processor id; distribute rings equally over the number of processors
-            probeInfo->processorId_[probeCounter] = divProcProbe > 0 ? probeCounter % divProcProbe : 0;
+            int candidateId = divProcProbe > 0 ? probeCounter % divProcProbe : 0;
+            
+            if ( candidateId == NaluEnv::self().parallel_rank() )
+              probeInfo->probeOnThisRank_[probeCounter] = 1;
             
             // name that will be the part of choice
             const YAML::Node nameNode = y_ring["name"];
@@ -330,7 +336,7 @@ DataProbePostProcessing::load(
         
         // extract the output variables
         const YAML::Node y_outputs = expect_sequence(y_spec, "output_variables", false);
-        if (y_outputs) {
+        if ( y_outputs ) {
           for (size_t ioutput = 0; ioutput < y_outputs.size(); ++ioutput) {
             const YAML::Node y_output = y_outputs[ioutput];
 
@@ -461,22 +467,35 @@ DataProbePostProcessing::initialize()
         // extract some things off of the probeInfo
         stk::mesh::Part *probePart = probeInfo->part_[j];
         const int numTotalPoints = probeInfo->numTotalPoints_[j];
-        const int processorId  = probeInfo->processorId_[j];
+        const int probeOnThisRank  = probeInfo->probeOnThisRank_[j];
         const bool generateNewIds = probeInfo->generateNewIds_[j];
 
-        // generate new ids; only if the part was 
-        std::vector<stk::mesh::EntityId> availableNodeIds(numTotalPoints);
-        if ( generateNewIds > 0 ) 
+        // Objective: fill the node vec. Two cases: either the part existed (with nodes) or not
+        std::vector<stk::mesh::Entity> &nodeVec = probeInfo->nodeVector_[j];
+
+        // generate new ids is true only if the part was in existance at setup, e.g., a restart
+        if ( generateNewIds > 0 ) {
+          // no previous parts existed, generate new ids based on size of probe
+          std::vector<stk::mesh::EntityId> availableNodeIds(numTotalPoints);
+          // generate_new_ids must be called on all ranks
           bulkData.generate_new_ids(stk::topology::NODE_RANK, numTotalPoints, availableNodeIds);
-        
-        // check to see if part has nodes on it already
-        if ( processorId == NaluEnv::self().parallel_rank()) {    
           
-          // set some data
+          if ( probeOnThisRank ) {
+            // calling declare_entity on this desired rank determines entity ownership
+            NaluEnv::self().naluOutput() << "probeOnThisRank " << NaluEnv::self().parallel_rank() 
+                                         << " for part: " << probeInfo->partName_[j] << std::endl;
+            nodeVec.resize(numTotalPoints);
+            for (int i = 0; i < numTotalPoints; ++i) {
+              stk::mesh::Entity theNode = bulkData.declare_entity(stk::topology::NODE_RANK, availableNodeIds[i], *probePart);
+              nodeVec[i] = theNode;
+            }
+          }
+        }
+        else {
+          // previous part existed, make sure that the part has nodes on it already  
           int checkNumTotalPoints = 0;
           bool nodesExist = false;
-          std::vector<stk::mesh::Entity> &nodeVec = probeInfo->nodeVector_[j];
-
+          
           stk::mesh::Selector s_local_nodes
             = metaData.locally_owned_part() &stk::mesh::Selector(*probePart);
           
@@ -490,9 +509,17 @@ DataProbePostProcessing::initialize()
               nodesExist = true;
             }
           }
-          
-          // check if nodes exists. If they do, did the number of points match?
+                    
+          // check if nodes exists. 
           if ( nodesExist ) {
+
+            // subtlety here... if the nodes existed, then ensure that this rank owns the part
+            probeInfo->probeOnThisRank_[j] = 1;
+
+            NaluEnv::self().naluOutput() << "probeOnThisRank " << NaluEnv::self().parallel_rank() 
+                                         << " for part: " << probeInfo->partName_[j] << std::endl;
+            
+            // sanity check: did the number of points match?
             if ( checkNumTotalPoints != numTotalPoints ) {
               std::cout << "Number of points specified within input file does not match nodes that exists: " << probePart->name() << std::endl;
               std::cout << "The old and new node count is as follows: " << numTotalPoints << " " << checkNumTotalPoints << std::endl;
@@ -500,14 +527,8 @@ DataProbePostProcessing::initialize()
             }
           }
           else {
-            // only declare entities on which these nodes parallel rank resides
-            nodeVec.resize(numTotalPoints);
-            
-            // declare the entity on this rank (rank is determined by calling declare_entity on this rank)
-            for (int i = 0; i < numTotalPoints; ++i) {
-              stk::mesh::Entity theNode = bulkData.declare_entity(stk::topology::NODE_RANK, availableNodeIds[i], *probePart);
-              nodeVec[i] = theNode;
-            }
+            // reinforce that this probve is not on this rank
+            probeInfo->probeOnThisRank_[j] = 0;
           }
         }
       }
@@ -757,12 +778,10 @@ DataProbePostProcessing::provide_output(
       for ( int inp = 0; inp < probeInfo->numProbes_; ++inp ) {
 
         // open the file for this probe
-        const int processorId = probeInfo->processorId_[inp];
-        std::ostringstream ss;
-        ss << processorId;
-        const std::string fileName = probeInfo->partName_[inp] + "_" + ss.str() + ".dat";
-        std::ofstream myfile;
-        if ( processorId == NaluEnv::self().parallel_rank()) {    
+        if ( probeInfo->probeOnThisRank_[inp] ) {    
+
+          const std::string fileName = probeInfo->partName_[inp] + ".dat";
+          std::ofstream myfile;
           
           // one banner per file 
           const bool addBanner = std::ifstream(fileName.c_str()) ? false : true;
