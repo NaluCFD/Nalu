@@ -1030,6 +1030,11 @@ Realm::setup_initial_conditions()
 void
 Realm::setup_property()
 {
+  // high level defaults, which can be modified, for pressure, temperature and R
+  double pRef = 101325.0;
+  double tRef = 298.15;
+  double universalR = 8314.4621;
+         
   // loop overall material property blocks
   for ( size_t i = 0; i < materialPropertys_.materialPropertyVector_.size(); ++i ) {
     
@@ -1071,7 +1076,6 @@ Realm::setup_property()
           // for constant specific heat, proceed in specialty code; create the appropriate enthalpy evaluator
           if (thePropId == SPEC_HEAT_ID && needsEnthalpy_) {
             // extract reference temperature
-            double tRef = 300.0;
             matPropBlock->extract_universal_constant("reference_temperature", tRef, true);
             
             // set up evaluators required for all cases
@@ -1179,7 +1183,6 @@ Realm::setup_property()
               
               if ( isothermal_ ) {
                 // all props will use Tref; extract it
-                double tRef = 0.0;
                 matPropBlock->extract_universal_constant("reference_temperature", tRef, true);
 
                 if ( uniform_ ) {
@@ -1229,7 +1232,6 @@ Realm::setup_property()
             case SPEC_HEAT_ID:
             {
               // R
-              double universalR = 8314.4621;
               matPropBlock->extract_universal_constant("universal_gas_constant", universalR, true);
 
               // create the property alg and push to evalmap
@@ -1275,12 +1277,7 @@ Realm::setup_property()
         {
           if ( DENSITY_ID == thePropId ) {
         
-            // pRef, tRef and R (all optional with default values provided)
-            double pRef = 101325.0;
-            double tRef = 300.0;
-            double universalR = 8314.4621;
-            matPropBlock->extract_universal_constant("reference_pressure", pRef, true);
-            matPropBlock->extract_universal_constant("reference_temperature", tRef, true);
+            // require R
             matPropBlock->extract_universal_constant("universal_gas_constant", universalR, true);
             
             // flag for what type of prop algorithm to create
@@ -1306,6 +1303,8 @@ Realm::setup_property()
               if ( isothermal_ ) {
                 // rho = f(pRef, tRef, and mwRef)
                 createTempPropAlg = false;
+                matPropBlock->extract_universal_constant("reference_pressure", pRef, true);
+                matPropBlock->extract_universal_constant("reference_temperature", tRef, true);
                 rhoPropEval = new IdealGasPrefTrefYkrefPropertyEvaluator(pRef, tRef, universalR, mwMassFracVec);
               }
               else {
@@ -1315,6 +1314,7 @@ Realm::setup_property()
                 }
                 else {
                   // rho = f(pRef,T,mwRef)
+                  matPropBlock->extract_universal_constant("reference_pressure", pRef, true);
                   rhoPropEval = new IdealGasPrefTYkrefPropertyEvaluator(pRef, universalR, mwMassFracVec);
                 }
               }
@@ -1338,6 +1338,8 @@ Realm::setup_property()
                 else {
                   // rho = f(Pref,Tref,Yk)
                   createTempPropAlg = false;
+                  matPropBlock->extract_universal_constant("reference_pressure", pRef, true);
+                  matPropBlock->extract_universal_constant("reference_temperature", tRef, true);
                   rhoPropEval = new IdealGasPrefTrefYkPropertyEvaluator(pRef, tRef, universalR, mwVec, *metaData_);
                 }
               }
@@ -1348,6 +1350,7 @@ Realm::setup_property()
                 }
                 else {
                   // rho = f(pRef,T,Yk)
+                  matPropBlock->extract_universal_constant("reference_pressure", pRef, true);
                   rhoPropEval = new IdealGasPrefTYkPropertyEvaluator(pRef, universalR, mwVec, *metaData_); 
                 } 
               }
