@@ -482,8 +482,6 @@ DataProbePostProcessing::initialize()
           
           if ( probeOnThisRank ) {
             // calling declare_entity on this desired rank determines entity ownership
-            NaluEnv::self().naluOutput() << "probeOnThisRank " << NaluEnv::self().parallel_rank() 
-                                         << " for part: " << probeInfo->partName_[j] << std::endl;
             nodeVec.resize(numTotalPoints);
             for (int i = 0; i < numTotalPoints; ++i) {
               stk::mesh::Entity theNode = bulkData.declare_entity(stk::topology::NODE_RANK, availableNodeIds[i], *probePart);
@@ -516,9 +514,6 @@ DataProbePostProcessing::initialize()
             // subtlety here... if the nodes existed, then ensure that this rank owns the part
             probeInfo->probeOnThisRank_[j] = 1;
 
-            NaluEnv::self().naluOutput() << "probeOnThisRank " << NaluEnv::self().parallel_rank() 
-                                         << " for part: " << probeInfo->partName_[j] << std::endl;
-            
             // sanity check: did the number of points match?
             if ( checkNumTotalPoints != numTotalPoints ) {
               std::cout << "Number of points specified within input file does not match nodes that exists: " << probePart->name() << std::endl;
