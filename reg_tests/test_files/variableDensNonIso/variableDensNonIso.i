@@ -66,6 +66,7 @@ realms:
       constant_specification:
        universal_gas_constant: 10.0
        reference_pressure: 100.00
+       reference_temperature: 300.0 # for h = \bar{Cp}*(T-Tref)
 
       reference_quantities:
         - species_name: N2
