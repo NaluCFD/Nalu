@@ -655,9 +655,16 @@ DataProbePostProcessing::register_field(
   stk::mesh::MetaData &metaData,
   stk::mesh::Part *part)
 {
-  stk::mesh::Field<double, stk::mesh::SimpleArrayTag> *toField 
-    = &(metaData.declare_field< stk::mesh::Field<double, stk::mesh::SimpleArrayTag> >(stk::topology::NODE_RANK, fieldName));
-  stk::mesh::put_field_on_mesh(*toField, *part, fieldSize, nullptr);
+  // check for velocity as this is the only current vector supported
+  if ( fieldName.find("velocity") != std::string::npos ) { //FIXME: require FieldType as in InputOutpu and TurbAverga
+    VectorFieldType *someVelocity = &(metaData.declare_field<VectorFieldType>(stk::topology::NODE_RANK, fieldName));
+    stk::mesh::put_field_on_mesh(*someVelocity, *part, fieldSize, nullptr);
+  }
+  else {
+    stk::mesh::Field<double, stk::mesh::SimpleArrayTag> *toField 
+      = &(metaData.declare_field< stk::mesh::Field<double, stk::mesh::SimpleArrayTag> >(stk::topology::NODE_RANK, fieldName));
+    stk::mesh::put_field_on_mesh(*toField, *part, fieldSize, nullptr);
+  }
 }
 
 //--------------------------------------------------------------------------
