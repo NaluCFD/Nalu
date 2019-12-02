@@ -30,6 +30,7 @@ class ComputeMdotAlgorithmDriver;
 class LinearSystem;
 class ProjectedNodalGradientEquationSystem;
 class SurfaceForceAndMomentAlgorithmDriver;
+class WallFunctionParamsAlgorithmDriver;
 
 /** Low-Mach formulation of the Navier-Stokes Equations
  *
@@ -182,7 +183,7 @@ public:
   AlgorithmDriver *diffFluxCoeffAlgDriver_;
   AlgorithmDriver *tviscAlgDriver_;
   AlgorithmDriver *cflReyAlgDriver_;
-  AlgorithmDriver *wallFunctionParamsAlgDriver_;
+  WallFunctionParamsAlgorithmDriver *wallFunctionParamsAlgDriver_;
 
   ProjectedNodalGradientEquationSystem *projectedNodalGradEqs_;
 

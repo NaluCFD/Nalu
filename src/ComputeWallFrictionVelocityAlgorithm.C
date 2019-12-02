@@ -84,9 +84,6 @@ ComputeWallFrictionVelocityAlgorithm::execute()
 
   const int nDim = meta_data.spatial_dimension();
 
-  // zero out assembled nodal quantities
-  zero_nodal_fields();
-
   // bip values
   std::vector<double> uBip(nDim);
   std::vector<double> uBcBip(nDim);
@@ -295,37 +292,6 @@ ComputeWallFrictionVelocityAlgorithm::execute()
       }
     }
   }
-
-  // parallel assemble and normalize
-  normalize_nodal_fields();
-}
-
-//--------------------------------------------------------------------------
-//-------- zero_nodal_fields -----------------------------------------------
-//--------------------------------------------------------------------------
-void
-ComputeWallFrictionVelocityAlgorithm::zero_nodal_fields()
-{
-
-  stk::mesh::MetaData & meta_data = realm_.meta_data();
-
-  stk::mesh::Selector s_all_nodes
-    = (meta_data.locally_owned_part() | meta_data.globally_shared_part())
-    &stk::mesh::selectUnion(partVec_);
-
-  stk::mesh::BucketVector const& node_buckets =
-    realm_.get_buckets( stk::topology::NODE_RANK, s_all_nodes );
-  for ( stk::mesh::BucketVector::const_iterator ib = node_buckets.begin() ;
-        ib != node_buckets.end() ; ++ib ) {
-    stk::mesh::Bucket & b = **ib ;
-    const stk::mesh::Bucket::size_type length  = b.size();
-    double * assembledWallArea = stk::mesh::field_data(*assembledWallArea_, b);
-    double * assembledWallNormalDistance = stk::mesh::field_data(*assembledWallNormalDistance_, b);
-    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
-      assembledWallArea[k] = 0.0;
-      assembledWallNormalDistance[k] = 0.0;
-    }
-  }
 }
 
 //--------------------------------------------------------------------------
@@ -366,47 +332,6 @@ ComputeWallFrictionVelocityAlgorithm::compute_utau(
   if (!converged ) {
     NaluEnv::self().naluOutputP0() << "Issue with utau; not converged " << std::endl;
     NaluEnv::self().naluOutputP0() << up << " " << yp << " " << utau << std::endl;
-  }
-
-}
-
-//--------------------------------------------------------------------------
-//-------- normalize_nodal_fields -----------------------------------------------
-//--------------------------------------------------------------------------
-void
-ComputeWallFrictionVelocityAlgorithm::normalize_nodal_fields()
-{
-
-  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
-  stk::mesh::MetaData & meta_data = realm_.meta_data();
-
-  // parallel assemble
-  stk::mesh::parallel_sum(bulk_data, {assembledWallArea_, assembledWallNormalDistance_});
-
-  // periodic assemble
-  if ( realm_.hasPeriodic_) {
-    const unsigned fieldSize = 1;
-    const bool bypassFieldCheck = false; // fields are not defined at all slave/master node pairs
-    realm_.periodic_field_update(assembledWallArea_, fieldSize, bypassFieldCheck);
-    realm_.periodic_field_update(assembledWallNormalDistance_, fieldSize, bypassFieldCheck);
-  }
-
-  // normalize
-  stk::mesh::Selector s_all_nodes
-    = (meta_data.locally_owned_part() | meta_data.globally_shared_part())
-    &stk::mesh::selectUnion(partVec_);
-
-  stk::mesh::BucketVector const& node_buckets =
-    realm_.get_buckets( stk::topology::NODE_RANK, s_all_nodes );
-  for ( stk::mesh::BucketVector::const_iterator ib = node_buckets.begin() ;
-        ib != node_buckets.end() ; ++ib ) {
-    stk::mesh::Bucket & b = **ib ;
-    const stk::mesh::Bucket::size_type length  = b.size();
-    const double * assembledWallArea = stk::mesh::field_data(*assembledWallArea_, b);
-    double * assembledWallNormalDistance = stk::mesh::field_data(*assembledWallNormalDistance_, b);
-    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
-      assembledWallNormalDistance[k] /= assembledWallArea[k];
-    }
   }
 }
 
