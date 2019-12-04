@@ -32,14 +32,10 @@ public:
 
   void execute();
 
-  void zero_nodal_fields();
-
   void compute_utau(
       const double &up, const double &yp,
       const double &density, const double &viscosity,
       double &utau);
-  
-  void normalize_nodal_fields();
 
   const bool useShifted_;
   const double yplusCrit_;

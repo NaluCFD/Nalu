@@ -91,6 +91,7 @@
 #include "TurbViscWaleAlgorithm.h"
 #include "FixPressureAtNodeAlgorithm.h"
 #include "FixPressureAtNodeInfo.h"
+#include "WallFunctionParamsAlgorithmDriver.h"
 
 // template for kernels
 #include "AlgTraits.h"
@@ -1769,8 +1770,8 @@ MomentumEquationSystem::register_wall_bc(
 
     // create wallFunctionParamsAlgDriver
     if ( NULL == wallFunctionParamsAlgDriver_) 
-      wallFunctionParamsAlgDriver_ = new AlgorithmDriver(realm_);
-   
+      wallFunctionParamsAlgDriver_ = new WallFunctionParamsAlgorithmDriver(realm_);
+    
     const AlgorithmType wfAlgType = WALL_FCN;
     
     // create algorithm for utau, yp and assembled nodal wall area (_WallFunction)
