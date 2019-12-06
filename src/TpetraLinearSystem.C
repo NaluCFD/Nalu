@@ -886,28 +886,33 @@ TpetraLinearSystem::insert_graph_connections(const std::vector<stk::mesh::Entity
   for(size_t i=0; i<rowEntities.size(); ++i) {
     const std::vector<stk::mesh::Entity>& entities_b = connections[i];
     unsigned numColEntities = entities_b.size();
-    dofStatus.resize(numColEntities);
-    localDofs_b.resize(numColEntities);
-
-    const stk::mesh::Entity entity_a = rowEntities[i];
-    int dofStatus_a = getDofStatus(entity_a);
-    localDofs_a[0] = entityToColLID_[entity_a.local_offset()];
-
-    for(size_t j=0; j<numColEntities; ++j) {
-      const stk::mesh::Entity entity_b = entities_b[j];
-      dofStatus[j] = getDofStatus(entity_b);
-      localDofs_b[j] = entityToColLID_[entity_b.local_offset()];
-    }
-
-    {
-      LocalGraphArrays& crsGraph = (dofStatus_a & DS_OwnedDOF) ? locallyOwnedGraph : sharedNotOwnedGraph;
-      insert_single_dof_row_into_graph(crsGraph, entityToLID_[entity_a.local_offset()], maxOwnedRowId_, numDof_, numColEntities, localDofs_b);
-    }
-
-    for(unsigned j=0; j<numColEntities; ++j) {
-      if (entities_b[j] != entity_a) {
-        LocalGraphArrays& crsGraph = (dofStatus[j] & DS_OwnedDOF) ? locallyOwnedGraph : sharedNotOwnedGraph;
-        insert_single_dof_row_into_graph(crsGraph, entityToLID_[entities_b[j].local_offset()], maxOwnedRowId_, numDof_, 1, localDofs_a);
+    if ( numColEntities > 0 ) {
+      // proceed only if column entries exist. numColEntities may 
+      // be zero for shared-not-owned nodes that did not have an
+      // owning entity iterated in, e.g., buildEdgeToNodeGraph
+      dofStatus.resize(numColEntities);
+      localDofs_b.resize(numColEntities);
+      
+      const stk::mesh::Entity entity_a = rowEntities[i];
+      int dofStatus_a = getDofStatus(entity_a);
+      localDofs_a[0] = entityToColLID_[entity_a.local_offset()];
+      
+      for(size_t j=0; j<numColEntities; ++j) {
+        const stk::mesh::Entity entity_b = entities_b[j];
+        dofStatus[j] = getDofStatus(entity_b);
+        localDofs_b[j] = entityToColLID_[entity_b.local_offset()];
+      }
+      
+      {
+        LocalGraphArrays& crsGraph = (dofStatus_a & DS_OwnedDOF) ? locallyOwnedGraph : sharedNotOwnedGraph;
+        insert_single_dof_row_into_graph(crsGraph, entityToLID_[entity_a.local_offset()], maxOwnedRowId_, numDof_, numColEntities, localDofs_b);
+      }
+      
+      for(unsigned j=0; j<numColEntities; ++j) {
+        if (entities_b[j] != entity_a) {
+          LocalGraphArrays& crsGraph = (dofStatus[j] & DS_OwnedDOF) ? locallyOwnedGraph : sharedNotOwnedGraph;
+          insert_single_dof_row_into_graph(crsGraph, entityToLID_[entities_b[j].local_offset()], maxOwnedRowId_, numDof_, 1, localDofs_a);
+        }
       }
     }
   }
