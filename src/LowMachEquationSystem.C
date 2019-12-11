@@ -161,6 +161,8 @@
 #include "user_functions/SinProfileChannelFlowVelocityAuxFunction.h"
 #include "user_functions/SinProfilePipeFlowVelocityAuxFunction.h"
 
+#include "user_functions/ChannelFlowPerturbedPlugVelocityAuxFunction.h"
+
 #include "user_functions/BoundaryLayerPerturbationAuxFunction.h"
 
 #include "user_functions/KovasznayVelocityAuxFunction.h"
@@ -632,6 +634,9 @@ LowMachEquationSystem::register_initial_condition_fcn(
     }
     else if ( fcnName == "power_law" ) {
       theAuxFunc = new PowerlawVelocityAuxFunction(0,nDim,fcnParams);
+    }
+    else if ( fcnName == "ChannelFlowPerturbedPlug" ) {
+      theAuxFunc = new ChannelFlowPerturbedPlugVelocityAuxFunction(0,nDim,fcnParams);
     }
     else {
       throw std::runtime_error("InitialCondFunction::non-supported velocity IC"); 
