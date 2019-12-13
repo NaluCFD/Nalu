@@ -49,7 +49,8 @@ SurfaceForceAndMomentWallFunctionAlgorithm::SurfaceForceAndMomentWallFunctionAlg
   const std::string &outputFileName,
   const int &frequency,
   const std::vector<double > &parameters,
-  const bool &useShifted)
+  const bool &useShifted,
+  ScalarFieldType *assembledArea)
   : Algorithm(realm, partVec),
     outputFileName_(outputFileName),
     frequency_(frequency),
@@ -58,19 +59,19 @@ SurfaceForceAndMomentWallFunctionAlgorithm::SurfaceForceAndMomentWallFunctionAlg
     yplusCrit_(11.63),
     elog_(9.8),
     kappa_(realm.get_turb_model_constant(TM_kappa)),
-    coordinates_(NULL),
-    velocity_(NULL),
-    pressure_(NULL),
-    pressureForce_(NULL),
-    tauWall_(NULL),
-    yplus_(NULL),
-    bcVelocity_(NULL),
-    density_(NULL),
-    viscosity_(NULL),
-    wallFrictionVelocityBip_(NULL),
-    wallNormalDistanceBip_(NULL),
-    exposedAreaVec_(NULL),
-    assembledArea_(NULL),
+    assembledArea_(assembledArea),
+    coordinates_(nullptr),
+    velocity_(nullptr),
+    pressure_(nullptr),
+    pressureForce_(nullptr),
+    tauWall_(nullptr),
+    yplus_(nullptr),
+    bcVelocity_(nullptr),
+    density_(nullptr),
+    viscosity_(nullptr),
+    wallFrictionVelocityBip_(nullptr),
+    wallNormalDistanceBip_(nullptr),
+    exposedAreaVec_(nullptr),
     w_(16)
 {
   // save off fields
@@ -87,7 +88,6 @@ SurfaceForceAndMomentWallFunctionAlgorithm::SurfaceForceAndMomentWallFunctionAlg
   wallFrictionVelocityBip_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "wall_friction_velocity_bip");
   wallNormalDistanceBip_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "wall_normal_distance_bip");
   exposedAreaVec_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");
-  assembledArea_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "assembled_area_force_moment_wf");
 
   // error check on params
   const size_t nDim = meta_data.spatial_dimension();
@@ -95,7 +95,7 @@ SurfaceForceAndMomentWallFunctionAlgorithm::SurfaceForceAndMomentWallFunctionAlg
     throw std::runtime_error("SurfaceForce: parameter length wrong; expect nDim");
 
   // make sure that the wall function params are registered
-  if ( NULL == wallFrictionVelocityBip_ )
+  if ( nullptr == wallFrictionVelocityBip_ )
     throw std::runtime_error("SurfaceForce: wall friction velocity is not registered; wall bcs and post processing must be consistent");
 
   // deal with file name and banner
@@ -110,7 +110,7 @@ SurfaceForceAndMomentWallFunctionAlgorithm::SurfaceForceAndMomentWallFunctionAlg
            << "Y+min" << std::setw(w_) << "Y+max"<< std::endl;
     myfile.close();
   }
- }
+}
 
 //--------------------------------------------------------------------------
 //-------- destructor ------------------------------------------------------

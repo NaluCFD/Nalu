@@ -196,7 +196,8 @@ struct WallUserData : public UserData {
   bool emissSpec_;
 
   bool wallFunctionApproach_;
-  bool ablWallFunctionApproach_;
+  bool wallFunctionProjectedApproach_;
+  double projectedDistance_;
 
   bool isFsiInterface_;
 
@@ -211,7 +212,8 @@ struct WallUserData : public UserData {
       robinParameterSpec_(false),
       irradSpec_(false),
       wallFunctionApproach_(false),
-      ablWallFunctionApproach_(false),
+      wallFunctionProjectedApproach_(false),
+      projectedDistance_(1.0),
       isFsiInterface_(false) {}    
 };
 

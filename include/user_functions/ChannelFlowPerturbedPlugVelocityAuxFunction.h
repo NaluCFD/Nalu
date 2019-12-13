@@ -41,6 +41,9 @@ private:
   double Lx_;
   double Ly_;
   double Lz_;
+  int streamwiseD_;
+  int spanwiseD_;
+  int normalD_;
   const double pi_;
 };
 

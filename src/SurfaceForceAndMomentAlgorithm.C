@@ -50,23 +50,24 @@ SurfaceForceAndMomentAlgorithm::SurfaceForceAndMomentAlgorithm(
   const std::string &outputFileName,
   const int &frequency,
   const std::vector<double > &parameters,
-  const bool &useShifted)
+  const bool &useShifted,
+  ScalarFieldType *assembledArea)
   : Algorithm(realm, partVec),
     outputFileName_(outputFileName),
     frequency_(frequency),
     parameters_(parameters),
     useShifted_(useShifted),
     includeDivU_(realm.get_divU()),
-    coordinates_(NULL),
-    pressure_(NULL),
-    pressureForce_(NULL),
-    tauWall_(NULL),
-    yplus_(NULL),
-    density_(NULL),
-    viscosity_(NULL),
-    dudx_(NULL),
-    exposedAreaVec_(NULL),
-    assembledArea_(NULL),
+    assembledArea_(assembledArea),
+    coordinates_(nullptr),
+    pressure_(nullptr),
+    pressureForce_(nullptr),
+    tauWall_(nullptr),
+    yplus_(nullptr),
+    density_(nullptr),
+    viscosity_(nullptr),
+    dudx_(nullptr),
+    exposedAreaVec_(nullptr),
     w_(16)
 {
   // save off fields
@@ -83,7 +84,6 @@ SurfaceForceAndMomentAlgorithm::SurfaceForceAndMomentAlgorithm(
   viscosity_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, viscName);
   dudx_ = meta_data.get_field<GenericFieldType>(stk::topology::NODE_RANK, "dudx");
   exposedAreaVec_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");
-  assembledArea_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "assembled_area_force_moment");
   // error check on params
   const size_t nDim = meta_data.spatial_dimension();
   if ( parameters_.size() > nDim )
