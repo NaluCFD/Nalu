@@ -593,7 +593,7 @@ EquationSystems::register_overset_bc(
 }
 
 //--------------------------------------------------------------------------
-//-------- register_surface_pp_algorithm ----------------------
+//-------- register_surface_pp_algorithm -----------------------------------
 //--------------------------------------------------------------------------
 void
 EquationSystems::register_surface_pp_algorithm(

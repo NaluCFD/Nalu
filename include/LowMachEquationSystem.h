@@ -14,7 +14,8 @@
 #include <NaluParsing.h>
 
 namespace stk{
-struct topology;
+  struct topology;
+  class Ghosting;
 }
 
 namespace sierra{
@@ -31,6 +32,7 @@ class LinearSystem;
 class ProjectedNodalGradientEquationSystem;
 class SurfaceForceAndMomentAlgorithmDriver;
 class WallFunctionParamsAlgorithmDriver;
+class PointInfo;
 
 /** Low-Mach formulation of the Navier-Stokes Equations
  *
@@ -183,7 +185,8 @@ public:
   AlgorithmDriver *diffFluxCoeffAlgDriver_;
   AlgorithmDriver *tviscAlgDriver_;
   AlgorithmDriver *cflReyAlgDriver_;
-  WallFunctionParamsAlgorithmDriver *wallFunctionParamsAlgDriver_;
+  WallFunctionParamsAlgorithmDriver *wallFunctionParamsAlgDriver_;  
+  stk::mesh::Ghosting *wallFunctionGhosting_;
 
   ProjectedNodalGradientEquationSystem *projectedNodalGradEqs_;
 
@@ -191,6 +194,9 @@ public:
 
   // saved of mesh parts that are not to be projected
   std::vector<stk::mesh::Part *> notProjectedPart_;
+  
+  // projected in space points
+  std::vector<std::vector<PointInfo *> > pointInfoVec_;
 };
 
 class ContinuityEquationSystem : public EquationSystem {

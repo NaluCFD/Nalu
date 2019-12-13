@@ -30,7 +30,8 @@ public:
     const std::string &outputFileName,
     const int &frequency_,
     const std::vector<double > &parameters,
-    const bool &useShifted);
+    const bool &useShifted,
+    ScalarFieldType *assembledArea);
   ~SurfaceForceAndMomentAlgorithm();
 
   void execute();
@@ -46,6 +47,7 @@ public:
   const bool useShifted_;
   const double includeDivU_;
 
+  ScalarFieldType *assembledArea_;
   VectorFieldType *coordinates_;
   ScalarFieldType *pressure_;
   VectorFieldType *pressureForce_;
@@ -55,7 +57,6 @@ public:
   ScalarFieldType *viscosity_;
   GenericFieldType *dudx_;
   GenericFieldType *exposedAreaVec_;
-  ScalarFieldType *assembledArea_;
 
   const int w_;
 

@@ -794,8 +794,7 @@ MomentumFemEquationSystem::register_wall_bc(
   // find out if this is a wall function approach
   WallUserData userData = wallBCData.userData_;
   const bool wallFunctionApproach = userData.wallFunctionApproach_;
-  const bool ablWallFunctionApproach = userData.ablWallFunctionApproach_;
-  const bool anyWallFunctionActivated = wallFunctionApproach || ablWallFunctionApproach;
+  const bool anyWallFunctionActivated = wallFunctionApproach;
 
   // push mesh part
   if ( !anyWallFunctionActivated )
