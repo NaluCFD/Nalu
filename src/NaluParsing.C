@@ -850,11 +850,13 @@ namespace YAML
     {
       wallData.wallFunctionApproach_ = node["use_wall_function"].as<bool>();
     }
-    if (node["use_abl_wall_function"])
+    if (node["use_wall_function_projected"]) 
     {
-      wallData.wallFunctionApproach_ = node["use_abl_wall_function"].as<bool>();
-      wallData.ablWallFunctionApproach_ =
-          node["use_abl_wall_function"].as<bool>();
+      wallData.wallFunctionProjectedApproach_ = node["use_wall_function_projected"].as<bool>();
+    }
+    if (node["projected_distance"]) 
+    {
+      wallData.projectedDistance_ = node["projected_distance"].as<double>();
     }
     if (node["pressure"])
     {

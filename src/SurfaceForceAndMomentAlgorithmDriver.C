@@ -71,6 +71,7 @@ SurfaceForceAndMomentAlgorithmDriver::zero_fields()
   // one of these might be null
   ScalarFieldType *assembledArea = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "assembled_area_force_moment");
   ScalarFieldType *assembledAreaWF = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "assembled_area_force_moment_wf");
+  ScalarFieldType *assembledAreaWFP = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "assembled_area_force_moment_wfp");
 
   // zero fields
   field_fill( meta_data, bulk_data, 0.0, *pressureForce, realm_.get_activate_aura());
@@ -80,7 +81,8 @@ SurfaceForceAndMomentAlgorithmDriver::zero_fields()
     field_fill( meta_data, bulk_data, 0.0, *assembledArea, realm_.get_activate_aura());
   if ( NULL != assembledAreaWF ) 
     field_fill( meta_data, bulk_data, 0.0, *assembledAreaWF, realm_.get_activate_aura());
-
+  if ( NULL != assembledAreaWFP ) 
+    field_fill( meta_data, bulk_data, 0.0, *assembledAreaWFP, realm_.get_activate_aura());
 }
 
 //--------------------------------------------------------------------------
@@ -125,6 +127,7 @@ SurfaceForceAndMomentAlgorithmDriver::parallel_assemble_area()
   // extract the fields; one of these might be null
   ScalarFieldType *assembledArea = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "assembled_area_force_moment");
   ScalarFieldType *assembledAreaWF = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "assembled_area_force_moment_wf");
+  ScalarFieldType *assembledAreaWFP = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "assembled_area_force_moment_wfp");
 
   // parallel assemble
   std::vector<const stk::mesh::FieldBase*> fields;
@@ -132,6 +135,8 @@ SurfaceForceAndMomentAlgorithmDriver::parallel_assemble_area()
     fields.push_back(assembledArea);
   if ( NULL != assembledAreaWF )
     fields.push_back(assembledAreaWF);
+  if ( NULL != assembledAreaWFP )
+    fields.push_back(assembledAreaWFP);
   stk::mesh::parallel_sum(bulk_data, fields);
 
   // periodic assemble
@@ -141,6 +146,8 @@ SurfaceForceAndMomentAlgorithmDriver::parallel_assemble_area()
       realm_.periodic_field_update(assembledArea, 1, bypassFieldCheck);
     if ( NULL != assembledAreaWF )
       realm_.periodic_field_update(assembledAreaWF, 1, bypassFieldCheck);
+    if ( NULL != assembledAreaWFP )
+      realm_.periodic_field_update(assembledAreaWFP, 1, bypassFieldCheck);
   }
 
 }
