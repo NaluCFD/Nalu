@@ -153,17 +153,19 @@ ComputeWallFrictionVelocityProjectedAlgorithm::execute()
   if ( nullptr != wallFunctionGhosting_ )
     stk::mesh::communicate_field_data(*(wallFunctionGhosting_), ghostFieldVec_);
   
-  // iterate over parts to match construction
+  // iterate over parts to match construction (requires global counter over locally owned faces)
+  size_t pointInfoVecCounter = 0;  
   for ( size_t pv = 0; pv < partVec_.size(); ++pv ) {
 
     // extract projected distance
     const double pDistance = projectedDistanceVec_[pv];
 
-    stk::mesh::Selector s_locally_owned_union = metaData_->locally_owned_part()
-      &stk::mesh::Selector(*partVec_[pv]);
+    // define selector (per part)
+    stk::mesh::Selector s_locally_owned 
+      = metaData_->locally_owned_part() &stk::mesh::Selector(*partVec_[pv]);
     
     stk::mesh::BucketVector const& face_buckets =
-      realm_.get_buckets( metaData_->side_rank(), s_locally_owned_union );
+      realm_.get_buckets( metaData_->side_rank(), s_locally_owned );
     
     for ( stk::mesh::BucketVector::const_iterator ib = face_buckets.begin();
           ib != face_buckets.end() ; ++ib ) {
@@ -230,7 +232,7 @@ ComputeWallFrictionVelocityProjectedAlgorithm::execute()
         double *wallFrictionVelocityBip = stk::mesh::field_data(*wallFrictionVelocityBip_, face);
         
         // extract the vector of PointInfo for this face 
-        std::vector<PointInfo *> &faceInfoVec = pointInfoVec_[k];
+        std::vector<PointInfo *> &faceInfoVec = pointInfoVec_[pointInfoVecCounter++];
 
         // loop over ips
         for ( int ip = 0; ip < numScsBip; ++ip ) {
@@ -490,17 +492,18 @@ ComputeWallFrictionVelocityProjectedAlgorithm::construct_bounding_points()
   // need to keep track of some sort of local id for each gauss point...
   uint64_t localPointId = 0;
   
-  // iterate over parts to allow for projected distance to vary per surface
+  // iterate over parts to allow for projected distance to vary per surface and defines ordering everywhere else
   for ( size_t pv = 0; pv < partVec_.size(); ++pv ) {
     
     // extract projected distance
     const double pDistance = projectedDistanceVec_[pv];
-
-    stk::mesh::Selector s_locally_owned_union = metaData_->locally_owned_part()
-      &stk::mesh::Selector(*partVec_[pv]);
+    
+    // define selector (per part)
+    stk::mesh::Selector s_locally_owned 
+      = metaData_->locally_owned_part() &stk::mesh::Selector(*partVec_[pv]);
     
     stk::mesh::BucketVector const& face_buckets =
-      realm_.get_buckets( metaData_->side_rank(), s_locally_owned_union );
+      realm_.get_buckets( metaData_->side_rank(), s_locally_owned );
     
     for ( stk::mesh::BucketVector::const_iterator ib = face_buckets.begin();
           ib != face_buckets.end() ; ++ib ) {
@@ -626,10 +629,10 @@ ComputeWallFrictionVelocityProjectedAlgorithm::construct_bounding_boxes()
   }
   
   // selector
-  stk::mesh::Selector s_locally_owned
+  stk::mesh::Selector s_locally_owned_union
     = metaData_->locally_owned_part() &stk::mesh::selectUnion(elemBlockPartVec);
   stk::mesh::BucketVector const &elem_buckets 
-    = bulkData_->get_buckets( stk::topology::ELEMENT_RANK, s_locally_owned );
+    = bulkData_->get_buckets( stk::topology::ELEMENT_RANK, s_locally_owned_union );
   
   for ( stk::mesh::BucketVector::const_iterator ib = elem_buckets.begin();
         ib != elem_buckets.end() ; ++ib ) {
