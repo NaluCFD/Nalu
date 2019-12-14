@@ -207,15 +207,16 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
   for ( size_t k = 0; k < parameters_.size(); ++k)
     centroid[k] = parameters_[k];
 
-  // iterate over parts to match construction
+  // iterate over parts to match construction (requires global counter over locally owned faces)
+  size_t pointInfoVecCounter = 0;
   for ( size_t pv = 0; pv < partVec_.size(); ++pv ) {
     
-    // define some common selectors
-    stk::mesh::Selector s_locally_owned_union = meta_data.locally_owned_part()
-      &stk::mesh::Selector(*partVec_[pv]);
+    // define selector (per part)
+    stk::mesh::Selector s_locally_owned 
+      = meta_data.locally_owned_part() &stk::mesh::Selector(*partVec_[pv]);
     
     stk::mesh::BucketVector const& face_buckets =
-      realm_.get_buckets( meta_data.side_rank(), s_locally_owned_union );
+      realm_.get_buckets( meta_data.side_rank(), s_locally_owned );
     for ( stk::mesh::BucketVector::const_iterator ib = face_buckets.begin();
           ib != face_buckets.end() ; ++ib ) {
       stk::mesh::Bucket & b = **ib ;
@@ -283,7 +284,7 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
         const double *wallFrictionVelocityBip = stk::mesh::field_data(*wallFrictionVelocityBip_, face);
         
         // extract the vector of PointInfo for this face
-        std::vector<PointInfo *> &faceInfoVec = pointInfoVec_[k];
+        std::vector<PointInfo *> &faceInfoVec = pointInfoVec_[pointInfoVecCounter++];
         
         for ( int ip = 0; ip < numScsBip; ++ip ) {
           
@@ -477,9 +478,9 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::pre_work()
   // assemble area
   //======================
 
-  // define some common selectors
-  stk::mesh::Selector s_locally_owned_union = meta_data.locally_owned_part()
-      &stk::mesh::selectUnion(partVec_);
+  // define selector (need not be per part)
+  stk::mesh::Selector s_locally_owned_union 
+    = meta_data.locally_owned_part() &stk::mesh::selectUnion(partVec_);
 
   stk::mesh::BucketVector const& face_buckets
     = realm_.get_buckets( meta_data.side_rank(), s_locally_owned_union );
@@ -558,13 +559,13 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::error_check()
     totalIpsFromInfoVec += pointInfoVec_[k].size();
   }
 
-  // count number of ips from partVec_
+  // count total number of ips from partVec_
   size_t totalIpsFromParts = 0;
-  stk::mesh::Selector s_locally_owned_union = meta_data.locally_owned_part()
-      &stk::mesh::selectUnion(partVec_);
+  stk::mesh::Selector s_locally_owned 
+    = meta_data.locally_owned_part() &stk::mesh::selectUnion(partVec_);
 
   stk::mesh::BucketVector const& face_buckets
-    = realm_.get_buckets( meta_data.side_rank(), s_locally_owned_union );
+    = realm_.get_buckets( meta_data.side_rank(), s_locally_owned );
   for ( stk::mesh::BucketVector::const_iterator ib = face_buckets.begin();
            ib != face_buckets.end() ; ++ib ) {
     stk::mesh::Bucket & b = **ib ;
