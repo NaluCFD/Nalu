@@ -28,6 +28,9 @@
 #include <stk_mesh/base/Part.hpp>
 #include <stk_mesh/base/ExodusTranslator.hpp>
 
+// stk_util
+#include <stk_util/parallel/ParallelReduce.hpp>
+
 // basic c++
 #include <cmath>
 
@@ -752,7 +755,7 @@ void
 ComputeWallFrictionVelocityProjectedAlgorithm::manage_ghosting()
 {  
   // check for ghosting need
-  uint64_t g_needToGhostCount = 0;
+  size_t g_needToGhostCount = 0;
   stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &needToGhostCount_, &g_needToGhostCount, 1);
   if (g_needToGhostCount > 0) {
     
