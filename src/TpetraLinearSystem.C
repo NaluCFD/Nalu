@@ -92,8 +92,7 @@ TpetraLinearSystem::TpetraLinearSystem(
   LinearSolver * linearSolver)
   : LinearSystem(realm, numDof, eqSys, linearSolver)
 {
-  Teuchos::ParameterList junk;
-  node_ = Teuchos::rcp(new LinSys::Node(junk));
+  // nothing to do
 }
 
 TpetraLinearSystem::~TpetraLinearSystem()
