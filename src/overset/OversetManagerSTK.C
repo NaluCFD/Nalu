@@ -120,11 +120,10 @@ OversetManagerSTK::initialize()
     boundingElementInactiveBoxVec_, 
     boundingElementBackgroundBoxesVec_, 
     intersectedInactiveElementVec_);
-
+  
   // create a part that holds the intersected elements that should be inactive
   populate_inactive_part();
     
-
   // perform the coarse search to find the inner intersected inactive elements
   if ( realm_.has_mesh_motion() ) { 
     determine_intersected_elements(
@@ -535,6 +534,9 @@ OversetManagerSTK::determine_intersected_elements(
   
   // proceed with coarse search
   stk::search::coarse_search(boundingBoxVec, boundingBoxesVec, searchMethod_, NaluEnv::self().parallel_comm(), searchKeyPair);
+
+  // sort to avoid possible elementVec ordering in change_entity_parts() for each element in elementVec
+  std::sort(searchKeyPair.begin(), searchKeyPair.end());
 
   // iterate search key; extract found elements and push to vector
   std::vector<std::pair<theKey, theKey> >::const_iterator ii;
@@ -1007,7 +1009,10 @@ OversetManagerSTK::coarse_search(
   searchKeyPair.clear();
   stk::search::coarse_search(boundingPointVec, boundingElementVec,
     searchMethod_, NaluEnv::self().parallel_comm(), searchKeyPair);
-
+  
+  // sort to avoid possible elemsToGhost_ in change_ghosting() and/or intersectedInactiveElementVec*_ ordering
+  std::sort(searchKeyPair.begin(), searchKeyPair.end());
+  
   // now determine elements to ghost
   std::vector<std::pair<boundingPoint::second_type, boundingElementBox::second_type> >::const_iterator ii;  
   for ( ii=searchKeyPair.begin(); ii!=searchKeyPair.end(); ++ii ) {
@@ -1044,10 +1049,9 @@ OversetManagerSTK::manage_ghosting()
   uint64_t g_needToGhostCount = 0;
   stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &needToGhostCount_, &g_needToGhostCount, 1);
   if (g_needToGhostCount > 0) {
-    
     NaluEnv::self().naluOutputP0() << "Overset alg will ghost a number of entities: "
                     << g_needToGhostCount  << std::endl;
-    
+    // now modify
     bulkData_->modification_begin();
     bulkData_->change_ghosting( *oversetGhosting_, elemsToGhost_);
     bulkData_->modification_end();
