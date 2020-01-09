@@ -291,9 +291,7 @@ ActuatorLinePointDrag::load(
 
         // number of points
         get_if_present(y_spec, "number_of_points", actuatorLineInfo->numPoints_, actuatorLineInfo->numPoints_);
-        if ( actuatorLineInfo->numPoints_ < 2 )
-          throw std::runtime_error("ActuatorLinePointDrag: number of points must have at least two points");
-
+      
         // radius and omega
         get_if_present(y_spec, "radius", actuatorLineInfo->radius_, actuatorLineInfo->radius_);
         get_if_present(y_spec, "omega", actuatorLineInfo->omega_, actuatorLineInfo->omega_);
@@ -302,11 +300,6 @@ ActuatorLinePointDrag::load(
 
         // Gaussian props
         get_if_present(y_spec, "gaussian_decay_radius", actuatorLineInfo->gaussDecayRadius_, actuatorLineInfo->gaussDecayRadius_);
-
-        // number of points for this line
-        double numPoints = 10;
-        get_if_present(y_spec, "number_of_points", numPoints, numPoints);
-        actuatorLineInfo->numPoints_ = numPoints;
 
         // tip coordinates of this point
         const YAML::Node tipCoord = y_spec["tip_coordinates"];
@@ -616,6 +609,9 @@ ActuatorLinePointDrag::determine_elems_to_ghost()
   stk::search::coarse_search(boundingSphereVec_, boundingElementBoxVec_, searchMethod_,
                              NaluEnv::self().parallel_comm(), searchKeyPair_);
 
+  // sort to avoid possible elemsToGhost_ ordering in change_ghosting() or actuatorLinePointInfo->nodeVec_.insert(node)
+  std::sort(searchKeyPair_.begin(), searchKeyPair_.end());
+  
   // lowest effort is to ghost elements to the owning rank of the point; can just as easily do the opposite
   std::vector<std::pair<boundingSphere::second_type, boundingElementBox::second_type> >::const_iterator ii;
   for( ii=searchKeyPair_.begin(); ii!=searchKeyPair_.end(); ++ii ) {
@@ -624,6 +620,7 @@ ActuatorLinePointDrag::determine_elems_to_ghost()
     unsigned theRank = NaluEnv::self().parallel_rank();
     const unsigned pt_proc = ii->first.proc();
     const unsigned box_proc = ii->second.proc();
+    
     if ( (box_proc == theRank) && (pt_proc != theRank) ) {
 
       // Send box to pt proc
@@ -684,8 +681,9 @@ ActuatorLinePointDrag::create_actuator_line_point_info_map() {
       }
 
       const int numPoints = actuatorLineInfo->numPoints_;
+      const int denomPts = std::max(numPoints - 1, 1);
       for ( int j = 0; j < nDim; ++j ) {
-        dx[j] = (tipC[j] - tailC[j])/(double)(numPoints-1);
+        dx[j] = (tipC[j] - tailC[j])/(double)denomPts;
         lineCentroid[j] = (tipC[j] + tailC[j])/2.0;
       }
 
@@ -770,7 +768,7 @@ ActuatorLinePointDrag::manage_ghosting()
   stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &needToGhostCount_, &g_needToGhostCount, 1);
   if (g_needToGhostCount > 0) {
     NaluEnv::self().naluOutputP0() << "ActuatorLinePointDrag alg will ghost a number of entities: "
-                                   << g_needToGhostCount  << std::endl;
+                                   << g_needToGhostCount  << std::endl;    
     bulkData.modification_begin();
     bulkData.change_ghosting( *actuatorLineGhosting_, elemsToGhost_);
     bulkData.modification_end();
