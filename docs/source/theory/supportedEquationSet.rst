@@ -303,7 +303,13 @@ energy equation, subtracting the mechanical energy equation and
 enforcing the variable density continuity equation. Note that the above
 equation includes possible source terms due to thermal radiatitive
 transport, viscous dissipation, pressure work,
-and external driving sources (:math:`S_\theta`).
+and external driving sources (:math:`S_\theta`). 
+
+Above, :math:`\frac{\partial \bar{q}_i^r}{\partial x_i}` represents the divergence
+of the radiative flux and is active when participating media radiation (PMR) coupling 
+is active. At present, there is no sophisticated absorption coefficient model supported in
+the gas phase. Therefore, this source term is fully applied to the enthalpy along with 
+any possible linearizations that solely originate from the PMR realm solve and transfer.
 
 The simple Fickian diffusion velocity approximation,
 Equation :eq:`diffvel1`, is assumed, so that the mean diffusive heat flux

@@ -58,7 +58,7 @@ EnthalpyPmrSrcNodeSuppAlg::node_execute(
   const double divQLin = *stk::mesh::field_data(*divRadFluxLin_, node );
   const double specificHeat = *stk::mesh::field_data(*specificHeat_, node );
   const double dualVolume = *stk::mesh::field_data(*dualNodalVolume_, node );
-
+  // divQ = absorption[k]*(4.0*sb*T*T*T*T-G) = (4.0*pi*rad_source - absorption*G)
   rhs[0] -= divQ*dualVolume;
   lhs[0] += divQLin/specificHeat*dualVolume;
 }
