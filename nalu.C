@@ -19,8 +19,9 @@
 #include <stk_util/environment/perf_util.hpp>
 #include <stk_util/parallel/ParallelReduce.hpp>
 
-// boost for input params
-#include <boost/program_options.hpp>
+// input params
+#include <stk_util/environment/OptionsSpecification.hpp>
+#include <stk_util/environment/ParseCommandLineArgs.hpp>
 
 // yaml for parsing..
 #include <yaml-cpp/yaml.h>
@@ -85,39 +86,35 @@ int main( int argc, char ** argv )
     ? (version::NaluVersionTag + "-dirty")
     : version::NaluVersionTag;
 
-  boost::program_options::options_description desc("Nalu Supported Options");
+  stk::OptionsSpecification desc("Nalu Supported Options:");
+  std::string naluVout = naluVersion.c_str();
   desc.add_options()
     ("help,h","Help message")
     ("version,v", naluVersion.c_str())
-    ("input-deck,i", boost::program_options::value<std::string>(&inputFileName)->default_value("nalu.i"),
-        "Analysis input file")
-    ("log-file,o", boost::program_options::value<std::string>(&logFileName),
-        "Analysis log file")
-    ("serialized-io-group-size,s",
-     boost::program_options::value<int>(&serializedIOGroupSize)->default_value(0),
-        "Specifies the number of processors which can concurrently perform I/O. Specifying zero disables serialization.")
-    ("debug,D", "debug print on")
-    ("pprint,p", "parallel print on");
+    ("input-file,i", "Analysis input file", stk::DefaultValue<std::string>("nalu.i"), stk::TargetPointer<std::string>(&inputFileName))
+    /*("log-file,o", "Analysis log file", stk::DefaultValue<std::string>("nalu.log"), stk::TargetPointer<std::string>(&logFileName))*/
+    ("log-file,o", "Analysis log file", stk::TargetPointer<std::string>(&logFileName))
+    ("serialized-io-group-size,s", "Specifies the number of processors that can concurrently perform I/O. Specifying zero disables serialization.", stk::DefaultValue<int>(0), stk::TargetPointer<int>(&serializedIOGroupSize))
+    ("debug,D","Debug output to the log file")
+    ("pprint,p","Parallel output to the number of mpi rank log files ");
 
-  boost::program_options::variables_map vm;
-  boost::program_options::store(boost::program_options::parse_command_line(argc, argv, desc), vm);
-
-  boost::program_options::notify(vm);
+  stk::ParsedOptions parsedOptions;
+  stk::parse_command_line_args(argc, const_cast<const char**>(argv), desc, parsedOptions);
 
   // deal with some default parameters
-  if ( vm.count("help") ) {
+  if ( parsedOptions.count("help") ) {
     if (!naluEnv.parallel_rank())
       std::cerr << desc << std::endl;
     return 0;
   }
 
-  if (vm.count("version")) {
+  if (parsedOptions.count("version")) {
     if (!naluEnv.parallel_rank())
       std::cerr << "Version: " << naluVersion << std::endl;
     return 0;
   }
 
-  if (vm.count("debug")) {
+  if (parsedOptions.count("debug")) {
     debug = true;
   }
 
@@ -129,7 +126,7 @@ int main( int argc, char ** argv )
   }
 
   // deal with logfile name; if none supplied, go with inputFileName.log  
-  if (!vm.count("log-file")) {
+  if (!parsedOptions.count("log-file")) {
     int dotPos = inputFileName.rfind(".");
     if ( -1 == dotPos ) {  
       // lacking extension
@@ -147,7 +144,7 @@ int main( int argc, char ** argv )
   naluEnv.set_base_name(baseName);
 
   bool pprint = false;
-  if (vm.count("pprint")) {
+  if (parsedOptions.count("pprint")) {
     pprint = true;
   }
   // deal with log file stream
