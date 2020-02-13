@@ -1,7 +1,8 @@
 # The base directory where mpi is located.  
 # From here you should be able to find include/mpi.h bin/mpicxx, bin/mpiexec, etc.
 mpi_base_dir=/your/path/to/mpi/openmpi/1.10.2-gcc-7.2.0-RHEL6
-nalu_install_dir=/home/nalu_user/gitHubWork/scratch_build/install/gcc7.2.0
+nalu_install_dir=/home/nalu_user/gitHubWork/scratch_build/install/gcc8.3.0
+0
 
 # Note: Don't forget to set your LD_LIBRARY_PATH to $mpi_base_dir/lib
 #       You may also need to add to LD_LIBRARY_PATH the lib directory for the compiler
@@ -11,15 +12,16 @@ nalu_install_dir=/home/nalu_user/gitHubWork/scratch_build/install/gcc7.2.0
 #boost_dir=/usr/local/Cellar/boost/1.56.0/include/boost/
 #superlu_inc_dir=/usr/local/Cellar/superlu/4.3/include/superlu
 #superlu_lib_dir=/usr/local/Cellar/superlu/4.3/lib
-boost_dir=$nalu_install_dir/boost/1.68.0
+boost_inc_dir=$nalu_install_dir/boost/1.68.0/include
 superlu_inc_dir=$nalu_install_dir/SuperLU/4.3/include
 superlu_lib_dir=$nalu_install_dir/SuperLU/4.3/lib
+
+echo "boost_inc_dir = \"$boost_inc_dir\""
 
 # Additional needed TPLS
 netcdf_install_dir=$nalu_install_dir/netcdf/4.6.1
 hdf_install_dir=$nalu_install_dir/hdf5/1.10.4
 pnetcdf_install_dir=$nalu_install_dir/pnetcdf/1.10.0
-z_install_dir=$nalu_install_dir/zlib/1.2.11
 
 # Where trilinos will be installed
 trilinos_install_dir=$nalu_install_dir/Trilinos_stable_release
@@ -50,6 +52,8 @@ cmake \
 -DTPL_ENABLE_SuperLU=ON \
   -DSuperLU_INCLUDE_DIRS:PATH=$superlu_inc_dir \
   -DSuperLU_LIBRARY_DIRS:PATH=$superlu_lib_dir \
+-DTPL_ENABLE_Boost:BOOL=ON \
+  -DBoost_INCLUDE_DIRS:PATH=$boost_inc_dir \
 -DTrilinos_ENABLE_Epetra:BOOL=OFF \
 -DTrilinos_ENABLE_Tpetra:BOOL=ON \
 -DTrilinos_ENABLE_ML:BOOL=OFF \
@@ -71,7 +75,6 @@ cmake \
 -DTrilinos_ENABLE_STKUtil:BOOL=ON \
 -DTrilinos_ENABLE_STKTopology:BOOL=ON \
 -DTrilinos_ENABLE_STKBalance:BOOL=OFF \
--DTPL_ENABLE_BoostLib:BOOL=ON \
 -DTrilinos_ENABLE_STKUnit_tests:BOOL=OFF \
 -DTrilinos_ENABLE_STKUnit_test_utils:BOOL=OFF \
 -DTrilinos_ENABLE_Gtest:BOOL=ON \
@@ -86,9 +89,6 @@ cmake \
 -DHDF5_ROOT:PATH=${hdf_install_dir} \
 -DHDF5_NO_SYSTEM_PATHS=ON \
 -DPNetCDF_ROOT:PATH=${pnetcdf_install_dir} \
--DZlib_ROOT:PATH=${z_install_dir} \
--DBoostLib_INCLUDE_DIRS:PATH="$boost_dir/include" \
--DBoostLib_LIBRARY_DIRS:PATH="$boost_dir/lib" \
 -DTrilinos_ASSERT_MISSING_PACKAGES=OFF \
 $EXTRA_ARGS \
 ../
