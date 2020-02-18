@@ -1458,10 +1458,10 @@ TpetraLinearSystem::sumInto(
 {
   constexpr bool forceAtomic = !std::is_same<sierra::nalu::DeviceSpace, Kokkos::Serial>::value;
 
-  ThrowAssertMsg(lhs.is_contiguous(), "LHS assumed contiguous");
-  ThrowAssertMsg(rhs.is_contiguous(), "RHS assumed contiguous");
-  ThrowAssertMsg(localIds.is_contiguous(), "localIds assumed contiguous");
-  ThrowAssertMsg(sortPermutation.is_contiguous(), "sortPermutation assumed contiguous");
+  ThrowAssertMsg(lhs.span_is_contiguous(), "LHS assumed contiguous");
+  ThrowAssertMsg(rhs.span_is_contiguous(), "RHS assumed contiguous");
+  ThrowAssertMsg(localIds.span_is_contiguous(), "localIds assumed contiguous");
+  ThrowAssertMsg(sortPermutation.span_is_contiguous(), "sortPermutation assumed contiguous");
 
   const int n_obj = numEntities;
   const int numRows = n_obj * numDof_;
