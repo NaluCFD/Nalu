@@ -24,6 +24,7 @@
 // stk_mesh/base/fem
 #include <stk_mesh/base/BulkData.hpp>
 #include <stk_mesh/base/Field.hpp>
+#include <stk_mesh/base/FieldParallel.hpp>
 #include <stk_mesh/base/GetBuckets.hpp>
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/Part.hpp>
@@ -1759,6 +1760,9 @@ TurbulenceAveragingPostProcessing::compute_dissipation_rate(
     }
   }
 
+  // parallel assemble
+  stk::mesh::parallel_sum(realm_.bulk_data(), {dissipationRateProjected, dissipationRateFilter});
+
   // periodic assemble
   if ( realm_.hasPeriodic_) {
     realm_.periodic_field_update(dissipationRateProjected, 1);
@@ -2015,6 +2019,9 @@ TurbulenceAveragingPostProcessing::compute_production(
       } 
     }
   }
+
+  // parallel assemble
+  stk::mesh::parallel_sum(realm_.bulk_data(), {productionProjected, productionFilter});
 
   // periodic assemble
   if ( realm_.hasPeriodic_) {
