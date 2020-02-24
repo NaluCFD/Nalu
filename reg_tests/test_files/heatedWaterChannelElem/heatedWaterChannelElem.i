@@ -175,6 +175,7 @@ realms:
           compute_reynolds_stress: yes
           compute_dissipation_rate: yes
           compute_production: yes
+          compute_favre_stress: yes
 
         - name: two
           target_name: surface_5

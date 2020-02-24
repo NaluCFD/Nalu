@@ -1829,6 +1829,7 @@ TurbulenceAveragingPostProcessing::compute_production(
   // extract mean velocity name - assume Favre until proven otherwise
   std::string meanVelocityName = "velocity_fa_" + averageBlockName;
   std::string stressName = "favre_stress";
+  
   if ( std::find(avInfo->favreFieldNameVec_.begin(), avInfo->favreFieldNameVec_.end(), "velocity") == avInfo->favreFieldNameVec_.end() ) {
     // Favre not found - rely on standart Reynolds stress
     meanVelocityName = "velocity_ra_" + averageBlockName;
@@ -1838,7 +1839,7 @@ TurbulenceAveragingPostProcessing::compute_production(
   }
   else {
     if ( !avInfo->computeFavreStress_ )
-      throw std::runtime_error("TurbulenceAveragingPostProcessing:compute_production() compute_favre_stress is not active: ");
+      throw std::runtime_error("TurbulenceAveragingPostProcessing:compute_production() compute_favre_stress is not active while favre requested for velocity: ");
   }
 
   VectorFieldType *meanVelocity 
