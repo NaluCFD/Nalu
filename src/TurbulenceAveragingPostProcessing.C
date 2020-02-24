@@ -377,18 +377,23 @@ TurbulenceAveragingPostProcessing::setup()
       
       // dissipation rate
       if ( avInfo->computeDissipationRate_ ) {
-        const std::string dRateName = "dissipation_rate";
-        GenericFieldType *dRate = &(metaData.declare_field<GenericFieldType>(stk::topology::ELEMENT_RANK, dRateName));
+        GenericFieldType *dRate = &(metaData.declare_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "dissipation_rate"));
         stk::mesh::put_field_on_mesh(*dRate, *targetPart, 1, nullptr);
-        realm_.augment_restart_variable_list(dRateName); 
+        realm_.augment_restart_variable_list("dissipation_rate");
+        // nodal fields for projection
+        register_field("dissipation_rate_projected", 1, metaData, targetPart, false);
+        register_field("dissipation_rate_filter", 1, metaData, targetPart, false);
+        
       }
 
       // production
       if ( avInfo->computeProduction_ ) {
-        const std::string pkName = "production";
-        GenericFieldType *pk = &(metaData.declare_field<GenericFieldType>(stk::topology::ELEMENT_RANK, pkName));
+        GenericFieldType *pk = &(metaData.declare_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "production"));
         stk::mesh::put_field_on_mesh(*pk, *targetPart, 1, nullptr);
-        realm_.augment_restart_variable_list(pkName); 
+        realm_.augment_restart_variable_list("production");
+        // nodal fields for projection
+        register_field("production_projected", 1, metaData, targetPart, false);
+        register_field("production_filter", 1, metaData, targetPart, false);
       }
     }
     
@@ -499,14 +504,16 @@ TurbulenceAveragingPostProcessing::register_field(
   const std::string fieldName,
   const int fieldSize,
   stk::mesh::MetaData &metaData,
-  stk::mesh::Part *targetPart)
+  stk::mesh::Part *targetPart,
+  const bool restartField)
 {
   // register and put the field
   stk::mesh::Field<double, stk::mesh::SimpleArrayTag> *theField
     = &(metaData.declare_field< stk::mesh::Field<double, stk::mesh::SimpleArrayTag> >(stk::topology::NODE_RANK, fieldName));
   stk::mesh::put_field_on_mesh(*theField,*targetPart,fieldSize,nullptr);
   // augment the restart list
-  realm_.augment_restart_variable_list(fieldName);
+  if ( restartField )
+    realm_.augment_restart_variable_list(fieldName);
 }
 
 //--------------------------------------------------------------------------
@@ -1549,6 +1556,25 @@ TurbulenceAveragingPostProcessing::compute_dissipation_rate(
   stk::mesh::MetaData & metaData = realm_.meta_data();
   const int nDim = realm_.spatialDimension_;
 
+  // first zero out projected quantities
+  ScalarFieldType *dissipationRateProjected 
+    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dissipation_rate_projected");
+  ScalarFieldType *dissipationRateFilter 
+    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dissipation_rate_filter");
+  stk::mesh::BucketVector const& nodal_buckets =
+    realm_.get_buckets( stk::topology::NODE_RANK, s_all_nodes );
+  for ( stk::mesh::BucketVector::const_iterator ib = nodal_buckets.begin();
+        ib != nodal_buckets.end() ; ++ib ) {
+    stk::mesh::Bucket & b = **ib ;
+    const stk::mesh::Bucket::size_type length   = b.size();
+    double *dRateP = (double*)stk::mesh::field_data(*dissipationRateProjected,b);
+    double *dRateF = (double*)stk::mesh::field_data(*dissipationRateFilter,b);
+    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+      dRateP[k] = 0.0;
+      dRateF[k] = 0.0;
+    }
+  }
+  
   // extract fields
   VectorFieldType *coordinates 
     = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
@@ -1718,6 +1744,36 @@ TurbulenceAveragingPostProcessing::compute_dissipation_rate(
       
       const double averageField = (dRate[k]*oldTimeFilter*zeroCurrent + sumDissipationRate/sumVolume*dt)/currentTimeFilter_;  
       dRate[k] = averageField;
+
+      // now scatter
+      for ( int ni = 0; ni < num_nodes; ++ni ) {
+        stk::mesh::Entity node = node_rels[ni];
+        
+        // pointers to real data
+        double *dRateP =  stk::mesh::field_data(*dissipationRateProjected, node);
+        double *dRateF = stk::mesh::field_data(*dissipationRateFilter, node);
+
+        *dRateP += averageField*sumVolume;
+        *dRateF += sumVolume;
+      }
+    }
+  }
+
+  // periodic assemble
+  if ( realm_.hasPeriodic_) {
+    realm_.periodic_field_update(dissipationRateProjected, 1);
+    realm_.periodic_field_update(dissipationRateFilter, 1);
+  }
+  
+  // finally, normalize
+  for ( stk::mesh::BucketVector::const_iterator ib = nodal_buckets.begin();
+        ib != nodal_buckets.end() ; ++ib ) {
+    stk::mesh::Bucket & b = **ib ;
+    const stk::mesh::Bucket::size_type length   = b.size();
+    double *dRateP = (double*)stk::mesh::field_data(*dissipationRateProjected,b);
+    const double *dRateF = (double*)stk::mesh::field_data(*dissipationRateFilter,b);
+    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+      dRateP[k] /= dRateF[k];
     }
   }
 }
@@ -1738,6 +1794,25 @@ TurbulenceAveragingPostProcessing::compute_production(
 
   stk::mesh::MetaData & metaData = realm_.meta_data();
   const int nDim = realm_.spatialDimension_;
+  
+  // first zero out projected quantities
+  ScalarFieldType *productionProjected 
+    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "production_projected");
+  ScalarFieldType *productionFilter 
+    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "production_filter");
+  stk::mesh::BucketVector const& nodal_buckets =
+    realm_.get_buckets( stk::topology::NODE_RANK, s_all_nodes );
+  for ( stk::mesh::BucketVector::const_iterator ib = nodal_buckets.begin();
+        ib != nodal_buckets.end() ; ++ib ) {
+    stk::mesh::Bucket & b = **ib ;
+    const stk::mesh::Bucket::size_type length   = b.size();
+    double *prodP = (double*)stk::mesh::field_data(*productionProjected,b);
+    double *prodF = (double*)stk::mesh::field_data(*productionFilter,b);
+    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+      prodP[k] = 0.0;
+      prodF[k] = 0.0;
+    }
+  }
 
   // extract fields
   VectorFieldType *coordinates 
@@ -1925,6 +2000,36 @@ TurbulenceAveragingPostProcessing::compute_production(
       
       // no need to average this as it is a function of averaged variables
       prodKe[k] = sumProduction/sumVolume;
+
+      // now scatter
+      for ( int ni = 0; ni < num_nodes; ++ni ) {
+        stk::mesh::Entity node = node_rels[ni];
+        
+        // pointers to real data
+        double *prodP =  stk::mesh::field_data(*productionProjected, node);
+        double *prodF = stk::mesh::field_data(*productionFilter, node);
+        
+        *prodP += sumProduction;
+        *prodF += sumVolume;
+      } 
+    }
+  }
+
+  // periodic assemble
+  if ( realm_.hasPeriodic_) {
+    realm_.periodic_field_update(productionProjected, 1);
+    realm_.periodic_field_update(productionFilter, 1);
+  }
+  
+  // finally, normalize
+  for ( stk::mesh::BucketVector::const_iterator ib = nodal_buckets.begin();
+        ib != nodal_buckets.end() ; ++ib ) {
+    stk::mesh::Bucket & b = **ib ;
+    const stk::mesh::Bucket::size_type length   = b.size();
+    double *prodP = (double*)stk::mesh::field_data(*productionProjected,b);
+    const double *prodF = (double*)stk::mesh::field_data(*productionFilter,b);
+    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+      prodP[k] /= prodF[k];
     }
   }
 }
