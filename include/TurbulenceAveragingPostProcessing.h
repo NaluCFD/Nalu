@@ -83,7 +83,8 @@ public:
     const std::string fieldName,
     const int fieldSize,
     stk::mesh::MetaData &metaData,
-    stk::mesh::Part *targetPart);
+    stk::mesh::Part *targetPart,
+    const bool restartField = true);
 
   void review( 
     const AveragingInfo *avInfo);
