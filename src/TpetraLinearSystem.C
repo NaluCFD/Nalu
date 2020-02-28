@@ -210,7 +210,7 @@ TpetraLinearSystem::beginLinearSystemConstruction()
   LocalOrdinal numGhostNodes = 0;
   LocalOrdinal numOwnedNodes = 0;
   LocalOrdinal numNodes = 0;
-  LocalOrdinal numSharedNotOwnedNotLocallyOwned = 0; // these are nodes on other procs
+  LocalOrdinal numSharedNotOwned = 0; // these are nodes on other procs
   // First, get the number of owned and sharedNotOwned (or num_sharedNotOwned_nodes = num_nodes - num_owned_nodes)
   //KOKKOS: BucketLoop parallel "reduce" is accumulating 4 sums
   kokkos_parallel_for("Nalu::TpetraLinearSystem::beginLinearSystemConstructionA", buckets.size(), [&] (const int& ib) {
@@ -233,7 +233,7 @@ TpetraLinearSystem::beginLinearSystemConstruction()
 
       if (status & DS_SharedNotOwnedDOF) {
         numNodes++;
-        numSharedNotOwnedNotLocallyOwned++;
+        numSharedNotOwned++;
       }
 
       if (status & DS_GhostedDOF) {
@@ -254,11 +254,11 @@ TpetraLinearSystem::beginLinearSystemConstruction()
   // make separate arrays that hold the owned and sharedNotOwned gids
   std::vector<stk::mesh::Entity> owned_nodes, shared_not_owned_nodes;
   owned_nodes.reserve(numOwnedNodes);
-  shared_not_owned_nodes.reserve(numSharedNotOwnedNotLocallyOwned);
+  shared_not_owned_nodes.reserve(numSharedNotOwned);
 
   std::vector<GlobalOrdinal> ownedGids, sharedNotOwnedGids;
   ownedGids.reserve(maxOwnedRowId_);
-  sharedNotOwnedGids.reserve(numSharedNotOwnedNotLocallyOwned*numDof_);
+  sharedNotOwnedGids.reserve(numSharedNotOwned*numDof_);
   sharedPids_.reserve(sharedNotOwnedGids.capacity());
 
   // owned first:
