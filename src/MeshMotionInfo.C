@@ -29,13 +29,15 @@ MeshMotionInfo::MeshMotionInfo(
   const double omega, 
   std::vector<double> centroid,
   std::vector<double> unitVec,
-  const bool computeCentroid)
+  const bool computeCentroid,
+  const double theAngle)
   : meshMotionBlock_(meshMotionBlock), 
     omega_(omega), 
     centroid_(centroid),
     unitVec_(unitVec),
     computeCentroid_(computeCentroid),
-    computeCentroidCompleted_(false)
+    computeCentroidCompleted_(false),
+    theAngle_(theAngle)
 {
   // nothing to do
 }

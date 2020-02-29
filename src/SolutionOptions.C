@@ -52,6 +52,7 @@ SolutionOptions::SolutionOptions()
     meshMotion_(false),
     meshDeformation_(false),
     externalMeshDeformation_(false),
+    initialMeshDisplacement_(false),
     errorIndicatorActive_(false),
     errorIndicatorType_(EIT_NONE),
     errorIndicatorFrequency_(100),
@@ -90,6 +91,10 @@ SolutionOptions::~SolutionOptions()
 {
   std::map<std::string, MeshMotionInfo *>::iterator it;
   for ( it = meshMotionInfoMap_.begin(); it!= meshMotionInfoMap_.end(); ++it ) {
+    MeshMotionInfo *info = it->second;
+    delete info;
+  }
+  for ( it = initialMeshDisplacementInfoMap_.begin(); it!= initialMeshDisplacementInfoMap_.end(); ++it ) {
     MeshMotionInfo *info = it->second;
     delete info;
   }
@@ -189,8 +194,7 @@ SolutionOptions::load(const YAML::Node & y_node)
 
     // first set of options; hybrid, source, etc.
     const YAML::Node y_options = expect_sequence(y_solution_options, "options", required);
-    if (y_options)
-    {
+    if (y_options) {
       for (size_t ioption = 0; ioption < y_options.size(); ++ioption)
       {
         const YAML::Node y_option = y_options[ioption] ;
@@ -339,11 +343,10 @@ SolutionOptions::load(const YAML::Node & y_node)
 
     // second set of options: mesh motion... this means that the Realm will expect to provide rotation-based motion
     const YAML::Node y_mesh_motion = expect_sequence(y_solution_options, "mesh_motion", optional);
-    if (y_mesh_motion)
-    {
+    if (y_mesh_motion) {
       // mesh motion is active
       meshMotion_ = true;
-
+      
       // has a user stated that mesh motion is external?
       if ( meshDeformation_ ) {
         NaluEnv::self().naluOutputP0() << "mesh motion set to external (will prevail over mesh motion specification)!" << std::endl;
@@ -408,7 +411,77 @@ SolutionOptions::load(const YAML::Node & y_node)
         }
       }
     }
+    
+    // second set of options: initial mesh displacement 
+    const YAML::Node y_initial_mesh_displacement = expect_sequence(y_solution_options, "initial_mesh_displacement", optional);
+    if (y_initial_mesh_displacement) {
+      // initial displacement is activated
+      initialMeshDisplacement_ = true;
+      
+      for (size_t ioption = 0; ioption < y_initial_mesh_displacement.size(); ++ioption) {
+	const YAML::Node &y_option = y_initial_mesh_displacement[ioption];
+        
+	// extract mesh motion name
+	std::string motionName = "na";
+	get_required(y_option, "name", motionName);
 
+	// dummy omega
+	const double omega = 0.0;
+	
+	// now fill in name
+	std::vector<std::string> meshMotionBlock;
+	const YAML::Node &targets = y_option["target_name"];
+	if (targets.Type() == YAML::NodeType::Scalar) {
+	  meshMotionBlock.resize(1);
+	  meshMotionBlock[0] = targets.as<std::string>() ;
+	}
+	else {
+	  meshMotionBlock.resize(targets.size());
+	  for (size_t i=0; i < targets.size(); ++i) {
+	    meshMotionBlock[i] = targets[i].as<std::string>() ;
+	  }
+	}
+        
+	// look for centroid coordinates; optional, provide a default
+	std::vector<double> cCoordsVec(3,0.0); 
+	const YAML::Node coordsVecNode = y_option["centroid_coordinates"];
+	if ( coordsVecNode ) {
+	  for ( size_t i = 0; i < coordsVecNode.size(); ++i )
+	    cCoordsVec[i] = coordsVecNode[i].as<double>();
+	}
+	
+	// check for calculation of centroid
+	bool computeCentroid = false;
+	get_if_present(y_option, "compute_centroid", computeCentroid, computeCentroid);
+	// user specified prevails
+	if ( coordsVecNode && computeCentroid ) {
+	  NaluEnv::self().naluOutputP0() 
+	    << "centroid_coordinates and compute_centroid both active, user-specified centroid will prevail" << std::endl;
+	  computeCentroid = false;
+	}
+	
+	// look for unit vector; provide default
+	std::vector<double> unitVec(3,0.0); 
+	const YAML::Node uV = y_option["unit_vector"];
+	if ( uV ) {
+	  for ( size_t i = 0; i < uV.size(); ++i )
+	    unitVec[i] = uV[i].as<double>() ;
+	}
+	else {
+	  NaluEnv::self().naluOutputP0() << "SolutionOptions::load() unit_vector not supplied; will use 0,0,1" << std::endl;
+	  unitVec[2] = 1.0;
+	}
+	
+	// extract angle
+	double theAngle = 0.0;
+	get_if_present(y_option, "angle", theAngle, theAngle);
+        
+	MeshMotionInfo *meshInfo = new MeshMotionInfo(meshMotionBlock, omega, cCoordsVec, unitVec, computeCentroid, theAngle);
+	// set the map
+	initialMeshDisplacementInfoMap_[motionName] = meshInfo;
+      }
+    }
+  
     const YAML::Node fix_pressure = expect_map(y_solution_options, "fix_pressure_at_node", optional);
     if (fix_pressure) {
       needPressureReference_ = true;

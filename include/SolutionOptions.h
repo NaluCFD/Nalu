@@ -59,9 +59,10 @@ public:
 
   inline std::string get_coordinates_name() const
   {
-    return does_mesh_move() ? "current_coordinates" : "coordinates";
+    return ( (meshMotion_ | meshDeformation_ | externalMeshDeformation_ | initialMeshDisplacement_) 
+	     ? "current_coordinates" : "coordinates");    
   }
-
+  
   double get_alpha_factor(const std::string&) const;
 
   double get_alpha_upw_factor(const std::string&) const;
@@ -108,6 +109,7 @@ public:
   bool meshMotion_;
   bool meshDeformation_;
   bool externalMeshDeformation_;
+  bool initialMeshDisplacement_;
   bool errorIndicatorActive_;
   ErrorIndicatorType errorIndicatorType_;
   int errorIndicatorFrequency_;
@@ -177,6 +179,9 @@ public:
 
   // mesh motion
   std::map<std::string, MeshMotionInfo *> meshMotionInfoMap_;
+
+  // initial displacement
+  std::map<std::string, MeshMotionInfo *> initialMeshDisplacementInfoMap_;
 
   std::vector<double> gravity_;
 

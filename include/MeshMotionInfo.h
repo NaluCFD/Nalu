@@ -24,7 +24,8 @@ class MeshMotionInfo
    const double omega, 
    std::vector<double> centroid,
    std::vector<double> unitVec,
-   const bool computeCentroid);
+   const bool computeCentroid,
+   const double theAngle_ = 0.0);
 
   ~MeshMotionInfo();
 
@@ -34,6 +35,7 @@ class MeshMotionInfo
   std::vector<double> unitVec_;
   const double computeCentroid_;
   double computeCentroidCompleted_;
+  const double theAngle_;
 };
 
 } // namespace nalu

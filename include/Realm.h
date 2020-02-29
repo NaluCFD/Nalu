@@ -151,7 +151,7 @@ class Realm {
 
   // overset boundary condition requires elemental field registration
   bool query_for_overset();
-
+  
   void set_omega(
     stk::mesh::Part *targetPart,
     double omega);
@@ -166,6 +166,14 @@ class Realm {
     const std::vector<double> &centroidCoords,
     const std::vector<double> &unitVec);
   void mesh_velocity_cross_product(double *o, double *c, double *u);
+
+  // allow for a single mesh displacement (coords change, however, mesh motion fixed)
+  void process_initial_displacement();
+  void set_initial_displacement(
+    stk::mesh::Part *targetPart,
+    const std::vector<double> &centroidCoords,
+    const std::vector<double> &unitVec,
+    const double theAngle);
 
   // non-conformal-like algorithm suppoer
   void initialize_non_conformal();
