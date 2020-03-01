@@ -469,6 +469,9 @@ Realm::initialize()
 
   populate_boundary_data();
 
+  if ( solutionOptions_->initialMeshDisplacement_ )
+    process_initial_displacement();
+  
   if ( solutionOptions_->meshMotion_ )
     process_mesh_motion();
 
@@ -2005,7 +2008,7 @@ Realm::initialize_post_processing_algorithms()
 std::string
 Realm::get_coordinates_name()
 {
-  return ( (solutionOptions_->meshMotion_ | solutionOptions_->meshDeformation_ | solutionOptions_->externalMeshDeformation_) 
+  return ( (solutionOptions_->meshMotion_ | solutionOptions_->meshDeformation_ | solutionOptions_->externalMeshDeformation_ | solutionOptions_->initialMeshDisplacement_) 
            ? "current_coordinates" : "coordinates");
 }
 
@@ -2275,6 +2278,120 @@ Realm::set_current_displacement(
 }
 
 //--------------------------------------------------------------------------
+//-------- process_initial_displacement ------------------------------------
+//--------------------------------------------------------------------------
+void
+Realm::process_initial_displacement()
+{
+  std::cout << "Realm::process_initial_displacement()  " << std::endl;
+  // extract parameters
+  std::map<std::string, MeshMotionInfo *>::const_iterator iter;
+  for ( iter = solutionOptions_->initialMeshDisplacementInfoMap_.begin();
+        iter != solutionOptions_->initialMeshDisplacementInfoMap_.end(); ++iter) {
+    
+    // extract mesh info object
+    MeshMotionInfo *meshInfo = iter->second;
+    
+    // mesh displacement block, centroid coordinates
+    std::vector<std::string> meshMotionBlock = meshInfo->meshMotionBlock_;
+    std::vector<double> unitVec = meshInfo->unitVec_;
+    
+    // extract compute centroid option
+    const bool computeCentroid = meshInfo->computeCentroid_;
+    if ( computeCentroid ) {
+      NaluEnv::self().naluOutputP0() << "Realm::process_initial_displacement() Centroid for: " << iter->first << std::endl;
+      compute_centroid_on_parts(meshMotionBlock, meshInfo->centroid_);
+      // tell the user
+      const int nDim = metaData_->spatial_dimension();
+      for ( int j = 0; j < nDim; ++j ) {
+        NaluEnv::self().naluOutputP0() << "  centroid[" << j << "] = " << meshInfo->centroid_[j] <<  std::endl;
+      }
+    }
+    
+    // proceed with setting mesh motion information on the Nalu mesh
+    for (size_t k = 0; k < meshMotionBlock.size(); ++k ) {
+      
+      stk::mesh::Part *targetPart = metaData_->get_part(meshMotionBlock[k]);
+      
+      if ( NULL == targetPart ) {
+        throw std::runtime_error("Realm::process_mesh_motion() Error Error, no part name found" + meshMotionBlock[k]);
+      }
+      else {
+        set_initial_displacement(targetPart, meshInfo->centroid_, unitVec, meshInfo->theAngle_);
+        set_current_coordinates(targetPart);
+      }
+    }
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- set_initial_displacement ----------------------------------------
+//--------------------------------------------------------------------------
+void
+Realm::set_initial_displacement(
+  stk::mesh::Part *targetPart,
+  const std::vector<double> &centroidCoords,
+  const std::vector<double> &unitVec,
+  const double theAngle)
+{
+  std::cout << "Realm::set_initial_displacement() " << std::endl;
+  const int nDim = metaData_->spatial_dimension();
+
+  // convert to radians
+  const double theAngleInRad = theAngle*std::acos(-1.0)/180.0;
+  
+  // local space; Nalu current coords and rotated coords; generalized for 2D and 3D
+  double mcX[3] = {0.0,0.0,0.0};
+  double rcX[3] = {0.0,0.0,0.0};
+  
+  VectorFieldType *modelCoords = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates");
+  VectorFieldType *displacement = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_displacement");
+ 
+  stk::mesh::Selector s_all_nodes = stk::mesh::Selector(*targetPart);
+
+  stk::mesh::BucketVector const& node_buckets = bulkData_->get_buckets( stk::topology::NODE_RANK, s_all_nodes );
+
+  for ( stk::mesh::BucketVector::const_iterator ib = node_buckets.begin() ;
+        ib != node_buckets.end() ; ++ib ) {
+    stk::mesh::Bucket & b = **ib ;
+    const stk::mesh::Bucket::size_type length   = b.size();
+    const double * mCoords = stk::mesh::field_data(*modelCoords, b);
+    double * dx = stk::mesh::field_data(*displacement, b);
+    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+
+      const int kNdim = k*nDim;
+    
+      // load the current and model coords
+      for ( int i = 0; i < nDim; ++i ) {
+        mcX[i] = mCoords[kNdim+i];
+      }
+
+      const double cX = mcX[0] - centroidCoords[0];
+      const double cY = mcX[1] - centroidCoords[1];
+      const double cZ = mcX[2] - centroidCoords[2];
+
+      const double sinOTby2 = sin(theAngleInRad*0.5);
+      const double cosOTby2 = cos(theAngleInRad*0.5);
+      
+      const double q0 = cosOTby2;
+      const double q1 = sinOTby2*unitVec[0];
+      const double q2 = sinOTby2*unitVec[1];
+      const double q3 = sinOTby2*unitVec[2];    
+      
+      // rotated model coordinates; converted to displacement; add back in centroid
+      rcX[0] = (q0*q0 + q1*q1 - q2*q2 - q3*q3)*cX + 2.0*(q1*q2 - q0*q3)*cY + 2.0*(q0*q2 + q1*q3)*cZ - mcX[0] + centroidCoords[0];
+      rcX[1] = 2.0*(q1*q2 + q0*q3)*cX + (q0*q0 - q1*q1 + q2*q2 - q3*q3)*cY + 2.0*(q2*q3 - q0*q1)*cZ - mcX[1] + centroidCoords[1];
+      rcX[2] = 2.0*(q1*q3 - q0*q2)*cX + 2.0*(q0*q1 + q2*q3)*cY + (q0*q0 - q1*q1 - q2*q2 + q3*q3)*cZ - mcX[2] + centroidCoords[2];
+
+      // set displacement
+      for ( int i = 0; i < nDim; ++i ) {
+        dx[kNdim+i] = rcX[i];
+      }
+    }
+  }
+}
+
+//--------------------------------------------------------------------------
 //-------- set_current_coordinates -----------------------------------------
 //--------------------------------------------------------------------------
 void
@@ -2299,8 +2416,9 @@ Realm::set_current_coordinates(
     const double * dx = stk::mesh::field_data(*displacement, b);
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
       const int offSet = k*nDim;
-      for ( int j = 0; j < nDim; ++j )
+      for ( int j = 0; j < nDim; ++j ) {
         cCoords[offSet+j] = mCoords[offSet+j] + dx[offSet+j];
+      }
     }
   }
 }
@@ -2562,6 +2680,14 @@ Realm::register_nodal_fields(
       ScalarFieldType *divV = &(metaData_->declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "div_mesh_velocity"));
       stk::mesh::put_field_on_mesh(*divV, *part, nullptr);
     }
+  }
+  
+  if ( solutionOptions_->initialMeshDisplacement_ ) {
+    // initialize to zero
+    VectorFieldType *displacement = &(metaData_->declare_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_displacement"));
+    stk::mesh::put_field_on_mesh(*displacement, *part, nDim, nullptr);
+    VectorFieldType *currentCoords = &(metaData_->declare_field<VectorFieldType>(stk::topology::NODE_RANK, "current_coordinates"));
+    stk::mesh::put_field_on_mesh(*currentCoords, *part, nDim, nullptr);
   }
 }
 
