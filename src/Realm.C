@@ -989,8 +989,10 @@ Realm::setup_initial_conditions()
 
             std::vector<double>  genSpec = genIC.data_[ifield];
             stk::mesh::FieldBase *field = stk::mesh::get_field_by_name(genIC.fieldNames_[ifield], *metaData_);
-            ThrowAssert(field);
-      
+
+            if ( nullptr == field )
+              throw std::runtime_error("Realm::setup_initial_conditions: field is null: " + genIC.fieldNames_[ifield]);
+
             stk::mesh::FieldBase *fieldWithState = ( field->number_of_states() > 1 )
               ? field->field_state(stk::mesh::StateNP1)
               : field->field_state(stk::mesh::StateNone);
