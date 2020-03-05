@@ -48,13 +48,11 @@ SurfaceForceAndMomentAlgorithm::SurfaceForceAndMomentAlgorithm(
   Realm &realm,
   stk::mesh::PartVector &partVec,
   const std::string &outputFileName,
-  const int &frequency,
   const std::vector<double > &parameters,
   const bool &useShifted,
   ScalarFieldType *assembledArea)
   : Algorithm(realm, partVec),
     outputFileName_(outputFileName),
-    frequency_(frequency),
     parameters_(parameters),
     useShifted_(useShifted),
     includeDivU_(realm.get_divU()),
@@ -117,14 +115,6 @@ SurfaceForceAndMomentAlgorithm::~SurfaceForceAndMomentAlgorithm()
 void
 SurfaceForceAndMomentAlgorithm::execute()
 {
-  // check to see if this is a valid step to process output file
-  const int timeStepCount = realm_.get_time_step_count();
-  const bool processMe = (timeStepCount % frequency_) == 0 ? true : false;
-
-  // do not waste time here
-  if ( !processMe )
-    return;
-
   // common
   stk::mesh::BulkData & bulk_data = realm_.bulk_data();
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -373,34 +363,32 @@ SurfaceForceAndMomentAlgorithm::execute()
     }
   }
 
-  if ( processMe ) {
-    // parallel assemble and output
-    double g_force_moment[9] = {};
-    stk::ParallelMachine comm = NaluEnv::self().parallel_comm();
-
-    // Parallel assembly of L2
-    stk::all_reduce_sum(comm, &l_force_moment[0], &g_force_moment[0], 9);
-
-    // min/max
-    double g_yplusMin = 0.0, g_yplusMax = 0.0;
-    stk::all_reduce_min(comm, &yplusMin, &g_yplusMin, 1);
-    stk::all_reduce_max(comm, &yplusMax, &g_yplusMax, 1);
-
-    // deal with file name and banner
-    if ( NaluEnv::self().parallel_rank() == 0 ) {
-      std::ofstream myfile;
-      myfile.open(outputFileName_.c_str(), std::ios_base::app);
-      myfile << std::setprecision(6) 
-             << std::setw(w_) 
-             << currentTime << std::setw(w_) 
-             << g_force_moment[0] << std::setw(w_) << g_force_moment[1] << std::setw(w_) << g_force_moment[2] << std::setw(w_)
-             << g_force_moment[3] << std::setw(w_) << g_force_moment[4] << std::setw(w_) << g_force_moment[5] <<  std::setw(w_)
-             << g_force_moment[6] << std::setw(w_) << g_force_moment[7] << std::setw(w_) << g_force_moment[8] <<  std::setw(w_)
-             << g_yplusMin << std::setw(w_) << g_yplusMax << std::endl;
-      myfile.close();
-    }
+  // parallel assemble and output
+  double g_force_moment[9] = {};
+  stk::ParallelMachine comm = NaluEnv::self().parallel_comm();
+  
+  // Parallel assembly of L2
+  stk::all_reduce_sum(comm, &l_force_moment[0], &g_force_moment[0], 9);
+  
+  // min/max
+  double g_yplusMin = 0.0, g_yplusMax = 0.0;
+  stk::all_reduce_min(comm, &yplusMin, &g_yplusMin, 1);
+  stk::all_reduce_max(comm, &yplusMax, &g_yplusMax, 1);
+  
+  // deal with file name and banner
+  if ( NaluEnv::self().parallel_rank() == 0 ) {
+    std::ofstream myfile;
+    myfile.open(outputFileName_.c_str(), std::ios_base::app);
+    myfile << std::setprecision(6) 
+           << std::setw(w_) 
+           << currentTime << std::setw(w_) 
+           << g_force_moment[0] << std::setw(w_) << g_force_moment[1] << std::setw(w_) << g_force_moment[2] << std::setw(w_)
+           << g_force_moment[3] << std::setw(w_) << g_force_moment[4] << std::setw(w_) << g_force_moment[5] <<  std::setw(w_)
+           << g_force_moment[6] << std::setw(w_) << g_force_moment[7] << std::setw(w_) << g_force_moment[8] <<  std::setw(w_)
+           << g_yplusMin << std::setw(w_) << g_yplusMax << std::endl;
+    myfile.close();
   }
-
+  
 }
 
 //--------------------------------------------------------------------------
