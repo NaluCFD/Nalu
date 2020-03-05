@@ -23,8 +23,11 @@ class SurfaceForceAndMomentAlgorithmDriver : public AlgorithmDriver
 public:
 
   SurfaceForceAndMomentAlgorithmDriver(
-    Realm &realm);
+    Realm &realm,
+    const int frequency);
   ~SurfaceForceAndMomentAlgorithmDriver();
+
+  const int frequency_;
 
   std::vector<Algorithm *> algVec_;
 
@@ -33,7 +36,9 @@ public:
   void zero_fields();
   void parallel_assemble_area();
   void parallel_assemble_fields();
-  
+
+  // deal with possible disparate frequencies (last one in wins)
+  int get_frequency() {return frequency_;}
 };
   
 

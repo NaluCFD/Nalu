@@ -538,41 +538,62 @@ LowMachEquationSystem::register_surface_pp_algorithm(
   realm_.augment_output_variable_list(tauWall->name());
   realm_.augment_output_variable_list(yplus->name());
 
+  // extract frequency
+  int currentFrequency = 0;
+  int savedFrequency = 0;
+  
   if ( thePhysics == "surface_force_and_moment" ) {
+    // extract appropriate frequency
+    currentFrequency = theData.frequency_;
     ScalarFieldType *assembledArea =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "assembled_area_force_moment"));
     stk::mesh::put_field_on_mesh(*assembledArea, stk::mesh::selectUnion(partVector), nullptr);
-    if ( NULL == surfaceForceAndMomentAlgDriver_ )
-      surfaceForceAndMomentAlgDriver_ = new SurfaceForceAndMomentAlgorithmDriver(realm_);
+    if ( nullptr == surfaceForceAndMomentAlgDriver_ )
+      surfaceForceAndMomentAlgDriver_ = new SurfaceForceAndMomentAlgorithmDriver(realm_, currentFrequency);
     SurfaceForceAndMomentAlgorithm *ppAlg
       = new SurfaceForceAndMomentAlgorithm(
-          realm_, partVector, theData.outputFileName_, theData.frequency_,
+          realm_, partVector, theData.outputFileName_,
           theData.parameters_, realm_.realmUsesEdges_, assembledArea);
     surfaceForceAndMomentAlgDriver_->algVec_.push_back(ppAlg);
+    savedFrequency = surfaceForceAndMomentAlgDriver_->get_frequency();
   }
   else if ( thePhysics == "surface_force_and_moment_wall_function" ) {
+    // extract appropriate frequency
+    currentFrequency = theData.frequency_;
     ScalarFieldType *assembledArea =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "assembled_area_force_moment_wf"));
     stk::mesh::put_field_on_mesh(*assembledArea, stk::mesh::selectUnion(partVector), nullptr);
-    if ( NULL == surfaceForceAndMomentAlgDriver_ )
-      surfaceForceAndMomentAlgDriver_ = new SurfaceForceAndMomentAlgorithmDriver(realm_);
+    if ( nullptr == surfaceForceAndMomentAlgDriver_ )
+      surfaceForceAndMomentAlgDriver_ = new SurfaceForceAndMomentAlgorithmDriver(realm_, currentFrequency);
     SurfaceForceAndMomentWallFunctionAlgorithm *ppAlg
       = new SurfaceForceAndMomentWallFunctionAlgorithm(
-          realm_, partVector, theData.outputFileName_, theData.frequency_,
+          realm_, partVector, theData.outputFileName_,
           theData.parameters_, realm_.realmUsesEdges_, assembledArea);
     surfaceForceAndMomentAlgDriver_->algVec_.push_back(ppAlg);
+    savedFrequency = surfaceForceAndMomentAlgDriver_->get_frequency();    
   }
   else if ( thePhysics == "surface_force_and_moment_wall_function_projected" ) {
+    // extract appropriate frequency
+    currentFrequency = theData.frequency_;
     ScalarFieldType *assembledArea =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "assembled_area_force_moment_wfp"));
     stk::mesh::put_field_on_mesh(*assembledArea, stk::mesh::selectUnion(partVector), nullptr);
-    if ( NULL == surfaceForceAndMomentAlgDriver_ )
-      surfaceForceAndMomentAlgDriver_ = new SurfaceForceAndMomentAlgorithmDriver(realm_);
+    if ( nullptr == surfaceForceAndMomentAlgDriver_ )
+      surfaceForceAndMomentAlgDriver_ = new SurfaceForceAndMomentAlgorithmDriver(realm_, currentFrequency);
     SurfaceForceAndMomentWallFunctionProjectedAlgorithm *ppAlg
       = new SurfaceForceAndMomentWallFunctionProjectedAlgorithm(
-          realm_, partVector, theData.outputFileName_, theData.frequency_,
+          realm_, partVector, theData.outputFileName_,
           theData.parameters_, realm_.realmUsesEdges_, assembledArea, momentumEqSys_->pointInfoVec_, momentumEqSys_->wallFunctionGhosting_);
     surfaceForceAndMomentAlgDriver_->algVec_.push_back(ppAlg);
+    savedFrequency = surfaceForceAndMomentAlgDriver_->get_frequency();
   }
   else {
     throw std::runtime_error("LowMachEquationSystem::register_surface_pp_algorithm:Error() Unrecognized pp algorithm name");       
+  }
+
+  // check on frequency for surface force and moment algorithm driver; parsing design allows for multiple settings
+  if ( nullptr != surfaceForceAndMomentAlgDriver_ ) {
+    if ( savedFrequency != currentFrequency ) {
+      NaluEnv::self().naluOutputP0() << "SurfaceForceAndMoment::Warning() Multiple frequencies set for the same type of algorithm. First value will prevail: "
+                                     << savedFrequency << std::endl;
+    }
   }
 }
 

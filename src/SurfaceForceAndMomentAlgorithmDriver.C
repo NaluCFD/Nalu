@@ -35,9 +35,11 @@ class Realm;
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
-SurfaceForceAndMomentAlgorithmDriver::SurfaceForceAndMomentAlgorithmDriver(
-  Realm &realm)
-  : AlgorithmDriver(realm)
+SurfaceForceAndMomentAlgorithmDriver::SurfaceForceAndMomentAlgorithmDriver(                                                    
+  Realm &realm,
+  const int frequency)
+  : AlgorithmDriver(realm),
+    frequency_(frequency)
 {
   // nothing to do
 }
@@ -158,6 +160,13 @@ SurfaceForceAndMomentAlgorithmDriver::parallel_assemble_area()
 void
 SurfaceForceAndMomentAlgorithmDriver::execute()
 {
+  // check to see if this is a valid step to process output file
+  const int timeStepCount = realm_.get_time_step_count();
+  const bool processMe = (timeStepCount % frequency_) == 0 ? true : false;
+  
+  // do not waste time here
+  if ( !processMe )
+    return;
 
   // zero fields
   zero_fields();

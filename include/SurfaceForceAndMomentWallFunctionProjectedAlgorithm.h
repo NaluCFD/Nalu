@@ -36,7 +36,6 @@ public:
     Realm &realm,
     stk::mesh::PartVector &partVec,
     const std::string &outputFileName,
-    const int &frequency_,
     const std::vector<double > &parameters,
     const bool &useShifted,
     ScalarFieldType *assembledArea,
@@ -54,7 +53,6 @@ public:
   void error_check();
 
   const std::string &outputFileName_;
-  const int &frequency_;
   const std::vector<double > &parameters_;
   const bool useShifted_;
   std::vector<std::vector<PointInfo *> > &pointInfoVec_;  
