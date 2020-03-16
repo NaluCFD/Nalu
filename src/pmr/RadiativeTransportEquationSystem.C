@@ -1189,6 +1189,12 @@ RadiativeTransportEquationSystem::assemble_boundary_area()
     stk::mesh::Bucket & b = **ib ;
 
     const stk::mesh::Bucket::size_type length   = b.size();
+
+    // extract master element and master element specifics
+    MasterElement *meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(b.topology());
+    const int *ipNodeMap = meFC->ipNodeMap();
+    const int numScsIp = meFC->numIntPoints_;
+
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
 
       // face data
@@ -1197,13 +1203,11 @@ RadiativeTransportEquationSystem::assemble_boundary_area()
       // face node relations for nodal gather
       stk::mesh::Entity const * face_node_rels = b.begin_nodes(k);
 
-      // number of nodes (equals ips) and face data
-      int num_face_ip = b.num_nodes(k);
-
-      for ( int ip = 0; ip < num_face_ip; ++ip ) {
+      for ( int ip = 0; ip < numScsIp; ++ip ) {
 
         // nearest node maps to face ip...
-        const int nn = ip;
+        const int nn = ipNodeMap[ip];
+
         stk::mesh::Entity nodeNN = face_node_rels[nn];
 
         // pointer to fields to assemble
@@ -1313,6 +1317,7 @@ RadiativeTransportEquationSystem::assemble_irradiation()
     MasterElement *meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(b.topology());
     const int nodesPerFace = meFC->nodesPerElement_;
     const int numScsIp = meFC->numIntPoints_;
+    const int *ipNodeMap = meFC->ipNodeMap();
 
     // resize some things; algorithm related
     ws_intensity.resize(nodesPerFace);
@@ -1336,16 +1341,20 @@ RadiativeTransportEquationSystem::assemble_irradiation()
       // face node relations for nodal gather
       stk::mesh::Entity const * face_node_rels = b.begin_nodes(k);
       int num_nodes = b.num_nodes(k);
+      
+      // sanity check on num nodes
+      ThrowAssert( num_nodes == nodesPerFace );
+
       for ( int ni = 0; ni < num_nodes; ++ni ) {
         // gather scalar
         p_intensity[ni] = *stk::mesh::field_data(*intensity_, face_node_rels[ni]);
       }
 
       // start the assembly
-      for ( int ip = 0; ip < num_nodes; ++ip ) {
+      for ( int ip = 0; ip < numScsIp; ++ip ) {
 
         // nearest node maps to face ip...
-        const int nn = ip;
+        const int nn = ipNodeMap[ip];
         stk::mesh::Entity nodeNN = face_node_rels[nn];
 
         // pointer to fields to assemble
@@ -1366,20 +1375,20 @@ RadiativeTransportEquationSystem::assemble_irradiation()
           amag += areaVec[offSet+j]*areaVec[offSet+j];
         }
         amag = std::sqrt(amag);
-
+        
         // see if this ordinate direction should count..
         double dot = 0.0;
         for ( int j = 0; j < nDim; ++j ) {
           const double nj = areaVec[offSet+j]/amag;
           dot += nj*p_Sk[j];
         }
-
+        
         if ( dot > 0.0 )
           *irrad += weight*iBc*dot*amag;
       }
     }
   }
-
+  
   // let's not parallel assemble until the normalization..
 }
 

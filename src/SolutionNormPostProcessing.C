@@ -31,6 +31,7 @@
 #include "user_functions/WindEnergyTaylorVortexPressureAuxFunction.h"
 
 #include "user_functions/OneTwoTenVelocityAuxFunction.h"
+#include "user_functions/ConcentricAuxFunction.h"
 
 // stk_util
 #include <stk_util/parallel/ParallelReduce.hpp>
@@ -108,9 +109,26 @@ SolutionNormPostProcessing::load(
     get_if_present(y_norm, "percision", percision_, percision_);
     get_if_present(y_norm, "precision", percision_, percision_);
 
+    // target 
+    if ( y_norm["target_name"] ) {
+      
+      // extract the value(s)
+      const YAML::Node targets = y_norm["target_name"];
+      if (targets.Type() == YAML::NodeType::Scalar) {
+        targets_.resize(1);
+        targets_[0] = targets.as<std::string>() ;
+      }
+      else {
+        targets_.resize(targets.size());
+        for (size_t i=0; i < targets.size(); ++i) {
+          targets_[i] = targets[i].as<std::string>() ;
+        }
+      }
+    }
+    else {
+      throw std::runtime_error("Missing target name in solution norm");
+    }
 
-    // target matches the physics description (see Material model)
-    
     // find the pair; create some space for the names
     const YAML::Node y_dof_pair = y_norm["dof_user_function_pair"];
     std::string dofName, functionName;
@@ -148,17 +166,15 @@ SolutionNormPostProcessing::load(
 void
 SolutionNormPostProcessing::setup()
 {
-  // extract target names
-
-  const std::vector<std::string> targetNames = realm_.get_physics_target_names();
   stk::mesh::MetaData & metaData = realm_.meta_data();
-
+  
   // first, loop over all target names, extract the part and push back
-  for ( size_t itarget = 0; itarget < targetNames.size(); ++itarget ) {
-    stk::mesh::Part *targetPart = metaData.get_part(targetNames[itarget]);
+  for ( size_t itarget = 0; itarget < targets_.size(); ++itarget ) {
+    std::string physicsName = realm_.physics_part_name(targets_[itarget]);
+    stk::mesh::Part *targetPart = metaData.get_part(physicsName);
     if ( NULL == targetPart ) {
-      NaluEnv::self().naluOutputP0() << "Trouble with part " << targetNames[itarget] << std::endl;
-      throw std::runtime_error("Sorry, no part name found by the name " + targetNames[itarget]);
+      NaluEnv::self().naluOutputP0() << "Trouble with part " << physicsName << std::endl;
+      throw std::runtime_error("Sorry, no part name found by the name " + physicsName);
     }
     else {
       // push back
@@ -275,6 +291,9 @@ SolutionNormPostProcessing::analytical_function_factory(
   }
   else if ( functionName == "wind_energy_taylor_vortex_dpdx" ) {
     theAuxFunc = new WindEnergyTaylorVortexPressureGradAuxFunction(0,realm_.meta_data().spatial_dimension(), std::vector<double>());
+  }
+  else if ( functionName == "concentric" ) {
+    theAuxFunc = new ConcentricAuxFunction();
   }
   else {
     throw std::runtime_error(

@@ -78,6 +78,9 @@ public:
   // percision
   int percision_;
 
+  // target names
+  std::vector<std::string> targets_;
+
   // hold the dofName, functionName in a vector 
   std::vector<std::pair<std::string, std::string> > dofFunctionVec_;
 
