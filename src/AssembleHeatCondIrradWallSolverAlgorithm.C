@@ -105,6 +105,7 @@ AssembleHeatCondIrradWallSolverAlgorithm::execute()
     MasterElement *meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(b.topology());
     const int nodesPerFace = meFC->nodesPerElement_;
     const int numScsIp = meFC->numIntPoints_;
+    const int *ipNodeMap = meFC->ipNodeMap();
 
     // resize some things; matrix related
     const int lhsSize = nodesPerFace*nodesPerFace;
@@ -171,7 +172,7 @@ AssembleHeatCondIrradWallSolverAlgorithm::execute()
         }
         magA = std::sqrt(magA);
 	
-        const int nn = ip;
+        const int nn = ipNodeMap[ip];
         const int offSet = ip*nodesPerFace;
 	
         // form boundary ip values

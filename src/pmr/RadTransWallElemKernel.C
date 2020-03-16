@@ -37,7 +37,7 @@ RadTransWallElemKernel<BcAlgTraits>::RadTransWallElemKernel(
   bcIntensity_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "intensity_bc");
   intensity_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "intensity");
   exposedAreaVec_ = metaData.get_field<GenericFieldType>(metaData.side_rank(), "exposed_area_vector");
-
+  
   MasterElement *meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(BcAlgTraits::topo_);
  
   // compute and save shape function
@@ -68,7 +68,7 @@ RadTransWallElemKernel<BcAlgTraits>::setup(const TimeIntegrator& /*timeIntegrato
   for ( int j = 0; j < BcAlgTraits::nDim_; ++j )
     v_Sk_(j) = Sk[j];
 }
-
+  
 template<typename BcAlgTraits>
 void
 RadTransWallElemKernel<BcAlgTraits>::execute(
