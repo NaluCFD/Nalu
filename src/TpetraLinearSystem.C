@@ -2181,35 +2181,43 @@ int getDofStatus_impl(stk::mesh::Entity node, const Realm& realm)
 
   bool nonConformalActive = realm.has_non_matching_boundary_face_alg();
   bool periodicActive = realm.hasPeriodic_;
-  
-  // check if a node, which is associated with a row, is both periodic and non-conformal; not yet supported
-  bool isNonConformalNode = false;
   bool isPeriodicNode = false;
-  
-  if ( nonConformalActive ) {
-    stk::mesh::Selector nonConfSel = stk::mesh::selectUnion(realm.allNonConformalInteractingParts_);
-    for (auto part : b.supersets()) {
-      if (nonConfSel(*part)) {
-        isNonConformalNode = true;
-      }
-    }
-  }
-  
-  if ( periodicActive ) {
-    stk::mesh::Selector perSel = stk::mesh::selectUnion(realm.allPeriodicInteractingParts_);
-    for (auto part : b.supersets()) {
-      if (perSel(*part)) {
-        isPeriodicNode = true;
-      }
-    }
-  }
-  
-  if (isNonConformalNode && isPeriodicNode) {
-    std::ostringstream ostr;
-    ostr << "node id= " << realm.bulkData_->identifier(node);
-    throw std::logic_error("not ready for primetime to combine periodic and non-matching algorithm on same node: "+ostr.str());
-  }
 
+  // check if a node, which is associated with a row, is both periodic and non-conformal
+  if ( nonConformalActive && periodicActive ) {
+
+    // detailed check only if both options are active
+
+    bool isNonConformalNode = false;
+    if ( nonConformalActive ) {
+      stk::mesh::Selector nonConfSel = stk::mesh::selectUnion(realm.allNonConformalInteractingParts_);
+      for (auto part : b.supersets()) {
+        if (nonConfSel(*part)) {
+          isNonConformalNode = true;
+        }
+      }
+    }
+    
+    if ( periodicActive ) {
+      stk::mesh::Selector perSel = stk::mesh::selectUnion(realm.allPeriodicInteractingParts_);
+      for (auto part : b.supersets()) {
+        if (perSel(*part)) {
+          isPeriodicNode = true;
+        }
+      }
+    }
+    
+    if (isNonConformalNode && isPeriodicNode) {
+      std::ostringstream ostr;
+      ostr << "node id= " << realm.bulkData_->identifier(node);
+      throw std::logic_error("not ready for primetime to combine periodic and non-matching algorithm on same node: "+ostr.str());
+    }
+  }
+  else {
+    // both are not active; assign periodicNode to periodicActive status
+    isPeriodicNode = periodicActive;
+  }
+  
   // simple case
   if (!isPeriodicNode  && !nonConformalActive) {
     if (entityIsGhosted)
@@ -2220,7 +2228,7 @@ int getDofStatus_impl(stk::mesh::Entity node, const Realm& realm)
       return DS_SharedNotOwnedDOF;
   }
 
-  // more complex case; this node is a periodic node
+  // more complex case; this node is a periodic node, however, absolutely not a non-conformal [face] node
   if ( isPeriodicNode ) {
     const stk::mesh::EntityId stkId = bulkData.identifier(node);
     const stk::mesh::EntityId naluId = *stk::mesh::field_data(*realm.naluGlobalId_, node);
