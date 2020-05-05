@@ -16,4 +16,9 @@ A local sub-domain additive Schwarz algorithm with 0-overlap is applied.
 Note that a distance Laplacian (agglomeration: drop scheme) IS employed for high aspect ratio.
 Also note max levels set to 6 and implicit transpose options.
 
+Added the following to remove WIP aggregation scheme. Based on JHU's comment, its not clear
+if this is better or worse for low-Mach flow.
 
+ <Parameter        name="aggregation: phase2a include root" type="bool"   value="false"/>
+ 
+See: https://github.com/trilinos/Trilinos/issues/7295
