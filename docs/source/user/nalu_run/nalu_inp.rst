@@ -1058,11 +1058,11 @@ Actuator
    
 .. inpfile:: tip_coordinates
 
-   Cooridnates for tip.
+   Coordinates for tip.
    
 .. inpfile:: tail_coordinates
 
-   Cooridnates for tail.
+   Coordinates for tail.
    
 .. inpfile:: number_of_points
 
