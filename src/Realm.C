@@ -3038,10 +3038,10 @@ void
 Realm::periodic_field_update(
   stk::mesh::FieldBase *theField,
   const unsigned &sizeOfField,
-  const bool &bypassFieldCheck) const
+  const bool bypassFieldCheck,
+  const bool addSlaves,
+  const bool setSlaves) const
 {
-  const bool addSlaves = true;
-  const bool setSlaves = true;
   periodicManager_->apply_constraints(theField, sizeOfField, bypassFieldCheck, addSlaves, setSlaves);
 }
 

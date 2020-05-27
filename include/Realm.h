@@ -230,7 +230,9 @@ class Realm {
   void periodic_field_update(
     stk::mesh::FieldBase *theField,
     const unsigned &sizeOfTheField,
-    const bool &bypassFieldCheck = true) const;
+    const bool bypassFieldCheck = true,
+    const bool addSlaves = true,
+    const bool setSlaves = true) const;
 
   void periodic_delta_solution_update(
      stk::mesh::FieldBase *theField,

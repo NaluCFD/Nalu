@@ -468,7 +468,7 @@ ShearStressTransportEquationSystem::clip_min_distance_to_wall()
    
    // deal with periodicity
    if ( realm_.hasPeriodic_) {
-     realm_.periodic_field_update(minDistanceToWall_, 1);
+     realm_.periodic_field_update(minDistanceToWall_, 1, true, false, true);
    }
 }
 

@@ -748,12 +748,11 @@ PeriodicManager::update_global_id_field()
 void
 PeriodicManager::apply_constraints(
   stk::mesh::FieldBase *theField,
-  const unsigned &sizeOfField,
-  const bool &bypassFieldCheck,
-  const bool &addSlaves,
-  const bool &setSlaves)
+  const unsigned sizeOfField,
+  const bool bypassFieldCheck,
+  const bool addSlaves,
+  const bool setSlaves)
 {
-
   // update periodically ghosted fields within add_ and set_
   if ( addSlaves )
     add_slave_to_master(theField, sizeOfField, bypassFieldCheck);

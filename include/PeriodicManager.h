@@ -60,10 +60,10 @@ class PeriodicManager {
   // holder for master += slave; slave = master
   void apply_constraints(
     stk::mesh::FieldBase *,
-    const unsigned &sizeOfField,
-    const bool &bypassFieldCheck,
-    const bool &addSlaves = true,
-    const bool &setSlaves = true);
+    const unsigned sizeOfField,
+    const bool bypassFieldCheck,
+    const bool addSlaves,
+    const bool setSlaves);
 
   // find the max
   void apply_max_field(

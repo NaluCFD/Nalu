@@ -149,7 +149,7 @@ ComputeSSTMaxLengthScaleElemAlgorithm::execute()
   
   // deal with periodicity
   if ( realm_.hasPeriodic_) {
-    realm_.periodic_field_update(maxLengthScale_, 1);
+    realm_.periodic_field_update(maxLengthScale_, 1, true, false, true);
   }
  
 }
