@@ -128,6 +128,14 @@ public:
   bool consistentMMPngDefault_;
   bool useConsolidatedSolverAlg_;
   bool useConsolidatedBcSolverAlg_;
+  bool momentumPerturb_;
+  bool momentumMagnitudePerturb_;
+  double momentumMagnitudePerturbCoeff_;
+  bool momentumEigenvaluePerturb_;
+  double momentumEigenvaluePerturbDelta_;
+  int momentumEigenvaluePerturbBiasTowards_;
+  bool momentumEigenvectorPerturb_;
+  int momentumEigenvectorPerturbPermutation_;
   bool eigenvaluePerturb_;
   double eigenvaluePerturbDelta_;
   int eigenvaluePerturbBiasTowards_;

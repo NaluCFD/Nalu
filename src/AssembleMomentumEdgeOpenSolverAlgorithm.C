@@ -353,6 +353,9 @@ AssembleMomentumEdgeOpenSolverAlgorithm::execute()
             p_lhs[rRiR] += tmdot;
           }
         }
+#if 1
+        // Lluis: modification for axisymmetric jet case
+#else
         else {
           // entrainment magnitude (must correct for possible mesh motion at the open bc)
           double mvc = 0.0;
@@ -373,6 +376,7 @@ AssembleMomentumEdgeOpenSolverAlgorithm::execute()
 
           }
         }
+#endif
       }
 
       apply_coeff(connected_nodes, scratchIds, scratchVals, rhs, lhs, __FILE__);

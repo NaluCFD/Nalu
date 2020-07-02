@@ -71,6 +71,14 @@ SolutionOptions::SolutionOptions()
     consistentMMPngDefault_(false),
     useConsolidatedSolverAlg_(false),
     useConsolidatedBcSolverAlg_(false),
+    momentumPerturb_(false),
+    momentumMagnitudePerturb_(false),
+    momentumMagnitudePerturbCoeff_(0.0),
+    momentumEigenvaluePerturb_(false),
+    momentumEigenvaluePerturbDelta_(0.0),
+    momentumEigenvaluePerturbBiasTowards_(3),
+    momentumEigenvectorPerturb_(false),
+    momentumEigenvectorPerturbPermutation_(1),
     eigenvaluePerturb_(false),
     eigenvaluePerturbDelta_(0.0),
     eigenvaluePerturbBiasTowards_(3),
@@ -133,6 +141,16 @@ SolutionOptions::load(const YAML::Node & y_node)
 
     // check for consolidated solver alg (AssembleSolver)
     get_if_present(y_solution_options, "use_consolidated_solver_algorithm", useConsolidatedSolverAlg_, useConsolidatedSolverAlg_);
+
+    // eigenvalue perturbation; over all dofs
+    get_if_present(y_solution_options, "momentum_perturbation", momentumPerturb_);
+    get_if_present(y_solution_options, "momentum_magnitude_perturbation", momentumMagnitudePerturb_);
+    get_if_present(y_solution_options, "momentum_magnitude_perturbation_coeff", momentumMagnitudePerturbCoeff_);
+    get_if_present(y_solution_options, "momentum_eigenvalue_perturbation", momentumEigenvaluePerturb_);
+    get_if_present(y_solution_options, "momentum_eigenvalue_perturbation_delta", momentumEigenvaluePerturbDelta_);
+    get_if_present(y_solution_options, "momentum_eigenvalue_perturbation_bias_towards", momentumEigenvaluePerturbBiasTowards_);
+    get_if_present(y_solution_options, "momentum_eigenvector_perturbation", momentumEigenvectorPerturb_);
+    get_if_present(y_solution_options, "momentum_eigenvector_perturbation_permutation", momentumEigenvectorPerturbPermutation_);
 
     // check for consolidated face-elem bc alg
     get_if_present(y_solution_options, "use_consolidated_face_elem_bc_algorithm", useConsolidatedBcSolverAlg_, useConsolidatedBcSolverAlg_);
