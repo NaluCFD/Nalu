@@ -615,7 +615,7 @@ HypreLinearSystem::copy_hypre_to_stk(
   auto& bulk = realm_.bulk_data();
   const auto sel = stk::mesh::selectField(*stkField)
     & meta.locally_owned_part()
-    & !(stk::mesh::selectUnion(realm_.get_slave_part_vector()))
+    & !(stk::mesh::selectUnion(realm_.get_subject_part_vector()))
     & !(realm_.get_inactive_selector());
 
   const auto& bkts = bulk.get_buckets(

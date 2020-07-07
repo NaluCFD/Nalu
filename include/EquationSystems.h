@@ -104,8 +104,8 @@ class EquationSystems
     const SymmetryBoundaryConditionData &symmetryBCData);
 
   void register_periodic_bc(
-    const std::string targetNameMaster,
-    const std::string targetNameSlave,
+    const std::string targetNameMonarch,
+    const std::string targetNameSubject,
     const PeriodicBoundaryConditionData &periodicBCData);
 
   void register_overset_bc(

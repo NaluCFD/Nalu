@@ -80,7 +80,7 @@ AssembleNodeSolverAlgorithm::execute()
   // define some common selectors
   stk::mesh::Selector s_locally_owned_union = meta_data.locally_owned_part()
     & stk::mesh::selectUnion(partVec_) 
-    & !(stk::mesh::selectUnion(realm_.get_slave_part_vector()))
+    & !(stk::mesh::selectUnion(realm_.get_subject_part_vector()))
     & !(realm_.get_inactive_selector());
 
   stk::mesh::BucketVector const& node_buckets =

@@ -96,7 +96,7 @@ class NonConformalInfo {
   Realm &realm_;
   const std::string name_;
 
-  // master slave parts; slave part can be subsetted while master is not..
+  // monarch subject parts; subject part can be subsetted while monarch is not..
   const stk::mesh::PartVector currentPartVec_;
   const stk::mesh::PartVector opposingPartVec_;
 

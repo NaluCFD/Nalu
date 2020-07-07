@@ -179,10 +179,10 @@ public:
     const SymmetryBoundaryConditionData &symmetryBCData) {}
 
   virtual void register_periodic_bc(
-    stk::mesh::Part *partMaster,
-    stk::mesh::Part *partSlave,
-    const stk::topology &theTopoMaster,
-    const stk::topology &theTopoSlave,
+    stk::mesh::Part *partMonarch,
+    stk::mesh::Part *partSubject,
+    const stk::topology &theTopoMonarch,
+    const stk::topology &theTopoSubject,
     const PeriodicBoundaryConditionData &periodicBCData) {}
   
   virtual void register_non_conformal_bc(

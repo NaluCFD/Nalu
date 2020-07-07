@@ -485,38 +485,38 @@ EquationSystems::register_symmetry_bc(
 //--------------------------------------------------------------------------
 void
 EquationSystems::register_periodic_bc(
-  const std::string targetNameMaster,
-  const std::string targetNameSlave,
+  const std::string targetNameMonarch,
+  const std::string targetNameSubject,
   const PeriodicBoundaryConditionData &periodicBCData)
 {
   stk::mesh::MetaData &meta_data = realm_.meta_data();
 
-  stk::mesh::Part *masterMeshPart= meta_data.get_part(targetNameMaster);
-  stk::mesh::Part *slaveMeshPart= meta_data.get_part(targetNameSlave);
-  if ( NULL == masterMeshPart) {
-    NaluEnv::self().naluOutputP0() << "Sorry, no part name found by the name " << targetNameMaster << std::endl;
+  stk::mesh::Part *monarchMeshPart= meta_data.get_part(targetNameMonarch);
+  stk::mesh::Part *subjectMeshPart= meta_data.get_part(targetNameSubject);
+  if ( NULL == monarchMeshPart) {
+    NaluEnv::self().naluOutputP0() << "Sorry, no part name found by the name " << targetNameMonarch << std::endl;
     throw std::runtime_error("EquationSystems::fatal_error()");
   }
-  else if ( NULL == slaveMeshPart) {
-    NaluEnv::self().naluOutputP0() << "Sorry, no part name found by the name " << targetNameSlave << std::endl;
+  else if ( NULL == subjectMeshPart) {
+    NaluEnv::self().naluOutputP0() << "Sorry, no part name found by the name " << targetNameSubject << std::endl;
     throw std::runtime_error("EquationSystems::fatal_error()");
   }
   else {
     // error check on size of subsets
-    const std::vector<stk::mesh::Part*> & masterMeshParts = masterMeshPart->subsets();
-    const std::vector<stk::mesh::Part*> & slaveMeshParts = slaveMeshPart->subsets();
+    const std::vector<stk::mesh::Part*> & monarchMeshParts = monarchMeshPart->subsets();
+    const std::vector<stk::mesh::Part*> & subjectMeshParts = subjectMeshPart->subsets();
 
-    if ( masterMeshParts.size() != slaveMeshParts.size())
-      NaluEnv::self().naluOutputP0() << "Mesh part subsets for master slave do not match in size" << std::endl;
+    if ( monarchMeshParts.size() != subjectMeshParts.size())
+      NaluEnv::self().naluOutputP0() << "Mesh part subsets for monarch/subject do not match in size" << std::endl;
 
-    if ( masterMeshParts.size() > 1 )
+    if ( monarchMeshParts.size() > 1 )
       NaluEnv::self().naluOutputP0() << "Surface has subsets active; please make sure that the topologies match" << std::endl;
 
     // extract data and search tolerance
     PeriodicUserData userData = periodicBCData.userData_;
     const double searchTolerance = userData.searchTolerance_;
     const std::string searchMethodName = userData.searchMethodName_;
-    realm_.register_periodic_bc(masterMeshPart, slaveMeshPart, searchTolerance, searchMethodName);
+    realm_.register_periodic_bc(monarchMeshPart, subjectMeshPart, searchTolerance, searchMethodName);
   }
 }
 

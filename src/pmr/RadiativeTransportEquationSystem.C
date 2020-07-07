@@ -1229,7 +1229,7 @@ RadiativeTransportEquationSystem::assemble_boundary_area()
   stk::mesh::parallel_sum(bulk_data, {assembledBoundaryArea_});
 
   if ( realm_.hasPeriodic_) {
-    const bool bypassFieldCheck = false; // fields are not defined at all slave/master node pairs
+    const bool bypassFieldCheck = false;
     realm_.periodic_field_update(assembledBoundaryArea_, 1, bypassFieldCheck);
   }
 
@@ -1407,7 +1407,7 @@ RadiativeTransportEquationSystem::normalize_irradiation()
   stk::mesh::parallel_sum(bulk_data, sum_fields);
 
   if ( realm_.hasPeriodic_) {
-    const bool bypassFieldCheck = false; // fields are not defined at all slave/master node pairs
+    const bool bypassFieldCheck = false;
     realm_.periodic_field_update(irradiation_, 1, bypassFieldCheck);
   }
 

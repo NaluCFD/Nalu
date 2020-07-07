@@ -210,8 +210,8 @@ class Realm {
     const stk::topology &theTopo);
 
   void register_periodic_bc(
-    stk::mesh::Part *masterMeshPart,
-    stk::mesh::Part *slaveMeshPart,
+    stk::mesh::Part *monarchMeshPart,
+    stk::mesh::Part *subjectMeshPart,
     const double &searchTolerance,
     const std::string &searchMethodName);
 
@@ -231,8 +231,8 @@ class Realm {
     stk::mesh::FieldBase *theField,
     const unsigned &sizeOfTheField,
     const bool bypassFieldCheck = true,
-    const bool addSlaves = true,
-    const bool setSlaves = true) const;
+    const bool addSubject = true,
+    const bool setSubjects = true) const;
 
   void periodic_delta_solution_update(
      stk::mesh::FieldBase *theField,
@@ -242,7 +242,7 @@ class Realm {
      stk::mesh::FieldBase *theField,
      const unsigned &sizeOfField) const;
 
-  const stk::mesh::PartVector &get_slave_part_vector();
+  const stk::mesh::PartVector &get_subject_part_vector();
 
   void overset_orphan_node_field_update(
     stk::mesh::FieldBase *theField,
