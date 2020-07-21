@@ -108,7 +108,7 @@ SurfaceForceAndMomentAlgorithmDriver::parallel_assemble_fields()
 
   // periodic assemble
   if ( realm_.hasPeriodic_) {
-    const bool bypassFieldCheck = false; // fields are not defined at all slave/master node pairs
+    const bool bypassFieldCheck = false;
     realm_.periodic_field_update(pressureForce, nDim, bypassFieldCheck);
     realm_.periodic_field_update(tauWall, 1, bypassFieldCheck);
     realm_.periodic_field_update(yplus, 1, bypassFieldCheck);
@@ -143,7 +143,7 @@ SurfaceForceAndMomentAlgorithmDriver::parallel_assemble_area()
 
   // periodic assemble
   if ( realm_.hasPeriodic_) {
-    const bool bypassFieldCheck = false; // fields are not defined at all slave/master node pairs
+    const bool bypassFieldCheck = false;
     if ( NULL != assembledArea )
       realm_.periodic_field_update(assembledArea, 1, bypassFieldCheck);
     if ( NULL != assembledAreaWF )

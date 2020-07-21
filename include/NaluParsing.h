@@ -162,10 +162,10 @@ struct NormalTemperatureGradient {
   {}
 };
 
-struct MasterSlave {
-  std::string master_;
-  std::string slave_;
-  MasterSlave() {}
+struct MonarchSubject {
+  std::string monarch_;
+  std::string subject_;
+  MonarchSubject() {}
 };
 
 // packaged
@@ -375,7 +375,7 @@ struct SymmetryBoundaryConditionData : public BoundaryCondition {
 
 struct PeriodicBoundaryConditionData : public BoundaryCondition {
   PeriodicBoundaryConditionData(BoundaryConditions& bcs) : BoundaryCondition(bcs){};
-  MasterSlave masterSlave_;
+  MonarchSubject monarchSubject_;
   PeriodicUserData userData_;
 };
 
@@ -578,8 +578,8 @@ template<> struct convert<sierra::nalu::NormalTemperatureGradient> {
   static bool decode(const Node& node, sierra::nalu::NormalTemperatureGradient& rhs) ;
 };
 
-template<> struct convert<sierra::nalu::MasterSlave> {
-  static bool decode(const Node& node, sierra::nalu::MasterSlave& rhs) ;
+template<> struct convert<sierra::nalu::MonarchSubject> {
+  static bool decode(const Node& node, sierra::nalu::MonarchSubject& rhs) ;
 };
 
 template<> struct convert<sierra::nalu::WallUserData> {

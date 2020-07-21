@@ -381,7 +381,7 @@ Realm::convert_bytes(double bytes)
 }
 
 //--------------------------------------------------------------------------
-//-------- initialize -----------------------------------------------
+//-------- initialize ------------------------------------------------------
 //--------------------------------------------------------------------------
 void
 Realm::initialize()
@@ -873,9 +873,9 @@ Realm::setup_bc()
         ThrowAssert(reinterpret_cast<const PeriodicBoundaryConditionData *>(&bc) != nullptr);
         const auto& pbc = (*reinterpret_cast<const PeriodicBoundaryConditionData *>(&bc));
 
-        std::string masterName = physics_part_name(pbc.masterSlave_.master_);
-        std::string slaveName = physics_part_name(pbc.masterSlave_.slave_);
-        equationSystems_.register_periodic_bc(masterName, slaveName, pbc);
+        std::string monarchName = physics_part_name(pbc.monarchSubject_.monarch_);
+        std::string subjectName = physics_part_name(pbc.monarchSubject_.subject_);
+        equationSystems_.register_periodic_bc(monarchName, subjectName, pbc);
         break;
       }
       case NON_CONFORMAL_BC:
@@ -1821,7 +1821,7 @@ Realm::create_output_mesh()
 }
 
 //--------------------------------------------------------------------------
-//-------- create_restart_mesh() --------------------------------------------
+//-------- create_restart_mesh() -------------------------------------------
 //--------------------------------------------------------------------------
 void
 Realm::create_restart_mesh()
@@ -1869,7 +1869,7 @@ Realm::create_restart_mesh()
 }
 
 //--------------------------------------------------------------------------
-//-------- input_variables_from_mesh() --------------------------------------------
+//-------- input_variables_from_mesh() -------------------------------------
 //--------------------------------------------------------------------------
 void
 Realm::input_variables_from_mesh()
@@ -1930,7 +1930,7 @@ Realm::augment_restart_variable_list(
 }
 
 //--------------------------------------------------------------------------
-//-------- create_edges -----------------------------------------------
+//-------- create_edges ----------------------------------------------------
 //--------------------------------------------------------------------------
 void
 Realm::create_edges()
@@ -2005,7 +2005,7 @@ Realm::initialize_post_processing_algorithms()
 }
 
 //--------------------------------------------------------------------------
-//-------- get_coordinates_name ---------------------------------------------
+//-------- get_coordinates_name --------------------------------------------
 //--------------------------------------------------------------------------
 std::string
 Realm::get_coordinates_name()
@@ -2579,7 +2579,7 @@ Realm::compute_vrtm()
 }
 
 //--------------------------------------------------------------------------
-//-------- init_current_coordinates -----------------------------------------
+//-------- init_current_coordinates ----------------------------------------
 //--------------------------------------------------------------------------
 void
 Realm::init_current_coordinates()
@@ -2765,7 +2765,7 @@ Realm::register_wall_bc(
 }
 
 //--------------------------------------------------------------------------
-//-------- register_inflow_bc ------------------------------------------------
+//-------- register_inflow_bc ----------------------------------------------
 //--------------------------------------------------------------------------
 void
 Realm::register_inflow_bc(
@@ -2889,17 +2889,17 @@ Realm::register_symmetry_bc(
 //--------------------------------------------------------------------------
 void
 Realm::register_periodic_bc(
-  stk::mesh::Part *masterMeshPart,
-  stk::mesh::Part *slaveMeshPart,
+  stk::mesh::Part *monarchMeshPart,
+  stk::mesh::Part *subjectMeshPart,
   const double &searchTolerance,
   const std::string &searchMethodName)
 {
-  allPeriodicInteractingParts_.push_back(masterMeshPart);
-  allPeriodicInteractingParts_.push_back(slaveMeshPart);
+  allPeriodicInteractingParts_.push_back(monarchMeshPart);
+  allPeriodicInteractingParts_.push_back(subjectMeshPart);
 
   // push back the part for book keeping and, later, skin mesh
-  bcPartVec_.push_back(masterMeshPart);
-  bcPartVec_.push_back(slaveMeshPart);
+  bcPartVec_.push_back(monarchMeshPart);
+  bcPartVec_.push_back(subjectMeshPart);
 
   if ( NULL == periodicManager_ ) {
     periodicManager_ = new PeriodicManager(*this);
@@ -2907,7 +2907,7 @@ Realm::register_periodic_bc(
   }
 
   // add the parts to the manager
-  periodicManager_->add_periodic_pair(masterMeshPart, slaveMeshPart, searchTolerance, searchMethodName);
+  periodicManager_->add_periodic_pair(monarchMeshPart, subjectMeshPart, searchTolerance, searchMethodName);
 }
 
 //--------------------------------------------------------------------------
@@ -3039,14 +3039,14 @@ Realm::periodic_field_update(
   stk::mesh::FieldBase *theField,
   const unsigned &sizeOfField,
   const bool bypassFieldCheck,
-  const bool addSlaves,
-  const bool setSlaves) const
+  const bool addSubjects,
+  const bool setSubjects) const
 {
-  periodicManager_->apply_constraints(theField, sizeOfField, bypassFieldCheck, addSlaves, setSlaves);
+  periodicManager_->apply_constraints(theField, sizeOfField, bypassFieldCheck, addSubjects, setSubjects);
 }
 
 //--------------------------------------------------------------------------
-//-------- periodic_delta_solution_update -------------------------------------------
+//-------- periodic_delta_solution_update ----------------------------------
 //--------------------------------------------------------------------------
 void
 Realm::periodic_delta_solution_update(
@@ -3054,9 +3054,9 @@ Realm::periodic_delta_solution_update(
   const unsigned &sizeOfField) const
 {
   const bool bypassFieldCheck = true;
-  const bool addSlaves = false;
-  const bool setSlaves = true;
-  periodicManager_->apply_constraints(theField, sizeOfField, bypassFieldCheck, addSlaves, setSlaves);
+  const bool addSubjects = false;
+  const bool setSubjects = true;
+  periodicManager_->apply_constraints(theField, sizeOfField, bypassFieldCheck, addSubjects, setSubjects);
 }
 
 //--------------------------------------------------------------------------
@@ -3071,20 +3071,20 @@ Realm::periodic_max_field_update(
 }
 
 //--------------------------------------------------------------------------
-//-------- get_slave_part_vector -------------------------------------------
+//-------- get_subject_part_vector -----------------------------------------
 //--------------------------------------------------------------------------
 const stk::mesh::PartVector &
-Realm::get_slave_part_vector()
+Realm::get_subject_part_vector()
 {
   if ( hasPeriodic_)
-    return periodicManager_->get_slave_part_vector();
+    return periodicManager_->get_subject_part_vector();
   else
     return emptyPartVector_;
 }
 
 
 //--------------------------------------------------------------------------
-//-------- overset_field_update -------------------------------------------
+//-------- overset_field_update --------------------------------------------
 //--------------------------------------------------------------------------
 void
 Realm::overset_orphan_node_field_update(
@@ -3350,7 +3350,7 @@ Realm::populate_derived_quantities()
 }
 
 //--------------------------------------------------------------------------
-//-------- initial_work -----------------------------------------------------
+//-------- initial_work ----------------------------------------------------
 //--------------------------------------------------------------------------
 void
 Realm::initial_work()
@@ -3742,7 +3742,7 @@ Realm::get_alpha_upw_factor(
 }
 
 //--------------------------------------------------------------------------
-//-------- get_upw_factor ------------------------------------------------
+//-------- get_upw_factor --------------------------------------------------
 //--------------------------------------------------------------------------
 double
 Realm::get_upw_factor(
@@ -3961,7 +3961,7 @@ Realm::get_cvfem_shifted_mdot()
 }
 
 //--------------------------------------------------------------------------
-//-------- get_cvfem_reduced_sens_poisson ---------------------------------------
+//-------- get_cvfem_reduced_sens_poisson ----------------------------------
 //--------------------------------------------------------------------------
 bool
 Realm::get_cvfem_reduced_sens_poisson()
@@ -4147,7 +4147,7 @@ Realm::process_initialization_transfer()
 }
 
 //--------------------------------------------------------------------------
-//-------- process_io_transfer ------------------------------------------------
+//-------- process_io_transfer ---------------------------------------------
 //--------------------------------------------------------------------------
 void
 Realm::process_io_transfer()
@@ -4211,7 +4211,7 @@ Realm::post_converged_work()
 }
 
 //--------------------------------------------------------------------------
-//-------- part_name(std::string) ----------------------------------------------
+//-------- part_name(std::string) ------------------------------------------
 //--------------------------------------------------------------------------
 std::string
 Realm::physics_part_name(std::string name) const
@@ -4235,7 +4235,7 @@ Realm::get_current_time()
 }
 
 //--------------------------------------------------------------------------
-//-------- get_time_step() ----------------------------------------------
+//-------- get_time_step() -------------------------------------------------
 //--------------------------------------------------------------------------
 double
 Realm::get_time_step()
@@ -4296,7 +4296,7 @@ Realm::get_gamma3()
 }
 
 //--------------------------------------------------------------------------
-//-------- get_time_step_count() ----------------------------------------------
+//-------- get_time_step_count() -------------------------------------------
 //--------------------------------------------------------------------------
 int
 Realm::get_time_step_count() const
@@ -4332,7 +4332,7 @@ Realm::get_stefan_boltzmann()
 }
 
 //--------------------------------------------------------------------------
-//-------- get_turb_model_constant() ------------------------------------------
+//-------- get_turb_model_constant() ---------------------------------------
 //--------------------------------------------------------------------------
 double
 Realm::get_turb_model_constant(
@@ -4349,7 +4349,7 @@ Realm::get_turb_model_constant(
 }
 
 //--------------------------------------------------------------------------
-//-------- get_buckets() ----------------------------------------------
+//-------- get_buckets() ---------------------------------------------------
 //--------------------------------------------------------------------------
 stk::mesh::BucketVector const& Realm::get_buckets( 
   stk::mesh::EntityRank rank,
@@ -4389,7 +4389,7 @@ Realm::meta_data() const
 }
 
 //--------------------------------------------------------------------------
-//-------- get_activate_aura() -----------------------------------------------------
+//-------- get_activate_aura() ---------------------------------------------
 //--------------------------------------------------------------------------
 bool
 Realm::get_activate_aura()

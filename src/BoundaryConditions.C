@@ -73,8 +73,8 @@ BoundaryCondition * BoundaryCondition::load(const YAML::Node & node)
     PeriodicBoundaryConditionData& periodicBC = *new PeriodicBoundaryConditionData(*parent());
     node >> periodicBC;
     NaluEnv::self().naluOutputP0() << "Periodic BC name:    " << periodicBC.bcName_
-                    << " between " << periodicBC.masterSlave_.master_
-                    << " and "<< periodicBC.masterSlave_.slave_ << std::endl;
+                    << " between " << periodicBC.monarchSubject_.monarch_
+                    << " and "<< periodicBC.monarchSubject_.subject_ << std::endl;
     return &periodicBC;
   }
   else if (node["non_conformal_boundary_condition"]) {

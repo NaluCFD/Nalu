@@ -867,7 +867,7 @@ SpecificDissipationRateEquationSystem::compute_wall_model_parameters()
   // periodic assemble
   if ( realm_.hasPeriodic_) {
     const unsigned fieldSize = 1;
-    const bool bypassFieldCheck = false; // fields are not defined at all slave/master node pairs
+    const bool bypassFieldCheck = false;
     realm_.periodic_field_update(assembledWallSdr_, fieldSize, bypassFieldCheck);
     realm_.periodic_field_update(assembledWallArea_, fieldSize, bypassFieldCheck);
   }

@@ -50,20 +50,20 @@ class PeriodicManager {
   void initialize_error_count();
 
   void add_periodic_pair(
-    stk::mesh::Part* meshPartsMaster,
-    stk::mesh::Part* meshPartsSlave,
+    stk::mesh::Part* meshPartsMonarch,
+    stk::mesh::Part* meshPartsSubject,
     const double &userSearchTolerance,
     const std::string &searchMethodName);
 
   void build_constraints();
 
-  // holder for master += slave; slave = master
+  // holder for monarch += subject; subject = monarch
   void apply_constraints(
     stk::mesh::FieldBase *,
     const unsigned sizeOfField,
     const bool bypassFieldCheck,
-    const bool addSlaves,
-    const bool setSlaves);
+    const bool addSubjects,
+    const bool setSubjects);
 
   // find the max
   void apply_max_field(
@@ -74,7 +74,7 @@ class PeriodicManager {
 
   stk::mesh::Ghosting * get_ghosting_object();
 
-  const stk::mesh::PartVector &get_slave_part_vector();
+  const stk::mesh::PartVector &get_subject_part_vector();
 
   double get_search_time();
 
@@ -85,18 +85,18 @@ class PeriodicManager {
   void initialize_translation_vector();
 
   void determine_translation(
-     stk::mesh::Selector masterSelector,
-     stk::mesh::Selector slaveSelector,
+     stk::mesh::Selector monarchSelector,
+     stk::mesh::Selector subjectSelector,
      std::vector<double> &translationVector,
      std::vector<double> &rotationVector);
 
-  void remove_redundant_slave_nodes();
+  void remove_redundant_subject_nodes();
 
   void finalize_search();
 
   void populate_search_key_vec(
-    stk::mesh::Selector masterSelector,
-    stk::mesh::Selector slaveSelector,
+    stk::mesh::Selector monarchSelector,
+    stk::mesh::Selector subjectSelector,
     std::vector<double> &translationVector,
     const stk::search::SearchMethod searchMethod);
 
@@ -129,7 +129,7 @@ class PeriodicManager {
   const double amplificationFactor_;
 
  public:
-  // the data structures to hold master/slave information
+  // the data structures to hold monarch/subject information
   typedef std::pair<stk::mesh::Entity, stk::mesh::Entity> EntityPair;
   typedef std::pair<stk::mesh::Selector, stk::mesh::Selector> SelectorPair;
   typedef std::vector<std::pair<theEntityKey,theEntityKey> > SearchKeyVector;
@@ -138,11 +138,11 @@ class PeriodicManager {
 
  private:
 
-  // vector of master:slave selector pairs
+  // vector of monarch:subject selector pairs
   std::vector<SelectorPair> periodicSelectorPairs_;
 
-  // vector of slave parts
-  stk::mesh::PartVector slavePartVector_;
+  // vector of subject parts
+  stk::mesh::PartVector subjectPartVector_;
 
   // vector of search types
   std::vector<stk::search::SearchMethod> searchMethodVec_;
@@ -151,18 +151,18 @@ class PeriodicManager {
   std::vector<std::vector<double> > translationVector_;
   std::vector<std::vector<double> > rotationVector_;
 
-  // vector of masterEntity:slaveEntity
-  std::vector<EntityPair> masterSlaveCommunicator_;
+  // vector of monarchEntity:subjectEntity
+  std::vector<EntityPair> monarchSubjectCommunicator_;
 
   // culmination of all searches
   SearchKeyVector searchKeyVector_;
 
-  void add_slave_to_master(
+  void add_subject_to_monarch(
     stk::mesh::FieldBase *theField,
     const unsigned &sizeOfField,
     const bool &bypassFieldCheck);
 
-  void set_slave_to_master(
+  void set_subject_to_monarch(
     stk::mesh::FieldBase *theField,
     const unsigned &sizeOfField,
     const bool &bypassFieldCheck);

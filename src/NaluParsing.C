@@ -209,9 +209,9 @@ namespace sierra
     {
       periodicBC.bcName_ =
           node["periodic_boundary_condition"].as<std::string>();
-      periodicBC.masterSlave_ = node["target_name"].as<MasterSlave>();
-      periodicBC.targetName_ = periodicBC.masterSlave_.master_ + "_"
-          + periodicBC.masterSlave_.slave_;
+      periodicBC.monarchSubject_ = node["target_name"].as<MonarchSubject>();
+      periodicBC.targetName_ = periodicBC.monarchSubject_.monarch_ + "_"
+          + periodicBC.monarchSubject_.subject_;
       periodicBC.theBcType_ = PERIODIC_BC;
       const YAML::Node& periodicUserData = node["periodic_user_data"];
       periodicBC.userData_ = periodicUserData.as<PeriodicUserData>();
@@ -920,8 +920,8 @@ namespace YAML
 
   }
 
-  bool convert<sierra::nalu::MasterSlave>::decode(const Node& node,
-    sierra::nalu::MasterSlave& ms)
+  bool convert<sierra::nalu::MonarchSubject>::decode(const Node& node,
+    sierra::nalu::MonarchSubject& ms)
   {
 
     if (!node.IsSequence() || node.size() != 2)
@@ -929,8 +929,8 @@ namespace YAML
       return false;
     }
 
-    ms.master_ = node[0].as<std::string>();
-    ms.slave_ = node[1].as<std::string>();
+    ms.monarch_ = node[0].as<std::string>();
+    ms.subject_ = node[1].as<std::string>();
 
     return true;
   }
