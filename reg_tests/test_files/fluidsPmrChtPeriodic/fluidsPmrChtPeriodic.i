@@ -32,6 +32,8 @@ transfers:
     mesh_part_pair: [block_1, block_1]
     transfer_variables:
       - [temperature, temperature]
+    clipped_variables:
+      - [temperature, 250.0, 550.0]
 
   - name: xfer_fluid_thermal
     type: geometric
