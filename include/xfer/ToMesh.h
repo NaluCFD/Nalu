@@ -49,7 +49,7 @@ public :
   typedef stk::search::Point<double> Point;
   typedef stk::search::Sphere<double> Sphere;
   typedef std::pair<Sphere,EntityProc> BoundingBox;
-
+  
   enum {Dimension = 3};
 
   typedef std::vector<std::pair<std::string, std::string> > PairNames;
@@ -114,7 +114,8 @@ public :
     const PairNames &VarPairName,
     const stk::mesh::PartVector &toPartVec,
     const stk::ParallelMachine comm,
-    const double radius) 
+    const double radius,
+    const std::map<std::string, std::pair<double,double> > clipMap) 
     : toMetaData_(toMetaData),
     toBulkData_(toBulkData),
     toRealm_      (toRealm),
@@ -122,7 +123,8 @@ public :
     toPartVec_(toPartVec),
     toFieldVec_   (get_fields(toMetaData, VarPairName)),
     comm_(comm),
-    radius_(radius)   
+    radius_(radius),
+    clipMap_(clipMap)
     {
       // nothing to do
     }
@@ -192,7 +194,7 @@ public :
   const std::vector< const stk::mesh::FieldBase *> toFieldVec_;
   const stk::ParallelMachine comm_;
   const double radius_;
-
+  std::map<std::string, std::pair<double,double> > clipMap_;
   typedef std::map<stk::mesh::EntityKey, std::vector<double> > TransferInfo;
   TransferInfo TransferInfo_;
 

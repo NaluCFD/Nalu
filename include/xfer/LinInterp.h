@@ -180,6 +180,19 @@ template <class FROM, class TO>  void LinInterp<FROM,TO>::apply
       // extract field
       const stk::mesh::FieldBase *toFieldBaseField = ToPoints.toFieldVec_[n];
 
+      // extract field name
+      const std::string fieldName = toFieldBaseField->name();
+      
+      // find any clipping
+      double clipMin = std::numeric_limits<double>::lowest();
+      double clipMax = std::numeric_limits<double>::max();
+      std::map<std::string, std::pair<double,double> >::iterator itc
+        = ToPoints.clipMap_.find(fieldName);
+      if ( itc != ToPoints.clipMap_.end() ) {
+        clipMin = (*itc).second.first;
+        clipMax = (*itc).second.second;
+      }
+
       // FixMe: integers are problematic for now...
       const size_t sizeOfField = field_bytes_per_entity(*toFieldBaseField, theNode) / sizeof(double);
       std::vector <double > Coeff(nodesPerElement*sizeOfField);
@@ -203,6 +216,11 @@ template <class FROM, class TO>  void LinInterp<FROM,TO>::apply
                               &isoParCoords_[0],
                               &Coeff[0],
                               toField);
+
+      // clip it
+      for ( size_t j = 0; j < sizeOfField; ++j) {
+        toField[j] = std::min(clipMax, std::max(toField[j],clipMin));
+      }
     }   
   }
 }
