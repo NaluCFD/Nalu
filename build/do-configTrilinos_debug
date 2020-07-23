@@ -1,8 +1,7 @@
 # The base directory where mpi is located.  
 # From here you should be able to find include/mpi.h bin/mpicxx, bin/mpiexec, etc.
-mpi_base_dir=/your/path/to/mpi/openmpi/1.10.2-gcc-7.2.0-RHEL6
-nalu_install_dir=/home/nalu_user/gitHubWork/scratch_build/install/gcc8.3.0
-0
+mpi_base_dir=/path_to_mpi/mpi/openmpi/4.0.3-gcc-8.3.0-RHEL7
+nalu_install_dir=/path_to_install/install/gcc8.3.0
 
 # Note: Don't forget to set your LD_LIBRARY_PATH to $mpi_base_dir/lib
 #       You may also need to add to LD_LIBRARY_PATH the lib directory for the compiler
@@ -16,12 +15,10 @@ boost_inc_dir=$nalu_install_dir/boost/1.68.0/include
 superlu_inc_dir=$nalu_install_dir/SuperLU/4.3/include
 superlu_lib_dir=$nalu_install_dir/SuperLU/4.3/lib
 
-echo "boost_inc_dir = \"$boost_inc_dir\""
-
 # Additional needed TPLS
-netcdf_install_dir=$nalu_install_dir/netcdf/4.6.1
-hdf_install_dir=$nalu_install_dir/hdf5/1.10.4
-pnetcdf_install_dir=$nalu_install_dir/pnetcdf/1.10.0
+netcdf_install_dir=$nalu_install_dir/netcdf/4.7.1
+hdf_install_dir=$nalu_install_dir/hdf5/1.10.5
+pnetcdf_install_dir=$nalu_install_dir/pnetcdf/1.12.1
 
 # Where trilinos will be installed
 trilinos_install_dir=$nalu_install_dir/Trilinos_stable_debug

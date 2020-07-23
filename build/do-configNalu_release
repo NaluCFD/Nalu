@@ -1,4 +1,4 @@
-nalu_install_dir=/home/nalu_user/gitHubWork/scratch_build/install/gcc7.2.0/
+nalu_install_dir=/home/nalu_user/gitHubWork/scratch_build/install/gcc8.3.0/
 trilinos_install_dir=$nalu_install_dir/Trilinos_stable_release_test
 yaml_install_dir=$nalu_install_dir/yaml/0.6.2
 tioga_install_dir=$nalu_install_dir/tioga
