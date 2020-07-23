@@ -70,7 +70,8 @@ public:
   double searchTolerance_;
   double searchExpansionFactor_;
   std::pair<std::string, std::string> realmPairName_;
-  
+  std::map<std::string, std::pair<double,double> > clipMap_;
+
   // allow the user to provide a vector "from" and "to" parts; names
   std::vector<std::string> fromPartNameVec_;
   std::vector<std::string> toPartNameVec_;
