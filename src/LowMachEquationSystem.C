@@ -16,6 +16,7 @@
 #include "AssembleContinuityElemOpenSolverAlgorithm.h"
 #include "AssembleContinuityNonConformalSolverAlgorithm.h"
 #include "AssembleMomentumEdgeSolverAlgorithm.h"
+#include "AssembleMomentumEigenEdgeSolverAlgorithm.h"
 #include "AssembleMomentumElemSolverAlgorithm.h"
 #include "AssembleMomentumEdgeOpenSolverAlgorithm.h"
 #include "AssembleMomentumElemOpenSolverAlgorithm.h"
@@ -1140,7 +1141,10 @@ MomentumEquationSystem::register_interior_algorithm(
     if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
       SolverAlgorithm *theSolverAlg = NULL;
       if ( realm_.realmUsesEdges_ ) {
-        theSolverAlg = new AssembleMomentumEdgeSolverAlgorithm(realm_, part, this);
+        if ( !realm_.solutionOptions_->momentumPerturb_ )
+          theSolverAlg = new AssembleMomentumEdgeSolverAlgorithm(realm_, part, this);
+        else
+          theSolverAlg = new AssembleMomentumEigenEdgeSolverAlgorithm(realm_, part, this);
       }
       else {
         theSolverAlg = new AssembleMomentumElemSolverAlgorithm(realm_, part, this);
