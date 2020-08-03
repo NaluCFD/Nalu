@@ -21,10 +21,6 @@
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/Part.hpp>
 
-#define _MODIFY_VELOCITY_ 0
-#define _MODIFY_VISCOSITY_ 0
-#define _AXISYMMETRIC_JET_ 1
-#define _BACKWARD_FACING_STEP_ 0
 
 namespace sierra{
 namespace nalu{
@@ -282,106 +278,17 @@ AssembleMomentumEigenEdgeSolverAlgorithm::execute()
       const double * vrtmL = stk::mesh::field_data(*velocityRTM_, nodeL);
       const double * vrtmR = stk::mesh::field_data(*velocityRTM_, nodeR);
 
-#if _MODIFY_VELOCITY_
-      double * uNp1L = stk::mesh::field_data(velocityNp1, nodeL);
-      double * uNp1R = stk::mesh::field_data(velocityNp1, nodeR);
-
-      // Modify velocity at the top boundary to enforce outflow
-
-#if _AXISYMMETRIC_JET_
-      //if( 0.5*( coordR[2] + coordL[2] ) > 0.75 ) {
-      //if( 0.5*( coordR[2] + coordL[2] ) > 0.7 ) {
-      if( 0.5*( coordR[2] + coordL[2] ) > 0.675 ) {
-
-        const double vel_x = 0.0;
-        const double vel_y = 0.0;
-        const double vel_z = 0.92775;
-
-        //const double original_weight_factor = 0.999;
-        const double original_weight_factor = 0.995;
-
-
-        uNp1L[0] = original_weight_factor*uNp1L[0] + (1.0 - original_weight_factor)*vel_x;
-        uNp1R[0] = original_weight_factor*uNp1R[0] + (1.0 - original_weight_factor)*vel_x;
-
-        uNp1L[1] = original_weight_factor*uNp1L[1] + (1.0 - original_weight_factor)*vel_y;
-        uNp1R[1] = original_weight_factor*uNp1R[1] + (1.0 - original_weight_factor)*vel_y;
-
-        uNp1L[2] = original_weight_factor*uNp1L[2] + (1.0 - original_weight_factor)*vel_z;
-        uNp1R[2] = original_weight_factor*uNp1R[2] + (1.0 - original_weight_factor)*vel_z;
-
-      }
-#endif
-
-#else
       const double * uNp1L = stk::mesh::field_data(velocityNp1, nodeL);
       const double * uNp1R = stk::mesh::field_data(velocityNp1, nodeR);
-#endif
 
       const double densityL = *stk::mesh::field_data(densityNp1, nodeL);
       const double densityR = *stk::mesh::field_data(densityNp1, nodeR);
 
-#if _MODIFY_VISCOSITY_
-      double viscosityL = *stk::mesh::field_data(*viscosity_, nodeL);
-      double viscosityR = *stk::mesh::field_data(*viscosity_, nodeR);
-
-      double viscosityLamL = *stk::mesh::field_data(*viscosity_lam_, nodeL);
-      double viscosityLamR = *stk::mesh::field_data(*viscosity_lam_, nodeR);
-
-      // Modify molecular viscosity at the boundaries to laminarize flow
-
-#if _AXISYMMETRIC_JET_
-      //if( ( sqrt( pow( 0.5*( coordR[0] + coordL[0] ), 2.0 ) + pow( 0.5*( coordR[1] + coordL[1] ), 2.0 ) ) > 0.20 ) || ( 0.5*( coordR[2] + coordL[2] ) > 0.575 ) ) {
-      //if( ( sqrt( pow( 0.5*( coordR[0] + coordL[0] ), 2.0 ) + pow( 0.5*( coordR[1] + coordL[1] ), 2.0 ) ) > 0.20 ) || ( 0.5*( coordR[2] + coordL[2] ) > 0.675 ) ) {
-      //if( ( sqrt( pow( 0.5*( coordR[0] + coordL[0] ), 2.0 ) + pow( 0.5*( coordR[1] + coordL[1] ), 2.0 ) ) > 0.23 ) || ( 0.5*( coordR[2] + coordL[2] ) > 0.75 ) ) {
-      if( ( sqrt( pow( 0.5*( coordR[0] + coordL[0] ), 2.0 ) + pow( 0.5*( coordR[1] + coordL[1] ), 2.0 ) ) > 0.23 ) || ( 0.5*( coordR[2] + coordL[2] ) > 0.70 ) ) {
-
-        // Increase viscosity by 100x
-        //double increased_viscosity = 10.0*1.8e-5;
-        //double increased_viscosity = 20.0*1.8e-5;
-        //double increased_viscosity = 100.0*1.8e-5;
-        //double increased_viscosity = 1000.0*1.8e-5;
-
-        double increased_viscosity = 1.0e-2*1.8e-5;
-
-        viscosityLamL = increased_viscosity;
-        viscosityLamR = increased_viscosity;
-
-      }
-#endif
-
-#if _BACKWARD_FACING_STEP_
-      if( 0.5*( coordR[0] + coordL[0] ) > 26.0 ) {
-
-        // Increase viscosity by 100x
-        const double increased_viscosity = 100.0*0.000196078;
-
-        viscosityLamL = increased_viscosity;
-        viscosityLamR = increased_viscosity;
-
-      }
-#endif
-
-      // Switch turbulent viscosity off near the jet injection
-#if 0
-//#if _AXISYMMETRIC_JET_
-      if( ( sqrt( pow( 0.5*( coordR[0] + coordL[0] ), 2.0 ) + pow( 0.5*( coordR[1] + coordL[1] ), 2.0 ) ) < 0.0145 ) && ( 0.5*( coordR[2] + coordL[2] ) < 0.026 ) ) {
-      //if( ( sqrt( pow( 0.5*( coordR[0] + coordL[0] ), 2.0 ) + pow( 0.5*( coordR[1] + coordL[1] ), 2.0 ) ) < 0.0145 ) && ( 0.5*( coordR[2] + coordL[2] ) < 0.13 ) ) {
-      //if( ( sqrt( pow( 0.5*( coordR[0] + coordL[0] ), 2.0 ) + pow( 0.5*( coordR[1] + coordL[1] ), 2.0 ) ) < 0.0145 ) && ( 0.5*( coordR[2] + coordL[2] ) < 0.195 ) ) {
-
-        viscosityL = 1.8e-5;
-        viscosityR = 1.8e-5;
-
-      }
-#endif
-
-#else
       const double viscosityL = *stk::mesh::field_data(*viscosity_, nodeL);
       const double viscosityR = *stk::mesh::field_data(*viscosity_, nodeR);
 
       const double viscosityLamL = *stk::mesh::field_data(*viscosity_lam_, nodeL);
       const double viscosityLamR = *stk::mesh::field_data(*viscosity_lam_, nodeR);
-#endif
 
       const double volL = *stk::mesh::field_data( *dualNodalVolume_, nodeL );
       const double volR = *stk::mesh::field_data( *dualNodalVolume_, nodeR );
@@ -510,21 +417,6 @@ AssembleMomentumEigenEdgeSolverAlgorithm::execute()
         nu_sgs = (viscIp - viscLamIp)/rhoIp;
         //NaluEnv::self().naluOutputP0() << "nu: " << viscIp/rhoIp << "   nu_lam: " << viscLamIp/rhoIp << "   nu_sgs: " << nu_sgs << std::endl;
 
-#if 0
-        // compute S_mag
-        const double S_mag = sqrt( 2.0*( S_[0][0]*S_[0][0] +
-                                         S_[1][1]*S_[1][1] +
-                                         S_[2][2]*S_[2][2] ) +
-                                   4.0*( S_[0][1]*S_[0][1] +
-                                         S_[1][2]*S_[1][2] +
-                                         S_[2][0]*S_[2][0] ) );
-        //NaluEnv::self().naluOutputP0() << "S_mag: " << S_mag << std::endl;
-
-        // calculate modeled_kk (A. Yoshizawa. Phys. Fluids 29, 2152, 1986; Moin et al. Phys. Fluids A, 3 (11), 1991)
-        //const double C_I = Cw_*Cw_; // using the same coefficient as the sgs WALE model
-        const double C_I = 0.5*sqrt(3.0)*Cw_*Cw_; // using the same coefficient as the sgs WALE model
-        modeled_kk = 2.0*C_I*filter*filter*S_mag*S_mag + 1.0e-20;
-#else
         // compute S_mag
         const double S_mag = sqrt( 0.5*( 4.0*S_[0][0]*S_[0][0] + 4.0*S_[0][1]*S_[0][1] + 4.0*S_[0][2]*S_[0][2]
                                        + 4.0*S_[1][0]*S_[1][0] + 4.0*S_[1][1]*S_[1][1] + 4.0*S_[1][2]*S_[1][2]
@@ -535,7 +427,7 @@ AssembleMomentumEigenEdgeSolverAlgorithm::execute()
         modeled_kk = sqrt(3.0)*nu_sgs*S_mag + 1.0e-20;
         //modeled_kk = sqrt(3.0)*(0.5*0.5*nu_sgs/(Cw_*Cw_))*S_mag + 1.0e-20; // Modification to recover Nicoud et al. original Cw_ value (Cw_ = 0.5).
         //modeled_kk = 2.0*0.0886*filter*filter*S_mag*S_mag + 1.0e-20; // Yoshizawa model proposed in Vreman et al. 1994.
-#endif
+
         //NaluEnv::self().naluOutputP0() << "modeled_kk: " << modeled_kk << std::endl;
 
         // calculate total_kk = resolved_kk + modeled_kk
@@ -617,29 +509,6 @@ AssembleMomentumEigenEdgeSolverAlgorithm::execute()
           }
 
         }
-
-#if 0 
-        // Check if the resolved + perturbed_modeled tensor is realizable
-
-        double anisotropyNonFilterAdvectionTensor_[3][3];
-
-        // compute the anisotropy nonlinear filtered advection term
-        for ( int i = 0; i < nDim; ++i ) {
-          const int offSetI = nDim*i;
-          for ( int j = 0; j < nDim; ++j ) {
-            anisotropyNonFilterAdvectionTensor_[i][j] = (1.0/total_kk)*( uiIp_[i]*uiIp_[j] + total_kk*A_[i][j] - ( (i ==j) ? (resolved_kk/3.0) : 0.0 ) );
-          }
-        }
-
-        // correct non-zero trace anisotropyNonFilterAdvectionTensor_
-        const double tmpAuxAux = (anisotropyNonFilterAdvectionTensor_[0][0] + anisotropyNonFilterAdvectionTensor_[1][1] + anisotropyNonFilterAdvectionTensor_[2][2])/3.0;
-        anisotropyNonFilterAdvectionTensor_[0][0] -= tmpAuxAux;
-        anisotropyNonFilterAdvectionTensor_[1][1] -= tmpAuxAux;
-        anisotropyNonFilterAdvectionTensor_[2][2] -= tmpAuxAux;
-
-        //if( anisotropyNonFilterAdvectionTensor_[0][0] < (-1.0/3.0) || anisotropyNonFilterAdvectionTensor_[0][0] > (2.0/3.0) || anisotropyNonFilterAdvectionTensor_[1][1] < (-1.0/3.0) || anisotropyNonFilterAdvectionTensor_[1][1] > (2.0/3.0) || anisotropyNonFilterAdvectionTensor_[2][2] < (-1.0/3.0) || anisotropyNonFilterAdvectionTensor_[2][2] > (2.0/3.0) || anisotropyNonFilterAdvectionTensor_[0][1] < -0.5 || anisotropyNonFilterAdvectionTensor_[0][1] > 0.5 || anisotropyNonFilterAdvectionTensor_[0][2] < -0.5 || anisotropyNonFilterAdvectionTensor_[0][2] > 0.5 || anisotropyNonFilterAdvectionTensor_[1][0] < -0.5 || anisotropyNonFilterAdvectionTensor_[1][0] > 0.5 || anisotropyNonFilterAdvectionTensor_[1][2] < -0.5 || anisotropyNonFilterAdvectionTensor_[1][2] > 0.5 || anisotropyNonFilterAdvectionTensor_[2][0] < -0.5 || anisotropyNonFilterAdvectionTensor_[2][0] > 0.5 || anisotropyNonFilterAdvectionTensor_[2][1] < -0.5 || anisotropyNonFilterAdvectionTensor_[2][1] > 0.5 ) { NaluEnv::self().naluOutputP0() << "a11: " << anisotropyNonFilterAdvectionTensor_[0][0] << "  a12: " << anisotropyNonFilterAdvectionTensor_[0][1] << "  a13: " << anisotropyNonFilterAdvectionTensor_[0][2] << "  a21: " << anisotropyNonFilterAdvectionTensor_[1][0] << "  a22: " << anisotropyNonFilterAdvectionTensor_[1][1] << "  a23: " << anisotropyNonFilterAdvectionTensor_[1][2] << "  a31: " << anisotropyNonFilterAdvectionTensor_[2][0] << "  a32: " << anisotropyNonFilterAdvectionTensor_[2][1] << "  a33: " << anisotropyNonFilterAdvectionTensor_[2][2] << std::endl; }
-
-#endif
 
       }
 
