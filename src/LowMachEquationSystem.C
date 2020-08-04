@@ -1147,6 +1147,8 @@ MomentumEquationSystem::register_interior_algorithm(
           theSolverAlg = new AssembleMomentumEigenEdgeSolverAlgorithm(realm_, part, this);
       }
       else {
+        if ( realm_.solutionOptions_->momentumPerturb_ )
+          throw std::runtime_error("Sorry, SGS perturbation is only available for the element-based scheme");
         theSolverAlg = new AssembleMomentumElemSolverAlgorithm(realm_, part, this);
       }
       solverAlgDriver_->solverAlgMap_[algType] = theSolverAlg;
