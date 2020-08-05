@@ -47,7 +47,7 @@ transfers:
     mesh_part_pair: [block_1, block_1]
     transfer_variables:
       - [div_radiative_heat_flux, div_radiative_heat_flux]
-      - [div_radiative_heat_flux_linearization, div_radiative_heat_flux_linearization]
+      - [div_radiative_heat_flux_lin, div_radiative_heat_flux_lin]
 
   - name: xfer_pmr_thermal
     type: geometric
