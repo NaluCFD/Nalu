@@ -15,6 +15,8 @@
 #include <stk_mesh/base/BulkData.hpp>
 
 #include <set>
+#include <array>
+#include <map>
 
 namespace sierra{
 namespace nalu{
