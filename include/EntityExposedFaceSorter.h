@@ -11,7 +11,6 @@
 
 #include <stk_mesh/base/BulkData.hpp>
 #include <stk_mesh/base/MetaData.hpp>
-#include <stk_mesh/base/EntitySorterBase.hpp>
 
 namespace sierra {
 namespace nalu {
