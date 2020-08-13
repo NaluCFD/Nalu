@@ -33,6 +33,9 @@
 // stk_search
 #include <stk_search/SearchMethod.hpp>
 
+// c++
+#include <memory>
+
 namespace sierra{
 namespace nalu{
 
