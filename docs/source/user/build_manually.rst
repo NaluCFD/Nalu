@@ -206,24 +206,24 @@ Build:
     make
     make install
 
-HDF5 v1.10.5
+HDF5 v1.10.6
 ~~~~~~~~~~~~
 
-HDF5 1.10.5 is provided `here <http://www.hdfgroup.org/downloads/index.html>`__.
+HDF5 1.10.6 is provided `here <http://www.hdfgroup.org/downloads/index.html>`__.
 
 Prepare:
 
 ::
 
     cd $nalu_build_dir/packages/
-    tar -zxvf hdf5-1.10.5.tar.gz
+    tar -xvf hdf5-1.10.6.tar
 
 Build:
 
 ::
 
-    cd $nalu_build_dir/packages/hdf5-1.10.5
-    ./configure CC=mpicc FC=mpif90 CXX=mpicxx CXXFLAGS="-fPIC -O3" CFLAGS="-fPIC -O3" FCFLAGS="-fPIC -O3" --enable-parallel --with-zlib=$nalu_install_dir/zlib/1.2.11 --prefix=$nalu_install_dir/hdf5/1.10.5
+    cd $nalu_build_dir/packages/hdf5-1.10.6
+    ./configure CC=mpicc FC=mpif90 CXX=mpicxx CXXFLAGS="-fPIC -O3" CFLAGS="-fPIC -O3" FCFLAGS="-fPIC -O3" --enable-parallel --with-zlib=$nalu_install_dir/zlib/1.2.11 --prefix=$nalu_install_dir/hdf5/1.10.6
     make
     make install
     make check
@@ -244,20 +244,20 @@ Prepare:
 ::
 
     cd $nalu_build_dir/packages/
-    tar -zxvf parallel-netcdf-1.12.1.tar.gz
+    tar -zxvf pnetcdf-1.12.1.tar.gz
 
 Build:
 
 ::
 
-    cd parallel-netcdf-1.12.1
+    cd pnetcdf-1.12.1
     ./configure --prefix=$nalu_install_dir/pnetcdf/1.12.1 CC=mpicc FC=mpif90 CXX=mpicxx CFLAGS="-I$nalu_install_dir/pnetcdf/1.12.1/include -O3" LDFLAGS=-L$nalu_install_dir/pnetcdf/1.12.1/lib --disable-fortran
     make
     make install
 
 Note that we have created an install directory that might look like ``$nalu_build_dir/install``.
 
-NetCDF v4.7.1
+NetCDF v4.7.4
 ***************
 
 NetCDF is provided `here <https://github.com/Unidata/netcdf-c/releases>`__.
@@ -267,15 +267,15 @@ Prepare:
 ::
 
     cd $nalu_build_dir/packages/
-    curl -o netcdf-c-4.7.1.tar.gz https://codeload.github.com/Unidata/netcdf-c/tar.gz/v4.6.1
-    tar -zxvf netcdf-c-4.7.1.tar.gz 
+    curl -o netcdf-c-4.7.4.tar.gz https://codeload.github.com/Unidata/netcdf-c/tar.gz/v4.6.1
+    tar -zxvf netcdf-c-4.7.4.tar.gz 
 
 Build:
 
 ::
 
-    cd netcdf-c-4.6.1/
-    ./configure --prefix=$nalu_install_dir/netcdf/4.7.1 CC=mpicc FC=mpif90 CXX=mpicxx CFLAGS="-I$nalu_install_dir/hdf5/1.10.5/include -I$nalu_install_dir/pnetcdf/1.12.1/include -O3" CPPFLAGS=${CFLAGS} LDFLAGS="-L$nalu_install_dir/hdf5/1.10.5/lib -L$nalu_install_dir/pnetcdf/1.12.1/lib -Wl,--rpath=$nalu_install_dir/hdf5/1.10.5/lib" --enable-pnetcdf --enable-parallel-tests --enable-netcdf-4 --disable-shared --disable-fsync --disable-cdmremote --disable-dap --disable-doxygen --disable-v2
+    cd netcdf-c-4.7.4/
+    ./configure --prefix=$nalu_install_dir/netcdf/4.7.4 CC=mpicc FC=mpif90 CXX=mpicxx CFLAGS="-I$nalu_install_dir/hdf5/1.10.6/include -I$nalu_install_dir/pnetcdf/1.12.1/include -O3" CPPFLAGS=${CFLAGS} LDFLAGS="-L$nalu_install_dir/hdf5/1.10.6/lib -L$nalu_install_dir/pnetcdf/1.12.1/lib -L$nalu_install_dir/zlib/1.2.11/lib -Wl,--rpath=$nalu_install_dir/hdf5/1.10.6/lib" --enable-pnetcdf --enable-parallel-tests --enable-netcdf-4 --disable-shared --disable-fsync --disable-cdmremote --disable-dap --disable-doxygen --disable-v2
     make -j 4 
     make check
     make install
