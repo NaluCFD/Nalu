@@ -37,7 +37,7 @@ TurbKineticEnergyKsgsNodeSourceSuppAlg::TurbKineticEnergyKsgsNodeSourceSuppAlg(
     tvisc_(NULL),
     dudx_(NULL),
     dualNodalVolume_(NULL),
-    cEps_(realm_.get_turb_model_constant(TM_cEps)),
+    cEps_(NULL),
     tkeProdLimitRatio_(realm_.get_turb_model_constant(TM_tkeProdLimitRatio)),
     nDim_(realm_.meta_data().spatial_dimension())
 {
@@ -50,6 +50,7 @@ TurbKineticEnergyKsgsNodeSourceSuppAlg::TurbKineticEnergyKsgsNodeSourceSuppAlg(
   tvisc_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_viscosity");
   dudx_ = meta_data.get_field<GenericFieldType>(stk::topology::NODE_RANK, "dudx");
   dualNodalVolume_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
+  cEps_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "c_epsilon");
 }
 
 //--------------------------------------------------------------------------
@@ -75,6 +76,7 @@ TurbKineticEnergyKsgsNodeSourceSuppAlg::node_execute(
   const double tvisc      = *stk::mesh::field_data(*tvisc_, node );
   const double *dudx      =  stk::mesh::field_data(*dudx_, node );
   const double dualVolume = *stk::mesh::field_data(*dualNodalVolume_, node );
+  const double cEps = *stk::mesh::field_data(*cEps_, node );
 
   // filter
   double filter = std::pow(dualVolume, 1.0/nDim_);
@@ -89,13 +91,13 @@ TurbKineticEnergyKsgsNodeSourceSuppAlg::node_execute(
   }
   Pk *= tvisc;
 
-  double Dk = cEps_*rho*std::pow(tke, 1.5)/filter;
+  double Dk = cEps*rho*std::pow(tke, 1.5)/filter;
 
   if ( Pk > tkeProdLimitRatio_*Dk )
     Pk = tkeProdLimitRatio_*Dk;
 
   rhs[0] += (Pk - Dk)*dualVolume;
-  lhs[0] += 1.5*cEps_*rho*std::sqrt(tke)/filter*dualVolume;
+  lhs[0] += 1.5*cEps*rho*std::sqrt(tke)/filter*dualVolume;
 }
 
 } // namespace nalu
