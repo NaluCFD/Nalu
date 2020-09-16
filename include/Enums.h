@@ -147,6 +147,7 @@ enum TurbulenceModel {
   WALE = 3,
   SST = 4,
   SST_DES = 5,
+  DKSGS = 6,
   TurbulenceModel_END
 };  
 
@@ -157,7 +158,8 @@ static const std::string TurbulenceModelNames[] = {
   "smagorinsky",
   "wale",
   "sst",
-  "sst_des"};
+  "sst_des",
+  "dynamic_ksgs"};
 
 enum TurbulenceModelConstant {
   TM_cMu = 0,
