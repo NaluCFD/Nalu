@@ -146,8 +146,11 @@ TurbKineticEnergyEquationSystem::TurbKineticEnergyEquationSystem(
   realm_.push_equation_to_systems(this);
 
   // sanity check on turbulence model
-  if ( (turbulenceModel_ != SST) && (turbulenceModel_ != KSGS) && (turbulenceModel_ != SST_DES) ) {
-    throw std::runtime_error("User has requested TurbKinEnergyEqs, however, turbulence model is not KSGS, SST or SST_DES");
+  if ( (turbulenceModel_ != SST) 
+       && (turbulenceModel_ != KSGS) 
+       && (turbulenceModel_ != DKSGS) 
+       && (turbulenceModel_ != SST_DES) ) {
+    throw std::runtime_error("User has requested TurbKinEnergyEqs, however, turbulence model is not KSGS, DKSGS, SST or SST_DES");
   }
 
   // create projected nodal gradient equation system
@@ -200,6 +203,57 @@ TurbKineticEnergyEquationSystem::register_nodal_fields(
 
   evisc_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "effective_viscosity_tke"));
   stk::mesh::put_field_on_mesh(*evisc_, *part, nullptr);
+
+  // allow for nodal values for ksgs model constants
+  if ( turbulenceModel_ == KSGS || turbulenceModel_ == DKSGS ) {
+    const double cEpsConstant = realm_.get_turb_model_constant(TM_cEps);
+    ScalarFieldType *cEpsField 
+      = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "c_epsilon"));
+    stk::mesh::put_field_on_mesh(*cEpsField, *part, &cEpsConstant);  
+  
+    const double cmuEpsConstant = realm_.get_turb_model_constant(TM_cmuEps);
+    ScalarFieldType *cmuEpsField 
+      = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "c_mu_epsilon"));
+    stk::mesh::put_field_on_mesh(*cmuEpsField, *part, &cmuEpsConstant);
+
+    if ( turbulenceModel_ == DKSGS ) {
+      ScalarFieldType *filteredFilter 
+        = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "filtered_filter"));
+      stk::mesh::put_field_on_mesh(*filteredFilter, *part, nullptr);
+
+      ScalarFieldType *filteredDensity 
+        = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "filtered_density"));
+      stk::mesh::put_field_on_mesh(*filteredDensity, *part, nullptr);
+
+      ScalarFieldType *filteredKineticEnergy 
+        = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "filtered_kinetic_energy"));
+      stk::mesh::put_field_on_mesh(*filteredKineticEnergy, *part, nullptr);
+
+      ScalarFieldType *filteredSijDij 
+        = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "filtered_sij_dij"));
+      stk::mesh::put_field_on_mesh(*filteredSijDij, *part, nullptr);
+
+      VectorFieldType *filteredVelocity 
+        = &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "filtered_velocity"));
+      stk::mesh::put_field_on_mesh(*filteredVelocity, *part, nDim, nullptr);
+
+      VectorFieldType *filteredDensityVelocity 
+        = &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "filtered_density_velocity"));
+      stk::mesh::put_field_on_mesh(*filteredDensityVelocity, *part, nDim, nullptr);
+
+      GenericFieldType *filteredStrainRate 
+        = &(meta_data.declare_field<GenericFieldType>(stk::topology::NODE_RANK, "filtered_strain_rate"));
+      stk::mesh::put_field_on_mesh(*filteredStrainRate, *part, nDim*nDim, nullptr);
+      
+      GenericFieldType *filteredVelocityGradient 
+        = &(meta_data.declare_field<GenericFieldType>(stk::topology::NODE_RANK, "filtered_velocity_gradient"));
+      stk::mesh::put_field_on_mesh(*filteredVelocityGradient, *part, nDim*nDim, nullptr);
+
+      GenericFieldType *filteredDensityStress 
+        = &(meta_data.declare_field<GenericFieldType>(stk::topology::NODE_RANK, "filtered_density_stress"));
+      stk::mesh::put_field_on_mesh(*filteredDensityStress, *part, nDim*nDim, nullptr);
+    }
+  }
 
   // make sure all states are properly populated (restart can handle this)
   if ( numStates > 2 && (!realm_.restarted_simulation() || realm_.support_inconsistent_restart()) ) {
@@ -275,7 +329,7 @@ TurbKineticEnergyEquationSystem::register_interior_algorithm(
           std::string sourceName = mapNameVec[k];
           SupplementalAlgorithm *suppAlg = NULL;
           if (sourceName == "ksgs_buoyant" ) {
-            if (turbulenceModel_ != KSGS)
+            if (turbulenceModel_ != KSGS && turbulenceModel_ != DKSGS )
               throw std::runtime_error("ElemSrcTermsError::TurbKineticEnergyKsgsBuoyantElemSuppAlg requires Ksgs model");
             suppAlg = new TurbKineticEnergyKsgsBuoyantElemSuppAlg(realm_);
           }
@@ -343,7 +397,7 @@ TurbKineticEnergyEquationSystem::register_interior_algorithm(
       // now create the src alg for tke source
       SupplementalAlgorithm *theSrc = NULL;
       switch(turbulenceModel_) {
-      case KSGS:
+      case KSGS: case DKSGS:
         {
           theSrc = new TurbKineticEnergyKsgsNodeSourceSuppAlg(realm_);
         }
@@ -359,7 +413,7 @@ TurbKineticEnergyEquationSystem::register_interior_algorithm(
         }
         break;
       default:
-        throw std::runtime_error("Unsupported turbulence model in TurbKe: only SST, SST_DES and Ksgs supported");
+        throw std::runtime_error("Unsupported turbulence model in TurbKe: only SST, SST_DES, Ksgs, and DKsgs supported");
       }
       theAlg->supplementalAlg_.push_back(theSrc);
       
@@ -478,7 +532,7 @@ TurbKineticEnergyEquationSystem::register_interior_algorithm(
   if ( itev == diffFluxCoeffAlgDriver_->algMap_.end() ) {
     Algorithm *effDiffAlg = NULL;
     switch(turbulenceModel_) {
-      case KSGS:
+      case KSGS: case DKSGS:
       {
         const double lamSc = realm_.get_lam_schmidt(tke_->name());
         const double turbSc = realm_.get_turb_schmidt(tke_->name());
@@ -493,7 +547,7 @@ TurbKineticEnergyEquationSystem::register_interior_algorithm(
       }
       break;
       default:
-        throw std::runtime_error("Unsupported turbulence model in TurbKe: only SST, SST_DES and Ksgs supported");
+        throw std::runtime_error("Unsupported turbulence model in TurbKe: only SST, SST_DES, Ksgs, and DKsgs supported");
     }
     diffFluxCoeffAlgDriver_->algMap_[algType] = effDiffAlg;
   }
@@ -956,7 +1010,7 @@ TurbKineticEnergyEquationSystem::solve_and_update()
 {
 
   // sometimes, a higher level equation system manages the solve and update
-  if ( turbulenceModel_ != KSGS)
+  if ( turbulenceModel_ != KSGS && turbulenceModel_ != DKSGS )
     return;
 
   // compute dk/dx
@@ -988,6 +1042,10 @@ TurbKineticEnergyEquationSystem::solve_and_update()
 
     // projected nodal gradient
     compute_projected_nodal_gradient();
+
+    // deal with "hat" or filtered quantities
+    if ( turbulenceModel_ == DKSGS )
+      compute_filtered_quantities();
   }
 
 }
@@ -1047,6 +1105,450 @@ TurbKineticEnergyEquationSystem::compute_wall_model_parameters()
     wallFunctionTurbKineticEnergyAlgDriver_->execute();
 }
 
+//--------------------------------------------------------------------------
+//-------- compute_filtered_quantities() -----------------------------------
+//--------------------------------------------------------------------------
+void
+TurbKineticEnergyEquationSystem::compute_filtered_quantities()
+{
+  // extract fields
+  stk::mesh::MetaData & metaData = realm_.meta_data();
+  stk::mesh::BulkData &bulkData = realm_.bulk_data();
+
+  const int nDim = metaData.spatial_dimension();
+
+  // clipping algorithm lamFraction defines how negative tvisc can become
+  const double lamFraction = 0.50;
+
+  // manage du_k/dx_k
+  const double includeDivU = 1.0; //realm_.get_divU();
+  const double oneThird = 1.0/3.0;
+  const double kd[3][3] = {{1.0, 0.0, 0.0}, 
+                           {0.0, 1.0, 0.0}, 
+                           {0.0, 0.0, 1.0}};
+
+  // nodal fileds that need to be gathered
+  ScalarFieldType *dualNodalVolume
+    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
+  ScalarFieldType *density 
+    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
+  VectorFieldType *velocity 
+    = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
+  VectorFieldType *coordinates 
+    = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+
+  // the filtered quantities
+  ScalarFieldType *filteredFilter 
+    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "filtered_filter");
+  ScalarFieldType *filteredDensity 
+    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "filtered_density");
+  ScalarFieldType *filteredKineticEnergy 
+    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "filtered_kinetic_energy");
+  ScalarFieldType *filteredSijDij 
+    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "filtered_sij_dij");
+  VectorFieldType *filteredVelocity 
+    = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "filtered_velocity");
+  VectorFieldType *filteredDensityVelocity 
+    = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "filtered_density_velocity");
+  GenericFieldType *filteredStrainRate 
+    = metaData.get_field<GenericFieldType>(stk::topology::NODE_RANK, "filtered_strain_rate");
+  GenericFieldType *filteredVelocityGradient 
+    = metaData.get_field<GenericFieldType>(stk::topology::NODE_RANK, "filtered_velocity_gradient");
+  GenericFieldType *filteredDensityStress 
+    = metaData.get_field<GenericFieldType>(stk::topology::NODE_RANK, "filtered_density_stress");
+
+  // the constants
+  ScalarFieldType *cEpsField 
+    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "c_epsilon");
+  ScalarFieldType *cmuEpsField 
+    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "c_mu_epsilon");
+  
+  // zero fields (nodal loop over shared/owned where filtered varibale was registered)
+  stk::mesh::Selector s_all_nodes
+    = stk::mesh::selectField(*filteredFilter);
+
+  stk::mesh::BucketVector const& node_buckets =
+    realm_.get_buckets( stk::topology::NODE_RANK, s_all_nodes );
+  for ( stk::mesh::BucketVector::const_iterator ib = node_buckets.begin() ;
+        ib != node_buckets.end() ; ++ib ) {
+    stk::mesh::Bucket & b = **ib ;
+    const stk::mesh::Bucket::size_type length   = b.size();
+    double * fFilter = stk::mesh::field_data(*filteredFilter, b);
+    double * fDensity = stk::mesh::field_data(*filteredDensity, b);
+    double * fKineticEnergy = stk::mesh::field_data(*filteredKineticEnergy, b);
+    double * fSijDij = stk::mesh::field_data(*filteredSijDij, b);
+    double * fVelocity = stk::mesh::field_data(*filteredVelocity, b);
+    double * fDensityVelocity = stk::mesh::field_data(*filteredDensityVelocity, b);
+    double * fStrainRate = stk::mesh::field_data(*filteredStrainRate, b);
+    double * fVelocityGradient = stk::mesh::field_data(*filteredVelocityGradient, b);
+    double * fDensityStress = stk::mesh::field_data(*filteredDensityStress, b);
+    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+
+      // scalar
+      fFilter[k] = 0.0;
+      fDensity[k] = 0.0;
+      fKineticEnergy[k] = 0.0;
+      fSijDij[k] = 0.0;
+         
+      // vector
+      const int kNdim = k*nDim;    
+      for ( int i = 0; i < nDim; ++i ) {
+        fVelocity[kNdim+i] = 0.0;
+        fDensityVelocity[kNdim+i] = 0.0;
+      }
+
+      // tensor
+      const int kNdimNdim = k*nDim*nDim;    
+      for ( int i = 0; i < nDim*nDim; ++i ) {
+        fStrainRate[kNdimNdim+i] = 0.0;
+        fVelocityGradient[kNdimNdim+i] = 0.0;
+        fDensityStress[kNdimNdim+i] = 0.0;
+      }
+    }
+  }
+
+  // master element information
+  std::vector<double> ws_dndx;
+  std::vector<double> ws_deriv;
+  std::vector<double> ws_det_j;
+  std::vector<double> ws_shape_function;
+  std::vector<double> ws_scv_volume;
+
+  // fields that map to dofs
+  std::vector<double> ws_density;
+  std::vector<double> ws_velocity;
+  std::vector<double> ws_coordinates;
+    
+  // fixed size
+  std::vector<double> velocityIp(nDim);
+  std::vector<double> densityVelocityIp(nDim);
+  std::vector<double> dudxIp(nDim*nDim);
+  std::vector<double> densityStressIp(nDim*nDim);
+
+  // element variables to assemble (scalars local below)
+  std::vector<double> elemVelocity(nDim);
+  std::vector<double> elemDensityVelocity(nDim);
+  std::vector<double> elemStrainRate(nDim*nDim);
+  std::vector<double> elemVelocityGradient(nDim*nDim);
+  std::vector<double> elemDensityStress(nDim*nDim);
+  
+  // extract locally owned elements
+  stk::mesh::Selector s_locally_owned
+    = (metaData.locally_owned_part() & !(realm_.get_inactive_selector()));
+  
+  // buckets
+  stk::mesh::BucketVector const& elem_buckets =
+    realm_.get_buckets( stk::topology::ELEMENT_RANK, s_locally_owned );
+  for ( stk::mesh::BucketVector::const_iterator ib = elem_buckets.begin();
+        ib != elem_buckets.end() ; ++ib ) {
+    stk::mesh::Bucket & b = **ib ;
+    const stk::mesh::Bucket::size_type length   = b.size();
+    
+    // extract master element
+    MasterElement *meSCV = sierra::nalu::MasterElementRepo::get_volume_master_element(b.topology());
+    const int nodesPerElement = meSCV->nodesPerElement_;
+    const int numIp = meSCV->numIntPoints_;
+    
+    // resize element integration point quantities
+    ws_dndx.resize(nDim*numIp*nodesPerElement);
+    ws_deriv.resize(nDim*numIp*nodesPerElement);
+    ws_det_j.resize(numIp);
+    ws_shape_function.resize(numIp*nodesPerElement);
+    ws_scv_volume.resize(numIp);
+
+    // resize nodal-based quantities
+    ws_density.resize(nodesPerElement);
+    ws_velocity.resize(nDim*nodesPerElement);
+    ws_coordinates.resize(nDim*nodesPerElement);
+
+    // can compute shape function for all of this bucket's topology
+    meSCV->shape_fcn(&ws_shape_function[0]);
+    
+    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+
+      stk::mesh::Entity const * node_rels = b.begin_nodes(k);
+      int num_nodes = b.num_nodes(k);
+
+      // sanity check on num nodes
+      ThrowAssert( num_nodes == nodesPerElement );
+
+      for ( int ni = 0; ni < num_nodes; ++ni ) {
+        stk::mesh::Entity node = node_rels[ni];
+
+        // pointers to real data        
+        const double rho = *stk::mesh::field_data(*density, node);
+        const double *uNp1 = stk::mesh::field_data(*velocity, node);
+        const double *coords =  stk::mesh::field_data(*coordinates, node);
+
+        // gather scalars
+        ws_density[ni] = rho;
+
+        // gather vectors
+        const int niNdim = ni*nDim;
+        for ( int i = 0; i < nDim; ++i ) {
+          ws_velocity[niNdim+i] = uNp1[i];
+          ws_coordinates[niNdim+i] = coords[i];
+        }
+      }
+      
+      // compute geometry and grad-op
+      double scv_error = 0.0;
+      meSCV->determinant(1, &ws_coordinates[0], &ws_scv_volume[0], &scv_error);
+      meSCV->grad_op(1, &ws_coordinates[0], &ws_dndx[0], &ws_deriv[0], &ws_det_j[0], &scv_error);
+
+      // loop over scv ip
+      double elemFilter = 0.0;
+      double elemDensity = 0.0;
+      double elemKineticEnergy = 0.0;
+      double elemSijDij = 0.0;
+
+      // vector
+      for ( int i = 0; i < nDim; ++i ) {
+        elemVelocity[i] = 0.0;
+        elemDensityVelocity[i] = 0.0;
+      }
+
+      // tensor
+      for ( int i = 0; i < nDim*nDim; ++i ) {
+        elemStrainRate[i] = 0.0;
+        elemVelocityGradient[i] = 0.0;
+        elemDensityStress[i] = 0.0;
+      }
+      
+      for ( int ip = 0; ip < numIp; ++ip ) {
+
+        const int ipNpe = ip*nodesPerElement;        
+        
+        // zero out local ip; vector
+        for ( int i = 0; i < nDim; ++i ) {
+          velocityIp[i] = 0.0;
+          densityVelocityIp[i] = 0.0;
+        }
+
+        // zero out local ip; tensor
+        for ( int i = 0; i < nDim*nDim; ++i ) {
+          dudxIp[i] = 0.0;
+          densityStressIp[i] = 0.0;
+        }
+
+        double rhoIp = 0.0;        
+        for ( int ic = 0; ic < nodesPerElement; ++ic ) {
+          const double r = ws_shape_function[ipNpe+ic];
+          const double rhoIc = ws_density[ic];
+          rhoIp += r*rhoIc;
+          const int offSetDnDx = nDim*ipNpe + ic*nDim;
+          for ( int i = 0; i < nDim; ++i ) {
+            const double ui = ws_velocity[ic*nDim+i];
+            velocityIp[i] += r*ui; 
+            densityVelocityIp[i] += r*rhoIc*ui; 
+            const int iNdim = i*nDim;
+            for ( int j = 0; j < nDim; ++j ) {
+              dudxIp[iNdim+j] += ws_dndx[offSetDnDx+j]*ui;
+              densityStressIp[iNdim+j] += r*rhoIc*ui*ws_velocity[ic*nDim+j];
+            }
+          }
+        }
+        
+        // compute divu
+        double divU = 0.0;
+        for ( int i = 0; i < nDim; ++i ) 
+          divU += dudxIp[i*nDim+i];
+        divU *= includeDivU;
+
+        const double scv = ws_scv_volume[ip];
+
+        // element-averaged
+        elemFilter += scv;
+        elemDensity += rhoIp*scv;
+        double keIp = 0.0;
+        double sijdijIp = 0.0;
+        for ( int i = 0; i < nDim; ++i ) {
+          keIp += 0.5*velocityIp[i]*velocityIp[i];
+          elemVelocity[i] += velocityIp[i]*scv;
+          elemDensityVelocity[i] += densityVelocityIp[i]*scv;
+          const int iNdim = i*nDim;
+          for ( int j = 0; j < nDim; ++j ) {
+            const double Sij = 0.5*(dudxIp[iNdim+j] + dudxIp[nDim*j+i]) - oneThird*divU*kd[i][j];
+            const double Dij = dudxIp[iNdim+j] - oneThird*divU*kd[i][j];
+            sijdijIp += Sij*Dij;
+            elemStrainRate[iNdim+j] += Sij*scv;
+            elemVelocityGradient[iNdim+j] += Dij*scv;
+            elemDensityStress[iNdim+j] += densityStressIp[iNdim+j]*scv;
+          }
+        }
+        elemKineticEnergy += keIp*scv;
+        elemSijDij += sijdijIp*scv;
+      }
+      
+      // now scatter
+      for ( int ni = 0; ni < num_nodes; ++ni ) {
+        stk::mesh::Entity node = node_rels[ni];
+        
+        // pointers to real data
+        double * fFilter = stk::mesh::field_data(*filteredFilter, node);
+        double * fDensity = stk::mesh::field_data(*filteredDensity, node);
+        double * fKineticEnergy = stk::mesh::field_data(*filteredKineticEnergy, node);
+        double * fSijDij = stk::mesh::field_data(*filteredSijDij, node);
+        double * fVelocity = stk::mesh::field_data(*filteredVelocity, node);
+        double * fDensityVelocity = stk::mesh::field_data(*filteredDensityVelocity, node);
+        double * fStrainRate = stk::mesh::field_data(*filteredStrainRate, node);
+        double * fVelocityGradient = stk::mesh::field_data(*filteredVelocityGradient, node);
+        double * fDensityStress = stk::mesh::field_data(*filteredDensityStress, node);
+        
+        *fFilter += elemFilter;
+        *fDensity += elemDensity;
+        *fKineticEnergy += elemKineticEnergy;
+        *fSijDij += elemSijDij;
+        
+        for ( int i = 0; i < nDim; ++i ) {
+          fVelocity[i] += elemVelocity[i];
+          fDensityVelocity[i] += elemDensityVelocity[i];
+          for ( int j = 0; j < nDim; ++j ) {
+            const int lStride = i*nDim+j;
+            fStrainRate[lStride] += elemStrainRate[lStride];
+            fVelocityGradient[lStride] += elemVelocityGradient[lStride];
+            fDensityStress[lStride] += elemDensityStress[lStride];
+          }
+        }
+      } 
+    }
+  }
+
+  // parallel assemble
+  stk::mesh::parallel_sum(bulkData, {filteredFilter, filteredDensity, 
+        filteredKineticEnergy, filteredSijDij, filteredVelocity, filteredDensityVelocity, 
+        filteredStrainRate, filteredVelocityGradient, filteredDensityStress});
+
+  // assemble nodal filter
+  if ( realm_.hasPeriodic_ ) {
+    realm_.periodic_field_update(filteredFilter, 1);
+  }
+
+  // normalize by filter
+  for ( stk::mesh::BucketVector::const_iterator ib = node_buckets.begin() ;
+        ib != node_buckets.end() ; ++ib ) {
+    stk::mesh::Bucket & b = **ib ;
+    const stk::mesh::Bucket::size_type length   = b.size();
+    double * fFilter = stk::mesh::field_data(*filteredFilter, b);
+    double * fDensity = stk::mesh::field_data(*filteredDensity, b);
+    double * fKineticEnergy = stk::mesh::field_data(*filteredKineticEnergy, b);
+    double * fSijDij = stk::mesh::field_data(*filteredSijDij, b);
+    double * fVelocity = stk::mesh::field_data(*filteredVelocity, b);
+    double * fDensityVelocity = stk::mesh::field_data(*filteredDensityVelocity, b);
+    double * fStrainRate = stk::mesh::field_data(*filteredStrainRate, b);
+    double * fVelocityGradient = stk::mesh::field_data(*filteredVelocityGradient, b);
+    double * fDensityStress = stk::mesh::field_data(*filteredDensityStress, b);
+    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+
+      // extract nodal filter
+      const double nodalFilter = fFilter[k];
+
+      // scalar
+      fDensity[k] /= nodalFilter;
+      fKineticEnergy[k] /= nodalFilter;
+      fSijDij[k] /= nodalFilter;
+         
+      // vector
+      const int kNdim = k*nDim;    
+      for ( int i = 0; i < nDim; ++i ) {
+        fVelocity[kNdim+i] /= nodalFilter;
+        fDensityVelocity[kNdim+i] /= nodalFilter;
+      }
+
+      // tensor
+      const int kNdimNdim = k*nDim*nDim;    
+      for ( int i = 0; i < nDim*nDim; ++i ) {
+        fStrainRate[kNdimNdim+i] /= nodalFilter;
+        fVelocityGradient[kNdimNdim+i] /= nodalFilter;
+        fDensityStress[kNdimNdim+i] /= nodalFilter;
+      }
+    }
+  }
+
+  // periodic assemble
+  if ( realm_.hasPeriodic_) {
+    // one by one... (filter has already been completed prior to normalization)
+    realm_.periodic_field_update(filteredDensity, 1);
+    realm_.periodic_field_update(filteredKineticEnergy, 1);
+    realm_.periodic_field_update(filteredSijDij, 1);
+    realm_.periodic_field_update(filteredVelocity, nDim);
+    realm_.periodic_field_update(filteredDensityVelocity, nDim);
+    realm_.periodic_field_update(filteredStrainRate, nDim*nDim);
+    realm_.periodic_field_update(filteredVelocityGradient, nDim*nDim);
+  }
+
+  // formulation uses a nodal effective viscosity to form Ceps
+  ScalarFieldType *evisc 
+    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "effective_viscosity_u");
+
+  // nodal loop over locally owned to define nodal constants
+  for ( stk::mesh::BucketVector::const_iterator ib = node_buckets.begin() ;
+        ib != node_buckets.end() ; ++ib ) {
+    stk::mesh::Bucket & b = **ib ;
+    const stk::mesh::Bucket::size_type length   = b.size();
+    const double * fFilter = stk::mesh::field_data(*filteredFilter, b);
+    const double * fDensity = stk::mesh::field_data(*filteredDensity, b);
+    const double * fKineticEnergy = stk::mesh::field_data(*filteredKineticEnergy, b);
+    const double * fSijDij = stk::mesh::field_data(*filteredSijDij, b);
+    const double * fVelocity = stk::mesh::field_data(*filteredVelocity, b);
+    const double * fDensityVelocity = stk::mesh::field_data(*filteredDensityVelocity, b);
+    const double * fStrainRate = stk::mesh::field_data(*filteredStrainRate, b);
+    const double * fVelocityGradient = stk::mesh::field_data(*filteredVelocityGradient, b);
+    const double * fDensityStress = stk::mesh::field_data(*filteredDensityStress, b);
+    const double * nEvisc = stk::mesh::field_data(*evisc, b);
+    const double * filter = stk::mesh::field_data(*dualNodalVolume, b);
+
+    // fields for minimum algorithm
+    const double * rho = stk::mesh::field_data(*density, b);
+    const double * visc = stk::mesh::field_data(*visc_, b);
+    const double * tke = stk::mesh::field_data(*tke_, b);
+
+    // constants
+    double * dcEps  = stk::mesh::field_data(*cEpsField, b);
+    double * dcmuEps  = stk::mesh::field_data(*cmuEpsField, b);
+    
+    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+      
+      // form ktest
+      double ktest = fKineticEnergy[k];
+      int kNdim = k*nDim;
+      for (int i = 0; i < nDim; ++i ) {
+        ktest -= 0.5*fVelocity[kNdim+i]*fVelocity[kNdim+i];
+      }
+      // clip ktest
+      ktest = std::max(1.0e-16, ktest);
+      
+      double SijDij = 0.0;
+      double LM = 0.0;
+      double MM = 0.0;
+      int kNdimNdim = kNdim*nDim;
+      for (int i = 0; i < nDim; ++i ) {
+        const int iNdim = i*nDim;
+        for ( int j = 0; j < nDim; ++j ) {
+          SijDij += fStrainRate[kNdimNdim+iNdim+j]*fVelocityGradient[kNdimNdim+iNdim+j];
+          const double L = -(fDensityStress[kNdimNdim+iNdim+j] 
+                             - fDensityVelocity[kNdim+i]*fDensityVelocity[kNdim+j]/fDensity[k]);
+          const double M = 2.0*fDensity[k]*fFilter[k]*std::sqrt(ktest)*fStrainRate[kNdimNdim+iNdim+j];
+          LM += L*M;
+          MM += M*M;
+        }
+      }
+
+      // dissipation dynamic constant
+      double cEps = 2.0*nEvisc[k]*(fSijDij[k] - SijDij)/(fDensity[k]*std::pow(ktest, 1.5)/fFilter[k]);
+      dcEps[k] = std::max(1e-16, cEps);
+
+      // tvisc dynamic constant; clip LM and MM
+      const double cmuEps = std::max(LM, 0.0)/std::max(MM, 1.0e-16);
+      
+      // do not allow cmuEps to provide a zero-valued effective viscosity
+      const double tkeClip = std::max(tke[k], 1.0e-16);
+      const double cmuEpsMin = -visc[k]*lamFraction/(rho[k]*filter[k]*std::sqrt(tkeClip));
+      dcmuEps[k] = std::max(cmuEpsMin, cmuEps);
+    }
+  }
+}
+  
 //--------------------------------------------------------------------------
 //-------- update_and_clip() -----------------------------------------------
 //--------------------------------------------------------------------------

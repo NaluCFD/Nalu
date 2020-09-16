@@ -40,7 +40,7 @@ public:
   ScalarFieldType *tvisc_;
   GenericFieldType *dudx_;
   ScalarFieldType *dualNodalVolume_;
-  double cEps_;
+  ScalarFieldType *cEps_;
   double tkeProdLimitRatio_;
   int nDim_;
   

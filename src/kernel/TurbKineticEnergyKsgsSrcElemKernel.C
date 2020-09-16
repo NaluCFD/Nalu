@@ -30,7 +30,6 @@ TurbKineticEnergyKsgsSrcElemKernel<AlgTraits>::TurbKineticEnergyKsgsSrcElemKerne
   const SolutionOptions& solnOpts,
   ElemDataRequests& dataPreReqs)
   : Kernel(),
-    cEps_(solnOpts.get_turb_model_constant(TM_cEps)),
     tkeProdLimitRatio_(solnOpts.get_turb_model_constant(TM_tkeProdLimitRatio)),
     ipNodeMap_(sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_)->ipNodeMap())
 {
@@ -45,8 +44,8 @@ TurbKineticEnergyKsgsSrcElemKernel<AlgTraits>::TurbKineticEnergyKsgsSrcElemKerne
   tvisc_ = metaData.get_field<ScalarFieldType>(
     stk::topology::NODE_RANK, "turbulent_viscosity");
   dualNodalVolume_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
-  Gju_ = metaData.get_field<GenericFieldType>(
-    stk::topology::NODE_RANK, "dudx");
+  cEps_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "c_epsilon");
+  Gju_ = metaData.get_field<GenericFieldType>(stk::topology::NODE_RANK, "dudx");
 
   MasterElement *meSCV = sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_);
 
@@ -59,6 +58,7 @@ TurbKineticEnergyKsgsSrcElemKernel<AlgTraits>::TurbKineticEnergyKsgsSrcElemKerne
   dataPreReqs.add_gathered_nodal_field(*densityNp1_, 1);
   dataPreReqs.add_gathered_nodal_field(*tvisc_, 1);
   dataPreReqs.add_gathered_nodal_field(*dualNodalVolume_, 1);
+  dataPreReqs.add_gathered_nodal_field(*cEps_, 1);
   dataPreReqs.add_gathered_nodal_field(*Gju_, AlgTraits::nDim_, AlgTraits::nDim_);
   dataPreReqs.add_master_element_call(SCV_VOLUME, CURRENT_COORDINATES);
 }
@@ -82,6 +82,8 @@ TurbKineticEnergyKsgsSrcElemKernel<AlgTraits>::execute(
     *tvisc_);
   SharedMemView<DoubleType*>& v_dualNodalVolume = scratchViews.get_scratch_view_1D(
     *dualNodalVolume_);
+  SharedMemView<DoubleType*>& v_cEps = scratchViews.get_scratch_view_1D(
+    *cEps_);
   SharedMemView<DoubleType***>& v_Gju = scratchViews.get_scratch_view_3D(*Gju_);
   SharedMemView<DoubleType*>& v_scv_volume = scratchViews.get_me_views(CURRENT_COORDINATES).scv_volume;
 
@@ -99,8 +101,8 @@ TurbKineticEnergyKsgsSrcElemKernel<AlgTraits>::execute(
     // tke factor
     const DoubleType tke = v_tkeNp1(nearestNode);
     const DoubleType tkeFac = (AlgTraits::nDim_ == 2) ?
-        cEps_*v_densityNp1(nearestNode)*stk::math::sqrt(tke/v_dualNodalVolume(nearestNode))
-      : cEps_*v_densityNp1(nearestNode)*stk::math::sqrt(tke)/stk::math::cbrt(v_dualNodalVolume(nearestNode));
+      v_cEps(nearestNode)*v_densityNp1(nearestNode)*stk::math::sqrt(tke/v_dualNodalVolume(nearestNode))
+      : v_cEps(nearestNode)*v_densityNp1(nearestNode)*stk::math::sqrt(tke)/stk::math::cbrt(v_dualNodalVolume(nearestNode));
 
     // dissipation and production; limited
     DoubleType Dk = tkeFac * tke;

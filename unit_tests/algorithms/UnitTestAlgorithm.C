@@ -11,6 +11,7 @@
 #include "kernels/UnitTestKernelUtils.h"
 
 #include "Realm.h"
+#include "Enums.h"
 
 void
 TestAlgorithm::fill_mesh(const std::string mesh_spec)
@@ -85,10 +86,15 @@ TestTurbulenceAlgorithm::declare_fields()
   dhdx_ = (
      &meta.declare_field<VectorFieldType>(
        stk::topology::NODE_RANK, "dhdx"));
-  
   specificHeat_ = (
      &meta.declare_field<ScalarFieldType>(
        stk::topology::NODE_RANK, "specific_heat"));
+  cEps_ = (
+     &meta.declare_field<ScalarFieldType>(
+       stk::topology::NODE_RANK, "c_epsilon"));
+  cmuEps_ = (
+     &meta.declare_field<ScalarFieldType>(
+       stk::topology::NODE_RANK, "c_mu_epsilon"));
 
   stk::mesh::put_field_on_mesh(*density_, meta.universal_part(), 1, nullptr);
   stk::mesh::put_field_on_mesh(*viscosity_, meta.universal_part(), 1, nullptr);
@@ -105,6 +111,10 @@ TestTurbulenceAlgorithm::declare_fields()
   stk::mesh::put_field_on_mesh(*dwdx_, meta.universal_part(), spatialDim, nullptr);
   stk::mesh::put_field_on_mesh(*dhdx_, meta.universal_part(), spatialDim, nullptr);
   stk::mesh::put_field_on_mesh(*specificHeat_, meta.universal_part(), 1, nullptr);
+  const double cEps = realm().get_turb_model_constant(sierra::nalu::TM_cEps);
+  stk::mesh::put_field_on_mesh(*cEps_, meta.universal_part(), 1, &cEps);
+  const double cmuEps = realm().get_turb_model_constant(sierra::nalu::TM_cmuEps);
+  stk::mesh::put_field_on_mesh(*cmuEps_, meta.universal_part(), 1, &cmuEps);
 }
 
 void
