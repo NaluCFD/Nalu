@@ -93,6 +93,7 @@
 #include "TurbViscSmagorinskyAlgorithm.h"
 #include "TurbViscSSTAlgorithm.h"
 #include "TurbViscWaleAlgorithm.h"
+#include "TurbViscKEpsilonAlgorithm.h"
 #include "FixPressureAtNodeAlgorithm.h"
 #include "FixPressureAtNodeInfo.h"
 #include "WallFunctionParamsAlgorithmDriver.h"
@@ -1421,6 +1422,9 @@ MomentumEquationSystem::register_interior_algorithm(
           break;
         case SST: case SST_DES:
           theAlg = new TurbViscSSTAlgorithm(realm_, part);
+          break;
+        case KEPS:
+          theAlg = new TurbViscKEpsilonAlgorithm(realm_, part);
           break;
         default:
           throw std::runtime_error("non-supported turb model");
