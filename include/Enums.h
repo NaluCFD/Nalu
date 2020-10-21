@@ -62,13 +62,14 @@ enum EquationType {
   EQ_ENTHALPY = 6,
   EQ_MESH_DISPLACEMENT = 7,
   EQ_SPEC_DISS_RATE = 8,
-  EQ_MASS_FRACTION = 9,
-  EQ_PNG   = 10,
-  EQ_PNG_P = 11,
-  EQ_PNG_Z = 12,
-  EQ_PNG_H = 13,
-  EQ_PNG_U = 14,
-  EQ_PNG_TKE = 15, // FIXME... Last PNG managed like this..
+  EQ_TURBULENT_DISS = 9,
+  EQ_MASS_FRACTION = 10,
+  EQ_PNG   = 11,
+  EQ_PNG_P = 12,
+  EQ_PNG_Z = 13,
+  EQ_PNG_H = 14,
+  EQ_PNG_U = 15,
+  EQ_PNG_TKE = 16, // FIXME... Last PNG managed like this..
   EquationSystemType_END
 };
 
@@ -82,6 +83,7 @@ static const std::string EquationTypeMap[] = {
   "Enthalpy",
   "MeshVelocity",
   "Specific_Dissipation_Rate",
+  "Turbulent_Dissipation",
   "Mass_Fraction",
   "PNG",
   "PNG_P",
@@ -148,6 +150,7 @@ enum TurbulenceModel {
   SST = 4,
   SST_DES = 5,
   DKSGS = 6,
+  KEPS = 7,
   TurbulenceModel_END
 };  
 
@@ -159,7 +162,8 @@ static const std::string TurbulenceModelNames[] = {
   "wale",
   "sst",
   "sst_des",
-  "dynamic_ksgs"};
+  "dynamic_ksgs",
+  "k_epsilon"};
 
 enum TurbulenceModelConstant {
   TM_cMu = 0,
@@ -187,7 +191,9 @@ enum TurbulenceModelConstant {
   TM_ci = 22,
   TM_elog = 23,
   TM_yplus_crit = 24,
-  TM_END = 25
+  TM_cEpsOne = 25,
+  TM_cEpsTwo = 26,
+  TM_END = 27
 };
 
 static const std::string TurbulenceModelConstantNames[] = {
@@ -216,6 +222,8 @@ static const std::string TurbulenceModelConstantNames[] = {
   "ci",
   "Elog",
   "yplus_crit",
+  "cEpsOne",
+  "cEpsTwo",
   "END"};
 
 enum ActuatorType {

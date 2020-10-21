@@ -26,6 +26,7 @@
 #include <MixtureFractionEquationSystem.h>
 #include <MixtureFractionFemEquationSystem.h>
 #include <ShearStressTransportEquationSystem.h>
+#include <KEpsilonEquationSystem.h>
 #include <MassFractionEquationSystem.h>
 #include <TurbKineticEnergyEquationSystem.h>
 #include <pmr/RadiativeTransportEquationSystem.h>
@@ -112,6 +113,13 @@ void EquationSystems::load(const YAML::Node & y_node)
           if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = tke/sdr " << std::endl;
           eqSys = new ShearStressTransportEquationSystem(*this);
         }
+        else if( expect_map(y_system, "KEpsilon", true) ) {
+	  y_eqsys =  expect_map(y_system, "KEpsilon", true);
+          bool outputClipDiag = false;
+          get_if_present_no_default(y_eqsys, "output_clipping_diagnostic", outputClipDiag);
+          if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = tke/eps " << std::endl;
+          eqSys = new KEpsilonEquationSystem(*this, outputClipDiag);
+        }
         else if( expect_map(y_system, "TurbKineticEnergy", true) ) {
 	  y_eqsys =  expect_map(y_system, "TurbKineticEnergy", true) ;
           if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = tke " << std::endl;
@@ -127,22 +135,22 @@ void EquationSystems::load(const YAML::Node & y_node)
         else if( expect_map(y_system, "MixtureFraction", true) ) {
 	  y_eqsys =  expect_map(y_system, "MixtureFraction", true) ;
           if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = mixFrac " << std::endl;
-          bool ouputClipDiag = false;
-          get_if_present_no_default(y_eqsys, "output_clipping_diagnostic", ouputClipDiag);
+          bool outputClipDiag = false;
+          get_if_present_no_default(y_eqsys, "output_clipping_diagnostic", outputClipDiag);
           double deltaZClip = 0.0;
           get_if_present_no_default(y_eqsys, "clipping_delta", deltaZClip);
-          eqSys = new MixtureFractionEquationSystem(*this, ouputClipDiag, deltaZClip);
+          eqSys = new MixtureFractionEquationSystem(*this, outputClipDiag, deltaZClip);
         }
         else if( expect_map(y_system, "MixtureFractionFEM", true) ) {
 	  y_eqsys =  expect_map(y_system, "MixtureFractionFEM", true) ;
           if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = mixFracFEM " << std::endl;
-          bool ouputClipDiag = false;
-          get_if_present_no_default(y_eqsys, "output_clipping_diagnostic", ouputClipDiag);
+          bool outputClipDiag = false;
+          get_if_present_no_default(y_eqsys, "output_clipping_diagnostic", outputClipDiag);
           double deltaZClip = 0.0;
           get_if_present_no_default(y_eqsys, "clipping_delta", deltaZClip);
           bool computePNG = false;
           get_if_present_no_default(y_eqsys, "compute_png", computePNG);
-          eqSys = new MixtureFractionFemEquationSystem(*this, ouputClipDiag, deltaZClip, computePNG);
+          eqSys = new MixtureFractionFemEquationSystem(*this, outputClipDiag, deltaZClip, computePNG);
         }
         else if( expect_map(y_system, "Enthalpy", true) ) {
 	  y_eqsys =  expect_map(y_system, "Enthalpy", true);
@@ -151,9 +159,9 @@ void EquationSystems::load(const YAML::Node & y_node)
           double maxT = 3000.0;
           get_if_present_no_default(y_eqsys, "minimum_temperature", minT);
           get_if_present_no_default(y_eqsys, "maximum_temperature", maxT);
-          bool ouputClipDiag = true;
-          get_if_present_no_default(y_eqsys, "output_clipping_diagnostic", ouputClipDiag);
-          eqSys = new EnthalpyEquationSystem(*this, minT, maxT, ouputClipDiag);
+          bool outputClipDiag = true;
+          get_if_present_no_default(y_eqsys, "output_clipping_diagnostic", outputClipDiag);
+          eqSys = new EnthalpyEquationSystem(*this, minT, maxT, outputClipDiag);
         }
         else if( expect_map(y_system, "HeatConduction", true) ) {
 	  y_eqsys =  expect_map(y_system, "HeatConduction", true);
