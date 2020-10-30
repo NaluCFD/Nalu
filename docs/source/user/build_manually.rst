@@ -28,9 +28,6 @@ in which Homebrew has installed them, to use when building Trilinos and Nalu.
     brew install cmake
     brew install libxml2
     brew install boost
-    brew tap homebrew/science
-    brew install superlu43
-
 
 CMake v3.12.3
 ~~~~~~~~~~~~
@@ -89,7 +86,7 @@ Edit ``make.inc`` as shown below (diffs shown from baseline).
     CC            = mpicc
     FORTRAN       = mpif77
 
-On some platforms, the ``$nalu_insall_dir`` may be mangled and, thus the make will fail. In such cases, you 
+On some platforms, the ``$nalu_install_dir`` may be mangled and, thus the make will fail. In such cases, you 
 need to use the entire path to ``your_path_to_install/SuperLU_4.3``.
 
 Next, make some new directories:
@@ -267,7 +264,7 @@ Prepare:
 ::
 
     cd $nalu_build_dir/packages/
-    curl -o netcdf-c-4.7.4.tar.gz https://codeload.github.com/Unidata/netcdf-c/tar.gz/v4.6.1
+    curl -o netcdf-c-4.7.4.tar.gz https://codeload.github.com/Unidata/netcdf-c/tar.gz/v4.7.4
     tar -zxvf netcdf-c-4.7.4.tar.gz 
 
 Build:
@@ -309,7 +306,7 @@ nightly.
 .. code-block:: bash
 
    # 1. Clone hypre sources
-   https://github.com/LLNL/hypre.git
+   https://github.com/hypre-space/hypre
    cd hypre/src
 
    # 2. Configure HYPRE package and pass installation directory
