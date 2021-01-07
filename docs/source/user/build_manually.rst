@@ -53,10 +53,11 @@ Build:
 SuperLU v4.3
 ~~~~~~~~~~~~
 
-SuperLU is a deprecated, optional package provided `here <http://crd-legacy.lbl.gov/~xiaoye/SuperLU/>`__. KLU2, as described in the Amesos2 documentation `here <https://trilinos.github.io/amesos2.html>`__, is automatically used in place of SuperLU if not included. If desired, a SuperLU build can instead use KLU2 in place of SuperLU by specifying as such in the Muelue .xml configuration file as follows.
+SuperLU is a deprecated, optional package provided `here <http://crd-legacy.lbl.gov/~xiaoye/SuperLU/>`__. KLU2, as described in the Amesos2 documentation `here <https://trilinos.github.io/amesos2.html>`__, is automatically used in place of SuperLU if not included. If desired, a SuperLU build can instead use KLU2 in place of SuperLU by specifying as such in the MueLu .xml configuration file as follows.
 
 ::
-<Parameter name="coarse: type" type="string" value="klu2"/>
+
+  <Parameter name="coarse: type" type="string" value="klu2"/>
 
  
 
