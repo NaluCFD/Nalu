@@ -9,11 +9,7 @@ nalu_install_dir=/path_to_install/install/gcc8.3.0
 
 # TPLS needed by trilinos, possibly provided by HomeBrew on a Mac
 #boost_dir=/usr/local/Cellar/boost/1.56.0/include/boost/
-#superlu_inc_dir=/usr/local/Cellar/superlu/4.3/include/superlu
-#superlu_lib_dir=/usr/local/Cellar/superlu/4.3/lib
 boost_inc_dir=$nalu_install_dir/boost/1.68.0/include
-superlu_inc_dir=$nalu_install_dir/SuperLU/4.3/include
-superlu_lib_dir=$nalu_install_dir/SuperLU/4.3/lib
 
 # Additional needed TPLS
 netcdf_install_dir=$nalu_install_dir/netcdf/4.7.4
@@ -46,9 +42,7 @@ cmake \
 -DTrilinos_ALLOW_NO_PACKAGES:BOOL=OFF \
 -DTPL_ENABLE_MPI=ON \
   -DMPI_BASE_DIR:PATH=$mpi_base_dir \
--DTPL_ENABLE_SuperLU=ON \
-  -DSuperLU_INCLUDE_DIRS:PATH=$superlu_inc_dir \
-  -DSuperLU_LIBRARY_DIRS:PATH=$superlu_lib_dir \
+-DTPL_ENABLE_SuperLU=OFF \
 -DTPL_ENABLE_Boost:BOOL=ON \
   -DBoost_INCLUDE_DIRS:PATH=$boost_inc_dir \
 -DTrilinos_ENABLE_Epetra:BOOL=OFF \
