@@ -1,6 +1,7 @@
 <ParameterList name="MueLu">
   <Parameter        name="verbosity"                        type="string"   value="none"/>
   <Parameter        name="coarse: max size"                 type="int"      value="500"/>
+  <Parameter        name="coarse: type"                     type="string"   value="klu2"/>
 
   <Parameter        name="smoother: type"                   type="string"   value="CHEBYSHEV"/>
   <ParameterList    name="smoother: params">
