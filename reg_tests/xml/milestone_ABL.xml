@@ -1,6 +1,8 @@
 <ParameterList name="MueLu">
   <Parameter        name="verbosity"                        type="string"   value="low"/>
   <Parameter        name="coarse: max size"                 type="int"      value="2000"/>
+  <Parameter        name="coarse: type"                     type="string"   value="klu2"/>
+
   <Parameter        name="max levels"                       type="int"      value="6"/>
 
   <Parameter        name="transpose: use implicit"          type="bool"     value="true"/>
