@@ -22,6 +22,7 @@
 // input params
 #include <stk_util/environment/OptionsSpecification.hpp>
 #include <stk_util/environment/ParseCommandLineArgs.hpp>
+#include <stk_util/environment/ParsedOptions.hpp>
 
 // yaml for parsing..
 #include <yaml-cpp/yaml.h>
