@@ -29,24 +29,26 @@ in which Homebrew has installed them, to use when building Trilinos and Nalu.
     brew install libxml2
     brew install boost
 
-CMake v3.12.3
+CMake v3.17.0
 ~~~~~~~~~~~~
 
-CMake is provided `here <http://www.cmake.org/download/>`__.
+CMake is provided `here <http://www.cmake.org/download/>`__. The version
+of CMake that is used is generally dictated by 
+the `Trilinos <http://www.trilinos.org>`__ project.
 
 Prepare:
 
 ::
 
     cd $nalu_build_dir/packages
-    tar xf cmake-3.12.3.tar.gz
+    tar -xf cmake-3.17.0.tar.gz
 
 Build:
 
 ::
 
-    cd $nalu_build_dir/packages/cmake-3.12.3
-    ./configure --prefix=$nalu_install_dir/cmake/3.12.3
+    cd $nalu_build_dir/packages/cmake-3.17.0
+    ./configure --prefix=$nalu_install_dir/cmake/3.17.0
     make
     make install
 

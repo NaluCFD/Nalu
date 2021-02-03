@@ -481,13 +481,13 @@ Realm::initialize()
   if ( hasPeriodic_ )
     periodicManager_->build_constraints();
 
+  if ( hasOverset_ )
+    initialize_overset();
+
   compute_geometry();
 
   if ( hasNonConformal_ )
     initialize_non_conformal();
-
-  if ( hasOverset_ )
-    initialize_overset();
 
   initialize_post_processing_algorithms();
 
