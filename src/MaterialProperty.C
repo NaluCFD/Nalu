@@ -210,6 +210,19 @@ MaterialProperty::load(const YAML::Node &y_prop)
                                        << primaryVal << " "
                                        << secondaryVal << std::endl;
       }
+      else if ( thePropType == "volume_of_fluid") {
+        double phaseOne;
+        double phaseTwo;
+        get_required(y_spec, "phase_one", phaseOne);
+        get_required(y_spec, "phase_two", phaseTwo);
+        matData->type_ = VOF_MAT;
+        matData->phaseOne_ = phaseOne;
+        matData->phaseTwo_ = phaseTwo;
+        NaluEnv::self().naluOutputP0() << thePropName
+                                       << " is a vof prop: "
+                                       << phaseOne << " "
+                                       << phaseTwo << std::endl;
+      }
       else if ( thePropType == "polynomial" ) {
         matData->type_ = POLYNOMIAL_MAT;
         

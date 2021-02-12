@@ -1176,6 +1176,22 @@ Realm::setup_property()
         }
         break;
 
+        case VOF_MAT:
+        {
+          // extract the volume of fluiod field
+          ScalarFieldType *vof = metaData_->get_field<ScalarFieldType>(stk::topology::NODE_RANK, "volume_of_fluid");
+
+          // primary and secondary
+          const double phaseOne = matData->phaseOne_;
+          const double phaseTwo = matData->phaseTwo_;
+
+          // everything is linear weighting
+          LinearPropAlgorithm *auxAlg
+            = new LinearPropAlgorithm( *this, targetPart, thePropField, vof, phaseOne, phaseTwo);
+          propertyAlg_.push_back(auxAlg);
+        }
+        break;
+
         case POLYNOMIAL_MAT:
         {
 

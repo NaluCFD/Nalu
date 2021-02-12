@@ -31,6 +31,7 @@
 #include <TurbKineticEnergyEquationSystem.h>
 #include <pmr/RadiativeTransportEquationSystem.h>
 #include <mesh_motion/MeshDisplacementEquationSystem.h>
+#include <VolumeOfFluidEquationSystem.h>
 
 #include <vector>
 
@@ -96,7 +97,16 @@ void EquationSystems::load(const YAML::Node & y_node)
         const YAML::Node y_system = y_systems[isystem] ;
         EquationSystem *eqSys = 0;
 	YAML::Node y_eqsys ;
-        if ( expect_map(y_system, "LowMachEOM", true) ) {
+        if ( expect_map(y_system, "VolumeOfFluid", true) ) {
+	  y_eqsys =  expect_map(y_system, "VolumeOfFluid", true);
+          if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = VolumeOfFluid" << std::endl;
+          bool outputClipDiag = false;
+          get_if_present_no_default(y_eqsys, "output_clipping_diagnostic", outputClipDiag);
+          double deltaVofClip = 0.0;
+          get_if_present_no_default(y_eqsys, "clipping_delta", deltaVofClip);
+          eqSys = new VolumeOfFluidEquationSystem(*this, outputClipDiag, deltaVofClip);
+        }
+        else if ( expect_map(y_system, "LowMachEOM", true) ) {
 	  y_eqsys =  expect_map(y_system, "LowMachEOM", true);
           if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = LowMachEOM " << std::endl;
           bool elemCont = (realm_.realmUsesEdges_) ? false : true;

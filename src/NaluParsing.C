@@ -642,6 +642,19 @@ namespace YAML
     return true;
   }
 
+  bool convert<sierra::nalu::VolumeOfFluid>::decode(const Node& node,
+    sierra::nalu::VolumeOfFluid& vof)
+  {
+    if (!node.IsScalar())
+    {
+      return false;
+    }
+
+    vof.vof_ = node.as<double>();
+
+    return true;
+  }
+
   bool convert<sierra::nalu::Emissivity>::decode(const Node& node,
     sierra::nalu::Emissivity& emiss)
   {
@@ -991,6 +1004,12 @@ namespace YAML
       inflowData.massFraction_ = node["mass_fraction"].as<
           sierra::nalu::MassFraction>();
       inflowData.massFractionSpec_ = true;
+    }
+    if (node["volume_of_fluid"])
+    {
+      inflowData.vof_ = node["volume_of_fluid"].as<
+          sierra::nalu::VolumeOfFluid>();
+      inflowData.vofSpec_ = true;
     }
     if (node["temperature"])
     {
