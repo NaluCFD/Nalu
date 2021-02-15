@@ -30,7 +30,11 @@ public:
   // mixture fraction specifics
   double primary_;
   double secondary_;
- 
+
+  // vof specifics
+  double phaseOne_;
+  double phaseTwo_;
+
   // table specifics, all single in size, all possibly required to be more general
   std::vector<std::string> indVarName_;
   std::vector<std::string> indVarTableName_;

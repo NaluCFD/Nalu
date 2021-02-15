@@ -19,7 +19,8 @@ class RayleighTaylorMixFracAuxFunction : public AuxFunction
 {
 public:
 
-  RayleighTaylorMixFracAuxFunction();
+  RayleighTaylorMixFracAuxFunction(
+    const std::vector<double> &theParams);
 
   virtual ~RayleighTaylorMixFracAuxFunction() {}
   
@@ -34,10 +35,10 @@ public:
     const unsigned endPos) const;
   
 private:
-  const double aX_;
-  const double tX_;
-  const double yTr_;
-  const double dTr_;
+  double aX_;
+  double tX_;
+  double yTr_;
+  double dTr_;
   const double pi_;
 };
 

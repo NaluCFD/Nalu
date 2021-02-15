@@ -17,7 +17,8 @@
 namespace sierra{
 namespace nalu{
 
-RayleighTaylorMixFracAuxFunction::RayleighTaylorMixFracAuxFunction() :
+RayleighTaylorMixFracAuxFunction::RayleighTaylorMixFracAuxFunction(
+    const std::vector<double> &theParams) :
   AuxFunction(0,1),
   aX_(0.1),
   tX_(1.0),
@@ -25,7 +26,15 @@ RayleighTaylorMixFracAuxFunction::RayleighTaylorMixFracAuxFunction() :
   dTr_(0.20),
   pi_(acos(-1.0))
 {
-  // does nothing
+  // extract the params - if they are supplied (optional)
+  if ( theParams.size() > 0 )
+    aX_ = theParams[0];
+  if ( theParams.size() > 1 )
+    tX_ = theParams[1];
+  if ( theParams.size() > 2 )
+    yTr_ = theParams[2];
+  if ( theParams.size() > 3 )
+    dTr_ = theParams[3];
 }
 
 void
