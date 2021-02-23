@@ -354,13 +354,21 @@ SolutionOptions::load(const YAML::Node & y_node)
       else {        
         for (size_t ioption = 0; ioption < y_mesh_motion.size(); ++ioption) {
           const YAML::Node &y_option = y_mesh_motion[ioption];
-          
-          // extract mesh motion name and omega value
+
+          // extract mesh motion name
           std::string motionName = "na";
           get_required(y_option, "name", motionName);
           double omega = 0.0;
-          get_required(y_option, "omega", omega);
-          
+
+
+          // Check for 6 DOF
+          bool sixDOF = false;
+          get_if_present(y_option, "include_six_dof", sixDOF, sixDOF);
+
+          // Assume straight rotation if no sixDOF included          
+          if ( !sixDOF )
+            get_required(y_option, "omega", omega);
+
           // now fill in name
           std::vector<std::string> meshMotionBlock;
           const YAML::Node &targets = y_option["target_name"];
@@ -393,21 +401,93 @@ SolutionOptions::load(const YAML::Node & y_node)
             computeCentroid = false;
           }
 
+
           // look for unit vector; provide default
           std::vector<double> unitVec(3,0.0); 
-          const YAML::Node uV = y_option["unit_vector"];
-          if ( uV ) {
-            for ( size_t i = 0; i < uV.size(); ++i )
-              unitVec[i] = uV[i].as<double>() ;
+          if ( !sixDOF ) {
+            const YAML::Node uV = y_option["unit_vector"];
+            if ( uV ) {
+              for ( size_t i = 0; i < uV.size(); ++i )
+                unitVec[i] = uV[i].as<double>() ;
+            }
+            else {
+              NaluEnv::self().naluOutputP0() << "SolutionOptions::load() unit_vector not supplied; will use 0,0,1" << std::endl;
+              unitVec[2] = 1.0;
+            }
+          }
+
+          if ( sixDOF ) {
+
+            std::vector<std::string> forceSurface;
+            std::vector<double> bodyAngle(3,0.0);
+            std::vector<double> bodyOmega(3,0.0);
+            std::vector<double> appliedForce(3,0.0);
+            std::vector<double> bodyPrincInertia(3,0.0);
+            std::vector<double> bodyVel(3,0.0);
+            std::vector<double> bodyDispCC(3,0.0);
+
+            // Check for all 6-DOF related inputs
+            const YAML::Node fS = y_option["forcing_surface"];
+            if ( fS ) {
+              for ( size_t i = 0; i < fS.size(); ++i )
+                forceSurface.push_back(fS[i].as<std::string>()) ;
+            }
+
+            const YAML::Node bA = y_option["body_angle"];
+            if ( bA ) {
+              for ( size_t i = 0; i < bA.size(); ++i )
+                bodyAngle[i] = bA[i].as<double>() ;
+            }
+
+            const YAML::Node bdCC = y_option["body_cc_disp"];
+            if ( bdCC ) {
+              for ( size_t i = 0; i < bdCC.size(); ++i )
+                bodyDispCC[i] = bdCC[i].as<double>() ;
+            }
+
+            const YAML::Node bO = y_option["body_omega"];
+            if ( bO ) {
+              for ( size_t i = 0; i < bO.size(); ++i )
+                bodyOmega[i] = bO[i].as<double>() ;
+            }
+
+            const YAML::Node bF = y_option["applied_force"];
+            if ( bF ) {
+              for ( size_t i = 0; i < bF.size(); ++i )
+                appliedForce[i] = bF[i].as<double>() ; 
+            }
+
+            const YAML::Node bFI = y_option["principal_moments_inertia"];
+            if ( bFI ) {
+              for ( size_t i = 0; i < bFI.size(); ++i )
+                bodyPrincInertia[i] = bFI[i].as<double>() ; 
+            }
+
+            const YAML::Node bV = y_option["body_velocity"];
+            if ( bV ) {
+              for ( size_t i = 0; i < bV.size(); ++i )
+                bodyVel[i] = bV[i].as<double>() ;
+            }
+
+            double bodyMass = 0.0;
+            get_if_present(y_option, "body_mass", bodyMass, bodyMass);
+
+            double bodyDen = 0.0;
+            get_if_present(y_option, "body_density", bodyDen, bodyDen);
+
+            MeshMotionInfo *meshInfo = new MeshMotionInfo(meshMotionBlock, forceSurface, bodyDispCC, bodyAngle, bodyOmega, bodyPrincInertia, cCoordsVec, bodyVel, bodyMass, bodyDen, appliedForce, computeCentroid);
+
+            // set the map
+            meshMotionInfoMap_[motionName] = meshInfo;
+
           }
           else {
-            NaluEnv::self().naluOutputP0() << "SolutionOptions::load() unit_vector not supplied; will use 0,0,1" << std::endl;
-            unitVec[2] = 1.0;
+
+            MeshMotionInfo *meshInfo = new MeshMotionInfo(meshMotionBlock, omega, cCoordsVec, unitVec, computeCentroid);
+            // set the map
+            meshMotionInfoMap_[motionName] = meshInfo;
+
           }
-          
-          MeshMotionInfo *meshInfo = new MeshMotionInfo(meshMotionBlock, omega, cCoordsVec, unitVec, computeCentroid);
-          // set the map
-          meshMotionInfoMap_[motionName] = meshInfo;
         }
       }
     }

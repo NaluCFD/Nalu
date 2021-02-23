@@ -31,6 +31,7 @@ class ComputeMdotAlgorithmDriver;
 class LinearSystem;
 class ProjectedNodalGradientEquationSystem;
 class SurfaceForceAndMomentAlgorithmDriver;
+class SixDofSurfaceForceAndMomentAlgorithmDriver;
 class WallFunctionParamsAlgorithmDriver;
 class PointInfo;
 
@@ -74,6 +75,10 @@ public:
        const PostProcessingData &theData,
        stk::mesh::PartVector &partVector);
 
+  virtual void register_surface_six_dof_algorithm(
+    MeshMotionInfo* motion,
+    stk::mesh::PartVector &partVector);
+
   virtual void register_initial_condition_fcn(
       stk::mesh::Part *part,
       const std::map<std::string, std::string> &theNames,
@@ -99,6 +104,7 @@ public:
   VectorFieldType *edgeAreaVec_;
 
   SurfaceForceAndMomentAlgorithmDriver *surfaceForceAndMomentAlgDriver_;
+  SixDofSurfaceForceAndMomentAlgorithmDriver *sixDofSurfaceForceAndMomentAlgDriver_;
 
   bool isInit_;
 

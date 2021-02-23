@@ -84,6 +84,8 @@
 #include "Realms.h"
 #include "SurfaceForceAndMomentAlgorithmDriver.h"
 #include "SurfaceForceAndMomentAlgorithm.h"
+#include "SixDofSurfaceForceAndMomentAlgorithmDriver.h"
+#include "SixDofSurfaceForceAndMomentAlgorithm.h"
 #include "SurfaceForceAndMomentWallFunctionAlgorithm.h"
 #include "SurfaceForceAndMomentWallFunctionProjectedAlgorithm.h"
 #include "Simulation.h"
@@ -140,6 +142,8 @@
 #include "user_functions/WindEnergyAuxFunction.h"
 #include "user_functions/WindEnergyTaylorVortexAuxFunction.h"
 #include "user_functions/WindEnergyTaylorVortexPressureAuxFunction.h"
+
+#include "user_functions/MeshMotionAuxFunction.h"
 
 #include "user_functions/SteadyTaylorVortexMomentumSrcElemSuppAlg.h"
 #include "user_functions/SteadyTaylorVortexContinuitySrcElemSuppAlg.h"
@@ -233,6 +237,7 @@ LowMachEquationSystem::LowMachEquationSystem(
     dualNodalVolume_(NULL),
     edgeAreaVec_(NULL),
     surfaceForceAndMomentAlgDriver_(NULL),
+    sixDofSurfaceForceAndMomentAlgDriver_(NULL),
     isInit_(true)
 {
   // push back EQ to manager
@@ -515,6 +520,30 @@ LowMachEquationSystem::register_open_bc(
   }
 }
 
+//--------------------------------------------------------------------------
+//-------- register_surface_six_dof_algorithm ------------------------------
+//--------------------------------------------------------------------------
+void
+LowMachEquationSystem::register_surface_six_dof_algorithm(
+  MeshMotionInfo* motion,
+  stk::mesh::PartVector &partVector)
+{
+
+  // register nodal fields in common
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
+
+  ScalarFieldType *assembledArea =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "assembled_area_six_dof"));
+  stk::mesh::put_field_on_mesh(*assembledArea, stk::mesh::selectUnion(partVector), nullptr);
+  if ( nullptr == sixDofSurfaceForceAndMomentAlgDriver_ ) {
+    sixDofSurfaceForceAndMomentAlgDriver_ = new SixDofSurfaceForceAndMomentAlgorithmDriver(realm_);
+  }
+
+  SixDofSurfaceForceAndMomentAlgorithm *sdAlg
+    = new SixDofSurfaceForceAndMomentAlgorithm(
+        realm_, motion, partVector, realm_.realmUsesEdges_, assembledArea);
+  sixDofSurfaceForceAndMomentAlgDriver_->algVec_.push_back(sdAlg);
+
+}
 //--------------------------------------------------------------------------
 //-------- register_surface_pp_algorithm -----------------------------------
 //--------------------------------------------------------------------------
@@ -907,6 +936,10 @@ LowMachEquationSystem::post_converged_work()
     surfaceForceAndMomentAlgDriver_->execute();
   }
   
+  if (NULL != sixDofSurfaceForceAndMomentAlgDriver_){
+    sixDofSurfaceForceAndMomentAlgDriver_->execute();
+  }
+
   // output mass closure
   continuityEqSys_->computeMdotAlgDriver_->provide_output();
 }
@@ -1739,8 +1772,12 @@ MomentumEquationSystem::register_wall_bc(
         std::vector<std::string> theStringParams  = get_bc_function_string_params(userData, velocityName);
      	theAuxFunc = new WindEnergyAuxFunction(0,nDim, theStringParams, realm_);
       }
+      else if ( fcnName == "mesh_motion" ) {
+        std::vector<std::string> theStringParams  = get_bc_function_string_params(userData, velocityName);
+        theAuxFunc = new MeshMotionAuxFunction(0,nDim, theStringParams, realm_);
+      }
       else {
-        throw std::runtime_error("Only wind_energy and tornado user functions supported");
+        throw std::runtime_error("Only wind_energy, mesh_motion, and tornado user functions supported");
       }
     }
   }
