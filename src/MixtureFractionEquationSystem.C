@@ -1,4 +1,3 @@
-
 /*------------------------------------------------------------------------*/
 /*  Copyright 2014 Sandia Corporation.                                    */
 /*  This software is released under the license detailed                  */
@@ -905,7 +904,7 @@ void
 MixtureFractionEquationSystem::register_initial_condition_fcn(
   stk::mesh::Part *part,
   const std::map<std::string, std::string> &theNames,
-  const std::map<std::string, std::vector<double> > &/*theParams*/)
+  const std::map<std::string, std::vector<double> > &theParams)
 {
   // iterate map and check for name
   const std::string dofName = "mixture_fraction";
@@ -913,14 +912,24 @@ MixtureFractionEquationSystem::register_initial_condition_fcn(
     = theNames.find(dofName);
   if (iterName != theNames.end()) {
     std::string fcnName = (*iterName).second;
+
     AuxFunction *theAuxFunc = NULL;
+    std::vector<double> fcnParams;
+    
+    // extract the params
+    std::map<std::string, std::vector<double> >::const_iterator iterParams
+      = theParams.find(dofName);
+    if (iterParams != theParams.end()) {
+      fcnParams = (*iterParams).second;	
+    }
+
     if ( fcnName == "VariableDensity" ) {
       // create the function
       theAuxFunc = new VariableDensityMixFracAuxFunction();      
     }
     else if ( fcnName == "RayleighTaylor" ) {
       // create the function
-      theAuxFunc = new RayleighTaylorMixFracAuxFunction();      
+      theAuxFunc = new RayleighTaylorMixFracAuxFunction(fcnParams);      
     }
     else {
       throw std::runtime_error("MixtureFractionEquationSystem::register_initial_condition_fcn: VariableDensity only supported");

@@ -481,13 +481,13 @@ Realm::initialize()
   if ( hasPeriodic_ )
     periodicManager_->build_constraints();
 
+  if ( hasOverset_ )
+    initialize_overset();
+
   compute_geometry();
 
   if ( hasNonConformal_ )
     initialize_non_conformal();
-
-  if ( hasOverset_ )
-    initialize_overset();
 
   initialize_post_processing_algorithms();
 
@@ -1173,6 +1173,22 @@ Realm::setup_property()
               = new LinearPropAlgorithm( *this, targetPart, thePropField, mixFrac, propPrim, propSec);
             propertyAlg_.push_back(auxAlg);
           }
+        }
+        break;
+
+        case VOF_MAT:
+        {
+          // extract the volume of fluiod field
+          ScalarFieldType *vof = metaData_->get_field<ScalarFieldType>(stk::topology::NODE_RANK, "volume_of_fluid");
+
+          // primary and secondary
+          const double phaseOne = matData->phaseOne_;
+          const double phaseTwo = matData->phaseTwo_;
+
+          // everything is linear weighting
+          LinearPropAlgorithm *auxAlg
+            = new LinearPropAlgorithm( *this, targetPart, thePropField, vof, phaseOne, phaseTwo);
+          propertyAlg_.push_back(auxAlg);
         }
         break;
 

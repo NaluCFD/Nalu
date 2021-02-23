@@ -90,6 +90,13 @@ struct MassFraction {
   {}
 };
 
+struct VolumeOfFluid {
+  double vof_;
+  VolumeOfFluid()
+    : vof_(0.0)
+  {}
+};
+
 struct Emissivity {
   double emissivity_;
   Emissivity()
@@ -231,16 +238,17 @@ struct InflowUserData : public UserData {
   TurbDiss eps_;
   MixtureFraction mixFrac_;
   MassFraction massFraction_;
- 
+  VolumeOfFluid vof_;
   bool uSpec_;
   bool tkeSpec_;
   bool sdrSpec_;
   bool epsSpec_;
   bool mixFracSpec_;
   bool massFractionSpec_;
+  bool vofSpec_;
   InflowUserData()
     : UserData(),
-    uSpec_(false), tkeSpec_(false), sdrSpec_(false), epsSpec_(false), mixFracSpec_(false), massFractionSpec_(false)
+    uSpec_(false), tkeSpec_(false), sdrSpec_(false), epsSpec_(false), mixFracSpec_(false), massFractionSpec_(false), vofSpec_(false)
   {}
 };
 
@@ -551,6 +559,10 @@ template<> struct convert<sierra::nalu::MixtureFraction> {
 
 template<> struct convert<sierra::nalu::MassFraction> {
   static bool decode(const Node& node, sierra::nalu::MassFraction& rhs) ;
+};
+
+template<> struct convert<sierra::nalu::VolumeOfFluid> {
+  static bool decode(const Node& node, sierra::nalu::VolumeOfFluid& rhs) ;
 };
 
 template<> struct convert<sierra::nalu::Emissivity> {

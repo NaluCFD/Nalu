@@ -64,12 +64,13 @@ enum EquationType {
   EQ_SPEC_DISS_RATE = 8,
   EQ_TURBULENT_DISS = 9,
   EQ_MASS_FRACTION = 10,
-  EQ_PNG   = 11,
-  EQ_PNG_P = 12,
-  EQ_PNG_Z = 13,
-  EQ_PNG_H = 14,
-  EQ_PNG_U = 15,
-  EQ_PNG_TKE = 16, // FIXME... Last PNG managed like this..
+  EQ_VOLUME_OF_FLUID = 11,
+  EQ_PNG   = 12,
+  EQ_PNG_P = 13,
+  EQ_PNG_Z = 14,
+  EQ_PNG_H = 15,
+  EQ_PNG_U = 16,
+  EQ_PNG_TKE = 17, // FIXME... Last PNG managed like this..
   EquationSystemType_END
 };
 
@@ -85,6 +86,7 @@ static const std::string EquationTypeMap[] = {
   "Specific_Dissipation_Rate",
   "Turbulent_Dissipation",
   "Mass_Fraction",
+  "Volume_of_Fluid",
   "PNG",
   "PNG_P",
   "PNG_Z",
@@ -134,6 +136,7 @@ enum  MaterialPropertyType {
   GEOMETRIC_MAT = 4,
   HDF5_TABLE_MAT = 5,
   GENERIC = 6,
+  VOF_MAT = 7,
   MaterialPropertyType_END
 };
 
