@@ -48,6 +48,7 @@ MeshMotionAuxFunction::MeshMotionAuxFunction(
   // set the data
   omegaMM_ = &meshInfo->bodyOmega_;
   centroidMM_ = &meshInfo->centroid_;
+  dispMM_ = &meshInfo->bodyDispCC_;
   velMM_ = &meshInfo->bodyVel_;
 }
 
@@ -82,12 +83,12 @@ MeshMotionAuxFunction::do_evaluate(
   for(unsigned p=0; p < numPoints; ++p) {
 
     // define distance from centroid and compute cross product
-    for ( unsigned i = 0; i < fieldSize; ++i )
-      c[i] = coords[i] - (*centroidMM_)[i];   
+    for ( unsigned i = 0; i < fieldSize; ++i ) 
+      c[i] = coords[i] - ((*centroidMM_)[i]+(*dispMM_)[i]);  
  
     cross_product(c, u);
 
-    for ( unsigned i = 0; i < fieldSize; ++i )
+    for ( unsigned i = 0; i < fieldSize; ++i ) 
       u[i] += (*velMM_)[i];
     
     for ( unsigned i = 0; i < fieldSize; ++i )

@@ -47,6 +47,7 @@ private:
   std::vector<double>* omegaMM_;
   std::vector<double>* centroidMM_;
   std::vector<double>* velMM_;
+  std::vector<double>* dispMM_;
 };
 
 } // namespace nalu

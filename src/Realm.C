@@ -2898,7 +2898,7 @@ Realm::set_mesh_velocity_six_dof(
       
       // compute relative coords and vector omega (dimension 3) for general cross product
       for ( unsigned i = 0; i < 3; ++i ) {
-        cX[i] = ccX[i] - motion.centroid_[i] + motion.bodyDispCC_[i];
+        cX[i] = ccX[i] - (motion.centroid_[i] + motion.bodyDispCC_[i]);
       }
       
       mesh_velocity_cross_product(motion.bodyOmega_.data(), cX, uX);
