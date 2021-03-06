@@ -244,7 +244,7 @@ HeatCondEquationSystem::register_nodal_fields(
   if ( pmrCouplingActive_ ) {
     ScalarFieldType *divQ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "div_radiative_heat_flux"));
     stk::mesh::put_field_on_mesh(*divQ, *part, nullptr);
-    ScalarFieldType *divQLin = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "div_radiative_heat_flux_linearization"));
+    ScalarFieldType *divQLin = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "div_radiative_heat_flux_lin"));
     stk::mesh::put_field_on_mesh(*divQLin, *part, nullptr);
   }
 

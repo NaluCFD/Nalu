@@ -116,7 +116,7 @@ ComputeGeometryInteriorAlgorithm::execute()
       double scv_error = 0.0;
       meSCV->determinant(1, &ws_coordinates[0], &ws_scv_volume[0], &scv_error);
 
-      // assemble dual volume while scattering ip volume
+      // assemble dual volume
       for ( int ip = 0; ip < numScvIp; ++ip ) {
         // nearest node for this ip
         const int nn = ipNodeMap[ip];

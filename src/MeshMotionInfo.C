@@ -24,6 +24,7 @@ namespace nalu{
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
+// Rotation constructor
 MeshMotionInfo::MeshMotionInfo(
   std::vector<std::string> meshMotionBlock, 
   const double omega, 
@@ -37,9 +38,55 @@ MeshMotionInfo::MeshMotionInfo(
     unitVec_(unitVec),
     computeCentroid_(computeCentroid),
     computeCentroidCompleted_(false),
-    theAngle_(theAngle)
+    theAngle_(theAngle),
+    sixDof_(false),
+    bodyDispCC_(std::vector<double>(3,0.0)),
+    bodyVel_(std::vector<double>(3,0.0)),
+    bodyAccel_(std::vector<double>(3,0.0)),
+    bodyAlpha_(std::vector<double>(3,0.0)),
+    bodyMass_(0.0),
+    bodyDen_(0.0)
 {
-  // nothing to do
+
+}
+
+// 6-DOF constructor
+MeshMotionInfo::MeshMotionInfo(
+    std::vector<std::string> meshMotionBlock,
+    std::vector<std::string> forceSurface,
+    std::vector<double> bodyDispCC,
+    std::vector<double> bodyAngle,
+    std::vector<double> bodyOmega,
+    std::vector<double> bodyPrincInertia,
+    std::vector<double> centroid,
+    std::vector<double> bodyVel,
+    const double bodyMass,
+    const double bodyDen,
+    std::vector<double> appliedForce, 
+    const bool computeCentroid)
+    : meshMotionBlock_(meshMotionBlock),
+      omega_(0.0),
+      centroid_(centroid),
+      computeCentroid_(computeCentroid),
+      computeCentroidCompleted_(false),
+      theAngle_(0.0),
+      sixDof_(true),
+      bodyDispCC_(bodyDispCC),
+      bodyAngle_(bodyAngle),
+      bodyOmega_(bodyOmega),
+      bodyPrincInertia_(bodyPrincInertia),
+      bodyVel_(bodyVel),
+      bodyForce_(std::vector<double>(3,0.0)),
+      bodyMom_(std::vector<double>(3,0.0)),
+      appliedForce_(appliedForce),
+      bodyAccel_(std::vector<double>(3,0.0)),
+      bodyMass_(bodyMass),
+      bodyDen_(bodyDen),
+      forceSurface_(forceSurface)
+{
+  
+  // Nothing to do
+
 }
 
 //--------------------------------------------------------------------------

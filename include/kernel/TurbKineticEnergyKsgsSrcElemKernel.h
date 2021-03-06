@@ -52,9 +52,9 @@ private:
   ScalarFieldType *densityNp1_{nullptr};
   ScalarFieldType *tvisc_{nullptr};
   ScalarFieldType *dualNodalVolume_{nullptr};
+  ScalarFieldType *cEps_{nullptr};
   GenericFieldType *Gju_{nullptr};
 
-  double cEps_{0.0};
   double tkeProdLimitRatio_{0.0};
   
   /// Integration point to node mapping

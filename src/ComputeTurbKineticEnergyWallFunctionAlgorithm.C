@@ -117,7 +117,7 @@ ComputeTurbKineticEnergyWallFunctionAlgorithm::execute()
         }
         aMag = std::sqrt(aMag);
 
-        // extract utau and compute wall valu for tke
+        // extract utau and compute wall value for tke
         const double utau = wallFrictionVelocityBip[ip];
         const double tkeBip = utau*utau/std::sqrt(cMu_);
         // assemble to nodal quantities

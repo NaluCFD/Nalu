@@ -38,7 +38,7 @@ TurbViscKsgsAlgorithm::TurbViscKsgsAlgorithm(
     density_(NULL),
     tvisc_(NULL),
     dualNodalVolume_(NULL),
-    cmuEps_(realm.get_turb_model_constant(TM_cmuEps))
+    cmuEps_(NULL)
 {
 
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -47,7 +47,7 @@ TurbViscKsgsAlgorithm::TurbViscKsgsAlgorithm(
   density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
   tvisc_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_viscosity");
   dualNodalVolume_ =meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
-
+  cmuEps_ =meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "c_mu_epsilon");
 }
 
 //--------------------------------------------------------------------------
@@ -59,7 +59,6 @@ TurbViscKsgsAlgorithm::execute()
 
   stk::mesh::MetaData & meta_data = realm_.meta_data();
 
-  const double cmuEps = cmuEps_;
   const double invNdim = 1.0/meta_data.spatial_dimension();
 
   // define some common selectors
@@ -77,12 +76,12 @@ TurbViscKsgsAlgorithm::execute()
     const double *tke = stk::mesh::field_data(*tke_, *b.begin() );
     const double *density = stk::mesh::field_data(*density_, *b.begin() );
     const double *dualNodalVolume = stk::mesh::field_data(*dualNodalVolume_, *b.begin() );
+    const double *cmuEps = stk::mesh::field_data(*cmuEps_, *b.begin() );
     double *tvisc = stk::mesh::field_data(*tvisc_, *b.begin() );
 
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
       const double filter = std::pow(dualNodalVolume[k], invNdim);
-      // clip tke
-      tvisc[k] = cmuEps*density[k]*std::sqrt(tke[k])*filter;
+      tvisc[k] = cmuEps[k]*density[k]*std::sqrt(tke[k])*filter;
     }
   }
 }

@@ -32,8 +32,7 @@ public:
   ScalarFieldType *density_;
   ScalarFieldType *tvisc_;
   ScalarFieldType *dualNodalVolume_;
-
-  const double cmuEps_;
+  ScalarFieldType *cmuEps_;
   
 };
 

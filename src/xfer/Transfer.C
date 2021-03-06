@@ -33,6 +33,9 @@
 // stk_search
 #include <stk_search/SearchMethod.hpp>
 
+// c++
+#include <memory>
+
 namespace sierra{
 namespace nalu{
 
@@ -165,6 +168,21 @@ Transfer::load(const YAML::Node & node)
     searchExpansionFactor_ = node["search_expansion_factor"].as<double>() ;
   }
 
+  // low/high clip
+  const YAML::Node y_clips = node["clipped_variables"];
+  if (y_clips) {
+    for (size_t ioption = 0; ioption < y_clips.size(); ioption++) {
+      const YAML::Node y_clip = y_clips[ioption] ;
+      size_t varPairSize = y_clip.size();
+      if ( varPairSize != 3 )
+        throw std::runtime_error("need three arguments: fieldname, low, high for clipped_variables");
+      std::string fieldName = y_clip[0].as<std::string>();
+      double clipMin = y_clip[1].as<double>();
+      double clipMax = y_clip[2].as<double>();
+      clipMap_[fieldName] = std::make_pair(clipMin, clipMax);
+    }
+  }
+  
   // now possible field names
   const YAML::Node y_vars = node["transfer_variables"];
   if (y_vars) {
@@ -350,7 +368,8 @@ void Transfer::allocate_stk_transfer() {
   const stk::ParallelMachine    &toComm    = toRealm_->bulk_data().parallel();
 
   std::shared_ptr<ToMesh >
-    to_mesh (new ToMesh(toMetaData, toBulkData, *toRealm_, tocoordName, toVar, toPartVec_, toComm, searchTolerance_));
+    to_mesh (new ToMesh(toMetaData, toBulkData, *toRealm_, tocoordName, toVar, toPartVec_, toComm, searchTolerance_,
+                        clipMap_));
 
   typedef stk::transfer::GeometricTransfer< class LinInterp< class FromMesh, class ToMesh > > STKTransfer;
 

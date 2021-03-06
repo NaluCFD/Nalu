@@ -63,6 +63,13 @@ struct SpecDissRate {
   {}
 };
 
+struct TurbDiss {
+  double turbDiss_;
+  TurbDiss()
+    : turbDiss_(0.0)
+  {}
+};
+
 struct Temperature {
   double temperature_;
   Temperature()
@@ -80,6 +87,13 @@ struct MixtureFraction {
 struct MassFraction {
   std::vector<double> massFraction_;
   MassFraction()
+  {}
+};
+
+struct VolumeOfFluid {
+  double vof_;
+  VolumeOfFluid()
+    : vof_(0.0)
   {}
 };
 
@@ -221,17 +235,20 @@ struct InflowUserData : public UserData {
   Velocity u_;
   TurbKinEnergy tke_;
   SpecDissRate sdr_;
+  TurbDiss eps_;
   MixtureFraction mixFrac_;
   MassFraction massFraction_;
- 
+  VolumeOfFluid vof_;
   bool uSpec_;
   bool tkeSpec_;
   bool sdrSpec_;
+  bool epsSpec_;
   bool mixFracSpec_;
   bool massFractionSpec_;
+  bool vofSpec_;
   InflowUserData()
     : UserData(),
-    uSpec_(false), tkeSpec_(false), sdrSpec_(false), mixFracSpec_(false), massFractionSpec_(false)
+    uSpec_(false), tkeSpec_(false), sdrSpec_(false), epsSpec_(false), mixFracSpec_(false), massFractionSpec_(false), vofSpec_(false)
   {}
 };
 
@@ -240,6 +257,7 @@ struct OpenUserData : public UserData {
   Pressure p_;
   TurbKinEnergy tke_;
   SpecDissRate sdr_;
+  TurbDiss eps_;
   MixtureFraction mixFrac_;
   MassFraction massFraction_;
  
@@ -247,6 +265,7 @@ struct OpenUserData : public UserData {
   bool pSpec_;
   bool tkeSpec_;
   bool sdrSpec_;
+  bool epsSpec_;
   bool mixFracSpec_;
   bool massFractionSpec_;
   
@@ -254,7 +273,7 @@ struct OpenUserData : public UserData {
 
   OpenUserData()
     : UserData(),
-    uSpec_(false), pSpec_(false), tkeSpec_(false), sdrSpec_(false), mixFracSpec_(false), massFractionSpec_(false), useTotalP_(false)
+    uSpec_(false), pSpec_(false), tkeSpec_(false), sdrSpec_(false), epsSpec_(false), mixFracSpec_(false), massFractionSpec_(false), useTotalP_(false)
   {}
 };
 
@@ -526,6 +545,10 @@ template<> struct convert<sierra::nalu::SpecDissRate> {
   static bool decode(const Node& node, sierra::nalu::SpecDissRate& rhs) ;
 };
 
+template<> struct convert<sierra::nalu::TurbDiss> {
+  static bool decode(const Node& node, sierra::nalu::TurbDiss& rhs) ;
+};
+
 template<> struct convert<sierra::nalu::Temperature> {
   static bool decode(const Node& node, sierra::nalu::Temperature& rhs) ;
 };
@@ -536,6 +559,10 @@ template<> struct convert<sierra::nalu::MixtureFraction> {
 
 template<> struct convert<sierra::nalu::MassFraction> {
   static bool decode(const Node& node, sierra::nalu::MassFraction& rhs) ;
+};
+
+template<> struct convert<sierra::nalu::VolumeOfFluid> {
+  static bool decode(const Node& node, sierra::nalu::VolumeOfFluid& rhs) ;
 };
 
 template<> struct convert<sierra::nalu::Emissivity> {

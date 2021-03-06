@@ -28,35 +28,40 @@ in which Homebrew has installed them, to use when building Trilinos and Nalu.
     brew install cmake
     brew install libxml2
     brew install boost
-    brew tap homebrew/science
-    brew install superlu43
 
-
-CMake v3.12.3
+CMake v3.17.0
 ~~~~~~~~~~~~
 
-CMake is provided `here <http://www.cmake.org/download/>`__.
+CMake is provided `here <http://www.cmake.org/download/>`__. The version
+of CMake that is used is generally dictated by 
+the `Trilinos <http://www.trilinos.org>`__ project.
 
 Prepare:
 
 ::
 
     cd $nalu_build_dir/packages
-    tar xf cmake-3.12.3.tar.gz
+    tar -xf cmake-3.17.0.tar.gz
 
 Build:
 
 ::
 
-    cd $nalu_build_dir/packages/cmake-3.12.3
-    ./configure --prefix=$nalu_install_dir/cmake/3.12.3
+    cd $nalu_build_dir/packages/cmake-3.17.0
+    ./configure --prefix=$nalu_install_dir/cmake/3.17.0
     make
     make install
 
 SuperLU v4.3
 ~~~~~~~~~~~~
 
-SuperLU is provided `here <http://crd-legacy.lbl.gov/~xiaoye/SuperLU/>`__.
+SuperLU is a deprecated, optional package provided `here <http://crd-legacy.lbl.gov/~xiaoye/SuperLU/>`__. KLU2, as described in the Amesos2 documentation `here <https://trilinos.github.io/amesos2.html>`__, is automatically used in place of SuperLU if not included. If desired, a SuperLU build can instead use KLU2 in place of SuperLU by specifying as such in the MueLu .xml configuration file as follows.
+
+::
+
+  <Parameter name="coarse: type" type="string" value="klu2"/>
+
+ 
 
 Prepare:
 
@@ -89,7 +94,7 @@ Edit ``make.inc`` as shown below (diffs shown from baseline).
     CC            = mpicc
     FORTRAN       = mpif77
 
-On some platforms, the ``$nalu_insall_dir`` may be mangled and, thus the make will fail. In such cases, you 
+On some platforms, the ``$nalu_install_dir`` may be mangled and, thus the make will fail. In such cases, you 
 need to use the entire path to ``your_path_to_install/SuperLU_4.3``.
 
 Next, make some new directories:
@@ -109,7 +114,7 @@ permission on a particular file, ``chmod g+r  $nalu_install_dir/SuperLU/4.3/incl
 Libxml2 v2.9.2
 ~~~~~~~~~~~~~~
 
-Libxml2 is found `here <http://www.xmlsoft.org/sources/>`__.
+Libxml2, which is no longer required for most Nalu builds, is found `here <http://www.xmlsoft.org/sources/>`__.
 
 Prepare:
 
@@ -206,34 +211,34 @@ Build:
     make
     make install
 
-HDF5 v1.10.4
+HDF5 v1.10.6
 ~~~~~~~~~~~~
 
-HDF5 1.10.4 is provided `here <http://www.hdfgroup.org/downloads/index.html>`__.
+HDF5 1.10.6 is provided `here <http://www.hdfgroup.org/downloads/index.html>`__.
 
 Prepare:
 
 ::
 
     cd $nalu_build_dir/packages/
-    tar -zxvf hdf5-1.10.4.tar.gz
+    tar -xvf hdf5-1.10.6.tar
 
 Build:
 
 ::
 
-    cd $nalu_build_dir/packages/hdf5-1.10.4
-    ./configure CC=mpicc FC=mpif90 CXX=mpicxx CXXFLAGS="-fPIC -O3" CFLAGS="-fPIC -O3" FCFLAGS="-fPIC -O3" --enable-parallel --with-zlib=$nalu_install_dir/zlib/1.2.11 --prefix=$nalu_install_dir/hdf5/1.10.4
+    cd $nalu_build_dir/packages/hdf5-1.10.6
+    ./configure CC=mpicc FC=mpif90 CXX=mpicxx CXXFLAGS="-fPIC -O3" CFLAGS="-fPIC -O3" FCFLAGS="-fPIC -O3" --enable-parallel --with-zlib=$nalu_install_dir/zlib/1.2.11 --prefix=$nalu_install_dir/hdf5/1.10.6
     make
     make install
     make check
 
-NetCDF v4.6.1 and Parallel NetCDF v1.10.1
+NetCDF v4.7.1 and Parallel NetCDF v1.12.1
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In order to support all aspects of Nalu's parallel models, NetCDF and Parallel NetCFD must be consistent.
 
-Parallel NetCDF v1.10.0
+Parallel NetCDF v1.12.1
 **********************
 
 Parallel NetCDF is provided on the `Argon Trac Page <https://trac.mcs.anl.gov/projects/parallel-netcdf/wiki/Download>`__. Newer versions
@@ -244,20 +249,20 @@ Prepare:
 ::
 
     cd $nalu_build_dir/packages/
-    tar -zxvf parallel-netcdf-1.10.0.tar.gz
+    tar -zxvf pnetcdf-1.12.1.tar.gz
 
 Build:
 
 ::
 
-    cd parallel-netcdf-1.10.0
-    ./configure --prefix=$nalu_install_dir/pnetcdf/1.10.0 CC=mpicc FC=mpif90 CXX=mpicxx CFLAGS="-I$nalu_install_dir/pnetcdf/1.10.0/include -O3" LDFLAGS=-L$nalu_install_dir/pnetcdf/1.10.0/lib --disable-fortran
+    cd pnetcdf-1.12.1
+    ./configure --prefix=$nalu_install_dir/pnetcdf/1.12.1 CC=mpicc FC=mpif90 CXX=mpicxx CFLAGS="-I$nalu_install_dir/pnetcdf/1.12.1/include -O3" LDFLAGS=-L$nalu_install_dir/pnetcdf/1.12.1/lib --disable-fortran
     make
     make install
 
 Note that we have created an install directory that might look like ``$nalu_build_dir/install``.
 
-NetCDF v4.6.1
+NetCDF v4.7.4
 ***************
 
 NetCDF is provided `here <https://github.com/Unidata/netcdf-c/releases>`__.
@@ -267,15 +272,15 @@ Prepare:
 ::
 
     cd $nalu_build_dir/packages/
-    curl -o netcdf-c-4.6.1.tar.gz https://codeload.github.com/Unidata/netcdf-c/tar.gz/v4.6.1
-    tar -zxvf netcdf-c-4.6.1.tar.gz 
+    curl -o netcdf-c-4.7.4.tar.gz https://codeload.github.com/Unidata/netcdf-c/tar.gz/v4.7.4
+    tar -zxvf netcdf-c-4.7.4.tar.gz 
 
 Build:
 
 ::
 
-    cd netcdf-c-4.6.1/
-    ./configure --prefix=$nalu_install_dir/netcdf/4.6.1 CC=mpicc FC=mpif90 CXX=mpicxx CFLAGS="-I$nalu_install_dir/hdf5/1.10.4/include -I$nalu_install_dir/pnetcdf/1.10.0/include -O3" CPPFLAGS=${CFLAGS} LDFLAGS="-L$nalu_install_dir/hdf5/1.10.4/lib -L$nalu_install_dir/pnetcdf/1.10.0/lib -Wl,--rpath=$nalu_install_dir/hdf5/1.10.4/lib" --enable-pnetcdf --enable-parallel-tests --enable-netcdf-4 --disable-shared --disable-fsync --disable-cdmremote --disable-dap --disable-doxygen --disable-v2
+    cd netcdf-c-4.7.4/
+    ./configure --prefix=$nalu_install_dir/netcdf/4.7.4 CC=mpicc FC=mpif90 CXX=mpicxx CFLAGS="-I$nalu_install_dir/hdf5/1.10.6/include -I$nalu_install_dir/pnetcdf/1.12.1/include -O3" CPPFLAGS=${CFLAGS} LDFLAGS="-L$nalu_install_dir/hdf5/1.10.6/lib -L$nalu_install_dir/pnetcdf/1.12.1/lib -L$nalu_install_dir/zlib/1.2.11/lib -Wl,--rpath=$nalu_install_dir/hdf5/1.10.6/lib" --enable-pnetcdf --enable-parallel-tests --enable-netcdf-4 --disable-shared --disable-fsync --disable-cdmremote --disable-dap --disable-doxygen --disable-v2
     make -j 4 
     make check
     make install
@@ -303,12 +308,13 @@ HYPRE
 Nalu can use HYPRE solvers and preconditioners, especially for Pressure Poisson
 solves. However, this dependency is optional and is not enabled by default.
 Users wishing to use HYPRE solver and preconditioner combination must compile
-HYPRE library and link to it when building Nalu.
+HYPRE library and link to it when building Nalu. This capability is not tested 
+nightly.
 
 .. code-block:: bash
 
    # 1. Clone hypre sources
-   https://github.com/LLNL/hypre.git
+   https://github.com/hypre-space/hypre
    cd hypre/src
 
    # 2. Configure HYPRE package and pass installation directory
@@ -369,7 +375,8 @@ ParaView Catalyst
 
 Optionally enable `ParaView Catalyst <https://www.paraview.org/in-situ/>`__
 for in-situ visualization with Nalu. These instructions can be skipped if 
-you do not require in-situ visualization with Nalu.
+you do not require in-situ visualization with Nalu. This capability is not
+tested nightly.
 
 Build ParaView SuperBuild v5.3.0
 ********************************

@@ -585,6 +585,19 @@ namespace YAML
     return true;
   }
 
+  bool convert<sierra::nalu::TurbDiss>::decode(const Node& node,
+    sierra::nalu::TurbDiss& eps)
+  {
+    if (!node.IsScalar())
+    {
+      return false;
+    }
+
+    eps.turbDiss_ = node.as<double>();
+
+    return true;
+  }
+
   bool convert<sierra::nalu::Temperature>::decode(const Node& node,
     sierra::nalu::Temperature& t)
   {
@@ -625,6 +638,19 @@ namespace YAML
     {
       yk.massFraction_[k] = node[k].as<double>();
     }
+
+    return true;
+  }
+
+  bool convert<sierra::nalu::VolumeOfFluid>::decode(const Node& node,
+    sierra::nalu::VolumeOfFluid& vof)
+  {
+    if (!node.IsScalar())
+    {
+      return false;
+    }
+
+    vof.vof_ = node.as<double>();
 
     return true;
   }
@@ -876,6 +902,12 @@ namespace YAML
         "specific_dissipation rate at walls is provided by a model, not the user");
     }
 
+    if (node["turbulent_dissipation"])
+    {
+      throw std::runtime_error(
+        "turbulent_dissipation at walls is provided by a model, not the user");
+    }
+
     if (node["heat_flux"])
     {
       wallData.q_ = node["heat_flux"].as<sierra::nalu::NormalHeatFlux>();
@@ -955,6 +987,12 @@ namespace YAML
           sierra::nalu::SpecDissRate>();
       inflowData.sdrSpec_ = true;
     }
+    if (node["turbulent_dissipation"])
+    {
+      inflowData.eps_ = node["turbulent_dissipation"].as<
+          sierra::nalu::TurbDiss>();
+      inflowData.epsSpec_ = true;
+    }
     if (node["mixture_fraction"])
     {
       inflowData.mixFrac_ = node["mixture_fraction"].as<
@@ -966,6 +1004,12 @@ namespace YAML
       inflowData.massFraction_ = node["mass_fraction"].as<
           sierra::nalu::MassFraction>();
       inflowData.massFractionSpec_ = true;
+    }
+    if (node["volume_of_fluid"])
+    {
+      inflowData.vof_ = node["volume_of_fluid"].as<
+          sierra::nalu::VolumeOfFluid>();
+      inflowData.vofSpec_ = true;
     }
     if (node["temperature"])
     {
@@ -1030,6 +1074,12 @@ namespace YAML
       openData.sdr_ = node["specific_dissipation_rate"].as<
           sierra::nalu::SpecDissRate>();
       openData.sdrSpec_ = true;
+    }
+    if (node["turbulent_dissipation_"])
+    {
+      openData.eps_ = node["turbulent_dissipation"].as<
+          sierra::nalu::TurbDiss>();
+      openData.epsSpec_ = true;
     }
     if (node["pressure"])
     {

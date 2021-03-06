@@ -111,10 +111,11 @@ realms:
         pressure: 0.0
         turbulent_ke: 1.0e-16
         mixture_fraction: 0.0
+        use_total_pressure: yes
 
     solution_options:
       name: myOptions
-      turbulence_model: ksgs
+      turbulence_model: dynamic_ksgs
 
       use_consolidated_solver_algorithm: yes
       use_consolidated_face_elem_bc_algorithm: yes
@@ -160,6 +161,8 @@ realms:
        - mixture_fraction
        - scalar_variance
        - scalar_dissipation
+       - c_epsilon
+       - c_mu_epsilon
 
     restart:
       restart_data_base_name: milestoneRunConsolidated_A.rst
@@ -173,7 +176,7 @@ Time_Integrators:
       time_step: 1.0e-4
       time_stepping_type: fixed 
       time_step_count: 0
-      second_order_accuracy: no
+      second_order_accuracy: yes
 
       realms: 
         - realm_1

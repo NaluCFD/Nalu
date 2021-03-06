@@ -422,7 +422,7 @@ RadiativeTransportEquationSystem::register_nodal_fields(
   stk::mesh::put_field_on_mesh(*divRadiativeHeatFlux_, *part, nullptr);
   realm_.augment_restart_variable_list(divRadiativeHeatFlux_->name());
 
-  divRadiativeHeatFluxLin_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "div_radiative_heat_flux_linearization"));
+  divRadiativeHeatFluxLin_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "div_radiative_heat_flux_lin"));
   stk::mesh::put_field_on_mesh(*divRadiativeHeatFluxLin_, *part, nullptr);
   realm_.augment_restart_variable_list(divRadiativeHeatFluxLin_->name());
   

@@ -326,7 +326,7 @@ SpecificDissipationRateEquationSystem::register_interior_algorithm(
         }
         break;
       default:
-        throw std::runtime_error("Unsupported turbulence model in TurbKe: only SST and SST_DES supported");
+        throw std::runtime_error("Unsupported turbulence model in SpecificDR: only SST and SST_DES supported");
       }
       theAlg->supplementalAlg_.push_back(theSrc);
 

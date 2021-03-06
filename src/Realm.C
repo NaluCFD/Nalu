@@ -405,6 +405,10 @@ Realm::initialize()
   // post processing algorithm creation
   setup_post_processing_algorithms();
 
+  // Create six_dof surface integration algorithms
+  if ( solutionOptions_->meshMotion_ )
+    equationSystems_.register_surface_six_dof_algorithm();
+
   // create initial conditions
   setup_initial_conditions();
 
@@ -481,13 +485,13 @@ Realm::initialize()
   if ( hasPeriodic_ )
     periodicManager_->build_constraints();
 
+  if ( hasOverset_ )
+    initialize_overset();
+
   compute_geometry();
 
   if ( hasNonConformal_ )
     initialize_non_conformal();
-
-  if ( hasOverset_ )
-    initialize_overset();
 
   initialize_post_processing_algorithms();
 
@@ -1176,6 +1180,22 @@ Realm::setup_property()
         }
         break;
 
+        case VOF_MAT:
+        {
+          // extract the volume of fluiod field
+          ScalarFieldType *vof = metaData_->get_field<ScalarFieldType>(stk::topology::NODE_RANK, "volume_of_fluid");
+
+          // primary and secondary
+          const double phaseOne = matData->phaseOne_;
+          const double phaseTwo = matData->phaseTwo_;
+
+          // everything is linear weighting
+          LinearPropAlgorithm *auxAlg
+            = new LinearPropAlgorithm( *this, targetPart, thePropField, vof, phaseOne, phaseTwo);
+          propertyAlg_.push_back(auxAlg);
+        }
+        break;
+
         case POLYNOMIAL_MAT:
         {
 
@@ -1536,7 +1556,8 @@ Realm::pre_timestep_work()
 {
   // check for mesh motion
   if ( solutionOptions_->meshMotion_ ) {
-
+    
+    update_six_dof_motion();
     process_mesh_motion();
     compute_geometry();
 
@@ -2072,6 +2093,42 @@ Realm::query_for_overset()
 }
 
 //--------------------------------------------------------------------------
+//-------- update_six_dof_motion -------------------------------------------
+//--------------------------------------------------------------------------
+void
+Realm::update_six_dof_motion()
+{
+  // extract parameters
+  std::map<std::string, MeshMotionInfo *>::const_iterator iter;
+  for ( iter = solutionOptions_->meshMotionInfoMap_.begin();
+        iter != solutionOptions_->meshMotionInfoMap_.end(); ++iter) {
+
+    // extract mesh info object
+    MeshMotionInfo *meshInfo = iter->second;
+
+    // mesh motion block
+    std::vector<std::string> meshMotionBlock = meshInfo->meshMotionBlock_;
+
+    // proceed with setting mesh motion information on the Nalu mesh
+    for (size_t k = 0; k < meshMotionBlock.size(); ++k ) {
+      
+      stk::mesh::Part *targetPart = metaData_->get_part(meshMotionBlock[k]);
+      
+      if ( NULL == targetPart ) {
+        throw std::runtime_error("Realm::process_mesh_motion() Error Error, no part name found" + meshMotionBlock[k]);
+      }
+      else {
+        if (meshInfo->sixDof_) {
+          update_body_vel(*meshInfo,get_time_step());
+          update_body_cc(*meshInfo,get_time_step());
+        }
+      }
+    }
+  }
+}
+
+
+//--------------------------------------------------------------------------
 //-------- process_mesh_motion ---------------------------------------------
 //--------------------------------------------------------------------------
 void
@@ -2113,10 +2170,18 @@ Realm::process_mesh_motion()
         throw std::runtime_error("Realm::process_mesh_motion() Error Error, no part name found" + meshMotionBlock[k]);
       }
       else {
-        set_omega(targetPart, theOmega);
-        set_current_displacement(targetPart, meshInfo->centroid_, unitVec);
-        set_current_coordinates(targetPart);
-        set_mesh_velocity(targetPart, meshInfo->centroid_, unitVec);
+        if (meshInfo->sixDof_) {
+          set_displacement_six_dof(targetPart, meshInfo->centroid_, meshInfo->bodyDispCC_, 
+            meshInfo->bodyAngle_);
+          set_current_coordinates(targetPart);
+          set_mesh_velocity_six_dof(targetPart, *meshInfo);
+        }
+        else { 
+          set_omega(targetPart, theOmega);
+          set_current_displacement(targetPart, meshInfo->centroid_, unitVec);
+          set_current_coordinates(targetPart);
+          set_mesh_velocity(targetPart, meshInfo->centroid_, unitVec);
+        }
       }
     }
   }
@@ -2184,6 +2249,309 @@ Realm::compute_centroid_on_parts(
     centroid[j] = 0.5*(g_maxCoord[j] + g_minCoord[j]);
 }
 
+//--------------------------------------------------------------------------
+//-------- get_rotmat_from_quat --------------------------------------------
+//--------------------------------------------------------------------------
+std::vector<double>
+Realm::get_rotmat_from_quat(
+  std::vector<double> &quat,
+  bool to_frame)
+{
+  std::vector<double> rotMat(9,0.0);
+
+  rotMat[0] = 2.0*(quat[0]*quat[0]+quat[1]*quat[1]-0.5);
+  rotMat[1] = 2.0*(quat[1]*quat[2]-quat[0]*quat[3]);
+  rotMat[2] = 2.0*(quat[1]*quat[3]+quat[0]*quat[2]);
+  rotMat[3] = 2.0*(quat[1]*quat[2]+quat[0]*quat[3]);
+  rotMat[4] = 2.0*(quat[0]*quat[0]+quat[2]*quat[2]-0.5);
+  rotMat[5] = 2.0*(quat[2]*quat[3]-quat[0]*quat[1]);
+  rotMat[6] = 2.0*(quat[1]*quat[3]-quat[0]*quat[2]);
+  rotMat[7] = 2.0*(quat[2]*quat[3]+quat[0]*quat[1]);
+  rotMat[8] = 2.0*(quat[0]*quat[0]+quat[3]*quat[3]-0.5);
+
+  if (!to_frame) {
+    // Calculate inverse of rotation matrix 
+    double det = rotMat[0]*(rotMat[4]*rotMat[8]-rotMat[7]*rotMat[5])-
+      rotMat[1]*(rotMat[3]*rotMat[8]-rotMat[6]*rotMat[5])+
+      rotMat[2]*(rotMat[3]*rotMat[7]-rotMat[4]*rotMat[6]);
+
+    if ( det < FLT_MIN ) {
+      std::fill(rotMat.begin(), rotMat.end(), 0.0);
+      rotMat[0] = 1.0;
+      rotMat[4] = 1.0;
+      rotMat[8] = 1.0;
+    }
+    else {
+      std::vector<double> rotMati(9,0.0); 
+      det = 1.0/det;
+      rotMati[0] = (rotMat[4]*rotMat[8]-rotMat[5]*rotMat[7])*det;
+      rotMati[1] = -(rotMat[1]*rotMat[8]-rotMat[2]*rotMat[7])*det;
+      rotMati[2] = (rotMat[1]*rotMat[5]-rotMat[2]*rotMat[4])*det;
+      rotMati[3] = -(rotMat[3]*rotMat[8]-rotMat[5]*rotMat[6])*det;
+      rotMati[4] = (rotMat[0]*rotMat[8]-rotMat[2]*rotMat[6])*det;
+      rotMati[5] = -(rotMat[0]*rotMat[5]-rotMat[3]*rotMat[2])*det;
+      rotMati[6] = (rotMat[3]*rotMat[7]-rotMat[4]*rotMat[6])*det;
+      rotMati[7] = -(rotMat[0]*rotMat[7]-rotMat[1]*rotMat[6])*det;
+      rotMati[8] = (rotMat[0]*rotMat[4]-rotMat[1]*rotMat[3])*det;
+
+      return rotMati;
+    }
+  }
+  return rotMat;
+
+}
+
+//--------------------------------------------------------------------------
+//-------- get_eulerxyz_from_quat ------------------------------------------
+//--------------------------------------------------------------------------
+std::vector<double>
+Realm::get_eulerxyz_from_quat(
+  const std::vector<double> &quat)
+{
+  std::vector<double> angle(3,0.0);
+  angle[0] = std::atan2(2.0*(quat[0]*quat[1]+quat[2]*quat[3]),
+    quat[0]*quat[0]-quat[1]*quat[1]-quat[2]*quat[2]+quat[3]*quat[3]);
+  angle[1] = std::asin(-2.0*(quat[1]*quat[3]-quat[0]*quat[2]));
+  angle[2] = std::atan2(2.0*(quat[2]*quat[1]+quat[0]*quat[3]),
+    quat[0]*quat[0]+quat[1]*quat[1]-quat[2]*quat[2]-quat[3]*quat[3]);
+
+  return angle;
+}
+
+//--------------------------------------------------------------------------
+//-------- get_quat_from_eulerxyz ------------------------------------------
+//--------------------------------------------------------------------------
+std::vector<double>
+Realm::get_quat_from_eulerxyz(
+  const std::vector<double> &bodyAngle)
+{
+  std::vector<double> quat(4,0.0);
+  std::vector<double> c(3);
+  std::vector<double> s(3);
+
+  c[0] = std::cos(bodyAngle[0]*0.5);
+  c[1] = std::cos(bodyAngle[1]*0.5);
+  c[2] = std::cos(bodyAngle[2]*0.5);
+  s[0] = std::sin(bodyAngle[0]*0.5);
+  s[1] = std::sin(bodyAngle[1]*0.5);
+  s[2] = std::sin(bodyAngle[2]*0.5);
+
+  quat[0] = c[0]*c[1]*c[2]+s[0]*s[1]*s[2];
+  quat[1] = s[0]*c[1]*c[2]-c[0]*s[1]*s[2];
+  quat[2] = c[0]*s[1]*c[2]+s[0]*c[1]*s[2];
+  quat[3] = c[0]*c[1]*s[2]-s[0]*s[1]*c[2];  
+
+  double qmag = std::sqrt( quat[0]*quat[0] +
+                           quat[1]*quat[1] +
+                           quat[2]*quat[2] +
+                           quat[3]*quat[3] );
+
+  for ( size_t i = 0; i < 4; ++i ) 
+    quat[i] /= qmag;
+  
+  return quat;
+
+}
+
+//--------------------------------------------------------------------------
+//-------- convert_vect_between_frames -------------------------------------
+//--------------------------------------------------------------------------
+std::vector<double>
+Realm::convert_vect_to_orig_frame(
+  const std::vector<double> &vect,
+  const std::vector<double> &bodyAngle,
+  bool to_lab_frame)
+{
+
+  // Get quaternion from angles
+  std::vector<double> quat = get_quat_from_eulerxyz(bodyAngle);
+
+  // Get rotation matrix
+  std::vector<double> rotMat = get_rotmat_from_quat(quat, to_lab_frame);
+
+  std::vector<double> vectReturn(3,0.0);
+
+  vectReturn[0] = rotMat[0]*vect[0] + rotMat[1]*vect[1] + rotMat[2]*vect[2];
+  vectReturn[1] = rotMat[3]*vect[0] + rotMat[4]*vect[1] + rotMat[5]*vect[2];
+  vectReturn[2] = rotMat[6]*vect[0] + rotMat[7]*vect[1] + rotMat[8]*vect[2];
+
+  return vectReturn; 
+
+}
+
+//--------------------------------------------------------------------------
+//-------- assess_rigid_euler_rhs ------------------------------------------
+//--------------------------------------------------------------------------
+double
+Realm::assess_rigid_euler_rhs(
+  double momentRHS,
+  double omega1RHS,
+  double omega2RHS,
+  double i0LHS,
+  double i1RHS,
+  double i2RHS)
+{
+
+  double rhs = 0.0;
+  if ( i0LHS > FLT_MIN ) {
+    rhs = (momentRHS-(i1RHS-i2RHS)*omega1RHS*omega2RHS)/i0LHS;
+  }
+
+  return rhs;
+  
+}
+//--------------------------------------------------------------------------
+//-------- evaluate_quat_rhs ----------------------------------------------
+//--------------------------------------------------------------------------
+void
+Realm::evaluate_quat_rhs(
+  std::vector<double> &quat,
+  std::vector<double> &omega,
+  std::vector<double> &qrhs)
+{
+  qrhs[0] = (-quat[1]*omega[0]-quat[2]*omega[1]-quat[3]*omega[2])*0.5;
+  qrhs[1] = ( quat[0]*omega[0]+quat[3]*omega[1]-quat[2]*omega[2])*0.5;
+  qrhs[2] = (-quat[3]*omega[0]+quat[0]*omega[1]+quat[1]*omega[2])*0.5;
+  qrhs[3] = ( quat[2]*omega[0]-quat[1]*omega[1]+quat[0]*omega[2])*0.5;
+}
+
+//--------------------------------------------------------------------------
+//-------- update_body_cc --------------------------------------------------
+//--------------------------------------------------------------------------
+void
+Realm::update_body_cc(
+  MeshMotionInfo &motion,
+  double dt)
+{
+
+  for ( size_t i = 0; i < 3; ++i ) {
+    motion.bodyDispCC_[i] += motion.bodyVel_[i]*dt;
+  }
+
+  // angle -> quaternion -> RK4 using Omega -> angle
+  std::vector<double> quat = get_quat_from_eulerxyz(
+    motion.bodyAngle_);
+  std::vector<double> quatm(quat);
+  std::vector<double> qrhs(4,0.0);
+  std::vector<double> rk_fact(4,0.0);
+  double k[4][4];
+
+  rk_fact[0] = 0.5*dt;
+  rk_fact[1] = 0.5*dt;
+  rk_fact[2] = dt;
+
+  for ( size_t i = 0; i < 4; ++i ) {
+    evaluate_quat_rhs(quatm, motion.bodyOmega_, qrhs);
+    std::copy(qrhs.begin(), qrhs.end(), k[i]);
+    for ( size_t j = 0; j < 4; ++j ) {
+      quatm[j] = quat[j] + dt*rk_fact[i]*qrhs[j];
+    } 
+  }
+  quat[0] += dt/6.0*(k[0][0]+k[1][0]+k[2][0]+k[3][0]);
+  quat[1] += dt/6.0*(k[0][1]+k[1][1]+k[2][1]+k[3][1]);
+  quat[2] += dt/6.0*(k[0][2]+k[1][2]+k[2][2]+k[3][2]);
+  quat[3] += dt/6.0*(k[0][3]+k[1][3]+k[2][3]+k[3][3]);
+
+  // Extract angle from Quat
+  motion.bodyAngle_ = get_eulerxyz_from_quat(quat);
+
+}
+
+//--------------------------------------------------------------------------
+//-------- advance_omega_dt ------------------------------------------------
+//--------------------------------------------------------------------------
+void
+Realm::advance_omega_dt(
+  std::vector<double> &bodyFrameOme,
+  std::vector<double> &bodyFrameIne,
+  std::vector<double> &bodyFrameMom,
+  double dt)
+{
+
+  // Advance using RK4 
+  std::vector<double> omegam(bodyFrameOme);
+  std::vector<double> rk_fact(4,0.0);
+  double k[3][4];
+
+  rk_fact[0] = 0.5*dt;
+  rk_fact[1] = 0.5*dt;
+  rk_fact[2] = dt;
+
+  for ( size_t i = 0; i < 4; ++i) {
+    k[0][i] = 0.0;
+    k[1][i] = 0.0;
+    k[2][i] = 0.0;
+  }
+
+  for ( size_t i = 0; i < 4; ++i) {
+    k[0][i] = assess_rigid_euler_rhs(bodyFrameMom[0],
+      omegam[2],
+      omegam[1],
+      bodyFrameIne[0],
+      bodyFrameIne[2],
+      bodyFrameIne[1]);
+    k[1][i] = assess_rigid_euler_rhs(bodyFrameMom[1],
+      omegam[0],
+      omegam[2],
+      bodyFrameIne[1],
+      bodyFrameIne[0],
+      bodyFrameIne[2]);
+    k[2][i] = assess_rigid_euler_rhs(bodyFrameMom[2],
+      omegam[1],
+      omegam[0],
+      bodyFrameIne[2],
+      bodyFrameIne[1],
+      bodyFrameIne[0]);
+    for ( size_t j = 0; j < 3; ++j) {
+      omegam[j] = bodyFrameOme[j]+rk_fact[i]*dt;
+    }    
+  }
+  
+  bodyFrameOme[0] += (dt/6.0)*(k[0][0]+2.0*k[0][1]+2.0*k[0][2]+k[0][3]);
+  bodyFrameOme[1] += (dt/6.0)*(k[1][0]+2.0*k[1][1]+2.0*k[1][2]+k[1][3]);
+  bodyFrameOme[2] += (dt/6.0)*(k[2][0]+2.0*k[2][1]+2.0*k[2][2]+k[2][3]);
+
+}
+
+//--------------------------------------------------------------------------
+//-------- update_body_vel -------------------------------------------------
+//--------------------------------------------------------------------------
+void
+Realm::update_body_vel(
+  MeshMotionInfo &motion,
+  double dt)
+{
+  std::vector<double> bodyAccel(3,0.0);
+  std::vector<double> bodyAlpha(3,0.0);
+
+  // Get acceleration and update velocity from updated force
+  if ( motion.bodyMass_ > 0.0 ) {
+    for ( size_t i = 0; i < 3; ++i ) {
+      motion.bodyAccel_[i] = 0.5*motion.bodyAccel_[i]+
+        0.5*(motion.bodyForce_[i]+motion.appliedForce_[i])/motion.bodyMass_;
+      motion.bodyVel_[i] = motion.bodyVel_[i] + dt*motion.bodyAccel_[i];
+    }
+  }
+  
+  // Convert back into body frame
+  std::vector<double> bodyFrameOme = convert_vect_to_orig_frame(motion.bodyOmega_,
+    motion.bodyAngle_, false);
+  std::vector<double> bodyFrameMom = convert_vect_to_orig_frame(motion.bodyMom_,
+    motion.bodyAngle_, false);
+
+  advance_omega_dt(
+    bodyFrameOme,
+    motion.bodyPrincInertia_,
+    motion.bodyMom_,
+    dt);
+
+  // Convert back to lab frame
+  motion.bodyOmega_ = convert_vect_to_orig_frame(
+    bodyFrameOme,
+    motion.bodyAngle_, 
+    true);
+
+}
 
 //--------------------------------------------------------------------------
 //-------- set_omega -------------------------------------------------------
@@ -2319,13 +2687,81 @@ Realm::process_initial_displacement()
         throw std::runtime_error("Realm::process_mesh_motion() Error Error, no part name found" + meshMotionBlock[k]);
       }
       else {
-        set_initial_displacement(targetPart, meshInfo->centroid_, unitVec, meshInfo->theAngle_);
+        if ( meshInfo->sixDof_ ) {
+          set_displacement_six_dof(targetPart, meshInfo->centroid_, meshInfo->bodyDispCC_,
+            meshInfo->bodyAngle_);
+        }
+        else { 
+          set_initial_displacement(targetPart, meshInfo->centroid_, unitVec, meshInfo->theAngle_);
+        }
         set_current_coordinates(targetPart);
       }
     }
   }
 }
 
+//--------------------------------------------------------------------------
+//-------- set_displacement_six_dof ----------------------------------------
+//--------------------------------------------------------------------------
+void
+Realm::set_displacement_six_dof(
+  stk::mesh::Part *targetPart,
+  const std::vector<double> &centroidCoords,
+  const std::vector<double> &centroidDisp,
+  const std::vector<double> &bodyAngle)
+{
+  const int nDim = metaData_->spatial_dimension();
+
+  // Calculate full Quaternion
+  std::vector<double> q(4,0.0);
+  std::vector<double> rotMat(9,0.0);
+
+  q = get_quat_from_eulerxyz(bodyAngle);
+  rotMat = get_rotmat_from_quat(q);
+
+  // local space; Nalu current coords and rotated coords; generalized for 2D and 3D
+  double mcX[3] = {0.0,0.0,0.0};
+  double rcX[3] = {0.0,0.0,0.0};
+
+  VectorFieldType *modelCoords = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates");
+  VectorFieldType *displacement = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_displacement");
+
+  stk::mesh::Selector s_all_nodes = stk::mesh::Selector(*targetPart);
+
+  stk::mesh::BucketVector const& node_buckets = bulkData_->get_buckets( stk::topology::NODE_RANK, s_all_nodes );
+
+  for ( stk::mesh::BucketVector::const_iterator ib = node_buckets.begin() ;
+        ib != node_buckets.end() ; ++ib ) {
+    stk::mesh::Bucket & b = **ib ;
+    const stk::mesh::Bucket::size_type length   = b.size();
+    const double * mCoords = stk::mesh::field_data(*modelCoords, b);
+    double * dx = stk::mesh::field_data(*displacement, b);
+    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+
+      const int kNdim = k*nDim;
+    
+      // load the current and model coords
+      for ( int i = 0; i < nDim; ++i ) {
+        mcX[i] = mCoords[kNdim+i];
+      }
+
+      const double cX = mcX[0]-centroidCoords[0]; 
+      const double cY = mcX[1]-centroidCoords[1]; 
+      const double cZ = mcX[2]-centroidCoords[2]; 
+
+      // rotated model coordinates; converted to displacement; add back in centroid
+      rcX[0] = rotMat[0]*cX + rotMat[1]*cY + rotMat[2]*cZ - mcX[0] + centroidCoords[0] + centroidDisp[0];
+      rcX[1] = rotMat[3]*cX + rotMat[4]*cY + rotMat[5]*cZ - mcX[1] + centroidCoords[1] + centroidDisp[1];
+      rcX[2] = rotMat[6]*cX + rotMat[7]*cY + rotMat[8]*cZ - mcX[2] + centroidCoords[2] + centroidDisp[2];
+      
+      // set displacement
+      for ( int i = 0; i < nDim; ++i ) {
+        dx[kNdim+i] = rcX[i];
+      }
+    }
+  }
+
+}
 //--------------------------------------------------------------------------
 //-------- set_initial_displacement ----------------------------------------
 //--------------------------------------------------------------------------
@@ -2425,6 +2861,54 @@ Realm::set_current_coordinates(
   }
 }
 
+//--------------------------------------------------------------------------
+//-------- set_mesh_velocity_six_dof ---------------------------------------
+//--------------------------------------------------------------------------
+void
+Realm::set_mesh_velocity_six_dof(
+  stk::mesh::Part *targetPart,
+  MeshMotionInfo &motion)
+{
+  const int nDim = metaData_->spatial_dimension();
+
+  // local space; omega*normal, coords, velocity and Nalu current coords
+  double cX[3] = {0.0,0.0,0.0};
+  double uX[3] = {0.0,0.0,0.0};
+  double ccX[3] = {0.0,0.0,0.0};
+  
+  VectorFieldType *currentCoords = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, "current_coordinates");
+  VectorFieldType *meshVelocity = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_velocity");
+
+  stk::mesh::Selector s_all_nodes = stk::mesh::Selector(*targetPart);
+
+  stk::mesh::BucketVector const& node_buckets = bulkData_->get_buckets( stk::topology::NODE_RANK, s_all_nodes );
+  for ( stk::mesh::BucketVector::const_iterator ib = node_buckets.begin() ;
+        ib != node_buckets.end() ; ++ib ) {
+    stk::mesh::Bucket & b = **ib ;
+    const stk::mesh::Bucket::size_type length   = b.size();
+    const double * cCoords = stk::mesh::field_data(*currentCoords, b);
+    double * vnp1 = stk::mesh::field_data(*meshVelocity, b);
+    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+      const int offSet = k*nDim;
+
+      // load the current coords
+      for ( int i = 0; i < nDim; ++i ) {
+        ccX[i] = cCoords[offSet+i];    
+      }
+      
+      // compute relative coords and vector omega (dimension 3) for general cross product
+      for ( unsigned i = 0; i < 3; ++i ) {
+        cX[i] = ccX[i] - (motion.centroid_[i] + motion.bodyDispCC_[i]);
+      }
+      
+      mesh_velocity_cross_product(motion.bodyOmega_.data(), cX, uX);
+      
+      for ( int i = 0; i < nDim; ++i ) {
+        vnp1[offSet+i] =  uX[i]+motion.bodyVel_[i];
+      }
+    }
+  }
+}
 //--------------------------------------------------------------------------
 //-------- set_mesh_velocity -----------------------------------------------
 //--------------------------------------------------------------------------
