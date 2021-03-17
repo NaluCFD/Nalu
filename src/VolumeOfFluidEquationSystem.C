@@ -1,4 +1,4 @@
-/*------------------------------------------------------------------------*/
+//*------------------------------------------------------------------------*/
 /*  Copyright 2014 Sandia Corporation.                                    */
 /*  This software is released under the license detailed                  */
 /*  in the file, LICENSE, which is located in the top-level Nalu          */
@@ -41,6 +41,7 @@
 #include "AssembleElemSolverAlgorithm.h"
 #include "kernel/VolumeOfFluidElemKernel.h"
 #include "kernel/VolumeOfFluidSucvNsoElemKernel.h"
+#include "kernel/VolumeOfFluidSharpenElemKernel.h"
 
 // user function
 #include "user_functions/RayleighTaylorMixFracAuxFunction.h"
@@ -85,18 +86,28 @@ namespace nalu{
 VolumeOfFluidEquationSystem::VolumeOfFluidEquationSystem(
   EquationSystems& eqSystems,
   const bool outputClippingDiag,
-  const double deltaVofClip)
+  const double deltaVofClip,
+  const double Fo,
+  const double cAlpha,
+  const bool smooth,
+  const int smoothIter)
   : EquationSystem(eqSystems, "VolumeOfFluidEQS", "volume_of_fluid"),
     managePNG_(realm_.get_consistent_mass_matrix_png("volume_of_fluid")),
-    outputClippingDiag_(outputClippingDiag),
-    deltaVofClip_(deltaVofClip),
     vof_(NULL),
     vofSmoothed_(NULL),
+    smoothedRhs_(NULL),
     interfaceNormal_(NULL),
     dvofdx_(NULL),
     vofTmp_(NULL),
     assembleNodalGradAlgDriver_(new AssembleNodalGradAlgorithmDriver(realm_, "volume_of_fluid", "dvofdx")),
     projectedNodalGradEqs_(NULL),
+    outputClippingDiag_(outputClippingDiag),
+    deltaVofClip_(deltaVofClip),
+    Fo_(Fo),
+    cAlpha_(cAlpha),
+    dxMin_(1.0e16),
+    smooth_(smooth),
+    smoothIter_(smoothIter),
     isInit_(true)
 {
   // extract solver name and solver object
@@ -119,6 +130,14 @@ VolumeOfFluidEquationSystem::VolumeOfFluidEquationSystem(
   if ( managePNG_ ) {
     manage_projected_nodal_gradient(eqSystems);
   }
+
+  // output options
+  if ( smooth_ ) {
+    NaluEnv::self().naluOutputP0() << "SCS smoothing_iterations: " << smoothIter_ << std::endl;
+    NaluEnv::self().naluOutputP0() << "fourier_number: " << Fo_ << std::endl;
+  }
+  if ( supp_alg_is_requested("sharpen") )
+    NaluEnv::self().naluOutputP0() << "compression_constant: " << cAlpha_ << std::endl;
 }
 
 //--------------------------------------------------------------------------
@@ -156,13 +175,17 @@ VolumeOfFluidEquationSystem::register_nodal_fields(
   stk::mesh::put_field_on_mesh(*vof_, *part, nullptr);
   realm_.augment_restart_variable_list("volume_of_fluid");
 
-  // smoothed
-  vofSmoothed_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "volume_of_fluid_smoothed"));
-  stk::mesh::put_field_on_mesh(*vofSmoothed_, *part, nullptr);
+  // smoothed field and smoothed rhs
+  if ( smooth_ ) {
+    vofSmoothed_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "volume_of_fluid_smoothed"));
+    stk::mesh::put_field_on_mesh(*vofSmoothed_, *part, nullptr);    
+    smoothedRhs_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "smoothed_rhs"));
+    stk::mesh::put_field_on_mesh(*smoothedRhs_, *part, nullptr);
+  }
 
   // normal
-  interfaceNormal_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "interface_normal"));
-  stk::mesh::put_field_on_mesh(*interfaceNormal_, *part, nullptr);
+  interfaceNormal_ =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "interface_normal"));
+  stk::mesh::put_field_on_mesh(*interfaceNormal_, *part, nDim, nullptr);
 
   // projected nodal gradient
   dvofdx_ =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "dvofdx"));
@@ -197,7 +220,8 @@ VolumeOfFluidEquationSystem::register_interior_algorithm(
   // types of algorithms
   const AlgorithmType algType = INTERIOR;
 
-  ScalarFieldType &vofNp1 = vofSmoothed_->field_of_state(stk::mesh::StateNone);
+  ScalarFieldType &vofNp1 = (smooth_) ? vofSmoothed_->field_of_state(stk::mesh::StateNone) 
+    : vof_->field_of_state(stk::mesh::StateNP1);  
   VectorFieldType &dvofdxNone = dvofdx_->field_of_state(stk::mesh::StateNone);
 
   // non-solver; contribution to projected nodal gradient; allow for element-based shifted
@@ -245,6 +269,10 @@ VolumeOfFluidEquationSystem::register_interior_algorithm(
     build_topo_kernel_if_requested<VolumeOfFluidSucvNsoElemKernel>
       (partTopo, *this, activeKernels, "nso",
        realm_.bulk_data(), *realm_.solutionOptions_, vof_, 0.0, 1.0, dataPreReqs);
+  
+    build_topo_kernel_if_requested<VolumeOfFluidSharpenElemKernel>
+      (partTopo, *this, activeKernels, "sharpen",
+       realm_.bulk_data(), *realm_.solutionOptions_, vof_, cAlpha_, dataPreReqs);
       
     report_invalid_supp_alg_names();
     report_built_supp_alg_names();
@@ -264,7 +292,8 @@ VolumeOfFluidEquationSystem::register_inflow_bc(
   // algorithm type
   const AlgorithmType algType = INFLOW;
 
-  ScalarFieldType &vofNp1 = vofSmoothed_->field_of_state(stk::mesh::StateNone);
+  ScalarFieldType &vofNp1 = (smooth_) ? vofSmoothed_->field_of_state(stk::mesh::StateNone) 
+    : vof_->field_of_state(stk::mesh::StateNP1);  
   VectorFieldType &dvofdxNone = dvofdx_->field_of_state(stk::mesh::StateNone);
 
   stk::mesh::MetaData &meta_data = realm_.meta_data();
@@ -356,7 +385,8 @@ VolumeOfFluidEquationSystem::register_open_bc(
   // algorithm type
   const AlgorithmType algType = OPEN;
 
-  ScalarFieldType &vofNp1 = vofSmoothed_->field_of_state(stk::mesh::StateNone);
+  ScalarFieldType &vofNp1 = (smooth_) ? vofSmoothed_->field_of_state(stk::mesh::StateNone) 
+    : vof_->field_of_state(stk::mesh::StateNP1);  
   VectorFieldType &dvofdxNone = dvofdx_->field_of_state(stk::mesh::StateNone);
 
   // non-solver; dvofdx; allow for element-based shifted
@@ -388,9 +418,60 @@ VolumeOfFluidEquationSystem::register_wall_bc(
   // algorithm type
   const AlgorithmType algType = WALL;
 
-  // np1
-  ScalarFieldType &vofNp1 = vofSmoothed_->field_of_state(stk::mesh::StateNone);
+  ScalarFieldType &vofNp1 = (smooth_) ? vofSmoothed_->field_of_state(stk::mesh::StateNone) 
+    : vof_->field_of_state(stk::mesh::StateNP1);  
   VectorFieldType &dvofdxNone = dvofdx_->field_of_state(stk::mesh::StateNone);
+ 
+  stk::mesh::MetaData & meta_data = realm_.meta_data();
+ 
+  // extract the value for [optional] user specified vof
+  WallUserData userData = wallBCData.userData_;
+  std::string vofName = "volume_of_fluid";
+  if ( bc_data_specified(userData, vofName) ) {
+
+    // FIXME: Generalize for constant vs function
+    
+    ScalarFieldType &realVofNp1 = vof_->field_of_state(stk::mesh::StateNP1);  
+    
+    // register boundary data; vof_bc
+    ScalarFieldType *theBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "vof_bc"));
+    stk::mesh::put_field_on_mesh(*theBcField, *part, nullptr);
+
+    // extract data
+    std::vector<double> userSpec(1);
+    VolumeOfFluid vof = userData.vof_;
+    userSpec[0] = vof.vof_;
+
+    // new it
+    ConstantAuxFunction *theAuxFunc = new ConstantAuxFunction(0, 1, userSpec);
+
+    // bc data alg
+    AuxFunctionAlgorithm *auxAlg
+      = new AuxFunctionAlgorithm(realm_, part,
+                                 theBcField, theAuxFunc,
+                                 stk::topology::NODE_RANK);
+    bcDataAlg_.push_back(auxAlg);
+
+    // copy vof_bc to vof np1...
+    CopyFieldAlgorithm *theCopyAlg
+      = new CopyFieldAlgorithm(realm_, part,
+                               theBcField, &realVofNp1,
+                               0, 1,
+                               stk::topology::NODE_RANK);
+    bcDataMapAlg_.push_back(theCopyAlg);
+
+    // Dirichlet bc
+    std::map<AlgorithmType, SolverAlgorithm *>::iterator itd =
+      solverAlgDriver_->solverDirichAlgMap_.find(algType);
+    if ( itd == solverAlgDriver_->solverDirichAlgMap_.end() ) {
+      DirichletBC *theAlg
+        = new DirichletBC(realm_, this, part, &realVofNp1, theBcField, 0, 1);
+      solverAlgDriver_->solverDirichAlgMap_[algType] = theAlg;
+    }
+    else {
+      itd->second->partVec_.push_back(part);
+    }
+  }
 
   // non-solver; dvofdx; allow for element-based shifted
   if ( !managePNG_ ) {
@@ -406,7 +487,7 @@ VolumeOfFluidEquationSystem::register_wall_bc(
     }
   }
 }
-
+  
 //--------------------------------------------------------------------------
 //-------- register_symmetry_bc --------------------------------------------
 //--------------------------------------------------------------------------
@@ -420,8 +501,8 @@ VolumeOfFluidEquationSystem::register_symmetry_bc(
   // algorithm type
   const AlgorithmType algType = SYMMETRY;
 
-  // np1
-  ScalarFieldType &vofNp1 = vofSmoothed_->field_of_state(stk::mesh::StateNone);
+  ScalarFieldType &vofNp1 = (smooth_) ? vofSmoothed_->field_of_state(stk::mesh::StateNone) 
+    : vof_->field_of_state(stk::mesh::StateNP1);  
   VectorFieldType &dvofdxNone = dvofdx_->field_of_state(stk::mesh::StateNone);
 
   // non-solver; dvofdx; allow for element-based shifted
@@ -450,10 +531,9 @@ VolumeOfFluidEquationSystem::register_overset_bc()
   UpdateOversetFringeAlgorithmDriver* theAlg = new UpdateOversetFringeAlgorithmDriver(realm_);
   // Perform fringe updates before all equation system solves
   equationSystems_.preIterAlgDriver_.push_back(theAlg);
-
   theAlg->fields_.push_back(
     std::unique_ptr<OversetFieldData>(new OversetFieldData(vof_,1,1)));
-
+    
   if ( realm_.has_mesh_motion() ) {
     UpdateOversetFringeAlgorithmDriver* theAlgPost = new UpdateOversetFringeAlgorithmDriver(realm_,false);
     // Perform fringe updates after all equation system solves (ideally on the post_time_step)
@@ -668,20 +748,24 @@ VolumeOfFluidEquationSystem::update_and_clip()
 void
 VolumeOfFluidEquationSystem::compute_interface_normal()
 {
-  // interface normal is generally compiuted based on vofSmoothed_
-  stk::mesh::MetaData & meta_data = realm_.meta_data();
-  stk::mesh::BulkData & bulk_data = realm_.bulk_data();
+  stk::mesh::MetaData & metaData = realm_.meta_data();
+  stk::mesh::BulkData & bulkData = realm_.bulk_data();
   
-  const int nDim = meta_data.spatial_dimension();
+  const int nDim = metaData.spatial_dimension();
   const double small = 1.0e-16;
 
   // extract nodal fields
-  VectorFieldType *coordinates = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  VectorFieldType *coordinates 
+    = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  ScalarFieldType *dualNodalVolume 
+    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
 
-  ScalarFieldType *dualNodalVolume = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
-
+  // interface normal is generally computed based on vofSmoothed_; user defines this
+  ScalarFieldType &vofNp1 = (smooth_) ? vofSmoothed_->field_of_state(stk::mesh::StateNone) 
+    : vof_->field_of_state(stk::mesh::StateNP1);  
+  
   // zero assembled normal
-  field_fill( meta_data, bulk_data, 0.0, *interfaceNormal_, realm_.get_activate_aura());
+  field_fill( metaData, bulkData, 0.0, *interfaceNormal_, realm_.get_activate_aura());
 
   // integration point data that is fixed
   std::vector<double> dvofdxIp(nDim);
@@ -689,16 +773,16 @@ VolumeOfFluidEquationSystem::compute_interface_normal()
 
   // fields to gather
   std::vector<double> ws_coordinates;
-  std::vector<double> ws_vofSmoothed;
-  std::vector<double> ws_dual_volume;
-  std::vector<double> ws_scv_volume;
+  std::vector<double> ws_vofNp1;
+  std::vector<double> ws_dualVolume;
+  std::vector<double> ws_scVolume;
   std::vector<double> ws_dndx;
   std::vector<double> ws_deriv;
   std::vector<double> ws_det_j;
 
   // select locally owned where vof is defined; exclude inactive block
-  stk::mesh::Selector s_locally_owned_union = meta_data.locally_owned_part()
-    & stk::mesh::selectField(*vofSmoothed_)  
+  stk::mesh::Selector s_locally_owned_union = metaData.locally_owned_part()
+    & stk::mesh::selectField(vofNp1)
     & !(realm_.get_inactive_selector());
 
   stk::mesh::BucketVector const& elem_buckets =
@@ -718,18 +802,18 @@ VolumeOfFluidEquationSystem::compute_interface_normal()
 
     // algorithm related
     ws_coordinates.resize(nodesPerElement*nDim);
-    ws_vofSmoothed.resize(nodesPerElement);
-    ws_dual_volume.resize(nodesPerElement);
-    ws_scv_volume.resize(numScvIp);
+    ws_vofNp1.resize(nodesPerElement);
+    ws_dualVolume.resize(nodesPerElement);
+    ws_scVolume.resize(numScvIp);
     ws_dndx.resize(nDim*numScvIp*nodesPerElement);
     ws_deriv.resize(nDim*numScvIp*nodesPerElement);
     ws_det_j.resize(numScvIp);
 
     // pointers
     double *p_coordinates = &ws_coordinates[0];
-    double *p_vofSmoothed = &ws_vofSmoothed[0];
-    double *p_dual_volume = &ws_dual_volume[0];
-    double *p_scv_volume = &ws_scv_volume[0];
+    double *p_vofNp1 = &ws_vofNp1[0];
+    double *p_dualVolume = &ws_dualVolume[0];
+    double *p_scVolume = &ws_scVolume[0];
     double *p_dndx = &ws_dndx[0];
     
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
@@ -750,8 +834,8 @@ VolumeOfFluidEquationSystem::compute_interface_normal()
         const double * coords = stk::mesh::field_data(*coordinates, node);
 
         // gather scalars
-        p_vofSmoothed[ni] = *stk::mesh::field_data(*vofSmoothed_, node);
-        p_dual_volume[ni] = *stk::mesh::field_data(*dualNodalVolume, node);
+        p_vofNp1[ni] = *stk::mesh::field_data(vofNp1, node);
+        p_dualVolume[ni] = *stk::mesh::field_data(*dualNodalVolume, node);
 
         // gather vectors
         const int offSet = ni*nDim;
@@ -761,11 +845,11 @@ VolumeOfFluidEquationSystem::compute_interface_normal()
       }
       
       // compute geometry
-      double scv_error = 0.0;
-      meSCV->determinant(1, &p_coordinates[0], &p_scv_volume[0], &scv_error);
+      double scvError = 0.0;
+      meSCV->determinant(1, &p_coordinates[0], &p_scVolume[0], &scvError);
 
       // compute dndx
-      meSCV->grad_op(1, &p_coordinates[0], &p_dndx[0], &ws_deriv[0], &ws_det_j[0], &scv_error);
+      meSCV->grad_op(1, &p_coordinates[0], &p_dndx[0], &ws_deriv[0], &ws_det_j[0], &scvError);
       
       for ( int ip = 0; ip < numScvIp; ++ip ) {
         
@@ -777,9 +861,9 @@ VolumeOfFluidEquationSystem::compute_interface_normal()
         // compute gradient
         for ( int ic = 0; ic < nodesPerElement; ++ic ) {
           const int offSetDnDx = nDim*nodesPerElement*ip + ic*nDim;
-          const double nodalVofSmoothed = p_vofSmoothed[ic];
+          const double nodalVof = p_vofNp1[ic];
           for ( int j = 0; j < nDim; ++j ) {
-            p_dvofdxIp[j] += p_dndx[offSetDnDx+j]*nodalVofSmoothed;
+            p_dvofdxIp[j] += p_dndx[offSetDnDx+j]*nodalVof;
           }
         }
         
@@ -797,7 +881,7 @@ VolumeOfFluidEquationSystem::compute_interface_normal()
         // pointers to real data
         double * interfaceNormal = stk::mesh::field_data(*interfaceNormal_, node);
 
-        const double volumeFac = p_scv_volume[ip]/p_dual_volume[nn];
+        const double volumeFac = p_scVolume[ip]/p_dualVolume[nn];
         for ( int j = 0; j < nDim; ++j )
           interfaceNormal[j] += p_dvofdxIp[j]/dvofMag*volumeFac;
       }
@@ -805,15 +889,19 @@ VolumeOfFluidEquationSystem::compute_interface_normal()
   }
   
   // parallel sum
-  stk::mesh::parallel_sum(bulk_data, {interfaceNormal_});
+  stk::mesh::parallel_sum(bulkData, {interfaceNormal_});
   
   // periodic assemble
   if ( realm_.hasPeriodic_) {
-    const unsigned fieldSize = 1;
-    realm_.periodic_field_update(interfaceNormal_, fieldSize);
+    realm_.periodic_field_update(interfaceNormal_, nDim);
   }
 
+  // overset update
+  if ( realm_.hasOverset_ ) {
+    realm_.overset_orphan_node_field_update(interfaceNormal_, 1, nDim);
+  }
 }
+
 
 //--------------------------------------------------------------------------
 //-------- smooth_vof ------------------------------------------------------
@@ -821,11 +909,184 @@ VolumeOfFluidEquationSystem::compute_interface_normal()
 void
 VolumeOfFluidEquationSystem::smooth_vof()
 {
-  // for now, just copy vof to vofSmoothed
-  NaluEnv::self().naluOutputP0() << "VOF::smooth_interface() TBD" << std::endl;
-  ScalarFieldType &vofNp1 = vof_->field_of_state(stk::mesh::StateN);
-  ScalarFieldType &vofSmoothed = vofSmoothed_->field_of_state(stk::mesh::StateNone);
-  field_copy(realm_.meta_data(), realm_.bulk_data(), vofNp1, vofSmoothed, realm_.get_activate_aura());
+
+  // may not want to smooth
+  if ( !smooth_)
+    return;
+
+  // otherwise, proceed
+  stk::mesh::MetaData & metaData = realm_.meta_data();
+  stk::mesh::BulkData & bulkData = realm_.bulk_data();
+
+  // Copy vof to vofSmoothed
+  field_copy(metaData, bulkData, *vof_, *vofSmoothed_, realm_.get_activate_aura());
+  
+  // fixed set of iterations...
+  for( int k = 0; k < smoothIter_; ++k) {
+    smooth_vof_execute();
+    // vofSmoothed = Fo_*dxMin_*dxMin_*smoothedRhs_ + 1.0*vofSmoothed_
+    field_axpby(metaData, bulkData, Fo_*dxMin_*dxMin_, *smoothedRhs_, 1.0, *vofSmoothed_, realm_.get_activate_aura());
+  }
+
+}
+
+//--------------------------------------------------------------------------
+//-------- smooth_vof_execute ----------------------------------------------
+//--------------------------------------------------------------------------
+void
+VolumeOfFluidEquationSystem::smooth_vof_execute()
+{
+  // compute  smoothedRhs =  (Fo*dx*dx) d^2(vof)/dxj^2 using a low-order lumped projection
+  // leave off smoothing factors until axpby and fold in the dxMin_ here..
+  double l_dxMin = 1.0e16;
+  
+  stk::mesh::MetaData & metaData = realm_.meta_data();
+  stk::mesh::BulkData & bulkData = realm_.bulk_data();
+  
+  const int nDim = metaData.spatial_dimension();
+  
+  // extract nodal fields
+  VectorFieldType *coordinates 
+    = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  ScalarFieldType *dualNodalVolume 
+    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
+
+  // zero it
+  field_fill(metaData, bulkData, 0.0, *smoothedRhs_, realm_.get_activate_aura());
+  
+  // geometry related to populate
+  std::vector<double> ws_vof;
+  std::vector<double> ws_dualVolume;
+  std::vector<double> ws_coordinates;
+
+  // define some common selectors
+  stk::mesh::Selector s_locally_owned_union = metaData.locally_owned_part()
+    & stk::mesh::selectField(*vofSmoothed_) 
+    & !(realm_.get_inactive_selector());
+  
+  stk::mesh::BucketVector const& elem_buckets =
+    realm_.get_buckets( stk::topology::ELEMENT_RANK, s_locally_owned_union );
+  
+  std::vector<double> ws_scsAreav;
+  std::vector<double> ws_dndx;
+  std::vector<double> ws_deriv;
+  std::vector<double> ws_detJ;
+  
+  for ( const stk::mesh::Bucket* bucket_ptr : elem_buckets ) {
+    const stk::mesh::Bucket & b = *bucket_ptr ;
+    const stk::mesh::Bucket::size_type length   = b.size();
+    
+    // extract master element
+    MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(b.topology());
+    
+    // extract master element specifics
+    const int nodesPerElement = meSCS->nodesPerElement_;
+    const int numScsIp = meSCS->numIntPoints_;
+    const int *lrscv = meSCS->adjacentNodes();
+    
+    // algorithm related
+    ws_coordinates.resize(nodesPerElement*nDim);
+    ws_vof.resize(nodesPerElement);
+    ws_dualVolume.resize(nodesPerElement);
+    ws_scsAreav.resize(numScsIp*nDim);
+    ws_dndx.resize(nDim*numScsIp*nodesPerElement);
+    ws_deriv.resize(nDim*numScsIp*nodesPerElement);
+    ws_detJ.resize(numScsIp);
+    
+    // pointers
+    double *p_coordinates = &ws_coordinates[0];
+    double *p_vof = &ws_vof[0];
+    double *p_dualVolume = &ws_dualVolume[0];
+    double *p_scsAreav = &ws_scsAreav[0];
+    double *p_dndx = &ws_dndx[0];
+    
+    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+      
+      //===============================================
+      // gather nodal data; this is how we do it now..
+      //===============================================
+      stk::mesh::Entity const *  node_rels = b.begin_nodes(k);
+      int num_nodes = b.num_nodes(k);
+      
+      // sanity check on num nodes
+      ThrowAssert( num_nodes == nodesPerElement );
+      
+      for ( int ni = 0; ni < num_nodes; ++ni ) {
+        stk::mesh::Entity node = node_rels[ni];
+        
+        // pointers to real data
+        const double * coords = stk::mesh::field_data(*coordinates, node );
+        
+        // gather scalars
+        p_vof[ni] = *stk::mesh::field_data(*vofSmoothed_, node );
+        p_dualVolume[ni] = *stk::mesh::field_data(*dualNodalVolume, node );
+        
+        // gather vectors
+        const int niNdim = ni*nDim;
+        for ( int j=0; j < nDim; ++j ) {
+          p_coordinates[niNdim+j] = coords[j];
+        }
+      }
+      
+      // compute geometry
+      double scsError = 0.0;
+      meSCS->determinant(1, &p_coordinates[0], &p_scsAreav[0], &scsError);
+      meSCS->grad_op(1, &p_coordinates[0], &p_dndx[0], &ws_deriv[0], &ws_detJ[0], &scsError);
+      
+      for ( int ip = 0; ip < numScsIp; ++ip ) {
+        
+        // left and right nodes for this ip
+        const int il = lrscv[2*ip];
+        const int ir = lrscv[2*ip+1];
+        
+        // determine dx; edge distance magnitude
+        double dx = 0.0;
+        for ( int j = 0; j < nDim; ++j ) {
+          const double dxj = p_coordinates[ir*nDim+j] - p_coordinates[il*nDim+j];
+          dx += dxj*dxj;
+        }
+        l_dxMin = std::min(l_dxMin, std::sqrt(dx));
+        
+        stk::mesh::Entity nodeL = node_rels[il];
+        stk::mesh::Entity nodeR = node_rels[ir];
+        
+        // pointer to fields to assemble
+        double *smoothedRhsL = stk::mesh::field_data(*smoothedRhs_, nodeL );
+        double *smoothedRhsR = stk::mesh::field_data(*smoothedRhs_, nodeR );
+        
+        double qDiff = 0.0;
+        for ( int ic = 0; ic < nodesPerElement; ++ic ) {
+          
+          double lhsfacDiff = 0.0;
+          const int offSetDnDx = nDim*nodesPerElement*ip + ic*nDim;
+          for ( int j = 0; j < nDim; ++j ) {
+            lhsfacDiff += -p_dndx[offSetDnDx+j]*p_scsAreav[ip*nDim+j];
+          }
+          qDiff += lhsfacDiff*p_vof[ic];
+        }
+        
+        *smoothedRhsL -= qDiff/ws_dualVolume[il];
+        *smoothedRhsR += qDiff/ws_dualVolume[ir];
+      }
+    }
+  }
+  
+  // parallel sum
+  stk::mesh::parallel_sum(bulkData, {smoothedRhs_});
+
+  // periodic update
+  if ( realm_.hasPeriodic_) {
+    realm_.periodic_field_update(smoothedRhs_, 1);
+  }
+
+  // overset update
+  if ( realm_.hasOverset_ ) {
+    realm_.overset_orphan_node_field_update(smoothedRhs_, 1, 1);
+  }
+  
+  // compute min
+  stk::ParallelMachine comm = NaluEnv::self().parallel_comm();
+  stk::all_reduce_min(comm, &l_dxMin, &dxMin_, 1);
 }
 
 //--------------------------------------------------------------------------
@@ -834,7 +1095,7 @@ VolumeOfFluidEquationSystem::smooth_vof()
 void
 VolumeOfFluidEquationSystem::sharpen_interface_explicit()
 {
-  NaluEnv::self().naluOutputP0() << "VOF::sharpen_interface() currently in situ via the linear system" << std::endl;
+  NaluEnv::self().naluOutputP0() << "VOF::sharpen_interface_explicit() inative" << std::endl;
 }
 
 //--------------------------------------------------------------------------

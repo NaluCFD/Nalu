@@ -189,6 +189,7 @@ struct WallUserData : public UserData {
   TurbKinEnergy tke_;
   MixtureFraction mixFrac_;
   MassFraction massFraction_;
+  VolumeOfFluid vof_;
   Emissivity emissivity_;
   Irradiation irradiation_;
   Transmissivity transmissivity_;

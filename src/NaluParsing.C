@@ -821,6 +821,13 @@ namespace YAML
       wallData.bcDataSpecifiedMap_["mass_fraction"] = true;
       wallData.bcDataTypeMap_["mass_fraction"] = sierra::nalu::CONSTANT_UD;
     }
+    if (node["volume_of_fluid"])
+    {
+      wallData.vof_ = node["volume_of_fluid"].as<
+        sierra::nalu::VolumeOfFluid>();
+      wallData.bcDataSpecifiedMap_["volume_of_fluid"] = true;
+      wallData.bcDataTypeMap_["volume_of_fluid"] = sierra::nalu::CONSTANT_UD;
+    }
     if (node["emissivity"])
     {
       wallData.emissivity_ = node["emissivity"].as<sierra::nalu::Emissivity>();

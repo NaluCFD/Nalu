@@ -104,7 +104,17 @@ void EquationSystems::load(const YAML::Node & y_node)
           get_if_present_no_default(y_eqsys, "output_clipping_diagnostic", outputClipDiag);
           double deltaVofClip = 0.0;
           get_if_present_no_default(y_eqsys, "clipping_delta", deltaVofClip);
-          eqSys = new VolumeOfFluidEquationSystem(*this, outputClipDiag, deltaVofClip);
+          // vof smoothing/sharpening; provide defaults...
+          double fourierNumber = 0.25;
+          double cAlpha = 0.05;
+          bool smooth = true;
+          int smoothIter = 5;
+          get_if_present_no_default(y_eqsys, "fourier_number", fourierNumber);
+          get_if_present_no_default(y_eqsys, "compression_constant", cAlpha);
+          get_if_present_no_default(y_eqsys, "activate_smoothing", smooth);
+          get_if_present_no_default(y_eqsys, "smoothing_iterations", smoothIter);
+          eqSys = new VolumeOfFluidEquationSystem(*this, outputClipDiag, deltaVofClip, 
+                                                  fourierNumber, cAlpha, smooth, smoothIter);
         }
         else if ( expect_map(y_system, "LowMachEOM", true) ) {
 	  y_eqsys =  expect_map(y_system, "LowMachEOM", true);
