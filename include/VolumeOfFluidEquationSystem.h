@@ -34,7 +34,11 @@ public:
   VolumeOfFluidEquationSystem(
     EquationSystems& equationSystems,
     const bool outputClippingDiag,
-    const double deltaZClip);
+    const double deltaVofClip,
+    const double Fo,
+    const double cAlpha,
+    const bool smooth,
+    const int smoothIter);
   virtual ~VolumeOfFluidEquationSystem();
 
   void populate_derived_quantities();
@@ -86,15 +90,15 @@ public:
   
   void sharpen_interface_explicit();
   void smooth_vof();
+  void smooth_vof_execute();
   void compute_interface_normal();
 
   const bool managePNG_;
-  const bool outputClippingDiag_;
-  const double deltaVofClip_;
 
   ScalarFieldType *vof_;
   ScalarFieldType *vofSmoothed_;
-  ScalarFieldType *interfaceNormal_;
+  ScalarFieldType *smoothedRhs_;
+  VectorFieldType *interfaceNormal_;
   VectorFieldType *dvofdx_;
   ScalarFieldType *vofTmp_;
   
@@ -102,6 +106,17 @@ public:
   
   ProjectedNodalGradientEquationSystem *projectedNodalGradEqs_;
   
+  // clipping
+  const bool outputClippingDiag_;
+  const double deltaVofClip_;
+
+  // smoothing and sharepening params
+  const double Fo_;
+  const double cAlpha_;
+  double dxMin_;
+  const bool smooth_;
+  const int smoothIter_;
+
   bool isInit_;
 };
 

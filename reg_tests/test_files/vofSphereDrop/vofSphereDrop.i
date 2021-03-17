@@ -51,6 +51,9 @@ realms:
             name: myV
             max_iterations: 1
             convergence_tolerance: 1.e-2
+            activate_smoothing: yes
+            fourier_number: 0.25
+            compression_constant: 0.05
 
     initial_conditions:
       - constant: ic_1
@@ -149,7 +152,7 @@ realms:
         - element_source_terms:
             momentum: [lumped_momentum_time_derivative, advection_diffusion, buoyancy]
             continuity: [advection]
-            volume_of_fluid: [vof, sucv_nso]
+            volume_of_fluid: [vof, sucv_nso, sharpen]
 
         - user_constants:
             gravity: [0.0, -10.0]
@@ -169,6 +172,10 @@ realms:
        - intersected_element
        - mesh_velocity
        - density
+       - volume_of_fluid
+       - volume_of_fluid_smoothed
+       - interface_normal
+       - dvofdx
 
 Time_Integrators:
   - StandardTimeIntegrator:

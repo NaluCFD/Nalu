@@ -39,6 +39,7 @@ private:
   double tX_;
   double yTr_;
   double dTr_;
+  double surf_;
   const double pi_;
 };
 

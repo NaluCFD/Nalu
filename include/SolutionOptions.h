@@ -137,7 +137,7 @@ public:
   double mdotAlgAccumulation_;
   double mdotAlgInflow_;
   double mdotAlgOpen_;
- 
+
   // turbulence model coeffs
   std::map<TurbulenceModelConstant, double> turbModelConstantMap_;
   
