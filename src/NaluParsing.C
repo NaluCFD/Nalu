@@ -154,7 +154,7 @@ namespace sierra
         } else
         {
           throw std::runtime_error(
-            "Nalu supports two overset connectivity packages: 'nalu_stk'. "
+            "Nalu supports one overset connectivity package: 'nalu_stk'. "
                 "Value in input file: " + ogaName);
         }
       }

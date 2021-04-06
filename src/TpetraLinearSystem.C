@@ -1666,7 +1666,7 @@ TpetraLinearSystem::prepareConstraints(
   //KOKKOS: Loop noparallel RCP Vector Matrix replaceValues
   for( const OversetInfo* oversetInfo : realm_.oversetManager_->oversetInfoVec_) {
 
-    // extract fringe node and global id; process both owned and shared
+    // extract constraint node and global id; process both owned and shared
     stk::mesh::Entity constraintNode = oversetInfo->constraintNode_;
     const stk::mesh::EntityId naluId = *stk::mesh::field_data(*realm_.naluGlobalId_, constraintNode);
     const LocalOrdinal localIdOffset = lookup_myLID(myLIDs_, naluId, "prepareConstraints");

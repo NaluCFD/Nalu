@@ -60,7 +60,6 @@ private:
   ScalarFieldType *vofNp1_{nullptr};
   VectorFieldType *velocityRTM_{nullptr};
   VectorFieldType *coordinates_{nullptr};
-  VectorFieldType *velocity_{nullptr};
 
   const double sucvFac_;
   const double nsoFac_;
