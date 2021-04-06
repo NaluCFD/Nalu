@@ -170,9 +170,6 @@ void Simulation::high_level_banner() {
 #ifdef NALU_USES_HYPRE
   additionalTPLs.push_back("Hypre");
 #endif
-#ifdef NALU_USES_TIOGA
-  additionalTPLs.push_back("TIOGA");
-#endif
 
   NaluEnv::self().naluOutputP0() << std::endl;
   NaluEnv::self().naluOutputP0() << "=================================================================" << std::endl;

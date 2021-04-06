@@ -305,12 +305,14 @@ struct OversetUserData : public UserData {
   /// Exterior boundary of the internal meshe(s) that are mandatory receptors
   std::string oversetSurface_;
 
+  /// Type of shape used for STK element removal
+  std::string cuttingShape_;
+
+  /// Axial direction for cylindrical cut
+  int cuttingAxis_;
+
   /// List of part names for the interior meshes
   std::vector<std::string> oversetBlockVec_;
-
-#ifdef NALU_USES_TIOGA
-  YAML::Node oversetBlocks_;
-#endif
 
   OversetUserData()
     : UserData(),
@@ -322,7 +324,9 @@ struct OversetUserData : public UserData {
       backgroundSurface_("na"),
       backgroundCutBlock_("na"),
       backgroundInnerBlock_("na"),
-      oversetSurface_("na")
+      oversetSurface_("na"),
+      cuttingShape_("aabb"),
+      cuttingAxis_(2)
   {}
 };
 
@@ -379,7 +383,6 @@ struct OpenBoundaryConditionData : public BoundaryCondition {
 struct OversetBoundaryConditionData : public BoundaryCondition {
   enum OversetAPI {
     NALU_STK      = 0, ///< Native Nalu holecutting using STK search
-    TPL_TIOGA     = 1, ///< Overset connectivity using TIOGA
     OVERSET_NONE  = 2  ///< Guard for error messages
   };
 

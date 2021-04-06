@@ -50,6 +50,10 @@ VolumeOfFluidSucvNsoElemKernel<AlgTraits>::VolumeOfFluidSucvNsoElemKernel(
   std::string velocity_name = solnOpts.does_mesh_move() ? "velocity_rtm" : "velocity";
   velocityRTM_ = metaData.get_field<VectorFieldType>(
     stk::topology::NODE_RANK, velocity_name);
+  // NEW WJH 
+  velocity_ = metaData.get_field<VectorFieldType>(
+    stk::topology::NODE_RANK, "velocity");
+
   coordinates_ = metaData.get_field<VectorFieldType>(
     stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
 
@@ -64,6 +68,10 @@ VolumeOfFluidSucvNsoElemKernel<AlgTraits>::VolumeOfFluidSucvNsoElemKernel(
   // fields and data
   dataPreReqs.add_coordinates_field(*coordinates_, AlgTraits::nDim_, CURRENT_COORDINATES);
   dataPreReqs.add_gathered_nodal_field(*velocityRTM_, AlgTraits::nDim_);
+
+  // NEW WJH 
+  dataPreReqs.add_gathered_nodal_field(*velocity_, AlgTraits::nDim_);
+
   dataPreReqs.add_gathered_nodal_field(*vofNm1_, 1);
   dataPreReqs.add_gathered_nodal_field(*vofN_, 1);
   dataPreReqs.add_gathered_nodal_field(*vofNp1_, 1);
@@ -99,6 +107,7 @@ VolumeOfFluidSucvNsoElemKernel<AlgTraits>::execute(
   ScratchViews<DoubleType>& scratchViews)
 {
   NALU_ALIGNED DoubleType w_uIp[AlgTraits::nDim_];
+  NALU_ALIGNED DoubleType w_uIpv[AlgTraits::nDim_];
   NALU_ALIGNED DoubleType w_dvofdxIp[AlgTraits::nDim_];
 
   SharedMemView<DoubleType*>& v_vofNm1 = scratchViews.get_scratch_view_1D(
@@ -108,6 +117,8 @@ VolumeOfFluidSucvNsoElemKernel<AlgTraits>::execute(
   SharedMemView<DoubleType*>& v_vofNp1 = scratchViews.get_scratch_view_1D(
     *vofNp1_);
   SharedMemView<DoubleType**>& v_vrtm = scratchViews.get_scratch_view_2D(*velocityRTM_);
+
+  SharedMemView<DoubleType**>& v_v = scratchViews.get_scratch_view_2D(*velocity_);
 
   SharedMemView<DoubleType**>& v_scs_areav = scratchViews.get_me_views(CURRENT_COORDINATES).scs_areav;
   SharedMemView<DoubleType***>& v_dndx = scratchViews.get_me_views(CURRENT_COORDINATES).dndx;
@@ -140,6 +151,7 @@ VolumeOfFluidSucvNsoElemKernel<AlgTraits>::execute(
       const DoubleType vofIc = v_vofNp1(ic);
       for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
         w_uIp[j] += r*v_vrtm(ic,j);
+        w_uIpv[j] += r*v_v(ic,j);
         w_dvofdxIp[j] += vofIc*v_dndx(ip,ic,j);
       }
     }

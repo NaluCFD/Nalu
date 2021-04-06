@@ -8,6 +8,7 @@
 #include <NaluEnv.h>
 #include <NaluParsing.h>
 #include <Realm.h>
+#include <SolutionOptions.h> 
 #include <master_element/MasterElement.h>
 #include <utils/StkHelpers.h>
 
@@ -36,8 +37,55 @@
 #include <stk_util/parallel/ParallelReduce.hpp>
 #include <stk_util/environment/CPUTime.hpp>
 
+// mesh motion
+#include "MeshMotionInfo.h"
+
 namespace sierra{
 namespace nalu{
+
+
+// Get points of bounding box from extrema 
+std::vector<double> get_bbox_points( 
+  const Point &minOverset,
+  const Point &maxOverset) 
+{
+
+  std::vector<double> points(24,0.0);
+  
+  points[0] = minOverset[0]; 
+  points[1] = maxOverset[1]; 
+  points[2] = minOverset[2]; 
+
+  points[3] = minOverset[0]; 
+  points[4] = maxOverset[1]; 
+  points[5] = maxOverset[2]; 
+
+  points[6] = minOverset[0]; 
+  points[7] = minOverset[1]; 
+  points[8] = maxOverset[2]; 
+
+  points[9] = minOverset[0]; 
+  points[10] = minOverset[1]; 
+  points[11] = minOverset[2]; 
+
+  points[12] = maxOverset[0]; 
+  points[13] = maxOverset[1]; 
+  points[14] = minOverset[2]; 
+
+  points[15] = maxOverset[0]; 
+  points[16] = maxOverset[1]; 
+  points[17] = maxOverset[2]; 
+
+  points[18] = maxOverset[0]; 
+  points[19] = minOverset[1]; 
+  points[20] = maxOverset[2]; 
+
+  points[21] = maxOverset[0]; 
+  points[22] = minOverset[1]; 
+  points[23] = minOverset[2]; 
+
+  return points;
+}
 
 //==========================================================================
 // Class Definition
@@ -118,6 +166,7 @@ OversetManagerSTK::initialize()
   // perform the coarse search to find the intersected inactive elements
   determine_intersected_elements(
     boundingElementInactiveBoxVec_, 
+    boundingElementInactiveModelBoxVec_, 
     boundingElementBackgroundBoxesVec_, 
     intersectedInactiveElementVec_);
   
@@ -128,6 +177,7 @@ OversetManagerSTK::initialize()
   if ( realm_.has_mesh_motion() ) { 
     determine_intersected_elements(
       boundingElementInactiveBoxVecInner_, 
+      boundingElementInactiveModelBoxVecInner_, 
       boundingElementBackgroundBoxesVec_, 
       intersectedInactiveElementVecInner_);
    
@@ -138,8 +188,8 @@ OversetManagerSTK::initialize()
   // skin the inActivePart_ and, therefore, populate the backgroundSurfacePart_
   skin_exposed_surface_on_inactive_part();
     
-  // define surfaces that include orphan nodes
-  set_orphan_surface_part_vec();
+  // define surfaces that include constraint nodes
+  set_constraint_surface_part_vec();
   
   // define OversetInfo object for each node on the exposed parts
   create_overset_info_vec();
@@ -149,7 +199,7 @@ OversetManagerSTK::initialize()
     create_fringe_info_vec();
 
   // search for nodes in elements
-  orphan_node_search();
+  constraint_node_search();
 
   // set elemental data on inactive part
   set_data_on_inactive_part();
@@ -235,10 +285,14 @@ OversetManagerSTK::declare_background_surface_part()
 void
 OversetManagerSTK::define_inactive_bounding_box()
 {
-  // extract coordinates
+  // extract model coordinates
   VectorFieldType *coordinates
-  = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
-  
+    = (oversetUserData_.cuttingShape_=="aabb") ? 
+      (metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name())) :
+      (metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates")) ;
+
+  NaluEnv::self().naluOutputP0() << "Cutting shape :: " << oversetUserData_.cuttingShape_ << std::endl;
+
   // obtained via block_2 max/min coords
   std::vector<double> minOversetCorner(nDim_);
   std::vector<double> maxOversetCorner(nDim_);
@@ -349,12 +403,117 @@ OversetManagerSTK::define_inactive_bounding_box()
   }
 
   // inform the user and copy into points
-  NaluEnv::self().naluOutputP0() << "Min/Max coords for overset bounding box" << std::endl;
   for ( int i = 0; i < nDim_; ++i ) {
     minOverset[i] = g_minOversetCorner[i];
     maxOverset[i] = g_maxOversetCorner[i];
+  }
+
+  // Reorient box if meshMotionBlock is provided and recalculate min-max box
+  // Store model coordinate boxes
+  {
+    const size_t inactiveBoundingBoxIdent = 0;
+    const int parallelRankForInactiveBoundingBox = NaluEnv::self().parallel_rank();
+    stk::search::IdentProc<uint64_t,int> theIdent(inactiveBoundingBoxIdent, parallelRankForInactiveBoundingBox);
+
+    boundingElementBox inactiveBox(Box(minOverset,maxOverset), theIdent);
+    boundingElementInactiveModelBoxVec_.push_back(inactiveBox);
+  }
+  if ( realm_.has_mesh_motion() ) {
+    const size_t inactiveBoundingBoxIdentInner = 0;
+    const int parallelRankForInactiveBoundingBoxInner = NaluEnv::self().parallel_rank();
+    stk::search::IdentProc<uint64_t,int> theIdentInner(inactiveBoundingBoxIdentInner, parallelRankForInactiveBoundingBoxInner);
+    boundingElementBox innerBox(Box(minOversetInner,maxOversetInner), theIdentInner);
+    boundingElementInactiveModelBoxVecInner_.push_back(innerBox);
+  }
+
+  std::vector<double> cc_disp(3,0.0);
+  std::vector<double> theta_disp(3,0.0);
+  std::vector<double> cent(3,0.0);
+
+  if ( realm_.has_mesh_motion() && oversetUserData_.cuttingShape_ != "aabb" ) {
+
+    for ( size_t i = 0; i < oversetUserData_.oversetBlockVec_.size(); ++i) {
+      // Get relevant motion information
+      std::map<std::string, MeshMotionInfo *>::const_iterator iter;
+      for ( iter = realm_.solutionOptions_->meshMotionInfoMap_.begin();
+            iter != realm_.solutionOptions_->meshMotionInfoMap_.end(); ++iter) {
+
+        // extract mesh info object
+        MeshMotionInfo *meshInfo = iter->second;
+
+        // Assume blocks have same motion information. Last selection wins in
+        // case of multiple blocks
+        for ( size_t j = 0; j < meshInfo->meshMotionBlock_.size(); ++j ) {
+          if ( oversetUserData_.oversetBlockVec_[i] == meshInfo->meshMotionBlock_[j] ) {
+            cc_disp    = meshInfo->bodyDispCC_;
+            cent       = meshInfo->centroid_;
+            theta_disp = meshInfo->bodyAngle_;
+            break;
+          }
+        }
+      }
+    }
+
+    std::vector<double> point_f(3,0.0);
+
+    std::vector<double> points = get_bbox_points(minOverset, maxOverset);
+
+    for ( int i = 0; i < 3; ++i ) {
+      minOverset[i] = 1.e16;
+      maxOverset[i] = -1.e16;
+    }
+
+    std::vector<double> rot_point;
+
+    for ( int i = 0; i < 8; ++i ) {
+      for ( int j = 0; j < 3; ++j )
+        point_f[j] = points[3*i+j];
+
+      rot_point = realm_.rotate_translate_point(
+        point_f, cent, cc_disp, theta_disp);
+
+      for ( int j = 0; j < 3; ++j ) { 
+        if ( rot_point[j] < minOverset[j] )
+          minOverset[j] = rot_point[j];
+        if ( rot_point[j] > maxOverset[j] )
+          maxOverset[j] = rot_point[j];
+      }
+
+    }
+    points = get_bbox_points(minOversetInner, maxOversetInner);
+
+    for ( int i = 0; i < 3; ++i ) {
+      minOversetInner[i] = 1.e16;
+      maxOversetInner[i] = -1.e16;
+    }
+
+    for ( int i = 0; i < 8; ++i ) {
+      for ( int j = 0; j < 3; ++j )
+        point_f[j] = points[3*i+j];
+
+      rot_point = realm_.rotate_translate_point(
+        point_f, cent, cc_disp, theta_disp);
+
+      for ( int j = 0; j < 3; ++j ) { 
+        if ( rot_point[j] < minOversetInner[j] )
+          minOversetInner[j] = rot_point[j];
+        if ( rot_point[j] > maxOversetInner[j] )
+          maxOversetInner[j] = rot_point[j];
+      }
+    }
+  }
+
+  // inform the user and copy into points
+  NaluEnv::self().naluOutputP0() << "Min/Max coords for overset bounding box" << std::endl;
+  for ( int i = 0; i < nDim_; ++i ) {
     NaluEnv::self().naluOutputP0() << "component: " << i << " " << minOverset[i] << " " << maxOverset[i] << std::endl;
   }
+
+  // Store orientation information
+  ccDisp_ = cc_disp;
+  thetaDisp_ = theta_disp;
+  cent_ = cent;
+  axialDir_ = oversetUserData_.cuttingAxis_;
 
   // set up the processor info for this bounding box; attach it to local rank with unique id (zero)
   const size_t inactiveBoundingBoxIdent = 0;
@@ -371,12 +530,12 @@ OversetManagerSTK::define_inactive_bounding_box()
     for ( int i = 0; i < nDim_; ++i ) {
       NaluEnv::self().naluOutputP0() << "component: " << i << " " << minOversetInner[i] << " " << maxOversetInner[i] << std::endl;
     }
-    
+
     // set up the processor info for this bounding box; attach it to local rank with unique id (zero)
     const size_t innerBoundingBoxIdent = 0;
     const int parallelRankForInnerBoundingBox = NaluEnv::self().parallel_rank();
     stk::search::IdentProc<uint64_t,int> theIdentInner(innerBoundingBoxIdent, parallelRankForInnerBoundingBox);
-    
+   
     // bounding box for all of the overset mesh
     boundingElementBox boxInner(Box(minOversetInner,maxOversetInner), theIdentInner);
     boundingElementInactiveBoxVecInner_.push_back(boxInner);
@@ -525,13 +684,35 @@ OversetManagerSTK::define_background_bounding_boxes()
 //--------------------------------------------------------------------------
 void
 OversetManagerSTK::determine_intersected_elements(
-  std::vector<boundingElementBox> &boundingBoxVec,  
+  std::vector<boundingElementBox> &boundingBoxVec, 
+  std::vector<boundingElementBox> &boundingModelBoxVec, 
   std::vector<boundingElementBox> &boundingBoxesVec,  
   std::vector<stk::mesh::Entity > &elementVec)
 {
   // use local searchKeyPair since we do not need to save this off
   std::vector<std::pair<theKey, theKey> > searchKeyPair;
-  
+
+  std::vector<double> elementCent(3,0.0);
+
+  // Generate box shape object from original box and orientation information 
+  std::vector<double> q = realm_.get_quat_from_eulerxyz(thetaDisp_);
+  std::vector<double> rotMat = realm_.get_rotmat_from_quat(q,false);
+
+  std::shared_ptr<OrientedShape> fineShape;
+
+  if ( oversetUserData_.cuttingShape_ == "cylinder") {
+    fineShape = std::make_shared<OrientedCylinder>(boundingModelBoxVec[0],
+      ccDisp_, rotMat, cent_, axialDir_);
+  } 
+  else if ( oversetUserData_.cuttingShape_ == "obb" ) {
+    fineShape = std::make_shared<OrientedBox>(boundingModelBoxVec[0],
+      ccDisp_, rotMat, cent_);
+  }
+
+  // extract coordinates
+  VectorFieldType *coordinates
+    = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+ 
   // proceed with coarse search
   stk::search::coarse_search(boundingBoxVec, boundingBoxesVec, searchMethod_, NaluEnv::self().parallel_comm(), searchKeyPair);
 
@@ -542,6 +723,7 @@ OversetManagerSTK::determine_intersected_elements(
   std::vector<std::pair<theKey, theKey> >::const_iterator ii;
   for( ii=searchKeyPair.begin(); ii!=searchKeyPair.end(); ++ii ) {
 
+
     const uint64_t theBox = ii->second.id();
     unsigned theRank = NaluEnv::self().parallel_rank();
     const unsigned box_proc = ii->second.proc();
@@ -550,12 +732,41 @@ OversetManagerSTK::determine_intersected_elements(
     if ( box_proc == theRank ) {
       // find the element
       stk::mesh::Entity element = bulkData_->get_entity(stk::topology::ELEMENT_RANK, theBox);
+
+      if ( !(bulkData_->is_valid(element)) )
+        throw std::runtime_error("no valid entry for element");
+
+      // now load the elemental nodal coords
+      stk::mesh::Entity const * elem_node_rels = bulkData_->begin_nodes(element);
+      int num_nodes = bulkData_->num_nodes(element);
+      
+      // reset
+      std::fill(elementCent.begin(), elementCent.end(), 0.0);
+
+      double denom = 1.0/((double)num_nodes);
+
+      for ( int ni = 0; ni < num_nodes; ++ni ) {
+        stk::mesh::Entity node = elem_node_rels[ni];
+        const double * coords = stk::mesh::field_data(*coordinates, node );
+        for ( int j = 0; j < nDim_; ++j ) {
+          elementCent[j] += denom*coords[j];
+        }
+      }
+
+
       if ( !(bulkData_->is_valid(element)) )
         throw std::runtime_error("OversetManagerSTK::determine_intersected_elements() no valid entry for element id ");
-      elementVec.push_back(element);
+      if ( oversetUserData_.cuttingShape_ == "aabb") {
+        elementVec.push_back(element);
+      }      
+      else if ( fineShape->is_point_inside(elementCent) ) {
+        elementVec.push_back(element);
+      }
+
     }
   }
 }
+
 
 //--------------------------------------------------------------------------
 //-------- clear_parts -----------------------------------------------------
@@ -566,6 +777,8 @@ OversetManagerSTK::clear_parts()
   // clear some internal data structures
   boundingElementInactiveBoxVec_.clear();
   boundingElementInactiveBoxVecInner_.clear();
+  boundingElementInactiveModelBoxVecInner_.clear();
+  boundingElementInactiveModelBoxVec_.clear();
   boundingElementOversetBoxesVec_.clear();
   boundingElementBackgroundBoxesVec_.clear();
   boundingPointVecBackground_.clear();
@@ -573,8 +786,8 @@ OversetManagerSTK::clear_parts()
   boundingPointVecInner_.clear();
   searchKeyPairBackground_.clear();
   searchKeyPairOverset_.clear();
-  orphanPointSurfaceVecOverset_.clear();
-  orphanPointSurfaceVecBackground_.clear();
+  constraintPointSurfaceVecOverset_.clear();
+  constraintPointSurfaceVecBackground_.clear();
 
   // delete info vec before clear
   delete_info_vec();
@@ -705,10 +918,10 @@ OversetManagerSTK::skin_exposed_surface_on_inactive_part()
 }
   
 //--------------------------------------------------------------------------
-//-------- set_orphan_surface_part_vec -------------------------------------
+//-------- set_constraint_surface_part_vec ---------------------------------
 //--------------------------------------------------------------------------
 void
-OversetManagerSTK::set_orphan_surface_part_vec()
+OversetManagerSTK::set_constraint_surface_part_vec()
 {
   std::string targetNameOverset(oversetUserData_.oversetSurface_);
   std::string targetNameBackground(oversetUserData_.backgroundSurface_);
@@ -716,14 +929,14 @@ OversetManagerSTK::set_orphan_surface_part_vec()
   // extract overset part
   stk::mesh::Part *targetPartOverset = metaData_->get_part(targetNameOverset);
   
-  // place the orphans on the overset into orphanPointSurfaceVecOverset
-  orphanPointSurfaceVecOverset_.push_back(targetPartOverset);
+  // place the constraints on the overset into constraintPointSurfaceVecOverset
+  constraintPointSurfaceVecOverset_.push_back(targetPartOverset);
   
   // extract background part
   stk::mesh::Part *targetPartBackground = metaData_->get_part(targetNameBackground);
   
-  // place the orphans on the background into orphanPointSurfaceVecBackground
-  orphanPointSurfaceVecBackground_.push_back(targetPartBackground);
+  // place the constraints on the background into constraintPointSurfaceVecBackground
+  constraintPointSurfaceVecBackground_.push_back(targetPartBackground);
 }
   
 //--------------------------------------------------------------------------
@@ -740,7 +953,7 @@ OversetManagerSTK::create_overset_info_vec()
   
   // first populate overset info on overset mesh
   stk::mesh::Selector s_locally_owned_overset = (metaData_->locally_owned_part() | metaData_->globally_shared_part())
-            &stk::mesh::selectUnion(orphanPointSurfaceVecOverset_);
+            &stk::mesh::selectUnion(constraintPointSurfaceVecOverset_);
 
   stk::mesh::BucketVector const& locally_owned_node_bucket_overset =
       bulkData_->get_buckets( stk::topology::NODE_RANK, s_locally_owned_overset );
@@ -787,7 +1000,7 @@ OversetManagerSTK::create_overset_info_vec()
   
   // populate background overset info
   stk::mesh::Selector s_locally_owned_background = (metaData_->locally_owned_part() | metaData_->globally_shared_part())
-    &stk::mesh::selectUnion(orphanPointSurfaceVecBackground_);
+    &stk::mesh::selectUnion(constraintPointSurfaceVecBackground_);
   
   stk::mesh::BucketVector const& locally_owned_node_bucket_background =
       bulkData_->get_buckets( stk::topology::NODE_RANK, s_locally_owned_background );
@@ -896,10 +1109,10 @@ OversetManagerSTK::create_fringe_info_vec()
 }
 
 //--------------------------------------------------------------------------
-//-------- orphan_node_search ----------------------------------------------
+//-------- constraint_node_search ------------------------------------------
 //--------------------------------------------------------------------------
 void
-OversetManagerSTK::orphan_node_search()
+OversetManagerSTK::constraint_node_search()
 {
   // coarse search 
   coarse_search(
@@ -1005,7 +1218,7 @@ OversetManagerSTK::coarse_search(
   std::vector<boundingElementBox> &boundingElementVec,
   std::vector<std::pair<theKey, theKey> > &searchKeyPair)
 {
-  // first coarse search for potential donors for the orphans on the overset
+  // first coarse search for potential donors for the constraints on the overset
   searchKeyPair.clear();
   stk::search::coarse_search(boundingPointVec, boundingElementVec,
     searchMethod_, NaluEnv::self().parallel_comm(), searchKeyPair);
@@ -1077,8 +1290,8 @@ OversetManagerSTK::complete_search(
 
   // define vectors; fixed size
   std::vector<double> isoParCoords(nDim_);
-  std::vector<double> orphanCoords(nDim_);
-  std::vector<double> orphanCoordCheck(nDim_);
+  std::vector<double> constraintCoords(nDim_);
+  std::vector<double> constraintCoordCheck(nDim_);
   // variable size (resize later)
   std::vector<double> elementCoords;
   
@@ -1114,8 +1327,8 @@ OversetManagerSTK::complete_search(
       // extract overset info
       OversetInfo *theInfo = iterInfo->second;
       
-      // extract orphan node coords
-      orphanCoords = theInfo->nodalCoords_;
+      // extract constraint node coords
+      constraintCoords = theInfo->nodalCoords_;
       
       // now load the elemental nodal coords
       stk::mesh::Entity const * elem_node_rels = bulkData_->begin_nodes(elem);
@@ -1135,7 +1348,7 @@ OversetManagerSTK::complete_search(
       // extract master element
       MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(elementTopo);
       const double nearestDistance = meSCS->isInElement(&elementCoords[0],
-        &(orphanCoords[0]),
+        &(constraintCoords[0]),
         &(isoParCoords[0]));
 
       if ( nearestDistance < theInfo->bestX_ ) {
@@ -1153,20 +1366,20 @@ OversetManagerSTK::complete_search(
 
   // FIXME: Add a "canDelete infoVec for any point that does not find a home
 
-  // check to see that all orphan coords have a home...
+  // check to see that all fringe coords have a home...
   if ( oversetAlgDetailedOutput_ ) {
     const double tol = 1.0e-6;
     const double maxTol = 1.0+tol;
-    std::map<uint64_t, OversetInfo *>::iterator iterOrphan;
-    for (iterOrphan =  oversetInfoMap.begin();
-         iterOrphan != oversetInfoMap.end();
-         ++iterOrphan) {
+    std::map<uint64_t, OversetInfo *>::iterator iterConstraint;
+    for (iterConstraint =  oversetInfoMap.begin();
+         iterConstraint != oversetInfoMap.end();
+         ++iterConstraint) {
       
-      OversetInfo * infoObject = (*iterOrphan).second;
+      OversetInfo * infoObject = (*iterConstraint).second;
       stk::mesh::Entity elem = infoObject->owningElement_;   
     
       if ( infoObject->bestX_ > maxTol || !(bulkData_->is_valid(elem)) ) {
-        NaluEnv::self().naluOutputP0() << "Sorry, orphan node for node " << bulkData_->identifier(infoObject->orphanNode_)
+        NaluEnv::self().naluOutputP0() << "Sorry, constraint node for node " << bulkData_->identifier(infoObject->constraintNode_)
             << " does not have an ideal bestX; consider clipping "
             << infoObject->bestX_ << std::endl;
         if ( !(bulkData_->is_valid(elem)) )
@@ -1179,7 +1392,7 @@ OversetManagerSTK::complete_search(
         // clip to isoPar min/max... 
         if ( infoObject->bestX_ > maxTol && oversetUserData_.clipIsoParametricCoords_) {
           NaluEnv::self().naluOutputP0()
-            << "Will clip the isoParametricCoords for node id: " << bulkData_->identifier(infoObject->orphanNode_) << std::endl;
+            << "Will clip the isoParametricCoords for node id: " << bulkData_->identifier(infoObject->constraintNode_) << std::endl;
           const double minTol = -1.0-tol;
           for ( int j = 0; j < nDim_; ++j ) {
             if ( infoObject->isoParCoords_[j] > maxTol )
@@ -1190,7 +1403,7 @@ OversetManagerSTK::complete_search(
         }
       }
       else {
-        NaluEnv::self().naluOutputP0() << "Orphan node (all is well): " << bulkData_->identifier(infoObject->orphanNode_)
+        NaluEnv::self().naluOutputP0() << "Constraint node (all is well): " << bulkData_->identifier(infoObject->constraintNode_)
                                        << " has the following best X " << infoObject->bestX_ << std::endl;
         NaluEnv::self().naluOutputP0() << " with owning element: " << bulkData_->identifier(elem) << std::endl;
         NaluEnv::self().naluOutputP0() << " elem nodes ";

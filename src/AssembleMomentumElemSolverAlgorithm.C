@@ -369,7 +369,8 @@ AssembleMomentumElemSolverAlgorithm::execute()
         for (int i = 0; i < nDim; ++i ) {
           // udotx
           const double dxi = p_coordinates[irNdim+i]-p_coordinates[ilNdim+i];
-          const double ui = 0.5*(p_vrtm[ilNdim+i] + p_vrtm[irNdim+i]);
+          //const double ui = 0.5*(p_vrtm[ilNdim+i] + p_vrtm[irNdim+i]);
+          const double ui = 0.5*(p_velocityNp1[ilNdim+i] + p_velocityNp1[irNdim+i]);
           udotx += ui*dxi;
           // extrapolation du
           p_duL[i] = 0.0;
