@@ -392,34 +392,6 @@ AssembleMomentumEigenEdgeSolverAlgorithm::execute()
         resolved_kk = uiIp_[0]*uiIp_[0] + uiIp_[1]*uiIp_[1] + uiIp_[2]*uiIp_[2] + 1.0e-20;
         //NaluEnv::self().naluOutputP0() << "resolved_kk: " << resolved_kk << std::endl;
 
-
-        /*------------------------------------------------------------------------------*/
-        /*------------------------------------------------------------------------------*/
-        /*------------------------------------------------------------------------------*/
-        // compute resolved stress tensor
-        //
-
-       
-        for ( int i = 0; i < nDim; ++i ) {
-          for ( int j = 0; j < nDim; ++j ) {
-            S_res[i][j] = uiIp_[i]*uiIp_[j];
-          }
-        }
-
-        // compute resolved stress anisotropy tensor
-        double tr_res = S_res[0][0] + S_res[1][1] + S_res[2][2];
-
-        for ( int i = 0; i < nDim; ++i ) {
-          for ( int j = 0; j < nDim; ++j ) {
-            if (i==j) {
-              A_res[i][j] = S_res[i][j]/(tr_res + small) -1.0/3.0;
-            }
-            else {
-              A_res[i][j] = S_res[i][j]/(tr_res + small);
-            }
-          }
-        }
-
         // compute the resolved strain tensor S_
         for ( int i = 0; i < nDim; ++i ) {
           const int offSetI = nDim*i;
@@ -468,15 +440,6 @@ AssembleMomentumEigenEdgeSolverAlgorithm::execute()
             A_[i][j] = (-2.0)*(nu_sgs/total_kk)*S_[i][j];
           }
         }
-
-
-       //---------------------------------------------------------------//
-       //---------------------------------------------------------------//
-       //---------------------------------------------------------------//
-       // get and sort resolved stress eigenvalues
-       diagonalize(A_res, Q_res, D_res);
-       sort(Q_res, D_res);
-
         //if( A_[0][0] < (-1.0/3.0) || A_[0][0] > (2.0/3.0) || A_[1][1] < (-1.0/3.0) || A_[1][1] > (2.0/3.0) || A_[2][2] < (-1.0/3.0) || A_[2][2] > (2.0/3.0) || A_[0][1] < -0.5 || A_[0][1] > 0.5 || A_[0][2] < -0.5 || A_[0][2] > 0.5 || A_[1][0] < -0.5 || A_[1][0] > 0.5 || A_[1][2] < -0.5 || A_[1][2] > 0.5 || A_[2][0] < -0.5 || A_[2][0] > 0.5 || A_[2][1] < -0.5 || A_[2][1] > 0.5 ) { NaluEnv::self().naluOutputP0() << "a11: " << A_[0][0] << "  a12: " << A_[0][1] << "  a13: " << A_[0][2] << "  a21: " << A_[1][0] << "  a22: " << A_[1][1] << "  a23: " << A_[1][2] << "  a31: " << A_[2][0] << "  a32: " << A_[2][1] << "  a33: " << A_[2][2] << "   total_kk: " << total_kk << std::endl; } else { NaluEnv::self().naluOutputP0() << "total_kk: " << total_kk << std::endl;} 
 
         // perform the decomposition
@@ -490,7 +453,7 @@ AssembleMomentumEigenEdgeSolverAlgorithm::execute()
         //NaluEnv::self().naluOutputP0() <<"total_kk: " << total_kk << "  nu_sgs: " << nu_sgs << "  x0: " << 0.0*(D_[0][0] - D_[1][1]) + 1.0*(2.0*D_[1][1] - 2.0*D_[2][2]) + 0.5*(3.0*D_[2][2] + 1.0) << "  x1: " << 0.0*(D_[0][0] - D_[1][1]) + 0.0*(2.0*D_[1][1] - 2.0*D_[2][2]) + (sqrt(3.0)/2.0)*(3.0*D_[2][2] + 1.0) << std::endl;
 
         // perturb
-        perturb(Q_, D_,D_res);
+        perturb(Q_,D_);
         //NaluEnv::self().naluOutputP0() << "Lambda1: " << D_[0][0] << "   Lambda2: " << D_[1][1] << "   Lambda3: " << D_[2][2] << "   Sum: " << D_[0][0] + D_[1][1] + D_[2][2] << std::endl;
 
         // form perturbed stress tensor (deviatoric term absorbed into pressure)
@@ -826,7 +789,7 @@ AssembleMomentumEigenEdgeSolverAlgorithm::sort(
 //--------------------------------------------------------------------------
 void
 AssembleMomentumEigenEdgeSolverAlgorithm::perturb(
-  double (&Q)[3][3], double (&D)[3][3], double (&P)[3][3])
+  double (&Q)[3][3], double (&D)[3][3])
 {
   // sgs stress eigenvalue perturbation
   if(realm_.solutionOptions_->momentumEigenvaluePerturb_) {
@@ -836,14 +799,9 @@ AssembleMomentumEigenEdgeSolverAlgorithm::perturb(
     const double Lambda2 = D[1][1];
     const double Lambda3 = D[2][2];
 
-    // extract resolved stress eigenvalues
-    const double L_res1 = P[0][0];
-    const double L_res2 = P[1][1];
-    const double L_res3 = P[2][2];
-
-    const double pLambda1 = (1.0 - deltaB_)*Lambda1 + deltaB_*L_res1;
-    const double pLambda2 = (1.0 - deltaB_)*Lambda2 + deltaB_*L_res2;
-    const double pLambda3 = (1.0 - deltaB_)*Lambda3 + deltaB_*L_res3;
+    const double pLambda1 = (1.0 - deltaB_)*Lambda1 + deltaB_*BinvXt_[0];
+    const double pLambda2 = (1.0 - deltaB_)*Lambda2 + deltaB_*BinvXt_[1];
+    const double pLambda3 = (1.0 - deltaB_)*Lambda3 + deltaB_*BinvXt_[2];
 
     D[0][0] = pLambda1;
     D[1][1] = pLambda2;
