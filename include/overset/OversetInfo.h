@@ -38,7 +38,7 @@ class OversetInfo {
 
   ~OversetInfo();
 
-  stk::mesh::Entity orphanNode_;
+  stk::mesh::Entity constraintNode_;
   stk::mesh::Entity owningElement_;
 
   double bestX_;

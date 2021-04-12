@@ -17,7 +17,7 @@ namespace nalu{
 //==========================================================================
 // Class Definition
 //==========================================================================
-// OversetInfo - contains orphan point -> donor elements
+// OversetInfo - contains constraint point -> donor elements
 //==========================================================================
 //--------------------------------------------------------------------------
 //-------- constructor -----------------------------------------------------
@@ -25,7 +25,7 @@ namespace nalu{
 OversetInfo::OversetInfo(
   stk::mesh::Entity node,
   const int nDim)
-  : orphanNode_(node),
+  : constraintNode_(node),
     owningElement_(),
     bestX_(1.0e16),
     elemIsGhosted_(0),

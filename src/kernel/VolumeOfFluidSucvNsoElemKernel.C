@@ -50,6 +50,7 @@ VolumeOfFluidSucvNsoElemKernel<AlgTraits>::VolumeOfFluidSucvNsoElemKernel(
   std::string velocity_name = solnOpts.does_mesh_move() ? "velocity_rtm" : "velocity";
   velocityRTM_ = metaData.get_field<VectorFieldType>(
     stk::topology::NODE_RANK, velocity_name);
+
   coordinates_ = metaData.get_field<VectorFieldType>(
     stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
 
@@ -64,6 +65,7 @@ VolumeOfFluidSucvNsoElemKernel<AlgTraits>::VolumeOfFluidSucvNsoElemKernel(
   // fields and data
   dataPreReqs.add_coordinates_field(*coordinates_, AlgTraits::nDim_, CURRENT_COORDINATES);
   dataPreReqs.add_gathered_nodal_field(*velocityRTM_, AlgTraits::nDim_);
+
   dataPreReqs.add_gathered_nodal_field(*vofNm1_, 1);
   dataPreReqs.add_gathered_nodal_field(*vofN_, 1);
   dataPreReqs.add_gathered_nodal_field(*vofNp1_, 1);

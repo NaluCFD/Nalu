@@ -199,7 +199,7 @@ HypreLinearSystem::buildOversetNodeGraph(
   // Mark all the fringe nodes as skipped so that sumInto doesn't add into these
   // rows during assembly process
   for(auto* oinfo: realm_.oversetManager_->oversetInfoVec_) {
-    auto node = oinfo->orphanNode_;
+    auto node = oinfo->constraintNode_;
     HypreIntType hid = *stk::mesh::field_data(*realm_.hypreGlobalId_, node);
     skippedRows_.insert(hid * numDof_);
   }

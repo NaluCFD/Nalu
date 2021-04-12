@@ -579,12 +579,12 @@ TpetraLinearSystem::buildOversetNodeGraph(const stk::mesh::PartVector &parts)
 
   for( const OversetInfo* oversetInfo : realm_.oversetManager_->oversetInfoVec_) {
 
-    // extract element mesh object and orphan node
+    // extract element mesh object and constraint node
     stk::mesh::Entity owningElement = oversetInfo->owningElement_;
-    stk::mesh::Entity orphanNode = oversetInfo->orphanNode_;
+    stk::mesh::Entity constraintNode = oversetInfo->constraintNode_;
 
     // extract the owning rank for this node
-    const int nodeRank = bulkData.parallel_owner_rank(orphanNode);
+    const int nodeRank = bulkData.parallel_owner_rank(constraintNode);
 
     const bool nodeIsLocallyOwned = (theRank == nodeRank);
     if ( !nodeIsLocallyOwned )
@@ -592,16 +592,21 @@ TpetraLinearSystem::buildOversetNodeGraph(const stk::mesh::PartVector &parts)
 
     // relations
     stk::mesh::Entity const* elem_nodes = bulkData.begin_nodes(owningElement);
+
+    if ( !(bulkData.is_valid(owningElement)) )
+      throw std::runtime_error("no valid entry for element test");
+
     const size_t numNodes = bulkData.num_nodes(owningElement);
     const size_t numEntities = numNodes+1;
     entities.resize(numEntities);
     
-    entities[0] = orphanNode;
+    entities[0] = constraintNode;
     for(size_t n=0; n < numNodes; ++n) {
       entities[n+1] = elem_nodes[n];
     }
     addConnections(entities.data(), entities.size());
   }
+
 }
 
 void
@@ -1661,9 +1666,9 @@ TpetraLinearSystem::prepareConstraints(
   //KOKKOS: Loop noparallel RCP Vector Matrix replaceValues
   for( const OversetInfo* oversetInfo : realm_.oversetManager_->oversetInfoVec_) {
 
-    // extract orphan node and global id; process both owned and shared
-    stk::mesh::Entity orphanNode = oversetInfo->orphanNode_;
-    const stk::mesh::EntityId naluId = *stk::mesh::field_data(*realm_.naluGlobalId_, orphanNode);
+    // extract constraint node and global id; process both owned and shared
+    stk::mesh::Entity constraintNode = oversetInfo->constraintNode_;
+    const stk::mesh::EntityId naluId = *stk::mesh::field_data(*realm_.naluGlobalId_, constraintNode);
     const LocalOrdinal localIdOffset = lookup_myLID(myLIDs_, naluId, "prepareConstraints");
 
     //KOKKOS: Nested Loop noparallel RCP Vector Matrix replaceValues

@@ -898,7 +898,7 @@ VolumeOfFluidEquationSystem::compute_interface_normal()
 
   // overset update
   if ( realm_.hasOverset_ ) {
-    realm_.overset_orphan_node_field_update(interfaceNormal_, 1, nDim);
+    realm_.overset_constraint_node_field_update(interfaceNormal_, 1, nDim);
   }
 }
 
@@ -1081,7 +1081,7 @@ VolumeOfFluidEquationSystem::smooth_vof_execute()
 
   // overset update
   if ( realm_.hasOverset_ ) {
-    realm_.overset_orphan_node_field_update(smoothedRhs_, 1, 1);
+    realm_.overset_constraint_node_field_update(smoothedRhs_, 1, 1);
   }
   
   // compute min

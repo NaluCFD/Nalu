@@ -29,12 +29,12 @@ UpdateOversetFringeAlgorithmDriver::pre_work()
 {
   if ( applyItPreIter_ ) {
     for (auto& f: fields_) {
-      realm_.oversetManager_->overset_orphan_node_field_update(f->field_, f->sizeRow_, f->sizeCol_);
+      realm_.oversetManager_->overset_constraint_node_field_update(f->field_, f->sizeRow_, f->sizeCol_);
     }
   }
   else {
     for (auto& f: fields_) {
-      realm_.oversetManager_->overset_orphan_node_field_update_post(f->field_, f->sizeRow_, f->sizeCol_);
+      realm_.oversetManager_->overset_constraint_node_field_update_post(f->field_, f->sizeRow_, f->sizeCol_);
     }
   }
 }

@@ -54,17 +54,17 @@ stk::mesh::Selector
 OversetManager::get_inactive_selector()
 {
   return (stk::mesh::Selector(*inActivePart_) &
-          !(stk::mesh::selectUnion(orphanPointSurfaceVecBackground_)));
+          !(stk::mesh::selectUnion(constraintPointSurfaceVecBackground_)));
 }
 
 void
-OversetManager::overset_orphan_node_field_update(
+OversetManager::overset_constraint_node_field_update(
   stk::mesh::FieldBase *theField,
   const int sizeRow,
   const int sizeCol)
 {
   // operates on known oversetInfoVec_
-  overset_orphan_node_field_update_gen(
+  overset_constraint_node_field_update_gen(
     theField,
     sizeRow,
     sizeCol,
@@ -72,13 +72,13 @@ OversetManager::overset_orphan_node_field_update(
 }
 
 void
-OversetManager::overset_orphan_node_field_update_post(
+OversetManager::overset_constraint_node_field_update_post(
   stk::mesh::FieldBase *theField,
   const int sizeRow,
   const int sizeCol)
 {
   // operates on known fringeInfoVec_
-  overset_orphan_node_field_update_gen(
+  overset_constraint_node_field_update_gen(
     theField,
     sizeRow,
     sizeCol,
@@ -86,14 +86,14 @@ OversetManager::overset_orphan_node_field_update_post(
 }
 
 void
-OversetManager::overset_orphan_node_field_update_gen(
+OversetManager::overset_constraint_node_field_update_gen(
   stk::mesh::FieldBase *theField,
   const int sizeRow,
   const int sizeCol,
   std::vector<OversetInfo *> &infoVec)
 {
   const unsigned sizeOfField = sizeRow*sizeCol;
-  std::vector <double > orphanNodalQ(sizeOfField);
+  std::vector <double > constraintNodalQ(sizeOfField);
 
   // parallel communicate ghosted entities
   if ( NULL != oversetGhosting_ ) {
@@ -111,7 +111,7 @@ OversetManager::overset_orphan_node_field_update_gen(
 
     // extract element and node mesh object
     stk::mesh::Entity owningElement = infoObject->owningElement_;
-    stk::mesh::Entity orphanNode = infoObject->orphanNode_;
+    stk::mesh::Entity constraintNode = infoObject->constraintNode_;
 
     // get master element type for this contactInfo
     MasterElement *meSCS  = infoObject->meSCS_;
@@ -146,14 +146,14 @@ OversetManager::overset_orphan_node_field_update_gen(
         sizeOfField,
         &(infoObject->isoParCoords_[0]),
         &elemNodalQ[0],
-        &(orphanNodalQ[0]));
+        &(constraintNodalQ[0]));
 
-    // populate orphan node
-    double *orphanQ = (double *) stk::mesh::field_data(*theField, orphanNode);
+    // populate constraint node
+    double *constraintQ = (double *) stk::mesh::field_data(*theField, constraintNode);
     for ( int i = 0; i < sizeRow; ++i ) {
       const int rowI = i*sizeCol;
       for ( int j = 0; j < sizeCol; ++j ) {
-        orphanQ[rowI+j] = orphanNodalQ[rowI+j];
+        constraintQ[rowI+j] = constraintNodalQ[rowI+j];
       }
     }
   }

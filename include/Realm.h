@@ -179,6 +179,11 @@ class Realm {
   std::vector<double> get_rotmat_from_quat(
     std::vector<double> &quat,
     bool to_frame = true);
+  std::vector<double> rotate_translate_point(
+    const std::vector<double> &point,
+    const std::vector<double> &centroidCoords,
+    const std::vector<double> &centroidDisp,
+    const std::vector<double> &bodyAngle);
   std::vector<double> get_quat_from_eulerxyz(
     const std::vector<double> &bodyAngle);
   std::vector<double> get_eulerxyz_from_quat(
@@ -288,7 +293,7 @@ class Realm {
 
   const stk::mesh::PartVector &get_subject_part_vector();
 
-  void overset_orphan_node_field_update(
+  void overset_constraint_node_field_update(
     stk::mesh::FieldBase *theField,
     const unsigned sizeRow,
     const unsigned sizeCol);

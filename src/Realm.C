@@ -45,10 +45,6 @@
 #include "overset/OversetManager.h"
 #include "overset/OversetManagerSTK.h"
 
-#ifdef NALU_USES_TIOGA
-#include "overset/OversetManagerTIOGA.h"
-#endif
-
 // post processing
 #include "SolutionNormPostProcessing.h"
 #include "TurbulenceAveragingPostProcessing.h"
@@ -2447,10 +2443,10 @@ Realm::update_body_cc(
       quatm[j] = quat[j] + dt*rk_fact[i]*qrhs[j];
     } 
   }
-  quat[0] += dt/6.0*(k[0][0]+k[1][0]+k[2][0]+k[3][0]);
-  quat[1] += dt/6.0*(k[0][1]+k[1][1]+k[2][1]+k[3][1]);
-  quat[2] += dt/6.0*(k[0][2]+k[1][2]+k[2][2]+k[3][2]);
-  quat[3] += dt/6.0*(k[0][3]+k[1][3]+k[2][3]+k[3][3]);
+  quat[0] += dt/6.0*(k[0][0]+2.0*k[1][0]+2.0*k[2][0]+k[3][0]);
+  quat[1] += dt/6.0*(k[0][1]+2.0*k[1][1]+2.0*k[2][1]+k[3][1]);
+  quat[2] += dt/6.0*(k[0][2]+2.0*k[1][2]+2.0*k[2][2]+k[3][2]);
+  quat[3] += dt/6.0*(k[0][3]+2.0*k[1][3]+2.0*k[2][3]+k[3][3]);
 
   // Extract angle from Quat
   motion.bodyAngle_ = get_eulerxyz_from_quat(quat);
@@ -2701,6 +2697,40 @@ Realm::process_initial_displacement()
 }
 
 //--------------------------------------------------------------------------
+//-------- rotate_translate_point ------------------------------------------
+//--------------------------------------------------------------------------
+std::vector<double> 
+Realm::rotate_translate_point(
+  const std::vector<double> &point,
+  const std::vector<double> &centroidCoords,
+  const std::vector<double> &centroidDisp,
+  const std::vector<double> &bodyAngle)
+{
+
+  // translated/rotated point
+  std::vector<double> new_point(point);
+
+  // Calculate full Quaternion
+  std::vector<double> q(4,0.0);
+  std::vector<double> rotMat(9,0.0);
+
+  q = get_quat_from_eulerxyz(bodyAngle);
+  rotMat = get_rotmat_from_quat(q);
+ 
+  const double cX = point[0]-(centroidCoords[0]); 
+  const double cY = point[1]-(centroidCoords[1]); 
+  const double cZ = point[2]-(centroidCoords[2]); 
+
+  // rotated model coordinates; converted to displacement; add back in centroid
+  new_point[0] = rotMat[0]*cX + rotMat[1]*cY + rotMat[2]*cZ  + centroidCoords[0] + centroidDisp[0];
+  new_point[1] = rotMat[3]*cX + rotMat[4]*cY + rotMat[5]*cZ  + centroidCoords[1] + centroidDisp[1];
+  new_point[2] = rotMat[6]*cX + rotMat[7]*cY + rotMat[8]*cZ  + centroidCoords[2] + centroidDisp[2];
+
+  return new_point;
+}
+
+
+//--------------------------------------------------------------------------
 //-------- set_displacement_six_dof ----------------------------------------
 //--------------------------------------------------------------------------
 void
@@ -2750,6 +2780,7 @@ Realm::set_displacement_six_dof(
       const double cZ = mcX[2]-centroidCoords[2]; 
 
       // rotated model coordinates; converted to displacement; add back in centroid
+      
       rcX[0] = rotMat[0]*cX + rotMat[1]*cY + rotMat[2]*cZ - mcX[0] + centroidCoords[0] + centroidDisp[0];
       rcX[1] = rotMat[3]*cX + rotMat[4]*cY + rotMat[5]*cZ - mcX[1] + centroidCoords[1] + centroidDisp[1];
       rcX[2] = rotMat[6]*cX + rotMat[7]*cY + rotMat[8]*cZ - mcX[2] + centroidCoords[2] + centroidDisp[2];
@@ -2904,7 +2935,7 @@ Realm::set_mesh_velocity_six_dof(
       mesh_velocity_cross_product(motion.bodyOmega_.data(), cX, uX);
       
       for ( int i = 0; i < nDim; ++i ) {
-        vnp1[offSet+i] =  uX[i]+motion.bodyVel_[i];
+        vnp1[offSet+i] = uX[i]+motion.bodyVel_[i];
       }
     }
   }
@@ -3494,19 +3525,6 @@ Realm::setup_overset_bc(
         << std::endl;
       oversetManager_ = new OversetManagerSTK(*this, oversetBCData.userData_);
       break;
-
-    case OversetBoundaryConditionData::TPL_TIOGA:
-#ifdef NALU_USES_TIOGA
-      oversetManager_ = new OversetManagerTIOGA(*this, oversetBCData.userData_);
-      NaluEnv::self().naluOutputP0()
-        << "Realm::setup_overset_bc:: Selecting TIOGA TPL for overset connectivity"
-        << std::endl;
-#else
-      // should not get here... we should have thrown error in input file processing stage
-      throw std::runtime_error("TIOGA TPL support not enabled during compilation phase");
-#endif
-      break;
-
     case OversetBoundaryConditionData::OVERSET_NONE:
     default:
       throw std::runtime_error("Invalid setting for overset connectivity");
@@ -3571,12 +3589,12 @@ Realm::get_subject_part_vector()
 //-------- overset_field_update --------------------------------------------
 //--------------------------------------------------------------------------
 void
-Realm::overset_orphan_node_field_update(
+Realm::overset_constraint_node_field_update(
   stk::mesh::FieldBase *theField,
   const unsigned sizeRow,
   const unsigned sizeCol)
 {
-  oversetManager_->overset_orphan_node_field_update(theField, sizeRow, sizeCol);
+  oversetManager_->overset_constraint_node_field_update(theField, sizeRow, sizeCol);
 }
 
 //--------------------------------------------------------------------------
