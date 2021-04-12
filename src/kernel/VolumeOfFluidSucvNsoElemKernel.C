@@ -101,7 +101,6 @@ VolumeOfFluidSucvNsoElemKernel<AlgTraits>::execute(
   ScratchViews<DoubleType>& scratchViews)
 {
   NALU_ALIGNED DoubleType w_uIp[AlgTraits::nDim_];
-  NALU_ALIGNED DoubleType w_uIpv[AlgTraits::nDim_];
   NALU_ALIGNED DoubleType w_dvofdxIp[AlgTraits::nDim_];
 
   SharedMemView<DoubleType*>& v_vofNm1 = scratchViews.get_scratch_view_1D(

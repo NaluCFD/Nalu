@@ -2935,7 +2935,7 @@ Realm::set_mesh_velocity_six_dof(
       mesh_velocity_cross_product(motion.bodyOmega_.data(), cX, uX);
       
       for ( int i = 0; i < nDim; ++i ) {
-        vnp1[offSet+i] = (uX[i]+motion.bodyVel_[i]);
+        vnp1[offSet+i] = uX[i]+motion.bodyVel_[i];
       }
     }
   }
