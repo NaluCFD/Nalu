@@ -103,10 +103,6 @@ realms:
 
       options:
 
-        - hybrid_factor:
-            velocity: 1.0
-            mixture_fraction: 0.0
-
         - limiter:
             velocity: yes
             mixture_fraction: no
