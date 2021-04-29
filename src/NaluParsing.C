@@ -1193,7 +1193,7 @@ namespace YAML
       oversetData.cuttingShape_ = node["cutting_shape"].as<std::string>();
     }
 
-    if (node["cutting_shape_axis"])
+    if (node["cutting_shape_axial_dir"])
     {
      oversetData.cuttingAxis_ = node["cutting_shape_axial_dir"].as<int>();
     }    
