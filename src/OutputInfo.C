@@ -31,7 +31,6 @@ namespace nalu{
 OutputInfo::OutputInfo() 
   : outputDBName_("output.e"),
     catalystFileName_(""),
-    catalystParseJson_(""),
     paraviewScriptName_(""),
     outputFreq_(1),
     outputStart_(0),
