@@ -261,7 +261,8 @@ struct OpenUserData : public UserData {
   TurbDiss eps_;
   MixtureFraction mixFrac_;
   MassFraction massFraction_;
- 
+  VolumeOfFluid vof_;
+
   bool uSpec_;
   bool pSpec_;
   bool tkeSpec_;
@@ -269,12 +270,12 @@ struct OpenUserData : public UserData {
   bool epsSpec_;
   bool mixFracSpec_;
   bool massFractionSpec_;
-  
+  bool vofSpec_;
   bool useTotalP_;
 
   OpenUserData()
     : UserData(),
-    uSpec_(false), pSpec_(false), tkeSpec_(false), sdrSpec_(false), epsSpec_(false), mixFracSpec_(false), massFractionSpec_(false), useTotalP_(false)
+    uSpec_(false), pSpec_(false), tkeSpec_(false), sdrSpec_(false), epsSpec_(false), mixFracSpec_(false), massFractionSpec_(false), vofSpec_(false), useTotalP_(false)
   {}
 };
 

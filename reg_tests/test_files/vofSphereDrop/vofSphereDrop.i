@@ -152,7 +152,7 @@ realms:
         - element_source_terms:
             momentum: [lumped_momentum_time_derivative, advection_diffusion, buoyancy]
             continuity: [advection]
-            volume_of_fluid: [vof, sucv_nso, sharpen]
+            volume_of_fluid: [lumped_mass, scv_advection, sucv_nso, sharpen]
 
         - user_constants:
             gravity: [0.0, -10.0]

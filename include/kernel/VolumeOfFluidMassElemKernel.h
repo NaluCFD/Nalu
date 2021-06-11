@@ -5,8 +5,8 @@
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
-#ifndef MOMENTUMMASSELEMKERNEL_H
-#define MOMENTUMMASSELEMKERNEL_H
+#ifndef VolumeOfFluidMassElemKernel_H
+#define VolumeOfFluidMassElemKernel_H
 
 #include "kernel/Kernel.h"
 #include "FieldTypeDef.h"
@@ -24,19 +24,20 @@ class SolutionOptions;
 class MasterElement;
 class ElemDataRequests;
 
-/** CMM (BDF2/BE) for momentum equation (velocity DOF)
+/** CMM (BDF2/BE) for scalar equation
  */
 template<typename AlgTraits>
-class MomentumMassElemKernel: public Kernel
+class VolumeOfFluidMassElemKernel: public Kernel
 {
 public:
-  MomentumMassElemKernel(
+  VolumeOfFluidMassElemKernel(
     const stk::mesh::BulkData&,
     const SolutionOptions&,
+    ScalarFieldType*,
     ElemDataRequests&,
     const bool);
 
-  virtual ~MomentumMassElemKernel();
+  virtual ~VolumeOfFluidMassElemKernel();
 
   /** Perform pre-timestep work for the computational kernel
    */
@@ -51,15 +52,11 @@ public:
     ScratchViews<DoubleType>&);
 
 private:
-  MomentumMassElemKernel() = delete;
+  VolumeOfFluidMassElemKernel() = delete;
 
-  VectorFieldType *velocityNm1_{nullptr};
-  VectorFieldType *velocityN_{nullptr};
-  VectorFieldType *velocityNp1_{nullptr};
-  ScalarFieldType *densityNm1_{nullptr};
-  ScalarFieldType *densityN_{nullptr};
-  ScalarFieldType *densityNp1_{nullptr};
-  VectorFieldType *Gjp_{nullptr};
+  ScalarFieldType *vofNm1_{nullptr};
+  ScalarFieldType *vofN_{nullptr};
+  ScalarFieldType *vofNp1_{nullptr};
   VectorFieldType *coordinates_{nullptr};
 
   double dt_{0.0};
@@ -67,8 +64,6 @@ private:
   double gamma2_{0.0};
   double gamma3_{0.0};
   const bool lumpedMass_;
-  const double densFac_;
-  const double om_densFac_;
 
   /// Integration point to node mapping
   const int* ipNodeMap_;
@@ -80,4 +75,4 @@ private:
 }  // nalu
 }  // sierra
 
-#endif /* MOMENTUMMASSELEMKERNEL_H */
+#endif /* VolumeOfFluidMassElemKernel_H */

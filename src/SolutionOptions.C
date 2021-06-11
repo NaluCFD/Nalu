@@ -79,7 +79,8 @@ SolutionOptions::SolutionOptions()
     mdotAlgInflow_(0.0),
     mdotAlgOpen_(0.0),
     quadType_("GaussLegendre"),
-    accousticallyCompressible_(false)
+    accousticallyCompressible_(false),
+    balancedForce_(false)
 {
   // nothing to do
 }
@@ -149,6 +150,9 @@ SolutionOptions::load(const YAML::Node & y_node)
     // accoustically compressible algorith
     get_if_present(y_solution_options, "use_accoustically_compressible_algorithm", accousticallyCompressible_);
 
+    // balanced-force area and inverse density scaling
+    get_if_present_no_default(y_solution_options, "activate_balanced_force_algorithm", balancedForce_);
+          
     // extract turbulence model; would be nice if we could parse an enum..
     std::string specifiedTurbModel;
     std::string defaultTurbModel = "laminar";

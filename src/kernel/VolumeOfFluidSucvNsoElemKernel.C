@@ -57,7 +57,7 @@ VolumeOfFluidSucvNsoElemKernel<AlgTraits>::VolumeOfFluidSucvNsoElemKernel(
   MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(AlgTraits::topo_);
 
   // compute shape function
-  get_scv_shape_fn_data<AlgTraits>([&](double* ptr){meSCS->shape_fcn(ptr);}, v_shape_function_);
+  get_scs_shape_fn_data<AlgTraits>([&](double* ptr){meSCS->shape_fcn(ptr);}, v_shape_function_);
 
   // add master elements
   dataPreReqs.add_cvfem_surface_me(meSCS);

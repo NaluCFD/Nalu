@@ -5,8 +5,8 @@
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
-#ifndef MOMENTUMMASSELEMKERNEL_H
-#define MOMENTUMMASSELEMKERNEL_H
+#ifndef VolumeOfFluidScvAdvElemKernel_H
+#define VolumeOfFluidScvAdvElemKernel_H
 
 #include "kernel/Kernel.h"
 #include "FieldTypeDef.h"
@@ -19,28 +19,23 @@
 namespace sierra {
 namespace nalu {
 
-class TimeIntegrator;
 class SolutionOptions;
 class MasterElement;
 class ElemDataRequests;
 
-/** CMM (BDF2/BE) for momentum equation (velocity DOF)
+/** SCV advection for VOF
  */
 template<typename AlgTraits>
-class MomentumMassElemKernel: public Kernel
+class VolumeOfFluidScvAdvElemKernel: public Kernel
 {
 public:
-  MomentumMassElemKernel(
+  VolumeOfFluidScvAdvElemKernel(
     const stk::mesh::BulkData&,
     const SolutionOptions&,
-    ElemDataRequests&,
-    const bool);
+    ScalarFieldType*,
+    ElemDataRequests&);
 
-  virtual ~MomentumMassElemKernel();
-
-  /** Perform pre-timestep work for the computational kernel
-   */
-  virtual void setup(const TimeIntegrator&);
+  virtual ~VolumeOfFluidScvAdvElemKernel();
 
   /** Execute the kernel within a Kokkos loop and populate the LHS and RHS for
    *  the linear solve
@@ -51,24 +46,11 @@ public:
     ScratchViews<DoubleType>&);
 
 private:
-  MomentumMassElemKernel() = delete;
+  VolumeOfFluidScvAdvElemKernel() = delete;
 
-  VectorFieldType *velocityNm1_{nullptr};
-  VectorFieldType *velocityN_{nullptr};
-  VectorFieldType *velocityNp1_{nullptr};
-  ScalarFieldType *densityNm1_{nullptr};
-  ScalarFieldType *densityN_{nullptr};
-  ScalarFieldType *densityNp1_{nullptr};
-  VectorFieldType *Gjp_{nullptr};
+  ScalarFieldType *vofNp1_{nullptr};
+  VectorFieldType *velocityRTM_{nullptr};
   VectorFieldType *coordinates_{nullptr};
-
-  double dt_{0.0};
-  double gamma1_{0.0};
-  double gamma2_{0.0};
-  double gamma3_{0.0};
-  const bool lumpedMass_;
-  const double densFac_;
-  const double om_densFac_;
 
   /// Integration point to node mapping
   const int* ipNodeMap_;
@@ -80,4 +62,4 @@ private:
 }  // nalu
 }  // sierra
 
-#endif /* MOMENTUMMASSELEMKERNEL_H */
+#endif /* VolumeOfFluidScvAdvElemKernel_H */

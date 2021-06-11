@@ -39,9 +39,13 @@
 
 // kernels
 #include "AssembleElemSolverAlgorithm.h"
-#include "kernel/VolumeOfFluidElemKernel.h"
+#include "kernel/VolumeOfFluidMassElemKernel.h"
+#include "kernel/VolumeOfFluidScvAdvElemKernel.h"
+#include "kernel/VolumeOfFluidScsAdvElemKernel.h"
+#include "kernel/VolumeOfFluidDivElemKernel.h"
 #include "kernel/VolumeOfFluidSucvNsoElemKernel.h"
 #include "kernel/VolumeOfFluidSharpenElemKernel.h"
+#include "kernel/VolumeOfFluidOpenAdvElemKernel.h"
 
 // user function
 #include "user_functions/RayleighTaylorMixFracAuxFunction.h"
@@ -108,7 +112,8 @@ VolumeOfFluidEquationSystem::VolumeOfFluidEquationSystem(
     dxMin_(1.0e16),
     smooth_(smooth),
     smoothIter_(smoothIter),
-    isInit_(true)
+    isInit_(true),
+    scsAdvection_(false)
 {
   // extract solver name and solver object
   std::string solverName = realm_.equationSystems_.get_solver_block_name("volume_of_fluid");
@@ -131,13 +136,31 @@ VolumeOfFluidEquationSystem::VolumeOfFluidEquationSystem(
     manage_projected_nodal_gradient(eqSystems);
   }
 
+  // look for scs_advection (controls an additional open bc)
+  std::map<std::string, std::vector<std::string> >::iterator isrc
+    = realm_.solutionOptions_->elemSrcTermsMap_.find("volume_of_fluid");
+  if ( isrc != realm_.solutionOptions_->elemSrcTermsMap_.end() ) {
+    std::vector<std::string> mapNameVec = isrc->second;
+    for (size_t k = 0; k < mapNameVec.size(); ++k ) {
+      std::string sourceName = mapNameVec[k];
+      if ( sourceName == "scs_advection" ) {
+        scsAdvection_ = true;
+        break;
+      }
+    }
+  }
+
   // output options
   if ( smooth_ ) {
     NaluEnv::self().naluOutputP0() << "SCS smoothing_iterations: " << smoothIter_ << std::endl;
     NaluEnv::self().naluOutputP0() << "fourier_number: " << Fo_ << std::endl;
   }
+
   if ( supp_alg_is_requested("sharpen") )
     NaluEnv::self().naluOutputP0() << "compression_constant: " << cAlpha_ << std::endl;
+
+  if ( scsAdvection_ ) 
+    NaluEnv::self().naluOutputP0() << "VOF scs_advection is active " << std::endl;
 }
 
 //--------------------------------------------------------------------------
@@ -250,13 +273,25 @@ VolumeOfFluidEquationSystem::register_interior_algorithm(
   auto& activeKernels = solverAlg->activeKernels_;
   
   if (solverAlgWasBuilt) {
-    build_topo_kernel_if_requested<VolumeOfFluidElemKernel>
-      (partTopo, *this, activeKernels, "vof",
-       realm_.bulk_data(), *realm_.solutionOptions_, vof_, dataPreReqs, false);
-    
-    build_topo_kernel_if_requested<VolumeOfFluidElemKernel>
-      (partTopo, *this, activeKernels, "lumped_vof",
+    build_topo_kernel_if_requested<VolumeOfFluidMassElemKernel>
+      (partTopo, *this, activeKernels, "lumped_mass",
        realm_.bulk_data(), *realm_.solutionOptions_, vof_, dataPreReqs, true);
+
+    build_topo_kernel_if_requested<VolumeOfFluidMassElemKernel>
+      (partTopo, *this, activeKernels, "mass",
+       realm_.bulk_data(), *realm_.solutionOptions_, vof_, dataPreReqs, false);
+
+    build_topo_kernel_if_requested<VolumeOfFluidScvAdvElemKernel>
+      (partTopo, *this, activeKernels, "scv_advection",
+       realm_.bulk_data(), *realm_.solutionOptions_, vof_, dataPreReqs);
+
+    build_topo_kernel_if_requested<VolumeOfFluidScsAdvElemKernel>
+      (partTopo, *this, activeKernels, "scs_advection",
+       realm_.bulk_data(), *realm_.solutionOptions_, vof_, dataPreReqs);
+
+    build_topo_kernel_if_requested<VolumeOfFluidDivElemKernel>
+      (partTopo, *this, activeKernels, "div_correction",
+       realm_.bulk_data(), *realm_.solutionOptions_, vof_, dataPreReqs);
 
     build_topo_kernel_if_requested<VolumeOfFluidSucvNsoElemKernel>
       (partTopo, *this, activeKernels, "sucv_nso",
@@ -388,6 +423,63 @@ VolumeOfFluidEquationSystem::register_open_bc(
   ScalarFieldType &vofNp1 = (smooth_) ? vofSmoothed_->field_of_state(stk::mesh::StateNone) 
     : vof_->field_of_state(stk::mesh::StateNP1);  
   VectorFieldType &dvofdxNone = dvofdx_->field_of_state(stk::mesh::StateNone);
+
+  // check if scs advection is active. If so, we need entrainment and open bc algorithms
+  if ( scsAdvection_ ) {
+    
+    stk::mesh::MetaData &meta_data = realm_.meta_data();
+
+    // first, vdot at open bc; register field
+    MasterElement *meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(partTopo);
+    const int numScsBip = meFC->numIntPoints_;    
+    GenericFieldType *volBip 
+      = &(meta_data.declare_field<GenericFieldType>(static_cast<stk::topology::rank_t>(meta_data.side_rank()), 
+                                                   "open_volume_flow_rate"));
+    stk::mesh::put_field_on_mesh(*volBip, *part, numScsBip, nullptr);
+
+    // register boundary data; volume_of_fluid at bc
+    ScalarFieldType *theBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "open_vof_bc"));
+    stk::mesh::put_field_on_mesh(*theBcField, *part, nullptr);
+    
+    // extract the value for user specified mixFrac and save off the AuxFunction
+    OpenUserData userData = openBCData.userData_;
+    VolumeOfFluid vof = userData.vof_;
+    std::vector<double> userSpec(1);
+    userSpec[0] = vof.vof_;
+    
+    // new it
+    ConstantAuxFunction *theAuxFunc = new ConstantAuxFunction(0, 1, userSpec);
+    
+    // bc data alg
+    AuxFunctionAlgorithm *auxAlg
+      = new AuxFunctionAlgorithm(realm_, part,
+                                 theBcField, theAuxFunc,
+                                 stk::topology::NODE_RANK);
+    bcDataAlg_.push_back(auxAlg);
+
+    auto& solverAlgMap = solverAlgDriver_->solverAlgorithmMap_;
+    
+    stk::topology elemTopo = get_elem_topo(realm_, *part);
+    
+    AssembleFaceElemSolverAlgorithm* faceElemSolverAlg = nullptr;
+    bool solverAlgWasBuilt = false;
+    
+    std::tie(faceElemSolverAlg, solverAlgWasBuilt) 
+      = build_or_add_part_to_face_elem_solver_alg(algType, *this, *part, elemTopo, solverAlgMap, "open");
+    
+    auto& activeKernels = faceElemSolverAlg->activeKernels_;
+    
+    if (solverAlgWasBuilt) {
+  
+      build_face_elem_topo_kernel_automatic<VolumeOfFluidOpenAdvElemKernel>
+        (partTopo, elemTopo, *this, activeKernels, "volume_of_fluid_open",
+         realm_.meta_data(), *realm_.solutionOptions_,
+         this, vof_, theBcField, 
+         faceElemSolverAlg->faceDataNeeded_, faceElemSolverAlg->elemDataNeeded_);
+      
+    }
+
+  }
 
   // non-solver; dvofdx; allow for element-based shifted
   if ( !managePNG_ ) {
@@ -665,7 +757,13 @@ VolumeOfFluidEquationSystem::solve_and_update()
     
     // projected nodal gradient
     compute_projected_nodal_gradient();
+  }
 
+  // allow for property evaluation
+  if ( realm_.solutionOptions_->balancedForce_ ) {
+    NaluEnv::self().naluOutputP0() 
+      << "VolumeOfFluidEquationSystem::solve_and_update(): evaluate_properties" << std::endl;
+    realm_.evaluate_properties();
   }
 }
 
@@ -1095,7 +1193,7 @@ VolumeOfFluidEquationSystem::smooth_vof_execute()
 void
 VolumeOfFluidEquationSystem::sharpen_interface_explicit()
 {
-  NaluEnv::self().naluOutputP0() << "VOF::sharpen_interface_explicit() inative" << std::endl;
+  // not yet supported
 }
 
 //--------------------------------------------------------------------------

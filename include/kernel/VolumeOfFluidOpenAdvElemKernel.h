@@ -5,8 +5,8 @@
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
-#ifndef ScalarOpenAdvElemKernel_h
-#define ScalarOpenAdvElemKernel_h
+#ifndef VolumeOfFluidOpenAdvElemKernel_h
+#define VolumeOfFluidOpenAdvElemKernel_h
 
 #include "master_element/MasterElement.h"
 
@@ -27,27 +27,24 @@ namespace nalu {
 class ElemDataRequests;
 class EquationSystem;
 class MasterElement;
-template <typename T> class PecletFunction;
 class SolutionOptions;
 
-/** open advection kernel for scalar equation
+/** open advection for vof
  */
 template<typename BcAlgTraits>
-class ScalarOpenAdvElemKernel: public Kernel
+class VolumeOfFluidOpenAdvElemKernel: public Kernel
 {
 public:
-  ScalarOpenAdvElemKernel(
+  VolumeOfFluidOpenAdvElemKernel(
     const stk::mesh::MetaData &metaData,
     const SolutionOptions &solnOpts,
     EquationSystem* eqSystem,  
     ScalarFieldType *scalarQ,
     ScalarFieldType *bcScalarQ,
-    VectorFieldType *Gjq,
-    ScalarFieldType *diffFluxCoeff,
     ElemDataRequests &faceDataPreReqs,
     ElemDataRequests &elemDataPreReqs);
 
-  virtual ~ScalarOpenAdvElemKernel();
+  virtual ~VolumeOfFluidOpenAdvElemKernel();
 
   /** Execute the kernel within a Kokkos loop and populate the LHS and RHS for
    *  the linear solve
@@ -60,29 +57,15 @@ public:
     int elemFaceOrdinal);
 
 private:
-  ScalarOpenAdvElemKernel() = delete;
+  VolumeOfFluidOpenAdvElemKernel() = delete;
 
   ScalarFieldType *scalarQ_{nullptr};
   ScalarFieldType *bcScalarQ_{nullptr};
-  VectorFieldType *Gjq_{nullptr};
-  ScalarFieldType *diffFluxCoeff_{nullptr};
-  VectorFieldType *velocityRTM_{nullptr};
   VectorFieldType *coordinates_{nullptr};
-  ScalarFieldType *density_{nullptr};
-  GenericFieldType *openMassFlowRate_{nullptr};
+  GenericFieldType *openVolumeFlowRate_{nullptr};
   
-  // numerical parameters
-  const double alphaUpw_;
-  const double om_alphaUpw_;
-  const double hoUpwind_;
-  const double small_{1.0e-16};
-
-  // Integration point to node mapping and master element for interior
-  const int *faceIpNodeMap_{nullptr};
+  // Integration point to node mapping
   MasterElement *meSCS_{nullptr};
-
-  // Peclet function
-  PecletFunction<DoubleType> *pecletFunction_{nullptr};
 
   /// Shape functions
   AlignedViewType<DoubleType[BcAlgTraits::numFaceIp_][BcAlgTraits::nodesPerFace_]> vf_adv_shape_function_ {"vf_adv_shape_function"};
@@ -91,4 +74,4 @@ private:
 }  // nalu
 }  // sierra
 
-#endif /* ScalarOpenAdvElemKernel_h */
+#endif /* VolumeOfFluidOpenAdvElemKernel_h */

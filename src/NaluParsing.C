@@ -1092,6 +1092,13 @@ namespace YAML
           node["temperature"].as<sierra::nalu::Temperature>();
       openData.tempSpec_ = true;
     }
+
+    if (node["volume_of_fluid"])
+    {
+      openData.vof_ = node["volume_of_fluid"].as<
+          sierra::nalu::VolumeOfFluid>();
+      openData.vofSpec_ = true;
+    }
     
     if (node["use_total_pressure"])
     {

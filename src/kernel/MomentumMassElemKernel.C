@@ -32,6 +32,8 @@ MomentumMassElemKernel<AlgTraits>::MomentumMassElemKernel(
   const bool lumpedMass)
   : Kernel(),
     lumpedMass_(lumpedMass),
+    densFac_(solnOpts.balancedForce_ ? 1.0 : 0.0),
+    om_densFac_(solnOpts.balancedForce_ ? 0.0 : 1.0),
     ipNodeMap_(sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_)->ipNodeMap())
 {
 
@@ -147,13 +149,14 @@ MomentumMassElemKernel<AlgTraits>::execute(
 
     const DoubleType scV = v_scv_volume(ip);
     const int nnNdim = nearestNode * AlgTraits::nDim_;
-    // Compute RHS
+    // Compute RHS; with possible density scaling
+    const DoubleType densFac = rhoNp1*densFac_ + om_densFac_;
     for (int j=0; j < AlgTraits::nDim_; ++j) {
       rhs(nnNdim + j) +=
         - ( gamma1_ * rhoNp1 * w_uNp1[j] +
             gamma2_ * rhoN   * w_uN[j] +
             gamma3_ * rhoNm1 * w_uNm1[j]) * scV / dt_
-        - w_Gjp[j] * scV;
+        - w_Gjp[j] * scV * densFac;
     }
 
     // Compute LHS
