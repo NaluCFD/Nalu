@@ -5,8 +5,8 @@
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
-#ifndef MOMENTUMMASSELEMKERNEL_H
-#define MOMENTUMMASSELEMKERNEL_H
+#ifndef ContinuityVofAdvElemKernel_H
+#define ContinuityVofAdvElemKernel_H
 
 #include "kernel/Kernel.h"
 #include "FieldTypeDef.h"
@@ -24,19 +24,18 @@ class SolutionOptions;
 class MasterElement;
 class ElemDataRequests;
 
-/** CMM (BDF2/BE) for momentum equation (velocity DOF)
+/** CMM (BDF2) for continuity equation (pressure DOF)
  */
 template<typename AlgTraits>
-class MomentumMassElemKernel: public Kernel
+class ContinuityVofAdvElemKernel: public Kernel
 {
 public:
-  MomentumMassElemKernel(
+  ContinuityVofAdvElemKernel(
     const stk::mesh::BulkData&,
     const SolutionOptions&,
-    ElemDataRequests&,
-    const bool);
+    ElemDataRequests&);
 
-  virtual ~MomentumMassElemKernel();
+  virtual ~ContinuityVofAdvElemKernel();
 
   /** Perform pre-timestep work for the computational kernel
    */
@@ -51,33 +50,29 @@ public:
     ScratchViews<DoubleType>&);
 
 private:
-  MomentumMassElemKernel() = delete;
+  ContinuityVofAdvElemKernel() = delete;
 
-  VectorFieldType *velocityNm1_{nullptr};
-  VectorFieldType *velocityN_{nullptr};
-  VectorFieldType *velocityNp1_{nullptr};
-  ScalarFieldType *densityNm1_{nullptr};
-  ScalarFieldType *densityN_{nullptr};
+  // extract fields; nodal
+  VectorFieldType *velocityRTM_{nullptr};
+  VectorFieldType *Gpdx_{nullptr};
+  ScalarFieldType *pressure_{nullptr};
   ScalarFieldType *densityNp1_{nullptr};
-  VectorFieldType *Gjp_{nullptr};
   VectorFieldType *coordinates_{nullptr};
 
-  double dt_{0.0};
-  double gamma1_{0.0};
-  double gamma2_{0.0};
-  double gamma3_{0.0};
-  const bool lumpedMass_;
-  const double densFac_;
-  const double om_densFac_;
+  double projTimeScale_{1.0};
 
-  /// Integration point to node mapping
-  const int* ipNodeMap_;
+  const bool meshMotion_;
+  const bool shiftMdot_;
+  const bool shiftPoisson_;
+  const bool reducedSensitivities_;
 
-  /// Shape functions
-  AlignedViewType<DoubleType[AlgTraits::numScvIp_][AlgTraits::nodesPerElement_]> v_shape_function_ {"view_shape_func"};
+  // scratch space
+  AlignedViewType<DoubleType[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_ { "view_shape_func" };
+
+  const int* lrscv_;
 };
 
 }  // nalu
 }  // sierra
 
-#endif /* MOMENTUMMASSELEMKERNEL_H */
+#endif /* ContinuityVofAdvElemKernel_H */

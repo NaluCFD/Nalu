@@ -24,15 +24,19 @@ public:
   AssembleNodalGradAlgorithmDriver(
     Realm &realm,
     const std::string & scalarQName,
-    const std::string & dqdxName);
+    const std::string & dqdxName,
+    const std::string & areaWeightName = "na",
+    const bool areaWeight = false);
   ~AssembleNodalGradAlgorithmDriver();
 
   void pre_work();
   void post_work();
+  void normalize_by_area();
 
   const std::string scalarQName_;
   const std::string dqdxName_;
-  
+  const std::string areaWeightName_;  
+  const bool areaWeight_;  
 };
   
 

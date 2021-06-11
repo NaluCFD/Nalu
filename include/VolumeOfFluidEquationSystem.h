@@ -118,6 +118,7 @@ public:
   const int smoothIter_;
 
   bool isInit_;
+  bool scsAdvection_;
 };
 
 

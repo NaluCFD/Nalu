@@ -200,6 +200,9 @@ public:
   
   // allow for rho = f(P)
   bool accousticallyCompressible_;
+
+  // inverse density weights
+  bool balancedForce_;
 };
 
 } // namespace nalu

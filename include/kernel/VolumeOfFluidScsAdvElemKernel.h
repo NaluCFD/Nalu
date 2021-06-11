@@ -5,8 +5,8 @@
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
-#ifndef VolumeOfFluidElemKernel_H
-#define VolumeOfFluidElemKernel_H
+#ifndef VolumeOfFluidScsAdvElemKernel_H
+#define VolumeOfFluidScsAdvElemKernel_H
 
 #include "kernel/Kernel.h"
 #include "FieldTypeDef.h"
@@ -19,29 +19,23 @@
 namespace sierra {
 namespace nalu {
 
-class TimeIntegrator;
 class SolutionOptions;
 class MasterElement;
 class ElemDataRequests;
 
-/** CMM (BDF2/BE) for scalar equation
+/** SCS advection for VOF
  */
 template<typename AlgTraits>
-class VolumeOfFluidElemKernel: public Kernel
+class VolumeOfFluidScsAdvElemKernel: public Kernel
 {
 public:
-  VolumeOfFluidElemKernel(
+  VolumeOfFluidScsAdvElemKernel(
     const stk::mesh::BulkData&,
     const SolutionOptions&,
     ScalarFieldType*,
-    ElemDataRequests&,
-    const bool);
+    ElemDataRequests&);
 
-  virtual ~VolumeOfFluidElemKernel();
-
-  /** Perform pre-timestep work for the computational kernel
-   */
-  virtual void setup(const TimeIntegrator&);
+  virtual ~VolumeOfFluidScsAdvElemKernel();
 
   /** Execute the kernel within a Kokkos loop and populate the LHS and RHS for
    *  the linear solve
@@ -52,28 +46,21 @@ public:
     ScratchViews<DoubleType>&);
 
 private:
-  VolumeOfFluidElemKernel() = delete;
+  VolumeOfFluidScsAdvElemKernel() = delete;
 
-  ScalarFieldType *vofNm1_{nullptr};
-  ScalarFieldType *vofN_{nullptr};
   ScalarFieldType *vofNp1_{nullptr};
   VectorFieldType *velocityRTM_{nullptr};
   VectorFieldType *coordinates_{nullptr};
+  GenericFieldType *volumeFlowRate_{nullptr};
 
-  double dt_{0.0};
-  double gamma1_{0.0};
-  double gamma2_{0.0};
-  double gamma3_{0.0};
-  const bool lumpedMass_;
-
-  /// Integration point to node mapping
-  const int* ipNodeMap_;
+  // Integration point to node mapping
+  const int* lrscv_;
 
   /// Shape functions
-  AlignedViewType<DoubleType[AlgTraits::numScvIp_][AlgTraits::nodesPerElement_]> v_shape_function_ {"view_shape_func"};
+  AlignedViewType<DoubleType[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_ {"view_shape_func"};
 };
 
 }  // nalu
 }  // sierra
 
-#endif /* VolumeOfFluidElemKernel_H */
+#endif /* VolumeOfFluidScsAdvElemKernel_H */

@@ -5,7 +5,7 @@
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
-#include "kernel/ContinuityAdvElemKernel.h"
+#include "kernel/ContinuityVofAdvElemKernel.h"
 #include "AlgTraits.h"
 #include "master_element/MasterElement.h"
 #include "TimeIntegrator.h"
@@ -25,7 +25,7 @@ namespace sierra {
 namespace nalu {
 
 template<typename AlgTraits>
-ContinuityAdvElemKernel<AlgTraits>::ContinuityAdvElemKernel(
+ContinuityVofAdvElemKernel<AlgTraits>::ContinuityVofAdvElemKernel(
   const stk::mesh::BulkData& bulkData,
   const SolutionOptions& solnOpts,
   ElemDataRequests& dataPreReqs)
@@ -71,15 +71,16 @@ ContinuityAdvElemKernel<AlgTraits>::ContinuityAdvElemKernel(
     get_scs_shape_fn_data<AlgTraits>([&](double* ptr){meSCS->shifted_shape_fcn(ptr);}, v_shape_function_);
   else
     get_scs_shape_fn_data<AlgTraits>([&](double* ptr){meSCS->shape_fcn(ptr);}, v_shape_function_);
+  NaluEnv::self().naluOutputP0() << "VOF ContinuityVofAdvElemKernel is active" << std::endl;
 }
 
 template<typename AlgTraits>
-ContinuityAdvElemKernel<AlgTraits>::~ContinuityAdvElemKernel()
+ContinuityVofAdvElemKernel<AlgTraits>::~ContinuityVofAdvElemKernel()
 {}
 
 template<typename AlgTraits>
 void
-ContinuityAdvElemKernel<AlgTraits>::setup(const TimeIntegrator& timeIntegrator)
+ContinuityVofAdvElemKernel<AlgTraits>::setup(const TimeIntegrator& timeIntegrator)
 {
   const double dt = timeIntegrator.get_time_step();
   const double gamma1 = timeIntegrator.get_gamma1();
@@ -88,14 +89,14 @@ ContinuityAdvElemKernel<AlgTraits>::setup(const TimeIntegrator& timeIntegrator)
 
 template<typename AlgTraits>
 void
-ContinuityAdvElemKernel<AlgTraits>::execute(
+ContinuityVofAdvElemKernel<AlgTraits>::execute(
   SharedMemView<DoubleType **>& lhs,
   SharedMemView<DoubleType *>& rhs,
   ScratchViews<DoubleType>& scratchViews)
 {
   // Work arrays (fixed size)
-  NALU_ALIGNED DoubleType w_rho_uIp [AlgTraits::nDim_];
-  NALU_ALIGNED DoubleType w_Gpdx_Ip [AlgTraits::nDim_];
+  NALU_ALIGNED DoubleType w_uIp [AlgTraits::nDim_];
+  NALU_ALIGNED DoubleType w_GpdxIp [AlgTraits::nDim_];
   NALU_ALIGNED DoubleType w_dpdxIp  [AlgTraits::nDim_];
 
   SharedMemView<DoubleType*>& v_densityNp1 = scratchViews.get_scratch_view_1D(*densityNp1_);
@@ -115,9 +116,15 @@ ContinuityAdvElemKernel<AlgTraits>::execute(
     const int il = lrscv_[2*ip];
     const int ir = lrscv_[2*ip+1];
 
+    // need density at ip first for proper LHS scaling
+    DoubleType rhoIp = 0.0;
+    for (int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic) {
+      rhoIp += v_shape_function_(ip, ic)*v_densityNp1(ic);
+    }
+
     for (int j = 0; j < AlgTraits::nDim_; ++j) {
-      w_rho_uIp[j] = 0.0;
-      w_Gpdx_Ip[j] = 0.0;
+      w_uIp[j] = 0.0;
+      w_GpdxIp[j] = 0.0;
       w_dpdxIp[j] = 0.0;
     }
 
@@ -128,29 +135,30 @@ ContinuityAdvElemKernel<AlgTraits>::execute(
 
       DoubleType lhsfac = 0.0;
       for (int j = 0; j < AlgTraits::nDim_; ++j) {
-        w_Gpdx_Ip[j] += r * v_Gpdx(ic, j);
-        w_rho_uIp[j] += r * nodalRho * v_velocity(ic, j);
-        w_dpdxIp[j]  += v_dndx(ip, ic, j) * nodalPressure;
-        lhsfac += -v_dndx_lhs(ip, ic, j) * v_scs_areav(ip, j);
+        w_GpdxIp[j] += r*v_Gpdx(ic, j);
+        w_uIp[j] += r*v_velocity(ic, j);
+        w_dpdxIp[j]  += v_dndx(ip, ic, j)*nodalPressure;
+        lhsfac += -v_dndx_lhs(ip, ic, j)*v_scs_areav(ip, j);
       }
 
-      lhs(il,ic) += lhsfac;
-      lhs(ir,ic) -= lhsfac;
+      lhs(il,ic) += lhsfac/rhoIp;
+      lhs(ir,ic) -= lhsfac/rhoIp;
     }
 
-    // assemble mdot
-    DoubleType mdot = 0.0;
-    for (int j = 0; j < AlgTraits::nDim_; ++j) {
-      mdot += (w_rho_uIp[j] - projTimeScale_*(w_dpdxIp[j] - w_Gpdx_Ip[j]))*v_scs_areav(ip,j);
+    // assemble flow rate
+    DoubleType vdot = 0.0;
+    for (int j = 0; j < AlgTraits::nDim_; ++j) {      
+      // balanced force approach
+      vdot += (w_uIp[j] - projTimeScale_*(w_dpdxIp[j]/rhoIp - w_GpdxIp[j]))*v_scs_areav(ip,j);
     }
 
     // residuals
-    rhs(il) -= mdot / projTimeScale_;
-    rhs(ir) += mdot / projTimeScale_;
+    rhs(il) -= vdot/projTimeScale_;
+    rhs(ir) += vdot/projTimeScale_;
   }
 }
 
-INSTANTIATE_KERNEL(ContinuityAdvElemKernel);
+INSTANTIATE_KERNEL(ContinuityVofAdvElemKernel);
 
 }  // nalu
 }  // sierra

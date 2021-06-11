@@ -55,8 +55,7 @@ private:
 
   /// Integration point to node mapping
   const double cAlpha_;
-  const int* ipNodeMap_;
- 
+  const int* ipNodeMap_; 
 };
 
 }  // nalu
