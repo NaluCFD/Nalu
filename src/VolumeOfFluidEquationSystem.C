@@ -46,6 +46,7 @@
 #include "kernel/VolumeOfFluidSucvNsoElemKernel.h"
 #include "kernel/VolumeOfFluidSharpenElemKernel.h"
 #include "kernel/VolumeOfFluidOpenAdvElemKernel.h"
+#include "kernel/VolumeOfFluidGclElemKernel.h"
 
 // user function
 #include "user_functions/RayleighTaylorMixFracAuxFunction.h"
@@ -308,6 +309,14 @@ VolumeOfFluidEquationSystem::register_interior_algorithm(
     build_topo_kernel_if_requested<VolumeOfFluidSharpenElemKernel>
       (partTopo, *this, activeKernels, "sharpen",
        realm_.bulk_data(), *realm_.solutionOptions_, vof_, cAlpha_, dataPreReqs);
+
+    build_topo_kernel_if_requested<VolumeOfFluidGclElemKernel>
+      (partTopo, *this, activeKernels, "lumped_gcl",
+       realm_.bulk_data(), *realm_.solutionOptions_, vof_, dataPreReqs, true);
+
+    build_topo_kernel_if_requested<VolumeOfFluidGclElemKernel>
+      (partTopo, *this, activeKernels, "gcl",
+       realm_.bulk_data(), *realm_.solutionOptions_, vof_, dataPreReqs, false);
       
     report_invalid_supp_alg_names();
     report_built_supp_alg_names();

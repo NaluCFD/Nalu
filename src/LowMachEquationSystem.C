@@ -112,11 +112,13 @@
 // kernels
 #include "kernel/ContinuityAdvElemKernel.h"
 #include "kernel/ContinuityVofAdvElemKernel.h"
+#include "kernel/ContinuityGclElemKernel.h"
 #include "kernel/ContinuityMassElemKernel.h"
 #include "kernel/MomentumAdvDiffElemKernel.h"
 #include "kernel/MomentumActuatorSrcElemKernel.h"
 #include "kernel/MomentumBuoyancyBoussinesqSrcElemKernel.h"
 #include "kernel/MomentumBuoyancySrcElemKernel.h"
+#include "kernel/MomentumGclElemKernel.h"
 #include "kernel/MomentumMassElemKernel.h"
 #include "kernel/MomentumUpwAdvDiffElemKernel.h"
 
@@ -1359,6 +1361,14 @@ MomentumEquationSystem::register_interior_algorithm(
         (partTopo, *this, activeKernels, "NSO_4TH_KE",
          realm_.bulk_data(), *realm_.solutionOptions_, velocity_, dudx_, 1.0, dataPreReqs);
 
+      build_topo_kernel_if_requested<MomentumGclElemKernel>
+        (partTopo, *this, activeKernels, "gcl",
+         realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs, false);
+      
+      build_topo_kernel_if_requested<MomentumGclElemKernel>
+        (partTopo, *this, activeKernels, "lumped_gcl",
+         realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs, true);
+
       report_invalid_supp_alg_names();
       report_built_supp_alg_names();
     }
@@ -2582,6 +2592,14 @@ ContinuityEquationSystem::register_interior_algorithm(
 
         build_topo_kernel_if_requested<ContinuityMassElemKernel>
           (partTopo, *this, activeKernels, "lumped_density_time_derivative",
+           realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs, true);
+
+        build_topo_kernel_if_requested<ContinuityGclElemKernel>
+          (partTopo, *this, activeKernels, "gcl",
+           realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs, false);
+
+        build_topo_kernel_if_requested<ContinuityGclElemKernel>
+          (partTopo, *this, activeKernels, "lumped_gcl",
            realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs, true);
 
         build_topo_kernel_if_requested<ContinuityAdvElemKernel>
