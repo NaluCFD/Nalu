@@ -161,7 +161,6 @@ ContinuityVofOpenElemKernel<BcAlgTraits>::execute(
       pBip += r*vf_pressure(ic);
       pbcBip += r*vf_pressureBc(ic);
       rhoBip += r*vf_density(ic);
-      const DoubleType rhoIC = vf_density(ic);
       for ( int j = 0; j < BcAlgTraits::nDim_; ++j ) {
         w_uBip[j] += r*vf_vrtm(ic,j);
         w_GpdxBip[j] += r*vf_Gpdx(ic,j);
