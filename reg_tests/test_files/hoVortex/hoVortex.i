@@ -91,24 +91,19 @@ realms:
     solution_options:
       name: myOptions
       turbulence_model: laminar
+
+      use_consolidated_solver_algorithm: yes
+      use_consolidated_face_elem_bc_algorithm: yes
   
       options:
-        - hybrid_factor:
-            velocity: 0.0
-
-        - alpha_upw:
-            velocity: 1.0
-
-        - limiter:
-            pressure: no
-            velocity: no
 
         - consistent_mass_matrix_png:
             pressure: yes
             velocity: yes
 
         - element_source_terms:
-            momentum: [momentum_time_derivative, NSO_4TH_ALT]
+            momentum: [momentum_time_derivative, advection_diffusion, NSO_4TH_ALT]
+            continuity: [advection]
 
     output:
       output_data_base_name: hoVortex.e

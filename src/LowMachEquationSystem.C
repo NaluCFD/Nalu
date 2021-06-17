@@ -153,11 +153,10 @@
 
 #include "user_functions/MeshMotionAuxFunction.h"
 
-#include "user_functions/SteadyTaylorVortexMomentumSrcElemSuppAlg.h"
-#include "user_functions/SteadyTaylorVortexContinuitySrcElemSuppAlg.h"
-#include "user_functions/SteadyTaylorVortexMomentumSrcNodeSuppAlg.h"
 #include "user_functions/SteadyTaylorVortexVelocityAuxFunction.h"
 #include "user_functions/SteadyTaylorVortexPressureAuxFunction.h"
+#include "user_functions/SteadyTaylorVortexMomentumSrcElemKernel.h"
+#include "user_functions/SteadyTaylorVortexContinuitySrcElemKernel.h"
 
 #include "user_functions/VariableDensityVelocityAuxFunction.h"
 #include "user_functions/VariableDensityPressureAuxFunction.h"
@@ -191,13 +190,6 @@
 #include "user_functions/PowerlawVelocityAuxFunction.h"
 
 #include "user_functions/PulseVelocityAuxFunction.h"
-
-// deprecated
-#include "ContinuityMassElemSuppAlgDep.h"
-#include "MomentumMassElemSuppAlgDep.h"
-#include "MomentumBuoyancySrcElemSuppAlgDep.h"
-#include "nso/MomentumNSOKeElemSuppAlgDep.h"
-#include "nso/MomentumNSOElemSuppAlgDep.h"
 
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
@@ -1219,44 +1211,14 @@ MomentumEquationSystem::register_interior_algorithm(
         for (size_t k = 0; k < mapNameVec.size(); ++k ) {
           std::string sourceName = mapNameVec[k];
           SupplementalAlgorithm *suppAlg = NULL;
-          if (sourceName == "momentum_time_derivative" ) {
-            suppAlg = new MomentumMassElemSuppAlgDep(realm_, false);
-          }
-          else if (sourceName == "lumped_momentum_time_derivative" ) {
-            suppAlg = new MomentumMassElemSuppAlgDep(realm_, true);
-          }
-          else if (sourceName == "SteadyTaylorVortex" ) {
-            suppAlg = new SteadyTaylorVortexMomentumSrcElemSuppAlg(realm_);
-          }
-          else if (sourceName == "VariableDensity" ) {
+          if (sourceName == "VariableDensity" ) {
             suppAlg = new VariableDensityMomentumSrcElemSuppAlg(realm_);
-          }
-          else if (sourceName == "NSO_2ND" ) {
-            suppAlg = new MomentumNSOElemSuppAlgDep(realm_, velocity_, dudx_, realm_.is_turbulent() ? evisc_ : visc_, 0.0, 0.0);
-          }
-          else if (sourceName == "NSO_2ND_ALT" ) {
-            suppAlg = new MomentumNSOElemSuppAlgDep(realm_, velocity_, dudx_, realm_.is_turbulent() ? evisc_ : visc_, 0.0, 1.0);
-          }
-          else if (sourceName == "NSO_4TH" ) {
-            suppAlg = new MomentumNSOElemSuppAlgDep(realm_, velocity_, dudx_, realm_.is_turbulent() ? evisc_ : visc_, 1.0, 0.0);
-          }
-          else if (sourceName == "NSO_4TH_ALT" ) {
-            suppAlg = new MomentumNSOElemSuppAlgDep(realm_, velocity_, dudx_, realm_.is_turbulent() ? evisc_ : visc_, 1.0, 1.0);
-          }
-          else if (sourceName == "NSO_2ND_KE" ) {
-            suppAlg = new MomentumNSOKeElemSuppAlgDep(realm_, velocity_, dudx_, 0.0);
-          }
-          else if (sourceName == "NSO_4TH_KE" ) {
-            suppAlg = new MomentumNSOKeElemSuppAlgDep(realm_, velocity_, dudx_, 1.0);
           }
           else if (sourceName == "NSO_2ND_GRAD" ) {
             suppAlg = new MomentumNSOGradElemSuppAlg(realm_, velocity_, dudx_, 0.0);
           }
           else if (sourceName == "NSO_4TH_GRAD" ) {
             suppAlg = new MomentumNSOGradElemSuppAlg(realm_, velocity_, dudx_, 1.0);
-          }
-          else if (sourceName == "buoyancy" ) {
-            suppAlg = new MomentumBuoyancySrcElemSuppAlgDep(realm_);
           }
           else {
             throw std::runtime_error("MomentumElemSrcTerms::Error Source term is not supported: " + sourceName);
@@ -1369,6 +1331,10 @@ MomentumEquationSystem::register_interior_algorithm(
         (partTopo, *this, activeKernels, "lumped_gcl",
          realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs, true);
 
+      build_topo_kernel_if_requested<SteadyTaylorVortexMomentumSrcElemKernel>
+        (partTopo, *this, activeKernels, "SteadyTaylorVortex",
+         realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs);
+
       report_invalid_supp_alg_names();
       report_built_supp_alg_names();
     }
@@ -1430,9 +1396,6 @@ MomentumEquationSystem::register_interior_algorithm(
           }
           else if ( sourceName == "gcl") {
             suppAlg = new MomentumGclSrcNodeSuppAlg(realm_);
-          }
-          else if (sourceName == "SteadyTaylorVortex" ) {
-            suppAlg = new SteadyTaylorVortexMomentumSrcNodeSuppAlg(realm_);
           }
           else if (sourceName == "VariableDensity" ) {
             suppAlg = new VariableDensityMomentumSrcNodeSuppAlg(realm_);
@@ -2547,17 +2510,8 @@ ContinuityEquationSystem::register_interior_algorithm(
           for (size_t k = 0; k < mapNameVec.size(); ++k ) {
             std::string sourceName = mapNameVec[k];
             SupplementalAlgorithm *suppAlg = NULL;
-            if (sourceName == "SteadyTaylorVortex" ) {
-              suppAlg = new SteadyTaylorVortexContinuitySrcElemSuppAlg(realm_);
-            }
-            else if ( sourceName == "VariableDensity" ) {
+            if ( sourceName == "VariableDensity" ) {
               suppAlg = new VariableDensityContinuitySrcElemSuppAlg(realm_);
-            }
-            else if (sourceName == "density_time_derivative" ) {
-              suppAlg = new ContinuityMassElemSuppAlgDep(realm_, false);
-            }
-            else if (sourceName == "lumped_density_time_derivative" ) {
-              suppAlg = new ContinuityMassElemSuppAlgDep(realm_, true);
             }
             else {
               throw std::runtime_error("ContinuityElemSrcTerms::Error Source term is not supported: " + sourceName);
@@ -2601,6 +2555,10 @@ ContinuityEquationSystem::register_interior_algorithm(
         build_topo_kernel_if_requested<ContinuityGclElemKernel>
           (partTopo, *this, activeKernels, "lumped_gcl",
            realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs, true);
+
+        build_topo_kernel_if_requested<SteadyTaylorVortexContinuitySrcElemKernel>
+          (partTopo, *this, activeKernels, "SteadyTaylorVortex",
+           realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs);
 
         build_topo_kernel_if_requested<ContinuityAdvElemKernel>
           (partTopo, *this, activeKernels, "advection",

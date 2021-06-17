@@ -39,7 +39,6 @@
 #include "ScalarGclNodeSuppAlg.h"
 #include "ScalarMassBackwardEulerNodeSuppAlg.h"
 #include "ScalarMassBDF2NodeSuppAlg.h"
-#include "ScalarMassElemSuppAlgDep.h"
 #include "Simulation.h"
 #include "SolutionOptions.h"
 #include "TimeIntegrator.h"
@@ -60,8 +59,6 @@
 
 // nso
 #include "nso/ScalarNSOElemKernel.h"
-#include "nso/ScalarNSOKeElemSuppAlg.h"
-#include "nso/ScalarNSOElemSuppAlgDep.h"
 
 #include "overset/UpdateOversetFringeAlgorithmDriver.h"
 
@@ -247,32 +244,7 @@ TurbDissipationEquationSystem::register_interior_algorithm(
         std::vector<std::string> mapNameVec = isrc->second;
         for (size_t k = 0; k < mapNameVec.size(); ++k) {
           std::string sourceName = mapNameVec[k];
-          SupplementalAlgorithm* suppAlg = NULL;
-          if (sourceName == "NSO_2ND_ALT") {
-            suppAlg = new ScalarNSOElemSuppAlgDep(realm_, eps_, dedx_, evisc_, 0.0, 1.0);
-          }
-          else if (sourceName == "NSO_4TH_ALT") {
-            suppAlg = new ScalarNSOElemSuppAlgDep(realm_, eps_, dedx_, evisc_, 1.0, 1.0);
-          }
-          else if (sourceName == "NSO_2ND_KE") {
-            const double turbSc = realm_.get_turb_schmidt(eps_->name());
-            suppAlg = new ScalarNSOKeElemSuppAlg(realm_, eps_, dedx_, turbSc, 0.0);
-          }
-          else if (sourceName == "NSO_4TH_KE") {
-            const double turbSc = realm_.get_turb_schmidt(eps_->name());
-            suppAlg = new ScalarNSOKeElemSuppAlg(realm_, eps_, dedx_, turbSc, 1.0);
-          }
-          else if (sourceName == "turbulent_dissipation_time_derivative" ) {
-            suppAlg = new ScalarMassElemSuppAlgDep(realm_, eps_, false);
-          }
-          else if (sourceName == "lumped_turbulent_dissipation_time_derivative" ) {
-            suppAlg = new ScalarMassElemSuppAlgDep(realm_, eps_, true);
-          }
-          else {
-            throw std::runtime_error("TurbDissipationElemSrcTerms::Error Source term is not supported: " + sourceName);
-          }
-          NaluEnv::self().naluOutputP0() << "TurbDissipationElemSrcTerms::added() " << sourceName << std::endl;
-          theAlg->supplementalAlg_.push_back(suppAlg);
+          throw std::runtime_error("TurbDissipationElemSrcTerms::Error Source term is not supported: " + sourceName);
         }
       }
     }

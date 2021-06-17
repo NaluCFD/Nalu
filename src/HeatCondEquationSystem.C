@@ -74,7 +74,6 @@
 #include "user_functions/SteadyThermalContactSrcElemSuppAlg.h"
 #include "user_functions/SteadyThermal3dContactAuxFunction.h"
 #include "user_functions/SteadyThermalContact3DSrcNodeSuppAlg.h"
-#include "user_functions/SteadyThermal3dContactSrcElemSuppAlgDep.h"
 #include "user_functions/SteadyThermal3dContactSrcElemKernel.h"
 
 #include "overset/UpdateOversetFringeAlgorithmDriver.h"
@@ -379,9 +378,6 @@ HeatCondEquationSystem::register_interior_algorithm(
           SupplementalAlgorithm *suppAlg = NULL;
           if (sourceName == "steady_2d_thermal" ) {
             suppAlg = new SteadyThermalContactSrcElemSuppAlg(realm_);
-          }
-          else if (sourceName == "steady_3d_thermal" ) {
-            suppAlg = new SteadyThermal3dContactSrcElemSuppAlgDep(realm_);
           }
           else if (sourceName == "FEM" ) {
             throw std::runtime_error("HeatCondElemSrcTerms::Error FEM must use consolidated approach");

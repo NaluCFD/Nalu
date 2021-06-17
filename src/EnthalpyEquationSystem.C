@@ -49,7 +49,6 @@
 #include "ScalarGclNodeSuppAlg.h"
 #include "ScalarMassBackwardEulerNodeSuppAlg.h"
 #include "ScalarMassBDF2NodeSuppAlg.h"
-#include "ScalarMassElemSuppAlgDep.h"
 #include "Simulation.h"
 #include "TimeIntegrator.h"
 #include "SolverAlgorithmDriver.h"
@@ -72,10 +71,6 @@
 // nso
 #include "nso/ScalarNSOElemKernel.h"
 #include "nso/ScalarNSOKeElemKernel.h"
-
-// nso to be deprecated
-#include "nso/ScalarNSOElemSuppAlgDep.h"
-#include "nso/ScalarNSOKeElemSuppAlg.h"
 
 // props
 #include "property_evaluator/EnthalpyPropertyEvaluator.h"
@@ -411,38 +406,7 @@ EnthalpyEquationSystem::register_interior_algorithm(
         std::vector<std::string> mapNameVec = isrc->second;
         for (size_t k = 0; k < mapNameVec.size(); ++k ) {
           std::string sourceName = mapNameVec[k];
-          SupplementalAlgorithm *suppAlg = NULL;
-          if (sourceName == "NSO_2ND" ) {
-            suppAlg = new ScalarNSOElemSuppAlgDep(realm_, enthalpy_, dhdx_, evisc_, 0.0, 0.0);
-          }
-          else if (sourceName == "NSO_2ND_ALT" ) {
-            suppAlg = new ScalarNSOElemSuppAlgDep(realm_, enthalpy_, dhdx_, evisc_, 0.0, 1.0);
-          }
-          else if (sourceName == "NSO_4TH" ) {
-            suppAlg = new ScalarNSOElemSuppAlgDep(realm_, enthalpy_, dhdx_, evisc_, 1.0, 0.0);
-          }
-          else if (sourceName == "NSO_4TH_ALT" ) {
-            suppAlg = new ScalarNSOElemSuppAlgDep(realm_, enthalpy_, dhdx_, evisc_, 1.0, 1.0);
-          }
-          else if (sourceName == "NSO_2ND_KE" ) {
-            const double turbPr = realm_.get_turb_prandtl(enthalpy_->name());
-            suppAlg = new ScalarNSOKeElemSuppAlg(realm_, enthalpy_, dhdx_, turbPr, 0.0);
-          }
-          else if (sourceName == "NSO_4TH_KE" ) {
-            const double turbPr = realm_.get_turb_prandtl(enthalpy_->name());
-            suppAlg = new ScalarNSOKeElemSuppAlg(realm_, enthalpy_, dhdx_, turbPr, 1.0);
-          }
-          else if (sourceName == "enthalpy_time_derivative" ) {
-            suppAlg = new ScalarMassElemSuppAlgDep(realm_, enthalpy_, false);
-          }
-          else if (sourceName == "lumped_enthalpy_time_derivative" ) {
-            suppAlg = new ScalarMassElemSuppAlgDep(realm_, enthalpy_, true);
-          }
-          else {
-            throw std::runtime_error("EnthalpyElemSrcTerms::Error Source term is not supported: " + sourceName);
-          }
-          NaluEnv::self().naluOutputP0() << "EnthalpyElemSrcTerms::added() " << sourceName << std::endl;
-          theAlg->supplementalAlg_.push_back(suppAlg);
+          throw std::runtime_error("EnthalpyElemSrcTerms::Error Source term is not supported: " + sourceName);
         }
       }
     }

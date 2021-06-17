@@ -37,7 +37,6 @@
 #include "Realms.h"
 #include "ScalarMassBackwardEulerNodeSuppAlg.h"
 #include "ScalarMassBDF2NodeSuppAlg.h"
-#include "ScalarMassElemSuppAlgDep.h"
 #include "Simulation.h"
 #include "SolutionOptions.h"
 #include "SolverAlgorithmDriver.h"
@@ -220,17 +219,7 @@ MassFractionEquationSystem::register_interior_algorithm(
       std::vector<std::string> mapNameVec = isrc->second;
       for (size_t k = 0; k < mapNameVec.size(); ++k ) {
         std::string sourceName = mapNameVec[k];
-        SupplementalAlgorithm *suppAlg = NULL;
-        if (sourceName == "mass_fraction_time_derivative" ) {
-          suppAlg = new ScalarMassElemSuppAlgDep(realm_, currentMassFraction_, false);
-        }
-        else if (sourceName == "lumped_mass_fraction_time_derivative" ) {
-          suppAlg = new ScalarMassElemSuppAlgDep(realm_, currentMassFraction_, true);
-        }
-        else {
-          throw std::runtime_error("MassFractionElemSrcTerms::Error Source term is not supported: " + sourceName);
-        }
-        theAlg->supplementalAlg_.push_back(suppAlg);      
+        throw std::runtime_error("MassFractionElemSrcTerms::Error Source term is not supported: " + sourceName);
       }
     }
   }

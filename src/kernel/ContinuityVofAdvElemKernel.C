@@ -131,7 +131,6 @@ ContinuityVofAdvElemKernel<AlgTraits>::execute(
     for (int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic) {
       const DoubleType r = v_shape_function_(ip, ic);
       const DoubleType nodalPressure = v_pressure(ic);
-      const DoubleType nodalRho = v_densityNp1(ic);
 
       DoubleType lhsfac = 0.0;
       for (int j = 0; j < AlgTraits::nDim_; ++j) {
