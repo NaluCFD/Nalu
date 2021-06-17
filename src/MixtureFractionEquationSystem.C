@@ -58,14 +58,9 @@
 // bc kernels
 #include "kernel/ScalarOpenAdvElemKernel.h"
 
-// deprecated
-#include "ScalarMassElemSuppAlgDep.h"
-#include "nso/ScalarNSOElemSuppAlgDep.h"
-
 // nso
 #include "nso/ScalarNSOElemKernel.h"
 #include "nso/ScalarNSOKeElemKernel.h"
-#include "nso/ScalarNSOKeElemSuppAlg.h"
 
 // user function
 #include "user_functions/VariableDensityMixFracSrcElemSuppAlg.h"
@@ -295,32 +290,6 @@ MixtureFractionEquationSystem::register_interior_algorithm(
           SupplementalAlgorithm *suppAlg = NULL;
           if (sourceName == "VariableDensity" ) {
             suppAlg = new VariableDensityMixFracSrcElemSuppAlg(realm_);
-          }
-          else if (sourceName == "NSO_2ND" ) {
-            suppAlg = new ScalarNSOElemSuppAlgDep(realm_, mixFrac_, dzdx_, evisc_, 0.0, 0.0);
-          }
-          else if (sourceName == "NSO_2ND_ALT" ) {
-            suppAlg = new ScalarNSOElemSuppAlgDep(realm_, mixFrac_, dzdx_, evisc_, 0.0, 1.0);
-          }
-          else if (sourceName == "NSO_4TH" ) {
-            suppAlg = new ScalarNSOElemSuppAlgDep(realm_, mixFrac_, dzdx_, evisc_, 1.0, 0.0);
-          }
-          else if (sourceName == "NSO_4TH_ALT" ) {
-            suppAlg = new ScalarNSOElemSuppAlgDep(realm_, mixFrac_, dzdx_, evisc_, 1.0, 1.0);
-          }
-          else if (sourceName == "NSO_2ND_KE" ) {
-            const double turbSc = realm_.get_turb_schmidt(mixFrac_->name());
-            suppAlg = new ScalarNSOKeElemSuppAlg(realm_, mixFrac_, dzdx_, turbSc, 0.0);
-          }
-          else if (sourceName == "NSO_4TH_KE" ) {
-            const double turbSc = realm_.get_turb_schmidt(mixFrac_->name());
-            suppAlg = new ScalarNSOKeElemSuppAlg(realm_, mixFrac_, dzdx_, turbSc, 1.0);
-          }
-          else if (sourceName == "mixture_fraction_time_derivative" ) {
-            suppAlg = new ScalarMassElemSuppAlgDep(realm_, mixFrac_, false);
-          }
-          else if (sourceName == "lumped_mixture_fraction_time_derivative" ) {
-            suppAlg = new ScalarMassElemSuppAlgDep(realm_, mixFrac_, true);
           }
           else {
             throw std::runtime_error("MixtureFractionElemSrcTerms::Error Source term is not supported: " + sourceName);

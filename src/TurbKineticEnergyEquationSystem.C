@@ -48,7 +48,6 @@
 #include "TurbKineticEnergyKsgsNodeSourceSuppAlg.h"
 #include "TurbKineticEnergySSTNodeSourceSuppAlg.h"
 #include "TurbKineticEnergySSTDESNodeSourceSuppAlg.h"
-#include "TurbKineticEnergyKsgsBuoyantElemSuppAlg.h"
 #include "TurbKineticEnergyRodiNodeSourceSuppAlg.h"
 #include "TurbKineticEnergyKEpsilonNodeSourceSuppAlg.h"
 
@@ -68,18 +67,13 @@
 #include "kernel/TurbKineticEnergySSTSrcElemKernel.h"
 #include "kernel/TurbKineticEnergySSTDESSrcElemKernel.h"
 #include "kernel/TurbKineticEnergyKEpsilonSrcElemKernel.h"
+#include "kernel/TurbKineticEnergyKsgsBuoyancySrcElemKernel.h"
 
 // bc kernels
 #include "kernel/ScalarOpenAdvElemKernel.h"
 
 // nso
 #include "nso/ScalarNSOElemKernel.h"
-#include "nso/ScalarNSOKeElemSuppAlg.h"
-
-// deprecated
-#include "ScalarMassElemSuppAlgDep.h"
-#include "nso/ScalarNSOKeElemSuppAlg.h"
-#include "nso/ScalarNSOElemSuppAlgDep.h"
 
 #include "overset/UpdateOversetFringeAlgorithmDriver.h"
 
@@ -319,50 +313,12 @@ TurbKineticEnergyEquationSystem::register_interior_algorithm(
       }
       solverAlgDriver_->solverAlgMap_[algType] = theAlg;
       
-      // look for fully integrated source terms
-      std::map<std::string, std::vector<std::string> >::iterator isrc 
-        = realm_.solutionOptions_->elemSrcTermsMap_.find("turbulent_ke");
-      if ( isrc != realm_.solutionOptions_->elemSrcTermsMap_.end() ) {
-        
-        if ( realm_.realmUsesEdges_ )
-          throw std::runtime_error("TurbKineticEnergyElemSrcTerms::Error can not use element source terms for an edge-based scheme");
-        
-        std::vector<std::string> mapNameVec = isrc->second;
-        for (size_t k = 0; k < mapNameVec.size(); ++k ) {
-          std::string sourceName = mapNameVec[k];
-          SupplementalAlgorithm *suppAlg = NULL;
-          if (sourceName == "ksgs_buoyant" ) {
-            if (turbulenceModel_ != KSGS && turbulenceModel_ != DKSGS )
-              throw std::runtime_error("ElemSrcTermsError::TurbKineticEnergyKsgsBuoyantElemSuppAlg requires Ksgs model");
-            suppAlg = new TurbKineticEnergyKsgsBuoyantElemSuppAlg(realm_);
-          }
-          else if (sourceName == "NSO_2ND_ALT" ) {
-            suppAlg = new ScalarNSOElemSuppAlgDep(realm_, tke_, dkdx_, evisc_, 0.0, 1.0);
-          }
-          else if (sourceName == "NSO_4TH_ALT" ) {
-            suppAlg = new ScalarNSOElemSuppAlgDep(realm_, tke_, dkdx_, evisc_, 1.0, 1.0);
-          }
-          else if (sourceName == "NSO_2ND_KE" ) {
-            const double turbSc = realm_.get_turb_schmidt(tke_->name());
-            suppAlg = new ScalarNSOKeElemSuppAlg(realm_, tke_, dkdx_, turbSc, 0.0);
-          }
-          else if (sourceName == "NSO_4TH_KE" ) {
-            const double turbSc = realm_.get_turb_schmidt(tke_->name());
-            suppAlg = new ScalarNSOKeElemSuppAlg(realm_, tke_, dkdx_, turbSc, 1.0);
-          }
-          else if (sourceName == "turbulent_ke_time_derivative" ) {
-            suppAlg = new ScalarMassElemSuppAlgDep(realm_, tke_, false);
-          }
-          else if (sourceName == "lumped_turbulent_ke_time_derivative" ) {
-            suppAlg = new ScalarMassElemSuppAlgDep(realm_, tke_, true);
-          }
-          else {
-            throw std::runtime_error("TurbKineticEnergyElemSrcTerms::Error Source term is not supported: " + sourceName);
-          }     
-          NaluEnv::self().naluOutputP0() << "TurbKineticEnergyElemSrcTerms::added() " << sourceName << std::endl;
-          theAlg->supplementalAlg_.push_back(suppAlg); 
-        }
-      }
+      std::map<std::string, std::vector<std::string> >::iterator isrc
+        = realm_.solutionOptions_->elemSrcTermsMap_.find("specific_dissipation_rate");
+      if (isrc != realm_.solutionOptions_->elemSrcTermsMap_.end()) {
+        // no support for fully integrated source terms through a non-consolidated approach
+        throw std::runtime_error("SpecificDissipationElemSrcTerms:: Fully integrated Source terms are not supported");
+      } 
     }
     else {
       itsi->second->partVec_.push_back(part);
@@ -531,6 +487,10 @@ TurbKineticEnergyEquationSystem::register_interior_algorithm(
 
       build_topo_kernel_if_requested<TurbKineticEnergyRodiSrcElemKernel>
         (partTopo, *this, activeKernels, "rodi",
+         realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs);
+
+      build_topo_kernel_if_requested<TurbKineticEnergyKsgsBuoyancySrcElemKernel>
+        (partTopo, *this, activeKernels, "ksgs_buoyancy",
          realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs);
 
       report_invalid_supp_alg_names();

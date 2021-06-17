@@ -79,10 +79,13 @@ realms:
     solution_options:
       name: myOptions
 
+      use_consolidated_solver_algorithm: yes
+      use_consolidated_face_elem_bc_algorithm: yes
+
       options:
 
         - element_source_terms:
-            temperature: steady_3d_thermal
+            temperature: [steady_3d_thermal, CVFEM_DIFF]
 
         - consistent_mass_matrix_png:
             temperature: no 

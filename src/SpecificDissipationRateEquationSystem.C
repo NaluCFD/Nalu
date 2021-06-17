@@ -40,7 +40,6 @@
 #include "ScalarGclNodeSuppAlg.h"
 #include "ScalarMassBackwardEulerNodeSuppAlg.h"
 #include "ScalarMassBDF2NodeSuppAlg.h"
-#include "ScalarMassElemSuppAlgDep.h"
 #include "Simulation.h"
 #include "SolutionOptions.h"
 #include "TimeIntegrator.h"
@@ -62,8 +61,6 @@
 
 // nso
 #include "nso/ScalarNSOElemKernel.h"
-#include "nso/ScalarNSOKeElemSuppAlg.h"
-#include "nso/ScalarNSOElemSuppAlgDep.h"
 
 #include "overset/UpdateOversetFringeAlgorithmDriver.h"
 
@@ -238,44 +235,11 @@ SpecificDissipationRateEquationSystem::register_interior_algorithm(
       }
       solverAlgDriver_->solverAlgMap_[algType] = theAlg;
 
-      // look for fully integrated source terms
       std::map<std::string, std::vector<std::string> >::iterator isrc
         = realm_.solutionOptions_->elemSrcTermsMap_.find("specific_dissipation_rate");
       if (isrc != realm_.solutionOptions_->elemSrcTermsMap_.end()) {
-
-        if (realm_.realmUsesEdges_)
-          throw std::runtime_error("SpecificDissipationElemSrcTerms::Error can not use element source terms for an edge-based scheme");
-
-        std::vector<std::string> mapNameVec = isrc->second;
-        for (size_t k = 0; k < mapNameVec.size(); ++k) {
-          std::string sourceName = mapNameVec[k];
-          SupplementalAlgorithm* suppAlg = NULL;
-          if (sourceName == "NSO_2ND_ALT") {
-            suppAlg = new ScalarNSOElemSuppAlgDep(realm_, sdr_, dwdx_, evisc_, 0.0, 1.0);
-          }
-          else if (sourceName == "NSO_4TH_ALT") {
-            suppAlg = new ScalarNSOElemSuppAlgDep(realm_, sdr_, dwdx_, evisc_, 1.0, 1.0);
-          }
-          else if (sourceName == "NSO_2ND_KE") {
-            const double turbSc = realm_.get_turb_schmidt(sdr_->name());
-            suppAlg = new ScalarNSOKeElemSuppAlg(realm_, sdr_, dwdx_, turbSc, 0.0);
-          }
-          else if (sourceName == "NSO_4TH_KE") {
-            const double turbSc = realm_.get_turb_schmidt(sdr_->name());
-            suppAlg = new ScalarNSOKeElemSuppAlg(realm_, sdr_, dwdx_, turbSc, 1.0);
-          }
-          else if (sourceName == "specific_dissipation_rate_time_derivative" ) {
-            suppAlg = new ScalarMassElemSuppAlgDep(realm_, sdr_, false);
-          }
-          else if (sourceName == "lumped_specific_dissipation_rate_time_derivative" ) {
-            suppAlg = new ScalarMassElemSuppAlgDep(realm_, sdr_, true);
-          }
-          else {
-            throw std::runtime_error("SpecificDissipationElemSrcTerms::Error Source term is not supported: " + sourceName);
-          }
-          NaluEnv::self().naluOutputP0() << "SpecificDissipationElemSrcTerms::added() " << sourceName << std::endl;
-          theAlg->supplementalAlg_.push_back(suppAlg);
-        }
+        // no support for fully integrated source terms through a non-consolidated approach
+        throw std::runtime_error("SpecificDissipationElemSrcTerms:: Fully integrated Source terms are not supported");
       }
     }
     else {

@@ -126,6 +126,9 @@ realms:
       reduced_sens_cvfem_poisson: yes
       divU_stress_scaling: 1.0
 
+      use_consolidated_solver_algorithm: yes
+      use_consolidated_face_elem_bc_algorithm: yes
+
       options:
         - hybrid_factor:
             velocity: 0.0
@@ -145,12 +148,11 @@ realms:
             turbulent_ke: 1.0
             mixture_fraction: 1.0
 
-        - source_terms:
-            momentum: buoyancy
-            continuity: density_time_derivative
-
         - element_source_terms:
-            turbulent_ke: [ksgs_buoyant, NSO_4TH_ALT]
+            momentum: [lumped_momentum_time_derivative, advection_diffusion, buoyancy]
+            continuity: [lumped_density_time_derivative, advection]
+            turbulent_ke: [lumped_turbulent_ke_time_derivative, upw_advection_diffusion, ksgs, ksgs_buoyancy, NSO_4TH_ALT]
+            mixture_fraction: [lumped_mixture_fraction_time_derivative, upw_advection_diffusion]
 
         - user_constants:
             gravity: [0.0,-981.0,0.0]
