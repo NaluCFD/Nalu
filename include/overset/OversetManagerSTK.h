@@ -223,6 +223,7 @@ struct OrientedShape {
     throw std::runtime_error("OversetManagerSTK:OrientedShape error : Attempted to use default, non-overriden overlap calculation!");
     return false;
   }
+  virtual ~OrientedShape() {}
 };
 
 /** Oriented cylinder for fine overlap calculations
