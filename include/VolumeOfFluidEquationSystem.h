@@ -92,6 +92,7 @@ public:
   void smooth_vof();
   void smooth_vof_execute();
   void compute_interface_normal();
+  void compute_interface_curvature();
 
   const bool managePNG_;
 
@@ -99,6 +100,8 @@ public:
   ScalarFieldType *vofSmoothed_;
   ScalarFieldType *smoothedRhs_;
   VectorFieldType *interfaceNormal_;
+  ScalarFieldType *interfaceCurvature_;
+  ScalarFieldType *surfaceTension_;
   VectorFieldType *dvofdx_;
   ScalarFieldType *vofTmp_;
   

@@ -113,6 +113,7 @@ enum PropertyIdentifier {
   LAME_MU_ID = 6,
   LAME_LAMBDA_ID = 7,
   SCATTERING_COEFF_ID = 8,
+  SURFACE_TENSION_ID = 9,
   PropertyIdentifier_END
 };
 
@@ -125,7 +126,8 @@ static const std::string PropertyIdentifierNames[] = {
   "enthalpy",
   "lame_mu",
   "lame_lambda",
-  "scattering_coefficient"};
+  "scattering_coefficient",
+  "surface_tension"};
 
 // prop enum and name below
 enum  MaterialPropertyType {
