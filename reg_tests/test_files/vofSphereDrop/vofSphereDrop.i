@@ -82,6 +82,10 @@ realms:
           phase_one: 0.001
           phase_two: 0.001
 
+        - name: surface_tension
+          type: constant
+          value: 0.01
+
     boundary_conditions:
 
     - inflow_boundary_condition: top_bot

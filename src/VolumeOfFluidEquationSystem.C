@@ -102,6 +102,8 @@ VolumeOfFluidEquationSystem::VolumeOfFluidEquationSystem(
     vofSmoothed_(NULL),
     smoothedRhs_(NULL),
     interfaceNormal_(NULL),
+    interfaceCurvature_(NULL),
+    surfaceTension_(NULL),
     dvofdx_(NULL),
     vofTmp_(NULL),
     assembleNodalGradAlgDriver_(new AssembleNodalGradAlgorithmDriver(realm_, "volume_of_fluid", "dvofdx")),
@@ -210,6 +212,15 @@ VolumeOfFluidEquationSystem::register_nodal_fields(
   // normal
   interfaceNormal_ =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "interface_normal"));
   stk::mesh::put_field_on_mesh(*interfaceNormal_, *part, nDim, nullptr);
+
+  // always register curvature and surface tension; let property specification dictate its importance
+  interfaceCurvature_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "interface_curvature"));
+  stk::mesh::put_field_on_mesh(*interfaceCurvature_, *part, nullptr);
+  surfaceTension_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "surface_tension"));
+  stk::mesh::put_field_on_mesh(*surfaceTension_, *part, nullptr);
+
+  // push to property list
+  realm_.augment_property_map(SURFACE_TENSION_ID, surfaceTension_);
 
   // projected nodal gradient
   dvofdx_ =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "dvofdx"));
@@ -741,6 +752,7 @@ VolumeOfFluidEquationSystem::solve_and_update()
     sharpen_interface_explicit();
     smooth_vof();
     compute_interface_normal();
+    compute_interface_curvature();
     compute_projected_nodal_gradient();
     isInit_ = false;
   }
@@ -763,6 +775,7 @@ VolumeOfFluidEquationSystem::solve_and_update()
     sharpen_interface_explicit();
     smooth_vof();
     compute_interface_normal();
+    compute_interface_curvature();
     
     // projected nodal gradient
     compute_projected_nodal_gradient();
@@ -1006,6 +1019,144 @@ VolumeOfFluidEquationSystem::compute_interface_normal()
   // overset update
   if ( realm_.hasOverset_ ) {
     realm_.overset_constraint_node_field_update(interfaceNormal_, 1, nDim);
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- compute_interface_curvature -------------------------------------
+//--------------------------------------------------------------------------
+void
+VolumeOfFluidEquationSystem::compute_interface_curvature()
+{
+  stk::mesh::MetaData & metaData = realm_.meta_data();
+  stk::mesh::BulkData & bulkData = realm_.bulk_data();
+  
+  const int nDim = metaData.spatial_dimension();
+
+  // extract nodal fields
+  VectorFieldType *coordinates 
+    = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  ScalarFieldType *dualNodalVolume 
+    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
+  
+  // zero assembled interface curvature
+  field_fill( metaData, bulkData, 0.0, *interfaceCurvature_, realm_.get_activate_aura());
+
+  // fields to gather
+  std::vector<double> ws_coordinates;
+  std::vector<double> ws_interfaceNormal;
+  std::vector<double> ws_dualVolume;
+  std::vector<double> ws_scVolume;
+  std::vector<double> ws_dndx;
+  std::vector<double> ws_deriv;
+  std::vector<double> ws_det_j;
+
+  // select locally owned where vof is defined; exclude inactive block
+  stk::mesh::Selector s_locally_owned_union = metaData.locally_owned_part()
+    & stk::mesh::selectField(*interfaceCurvature_)
+    & !(realm_.get_inactive_selector());
+
+  stk::mesh::BucketVector const& elem_buckets =
+    realm_.get_buckets( stk::topology::ELEMENT_RANK, s_locally_owned_union );
+  for ( stk::mesh::BucketVector::const_iterator ib = elem_buckets.begin();
+        ib != elem_buckets.end() ; ++ib ) {
+    stk::mesh::Bucket & b = **ib ;
+    const stk::mesh::Bucket::size_type length   = b.size();
+
+    // extract master element
+    MasterElement *meSCV = sierra::nalu::MasterElementRepo::get_volume_master_element(b.topology());
+
+    // extract master element specifics
+    const int nodesPerElement = meSCV->nodesPerElement_;
+    const int numScvIp = meSCV->numIntPoints_;
+    const int *ipNodeMap = meSCV->ipNodeMap();
+
+    // algorithm related
+    ws_coordinates.resize(nodesPerElement*nDim);
+    ws_interfaceNormal.resize(nodesPerElement*nDim);
+    ws_dualVolume.resize(nodesPerElement);
+    ws_scVolume.resize(numScvIp);
+    ws_dndx.resize(nDim*numScvIp*nodesPerElement);
+    ws_deriv.resize(nDim*numScvIp*nodesPerElement);
+    ws_det_j.resize(numScvIp);
+
+    // pointers
+    double *p_coordinates = &ws_coordinates[0];
+    double *p_interfaceNormal = &ws_interfaceNormal[0];
+    double *p_dualVolume = &ws_dualVolume[0];
+    double *p_scVolume = &ws_scVolume[0];
+    double *p_dndx = &ws_dndx[0];
+    
+    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+
+      //===============================================
+      // gather nodal data; this is how we do it now..
+      //===============================================
+      stk::mesh::Entity const * node_rels = b.begin_nodes(k);
+      int num_nodes = b.num_nodes(k);
+
+      // sanity check on num nodes
+      ThrowAssert( num_nodes == nodesPerElement );
+
+      for ( int ni = 0; ni < num_nodes; ++ni ) {
+        stk::mesh::Entity node = node_rels[ni];
+
+        // pointers to real data
+        const double * coords = stk::mesh::field_data(*coordinates, node);
+        const double * interfaceNormal = stk::mesh::field_data(*interfaceNormal_, node);
+
+        // gather scalars
+        p_dualVolume[ni] = *stk::mesh::field_data(*dualNodalVolume, node);
+
+        // gather vectors
+        const int offSet = ni*nDim;
+        for ( int j=0; j < nDim; ++j ) {
+          p_coordinates[offSet+j] = coords[j];
+          p_interfaceNormal[offSet+j] = interfaceNormal[j];
+        }
+      }
+      
+      // compute geometry
+      double scvError = 0.0;
+      meSCV->determinant(1, &p_coordinates[0], &p_scVolume[0], &scvError);
+
+      // compute dndx
+      meSCV->grad_op(1, &p_coordinates[0], &p_dndx[0], &ws_deriv[0], &ws_det_j[0], &scvError);
+      
+      for ( int ip = 0; ip < numScvIp; ++ip ) {
+
+        double divN = 0.0;
+        for ( int ic = 0; ic < nodesPerElement; ++ic ) {
+          const int offSetDnDx = nDim*nodesPerElement*ip + ic*nDim;
+          for ( int j = 0; j < nDim; ++j ) {
+            divN += p_dndx[offSetDnDx+j]*p_interfaceNormal[ic*nDim+j];
+          }
+        }
+        
+        // nearest node for this ip
+        const int nn = ipNodeMap[ip];
+        stk::mesh::Entity node = node_rels[nn];
+
+        // pointers to real data
+        double *interfaceCurvature = stk::mesh::field_data(*interfaceCurvature_, node);
+
+        // augment nodal curvature
+        *interfaceCurvature += -divN*p_scVolume[ip]/p_dualVolume[nn];
+      }
+    }
+  }
+  
+  // parallel sum
+  stk::mesh::parallel_sum(bulkData, {interfaceCurvature_});
+  
+  // periodic assemble
+  if ( realm_.hasPeriodic_) {
+    realm_.periodic_field_update(interfaceCurvature_, 1);
+  }
+
+  // overset update
+  if ( realm_.hasOverset_ ) {
+    realm_.overset_constraint_node_field_update(interfaceCurvature_, 1, 1);
   }
 }
 

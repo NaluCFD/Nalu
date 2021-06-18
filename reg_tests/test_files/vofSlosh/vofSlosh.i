@@ -86,6 +86,10 @@ realms:
           phase_one: 8.9e-4
           phase_two: 1.8e-5
 
+        - name: surface_tension
+          type: constant
+          value: 0.01
+
     boundary_conditions:
 
     - wall_boundary_condition: bc_left
@@ -137,6 +141,8 @@ realms:
        - volume_of_fluid
        - volume_of_fluid_smoothed
        - interface_normal
+       - interface_curvature
+       - surface_tension
        - dvofdx
        - density
        - viscosity
