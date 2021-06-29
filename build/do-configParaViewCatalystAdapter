@@ -1,0 +1,21 @@
+
+nalu_build_dir="PathToTopLevelNaluBuildDirectory"
+nalu_install_dir="PathToNaluInstallDirectory"
+
+nalu_catalyst_adapter_dir="$nalu_build_dir/packages/Trilinos/packages/seacas/libraries/ioss/src/visualization/catalyst/"
+superbuild_install_dir="$nalu_build_dir/paraview-superbuild-build/install"
+paraview_catalyst_adapter_install_dir=$nalu_install_dir/paraview-catalyst-adapter
+
+EXTRA_ARGS=$@
+
+# Cleanup old cache before we configure
+# Note:  This does not remove files produced by make.  Use "make clean" for this.
+find . -name "CMakeFiles" -exec rm -rf {} \;
+rm -f CMakeCache.txt
+
+cmake \
+  -DCMAKE_BUILD_TYPE=RELEASE \
+  -DParaView_DIR:FILEPATH=$superbuild_install_dir/lib/cmake/paraview-5.9/ \
+  -DCMAKE_INSTALL_PREFIX:FILEPATH=$paraview_catalyst_adapter_install_dir \
+$EXTRA_ARGS \
+$nalu_catalyst_adapter_dir

@@ -41,7 +41,6 @@ public:
   
   // catalyst options
   std::string catalystFileName_;
-  std::string catalystParseJson_;
   std::string paraviewScriptName_;
 
   int outputFreq_;

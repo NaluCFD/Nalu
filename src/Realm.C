@@ -118,11 +118,6 @@
 #include <utility>
 #include <stdint.h>
 
-// catalyst visualization output
-#ifdef NALU_USES_CATALYST
-#include <Iovs_DatabaseIO.h>
-#endif
-
 #define USE_NALU_PERFORMANCE_TESTING_CALLGRIND 0
 #if USE_NALU_PERFORMANCE_TESTING_CALLGRIND
 #include "/usr/netpub/valgrind-3.8.1/include/valgrind/callgrind.h"
@@ -664,16 +659,6 @@ Realm::load(const YAML::Node & node)
     // only set from input file if command-line didn't set it
     root()->setSerializedIOGroupSize(outputInfo_->serializedIOGroupSize_);
   }
-
-#ifdef NALU_USES_CATALYST
-  // Parse catalyst input file if requested
-  if(!outputInfo_->catalystFileName_.empty()) {
-    int error = Iovs::DatabaseIO::parseCatalystFile(outputInfo_->catalystFileName_,
-                                                    outputInfo_->catalystParseJson_);
-    if(error)
-      throw std::runtime_error("Catalyst file parse failed: " + outputInfo_->catalystFileName_);
-  }
-#endif
 
   // solution options - loaded before create_mesh
   solutionOptions_->load(node);
@@ -1788,17 +1773,17 @@ Realm::create_output_mesh()
 #ifdef NALU_USES_CATALYST    
     if(!outputInfo_->catalystFileName_.empty()||
        !outputInfo_->paraviewScriptName_.empty()) {
-      outputInfo_->outputPropertyManager_->add(Ioss::Property("CATALYST_BLOCK_PARSE_JSON_STRING",
-                                                              outputInfo_->catalystParseJson_));
+      outputInfo_->outputPropertyManager_->add(Ioss::Property("PHACTORI_INPUT_SYNTAX_SCRIPT",
+                                                              outputInfo_->catalystFileName_));
       outputInfo_->outputPropertyManager_->add(Ioss::Property("CATALYST_BLOCK_PARSE_INPUT_DECK_NAME", 
-                                                              NaluEnv::self().get_base_name());
+                                                              NaluEnv::self().get_base_name()));
                                                
       if(!outputInfo_->paraviewScriptName_.empty())
         outputInfo_->outputPropertyManager_->add(Ioss::Property("CATALYST_SCRIPT", outputInfo_->paraviewScriptName_.c_str()));
       
       outputInfo_->outputPropertyManager_->add(Ioss::Property("CATALYST_CREATE_SIDE_SETS", 1));
       
-      resultsFileIndex_ = ioBroker_->create_output_mesh( oname, stk::io::WRITE_RESULTS, *outputInfo_->outputPropertyManager_, "catalyst" );
+      resultsFileIndex_ = ioBroker_->create_output_mesh( oname, stk::io::WRITE_RESULTS, *outputInfo_->outputPropertyManager_, "catalyst_exodus" );
     }
     else {
       resultsFileIndex_ = ioBroker_->create_output_mesh( oname, stk::io::WRITE_RESULTS, *outputInfo_->outputPropertyManager_);
