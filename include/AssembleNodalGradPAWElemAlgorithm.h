@@ -31,6 +31,9 @@ public:
 
   ScalarFieldType *pressure_;
   ScalarFieldType *density_;
+  ScalarFieldType *interfaceCurvature_;
+  ScalarFieldType *surfaceTension_;
+  ScalarFieldType *vof_;
   VectorFieldType *dpdx_;
   VectorFieldType *areaWeight_;
   const bool useShifted_;

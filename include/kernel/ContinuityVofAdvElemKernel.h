@@ -57,6 +57,9 @@ private:
   VectorFieldType *Gpdx_{nullptr};
   ScalarFieldType *pressure_{nullptr};
   ScalarFieldType *densityNp1_{nullptr};
+  ScalarFieldType *interfaceCurvature_{nullptr};
+  ScalarFieldType *surfaceTension_{nullptr};
+  ScalarFieldType *vof_{nullptr};
   VectorFieldType *coordinates_{nullptr};
 
   double projTimeScale_{1.0};
