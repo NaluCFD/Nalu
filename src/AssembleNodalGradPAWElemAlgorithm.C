@@ -41,6 +41,9 @@ AssembleNodalGradPAWElemAlgorithm::AssembleNodalGradPAWElemAlgorithm(
   : Algorithm(realm, part),
     pressure_(pressure),
     density_(nullptr),
+    interfaceCurvature_(NULL),
+    surfaceTension_(NULL),
+    vof_(NULL),
     dpdx_(dpdx),
     areaWeight_(nullptr),
     useShifted_(realm_.get_shifted_grad_op("pressure"))
@@ -48,9 +51,10 @@ AssembleNodalGradPAWElemAlgorithm::AssembleNodalGradPAWElemAlgorithm(
   // extract fields; nodal
   stk::mesh::MetaData & metaData = realm_.meta_data();
   density_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
+  interfaceCurvature_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "interface_curvature");
+  surfaceTension_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "surface_tension");
+  vof_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "volume_of_fluid");
   areaWeight_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "png_area_weight");
-
-  NaluEnv::self().naluOutputP0() << "AssembleNodalGradPAWElemAlgorithm Active" << std::endl;
 }
 
 //--------------------------------------------------------------------------
@@ -69,7 +73,11 @@ AssembleNodalGradPAWElemAlgorithm::execute()
 
   // nodal fields to gather; gather everything other than what we are assembling
   std::vector<double> ws_pressure;
-  std::vector<double> ws_density;
+  std::vector<double> ws_density;  
+  std::vector<double> ws_kappa;
+  std::vector<double> ws_sigma;
+  std::vector<double> ws_vof;
+
   std::vector<double> ws_coordinates;
 
   // geometry related to populate
@@ -106,6 +114,9 @@ AssembleNodalGradPAWElemAlgorithm::execute()
     // algorithm related
     ws_pressure.resize(nodesPerElement);
     ws_density.resize(nodesPerElement);
+    ws_kappa.resize(nodesPerElement);
+    ws_sigma.resize(nodesPerElement);
+    ws_vof.resize(nodesPerElement);
     ws_coordinates.resize(nodesPerElement*nDim);
     ws_scs_areav.resize(numScsIp*nDim);
     ws_dndx.resize(nDim*numScsIp*nodesPerElement);
@@ -116,6 +127,9 @@ AssembleNodalGradPAWElemAlgorithm::execute()
     // pointers.
     double *p_pressure = &ws_pressure[0];
     double *p_density = &ws_density[0];
+    double *p_kappa = &ws_kappa[0];
+    double *p_sigma = &ws_sigma[0];
+    double *p_vof = &ws_vof[0];
     double *p_coordinates = &ws_coordinates[0];
     double *p_scs_areav = &ws_scs_areav[0];
     double *p_dndx = &ws_dndx[0];
@@ -143,6 +157,9 @@ AssembleNodalGradPAWElemAlgorithm::execute()
         // gather scalars
         p_pressure[ni] = *stk::mesh::field_data(*pressure_, node);
         p_density[ni] = *stk::mesh::field_data(*density_, node);
+        p_kappa[ni]  = *stk::mesh::field_data(*interfaceCurvature_, node);
+        p_sigma[ni]  = *stk::mesh::field_data(*surfaceTension_, node);
+        p_vof[ni]  = *stk::mesh::field_data(*vof_, node);
 
         // gather vectors
         const int offSet = ni*nDim;
@@ -179,17 +196,24 @@ AssembleNodalGradPAWElemAlgorithm::execute()
 
         // zero ip values
         double rhoIp = 0.0;
+        double dfdaIp = 0.0;
+        double sigmaKappaIp = 0.0;
         for ( int j = 0; j < nDim; ++j ) {
           p_dpdxIp[j] = 0.0;
         }
 
         const int ipNpe = ip*nodesPerElement;
         for ( int ic = 0; ic < nodesPerElement; ++ic ) {
-          rhoIp += p_density[ic]*p_shape_function[ipNpe+ic];
-          const double pIc = p_pressure[ic];
+          const double r = p_shape_function[ipNpe+ic];
+          rhoIp += r*p_density[ic];
+          sigmaKappaIp += r*p_sigma[ic]*p_kappa[ic];
+          const double pressureIc = p_pressure[ic];
+          const double vofIc = p_vof[ic];
+
           const int offSetDnDx = nDim*nodesPerElement*ip + ic*nDim;
           for ( int j = 0; j < nDim; ++j ) {
-            p_dpdxIp[j] += p_dndx[offSetDnDx+j]*pIc;
+            p_dpdxIp[j] += p_dndx[offSetDnDx+j]*pressureIc;
+            dfdaIp += p_dndx[offSetDnDx+j]*vofIc*p_scs_areav[ip*nDim+j];
           }
         }
 
@@ -198,8 +222,8 @@ AssembleNodalGradPAWElemAlgorithm::execute()
         for ( int j = 0; j < nDim; ++j ) {
           const double absArea = std::abs(p_scs_areav[ipNdim+j]);
           double fac = absArea/rhoIp;
-          gradPL[j] += fac*p_dpdxIp[j];
-          gradPR[j] += fac*p_dpdxIp[j];
+          gradPL[j] += fac*(p_dpdxIp[j] - sigmaKappaIp*dfdaIp);
+          gradPR[j] += fac*(p_dpdxIp[j] - sigmaKappaIp*dfdaIp);
           areaWeightL[j] += absArea;
           areaWeightR[j] += absArea;
         }

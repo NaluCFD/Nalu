@@ -47,6 +47,9 @@ ContinuityVofAdvElemKernel<AlgTraits>::ContinuityVofAdvElemKernel(
   ScalarFieldType *density = metaData.get_field<ScalarFieldType>(
     stk::topology::NODE_RANK, "density");
   densityNp1_ = &(density->field_of_state(stk::mesh::StateNP1));
+  interfaceCurvature_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "interface_curvature");
+  surfaceTension_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "surface_tension");
+  vof_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "volume_of_fluid");
   coordinates_ = metaData.get_field<VectorFieldType>(
     stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
 
@@ -58,6 +61,9 @@ ContinuityVofAdvElemKernel<AlgTraits>::ContinuityVofAdvElemKernel(
   dataPreReqs.add_gathered_nodal_field(*velocityRTM_, AlgTraits::nDim_);
   dataPreReqs.add_gathered_nodal_field(*densityNp1_, 1);
   dataPreReqs.add_gathered_nodal_field(*pressure_, 1);
+  dataPreReqs.add_gathered_nodal_field(*interfaceCurvature_, 1);
+  dataPreReqs.add_gathered_nodal_field(*surfaceTension_, 1);
+  dataPreReqs.add_gathered_nodal_field(*vof_, 1);
   dataPreReqs.add_gathered_nodal_field(*Gpdx_, AlgTraits::nDim_);
   dataPreReqs.add_master_element_call(SCS_AREAV, CURRENT_COORDINATES);
 
@@ -71,7 +77,6 @@ ContinuityVofAdvElemKernel<AlgTraits>::ContinuityVofAdvElemKernel(
     get_scs_shape_fn_data<AlgTraits>([&](double* ptr){meSCS->shifted_shape_fcn(ptr);}, v_shape_function_);
   else
     get_scs_shape_fn_data<AlgTraits>([&](double* ptr){meSCS->shape_fcn(ptr);}, v_shape_function_);
-  NaluEnv::self().naluOutputP0() << "VOF ContinuityVofAdvElemKernel is active" << std::endl;
 }
 
 template<typename AlgTraits>
@@ -84,7 +89,7 @@ ContinuityVofAdvElemKernel<AlgTraits>::setup(const TimeIntegrator& timeIntegrato
 {
   const double dt = timeIntegrator.get_time_step();
   const double gamma1 = timeIntegrator.get_gamma1();
-  projTimeScale_ = dt / gamma1;
+  projTimeScale_ = dt/gamma1;
 }
 
 template<typename AlgTraits>
@@ -102,6 +107,10 @@ ContinuityVofAdvElemKernel<AlgTraits>::execute(
   SharedMemView<DoubleType*>& v_densityNp1 = scratchViews.get_scratch_view_1D(*densityNp1_);
   SharedMemView<DoubleType*>& v_pressure = scratchViews.get_scratch_view_1D(*pressure_);
 
+  SharedMemView<DoubleType*>& v_kappa = scratchViews.get_scratch_view_1D(*interfaceCurvature_);
+  SharedMemView<DoubleType*>& v_sigma = scratchViews.get_scratch_view_1D(*surfaceTension_);
+  SharedMemView<DoubleType*>& v_vof = scratchViews.get_scratch_view_1D(*vof_);
+
   SharedMemView<DoubleType**>& v_velocity = scratchViews.get_scratch_view_2D(*velocityRTM_);
   SharedMemView<DoubleType**>& v_Gpdx = scratchViews.get_scratch_view_2D(*Gpdx_);
 
@@ -118,26 +127,31 @@ ContinuityVofAdvElemKernel<AlgTraits>::execute(
 
     // need density at ip first for proper LHS scaling
     DoubleType rhoIp = 0.0;
+    DoubleType dfdaIp = 0.0;
+    DoubleType sigmaKappaIp = 0.0;
     for (int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic) {
       rhoIp += v_shape_function_(ip, ic)*v_densityNp1(ic);
     }
-
+    
     for (int j = 0; j < AlgTraits::nDim_; ++j) {
       w_uIp[j] = 0.0;
       w_GpdxIp[j] = 0.0;
       w_dpdxIp[j] = 0.0;
     }
-
+    
     for (int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic) {
       const DoubleType r = v_shape_function_(ip, ic);
-      const DoubleType nodalPressure = v_pressure(ic);
+      sigmaKappaIp += r*v_sigma(ic)*v_kappa(ic);
+      const DoubleType pressureIc = v_pressure(ic);
+      const DoubleType vofIc = v_vof(ic);
 
       DoubleType lhsfac = 0.0;
       for (int j = 0; j < AlgTraits::nDim_; ++j) {
         w_GpdxIp[j] += r*v_Gpdx(ic, j);
         w_uIp[j] += r*v_velocity(ic, j);
-        w_dpdxIp[j]  += v_dndx(ip, ic, j)*nodalPressure;
-        lhsfac += -v_dndx_lhs(ip, ic, j)*v_scs_areav(ip, j);
+        w_dpdxIp[j]  += v_dndx(ip,ic,j)*pressureIc;
+        dfdaIp += v_dndx(ip,ic,j)*vofIc*v_scs_areav(ip,j);
+        lhsfac += -v_dndx_lhs(ip, ic, j)*v_scs_areav(ip,j);
       }
 
       lhs(il,ic) += lhsfac/rhoIp;
@@ -145,7 +159,7 @@ ContinuityVofAdvElemKernel<AlgTraits>::execute(
     }
 
     // assemble flow rate
-    DoubleType vdot = 0.0;
+    DoubleType vdot = projTimeScale_*sigmaKappaIp*dfdaIp/rhoIp;
     for (int j = 0; j < AlgTraits::nDim_; ++j) {      
       // balanced force approach
       vdot += (w_uIp[j] - projTimeScale_*(w_dpdxIp[j]/rhoIp - w_GpdxIp[j]))*v_scs_areav(ip,j);

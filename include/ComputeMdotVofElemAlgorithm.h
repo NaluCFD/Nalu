@@ -41,6 +41,9 @@ public:
   VectorFieldType *coordinates_;
   ScalarFieldType *pressure_;
   ScalarFieldType *density_;
+  ScalarFieldType *interfaceCurvature_;
+  ScalarFieldType *surfaceTension_;
+  ScalarFieldType *vof_;
   GenericFieldType *massFlowRate_;
   GenericFieldType *volumeFlowRate_;
 

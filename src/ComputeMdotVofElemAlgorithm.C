@@ -46,6 +46,9 @@ ComputeMdotVofElemAlgorithm::ComputeMdotVofElemAlgorithm(
     coordinates_(NULL),
     pressure_(NULL),
     density_(NULL),
+    interfaceCurvature_(NULL),
+    surfaceTension_(NULL),
+    vof_(NULL),
     massFlowRate_(NULL),
     volumeFlowRate_(NULL),
     shiftMdot_(solnOpts.cvfemShiftMdot_),
@@ -61,10 +64,11 @@ ComputeMdotVofElemAlgorithm::ComputeMdotVofElemAlgorithm(
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   pressure_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure");
   density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
+  interfaceCurvature_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "interface_curvature");
+  surfaceTension_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "surface_tension");
+  vof_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "volume_of_fluid");
   massFlowRate_ = meta_data.get_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "mass_flow_rate_scs");
   volumeFlowRate_ = meta_data.get_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "volume_flow_rate_scs");
-
-  NaluEnv::self().naluOutputP0() << "VOF ComputeMdotVofElemAlgorithm is active" << std::endl;
 }
 
 //--------------------------------------------------------------------------
@@ -97,6 +101,9 @@ ComputeMdotVofElemAlgorithm::execute()
   std::vector<double> ws_coordinates;
   std::vector<double> ws_pressure;
   std::vector<double> ws_density;
+  std::vector<double> ws_kappa;
+  std::vector<double> ws_sigma;
+  std::vector<double> ws_vof;
 
   // geometry related to populate
   std::vector<double> ws_scs_areav;
@@ -143,6 +150,9 @@ ComputeMdotVofElemAlgorithm::execute()
     ws_coordinates.resize(nodesPerElement*nDim);
     ws_pressure.resize(nodesPerElement);
     ws_density.resize(nodesPerElement);
+    ws_kappa.resize(nodesPerElement);
+    ws_sigma.resize(nodesPerElement);
+    ws_vof.resize(nodesPerElement);
     ws_scs_areav.resize(numScsIp*nDim);
     ws_dndx.resize(nDim*numScsIp*nodesPerElement);
     ws_deriv.resize(nDim*numScsIp*nodesPerElement);
@@ -155,6 +165,9 @@ ComputeMdotVofElemAlgorithm::execute()
     double *p_coordinates = &ws_coordinates[0];
     double *p_pressure = &ws_pressure[0];
     double *p_density = &ws_density[0];
+    double *p_kappa = &ws_kappa[0];
+    double *p_sigma = &ws_sigma[0];
+    double *p_vof = &ws_vof[0];
     double *p_scs_areav = &ws_scs_areav[0];
     double *p_dndx = &ws_dndx[0];
     double *p_shape_function = &ws_shape_function[0];
@@ -190,6 +203,9 @@ ComputeMdotVofElemAlgorithm::execute()
         // gather scalars
         p_pressure[ni] = *stk::mesh::field_data(*pressure_, node);
         p_density[ni]  = *stk::mesh::field_data(densityNp1, node);
+        p_kappa[ni]  = *stk::mesh::field_data(*interfaceCurvature_, node);
+        p_sigma[ni]  = *stk::mesh::field_data(*surfaceTension_, node);
+        p_vof[ni]  = *stk::mesh::field_data(*vof_, node);
 
         // gather vectors
         const int offSet = ni*nDim;
@@ -214,6 +230,9 @@ ComputeMdotVofElemAlgorithm::execute()
 
         // setup for ip values
         double rhoIp = 0.0;
+        double dfdaIp = 0.0;
+        double sigmaKappaIp = 0.0;
+
         for ( int j = 0; j < nDim; ++j ) {
           p_uIp[j] = 0.0;
           p_GpdxIp[j] = 0.0;
@@ -224,19 +243,23 @@ ComputeMdotVofElemAlgorithm::execute()
         for ( int ic = 0; ic < nodesPerElement; ++ic ) {
 
           const double r = p_shape_function[offSet+ic];
-          const double nodalPressure = p_pressure[ic];
           rhoIp += r*p_density[ic];
+          sigmaKappaIp += r*p_sigma[ic]*p_kappa[ic];
+
+          const double pressureIc = p_pressure[ic];
+          const double vofIc = p_vof[ic];
 
           const int offSetDnDx = nDim*nodesPerElement*ip + ic*nDim;
           for ( int j = 0; j < nDim; ++j ) {
             p_GpdxIp[j] += r*p_Gpdx[nDim*ic+j];
             p_uIp[j] += r*p_vrtm[nDim*ic+j];
-            p_dpdxIp[j] += p_dndx[offSetDnDx+j]*nodalPressure;
+            p_dpdxIp[j] += p_dndx[offSetDnDx+j]*pressureIc;
+            dfdaIp += p_dndx[offSetDnDx+j]*vofIc*p_scs_areav[ip*nDim+j];
           }
         }
 
         // assemble flow rate
-        double tvdot = 0.0;
+        double tvdot = projTimeScale*sigmaKappaIp*dfdaIp/rhoIp;
         for ( int j = 0; j < nDim; ++j ) {
           // balanced force approach
           tvdot += (p_uIp[j] - projTimeScale*(p_dpdxIp[j]/rhoIp - p_GpdxIp[j]))*p_scs_areav[ip*nDim+j];

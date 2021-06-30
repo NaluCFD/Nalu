@@ -196,7 +196,7 @@ realms:
 
         - name: surface_tension
           type: constant
-          value: 0.02
+          value: 0.07
   
     boundary_conditions:
 
