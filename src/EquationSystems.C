@@ -216,7 +216,7 @@ void EquationSystems::load(const YAML::Node & y_node)
           get_if_present_no_default(y_eqsys, "activate_mass", activateMass);
           get_if_present_no_default(y_eqsys, "deform_wrt_model_coordinates", deformWrtModelCoords);
           if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = MeshDisplacement " << std::endl;
-          eqSys = new MeshDisplacementEquationSystem(*this, activateMass, deformWrtModelCoords);
+          eqSys = new MeshDisplacementEquationSystem(*this);
         }
         else {
           if (!NaluEnv::self().parallel_rank()) {

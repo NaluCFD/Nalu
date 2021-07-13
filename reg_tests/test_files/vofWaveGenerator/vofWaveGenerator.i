@@ -103,6 +103,9 @@ realms:
       options:
         - projected_nodal_gradient:
             mesh_velocity: element
+
+        - element_source_terms:
+            mesh_displacement: [mesh_disp_lumped, elastic_stress]
     
     initial_conditions:
 
