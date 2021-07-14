@@ -42,6 +42,9 @@ ContinuityVofOpenElemKernel<BcAlgTraits>::ContinuityVofOpenElemKernel(
   pressure_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure");
   pressureBc_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure_bc");
   density_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
+  interfaceCurvature_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "interface_curvature");
+  surfaceTension_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "surface_tension");
+  vof_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "volume_of_fluid");
   exposedAreaVec_ = metaData.get_field<GenericFieldType>(metaData.side_rank(), "exposed_area_vector");
   dynamicPressure_ = metaData.get_field<GenericFieldType>(metaData.side_rank(), "dynamic_pressure");
   
@@ -56,6 +59,8 @@ ContinuityVofOpenElemKernel<BcAlgTraits>::ContinuityVofOpenElemKernel(
   faceDataPreReqs.add_gathered_nodal_field(*pressure_, 1);
   faceDataPreReqs.add_gathered_nodal_field(*pressureBc_, 1);
   faceDataPreReqs.add_gathered_nodal_field(*density_, 1);
+  faceDataPreReqs.add_gathered_nodal_field(*interfaceCurvature_, 1);
+  faceDataPreReqs.add_gathered_nodal_field(*surfaceTension_, 1);
   faceDataPreReqs.add_gathered_nodal_field(*velocityRTM_, BcAlgTraits::nDim_);
   faceDataPreReqs.add_gathered_nodal_field(*Gpdx_, BcAlgTraits::nDim_);  
   faceDataPreReqs.add_face_field(*exposedAreaVec_, BcAlgTraits::numFaceIp_, BcAlgTraits::nDim_);
@@ -64,6 +69,7 @@ ContinuityVofOpenElemKernel<BcAlgTraits>::ContinuityVofOpenElemKernel(
   
   elemDataPreReqs.add_coordinates_field(*coordinates_, BcAlgTraits::nDim_, CURRENT_COORDINATES);
   elemDataPreReqs.add_gathered_nodal_field(*pressure_, 1);
+  elemDataPreReqs.add_gathered_nodal_field(*vof_, 1);
 
   // manage dndx
   if ( !shiftedGradOp_ || !reducedSensitivities_ )
@@ -112,13 +118,16 @@ ContinuityVofOpenElemKernel<BcAlgTraits>::execute(
   SharedMemView<DoubleType*>& vf_pressureBc = faceScratchViews.get_scratch_view_1D(*pressureBc_);
   SharedMemView<DoubleType**>& vf_Gpdx = faceScratchViews.get_scratch_view_2D(*Gpdx_);
   SharedMemView<DoubleType*>& vf_density = faceScratchViews.get_scratch_view_1D(*density_);
+  SharedMemView<DoubleType*>& vf_kappa = faceScratchViews.get_scratch_view_1D(*interfaceCurvature_);
+  SharedMemView<DoubleType*>& vf_sigma = faceScratchViews.get_scratch_view_1D(*surfaceTension_);
   SharedMemView<DoubleType**>& vf_vrtm = faceScratchViews.get_scratch_view_2D(*velocityRTM_);
   SharedMemView<DoubleType**>& vf_exposedAreaVec = faceScratchViews.get_scratch_view_2D(*exposedAreaVec_);
   SharedMemView<DoubleType*>& vf_dynamicP = faceScratchViews.get_scratch_view_1D(*dynamicPressure_);
  
   // element
   SharedMemView<DoubleType*>& v_pressure = elemScratchViews.get_scratch_view_1D(*pressure_);
- 
+  SharedMemView<DoubleType*>& v_vof = elemScratchViews.get_scratch_view_1D(*vof_);
+
   // dndx for both rhs and lhs
   SharedMemView<DoubleType***>& v_dndx_fc_elem = shiftedGradOp_ 
     ? elemScratchViews.get_me_views(CURRENT_COORDINATES).dndx_shifted_fc_elem
@@ -156,11 +165,13 @@ ContinuityVofOpenElemKernel<BcAlgTraits>::execute(
     DoubleType pBip = 0.0;
     DoubleType rhoBip = 0.0;
     DoubleType pbcBip = -vf_dynamicP(ip);
+    DoubleType sigmaKappaBip = 0.0;
     for ( int ic = 0; ic < BcAlgTraits::nodesPerFace_; ++ic ) {
       const DoubleType r = vf_shape_function_(ip,ic);
       pBip += r*vf_pressure(ic);
       pbcBip += r*vf_pressureBc(ic);
       rhoBip += r*vf_density(ic);
+      sigmaKappaBip += r*vf_sigma(ic)*vf_kappa(ic);
       for ( int j = 0; j < BcAlgTraits::nDim_; ++j ) {
         w_uBip[j] += r*vf_vrtm(ic,j);
         w_GpdxBip[j] += r*vf_Gpdx(ic,j);
@@ -168,15 +179,20 @@ ContinuityVofOpenElemKernel<BcAlgTraits>::execute(
     }
     
     // form dpdxBip
+    DoubleType dvofdaBip = 0.0;
     for ( int ic = 0; ic < BcAlgTraits::nodesPerElement_; ++ic ) {
       const DoubleType pIc = v_pressure(ic);
+      const DoubleType vofIc = v_vof(ic);
       for ( int j = 0; j < BcAlgTraits::nDim_; ++j ) {
-        w_dpdxBip[j] += v_dndx_fc_elem(ip,ic,j)*pIc;
+        const DoubleType dxj = v_dndx_fc_elem(ip,ic,j);
+        w_dpdxBip[j] += dxj*pIc;
+        dvofdaBip += dxj*vofIc*vf_exposedAreaVec(ip,j);
       }
     }
     
-    // form vdot; uj*Aj - projTS*(dpdxj/rhoBip - Gjph)*Aj + penaltyFac*projTS/rhoBip*invL*(pBip - pbcBip)*aMag
-    DoubleType vdot = penaltyFac_*projTimeScale_/rhoBip*inverseLengthScale*(pBip - pbcBip)*aMag;
+    // form vdot; uj*Aj - projTS*(dpdxj/rhoBip - Gjph)*Aj + penaltyFac*projTS/rhoBip*invL*(pBip - pbcBip)*aMag + BF
+    DoubleType vdot = penaltyFac_*projTimeScale_/rhoBip*inverseLengthScale*(pBip - pbcBip)*aMag
+      + projTimeScale_*sigmaKappaBip*dvofdaBip/rhoBip;
     for ( int j = 0; j < BcAlgTraits::nDim_; ++j ) {
       const DoubleType axj = vf_exposedAreaVec(ip,j);
       vdot += (w_uBip[j] - projTimeScale_*(w_dpdxBip[j]/rhoBip - w_GpdxBip[j]))*axj;

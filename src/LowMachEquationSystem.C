@@ -2732,7 +2732,7 @@ ContinuityEquationSystem::register_inflow_bc(
     if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
       Algorithm *theAlg = nullptr;
       if ( realm_.solutionOptions_->balancedForce_ ) {
-        theAlg = new AssembleNodalGradPAWBoundaryAlgorithm(realm_, part, pressure_, dpdx_);
+        theAlg = new AssembleNodalGradPAWBoundaryAlgorithm(realm_, part, pressure_, dpdx_, "pressure");
       }
       else {
         theAlg = new AssembleNodalGradBoundaryAlgorithm(realm_, part, pressure_, dpdx_, edgeNodalGradient_);
@@ -2820,7 +2820,7 @@ ContinuityEquationSystem::register_open_bc(
     if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
       Algorithm *theAlg = nullptr;
       if ( realm_.solutionOptions_->balancedForce_ ) {
-        theAlg = new AssembleNodalGradPAWBoundaryAlgorithm(realm_, part, pressure_, dpdx_, "pressure_bc");
+        theAlg = new AssembleNodalGradPAWBoundaryAlgorithm(realm_, part, pressure_, dpdx_, "pressure_bc", true);
       }
       else {
         theAlg = new AssembleNodalGradPBoundaryAlgorithm(realm_, part, pressureBC, dpdx_, edgeNodalGradient_);
@@ -2944,7 +2944,7 @@ ContinuityEquationSystem::register_wall_bc(
     if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
       Algorithm *theAlg = nullptr;
       if ( realm_.solutionOptions_->balancedForce_ ) {
-        theAlg = new AssembleNodalGradPAWBoundaryAlgorithm(realm_, part, pressure_, dpdx_);
+        theAlg = new AssembleNodalGradPAWBoundaryAlgorithm(realm_, part, pressure_, dpdx_, "pressure");
       }
       else {
         theAlg = new AssembleNodalGradBoundaryAlgorithm(realm_, part, pressure_, dpdx_, edgeNodalGradient_);
@@ -2976,7 +2976,7 @@ ContinuityEquationSystem::register_symmetry_bc(
     if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
       Algorithm *theAlg = nullptr;
       if ( realm_.solutionOptions_->balancedForce_ ) {
-        theAlg = new AssembleNodalGradPAWBoundaryAlgorithm(realm_, part, pressure_, dpdx_);
+        theAlg = new AssembleNodalGradPAWBoundaryAlgorithm(realm_, part, pressure_, dpdx_, "pressure");
       }
       else {
         theAlg = new AssembleNodalGradBoundaryAlgorithm(realm_, part, pressure_, dpdx_, edgeNodalGradient_);

@@ -89,7 +89,9 @@ AssembleNodalGradPAWElemAlgorithm::execute()
 
   // integration point data that depends on size
   std::vector<double> dpdxIp(nDim);
+  std::vector<double> dvofdxIp(nDim);
   double *p_dpdxIp = &dpdxIp[0];
+  double *p_dvofdxIp = &dvofdxIp[0];
 
   // define some common selectors
   stk::mesh::Selector s_locally_owned_union = meta_data.locally_owned_part()
@@ -196,10 +198,10 @@ AssembleNodalGradPAWElemAlgorithm::execute()
 
         // zero ip values
         double rhoIp = 0.0;
-        double dfdaIp = 0.0;
         double sigmaKappaIp = 0.0;
         for ( int j = 0; j < nDim; ++j ) {
           p_dpdxIp[j] = 0.0;
+          p_dvofdxIp[j] = 0.0;
         }
 
         const int ipNpe = ip*nodesPerElement;
@@ -212,8 +214,9 @@ AssembleNodalGradPAWElemAlgorithm::execute()
 
           const int offSetDnDx = nDim*nodesPerElement*ip + ic*nDim;
           for ( int j = 0; j < nDim; ++j ) {
-            p_dpdxIp[j] += p_dndx[offSetDnDx+j]*pressureIc;
-            dfdaIp += p_dndx[offSetDnDx+j]*vofIc*p_scs_areav[ip*nDim+j];
+            const double dxj = p_dndx[offSetDnDx+j];
+            p_dpdxIp[j] += dxj*pressureIc;
+            p_dvofdxIp[j] += dxj*vofIc;
           }
         }
 
@@ -222,8 +225,8 @@ AssembleNodalGradPAWElemAlgorithm::execute()
         for ( int j = 0; j < nDim; ++j ) {
           const double absArea = std::abs(p_scs_areav[ipNdim+j]);
           double fac = absArea/rhoIp;
-          gradPL[j] += fac*(p_dpdxIp[j] - sigmaKappaIp*dfdaIp);
-          gradPR[j] += fac*(p_dpdxIp[j] - sigmaKappaIp*dfdaIp);
+          gradPL[j] += fac*(p_dpdxIp[j] - sigmaKappaIp*dvofdxIp[j]);
+          gradPR[j] += fac*(p_dpdxIp[j] - sigmaKappaIp*dvofdxIp[j]);
           areaWeightL[j] += absArea;
           areaWeightR[j] += absArea;
         }
