@@ -230,7 +230,7 @@ ComputeMdotVofElemAlgorithm::execute()
 
         // setup for ip values
         double rhoIp = 0.0;
-        double dfdaIp = 0.0;
+        double dvofdaIp = 0.0;
         double sigmaKappaIp = 0.0;
 
         for ( int j = 0; j < nDim; ++j ) {
@@ -254,12 +254,12 @@ ComputeMdotVofElemAlgorithm::execute()
             p_GpdxIp[j] += r*p_Gpdx[nDim*ic+j];
             p_uIp[j] += r*p_vrtm[nDim*ic+j];
             p_dpdxIp[j] += p_dndx[offSetDnDx+j]*pressureIc;
-            dfdaIp += p_dndx[offSetDnDx+j]*vofIc*p_scs_areav[ip*nDim+j];
+            dvofdaIp += p_dndx[offSetDnDx+j]*vofIc*p_scs_areav[ip*nDim+j];
           }
         }
 
         // assemble flow rate
-        double tvdot = projTimeScale*sigmaKappaIp*dfdaIp/rhoIp;
+        double tvdot = projTimeScale*sigmaKappaIp*dvofdaIp/rhoIp;
         for ( int j = 0; j < nDim; ++j ) {
           // balanced force approach
           tvdot += (p_uIp[j] - projTimeScale*(p_dpdxIp[j]/rhoIp - p_GpdxIp[j]))*p_scs_areav[ip*nDim+j];

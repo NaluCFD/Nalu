@@ -102,10 +102,12 @@ realms:
       wall_user_data:
         velocity: [0.0,0.0]
 
-    - wall_boundary_condition: bc_top
+    - open_boundary_condition: bc_top
       target_name: surface_3
-      wall_user_data:
+      open_user_data:
         velocity: [0.0,0.0]
+        pressure: 0.0
+        volume_of_fluid: 0.0
 
     - wall_boundary_condition: bc_bot
       target_name: surface_4

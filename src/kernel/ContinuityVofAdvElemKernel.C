@@ -127,7 +127,7 @@ ContinuityVofAdvElemKernel<AlgTraits>::execute(
 
     // need density at ip first for proper LHS scaling
     DoubleType rhoIp = 0.0;
-    DoubleType dfdaIp = 0.0;
+    DoubleType dvofdaIp = 0.0;
     DoubleType sigmaKappaIp = 0.0;
     for (int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic) {
       rhoIp += v_shape_function_(ip, ic)*v_densityNp1(ic);
@@ -150,7 +150,7 @@ ContinuityVofAdvElemKernel<AlgTraits>::execute(
         w_GpdxIp[j] += r*v_Gpdx(ic, j);
         w_uIp[j] += r*v_velocity(ic, j);
         w_dpdxIp[j]  += v_dndx(ip,ic,j)*pressureIc;
-        dfdaIp += v_dndx(ip,ic,j)*vofIc*v_scs_areav(ip,j);
+        dvofdaIp += v_dndx(ip,ic,j)*vofIc*v_scs_areav(ip,j);
         lhsfac += -v_dndx_lhs(ip, ic, j)*v_scs_areav(ip,j);
       }
 
@@ -159,7 +159,7 @@ ContinuityVofAdvElemKernel<AlgTraits>::execute(
     }
 
     // assemble flow rate
-    DoubleType vdot = projTimeScale_*sigmaKappaIp*dfdaIp/rhoIp;
+    DoubleType vdot = projTimeScale_*sigmaKappaIp*dvofdaIp/rhoIp;
     for (int j = 0; j < AlgTraits::nDim_; ++j) {      
       // balanced force approach
       vdot += (w_uIp[j] - projTimeScale_*(w_dpdxIp[j]/rhoIp - w_GpdxIp[j]))*v_scs_areav(ip,j);
