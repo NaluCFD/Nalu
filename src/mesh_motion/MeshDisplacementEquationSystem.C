@@ -43,6 +43,16 @@
 
 #include "overset/UpdateOversetFringeAlgorithmDriver.h"
 
+// template for kernels
+#include "AlgTraits.h"
+#include "kernel/KernelBuilder.h"
+#include "kernel/KernelBuilderLog.h"
+
+// kernels
+#include "kernel/MeshDisplacementMassElemKernel.h"
+#include "kernel/MeshDisplacementElasticElemKernel.h"
+#include "kernel/MeshDisplacementSimplifiedNeohookeanElemKernel.h"
+
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
 
@@ -79,12 +89,8 @@ namespace nalu{
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 MeshDisplacementEquationSystem::MeshDisplacementEquationSystem(
-  EquationSystems& eqSystems,
-  const bool activateMass,
-  const bool deformWrtModelCoords)
-  : EquationSystem(eqSystems, "MeshDisplacementEQS"),
-    activateMass_(activateMass),
-    deformWrtModelCoords_(deformWrtModelCoords),
+  EquationSystems& eqSystems)
+  : EquationSystem(eqSystems, "MeshDisplacementEQS", "mesh_displacement"),
     isInit_(false),
     meshDisplacement_(NULL),
     meshVelocity_(NULL),
@@ -176,12 +182,9 @@ MeshDisplacementEquationSystem::register_nodal_fields(
   dualNodalVolume_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume"));
   stk::mesh::put_field_on_mesh(*dualNodalVolume_, *part, nullptr);
 
-  // properties
-  if ( activateMass_ ) {
-    density_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "density"));
-    stk::mesh::put_field_on_mesh(*density_, *part, nullptr);
-    realm_.augment_property_map(DENSITY_ID, density_);
-  }
+  density_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "density"));
+  stk::mesh::put_field_on_mesh(*density_, *part, nullptr);
+  realm_.augment_property_map(DENSITY_ID, density_);
 
   lameMu_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "lame_mu"));
   stk::mesh::put_field_on_mesh(*lameMu_, *part, nullptr);
@@ -230,39 +233,36 @@ MeshDisplacementEquationSystem::register_interior_algorithm(
 
   // types of algorithms
   const AlgorithmType algType = INTERIOR;
-  const AlgorithmType algMass = MASS;
 
-  // solver; interior elem contribution
-  std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi =
-    solverAlgDriver_->solverAlgMap_.find(algType);
-  if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
-    AssembleMeshDisplacementElemSolverAlgorithm *theAlg
-      = new AssembleMeshDisplacementElemSolverAlgorithm(
-              realm_, part, this, deformWrtModelCoords_);
-    solverAlgDriver_->solverAlgMap_[algType] = theAlg;
-  }
-  else {
-    itsi->second->partVec_.push_back(part);
+  stk::topology partTopo = part->topology();
+  auto& solverAlgMap = solverAlgDriver_->solverAlgorithmMap_;
+
+  AssembleElemSolverAlgorithm* solverAlg = nullptr;
+  bool solverAlgWasBuilt = false; 
+
+  std::tie(solverAlg, solverAlgWasBuilt) = build_or_add_part_to_solver_alg(*this, *part, solverAlgMap);
+
+  ElemDataRequests& dataPreReqs = solverAlg->dataNeededByKernels_;
+  auto& activeKernels = solverAlg->activeKernels_;
+
+  if (solverAlgWasBuilt) {
+    build_topo_kernel_if_requested<MeshDisplacementMassElemKernel>
+      (partTopo, *this, activeKernels, "mesh_disp",
+       realm_.bulk_data(), *realm_.solutionOptions_, meshDisplacement_, dataPreReqs, false);
+    build_topo_kernel_if_requested<MeshDisplacementMassElemKernel>
+      (partTopo, *this, activeKernels, "mesh_disp_lumped",
+       realm_.bulk_data(), *realm_.solutionOptions_, meshDisplacement_, dataPreReqs, true);
+    build_topo_kernel_if_requested<MeshDisplacementElasticElemKernel>
+      (partTopo, *this, activeKernels, "elastic_stress",
+       realm_.bulk_data(), *realm_.solutionOptions_, meshDisplacement_, dataPreReqs);
+    build_topo_kernel_if_requested<MeshDisplacementSimplifiedNeohookeanElemKernel>
+      (partTopo, *this, activeKernels, "simple_neo_stress",
+       realm_.bulk_data(), *realm_.solutionOptions_, meshDisplacement_, dataPreReqs);
+
+    report_invalid_supp_alg_names();
+    report_built_supp_alg_names();
   }
 
-  // solver; time contribution (lumped mass matrix)
-  if ( activateMass_ ) {
-    std::map<AlgorithmType, SolverAlgorithm *>::iterator itsm
-      = solverAlgDriver_->solverAlgMap_.find(algMass);
-    if ( itsm == solverAlgDriver_->solverAlgMap_.end() ) {
-      AssembleNodeSolverAlgorithm *theAlg
-        = new AssembleNodeSolverAlgorithm(realm_, part, this);
-      solverAlgDriver_->solverAlgMap_[algMass] = theAlg;
-
-      // now create the supplemental alg for mass term; generalize for BDF2
-      MeshDisplacementMassBackwardEulerNodeSuppAlg *theMass
-        = new MeshDisplacementMassBackwardEulerNodeSuppAlg(realm_);
-      theAlg->supplementalAlg_.push_back(theMass);
-    }
-    else {
-      itsm->second->partVec_.push_back(part);
-    }
-  }
 
   // non-solver; contribution to Gjvi; allow for element-based shifted
   std::map<AlgorithmType, Algorithm *>::iterator itgv
@@ -522,6 +522,7 @@ MeshDisplacementEquationSystem::solve_and_update()
     assemble_and_solve(dxTmp_);
 
     // update
+    
     double timeA = NaluEnv::self().nalu_time();
     field_axpby(
       realm_.meta_data(),
@@ -553,8 +554,16 @@ MeshDisplacementEquationSystem::compute_current_coordinates()
   VectorFieldType &displacementN = meshDisplacement_->field_of_state(stk::mesh::StateN);
   VectorFieldType &displacementNp1 = meshDisplacement_->field_of_state(stk::mesh::StateNP1);
 
+  const int numStates = meshDisplacement_->number_of_states();
+
+  VectorFieldType &displacementNm1 = (numStates == 2) ? displacementN : meshDisplacement_->field_of_state(stk::mesh::StateNM1);
+
   const int nDim = meta_data.spatial_dimension();
   const double dt = realm_.get_time_step();
+
+  const double gamma1 = realm_.get_gamma1();
+  const double gamma2 = realm_.get_gamma2();
+  const double gamma3 = realm_.get_gamma3();
 
   stk::mesh::Selector s_all_nodes
     = (meta_data.locally_owned_part() | meta_data.globally_shared_part())
@@ -568,6 +577,7 @@ MeshDisplacementEquationSystem::compute_current_coordinates()
     const stk::mesh::Bucket::size_type length   = b.size();
     const double * dxN = stk::mesh::field_data(displacementN, b);
     const double * dxNp1 = stk::mesh::field_data(displacementNp1, b);
+    const double * dxNm1 = stk::mesh::field_data(displacementNm1, b);
     double * meshVelocity = stk::mesh::field_data(*meshVelocity_, b);
     const double * coordinates = stk::mesh::field_data(*coordinates_, b);
     double * currentCoordinates = stk::mesh::field_data(*currentCoordinates_, b);
@@ -575,8 +585,10 @@ MeshDisplacementEquationSystem::compute_current_coordinates()
       size_t offSet = k*nDim;
       for ( int j = 0; j < nDim; ++j ) {
         currentCoordinates[offSet+j] = coordinates[offSet+j] + dxNp1[offSet+j];
+
         // hack a mesh velocity to be first order backward Euler
-        meshVelocity[offSet+j] = (dxNp1[offSet+j] - dxN[offSet+j])/dt;
+        meshVelocity[offSet+j] = (gamma1*dxNp1[offSet+j]+gamma2*dxN[offSet+j]+gamma3*dxNm1[offSet+j])/dt;
+
       }
     }
   }

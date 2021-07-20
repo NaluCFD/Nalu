@@ -1382,6 +1382,7 @@ OversetManagerSTK::complete_search(
         NaluEnv::self().naluOutputP0() << "Sorry, constraint node for node " << bulkData_->identifier(infoObject->constraintNode_)
             << " does not have an ideal bestX; consider clipping "
             << infoObject->bestX_ << std::endl;
+            
         if ( !(bulkData_->is_valid(elem)) )
           NaluEnv::self().naluOutputP0() << "In fact, the owning master element is null" << std::endl;
         else
