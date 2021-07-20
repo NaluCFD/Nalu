@@ -1773,17 +1773,23 @@ Realm::create_output_mesh()
 #ifdef NALU_USES_CATALYST    
     if(!outputInfo_->catalystFileName_.empty()||
        !outputInfo_->paraviewScriptName_.empty()) {
-      outputInfo_->outputPropertyManager_->add(Ioss::Property("PHACTORI_INPUT_SYNTAX_SCRIPT",
-                                                              outputInfo_->catalystFileName_));
+
       outputInfo_->outputPropertyManager_->add(Ioss::Property("CATALYST_BLOCK_PARSE_INPUT_DECK_NAME", 
                                                               NaluEnv::self().get_base_name()));
                                                
-      if(!outputInfo_->paraviewScriptName_.empty())
-        outputInfo_->outputPropertyManager_->add(Ioss::Property("CATALYST_SCRIPT", outputInfo_->paraviewScriptName_.c_str()));
+      if(!outputInfo_->catalystFileName_.empty()) {
+        outputInfo_->outputPropertyManager_->add(Ioss::Property("PHACTORI_INPUT_SYNTAX_SCRIPT",
+                                                                outputInfo_->catalystFileName_));
+      }
+      else if(!outputInfo_->paraviewScriptName_.empty()) {
+        outputInfo_->outputPropertyManager_->add(Ioss::Property("CATALYST_SCRIPT",
+            outputInfo_->paraviewScriptName_.c_str()));
+      }
       
       outputInfo_->outputPropertyManager_->add(Ioss::Property("CATALYST_CREATE_SIDE_SETS", 1));
       
-      resultsFileIndex_ = ioBroker_->create_output_mesh( oname, stk::io::WRITE_RESULTS, *outputInfo_->outputPropertyManager_, "catalyst_exodus" );
+      resultsFileIndex_ = ioBroker_->create_output_mesh( oname, stk::io::WRITE_RESULTS,
+          *outputInfo_->outputPropertyManager_, "catalyst_exodus" );
     }
     else {
       resultsFileIndex_ = ioBroker_->create_output_mesh( oname, stk::io::WRITE_RESULTS, *outputInfo_->outputPropertyManager_);

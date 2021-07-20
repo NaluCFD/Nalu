@@ -25,7 +25,8 @@ public:
     stk::mesh::Part *part,
     ScalarFieldType *pressure,
     VectorFieldType *dpdx,
-    const std::string bcPressureName = "pressure");
+    const std::string bcPressureName,
+    const bool overrideFacePressure = false);
   virtual ~AssembleNodalGradPAWBoundaryAlgorithm() {}
 
   virtual void execute();
@@ -34,9 +35,13 @@ public:
   VectorFieldType *dpdx_;
   VectorFieldType *coordinates_;
   ScalarFieldType *density_;
+  ScalarFieldType *interfaceCurvature_;
+  ScalarFieldType *surfaceTension_;
+  ScalarFieldType *vof_;
   ScalarFieldType *bcPressure_;
   VectorFieldType *areaWeight_;
   const bool useShifted_;
+  const bool overrideFacePressure_;
 };
 
 } // namespace nalu

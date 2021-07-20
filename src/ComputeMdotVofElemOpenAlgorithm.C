@@ -44,6 +44,9 @@ ComputeMdotVofElemOpenAlgorithm::ComputeMdotVofElemOpenAlgorithm(
     coordinates_(NULL),
     pressure_(NULL),
     density_(NULL),
+    interfaceCurvature_(NULL),
+    surfaceTension_(NULL),
+    vof_(NULL),
     exposedAreaVec_(NULL),
     dynamicPressure_(NULL),
     pressureBc_(NULL),
@@ -61,6 +64,9 @@ ComputeMdotVofElemOpenAlgorithm::ComputeMdotVofElemOpenAlgorithm(
   coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   pressure_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure");
   density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
+  interfaceCurvature_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "interface_curvature");
+  surfaceTension_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "surface_tension");
+  vof_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "volume_of_fluid");
   exposedAreaVec_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");
   dynamicPressure_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "dynamic_pressure");
   openMassFlowRate_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "open_mass_flow_rate");
@@ -105,6 +111,9 @@ ComputeMdotVofElemOpenAlgorithm::execute()
   std::vector<double> ws_vrtm;
   std::vector<double> ws_Gpdx;
   std::vector<double> ws_density;
+  std::vector<double> ws_kappa;
+  std::vector<double> ws_sigma;
+  std::vector<double> ws_vof;
   std::vector<double> ws_bcPressure;
 
   // master element
@@ -157,6 +166,9 @@ ComputeMdotVofElemOpenAlgorithm::execute()
     ws_vrtm.resize(nodesPerFace*nDim);
     ws_Gpdx.resize(nodesPerFace*nDim);
     ws_density.resize(nodesPerFace);
+    ws_kappa.resize(nodesPerFace);
+    ws_sigma.resize(nodesPerFace);
+    ws_vof.resize(nodesPerElement);
     ws_bcPressure.resize(nodesPerFace);
     ws_face_shape_function.resize(numScsBip*nodesPerFace);
     ws_dndx.resize(nDim*numScsBip*nodesPerElement);
@@ -169,6 +181,9 @@ ComputeMdotVofElemOpenAlgorithm::execute()
     double *p_vrtm = &ws_vrtm[0];
     double *p_Gpdx = &ws_Gpdx[0];
     double *p_density = &ws_density[0];
+    double *p_kappa = &ws_kappa[0];
+    double *p_sigma = &ws_sigma[0];
+    double *p_vof = &ws_vof[0];
     double *p_bcPressure = &ws_bcPressure[0];
     double *p_face_shape_function = &ws_face_shape_function[0];
     double *p_dndx = &ws_dndx[0];
@@ -200,7 +215,9 @@ ComputeMdotVofElemOpenAlgorithm::execute()
         p_face_pressure[ni]    = *stk::mesh::field_data(*pressure_, node);
         p_bcPressure[ni] = *stk::mesh::field_data(*pressureBc_, node);
         p_density[ni]    = *stk::mesh::field_data(densityNp1, node);
-
+        p_kappa[ni]  = *stk::mesh::field_data(*interfaceCurvature_, node);
+        p_sigma[ni]  = *stk::mesh::field_data(*surfaceTension_, node);
+        
         // gather vectors
         double * vrtm = stk::mesh::field_data(*velocityRTM_, node);
         double * Gjp = stk::mesh::field_data(*Gpdx_, node);
@@ -237,7 +254,8 @@ ComputeMdotVofElemOpenAlgorithm::execute()
         stk::mesh::Entity node = elem_node_rels[ni];
 
         // gather scalars
-        p_pressure[ni]    = *stk::mesh::field_data(*pressure_, node);
+        p_pressure[ni] = *stk::mesh::field_data(*pressure_, node);
+        p_vof[ni]  = *stk::mesh::field_data(*vof_, node);
         
         // gather vectors
         double * coords = stk::mesh::field_data(*coordinates_, node);
@@ -283,12 +301,14 @@ ComputeMdotVofElemOpenAlgorithm::execute()
         double pBip = 0.0;
         double pbcBip = -dynamicP[ip];
         double rhoBip = 0.0;
+        double sigmaKappaBip = 0.0;
         const int offSetSF_face = ip*nodesPerFace;
         for ( int ic = 0; ic < nodesPerFace; ++ic ) {
           const double r = p_face_shape_function[offSetSF_face+ic];
           pBip += r*p_face_pressure[ic];
           pbcBip += r*p_bcPressure[ic];
           rhoBip += r*p_density[ic];
+          sigmaKappaBip += r*p_sigma[ic]*p_kappa[ic];
           const int icNdim = ic*nDim;
           for ( int j = 0; j < nDim; ++j ) {
             p_uBip[j] += r*p_vrtm[icNdim+j];
@@ -296,17 +316,22 @@ ComputeMdotVofElemOpenAlgorithm::execute()
           }
         }
 
-        // form dpdxBip
+        // form dpdxBip and dvofdaBip
+        double dvofdaBip = 0.0;
         for ( int ic = 0; ic < nodesPerElement; ++ic ) {
           const int offSetDnDx = nDim*nodesPerElement*ip + ic*nDim;
           const double pIc = p_pressure[ic];
+          const double vofIc = p_vof[ic];
           for ( int j = 0; j < nDim; ++j ) {
-            p_dpdxBip[j] += p_dndx[offSetDnDx+j]*pIc;
+            const double dxj = p_dndx[offSetDnDx+j];
+            p_dpdxBip[j] += dxj*pIc;
+            dvofdaBip += dxj*vofIc*areaVec[ip*nDim+j];
           }
         }
      
-        // form vdot; uj*Aj - projTS*(dpdxj/rhoBip - Gjp)*Aj + penaltyFac_/rhoBip*projTS*invL*(pBip - pbcBip)*aMag
-        double tvdot = penaltyFac_*projTimeScale/rhoBip*inverseLengthScale*(pBip - pbcBip)*aMag;
+        // form vdot; uj*Aj - projTS*(dpdxj/rhoBip - Gjp)*Aj + penaltyFac_/rhoBip*projTS*invL*(pBip - pbcBip)*aMag + BF
+        double tvdot = penaltyFac_*projTimeScale/rhoBip*inverseLengthScale*(pBip - pbcBip)*aMag
+          + projTimeScale*sigmaKappaBip*dvofdaBip/rhoBip;
         for ( int j = 0; j < nDim; ++j ) {
           const double axj = areaVec[ip*nDim+j];
           tvdot += (p_uBip[j] - projTimeScale*(p_dpdxBip[j]/rhoBip - p_GpdxBip[j]))*axj;

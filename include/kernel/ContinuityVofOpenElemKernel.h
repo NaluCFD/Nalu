@@ -60,6 +60,9 @@ private:
   ScalarFieldType *pressure_{nullptr};
   ScalarFieldType *pressureBc_{nullptr};
   ScalarFieldType *density_{nullptr};
+  ScalarFieldType *interfaceCurvature_{nullptr};
+  ScalarFieldType *surfaceTension_{nullptr};
+  ScalarFieldType *vof_{nullptr};
   GenericFieldType *exposedAreaVec_{nullptr};
   GenericFieldType *dynamicPressure_{nullptr};
 

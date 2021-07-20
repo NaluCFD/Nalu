@@ -38,20 +38,28 @@ AssembleNodalGradPAWBoundaryAlgorithm::AssembleNodalGradPAWBoundaryAlgorithm(
   stk::mesh::Part *part,
   ScalarFieldType *pressure,
   VectorFieldType *dpdx,
-  const std::string bcPressureName)
+  const std::string bcPressureName,
+  const bool overrideFacePressure)
   : Algorithm(realm, part),
     pressure_(pressure),
     dpdx_(dpdx),
     coordinates_(nullptr),
-    density_(nullptr),
+    density_(nullptr),    
+    interfaceCurvature_(NULL),
+    surfaceTension_(NULL),
+    vof_(NULL),
     bcPressure_(nullptr),
     areaWeight_(nullptr),
-    useShifted_(realm_.get_shifted_grad_op("pressure"))
+    useShifted_(realm_.get_shifted_grad_op("pressure")),
+    overrideFacePressure_(overrideFacePressure)
 {
   // save off fields
   stk::mesh::MetaData & metaData = realm_.meta_data();
   coordinates_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   density_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
+  interfaceCurvature_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "interface_curvature");
+  surfaceTension_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "surface_tension");
+  vof_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "volume_of_fluid");
   bcPressure_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, bcPressureName);
   areaWeight_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "png_area_weight");
 
@@ -74,7 +82,9 @@ AssembleNodalGradPAWBoundaryAlgorithm::execute()
 
   // ip values; fixed size
   std::vector<double> dpdxBip(nDim);
+  std::vector<double> dvofdxBip(nDim);
   double *p_dpdxBip = &dpdxBip[0];
+  double *p_dvofdxBip = &dvofdxBip[0];
 
   // nodal fields to gather; gather everything other than what we are assembling
 
@@ -82,6 +92,9 @@ AssembleNodalGradPAWBoundaryAlgorithm::execute()
   std::vector<double> ws_coordinates;
   std::vector<double> ws_pressure;
   std::vector<double> ws_face_density;
+  std::vector<double> ws_face_kappa;
+  std::vector<double> ws_face_sigma;
+  std::vector<double> ws_vof;
   std::vector<double> ws_bcPressure;
 
   // master element
@@ -122,6 +135,9 @@ AssembleNodalGradPAWBoundaryAlgorithm::execute()
     ws_coordinates.resize(nodesPerElement*nDim);
     ws_pressure.resize(nodesPerElement);
     ws_face_density.resize(nodesPerFace);
+    ws_face_kappa.resize(nodesPerFace);
+    ws_face_sigma.resize(nodesPerFace);
+    ws_vof.resize(nodesPerElement);
     ws_bcPressure.resize(nodesPerFace);
     ws_face_shape_function.resize(numScsBip*nodesPerFace);
     ws_dndx.resize(nDim*numScsBip*nodesPerElement);
@@ -131,6 +147,9 @@ AssembleNodalGradPAWBoundaryAlgorithm::execute()
     double *p_coordinates = ws_coordinates.data();
     double *p_pressure = ws_pressure.data();
     double *p_face_density = ws_face_density.data();
+    double *p_face_kappa = ws_face_kappa.data();
+    double *p_face_sigma = ws_face_sigma.data();
+    double *p_vof = ws_vof.data();
     double *p_bcPressure = ws_bcPressure.data();
     double *p_face_shape_function = ws_face_shape_function.data();
     double *p_dndx = &ws_dndx[0];
@@ -153,6 +172,8 @@ AssembleNodalGradPAWBoundaryAlgorithm::execute()
         stk::mesh::Entity node = face_node_rels[ni];
         // gather scalars
         p_face_density[ni]    = *stk::mesh::field_data(*density_, node);
+        p_face_kappa[ni]    = *stk::mesh::field_data(*interfaceCurvature_, node);
+        p_face_sigma[ni]    = *stk::mesh::field_data(*surfaceTension_, node);
         p_bcPressure[ni] = *stk::mesh::field_data(*bcPressure_, node);
       }
 
@@ -180,6 +201,7 @@ AssembleNodalGradPAWBoundaryAlgorithm::execute()
 
         // gather scalars
         p_pressure[ni]    = *stk::mesh::field_data(*pressure_, node);
+        p_vof[ni]    = *stk::mesh::field_data(*vof_, node);
 
         // gather vectors
         double * coords = stk::mesh::field_data(*coordinates_, node);
@@ -190,13 +212,13 @@ AssembleNodalGradPAWBoundaryAlgorithm::execute()
       }
 
       // override face nodal pressure (bcPressure will be pressure for all but open)
-      const bool doIt = false;
-      if ( doIt ) {
-      for ( int ic = 0; ic < nodesPerFace; ++ic ) {
-        const int faceNodeNumber = face_node_ordinals[ic];
-        p_pressure[faceNodeNumber] = p_bcPressure[ic];
+      if ( overrideFacePressure_ ) {
+        for ( int ic = 0; ic < nodesPerFace; ++ic ) {
+          const int faceNodeNumber = face_node_ordinals[ic];
+          p_pressure[faceNodeNumber] = p_bcPressure[ic];
+        }
       }
-      }
+
       // compute dndx
       double scs_error = 0.0;
       if ( useShifted_ )
@@ -218,31 +240,40 @@ AssembleNodalGradPAWBoundaryAlgorithm::execute()
 
         // zero ip values
         double rhoBip = 0.0;
+        double sigmaKappaBip = 0.0;
         for ( int j = 0; j < nDim; ++j ) {
           p_dpdxBip[j] = 0.0;
+          p_dvofdxBip[j] = 0.0;
         }
 
         // interpolate to bip
         const int ipNpf = ip*nodesPerFace;
         for ( int ic = 0; ic < nodesPerFace; ++ic ) {
-          rhoBip += p_face_shape_function[ipNpf+ic]*p_face_density[ic];
+          const double r = p_face_shape_function[ipNpf+ic];
+          rhoBip += r*p_face_density[ic];
+          sigmaKappaBip += r*p_face_sigma[ic]*p_face_kappa[ic];
         }
 
-        // form dpdxBip
+        // save off index
+        const int ipNdim = ip*nDim;
+
+        // form dpdxBip and dvofdxBip
         for ( int ic = 0; ic < nodesPerElement; ++ic ) {
           const int offSetDnDx = nDim*nodesPerElement*ip + ic*nDim;
           const double pIc = p_pressure[ic];
+          const double vofIc = p_vof[ic];
           for ( int j = 0; j < nDim; ++j ) {
-            p_dpdxBip[j] += p_dndx[offSetDnDx+j]*pIc;
+            const double dxj = p_dndx[offSetDnDx+j];
+            p_dpdxBip[j] += dxj*pIc;
+            p_dvofdxBip[j] += dxj*vofIc;
           }
         }
 
         // assemble to nearest node
-        const int ipNdim = ip*nDim;
         for ( int j = 0; j < nDim; ++j ) {
           const double absArea = std::abs(areaVec[ipNdim+j]);
-          double fac = absArea/rhoBip;
-          gradPNN[j] += fac*p_dpdxBip[j];
+          const double fac = absArea/rhoBip;
+          gradPNN[j] += fac*(p_dpdxBip[j] - sigmaKappaBip*dvofdxBip[j]);
           areaWeightNN[j] += absArea;
         }
       }
