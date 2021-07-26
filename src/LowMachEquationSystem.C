@@ -191,6 +191,8 @@
 
 #include "user_functions/PulseVelocityAuxFunction.h"
 
+#include "user_functions/LinearAuxFunction.h"
+
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
 #include <stk_util/parallel/ParallelReduce.hpp>
@@ -3189,6 +3191,12 @@ ContinuityEquationSystem::register_initial_condition_fcn(
     }
     else if ( fcnName == "kovasznay" ) {
       theAuxFunc = new KovasznayPressureAuxFunction();
+    }
+    else if ( fcnName == "linear" ) {
+      // extract the params
+      auto iterParams = theParams.find(dofName);
+      std::vector<double> fcnParams = (iterParams != theParams.end()) ? (*iterParams).second : std::vector<double>();
+      theAuxFunc = new LinearAuxFunction(fcnParams,0,1);
     }
     else {
       throw std::runtime_error("ContinuityEquationSystem::register_initial_condition_fcn: limited functions supported");

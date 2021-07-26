@@ -55,11 +55,9 @@ realms:
         target_name: block_1
         user_function_name:
          velocity: OneTwoTenVelocity
-
-      - constant: ic_1
-        target_name: block_1
-        value:
-          pressure: 0.0
+         pressure: linear
+        user_function_parameters:
+         pressure: [0.016, 0.0, -5.0, 5.0, 2, 0] # qL qR xL xR coordPd fieldPd
 
     material_properties:
       target_name: block_1

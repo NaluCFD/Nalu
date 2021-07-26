@@ -66,6 +66,7 @@
 #include "user_functions/WindEnergyTaylorVortexAuxFunction.h"
 #include "user_functions/OneTwoTenVelocityAuxFunction.h"
 #include "user_functions/PulseVelocityAuxFunction.h"
+#include "user_functions/LinearAuxFunction.h"
 
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
@@ -1312,6 +1313,12 @@ ContinuityFemEquationSystem::register_initial_condition_fcn(
     if ( fcnName == "TaylorGreen") {
       // create the function
       theAuxFunc = new TaylorGreenPressureAuxFunction();      
+    }
+    else if ( fcnName == "linear" ) {
+      // extract the params
+      auto iterParams = theParams.find(dofName);
+      std::vector<double> fcnParams = (iterParams != theParams.end()) ? (*iterParams).second : std::vector<double>();
+      theAuxFunc = new LinearAuxFunction(fcnParams,0,1);
     }
     else {
       throw std::runtime_error("ContinuityFemEquationSystem::register_initial_condition_fcn: limited functions supported");
