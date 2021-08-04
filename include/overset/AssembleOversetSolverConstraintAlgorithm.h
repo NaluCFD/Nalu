@@ -32,7 +32,8 @@ public:
     Realm &realm,
     stk::mesh::Part *part,
     EquationSystem *eqSystem,
-    stk::mesh::FieldBase *fieldQ);
+    stk::mesh::FieldBase *fieldQ,
+    const bool densityScaling);
   virtual ~AssembleOversetSolverConstraintAlgorithm() {}
   virtual void initialize_connectivity();
   virtual void execute();
@@ -40,7 +41,11 @@ public:
 
   // interface assumes that the correct state was provided
   stk::mesh::FieldBase *fieldQ_;
+  ScalarFieldType *density_;
+  ScalarFieldType *dualNodalVolume_;
   
+  const double scaleFac_;
+
   std::vector< const stk::mesh::FieldBase *> ghostFieldVec_;
 };
 
