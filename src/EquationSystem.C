@@ -404,12 +404,18 @@ EquationSystem::create_constraint_algorithm(
   // create the alg on the new constraint; at present, should only hit this once
   const AlgorithmType algType = OVERSET;
 
+  // check for density scaling
+  bool densityScaling = false;
+  if ( eqnTypeName_ == "continuity" ) {
+    densityScaling = realm_.solutionOptions_->balancedForce_;
+  }
+
   std::map<AlgorithmType, SolverAlgorithm *>::iterator itc =
     solverAlgDriver_->solverConstraintAlgMap_.find(algType);
   if ( itc == solverAlgDriver_->solverConstraintAlgMap_.end() ) {
     // FIXME: should we declare an empty part to push into below Alg?
     AssembleOversetSolverConstraintAlgorithm *theAlg
-      = new AssembleOversetSolverConstraintAlgorithm(realm_, NULL, this, theField);
+      = new AssembleOversetSolverConstraintAlgorithm(realm_, NULL, this, theField, densityScaling);
     solverAlgDriver_->solverConstraintAlgMap_[algType] = theAlg;
   }
   else {
