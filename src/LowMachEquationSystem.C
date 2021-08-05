@@ -3083,6 +3083,17 @@ ContinuityEquationSystem::register_overset_bc()
   // manage pressure; variable density requires a pre-timestep evaluation of independent variables
   theAlg->fields_.push_back(
     std::unique_ptr<OversetFieldData>(new OversetFieldData(pressure_,1,1)));
+
+  if ( realm_.has_mesh_motion() ) {
+
+    const int nDim = realm_.meta_data().spatial_dimension();
+
+    UpdateOversetFringeAlgorithmDriver* theAlgPost = new UpdateOversetFringeAlgorithmDriver(realm_,false);
+    // Perform fringe updates after all equation system solves (ideally on the post_time_step)
+    equationSystems_.postIterAlgDriver_.push_back(theAlgPost);
+    theAlgPost->fields_.push_back(std::unique_ptr<OversetFieldData>(new OversetFieldData(dpdx_,1,nDim)));
+    theAlgPost->fields_.push_back(std::unique_ptr<OversetFieldData>(new OversetFieldData(pressure_,1,1)));
+  }
 }
 
 //--------------------------------------------------------------------------
