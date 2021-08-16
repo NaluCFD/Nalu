@@ -36,6 +36,7 @@ public:
     ScalarFieldType*,
     const double,
     const double,
+    const double,
     ElemDataRequests&);
 
   virtual ~VolumeOfFluidSucvNsoElemKernel();
@@ -63,6 +64,7 @@ private:
 
   const double sucvFac_;
   const double nsoFac_;
+  const double timeFac_;
 
   const int* lrscv_;
 
@@ -71,11 +73,11 @@ private:
   double gamma2_{0.0};
   double gamma3_{0.0};
 
-  const double Cupw_{0.1};
+  const double Cupw_{0.2};
   const double small_{1.0e-16};
 
   // correction for gij for elements that do not span -1:1
-  double gijFac_{1.0};
+  double gijC_{1.0};
 
   /// Integration point to node mapping
   const int* ipNodeMap_;

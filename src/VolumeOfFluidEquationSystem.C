@@ -308,15 +308,15 @@ VolumeOfFluidEquationSystem::register_interior_algorithm(
 
     build_topo_kernel_if_requested<VolumeOfFluidSucvNsoElemKernel>
       (partTopo, *this, activeKernels, "sucv_nso",
-       realm_.bulk_data(), *realm_.solutionOptions_, vof_, 1.0, 1.0, dataPreReqs);
+       realm_.bulk_data(), *realm_.solutionOptions_, vof_, 1.0, 1.0, 1.0, dataPreReqs);
 
     build_topo_kernel_if_requested<VolumeOfFluidSucvNsoElemKernel>
       (partTopo, *this, activeKernels, "sucv",
-       realm_.bulk_data(), *realm_.solutionOptions_, vof_, 1.0, 0.0, dataPreReqs);
+       realm_.bulk_data(), *realm_.solutionOptions_, vof_, 1.0, 0.0, 1.0, dataPreReqs);
 
     build_topo_kernel_if_requested<VolumeOfFluidSucvNsoElemKernel>
       (partTopo, *this, activeKernels, "nso",
-       realm_.bulk_data(), *realm_.solutionOptions_, vof_, 0.0, 1.0, dataPreReqs);
+       realm_.bulk_data(), *realm_.solutionOptions_, vof_, 0.0, 1.0, 0.0, dataPreReqs);
   
     build_topo_kernel_if_requested<VolumeOfFluidSharpenElemKernel>
       (partTopo, *this, activeKernels, "sharpen",
