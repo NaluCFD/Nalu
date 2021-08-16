@@ -31,10 +31,12 @@ VolumeOfFluidSucvNsoElemKernel<AlgTraits>::VolumeOfFluidSucvNsoElemKernel(
   ScalarFieldType* vof,
   const double sucvFac,
   const double nsoFac,
+  const double timeFac,
   ElemDataRequests& dataPreReqs)
   : Kernel(),
     sucvFac_(sucvFac),
     nsoFac_(nsoFac),
+    timeFac_(timeFac),
     lrscv_(sierra::nalu::MasterElementRepo::get_surface_master_element(AlgTraits::topo_)->adjacentNodes())
 {
   // save off fields
@@ -76,7 +78,11 @@ VolumeOfFluidSucvNsoElemKernel<AlgTraits>::VolumeOfFluidSucvNsoElemKernel(
   dataPreReqs.add_master_element_call(SCS_GIJ, CURRENT_COORDINATES);
   
   // correction to gij
-  gijFac_ = (AlgTraits::nodesPerElement_ == 4 || AlgTraits::nodesPerElement_ == 8) ? 4.0 : 1.0;
+  gijC_ = (AlgTraits::nodesPerElement_ == 4 || AlgTraits::nodesPerElement_ == 8) ? 4.0 : 1.0;
+
+  NaluEnv::self().naluOutputP0() << "sucvFac_ :" << sucvFac_ << std::endl;
+  NaluEnv::self().naluOutputP0() << "nsoFac_  :" << nsoFac_ << std::endl;
+  NaluEnv::self().naluOutputP0() << "timeFac_ :" << timeFac_ << std::endl;
 }
 
 template<typename AlgTraits>
@@ -129,7 +135,7 @@ VolumeOfFluidSucvNsoElemKernel<AlgTraits>::execute(
     
     // zero out; vector
     for (int j = 0; j < AlgTraits::nDim_; ++j) {
-      w_uIp[j] = 0.0;
+      w_uIp[j] = small_*(1.0-timeFac_);
       w_dvofdxIp[j] = 0.0;
     }
 
@@ -146,29 +152,26 @@ VolumeOfFluidSucvNsoElemKernel<AlgTraits>::execute(
       }
     }
 
-    // form uj*nj; fold in uigijuj
+    // form uj*aj; fold in metric evaluations
     DoubleType ujaj = 0.0;
-    DoubleType uigijuj = 0.0;
     DoubleType gUpperMagGradQ = 0.0;
-    DoubleType uigLijuj = 0.0;
+    DoubleType uigLowerijuj = 0.0;
     for ( int i = 0; i < AlgTraits::nDim_; ++i ) {
       const DoubleType ai = v_scs_areav(ip,i);
       const DoubleType ui = w_uIp[i];
       const DoubleType dvofdxIpi = w_dvofdxIp[i];
-
       ujaj += ui*ai;
       for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
-        uigijuj += ui*v_gijLower(ip,i,j)*w_uIp[j];
-        uigLijuj += ui*v_gijLower(ip,i,j)*w_uIp[j];
-        gUpperMagGradQ += dvofdxIpi*v_gijUpper(ip,i,j)*w_dvofdxIp[j];
+        uigLowerijuj += ui*v_gijLower(ip,i,j)*gijC_*w_uIp[j];
+        gUpperMagGradQ += dvofdxIpi*v_gijUpper(ip,i,j)/gijC_*w_dvofdxIp[j];
       }
     }
 
-    // construct tau (from flow-aligned time scale) and nu (from residual)
-    const DoubleType tau = 1.0/(stk::math::sqrt((2.0/dt_)*(2.0/dt_) + gijFac_*uigijuj));
-    
-    // form mass term residual
-    const DoubleType mass = (gamma1_*vofNp1Ip + gamma2_*vofNIp + gamma3_*vofNm1Ip)/dt_;
+    // construct tau (from flow-aligned time scale); 
+    // Note: When running at unity Courant, inclusion of dt effectively 
+    // doubles tau, however, prevents problematic behavior in regions of 
+    // zero flow.
+    const DoubleType tau = 1.0/(stk::math::sqrt((2.0/dt_)*(2.0/dt_)*timeFac_ + uigLowerijuj ));
 
     DoubleType uidVofdxi = 0.0;
     for ( int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic ) {
@@ -177,30 +180,30 @@ VolumeOfFluidSucvNsoElemKernel<AlgTraits>::execute(
       
       // SUCV diffusion-like term; -tau*uidvof/dxi*ujnj (residual below)
       DoubleType lhsfac = 0.0;
-      for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
-        const DoubleType ujdNj = w_uIp[j]*v_dndx(ip,ic,j);
-        uidVofdxi += ujdNj*vofIc;
-        lhsfac += -ujdNj;
+      for ( int i = 0; i < AlgTraits::nDim_; ++i ) {
+        const DoubleType uidNi = w_uIp[i]*v_dndx(ip,ic,i);
+        uidVofdxi += uidNi*vofIc;
+        lhsfac += -uidNi;
       }
       lhs(il,ic) += tau*ujaj*lhsfac*sucvFac_;
       lhs(ir,ic) -= tau*ujaj*lhsfac*sucvFac_;	  
     }
     
-    // form residual
-    const DoubleType residual = mass+uidVofdxi;
+    // form residual for PDE
+    const DoubleType residualPDE = (gamma1_*vofNp1Ip + gamma2_*vofNIp + gamma3_*vofNm1Ip)/dt_ + uidVofdxi;
 
     // full sucv residual
-    const DoubleType residualSucv = -tau*ujaj*residual*sucvFac_;
+    const DoubleType residualSucv = -tau*ujaj*residualPDE*sucvFac_;
     
     // residual; left and right
     rhs(il) -= residualSucv;
     rhs(ir) += residualSucv; 
 
-    // construct and nu (from residual)
-    const DoubleType nuResidual = stk::math::sqrt((residual*residual)/(gUpperMagGradQ/gijFac_+small_));
+    // construct nu (from residual)
+    const DoubleType nuResidual = stk::math::sqrt((residualPDE*residualPDE)/(gUpperMagGradQ + small_));
 
     // construct nu from first-order-like approach; SNL-internal write-up (eq 209)
-    const DoubleType nuFirstOrder = stk::math::sqrt(uigLijuj);
+    const DoubleType nuFirstOrder = stk::math::sqrt(uigLowerijuj);
 
     // limit based on first order; Cupw_ is a fudge factor similar to Guermond's approach
     const DoubleType nu = stk::math::min(Cupw_*nuFirstOrder, nuResidual);
@@ -217,18 +220,18 @@ VolumeOfFluidSucvNsoElemKernel<AlgTraits>::execute(
         const DoubleType axi = v_scs_areav(ip,i);
         for ( int j = 0; j < AlgTraits::nDim_; ++j ) {
           const DoubleType dnxj = v_dndx(ip,ic,j);
-          const DoubleType fac = v_gijUpper(ip,i,j)*dnxj*axi;
+          const DoubleType fac = v_gijUpper(ip,i,j)/gijC_*dnxj*axi;
           gijFac += fac*vofIc;
           lhsfac += -fac;
         }
       }
       
-      lhs(il,ic) += nu*lhsfac;
-      lhs(ir,ic) -= nu*lhsfac;
+      lhs(il,ic) += nu*lhsfac*nsoFac_;
+      lhs(ir,ic) -= nu*lhsfac*nsoFac_;
     }
 
     // residual; left and right
-    const DoubleType residualNSO = -nu*gijFac;
+    const DoubleType residualNSO = -nu*gijFac*nsoFac_;
     rhs(il) -= residualNSO;
     rhs(ir) += residualNSO;   
   }
