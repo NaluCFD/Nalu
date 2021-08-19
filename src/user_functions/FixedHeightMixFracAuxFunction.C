@@ -43,7 +43,6 @@ FixedHeightMixFracAuxFunction::do_evaluate(
 {
   for(unsigned p=0; p < numPoints; ++p) {
 
-    const double x = coords[0];
     const double y = coords[1];
 
     const double dy = y-hY_;

@@ -31,7 +31,7 @@ realms:
 
     time_step_control:
      target_courant: 2.0
-     time_step_change_factor: 2.5
+     time_step_change_factor: 1.15
    
     equation_systems:
       name: theEqSys
@@ -96,6 +96,13 @@ realms:
       wall_user_data:
         velocity: [0,0,0]
 
+    - open_boundary_condition: bg_bc_open
+      target_name: bgopen
+      open_user_data:
+        velocity: [0,0,0]
+        pressure: 0
+        volume_of_fluid: 1.0
+
     - overset_boundary_condition: buoy_edge
       overset_user_data:
         percent_overlap: 15.0
@@ -136,7 +143,7 @@ realms:
           body_cc_disp: [1.0,0.5,0]
           principal_moments_inertia: [0.0,0.0,50.0]
           forcing_surface: [buoy]
-          applied_force: [0.0,-1646.00,0.0]
+          applied_force: [0.0,-1646.90,0.0]
           compute_centroid: yes
 
       use_consolidated_solver_algorithm: yes
