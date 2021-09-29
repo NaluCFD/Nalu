@@ -1866,7 +1866,7 @@ Realm::create_restart_mesh()
       std::string parameterName = (*i).first;
       stk::util::Parameter parameter = (*i).second;
       if(parameter.toRestartFile) {
-        ioBroker_->add_global(restartFileIndex_, parameterName, parameter.value, parameter.type);
+        ioBroker_->add_global(restartFileIndex_, parameterName, parameter);
       }
     }
 
@@ -3718,7 +3718,7 @@ Realm::provide_restart_output()
         std::string parameterName = (*i).first;
         stk::util::Parameter parameter = (*i).second;
         if ( parameter.toRestartFile ) {
-          ioBroker_->write_global(restartFileIndex_, parameterName,  parameter.value, parameter.type);
+          ioBroker_->write_global(restartFileIndex_, parameterName,  parameter);
         }
       }
 
