@@ -1443,7 +1443,7 @@ MomentumEquationSystem::register_interior_algorithm(
     if ( it_tv == tviscAlgDriver_->algMap_.end() ) {
       Algorithm * theAlg = NULL;
       switch (realm_.solutionOptions_->turbulenceModel_ ) {
-        case KSGS: case DKSGS:
+        case KSGS: case LRKSGS: case DKSGS:
           theAlg = new TurbViscKsgsAlgorithm(realm_, part);
           break;
         case SMAGORINSKY:

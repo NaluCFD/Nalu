@@ -32,7 +32,8 @@ public:
   TurbKineticEnergyKsgsDesignOrderSrcElemKernel(
     const stk::mesh::BulkData&,
     const SolutionOptions&,
-    ElemDataRequests&);
+    ElemDataRequests&,
+    double lrksgsfac);
 
   virtual ~TurbKineticEnergyKsgsDesignOrderSrcElemKernel();
   
@@ -54,7 +55,9 @@ private:
   ScalarFieldType *tvisc_{nullptr};
   ScalarFieldType *dualNodalVolume_{nullptr};
   ScalarFieldType *cEps_{nullptr};
+  ScalarFieldType *visc_{nullptr};
 
+  const double lrksgsfac_;
   const double tkeProdLimitRatio_;
   
   /// Integration point to node mapping

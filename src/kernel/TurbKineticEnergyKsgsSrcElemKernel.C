@@ -28,8 +28,10 @@ template<typename AlgTraits>
 TurbKineticEnergyKsgsSrcElemKernel<AlgTraits>::TurbKineticEnergyKsgsSrcElemKernel(
   const stk::mesh::BulkData& bulkData,
   const SolutionOptions& solnOpts,
-  ElemDataRequests& dataPreReqs)
+  ElemDataRequests& dataPreReqs,
+  double lrksgsfac)
   : Kernel(),
+    lrksgsfac_(lrksgsfac),
     tkeProdLimitRatio_(solnOpts.get_turb_model_constant(TM_tkeProdLimitRatio)),
     ipNodeMap_(sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_)->ipNodeMap())
 {
@@ -47,6 +49,14 @@ TurbKineticEnergyKsgsSrcElemKernel<AlgTraits>::TurbKineticEnergyKsgsSrcElemKerne
   cEps_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "c_epsilon");
   Gju_ = metaData.get_field<GenericFieldType>(stk::topology::NODE_RANK, "dudx");
 
+  // low-Re form
+  visc_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity");
+  // assign required variables that may not be registered to an arbitrary field
+  dsqrtkSq_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity");
+  if (lrksgsfac > 0.0 ) {
+    dsqrtkSq_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dsqrtk_dx_sq");
+  }
+
   MasterElement *meSCV = sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_);
 
   // add master elements
@@ -60,6 +70,8 @@ TurbKineticEnergyKsgsSrcElemKernel<AlgTraits>::TurbKineticEnergyKsgsSrcElemKerne
   dataPreReqs.add_gathered_nodal_field(*dualNodalVolume_, 1);
   dataPreReqs.add_gathered_nodal_field(*cEps_, 1);
   dataPreReqs.add_gathered_nodal_field(*Gju_, AlgTraits::nDim_, AlgTraits::nDim_);
+  dataPreReqs.add_gathered_nodal_field(*visc_, 1);
+  dataPreReqs.add_gathered_nodal_field(*dsqrtkSq_, 1);
   dataPreReqs.add_master_element_call(SCV_VOLUME, CURRENT_COORDINATES);
 }
 
@@ -86,6 +98,10 @@ TurbKineticEnergyKsgsSrcElemKernel<AlgTraits>::execute(
     *cEps_);
   SharedMemView<DoubleType***>& v_Gju = scratchViews.get_scratch_view_3D(*Gju_);
   SharedMemView<DoubleType*>& v_scv_volume = scratchViews.get_me_views(CURRENT_COORDINATES).scv_volume;
+  SharedMemView<DoubleType*>& v_visc = scratchViews.get_scratch_view_1D(
+    *visc_);
+  SharedMemView<DoubleType*>& v_dsqrtkSq = scratchViews.get_scratch_view_1D(
+    *dsqrtkSq_);
 
   for (int ip=0; ip < AlgTraits::numScvIp_; ++ip) {
     const int nearestNode = ipNodeMap_[ip];
@@ -105,7 +121,7 @@ TurbKineticEnergyKsgsSrcElemKernel<AlgTraits>::execute(
       : v_cEps(nearestNode)*v_densityNp1(nearestNode)*stk::math::sqrt(tke)/stk::math::cbrt(v_dualNodalVolume(nearestNode));
 
     // dissipation and production; limited
-    DoubleType Dk = tkeFac * tke;
+    DoubleType Dk = tkeFac * tke + lrksgsfac_*2.0*v_visc(nearestNode)*v_dsqrtkSq(nearestNode);
     Pk = stk::math::min(Pk, tkeProdLimitRatio_*Dk);
     
     // lhs assembly, all lumped
