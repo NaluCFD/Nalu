@@ -33,7 +33,17 @@ public:
   ScalarFieldType *tvisc_;
   ScalarFieldType *dualNodalVolume_;
   ScalarFieldType *cmuEps_;
-  
+  // low-Re
+  ScalarFieldType *cEps_;
+  ScalarFieldType *visc_;
+  ScalarFieldType *minDistance_;
+  ScalarFieldType *dsqrtkSq_;
+
+  // low-Re factors and constants
+  double lrksgsfac_;
+  const double Cl_;
+  const double Ao_;
+  const double Bo_;
 };
 
 } // namespace nalu

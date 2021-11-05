@@ -156,6 +156,7 @@ enum TurbulenceModel {
   SST_DES = 5,
   DKSGS = 6,
   KEPS = 7,
+  LRKSGS = 8,
   TurbulenceModel_END
 };  
 
@@ -168,7 +169,8 @@ static const std::string TurbulenceModelNames[] = {
   "sst",
   "sst_des",
   "dynamic_ksgs",
-  "k_epsilon"};
+  "k_epsilon",
+  "lr_ksgs"};
 
 enum TurbulenceModelConstant {
   TM_cMu = 0,

@@ -41,9 +41,11 @@ public:
   GenericFieldType *dudx_;
   ScalarFieldType *dualNodalVolume_;
   ScalarFieldType *cEps_;
+  ScalarFieldType *visc_;
+  ScalarFieldType *dsqrtkSq_;
   double tkeProdLimitRatio_;
   int nDim_;
-  
+  double lrksgsfac_;
 };
 
 } // namespace nalu

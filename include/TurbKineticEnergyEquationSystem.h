@@ -84,6 +84,8 @@ public:
     EquationSystems& eqSystems);
   void compute_projected_nodal_gradient();
   
+  void compute_dsqrtk_dx_sq();
+
   const bool managePNG_;
 
   ScalarFieldType *tke_;

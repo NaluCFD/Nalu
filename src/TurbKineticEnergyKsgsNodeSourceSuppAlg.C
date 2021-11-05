@@ -9,6 +9,7 @@
 #include <TurbKineticEnergyKsgsNodeSourceSuppAlg.h>
 #include <FieldTypeDef.h>
 #include <Realm.h>
+#include <SolutionOptions.h>
 #include <SupplementalAlgorithm.h>
 #include <TimeIntegrator.h>
 #include <stk_mesh/base/Field.hpp>
@@ -38,8 +39,11 @@ TurbKineticEnergyKsgsNodeSourceSuppAlg::TurbKineticEnergyKsgsNodeSourceSuppAlg(
     dudx_(NULL),
     dualNodalVolume_(NULL),
     cEps_(NULL),
+    visc_(NULL),
+    dsqrtkSq_(NULL),
     tkeProdLimitRatio_(realm_.get_turb_model_constant(TM_tkeProdLimitRatio)),
-    nDim_(realm_.meta_data().spatial_dimension())
+    nDim_(realm_.meta_data().spatial_dimension()),
+    lrksgsfac_(0.0)
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -51,6 +55,15 @@ TurbKineticEnergyKsgsNodeSourceSuppAlg::TurbKineticEnergyKsgsNodeSourceSuppAlg(
   dudx_ = meta_data.get_field<GenericFieldType>(stk::topology::NODE_RANK, "dudx");
   dualNodalVolume_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
   cEps_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "c_epsilon");
+  
+  // low-Re form
+  visc_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity");
+  // assign required variables that may not be registered to an arbitrary field
+  dsqrtkSq_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity");
+  if ( realm_.solutionOptions_->turbulenceModel_ == LRKSGS ) {
+    dsqrtkSq_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dsqrtk_dx_sq");
+    lrksgsfac_ = 1.0;
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -77,6 +90,9 @@ TurbKineticEnergyKsgsNodeSourceSuppAlg::node_execute(
   const double *dudx      =  stk::mesh::field_data(*dudx_, node );
   const double dualVolume = *stk::mesh::field_data(*dualNodalVolume_, node );
   const double cEps = *stk::mesh::field_data(*cEps_, node );
+  // low-Re
+  const double visc =  *stk::mesh::field_data(*visc_, node );
+  const double dsqrtkSq =  *stk::mesh::field_data(*dsqrtkSq_, node );
 
   // filter
   double filter = std::pow(dualVolume, 1.0/nDim_);
@@ -91,7 +107,7 @@ TurbKineticEnergyKsgsNodeSourceSuppAlg::node_execute(
   }
   Pk *= tvisc;
 
-  double Dk = cEps*rho*std::pow(tke, 1.5)/filter;
+  double Dk = cEps*rho*std::pow(tke, 1.5)/filter + lrksgsfac_*2.0*visc*dsqrtkSq;
 
   if ( Pk > tkeProdLimitRatio_*Dk )
     Pk = tkeProdLimitRatio_*Dk;
