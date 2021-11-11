@@ -2110,12 +2110,17 @@ MomentumEquationSystem::register_overset_bc()
 {
   create_constraint_algorithm(velocity_);
 
+  auto &&metaData = realm_.meta_data();
+  auto &&dualNodalVolume_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
+
   int nDim = realm_.meta_data().spatial_dimension();
   UpdateOversetFringeAlgorithmDriver* theAlg = new UpdateOversetFringeAlgorithmDriver(realm_);
   // Perform fringe updates before all equation system solves
   equationSystems_.preIterAlgDriver_.push_back(theAlg);
   theAlg->fields_.push_back(std::unique_ptr<OversetFieldData>(new OversetFieldData(velocity_,1,nDim)));
-  
+  theAlg->fields_.push_back(std::unique_ptr<OversetFieldData>(new OversetFieldData(dualNodalVolume_,1,1)));
+
+
   if ( realm_.has_mesh_motion() ) {
     UpdateOversetFringeAlgorithmDriver* theAlgPost = new UpdateOversetFringeAlgorithmDriver(realm_,false);
     // Perform fringe updates after all equation system solves (ideally on the post_time_step)

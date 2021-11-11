@@ -640,12 +640,19 @@ void
 VolumeOfFluidEquationSystem::register_overset_bc()
 {
   create_constraint_algorithm(vof_);
+  stk::mesh::MetaData &metaData = realm_.meta_data();
+
+  const int nDim = metaData.spatial_dimension();
 
   UpdateOversetFringeAlgorithmDriver* theAlg = new UpdateOversetFringeAlgorithmDriver(realm_);
   // Perform fringe updates before all equation system solves
   equationSystems_.preIterAlgDriver_.push_back(theAlg);
   theAlg->fields_.push_back(
     std::unique_ptr<OversetFieldData>(new OversetFieldData(vof_,1,1)));
+  theAlg->fields_.push_back(
+    std::unique_ptr<OversetFieldData>(new OversetFieldData(interfaceNormal_,1,nDim)));
+  theAlg->fields_.push_back(
+    std::unique_ptr<OversetFieldData>(new OversetFieldData(interfaceCurvature_,1,1)));
     
   if ( realm_.has_mesh_motion() ) {
     UpdateOversetFringeAlgorithmDriver* theAlgPost = new UpdateOversetFringeAlgorithmDriver(realm_,false);

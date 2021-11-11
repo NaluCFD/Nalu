@@ -134,6 +134,10 @@ ComputeGeometryAlgorithmDriver::post_work()
     realm_.periodic_field_update(dualNodalVolume, fieldSize);
   }
 
+  if ( realm_.hasOverset_) {
+    realm_.overset_constraint_node_field_update(dualNodalVolume, 1, 1);
+  }
+
   if ( realm_.checkJacobians_ ) {
     check_jacobians();
   }
