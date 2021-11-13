@@ -233,7 +233,7 @@ Build:
     make install
     make check
 
-NetCDF v4.7.1 and Parallel NetCDF v1.12.1
+NetCDF v4.7.4 and Parallel NetCDF v1.12.1
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In order to support all aspects of Nalu's parallel models, NetCDF and Parallel NetCFD must be consistent.
