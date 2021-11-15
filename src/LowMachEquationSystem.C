@@ -2126,6 +2126,11 @@ MomentumEquationSystem::register_overset_bc()
     // Perform fringe updates after all equation system solves (ideally on the post_time_step)
     equationSystems_.postIterAlgDriver_.push_back(theAlgPost);
     theAlgPost->fields_.push_back(std::unique_ptr<OversetFieldData>(new OversetFieldData(velocity_,1,nDim)));
+    if (realm_.number_of_states()>2)
+    {
+      auto &&velocityN = velocity_->field_of_state(stk::mesh::StateN);
+      theAlgPost->fields_.push_back(std::unique_ptr<OversetFieldData>(new OversetFieldData(&velocityN,1,nDim)));
+    }
   }
 }
 

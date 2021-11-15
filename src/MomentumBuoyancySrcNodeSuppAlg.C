@@ -43,7 +43,6 @@ MomentumBuoyancySrcNodeSuppAlg::MomentumBuoyancySrcNodeSuppAlg(
   densityNp1_ = &(density->field_of_state(stk::mesh::StateNP1));
   dualNodalVolume_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
   nDim_ = meta_data.spatial_dimension();
-  gravity_.resize(nDim_);
 
   // extract user parameters from solution options
   gravity_ = realm_.solutionOptions_->gravity_;

@@ -39,7 +39,7 @@ MomentumBuoyancySrcElemKernel<AlgTraits>::MomentumBuoyancySrcElemKernel(
   coordinates_ = metaData.get_field<VectorFieldType>(
     stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
   
-  const std::vector<double>& solnOptsGravity = solnOpts.get_gravity_vector(AlgTraits::nDim_);
+  const std::array<double,3>& solnOptsGravity = solnOpts.get_gravity_vector();
   for (int i = 0; i < AlgTraits::nDim_; i++)
     gravity_(i) = solnOptsGravity[i];
 

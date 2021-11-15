@@ -75,7 +75,7 @@ public:
   
   bool get_skew_symmetric(const std::string&) const;
 
-  std::vector<double> get_gravity_vector(const unsigned nDim) const;
+  std::array<double, 3> get_gravity_vector() const;
  
   double get_turb_model_constant(
     TurbulenceModelConstant turbModelEnum) const;
@@ -183,7 +183,7 @@ public:
   // initial displacement
   std::map<std::string, MeshMotionInfo *> initialMeshDisplacementInfoMap_;
 
-  std::vector<double> gravity_;
+  std::array<double, 3> gravity_ = {0.0, 0.0, 0.0};
 
   // Coriolis source term
   std::vector<double> eastVector_;

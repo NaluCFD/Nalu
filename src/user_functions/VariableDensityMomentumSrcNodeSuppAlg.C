@@ -61,7 +61,7 @@ VariableDensityMomentumSrcNodeSuppAlg::VariableDensityMomentumSrcNodeSuppAlg(
   srcXi_.resize(nDim_);
 
   // extract user parameters from solution options
-  std::vector<double> gravity = realm_.solutionOptions_->gravity_;
+  std::array<double, 3> gravity = realm_.solutionOptions_->gravity_;
   rhoRef_ = realm_.solutionOptions_->referenceDensity_;
   gx_ = gravity[0];
   gy_ = gravity[1];

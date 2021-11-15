@@ -48,7 +48,6 @@ TurbKineticEnergyRodiNodeSourceSuppAlg::TurbKineticEnergyRodiNodeSourceSuppAlg(
   dualNodalVolume_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
 
   // extract and size gravity
-  gravity_.resize(nDim_);
   gravity_ = realm_.solutionOptions_->gravity_;
 }
 
