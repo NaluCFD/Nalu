@@ -42,7 +42,7 @@ public:
   const double beta_;
   const double turbPr_;
   const int nDim_;
-  std::vector<double> gravity_;
+  std::array<double, 3> gravity_ = {0.0, 0.0, 0.0};
 };
 
 } // namespace nalu

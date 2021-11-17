@@ -55,7 +55,7 @@ TEST(MomentumBoussinesqSrcNodeSuppAlg, single_value)
   const double beta = 1.0/tRef;
   solnOpts.thermalExpansionCoeff_ = beta;
 
-  std::vector<double> gravity = { -5, 6, 7 };
+  std::array<double,3> gravity = { -5, 6, 7 };
   solnOpts.gravity_ = gravity;
 
   double coeff = -beta * rhoRef * (temperature_value - tRef) * dnv_value;

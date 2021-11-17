@@ -295,7 +295,6 @@ SolutionOptions::load(const YAML::Node & y_node)
         
           if (expect_sequence( y_user_constants, "gravity", optional) ) {
             const int gravSize = y_user_constants["gravity"].size();
-            gravity_.resize(gravSize);
             for (int i = 0; i < gravSize; ++i ) {
               gravity_[i] = y_user_constants["gravity"][i].as<double>() ;
             }
@@ -773,13 +772,10 @@ SolutionOptions::get_skew_symmetric(const std::string& dofName) const
   return factor;
 }
 
-std::vector<double>
-SolutionOptions::get_gravity_vector(const unsigned nDim) const
+std::array<double, 3> 
+SolutionOptions::get_gravity_vector() const
 {
-  if ( nDim != gravity_.size() )
-    throw std::runtime_error("SolutionOptions::get_gravity_vector():Error Expected size does not equaly nDim");
-  else
-    return gravity_;
+  return gravity_;
 }
 
 //--------------------------------------------------------------------------

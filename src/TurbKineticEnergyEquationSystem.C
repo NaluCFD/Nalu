@@ -954,6 +954,11 @@ TurbKineticEnergyEquationSystem::register_overset_bc()
     // Perform fringe updates after all equation system solves (ideally on the post_time_step)
     equationSystems_.postIterAlgDriver_.push_back(theAlgPost);
     theAlgPost->fields_.push_back(std::unique_ptr<OversetFieldData>(new OversetFieldData(tke_,1,1)));
+    if (realm_.number_of_states()>2)
+    {
+      auto &&tkeN = tke_->field_of_state(stk::mesh::StateN);
+      theAlgPost->fields_.push_back(std::unique_ptr<OversetFieldData>(new OversetFieldData(&tkeN,1,1)));
+    }
   }
 }
 

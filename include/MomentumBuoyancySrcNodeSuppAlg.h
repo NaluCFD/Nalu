@@ -39,7 +39,7 @@ public:
   ScalarFieldType *dualNodalVolume_;
   int nDim_;
   double rhoRef_;
-  std::vector<double> gravity_;
+  std::array<double, 3> gravity_ = {0.0, 0.0, 0.0};
 
 };
 

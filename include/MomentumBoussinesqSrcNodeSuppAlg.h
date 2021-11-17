@@ -41,7 +41,7 @@ public:
   double rhoRef_;
   double beta_;
   int nDim_;
-  std::vector<double> gravity_;
+  std::array<double, 3> gravity_ = {0.0, 0.0, 0.0};
 
 };
 

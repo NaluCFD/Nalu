@@ -20,7 +20,6 @@ TEST_F(TestTurbulenceAlgorithm, turbkineticenergyrodinodesourcesuppalg)
   fill_mesh_and_init_fields();
 
   // set solution options
-  realm.solutionOptions_->gravity_.resize(3);
   realm.solutionOptions_->gravity_[0] = 10.0;
   realm.solutionOptions_->gravity_[1] = -10.0;
   realm.solutionOptions_->gravity_[2] = 5.0;

@@ -44,7 +44,7 @@ public:
   double beta;
   double rhoRef;
   double TRef;
-  std::vector<double> gravity;
+  std::array<double, 3> gravity = {0.0, 0.0, 0.0};
 };
 
 } // namespace nalu

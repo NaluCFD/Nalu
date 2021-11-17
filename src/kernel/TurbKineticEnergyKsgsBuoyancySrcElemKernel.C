@@ -58,7 +58,7 @@ TurbKineticEnergyKsgsBuoyancySrcElemKernel<AlgTraits>::TurbKineticEnergyKsgsBuoy
   dataPreReqs.add_master_element_call(SCV_GRAD_OP, CURRENT_COORDINATES);
 
   // extract gravity from solution options
-  std::vector<double> soGravity = solnOpts.gravity_;
+  std::array<double, 3> soGravity = solnOpts.gravity_;
   
   // error checks
   if ( AlgTraits::nDim_ != 3 || soGravity.size() != 3 ) 

@@ -25,7 +25,6 @@ TEST_F(MomentumKernelHex8Mesh, buoyancy_boussinesq)
   solnOpts_.meshMotion_ = false;
   solnOpts_.meshDeformation_ = false;
   solnOpts_.externalMeshDeformation_ = false;
-  solnOpts_.gravity_.resize(spatialDim_, 0.0);
   solnOpts_.gravity_[2] = -9.81;
   solnOpts_.referenceDensity_ = ref_densities(rng);
   solnOpts_.referenceTemperature_ = 298;

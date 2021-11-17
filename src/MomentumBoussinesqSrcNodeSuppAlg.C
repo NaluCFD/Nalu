@@ -49,7 +49,6 @@ MomentumBoussinesqSrcNodeSuppAlg::MomentumBoussinesqSrcNodeSuppAlg(
   rhoRef_ = realm_.solutionOptions_->referenceDensity_;
   beta_ = realm_.solutionOptions_->thermalExpansionCoeff_;
   nDim_ = meta_data.spatial_dimension();
-  gravity_.resize(nDim_);
   gravity_ = realm_.solutionOptions_->gravity_;
 }
 
