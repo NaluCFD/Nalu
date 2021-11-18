@@ -69,6 +69,7 @@ ComputeMdotVofElemAlgorithm::ComputeMdotVofElemAlgorithm(
   vof_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "volume_of_fluid");
   massFlowRate_ = meta_data.get_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "mass_flow_rate_scs");
   volumeFlowRate_ = meta_data.get_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "volume_flow_rate_scs");
+  gravity_ = realm_.solutionOptions_->gravity_;
 }
 
 //--------------------------------------------------------------------------
@@ -262,7 +263,7 @@ ComputeMdotVofElemAlgorithm::execute()
         double tvdot = projTimeScale*sigmaKappaIp*dvofdaIp/rhoIp;
         for ( int j = 0; j < nDim; ++j ) {
           // balanced force approach
-          tvdot += (p_uIp[j] - projTimeScale*(p_dpdxIp[j]/rhoIp - p_GpdxIp[j]))*p_scs_areav[ip*nDim+j];
+          tvdot += (p_uIp[j] - projTimeScale*((p_dpdxIp[j]-rhoIp*gravity_[j])/rhoIp - p_GpdxIp[j]))*p_scs_areav[ip*nDim+j];
         }
 
         // save off scs ip flow rates

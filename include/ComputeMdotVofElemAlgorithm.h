@@ -46,6 +46,7 @@ public:
   ScalarFieldType *vof_;
   GenericFieldType *massFlowRate_;
   GenericFieldType *volumeFlowRate_;
+  std::array<double, 3> gravity_;
 
   const bool shiftMdot_;
   const bool shiftPoisson_;

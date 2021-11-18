@@ -69,6 +69,8 @@ private:
   const bool shiftPoisson_;
   const bool reducedSensitivities_;
 
+  AlignedViewType<DoubleType[AlgTraits::nDim_]> gravity_{ "v_gravity"};
+
   // scratch space
   AlignedViewType<DoubleType[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_ { "view_shape_func" };
 

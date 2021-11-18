@@ -42,6 +42,7 @@ public:
   VectorFieldType *areaWeight_;
   const bool useShifted_;
   const bool overrideFacePressure_;
+  std::array<double, 3> gravity_;
 };
 
 } // namespace nalu
