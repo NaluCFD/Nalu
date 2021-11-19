@@ -108,7 +108,6 @@ void
 SolutionOptions::load(const YAML::Node & y_node)
 {
   const bool optional=true;
-  const bool required=!optional;
 
   const YAML::Node y_solution_options = expect_map(y_node,"solution_options", optional);
   if(y_solution_options)
@@ -197,7 +196,7 @@ SolutionOptions::load(const YAML::Node & y_node)
       inputVariablesPeriodicTime_, inputVariablesPeriodicTime_);
 
     // first set of options; hybrid, source, etc.
-    const YAML::Node y_options = expect_sequence(y_solution_options, "options", required);
+    const YAML::Node y_options = expect_sequence(y_solution_options, "options", optional);
     if (y_options) {
       for (size_t ioption = 0; ioption < y_options.size(); ++ioption)
       {

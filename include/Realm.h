@@ -523,6 +523,7 @@ class Realm {
   // types of physics
   bool isothermal_;
   bool uniform_;
+  bool gasDynamics_;
 
   // some post processing of entity counts
   bool provideEntityCount_;

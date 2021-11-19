@@ -203,6 +203,7 @@ namespace nalu{
     checkJacobians_(false),
     isothermal_(true),
     uniform_(true),
+    gasDynamics_(false),
     provideEntityCount_(false),
     HDF5ptr_(NULL),
     autoDecompType_("None"),
@@ -1061,10 +1062,10 @@ Realm::setup_property()
         switch( matData->type_) {
 
         case CONSTANT_MAT:
-        {
-          
+        { 
           // for constant specific heat, proceed in specialty code; create the appropriate enthalpy evaluator
           if (thePropId == SPEC_HEAT_ID && needsEnthalpy_) {
+            
             // extract reference temperature
             matPropBlock->extract_universal_constant("reference_temperature", tRef, true);
             
@@ -1116,8 +1117,90 @@ Realm::setup_property()
             matPropBlock->propertyEvalMap_[SPEC_HEAT_ID] = theCpPropEval;
             matPropBlock->propertyEvalMap_[ENTHALPY_ID]  = theEnthPropEval;
           }
-          else {
+          else if ( thePropId == GAMMA_ID ) {
+            // catch possible errors in setting up gas dynamics (implied by gamma usage)
+            if ( !gasDynamics_ )
+              throw std::runtime_error("gas dynamics only requires gamma");
 
+            if ( matData->cpConstMap_.size() > 0.0 )
+              throw std::runtime_error("gas dynamics does not support species-based Cp");
+
+            if ( !solutionOptions_->accousticallyCompressible_ )
+              throw std::runtime_error("gas dynamics requires an accoustically compressible key word");
+
+            // save off constant value
+            const double gamma = matData->constValue_;
+
+            // extract reference values
+            matPropBlock->extract_universal_constant("reference_temperature", tRef, true);
+            matPropBlock->extract_universal_constant("universal_gas_constant", universalR, true);
+            
+            // extract fields
+            ScalarFieldType *cpField 
+              = metaData_->get_field<ScalarFieldType>(stk::topology::NODE_RANK, "specific_heat");
+            ScalarFieldType *cvField 
+              = metaData_->get_field<ScalarFieldType>(stk::topology::NODE_RANK, "specific_heat_v");
+
+            // Compute Cp and Cv on the fly based on gamma and R/mixtureMW
+            std::vector<std::pair<double, double> > mwMassFracVec;
+            std::map<std::string, ReferencePropertyData*>::const_iterator itrp;
+            for ( itrp = matPropBlock->referencePropertyDataMap_.begin();
+                  itrp!= matPropBlock->referencePropertyDataMap_.end(); ++itrp) {
+              ReferencePropertyData *propData = (*itrp).second;
+              std::pair<double,double> thePair;
+              thePair = std::make_pair(propData->mw_,propData->massFraction_);
+              mwMassFracVec.push_back(thePair);
+            }
+                
+            double mixtureMW = 0.0;
+            for (std::size_t k = 0; k < mwMassFracVec.size(); ++k ){
+              mixtureMW += mwMassFracVec[k].second/mwMassFracVec[k].first;
+            }
+            mixtureMW = 1.0/mixtureMW;
+
+            // compute Cp and Cv with constant gamma
+            const double Cp = gamma*universalR/mixtureMW/(gamma - 1.0);
+            const double Cv = universalR/mixtureMW/(gamma - 1.0);
+            
+            // create the nodal population for gamma
+            std::vector<double> userGamma(1);
+            userGamma[0] = gamma;
+            ConstantAuxFunction *auxFuncGamma
+              = new ConstantAuxFunction(0, 1, userGamma);
+            AuxFunctionAlgorithm *auxAlgGamma
+              = new AuxFunctionAlgorithm( *this, targetPart,
+                                          thePropField, auxFuncGamma, stk::topology::NODE_RANK);
+            propertyAlg_.push_back(auxAlgGamma);
+                        
+            // create the nodal population for Cp
+            std::vector<double> userCp(1);            
+            userCp[0] = Cp;
+            ConstantAuxFunction *auxFuncCp
+              = new ConstantAuxFunction(0, 1, userCp);
+            AuxFunctionAlgorithm *auxAlgCp
+              = new AuxFunctionAlgorithm( *this, targetPart,
+                                          cpField, auxFuncCp, stk::topology::NODE_RANK);
+            propertyAlg_.push_back(auxAlgCp);
+
+            // create the nodal population for Cv
+            std::vector<double> userCv(1);            
+            userCv[0] = Cv;
+            ConstantAuxFunction *auxFuncCv
+              = new ConstantAuxFunction(0, 1, userCv);
+            AuxFunctionAlgorithm *auxAlgCv
+              = new AuxFunctionAlgorithm( *this, targetPart,
+                                          cvField, auxFuncCv, stk::topology::NODE_RANK);
+            propertyAlg_.push_back(auxAlgCv);
+
+            // deal with enthalpy property evaluator
+            PropertyEvaluator *theEnthPropEval 
+              = new EnthalpyConstSpecHeatPropertyEvaluator(Cp, tRef);
+            
+            // push to prop eval
+            matPropBlock->propertyEvalMap_[ENTHALPY_ID]  = theEnthPropEval;
+          }
+          else {
+            
             // set the default begin/end
             int theBegin = 0;
             int theEnd = 1;
@@ -1365,14 +1448,16 @@ Realm::setup_property()
             // push back property evaluator to map
             matPropBlock->propertyEvalMap_[thePropId] = rhoPropEval;
             
-            // create the appropriate property algorithm and push back
-            if ( createTempPropAlg ) {
-              auxAlg = new TemperaturePropAlgorithm( *this, targetPart, thePropField, rhoPropEval);
+            // create the appropriate property algorithm and push back (gas dynamics manages density as a DOF)
+            if ( !gasDynamics_ ) {
+              if ( createTempPropAlg ) {
+                auxAlg = new TemperaturePropAlgorithm( *this, targetPart, thePropField, rhoPropEval);
+              }
+              else {
+                auxAlg = new GenericPropAlgorithm(*this, targetPart, thePropField, rhoPropEval);
+              }
+              propertyAlg_.push_back(auxAlg);
             }
-            else {
-              auxAlg = new GenericPropAlgorithm(*this, targetPart, thePropField, rhoPropEval);
-            }
-            propertyAlg_.push_back(auxAlg);
           }
           else {
             throw std::runtime_error("Realm::setup_property: ideal_gas_t only supported for density:");

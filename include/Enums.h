@@ -65,12 +65,13 @@ enum EquationType {
   EQ_TURBULENT_DISS = 9,
   EQ_MASS_FRACTION = 10,
   EQ_VOLUME_OF_FLUID = 11,
-  EQ_PNG   = 12,
-  EQ_PNG_P = 13,
-  EQ_PNG_Z = 14,
-  EQ_PNG_H = 15,
-  EQ_PNG_U = 16,
-  EQ_PNG_TKE = 17, // FIXME... Last PNG managed like this..
+  EQ_GASDYN = 12,
+  EQ_PNG   = 13,
+  EQ_PNG_P = 14,
+  EQ_PNG_Z = 15,
+  EQ_PNG_H = 16,
+  EQ_PNG_U = 17,
+  EQ_PNG_TKE = 18, // FIXME... Last PNG managed like this..
   EquationSystemType_END
 };
 
@@ -87,6 +88,7 @@ static const std::string EquationTypeMap[] = {
   "Turbulent_Dissipation",
   "Mass_Fraction",
   "Volume_of_Fluid",
+  "Gas_Dynamics",
   "PNG",
   "PNG_P",
   "PNG_Z",
@@ -114,6 +116,7 @@ enum PropertyIdentifier {
   LAME_LAMBDA_ID = 7,
   SCATTERING_COEFF_ID = 8,
   SURFACE_TENSION_ID = 9,
+  GAMMA_ID = 10,
   PropertyIdentifier_END
 };
 
@@ -127,7 +130,8 @@ static const std::string PropertyIdentifierNames[] = {
   "lame_mu",
   "lame_lambda",
   "scattering_coefficient",
-  "surface_tension"};
+  "surface_tension",
+  "gamma"};
 
 // prop enum and name below
 enum  MaterialPropertyType {
