@@ -32,6 +32,7 @@
 #include <pmr/RadiativeTransportEquationSystem.h>
 #include <mesh_motion/MeshDisplacementEquationSystem.h>
 #include <VolumeOfFluidEquationSystem.h>
+#include <gas_dynamics/GasDynamicsEquationSystem.h>
 
 #include <vector>
 
@@ -210,13 +211,20 @@ void EquationSystems::load(const YAML::Node & y_node)
             quadratureOrder, activateScattering, activatePmrUpwind, deactivatePmrSucv, externalCoupling);
         }
         else if( expect_map(y_system, "MeshDisplacement", true) ) {
-	  y_eqsys =  expect_map(y_system, "MeshDisplacement", true) ;
+	  y_eqsys =  expect_map(y_system, "MeshDisplacement", true);
           bool activateMass = false;
           bool deformWrtModelCoords = false;
           get_if_present_no_default(y_eqsys, "activate_mass", activateMass);
           get_if_present_no_default(y_eqsys, "deform_wrt_model_coordinates", deformWrtModelCoords);
           if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = MeshDisplacement " << std::endl;
           eqSys = new MeshDisplacementEquationSystem(*this);
+        }
+        else if( expect_map(y_system, "GasDynamics", true) ) {
+	  y_eqsys =  expect_map(y_system, "GasDynamics", true);
+          bool debugOutput = false;
+          get_if_present_no_default(y_eqsys, "debug_output", debugOutput);
+          if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = GasDynamics " << std::endl;
+          eqSys = new GasDynamicsEquationSystem(*this, debugOutput);
         }
         else {
           if (!NaluEnv::self().parallel_rank()) {

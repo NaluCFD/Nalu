@@ -99,8 +99,6 @@ AssembleNodalGradAlgorithmDriver::pre_work()
     }
   }
 
-  //field_fill( metaData, bulkData, 0.0, *dqdx, realm_.get_activate_aura());
-
   if ( areaWeight_ ) {
     VectorFieldType *areaWeight = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, areaWeightName_);
     field_fill( metaData, bulkData, 0.0, *areaWeight, realm_.get_activate_aura());

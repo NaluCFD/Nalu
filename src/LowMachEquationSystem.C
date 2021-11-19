@@ -326,7 +326,7 @@ LowMachEquationSystem::register_nodal_fields(
 }
 
 //--------------------------------------------------------------------------
-//-------- register_element_fields -------------------------------------------
+//-------- register_element_fields -----------------------------------------
 //--------------------------------------------------------------------------
 void
 LowMachEquationSystem::register_element_fields(
@@ -2392,7 +2392,6 @@ ContinuityEquationSystem::register_nodal_fields(
 
   coordinates_ =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates"));
   stk::mesh::put_field_on_mesh(*coordinates_, *part, nDim, nullptr);
-
 }
 
 //--------------------------------------------------------------------------
