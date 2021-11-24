@@ -28,6 +28,7 @@
 #include "gas_dynamics/AssembleGasDynamicsAlgorithmDriver.h"
 #include "gas_dynamics/AssembleGasDynamicsFluxAlgorithm.h"
 #include "gas_dynamics/AssembleGasDynamicsSymmetryAlgorithm.h"
+#include "gas_dynamics/AssembleGasDynamicsNonConformalAlgorithm.h"
 
 // suplemental
 #include "gas_dynamics/AssembleGasDynamicsCourantReynoldsElemAlgorithm.h"
@@ -636,6 +637,32 @@ GasDynamicsEquationSystem::register_symmetry_bc(
   if ( it == assembleGasDynAlgDriver_->algMap_.end() ) {
     Algorithm *theAlg = new AssembleGasDynamicsSymmetryAlgorithm(realm_, part, pressure_, 
                                                                  rhsGasDyn_);
+    assembleGasDynAlgDriver_->algMap_[algType] = theAlg;
+  }
+  else {
+    it->second->partVec_.push_back(part);
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- register_non_conformal_bc ---------------------------------------
+//--------------------------------------------------------------------------
+void
+GasDynamicsEquationSystem::register_non_conformal_bc(
+  stk::mesh::Part *part,
+  const stk::topology &/*theTopo*/)
+{
+  const AlgorithmType algType = NON_CONFORMAL;
+  
+  // edge-based (only) to compute RHS residual; no mass term, no source terms
+  std::map<AlgorithmType, Algorithm *>::iterator it
+    = assembleGasDynAlgDriver_->algMap_.find(algType);
+  if ( it == assembleGasDynAlgDriver_->algMap_.end() ) {
+    Algorithm *theAlg = new AssembleGasDynamicsNonConformalAlgorithm(
+     realm_, part, density_, 
+     momentum_, velocity_, totalEnthalpy_, 
+     pressure_, temperature_, speedOfSound_, viscosity_,
+     thermalCond_, rhsGasDyn_);
     assembleGasDynAlgDriver_->algMap_[algType] = theAlg;
   }
   else {
