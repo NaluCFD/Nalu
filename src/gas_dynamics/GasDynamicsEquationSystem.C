@@ -92,7 +92,8 @@ GasDynamicsEquationSystem::GasDynamicsEquationSystem(
     assembleGasDynAlgDriver_(new AssembleGasDynamicsAlgorithmDriver(realm_)),
     cflReyAlgDriver_(new AlgorithmDriver(realm_)),
     isInit_(true),
-    debugOutput_(debugOutput)
+    debugOutput_(debugOutput),
+    fakeNorm_(0.0)
 {
   // must be edge-based; AUSM+ based; no gradient extrapolation and limiting
   if ( !realm_.realmUsesEdges_ )
@@ -773,6 +774,9 @@ GasDynamicsEquationSystem::update_gas_dynamics()
   // toggle for debug
   const double updateFac = 1.0;
 
+  // fake norm for regression testing
+  double l_fakeNorm = 0.0;
+
   // extract fields of state
   VectorFieldType &momentumN = momentum_->field_of_state(stk::mesh::StateN);
   VectorFieldType &momentumNp1 = momentum_->field_of_state(stk::mesh::StateNP1);
@@ -816,6 +820,8 @@ GasDynamicsEquationSystem::update_gas_dynamics()
       // continuity and energy
       rhoNp1[k] = rhoN[k] + fac*rhsGasDyn[kTotalS+cOffset];
       teNp1[k] = teN[k] + fac*rhsGasDyn[kTotalS+eOffset];
+
+      l_fakeNorm += rhsGasDyn[kTotalS+cOffset]*rhsGasDyn[kTotalS+cOffset];
     }
   }
   
@@ -830,8 +836,33 @@ GasDynamicsEquationSystem::update_gas_dynamics()
   
   if ( debugOutput_ )
     dump_state("GasDynamicsEquationSystem::assemble_gas_dynamics(): post");
+
+  // compute fake norm sum
+  double g_fakeNorm = 0.0;
+  stk::ParallelMachine comm = NaluEnv::self().parallel_comm();
+  stk::all_reduce_sum(comm, &l_fakeNorm, &g_fakeNorm, 1);
+
+  // advertise
+  fakeNorm_ = std::sqrt(g_fakeNorm);
 }
 
+//--------------------------------------------------------------------------
+//-------- provide_scaled_norm ---------------------------------------------
+//--------------------------------------------------------------------------
+double
+GasDynamicsEquationSystem::provide_scaled_norm()
+{
+  return fakeNorm_;
+}
+
+//--------------------------------------------------------------------------
+//-------- provide_norm ----------------------------------------------------
+//--------------------------------------------------------------------------
+double
+GasDynamicsEquationSystem::provide_norm()
+{
+  return fakeNorm_;
+}
 
 //--------------------------------------------------------------------------
 //-------- dump_state ------------------------------------------------------
