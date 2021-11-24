@@ -33,6 +33,8 @@
 // suplemental
 #include "gas_dynamics/AssembleGasDynamicsCourantReynoldsElemAlgorithm.h"
 
+#include "overset/UpdateOversetFringeAlgorithmDriver.h"
+
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
 
@@ -677,8 +679,29 @@ GasDynamicsEquationSystem::register_non_conformal_bc(
 void
 GasDynamicsEquationSystem::register_overset_bc()
 {
-  // GDFIXME: think of what needs to be reconstructed
-  throw std::runtime_error("GasDynamicsEquationSystem does not overset fully as of yet");
+  const int nDim = realm_.meta_data().spatial_dimension();
+
+  UpdateOversetFringeAlgorithmDriver* theAlg = new UpdateOversetFringeAlgorithmDriver(realm_);
+  // Perform fringe updates before all equation system solves
+  equationSystems_.preIterAlgDriver_.push_back(theAlg);
+  theAlg->fields_.push_back(
+    std::unique_ptr<OversetFieldData>(new OversetFieldData(density_,1,1)));
+  theAlg->fields_.push_back(
+    std::unique_ptr<OversetFieldData>(new OversetFieldData(momentum_,1,nDim)));
+  theAlg->fields_.push_back(
+    std::unique_ptr<OversetFieldData>(new OversetFieldData(totalEnergy_,1,1)));
+
+  if ( realm_.has_mesh_motion() ) {
+    UpdateOversetFringeAlgorithmDriver* theAlgPost = new UpdateOversetFringeAlgorithmDriver(realm_,false);
+    // Perform fringe updates after all equation system solves (ideally on the post_time_step)
+    equationSystems_.postIterAlgDriver_.push_back(theAlgPost);
+    theAlgPost->fields_.push_back(
+      std::unique_ptr<OversetFieldData>(new OversetFieldData(density_,1,1)));
+    theAlgPost->fields_.push_back(
+      std::unique_ptr<OversetFieldData>(new OversetFieldData(momentum_,1,nDim)));
+    theAlgPost->fields_.push_back(
+      std::unique_ptr<OversetFieldData>(new OversetFieldData(totalEnergy_,1,1)));
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -787,7 +810,8 @@ GasDynamicsEquationSystem::update_gas_dynamics()
 
   // select everything other than dirichlet parts
   stk::mesh::Selector s_nodes = (!stk::mesh::selectUnion(dirichletPart_)) 
-    & stk::mesh::selectField(*rhsGasDyn_);
+    & stk::mesh::selectField(*rhsGasDyn_)
+    & !(realm_.get_inactive_selector());
 
   stk::mesh::BucketVector const& node_buckets =
     realm_.get_buckets( stk::topology::NODE_RANK, s_nodes );
@@ -823,6 +847,13 @@ GasDynamicsEquationSystem::update_gas_dynamics()
 
       l_fakeNorm += rhsGasDyn[kTotalS+cOffset]*rhsGasDyn[kTotalS+cOffset];
     }
+  }
+  
+  // overset update; reconstruct the dofs and let aux variables go for the ride below
+  if ( realm_.hasOverset_ ) {
+    realm_.overset_constraint_node_field_update(density_, 1, nDim);
+    realm_.overset_constraint_node_field_update(momentum_, 1, 1);
+    realm_.overset_constraint_node_field_update(totalEnergy_, 1, 1);
   }
   
   // update aux variables
