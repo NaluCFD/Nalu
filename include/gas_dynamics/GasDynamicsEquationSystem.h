@@ -87,8 +87,8 @@ public:
   void dump_state(const std::string indicator);
 
   // keep it real
-  double provide_scaled_norm() {return 1.0;}
-  double provide_norm() {return 1.0;}
+  double provide_scaled_norm();
+  double provide_norm();
   double provide_norm_increment() {return 1.0;}
 
   void compute_density();
@@ -126,6 +126,9 @@ public:
 
   bool isInit_;
   const bool debugOutput_;
+
+  // fill in some sort of norm
+  double fakeNorm_;
 
   // boundary condition mapping
   std::vector<Algorithm *> gasDynBcDataMapAlg_;
