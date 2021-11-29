@@ -38,7 +38,8 @@ namespace nalu{
 ComputeMdotVofElemAlgorithm::ComputeMdotVofElemAlgorithm(
   Realm &realm,
   stk::mesh::Part *part,
-  const SolutionOptions &solnOpts)
+  const SolutionOptions &solnOpts,
+  const double buoyancyWeight)
   : Algorithm(realm, part),
     meshMotion_(solnOpts.does_mesh_move()),
     velocityRTM_(NULL),
@@ -52,7 +53,8 @@ ComputeMdotVofElemAlgorithm::ComputeMdotVofElemAlgorithm(
     massFlowRate_(NULL),
     volumeFlowRate_(NULL),
     shiftMdot_(solnOpts.cvfemShiftMdot_),
-    shiftPoisson_(solnOpts.get_shifted_grad_op("pressure"))
+    shiftPoisson_(solnOpts.get_shifted_grad_op("pressure")),
+    buoyancyWeight_(buoyancyWeight)
 {
    // extract fields; nodal
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -263,7 +265,7 @@ ComputeMdotVofElemAlgorithm::execute()
         double tvdot = projTimeScale*sigmaKappaIp*dvofdaIp/rhoIp;
         for ( int j = 0; j < nDim; ++j ) {
           // balanced force approach
-          tvdot += (p_uIp[j] - projTimeScale*((p_dpdxIp[j]-rhoIp*gravity_[j])/rhoIp - p_GpdxIp[j]))*p_scs_areav[ip*nDim+j];
+          tvdot += (p_uIp[j] - projTimeScale*((p_dpdxIp[j]-buoyancyWeight_*rhoIp*gravity_[j])/rhoIp - p_GpdxIp[j]))*p_scs_areav[ip*nDim+j];
         }
 
         // save off scs ip flow rates

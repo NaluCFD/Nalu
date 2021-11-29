@@ -75,6 +75,9 @@ private:
   AlignedViewType<DoubleType[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_ { "view_shape_func" };
 
   const int* lrscv_;
+
+  DoubleType buoyancyWeight_{0.0};
+
 };
 
 }  // nalu

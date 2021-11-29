@@ -49,6 +49,13 @@ ContinuityVofOpenElemKernel<BcAlgTraits>::ContinuityVofOpenElemKernel(
   dynamicPressure_ = metaData.get_field<GenericFieldType>(metaData.side_rank(), "dynamic_pressure");
   for (int i = 0; i < BcAlgTraits::nDim_; ++i)
     gravity_(i) = solnOpts.gravity_[i];
+
+
+  if (solnOpts.buoyancyPressureStab_)
+    buoyancyWeight_ = 1.0;
+  else
+    buoyancyWeight_ = 0.0;
+
   // extract master elements
   MasterElement* meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(BcAlgTraits::faceTopo_);
   
@@ -196,7 +203,7 @@ ContinuityVofOpenElemKernel<BcAlgTraits>::execute(
       + projTimeScale_*sigmaKappaBip*dvofdaBip/rhoBip;
     for ( int j = 0; j < BcAlgTraits::nDim_; ++j ) {
       const DoubleType axj = vf_exposedAreaVec(ip,j);
-      vdot += (w_uBip[j] - projTimeScale_*((w_dpdxBip[j]-rhoBip*gravity_(j))/rhoBip - w_GpdxBip[j]))*axj;
+      vdot += (w_uBip[j] - projTimeScale_*((w_dpdxBip[j]-buoyancyWeight_*rhoBip*gravity_(j))/rhoBip - w_GpdxBip[j]))*axj;
     }
     
     // face-based penalty; divide by projTimeScale

@@ -37,7 +37,8 @@ namespace nalu{
 ComputeMdotVofElemOpenAlgorithm::ComputeMdotVofElemOpenAlgorithm(
   Realm &realm,
   stk::mesh::Part *part,
-  const SolutionOptions &solnOpts)
+  const SolutionOptions &solnOpts,
+  const double buoyancyWeight)
   : Algorithm(realm, part),
     velocityRTM_(NULL),
     Gpdx_(NULL),
@@ -52,7 +53,8 @@ ComputeMdotVofElemOpenAlgorithm::ComputeMdotVofElemOpenAlgorithm(
     pressureBc_(NULL),
     shiftMdot_(solnOpts.cvfemShiftMdot_),
     shiftedGradOp_(solnOpts.get_shifted_grad_op("pressure")),
-    penaltyFac_(2.0)
+    penaltyFac_(2.0),
+    buoyancyWeight_(buoyancyWeight)
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -335,7 +337,7 @@ ComputeMdotVofElemOpenAlgorithm::execute()
           + projTimeScale*sigmaKappaBip*dvofdaBip/rhoBip;
         for ( int j = 0; j < nDim; ++j ) {
           const double axj = areaVec[ip*nDim+j];
-          tvdot += (p_uBip[j] - projTimeScale*((p_dpdxBip[j]-rhoBip*gravity_[j])/rhoBip - p_GpdxBip[j]))*axj;
+          tvdot += (p_uBip[j] - projTimeScale*((p_dpdxBip[j]-buoyancyWeight_*rhoBip*gravity_[j])/rhoBip - p_GpdxBip[j]))*axj;
         }
         
         // scatter to vdot and mdot; accumulate

@@ -28,7 +28,8 @@ public:
   ComputeMdotVofElemOpenAlgorithm(
     Realm &realm,
     stk::mesh::Part *part,
-    const SolutionOptions &solnOpts);
+    const SolutionOptions &solnOpts,
+    const double buoyancyWeight);
   ~ComputeMdotVofElemOpenAlgorithm();
 
   void execute();
@@ -51,6 +52,7 @@ public:
   const bool shiftMdot_;
   const bool shiftedGradOp_;
   const double penaltyFac_;
+  double buoyancyWeight_;
 };
 
 } // namespace nalu

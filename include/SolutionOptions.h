@@ -203,6 +203,10 @@ public:
 
   // inverse density weights
   bool balancedForce_;
+
+  // Pressure stabilization buoyancy term
+  bool buoyancyPressureStab_;
+
 };
 
 } // namespace nalu

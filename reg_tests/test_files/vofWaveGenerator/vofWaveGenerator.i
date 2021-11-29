@@ -237,6 +237,7 @@ realms:
       use_consolidated_face_elem_bc_algorithm: yes
 
       activate_balanced_force_algorithm: yes
+      activate_buoyancy_pressure_stabilization: yes
 
       options:
 

@@ -38,7 +38,8 @@ public:
     const double Fo,
     const double cAlpha,
     const bool smooth,
-    const int smoothIter);
+    const int smoothIter,
+    const double buoyancy_stab);
   virtual ~VolumeOfFluidEquationSystem();
 
   void populate_derived_quantities();
@@ -122,6 +123,8 @@ public:
 
   bool isInit_;
   bool scsAdvection_;
+
+  double buoyancyStab_;
 };
 
 

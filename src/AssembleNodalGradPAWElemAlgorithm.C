@@ -38,7 +38,8 @@ AssembleNodalGradPAWElemAlgorithm::AssembleNodalGradPAWElemAlgorithm(
   Realm &realm,
   stk::mesh::Part *part,
   ScalarFieldType *pressure,
-  VectorFieldType *dpdx)
+  VectorFieldType *dpdx,
+  const double buoyancyWeight)
   : Algorithm(realm, part),
     pressure_(pressure),
     density_(nullptr),
@@ -47,7 +48,8 @@ AssembleNodalGradPAWElemAlgorithm::AssembleNodalGradPAWElemAlgorithm(
     vof_(NULL),
     dpdx_(dpdx),
     areaWeight_(nullptr),
-    useShifted_(realm_.get_shifted_grad_op("pressure"))
+    useShifted_(realm_.get_shifted_grad_op("pressure")),
+    buoyancyWeight_(buoyancyWeight)
 {
   // extract fields; nodal
   stk::mesh::MetaData & metaData = realm_.meta_data();
@@ -227,8 +229,8 @@ AssembleNodalGradPAWElemAlgorithm::execute()
         for ( int j = 0; j < nDim; ++j ) {
           const double absArea = std::abs(p_scs_areav[ipNdim+j]);
           double fac = absArea/rhoIp;
-          gradPL[j] += fac*(p_dpdxIp[j] - rhoIp*gravity_[j] - sigmaKappaIp*dvofdxIp[j]);
-          gradPR[j] += fac*(p_dpdxIp[j] - rhoIp*gravity_[j] - sigmaKappaIp*dvofdxIp[j]);
+          gradPL[j] += fac*(p_dpdxIp[j] - rhoIp*gravity_[j]*buoyancyWeight_ - sigmaKappaIp*dvofdxIp[j]);
+          gradPR[j] += fac*(p_dpdxIp[j] - rhoIp*gravity_[j]*buoyancyWeight_ - sigmaKappaIp*dvofdxIp[j]);
           areaWeightL[j] += absArea;
           areaWeightR[j] += absArea;
         }

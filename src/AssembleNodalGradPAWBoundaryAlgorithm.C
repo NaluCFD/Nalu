@@ -40,6 +40,7 @@ AssembleNodalGradPAWBoundaryAlgorithm::AssembleNodalGradPAWBoundaryAlgorithm(
   ScalarFieldType *pressure,
   VectorFieldType *dpdx,
   const std::string bcPressureName,
+  const double buoyancyWeight,
   const bool overrideFacePressure)
   : Algorithm(realm, part),
     pressure_(pressure),
@@ -52,6 +53,7 @@ AssembleNodalGradPAWBoundaryAlgorithm::AssembleNodalGradPAWBoundaryAlgorithm(
     bcPressure_(nullptr),
     areaWeight_(nullptr),
     useShifted_(realm_.get_shifted_grad_op("pressure")),
+    buoyancyWeight_(buoyancyWeight),
     overrideFacePressure_(overrideFacePressure)
 {
   // save off fields
@@ -275,7 +277,7 @@ AssembleNodalGradPAWBoundaryAlgorithm::execute()
         for ( int j = 0; j < nDim; ++j ) {
           const double absArea = std::abs(areaVec[ipNdim+j]);
           const double fac = absArea/rhoBip;
-          gradPNN[j] += fac*(p_dpdxBip[j]-rhoBip*gravity_[j] - sigmaKappaBip*dvofdxBip[j]);
+          gradPNN[j] += fac*(p_dpdxBip[j]-buoyancyWeight_*rhoBip*gravity_[j] - sigmaKappaBip*dvofdxBip[j]);
           areaWeightNN[j] += absArea;
         }
       }

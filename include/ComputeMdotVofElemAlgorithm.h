@@ -28,7 +28,8 @@ public:
   ComputeMdotVofElemAlgorithm(
     Realm &realm,
     stk::mesh::Part *part,
-    const SolutionOptions &solnOpts);
+    const SolutionOptions &solnOpts,
+    const double buoyancyWeight);
   ~ComputeMdotVofElemAlgorithm();
 
   void execute();
@@ -50,6 +51,9 @@ public:
 
   const bool shiftMdot_;
   const bool shiftPoisson_;
+
+  double buoyancyWeight_;
+
 };
 
 } // namespace nalu

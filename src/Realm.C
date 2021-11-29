@@ -2514,8 +2514,8 @@ Realm::update_body_vel(
   // Get acceleration and update velocity from updated force
   if ( motion.bodyMass_ > 0.0 ) {
     for ( size_t i = 0; i < 3; ++i ) {
-      motion.bodyAccel_[i] = 0.5*motion.bodyAccel_[i]+
-        0.5*(motion.bodyForce_[i]+motion.appliedForce_[i])/motion.bodyMass_;
+      motion.bodyAccel_[i] = -motion.bodyAccel_[i]*1.0+
+        2.0*(motion.bodyForce_[i]+motion.appliedForce_[i])/motion.bodyMass_;
       motion.bodyVel_[i] = motion.bodyVel_[i] + dt*motion.bodyAccel_[i];
     }
   }
@@ -2768,14 +2768,15 @@ Realm::set_displacement_six_dof(
 
       const double cX = mcX[0]-centroidCoords[0]; 
       const double cY = mcX[1]-centroidCoords[1]; 
-      const double cZ = mcX[2]-centroidCoords[2]; 
+      const double cZ = mcX[2]-centroidCoords[2];
+      
 
       // rotated model coordinates; converted to displacement; add back in centroid
       
       rcX[0] = rotMat[0]*cX + rotMat[1]*cY + rotMat[2]*cZ - mcX[0] + centroidCoords[0] + centroidDisp[0];
       rcX[1] = rotMat[3]*cX + rotMat[4]*cY + rotMat[5]*cZ - mcX[1] + centroidCoords[1] + centroidDisp[1];
       rcX[2] = rotMat[6]*cX + rotMat[7]*cY + rotMat[8]*cZ - mcX[2] + centroidCoords[2] + centroidDisp[2];
-      
+
       // set displacement
       for ( int i = 0; i < nDim; ++i ) {
         dx[kNdim+i] = rcX[i];
