@@ -155,9 +155,9 @@ SolutionOptions::load(const YAML::Node & y_node)
 
     // Buoyancy pressure stabilization 
     if(balancedForce_)
-      get_if_present(y_solution_options, "activate_buoyancy_pressure_stabilization", buoyancyPressureStab_, false);
-    else
       get_if_present(y_solution_options, "activate_buoyancy_pressure_stabilization", buoyancyPressureStab_, true);
+    else
+      get_if_present(y_solution_options, "activate_buoyancy_pressure_stabilization", buoyancyPressureStab_, false);
           
     // extract turbulence model; would be nice if we could parse an enum..
     std::string specifiedTurbModel;
