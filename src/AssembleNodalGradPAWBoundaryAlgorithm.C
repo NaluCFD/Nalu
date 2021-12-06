@@ -12,6 +12,7 @@
 
 #include <FieldTypeDef.h>
 #include <Realm.h>
+#include <SolutionOptions.h>
 #include <TimeIntegrator.h>
 #include <master_element/MasterElement.h>
 
@@ -39,6 +40,7 @@ AssembleNodalGradPAWBoundaryAlgorithm::AssembleNodalGradPAWBoundaryAlgorithm(
   ScalarFieldType *pressure,
   VectorFieldType *dpdx,
   const std::string bcPressureName,
+  const double buoyancyWeight,
   const bool overrideFacePressure)
   : Algorithm(realm, part),
     pressure_(pressure),
@@ -51,6 +53,7 @@ AssembleNodalGradPAWBoundaryAlgorithm::AssembleNodalGradPAWBoundaryAlgorithm(
     bcPressure_(nullptr),
     areaWeight_(nullptr),
     useShifted_(realm_.get_shifted_grad_op("pressure")),
+    buoyancyWeight_(buoyancyWeight),
     overrideFacePressure_(overrideFacePressure)
 {
   // save off fields
@@ -62,6 +65,7 @@ AssembleNodalGradPAWBoundaryAlgorithm::AssembleNodalGradPAWBoundaryAlgorithm(
   vof_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "volume_of_fluid");
   bcPressure_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, bcPressureName);
   areaWeight_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "png_area_weight");
+  gravity_ = realm_.solutionOptions_->gravity_;
 
   NaluEnv::self().naluOutputP0() << "AssembleNodalGradPAWBoundaryAlgorithm Active" << std::endl;
 }
@@ -273,7 +277,7 @@ AssembleNodalGradPAWBoundaryAlgorithm::execute()
         for ( int j = 0; j < nDim; ++j ) {
           const double absArea = std::abs(areaVec[ipNdim+j]);
           const double fac = absArea/rhoBip;
-          gradPNN[j] += fac*(p_dpdxBip[j] - sigmaKappaBip*dvofdxBip[j]);
+          gradPNN[j] += fac*(p_dpdxBip[j]-buoyancyWeight_*rhoBip*gravity_[j] - sigmaKappaBip*dvofdxBip[j]);
           areaWeightNN[j] += absArea;
         }
       }

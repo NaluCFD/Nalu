@@ -28,7 +28,8 @@ public:
   ComputeMdotVofElemAlgorithm(
     Realm &realm,
     stk::mesh::Part *part,
-    const SolutionOptions &solnOpts);
+    const SolutionOptions &solnOpts,
+    const double buoyancyWeight);
   ~ComputeMdotVofElemAlgorithm();
 
   void execute();
@@ -46,9 +47,13 @@ public:
   ScalarFieldType *vof_;
   GenericFieldType *massFlowRate_;
   GenericFieldType *volumeFlowRate_;
+  std::array<double, 3> gravity_;
 
   const bool shiftMdot_;
   const bool shiftPoisson_;
+
+  double buoyancyWeight_;
+
 };
 
 } // namespace nalu

@@ -96,7 +96,8 @@ VolumeOfFluidEquationSystem::VolumeOfFluidEquationSystem(
   const double Fo,
   const double cAlpha,
   const bool smooth,
-  const int smoothIter)
+  const int smoothIter,
+  const double buoyancy_stab)
   : EquationSystem(eqSystems, "VolumeOfFluidEQS", "volume_of_fluid"),
     managePNG_(realm_.get_consistent_mass_matrix_png("volume_of_fluid")),
     vof_(NULL),
@@ -117,7 +118,8 @@ VolumeOfFluidEquationSystem::VolumeOfFluidEquationSystem(
     smooth_(smooth),
     smoothIter_(smoothIter),
     isInit_(true),
-    scsAdvection_(false)
+    scsAdvection_(false),
+    buoyancyStab_(buoyancy_stab)
 {
   // extract solver name and solver object
   std::string solverName = realm_.equationSystems_.get_solver_block_name("volume_of_fluid");

@@ -97,9 +97,9 @@ void EquationSystems::load(const YAML::Node & y_node)
       {
         const YAML::Node y_system = y_systems[isystem] ;
         EquationSystem *eqSys = 0;
-	YAML::Node y_eqsys ;
+	      YAML::Node y_eqsys ;
         if ( expect_map(y_system, "VolumeOfFluid", true) ) {
-	  y_eqsys =  expect_map(y_system, "VolumeOfFluid", true);
+	        y_eqsys =  expect_map(y_system, "VolumeOfFluid", true);
           if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = VolumeOfFluid" << std::endl;
           bool outputClipDiag = false;
           get_if_present_no_default(y_eqsys, "output_clipping_diagnostic", outputClipDiag);
@@ -110,12 +110,17 @@ void EquationSystems::load(const YAML::Node & y_node)
           double cAlpha = 0.05;
           bool smooth = true;
           int smoothIter = 5;
+          double buoyancy_pressure_scale = 0.0;
           get_if_present_no_default(y_eqsys, "fourier_number", fourierNumber);
           get_if_present_no_default(y_eqsys, "compression_constant", cAlpha);
           get_if_present_no_default(y_eqsys, "activate_smoothing", smooth);
           get_if_present_no_default(y_eqsys, "smoothing_iterations", smoothIter);
+
+          if (realm_.solutionOptions_->buoyancyPressureStab_)
+            buoyancy_pressure_scale = 1.0;
+
           eqSys = new VolumeOfFluidEquationSystem(*this, outputClipDiag, deltaVofClip, 
-                                                  fourierNumber, cAlpha, smooth, smoothIter);
+                                                  fourierNumber, cAlpha, smooth, smoothIter,buoyancy_pressure_scale);
         }
         else if ( expect_map(y_system, "LowMachEOM", true) ) {
 	  y_eqsys =  expect_map(y_system, "LowMachEOM", true);

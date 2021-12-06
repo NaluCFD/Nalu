@@ -73,8 +73,13 @@ private:
   const bool reducedSensitivities_;
   MasterElement *meSCS_{nullptr};
 
+  AlignedViewType<DoubleType[BcAlgTraits::nDim_]> gravity_{ "v_gravity"};
+
+
   /// Shape functions
   AlignedViewType<DoubleType[BcAlgTraits::numFaceIp_][BcAlgTraits::nodesPerFace_]> vf_shape_function_ {"view_face_shape_func"};
+
+  DoubleType buoyancyWeight_;
 };
 
 }  // nalu

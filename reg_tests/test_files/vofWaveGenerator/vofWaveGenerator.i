@@ -237,11 +237,12 @@ realms:
       use_consolidated_face_elem_bc_algorithm: yes
 
       activate_balanced_force_algorithm: yes
+      activate_buoyancy_pressure_stabilization: yes
 
       options:
 
         - element_source_terms:
-            momentum: [lumped_momentum_time_derivative, advection_diffusion, buoyancy, lumped_gcl, NSO_2ND_ALT]
+            momentum: [lumped_momentum_time_derivative, advection_diffusion, lumped_gcl, NSO_2ND_ALT]
             continuity: [vof_advection, lumped_gcl]
             volume_of_fluid: [lumped_mass, scs_advection, sucv_nso, sharpen, lumped_gcl]
 

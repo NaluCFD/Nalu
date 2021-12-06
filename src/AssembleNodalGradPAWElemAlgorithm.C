@@ -12,6 +12,7 @@
 
 #include <FieldTypeDef.h>
 #include <Realm.h>
+#include "SolutionOptions.h"
 #include <TimeIntegrator.h>
 #include <master_element/MasterElement.h>
 
@@ -37,7 +38,8 @@ AssembleNodalGradPAWElemAlgorithm::AssembleNodalGradPAWElemAlgorithm(
   Realm &realm,
   stk::mesh::Part *part,
   ScalarFieldType *pressure,
-  VectorFieldType *dpdx)
+  VectorFieldType *dpdx,
+  const double buoyancyWeight)
   : Algorithm(realm, part),
     pressure_(pressure),
     density_(nullptr),
@@ -46,7 +48,8 @@ AssembleNodalGradPAWElemAlgorithm::AssembleNodalGradPAWElemAlgorithm(
     vof_(NULL),
     dpdx_(dpdx),
     areaWeight_(nullptr),
-    useShifted_(realm_.get_shifted_grad_op("pressure"))
+    useShifted_(realm_.get_shifted_grad_op("pressure")),
+    buoyancyWeight_(buoyancyWeight)
 {
   // extract fields; nodal
   stk::mesh::MetaData & metaData = realm_.meta_data();
@@ -55,6 +58,7 @@ AssembleNodalGradPAWElemAlgorithm::AssembleNodalGradPAWElemAlgorithm(
   surfaceTension_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "surface_tension");
   vof_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "volume_of_fluid");
   areaWeight_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "png_area_weight");
+  gravity_ = realm_.solutionOptions_->gravity_;
 }
 
 //--------------------------------------------------------------------------
@@ -225,8 +229,8 @@ AssembleNodalGradPAWElemAlgorithm::execute()
         for ( int j = 0; j < nDim; ++j ) {
           const double absArea = std::abs(p_scs_areav[ipNdim+j]);
           double fac = absArea/rhoIp;
-          gradPL[j] += fac*(p_dpdxIp[j] - sigmaKappaIp*dvofdxIp[j]);
-          gradPR[j] += fac*(p_dpdxIp[j] - sigmaKappaIp*dvofdxIp[j]);
+          gradPL[j] += fac*(p_dpdxIp[j] - rhoIp*gravity_[j]*buoyancyWeight_ - sigmaKappaIp*dvofdxIp[j]);
+          gradPR[j] += fac*(p_dpdxIp[j] - rhoIp*gravity_[j]*buoyancyWeight_ - sigmaKappaIp*dvofdxIp[j]);
           areaWeightL[j] += absArea;
           areaWeightR[j] += absArea;
         }
