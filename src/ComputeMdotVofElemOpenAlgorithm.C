@@ -37,8 +37,7 @@ namespace nalu{
 ComputeMdotVofElemOpenAlgorithm::ComputeMdotVofElemOpenAlgorithm(
   Realm &realm,
   stk::mesh::Part *part,
-  const SolutionOptions &solnOpts,
-  const double buoyancyWeight)
+  const SolutionOptions &solnOpts)
   : Algorithm(realm, part),
     velocityRTM_(NULL),
     Gpdx_(NULL),
@@ -53,8 +52,7 @@ ComputeMdotVofElemOpenAlgorithm::ComputeMdotVofElemOpenAlgorithm(
     pressureBc_(NULL),
     shiftMdot_(solnOpts.cvfemShiftMdot_),
     shiftedGradOp_(solnOpts.get_shifted_grad_op("pressure")),
-    penaltyFac_(2.0),
-    buoyancyWeight_(buoyancyWeight)
+    penaltyFac_(2.0)
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -74,7 +72,6 @@ ComputeMdotVofElemOpenAlgorithm::ComputeMdotVofElemOpenAlgorithm(
   openMassFlowRate_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "open_mass_flow_rate");
   openVolumeFlowRate_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "open_volume_flow_rate");
   pressureBc_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure_bc");
-  gravity_ = realm_.solutionOptions_->gravity_;
 }
 
 //--------------------------------------------------------------------------
@@ -337,7 +334,7 @@ ComputeMdotVofElemOpenAlgorithm::execute()
           + projTimeScale*sigmaKappaBip*dvofdaBip/rhoBip;
         for ( int j = 0; j < nDim; ++j ) {
           const double axj = areaVec[ip*nDim+j];
-          tvdot += (p_uBip[j] - projTimeScale*((p_dpdxBip[j]-buoyancyWeight_*rhoBip*gravity_[j])/rhoBip - p_GpdxBip[j]))*axj;
+          tvdot += (p_uBip[j] - projTimeScale*(p_dpdxBip[j]/rhoBip - p_GpdxBip[j]))*axj;
         }
         
         // scatter to vdot and mdot; accumulate

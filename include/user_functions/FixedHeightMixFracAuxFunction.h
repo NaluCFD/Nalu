@@ -37,8 +37,6 @@ public:
 private:
   double hY_;
   double dY_;
-  double amp_;
-  double freq_;
 };
 
 } // namespace nalu

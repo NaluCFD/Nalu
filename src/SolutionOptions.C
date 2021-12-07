@@ -150,13 +150,7 @@ SolutionOptions::load(const YAML::Node & y_node)
     get_if_present(y_solution_options, "use_accoustically_compressible_algorithm", accousticallyCompressible_);
 
     // balanced-force area and inverse density scaling
-    get_if_present(y_solution_options, "activate_balanced_force_algorithm", balancedForce_, false);
-
-    // Buoyancy pressure stabilization 
-    if(balancedForce_)
-      get_if_present(y_solution_options, "activate_buoyancy_pressure_stabilization", buoyancyPressureStab_, true);
-    else
-      get_if_present(y_solution_options, "activate_buoyancy_pressure_stabilization", buoyancyPressureStab_, false);
+    get_if_present_no_default(y_solution_options, "activate_balanced_force_algorithm", balancedForce_);
           
     // extract turbulence model; would be nice if we could parse an enum..
     std::string specifiedTurbModel;
