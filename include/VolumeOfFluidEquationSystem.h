@@ -122,6 +122,8 @@ public:
 
   bool isInit_;
   bool scsAdvection_;
+
+  double buoyancyStab_;
 };
 
 

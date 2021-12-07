@@ -37,6 +37,8 @@ public:
   VectorFieldType *dpdx_;
   VectorFieldType *areaWeight_;
   const bool useShifted_;
+  std::array<double, 3> gravity_;
+  double buoyancyWeight_;
 };
 
 } // namespace nalu

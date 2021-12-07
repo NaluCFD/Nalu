@@ -41,7 +41,9 @@ public:
   ScalarFieldType *bcPressure_;
   VectorFieldType *areaWeight_;
   const bool useShifted_;
+  const double buoyancyWeight_;
   const bool overrideFacePressure_;
+  std::array<double, 3> gravity_;
 };
 
 } // namespace nalu

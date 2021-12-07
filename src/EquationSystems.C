@@ -97,9 +97,9 @@ void EquationSystems::load(const YAML::Node & y_node)
       {
         const YAML::Node y_system = y_systems[isystem] ;
         EquationSystem *eqSys = 0;
-	YAML::Node y_eqsys ;
+	      YAML::Node y_eqsys ;
         if ( expect_map(y_system, "VolumeOfFluid", true) ) {
-	  y_eqsys =  expect_map(y_system, "VolumeOfFluid", true);
+	        y_eqsys =  expect_map(y_system, "VolumeOfFluid", true);
           if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = VolumeOfFluid" << std::endl;
           bool outputClipDiag = false;
           get_if_present_no_default(y_eqsys, "output_clipping_diagnostic", outputClipDiag);
@@ -114,6 +114,7 @@ void EquationSystems::load(const YAML::Node & y_node)
           get_if_present_no_default(y_eqsys, "compression_constant", cAlpha);
           get_if_present_no_default(y_eqsys, "activate_smoothing", smooth);
           get_if_present_no_default(y_eqsys, "smoothing_iterations", smoothIter);
+
           eqSys = new VolumeOfFluidEquationSystem(*this, outputClipDiag, deltaVofClip, 
                                                   fourierNumber, cAlpha, smooth, smoothIter);
         }

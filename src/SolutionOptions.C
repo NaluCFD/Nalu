@@ -151,6 +151,12 @@ SolutionOptions::load(const YAML::Node & y_node)
 
     // balanced-force area and inverse density scaling
     get_if_present_no_default(y_solution_options, "activate_balanced_force_algorithm", balancedForce_);
+
+    // Buoyancy pressure stabilization 
+    if(balancedForce_)
+      get_if_present(y_solution_options, "activate_buoyancy_pressure_stabilization", buoyancyPressureStab_, true);
+    else
+      get_if_present(y_solution_options, "activate_buoyancy_pressure_stabilization", buoyancyPressureStab_, false);
           
     // extract turbulence model; would be nice if we could parse an enum..
     std::string specifiedTurbModel;

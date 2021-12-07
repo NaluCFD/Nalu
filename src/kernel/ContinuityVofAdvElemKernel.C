@@ -53,6 +53,14 @@ ContinuityVofAdvElemKernel<AlgTraits>::ContinuityVofAdvElemKernel(
   coordinates_ = metaData.get_field<VectorFieldType>(
     stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
 
+  for (int i = 0; i < AlgTraits::nDim_; ++i)
+    gravity_(i) = solnOpts.gravity_[i];
+
+  if(solnOpts.buoyancyPressureStab_)
+    buoyancyWeight_ = 1.0;
+  else
+    buoyancyWeight_ = 0.0;
+
   MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(AlgTraits::topo_);
   dataPreReqs.add_cvfem_surface_me(meSCS);
 
@@ -162,7 +170,7 @@ ContinuityVofAdvElemKernel<AlgTraits>::execute(
     DoubleType vdot = projTimeScale_*sigmaKappaIp*dvofdaIp/rhoIp;
     for (int j = 0; j < AlgTraits::nDim_; ++j) {      
       // balanced force approach
-      vdot += (w_uIp[j] - projTimeScale_*(w_dpdxIp[j]/rhoIp - w_GpdxIp[j]))*v_scs_areav(ip,j);
+      vdot += (w_uIp[j] - projTimeScale_*((w_dpdxIp[j]-buoyancyWeight_*rhoIp*gravity_(j))/rhoIp - w_GpdxIp[j]))*v_scs_areav(ip,j);
     }
 
     // residuals
