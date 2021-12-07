@@ -24,8 +24,7 @@ public:
     Realm &realm,
     stk::mesh::Part *part,
     ScalarFieldType *pressure,
-    VectorFieldType *dpdx,
-    const double buoyancyWeight);
+    VectorFieldType *dpdx);
   virtual ~AssembleNodalGradPAWElemAlgorithm() {}
 
   virtual void execute();
@@ -38,8 +37,6 @@ public:
   VectorFieldType *dpdx_;
   VectorFieldType *areaWeight_;
   const bool useShifted_;
-  std::array<double, 3> gravity_;
-  double buoyancyWeight_;
 };
 
 } // namespace nalu

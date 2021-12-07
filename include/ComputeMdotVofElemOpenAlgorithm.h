@@ -28,8 +28,7 @@ public:
   ComputeMdotVofElemOpenAlgorithm(
     Realm &realm,
     stk::mesh::Part *part,
-    const SolutionOptions &solnOpts,
-    const double buoyancyWeight);
+    const SolutionOptions &solnOpts);
   ~ComputeMdotVofElemOpenAlgorithm();
 
   void execute();
@@ -47,12 +46,10 @@ public:
   GenericFieldType *openVolumeFlowRate_;
   GenericFieldType *dynamicPressure_;
   ScalarFieldType *pressureBc_;
-  std::array<double, 3> gravity_;
 
   const bool shiftMdot_;
   const bool shiftedGradOp_;
   const double penaltyFac_;
-  double buoyancyWeight_;
 };
 
 } // namespace nalu
