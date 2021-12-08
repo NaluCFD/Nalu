@@ -46,10 +46,12 @@ public:
   GenericFieldType *openVolumeFlowRate_;
   GenericFieldType *dynamicPressure_;
   ScalarFieldType *pressureBc_;
+  std::array<double, 3> gravity_;
 
   const bool shiftMdot_;
   const bool shiftedGradOp_;
   const double penaltyFac_;
+  double buoyancyWeight_;
 };
 
 } // namespace nalu

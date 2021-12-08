@@ -2438,8 +2438,9 @@ ContinuityEquationSystem::register_interior_algorithm(
         theAlg = new AssembleNodalGradEdgeAlgorithm(realm_, part, pressure_, dpdx_);
       }
       else {
-        if ( realm_.solutionOptions_->balancedForce_ )
+        if ( realm_.solutionOptions_->balancedForce_ ) {
           theAlg = new AssembleNodalGradPAWElemAlgorithm(realm_, part, pressure_, dpdx_);
+        }
         else
           theAlg = new AssembleNodalGradElemAlgorithm(realm_, part, pressure_, dpdx_, edgeNodalGradient_);
       }
