@@ -117,8 +117,7 @@ VolumeOfFluidEquationSystem::VolumeOfFluidEquationSystem(
     smooth_(smooth),
     smoothIter_(smoothIter),
     isInit_(true),
-    scsAdvection_(false),
-    buoyancyStab_(realm_.solutionOptions_->buoyancyPressureStab_ ? 1.0 : 0.0)
+    scsAdvection_(false)
 {
   // extract solver name and solver object
   std::string solverName = realm_.equationSystems_.get_solver_block_name("volume_of_fluid");
