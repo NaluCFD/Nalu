@@ -142,7 +142,7 @@ AssembleGasDynamicsFluxAlgorithm::execute()
       const double * vrtmL = stk::mesh::field_data( *velocityRTM_, nodeL);
       const double * vrtmR = stk::mesh::field_data( *velocityRTM_, nodeR);
 
-      // rhoU
+      // rhoH
       const double totalHL = *stk::mesh::field_data( *totalH_, nodeL);
       const double totalHR = *stk::mesh::field_data( *totalH_, nodeR);
 
@@ -225,8 +225,8 @@ AssembleGasDynamicsFluxAlgorithm::execute()
       // AUSM quantities
       const double absML = std::abs(machNumberL);
       const double absMR = std::abs(machNumberR);
-      const double signML = machNumberL > 0 ? 1.0 : -1.0;
-      const double signMR = machNumberR > 0 ? 1.0 : -1.0;
+      const double signML = machNumberL > 0.0 ? 1.0 : -1.0;
+      const double signMR = machNumberR > 0.0 ? 1.0 : -1.0;
 
       // script{M}+Left and script{M}-Right
       const double scriptMpL = ( absML >= 1.0) 
@@ -234,7 +234,7 @@ AssembleGasDynamicsFluxAlgorithm::execute()
         : 0.25*std::pow(machNumberL + 1.0, 2.0) 
         + oneEighth*std::pow(machNumberL*machNumberL - 1.0, 2.0);
 
-      const double scriptMmR = ( absMR > 1.0) 
+      const double scriptMmR = ( absMR >= 1.0) 
         ? 0.5*(machNumberR - absMR)
         : -0.25*std::pow(machNumberR - 1.0, 2.0) 
         - oneEighth*std::pow(machNumberR*machNumberR - 1.0, 2.0);
