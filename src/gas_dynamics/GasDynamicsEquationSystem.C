@@ -27,6 +27,7 @@
 // gas dynamics specifically
 #include "gas_dynamics/AssembleGasDynamicsAlgorithmDriver.h"
 #include "gas_dynamics/AssembleGasDynamicsFluxAlgorithm.h"
+#include "gas_dynamics/AssembleGasDynamicsOpenAlgorithm.h"
 #include "gas_dynamics/AssembleGasDynamicsSymmetryAlgorithm.h"
 #include "gas_dynamics/AssembleGasDynamicsNonConformalAlgorithm.h"
 
@@ -405,7 +406,7 @@ GasDynamicsEquationSystem::register_inflow_bc(
   // register boundary data; temperature
   primitiveName = "temperature";
   ScalarFieldType *tBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature_bc"));
-  stk::mesh::put_field_on_mesh(*tBcField, *part, nDim, nullptr);
+  stk::mesh::put_field_on_mesh(*tBcField, *part, nullptr);
   
   theDataType = get_bc_data_type(userData, primitiveName);
   if ( CONSTANT_UD != theDataType )
@@ -444,6 +445,9 @@ GasDynamicsEquationSystem::register_open_bc(
   const stk::topology &partTopo,
   const OpenBoundaryConditionData &openBCData)
 {
+  // algorithm type
+  const AlgorithmType algType = OPEN;
+  
   stk::mesh::MetaData &meta_data = realm_.meta_data();
   const unsigned nDim = meta_data.spatial_dimension();
 
@@ -482,7 +486,7 @@ GasDynamicsEquationSystem::register_open_bc(
   // register boundary data; temperature
   primitiveName = "temperature";
   ScalarFieldType *tBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature_bc"));
-  stk::mesh::put_field_on_mesh(*tBcField, *part, nDim, nullptr);
+  stk::mesh::put_field_on_mesh(*tBcField, *part, nullptr);
   
   theDataType = get_bc_data_type(userData, primitiveName);
   if ( CONSTANT_UD != theDataType )
@@ -506,7 +510,7 @@ GasDynamicsEquationSystem::register_open_bc(
   // register boundary data; pressure
   primitiveName = "pressure";
   ScalarFieldType *pBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure_bc"));
-  stk::mesh::put_field_on_mesh(*pBcField, *part, nDim, nullptr);
+  stk::mesh::put_field_on_mesh(*pBcField, *part, nullptr);
   
   theDataType = get_bc_data_type(userData, primitiveName);
   if ( CONSTANT_UD != theDataType )
@@ -526,6 +530,20 @@ GasDynamicsEquationSystem::register_open_bc(
 			       stk::topology::NODE_RANK);
   
   realm_.initCondAlg_.push_back(pauxAlg);
+
+  // outflow (convected out only)
+  std::map<AlgorithmType, Algorithm *>::iterator it
+    = assembleGasDynAlgDriver_->algMap_.find(algType);
+  if ( it == assembleGasDynAlgDriver_->algMap_.end() ) {
+    Algorithm *theAlg = new AssembleGasDynamicsOpenAlgorithm(realm_, part, 
+                                                             density_, momentum_, totalEnthalpy_, 
+                                                             pBcField, tBcField, cp_, gamma_, 
+                                                             rhsGasDyn_);
+    assembleGasDynAlgDriver_->algMap_[algType] = theAlg;
+  }
+  else {
+    it->second->partVec_.push_back(part);
+  }  
 }
 
 //--------------------------------------------------------------------------
@@ -537,7 +555,7 @@ GasDynamicsEquationSystem::register_wall_bc(
   const stk::topology &/*theTopo*/,
   const WallBoundaryConditionData &wallBCData)
 {
-  // dirichlet mesh part; no wall function, no adiabatic
+  // dirichlet mesh part; no wall function
   dirichletPart_.push_back(part);
 
   stk::mesh::MetaData &meta_data = realm_.meta_data();
@@ -588,7 +606,7 @@ GasDynamicsEquationSystem::register_wall_bc(
   if ( bc_data_specified(userData, primitiveName) ) {
     
     ScalarFieldType *tBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature_bc"));
-    stk::mesh::put_field_on_mesh(*tBcField, *part, nDim, nullptr);
+    stk::mesh::put_field_on_mesh(*tBcField, *part, nullptr);
     
     theDataType = get_bc_data_type(userData, primitiveName);
     if ( CONSTANT_UD != theDataType )
@@ -618,7 +636,7 @@ GasDynamicsEquationSystem::register_wall_bc(
     gasDynBcDataMapAlg_.push_back(theCopyAlgT);
   }
   else {
-    throw std::runtime_error("No adiabtic BC supported");
+    NaluEnv::self().naluOutputP0() << "adiabatic wall" << std::endl;
   }
 }
 
@@ -634,7 +652,7 @@ GasDynamicsEquationSystem::register_symmetry_bc(
   // algorithm type
   const AlgorithmType algType = SYMMETRY;
 
-  // edge-based (only) to compute RHS residual; no mass term, no source terms
+  // symmetry (normal stress)
   std::map<AlgorithmType, Algorithm *>::iterator it
     = assembleGasDynAlgDriver_->algMap_.find(algType);
   if ( it == assembleGasDynAlgDriver_->algMap_.end() ) {
