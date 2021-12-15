@@ -22,3 +22,9 @@ if this is better or worse for low-Mach flow.
  <Parameter        name="aggregation: phase2a include root" type="bool"   value="false"/>
  
 See: https://github.com/trilinos/Trilinos/issues/7295
+
+Muelu changed the name to, which is defaulted to false:
+
+  <Parameter        name="aggregation: match ML phase2a" type="bool"   value="false"/>
+
+I chose to remove this as perhaps the name will change again.
