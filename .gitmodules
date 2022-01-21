@@ -1,4 +1,4 @@
 [submodule "reg_tests/mesh"]
 	path = reg_tests/mesh
-	url = https://github.com/NaluCFD/NaluMesh.git
+	url = ../NaluMesh.git
         ignore = dirty
