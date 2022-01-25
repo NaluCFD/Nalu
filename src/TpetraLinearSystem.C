@@ -1153,7 +1153,12 @@ void verify_row_lengths(const LinSys::Graph& graph,
          <<" entries: ";
       GlobalOrdinal rowGID = graph.getRowMap()->getGlobalElement(i);
       std::vector<GlobalOrdinal> vIndices(graph.getNumEntriesInGlobalRow(rowGID));
-      Teuchos::ArrayView<GlobalOrdinal> colIndices(vIndices);
+
+      Tpetra::CrsGraph<>::nonconst_global_inds_host_view_type colIndices("col_indices", vIndices.size());
+      for (size_t col_idx = 0; col_idx < vIndices.size(); ++col_idx) 
+        colIndices(col_idx) = vIndices[col_idx];
+      
+
       size_t rowLen = 0;
       graph.getGlobalRowCopy(rowGID, colIndices, rowLen);
 
@@ -1174,7 +1179,9 @@ void dump_graph(const std::string& name, int counter, int proc, LinSys::Graph& g
   for(size_t i=0; i<myGlobalIndices.size(); ++i) {
     GlobalOrdinal rowGID = myGlobalIndices[i];
     std::vector<GlobalOrdinal> vIndices(graph.getNumEntriesInGlobalRow(rowGID));
-    Teuchos::ArrayView<GlobalOrdinal> colIndices(vIndices);
+    Tpetra::CrsGraph<>::nonconst_global_inds_host_view_type colIndices("col_indices", vIndices.size());
+    for (size_t col_idx = 0; col_idx < vIndices.size(); ++col_idx) 
+      colIndices(col_idx) = vIndices[col_idx];
     size_t rowLen = 0;
     graph.getGlobalRowCopy(rowGID, colIndices, rowLen);
     std::ostringstream os;
@@ -1324,14 +1331,14 @@ TpetraLinearSystem::finalizeLinearSystem()
   ownedMatrix_ = Teuchos::rcp(new LinSys::Matrix(ownedGraph_));
   sharedNotOwnedMatrix_ = Teuchos::rcp(new LinSys::Matrix(sharedNotOwnedGraph_));
 
-  ownedLocalMatrix_ = ownedMatrix_->getLocalMatrix();
-  sharedNotOwnedLocalMatrix_ = sharedNotOwnedMatrix_->getLocalMatrix();
+  ownedLocalMatrix_ = ownedMatrix_->getLocalMatrixHost();
+  sharedNotOwnedLocalMatrix_ = sharedNotOwnedMatrix_->getLocalMatrixHost();
 
   ownedRhs_ = Teuchos::rcp(new LinSys::Vector(ownedRowsMap_));
   sharedNotOwnedRhs_ = Teuchos::rcp(new LinSys::Vector(sharedNotOwnedRowsMap_));
 
-  ownedLocalRhs_ = ownedRhs_->getLocalView<sierra::nalu::HostSpace>();
-  sharedNotOwnedLocalRhs_ = sharedNotOwnedRhs_->getLocalView<sierra::nalu::HostSpace>();
+  ownedLocalRhs_ = ownedRhs_->getLocalView<sierra::nalu::HostSpace>(Tpetra::Access::ReadWrite);
+  sharedNotOwnedLocalRhs_ = sharedNotOwnedRhs_->getLocalView<sierra::nalu::HostSpace>(Tpetra::Access::ReadWrite);
 
   sln_ = Teuchos::rcp(new LinSys::Vector(ownedRowsMap_));
 
@@ -1606,8 +1613,9 @@ TpetraLinearSystem::applyDirichletBCs(
     const double * solution = (double*)stk::mesh::field_data(*solutionField, *b.begin());
     const double * bcValues = (double*)stk::mesh::field_data(*bcValuesField, *b.begin());
 
-    Teuchos::ArrayView<const LocalOrdinal> indices;
-    Teuchos::ArrayView<const double> values;
+    Tpetra::CrsMatrix<>::values_host_view_type values;
+    Tpetra::CrsMatrix<>::local_inds_host_view_type indices;
+
     std::vector<double> new_values;
 
     for (stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
@@ -1632,6 +1640,7 @@ TpetraLinearSystem::applyDirichletBCs(
         const double diagonal_value = useOwned ? 1.0 : 0.0;
 
         matrix->getLocalRowView(actualLocalId, indices, values);
+
         const size_t rowLength = values.size();
         if (rowLength > 0) {
           new_values.resize(rowLength);
@@ -1657,8 +1666,9 @@ TpetraLinearSystem::prepareConstraints(
   const unsigned beginPos,
   const unsigned endPos)
 {
-  Teuchos::ArrayView<const LocalOrdinal> indices;
-  Teuchos::ArrayView<const double> values;
+
+  Tpetra::CrsMatrix<>::local_inds_host_view_type indices;
+  Tpetra::CrsMatrix<>::values_host_view_type values;
   std::vector<double> new_values;
 
   const bool internalMatrixIsSorted = true;
@@ -1677,7 +1687,7 @@ TpetraLinearSystem::prepareConstraints(
       const bool useOwned = localId < maxOwnedRowId_;
       const LocalOrdinal actualLocalId = useOwned ? localId : localId - maxOwnedRowId_;
       Teuchos::RCP<LinSys::Matrix> matrix = useOwned ? ownedMatrix_ : sharedNotOwnedMatrix_;
-      const LinSys::Matrix::local_matrix_type& local_matrix = matrix->getLocalMatrix();
+      const LinSys::Matrix::local_matrix_type& local_matrix = matrix->getLocalMatrixHost();
       
       if ( localId > maxSharedNotOwnedRowId_) {
         throw std::runtime_error("logic error: localId > maxSharedNotOwnedRowId_");
@@ -1708,8 +1718,11 @@ TpetraLinearSystem::resetRows(
   const unsigned beginPos,
   const unsigned endPos)
 {
-  Teuchos::ArrayView<const LocalOrdinal> indices;
-  Teuchos::ArrayView<const double> values;
+  //Teuchos::ArrayView<const LocalOrdinal> indices;
+  //Teuchos::ArrayView<const double> values;
+  Tpetra::CrsMatrix<>::local_inds_host_view_type indices;
+  Tpetra::CrsMatrix<>::values_host_view_type values;
+
   std::vector<double> new_values;
   constexpr double rhs_residual = 0.0;
   const bool internalMatrixIsSorted = true;
@@ -1725,7 +1738,7 @@ TpetraLinearSystem::resetRows(
         useOwned ? localId : (localId - maxOwnedRowId_);
       Teuchos::RCP<LinSys::Matrix> matrix =
         useOwned ? ownedMatrix_ : sharedNotOwnedMatrix_;
-      const LinSys::Matrix::local_matrix_type& local_matrix = matrix->getLocalMatrix();
+      const LinSys::Matrix::local_matrix_type& local_matrix = matrix->getLocalMatrixHost();
 
       if (localId > maxSharedNotOwnedRowId_) {
         throw std::runtime_error("logic error: localId > maxSharedNotOwnedRowId");
@@ -1852,8 +1865,8 @@ TpetraLinearSystem::checkForNaN(bool useOwned)
   Teuchos::RCP<LinSys::Matrix> matrix = useOwned ? ownedMatrix_ : sharedNotOwnedMatrix_;
   Teuchos::RCP<LinSys::Vector> rhs = useOwned ? ownedRhs_ : sharedNotOwnedRhs_;
 
-  Teuchos::ArrayView<const LocalOrdinal> indices;
-  Teuchos::ArrayView<const double> values;
+  Tpetra::CrsMatrix<>::local_inds_host_view_type indices;
+  Tpetra::CrsMatrix<>::values_host_view_type values;
 
   size_t n = matrix->getRowMap()->getNodeNumElements();
   for(size_t i=0; i<n; ++i) {
@@ -1885,8 +1898,8 @@ TpetraLinearSystem::checkForZeroRow(bool useOwned, bool doThrow, bool doPrint)
   Teuchos::RCP<LinSys::Vector> rhs = useOwned ? ownedRhs_ : sharedNotOwnedRhs_;
   stk::mesh::BulkData & bulkData = realm_.bulk_data();
 
-  Teuchos::ArrayView<const LocalOrdinal> indices;
-  Teuchos::ArrayView<const double> values;
+  Tpetra::CrsMatrix<>::local_inds_host_view_type indices;
+  Tpetra::CrsMatrix<>::values_host_view_type values;
 
   size_t nrowG = matrix->getRangeMap()->getGlobalNumElements();
   size_t n = matrix->getRowMap()->getNodeNumElements();
