@@ -1155,9 +1155,7 @@ void verify_row_lengths(const LinSys::Graph& graph,
       std::vector<GlobalOrdinal> vIndices(graph.getNumEntriesInGlobalRow(rowGID));
 
       Tpetra::CrsGraph<>::nonconst_global_inds_host_view_type colIndices("col_indices", vIndices.size());
-      for (size_t col_idx = 0; col_idx < vIndices.size(); ++col_idx) 
-        colIndices(col_idx) = vIndices[col_idx];
-      
+  
 
       size_t rowLen = 0;
       graph.getGlobalRowCopy(rowGID, colIndices, rowLen);
@@ -1180,8 +1178,7 @@ void dump_graph(const std::string& name, int counter, int proc, LinSys::Graph& g
     GlobalOrdinal rowGID = myGlobalIndices[i];
     std::vector<GlobalOrdinal> vIndices(graph.getNumEntriesInGlobalRow(rowGID));
     Tpetra::CrsGraph<>::nonconst_global_inds_host_view_type colIndices("col_indices", vIndices.size());
-    for (size_t col_idx = 0; col_idx < vIndices.size(); ++col_idx) 
-      colIndices(col_idx) = vIndices[col_idx];
+
     size_t rowLen = 0;
     graph.getGlobalRowCopy(rowGID, colIndices, rowLen);
     std::ostringstream os;
