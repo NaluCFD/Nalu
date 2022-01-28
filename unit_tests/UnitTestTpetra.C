@@ -192,8 +192,8 @@ void verify_matrix_for_2_hex8_mesh(int numProcs, int localProc, sierra::nalu::Tp
   for(sierra::nalu::LinSys::LocalOrdinal rowlid=0; rowlid<expectedLocalNumRows; ++rowlid) {
     sierra::nalu::LinSys::GlobalOrdinal rowgid = rowMap->getGlobalElement(rowlid);
     unsigned rowLength = ownedMatrix->getNumEntriesInGlobalRow(rowgid);
-    Teuchos::ArrayView<const sierra::nalu::LinSys::LocalOrdinal> inds;
-    Teuchos::ArrayView<const double> vals;
+  Tpetra::CrsMatrix<>::local_inds_host_view_type inds;
+  Tpetra::CrsMatrix<>::values_host_view_type vals;
     ownedMatrix->getLocalRowView(rowlid, inds, vals);
     for(unsigned j=0; j<rowLength; ++j) {
       sierra::nalu::LinSys::GlobalOrdinal colgid = colMap->getGlobalElement(inds[j]);
