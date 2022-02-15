@@ -12,6 +12,7 @@
 // standard c++
 #include <string>
 #include <vector>
+#include <array>
 
 namespace sierra{
 namespace nalu{
@@ -42,7 +43,8 @@ class MeshMotionInfo
     const double bodyMass,
     const double bodyDen,
     std::vector<double> appliedForce,
-    const bool computeCentroid);
+    const bool computeCentroid,
+    std::vector<std::array<double,9>> tetherGeom);
 
   ~MeshMotionInfo();
 
@@ -51,13 +53,14 @@ class MeshMotionInfo
   std::vector<double> centroid_;
   std::vector<double> unitVec_;
   const double computeCentroid_;
+
+  std::vector<std::array<double,9>> tetherGeom_;
+
   double computeCentroidCompleted_;
   const double theAngle_;
 
 
   // General 6-DOF motion
-  // TODO :: Likely hooks to mass related quantities that
-  // can be used in place of inputs here.
   const bool sixDof_;
   std::vector<double> bodyDispCC_;
   std::vector<double> bodyAngle_;

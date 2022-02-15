@@ -434,6 +434,8 @@ SolutionOptions::load(const YAML::Node & y_node)
             std::vector<double> bodyVel(3,0.0);
             std::vector<double> bodyDispCC(3,0.0);
 
+            std::vector<std::array<double,9>> tetherGeom;
+
             // Check for all 6-DOF related inputs
             const YAML::Node fS = y_option["forcing_surface"];
             if ( fS ) {
@@ -483,7 +485,26 @@ SolutionOptions::load(const YAML::Node & y_node)
             double bodyDen = 0.0;
             get_if_present(y_option, "body_density", bodyDen, bodyDen);
 
-            MeshMotionInfo *meshInfo = new MeshMotionInfo(meshMotionBlock, forceSurface, bodyDispCC, bodyAngle, bodyOmega, bodyPrincInertia, cCoordsVec, bodyVel, bodyMass, bodyDen, appliedForce, computeCentroid);
+            const YAML::Node bTether = y_option["tethers"];
+
+            if ( bTether ) {
+              if ( bTether.size() % 9 != 0 ) 
+                throw std::runtime_error("Incorrect tether format! Format should be :: " \
+                  " allow_slack (0 or 1), relaxed length, spring constant," \
+                  " x1 relative to center of mass (RCOM), y1 RCOM, z1 RCOM, x2 fixed on domain (FOD)," \
+                  " y2 FOD, z2 FOD :: For multiple tethers repeat same format for each tether.");
+              
+              size_t numTethers = bTether.size()/9;
+              for ( size_t i = 0; i < numTethers; ++i ) {
+                tetherGeom.emplace_back(std::array<double,9>{});
+                auto &&currentTether = tetherGeom.back();
+                for ( size_t tetherInfo = 0; tetherInfo < 9; ++tetherInfo )
+                  currentTether[tetherInfo] = bTether[9*i+tetherInfo].as<double>();
+              }
+            }
+
+            MeshMotionInfo *meshInfo = new MeshMotionInfo(meshMotionBlock, forceSurface, bodyDispCC, bodyAngle, bodyOmega, 
+              bodyPrincInertia, cCoordsVec, bodyVel, bodyMass, bodyDen, appliedForce, computeCentroid, tetherGeom);
 
             // set the map
             meshMotionInfoMap_[motionName] = meshInfo;
