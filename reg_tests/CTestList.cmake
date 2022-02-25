@@ -69,6 +69,14 @@ function(add_test_r_cat testname np ncat cat_comm cat_file)
     endif()
 endfunction(add_test_r_cat)
 
+function(add_test_l testname np)
+    add_test(${testname} sh -c "mpiexec -np ${np} --oversubscribe ${CMAKE_BINARY_DIR}/${nalu_ex_name} -i ${CMAKE_CURRENT_SOURCE_DIR}/test_files/laboratory/${testname}/${testname}.i -o ${testname}.log && ${CMAKE_CURRENT_SOURCE_DIR}/pass_fail.sh ${testname} ${CMAKE_CURRENT_SOURCE_DIR}/test_files/laboratory/${testname}/${testname}.norm.gold ${TOLERANCE}")
+    set_tests_properties(${testname} PROPERTIES TIMEOUT 2500 PROCESSORS ${np} WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test_files/laboratory/${testname}" LABELS "laboratory")
+    file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/test_files/laboratory/${testname})
+    file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/test_files/laboratory/${testname}/mesh)
+    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/test_files/laboratory/${testname}/mesh/${testname}.exo DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/test_files/laboratory/${testname}/mesh)
+endfunction(add_test_l)
+
 #=============================================================================
 # Regression tests
 #=============================================================================
@@ -165,3 +173,11 @@ if(ENABLE_PERFORMANCE_TESTS)
   add_test_p(uqSlidingMeshDG 8)
   add_test_p(waleElemXflowMixFrac3.5m 8)
 endif(ENABLE_PERFORMANCE_TESTS)
+
+#=============================================================================
+# Laboratory tests
+#=============================================================================
+if(ENABLE_LABORATORY_TESTS)
+  add_test_l(2d_quad4_channel 2)
+  add_test_l(2d_quad9_couette 4)
+endif(ENABLE_LABORATORY_TESTS)
