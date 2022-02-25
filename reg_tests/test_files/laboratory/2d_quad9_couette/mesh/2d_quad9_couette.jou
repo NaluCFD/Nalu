@@ -1,0 +1,23 @@
+## /projects/cubit/claro.Lin64.16.02/bin/clarox
+## Cubit Version 16.02.2
+## Cubit Build 0561bf5
+## Revised Mon Feb 21 11:00:54 2022 -0700
+## Running 02/25/2022 01:05:03 PM
+## Command Options:
+undo on
+brick x 2 y 1 z 1
+undo group begin
+mesh surface 1
+undo group end
+set duplicate block elements off
+block 1 add surface 1
+sideset 1 add curve 3
+sideset 2 add curve 1
+sideset 3 add curve 2
+sideset 4 add curve 4
+block 1 element type QUAD9
+undo group begin
+set exodus netcdf4 off
+set large exodus file on
+export mesh "2d_quad9_couette.exo"
+undo group end
