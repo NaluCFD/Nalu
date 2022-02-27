@@ -278,19 +278,19 @@ struct OrientedCylinder : public OrientedShape {
     switch (axialDir_) {
       case 0:
         if ( r_point[1]*r_point[1] + r_point[2]*r_point[2] < 
-          0.5*(halfDist_[1]+halfDist_[2]) && 
+          std::pow(0.5*(halfDist_[1]+halfDist_[2]),2) && 
           (abs(r_point[0]-cent_[0])<halfDist_[0] || halfDist_[0]<FLT_MIN) )  
           is_it = true;
         break;
       case 1:
         if ( r_point[0]*r_point[0] + r_point[2]*r_point[2] < 
-          0.5*(halfDist_[0]+halfDist_[2]) && 
+          std::pow(0.5*(halfDist_[0]+halfDist_[2]),2) && 
           (abs(r_point[1]-cent_[1])<halfDist_[1] || halfDist_[1]<FLT_MIN) )  
           is_it = true;
         break;
       case 2:
         if ( r_point[0]*r_point[0] + r_point[1]*r_point[1] < 
-          0.5*(halfDist_[0]+halfDist_[1]) && 
+          std::pow(0.5*(halfDist_[0]+halfDist_[1]),2) && 
           (abs(r_point[2]-cent_[2])<halfDist_[2] || halfDist_[2]<FLT_MIN) )  
           is_it = true;
         break;

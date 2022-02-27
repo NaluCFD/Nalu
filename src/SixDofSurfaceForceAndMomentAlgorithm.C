@@ -291,11 +291,71 @@ SixDofSurfaceForceAndMomentAlgorithm::execute()
   // Parallel assembly of L2
   stk::all_reduce_sum(comm, &l_force_moment[0], &g_force_moment[0], 9);
 
+  // Add tether forces 
+  for ( size_t tether = 0; tether < motion_->tetherGeom_.size(); ++tether) {
+    auto &&current_tether = motion_->tetherGeom_[tether];
+
+    const bool allow_slack = current_tether[0] > 0.5;
+    const double relaxed_length = current_tether[1];
+    const double spring_constant = current_tether[2];
+
+    std::vector<double> body_fixed_cc = {
+      current_tether[3], 
+      current_tether[4], 
+      current_tether[5]
+    };
+
+    std::vector<double> fixed_cc = {current_tether[6], current_tether[7], current_tether[8]}; 
+    std::array<double,3> moment = {0.0, 0.0, 0.0};
+    std::array<double,3> force = {0.0, 0.0, 0.0};
+
+    auto moving_cc = realm_.convert_vect_to_orig_frame(body_fixed_cc, motion_->bodyAngle_, true);
+ 
+    for ( int idim = 0; idim < 3; ++idim )
+      moving_cc[idim] += ccdisp[idim] + centroid[idim];
+
+    std::array<double,3> moment_arm = {
+      moving_cc[0]-(centroid[0]+ccdisp[0]),
+      moving_cc[1]-(centroid[1]+ccdisp[1]),
+      moving_cc[2]-(centroid[2]+ccdisp[2])
+    };
+
+    auto dist = std::sqrt(
+      std::pow(moving_cc[0]-fixed_cc[0],2) +
+      std::pow(moving_cc[1]-fixed_cc[1],2) +
+      std::pow(moving_cc[2]-fixed_cc[2],2)
+    );
+
+    auto displacement = dist - relaxed_length;
+
+    if (allow_slack) {
+      if (displacement > 0.0) {
+        for (int idim = 0; idim < 3; ++idim)
+          force[idim] = spring_constant*displacement*(fixed_cc[idim]-moving_cc[idim])/dist;
+      }
+    } else {
+      for (int idim = 0; idim < 3; ++idim)
+        force[idim] = spring_constant*displacement*(fixed_cc[idim]-moving_cc[idim])/dist;
+    }
+
+    cross_product(&force[0], &moment[0], &moment_arm[0]);
+
+    for ( int idim = 0; idim < 3; ++idim) {
+      g_force_moment[idim] += force[idim];
+      g_force_moment[idim+6] += moment[idim];
+      NaluEnv::self().naluOutputP0() << "Tether " << tether << " axis, force, moment :: " << 
+        idim << ", " << force[idim] << ", " << moment[idim]<< std::endl;
+    }
+
+  }
+
   // Transfer forces to mesh motion
   for ( int j = 0; j < 3; ++j ) {
     motion_->bodyForce_[j] = g_force_moment[j]+g_force_moment[j+3];
     motion_->bodyMom_[j] = g_force_moment[j+6];
   }
+
+
   NaluEnv::self().naluOutputP0() << "Forces by type p then v  :: " << g_force_moment[0] << " " << g_force_moment[1] << " " << g_force_moment[3] << " " << g_force_moment[4] << " " << g_force_moment[8] << std::endl;
 
 }

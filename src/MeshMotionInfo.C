@@ -11,6 +11,7 @@
 // standard c++
 #include <string>
 #include <vector>
+#include <array>
 
 namespace sierra{
 namespace nalu{
@@ -63,7 +64,8 @@ MeshMotionInfo::MeshMotionInfo(
     const double bodyMass,
     const double bodyDen,
     std::vector<double> appliedForce, 
-    const bool computeCentroid)
+    const bool computeCentroid,
+    const std::vector<std::array<double, 9>> tetherGeom)
     : meshMotionBlock_(meshMotionBlock),
       omega_(0.0),
       centroid_(centroid),
@@ -84,8 +86,13 @@ MeshMotionInfo::MeshMotionInfo(
       bodyDen_(bodyDen),
       forceSurface_(forceSurface)
 {
-  
-  // Nothing to do
+
+  for (size_t i = 0; i < tetherGeom.size(); ++i) {
+    this->tetherGeom_.emplace_back(std::array<double,9>{});
+    for (size_t j = 0; j < 9; ++j)
+      tetherGeom_.back()[j] = tetherGeom[i][j];
+
+  }  
 
 }
 
