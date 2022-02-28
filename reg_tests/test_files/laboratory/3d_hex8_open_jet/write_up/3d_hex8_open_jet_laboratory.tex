@@ -23,7 +23,7 @@ absent of any profile.
 The three-dimensional geometry for this tutorial is captured in 
 Figure~\ref{fig:geom}. Here, the cylindrical domain is defined by the 
 vertical height, $H$, the outer diameter, $D_o$, and inlet pipe diameter $d_o$ and 
-specified to be 50 cm, 15 cm, and 0.01 cm, respectively. 
+specified to be 50 cm, 15 cm, and 1.0 cm, respectively. 
 
 The bottom plane contains an inflow and bottom wall while the side and top are represented
 as an open boundary condition where static pressure is specified.
@@ -52,7 +52,7 @@ The variable-density low-Mach equation set is defined by the continuity and mome
 \end{align}
 %
 In the above equation, $\rho$ is the fluid density and $u_j$ is the fluid velocity. 
-The Cauchy stress is provided by
+The stress tensor is provided by
 \begin{align}
 \sigma_{ij}  = 2 \mu S^*_{ij} - P \delta_{ij},
 \end{align}
@@ -93,7 +93,9 @@ and inlet pipe diameter, the inflow velocity ($u_{inlet}$) in the z-direction is
   u_{inlet} = \frac{\mu Re}{\rho d_o}.
 \label{eq:muForm}
 \end{align}
-
+%
+Values for density, viscosity, and inflow velocity are 1.0e-3 $g/cm^3$, 2.0e-4 $dyne-s/cm^3$, 
+20 $cm/s$, respectively.
 \subsection{Simulation Specification and Results}
 
 For the $Re = 100$ configuration, the simulation is run using a Hex8 (linear hexahedral)
@@ -104,12 +106,12 @@ are provided for the specifications provided above.
  \subfloat[]
   \centering
   {
-   \includegraphics[height=2.0in]{images/3d_hex8_open_jet_mix_frac.png}
+   \includegraphics[height=3.0in]{images/3d_hex8_open_jet_mix_frac.png}
   }
   \subfloat[]
   \centering
   {
-   \includegraphics[height=2.0in]{images/3d_hex8_open_jet_umag.png}
+   \includegraphics[height=3.0in]{images/3d_hex8_open_jet_umag.png}
   }
   \caption{Planar mixture fraction (a) and velocity magnitude (b) shadings for the $Re = 100$ jet case.}
   \label{fig:results}
@@ -117,18 +119,18 @@ are provided for the specifications provided above.
 
 In Figure~\ref{fig:centerline}, the centerline normalized mixture fraction and vertical velocity
 are presented.
-
+%
 \begin{figure}[!htbp]
   \centering
   {
    \includegraphics[height=2.0in]{images/CenterlineData-crop.pdf}
   }
   \caption{Normalized velocity and normalized-mixture fraction centerline plot for the $Re = 100$ jet case.}
-  \label{fig:results}
+  \label{fig:centerline}
 \end{figure}
-
+%
 Finally, to illustrate the self-similar radial profiles for the downstream locations ($\frac{z}{d_o}$ of 5, 10,
-and 20), see Figure~\cite{fig:simular}. For this procedure, the maximum velocity that occurs on the centerline
+and 20), see Figure~\ref{fig:similar}. For this procedure, the maximum velocity that occurs on the centerline
 is captured at each downstream location. The radial half length, $r_h$, is defined as the radial position where the
 velocity is one-half the peak value on the centerline. The self-similar jet profile is strongly correlated past 
 $\frac{z}{d_o}$ of five - well beyond the core collapse of the jet.
@@ -140,7 +142,7 @@ $\frac{z}{d_o}$ of five - well beyond the core collapse of the jet.
   }
   \caption{Normalized vertical velocity as a function of normalized radial distance (by radial half distance, 
 $r_h$) for the $Re = 100$ jet case.}
-  \label{fig:results}
+  \label{fig:similar}
 \end{figure}
 
 \section{Discussion Points}
