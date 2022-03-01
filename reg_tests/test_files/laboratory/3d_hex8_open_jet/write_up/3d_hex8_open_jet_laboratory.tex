@@ -19,7 +19,7 @@ open jet flow (bottom constrained plane) with constant properties. A passive
 scale mixture fraction is activated; inflow velocity is a constant value
 absent of any profile.
 
-\section{Theory}
+\section{Domain}
 The three-dimensional geometry for this tutorial is captured in 
 Figure~\ref{fig:geom}. Here, the cylindrical domain is defined by the 
 vertical height, $H$, the outer diameter, $D_o$, and inlet pipe diameter $d_o$ and 
@@ -38,6 +38,7 @@ right side of the figure are for mixture fraction, $Z$.}
   \label{fig:geom}
 \end{figure}
 
+\section{Theory}
 The variable-density low-Mach equation set is defined by the continuity and momentum equation,
 
 \begin{align}
@@ -74,7 +75,7 @@ from the inlet boundary condition,
 +\frac{\partial q_j }{\partial x_j} = 0,
 \label{eq:zEq}
 \end{align}
-where the diffusive flux vector is given by $q_j = \frac{\mu}{Sc}\frac{\partial Z}{\partial x_j}$.
+where the diffusive flux vector is given by $q_j = -\frac{\mu}{Sc}\frac{\partial Z}{\partial x_j}$.
 Here, the Schmidt number is given as a function of density and mass diffusivity $D$, as
 $Sc = \frac{\mu}{\rho D}$. 
 
@@ -103,13 +104,13 @@ mesh. In Figure~\ref{fig:results}, mixture fraction and magnitude of velocity sh
 are provided for the specifications provided above.
 
 \begin{figure}[!htbp]
- \subfloat[]
   \centering
+ \subfloat[]
   {
    \includegraphics[height=3.0in]{images/3d_hex8_open_jet_mix_frac.png}
   }
-  \subfloat[]
   \centering
+  \subfloat[]
   {
    \includegraphics[height=3.0in]{images/3d_hex8_open_jet_umag.png}
   }
@@ -152,7 +153,7 @@ the following:
 
 \begin{itemize}
 	\item Ensure that the underlying model suite is well understood.
-	\item Explore the mesh and input file associated with this case.
+	\item Explore the mesh and input file specifications associated with this case.
 	\item Explore the removal of the bottom wall plane in favor of an open boudnary condition with 
           and without total pressure specification.
         \item Comment on the resulting core collapse distance and the self-similar behavior.
