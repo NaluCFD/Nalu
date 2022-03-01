@@ -18,7 +18,7 @@
 This case provides a description for three-dimensional laminar
 pipe flow with constant properties, and a constant pressure gradient.
 
-\section{Theory}
+\section{Domain}
 The three-dimensional geometry for this tutorial is captured in 
 Figure~\ref{fig:geom}. Here, the cylindrical domain is defined by the 
 length, $L$, and pipe diameter $d_o$, respectively. 
@@ -37,6 +37,7 @@ no-slip wall boundary condition.
   \label{fig:geom}
 \end{figure}
 
+\section{Theory}
 The variable-density low-Mach equation set is defined by the continuity and momentum equation.
 Here, in cylindrical coordinates the axial coordinate
 is $z$, the radial coordinate is $r$, and the azimuthal
@@ -208,7 +209,7 @@ including the following:
 	\item Ensure that derivation of Equation~\ref{eq:uMax} is clear.
 	\item Ensure that derivation of Equation~\ref{eq:balance} and the expression
            $\frac{dP}{dz} = 2\frac{\tau_w}{r}$ is clear.
-	\item Explore the mesh and input file associated with this case.
+	\item Explore the mesh and input file specifications associated with this case.
 	\item In Figure~\ref{fig:results}, it is noted that the difference between
           the analytical and simulation result is not zero. However, the underlying
           basis is a linear approach. Why are the results not exact as noted in the two-dimensional

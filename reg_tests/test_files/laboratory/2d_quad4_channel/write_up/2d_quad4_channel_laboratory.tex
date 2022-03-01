@@ -17,7 +17,7 @@
 This case provides a description for two-dimensional channel flow
 with constant properties, and a constant pressure gradient.
 
-\section{Theory}
+\section{Domain}
 The two-dimensional geometry for this tutorial is captured in 
 Figure~\ref{fig:geom} where the rectangular domain is defined by the 
 height, $H$, and length, $L$. The streamwise and vertical velocity are 
@@ -39,6 +39,7 @@ i.e., $u_x = f(y)$.
   \label{fig:geom}
 \end{figure}
 
+\section{Theory}
 The variable-density low-Mach equation set is defined by the continuity and momentum equation,
 
 \begin{align}
@@ -154,7 +155,7 @@ the following:
 	\item Ensure that derivation of Equation~\ref{eq:uMax} is clear.
 	\item Ensure that derivation of Equation~\ref{eq:balance} and the expression
            $\frac{dP}{dx} = 2\tau_w$ is clear.
-	\item Explore the mesh and input file associated with this case.
+	\item Explore the mesh and input file specifications associated with this case.
 	\item In Figure~\ref{fig:results}, it is noted that the difference between
           the analytical and simulation result is zero. When you run the two mesh resolutions provided, 
           does this finding hold? Why is this?

@@ -25,7 +25,7 @@ linear_solvers:
 realms:
 
   - name: realm_1
-    mesh: mesh/square_R0.g
+    mesh: square_R0.g
     use_edges: no       
     automatic_decomposition_type: rcb
    

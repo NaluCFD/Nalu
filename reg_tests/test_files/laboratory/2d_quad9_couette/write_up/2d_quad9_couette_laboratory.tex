@@ -17,7 +17,7 @@
 This case provides a description for two-dimensional Couette flow
 with constant properties, and a zero pressure gradient.
 
-\section{Theory}
+\section{Domain}
 The two-dimensional geometry for this tutorial is captured in 
 Figure~\ref{fig:geom} where the rectangular domain is defined by the 
 height, $H$, and length, $L$. The streamwise and vertical velocity are 
@@ -39,6 +39,7 @@ strictly a function of the vertical-dimension, $y$, i.e., $u_x = f(y)$.
   \label{fig:geom}
 \end{figure}
 
+\section{Theory}
 The variable-density low-Mach equation set is defined by the continuity and momentum equation,
 
 \begin{align}
@@ -113,13 +114,13 @@ In Figure~\ref{fig:results}, results are provided for the specifications
 provided above.
 
 \begin{figure}[!htbp]
-  \subfloat[]
   \centering
+  \subfloat[]
   {
    \includegraphics[height=1.2in]{images/2d_quad9_couette_results_early.png}
   }
-  \subfloat[]
   \centering
+  \subfloat[]
   {
    \includegraphics[height=1.2in]{images/2d_quad9_couette_results_late.png}
   }
@@ -134,7 +135,7 @@ the following:
 
 \begin{itemize}
 	\item Ensure that derivation of Equation~\ref{eq:simpleEqWithoutK} is clear.
-	\item Explore the mesh and input file associated with this case.
+	\item Explore the mesh and input file specifications associated with this case.
 	\item In Figure~\ref{fig:results}, the flow results demonstrate a linear profile, as 
           expected. Based on past experience with a linear basis, comment on the usage of a quadratic
           basis.

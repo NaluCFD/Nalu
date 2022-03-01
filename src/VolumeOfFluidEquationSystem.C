@@ -51,6 +51,7 @@
 // user function
 #include "user_functions/RayleighTaylorMixFracAuxFunction.h"
 #include "user_functions/FixedHeightMixFracAuxFunction.h"
+#include "user_functions/RecMixFracAuxFunction.h"
 
 #include "overset/UpdateOversetFringeAlgorithmDriver.h"
 
@@ -741,6 +742,10 @@ VolumeOfFluidEquationSystem::register_initial_condition_fcn(
     else if ( fcnName == "FixedHeight" ) {
       // create the function
       theAuxFunc = new FixedHeightMixFracAuxFunction(fcnParams);      
+    }
+    else if ( fcnName == "rectangle" ) {
+      // create the function
+      theAuxFunc = new RecMixFracAuxFunction();      
     }
     else {
       throw std::runtime_error("VolumeOfFluidEquationSystem::register_initial_condition_fcn: limited functions supported");
