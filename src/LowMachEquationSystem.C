@@ -43,6 +43,7 @@
 #include "ComputeDynamicPressureAlgorithm.h"
 #include "ComputeMdotAlgorithmDriver.h"
 #include "ComputeMdotInflowAlgorithm.h"
+#include "ComputeMdotVofInflowAlgorithm.h"
 #include "ComputeMdotEdgeAlgorithm.h"
 #include "ComputeMdotElemAlgorithm.h"
 #include "ComputeMdotVofElemAlgorithm.h"
@@ -112,6 +113,7 @@
 // kernels
 #include "kernel/ContinuityAdvElemKernel.h"
 #include "kernel/ContinuityVofAdvElemKernel.h"
+#include "kernel/ContinuityVofInflowElemKernel.h"
 #include "kernel/ContinuityGclElemKernel.h"
 #include "kernel/ContinuityMassElemKernel.h"
 #include "kernel/MomentumAdvDiffElemKernel.h"
@@ -2763,8 +2765,13 @@ ContinuityEquationSystem::register_inflow_bc(
   std::map<AlgorithmType, Algorithm *>::iterator itmd =
     computeMdotAlgDriver_->algMap_.find(algType);
   if ( itmd == computeMdotAlgDriver_->algMap_.end() ) {
-    ComputeMdotInflowAlgorithm *theAlg
-      = new ComputeMdotInflowAlgorithm(realm_, part, useShifted);
+    Algorithm *theAlg = NULL;
+    if ( realm_.solutionOptions_->balancedForce_ ) {
+      theAlg = new ComputeMdotVofInflowAlgorithm(realm_, part, useShifted);
+    }
+    else {
+      theAlg = new ComputeMdotInflowAlgorithm(realm_, part, useShifted);
+    }
     computeMdotAlgDriver_->algMap_[algType] = theAlg;
   }
   else {
@@ -2786,11 +2793,17 @@ ContinuityEquationSystem::register_inflow_bc(
     auto& activeKernels = solverAlg->activeKernels_;
     
     if (solverAlgWasBuilt) {
-      build_face_topo_kernel_automatic<ContinuityInflowElemKernel>
-        (partTopo, *this, activeKernels, "continuity_inflow",
-         realm_.bulk_data(), *realm_.solutionOptions_, useShifted, dataPreReqs);
+      if ( realm_.solutionOptions_->balancedForce_ ) {
+        build_face_topo_kernel_automatic<ContinuityVofInflowElemKernel>
+          (partTopo, *this, activeKernels, "continuity_vof_inflow",
+           realm_.bulk_data(), *realm_.solutionOptions_, useShifted, dataPreReqs);
+      }
+      else {
+        build_face_topo_kernel_automatic<ContinuityInflowElemKernel>
+          (partTopo, *this, activeKernels, "continuity_inflow",
+           realm_.bulk_data(), *realm_.solutionOptions_, useShifted, dataPreReqs);
+      }
     }
-
   }
   else {
     std::map<AlgorithmType, SolverAlgorithm *>::iterator its =
