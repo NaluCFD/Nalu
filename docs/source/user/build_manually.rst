@@ -199,7 +199,7 @@ Prepare:
 ::
 
     cd $nalu_build_dir/packages
-    curl -o zlib-1.2.11.tar.gz http://zlib.net/zlib-1.2.11.tar.gz
+    curl -o zlib-1.2.11.tar.gz https://zlib.net/fossils/zlib-1.2.11.tar.gz
     tar -zxvf zlib-1.2.11.tar.gz
 
 Build:
