@@ -65,6 +65,23 @@ S^*_{ij}  = S_{ij} - \frac{1}{3} \delta_{ij} S_{kk} \nonumber
 In a low-Mach flow, the above pressure, $P$, is the perturbation about the thermodynamic
 pressure, $P^{th}$. The above system can be simplified for a div-free velocity field with constant density.
 
+Although the properties are constant, the baseline case activates a passive scale, $Z$, that is defined as the mixture
+fraction. The value of $Z$ varies between zero and unity and can be viewed in an analogous manner as a mass fraction. The transport
+of $Z$ is given by,
+
+\begin{align}
+  \frac {\partial \rho Z }{\partial t} + \frac{ \partial \rho u_j Z}{\partial x_j} +\frac{\partial q_j}{\partial x_j} = 0,
+\label{eq:zEq}
+\end{align} 
+where $q_j$ is the diffusive flux vector given by $q_j = -\rho D \frac{\partial Z}{\partial x_j}$; $D$ is the diffusivity (units
+of $m^2/s)$ whose value is closed by a constant Schmidt number $\rho D = \frac{\mu}{Sc}$. In this particular input file, the
+Schmidt number is 0.9, and the value at the cylinder surface is set to unity, while the inflow and open far field entrainment
+value is zero. Therefore, the passive scalar $Z$ acts to be transported to highlight the vortical flow exhibited by the 
+vortex street. Given that the mixture fraction does not couple to the equations of motion, the boundedness of this variable, i.e.,
+the realization of $0.0 \leq Z \leq 1.0$ does not affect the primary flow field. Therefore, modification of this equation's advection
+stabilization form (while monitoring the amount of times the variable is clipped),
+allows a perspective as to the effectiveness of the stabilization (see the line command $output\_clipping\_diagnostic: yes$).
+
 \section*{Introduction}
 The flow of a liquid or gas past a circular cylinder is ubiquitious in
 engineering.  Examples include the flow of a river current past a
@@ -209,6 +226,11 @@ compute the diffusive flux coefficient.}
           than 2.0.
         \item Explore Peclet blending for both velocity and mixture fraction.
         \item Explore laminar Schmidt number (nominal value of 0.9), 10x smaller; 10x larger.
+        \item Monitor the total amount of instances in which the mixture fraction is non-monotonic.
+          \subitem The maximum and minimum clipped value can be provided in the MixtureFraction
+          equation system via the specification of a deviation from the monotonic range (zero and unity)
+          via, $clipping\_delta: 0.0$, where $0.0$ is the current default level. When clipping, how does nonlinear 
+          convergence behave?
         \item Explore various quantities of interests (QoIs), including: mean and instant drag 
           coefficient; mean and instant lift coefficient. 
         \subitem Note: $vortexStreetCVFEM\_Quad4.dat$ 
