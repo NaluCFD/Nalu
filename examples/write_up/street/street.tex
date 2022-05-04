@@ -3,6 +3,8 @@
 \usepackage{graphicx}
 \usepackage{subfig}
 \usepackage{amsmath}
+\usepackage{listings}
+
 %\usepackage{amsmath,rotating}
 
 \title{Laminar, Two-dimensional Flow Past Cylinder}
@@ -241,11 +243,58 @@ compute the diffusive flux coefficient.}
           and 10: (note the convergence within each step): $max\_iterations: 2, 4, 8$, d) Linear solver 
           tolerance: tolerance: 1e-5, e) Usage of limiters and the effect
         \item (Optional) Compute a FFT for either mixture fraction or velocity at select locations/points in the domain. 
-        \item (Optional) For CVFEM deactivate upwind blending via the designation of the tanh, 
-          $peclet\_function\_tanh\_transition$ to something large, i.e. 1e6. 
-          Activate nonlinear stabilization operator for mixture fraction by adding the following option: 
-        \subitem $element\_source\_terms: mixture\_fraction: [NSO\_2ND|NSO\_4TH]$
-
+        \item (Optional) For CVFEM, deactivate upwind blending for mixture fraction via 
+          the designation of the tanh transition,
+          $peclet\_function\_tanh\_transition$, to something large, i.e. 1e6. Activate a nonlinear stabilization 
+          operator for mixture fraction using a new $element\_source\_terms$ block while ensuring that $NSO\_2ND$ has 
+          been activated (see below for an input file example).
 \end{itemize}
+
+The input file change for the nonlinear stabilization operator is as follows:
+
+          \begin{lstlisting}
+
+    solution_options:
+      name: myOptions
+      turbulence_model: laminar 
+
+      use_consolidated_solver_algorithm: yes
+      use_consolidated_face_elem_bc_algorithm: yes
+
+      options:
+
+        - element_source_terms:
+            momentum: [lumped_momentum_time_derivative, 
+              upw_advection_diffusion]
+            continuity: [advection]
+            mixture_fraction: [lumped_mixture_fraction_time_derivative, 
+              upw_advection_diffusion, NSO_2ND]
+
+          \end{lstlisting}
+
+You may also remove all $upw\_$ options in the activated element source terms block that 
+results in a purely non-Peclet blending approach:
+
+          \begin{lstlisting}
+
+    solution_options:
+      name: myOptions
+      turbulence_model: laminar 
+
+      use_consolidated_solver_algorithm: yes
+      use_consolidated_face_elem_bc_algorithm: yes
+
+      options:
+
+        - element_source_terms:
+            momentum: [lumped_momentum_time_derivative, 
+              advection_diffusion, NSO_2ND]
+            continuity: [advection]
+            mixture_fraction: [lumped_mixture_fraction_time_derivative, 
+              advection_diffusion, NSO_2ND]
+
+          \end{lstlisting}
+
+Using the above block, all of the peclet blending options will be ignored.
 
 \end{document}
