@@ -48,16 +48,22 @@ public:
   // manage the types of probes
   std::vector<int> isLineOfSite_;
   std::vector<int> isRing_;
+  std::vector<int> isPlane_;
   std::vector<std::string> partName_;
   std::vector<int> probeOnThisRank_;
   std::vector<int> numPoints_;
   std::vector<int> numLinePoints_;
   std::vector<int> numTotalPoints_;
   std::vector<int> generateNewIds_;
+  std::vector<int> numPointsOne_;
+  std::vector<int> numPointsTwo_;
 
   // line of nodes
   std::vector<Coordinates> tipCoordinates_;
   std::vector<Coordinates> tailCoordinates_;
+  // two lines defining a plane
+  std::vector<Coordinates> tipCoordinatesOne_;
+  std::vector<Coordinates> tipCoordinatesTwo_;
 
   // ring unit normal and origin (vector or vectors to allow for 3D and 2D rotations)
   std::vector<std::array<double, 3> > unitNormal_;

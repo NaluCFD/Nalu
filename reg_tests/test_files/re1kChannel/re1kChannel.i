@@ -134,6 +134,40 @@ realms:
         - limiter:
             turbulent_ke: yes
 
+    data_probes:
+
+      output_frequency: 25
+
+      search_tolerance: 1.0e-3
+      search_expansion_factor: 2.0
+
+      specifications:
+
+        - name: probe_volume
+          from_target_part: Unspecified-2-HEX
+
+          plane_specifications:
+
+            - name: xTwo
+              number_of_points_dir_one: 201
+              number_of_points_dir_two: 101
+              tail_coordinates: [2.0, 0.0, 2.0]
+              tip_coordinates_dir_one: [2.0, 2.0, 2.0]
+              tip_coordinates_dir_two: [2.0, 0.0, 0.0]
+
+            - name: xFour
+              number_of_points_dir_one: 101
+              number_of_points_dir_two: 201
+              tail_coordinates: [4.0, 0.0, 2.0]
+              tip_coordinates_dir_one: [4.0, 2.0, 2.0]
+              tip_coordinates_dir_two: [4.0, 0.0, 0.0]
+
+          output_variables:
+            - field_name: velocity
+              field_size: 3
+            - field_name: turbulent_viscosity
+              field_size: 1
+
     post_processing:
     
     - type: surface
@@ -188,6 +222,8 @@ realms:
        - yplus_ra_two
        - tau_wall_ra_two
        - assembled_area_force_moment_wfp
+       - velocity_probe
+       - turbulent_viscosity_probe
 
 Time_Integrators:
   - StandardTimeIntegrator:
