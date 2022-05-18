@@ -1141,8 +1141,8 @@ void verify_same_except_sort_order(const std::vector<GlobalOrdinal>& vec1, const
 void verify_row_lengths(const LinSys::Graph& graph,
                         const Kokkos::View<size_t*,HostSpace>& rowLengths, int localProc)
 {
-  ThrowRequireMsg(graph.getNodeNumRows() == rowLengths.size(),
-                  "Error, graph.getNodeNumRows="<<graph.getNodeNumRows()<<" must equal "
+  ThrowRequireMsg(graph.getLocalNumRows() == rowLengths.size(),
+                  "Error, graph.getLocalNumRows="<<graph.getLocalNumRows()<<" must equal "
                   <<"rowLengths.size="<<rowLengths.size());
 
   for(size_t i=0; i<rowLengths.size(); ++i) {
@@ -1865,7 +1865,7 @@ TpetraLinearSystem::checkForNaN(bool useOwned)
   Tpetra::CrsMatrix<>::local_inds_host_view_type indices;
   Tpetra::CrsMatrix<>::values_host_view_type values;
 
-  size_t n = matrix->getRowMap()->getNodeNumElements();
+  size_t n = matrix->getRowMap()->getLocalNumElements();
   for(size_t i=0; i<n; ++i) {
 
     matrix->getLocalRowView(i, indices, values);
@@ -1899,7 +1899,7 @@ TpetraLinearSystem::checkForZeroRow(bool useOwned, bool doThrow, bool doPrint)
   Tpetra::CrsMatrix<>::values_host_view_type values;
 
   size_t nrowG = matrix->getRangeMap()->getGlobalNumElements();
-  size_t n = matrix->getRowMap()->getNodeNumElements();
+  size_t n = matrix->getRowMap()->getLocalNumElements();
   GlobalOrdinal max_gid = 0, g_max_gid=0;
   //KOKKOS: Loop parallel reduce
   kokkos_parallel_for("Nalu::TpetraLinearSystem::checkForZeroRowA", n, [&] (const size_t& i) {
