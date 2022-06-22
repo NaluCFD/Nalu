@@ -1308,9 +1308,9 @@ TpetraLinearSystem::finalizeLinearSystem()
 
   remove_invalid_indices(ownedGraph, ownedRowLengths);
 
-  sharedNotOwnedGraph_ = Teuchos::rcp(new LinSys::Graph(sharedNotOwnedRowsMap_, totalColsMap_, sharedNotOwnedRowLengths, Tpetra::StaticProfile));
+  sharedNotOwnedGraph_ = Teuchos::rcp(new LinSys::Graph(sharedNotOwnedRowsMap_, totalColsMap_, sharedNotOwnedRowLengths));
  
-  ownedGraph_ = Teuchos::rcp(new LinSys::Graph(ownedRowsMap_, totalColsMap_, locallyOwnedRowLengths, Tpetra::StaticProfile));
+  ownedGraph_ = Teuchos::rcp(new LinSys::Graph(ownedRowsMap_, totalColsMap_, locallyOwnedRowLengths));
 
   ownedGraph_->setAllIndices(ownedGraph.rowPointers, ownedGraph.colIndices);
   sharedNotOwnedGraph_->setAllIndices(sharedNotOwnedGraph.rowPointers, sharedNotOwnedGraph.colIndices);
@@ -1625,7 +1625,7 @@ TpetraLinearSystem::applyDirichletBCs(
         const bool useOwned = localId < maxOwnedRowId_;
         const LocalOrdinal actualLocalId = useOwned ? localId : localId - maxOwnedRowId_;
         Teuchos::RCP<LinSys::Matrix> matrix = useOwned ? ownedMatrix_ : sharedNotOwnedMatrix_;
-        const LinSys::Matrix::local_matrix_type& local_matrix = useOwned ? ownedLocalMatrix_ : sharedNotOwnedLocalMatrix_;
+        const LinSys::Matrix::local_matrix_host_type& local_matrix = useOwned ? ownedLocalMatrix_ : sharedNotOwnedLocalMatrix_;
 
         if(localId > maxSharedNotOwnedRowId_) {
           std::cerr << "localId > maxSharedNotOwnedRowId_:: localId= " << localId << " maxSharedNotOwnedRowId_= " << maxSharedNotOwnedRowId_ << " useOwned = " << (localId < maxOwnedRowId_ ) << std::endl;
@@ -1684,7 +1684,7 @@ TpetraLinearSystem::prepareConstraints(
       const bool useOwned = localId < maxOwnedRowId_;
       const LocalOrdinal actualLocalId = useOwned ? localId : localId - maxOwnedRowId_;
       Teuchos::RCP<LinSys::Matrix> matrix = useOwned ? ownedMatrix_ : sharedNotOwnedMatrix_;
-      const LinSys::Matrix::local_matrix_type& local_matrix = matrix->getLocalMatrixHost();
+      const LinSys::Matrix::local_matrix_host_type& local_matrix = matrix->getLocalMatrixHost();
       
       if ( localId > maxSharedNotOwnedRowId_) {
         throw std::runtime_error("logic error: localId > maxSharedNotOwnedRowId_");
@@ -1735,7 +1735,7 @@ TpetraLinearSystem::resetRows(
         useOwned ? localId : (localId - maxOwnedRowId_);
       Teuchos::RCP<LinSys::Matrix> matrix =
         useOwned ? ownedMatrix_ : sharedNotOwnedMatrix_;
-      const LinSys::Matrix::local_matrix_type& local_matrix = matrix->getLocalMatrixHost();
+      const LinSys::Matrix::local_matrix_host_type& local_matrix = matrix->getLocalMatrixHost();
 
       if (localId > maxSharedNotOwnedRowId_) {
         throw std::runtime_error("logic error: localId > maxSharedNotOwnedRowId");

@@ -200,8 +200,8 @@ private:
 
   Teuchos::RCP<LinSys::Matrix> ownedMatrix_;
   Teuchos::RCP<LinSys::Vector> ownedRhs_;
-  LinSys::Matrix::local_matrix_type ownedLocalMatrix_;
-  LinSys::Matrix::local_matrix_type sharedNotOwnedLocalMatrix_;
+  LinSys::Matrix::local_matrix_host_type ownedLocalMatrix_;
+  LinSys::Matrix::local_matrix_host_type sharedNotOwnedLocalMatrix_;
   host_view_type ownedLocalRhs_;
   host_view_type sharedNotOwnedLocalRhs_;
 
