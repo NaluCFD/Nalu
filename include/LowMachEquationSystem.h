@@ -89,7 +89,6 @@ public:
   void compute_dynamic_pressure();
 
   virtual void predict_state();
-
   void project_nodal_velocity();
 
   void post_converged_work();
