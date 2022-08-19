@@ -51,9 +51,10 @@ void test_metric_for_topo_2D(stk::topology topo, double tol) {
   int dim = topo.dimension();
   ASSERT_EQ(dim, 2);
 
-  stk::mesh::MetaData meta(dim);
-  stk::mesh::BulkData bulk(meta, MPI_COMM_WORLD);
-  stk::mesh::Entity elem = unit_test_utils::create_one_reference_element(bulk, topo);
+  stk::mesh::MeshBuilder meshBuilder(MPI_COMM_WORLD);
+  meshBuilder.set_spatial_dimension(dim);
+  auto bulk = meshBuilder.create();
+  stk::mesh::Entity elem = unit_test_utils::create_one_reference_element(*bulk, topo);
 
   auto* mescs = sierra::nalu::MasterElementRepo::get_surface_master_element(topo);
 
@@ -71,9 +72,10 @@ void test_metric_for_topo_2D(stk::topology topo, double tol) {
   sierra::nalu::mxm22(Q,Qt,metric_exact);
 
 
-  const auto& coordField = *static_cast<const VectorFieldType*>(meta.coordinate_field());
+  const auto& coordField = *static_cast<const VectorFieldType*>(
+    bulk->mesh_meta_data().coordinate_field());
   std::vector<double> ws_coords(topo.num_nodes() * dim);
-  const auto* nodes = bulk.begin_nodes(elem);
+  const auto* nodes = bulk->begin_nodes(elem);
   for (unsigned j = 0; j < topo.num_nodes(); ++j) {
     const double* coords = stk::mesh::field_data(coordField, nodes[j]);
     sierra::nalu::matvec22(Q, coords, &ws_coords[j*dim]);
@@ -97,9 +99,10 @@ void test_metric_for_topo_3D(stk::topology topo, double tol) {
   int dim = topo.dimension();
   ASSERT_EQ(dim,3);
 
-  stk::mesh::MetaData meta(dim);
-  stk::mesh::BulkData bulk(meta, MPI_COMM_WORLD);
-  stk::mesh::Entity elem = unit_test_utils::create_one_reference_element(bulk, topo);
+  stk::mesh::MeshBuilder meshBuilder(MPI_COMM_WORLD);
+  meshBuilder.set_spatial_dimension(dim);
+  auto bulk = meshBuilder.create();
+  stk::mesh::Entity elem = unit_test_utils::create_one_reference_element(*bulk, topo);
 
   auto* mescs = sierra::nalu::MasterElementRepo::get_surface_master_element(topo);
 
@@ -120,11 +123,11 @@ void test_metric_for_topo_3D(stk::topology topo, double tol) {
   double metric_exact[9];
   sierra::nalu::mxm33(Q,Qt,metric_exact);
 
-
-  const auto& coordField = *static_cast<const VectorFieldType*>(meta.coordinate_field());
+  const auto& coordField = *static_cast<const VectorFieldType*>(
+    bulk->mesh_meta_data().coordinate_field());
 
   std::vector<double> ws_coords(topo.num_nodes() * dim);
-  const auto* nodes = bulk.begin_nodes(elem);
+  const auto* nodes = bulk->begin_nodes(elem);
   for (unsigned j = 0; j < topo.num_nodes(); ++j) {
     const double* coords = stk::mesh::field_data(coordField, nodes[j]);
     sierra::nalu::matvec33(Q, coords, &ws_coords[j*dim]);
@@ -192,9 +195,10 @@ TEST(MetricTensorNGP, hex27)
   int dim = topo.dimension();
   ASSERT_EQ(dim,3);
 
-  stk::mesh::MetaData meta(dim);
-  stk::mesh::BulkData bulk(meta, MPI_COMM_WORLD);
-  stk::mesh::Entity elem = unit_test_utils::create_one_reference_element(bulk, topo);
+  stk::mesh::MeshBuilder meshBuilder(MPI_COMM_WORLD);
+  meshBuilder.set_spatial_dimension(dim);
+  auto bulk = meshBuilder.create();
+  stk::mesh::Entity elem = unit_test_utils::create_one_reference_element(*bulk, topo);
 
   sierra::nalu::Hex27SCS mescs;
 
@@ -215,10 +219,11 @@ TEST(MetricTensorNGP, hex27)
   double metric_exact[9];
   sierra::nalu::mxm33(Q,Qt,metric_exact);
 
-  const auto& coordField = *static_cast<const VectorFieldType*>(meta.coordinate_field());
+  const auto& coordField = *static_cast<const VectorFieldType*>(
+    bulk->mesh_meta_data().coordinate_field());
 
   Kokkos::View<double**> v_coords("coords", 27, 3);
-  const auto* nodes = bulk.begin_nodes(elem);
+  const auto* nodes = bulk->begin_nodes(elem);
   for (unsigned j = 0; j < topo.num_nodes(); ++j) {
     const double* coords = stk::mesh::field_data(coordField, nodes[j]);
     sierra::nalu::matvec33(Q, coords, &v_coords(j,0));

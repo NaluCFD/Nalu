@@ -428,9 +428,8 @@ class Realm {
 
   double l2Scaling_;
 
-  // ioBroker, meta and bulk data
-  stk::mesh::MetaData *metaData_;
-  stk::mesh::BulkData *bulkData_;
+  // bulk data and io broker; meta data obtained from bulk data
+  std::shared_ptr<stk::mesh::BulkData> bulkData_;
   stk::io::StkMeshIoBroker *ioBroker_;
 
   size_t resultsFileIndex_;

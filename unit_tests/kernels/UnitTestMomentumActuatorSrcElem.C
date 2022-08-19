@@ -25,7 +25,7 @@ TEST_F(ActuatorSourceKernelHex8Mesh, actuator_source)
   // Initialize the kernel
   std::unique_ptr<sierra::nalu::Kernel> kernel(
     new sierra::nalu::MomentumActuatorSrcElemKernel<sierra::nalu::AlgTraitsHex8>(
-        bulk_, solnOpts_, helperObjs.assembleElemSolverAlg->dataNeededByKernels_,
+        *bulk_, solnOpts_, helperObjs.assembleElemSolverAlg->dataNeededByKernels_,
         false));
 
   // Add to kernels to be tested

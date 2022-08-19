@@ -94,11 +94,12 @@ TEST(Hex27,creation)
   }
 
   unsigned spatialDimension = 3;
-  stk::mesh::MetaData meta(spatialDimension);
-  stk::mesh::BulkData bulk(meta, comm);
+  stk::mesh::MeshBuilder meshBuilder(comm);
+  meshBuilder.set_spatial_dimension(spatialDimension);
+  auto bulk = meshBuilder.create();
 
-  unit_test_utils::create_one_reference_element(bulk, stk::topology::HEX_27);
-  check_Hex27_creation(bulk);
+  unit_test_utils::create_one_reference_element(*bulk, stk::topology::HEX_27);
+  check_Hex27_creation(*bulk);
 }
 
 TEST(Hex27, face_node_ordering)
@@ -109,13 +110,13 @@ TEST(Hex27, face_node_ordering)
   }
 
   unsigned spatialDimension = 3;
-  stk::mesh::MetaData meta(spatialDimension);
-  stk::mesh::BulkData bulk(meta, comm);
+  stk::mesh::MeshBuilder meshBuilder(comm);
+  meshBuilder.set_spatial_dimension(spatialDimension);
+  auto bulk = meshBuilder.create();
 
-  unit_test_utils::create_one_reference_element(bulk, stk::topology::HEX_27);
-  check_Hex27_face_ip_node_ordering(bulk);
+  unit_test_utils::create_one_reference_element(*bulk, stk::topology::HEX_27);
+  check_Hex27_face_ip_node_ordering(*bulk);
 }
-
 
 
 

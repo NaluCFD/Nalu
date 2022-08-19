@@ -14,7 +14,7 @@
 namespace unit_test_utils {
 
 struct HelperObjects {
-  HelperObjects(stk::mesh::BulkData& bulk, stk::topology topo, int numDof, stk::mesh::Part* part)
+  HelperObjects(std::shared_ptr<stk::mesh::BulkData> bulk, stk::topology topo, int numDof, stk::mesh::Part* part)
   : yamlNode(unit_test_utils::get_default_inputs()),
     realmDefaultNode(unit_test_utils::get_realm_default_node()),
     naluObj(new unit_test_utils::NaluTest(yamlNode)),
@@ -24,8 +24,7 @@ struct HelperObjects {
     linsys(new unit_test_utils::TestLinearSystem(realm, numDof, &eqSystem)),
     assembleElemSolverAlg(nullptr)
   {
-    realm.metaData_ = &bulk.mesh_meta_data();
-    realm.bulkData_ = &bulk;
+    realm.bulkData_ = bulk;
     eqSystem.linsys_ = linsys;
     assembleElemSolverAlg = new sierra::nalu::AssembleElemSolverAlgorithm(realm, part, &eqSystem, topo.rank(), topo.num_nodes(), false);
   }
@@ -34,8 +33,6 @@ struct HelperObjects {
   {
     assembleElemSolverAlg->activeKernels_.clear();
     delete assembleElemSolverAlg;
-    realm.metaData_ = nullptr;
-    realm.bulkData_ = nullptr;
 
     delete naluObj;
   }
@@ -52,7 +49,7 @@ struct HelperObjects {
 
 
 struct FaceElemHelperObjects : HelperObjects {
-  FaceElemHelperObjects(stk::mesh::BulkData& bulk, stk::topology faceTopo, stk::topology elemTopo, int numDof, stk::mesh::Part* part)
+  FaceElemHelperObjects(std::shared_ptr<stk::mesh::BulkData> bulk, stk::topology faceTopo, stk::topology elemTopo, int numDof, stk::mesh::Part* part)
   : HelperObjects(bulk, elemTopo, numDof, part)
   {
     assembleFaceElemSolverAlg = new sierra::nalu::AssembleFaceElemSolverAlgorithm(realm, part, &eqSystem, faceTopo.num_nodes(), elemTopo.num_nodes(), false);

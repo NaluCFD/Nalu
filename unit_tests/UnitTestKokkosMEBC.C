@@ -61,8 +61,8 @@ template<typename BcAlgTraits>
 void test_MEBC_views(int faceOrdinal, const std::vector<sierra::nalu::ELEM_DATA_NEEDED>& elem_requests)
 {
   unit_test_utils::KokkosMEBC<BcAlgTraits> driver(faceOrdinal, true, true);
-  ASSERT_TRUE((BcAlgTraits::nDim_ == 3 && driver.bulk_.buckets(stk::topology::FACE_RANK).size() > 0) 
-           || (BcAlgTraits::nDim_ == 2 && driver.bulk_.buckets(stk::topology::EDGE_RANK).size() > 0));
+  ASSERT_TRUE((BcAlgTraits::nDim_ == 3 && driver.bulk_->buckets(stk::topology::FACE_RANK).size() > 0) 
+           || (BcAlgTraits::nDim_ == 2 && driver.bulk_->buckets(stk::topology::EDGE_RANK).size() > 0));
 
   // Register ME data requests
   for(sierra::nalu::ELEM_DATA_NEEDED request : elem_requests) {

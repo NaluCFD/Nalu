@@ -119,8 +119,7 @@ struct NodeSuppHelper {
     naluObj(std::unique_ptr<unit_test_utils::NaluTest>(new unit_test_utils::NaluTest(yamlNode))),
     realm(naluObj->create_realm(realmDefaultNode, "multi_physics"))
   {
-    realm.metaData_ = new stk::mesh::MetaData(3u);
-    realm.bulkData_ = new stk::mesh::BulkData(*realm.metaData_, MPI_COMM_WORLD);
+    // nothing to do
   }
 
   stk::mesh::Entity make_one_node_mesh() {

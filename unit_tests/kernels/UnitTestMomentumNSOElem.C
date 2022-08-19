@@ -330,7 +330,7 @@ TEST_F(MomentumKernelHex8Mesh, nso_2nd)
   // Initialize the kernel
   std::unique_ptr<sierra::nalu::Kernel> kernel(
     new sierra::nalu::MomentumNSOElemKernel<sierra::nalu::AlgTraitsHex8>(
-      bulk_, solnOpts_, velocity_, dudx_, viscosity_, 0.0, 0.0,
+      *bulk_, solnOpts_, velocity_, dudx_, viscosity_, 0.0, 0.0,
       helperObjs.assembleElemSolverAlg->dataNeededByKernels_));
 
   // Add to kernels to be tested
@@ -373,7 +373,7 @@ TEST_F(MomentumKernelHex8Mesh, nso_2nd_alt)
   // Initialize the kernel
   std::unique_ptr<sierra::nalu::Kernel> kernel(
     new sierra::nalu::MomentumNSOElemKernel<sierra::nalu::AlgTraitsHex8>(
-      bulk_, solnOpts_, velocity_, dudx_, viscosity_, 0.0, 1.0,
+      *bulk_, solnOpts_, velocity_, dudx_, viscosity_, 0.0, 1.0,
       helperObjs.assembleElemSolverAlg->dataNeededByKernels_));
 
   // Add to kernels to be tested

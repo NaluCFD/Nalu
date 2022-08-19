@@ -24,16 +24,16 @@ TEST_F(Hex8MeshWithNSOFields, twoMomentumKernels)
   solnOpts.includeDivU_ = 0.0;
 
   const unsigned numDof = 3;
-  unit_test_utils::HelperObjects helperObjs(bulk, stk::topology::HEX_8, numDof, meta.get_part("block_1"));
+  unit_test_utils::HelperObjects helperObjs(bulk, stk::topology::HEX_8, numDof, meta->get_part("block_1"));
 
   std::unique_ptr<sierra::nalu::Kernel> advDiffKernel(
      new sierra::nalu::MomentumAdvDiffElemKernel<sierra::nalu::AlgTraitsHex8>(
-        bulk, solnOpts, velocity, viscosity,
+        *bulk, solnOpts, velocity, viscosity,
         helperObjs.assembleElemSolverAlg->dataNeededByKernels_));
 
   std::unique_ptr<sierra::nalu::Kernel> nsoKernel(
      new sierra::nalu::MomentumNSOElemKernel<sierra::nalu::AlgTraitsHex8>(
-        bulk, solnOpts, velocity, Gju, viscosity, 0.0, 0.0,
+        *bulk, solnOpts, velocity, Gju, viscosity, 0.0, 0.0,
         helperObjs.assembleElemSolverAlg->dataNeededByKernels_));
 
   helperObjs.assembleElemSolverAlg->activeKernels_.push_back(advDiffKernel.get());
@@ -48,8 +48,8 @@ TEST_F(Hex8MeshWithNSOFields, twoMomentumKernels)
 
   helperObjs.realm.timeIntegrator_ = &timeIntegrator;
 
-  stk::mesh::Selector all_local = meta.universal_part() & meta.locally_owned_part();
-  const stk::mesh::BucketVector& elemBuckets = bulk.get_buckets(stk::topology::ELEM_RANK, all_local);
+  stk::mesh::Selector all_local = meta->universal_part() & meta->locally_owned_part();
+  const stk::mesh::BucketVector& elemBuckets = bulk->get_buckets(stk::topology::ELEM_RANK, all_local);
   const unsigned numElems = stk::mesh::count_selected_entities(all_local, elemBuckets);
 
   double startTime = stk::wall_time();
