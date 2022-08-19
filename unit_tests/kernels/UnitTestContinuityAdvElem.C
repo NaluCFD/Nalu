@@ -82,7 +82,7 @@ TEST_F(ContinuityKernelHex8Mesh, advection_default)
   // Initialize the kernel
   std::unique_ptr<sierra::nalu::Kernel> advKernel(
     new sierra::nalu::ContinuityAdvElemKernel<sierra::nalu::AlgTraitsHex8>(
-      bulk_, solnOpts_, helperObjs.assembleElemSolverAlg->dataNeededByKernels_));
+      *bulk_, solnOpts_, helperObjs.assembleElemSolverAlg->dataNeededByKernels_));
 
   // Register the kernel for execution
   helperObjs.assembleElemSolverAlg->activeKernels_.push_back(advKernel.get());
@@ -127,7 +127,7 @@ TEST_F(ContinuityKernelHex8Mesh, advection_reduced_sens_cvfem_poisson)
   // Initialize the kernel
   std::unique_ptr<sierra::nalu::Kernel> advKernel(
     new sierra::nalu::ContinuityAdvElemKernel<sierra::nalu::AlgTraitsHex8>(
-      bulk_, solnOpts_, helperObjs.assembleElemSolverAlg->dataNeededByKernels_));
+      *bulk_, solnOpts_, helperObjs.assembleElemSolverAlg->dataNeededByKernels_));
 
   // Register the kernel for execution
   helperObjs.assembleElemSolverAlg->activeKernels_.push_back(advKernel.get());
@@ -172,7 +172,7 @@ TEST_F(ContinuityKernelHex8Mesh, advection_reduced_shift_cvfem_poisson)
   // Initialize the kernel
   std::unique_ptr<sierra::nalu::Kernel> advKernel(
     new sierra::nalu::ContinuityAdvElemKernel<sierra::nalu::AlgTraitsHex8>(
-      bulk_, solnOpts_, helperObjs.assembleElemSolverAlg->dataNeededByKernels_));
+      *bulk_, solnOpts_, helperObjs.assembleElemSolverAlg->dataNeededByKernels_));
 
   // Register the kernel for execution
   helperObjs.assembleElemSolverAlg->activeKernels_.push_back(advKernel.get());

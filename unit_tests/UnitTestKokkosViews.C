@@ -369,7 +369,7 @@ TEST_F(Hex8Mesh, indexing_vectors)
 {
     fill_mesh_and_initialize_test_fields();
 
-    TestElemAlgorithmWithVectors testAlgorithm(bulk, coordField,
+    TestElemAlgorithmWithVectors testAlgorithm(*bulk, coordField,
                           discreteLaplacianOfPressure, nodalPressureField);
 
     testAlgorithm.execute();
@@ -381,7 +381,7 @@ TEST_F(Hex8Mesh, indexing_template_raw_arrays)
 {
     fill_mesh_and_initialize_test_fields();
 
-    TestElemAlgorithmWithTemplate testAlgorithm(bulk, coordField,
+    TestElemAlgorithmWithTemplate testAlgorithm(*bulk, coordField,
                           discreteLaplacianOfPressure, nodalPressureField);
 
     testAlgorithm.execute();
@@ -393,7 +393,7 @@ TEST_F(Hex8Mesh, indexing_views)
 {
     fill_mesh_and_initialize_test_fields();
 
-    TestElemAlgorithmWithViews testAlgorithm(bulk, coordField,
+    TestElemAlgorithmWithViews testAlgorithm(*bulk, coordField,
                           discreteLaplacianOfPressure, nodalPressureField);
 
     testAlgorithm.execute();

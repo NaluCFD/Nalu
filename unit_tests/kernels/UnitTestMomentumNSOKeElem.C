@@ -283,7 +283,7 @@ TEST_F(MomentumKernelHex8Mesh, nso_ke)
   // Initialize the kernel
   std::unique_ptr<sierra::nalu::Kernel> kernel(
     new sierra::nalu::MomentumNSOKeElemKernel<sierra::nalu::AlgTraitsHex8>(
-      bulk_, solnOpts_, velocity_, dudx_, 0.0,
+      *bulk_, solnOpts_, velocity_, dudx_, 0.0,
       helperObjs.assembleElemSolverAlg->dataNeededByKernels_));
 
   // Add to kernels to be tested

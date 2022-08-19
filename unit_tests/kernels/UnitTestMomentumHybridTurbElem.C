@@ -288,7 +288,7 @@ TEST_F(HybridTurbKernelHex8Mesh, MomentumHybridTurbElemKernel)
   // Initialize the kernel
   std::unique_ptr<sierra::nalu::Kernel> kernel(
     new sierra::nalu::MomentumHybridTurbElemKernel<sierra::nalu::AlgTraitsHex8>(
-      bulk_, solnOpts_, velocity_,
+      *bulk_, solnOpts_, velocity_,
       helperObjs.assembleElemSolverAlg->dataNeededByKernels_));
 
   // Add to kernels to be tested

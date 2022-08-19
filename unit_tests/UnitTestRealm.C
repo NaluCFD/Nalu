@@ -153,9 +153,11 @@ NaluTest::create_realm(const YAML::Node& realm_node, const std::string realm_typ
   // Populate solution options
   realm->solutionOptions_->load(realm_node);
 
-  // Set-up mesh metadata and bulkdata ... let user fill mesh in test function
-  realm->metaData_ = new stk::mesh::MetaData(spatialDim_);
-  realm->bulkData_ = new stk::mesh::BulkData(*realm->metaData_, comm_);
+  // Set-up mesh ... let user fill mesh in test function
+  stk::mesh::MeshBuilder meshBuilder(comm_);
+  meshBuilder.set_spatial_dimension(spatialDim_);
+  realm->bulkData_ = meshBuilder.create();
+
   sim_.realms_->realmVector_.push_back(realm);
 
   return *realm;

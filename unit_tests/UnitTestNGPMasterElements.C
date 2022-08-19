@@ -36,13 +36,14 @@ double linear_scalar_value(int dim, double a, const double* b, const double* x)
 
 TEST(MasterElementFunctions, generic_grad_op_3d_hex_27)
 {
-  stk::mesh::MetaData meta(3);
-  stk::mesh::BulkData bulk(meta, MPI_COMM_WORLD);
+  stk::mesh::MeshBuilder meshBuilder(MPI_COMM_WORLD);
+  meshBuilder.set_spatial_dimension(3);
+  auto bulk = meshBuilder.create();
 
-  stk::mesh::Entity elem = unit_test_utils::create_one_reference_element(bulk, stk::topology::HEXAHEDRON_27);
-  const auto* node_rels = bulk.begin_nodes(elem);
+  stk::mesh::Entity elem = unit_test_utils::create_one_reference_element(*bulk, stk::topology::HEXAHEDRON_27);
+  const auto* node_rels = bulk->begin_nodes(elem);
   sierra::nalu::Hex27SCS me;
-  auto& coordField = *static_cast<const VectorFieldType*>(meta.coordinate_field());
+  auto& coordField = *static_cast<const VectorFieldType*>(bulk->mesh_meta_data().coordinate_field());
   int dim = me.nDim_;
 
   std::mt19937 rng;
@@ -106,13 +107,14 @@ TEST(MasterElementFunctions, generic_grad_op_3d_hex_27)
 
 TEST(MasterElementFunctions, generic_grad_op_2d_tri_6)
 {
-  stk::mesh::MetaData meta(2);
-  stk::mesh::BulkData bulk(meta, MPI_COMM_WORLD);
+  stk::mesh::MeshBuilder meshBuilder(MPI_COMM_WORLD);
+  meshBuilder.set_spatial_dimension(2);
+  auto bulk = meshBuilder.create();
 
-  stk::mesh::Entity elem = unit_test_utils::create_one_reference_element(bulk, stk::topology::TRIANGLE_3_2D);
-  const auto* node_rels = bulk.begin_nodes(elem);
+  stk::mesh::Entity elem = unit_test_utils::create_one_reference_element(*bulk, stk::topology::TRIANGLE_3_2D);
+  const auto* node_rels = bulk->begin_nodes(elem);
   sierra::nalu::Tri32DSCS me;
-  auto& coordField = *static_cast<const VectorFieldType*>(meta.coordinate_field());
+  auto& coordField = *static_cast<const VectorFieldType*>(bulk->mesh_meta_data().coordinate_field());
   int dim = me.nDim_;
 
   std::mt19937 rng;
@@ -185,13 +187,15 @@ TEST(MasterElementFunctions, generic_grad_op_2d_tri_6)
 
 TEST(Hex27SCV, detj)
 {
-  stk::mesh::MetaData meta(3);
-  stk::mesh::BulkData bulk(meta, MPI_COMM_WORLD);
 
-  stk::mesh::Entity elem = unit_test_utils::create_one_reference_element(bulk, stk::topology::HEXAHEDRON_27);
-  const auto* node_rels = bulk.begin_nodes(elem);
+  stk::mesh::MeshBuilder meshBuilder(MPI_COMM_WORLD);
+  meshBuilder.set_spatial_dimension(3);
+  auto bulk = meshBuilder.create();
+
+  stk::mesh::Entity elem = unit_test_utils::create_one_reference_element(*bulk, stk::topology::HEXAHEDRON_27);
+  const auto* node_rels = bulk->begin_nodes(elem);
   sierra::nalu::Hex27SCV me;
-  auto& coordField = *static_cast<const VectorFieldType*>(meta.coordinate_field());
+  auto& coordField = *static_cast<const VectorFieldType*>(bulk->mesh_meta_data().coordinate_field());
   int dim = me.nDim_;
 
   std::mt19937 rng;
@@ -265,13 +269,14 @@ TEST(Hex27SCV, detj)
 
 TEST(Hex27SCS, area_vec)
 {
-  stk::mesh::MetaData meta(3);
-  stk::mesh::BulkData bulk(meta, MPI_COMM_WORLD);
+  stk::mesh::MeshBuilder meshBuilder(MPI_COMM_WORLD);
+  meshBuilder.set_spatial_dimension(3);
+  auto bulk = meshBuilder.create();
 
-  stk::mesh::Entity elem = unit_test_utils::create_one_reference_element(bulk, stk::topology::HEXAHEDRON_27);
-  const auto* node_rels = bulk.begin_nodes(elem);
+  stk::mesh::Entity elem = unit_test_utils::create_one_reference_element(*bulk, stk::topology::HEXAHEDRON_27);
+  const auto* node_rels = bulk->begin_nodes(elem);
   sierra::nalu::Hex27SCS me;
-  auto& coordField = *static_cast<const VectorFieldType*>(meta.coordinate_field());
+  auto& coordField = *static_cast<const VectorFieldType*>(bulk->mesh_meta_data().coordinate_field());
   int dim = me.nDim_;
 
   std::mt19937 rng;

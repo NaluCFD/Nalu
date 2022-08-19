@@ -116,6 +116,7 @@
 #include "kernel/ContinuityVofInflowElemKernel.h"
 #include "kernel/ContinuityGclElemKernel.h"
 #include "kernel/ContinuityMassElemKernel.h"
+#include "kernel/ContinuityVofEvaporationElemKernel.h"
 #include "kernel/MomentumAdvDiffElemKernel.h"
 #include "kernel/MomentumActuatorSrcElemKernel.h"
 #include "kernel/MomentumBuoyancyBoussinesqSrcElemKernel.h"
@@ -2580,6 +2581,10 @@ ContinuityEquationSystem::register_interior_algorithm(
 
         build_topo_kernel_if_requested<ContinuityVofAdvElemKernel>
           (partTopo, *this, activeKernels, "vof_advection",
+           realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs);
+
+        build_topo_kernel_if_requested<ContinuityVofEvaporationElemKernel>
+          (partTopo, *this, activeKernels, "vof_evaporation",
            realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs);
 
         report_invalid_supp_alg_names();

@@ -132,7 +132,13 @@ public:
   double eigenvaluePerturbDelta_;
   int eigenvaluePerturbBiasTowards_;
   double eigenvaluePerturbTurbKe_;
- 
+
+  // evaporation model constants
+  double evapJm_;
+  double evapM_;
+  double evapN_;
+  double evapC_;
+
   // mdot post processing
   double mdotAlgAccumulation_;
   double mdotAlgInflow_;

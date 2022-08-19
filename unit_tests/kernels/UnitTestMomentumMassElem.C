@@ -155,7 +155,7 @@ TEST_F(MomentumKernelHex8Mesh, momentum_time_derivative)
   // Initialize the kernel
   std::unique_ptr<sierra::nalu::Kernel> massKernel(
     new sierra::nalu::MomentumMassElemKernel<sierra::nalu::AlgTraitsHex8>(
-      bulk_, solnOpts_, helperObjs.assembleElemSolverAlg->dataNeededByKernels_, false));
+      *bulk_, solnOpts_, helperObjs.assembleElemSolverAlg->dataNeededByKernels_, false));
 
   // Add to kernels to be tested
   helperObjs.assembleElemSolverAlg->activeKernels_.push_back(massKernel.get());
@@ -198,7 +198,7 @@ TEST_F(MomentumKernelHex8Mesh, momentum_time_derivative_lumped)
   // Initialize the kernel
   std::unique_ptr<sierra::nalu::Kernel> massKernel(
     new sierra::nalu::MomentumMassElemKernel<sierra::nalu::AlgTraitsHex8>(
-      bulk_, solnOpts_, helperObjs.assembleElemSolverAlg->dataNeededByKernels_, true));
+      *bulk_, solnOpts_, helperObjs.assembleElemSolverAlg->dataNeededByKernels_, true));
 
   // Add to kernels to be tested
   helperObjs.assembleElemSolverAlg->activeKernels_.push_back(massKernel.get());

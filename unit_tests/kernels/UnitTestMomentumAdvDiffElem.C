@@ -286,7 +286,7 @@ TEST_F(MomentumKernelHex8Mesh, advection_diffusion)
   // Initialize the kernel
   std::unique_ptr<sierra::nalu::Kernel> kernel(
     new sierra::nalu::MomentumAdvDiffElemKernel<sierra::nalu::AlgTraitsHex8>(
-      bulk_, solnOpts_, velocity_, viscosity_,
+      *bulk_, solnOpts_, velocity_, viscosity_,
       helperObjs.assembleElemSolverAlg->dataNeededByKernels_));
 
   // Add to kernels to be tested

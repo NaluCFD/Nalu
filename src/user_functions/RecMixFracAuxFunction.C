@@ -37,7 +37,6 @@ RecMixFracAuxFunction::do_evaluate(
   for(unsigned p=0; p < numPoints; ++p) {
 
     const double x = coords[0];
-    const double y = coords[1];
     const double z = coords[2];
     
     if ( x < 1.228 && z < 0.55 )

@@ -36,7 +36,7 @@ TEST_F(Hex8MeshWithNSOFields, continuityAdvElem)
 
   std::unique_ptr<sierra::nalu::Kernel> advKernel(
     new sierra::nalu::ContinuityAdvElemKernel<sierra::nalu::AlgTraitsHex8>(
-      bulk, solnOpts, helperObjs.assembleElemSolverAlg->dataNeededByKernels_));
+      *bulk, solnOpts, helperObjs.assembleElemSolverAlg->dataNeededByKernels_));
 
   helperObjs.assembleElemSolverAlg->activeKernels_.push_back(advKernel.get());
 
@@ -46,8 +46,8 @@ TEST_F(Hex8MeshWithNSOFields, continuityAdvElem)
 
   double elapsedTimeSimd = stk::wall_time() - startTime;
 
-  stk::mesh::Selector all_local = meta.universal_part() & meta.locally_owned_part();
-  const stk::mesh::BucketVector& elemBuckets = bulk.get_buckets(stk::topology::ELEM_RANK, all_local);
+  stk::mesh::Selector all_local = meta->universal_part() & meta->locally_owned_part();
+  const stk::mesh::BucketVector& elemBuckets = bulk->get_buckets(stk::topology::ELEM_RANK, all_local);
   const unsigned numElems = stk::mesh::count_selected_entities(all_local, elemBuckets);
 
   std::cerr<<"numElems: "<<numElems<<", elapsedTime Hex8MeshWithNSOFields.continuityAdvElem: "<<elapsedTimeSimd<<std::endl;

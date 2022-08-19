@@ -56,7 +56,7 @@ TEST_F(MixtureFractionKernelHex8Mesh, advection_diffusion)
   // Initialize the kernel
   std::unique_ptr<sierra::nalu::Kernel> advKernel(
     new sierra::nalu::ScalarAdvDiffElemKernel<sierra::nalu::AlgTraitsHex8>(
-     bulk_, solnOpts_, mixFraction_, viscosity_, helperObjs.assembleElemSolverAlg->dataNeededByKernels_));
+     *bulk_, solnOpts_, mixFraction_, viscosity_, helperObjs.assembleElemSolverAlg->dataNeededByKernels_));
 
   // Register the kernel for execution
   helperObjs.assembleElemSolverAlg->activeKernels_.push_back(advKernel.get());
