@@ -34,19 +34,19 @@ ContinuityVofOpenElemKernel<BcAlgTraits>::ContinuityVofOpenElemKernel(
     meSCS_(sierra::nalu::MasterElementRepo::get_surface_master_element(BcAlgTraits::elemTopo_))
 {
   if ( solnOpts.does_mesh_move())
-    velocityRTM_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity_rtm");
+    velocityRTM_ = metaData.get_field<double>(stk::topology::NODE_RANK, "velocity_rtm");
   else
-    velocityRTM_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
-  Gpdx_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "dpdx");
-  coordinates_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
-  pressure_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure");
-  pressureBc_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure_bc");
-  density_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
-  interfaceCurvature_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "interface_curvature");
-  surfaceTension_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "surface_tension");
-  vof_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "volume_of_fluid");
-  exposedAreaVec_ = metaData.get_field<GenericFieldType>(metaData.side_rank(), "exposed_area_vector");
-  dynamicPressure_ = metaData.get_field<GenericFieldType>(metaData.side_rank(), "dynamic_pressure");
+    velocityRTM_ = metaData.get_field<double>(stk::topology::NODE_RANK, "velocity");
+  Gpdx_ = metaData.get_field<double>(stk::topology::NODE_RANK, "dpdx");
+  coordinates_ = metaData.get_field<double>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
+  pressure_ = metaData.get_field<double>(stk::topology::NODE_RANK, "pressure");
+  pressureBc_ = metaData.get_field<double>(stk::topology::NODE_RANK, "pressure_bc");
+  density_ = metaData.get_field<double>(stk::topology::NODE_RANK, "density");
+  interfaceCurvature_ = metaData.get_field<double>(stk::topology::NODE_RANK, "interface_curvature");
+  surfaceTension_ = metaData.get_field<double>(stk::topology::NODE_RANK, "surface_tension");
+  vof_ = metaData.get_field<double>(stk::topology::NODE_RANK, "volume_of_fluid");
+  exposedAreaVec_ = metaData.get_field<double>(metaData.side_rank(), "exposed_area_vector");
+  dynamicPressure_ = metaData.get_field<double>(metaData.side_rank(), "dynamic_pressure");
   for (int i = 0; i < BcAlgTraits::nDim_; ++i)
     gravity_(i) = solnOpts.gravity_[i];
 

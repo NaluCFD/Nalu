@@ -155,24 +155,25 @@ SpecificDissipationRateEquationSystem::register_nodal_fields(
   const int numStates = realm_.number_of_states();
 
   // register dof; set it as a restart variable
-  sdr_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "specific_dissipation_rate", numStates));
+  sdr_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "specific_dissipation_rate", numStates));
   stk::mesh::put_field_on_mesh(*sdr_, *part, nullptr);
   realm_.augment_restart_variable_list("specific_dissipation_rate");
 
-  dwdx_ =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "dwdx"));
+  dwdx_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "dwdx"));
   stk::mesh::put_field_on_mesh(*dwdx_, *part, nDim, nullptr);
+  stk::io::set_field_output_type(*dwdx_, stk::io::FieldOutputType::VECTOR_3D);
 
   // delta solution for linear solver; share delta since this is a split system
-  wTmp_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "wTmp"));
+  wTmp_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "wTmp"));
   stk::mesh::put_field_on_mesh(*wTmp_, *part, nullptr);
 
-  visc_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity"));
+  visc_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "viscosity"));
   stk::mesh::put_field_on_mesh(*visc_, *part, nullptr);
 
-  tvisc_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_viscosity"));
+  tvisc_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "turbulent_viscosity"));
   stk::mesh::put_field_on_mesh(*tvisc_, *part, nullptr);
 
-  evisc_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "effective_viscosity_sdr"));
+  evisc_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "effective_viscosity_sdr"));
   stk::mesh::put_field_on_mesh(*evisc_, *part, nullptr);
 
   // make sure all states are properly populated (restart can handle this)
@@ -415,7 +416,7 @@ SpecificDissipationRateEquationSystem::register_inflow_bc(
   stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   // register boundary data; sdr_bc
-  ScalarFieldType *theBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "sdr_bc"));
+  ScalarFieldType *theBcField = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "sdr_bc"));
   stk::mesh::put_field_on_mesh(*theBcField, *part, nullptr);
 
   // extract the value for user specified tke and save off the AuxFunction
@@ -496,7 +497,7 @@ SpecificDissipationRateEquationSystem::register_open_bc(
   stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   // register boundary data; sdr_bc
-  ScalarFieldType *theBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "open_sdr_bc"));
+  ScalarFieldType *theBcField = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "open_sdr_bc"));
   stk::mesh::put_field_on_mesh(*theBcField, *part, nullptr);
 
   // extract the value for user specified tke and save off the AuxFunction
@@ -566,14 +567,14 @@ SpecificDissipationRateEquationSystem::register_wall_bc(
   stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   // register boundary data; sdr_bc
-  sdrWallBc_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "sdr_bc"));
+  sdrWallBc_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "sdr_bc"));
   stk::mesh::put_field_on_mesh(*sdrWallBc_, *part, nullptr);
 
   // need to register the assembles wall value for sdr; can not share with sdr_bc
-  assembledWallSdr_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "wall_model_sdr_bc"));
+  assembledWallSdr_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "wall_model_sdr_bc"));
   stk::mesh::put_field_on_mesh(*assembledWallSdr_, *part, nullptr);
 
-  assembledWallArea_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "assembled_wall_area_sdr"));
+  assembledWallArea_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "assembled_wall_area_sdr"));
   stk::mesh::put_field_on_mesh(*assembledWallArea_, *part, nullptr);
 
   // are we using wall functions or is this a low Re model?

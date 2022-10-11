@@ -41,8 +41,8 @@ MomentumBoussinesqSrcNodeSuppAlg::MomentumBoussinesqSrcNodeSuppAlg(
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
-  temperature_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature");
-  dualNodalVolume_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
+  temperature_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "temperature");
+  dualNodalVolume_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "dual_nodal_volume");
 
   // extract user parameters from solution options
   tRef_ = realm_.solutionOptions_->referenceTemperature_;

@@ -37,24 +37,20 @@ TurbKineticEnergyKsgsSrcElemKernel<AlgTraits>::TurbKineticEnergyKsgsSrcElemKerne
 {
   // save off fields
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
-  coordinates_ = metaData.get_field<VectorFieldType>(
-    stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
-  tkeNp1_ = metaData.get_field<ScalarFieldType>(
-    stk::topology::NODE_RANK, "turbulent_ke");
-  densityNp1_ = metaData.get_field<ScalarFieldType>(
-    stk::topology::NODE_RANK, "density");
-  tvisc_ = metaData.get_field<ScalarFieldType>(
-    stk::topology::NODE_RANK, "turbulent_viscosity");
-  dualNodalVolume_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
-  cEps_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "c_epsilon");
-  Gju_ = metaData.get_field<GenericFieldType>(stk::topology::NODE_RANK, "dudx");
+  coordinates_ = metaData.get_field<double>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
+  tkeNp1_ = metaData.get_field<double>(stk::topology::NODE_RANK, "turbulent_ke");
+  densityNp1_ = metaData.get_field<double>(stk::topology::NODE_RANK, "density");
+  tvisc_ = metaData.get_field<double>(stk::topology::NODE_RANK, "turbulent_viscosity");
+  dualNodalVolume_ = metaData.get_field<double>(stk::topology::NODE_RANK, "dual_nodal_volume");
+  cEps_ = metaData.get_field<double>(stk::topology::NODE_RANK, "c_epsilon");
+  Gju_ = metaData.get_field<double>(stk::topology::NODE_RANK, "dudx");
 
   // low-Re form
-  visc_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity");
+  visc_ = metaData.get_field<double>(stk::topology::NODE_RANK, "viscosity");
   // assign required variables that may not be registered to an arbitrary field
-  dsqrtkSq_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity");
+  dsqrtkSq_ = metaData.get_field<double>(stk::topology::NODE_RANK, "viscosity");
   if (lrksgsfac > 0.0 ) {
-    dsqrtkSq_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dsqrtk_dx_sq");
+    dsqrtkSq_ = metaData.get_field<double>(stk::topology::NODE_RANK, "dsqrtk_dx_sq");
   }
 
   MasterElement *meSCV = sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_);

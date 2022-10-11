@@ -47,7 +47,7 @@ HDF5TablePropAlgorithm::HDF5TablePropAlgorithm(
 
   indVar_.resize(indVarSize_);
   for ( size_t k = 0; k < indVarSize_; ++k) {
-    ScalarFieldType *indVar = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, indVarNameVec[k]);
+    ScalarFieldType *indVar = meta_data.get_field<double>(stk::topology::NODE_RANK, indVarNameVec[k]);
     if ( NULL == indVar ) {
       throw std::runtime_error("HDF5TablePropAlgorithm: independent variable not registered:");
     }

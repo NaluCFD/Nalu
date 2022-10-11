@@ -43,14 +43,14 @@ TurbKineticEnergyKEpsilonSrcElemKernel<AlgTraits>::TurbKineticEnergyKEpsilonSrcE
 {
   // save off fields
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
-  coordinates_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
-  VectorFieldType *velocity = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
+  coordinates_ = metaData.get_field<double>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
+  VectorFieldType *velocity = metaData.get_field<double>(stk::topology::NODE_RANK, "velocity");
   velocityNp1_ = &(velocity->field_of_state(stk::mesh::StateNP1));
-  tkeNp1_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_ke");
-  epsNp1_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_dissipation");
-  ScalarFieldType *density = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
+  tkeNp1_ = metaData.get_field<double>(stk::topology::NODE_RANK, "turbulent_ke");
+  epsNp1_ = metaData.get_field<double>(stk::topology::NODE_RANK, "turbulent_dissipation");
+  ScalarFieldType *density = metaData.get_field<double>(stk::topology::NODE_RANK, "density");
   densityNp1_ = &(density->field_of_state(stk::mesh::StateNP1));
-  tvisc_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_viscosity");
+  tvisc_ = metaData.get_field<double>(stk::topology::NODE_RANK, "turbulent_viscosity");
 
   MasterElement *meSCV = sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_);
 

@@ -52,18 +52,18 @@ MomentumNSOGradElemSuppAlg::MomentumNSOGradElemSuppAlg(
   // save off fields with and without state
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   velocityNp1_ = &(velocity->field_of_state(stk::mesh::StateNP1));
-  ScalarFieldType *density = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
+  ScalarFieldType *density = meta_data.get_field<double>(stk::topology::NODE_RANK, "density");
   densityNp1_ = &(density->field_of_state(stk::mesh::StateNP1));
-  pressure_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure");
-  Gjp_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "dpdx");
+  pressure_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "pressure");
+  Gjp_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "dpdx");
 
   // check for mesh motion for proper velocity
   const bool meshMotion = realm_.does_mesh_move();
   if ( meshMotion )
-    velocityRTM_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity_rtm");
+    velocityRTM_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "velocity_rtm");
   else
-    velocityRTM_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
-  coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+    velocityRTM_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "velocity");
+  coordinates_ = meta_data.get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
 
   // fixed size
   ws_dukdxScs_.resize(nDim_);

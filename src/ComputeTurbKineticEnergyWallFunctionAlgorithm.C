@@ -44,12 +44,12 @@ ComputeTurbKineticEnergyWallFunctionAlgorithm::ComputeTurbKineticEnergyWallFunct
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
-  turbKineticEnergy_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_ke");
-  bcTurbKineticEnergy_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "tke_bc");
-  bcAssembledTurbKineticEnergy_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "wall_model_tke_bc");
-  assembledWallArea_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "assembled_wall_area_wf");
-  wallFrictionVelocityBip_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "wall_friction_velocity_bip");
-  exposedAreaVec_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");
+  turbKineticEnergy_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "turbulent_ke");
+  bcTurbKineticEnergy_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "tke_bc");
+  bcAssembledTurbKineticEnergy_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "wall_model_tke_bc");
+  assembledWallArea_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "assembled_wall_area_wf");
+  wallFrictionVelocityBip_ = meta_data.get_field<double>(meta_data.side_rank(), "wall_friction_velocity_bip");
+  exposedAreaVec_ = meta_data.get_field<double>(meta_data.side_rank(), "exposed_area_vector");
 }
 
 //--------------------------------------------------------------------------

@@ -46,13 +46,13 @@ TurbViscSSTAlgorithm::TurbViscSSTAlgorithm(
 {
   // 2003 variant; basically, sijMag replaces vorticityMag
   stk::mesh::MetaData & meta_data = realm_.meta_data();
-  density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
-  viscosity_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity");
-  tke_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_ke");
-  sdr_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "specific_dissipation_rate");
-  minDistance_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "minimum_distance_to_wall");
-  dudx_ = meta_data.get_field<GenericFieldType>(stk::topology::NODE_RANK, "dudx");
-  tvisc_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_viscosity");
+  density_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "density");
+  viscosity_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "viscosity");
+  tke_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "turbulent_ke");
+  sdr_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "specific_dissipation_rate");
+  minDistance_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "minimum_distance_to_wall");
+  dudx_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "dudx");
+  tvisc_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "turbulent_viscosity");
 }
 
 //--------------------------------------------------------------------------

@@ -31,8 +31,8 @@ ScalarPngBcFemKernel<BcAlgTraits>::ScalarPngBcFemKernel(
   : Kernel()
 {
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
-  scalarQ_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, fieldName);
-  VectorFieldType *coordinates = metaData.get_field<VectorFieldType>(
+  scalarQ_ = metaData.get_field<double>(stk::topology::NODE_RANK, fieldName);
+  VectorFieldType *coordinates = metaData.get_field<double>(
     stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
  
   // extract master element

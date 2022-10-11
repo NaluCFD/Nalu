@@ -52,15 +52,13 @@ MomentumUpwAdvDiffElemKernel<AlgTraits>::MomentumUpwAdvDiffElemKernel(
 {
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
   if ( solnOpts_.does_mesh_move() )
-    velocityRTM_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity_rtm");
+    velocityRTM_ = metaData.get_field<double>(stk::topology::NODE_RANK, "velocity_rtm");
   else
-    velocityRTM_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
+    velocityRTM_ = metaData.get_field<double>(stk::topology::NODE_RANK, "velocity");
   velocityNp1_ = &(velocity->field_of_state(stk::mesh::StateNP1));
-  coordinates_ = metaData.get_field<VectorFieldType>(
-    stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
-  density_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
-  massFlowRate_ = metaData.get_field<GenericFieldType>(
-    stk::topology::ELEMENT_RANK, "mass_flow_rate_scs");
+  coordinates_ = metaData.get_field<double>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
+  density_ = metaData.get_field<double>(stk::topology::NODE_RANK, "density");
+  massFlowRate_ = metaData.get_field<double>(stk::topology::ELEMENT_RANK, "mass_flow_rate_scs");
   
   MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(AlgTraits::topo_);
 

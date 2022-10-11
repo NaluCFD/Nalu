@@ -38,12 +38,9 @@ VolumeOfFluidScsAdvElemKernel<AlgTraits>::VolumeOfFluidScsAdvElemKernel(
   vofNp1_ = &(vof->field_of_state(stk::mesh::StateNP1));
 
   std::string velocity_name = solnOpts.does_mesh_move() ? "velocity_rtm" : "velocity";
-  velocityRTM_ = metaData.get_field<VectorFieldType>(
-    stk::topology::NODE_RANK, velocity_name);
-  coordinates_ = metaData.get_field<VectorFieldType>(
-    stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
-  volumeFlowRate_ = metaData.get_field<GenericFieldType>(
-    stk::topology::ELEMENT_RANK, "volume_flow_rate_scs");
+  velocityRTM_ = metaData.get_field<double>(stk::topology::NODE_RANK, velocity_name);
+  coordinates_ = metaData.get_field<double>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
+  volumeFlowRate_ = metaData.get_field<double>(stk::topology::ELEMENT_RANK, "volume_flow_rate_scs");
 
   MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(AlgTraits::topo_);
 

@@ -53,13 +53,13 @@ AssembleContinuityElemSolverAlgorithm::AssembleContinuityElemSolverAlgorithm(
   // extract fields; nodal
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   if ( meshMotion_ )
-    velocityRTM_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity_rtm");
+    velocityRTM_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "velocity_rtm");
   else
-    velocityRTM_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
-  Gpdx_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "dpdx");
-  coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
-  pressure_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure");
-  density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
+    velocityRTM_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "velocity");
+  Gpdx_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "dpdx");
+  coordinates_ = meta_data.get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  pressure_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "pressure");
+  density_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "density");
 
   // Implementation details: code is designed to manage the following
   // When shiftPoisson_ is TRUE, reducedSensitivities_ is enforced to be TRUE

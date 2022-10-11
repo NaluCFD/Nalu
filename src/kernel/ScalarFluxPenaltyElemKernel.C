@@ -39,8 +39,8 @@ ScalarFluxPenaltyElemKernel<BcAlgTraits>::ScalarFluxPenaltyElemKernel(
     shiftedGradOp_(solnOpts.get_shifted_grad_op("pressure")),
     meSCS_(sierra::nalu::MasterElementRepo::get_surface_master_element(BcAlgTraits::elemTopo_))
 {
-  coordinates_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
-  exposedAreaVec_ = metaData.get_field<GenericFieldType>(metaData.side_rank(), "exposed_area_vector");
+  coordinates_ = metaData.get_field<double>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
+  exposedAreaVec_ = metaData.get_field<double>(metaData.side_rank(), "exposed_area_vector");
   
   // extract master elements
   MasterElement* meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(BcAlgTraits::faceTopo_);

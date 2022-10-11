@@ -52,14 +52,14 @@ AssembleRadTransEdgeSolverAlgorithm::AssembleRadTransEdgeSolverAlgorithm(
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
-  edgeAreaVec_ = meta_data.get_field<VectorFieldType>(stk::topology::EDGE_RANK, "edge_area_vector");
+  edgeAreaVec_ = meta_data.get_field<double>(stk::topology::EDGE_RANK, "edge_area_vector");
   // residual contribution
-  coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
-  absorption_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "absorption_coefficient");
-  scattering_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "scattering_coefficient");
-  scalarFlux_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "scalar_flux");
-  radiationSource_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "radiation_source");
-  dualNodalVolume_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
+  coordinates_ = meta_data.get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  absorption_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "absorption_coefficient");
+  scattering_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "scattering_coefficient");
+  scalarFlux_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "scalar_flux");
+  radiationSource_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "radiation_source");
+  dualNodalVolume_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "dual_nodal_volume");
 }
 
 //--------------------------------------------------------------------------

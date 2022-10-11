@@ -43,14 +43,14 @@ MomentumMassBackwardEulerNodeSuppAlg::MomentumMassBackwardEulerNodeSuppAlg(
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
-  VectorFieldType *velocity = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
+  VectorFieldType *velocity = meta_data.get_field<double>(stk::topology::NODE_RANK, "velocity");
   velocityN_ = &(velocity->field_of_state(stk::mesh::StateN));
   velocityNp1_ = &(velocity->field_of_state(stk::mesh::StateNP1));
-  ScalarFieldType *density = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
+  ScalarFieldType *density = meta_data.get_field<double>(stk::topology::NODE_RANK, "density");
   densityN_ = &(density->field_of_state(stk::mesh::StateN));
   densityNp1_ = &(density->field_of_state(stk::mesh::StateNP1));
-  dpdx_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "dpdx");
-  dualNodalVolume_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
+  dpdx_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "dpdx");
+  dualNodalVolume_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "dual_nodal_volume");
   nDim_ = meta_data.spatial_dimension();
 
 }

@@ -118,7 +118,7 @@ SpecificHeatTYkPropertyEvaluator::SpecificHeatTYkPropertyEvaluator(
     massFraction_(NULL)
 {
   // save off mass fraction field
-  massFraction_ = metaData.get_field<GenericFieldType>(stk::topology::NODE_RANK, "mass_fraction");
+  massFraction_ = metaData.get_field<double>(stk::topology::NODE_RANK, "mass_fraction");
 
 }
 
@@ -190,7 +190,7 @@ SpecificHeatConstCpkPropertyEvaluator::SpecificHeatConstCpkPropertyEvaluator(
     massFraction_(NULL)
 {
   // save off mass fraction field
-  massFraction_ = metaData.get_field<GenericFieldType>(stk::topology::NODE_RANK, "mass_fraction");
+  massFraction_ = metaData.get_field<double>(stk::topology::NODE_RANK, "mass_fraction");
 
   // save off Cp_k as vector
   cpVec_.resize(cpVecSize_);

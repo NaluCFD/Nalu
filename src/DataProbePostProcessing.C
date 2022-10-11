@@ -497,8 +497,9 @@ DataProbePostProcessing::setup()
         stk::mesh::Part *probePart = probeInfo->part_[p];
         // everyone needs coordinates to be registered
         VectorFieldType *coordinates 
-          =  &(metaData.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates"));
+          =  &(metaData.declare_field<double>(stk::topology::NODE_RANK, "coordinates"));
         stk::mesh::put_field_on_mesh(*coordinates, *probePart, nDim, nullptr);
+        stk::io::set_field_output_type(*coordinates, stk::io::FieldOutputType::VECTOR_3D);
         // now the general set of fields for this probe
         for ( size_t j = 0; j < probeSpec->fieldInfo_.size(); ++j ) 
           register_field(probeSpec->fieldInfo_[j].first, probeSpec->fieldInfo_[j].second, metaData, probePart);
@@ -604,7 +605,7 @@ DataProbePostProcessing::initialize()
   
   // populate values for coord; probe stays the same place
   // FIXME: worry about mesh motion (if the probe moves around?)
-  VectorFieldType *coordinates = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates");
+  VectorFieldType *coordinates = metaData.get_field<double>(stk::topology::NODE_RANK, "coordinates");
 
   const int nDim = metaData.spatial_dimension();
   for ( size_t idps = 0; idps < dataProbeSpecInfo_.size(); ++idps ) {
@@ -765,12 +766,13 @@ DataProbePostProcessing::register_field(
 {
   // check for velocity as this is the only current vector supported
   if ( fieldName.find("velocity") != std::string::npos ) { //FIXME: require FieldType as in InputOutpu and TurbAverga
-    VectorFieldType *someVelocity = &(metaData.declare_field<VectorFieldType>(stk::topology::NODE_RANK, fieldName));
+    VectorFieldType *someVelocity = &(metaData.declare_field<double>(stk::topology::NODE_RANK, fieldName));
     stk::mesh::put_field_on_mesh(*someVelocity, *part, fieldSize, nullptr);
+    stk::io::set_field_output_type(*someVelocity, stk::io::FieldOutputType::VECTOR_3D);
   }
   else {
-    stk::mesh::Field<double, stk::mesh::SimpleArrayTag> *toField 
-      = &(metaData.declare_field< stk::mesh::Field<double, stk::mesh::SimpleArrayTag> >(stk::topology::NODE_RANK, fieldName));
+    stk::mesh::Field<double> *toField
+      = &(metaData.declare_field<double>(stk::topology::NODE_RANK, fieldName));
     stk::mesh::put_field_on_mesh(*toField, *part, fieldSize, nullptr);
   }
 }
@@ -873,7 +875,7 @@ DataProbePostProcessing::provide_output(
   stk::mesh::MetaData &metaData = realm_.meta_data();
   stk::mesh::BulkData &bulkData = realm_.bulk_data();
   VectorFieldType *coordinates 
-    = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates");
+    = metaData.get_field<double>(stk::topology::NODE_RANK, "coordinates");
   
   const int nDim = metaData.spatial_dimension();
  

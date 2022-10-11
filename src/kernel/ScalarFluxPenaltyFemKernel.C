@@ -39,7 +39,7 @@ ScalarFluxPenaltyFemKernel<BcAlgTraits>::ScalarFluxPenaltyFemKernel(
     shiftedGradOp_(solnOpts.get_shifted_grad_op(scalarQ->name())),
     meFEM_(sierra::nalu::MasterElementRepo::get_fem_master_element(BcAlgTraits::elemTopo_))
 {
-  coordinates_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
+  coordinates_ = metaData.get_field<double>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
   
   // extract master elements
   MasterElement* meFC = sierra::nalu::MasterElementRepo::get_fem_master_element(BcAlgTraits::faceTopo_);

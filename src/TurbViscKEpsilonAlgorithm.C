@@ -42,10 +42,10 @@ TurbViscKEpsilonAlgorithm::TurbViscKEpsilonAlgorithm(
 
   stk::mesh::MetaData & meta_data = realm_.meta_data();
 
-  tke_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_ke");
-  eps_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_dissipation");
-  density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
-  tvisc_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_viscosity");
+  tke_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "turbulent_ke");
+  eps_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "turbulent_dissipation");
+  density_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "density");
+  tvisc_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "turbulent_viscosity");
 }
 
 //--------------------------------------------------------------------------

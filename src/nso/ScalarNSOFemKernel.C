@@ -33,21 +33,18 @@ ScalarNSOFemKernel<AlgTraits>::ScalarNSOFemKernel(
     shiftedGradOp_(solnOpts.get_shifted_grad_op(scalarQ->name()))
 {
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
-  ScalarFieldType *density = metaData.get_field<ScalarFieldType>(
-    stk::topology::NODE_RANK, "density");
+  ScalarFieldType *density = metaData.get_field<double>(stk::topology::NODE_RANK, "density");
 
   scalarQNp1_ = &(scalarQ->field_of_state(stk::mesh::StateNP1));
   densityNp1_ = &(density->field_of_state(stk::mesh::StateNP1));
 
   if (solnOpts.does_mesh_move())
-    velocityRTM_ = metaData.get_field<VectorFieldType>(
-      stk::topology::NODE_RANK, "velocity_rtm");
+    velocityRTM_ = metaData.get_field<double>(stk::topology::NODE_RANK, "velocity_rtm");
   else
-    velocityRTM_ = metaData.get_field<VectorFieldType>(
-      stk::topology::NODE_RANK, "velocity");
+    velocityRTM_ = metaData.get_field<double>(stk::topology::NODE_RANK, "velocity");
 
   // extract field not required in execute()
-  VectorFieldType *coordinates = metaData.get_field<VectorFieldType>(
+  VectorFieldType *coordinates = metaData.get_field<double>(
     stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
 
   // extract master element

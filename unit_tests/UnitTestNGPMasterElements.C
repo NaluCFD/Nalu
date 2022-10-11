@@ -22,7 +22,7 @@
 #include <UnitTestUtils.h>
 
 using clock_type = std::chrono::steady_clock;
-using VectorFieldType = stk::mesh::Field<double, stk::mesh::Cartesian>;
+using VectorFieldType = stk::mesh::Field<double>;
 //-------------------------------------------------------------------------
 
 namespace {
@@ -39,6 +39,7 @@ TEST(MasterElementFunctions, generic_grad_op_3d_hex_27)
   stk::mesh::MeshBuilder meshBuilder(MPI_COMM_WORLD);
   meshBuilder.set_spatial_dimension(3);
   auto bulk = meshBuilder.create();
+  bulk->mesh_meta_data().use_simple_fields();
 
   stk::mesh::Entity elem = unit_test_utils::create_one_reference_element(*bulk, stk::topology::HEXAHEDRON_27);
   const auto* node_rels = bulk->begin_nodes(elem);
@@ -191,6 +192,7 @@ TEST(Hex27SCV, detj)
   stk::mesh::MeshBuilder meshBuilder(MPI_COMM_WORLD);
   meshBuilder.set_spatial_dimension(3);
   auto bulk = meshBuilder.create();
+  bulk->mesh_meta_data().use_simple_fields();
 
   stk::mesh::Entity elem = unit_test_utils::create_one_reference_element(*bulk, stk::topology::HEXAHEDRON_27);
   const auto* node_rels = bulk->begin_nodes(elem);
@@ -272,6 +274,7 @@ TEST(Hex27SCS, area_vec)
   stk::mesh::MeshBuilder meshBuilder(MPI_COMM_WORLD);
   meshBuilder.set_spatial_dimension(3);
   auto bulk = meshBuilder.create();
+  bulk->mesh_meta_data().use_simple_fields();
 
   stk::mesh::Entity elem = unit_test_utils::create_one_reference_element(*bulk, stk::topology::HEXAHEDRON_27);
   const auto* node_rels = bulk->begin_nodes(elem);

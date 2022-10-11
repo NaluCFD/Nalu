@@ -55,17 +55,17 @@ AssembleMomentumElemSolverAlgorithm::AssembleMomentumElemSolverAlgorithm(
   // save off data
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   if ( meshMotion_ )
-    velocityRTM_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity_rtm");
+    velocityRTM_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "velocity_rtm");
   else
-    velocityRTM_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
-  velocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
-  coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
-  dudx_ = meta_data.get_field<GenericFieldType>(stk::topology::NODE_RANK, "dudx");
-  density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
+    velocityRTM_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "velocity");
+  velocity_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "velocity");
+  coordinates_ = meta_data.get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  dudx_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "dudx");
+  density_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "density");
   const std::string viscName = realm.is_turbulent()
     ? "effective_viscosity_u" : "viscosity";
-  viscosity_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, viscName);
-  massFlowRate_ = meta_data.get_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "mass_flow_rate_scs");
+  viscosity_ = meta_data.get_field<double>(stk::topology::NODE_RANK, viscName);
+  massFlowRate_ = meta_data.get_field<double>(stk::topology::ELEMENT_RANK, "mass_flow_rate_scs");
 
   // create the peclet blending function
   pecletFunction_ = eqSystem->create_peclet_function<double>(velocity_->name());

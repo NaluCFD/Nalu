@@ -45,8 +45,7 @@ VolumeOfFluidMassElemKernel<AlgTraits>::VolumeOfFluidMassElemKernel(
   else
     vofNm1_ = &(vof->field_of_state(stk::mesh::StateNM1));
 
-  coordinates_ = metaData.get_field<VectorFieldType>(
-    stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
+  coordinates_ = metaData.get_field<double>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
 
   MasterElement *meSCV = sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_);
 

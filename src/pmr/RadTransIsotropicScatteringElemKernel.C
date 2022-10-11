@@ -34,8 +34,8 @@ RadTransIsotropicScatteringElemKernel<AlgTraits>::RadTransIsotropicScatteringEle
 {
   // save off fields
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
-  scalarFlux_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "scalar_flux");
-  scattering_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "scattering_coefficient");
+  scalarFlux_ = metaData.get_field<double>(stk::topology::NODE_RANK, "scalar_flux");
+  scattering_ = metaData.get_field<double>(stk::topology::NODE_RANK, "scattering_coefficient");
  
   MasterElement *meSCV = sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_);
 

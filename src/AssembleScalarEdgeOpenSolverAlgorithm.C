@@ -52,8 +52,8 @@ AssembleScalarEdgeOpenSolverAlgorithm::AssembleScalarEdgeOpenSolverAlgorithm(
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
-  coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
-  openMassFlowRate_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "open_mass_flow_rate");
+  coordinates_ = meta_data.get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  openMassFlowRate_ = meta_data.get_field<double>(meta_data.side_rank(), "open_mass_flow_rate");
 }
 
 //--------------------------------------------------------------------------

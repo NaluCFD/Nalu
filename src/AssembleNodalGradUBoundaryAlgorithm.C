@@ -60,8 +60,8 @@ AssembleNodalGradUBoundaryAlgorithm::execute()
   const int nDim = meta_data.spatial_dimension();
 
   // extract fields
-  GenericFieldType *exposedAreaVec = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");
-  ScalarFieldType *dualNodalVolume = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
+  GenericFieldType *exposedAreaVec = meta_data.get_field<double>(meta_data.side_rank(), "exposed_area_vector");
+  ScalarFieldType *dualNodalVolume = meta_data.get_field<double>(stk::topology::NODE_RANK, "dual_nodal_volume");
 
   // nodal fields to gather; gather everything other than what we are assembling
   std::vector<double> ws_vectorQ;

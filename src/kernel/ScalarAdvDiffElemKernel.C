@@ -38,10 +38,8 @@ ScalarAdvDiffElemKernel<AlgTraits>::ScalarAdvDiffElemKernel(
 {
   // Save of required fields
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
-  coordinates_ = metaData.get_field<VectorFieldType>(
-    stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
-  massFlowRate_ = metaData.get_field<GenericFieldType>(
-    stk::topology::ELEMENT_RANK, "mass_flow_rate_scs");
+  coordinates_ = metaData.get_field<double>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
+  massFlowRate_ = metaData.get_field<double>(stk::topology::ELEMENT_RANK, "mass_flow_rate_scs");
 
   MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(AlgTraits::topo_);
 

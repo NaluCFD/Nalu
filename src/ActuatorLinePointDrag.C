@@ -399,18 +399,18 @@ ActuatorLinePointDrag::execute()
 
   // extract fields
   VectorFieldType *coordinates
-    = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
-  VectorFieldType *velocity = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
+    = metaData.get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  VectorFieldType *velocity = metaData.get_field<double>(stk::topology::NODE_RANK, "velocity");
   VectorFieldType *actuator_source
-    = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "actuator_source");
+    = metaData.get_field<double>(stk::topology::NODE_RANK, "actuator_source");
   VectorFieldType *actuator_source_lhs
-    = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "actuator_source_lhs");
+    = metaData.get_field<double>(stk::topology::NODE_RANK, "actuator_source_lhs");
   ScalarFieldType *density
-    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
+    = metaData.get_field<double>(stk::topology::NODE_RANK, "density");
   // deal with proper viscosity
   const std::string viscName = realm_.is_turbulent() ? "effective_viscosity" : "viscosity";
   ScalarFieldType *viscosity
-    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, viscName);
+    = metaData.get_field<double>(stk::topology::NODE_RANK, viscName);
 
   // fixed size scratch
   std::vector<double> ws_pointGasVelocity(nDim);
@@ -531,7 +531,7 @@ ActuatorLinePointDrag::populate_candidate_elements()
   const int nDim = metaData.spatial_dimension();
 
   // fields
-  VectorFieldType *coordinates = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  VectorFieldType *coordinates = metaData.get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
 
   // point data structures
   Point minCorner, maxCorner;
@@ -790,7 +790,7 @@ ActuatorLinePointDrag::complete_search()
 
   // extract fields
   VectorFieldType *coordinates
-    = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+    = metaData.get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
 
   // now proceed with the standard search
   std::vector<std::pair<boundingSphere::second_type, boundingElementBox::second_type> >::const_iterator ii;

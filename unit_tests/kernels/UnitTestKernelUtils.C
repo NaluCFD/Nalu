@@ -627,7 +627,7 @@ void calc_mass_flow_rate_scs(
     });
 }
 
-void calc_projected_nodal_gradient_interior(
+void calc_scalar_projected_nodal_gradient_interior(
   const stk::mesh::BulkData& bulk,
   const stk::topology& topo,
   const VectorFieldType& coordinates,
@@ -704,7 +704,7 @@ void calc_projected_nodal_gradient_interior(
   });
 }
 
-void calc_projected_nodal_gradient_interior(
+void calc_vector_projected_nodal_gradient_interior(
   const stk::mesh::BulkData& bulk,
   const stk::topology& topo,
   const VectorFieldType& coordinates,
@@ -783,7 +783,7 @@ void calc_projected_nodal_gradient_interior(
   });
 }
 
-void calc_projected_nodal_gradient_boundary(
+void calc_scalar_projected_nodal_gradient_boundary(
   const stk::mesh::BulkData& bulk,
   const stk::topology& topo,
   const VectorFieldType& coordinates,
@@ -855,7 +855,7 @@ void calc_projected_nodal_gradient_boundary(
   });
 }
 
-void calc_projected_nodal_gradient_boundary(
+void calc_vector_projected_nodal_gradient_boundary(
   const stk::mesh::BulkData& bulk,
   const stk::topology& topo,
   const VectorFieldType& coordinates,
@@ -984,7 +984,7 @@ void calc_dual_nodal_volume(
   });
 }
 
-void calc_projected_nodal_gradient(
+void calc_scalar_projected_nodal_gradient(
   const stk::mesh::BulkData& bulk,
   const stk::topology& topo,
   const VectorFieldType& coordinates,
@@ -1002,15 +1002,15 @@ void calc_projected_nodal_gradient(
     stk::mesh::parallel_sum(bulk, {&dnv});
   }
 
-  calc_projected_nodal_gradient_interior(bulk, topo, coordinates, dnv, scalarField, gradField);
-  calc_projected_nodal_gradient_boundary(bulk, topo.side_topology(0), coordinates, dnv, scalarField, gradField);
+  calc_scalar_projected_nodal_gradient_interior(bulk, topo, coordinates, dnv, scalarField, gradField);
+  calc_scalar_projected_nodal_gradient_boundary(bulk, topo.side_topology(0), coordinates, dnv, scalarField, gradField);
   if (bulk.parallel_size() > 1) {
     stk::mesh::parallel_sum(bulk, {&gradField});
   }
 
 }
 
-void calc_projected_nodal_gradient(
+void calc_vector_projected_nodal_gradient(
   const stk::mesh::BulkData& bulk,
   const stk::topology& topo,
   const VectorFieldType& coordinates,
@@ -1028,8 +1028,8 @@ void calc_projected_nodal_gradient(
   }
 
   stk::mesh::field_fill(0.0, gradField);
-  calc_projected_nodal_gradient_interior(bulk, topo, coordinates, dnv, vectorField, gradField);
-  calc_projected_nodal_gradient_boundary(bulk, topo.side_topology(0), coordinates, dnv, vectorField, gradField);
+  calc_vector_projected_nodal_gradient_interior(bulk, topo, coordinates, dnv, vectorField, gradField);
+  calc_vector_projected_nodal_gradient_boundary(bulk, topo.side_topology(0), coordinates, dnv, vectorField, gradField);
   if (bulk.parallel_size() > 1) {
     stk::mesh::parallel_sum(bulk, {&gradField});
   }

@@ -39,12 +39,13 @@ namespace
     meshBuilder.set_spatial_dimension(dim);
     auto bulk = meshBuilder.create();
     auto& meta = bulk->mesh_meta_data();
+    meta.use_simple_fields();
 
     auto elem = unit_test_utils::create_one_reference_element(*bulk, topo);
     const stk::mesh::Entity* elem_node_rels = bulk->begin_nodes(elem);
     auto* meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(topo);
 
-    using VectorFieldType = stk::mesh::Field<double, stk::mesh::Cartesian>;
+    using VectorFieldType = stk::mesh::Field<double>;
     const VectorFieldType& coordField = *static_cast<const VectorFieldType*>(meta.coordinate_field());
 
     // perturb the reference element

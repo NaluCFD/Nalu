@@ -48,13 +48,13 @@ SimpleErrorIndicatorScalarElemAlgorithm::SimpleErrorIndicatorScalarElemAlgorithm
 {
    // extract fields; nodal
   stk::mesh::MetaData & meta_data = realm_.meta_data();
-  coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  coordinates_ = meta_data.get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
 
   velocity_ = scalarQ;
   dudx_ = dqdx;
   nUnk_ = 1;
 
-  errorIndicatorField_ = meta_data.get_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "error_indicator");
+  errorIndicatorField_ = meta_data.get_field<double>(stk::topology::ELEMENT_RANK, "error_indicator");
 }
 
 //--------------------------------------------------------------------------

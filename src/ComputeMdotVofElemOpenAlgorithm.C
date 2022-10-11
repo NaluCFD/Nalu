@@ -58,21 +58,21 @@ ComputeMdotVofElemOpenAlgorithm::ComputeMdotVofElemOpenAlgorithm(
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   if ( solnOpts.does_mesh_move() )
-    velocityRTM_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity_rtm");
+    velocityRTM_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "velocity_rtm");
   else
-    velocityRTM_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
-  Gpdx_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "dpdx");
-  coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
-  pressure_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure");
-  density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
-  interfaceCurvature_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "interface_curvature");
-  surfaceTension_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "surface_tension");
-  vof_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "volume_of_fluid");
-  exposedAreaVec_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");
-  dynamicPressure_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "dynamic_pressure");
-  openMassFlowRate_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "open_mass_flow_rate");
-  openVolumeFlowRate_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "open_volume_flow_rate");
-  pressureBc_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure_bc");
+    velocityRTM_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "velocity");
+  Gpdx_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "dpdx");
+  coordinates_ = meta_data.get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  pressure_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "pressure");
+  density_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "density");
+  interfaceCurvature_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "interface_curvature");
+  surfaceTension_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "surface_tension");
+  vof_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "volume_of_fluid");
+  exposedAreaVec_ = meta_data.get_field<double>(meta_data.side_rank(), "exposed_area_vector");
+  dynamicPressure_ = meta_data.get_field<double>(meta_data.side_rank(), "dynamic_pressure");
+  openMassFlowRate_ = meta_data.get_field<double>(meta_data.side_rank(), "open_mass_flow_rate");
+  openVolumeFlowRate_ = meta_data.get_field<double>(meta_data.side_rank(), "open_volume_flow_rate");
+  pressureBc_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "pressure_bc");
   gravity_ = realm_.solutionOptions_->gravity_;
 }
 

@@ -35,8 +35,8 @@ MomentumMassFemKernel<AlgTraits>::MomentumMassFemKernel(
 {
   // Save of required fields
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
-  coordinates_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
-  Gjp_ =  metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "dpdx");
+  coordinates_ = metaData.get_field<double>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
+  Gjp_ =  metaData.get_field<double>(stk::topology::NODE_RANK, "dpdx");
   
   velocityNp1_ = &(velocity->field_of_state(stk::mesh::StateNP1));
   velocityN_ = &(velocity->field_of_state(stk::mesh::StateN));

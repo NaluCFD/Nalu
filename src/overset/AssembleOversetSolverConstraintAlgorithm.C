@@ -59,8 +59,8 @@ AssembleOversetSolverConstraintAlgorithm::AssembleOversetSolverConstraintAlgorit
 
   // extract fields (only used for density scaling)
   stk::mesh::MetaData & meta_data = realm_.meta_data();
-  density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
-  dualNodalVolume_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
+  density_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "density");
+  dualNodalVolume_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "dual_nodal_volume");
   if ( densityScaling ) {
     ghostFieldVec_.push_back(density_);
     ghostFieldVec_.push_back(dualNodalVolume_);    

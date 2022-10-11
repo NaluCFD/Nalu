@@ -40,15 +40,15 @@ ScalarOpenAdvFemKernel<BcAlgTraits>::ScalarOpenAdvFemKernel(
     meFEM_(sierra::nalu::MasterElementRepo::get_fem_master_element(BcAlgTraits::elemTopo_))
 {
   // save off fields
-  vrtmL_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "vrtm_lagged");
-  GjpL_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "dpdx_lagged");
-  pressure_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure");
-  pressureBc_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure_bc");
-  density_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
-  dynamicPressure_ = metaData.get_field<GenericFieldType>(metaData.side_rank(), "dynamic_pressure");
+  vrtmL_ = metaData.get_field<double>(stk::topology::NODE_RANK, "vrtm_lagged");
+  GjpL_ = metaData.get_field<double>(stk::topology::NODE_RANK, "dpdx_lagged");
+  pressure_ = metaData.get_field<double>(stk::topology::NODE_RANK, "pressure");
+  pressureBc_ = metaData.get_field<double>(stk::topology::NODE_RANK, "pressure_bc");
+  density_ = metaData.get_field<double>(stk::topology::NODE_RANK, "density");
+  dynamicPressure_ = metaData.get_field<double>(metaData.side_rank(), "dynamic_pressure");
     
   // extract field not required in execute()
-  VectorFieldType *coordinates = metaData.get_field<VectorFieldType>(
+  VectorFieldType *coordinates = metaData.get_field<double>(
     stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
 
   // extract master elements

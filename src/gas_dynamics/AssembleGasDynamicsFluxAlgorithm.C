@@ -64,11 +64,11 @@ AssembleGasDynamicsFluxAlgorithm::AssembleGasDynamicsFluxAlgorithm(
   // save off mising fields
   stk::mesh::MetaData & metaData = realm_.meta_data();
   if ( realm_.does_mesh_move() )
-    velocityRTM_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity_rtm");
+    velocityRTM_ = metaData.get_field<double>(stk::topology::NODE_RANK, "velocity_rtm");
   else
-    velocityRTM_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
-  edgeAreaVec_ = metaData.get_field<VectorFieldType>(stk::topology::EDGE_RANK, "edge_area_vector");
-  coordinates_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+    velocityRTM_ = metaData.get_field<double>(stk::topology::NODE_RANK, "velocity");
+  edgeAreaVec_ = metaData.get_field<double>(stk::topology::EDGE_RANK, "edge_area_vector");
+  coordinates_ = metaData.get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
 }
 
 //--------------------------------------------------------------------------

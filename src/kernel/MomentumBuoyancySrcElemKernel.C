@@ -33,11 +33,9 @@ MomentumBuoyancySrcElemKernel<AlgTraits>::MomentumBuoyancySrcElemKernel(
     ipNodeMap_(sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_)->ipNodeMap())
 {
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
-  ScalarFieldType *density = metaData.get_field<ScalarFieldType>(
-    stk::topology::NODE_RANK, "density");
+  ScalarFieldType *density = metaData.get_field<double>(stk::topology::NODE_RANK, "density");
   densityNp1_ = &(density->field_of_state(stk::mesh::StateNP1));
-  coordinates_ = metaData.get_field<VectorFieldType>(
-    stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
+  coordinates_ = metaData.get_field<double>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
   
   const std::array<double,3>& solnOptsGravity = solnOpts.get_gravity_vector();
   for (int i = 0; i < AlgTraits::nDim_; i++)

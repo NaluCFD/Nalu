@@ -36,14 +36,10 @@ TurbKineticEnergyRodiSrcElemKernel<AlgTraits>::TurbKineticEnergyRodiSrcElemKerne
 {
   // save off fields
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
-  coordinates_ = metaData.get_field<VectorFieldType>(
-    stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
-  dhdx_ = metaData.get_field<VectorFieldType>(
-    stk::topology::NODE_RANK, "dhdx");
-  specificHeat_ = metaData.get_field<ScalarFieldType>(
-    stk::topology::NODE_RANK, "specific_heat");
-  tvisc_ = metaData.get_field<ScalarFieldType>(
-    stk::topology::NODE_RANK, "turbulent_viscosity");
+  coordinates_ = metaData.get_field<double>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
+  dhdx_ = metaData.get_field<double>(stk::topology::NODE_RANK, "dhdx");
+  specificHeat_ = metaData.get_field<double>(stk::topology::NODE_RANK, "specific_heat");
+  tvisc_ = metaData.get_field<double>(stk::topology::NODE_RANK, "turbulent_viscosity");
 
   const std::array<double,3>& solnOptsGravity = solnOpts.get_gravity_vector();
   for (int i = 0; i < AlgTraits::nDim_; i++)

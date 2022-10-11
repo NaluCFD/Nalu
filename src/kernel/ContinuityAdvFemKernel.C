@@ -39,13 +39,12 @@ ContinuityAdvFemKernel<AlgTraits>::ContinuityAdvFemKernel(
   // Save of required fields
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
   std::string velocityRTM_name = meshMotion_ ? "velocity_rtm" : "velocity";
-  velocityRTM_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, velocityRTM_name);
-  Gjp_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "dpdx");
-  pressure_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure");
-  ScalarFieldType *density = metaData.get_field<ScalarFieldType>(
-    stk::topology::NODE_RANK, "density");
+  velocityRTM_ = metaData.get_field<double>(stk::topology::NODE_RANK, velocityRTM_name);
+  Gjp_ = metaData.get_field<double>(stk::topology::NODE_RANK, "dpdx");
+  pressure_ = metaData.get_field<double>(stk::topology::NODE_RANK, "pressure");
+  ScalarFieldType *density = metaData.get_field<double>(stk::topology::NODE_RANK, "density");
   densityNp1_ = &(density->field_of_state(stk::mesh::StateNP1));
-  coordinates_ = metaData.get_field<VectorFieldType>( stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
+  coordinates_ = metaData.get_field<double>( stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
 
   // extract master element
   MasterElement *meFEM = sierra::nalu::MasterElementRepo::get_fem_master_element(AlgTraits::topo_);

@@ -37,12 +37,11 @@ MeshDisplacementElasticElemKernel<AlgTraits>::MeshDisplacementElasticElemKernel(
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
   
   meshDisplacement_ = &(meshDisplacement->field_of_state(stk::mesh::StateNP1));
-  coordinates_ = metaData.get_field<VectorFieldType>(
-    stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
+  coordinates_ = metaData.get_field<double>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
 
 
-  mu_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "lame_mu");
-  lambda_     = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "lame_lambda");
+  mu_ = metaData.get_field<double>(stk::topology::NODE_RANK, "lame_mu");
+  lambda_     = metaData.get_field<double>(stk::topology::NODE_RANK, "lame_lambda");
 
   MasterElement *meSCV = sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_);
   MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(AlgTraits::topo_);

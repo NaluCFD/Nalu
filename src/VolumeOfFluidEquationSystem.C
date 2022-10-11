@@ -200,37 +200,39 @@ VolumeOfFluidEquationSystem::register_nodal_fields(
   const int numStates = realm_.number_of_states();
 
   // register dof; set it as a restart variable
-  vof_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "volume_of_fluid", numStates));
+  vof_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "volume_of_fluid", numStates));
   stk::mesh::put_field_on_mesh(*vof_, *part, nullptr);
   realm_.augment_restart_variable_list("volume_of_fluid");
 
   // smoothed field and smoothed rhs
   if ( smooth_ ) {
-    vofSmoothed_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "volume_of_fluid_smoothed"));
+    vofSmoothed_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "volume_of_fluid_smoothed"));
     stk::mesh::put_field_on_mesh(*vofSmoothed_, *part, nullptr);    
-    smoothedRhs_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "smoothed_rhs"));
+    smoothedRhs_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "smoothed_rhs"));
     stk::mesh::put_field_on_mesh(*smoothedRhs_, *part, nullptr);
   }
 
   // normal
-  interfaceNormal_ =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "interface_normal"));
+  interfaceNormal_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "interface_normal"));
   stk::mesh::put_field_on_mesh(*interfaceNormal_, *part, nDim, nullptr);
+  stk::io::set_field_output_type(*interfaceNormal_, stk::io::FieldOutputType::VECTOR_3D);
 
   // always register curvature and surface tension; let property specification dictate its importance
-  interfaceCurvature_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "interface_curvature"));
+  interfaceCurvature_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "interface_curvature"));
   stk::mesh::put_field_on_mesh(*interfaceCurvature_, *part, nullptr);
-  surfaceTension_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "surface_tension"));
+  surfaceTension_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "surface_tension"));
   stk::mesh::put_field_on_mesh(*surfaceTension_, *part, nullptr);
 
   // push to property list
   realm_.augment_property_map(SURFACE_TENSION_ID, surfaceTension_);
 
   // projected nodal gradient
-  dvofdx_ =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "dvofdx"));
+  dvofdx_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "dvofdx"));
   stk::mesh::put_field_on_mesh(*dvofdx_, *part, nDim, nullptr);
+  stk::io::set_field_output_type(*dvofdx_, stk::io::FieldOutputType::VECTOR_3D);
 
   // delta solution for linear solver; share delta since this is a split system
-  vofTmp_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "pTmp"));
+  vofTmp_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "pTmp"));
   stk::mesh::put_field_on_mesh(*vofTmp_, *part, nullptr);
 
   // make sure all states are properly populated (restart can handle this)
@@ -361,7 +363,7 @@ VolumeOfFluidEquationSystem::register_inflow_bc(
   stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   // register boundary data; vof_bc
-  ScalarFieldType *theBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "volume_of_fluid_bc"));
+  ScalarFieldType *theBcField = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "volume_of_fluid_bc"));
   stk::mesh::put_field_on_mesh(*theBcField, *part, nullptr);
 
   // extract the value for user specified vof and save off the AuxFunction
@@ -460,12 +462,12 @@ VolumeOfFluidEquationSystem::register_open_bc(
     MasterElement *meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(partTopo);
     const int numScsBip = meFC->numIntPoints_;    
     GenericFieldType *volBip 
-      = &(meta_data.declare_field<GenericFieldType>(static_cast<stk::topology::rank_t>(meta_data.side_rank()), 
-                                                   "open_volume_flow_rate"));
+      = &(meta_data.declare_field<double>(static_cast<stk::topology::rank_t>(meta_data.side_rank()),
+                                          "open_volume_flow_rate"));
     stk::mesh::put_field_on_mesh(*volBip, *part, numScsBip, nullptr);
 
     // register boundary data; volume_of_fluid at bc
-    ScalarFieldType *theBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "open_vof_bc"));
+    ScalarFieldType *theBcField = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "open_vof_bc"));
     stk::mesh::put_field_on_mesh(*theBcField, *part, nullptr);
     
     // extract the value for user specified mixFrac and save off the AuxFunction
@@ -553,7 +555,7 @@ VolumeOfFluidEquationSystem::register_wall_bc(
     ScalarFieldType &realVofNp1 = vof_->field_of_state(stk::mesh::StateNP1);  
     
     // register boundary data; vof_bc
-    ScalarFieldType *theBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "vof_bc"));
+    ScalarFieldType *theBcField = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "vof_bc"));
     stk::mesh::put_field_on_mesh(*theBcField, *part, nullptr);
 
     // extract data
@@ -904,9 +906,9 @@ VolumeOfFluidEquationSystem::compute_interface_normal()
 
   // extract nodal fields
   VectorFieldType *coordinates 
-    = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+    = metaData.get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   ScalarFieldType *dualNodalVolume 
-    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
+    = metaData.get_field<double>(stk::topology::NODE_RANK, "dual_nodal_volume");
 
   // interface normal is generally computed based on vofSmoothed_; user defines this
   ScalarFieldType &vofNp1 = (smooth_) ? vofSmoothed_->field_of_state(stk::mesh::StateNone) 
@@ -1063,9 +1065,9 @@ VolumeOfFluidEquationSystem::compute_interface_curvature()
 
   // extract nodal fields
   VectorFieldType *coordinates 
-    = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+    = metaData.get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   ScalarFieldType *dualNodalVolume 
-    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
+    = metaData.get_field<double>(stk::topology::NODE_RANK, "dual_nodal_volume");
   
   // zero assembled interface curvature
   field_fill( metaData, bulkData, 0.0, *interfaceCurvature_, realm_.get_activate_aura());
@@ -1233,9 +1235,9 @@ VolumeOfFluidEquationSystem::smooth_vof_execute()
   
   // extract nodal fields
   VectorFieldType *coordinates 
-    = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+    = metaData.get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   ScalarFieldType *dualNodalVolume 
-    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
+    = metaData.get_field<double>(stk::topology::NODE_RANK, "dual_nodal_volume");
 
   // zero it
   field_fill(metaData, bulkData, 0.0, *smoothedRhs_, realm_.get_activate_aura());

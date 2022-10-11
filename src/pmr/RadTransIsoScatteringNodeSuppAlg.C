@@ -42,9 +42,9 @@ RadTransIsoScatteringNodeSuppAlg::RadTransIsoScatteringNodeSuppAlg(
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
-  scalarFlux_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "scalar_flux");
-  scattering_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "scattering_coefficient");
-  dualNodalVolume_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
+  scalarFlux_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "scalar_flux");
+  scattering_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "scattering_coefficient");
+  dualNodalVolume_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "dual_nodal_volume");
 }
 
 //--------------------------------------------------------------------------

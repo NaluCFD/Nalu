@@ -58,18 +58,18 @@ ComputeMdotVofElemAlgorithm::ComputeMdotVofElemAlgorithm(
    // extract fields; nodal
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   if ( meshMotion_ )
-    velocityRTM_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity_rtm");
+    velocityRTM_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "velocity_rtm");
   else
-    velocityRTM_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
-  Gpdx_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "dpdx");
-  coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
-  pressure_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure");
-  density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
-  interfaceCurvature_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "interface_curvature");
-  surfaceTension_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "surface_tension");
-  vof_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "volume_of_fluid");
-  massFlowRate_ = meta_data.get_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "mass_flow_rate_scs");
-  volumeFlowRate_ = meta_data.get_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "volume_flow_rate_scs");
+    velocityRTM_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "velocity");
+  Gpdx_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "dpdx");
+  coordinates_ = meta_data.get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  pressure_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "pressure");
+  density_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "density");
+  interfaceCurvature_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "interface_curvature");
+  surfaceTension_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "surface_tension");
+  vof_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "volume_of_fluid");
+  massFlowRate_ = meta_data.get_field<double>(stk::topology::ELEMENT_RANK, "mass_flow_rate_scs");
+  volumeFlowRate_ = meta_data.get_field<double>(stk::topology::ELEMENT_RANK, "volume_flow_rate_scs");
   gravity_ = realm_.solutionOptions_->gravity_;
 }
 

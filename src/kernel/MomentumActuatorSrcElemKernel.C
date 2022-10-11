@@ -34,10 +34,10 @@ MomentumActuatorSrcElemKernel<AlgTraits>::MomentumActuatorSrcElemKernel(
 {
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
   actuator_source_
-      = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "actuator_source");
+      = metaData.get_field<double>(stk::topology::NODE_RANK, "actuator_source");
   actuator_source_lhs_
-      = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "actuator_source_lhs");
-  coordinates_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
+      = metaData.get_field<double>(stk::topology::NODE_RANK, "actuator_source_lhs");
+  coordinates_ = metaData.get_field<double>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
 
   MasterElement* meSCV = sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_);
 

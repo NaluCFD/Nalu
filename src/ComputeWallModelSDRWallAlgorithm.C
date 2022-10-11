@@ -50,11 +50,11 @@ ComputeWallModelSDRWallAlgorithm::ComputeWallModelSDRWallAlgorithm(
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
-  coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
-  exposedAreaVec_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");
-  wallFrictionVelocityBip_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "wall_friction_velocity_bip");
-  sdrBc_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "wall_model_sdr_bc");
-  assembledWallArea_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "assembled_wall_area_sdr");
+  coordinates_ = meta_data.get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  exposedAreaVec_ = meta_data.get_field<double>(meta_data.side_rank(), "exposed_area_vector");
+  wallFrictionVelocityBip_ = meta_data.get_field<double>(meta_data.side_rank(), "wall_friction_velocity_bip");
+  sdrBc_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "wall_model_sdr_bc");
+  assembledWallArea_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "assembled_wall_area_sdr");
 }
 
 //--------------------------------------------------------------------------

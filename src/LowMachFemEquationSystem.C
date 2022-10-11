@@ -73,6 +73,9 @@
 #include <stk_util/parallel/ParallelReduce.hpp>
 #include <stk_util/util/SortAndUnique.hpp>
 
+// stk_io
+#include <stk_io/IossBridge.hpp>
+
 // stk_mesh/base/fem
 #include <stk_mesh/base/BulkData.hpp>
 #include <stk_mesh/base/Field.hpp>
@@ -153,18 +156,20 @@ LowMachFemEquationSystem::register_nodal_fields(
 
   // register lagged variables to avoid storage of an (ip) field mDot
   const int nDim = meta_data.spatial_dimension();
-  dpdxL_ =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "dpdx_lagged"));
+  dpdxL_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "dpdx_lagged"));
   stk::mesh::put_field_on_mesh(*dpdxL_, *part, nDim, nullptr);
-  vrtmL_ = &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "vrtm_lagged"));
+  stk::io::set_field_output_type(*dpdxL_, stk::io::FieldOutputType::VECTOR_3D);
+  vrtmL_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "vrtm_lagged"));
   stk::mesh::put_field_on_mesh(*vrtmL_, *part, nDim, nullptr);
- 
+  stk::io::set_field_output_type(*vrtmL_, stk::io::FieldOutputType::VECTOR_3D);
+
   // add properties; denisty needs to be a restart field
   const int numStates = realm_.number_of_states();
-  density_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "density", numStates));
+  density_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "density", numStates));
   stk::mesh::put_field_on_mesh(*density_, *part, nullptr);
   realm_.augment_restart_variable_list("density");
 
-  viscosity_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity"));
+  viscosity_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "viscosity"));
   stk::mesh::put_field_on_mesh(*viscosity_, *part, nullptr);
 
   // push to property list
@@ -187,7 +192,7 @@ LowMachFemEquationSystem::register_nodal_fields(
   // register the fringe nodal field 
   if ( realm_.query_for_overset() && realm_.has_mesh_motion() ) {
     ScalarFieldType *fringeNode
-      = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "fringe_node"));
+      = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "fringe_node"));
     stk::mesh::put_field_on_mesh(*fringeNode, *part, nullptr);
   }
 }
@@ -208,17 +213,17 @@ LowMachFemEquationSystem::register_element_fields(
   if ( realm_.query_for_overset() ) {
     const int sizeOfElemField = 1;
     GenericFieldType *intersectedElement
-      = &(meta_data.declare_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "intersected_element"));
+      = &(meta_data.declare_field<double>(stk::topology::ELEMENT_RANK, "intersected_element"));
     stk::mesh::put_field_on_mesh(*intersectedElement, *part, sizeOfElemField, nullptr);
   }
 
   // provide mean element Peclet and Courant fields; always...
   GenericFieldType *elemReynolds
-    = &(meta_data.declare_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "element_reynolds"));
-  stk::mesh::put_field_on_mesh(*elemReynolds, *part, 1, nullptr);
+    = &(meta_data.declare_field<double>(stk::topology::ELEMENT_RANK, "element_reynolds"));
+  stk::mesh::put_field_on_mesh(*elemReynolds, *part, nullptr);
   GenericFieldType *elemCourant
-    = &(meta_data.declare_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "element_courant"));
-  stk::mesh::put_field_on_mesh(*elemCourant, *part, 1, nullptr);
+    = &(meta_data.declare_field<double>(stk::topology::ELEMENT_RANK, "element_courant"));
+  stk::mesh::put_field_on_mesh(*elemCourant, *part, nullptr);
 }
 
 //--------------------------------------------------------------------------
@@ -241,7 +246,7 @@ LowMachFemEquationSystem::register_open_bc(
 
   // register boundary data
   ScalarFieldType *pressureBC 
-    = &(metaData.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure_bc"));
+    = &(metaData.declare_field<double>(stk::topology::NODE_RANK, "pressure_bc"));
   stk::mesh::put_field_on_mesh(*pressureBC, *part, nullptr);
 
   // algorithm to populate specified pressure
@@ -266,7 +271,7 @@ LowMachFemEquationSystem::register_open_bc(
   // pbip; always register (initial value of zero)
   std::vector<double> zeroVec(numIntPoints,0.0);
   GenericFieldType *pBip 
-    = &(metaData.declare_field<GenericFieldType>(static_cast<stk::topology::rank_t>(metaData.side_rank()), 
+    = &(metaData.declare_field<double>(static_cast<stk::topology::rank_t>(metaData.side_rank()),
                                                  "dynamic_pressure"));
   stk::mesh::put_field_on_mesh(*pBip, *part, numIntPoints, zeroVec.data());
   
@@ -366,7 +371,7 @@ LowMachFemEquationSystem::copy_lagged()
 {
   // copy velocity and projected nodal pressure gradient to a lagged set of fields
   const std::string vrtmName = realm_.does_mesh_move() ? "velocity_rtm" : "velocity";
-  VectorFieldType *vrtm = realm_.meta_data().get_field<VectorFieldType>(stk::topology::NODE_RANK, vrtmName);
+  VectorFieldType *vrtm = realm_.meta_data().get_field<double>(stk::topology::NODE_RANK, vrtmName);
   field_copy(realm_.meta_data(), realm_.bulk_data(), *continuityEqSys_->dpdx_, *dpdxL_, realm_.get_activate_aura());
   field_copy(realm_.meta_data(), realm_.bulk_data(), *vrtm, *vrtmL_, realm_.get_activate_aura());
 }
@@ -527,21 +532,24 @@ MomentumFemEquationSystem::register_nodal_fields(
   const int numStates = realm_.number_of_states();
 
   // register dof; set it as a restart variable
-  velocity_ =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity", numStates));
+  velocity_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "velocity", numStates));
   stk::mesh::put_field_on_mesh(*velocity_, *part, nDim, nullptr);
+  stk::io::set_field_output_type(*velocity_, stk::io::FieldOutputType::VECTOR_3D);
   realm_.augment_restart_variable_list("velocity");
 
   // delta solution for linear solver
-  uTmp_ =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "uTmp"));
+  uTmp_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "uTmp"));
   stk::mesh::put_field_on_mesh(*uTmp_, *part, nDim, nullptr);
+  stk::io::set_field_output_type(*uTmp_, stk::io::FieldOutputType::VECTOR_3D);
 
-  VectorFieldType *coordinates =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates"));
+  VectorFieldType *coordinates =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "coordinates"));
   stk::mesh::put_field_on_mesh(*coordinates, *part, nDim, nullptr);
+  stk::io::set_field_output_type(*coordinates, stk::io::FieldOutputType::VECTOR_3D);
 
-  density_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "density", numStates));
+  density_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "density", numStates));
   stk::mesh::put_field_on_mesh(*density_, *part, nullptr);
  
-  viscosity_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity"));
+  viscosity_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "viscosity"));
   stk::mesh::put_field_on_mesh(*viscosity_, *part, nullptr);
 
   // make sure all states are properly populated (restart can handle this)
@@ -639,8 +647,9 @@ MomentumFemEquationSystem::register_inflow_bc(
   const unsigned nDim = meta_data.spatial_dimension();
 
   // register boundary data; velocity_bc
-  VectorFieldType *theBcField = &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity_bc"));
+  VectorFieldType *theBcField = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "velocity_bc"));
   stk::mesh::put_field_on_mesh(*theBcField, *part, nDim, nullptr);
+  stk::io::set_field_output_type(*theBcField, stk::io::FieldOutputType::VECTOR_3D);
   
   // extract the value for user specified velocity and save off the AuxFunction
   InflowUserData userData = inflowBCData.userData_;
@@ -736,8 +745,9 @@ MomentumFemEquationSystem::register_open_bc(
   
   // register boundary data; open_velocity_bc
   VectorFieldType *theBcField 
-    = &(metaData.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "open_velocity_bc"));
+    = &(metaData.declare_field<double>(stk::topology::NODE_RANK, "open_velocity_bc"));
   stk::mesh::put_field_on_mesh(*theBcField, *part, nDim, nullptr);
+  stk::io::set_field_output_type(*theBcField, stk::io::FieldOutputType::VECTOR_3D);
 
   // extract the value for user specified velocity and save off the AuxFunction
   Velocity ux = userData.u_;
@@ -812,9 +822,10 @@ MomentumFemEquationSystem::register_wall_bc(
   const std::string bcFieldName = anyWallFunctionActivated ? "wall_velocity_bc" : "velocity_bc";
   
   // register boundary data; velocity_bc
-  VectorFieldType *theBcField = &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, bcFieldName));
+  VectorFieldType *theBcField = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, bcFieldName));
   stk::mesh::put_field_on_mesh(*theBcField, *part, nDim, nullptr);
-  
+  stk::io::set_field_output_type(*theBcField, stk::io::FieldOutputType::VECTOR_3D);
+
   // extract the value for user specified velocity and save off the AuxFunction
   AuxFunction *theAuxFunc = NULL;
   std::string velocityName = "velocity";
@@ -978,7 +989,7 @@ MomentumFemEquationSystem::register_initial_condition_fcn(
     std::string fcnName = (*iterName).second;
     
     // save off the field (np1 state)
-    VectorFieldType *velocityNp1 = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
+    VectorFieldType *velocityNp1 = meta_data.get_field<double>(stk::topology::NODE_RANK, "velocity");
     
     // create a few Aux things
     AuxFunction *theAuxFunc = NULL;
@@ -1072,23 +1083,25 @@ ContinuityFemEquationSystem::register_nodal_fields(
   const int nDim = meta_data.spatial_dimension();
 
   // register dof; set it as a restart variable
-  pressure_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure"));
+  pressure_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "pressure"));
   stk::mesh::put_field_on_mesh(*pressure_, *part, nullptr);
   realm_.augment_restart_variable_list("pressure");
 
-  dpdx_ =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "dpdx"));
+  dpdx_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "dpdx"));
   stk::mesh::put_field_on_mesh(*dpdx_, *part, nDim, nullptr);
+  stk::io::set_field_output_type(*dpdx_, stk::io::FieldOutputType::VECTOR_3D);
   
   const int numStates = realm_.number_of_states();
-  density_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "density", numStates));
+  density_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "density", numStates));
   stk::mesh::put_field_on_mesh(*density_, *part, nullptr);
 
   // delta solution for linear solver; share delta with other split systems
-  pTmp_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "pTmp"));
+  pTmp_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "pTmp"));
   stk::mesh::put_field_on_mesh(*pTmp_, *part, nullptr);
  
-  VectorFieldType *coordinates =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates"));
+  VectorFieldType *coordinates =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "coordinates"));
   stk::mesh::put_field_on_mesh(*coordinates, *part, nDim, nullptr);
+  stk::io::set_field_output_type(*coordinates, stk::io::FieldOutputType::VECTOR_3D);
 }
 
 //--------------------------------------------------------------------------
@@ -1136,9 +1149,10 @@ ContinuityFemEquationSystem::register_inflow_bc(
   const unsigned nDim = meta_data.spatial_dimension();
 
   // register boundary data; cont_velocity_bc
-  VectorFieldType *theBcField = &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "cont_velocity_bc"));
+  VectorFieldType *theBcField = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "cont_velocity_bc"));
   stk::mesh::put_field_on_mesh(*theBcField, *part, nDim, nullptr);
-  
+  stk::io::set_field_output_type(*theBcField, stk::io::FieldOutputType::VECTOR_3D);
+
   // extract the value for user specified velocity and save off the AuxFunction
   InflowUserData userData = inflowBCData.userData_;
   std::string velocityName = "velocity";

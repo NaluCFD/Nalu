@@ -37,23 +37,17 @@
  {
    // save off fields
    const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
-   coordinates_ = metaData.get_field<VectorFieldType>(
-     stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
-   VectorFieldType *velocity = metaData.get_field<VectorFieldType>(
-     stk::topology::NODE_RANK, "velocity");
+   coordinates_ = metaData.get_field<double>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
+   VectorFieldType *velocity = metaData.get_field<double>(stk::topology::NODE_RANK, "velocity");
    velocityNp1_ = &(velocity->field_of_state(stk::mesh::StateNP1));
-   tkeNp1_ = metaData.get_field<ScalarFieldType>(
-     stk::topology::NODE_RANK, "turbulent_ke");
-   densityNp1_ = metaData.get_field<ScalarFieldType>(
-     stk::topology::NODE_RANK, "density");
-   tvisc_ = metaData.get_field<ScalarFieldType>(
-     stk::topology::NODE_RANK, "turbulent_viscosity");
-   dualNodalVolume_ = metaData.get_field<ScalarFieldType>(
-     stk::topology::NODE_RANK, "dual_nodal_volume");
-   cEps_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "c_epsilon");
+   tkeNp1_ = metaData.get_field<double>(stk::topology::NODE_RANK, "turbulent_ke");
+   densityNp1_ = metaData.get_field<double>(stk::topology::NODE_RANK, "density");
+   tvisc_ = metaData.get_field<double>(stk::topology::NODE_RANK, "turbulent_viscosity");
+   dualNodalVolume_ = metaData.get_field<double>(stk::topology::NODE_RANK, "dual_nodal_volume");
+   cEps_ = metaData.get_field<double>(stk::topology::NODE_RANK, "c_epsilon");
 
    // low-Re form
-   visc_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity");
+   visc_ = metaData.get_field<double>(stk::topology::NODE_RANK, "viscosity");
 
    MasterElement *meSCV = sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_);
    get_scv_shape_fn_data<AlgTraits>([&](double* ptr){meSCV->shape_fcn(ptr);}, v_shape_function_);

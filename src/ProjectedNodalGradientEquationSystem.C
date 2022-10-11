@@ -150,12 +150,14 @@ ProjectedNodalGradientEquationSystem::register_nodal_fields(
 
   const int nDim = meta_data.spatial_dimension();
 
-  dqdx_ =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, dofName_));
+  dqdx_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, dofName_));
   stk::mesh::put_field_on_mesh(*dqdx_, *part, nDim, nullptr);
+  stk::io::set_field_output_type(*dqdx_, stk::io::FieldOutputType::VECTOR_3D);
 
   // delta solution for linear solver
-  qTmp_ =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, deltaName_));
+  qTmp_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, deltaName_));
   stk::mesh::put_field_on_mesh(*qTmp_, *part, nDim, nullptr);
+  stk::io::set_field_output_type(*qTmp_, stk::io::FieldOutputType::VECTOR_3D);
 }
 
 //--------------------------------------------------------------------------

@@ -50,9 +50,9 @@ PstabErrorIndicatorEdgeAlgorithm::PstabErrorIndicatorEdgeAlgorithm(
 {
   // save off field
   stk::mesh::MetaData & meta_data = realm_.meta_data();
-  coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
-  edgeAreaVec_ = meta_data.get_field<VectorFieldType>(stk::topology::EDGE_RANK, "edge_area_vector");
-  pstabEI_ = meta_data.get_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "error_indicator");
+  coordinates_ = meta_data.get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  edgeAreaVec_ = meta_data.get_field<double>(stk::topology::EDGE_RANK, "edge_area_vector");
+  pstabEI_ = meta_data.get_field<double>(stk::topology::ELEMENT_RANK, "error_indicator");
 }
 
 //--------------------------------------------------------------------------

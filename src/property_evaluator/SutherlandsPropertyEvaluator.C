@@ -196,7 +196,7 @@ SutherlandsYkPropertyEvaluator::SutherlandsYkPropertyEvaluator(
     massFraction_(NULL)
 { 
   // save off mass fraction field
-  massFraction_ = metaData.get_field<GenericFieldType>(stk::topology::NODE_RANK, "mass_fraction");
+  massFraction_ = metaData.get_field<double>(stk::topology::NODE_RANK, "mass_fraction");
 }
 
 //--------------------------------------------------------------------------
@@ -250,7 +250,7 @@ SutherlandsYkTrefPropertyEvaluator::SutherlandsYkTrefPropertyEvaluator(
     tRef_(tRef)
 {  
   // save off mass fraction field
-  massFraction_ = metaData.get_field<GenericFieldType>(stk::topology::NODE_RANK, "mass_fraction");
+  massFraction_ = metaData.get_field<double>(stk::topology::NODE_RANK, "mass_fraction");
 }
 
 //--------------------------------------------------------------------------

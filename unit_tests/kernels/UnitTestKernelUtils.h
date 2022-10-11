@@ -139,7 +139,7 @@ void calc_mass_flow_rate_scs(
   const VectorFieldType&,
   const GenericFieldType&);
 
-void calc_projected_nodal_gradient(
+void calc_scalar_projected_nodal_gradient(
   const stk::mesh::BulkData& bulk,
   const stk::topology& topo,
   const VectorFieldType& coordinates,
@@ -147,7 +147,7 @@ void calc_projected_nodal_gradient(
   const ScalarFieldType& scalarField,
   VectorFieldType& vectorField);
 
-void calc_projected_nodal_gradient(
+void calc_vector_projected_nodal_gradient(
   const stk::mesh::BulkData& bulk,
   const stk::topology& topo,
   const VectorFieldType& coordinates,
@@ -226,6 +226,7 @@ public:
     meshBuilder.set_spatial_dimension(spatialDim_);
     bulk_ = meshBuilder.create();
     meta_ = &bulk_->mesh_meta_data();
+    meta_->use_simple_fields();
   }
 
   virtual ~TestKernelHex8Mesh() {}
@@ -270,22 +271,22 @@ public:
   LowMachKernelHex8Mesh()
     : TestKernelHex8Mesh(),
       velocity_(
-        &meta_->declare_field<VectorFieldType>(
+        &meta_->declare_field<double>(
           stk::topology::NODE_RANK, "velocity",2)),
       dpdx_(
-        &meta_->declare_field<VectorFieldType>(
+        &meta_->declare_field<double>(
           stk::topology::NODE_RANK, "dpdx",2)),
       density_(
-        &meta_->declare_field<ScalarFieldType>(
+        &meta_->declare_field<double>(
           stk::topology::NODE_RANK, "density",2)),
       pressure_(
-        &meta_->declare_field<ScalarFieldType>(
+        &meta_->declare_field<double>(
           stk::topology::NODE_RANK, "pressure",2))
   {
     stk::mesh::put_field_on_mesh(*velocity_, meta_->universal_part(), spatialDim_, nullptr);
     stk::mesh::put_field_on_mesh(*dpdx_, meta_->universal_part(), spatialDim_, nullptr);
-    stk::mesh::put_field_on_mesh(*density_, meta_->universal_part(), 1, nullptr);
-    stk::mesh::put_field_on_mesh(*pressure_, meta_->universal_part(), 1, nullptr);
+    stk::mesh::put_field_on_mesh(*density_, meta_->universal_part(), nullptr);
+    stk::mesh::put_field_on_mesh(*pressure_, meta_->universal_part(), nullptr);
   }
 
   virtual ~LowMachKernelHex8Mesh() {}
@@ -318,23 +319,23 @@ public:
   MomentumKernelHex8Mesh()
     : LowMachKernelHex8Mesh(),
       massFlowRate_(
-        &meta_->declare_field<GenericFieldType>(
+        &meta_->declare_field<double>(
           stk::topology::ELEM_RANK, "mass_flow_rate_scs")),
       viscosity_(
-        &meta_->declare_field<ScalarFieldType>(
+        &meta_->declare_field<double>(
           stk::topology::NODE_RANK, "viscosity")),
       dudx_(
-        &meta_->declare_field<GenericFieldType>(
+        &meta_->declare_field<double>(
           stk::topology::NODE_RANK, "dudx")),
      temperature_(
-        &meta_->declare_field<ScalarFieldType>(
+        &meta_->declare_field<double>(
           stk::topology::NODE_RANK, "temperature"))
   {
     const auto& meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(stk::topology::HEX_8);
     stk::mesh::put_field_on_mesh(*massFlowRate_, meta_->universal_part(), meSCS->numIntPoints_, nullptr);
-    stk::mesh::put_field_on_mesh(*viscosity_, meta_->universal_part(), 1, nullptr);
+    stk::mesh::put_field_on_mesh(*viscosity_, meta_->universal_part(), nullptr);
     stk::mesh::put_field_on_mesh(*dudx_, meta_->universal_part(), spatialDim_ * spatialDim_, nullptr);
-    stk::mesh::put_field_on_mesh(*temperature_, meta_->universal_part(), 1, nullptr);
+    stk::mesh::put_field_on_mesh(*temperature_, meta_->universal_part(), nullptr);
   }
 
   virtual ~MomentumKernelHex8Mesh() {}
@@ -363,22 +364,22 @@ class SSTKernelHex8Mesh : public LowMachKernelHex8Mesh
 public:
   SSTKernelHex8Mesh()
     : LowMachKernelHex8Mesh(),
-      tke_(&meta_->declare_field<ScalarFieldType>(
+      tke_(&meta_->declare_field<double>(
         stk::topology::NODE_RANK, "turbulent_ke")),
-      sdr_(&meta_->declare_field<ScalarFieldType>(
+      sdr_(&meta_->declare_field<double>(
         stk::topology::NODE_RANK, "specific_dissipation_rate")),
-      tvisc_(&meta_->declare_field<ScalarFieldType>(
+      tvisc_(&meta_->declare_field<double>(
         stk::topology::NODE_RANK, "turbulent_viscosity")),
-      maxLengthScale_(&meta_->declare_field<ScalarFieldType>(
+      maxLengthScale_(&meta_->declare_field<double>(
         stk::topology::NODE_RANK, "sst_max_length_scale")),
-      fOneBlend_(&meta_->declare_field<ScalarFieldType>(
+      fOneBlend_(&meta_->declare_field<double>(
         stk::topology::NODE_RANK, "sst_f_one_blending"))
   {
-    stk::mesh::put_field_on_mesh(*tke_, meta_->universal_part(), 1, nullptr);
-    stk::mesh::put_field_on_mesh(*sdr_, meta_->universal_part(), 1, nullptr);
-    stk::mesh::put_field_on_mesh(*tvisc_, meta_->universal_part(), 1, nullptr);
-    stk::mesh::put_field_on_mesh(*maxLengthScale_, meta_->universal_part(), 1, nullptr);
-    stk::mesh::put_field_on_mesh(*fOneBlend_, meta_->universal_part(), 1, nullptr);
+    stk::mesh::put_field_on_mesh(*tke_, meta_->universal_part(), nullptr);
+    stk::mesh::put_field_on_mesh(*sdr_, meta_->universal_part(), nullptr);
+    stk::mesh::put_field_on_mesh(*tvisc_, meta_->universal_part(), nullptr);
+    stk::mesh::put_field_on_mesh(*maxLengthScale_, meta_->universal_part(), nullptr);
+    stk::mesh::put_field_on_mesh(*fOneBlend_, meta_->universal_part(), nullptr);
   }
 
   virtual ~SSTKernelHex8Mesh() {}
@@ -411,15 +412,15 @@ class HybridTurbKernelHex8Mesh : public LowMachKernelHex8Mesh
 public:
   HybridTurbKernelHex8Mesh()
     : LowMachKernelHex8Mesh(),
-      tke_(&meta_->declare_field<ScalarFieldType>(
+      tke_(&meta_->declare_field<double>(
         stk::topology::NODE_RANK, "turbulent_ke")),
-      alpha_(&meta_->declare_field<ScalarFieldType>(
+      alpha_(&meta_->declare_field<double>(
         stk::topology::NODE_RANK, "adaptivity_parameter")),
-      mutij_(&meta_->declare_field<GenericFieldType>(
+      mutij_(&meta_->declare_field<double>(
         stk::topology::NODE_RANK, "tensor_turbulent_viscosity"))
   {
-    stk::mesh::put_field_on_mesh(*tke_, meta_->universal_part(), 1, nullptr);
-    stk::mesh::put_field_on_mesh(*alpha_, meta_->universal_part(), 1, nullptr);
+    stk::mesh::put_field_on_mesh(*tke_, meta_->universal_part(), nullptr);
+    stk::mesh::put_field_on_mesh(*alpha_, meta_->universal_part(), nullptr);
     stk::mesh::put_field_on_mesh(
       *mutij_, meta_->universal_part(), spatialDim_ * spatialDim_, nullptr);
   }
@@ -453,14 +454,14 @@ public:
   HeatCondKernelHex8Mesh()
     : TestKernelHex8Mesh(),
       temperature_(
-        &meta_->declare_field<ScalarFieldType>(
+        &meta_->declare_field<double>(
           stk::topology::NODE_RANK, "temperature",2)),
       thermalCond_(
-        &meta_->declare_field<ScalarFieldType>(
+        &meta_->declare_field<double>(
           stk::topology::NODE_RANK, "thermal_conductivity",2))
   {
-    stk::mesh::put_field_on_mesh(*temperature_, meta_->universal_part(), 1, nullptr);
-    stk::mesh::put_field_on_mesh(*thermalCond_, meta_->universal_part(), 1, nullptr);
+    stk::mesh::put_field_on_mesh(*temperature_, meta_->universal_part(), nullptr);
+    stk::mesh::put_field_on_mesh(*thermalCond_, meta_->universal_part(), nullptr);
   }
 
   void fill_mesh_and_init_fields(bool doPerturb = false)
@@ -487,18 +488,18 @@ class MixtureFractionKernelHex8Mesh : public TestKernelHex8Mesh
 public:
   MixtureFractionKernelHex8Mesh()
     : TestKernelHex8Mesh(),
-    mixFraction_(&meta_->declare_field<ScalarFieldType>(stk::topology::NODE_RANK,
-                                                       "mixture_fraction")),
-    velocity_(&meta_->declare_field<VectorFieldType>(stk::topology::NODE_RANK,
-                                                    "velocity")),
-    density_(&meta_->declare_field<ScalarFieldType>(stk::topology::NODE_RANK,
-                                                   "density")),
-    viscosity_(&meta_->declare_field<ScalarFieldType>(stk::topology::NODE_RANK,
-                                                     "viscosity")),
-    effectiveViscosity_(&meta_->declare_field<ScalarFieldType>(stk::topology::NODE_RANK,
-                                                              "effective_viscosity")),
-    massFlowRate_(&meta_->declare_field<GenericFieldType>(stk::topology::ELEM_RANK,
-                                                         "mass_flow_rate_scs")),
+    mixFraction_(&meta_->declare_field<double>(stk::topology::NODE_RANK,
+                                              "mixture_fraction")),
+    velocity_(&meta_->declare_field<double>(stk::topology::NODE_RANK,
+                                           "velocity")),
+    density_(&meta_->declare_field<double>(stk::topology::NODE_RANK,
+                                          "density")),
+    viscosity_(&meta_->declare_field<double>(stk::topology::NODE_RANK,
+                                            "viscosity")),
+    effectiveViscosity_(&meta_->declare_field<double>(stk::topology::NODE_RANK,
+                                                     "effective_viscosity")),
+    massFlowRate_(&meta_->declare_field<double>(stk::topology::ELEM_RANK,
+                                               "mass_flow_rate_scs")),
 
     znot_(1.0),
     amf_(2.0),
@@ -510,10 +511,10 @@ public:
     viscSecondary_(1.85e-5)
   {
     const auto& meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(stk::topology::HEX_8);
-    stk::mesh::put_field_on_mesh(*mixFraction_, meta_->universal_part(), 1, nullptr);
+    stk::mesh::put_field_on_mesh(*mixFraction_, meta_->universal_part(), nullptr);
     stk::mesh::put_field_on_mesh(*velocity_, meta_->universal_part(), spatialDim_, nullptr);
-    stk::mesh::put_field_on_mesh(*density_, meta_->universal_part(), 1, nullptr);
-    stk::mesh::put_field_on_mesh(*viscosity_, meta_->universal_part(), 1, nullptr);
+    stk::mesh::put_field_on_mesh(*density_, meta_->universal_part(), nullptr);
+    stk::mesh::put_field_on_mesh(*viscosity_, meta_->universal_part(), nullptr);
     stk::mesh::put_field_on_mesh(*massFlowRate_, meta_->universal_part(), meSCS->numIntPoints_, nullptr);
   }
   virtual ~MixtureFractionKernelHex8Mesh() {}
@@ -561,10 +562,10 @@ class ActuatorSourceKernelHex8Mesh : public TestKernelHex8Mesh
 public:
   ActuatorSourceKernelHex8Mesh()
     : TestKernelHex8Mesh(),
-    actuator_source_(&meta_->declare_field<VectorFieldType>(stk::topology::NODE_RANK,
-                                                          "actuator_source")),
-    actuator_source_lhs_(&meta_->declare_field<VectorFieldType>(stk::topology::NODE_RANK,
-                                                           "actuator_source_lhs"))
+    actuator_source_(&meta_->declare_field<double>(stk::topology::NODE_RANK,
+                                                  "actuator_source")),
+    actuator_source_lhs_(&meta_->declare_field<double>(stk::topology::NODE_RANK,
+                                                      "actuator_source_lhs"))
   {
       stk::mesh::put_field_on_mesh(*actuator_source_, meta_->universal_part(), spatialDim_, nullptr);
       stk::mesh::put_field_on_mesh(*actuator_source_lhs_, meta_->universal_part(), spatialDim_, nullptr);

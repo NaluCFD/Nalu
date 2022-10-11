@@ -48,12 +48,12 @@ ScalarOpenAdvElemKernel<BcAlgTraits>::ScalarOpenAdvElemKernel(
 {
   // save off fields
   if ( solnOpts.does_mesh_move() )
-    velocityRTM_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity_rtm");
+    velocityRTM_ = metaData.get_field<double>(stk::topology::NODE_RANK, "velocity_rtm");
   else
-    velocityRTM_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
-  coordinates_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
-  density_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
-  openMassFlowRate_ = metaData.get_field<GenericFieldType>(metaData.side_rank(), "open_mass_flow_rate");
+    velocityRTM_ = metaData.get_field<double>(stk::topology::NODE_RANK, "velocity");
+  coordinates_ = metaData.get_field<double>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
+  density_ = metaData.get_field<double>(stk::topology::NODE_RANK, "density");
+  openMassFlowRate_ = metaData.get_field<double>(metaData.side_rank(), "open_mass_flow_rate");
   
   // extract master elements
   MasterElement *meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(BcAlgTraits::faceTopo_);

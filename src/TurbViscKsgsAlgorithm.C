@@ -55,21 +55,21 @@ TurbViscKsgsAlgorithm::TurbViscKsgsAlgorithm(
 
   stk::mesh::MetaData & meta_data = realm_.meta_data();
 
-  tke_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_ke");
-  density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
-  tvisc_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_viscosity");
-  dualNodalVolume_ =meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
-  cmuEps_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "c_mu_epsilon");
+  tke_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "turbulent_ke");
+  density_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "density");
+  tvisc_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "turbulent_viscosity");
+  dualNodalVolume_ =meta_data.get_field<double>(stk::topology::NODE_RANK, "dual_nodal_volume");
+  cmuEps_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "c_mu_epsilon");
 
   // low-Re form
-  cEps_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "c_epsilon");
-  visc_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity");
+  cEps_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "c_epsilon");
+  visc_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "viscosity");
   // assign required variables that may not be registered to an arbitrary field
-  minDistance_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity");
-  dsqrtkSq_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity");
+  minDistance_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "viscosity");
+  dsqrtkSq_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "viscosity");
   if (realm_.solutionOptions_->turbulenceModel_ == LRKSGS ) {
-    minDistance_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "minimum_distance_to_wall");
-    dsqrtkSq_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dsqrtk_dx_sq");
+    minDistance_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "minimum_distance_to_wall");
+    dsqrtkSq_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "dsqrtk_dx_sq");
     lrksgsfac_ = 1.0;
   }
 }

@@ -34,10 +34,10 @@ ScalarPngFemKernel<AlgTraits>::ScalarPngFemKernel(
 {
   // Save of required fields
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
-  scalarQ_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, independentDofName);
-  Gjq_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, dofName);
+  scalarQ_ = metaData.get_field<double>(stk::topology::NODE_RANK, independentDofName);
+  Gjq_ = metaData.get_field<double>(stk::topology::NODE_RANK, dofName);
 
-  coordinates_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
+  coordinates_ = metaData.get_field<double>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
 
   // extract master element
   MasterElement *meFEM = sierra::nalu::MasterElementRepo::get_fem_master_element(AlgTraits::topo_);

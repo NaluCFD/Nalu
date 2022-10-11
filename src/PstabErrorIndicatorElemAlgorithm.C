@@ -47,8 +47,8 @@ PstabErrorIndicatorElemAlgorithm::PstabErrorIndicatorElemAlgorithm(
 {
    // extract fields; nodal
   stk::mesh::MetaData & meta_data = realm_.meta_data();
-  coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
-  pstabEI_ = meta_data.get_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "error_indicator");
+  coordinates_ = meta_data.get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  pstabEI_ = meta_data.get_field<double>(stk::topology::ELEMENT_RANK, "error_indicator");
 }
 
 //--------------------------------------------------------------------------

@@ -46,7 +46,7 @@ AssembleGasDynamicsSymmetryAlgorithm::AssembleGasDynamicsSymmetryAlgorithm(
 {
   // save off mising fields
   stk::mesh::MetaData & metaData = realm_.meta_data();
-  exposedAreaVec_ = metaData.get_field<GenericFieldType>(metaData.side_rank(), "exposed_area_vector");
+  exposedAreaVec_ = metaData.get_field<double>(metaData.side_rank(), "exposed_area_vector");
 }
 
 //--------------------------------------------------------------------------

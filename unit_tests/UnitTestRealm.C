@@ -157,6 +157,7 @@ NaluTest::create_realm(const YAML::Node& realm_node, const std::string realm_typ
   stk::mesh::MeshBuilder meshBuilder(comm_);
   meshBuilder.set_spatial_dimension(spatialDim_);
   realm->bulkData_ = meshBuilder.create();
+  realm->bulkData_->mesh_meta_data().use_simple_fields();
 
   sim_.realms_->realmVector_.push_back(realm);
 
@@ -194,7 +195,7 @@ TEST(NaluMock, test_nalu_mock)
 
   // 4. Create necessary fields...
   ScalarFieldType& maxLengthScaleField =
-      realm.meta_data().declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "sst_max_length_scale");
+      realm.meta_data().declare_field<double>(stk::topology::NODE_RANK, "sst_max_length_scale");
   double zero = 0.0;
   stk::mesh::put_field_on_mesh(maxLengthScaleField, realm.meta_data().universal_part(), &zero);
 

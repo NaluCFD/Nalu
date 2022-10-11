@@ -49,11 +49,11 @@ ScalarMassBDF2NodeSuppAlg::ScalarMassBDF2NodeSuppAlg(
   scalarQNm1_ = &(scalarQ->field_of_state(stk::mesh::StateNM1));
   scalarQN_ = &(scalarQ->field_of_state(stk::mesh::StateN));
   scalarQNp1_ = &(scalarQ->field_of_state(stk::mesh::StateNP1));
-  ScalarFieldType *density = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
+  ScalarFieldType *density = meta_data.get_field<double>(stk::topology::NODE_RANK, "density");
   densityNm1_ = &(density->field_of_state(stk::mesh::StateNM1));
   densityN_ = &(density->field_of_state(stk::mesh::StateN));
   densityNp1_ = &(density->field_of_state(stk::mesh::StateNP1));
-  dualNodalVolume_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
+  dualNodalVolume_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "dual_nodal_volume");
 }
 
 //--------------------------------------------------------------------------

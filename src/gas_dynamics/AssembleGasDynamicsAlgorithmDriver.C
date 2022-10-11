@@ -60,7 +60,7 @@ AssembleGasDynamicsAlgorithmDriver::pre_work()
   stk::mesh::BulkData & bulkData = realm_.bulk_data();
 
   // zero
-  GenericFieldType *rhsGasDyn = metaData.get_field<GenericFieldType>(stk::topology::NODE_RANK, "rhs_gas_dynamics");
+  GenericFieldType *rhsGasDyn = metaData.get_field<double>(stk::topology::NODE_RANK, "rhs_gas_dynamics");
   field_fill( metaData, bulkData, 0.0, *rhsGasDyn, realm_.get_activate_aura());
 }
 
@@ -73,7 +73,7 @@ AssembleGasDynamicsAlgorithmDriver::post_work()
   stk::mesh::BulkData & bulkData = realm_.bulk_data();
   stk::mesh::MetaData & metaData = realm_.meta_data();
 
-  GenericFieldType *rhsGasDyn = metaData.get_field<GenericFieldType>(stk::topology::NODE_RANK, "rhs_gas_dynamics");
+  GenericFieldType *rhsGasDyn = metaData.get_field<double>(stk::topology::NODE_RANK, "rhs_gas_dynamics");
 
   // u, v, w + cont + e 
   const unsigned totalSize  = metaData.spatial_dimension() + 2;

@@ -34,16 +34,16 @@ ContinuityOpenElemKernel<BcAlgTraits>::ContinuityOpenElemKernel(
     meSCS_(sierra::nalu::MasterElementRepo::get_surface_master_element(BcAlgTraits::elemTopo_))
 {
   if ( solnOpts.does_mesh_move())
-    velocityRTM_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity_rtm");
+    velocityRTM_ = metaData.get_field<double>(stk::topology::NODE_RANK, "velocity_rtm");
   else
-    velocityRTM_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
-  Gpdx_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "dpdx");
-  coordinates_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
-  pressure_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure");
-  pressureBc_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure_bc");
-  density_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
-  exposedAreaVec_ = metaData.get_field<GenericFieldType>(metaData.side_rank(), "exposed_area_vector");
-  dynamicPressure_ = metaData.get_field<GenericFieldType>(metaData.side_rank(), "dynamic_pressure");
+    velocityRTM_ = metaData.get_field<double>(stk::topology::NODE_RANK, "velocity");
+  Gpdx_ = metaData.get_field<double>(stk::topology::NODE_RANK, "dpdx");
+  coordinates_ = metaData.get_field<double>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
+  pressure_ = metaData.get_field<double>(stk::topology::NODE_RANK, "pressure");
+  pressureBc_ = metaData.get_field<double>(stk::topology::NODE_RANK, "pressure_bc");
+  density_ = metaData.get_field<double>(stk::topology::NODE_RANK, "density");
+  exposedAreaVec_ = metaData.get_field<double>(metaData.side_rank(), "exposed_area_vector");
+  dynamicPressure_ = metaData.get_field<double>(metaData.side_rank(), "dynamic_pressure");
   
   // extract master elements
   MasterElement* meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(BcAlgTraits::faceTopo_);

@@ -186,83 +186,86 @@ TurbKineticEnergyEquationSystem::register_nodal_fields(
   const int numStates = realm_.number_of_states();
 
   // register dof; set it as a restart variable
-  tke_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_ke", numStates));
+  tke_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "turbulent_ke", numStates));
   stk::mesh::put_field_on_mesh(*tke_, *part, nullptr);
   realm_.augment_restart_variable_list("turbulent_ke");
 
-  dkdx_ =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "dkdx"));
+  dkdx_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "dkdx"));
   stk::mesh::put_field_on_mesh(*dkdx_, *part, nDim, nullptr);
+  stk::io::set_field_output_type(*dkdx_, stk::io::FieldOutputType::VECTOR_3D);
 
   // delta solution for linear solver; share delta since this is a split system
-  kTmp_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "pTmp"));
+  kTmp_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "pTmp"));
   stk::mesh::put_field_on_mesh(*kTmp_, *part, nullptr);
 
-  visc_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity"));
+  visc_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "viscosity"));
   stk::mesh::put_field_on_mesh(*visc_, *part, nullptr);
 
-  tvisc_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_viscosity"));
+  tvisc_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "turbulent_viscosity"));
   stk::mesh::put_field_on_mesh(*tvisc_, *part, nullptr);
 
-  evisc_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "effective_viscosity_tke"));
+  evisc_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "effective_viscosity_tke"));
   stk::mesh::put_field_on_mesh(*evisc_, *part, nullptr);
 
   // allow for nodal values for ksgs model constants
   if ( turbulenceModel_ == KSGS || turbulenceModel_ == LRKSGS || turbulenceModel_ == DKSGS ) {
     const double cEpsConstant = realm_.get_turb_model_constant(TM_cEps);
     ScalarFieldType *cEpsField 
-      = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "c_epsilon"));
+      = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "c_epsilon"));
     stk::mesh::put_field_on_mesh(*cEpsField, *part, &cEpsConstant);  
   
     const double cmuEpsConstant = realm_.get_turb_model_constant(TM_cmuEps);
     ScalarFieldType *cmuEpsField 
-      = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "c_mu_epsilon"));
+      = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "c_mu_epsilon"));
     stk::mesh::put_field_on_mesh(*cmuEpsField, *part, &cmuEpsConstant);
 
     if ( turbulenceModel_ == LRKSGS ) {
       ScalarFieldType *dsqrtk_dx_sq
-        = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "dsqrtk_dx_sq"));
+        = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "dsqrtk_dx_sq"));
       stk::mesh::put_field_on_mesh(*dsqrtk_dx_sq, *part, nullptr);
       ScalarFieldType *minDistanceToWall 
-        =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "minimum_distance_to_wall"));
+        =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "minimum_distance_to_wall"));
       stk::mesh::put_field_on_mesh(*minDistanceToWall, *part, nullptr);
       realm_.augment_restart_variable_list("minimum_distance_to_wall");
     }
 
     if ( turbulenceModel_ == DKSGS ) {
       ScalarFieldType *filteredFilter 
-        = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "filtered_filter"));
+        = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "filtered_filter"));
       stk::mesh::put_field_on_mesh(*filteredFilter, *part, nullptr);
 
       ScalarFieldType *filteredDensity 
-        = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "filtered_density"));
+        = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "filtered_density"));
       stk::mesh::put_field_on_mesh(*filteredDensity, *part, nullptr);
 
       ScalarFieldType *filteredKineticEnergy 
-        = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "filtered_kinetic_energy"));
+        = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "filtered_kinetic_energy"));
       stk::mesh::put_field_on_mesh(*filteredKineticEnergy, *part, nullptr);
 
       ScalarFieldType *filteredSijDij 
-        = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "filtered_sij_dij"));
+        = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "filtered_sij_dij"));
       stk::mesh::put_field_on_mesh(*filteredSijDij, *part, nullptr);
 
       VectorFieldType *filteredVelocity 
-        = &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "filtered_velocity"));
+        = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "filtered_velocity"));
       stk::mesh::put_field_on_mesh(*filteredVelocity, *part, nDim, nullptr);
+      stk::io::set_field_output_type(*filteredVelocity, stk::io::FieldOutputType::VECTOR_3D);
 
       VectorFieldType *filteredDensityVelocity 
-        = &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "filtered_density_velocity"));
+        = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "filtered_density_velocity"));
       stk::mesh::put_field_on_mesh(*filteredDensityVelocity, *part, nDim, nullptr);
+      stk::io::set_field_output_type(*filteredDensityVelocity, stk::io::FieldOutputType::VECTOR_3D);
 
       GenericFieldType *filteredStrainRate 
-        = &(meta_data.declare_field<GenericFieldType>(stk::topology::NODE_RANK, "filtered_strain_rate"));
+        = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "filtered_strain_rate"));
       stk::mesh::put_field_on_mesh(*filteredStrainRate, *part, nDim*nDim, nullptr);
       
       GenericFieldType *filteredVelocityGradient 
-        = &(meta_data.declare_field<GenericFieldType>(stk::topology::NODE_RANK, "filtered_velocity_gradient"));
+        = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "filtered_velocity_gradient"));
       stk::mesh::put_field_on_mesh(*filteredVelocityGradient, *part, nDim*nDim, nullptr);
 
       GenericFieldType *filteredDensityStress 
-        = &(meta_data.declare_field<GenericFieldType>(stk::topology::NODE_RANK, "filtered_density_stress"));
+        = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "filtered_density_stress"));
       stk::mesh::put_field_on_mesh(*filteredDensityStress, *part, nDim*nDim, nullptr);  
     }
   }
@@ -571,7 +574,7 @@ TurbKineticEnergyEquationSystem::register_inflow_bc(
   stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   // register boundary data; tke_bc
-  ScalarFieldType *theBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "tke_bc"));
+  ScalarFieldType *theBcField = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "tke_bc"));
   stk::mesh::put_field_on_mesh(*theBcField, *part, nullptr);
 
   // extract the value for user specified tke and save off the AuxFunction
@@ -653,7 +656,7 @@ TurbKineticEnergyEquationSystem::register_open_bc(
   stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   // register boundary data; tke_bc
-  ScalarFieldType *theBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "open_tke_bc"));
+  ScalarFieldType *theBcField = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "open_tke_bc"));
   stk::mesh::put_field_on_mesh(*theBcField, *part, nullptr);
 
   // extract the value for user specified tke and save off the AuxFunction
@@ -750,7 +753,7 @@ TurbKineticEnergyEquationSystem::register_wall_bc(
   stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   // register boundary data; tke_bc
-  ScalarFieldType *theBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "tke_bc"));
+  ScalarFieldType *theBcField = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "tke_bc"));
   stk::mesh::put_field_on_mesh(*theBcField, *part, nullptr);
 
   // extract the value for user specified tke and save off the AuxFunction
@@ -771,7 +774,7 @@ TurbKineticEnergyEquationSystem::register_wall_bc(
       wallFunctionTurbKineticEnergyAlgDriver_ = new AlgorithmDriver(realm_);
 
     // need to register the assembles wall value for tke; can not share with tke_bc
-    ScalarFieldType *theAssembledField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "wall_model_tke_bc"));
+    ScalarFieldType *theAssembledField = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "wall_model_tke_bc"));
     stk::mesh::put_field_on_mesh(*theAssembledField, *part, nullptr);
 
     // wall function value will prevail at bc intersections
@@ -1138,39 +1141,39 @@ TurbKineticEnergyEquationSystem::compute_filtered_quantities()
 
   // nodal fileds that need to be gathered
   ScalarFieldType *dualNodalVolume
-    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
+    = metaData.get_field<double>(stk::topology::NODE_RANK, "dual_nodal_volume");
   ScalarFieldType *density 
-    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
+    = metaData.get_field<double>(stk::topology::NODE_RANK, "density");
   VectorFieldType *velocity 
-    = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
+    = metaData.get_field<double>(stk::topology::NODE_RANK, "velocity");
   VectorFieldType *coordinates 
-    = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+    = metaData.get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
 
   // the filtered quantities
   ScalarFieldType *filteredFilter 
-    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "filtered_filter");
+    = metaData.get_field<double>(stk::topology::NODE_RANK, "filtered_filter");
   ScalarFieldType *filteredDensity 
-    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "filtered_density");
+    = metaData.get_field<double>(stk::topology::NODE_RANK, "filtered_density");
   ScalarFieldType *filteredKineticEnergy 
-    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "filtered_kinetic_energy");
+    = metaData.get_field<double>(stk::topology::NODE_RANK, "filtered_kinetic_energy");
   ScalarFieldType *filteredSijDij 
-    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "filtered_sij_dij");
+    = metaData.get_field<double>(stk::topology::NODE_RANK, "filtered_sij_dij");
   VectorFieldType *filteredVelocity 
-    = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "filtered_velocity");
+    = metaData.get_field<double>(stk::topology::NODE_RANK, "filtered_velocity");
   VectorFieldType *filteredDensityVelocity 
-    = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "filtered_density_velocity");
+    = metaData.get_field<double>(stk::topology::NODE_RANK, "filtered_density_velocity");
   GenericFieldType *filteredStrainRate 
-    = metaData.get_field<GenericFieldType>(stk::topology::NODE_RANK, "filtered_strain_rate");
+    = metaData.get_field<double>(stk::topology::NODE_RANK, "filtered_strain_rate");
   GenericFieldType *filteredVelocityGradient 
-    = metaData.get_field<GenericFieldType>(stk::topology::NODE_RANK, "filtered_velocity_gradient");
+    = metaData.get_field<double>(stk::topology::NODE_RANK, "filtered_velocity_gradient");
   GenericFieldType *filteredDensityStress 
-    = metaData.get_field<GenericFieldType>(stk::topology::NODE_RANK, "filtered_density_stress");
+    = metaData.get_field<double>(stk::topology::NODE_RANK, "filtered_density_stress");
 
   // the constants
   ScalarFieldType *cEpsField 
-    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "c_epsilon");
+    = metaData.get_field<double>(stk::topology::NODE_RANK, "c_epsilon");
   ScalarFieldType *cmuEpsField 
-    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "c_mu_epsilon");
+    = metaData.get_field<double>(stk::topology::NODE_RANK, "c_mu_epsilon");
   
   // zero fields (nodal loop over shared/owned where filtered varibale was registered)
   stk::mesh::Selector s_all_nodes
@@ -1488,7 +1491,7 @@ TurbKineticEnergyEquationSystem::compute_filtered_quantities()
 
   // formulation uses a nodal effective viscosity to form Ceps
   ScalarFieldType *evisc 
-    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "effective_viscosity_u");
+    = metaData.get_field<double>(stk::topology::NODE_RANK, "effective_viscosity_u");
 
   // nodal loop over locally owned to define nodal constants
   for ( stk::mesh::BucketVector::const_iterator ib = node_buckets.begin() ;
@@ -1664,14 +1667,14 @@ TurbKineticEnergyEquationSystem::compute_dsqrtk_dx_sq()
 
   // extract nodal fields
   VectorFieldType *coordinates 
-    = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+    = metaData.get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   ScalarFieldType *dualNodalVolume 
-    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
+    = metaData.get_field<double>(stk::topology::NODE_RANK, "dual_nodal_volume");
 
   // extract fields
   ScalarFieldType &tkeNp1 = tke_->field_of_state(stk::mesh::StateNP1);
   ScalarFieldType *dsqrtk_dx_sq
-    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dsqrtk_dx_sq");
+    = metaData.get_field<double>(stk::topology::NODE_RANK, "dsqrtk_dx_sq");
 
   // zero assembled gradient
   field_fill( metaData, bulkData, 0.0, *dsqrtk_dx_sq, realm_.get_activate_aura());

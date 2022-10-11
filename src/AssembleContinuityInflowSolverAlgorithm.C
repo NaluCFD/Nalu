@@ -47,10 +47,10 @@ AssembleContinuityInflowSolverAlgorithm::AssembleContinuityInflowSolverAlgorithm
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
-  exposedAreaVec_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");
-  velocityBC_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "cont_velocity_bc");
+  exposedAreaVec_ = meta_data.get_field<double>(meta_data.side_rank(), "exposed_area_vector");
+  velocityBC_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "cont_velocity_bc");
   // variable density will need density as a function of user inflow conditions
-  densityBC_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
+  densityBC_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "density");
 }
 
 //--------------------------------------------------------------------------
