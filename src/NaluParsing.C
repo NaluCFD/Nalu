@@ -832,6 +832,10 @@ namespace YAML
     {
       wallData.isInterface_ = node["interface"].as<bool>();
     }
+    if (node["external_data"])
+    {
+      wallData.externalData_ = node["external_data"].as<bool>();
+    }
     if (node["post_process_heat_flux"])
     {
       wallData.ppHeatFlux_ = node["post_process_heat_flux"].as<bool>();

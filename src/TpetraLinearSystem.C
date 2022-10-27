@@ -42,7 +42,7 @@
 #include <stk_mesh/base/FieldParallel.hpp>
 
 // For Tpetra support
-#include <Kokkos_Serial.hpp>
+#include <Kokkos_Core.hpp>
 #include <Teuchos_ArrayRCP.hpp>
 #include <Teuchos_DefaultMpiComm.hpp>
 #include <Teuchos_OrdinalTraits.hpp>

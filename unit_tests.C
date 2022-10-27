@@ -28,7 +28,7 @@ int main(int argc, char **argv)
     int returnVal = 0;
 
     // Create a dummy nested scope to ensure destructors are called before
-    // Kokkos::finalize_all. The instances owning threaded Kokkos loops must be
+    // Kokkos::finalize. The instances owning threaded Kokkos loops must be
     // cleared out before Kokkos::finalize is called.
     {
       testing::InitGoogleTest(&argc, argv);
@@ -43,7 +43,7 @@ int main(int argc, char **argv)
       returnVal = RUN_ALL_TESTS();
     }
 
-    Kokkos::finalize_all();
+    Kokkos::finalize();
 
     //NaluEnv will call MPI_Finalize when the NaluEnv singleton is cleaned up,
     //which is after we return.
