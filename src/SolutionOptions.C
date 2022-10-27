@@ -84,7 +84,8 @@ SolutionOptions::SolutionOptions()
     mdotAlgOpen_(0.0),
     quadType_("GaussLegendre"),
     accousticallyCompressible_(false),
-    balancedForce_(false)
+    balancedForce_(false),
+    thermalSrc_(0.0)
 {
   // nothing to do
 }
@@ -167,6 +168,9 @@ SolutionOptions::load(const YAML::Node & y_node)
       get_if_present(y_solution_options, "activate_buoyancy_pressure_stabilization", buoyancyPressureStab_, true);
     else
       get_if_present(y_solution_options, "activate_buoyancy_pressure_stabilization", buoyancyPressureStab_, false);
+
+    // thermal source term
+    get_if_present(y_solution_options, "thermal_source", thermalSrc_, thermalSrc_);
           
     // extract turbulence model; would be nice if we could parse an enum..
     std::string specifiedTurbModel;

@@ -61,6 +61,7 @@
 #include "kernel/ScalarDiffElemKernel.h"
 #include "kernel/ScalarDiffFemKernel.h"
 #include "kernel/HeatCondMassFemKernel.h"
+#include "kernel/ThermalSrcElemKernel.h"
 
 // bc kernels
 #include "kernel/ScalarFluxPenaltyElemKernel.h"
@@ -437,6 +438,11 @@ HeatCondEquationSystem::register_interior_algorithm(
         realm_.bulk_data(), *realm_.solutionOptions_, temperature_, thermalCond_, dataPreReqs
       );
 
+      build_topo_kernel_if_requested<ThermalSrcElemKernel>(
+        partTopo, *this, activeKernels, "volumetric",
+        realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs
+      );
+
       report_invalid_supp_alg_names();
       report_built_supp_alg_names();
     }
@@ -718,7 +724,14 @@ HeatCondEquationSystem::register_wall_bc(
       = new AuxFunctionAlgorithm(realm_, part,
                                  theBcField, theAuxFunc,
                                  stk::topology::NODE_RANK);
-    bcDataAlg_.push_back(auxAlg);
+  
+    if ( userData.externalData_ ) {
+      // xfer will handle population; only need to populate the initial value
+      realm_.initCondAlg_.push_back(auxAlg);
+    }
+    else {
+      bcDataAlg_.push_back(auxAlg);
+    }
 
     // solver; lhs; same for edge and element-based scheme
     std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi =
@@ -770,8 +783,8 @@ HeatCondEquationSystem::register_wall_bc(
           emissField, emissAuxFunc,
           stk::topology::NODE_RANK);
     
-    // if this is a multi-physics coupling, only populate IC for irradiation (xfer will handle it)
-    if ( userData.isInterface_ ) {
+    // if this is a multi-physics coupling, or external, only populate IC for irradiation (xfer will handle it)
+    if ( userData.isInterface_ || userData.externalData_ ) {
       // xfer will handle population; only need to populate the initial value
       realm_.initCondAlg_.push_back(irradAuxAlg);
     }
@@ -892,7 +905,7 @@ HeatCondEquationSystem::register_wall_bc(
     // Normal heat flux, reference temperature, and coupling parameter
     // come from a transfer if this is an interface, so in that case
     // only need to populate the initial values
-    if ( userData.isInterface_ ) {
+    if ( userData.isInterface_ || userData.externalData_ ) {
       // xfer will handle population; only need to populate the initial value
       realm_.initCondAlg_.push_back(tRefAuxAlg);
       if (isRobinCHT) 

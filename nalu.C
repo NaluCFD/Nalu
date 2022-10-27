@@ -237,7 +237,7 @@ int main( int argc, char ** argv )
 
   stk::diag::deleteRootTimer(sierra::nalu::Simulation::rootTimer());
   }
-  Kokkos::finalize_all();
+  Kokkos::finalize();
   // all done  
   return 0;
 }

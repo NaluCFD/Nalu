@@ -213,6 +213,9 @@ public:
   // Pressure stabilization buoyancy term
   bool buoyancyPressureStab_;
 
+  // constant volumetric source
+  double thermalSrc_;
+
 };
 
 } // namespace nalu
