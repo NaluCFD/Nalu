@@ -49,6 +49,7 @@
 #include "SolutionNormPostProcessing.h"
 #include "TurbulenceAveragingPostProcessing.h"
 #include "DataProbePostProcessing.h"
+#include "ExplicitFiltering.h"
 
 // actuator line
 #include "Actuator.h"
@@ -170,6 +171,7 @@ namespace nalu{
     turbulenceAveragingPostProcessing_(NULL),
     dataProbePostProcessing_(NULL),
     actuator_(NULL),
+    explicitFiltering_(NULL),
     nodeCount_(0),
     estimateMemoryOnly_(false),
     availableMemoryPerCoreGB_(0),
@@ -261,6 +263,9 @@ Realm::~Realm()
 
   if ( NULL != actuator_ )
     delete actuator_;
+
+  if ( NULL != explicitFiltering_ )
+    delete explicitFiltering_;
 
   // delete non-conformal related things
   if ( NULL != nonConformalManager_ )
@@ -556,6 +561,16 @@ Realm::look_ahead_and_creation(const YAML::Node & node)
       throw std::runtime_error("look_ahead_and_create::error: No 'type' specified in actuator");
     }
   }
+
+  // look for ExplicitFiltering
+  std::vector<const YAML::Node*> foundExplicitFiltering;
+  NaluParsingHelper::find_nodes_given_key("explicit_filtering", node, foundExplicitFiltering);
+  if ( foundExplicitFiltering.size() > 0 ) {
+    if ( foundExplicitFiltering.size() != 1 )
+      throw std::runtime_error("look_ahead_and_create::error: Too many explicit_filtering blocks");
+    explicitFiltering_ =  new ExplicitFiltering(*this, *foundExplicitFiltering[0]);
+  }
+
 }
   
 //--------------------------------------------------------------------------
@@ -822,6 +837,10 @@ Realm::setup_post_processing_algorithms()
   // check for actuator line
   if ( NULL != actuator_ )
     actuator_->setup();
+
+  // check for explicit filtering
+  if ( NULL != explicitFiltering_ )
+    explicitFiltering_->setup();
 
   // check for norm nodal fields
   if ( NULL != solutionNormPostProcessing_ )
@@ -2094,6 +2113,11 @@ Realm::initialize_post_processing_algorithms()
   // check for actuator... probably a better place for this
   if ( NULL != actuator_ ) {
     actuator_->initialize();
+  }
+
+  // check for explicit filtering
+  if ( NULL != explicitFiltering_ ) {
+    explicitFiltering_->initialize();
   }
 }
 
@@ -3721,6 +3745,11 @@ Realm::provide_output()
       = (timeStepCount >=outputInfo_->outputStart_ && modStep % outputInfo_->outputFreq_ == 0) || forcedOutput;
 
     if ( isOutput ) {
+
+      // process any particularily expensive post processing
+      if ( NULL != explicitFiltering_ )
+        explicitFiltering_->execute();
+
       NaluEnv::self().naluOutputP0() << "Realm shall provide output files at : currentTime/timeStepCount: "
                                      << currentTime << "/" <<  timeStepCount << " (" << name_ << ")" << std::endl;      
 
