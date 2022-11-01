@@ -10,7 +10,7 @@
 #define Actuator_h
 
 #include <NaluParsing.h>
-#include<FieldTypeDef.h>
+#include <FieldTypeDef.h>
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/Entity.hpp>
