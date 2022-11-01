@@ -148,6 +148,29 @@ realms:
             - velocity
             - mixture_fraction
 
+    explicit_filtering:
+
+      search_target_part: block_1
+      filter_size: [0.05, 0.05]
+      debug_output: no
+
+      specifications:
+
+        - field_name: velocity
+          explicit_field_name: explicit_velocity
+          field_size: 2
+          field_type: node_rank
+
+        - field_name: mixture_fraction
+          explicit_field_name: explicit_mixture_fraction
+          field_size: 1
+          field_type: node_rank
+
+        - field_name: density_ra_one
+          explicit_field_name: explicit_density_ra_one
+          field_size: 1
+          field_type: node_rank
+
     output:
       output_data_base_name: output/2d_quad9_helium.e
       output_frequency: 50
@@ -162,6 +185,10 @@ realms:
        - velocity_fa_one
        - mixture_fraction_ra_one
        - mixture_fraction_fa_one
+       - explicit_filter
+       - explicit_velocity
+       - explicit_mixture_fraction
+       - explicit_density_ra_one
 
 Time_Integrators:
   - StandardTimeIntegrator:
