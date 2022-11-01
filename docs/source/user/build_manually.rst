@@ -52,6 +52,12 @@ Build:
     make
     make install
 
+Python v3+
+~~~~~~~~~~~~~
+
+The regression test suite for Nalu uses Python and requires a version greater than 3.
+
+
 SuperLU v4.3
 ~~~~~~~~~~~~
 
