@@ -19,15 +19,15 @@
 namespace sierra{
 namespace nalu{
 
-// define scalar field typedef
+// define scalar field typedef; just for clarity
 typedef stk::mesh::Field<double>  ScalarFieldType;
 typedef stk::mesh::Field<stk::mesh::EntityId> GlobalIdFieldType;
 typedef stk::mesh::Field<int>  ScalarIntFieldType;
 
-// define vector field typedef; however, what is the value of Cartesian?
+// define vector field typedef; just for clarity
 typedef stk::mesh::Field<double>  VectorFieldType;
 
-// define generic
+// define generic; just for clarity
 typedef stk::mesh::Field<double>  GenericFieldType;
 
 // field type for local ids

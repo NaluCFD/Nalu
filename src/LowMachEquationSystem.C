@@ -295,7 +295,6 @@ LowMachEquationSystem::register_nodal_fields(
 
   // add properties; density needs to be a restart field
   const int numStates = realm_.number_of_states();
-  //density_ =  &(meta_data.declare_field<stk::mesh::Field<double>>(stk::topology::NODE_RANK, "density", numStates));
   density_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "density", numStates));
   stk::mesh::put_field_on_mesh(*density_, *part, nullptr);
   realm_.augment_restart_variable_list("density");

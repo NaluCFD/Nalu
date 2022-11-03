@@ -174,7 +174,7 @@ ExplicitFiltering::setup()
   }
 
   // volume for all variables
-  stk::mesh::Field<double> *filter =  &(metaData.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "explicit_filter"));
+  stk::mesh::Field<double> *filter =  &(metaData.declare_field<double>(stk::topology::NODE_RANK, "explicit_filter"));
   stk::mesh::put_field_on_mesh(*filter, stk::mesh::selectUnion(searchParts_), 1, nullptr);
 
   // provide output for the names to be registered under STK (and, therefore, available for IO)
@@ -260,11 +260,11 @@ ExplicitFiltering::execute()
 
   // extract fields
   VectorFieldType *coordinates
-    = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+    = metaData.get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
 
   // extract filter
   stk::mesh::Field<double> *explicitFilter 
-    = metaData.get_field<stk::mesh::Field<double> >(stk::topology::NODE_RANK, "explicit_filter");
+    = metaData.get_field<double>(stk::topology::NODE_RANK, "explicit_filter");
 
   // zero assembled field(s)
   field_fill( metaData, bulkData, 0.0, *explicitFilter, realm_.get_activate_aura());  
@@ -419,7 +419,7 @@ ExplicitFiltering::populate_candidate_elements()
   const int nDim = metaData.spatial_dimension();
 
   // fields
-  VectorFieldType *coordinates = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  VectorFieldType *coordinates = metaData.get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
 
   // point data structures
   Point minCorner, maxCorner;
@@ -537,7 +537,7 @@ ExplicitFiltering::create_explicit_filter_point_info_map() {
     filterSizeAbstract[2] = filterSize_.z_;
   
   // fields
-  VectorFieldType *coordinates = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  VectorFieldType *coordinates = metaData.get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
 
   // define a point that will hold the min/max
   Point minCorner, maxCorner;
