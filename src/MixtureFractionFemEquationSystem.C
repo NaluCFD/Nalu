@@ -173,29 +173,30 @@ MixtureFractionFemEquationSystem::register_nodal_fields(
   const int numStates = realm_.number_of_states();
 
   // register dof; set it as a restart variable
-  mixFrac_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "mixture_fraction", numStates));
+  mixFrac_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "mixture_fraction", numStates));
   stk::mesh::put_field_on_mesh(*mixFrac_, *part, nullptr);
   realm_.augment_restart_variable_list("mixture_fraction");
 
   // for a sanity check, keep around the un-filterd/clipped field
-  mixFracUF_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "uf_mixture_fraction", numStates));
+  mixFracUF_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "uf_mixture_fraction", numStates));
   stk::mesh::put_field_on_mesh(*mixFracUF_, *part, nullptr);
  
   // delta solution for linear solver; share delta since this is a split system
-  zTmp_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "pTmp"));
+  zTmp_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "pTmp"));
   stk::mesh::put_field_on_mesh(*zTmp_, *part, nullptr);
   
   // aux variables
-  velocity_ =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity", numStates));
+  velocity_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "velocity", numStates));
   stk::mesh::put_field_on_mesh(*velocity_, *part, nDim, nullptr);
+  stk::io::set_field_output_type(*velocity_, stk::io::FieldOutputType::VECTOR_3D);
   realm_.augment_restart_variable_list("velocity");
 
   // properties
-  density_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "density", numStates));
+  density_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "density", numStates));
   stk::mesh::put_field_on_mesh(*density_, *part, nullptr);
   realm_.augment_restart_variable_list("density");
 
-  visc_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity"));
+  visc_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "viscosity"));
   stk::mesh::put_field_on_mesh(*visc_, *part, nullptr);
 
   // push to property list
@@ -203,20 +204,21 @@ MixtureFractionFemEquationSystem::register_nodal_fields(
   realm_.augment_property_map(VISCOSITY_ID, visc_);
 
   if ( realm_.is_turbulent() ) {
-    tvisc_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_viscosity"));
+    tvisc_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "turbulent_viscosity"));
     stk::mesh::put_field_on_mesh(*tvisc_, *part, nullptr);
   }
 
-  evisc_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "effective_viscosity_z"));
+  evisc_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "effective_viscosity_z"));
   stk::mesh::put_field_on_mesh(*evisc_, *part, nullptr);
 
   // projected nodal gradients  
-  ScalarFieldType *dualNodalVolume = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume"));
+  ScalarFieldType *dualNodalVolume = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "dual_nodal_volume"));
   stk::mesh::put_field_on_mesh(*dualNodalVolume, *part, nullptr);
   
-  Gjz_ =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "dzdx"));
-  stk::mesh::put_field_on_mesh(*Gjz_, *part, nullptr);
- 
+  Gjz_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "dzdx"));
+  stk::mesh::put_field_on_mesh(*Gjz_, *part, nDim, nullptr);
+  stk::io::set_field_output_type(*Gjz_, stk::io::FieldOutputType::VECTOR_3D);
+
   // make sure all states are properly populated (restart can handle this)
   if ( numStates > 2 && (!realm_.restarted_simulation() || realm_.support_inconsistent_restart()) ) {
     ScalarFieldType &mixFracN = mixFrac_->field_of_state(stk::mesh::StateN);
@@ -268,11 +270,11 @@ MixtureFractionFemEquationSystem::register_element_fields(
 
   // provide mean element Peclet and Courant fields
   GenericFieldType *elemReynolds
-    = &(meta_data.declare_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "element_reynolds"));
-  stk::mesh::put_field_on_mesh(*elemReynolds, *part, 1, nullptr);
+    = &(meta_data.declare_field<double>(stk::topology::ELEMENT_RANK, "element_reynolds"));
+  stk::mesh::put_field_on_mesh(*elemReynolds, *part, nullptr);
   GenericFieldType *elemCourant
-    = &(meta_data.declare_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "element_courant"));
-  stk::mesh::put_field_on_mesh(*elemCourant, *part, 1, nullptr);
+    = &(meta_data.declare_field<double>(stk::topology::ELEMENT_RANK, "element_courant"));
+  stk::mesh::put_field_on_mesh(*elemCourant, *part, nullptr);
 }
 
 //--------------------------------------------------------------------------
@@ -362,7 +364,7 @@ MixtureFractionFemEquationSystem::register_inflow_bc(
   stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   // register boundary data; mixFrac_bc
-  ScalarFieldType *theBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "mixFrac_bc"));
+  ScalarFieldType *theBcField = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "mixFrac_bc"));
   stk::mesh::put_field_on_mesh(*theBcField, *part, nullptr);
 
   // extract the value for user specified mixFrac and save off the AuxFunction
@@ -439,7 +441,7 @@ MixtureFractionFemEquationSystem::register_open_bc(
   stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   // register boundary data; mixFrac_bc
-  ScalarFieldType *theBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "open_mixFrac_bc"));
+  ScalarFieldType *theBcField = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "open_mixFrac_bc"));
   stk::mesh::put_field_on_mesh(*theBcField, *part, nullptr);
 
   // extract the value for user specified mixFrac and save off the AuxFunction
@@ -506,7 +508,7 @@ MixtureFractionFemEquationSystem::register_wall_bc(
     // FIXME: Generalize for constant vs function
 
     // register boundary data; mixFrac_bc
-    ScalarFieldType *theBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "mixFrac_bc"));
+    ScalarFieldType *theBcField = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "mixFrac_bc"));
     stk::mesh::put_field_on_mesh(*theBcField, *part, nullptr);
 
     // extract data

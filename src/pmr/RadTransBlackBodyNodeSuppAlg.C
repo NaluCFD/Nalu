@@ -43,10 +43,10 @@ RadTransBlackBodyNodeSuppAlg::RadTransBlackBodyNodeSuppAlg(
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
-  absorption_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "absorption_coefficient");
-  scattering_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "scattering_coefficient");
-  radiationSource_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "radiation_source");
-  dualNodalVolume_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
+  absorption_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "absorption_coefficient");
+  scattering_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "scattering_coefficient");
+  radiationSource_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "radiation_source");
+  dualNodalVolume_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "dual_nodal_volume");
 }
 
 //--------------------------------------------------------------------------

@@ -17,7 +17,7 @@ class tioga;
 
 namespace tioga_nalu {
 
-typedef stk::mesh::Field<double, stk::mesh::Cartesian> VectorFieldType;
+typedef stk::mesh::Field<double> VectorFieldType;
 typedef stk::mesh::Field<int> ScalarIntFieldType;
 
 /**

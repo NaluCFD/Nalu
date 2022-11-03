@@ -39,7 +39,7 @@ MomentumDiffFemKernel<AlgTraits>::MomentumDiffFemKernel(
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
 
   velocityNp1_ = &(velocity->field_of_state(stk::mesh::StateNP1));
-  coordinates_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
+  coordinates_ = metaData.get_field<double>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
 
   // extract master element
   MasterElement *meFEM = sierra::nalu::MasterElementRepo::get_fem_master_element(AlgTraits::topo_);

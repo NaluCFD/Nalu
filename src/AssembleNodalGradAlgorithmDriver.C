@@ -70,7 +70,7 @@ AssembleNodalGradAlgorithmDriver::pre_work()
   const int nDim = metaData.spatial_dimension();
 
   // extract fields
-  VectorFieldType *dqdx = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, dqdxName_);
+  VectorFieldType *dqdx = metaData.get_field<double>(stk::topology::NODE_RANK, dqdxName_);
 
   // define some common selectors; select all nodes (locally and shared)
   // where dqdx is defined
@@ -100,7 +100,7 @@ AssembleNodalGradAlgorithmDriver::pre_work()
   }
 
   if ( areaWeight_ ) {
-    VectorFieldType *areaWeight = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, areaWeightName_);
+    VectorFieldType *areaWeight = metaData.get_field<double>(stk::topology::NODE_RANK, areaWeightName_);
     field_fill( metaData, bulkData, 0.0, *areaWeight, realm_.get_activate_aura());
   }
 }
@@ -117,7 +117,7 @@ AssembleNodalGradAlgorithmDriver::post_work()
   const unsigned nDim = meta_data.spatial_dimension();
 
   // extract fields
-  VectorFieldType *dqdx = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, dqdxName_);
+  VectorFieldType *dqdx = meta_data.get_field<double>(stk::topology::NODE_RANK, dqdxName_);
   std::vector<const stk::mesh::FieldBase*> sum_fields(1, dqdx);
   stk::mesh::parallel_sum(bulk_data, sum_fields);
 
@@ -127,7 +127,7 @@ AssembleNodalGradAlgorithmDriver::post_work()
 
   // allow for area weighting
   if ( areaWeight_ ) {
-    VectorFieldType *areaWeight = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, areaWeightName_);
+    VectorFieldType *areaWeight = meta_data.get_field<double>(stk::topology::NODE_RANK, areaWeightName_);
     std::vector<const stk::mesh::FieldBase*> sum_area(1, areaWeight);
     stk::mesh::parallel_sum(bulk_data, sum_area);
     if ( realm_.hasPeriodic_) {
@@ -154,8 +154,8 @@ AssembleNodalGradAlgorithmDriver::normalize_by_area()
   const int nDim = meta_data.spatial_dimension();
 
   // extract fields
-  VectorFieldType *dqdx = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, dqdxName_);
-  VectorFieldType *areaWeight = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, areaWeightName_);
+  VectorFieldType *dqdx = meta_data.get_field<double>(stk::topology::NODE_RANK, dqdxName_);
+  VectorFieldType *areaWeight = meta_data.get_field<double>(stk::topology::NODE_RANK, areaWeightName_);
 
   // define some common selectors; select all nodes (locally and shared)
   // where dqdx is defined

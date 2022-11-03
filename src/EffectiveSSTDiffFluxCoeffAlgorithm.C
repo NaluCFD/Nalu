@@ -48,7 +48,7 @@ EffectiveSSTDiffFluxCoeffAlgorithm::EffectiveSSTDiffFluxCoeffAlgorithm(
 {
   // extract blending nodal variable
   stk::mesh::MetaData & meta_data = realm_.meta_data();
-  fOneBlend_= meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "sst_f_one_blending");
+  fOneBlend_= meta_data.get_field<double>(stk::topology::NODE_RANK, "sst_f_one_blending");
 }
 
 //--------------------------------------------------------------------------

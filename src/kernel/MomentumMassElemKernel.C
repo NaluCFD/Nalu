@@ -38,10 +38,8 @@ MomentumMassElemKernel<AlgTraits>::MomentumMassElemKernel(
 {
 
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
-  VectorFieldType *velocity = metaData.get_field<VectorFieldType>(
-    stk::topology::NODE_RANK, "velocity");
-  ScalarFieldType *density = metaData.get_field<ScalarFieldType>(
-    stk::topology::NODE_RANK, "density");
+  VectorFieldType *velocity = metaData.get_field<double>(stk::topology::NODE_RANK, "velocity");
+  ScalarFieldType *density = metaData.get_field<double>(stk::topology::NODE_RANK, "density");
 
   velocityN_ = &(velocity->field_of_state(stk::mesh::StateN));
   velocityNp1_ = &(velocity->field_of_state(stk::mesh::StateNP1));
@@ -57,9 +55,8 @@ MomentumMassElemKernel<AlgTraits>::MomentumMassElemKernel(
   else
     densityNm1_ = &(density->field_of_state(stk::mesh::StateNM1));
 
-  Gjp_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "dpdx");
-  coordinates_ = metaData.get_field<VectorFieldType>(
-    stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
+  Gjp_ = metaData.get_field<double>(stk::topology::NODE_RANK, "dpdx");
+  coordinates_ = metaData.get_field<double>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
 
   MasterElement* meSCV = sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_);
 

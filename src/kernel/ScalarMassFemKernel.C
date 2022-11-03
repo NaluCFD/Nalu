@@ -35,7 +35,7 @@ ScalarMassFemKernel<AlgTraits>::ScalarMassFemKernel(
 {
   // Save of required fields
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
-  coordinates_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
+  coordinates_ = metaData.get_field<double>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
 
   scalarQNp1_ = &(scalarQ->field_of_state(stk::mesh::StateNP1));
   scalarQN_ = &(scalarQ->field_of_state(stk::mesh::StateN));

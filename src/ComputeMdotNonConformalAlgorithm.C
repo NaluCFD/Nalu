@@ -57,20 +57,20 @@ ComputeMdotNonConformalAlgorithm::ComputeMdotNonConformalAlgorithm(
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
 
-  velocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
+  velocity_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "velocity");
   if ( meshMotion_ ) {
     meshMotionFac_ = 1.0;
-    meshVelocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_velocity");
+    meshVelocity_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "mesh_velocity");
   }
   else {
     meshMotionFac_ = 0.0;
-    meshVelocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
+    meshVelocity_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "velocity");
   }
 
-  coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
-  density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
-  exposedAreaVec_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");
-  ncMassFlowRate_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "nc_mass_flow_rate");
+  coordinates_ = meta_data.get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  density_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "density");
+  exposedAreaVec_ = meta_data.get_field<double>(meta_data.side_rank(), "exposed_area_vector");
+  ncMassFlowRate_ = meta_data.get_field<double>(meta_data.side_rank(), "nc_mass_flow_rate");
   
   // what do we need ghosted for this alg to work?
   ghostFieldVec_.push_back(pressure_);

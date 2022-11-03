@@ -25,7 +25,7 @@
 
 namespace
 {
-  using VectorFieldType = stk::mesh::Field<double, stk::mesh::Cartesian>;
+  using VectorFieldType = stk::mesh::Field<double>;
 
   void randomly_perturb_element_coords(
     std::mt19937& rng,
@@ -74,6 +74,7 @@ namespace
       meshBuilder.set_spatial_dimension(dim);
       auto bulk = meshBuilder.create();
       auto& meta = bulk->mesh_meta_data();
+      meta.use_simple_fields();
 
       auto elem = unit_test_utils::create_one_reference_element(*bulk, topo);
       const VectorFieldType& coordField = *static_cast<const VectorFieldType*>(meta.coordinate_field());

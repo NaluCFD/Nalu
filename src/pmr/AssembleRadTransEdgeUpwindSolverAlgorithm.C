@@ -46,7 +46,7 @@ AssembleRadTransEdgeUpwindSolverAlgorithm::AssembleRadTransEdgeUpwindSolverAlgor
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
-  edgeAreaVec_ = meta_data.get_field<VectorFieldType>(stk::topology::EDGE_RANK, "edge_area_vector");
+  edgeAreaVec_ = meta_data.get_field<double>(stk::topology::EDGE_RANK, "edge_area_vector");
 }
 
 //--------------------------------------------------------------------------

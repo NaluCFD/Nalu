@@ -59,8 +59,8 @@ AssembleNodalGradUElemAlgorithm::execute()
   const int nDim = meta_data.spatial_dimension();
 
   // extract fields
-  ScalarFieldType *dualNodalVolume = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
-  VectorFieldType *coordinates = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  ScalarFieldType *dualNodalVolume = meta_data.get_field<double>(stk::topology::NODE_RANK, "dual_nodal_volume");
+  VectorFieldType *coordinates = meta_data.get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
 
   // nodal fields to gather; gather everything other than what we are assembling
   std::vector<double> ws_vectorQ;

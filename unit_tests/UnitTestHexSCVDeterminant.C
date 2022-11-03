@@ -28,8 +28,8 @@ namespace {
 
 void check_HexSCV_determinant(const stk::mesh::BulkData& bulk)
 {
-    typedef stk::mesh::Field<double,stk::mesh::Cartesian> CoordFieldType;
-    CoordFieldType* coordField = bulk.mesh_meta_data().get_field<CoordFieldType>(stk::topology::NODE_RANK, "coordinates");
+    typedef stk::mesh::Field<double> CoordFieldType;
+    CoordFieldType* coordField = bulk.mesh_meta_data().get_field<double>(stk::topology::NODE_RANK, "coordinates");
     EXPECT_TRUE(coordField != nullptr);
 
     stk::mesh::EntityVector elems;
@@ -79,6 +79,7 @@ TEST(HexSCV, determinant)
     stk::mesh::MeshBuilder meshBuilder(comm);
     meshBuilder.set_spatial_dimension(spatialDimension);
     auto bulk = meshBuilder.create();
+    bulk->mesh_meta_data().use_simple_fields();
 
     unit_test_utils::fill_mesh_1_elem_per_proc_hex8(*bulk);
 
@@ -93,6 +94,7 @@ TEST(HexSCV, grandyvol)
   stk::mesh::MeshBuilder meshBuilder(comm);
   meshBuilder.set_spatial_dimension(spatialDimension);
   auto bulk = meshBuilder.create();
+  bulk->mesh_meta_data().use_simple_fields();
 
   unit_test_utils::fill_mesh_1_elem_per_proc_hex8(*bulk);
   const auto& coordField = *static_cast<const VectorFieldType*>(bulk->mesh_meta_data().coordinate_field());

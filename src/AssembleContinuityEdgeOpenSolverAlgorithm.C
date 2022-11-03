@@ -52,16 +52,16 @@ AssembleContinuityEdgeOpenSolverAlgorithm::AssembleContinuityEdgeOpenSolverAlgor
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   if ( meshMotion_ )
-     velocityRTM_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity_rtm");
+     velocityRTM_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "velocity_rtm");
    else
-     velocityRTM_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
-  Gpdx_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "dpdx");
-  coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
-  pressure_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure");
-  density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
-  exposedAreaVec_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");
-  dynamicPressure_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "dynamic_pressure");
-  pressureBc_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure_bc");
+     velocityRTM_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "velocity");
+  Gpdx_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "dpdx");
+  coordinates_ = meta_data.get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  pressure_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "pressure");
+  density_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "density");
+  exposedAreaVec_ = meta_data.get_field<double>(meta_data.side_rank(), "exposed_area_vector");
+  dynamicPressure_ = meta_data.get_field<double>(meta_data.side_rank(), "dynamic_pressure");
+  pressureBc_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "pressure_bc");
 }
 
 //--------------------------------------------------------------------------

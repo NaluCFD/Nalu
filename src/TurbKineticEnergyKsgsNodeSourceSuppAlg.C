@@ -47,21 +47,21 @@ TurbKineticEnergyKsgsNodeSourceSuppAlg::TurbKineticEnergyKsgsNodeSourceSuppAlg(
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
-  ScalarFieldType *tke = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_ke");
+  ScalarFieldType *tke = meta_data.get_field<double>(stk::topology::NODE_RANK, "turbulent_ke");
   tkeNp1_ = &(tke->field_of_state(stk::mesh::StateNP1));
-  ScalarFieldType *density = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
+  ScalarFieldType *density = meta_data.get_field<double>(stk::topology::NODE_RANK, "density");
   densityNp1_ = &(density->field_of_state(stk::mesh::StateNP1));
-  tvisc_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_viscosity");
-  dudx_ = meta_data.get_field<GenericFieldType>(stk::topology::NODE_RANK, "dudx");
-  dualNodalVolume_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
-  cEps_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "c_epsilon");
+  tvisc_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "turbulent_viscosity");
+  dudx_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "dudx");
+  dualNodalVolume_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "dual_nodal_volume");
+  cEps_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "c_epsilon");
   
   // low-Re form
-  visc_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity");
+  visc_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "viscosity");
   // assign required variables that may not be registered to an arbitrary field
-  dsqrtkSq_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity");
+  dsqrtkSq_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "viscosity");
   if ( realm_.solutionOptions_->turbulenceModel_ == LRKSGS ) {
-    dsqrtkSq_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dsqrtk_dx_sq");
+    dsqrtkSq_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "dsqrtk_dx_sq");
     lrksgsfac_ = 1.0;
   }
 }

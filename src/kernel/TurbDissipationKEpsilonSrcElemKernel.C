@@ -43,16 +43,16 @@ TurbDissipationKEpsilonSrcElemKernel<AlgTraits>::
     ipNodeMap_(sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_)->ipNodeMap())
 {
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
-  coordinates_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
-  VectorFieldType* velocity = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
+  coordinates_ = metaData.get_field<double>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
+  VectorFieldType* velocity = metaData.get_field<double>(stk::topology::NODE_RANK, "velocity");
   velocityNp1_ = &(velocity->field_of_state(stk::mesh::StateNP1));
-  ScalarFieldType* tke = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_ke");
+  ScalarFieldType* tke = metaData.get_field<double>(stk::topology::NODE_RANK, "turbulent_ke");
   tkeNp1_ = &tke->field_of_state(stk::mesh::StateNP1);
-  ScalarFieldType* eps = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_dissipation");
+  ScalarFieldType* eps = metaData.get_field<double>(stk::topology::NODE_RANK, "turbulent_dissipation");
   epsNp1_ = &eps->field_of_state(stk::mesh::StateNP1);
-  ScalarFieldType* density = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
+  ScalarFieldType* density = metaData.get_field<double>(stk::topology::NODE_RANK, "density");
   densityNp1_ = &density->field_of_state(stk::mesh::StateNP1);
-  tvisc_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_viscosity");
+  tvisc_ = metaData.get_field<double>(stk::topology::NODE_RANK, "turbulent_viscosity");
 
   MasterElement* meSCV =
     sierra::nalu::MasterElementRepo::get_volume_master_element(

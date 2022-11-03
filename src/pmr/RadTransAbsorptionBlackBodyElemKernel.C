@@ -33,10 +33,10 @@ RadTransAbsorptionBlackBodyElemKernel<AlgTraits>::RadTransAbsorptionBlackBodyEle
 {
   // save off fields
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
-  intensity_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "intensity");
-  absorption_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "absorption_coefficient");
-  scattering_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "scattering_coefficient");
-  radiationSource_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "radiation_source");
+  intensity_ = metaData.get_field<double>(stk::topology::NODE_RANK, "intensity");
+  absorption_ = metaData.get_field<double>(stk::topology::NODE_RANK, "absorption_coefficient");
+  scattering_ = metaData.get_field<double>(stk::topology::NODE_RANK, "scattering_coefficient");
+  radiationSource_ = metaData.get_field<double>(stk::topology::NODE_RANK, "radiation_source");
   
   MasterElement *meSCV = sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_);
 

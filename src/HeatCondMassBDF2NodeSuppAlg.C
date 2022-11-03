@@ -44,13 +44,13 @@ HeatCondMassBDF2NodeSuppAlg::HeatCondMassBDF2NodeSuppAlg(
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
-  ScalarFieldType *temperature = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature");
+  ScalarFieldType *temperature = meta_data.get_field<double>(stk::topology::NODE_RANK, "temperature");
   temperatureNm1_ = &(temperature->field_of_state(stk::mesh::StateNM1));
   temperatureN_ = &(temperature->field_of_state(stk::mesh::StateN));
   temperatureNp1_ = &(temperature->field_of_state(stk::mesh::StateNP1));
-  density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
-  specificHeat_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "specific_heat");
-  dualNodalVolume_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
+  density_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "density");
+  specificHeat_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "specific_heat");
+  dualNodalVolume_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "dual_nodal_volume");
 }
 
 //--------------------------------------------------------------------------

@@ -167,13 +167,13 @@ ComputeMdotAlgorithmDriver::compute_accumulation()
   const double gamma3 = realm_.get_gamma3(); // gamma3 may be zero
 
   // extract fields
-  ScalarFieldType *density = metaData.get_field<ScalarFieldType>(
+  ScalarFieldType *density = metaData.get_field<double>(
     stk::topology::NODE_RANK, "density");
   ScalarFieldType &densityNp1 = density->field_of_state(stk::mesh::StateNP1);
   ScalarFieldType &densityN = density->field_of_state(stk::mesh::StateN);
   ScalarFieldType &densityNm1 = (density->number_of_states() == 2) 
     ? density->field_of_state(stk::mesh::StateN) : density->field_of_state(stk::mesh::StateNM1);
-  VectorFieldType *coordinates = metaData.get_field<VectorFieldType>(
+  VectorFieldType *coordinates = metaData.get_field<double>(
     stk::topology::NODE_RANK, solnOpts_.get_coordinates_name());
 
   //  required space

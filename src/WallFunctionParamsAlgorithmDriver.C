@@ -42,8 +42,8 @@ WallFunctionParamsAlgorithmDriver::WallFunctionParamsAlgorithmDriver(
 {
   // register the fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
-  assembledWallArea_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "assembled_wall_area_wf");
-  assembledWallNormalDistance_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "assembled_wall_normal_distance");
+  assembledWallArea_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "assembled_wall_area_wf");
+  assembledWallNormalDistance_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "assembled_wall_normal_distance");
 }
 
 //--------------------------------------------------------------------------

@@ -34,6 +34,7 @@ public:
      meshBuilder.set_spatial_dimension(BcAlgTraits::nDim_);
      bulk_ = meshBuilder.create();
      meta_ = &bulk_->mesh_meta_data();
+     meta_->use_simple_fields();
      if (doInit)
        fill_mesh_and_init_data(doPerturb);
    }

@@ -42,79 +42,79 @@ TestTurbulenceAlgorithm::declare_fields()
   auto spatialDim = meta.spatial_dimension();
 
   density_ = (
-    &meta.declare_field<ScalarFieldType>(
+    &meta.declare_field<double>(
       stk::topology::NODE_RANK, "density"));
   viscosity_ = (
-    &meta.declare_field<ScalarFieldType>(
+    &meta.declare_field<double>(
       stk::topology::NODE_RANK, "viscosity"));
   tke_ = (
-    &meta.declare_field<ScalarFieldType>(
+    &meta.declare_field<double>(
       stk::topology::NODE_RANK, "turbulent_ke"));
   sdr_ = (
-    &meta.declare_field<ScalarFieldType>(
+    &meta.declare_field<double>(
       stk::topology::NODE_RANK, "specific_dissipation_rate"));
   minDistance_ = (
-    &meta.declare_field<ScalarFieldType>(
+    &meta.declare_field<double>(
       stk::topology::NODE_RANK, "minimum_distance_to_wall"));
   dudx_ = (
-    &meta.declare_field<GenericFieldType>(
+    &meta.declare_field<double>(
       stk::topology::NODE_RANK, "dudx"));
   tvisc_ = (
-    &meta.declare_field<ScalarFieldType>(
+    &meta.declare_field<double>(
       stk::topology::NODE_RANK, "turbulent_viscosity"));
   maxLengthScale_ = (
-    &meta.declare_field<ScalarFieldType>(
+    &meta.declare_field<double>(
       stk::topology::NODE_RANK, "sst_max_length_scale"));
   fOneBlend_ = (
-    &meta.declare_field<ScalarFieldType>(
+    &meta.declare_field<double>(
       stk::topology::NODE_RANK, "sst_f_one_blending"));
   evisc_ = (
-     &meta.declare_field<ScalarFieldType>(
+     &meta.declare_field<double>(
        stk::topology::NODE_RANK, "effective_viscosity"));
   evisc_ = (
-     &meta.declare_field<ScalarFieldType>(
+     &meta.declare_field<double>(
        stk::topology::NODE_RANK, "effective_viscosity"));
   dualNodalVolume_ = (
-     &meta.declare_field<ScalarFieldType>(
+     &meta.declare_field<double>(
        stk::topology::NODE_RANK, "dual_nodal_volume"));
   dkdx_ = (
-     &meta.declare_field<VectorFieldType>(
+     &meta.declare_field<double>(
        stk::topology::NODE_RANK, "dkdx"));
   dwdx_ = (
-     &meta.declare_field<VectorFieldType>(
+     &meta.declare_field<double>(
        stk::topology::NODE_RANK, "dwdx"));
   dhdx_ = (
-     &meta.declare_field<VectorFieldType>(
+     &meta.declare_field<double>(
        stk::topology::NODE_RANK, "dhdx"));
   specificHeat_ = (
-     &meta.declare_field<ScalarFieldType>(
+     &meta.declare_field<double>(
        stk::topology::NODE_RANK, "specific_heat"));
   cEps_ = (
-     &meta.declare_field<ScalarFieldType>(
+     &meta.declare_field<double>(
        stk::topology::NODE_RANK, "c_epsilon"));
   cmuEps_ = (
-     &meta.declare_field<ScalarFieldType>(
+     &meta.declare_field<double>(
        stk::topology::NODE_RANK, "c_mu_epsilon"));
 
-  stk::mesh::put_field_on_mesh(*density_, meta.universal_part(), 1, nullptr);
-  stk::mesh::put_field_on_mesh(*viscosity_, meta.universal_part(), 1, nullptr);
-  stk::mesh::put_field_on_mesh(*tke_, meta.universal_part(), 1, nullptr);
-  stk::mesh::put_field_on_mesh(*sdr_, meta.universal_part(), 1, nullptr);
-  stk::mesh::put_field_on_mesh(*minDistance_, meta.universal_part(), 1, nullptr);
+  stk::mesh::put_field_on_mesh(*density_, meta.universal_part(), nullptr);
+  stk::mesh::put_field_on_mesh(*viscosity_, meta.universal_part(), nullptr);
+  stk::mesh::put_field_on_mesh(*tke_, meta.universal_part(), nullptr);
+  stk::mesh::put_field_on_mesh(*sdr_, meta.universal_part(), nullptr);
+  stk::mesh::put_field_on_mesh(*minDistance_, meta.universal_part(), nullptr);
   stk::mesh::put_field_on_mesh(*dudx_, meta.universal_part(), spatialDim*spatialDim, nullptr);
-  stk::mesh::put_field_on_mesh(*tvisc_, meta.universal_part(), 1, nullptr);
-  stk::mesh::put_field_on_mesh(*maxLengthScale_, meta.universal_part(), 1, nullptr);
-  stk::mesh::put_field_on_mesh(*fOneBlend_, meta.universal_part(), 1, nullptr);
-  stk::mesh::put_field_on_mesh(*evisc_, meta.universal_part(), 1, nullptr);
-  stk::mesh::put_field_on_mesh(*dualNodalVolume_, meta.universal_part(), 1, nullptr);
+  stk::mesh::put_field_on_mesh(*tvisc_, meta.universal_part(), nullptr);
+  stk::mesh::put_field_on_mesh(*maxLengthScale_, meta.universal_part(), nullptr);
+  stk::mesh::put_field_on_mesh(*fOneBlend_, meta.universal_part(), nullptr);
+  stk::mesh::put_field_on_mesh(*evisc_, meta.universal_part(), nullptr);
+  stk::mesh::put_field_on_mesh(*dualNodalVolume_, meta.universal_part(), nullptr);
   stk::mesh::put_field_on_mesh(*dkdx_, meta.universal_part(), spatialDim, nullptr);
   stk::mesh::put_field_on_mesh(*dwdx_, meta.universal_part(), spatialDim, nullptr);
   stk::mesh::put_field_on_mesh(*dhdx_, meta.universal_part(), spatialDim, nullptr);
-  stk::mesh::put_field_on_mesh(*specificHeat_, meta.universal_part(), 1, nullptr);
+  stk::mesh::put_field_on_mesh(*specificHeat_, meta.universal_part(), nullptr);
   const double cEps = realm().get_turb_model_constant(sierra::nalu::TM_cEps);
-  stk::mesh::put_field_on_mesh(*cEps_, meta.universal_part(), 1, &cEps);
+  stk::mesh::put_field_on_mesh(*cEps_, meta.universal_part(), &cEps);
   const double cmuEps = realm().get_turb_model_constant(sierra::nalu::TM_cmuEps);
-  stk::mesh::put_field_on_mesh(*cmuEps_, meta.universal_part(), 1, &cmuEps);
+  stk::mesh::put_field_on_mesh(*cmuEps_, meta.universal_part(), &cmuEps);
 }
 
 void

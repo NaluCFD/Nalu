@@ -54,20 +54,20 @@ ComputeMdotElemAlgorithm::ComputeMdotElemAlgorithm(
    // extract fields; nodal
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   if ( meshMotion_ )
-    velocityRTM_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity_rtm");
+    velocityRTM_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "velocity_rtm");
   else
-    velocityRTM_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
-  Gpdx_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "dpdx");
-  coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
-  pressure_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure");
-  density_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
-  massFlowRate_ = meta_data.get_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "mass_flow_rate_scs");
+    velocityRTM_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "velocity");
+  Gpdx_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "dpdx");
+  coordinates_ = meta_data.get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  pressure_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "pressure");
+  density_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "density");
+  massFlowRate_ = meta_data.get_field<double>(stk::topology::ELEMENT_RANK, "mass_flow_rate_scs");
 
   if ( assembleMdotToEdge_ ) {
     // check to make sure edges are active
     if (!realm_.realmUsesEdges_ )
       throw std::runtime_error("Edges need to be activated for mixed edge/scalar; element/cont");
-    edgeMassFlowRate_ = meta_data.get_field<ScalarFieldType>(stk::topology::EDGE_RANK, "mass_flow_rate");
+    edgeMassFlowRate_ = meta_data.get_field<double>(stk::topology::EDGE_RANK, "mass_flow_rate");
   }
 }
 

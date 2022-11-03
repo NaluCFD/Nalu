@@ -721,13 +721,13 @@ void
 Realm::setup_nodal_fields()
 {
 #ifdef NALU_USES_HYPRE
-  hypreGlobalId_ = &(meta_data().declare_field<HypreIDFieldType>(
+  hypreGlobalId_ = &(meta_data().declare_field<HypreIntType>(
                        stk::topology::NODE_RANK, "hypre_global_id"));
 #endif
   // register global id and rank fields on all parts
   const stk::mesh::PartVector parts = meta_data().get_parts();
   for ( size_t ipart = 0; ipart < parts.size(); ++ipart ) {
-    naluGlobalId_ = &(meta_data().declare_field<GlobalIdFieldType>(stk::topology::NODE_RANK, "nalu_global_id"));
+    naluGlobalId_ = &(meta_data().declare_field<stk::mesh::EntityId>(stk::topology::NODE_RANK, "nalu_global_id"));
     stk::mesh::put_field_on_mesh(*naluGlobalId_, *parts[ipart], nullptr);
 
 #ifdef NALU_USES_HYPRE
@@ -1154,9 +1154,9 @@ Realm::setup_property()
             
             // extract fields
             ScalarFieldType *cpField 
-              = meta_data().get_field<ScalarFieldType>(stk::topology::NODE_RANK, "specific_heat");
+              = meta_data().get_field<double>(stk::topology::NODE_RANK, "specific_heat");
             ScalarFieldType *cvField 
-              = meta_data().get_field<ScalarFieldType>(stk::topology::NODE_RANK, "specific_heat_v");
+              = meta_data().get_field<double>(stk::topology::NODE_RANK, "specific_heat_v");
 
             // Compute Cp and Cv on the fly based on gamma and R/mixtureMW
             std::vector<std::pair<double, double> > mwMassFracVec;
@@ -1239,7 +1239,7 @@ Realm::setup_property()
         case MIXFRAC_MAT:
         {
           // extract the mixture fraction field
-          ScalarFieldType *mixFrac = meta_data().get_field<ScalarFieldType>(stk::topology::NODE_RANK, "mixture_fraction");
+          ScalarFieldType *mixFrac = meta_data().get_field<double>(stk::topology::NODE_RANK, "mixture_fraction");
 
           // primary and secondary
           const double propPrim = matData->primary_;
@@ -1264,7 +1264,7 @@ Realm::setup_property()
         case VOF_MAT:
         {
           // extract the volume of fluiod field
-          ScalarFieldType *vof = meta_data().get_field<ScalarFieldType>(stk::topology::NODE_RANK, "volume_of_fluid");
+          ScalarFieldType *vof = meta_data().get_field<double>(stk::topology::NODE_RANK, "volume_of_fluid");
 
           // primary and secondary
           const double phaseOne = matData->phaseOne_;
@@ -1517,7 +1517,7 @@ Realm::setup_property()
             NaluEnv::self().naluOutputP0() << matData->tablePropName_ << " will manage the aux_variable: " << matData->auxVarName_  << std::endl;
 	  
             // register and put the field; assume a scalar for now; species extraction will complicate the matter
-            ScalarFieldType *auxVar =  &(meta_data().declare_field<ScalarFieldType>(stk::topology::NODE_RANK, auxVarName));
+            ScalarFieldType *auxVar =  &(meta_data().declare_field<double>(stk::topology::NODE_RANK, auxVarName));
             stk::mesh::put_field_on_mesh(*auxVar, *targetPart, nullptr);
             // create the algorithm to populate it from an HDF5 file
 	    HDF5TablePropAlgorithm * auxVarAlg = new HDF5TablePropAlgorithm(*this, 
@@ -1827,6 +1827,7 @@ Realm::create_mesh()
   stk::mesh::MeshBuilder builder(pm);
   builder.set_aura_option(activateAura_ ? stk::mesh::BulkData::AUTO_AURA : stk::mesh::BulkData::NO_AUTO_AURA);
   bulkData_ = builder.create();
+  bulkData_->mesh_meta_data().use_simple_fields();
  
   ioBroker_ = new stk::io::StkMeshIoBroker(pm);
   ioBroker_->set_bulk_data(bulkData_);
@@ -2311,7 +2312,7 @@ Realm::compute_centroid_on_parts(
   double maxCoord[3] = {-largeNumber, -largeNumber, -largeNumber};
 
   // model coords are fine in this case
-  VectorFieldType *modelCoords = meta_data().get_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates");
+  VectorFieldType *modelCoords = meta_data().get_field<double>(stk::topology::NODE_RANK, "coordinates");
 
   // select all nodes
   stk::mesh::Selector s_all_nodes = stk::mesh::selectUnion(partVec);
@@ -2659,7 +2660,7 @@ Realm::set_omega(
 {
   // deal with tanh blending
   const double omegaBlend = get_tanh_blending("omega");
-  ScalarFieldType *omega = meta_data().get_field<ScalarFieldType>(stk::topology::NODE_RANK, "omega");
+  ScalarFieldType *omega = meta_data().get_field<double>(stk::topology::NODE_RANK, "omega");
   
   stk::mesh::Selector s_all_nodes = stk::mesh::Selector(*targetPart);
 
@@ -2691,9 +2692,9 @@ Realm::set_current_displacement(
   double mcX[3] = {0.0,0.0,0.0};
   double rcX[3] = {0.0,0.0,0.0};
 
-  VectorFieldType *modelCoords = meta_data().get_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates");
-  VectorFieldType *displacement = meta_data().get_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_displacement");
-  ScalarFieldType *omega = meta_data().get_field<ScalarFieldType>(stk::topology::NODE_RANK, "omega");
+  VectorFieldType *modelCoords = meta_data().get_field<double>(stk::topology::NODE_RANK, "coordinates");
+  VectorFieldType *displacement = meta_data().get_field<double>(stk::topology::NODE_RANK, "mesh_displacement");
+  ScalarFieldType *omega = meta_data().get_field<double>(stk::topology::NODE_RANK, "omega");
 
   stk::mesh::Selector s_all_nodes = stk::mesh::Selector(*targetPart);
 
@@ -2853,8 +2854,8 @@ Realm::set_displacement_six_dof(
   double mcX[3] = {0.0,0.0,0.0};
   double rcX[3] = {0.0,0.0,0.0};
 
-  VectorFieldType *modelCoords = meta_data().get_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates");
-  VectorFieldType *displacement = meta_data().get_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_displacement");
+  VectorFieldType *modelCoords = meta_data().get_field<double>(stk::topology::NODE_RANK, "coordinates");
+  VectorFieldType *displacement = meta_data().get_field<double>(stk::topology::NODE_RANK, "mesh_displacement");
 
   stk::mesh::Selector s_all_nodes = stk::mesh::Selector(*targetPart);
 
@@ -2914,8 +2915,8 @@ Realm::set_initial_displacement(
   double mcX[3] = {0.0,0.0,0.0};
   double rcX[3] = {0.0,0.0,0.0};
   
-  VectorFieldType *modelCoords = meta_data().get_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates");
-  VectorFieldType *displacement = meta_data().get_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_displacement");
+  VectorFieldType *modelCoords = meta_data().get_field<double>(stk::topology::NODE_RANK, "coordinates");
+  VectorFieldType *displacement = meta_data().get_field<double>(stk::topology::NODE_RANK, "mesh_displacement");
  
   stk::mesh::Selector s_all_nodes = stk::mesh::Selector(*targetPart);
 
@@ -2970,9 +2971,9 @@ Realm::set_current_coordinates(
 {
   const int nDim = meta_data().spatial_dimension();
 
-  VectorFieldType *modelCoords = meta_data().get_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates");
-  VectorFieldType *currentCoords = meta_data().get_field<VectorFieldType>(stk::topology::NODE_RANK, "current_coordinates");
-  VectorFieldType *displacement = meta_data().get_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_displacement");
+  VectorFieldType *modelCoords = meta_data().get_field<double>(stk::topology::NODE_RANK, "coordinates");
+  VectorFieldType *currentCoords = meta_data().get_field<double>(stk::topology::NODE_RANK, "current_coordinates");
+  VectorFieldType *displacement = meta_data().get_field<double>(stk::topology::NODE_RANK, "mesh_displacement");
 
   stk::mesh::Selector s_all_nodes = stk::mesh::Selector(*targetPart);
 
@@ -3008,8 +3009,8 @@ Realm::set_mesh_velocity_six_dof(
   double uX[3] = {0.0,0.0,0.0};
   double ccX[3] = {0.0,0.0,0.0};
   
-  VectorFieldType *currentCoords = meta_data().get_field<VectorFieldType>(stk::topology::NODE_RANK, "current_coordinates");
-  VectorFieldType *meshVelocity = meta_data().get_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_velocity");
+  VectorFieldType *currentCoords = meta_data().get_field<double>(stk::topology::NODE_RANK, "current_coordinates");
+  VectorFieldType *meshVelocity = meta_data().get_field<double>(stk::topology::NODE_RANK, "mesh_velocity");
 
   stk::mesh::Selector s_all_nodes = stk::mesh::Selector(*targetPart);
 
@@ -3058,9 +3059,9 @@ Realm::set_mesh_velocity(
   double uX[3] = {0.0,0.0,0.0};
   double ccX[3] = {0.0,0.0,0.0};
   
-  VectorFieldType *currentCoords = meta_data().get_field<VectorFieldType>(stk::topology::NODE_RANK, "current_coordinates");
-  VectorFieldType *meshVelocity = meta_data().get_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_velocity");
-  ScalarFieldType *omega = meta_data().get_field<ScalarFieldType>(stk::topology::NODE_RANK, "omega");
+  VectorFieldType *currentCoords = meta_data().get_field<double>(stk::topology::NODE_RANK, "current_coordinates");
+  VectorFieldType *meshVelocity = meta_data().get_field<double>(stk::topology::NODE_RANK, "mesh_velocity");
+  ScalarFieldType *omega = meta_data().get_field<double>(stk::topology::NODE_RANK, "omega");
 
   stk::mesh::Selector s_all_nodes = stk::mesh::Selector(*targetPart);
 
@@ -3127,7 +3128,7 @@ Realm::compute_geometry()
     double maxVolume = -1.0e16;
     double minVolume = 1.0e16;
 
-    ScalarFieldType *dualVolume = meta_data().get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
+    ScalarFieldType *dualVolume = meta_data().get_field<double>(stk::topology::NODE_RANK, "dual_nodal_volume");
 
     stk::mesh::Selector s_local_nodes
       = meta_data().locally_owned_part() &stk::mesh::selectField(*dualVolume);
@@ -3168,9 +3169,9 @@ Realm::compute_vrtm()
   if ( hasFluids_ && (solutionOptions_->meshMotion_ || solutionOptions_->externalMeshDeformation_) ) {
     const int nDim = meta_data().spatial_dimension();
 
-    VectorFieldType *velocity = meta_data().get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
-    VectorFieldType *meshVelocity = meta_data().get_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_velocity");
-    VectorFieldType *velocityRTM = meta_data().get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity_rtm");
+    VectorFieldType *velocity = meta_data().get_field<double>(stk::topology::NODE_RANK, "velocity");
+    VectorFieldType *meshVelocity = meta_data().get_field<double>(stk::topology::NODE_RANK, "mesh_velocity");
+    VectorFieldType *velocityRTM = meta_data().get_field<double>(stk::topology::NODE_RANK, "velocity_rtm");
 
     stk::mesh::Selector s_all_nodes
        = (meta_data().locally_owned_part() | meta_data().globally_shared_part());
@@ -3203,9 +3204,9 @@ Realm::init_current_coordinates()
 
   const int nDim = meta_data().spatial_dimension();
 
-  VectorFieldType *modelCoords = meta_data().get_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates");
-  VectorFieldType *currentCoords = meta_data().get_field<VectorFieldType>(stk::topology::NODE_RANK, "current_coordinates");
-  VectorFieldType *displacement = meta_data().get_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_displacement");
+  VectorFieldType *modelCoords = meta_data().get_field<double>(stk::topology::NODE_RANK, "coordinates");
+  VectorFieldType *currentCoords = meta_data().get_field<double>(stk::topology::NODE_RANK, "current_coordinates");
+  VectorFieldType *displacement = meta_data().get_field<double>(stk::topology::NODE_RANK, "mesh_displacement");
 
   stk::mesh::Selector s_all_nodes
     = (meta_data().locally_owned_part() | meta_data().globally_shared_part());
@@ -3280,32 +3281,38 @@ Realm::register_nodal_fields(
 
   // mesh motion/deformation is high level
   if ( solutionOptions_->meshMotion_ || solutionOptions_->externalMeshDeformation_) {
-    VectorFieldType *displacement = &(meta_data().declare_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_displacement"));
+    VectorFieldType *displacement = &(meta_data().declare_field<double>(stk::topology::NODE_RANK, "mesh_displacement"));
     stk::mesh::put_field_on_mesh(*displacement, *part, nDim, nullptr);
-    VectorFieldType *currentCoords = &(meta_data().declare_field<VectorFieldType>(stk::topology::NODE_RANK, "current_coordinates"));
+    stk::io::set_field_output_type(*displacement, stk::io::FieldOutputType::VECTOR_3D);
+    VectorFieldType *currentCoords = &(meta_data().declare_field<double>(stk::topology::NODE_RANK, "current_coordinates"));
     stk::mesh::put_field_on_mesh(*currentCoords, *part, nDim, nullptr);
-    VectorFieldType *meshVelocity = &(meta_data().declare_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_velocity"));
+    stk::io::set_field_output_type(*currentCoords, stk::io::FieldOutputType::VECTOR_3D);
+    VectorFieldType *meshVelocity = &(meta_data().declare_field<double>(stk::topology::NODE_RANK, "mesh_velocity"));
     stk::mesh::put_field_on_mesh(*meshVelocity, *part, nDim, nullptr);
-    VectorFieldType *velocityRTM = &(meta_data().declare_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity_rtm"));
+    stk::io::set_field_output_type(*meshVelocity, stk::io::FieldOutputType::VECTOR_3D);
+    VectorFieldType *velocityRTM = &(meta_data().declare_field<double>(stk::topology::NODE_RANK, "velocity_rtm"));
     stk::mesh::put_field_on_mesh(*velocityRTM, *part, nDim, nullptr);
+    stk::io::set_field_output_type(*velocityRTM, stk::io::FieldOutputType::VECTOR_3D);
     // only internal mesh motion requires rotation rate
     if ( solutionOptions_->meshMotion_ ) {
-      ScalarFieldType *omega = &(meta_data().declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "omega"));
+      ScalarFieldType *omega = &(meta_data().declare_field<double>(stk::topology::NODE_RANK, "omega"));
       stk::mesh::put_field_on_mesh(*omega, *part, nullptr);
     }
     // only external mesh deformation requires dvi/dxj (for GCL)
     if ( solutionOptions_->externalMeshDeformation_) {
-      ScalarFieldType *divV = &(meta_data().declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "div_mesh_velocity"));
+      ScalarFieldType *divV = &(meta_data().declare_field<double>(stk::topology::NODE_RANK, "div_mesh_velocity"));
       stk::mesh::put_field_on_mesh(*divV, *part, nullptr);
     }
   }
   
   if ( solutionOptions_->initialMeshDisplacement_ ) {
     // initialize to zero
-    VectorFieldType *displacement = &(meta_data().declare_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_displacement"));
+    VectorFieldType *displacement = &(meta_data().declare_field<double>(stk::topology::NODE_RANK, "mesh_displacement"));
     stk::mesh::put_field_on_mesh(*displacement, *part, nDim, nullptr);
-    VectorFieldType *currentCoords = &(meta_data().declare_field<VectorFieldType>(stk::topology::NODE_RANK, "current_coordinates"));
+    stk::io::set_field_output_type(*displacement, stk::io::FieldOutputType::VECTOR_3D);
+    VectorFieldType *currentCoords = &(meta_data().declare_field<double>(stk::topology::NODE_RANK, "current_coordinates"));
     stk::mesh::put_field_on_mesh(*currentCoords, *part, nDim, nullptr);
+    stk::io::set_field_output_type(*currentCoords, stk::io::FieldOutputType::VECTOR_3D);
   }
 }
 
@@ -3363,7 +3370,7 @@ Realm::register_wall_bc(
   const int numScsIp = meFC->numIntPoints_;
 
   GenericFieldType *exposedAreaVec_
-    = &(meta_data().declare_field<GenericFieldType>(static_cast<stk::topology::rank_t>(meta_data().side_rank()), "exposed_area_vector"));
+    = &(meta_data().declare_field<double>(static_cast<stk::topology::rank_t>(meta_data().side_rank()), "exposed_area_vector"));
   stk::mesh::put_field_on_mesh(*exposedAreaVec_, *part, nDim*numScsIp, nullptr);
 
   const AlgorithmType algType = WALL;
@@ -3404,7 +3411,7 @@ Realm::register_inflow_bc(
   const int numScsIp = meFC->numIntPoints_;
 
   GenericFieldType *exposedAreaVec_
-    = &(meta_data().declare_field<GenericFieldType>(static_cast<stk::topology::rank_t>(meta_data().side_rank()), "exposed_area_vector"));
+    = &(meta_data().declare_field<double>(static_cast<stk::topology::rank_t>(meta_data().side_rank()), "exposed_area_vector"));
   stk::mesh::put_field_on_mesh(*exposedAreaVec_, *part, nDim*numScsIp, nullptr);
 
   const AlgorithmType algType = INFLOW;
@@ -3444,7 +3451,7 @@ Realm::register_open_bc(
   const int numScsIp = meFC->numIntPoints_;
 
   GenericFieldType *exposedAreaVec_
-    = &(meta_data().declare_field<GenericFieldType>(static_cast<stk::topology::rank_t>(meta_data().side_rank()), "exposed_area_vector"));
+    = &(meta_data().declare_field<double>(static_cast<stk::topology::rank_t>(meta_data().side_rank()), "exposed_area_vector"));
   stk::mesh::put_field_on_mesh(*exposedAreaVec_, *part, nDim*numScsIp, nullptr);
 
   const AlgorithmType algType = OPEN;
@@ -3484,7 +3491,7 @@ Realm::register_symmetry_bc(
   const int numScsIp = meFC->numIntPoints_;
 
   GenericFieldType *exposedAreaVec_
-    = &(meta_data().declare_field<GenericFieldType>(static_cast<stk::topology::rank_t>(meta_data().side_rank()), "exposed_area_vector"));
+    = &(meta_data().declare_field<double>(static_cast<stk::topology::rank_t>(meta_data().side_rank()), "exposed_area_vector"));
   stk::mesh::put_field_on_mesh(*exposedAreaVec_, *part, nDim*numScsIp, nullptr);
 
   const AlgorithmType algType = SYMMETRY;
@@ -3592,9 +3599,9 @@ Realm::register_non_conformal_bc(
   
   // exposed area vector
   GenericFieldType *exposedAreaVec_
-    = &(meta_data().declare_field<GenericFieldType>(static_cast<stk::topology::rank_t>(meta_data().side_rank()), "exposed_area_vector"));
+    = &(meta_data().declare_field<double>(static_cast<stk::topology::rank_t>(meta_data().side_rank()), "exposed_area_vector"));
   stk::mesh::put_field_on_mesh(*exposedAreaVec_, *part, nDim*numScsIp, nullptr);
-   
+
   std::map<AlgorithmType, Algorithm *>::iterator it
     = computeGeometryAlgDriver_->algMap_.find(algType);
   if ( it == computeGeometryAlgDriver_->algMap_.end() ) {

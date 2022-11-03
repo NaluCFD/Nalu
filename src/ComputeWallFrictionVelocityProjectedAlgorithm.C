@@ -88,16 +88,16 @@ ComputeWallFrictionVelocityProjectedAlgorithm::ComputeWallFrictionVelocityProjec
     needToGhostCount_(0)
 {
   // save off fields
-  velocity_ = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
-  bcVelocity_ = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, "wall_velocity_bc");
-  coordinates_ = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
-  density_ = metaData_->get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
-  viscosity_ = metaData_->get_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity");
-  exposedAreaVec_ = metaData_->get_field<GenericFieldType>(metaData_->side_rank(), "exposed_area_vector");
-  wallFrictionVelocityBip_ = metaData_->get_field<GenericFieldType>(metaData_->side_rank(), "wall_friction_velocity_bip");
-  wallNormalDistanceBip_ = metaData_->get_field<GenericFieldType>(metaData_->side_rank(), "wall_normal_distance_bip");
-  assembledWallArea_ = metaData_->get_field<ScalarFieldType>(stk::topology::NODE_RANK, "assembled_wall_area_wf");
-  assembledWallNormalDistance_ = metaData_->get_field<ScalarFieldType>(stk::topology::NODE_RANK, "assembled_wall_normal_distance");
+  velocity_ = metaData_->get_field<double>(stk::topology::NODE_RANK, "velocity");
+  bcVelocity_ = metaData_->get_field<double>(stk::topology::NODE_RANK, "wall_velocity_bc");
+  coordinates_ = metaData_->get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  density_ = metaData_->get_field<double>(stk::topology::NODE_RANK, "density");
+  viscosity_ = metaData_->get_field<double>(stk::topology::NODE_RANK, "viscosity");
+  exposedAreaVec_ = metaData_->get_field<double>(metaData_->side_rank(), "exposed_area_vector");
+  wallFrictionVelocityBip_ = metaData_->get_field<double>(metaData_->side_rank(), "wall_friction_velocity_bip");
+  wallNormalDistanceBip_ = metaData_->get_field<double>(metaData_->side_rank(), "wall_normal_distance_bip");
+  assembledWallArea_ = metaData_->get_field<double>(stk::topology::NODE_RANK, "assembled_wall_area_wf");
+  assembledWallNormalDistance_ = metaData_->get_field<double>(stk::topology::NODE_RANK, "assembled_wall_normal_distance");
   
   // set data
   set_data(projectedDistance);
@@ -483,7 +483,7 @@ ComputeWallFrictionVelocityProjectedAlgorithm::construct_bounding_points()
 
   // field extraction
   VectorFieldType *coordinates
-    = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+    = metaData_->get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   
   // nodal fields to gather
   std::vector<double> ws_coordinates;
@@ -617,7 +617,7 @@ ComputeWallFrictionVelocityProjectedAlgorithm::construct_bounding_boxes()
 {
   // extract coordinates
   VectorFieldType *coordinates
-    = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+    = metaData_->get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   
   // setup data structures for search
   Point minCorner, maxCorner;
@@ -774,7 +774,7 @@ ComputeWallFrictionVelocityProjectedAlgorithm::manage_ghosting()
   // ensure that the coordinates for the ghosted elements (required for the fine search) are up-to-date
   if (g_needToGhostCount > 0 ) {
     VectorFieldType *coordinates 
-      = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+      = metaData_->get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
     std::vector<const stk::mesh::FieldBase*> fieldVec = {coordinates};
     stk::mesh::communicate_field_data(*wallFunctionGhosting_, fieldVec);
   }
@@ -787,7 +787,7 @@ void
 ComputeWallFrictionVelocityProjectedAlgorithm::complete_search()
 {
   // fields
-  VectorFieldType *coordinates = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  VectorFieldType *coordinates = metaData_->get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
 
   // coordinates
   std::vector<double> isoParCoords(nDim_);

@@ -190,41 +190,43 @@ GasDynamicsEquationSystem::register_nodal_fields(
   const int numStates = realm_.number_of_states();
 
   // dofs first
-  density_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "density", numStates));
+  density_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "density", numStates));
   stk::mesh::put_field_on_mesh(*density_, *part, nullptr);
-  momentum_ = &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "momentum", numStates));
+  momentum_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "momentum", numStates));
   stk::mesh::put_field_on_mesh(*momentum_, *part, nDim, nullptr);
-  totalEnergy_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "total_energy", numStates));
+  stk::io::set_field_output_type(*momentum_, stk::io::FieldOutputType::VECTOR_3D);
+  totalEnergy_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "total_energy", numStates));
   stk::mesh::put_field_on_mesh(*totalEnergy_, *part, nullptr);
 
   // aux
-  velocity_ = &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity"));
+  velocity_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "velocity"));
   stk::mesh::put_field_on_mesh(*velocity_, *part, nDim, nullptr);
-  totalEnthalpy_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "total_enthalpy"));
+  stk::io::set_field_output_type(*velocity_, stk::io::FieldOutputType::VECTOR_3D);
+  totalEnthalpy_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "total_enthalpy"));
   stk::mesh::put_field_on_mesh(*totalEnthalpy_, *part, nullptr);
-  staticEnthalpy_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "enthalpy"));
+  staticEnthalpy_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "enthalpy"));
   stk::mesh::put_field_on_mesh(*staticEnthalpy_, *part, nullptr);
-  pressure_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure"));
+  pressure_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "pressure"));
   stk::mesh::put_field_on_mesh(*pressure_, *part, nullptr);
-  temperature_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature"));
+  temperature_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "temperature"));
   stk::mesh::put_field_on_mesh(*temperature_, *part, nullptr);
-  machNumber_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "mach_number"));
+  machNumber_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "mach_number"));
   stk::mesh::put_field_on_mesh(*machNumber_, *part, nullptr);
-  speedOfSound_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "speed_of_sound"));
+  speedOfSound_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "speed_of_sound"));
   stk::mesh::put_field_on_mesh(*speedOfSound_, *part, nullptr);
 
   // properties: user specifies: mu, R, MW, gamma, and kappa
   //             property evaluator populates nodal fields for 
   //             mu, gamma, kappa, cp and cv (each based on gamma and R/MW)
-  viscosity_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity"));
+  viscosity_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "viscosity"));
   stk::mesh::put_field_on_mesh(*viscosity_, *part, nullptr);
-  cp_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "specific_heat"));
+  cp_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "specific_heat"));
   stk::mesh::put_field_on_mesh(*cp_, *part, nullptr);
-  cv_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "specific_heat_v"));
+  cv_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "specific_heat_v"));
   stk::mesh::put_field_on_mesh(*cv_, *part, nullptr);
-  thermalCond_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "thermal_conductivity"));
+  thermalCond_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "thermal_conductivity"));
   stk::mesh::put_field_on_mesh(*thermalCond_, *part, nullptr);
-  gamma_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "gamma"));
+  gamma_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "gamma"));
   stk::mesh::put_field_on_mesh(*gamma_, *part, nullptr);
 
   // push to property list: density needs to be populated for IC
@@ -235,11 +237,11 @@ GasDynamicsEquationSystem::register_nodal_fields(
   realm_.augment_property_map(GAMMA_ID, gamma_);
 
   // dual nodal volume (should push up...)
-  dualNodalVolume_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume"));
+  dualNodalVolume_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "dual_nodal_volume"));
   stk::mesh::put_field_on_mesh(*dualNodalVolume_, *part, nullptr);
 
   // residual; special ordering... Pick momentum first, then continuity, then total energy
-  rhsGasDyn_ = &(meta_data.declare_field<GenericFieldType>(stk::topology::NODE_RANK, "rhs_gas_dynamics"));
+  rhsGasDyn_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "rhs_gas_dynamics"));
   stk::mesh::put_field_on_mesh(*rhsGasDyn_, *part, nDim+2, nullptr);
 
   // fileds that require restart
@@ -264,8 +266,9 @@ GasDynamicsEquationSystem::register_edge_fields(
   stk::mesh::MetaData &meta_data = realm_.meta_data();
   const int nDim = meta_data.spatial_dimension();
   VectorFieldType *edgeAreaVec 
-    = &(meta_data.declare_field<VectorFieldType>(stk::topology::EDGE_RANK, "edge_area_vector"));
+    = &(meta_data.declare_field<double>(stk::topology::EDGE_RANK, "edge_area_vector"));
   stk::mesh::put_field_on_mesh(*edgeAreaVec, *part, nDim, nullptr);
+  stk::io::set_field_output_type(*edgeAreaVec, stk::io::FieldOutputType::VECTOR_3D);
 }
 
 //--------------------------------------------------------------------------
@@ -282,17 +285,17 @@ GasDynamicsEquationSystem::register_element_fields(
   if ( realm_.query_for_overset() ) {
     const int sizeOfElemField = 1;
     GenericFieldType *intersectedElement
-      = &(meta_data.declare_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "intersected_element"));
+      = &(meta_data.declare_field<double>(stk::topology::ELEMENT_RANK, "intersected_element"));
     stk::mesh::put_field_on_mesh(*intersectedElement, *part, sizeOfElemField, nullptr);
   }
 
   // provide mean element Peclet and Courant fields; always...
   GenericFieldType *elemReynolds
-    = &(meta_data.declare_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "element_reynolds"));
-  stk::mesh::put_field_on_mesh(*elemReynolds, *part, 1, nullptr);
+    = &(meta_data.declare_field<double>(stk::topology::ELEMENT_RANK, "element_reynolds"));
+  stk::mesh::put_field_on_mesh(*elemReynolds, *part, nullptr);
   GenericFieldType *elemCourant
-    = &(meta_data.declare_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "element_courant"));
-  stk::mesh::put_field_on_mesh(*elemCourant, *part, 1, nullptr);
+    = &(meta_data.declare_field<double>(stk::topology::ELEMENT_RANK, "element_courant"));
+  stk::mesh::put_field_on_mesh(*elemCourant, *part, nullptr);
 }
 
 //--------------------------------------------------------------------------
@@ -370,8 +373,9 @@ GasDynamicsEquationSystem::register_inflow_bc(
 
   // register boundary data; velocity
   primitiveName = "velocity";
-  VectorFieldType *uBcField = &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity_bc"));
+  VectorFieldType *uBcField = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "velocity_bc"));
   stk::mesh::put_field_on_mesh(*uBcField, *part, nDim, nullptr);
+  stk::io::set_field_output_type(*uBcField, stk::io::FieldOutputType::VECTOR_3D);
 
   theDataType = get_bc_data_type(userData, primitiveName);
   if ( CONSTANT_UD != theDataType )
@@ -405,7 +409,7 @@ GasDynamicsEquationSystem::register_inflow_bc(
 
   // register boundary data; temperature
   primitiveName = "temperature";
-  ScalarFieldType *tBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature_bc"));
+  ScalarFieldType *tBcField = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "temperature_bc"));
   stk::mesh::put_field_on_mesh(*tBcField, *part, nullptr);
   
   theDataType = get_bc_data_type(userData, primitiveName);
@@ -458,8 +462,9 @@ GasDynamicsEquationSystem::register_open_bc(
 
   // register boundary data; velocity
   primitiveName = "velocity";
-  VectorFieldType *uBcField = &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity_bc"));
+  VectorFieldType *uBcField = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "velocity_bc"));
   stk::mesh::put_field_on_mesh(*uBcField, *part, nDim, nullptr);
+  stk::io::set_field_output_type(*uBcField, stk::io::FieldOutputType::VECTOR_3D);
 
   theDataType = get_bc_data_type(userData, primitiveName);
   if ( CONSTANT_UD != theDataType )
@@ -485,7 +490,7 @@ GasDynamicsEquationSystem::register_open_bc(
 
   // register boundary data; temperature
   primitiveName = "temperature";
-  ScalarFieldType *tBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature_bc"));
+  ScalarFieldType *tBcField = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "temperature_bc"));
   stk::mesh::put_field_on_mesh(*tBcField, *part, nullptr);
   
   theDataType = get_bc_data_type(userData, primitiveName);
@@ -509,7 +514,7 @@ GasDynamicsEquationSystem::register_open_bc(
 
   // register boundary data; pressure
   primitiveName = "pressure";
-  ScalarFieldType *pBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure_bc"));
+  ScalarFieldType *pBcField = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "pressure_bc"));
   stk::mesh::put_field_on_mesh(*pBcField, *part, nullptr);
   
   theDataType = get_bc_data_type(userData, primitiveName);
@@ -568,8 +573,9 @@ GasDynamicsEquationSystem::register_wall_bc(
 
   // register boundary data; velocity
   primitiveName = "velocity";
-  VectorFieldType *uBcField = &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity_bc"));
+  VectorFieldType *uBcField = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "velocity_bc"));
   stk::mesh::put_field_on_mesh(*uBcField, *part, nDim, nullptr);
+  stk::io::set_field_output_type(*uBcField, stk::io::FieldOutputType::VECTOR_3D);
 
   theDataType = get_bc_data_type(userData, primitiveName);
   if ( CONSTANT_UD != theDataType )
@@ -605,7 +611,7 @@ GasDynamicsEquationSystem::register_wall_bc(
   primitiveName = "temperature";
   if ( bc_data_specified(userData, primitiveName) ) {
     
-    ScalarFieldType *tBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature_bc"));
+    ScalarFieldType *tBcField = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "temperature_bc"));
     stk::mesh::put_field_on_mesh(*tBcField, *part, nullptr);
     
     theDataType = get_bc_data_type(userData, primitiveName);
@@ -927,7 +933,7 @@ GasDynamicsEquationSystem::dump_state(
 
   // extract coords
   VectorFieldType *coords_ 
-    = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+    = metaData.get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   
   // deal with state
   ScalarFieldType &densityN = density_->field_of_state(stk::mesh::StateN);

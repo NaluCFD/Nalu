@@ -41,8 +41,8 @@ AssembleNodalGradUEdgeAlgorithm::AssembleNodalGradUEdgeAlgorithm(
 {
   // extract fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
-  edgeAreaVec_ = meta_data.get_field<VectorFieldType>(stk::topology::EDGE_RANK, "edge_area_vector");
-  dualNodalVolume_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
+  edgeAreaVec_ = meta_data.get_field<double>(stk::topology::EDGE_RANK, "edge_area_vector");
+  dualNodalVolume_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "dual_nodal_volume");
 }
 
 //--------------------------------------------------------------------------

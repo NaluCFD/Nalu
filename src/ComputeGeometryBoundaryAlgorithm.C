@@ -52,8 +52,8 @@ ComputeGeometryBoundaryAlgorithm::execute()
   const int nDim = meta_data.spatial_dimension();
 
   // extract fields
-  GenericFieldType *exposedAreaVec = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");
-  VectorFieldType *coordinates = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  GenericFieldType *exposedAreaVec = meta_data.get_field<double>(meta_data.side_rank(), "exposed_area_vector");
+  VectorFieldType *coordinates = meta_data.get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
 
   // setup for buckets; union parts and ask for locally owned
   stk::mesh::Selector s_locally_owned_union = meta_data.locally_owned_part()

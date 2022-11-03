@@ -37,16 +37,14 @@ ContinuityMassElemKernel<AlgTraits>::ContinuityMassElemKernel(
   // save off fields
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
 
-  ScalarFieldType* density = metaData.get_field<ScalarFieldType>(
-    stk::topology::NODE_RANK, "density");
+  ScalarFieldType* density = metaData.get_field<double>(stk::topology::NODE_RANK, "density");
   densityN_ = &(density->field_of_state(stk::mesh::StateN));
   densityNp1_ = &(density->field_of_state(stk::mesh::StateNP1));
   if (density->number_of_states() == 2)
     densityNm1_ = densityN_;
   else
     densityNm1_ = &(density->field_of_state(stk::mesh::StateNM1));
-  coordinates_ = metaData.get_field<VectorFieldType>(
-    stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
+  coordinates_ = metaData.get_field<double>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
 
   MasterElement *meSCV = sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_);
 

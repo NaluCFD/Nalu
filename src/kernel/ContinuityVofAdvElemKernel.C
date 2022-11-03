@@ -40,18 +40,15 @@ ContinuityVofAdvElemKernel<AlgTraits>::ContinuityVofAdvElemKernel(
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
   std::string velocity_name = meshMotion_ ? "velocity_rtm" : "velocity";
 
-  velocityRTM_ = metaData.get_field<VectorFieldType>(
-    stk::topology::NODE_RANK, velocity_name);
-  Gpdx_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "dpdx");
-  pressure_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure");
-  ScalarFieldType *density = metaData.get_field<ScalarFieldType>(
-    stk::topology::NODE_RANK, "density");
+  velocityRTM_ = metaData.get_field<double>(stk::topology::NODE_RANK, velocity_name);
+  Gpdx_ = metaData.get_field<double>(stk::topology::NODE_RANK, "dpdx");
+  pressure_ = metaData.get_field<double>(stk::topology::NODE_RANK, "pressure");
+  ScalarFieldType *density = metaData.get_field<double>(stk::topology::NODE_RANK, "density");
   densityNp1_ = &(density->field_of_state(stk::mesh::StateNP1));
-  interfaceCurvature_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "interface_curvature");
-  surfaceTension_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "surface_tension");
-  vof_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "volume_of_fluid");
-  coordinates_ = metaData.get_field<VectorFieldType>(
-    stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
+  interfaceCurvature_ = metaData.get_field<double>(stk::topology::NODE_RANK, "interface_curvature");
+  surfaceTension_ = metaData.get_field<double>(stk::topology::NODE_RANK, "surface_tension");
+  vof_ = metaData.get_field<double>(stk::topology::NODE_RANK, "volume_of_fluid");
+  coordinates_ = metaData.get_field<double>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
 
   for (int i = 0; i < AlgTraits::nDim_; ++i)
     gravity_(i) = solnOpts.gravity_[i];

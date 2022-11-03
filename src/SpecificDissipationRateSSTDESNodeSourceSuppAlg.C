@@ -54,19 +54,19 @@ SpecificDissipationRateSSTDESNodeSourceSuppAlg::SpecificDissipationRateSSTDESNod
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
-  ScalarFieldType *sdr = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "specific_dissipation_rate");
+  ScalarFieldType *sdr = meta_data.get_field<double>(stk::topology::NODE_RANK, "specific_dissipation_rate");
   sdrNp1_ = &(sdr->field_of_state(stk::mesh::StateNP1));
-  ScalarFieldType *tke = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_ke");
+  ScalarFieldType *tke = meta_data.get_field<double>(stk::topology::NODE_RANK, "turbulent_ke");
   tkeNp1_ = &(tke->field_of_state(stk::mesh::StateNP1));
-  ScalarFieldType *density = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
+  ScalarFieldType *density = meta_data.get_field<double>(stk::topology::NODE_RANK, "density");
   densityNp1_ = &(density->field_of_state(stk::mesh::StateNP1));
-  fOneBlend_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "sst_f_one_blending");
-  tvisc_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_viscosity");
-  dudx_ = meta_data.get_field<GenericFieldType>(stk::topology::NODE_RANK, "dudx");
-  dkdx_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "dkdx");
-  dwdx_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "dwdx");
-  maxLengthScale_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "sst_max_length_scale");
-  dualNodalVolume_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
+  fOneBlend_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "sst_f_one_blending");
+  tvisc_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "turbulent_viscosity");
+  dudx_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "dudx");
+  dkdx_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "dkdx");
+  dwdx_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "dwdx");
+  maxLengthScale_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "sst_max_length_scale");
+  dualNodalVolume_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "dual_nodal_volume");
 }
 
 //--------------------------------------------------------------------------

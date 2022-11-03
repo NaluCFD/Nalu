@@ -97,20 +97,20 @@ ShearStressTransportEquationSystem::register_nodal_fields(
   const int numStates = realm_.number_of_states();
 
   // re-register tke and sdr for convenience
-  tke_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_ke", numStates));
+  tke_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "turbulent_ke", numStates));
   stk::mesh::put_field_on_mesh(*tke_, *part, nullptr);
-  sdr_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "specific_dissipation_rate", numStates));
+  sdr_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "specific_dissipation_rate", numStates));
   stk::mesh::put_field_on_mesh(*sdr_, *part, nullptr);
 
   // SST parameters that everyone needs
-  minDistanceToWall_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "minimum_distance_to_wall"));
+  minDistanceToWall_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "minimum_distance_to_wall"));
   stk::mesh::put_field_on_mesh(*minDistanceToWall_, *part, nullptr);
-  fOneBlending_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "sst_f_one_blending"));
+  fOneBlending_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "sst_f_one_blending"));
   stk::mesh::put_field_on_mesh(*fOneBlending_, *part, nullptr);
   
   // DES model
   if ( SST_DES == realm_.solutionOptions_->turbulenceModel_ ) {
-    maxLengthScale_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "sst_max_length_scale"));
+    maxLengthScale_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "sst_max_length_scale"));
     stk::mesh::put_field_on_mesh(*maxLengthScale_, *part, nullptr);
   }
 
@@ -232,8 +232,8 @@ ShearStressTransportEquationSystem::initial_work()
   stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   // required fields
-  ScalarFieldType *density = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
-  ScalarFieldType *viscosity = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity");
+  ScalarFieldType *density = meta_data.get_field<double>(stk::topology::NODE_RANK, "density");
+  ScalarFieldType *viscosity = meta_data.get_field<double>(stk::topology::NODE_RANK, "viscosity");
 
   // required fields with state
   ScalarFieldType &sdrNp1 = sdr_->field_of_state(stk::mesh::StateNP1);
@@ -292,9 +292,9 @@ ShearStressTransportEquationSystem::update_and_clip()
   stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   // required fields
-  ScalarFieldType *density = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
-  ScalarFieldType *viscosity = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity");
-  ScalarFieldType *turbViscosity = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_viscosity");
+  ScalarFieldType *density = meta_data.get_field<double>(stk::topology::NODE_RANK, "density");
+  ScalarFieldType *viscosity = meta_data.get_field<double>(stk::topology::NODE_RANK, "viscosity");
+  ScalarFieldType *turbViscosity = meta_data.get_field<double>(stk::topology::NODE_RANK, "turbulent_viscosity");
 
   // required fields with state
   ScalarFieldType &sdrNp1 = sdr_->field_of_state(stk::mesh::StateNP1);
@@ -374,8 +374,8 @@ ShearStressTransportEquationSystem::clip_min_distance_to_wall()
   const int nDim = meta_data.spatial_dimension();
 
   // extract fields required
-  GenericFieldType *exposedAreaVec = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");
-  VectorFieldType *coordinates = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  GenericFieldType *exposedAreaVec = meta_data.get_field<double>(meta_data.side_rank(), "exposed_area_vector");
+  VectorFieldType *coordinates = meta_data.get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
 
   // define vector of parent topos; should always be UNITY in size
   std::vector<stk::topology> parentTopo;
@@ -493,8 +493,8 @@ ShearStressTransportEquationSystem::compute_f_one_blending()
   ScalarFieldType &tkeNp1 = tke_->field_of_state(stk::mesh::StateNP1);
 
   // fields not saved off
-  ScalarFieldType *density = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
-  ScalarFieldType *viscosity = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity");
+  ScalarFieldType *density = meta_data.get_field<double>(stk::topology::NODE_RANK, "density");
+  ScalarFieldType *viscosity = meta_data.get_field<double>(stk::topology::NODE_RANK, "viscosity");
   VectorFieldType *dkdx = tkeEqSys_->dkdx_;
   VectorFieldType *dwdx = sdrEqSys_->dwdx_;
 

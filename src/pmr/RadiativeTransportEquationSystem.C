@@ -389,7 +389,7 @@ RadiativeTransportEquationSystem::register_nodal_fields(
   const int nDim = meta_data.spatial_dimension();
 
   // register all number of ordinates intensity; reserve intensity_ for "curent"
-  intensity_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "intensity"));
+  intensity_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "intensity"));
   stk::mesh::put_field_on_mesh(*intensity_, *part, nullptr);
 
   // may not want all of these at production time...
@@ -398,53 +398,55 @@ RadiativeTransportEquationSystem::register_nodal_fields(
     ss << k;
     const std::string incrementName = ss.str();
     const std::string theName = "intensity_" + incrementName;
-    ScalarFieldType *intensityK = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, theName));
+    ScalarFieldType *intensityK = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, theName));
     stk::mesh::put_field_on_mesh(*intensityK, *part, nullptr);
   }
 
   // delta solution for linear solver
-  iTmp_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "iTmp"));
+  iTmp_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "iTmp"));
   stk::mesh::put_field_on_mesh(*iTmp_, *part, nullptr);
 
-  dualNodalVolume_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume"));
+  dualNodalVolume_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "dual_nodal_volume"));
   stk::mesh::put_field_on_mesh(*dualNodalVolume_, *part, nullptr);
 
-  coordinates_ =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates"));
+  coordinates_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "coordinates"));
   stk::mesh::put_field_on_mesh(*coordinates_, *part, nDim, nullptr);
+  stk::io::set_field_output_type(*coordinates_, stk::io::FieldOutputType::VECTOR_3D);
 
-  temperature_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature"));
+  temperature_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "temperature"));
   stk::mesh::put_field_on_mesh(*temperature_, *part, nullptr);
 
-  radiativeHeatFlux_ = &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "radiative_heat_flux"));
+  radiativeHeatFlux_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "radiative_heat_flux"));
   stk::mesh::put_field_on_mesh(*radiativeHeatFlux_, *part, nDim, nullptr);
+  stk::io::set_field_output_type(*radiativeHeatFlux_, stk::io::FieldOutputType::VECTOR_3D);
 
-  divRadiativeHeatFlux_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "div_radiative_heat_flux"));
+  divRadiativeHeatFlux_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "div_radiative_heat_flux"));
   stk::mesh::put_field_on_mesh(*divRadiativeHeatFlux_, *part, nullptr);
   realm_.augment_restart_variable_list(divRadiativeHeatFlux_->name());
 
-  divRadiativeHeatFluxLin_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "div_radiative_heat_flux_lin"));
+  divRadiativeHeatFluxLin_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "div_radiative_heat_flux_lin"));
   stk::mesh::put_field_on_mesh(*divRadiativeHeatFluxLin_, *part, nullptr);
   realm_.augment_restart_variable_list(divRadiativeHeatFluxLin_->name());
   
-  radiationSource_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "radiation_source"));
+  radiationSource_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "radiation_source"));
   stk::mesh::put_field_on_mesh(*radiationSource_, *part, nullptr);
 
-  scalarFlux_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "scalar_flux"));
+  scalarFlux_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "scalar_flux"));
   stk::mesh::put_field_on_mesh(*scalarFlux_, *part, nullptr);
 
   // for non-linear residual
-  scalarFluxOld_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "scalar_flux_old"));
+  scalarFluxOld_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "scalar_flux_old"));
   stk::mesh::put_field_on_mesh(*scalarFluxOld_, *part, nullptr);
 
   // props; register and push
-  absorptionCoeff_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "absorption_coefficient"));
+  absorptionCoeff_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "absorption_coefficient"));
   stk::mesh::put_field_on_mesh(*absorptionCoeff_, *part, nullptr);
   // possibly provided by another coupling mechanism; if so, do not push to propery evaluation
   if (!externalCoupling_)
     realm_.augment_property_map(ABSORBTION_COEFF_ID, absorptionCoeff_);
 
   // always register, however, do not make the user provide a value (default to zero)
-  scatteringCoeff_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "scattering_coefficient"));
+  scatteringCoeff_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "scattering_coefficient"));
   stk::mesh::put_field_on_mesh(*scatteringCoeff_, *part, nullptr);
   if ( activateScattering_ )
     realm_.augment_property_map(SCATTERING_COEFF_ID, scatteringCoeff_);
@@ -466,8 +468,9 @@ RadiativeTransportEquationSystem::register_edge_fields(
   //====================================================
   if ( realm_.realmUsesEdges_ ) {
     const int nDim = meta_data.spatial_dimension();
-    edgeAreaVec_ = &(meta_data.declare_field<VectorFieldType>(stk::topology::EDGE_RANK, "edge_area_vector"));
+    edgeAreaVec_ = &(meta_data.declare_field<double>(stk::topology::EDGE_RANK, "edge_area_vector"));
     stk::mesh::put_field_on_mesh(*edgeAreaVec_, *part, nDim, nullptr);
+    stk::io::set_field_output_type(*edgeAreaVec_, stk::io::FieldOutputType::VECTOR_3D);
   }
 
 }
@@ -599,26 +602,26 @@ RadiativeTransportEquationSystem::register_wall_bc(
     const bool isInterface = userData.isInterface_;
 
     // register germane fields (boundary data)
-    intensityBc_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "intensity_bc"));
+    intensityBc_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "intensity_bc"));
     stk::mesh::put_field_on_mesh(*intensityBc_, *part, nullptr);
 
-    emissivity_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "emissivity"));
+    emissivity_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "emissivity"));
     stk::mesh::put_field_on_mesh(*emissivity_, *part, nullptr);
 
-    transmissivity_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "transmissivity"));
+    transmissivity_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "transmissivity"));
     stk::mesh::put_field_on_mesh(*transmissivity_, *part, nullptr);
 
-    environmentalT_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "environmental_temperature"));
+    environmentalT_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "environmental_temperature"));
     stk::mesh::put_field_on_mesh(*environmentalT_, *part, nullptr);
 
-    irradiation_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "irradiation"));
+    irradiation_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "irradiation"));
     stk::mesh::put_field_on_mesh(*irradiation_, *part, nullptr);
     realm_.augment_restart_variable_list(irradiation_->name());
     
-    bcTemperature_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature_bc"));
+    bcTemperature_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "temperature_bc"));
     stk::mesh::put_field_on_mesh(*bcTemperature_, *part, nullptr);
 
-    assembledBoundaryArea_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "assembled_boundary_area"));
+    assembledBoundaryArea_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "assembled_boundary_area"));
     stk::mesh::put_field_on_mesh(*assembledBoundaryArea_, *part, nullptr);
 
     // interior temperature is not over written by boundary value; push to bcTemperature_
@@ -758,7 +761,7 @@ RadiativeTransportEquationSystem::set_current_ordinate_info(
   const std::string theName = "intensity_" + incrementName;
 
   // advertise current pointer
-  currentIntensity_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, theName);
+  currentIntensity_ = meta_data.get_field<double>(stk::topology::NODE_RANK, theName);
 
   // copy intensity_k -> intensity_
   copy_ordinate_intensity(*currentIntensity_, *intensity_);
@@ -994,7 +997,7 @@ RadiativeTransportEquationSystem::initialize_intensity()
      ss << k;
      const std::string incrementName = ss.str();
      const std::string theName = "intensity_" + incrementName;
-     ScalarFieldType *kthIntensity = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, theName);
+     ScalarFieldType *kthIntensity = meta_data.get_field<double>(stk::topology::NODE_RANK, theName);
      copy_ordinate_intensity(*intensity_, *kthIntensity);
    }
 
@@ -1158,7 +1161,7 @@ RadiativeTransportEquationSystem::assemble_boundary_area()
 
   const int nDim = meta_data.spatial_dimension();
 
-  GenericFieldType *exposedAreaVec = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");
+  GenericFieldType *exposedAreaVec = meta_data.get_field<double>(meta_data.side_rank(), "exposed_area_vector");
 
   // zero all nodes for assemble boundary area
   stk::mesh::Selector s_all_nodes_bc
@@ -1288,7 +1291,7 @@ RadiativeTransportEquationSystem::assemble_irradiation()
 
   const int nDim = meta_data.spatial_dimension();
 
-  GenericFieldType *exposedAreaVec = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");
+  GenericFieldType *exposedAreaVec = meta_data.get_field<double>(meta_data.side_rank(), "exposed_area_vector");
 
   // current weights
   double weight = currentWeight_;

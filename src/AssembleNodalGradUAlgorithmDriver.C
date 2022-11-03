@@ -53,7 +53,7 @@ AssembleNodalGradUAlgorithmDriver::pre_work()
   const int nDim = meta_data.spatial_dimension();
 
   // extract fields
-  GenericFieldType *dudx = meta_data.get_field<GenericFieldType>(stk::topology::NODE_RANK, dudxName_);
+  GenericFieldType *dudx = meta_data.get_field<double>(stk::topology::NODE_RANK, dudxName_);
 
   // define some common selectors; select all nodes (locally and shared)
   // where dudx is defined
@@ -95,7 +95,7 @@ AssembleNodalGradUAlgorithmDriver::post_work()
   stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   // extract fields
-  GenericFieldType *dudx = meta_data.get_field<GenericFieldType>(stk::topology::NODE_RANK, dudxName_);
+  GenericFieldType *dudx = meta_data.get_field<double>(stk::topology::NODE_RANK, dudxName_);
   stk::mesh::parallel_sum(bulk_data, {dudx});
 
   if ( realm_.hasPeriodic_) {

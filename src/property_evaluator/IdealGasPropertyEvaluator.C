@@ -95,7 +95,7 @@ IdealGasPrefTYkPropertyEvaluator::IdealGasPrefTYkPropertyEvaluator(
   }
 
   // save off mass fraction field
-  massFraction_ = metaData.get_field<GenericFieldType>(stk::topology::NODE_RANK, "mass_fraction");
+  massFraction_ = metaData.get_field<double>(stk::topology::NODE_RANK, "mass_fraction");
 }
  
 //--------------------------------------------------------------------------
@@ -156,7 +156,7 @@ IdealGasPTYkrefPropertyEvaluator::IdealGasPTYkrefPropertyEvaluator(
 {
 
   // save off mass fraction field
-  pressure_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure");
+  pressure_ = metaData.get_field<double>(stk::topology::NODE_RANK, "pressure");
 
   // compute mixture mw
   double sum = 0.0;
@@ -219,7 +219,7 @@ IdealGasPrefTrefYkPropertyEvaluator::IdealGasPrefTrefYkPropertyEvaluator(
   }
 
   // save off mass fraction field
-  massFraction_ = metaData.get_field<GenericFieldType>(stk::topology::NODE_RANK, "mass_fraction");
+  massFraction_ = metaData.get_field<double>(stk::topology::NODE_RANK, "mass_fraction");
 
 }
  

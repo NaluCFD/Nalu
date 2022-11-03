@@ -42,24 +42,18 @@ ScalarNSOKeElemKernel<AlgTraits>::ScalarNSOKeElemKernel(
     shiftedGradOp_(solnOpts.get_shifted_grad_op(scalarQ->name()))
 {
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
-  velocityNp1_ = metaData.get_field<VectorFieldType>(
-    stk::topology::NODE_RANK, "velocity");
-  densityNp1_ = metaData.get_field<ScalarFieldType>(
-    stk::topology::NODE_RANK, "density");
-  pressure_ = metaData.get_field<ScalarFieldType>(
-    stk::topology::NODE_RANK, "pressure");
+  velocityNp1_ = metaData.get_field<double>(stk::topology::NODE_RANK, "velocity");
+  densityNp1_ = metaData.get_field<double>(stk::topology::NODE_RANK, "density");
+  pressure_ = metaData.get_field<double>(stk::topology::NODE_RANK, "pressure");
 
   if (solnOpts.does_mesh_move())
-    velocityRTM_ = metaData.get_field<VectorFieldType>(
-      stk::topology::NODE_RANK, "velocity_rtm");
+    velocityRTM_ = metaData.get_field<double>(stk::topology::NODE_RANK, "velocity_rtm");
   else
-    velocityRTM_ = metaData.get_field<VectorFieldType>(
-      stk::topology::NODE_RANK, "velocity");
+    velocityRTM_ = metaData.get_field<double>(stk::topology::NODE_RANK, "velocity");
 
-  coordinates_ = metaData.get_field<VectorFieldType>(
-    stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
+  coordinates_ = metaData.get_field<double>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
 
-  Gjp_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "dpdx");
+  Gjp_ = metaData.get_field<double>(stk::topology::NODE_RANK, "dpdx");
 
   MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(AlgTraits::topo_);
   get_scs_shape_fn_data<AlgTraits>([&](double* ptr){meSCS->shape_fcn(ptr);}, v_shape_function_);

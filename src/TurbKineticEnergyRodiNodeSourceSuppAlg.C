@@ -42,10 +42,10 @@ TurbKineticEnergyRodiNodeSourceSuppAlg::TurbKineticEnergyRodiNodeSourceSuppAlg(
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
-  dhdx_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "dhdx");
-  specificHeat_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "specific_heat");
-  tvisc_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_viscosity");
-  dualNodalVolume_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
+  dhdx_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "dhdx");
+  specificHeat_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "specific_heat");
+  tvisc_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "turbulent_viscosity");
+  dualNodalVolume_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "dual_nodal_volume");
 
   // extract and size gravity
   gravity_ = realm_.solutionOptions_->gravity_;

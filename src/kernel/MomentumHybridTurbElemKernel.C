@@ -37,19 +37,13 @@ MomentumHybridTurbElemKernel<AlgTraits>::MomentumHybridTurbElemKernel(
     shiftedGradOp_(solnOpts.get_shifted_grad_op("velocity"))
 {
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
-  velocityNp1_ =
-    metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
-  densityNp1_ =
-    metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
-  tkeNp1_ = metaData.get_field<ScalarFieldType>(
-    stk::topology::NODE_RANK, "turbulent_ke");
-  alphaNp1_ = metaData.get_field<ScalarFieldType>(
-    stk::topology::NODE_RANK, "adaptivity_parameter");
-  mutij_ = metaData.get_field<GenericFieldType>(
-    stk::topology::NODE_RANK, "tensor_turbulent_viscosity");
+  velocityNp1_ = metaData.get_field<double>(stk::topology::NODE_RANK, "velocity");
+  densityNp1_ = metaData.get_field<double>(stk::topology::NODE_RANK, "density");
+  tkeNp1_ = metaData.get_field<double>(stk::topology::NODE_RANK, "turbulent_ke");
+  alphaNp1_ = metaData.get_field<double>(stk::topology::NODE_RANK, "adaptivity_parameter");
+  mutij_ = metaData.get_field<double>(stk::topology::NODE_RANK, "tensor_turbulent_viscosity");
 
-  coordinates_ = metaData.get_field<VectorFieldType>(
-    stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
+  coordinates_ = metaData.get_field<double>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
 
   MasterElement* meSCS =
     sierra::nalu::MasterElementRepo::get_surface_master_element(

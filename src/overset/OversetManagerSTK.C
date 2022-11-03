@@ -288,8 +288,8 @@ OversetManagerSTK::define_inactive_bounding_box()
   // extract model coordinates
   VectorFieldType *coordinates
     = (oversetUserData_.cuttingShape_=="aabb") ? 
-      (metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name())) :
-      (metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates")) ;
+      (metaData_->get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name())) :
+      (metaData_->get_field<double>(stk::topology::NODE_RANK, "coordinates")) ;
 
   NaluEnv::self().naluOutputP0() << "Cutting shape :: " << oversetUserData_.cuttingShape_ << std::endl;
 
@@ -550,7 +550,7 @@ OversetManagerSTK::define_overset_bounding_boxes()
 {
   // extract coordinates
   VectorFieldType *coordinates
-    = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+    = metaData_->get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   
   // setup data structures for search
   Point minBackgroundCorner, maxBackgroundCorner;
@@ -621,7 +621,7 @@ OversetManagerSTK::define_background_bounding_boxes()
 {
   // extract coordinates
   VectorFieldType *coordinates
-    = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+    = metaData_->get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   
   // setup data structures for search
   Point minBackgroundCorner, maxBackgroundCorner;
@@ -711,7 +711,7 @@ OversetManagerSTK::determine_intersected_elements(
 
   // extract coordinates
   VectorFieldType *coordinates
-    = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+    = metaData_->get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
  
   // proceed with coarse search
   stk::search::coarse_search(boundingBoxVec, boundingBoxesVec, searchMethod_, NaluEnv::self().parallel_comm(), searchKeyPair);
@@ -947,7 +947,7 @@ OversetManagerSTK::create_overset_info_vec()
 {
   // extract coordinates
   VectorFieldType *coordinates
-    = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+    = metaData_->get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   
   Point localNodalCoords;
   
@@ -1054,7 +1054,7 @@ OversetManagerSTK::create_fringe_info_vec()
 {
   // extract coordinates
   VectorFieldType *coordinates
-    = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+    = metaData_->get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   
   Point localNodalCoords;
   
@@ -1140,7 +1140,7 @@ OversetManagerSTK::set_data_on_inactive_part()
 {
   // extract elemental field
   GenericFieldType *intersectedElement
-    = metaData_->get_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "intersected_element");
+    = metaData_->get_field<double>(stk::topology::ELEMENT_RANK, "intersected_element");
 
   // first, initialize element field to zero everywhere
   stk::mesh::Selector s_everywhere = stk::mesh::selectField(*intersectedElement);
@@ -1177,7 +1177,7 @@ OversetManagerSTK::set_data_on_fringe_part()
 {
   // extract nodal field
   ScalarFieldType *fringeNode
-    = metaData_->get_field<ScalarFieldType>(stk::topology::NODE_RANK, "fringe_node");
+    = metaData_->get_field<double>(stk::topology::NODE_RANK, "fringe_node");
 
   // first, initialize field to zero everywhere
   stk::mesh::Selector s_everywhere = stk::mesh::selectField(*fringeNode);
@@ -1286,7 +1286,7 @@ OversetManagerSTK::complete_search(
 {
   // extract coordinates
   VectorFieldType *coordinates
-    = metaData_->get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+    = metaData_->get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
 
   // define vectors; fixed size
   std::vector<double> isoParCoords(nDim_);

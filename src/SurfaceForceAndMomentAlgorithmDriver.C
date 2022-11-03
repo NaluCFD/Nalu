@@ -67,13 +67,13 @@ SurfaceForceAndMomentAlgorithmDriver::zero_fields()
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   
   // extract the fields
-  VectorFieldType *pressureForce = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "pressure_force");
-  ScalarFieldType *tauWall = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "tau_wall");
-  ScalarFieldType *yplus = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "yplus");
+  VectorFieldType *pressureForce = meta_data.get_field<double>(stk::topology::NODE_RANK, "pressure_force");
+  ScalarFieldType *tauWall = meta_data.get_field<double>(stk::topology::NODE_RANK, "tau_wall");
+  ScalarFieldType *yplus = meta_data.get_field<double>(stk::topology::NODE_RANK, "yplus");
   // one of these might be null
-  ScalarFieldType *assembledArea = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "assembled_area_force_moment");
-  ScalarFieldType *assembledAreaWF = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "assembled_area_force_moment_wf");
-  ScalarFieldType *assembledAreaWFP = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "assembled_area_force_moment_wfp");
+  ScalarFieldType *assembledArea = meta_data.get_field<double>(stk::topology::NODE_RANK, "assembled_area_force_moment");
+  ScalarFieldType *assembledAreaWF = meta_data.get_field<double>(stk::topology::NODE_RANK, "assembled_area_force_moment_wf");
+  ScalarFieldType *assembledAreaWFP = meta_data.get_field<double>(stk::topology::NODE_RANK, "assembled_area_force_moment_wfp");
 
   // zero fields
   field_fill( meta_data, bulk_data, 0.0, *pressureForce, realm_.get_activate_aura());
@@ -99,9 +99,9 @@ SurfaceForceAndMomentAlgorithmDriver::parallel_assemble_fields()
   const size_t nDim = meta_data.spatial_dimension();
 
   // extract the fields
-  VectorFieldType *pressureForce = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "pressure_force");
-  ScalarFieldType *tauWall = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "tau_wall");
-  ScalarFieldType *yplus = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "yplus");
+  VectorFieldType *pressureForce = meta_data.get_field<double>(stk::topology::NODE_RANK, "pressure_force");
+  ScalarFieldType *tauWall = meta_data.get_field<double>(stk::topology::NODE_RANK, "tau_wall");
+  ScalarFieldType *yplus = meta_data.get_field<double>(stk::topology::NODE_RANK, "yplus");
 
   // parallel assemble
   stk::mesh::parallel_sum(bulk_data, {pressureForce, tauWall, yplus});
@@ -127,9 +127,9 @@ SurfaceForceAndMomentAlgorithmDriver::parallel_assemble_area()
   stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   // extract the fields; one of these might be null
-  ScalarFieldType *assembledArea = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "assembled_area_force_moment");
-  ScalarFieldType *assembledAreaWF = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "assembled_area_force_moment_wf");
-  ScalarFieldType *assembledAreaWFP = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "assembled_area_force_moment_wfp");
+  ScalarFieldType *assembledArea = meta_data.get_field<double>(stk::topology::NODE_RANK, "assembled_area_force_moment");
+  ScalarFieldType *assembledAreaWF = meta_data.get_field<double>(stk::topology::NODE_RANK, "assembled_area_force_moment_wf");
+  ScalarFieldType *assembledAreaWFP = meta_data.get_field<double>(stk::topology::NODE_RANK, "assembled_area_force_moment_wfp");
 
   // parallel assemble
   std::vector<const stk::mesh::FieldBase*> fields;

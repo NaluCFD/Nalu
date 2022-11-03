@@ -71,14 +71,14 @@ AssembleGasDynamicsNonConformalAlgorithm::AssembleGasDynamicsNonConformalAlgorit
   stk::mesh::MetaData & metaData = realm_.meta_data();
   if ( realm_.does_mesh_move() ) {
     meshMotionFac_ = 1.0;
-    meshVelocity_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_velocity");
+    meshVelocity_ = metaData.get_field<double>(stk::topology::NODE_RANK, "mesh_velocity");
   }
   else {
     meshMotionFac_ = 0.0;
-    meshVelocity_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
+    meshVelocity_ = metaData.get_field<double>(stk::topology::NODE_RANK, "velocity");
   }
-  exposedAreaVec_ = metaData.get_field<GenericFieldType>(metaData.side_rank(), "exposed_area_vector");  
-  coordinates_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  exposedAreaVec_ = metaData.get_field<double>(metaData.side_rank(), "exposed_area_vector");
+  coordinates_ = metaData.get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
 
   // what do we need ghosted for this alg to work?
   ghostFieldVec_.push_back(density_);

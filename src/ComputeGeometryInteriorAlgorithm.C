@@ -61,8 +61,8 @@ ComputeGeometryInteriorAlgorithm::execute()
   const int nDim = meta_data.spatial_dimension();
 
   // extract field always germane
-  ScalarFieldType *dualNodalVolume = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
-  VectorFieldType *coordinates = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  ScalarFieldType *dualNodalVolume = meta_data.get_field<double>(stk::topology::NODE_RANK, "dual_nodal_volume");
+  VectorFieldType *coordinates = meta_data.get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
  
   // setup for buckets; union parts and ask for locally owned
   stk::mesh::Selector s_locally_owned_union = meta_data.locally_owned_part()
@@ -133,7 +133,7 @@ ComputeGeometryInteriorAlgorithm::execute()
   //===========================================================
   if ( assembleEdgeAreaVec_ ) {
 
-    VectorFieldType *edgeAreaVec = meta_data.get_field<VectorFieldType>(stk::topology::EDGE_RANK, "edge_area_vector");
+    VectorFieldType *edgeAreaVec = meta_data.get_field<double>(stk::topology::EDGE_RANK, "edge_area_vector");
 
     for ( stk::mesh::BucketVector::const_iterator ib = element_buckets.begin();
           ib != element_buckets.end() ; ++ib ) {

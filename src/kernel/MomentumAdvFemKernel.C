@@ -41,8 +41,8 @@ MomentumAdvFemKernel<AlgTraits>::MomentumAdvFemKernel(
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
 
   velocityNp1_ = &(velocity->field_of_state(stk::mesh::StateNP1));
-  density_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
-  coordinates_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
+  density_ = metaData.get_field<double>(stk::topology::NODE_RANK, "density");
+  coordinates_ = metaData.get_field<double>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
   
   // extract master element
   MasterElement *meFEM = sierra::nalu::MasterElementRepo::get_fem_master_element(AlgTraits::topo_);
@@ -69,9 +69,9 @@ MomentumAdvFemKernel<AlgTraits>::MomentumAdvFemKernel(
     dataPreReqs.add_master_element_call(FEM_GRAD_OP, CURRENT_COORDINATES);
 
   // with pstab
-  pressure_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure");
-  vrtmL_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "vrtm_lagged");
-  GjpL_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "dpdx_lagged");
+  pressure_ = metaData.get_field<double>(stk::topology::NODE_RANK, "pressure");
+  vrtmL_ = metaData.get_field<double>(stk::topology::NODE_RANK, "vrtm_lagged");
+  GjpL_ = metaData.get_field<double>(stk::topology::NODE_RANK, "dpdx_lagged");
   dataPreReqs.add_gathered_nodal_field(*vrtmL_, AlgTraits::nDim_);
   dataPreReqs.add_gathered_nodal_field(*pressure_, 1);
   dataPreReqs.add_gathered_nodal_field(*GjpL_, AlgTraits::nDim_);

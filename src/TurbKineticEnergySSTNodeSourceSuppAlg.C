@@ -44,15 +44,15 @@ TurbKineticEnergySSTNodeSourceSuppAlg::TurbKineticEnergySSTNodeSourceSuppAlg(
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
-  ScalarFieldType *tke = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_ke");
+  ScalarFieldType *tke = meta_data.get_field<double>(stk::topology::NODE_RANK, "turbulent_ke");
   tkeNp1_ = &(tke->field_of_state(stk::mesh::StateNP1));
-  ScalarFieldType *sdr = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "specific_dissipation_rate");
+  ScalarFieldType *sdr = meta_data.get_field<double>(stk::topology::NODE_RANK, "specific_dissipation_rate");
   sdrNp1_ = &(sdr->field_of_state(stk::mesh::StateNP1));
-  ScalarFieldType *density = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
+  ScalarFieldType *density = meta_data.get_field<double>(stk::topology::NODE_RANK, "density");
   densityNp1_ = &(density->field_of_state(stk::mesh::StateNP1));
-  tvisc_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_viscosity");
-  dudx_ = meta_data.get_field<GenericFieldType>(stk::topology::NODE_RANK, "dudx");
-  dualNodalVolume_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
+  tvisc_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "turbulent_viscosity");
+  dudx_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "dudx");
+  dualNodalVolume_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "dual_nodal_volume");
 }
 
 //--------------------------------------------------------------------------

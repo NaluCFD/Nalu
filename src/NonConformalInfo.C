@@ -260,7 +260,7 @@ NonConformalInfo::construct_bounding_points()
   std::vector<double> ws_face_shape_function;
 
   // fields
-  VectorFieldType *coordinates = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  VectorFieldType *coordinates = meta_data.get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   
   std::vector<std::vector<DgInfo*> >::iterator ii;
   for( ii=dgInfoVec_.begin(); ii!=dgInfoVec_.end(); ++ii ) {
@@ -478,7 +478,7 @@ NonConformalInfo::complete_search()
   double bestElemIpCoords[3];
 
   // fields
-  VectorFieldType *coordinates = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  VectorFieldType *coordinates = meta_data.get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
 
   std::vector<double> currentGaussPointCoords(nDim);
   std::vector<double> opposingIsoParCoords(nDim);
@@ -698,7 +698,7 @@ NonConformalInfo::construct_bounding_boxes()
   const double dynamicFac = dynamicSearchTolAlg_ ? 0.0 : 1.0;
 
   // fields
-  VectorFieldType *coordinates = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  VectorFieldType *coordinates = meta_data.get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
 
   // points
   Point minCorner, maxCorner;
@@ -773,7 +773,7 @@ NonConformalInfo::provide_diagnosis()
   stk::mesh::BulkData & bulk_data = realm_.bulk_data();
   const int nDim = meta_data.spatial_dimension();
 
-  VectorFieldType *coordinates = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  VectorFieldType *coordinates = meta_data.get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
 
   std::vector<double> currentGaussPointCoords(nDim);
   std::vector<double> opposingGaussPointCoords(nDim);

@@ -55,7 +55,7 @@ ComputeGeometryAlgorithmDriver::pre_work()
   const int nDim = meta_data.spatial_dimension();
 
   // extract field that is always germane
-  ScalarFieldType *dualNodalVolume = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
+  ScalarFieldType *dualNodalVolume = meta_data.get_field<double>(stk::topology::NODE_RANK, "dual_nodal_volume");
 
   // define some common selectors
   stk::mesh::Selector s_locally_owned = meta_data.locally_owned_part();
@@ -83,7 +83,7 @@ ComputeGeometryAlgorithmDriver::pre_work()
   // handle case for realm using edge-based
   if ( realm_.realmUsesEdges_ ) {
 
-    VectorFieldType *edgeAreaVec = meta_data.get_field<VectorFieldType>(stk::topology::EDGE_RANK, "edge_area_vector");
+    VectorFieldType *edgeAreaVec = meta_data.get_field<double>(stk::topology::EDGE_RANK, "edge_area_vector");
 
     // edge fields second
     stk::mesh::Selector s_all_area
@@ -118,11 +118,11 @@ ComputeGeometryAlgorithmDriver::post_work()
   stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   // extract field always germane
-  ScalarFieldType *dualNodalVolume = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
+  ScalarFieldType *dualNodalVolume = meta_data.get_field<double>(stk::topology::NODE_RANK, "dual_nodal_volume");
 
   // handle case for realm using edge-based
   if ( realm_.realmUsesEdges_ ) {
-    VectorFieldType *edgeAreaVec = meta_data.get_field<VectorFieldType>(stk::topology::EDGE_RANK, "edge_area_vector");
+    VectorFieldType *edgeAreaVec = meta_data.get_field<double>(stk::topology::EDGE_RANK, "edge_area_vector");
     stk::mesh::parallel_sum(bulk_data, {dualNodalVolume, edgeAreaVec});
   }
   else {
@@ -157,7 +157,7 @@ ComputeGeometryAlgorithmDriver::check_jacobians()
 
   // fields and future ws 
   VectorFieldType *coordinates 
-    = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+    = meta_data.get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
 
   std::vector<double> ws_coordinates;
   std::vector<double> ws_scv_volume;

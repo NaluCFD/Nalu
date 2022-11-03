@@ -45,10 +45,10 @@ SimpleErrorIndicatorElemAlgorithm::SimpleErrorIndicatorElemAlgorithm(
 {
    // extract fields; nodal
   stk::mesh::MetaData & meta_data = realm_.meta_data();
-  velocity_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
-  coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
-  dudx_ = meta_data.get_field<GenericFieldType>(stk::topology::NODE_RANK, "dudx");
-  errorIndicatorField_ = meta_data.get_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "error_indicator");
+  velocity_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "velocity");
+  coordinates_ = meta_data.get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  dudx_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "dudx");
+  errorIndicatorField_ = meta_data.get_field<double>(stk::topology::ELEMENT_RANK, "error_indicator");
 }
 
 //--------------------------------------------------------------------------

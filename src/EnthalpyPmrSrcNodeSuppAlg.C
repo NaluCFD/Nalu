@@ -38,10 +38,10 @@ EnthalpyPmrSrcNodeSuppAlg::EnthalpyPmrSrcNodeSuppAlg(
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
-  divRadFlux_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "div_radiative_heat_flux");
-  divRadFluxLin_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "div_radiative_heat_flux_lin");
-  specificHeat_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "specific_heat");
-  dualNodalVolume_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume");
+  divRadFlux_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "div_radiative_heat_flux");
+  divRadFluxLin_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "div_radiative_heat_flux_lin");
+  specificHeat_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "specific_heat");
+  dualNodalVolume_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "dual_nodal_volume");
 }
 
 //--------------------------------------------------------------------------

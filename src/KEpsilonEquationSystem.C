@@ -95,9 +95,9 @@ KEpsilonEquationSystem::register_nodal_fields(
   const int numStates = realm_.number_of_states();
 
   // re-register tke and sdr for convenience; other specifics managed by EQS
-  tke_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_ke", numStates));
+  tke_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "turbulent_ke", numStates));
   stk::mesh::put_field_on_mesh(*tke_, *part, nullptr);
-  eps_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_dissipation", numStates));
+  eps_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "turbulent_dissipation", numStates));
   stk::mesh::put_field_on_mesh(*eps_, *part, nullptr);
 }
 
@@ -156,8 +156,8 @@ KEpsilonEquationSystem::initial_work()
   stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   // required fields
-  ScalarFieldType *density = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
-  ScalarFieldType *viscosity = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity");
+  ScalarFieldType *density = meta_data.get_field<double>(stk::topology::NODE_RANK, "density");
+  ScalarFieldType *viscosity = meta_data.get_field<double>(stk::topology::NODE_RANK, "viscosity");
 
   // required fields with state
   ScalarFieldType &epsNp1 = eps_->field_of_state(stk::mesh::StateNP1);
@@ -224,9 +224,9 @@ KEpsilonEquationSystem::update_and_clip()
   const double small = 1.0e-16;
 
   // required fields
-  ScalarFieldType *density = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
-  ScalarFieldType *viscosity = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity");
-  ScalarFieldType *turbViscosity = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_viscosity");
+  ScalarFieldType *density = meta_data.get_field<double>(stk::topology::NODE_RANK, "density");
+  ScalarFieldType *viscosity = meta_data.get_field<double>(stk::topology::NODE_RANK, "viscosity");
+  ScalarFieldType *turbViscosity = meta_data.get_field<double>(stk::topology::NODE_RANK, "turbulent_viscosity");
 
   // required fields with state
   ScalarFieldType &epsNp1 = eps_->field_of_state(stk::mesh::StateNP1);

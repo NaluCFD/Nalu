@@ -39,13 +39,10 @@ VolumeOfFluidSharpenElemKernel<AlgTraits>::VolumeOfFluidSharpenElemKernel(
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
   
   vofNp1_ = &(vof->field_of_state(stk::mesh::StateNP1));
-  interfaceNormal_ = metaData.get_field<VectorFieldType>(
-    stk::topology::NODE_RANK, "interface_normal");
+  interfaceNormal_ = metaData.get_field<double>(stk::topology::NODE_RANK, "interface_normal");
   std::string velocity_name = solnOpts.does_mesh_move() ? "velocity_rtm" : "velocity";
-  velocityRTM_ = metaData.get_field<VectorFieldType>(
-    stk::topology::NODE_RANK, velocity_name);
-  coordinates_ = metaData.get_field<VectorFieldType>(
-    stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
+  velocityRTM_ = metaData.get_field<double>(stk::topology::NODE_RANK, velocity_name);
+  coordinates_ = metaData.get_field<double>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
   
   MasterElement *meSCV = sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_);
 

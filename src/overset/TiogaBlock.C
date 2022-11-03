@@ -76,10 +76,10 @@ void TiogaBlock::setup(stk::mesh::PartVector& bcPartVec)
   if (ovsetNames_.size() > 0)
     names_to_parts(ovsetNames_, ovsetParts_);
 
-  ScalarIntFieldType& ibf = meta_.declare_field<ScalarIntFieldType>(
+  ScalarIntFieldType& ibf = meta_.declare_field<int>(
     stk::topology::NODE_RANK, "iblank");
 
-  ScalarIntFieldType& ibcell = meta_.declare_field<ScalarIntFieldType>(
+  ScalarIntFieldType& ibcell = meta_.declare_field<int>(
     stk::topology::ELEM_RANK, "iblank_cell");
 
   for (auto p: blkParts_) {
@@ -111,7 +111,7 @@ void TiogaBlock::update_coords()
   stk::mesh::Selector mesh_selector = stk::mesh::selectUnion(blkParts_);
   const stk::mesh::BucketVector& mbkts = bulk_.get_buckets(
     stk::topology::NODE_RANK, mesh_selector);
-  VectorFieldType* coords = meta_.get_field<VectorFieldType>(
+  VectorFieldType* coords = meta_.get_field<int>(
     stk::topology::NODE_RANK, coords_name_);
 
 #if 0
@@ -169,7 +169,7 @@ void
 TiogaBlock::update_iblanks()
 {
   ScalarIntFieldType* ibf =
-    meta_.get_field<ScalarIntFieldType>(stk::topology::NODE_RANK, "iblank");
+    meta_.get_field<int>(stk::topology::NODE_RANK, "iblank");
 
   stk::mesh::Selector mesh_selector = stk::mesh::selectUnion(blkParts_);
   const stk::mesh::BucketVector& mbkts =
@@ -186,7 +186,7 @@ TiogaBlock::update_iblanks()
 
 void TiogaBlock::update_iblank_cell()
 {
-  ScalarIntFieldType* ibf = meta_.get_field<ScalarIntFieldType>(
+  ScalarIntFieldType* ibf = meta_.get_field<int>(
     stk::topology::ELEM_RANK, "iblank_cell");
 
   stk::mesh::Selector mesh_selector = meta_.locally_owned_part() &
@@ -279,7 +279,7 @@ void TiogaBlock::process_nodes()
   stk::mesh::Selector mesh_selector = stk::mesh::selectUnion(blkParts_);
   const stk::mesh::BucketVector& mbkts = bulk_.get_buckets(
     stk::topology::NODE_RANK, mesh_selector);
-  VectorFieldType* coords = meta_.get_field<VectorFieldType>(
+  VectorFieldType* coords = meta_.get_field<double>(
     stk::topology::NODE_RANK, coords_name_);
 
   int ncount = 0;

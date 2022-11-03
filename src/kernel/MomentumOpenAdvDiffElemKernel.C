@@ -49,18 +49,18 @@ MomentumOpenAdvDiffElemKernel<BcAlgTraits>::MomentumOpenAdvDiffElemKernel(
   // save off fields
   velocityNp1_ = &(velocity->field_of_state(stk::mesh::StateNP1));
   if ( solnOpts.does_mesh_move() ) {
-    velocityRTM_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity_rtm");
-    meshVelocity_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_velocity");
+    velocityRTM_ = metaData.get_field<double>(stk::topology::NODE_RANK, "velocity_rtm");
+    meshVelocity_ = metaData.get_field<double>(stk::topology::NODE_RANK, "mesh_velocity");
   }
   else {
     velocityRTM_ = velocityNp1_;
     meshVelocity_ = velocityNp1_;
   }
-  coordinates_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
-  density_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
-  exposedAreaVec_ = metaData.get_field<GenericFieldType>(metaData.side_rank(), "exposed_area_vector");
-  openMassFlowRate_ = metaData.get_field<GenericFieldType>(metaData.side_rank(), "open_mass_flow_rate");
-  velocityBc_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "open_velocity_bc");
+  coordinates_ = metaData.get_field<double>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
+  density_ = metaData.get_field<double>(stk::topology::NODE_RANK, "density");
+  exposedAreaVec_ = metaData.get_field<double>(metaData.side_rank(), "exposed_area_vector");
+  openMassFlowRate_ = metaData.get_field<double>(metaData.side_rank(), "open_mass_flow_rate");
+  velocityBc_ = metaData.get_field<double>(stk::topology::NODE_RANK, "open_velocity_bc");
   
   // extract master elements
   MasterElement *meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(BcAlgTraits::faceTopo_);

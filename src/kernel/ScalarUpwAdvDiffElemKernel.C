@@ -52,19 +52,14 @@ ScalarUpwAdvDiffElemKernel<AlgTraits>::ScalarUpwAdvDiffElemKernel(
 {
   // Save of required fields
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
-  coordinates_ = metaData.get_field<VectorFieldType>(
-    stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
-  massFlowRate_ = metaData.get_field<GenericFieldType>(
-    stk::topology::ELEMENT_RANK, "mass_flow_rate_scs");
-  density_ = metaData.get_field<ScalarFieldType>(
-    stk::topology::NODE_RANK, "density");
+  coordinates_ = metaData.get_field<double>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
+  massFlowRate_ = metaData.get_field<double>(stk::topology::ELEMENT_RANK, "mass_flow_rate_scs");
+  density_ = metaData.get_field<double>(stk::topology::NODE_RANK, "density");
 
   if (solnOpts.does_mesh_move())
-    velocityRTM_ = metaData.get_field<VectorFieldType>(
-        stk::topology::NODE_RANK, "velocity_rtm");
+    velocityRTM_ = metaData.get_field<double>(stk::topology::NODE_RANK, "velocity_rtm");
   else
-    velocityRTM_ = metaData.get_field<VectorFieldType>(
-      stk::topology::NODE_RANK, "velocity");
+    velocityRTM_ = metaData.get_field<double>(stk::topology::NODE_RANK, "velocity");
 
   MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(AlgTraits::topo_);
   

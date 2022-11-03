@@ -153,24 +153,25 @@ TurbDissipationEquationSystem::register_nodal_fields(
   const int numStates = realm_.number_of_states();
 
   // register dof; set it as a restart variable
-  eps_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_dissipation", numStates));
+  eps_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "turbulent_dissipation", numStates));
   stk::mesh::put_field_on_mesh(*eps_, *part, nullptr);
   realm_.augment_restart_variable_list("turbulent_dissipation");
 
-  dedx_ =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "dedx"));
+  dedx_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "dedx"));
   stk::mesh::put_field_on_mesh(*dedx_, *part, nDim, nullptr);
+  stk::io::set_field_output_type(*dedx_, stk::io::FieldOutputType::VECTOR_3D);
 
   // delta solution for linear solver; share delta since this is a split system
-  eTmp_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "eTmp"));
+  eTmp_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "eTmp"));
   stk::mesh::put_field_on_mesh(*eTmp_, *part, nullptr);
 
-  visc_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity"));
+  visc_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "viscosity"));
   stk::mesh::put_field_on_mesh(*visc_, *part, nullptr);
 
-  tvisc_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_viscosity"));
+  tvisc_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "turbulent_viscosity"));
   stk::mesh::put_field_on_mesh(*tvisc_, *part, nullptr);
 
-  evisc_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "effective_viscosity_eps"));
+  evisc_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "effective_viscosity_eps"));
   stk::mesh::put_field_on_mesh(*evisc_, *part, nullptr);
 
   // make sure all states are properly populated (restart can handle this)
@@ -412,7 +413,7 @@ TurbDissipationEquationSystem::register_inflow_bc(
   stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   // register boundary data; eps_bc
-  ScalarFieldType *theBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_dissipation_bc"));
+  ScalarFieldType *theBcField = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "turbulent_dissipation_bc"));
   stk::mesh::put_field_on_mesh(*theBcField, *part, nullptr);
 
   // extract the value for user specified tke and save off the AuxFunction
@@ -493,7 +494,7 @@ TurbDissipationEquationSystem::register_open_bc(
   stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   // register boundary data; eps_bc
-  ScalarFieldType *theBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "open_eps_bc"));
+  ScalarFieldType *theBcField = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "open_eps_bc"));
   stk::mesh::put_field_on_mesh(*theBcField, *part, nullptr);
 
   // extract the value for user specified tke and save off the AuxFunction
@@ -563,14 +564,14 @@ TurbDissipationEquationSystem::register_wall_bc(
   stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   // register boundary data; eps_bc
-  epsWallBc_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "eps_bc"));
+  epsWallBc_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "eps_bc"));
   stk::mesh::put_field_on_mesh(*epsWallBc_, *part, nullptr);
 
   // need to register the assembles wall value for eps; can not share with eps_bc
-  assembledWallEps_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "wall_model_eps_bc"));
+  assembledWallEps_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "wall_model_eps_bc"));
   stk::mesh::put_field_on_mesh(*assembledWallEps_, *part, nullptr);
 
-  assembledWallArea_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "assembled_wall_area_eps"));
+  assembledWallArea_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "assembled_wall_area_eps"));
   stk::mesh::put_field_on_mesh(*assembledWallArea_, *part, nullptr);
 
   // wall function support only 

@@ -34,11 +34,11 @@ ContinuityInflowFemKernel<BcAlgTraits>::ContinuityInflowFemKernel(
 {
   // save off fields
   const stk::mesh::MetaData &metaData = bulkData.mesh_meta_data();
-  velocityBC_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "cont_velocity_bc");
-  densityBC_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
+  velocityBC_ = metaData.get_field<double>(stk::topology::NODE_RANK, "cont_velocity_bc");
+  densityBC_ = metaData.get_field<double>(stk::topology::NODE_RANK, "density");
   
   // extract field not required in execute()
-  VectorFieldType *coordinates = metaData.get_field<VectorFieldType>(
+  VectorFieldType *coordinates = metaData.get_field<double>(
     stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
   
   // extract master element

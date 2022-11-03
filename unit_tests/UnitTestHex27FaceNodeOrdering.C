@@ -97,6 +97,7 @@ TEST(Hex27,creation)
   stk::mesh::MeshBuilder meshBuilder(comm);
   meshBuilder.set_spatial_dimension(spatialDimension);
   auto bulk = meshBuilder.create();
+  bulk->mesh_meta_data().use_simple_fields();
 
   unit_test_utils::create_one_reference_element(*bulk, stk::topology::HEX_27);
   check_Hex27_creation(*bulk);
@@ -113,6 +114,7 @@ TEST(Hex27, face_node_ordering)
   stk::mesh::MeshBuilder meshBuilder(comm);
   meshBuilder.set_spatial_dimension(spatialDimension);
   auto bulk = meshBuilder.create();
+  bulk->mesh_meta_data().use_simple_fields();
 
   unit_test_utils::create_one_reference_element(*bulk, stk::topology::HEX_27);
   check_Hex27_face_ip_node_ordering(*bulk);

@@ -144,7 +144,7 @@ void TiogaSTKIface::execute()
   }
 
   // Synchronize IBLANK data for shared nodes
-  ScalarIntFieldType* ibf = meta_.get_field<ScalarIntFieldType>(
+  ScalarIntFieldType* ibf = meta_.get_field<int>(
           stk::topology::NODE_RANK, "iblank");
   std::vector<const stk::mesh::FieldBase*> pvec{ibf};
   stk::mesh::copy_owned_to_shared(bulk_, pvec);
@@ -280,9 +280,9 @@ void TiogaSTKIface::update_fringe_info()
   // Before we begin ensure that we have cleaned up oversetInfoVec
   ThrowAssert(osetInfo.size() == 0);
 
-  VectorFieldType *coords = meta_.get_field<VectorFieldType>
+  VectorFieldType *coords = meta_.get_field<double>
     (stk::topology::NODE_RANK, realm.get_coordinates_name());
-  ScalarIntFieldType* ibf = meta_.get_field<ScalarIntFieldType>(
+  ScalarIntFieldType* ibf = meta_.get_field<int>(
           stk::topology::NODE_RANK, "iblank");
   int nbadnodes = 0;
 
@@ -389,7 +389,7 @@ void TiogaSTKIface::update_fringe_info()
 void
 TiogaSTKIface::get_receptor_info()
 {
-  ScalarIntFieldType* ibf = meta_.get_field<ScalarIntFieldType>(
+  ScalarIntFieldType* ibf = meta_.get_field<int>(
     stk::topology::NODE_RANK, "iblank");
 
   std::vector<unsigned long> nodesToReset;
@@ -505,7 +505,7 @@ TiogaSTKIface::populate_overset_info()
   // Ensure that the oversetInfoVec has been cleared out
   ThrowAssert(osetInfo.size() == 0);
 
-  VectorFieldType *coords = meta_.get_field<VectorFieldType>
+  VectorFieldType *coords = meta_.get_field<double>
     (stk::topology::NODE_RANK, realm.get_coordinates_name());
 
   size_t numReceptors = receptorIDs_.size();

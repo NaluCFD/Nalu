@@ -150,12 +150,12 @@ private:
 
 TEST_F(Hex8Mesh, supp_alg_data_sharing)
 {
-    ScalarFieldType& nodalScalarField = meta->declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "nodalScalarField");
-    VectorFieldType& nodalVectorField = meta->declare_field<VectorFieldType>(stk::topology::NODE_RANK, "nodalVectorField");
-    TensorFieldType& nodalTensorField = meta->declare_field<TensorFieldType>(stk::topology::NODE_RANK, "nodalTensorField");
-    ScalarFieldType& elemScalarField = meta->declare_field<ScalarFieldType>(stk::topology::ELEM_RANK, "elemScalarField");
-    VectorFieldType& elemVectorField = meta->declare_field<VectorFieldType>(stk::topology::ELEM_RANK, "elemVectorField");
-    TensorFieldType& elemTensorField = meta->declare_field<TensorFieldType>(stk::topology::ELEM_RANK, "elemTensorField");
+    ScalarFieldType& nodalScalarField = meta->declare_field<double>(stk::topology::NODE_RANK, "nodalScalarField");
+    VectorFieldType& nodalVectorField = meta->declare_field<double>(stk::topology::NODE_RANK, "nodalVectorField");
+    TensorFieldType& nodalTensorField = meta->declare_field<double>(stk::topology::NODE_RANK, "nodalTensorField");
+    ScalarFieldType& elemScalarField = meta->declare_field<double>(stk::topology::ELEM_RANK, "elemScalarField");
+    VectorFieldType& elemVectorField = meta->declare_field<double>(stk::topology::ELEM_RANK, "elemVectorField");
+    TensorFieldType& elemTensorField = meta->declare_field<double>(stk::topology::ELEM_RANK, "elemTensorField");
 
     const stk::mesh::Part& wholemesh = meta->universal_part();
 
@@ -187,10 +187,10 @@ TEST_F(Hex8Mesh, supp_alg_data_sharing)
 
 TEST_F(Hex8Mesh, inconsistent_field_requests)
 {
-    ScalarFieldType& nodalScalarField = meta->declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "nodalScalarField");
-    TensorFieldType& nodalTensorField = meta->declare_field<TensorFieldType>(stk::topology::NODE_RANK, "nodalTensorField");
-    ScalarFieldType& elemScalarField = meta->declare_field<ScalarFieldType>(stk::topology::ELEM_RANK, "elemScalarField");
-    TensorFieldType& elemTensorField = meta->declare_field<TensorFieldType>(stk::topology::ELEM_RANK, "elemTensorField");
+    ScalarFieldType& nodalScalarField = meta->declare_field<double>(stk::topology::NODE_RANK, "nodalScalarField");
+    TensorFieldType& nodalTensorField = meta->declare_field<double>(stk::topology::NODE_RANK, "nodalTensorField");
+    ScalarFieldType& elemScalarField = meta->declare_field<double>(stk::topology::ELEM_RANK, "elemScalarField");
+    TensorFieldType& elemTensorField = meta->declare_field<double>(stk::topology::ELEM_RANK, "elemTensorField");
 
     const stk::mesh::Part& wholemesh = meta->universal_part();
 

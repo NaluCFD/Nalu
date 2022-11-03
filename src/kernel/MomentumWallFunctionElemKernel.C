@@ -34,16 +34,15 @@ MomentumWallFunctionElemKernel<BcAlgTraits>::MomentumWallFunctionElemKernel(
     ipNodeMap_(sierra::nalu::MasterElementRepo::get_surface_master_element(BcAlgTraits::topo_)->ipNodeMap())
 {
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
-  VectorFieldType *velocity = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
+  VectorFieldType *velocity = metaData.get_field<double>(stk::topology::NODE_RANK, "velocity");
   velocityNp1_ = &(velocity->field_of_state(stk::mesh::StateNP1));
-  bcVelocity_ = metaData.get_field<VectorFieldType>(
-    stk::topology::NODE_RANK, "wall_velocity_bc");
-  density_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
-  viscosity_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity");
-  exposedAreaVec_ = metaData.get_field<GenericFieldType>(metaData.side_rank(), "exposed_area_vector");
-  wallFrictionVelocityBip_ = metaData.get_field<GenericFieldType>(metaData.side_rank(), "wall_friction_velocity_bip");
-  wallNormalDistanceBip_ = metaData.get_field<GenericFieldType>(metaData.side_rank(), "wall_normal_distance_bip");
-  VectorFieldType *coordinates = metaData.get_field<VectorFieldType>(
+  bcVelocity_ = metaData.get_field<double>(stk::topology::NODE_RANK, "wall_velocity_bc");
+  density_ = metaData.get_field<double>(stk::topology::NODE_RANK, "density");
+  viscosity_ = metaData.get_field<double>(stk::topology::NODE_RANK, "viscosity");
+  exposedAreaVec_ = metaData.get_field<double>(metaData.side_rank(), "exposed_area_vector");
+  wallFrictionVelocityBip_ = metaData.get_field<double>(metaData.side_rank(), "wall_friction_velocity_bip");
+  wallNormalDistanceBip_ = metaData.get_field<double>(metaData.side_rank(), "wall_normal_distance_bip");
+  VectorFieldType *coordinates = metaData.get_field<double>(
     stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
  
   MasterElement *meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(BcAlgTraits::topo_);

@@ -44,10 +44,9 @@ MeshDisplacementMassElemKernel<AlgTraits>::MeshDisplacementMassElemKernel(
   const int numStates = meshDisplacement->number_of_states(); 
   meshDisplacementNm1_ = (numStates == 2) ? meshDisplacement_ : &(meshDisplacement->field_of_state(stk::mesh::StateNM1));
 
-  coordinates_ = metaData.get_field<VectorFieldType>(
-    stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
+  coordinates_ = metaData.get_field<double>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
 
-  density_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
+  density_ = metaData.get_field<double>(stk::topology::NODE_RANK, "density");
 
   MasterElement *meSCV = sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_);
 

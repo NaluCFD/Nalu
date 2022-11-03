@@ -64,7 +64,7 @@ SixDofSurfaceForceAndMomentAlgorithmDriver::zero_fields()
   stk::mesh::BulkData & bulk_data = realm_.bulk_data();
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   
-  ScalarFieldType *assembledArea = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "assembled_area_six_dof");
+  ScalarFieldType *assembledArea = meta_data.get_field<double>(stk::topology::NODE_RANK, "assembled_area_six_dof");
   // zero fields
   field_fill( meta_data, bulk_data, 0.0, *assembledArea, realm_.get_activate_aura());
 }
@@ -91,7 +91,7 @@ SixDofSurfaceForceAndMomentAlgorithmDriver::parallel_assemble_area()
   stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   // extract the fields; one of these might be null
-  ScalarFieldType *assembledArea = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "assembled_area_six_dof");
+  ScalarFieldType *assembledArea = meta_data.get_field<double>(stk::topology::NODE_RANK, "assembled_area_six_dof");
   // parallel assemble
   std::vector<const stk::mesh::FieldBase*> fields;
   fields.push_back(assembledArea);

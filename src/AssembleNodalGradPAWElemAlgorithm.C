@@ -52,11 +52,11 @@ AssembleNodalGradPAWElemAlgorithm::AssembleNodalGradPAWElemAlgorithm(
 {
   // extract fields; nodal
   stk::mesh::MetaData & metaData = realm_.meta_data();
-  density_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
-  interfaceCurvature_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "interface_curvature");
-  surfaceTension_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "surface_tension");
-  vof_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "volume_of_fluid");
-  areaWeight_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "png_area_weight");
+  density_ = metaData.get_field<double>(stk::topology::NODE_RANK, "density");
+  interfaceCurvature_ = metaData.get_field<double>(stk::topology::NODE_RANK, "interface_curvature");
+  surfaceTension_ = metaData.get_field<double>(stk::topology::NODE_RANK, "surface_tension");
+  vof_ = metaData.get_field<double>(stk::topology::NODE_RANK, "volume_of_fluid");
+  areaWeight_ = metaData.get_field<double>(stk::topology::NODE_RANK, "png_area_weight");
   gravity_ = realm_.solutionOptions_->gravity_;
 }
 
@@ -72,7 +72,7 @@ AssembleNodalGradPAWElemAlgorithm::execute()
   const int nDim = meta_data.spatial_dimension();
 
   // extract fields
-  VectorFieldType *coordinates = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  VectorFieldType *coordinates = meta_data.get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
 
   // nodal fields to gather; gather everything other than what we are assembling
   std::vector<double> ws_pressure;

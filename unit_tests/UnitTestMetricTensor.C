@@ -45,7 +45,7 @@ calculate_metric_tensor(sierra::nalu::MasterElement& me, const std::vector<doubl
   return {contravariant_metric_tensor, covariant_metric_tensor};
 }
 
-using VectorFieldType = stk::mesh::Field<double, stk::mesh::Cartesian>;
+using VectorFieldType = stk::mesh::Field<double>;
 
 void test_metric_for_topo_2D(stk::topology topo, double tol) {
   int dim = topo.dimension();
@@ -54,6 +54,7 @@ void test_metric_for_topo_2D(stk::topology topo, double tol) {
   stk::mesh::MeshBuilder meshBuilder(MPI_COMM_WORLD);
   meshBuilder.set_spatial_dimension(dim);
   auto bulk = meshBuilder.create();
+  bulk->mesh_meta_data().use_simple_fields();
   stk::mesh::Entity elem = unit_test_utils::create_one_reference_element(*bulk, topo);
 
   auto* mescs = sierra::nalu::MasterElementRepo::get_surface_master_element(topo);
@@ -102,6 +103,7 @@ void test_metric_for_topo_3D(stk::topology topo, double tol) {
   stk::mesh::MeshBuilder meshBuilder(MPI_COMM_WORLD);
   meshBuilder.set_spatial_dimension(dim);
   auto bulk = meshBuilder.create();
+  bulk->mesh_meta_data().use_simple_fields();
   stk::mesh::Entity elem = unit_test_utils::create_one_reference_element(*bulk, topo);
 
   auto* mescs = sierra::nalu::MasterElementRepo::get_surface_master_element(topo);
@@ -198,6 +200,7 @@ TEST(MetricTensorNGP, hex27)
   stk::mesh::MeshBuilder meshBuilder(MPI_COMM_WORLD);
   meshBuilder.set_spatial_dimension(dim);
   auto bulk = meshBuilder.create();
+  bulk->mesh_meta_data().use_simple_fields();
   stk::mesh::Entity elem = unit_test_utils::create_one_reference_element(*bulk, topo);
 
   sierra::nalu::Hex27SCS mescs;

@@ -24,9 +24,9 @@
 
 typedef stk::mesh::Field<double> IdFieldType;
 typedef stk::mesh::Field<double> ScalarFieldType;
-typedef stk::mesh::Field<double,stk::mesh::Cartesian> VectorFieldType;
-typedef stk::mesh::Field<double,stk::mesh::Cartesian,stk::mesh::Cartesian> TensorFieldType;
-typedef stk::mesh::Field<double, stk::mesh::SimpleArrayTag>  GenericFieldType;
+typedef stk::mesh::Field<double> VectorFieldType;
+typedef stk::mesh::Field<double> TensorFieldType;
+typedef stk::mesh::Field<double>  GenericFieldType;
 typedef sierra::nalu::DoubleType DoubleType;
 
 namespace stk { namespace mesh { class FieldBase; } }
@@ -82,23 +82,24 @@ protected:
     meshBuilder.set_spatial_dimension(spatialDimension);
     bulk = meshBuilder.create();
     meta = &bulk->mesh_meta_data();
+    meta->use_simple_fields();
 
-    elemCentroidField = &meta->declare_field<VectorFieldType>(stk::topology::ELEM_RANK, "elemCentroid");
-    nodalPressureField = &meta->declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "nodalPressure");
-    discreteLaplacianOfPressure = &meta->declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "discreteLaplacian");
-    scalarQ = &meta->declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "scalarQ");
-    diffFluxCoeff = &meta->declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "diffFluxCoeff");
-    idField = &meta->declare_field<IdFieldType>(stk::topology::NODE_RANK, "idField");
+    elemCentroidField = &meta->declare_field<double>(stk::topology::ELEM_RANK, "elemCentroid");
+    nodalPressureField = &meta->declare_field<double>(stk::topology::NODE_RANK, "nodalPressure");
+    discreteLaplacianOfPressure = &meta->declare_field<double>(stk::topology::NODE_RANK, "discreteLaplacian");
+    scalarQ = &meta->declare_field<double>(stk::topology::NODE_RANK, "scalarQ");
+    diffFluxCoeff = &meta->declare_field<double>(stk::topology::NODE_RANK, "diffFluxCoeff");
+    idField = &meta->declare_field<double>(stk::topology::NODE_RANK, "idField");
 
     stk::mesh::put_field_on_mesh(*elemCentroidField, meta->universal_part(), spatialDimension, (double*)nullptr);
 
     double one = 1.0;
     double zero = 0.0;
-    stk::mesh::put_field_on_mesh(*nodalPressureField, meta->universal_part(), 1, &one);
-    stk::mesh::put_field_on_mesh(*discreteLaplacianOfPressure, meta->universal_part(), 1, &zero);
-    stk::mesh::put_field_on_mesh(*scalarQ, meta->universal_part(), 1, &zero);
-    stk::mesh::put_field_on_mesh(*diffFluxCoeff, meta->universal_part(), 1, &zero);
-    stk::mesh::put_field_on_mesh(*idField, meta->universal_part(), 1, nullptr);
+    stk::mesh::put_field_on_mesh(*nodalPressureField, meta->universal_part(), &one);
+    stk::mesh::put_field_on_mesh(*discreteLaplacianOfPressure, meta->universal_part(), &zero);
+    stk::mesh::put_field_on_mesh(*scalarQ, meta->universal_part(), &zero);
+    stk::mesh::put_field_on_mesh(*diffFluxCoeff, meta->universal_part(), &zero);
+    stk::mesh::put_field_on_mesh(*idField, meta->universal_part(), nullptr);
   }
 
   ~Hex8Mesh() {}
@@ -146,13 +147,13 @@ class Hex8MeshWithNSOFields : public Hex8Mesh
 protected:
  Hex8MeshWithNSOFields() : Hex8Mesh()
  {
-   massFlowRate = &meta->declare_field<GenericFieldType>(stk::topology::ELEM_RANK, "mass_flow_rate_scs");
-   Gju = &meta->declare_field<GenericFieldType>(stk::topology::NODE_RANK, "Gju", 1);
-   velocity = &meta->declare_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity", 3);
-   dpdx = &meta->declare_field<VectorFieldType>(stk::topology::NODE_RANK, "dpdx", 3);
-   density = &meta->declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "density", 3);
-   viscosity = &meta->declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity");
-   pressure = &meta->declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure");
+   massFlowRate = &meta->declare_field<double>(stk::topology::ELEM_RANK, "mass_flow_rate_scs");
+   Gju = &meta->declare_field<double>(stk::topology::NODE_RANK, "Gju", 1);
+   velocity = &meta->declare_field<double>(stk::topology::NODE_RANK, "velocity", 3);
+   dpdx = &meta->declare_field<double>(stk::topology::NODE_RANK, "dpdx", 3);
+   density = &meta->declare_field<double>(stk::topology::NODE_RANK, "density", 3);
+   viscosity = &meta->declare_field<double>(stk::topology::NODE_RANK, "viscosity");
+   pressure = &meta->declare_field<double>(stk::topology::NODE_RANK, "pressure");
 
    double one = 1.0;
    double oneVecThree[3] = {one, one, one};
@@ -192,29 +193,30 @@ class Hex8ElementWithBCFields : public ::testing::Test
     meshBuilder.set_spatial_dimension(3);
     bulk = meshBuilder.create();
     meta = &bulk->mesh_meta_data();
+    meta->use_simple_fields();
 
-    velocity = &meta->declare_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
-    bcVelocity = &meta->declare_field<VectorFieldType>(stk::topology::NODE_RANK, "wall_velocity_bc");
-    density = &meta->declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
-    viscosity = &meta->declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity");
-    bcHeatFlux = &meta->declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "heat_flux_bc");
-    specificHeat = &meta->declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "specific_heat");
-    exposedAreaVec = &meta->declare_field<GenericFieldType>(meta->side_rank(), "exposed_area_vector");
-    wallFrictionVelocityBip = &meta->declare_field<GenericFieldType>(meta->side_rank(), "wall_friction_velocity_bip");
-    wallNormalDistanceBip = &meta->declare_field<GenericFieldType>(meta->side_rank(), "wall_normal_distance_bip");
-    bcVelocityOpen = &meta->declare_field<VectorFieldType>(stk::topology::NODE_RANK, "open_velocity_bc");
-    openMdot = &meta->declare_field<GenericFieldType>(meta->side_rank(), "open_mass_flow_rate");
-    Gjui = &meta->declare_field<GenericFieldType>(stk::topology::NODE_RANK, "dudx");
-    scalarQ = &meta->declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "scalar_q");
-    bcScalarQ = &meta->declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "bc_scalar_q");
-    Gjq = &meta->declare_field<VectorFieldType>(stk::topology::NODE_RANK, "Gjq");
+    velocity = &meta->declare_field<double>(stk::topology::NODE_RANK, "velocity");
+    bcVelocity = &meta->declare_field<double>(stk::topology::NODE_RANK, "wall_velocity_bc");
+    density = &meta->declare_field<double>(stk::topology::NODE_RANK, "density");
+    viscosity = &meta->declare_field<double>(stk::topology::NODE_RANK, "viscosity");
+    bcHeatFlux = &meta->declare_field<double>(stk::topology::NODE_RANK, "heat_flux_bc");
+    specificHeat = &meta->declare_field<double>(stk::topology::NODE_RANK, "specific_heat");
+    exposedAreaVec = &meta->declare_field<double>(meta->side_rank(), "exposed_area_vector");
+    wallFrictionVelocityBip = &meta->declare_field<double>(meta->side_rank(), "wall_friction_velocity_bip");
+    wallNormalDistanceBip = &meta->declare_field<double>(meta->side_rank(), "wall_normal_distance_bip");
+    bcVelocityOpen = &meta->declare_field<double>(stk::topology::NODE_RANK, "open_velocity_bc");
+    openMdot = &meta->declare_field<double>(meta->side_rank(), "open_mass_flow_rate");
+    Gjui = &meta->declare_field<double>(stk::topology::NODE_RANK, "dudx");
+    scalarQ = &meta->declare_field<double>(stk::topology::NODE_RANK, "scalar_q");
+    bcScalarQ = &meta->declare_field<double>(stk::topology::NODE_RANK, "bc_scalar_q");
+    Gjq = &meta->declare_field<double>(stk::topology::NODE_RANK, "Gjq");
 
     stk::mesh::put_field_on_mesh(*velocity, meta->universal_part(), 3, oneVecThree);
     stk::mesh::put_field_on_mesh(*bcVelocity, meta->universal_part(), 3, oneVecThree);
-    stk::mesh::put_field_on_mesh(*density, meta->universal_part(), 1, nullptr);
-    stk::mesh::put_field_on_mesh(*viscosity, meta->universal_part(), 1, &one);
-    stk::mesh::put_field_on_mesh(*bcHeatFlux, meta->universal_part(), 1, nullptr);
-    stk::mesh::put_field_on_mesh(*specificHeat, meta->universal_part(), 1, nullptr);    
+    stk::mesh::put_field_on_mesh(*density, meta->universal_part(), nullptr);
+    stk::mesh::put_field_on_mesh(*viscosity, meta->universal_part(), &one);
+    stk::mesh::put_field_on_mesh(*bcHeatFlux, meta->universal_part(), nullptr);
+    stk::mesh::put_field_on_mesh(*specificHeat, meta->universal_part(), nullptr);
     
     const sierra::nalu::MasterElement* meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(stk::topology::QUAD_4);
     stk::mesh::put_field_on_mesh(*exposedAreaVec, meta->universal_part(), 3*meFC->numIntPoints_, oneVecTwelve);
@@ -225,8 +227,8 @@ class Hex8ElementWithBCFields : public ::testing::Test
     stk::mesh::put_field_on_mesh(*openMdot, meta->universal_part(), 4, oneVecFour);
     stk::mesh::put_field_on_mesh(*Gjui, meta->universal_part(), 3*3, oneVecNine);
     
-    stk::mesh::put_field_on_mesh(*scalarQ, meta->universal_part(), 1, &one);    
-    stk::mesh::put_field_on_mesh(*bcScalarQ, meta->universal_part(), 1, &one);    
+    stk::mesh::put_field_on_mesh(*scalarQ, meta->universal_part(), &one);
+    stk::mesh::put_field_on_mesh(*bcScalarQ, meta->universal_part(), &one);
     stk::mesh::put_field_on_mesh(*Gjq, meta->universal_part(), 3, oneVecThree);    
     
     unit_test_utils::create_one_reference_element(*bulk, stk::topology::HEXAHEDRON_8);

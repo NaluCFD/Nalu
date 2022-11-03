@@ -29,6 +29,9 @@
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/Part.hpp>
 
+// stk_io
+#include <stk_io/IossBridge.hpp>
+
 // basic c++
 #include <stdexcept>
 #include <string>
@@ -271,8 +274,9 @@ TurbulenceAveragingPostProcessing::setup()
       if ( avInfo->computeVorticity_ ) {
         const int vortSize = realm_.spatialDimension_;
         const std::string vorticityName = "vorticity";
-        VectorFieldType *vortField = &(metaData.declare_field<VectorFieldType>(stk::topology::NODE_RANK, vorticityName));
+        VectorFieldType *vortField = &(metaData.declare_field<double>(stk::topology::NODE_RANK, vorticityName));
         stk::mesh::put_field_on_mesh(*vortField, *targetPart, vortSize, nullptr);
+        stk::io::set_field_output_type(*vortField, stk::io::FieldOutputType::VECTOR_3D);
       }
 
       if ( avInfo->computeQcriterion_ ) {
@@ -325,7 +329,7 @@ TurbulenceAveragingPostProcessing::setup()
       
       // deal with density; always need Reynolds averaged quantity
       const std::string densityReynoldsName = "density_ra_" + averageBlockName;
-      ScalarFieldType *densityReynolds =  &(metaData.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, densityReynoldsName));
+      ScalarFieldType *densityReynolds =  &(metaData.declare_field<double>(stk::topology::NODE_RANK, densityReynoldsName));
       stk::mesh::put_field_on_mesh(*densityReynolds, *targetPart, nullptr);
       
       // Reynolds
@@ -371,15 +375,15 @@ TurbulenceAveragingPostProcessing::setup()
       // mean error indicator
       if ( avInfo->computeMeanErrorIndictor_ ) {
         const std::string meanEiName = "mean_error_indicator";
-        GenericFieldType *mEI = &(metaData.declare_field<GenericFieldType>(stk::topology::ELEMENT_RANK, meanEiName));
-        stk::mesh::put_field_on_mesh(*mEI, *targetPart, 1, nullptr);
+        GenericFieldType *mEI = &(metaData.declare_field<double>(stk::topology::ELEMENT_RANK, meanEiName));
+        stk::mesh::put_field_on_mesh(*mEI, *targetPart, nullptr);
         realm_.augment_restart_variable_list(meanEiName); 
       }
       
       // dissipation rate
       if ( avInfo->computeDissipationRate_ ) {
-        GenericFieldType *dRate = &(metaData.declare_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "dissipation_rate"));
-        stk::mesh::put_field_on_mesh(*dRate, *targetPart, 1, nullptr);
+        GenericFieldType *dRate = &(metaData.declare_field<double>(stk::topology::ELEMENT_RANK, "dissipation_rate"));
+        stk::mesh::put_field_on_mesh(*dRate, *targetPart, nullptr);
         realm_.augment_restart_variable_list("dissipation_rate");
         // nodal fields for projection
         register_field("dissipation_rate_projected", 1, metaData, targetPart, false);
@@ -389,8 +393,8 @@ TurbulenceAveragingPostProcessing::setup()
 
       // production
       if ( avInfo->computeProduction_ ) {
-        GenericFieldType *pk = &(metaData.declare_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "production"));
-        stk::mesh::put_field_on_mesh(*pk, *targetPart, 1, nullptr);
+        GenericFieldType *pk = &(metaData.declare_field<double>(stk::topology::ELEMENT_RANK, "production"));
+        stk::mesh::put_field_on_mesh(*pk, *targetPart, nullptr);
         realm_.augment_restart_variable_list("production");
         // nodal fields for projection
         register_field("production_projected", 1, metaData, targetPart, false);
@@ -461,12 +465,13 @@ TurbulenceAveragingPostProcessing::register_field_from_primitive(
 
   // register the averaged field with this size; treat velocity as a special case to retain the vector aspect
   if ( primitiveName == "velocity" ) {
-    VectorFieldType *averagedField = &(metaData.declare_field<VectorFieldType>(stk::topology::NODE_RANK, averagedName));
+    VectorFieldType *averagedField = &(metaData.declare_field<double>(stk::topology::NODE_RANK, averagedName));
     stk::mesh::put_field_on_mesh(*averagedField, *part, fieldSizePrimitive, nullptr);
+    stk::io::set_field_output_type(*averagedField, stk::io::FieldOutputType::VECTOR_3D);
   }
   else {
-    stk::mesh::Field<double, stk::mesh::SimpleArrayTag> *averagedField 
-      = &(metaData.declare_field< stk::mesh::Field<double, stk::mesh::SimpleArrayTag> >(stk::topology::NODE_RANK, averagedName));
+    stk::mesh::Field<double> *averagedField
+      = &(metaData.declare_field<double>(stk::topology::NODE_RANK, averagedName));
     stk::mesh::put_field_on_mesh(*averagedField, *part, fieldSizePrimitive, nullptr);
   }
 }
@@ -509,8 +514,8 @@ TurbulenceAveragingPostProcessing::register_field(
   const bool restartField)
 {
   // register and put the field
-  stk::mesh::Field<double, stk::mesh::SimpleArrayTag> *theField
-    = &(metaData.declare_field< stk::mesh::Field<double, stk::mesh::SimpleArrayTag> >(stk::topology::NODE_RANK, fieldName));
+  stk::mesh::Field<double> *theField
+    = &(metaData.declare_field<double>(stk::topology::NODE_RANK, fieldName));
   stk::mesh::put_field_on_mesh(*theField,*targetPart,fieldSize,nullptr);
   // augment the restart list
   if ( restartField )
@@ -1348,7 +1353,7 @@ TurbulenceAveragingPostProcessing::compute_lambda_ci(
 
   // extract fields
   stk::mesh::FieldBase *Lambda = metaData.get_field(stk::topology::NODE_RANK, lambdaName);
-  GenericFieldType *dudx_ = metaData.get_field<GenericFieldType>(stk::topology::NODE_RANK, "dudx");
+  GenericFieldType *dudx_ = metaData.get_field<double>(stk::topology::NODE_RANK, "dudx");
 
   stk::mesh::BucketVector const& node_buckets_vort =
     realm_.get_buckets( stk::topology::NODE_RANK, s_all_nodes );
@@ -1559,9 +1564,9 @@ TurbulenceAveragingPostProcessing::compute_dissipation_rate(
 
   // first zero out projected quantities
   ScalarFieldType *dissipationRateProjected 
-    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dissipation_rate_projected");
+    = metaData.get_field<double>(stk::topology::NODE_RANK, "dissipation_rate_projected");
   ScalarFieldType *dissipationRateFilter 
-    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "dissipation_rate_filter");
+    = metaData.get_field<double>(stk::topology::NODE_RANK, "dissipation_rate_filter");
   stk::mesh::BucketVector const& nodal_buckets =
     realm_.get_buckets( stk::topology::NODE_RANK, s_all_nodes );
   for ( stk::mesh::BucketVector::const_iterator ib = nodal_buckets.begin();
@@ -1578,19 +1583,19 @@ TurbulenceAveragingPostProcessing::compute_dissipation_rate(
   
   // extract fields
   VectorFieldType *coordinates 
-    = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+    = metaData.get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   VectorFieldType *velocity 
-    = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "velocity");
+    = metaData.get_field<double>(stk::topology::NODE_RANK, "velocity");
   ScalarFieldType *viscosity 
-    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity");
+    = metaData.get_field<double>(stk::topology::NODE_RANK, "viscosity");
   GenericFieldType *dissipationRate 
-    = metaData.get_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "dissipation_rate");
+    = metaData.get_field<double>(stk::topology::ELEMENT_RANK, "dissipation_rate");
  
   // mean values require knowing the block name to extract the field
   const std::string averageBlockName = avInfo->name_;
   const std::string meanDensityName = "density_ra_" + averageBlockName;
   ScalarFieldType *meanDensity 
-    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, meanDensityName);
+    = metaData.get_field<double>(stk::topology::NODE_RANK, meanDensityName);
  
   // extract mean velocity name - assume Favre until proven otherwise
   std::string meanVelocityName = "velocity_fa_" + averageBlockName;
@@ -1601,7 +1606,7 @@ TurbulenceAveragingPostProcessing::compute_dissipation_rate(
     includeDivU = 0.0;
   }
   VectorFieldType *meanVelocity 
-    = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, meanVelocityName);
+    = metaData.get_field<double>(stk::topology::NODE_RANK, meanVelocityName);
 
   // need a grad-op (assume CVFEM)
   std::vector<double> ws_dndx;
@@ -1801,9 +1806,9 @@ TurbulenceAveragingPostProcessing::compute_production(
   
   // first zero out projected quantities
   ScalarFieldType *productionProjected 
-    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "production_projected");
+    = metaData.get_field<double>(stk::topology::NODE_RANK, "production_projected");
   ScalarFieldType *productionFilter 
-    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "production_filter");
+    = metaData.get_field<double>(stk::topology::NODE_RANK, "production_filter");
   stk::mesh::BucketVector const& nodal_buckets =
     realm_.get_buckets( stk::topology::NODE_RANK, s_all_nodes );
   for ( stk::mesh::BucketVector::const_iterator ib = nodal_buckets.begin();
@@ -1820,15 +1825,15 @@ TurbulenceAveragingPostProcessing::compute_production(
 
   // extract fields
   VectorFieldType *coordinates 
-    = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+    = metaData.get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   GenericFieldType *production 
-    = metaData.get_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "production");
+    = metaData.get_field<double>(stk::topology::ELEMENT_RANK, "production");
  
   // mean values require knowing the block name to extract the field
   const std::string averageBlockName = avInfo->name_;
   const std::string meanDensityName = "density_ra_" + averageBlockName;
   ScalarFieldType *meanDensity 
-    = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, meanDensityName);
+    = metaData.get_field<double>(stk::topology::NODE_RANK, meanDensityName);
  
   // extract mean velocity name - assume Favre until proven otherwise
   std::string meanVelocityName = "velocity_fa_" + averageBlockName;
@@ -1847,9 +1852,9 @@ TurbulenceAveragingPostProcessing::compute_production(
   }
 
   VectorFieldType *meanVelocity 
-    = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, meanVelocityName);
+    = metaData.get_field<double>(stk::topology::NODE_RANK, meanVelocityName);
   GenericFieldType *stress 
-    = metaData.get_field<GenericFieldType>(stk::topology::NODE_RANK, stressName);
+    = metaData.get_field<double>(stk::topology::NODE_RANK, stressName);
 
   // need a grad-op (assume CVFEM)
   std::vector<double> ws_dndx;

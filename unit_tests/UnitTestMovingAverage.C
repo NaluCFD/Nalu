@@ -35,10 +35,11 @@ public:
     meshBuilder.set_spatial_dimension(numberOfDimensions);
     bulk_ = meshBuilder.create();
     auto& meta_ = bulk_->mesh_meta_data();
+    meta_.use_simple_fields();
 
-    temperature_ = &meta_.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature");
+    temperature_ = &meta_.declare_field<double>(stk::topology::NODE_RANK, "temperature");
 
-    raTemperature_ = &meta_.declare_field<ScalarFieldType>(
+    raTemperature_ = &meta_.declare_field<double>(
         stk::topology::NODE_RANK,
         sierra::nalu::MovingAveragePostProcessor::filtered_field_name("temperature")
     );

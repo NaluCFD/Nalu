@@ -57,13 +57,13 @@ AssembleNodalGradPAWBoundaryAlgorithm::AssembleNodalGradPAWBoundaryAlgorithm(
 {
   // save off fields
   stk::mesh::MetaData & metaData = realm_.meta_data();
-  coordinates_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
-  density_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
-  interfaceCurvature_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "interface_curvature");
-  surfaceTension_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "surface_tension");
-  vof_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "volume_of_fluid");
-  bcPressure_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, bcPressureName);
-  areaWeight_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "png_area_weight");
+  coordinates_ = metaData.get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  density_ = metaData.get_field<double>(stk::topology::NODE_RANK, "density");
+  interfaceCurvature_ = metaData.get_field<double>(stk::topology::NODE_RANK, "interface_curvature");
+  surfaceTension_ = metaData.get_field<double>(stk::topology::NODE_RANK, "surface_tension");
+  vof_ = metaData.get_field<double>(stk::topology::NODE_RANK, "volume_of_fluid");
+  bcPressure_ = metaData.get_field<double>(stk::topology::NODE_RANK, bcPressureName);
+  areaWeight_ = metaData.get_field<double>(stk::topology::NODE_RANK, "png_area_weight");
   gravity_ = realm_.solutionOptions_->gravity_;
 
   NaluEnv::self().naluOutputP0() << "AssembleNodalGradPAWBoundaryAlgorithm Active" << std::endl;
@@ -81,7 +81,7 @@ AssembleNodalGradPAWBoundaryAlgorithm::execute()
   const int nDim = metaData.spatial_dimension();
 
   // extract fields
-  GenericFieldType *exposedAreaVec = metaData.get_field<GenericFieldType>(metaData.side_rank(), "exposed_area_vector");
+  GenericFieldType *exposedAreaVec = metaData.get_field<double>(metaData.side_rank(), "exposed_area_vector");
 
   // ip values; fixed size
   std::vector<double> dpdxBip(nDim);

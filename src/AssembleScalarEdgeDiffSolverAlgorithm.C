@@ -46,8 +46,8 @@ AssembleScalarEdgeDiffSolverAlgorithm::AssembleScalarEdgeDiffSolverAlgorithm(
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
-  coordinates_ = meta_data.get_field<VectorFieldType>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
-  edgeAreaVec_ = meta_data.get_field<VectorFieldType>(stk::topology::EDGE_RANK, "edge_area_vector");
+  coordinates_ = meta_data.get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
+  edgeAreaVec_ = meta_data.get_field<double>(stk::topology::EDGE_RANK, "edge_area_vector");
 }
 
 void

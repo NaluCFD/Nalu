@@ -37,13 +37,10 @@ ScalarGclElemKernel<AlgTraits>::ScalarGclElemKernel(
   // save off fields
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
 
-  ScalarFieldType* density = metaData.get_field<ScalarFieldType>(
-    stk::topology::NODE_RANK, "density");
+  ScalarFieldType* density = metaData.get_field<double>(stk::topology::NODE_RANK, "density");
   densityNp1_ = &(density->field_of_state(stk::mesh::StateNP1));
-  divV_ = metaData.get_field<ScalarFieldType>(
-    stk::topology::NODE_RANK, "div_mesh_velocity");
-  coordinates_ = metaData.get_field<VectorFieldType>(
-    stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
+  divV_ = metaData.get_field<double>(stk::topology::NODE_RANK, "div_mesh_velocity");
+  coordinates_ = metaData.get_field<double>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
 
   MasterElement *meSCV = sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_);
 

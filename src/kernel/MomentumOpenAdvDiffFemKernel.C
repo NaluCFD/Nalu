@@ -42,22 +42,22 @@ MomentumOpenAdvDiffFemKernel<BcAlgTraits>::MomentumOpenAdvDiffFemKernel(
 {
   // save off fields
   velocityNp1_ = &(velocity->field_of_state(stk::mesh::StateNP1));
-  vrtmL_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "vrtm_lagged");
-  velocityBc_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "open_velocity_bc");
+  vrtmL_ = metaData.get_field<double>(stk::topology::NODE_RANK, "vrtm_lagged");
+  velocityBc_ = metaData.get_field<double>(stk::topology::NODE_RANK, "open_velocity_bc");
   if ( solnOpts.does_mesh_move() ) {
-    meshVelocity_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "mesh_velocity");
+    meshVelocity_ = metaData.get_field<double>(stk::topology::NODE_RANK, "mesh_velocity");
   }
   else {
     meshVelocity_ = velocityNp1_;
   }
-  GjpL_ = metaData.get_field<VectorFieldType>(stk::topology::NODE_RANK, "dpdx_lagged");
-  pressure_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure");
-  pressureBc_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "pressure_bc");
-  density_ = metaData.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "density");
-  dynamicPressure_ = metaData.get_field<GenericFieldType>(metaData.side_rank(), "dynamic_pressure");
+  GjpL_ = metaData.get_field<double>(stk::topology::NODE_RANK, "dpdx_lagged");
+  pressure_ = metaData.get_field<double>(stk::topology::NODE_RANK, "pressure");
+  pressureBc_ = metaData.get_field<double>(stk::topology::NODE_RANK, "pressure_bc");
+  density_ = metaData.get_field<double>(stk::topology::NODE_RANK, "density");
+  dynamicPressure_ = metaData.get_field<double>(metaData.side_rank(), "dynamic_pressure");
     
   // extract field not required in execute()
-  VectorFieldType *coordinates = metaData.get_field<VectorFieldType>(
+  VectorFieldType *coordinates = metaData.get_field<double>(
     stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
 
   // extract master elements

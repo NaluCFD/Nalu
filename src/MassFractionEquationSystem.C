@@ -140,29 +140,30 @@ MassFractionEquationSystem::register_nodal_fields(
   const int numStates = realm_.number_of_states();
 
   // register dof; set it as a restart variable
-  massFraction_ =  &(meta_data.declare_field<GenericFieldType>(stk::topology::NODE_RANK, "mass_fraction", numStates));
+  massFraction_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "mass_fraction", numStates));
   stk::mesh::put_field_on_mesh(*massFraction_, *part, numMassFraction_, nullptr);
   realm_.augment_restart_variable_list("mass_fraction");
 
-  currentMassFraction_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "current_mass_fraction", numStates));
+  currentMassFraction_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "current_mass_fraction", numStates));
   stk::mesh::put_field_on_mesh(*currentMassFraction_, *part, nullptr);
 
   // delta solution for linear solver
-  yTmp_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "yTmp"));
+  yTmp_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "yTmp"));
   stk::mesh::put_field_on_mesh(*yTmp_, *part, nullptr);
 
-  dydx_ = &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "dydx"));
+  dydx_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "dydx"));
   stk::mesh::put_field_on_mesh(*dydx_, *part, nDim, nullptr);
+  stk::io::set_field_output_type(*dydx_, stk::io::FieldOutputType::VECTOR_3D);
 
-  visc_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "viscosity"));
+  visc_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "viscosity"));
   stk::mesh::put_field_on_mesh(*visc_, *part, nullptr);
 
   if ( realm_.is_turbulent() ) {
-    tvisc_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "turbulent_viscosity"));
+    tvisc_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "turbulent_viscosity"));
     stk::mesh::put_field_on_mesh(*tvisc_, *part, nullptr);
   }
   
-  evisc_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "effective_viscosity_y"));
+  evisc_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "effective_viscosity_y"));
   stk::mesh::put_field_on_mesh(*evisc_, *part, nullptr);
 
 }
@@ -297,11 +298,11 @@ MassFractionEquationSystem::register_inflow_bc(
   stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   // register boundary data; massFraction_bc for all mass fraction number
-  GenericFieldType *theBcField = &(meta_data.declare_field<GenericFieldType>(stk::topology::NODE_RANK, "mass_fraction_bc"));
+  GenericFieldType *theBcField = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "mass_fraction_bc"));
   stk::mesh::put_field_on_mesh(*theBcField, *part, numMassFraction_, nullptr);
 
   // register single scalar bc value
-  ScalarFieldType *theCurrentBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "current_mass_fraction_bc"));
+  ScalarFieldType *theCurrentBcField = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "current_mass_fraction_bc"));
   stk::mesh::put_field_on_mesh(*theCurrentBcField, *part, nullptr);
 
   // insert to the set of bcs
@@ -383,11 +384,11 @@ MassFractionEquationSystem::register_open_bc(
   stk::mesh::MetaData &meta_data = realm_.meta_data();
 
   // register boundary data; mass fraction_bc for all speecies number
-  GenericFieldType *theBcField = &(meta_data.declare_field<GenericFieldType>(stk::topology::NODE_RANK, "mass_fraction_open_bc"));
+  GenericFieldType *theBcField = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "mass_fraction_open_bc"));
   stk::mesh::put_field_on_mesh(*theBcField, *part, numMassFraction_, nullptr);
 
   // register single scalar bc value
-  ScalarFieldType *theCurrentBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "current_mass_fraction_open_bc"));
+  ScalarFieldType *theCurrentBcField = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "current_mass_fraction_open_bc"));
   stk::mesh::put_field_on_mesh(*theCurrentBcField, *part, nullptr);
 
   // insert to the set of bcs
@@ -464,11 +465,11 @@ MassFractionEquationSystem::register_wall_bc(
     // FIXME: Generalize for constant vs function
 
     // register boundary data; mass fraction_bc for all mass fraction number
-    GenericFieldType *theBcField = &(meta_data.declare_field<GenericFieldType>(stk::topology::NODE_RANK, "mass_fraction_bc"));
+    GenericFieldType *theBcField = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "mass_fraction_bc"));
     stk::mesh::put_field_on_mesh(*theBcField, *part, numMassFraction_, nullptr);
 
     // register single scalar bc value
-    ScalarFieldType *theCurrentBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "current_mass_fraction_bc"));
+    ScalarFieldType *theCurrentBcField = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "current_mass_fraction_bc"));
     stk::mesh::put_field_on_mesh(*theCurrentBcField, *part, nullptr);
 
     // insert to the set of bcs

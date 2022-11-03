@@ -25,10 +25,10 @@ typedef stk::mesh::Field<stk::mesh::EntityId> GlobalIdFieldType;
 typedef stk::mesh::Field<int>  ScalarIntFieldType;
 
 // define vector field typedef; however, what is the value of Cartesian?
-typedef stk::mesh::Field<double, stk::mesh::Cartesian>  VectorFieldType;
+typedef stk::mesh::Field<double>  VectorFieldType;
 
 // define generic
-typedef stk::mesh::Field<double, stk::mesh::SimpleArrayTag>  GenericFieldType;
+typedef stk::mesh::Field<double>  GenericFieldType;
 
 // field type for local ids
 typedef unsigned LocalId;

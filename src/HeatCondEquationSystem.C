@@ -208,31 +208,33 @@ HeatCondEquationSystem::register_nodal_fields(
   const int numStates = realm_.number_of_states();
 
   // register dof; set it as a restart variable
-  temperature_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature", numStates));
+  temperature_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "temperature", numStates));
   stk::mesh::put_field_on_mesh(*temperature_, *part, nullptr);
   realm_.augment_restart_variable_list("temperature");
 
-  dtdx_ =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "dtdx"));
+  dtdx_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "dtdx"));
   stk::mesh::put_field_on_mesh(*dtdx_, *part, nDim, nullptr);
+  stk::io::set_field_output_type(*dtdx_, stk::io::FieldOutputType::VECTOR_3D);
 
   // delta solution for linear solver
-  tTmp_ =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "tTmp"));
+  tTmp_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "tTmp"));
   stk::mesh::put_field_on_mesh(*tTmp_, *part, nullptr);
 
-  dualNodalVolume_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "dual_nodal_volume"));
+  dualNodalVolume_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "dual_nodal_volume"));
   stk::mesh::put_field_on_mesh(*dualNodalVolume_, *part, nullptr);
 
-  coordinates_ =  &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, "coordinates"));
+  coordinates_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "coordinates"));
   stk::mesh::put_field_on_mesh(*coordinates_, *part, nDim, nullptr);
+  stk::io::set_field_output_type(*coordinates_, stk::io::FieldOutputType::VECTOR_3D);
 
   // props
-  density_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "density"));
+  density_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "density"));
   stk::mesh::put_field_on_mesh(*density_, *part, nullptr);
 
-  specHeat_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "specific_heat"));
+  specHeat_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "specific_heat"));
   stk::mesh::put_field_on_mesh(*specHeat_, *part, nullptr);
 
-  thermalCond_ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "thermal_conductivity"));
+  thermalCond_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "thermal_conductivity"));
   stk::mesh::put_field_on_mesh(*thermalCond_, *part, nullptr);
 
   // push to property list
@@ -242,9 +244,9 @@ HeatCondEquationSystem::register_nodal_fields(
 
   // register divergence of radiative heat flux and linearization (controled by transfer)
   if ( pmrCouplingActive_ ) {
-    ScalarFieldType *divQ = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "div_radiative_heat_flux"));
+    ScalarFieldType *divQ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "div_radiative_heat_flux"));
     stk::mesh::put_field_on_mesh(*divQ, *part, nullptr);
-    ScalarFieldType *divQLin = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "div_radiative_heat_flux_lin"));
+    ScalarFieldType *divQLin = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "div_radiative_heat_flux_lin"));
     stk::mesh::put_field_on_mesh(*divQLin, *part, nullptr);
   }
 
@@ -265,7 +267,7 @@ HeatCondEquationSystem::register_nodal_fields(
   // register the fringe nodal field 
   if ( realm_.query_for_overset() && realm_.has_mesh_motion() ) {
     ScalarFieldType *fringeNode
-      = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "fringe_node"));
+      = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "fringe_node"));
     stk::mesh::put_field_on_mesh(*fringeNode, *part, nullptr);
   }
 }
@@ -285,8 +287,9 @@ HeatCondEquationSystem::register_edge_fields(
   //====================================================
   if ( realm_.realmUsesEdges_ ) {
     const int nDim = meta_data.spatial_dimension();
-    edgeAreaVec_ = &(meta_data.declare_field<VectorFieldType>(stk::topology::EDGE_RANK, "edge_area_vector"));
+    edgeAreaVec_ = &(meta_data.declare_field<double>(stk::topology::EDGE_RANK, "edge_area_vector"));
     stk::mesh::put_field_on_mesh(*edgeAreaVec_, *part, nDim, nullptr);
+    stk::io::set_field_output_type(*edgeAreaVec_, stk::io::FieldOutputType::VECTOR_3D);
   }
 
 }
@@ -304,7 +307,7 @@ HeatCondEquationSystem::register_element_fields(
   // deal with heat conduction error indicator; elemental field of size unity
   if ( realm_.solutionOptions_->errorIndicatorActive_ ) {
     const int numIp = 1;
-    GenericFieldType *pstabEI= &(meta_data.declare_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "error_indicator"));
+    GenericFieldType *pstabEI= &(meta_data.declare_field<double>(stk::topology::ELEMENT_RANK, "error_indicator"));
     stk::mesh::put_field_on_mesh(*pstabEI, *part, numIp, nullptr);
   }
   
@@ -312,7 +315,7 @@ HeatCondEquationSystem::register_element_fields(
   if ( realm_.query_for_overset() ) {
     const int sizeOfElemField = 1;
     GenericFieldType *intersectedElement
-      = &(meta_data.declare_field<GenericFieldType>(stk::topology::ELEMENT_RANK, "intersected_element"));
+      = &(meta_data.declare_field<double>(stk::topology::ELEMENT_RANK, "intersected_element"));
     stk::mesh::put_field_on_mesh(*intersectedElement, *part, sizeOfElemField, nullptr);
   }
 }
@@ -575,7 +578,7 @@ HeatCondEquationSystem::register_wall_bc(
   if ( userData.tempSpec_ ||  FUNCTION_UD == theDataType ) {
  
     // register boundary data; temperature_bc
-    ScalarFieldType *theBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature_bc"));
+    ScalarFieldType *theBcField = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "temperature_bc"));
     stk::mesh::put_field_on_mesh(*theBcField, *part, nullptr);
 
     AuxFunction *theAuxFunc = NULL;
@@ -628,15 +631,15 @@ HeatCondEquationSystem::register_wall_bc(
     // check for post processing
     if ( userData.ppHeatFlux_ ) {
       // register the fields
-      ScalarFieldType *assembledWallArea =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "assembled_wall_area_ht"));
+      ScalarFieldType *assembledWallArea =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "assembled_wall_area_ht"));
       stk::mesh::put_field_on_mesh(*assembledWallArea, *part, nullptr);
-      ScalarFieldType *referenceTemperature =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "reference_temperature"));
+      ScalarFieldType *referenceTemperature =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "reference_temperature"));
       stk::mesh::put_field_on_mesh(*referenceTemperature, *part, nullptr);
-      ScalarFieldType *heatTransferCoeff =  &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "heat_transfer_coefficient"));
+      ScalarFieldType *heatTransferCoeff =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "heat_transfer_coefficient"));
       stk::mesh::put_field_on_mesh(*heatTransferCoeff, *part, nullptr);
-      ScalarFieldType *normalHeatFlux = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "normal_heat_flux"));
+      ScalarFieldType *normalHeatFlux = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "normal_heat_flux"));
       stk::mesh::put_field_on_mesh(*normalHeatFlux, *part, nullptr);
-      ScalarFieldType *robinCouplingParameter = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "robin_coupling_parameter"));
+      ScalarFieldType *robinCouplingParameter = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "robin_coupling_parameter"));
       stk::mesh::put_field_on_mesh(*robinCouplingParameter, *part, nullptr);
       
       // provide restart fields
@@ -709,7 +712,7 @@ HeatCondEquationSystem::register_wall_bc(
 
     const AlgorithmType algTypeHF = WALL_HF;
 
-    ScalarFieldType *theBcField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "heat_flux_bc"));
+    ScalarFieldType *theBcField = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "heat_flux_bc"));
     stk::mesh::put_field_on_mesh(*theBcField, *part, nullptr);
 
     NormalHeatFlux heatFlux = userData.q_;
@@ -756,9 +759,9 @@ HeatCondEquationSystem::register_wall_bc(
       throw std::runtime_error("Sorry, irradiation was specified while emissivity was not");
 
     // register boundary data;
-    ScalarFieldType *irradField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "irradiation"));
+    ScalarFieldType *irradField = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "irradiation"));
     stk::mesh::put_field_on_mesh(*irradField, *part, nullptr);
-    ScalarFieldType *emissField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "emissivity"));
+    ScalarFieldType *emissField = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "emissivity"));
     stk::mesh::put_field_on_mesh(*emissField, *part, nullptr);
 
     // aux algs; irradiation
@@ -834,19 +837,19 @@ HeatCondEquationSystem::register_wall_bc(
     }
 
     // register boundary data
-    ScalarFieldType *normalHeatFluxField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "normal_heat_flux"));
+    ScalarFieldType *normalHeatFluxField = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "normal_heat_flux"));
     stk::mesh::put_field_on_mesh(*normalHeatFluxField, *part, nullptr);
-    ScalarFieldType *tRefField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "reference_temperature"));
+    ScalarFieldType *tRefField = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "reference_temperature"));
     stk::mesh::put_field_on_mesh(*tRefField, *part, nullptr);
 
     ScalarFieldType *alphaField = NULL;
     if (isConvectionCHT)
     {
-      alphaField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "heat_transfer_coefficient"));
+      alphaField = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "heat_transfer_coefficient"));
     }
     if (isRobinCHT)
     {
-      alphaField = &(meta_data.declare_field<ScalarFieldType>(stk::topology::NODE_RANK, "robin_coupling_parameter"));
+      alphaField = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "robin_coupling_parameter"));
     }
     stk::mesh::put_field_on_mesh(*alphaField, *part, nullptr);
   

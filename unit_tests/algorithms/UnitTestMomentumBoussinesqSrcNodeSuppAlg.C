@@ -28,11 +28,11 @@ TEST(MomentumBoussinesqSrcNodeSuppAlg, single_value)
   NodeSuppHelper helper;
   auto& meta = helper.realm.meta_data();
 
-  auto& dnv = meta.declare_field<stk::mesh::Field<double>>(stk::topology::NODE_RANK, "dual_nodal_volume");
-  stk::mesh::put_field_on_mesh(dnv, meta.universal_part(), 1, nullptr);
+  auto& dnv = meta.declare_field<double>(stk::topology::NODE_RANK, "dual_nodal_volume");
+  stk::mesh::put_field_on_mesh(dnv, meta.universal_part(), nullptr);
 
-  auto& temperature = meta.declare_field<stk::mesh::Field<double>>(stk::topology::NODE_RANK, "temperature");
-  stk::mesh::put_field_on_mesh(temperature, meta.universal_part(), 1, nullptr);
+  auto& temperature = meta.declare_field<double>(stk::topology::NODE_RANK, "temperature");
+  stk::mesh::put_field_on_mesh(temperature, meta.universal_part(), nullptr);
 
   meta.commit();
 

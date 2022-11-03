@@ -48,10 +48,10 @@ AssembleHeatCondIrradWallSolverAlgorithm::AssembleHeatCondIrradWallSolverAlgorit
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
-  exposedAreaVec_ = meta_data.get_field<GenericFieldType>(meta_data.side_rank(), "exposed_area_vector");
-  temperature_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "temperature");
-  irradiation_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "irradiation");
-  emissivity_ = meta_data.get_field<ScalarFieldType>(stk::topology::NODE_RANK, "emissivity");
+  exposedAreaVec_ = meta_data.get_field<double>(meta_data.side_rank(), "exposed_area_vector");
+  temperature_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "temperature");
+  irradiation_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "irradiation");
+  emissivity_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "emissivity");
 }
 
 //--------------------------------------------------------------------------
