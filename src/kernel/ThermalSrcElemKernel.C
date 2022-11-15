@@ -36,7 +36,7 @@ ThermalSrcElemKernel<AlgTraits>::ThermalSrcElemKernel(
     src_(solnOpts.thermalSrc_)
 {
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
-  coordinates_ = metaData.get_field<VectorFieldType>(
+  coordinates_ = metaData.get_field<double>(
     stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
 
   MasterElement *meSCV = sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_);
