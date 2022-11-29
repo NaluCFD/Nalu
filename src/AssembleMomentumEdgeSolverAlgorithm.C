@@ -111,6 +111,10 @@ AssembleMomentumEdgeSolverAlgorithm::execute()
   const double om_alpha = 1.0-alpha;
   const double om_alphaUpw = 1.0-alphaUpw;
 
+  // extract noc
+  const double nocFac
+    = (realm_.get_noc_usage(dofName) == true) ? 1.0 : 0.0;
+  
   // space for LHS/RHS; always edge connectivity
   const int nodesPerEdge = 2;
   const int lhsSize = nDim*nodesPerEdge*nDim*nodesPerEdge;
@@ -297,7 +301,7 @@ AssembleMomentumEdgeSolverAlgorithm::execute()
           const int offSetIJ = offSetI+j;
           const double axj = p_areaVec[j];
           const double GjUi = 0.5*(dudxL[offSetIJ] + dudxR[offSetIJ]);
-          p_duidxj[offSetIJ] = GjUi + (uidiff - GlUidxl)*axj*inv_axdx;
+          p_duidxj[offSetIJ] = GjUi*nocFac + (uidiff - GlUidxl*nocFac)*axj*inv_axdx;
         }
       }
 

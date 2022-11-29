@@ -99,6 +99,7 @@ realms:
  
         - noc_correction:
             pressure: yes 
+            velocity: yes 
 
         - non_conformal:
             gauss_labatto_quadrature: no

@@ -98,6 +98,10 @@ AssembleMomentumEdgeOpenSolverAlgorithm::execute()
   // space for dui/dxj; the modified gradient with NOC
   std::vector<double> duidxj(nDim*nDim);
 
+  // extract noc
+  const double nocFac
+    = (realm_.get_noc_usage(velocity_->name()) == true) ? 1.0 : 0.0;
+
   // lhs/rhs space
   std::vector<double> rhs;
   std::vector<double> lhs;
@@ -252,7 +256,7 @@ AssembleMomentumEdgeOpenSolverAlgorithm::execute()
             const int offSetIJ = offSetI+j;
             const double axj = areaVec[faceOffSet+j];
             const double GjUi = dudxR[offSetIJ];
-            p_duidxj[offSetIJ] = GjUi + (uidiff - GlUidxl)*axj*inv_axdx;
+            p_duidxj[offSetIJ] = GjUi*nocFac + (uidiff - GlUidxl*nocFac)*axj*inv_axdx;
           }
         }
 

@@ -68,6 +68,10 @@ AssembleScalarEdgeDiffSolverAlgorithm::execute()
 
   const int nDim = meta_data.spatial_dimension();
 
+  // extract noc
+  const double nocFac
+    = (realm_.get_noc_usage(scalarQ_->name()) == true) ? 1.0 : 0.0;
+
   // space for LHS/RHS; always edge connectivity
   const int nodesPerEdge = 2;
   const int lhsSize = nodesPerEdge*nodesPerEdge;
@@ -175,7 +179,7 @@ AssembleScalarEdgeDiffSolverAlgorithm::execute()
       // diffusive flux
       //====================================
       double lhsfac = -viscIp*asq*inv_axdx;
-      double diffFlux = lhsfac*(qNp1R - qNp1L) + nonOrth;
+      double diffFlux = lhsfac*(qNp1R - qNp1L) + nonOrth*nocFac;
 
       // first left
       p_lhs[0] = -lhsfac;

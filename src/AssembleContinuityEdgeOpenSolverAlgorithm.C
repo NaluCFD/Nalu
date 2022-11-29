@@ -85,9 +85,8 @@ AssembleContinuityEdgeOpenSolverAlgorithm::execute()
   const int nDim = meta_data.spatial_dimension();
 
   // extract noc
-  const std::string dofName = "pressure";
   const double nocFac
-    = (realm_.get_noc_usage(dofName) == true) ? 1.0 : 0.0;
+    = (realm_.get_noc_usage(pressure_->name()) == true) ? 1.0 : 0.0;
     
   // lhs/rhs space
   std::vector<double> lhs;

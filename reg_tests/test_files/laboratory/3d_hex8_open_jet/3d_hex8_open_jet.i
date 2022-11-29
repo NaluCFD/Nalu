@@ -130,6 +130,11 @@ realms:
             velocity: element
             pressure: element
             mixture_fraction: element
+
+        - noc_correction:
+            velocity: no
+            pressure: no
+            mixture_fraction: no
           
     output:
       output_data_base_name: output/3d_hex8_open_jet.e
