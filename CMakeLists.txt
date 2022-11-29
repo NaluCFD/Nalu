@@ -10,7 +10,6 @@ option(ENABLE_SPHINX_API_DOCS "Link Doxygen API docs to Sphinx" OFF)
 option(ENABLE_PARAVIEW_CATALYST
       "Enable ParaView Catalyst. Requires external installation of Trilinos Catalyst IOSS adapter."
        OFF)
-option(ENABLE_TIOGA "Use TIOGA TPL to perform overset connectivity" OFF)
 option(ENABLE_HYPRE "Use HYPRE Solver library" OFF)
 option(ENABLE_WARNINGS "Add -Wall to show compiler warnings" ON)
 option(ENABLE_EXTRA_WARNINGS "Add -Wextra to show even more compiler warnings" OFF)
@@ -90,16 +89,6 @@ if(ENABLE_HYPRE)
   add_definitions("-DNALU_USES_HYPRE")
 endif(ENABLE_HYPRE)
 
-############################ TIOGA #####################################
-if(ENABLE_TIOGA)
-  set(CMAKE_PREFIX_PATH ${TIOGA_DIR} ${CMAKE_PREFIX_PATH})
-  find_package(TIOGA REQUIRED)
-  if(TIOGA_FOUND)
-    message("-- Found TIOGA = ${TIOGA_DIR}")
-  endif()
-  include_directories(${TIOGA_INCLUDE_DIRS})
-  add_definitions("-DNALU_USES_TIOGA")
-endif()
 
 ########################### NALU #####################################
 
@@ -186,10 +175,6 @@ include_directories(${CMAKE_BINARY_DIR}/include)
 add_library(nalu ${SOURCE} ${HEADER})
 target_link_libraries(nalu ${Trilinos_LIBRARIES})
 target_link_libraries(nalu ${YAML_CPP_LIBRARIES})
-
-if(ENABLE_TIOGA)
-  target_link_libraries(nalu ${TIOGA_LIBRARIES})
-endif()
 
 if(ENABLE_HYPRE)
   target_link_libraries(nalu ${HYPRE_LIBRARIES})
