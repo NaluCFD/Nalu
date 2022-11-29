@@ -1,3 +1,10 @@
+#  Notes on target part names
+#   [Unspecified-2-QUAD, Unspecified-3-TRIANGLE] = [block_202, block_303]
+#   Inflow   = surface_1
+#   Outflow  = surface_2
+#   Sides    = surface_3
+#   Cylinder = surface_4
+
 Simulation:
   name: NaluSim
 
@@ -21,13 +28,13 @@ linear_solvers:
     kspace: 75
     output_level: 0
     recompute_preconditioner: false
-    muelu_xml_file_name: milestone_aspect_ratio_smooth.xml
+    muelu_xml_file_name: ../../../xml/milestone_aspect_ratio_smooth.xml
 
 realms:
 
   - name: realm_1
-    mesh: circular_cylinder_coarse.exo
-    use_edges: yes 
+    mesh: mesh/2d_tri3_quad4_street.exo
+    use_edges: no 
     automatic_decomposition_type: rcb
 
     equation_systems:
@@ -116,20 +123,27 @@ realms:
 
         - peclet_function_tanh_transition:
             velocity: 2.0
-            mixture_fraction: 1000.0
+            mixture_fraction: 2.0
 
         - peclet_function_tanh_width:
             velocity: 4.0
-            mixture_fraction: 100.0
+            mixture_fraction: 4.0
 
-        - noc_correction:
+        - projected_nodal_gradient:
+            velocity: element
+            pressure: element
+            mixture_fraction: element
+
+        - noc_correction: # active for edge-based only
+            velocity: yes
             pressure: yes
+            mixture_fraction: yes
 
     post_processing:
     
     - type: surface
       physics: surface_force_and_moment
-      output_file_name: vortexStreetEBVC_Quad4.dat
+      output_file_name: 2d_tri3_quad4_street.dat
       frequency: 10
       parameters: [0.0,0.0]
       target_name: Cylinder
@@ -148,7 +162,7 @@ realms:
           compute_q_criterion: yes
 
     output:
-      output_data_base_name: output/vortexStreetEBVC_Quad4.e
+      output_data_base_name: output/2d_tri3_quad4_street.e
       output_frequency: 20 
       output_node_set: no
       output_variables:
@@ -165,7 +179,7 @@ Time_Integrators:
   - StandardTimeIntegrator:
       name: ti_1
       start_time: 0
-      termination_step_count: 2000
+      termination_step_count: 100
       time_step: 1.0e-3
       time_stepping_type: adaptive
       time_step_count: 0

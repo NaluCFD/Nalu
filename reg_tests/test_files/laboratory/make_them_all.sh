@@ -27,3 +27,8 @@ cd 3d_tet4_pipe/write_up
 make all
 make clean
 cd ../../
+
+cd 2d_tri3_quad4_street/write_up
+make all
+make clean
+cd ../../
