@@ -96,9 +96,6 @@ realms:
             momentum: [lumped_momentum_time_derivative, advection_diffusion]
             continuity: advection
 
-        - noc_correction:
-            pressure: yes
-
         - projected_nodal_gradient:
             pressure: element
           

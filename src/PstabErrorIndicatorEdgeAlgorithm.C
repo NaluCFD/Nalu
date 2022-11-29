@@ -67,6 +67,9 @@ PstabErrorIndicatorEdgeAlgorithm::execute()
 
   const int nDim = meta_data.spatial_dimension();
 
+  const double nocFac
+    = (realm_.get_noc_usage(pressure_->name()) == true) ? 1.0 : 0.0;
+
   // time step
   const double dt = realm_.get_time_step();
   const double gamma1 = realm_.get_gamma1();
@@ -147,7 +150,7 @@ PstabErrorIndicatorEdgeAlgorithm::execute()
           const double dxj = coordR[j] - coordL[j];
           const double kxj = axj - asq*inv_axdx*dxj; // NOC
           const double GjIp = 0.5*(GpdxR[j] + GpdxL[j])*simpleGradApproachScale_;
-          const double theEI = projTimeScale*(GjIp*axj - kxj*GjIp);
+          const double theEI = projTimeScale*(GjIp*axj - kxj*GjIp)*nocFac;
           eiEdge += theEI;
         }
         errorIndicator += eiEdge*eiEdge;

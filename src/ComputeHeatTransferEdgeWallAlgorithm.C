@@ -81,6 +81,10 @@ ComputeHeatTransferEdgeWallAlgorithm::execute()
 
   const int nDim = meta_data.spatial_dimension();
 
+  // extract noc
+  const double nocFac
+    = (realm_.get_noc_usage("enthalpy") == true) ? 1.0 : 0.0;
+
   const double dt = realm_.get_time_step();
 
   // define vector of parent topos; should always be UNITY in size
@@ -189,9 +193,9 @@ ComputeHeatTransferEdgeWallAlgorithm::execute()
         // if NOC is > 0; Too will be less than Tphysical
         // grouping NOC on H reverses the above, however, who knows which is best..
         *assembledWallArea += aMag;
-        *referenceTemperature += thermalCondR*tempL*asq*inv_axdx - nonOrth;
+        *referenceTemperature += thermalCondR*tempL*asq*inv_axdx - nonOrth*nocFac;
         *heatTransferCoefficient += -thermalCondR*tempR*asq*inv_axdx;
-        *normalHeatFlux += thermalCondR*(tempL-tempR)*asq*inv_axdx - nonOrth;
+        *normalHeatFlux += thermalCondR*(tempL-tempR)*asq*inv_axdx - nonOrth*nocFac;
         *robinCouplingParameter += alpha*aMag;
       }
     }

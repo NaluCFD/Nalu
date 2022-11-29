@@ -152,6 +152,12 @@ AssembleScalarEigenEdgeSolverAlgorithm::execute()
   const double om_alpha = 1.0-alpha;
   const double om_alphaUpw = 1.0-alphaUpw;
 
+  // extract noc - for both scalar and velocity
+  const double nocFac
+    = (realm_.get_noc_usage(dofName) == true) ? 1.0 : 0.0;
+  const double nocFacVel
+    = (realm_.get_noc_usage(velocity_->name()) == true) ? 1.0 : 0.0;
+
   // space for LHS/RHS; always edge connectivity
   const int nodesPerEdge = 2;
   const int lhsSize = nodesPerEdge*nodesPerEdge;
@@ -299,7 +305,7 @@ AssembleScalarEigenEdgeSolverAlgorithm::execute()
           const int offSetIJ = offSetI+j;
           const double axj = p_areaVec[j];
           const double GjUi = 0.5*(dudxL[offSetIJ] + dudxR[offSetIJ]);
-          duidxj_[i][j] = GjUi + (uidiff - GlUidxl)*axj*inv_axdx;
+          duidxj_[i][j] = GjUi*nocFacVel + (uidiff - GlUidxl*nocFacVel)*axj*inv_axdx;
         }
       }
 
@@ -334,7 +340,7 @@ AssembleScalarEigenEdgeSolverAlgorithm::execute()
       for ( int j = 0; j < nDim; ++j ) {
         const double axj = p_areaVec[j];
         const double Gjq = 0.5*(dqdxL[j] + dqdxR[j]);
-        dqdxj_[j] = Gjq + (qDiff - Glqdxl)*axj*inv_axdx;
+        dqdxj_[j] = Gjq*nocFac + (qDiff - Glqdxl*nocFac)*axj*inv_axdx;
       }
 
       // compute the normalized Reynolds stress
