@@ -23,7 +23,6 @@ namespace nalu{
 
 class LinearSolver;
 class TpetraLinearSolverConfig;
-class HypreLinearSolverConfig;
 class Simulation;
 
 /** Collection of solvers and their associated configuration
@@ -58,7 +57,6 @@ public:
   
   typedef std::map<EquationType, LinearSolver *> SolverMap;
   typedef std::map<std::string, TpetraLinearSolverConfig *> SolverTpetraConfigMap;
-  typedef std::map<std::string, HypreLinearSolverConfig*> HypreSolverConfigMap;
 
   //! Mapping of solver instances to the EquationType
   SolverMap solvers_;
@@ -66,10 +64,6 @@ public:
   //! A lookup table of solver configurations against the names provided in the
   //! input file when the `type` is `tpetra`
   SolverTpetraConfigMap solverTpetraConfig_;
-
-  //! A lookup table of solver configurations against the names provided in the
-  //! input file when `type` is `hypre` or `tpetra_hypre`
-  HypreSolverConfigMap solverHypreConfig_;
   
   //! Reference to the sierra::nalu::Simulation instance
   Simulation& sim_;

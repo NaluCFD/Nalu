@@ -10,7 +10,6 @@ option(ENABLE_SPHINX_API_DOCS "Link Doxygen API docs to Sphinx" OFF)
 option(ENABLE_PARAVIEW_CATALYST
       "Enable ParaView Catalyst. Requires external installation of Trilinos Catalyst IOSS adapter."
        OFF)
-option(ENABLE_HYPRE "Use HYPRE Solver library" OFF)
 option(ENABLE_WARNINGS "Add -Wall to show compiler warnings" ON)
 option(ENABLE_EXTRA_WARNINGS "Add -Wextra to show even more compiler warnings" OFF)
 
@@ -77,19 +76,6 @@ else()
   message(FATAL_ERROR "YAML-CPP NOT FOUND")
 endif()
 
-############################ HYPRE #####################################
-if(ENABLE_HYPRE)
-  set(CMAKE_PREFIX_PATH ${HYPRE_DIR} ${CMAKE_PREFIX_PATH})
-  # Quiet down HYPRE's own "found" output to be consistent with others
-  find_package(HYPRE QUIET REQUIRED)
-  if(HYPRE_FOUND)
-    message("-- Found HYPRE = ${HYPRE_DIR}")
-  endif()
-  include_directories(SYSTEM ${HYPRE_INCLUDE_DIRS})
-  add_definitions("-DNALU_USES_HYPRE")
-endif(ENABLE_HYPRE)
-
-
 ########################### NALU #####################################
 
 # Add any extra flags based on compiler and/or OS
@@ -123,17 +109,6 @@ set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} ${Trilinos_Fortran_COMPILER_FLAG
 
 message("-- CMAKE_CXX_FLAGS = ${CMAKE_CXX_FLAGS}")
 message("-- CMAKE_Fortran_FLAGS = ${CMAKE_Fortran_FLAGS}")
-
-if(ENABLE_HYPRE)
-  include(CheckSymbolExists)
-  set(CMAKE_REQUIRED_INCLUDES "${HYPRE_INCLUDE_DIRS}")
-  check_symbol_exists(
-    HYPRE_BIGINT "${HYPRE_INCLUDE_DIRS}/HYPRE_config.h" NALU_HYPRE_BIGINT)
-  if(NOT NALU_HYPRE_BIGINT)
-    message(WARNING
-      "HYPRE does not enable 64-bit integer support; will fail on large problems!")
-  endif()
-endif()
 
 ################################# TAG VERSIONS #####################################
 include(GetGitRevisionDescription)
@@ -175,10 +150,6 @@ include_directories(${CMAKE_BINARY_DIR}/include)
 add_library(nalu ${SOURCE} ${HEADER})
 target_link_libraries(nalu ${Trilinos_LIBRARIES})
 target_link_libraries(nalu ${YAML_CPP_LIBRARIES})
-
-if(ENABLE_HYPRE)
-  target_link_libraries(nalu ${HYPRE_LIBRARIES})
-endif()
 
 file(GLOB UNIT_TESTS_SOURCES unit_tests/*.C unit_tests/*/*.C)
 

@@ -167,9 +167,6 @@ void Simulation::run()
 void Simulation::high_level_banner() {
 
   std::vector<std::string> additionalTPLs;
-#ifdef NALU_USES_HYPRE
-  additionalTPLs.push_back("Hypre");
-#endif
 
   NaluEnv::self().naluOutputP0() << std::endl;
   NaluEnv::self().naluOutputP0() << "=================================================================" << std::endl;

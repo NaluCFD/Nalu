@@ -317,12 +317,6 @@ class Realm {
   virtual void initial_work();
   
   void set_global_id();
-
-  /** Initialize the HYPRE global row IDs
-   *
-   *  \sa Realm::hypreGlobalId_
-   */
-  void set_hypre_global_id();
  
   /// check job for fitting in memory
   void check_job(bool get_node_count);
@@ -636,42 +630,6 @@ class Realm {
   stk::mesh::PartVector allNonConformalInteractingParts_;
 
   bool isFinalOuterIter_{false};
-
-  /** The starting index (global) of the HYPRE linear system in this MPI rank
-   *
-   *  Note that this is actually the offset into the linear system. This index
-   *  must be adjusted accordingly to account for multiple degrees of freedom on
-   *  a particular node. This is performed in sierra::nalu::HypreLinearSystem.
-   */
-  stk::mesh::EntityId hypreILower_;
-
-  /** The ending index (global) of the HYPRE linear system in this MPI rank
-   *
-   *  Note that this is actually the offset into the linear system. This index
-   *  must be adjusted accordingly to account for multiple degrees of freedom on
-   *  a particular node. This is performed in sierra::nalu::HypreLinearSystem.
-   */
-  stk::mesh::EntityId hypreIUpper_;
-
-  /** The total number of HYPRE nodes in the linear system
-   *
-   *  Note that this is not an MPI rank local quantity
-   */
-  stk::mesh::EntityId hypreNumNodes_;
-
-  /** Global Row IDs for the HYPRE linear system
-   *
-   *  The HYPRE IDs are different from STK IDs and Realm::naluGlobalId_ because
-   *  HYPRE expects contiguous IDs for matrix rows and further requires that the
-   *  IDs be ordered across MPI ranks; i.e., startIdx (MPI_rank + 1) =
-   *  endIdx(MPI_rank) + 1.
-   */
-  HypreIDFieldType* hypreGlobalId_{nullptr};
-
-  /** Flag indicating whether Hypre solver is being used for any of the equation
-   * systems.
-   */
-  bool hypreIsActive_{false};
 
 };
 

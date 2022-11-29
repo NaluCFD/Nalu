@@ -12,10 +12,6 @@
 #include <stk_mesh/base/FieldBase.hpp>
 #include <stk_mesh/base/CoordinateSystems.hpp>
 
-#ifdef NALU_USES_HYPRE
-#include "HYPRE_utilities.h"
-#endif
-
 namespace sierra{
 namespace nalu{
 
@@ -33,16 +29,6 @@ typedef stk::mesh::Field<double>  GenericFieldType;
 // field type for local ids
 typedef unsigned LocalId;
 typedef stk::mesh::Field<LocalId>  LocalIdFieldType;
-
-
-// Hypre Integer types
-#ifdef NALU_USES_HYPRE
-typedef HYPRE_Int HypreIntType;
-#else
-typedef int HypreIntType;
-#endif
-
-typedef stk::mesh::Field<HypreIntType> HypreIDFieldType;
 
 } // namespace nalu
 } // namespace Sierra
