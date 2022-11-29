@@ -45,7 +45,6 @@ namespace nalu{
 /** Type of solvers available in Nalu simulation **/
   enum PetraType {
     PT_TPETRA,       //!< Nalu Tpetra interface
-    PT_HYPRE,        //!< Direct HYPRE interface
     PT_END
   };
 

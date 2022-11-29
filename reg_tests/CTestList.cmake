@@ -150,9 +150,6 @@ add_test_r(vofBuoy 4)
 add_test_r(vofSlosh 4)
 add_test_r(vofWaveGenerator 4)
 add_test_r(dgNonConformalShockTube 2)
-if(ENABLE_HYPRE)
-  add_test_r(dgncThreeBladeHypre 2)
-endif(ENABLE_HYPRE)
 
 #=============================================================================
 # Convergence tests
