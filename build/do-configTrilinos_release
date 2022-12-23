@@ -8,10 +8,6 @@ nalu_install_dir=/path_to_install/install/gcc8.3.0
 #       used to create the mpi executables.
 
 # TPLS needed by trilinos, possibly provided by HomeBrew on a Mac
-#boost_dir=/usr/local/Cellar/boost/1.56.0/include/boost/
-boost_inc_dir=$nalu_install_dir/boost/1.68.0/include
-
-# Additional needed TPLS
 netcdf_install_dir=$nalu_install_dir/netcdf/4.7.4
 hdf_install_dir=$nalu_install_dir/hdf5/1.10.6
 pnetcdf_install_dir=$nalu_install_dir/pnetcdf/1.12.1
@@ -43,8 +39,7 @@ cmake \
 -DTPL_ENABLE_MPI=ON \
   -DMPI_BASE_DIR:PATH=$mpi_base_dir \
 -DTPL_ENABLE_SuperLU=OFF \
--DTPL_ENABLE_Boost:BOOL=ON \
-  -DBoost_INCLUDE_DIRS:PATH=$boost_inc_dir \
+-DTPL_ENABLE_Boost:BOOL=OFF \
 -DTrilinos_ENABLE_Epetra:BOOL=OFF \
 -DTrilinos_ENABLE_Tpetra:BOOL=ON \
 -DTrilinos_ENABLE_ML:BOOL=OFF \
@@ -80,6 +75,5 @@ cmake \
 -DHDF5_ROOT:PATH=${hdf_install_dir} \
 -DHDF5_NO_SYSTEM_PATHS=ON \
 -DPNetCDF_ROOT:PATH=${pnetcdf_install_dir} \
--DTrilinos_ASSERT_MISSING_PACKAGES=OFF \
 $EXTRA_ARGS \
 ../

@@ -27,7 +27,6 @@ in which Homebrew has installed them, to use when building Trilinos and Nalu.
     brew install openmpi
     brew install cmake
     brew install libxml2
-    brew install boost
 
 CMake v3.17.0
 ~~~~~~~~~~~~~
@@ -61,7 +60,7 @@ The regression test suite for Nalu uses Python and requires a version greater th
 SuperLU v4.3
 ~~~~~~~~~~~~
 
-SuperLU is a deprecated, optional package provided `here <http://crd-legacy.lbl.gov/~xiaoye/SuperLU/>`__. KLU2, as described in the Amesos2 documentation `here <https://trilinos.github.io/amesos2.html>`__, is automatically used in place of SuperLU if not included. If desired, a SuperLU build can instead use KLU2 in place of SuperLU by specifying as such in the MueLu .xml configuration file as follows.
+Required usage of SuperLU is a deprecated; optional package provided `here <http://crd-legacy.lbl.gov/~xiaoye/SuperLU/>`__. KLU2, as described in the Amesos2 documentation `here <https://trilinos.github.io/amesos2.html>`__, is automatically used in place of SuperLU if not included. If desired, a SuperLU build can instead use KLU2 in place of SuperLU by specifying as such in the MueLu .xml configuration file as follows.
 
 ::
 
@@ -142,7 +141,7 @@ Build:
 Boost v1.68.0
 ~~~~~~~~~~~~~
 
-Boost is found `here <http://www.boost.org>`__.
+Required usage of Boost is a deprecated; optional package provide `here <http://www.boost.org>`__.
 
 Prepare:
 
