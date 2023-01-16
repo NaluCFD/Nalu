@@ -114,7 +114,6 @@ void EquationSystems::load(const YAML::Node & y_node)
           get_if_present_no_default(y_eqsys, "compression_constant", cAlpha);
           get_if_present_no_default(y_eqsys, "activate_smoothing", smooth);
           get_if_present_no_default(y_eqsys, "smoothing_iterations", smoothIter);
-
           eqSys = new VolumeOfFluidEquationSystem(*this, outputClipDiag, deltaVofClip, 
                                                   fourierNumber, cAlpha, smooth, smoothIter);
         }

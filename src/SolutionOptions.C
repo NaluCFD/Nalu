@@ -85,7 +85,9 @@ SolutionOptions::SolutionOptions()
     quadType_("GaussLegendre"),
     accousticallyCompressible_(false),
     balancedForce_(false),
-    thermalSrc_(0.0)
+    thermalSrc_(0.0),
+    wettedWallInit_(false),
+    wettedWallDistance_(-1.0)
 {
   // nothing to do
 }
@@ -172,6 +174,10 @@ SolutionOptions::load(const YAML::Node & y_node)
     // thermal source term
     get_if_present(y_solution_options, "thermal_source", thermalSrc_, thermalSrc_);
           
+    // wetted wall active
+    get_if_present(y_solution_options, "activate_wetted_wall_initialization", wettedWallInit_, wettedWallInit_);
+    get_if_present(y_solution_options, "wetted_wall_initialization_distance", wettedWallDistance_, wettedWallDistance_);
+
     // extract turbulence model; would be nice if we could parse an enum..
     std::string specifiedTurbModel;
     std::string defaultTurbModel = "laminar";

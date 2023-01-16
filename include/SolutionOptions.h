@@ -216,6 +216,9 @@ public:
   // constant volumetric source
   double thermalSrc_;
 
+  // wetted wall init
+  bool wettedWallInit_;
+  double wettedWallDistance_;
 };
 
 } // namespace nalu
