@@ -94,6 +94,8 @@ public:
   void compute_interface_normal();
   void compute_interface_curvature();
 
+  void wetted_wall_init();
+
   const bool managePNG_;
 
   ScalarFieldType *vof_;

@@ -183,7 +183,8 @@ VolumeOfFluidEquationSystem::~VolumeOfFluidEquationSystem()
 void
 VolumeOfFluidEquationSystem::populate_derived_quantities()
 {
-  // placeholder
+  if ( realm_.solutionOptions_->wettedWallInit_ )
+    wetted_wall_init();
 }
 
 //--------------------------------------------------------------------------
@@ -247,6 +248,14 @@ VolumeOfFluidEquationSystem::register_nodal_fields(
                                stk::topology::NODE_RANK);
     copyStateAlg_.push_back(theCopyAlg);
   }
+
+  // add in min distance to wall for attached IC
+  if ( realm_.solutionOptions_->wettedWallInit_ ) {
+    ScalarFieldType *minDistanceToWall 
+      =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "minimum_distance_to_wall"));
+    stk::mesh::put_field_on_mesh(*minDistanceToWall, *part, nullptr);
+  }
+
 }
 
 //--------------------------------------------------------------------------
@@ -1422,6 +1431,58 @@ VolumeOfFluidEquationSystem::compute_projected_nodal_gradient()
   }
   else {
     projectedNodalGradEqs_->solve_and_update_external();
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- wetted_wall_init ------------------------------------------------
+//--------------------------------------------------------------------------
+void
+VolumeOfFluidEquationSystem::wetted_wall_init()
+{
+  const double specDistance_ = realm_.solutionOptions_->wettedWallDistance_;
+
+  stk::mesh::MetaData & metaData = realm_.meta_data();
+
+  // extract fields
+  ScalarFieldType *minDistanceToWall = metaData.get_field<double>(stk::topology::NODE_RANK, "minimum_distance_to_wall");
+
+  ScalarFieldType *vofNp1 = &(vof_->field_of_state(stk::mesh::StateNP1));
+  ScalarFieldType *vofN = &(vof_->field_of_state(stk::mesh::StateN));
+  ScalarFieldType *vofNm1 = (vof_->number_of_states() == 2) 
+    ? &(vof_->field_of_state(stk::mesh::StateNM1)) 
+    : &(vof_->field_of_state(stk::mesh::StateN));
+
+  // define some common selectors
+  stk::mesh::Selector s_all_nodes
+    = (metaData.locally_owned_part() | metaData.globally_shared_part())
+    &stk::mesh::selectField(*vof_);
+
+  stk::mesh::BucketVector const& node_buckets =
+    realm_.get_buckets( stk::topology::NODE_RANK, s_all_nodes );
+  for ( stk::mesh::BucketVector::const_iterator ib = node_buckets.begin();
+        ib != node_buckets.end() ; ++ib ) {
+    stk::mesh::Bucket & b = **ib ;
+    const stk::mesh::Bucket::size_type length   = b.size();
+
+    double *vNp1 = stk::mesh::field_data(*vofNp1, b);
+    double *vN = stk::mesh::field_data(*vofN, b);
+    double *vNm1 = stk::mesh::field_data(*vofNm1, b);
+    const double *ndtw    = stk::mesh::field_data(*minDistanceToWall, b);
+
+    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+
+      if ( ndtw[k] < specDistance_ ) {
+        vNp1[k] = 1.0;
+        vN[k] = 1.0;
+        vNm1[k] = 1.0;
+      }
+      else {
+        vNp1[k] = 0.0;
+        vN[k] = 0.0;
+        vNm1[k] = 0.0;
+      }
+    }
   }
 }
 
