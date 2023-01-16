@@ -12,7 +12,6 @@
 #include <LinearSystem.h>
 
 #include <KokkosInterface.h>
-#include <Kokkos_DefaultNode.hpp>
 
 #include <Tpetra_Vector.hpp>
 #include <Tpetra_CrsMatrix.hpp>
