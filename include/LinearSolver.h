@@ -14,7 +14,6 @@
 
 #include <LinearSolverTypes.h>
 
-#include <Kokkos_DefaultNode.hpp>
 #include <Tpetra_Vector.hpp>
 #include <Tpetra_CrsMatrix.hpp>
 #include <Teuchos_GlobalMPISession.hpp>
