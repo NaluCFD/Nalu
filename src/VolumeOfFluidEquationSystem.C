@@ -115,7 +115,6 @@ VolumeOfFluidEquationSystem::VolumeOfFluidEquationSystem(
     surfaceTension_(NULL),
     dvofdx_(NULL),
     vofTmp_(NULL),
-    density_(NULL),
     viscosity_(NULL),
     assembleNodalGradAlgDriver_(new AssembleNodalGradAlgorithmDriver(realm_, "volume_of_fluid", "dvofdx")),
     projectedNodalGradEqs_(NULL),

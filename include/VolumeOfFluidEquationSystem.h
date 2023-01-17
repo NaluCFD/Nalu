@@ -107,7 +107,6 @@ public:
   ScalarFieldType *surfaceTension_;
   VectorFieldType *dvofdx_;
   ScalarFieldType *vofTmp_;
-  ScalarFieldType *density_;
   ScalarFieldType *viscosity_;
 
   AssembleNodalGradAlgorithmDriver *assembleNodalGradAlgDriver_;
