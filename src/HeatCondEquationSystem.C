@@ -122,7 +122,6 @@ HeatCondEquationSystem::HeatCondEquationSystem(
     temperature_(NULL),
     dtdx_(NULL),
     tTmp_(NULL),
-    dualNodalVolume_(NULL),
     coordinates_(NULL),
     density_(NULL),
     specHeat_(NULL),
@@ -219,9 +218,6 @@ HeatCondEquationSystem::register_nodal_fields(
   // delta solution for linear solver
   tTmp_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "tTmp"));
   stk::mesh::put_field_on_mesh(*tTmp_, *part, nullptr);
-
-  dualNodalVolume_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "dual_nodal_volume"));
-  stk::mesh::put_field_on_mesh(*dualNodalVolume_, *part, nullptr);
 
   coordinates_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "coordinates"));
   stk::mesh::put_field_on_mesh(*coordinates_, *part, nDim, nullptr);

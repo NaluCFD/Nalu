@@ -98,7 +98,6 @@ MeshDisplacementEquationSystem::MeshDisplacementEquationSystem(
     divV_(NULL),
     coordinates_(NULL),
     currentCoordinates_(NULL),
-    dualNodalVolume_(NULL),
     density_(NULL),
     lameMu_(NULL),
     lameLambda_(NULL),
@@ -183,9 +182,6 @@ MeshDisplacementEquationSystem::register_nodal_fields(
   currentCoordinates_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "current_coordinates"));
   stk::mesh::put_field_on_mesh(*currentCoordinates_, *part, nDim, nullptr);
   stk::io::set_field_output_type(*currentCoordinates_, stk::io::FieldOutputType::VECTOR_3D);
-
-  dualNodalVolume_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "dual_nodal_volume"));
-  stk::mesh::put_field_on_mesh(*dualNodalVolume_, *part, nullptr);
 
   density_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "density"));
   stk::mesh::put_field_on_mesh(*density_, *part, nullptr);

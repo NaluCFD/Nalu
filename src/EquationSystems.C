@@ -108,14 +108,17 @@ void EquationSystems::load(const YAML::Node & y_node)
           // vof smoothing/sharpening; provide defaults...
           double fourierNumber = 0.25;
           double cAlpha = 0.05;
-          bool smooth = true;
+          bool smooth = false;
           int smoothIter = 5;
+          bool standAloneEqs = false;
           get_if_present_no_default(y_eqsys, "fourier_number", fourierNumber);
           get_if_present_no_default(y_eqsys, "compression_constant", cAlpha);
           get_if_present_no_default(y_eqsys, "activate_smoothing", smooth);
           get_if_present_no_default(y_eqsys, "smoothing_iterations", smoothIter);
+          get_if_present_no_default(y_eqsys, "stand_alone_equation_system", standAloneEqs);
           eqSys = new VolumeOfFluidEquationSystem(*this, outputClipDiag, deltaVofClip, 
-                                                  fourierNumber, cAlpha, smooth, smoothIter);
+                                                  fourierNumber, cAlpha, smooth, smoothIter, 
+                                                  standAloneEqs);
         }
         else if ( expect_map(y_system, "LowMachEOM", true) ) {
 	  y_eqsys =  expect_map(y_system, "LowMachEOM", true);

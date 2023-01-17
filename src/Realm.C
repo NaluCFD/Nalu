@@ -722,7 +722,7 @@ Realm::setup_nodal_fields()
     naluGlobalId_ = &(meta_data().declare_field<stk::mesh::EntityId>(stk::topology::NODE_RANK, "nalu_global_id"));
     stk::mesh::put_field_on_mesh(*naluGlobalId_, *parts[ipart], nullptr);
   }
-
+  
   // loop over all material props targets and register nodal fields
   std::vector<std::string> targetNames = get_physics_target_names();
   equationSystems_.register_nodal_fields(targetNames);
@@ -3263,6 +3263,12 @@ Realm::register_nodal_fields(
 {
   // register high level common fields
   const int nDim = meta_data().spatial_dimension();
+  
+  // common fields for everyone cvfem-based
+  if ( usesCVFEM_ ) {
+    ScalarFieldType *dualNodalVolume = &(meta_data().declare_field<double>(stk::topology::NODE_RANK, "dual_nodal_volume"));
+    stk::mesh::put_field_on_mesh(*dualNodalVolume, *part, nullptr);
+  }
 
   // mesh motion/deformation is high level
   if ( solutionOptions_->meshMotion_ || solutionOptions_->externalMeshDeformation_) {

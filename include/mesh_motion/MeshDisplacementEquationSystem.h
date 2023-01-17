@@ -67,7 +67,6 @@ public:
   ScalarFieldType *divV_;
   VectorFieldType *coordinates_;
   VectorFieldType *currentCoordinates_;
-  ScalarFieldType *dualNodalVolume_;
   ScalarFieldType *density_;
   ScalarFieldType *lameMu_;
   ScalarFieldType *lameLambda_;

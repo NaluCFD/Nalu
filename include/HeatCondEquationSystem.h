@@ -88,7 +88,6 @@ public:
   ScalarFieldType *temperature_;
   VectorFieldType *dtdx_;
   ScalarFieldType *tTmp_;
-  ScalarFieldType *dualNodalVolume_;
   VectorFieldType *coordinates_;
   
   ScalarFieldType *density_;
