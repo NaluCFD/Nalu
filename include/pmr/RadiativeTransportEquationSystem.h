@@ -116,7 +116,6 @@ public:
   ScalarFieldType *transmissivity_;
   ScalarFieldType *environmentalT_;
   ScalarFieldType *iTmp_;
-  ScalarFieldType *dualNodalVolume_;
   VectorFieldType *coordinates_;
   ScalarFieldType *temperature_;
   VectorFieldType *radiativeHeatFlux_;

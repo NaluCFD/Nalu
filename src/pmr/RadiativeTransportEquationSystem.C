@@ -100,7 +100,6 @@ RadiativeTransportEquationSystem::RadiativeTransportEquationSystem(
     transmissivity_(NULL),
     environmentalT_(NULL),
     iTmp_(NULL),
-    dualNodalVolume_(NULL),
     coordinates_(NULL),
     temperature_(NULL),
     radiativeHeatFlux_(NULL),
@@ -405,9 +404,6 @@ RadiativeTransportEquationSystem::register_nodal_fields(
   // delta solution for linear solver
   iTmp_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "iTmp"));
   stk::mesh::put_field_on_mesh(*iTmp_, *part, nullptr);
-
-  dualNodalVolume_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "dual_nodal_volume"));
-  stk::mesh::put_field_on_mesh(*dualNodalVolume_, *part, nullptr);
 
   coordinates_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "coordinates"));
   stk::mesh::put_field_on_mesh(*coordinates_, *part, nDim, nullptr);

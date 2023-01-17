@@ -42,17 +42,22 @@
 #include "kernel/VolumeOfFluidMassElemKernel.h"
 #include "kernel/VolumeOfFluidScvAdvElemKernel.h"
 #include "kernel/VolumeOfFluidScsAdvElemKernel.h"
+#include "kernel/VolumeOfFluidScsUpwAdvElemKernel.h"
+#include "kernel/VolumeOfFluidScsNoPstabAdvElemKernel.h"
+#include "kernel/VolumeOfFluidScsNoPstabUpwAdvElemKernel.h"
 #include "kernel/VolumeOfFluidDivElemKernel.h"
 #include "kernel/VolumeOfFluidSucvNsoElemKernel.h"
 #include "kernel/VolumeOfFluidSharpenElemKernel.h"
 #include "kernel/VolumeOfFluidOpenAdvElemKernel.h"
 #include "kernel/VolumeOfFluidGclElemKernel.h"
 #include "kernel/VolumeOfFluidEvaporationElemKernel.h"
+#include "kernel/ScalarDiffElemKernel.h"
 
 // user function
 #include "user_functions/RayleighTaylorMixFracAuxFunction.h"
 #include "user_functions/FixedHeightMixFracAuxFunction.h"
 #include "user_functions/RecMixFracAuxFunction.h"
+#include "user_functions/ScalarGaussianAuxFunction.h"
 
 #include "overset/UpdateOversetFringeAlgorithmDriver.h"
 
@@ -98,7 +103,8 @@ VolumeOfFluidEquationSystem::VolumeOfFluidEquationSystem(
   const double Fo,
   const double cAlpha,
   const bool smooth,
-  const int smoothIter)
+  const int smoothIter,
+  const bool standAloneEqs)
   : EquationSystem(eqSystems, "VolumeOfFluidEQS", "volume_of_fluid"),
     managePNG_(realm_.get_consistent_mass_matrix_png("volume_of_fluid")),
     vof_(NULL),
@@ -109,6 +115,8 @@ VolumeOfFluidEquationSystem::VolumeOfFluidEquationSystem(
     surfaceTension_(NULL),
     dvofdx_(NULL),
     vofTmp_(NULL),
+    density_(NULL),
+    viscosity_(NULL),
     assembleNodalGradAlgDriver_(new AssembleNodalGradAlgorithmDriver(realm_, "volume_of_fluid", "dvofdx")),
     projectedNodalGradEqs_(NULL),
     outputClippingDiag_(outputClippingDiag),
@@ -118,6 +126,7 @@ VolumeOfFluidEquationSystem::VolumeOfFluidEquationSystem(
     dxMin_(1.0e16),
     smooth_(smooth),
     smoothIter_(smoothIter),
+    standAloneEqs_(standAloneEqs),
     isInit_(true),
     scsAdvection_(false)
 {
@@ -149,7 +158,8 @@ VolumeOfFluidEquationSystem::VolumeOfFluidEquationSystem(
     std::vector<std::string> mapNameVec = isrc->second;
     for (size_t k = 0; k < mapNameVec.size(); ++k ) {
       std::string sourceName = mapNameVec[k];
-      if ( sourceName == "scs_advection" ) {
+      if ( sourceName == "scs_advection"    || sourceName == "scs_upw_advection" ||
+           sourceName == "scs_advection_np" || sourceName == "scs_upw_advection_np" ) {
         scsAdvection_ = true;
         break;
       }
@@ -219,13 +229,15 @@ VolumeOfFluidEquationSystem::register_nodal_fields(
   stk::io::set_field_output_type(*interfaceNormal_, stk::io::FieldOutputType::VECTOR_3D);
 
   // always register curvature and surface tension; let property specification dictate its importance
+  const double zeroIc = 0.0;
   interfaceCurvature_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "interface_curvature"));
-  stk::mesh::put_field_on_mesh(*interfaceCurvature_, *part, nullptr);
+  stk::mesh::put_field_on_mesh(*interfaceCurvature_, *part, &zeroIc);
   surfaceTension_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "surface_tension"));
-  stk::mesh::put_field_on_mesh(*surfaceTension_, *part, nullptr);
+  stk::mesh::put_field_on_mesh(*surfaceTension_, *part, &zeroIc);
 
   // push to property list
-  realm_.augment_property_map(SURFACE_TENSION_ID, surfaceTension_);
+  if ( !standAloneEqs_ )
+    realm_.augment_property_map(SURFACE_TENSION_ID, surfaceTension_);
 
   // projected nodal gradient
   dvofdx_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "dvofdx"));
@@ -235,6 +247,19 @@ VolumeOfFluidEquationSystem::register_nodal_fields(
   // delta solution for linear solver; share delta since this is a split system
   vofTmp_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "pTmp"));
   stk::mesh::put_field_on_mesh(*vofTmp_, *part, nullptr);
+
+  // register fields and properties required to allow for a stand-alone PDE evolution
+  if ( standAloneEqs_ ) {
+    VectorFieldType *velocity =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "velocity"));
+    stk::mesh::put_field_on_mesh(*velocity, *part, nDim, nullptr);
+    stk::io::set_field_output_type(*velocity, stk::io::FieldOutputType::VECTOR_3D);
+    
+    viscosity_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "viscosity"));
+    stk::mesh::put_field_on_mesh(*viscosity_, *part, nullptr);
+    
+    // push to property list
+    realm_.augment_property_map(VISCOSITY_ID, viscosity_);
+  }
 
   // make sure all states are properly populated (restart can handle this)
   if ( numStates > 2 && (!realm_.restarted_simulation() || realm_.support_inconsistent_restart()) ) {
@@ -307,13 +332,29 @@ VolumeOfFluidEquationSystem::register_interior_algorithm(
       (partTopo, *this, activeKernels, "mass",
        realm_.bulk_data(), *realm_.solutionOptions_, vof_, dataPreReqs, false);
 
-    build_topo_kernel_if_requested<VolumeOfFluidScvAdvElemKernel>
-      (partTopo, *this, activeKernels, "scv_advection",
-       realm_.bulk_data(), *realm_.solutionOptions_, vof_, dataPreReqs);
-
     build_topo_kernel_if_requested<VolumeOfFluidScsAdvElemKernel>
       (partTopo, *this, activeKernels, "scs_advection",
        realm_.bulk_data(), *realm_.solutionOptions_, vof_, dataPreReqs);
+
+    build_topo_kernel_if_requested<VolumeOfFluidScsNoPstabAdvElemKernel>
+      (partTopo, *this, activeKernels, "scs_advection_np",
+       realm_.bulk_data(), *realm_.solutionOptions_, vof_, dataPreReqs);
+
+    build_topo_kernel_if_requested<VolumeOfFluidScsUpwAdvElemKernel>
+      (partTopo, *this, activeKernels, "scs_upw_advection",
+       realm_.bulk_data(), *realm_.solutionOptions_, vof_, dataPreReqs);
+
+    build_topo_kernel_if_requested<VolumeOfFluidScsNoPstabUpwAdvElemKernel>
+      (partTopo, *this, activeKernels, "scs_upw_advection_np",
+       realm_.bulk_data(), *realm_.solutionOptions_, vof_, dataPreReqs);
+
+    build_topo_kernel_if_requested<VolumeOfFluidScvAdvElemKernel>
+      (partTopo, *this, activeKernels, "scv_advection_np",
+       realm_.bulk_data(), *realm_.solutionOptions_, vof_, dataPreReqs);
+
+    build_topo_kernel_if_requested<ScalarDiffElemKernel>
+      (partTopo, *this, activeKernels, "diffusion",
+       realm_.bulk_data(), *realm_.solutionOptions_, vof_, viscosity_, dataPreReqs);
 
     build_topo_kernel_if_requested<VolumeOfFluidDivElemKernel>
       (partTopo, *this, activeKernels, "div_correction",
@@ -508,7 +549,7 @@ VolumeOfFluidEquationSystem::register_open_bc(
     auto& activeKernels = faceElemSolverAlg->activeKernels_;
     
     if (solverAlgWasBuilt) {
-  
+      
       build_face_elem_topo_kernel_automatic<VolumeOfFluidOpenAdvElemKernel>
         (partTopo, elemTopo, *this, activeKernels, "volume_of_fluid_open",
          realm_.meta_data(), *realm_.solutionOptions_,
@@ -762,6 +803,10 @@ VolumeOfFluidEquationSystem::register_initial_condition_fcn(
     else if ( fcnName == "rectangle" ) {
       // create the function
       theAuxFunc = new RecMixFracAuxFunction();      
+    }
+    else if ( fcnName == "gaussian" ) {
+      // create the function
+      theAuxFunc = new ScalarGaussianAuxFunction(fcnParams);      
     }
     else {
       throw std::runtime_error("VolumeOfFluidEquationSystem::register_initial_condition_fcn: limited functions supported");

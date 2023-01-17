@@ -5,8 +5,8 @@
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
-#ifndef VolumeOfFluidScsAdvElemKernel_H
-#define VolumeOfFluidScsAdvElemKernel_H
+#ifndef VolumeOfFluidScsNoPstabAdvElemKernel_H
+#define VolumeOfFluidScsNoPstabAdvElemKernel_H
 
 #include "kernel/Kernel.h"
 #include "FieldTypeDef.h"
@@ -26,16 +26,16 @@ class ElemDataRequests;
 /** SCS advection for VOF
  */
 template<typename AlgTraits>
-class VolumeOfFluidScsAdvElemKernel: public Kernel
+class VolumeOfFluidScsNoPstabAdvElemKernel: public Kernel
 {
 public:
-  VolumeOfFluidScsAdvElemKernel(
+  VolumeOfFluidScsNoPstabAdvElemKernel(
     const stk::mesh::BulkData&,
     const SolutionOptions&,
     ScalarFieldType*,
     ElemDataRequests&);
 
-  virtual ~VolumeOfFluidScsAdvElemKernel();
+  virtual ~VolumeOfFluidScsNoPstabAdvElemKernel();
 
   /** Execute the kernel within a Kokkos loop and populate the LHS and RHS for
    *  the linear solve
@@ -46,10 +46,11 @@ public:
     ScratchViews<DoubleType>&);
 
 private:
-  VolumeOfFluidScsAdvElemKernel() = delete;
+  VolumeOfFluidScsNoPstabAdvElemKernel() = delete;
 
   ScalarFieldType *vofNp1_{nullptr};
-  GenericFieldType *volumeFlowRate_{nullptr};
+  VectorFieldType *coordinates_{nullptr};
+  GenericFieldType *velocityRTM_{nullptr};
 
   // Integration point to node mapping
   const int* lrscv_;
@@ -61,4 +62,4 @@ private:
 }  // nalu
 }  // sierra
 
-#endif /* VolumeOfFluidScsAdvElemKernel_H */
+#endif /* VolumeOfFluidScsNoPstabAdvElemKernel_H */

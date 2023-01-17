@@ -211,10 +211,7 @@ MixtureFractionFemEquationSystem::register_nodal_fields(
   evisc_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "effective_viscosity_z"));
   stk::mesh::put_field_on_mesh(*evisc_, *part, nullptr);
 
-  // projected nodal gradients  
-  ScalarFieldType *dualNodalVolume = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "dual_nodal_volume"));
-  stk::mesh::put_field_on_mesh(*dualNodalVolume, *part, nullptr);
-  
+  // projected nodal gradients    
   Gjz_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "dzdx"));
   stk::mesh::put_field_on_mesh(*Gjz_, *part, nDim, nullptr);
   stk::io::set_field_output_type(*Gjz_, stk::io::FieldOutputType::VECTOR_3D);

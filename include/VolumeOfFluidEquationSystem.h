@@ -38,7 +38,8 @@ public:
     const double Fo,
     const double cAlpha,
     const bool smooth,
-    const int smoothIter);
+    const int smoothIter,
+    const bool standAloneEqs);
   virtual ~VolumeOfFluidEquationSystem();
 
   void populate_derived_quantities();
@@ -106,7 +107,9 @@ public:
   ScalarFieldType *surfaceTension_;
   VectorFieldType *dvofdx_;
   ScalarFieldType *vofTmp_;
-  
+  ScalarFieldType *density_;
+  ScalarFieldType *viscosity_;
+
   AssembleNodalGradAlgorithmDriver *assembleNodalGradAlgDriver_;
   
   ProjectedNodalGradientEquationSystem *projectedNodalGradEqs_;
@@ -121,6 +124,9 @@ public:
   double dxMin_;
   const bool smooth_;
   const int smoothIter_;
+
+  // allow for a stand-alone EQS
+  const bool standAloneEqs_;
 
   bool isInit_;
   bool scsAdvection_;

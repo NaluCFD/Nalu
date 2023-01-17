@@ -5,8 +5,8 @@
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
-#ifndef VolumeOfFluidScsAdvElemKernel_H
-#define VolumeOfFluidScsAdvElemKernel_H
+#ifndef VolumeOfFluidScsNoPstabUpwAdvElemKernel_H
+#define VolumeOfFluidScsNoPstabUpwAdvElemKernel_H
 
 #include "kernel/Kernel.h"
 #include "FieldTypeDef.h"
@@ -23,19 +23,19 @@ class SolutionOptions;
 class MasterElement;
 class ElemDataRequests;
 
-/** SCS advection for VOF
+/** SCS advection for VOF (upwind)
  */
 template<typename AlgTraits>
-class VolumeOfFluidScsAdvElemKernel: public Kernel
+class VolumeOfFluidScsNoPstabUpwAdvElemKernel: public Kernel
 {
 public:
-  VolumeOfFluidScsAdvElemKernel(
+  VolumeOfFluidScsNoPstabUpwAdvElemKernel(
     const stk::mesh::BulkData&,
     const SolutionOptions&,
     ScalarFieldType*,
     ElemDataRequests&);
 
-  virtual ~VolumeOfFluidScsAdvElemKernel();
+  virtual ~VolumeOfFluidScsNoPstabUpwAdvElemKernel();
 
   /** Execute the kernel within a Kokkos loop and populate the LHS and RHS for
    *  the linear solve
@@ -45,14 +45,25 @@ public:
     SharedMemView<DoubleType*>&,
     ScratchViews<DoubleType>&);
 
+  virtual DoubleType van_leer(
+    const DoubleType &dqm,
+    const DoubleType &dqp);
+
 private:
-  VolumeOfFluidScsAdvElemKernel() = delete;
+  VolumeOfFluidScsNoPstabUpwAdvElemKernel() = delete;
 
   ScalarFieldType *vofNp1_{nullptr};
-  GenericFieldType *volumeFlowRate_{nullptr};
-
+  VectorFieldType *dvofdx_{nullptr};
+  VectorFieldType *velocityRTM_{nullptr};
+  VectorFieldType *coordinates_{nullptr};
+  
+  const double hoUpwind_;
+  bool useLimiter_;
+  
   // Integration point to node mapping
   const int* lrscv_;
+  
+  const double small_{1.0e-16};
 
   /// Shape functions
   AlignedViewType<DoubleType[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_ {"view_shape_func"};
@@ -61,4 +72,4 @@ private:
 }  // nalu
 }  // sierra
 
-#endif /* VolumeOfFluidScsAdvElemKernel_H */
+#endif /* VolumeOfFluidScsNoPstabUpwAdvElemKernel_H */

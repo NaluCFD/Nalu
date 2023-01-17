@@ -242,7 +242,6 @@ LowMachEquationSystem::LowMachEquationSystem(
     elementContinuityEqs_(elementContinuityEqs),
     density_(NULL),
     viscosity_(NULL),
-    dualNodalVolume_(NULL),
     edgeAreaVec_(NULL),
     surfaceForceAndMomentAlgDriver_(NULL),
     sixDofSurfaceForceAndMomentAlgDriver_(NULL),
@@ -305,10 +304,6 @@ LowMachEquationSystem::register_nodal_fields(
   // push to property list
   realm_.augment_property_map(DENSITY_ID, density_);
   realm_.augment_property_map(VISCOSITY_ID, viscosity_);
-
-  // dual nodal volume (should push up...)
-  dualNodalVolume_ = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "dual_nodal_volume"));
-  stk::mesh::put_field_on_mesh(*dualNodalVolume_, *part, nullptr);
 
   // make sure all states are properly populated (restart can handle this)
   if ( numStates > 2 && (!realm_.restarted_simulation() || realm_.support_inconsistent_restart()) ) {
@@ -2129,14 +2124,14 @@ MomentumEquationSystem::register_overset_bc()
   create_constraint_algorithm(velocity_);
 
   auto &&metaData = realm_.meta_data();
-  auto &&dualNodalVolume_ = metaData.get_field<double>(stk::topology::NODE_RANK, "dual_nodal_volume");
+  auto &&dualNodalVolume = metaData.get_field<double>(stk::topology::NODE_RANK, "dual_nodal_volume");
 
   int nDim = realm_.meta_data().spatial_dimension();
   UpdateOversetFringeAlgorithmDriver* theAlg = new UpdateOversetFringeAlgorithmDriver(realm_);
   // Perform fringe updates before all equation system solves
   equationSystems_.preIterAlgDriver_.push_back(theAlg);
   theAlg->fields_.push_back(std::unique_ptr<OversetFieldData>(new OversetFieldData(velocity_,1,nDim)));
-  theAlg->fields_.push_back(std::unique_ptr<OversetFieldData>(new OversetFieldData(dualNodalVolume_,1,1)));
+  theAlg->fields_.push_back(std::unique_ptr<OversetFieldData>(new OversetFieldData(dualNodalVolume,1,1)));
 
 
   if ( realm_.has_mesh_motion() ) {
