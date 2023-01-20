@@ -101,7 +101,6 @@
 #include <stk_io/StkMeshIoBroker.hpp>
 #include <stk_io/IossBridge.hpp>
 #include <stk_io/InputFile.hpp>
-#include <Ioss_SubSystem.h>
 
 // stk_util
 #include <stk_util/parallel/ParallelReduce.hpp>
