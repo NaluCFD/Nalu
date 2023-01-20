@@ -21,7 +21,6 @@
 // stk_io
 #include <stk_io/StkMeshIoBroker.hpp>
 #include <stk_io/IossBridge.hpp>
-#include <Ioss_SubSystem.h>
 
 // c++
 #include <string>
