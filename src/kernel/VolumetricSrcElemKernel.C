@@ -5,7 +5,7 @@
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
-#include "kernel/ThermalSrcElemKernel.h"
+#include "kernel/VolumetricSrcElemKernel.h"
 #include "AlgTraits.h"
 #include "master_element/MasterElement.h"
 #include "SolutionOptions.h"
@@ -27,13 +27,13 @@ namespace sierra {
 namespace nalu {
 
 template<typename AlgTraits>
-ThermalSrcElemKernel<AlgTraits>::ThermalSrcElemKernel(
+VolumetricSrcElemKernel<AlgTraits>::VolumetricSrcElemKernel(
   const stk::mesh::BulkData& bulkData,
   SolutionOptions& solnOpts,
   ElemDataRequests& dataPreReqs)
   : Kernel(),
     ipNodeMap_(sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_)->ipNodeMap()),
-    src_(solnOpts.thermalSrc_)
+    src_(solnOpts.volumetricSrc_)
 {
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
   coordinates_ = metaData.get_field<double>(
@@ -48,12 +48,12 @@ ThermalSrcElemKernel<AlgTraits>::ThermalSrcElemKernel(
   dataPreReqs.add_coordinates_field(*coordinates_, AlgTraits::nDim_, CURRENT_COORDINATES);
   dataPreReqs.add_master_element_call(SCV_VOLUME, CURRENT_COORDINATES);
 
-  NaluEnv::self().naluOutputP0() << "Thermal Source: " << src_ << std::endl;
+  NaluEnv::self().naluOutputP0() << "Volumetric Source: " << src_ << std::endl;
 }
 
 template<typename AlgTraits>
 void
-ThermalSrcElemKernel<AlgTraits>::execute(
+VolumetricSrcElemKernel<AlgTraits>::execute(
   SharedMemView<DoubleType**>& /* lhs */,
   SharedMemView<DoubleType *>& rhs,
   ScratchViews<DoubleType>& scratchViews)
@@ -70,7 +70,7 @@ ThermalSrcElemKernel<AlgTraits>::execute(
   }
 }
 
-INSTANTIATE_KERNEL(ThermalSrcElemKernel);
+INSTANTIATE_KERNEL(VolumetricSrcElemKernel);
 
 }  // nalu
 }  // sierra
