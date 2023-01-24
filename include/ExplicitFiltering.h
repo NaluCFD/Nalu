@@ -37,9 +37,15 @@ struct ExplicitFilteringNames {
   std::string fieldName_;
   std::string expFieldName_;
   int fieldSize_;
+  int fieldStateSize_;
 
-ExplicitFilteringNames(std::string fieldName, std::string expFieldName, int fieldSize) 
-: fieldName_(fieldName), expFieldName_(expFieldName), fieldSize_(fieldSize) {}
+ExplicitFilteringNames(std::string fieldName, std::string expFieldName, int fieldSize, int fieldStateSize) 
+: fieldName_(fieldName), expFieldName_(expFieldName), fieldSize_(fieldSize), fieldStateSize_(fieldStateSize) 
+  {
+    if ( fieldStateSize_ > 3 ) {
+      throw std::runtime_error("ExplicitFiltering::error() Only three state schemes are supported");
+    } 
+  }
 };
 
 struct ExplicitFilteringFields {
@@ -112,6 +118,19 @@ public:
     const int &nodesPerElement,
     const double &elemVolume);
 
+  void compute_scv_residual(
+    const stk::mesh::FieldBase *velocityNp1_,
+    const stk::mesh::FieldBase *velocityN_,
+    const stk::mesh::FieldBase *velocityNm1_,
+    const stk::mesh::FieldBase *densityNp1_,
+    const stk::mesh::FieldBase *densityN_,
+    const stk::mesh::FieldBase *densityNm1_,
+    const stk::mesh::FieldBase *viscosity_,
+    const stk::mesh::FieldBase *pressure_,
+    const stk::mesh::FieldBase *dudx_,
+    const stk::mesh::FieldBase *coordinates_,
+    stk::mesh::FieldBase *residual_);
+
   // hold the realm
   Realm &realm_;
 
@@ -129,12 +148,17 @@ public:
 
   // provide debug output
   bool debugOutput_;
+  
+  // do we normalize by dual nodal volume?
+  bool normalizeResidual_;
 
-  // vector of Names struct
+  // vector of explicit/residual Names struct
   std::vector<ExplicitFilteringNames> explicitFilteringNamesVec_;
+  std::vector<ExplicitFilteringNames> residualNamesVec_;
 
-  // vector of Fields struct
+  // vector of explicit/residual Fields struct
   std::vector<ExplicitFilteringFields> explicitFilteringFieldsVec_;
+  std::vector<ExplicitFilteringFields> residualFieldsVec_;
 
   // vector of elements/poit processor to ghost
   stk::mesh::EntityProcVec elemsToGhost_;

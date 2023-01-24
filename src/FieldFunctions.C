@@ -181,5 +181,40 @@ void field_index_copy(
 
 }
 
+void field_normalize(
+  const stk::mesh::MetaData & metaData,
+  const stk::mesh::BulkData & bulkData,
+  const stk::mesh::FieldBase & xField,
+  const stk::mesh::FieldBase & yField,
+  const bool auraIsActive,
+  const stk::topology::rank_t entityRankValue)
+{
+  // decide on selector
+  const stk::mesh::Selector selector = auraIsActive 
+    ? metaData.universal_part() &
+    stk::mesh::selectField(xField) &
+    stk::mesh::selectField(yField)
+    : (metaData.locally_owned_part() | metaData.globally_shared_part()) &
+    stk::mesh::selectField(xField) &
+    stk::mesh::selectField(yField);
+
+  stk::mesh::BucketVector const& buckets = bulkData.get_buckets( entityRankValue, selector );
+
+  for(size_t i=0; i < buckets.size(); ++i) {
+    stk::mesh::Bucket & b = *buckets[i];
+    const stk::mesh::Bucket::size_type length = b.size();
+    const size_t fieldYsize = field_bytes_per_entity(yField, b) / sizeof(double);
+    const double * x = (double*)stk::mesh::field_data(xField, b);
+    double * y = (double*)stk::mesh::field_data(yField, b);
+    for(unsigned k = 0 ; k < length; ++k) {
+      const double invX = 1.0/x[k];
+      const int kFieldSize = k*fieldYsize;
+      for ( size_t i = 0; i < fieldYsize; ++i) {
+        y[kFieldSize+i] *= invX;
+      }
+    }
+  }
+}
+
 } // namespace nalu
 } // namespace Sierra
