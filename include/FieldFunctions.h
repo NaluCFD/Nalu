@@ -91,6 +91,15 @@ void field_index_copy(
   const bool auraIsActive,
   const stk::topology::rank_t entityRankValue=stk::topology::NODE_RANK);
 
+// y[i] = y[i]/x
+void field_normalize(
+  const stk::mesh::MetaData & metaData,
+  const stk::mesh::BulkData & bulkData,
+  const stk::mesh::FieldBase & xField,
+  const stk::mesh::FieldBase & yField,
+  const bool auraIsActive,
+  const stk::topology::rank_t entityRankValue=stk::topology::NODE_RANK);
+
 } // namespace nalu
 } // namespace Sierra
 

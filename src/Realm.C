@@ -105,9 +105,6 @@
 // stk_util
 #include <stk_util/parallel/ParallelReduce.hpp>
 
-// Ioss for propertManager (io)
-#include <Ioss_PropertyManager.h>
-
 // yaml for parsing..
 #include <yaml-cpp/yaml.h>
 #include <NaluParsing.h>
@@ -812,7 +809,7 @@ Realm::setup_post_processing_algorithms()
       throw std::runtime_error("Post Processing Error: only  surface-based is supported");
     }
   }
-
+  
   // check for turbulence averaging fields
   if ( NULL != turbulenceAveragingPostProcessing_ )
     turbulenceAveragingPostProcessing_->setup();
@@ -825,13 +822,14 @@ Realm::setup_post_processing_algorithms()
   if ( NULL != actuator_ )
     actuator_->setup();
 
+  // check for norm nodal fields
+  if ( NULL != solutionNormPostProcessing_ )
+    solutionNormPostProcessing_->setup();
+
   // check for explicit filtering
   if ( NULL != explicitFiltering_ )
     explicitFiltering_->setup();
 
-  // check for norm nodal fields
-  if ( NULL != solutionNormPostProcessing_ )
-    solutionNormPostProcessing_->setup();
 }
 
 //--------------------------------------------------------------------------

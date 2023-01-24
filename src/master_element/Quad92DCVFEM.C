@@ -248,6 +248,33 @@ void Quad92DSCV::determinant(
 
 }
 
+void Quad92DSCV::grad_op(
+  const int nelem,
+  const double *coords,
+  double *gradop,
+  double *deriv,
+  double *det_j,
+  double *error)
+{
+  int lerr = 0;
+
+  constexpr int numShapeDerivs = Traits::numScvIp_*Traits::nodesPerElement_*Traits::nDim_;
+  for (int j = 0; j < numShapeDerivs; ++j) {
+    deriv[j] = shapeDerivs_[j];
+  }
+
+  SIERRA_FORTRAN(quad_gradient_operator)
+    ( &nelem,
+      &nodesPerElement_,
+      &numIntPoints_,
+      deriv,
+      coords, gradop, det_j, error, &lerr );
+
+  if ( lerr )
+    NaluEnv::self().naluOutput() << "sorry, negative area.." << std::endl;
+
+}
+
 //--------------------------------------------------------------------------
 //-------- jacobian_determinant --------------------------------------------
 //--------------------------------------------------------------------------
