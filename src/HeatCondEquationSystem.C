@@ -61,7 +61,7 @@
 #include "kernel/ScalarDiffElemKernel.h"
 #include "kernel/ScalarDiffFemKernel.h"
 #include "kernel/HeatCondMassFemKernel.h"
-#include "kernel/ThermalSrcElemKernel.h"
+#include "kernel/VolumetricSrcElemKernel.h"
 
 // bc kernels
 #include "kernel/ScalarFluxPenaltyElemKernel.h"
@@ -437,7 +437,7 @@ HeatCondEquationSystem::register_interior_algorithm(
         realm_.bulk_data(), *realm_.solutionOptions_, temperature_, thermalCond_, dataPreReqs
       );
 
-      build_topo_kernel_if_requested<ThermalSrcElemKernel>(
+      build_topo_kernel_if_requested<VolumetricSrcElemKernel>(
         partTopo, *this, activeKernels, "volumetric",
         realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs
       );

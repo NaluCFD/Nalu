@@ -52,6 +52,7 @@
 #include "kernel/VolumeOfFluidGclElemKernel.h"
 #include "kernel/VolumeOfFluidEvaporationElemKernel.h"
 #include "kernel/ScalarDiffElemKernel.h"
+#include "kernel/VolumetricSrcElemKernel.h"
 
 // user function
 #include "user_functions/RayleighTaylorMixFracAuxFunction.h"
@@ -386,6 +387,10 @@ VolumeOfFluidEquationSystem::register_interior_algorithm(
     build_topo_kernel_if_requested<VolumeOfFluidEvaporationElemKernel>
       (partTopo, *this, activeKernels, "evaporation",
        realm_.bulk_data(), *realm_.solutionOptions_, vof_, dataPreReqs);
+
+    build_topo_kernel_if_requested<VolumetricSrcElemKernel>
+      (partTopo, *this, activeKernels, "volumetric",
+       realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs);
       
     report_invalid_supp_alg_names();
     report_built_supp_alg_names();

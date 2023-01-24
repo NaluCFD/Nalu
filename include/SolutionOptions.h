@@ -214,7 +214,7 @@ public:
   bool buoyancyPressureStab_;
 
   // constant volumetric source
-  double thermalSrc_;
+  double volumetricSrc_;
 
   // wetted wall init
   bool wettedWallInit_;

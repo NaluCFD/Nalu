@@ -85,7 +85,7 @@ SolutionOptions::SolutionOptions()
     quadType_("GaussLegendre"),
     accousticallyCompressible_(false),
     balancedForce_(false),
-    thermalSrc_(0.0),
+    volumetricSrc_(0.0),
     wettedWallInit_(false),
     wettedWallDistance_(-1.0)
 {
@@ -171,8 +171,8 @@ SolutionOptions::load(const YAML::Node & y_node)
     else
       get_if_present(y_solution_options, "activate_buoyancy_pressure_stabilization", buoyancyPressureStab_, false);
 
-    // thermal source term
-    get_if_present(y_solution_options, "thermal_source", thermalSrc_, thermalSrc_);
+    // volumetric source term
+    get_if_present(y_solution_options, "volumetric_source", volumetricSrc_, volumetricSrc_);
           
     // wetted wall active
     get_if_present(y_solution_options, "activate_wetted_wall_initialization", wettedWallInit_, wettedWallInit_);

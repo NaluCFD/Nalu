@@ -5,8 +5,8 @@
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
-#ifndef THERMALSRCELEMKERNEL_H
-#define THERMALSRCELEMKERNEL_H
+#ifndef VOLUMETRICSRCELEMKERNEL_H
+#define VOLUMETRICSRCELEMKERNEL_H
 
 #include "kernel/Kernel.h"
 #include "FieldTypeDef.h"
@@ -24,15 +24,15 @@ class MasterElement;
 class ElemDataRequests;
 
 template<typename AlgTraits>
-class ThermalSrcElemKernel: public Kernel
+class VolumetricSrcElemKernel: public Kernel
 {
 public:
-  ThermalSrcElemKernel(
+  VolumetricSrcElemKernel(
     const stk::mesh::BulkData&,
     SolutionOptions&,
     ElemDataRequests&);
 
-  virtual ~ThermalSrcElemKernel() {}
+  virtual ~VolumetricSrcElemKernel() {}
 
   virtual void execute(
     SharedMemView<DoubleType**>&,
@@ -40,7 +40,7 @@ public:
     ScratchViews<DoubleType>&);
 
 private:
-  ThermalSrcElemKernel() = delete;
+  VolumetricSrcElemKernel() = delete;
 
   VectorFieldType *coordinates_;
 
