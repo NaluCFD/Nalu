@@ -1499,8 +1499,8 @@ VolumeOfFluidEquationSystem::wetted_wall_init()
   ScalarFieldType *vofNp1 = &(vof_->field_of_state(stk::mesh::StateNP1));
   ScalarFieldType *vofN = &(vof_->field_of_state(stk::mesh::StateN));
   ScalarFieldType *vofNm1 = (vof_->number_of_states() == 2) 
-    ? &(vof_->field_of_state(stk::mesh::StateNM1)) 
-    : &(vof_->field_of_state(stk::mesh::StateN));
+    ? &(vof_->field_of_state(stk::mesh::StateN)) 
+    : &(vof_->field_of_state(stk::mesh::StateNM1));
 
   // define some common selectors
   stk::mesh::Selector s_all_nodes
