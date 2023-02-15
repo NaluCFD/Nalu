@@ -57,116 +57,6 @@ Python v3+
 The regression test suite for Nalu uses Python and requires a version greater than 3.
 
 
-SuperLU v4.3
-~~~~~~~~~~~~
-
-Required usage of SuperLU is a deprecated; optional package provided `here <http://crd-legacy.lbl.gov/~xiaoye/SuperLU/>`__. KLU2, as described in the Amesos2 documentation `here <https://trilinos.github.io/amesos2.html>`__, is automatically used in place of SuperLU if not included. If desired, a SuperLU build can instead use KLU2 in place of SuperLU by specifying as such in the MueLu .xml configuration file as follows.
-
-::
-
-  <Parameter name="coarse: type" type="string" value="klu2"/>
-
- 
-
-Prepare:
-
-::
-
-    cd $nalu_build_dir/packages
-    curl -o superlu_4.3.tar.gz http://crd-legacy.lbl.gov/~xiaoye/SuperLU/superlu_4.3.tar.gz
-    tar xf superlu_4.3.tar.gz
-
-Build:
-
-::
-
-    cd $nalu_build_dir/packages/SuperLU_4.3
-    cp MAKE_INC/make.linux make.inc
-
-To find out what the correct platform extension PLAT is:
-
-::
-
-    uname -m
-
-Edit ``make.inc`` as shown below (diffs shown from baseline).
-
-::
-
-    PLAT = _x86_64
-    SuperLUroot   = /your_path_to_install/SuperLU_4.3 i.e., $nalu_install_dir/SuperLU/4.3
-    BLASLIB       = -L/usr/lib64 -lblas
-    CC            = mpicc
-    FORTRAN       = mpif77
-
-On some platforms, the ``$nalu_install_dir`` may be mangled and, thus the make will fail. In such cases, you 
-need to use the entire path to ``your_path_to_install/SuperLU_4.3``.
-
-Next, make some new directories:
-
-::
-
-    mkdir $nalu_install_dir/SuperLU/4.3
-    mkdir $nalu_install_dir/SuperLU/4.3/lib
-    mkdir $nalu_install_dir/SuperLU/4.3/include
-    cd $nalu_build_dir/packages/SuperLU_4.3
-    make
-    cp SRC/*.h $nalu_install_dir/SuperLU/4.3/include
-
-If you are planning on sharing this install location with other team members, you will likely need to change a
-permission on a particular file, ``chmod g+r  $nalu_install_dir/SuperLU/4.3/include/superlu_enum_consts.h``.
-
-Libxml2 v2.9.2
-~~~~~~~~~~~~~~
-
-Libxml2, which is no longer required for most Nalu builds, is found `here <http://www.xmlsoft.org/sources/>`__.
-
-Prepare:
-
-::
-
-    cd $nalu_build_dir/packages
-    curl -o libxml2-2.9.2.tar.gz http://www.xmlsoft.org/sources/libxml2-2.9.2.tar.gz
-    tar -xvf libxml2-2.9.2.tar.gz
-
-Build:
-
-::
-
-    cd $nalu_build_dir/packages/libxml2-2.9.2
-    CC=mpicc CXX=mpicxx ./configure -without-python --prefix=$nalu_install_dir/libxml2/2.9.2
-    make
-    make install
-
-Boost v1.68.0
-~~~~~~~~~~~~~
-
-Required usage of Boost is a deprecated; optional package provide `here <http://www.boost.org>`__.
-
-Prepare:
-
-::
-
-    cd $nalu_build_dir/packages
-    curl -o boost_1_68_0.tar.gz http://iweb.dl.sourceforge.net/project/boost/boost/1.68.0/boost_1_68_0.tar.gz
-    tar -zxvf boost_1_68_0.tar.gz
-
-Build:
-
-::
-
-    cd $nalu_build_dir/packages/boost_1_68_0
-    ./bootstrap.sh --prefix=$nalu_install_dir/boost/1.68.0 --with-libraries=signals,regex,filesystem,system,mpi,serialization,thread,program_options,exception
-
-You may or may not need to edit ``project-config.jam`` and add a 'using mpi', e.g,
-
-using mpi: /path/to/mpi/openmpi/bin/mpicc
-
-::
-
-    ./b2 -j 4 2>&1 | tee boost_build_one
-    ./b2 -j 4 install 2>&1 | tee boost_build_intall
-
 YAML-CPP 0.6.2
 ~~~~~~~~~~~~~~
 
@@ -268,7 +158,7 @@ Build:
 Note that we have created an install directory that might look like ``$nalu_build_dir/install``.
 
 NetCDF v4.7.4
-***************
+*************
 
 NetCDF is provided `here <https://github.com/Unidata/netcdf-c/releases>`__.
 
@@ -307,14 +197,140 @@ Prepare:
     git checkout develop
     mkdir build
 
+Within the build directory, place a configuration file for Trilinos, e.g., 
+`do-configTrilinos_release <https://github.com/NaluCFD/Nalu/blob/master/build/do-configTrilinos_release>`__. Ensure that
+the proper paths for each required TPL is provided. Follow this customization with a 
+
+::
+
+   ./do-configTrilinos_release
+   make -j 16
+   make install
+
+
+Deprecated TPLS
+***********************
+The below TPLS are no longer required for Nalu builds. However, instructions for
+the particular libraries used in past versions of the code follow.
+
+
+SuperLU v4.3
+~~~~~~~~~~~~
+
+Required usage of SuperLU is a deprecated; optional package provided `here <http://crd-legacy.lbl.gov/~xiaoye/SuperLU/>`__. KLU2, as described in the Amesos2 documentation `here <https://trilinos.github.io/amesos2.html>`__, is automatically used in place of SuperLU if not included. If desired, a SuperLU build can instead use KLU2 in place of SuperLU by specifying as such in the MueLu .xml configuration file as follows.
+
+::
+
+  <Parameter name="coarse: type" type="string" value="klu2"/>
+
+ 
+
+Prepare:
+
+::
+
+    cd $nalu_build_dir/packages
+    curl -o superlu_4.3.tar.gz http://crd-legacy.lbl.gov/~xiaoye/SuperLU/superlu_4.3.tar.gz
+    tar xf superlu_4.3.tar.gz
+
+Build:
+
+::
+
+    cd $nalu_build_dir/packages/SuperLU_4.3
+    cp MAKE_INC/make.linux make.inc
+
+To find out what the correct platform extension PLAT is:
+
+::
+
+    uname -m
+
+Edit ``make.inc`` as shown below (diffs shown from baseline).
+
+::
+
+    PLAT = _x86_64
+    SuperLUroot   = /your_path_to_install/SuperLU_4.3 i.e., $nalu_install_dir/SuperLU/4.3
+    BLASLIB       = -L/usr/lib64 -lblas
+    CC            = mpicc
+    FORTRAN       = mpif77
+
+On some platforms, the ``$nalu_install_dir`` may be mangled and, thus the make will fail. In such cases, you 
+need to use the entire path to ``your_path_to_install/SuperLU_4.3``.
+
+Next, make some new directories:
+
+::
+
+    mkdir $nalu_install_dir/SuperLU/4.3
+    mkdir $nalu_install_dir/SuperLU/4.3/lib
+    mkdir $nalu_install_dir/SuperLU/4.3/include
+    cd $nalu_build_dir/packages/SuperLU_4.3
+    make
+    cp SRC/*.h $nalu_install_dir/SuperLU/4.3/include
+
+If you are planning on sharing this install location with other team members, you will likely need to change a
+permission on a particular file, ``chmod g+r  $nalu_install_dir/SuperLU/4.3/include/superlu_enum_consts.h``.
+
+Libxml2 v2.9.2
+~~~~~~~~~~~~~~
+
+Libxml2, which is no longer required for Nalu builds, is found `here <http://www.xmlsoft.org/sources/>`__.
+
+Prepare:
+
+::
+
+    cd $nalu_build_dir/packages
+    curl -o libxml2-2.9.2.tar.gz http://www.xmlsoft.org/sources/libxml2-2.9.2.tar.gz
+    tar -xvf libxml2-2.9.2.tar.gz
+
+Build:
+
+::
+
+    cd $nalu_build_dir/packages/libxml2-2.9.2
+    CC=mpicc CXX=mpicxx ./configure -without-python --prefix=$nalu_install_dir/libxml2/2.9.2
+    make
+    make install
+
+Boost v1.68.0
+~~~~~~~~~~~~~
+
+Required usage of Boost is a deprecated; optional package provide `here <http://www.boost.org>`__.
+
+Prepare:
+
+::
+
+    cd $nalu_build_dir/packages
+    curl -o boost_1_68_0.tar.gz http://iweb.dl.sourceforge.net/project/boost/boost/1.68.0/boost_1_68_0.tar.gz
+    tar -zxvf boost_1_68_0.tar.gz
+
+Build:
+
+::
+
+    cd $nalu_build_dir/packages/boost_1_68_0
+    ./bootstrap.sh --prefix=$nalu_install_dir/boost/1.68.0 --with-libraries=signals,regex,filesystem,system,mpi,serialization,thread,program_options,exception
+
+You may or may not need to edit ``project-config.jam`` and add a 'using mpi', e.g,
+
+using mpi: /path/to/mpi/openmpi/bin/mpicc
+
+::
+
+    ./b2 -j 4 2>&1 | tee boost_build_one
+    ./b2 -j 4 install 2>&1 | tee boost_build_intall
+
+
 HYPRE
 ~~~~~
 
-Nalu can use HYPRE solvers and preconditioners, especially for Pressure Poisson
-solves. However, this dependency is optional and is not enabled by default.
-Users wishing to use HYPRE solver and preconditioner combination must compile
-HYPRE library and link to it when building Nalu. This capability is not tested 
-nightly.
+Nalu has deprecated HYPRE solver and preconditioner usage. Users wishing to use HYPRE solver and 
+preconditioner combination must compile HYPRE library and link to it when building Nalu and also
+re-stablish the linear system assembly approach in the code base. 
 
 .. code-block:: bash
 
