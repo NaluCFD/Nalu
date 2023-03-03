@@ -32,3 +32,8 @@ cd 2d_tri3_quad4_street/write_up
 make all
 make clean
 cd ../../
+
+cd 1d_quad4_adv_diff/write_up
+make all
+make clean
+cd ../../
