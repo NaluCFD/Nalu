@@ -461,7 +461,7 @@ TurbulenceAveragingPostProcessing::register_field_from_primitive(
     throw std::runtime_error("TurbulenceAveragingPostProcessing::register_field() type of field is not double: " +primitiveName);
   
   // extract size (would love to do this by part), however, not yet a use case
-  const unsigned fieldSizePrimitive = primitiveField->max_size(stk::topology::NODE_RANK);
+  const unsigned fieldSizePrimitive = primitiveField->max_size();
 
   // register the averaged field with this size; treat velocity as a special case to retain the vector aspect
   if ( primitiveName == "velocity" ) {
@@ -495,7 +495,7 @@ TurbulenceAveragingPostProcessing::construct_pair(
   stk::mesh::FieldBase *averagedField = metaData.get_field(stk::topology::NODE_RANK, averagedName);
   
   // the size; guaranteed to be the same based on the field registration
-  const unsigned fieldSizeAveraged = averagedField->max_size(stk::topology::NODE_RANK);
+  const unsigned fieldSizeAveraged = averagedField->max_size();
   fieldSizeVec.push_back(fieldSizeAveraged);
   
   // construct pairs

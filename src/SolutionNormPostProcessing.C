@@ -196,7 +196,7 @@ SolutionNormPostProcessing::setup()
       throw std::runtime_error("SolutionNorm::setup no dof field by the name of: " + dofName);
     
     // find the size; is there a better wat to determine a field size on a given part?
-    const int dofSize = dofField->max_size(stk::topology::NODE_RANK);
+    const int dofSize = dofField->max_size();
 
     // increment total dof component size
     totalDofCompSize_ += dofSize;
