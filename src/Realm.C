@@ -4051,26 +4051,12 @@ Realm::check_job(bool get_node_count)
   if (meta_data().is_commit()) {
     std::vector<size_t> counts;
     stk::mesh::comm_mesh_counts( *bulkData_ , counts);
-    ThrowRequire(counts.size() >= 4);
-    size_t nodeCount = counts[stk::topology::NODE_RANK];
-    size_t edgeCount = counts[stk::topology::EDGE_RANK];
-    size_t faceCount = counts[stk::topology::FACE_RANK];
-    size_t elemCount = counts[stk::topology::ELEM_RANK];
-    
+    ThrowRequire(counts.size() >= 4); // node, edge, face, elem
     const stk::mesh::FieldVector & fields =  meta_data().get_fields();
     unsigned nfields = fields.size();
     for (unsigned ifld = 0; ifld < nfields; ++ifld)  {
       stk::mesh::FieldBase *field = fields[ifld];
-      unsigned fszNode = field->max_size(stk::topology::NODE_RANK);
-      unsigned fszEdge = field->max_size(stk::topology::EDGE_RANK);
-      unsigned fszFace = field->max_size(stk::topology::FACE_RANK);
-      unsigned fszElem = field->max_size(stk::topology::ELEM_RANK);
-      
-      memoryEstimateFields +=
-        ( nodeCount * fszNode
-          + edgeCount * fszEdge
-          + faceCount * fszFace
-          + elemCount * fszElem ) * sizeof(double);
+      memoryEstimateFields += field->max_size()*counts[field->entity_rank()]*sizeof(double);
     }
     NaluEnv::self().naluOutputP0() << "Total memory estimate for Fields (per core)= "
                                    << double(memoryEstimateFields)/procGBScale << " GB." << std::endl;
