@@ -1,0 +1,80 @@
+\documentclass{article}
+
+\usepackage{graphicx}
+\usepackage{subfig}
+\usepackage{amsmath}
+%\usepackage{amsmath,rotating}
+
+\title{One-dimensional Advection/Diffusion Passive Scalar}
+
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+This case provides a description for one-dimensional time advancement
+of a passive scalar, i.e., constant velocity, whose partial differential
+equation (PDE) includes the effects of advection and diffusion.
+
+\section{Domain}
+The simple two-dimensional geometry for this tutorial is captured in 
+Figure~\ref{fig:geom} where the key length of the domain is unity.
+
+The left and right surfaces are periodic while all other surfaces are zero flux. 
+A constant velocity of $u_x = 1$ is applied to the scalar transport equation. A
+viscosity, $\nu$, is specified to be 0.01, resulting in a Peclet number of 100 based on the 
+domain length and unity based on the local mesh spacing ($Pe = U L/\nu$). The initial condition 
+is simply a Gaussian distribution, see /src/user\_functions/ScalarGaussianAuxFunction.C.
+
+\begin{figure}[!htbp]
+  \centering
+  {
+   \includegraphics[height=2.0in]{images/oneD_teq0.png}
+  }
+  {
+   \includegraphics[height=2.0in]{images/oneD_teq1.png}
+  }
+  \caption{Two-dimensional domain capturing a one-dimensional evolution of a passive scalar at the time of 0 and 1.}
+  \label{fig:geom}
+\end{figure}
+
+\section{Theory}
+The time varying transport of scalar $\phi$ is given by,
+
+\begin{align}
+  \frac {\partial \phi }{\partial t} + u_j \frac{ \partial \phi }{\partial x_j} + \frac{\partial q_j}{\partial x_j} = 0,
+\label{eq:contEq}
+\end{align} 
+where $q_j$ is the diffusive flux given by,
+
+\begin{align}
+  q_j = -\nu \frac{\partial \phi}{\partial x_j}.
+\label{eq:momEq}
+\end{align}
+
+\subsection{Simulation Specification and Results}
+
+The mesh exercised activates a Hex8 topology, thereby exercising a
+linear basis that yields a nominal second-order spatial accurate
+simulation. A BDF2 three state scheme is applied for a fully implicit
+evolution. The simulation can be extended in time. The periodic domain
+mimics and infinately long domain.
+
+\section{Discussion Points}
+
+There are several interesting activities associated with this sample case including
+the following:
+
+\begin{itemize}
+	\item Explore the mesh and input file specifications associated with this case.
+	\item Explore the specification of viscosity: increasing and decreasing the nominal value by 10x. 
+          What do you see?
+        \item The current advection operator is specified as "scs\_upw\_advection\_np''. What happens if you
+          activate "scs\_advection\_np'', again in the context of modification of the viscosity by 10x?
+        \item What happens when viscosity is set to zero?
+        \item Based on what you have learned in class, what is the controlling numerical principle?
+\end{itemize}
+
+\end{document}
