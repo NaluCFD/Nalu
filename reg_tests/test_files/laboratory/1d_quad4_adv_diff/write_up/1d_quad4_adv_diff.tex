@@ -41,7 +41,7 @@ is simply a Gaussian distribution, see /src/user\_functions/ScalarGaussianAuxFun
 \end{figure}
 
 \section{Theory}
-The time varying transport of scalar $\phi$ is given by,
+The time varying transport of scalar $\phi$ partial differential equation (PDE) is given by,
 
 \begin{align}
   \frac {\partial \phi }{\partial t} + u_j \frac{ \partial \phi }{\partial x_j} + \frac{\partial q_j}{\partial x_j} = 0,
@@ -58,9 +58,25 @@ where $q_j$ is the diffusive flux given by,
 
 The mesh exercised activates a Hex8 topology, thereby exercising a
 linear basis that yields a nominal second-order spatial accurate
-simulation. A BDF2 three state scheme is applied for a fully implicit
-evolution. The simulation can be extended in time. The periodic domain
-mimics and infinately long domain.
+simulation. A second-order in time BDF2 three state scheme, which is activated via the "second\_order\_accuracy" line command, is applied for a fully implicit
+temporal evolution. Setting this option to "no" yields a first-order Backward Euler time integration. Note that the simulation can be extended in time by increasing the "termination\_step\_count" setting, or switching this to a physical time, "termination\_time". In this mesh configuration, the periodic boundary condition specification
+mimics an infinitely long domain.
+
+\subsubsection{Input Parameters}
+In the baseline Nalu simulation, the precise PDE definition is achieved through the activation of  "element\_source\_terms'' that, for example, activates a time term via "lumped\_mass", an advection term via "scs\_upw\_advection\_np", and a diffusion term via "diffusion".
+%
+The time derivative options in the code base are as follows:
+\begin{itemize}
+    \item lumped\_mass
+    \item mass
+\end{itemize}
+
+The primary advection term options in the code base allow for either a volume- or surface-based integration:
+\begin{itemize}
+    \item scv\_advection\_np, or $\int u_j \frac{\partial \phi}{\partial x_j} dV$
+    \item scs\_advection\_np, or $\int u_j \frac{\partial \phi}{\partial x_j} dV = \int \frac{\partial u_j \phi}{\partial x_j} dV - \int \phi \frac{\partial u_j}{\partial x_j} dV$ that for the case of a constant velocity (along with using the Gauss Divergence theorem) can be written as, $\int u_j \phi n_j dS$.
+\end{itemize}
+Above, the scs and scv abbreviations represent the sub-control surface and sub-control volume integration points, respectively. For the scs approach, we also allow for an "upwinded" approach through the option, scs\_upw\_advection\_np. Here, either an unstructured gradient reconstruction scheme is used (when upw\_factor is unity), or pure first-order upwind when upw\_factor is zero). Finally, a limiter for the higher-oder upwind scheme can be specified in the limiter setting. Many of the details regarding the meaning of these options will be discussed in upcoming tutorials and laboratory sessions.
 
 \section{Discussion Points}
 
