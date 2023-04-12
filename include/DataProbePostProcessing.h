@@ -164,8 +164,9 @@ public:
   // frequency of output
   int outputFreq_;
 
-  // width for output
+  // width for output and precision
   int w_;
+  int p_;
 
   // xfer specifications
   std::string searchMethodName_;
