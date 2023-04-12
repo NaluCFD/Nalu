@@ -33,7 +33,7 @@ namespace
     const stk::mesh::Entity* node_rels,
     const VectorFieldType& coordField)
   {
-    int dim = coordField.max_size(stk::topology::NODE_RANK);
+    int dim = coordField.max_size();
     auto rot = unit_test_utils::random_rotation_matrix(dim, rng);
 
     std::uniform_real_distribution<double> random_perturb(0.125, 0.25);

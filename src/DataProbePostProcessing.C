@@ -79,7 +79,8 @@ DataProbePostProcessing::DataProbePostProcessing(
   const YAML::Node &node)
   : realm_(realm),
     outputFreq_(10),
-    w_(26),
+    w_(36),
+    p_(16),
     searchMethodName_("none"),
     searchTolerance_(1.0e-4),
     searchExpansionFactor_(1.5)
@@ -114,8 +115,10 @@ DataProbePostProcessing::load(
   if ( y_dataProbe ) {
     NaluEnv::self().naluOutputP0() << "DataProbePostProcessing::load" << std::endl;
 
-    // extract the frequency of output
+    // extract the frequency of output, width, and precision
     get_if_present(y_dataProbe, "output_frequency", outputFreq_, outputFreq_);
+    get_if_present(y_dataProbe, "output_width", w_, w_);
+    get_if_present(y_dataProbe, "output_precision", p_, p_);
 
     // transfer specifications
     get_if_present(y_dataProbe, "search_method", searchMethodName_, searchMethodName_);
@@ -902,7 +905,7 @@ DataProbePostProcessing::provide_output(
 
           // provide banner for current time, nodeId, coordinates, field 1, field 2, etc
           if ( addBanner ) {
-            myfile << "Time" << std::setw(w_) << "Node Id" << std::setw(w_);
+            myfile << "Time" << std::setw(w_) << "Node_Id" << std::setw(w_);
             
             for ( int jj = 0; jj < nDim; ++jj )
               myfile << "coordinates[" << jj << "]" << std::setw(w_);          
@@ -920,6 +923,9 @@ DataProbePostProcessing::provide_output(
             myfile << std::endl;
           }
 
+          // set precision and style
+          myfile.precision(p_);
+
           // reference to the nodeVector
           std::vector<stk::mesh::Entity> &nodeVec = probeInfo->nodeVector_[inp];
           
@@ -929,9 +935,9 @@ DataProbePostProcessing::provide_output(
             double * theCoord = (double*)stk::mesh::field_data(*coordinates, node );
             
             // always output time, node id, and coordinates
-            myfile << std::left << std::setw(w_) << currentTime << std::setw(w_) <<  bulkData.identifier(node) << std::setw(w_);
+            myfile << std::left << std::setw(w_) << std::scientific << currentTime << std::setw(w_) <<  bulkData.identifier(node) << std::setw(w_);
             for ( int jj = 0; jj < nDim; ++jj ) {
-              myfile << theCoord[jj] << std::setw(w_);
+              myfile << std::scientific << theCoord[jj] << std::setw(w_);
             }
 
             // now all of the other fields required
@@ -942,7 +948,7 @@ DataProbePostProcessing::provide_output(
                
               const int fieldSize = probeSpec->fieldInfo_[ifi].second;
               for ( int jj = 0; jj < fieldSize; ++jj ) {
-                myfile << theF[jj] << std::setw(w_);
+                myfile << std::scientific << theF[jj] << std::setw(w_);
               }
             }
             // node output complete
