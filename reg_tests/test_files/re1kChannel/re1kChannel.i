@@ -137,6 +137,8 @@ realms:
     data_probes:
 
       output_frequency: 25
+      output_precision: 8 
+      output_width: 32
 
       search_tolerance: 1.0e-3
       search_expansion_factor: 2.0
