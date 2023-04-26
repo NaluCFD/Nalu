@@ -69,7 +69,12 @@ realms:
     - inflow_boundary_condition: bc_inflow
       target_name: surface_1
       inflow_user_data:
-        velocity: [0.0,0.0,2.0]
+        user_function_name:
+         velocity: table
+        user_function_parameters:
+         velocity: [2, 1, 
+                    0.0, 2.0, 
+                    2.0, 2.0]
 
     - open_boundary_condition: bc_open
       target_name: surface_2
