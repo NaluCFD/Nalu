@@ -272,7 +272,7 @@ TurbulenceAveragingPostProcessing::setup()
       }
 
       if ( avInfo->computeVorticity_ ) {
-        const int vortSize = realm_.spatialDimension_;
+        const int vortSize = 3; // always 3
         const std::string vorticityName = "vorticity";
         VectorFieldType *vortField = &(metaData.declare_field<double>(stk::topology::NODE_RANK, vorticityName));
         stk::mesh::put_field_on_mesh(*vortField, *targetPart, vortSize, nullptr);
@@ -1238,8 +1238,9 @@ TurbulenceAveragingPostProcessing::compute_temperature_sfs_flux(
     }
   }
 }
+
 //--------------------------------------------------------------------------
-//-------- compute_vortictiy -----------------------------------------------
+//-------- compute_vorticity -----------------------------------------------
 //--------------------------------------------------------------------------
 void
 TurbulenceAveragingPostProcessing::compute_vorticity(
@@ -1249,11 +1250,16 @@ TurbulenceAveragingPostProcessing::compute_vorticity(
   stk::mesh::MetaData & metaData = realm_.meta_data();
   
   const int nDim = realm_.spatialDimension_;
+  const int nDimV = 3; 
   const std::string VortFieldName = "vorticity";
-  
+
+  // temp loading and holding
+  double dudxTemp[3][3] = {};
+  double vorticityTemp[3] = {};
+
   // extract fields
-  stk::mesh::FieldBase *dudx_ = metaData.get_field(stk::topology::NODE_RANK, "dudx");
-  stk::mesh::FieldBase *Vort = metaData.get_field(stk::topology::NODE_RANK, VortFieldName);
+  stk::mesh::FieldBase *dudx = metaData.get_field(stk::topology::NODE_RANK, "dudx");
+  stk::mesh::FieldBase *vorticity = metaData.get_field(stk::topology::NODE_RANK, VortFieldName);
 
   stk::mesh::BucketVector const& node_buckets_vort =
     realm_.get_buckets( stk::topology::NODE_RANK, s_all_nodes );
@@ -1263,22 +1269,24 @@ TurbulenceAveragingPostProcessing::compute_vorticity(
     const stk::mesh::Bucket::size_type length   = b.size();
     
     // fields
-    const double * du = (double*)stk::mesh::field_data(*dudx_, b);
-    double *vorticity_ = (double*)stk::mesh::field_data(*Vort,b);
-    const int offSet = nDim*nDim;
-    
+    const double * du = (double*)stk::mesh::field_data(*dudx, b);
+    double *vort = (double*)stk::mesh::field_data(*vorticity,b);    
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
       for ( int i = 0; i < nDim; ++i ) {
-    	const int vortswitch = nDim*i;
     	for ( int j = 0; j < nDim; ++j ) {
-          // Vorticity is the difference in the off diagonals, calculate only those
-    	  if ( (i==0 && j==1) || (i==1 && j ==2) || (i==2 && j==0) ){
-            const double vort_ = du[k*offSet+(nDim*j+i)] - du[k*offSet+(vortswitch+j)] ;
-            // Store the x, y, z components of vorticity
-            vorticity_[k*nDim + (nDim-i-j)] = vort_;
-    	  }
+          // load velocity gradients
+          dudxTemp[i][j] = du[nDim*nDim*k+i*nDim+j];
         }
       }
+      
+      // compute cross product
+      vorticityTemp[0] = dudxTemp[2][1] - dudxTemp[1][2];
+      vorticityTemp[1] = dudxTemp[0][2] - dudxTemp[2][0];
+      vorticityTemp[2] = dudxTemp[1][0] - dudxTemp[0][1];
+      
+      // scatter back to nodal field (now over nDimV)
+      for ( int i = 0; i < nDimV; ++i )
+        vort[k*nDimV+i] = vorticityTemp[i];
     }
   }
 }
