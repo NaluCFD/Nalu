@@ -196,6 +196,8 @@
 
 #include "user_functions/LinearAuxFunction.h"
 
+#include "user_functions/TableAuxFunction.h"
+
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
 #include <stk_util/parallel/ParallelReduce.hpp>
@@ -1561,6 +1563,9 @@ MomentumEquationSystem::register_inflow_bc(
     else if ( fcnName == "pulse" ) {
       theAuxFunc = new PulseVelocityAuxFunction(0,nDim,theParams);
     }
+    else if ( fcnName == "table" ) {
+      theAuxFunc = new TableAuxFunction(0,nDim,theParams);
+    }
     else {
       throw std::runtime_error("MomentumEquationSystem::register_inflow_bc: limited functions supported");
     }
@@ -2733,6 +2738,9 @@ ContinuityEquationSystem::register_inflow_bc(
     }
     else if ( fcnName == "pulse" ) {
       theAuxFunc = new PulseVelocityAuxFunction(0,nDim,theParams);
+    }
+    else if ( fcnName == "table" ) {
+      theAuxFunc = new TableAuxFunction(0,nDim,theParams);
     }
     else {
       throw std::runtime_error("ContEquationSystem::register_inflow_bc: limited functions supported");

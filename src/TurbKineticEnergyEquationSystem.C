@@ -75,7 +75,11 @@
 // nso
 #include "nso/ScalarNSOElemKernel.h"
 
+// overset
 #include "overset/UpdateOversetFringeAlgorithmDriver.h"
+
+// user function
+#include "user_functions/TableAuxFunction.h"
 
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
@@ -579,12 +583,32 @@ TurbKineticEnergyEquationSystem::register_inflow_bc(
 
   // extract the value for user specified tke and save off the AuxFunction
   InflowUserData userData = inflowBCData.userData_;
-  TurbKinEnergy tke = userData.tke_;
-  std::vector<double> userSpec(1);
-  userSpec[0] = tke.turbKinEnergy_;
+  std::string tkeName = "turbulent_ke";
+  UserDataType theDataType = get_bc_data_type(userData, tkeName);
 
-  // new it
-  ConstantAuxFunction *theAuxFunc = new ConstantAuxFunction(0, 1, userSpec);
+  
+  AuxFunction *theAuxFunc = NULL;
+  if ( CONSTANT_UD == theDataType ) {
+    TurbKinEnergy tke = userData.tke_;
+    std::vector<double> userSpec(1);
+    userSpec[0] = tke.turbKinEnergy_;
+
+    // new it
+    theAuxFunc = new ConstantAuxFunction(0, 1, userSpec);
+  }
+  else if ( FUNCTION_UD == theDataType ) {
+    // extract the name/params
+    std::string fcnName = get_bc_function_name(userData, tkeName);
+    std::vector<double> theParams = get_bc_function_params(userData, tkeName);
+
+    // switch on the name found...
+    if ( fcnName == "table" ) {
+      theAuxFunc = new TableAuxFunction(0,1,theParams);
+    }
+    else {
+      throw std::runtime_error("TurbKineticEnergyEquationSystem::register_inflow_bc: limited functions supported");
+    }
+  }
 
   // bc data alg
   AuxFunctionAlgorithm *auxAlg
