@@ -101,7 +101,7 @@ realms:
       options:
       
         - element_source_terms:
-            momentum: [momentum_time_derivative, advection_diffusion]
+            momentum: [lumped_momentum_time_derivative, advection_diffusion]
             continuity: advection
 
         - projected_nodal_gradient:
