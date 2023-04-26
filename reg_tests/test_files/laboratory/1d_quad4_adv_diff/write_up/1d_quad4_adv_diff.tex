@@ -56,11 +56,11 @@ where $q_j$ is the diffusive flux given by,
 
 \subsection{Simulation Specification and Results}
 
-The mesh exercised activates a Hex8 topology, thereby exercising a
+The mesh exercised activates a Quad4 topology, thereby exercising a
 linear basis that yields a nominal second-order spatial accurate
 simulation. A second-order in time BDF2 three state scheme, which is activated via the "second\_order\_accuracy" line command, is applied for a fully implicit
 temporal evolution. Setting this option to "no" yields a first-order Backward Euler time integration. Note that the simulation can be extended in time by increasing the "termination\_step\_count" setting, or switching this to a physical time, "termination\_time". In this mesh configuration, the periodic boundary condition specification
-mimics an infinitely long domain.
+mimics an infinitely long domain (left and right boundaries). The top and bottom boundaries are zero-flux, and zero mass injection.
 
 \subsubsection{Input Parameters}
 In the baseline Nalu simulation, the precise PDE definition is achieved through the activation of  "element\_source\_terms'' that, for example, activates a time term via "lumped\_mass", an advection term via "scs\_upw\_advection\_np", and a diffusion term via "diffusion".
