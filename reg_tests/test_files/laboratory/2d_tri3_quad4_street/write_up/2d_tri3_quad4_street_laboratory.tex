@@ -82,10 +82,11 @@ value is zero. Therefore, the passive scalar $Z$ acts to be transported to highl
 vortex street. Given that the mixture fraction does not couple to the equations of motion, the boundedness of this variable, i.e.,
 the realization of $0.0 \leq Z \leq 1.0$ does not affect the primary flow field. Therefore, modification of this equation's advection
 stabilization form (while monitoring the amount of times the variable is clipped),
-allows a perspective as to the effectiveness of the stabilization (see the line command $output\_clipping\_diagnostic: yes$).
+allows a perspective as to the effectiveness of the stabilization (see the line command $output\_clipping\_diagnostic: yes$; you can also
+visualize the unclipped, or unfiltered mixture fraction, "uf\_mixture\_fraction").
 
 \section*{Introduction}
-The flow of a liquid or gas past a circular cylinder is ubiquitious in
+The flow of a liquid or gas past a circular cylinder is ubiquitous in
 engineering.  Examples include the flow of a river current past a
 bridge support column, or wind blowing past a wind turbine tower or
 cylindrical water storage tank.  This flow is representative of a
@@ -240,11 +241,11 @@ compute the diffusive flux coefficient.}
           coefficient; mean and instant lift coefficient. 
         \subitem Note: $2d\_tri3\_quad4\_street.dat$ 
           that provides forces and moments on the cylinder surface. For QoIs above, at the nominal 
-          Reynolds nominal Reynolds number, what is the effect of: a) Mesh refinement; see: 
+          Reynolds number, what is the effect of: a) Mesh refinement; see: 
           $mesh/2d\_tri3\_quad4\_street\_refined.exo$, b) First-order time vs second-order time: 
           $second\_order\_accuracy: yes/no$, c) Changing the number of nonlinear iterations from 2 to 5, 
           and 10: (note the convergence within each step): $max\_iterations: 2, 4, 8$, d) Linear solver 
-          tolerance: tolerance: 1e-5, e) Usage of limiters and the effect
+          tolerance: tolerance: 1e-3, 1e-5, 1e-8) Usage of limiters and the effect
         \item (Optional) Compute a FFT for either mixture fraction or velocity at select locations/points in the domain. 
 \end{itemize}
 

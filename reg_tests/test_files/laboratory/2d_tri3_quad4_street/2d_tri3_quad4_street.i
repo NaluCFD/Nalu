@@ -169,6 +169,7 @@ realms:
        - velocity
        - pressure
        - mixture_fraction
+       - uf_mixture_fraction
        - velocity_ra_one
        - pressure_ra_one
        - mixture_fraction_ra_one
