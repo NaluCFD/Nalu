@@ -222,10 +222,10 @@ compute the diffusive flux coefficient.}
 \section{Discussion Points}
 
 \begin{itemize}
-	\item The input file is currently set to terminate only after a small amount of tme steps. While this
+	\item The input file is currently set to terminate only after a small amount of time steps. While this
               termination may be appropriate for regression testing, for many of the QoIs desired in this
               session, the number of time steps required will be much higher. Please modify accordingly.
-	\item Compare timing between EBVC and CVFEM (see command $use\_edges: no$. Comments on speed?
+	\item Compare timing between EBVC and CVFEM (see command $use\_edges: no$). Comments on speed?
         \item Modify the Reynolds number 10x smaller, 10x larger and report general findings. 
           As you change the Reynolds number, make sure that you adjust the initial time step 
           specification such that the first Courant number reported in the log file is not greater 
