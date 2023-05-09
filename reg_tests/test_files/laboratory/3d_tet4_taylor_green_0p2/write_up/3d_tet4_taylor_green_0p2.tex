@@ -94,6 +94,44 @@ that, even for a coarsest mesh spacing reported, are far more refined than the m
 However, the prime motivation for this exercise is to learn more about fully implicit solver approaches
 in the low-Mach limit.
 
+\section{Equation Set}
+The variable-density low-Mach equation set is defined by the continuity and momentum equation, here shown in
+integral form,
+
+\begin{align}
+ \int  \frac {\partial \rho }{\partial t} dV + \int \rho \hat{u}_j n_j dS = 0,
+\label{eq:contEq}
+\end{align} 
+
+\begin{align}
+\int  \frac {\partial \rho u_i }{\partial t} dV + \int \rho \hat{u}_j u_i n_j dS 
+-\int 2 \mu S^*_{ij} n_j dS = \int P \delta_{ij} n_j dS
+\label{eq:momEq}
+\end{align}
+%
+In the above equation, $\rho$ is the fluid density and $u_i$ is the fluid velocity, while
+the traceless rate-of-strain tensor is defined as
+\begin{align}
+S^*_{ij}  = S_{ij} - \frac{1}{3} \delta_{ij} S_{kk} \nonumber
+		     = S_{ij} - \frac{1}{3} \frac{\partial  u_k }{\partial x_k}\delta_{ij}.
+\end{align}
+In a low-Mach flow, the above pressure, $P$, is the perturbation about the thermodynamic
+pressure, $P^{th}$. We also note that the form shown above includes pressure stabilization
+embedded in the special velocity, $\hat{u}_j$, whose form can be written as,
+
+\begin{align}
+\rho \hat{u}_j = \rho u_j -\frac{\Delta t}{\gamma_1}\left(\frac{\partial P}{\partial x_j} - G_j P\right),
+\end{align}
+where the projected nodal gradient, $G_jP$ is obtained though the following equation:
+\begin{align}
+\int G_j P dV - \int P n_j dS = 0.
+\end{align}
+When using higher-order approaches, and to retain design-order accuracy, $G_jP$ must be computed
+using the consistent mass matrix, while using mass-lumping, yields,
+\begin{align}
+G_j P = \frac{\int P n_j dS}{\int dV}.
+\end{align}
+
 \section{Discussion Points}
 
 There are several interesting activities associated with this sample case including
