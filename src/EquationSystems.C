@@ -23,6 +23,7 @@
 #include <HeatCondEquationSystem.h>
 #include <LowMachEquationSystem.h>
 #include <LowMachFemEquationSystem.h>
+#include <LowMachMonolithicEquationSystem.h>
 #include <MixtureFractionEquationSystem.h>
 #include <MixtureFractionFemEquationSystem.h>
 #include <ShearStressTransportEquationSystem.h>
@@ -131,6 +132,11 @@ void EquationSystems::load(const YAML::Node & y_node)
 	  y_eqsys =  expect_map(y_system, "LowMachFemEOM", true);
           if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = LowMachFemEOM " << std::endl;
           eqSys = new LowMachFemEquationSystem(*this);
+        }
+        else if ( expect_map(y_system, "LowMachMonoEOM", true) ) {
+	  y_eqsys =  expect_map(y_system, "LowMachMonoEOM", true);
+          if (root()->debug()) NaluEnv::self().naluOutputP0() << "eqSys = LowMachMonoEOM " << std::endl;
+          eqSys = new LowMachMonolithicEquationSystem(*this);
         }
         else if( expect_map(y_system, "ShearStressTransport", true) ) {
 	  y_eqsys =  expect_map(y_system, "ShearStressTransport", true);

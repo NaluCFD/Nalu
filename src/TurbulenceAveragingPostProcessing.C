@@ -1514,10 +1514,11 @@ TurbulenceAveragingPostProcessing::compute_mean_resolved_ke(
   stk::ParallelMachine comm = NaluEnv::self().parallel_comm();
   stk::all_reduce_sum(comm, l_sum, g_sum, 2);
   
-  NaluEnv::self().naluOutputP0() << "Integrated ke and volume at time: " 
-                                 << g_sum[1]/g_sum[0] << " " 
-                                 << g_sum[0] <<  " " 
-                                 << realm_.get_current_time() << std::endl;
+  NaluEnv::self().naluOutputP0() << "time, sum(vol), sum(ke*vol), mean(ke): " 
+                                 << realm_.get_current_time() << " " 
+                                 << g_sum[0] << " " 
+                                 << g_sum[1] << " " 
+                                 << g_sum[1]/g_sum[0] << std::endl;
 }
 
 //--------------------------------------------------------------------------

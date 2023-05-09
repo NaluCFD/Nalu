@@ -72,6 +72,7 @@ enum EquationType {
   EQ_PNG_H = 16,
   EQ_PNG_U = 17,
   EQ_PNG_TKE = 18, // FIXME... Last PNG managed like this..
+  EQ_UVWP = 19,
   EquationSystemType_END
 };
 
@@ -94,7 +95,8 @@ static const std::string EquationTypeMap[] = {
   "PNG_Z",
   "PNG_H",
   "PNG_U",
-  "PNG_TKE"
+  "PNG_TKE",
+  "MOMENTUM_CONTINUITY"
 };
 
 enum UserDataType {
