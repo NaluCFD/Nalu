@@ -833,17 +833,21 @@ RadiativeTransportEquationSystem::solve_and_update()
 
   if ( isInit_ ) {
     initialize_intensity();
-    compute_bc_intensity();
     isInit_ = false;
   }
-  
+
+  // compute quantities that may be a function of externally provided temperature
   compute_radiation_source();
-  
+
   // extract equation system status before first iteration or first ordinate solve
   bool firstTimeStepSolve = firstTimeStepSolve_;
   
   for ( int i = 0; i < maxIterations_; ++i ) {
-    
+
+    // compute quantities that may be a function of externally provided temperature 
+    // **and** the converging intensity field 
+    compute_bc_intensity();
+
     // zero out qj, G; irradiation
     zero_out_fields();
     zero_irradiation();
@@ -897,10 +901,9 @@ RadiativeTransportEquationSystem::solve_and_update()
     
     // normalize_irradiation
     normalize_irradiation();
-    
-    // compute boundary intensity
-    compute_bc_intensity();
-    
+        
+    // bc intensity is only used by PMR; output will be lagged
+
     // compute divRadFLux and norm
     compute_div_norm();
     copy_ordinate_intensity(*scalarFlux_, *scalarFluxOld_);
