@@ -381,8 +381,8 @@ public:
     using ftype = typename CoordViewType::value_type;
 
     static_assert(std::is_same<ftype, typename OutputViewType::value_type>::value, "Incompatiable value type for views");
-    static_assert(CoordViewType::Rank == 2, "Coordinate view assumed to be 2D");
-    static_assert(OutputViewType::Rank == 2, "area_vector view assumed to be 2D");
+    static_assert(CoordViewType::rank == 2, "Coordinate view assumed to be 2D");
+    static_assert(OutputViewType::rank == 2, "area_vector view assumed to be 2D");
 
     static_assert (AlgTraits::numScsIp_ % AlgTraits::nDim_ == 0, "Number of ips incorrect");
     constexpr int ipsPerDirection = AlgTraits::numScsIp_ / AlgTraits::nDim_;
@@ -392,17 +392,17 @@ public:
     // this relies on the ips being laid out direction-by-direction,
     // specifically in the U->T->S order
     for (int ip = 0; ip < t_start; ++ip) {
-      ThrowAssert(ipInfo_[ip].direction == Jacobian::U_DIRECTION);
+      STK_ThrowAssert(ipInfo_[ip].direction == Jacobian::U_DIRECTION);
       area_vector<Jacobian::U_DIRECTION>(ip, referenceGradWeights, coords, areav);
     }
 
     for (int ip = t_start; ip < s_start; ++ip) {
-      ThrowAssert(ipInfo_[ip].direction == Jacobian::T_DIRECTION);
+      STK_ThrowAssert(ipInfo_[ip].direction == Jacobian::T_DIRECTION);
       area_vector<Jacobian::T_DIRECTION>(ip, referenceGradWeights, coords, areav);
     }
 
     for (int ip = s_start; ip < AlgTraits::numScsIp_; ++ip) {
-      ThrowAssert(ipInfo_[ip].direction == Jacobian::S_DIRECTION);
+      STK_ThrowAssert(ipInfo_[ip].direction == Jacobian::S_DIRECTION);
       area_vector<Jacobian::S_DIRECTION>(ip, referenceGradWeights, coords, areav);
     }
 
@@ -443,8 +443,8 @@ private:
     static_assert(std::is_same<ftype, typename OutputViewType::value_type>::value,
       "Incompatiable value type for views");
 
-    static_assert(CoordViewType::Rank == 2, "Coordinate view assumed to be 2D");
-    static_assert(OutputViewType::Rank == 2, "areav view assumed to be 2D");
+    static_assert(CoordViewType::rank == 2, "Coordinate view assumed to be 2D");
+    static_assert(OutputViewType::rank == 2, "areav view assumed to be 2D");
 
     ftype sjac[3][2] = { {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0} };
     for (int n = 0; n < AlgTraits::nodesPerElement_; ++n) {

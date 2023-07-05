@@ -76,8 +76,8 @@ public:
    void execute(LambdaFunction func)
    {
      int numDof = 1;
-     ThrowRequireMsg(partVec_.size()==1, "KokkosMEViews unit-test assumes partVec_.size==1");
-     ThrowRequireMsg(!bulk_->get_buckets(meta_->side_rank(), *partVec_[0]).empty(), "part does not contain side-ranked elements");
+     STK_ThrowRequireMsg(partVec_.size()==1, "KokkosMEViews unit-test assumes partVec_.size==1");
+     STK_ThrowRequireMsg(!bulk_->get_buckets(meta_->side_rank(), *partVec_[0]).empty(), "part does not contain side-ranked elements");
      FaceElemHelperObjects helperObjs(bulk_, BcAlgTraits::faceTopo_, BcAlgTraits::elemTopo_, numDof, partVec_[0]);
 
      sierra::nalu::AssembleFaceElemSolverAlgorithm& alg = *helperObjs.assembleFaceElemSolverAlg;

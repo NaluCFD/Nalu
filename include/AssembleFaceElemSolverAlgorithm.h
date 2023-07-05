@@ -80,7 +80,7 @@ public:
       {
         stk::mesh::Bucket & b = *buckets[team.league_rank()];
 
-        ThrowAssertMsg(b.topology().num_nodes() == (unsigned)nodesPerFace_,
+        STK_ThrowAssertMsg(b.topology().num_nodes() == (unsigned)nodesPerFace_,
                        "AssembleFaceElemSolverAlgorithm expected nodesPerEntity_ = "
                        <<nodesPerFace_<<", but b.topology().num_nodes() = "<<b.topology().num_nodes());
 
@@ -98,7 +98,7 @@ public:
             int simdFaceIndex = 0;
             while((numFacesProcessed+simdFaceIndex)<simdGroupLen) {
               stk::mesh::Entity face = b[bktIndex*simdLen + numFacesProcessed + simdFaceIndex];
-              ThrowAssertMsg(bulk.num_elements(face)==1, "Expecting just 1 element attached to face!");
+              STK_ThrowAssertMsg(bulk.num_elements(face)==1, "Expecting just 1 element attached to face!");
               int thisElemFaceOrdinal = bulk.begin_element_ordinals(face)[0];
 
               if (elemFaceOrdinal >= 0 && thisElemFaceOrdinal != elemFaceOrdinal) {

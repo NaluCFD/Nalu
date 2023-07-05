@@ -60,7 +60,7 @@ FixPressureAtNodeAlgorithm::execute()
   eqSystem_->linsys_->resetRows(refNodeList_, 0, 1);
 
   int numNodes = refNodeList_.size();
-  ThrowAssertMsg(numNodes <= 1,
+  STK_ThrowAssertMsg(numNodes <= 1,
                  "Invalid number of nodes encountered in FixPressureAtNodeAlgorithm");
 
   // Fix the pressure for this node only if this is proc is owner

@@ -1069,7 +1069,7 @@ ExplicitFiltering::compute_scv_residual(
       int num_nodes = b.num_nodes(k);
 
       // sanity check on num nodes
-      ThrowAssert( num_nodes == nodesPerElement );
+      STK_ThrowAssert( num_nodes == nodesPerElement );
 
       for ( int ni = 0; ni < num_nodes; ++ni ) {
         stk::mesh::Entity node = node_rels[ni];

@@ -26,9 +26,9 @@ class SolutionOptions;
 template<typename AlgTraits, typename LambdaFunction, typename ViewType>
 void get_scv_shape_fn_data(LambdaFunction lambdaFunction, ViewType& shape_fn_view)
 {
-  static_assert(ViewType::Rank == 2u, "2D View");
-  ThrowRequireMsg(shape_fn_view.extent_int(0) == AlgTraits::numScvIp_, "Inconsistent number of scv ips");
-  ThrowRequireMsg(shape_fn_view.extent_int(1) == AlgTraits::nodesPerElement_, "Inconsistent number of of nodes");
+  static_assert(ViewType::rank == 2u, "2D View");
+  STK_ThrowRequireMsg(shape_fn_view.extent_int(0) == AlgTraits::numScvIp_, "Inconsistent number of scv ips");
+  STK_ThrowRequireMsg(shape_fn_view.extent_int(1) == AlgTraits::nodesPerElement_, "Inconsistent number of of nodes");
 
   double tmp_data[AlgTraits::numScvIp_*AlgTraits::nodesPerElement_];
   lambdaFunction(tmp_data);
@@ -42,9 +42,9 @@ void get_scv_shape_fn_data(LambdaFunction lambdaFunction, ViewType& shape_fn_vie
 template<typename AlgTraits, typename LambdaFunction, typename ViewType>
 void get_scs_shape_fn_data(LambdaFunction lambdaFunction, ViewType& shape_fn_view)
 {
-  static_assert(ViewType::Rank == 2u, "2D View");
-  ThrowRequireMsg(shape_fn_view.extent_int(0) == AlgTraits::numScsIp_, "Inconsistent number of scs ips");
-  ThrowRequireMsg(shape_fn_view.extent_int(1) == AlgTraits::nodesPerElement_, "Inconsistent number of of nodes");
+  static_assert(ViewType::rank == 2u, "2D View");
+  STK_ThrowRequireMsg(shape_fn_view.extent_int(0) == AlgTraits::numScsIp_, "Inconsistent number of scs ips");
+  STK_ThrowRequireMsg(shape_fn_view.extent_int(1) == AlgTraits::nodesPerElement_, "Inconsistent number of of nodes");
 
   double tmp_data[AlgTraits::numScsIp_*AlgTraits::nodesPerElement_];
   lambdaFunction(tmp_data);
@@ -58,9 +58,9 @@ void get_scs_shape_fn_data(LambdaFunction lambdaFunction, ViewType& shape_fn_vie
 template<typename AlgTraits, typename LambdaFunction, typename ViewType>
 void get_fem_shape_fn_data(LambdaFunction lambdaFunction, ViewType& shape_fn_view)
 {
-  static_assert(ViewType::Rank == 2u, "2D View");
-  ThrowRequireMsg(shape_fn_view.extent_int(0) == AlgTraits::numGp_, "Inconsistent number of Gauss points");
-  ThrowRequireMsg(shape_fn_view.extent_int(1) == AlgTraits::nodesPerElement_, "Inconsistent number of of nodes");
+  static_assert(ViewType::rank == 2u, "2D View");
+  STK_ThrowRequireMsg(shape_fn_view.extent_int(0) == AlgTraits::numGp_, "Inconsistent number of Gauss points");
+  STK_ThrowRequireMsg(shape_fn_view.extent_int(1) == AlgTraits::nodesPerElement_, "Inconsistent number of of nodes");
 
   double tmp_data[AlgTraits::numGp_*AlgTraits::nodesPerElement_];
   lambdaFunction(tmp_data);
@@ -74,9 +74,9 @@ void get_fem_shape_fn_data(LambdaFunction lambdaFunction, ViewType& shape_fn_vie
 template<typename BcAlgTraits, typename LambdaFunction, typename ViewType>
 void get_face_shape_fn_data(LambdaFunction lambdaFunction, ViewType& shape_fn_view)
 {
-  static_assert(ViewType::Rank == 2u, "2D View");
-  ThrowRequireMsg(shape_fn_view.extent_int(0) == BcAlgTraits::numFaceIp_, "Inconsistent number of face ips");
-  ThrowRequireMsg(shape_fn_view.extent_int(1) == BcAlgTraits::nodesPerFace_, "Inconsistent number of of nodes");
+  static_assert(ViewType::rank == 2u, "2D View");
+  STK_ThrowRequireMsg(shape_fn_view.extent_int(0) == BcAlgTraits::numFaceIp_, "Inconsistent number of face ips");
+  STK_ThrowRequireMsg(shape_fn_view.extent_int(1) == BcAlgTraits::nodesPerFace_, "Inconsistent number of of nodes");
 
   double tmp_data[BcAlgTraits::numFaceIp_*BcAlgTraits::nodesPerFace_];
   lambdaFunction(tmp_data);

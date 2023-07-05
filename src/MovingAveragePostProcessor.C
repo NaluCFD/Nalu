@@ -41,7 +41,7 @@ ExponentialMovingAverager::ExponentialMovingAverager(double timeScale, bool isIn
 void
 ExponentialMovingAverager::compute_and_set_alpha(double delta_t)
 {
-  ThrowAssert(delta_t > 1.0e6 * std::numeric_limits<double>::min());
+  STK_ThrowAssert(delta_t > 1.0e6 * std::numeric_limits<double>::min());
   alpha_ = (isInit_) ? 1.0 : std::min(1.0, delta_t / timeScale_);
 }
 //--------------------------------------------------------------------------
@@ -73,12 +73,12 @@ void MovingAveragePostProcessor::add_fields(std::vector<std::string> fieldNames)
     auto& meta = bulk_.mesh_meta_data();   
     auto* field = meta.get_field(stk::topology::NODE_RANK, fieldName);
  
-    ThrowRequireMsg(field != nullptr, "Requested field `" + fieldName + "' not available for averaging");
-    ThrowRequireMsg(field->type_is<double>(), "Only double precision-typed fields allowed");
+    STK_ThrowRequireMsg(field != nullptr, "Requested field `" + fieldName + "' not available for averaging");
+    STK_ThrowRequireMsg(field->type_is<double>(), "Only double precision-typed fields allowed");
 
     stk::mesh::FieldBase* avgField = meta.get_field(stk::topology::NODE_RANK, filtered_field_name(field->name()));
     
-    ThrowRequireMsg(avgField != nullptr, filtered_field_name(field->name()) + " field not registered" );
+    STK_ThrowRequireMsg(avgField != nullptr, filtered_field_name(field->name()) + " field not registered" );
     fieldMap_.insert({field, avgField});
   }
 }
@@ -105,7 +105,7 @@ void MovingAveragePostProcessor::execute()
       const double* fieldVals = static_cast<const double*>(stk::mesh::field_data(field, b));
       double* avgFieldVals = static_cast<double*>(stk::mesh::field_data(avgField, b));
       const unsigned fieldSize = stk::mesh::field_scalars_per_entity(field, b);
-      ThrowAssert(fieldSize == stk::mesh::field_scalars_per_entity(avgField, b));
+      STK_ThrowAssert(fieldSize == stk::mesh::field_scalars_per_entity(avgField, b));
       for (size_t k = 0u; k < b.size(); ++k) {
         const size_t offset = k * fieldSize;
         for (unsigned d = 0; d < fieldSize; ++d) {

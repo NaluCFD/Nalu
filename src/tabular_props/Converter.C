@@ -474,9 +474,6 @@ void
 HStarConverter::augmented_mixfrac( const std::vector<double> &mixFrac,
                                    std::vector<double> & mixFracAug ) const
 {
-//  ThrowRequire( mixFrac.size() == streamProp.size()-1 );
-// resize mixFracAug
-
   // Clip the mixture fraction vector to unity and augment it with the last
   // "implied" component so that its dimension matches the number of streams
   double lastMixFrac = 1.0;
@@ -491,8 +488,6 @@ double
 HStarConverter::mixture_property( const std::vector<double> & mixFracAug,
                                   const std::vector<double> & streamProp ) const
 {
-//  ThrowRequire( mixFracAug.size() == streamProp.size() );
-
   //
   // Compute the mixture-weighted material property as a linear weighting
   // of the pure-stream properties.

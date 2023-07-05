@@ -213,7 +213,7 @@ ComputeWallFrictionVelocityProjectedAlgorithm::execute()
         stk::mesh::Entity const * face_node_rels = bulkData_->begin_nodes(face);
         int num_face_nodes = bulkData_->num_nodes(face);
         // sanity check on num nodes
-        ThrowAssert( num_face_nodes == nodesPerFace );
+        STK_ThrowAssert( num_face_nodes == nodesPerFace );
         for ( int ni = 0; ni < num_face_nodes; ++ni ) {
           stk::mesh::Entity node = face_node_rels[ni];
           
@@ -547,7 +547,7 @@ ComputeWallFrictionVelocityProjectedAlgorithm::construct_bounding_points()
         stk::mesh::Entity const * face_node_rels = bulkData_->begin_nodes(face);
         int num_face_nodes = bulkData_->num_nodes(face);
         // sanity check on num nodes
-        ThrowAssert( num_face_nodes == nodesPerFace );
+        STK_ThrowAssert( num_face_nodes == nodesPerFace );
         for ( int ni = 0; ni < num_face_nodes; ++ni ) {
           stk::mesh::Entity node = face_node_rels[ni]; 
           // gather vectors

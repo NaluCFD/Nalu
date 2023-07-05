@@ -113,7 +113,7 @@ AssembleNodalGradBoundaryAlgorithm::execute()
       int num_nodes = b.num_nodes(k);
 
       // sanity check on num nodes
-      ThrowAssert( num_nodes == nodesPerFace );
+      STK_ThrowAssert( num_nodes == nodesPerFace );
 
       for ( int ni = 0; ni < num_nodes; ++ni ) {
         stk::mesh::Entity node = face_node_rels[ni];

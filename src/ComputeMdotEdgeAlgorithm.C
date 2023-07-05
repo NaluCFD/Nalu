@@ -111,7 +111,7 @@ ComputeMdotEdgeAlgorithm::execute()
       stk::mesh::Entity const * edge_node_rels = b.begin_nodes(k);
 
       // sanity check on number or nodes
-      ThrowAssert( b.num_nodes(k) == 2 );
+      STK_ThrowAssert( b.num_nodes(k) == 2 );
 
       // pointer to edge area vector
       for ( int j = 0; j < nDim; ++j )

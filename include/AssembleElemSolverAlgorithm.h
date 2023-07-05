@@ -72,7 +72,7 @@ public:
    {
      stk::mesh::Bucket & b = *elem_buckets[team.league_rank()];
  
-     ThrowAssertMsg(b.topology().num_nodes() == (unsigned)nodesPerEntity_,
+     STK_ThrowAssertMsg(b.topology().num_nodes() == (unsigned)nodesPerEntity_,
                     "AssembleElemSolverAlgorithm expected nodesPerEntity_ = "
                     <<nodesPerEntity_<<", but b.topology().num_nodes() = "<<b.topology().num_nodes());
  

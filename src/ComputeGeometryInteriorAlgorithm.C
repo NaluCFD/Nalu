@@ -101,7 +101,7 @@ ComputeGeometryInteriorAlgorithm::execute()
       int num_nodes = b.num_nodes(k);
 
       // sanity check on num nodes
-      ThrowAssert( num_nodes == nodesPerElement );
+      STK_ThrowAssert( num_nodes == nodesPerElement );
 
       for ( int ni = 0; ni < num_nodes; ++ni ) {
         stk::mesh::Entity node = node_rels[ni];
@@ -186,13 +186,13 @@ ComputeGeometryInteriorAlgorithm::execute()
           
           // get edge and area_vector
           stk::mesh::Entity edge = elem_edge_rels[nedge];
-          ThrowAssertMsg(bulk_data.is_valid(edge),"Error!  Invalid edge returned from element relations to edges!");
+          STK_ThrowAssertMsg(bulk_data.is_valid(edge),"Error!  Invalid edge returned from element relations to edges!");
           
           double * av = stk::mesh::field_data(*edgeAreaVec, edge );
           
           // extract edge->node relations
           stk::mesh::Entity const * edge_node_rels = bulk_data.begin_nodes(edge);
-          ThrowAssert( 2 == bulk_data.num_nodes(edge) );
+          STK_ThrowAssert( 2 == bulk_data.num_nodes(edge) );
 
           // work towards "sign" convention
 

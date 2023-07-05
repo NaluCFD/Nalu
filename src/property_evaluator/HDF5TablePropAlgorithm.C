@@ -80,7 +80,7 @@ void
 HDF5TablePropAlgorithm::execute()
 {
   // make sure that partVec_ is size one
-  ThrowAssert( partVec_.size() == 1 );
+  STK_ThrowAssert( partVec_.size() == 1 );
 
   stk::mesh::Selector selector = stk::mesh::selectUnion(partVec_);
 

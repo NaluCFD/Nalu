@@ -122,7 +122,7 @@ AssembleNodalGradUElemAlgorithm::execute()
       int num_nodes = b.num_nodes(k);
 
       // sanity check on num nodes
-      ThrowAssert( num_nodes == nodesPerElement );
+      STK_ThrowAssert( num_nodes == nodesPerElement );
 
       // note: we absolutely need to gather coords since it
       // is required to compute the area vector. however,

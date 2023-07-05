@@ -176,7 +176,7 @@ namespace nalu{
       surfaceMeMap_[theTopo] = create_surface_master_element(theTopo);
     }
     MasterElement* theElem = surfaceMeMap_.at(theTopo).get();
-    ThrowRequire(theElem != nullptr);
+    STK_ThrowRequire(theElem != nullptr);
     return theElem;
   }
 
@@ -190,7 +190,7 @@ namespace nalu{
       volumeMeMap_[theTopo] = create_volume_master_element(theTopo);
     }
     MasterElement* theElem = volumeMeMap_.at(theTopo).get();
-    ThrowRequire(theElem != nullptr);
+    STK_ThrowRequire(theElem != nullptr);
     return theElem;
   }
 
@@ -205,7 +205,7 @@ namespace nalu{
     }
     
     MasterElement* theElem = femMeMap_.at(theTopo).get();
-    ThrowRequire(theElem != nullptr);
+    STK_ThrowRequire(theElem != nullptr);
     return theElem;
   }
 

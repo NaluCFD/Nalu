@@ -109,7 +109,7 @@ namespace nalu{
     const ScalarType* POINTER_RESTRICT b,
     ScalarType*  POINTER_RESTRICT x)
   {
-    ThrowAssert(stk::simd::are_any(determinant22(A) > tiny_positive_value()));
+    STK_ThrowAssert(stk::simd::are_any(determinant22(A) > tiny_positive_value()));
     enum { XX = 0, XY = 1, YX = 2, YY = 3 };
     enum { X_RANK1 = 0, Y_RANK1 = 1};
 
@@ -125,7 +125,7 @@ namespace nalu{
     const ScalarType* POINTER_RESTRICT b,
     ScalarType*  POINTER_RESTRICT x)
   {
-    ThrowAssert(stk::simd::are_any(determinant33(A) > tiny_positive_value()));
+    STK_ThrowAssert(stk::simd::are_any(determinant33(A) > tiny_positive_value()));
 
 
     enum { XX = 0, XY = 1, XZ = 2, YX = 3, YY = 4, YZ = 5, ZX = 6, ZY = 7, ZZ = 8 };

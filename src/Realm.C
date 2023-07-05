@@ -858,7 +858,7 @@ Realm::setup_bc()
         break;
       case PERIODIC_BC:
       {
-        ThrowAssert(reinterpret_cast<const PeriodicBoundaryConditionData *>(&bc) != nullptr);
+        STK_ThrowAssert(reinterpret_cast<const PeriodicBoundaryConditionData *>(&bc) != nullptr);
         const auto& pbc = (*reinterpret_cast<const PeriodicBoundaryConditionData *>(&bc));
 
         std::string monarchName = physics_part_name(pbc.monarchSubject_.monarch_);
@@ -972,7 +972,7 @@ Realm::setup_initial_conditions()
         case CONSTANT_UD:
         {
           const ConstantInitialConditionData& genIC = *reinterpret_cast<const ConstantInitialConditionData *>(&initCond);
-          ThrowAssert(genIC.data_.size() == genIC.fieldNames_.size());
+          STK_ThrowAssert(genIC.data_.size() == genIC.fieldNames_.size());
           for (size_t ifield = 0; ifield < genIC.fieldNames_.size(); ++ifield) {
 
             std::vector<double>  genSpec = genIC.data_[ifield];
@@ -1613,7 +1613,7 @@ Realm::makeSureNodesHaveValidTopology()
   // now we require all nodes are in proper node part
   if (nodes_vector.size())
     std::cout << "nodes_vector= " << nodes_vector.size() << std::endl;
-  ThrowRequire(0 == nodes_vector.size());
+  STK_ThrowRequire(0 == nodes_vector.size());
 }
 
 //--------------------------------------------------------------------------
@@ -1958,7 +1958,7 @@ Realm::create_restart_mesh()
     }
 
     // set max size for restart data base
-    ioBroker_->get_output_io_region(restartFileIndex_)->get_database()->set_cycle_count(outputInfo_->restartMaxDataBaseStepSize_);
+    ioBroker_->get_output_ioss_region(restartFileIndex_)->get_database()->set_cycle_count(outputInfo_->restartMaxDataBaseStepSize_);
   }
 
 }
@@ -2287,7 +2287,7 @@ Realm::compute_centroid_on_parts(
 
   // set min/max
   const int nDim = meta_data().spatial_dimension();
-  ThrowRequire(nDim <= 3);
+  STK_ThrowRequire(nDim <= 3);
 
   const double largeNumber = 1.0e16;
   double minCoord[3] = {largeNumber, largeNumber, largeNumber};
@@ -4025,7 +4025,7 @@ Realm::check_job(bool get_node_count)
   // set number of nodes, check job run size
   if (get_node_count)
   {
-    size_t localNodeCount = ioBroker_->get_input_io_region()->get_property("node_count").get_int();
+    size_t localNodeCount = ioBroker_->get_input_ioss_region()->get_property("node_count").get_int();
     stk::all_reduce_sum(NaluEnv::self().parallel_comm(), &localNodeCount, &nodeCount_, 1);
     NaluEnv::self().naluOutputP0() << "Node count from meta data = " << nodeCount_ << std::endl;
 
@@ -4051,7 +4051,7 @@ Realm::check_job(bool get_node_count)
   if (meta_data().is_commit()) {
     std::vector<size_t> counts;
     stk::mesh::comm_mesh_counts( *bulkData_ , counts);
-    ThrowRequire(counts.size() >= 4); // node, edge, face, elem
+    STK_ThrowRequire(counts.size() >= 4); // node, edge, face, elem
     const stk::mesh::FieldVector & fields =  meta_data().get_fields();
     unsigned nfields = fields.size();
     for (unsigned ifld = 0; ifld < nfields; ++ifld)  {
@@ -5000,7 +5000,7 @@ void Realm::balance_nodes()
 //--------------------------------------------------------------------------
 std::string Realm::get_quad_type() const
 {
-  ThrowRequire(solutionOptions_ != nullptr);
+  STK_ThrowRequire(solutionOptions_ != nullptr);
   return solutionOptions_->quadType_;
 }
 
