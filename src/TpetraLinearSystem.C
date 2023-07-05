@@ -499,7 +499,7 @@ TpetraLinearSystem::buildFaceElemToNodeGraph(const stk::mesh::PartVector & parts
 
       // extract the connected element to this exposed face; should be single in size!
       const stk::mesh::Entity* face_elem_rels = bulkData.begin_elements(face);
-      STK_STK_ThrowAssert( bulkData.num_elements(face) == 1 );
+      STK_ThrowAssert( bulkData.num_elements(face) == 1 );
 
       // get connected element and nodal relations
       stk::mesh::Entity element = face_elem_rels[0];
@@ -614,8 +614,8 @@ TpetraLinearSystem::copy_stk_to_tpetra(
   stk::mesh::FieldBase * stkField,
   const Teuchos::RCP<LinSys::MultiVector> tpetraField)
 {
-  STK_STK_ThrowAssert(!tpetraField.is_null());
-  STK_STK_ThrowAssert(stkField);
+  STK_ThrowAssert(!tpetraField.is_null());
+  STK_ThrowAssert(stkField);
   const int numVectors = tpetraField->getNumVectors();
 
   stk::mesh::BulkData & bulkData = realm_.bulk_data();
