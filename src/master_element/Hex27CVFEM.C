@@ -661,7 +661,7 @@ Hex27SCV::set_interior_info()
 {
   //1D integration rule per sub-control volume
   numIntPoints_ = (nodes1D_ * nodes1D_  * nodes1D_) * ( numQuad_ * numQuad_ * numQuad_); // 216
-  ThrowRequire(numIntPoints_ == AlgTraits::numScvIp_);
+  STK_ThrowRequire(numIntPoints_ == AlgTraits::numScvIp_);
 
   // define ip node mappings
   ipNodeMap_.resize(numIntPoints_);
@@ -891,7 +891,7 @@ Hex27SCS::set_interior_info()
   const int numSurfaces = surfacesPerDirection * nDim_; // 6
 
   numIntPoints_ = numSurfaces*ipsPerSurface; // 216
-  ThrowRequire(numIntPoints_ == AlgTraits::numScsIp_);
+  STK_ThrowRequire(numIntPoints_ == AlgTraits::numScsIp_);
 
   const int numVectorPoints = numIntPoints_*nDim_; // 648
 
@@ -1375,7 +1375,7 @@ Hex27SCS::determinant(
   double *areav,
   double *error)
 {
-  ThrowRequireMsg(nelem == 1, "P2 elements are processed one-at-a-time");
+  STK_ThrowRequireMsg(nelem == 1, "P2 elements are processed one-at-a-time");
 
   constexpr int dim = AlgTraits::nDim_;
   constexpr int ipsPerDirection = AlgTraits::numScsIp_ / dim;
@@ -1387,21 +1387,21 @@ Hex27SCS::determinant(
 
   //returns the normal vector x_s x x_t for constant u surfaces
   for (int ip = 0; ip < ipsPerDirection; ++ip) {
-    ThrowAssert(ipInfo_[index].direction == Jacobian::U_DIRECTION);
+    STK_ThrowAssert(ipInfo_[index].direction == Jacobian::U_DIRECTION);
     area_vector<Jacobian::U_DIRECTION>(coords, &shapeDerivs_[deriv_increment * index], &areav[index*dim]);
     ++index;
   }
 
   //returns the normal vector x_u x x_s for constant t surfaces
   for (int ip = 0; ip < ipsPerDirection; ++ip) {
-    ThrowAssert(ipInfo_[index].direction == Jacobian::T_DIRECTION);
+    STK_ThrowAssert(ipInfo_[index].direction == Jacobian::T_DIRECTION);
     area_vector<Jacobian::T_DIRECTION>(coords, &shapeDerivs_[deriv_increment * index], &areav[index*dim]);
     ++index;
   }
 
   //returns the normal vector x_t x x_u for constant s curves
   for (int ip = 0; ip < ipsPerDirection; ++ip) {
-    ThrowAssert(ipInfo_[index].direction == Jacobian::S_DIRECTION);
+    STK_ThrowAssert(ipInfo_[index].direction == Jacobian::S_DIRECTION);
     area_vector<Jacobian::S_DIRECTION>(coords, &shapeDerivs_[deriv_increment * index], &areav[index*dim]);
     ++index;
   }
@@ -1478,7 +1478,7 @@ void Hex27SCS::grad_op(
   double *det_j,
   double *error)
 {
-  ThrowRequireMsg(nelem == 1, "P2 elements are processed one-at-a-time");
+  STK_ThrowRequireMsg(nelem == 1, "P2 elements are processed one-at-a-time");
 
   *error = 0.0;
 
@@ -1527,7 +1527,7 @@ void Hex27SCS::shifted_grad_op(
   double *det_j,
   double *error)
 {
-  ThrowRequireMsg(nelem == 1, "P2 elements are processed one-at-a-time");
+  STK_ThrowRequireMsg(nelem == 1, "P2 elements are processed one-at-a-time");
 
   *error = 0.0;
 
@@ -1577,7 +1577,7 @@ void Hex27SCS::face_grad_op(
   double *det_j,
   double *error)
 {
-  ThrowRequireMsg(nelem == 1, "P2 elements are processed one-at-a-time");
+  STK_ThrowRequireMsg(nelem == 1, "P2 elements are processed one-at-a-time");
 
   *error = 0.0;
   const int face_offset =  nDim_ * ipsPerFace_ * nodesPerElement_ * face_ordinal;
@@ -1604,7 +1604,7 @@ void Hex27SCS::shifted_face_grad_op(
   double *det_j,
   double *error)
 {
-  ThrowRequireMsg(nelem == 1, "P2 elements are processed one-at-a-time");
+  STK_ThrowRequireMsg(nelem == 1, "P2 elements are processed one-at-a-time");
 
   *error = 0.0;
   const int face_offset =  nDim_ * ipsPerFace_ * nodesPerElement_ * face_ordinal;

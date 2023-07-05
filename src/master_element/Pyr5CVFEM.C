@@ -1457,8 +1457,8 @@ PyrSCS::sidePcoords_to_elemPcoords(
   const double *side_pcoords,
   double *elem_pcoords)
 {
-  ThrowRequireMsg(side_ordinal >= 0 && side_ordinal <= 4,
-    "Invalid pyramid side ordinal " + std::to_string(side_ordinal));
+  STK_ThrowRequireMsg(side_ordinal >= 0 && side_ordinal <= 4,
+                      "Invalid pyramid side ordinal " + std::to_string(side_ordinal));
 
   for (int i = 0; i < npoints; i++) {
     const double x = side_pcoords[2 * i + 0];

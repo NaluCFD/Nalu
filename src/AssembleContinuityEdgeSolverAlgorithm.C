@@ -124,7 +124,7 @@ AssembleContinuityEdgeSolverAlgorithm::execute()
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
 
       // sanity check on number or nodes
-      ThrowAssert( b.num_nodes(k) == 2 );
+      STK_ThrowAssert( b.num_nodes(k) == 2 );
 
       stk::mesh::Entity const * edge_node_rels = b.begin_nodes(k);
 

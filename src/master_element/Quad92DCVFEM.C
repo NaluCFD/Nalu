@@ -601,14 +601,14 @@ Quad92DSCS::determinant(
 
    //returns the normal vector x_u x x_s for constant t surfaces
   for (int ip = 0; ip < ipsPerDirection; ++ip) {
-    ThrowAssert(ipInfo_[index].direction == Jacobian::T_DIRECTION);
+    STK_ThrowAssert(ipInfo_[index].direction == Jacobian::T_DIRECTION);
     area_vector<Jacobian::T_DIRECTION>(coords, &shapeDerivs_[deriv_increment * index], &areav(index,0));
     ++index;
   }
 
   //returns the normal vector x_t x x_u for constant s curves
   for (int ip = 0; ip < ipsPerDirection; ++ip) {
-    ThrowAssert(ipInfo_[index].direction == Jacobian::S_DIRECTION);
+    STK_ThrowAssert(ipInfo_[index].direction == Jacobian::S_DIRECTION);
     area_vector<Jacobian::S_DIRECTION>(coords, &shapeDerivs_[deriv_increment * index], &areav(index,0));
     ++index;
   }
@@ -631,7 +631,7 @@ Quad92DSCS::determinant(
   //returns the normal vector (dyds,-dxds) for constant t curves
   //returns the normal vector (dydt,-dxdt) for constant s curves
 
-  ThrowRequireMsg(nelem == 1, "P2 elements are processed one-at-a-time");
+  STK_ThrowRequireMsg(nelem == 1, "P2 elements are processed one-at-a-time");
 
   constexpr int dim = Traits::nDim_;
   constexpr int ipsPerDirection = Traits::numScsIp_ / dim;
@@ -643,14 +643,14 @@ Quad92DSCS::determinant(
 
    //returns the normal vector x_u x x_s for constant t surfaces
   for (int ip = 0; ip < ipsPerDirection; ++ip) {
-    ThrowAssert(ipInfo_[index].direction == Jacobian::T_DIRECTION);
+    STK_ThrowAssert(ipInfo_[index].direction == Jacobian::T_DIRECTION);
     area_vector<Jacobian::T_DIRECTION>(coords, &shapeDerivs_[deriv_increment * index], &areav[index*dim]);
     ++index;
   }
 
   //returns the normal vector x_t x x_u for constant s curves
   for (int ip = 0; ip < ipsPerDirection; ++ip) {
-    ThrowAssert(ipInfo_[index].direction == Jacobian::S_DIRECTION);
+    STK_ThrowAssert(ipInfo_[index].direction == Jacobian::S_DIRECTION);
     area_vector<Jacobian::S_DIRECTION>(coords, &shapeDerivs_[deriv_increment * index], &areav[index*dim]);
     ++index;
   }
@@ -779,7 +779,7 @@ void Quad92DSCS::face_grad_op(
   double *det_j,
   double *error)
 {
-  ThrowRequireMsg(nelem == 1, "P2 elements are processed one-at-a-time");
+  STK_ThrowRequireMsg(nelem == 1, "P2 elements are processed one-at-a-time");
 
   int lerr = 0;
 

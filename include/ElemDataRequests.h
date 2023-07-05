@@ -92,7 +92,7 @@ public:
   )
   {
     auto it = coordsFields_.find(cType);
-    ThrowRequireMsg(
+    STK_ThrowRequireMsg(
       it != coordsFields_.end(),
       "ElemDataRequests::add_master_element_call: Coordinates field (" +
       CoordinatesTypeNames[cType] +
@@ -150,11 +150,10 @@ public:
     const COORDS_TYPES cType) const
   {
     auto it = coordsFields_.find(cType);
-    ThrowRequireMsg(
-      it != coordsFields_.end(),
-      "ElemDataRequests::get_coordinates_field: Coordinates field (" +
-      CoordinatesTypeNames[cType] +
-      ") must be registered to ElemDataRequests before access");
+    STK_ThrowRequireMsg(it != coordsFields_.end(),
+                        "ElemDataRequests::get_coordinates_field: Coordinates field (" +
+                        CoordinatesTypeNames[cType] +
+                        ") must be registered to ElemDataRequests before access");
     return it->second;
   }
 

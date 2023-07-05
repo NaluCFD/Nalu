@@ -38,7 +38,7 @@ get_TpetraLinearSystem(unit_test_utils::NaluTest& naluObj)
   EXPECT_TRUE(linsys != nullptr);
 
   sierra::nalu::TpetraLinearSystem* tpetraLinsys = dynamic_cast<sierra::nalu::TpetraLinearSystem*>(linsys);
-  ThrowRequireMsg(tpetraLinsys != nullptr, "Expected TpetraLinearSystem to be non-null");
+  STK_ThrowRequireMsg(tpetraLinsys != nullptr, "Expected TpetraLinearSystem to be non-null");
 
   return tpetraLinsys;
 }
@@ -53,7 +53,7 @@ create_algorithm(sierra::nalu::Realm& realm, stk::mesh::Part& part)
       sierra::nalu::build_or_add_part_to_solver_alg(*eqsys, part, eqsys->solverAlgDriver_->solverAlgorithmMap_);
 
   EXPECT_TRUE(solverAlgResult.second);
-  ThrowRequireMsg(solverAlgResult.first != nullptr,"Error, failed to obtain non-null solver-algorithm object.");
+  STK_ThrowRequireMsg(solverAlgResult.first != nullptr,"Error, failed to obtain non-null solver-algorithm object.");
 
   if (realm.computeGeometryAlgDriver_ == nullptr) {
     realm.breadboard();
@@ -75,11 +75,11 @@ get_AssembleElemSolverAlgorithm(unit_test_utils::NaluTest& naluObj)
   auto solverAlgMap = eqsys->solverAlgDriver_->solverAlgorithmMap_;
   EXPECT_EQ(1u, solverAlgMap.size());
   sierra::nalu::SolverAlgorithm* solverAlg = solverAlgMap.begin()->second;
-  ThrowRequireMsg(solverAlg != nullptr, "Error, null solver-algorithm");
+  STK_ThrowRequireMsg(solverAlg != nullptr, "Error, null solver-algorithm");
 
   sierra::nalu::AssembleElemSolverAlgorithm* assembleElemSolverAlgorithm =
       dynamic_cast<sierra::nalu::AssembleElemSolverAlgorithm*>(solverAlg);
-  ThrowRequireMsg(assembleElemSolverAlgorithm != nullptr, "Error, failed to dynamic_cast to AssembleElemSolverAlgorithm.");
+  STK_ThrowRequireMsg(assembleElemSolverAlgorithm != nullptr, "Error, failed to dynamic_cast to AssembleElemSolverAlgorithm.");
   return assembleElemSolverAlgorithm;
 }
 
@@ -127,7 +127,7 @@ public:
   {
     EXPECT_EQ(numNodesPerElem*numNodesPerElem, lhs.size());
     EXPECT_EQ(numNodesPerElem, rhs.size());
-    ThrowRequireMsg(numNodesPerElem == 8,"For now, this is hard-wired for hex-8.");
+    STK_ThrowRequireMsg(numNodesPerElem == 8,"For now, this is hard-wired for hex-8.");
 
     for(unsigned i=0; i<numNodesPerElem; ++i) {
       for(unsigned j=0; j<numNodesPerElem; ++j) {

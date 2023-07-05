@@ -37,7 +37,7 @@ namespace nalu{
     case stk::topology::TET_10:
       return new T<AlgTraitsTet10>(std::forward<Args>(args)...);
     default:
-      ThrowRequireMsg(false, "Only Hex8 and Tet10/Tri6 FEM elements currently supported");
+      STK_ThrowRequireMsg(false, "Only Hex8 and Tet10/Tri6 FEM elements currently supported");
       return nullptr;
     }
   }
@@ -84,8 +84,8 @@ namespace nalu{
           return new T<AlgTraitsQuad4Wed6>(std::forward<Args>(args)...);
         }
         else {
-          ThrowRequireMsg(false,
-                          "Quad4 exposed face is not attached to either a hex8, pyr5, or wedge6.");
+          STK_ThrowRequireMsg(false,
+                              "Quad4 exposed face is not attached to either a hex8, pyr5, or wedge6.");
         }
       case stk::topology::QUAD_9:
         return new T<AlgTraitsQuad9Hex27>(std::forward<Args>(args)...);
@@ -100,8 +100,8 @@ namespace nalu{
           return new T<AlgTraitsTri3Wed6>(std::forward<Args>(args)...);
         }
         else {   
-          ThrowRequireMsg(false,
-                          "Tri3 exposed face is not attached to either a tet4, pyr5, or wedge6.");
+          STK_ThrowRequireMsg(false,
+                              "Tri3 exposed face is not attached to either a tet4, pyr5, or wedge6.");
         }
       case stk::topology::LINE_2:
         if (elemTopo == stk::topology::TRI_3_2D) {
@@ -128,8 +128,8 @@ namespace nalu{
           return new T<AlgTraitsTri6Tet10>(std::forward<Args>(args)...);
         }
         else {   
-          ThrowRequireMsg(false,
-                          "Tri6 exposed face is not attached to either a tet10.");
+          STK_ThrowRequireMsg(false,
+                              "Tri6 exposed face is not attached to either a tet10.");
         }
       default:
         return nullptr;
@@ -162,7 +162,7 @@ namespace nalu{
     case stk::topology::TRI_6:
       return new T<AlgTraitsTri6>(std::forward<Args>(args)...);
     default:
-      ThrowRequireMsg(false, "Only Tri6 FEM elements currently supported");
+      STK_ThrowRequireMsg(false, "Only Tri6 FEM elements currently supported");
       return nullptr;
     }
   }
@@ -182,7 +182,7 @@ namespace nalu{
     KernelBuilderLog::self().add_valid_name(eqSys.eqnTypeName_,  name);
     if (eqSys.supp_alg_is_requested(name)) {
       Kernel* compKernel = build_topo_kernel<T>(dim, topo, std::forward<Args>(args)...);
-      ThrowRequire(compKernel != nullptr);
+      STK_ThrowRequire(compKernel != nullptr);
       KernelBuilderLog::self().add_built_name(eqSys.eqnTypeName_,  name);
       kernelVec.push_back(compKernel);
       isCreated = true;
@@ -205,7 +205,7 @@ namespace nalu{
     KernelBuilderLog::self().add_valid_name(eqSys.eqnTypeName_,  name);
     Kernel* compKernel = build_face_elem_topo_kernel<T>(dim, faceTopo, elemTopo,
                                                         std::forward<Args>(args)...);
-    ThrowRequire(compKernel != nullptr);
+    STK_ThrowRequire(compKernel != nullptr);
     KernelBuilderLog::self().add_built_name(eqSys.eqnTypeName_,  name);
     kernelVec.push_back(compKernel);
     return true;
@@ -226,7 +226,7 @@ namespace nalu{
     KernelBuilderLog::self().add_valid_name(eqSys.eqnTypeName_,  name);
     Kernel* compKernel = build_fem_face_elem_topo_kernel<T>(dim, faceTopo, elemTopo,
                                                             std::forward<Args>(args)...);
-    ThrowRequire(compKernel != nullptr);
+    STK_ThrowRequire(compKernel != nullptr);
     KernelBuilderLog::self().add_built_name(eqSys.eqnTypeName_,  name);
     kernelVec.push_back(compKernel);
     return true;
@@ -244,7 +244,7 @@ namespace nalu{
     KernelBuilderLog::self().add_valid_name(eqSys.eqnTypeName_,  name);
     if (eqSys.supp_alg_is_requested(name)) {
       Kernel* compKernel = build_fem_topo_kernel<T>(topo, std::forward<Args>(args)...);
-      ThrowRequire(compKernel != nullptr);
+      STK_ThrowRequire(compKernel != nullptr);
       KernelBuilderLog::self().add_built_name(eqSys.eqnTypeName_,  name);
       kernelVec.push_back(compKernel);
       isCreated = true;
@@ -265,7 +265,7 @@ namespace nalu{
 
     KernelBuilderLog::self().add_valid_name(eqSys.eqnTypeName_, name);
     Kernel* compKernel = build_face_topo_kernel<T>(dim, topo, std::forward<Args>(args)...);
-    ThrowRequire(compKernel != nullptr);
+    STK_ThrowRequire(compKernel != nullptr);
     KernelBuilderLog::self().add_built_name(eqSys.eqnTypeName_, name);
     kernelVec.push_back(compKernel);  
     return true;
@@ -281,7 +281,7 @@ namespace nalu{
   {
     KernelBuilderLog::self().add_valid_name(eqSys.eqnTypeName_, name);
     Kernel* compKernel = build_fem_face_topo_kernel<T>(topo, std::forward<Args>(args)...);
-    ThrowRequire(compKernel != nullptr);
+    STK_ThrowRequire(compKernel != nullptr);
     KernelBuilderLog::self().add_built_name(eqSys.eqnTypeName_, name);
     kernelVec.push_back(compKernel);  
     return true;
@@ -309,7 +309,7 @@ namespace nalu{
     bool createNewAlg = itc == solverAlgs.end();
     if (createNewAlg) {
       auto* theSolverAlg = new AssembleElemSolverAlgorithm(eqSys.realm_, &part, &eqSys, stk::topology::ELEMENT_RANK, topo.num_nodes(), isNotNGP);
-      ThrowRequire(theSolverAlg != nullptr);
+      STK_ThrowRequire(theSolverAlg != nullptr);
 
       NaluEnv::self().naluOutputP0() << "Created the following interior elem alg: " << algName << std::endl;
       solverAlgs.insert({algName, theSolverAlg});
@@ -322,7 +322,7 @@ namespace nalu{
     }
 
     auto* theSolverAlg = dynamic_cast<AssembleElemSolverAlgorithm*>(solverAlgs.at(algName));
-    ThrowRequire(theSolverAlg != nullptr);
+    STK_ThrowRequire(theSolverAlg != nullptr);
 
     return {theSolverAlg, createNewAlg};
   }
@@ -354,7 +354,7 @@ namespace nalu{
     if (createNewAlg) {
       auto* theSolverAlg = new AssembleFaceElemSolverAlgorithm(eqSys.realm_, &part, &eqSys,
                                             topo.num_nodes(), elemTopo.num_nodes(), isNotNGP);
-      ThrowRequire(theSolverAlg != nullptr);
+      STK_ThrowRequire(theSolverAlg != nullptr);
 
       NaluEnv::self().naluOutputP0() << "Created the following bc face/elem alg: " << algName << std::endl;
       solverAlgs.insert({algName, theSolverAlg});
@@ -367,7 +367,7 @@ namespace nalu{
     }
 
     auto* theSolverAlg = dynamic_cast<AssembleFaceElemSolverAlgorithm*>(solverAlgs.at(algName));
-    ThrowRequire(theSolverAlg != nullptr);
+    STK_ThrowRequire(theSolverAlg != nullptr);
 
     return {theSolverAlg, createNewAlg};
   }
@@ -395,7 +395,7 @@ namespace nalu{
     if (createNewAlg) {
       auto* theSolverAlg = new AssembleElemSolverAlgorithm(eqSys.realm_, &part, &eqSys, 
                                                            eqSys.realm_.meta_data().side_rank(), topo.num_nodes(), isNotNGP);
-      ThrowRequire(theSolverAlg != nullptr);
+      STK_ThrowRequire(theSolverAlg != nullptr);
 
       NaluEnv::self().naluOutputP0() << "Created the following bc face alg: " << algName << std::endl;
       solverAlgs.insert({algName, theSolverAlg});
@@ -408,7 +408,7 @@ namespace nalu{
     }
 
     auto* theSolverAlg = dynamic_cast<AssembleElemSolverAlgorithm*>(solverAlgs.at(algName));
-    ThrowRequire(theSolverAlg != nullptr);
+    STK_ThrowRequire(theSolverAlg != nullptr);
 
     return {theSolverAlg, createNewAlg};
   }

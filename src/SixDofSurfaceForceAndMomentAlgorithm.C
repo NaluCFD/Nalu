@@ -153,7 +153,7 @@ SixDofSurfaceForceAndMomentAlgorithm::execute()
 
     // extract connected element topology
     b.parent_topology(stk::topology::ELEMENT_RANK, parentTopo);
-    ThrowAssert ( parentTopo.size() == 1 );
+    STK_ThrowAssert ( parentTopo.size() == 1 );
 
     // algorithm related; element
     ws_pressure.resize(nodesPerFace);
@@ -198,7 +198,7 @@ SixDofSurfaceForceAndMomentAlgorithm::execute()
       const double * areaVec = stk::mesh::field_data(*exposedAreaVec_, face);
 
       // extract the connected element to this exposed face; should be single in size!
-      ThrowAssert( bulk_data.num_elements(face) == 1 );
+      STK_ThrowAssert( bulk_data.num_elements(face) == 1 );
 
       for ( int ip = 0; ip < numScsBip; ++ip ) {
 

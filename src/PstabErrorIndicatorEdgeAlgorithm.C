@@ -111,7 +111,7 @@ PstabErrorIndicatorEdgeAlgorithm::execute()
 
         // extract edge->node relations
         stk::mesh::Entity const * edge_node_rels = bulk_data.begin_nodes(edge);
-        ThrowAssert( 2 == bulk_data.num_nodes(edge) );
+        STK_ThrowAssert( 2 == bulk_data.num_nodes(edge) );
 
         // pointer to edge area vector; fill
         for ( int j = 0; j < nDim; ++j )

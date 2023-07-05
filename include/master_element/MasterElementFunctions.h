@@ -56,14 +56,14 @@ namespace nalu {
     using ftype = typename CoordViewType::value_type;
     static_assert(std::is_same<ftype, typename GradViewType::value_type>::value,  "Incompatiable value type for views");
     static_assert(std::is_same<ftype, typename OutputViewType::value_type>::value,  "Incompatiable value type for views");
-    static_assert(GradViewType::Rank   ==   3, "grad view assumed to be rank 3");
-    static_assert(CoordViewType::Rank  ==   2, "Coordinate view assumed to be rank 2");
-    static_assert(OutputViewType::Rank ==   3, "Weight view assumed to be rank 3");
+    static_assert(GradViewType::rank   ==   3, "grad view assumed to be rank 3");
+    static_assert(CoordViewType::rank  ==   2, "Coordinate view assumed to be rank 2");
+    static_assert(OutputViewType::rank ==   3, "Weight view assumed to be rank 3");
 
-    ThrowAssert(AlgTraits::nodesPerElement_ == referenceGradWeights.extent(1));
-    ThrowAssert(AlgTraits::nDim_            == referenceGradWeights.extent(2));
+    STK_ThrowAssert(AlgTraits::nodesPerElement_ == referenceGradWeights.extent(1));
+    STK_ThrowAssert(AlgTraits::nDim_            == referenceGradWeights.extent(2));
     for (int i=0; i<dim; ++i) 
-      ThrowAssert(weights.extent(i) == referenceGradWeights.extent(i));
+      STK_ThrowAssert(weights.extent(i) == referenceGradWeights.extent(i));
 
     for (unsigned ip = 0; ip < referenceGradWeights.extent(0); ++ip) {
       NALU_ALIGNED ftype jact[dim][dim];
@@ -88,7 +88,7 @@ namespace nalu {
 
       NALU_ALIGNED ftype det = ftype(0.0);
       for (int i=0; i<dim; ++i) det += jact[i][0] * adjJac[i][0];
-      ThrowAssertMsg(
+      STK_ThrowAssertMsg(
         stk::simd::are_any(det > tiny_positive_value()),
         "Problem with Jacobian determinant"
       );
@@ -115,14 +115,14 @@ namespace nalu {
     using ftype = typename CoordViewType::value_type;
     static_assert(std::is_same<ftype, typename GradViewType::value_type>::value,  "Incompatiable value type for views");
     static_assert(std::is_same<ftype, typename OutputViewType::value_type>::value,  "Incompatiable value type for views");
-    static_assert(GradViewType::Rank   ==   3, "grad view assumed to be rank 3");
-    static_assert(CoordViewType::Rank  ==   2, "Coordinate view assumed to be rank 2");
-    static_assert(OutputViewType::Rank ==   3, "Weight view assumed to be rank 3");
+    static_assert(GradViewType::rank   ==   3, "grad view assumed to be rank 3");
+    static_assert(CoordViewType::rank  ==   2, "Coordinate view assumed to be rank 2");
+    static_assert(OutputViewType::rank ==   3, "Weight view assumed to be rank 3");
 
-    ThrowAssert(AlgTraits::nodesPerElement_ == referenceGradWeights.extent(1));
-    ThrowAssert(AlgTraits::nDim_            == referenceGradWeights.extent(2));
+    STK_ThrowAssert(AlgTraits::nodesPerElement_ == referenceGradWeights.extent(1));
+    STK_ThrowAssert(AlgTraits::nDim_            == referenceGradWeights.extent(2));
     for (int i=0; i<dim; ++i) 
-      ThrowAssert(weights.extent(i) == referenceGradWeights.extent(i));
+      STK_ThrowAssert(weights.extent(i) == referenceGradWeights.extent(i));
 
     for (unsigned ip = 0; ip < referenceGradWeights.extent(0); ++ip) {
       NALU_ALIGNED ftype jact[dim][dim];
@@ -147,7 +147,7 @@ namespace nalu {
 
       NALU_ALIGNED ftype det = ftype(0.0);
       for (int i=0; i<dim; ++i) det += jact[i][0] * adjJac[i][0];
-      ThrowAssertMsg(
+      STK_ThrowAssertMsg(
         stk::simd::are_any(det > tiny_positive_value()),
         "Problem with Jacobian determinant"
       );
@@ -179,9 +179,9 @@ namespace nalu {
       "Incompatiable value type for views");
     static_assert(std::is_same<ftype, typename OutputViewType::value_type>::value,
       "Incompatiable value type for views");
-    static_assert(GradViewType::Rank == 3, "grad view assumed to be 3D");
-    static_assert(CoordViewType::Rank == 2, "Coordinate view assumed to be 2D");
-    static_assert(OutputViewType::Rank == 3, "gij view assumed to be 3D");
+    static_assert(GradViewType::rank == 3, "grad view assumed to be 3D");
+    static_assert(CoordViewType::rank == 2, "Coordinate view assumed to be 2D");
+    static_assert(OutputViewType::rank == 3, "gij view assumed to be 3D");
     static_assert(AlgTraits::nDim_ == 3, "3D method");
 
     for (unsigned ip = 0; ip < referenceGradWeights.extent(0); ++ip) {
@@ -242,15 +242,15 @@ namespace nalu {
     using ftype = typename CoordViewType::value_type;
     static_assert(std::is_same<ftype, typename GradViewType::value_type>::value,  "Incompatiable value type for views");
     static_assert(std::is_same<ftype, typename OutputViewType::value_type>::value,  "Incompatiable value type for views");
-    static_assert(GradViewType::Rank == 3, "grad view assumed to be 3D");
-    static_assert(CoordViewType::Rank == 2, "Coordinate view assumed to be 2D");
-    static_assert(OutputViewType::Rank == 1, "Weight view assumed to be 1D");
+    static_assert(GradViewType::rank == 3, "grad view assumed to be 3D");
+    static_assert(CoordViewType::rank == 2, "Coordinate view assumed to be 2D");
+    static_assert(OutputViewType::rank == 1, "Weight view assumed to be 1D");
     static_assert(AlgTraits::nDim_ == 3, "3D method");
 
-    ThrowAssert(AlgTraits::nodesPerElement_ == referenceGradWeights.extent(1));
-    ThrowAssert(AlgTraits::nDim_ == referenceGradWeights.extent(2));
+    STK_ThrowAssert(AlgTraits::nodesPerElement_ == referenceGradWeights.extent(1));
+    STK_ThrowAssert(AlgTraits::nDim_ == referenceGradWeights.extent(2));
 
-    ThrowAssert(detj.extent(0) == referenceGradWeights.extent(0));
+    STK_ThrowAssert(detj.extent(0) == referenceGradWeights.extent(0));
 
     for (unsigned ip = 0; ip < referenceGradWeights.extent(0); ++ip) {
       NALU_ALIGNED ftype jac[3][3] = { {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0} };
@@ -277,15 +277,15 @@ namespace nalu {
     using ftype = typename CoordViewType::value_type;
     static_assert(std::is_same<ftype, typename GradViewType::value_type>::value,  "Incompatiable value type for views");
     static_assert(std::is_same<ftype, typename OutputViewType::value_type>::value,  "Incompatiable value type for views");
-    static_assert(GradViewType::Rank == 2, "grad view assumed to be 2D");
-    static_assert(CoordViewType::Rank == 2, "Coordinate view assumed to be 2D");
-    static_assert(OutputViewType::Rank == 1, "Weight view assumed to be 1D");
+    static_assert(GradViewType::rank == 2, "grad view assumed to be 2D");
+    static_assert(CoordViewType::rank == 2, "Coordinate view assumed to be 2D");
+    static_assert(OutputViewType::rank == 1, "Weight view assumed to be 1D");
     static_assert(AlgTraits::nDim_ == 2, "2D method");
 
-    ThrowAssert(AlgTraits::nodesPerElement_ == referenceGradWeights.extent(1));
-    ThrowAssert(AlgTraits::nDim_ == referenceGradWeights.extent(2));
+    STK_ThrowAssert(AlgTraits::nodesPerElement_ == referenceGradWeights.extent(1));
+    STK_ThrowAssert(AlgTraits::nDim_ == referenceGradWeights.extent(2));
 
-    ThrowAssert(detj.extent(0) == referenceGradWeights.extent(0));
+    STK_ThrowAssert(detj.extent(0) == referenceGradWeights.extent(0));
 
     for (unsigned ip = 0; ip < referenceGradWeights.extent(0); ++ip) {
       NALU_ALIGNED ftype jac[2][2] = { {0.0, 0.0}, {0.0, 0.0} };

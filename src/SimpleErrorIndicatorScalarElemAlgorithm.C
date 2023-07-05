@@ -120,7 +120,7 @@ SimpleErrorIndicatorScalarElemAlgorithm::execute()
       int num_nodes = b.num_nodes(k);
 
       // sanity check on num nodes
-      ThrowAssert( num_nodes == nodesPerElement );
+      STK_ThrowAssert( num_nodes == nodesPerElement );
 
       for ( int ni = 0; ni < num_nodes; ++ni ) {
 

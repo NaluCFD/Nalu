@@ -71,8 +71,8 @@ TpetraLinearSolver::setSystemObjects(
       Teuchos::RCP<LinSys::Matrix> matrix,
       Teuchos::RCP<LinSys::Vector> rhs)
 {
-  ThrowRequire(!matrix.is_null());
-  ThrowRequire(!rhs.is_null());
+  STK_ThrowRequire(!matrix.is_null());
+  STK_ThrowRequire(!rhs.is_null());
 
   matrix_ = matrix;
   rhs_ = rhs;
@@ -154,7 +154,7 @@ void TpetraLinearSolver::setMueLu()
 int TpetraLinearSolver::residual_norm(int whichNorm, Teuchos::RCP<LinSys::Vector> sln, double& norm)
 {
   LinSys::Vector resid(rhs_->getMap());
-  ThrowRequire(! (sln.is_null()  || rhs_.is_null() ) );
+  STK_ThrowRequire(! (sln.is_null()  || rhs_.is_null() ) );
 
   if (matrix_->isFillActive() )
   {
@@ -186,7 +186,7 @@ TpetraLinearSolver::solve(
   double & finalResidNrm,
   bool isFinalOuterIter)
 {
-  ThrowRequire(!sln.is_null());
+  STK_ThrowRequire(!sln.is_null());
 
 
   const int status = 0;
