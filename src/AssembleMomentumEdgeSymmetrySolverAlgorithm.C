@@ -115,7 +115,7 @@ AssembleMomentumEdgeSymmetrySolverAlgorithm::execute()
 
     // extract connected element topology
     b.parent_topology(stk::topology::ELEMENT_RANK, parentTopo);
-    ThrowAssert ( parentTopo.size() == 1 );
+    STK_ThrowAssert ( parentTopo.size() == 1 );
     stk::topology theElemTopo = parentTopo[0];
     MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(theElemTopo);
     const int nodesPerElement = meSCS->nodesPerElement_;
@@ -152,7 +152,7 @@ AssembleMomentumEdgeSymmetrySolverAlgorithm::execute()
 
       // extract the connected element to this exposed face; should be single in size!
       stk::mesh::Entity const * face_elem_rels = b.begin_elements(k);
-      ThrowAssert( b.num_elements(k) == 1 );
+      STK_ThrowAssert( b.num_elements(k) == 1 );
 
       // get element; its face ordinal number and populate face_node_ordinals
       stk::mesh::Entity element = face_elem_rels[0];
@@ -163,7 +163,7 @@ AssembleMomentumEdgeSymmetrySolverAlgorithm::execute()
       stk::mesh::Entity const * elem_node_rels = bulk_data.begin_nodes(element);
       int num_nodes = bulk_data.num_nodes(element);
       // sanity check on num nodes
-      ThrowAssert( num_nodes == nodesPerElement );
+      STK_ThrowAssert( num_nodes == nodesPerElement );
       for ( int ni = 0; ni < num_nodes; ++ni ) {
         // set connected nodes
         connected_nodes[ni] = elem_node_rels[ni];

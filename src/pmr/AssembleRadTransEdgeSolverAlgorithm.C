@@ -127,7 +127,7 @@ AssembleRadTransEdgeSolverAlgorithm::execute()
       // set ordinal for edge
       unsigned edge_ordinal = k;
       // sanity check on number or nodes
-      ThrowAssert( b.num_nodes(edge_ordinal) == 2 );
+      STK_ThrowAssert( b.num_nodes(edge_ordinal) == 2 );
 
       stk::mesh::Entity const * edge_node_rels = b.begin_nodes(edge_ordinal);
 

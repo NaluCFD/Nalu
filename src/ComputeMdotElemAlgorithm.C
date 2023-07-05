@@ -180,7 +180,7 @@ ComputeMdotElemAlgorithm::execute()
       int num_nodes = b.num_nodes(k);
 
       // sanity check on num nodes
-      ThrowAssert( num_nodes == nodesPerElement );
+      STK_ThrowAssert( num_nodes == nodesPerElement );
 
       for ( int ni = 0; ni < num_nodes; ++ni ) {
         stk::mesh::Entity node = node_rels[ni];
@@ -322,7 +322,7 @@ ComputeMdotElemAlgorithm::assemble_edge_mdot()
 
         // extract edge->node relations
         stk::mesh::Entity const * edge_node_rels = bulk_data.begin_nodes(edge);
-        ThrowAssert( 2 == bulk_data.num_nodes(edge) );
+        STK_ThrowAssert( 2 == bulk_data.num_nodes(edge) );
 
         // work towards "sign" convention
 

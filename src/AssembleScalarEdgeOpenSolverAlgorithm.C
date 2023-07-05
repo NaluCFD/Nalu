@@ -100,7 +100,7 @@ AssembleScalarEdgeOpenSolverAlgorithm::execute()
 
     // extract connected element topology
     b.parent_topology(stk::topology::ELEMENT_RANK, parentTopo);
-    ThrowAssert ( parentTopo.size() == 1 );
+    STK_ThrowAssert ( parentTopo.size() == 1 );
     stk::topology theElemTopo = parentTopo[0];
 
     // volume master element
@@ -143,7 +143,7 @@ AssembleScalarEdgeOpenSolverAlgorithm::execute()
 
       // extract the connected element to this exposed face; should be single in size!
       const stk::mesh::Entity* face_elem_rels = bulk_data.begin_elements(face);
-      ThrowAssert( bulk_data.num_elements(face) == 1 );
+      STK_ThrowAssert( bulk_data.num_elements(face) == 1 );
 
       // get element; its face ordinal number and populate face_node_ordinals
       stk::mesh::Entity element = face_elem_rels[0];
@@ -156,7 +156,7 @@ AssembleScalarEdgeOpenSolverAlgorithm::execute()
       const stk::mesh::Entity* elem_node_rels = bulk_data.begin_nodes(element);
       const int num_nodes = bulk_data.num_nodes(element);
       // sanity check on num nodes
-      ThrowAssert( num_nodes == nodesPerElement );
+      STK_ThrowAssert( num_nodes == nodesPerElement );
       for ( int ni = 0; ni < num_nodes; ++ni ) {
         stk::mesh::Entity node = elem_node_rels[ni];
         // set connected nodes

@@ -193,7 +193,7 @@ AssembleMomentumEdgeSolverAlgorithm::execute()
       const double tmdot = mdot[k];
 
       // sanity check on number or nodes
-      ThrowAssert( b.num_nodes(k) == 2 );
+      STK_ThrowAssert( b.num_nodes(k) == 2 );
 
       // left and right nodes
       stk::mesh::Entity nodeL = edge_node_rels[0];

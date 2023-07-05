@@ -164,10 +164,10 @@ void copy_and_interleave(std::unique_ptr<ScratchViews<double>>* data,
         case 1: interleave_1D(simdFieldViews[fieldViewsIndex], fViews, simdElems); break;
         case 2: interleave_2D(simdFieldViews[fieldViewsIndex], fViews, simdElems); break;
         case 3: interleave_3D(simdFieldViews[fieldViewsIndex], fViews, simdElems); break;
-        default: ThrowRequireMsg(simdFieldViews[fieldViewsIndex]->dim_ > 0 &&
-                                 simdFieldViews[fieldViewsIndex]->dim_ < 4,
-                                 "ERROR, view dim out of range: "<<simdFieldViews[fieldViewsIndex]->dim_);
-                 break;
+        default: STK_ThrowRequireMsg(simdFieldViews[fieldViewsIndex]->dim_ > 0 &&
+                                     simdFieldViews[fieldViewsIndex]->dim_ < 4,
+                                     "ERROR, view dim out of range: "<<simdFieldViews[fieldViewsIndex]->dim_);
+          break;
         }
       }
     }

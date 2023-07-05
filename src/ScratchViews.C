@@ -101,7 +101,7 @@ int get_num_scalars_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDi
   const bool elemDataNeeded = meFC == nullptr
     && (meSCS != nullptr || meSCV != nullptr || meFEM != nullptr);
 
-  ThrowRequireMsg(faceDataNeeded != elemDataNeeded,
+  STK_ThrowRequireMsg(faceDataNeeded != elemDataNeeded,
     "An algorithm has been registered with conflicting face/element data requests");
 
   const int nodesPerEntity = meSCS != nullptr ? meSCS->nodesPerElement_
@@ -126,7 +126,7 @@ int get_num_scalars_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDi
 
     // Catch errors if user requests nodal field but has not registered any
     // MasterElement we need to get nodesPerEntity
-    ThrowRequire(entitiesPerElem > 0);
+    STK_ThrowRequire(entitiesPerElem > 0);
     if (fieldInfo.scalarsDim2 > 1) {
       scalarsPerEntity *= fieldInfo.scalarsDim2;
     }
@@ -220,7 +220,7 @@ int get_num_scalars_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDi
           numScalars += (gUpperLength + gLowerLength);
           break;
         default: 
-          ThrowRequireMsg(false, "get_num_scalars_pre_req_data: enum not coded " << data);
+          STK_ThrowRequireMsg(false, "get_num_scalars_pre_req_data: enum not coded " << data);
           break;
       }
     }
@@ -274,7 +274,7 @@ int get_num_scalars_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDi
 
     // Catch errors if user requests nodal field but has not registered any
     // MasterElement we need to get nodesPerEntity
-    ThrowRequire(entitiesPerElem > 0);
+    STK_ThrowRequire(entitiesPerElem > 0);
     if (fieldInfo.scalarsDim2 > 1) {
       scalarsPerEntity *= fieldInfo.scalarsDim2;
     }
@@ -367,7 +367,7 @@ int get_num_scalars_pre_req_data(ElemDataRequests& dataNeededBySuppAlgs, int nDi
           numScalars += (gUpperLength + gLowerLength );
           break;
         default: 
-          ThrowRequireMsg(false, "get_num_scalars_pre_req_data: enum not coded " << data);
+          STK_ThrowRequireMsg(false, "get_num_scalars_pre_req_data: enum not coded " << data);
           break;
       }
     }
@@ -463,7 +463,7 @@ void fill_pre_req_data(
       }
     }
     else {
-      ThrowRequireMsg(false,"Unknown stk-rank" << fieldEntityRank);
+      STK_ThrowRequireMsg(false,"Unknown stk-rank" << fieldEntityRank);
     }
   } 
 

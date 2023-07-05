@@ -226,8 +226,8 @@ double F_gamma( const std::vector<double> & Zpoint,
                 std::vector<double> gamma_st )           // local copy
 {
   // Only works for up to a three-stream problem (for now)
-  ThrowRequire( Z_st.size() > 0 && Z_st.size() <= Zpoint.size() );
-  ThrowRequire( gamma_st.size() == Z_st.size() );
+  STK_ThrowRequire( Z_st.size() > 0 && Z_st.size() <= Zpoint.size() );
+  STK_ThrowRequire( gamma_st.size() == Z_st.size() );
   const double SMALL = 1.0e-16;
   double value = 0.0;
 
