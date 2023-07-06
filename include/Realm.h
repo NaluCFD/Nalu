@@ -409,6 +409,8 @@ class Realm {
   const std::vector<std::string> &get_physics_target_names();
   double get_tanh_blending(const std::string dofName);
 
+  inline double get_min_dual_volume() {return minDualVolume_; }
+
   Realms& realms_;
 
   std::string name_;
@@ -618,6 +620,9 @@ class Realm {
 
   // flag for CVFEM usage
   bool usesCVFEM_;
+
+  // min volume
+  double minDualVolume_;
 
   std::string physics_part_name(std::string) const;
   std::vector<std::string> physics_part_names(std::vector<std::string>) const;

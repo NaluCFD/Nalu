@@ -144,6 +144,9 @@ public:
   double mdotAlgInflow_;
   double mdotAlgOpen_;
 
+  // scaling of properties
+  bool scaleGeometricProps_;
+
   // turbulence model coeffs
   std::map<TurbulenceModelConstant, double> turbModelConstantMap_;
   

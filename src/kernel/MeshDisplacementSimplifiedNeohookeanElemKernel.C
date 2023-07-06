@@ -43,13 +43,11 @@ MeshDisplacementSimplifiedNeohookeanElemKernel<AlgTraits>::MeshDisplacementSimpl
   mu_ = metaData.get_field<double>(stk::topology::NODE_RANK, "lame_mu");
   lambda_     = metaData.get_field<double>(stk::topology::NODE_RANK, "lame_lambda");
 
-  MasterElement *meSCV = sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_);
   MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(AlgTraits::topo_);
 
-  get_scv_shape_fn_data<AlgTraits>([&](double* ptr){meSCV->shape_fcn(ptr);}, v_shape_function_);
+  get_scs_shape_fn_data<AlgTraits>([&](double* ptr){meSCS->shape_fcn(ptr);}, v_shape_function_);
 
   // add master elements
-  dataPreReqs.add_cvfem_volume_me(meSCV);
   dataPreReqs.add_cvfem_surface_me(meSCS);
 
   // fields and data
@@ -59,11 +57,8 @@ MeshDisplacementSimplifiedNeohookeanElemKernel<AlgTraits>::MeshDisplacementSimpl
   dataPreReqs.add_gathered_nodal_field(*lambda_, 1);
   dataPreReqs.add_gathered_nodal_field(*mu_, 1);
 
-  dataPreReqs.add_master_element_call(SCV_VOLUME, CURRENT_COORDINATES);
   dataPreReqs.add_master_element_call(SCS_AREAV, CURRENT_COORDINATES);
-
   dataPreReqs.add_master_element_call(SCS_GRAD_OP, CURRENT_COORDINATES);
-
 }
 
 template<typename AlgTraits>
