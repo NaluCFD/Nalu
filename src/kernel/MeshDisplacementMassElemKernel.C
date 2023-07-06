@@ -83,7 +83,6 @@ MeshDisplacementMassElemKernel<AlgTraits>::setup(const TimeIntegrator& timeInteg
   gamma_1_ = 1.0/(dt_*dt_avg_);
   gamma_2_ = -1.0/(dt_*dt_avg_)-1.0/(dt_nm1_*dt_avg_);
   gamma_3_ = 1.0/(dt_nm1_*dt_avg_);
-
 }
 
 template<typename AlgTraits>

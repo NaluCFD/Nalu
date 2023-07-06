@@ -10,6 +10,7 @@
 #include <property_evaluator/InverseDualVolumePropAlgorithm.h>
 #include <FieldTypeDef.h>
 #include <Realm.h>
+#include <SolutionOptions.h>
 
 #include <stk_mesh/base/BulkData.hpp>
 #include <stk_mesh/base/Field.hpp>
@@ -39,6 +40,9 @@ InverseDualVolumePropAlgorithm::~InverseDualVolumePropAlgorithm() {
 void
 InverseDualVolumePropAlgorithm::execute()
 {
+  const double scaleFac = realm_.solutionOptions_->scaleGeometricProps_ 
+    ? realm_.get_min_dual_volume()
+    : 1.0;
 
   // make sure that partVec_ is size one
   STK_ThrowAssert( partVec_.size() == 1 );
@@ -57,7 +61,7 @@ InverseDualVolumePropAlgorithm::execute()
     const double *dualNodalVolume  = (double*)stk::mesh::field_data(*dualNodalVolume_, b);
 
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
-      prop[k] = 1.0/dualNodalVolume[k];
+      prop[k] = scaleFac/dualNodalVolume[k];
     }
   }
 }

@@ -213,7 +213,8 @@ namespace nalu{
     wallTimeStart_(stk::wall_time()),
     inputMeshIdx_(-1),
     node_(node),
-    usesCVFEM_(true)
+    usesCVFEM_(true),
+    minDualVolume_(1.0)
 {
   // deal with specialty options that live off of the realm; 
   // choose to do this now rather than waiting for the load stage
@@ -3138,6 +3139,8 @@ Realm::compute_geometry()
     NaluEnv::self().naluOutputP0() << " Volume  " << g_totalVolume
 		    << " min: " << g_minVolume
 		    << " max: " << g_maxVolume << std::endl;
+    // set Realm data
+    minDualVolume_ = g_minVolume;
   }
 }
 

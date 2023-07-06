@@ -100,6 +100,8 @@ realms:
     solution_options:
       name: myOptions
 
+      scale_geometric_properties: yes
+
       options:
         - projected_nodal_gradient:
             mesh_velocity: element
@@ -122,8 +124,7 @@ realms:
         - name: lame_lambda
           type: geometric
         - name: density
-          type: constant
-          value: 10.0
+          type: geometric
 
     output:
       output_data_base_name: meshDisplacement.e

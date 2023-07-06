@@ -82,6 +82,7 @@ SolutionOptions::SolutionOptions()
     mdotAlgAccumulation_(0.0),
     mdotAlgInflow_(0.0),
     mdotAlgOpen_(0.0),
+    scaleGeometricProps_(false),
     quadType_("GaussLegendre"),
     accousticallyCompressible_(false),
     balancedForce_(false),
@@ -177,6 +178,9 @@ SolutionOptions::load(const YAML::Node & y_node)
     // wetted wall active
     get_if_present(y_solution_options, "activate_wetted_wall_initialization", wettedWallInit_, wettedWallInit_);
     get_if_present(y_solution_options, "wetted_wall_initialization_distance", wettedWallDistance_, wettedWallDistance_);
+
+    // scale inverse props
+    get_if_present(y_solution_options, "scale_geometric_properties", scaleGeometricProps_, scaleGeometricProps_);
 
     // extract turbulence model; would be nice if we could parse an enum..
     std::string specifiedTurbModel;
