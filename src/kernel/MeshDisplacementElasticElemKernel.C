@@ -29,14 +29,17 @@ MeshDisplacementElasticElemKernel<AlgTraits>::MeshDisplacementElasticElemKernel(
   const stk::mesh::BulkData& bulkData,
   const SolutionOptions& solnOpts,
   VectorFieldType* meshDisplacement,
+  const bool deformWrtModelCoords,
   ElemDataRequests& dataPreReqs)
   : Kernel(),
+    deformWrtModelCoords_(deformWrtModelCoords),
     lrscv_(sierra::nalu::MasterElementRepo::get_surface_master_element(AlgTraits::topo_)->adjacentNodes())
 {
   // save off fields
   const stk::mesh::MetaData& metaData = bulkData.mesh_meta_data();
   
   meshDisplacement_ = &(meshDisplacement->field_of_state(stk::mesh::StateNP1));
+  coordinatesModel_ = metaData.get_field<double>(stk::topology::NODE_RANK, "coordinates");
   coordinates_ = metaData.get_field<double>(stk::topology::NODE_RANK, solnOpts.get_coordinates_name());
 
   mu_ = metaData.get_field<double>(stk::topology::NODE_RANK, "lame_mu");
@@ -51,13 +54,15 @@ MeshDisplacementElasticElemKernel<AlgTraits>::MeshDisplacementElasticElemKernel(
 
   // fields and data
   dataPreReqs.add_coordinates_field(*coordinates_, AlgTraits::nDim_, CURRENT_COORDINATES);
+  if ( deformWrtModelCoords_ )
+    dataPreReqs.add_coordinates_field(*coordinatesModel_, AlgTraits::nDim_, MODEL_COORDINATES);
   dataPreReqs.add_gathered_nodal_field(*meshDisplacement_, AlgTraits::nDim_);
 
   dataPreReqs.add_gathered_nodal_field(*lambda_, 1);
   dataPreReqs.add_gathered_nodal_field(*mu_, 1);
 
-  dataPreReqs.add_master_element_call(SCS_AREAV, CURRENT_COORDINATES);
-  dataPreReqs.add_master_element_call(SCS_GRAD_OP, CURRENT_COORDINATES);
+  dataPreReqs.add_master_element_call(SCS_AREAV, deformWrtModelCoords_ ? MODEL_COORDINATES : CURRENT_COORDINATES);
+  dataPreReqs.add_master_element_call(SCS_GRAD_OP, deformWrtModelCoords_ ? MODEL_COORDINATES : CURRENT_COORDINATES);
 }
 
 template<typename AlgTraits>
@@ -97,8 +102,8 @@ MeshDisplacementElasticElemKernel<AlgTraits>::execute(
   SharedMemView<DoubleType*>& mu = scratchViews.get_scratch_view_1D(*mu_);
   SharedMemView<DoubleType*>& lambda = scratchViews.get_scratch_view_1D(*lambda_);
 
-  SharedMemView<DoubleType**>& v_scs_areav = scratchViews.get_me_views(CURRENT_COORDINATES).scs_areav;
-  SharedMemView<DoubleType***>& v_dndx = scratchViews.get_me_views(CURRENT_COORDINATES).dndx;
+  SharedMemView<DoubleType**>& v_scs_areav = scratchViews.get_me_views(deformWrtModelCoords_ ? MODEL_COORDINATES : CURRENT_COORDINATES).scs_areav;
+  SharedMemView<DoubleType***>& v_dndx = scratchViews.get_me_views(deformWrtModelCoords_ ? MODEL_COORDINATES : CURRENT_COORDINATES).dndx;
 
   for ( int ip = 0; ip < numScsIp; ++ip ) {
 

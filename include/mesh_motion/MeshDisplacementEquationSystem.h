@@ -30,7 +30,8 @@ class MeshDisplacementEquationSystem : public EquationSystem {
 public:
 
   MeshDisplacementEquationSystem(
-    EquationSystems& equationSystems);
+    EquationSystems& equationSystems,
+    const bool deformWrtModelCoords);
   virtual ~MeshDisplacementEquationSystem();
 
   void initial_work();
@@ -60,7 +61,9 @@ public:
   void compute_current_coordinates();
   void compute_div_mesh_velocity();
   
+  bool deformWrtModelCoords_;
   bool isInit_;
+
   VectorFieldType *meshDisplacement_;
   VectorFieldType *meshVelocity_;
   GenericFieldType *dvdx_;

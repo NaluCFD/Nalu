@@ -32,6 +32,7 @@ public:
     const stk::mesh::BulkData&,
     const SolutionOptions&,
     VectorFieldType*,
+    const bool,
     ElemDataRequests&);
 
   virtual ~MeshDisplacementElasticElemKernel();
@@ -54,10 +55,13 @@ private:
   VectorFieldType *meshDisplacement_{nullptr};
 
   VectorFieldType *coordinates_{nullptr};
+  VectorFieldType *coordinatesModel_{nullptr};
   ScalarFieldType *dualNodalVolume_{nullptr};
 
   ScalarFieldType *mu_{nullptr};
   ScalarFieldType *lambda_{nullptr};
+
+  const bool deformWrtModelCoords_;
 
   /// Integration point to node maping
   const int* lrscv_;

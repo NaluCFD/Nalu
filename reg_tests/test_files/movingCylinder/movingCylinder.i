@@ -53,7 +53,7 @@ realms:
 
     equation_systems:
       name: theEqSys
-      max_iterations: 1 
+      max_iterations: 1
     
       solver_system_specification:
         mesh_displacement: solve_scalar
@@ -63,7 +63,6 @@ realms:
             name: myMM
             max_iterations: 1 
             convergence_tolerance: 1.e-3
-            activate_mass: yes
             deform_wrt_model_coordinates: yes
 
     boundary_conditions:
@@ -95,7 +94,6 @@ realms:
          mesh_displacement: sinusoidal
         user_function_parameters:
          mesh_displacement: [0.20]
-
 
     solution_options:
       name: myOptions
@@ -148,6 +146,7 @@ realms:
       solver_system_specification:
         velocity: solve_scalar
         pressure: solve_cont
+        mixture_fraction: solve_scalar
 
       systems:
 
@@ -155,6 +154,12 @@ realms:
             name: myLowMach
             max_iterations: 1
             convergence_tolerance: 1e-5
+
+        - MixtureFraction:
+            name: myZ
+            max_iterations: 1
+            convergence_tolerance: 1.e-2
+            output_clipping_diagnostic: yes
 
     material_properties:
       target_name: block_10
@@ -173,6 +178,7 @@ realms:
         value:
           pressure: 0.0
           velocity: [0.0,0.0]
+          mixture_fraction: 0.0
   
     boundary_conditions:
 
@@ -180,17 +186,19 @@ realms:
       target_name: surface_1
       inflow_user_data:
         velocity: [10.0,0.0]
+        mixture_fraction: 0.0
 
     - open_boundary_condition: bc_2
       target_name: surface_2
       open_user_data:
         pressure: 0.0
         velocity: [0.0,0.0]
+        mixture_fraction: 0.0
 
     - wall_boundary_condition: bc_3
       target_name: surface_3
       wall_user_data:
-         velocity: [0.0,0.0]
+        velocity: [0.0,0.0]
 
     - symmetry_boundary_condition: bc_4
       target_name: surface_4
@@ -199,8 +207,9 @@ realms:
     - wall_boundary_condition: bc_5
       target_name: surface_5
       wall_user_data:
-         velocity: [0.0,0.0]
-         fsi_interface: yes
+        velocity: [0.0,0.0]
+        fsi_interface: yes
+        mixture_fraction: 1.0
 
     solution_options:
       name: myOptions
@@ -209,6 +218,7 @@ realms:
       options:
         - hybrid_factor:
             velocity: 1.0
+            mixture_fraction: 1.0
 
         - limiter:
             pressure: no
@@ -217,10 +227,12 @@ realms:
         - source_terms:
             momentum: gcl
             continuity: gcl
+            mixture_fraction: gcl
 
         - projected_nodal_gradient:
             momentum: element
             continuity: element
+            mixture_fraction: element
 
       error_indicator:
         type: pstab
@@ -237,6 +249,7 @@ realms:
        - mesh_velocity
        - div_mesh_velocity
        - error_indicator
+       - mixture_fraction
 
 Time_Integrators:
   - StandardTimeIntegrator:

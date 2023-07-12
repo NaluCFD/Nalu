@@ -64,8 +64,7 @@ realms:
             name: myMM
             max_iterations: 1 
             convergence_tolerance: 1.e-3
-            activate_mass: yes
-            deform_wrt_model_coordinates: yes
+            deform_wrt_model_coordinates: no
 
     boundary_conditions:
 

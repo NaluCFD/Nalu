@@ -89,8 +89,10 @@ namespace nalu{
 //-------- constructor -----------------------------------------------------
 //--------------------------------------------------------------------------
 MeshDisplacementEquationSystem::MeshDisplacementEquationSystem(
-  EquationSystems& eqSystems)
+  EquationSystems& eqSystems,
+  const bool deformWrtModelCoords)
   : EquationSystem(eqSystems, "MeshDisplacementEQS", "mesh_displacement"),
+    deformWrtModelCoords_(deformWrtModelCoords),
     isInit_(false),
     meshDisplacement_(NULL),
     meshVelocity_(NULL),
@@ -255,7 +257,7 @@ MeshDisplacementEquationSystem::register_interior_algorithm(
        realm_.bulk_data(), *realm_.solutionOptions_, meshDisplacement_, dataPreReqs, true);
     build_topo_kernel_if_requested<MeshDisplacementElasticElemKernel>
       (partTopo, *this, activeKernels, "elastic_stress",
-       realm_.bulk_data(), *realm_.solutionOptions_, meshDisplacement_, dataPreReqs);
+       realm_.bulk_data(), *realm_.solutionOptions_, meshDisplacement_, deformWrtModelCoords_, dataPreReqs);
     build_topo_kernel_if_requested<MeshDisplacementSimplifiedNeohookeanElemKernel>
       (partTopo, *this, activeKernels, "simple_neo_stress",
        realm_.bulk_data(), *realm_.solutionOptions_, meshDisplacement_, dataPreReqs);
