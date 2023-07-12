@@ -33,7 +33,7 @@ ScalarGclNodeSuppAlg::ScalarGclNodeSuppAlg(
   ScalarFieldType *scalarQNp1,
   Realm &realm)
   : SupplementalAlgorithm(realm),
-    scalarQNp1_(NULL),
+    scalarQNp1_(scalarQNp1),
     densityNp1_(NULL),
     divV_(NULL),
     dualNodalVolume_(NULL)
