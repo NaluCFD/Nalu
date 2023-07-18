@@ -94,7 +94,7 @@ public:
   void execute(LambdaFunction func)
   {
     int numDof = 1;
-    ThrowAssertMsg(partVec_.size()==1, "KokkosMEViews unit-test assumes partVec_.size==1");
+    STK_ThrowAssertMsg(partVec_.size()==1, "KokkosMEViews unit-test assumes partVec_.size==1");
 
     HelperObjects helperObjs(bulk_, AlgTraits::topo_, numDof, partVec_[0]);
     helperObjs.assembleElemSolverAlg->dataNeededByKernels_ = dataNeeded_;

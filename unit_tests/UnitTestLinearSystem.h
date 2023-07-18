@@ -77,7 +77,7 @@ public:
         rhs_(i) = rhs[i];
       }
       const size_t numRows = rhs.size();
-      ThrowAssert(numRows*numRows == lhs.size());
+      STK_ThrowAssert(numRows*numRows == lhs.size());
       lhs_ = Kokkos::View<double**>("lhs_",numRows, numRows);
       for (size_t i=0; i<numRows; ++i) {
         for (size_t j=0; j<numRows; ++j) {
