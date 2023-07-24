@@ -53,7 +53,10 @@ AssembleNodalGradPAWBoundaryAlgorithm::AssembleNodalGradPAWBoundaryAlgorithm(
     areaWeight_(nullptr),
     useShifted_(realm_.get_shifted_grad_op("pressure")),
     buoyancyWeight_(realm.solutionOptions_->buoyancyPressureStab_ ? 1.0 : 0.0),
-    overrideFacePressure_(overrideFacePressure)
+    overrideFacePressure_(overrideFacePressure),
+    n_(realm_.solutionOptions_->localVofN_),
+    m_(realm_.solutionOptions_->localVofM_),
+    c_(realm_.solutionOptions_->localVofC_)
 {
   // save off fields
   stk::mesh::MetaData & metaData = realm_.meta_data();
@@ -244,6 +247,7 @@ AssembleNodalGradPAWBoundaryAlgorithm::execute()
         // zero ip values
         double rhoBip = 0.0;
         double sigmaKappaBip = 0.0;
+        double vofBip = 0.0;
         for ( int j = 0; j < nDim; ++j ) {
           p_dpdxBip[j] = 0.0;
           p_dvofdxBip[j] = 0.0;
@@ -255,7 +259,11 @@ AssembleNodalGradPAWBoundaryAlgorithm::execute()
           const double r = p_face_shape_function[ipNpf+ic];
           rhoBip += r*p_face_density[ic];
           sigmaKappaBip += r*p_face_sigma[ic]*p_face_kappa[ic];
+          vofBip += r*p_vof[ic];
         }
+
+        // correct for localized approach
+        sigmaKappaBip *= c_*std::pow(vofBip,n_)*std::pow(1.0-vofBip,m_);
 
         // save off index
         const int ipNdim = ip*nDim;

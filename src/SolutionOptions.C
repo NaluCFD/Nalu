@@ -75,10 +75,13 @@ SolutionOptions::SolutionOptions()
     eigenvaluePerturbDelta_(0.0),
     eigenvaluePerturbBiasTowards_(3),
     eigenvaluePerturbTurbKe_(0.0),
-    evapJm_(0.003),
-    evapM_(1.0),
-    evapN_(1.0),
-    evapC_(6.0),
+    localVofJm_(0.003),
+    localVofM_(0.0),
+    localVofN_(0.0),
+    localVofC_(1.0),
+    vofCalpha_(0.05),
+    vofDensityPhaseOne_(1.0),
+    vofDensityPhaseTwo_(1.2e-3),
     mdotAlgAccumulation_(0.0),
     mdotAlgInflow_(0.0),
     mdotAlgOpen_(0.0),
@@ -151,11 +154,11 @@ SolutionOptions::load(const YAML::Node & y_node)
     get_if_present(y_solution_options, "eigenvalue_perturbation_bias_towards", eigenvaluePerturbBiasTowards_);
     get_if_present(y_solution_options, "eigenvalue_perturbation_turbulent_ke", eigenvaluePerturbTurbKe_);
     
-    // evaporation
-    get_if_present(y_solution_options, "evaporation_jm", evapJm_, evapJm_);
-    get_if_present(y_solution_options, "evaporation_m", evapM_, evapM_);
-    get_if_present(y_solution_options, "evaporation_n", evapN_, evapN_);
-    get_if_present(y_solution_options, "evaporation_c", evapC_, evapC_);
+    // evaporation and localized VOF
+    get_if_present(y_solution_options, "local_vof_jm", localVofJm_, localVofJm_);
+    get_if_present(y_solution_options, "local_vof_m", localVofM_, localVofM_);
+    get_if_present(y_solution_options, "local_vof_n", localVofN_, localVofN_);
+    get_if_present(y_solution_options, "local_vof_c", localVofC_, localVofC_);
 
     // quadrature type for high order
     get_if_present(y_solution_options, "high_order_quadrature_type", quadType_);

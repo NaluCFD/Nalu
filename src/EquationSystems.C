@@ -108,7 +108,9 @@ void EquationSystems::load(const YAML::Node & y_node)
           get_if_present_no_default(y_eqsys, "clipping_delta", deltaVofClip);
           // vof smoothing/sharpening; provide defaults...
           double fourierNumber = 0.25;
-          double cAlpha = 0.05;
+          double cAlpha = realm_.solutionOptions_->vofCalpha_;
+          double densityPhaseOne = realm_.solutionOptions_->vofDensityPhaseOne_;
+          double densityPhaseTwo = realm_.solutionOptions_->vofDensityPhaseTwo_;
           bool smooth = false;
           int smoothIter = 5;
           bool standAloneEqs = false;
@@ -117,8 +119,15 @@ void EquationSystems::load(const YAML::Node & y_node)
           get_if_present_no_default(y_eqsys, "activate_smoothing", smooth);
           get_if_present_no_default(y_eqsys, "smoothing_iterations", smoothIter);
           get_if_present_no_default(y_eqsys, "stand_alone_equation_system", standAloneEqs);
+          // extract density phase from user; difficult to extract from property manager
+          get_if_present_no_default(y_eqsys, "vof_density_phase_one", densityPhaseOne);
+          get_if_present_no_default(y_eqsys, "vof_density_phase_two", densityPhaseTwo);
+          // set on solution options
+          realm_.solutionOptions_->vofCalpha_ = cAlpha;
+          realm_.solutionOptions_->vofDensityPhaseOne_ = densityPhaseOne;
+          realm_.solutionOptions_->vofDensityPhaseTwo_ = densityPhaseTwo;
           eqSys = new VolumeOfFluidEquationSystem(*this, outputClipDiag, deltaVofClip, 
-                                                  fourierNumber, cAlpha, smooth, smoothIter, 
+                                                  fourierNumber, smooth, smoothIter, 
                                                   standAloneEqs);
         }
         else if ( expect_map(y_system, "LowMachEOM", true) ) {

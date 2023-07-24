@@ -102,7 +102,6 @@ VolumeOfFluidEquationSystem::VolumeOfFluidEquationSystem(
   const bool outputClippingDiag,
   const double deltaVofClip,
   const double Fo,
-  const double cAlpha,
   const bool smooth,
   const int smoothIter,
   const bool standAloneEqs)
@@ -122,7 +121,6 @@ VolumeOfFluidEquationSystem::VolumeOfFluidEquationSystem(
     outputClippingDiag_(outputClippingDiag),
     deltaVofClip_(deltaVofClip),
     Fo_(Fo),
-    cAlpha_(cAlpha),
     dxMin_(1.0e16),
     smooth_(smooth),
     smoothIter_(smoothIter),
@@ -171,10 +169,10 @@ VolumeOfFluidEquationSystem::VolumeOfFluidEquationSystem(
     NaluEnv::self().naluOutputP0() << "SCS smoothing_iterations: " << smoothIter_ << std::endl;
     NaluEnv::self().naluOutputP0() << "fourier_number: " << Fo_ << std::endl;
   }
-
+  
   if ( supp_alg_is_requested("sharpen") )
-    NaluEnv::self().naluOutputP0() << "compression_constant: " << cAlpha_ << std::endl;
-
+    NaluEnv::self().naluOutputP0() << "compression_constant: " << realm_.solutionOptions_->vofCalpha_ << std::endl;
+  
   if ( scsAdvection_ ) 
     NaluEnv::self().naluOutputP0() << "VOF scs_advection is active " << std::endl;
 }
@@ -374,7 +372,7 @@ VolumeOfFluidEquationSystem::register_interior_algorithm(
   
     build_topo_kernel_if_requested<VolumeOfFluidSharpenElemKernel>
       (partTopo, *this, activeKernels, "sharpen",
-       realm_.bulk_data(), *realm_.solutionOptions_, vof_, cAlpha_, dataPreReqs);
+       realm_.bulk_data(), *realm_.solutionOptions_, vof_, dataPreReqs);
 
     build_topo_kernel_if_requested<VolumeOfFluidGclElemKernel>
       (partTopo, *this, activeKernels, "lumped_gcl",

@@ -5,8 +5,8 @@
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
-#ifndef VolumeOfFluidSharpenElemKernel_H
-#define VolumeOfFluidSharpenElemKernel_H
+#ifndef MomentumVofSharpenElemKernel_H
+#define MomentumVofSharpenElemKernel_H
 
 #include "kernel/Kernel.h"
 #include "FieldTypeDef.h"
@@ -19,22 +19,23 @@
 namespace sierra {
 namespace nalu {
 
-class TimeIntegrator;
 class SolutionOptions;
 class MasterElement;
 class ElemDataRequests;
 
+/** Tanh sharpening kernel
+ */
 template<typename AlgTraits>
-class VolumeOfFluidSharpenElemKernel: public Kernel
+class MomentumVofSharpenElemKernel: public Kernel
 {
 public:
-  VolumeOfFluidSharpenElemKernel(
+  MomentumVofSharpenElemKernel(
     const stk::mesh::BulkData&,
     const SolutionOptions&,
-    ScalarFieldType*,
+    VectorFieldType*,
     ElemDataRequests&);
 
-  virtual ~VolumeOfFluidSharpenElemKernel();
+  virtual ~MomentumVofSharpenElemKernel();
 
   /** Execute the kernel within a Kokkos loop and populate the LHS and RHS for
    *  the linear solve
@@ -45,19 +46,26 @@ public:
     ScratchViews<DoubleType>&);
 
 private:
-  VolumeOfFluidSharpenElemKernel() = delete;
+  MomentumVofSharpenElemKernel() = delete;
 
   VectorFieldType *coordinates_{nullptr};
+  VectorFieldType *velocityNp1_{nullptr};
   VectorFieldType *velocityRTM_{nullptr};
+  ScalarFieldType *vof_{nullptr};
   VectorFieldType *interfaceNormal_{nullptr};
-  ScalarFieldType *vofNp1_{nullptr};
 
-  /// Integration point to node mapping
+  // integration point to node mapping
+  const int* lrscv_;
+
+  // constants
   const double cAlpha_;
-  const int* ipNodeMap_; 
+  const double densDiff_;
+
+  // fixed scratch space
+  AlignedViewType<DoubleType[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_{"v_shape_function"};
 };
 
 }  // nalu
 }  // sierra
 
-#endif /* VolumeOfFluidSharpenElemKernel_H */
+#endif /* MomentumVofSharpenElemKernel_H */

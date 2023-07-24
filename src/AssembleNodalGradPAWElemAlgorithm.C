@@ -48,7 +48,10 @@ AssembleNodalGradPAWElemAlgorithm::AssembleNodalGradPAWElemAlgorithm(
     dpdx_(dpdx),
     areaWeight_(nullptr),
     useShifted_(realm_.get_shifted_grad_op("pressure")),
-    buoyancyWeight_(realm_.solutionOptions_->buoyancyPressureStab_ ? 1.0 : 0.0)
+    buoyancyWeight_(realm_.solutionOptions_->buoyancyPressureStab_ ? 1.0 : 0.0),
+    n_(realm_.solutionOptions_->localVofN_),
+    m_(realm_.solutionOptions_->localVofM_),
+    c_(realm_.solutionOptions_->localVofC_)
 {
   // extract fields; nodal
   stk::mesh::MetaData & metaData = realm_.meta_data();
@@ -202,6 +205,7 @@ AssembleNodalGradPAWElemAlgorithm::execute()
         // zero ip values
         double rhoIp = 0.0;
         double sigmaKappaIp = 0.0;
+        double vofIp = 0.0;
         for ( int j = 0; j < nDim; ++j ) {
           p_dpdxIp[j] = 0.0;
           p_dvofdxIp[j] = 0.0;
@@ -211,6 +215,7 @@ AssembleNodalGradPAWElemAlgorithm::execute()
         for ( int ic = 0; ic < nodesPerElement; ++ic ) {
           const double r = p_shape_function[ipNpe+ic];
           rhoIp += r*p_density[ic];
+          vofIp += r*p_vof[ic];
           sigmaKappaIp += r*p_sigma[ic]*p_kappa[ic];
           const double pressureIc = p_pressure[ic];
           const double vofIc = p_vof[ic];
@@ -222,6 +227,9 @@ AssembleNodalGradPAWElemAlgorithm::execute()
             p_dvofdxIp[j] += dxj*vofIc;
           }
         }
+
+        // correct for localized approach
+        sigmaKappaIp *= c_*std::pow(vofIp,n_)*std::pow(1.0-vofIp,m_);
 
         // assemble to il/ir - all addition here..
         const int ipNdim = ip*nDim;

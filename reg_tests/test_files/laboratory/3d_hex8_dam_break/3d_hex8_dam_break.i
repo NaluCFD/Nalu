@@ -49,6 +49,8 @@ realms:
             fourier_number: 0.25
             smoothing_iterations: 5
             compression_constant: 0.1
+            vof_density_phase_one: 1000.0
+            vof_density_phase_two: 1.0
 
         - LowMachEOM:
             name: myLowMach
@@ -120,10 +122,14 @@ realms:
       activate_balanced_force_algorithm: yes
       activate_buoyancy_pressure_stabilization: yes
 
+      local_vof_m: 1.0
+      local_vof_n: 1.0
+      local_vof_c: 6.0
+
       options:
 
         - element_source_terms:
-            momentum: [lumped_momentum_time_derivative, advection_diffusion, NSO_2ND_ALT]
+            momentum: [lumped_momentum_time_derivative, advection_diffusion, NSO_2ND_ALT, sharpen]
             continuity: [vof_advection]
             volume_of_fluid: [lumped_mass, scs_advection, sucv_nso, sharpen]
 

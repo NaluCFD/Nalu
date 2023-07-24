@@ -53,7 +53,10 @@ ComputeMdotVofElemOpenAlgorithm::ComputeMdotVofElemOpenAlgorithm(
     shiftMdot_(solnOpts.cvfemShiftMdot_),
     shiftedGradOp_(solnOpts.get_shifted_grad_op("pressure")),
     penaltyFac_(2.0),
-    buoyancyWeight_(solnOpts.buoyancyPressureStab_ ? 1.0 : 0.0)
+    buoyancyWeight_(solnOpts.buoyancyPressureStab_ ? 1.0 : 0.0),
+    n_(realm_.solutionOptions_->localVofN_),
+    m_(realm_.solutionOptions_->localVofM_),
+    c_(realm_.solutionOptions_->localVofC_)
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -304,6 +307,7 @@ ComputeMdotVofElemOpenAlgorithm::execute()
         double pbcBip = -dynamicP[ip];
         double rhoBip = 0.0;
         double sigmaKappaBip = 0.0;
+        double vofBip = 0.0;
         const int offSetSF_face = ip*nodesPerFace;
         for ( int ic = 0; ic < nodesPerFace; ++ic ) {
           const double r = p_face_shape_function[offSetSF_face+ic];
@@ -311,6 +315,7 @@ ComputeMdotVofElemOpenAlgorithm::execute()
           pbcBip += r*p_bcPressure[ic];
           rhoBip += r*p_density[ic];
           sigmaKappaBip += r*p_sigma[ic]*p_kappa[ic];
+          vofBip += r*p_vof[ic];
           const int icNdim = ic*nDim;
           for ( int j = 0; j < nDim; ++j ) {
             p_uBip[j] += r*p_vrtm[icNdim+j];
@@ -331,6 +336,9 @@ ComputeMdotVofElemOpenAlgorithm::execute()
           }
         }
      
+        // correct for localized approach
+        sigmaKappaBip *= c_*std::pow(vofBip,n_)*std::pow(1.0-vofBip,m_);
+        
         // form vdot; uj*Aj - projTS*(dpdxj/rhoBip - Gjp)*Aj + penaltyFac_/rhoBip*projTS*invL*(pBip - pbcBip)*aMag + BF
         double tvdot = penaltyFac_*projTimeScale/rhoBip*inverseLengthScale*(pBip - pbcBip)*aMag
           + projTimeScale*sigmaKappaBip*dvofdaBip/rhoBip;

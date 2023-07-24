@@ -39,6 +39,9 @@ public:
   const bool useShifted_;
   std::array<double, 3> gravity_;
   double buoyancyWeight_;
+  const double n_;
+  const double m_;
+  const double c_;
 };
 
 } // namespace nalu

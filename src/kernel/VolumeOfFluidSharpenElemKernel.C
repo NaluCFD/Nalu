@@ -29,10 +29,9 @@ VolumeOfFluidSharpenElemKernel<AlgTraits>::VolumeOfFluidSharpenElemKernel(
   const stk::mesh::BulkData& bulkData,
   const SolutionOptions& solnOpts,
   ScalarFieldType* vof,
-  const double cAlpha,
   ElemDataRequests& dataPreReqs)
   : Kernel(),
-    cAlpha_(cAlpha),
+    cAlpha_(solnOpts.vofCalpha_),
     ipNodeMap_(sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_)->ipNodeMap())
 {
   // save off fields

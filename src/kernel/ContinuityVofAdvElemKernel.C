@@ -34,6 +34,9 @@ ContinuityVofAdvElemKernel<AlgTraits>::ContinuityVofAdvElemKernel(
     shiftMdot_(solnOpts.cvfemShiftMdot_),
     shiftPoisson_(solnOpts.get_shifted_grad_op("pressure")),
     reducedSensitivities_(solnOpts.cvfemReducedSensPoisson_),
+    n_(solnOpts.localVofN_),
+    m_(solnOpts.localVofM_),
+    c_(solnOpts.localVofC_),
     lrscv_(sierra::nalu::MasterElementRepo::get_surface_master_element(AlgTraits::topo_)->adjacentNodes())
 {
   // Save of required fields
@@ -134,8 +137,10 @@ ContinuityVofAdvElemKernel<AlgTraits>::execute(
     DoubleType rhoIp = 0.0;
     DoubleType dvofdaIp = 0.0;
     DoubleType sigmaKappaIp = 0.0;
+    DoubleType vofIp = 0.0;
     for (int ic = 0; ic < AlgTraits::nodesPerElement_; ++ic) {
       rhoIp += v_shape_function_(ip, ic)*v_densityNp1(ic);
+      vofIp += v_shape_function_(ip, ic)*v_vof(ic);
     }
     
     for (int j = 0; j < AlgTraits::nDim_; ++j) {
@@ -162,6 +167,9 @@ ContinuityVofAdvElemKernel<AlgTraits>::execute(
       lhs(il,ic) += lhsfac/rhoIp;
       lhs(ir,ic) -= lhsfac/rhoIp;
     }
+
+    // correct for localized approach
+    sigmaKappaIp *= c_*stk::math::pow(vofIp,n_)*stk::math::pow(1.0-vofIp,m_);
 
     // assemble flow rate
     DoubleType vdot = projTimeScale_*sigmaKappaIp*dvofdaIp/rhoIp;
