@@ -36,7 +36,6 @@ public:
     const bool outputClippingDiag,
     const double deltaVofClip,
     const double Fo,
-    const double cAlpha,
     const bool smooth,
     const int smoothIter,
     const bool standAloneEqs);
@@ -117,9 +116,8 @@ public:
   const bool outputClippingDiag_;
   const double deltaVofClip_;
 
-  // smoothing and sharepening params
+  // smoothing params
   const double Fo_;
-  const double cAlpha_;
   double dxMin_;
   const bool smooth_;
   const int smoothIter_;

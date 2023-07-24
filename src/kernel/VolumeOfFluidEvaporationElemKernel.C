@@ -30,11 +30,11 @@ VolumeOfFluidEvaporationElemKernel<AlgTraits>::VolumeOfFluidEvaporationElemKerne
   ScalarFieldType* vof,
   ElemDataRequests& dataPreReqs)
   : Kernel(),
-    rhoL_(1.0), // cgs g/cm^3
-    jm_(solnOpts.evapJm_), // cgs g/cm^2/s
-    m_(solnOpts.evapM_),
-    n_(solnOpts.evapN_),
-    c_(solnOpts.evapC_),
+    rhoL_(solnOpts.vofDensityPhaseOne_),    // cgs g/cm^3
+    jm_(solnOpts.localVofJm_), // cgs g/cm^2/s
+    m_(solnOpts.localVofM_),
+    n_(solnOpts.localVofN_),
+    c_(solnOpts.localVofC_),
     ipNodeMap_(sierra::nalu::MasterElementRepo::get_volume_master_element(AlgTraits::topo_)->ipNodeMap())
 {
   // save off fields

@@ -53,7 +53,10 @@ ComputeMdotVofElemAlgorithm::ComputeMdotVofElemAlgorithm(
     volumeFlowRate_(NULL),
     shiftMdot_(solnOpts.cvfemShiftMdot_),
     shiftPoisson_(solnOpts.get_shifted_grad_op("pressure")),
-    buoyancyWeight_(solnOpts.buoyancyPressureStab_ ? 1.0 : 0.0)
+    buoyancyWeight_(solnOpts.buoyancyPressureStab_ ? 1.0 : 0.0),
+    n_(solnOpts.localVofN_),
+    m_(solnOpts.localVofM_),
+    c_(solnOpts.localVofC_)
 {
    // extract fields; nodal
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -234,7 +237,7 @@ ComputeMdotVofElemAlgorithm::execute()
         double rhoIp = 0.0;
         double dvofdaIp = 0.0;
         double sigmaKappaIp = 0.0;
-
+        double vofIp = 0.0;
         for ( int j = 0; j < nDim; ++j ) {
           p_uIp[j] = 0.0;
           p_GpdxIp[j] = 0.0;
@@ -247,6 +250,7 @@ ComputeMdotVofElemAlgorithm::execute()
           const double r = p_shape_function[offSet+ic];
           rhoIp += r*p_density[ic];
           sigmaKappaIp += r*p_sigma[ic]*p_kappa[ic];
+          vofIp += r*p_vof[ic];
 
           const double pressureIc = p_pressure[ic];
           const double vofIc = p_vof[ic];
@@ -259,6 +263,9 @@ ComputeMdotVofElemAlgorithm::execute()
             dvofdaIp += p_dndx[offSetDnDx+j]*vofIc*p_scs_areav[ip*nDim+j];
           }
         }
+
+        // correct for localized approach
+        sigmaKappaIp *= c_*std::pow(vofIp,n_)*std::pow(1.0-vofIp,m_);
 
         // assemble flow rate
         double tvdot = projTimeScale*sigmaKappaIp*dvofdaIp/rhoIp;

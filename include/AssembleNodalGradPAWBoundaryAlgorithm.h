@@ -43,6 +43,9 @@ public:
   const bool useShifted_;
   const double buoyancyWeight_;
   const bool overrideFacePressure_;
+  const double n_;
+  const double m_;
+  const double c_;
   std::array<double, 3> gravity_;
 };
 

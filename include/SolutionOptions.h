@@ -133,12 +133,16 @@ public:
   int eigenvaluePerturbBiasTowards_;
   double eigenvaluePerturbTurbKe_;
 
-  // evaporation model constants
-  double evapJm_;
-  double evapM_;
-  double evapN_;
-  double evapC_;
-
+  // evaporation and localized VOF model constants
+  double localVofJm_;
+  double localVofM_;
+  double localVofN_;
+  double localVofC_;
+  
+  double vofCalpha_;
+  double vofDensityPhaseOne_;
+  double vofDensityPhaseTwo_;
+  
   // mdot post processing
   double mdotAlgAccumulation_;
   double mdotAlgInflow_;

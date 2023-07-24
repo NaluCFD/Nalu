@@ -46,13 +46,16 @@ public:
   ScalarFieldType *vof_;
   GenericFieldType *massFlowRate_;
   GenericFieldType *volumeFlowRate_;
-  std::array<double, 3> gravity_;
 
   const bool shiftMdot_;
   const bool shiftPoisson_;
-
   double buoyancyWeight_;
 
+  const double n_;
+  const double m_;
+  const double c_;
+
+  std::array<double, 3> gravity_;
 };
 
 } // namespace nalu

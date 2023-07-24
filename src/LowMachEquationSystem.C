@@ -124,6 +124,7 @@
 #include "kernel/MomentumGclElemKernel.h"
 #include "kernel/MomentumMassElemKernel.h"
 #include "kernel/MomentumUpwAdvDiffElemKernel.h"
+#include "kernel/MomentumVofSharpenElemKernel.h"
 
 // bc kernels
 #include "kernel/ContinuityInflowElemKernel.h"
@@ -1348,6 +1349,10 @@ MomentumEquationSystem::register_interior_algorithm(
       build_topo_kernel_if_requested<SteadyTaylorVortexMomentumSrcElemKernel>
         (partTopo, *this, activeKernels, "SteadyTaylorVortex",
          realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs);
+
+      build_topo_kernel_if_requested<MomentumVofSharpenElemKernel>
+        (partTopo, *this, activeKernels, "sharpen",
+         realm_.bulk_data(), *realm_.solutionOptions_, velocity_, dataPreReqs);
 
       report_invalid_supp_alg_names();
       report_built_supp_alg_names();
