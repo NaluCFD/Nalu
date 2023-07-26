@@ -5,8 +5,8 @@
 /*  directory structure                                                   */
 /*------------------------------------------------------------------------*/
 
-#ifndef MomentumVofSharpenElemKernel_H
-#define MomentumVofSharpenElemKernel_H
+#ifndef MomentumVofCapillaryElemKernel_H
+#define MomentumVofCapillaryElemKernel_H
 
 #include "kernel/Kernel.h"
 #include "FieldTypeDef.h"
@@ -20,22 +20,27 @@ namespace sierra {
 namespace nalu {
 
 class SolutionOptions;
+class TimeIntegrator;
 class MasterElement;
 class ElemDataRequests;
 
-/** sharpening kernel for the momentum equation (velocity DOF)
+/** capillary stabilization kernel for the momentum equation (velocity DOF) 
  */
 template<typename AlgTraits>
-class MomentumVofSharpenElemKernel: public Kernel
+class MomentumVofCapillaryElemKernel: public Kernel
 {
 public:
-  MomentumVofSharpenElemKernel(
+  MomentumVofCapillaryElemKernel(
     const stk::mesh::BulkData&,
     const SolutionOptions&,
     VectorFieldType*,
     ElemDataRequests&);
 
-  virtual ~MomentumVofSharpenElemKernel();
+  virtual ~MomentumVofCapillaryElemKernel();
+
+  /** Perform pre-timestep work for the computational kernel
+   */
+  virtual void setup(const TimeIntegrator&);
 
   /** Execute the kernel within a Kokkos loop and populate the LHS and RHS for
    *  the linear solve
@@ -46,20 +51,19 @@ public:
     ScratchViews<DoubleType>&);
 
 private:
-  MomentumVofSharpenElemKernel() = delete;
+  MomentumVofCapillaryElemKernel() = delete;
 
-  VectorFieldType *coordinates_{nullptr};
   VectorFieldType *velocityNp1_{nullptr};
-  VectorFieldType *velocityRTM_{nullptr};
-  ScalarFieldType *vof_{nullptr};
+  VectorFieldType *coordinates_{nullptr};
   VectorFieldType *interfaceNormal_{nullptr};
+  ScalarFieldType *vof_{nullptr};
+  ScalarFieldType *surfaceTension_{nullptr};
 
-  // integration point to node mapping
+  double dt_{0.0};
+
   const int* lrscv_;
 
-  // constants
-  const double cAlpha_;
-  const double densDiff_;
+  const bool shiftedGradOp_;
 
   // fixed scratch space
   AlignedViewType<DoubleType[AlgTraits::numScsIp_][AlgTraits::nodesPerElement_]> v_shape_function_{"v_shape_function"};
@@ -68,4 +72,4 @@ private:
 }  // nalu
 }  // sierra
 
-#endif /* MomentumVofSharpenElemKernel_H */
+#endif /* MOMENTUMADVDIFFELEMKERNEL_H */

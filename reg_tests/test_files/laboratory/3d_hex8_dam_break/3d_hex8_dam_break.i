@@ -129,7 +129,7 @@ realms:
       options:
 
         - element_source_terms:
-            momentum: [lumped_momentum_time_derivative, advection_diffusion, NSO_2ND_ALT, sharpen]
+            momentum: [lumped_momentum_time_derivative, advection_diffusion, NSO_2ND_ALT, sharpen, capillary]
             continuity: [vof_advection]
             volume_of_fluid: [lumped_mass, scs_advection, sucv_nso, sharpen]
 
