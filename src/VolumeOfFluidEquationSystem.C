@@ -59,6 +59,7 @@
 #include "user_functions/FixedHeightMixFracAuxFunction.h"
 #include "user_functions/RecMixFracAuxFunction.h"
 #include "user_functions/ScalarGaussianAuxFunction.h"
+#include "user_functions/SinVofAuxFunction.h"
 
 #include "overset/UpdateOversetFringeAlgorithmDriver.h"
 
@@ -809,6 +810,10 @@ VolumeOfFluidEquationSystem::register_initial_condition_fcn(
     else if ( fcnName == "gaussian" ) {
       // create the function
       theAuxFunc = new ScalarGaussianAuxFunction(fcnParams);      
+    }
+    else if ( fcnName == "sinusoidal" ) {
+      // create the function
+      theAuxFunc = new SinVofAuxFunction(fcnParams);      
     }
     else {
       throw std::runtime_error("VolumeOfFluidEquationSystem::register_initial_condition_fcn: limited functions supported");
