@@ -14,6 +14,7 @@
 
 #include "user_functions/LinearRampMeshDisplacementAuxFunction.h"
 #include "user_functions/SinMeshDisplacementAuxFunction.h"
+#include "user_functions/Table2dAuxFunction.h"
 
 #include "AlgorithmDriver.h"
 #include "AssembleNodalGradUAlgorithmDriver.h"
@@ -331,10 +332,14 @@ MeshDisplacementEquationSystem::register_wall_bc(
       std::vector<double> theParams = get_bc_function_params(userData, displacementName);
       // switch on the name found...
       if ( fcnName == "linear" ) {
-        theAuxFunc = new LinearRampMeshDisplacementAuxFunction(0,nDim, theParams);
+        theAuxFunc = new LinearRampMeshDisplacementAuxFunction(0, nDim, theParams);
       }
       else if ( fcnName == "sinusoidal") {
-        theAuxFunc = new SinMeshDisplacementAuxFunction(0,nDim, theParams);
+        theAuxFunc = new SinMeshDisplacementAuxFunction(0, nDim, theParams);
+      }
+      else if ( fcnName == "table2d") {
+        std::vector<std::string> theStringParams  = get_bc_function_string_params(userData, displacementName);
+        theAuxFunc = new Table2dAuxFunction(0, nDim, theParams, theStringParams);
       }
       else {
         throw std::runtime_error("Only linear ramp user functions supported");
