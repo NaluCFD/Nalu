@@ -23,6 +23,14 @@ function(add_test_r_rst testname np)
     file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/test_files/${testname})
 endfunction(add_test_r_rst)
 
+# Standard regression test with input data
+function(add_test_r_t testname np)
+    add_test(${testname} sh -c "mpiexec -np ${np} --oversubscribe ${CMAKE_BINARY_DIR}/${nalu_ex_name} -i ${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/${testname}.i -o ${testname}.log && ${CMAKE_CURRENT_SOURCE_DIR}/pass_fail.sh ${testname} ${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/${testname}.norm.gold ${TOLERANCE}")
+    set_tests_properties(${testname} PROPERTIES TIMEOUT 1500 PROCESSORS ${np} WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test_files/${testname}" LABELS "regression")
+    file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/test_files/${testname})
+    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/${testname}.dat DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/test_files/${testname})
+endfunction(add_test_r_t)
+
 # Verification test with three resolutions
 function(add_test_v3 testname np)
     add_test(${testname} sh -c "mpiexec -np ${np} --oversubscribe ${CMAKE_BINARY_DIR}/${nalu_ex_name} -i ${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/${testname}_R0.i -o ${testname}_R0.log && mpiexec -np ${np} --oversubscribe ${CMAKE_BINARY_DIR}/${nalu_ex_name} -i ${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/${testname}_R1.i -o ${testname}_R1.log && mpiexec -np ${np} --oversubscribe ${CMAKE_BINARY_DIR}/${nalu_ex_name} -i ${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/${testname}_R2.i -o ${testname}_R2.log && python ${CMAKE_CURRENT_SOURCE_DIR}/test_files/${testname}/norms.py")
@@ -95,7 +103,7 @@ add_test_r(dgNonConformalFluids 4)
 add_test_r(dgNonConformalFluidsEdge 4)
 add_test_r_rst(dgNonConformalThreeBlade 4)
 add_test_r(ductElemWedge 2)
-add_test_r(ductWedge 2)
+add_test_r_t(ductWedge 2)
 add_test_r(edgeHybridFluids 8)
 add_test_r(edgePipeCHT 4)
 add_test_r_rst(elemBackStepLRSST 4)

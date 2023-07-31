@@ -69,7 +69,12 @@ realms:
     - inflow_boundary_condition: bc_inflow
       target_name: surface_1
       inflow_user_data:
-        velocity: [0.0,0.0,1.0]
+        user_function_name:
+         velocity: table2d
+        user_function_parameters:
+         velocity: [2, 0, 1, 31, 31, 0.5]
+        user_function_string_parameters:
+         velocity: [ductWedge.dat]
 
     - open_boundary_condition: bc_open
       target_name: surface_2
