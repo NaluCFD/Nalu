@@ -200,6 +200,7 @@
 #include "user_functions/LinearAuxFunction.h"
 
 #include "user_functions/TableAuxFunction.h"
+#include "user_functions/Table2dAuxFunction.h"
 
 // stk_util
 #include <stk_util/parallel/Parallel.hpp>
@@ -1577,6 +1578,10 @@ MomentumEquationSystem::register_inflow_bc(
     else if ( fcnName == "table" ) {
       theAuxFunc = new TableAuxFunction(0,nDim,theParams);
     }
+    else if ( fcnName == "table2d" ) {
+      std::vector<std::string> theStringParams  = get_bc_function_string_params(userData, velocityName);
+      theAuxFunc = new Table2dAuxFunction(0, nDim, theParams, theStringParams);
+    }
     else {
       throw std::runtime_error("MomentumEquationSystem::register_inflow_bc: limited functions supported");
     }
@@ -2752,6 +2757,10 @@ ContinuityEquationSystem::register_inflow_bc(
     }
     else if ( fcnName == "table" ) {
       theAuxFunc = new TableAuxFunction(0,nDim,theParams);
+    }
+    else if ( fcnName == "table2d" ) {
+      std::vector<std::string> theStringParams  = get_bc_function_string_params(userData, velocityName);
+      theAuxFunc = new Table2dAuxFunction(0, nDim, theParams, theStringParams);
     }
     else {
       throw std::runtime_error("ContEquationSystem::register_inflow_bc: limited functions supported");
