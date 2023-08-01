@@ -49,6 +49,7 @@ SolutionOptions::SolutionOptions()
     includeDivU_(0.0),
     isTurbulent_(false),
     turbulenceModel_(LAMINAR),
+    dynamicTurbulenceProcedure_(false),
     meshMotion_(false),
     meshDeformation_(false),
     externalMeshDeformation_(false),
@@ -213,8 +214,18 @@ SolutionOptions::load(const YAML::Node & y_node)
     if ( turbulenceModel_ != LAMINAR ) {
       isTurbulent_ = true;
     }
-    // initialize turbuelnce constants since some laminar models may need such variables, e.g., kappa
+
+    // initialize turbulence constants since some laminar models may need such variables, e.g., kappa
     initialize_turbulence_constants();
+
+    // check for dynamic procedure; error checks
+    get_if_present(y_solution_options,
+                   "activate_dynamic_turbulence_procedure", dynamicTurbulenceProcedure_, dynamicTurbulenceProcedure_);
+    if ( dynamicTurbulenceProcedure_ ) {
+      if ( turbulenceModel_ != KSGS && turbulenceModel_ != LRKSGS ) {
+        throw std::runtime_error("Error: Dynamic procedure is only implemented for the kSGS family of turbuelnce models");
+      }
+    }
 
     // extract possible copy from input fields restoration time
     get_if_present(y_solution_options, "input_variables_from_file_restoration_time",
