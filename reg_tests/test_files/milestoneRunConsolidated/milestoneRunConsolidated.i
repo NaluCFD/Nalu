@@ -115,7 +115,8 @@ realms:
 
     solution_options:
       name: myOptions
-      turbulence_model: dynamic_ksgs
+      turbulence_model: ksgs
+      activate_dynamic_turbulence_procedure: yes
 
       use_consolidated_solver_algorithm: yes
       use_consolidated_face_elem_bc_algorithm: yes
@@ -161,6 +162,7 @@ realms:
        - mixture_fraction
        - scalar_variance
        - scalar_dissipation
+       - turbulent_viscosity
        - c_epsilon
        - c_mu_epsilon
 

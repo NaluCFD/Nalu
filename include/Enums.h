@@ -160,9 +160,8 @@ enum TurbulenceModel {
   WALE = 3,
   SST = 4,
   SST_DES = 5,
-  DKSGS = 6,
-  KEPS = 7,
-  LRKSGS = 8,
+  KEPS = 6,
+  LRKSGS = 7,
   TurbulenceModel_END
 };  
 
@@ -174,7 +173,6 @@ static const std::string TurbulenceModelNames[] = {
   "wale",
   "sst",
   "sst_des",
-  "dynamic_ksgs",
   "k_epsilon",
   "lr_ksgs"};
 

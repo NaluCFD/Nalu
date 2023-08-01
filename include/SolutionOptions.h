@@ -106,6 +106,7 @@ public:
   double includeDivU_;
   bool isTurbulent_;
   TurbulenceModel turbulenceModel_;
+  bool dynamicTurbulenceProcedure_;
   bool meshMotion_;
   bool meshDeformation_;
   bool externalMeshDeformation_;
