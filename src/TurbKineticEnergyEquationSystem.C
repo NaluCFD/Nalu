@@ -1455,9 +1455,17 @@ TurbKineticEnergyEquationSystem::compute_filtered_quantities()
         filteredKineticEnergy, filteredSijDij, filteredVelocity, filteredDensityVelocity, 
         filteredStrainRate, filteredVelocityGradient, filteredDensityStress});
 
-  // assemble nodal filter
+  // periodic assemble prior to normalization; one by one
   if ( realm_.hasPeriodic_ ) {
     realm_.periodic_field_update(filteredVolume, 1);
+    realm_.periodic_field_update(filteredDensity, 1);
+    realm_.periodic_field_update(filteredKineticEnergy, 1);
+    realm_.periodic_field_update(filteredSijDij, 1);
+    realm_.periodic_field_update(filteredVelocity, nDim);
+    realm_.periodic_field_update(filteredDensityVelocity, nDim);
+    realm_.periodic_field_update(filteredStrainRate, nDim*nDim);
+    realm_.periodic_field_update(filteredVelocityGradient, nDim*nDim);
+    realm_.periodic_field_update(filteredDensityStress, nDim*nDim);
   }
 
   // normalize by filter
@@ -1499,18 +1507,6 @@ TurbKineticEnergyEquationSystem::compute_filtered_quantities()
         fDensityStress[kNdimNdim+i] /= nodalFilterVolume;
       }
     }
-  }
-
-  // periodic assemble
-  if ( realm_.hasPeriodic_) {
-    // one by one... (filter has already been completed prior to normalization)
-    realm_.periodic_field_update(filteredDensity, 1);
-    realm_.periodic_field_update(filteredKineticEnergy, 1);
-    realm_.periodic_field_update(filteredSijDij, 1);
-    realm_.periodic_field_update(filteredVelocity, nDim);
-    realm_.periodic_field_update(filteredDensityVelocity, nDim);
-    realm_.periodic_field_update(filteredStrainRate, nDim*nDim);
-    realm_.periodic_field_update(filteredVelocityGradient, nDim*nDim);
   }
 
   // formulation uses a nodal effective viscosity to form Ceps
