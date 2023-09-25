@@ -1,5 +1,5 @@
 ############################ BASE ######################################
-cmake_minimum_required (VERSION 3.1)
+cmake_minimum_required (VERSION 3.23.0)
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 cmake_policy(SET CMP0057 NEW)
 
@@ -12,6 +12,11 @@ option(ENABLE_PARAVIEW_CATALYST
        OFF)
 option(ENABLE_WARNINGS "Add -Wall to show compiler warnings" ON)
 option(ENABLE_EXTRA_WARNINGS "Add -Wextra to show even more compiler warnings" OFF)
+
+########################### NALU-first #####################################
+# Set Nalu's compilers, CMAKE_FIND_LIBRARY_PREFIXES
+# and CMAKE_FIND_LIBRARY_SUFFIXES, etc, after inheriting settings from Trilinos
+project(Nalu CXX Fortran)
 
 ########################## TRILINOS ####################################
 message("   Trilinos_DIR = ${Trilinos_DIR}")
@@ -51,10 +56,6 @@ else(Trilinos_BUILD_SHARED_LIBS)
   set(Nalu_LIBRARY_TYPE STATIC)
 endif(Trilinos_BUILD_SHARED_LIBS)
 
-# Set Nalu's compilers, CMAKE_FIND_LIBRARY_PREFIXES
-# and CMAKE_FIND_LIBRARY_SUFFIXES, etc, after inheriting settings from Trilinos
-project(Nalu CXX Fortran)
-
 ############################ YAML ######################################
 set(CMAKE_PREFIX_PATH ${YAML_DIR} ${CMAKE_PREFIX_PATH})
 find_package(YAML-CPP QUIET)
@@ -76,7 +77,7 @@ else()
   message(FATAL_ERROR "YAML-CPP NOT FOUND")
 endif()
 
-########################### NALU #####################################
+########################### NALU-second #####################################
 
 # Add any extra flags based on compiler and/or OS
 message("-- CMAKE_SYSTEM_NAME = ${CMAKE_SYSTEM_NAME}")
