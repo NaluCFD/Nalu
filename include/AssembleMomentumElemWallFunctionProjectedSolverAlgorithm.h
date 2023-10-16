@@ -34,14 +34,14 @@ public:
     stk::mesh::Part *part,
     EquationSystem *eqSystem,
     const bool &useShifted,
-    std::vector<std::vector<PointInfo *> > &pointInfoVec,
+    std::map<std::string, std::vector<std::vector<PointInfo *> > > &pointInfoMap,
     stk::mesh::Ghosting *wallFunctionGhosting);
   virtual ~AssembleMomentumElemWallFunctionProjectedSolverAlgorithm() {}
   virtual void initialize_connectivity();
   virtual void execute();
 
   const bool useShifted_;
-  std::vector<std::vector<PointInfo *> > &pointInfoVec_;
+  std::map<std::string, std::vector<std::vector<PointInfo *> > > &pointInfoMap_;
   stk::mesh::Ghosting *wallFunctionGhosting_;
 
   const double yplusCrit_;

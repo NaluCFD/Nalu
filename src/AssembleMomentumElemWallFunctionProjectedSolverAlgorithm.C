@@ -44,11 +44,11 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::AssembleMomentumElemWa
   stk::mesh::Part *part,
   EquationSystem *eqSystem,
   const bool &useShifted,
-  std::vector<std::vector<PointInfo *> > &pointInfoVec,
+  std::map<std::string, std::vector<std::vector<PointInfo *> > > &pointInfoMap,
   stk::mesh::Ghosting *wallFunctionGhosting)
   : SolverAlgorithm(realm, part, eqSystem),
     useShifted_(useShifted),
-    pointInfoVec_(pointInfoVec),
+    pointInfoMap_(pointInfoMap),
     wallFunctionGhosting_(wallFunctionGhosting),
     yplusCrit_(11.63),
     elog_(9.8),
@@ -74,7 +74,7 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::AssembleMomentumElemWa
 void
 AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::initialize_connectivity()
 {
-  // iterate parts to match pointInfoVec_ construction (overly cautious)
+  // iterate parts to match pointInfoMap_ construction
   for ( size_t k = 0; k < partVec_.size(); ++k ) {
     stk::mesh::PartVector partVec;
     partVec.push_back(partVec_[k]);
@@ -127,12 +127,30 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::execute()
     stk::mesh::communicate_field_data(*(wallFunctionGhosting_), ghostFieldVec_);
 
   // iterate over parts to match construction (requires global counter over locally owned faces)
-  size_t pointInfoVecCounter = 0;
   for ( size_t pv = 0; pv < partVec_.size(); ++pv ) {
         
+    // extract name 
+    const std::string partName = partVec_[pv]->name();
+
+    // set counter for this particular part
+    size_t pointInfoVecCounter = 0;
+    
     // define selector (per part)
     stk::mesh::Selector s_locally_owned 
       = meta_data.locally_owned_part() &stk::mesh::Selector(*partVec_[pv]);
+
+    // extract local vector for this part
+    std::vector<std::vector<PointInfo *> > pointInfoVec;
+    std::map<std::string, std::vector<std::vector<PointInfo *> > >::iterator itf =
+      pointInfoMap_.find(partName);
+    if ( itf == pointInfoMap_.end() ) {
+      // will need to throw
+      NaluEnv::self().naluOutputP0() << "cannot find pointInfoMap_ with part name: " << partName << std::endl;
+      throw std::runtime_error("SurfaceForceAndMomentWallFunctionProjectedAlgorithm::issue");
+    }
+    else {
+      pointInfoVec = (*itf).second;
+    }
     
     stk::mesh::BucketVector const& face_buckets =
       realm_.get_buckets( meta_data.side_rank(), s_locally_owned );
@@ -216,7 +234,7 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::execute()
         const double *wallFrictionVelocityBip = stk::mesh::field_data(*wallFrictionVelocityBip_, face);
         
         // extract the vector of PointInfo for this face
-        std::vector<PointInfo *> &faceInfoVec = pointInfoVec_[pointInfoVecCounter++];
+        std::vector<PointInfo *> &faceInfoVec = pointInfoVec[pointInfoVecCounter++];
         
         for ( int ip = 0; ip < numScsBip; ++ip ) {
           

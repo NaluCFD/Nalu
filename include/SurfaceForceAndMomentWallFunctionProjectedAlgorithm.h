@@ -39,7 +39,7 @@ public:
     const std::vector<double > &parameters,
     const bool &useShifted,
     ScalarFieldType *assembledArea,
-    std::vector<std::vector<PointInfo *> > &pointInfoVec,
+    std::map<std::string, std::vector<std::vector<PointInfo *> > > &pointInfoMap,
     stk::mesh::Ghosting *wallFunctionGhosting);
   ~SurfaceForceAndMomentWallFunctionProjectedAlgorithm();
 
@@ -55,7 +55,7 @@ public:
   const std::string &outputFileName_;
   const std::vector<double > &parameters_;
   const bool useShifted_;
-  std::vector<std::vector<PointInfo *> > &pointInfoVec_;  
+  std::map<std::string, std::vector<std::vector<PointInfo *> > > &pointInfoMap_;  
   stk::mesh::Ghosting *wallFunctionGhosting_;
   const double yplusCrit_;
   const double elog_;
@@ -77,7 +77,7 @@ public:
 
   const int w_;
 
-  // sanity check for like partVec_ and pointInfoVec_ size
+  // sanity check for like partVec_ and pointInfoMap_ size
   bool errorCheckProcessed_;
 
   // data structure to parallel communicate nodal data to ghosted elements

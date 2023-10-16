@@ -51,13 +51,13 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::SurfaceForceAndMomentWallFu
   const std::vector<double > &parameters,
   const bool &useShifted,
   ScalarFieldType *assembledArea,
-  std::vector<std::vector<PointInfo *> > &pointInfoVec,
+  std::map<std::string, std::vector<std::vector<PointInfo *> > >&pointInfoMap,
   stk::mesh::Ghosting *wallFunctionGhosting)
   : Algorithm(realm, partVec),
     outputFileName_(outputFileName),
     parameters_(parameters),
     useShifted_(useShifted),
-    pointInfoVec_(pointInfoVec),
+    pointInfoMap_(pointInfoMap),
     wallFunctionGhosting_(wallFunctionGhosting),
     yplusCrit_(11.63),
     elog_(9.8),
@@ -186,7 +186,7 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
   // local force and MomentWallFunction; i.e., to be assembled
   double l_force_moment[9] = {};
 
-  // work force, MomentWallFunction and radius; i.e., to be pused to cross_product()
+  // work force, MomentWallFunction and radius; i.e., to be pushed to cross_product()
   double ws_p_force[3] = {};
   double ws_v_force[3] = {};
   double ws_t_force[3] = {};
@@ -199,9 +199,27 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
     centroid[k] = parameters_[k];
 
   // iterate over parts to match construction (requires global counter over locally owned faces)
-  size_t pointInfoVecCounter = 0;
   for ( size_t pv = 0; pv < partVec_.size(); ++pv ) {
-    
+
+    // extract name 
+    const std::string partName = partVec_[pv]->name();
+
+    // set counter for this particular part
+    size_t pointInfoVecCounter = 0;
+
+    // extract local vector for this part
+    std::vector<std::vector<PointInfo *> > pointInfoVec;
+    std::map<std::string, std::vector<std::vector<PointInfo *> > >::iterator itf =
+      pointInfoMap_.find(partName);
+    if ( itf == pointInfoMap_.end() ) {
+      // will need to throw
+      NaluEnv::self().naluOutputP0() << "cannot find pointInfoMap_ with part name: " << partName << std::endl;
+      throw std::runtime_error("SurfaceForceAndMomentWallFunctionProjectedAlgorithm::issue");
+    }
+    else {
+      pointInfoVec = (*itf).second;
+    }
+        
     // define selector (per part)
     stk::mesh::Selector s_locally_owned 
       = meta_data.locally_owned_part() &stk::mesh::Selector(*partVec_[pv]);
@@ -275,7 +293,7 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
         const double *wallFrictionVelocityBip = stk::mesh::field_data(*wallFrictionVelocityBip_, face);
         
         // extract the vector of PointInfo for this face
-        std::vector<PointInfo *> &faceInfoVec = pointInfoVec_[pointInfoVecCounter++];
+        std::vector<PointInfo *> &faceInfoVec = pointInfoVec[pointInfoVecCounter++];
         
         for ( int ip = 0; ip < numScsBip; ++ip ) {
           
@@ -416,8 +434,7 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
           *tauWall += lambda*std::sqrt(uParallel)/assembledArea;
           
           // deal with yplus
-          *yplus += yplusBip*aMag/assembledArea;
-          
+          *yplus += yplusBip*aMag/assembledArea;          
         }
       }
     } 
@@ -542,41 +559,60 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::error_check()
 {
   stk::mesh::MetaData & meta_data = realm_.meta_data();
 
-  // count number of ips from pointInfoVec_
-  size_t totalIpsFromInfoVec = 0;
-  for ( size_t k = 0; k < pointInfoVec_.size(); ++k ) {
-    totalIpsFromInfoVec += pointInfoVec_[k].size();
-  }
-
-  // count total number of ips from partVec_
-  size_t totalIpsFromParts = 0;
-  stk::mesh::Selector s_locally_owned 
-    = meta_data.locally_owned_part() &stk::mesh::selectUnion(partVec_);
-
-  stk::mesh::BucketVector const& face_buckets
-    = realm_.get_buckets( meta_data.side_rank(), s_locally_owned );
-  for ( stk::mesh::BucketVector::const_iterator ib = face_buckets.begin();
-           ib != face_buckets.end() ; ++ib ) {
-    stk::mesh::Bucket & b = **ib ;
-
-    // face master element
-    MasterElement *meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(b.topology());
-    const int numScsBip = meFC->numIntPoints_;
-
-    const stk::mesh::Bucket::size_type length   = b.size();
-
-    for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
-
-      // increment
-      totalIpsFromParts += numScsBip;
+  // iterate over parts to match construction (requires global counter over locally owned faces)
+  for ( size_t pv = 0; pv < partVec_.size(); ++pv ) {
+    
+    // extract name 
+    const std::string partName = partVec_[pv]->name();
+    
+    // extract local vector for this part
+    std::vector<std::vector<PointInfo *> > pointInfoVec;
+    std::map<std::string, std::vector<std::vector<PointInfo *> > >::iterator itf =
+      pointInfoMap_.find(partName);
+    if ( itf == pointInfoMap_.end() ) {
+      // will need to throw
+      NaluEnv::self().naluOutputP0() << "cannot find pointInfoMap_ with part name: " << partName << std::endl;
+      throw std::runtime_error("SurfaceForceAndMomentWallFunctionProjectedAlgorithm::issue");
     }
-  }
+    else {
+      pointInfoVec = (*itf).second;
+    }
 
-  // check for a match
-  if ( totalIpsFromInfoVec != totalIpsFromParts ) {
-    throw std::runtime_error("SurfaceForceAndMomentWallFunctionProjectedAlgorithm: totalIpsFromParts !=  totalIpsFromInfoVec");
-  }
+    // count number of ips from pointInfoVec
+    size_t totalIpsFromInfoVec = 0;
+    for ( size_t k = 0; k < pointInfoVec.size(); ++k ) {
+      totalIpsFromInfoVec += pointInfoVec[k].size();
+    }
 
+    // count total number of ips from this part
+    size_t totalIpsFromParts = 0;
+    stk::mesh::Selector s_locally_owned 
+      = meta_data.locally_owned_part() &stk::mesh::Selector(*partVec_[pv]);
+    
+    stk::mesh::BucketVector const& face_buckets
+      = realm_.get_buckets( meta_data.side_rank(), s_locally_owned );
+    for ( stk::mesh::BucketVector::const_iterator ib = face_buckets.begin();
+          ib != face_buckets.end() ; ++ib ) {
+      stk::mesh::Bucket & b = **ib ;
+      
+      // face master element
+      MasterElement *meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(b.topology());
+      const int numScsBip = meFC->numIntPoints_;
+      
+      const stk::mesh::Bucket::size_type length   = b.size();
+      
+      for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
+        
+        // increment
+        totalIpsFromParts += numScsBip;
+      }
+    }
+    
+    // check for a match
+    if ( totalIpsFromInfoVec != totalIpsFromParts ) {
+      throw std::runtime_error("SurfaceForceAndMomentWallFunctionProjectedAlgorithm: totalIpsFromParts !=  totalIpsFromInfoVec on part: " + partName);
+    }
+  }  
   errorCheckProcessed_ = true;
 }
 
