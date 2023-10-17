@@ -163,7 +163,7 @@ ComputeWallFrictionVelocityProjectedAlgorithm::execute()
     const std::string partName = partVec_[pv]->name();
     
     // extract local vector for this part
-    std::vector<std::vector<PointInfo *> > pointInfoVec;
+    std::vector<std::vector<PointInfo *> > *pointInfoVec = nullptr;
     std::map<std::string, std::vector<std::vector<PointInfo *> > >::iterator itf =
       pointInfoMap_.find(partName);
     if ( itf == pointInfoMap_.end() ) {
@@ -172,7 +172,7 @@ ComputeWallFrictionVelocityProjectedAlgorithm::execute()
       throw std::runtime_error("SurfaceForceAndMomentWallFunctionProjectedAlgorithm::issue");
     }
     else {
-      pointInfoVec = (*itf).second;
+      pointInfoVec = &((*itf)).second;
     }
 
     // set counter for this particular part
@@ -253,7 +253,7 @@ ComputeWallFrictionVelocityProjectedAlgorithm::execute()
         double *wallFrictionVelocityBip = stk::mesh::field_data(*wallFrictionVelocityBip_, face);
         
         // extract the vector of PointInfo for this face 
-        std::vector<PointInfo *> &faceInfoVec = pointInfoVec[pointInfoVecCounter++];
+        std::vector<PointInfo *> &faceInfoVec = (*pointInfoVec)[pointInfoVecCounter++];
 
         // loop over ips
         for ( int ip = 0; ip < numScsBip; ++ip ) {
@@ -533,7 +533,7 @@ ComputeWallFrictionVelocityProjectedAlgorithm::construct_bounding_points()
   // need to keep track of some sort of local id for each gauss point...
   uint64_t localPointId = 0;
   
-  // iterate over parts to allow for projected distance to vary per surface and defines ordering everywhere else
+  // iterate over parts to allow for projected distance to vary per surface; users access pointInfoMap_
   for ( size_t pv = 0; pv < partVec_.size(); ++pv ) {
     
     // extract name 

@@ -198,7 +198,7 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
   for ( size_t k = 0; k < parameters_.size(); ++k)
     centroid[k] = parameters_[k];
 
-  // iterate over parts to match construction (requires global counter over locally owned faces)
+  // iterate over parts (requires part-based local counter over locally owned faces)
   for ( size_t pv = 0; pv < partVec_.size(); ++pv ) {
 
     // extract name 
@@ -208,7 +208,7 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
     size_t pointInfoVecCounter = 0;
 
     // extract local vector for this part
-    std::vector<std::vector<PointInfo *> > pointInfoVec;
+    std::vector<std::vector<PointInfo *> > *pointInfoVec = nullptr;
     std::map<std::string, std::vector<std::vector<PointInfo *> > >::iterator itf =
       pointInfoMap_.find(partName);
     if ( itf == pointInfoMap_.end() ) {
@@ -217,7 +217,7 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
       throw std::runtime_error("SurfaceForceAndMomentWallFunctionProjectedAlgorithm::issue");
     }
     else {
-      pointInfoVec = (*itf).second;
+      pointInfoVec = &((*itf)).second;
     }
         
     // define selector (per part)
@@ -293,7 +293,7 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
         const double *wallFrictionVelocityBip = stk::mesh::field_data(*wallFrictionVelocityBip_, face);
         
         // extract the vector of PointInfo for this face
-        std::vector<PointInfo *> &faceInfoVec = pointInfoVec[pointInfoVecCounter++];
+        std::vector<PointInfo *> &faceInfoVec = (*pointInfoVec)[pointInfoVecCounter++];
         
         for ( int ip = 0; ip < numScsBip; ++ip ) {
           
@@ -566,7 +566,7 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::error_check()
     const std::string partName = partVec_[pv]->name();
     
     // extract local vector for this part
-    std::vector<std::vector<PointInfo *> > pointInfoVec;
+    std::vector<std::vector<PointInfo *> > *pointInfoVec = nullptr;
     std::map<std::string, std::vector<std::vector<PointInfo *> > >::iterator itf =
       pointInfoMap_.find(partName);
     if ( itf == pointInfoMap_.end() ) {
@@ -575,13 +575,13 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::error_check()
       throw std::runtime_error("SurfaceForceAndMomentWallFunctionProjectedAlgorithm::issue");
     }
     else {
-      pointInfoVec = (*itf).second;
+      pointInfoVec = &((*itf)).second;
     }
 
     // count number of ips from pointInfoVec
     size_t totalIpsFromInfoVec = 0;
-    for ( size_t k = 0; k < pointInfoVec.size(); ++k ) {
-      totalIpsFromInfoVec += pointInfoVec[k].size();
+    for ( size_t k = 0; k < pointInfoVec->size(); ++k ) {
+      totalIpsFromInfoVec += (*pointInfoVec)[k].size();
     }
 
     // count total number of ips from this part
