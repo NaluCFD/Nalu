@@ -635,7 +635,7 @@ LowMachEquationSystem::register_surface_pp_algorithm(
     SurfaceForceAndMomentWallFunctionProjectedAlgorithm *ppAlg
       = new SurfaceForceAndMomentWallFunctionProjectedAlgorithm(
           realm_, partVector, theData.outputFileName_,
-          theData.parameters_, realm_.realmUsesEdges_, assembledArea, momentumEqSys_->pointInfoVec_, momentumEqSys_->wallFunctionGhosting_);
+          theData.parameters_, realm_.realmUsesEdges_, assembledArea, momentumEqSys_->pointInfoMap_, momentumEqSys_->wallFunctionGhosting_);
     surfaceForceAndMomentAlgDriver_->algVec_.push_back(ppAlg);
     savedFrequency = surfaceForceAndMomentAlgDriver_->get_frequency();
   }
@@ -1908,7 +1908,7 @@ MomentumEquationSystem::register_wall_bc(
       if ( it_utau == wallFunctionParamsAlgDriver_->algMap_.end() ) {
         ComputeWallFrictionVelocityProjectedAlgorithm *theUtauAlg =
           new ComputeWallFrictionVelocityProjectedAlgorithm(realm_, part, projectedDistance, realm_.realmUsesEdges_, 
-                                                            pointInfoVec_, wallFunctionGhosting_);
+                                                            pointInfoMap_, wallFunctionGhosting_);
         wallFunctionParamsAlgDriver_->algMap_[wfAlgProjectedType] = theUtauAlg;
       }
       else {
@@ -1962,7 +1962,7 @@ MomentumEquationSystem::register_wall_bc(
           solverAlgDriver_->solverAlgMap_.find(wfAlgProjectedType);
         if ( it_wf == solverAlgDriver_->solverAlgMap_.end() ) {
           AssembleMomentumElemWallFunctionProjectedSolverAlgorithm *theAlg 
-            = new AssembleMomentumElemWallFunctionProjectedSolverAlgorithm(realm_, part, this, realm_.realmUsesEdges_, pointInfoVec_, wallFunctionGhosting_);
+            = new AssembleMomentumElemWallFunctionProjectedSolverAlgorithm(realm_, part, this, realm_.realmUsesEdges_, pointInfoMap_, wallFunctionGhosting_);
           solverAlgDriver_->solverAlgMap_[wfAlgProjectedType] = theAlg;
         }
         else {

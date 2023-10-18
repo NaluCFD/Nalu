@@ -67,11 +67,11 @@ ComputeWallFrictionVelocityProjectedAlgorithm::ComputeWallFrictionVelocityProjec
   stk::mesh::Part *part,
   const double projectedDistance,
   const bool useShifted,
-  std::vector<std::vector<PointInfo *> > &pointInfoVec,
+  std::map<std::string, std::vector<std::vector<PointInfo *> > > &pointInfoMap,
   stk::mesh::Ghosting *wallFunctionGhosting)
   : Algorithm(realm, part),
     useShifted_(useShifted),
-    pointInfoVec_(pointInfoVec),
+    pointInfoMap_(pointInfoMap),
     wallFunctionGhosting_(wallFunctionGhosting),
     bulkData_(&realm.bulk_data()),
     metaData_(&realm.meta_data()),
@@ -157,9 +157,27 @@ ComputeWallFrictionVelocityProjectedAlgorithm::execute()
     stk::mesh::communicate_field_data(*(wallFunctionGhosting_), ghostFieldVec_);
   
   // iterate over parts to match construction (requires global counter over locally owned faces)
-  size_t pointInfoVecCounter = 0;  
   for ( size_t pv = 0; pv < partVec_.size(); ++pv ) {
 
+    // extract name 
+    const std::string partName = partVec_[pv]->name();
+    
+    // extract local vector for this part
+    std::vector<std::vector<PointInfo *> > *pointInfoVec = nullptr;
+    std::map<std::string, std::vector<std::vector<PointInfo *> > >::iterator itf =
+      pointInfoMap_.find(partName);
+    if ( itf == pointInfoMap_.end() ) {
+      // will need to throw
+      NaluEnv::self().naluOutputP0() << "cannot find pointInfoMap_ with part name: " << partName << std::endl;
+      throw std::runtime_error("SurfaceForceAndMomentWallFunctionProjectedAlgorithm::issue");
+    }
+    else {
+      pointInfoVec = &((*itf)).second;
+    }
+
+    // set counter for this particular part
+    size_t pointInfoVecCounter = 0;
+    
     // extract projected distance
     const double pDistance = projectedDistanceVec_[pv];
 
@@ -169,11 +187,11 @@ ComputeWallFrictionVelocityProjectedAlgorithm::execute()
     
     stk::mesh::BucketVector const& face_buckets =
       realm_.get_buckets( metaData_->side_rank(), s_locally_owned );
-    
+
     for ( stk::mesh::BucketVector::const_iterator ib = face_buckets.begin();
           ib != face_buckets.end() ; ++ib ) {
       stk::mesh::Bucket & b = **ib ;
-      
+
       // face master element
       MasterElement *meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(b.topology());
       const int nodesPerFace = b.topology().num_nodes();
@@ -235,7 +253,7 @@ ComputeWallFrictionVelocityProjectedAlgorithm::execute()
         double *wallFrictionVelocityBip = stk::mesh::field_data(*wallFrictionVelocityBip_, face);
         
         // extract the vector of PointInfo for this face 
-        std::vector<PointInfo *> &faceInfoVec = pointInfoVec_[pointInfoVecCounter++];
+        std::vector<PointInfo *> &faceInfoVec = (*pointInfoVec)[pointInfoVecCounter++];
 
         // loop over ips
         for ( int ip = 0; ip < numScsBip; ++ip ) {
@@ -418,30 +436,32 @@ ComputeWallFrictionVelocityProjectedAlgorithm::initialize()
 {
   
   // only process if first time or mesh motion is active
-  if ( !firstInitialization_  && !realm_.has_mesh_motion() )
+  if ( !firstInitialization_  && !realm_.does_mesh_move() )
     return;
   
   // clear some of the search info
   boundingPointVec_.clear();
   boundingBoxVec_.clear();
   searchKeyPair_.clear();
-
+  
   // initialize all ghosting data structures
   initialize_ghosting();
+
+  // initialize the map
+  initialize_map();
   
-  // construct if the size is zero; reset always
-  if ( pointInfoVec_.size() == 0 )
-    construct_bounding_points();
+  // construct and reset bestX_
+  construct_bounding_points();
   reset_point_info();
   
   // construct the bounding boxes
   construct_bounding_boxes();
-
+  
   // coarse search (fills elemsToGhost_)
   coarse_search();
-
+  
   manage_ghosting();
-
+  
   // complete search
   complete_search();
   
@@ -472,7 +492,25 @@ ComputeWallFrictionVelocityProjectedAlgorithm::initialize_ghosting()
 }
 
 //--------------------------------------------------------------------------
-//-------- construct_bounding_points --------------------------------------
+//-------- initialize_map --------------------------------------------------
+//--------------------------------------------------------------------------
+void
+ComputeWallFrictionVelocityProjectedAlgorithm::initialize_map()
+{  
+  // clear the map
+  pointInfoMap_.clear();
+
+  // now fill with an empty set of entries to ensure that all of the part names exist in the map
+  for ( size_t pv = 0; pv < partVec_.size(); ++pv ) {
+    // extract name 
+    const std::string partName = partVec_[pv]->name();
+    // create an empty map (zero entries at this point, just the names of all of the parts expected)
+    pointInfoMap_[partName];
+  }
+}
+  
+//--------------------------------------------------------------------------
+//-------- construct_bounding_points ---------------------------------------
 //--------------------------------------------------------------------------
 void
 ComputeWallFrictionVelocityProjectedAlgorithm::construct_bounding_points()
@@ -495,9 +533,12 @@ ComputeWallFrictionVelocityProjectedAlgorithm::construct_bounding_points()
   // need to keep track of some sort of local id for each gauss point...
   uint64_t localPointId = 0;
   
-  // iterate over parts to allow for projected distance to vary per surface and defines ordering everywhere else
+  // iterate over parts to allow for projected distance to vary per surface; users access pointInfoMap_
   for ( size_t pv = 0; pv < partVec_.size(); ++pv ) {
     
+    // extract name 
+    const std::string partName = partVec_[pv]->name();
+
     // extract projected distance
     const double pDistance = projectedDistanceVec_[pv];
     
@@ -603,7 +644,7 @@ ComputeWallFrictionVelocityProjectedAlgorithm::construct_bounding_points()
         }
         
         // push them all back
-        pointInfoVec_.push_back(faceInfoVec);
+        pointInfoMap_[partName].push_back(faceInfoVec);
       }
     }
   }
@@ -681,12 +722,6 @@ ComputeWallFrictionVelocityProjectedAlgorithm::construct_bounding_boxes()
         minCorner[i] -= increment;
         maxCorner[i] += increment;
       }
-
-      // correct for 2d
-      //if ( nDim_ == 2 ) {
-      //  minCorner[2] = -1.0;
-      //  maxCorner[2] = +1.0;
-      // }
       
       // create the bounding box and push back
       boundingBox theBox(Box(minCorner,maxCorner), theIdent);
@@ -701,16 +736,21 @@ ComputeWallFrictionVelocityProjectedAlgorithm::construct_bounding_boxes()
 void
 ComputeWallFrictionVelocityProjectedAlgorithm::reset_point_info()
 {
-  std::vector<std::vector<PointInfo*> >::iterator ii;
-  for( ii=pointInfoVec_.begin(); ii!=pointInfoVec_.end(); ++ii ) {
-    std::vector<PointInfo *> &theVec = (*ii);    
-    for ( size_t k = 0; k < theVec.size(); ++k ) {
-      PointInfo *pInfo = theVec[k];
-      pInfo->bestX_ = pInfo->bestXRef_;
+
+  for( std::map<std::string, std::vector<std::vector<PointInfo*> > >::iterator im 
+         = pointInfoMap_.begin(); im!=pointInfoMap_.end(); ++im ) {
+    std::vector<std::vector<PointInfo*> > &theVecVec = (*im).second;
+    for( std::vector<std::vector<PointInfo*> >::iterator ii 
+           = theVecVec.begin(); ii!=theVecVec.end(); ++ii ) {
+      std::vector<PointInfo *> &theVec = (*ii);    
+      for ( size_t k = 0; k < theVec.size(); ++k ) {
+        PointInfo *pInfo = theVec[k];
+        pInfo->bestX_ = pInfo->bestXRef_;
+      }
     }
   }
 }
-
+  
 //--------------------------------------------------------------------------
 //-------- coarse_search ---------------------------------------------------
 //--------------------------------------------------------------------------
@@ -795,72 +835,76 @@ ComputeWallFrictionVelocityProjectedAlgorithm::complete_search()
 
   // invert the process... Loop over InfoVec_ and query searchKeyPair_ for this information (avoids a map)
   std::vector<PointInfo *> problemInfoVec;
-  std::vector<std::vector<PointInfo *> >::iterator ii;
-  for( ii=pointInfoVec_.begin(); ii!=pointInfoVec_.end(); ++ii ) {
-    std::vector<PointInfo *> &theVec = (*ii);
-    for ( size_t k = 0; k < theVec.size(); ++k ) {
-      
-      PointInfo *pInfo = theVec[k];
-      const uint64_t localPointId  = pInfo->localPointId_; 
-      for ( int j = 0; j < nDim_; ++j )
-        pointCoords[j] = pInfo->pointCoordinates_[j];
-      
-      std::pair <std::vector<std::pair<uint64IdentProc, uint64IdentProc> >::const_iterator, std::vector<std::pair<uint64IdentProc, uint64IdentProc> >::const_iterator > 
-        p2 = std::equal_range(searchKeyPair_.begin(), searchKeyPair_.end(), localPointId, compareId());
-      
-      if ( p2.first == p2.second ) {
-        problemInfoVec.push_back(pInfo);        
-      }
-      else {
-        for (std::vector<std::pair<uint64IdentProc, uint64IdentProc> >::const_iterator jj = p2.first; jj != p2.second; ++jj ) {
-          
-          const uint64_t theBox = jj->second.id();
-          const unsigned theRank = NaluEnv::self().parallel_rank();
-          const unsigned pt_proc = jj->first.proc();
-        
-          // check if I own the point...
-          if ( theRank == pt_proc ) {
+  for( std::map<std::string, std::vector<std::vector<PointInfo*> > >::iterator im 
+         = pointInfoMap_.begin(); im!=pointInfoMap_.end(); ++im ) {
+    std::vector<std::vector<PointInfo*> > &theVecVec = (*im).second;
+    for( std::vector<std::vector<PointInfo*> >::iterator ii 
+           = theVecVec.begin(); ii!=theVecVec.end(); ++ii ) {
+      std::vector<PointInfo *> &theVec = (*ii);    
+      for ( size_t k = 0; k < theVec.size(); ++k ) {
 
-            // proceed as required; all elements should have already been ghosted via the coarse search
-            stk::mesh::Entity candidateElement = bulkData_->get_entity(stk::topology::ELEMENT_RANK, theBox);
-            if ( !(bulkData_->is_valid(candidateElement)) )
-              throw std::runtime_error("no valid entry for element");
+        PointInfo *pInfo = theVec[k];
+        const uint64_t localPointId  = pInfo->localPointId_; 
+        for ( int j = 0; j < nDim_; ++j )
+          pointCoords[j] = pInfo->pointCoordinates_[j];
+        
+        std::pair <std::vector<std::pair<uint64IdentProc, uint64IdentProc> >::const_iterator, std::vector<std::pair<uint64IdentProc, uint64IdentProc> >::const_iterator > 
+          p2 = std::equal_range(searchKeyPair_.begin(), searchKeyPair_.end(), localPointId, compareId());
+        
+        if ( p2.first == p2.second ) {
+          problemInfoVec.push_back(pInfo);        
+        }
+        else {
+          for (std::vector<std::pair<uint64IdentProc, uint64IdentProc> >::const_iterator jj = p2.first; jj != p2.second; ++jj ) {
             
-            int elemIsGhosted = bulkData_->bucket(candidateElement).owned() ? 0 : 1;
-                        
-            // now load the elemental nodal coords
-            stk::mesh::Entity const * elem_node_rels = bulkData_->begin_nodes(candidateElement);
-            int num_nodes = bulkData_->num_nodes(candidateElement);            
-            std::vector<double> elementCoords(nDim_*num_nodes);
+            const uint64_t theBox = jj->second.id();
+            const unsigned theRank = NaluEnv::self().parallel_rank();
+            const unsigned pt_proc = jj->first.proc();
             
-            for ( int ni = 0; ni < num_nodes; ++ni ) {
-              stk::mesh::Entity node = elem_node_rels[ni];
-              // gather coordinates (conforms to isInElement)
-              const double * coords =  stk::mesh::field_data(*coordinates, node);
-              for ( int j = 0; j < nDim_; ++j ) {
-                elementCoords[j*num_nodes+ni] = coords[j];
+            // check if I own the point...
+            if ( theRank == pt_proc ) {
+              
+              // proceed as required; all elements should have already been ghosted via the coarse search
+              stk::mesh::Entity candidateElement = bulkData_->get_entity(stk::topology::ELEMENT_RANK, theBox);
+              if ( !(bulkData_->is_valid(candidateElement)) )
+                throw std::runtime_error("no valid entry for element");
+              
+              int elemIsGhosted = bulkData_->bucket(candidateElement).owned() ? 0 : 1;
+              
+              // now load the elemental nodal coords
+              stk::mesh::Entity const * elem_node_rels = bulkData_->begin_nodes(candidateElement);
+              int num_nodes = bulkData_->num_nodes(candidateElement);            
+              std::vector<double> elementCoords(nDim_*num_nodes);
+              
+              for ( int ni = 0; ni < num_nodes; ++ni ) {
+                stk::mesh::Entity node = elem_node_rels[ni];
+                // gather coordinates (conforms to isInElement)
+                const double * coords =  stk::mesh::field_data(*coordinates, node);
+                for ( int j = 0; j < nDim_; ++j ) {
+                  elementCoords[j*num_nodes+ni] = coords[j];
+                }
+              }
+              
+              // extract the topo from this element...
+              const stk::topology elemTopo = bulkData_->bucket(candidateElement).topology();
+              MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(elemTopo);
+              
+              const double nearestDistance = meSCS->isInElement(&elementCoords[0],
+                                                                &(pointCoords[0]),
+                                                                &(isoParCoords[0]));
+              
+              // check if this element is the best
+              if ( nearestDistance < pInfo->bestX_ ) {
+                pInfo->owningElement_ = candidateElement;
+                pInfo->meSCS_ = meSCS;
+                pInfo->isoParCoords_ = isoParCoords;
+                pInfo->bestX_ = nearestDistance;
+                pInfo->elemIsGhosted_ = elemIsGhosted;
               }
             }
-            
-            // extract the topo from this element...
-            const stk::topology elemTopo = bulkData_->bucket(candidateElement).topology();
-            MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(elemTopo);
-
-            const double nearestDistance = meSCS->isInElement(&elementCoords[0],
-                                                              &(pointCoords[0]),
-                                                              &(isoParCoords[0]));
-
-            // check if this element is the best
-            if ( nearestDistance < pInfo->bestX_ ) {
-              pInfo->owningElement_ = candidateElement;
-              pInfo->meSCS_ = meSCS;
-              pInfo->isoParCoords_ = isoParCoords;
-              pInfo->bestX_ = nearestDistance;
-              pInfo->elemIsGhosted_ = elemIsGhosted;
+            else {
+              // not this proc's issue
             }
-          }
-          else {
-            // not this proc's issue
           }
         }
       }
@@ -868,12 +912,17 @@ ComputeWallFrictionVelocityProjectedAlgorithm::complete_search()
   }
   
   if ( provideOutput_ ) {
-    
+  
     // provide output
-    for( ii=pointInfoVec_.begin(); ii!=pointInfoVec_.end(); ++ii ) {
-      std::vector<PointInfo *> &theVec = (*ii);
-      for ( size_t k = 0; k < theVec.size(); ++k ) {        
-        provide_output(theVec[k], false);        
+    for( std::map<std::string, std::vector<std::vector<PointInfo*> > >::iterator im 
+           = pointInfoMap_.begin(); im!=pointInfoMap_.end(); ++im ) {
+      std::vector<std::vector<PointInfo*> > &theVecVec = (*im).second;
+      for( std::vector<std::vector<PointInfo*> >::iterator ii 
+             = theVecVec.begin(); ii!=theVecVec.end(); ++ii ) {
+        std::vector<PointInfo *> &theVec = (*ii);    
+        for ( size_t k = 0; k < theVec.size(); ++k ) {        
+          provide_output(theVec[k], false);        
+        }
       }
     }
     

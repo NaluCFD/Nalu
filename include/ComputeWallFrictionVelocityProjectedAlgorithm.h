@@ -43,7 +43,7 @@ public:
     stk::mesh::Part *part,
     const double projectedDistance,
     const bool useShifted,
-    std::vector<std::vector<PointInfo *> > &pointInfoVec,
+    std::map<std::string, std::vector<std::vector<PointInfo *> > > &pointInfoMap,
     stk::mesh::Ghosting *wallFunctionGhosting);
   virtual ~ComputeWallFrictionVelocityProjectedAlgorithm();
 
@@ -60,10 +60,11 @@ public:
   // debug
   void provide_output(const PointInfo *pInfo, const bool problemPoint);
   
-  // ghosting procedure set of calls
+  // ghosting and initialization set of calls
   void initialize();
   void initialize_ghosting();
   void construct_bounding_points();
+  void initialize_map();
   void reset_point_info();
   void construct_bounding_boxes();
   void coarse_search();
@@ -71,8 +72,7 @@ public:
   void complete_search();
   
   const bool useShifted_;
-  /* vector of PointInfo pointInfoVec_[k] provides numScsBip PointInfo objects on face k */
-  std::vector<std::vector<PointInfo *> > &pointInfoVec_;  
+  std::map<std::string, std::vector<std::vector<PointInfo *> > > &pointInfoMap_;  
   stk::mesh::Ghosting *wallFunctionGhosting_;
 
   stk::mesh::BulkData *bulkData_;

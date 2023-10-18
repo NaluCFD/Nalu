@@ -201,7 +201,7 @@ public:
   std::vector<stk::mesh::Part *> notProjectedPart_;
   
   // projected in space points
-  std::vector<std::vector<PointInfo *> > pointInfoVec_;
+  std::map<std::string, std::vector<std::vector<PointInfo *> > > pointInfoMap_;
 };
 
 class ContinuityEquationSystem : public EquationSystem {
