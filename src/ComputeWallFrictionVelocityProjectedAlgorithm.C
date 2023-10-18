@@ -436,7 +436,7 @@ ComputeWallFrictionVelocityProjectedAlgorithm::initialize()
 {
   
   // only process if first time or mesh motion is active
-  if ( !firstInitialization_  && !realm_.has_mesh_motion() )
+  if ( !firstInitialization_  && !realm_.does_mesh_move() )
     return;
   
   // clear some of the search info
