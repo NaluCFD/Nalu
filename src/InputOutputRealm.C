@@ -58,8 +58,8 @@ void
 InputOutputRealm::initialize()
 {
   // bare minimum to register fields and to extract from possible mesh file
-  register_io_fields();
   setup_post_processing_algorithms();
+  register_io_fields();
   ioBroker_->populate_mesh();
   ioBroker_->populate_field_data();
   create_output_mesh();
