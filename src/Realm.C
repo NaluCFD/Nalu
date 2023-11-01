@@ -2111,8 +2111,7 @@ Realm::initialize_post_processing_algorithms()
 std::string
 Realm::get_coordinates_name()
 {
-  return ( (solutionOptions_->meshMotion_ | solutionOptions_->meshDeformation_ | solutionOptions_->externalMeshDeformation_ | solutionOptions_->initialMeshDisplacement_) 
-           ? "current_coordinates" : "coordinates");
+  return solutionOptions_->get_coordinates_name();
 }
 
 //--------------------------------------------------------------------------
@@ -2121,7 +2120,7 @@ Realm::get_coordinates_name()
 bool
 Realm::has_mesh_motion() const
 {
-  return solutionOptions_->meshMotion_;
+  return solutionOptions_->has_mesh_motion();
 }
 
 //--------------------------------------------------------------------------
@@ -2130,7 +2129,7 @@ Realm::has_mesh_motion() const
 bool
 Realm::has_mesh_deformation() const
 {
-  return solutionOptions_->externalMeshDeformation_ | solutionOptions_->meshDeformation_;
+  return solutionOptions_->has_mesh_deformation();
 }
 
 //--------------------------------------------------------------------------
@@ -2139,7 +2138,7 @@ Realm::has_mesh_deformation() const
 bool
 Realm::does_mesh_move() const
 {
-  return has_mesh_motion() | has_mesh_deformation();
+  return solutionOptions_->does_mesh_move();
 }
 
 //--------------------------------------------------------------------------
@@ -2148,7 +2147,7 @@ Realm::does_mesh_move() const
 bool
 Realm::has_non_matching_boundary_face_alg() const
 {
-  return hasNonConformal_ | hasOverset_; 
+  return hasNonConformal_ || hasOverset_; 
 }
 
 //--------------------------------------------------------------------------
