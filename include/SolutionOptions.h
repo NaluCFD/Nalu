@@ -49,17 +49,17 @@ public:
 
   inline bool has_mesh_deformation() const
   {
-    return externalMeshDeformation_ | meshDeformation_;
+    return externalMeshDeformation_ || meshDeformation_;
   }
 
   inline bool does_mesh_move() const
   {
-    return has_mesh_motion() | has_mesh_deformation();
+    return has_mesh_motion() || has_mesh_deformation();
   }
 
   inline std::string get_coordinates_name() const
   {
-    return ( (meshMotion_ | meshDeformation_ | externalMeshDeformation_ | initialMeshDisplacement_) 
+    return ( (meshMotion_ || meshDeformation_ || externalMeshDeformation_ || initialMeshDisplacement_) 
 	     ? "current_coordinates" : "coordinates");    
   }
   
