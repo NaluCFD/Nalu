@@ -221,13 +221,11 @@ AssembleMomentumEdgeOpenSolverAlgorithm::execute()
         // compute geometry
         double axdx = 0.0;
         double asq = 0.0;
-        double udotx = 0.0;
         for ( int j = 0; j < nDim; ++j ) {
           const double axj = areaVec[faceOffSet+j];
           const double dxj = coordR[j]  - coordL[j];
           asq += axj*axj;
           axdx += axj*dxj;
-          udotx += 0.5*dxj*(uNp1L[j] + uNp1R[j]);
         }
 
         const double inv_axdx = 1.0/axdx;

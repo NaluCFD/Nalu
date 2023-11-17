@@ -57,6 +57,9 @@ SixDofSurfaceForceAndMomentAlgorithm::SixDofSurfaceForceAndMomentAlgorithm(
     assembledArea_(assembledArea),
     coordinates_(nullptr),
     pressure_(nullptr),
+    pressureForce_(nullptr),
+    tauWall_(nullptr),
+    yplus_(nullptr),
     density_(nullptr),
     viscosity_(nullptr),
     dudx_(nullptr),
@@ -69,14 +72,16 @@ SixDofSurfaceForceAndMomentAlgorithm::SixDofSurfaceForceAndMomentAlgorithm(
 
   NaluEnv::self().naluOutputP0() << "Coords name :: " << realm_.get_coordinates_name() << std::endl;
   pressure_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "pressure");
+  pressureForce_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "pressure_force");
+  tauWall_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "tau_wall");
+  yplus_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "yplus");
+  density_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "density");
   // extract viscosity name
   const std::string viscName = realm_.is_turbulent()
     ? "effective_viscosity_u" : "viscosity";
   viscosity_ = meta_data.get_field<double>(stk::topology::NODE_RANK, viscName);
   dudx_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "dudx");
   exposedAreaVec_ = meta_data.get_field<double>(meta_data.side_rank(), "exposed_area_vector");
-  density_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "density");
-
 }
 //--------------------------------------------------------------------------
 //-------- destructor ------------------------------------------------------
@@ -154,6 +159,10 @@ SixDofSurfaceForceAndMomentAlgorithm::execute()
     // extract connected element topology
     b.parent_topology(stk::topology::ELEMENT_RANK, parentTopo);
     STK_ThrowAssert ( parentTopo.size() == 1 );
+    stk::topology theElemTopo = parentTopo[0];
+    
+    // extract master element for this element topo
+    MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(theElemTopo);
 
     // algorithm related; element
     ws_pressure.resize(nodesPerFace);
@@ -198,7 +207,15 @@ SixDofSurfaceForceAndMomentAlgorithm::execute()
       const double * areaVec = stk::mesh::field_data(*exposedAreaVec_, face);
 
       // extract the connected element to this exposed face; should be single in size!
+      const stk::mesh::Entity* face_elem_rels = bulk_data.begin_elements(face);
       STK_ThrowAssert( bulk_data.num_elements(face) == 1 );
+
+      // get element; its face ordinal number
+      stk::mesh::Entity element = face_elem_rels[0];
+      const int face_ordinal = bulk_data.begin_element_ordinals(face)[0];
+
+      // get the relations off of element
+      stk::mesh::Entity const * elem_node_rels = bulk_data.begin_nodes(element);
 
       for ( int ip = 0; ip < numScsBip; ++ip ) {
 
@@ -206,6 +223,7 @@ SixDofSurfaceForceAndMomentAlgorithm::execute()
         const int offSetAveraVec = ip*nDim;
         const int offSetSF_face = ip*nodesPerFace;
         const int localFaceNode = faceIpNodeMap[ip];
+        const int opposingNode = meSCS->opposingNodes(face_ordinal,ip);
 
         // interpolate to bip
         double pBip = 0.0;
@@ -222,6 +240,10 @@ SixDofSurfaceForceAndMomentAlgorithm::execute()
         stk::mesh::Entity node = face_node_rels[localFaceNode];
         const double * coord = stk::mesh::field_data(*coordinates_, node );
         const double *duidxj = stk::mesh::field_data(*dudx_, node );
+        double *pressureForce = stk::mesh::field_data(*pressureForce_, node );
+        double *tauWall = stk::mesh::field_data(*tauWall_, node );
+        double *yplus = stk::mesh::field_data(*yplus_, node );
+        const double assembledArea = *stk::mesh::field_data(*assembledArea_, node );
 
         // divU and aMag
         double divU = 0.0;
@@ -246,6 +268,7 @@ SixDofSurfaceForceAndMomentAlgorithm::execute()
           // set forces
           ws_v_force[i] = 2.0/3.0*muBip*divU*includeDivU_*ai;
           ws_p_force[i] = pBip*ai;
+          pressureForce[i] += pBip*ai;
           double dflux = 0.0;
           double tauijNj = 0.0;
           const int offSetI = nDim*i;
@@ -271,6 +294,10 @@ SixDofSurfaceForceAndMomentAlgorithm::execute()
           tauTangential += tauiTangential*tauiTangential;
         }
 
+        // assemble nodal quantities; scaled by area for L2 lumped nodal projection
+        const double areaFac = aMag/assembledArea;
+        *tauWall += std::sqrt(tauTangential)*areaFac;
+
         cross_product(&ws_t_force[0], &ws_moment[0], &ws_radius[0]);
 
         // assemble force and moment
@@ -279,6 +306,34 @@ SixDofSurfaceForceAndMomentAlgorithm::execute()
           l_force_moment[j+3] += ws_v_force[j];
           l_force_moment[j+6] += ws_moment[j];
         }
+
+        //==================
+        // deal with yplus
+        //==================
+
+        // left and right nodes; right is on the face; left is the opposing node
+        stk::mesh::Entity nodeL = elem_node_rels[opposingNode];
+        stk::mesh::Entity nodeR = face_node_rels[localFaceNode];
+
+        // extract nodal fields
+        const double * coordL = stk::mesh::field_data(*coordinates_, nodeL );
+        const double * coordR = stk::mesh::field_data(*coordinates_, nodeR );
+
+        // determine yp; ~nearest opposing edge normal distance to wall
+        double ypBip = 0.0;
+        for ( int j = 0; j < nDim; ++j ) {
+          const double nj = ws_normal[j];
+          const double ej = coordR[j] - coordL[j];
+          ypBip += nj*ej*nj*ej;
+        }
+        ypBip = std::sqrt(ypBip);
+
+        const double tauW = std::sqrt(tauTangential);
+        const double uTau = std::sqrt(tauW/rhoBip);
+        const double yplusBip = rhoBip*ypBip/muBip*uTau;
+
+        // nodal field
+        *yplus += yplusBip*areaFac;
 
       }
     }

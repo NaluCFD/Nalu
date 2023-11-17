@@ -108,6 +108,7 @@ public:
   TurbulenceModel turbulenceModel_;
   bool dynamicTurbulenceProcedure_;
   bool meshMotion_;
+  bool meshMotionIncludesSixDof_;
   bool meshDeformation_;
   bool externalMeshDeformation_;
   bool initialMeshDisplacement_;

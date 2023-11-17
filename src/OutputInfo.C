@@ -45,6 +45,8 @@ OutputInfo::OutputInfo()
     restartStart_(500),
     restartMaxDataBaseStepSize_(100000),
     restartNodeSet_(true),
+    restartResetTime_(false),
+    restartResetNewTime_(0.0),
     outputCompressionLevel_(0),
     outputCompressionShuffle_(false),
     restartCompressionLevel_(0),
@@ -170,6 +172,10 @@ OutputInfo::load(
 
     // determine if we want nodeset restart output
     get_if_present(y_restart, "restart_node_set", restartNodeSet_, restartNodeSet_);
+
+    // determine if we want to reset the time back to user start time
+    get_if_present(y_restart, "restart_reset_time", restartResetTime_, restartResetTime_);
+    get_if_present(y_restart, "restart_reset_new_time", restartResetNewTime_, restartResetNewTime_);
     
     // max data base size for restart
     get_if_present(y_restart, "max_data_base_step_size", restartMaxDataBaseStepSize_, restartMaxDataBaseStepSize_);

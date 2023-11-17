@@ -960,8 +960,9 @@ ExplicitFiltering::compute_scv_residual(
   
   // subtract out continuity factor and kd
   const double ncFac = 1.0;
-  double w_kd[3][3] = {0};
-  w_kd[0][0] = w_kd[1][1] = w_kd[2][2] = 1.0;
+  double w_kd[3][3] = {{1.0, 0.0, 0.0}, 
+                       {0.0, 1.0, 0.0}, 
+                       {0.0, 0.0, 1.0}};
 
   // zero residual
   field_fill( metaData, bulkData, 0.0, *residual_, realm_.get_activate_aura());  

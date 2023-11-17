@@ -1587,8 +1587,6 @@ TpetraLinearSystem::applyDirichletBCs(
 {
   stk::mesh::MetaData & metaData = realm_.meta_data();
 
-  double adbc_time = -NaluEnv::self().nalu_time();
-
   const stk::mesh::Selector selector 
     = (metaData.locally_owned_part() | metaData.globally_shared_part())
     & stk::mesh::selectUnion(parts)
@@ -1599,7 +1597,6 @@ TpetraLinearSystem::applyDirichletBCs(
     realm_.get_buckets( stk::topology::NODE_RANK, selector );
 
   const bool internalMatrixIsSorted = true;
-  int nbc=0;
   for(const stk::mesh::Bucket* bptr : buckets) {
     const stk::mesh::Bucket & b = *bptr;
 
@@ -1651,11 +1648,9 @@ TpetraLinearSystem::applyDirichletBCs(
         Teuchos::RCP<LinSys::Vector> rhs = useOwned ? ownedRhs_: sharedNotOwnedRhs_;
         const double bc_residual = useOwned ? (bcValues[k*fieldSize + d] - solution[k*fieldSize + d]) : 0.0;
         rhs->replaceLocalValue(actualLocalId, bc_residual);
-        ++nbc;
       }
     }
   }
-  adbc_time += NaluEnv::self().nalu_time();
 }
 
 void
@@ -1802,8 +1797,6 @@ TpetraLinearSystem::solve(
     writeToFile(eqSysName_.c_str(), false);
   }
 
-  double solve_time = -NaluEnv::self().nalu_time();
-
   int iters;
   double finalResidNorm;
   
@@ -1818,8 +1811,6 @@ TpetraLinearSystem::solve(
       iters,
       finalResidNorm,
       realm_.isFinalOuterIter_);
-
-  solve_time += NaluEnv::self().nalu_time();
 
   if (linearSolver->getConfig()->getWriteMatrixFiles()) {
     writeSolutionToFile(eqSysName_.c_str());

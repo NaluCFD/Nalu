@@ -179,14 +179,9 @@ SimpleErrorIndicatorScalarElemAlgorithm::execute()
         dlen = std::sqrt(dlen);
 
         for ( int i = 0; i < nUnk_; ++i ) {
-          double duL = 0.0;
-          double duR = 0.0;
           double du2 = 0.0;
           for(int j = 0; j < nDim; ++j ) {
             const double dxj = p_coordinates[irNdim+j] - p_coordinates[ilNdim+j];
-            duL += dxj*p_dudx[row_p_dudxL+i*nUnk_+j];
-            duR += dxj*p_dudx[row_p_dudxR+i*nUnk_+j];
-            //du2 += dxj*(p_dudx[row_p_dudxR+i*nUnk_+j] - p_dudx[row_p_dudxL+i*nUnk_+j]);
             du2 += dxj*(p_dudx[row_p_dudxR+i*nUnk_+j] + p_dudx[row_p_dudxL+i*nUnk_+j])/2.0;
           }
 

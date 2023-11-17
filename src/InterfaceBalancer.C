@@ -72,13 +72,10 @@ InterfaceBalancer::getInterfaceDescription (
   stk::mesh::Selector sharedSelector (metaData_.globally_shared_part ());
   const stk::mesh::BucketVector& buckets = bulkData_.get_buckets (stk::topology::NODE_RANK, sharedSelector);
 
-  int numInterfaceNodesOwned = 0;
-
   for (auto ib = buckets.begin (); ib != buckets.end (); ++ib) {
 
     const stk::mesh::Bucket& b = **ib;
     const size_t nnodes = b.size ();
-    const bool isOwned = b.owned();
     for (size_t n = 0; n < nnodes; ++n) {
       stk::mesh::Entity node = b[n];
       std::vector<int> shared_procs;
@@ -87,9 +84,6 @@ InterfaceBalancer::getInterfaceDescription (
       neighborProcessors.insert (shared_procs.begin (), shared_procs.end ());
       std::pair<stk::mesh::Entity, std::vector<int> > item (node, shared_procs);
       interfaceNodesAndProcessors.insert (item);
-      if(isOwned) {
-        numInterfaceNodesOwned++;
-      }
     }
   }
 }
