@@ -164,14 +164,10 @@ SimpleErrorIndicatorElemAlgorithm::execute()
           const double dxi = p_coordinates[irNdim+i] - p_coordinates[ilNdim+i];
           dlen += dxi*dxi;
 
-          double duL = 0.0;
-          double duR = 0.0;
           double du2 = 0.0;
           for(int j = 0; j < nDim; ++j ) {
             const double dxj = p_coordinates[irNdim+j] - p_coordinates[ilNdim+j];
-            duL += dxj*p_dudx[row_p_dudxL+i*nDim+j];
-            duR += dxj*p_dudx[row_p_dudxR+i*nDim+j];
-            du2 += dxj*(p_dudx[row_p_dudxR+i*nDim+j] - p_dudx[row_p_dudxL+i*nDim+j]);
+            du2 += dxj*(p_dudx[row_p_dudxR+i*nDim+j] + p_dudx[row_p_dudxL+i*nDim+j]);
           }
           dlen = std::sqrt(dlen);
 

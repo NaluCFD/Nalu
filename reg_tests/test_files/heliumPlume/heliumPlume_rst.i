@@ -211,6 +211,9 @@ realms:
       restart_data_base_name: heliumPlume_B.rst
       restart_frequency: 2 
       restart_time: 0.10
+      restart_reset_time: yes
+      restart_reset_new_time: 0.0
+
 
 Time_Integrators:
   - StandardTimeIntegrator:

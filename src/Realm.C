@@ -398,7 +398,7 @@ Realm::initialize()
   setup_post_processing_algorithms();
 
   // Create six_dof surface integration algorithms
-  if ( solutionOptions_->meshMotion_ )
+  if ( solutionOptions_->meshMotionIncludesSixDof_ )
     equationSystems_.register_surface_six_dof_algorithm();
 
   // create initial conditions
@@ -1626,7 +1626,8 @@ Realm::pre_timestep_work()
   // check for mesh motion
   if ( solutionOptions_->meshMotion_ ) {
     
-    update_six_dof_motion();
+    if ( solutionOptions_->meshMotionIncludesSixDof_ )
+      update_six_dof_motion();
     process_mesh_motion();
     compute_geometry();
 
@@ -3916,6 +3917,14 @@ Realm::populate_restart(
     ioBroker_->get_global("timeStepCount", timeStepCount, abortIfNotFound);
     if ( NULL != turbulenceAveragingPostProcessing_ ) {
       ioBroker_->get_global("currentTimeFilter", turbulenceAveragingPostProcessing_->currentTimeFilter_, abortIfNotFound);
+    }
+
+    // allow the user to reset the time; populate from the found data base, however, not reset to a user time
+    if ( outputInfo_->restartResetTime_ ) {
+      foundRestartTime = outputInfo_->restartResetNewTime_;
+      NaluEnv::self().naluOutputP0() << "Realm::populate_restart() candidate restart time: "
+                                     << foundRestartTime << " for Realm: " << name() << " (override via reset)" 
+                                     << std::endl;
     }
   }
   return foundRestartTime;

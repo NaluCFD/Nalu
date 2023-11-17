@@ -51,6 +51,7 @@ SolutionOptions::SolutionOptions()
     turbulenceModel_(LAMINAR),
     dynamicTurbulenceProcedure_(false),
     meshMotion_(false),
+    meshMotionIncludesSixDof_(false),
     meshDeformation_(false),
     externalMeshDeformation_(false),
     initialMeshDisplacement_(false),
@@ -406,10 +407,13 @@ SolutionOptions::load(const YAML::Node & y_node)
           get_required(y_option, "name", motionName);
           double omega = 0.0;
 
-
           // Check for 6 DOF
           bool sixDOF = false;
           get_if_present(y_option, "include_six_dof", sixDOF, sixDOF);
+
+          // set a flag for specialized six-dof mesh motion
+          if ( sixDOF )
+            meshMotionIncludesSixDof_ = true;
 
           // Assume straight rotation if no sixDOF included          
           if ( !sixDOF )

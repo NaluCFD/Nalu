@@ -56,6 +56,8 @@ public:
   int restartStart_;
   int restartMaxDataBaseStepSize_;
   bool restartNodeSet_;
+  bool restartResetTime_;
+  double restartResetNewTime_;
   int outputCompressionLevel_;
   bool outputCompressionShuffle_;
   int restartCompressionLevel_;
