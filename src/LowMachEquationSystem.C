@@ -15,6 +15,7 @@
 #include "AssembleContinuityEdgeOpenSolverAlgorithm.h"
 #include "AssembleContinuityElemOpenSolverAlgorithm.h"
 #include "AssembleContinuityNonConformalSolverAlgorithm.h"
+#include "AssembleContinuityVofNonConformalSolverAlgorithm.h"
 #include "AssembleMomentumEdgeSolverAlgorithm.h"
 #include "AssembleMomentumElemSolverAlgorithm.h"
 #include "AssembleMomentumEdgeOpenSolverAlgorithm.h"
@@ -51,6 +52,7 @@
 #include "ComputeMdotElemOpenAlgorithm.h"
 #include "ComputeMdotVofElemOpenAlgorithm.h"
 #include "ComputeMdotNonConformalAlgorithm.h"
+#include "ComputeMdotVofNonConformalAlgorithm.h"
 #include "ComputeWallFrictionVelocityAlgorithm.h"
 #include "ComputeWallFrictionVelocityProjectedAlgorithm.h"
 #include "ConstantAuxFunction.h"
@@ -3100,8 +3102,12 @@ ContinuityEquationSystem::register_non_conformal_bc(
     &(meta_data.declare_field<double>(sideRank, "nc_mass_flow_rate"));
   stk::mesh::put_field_on_mesh(*mdotBip, *part, numScsBip, nullptr);
 
-  if ( realm_.solutionOptions_->balancedForce_ )
-    throw std::runtime_error("ContinuityEquationSystem::non_conformal is not ready for production");
+  // register volume flow rate
+  if ( realm_.solutionOptions_->balancedForce_ ) {
+    GenericFieldType *vdotBip =
+      &(meta_data.declare_field<double>(sideRank, "nc_volume_flow_rate"));
+    stk::mesh::put_field_on_mesh(*vdotBip, *part, numScsBip, nullptr);
+  }
 
   // non-solver; contribution to Gjp; DG algorithm decides on locations for integration points
   if ( !managePNG_ ) {
@@ -3116,14 +3122,21 @@ ContinuityEquationSystem::register_non_conformal_bc(
       else {
         it->second->partVec_.push_back(part);
       }
+      if ( realm_.solutionOptions_->balancedForce_ )
+        throw std::runtime_error("ContinuityEquationSystem::non_conformal: Balanced force cannot use an edge nodal gradient");
     }
     else {
       // proceed with DG
       std::map<AlgorithmType, Algorithm *>::iterator it
         = assembleNodalGradAlgDriver_->algMap_.find(algType);
       if ( it == assembleNodalGradAlgDriver_->algMap_.end() ) {
-        AssembleNodalGradNonConformalAlgorithm *theAlg 
-          = new AssembleNodalGradNonConformalAlgorithm(realm_, part, pressure_, dpdx_);
+        Algorithm *theAlg = NULL;
+        if ( realm_.solutionOptions_->balancedForce_ ) {
+          theAlg = new AssembleNodalGradPAWElemAlgorithm(realm_, part, pressure_, dpdx_);
+        }
+        else {
+          theAlg = new AssembleNodalGradNonConformalAlgorithm(realm_, part, pressure_, dpdx_);
+        }
         assembleNodalGradAlgDriver_->algMap_[algType] = theAlg;
       }
       else {
@@ -3136,8 +3149,13 @@ ContinuityEquationSystem::register_non_conformal_bc(
   std::map<AlgorithmType, Algorithm *>::iterator itm =
     computeMdotAlgDriver_->algMap_.find(algType);
   if ( itm == computeMdotAlgDriver_->algMap_.end() ) {
-    ComputeMdotNonConformalAlgorithm *theAlg
-      = new ComputeMdotNonConformalAlgorithm(realm_, part, pressure_, dpdx_);
+    Algorithm *theAlg = NULL;
+    if ( realm_.solutionOptions_->balancedForce_) {
+      theAlg = new ComputeMdotVofNonConformalAlgorithm(realm_, part, pressure_, dpdx_, *realm_.solutionOptions_);
+    }
+    else {
+      theAlg = new ComputeMdotNonConformalAlgorithm(realm_, part, pressure_, dpdx_);
+    }
     computeMdotAlgDriver_->algMap_[algType] = theAlg;
   }
   else {
@@ -3148,9 +3166,14 @@ ContinuityEquationSystem::register_non_conformal_bc(
   std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi =
     solverAlgDriver_->solverAlgMap_.find(algType);
   if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
-    AssembleContinuityNonConformalSolverAlgorithm *theAlg
-      = new AssembleContinuityNonConformalSolverAlgorithm(realm_, part, this, pressure_, dpdx_);
-    solverAlgDriver_->solverAlgMap_[algType] = theAlg;
+    SolverAlgorithm *theSolverAlg = NULL;
+    if ( realm_.solutionOptions_->balancedForce_) {
+      theSolverAlg = new AssembleContinuityVofNonConformalSolverAlgorithm(realm_, part, this, pressure_, dpdx_, *realm_.solutionOptions_);
+    }
+    else {
+      theSolverAlg = new AssembleContinuityNonConformalSolverAlgorithm(realm_, part, this, pressure_, dpdx_);
+    }
+    solverAlgDriver_->solverAlgMap_[algType] = theSolverAlg;
   }
   else {
     itsi->second->partVec_.push_back(part);
