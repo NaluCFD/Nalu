@@ -11,7 +11,6 @@
 #include <Algorithm.h>
 #include <DgInfo.h>
 #include <FieldTypeDef.h>
-#include <LinearSystem.h>
 #include <NonConformalInfo.h>
 #include <NonConformalManager.h>
 #include <Realm.h>
@@ -112,7 +111,6 @@ ComputeMdotNonConformalAlgorithm::execute()
   std::vector<double> oNx(nDim);
   std::vector<double> currentRhoVelocityBip(nDim);
   std::vector<double> opposingRhoVelocityBip(nDim);
-  std::vector<double> currentMeshVelocityBip(nDim);
   std::vector<double> currentRhoMeshVelocityBip(nDim);
 
   // pressure stabilization
@@ -389,7 +387,7 @@ ComputeMdotNonConformalAlgorithm::execute()
           }
         }
         
-        // projected nodal gradient; zero out
+        // bip gradients; zero out
         for ( int j = 0; j < nDim; ++j ) {
           currentDpdxBip[j] = 0.0;
           opposingDpdxBip[j] = 0.0;
@@ -430,13 +428,6 @@ ComputeMdotNonConformalAlgorithm::execute()
           &ws_o_pressure[0],
           &opposingPressureBip);
         
-        // mesh velocity; only required at current
-        meFCCurrent->interpolatePoint(
-          sizeOfVectorField,
-          &(dgInfo->currentIsoParCoords_[0]),
-          &ws_c_meshVelocity[0],
-          &currentMeshVelocityBip[0]);
-
         // projected nodal gradient
         meFCCurrent->interpolatePoint(
           sizeOfVectorField,

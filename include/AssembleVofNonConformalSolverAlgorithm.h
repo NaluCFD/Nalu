@@ -6,50 +6,45 @@
 /*------------------------------------------------------------------------*/
 
 
-#ifndef ComputeMdotNonConformalAlgorithm_h
-#define ComputeMdotNonConformalAlgorithm_h
+#ifndef AssembleVofNonConformalSolverAlgorithm_h
+#define AssembleVofNonConformalSolverAlgorithm_h
 
-#include<Algorithm.h>
+#include<SolverAlgorithm.h>
 #include<FieldTypeDef.h>
 
-// stk
-#include <stk_mesh/base/Part.hpp>
+namespace stk {
+namespace mesh {
+class Part;
+}
+}
 
 namespace sierra{
 namespace nalu{
 
 class Realm;
 
-class ComputeMdotNonConformalAlgorithm : public Algorithm
+class AssembleVofNonConformalSolverAlgorithm : public SolverAlgorithm
 {
 public:
 
-  ComputeMdotNonConformalAlgorithm(
+  AssembleVofNonConformalSolverAlgorithm(
     Realm &realm,
     stk::mesh::Part *part,
-    ScalarFieldType *pressure,
-    VectorFieldType *Gjp);
-  ~ComputeMdotNonConformalAlgorithm();
+    EquationSystem *eqSystem,
+    ScalarFieldType *vof);
+  virtual ~AssembleVofNonConformalSolverAlgorithm() {}
+  virtual void initialize_connectivity();
+  virtual void execute();
 
-  void execute();
-
-  ScalarFieldType *pressure_;
-  VectorFieldType *Gjp_;
-  VectorFieldType *velocity_;
-  VectorFieldType *meshVelocity_;
+  ScalarFieldType *vof_;
   VectorFieldType *coordinates_;
-  ScalarFieldType *density_;
   GenericFieldType *exposedAreaVec_;
-  GenericFieldType *ncMassFlowRate_;
-
-  const bool meshMotion_;
+  GenericFieldType *ncVolumeFlowRate_;
 
   // options that prevail over all algorithms created
+  const double eta_;
   const bool useCurrentNormal_;
-  const double includePstab_;
-  double meshMotionFac_;
-  
-  // fields to parallel communicate
+
   std::vector< const stk::mesh::FieldBase *> ghostFieldVec_;
 };
 

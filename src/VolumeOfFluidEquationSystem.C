@@ -11,6 +11,7 @@
 #include "AssembleNodalGradAlgorithmDriver.h"
 #include "AssembleNodalGradElemAlgorithm.h"
 #include "AssembleNodalGradBoundaryAlgorithm.h"
+#include "AssembleVofNonConformalSolverAlgorithm.h"
 #include "AuxFunctionAlgorithm.h"
 #include "ConstantAuxFunction.h"
 #include "CopyFieldAlgorithm.h"
@@ -691,6 +692,48 @@ VolumeOfFluidEquationSystem::register_symmetry_bc(
     else {
       it->second->partVec_.push_back(part);
     }
+  }
+}
+
+//--------------------------------------------------------------------------
+//-------- register_non_conformal_bc ---------------------------------------
+//--------------------------------------------------------------------------
+void
+VolumeOfFluidEquationSystem::register_non_conformal_bc(
+  stk::mesh::Part *part,
+  const stk::topology &theTopo)
+{
+  
+  // algorithm type
+  const AlgorithmType algType = NON_CONFORMAL;
+  
+  stk::mesh::MetaData &meta_data = realm_.meta_data();
+
+  // field registration
+  MasterElement *meFC = sierra::nalu::MasterElementRepo::get_surface_master_element(theTopo);
+  const int numScsBip = meFC->numIntPoints_;
+
+  stk::topology::rank_t sideRank = static_cast<stk::topology::rank_t>(meta_data.side_rank());
+  GenericFieldType *mdotBip =
+    &(meta_data.declare_field<double>(sideRank, "nc_mass_flow_rate"));
+  stk::mesh::put_field_on_mesh(*mdotBip, *part, numScsBip, nullptr);
+
+  if ( realm_.solutionOptions_->balancedForce_ ) {
+    GenericFieldType *vdotBip =
+      &(meta_data.declare_field<double>(sideRank, "nc_volume_flow_rate"));
+    stk::mesh::put_field_on_mesh(*vdotBip, *part, numScsBip, nullptr);
+  }
+
+  // solver; lhs; same for edge and element-based scheme
+  std::map<AlgorithmType, SolverAlgorithm *>::iterator itsi =
+    solverAlgDriver_->solverAlgMap_.find(algType);
+  if ( itsi == solverAlgDriver_->solverAlgMap_.end() ) {
+    AssembleVofNonConformalSolverAlgorithm *theAlg
+      = new AssembleVofNonConformalSolverAlgorithm(realm_, part, this, vof_);
+    solverAlgDriver_->solverAlgMap_[algType] = theAlg;
+  }
+  else {
+    itsi->second->partVec_.push_back(part);
   }
 }
 
