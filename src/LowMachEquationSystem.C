@@ -758,7 +758,7 @@ LowMachEquationSystem::register_initial_condition_fcn(
     // create the algorithm
     auxAlg = new AuxFunctionAlgorithm(realm_, part,
                                       velocityNp1, theAuxFunc,
-                                      stk::topology::NODE_RANK);
+                                      stk::topology::NODE_RANK, true, realm_.hasPeriodic_);
     
     // push to ic
     realm_.initCondAlg_.push_back(auxAlg);
@@ -3328,7 +3328,7 @@ ContinuityEquationSystem::register_initial_condition_fcn(
     AuxFunctionAlgorithm *auxAlg
       = new AuxFunctionAlgorithm(realm_, part,
 				 pressure_, theAuxFunc,
-				 stk::topology::NODE_RANK);
+				 stk::topology::NODE_RANK, true, realm_.hasPeriodic_);
     
     // push to ic
     realm_.initCondAlg_.push_back(auxAlg);

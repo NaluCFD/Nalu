@@ -28,12 +28,14 @@ AuxFunctionAlgorithm::AuxFunctionAlgorithm(
   stk::mesh::FieldBase * field,
   AuxFunction * auxFunction,
   stk::mesh::EntityRank entityRank,
-  const bool parallelCommunicate)
+  const bool parallelCommunicate,
+  const bool periodicCommunicate)
   : Algorithm(realm, part),
     field_(field),
     auxFunction_(auxFunction),
     entityRank_(entityRank),
-    parallelCommunicate_(parallelCommunicate)
+    parallelCommunicate_(parallelCommunicate),
+    periodicCommunicate_(periodicCommunicate)
 {
   // does nothing
 }
@@ -64,10 +66,13 @@ AuxFunctionAlgorithm::execute()
   stk::mesh::BucketVector const& buckets =
     realm_.get_buckets( entityRank_, selector );
 
+  unsigned fieldSizeSaved = 0;
   for ( stk::mesh::BucketVector::const_iterator ib = buckets.begin();
         ib != buckets.end() ; ++ib ) {
     stk::mesh::Bucket & b = **ib ;
     const unsigned fieldSize = field_bytes_per_entity(*field_, b) / sizeof(double);
+    // save off field size for possible nodal field operations
+    fieldSizeSaved = fieldSize;
 
     const stk::mesh::Bucket::size_type length   = b.size();
 
@@ -79,12 +84,19 @@ AuxFunctionAlgorithm::execute()
     auxFunction_->evaluate(coords, time, nDim, length, fieldData, fieldSize);
   }
 
-  // sometimes, fields need to be parallel communicated - especially when randomness might be used
-  if ( parallelCommunicate_ ) {
-    std::vector< const stk::mesh::FieldBase *> fieldVec(1, field_);
-    stk::mesh::copy_owned_to_shared( realm_.bulk_data(), fieldVec);
-    stk::mesh::communicate_field_data(realm_.bulk_data().aura_ghosting(), fieldVec);
+  // nodal fields may need to be parallel communicated (random, periodic)
+  if ( entityRank_ == stk::topology::NODE_RANK ) {
+    if ( parallelCommunicate_ ) {
+      std::vector< const stk::mesh::FieldBase *> fieldVec(1, field_);
+      stk::mesh::copy_owned_to_shared( realm_.bulk_data(), fieldVec);
+      stk::mesh::communicate_field_data(realm_.bulk_data().aura_ghosting(), fieldVec);
+    }
+    if ( periodicCommunicate_ ) {
+      // all nodal fields have the same field size; logics are : bypass, +=, =
+      realm_.periodic_field_update(field_, fieldSizeSaved, true, false, true);
+    }
   }
+
 }
 
 } // namespace nalu
