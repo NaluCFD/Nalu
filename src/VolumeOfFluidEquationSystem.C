@@ -866,7 +866,7 @@ VolumeOfFluidEquationSystem::register_initial_condition_fcn(
     AuxFunctionAlgorithm *auxAlg
       = new AuxFunctionAlgorithm(realm_, part,
 				 vof_, theAuxFunc,
-				 stk::topology::NODE_RANK);
+				 stk::topology::NODE_RANK, true, realm_.hasPeriodic_);
     
     // push to ic
     realm_.initCondAlg_.push_back(auxAlg);
