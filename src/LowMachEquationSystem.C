@@ -1923,11 +1923,13 @@ MomentumEquationSystem::register_wall_bc(
     else {
       // first extract projected distance
       const double projectedDistance = userData.projectedDistance_;
+      const bool odeActive = userData.projectedDistanceOde_;
       std::map<AlgorithmType, Algorithm *>::iterator it_utau =
         wallFunctionParamsAlgDriver_->algMap_.find(wfAlgProjectedType);
       if ( it_utau == wallFunctionParamsAlgDriver_->algMap_.end() ) {
         ComputeWallFrictionVelocityProjectedAlgorithm *theUtauAlg =
-          new ComputeWallFrictionVelocityProjectedAlgorithm(realm_, part, projectedDistance, realm_.realmUsesEdges_, 
+          new ComputeWallFrictionVelocityProjectedAlgorithm(realm_, part, projectedDistance, odeActive, 
+                                                            realm_.realmUsesEdges_, 
                                                             pointInfoMap_, wallFunctionGhosting_);
         wallFunctionParamsAlgDriver_->algMap_[wfAlgProjectedType] = theUtauAlg;
       }
@@ -1935,6 +1937,7 @@ MomentumEquationSystem::register_wall_bc(
         // push back part and projected distance
         it_utau->second->partVec_.push_back(part);
         it_utau->second->set_data(projectedDistance);
+        it_utau->second->set_bool(odeActive);
       }
     }
   

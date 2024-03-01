@@ -400,6 +400,11 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
           if ( yplusBip > yplusCrit_)
             lambda = rhoBip*kappa_*utau/std::log(elog_*yplusBip)*aMag;
           
+          // correct for ODE-based approach, tauW = rho*utau*utau (given by ODE solve)
+          const double odeFac = pInfo->odeFac_;
+          const double om_odeFac = 1.0 - odeFac;
+          lambda = lambda*om_odeFac + odeFac*rhoBip*utau*utau*aMag;
+
           // extract nodal fields
           stk::mesh::Entity node = face_node_rels[localFaceNode];
           const double * coord = stk::mesh::field_data(*coordinates_, node );
@@ -431,7 +436,8 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
           }
           
           // assemble tauWall; area weighting is hiding in lambda/assembledArea
-          *tauWall += lambda*std::sqrt(uParallel)/assembledArea;
+          const double normalizeFac = odeFac + om_odeFac*std::sqrt(uParallel);
+          *tauWall += lambda*normalizeFac/assembledArea;
           
           // deal with yplus
           *yplus += yplusBip*aMag/assembledArea;          

@@ -95,6 +95,7 @@ realms:
         velocity: [0.0,0.0,0.0]
         use_wall_function_projected: yes
         projected_distance: 0.0625
+        projected_distance_ode: yes
 
     - wall_boundary_condition: bc_wall_top
       target_name: TopWall
@@ -102,6 +103,7 @@ realms:
         velocity: [0.0,0.0,0.0]
         use_wall_function_projected: yes
         projected_distance: 0.0625
+        projected_distance_ode: no
 
     - periodic_boundary_condition: bc_periodic_z
       target_name: [Left,Right]

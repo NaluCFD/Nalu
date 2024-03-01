@@ -66,6 +66,7 @@ ComputeWallFrictionVelocityProjectedAlgorithm::ComputeWallFrictionVelocityProjec
   Realm &realm,
   stk::mesh::Part *part,
   const double projectedDistance,
+  const bool odeActive,
   const bool useShifted,
   std::map<std::string, std::vector<std::vector<PointInfo *> > > &pointInfoMap,
   stk::mesh::Ghosting *wallFunctionGhosting)
@@ -101,6 +102,7 @@ ComputeWallFrictionVelocityProjectedAlgorithm::ComputeWallFrictionVelocityProjec
   
   // set data
   set_data(projectedDistance);
+  set_bool(odeActive);
 
   // what do we need ghosted for this alg to work?
   ghostFieldVec_.push_back(&(velocity_->field_of_state(stk::mesh::StateNP1)));
@@ -155,7 +157,8 @@ ComputeWallFrictionVelocityProjectedAlgorithm::execute()
   // parallel communicate ghosted entities
   if ( nullptr != wallFunctionGhosting_ )
     stk::mesh::communicate_field_data(*(wallFunctionGhosting_), ghostFieldVec_);
-  
+
+  size_t l_badConvergence = 0.0;
   // iterate over parts to match construction (requires global counter over locally owned faces)
   for ( size_t pv = 0; pv < partVec_.size(); ++pv ) {
 
@@ -367,13 +370,32 @@ ComputeWallFrictionVelocityProjectedAlgorithm::execute()
           
           // provide an initial guess based on yplusCrit_ (more robust than a pure guess on utau)
           double utauGuess = yplusCrit_*muBip/rhoBip/ypBip;
-          
-          compute_utau(uTangential, ypBip, rhoBip, muBip, utauGuess);
+
+          // determine which model (logic is fine since calls are expensive)
+          bool converged = false;
+          if ( !pInfo->odeActive_ ) { 
+            compute_utau(uTangential, ypBip, rhoBip, muBip, utauGuess, converged);
+          }
+          else {
+            compute_utau_ode(uTangential, 0.0, rhoBip, muBip, pInfo, utauGuess, converged);
+          }
+          if ( !converged )
+            l_badConvergence++;
+
           wallFrictionVelocityBip[ip] = utauGuess;
-          
+
         }
       }
     }
+  }
+
+  size_t g_badConvergence = {};
+  stk::ParallelMachine comm = NaluEnv::self().parallel_comm();
+  stk::all_reduce_sum(comm, &l_badConvergence, &g_badConvergence, 1);
+  
+  if ( g_badConvergence > 0 ) {
+    NaluEnv::self().naluOutputP0() << "Non-ideal ODE-based convergence detected; #: " 
+                                   << g_badConvergence << std::endl;
   }
 }
 
@@ -388,16 +410,24 @@ ComputeWallFrictionVelocityProjectedAlgorithm::set_data(
 }
 
 //--------------------------------------------------------------------------
+//-------- set_bool --------------------------------------------------------
+//--------------------------------------------------------------------------
+void
+ComputeWallFrictionVelocityProjectedAlgorithm::set_bool( 
+  bool theBool)
+{
+  projectedDistanceOdeVec_.push_back(theBool);
+}
+
+//--------------------------------------------------------------------------
 //-------- compute_utau ----------------------------------------------------
 //--------------------------------------------------------------------------
 void
 ComputeWallFrictionVelocityProjectedAlgorithm::compute_utau(
     const double &up, const double &yp,
     const double &density, const double &viscosity,
-    double &utau )
+    double &utau, bool &converged )
 {
-  bool converged = false;
-
   const double A = elog_*density*yp/viscosity;
 
   for ( int k = 0; k < maxIteration_; ++k ) {
@@ -420,14 +450,19 @@ ComputeWallFrictionVelocityProjectedAlgorithm::compute_utau(
       break;
     }
   }
-
-  // report trouble
-  if (!converged ) {
-    NaluEnv::self().naluOutputP0() << "Issue with utau; not converged " << std::endl;
-    NaluEnv::self().naluOutputP0() << up << " " << yp << " " << utau << std::endl;
-  }
 }
 
+//--------------------------------------------------------------------------
+//-------- compute_utau_ode ------------------------------------------------
+//--------------------------------------------------------------------------
+void
+ComputeWallFrictionVelocityProjectedAlgorithm::compute_utau_ode(
+    const double &uTan, const double &uWall, const double &rhoWall, 
+    const double &muWall, PointInfo *pInfo, double &utau, bool &converged)
+{
+  double tauWallGuess = rhoWall*utau*utau;
+  utau = pInfo->solve(uTan, uWall, rhoWall, muWall, kappa_, tauWallGuess, converged);
+}
 //--------------------------------------------------------------------------
 //-------- initialize ------------------------------------------------------
 //--------------------------------------------------------------------------
@@ -539,8 +574,9 @@ ComputeWallFrictionVelocityProjectedAlgorithm::construct_bounding_points()
     // extract name 
     const std::string partName = partVec_[pv]->name();
 
-    // extract projected distance
+    // extract projected distance and if this is an ODE-based approach
     const double pDistance = projectedDistanceVec_[pv];
+    const double odeActive = projectedDistanceOdeVec_[pv];
     
     // define selector (per part)
     stk::mesh::Selector s_locally_owned 
@@ -638,7 +674,7 @@ ComputeWallFrictionVelocityProjectedAlgorithm::construct_bounding_points()
           boundingPoint bPoint(Point(pointCoordinates), theIdent);
           boundingPointVec_.push_back(bPoint);
           
-          PointInfo *pInfo = new PointInfo(bPoint, localPointId, ipCoordinates, pointCoordinates, nDim_);
+          PointInfo *pInfo = new PointInfo(bPoint, localPointId, ipCoordinates, pointCoordinates, nDim_, odeActive);
           faceInfoVec[ip] = pInfo;
           localPointId++;
         }

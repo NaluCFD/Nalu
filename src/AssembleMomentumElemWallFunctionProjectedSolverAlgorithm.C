@@ -104,11 +104,15 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::execute()
   std::vector<double> uProjected(nDim);
   std::vector<double> uBcBip(nDim);
   std::vector<double> unitNormal(nDim);
+  std::vector<double> uiTanVec(nDim);
+  std::vector<double> uiBcTanVec(nDim);
 
   // pointers to fixed values
   double *p_uProjected = &uProjected[0];
   double *p_uBcBip = &uBcBip[0];
   double *p_unitNormal= &unitNormal[0];
+  double *p_uiTanVec = &uiTanVec[0];
+  double *p_uiBcTanVec = &uiBcTanVec[0];
 
   // nodal fields to gather
   std::vector<double> ws_bcVelocity;
@@ -310,12 +314,15 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::execute()
           double lambda = muBip/yp*aMag;
           if ( yplus > yplusCrit_)
             lambda = rhoBip*kappa_*utau/std::log(elog_*yplus)*aMag;
-          
-          // start the rhs assembly (lhs neglected)
-          for ( int i = 0; i < nDim; ++i ) {
-            
-            int indexR = localFaceNode*nDim + i;
-            
+
+          // correct for ODE-based approach, tauW = rho*utau*utau (given by ODE solve)
+          const double odeFac = pInfo->odeFac_;
+          const double om_odeFac = 1.0 - odeFac;
+          lambda = lambda*om_odeFac + odeFac*rhoBip*utau*utau*aMag;
+
+          // determine tangential velocity
+          double uTangential = 0.0;
+          for ( int i = 0; i < nDim; ++i ) {                
             double uiTan = 0.0;
             double uiBcTan = 0.0;
             for ( int j = 0; j < nDim; ++j ) {
@@ -330,7 +337,18 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::execute()
                 uiBcTan -= ninj*p_uBcBip[j];
               }
             }
-            p_rhs[indexR] -= lambda*(uiTan-uiBcTan);
+            uTangential += (uiTan-uiBcTan)*(uiTan-uiBcTan);
+            // save off for later matrix assembly
+            p_uiTanVec[i] = uiTan;
+            p_uiBcTanVec[i] = uiBcTan;
+          }
+          uTangential = std::sqrt(uTangential);
+          
+          // start the rhs assembly (lhs neglected) - account for possible ode
+          const double normalizeFac = 1.0/(om_odeFac + odeFac*uTangential);
+          for ( int i = 0; i < nDim; ++i ) {            
+            int indexR = localFaceNode*nDim + i;
+            p_rhs[indexR] -= lambda*(p_uiTanVec[i]-p_uiBcTanVec[i])*normalizeFac;
           }
         }
         
