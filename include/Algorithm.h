@@ -47,6 +47,8 @@ public:
 
   virtual void set_data(double theDouble) {}
 
+  virtual void set_bool(bool theBool) {}
+
   Realm &realm_;
   stk::mesh::PartVector partVec_;
   std::vector<SupplementalAlgorithm *> supplementalAlg_;

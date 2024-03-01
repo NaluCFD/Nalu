@@ -876,6 +876,10 @@ namespace YAML
     {
       wallData.projectedDistance_ = node["projected_distance"].as<double>();
     }
+    if (node["projected_distance_ode"]) 
+    {
+      wallData.projectedDistanceOde_ = node["projected_distance_ode"].as<bool>();
+    }
     if (node["pressure"])
     {
       wallData.pressure_ = node["pressure"].as<sierra::nalu::Pressure>();

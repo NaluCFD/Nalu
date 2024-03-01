@@ -42,6 +42,7 @@ public:
     Realm &realm,
     stk::mesh::Part *part,
     const double projectedDistance,
+    const bool odeActive,
     const bool useShifted,
     std::map<std::string, std::vector<std::vector<PointInfo *> > > &pointInfoMap,
     stk::mesh::Ghosting *wallFunctionGhosting);
@@ -51,11 +52,17 @@ public:
 
   void set_data( 
     double theDouble);
+  void set_bool( 
+    bool theBool);
 
   void compute_utau(
       const double &up, const double &yp,
       const double &density, const double &viscosity,
-      double &utau);
+      double &utau, bool &converged);
+
+  void compute_utau_ode(
+      const double &uTan, const double &uWall, const double &rhoWall, 
+      const double &muWall, PointInfo *pInfo, double &utau, bool &converged);
   
   // debug
   void provide_output(const PointInfo *pInfo, const bool problemPoint);
@@ -104,8 +111,9 @@ public:
   ScalarFieldType *assembledWallNormalDistance_;
   ScalarFieldType *assembledWallArea_;
 
-  // per part value for projected distance
+  // per part value for projected distance and ODE 
   std::vector<double> projectedDistanceVec_;
+  std::vector<double> projectedDistanceOdeVec_;
 
   /* data types for stk_search */
   std::vector<boundingPoint> boundingPointVec_;
