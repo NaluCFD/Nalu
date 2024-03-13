@@ -212,6 +212,7 @@ struct WallUserData : public UserData {
 
   bool wallFunctionApproach_;
   bool wallFunctionProjectedApproach_;
+  bool neumann_;
   double projectedDistance_;
   bool projectedDistanceOde_;
 

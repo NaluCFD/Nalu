@@ -784,32 +784,54 @@ TurbKineticEnergyEquationSystem::register_wall_bc(
   std::string tkeName = "turbulent_ke";
   const bool tkeSpecified = bc_data_specified(userData, tkeName);
   bool anyWallFunctionActivated = userData.wallFunctionApproach_ || userData.wallFunctionProjectedApproach_;
+  bool neumannActivated = userData.neumann_;
 
   if ( tkeSpecified && anyWallFunctionActivated ) {
-    NaluEnv::self().naluOutputP0() << "Both wall function and tke specified; will go with dirichlet" << std::endl;
+    NaluEnv::self().naluOutputP0() 
+      << "Warning: Both wall function and tke specified; will proceed with a Dirichlet (fixed)" << std::endl;
     anyWallFunctionActivated = false;
   }
 
+  // limited support for Neumann bc
+  if ( neumannActivated && !(turbulenceModel_ == KSGS) ) {
+    throw std::runtime_error("apply_neumann_condition is only valid for kSGS models");
+  }
+
+  // warn the user if a Neumann for kSGS has not been applied (utau^2/sqrt(Cmu) inconsistency)
+  if ( turbulenceModel_ == KSGS && !neumannActivated ) {
+    NaluEnv::self().naluOutputP0() 
+      <<"Warning: WMLES is active (kSGS), however, Neumann approach has not been activated" << std::endl;
+  }
+  
+  // set a flag for processing a Dirichlet; all models aside from kSGS apply a Dirichlet
+  bool processDirichlet = true;
   if ( anyWallFunctionActivated ) {
 
-    // create wallFunctionParamsAlgDriver
-    if ( NULL == wallFunctionTurbKineticEnergyAlgDriver_)
-      wallFunctionTurbKineticEnergyAlgDriver_ = new AlgorithmDriver(realm_);
-
-    // need to register the assembles wall value for tke; can not share with tke_bc
-    ScalarFieldType *theAssembledField = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "wall_model_tke_bc"));
-    stk::mesh::put_field_on_mesh(*theAssembledField, *part, nullptr);
-
-    // wall function value will prevail at bc intersections
-    std::map<AlgorithmType, Algorithm *>::iterator it_tke =
-        wallFunctionTurbKineticEnergyAlgDriver_->algMap_.find(algType);
-    if ( it_tke == wallFunctionTurbKineticEnergyAlgDriver_->algMap_.end() ) {
-      ComputeTurbKineticEnergyWallFunctionAlgorithm *theUtauAlg =
-          new ComputeTurbKineticEnergyWallFunctionAlgorithm(realm_, part);
-      wallFunctionTurbKineticEnergyAlgDriver_->algMap_[algType] = theUtauAlg;
+    // for ksgs, we may want a simple Nuemann bc: d(kSGS)/dn = 0
+    if ( neumannActivated ) {
+      processDirichlet = false;
+      NaluEnv::self().naluOutputP0() << "Neumann boundary condition is active...." << std::endl;
     }
     else {
-      it_tke->second->partVec_.push_back(part);
+      // create wallFunctionParamsAlgDriver
+      if ( NULL == wallFunctionTurbKineticEnergyAlgDriver_)
+        wallFunctionTurbKineticEnergyAlgDriver_ = new AlgorithmDriver(realm_);
+      
+      // need to register the assembles wall value for tke; can not share with tke_bc
+      ScalarFieldType *theAssembledField = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "wall_model_tke_bc"));
+      stk::mesh::put_field_on_mesh(*theAssembledField, *part, nullptr);
+      
+      // wall function value will prevail at bc intersections
+      std::map<AlgorithmType, Algorithm *>::iterator it_tke =
+        wallFunctionTurbKineticEnergyAlgDriver_->algMap_.find(algType);
+      if ( it_tke == wallFunctionTurbKineticEnergyAlgDriver_->algMap_.end() ) {
+        ComputeTurbKineticEnergyWallFunctionAlgorithm *theUtauAlg =
+          new ComputeTurbKineticEnergyWallFunctionAlgorithm(realm_, part);
+        wallFunctionTurbKineticEnergyAlgDriver_->algMap_[algType] = theUtauAlg;
+      }
+      else {
+        it_tke->second->partVec_.push_back(part);
+      }
     }
   }
   else if ( tkeSpecified ) {
@@ -845,15 +867,17 @@ TurbKineticEnergyEquationSystem::register_wall_bc(
   }
 
   // Dirichlet bc
-  std::map<AlgorithmType, SolverAlgorithm *>::iterator itd =
+  if ( processDirichlet ) {
+    std::map<AlgorithmType, SolverAlgorithm *>::iterator itd =
       solverAlgDriver_->solverDirichAlgMap_.find(algType);
-  if ( itd == solverAlgDriver_->solverDirichAlgMap_.end() ) {
-    DirichletBC *theAlg =
+    if ( itd == solverAlgDriver_->solverDirichAlgMap_.end() ) {
+      DirichletBC *theAlg =
         new DirichletBC(realm_, this, part, &tkeNp1, theBcField, 0, 1);
-    solverAlgDriver_->solverDirichAlgMap_[algType] = theAlg;
-  }
-  else {
-    itd->second->partVec_.push_back(part);
+      solverAlgDriver_->solverDirichAlgMap_[algType] = theAlg;
+    }
+    else {
+      itd->second->partVec_.push_back(part);
+    }
   }
 
   // non-solver; dkdx; allow for element-based shifted
@@ -1036,7 +1060,7 @@ TurbKineticEnergyEquationSystem::solve_and_update()
 {
 
   // sometimes, a higher level equation system manages the solve and update
-  if ( turbulenceModel_ != KSGS && turbulenceModel_ != LRKSGS )
+  if ( !(turbulenceModel_ == KSGS || turbulenceModel_ == LRKSGS) )
     return;
 
   // compute dk/dx

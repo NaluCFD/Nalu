@@ -872,6 +872,10 @@ namespace YAML
     {
       wallData.wallFunctionProjectedApproach_ = node["use_wall_function_projected"].as<bool>();
     }
+    if (node["use_neumann_condition"]) 
+    {
+      wallData.neumann_ = node["use_neumann_condition"].as<bool>();
+    }
     if (node["projected_distance"]) 
     {
       wallData.projectedDistance_ = node["projected_distance"].as<double>();
