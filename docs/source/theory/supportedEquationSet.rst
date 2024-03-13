@@ -689,6 +689,9 @@ For simulations in which a buoyancy source term is desired, the code supports th
 
 .. math:: P_b = \beta \frac{\mu^T}{Pr} g_i \frac{\partial T}{\partial x_i}.
 
+The subgrid scale model supports a Neumann-based boundary condition, while for a wall-resolved
+flow, the value of the subgrid scale kinetic energy is set to zero. 
+
 Shear Stress Transport (SST) RANS Model Suite
 +++++++++++++++++++++++++++++++++++++++++++++
 
@@ -778,7 +781,7 @@ The final parameter is
 
    arg_{2} = \max\left( \frac{2 \sqrt{k}}{\beta^* \omega y},
    \frac{500 \mu}{\bar{\rho} \omega y^{2}} \right).
-
+ 
 Direct Eddy Simulation (DES) Formulation
 ++++++++++++++++++++++++++++++++++++++++
 
