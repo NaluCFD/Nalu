@@ -37,3 +37,8 @@ cd 1d_quad4_adv_diff/write_up
 make all
 make clean
 cd ../../
+
+cd 3d_hex8_turb_channel/write_up
+make all
+make clean
+cd ../../
