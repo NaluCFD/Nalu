@@ -24,12 +24,12 @@ linear_solvers:
     kspace: 100
     output_level: 0
     recompute_preconditioner: no
-    muelu_xml_file_name: ../../xml/milestone.xml
+    muelu_xml_file_name: ../../../xml/milestone.xml
 
 realms:
 
   - name: realm_1
-    mesh: ../../mesh/channel_Retau1000_yp31_dxp196_dzp131.g
+    mesh: mesh/3d_hex8_turb_channel.exo
     use_edges: no
     automatic_decomposition_type: rcb
 
@@ -178,7 +178,7 @@ realms:
     
     - type: surface
       physics: surface_force_and_moment_wall_function_projected
-      output_file_name: re1kChannel.dat
+      output_file_name: 3d_hex8_turb_channel.dat
       frequency: 1
       parameters: [0,0,0]
       target_name: [BottomWall, TopWall]
@@ -205,7 +205,7 @@ realms:
             - tau_wall
 
     output:
-      output_data_base_name: re1kChannel.e
+      output_data_base_name: 3d_hex8_turb_channel.e
       output_frequency: 25
       output_node_set: no 
       output_variables:
