@@ -117,6 +117,7 @@ realms:
       name: myOptions
       turbulence_model: ksgs
       activate_dynamic_turbulence_procedure: yes
+      dynamic_turbulence_clipping_factor: 0.5
 
       use_consolidated_solver_algorithm: yes
       use_consolidated_face_elem_bc_algorithm: yes

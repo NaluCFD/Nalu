@@ -107,6 +107,7 @@ public:
   bool isTurbulent_;
   TurbulenceModel turbulenceModel_;
   bool dynamicTurbulenceProcedure_;
+  double dynamicTurbulenceClippingFac_;
   bool meshMotion_;
   bool meshMotionIncludesSixDof_;
   bool meshDeformation_;

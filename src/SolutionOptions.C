@@ -50,6 +50,7 @@ SolutionOptions::SolutionOptions()
     isTurbulent_(false),
     turbulenceModel_(LAMINAR),
     dynamicTurbulenceProcedure_(false),
+    dynamicTurbulenceClippingFac_(0.0),
     meshMotion_(false),
     meshMotionIncludesSixDof_(false),
     meshDeformation_(false),
@@ -224,9 +225,12 @@ SolutionOptions::load(const YAML::Node & y_node)
                    "activate_dynamic_turbulence_procedure", dynamicTurbulenceProcedure_, dynamicTurbulenceProcedure_);
     if ( dynamicTurbulenceProcedure_ ) {
       if ( turbulenceModel_ != KSGS && turbulenceModel_ != LRKSGS ) {
-        throw std::runtime_error("Error: Dynamic procedure is only implemented for the kSGS family of turbuelnce models");
+        throw std::runtime_error("Error: Dynamic procedure is only implemented for the kSGS family of turbulence models");
       }
     }
+
+    get_if_present(y_solution_options,
+                   "dynamic_turbulence_clipping_factor", dynamicTurbulenceClippingFac_, dynamicTurbulenceClippingFac_);
 
     // extract possible copy from input fields restoration time
     get_if_present(y_solution_options, "input_variables_from_file_restoration_time",

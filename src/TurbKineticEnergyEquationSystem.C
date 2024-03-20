@@ -793,8 +793,8 @@ TurbKineticEnergyEquationSystem::register_wall_bc(
   }
 
   // limited support for Neumann bc
-  if ( neumannActivated && !(turbulenceModel_ == KSGS) ) {
-    throw std::runtime_error("apply_neumann_condition is only valid for kSGS models");
+  if ( neumannActivated && !(turbulenceModel_ == KSGS || turbulenceModel_ == LRKSGS) ) {
+    throw std::runtime_error("apply_neumann_condition is only valid for kSGS-based models");
   }
 
   // warn the user if a Neumann for kSGS has not been applied (utau^2/sqrt(Cmu) inconsistency)
@@ -807,7 +807,7 @@ TurbKineticEnergyEquationSystem::register_wall_bc(
   bool processDirichlet = true;
   if ( anyWallFunctionActivated ) {
 
-    // for ksgs, we may want a simple Nuemann bc: d(kSGS)/dn = 0
+    // for ksgs, we may want a simple Neumann bc: d(kSGS)/dn = 0
     if ( neumannActivated ) {
       processDirichlet = false;
       NaluEnv::self().naluOutputP0() << "Neumann boundary condition is active...." << std::endl;
@@ -1178,7 +1178,7 @@ TurbKineticEnergyEquationSystem::compute_filtered_quantities()
   const double invNdim = 1.0/nDim;
 
   // clipping algorithm lamFraction defines how negative tvisc can become
-  const double lamFraction = 0.50;
+  const double lamFraction = realm_.solutionOptions_->dynamicTurbulenceClippingFac_;
 
   // manage du_k/dx_k
   const double includeDivU = 1.0; //realm_.get_divU();
