@@ -42,7 +42,7 @@ height (vertical direction, y) are $2\pi$ \!x $2/3\pi$ \!x $2$, respectively.
 
 \section{Theory}
 General details on the WMLES technique can be found in~\cite{larsson2016}, however, in short
-this is a modeling approach to aliviate the substantial mesh resolution requirement that is
+this is a modeling approach to alleviate the substantial mesh resolution requirement that is
 required to adequately resolve turbulent boundary layers. For a classic description of 
 mesh requirement scaling, the reader is referred to~\cite{chapman}. For the 
 target $Re_\tau = 1000$ configuration, which is based on the channel half-height, the density ($\rho$) 
@@ -82,7 +82,7 @@ can be modeled using an ordinary-differential equation (ODE) approach~\cite{lars
 following underlying one-dimensional equation is solved:
 
 \begin{align} 
-       \frac{d}{dy}\left[ \left(\mu + \mu^t\right) \frac{dU}{dy}  \right] = 0.0,
+       -\frac{d}{dy}\left[ \left(\mu + \mu^t\right) \frac{dU}{dy}  \right] = 0.0,
 \label{odeExpression}
 \end{align}
 where,
@@ -98,11 +98,12 @@ where,
 \label{odeExpressionYStar}
 \end{align}
 
-The above constants, $A^+$ and $\kappa$ are 17.0 and 0.41, respectively, while the distance $y$ is relative
+The constants $A^+$ and $\kappa$ are 17.0 and 0.41, respectively, while the distance $y$ is relative
 to the wall location and proceeds to the physical exchange location, $\Delta$.
 
 The above set of equations can be discretized over a one-dimensional coordinate system using a finite volume or 
-finite element method. The system mirrors a one-dimensional variable-coefficient diffusion solve since 
+finite element method. The system mirrors a stationary, i.e., without a time derivative,  one-dimensional 
+variable-coefficient diffusion solve since 
 the effective viscosity varies by height. Moreover, the solution procedure is nonlinear as the wall shear 
 stress is a obtained from the iteratively-converging velocity profile, i.e., $\tau_w = \mu \frac{dU}{dy}$. 
 This profile can be computed using a one-sided gradient at the wall, or $y=0$ location. 
@@ -168,27 +169,38 @@ the following:
 
 \item Replicate Fig.~\ref{fig:ode} using the specifications provided in this figure for parallel exchange 
 velocity, density, viscosity, exchange distance and constants $A^+$ and $\kappa$. For this step, you can 
-use a discretization of your choice. I prefer using an edge-based vertex-centered (EBVC) finite volume discretization
-approach. 
+use a discretization of your choice. I prefer using an edge-based vertex-centered (EBVC) finite volume 
+discretization. For your first experiment, use eleven points that are equally spaced between zero 
+and $\Delta$. Report the computed scaled velocity and distance plot along with the converged wall 
+shear stress. To determine the convergence metric, simply compute the absolute difference between the 
+guessed wall shear stress and the subsequently computed value. When this difference is less than 
+$1.0 \times 10^{-6}$, the system has been converged.
 
-\item For your first experiment, use eleven points that are equally spaced between zero and $\Delta$. Report
-the computed scaled velocity and distance plot along with the converged wall shear stress. To determine the 
-convergence metric, simply compute the absolute difference between the guessed wall shear stress and the 
-subsequently computed value. When this difference is less than $1.0 \times 10^{-6}$, the system has been
-converged. 
+There are many tools that can be used to solve this problem ranging from your own program with a linear
+solve (see below for a tri-diagonal solver hint), a programing platform such as MATLAB, or even a
+spread sheet application! Finally, if a linear system solve is too challenging, you can solve 
+a modified system using an explicit integration by adding a pseudo time derivative, i.e.,
+
+\begin{align} 
+      \frac{\partial \rho U}{\partial t} -\frac{\partial }{\partial y}\left[ \left(\mu + \mu^t\right) \frac{\partial U}{\partial y}  \right] = 0.0.
+\label{odeExpressionExplicit}
+\end{align}
+Above, evolve the velocity profile using a time step suitable to retain stability. This
+scheme will not be very efficient; however, a steady solution given a current wall shear stress
+and viscosity state can be reached. In this approach, a simple backward Euler scheme can be used.
 
 \item Vary the number of points (from 10, 100, and 200) and report the error in wall shear stress. 
 
 \item Document a biased, or variable mesh point distance algorithm that would be useful; run this approach
 with 10, 100, and 200 points and report errors.
 
-\item Comment on the linear solver approach that you used to solve this inner system. For this case, 
-a tri-diagonal solve can be extremely efficient, here shown in \emph{c++} using a simple one-dimensional 
-matrix structure, ``NaluOneDMatrixSystem'', that is size $mSize$, i.e., total number of nodes/points, 
+\item Comment on the linear solver strategy that you used to solve this inner-loop system. For a one-dimensional case, 
+a tri-diagonal solve can be extremely efficient, below demonstrated in \emph{c++} using a simple one-dimensional 
+matrix structure, ``NaluOneDMatrixSystem'', that is size $mSize$, i.e., the total number of nodes (or points), 
 with matrix entries ``Aw'', ``Ap'', and ``Ae'':
 
 \begin{lstlisting}[caption={This is a tri-diagonal implicit matrix solve routine (also
-known as the Thomas Algorithm) and is suitable for solving a diagnonal dominant matrix system. For structured
+known as the Thomas Algorithm) and is suitable for solving a diagonal dominant matrix system. For structured
 three-dimensional applications, alternating sweep directions can be combined with the tri-diagonal solve. In this 
 implementation, the matrix coefficients are modified and are not intended to be re-used for each subsequent 
 iteration.},captionpos=b]
@@ -213,7 +225,7 @@ void tdma(int mSize, NaluOneDMatrixSystem *ns, double *u) {
 
 \item Share your code base and methodology for solving this problem in addition to any plots you have created.
 
-\item Provide comments on how confident your are that your solution is ``correct'' and has been coded and/or 
+\item Provide comments on how confident you are that your solution is ``correct'' and has been coded and/or 
 solved correctly.
 
 \item \emph{OPTIONAL, i.e., NOT-REQUIRED}: Run the laboratory regression test and report your findings.

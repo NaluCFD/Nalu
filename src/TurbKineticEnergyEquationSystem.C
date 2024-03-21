@@ -216,16 +216,19 @@ TurbKineticEnergyEquationSystem::register_nodal_fields(
     ScalarFieldType *cEpsField 
       = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "c_epsilon"));
     stk::mesh::put_field_on_mesh(*cEpsField, *part, &cEpsConstant);  
-  
+    realm_.augment_restart_variable_list("c_epsilon");
+
     const double cmuEpsConstant = realm_.get_turb_model_constant(TM_cmuEps);
     ScalarFieldType *cmuEpsField 
       = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "c_mu_epsilon"));
     stk::mesh::put_field_on_mesh(*cmuEpsField, *part, &cmuEpsConstant);
+    realm_.augment_restart_variable_list("c_mu_epsilon");
 
     if ( turbulenceModel_ == LRKSGS ) {
       ScalarFieldType *dsqrtk_dx_sq
         = &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "dsqrtk_dx_sq"));
       stk::mesh::put_field_on_mesh(*dsqrtk_dx_sq, *part, nullptr);
+      realm_.augment_restart_variable_list("dsqrtk_dx_sq");
       ScalarFieldType *minDistanceToWall 
         =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "minimum_distance_to_wall"));
       stk::mesh::put_field_on_mesh(*minDistanceToWall, *part, nullptr);
