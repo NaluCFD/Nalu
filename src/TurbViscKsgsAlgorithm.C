@@ -111,10 +111,10 @@ TurbViscKsgsAlgorithm::execute()
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
       const double filter = std::pow(dualNodalVolume[k], invNdim);
       // low-Re corrections
-      const double dsq = lrksgsfac_*dsqrtkSq[k] + 0.0;
-      const double md = lrksgsfac_*minDistance[k] + 0.0;
+      const double dsq = lrksgsfac_*dsqrtkSq[k];
+      const double md = lrksgsfac_*minDistance[k];
       const double nu = visc[k]/density[k];
-      const double epsKsgs = lrksgsfac_*(cEps[k]*std::pow(tke[k], 1.5)/filter + 2.0*nu*dsq) + 0.0;
+      const double epsKsgs = lrksgsfac_*(cEps[k]*std::pow(tke[k], 1.5)/filter + 2.0*nu*dsq);
       const double upeps = std::pow(nu*epsKsgs, 0.25)*std::sqrt(Cl_*md/filter);
       const double ypeps = md*upeps/nu;
       const double fmu = lrksgsfac_*(1.0 - std::exp(-std::pow(std::pow(ypeps/Ao_, 2.0/3.0),Bo_))) 
