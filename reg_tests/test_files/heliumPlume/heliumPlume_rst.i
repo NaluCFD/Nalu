@@ -163,6 +163,7 @@ realms:
 
     turbulence_averaging:
       time_filter_interval: 10.0
+      forced_reset: yes
       specifications:
         - name: one
           target_name: block_1

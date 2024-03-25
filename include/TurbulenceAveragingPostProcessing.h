@@ -182,7 +182,8 @@ public:
   double currentTimeFilter_; /* provided by restart */
   double timeFilterInterval_; /* user supplied */
 
-  bool forcedReset_; /* allows forhard reset */
+  double startTime_; /* specifies start time */
+  bool forcedReset_; /* allows for a hard reset */
 
   AveragingType averagingType_;
   MovingAveragePostProcessor *movingAvgPP_;

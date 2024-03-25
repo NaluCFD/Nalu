@@ -58,6 +58,7 @@ TurbulenceAveragingPostProcessing::TurbulenceAveragingPostProcessing(
   : realm_(realm),
     currentTimeFilter_(0.0),
     timeFilterInterval_(1.0e8),
+    startTime_(0.0),
     forcedReset_(false),
     averagingType_(NALU_CLASSIC),
     movingAvgPP_(NULL)
@@ -88,6 +89,7 @@ TurbulenceAveragingPostProcessing::load(
   // output for results
   const YAML::Node y_average = y_node["turbulence_averaging"];
   if (y_average) {    
+    get_if_present(y_average, "start_time", startTime_, startTime_);
     get_if_present(y_average, "forced_reset", forcedReset_, forcedReset_);
     get_if_present(y_average, "time_filter_interval", timeFilterInterval_, timeFilterInterval_);
     if (y_average["averaging_type"]) {
@@ -632,6 +634,10 @@ TurbulenceAveragingPostProcessing::review(
 void
 TurbulenceAveragingPostProcessing::execute()
 {
+  // proceed only if current time is greater than requested start time
+  if ( !(realm_.get_current_time() >= startTime_) )
+    return;
+  
   stk::mesh::MetaData &metaData = realm_.meta_data();
 
   const double dt = realm_.get_time_step();

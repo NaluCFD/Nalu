@@ -152,6 +152,7 @@ realms:
 
     turbulence_averaging:
       time_filter_interval: 10.0
+      start_time: 0.1
       specifications:
         - name: one
           target_name: block_1
