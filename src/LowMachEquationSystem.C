@@ -1053,9 +1053,21 @@ MomentumEquationSystem::~MomentumEquationSystem()
 
   if ( NULL != wallFunctionParamsAlgDriver_)
     delete wallFunctionParamsAlgDriver_;
+
+  // delete pointInfo objects created
+  for( std::map<std::string, std::vector<std::vector<PointInfo*> > >::iterator im 
+         = pointInfoMap_.begin(); im!=pointInfoMap_.end(); ++im ) {
+    std::vector<std::vector<PointInfo*> > &theVecVec = (*im).second;
+    for( std::vector<std::vector<PointInfo*> >::iterator ii 
+           = theVecVec.begin(); ii!=theVecVec.end(); ++ii ) {
+      std::vector<PointInfo *> &theVec = (*ii);    
+      for ( size_t k = 0; k < theVec.size(); ++k ) {
+        PointInfo *pInfo = theVec[k];
+        delete pInfo;
+      }
+    }
+  }
 }
-
-
 
 //--------------------------------------------------------------------------
 //-------- initial_work ----------------------------------------------------
