@@ -1,16 +1,20 @@
 # The base directory where mpi is located.  
 # From here you should be able to find include/mpi.h bin/mpicxx, bin/mpiexec, etc.
-mpi_base_dir=/path_to_mpi/mpi/openmpi/4.0.3-gcc-8.3.0-RHEL7
-nalu_install_dir=/path_to_install/install/gcc8.3.0
+mpi_base_dir=/path_to_mpi/mpi/openmpi/4.1.2
+nalu_install_dir=/path_to_install/install/gcc10.3.0
 
 # Note: Don't forget to set your LD_LIBRARY_PATH to $mpi_base_dir/lib
 #       You may also need to add to LD_LIBRARY_PATH the lib directory for the compiler
 #       used to create the mpi executables.
 
 # TPLS needed by trilinos, possibly provided by HomeBrew on a Mac
-netcdf_install_dir=$nalu_install_dir/netcdf/4.7.4
-hdf_install_dir=$nalu_install_dir/hdf5/1.10.6
-pnetcdf_install_dir=$nalu_install_dir/pnetcdf/1.12.1
+netcdf_install_dir=$nalu_install_dir/netcdf/4.8.1
+hdf_install_dir=$nalu_install_dir/hdf5/1.10.10
+pnetcdf_install_dir=$nalu_install_dir/pnetcdf/1.12.2
+
+# libraries for blas and lapack
+blas_install_lib=/usr/lib64/libblas.so.3
+lapack_install_lib=/usr/lib64/liblapack.so.3
 
 # Where trilinos will be installed
 trilinos_install_dir=$nalu_install_dir/Trilinos_stable_debug
@@ -44,6 +48,8 @@ cmake \
 -DTrilinos_ENABLE_Tpetra:BOOL=ON \
 -DTrilinos_ENABLE_ML:BOOL=OFF \
 -DTrilinos_ENABLE_MueLu:BOOL=ON \
+-DTrilinos_ENABLE_Stratimikos:BOOL=OFF \
+-DTrilinos_ENABLE_Thyra:BOOL=OFF \
 -DTrilinos_ENABLE_EpetraExt:BOOL=OFF \
 -DTrilinos_ENABLE_AztecOO:BOOL=OFF \
 -DTrilinos_ENABLE_Belos:BOOL=ON \
@@ -70,10 +76,13 @@ cmake \
 -DTrilinos_ENABLE_SEACASNemspread:BOOL=ON \
 -DTrilinos_ENABLE_SEACASNemslice:BOOL=ON \
 -DTrilinos_ENABLE_SEACASIoss:BOOL=ON \
+-DKokkos_ENABLE_ATOMICS_BYPASS=ON \
 -DTPL_ENABLE_Netcdf:BOOL=ON \
 -DNetCDF_ROOT:PATH=${netcdf_install_dir} \
 -DHDF5_ROOT:PATH=${hdf_install_dir} \
 -DHDF5_NO_SYSTEM_PATHS=ON \
 -DPNetCDF_ROOT:PATH=${pnetcdf_install_dir} \
+-DTPL_BLAS_LIBRARIES=${blas_install_lib} \
+-DTPL_LAPACK_LIBRARIES=${lapack_install_lib} \
 $EXTRA_ARGS \
 ../
