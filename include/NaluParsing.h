@@ -230,6 +230,7 @@ struct WallUserData : public UserData {
       irradSpec_(false),
       wallFunctionApproach_(false),
       wallFunctionProjectedApproach_(false),
+      neumann_(false),
       projectedDistance_(1.0),
       projectedDistanceOde_(false),
       isFsiInterface_(false) {}    
