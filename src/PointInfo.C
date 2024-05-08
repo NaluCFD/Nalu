@@ -30,19 +30,18 @@ PointInfo::PointInfo(
   Point &ipCoords,
   Point &pointCoords,
   const int nDim,
-  const bool odeActive)
+  const double odeFac)
   : bPoint_(bPoint),
     localPointId_(localPointId),
     ipCoordinates_(ipCoords),
     pointCoordinates_(pointCoords),
     nDim_(nDim),
-    odeActive_(odeActive),
+    odeFac_(odeFac),
     owningElement_(),
     bestX_(1.0e16),
     bestXRef_(1.0e16),
     elemIsGhosted_(0),
     meSCS_(NULL),
-    odeFac_(0.0),
     numPoints_(50),
     bias_(200),
     tauWall_(-1.0),
@@ -50,8 +49,7 @@ PointInfo::PointInfo(
     debugOutput_(false)
 {
   // manage ODE set of points
-  if ( odeActive_ ) {
-    odeFac_ = 1.0;
+  if ( odeFac_ > 0 ) {
     initialize_ode_points();
   } 
 }

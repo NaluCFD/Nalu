@@ -42,7 +42,7 @@ public:
     Realm &realm,
     stk::mesh::Part *part,
     const double projectedDistance,
-    const bool odeActive,
+    const double odeFac,
     const bool useShifted,
     std::map<std::string, std::vector<std::vector<PointInfo *> > > &pointInfoMap,
     stk::mesh::Ghosting *wallFunctionGhosting);
@@ -52,8 +52,8 @@ public:
 
   void set_data( 
     double theDouble);
-  void set_bool( 
-    bool theBool);
+  void set_data_alt( 
+    double theDouble);
 
   void compute_utau(
       const double &up, const double &yp,

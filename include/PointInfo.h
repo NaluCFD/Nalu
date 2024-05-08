@@ -74,7 +74,7 @@ class PointInfo {
     Point &ipCoords,
     Point &pointCoords,
     const int nDim,
-    const bool odeActive);
+    const double odeFac);
   ~PointInfo();
   
   // if this is an ODE-based approach, we need to initialize the points
@@ -108,12 +108,11 @@ class PointInfo {
     bool &converged);
 
   boundingPoint bPoint_;
-  // should be able to extract this below from bPoint, right?
   const uint64_t localPointId_;
   const Point ipCoordinates_;
   const Point pointCoordinates_;
   const int nDim_;
-  const bool odeActive_;
+  const double odeFac_;
 
   stk::mesh::Entity owningElement_;
 
@@ -128,7 +127,6 @@ class PointInfo {
   std::vector<double> isoParCoords_;
 
   // ODE-based specifications
-  double odeFac_;
   const int numPoints_;
   const double bias_;
   double tauWall_;
