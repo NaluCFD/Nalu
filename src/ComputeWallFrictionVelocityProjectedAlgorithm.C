@@ -66,7 +66,7 @@ ComputeWallFrictionVelocityProjectedAlgorithm::ComputeWallFrictionVelocityProjec
   Realm &realm,
   stk::mesh::Part *part,
   const double projectedDistance,
-  const bool odeActive,
+  const double odeFac,
   const bool useShifted,
   std::map<std::string, std::vector<std::vector<PointInfo *> > > &pointInfoMap,
   stk::mesh::Ghosting *wallFunctionGhosting)
@@ -102,7 +102,7 @@ ComputeWallFrictionVelocityProjectedAlgorithm::ComputeWallFrictionVelocityProjec
   
   // set data
   set_data(projectedDistance);
-  set_bool(odeActive);
+  set_data_alt(odeFac);
 
   // what do we need ghosted for this alg to work?
   ghostFieldVec_.push_back(&(velocity_->field_of_state(stk::mesh::StateNP1)));
@@ -373,11 +373,11 @@ ComputeWallFrictionVelocityProjectedAlgorithm::execute()
 
           // determine which model (logic is fine since calls are expensive)
           bool converged = false;
-          if ( !pInfo->odeActive_ ) { 
-            compute_utau(uTangential, ypBip, rhoBip, muBip, utauGuess, converged);
+          if ( pInfo->odeFac_ > 0.0 ) { 
+            compute_utau_ode(uTangential, 0.0, rhoBip, muBip, pInfo, utauGuess, converged);
           }
           else {
-            compute_utau_ode(uTangential, 0.0, rhoBip, muBip, pInfo, utauGuess, converged);
+            compute_utau(uTangential, ypBip, rhoBip, muBip, utauGuess, converged);
           }
           if ( !converged )
             l_badConvergence++;
@@ -410,13 +410,13 @@ ComputeWallFrictionVelocityProjectedAlgorithm::set_data(
 }
 
 //--------------------------------------------------------------------------
-//-------- set_bool --------------------------------------------------------
+//-------- set_data_alt ----------------------------------------------------
 //--------------------------------------------------------------------------
 void
-ComputeWallFrictionVelocityProjectedAlgorithm::set_bool( 
-  bool theBool)
+ComputeWallFrictionVelocityProjectedAlgorithm::set_data_alt( 
+  double theDouble)
 {
-  projectedDistanceOdeVec_.push_back(theBool);
+  projectedDistanceOdeVec_.push_back(theDouble);
 }
 
 //--------------------------------------------------------------------------
@@ -576,7 +576,7 @@ ComputeWallFrictionVelocityProjectedAlgorithm::construct_bounding_points()
 
     // extract projected distance and if this is an ODE-based approach
     const double pDistance = projectedDistanceVec_[pv];
-    const double odeActive = projectedDistanceOdeVec_[pv];
+    const double odeFac = projectedDistanceOdeVec_[pv];
     
     // define selector (per part)
     stk::mesh::Selector s_locally_owned 
@@ -674,7 +674,7 @@ ComputeWallFrictionVelocityProjectedAlgorithm::construct_bounding_points()
           boundingPoint bPoint(Point(pointCoordinates), theIdent);
           boundingPointVec_.push_back(bPoint);
           
-          PointInfo *pInfo = new PointInfo(bPoint, localPointId, ipCoordinates, pointCoordinates, nDim_, odeActive);
+          PointInfo *pInfo = new PointInfo(bPoint, localPointId, ipCoordinates, pointCoordinates, nDim_, odeFac);
           faceInfoVec[ip] = pInfo;
           localPointId++;
         }
