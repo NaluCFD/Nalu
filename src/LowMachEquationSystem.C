@@ -1935,7 +1935,7 @@ MomentumEquationSystem::register_wall_bc(
     else {
       // first extract projected distance
       const double projectedDistance = userData.projectedDistance_;
-      const double odeFac = userData.projectedDistanceOde_ ? 1.0 : 0.0;
+      const double odeFac = userData.projectedDistanceOde_ ? 1.0 : -1.0;
       std::map<AlgorithmType, Algorithm *>::iterator it_utau =
         wallFunctionParamsAlgDriver_->algMap_.find(wfAlgProjectedType);
       if ( it_utau == wallFunctionParamsAlgDriver_->algMap_.end() ) {
