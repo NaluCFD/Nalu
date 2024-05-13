@@ -140,6 +140,20 @@ the following:
           expected. Based on past experience with a linear basis, comment on the usage of a quadratic
           basis.
         \item Probe all degree-of-freedom results, i.e., velocity and pressure. What is of interest?
+        \item Modify the underlying equation to include a specified constant bouyant force. This will mimic
+          a couette flow in a (potentially) adverse pressure gradient configuration. Can you generate
+          Figure~\ref{fig:analytical}?
 \end{itemize}
+
+\begin{figure}[!htbp]
+  \centering
+  {
+   \includegraphics[height=3.0in]{images/couette-crop.pdf}
+  }
+  \caption{Velocity as a function of height, $u_x(y)$ for a zero, adverse, and non-adverse pressure gradient. For the theoretical
+    adverse pressure gradient, a constant body force of magnitude $1.0 \times 10^{-5}$ was applied in addition to the current
+    property specification set of values. The above result exercised a linear basis mesh with constant mesh spacing of 0.05.}
+  \label{fig:analytical}
+\end{figure}
 
 \end{document}
