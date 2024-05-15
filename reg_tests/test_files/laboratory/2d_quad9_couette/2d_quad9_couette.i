@@ -95,12 +95,15 @@ realms:
       options:
       
         - element_source_terms:
-            momentum: [momentum_time_derivative, advection_diffusion, NSO_2ND_ALT]
+            momentum: [momentum_time_derivative, advection_diffusion, NSO_2ND_ALT, body_force]
             continuity: advection
 
         - consistent_mass_matrix_png:
             pressure: yes
-          
+
+        - element_source_term_parameters:
+            momentum: [0.0,0.0]
+
     output:
       output_data_base_name: output/2d_quad9_couette.e
       output_frequency: 10
