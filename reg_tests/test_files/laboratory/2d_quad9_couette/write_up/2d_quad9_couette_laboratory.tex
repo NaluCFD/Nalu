@@ -71,7 +71,7 @@ pressure, $P^{th}$.
 Given the assumptions provided in the introduction, the streamwise velocity equation reduces to,
 
 \begin{align}
-   \mu \frac{d^2 u_x}{dy^2} = 0.
+   -\mu \frac{d^2 u_x}{dy^2} = 0.
 \label{eq:simpEq}
 \end{align}
 We note that a more interesting Couette flow can be derived in the presence of a constant pressure 
@@ -106,7 +106,7 @@ at a bulk top velocity of $u_b = $1e-3 $m/s$, is approximately 1236.
 
 \subsection{Simulation Specification and Results}
 
-The mesh exercised activates a Quad9 topology, thereby exercising a
+The mesh provided activates a Quad9 topology, thereby exercising a
 quadratic underlying basis that yields a nominal third-order spatial accurate
 simulation.
 
@@ -140,10 +140,19 @@ the following:
           expected. Based on past experience with a linear basis, comment on the usage of a quadratic
           basis.
         \item Probe all degree-of-freedom results, i.e., velocity and pressure. What is of interest?
-        \item Modify the underlying equation to include a specified constant bouyant force. This will mimic
-          a couette flow in a (potentially) adverse pressure gradient configuration. Can you generate
-          Figure~\ref{fig:analytical}?
+        \item Modify the underlying equation to include a specified constant body force. This will mimic
+          a couette flow in a (potentially) adverse pressure gradient configuration. Generate generate
+          Figure~\ref{fig:analytical} for either the adverse or non-adverse scenario. How does the simulation
+          compare to the analytical result?
 \end{itemize}
+
+For the final bullet above, note that the underlying equation is simply as follows:
+
+\begin{align}
+   -\mu \frac{d^2 u_x}{dy^2} = -\frac{dP}{dx},
+\label{eq:simpEqP}
+\end{align}
+where $\frac{dP}{dx}$ is a constant.
 
 \begin{figure}[!htbp]
   \centering
