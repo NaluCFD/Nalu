@@ -126,6 +126,7 @@
 #include "kernel/MomentumGclElemKernel.h"
 #include "kernel/MomentumMassElemKernel.h"
 #include "kernel/MomentumUpwAdvDiffElemKernel.h"
+#include "kernel/MomentumBodyForceElemKernel.h"
 
 #include "kernel/MomentumVofSharpenElemKernel.h"
 #include "kernel/MomentumVofCapillaryElemKernel.h"
@@ -1392,6 +1393,10 @@ MomentumEquationSystem::register_interior_algorithm(
       build_topo_kernel_if_requested<MomentumVofCapillaryElemKernel>
         (partTopo, *this, activeKernels, "capillary",
          realm_.bulk_data(), *realm_.solutionOptions_, velocity_, dataPreReqs);
+
+      build_topo_kernel_if_requested<MomentumBodyForceElemKernel>
+        (partTopo, *this, activeKernels, "body_force",
+         realm_.bulk_data(), *realm_.solutionOptions_, dataPreReqs);
 
       report_invalid_supp_alg_names();
       report_built_supp_alg_names();
