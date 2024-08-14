@@ -25,6 +25,12 @@ struct HelperObjects {
     assembleElemSolverAlg(nullptr)
   {
     realm.bulkData_ = bulk;
+
+    // set the contrived rhs and lhs sizes
+    const int rowSize = topo.num_nodes()*numDof;
+    linsys->rhs_ = Kokkos::View<double*>("rhs_", rowSize);
+    linsys->lhs_ = Kokkos::View<double**>("lhs_", rowSize, rowSize);
+
     eqSystem.linsys_ = linsys;
     assembleElemSolverAlg = new sierra::nalu::AssembleElemSolverAlgorithm(realm, part, &eqSystem, topo.rank(), topo.num_nodes(), false);
   }
@@ -46,7 +52,6 @@ struct HelperObjects {
   unit_test_utils::TestLinearSystem* linsys;
   sierra::nalu::AssembleElemSolverAlgorithm* assembleElemSolverAlg;
 };
-
 
 struct FaceElemHelperObjects : HelperObjects {
   FaceElemHelperObjects(std::shared_ptr<stk::mesh::BulkData> bulk, stk::topology faceTopo, stk::topology elemTopo, int numDof, stk::mesh::Part* part)
