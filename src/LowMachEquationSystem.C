@@ -1938,22 +1938,30 @@ MomentumEquationSystem::register_wall_bc(
       }
     }
     else {
-      // first extract projected distance
+      // first extract projected distance and unit normal
       const double projectedDistance = userData.projectedDistance_;
+      Velocity projectedDistanceUnitNormal = userData.projectedDistanceUnitNormal_;
+      Velocity minDomainBoundingBox = userData.minDomainBoundingBox_;
+      Velocity maxDomainBoundingBox = userData.maxDomainBoundingBox_;
       const double odeFac = userData.projectedDistanceOde_ ? 1.0 : -1.0;
       std::map<AlgorithmType, Algorithm *>::iterator it_utau =
         wallFunctionParamsAlgDriver_->algMap_.find(wfAlgProjectedType);
       if ( it_utau == wallFunctionParamsAlgDriver_->algMap_.end() ) {
         ComputeWallFrictionVelocityProjectedAlgorithm *theUtauAlg =
-          new ComputeWallFrictionVelocityProjectedAlgorithm(realm_, part, projectedDistance, odeFac, 
+          new ComputeWallFrictionVelocityProjectedAlgorithm(realm_, part, projectedDistance,
+                                                            projectedDistanceUnitNormal,
+                                                            minDomainBoundingBox,
+                                                            maxDomainBoundingBox,
+                                                            odeFac, 
                                                             realm_.realmUsesEdges_, 
                                                             pointInfoMap_, wallFunctionGhosting_);
         wallFunctionParamsAlgDriver_->algMap_[wfAlgProjectedType] = theUtauAlg;
       }
       else {
-        // push back part and projected distance
+        // push back part and projected distance information
         it_utau->second->partVec_.push_back(part);
         it_utau->second->set_data(projectedDistance);
+        it_utau->second->set_data_vector(projectedDistanceUnitNormal);
         it_utau->second->set_data_alt(odeFac);
       }
     }

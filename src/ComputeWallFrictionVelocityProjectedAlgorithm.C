@@ -66,6 +66,9 @@ ComputeWallFrictionVelocityProjectedAlgorithm::ComputeWallFrictionVelocityProjec
   Realm &realm,
   stk::mesh::Part *part,
   const double projectedDistance,
+  const Velocity projectedDistanceUnitNormal,
+  const Velocity minDomainBoundingBox,
+  const Velocity maxDomainBoundingBox,
   const double odeFac,
   const bool useShifted,
   std::map<std::string, std::vector<std::vector<PointInfo *> > > &pointInfoMap,
@@ -86,7 +89,9 @@ ComputeWallFrictionVelocityProjectedAlgorithm::ComputeWallFrictionVelocityProjec
     provideOutput_(false),
     searchMethod_(stk::search::KDTREE),
     expandBoxPercentage_(0.05),
-    needToGhostCount_(0)
+    needToGhostCount_(0),
+    minDomainBoundingBox_(minDomainBoundingBox),
+    maxDomainBoundingBox_(maxDomainBoundingBox)
 {
   // save off fields
   velocity_ = metaData_->get_field<double>(stk::topology::NODE_RANK, "velocity");
@@ -102,8 +107,9 @@ ComputeWallFrictionVelocityProjectedAlgorithm::ComputeWallFrictionVelocityProjec
   
   // set data
   set_data(projectedDistance);
+  set_data_vector(projectedDistanceUnitNormal);
   set_data_alt(odeFac);
-
+  
   // what do we need ghosted for this alg to work?
   ghostFieldVec_.push_back(&(velocity_->field_of_state(stk::mesh::StateNP1)));
 }
@@ -332,7 +338,7 @@ ComputeWallFrictionVelocityProjectedAlgorithm::execute()
             }
           }
 
-          // form unit normal and determine yp (approximated by 1/4 distance along edge)
+          // form unit normal and determine yp
           for ( int j = 0; j < nDim_; ++j ) {
             p_unitNormal[j] = areaVec[ip*nDim_+j]/aMag;
           }
@@ -417,6 +423,16 @@ ComputeWallFrictionVelocityProjectedAlgorithm::set_data_alt(
   double theDouble)
 {
   projectedDistanceOdeVec_.push_back(theDouble);
+}
+
+//--------------------------------------------------------------------------
+//-------- set_data_vector -------------------------------------------------
+//--------------------------------------------------------------------------
+void
+ComputeWallFrictionVelocityProjectedAlgorithm::set_data_vector( 
+  Velocity uVec)
+{
+  projectedDistanceUnitNormalVec_.push_back(uVec);
 }
 
 //--------------------------------------------------------------------------

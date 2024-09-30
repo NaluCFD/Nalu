@@ -214,6 +214,10 @@ struct WallUserData : public UserData {
   bool wallFunctionProjectedApproach_;
   bool neumann_;
   double projectedDistance_;
+  Velocity projectedDistanceUnitNormal_;
+  Velocity minDomainBoundingBox_;
+  Velocity maxDomainBoundingBox_;
+  
   bool projectedDistanceOde_;
 
   bool isFsiInterface_;
@@ -233,7 +237,17 @@ struct WallUserData : public UserData {
       neumann_(false),
       projectedDistance_(1.0),
       projectedDistanceOde_(false),
-      isFsiInterface_(false) {}    
+      isFsiInterface_(false) {
+
+    // provide defaults
+    const double maxAvailable = std::numeric_limits<double>::max();
+    minDomainBoundingBox_.ux_ = -maxAvailable;
+    minDomainBoundingBox_.uy_ = -maxAvailable;
+    minDomainBoundingBox_.uz_ = -maxAvailable;
+    maxDomainBoundingBox_.ux_ = +maxAvailable;
+    maxDomainBoundingBox_.uy_ = +maxAvailable;
+    maxDomainBoundingBox_.uz_ = +maxAvailable;
+  }    
 };
 
 struct InflowUserData : public UserData {
