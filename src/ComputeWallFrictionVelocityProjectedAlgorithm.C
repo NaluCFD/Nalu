@@ -89,9 +89,7 @@ ComputeWallFrictionVelocityProjectedAlgorithm::ComputeWallFrictionVelocityProjec
     provideOutput_(false),
     searchMethod_(stk::search::KDTREE),
     expandBoxPercentage_(0.05),
-    needToGhostCount_(0),
-    minDomainBoundingBox_(minDomainBoundingBox),
-    maxDomainBoundingBox_(maxDomainBoundingBox)
+    needToGhostCount_(0)
 {
   // save off fields
   velocity_ = metaData_->get_field<double>(stk::topology::NODE_RANK, "velocity");
@@ -112,6 +110,16 @@ ComputeWallFrictionVelocityProjectedAlgorithm::ComputeWallFrictionVelocityProjec
   
   // what do we need ghosted for this alg to work?
   ghostFieldVec_.push_back(&(velocity_->field_of_state(stk::mesh::StateNP1)));
+
+  // min/max bounding box
+  minDomainBoundingBox_.push_back(minDomainBoundingBox.ux_);
+  maxDomainBoundingBox_.push_back(maxDomainBoundingBox.ux_);
+  minDomainBoundingBox_.push_back(minDomainBoundingBox.uy_);
+  maxDomainBoundingBox_.push_back(maxDomainBoundingBox.uy_);
+  if ( nDim_ > 2 ) {
+    minDomainBoundingBox_.push_back(minDomainBoundingBox.uz_);
+    maxDomainBoundingBox_.push_back(maxDomainBoundingBox.uz_);
+  }
 }
   
 //--------------------------------------------------------------------------
@@ -131,19 +139,22 @@ ComputeWallFrictionVelocityProjectedAlgorithm::execute()
   // fixed size
   std::vector<double> uProjected(nDim_);
   std::vector<double> uBcBip(nDim_);
-  std::vector<double> unitNormal(nDim_);
+  std::vector<double> wallUnitNormal(nDim_);
+  std::vector<double> cBcBip(nDim_);
   std::vector<double> cProjected(nDim_);
   
   // pointers to fixed values
   double *p_uProjected = &uProjected[0];
   double *p_uBcBip = &uBcBip[0];
-  double *p_unitNormal= &unitNormal[0];
+  double *p_wallUnitNormal= &wallUnitNormal[0];
+  double *p_cBcBip = &cBcBip[0];
   
   // isopar coordinates for the owning element
   std::vector<double> isoParCoords(nDim_);
   
   // nodal fields to gather
   std::vector<double> ws_bcVelocity;
+  std::vector<double> ws_bcCoords;
   std::vector<double> ws_density;
   std::vector<double> ws_viscosity;
   
@@ -187,9 +198,6 @@ ComputeWallFrictionVelocityProjectedAlgorithm::execute()
     // set counter for this particular part
     size_t pointInfoVecCounter = 0;
     
-    // extract projected distance
-    const double pDistance = projectedDistanceVec_[pv];
-
     // define selector (per part)
     stk::mesh::Selector s_locally_owned 
       = metaData_->locally_owned_part() &stk::mesh::Selector(*partVec_[pv]);
@@ -211,12 +219,14 @@ ComputeWallFrictionVelocityProjectedAlgorithm::execute()
 
       // algorithm related; element
       ws_bcVelocity.resize(nodesPerFace*nDim_);
+      ws_bcCoords.resize(nodesPerFace*nDim_);
       ws_density.resize(nodesPerFace);
       ws_viscosity.resize(nodesPerFace);
       ws_face_shape_function.resize(numScsBip*nodesPerFace);
       
       // pointers
       double *p_bcVelocity = &ws_bcVelocity[0];
+      double *p_bcCoords = &ws_bcCoords[0];
       double *p_density = &ws_density[0];
       double *p_viscosity = &ws_viscosity[0];
       double *p_face_shape_function = &ws_face_shape_function[0];
@@ -250,9 +260,11 @@ ComputeWallFrictionVelocityProjectedAlgorithm::execute()
           
           // gather vectors
           double * uBc = stk::mesh::field_data(*bcVelocity_, node);
+          double * cBc = stk::mesh::field_data(*coordinates_, node);
           const int niNdim = ni*nDim_;
           for ( int j=0; j < nDim_; ++j ) {
             p_bcVelocity[niNdim+j] = uBc[j];
+            p_bcCoords[niNdim+j] = cBc[j];
           }
         }
         
@@ -319,6 +331,7 @@ ComputeWallFrictionVelocityProjectedAlgorithm::execute()
           double aMag = 0.0;
           for ( int j = 0; j < nDim_; ++j ) {
             p_uBcBip[j] = 0.0;
+            p_cBcBip[j] = 0.0;
             const double axj = areaVec[ip*nDim_+j];
             aMag += axj*axj;
           }
@@ -335,17 +348,30 @@ ComputeWallFrictionVelocityProjectedAlgorithm::execute()
             const int icNdim = ic*nDim_;
             for ( int j = 0; j < nDim_; ++j ) {
               p_uBcBip[j] += r*p_bcVelocity[icNdim+j];
+              p_cBcBip[j] += r*p_bcCoords[icNdim+j];
             }
           }
 
-          // form unit normal and determine yp
+          // form unit normal
           for ( int j = 0; j < nDim_; ++j ) {
-            p_unitNormal[j] = areaVec[ip*nDim_+j]/aMag;
+            p_wallUnitNormal[j] = areaVec[ip*nDim_+j]/aMag;
           }
-          
-          double ypBip = pDistance;
+
+          // extract yp based on projected and bip coordinates (dotted) with -wallUnitNormal (outward facing)
+          double ypBip = 0.0;
+          for ( int j = 0; j < nDim_; ++j ) {
+            ypBip -= (cProjected[j] - p_bcCoords[j])*p_wallUnitNormal[j];
+          }
           wallNormalDistanceBip[ip] = ypBip;
-          
+
+          if ( provideOutput_ ) {
+            NaluEnv::self().naluOutput() <<  "Yp: " << ypBip << " for point:";
+            for ( int j = 0; j < nDim_; ++j ) {
+              NaluEnv::self().naluOutput() << " " << p_bcCoords[j];
+            }
+            NaluEnv::self().naluOutput() << std::endl;
+          }
+
           // assemble to nodal quantities
           double * assembledWallArea = stk::mesh::field_data(*assembledWallArea_, nearestNode );
           double * assembledWallNormalDistance = stk::mesh::field_data(*assembledWallNormalDistance_, nearestNode );
@@ -359,7 +385,7 @@ ComputeWallFrictionVelocityProjectedAlgorithm::execute()
             double uiTan = 0.0;
             double uiBcTan = 0.0;
             for ( int j = 0; j < nDim_; ++j ) {
-              const double ninj = p_unitNormal[i]*p_unitNormal[j];
+              const double ninj = p_wallUnitNormal[i]*p_wallUnitNormal[j];
               if ( i==j ) {
                 const double om_nini = 1.0 - ninj;
                 uiTan += om_nini*p_uProjected[j];
@@ -579,7 +605,13 @@ ComputeWallFrictionVelocityProjectedAlgorithm::construct_bounding_points()
   std::vector<double> ws_face_shape_function;
 
   // fixed size
-  std::vector<double> ws_unitNormal(nDim_,0.0);
+  std::vector<double> ws_wallUnitNormal(nDim_,0.0);
+
+  // extract distance in x, y, and z
+  std::vector<double> domainLength(nDim_, 0.0);
+  for ( int j = 0; j < nDim_; ++j ) {
+    domainLength[j] = maxDomainBoundingBox_[j] - minDomainBoundingBox_[j];
+  }
   
   // need to keep track of some sort of local id for each gauss point...
   uint64_t localPointId = 0;
@@ -593,7 +625,14 @@ ComputeWallFrictionVelocityProjectedAlgorithm::construct_bounding_points()
     // extract projected distance and if this is an ODE-based approach
     const double pDistance = projectedDistanceVec_[pv];
     const double odeFac = projectedDistanceOdeVec_[pv];
-    
+
+    // extract unit normal for this part
+    std::vector<double> pdUnitNormal(nDim_);
+    pdUnitNormal[0] = projectedDistanceUnitNormalVec_[pv].ux_;
+    pdUnitNormal[1] = projectedDistanceUnitNormalVec_[pv].uy_;
+    if ( nDim_ > 2 )
+      pdUnitNormal[2] = projectedDistanceUnitNormalVec_[pv].uz_;
+
     // define selector (per part)
     stk::mesh::Selector s_locally_owned 
       = metaData_->locally_owned_part() &stk::mesh::Selector(*partVec_[pv]);
@@ -665,7 +704,7 @@ ComputeWallFrictionVelocityProjectedAlgorithm::construct_bounding_points()
           
           // compute normal (outward facing)
           for ( int j = 0; j < nDim_; ++j ) {
-            ws_unitNormal[j] = areaVec[ip*nDim_+j]/aMag;
+            ws_wallUnitNormal[j] = areaVec[ip*nDim_+j]/aMag;
             ipCoordinates[j] = 0.0;
           }
           
@@ -678,9 +717,30 @@ ComputeWallFrictionVelocityProjectedAlgorithm::construct_bounding_points()
             }
           }
           
-          // project in space (unit normal is outward facing, hence the -)
+          // project in space
           for ( int j = 0; j < nDim_; ++j ) {
-            pointCoordinates[j] = ipCoordinates[j] - pDistance*ws_unitNormal[j];
+            // wall unit normal is outward facing, hence the -
+            //pointCoordinates[j] = ipCoordinates[j] - pDistance*ws_wallUnitNormal[j];
+
+            // user-provided projected unit normal (user controls the sign)
+            pointCoordinates[j] = ipCoordinates[j] + pDistance*pdUnitNormal[j];
+          }
+
+          // check for min recycle - assumes periodic...
+          for ( int j = 0; j < nDim_; ++j ) {
+            if ( pointCoordinates[j] < minDomainBoundingBox_[j] )
+              pointCoordinates[j] = pointCoordinates[j] + domainLength[j];
+          }
+
+          // check for max recycle - assumes periodic...
+          for ( int j = 0; j < nDim_; ++j ) {
+            if ( pointCoordinates[j] > maxDomainBoundingBox_[j] ) {
+              const double pS = pointCoordinates[j];
+              pointCoordinates[j] = pointCoordinates[j] - domainLength[j];
+              if ( provideOutput_ ) {
+                NaluEnv::self().naluOutput() << "Detected an extrapolation: Current:Prev: " << pointCoordinates[j] << ":" << pS << std::endl;
+              }
+            }
           }
           
           // setup ident for this point; use local integration point id

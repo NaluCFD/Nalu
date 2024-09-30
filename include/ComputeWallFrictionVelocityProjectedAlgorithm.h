@@ -106,9 +106,9 @@ public:
   const double expandBoxPercentage_;
   size_t needToGhostCount_;
 
-  /* min/max domain bounding box*/
-  Velocity minDomainBoundingBox_;
-  Velocity maxDomainBoundingBox_;
+  /* min/max domain bounding box */
+  std::vector<double> minDomainBoundingBox_;
+  std::vector<double> maxDomainBoundingBox_;
   
   VectorFieldType *velocity_;
   VectorFieldType *bcVelocity_;
