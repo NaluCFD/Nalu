@@ -44,8 +44,6 @@ public:
     stk::mesh::Part *part,
     const double projectedDistance,
     const Velocity projectedDistanceUnitNormal,
-    const Velocity minDomainBoundingBox,
-    const Velocity maxDomainBoundingBox,
     const double odeFac,
     const bool useShifted,
     std::map<std::string, std::vector<std::vector<PointInfo *> > > &pointInfoMap,

@@ -1941,8 +1941,6 @@ MomentumEquationSystem::register_wall_bc(
       // first extract projected distance and unit normal
       const double projectedDistance = userData.projectedDistance_;
       Velocity projectedDistanceUnitNormal = userData.projectedDistanceUnitNormal_;
-      Velocity minDomainBoundingBox = userData.minDomainBoundingBox_;
-      Velocity maxDomainBoundingBox = userData.maxDomainBoundingBox_;
       const double odeFac = userData.projectedDistanceOde_ ? 1.0 : -1.0;
       std::map<AlgorithmType, Algorithm *>::iterator it_utau =
         wallFunctionParamsAlgDriver_->algMap_.find(wfAlgProjectedType);
@@ -1950,8 +1948,6 @@ MomentumEquationSystem::register_wall_bc(
         ComputeWallFrictionVelocityProjectedAlgorithm *theUtauAlg =
           new ComputeWallFrictionVelocityProjectedAlgorithm(realm_, part, projectedDistance,
                                                             projectedDistanceUnitNormal,
-                                                            minDomainBoundingBox,
-                                                            maxDomainBoundingBox,
                                                             odeFac, 
                                                             realm_.realmUsesEdges_, 
                                                             pointInfoMap_, wallFunctionGhosting_);

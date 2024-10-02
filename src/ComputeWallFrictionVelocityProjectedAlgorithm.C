@@ -67,8 +67,6 @@ ComputeWallFrictionVelocityProjectedAlgorithm::ComputeWallFrictionVelocityProjec
   stk::mesh::Part *part,
   const double projectedDistance,
   const Velocity projectedDistanceUnitNormal,
-  const Velocity minDomainBoundingBox,
-  const Velocity maxDomainBoundingBox,
   const double odeFac,
   const bool useShifted,
   std::map<std::string, std::vector<std::vector<PointInfo *> > > &pointInfoMap,
@@ -110,16 +108,6 @@ ComputeWallFrictionVelocityProjectedAlgorithm::ComputeWallFrictionVelocityProjec
   
   // what do we need ghosted for this alg to work?
   ghostFieldVec_.push_back(&(velocity_->field_of_state(stk::mesh::StateNP1)));
-
-  // min/max bounding box
-  minDomainBoundingBox_.push_back(minDomainBoundingBox.ux_);
-  maxDomainBoundingBox_.push_back(maxDomainBoundingBox.ux_);
-  minDomainBoundingBox_.push_back(minDomainBoundingBox.uy_);
-  maxDomainBoundingBox_.push_back(maxDomainBoundingBox.uy_);
-  if ( nDim_ > 2 ) {
-    minDomainBoundingBox_.push_back(minDomainBoundingBox.uz_);
-    maxDomainBoundingBox_.push_back(maxDomainBoundingBox.uz_);
-  }
 }
   
 //--------------------------------------------------------------------------
@@ -129,7 +117,7 @@ ComputeWallFrictionVelocityProjectedAlgorithm::~ComputeWallFrictionVelocityProje
 {
   // does nothing
 }
-
+  
 //--------------------------------------------------------------------------
 //-------- execute ---------------------------------------------------------
 //--------------------------------------------------------------------------
@@ -526,13 +514,13 @@ ComputeWallFrictionVelocityProjectedAlgorithm::initialize()
 
   // initialize the map
   initialize_map();
+
+  // construct the bounding boxes
+  construct_bounding_boxes();
   
   // construct and reset bestX_
   construct_bounding_points();
   reset_point_info();
-  
-  // construct the bounding boxes
-  construct_bounding_boxes();
   
   // coarse search (fills elemsToGhost_)
   coarse_search();
@@ -775,6 +763,10 @@ ComputeWallFrictionVelocityProjectedAlgorithm::construct_bounding_boxes()
   // setup data structures for search
   Point minCorner, maxCorner;
 
+  // compute global min/max domain
+  double globalMinCorner[3] = {1.0e16};
+  double globalMaxCorner[3] = {-1.0e16};
+
   // deal with element part vector
   stk::mesh::PartVector elemBlockPartVec;
   const stk::mesh::PartVector allParts = metaData_->get_parts();
@@ -820,6 +812,8 @@ ComputeWallFrictionVelocityProjectedAlgorithm::construct_bounding_boxes()
         for ( int j = 0; j < nDim_; ++j ) {
           minCorner[j] = std::min(minCorner[j], coords[j]);
           maxCorner[j] = std::max(maxCorner[j], coords[j]);
+          globalMinCorner[j] = std::min(globalMinCorner[j], coords[j]);
+          globalMaxCorner[j] = std::max(globalMaxCorner[j], coords[j]);
         }
       }
       
@@ -839,6 +833,22 @@ ComputeWallFrictionVelocityProjectedAlgorithm::construct_bounding_boxes()
       boundingBox theBox(Box(minCorner,maxCorner), theIdent);
       boundingBoxVec_.push_back(theBox);
     }
+  }
+
+  // global min/max domain size
+  double g_min[3] = {};
+  stk::all_reduce_min(NaluEnv::self().parallel_comm(), globalMinCorner, g_min, nDim_);
+  double g_max[3] = {};
+  stk::all_reduce_max(NaluEnv::self().parallel_comm(), globalMaxCorner, g_max, nDim_);
+
+  // assign to member data
+  minDomainBoundingBox_.push_back(g_min[0]);
+  maxDomainBoundingBox_.push_back(g_max[0]);
+  minDomainBoundingBox_.push_back(g_min[1]);
+  maxDomainBoundingBox_.push_back(g_max[1]);
+  if ( nDim_ > 2 ) {
+    minDomainBoundingBox_.push_back(g_min[2]);
+    maxDomainBoundingBox_.push_back(g_max[2]);
   }
 }
 

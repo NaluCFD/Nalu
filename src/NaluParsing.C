@@ -884,14 +884,6 @@ namespace YAML
     {
       wallData.projectedDistanceUnitNormal_ = node["projected_distance_unit_normal"].as<sierra::nalu::Velocity>();
     }
-    if (node["projected_distance_min_domain"]) 
-    {
-      wallData.minDomainBoundingBox_ = node["projected_distance_min_domain"].as<sierra::nalu::Velocity>();
-    }
-    if (node["projected_distance_max_domain"]) 
-    {
-      wallData.maxDomainBoundingBox_ = node["projected_distance_max_domain"].as<sierra::nalu::Velocity>();
-    }
     if (node["projected_distance_ode"]) 
     {
       wallData.projectedDistanceOde_ = node["projected_distance_ode"].as<bool>();
