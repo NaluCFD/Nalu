@@ -621,6 +621,16 @@ ComputeWallFrictionVelocityProjectedAlgorithm::construct_bounding_points()
     if ( nDim_ > 2 )
       pdUnitNormal[2] = projectedDistanceUnitNormalVec_[pv].uz_;
 
+    // determine magnitude
+    double pdMag = 0.0;
+    for ( int j=0; j < nDim_; ++j ) {
+      pdMag += pdUnitNormal[j]*pdUnitNormal[j];
+    }
+    pdMag = std::sqrt(pdMag);
+
+    // a bit delicate, however, a nonsense value, i.e., >> unity, means use the wall normal alg
+    const bool useWallNormal = pdMag > 2.0 ? true : false;
+    
     // define selector (per part)
     stk::mesh::Selector s_locally_owned 
       = metaData_->locally_owned_part() &stk::mesh::Selector(*partVec_[pv]);
@@ -706,14 +716,19 @@ ComputeWallFrictionVelocityProjectedAlgorithm::construct_bounding_points()
           }
           
           // project in space
-          for ( int j = 0; j < nDim_; ++j ) {
-            // wall unit normal is outward facing, hence the -
-            //pointCoordinates[j] = ipCoordinates[j] - pDistance*ws_wallUnitNormal[j];
-
-            // user-provided projected unit normal (user controls the sign)
-            pointCoordinates[j] = ipCoordinates[j] + pDistance*pdUnitNormal[j];
+          if ( useWallNormal ) {
+            for ( int j = 0; j < nDim_; ++j ) {
+              // wall unit normal is outward facing, hence the -
+              pointCoordinates[j] = ipCoordinates[j] - pDistance*ws_wallUnitNormal[j];              
+            }
           }
-
+          else {
+            for ( int j = 0; j < nDim_; ++j ) {
+              // user-provided projected unit normal (user controls the sign)
+              pointCoordinates[j] = ipCoordinates[j] + pDistance*pdUnitNormal[j];
+            }
+          }
+          
           // check for min recycle - assumes periodic...
           for ( int j = 0; j < nDim_; ++j ) {
             if ( pointCoordinates[j] < minDomainBoundingBox_[j] )

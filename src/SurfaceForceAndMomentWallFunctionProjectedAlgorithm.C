@@ -151,7 +151,7 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
   // bip values
   std::vector<double> uProjected(nDim);
   std::vector<double> uBcBip(nDim);
-  std::vector<double> unitNormal(nDim);
+  std::vector<double> wallUnitNormal(nDim);
 
   // tangential work array
   std::vector<double> uiTangential(nDim);
@@ -160,7 +160,7 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
   // pointers to fixed values
   double *p_uProjected = &uProjected[0];
   double *p_uBcBip = &uBcBip[0];
-  double *p_unitNormal= &unitNormal[0];
+  double *p_wallUnitNormal= &wallUnitNormal[0];
   double *p_uiTangential = &uiTangential[0];
   double *p_uiBcTangential = &uiBcTangential[0];
 
@@ -358,7 +358,7 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
           
           // form unit normal
           for ( int j = 0; j < nDim; ++j ) {
-            p_unitNormal[j] = areaVec[ipNdim+j]/aMag;
+            p_wallUnitNormal[j] = areaVec[ipNdim+j]/aMag;
           }
           
           // determine tangential velocity
@@ -367,7 +367,7 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
             double uiTan = 0.0;
             double uiBcTan = 0.0;
             for ( int j = 0; j < nDim; ++j ) {
-              const double ninj = p_unitNormal[i]*p_unitNormal[j];
+              const double ninj = p_wallUnitNormal[i]*p_wallUnitNormal[j];
               if ( i==j ) {
                 const double om_nini = 1.0 - ninj;
                 uiTan += om_nini*p_uProjected[j];
