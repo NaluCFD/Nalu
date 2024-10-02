@@ -104,6 +104,7 @@ realms:
         velocity: [0.0,0.0,0.0]
         use_wall_function_projected: yes
         projected_distance: 0.0625
+        projected_distance_unit_normal: [0.0, -1.0, 0.0]
         projected_distance_ode: no
         use_neumann_condition: yes
 

@@ -600,6 +600,12 @@ ComputeWallFrictionVelocityProjectedAlgorithm::construct_bounding_points()
   for ( int j = 0; j < nDim_; ++j ) {
     domainLength[j] = maxDomainBoundingBox_[j] - minDomainBoundingBox_[j];
   }
+
+  // how many times we need to clip
+  size_t numClip[2] = {0,0};
+
+  // are there periodic boundaries? (nothing yet sophisticated)
+  const bool hasPeriodic = realm_.hasPeriodic_;
   
   // need to keep track of some sort of local id for each gauss point...
   uint64_t localPointId = 0;
@@ -729,17 +735,34 @@ ComputeWallFrictionVelocityProjectedAlgorithm::construct_bounding_points()
             }
           }
           
-          // check for min recycle - assumes periodic...
+          // check for min excursion
           for ( int j = 0; j < nDim_; ++j ) {
-            if ( pointCoordinates[j] < minDomainBoundingBox_[j] )
-              pointCoordinates[j] = pointCoordinates[j] + domainLength[j];
+            if ( pointCoordinates[j] < minDomainBoundingBox_[j] ) {
+              const double pS = pointCoordinates[j];
+              if ( hasPeriodic ) {
+                pointCoordinates[j] += domainLength[j];
+              }
+              else {
+                numClip[0]++;
+                pointCoordinates[j] = minDomainBoundingBox_[j];
+              }
+              if ( provideOutput_ ) {
+                NaluEnv::self().naluOutput() << "Detected an extrapolation: Current:Prev: " << pointCoordinates[j] << ":" << pS << std::endl;
+              }
+            }
           }
 
-          // check for max recycle - assumes periodic...
+          // check for max excursion
           for ( int j = 0; j < nDim_; ++j ) {
             if ( pointCoordinates[j] > maxDomainBoundingBox_[j] ) {
               const double pS = pointCoordinates[j];
-              pointCoordinates[j] = pointCoordinates[j] - domainLength[j];
+              if ( hasPeriodic ) {
+                pointCoordinates[j] -= domainLength[j];
+              }
+              else {
+                numClip[1]++;
+                pointCoordinates[j] = maxDomainBoundingBox_[j];
+              }
               if ( provideOutput_ ) {
                 NaluEnv::self().naluOutput() << "Detected an extrapolation: Current:Prev: " << pointCoordinates[j] << ":" << pS << std::endl;
               }
@@ -762,6 +785,19 @@ ComputeWallFrictionVelocityProjectedAlgorithm::construct_bounding_points()
         pointInfoMap_[partName].push_back(faceInfoVec);
       }
     }
+  }
+
+  // report clips
+  size_t g_numClip[2] = {};
+  stk::ParallelMachine comm = NaluEnv::self().parallel_comm();
+  stk::all_reduce_sum(comm, numClip, g_numClip, 2);
+
+  if ( g_numClip[0] > 0 ) {
+    NaluEnv::self().naluOutputP0() << "Warning: Clipped (-) projected point" << g_numClip[0] << " times; review the algorithm" << std::endl;
+  }
+
+  if ( g_numClip[1] > 0 ) {
+    NaluEnv::self().naluOutputP0() << "Warning: Clipped (+) projected point" << g_numClip[1] << " times; review the algorithm" << std::endl;
   }
 }
 
