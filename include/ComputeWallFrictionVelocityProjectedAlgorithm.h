@@ -11,6 +11,7 @@
 
 #include<Algorithm.h>
 #include<PointInfo.h>
+#include<NaluParsing.h>
 #include<FieldTypeDef.h>
 
 // stk
@@ -42,6 +43,7 @@ public:
     Realm &realm,
     stk::mesh::Part *part,
     const double projectedDistance,
+    const Velocity projectedDistanceUnitNormal,
     const double odeFac,
     const bool useShifted,
     std::map<std::string, std::vector<std::vector<PointInfo *> > > &pointInfoMap,
@@ -54,6 +56,8 @@ public:
     double theDouble);
   void set_data_alt( 
     double theDouble);
+  void set_data_vector( 
+    Velocity theVec);
 
   void compute_utau(
       const double &up, const double &yp,
@@ -100,6 +104,10 @@ public:
   const double expandBoxPercentage_;
   size_t needToGhostCount_;
 
+  /* min/max domain bounding box */
+  std::vector<double> minDomainBoundingBox_;
+  std::vector<double> maxDomainBoundingBox_;
+  
   VectorFieldType *velocity_;
   VectorFieldType *bcVelocity_;
   VectorFieldType *coordinates_;
@@ -111,8 +119,9 @@ public:
   ScalarFieldType *assembledWallNormalDistance_;
   ScalarFieldType *assembledWallArea_;
 
-  // per part value for projected distance and ODE 
+  // per part value for projected distance (and unit vec) and ODE option
   std::vector<double> projectedDistanceVec_;
+  std::vector<Velocity > projectedDistanceUnitNormalVec_;
   std::vector<double> projectedDistanceOdeVec_;
 
   /* data types for stk_search */

@@ -9,6 +9,8 @@
 #ifndef Algorithm_h
 #define Algorithm_h
 
+#include<NaluParsing.h>
+
 #include <vector>
 
 namespace stk {
@@ -48,6 +50,8 @@ public:
   virtual void set_data(double theDouble) {}
 
   virtual void set_data_alt(double theDouble) {}
+
+  virtual void set_data_vector(Velocity uVec) {}
 
   virtual void set_bool(bool theBool) {}
 
