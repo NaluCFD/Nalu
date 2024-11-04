@@ -94,7 +94,7 @@ realms:
       wall_user_data:
         velocity: [0.0,0.0,0.0]
         use_wall_function_projected: yes
-        projected_distance: 0.0625
+        wall_normal_projected_distance: 0.0625
         projected_distance_ode: yes
         use_neumann_condition: yes
 
@@ -103,8 +103,7 @@ realms:
       wall_user_data:
         velocity: [0.0,0.0,0.0]
         use_wall_function_projected: yes
-        projected_distance: 0.0625
-        projected_distance_unit_normal: [0.0, -1.0, 0.0]
+        wall_normal_projected_distance: 0.0625
         projected_distance_ode: no
         use_neumann_condition: yes
 

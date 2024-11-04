@@ -47,7 +47,7 @@ public:
 
   virtual void pre_work() {}
 
-  virtual void set_data(double theDouble) {}
+  virtual void set_data(double theDouble, double theSecondDouble = 0.0) {}
 
   virtual void set_data_alt(double theDouble) {}
 

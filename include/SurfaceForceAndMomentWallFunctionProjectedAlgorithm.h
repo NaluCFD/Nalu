@@ -39,7 +39,7 @@ public:
     const std::vector<double > &parameters,
     const bool &useShifted,
     ScalarFieldType *assembledArea,
-    std::map<std::string, std::vector<std::vector<PointInfo *> > > &pointInfoMap,
+    std::map<std::string, std::vector<std::vector<std::pair<PointInfo *, PointInfo *> > > > &pointInfoMap,
     stk::mesh::Ghosting *wallFunctionGhosting);
   ~SurfaceForceAndMomentWallFunctionProjectedAlgorithm();
 
@@ -55,7 +55,7 @@ public:
   const std::string &outputFileName_;
   const std::vector<double > &parameters_;
   const bool useShifted_;
-  std::map<std::string, std::vector<std::vector<PointInfo *> > > &pointInfoMap_;  
+  std::map<std::string, std::vector<std::vector<std::pair<PointInfo *, PointInfo *> > > >&pointInfoMap_;
   stk::mesh::Ghosting *wallFunctionGhosting_;
   const double yplusCrit_;
   const double elog_;

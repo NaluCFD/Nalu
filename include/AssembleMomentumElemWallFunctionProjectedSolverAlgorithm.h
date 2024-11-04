@@ -34,14 +34,14 @@ public:
     stk::mesh::Part *part,
     EquationSystem *eqSystem,
     const bool &useShifted,
-    std::map<std::string, std::vector<std::vector<PointInfo *> > > &pointInfoMap,
+    std::map<std::string, std::vector<std::vector<std::pair<PointInfo *, PointInfo *> > > > &pointInfoMap,
     stk::mesh::Ghosting *wallFunctionGhosting);
   virtual ~AssembleMomentumElemWallFunctionProjectedSolverAlgorithm() {}
   virtual void initialize_connectivity();
   virtual void execute();
 
   const bool useShifted_;
-  std::map<std::string, std::vector<std::vector<PointInfo *> > > &pointInfoMap_;
+  std::map<std::string, std::vector<std::vector<std::pair<PointInfo *, PointInfo *> > > >&pointInfoMap_;
   stk::mesh::Ghosting *wallFunctionGhosting_;
 
   const double yplusCrit_;
@@ -49,6 +49,7 @@ public:
   const double kappa_;
 
   VectorFieldType *velocity_;
+  VectorFieldType *raVelocity_;
   VectorFieldType *bcVelocity_;
   ScalarFieldType *density_;
   ScalarFieldType *viscosity_;

@@ -51,7 +51,7 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::SurfaceForceAndMomentWallFu
   const std::vector<double > &parameters,
   const bool &useShifted,
   ScalarFieldType *assembledArea,
-  std::map<std::string, std::vector<std::vector<PointInfo *> > >&pointInfoMap,
+  std::map<std::string, std::vector<std::vector<std::pair<PointInfo *, PointInfo *> > > > &pointInfoMap,
   stk::mesh::Ghosting *wallFunctionGhosting)
   : Algorithm(realm, partVec),
     outputFileName_(outputFileName),
@@ -208,8 +208,8 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
     size_t pointInfoVecCounter = 0;
 
     // extract local vector for this part
-    std::vector<std::vector<PointInfo *> > *pointInfoVec = nullptr;
-    std::map<std::string, std::vector<std::vector<PointInfo *> > >::iterator itf =
+    std::vector<std::vector<std::pair<PointInfo*, PointInfo*> > > *pointInfoVec = nullptr;
+    std::map<std::string, std::vector<std::vector<std::pair<PointInfo*,PointInfo*> > > >::iterator itf =
       pointInfoMap_.find(partName);
     if ( itf == pointInfoMap_.end() ) {
       // will need to throw
@@ -293,7 +293,7 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
         const double *wallFrictionVelocityBip = stk::mesh::field_data(*wallFrictionVelocityBip_, face);
         
         // extract the vector of PointInfo for this face
-        std::vector<PointInfo *> &faceInfoVec = (*pointInfoVec)[pointInfoVecCounter++];
+        std::vector<std::pair<PointInfo *, PointInfo *> > &faceInfoVec = (*pointInfoVec)[pointInfoVecCounter++];
         
         for ( int ip = 0; ip < numScsBip; ++ip ) {
           
@@ -304,11 +304,11 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
           const int localFaceNode = faceIpNodeMap[ip];
           
           // extract point info for this ip - must matches the construction of the pInfo vector
-          PointInfo *pInfo = faceInfoVec[ip];
-          stk::mesh::Entity owningElement = pInfo->owningElement_;
+          std::pair<PointInfo *, PointInfo *> *pInfoPair = &faceInfoVec[ip];
+          stk::mesh::Entity owningElement = pInfoPair->first->owningElement_;
           
           // get master element type for this contactInfo
-          MasterElement *meSCS  = pInfo->meSCS_;
+          MasterElement *meSCS  = pInfoPair->first->meSCS_;
           const int nodesPerElement = meSCS->nodesPerElement_;
           std::vector <double > elemNodalVelocity(nodesPerElement*nDim);
           std::vector <double > shpfc(nodesPerElement);
@@ -328,7 +328,7 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
           // interpolate to elemental point location
           meSCS->interpolatePoint(
             nDim,
-            &(pInfo->isoParCoords_[0]),
+            &(pInfoPair->first->isoParCoords_[0]),
             &elemNodalVelocity[0],
             &uProjected[0]);        
           
@@ -401,7 +401,7 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
             lambda = rhoBip*kappa_*utau/std::log(elog_*yplusBip)*aMag;
           
           // correct for ODE-based approach, tauW = rho*utau*utau (given by ODE solve)
-          const double odeFac = pInfo->odeFac_;
+          const double odeFac = pInfoPair->first->odeFac_;
           const double om_odeFac = 1.0 - odeFac;
           lambda = lambda*om_odeFac + odeFac*rhoBip*utau*utau*aMag;
 
@@ -572,8 +572,8 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::error_check()
     const std::string partName = partVec_[pv]->name();
     
     // extract local vector for this part
-    std::vector<std::vector<PointInfo *> > *pointInfoVec = nullptr;
-    std::map<std::string, std::vector<std::vector<PointInfo *> > >::iterator itf =
+    std::vector<std::vector<std::pair<PointInfo*, PointInfo*> > > *pointInfoVec = nullptr;
+    std::map<std::string, std::vector<std::vector<std::pair<PointInfo*,PointInfo*> > > >::iterator itf =
       pointInfoMap_.find(partName);
     if ( itf == pointInfoMap_.end() ) {
       // will need to throw

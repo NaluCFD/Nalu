@@ -880,6 +880,10 @@ namespace YAML
     {
       wallData.projectedDistance_ = node["projected_distance"].as<double>();
     }
+    if (node["wall_normal_projected_distance"]) 
+    {
+      wallData.wallNormalProjectedDistance_ = node["wall_normal_projected_distance"].as<double>();
+    }
     if (node["projected_distance_unit_normal"]) 
     {
       wallData.projectedDistanceUnitNormal_ = node["projected_distance_unit_normal"].as<sierra::nalu::Velocity>();

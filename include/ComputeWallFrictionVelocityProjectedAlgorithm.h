@@ -42,18 +42,19 @@ public:
   ComputeWallFrictionVelocityProjectedAlgorithm(
     Realm &realm,
     stk::mesh::Part *part,
+    const double wallNormalProjectedDistance,
     const double projectedDistance,
     const Velocity projectedDistanceUnitNormal,
     const double odeFac,
     const bool useShifted,
-    std::map<std::string, std::vector<std::vector<PointInfo *> > > &pointInfoMap,
+    std::map<std::string, std::vector<std::vector<std::pair<PointInfo *, PointInfo *> > > > &pointInfoMap,
     stk::mesh::Ghosting *wallFunctionGhosting);
   virtual ~ComputeWallFrictionVelocityProjectedAlgorithm();
 
   void execute();
 
   void set_data( 
-    double theDouble);
+    double theDouble, double theSecondDouble);
   void set_data_alt( 
     double theDouble);
   void set_data_vector( 
@@ -69,7 +70,7 @@ public:
       const double &muWall, PointInfo *pInfo, double &utau, bool &converged);
   
   // debug
-  void provide_output(const PointInfo *pInfo, const bool problemPoint);
+  void provide_output(const PointInfo *pInfo, const bool problemPoint, const int firstSecond);
   
   // ghosting and initialization set of calls
   void initialize();
@@ -81,9 +82,14 @@ public:
   void coarse_search();
   void manage_ghosting();
   void complete_search();
+  void complete_search_pinfo(
+    std::vector<double> &isoParCoords,
+    std::vector<double> &pointCoords,
+    PointInfo *pInfo,
+    std::vector<PointInfo *> &problemInfoVec);
   
   const bool useShifted_;
-  std::map<std::string, std::vector<std::vector<PointInfo *> > > &pointInfoMap_;  
+  std::map<std::string, std::vector<std::vector<std::pair<PointInfo *, PointInfo *> > > > &pointInfoMap_;
   stk::mesh::Ghosting *wallFunctionGhosting_;
 
   stk::mesh::BulkData *bulkData_;
@@ -109,6 +115,7 @@ public:
   std::vector<double> maxDomainBoundingBox_;
   
   VectorFieldType *velocity_;
+  VectorFieldType *raVelocity_;
   VectorFieldType *bcVelocity_;
   VectorFieldType *coordinates_;
   ScalarFieldType *density_;
@@ -121,6 +128,7 @@ public:
 
   // per part value for projected distance (and unit vec) and ODE option
   std::vector<double> projectedDistanceVec_;
+  std::vector<double> wallNormalProjectedDistanceVec_;
   std::vector<Velocity > projectedDistanceUnitNormalVec_;
   std::vector<double> projectedDistanceOdeVec_;
 

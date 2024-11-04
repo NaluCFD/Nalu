@@ -1056,15 +1056,19 @@ MomentumEquationSystem::~MomentumEquationSystem()
     delete wallFunctionParamsAlgDriver_;
 
   // delete pointInfo objects created
-  for( std::map<std::string, std::vector<std::vector<PointInfo*> > >::iterator im 
+  for( std::map<std::string, std::vector<std::vector<std::pair<PointInfo*, PointInfo*> > > >::iterator im 
          = pointInfoMap_.begin(); im!=pointInfoMap_.end(); ++im ) {
-    std::vector<std::vector<PointInfo*> > &theVecVec = (*im).second;
-    for( std::vector<std::vector<PointInfo*> >::iterator ii 
+    std::vector<std::vector<std::pair<PointInfo*, PointInfo*> > > &theVecVec = (*im).second;
+    for( std::vector<std::vector<std::pair<PointInfo*, PointInfo*> > >::iterator ii 
            = theVecVec.begin(); ii!=theVecVec.end(); ++ii ) {
-      std::vector<PointInfo *> &theVec = (*ii);    
+      std::vector<std::pair<PointInfo*, PointInfo*> > &theVec = (*ii);    
       for ( size_t k = 0; k < theVec.size(); ++k ) {
-        PointInfo *pInfo = theVec[k];
-        delete pInfo;
+        std::pair<PointInfo *, PointInfo *> *pInfoPair = &theVec[k];
+        PointInfo *pInfoF = pInfoPair->first;
+        PointInfo *pInfoS = pInfoPair->second;
+        delete pInfoF;
+        if ( nullptr != pInfoS )
+          delete pInfoS;
       }
     }
   }
@@ -1107,7 +1111,7 @@ MomentumEquationSystem::register_nodal_fields(
   // register dof; set it as a restart variable
   velocity_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "velocity", numStates));
   stk::mesh::put_field_on_mesh(*velocity_, *part, nDim, nullptr);
-  stk::io::set_field_output_type(*velocity_, stk::io::FieldOutputType::VECTOR_3D);
+  stk::io::set_field_output_type(*velocity_, nDim == 3 ? stk::io::FieldOutputType::VECTOR_3D : stk::io::FieldOutputType::VECTOR_2D);
   realm_.augment_restart_variable_list("velocity");
 
   dudx_ =  &(meta_data.declare_field<double>(stk::topology::NODE_RANK, "dudx"));
@@ -1938,7 +1942,8 @@ MomentumEquationSystem::register_wall_bc(
       }
     }
     else {
-      // first extract projected distance and unit normal
+      // first extract wall normal/user projected distance and user-defined unit normal
+      const double wallNormalProjectedDistance = userData.wallNormalProjectedDistance_;
       const double projectedDistance = userData.projectedDistance_;
       Velocity projectedDistanceUnitNormal = userData.projectedDistanceUnitNormal_;
       const double odeFac = userData.projectedDistanceOde_ ? 1.0 : -1.0;
@@ -1946,7 +1951,8 @@ MomentumEquationSystem::register_wall_bc(
         wallFunctionParamsAlgDriver_->algMap_.find(wfAlgProjectedType);
       if ( it_utau == wallFunctionParamsAlgDriver_->algMap_.end() ) {
         ComputeWallFrictionVelocityProjectedAlgorithm *theUtauAlg =
-          new ComputeWallFrictionVelocityProjectedAlgorithm(realm_, part, projectedDistance,
+          new ComputeWallFrictionVelocityProjectedAlgorithm(realm_, part, wallNormalProjectedDistance,
+                                                            projectedDistance,
                                                             projectedDistanceUnitNormal,
                                                             odeFac, 
                                                             realm_.realmUsesEdges_, 
@@ -1956,7 +1962,7 @@ MomentumEquationSystem::register_wall_bc(
       else {
         // push back part and projected distance information
         it_utau->second->partVec_.push_back(part);
-        it_utau->second->set_data(projectedDistance);
+        it_utau->second->set_data(wallNormalProjectedDistance, projectedDistance);
         it_utau->second->set_data_vector(projectedDistanceUnitNormal);
         it_utau->second->set_data_alt(odeFac);
       }

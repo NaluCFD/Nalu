@@ -44,7 +44,7 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::AssembleMomentumElemWa
   stk::mesh::Part *part,
   EquationSystem *eqSystem,
   const bool &useShifted,
-  std::map<std::string, std::vector<std::vector<PointInfo *> > > &pointInfoMap,
+  std::map<std::string, std::vector<std::vector<std::pair<PointInfo *, PointInfo *> > > > &pointInfoMap,
   stk::mesh::Ghosting *wallFunctionGhosting)
   : SolverAlgorithm(realm, part, eqSystem),
     useShifted_(useShifted),
@@ -57,6 +57,11 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::AssembleMomentumElemWa
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   velocity_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "velocity");
+  raVelocity_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "velocity_ra_one");
+  if ( nullptr == raVelocity_ ) {
+    NaluEnv::self().naluOutputP0() << "Cannot find velocity_ra_one; will use standard velocity: " << std::endl;
+    raVelocity_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "velocity");
+  }
   bcVelocity_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "wall_velocity_bc");
   density_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "density");
   viscosity_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "viscosity");
@@ -92,7 +97,8 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::execute()
   stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const int nDim = meta_data.spatial_dimension();
-
+  const double alphaT = 1.0;
+  
   // space for LHS/RHS; nodesPerFace*nDim*nodesPerFace*nDim and nodesPerFace*nDim
   std::vector<double> lhs;
   std::vector<double> rhs;
@@ -101,16 +107,16 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::execute()
   std::vector<stk::mesh::Entity> connected_nodes;
 
   // bip values
-  std::vector<double> uProjected(nDim);
+  std::vector<double> wnUprojected(nDim,0.0);
   std::vector<double> uBcBip(nDim);
-  std::vector<double> unitNormal(nDim);
+  std::vector<double> wnUnitNormal(nDim);
   std::vector<double> uiTanVec(nDim);
   std::vector<double> uiBcTanVec(nDim);
 
   // pointers to fixed values
-  double *p_uProjected = &uProjected[0];
+  double *p_wnUprojected = &wnUprojected[0];
   double *p_uBcBip = &uBcBip[0];
-  double *p_unitNormal= &unitNormal[0];
+  double *p_wnUnitNormal= &wnUnitNormal[0];
   double *p_uiTanVec = &uiTanVec[0];
   double *p_uiBcTanVec = &uiBcTanVec[0];
 
@@ -121,31 +127,41 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::execute()
 
   // master element
   std::vector<double> ws_face_shape_function;
-
-  // deal with state
-  VectorFieldType &velocityNp1 = velocity_->field_of_state(stk::mesh::StateNP1);
+  
+  // deal with state (and velocity instant or mean)
   ScalarFieldType &densityNp1 = density_->field_of_state(stk::mesh::StateNP1);
-
+  VectorFieldType &pdiVelocityNp1 = velocity_->field_of_state(stk::mesh::StateNP1);
+  VectorFieldType &pdmVelocityNp1 = *raVelocity_;
+  
   // parallel communicate ghosted entities
   if ( nullptr != wallFunctionGhosting_ )
     stk::mesh::communicate_field_data(*(wallFunctionGhosting_), ghostFieldVec_);
-
+  
   // iterate over parts (requires part-based local counter over locally owned faces)
   for ( size_t pv = 0; pv < partVec_.size(); ++pv ) {
-        
+    
     // extract name 
     const std::string partName = partVec_[pv]->name();
-
+        
+    // determine options active
+    //const bool useProjectedDistanceAlg = pDistance > 0.0 ? true : false;
+    
+    // create space for mean and instant
+    std::vector<double> pdmUprojected(nDim,0.0);
+    std::vector<double> pdiUprojected(nDim,0.0);
+    double *p_pdmUprojected = &pdmUprojected[0];
+    double *p_pdiUprojected = &pdiUprojected[0];
+        
     // set counter for this particular part
     size_t pointInfoVecCounter = 0;
     
     // define selector (per part)
     stk::mesh::Selector s_locally_owned 
       = meta_data.locally_owned_part() &stk::mesh::Selector(*partVec_[pv]);
-
+    
     // extract local vector for this part
-    std::vector<std::vector<PointInfo *> > *pointInfoVec = nullptr;
-    std::map<std::string, std::vector<std::vector<PointInfo *> > >::iterator itf =
+    std::vector<std::vector<std::pair<PointInfo*, PointInfo*> > > *pointInfoVec = nullptr;
+    std::map<std::string, std::vector<std::vector<std::pair<PointInfo*,PointInfo*> > > >::iterator itf =
       pointInfoMap_.find(partName);
     if ( itf == pointInfoMap_.end() ) {
       // will need to throw
@@ -238,7 +254,7 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::execute()
         const double *wallFrictionVelocityBip = stk::mesh::field_data(*wallFrictionVelocityBip_, face);
         
         // extract the vector of PointInfo for this face
-        std::vector<PointInfo *> &faceInfoVec = (*pointInfoVec)[pointInfoVecCounter++];
+        std::vector<std::pair<PointInfo *, PointInfo *> > &faceInfoVec = (*pointInfoVec)[pointInfoVecCounter++];
         
         for ( int ip = 0; ip < numScsBip; ++ip ) {
           
@@ -249,13 +265,18 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::execute()
           const int localFaceNode = faceIpNodeMap[ip];
           
           // extract point info for this ip - must matches the construction of the pInfo vector
-          PointInfo *pInfo = faceInfoVec[ip];
-          stk::mesh::Entity owningElement = pInfo->owningElement_;
-          
+          std::pair<PointInfo *, PointInfo *> *pInfoPair = &faceInfoVec[ip];
+          stk::mesh::Entity owningElement = pInfoPair->first->owningElement_;
+
+          // what velocity do we need? mean if the projected distance alg is active
+          VectorFieldType &wnVelocityNp1 = (nullptr == pInfoPair->second )
+            ? *raVelocity_
+            : velocity_->field_of_state(stk::mesh::StateNP1);
+
           // get master element type for this contactInfo
-          MasterElement *meSCS  = pInfo->meSCS_;
+          MasterElement *meSCS  = pInfoPair->first->meSCS_;
           const int nodesPerElement = meSCS->nodesPerElement_;
-          std::vector <double > elemNodalVelocity(nodesPerElement*nDim);
+          std::vector <double > wnElemNodalVelocity(nodesPerElement*nDim);
           std::vector <double > shpfc(nodesPerElement);
           
           // gather element data
@@ -264,19 +285,63 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::execute()
           for ( int ni = 0; ni < num_elem_nodes; ++ni ) {
             stk::mesh::Entity node = elem_node_rels[ni];
             // gather velocity (conforms to interpolatePoint)
-            const double *uNp1 = stk::mesh::field_data(velocityNp1, node );
+            const double *uNp1 = stk::mesh::field_data(wnVelocityNp1, node );
             for ( int j = 0; j < nDim; ++j ) {
-              elemNodalVelocity[j*nodesPerElement+ni] = uNp1[j];
+              wnElemNodalVelocity[j*nodesPerElement+ni] = uNp1[j];
             }
           }
           
           // interpolate to elemental point location
           meSCS->interpolatePoint(
            nDim,
-           &(pInfo->isoParCoords_[0]),
-           &elemNodalVelocity[0],
-           &uProjected[0]);
-        
+           &(pInfoPair->first->isoParCoords_[0]),
+           &wnElemNodalVelocity[0],
+           &wnUprojected[0]);
+
+          // check for "second"
+          if ( nullptr != pInfoPair->second ) {
+            stk::mesh::Entity pdowningElement = pInfoPair->first->owningElement_;
+            
+            // get master element type for this contactInfo
+            MasterElement *pdmeSCS  = pInfoPair->second->meSCS_;
+            const int pdnodesPerElement = pdmeSCS->nodesPerElement_;
+            std::vector <double > pdiElemNodalVelocity(pdnodesPerElement*nDim);
+            std::vector <double > pdmElemNodalVelocity(pdnodesPerElement*nDim);
+            std::vector <double > pdshpfc(pdnodesPerElement);
+          
+            // gather element data
+            stk::mesh::Entity const* pdelem_node_rels = bulk_data.begin_nodes(pdowningElement);
+            const int pdnum_elem_nodes = bulk_data.num_nodes(pdowningElement);
+            for ( int ni = 0; ni < pdnum_elem_nodes; ++ni ) {
+              stk::mesh::Entity node = pdelem_node_rels[ni];
+              // gather velocity (conforms to interpolatePoint)
+              const double *umNp1 = stk::mesh::field_data(pdmVelocityNp1, node );
+              const double *uiNp1 = stk::mesh::field_data(pdiVelocityNp1, node );
+              for ( int j = 0; j < nDim; ++j ) {
+                pdmElemNodalVelocity[j*pdnodesPerElement+ni] = umNp1[j];
+                pdiElemNodalVelocity[j*pdnodesPerElement+ni] = uiNp1[j];
+              }
+            }
+          
+            // interpolate to elemental point location
+            meSCS->interpolatePoint(
+             nDim,
+             &(pInfoPair->second->isoParCoords_[0]),
+             &pdmElemNodalVelocity[0],
+             &pdmUprojected[0]);
+
+            meSCS->interpolatePoint(
+             nDim,
+             &(pInfoPair->second->isoParCoords_[0]),
+             &pdiElemNodalVelocity[0],
+             &pdiUprojected[0]);
+          }
+
+          // determine tangential velocity; correct by correlated velocity difference
+          for ( int j = 0; j < nDim; ++j ) {
+            p_wnUprojected[j] += (p_pdiUprojected[j] - p_pdmUprojected[j]);
+          }
+
           // zero out vector quantities; squeeze in aMag
           double aMag = 0.0;
           for ( int j = 0; j < nDim; ++j ) {
@@ -301,7 +366,7 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::execute()
           
           // form unit normal
           for ( int j = 0; j < nDim; ++j ) {
-            p_unitNormal[j] = areaVec[ipNdim+j]/aMag;
+            p_wnUnitNormal[j] = areaVec[ipNdim+j]/aMag;
           }
           
           // extract bip data
@@ -316,24 +381,23 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::execute()
             lambda = rhoBip*kappa_*utau/std::log(elog_*yplus)*aMag;
 
           // correct for ODE-based approach, tauW = rho*utau*utau (given by ODE solve)
-          const double odeFac = pInfo->odeFac_;
+          const double odeFac = pInfoPair->first->odeFac_;
           const double om_odeFac = 1.0 - odeFac;
           lambda = lambda*om_odeFac + odeFac*rhoBip*utau*utau*aMag;
-
-          // determine tangential velocity
+          
           double uTangential = 0.0;
           for ( int i = 0; i < nDim; ++i ) {                
             double uiTan = 0.0;
             double uiBcTan = 0.0;
             for ( int j = 0; j < nDim; ++j ) {
-              const double ninj = p_unitNormal[i]*p_unitNormal[j];
+              const double ninj = p_wnUnitNormal[i]*p_wnUnitNormal[j];
               if ( i==j ) {
                 const double om_nini = 1.0 - ninj;
-                uiTan += om_nini*p_uProjected[j];
+                uiTan += om_nini*p_wnUprojected[j];
                 uiBcTan += om_nini*p_uBcBip[j];
               }
               else {
-                uiTan -= ninj*p_uProjected[j];
+                uiTan -= ninj*p_wnUprojected[j];
                 uiBcTan -= ninj*p_uBcBip[j];
               }
             }
@@ -343,12 +407,17 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::execute()
             p_uiBcTanVec[i] = uiBcTan;
           }
           uTangential = std::sqrt(uTangential);
-          
+
+          for ( int j = 0; j < nDim; ++j ) {
+            p_wnUprojected[j] += (p_pdiUprojected[j] - p_pdmUprojected[j]);
+          }
+
           // start the rhs assembly (lhs neglected) - account for possible ode
           const double normalizeFac = 1.0/(om_odeFac + odeFac*uTangential);
           for ( int i = 0; i < nDim; ++i ) {            
             int indexR = localFaceNode*nDim + i;
-            p_rhs[indexR] -= lambda*(p_uiTanVec[i]-p_uiBcTanVec[i])*normalizeFac;
+            p_rhs[indexR] -= lambda*(p_uiTanVec[i]-p_uiBcTanVec[i])*normalizeFac
+              + alphaT*rhoBip*utau*(p_pdiUprojected[i] - p_pdmUprojected[i])*aMag;
           }
         }
         

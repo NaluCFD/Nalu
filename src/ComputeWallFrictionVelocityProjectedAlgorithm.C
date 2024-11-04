@@ -65,11 +65,12 @@ struct lessThan
 ComputeWallFrictionVelocityProjectedAlgorithm::ComputeWallFrictionVelocityProjectedAlgorithm(
   Realm &realm,
   stk::mesh::Part *part,
+  const double wallNormalProjectedDistance,
   const double projectedDistance,
   const Velocity projectedDistanceUnitNormal,
   const double odeFac,
   const bool useShifted,
-  std::map<std::string, std::vector<std::vector<PointInfo *> > > &pointInfoMap,
+  std::map<std::string, std::vector<std::vector<std::pair<PointInfo*,PointInfo*> > > > &pointInfoMap,
   stk::mesh::Ghosting *wallFunctionGhosting)
   : Algorithm(realm, part),
     useShifted_(useShifted),
@@ -91,6 +92,11 @@ ComputeWallFrictionVelocityProjectedAlgorithm::ComputeWallFrictionVelocityProjec
 {
   // save off fields
   velocity_ = metaData_->get_field<double>(stk::topology::NODE_RANK, "velocity");
+  raVelocity_ = metaData_->get_field<double>(stk::topology::NODE_RANK, "velocity_ra_one");
+  if ( nullptr == raVelocity_ ) {
+    NaluEnv::self().naluOutputP0() << "Cannot find velocity_ra_one; will use standard velocity: " << std::endl;
+    raVelocity_ = metaData_->get_field<double>(stk::topology::NODE_RANK, "velocity");
+  }
   bcVelocity_ = metaData_->get_field<double>(stk::topology::NODE_RANK, "wall_velocity_bc");
   coordinates_ = metaData_->get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   density_ = metaData_->get_field<double>(stk::topology::NODE_RANK, "density");
@@ -102,12 +108,14 @@ ComputeWallFrictionVelocityProjectedAlgorithm::ComputeWallFrictionVelocityProjec
   assembledWallNormalDistance_ = metaData_->get_field<double>(stk::topology::NODE_RANK, "assembled_wall_normal_distance");
   
   // set data
-  set_data(projectedDistance);
+  set_data(wallNormalProjectedDistance, projectedDistance);
   set_data_vector(projectedDistanceUnitNormal);
   set_data_alt(odeFac);
   
   // what do we need ghosted for this alg to work?
   ghostFieldVec_.push_back(&(velocity_->field_of_state(stk::mesh::StateNP1)));
+  ghostFieldVec_.push_back(raVelocity_);
+  ghostFieldVec_.push_back(density_);
 }
   
 //--------------------------------------------------------------------------
@@ -117,7 +125,8 @@ ComputeWallFrictionVelocityProjectedAlgorithm::~ComputeWallFrictionVelocityProje
 {
   // does nothing
 }
-  
+
+    
 //--------------------------------------------------------------------------
 //-------- execute ---------------------------------------------------------
 //--------------------------------------------------------------------------
@@ -150,7 +159,6 @@ ComputeWallFrictionVelocityProjectedAlgorithm::execute()
   std::vector<double> ws_face_shape_function;
   
   // deal with state
-  VectorFieldType &velocityNp1 = velocity_->field_of_state(stk::mesh::StateNP1);
   ScalarFieldType &densityNp1 = density_->field_of_state(stk::mesh::StateNP1);
   
   // define vector of parent topos; should always be UNITY in size
@@ -169,10 +177,19 @@ ComputeWallFrictionVelocityProjectedAlgorithm::execute()
 
     // extract name 
     const std::string partName = partVec_[pv]->name();
-    
+
+    // extract options for this part
+    const double pDistance = projectedDistanceVec_[pv];
+
+    // determine options active
+    const bool useProjectedDistanceAlg = pDistance > 0.0 ? true : false;
+
+    // what velocity do we need?
+    VectorFieldType &wnVelocity = useProjectedDistanceAlg ? *raVelocity_ : velocity_->field_of_state(stk::mesh::StateNP1);
+
     // extract local vector for this part
-    std::vector<std::vector<PointInfo *> > *pointInfoVec = nullptr;
-    std::map<std::string, std::vector<std::vector<PointInfo *> > >::iterator itf =
+    std::vector<std::vector<std::pair<PointInfo*, PointInfo*> > > *pointInfoVec = nullptr;
+    std::map<std::string, std::vector<std::vector<std::pair<PointInfo*,PointInfo*> > > >::iterator itf =
       pointInfoMap_.find(partName);
     if ( itf == pointInfoMap_.end() ) {
       // will need to throw
@@ -261,8 +278,8 @@ ComputeWallFrictionVelocityProjectedAlgorithm::execute()
         double *wallNormalDistanceBip = stk::mesh::field_data(*wallNormalDistanceBip_, face);
         double *wallFrictionVelocityBip = stk::mesh::field_data(*wallFrictionVelocityBip_, face);
         
-        // extract the vector of PointInfo for this face 
-        std::vector<PointInfo *> &faceInfoVec = (*pointInfoVec)[pointInfoVecCounter++];
+        // extract the vector of PointInfo for this face
+        std::vector<std::pair<PointInfo *, PointInfo *> > &faceInfoVec = (*pointInfoVec)[pointInfoVecCounter++];
 
         // loop over ips
         for ( int ip = 0; ip < numScsBip; ++ip ) {
@@ -272,11 +289,11 @@ ComputeWallFrictionVelocityProjectedAlgorithm::execute()
           stk::mesh::Entity nearestNode = face_node_rels[localFaceNode];
           
           // extract point info for this ip - must matches the construction of the pInfo vector
-          PointInfo *pInfo = faceInfoVec[ip];
-          stk::mesh::Entity owningElement = pInfo->owningElement_;
+          std::pair<PointInfo *, PointInfo *> *pInfoPair = &faceInfoVec[ip];
+          stk::mesh::Entity owningElement = pInfoPair->first->owningElement_;
 
           // get master element type for this contactInfo
-          MasterElement *meSCS  = pInfo->meSCS_;
+          MasterElement *meSCS  = pInfoPair->first->meSCS_;
           const int nodesPerElement = meSCS->nodesPerElement_;
           std::vector <double > elemNodalVelocity(nodesPerElement*nDim_);
           std::vector <double > elemNodalCoords(nodesPerElement*nDim_);
@@ -288,7 +305,7 @@ ComputeWallFrictionVelocityProjectedAlgorithm::execute()
           for ( int ni = 0; ni < num_elem_nodes; ++ni ) {
             stk::mesh::Entity node = elem_node_rels[ni];
             // gather velocity (conforms to interpolatePoint)
-            const double *uNp1 = stk::mesh::field_data(velocityNp1, node );
+            const double *uNp1 = stk::mesh::field_data(wnVelocity, node );
             const double *coords = stk::mesh::field_data(*coordinates_, node );
             for ( int j = 0; j < nDim_; ++j ) {
               elemNodalVelocity[j*nodesPerElement+ni] = uNp1[j];
@@ -299,20 +316,20 @@ ComputeWallFrictionVelocityProjectedAlgorithm::execute()
           // interpolate to elemental point location
           meSCS->interpolatePoint(
             nDim_,
-            &(pInfo->isoParCoords_[0]),
+            &(pInfoPair->first->isoParCoords_[0]),
             &elemNodalVelocity[0],
             &uProjected[0]);
 
           // sanity check for coords
           meSCS->interpolatePoint(
             nDim_,
-            &(pInfo->isoParCoords_[0]),
+            &(pInfoPair->first->isoParCoords_[0]),
             &elemNodalCoords[0],
             &cProjected[0]);
 
           if ( provideOutput_ ) {
             for (int j = 0; j < nDim_; ++j ) 
-              NaluEnv::self().naluOutput() << "Coords sanity check: " << cProjected[j] << " " << pInfo->pointCoordinates_[j] << std::endl;
+              NaluEnv::self().naluOutput() << "Coords sanity check: " << cProjected[j] << " " << pInfoPair->first->pointCoordinates_[j] << std::endl;
           }
           
           // zero out vector quantities; squeeze in aMag
@@ -393,8 +410,8 @@ ComputeWallFrictionVelocityProjectedAlgorithm::execute()
 
           // determine which model (logic is fine since calls are expensive)
           bool converged = false;
-          if ( pInfo->odeFac_ > 0.0 ) { 
-            compute_utau_ode(uTangential, 0.0, rhoBip, muBip, pInfo, utauGuess, converged);
+          if ( pInfoPair->first->odeFac_ > 0.0 ) { 
+            compute_utau_ode(uTangential, 0.0, rhoBip, muBip, pInfoPair->first, utauGuess, converged);
           }
           else {
             compute_utau(uTangential, ypBip, rhoBip, muBip, utauGuess, converged);
@@ -424,9 +441,10 @@ ComputeWallFrictionVelocityProjectedAlgorithm::execute()
 //--------------------------------------------------------------------------
 void
 ComputeWallFrictionVelocityProjectedAlgorithm::set_data( 
-  double theDouble)
+  double wallNormalProjectedDistance, double projectedDistance)
 {
-  projectedDistanceVec_.push_back(theDouble);
+  wallNormalProjectedDistanceVec_.push_back(wallNormalProjectedDistance);
+  projectedDistanceVec_.push_back(projectedDistance);
 }
 
 //--------------------------------------------------------------------------
@@ -583,6 +601,7 @@ ComputeWallFrictionVelocityProjectedAlgorithm::construct_bounding_points()
   // hold the point location projected off the face integration points
   Point ipCoordinates;
   Point pointCoordinates;
+  Point wnpointCoordinates;
 
   // field extraction
   VectorFieldType *coordinates
@@ -617,26 +636,23 @@ ComputeWallFrictionVelocityProjectedAlgorithm::construct_bounding_points()
     const std::string partName = partVec_[pv]->name();
 
     // extract projected distance and if this is an ODE-based approach
+    const double wnpDistance = wallNormalProjectedDistanceVec_[pv];
     const double pDistance = projectedDistanceVec_[pv];
     const double odeFac = projectedDistanceOdeVec_[pv];
 
-    // extract unit normal for this part
-    std::vector<double> pdUnitNormal(nDim_);
-    pdUnitNormal[0] = projectedDistanceUnitNormalVec_[pv].ux_;
-    pdUnitNormal[1] = projectedDistanceUnitNormalVec_[pv].uy_;
-    if ( nDim_ > 2 )
-      pdUnitNormal[2] = projectedDistanceUnitNormalVec_[pv].uz_;
-
-    // determine magnitude
-    double pdMag = 0.0;
-    for ( int j=0; j < nDim_; ++j ) {
-      pdMag += pdUnitNormal[j]*pdUnitNormal[j];
-    }
-    pdMag = std::sqrt(pdMag);
-
-    // a bit delicate, however, a nonsense value, i.e., >> unity, means use the wall normal alg
-    const bool useWallNormal = pdMag > 2.0 ? true : false;
+    // determine options active
+    const bool useWallNormalAlg = wnpDistance > 0.0 ? true : false;
+    const bool useProjectedDistanceAlg = pDistance > 0.0 ? true : false;
     
+    // extract unit normal for this part
+    std::vector<double> pdUnitNormal(nDim_,0.0);
+    if ( useProjectedDistanceAlg ) {
+      pdUnitNormal[0] = projectedDistanceUnitNormalVec_[pv].ux_;
+      pdUnitNormal[1] = projectedDistanceUnitNormalVec_[pv].uy_;
+      if ( nDim_ > 2 )
+        pdUnitNormal[2] = projectedDistanceUnitNormalVec_[pv].uz_;
+    }
+        
     // define selector (per part)
     stk::mesh::Selector s_locally_owned 
       = metaData_->locally_owned_part() &stk::mesh::Selector(*partVec_[pv]);
@@ -695,7 +711,7 @@ ComputeWallFrictionVelocityProjectedAlgorithm::construct_bounding_points()
         }
                         
         // set size for vector of points on this face
-        std::vector<PointInfo *> faceInfoVec(numScsBip);
+        std::vector<std::pair<PointInfo *, PointInfo *> > faceInfoVec(numScsBip);
         for ( int ip = 0; ip < numScsBip; ++ip ) { 
           
           // compute area magnitude
@@ -712,7 +728,7 @@ ComputeWallFrictionVelocityProjectedAlgorithm::construct_bounding_points()
             ipCoordinates[j] = 0.0;
           }
           
-          // interpolate coodinates to gauss point
+          // interpolate coodinates to integration point
           const int ipNpf = ip*nodesPerFace;
           for ( int ic = 0; ic < nodesPerFace; ++ic ) {
             const double r = p_face_shape_function[ipNpf+ic];
@@ -721,64 +737,83 @@ ComputeWallFrictionVelocityProjectedAlgorithm::construct_bounding_points()
             }
           }
           
-          // project in space
-          if ( useWallNormal ) {
+          // project in space, wall normal direction
+          if ( useWallNormalAlg ) {
             for ( int j = 0; j < nDim_; ++j ) {
               // wall unit normal is outward facing, hence the -
-              pointCoordinates[j] = ipCoordinates[j] - pDistance*ws_wallUnitNormal[j];              
+              wnpointCoordinates[j] = ipCoordinates[j] - wnpDistance*ws_wallUnitNormal[j];              
             }
           }
-          else {
+
+          // project in space, user defined
+          if ( useProjectedDistanceAlg ) {
             for ( int j = 0; j < nDim_; ++j ) {
               // user-provided projected unit normal (user controls the sign)
               pointCoordinates[j] = ipCoordinates[j] + pDistance*pdUnitNormal[j];
             }
-          }
           
-          // check for min excursion
-          for ( int j = 0; j < nDim_; ++j ) {
-            if ( pointCoordinates[j] < minDomainBoundingBox_[j] ) {
-              const double pS = pointCoordinates[j];
-              if ( hasPeriodic ) {
-                pointCoordinates[j] += domainLength[j];
+            // check for min excursion
+            for ( int j = 0; j < nDim_; ++j ) {
+              if ( pointCoordinates[j] < minDomainBoundingBox_[j] ) {
+                const double pS = pointCoordinates[j];
+                if ( hasPeriodic ) {
+                  pointCoordinates[j] += domainLength[j];
+                }
+                else {
+                  numClip[0]++;
+                  pointCoordinates[j] = minDomainBoundingBox_[j];
+                }
+                if ( provideOutput_ ) {
+                  NaluEnv::self().naluOutput() << "Detected an extrapolation: Current:Prev: " << pointCoordinates[j] << ":" << pS << std::endl;
+                }
               }
-              else {
-                numClip[0]++;
-                pointCoordinates[j] = minDomainBoundingBox_[j];
-              }
-              if ( provideOutput_ ) {
-                NaluEnv::self().naluOutput() << "Detected an extrapolation: Current:Prev: " << pointCoordinates[j] << ":" << pS << std::endl;
+            }
+            
+            // check for max excursion
+            for ( int j = 0; j < nDim_; ++j ) {
+              if ( pointCoordinates[j] > maxDomainBoundingBox_[j] ) {
+                const double pS = pointCoordinates[j];
+                if ( hasPeriodic ) {
+                  pointCoordinates[j] -= domainLength[j];
+                }
+                else {
+                  numClip[1]++;
+                  pointCoordinates[j] = maxDomainBoundingBox_[j];
+                }
+                if ( provideOutput_ ) {
+                  NaluEnv::self().naluOutput() << "Detected an extrapolation: Current:Prev: " << pointCoordinates[j] << ":" << pS << std::endl;
+                }
               }
             }
           }
 
-          // check for max excursion
-          for ( int j = 0; j < nDim_; ++j ) {
-            if ( pointCoordinates[j] > maxDomainBoundingBox_[j] ) {
-              const double pS = pointCoordinates[j];
-              if ( hasPeriodic ) {
-                pointCoordinates[j] -= domainLength[j];
-              }
-              else {
-                numClip[1]++;
-                pointCoordinates[j] = maxDomainBoundingBox_[j];
-              }
-              if ( provideOutput_ ) {
-                NaluEnv::self().naluOutput() << "Detected an extrapolation: Current:Prev: " << pointCoordinates[j] << ":" << pS << std::endl;
-              }
-            }
-          }
-          
+          // set point infos
+          PointInfo *pInfoWNA = nullptr;
+          PointInfo *pInfoPDA = nullptr;
+
           // setup ident for this point; use local integration point id
-          uint64IdentProc theIdent(localPointId, NaluEnv::self().parallel_rank());
-          
-          // create the bounding point and push back
-          boundingPoint bPoint(Point(pointCoordinates), theIdent);
-          boundingPointVec_.push_back(bPoint);
-          
-          PointInfo *pInfo = new PointInfo(bPoint, localPointId, ipCoordinates, pointCoordinates, nDim_, odeFac);
-          faceInfoVec[ip] = pInfo;
-          localPointId++;
+          if ( useWallNormalAlg ) {
+            uint64IdentProc theIdent(localPointId, NaluEnv::self().parallel_rank());          
+            // create the bounding point
+            boundingPoint bPoint(Point(wnpointCoordinates), theIdent);
+            boundingPointVec_.push_back(bPoint);          
+            pInfoWNA = new PointInfo(bPoint, localPointId, ipCoordinates, wnpointCoordinates, nDim_, odeFac);
+            localPointId++;
+          }
+
+          if ( useProjectedDistanceAlg ) {
+            uint64IdentProc theIdent(localPointId, NaluEnv::self().parallel_rank());
+            // create the bounding point
+            boundingPoint bPoint(Point(pointCoordinates), theIdent);
+            boundingPointVec_.push_back(bPoint);
+            pInfoPDA = new PointInfo(bPoint, localPointId, ipCoordinates, pointCoordinates, nDim_, odeFac);
+            localPointId++;
+          }
+
+          // make the pair
+          std::pair<PointInfo *, PointInfo *> thePair;
+          thePair = std::make_pair(pInfoWNA, pInfoPDA);
+          faceInfoVec[ip] = thePair;
         }
         
         // push them all back
@@ -909,16 +944,18 @@ ComputeWallFrictionVelocityProjectedAlgorithm::construct_bounding_boxes()
 void
 ComputeWallFrictionVelocityProjectedAlgorithm::reset_point_info()
 {
-
-  for( std::map<std::string, std::vector<std::vector<PointInfo*> > >::iterator im 
+  // reset bestX to bestXRef_
+  for( std::map<std::string, std::vector<std::vector<std::pair<PointInfo*,PointInfo*> > > >::iterator im 
          = pointInfoMap_.begin(); im!=pointInfoMap_.end(); ++im ) {
-    std::vector<std::vector<PointInfo*> > &theVecVec = (*im).second;
-    for( std::vector<std::vector<PointInfo*> >::iterator ii 
+    std::vector<std::vector<std::pair<PointInfo*,PointInfo*> > > &theVecVec = (*im).second;
+    for( std::vector<std::vector<std::pair<PointInfo*,PointInfo*> > >::iterator ii 
            = theVecVec.begin(); ii!=theVecVec.end(); ++ii ) {
-      std::vector<PointInfo *> &theVec = (*ii);    
+      std::vector<std::pair<PointInfo*,PointInfo*>> &theVec = (*ii);    
       for ( size_t k = 0; k < theVec.size(); ++k ) {
-        PointInfo *pInfo = theVec[k];
-        pInfo->bestX_ = pInfo->bestXRef_;
+        std::pair<PointInfo*,PointInfo*> *pInfoPair = &theVec[k];
+        pInfoPair->first->bestX_ = pInfoPair->first->bestXRef_;
+        if ( nullptr != pInfoPair->second )
+          pInfoPair->second->bestX_ = pInfoPair->second->bestXRef_;
       }
     }
   }
@@ -994,92 +1031,28 @@ ComputeWallFrictionVelocityProjectedAlgorithm::manage_ghosting()
 }
 
 //--------------------------------------------------------------------------
-//-------- complete_search--------------------------------------------------
+//-------- complete_search -------------------------------------------------
 //--------------------------------------------------------------------------
 void
 ComputeWallFrictionVelocityProjectedAlgorithm::complete_search()
 {
-  // fields
-  VectorFieldType *coordinates = metaData_->get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
-
   // coordinates
   std::vector<double> isoParCoords(nDim_);
   std::vector<double> pointCoords(nDim_);
 
   // invert the process... Loop over InfoVec_ and query searchKeyPair_ for this information (avoids a map)
   std::vector<PointInfo *> problemInfoVec;
-  for( std::map<std::string, std::vector<std::vector<PointInfo*> > >::iterator im 
+  for( std::map<std::string, std::vector<std::vector<std::pair<PointInfo*,PointInfo*> > > >::iterator im 
          = pointInfoMap_.begin(); im!=pointInfoMap_.end(); ++im ) {
-    std::vector<std::vector<PointInfo*> > &theVecVec = (*im).second;
-    for( std::vector<std::vector<PointInfo*> >::iterator ii 
+    std::vector<std::vector<std::pair<PointInfo*, PointInfo *> > > &theVecVec = (*im).second;
+    for( std::vector<std::vector<std::pair<PointInfo*, PointInfo *> > >::iterator ii 
            = theVecVec.begin(); ii!=theVecVec.end(); ++ii ) {
-      std::vector<PointInfo *> &theVec = (*ii);    
+      std::vector<std::pair<PointInfo*, PointInfo *> > &theVec = (*ii);    
       for ( size_t k = 0; k < theVec.size(); ++k ) {
-
-        PointInfo *pInfo = theVec[k];
-        const uint64_t localPointId  = pInfo->localPointId_; 
-        for ( int j = 0; j < nDim_; ++j )
-          pointCoords[j] = pInfo->pointCoordinates_[j];
-        
-        std::pair <std::vector<std::pair<uint64IdentProc, uint64IdentProc> >::const_iterator, std::vector<std::pair<uint64IdentProc, uint64IdentProc> >::const_iterator > 
-          p2 = std::equal_range(searchKeyPair_.begin(), searchKeyPair_.end(), localPointId, compareId());
-        
-        if ( p2.first == p2.second ) {
-          problemInfoVec.push_back(pInfo);        
-        }
-        else {
-          for (std::vector<std::pair<uint64IdentProc, uint64IdentProc> >::const_iterator jj = p2.first; jj != p2.second; ++jj ) {
-            
-            const uint64_t theBox = jj->second.id();
-            const unsigned theRank = NaluEnv::self().parallel_rank();
-            const unsigned pt_proc = jj->first.proc();
-            
-            // check if I own the point...
-            if ( theRank == pt_proc ) {
-              
-              // proceed as required; all elements should have already been ghosted via the coarse search
-              stk::mesh::Entity candidateElement = bulkData_->get_entity(stk::topology::ELEMENT_RANK, theBox);
-              if ( !(bulkData_->is_valid(candidateElement)) )
-                throw std::runtime_error("no valid entry for element");
-              
-              int elemIsGhosted = bulkData_->bucket(candidateElement).owned() ? 0 : 1;
-              
-              // now load the elemental nodal coords
-              stk::mesh::Entity const * elem_node_rels = bulkData_->begin_nodes(candidateElement);
-              int num_nodes = bulkData_->num_nodes(candidateElement);            
-              std::vector<double> elementCoords(nDim_*num_nodes);
-              
-              for ( int ni = 0; ni < num_nodes; ++ni ) {
-                stk::mesh::Entity node = elem_node_rels[ni];
-                // gather coordinates (conforms to isInElement)
-                const double * coords =  stk::mesh::field_data(*coordinates, node);
-                for ( int j = 0; j < nDim_; ++j ) {
-                  elementCoords[j*num_nodes+ni] = coords[j];
-                }
-              }
-              
-              // extract the topo from this element...
-              const stk::topology elemTopo = bulkData_->bucket(candidateElement).topology();
-              MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(elemTopo);
-              
-              const double nearestDistance = meSCS->isInElement(&elementCoords[0],
-                                                                &(pointCoords[0]),
-                                                                &(isoParCoords[0]));
-              
-              // check if this element is the best
-              if ( nearestDistance < pInfo->bestX_ ) {
-                pInfo->owningElement_ = candidateElement;
-                pInfo->meSCS_ = meSCS;
-                pInfo->isoParCoords_ = isoParCoords;
-                pInfo->bestX_ = nearestDistance;
-                pInfo->elemIsGhosted_ = elemIsGhosted;
-              }
-            }
-            else {
-              // not this proc's issue
-            }
-          }
-        }
+        std::pair<PointInfo *, PointInfo*> *pInfoPair = &theVec[k];
+        complete_search_pinfo(isoParCoords, pointCoords, pInfoPair->first, problemInfoVec);
+        if ( nullptr != pInfoPair->second )
+          complete_search_pinfo(isoParCoords, pointCoords, pInfoPair->second, problemInfoVec);
       }
     }
   }
@@ -1087,14 +1060,17 @@ ComputeWallFrictionVelocityProjectedAlgorithm::complete_search()
   if ( provideOutput_ ) {
   
     // provide output
-    for( std::map<std::string, std::vector<std::vector<PointInfo*> > >::iterator im 
+    for( std::map<std::string, std::vector<std::vector<std::pair<PointInfo*,PointInfo*> > > >::iterator im 
            = pointInfoMap_.begin(); im!=pointInfoMap_.end(); ++im ) {
-      std::vector<std::vector<PointInfo*> > &theVecVec = (*im).second;
-      for( std::vector<std::vector<PointInfo*> >::iterator ii 
+      std::vector<std::vector<std::pair<PointInfo*,PointInfo*> > > &theVecVec = (*im).second;
+      for( std::vector<std::vector<std::pair<PointInfo*, PointInfo *> > >::iterator ii 
              = theVecVec.begin(); ii!=theVecVec.end(); ++ii ) {
-        std::vector<PointInfo *> &theVec = (*ii);    
-        for ( size_t k = 0; k < theVec.size(); ++k ) {        
-          provide_output(theVec[k], false);        
+        std::vector<std::pair<PointInfo*, PointInfo *> > &theVec = (*ii);    
+        for ( size_t k = 0; k < theVec.size(); ++k ) {
+          std::pair<PointInfo *, PointInfo*> *pInfoPair = &theVec[k];                  
+          provide_output(pInfoPair->first, false, 1);
+          if ( nullptr != pInfoPair->second )
+            provide_output(pInfoPair->second, false, 2);
         }
       }
     }
@@ -1114,7 +1090,7 @@ ComputeWallFrictionVelocityProjectedAlgorithm::complete_search()
     NaluEnv::self().naluOutputP0() << "there was BIG PROBLEM with problemInfoVec " << std::endl; 
     
     for ( size_t k = 0; k < problemInfoVec.size(); ++k ) {   
-      provide_output(problemInfoVec[k], true);        
+      provide_output(problemInfoVec[k], true, 0);        
     }
     
     // sanity check on the elements provided in the bounding box
@@ -1130,17 +1106,94 @@ ComputeWallFrictionVelocityProjectedAlgorithm::complete_search()
 }
 
 //--------------------------------------------------------------------------
+//-------- complete_search_pinfo -------------------------------------------
+//--------------------------------------------------------------------------
+void
+ComputeWallFrictionVelocityProjectedAlgorithm::complete_search_pinfo(
+  std::vector<double> &isoParCoords,
+  std::vector<double> &pointCoords,
+  PointInfo *pInfo,
+  std::vector<PointInfo *> &problemInfoVec)
+{
+  // operate on this pInfo to provide owning element - if applicable
+  const uint64_t localPointId  = pInfo->localPointId_; 
+  for ( int j = 0; j < nDim_; ++j )
+    pointCoords[j] = pInfo->pointCoordinates_[j];
+  
+  std::pair <std::vector<std::pair<uint64IdentProc, uint64IdentProc> >::const_iterator, std::vector<std::pair<uint64IdentProc, uint64IdentProc> >::const_iterator > 
+    p2 = std::equal_range(searchKeyPair_.begin(), searchKeyPair_.end(), localPointId, compareId());
+  
+  if ( p2.first == p2.second ) {
+    problemInfoVec.push_back(pInfo);        
+  }
+  else {
+    for (std::vector<std::pair<uint64IdentProc, uint64IdentProc> >::const_iterator jj = p2.first; jj != p2.second; ++jj ) {
+      
+      const uint64_t theBox = jj->second.id();
+      const unsigned theRank = NaluEnv::self().parallel_rank();
+      const unsigned pt_proc = jj->first.proc();
+      
+      // check if I own the point...
+      if ( theRank == pt_proc ) {
+        
+        // proceed as required; all elements should have already been ghosted via the coarse search
+        stk::mesh::Entity candidateElement = bulkData_->get_entity(stk::topology::ELEMENT_RANK, theBox);
+        if ( !(bulkData_->is_valid(candidateElement)) )
+          throw std::runtime_error("no valid entry for element");
+        
+        int elemIsGhosted = bulkData_->bucket(candidateElement).owned() ? 0 : 1;
+        
+        // now load the elemental nodal coords
+        stk::mesh::Entity const * elem_node_rels = bulkData_->begin_nodes(candidateElement);
+        int num_nodes = bulkData_->num_nodes(candidateElement);            
+        std::vector<double> elementCoords(nDim_*num_nodes);
+        
+        for ( int ni = 0; ni < num_nodes; ++ni ) {
+          stk::mesh::Entity node = elem_node_rels[ni];
+          // gather coordinates (conforms to isInElement)
+          const double * coords =  stk::mesh::field_data(*coordinates_, node);
+          for ( int j = 0; j < nDim_; ++j ) {
+            elementCoords[j*num_nodes+ni] = coords[j];
+          }
+        }
+        
+        // extract the topo from this element...
+        const stk::topology elemTopo = bulkData_->bucket(candidateElement).topology();
+        MasterElement *meSCS = sierra::nalu::MasterElementRepo::get_surface_master_element(elemTopo);
+        
+        const double nearestDistance = meSCS->isInElement(&elementCoords[0],
+                                                          &(pointCoords[0]),
+                                                          &(isoParCoords[0]));
+        
+        // check if this element is the best
+        if ( nearestDistance < pInfo->bestX_ ) {
+          pInfo->owningElement_ = candidateElement;
+          pInfo->meSCS_ = meSCS;
+          pInfo->isoParCoords_ = isoParCoords;
+          pInfo->bestX_ = nearestDistance;
+          pInfo->elemIsGhosted_ = elemIsGhosted;
+        }
+      }
+      else {
+        // not this proc's issue
+      }
+    }
+  }
+}
+
+//--------------------------------------------------------------------------
 //-------- provide_output --------------------------------------------------
 //--------------------------------------------------------------------------
 void
 ComputeWallFrictionVelocityProjectedAlgorithm::provide_output( 
   const PointInfo *pInfo,
-  const bool problemPoint)
+  const bool problemPoint,
+  const int firstSecond)
 {
   const uint64_t localId = pInfo->localPointId_;
   stk::mesh::Entity theElem = pInfo->owningElement_;
   
-  NaluEnv::self().naluOutput() << "...Review for Point ip: " << localId << std::endl;
+  NaluEnv::self().naluOutput() << "...Review for Point ip (firstSecond): " << localId << " (" << firstSecond << ")" << std::endl;
   if ( problemPoint )
     NaluEnv::self().naluOutput() << "   BAD POINT" << std::endl;
   

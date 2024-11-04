@@ -214,6 +214,7 @@ struct WallUserData : public UserData {
   bool wallFunctionProjectedApproach_;
   bool neumann_;
   double projectedDistance_;
+  double wallNormalProjectedDistance_;
   Velocity projectedDistanceUnitNormal_;
   
   bool projectedDistanceOde_;
@@ -233,15 +234,11 @@ struct WallUserData : public UserData {
       wallFunctionApproach_(false),
       wallFunctionProjectedApproach_(false),
       neumann_(false),
-      projectedDistance_(1.0),
+      projectedDistance_(-1.0e16),
+      wallNormalProjectedDistance_(-1.0e16),
       projectedDistanceOde_(false),
-      isFsiInterface_(false) {
-
-    // default will later serve to determine if the unit normal alg is active
-    projectedDistanceUnitNormal_.ux_ = 1.0e16;
-    projectedDistanceUnitNormal_.uy_ = 1.0e16;
-    projectedDistanceUnitNormal_.uz_ = 1.0e16;
-  }
+      isFsiInterface_(false)
+  {}
 };
 
 struct InflowUserData : public UserData {
