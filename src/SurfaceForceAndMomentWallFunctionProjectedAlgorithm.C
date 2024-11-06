@@ -82,6 +82,11 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::SurfaceForceAndMomentWallFu
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   coordinates_ = meta_data.get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   velocity_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "velocity");
+  raVelocity_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "velocity_ra_one");
+  if ( nullptr == raVelocity_ ) {
+    NaluEnv::self().naluOutputP0() << "Cannot find velocity_ra_one; will use standard velocity: " << std::endl;
+    raVelocity_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "velocity");
+  }
   pressure_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "pressure");
   pressureForce_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "pressure_force");
   tauWall_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "tau_wall");
@@ -119,6 +124,8 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::SurfaceForceAndMomentWallFu
 
   // what do we need ghosted for this alg to work?
   ghostFieldVec_.push_back(&(velocity_->field_of_state(stk::mesh::StateNP1)));
+  ghostFieldVec_.push_back(raVelocity_);
+  ghostFieldVec_.push_back(&(density_->field_of_state(stk::mesh::StateNP1)));
 }
 
 //--------------------------------------------------------------------------
@@ -143,24 +150,24 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
   stk::mesh::BulkData & bulk_data = realm_.bulk_data();
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   const int nDim = meta_data.spatial_dimension();
-  
+
   // set min and max values
   double yplusMin = 1.0e8;
   double yplusMax = -1.0e8;
 
   // bip values
-  std::vector<double> uProjected(nDim);
+  std::vector<double> wnUprojected(nDim);
   std::vector<double> uBcBip(nDim);
-  std::vector<double> wallUnitNormal(nDim);
+  std::vector<double> wnUnitNormal(nDim);
 
   // tangential work array
   std::vector<double> uiTangential(nDim);
   std::vector<double> uiBcTangential(nDim);
 
   // pointers to fixed values
-  double *p_uProjected = &uProjected[0];
+  double *p_wnUprojected = &wnUprojected[0];
   double *p_uBcBip = &uBcBip[0];
-  double *p_wallUnitNormal= &wallUnitNormal[0];
+  double *p_wnUnitNormal= &wnUnitNormal[0];
   double *p_uiTangential = &uiTangential[0];
   double *p_uiBcTangential = &uiBcTangential[0];
 
@@ -174,8 +181,9 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
   std::vector<double> ws_face_shape_function;
 
   // deal with state
-  VectorFieldType &velocityNp1 = velocity_->field_of_state(stk::mesh::StateNP1);
   ScalarFieldType &densityNp1 = density_->field_of_state(stk::mesh::StateNP1);
+  VectorFieldType &pdiVelocityNp1 = velocity_->field_of_state(stk::mesh::StateNP1);
+  VectorFieldType &pdmVelocityNp1 = *raVelocity_;
 
   // parallel communicate ghosted entities
   if ( nullptr != wallFunctionGhosting_ )
@@ -203,6 +211,13 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
 
     // extract name 
     const std::string partName = partVec_[pv]->name();
+
+    // create space for mean and instant
+    std::vector<double> pdmUprojected(nDim,0.0);
+    std::vector<double> pdiUprojected(nDim,0.0);
+    double *p_pdmUprojected = &pdmUprojected[0];
+    double *p_pdiUprojected = &pdiUprojected[0];
+    double alphaT = 0.0;
 
     // set counter for this particular part
     size_t pointInfoVecCounter = 0;
@@ -310,18 +325,23 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
           // get master element type for this contactInfo
           MasterElement *meSCS  = pInfoPair->first->meSCS_;
           const int nodesPerElement = meSCS->nodesPerElement_;
-          std::vector <double > elemNodalVelocity(nodesPerElement*nDim);
+          std::vector <double > wnElemNodalVelocity(nodesPerElement*nDim);
           std::vector <double > shpfc(nodesPerElement);
-          
+
+          // what velocity do we need? mean if the projected distance alg is active
+          VectorFieldType &wnVelocityNp1 = (nullptr != pInfoPair->second )
+            ? *raVelocity_
+            : velocity_->field_of_state(stk::mesh::StateNP1);
+
           // gather element data
           stk::mesh::Entity const* elem_node_rels = bulk_data.begin_nodes(owningElement);
           const int num_elem_nodes = bulk_data.num_nodes(owningElement);
           for ( int ni = 0; ni < num_elem_nodes; ++ni ) {
             stk::mesh::Entity node = elem_node_rels[ni];
             // gather velocity (conforms to interpolatePoint)
-            const double *uNp1 = stk::mesh::field_data(velocityNp1, node );
+            const double *uNp1 = stk::mesh::field_data(wnVelocityNp1, node );
             for ( int j = 0; j < nDim; ++j ) {
-              elemNodalVelocity[j*nodesPerElement+ni] = uNp1[j];
+              wnElemNodalVelocity[j*nodesPerElement+ni] = uNp1[j];
             }
           }
           
@@ -329,9 +349,49 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
           meSCS->interpolatePoint(
             nDim,
             &(pInfoPair->first->isoParCoords_[0]),
-            &elemNodalVelocity[0],
-            &uProjected[0]);        
+            &wnElemNodalVelocity[0],
+            &wnUprojected[0]);        
+
+          // check for "second"
+          if ( nullptr != pInfoPair->second ) {
+            alphaT = 1.0;
+            stk::mesh::Entity pdowningElement = pInfoPair->second->owningElement_;
+            
+            // get master element type for this contactInfo
+            MasterElement *pdmeSCS  = pInfoPair->second->meSCS_;
+            const int pdnodesPerElement = pdmeSCS->nodesPerElement_;
+            std::vector <double > pdiElemNodalVelocity(pdnodesPerElement*nDim);
+            std::vector <double > pdmElemNodalVelocity(pdnodesPerElement*nDim);
+            std::vector <double > pdshpfc(pdnodesPerElement);
           
+            // gather element data
+            stk::mesh::Entity const* pdelem_node_rels = bulk_data.begin_nodes(pdowningElement);
+            const int pdnum_elem_nodes = bulk_data.num_nodes(pdowningElement);
+            for ( int ni = 0; ni < pdnum_elem_nodes; ++ni ) {
+              stk::mesh::Entity node = pdelem_node_rels[ni];
+              // gather velocity (conforms to interpolatePoint)
+              const double *umNp1 = stk::mesh::field_data(pdmVelocityNp1, node );
+              const double *uiNp1 = stk::mesh::field_data(pdiVelocityNp1, node );
+              for ( int j = 0; j < nDim; ++j ) {
+                pdmElemNodalVelocity[j*pdnodesPerElement+ni] = umNp1[j];
+                pdiElemNodalVelocity[j*pdnodesPerElement+ni] = uiNp1[j];
+              }
+            }
+          
+            // interpolate to elemental point location
+            meSCS->interpolatePoint(
+             nDim,
+             &(pInfoPair->second->isoParCoords_[0]),
+             &pdmElemNodalVelocity[0],
+             &pdmUprojected[0]);
+
+            meSCS->interpolatePoint(
+             nDim,
+             &(pInfoPair->second->isoParCoords_[0]),
+             &pdiElemNodalVelocity[0],
+             &pdiUprojected[0]);
+          }
+
           // zero out vector quantities; squeeze in aMag
           double aMag = 0.0;
           for ( int j = 0; j < nDim; ++j ) {
@@ -356,9 +416,9 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
             }
           }
           
-          // form unit normal
+          // form unit normal (wall-normal)
           for ( int j = 0; j < nDim; ++j ) {
-            p_wallUnitNormal[j] = areaVec[ipNdim+j]/aMag;
+            p_wnUnitNormal[j] = areaVec[ipNdim+j]/aMag;
           }
           
           // determine tangential velocity
@@ -367,14 +427,14 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
             double uiTan = 0.0;
             double uiBcTan = 0.0;
             for ( int j = 0; j < nDim; ++j ) {
-              const double ninj = p_wallUnitNormal[i]*p_wallUnitNormal[j];
+              const double ninj = p_wnUnitNormal[i]*p_wnUnitNormal[j];
               if ( i==j ) {
                 const double om_nini = 1.0 - ninj;
-                uiTan += om_nini*p_uProjected[j];
+                uiTan += om_nini*p_wnUprojected[j];
                 uiBcTan += om_nini*p_uBcBip[j];
               }
               else {
-                uiTan -= ninj*p_uProjected[j];
+                uiTan -= ninj*p_wnUprojected[j];
                 uiBcTan -= ninj*p_uBcBip[j];
               }
             }
@@ -387,10 +447,16 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
           
           // extract bip data
           const double yp = wallNormalDistanceBip[ip];
-          const double utau= wallFrictionVelocityBip[ip];
+          const double utau = wallFrictionVelocityBip[ip];
+
+          double uPrime = 0.0;
+          for ( int i = 0; i < nDim; ++i ) {
+            uPrime += (p_pdiUprojected[i] - p_pdmUprojected[i])*(p_pdiUprojected[i] - p_pdmUprojected[i]);
+          }
+          const double tauWallPrime = alphaT*rhoBip*utau*std::sqrt(uPrime);
           
-          // determine yplus
-          const double yplusBip = rhoBip*yp*utau/muBip;
+          // determine yplus (including correction to utau)
+          const double yplusBip = rhoBip*yp*(utau+std::sqrt(tauWallPrime/rhoBip))/muBip;
           
           // min and max
           yplusMin = std::min(yplusMin, yplusBip);
@@ -437,7 +503,7 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
           
           // assemble tauWall; area weighting is hiding in lambda/assembledArea
           const double normalizeFac = odeFac + om_odeFac*std::sqrt(uParallel);
-          *tauWall += lambda*normalizeFac/assembledArea;
+          *tauWall += lambda*normalizeFac/assembledArea + tauWallPrime*aMag/assembledArea;
           
           // deal with yplus
           *yplus += yplusBip*aMag/assembledArea;          
@@ -485,7 +551,7 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::pre_work()
   stk::mesh::BulkData & bulk_data = realm_.bulk_data();
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   const int nDim = meta_data.spatial_dimension();
-
+  
   //======================
   // assemble area
   //======================
@@ -570,7 +636,7 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::error_check()
     
     // extract name 
     const std::string partName = partVec_[pv]->name();
-    
+
     // extract local vector for this part
     std::vector<std::vector<std::pair<PointInfo*, PointInfo*> > > *pointInfoVec = nullptr;
     std::map<std::string, std::vector<std::vector<std::pair<PointInfo*,PointInfo*> > > >::iterator itf =

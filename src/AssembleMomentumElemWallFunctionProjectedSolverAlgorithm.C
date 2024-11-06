@@ -71,6 +71,8 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::AssembleMomentumElemWa
 
   // what do we need ghosted for this alg to work?
   ghostFieldVec_.push_back(&(velocity_->field_of_state(stk::mesh::StateNP1)));
+  ghostFieldVec_.push_back(raVelocity_);
+  ghostFieldVec_.push_back(&(density_->field_of_state(stk::mesh::StateNP1)));
 }
 
 //--------------------------------------------------------------------------
@@ -97,7 +99,6 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::execute()
   stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const int nDim = meta_data.spatial_dimension();
-  const double alphaT = 1.0;
   
   // space for LHS/RHS; nodesPerFace*nDim*nodesPerFace*nDim and nodesPerFace*nDim
   std::vector<double> lhs;
@@ -142,19 +143,17 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::execute()
     
     // extract name 
     const std::string partName = partVec_[pv]->name();
-        
-    // determine options active
-    //const bool useProjectedDistanceAlg = pDistance > 0.0 ? true : false;
-    
+
+    // set counter for this particular part
+    size_t pointInfoVecCounter = 0;
+
     // create space for mean and instant
     std::vector<double> pdmUprojected(nDim,0.0);
     std::vector<double> pdiUprojected(nDim,0.0);
     double *p_pdmUprojected = &pdmUprojected[0];
     double *p_pdiUprojected = &pdiUprojected[0];
-        
-    // set counter for this particular part
-    size_t pointInfoVecCounter = 0;
-    
+    double alphaT = 0.0;
+
     // define selector (per part)
     stk::mesh::Selector s_locally_owned 
       = meta_data.locally_owned_part() &stk::mesh::Selector(*partVec_[pv]);
@@ -269,10 +268,10 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::execute()
           stk::mesh::Entity owningElement = pInfoPair->first->owningElement_;
 
           // what velocity do we need? mean if the projected distance alg is active
-          VectorFieldType &wnVelocityNp1 = (nullptr == pInfoPair->second )
+          VectorFieldType &wnVelocityNp1 = (nullptr != pInfoPair->second )
             ? *raVelocity_
             : velocity_->field_of_state(stk::mesh::StateNP1);
-
+         
           // get master element type for this contactInfo
           MasterElement *meSCS  = pInfoPair->first->meSCS_;
           const int nodesPerElement = meSCS->nodesPerElement_;
@@ -300,7 +299,8 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::execute()
 
           // check for "second"
           if ( nullptr != pInfoPair->second ) {
-            stk::mesh::Entity pdowningElement = pInfoPair->first->owningElement_;
+            alphaT = 1.0;
+            stk::mesh::Entity pdowningElement = pInfoPair->second->owningElement_;
             
             // get master element type for this contactInfo
             MasterElement *pdmeSCS  = pInfoPair->second->meSCS_;
@@ -337,11 +337,6 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::execute()
              &pdiUprojected[0]);
           }
 
-          // determine tangential velocity; correct by correlated velocity difference
-          for ( int j = 0; j < nDim; ++j ) {
-            p_wnUprojected[j] += (p_pdiUprojected[j] - p_pdmUprojected[j]);
-          }
-
           // zero out vector quantities; squeeze in aMag
           double aMag = 0.0;
           for ( int j = 0; j < nDim; ++j ) {
@@ -364,7 +359,7 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::execute()
             }
           }
           
-          // form unit normal
+          // form unit normal (wall-normal)
           for ( int j = 0; j < nDim; ++j ) {
             p_wnUnitNormal[j] = areaVec[ipNdim+j]/aMag;
           }
@@ -407,10 +402,6 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::execute()
             p_uiBcTanVec[i] = uiBcTan;
           }
           uTangential = std::sqrt(uTangential);
-
-          for ( int j = 0; j < nDim; ++j ) {
-            p_wnUprojected[j] += (p_pdiUprojected[j] - p_pdmUprojected[j]);
-          }
 
           // start the rhs assembly (lhs neglected) - account for possible ode
           const double normalizeFac = 1.0/(om_odeFac + odeFac*uTangential);

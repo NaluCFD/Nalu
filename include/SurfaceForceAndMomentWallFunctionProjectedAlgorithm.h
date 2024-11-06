@@ -64,6 +64,7 @@ public:
   ScalarFieldType *assembledArea_;
   VectorFieldType *coordinates_;
   VectorFieldType *velocity_;
+  VectorFieldType *raVelocity_;
   ScalarFieldType *pressure_;
   VectorFieldType *pressureForce_;
   ScalarFieldType *tauWall_;
