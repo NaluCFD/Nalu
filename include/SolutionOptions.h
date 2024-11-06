@@ -229,6 +229,9 @@ public:
   // wetted wall init
   bool wettedWallInit_;
   double wettedWallDistance_;
+
+  // exchange model constant
+  double exchangeAlphaTau_;
 };
 
 } // namespace nalu

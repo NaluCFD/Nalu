@@ -13,6 +13,7 @@
 
 #include <FieldTypeDef.h>
 #include <Realm.h>
+#include <SolutionOptions.h>
 #include <master_element/MasterElement.h>
 #include <NaluEnv.h>
 
@@ -82,6 +83,7 @@ ComputeWallFrictionVelocityProjectedAlgorithm::ComputeWallFrictionVelocityProjec
     yplusCrit_(11.63),
     elog_(9.8),
     kappa_(realm.get_turb_model_constant(TM_kappa)),
+    exchangeAlphaTau_(realm_.solutionOptions_->exchangeAlphaTau_),
     maxIteration_(20),
     tolerance_(1.0e-6),
     firstInitialization_(true),
@@ -663,6 +665,7 @@ ComputeWallFrictionVelocityProjectedAlgorithm::construct_bounding_points()
       NaluEnv::self().naluOutputP0() << "ComputeWallFrictionVelocityProjectedAlgorithm::projectedDistance is:       " << pDistance << std::endl;
       NaluEnv::self().naluOutputP0() << "ComputeWallFrictionVelocityProjectedAlgorithm::projectedNormal   is:       "
                                      << pdUnitNormal[0] << " " << pdUnitNormal[1] << " " << pdUnitNormal[2] << std::endl;
+      NaluEnv::self().naluOutputP0() << "ComputeWallFrictionVelocityProjectedAlgorithm::exchangeAlphaTau is:       " << exchangeAlphaTau_ << std::endl;
     }
 
     // define selector (per part)

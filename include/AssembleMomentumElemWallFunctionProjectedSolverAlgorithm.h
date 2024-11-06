@@ -47,7 +47,8 @@ public:
   const double yplusCrit_;
   const double elog_;
   const double kappa_;
-
+  const double exchangeAlphaTau_;
+  
   VectorFieldType *velocity_;
   VectorFieldType *bcVelocity_;
   ScalarFieldType *density_;

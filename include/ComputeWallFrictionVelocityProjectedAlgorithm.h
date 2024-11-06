@@ -99,6 +99,8 @@ public:
   const double yplusCrit_;
   const double elog_;
   const double kappa_;
+  const double exchangeAlphaTau_;
+
   const int maxIteration_;
   const double tolerance_;
 
@@ -109,7 +111,7 @@ public:
   const stk::search::SearchMethod searchMethod_;
   const double expandBoxPercentage_;
   size_t needToGhostCount_;
-
+  
   /* min/max domain bounding box */
   std::vector<double> minDomainBoundingBox_;
   std::vector<double> maxDomainBoundingBox_;

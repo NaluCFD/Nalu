@@ -12,6 +12,7 @@
 #include <PointInfo.h>
 #include <FieldTypeDef.h>
 #include <Realm.h>
+#include <SolutionOptions.h>
 #include <master_element/MasterElement.h>
 #include <NaluEnv.h>
 
@@ -62,6 +63,7 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::SurfaceForceAndMomentWallFu
     yplusCrit_(11.63),
     elog_(9.8),
     kappa_(realm.get_turb_model_constant(TM_kappa)),
+    exchangeAlphaTau_(realm_.solutionOptions_->exchangeAlphaTau_),
     assembledArea_(assembledArea),
     coordinates_(nullptr),
     velocity_(nullptr),
@@ -354,7 +356,7 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
 
           // check for "second"
           if ( nullptr != pInfoPair->second ) {
-            alphaT = 1.0;
+            alphaT = exchangeAlphaTau_;
             stk::mesh::Entity pdowningElement = pInfoPair->second->owningElement_;
             
             // get master element type for this contactInfo

@@ -14,6 +14,7 @@
 #include <PointInfo.h>
 #include <FieldTypeDef.h>
 #include <Realm.h>
+#include <SolutionOptions.h>
 #include <master_element/MasterElement.h>
 
 // stk_mesh/base/fem
@@ -52,7 +53,8 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::AssembleMomentumElemWa
     wallFunctionGhosting_(wallFunctionGhosting),
     yplusCrit_(11.63),
     elog_(9.8),
-    kappa_(realm.get_turb_model_constant(TM_kappa))
+    kappa_(realm.get_turb_model_constant(TM_kappa)),
+    exchangeAlphaTau_(realm_.solutionOptions_->exchangeAlphaTau_)
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -299,7 +301,7 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::execute()
 
           // check for "second"
           if ( nullptr != pInfoPair->second ) {
-            alphaT = 1.0;
+            alphaT = exchangeAlphaTau_;
             stk::mesh::Entity pdowningElement = pInfoPair->second->owningElement_;
             
             // get master element type for this contactInfo

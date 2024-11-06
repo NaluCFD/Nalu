@@ -94,7 +94,8 @@ SolutionOptions::SolutionOptions()
     balancedForce_(false),
     volumetricSrc_(0.0),
     wettedWallInit_(false),
-    wettedWallDistance_(-1.0)
+    wettedWallDistance_(-1.0),
+    exchangeAlphaTau_(0.1)
 {
   // nothing to do
 }
@@ -187,6 +188,9 @@ SolutionOptions::load(const YAML::Node & y_node)
 
     // scale inverse props
     get_if_present(y_solution_options, "scale_geometric_properties", scaleGeometricProps_, scaleGeometricProps_);
+
+    // model constant for exchange/projected alg
+    get_if_present(y_solution_options, "exchange_alpha_tau", exchangeAlphaTau_, exchangeAlphaTau_);
 
     // extract turbulence model; would be nice if we could parse an enum..
     std::string specifiedTurbModel;

@@ -60,7 +60,8 @@ public:
   const double yplusCrit_;
   const double elog_;
   const double kappa_;
-
+  const double exchangeAlphaTau_;
+  
   ScalarFieldType *assembledArea_;
   VectorFieldType *coordinates_;
   VectorFieldType *velocity_;
