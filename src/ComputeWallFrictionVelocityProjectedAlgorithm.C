@@ -92,11 +92,6 @@ ComputeWallFrictionVelocityProjectedAlgorithm::ComputeWallFrictionVelocityProjec
 {
   // save off fields
   velocity_ = metaData_->get_field<double>(stk::topology::NODE_RANK, "velocity");
-  raVelocity_ = metaData_->get_field<double>(stk::topology::NODE_RANK, "velocity_ra_one");
-  if ( nullptr == raVelocity_ ) {
-    NaluEnv::self().naluOutputP0() << "Cannot find velocity_ra_one; will use standard velocity: " << std::endl;
-    raVelocity_ = metaData_->get_field<double>(stk::topology::NODE_RANK, "velocity");
-  }
   bcVelocity_ = metaData_->get_field<double>(stk::topology::NODE_RANK, "wall_velocity_bc");
   coordinates_ = metaData_->get_field<double>(stk::topology::NODE_RANK, realm_.get_coordinates_name());
   density_ = metaData_->get_field<double>(stk::topology::NODE_RANK, "density");
@@ -110,12 +105,7 @@ ComputeWallFrictionVelocityProjectedAlgorithm::ComputeWallFrictionVelocityProjec
   // set data
   set_data(wallNormalProjectedDistance, projectedDistance);
   set_data_vector(projectedDistanceUnitNormal);
-  set_data_alt(odeFac);
-  
-  // what do we need ghosted for this alg to work?
-  ghostFieldVec_.push_back(&(velocity_->field_of_state(stk::mesh::StateNP1)));
-  ghostFieldVec_.push_back(raVelocity_);
-  ghostFieldVec_.push_back(density_);
+  set_data_alt(odeFac);  
 }
   
 //--------------------------------------------------------------------------
@@ -166,7 +156,17 @@ ComputeWallFrictionVelocityProjectedAlgorithm::execute()
 
   // simple for now...
   initialize();
-  
+
+  // what do we need ghosted for this alg to work?
+  VectorFieldType *raVelocity = metaData_->get_field<double>(stk::topology::NODE_RANK, "velocity_ra_one");
+  if ( nullptr == raVelocity ) {
+    raVelocity = metaData_->get_field<double>(stk::topology::NODE_RANK, "velocity");
+  }
+  ghostFieldVec_.clear();
+  ghostFieldVec_.push_back(&(velocity_->field_of_state(stk::mesh::StateNP1)));
+  ghostFieldVec_.push_back(raVelocity);
+  //ghostFieldVec_.push_back(density_);
+
   // parallel communicate ghosted entities
   if ( nullptr != wallFunctionGhosting_ )
     stk::mesh::communicate_field_data(*(wallFunctionGhosting_), ghostFieldVec_);
@@ -185,7 +185,7 @@ ComputeWallFrictionVelocityProjectedAlgorithm::execute()
     const bool useProjectedDistanceAlg = pDistance > 0.0 ? true : false;
 
     // what velocity do we need?
-    VectorFieldType &wnVelocity = useProjectedDistanceAlg ? *raVelocity_ : velocity_->field_of_state(stk::mesh::StateNP1);
+    VectorFieldType &wnVelocity = useProjectedDistanceAlg ? *raVelocity : velocity_->field_of_state(stk::mesh::StateNP1);
 
     // extract local vector for this part
     std::vector<std::vector<std::pair<PointInfo*, PointInfo*> > > *pointInfoVec = nullptr;
@@ -652,7 +652,19 @@ ComputeWallFrictionVelocityProjectedAlgorithm::construct_bounding_points()
       if ( nDim_ > 2 )
         pdUnitNormal[2] = projectedDistanceUnitNormalVec_[pv].uz_;
     }
-        
+
+    // provide information to the user
+    if ( useWallNormalAlg ) {
+      NaluEnv::self().naluOutputP0() << "ComputeWallFrictionVelocityProjectedAlgorithm::useWallNormalAlg   is: true" << std::endl;
+      NaluEnv::self().naluOutputP0() << "ComputeWallFrictionVelocityProjectedAlgorithm::wallNormalDistance is: " << wnpDistance << std::endl;
+    }
+    if ( useProjectedDistanceAlg ) {
+      NaluEnv::self().naluOutputP0() << "ComputeWallFrictionVelocityProjectedAlgorithm::useProjectedDistanceAlg is: true" << std::endl;
+      NaluEnv::self().naluOutputP0() << "ComputeWallFrictionVelocityProjectedAlgorithm::projectedDistance is:       " << pDistance << std::endl;
+      NaluEnv::self().naluOutputP0() << "ComputeWallFrictionVelocityProjectedAlgorithm::projectedNormal   is:       "
+                                     << pdUnitNormal[0] << " " << pdUnitNormal[1] << " " << pdUnitNormal[2] << std::endl;
+    }
+
     // define selector (per part)
     stk::mesh::Selector s_locally_owned 
       = metaData_->locally_owned_part() &stk::mesh::Selector(*partVec_[pv]);

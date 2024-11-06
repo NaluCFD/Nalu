@@ -115,7 +115,6 @@ public:
   std::vector<double> maxDomainBoundingBox_;
   
   VectorFieldType *velocity_;
-  VectorFieldType *raVelocity_;
   VectorFieldType *bcVelocity_;
   VectorFieldType *coordinates_;
   ScalarFieldType *density_;

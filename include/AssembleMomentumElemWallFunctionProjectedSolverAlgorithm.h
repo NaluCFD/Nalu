@@ -49,7 +49,6 @@ public:
   const double kappa_;
 
   VectorFieldType *velocity_;
-  VectorFieldType *raVelocity_;
   VectorFieldType *bcVelocity_;
   ScalarFieldType *density_;
   ScalarFieldType *viscosity_;

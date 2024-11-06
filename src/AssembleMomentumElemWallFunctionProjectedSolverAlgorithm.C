@@ -57,22 +57,12 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::AssembleMomentumElemWa
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
   velocity_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "velocity");
-  raVelocity_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "velocity_ra_one");
-  if ( nullptr == raVelocity_ ) {
-    NaluEnv::self().naluOutputP0() << "Cannot find velocity_ra_one; will use standard velocity: " << std::endl;
-    raVelocity_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "velocity");
-  }
   bcVelocity_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "wall_velocity_bc");
   density_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "density");
   viscosity_ = meta_data.get_field<double>(stk::topology::NODE_RANK, "viscosity");
   exposedAreaVec_ = meta_data.get_field<double>(meta_data.side_rank(), "exposed_area_vector");
   wallFrictionVelocityBip_ = meta_data.get_field<double>(meta_data.side_rank(), "wall_friction_velocity_bip");
   wallNormalDistanceBip_ = meta_data.get_field<double>(meta_data.side_rank(), "wall_normal_distance_bip");
-
-  // what do we need ghosted for this alg to work?
-  ghostFieldVec_.push_back(&(velocity_->field_of_state(stk::mesh::StateNP1)));
-  ghostFieldVec_.push_back(raVelocity_);
-  ghostFieldVec_.push_back(&(density_->field_of_state(stk::mesh::StateNP1)));
 }
 
 //--------------------------------------------------------------------------
@@ -128,11 +118,21 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::execute()
 
   // master element
   std::vector<double> ws_face_shape_function;
-  
+
+  // what do we need ghosted for this alg to work?
+  VectorFieldType *raVelocity = meta_data.get_field<double>(stk::topology::NODE_RANK, "velocity_ra_one");
+  if ( nullptr == raVelocity ) {
+    raVelocity = meta_data.get_field<double>(stk::topology::NODE_RANK, "velocity");
+  }
+  ghostFieldVec_.clear();
+  ghostFieldVec_.push_back(&(velocity_->field_of_state(stk::mesh::StateNP1)));
+  ghostFieldVec_.push_back(raVelocity);
+  //ghostFieldVec_.push_back(density_);
+
   // deal with state (and velocity instant or mean)
   ScalarFieldType &densityNp1 = density_->field_of_state(stk::mesh::StateNP1);
   VectorFieldType &pdiVelocityNp1 = velocity_->field_of_state(stk::mesh::StateNP1);
-  VectorFieldType &pdmVelocityNp1 = *raVelocity_;
+  VectorFieldType &pdmVelocityNp1 = *raVelocity;
   
   // parallel communicate ghosted entities
   if ( nullptr != wallFunctionGhosting_ )
@@ -269,7 +269,7 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::execute()
 
           // what velocity do we need? mean if the projected distance alg is active
           VectorFieldType &wnVelocityNp1 = (nullptr != pInfoPair->second )
-            ? *raVelocity_
+            ? *raVelocity
             : velocity_->field_of_state(stk::mesh::StateNP1);
          
           // get master element type for this contactInfo
