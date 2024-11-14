@@ -154,6 +154,7 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
 
   // tangential work array
   std::vector<double> uiTangential(nDim);
+  std::vector<double> uiPrimeTangential(nDim);
   std::vector<double> uiBcTangential(nDim);
 
   // pointers to fixed values
@@ -161,6 +162,7 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
   double *p_uBcBip = &uBcBip[0];
   double *p_wnUnitNormal= &wnUnitNormal[0];
   double *p_uiTangential = &uiTangential[0];
+  double *p_uiPrimeTangential = &uiPrimeTangential[0];
   double *p_uiBcTangential = &uiBcTangential[0];
 
   // nodal fields to gather
@@ -427,21 +429,25 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
           double uTangential = 0.0;
           for ( int i = 0; i < nDim; ++i ) {
             double uiTan = 0.0;
+            double uiPrimeTan = 0.0;
             double uiBcTan = 0.0;
             for ( int j = 0; j < nDim; ++j ) {
               const double ninj = p_wnUnitNormal[i]*p_wnUnitNormal[j];
               if ( i==j ) {
                 const double om_nini = 1.0 - ninj;
                 uiTan += om_nini*p_wnUprojected[j];
+                uiPrimeTan += om_nini*(p_pdiUprojected[j] - p_pdmUprojected[j]);
                 uiBcTan += om_nini*p_uBcBip[j];
               }
               else {
                 uiTan -= ninj*p_wnUprojected[j];
+                uiPrimeTan -= ninj*(p_pdiUprojected[j] - p_pdmUprojected[j]);
                 uiBcTan -= ninj*p_uBcBip[j];
               }
             }
             // save off tangential components and augment magnitude
             p_uiTangential[i] = uiTan;
+            p_uiPrimeTangential[i] = uiPrimeTan;
             p_uiBcTangential[i] = uiBcTan;
             uTangential += (uiTan-uiBcTan)*(uiTan-uiBcTan);
           }
@@ -453,7 +459,7 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
 
           double uPrime = 0.0;
           for ( int i = 0; i < nDim; ++i ) {
-            uPrime += (p_pdiUprojected[i] - p_pdmUprojected[i])*(p_pdiUprojected[i] - p_pdmUprojected[i]);
+            uPrime += p_uiPrimeTangential[i]*p_uiPrimeTangential[i];
           }
           const double tauWallPrime = alphaT*rhoBip*utau*std::sqrt(uPrime);
           

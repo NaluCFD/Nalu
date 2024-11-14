@@ -104,6 +104,7 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::execute()
   std::vector<double> uBcBip(nDim);
   std::vector<double> wnUnitNormal(nDim);
   std::vector<double> uiTanVec(nDim);
+  std::vector<double> uiPrimeTanVec(nDim);
   std::vector<double> uiBcTanVec(nDim);
 
   // pointers to fixed values
@@ -111,8 +112,9 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::execute()
   double *p_uBcBip = &uBcBip[0];
   double *p_wnUnitNormal= &wnUnitNormal[0];
   double *p_uiTanVec = &uiTanVec[0];
+  double *p_uiPrimeTanVec = &uiPrimeTanVec[0];
   double *p_uiBcTanVec = &uiBcTanVec[0];
-
+  
   // nodal fields to gather
   std::vector<double> ws_bcVelocity;
   std::vector<double> ws_density;
@@ -385,22 +387,26 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::execute()
           double uTangential = 0.0;
           for ( int i = 0; i < nDim; ++i ) {                
             double uiTan = 0.0;
+            double uiPrimeTan = 0.0;
             double uiBcTan = 0.0;
             for ( int j = 0; j < nDim; ++j ) {
               const double ninj = p_wnUnitNormal[i]*p_wnUnitNormal[j];
               if ( i==j ) {
                 const double om_nini = 1.0 - ninj;
                 uiTan += om_nini*p_wnUprojected[j];
+                uiPrimeTan += om_nini*(p_pdiUprojected[j] - p_pdmUprojected[j]);
                 uiBcTan += om_nini*p_uBcBip[j];
               }
               else {
                 uiTan -= ninj*p_wnUprojected[j];
+                uiPrimeTan -= ninj*(p_pdiUprojected[j] - p_pdmUprojected[j]);
                 uiBcTan -= ninj*p_uBcBip[j];
               }
             }
             uTangential += (uiTan-uiBcTan)*(uiTan-uiBcTan);
             // save off for later matrix assembly
             p_uiTanVec[i] = uiTan;
+            p_uiPrimeTanVec[i] = uiPrimeTan;
             p_uiBcTanVec[i] = uiBcTan;
           }
           uTangential = std::sqrt(uTangential);
@@ -410,7 +416,7 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::execute()
           for ( int i = 0; i < nDim; ++i ) {            
             int indexR = localFaceNode*nDim + i;
             p_rhs[indexR] -= lambda*(p_uiTanVec[i]-p_uiBcTanVec[i])*normalizeFac
-              + alphaT*rhoBip*utau*(p_pdiUprojected[i] - p_pdmUprojected[i])*aMag;
+              + alphaT*rhoBip*utau*p_uiPrimeTanVec[i]*aMag;
           }
         }
         
