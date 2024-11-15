@@ -1945,8 +1945,13 @@ MomentumEquationSystem::register_wall_bc(
       // first extract wall normal/user projected distance and user-defined unit normal
       const double wallNormalProjectedDistance = userData.wallNormalProjectedDistance_;
       const double projectedDistance = userData.projectedDistance_;
+
+      // error checks
+      if ( projectedDistance >= 0.0 && wallNormalProjectedDistance < 0.0 )
+        throw std::runtime_error("Projected distance alg requires wall normal projected distance specification");
+
       Velocity projectedDistanceUnitNormal = userData.projectedDistanceUnitNormal_;
-      const double odeFac = userData.projectedDistanceOde_ ? 1.0 : -1.0;
+      const double odeFac = userData.projectedDistanceOde_ ? 1.0 : 0.0;
       std::map<AlgorithmType, Algorithm *>::iterator it_utau =
         wallFunctionParamsAlgDriver_->algMap_.find(wfAlgProjectedType);
       if ( it_utau == wallFunctionParamsAlgDriver_->algMap_.end() ) {

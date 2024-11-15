@@ -12,6 +12,7 @@
 #include <EquationSystem.h>
 #include <LinearSystem.h>
 #include <PointInfo.h>
+#include <TurbulenceAveragingPostProcessing.h>
 #include <FieldTypeDef.h>
 #include <Realm.h>
 #include <SolutionOptions.h>
@@ -91,7 +92,13 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::execute()
   stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const int nDim = meta_data.spatial_dimension();
-  
+
+  // extract time
+  const double currentTime = realm_.get_current_time();
+  double averageStartTime = 0.0;
+  if ( nullptr != realm_.turbulenceAveragingPostProcessing_ )
+    averageStartTime = realm_.turbulenceAveragingPostProcessing_->startTime_;
+
   // space for LHS/RHS; nodesPerFace*nDim*nodesPerFace*nDim and nodesPerFace*nDim
   std::vector<double> lhs;
   std::vector<double> rhs;
@@ -123,11 +130,12 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::execute()
   // master element
   std::vector<double> ws_face_shape_function;
 
-  // what do we need ghosted for this alg to work?
+  // what do we need ghosted for this alg to work, while ensurin a sane raVelocity?
   VectorFieldType *raVelocity = meta_data.get_field<double>(stk::topology::NODE_RANK, "velocity_ra_one");
-  if ( nullptr == raVelocity ) {
+  if ( nullptr == raVelocity || (currentTime < averageStartTime) ) {
     raVelocity = meta_data.get_field<double>(stk::topology::NODE_RANK, "velocity");
   }
+  
   ghostFieldVec_.clear();
   ghostFieldVec_.push_back(&(velocity_->field_of_state(stk::mesh::StateNP1)));
   ghostFieldVec_.push_back(raVelocity);

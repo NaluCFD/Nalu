@@ -10,6 +10,7 @@
 #include <ComputeWallFrictionVelocityProjectedAlgorithm.h>
 #include <Algorithm.h>
 #include <PointInfo.h>
+#include <TurbulenceAveragingPostProcessing.h>
 
 #include <FieldTypeDef.h>
 #include <Realm.h>
@@ -125,6 +126,12 @@ ComputeWallFrictionVelocityProjectedAlgorithm::~ComputeWallFrictionVelocityProje
 void
 ComputeWallFrictionVelocityProjectedAlgorithm::execute()
 {
+  // extract times
+  const double currentTime = realm_.get_current_time();
+  double averageStartTime = 0.0;
+  if ( nullptr != realm_.turbulenceAveragingPostProcessing_ )
+    averageStartTime = realm_.turbulenceAveragingPostProcessing_->startTime_;
+  
   // fixed size
   std::vector<double> uProjected(nDim_);
   std::vector<double> uBcBip(nDim_);
@@ -159,11 +166,12 @@ ComputeWallFrictionVelocityProjectedAlgorithm::execute()
   // simple for now...
   initialize();
 
-  // what do we need ghosted for this alg to work?
+  // what do we need ghosted for this alg to work, while ensurin a sane raVelocity?
   VectorFieldType *raVelocity = metaData_->get_field<double>(stk::topology::NODE_RANK, "velocity_ra_one");
-  if ( nullptr == raVelocity ) {
+  if ( nullptr == raVelocity || (currentTime < averageStartTime) ) {
     raVelocity = metaData_->get_field<double>(stk::topology::NODE_RANK, "velocity");
   }
+  
   ghostFieldVec_.clear();
   ghostFieldVec_.push_back(&(velocity_->field_of_state(stk::mesh::StateNP1)));
   ghostFieldVec_.push_back(raVelocity);
@@ -188,7 +196,7 @@ ComputeWallFrictionVelocityProjectedAlgorithm::execute()
 
     // what velocity do we need?
     VectorFieldType &wnVelocity = useProjectedDistanceAlg ? *raVelocity : velocity_->field_of_state(stk::mesh::StateNP1);
-
+    
     // extract local vector for this part
     std::vector<std::vector<std::pair<PointInfo*, PointInfo*> > > *pointInfoVec = nullptr;
     std::map<std::string, std::vector<std::vector<std::pair<PointInfo*,PointInfo*> > > >::iterator itf =
