@@ -387,7 +387,7 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
           
           // extract bip data
           const double yp = wallNormalDistanceBip[ip];
-          const double utau= wallFrictionVelocityBip[ip];
+          const double utau = wallFrictionVelocityBip[ip];
           
           // determine yplus
           const double yplusBip = rhoBip*yp*utau/muBip;
@@ -414,13 +414,14 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
           const double assembledArea = *stk::mesh::field_data(*assembledArea_, node );
           
           // load radius; assemble force -sigma_ij*njdS
+          const double normalizeFacV = 1.0/(om_odeFac + odeFac*uParallel);
           double uParallel = 0.0;
           for ( int i = 0; i < nDim; ++i ) {
             const double ai = areaVec[ipNdim+i];
             ws_radius[i] = coord[i] - centroid[i];
             const double uDiff = p_uiTangential[i] - p_uiBcTangential[i];
             ws_p_force[i] = pBip*ai;
-            ws_v_force[i] = lambda*uDiff;
+            ws_v_force[i] = lambda*uDiff*normalizeFacV;
             ws_t_force[i] = ws_p_force[i] + ws_v_force[i];
             pressureForce[i] += ws_p_force[i];
             uParallel += uDiff*uDiff;
