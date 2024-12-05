@@ -392,7 +392,7 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::execute()
           const double om_odeFac = 1.0 - odeFac;
           lambda = lambda*om_odeFac + odeFac*rhoBip*utau*utau*aMag;
           
-          double uTangential = 0.0;
+          double uTan = 0.0;
           for ( int i = 0; i < nDim; ++i ) {                
             double uiTan = 0.0;
             double uiPrimeTan = 0.0;
@@ -411,16 +411,16 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::execute()
                 uiBcTan -= ninj*p_uBcBip[j];
               }
             }
-            uTangential += (uiTan-uiBcTan)*(uiTan-uiBcTan);
+            uTan += (uiTan-uiBcTan)*(uiTan-uiBcTan);
             // save off for later matrix assembly
             p_uiTanVec[i] = uiTan;
             p_uiPrimeTanVec[i] = uiPrimeTan;
             p_uiBcTanVec[i] = uiBcTan;
           }
-          uTangential = std::sqrt(uTangential);
+          uTan = std::sqrt(uTan);
 
           // start the rhs assembly (lhs neglected) - account for possible ode
-          const double normalizeFac = 1.0/(om_odeFac + odeFac*uTangential);
+          const double normalizeFac = 1.0/(om_odeFac + odeFac*uTan);
           for ( int i = 0; i < nDim; ++i ) {            
             int indexR = localFaceNode*nDim + i;
             p_rhs[indexR] -= lambda*(p_uiTanVec[i]-p_uiBcTanVec[i])*normalizeFac

@@ -161,17 +161,17 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
   std::vector<double> wnUnitNormal(nDim);
 
   // tangential work array
-  std::vector<double> uiTangential(nDim);
-  std::vector<double> uiPrimeTangential(nDim);
-  std::vector<double> uiBcTangential(nDim);
+  std::vector<double> uiTanVec(nDim);
+  std::vector<double> uiPrimeTanVec(nDim);
+  std::vector<double> uiBcTanVec(nDim);
 
   // pointers to fixed values
   double *p_wnUprojected = &wnUprojected[0];
   double *p_uBcBip = &uBcBip[0];
   double *p_wnUnitNormal= &wnUnitNormal[0];
-  double *p_uiTangential = &uiTangential[0];
-  double *p_uiPrimeTangential = &uiPrimeTangential[0];
-  double *p_uiBcTangential = &uiBcTangential[0];
+  double *p_uiTanVec = &uiTanVec[0];
+  double *p_uiPrimeTanVec = &uiPrimeTanVec[0];
+  double *p_uiBcTanVec = &uiBcTanVec[0];
 
   // nodal fields to gather
   std::vector<double> ws_bcVelocity;
@@ -431,9 +431,25 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
           for ( int j = 0; j < nDim; ++j ) {
             p_wnUnitNormal[j] = areaVec[ipNdim+j]/aMag;
           }
+                    
+          // extract bip data
+          const double yp = wallNormalDistanceBip[ip];
+          const double utau = wallFrictionVelocityBip[ip];
+
+          // determine yplus
+          const double yplus = rhoBip*yp*utau/muBip;
           
+          double lambda = muBip/yp*aMag;
+          if ( yplus > yplusCrit_)
+            lambda = rhoBip*kappa_*utau/std::log(elog_*yplus)*aMag;
+
+          // correct for ODE-based approach, tauW = rho*utau*utau (given by ODE solve)
+          const double odeFac = pInfoPair->first->odeFac_;
+          const double om_odeFac = 1.0 - odeFac;
+          lambda = lambda*om_odeFac + odeFac*rhoBip*utau*utau*aMag;
+
           // determine tangential velocity
-          double uTangential = 0.0;
+          double uTan = 0.0;
           for ( int i = 0; i < nDim; ++i ) {
             double uiTan = 0.0;
             double uiPrimeTan = 0.0;
@@ -452,59 +468,48 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
                 uiBcTan -= ninj*p_uBcBip[j];
               }
             }
-            // save off tangential components and augment magnitude
-            p_uiTangential[i] = uiTan;
-            p_uiPrimeTangential[i] = uiPrimeTan;
-            p_uiBcTangential[i] = uiBcTan;
-            uTangential += (uiTan-uiBcTan)*(uiTan-uiBcTan);
+            // save off for later use
+            p_uiTanVec[i] = uiTan;
+            p_uiPrimeTanVec[i] = uiPrimeTan;
+            p_uiBcTanVec[i] = uiBcTan;
+            uTan += (uiTan-uiBcTan)*(uiTan-uiBcTan);
           }
-          uTangential = std::sqrt(uTangential);
-          
-          // extract bip data
-          const double yp = wallNormalDistanceBip[ip];
-          const double utau = wallFrictionVelocityBip[ip];
+          uTan = std::sqrt(uTan);
 
-          double uPrime = 0.0;
-          for ( int i = 0; i < nDim; ++i ) {
-            uPrime += p_uiPrimeTangential[i]*p_uiPrimeTangential[i];
+          // compute tau wall
+          double tauWallMag = 0.0;
+          const double normalizeFac = 1.0/(om_odeFac + odeFac*uTan);
+          for ( int i = 0; i < nDim; ++i ) {            
+            tauWallMag += std::pow(lambda*(p_uiTanVec[i]-p_uiBcTanVec[i])*normalizeFac/aMag
+                                   + alphaT*rhoBip*utau*p_uiPrimeTanVec[i], 2.0);
           }
-          const double tauWallPrime = alphaT*rhoBip*utau*std::sqrt(uPrime);
-          
-          // determine yplus (including correction to utau)
-          const double yplusBip = rhoBip*yp*(utau+std::sqrt(tauWallPrime/rhoBip))/muBip;
+          tauWallMag = std::sqrt(tauWallMag);
+
+          // determine yplus with possible correction to utau
+          const double utauC = std::sqrt(tauWallMag/rhoBip);
+          const double yplusBip = rhoBip*yp*utauC/muBip;
           
           // min and max
           yplusMin = std::min(yplusMin, yplusBip);
           yplusMax = std::max(yplusMax, yplusBip);
-          
-          double lambda = muBip/yp*aMag;
-          if ( yplusBip > yplusCrit_)
-            lambda = rhoBip*kappa_*utau/std::log(elog_*yplusBip)*aMag;
-          
-          // correct for ODE-based approach, tauW = rho*utau*utau (given by ODE solve)
-          const double odeFac = pInfoPair->first->odeFac_;
-          const double om_odeFac = 1.0 - odeFac;
-          lambda = lambda*om_odeFac + odeFac*rhoBip*utau*utau*aMag;
 
           // extract nodal fields
           stk::mesh::Entity node = face_node_rels[localFaceNode];
           const double * coord = stk::mesh::field_data(*coordinates_, node );
           double *pressureForce = stk::mesh::field_data(*pressureForce_, node );
           double *tauWall = stk::mesh::field_data(*tauWall_, node );
-          double *yplus = stk::mesh::field_data(*yplus_, node );
+          double *yplusField = stk::mesh::field_data(*yplus_, node );
           const double assembledArea = *stk::mesh::field_data(*assembledArea_, node );
           
           // load radius; assemble force -sigma_ij*njdS
-          double uParallel = 0.0;
           for ( int i = 0; i < nDim; ++i ) {
             const double ai = areaVec[ipNdim+i];
             ws_radius[i] = coord[i] - centroid[i];
-            const double uDiff = p_uiTangential[i] - p_uiBcTangential[i];
             ws_p_force[i] = pBip*ai;
-            ws_v_force[i] = lambda*uDiff;
+            ws_v_force[i] = lambda*(p_uiTanVec[i] - p_uiBcTanVec[i])*normalizeFac
+              + alphaT*rhoBip*utau*p_uiPrimeTanVec[i]*aMag;
             ws_t_force[i] = ws_p_force[i] + ws_v_force[i];
             pressureForce[i] += ws_p_force[i];
-            uParallel += uDiff*uDiff;
           }
           
           cross_product(&ws_t_force[0], &ws_moment[0], &ws_radius[0]);
@@ -515,13 +520,15 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
             l_force_moment[j+3] += ws_v_force[j];
             l_force_moment[j+6] += ws_moment[j];
           }
-          
-          // assemble tauWall; area weighting is hiding in lambda/assembledArea
-          const double normalizeFac = odeFac + om_odeFac*std::sqrt(uParallel);
-          *tauWall += lambda*normalizeFac/assembledArea + tauWallPrime*aMag/assembledArea;
+
+          // normalization factor for area-assembly
+          const double areaNormFac = aMag/assembledArea;
+
+          // assemble tauWall
+          *tauWall += tauWallMag*areaNormFac;
           
           // deal with yplus
-          *yplus += yplusBip*aMag/assembledArea;          
+          *yplusField += yplusBip*areaNormFac;          
         }
       }
     } 
