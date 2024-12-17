@@ -232,6 +232,7 @@ public:
 
   // exchange model constant
   double exchangeAlphaTau_;
+  double shiftedPiomelli_;
 };
 
 } // namespace nalu

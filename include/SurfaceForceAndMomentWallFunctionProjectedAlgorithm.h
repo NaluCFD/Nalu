@@ -60,8 +60,10 @@ public:
   const double yplusCrit_;
   const double elog_;
   const double kappa_;
-  const double exchangeAlphaTau_;
-  
+  double exchangeAlphaTau_;
+  const double shiftedPiomelli_;
+  const double om_shiftedPiomelli_;
+
   ScalarFieldType *assembledArea_;
   VectorFieldType *coordinates_;
   VectorFieldType *velocity_;

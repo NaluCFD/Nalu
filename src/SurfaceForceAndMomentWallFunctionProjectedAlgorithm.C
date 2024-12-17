@@ -65,6 +65,8 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::SurfaceForceAndMomentWallFu
     elog_(9.8),
     kappa_(realm.get_turb_model_constant(TM_kappa)),
     exchangeAlphaTau_(realm_.solutionOptions_->exchangeAlphaTau_),
+    shiftedPiomelli_(realm_.solutionOptions_->shiftedPiomelli_),
+    om_shiftedPiomelli_(1.0-shiftedPiomelli_),
     assembledArea_(assembledArea),
     coordinates_(nullptr),
     velocity_(nullptr),
@@ -119,6 +121,12 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::SurfaceForceAndMomentWallFu
            << "Y+min" << std::setw(w_) << "Y+max"<< std::endl;
     myfile.close();
   }
+  
+  if ( shiftedPiomelli_ > 0.0 ) {
+    exchangeAlphaTau_ *= om_shiftedPiomelli_;
+    NaluEnv::self().naluOutputP0() << "Shifted Piomeli LHS/RHS is in use, alphaTau enforced to zero: "
+                                   << exchangeAlphaTau_ << std::endl;
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -144,7 +152,7 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
   stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const int nDim = meta_data.spatial_dimension();
-
+  
   // extract time
   const double currentTime = realm_.get_current_time();
   double averageStartTime = 0.0;
@@ -164,6 +172,7 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
   std::vector<double> uiTanVec(nDim);
   std::vector<double> uiPrimeTanVec(nDim);
   std::vector<double> uiBcTanVec(nDim);
+  std::vector<double> pdiUiTanVec(nDim);
 
   // pointers to fixed values
   double *p_wnUprojected = &wnUprojected[0];
@@ -172,6 +181,7 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
   double *p_uiTanVec = &uiTanVec[0];
   double *p_uiPrimeTanVec = &uiPrimeTanVec[0];
   double *p_uiBcTanVec = &uiBcTanVec[0];
+  double *p_pdiUiTanVec = &pdiUiTanVec[0];
 
   // nodal fields to gather
   std::vector<double> ws_bcVelocity;
@@ -454,6 +464,7 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
             double uiTan = 0.0;
             double uiPrimeTan = 0.0;
             double uiBcTan = 0.0;
+            double pdiUiTan = 0.0;
             for ( int j = 0; j < nDim; ++j ) {
               const double ninj = p_wnUnitNormal[i]*p_wnUnitNormal[j];
               if ( i==j ) {
@@ -461,18 +472,21 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
                 uiTan += om_nini*p_wnUprojected[j];
                 uiPrimeTan += om_nini*(p_pdiUprojected[j] - p_pdmUprojected[j]);
                 uiBcTan += om_nini*p_uBcBip[j];
+                pdiUiTan += om_nini*p_pdiUprojected[j];
               }
               else {
                 uiTan -= ninj*p_wnUprojected[j];
                 uiPrimeTan -= ninj*(p_pdiUprojected[j] - p_pdmUprojected[j]);
                 uiBcTan -= ninj*p_uBcBip[j];
+                pdiUiTan -= ninj*p_pdiUprojected[j];
               }
             }
+            uTan += (uiTan-uiBcTan)*(uiTan-uiBcTan);
             // save off for later use
             p_uiTanVec[i] = uiTan;
             p_uiPrimeTanVec[i] = uiPrimeTan;
             p_uiBcTanVec[i] = uiBcTan;
-            uTan += (uiTan-uiBcTan)*(uiTan-uiBcTan);
+            p_pdiUiTanVec[i] = pdiUiTan;
           }
           uTan = std::sqrt(uTan);
 
@@ -480,8 +494,9 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
           double tauWallMag = 0.0;
           const double normalizeFac = 1.0/(om_odeFac + odeFac*uTan);
           for ( int i = 0; i < nDim; ++i ) {            
-            tauWallMag += std::pow(lambda*(p_uiTanVec[i]-p_uiBcTanVec[i])*normalizeFac/aMag
-                                   + alphaT*rhoBip*utau*p_uiPrimeTanVec[i], 2.0);
+            tauWallMag += om_shiftedPiomelli_*std::pow(lambda*(p_uiTanVec[i]-p_uiBcTanVec[i])*normalizeFac/aMag
+                                                       + alphaT*rhoBip*utau*p_uiPrimeTanVec[i], 2.0);
+            tauWallMag += shiftedPiomelli_*std::pow(lambda*(p_pdiUiTanVec[i]-p_uiBcTanVec[i])*normalizeFac/aMag, 2.0);
           }
           tauWallMag = std::sqrt(tauWallMag);
 
@@ -506,8 +521,9 @@ SurfaceForceAndMomentWallFunctionProjectedAlgorithm::execute()
             const double ai = areaVec[ipNdim+i];
             ws_radius[i] = coord[i] - centroid[i];
             ws_p_force[i] = pBip*ai;
-            ws_v_force[i] = lambda*(p_uiTanVec[i] - p_uiBcTanVec[i])*normalizeFac
-              + alphaT*rhoBip*utau*p_uiPrimeTanVec[i]*aMag;
+            ws_v_force[i] = om_shiftedPiomelli_*(lambda*(p_uiTanVec[i] - p_uiBcTanVec[i])*normalizeFac
+                                                 + alphaT*rhoBip*utau*p_uiPrimeTanVec[i]*aMag)
+              + shiftedPiomelli_*lambda*(p_pdiUiTanVec[i] - p_uiBcTanVec[i])*normalizeFac;
             ws_t_force[i] = ws_p_force[i] + ws_v_force[i];
             pressureForce[i] += ws_p_force[i];
           }

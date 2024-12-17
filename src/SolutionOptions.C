@@ -95,7 +95,8 @@ SolutionOptions::SolutionOptions()
     volumetricSrc_(0.0),
     wettedWallInit_(false),
     wettedWallDistance_(-1.0),
-    exchangeAlphaTau_(0.1)
+    exchangeAlphaTau_(0.1),
+    shiftedPiomelli_(0.0)
 {
   // nothing to do
 }
@@ -191,6 +192,12 @@ SolutionOptions::load(const YAML::Node & y_node)
 
     // model constant for exchange/projected alg
     get_if_present(y_solution_options, "exchange_alpha_tau", exchangeAlphaTau_, exchangeAlphaTau_);
+
+    bool hasPiomelli = false;
+    get_if_present(y_solution_options, "activate_shifted_piomelli", hasPiomelli, hasPiomelli);
+    if ( hasPiomelli ) {
+      shiftedPiomelli_ = 1.0;
+    }
 
     // extract turbulence model; would be nice if we could parse an enum..
     std::string specifiedTurbModel;

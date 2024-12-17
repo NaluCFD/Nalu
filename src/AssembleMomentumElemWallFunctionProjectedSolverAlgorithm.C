@@ -55,7 +55,9 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::AssembleMomentumElemWa
     yplusCrit_(11.63),
     elog_(9.8),
     kappa_(realm.get_turb_model_constant(TM_kappa)),
-    exchangeAlphaTau_(realm_.solutionOptions_->exchangeAlphaTau_)
+    exchangeAlphaTau_(realm_.solutionOptions_->exchangeAlphaTau_),
+    shiftedPiomelli_(realm_.solutionOptions_->shiftedPiomelli_),
+    om_shiftedPiomelli_(1.0-shiftedPiomelli_)
 {
   // save off fields
   stk::mesh::MetaData & meta_data = realm_.meta_data();
@@ -66,6 +68,12 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::AssembleMomentumElemWa
   exposedAreaVec_ = meta_data.get_field<double>(meta_data.side_rank(), "exposed_area_vector");
   wallFrictionVelocityBip_ = meta_data.get_field<double>(meta_data.side_rank(), "wall_friction_velocity_bip");
   wallNormalDistanceBip_ = meta_data.get_field<double>(meta_data.side_rank(), "wall_normal_distance_bip");
+
+  if ( shiftedPiomelli_ > 0.0 ) {
+    exchangeAlphaTau_ *= om_shiftedPiomelli_;
+    NaluEnv::self().naluOutputP0() << "Shifted Piomeli LHS/RHS is in use, alphaTau enforced to zero: "
+                                   << exchangeAlphaTau_ << std::endl;
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -92,7 +100,7 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::execute()
   stk::mesh::MetaData & meta_data = realm_.meta_data();
 
   const int nDim = meta_data.spatial_dimension();
-
+  
   // extract time
   const double currentTime = realm_.get_current_time();
   double averageStartTime = 0.0;
@@ -113,6 +121,7 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::execute()
   std::vector<double> uiTanVec(nDim);
   std::vector<double> uiPrimeTanVec(nDim);
   std::vector<double> uiBcTanVec(nDim);
+  std::vector<double> pdiUiTanVec(nDim);
 
   // pointers to fixed values
   double *p_wnUprojected = &wnUprojected[0];
@@ -121,7 +130,8 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::execute()
   double *p_uiTanVec = &uiTanVec[0];
   double *p_uiPrimeTanVec = &uiPrimeTanVec[0];
   double *p_uiBcTanVec = &uiBcTanVec[0];
-  
+  double *p_pdiUiTanVec = &pdiUiTanVec[0];
+
   // nodal fields to gather
   std::vector<double> ws_bcVelocity;
   std::vector<double> ws_density;
@@ -397,6 +407,7 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::execute()
             double uiTan = 0.0;
             double uiPrimeTan = 0.0;
             double uiBcTan = 0.0;
+            double pdiUiTan = 0.0;
             for ( int j = 0; j < nDim; ++j ) {
               const double ninj = p_wnUnitNormal[i]*p_wnUnitNormal[j];
               if ( i==j ) {
@@ -404,11 +415,13 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::execute()
                 uiTan += om_nini*p_wnUprojected[j];
                 uiPrimeTan += om_nini*(p_pdiUprojected[j] - p_pdmUprojected[j]);
                 uiBcTan += om_nini*p_uBcBip[j];
+                pdiUiTan += om_nini*p_pdiUprojected[j];
               }
               else {
                 uiTan -= ninj*p_wnUprojected[j];
                 uiPrimeTan -= ninj*(p_pdiUprojected[j] - p_pdmUprojected[j]);
                 uiBcTan -= ninj*p_uBcBip[j];
+                pdiUiTan -= ninj*p_pdiUprojected[j];
               }
             }
             uTan += (uiTan-uiBcTan)*(uiTan-uiBcTan);
@@ -416,6 +429,7 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::execute()
             p_uiTanVec[i] = uiTan;
             p_uiPrimeTanVec[i] = uiPrimeTan;
             p_uiBcTanVec[i] = uiBcTan;
+            p_pdiUiTanVec[i] = pdiUiTan;
           }
           uTan = std::sqrt(uTan);
 
@@ -423,8 +437,9 @@ AssembleMomentumElemWallFunctionProjectedSolverAlgorithm::execute()
           const double normalizeFac = 1.0/(om_odeFac + odeFac*uTan);
           for ( int i = 0; i < nDim; ++i ) {            
             int indexR = localFaceNode*nDim + i;
-            p_rhs[indexR] -= lambda*(p_uiTanVec[i]-p_uiBcTanVec[i])*normalizeFac
-              + alphaT*rhoBip*utau*p_uiPrimeTanVec[i]*aMag;
+            p_rhs[indexR] -= om_shiftedPiomelli_*(lambda*(p_uiTanVec[i]-p_uiBcTanVec[i])*normalizeFac
+                                                  + alphaT*rhoBip*utau*p_uiPrimeTanVec[i]*aMag)
+              + shiftedPiomelli_*lambda*(p_pdiUiTanVec[i]-p_uiBcTanVec[i])*normalizeFac;
           }
         }
         
