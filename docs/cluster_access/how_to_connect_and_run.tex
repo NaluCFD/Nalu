@@ -47,7 +47,7 @@ modify and reuse for all your simulations.
    \item Nalu is installed on the cluster under: \texttt{/shared/codes/nalu/build/Nalu}. 
    The executable is located under: \texttt{/shared/codes/nalu/build/Nalu/build/naluX}
    \item Nightly regression tests can be found in the base \texttt{Nalu} directory, \texttt{Nalu/reg\_tests/test\_files}.
-   For example, \texttt{Nalu/reg\_tests/test\_files/ductWedge} is a three-dimensional duct simulation consisting of Wedge6 elements. This input file references a required mesh file, \texttt{Nalu/reg\_tests/mesh} and a solver XML file under: \texttt{Nalu/reg\_tests/xml}. A common mistake when running a simulation is copying over input files and not modifying the paths to the mesh and XML file.
+   For example, \texttt{Nalu/reg\_tests/test\_files/ductWedge} is a three-dimensional duct simulation consisting of Wedge6 elements. This input file references a required mesh file, \texttt{nalu/reg\_tests/mesh} and a solver XML file under: \texttt{Nalu/reg\_tests/xml}. A common mistake when running a simulation is copying over input files and not modifying the paths to the mesh and XML file.
     \item Make a directory for relevant simulation files (the input file, 
         the mesh file, and the XML solver settings file). 
     \item Copy the template slurm file from its shared location to your current
