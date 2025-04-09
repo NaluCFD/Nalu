@@ -1,0 +1,111 @@
+\documentclass[letterpaper, 11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{lipsum}
+\usepackage{lmodern}
+%\usepackage{tgadventor}
+\usepackage{fancyhdr}
+\usepackage{enumitem}
+\usepackage{url}
+
+
+% Header
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{\textbf{ME469/CME369: Computational Methods in Fluid Mechanics}}
+%\rhead{\textbf{Spring 2024}}
+%\rhead{\includegraphics[height=0.5in]{stanford_logo.png}}
+
+% Title
+\title{\vspace{-1.5cm}\textbf{Accessing the course cluster, me469-cluster@stanford.edu}}
+\author{Stefan Domino}
+%\date{\today}
+
+\begin{document}
+\maketitle
+\thispagestyle{fancy}
+
+% Itemized list
+\noindent
+To connect to the cluster from your local machine:
+\begin{itemize}[noitemsep]
+  \item Connect to the Stanford VPN: \url{https://uit.stanford.edu/service/vpn} where you can download the Mac of Windows VPN client.
+  \item Use SSH to access the cluster: 
+
+      \begin{center}
+      \texttt{ssh sunetid@me469-cluster.stanford.edu}
+      \end{center}
+
+      using your SUNet name and password. This step requires an installation of Stanford's VPN software.
+\end{itemize}
+
+\noindent
+Once you are logged in, you can submit jobs to the queue using the Slurm 
+scheduling manager. We provide a template job submission file that you can 
+modify and reuse for all your simulations.
+\begin{itemize}[noitemsep]
+   \item Nalu is installed on the cluster under: \texttt{/shared/codes/nalu/build/Nalu}. 
+   The executable is located under: \texttt{/shared/codes/nalu/build/Nalu/build/naluX}
+   \item Nightly regression tests can be found in the base \texttt{Nalu} directory, \texttt{Nalu/reg\_tests/test\_files}.
+   For example, \texttt{Nalu/reg\_tests/test\_files/ductWedge} is a three-dimensional duct simulation consisting of Wedge6 elements. This input file references a required mesh file, \texttt{nalu/reg\_tests/mesh} and a solver XML file under: \texttt{Nalu/reg\_tests/xml}. A common mistake when running a simulation is copying over input files and not modifying the paths to the mesh and XML file.
+    \item Make a directory for relevant simulation files (the input file, 
+        the mesh file, and the XML solver settings file). 
+    \item Copy the template slurm file from its shared location to your current
+        directory: 
+
+        \begin{center}
+        \texttt{cp /shared/scripts/nalu.slurm .}
+        \end{center}
+    \item Make changes to the paths, settings and filenames in the template as
+        necessary. Specifically, the default slurm file specifies an \texttt{input.i}, a number of nodes, \texttt{-N}, number mpi ranks, \texttt{-n}, etc. Note that the name of your job is currently set as "nalu-test", and stad output (such as errors) are sent to job.*.out, where * is a unique ID/number.
+    \item Submit the job using 
+
+        \begin{center}
+        \texttt{sbatch nalu.slurm}
+        \end{center}
+    \item To view the status of your job, use 
+
+        \begin{center}
+        \texttt{squeue}
+        \end{center}
+        \item A common mistake when submitting a simulation is not changing the \texttt{simulation\_time} or \texttt{termination\_time} line. Therefore, the simulation ends very early, as per the nightly regression test philosophy.
+        \item Make sure that the frequency for results output or restart output is "sane", i.e., not every step since you can easily fill the disk partition.
+\end{itemize}
+
+\noindent
+To run Paraview on the cluster: 
+\begin{itemize}[noitemsep]
+    \item Log into the cluster using X11 forwarding:
+
+      \begin{center}
+      \texttt{ssh -X sunetid@me469-cluster.stanford.edu}
+      \end{center}
+
+      \textit{Note:} Depending on what OS your computer uses, you may need to
+      install an X11 forwarding tool. For MacOS users, please download 
+      XQuartz from \url{https://www.xquartz.org/} -- version number should be 2.8.5. 
+
+    \item Load the installed Paraview module:
+      \begin{center}
+      \texttt{module load apps/paraview/5.5.0-RC4-Qt5-MPI}
+      \end{center}
+    
+    \item Launch the Paraview GUI using
+      \begin{center}
+      \texttt{paraview}
+      \end{center}
+     
+    \item The above remote procedure can be very slow to execute commands. Preferably, you can use the Secure Copy utility to 
+    copy the results files to your local machine, that requires a local installation of 
+        Paraview (see:  \url{https://www.paraview.org/download/}.
+      \begin{center}
+      \texttt{scp -r sunetid@me469-cluster.stanford.edu:/path/to/paraview/directory ./}
+      \end{center}
+
+\item For massively parallel computing visualization, the best path forward is a server/client model where Paraview is launched at both your local machine and the me469 cluster. However, this is not available - at present. As such, you will likely need to routinely move data off of the cluster to visualize the data.
+\end{itemize}
+
+\noindent
+Cluster support is at \texttt{hpccenter@stanford.edu}, however, if you run into any issues, try to contact me \texttt{spdomin@stanford.edu} first. Please remember that the cluster is a \texttt{shared resource}. It may be easy to take too many nodes at a time, or fill up a disk. Mistakes are expected; simply try to make sure that you are using the cluster in a fair manner (limit jobs when the machine is highly subscribed) and be careful about filling a disk with excessive simulation results.
+
+\end{document}
