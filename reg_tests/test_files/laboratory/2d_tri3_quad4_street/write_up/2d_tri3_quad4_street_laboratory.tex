@@ -220,33 +220,33 @@ compute the diffusive flux coefficient.}
 \end{figure}
 
 \section{Discussion Points}
-
-\begin{itemize}
-	\item The input file is currently set to terminate only after a small amount of time steps. While this
+Points obtained are noted below. Note that the input file is currently set to terminate only after a small amount of time steps. While this
               termination may be appropriate for regression testing, for many of the QoIs desired in this
-              session, the number of time steps required will be much higher. Please modify accordingly.
-	\item Compare timing between EBVC and CVFEM (see command $use\_edges: no$). Comments on speed?
+              session, the number of time steps required will be much higher. Please modify accordingly to ensure that your time-mean QoIs are well converged.
+              
+\begin{itemize}
+	\item Compare and report timings between EBVC and CVFEM (see command $use\_edges: no$). Comments on speed, the effect of solvers for the pressure Poisson system (AMG vs Gauss-Seidel). (5 points)
         \item Modify the Reynolds number 10x smaller, 10x larger and report general findings. 
           As you change the Reynolds number, make sure that you adjust the initial time step 
           specification such that the first Courant number reported in the log file is not greater 
-          than 2.0.
-        \item Explore Peclet blending for both velocity and mixture fraction.
-        \item Explore laminar Schmidt number (nominal value of 0.9), 10x smaller; 10x larger.
-        \item Monitor the total amount of instances in which the mixture fraction is non-monotonic.
+          than 2.0. (5 points)
+        \item Explore Peclet blending for both velocity and mixture fraction, including the effect of central vs upwind operators along with limiting. Also vary laminar Schmidt number (nominal value of 0.9) to be 10x smaller and 10x larger. Comment on the disparity in mixture fraction. (5 points)
+        \item Monitor the total amount of instances in which the mixture fraction is non-monotonic as you are varying advection operators and Schmidt number specifications. Comment on your findings. (5 points)
           \subitem The maximum and minimum clipped value can be provided in the MixtureFraction
           equation system via the specification of a deviation from the monotonic range (zero and unity)
           via, $clipping\_delta: 0.0$, where $0.0$ is the current default level. When clipping, how does nonlinear 
           convergence behave?
         \item Explore various quantities of interests (QoIs), including: mean and instant drag 
-          coefficient; mean and instant lift coefficient. 
+          coefficient; mean and instant lift coefficient as a function of, for example, the mesh refinement level and numerical operator(s) such as temporal and upwind/central. Recall the elements of a quality V\&V process during this step. For a single mesh, and single set of numerical operator settings, compare EBVC and CVFEM $C_D$. Are there any findings based on this result that would drive a down selection? This section represents the bulk of the work. Suggestions on what to vary are found below. (15 points)
         \subitem Note: $2d\_tri3\_quad4\_street.dat$ 
           that provides forces and moments on the cylinder surface. For QoIs above, at the nominal 
           Reynolds number, what is the effect of: a) Mesh refinement; see: 
           $mesh/2d\_tri3\_quad4\_street\_refined.exo$, b) First-order time vs second-order time: 
           $second\_order\_accuracy: yes/no$, c) Changing the number of nonlinear iterations from 2 to 5, 
           and 10: (note the convergence within each step): $max\_iterations: 2, 4, 8$, d) Linear solver 
-          tolerance: tolerance: 1e-3, 1e-5, 1e-8) Usage of limiters and the effect
+          tolerance: tolerance: 1e-3, 1e-5, 1e-8) Usage of limiters and effects. In this step, you are not required to run both CVFEM and EBVC. Simply down-select and provide justification.
         \item (Optional) Compute a FFT for either mixture fraction or velocity at select locations/points in the domain. 
+        \item The quality of the report (references, theory, background, results) will provide (5 points) for a total of 35.
 \end{itemize}
 
 \end{document}
