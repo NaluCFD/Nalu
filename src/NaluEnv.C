@@ -152,9 +152,6 @@ NaluEnv::~NaluEnv()
 {
   close_log_file_stream();
   delete naluParallelStream_;
-
-  // shut down MPI
-  MPI_Finalize();
 }
 
 //--------------------------------------------------------------------------
