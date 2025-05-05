@@ -45,8 +45,9 @@ int main(int argc, char **argv)
 
     Kokkos::finalize();
 
-    //NaluEnv will call MPI_Finalize when the NaluEnv singleton is cleaned up,
-    //which is after we return.
+    // shut down MPI
+    MPI_Finalize();
+
     return returnVal;
 }
 
