@@ -20,7 +20,6 @@
 // stk_mesh/base/fem
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/BulkData.hpp>
-#include <stk_mesh/base/GetBuckets.hpp>
 #include <stk_util/parallel/Parallel.hpp>
 
 #include <xfer/Transfer.h>

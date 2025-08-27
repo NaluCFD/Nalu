@@ -466,7 +466,7 @@ Quad92DSCS::set_boundary_info()
                                             3, 7, 0  //face 3, left face -- reversed order
                                           };
 
-  auto face_node_number = [=] (int number,int faceOrdinal)
+  auto face_node_number = [=,this] (int number,int faceOrdinal)
   {
     return stkFaceNodeMap[number+nodes1D_*faceOrdinal];
   };

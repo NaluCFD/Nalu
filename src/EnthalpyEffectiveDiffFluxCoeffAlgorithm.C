@@ -14,7 +14,6 @@
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/BulkData.hpp>
-#include <stk_mesh/base/GetBuckets.hpp>
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/Part.hpp>
 #include <stk_mesh/base/Field.hpp>

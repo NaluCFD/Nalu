@@ -1074,7 +1074,7 @@ Hex27SCS::set_boundary_info()
 
 
   // tensor-product style access to the map
-  auto face_node_number = [=] (int i, int j, int faceOrdinal)
+  auto face_node_number = [=,this] (int i, int j, int faceOrdinal)
   {
     return stkFaceNodeMap[i + nodes1D_ * j + nodesPerFace * faceOrdinal];
   };
@@ -1082,7 +1082,7 @@ Hex27SCS::set_boundary_info()
   // map face ip ordinal to nearest sub-control surface ip ordinal
   // sub-control surface renumbering
   const std::vector<int> faceToSurface = { 2, 5, 3, 4, 0, 1 };
-  auto opp_face_map = [=] ( int k, int l, int i, int j, int face_index)
+  auto opp_face_map = [=,this] ( int k, int l, int i, int j, int face_index)
   {
     int face_offset = faceToSurface[face_index] * ipsPerFace_;
 
@@ -1872,7 +1872,7 @@ Quad93DSCS::set_interior_info()
                                3, 6, 2    // top row of nodes
                              };
 
-  auto tensor_map_2D = [=] (int i, int j) { return nodeMap[i+nodes1D_*j]; };
+  auto tensor_map_2D = [=,this] (int i, int j) { return nodeMap[i+nodes1D_*j]; };
 
   //1D integration rule per sub-control volume
    numIntPoints_ = (nodes1D_ * nodes1D_) * ( numQuad_ * numQuad_ ); // 36
