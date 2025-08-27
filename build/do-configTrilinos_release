@@ -30,6 +30,7 @@ rm -f CMakeCache.txt
 
 cmake \
 -DCMAKE_INSTALL_PREFIX=$trilinos_install_dir \
+-DCMAKE_CXX_STANDARD:STRING=20 \
 -DTrilinos_ENABLE_CXX11=ON \
 -DCMAKE_BUILD_TYPE=RELEASE \
 -DTrilinos_ENABLE_EXPLICIT_INSTANTIATION:BOOL=ON \
@@ -77,6 +78,7 @@ cmake \
 -DTrilinos_ENABLE_SEACASNemslice:BOOL=ON \
 -DTrilinos_ENABLE_SEACASIoss:BOOL=ON \
 -DKokkos_ENABLE_ATOMICS_BYPASS=ON \
+-DKokkos_ENABLE_DEPRECATED_CODE_4=ON \
 -DTPL_ENABLE_Netcdf:BOOL=ON \
 -DNetCDF_ROOT:PATH=${netcdf_install_dir} \
 -DHDF5_ROOT:PATH=${hdf_install_dir} \

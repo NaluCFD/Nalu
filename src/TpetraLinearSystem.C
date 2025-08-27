@@ -36,7 +36,6 @@
 #include <stk_mesh/base/Bucket.hpp>
 #include <stk_mesh/base/MetaData.hpp>
 #include <stk_mesh/base/Selector.hpp>
-#include <stk_mesh/base/GetBuckets.hpp>
 #include <stk_mesh/base/Part.hpp>
 #include <stk_topology/topology.hpp>
 #include <stk_mesh/base/FieldParallel.hpp>
@@ -1933,7 +1932,7 @@ TpetraLinearSystem::checkForZeroRow(bool useOwned, bool doThrow, bool doPrint)
       GlobalOrdinal gid = ii+1;
       stk::mesh::EntityId nid = GLOBAL_ENTITY_ID(gid, numDof_);
       stk::mesh::Entity node = bulkData.get_entity(stk::topology::NODE_RANK, nid);
-      stk::mesh::EntityId naluGlobalId;
+      stk::mesh::EntityId naluGlobalId = -1;
       if (bulkData.is_valid(node)) naluGlobalId = *stk::mesh::field_data(*realm_.naluGlobalId_, node);
 
       int idof = GLOBAL_ENTITY_ID_IDOF(gid, numDof_);
