@@ -79,8 +79,8 @@
    SharedMemView<DoubleType *>&rhs,
    ScratchViews<DoubleType>& scratchViews)
  {
-   NALU_ALIGNED DoubleType w_dudx [AlgTraits::nDim_][AlgTraits::nDim_];
-   NALU_ALIGNED DoubleType w_dsqrtkdx [AlgTraits::nDim_];
+   DoubleType w_dudx [AlgTraits::nDim_][AlgTraits::nDim_];
+   DoubleType w_dsqrtkdx [AlgTraits::nDim_];
 
    SharedMemView<DoubleType**>& v_velocityNp1 = scratchViews.get_scratch_view_2D(*velocityNp1_);
    SharedMemView<DoubleType*>& v_tkeNp1 = scratchViews.get_scratch_view_1D(

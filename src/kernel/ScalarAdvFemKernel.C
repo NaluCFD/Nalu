@@ -80,7 +80,7 @@ ScalarAdvFemKernel<AlgTraits>::execute(
   SharedMemView<DoubleType*>& rhs,
   ScratchViews<DoubleType>& scratchViews)
 {
-  NALU_ALIGNED DoubleType w_rhoUIp[AlgTraits::nDim_];
+  DoubleType w_rhoUIp[AlgTraits::nDim_];
 
   SharedMemView<DoubleType*>& v_scalarQ = scratchViews.get_scratch_view_1D(*scalarQ_);
   SharedMemView<DoubleType*>& v_density = scratchViews.get_scratch_view_1D(*density_);

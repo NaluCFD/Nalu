@@ -12,8 +12,6 @@
 #include <Kokkos_Macros.hpp>
 #include <Kokkos_Core.hpp>
 
-#define NALU_ALIGNED alignas(KOKKOS_IMPL_MEMORY_ALIGNMENT)
-
 #if defined(__INTEL_COMPILER)
 #define POINTER_RESTRICT restrict
 #elif defined(__GNUC__)

@@ -68,7 +68,7 @@ VolumeOfFluidSharpenElemKernel<AlgTraits>::execute(
   SharedMemView<DoubleType *>&rhs,
   ScratchViews<DoubleType>& scratchViews)
 {
-  NALU_ALIGNED DoubleType w_magU[AlgTraits::nodesPerElement_];
+  DoubleType w_magU[AlgTraits::nodesPerElement_];
 
   SharedMemView<DoubleType*>& v_vofNp1 = scratchViews.get_scratch_view_1D(*vofNp1_);
   SharedMemView<DoubleType**>& v_vrtm = scratchViews.get_scratch_view_2D(*velocityRTM_);

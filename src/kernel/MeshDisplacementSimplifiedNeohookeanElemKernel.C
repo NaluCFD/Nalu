@@ -85,8 +85,8 @@ MeshDisplacementSimplifiedNeohookeanElemKernel<AlgTraits>::execute(
   const int nodesPerElement = AlgTraits::nodesPerElement_;
 
 
-  NALU_ALIGNED DoubleType kd[nDim2];
-  NALU_ALIGNED DoubleType gradTens[nDim2];
+  DoubleType kd[nDim2];
+  DoubleType gradTens[nDim2];
 
   // Define kd
   for ( int i = 0; i < nDim; ++i ) {

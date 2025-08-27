@@ -106,9 +106,9 @@ ContinuityAdvFemKernel<AlgTraits>::execute(
   ScratchViews<DoubleType>& scratchViews)
 {
   // Work arrays (fixed size)
-  NALU_ALIGNED DoubleType w_rhoUip [AlgTraits::nDim_];
-  NALU_ALIGNED DoubleType w_GpIp[AlgTraits::nDim_];
-  NALU_ALIGNED DoubleType w_dpdxIp [AlgTraits::nDim_];
+  DoubleType w_rhoUip [AlgTraits::nDim_];
+  DoubleType w_GpIp[AlgTraits::nDim_];
+  DoubleType w_dpdxIp [AlgTraits::nDim_];
 
   SharedMemView<DoubleType*>& v_densityNp1 = scratchViews.get_scratch_view_1D(*densityNp1_);
   SharedMemView<DoubleType*>& v_pressure = scratchViews.get_scratch_view_1D(*pressure_);

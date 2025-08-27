@@ -67,7 +67,7 @@ VolumeOfFluidScsNoPstabAdvElemKernel<AlgTraits>::execute(
   SharedMemView<DoubleType *>&rhs,
   ScratchViews<DoubleType>& scratchViews)
 {
-  NALU_ALIGNED DoubleType w_velocityRTMIp[AlgTraits::nDim_];
+  DoubleType w_velocityRTMIp[AlgTraits::nDim_];
 
   SharedMemView<DoubleType*>& v_vofNp1 = scratchViews.get_scratch_view_1D(*vofNp1_);
   SharedMemView<DoubleType**>& v_velocityRTM = scratchViews.get_scratch_view_2D(*velocityRTM_);

@@ -77,7 +77,7 @@ MomentumActuatorSrcElemKernel<AlgTraits>::execute(
 
     const int nearestNode = ipNodeMap_[ip];
 
-    NALU_ALIGNED DoubleType actuatorSourceIp[AlgTraits::nDim_];
+    DoubleType actuatorSourceIp[AlgTraits::nDim_];
     for ( int i = 0; i < AlgTraits::nDim_; ++i ) {
       actuatorSourceIp[i] = 0.0;
     }

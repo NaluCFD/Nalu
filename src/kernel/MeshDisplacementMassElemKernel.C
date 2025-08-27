@@ -92,10 +92,10 @@ MeshDisplacementMassElemKernel<AlgTraits>::execute(
   SharedMemView<DoubleType *>& rhs,
   ScratchViews<DoubleType>& scratchViews)
 {
-  NALU_ALIGNED DoubleType w_uIp[AlgTraits::nDim_];
-  NALU_ALIGNED DoubleType meshDispIp[AlgTraits::nDim_];
-  NALU_ALIGNED DoubleType meshDispNp1Ip[AlgTraits::nDim_];
-  NALU_ALIGNED DoubleType meshDispNm1Ip[AlgTraits::nDim_];
+  DoubleType w_uIp[AlgTraits::nDim_];
+  DoubleType meshDispIp[AlgTraits::nDim_];
+  DoubleType meshDispNp1Ip[AlgTraits::nDim_];
+  DoubleType meshDispNm1Ip[AlgTraits::nDim_];
 
   SharedMemView<DoubleType**>& meshDisp = scratchViews.get_scratch_view_2D(*meshDisplacement_);
   SharedMemView<DoubleType**>& meshDispNp1 = scratchViews.get_scratch_view_2D(*meshDisplacementNp1_);

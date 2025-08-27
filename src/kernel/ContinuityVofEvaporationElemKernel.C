@@ -70,7 +70,7 @@ ContinuityVofEvaporationElemKernel<AlgTraits>::execute(
   SharedMemView<DoubleType *>&rhs,
   ScratchViews<DoubleType>& scratchViews)
 {
-  NALU_ALIGNED DoubleType w_gradVof[AlgTraits::nDim_];
+  DoubleType w_gradVof[AlgTraits::nDim_];
 
   SharedMemView<DoubleType*>& v_vofNp1 = scratchViews.get_scratch_view_1D(
     *vofNp1_);

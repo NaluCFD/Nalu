@@ -87,7 +87,7 @@ MeshDisplacementElasticElemKernel<AlgTraits>::execute(
   const int numScsIp = AlgTraits::numScsIp_;
   const int nodesPerElement = AlgTraits::nodesPerElement_;
 
-  NALU_ALIGNED DoubleType kd[nDim2];
+  DoubleType kd[nDim2];
 
   // Define kd
   for ( int i = 0; i < nDim; ++i ) {

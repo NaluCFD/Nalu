@@ -66,12 +66,12 @@ namespace nalu {
       STK_ThrowAssert(weights.extent(i) == referenceGradWeights.extent(i));
 
     for (unsigned ip = 0; ip < referenceGradWeights.extent(0); ++ip) {
-      NALU_ALIGNED ftype jact[dim][dim];
+      ftype jact[dim][dim];
       for (int i=0; i<dim; ++i) 
         for (int j=0; j<dim; ++j) 
           jact[i][j] = ftype(0.0);
 
-      NALU_ALIGNED ftype refGrad[AlgTraits::nodesPerElement_][dim];
+      ftype refGrad[AlgTraits::nodesPerElement_][dim];
       for (int n = 0; n < AlgTraits::nodesPerElement_; ++n) {
         for (int i=0; i<dim; ++i) {
           refGrad[n][i] = referenceGradWeights(ip, n, i);
@@ -83,17 +83,17 @@ namespace nalu {
         }
       }
 
-      NALU_ALIGNED ftype adjJac[dim][dim];
+      ftype adjJac[dim][dim];
       cofactorMatrix(adjJac, jact);
 
-      NALU_ALIGNED ftype det = ftype(0.0);
+      ftype det = ftype(0.0);
       for (int i=0; i<dim; ++i) det += jact[i][0] * adjJac[i][0];
       STK_ThrowAssertMsg(
         stk::simd::are_any(det > tiny_positive_value()),
         "Problem with Jacobian determinant"
       );
 
-      NALU_ALIGNED const ftype inv_detj = ftype(1.0) / det;
+      const ftype inv_detj = ftype(1.0) / det;
 
       for (int n = 0; n < AlgTraits::nodesPerElement_; ++n) {
         for (int i=0; i<dim; ++i) {
@@ -125,12 +125,12 @@ namespace nalu {
       STK_ThrowAssert(weights.extent(i) == referenceGradWeights.extent(i));
 
     for (unsigned ip = 0; ip < referenceGradWeights.extent(0); ++ip) {
-      NALU_ALIGNED ftype jact[dim][dim];
+      ftype jact[dim][dim];
       for (int i=0; i<dim; ++i) 
         for (int j=0; j<dim; ++j) 
           jact[i][j] = ftype(0.0);
 
-      NALU_ALIGNED ftype refGrad[AlgTraits::nodesPerElement_][dim];
+      ftype refGrad[AlgTraits::nodesPerElement_][dim];
       for (int n = 0; n < AlgTraits::nodesPerElement_; ++n) {
         for (int i=0; i<dim; ++i) {
           refGrad[n][i] = referenceGradWeights(ip, n, i);
@@ -142,10 +142,10 @@ namespace nalu {
         }
       }
 
-      NALU_ALIGNED ftype adjJac[dim][dim];
+      ftype adjJac[dim][dim];
       cofactorMatrix(adjJac, jact);
 
-      NALU_ALIGNED ftype det = ftype(0.0);
+      ftype det = ftype(0.0);
       for (int i=0; i<dim; ++i) det += jact[i][0] * adjJac[i][0];
       STK_ThrowAssertMsg(
         stk::simd::are_any(det > tiny_positive_value()),
@@ -153,7 +153,7 @@ namespace nalu {
       );
       detj(ip) = det;
 
-      NALU_ALIGNED const ftype inv_detj = ftype(1.0) / det;
+      const ftype inv_detj = ftype(1.0) / det;
 
       for (int n = 0; n < AlgTraits::nodesPerElement_; ++n) {
         for (int i=0; i<dim; ++i) {
@@ -186,7 +186,7 @@ namespace nalu {
 
     for (unsigned ip = 0; ip < referenceGradWeights.extent(0); ++ip) {
 
-      NALU_ALIGNED ftype jac[3][3] = { {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0} };
+      ftype jac[3][3] = { {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0} };
       for (int n = 0; n < AlgTraits::nodesPerElement_; ++n) {
         jac[0][0] += referenceGradWeights(ip, n, 0) * coords(n, 0);
         jac[0][1] += referenceGradWeights(ip, n, 1) * coords(n, 0);
@@ -215,7 +215,7 @@ namespace nalu {
 
       // the covariant is the inverse of the contravariant by definition
       // gUpper is symmetric
-      NALU_ALIGNED const ftype inv_detj = ftype(1.0) / (
+      const ftype inv_detj = ftype(1.0) / (
             gup(ip, 0, 0) * ( gup(ip, 1, 1) * gup(ip, 2, 2) - gup(ip, 1, 2) * gup(ip, 1, 2) )
           - gup(ip, 0, 1) * ( gup(ip, 0, 1) * gup(ip, 2, 2) - gup(ip, 1, 2) * gup(ip, 0, 2) )
           + gup(ip, 0, 2) * ( gup(ip, 0, 1) * gup(ip, 1, 2) - gup(ip, 1, 1) * gup(ip, 0, 2) )
@@ -253,7 +253,7 @@ namespace nalu {
     STK_ThrowAssert(detj.extent(0) == referenceGradWeights.extent(0));
 
     for (unsigned ip = 0; ip < referenceGradWeights.extent(0); ++ip) {
-      NALU_ALIGNED ftype jac[3][3] = { {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0} };
+      ftype jac[3][3] = { {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0} };
       for (int n = 0; n < AlgTraits::nodesPerElement_; ++n) {
         jac[0][0] += referenceGradWeights(ip, n, 0) * coords(n, 0);
         jac[0][1] += referenceGradWeights(ip, n, 1) * coords(n, 0);
@@ -288,7 +288,7 @@ namespace nalu {
     STK_ThrowAssert(detj.extent(0) == referenceGradWeights.extent(0));
 
     for (unsigned ip = 0; ip < referenceGradWeights.extent(0); ++ip) {
-      NALU_ALIGNED ftype jac[2][2] = { {0.0, 0.0}, {0.0, 0.0} };
+      ftype jac[2][2] = { {0.0, 0.0}, {0.0, 0.0} };
       for (int n = 0; n < AlgTraits::nodesPerElement_; ++n) {
         jac[0][0] += referenceGradWeights(ip, n, 0) * coords(n, 0);
         jac[0][1] += referenceGradWeights(ip, n, 1) * coords(n, 0);

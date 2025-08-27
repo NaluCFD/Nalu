@@ -86,7 +86,7 @@ ContinuityInflowFemKernel<BcAlgTraits>::execute(
   SharedMemView<DoubleType *>&rhs,
   ScratchViews<DoubleType>& scratchViews)
 {
-  NALU_ALIGNED DoubleType w_rho_uBip[BcAlgTraits::nDim_];
+  DoubleType w_rho_uBip[BcAlgTraits::nDim_];
   
   SharedMemView<DoubleType**>& v_velocityBC = scratchViews.get_scratch_view_2D(*velocityBC_);
   SharedMemView<DoubleType*>& v_density = scratchViews.get_scratch_view_1D(*densityBC_);

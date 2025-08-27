@@ -79,8 +79,8 @@ MomentumVofCapillaryElemKernel<AlgTraits>::execute(
   SharedMemView<DoubleType *>& rhs,
   ScratchViews<DoubleType>& scratchViews)
 {
-  NALU_ALIGNED DoubleType w_nxIp[AlgTraits::nDim_];
-  NALU_ALIGNED DoubleType w_dvofdxIp[AlgTraits::nDim_];
+  DoubleType w_nxIp[AlgTraits::nDim_];
+  DoubleType w_dvofdxIp[AlgTraits::nDim_];
 
   SharedMemView<DoubleType**>& v_uNp1 = scratchViews.get_scratch_view_2D(*velocityNp1_);
   SharedMemView<DoubleType**>& v_interfaceNormal = scratchViews.get_scratch_view_2D(*interfaceNormal_);
