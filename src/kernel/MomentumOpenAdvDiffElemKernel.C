@@ -116,12 +116,12 @@ MomentumOpenAdvDiffElemKernel<BcAlgTraits>::execute(
   ScratchViews<DoubleType> &elemScratchViews,
   int elemFaceOrdinal)
 {
-  NALU_ALIGNED DoubleType w_uBip[BcAlgTraits::nDim_];
-  NALU_ALIGNED DoubleType w_rho_vBip[BcAlgTraits::nDim_];
-  NALU_ALIGNED DoubleType w_uBipExtrap[BcAlgTraits::nDim_];
-  NALU_ALIGNED DoubleType w_uspecBip[BcAlgTraits::nDim_];
-  NALU_ALIGNED DoubleType w_coordBip[BcAlgTraits::nDim_];
-  NALU_ALIGNED DoubleType w_nx[BcAlgTraits::nDim_];
+  DoubleType w_uBip[BcAlgTraits::nDim_];
+  DoubleType w_rho_vBip[BcAlgTraits::nDim_];
+  DoubleType w_uBipExtrap[BcAlgTraits::nDim_];
+  DoubleType w_uspecBip[BcAlgTraits::nDim_];
+  DoubleType w_coordBip[BcAlgTraits::nDim_];
+  DoubleType w_nx[BcAlgTraits::nDim_];
 
   const int *face_node_ordinals = meSCS_->side_node_ordinals(elemFaceOrdinal);
  

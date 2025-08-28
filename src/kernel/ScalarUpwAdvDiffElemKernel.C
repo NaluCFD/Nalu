@@ -114,7 +114,7 @@ ScalarUpwAdvDiffElemKernel<AlgTraits>::execute(
   ScratchViews<DoubleType>& scratchViews)
 {
   /// Scratch space to hold coordinates at the integration point
-  NALU_ALIGNED DoubleType w_coordIp[AlgTraits::nDim_];
+  DoubleType w_coordIp[AlgTraits::nDim_];
 
   SharedMemView<DoubleType**>& v_velocityRTM = scratchViews.get_scratch_view_2D(*velocityRTM_);
   SharedMemView<DoubleType**>& v_coordinates = scratchViews.get_scratch_view_2D(*coordinates_);

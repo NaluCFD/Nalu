@@ -99,9 +99,9 @@ MomentumAdvFemKernel<AlgTraits>::execute(
   SharedMemView<DoubleType*>& rhs,
   ScratchViews<DoubleType>& scratchViews)
 {
-  NALU_ALIGNED DoubleType w_rhoUIp[AlgTraits::nDim_];
-  NALU_ALIGNED DoubleType w_dpdxIp[AlgTraits::nDim_];
-  NALU_ALIGNED DoubleType w_GjpIp[AlgTraits::nDim_];
+  DoubleType w_rhoUIp[AlgTraits::nDim_];
+  DoubleType w_dpdxIp[AlgTraits::nDim_];
+  DoubleType w_GjpIp[AlgTraits::nDim_];
   
   SharedMemView<DoubleType**>& v_uNp1 = scratchViews.get_scratch_view_2D(*velocityNp1_);
   SharedMemView<DoubleType*>& v_rhoNp1 = scratchViews.get_scratch_view_1D(*density_); 

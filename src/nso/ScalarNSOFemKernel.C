@@ -81,8 +81,8 @@ ScalarNSOFemKernel<AlgTraits>::execute(
   SharedMemView<DoubleType *>& rhs,
   ScratchViews<DoubleType>& scratchViews)
 {
-  NALU_ALIGNED DoubleType w_dqdxIp    [AlgTraits::nDim_];
-  NALU_ALIGNED DoubleType w_rhoVrtmIp [AlgTraits::nDim_];
+  DoubleType w_dqdxIp    [AlgTraits::nDim_];
+  DoubleType w_rhoVrtmIp [AlgTraits::nDim_];
 
   SharedMemView<DoubleType*>& v_qNp1 = scratchViews.get_scratch_view_1D(*scalarQNp1_);
   SharedMemView<DoubleType**>& v_velocityRTM = scratchViews.get_scratch_view_2D(*velocityRTM_);

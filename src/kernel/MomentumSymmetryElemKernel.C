@@ -75,7 +75,7 @@ MomentumSymmetryElemKernel<BcAlgTraits>::execute(
   ScratchViews<DoubleType> &elemScratchViews,
   int elemFaceOrdinal)
 {
-  NALU_ALIGNED DoubleType w_nx[BcAlgTraits::nDim_];
+  DoubleType w_nx[BcAlgTraits::nDim_];
 
   // face
   SharedMemView<DoubleType*>& vf_viscosity = faceScratchViews.get_scratch_view_1D(*viscosity_);

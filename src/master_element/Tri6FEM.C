@@ -93,8 +93,8 @@ void Tri6FEM::determinant_fem(
 
   for (int ip = 0; ip < numIntPoints_; ++ip) {
     
-    NALU_ALIGNED DoubleType dxds[3]= {0.0, 0.0, 0.0};
-    NALU_ALIGNED DoubleType dxdt[3]= {0.0, 0.0, 0.0};
+    DoubleType dxds[3]= {0.0, 0.0, 0.0};
+    DoubleType dxdt[3]= {0.0, 0.0, 0.0};
    
     for ( int n = 0; n < nodesPerElement_; ++n ) {
       const DoubleType derivS = deriv(ip,n,0);
@@ -128,8 +128,8 @@ void Tri6FEM::normal_fem(
 
   for (int ip = 0; ip < numIntPoints_; ++ip) {
     
-    NALU_ALIGNED DoubleType dxds[3]= {0.0, 0.0, 0.0};
-    NALU_ALIGNED DoubleType dxdt[3]= {0.0, 0.0, 0.0};
+    DoubleType dxds[3]= {0.0, 0.0, 0.0};
+    DoubleType dxdt[3]= {0.0, 0.0, 0.0};
    
     for ( int n = 0; n < nodesPerElement_; ++n ) {
       const DoubleType derivS = deriv(ip,n,0);

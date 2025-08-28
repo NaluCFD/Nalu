@@ -73,8 +73,8 @@ MomentumVofSharpenElemKernel<AlgTraits>::execute(
   SharedMemView<DoubleType *>&rhs,
   ScratchViews<DoubleType>& scratchViews)
 {
-  NALU_ALIGNED DoubleType w_uIp[AlgTraits::nodesPerElement_];
-  NALU_ALIGNED DoubleType w_magU[AlgTraits::nodesPerElement_];
+  DoubleType w_uIp[AlgTraits::nodesPerElement_];
+  DoubleType w_magU[AlgTraits::nodesPerElement_];
 
   SharedMemView<DoubleType**>& v_uNp1 = scratchViews.get_scratch_view_2D(*velocityNp1_);
   SharedMemView<DoubleType**>& v_vrtm = scratchViews.get_scratch_view_2D(*velocityRTM_);

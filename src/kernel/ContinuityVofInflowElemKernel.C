@@ -73,7 +73,7 @@ ContinuityVofInflowElemKernel<BcAlgTraits>::execute(
   SharedMemView<DoubleType *>&rhs,
   ScratchViews<DoubleType>& scratchViews)
 {
-  NALU_ALIGNED DoubleType w_uBip[BcAlgTraits::nDim_];
+  DoubleType w_uBip[BcAlgTraits::nDim_];
   
   SharedMemView<DoubleType**>& vf_velocityBC = scratchViews.get_scratch_view_2D(*velocityBC_);
   SharedMemView<DoubleType**>& vf_exposedAreaVec = scratchViews.get_scratch_view_2D(*exposedAreaVec_);

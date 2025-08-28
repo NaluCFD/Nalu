@@ -109,9 +109,9 @@ ScalarOpenAdvFemKernel<BcAlgTraits>::execute(
   ScratchViews<DoubleType> &elemScratchViews,
   int elemFaceOrdinal)
 {
-  NALU_ALIGNED DoubleType w_rho_vrtmBip[BcAlgTraits::nDim_];
-  NALU_ALIGNED DoubleType w_GpdxBip[BcAlgTraits::nDim_];
-  NALU_ALIGNED DoubleType w_dpdxBip[BcAlgTraits::nDim_];
+  DoubleType w_rho_vrtmBip[BcAlgTraits::nDim_];
+  DoubleType w_GpdxBip[BcAlgTraits::nDim_];
+  DoubleType w_dpdxBip[BcAlgTraits::nDim_];
  
   const int *face_node_ordinals = meFEM_->side_node_ordinals(elemFaceOrdinal);
  

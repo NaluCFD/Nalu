@@ -58,10 +58,8 @@ SteadyThermal3dContactSrcElemKernel<AlgTraits>::execute(
   SharedMemView<DoubleType *>& rhs,
   ScratchViews<DoubleType>& scratchViews)
 {
-
-  // Forcing nDim = 3 instead of using AlgTraits::nDim_ here to avoid compiler
-  // warnings when this template is instantiated for 2-D topologies. 
-  NALU_ALIGNED DoubleType w_scvCoords[3];
+  // Forcing nDim = 3 to avoid compiler warnings 
+  DoubleType w_scvCoords[3];
 
   SharedMemView<DoubleType**>& v_coordinates = scratchViews.get_scratch_view_2D(*coordinates_);
   SharedMemView<DoubleType*>& v_scv_volume = scratchViews.get_me_views(CURRENT_COORDINATES).scv_volume;

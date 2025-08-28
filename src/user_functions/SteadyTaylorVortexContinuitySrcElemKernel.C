@@ -75,7 +75,7 @@ SteadyTaylorVortexContinuitySrcElemKernel<AlgTraits>::execute(
 {
   // Forcing nDim = 3 instead of using AlgTraits::nDim_ here to avoid compiler
   // warnings when this template is instantiated for 2-D topologies. 
-  NALU_ALIGNED DoubleType w_scvCoords[3];
+  DoubleType w_scvCoords[3];
 
   SharedMemView<DoubleType**>& v_coordinates = scratchViews.get_scratch_view_2D(*coordinates_);
   SharedMemView<DoubleType*>& v_scv_volume = scratchViews.get_me_views(CURRENT_COORDINATES).scv_volume;

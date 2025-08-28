@@ -85,7 +85,7 @@ ScalarFluxPenaltyFemKernel<BcAlgTraits>::execute(
   ScratchViews<DoubleType> &elemScratchViews,
   int elemFaceOrdinal)
 {
-  NALU_ALIGNED DoubleType w_dqdxBip[BcAlgTraits::nDim_];
+  DoubleType w_dqdxBip[BcAlgTraits::nDim_];
   
   const int *face_node_ordinals = meFEM_->side_node_ordinals(elemFaceOrdinal);
  
