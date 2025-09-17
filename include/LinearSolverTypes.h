@@ -66,7 +66,7 @@ typedef int    LocalOrdinal;  // MUST be signed
 typedef double Scalar;
 
 typedef Kokkos::DualView<size_t*, DeviceSpace>                             RowLengths;
-typedef Kokkos::StaticCrsGraph<LocalOrdinal, Kokkos::LayoutLeft, DeviceSpace> LocalGraph;
+typedef KokkosSparse::StaticCrsGraph<LocalOrdinal, Kokkos::LayoutLeft, DeviceSpace> LocalGraph;
 typedef Tpetra::Map<LocalOrdinal, GlobalOrdinal>::node_type                Node;
 typedef Teuchos::MpiComm<int>                                              Comm;
 typedef Tpetra::Export< LocalOrdinal, GlobalOrdinal, Node >                Export;
