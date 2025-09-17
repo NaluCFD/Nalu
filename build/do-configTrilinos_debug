@@ -77,6 +77,7 @@ cmake \
 -DTrilinos_ENABLE_SEACASNemslice:BOOL=ON \
 -DTrilinos_ENABLE_SEACASIoss:BOOL=ON \
 -DKokkos_ENABLE_ATOMICS_BYPASS=ON \
+-DKokkos_ENABLE_DEPRECATED_CODE_4=OFF \
 -DTPL_ENABLE_Netcdf:BOOL=ON \
 -DNetCDF_ROOT:PATH=${netcdf_install_dir} \
 -DHDF5_ROOT:PATH=${hdf_install_dir} \
